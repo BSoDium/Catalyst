@@ -1,6 +1,7 @@
 import { createBrowserRouter, Outlet, RouteObject } from "react-router-dom";
 import AnalyticsBanner from "@/components/AnalyticsBanner";
 import Copyright from "@/components/Copyright";
+import OutdatedVersionNotice from "@/components/OutdatedVersionNotice";
 import NavigationBar from "@/navigation/NavigationBar";
 import NoMatch from "@/pages/NoMatch";
 
@@ -11,6 +12,7 @@ export const architecture: RouteObject[] = [
   {
     element: (
       <>
+        <OutdatedVersionNotice />
         <AnalyticsBanner />
         <Copyright />
         <NavigationBar>
