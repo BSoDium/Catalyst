@@ -1,5 +1,7 @@
 {
   "framework": "vite",
+  "installCommand": "corepack yarn install --immutable",
+  "buildCommand": "corepack yarn build",
   "rewrites": [
     {
       "source": "/(.*)",
