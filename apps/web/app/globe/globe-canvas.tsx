@@ -11,6 +11,7 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { createHandover, type HandoverDebug, type HandoverHandle, type Notice } from "./handover/controller";
+import { enablePerf, perfEnd, perfStart } from "./engine/perf";
 import type { GlobeProps } from "./types";
 
 type Status = "loading" | "ready" | "unavailable" | "lost";
@@ -129,8 +130,10 @@ export default function GlobeCanvas({
           onNotice: setNotice,
           onSelect: (slug) => latest.current.onSelect(slug),
           onViewChange: (view) => {
+            const t0 = perfStart();
             viewRef.current = view;
             latest.current.onViewChange(view);
+            perfEnd("react.onViewChange", t0);
           },
           onContextChange: (lost) => setStatus(lost ? "lost" : "ready"),
           streetOptions: debugEnabled() ? streetDebugOptions() : undefined,
@@ -139,6 +142,7 @@ export default function GlobeCanvas({
         appliedSelection.current = now.selectedSlug;
         handleRef.current = handle;
         if (debugEnabled()) {
+          enablePerf();
           const d = handle.debug();
           window.__handoverDebug = d;
           window.__globeDebug = d.globe;

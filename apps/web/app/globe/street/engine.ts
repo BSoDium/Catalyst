@@ -17,6 +17,7 @@ import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import { readTheme, type GlobeTheme } from "../engine/colors";
 import { watchDevicePixelRatio } from "../engine/dpr";
 import { INSET_EASE } from "../engine/tuning";
+import { perfEnd, perfStart } from "../engine/perf";
 import { clampInset, fadeMask, insetShiftBuf } from "../engine/inset";
 import { attributionFor, attributionText } from "./core/attribution";
 import { INK_THRESHOLD, SOLID_FROM } from "./core/art-line";
@@ -24,7 +25,9 @@ import { cellCssFor, cellDevicePx, EasedValue, revealRadiusDevice } from "./core
 import { isPmtilesUrl, type SourceDescriptor } from "./core/source-descriptor";
 import { TileSourceManager, type SourceId, type TileStatus } from "./core/tile-source-manager";
 import { routeFeatures } from "./core/routes";
-import { Compositor } from "./gl/compositor";
+import { Compositor, type OutputSize } from "./gl/compositor";
+import { buildPalette } from "./core/palette";
+import { snapCenter } from "./core/snap";
 import type { PassParams } from "./gl/pixel-pass";
 import { createTileNetwork } from "./net/tile-protocols";
 import { probeSource, type ProbeConfig, type ProbeOutcome } from "./net/probe";
@@ -85,8 +88,12 @@ function bezier([x1, y1, x2, y2]: readonly [number, number, number, number]): (t
 }
 const insetEase = bezier(INSET_EASE);
 
+/** Map zoom change (levels) below which a pan counts as steady: the scale error stays under a fifth of a cell at the screen edge. */
+const STEADY_ZOOM = 3e-4;
+
 export function createStreetMap(container: HTMLElement, opts: StreetMapOptions): StreetMap {
   if (!isWebGL2Available()) throw new StreetUnavailableError();
+  const tAll = perfStart();
   const instance = ++instances;
   if (!workerReady) {
     setWorkerUrl(workerUrl);
@@ -105,7 +112,7 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
   } satisfies Partial<CSSStyleDeclaration>);
   const mapEl = document.createElement("div");
   mapEl.setAttribute("aria-hidden", "true");
-  Object.assign(mapEl.style, { position: "absolute", inset: "0" } satisfies Partial<CSSStyleDeclaration>);
+  Object.assign(mapEl.style, { position: "absolute", left: "0", top: "0" } satisfies Partial<CSSStyleDeclaration>);
   const hudRoot = document.createElement("div");
   hudRoot.dataset.streetOverlay = "";
   hudRoot.setAttribute("aria-hidden", "true");
@@ -132,15 +139,49 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
   let inset = 0;
   let mapLost = false;
   let renders = 0;
+  let heldZoom: number | null = null;
+  /** false: the host shows something else; the map renders (tiles load) but no overlay work and no pass happen. */
+  let active = true;
   let selected = opts.selectedSlug;
   let focused = opts.focusedSlug;
   const places = new Map(opts.places.map((p) => [p.slug, p]));
   const primaryIsPmtiles = isPmtilesUrl(opts.tiles.primaryUrl);
   const hasFallback = opts.tiles.fallbackPmtilesUrl !== null;
   const dprNow = () => window.devicePixelRatio || 1;
-  const mapScale = () => Math.min(dprNow(), 2);
   const cellNow = () => cellCssFor(root.clientWidth, root.clientHeight, dprNow());
   let cellCss = cellNow();
+  /**
+   * Native art-resolution mode (default): MapLibre renders ONE PIXEL PER ART CELL (pixelRatio = 1 / cell) and the pass runs
+   * on that grid; the overlay canvas is `cols x rows` and the browser scales it up with nearest-neighbour. `highResolution`
+   * keeps the device-resolution render the sharp reveal and the sharp dissolve need.
+   */
+  const native = !opts.highResolution;
+  /**
+   * The art grid: `cols x rows` cells covering the root (a partial cell at the right/bottom edge is clipped by the root).
+   * MapLibre reads an INTEGER container size, so the map box is `cssW x cssH` css px (the grid rounded up to whole css px)
+   * and its pixel ratio is `cols / cssW`: one canvas pixel per cell, an exact 1:1 between the map, the pass and the screen.
+   * The box is a little larger than the root; padding `gridPadR` / `gridPadB` keeps the projection centre on the root's centre.
+   */
+  interface Grid { cols: number; rows: number; cssW: number; cssH: number; cell: number; pr: number }
+  /** Map pixels per art cell per axis (native mode). 2 keeps short dashes alive; 1 is the cheapest. */
+  const clampScale = (n: number) => (native ? Math.max(1, Math.min(3, Math.round(n))) : 1);
+  let scale = clampScale(opts.renderScale ?? STREET_TUNING.renderScale);
+  const gridNow = (): Grid => {
+    const w = Math.max(1, root.clientWidth);
+    const h = Math.max(1, root.clientHeight);
+    if (!native) return { cols: w, rows: h, cssW: w, cssH: h, cell: 1, pr: Math.min(dprNow(), 2) };
+    const cell = cellNow();
+    const cols = Math.max(1, Math.ceil(w / cell - 1e-6));
+    const rows = Math.max(1, Math.ceil(h / cell - 1e-6));
+    const cssW = Math.max(w, Math.ceil(cols * cell - 1e-6));
+    const cssH = Math.max(h, Math.ceil(rows * cell - 1e-6));
+    return { cols, rows, cssW, cssH, cell, pr: (scale * cols + 1e-6) / cssW };
+  };
+  let artGrid = gridNow();
+  let gridPadR = native ? artGrid.cssW - root.clientWidth : 0;
+  let gridPadB = native ? artGrid.cssH - root.clientHeight : 0;
+  /** CSS px of one art cell as the MAP sees it (style widths are authored against it). */
+  const mapCell = () => (native ? artGrid.cssW / artGrid.cols : cellCss);
 
   let world: { coastlines: GeoJSON.FeatureCollection; borders: GeoJSON.FeatureCollection } = opts.world ?? { coastlines: EMPTY_FC, borders: EMPTY_FC };
   const grid = graticule(15, 3);
@@ -189,16 +230,23 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
       graticule: grid,
       routes,
       projection: opts.projection ?? "globe",
-      cellCss,
+      cellCss: mapCell(),
     });
 
   // ---- map -----------------------------------------------------------------------------------------------------
+  const sizeMapBox = () => {
+    mapEl.style.width = `${artGrid.cssW}px`;
+    mapEl.style.height = `${artGrid.cssH}px`;
+  };
+  sizeMapBox();
+  perfEnd("street.create.setup", tAll);
+  const tMap = perfStart();
   const map = new MLMap({
     container: mapEl,
     style: buildStyle(undefined),
     center: [opts.view.lon, opts.view.lat],
     zoom: opts.view.zoom,
-    pixelRatio: mapScale(),
+    pixelRatio: artGrid.pr,
     minZoom: opts.minZoom ?? STREET_TUNING.minZoom,
     maxZoom: opts.maxZoom ?? STREET_TUNING.maxZoom,
     attributionControl: false,
@@ -210,6 +258,7 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
     fadeDuration: 0,
     canvasContextAttributes: { antialias: false, preserveDrawingBuffer: false },
   });
+  perfEnd("street.create.maplibre", tMap);
   map.touchZoomRotate.disableRotation();
   // MapLibre's stylesheet is not used, so what it would give the canvas container is set here.
   const canvasBox = map.getCanvasContainer();
@@ -231,51 +280,64 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
   let reportedLost = false;
   const waiters: { value: EasedValue; resolve(): void }[] = [];
 
-  const compositor = new Compositor(map, root, {
-    params(outW: number, outH: number, dpr: number): PassParams {
-      const cell = cellCssFor(outW / dpr, outH / dpr, dpr);
-      if (Math.abs(cell - cellCss) > 1e-6) {
-        cellCss = cell;
-        // Re-apply the art widths after the pass was told the cell (never from inside a map render).
-        queueMicrotask(() => {
-          if (disposed) return;
-          applyCell(map, cellCss);
-          hud.setCell(cellCss);
-        });
-      }
-      let focus = { x: 0, y: 0, radius: 0, feather: 1 };
-      if (revealV.value > 0) {
-        const c = revealCenter === "selected" ? (selected ? places.get(selected) : undefined) : revealCenter;
-        if (c) {
-          const p = map.project([c.lon, c.lat]);
-          const r = revealRadiusDevice(outW, outH, dpr) * revealV.eased;
-          focus = { x: p.x * dpr, y: p.y * dpr, radius: r, feather: Math.max(1, r * 0.4) };
+  const compositorOptions = { native, scale };
+  const tComp = perfStart();
+  const compositor = new Compositor(
+    map,
+    root,
+    {
+      size(): OutputSize {
+        if (native) return { w: artGrid.cols, h: artGrid.rows, cssW: artGrid.cssW, cssH: artGrid.cssH };
+        const dpr = dprNow();
+        const w = Math.max(1, Math.round(root.clientWidth * dpr));
+        const h = Math.max(1, Math.round(root.clientHeight * dpr));
+        return { w, h, cssW: w / dpr, cssH: h / dpr };
+      },
+      params(outW: number, outH: number): PassParams {
+        const dpr = native ? 1 : dprNow();
+        const palette = buildPalette(theme);
+        let focus = { x: 0, y: 0, radius: 0, feather: 1 };
+        if (!native && revealV.value > 0) {
+          const c = revealCenter === "selected" ? (selected ? places.get(selected) : undefined) : revealCenter;
+          if (c) {
+            const p = map.project([c.lon, c.lat]);
+            const r = revealRadiusDevice(outW, outH, dpr) * revealV.eased;
+            focus = { x: p.x * dpr, y: p.y * dpr, radius: r, feather: Math.max(1, r * 0.4) };
+          }
         }
-      }
-      return {
-        bg: theme.background,
-        fg: theme.ink,
-        muted: theme.outline,
-        cellOut: cellDevicePx(cell, dpr),
-        inkThreshold: INK_THRESHOLD,
-        solidThreshold: SOLID_FROM,
-        sharp: sharpV.eased,
-        focus,
-        blend: blendV.eased,
-        anchor: [0, 0],
-      };
+        return {
+          bg: theme.background,
+          fg: theme.ink,
+          muted: theme.outline,
+          levels: palette.rgb,
+          codeLevel: palette.codeLevel,
+          toneSteps: palette.toneSteps,
+          cellOut: native ? 1 : cellDevicePx(cellCss, dpr),
+          inkThreshold: INK_THRESHOLD,
+          solidThreshold: SOLID_FROM,
+          sharp: native ? 0 : sharpV.eased,
+          focus,
+          blend: blendV.eased,
+          anchor: [0, 0],
+        };
+      },
+      onContextChange: () => reportContext(),
     },
-    onContextChange: () => reportContext(),
-  });
+    compositorOptions,
+  );
+  perfEnd("street.create.compositor", tComp);
   compositor.canvas.setAttribute("aria-hidden", "true");
   root.append(hudRoot, attributionEl);
 
+  const tHud = perfStart();
   const hud = new HudLayer(
     hudRoot,
     opts.places.map((p) => ({ slug: p.slug, name: p.name, lat: p.lat, lon: p.lon, labelPriority: p.labelPriority })),
     reduced,
     opts.embedded ? "globe" : "hud",
   );
+  perfEnd("street.create.hud", tHud);
+  const tRest = perfStart();
   hud.setCell(cellCss);
   hud.setSelected(selected);
   hud.setFocused(focused);
@@ -410,8 +472,15 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
     const c = map.getCenter();
     return { lon: c.lng, lat: c.lat, zoom: map.getZoom() };
   };
-  const pad = () => map.getPadding().right ?? 0;
+  /** Right padding that comes from the inset (the grid's own overhang excluded). */
+  const pad = () => Math.max(0, (map.getPadding().right ?? 0) - gridPadR);
+  const padObj = (insetPad: number) => ({ top: 0, bottom: gridPadB, left: 0, right: insetPad + gridPadR });
   const syncOverlay = () => {
+    const t0 = perfStart();
+    syncOverlayInner();
+    perfEnd("street.overlay", t0);
+  };
+  const syncOverlayInner = () => {
     const w = root.clientWidth;
     const h = root.clientHeight;
     const v = viewNow();
@@ -445,7 +514,7 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
 
   onMap("render", () => {
     renders++;
-    syncOverlay();
+    if (active) syncOverlay();
   });
   onMap("click", (e: { point: { x: number; y: number }; originalEvent?: Event }) => {
     const touch = (e.originalEvent as PointerEvent | undefined)?.pointerType === "touch";
@@ -477,28 +546,35 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
     reportContext();
   });
 
-  const ro = new ResizeObserver(() => {
+  /** The root or the device pixel ratio changed: new cell, new grid, new map box and pixel ratio, widths re-applied. */
+  const refreshGrid = () => {
     if (disposed) return;
     const c = cellNow();
-    if (Math.abs(c - cellCss) > 1e-6) {
-      cellCss = c;
-      applyCell(map, cellCss);
-      hud.setCell(cellCss);
-      map.triggerRepaint();
-    }
+    const g = gridNow();
+    const changed = Math.abs(c - cellCss) > 1e-6 || g.cols !== artGrid.cols || g.rows !== artGrid.rows || g.cssW !== artGrid.cssW || g.cssH !== artGrid.cssH || Math.abs(g.pr - artGrid.pr) > 1e-9;
+    if (!changed) return;
+    const keepInsetPad = pad();
+    cellCss = c;
+    artGrid = g;
+    gridPadR = native ? artGrid.cssW - root.clientWidth : 0;
+    gridPadB = native ? artGrid.cssH - root.clientHeight : 0;
+    sizeMapBox();
+    map.setPixelRatio(artGrid.pr);
+    map.resize();
+    map.setPadding(padObj(keepInsetPad));
+    applyCell(map, mapCell());
+    hud.setCell(cellCss);
+    map.triggerRepaint();
+  };
+  const ro = new ResizeObserver(() => {
+    if (disposed) return;
+    refreshGrid();
     // The inset's art-pixel rounding depends on the cell and its fraction on the width.
     if (inset > 0) setPadding(inset, false);
   });
   ro.observe(root);
 
-  const stopDpr = watchDevicePixelRatio(() => {
-    if (disposed) return;
-    map.setPixelRatio(mapScale());
-    cellCss = cellNow();
-    applyCell(map, cellCss);
-    hud.setCell(cellCss);
-    map.triggerRepaint();
-  });
+  const stopDpr = watchDevicePixelRatio(refreshGrid);
 
   const scheme = matchMedia("(prefers-color-scheme: dark)");
   const onScheme = () => {
@@ -561,15 +637,15 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
     const target = 2 * insetShiftBuf(clampInset(px, w), cellCss) * cellCss;
     if (Math.abs(pad() - target) < 1e-6) return;
     if (!animate || reduced) {
-      map.setPadding({ top: 0, bottom: 0, left: 0, right: target });
+      map.setPadding(padObj(target));
       return;
     }
-    map.easeTo({ padding: { top: 0, bottom: 0, left: 0, right: target }, duration: STREET_TUNING.insetMs, easing: insetEase, essential: true });
+    map.easeTo({ padding: padObj(target), duration: STREET_TUNING.insetMs, easing: insetEase, essential: true });
   };
 
   // The initial inset is read at creation (a direct load with the panel open starts centred).
   inset = clampInset(opts.insetRight, root.clientWidth || 1);
-  if (inset > 0) map.setPadding({ top: 0, bottom: 0, left: 0, right: 2 * insetShiftBuf(inset, cellCss) * cellCss });
+  map.setPadding(padObj(inset > 0 ? 2 * insetShiftBuf(inset, cellCss) * cellCss : 0));
   renderAttribution(manager.status);
   attributionEl.style.right = `${8 + Math.max(0, inset)}px`;
 
@@ -605,7 +681,18 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
         attributionEl.style.right = `${8 + inset}px`;
       }
       const right = 2 * insetShiftBuf(inset, cellCss) * cellCss;
-      map.jumpTo({ center: [v.lon, v.lat], zoom: v.zoom, padding: { top: 0, bottom: 0, left: 0, right } });
+      // Steady zoom: the centre moves by whole art cells (core/snap.ts), so the picture translates rigidly. The map zoom
+      // follows the latitude a little (the unified zoom is constant), which would make the grid drift under the snap:
+      // within STEADY_ZOOM the zoom of the last unsnapped frame is held. A real zoom change (and the frame it starts
+      // on) cannot be snapped to a common translation: it is applied as is and the zoom is held again once it rests.
+      let { lon, lat } = v;
+      let zoom = v.zoom;
+      const snapOk = !!o?.snap && opts.snapPan !== false && STREET_TUNING.snapPanFromZoom > 0 && v.zoom >= STREET_TUNING.snapPanFromZoom;
+      if (snapOk && heldZoom !== null && Math.abs(v.zoom - heldZoom) < STEADY_ZOOM) {
+        zoom = heldZoom;
+        ({ lon, lat } = snapCenter(lon, lat, zoom, mapCell()));
+      } else heldZoom = snapOk ? v.zoom : null;
+      map.jumpTo({ center: [lon, lat], zoom, padding: padObj(right) });
       if (o?.sync) map.redraw();
     },
     hit: (x, y, kind) => hud.hit(x, y, kind),
@@ -648,15 +735,30 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
     },
     getView: viewNow,
     setReveal(on, o?: RevealOptions) {
+      if (native) return Promise.resolve(); // needs the device-resolution render (StreetMapOptions.highResolution)
       if (o?.center) revealCenter = o.center;
       return driven(revealV, on ? 1 : 0, o);
     },
-    setSharp: (value, o) => driven(sharpV, value, o),
+    setSharp: (value, o) => (native ? Promise.resolve() : driven(sharpV, value, o)),
     setBlend: (value, o) => driven(blendV, value, o),
+    setActive(on) {
+      if (on === active) return;
+      active = on;
+      compositor.suspend(!on);
+      if (on) map.triggerRepaint();
+    },
     getTileStatus: () => manager.status,
     getMaxZoom: () => manager.status.maxZoom,
     resize() {
+      refreshGrid();
       map.resize();
+    },
+    setRenderScale(n) {
+      const next = clampScale(n);
+      if (next === scale) return;
+      scale = next;
+      compositorOptions.scale = next;
+      refreshGrid();
     },
     dispose() {
       if (disposed) return;
@@ -715,5 +817,7 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
       };
     },
   };
+  perfEnd("street.create.rest", tRest);
+  perfEnd("street.create.total", tAll);
   return map_;
 }

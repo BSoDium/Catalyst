@@ -17,6 +17,7 @@
  * Source orientation: row 0 is the top (an uploaded canvas). The art texture always has row 0 at the top.
  */
 import type { Rgb } from "../core/pixel-types";
+import { MAX_LEVELS } from "../core/palette";
 
 const VERT = `#version 300 es
 void main() {
@@ -47,6 +48,8 @@ uniform int uCellOut;        // art cell in output px
 uniform float uInk;          // ink threshold (0.49 * the weakest ink)
 uniform float uSolid;        // R above this is solid ink (never thinned); between uInk and uSolid it is thin ink
 uniform ivec2 uAnchor;
+uniform int uToneSteps;      // fill tone quantisation (core/palette.ts TONE_STEPS)
+uniform int uNativeArt;      // 1: the source IS the art grid (one texel per cell, nearest): alpha between 0 and 1 is the disc edge
 out vec4 o;
 ${BAYER}
 vec2 uvOfOut(vec2 outPx) { return outPx * uScale / vec2(uSrcSize); }
@@ -70,9 +73,9 @@ void main() {
     ivec2 tc = cell + uAnchor;
     if (mx.r > uInk) outCode = mx.r > uSolid ? 2 : 1;
     if (outCode == 0) {
-      if (aMin < 0.5) outCode = 4;                                   // straddles the disc edge: 1 art px limb
+      if (aMin < 0.5 || (uNativeArt == 1 && mx.a < 0.98)) outCode = 4; // straddles the disc edge: 1 art px limb
       else if (mx.b > 0.49) outCode = 4;                             // muted lines (rail, graticule): hard threshold
-      else if (bayer8(tc) < int(floor(mx.g * 16.0 + 0.5)) * 4) outCode = 3;   // fills: screen-anchored lattice
+      else if (bayer8(tc) < int(floor(mx.g * float(uToneSteps) + 0.5)) * (64 / uToneSteps)) outCode = 3;   // fills: screen-anchored lattice
     }
   }
   o = vec4(code(outCode), 0.0, 0.0, 1.0);
@@ -119,7 +122,9 @@ uniform int uCellOut;
 uniform float uSharp;         // global dissolve of pixel art into the sharp render, 0..1
 uniform float uBlend;         // share of cells that show the street map at all (1 = all, 0 = none: transparent)
 uniform vec4 uFocus;          // x, y (output px, top-origin), radius, feather
-uniform vec3 uBg, uFg, uMuted;
+uniform vec3 uBg, uFg, uMuted;   // the sharp path's colours (the palette's bg / ink / muted levels)
+uniform vec3 uPal[${MAX_LEVELS}];      // the palette table (core/palette.ts): one colour per level
+uniform int uCodeLevel[8];       // class code -> palette level
 uniform ivec2 uAnchor;
 out vec4 o;
 ${BAYER}
@@ -135,7 +140,7 @@ void main() {
   float th = thr(cell + uAnchor);
   if (uBlend < 1.0 && !(uBlend > th)) { o = vec4(0.0); return; }   // premultiplied transparent: the layer below shows
   int code = int(texelFetch(uArt, cell, 0).r * 255.0 + 0.5);
-  vec3 col = code == 0 ? uBg : (code == 4 ? uMuted : uFg);
+  vec3 col = uPal[uCodeLevel[code & 7]];
   float m = max(uSharp, coverage(vec2(p) + 0.5));
   if (m > 0.0 && m > th) {
     vec2 uv = (vec2(p) + 0.5) / vec2(uOutSize);
@@ -161,7 +166,11 @@ export interface PassParams {
   bg: Rgb;
   fg: Rgb;
   muted: Rgb;
-  /** art cell in output (device) px */
+  /** The palette table (core/palette.ts): colours per level and the level of each class code. */
+  levels: readonly Rgb[];
+  codeLevel: readonly number[];
+  toneSteps: number;
+  /** art cell in output px (1 when the source and the output are the art grid itself) */
   cellOut: number;
   /** hard ink threshold on the sampled R */
   inkThreshold: number;
@@ -213,6 +222,7 @@ export class PixelPass {
   private fbo: [WebGLFramebuffer, WebGLFramebuffer];
   /** index of the art texture holding the finished art image */
   private cur = 0;
+  private nearestSrc = false;
   private vao: WebGLVertexArrayObject;
   srcW = 0;
   srcH = 0;
@@ -236,12 +246,21 @@ export class PixelPass {
     }
   }
 
+  /** The source is the art grid itself (one texel per cell): sample it with NEAREST. Otherwise it is a device-resolution render (LINEAR). */
+  setNativeSource(on: boolean): void {
+    // LINEAR in both modes: at one texel per cell a centre sample IS the texel, at 2x2 it is the average of the four
+    // texels around the centre (the value of the ramp at the exact cell centre).
+    this.nearestSrc = on;
+  }
+
   /** Upload a canvas (another context's drawing buffer). Row 0 is the top. */
   uploadCanvas(canvas: HTMLCanvasElement): void {
     const gl = this.gl;
     gl.bindTexture(gl.TEXTURE_2D, this.srcTex);
     gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas);
+    // Same size as last time (every frame of a pan): overwrite the storage instead of re-specifying it.
+    if (canvas.width === this.srcW && canvas.height === this.srcH) gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, canvas);
+    else gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas);
     gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
     this.srcW = canvas.width;
     this.srcH = canvas.height;
@@ -291,6 +310,8 @@ export class PixelPass {
     gl.uniform1f(u.uInk!, p.inkThreshold);
     gl.uniform1f(u.uSolid!, p.solidThreshold);
     gl.uniform2i(u.uAnchor!, p.anchor[0], p.anchor[1]);
+    gl.uniform1i(u.uToneSteps!, p.toneSteps);
+    gl.uniform1i(u.uNativeArt!, this.nearestSrc ? 1 : 0);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     this.cur = 0;
 
@@ -333,6 +354,12 @@ export class PixelPass {
     gl.uniform3f(u.uMuted!, ...p.muted);
     gl.uniform2i(u.uAnchor!, p.anchor[0], p.anchor[1]);
     gl.uniform1i(u.uCellOut!, p.cellOut);
+    const pal = new Float32Array(MAX_LEVELS * 3);
+    p.levels.forEach((c, i) => pal.set(c, i * 3));
+    gl.uniform3fv(u["uPal[0]"]!, pal);
+    const codes = new Int32Array(8);
+    p.codeLevel.forEach((l, i) => (codes[i] = l));
+    gl.uniform1iv(u["uCodeLevel[0]"]!, codes);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     gl.activeTexture(gl.TEXTURE0);
   }

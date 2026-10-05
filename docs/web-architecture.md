@@ -16,6 +16,8 @@ Run from the repo root with `pnpm --filter @catalyst/web <script>` or inside `ap
 | `build` / `start` | production build / `react-router-serve` (set `PORT`) |
 | `typecheck` | `react-router typegen && tsc` |
 | `test` | vitest (pure logic only; `vitest.config.ts` does not boot the React Router plugin) |
+| `test:street-lines` | the line regression gate of the street pass (needs the dev routes, `docs/pixel-line-rules.md`) |
+| `perf` | performance budgets against a production build, exit 1 when exceeded (`docs/performance.md`; `-- --headed` for the real display) |
 
 ## Environment
 
@@ -381,6 +383,13 @@ street scale have none); JS heap 11 to 37 MB. GPU-synced frame in the dissolve b
 street render + pass, circular pan, 300 frames): desktop p50 10.1 / p95 12.2 / max 17.5 ms, mobile 6.7 / 8.2 / 11.9 ms.
 Contexts: 20 slide-over open/close cycles, 0 live while open and 1 after (22 created, 21 lost); 20 world to street to
 world round trips, 3 live at street scale (Three + 2) and 1 after (43 created, 42 lost). `scripts/globe/handover-*.mjs`.
+
+### Performance behaviour of the handover (see `docs/performance.md`)
+
+- The street map is created at unified zoom 4.0 (or at the click of a place) and released 2.5 s after the camera leaves its range. While the globe is the shown renderer the map is **inactive** (`StreetMap.setActive(false)`): tiles keep loading, but there is no canvas copy, no pass and no overlay work, and the camera is only pushed to it once the camera rests (140 ms debounce). From the cut it is pushed on every tick, snapped to the art-cell grid (`street/core/snap.ts`) while the zoom is steady.
+- The street map renders at native art resolution (3 map pixels per cell per axis), like the globe. `highResolution` follows `HANDOVER.revealFocus` (off).
+- The street chunk is fetched and evaluated in an idle period 2.5 s after the globe is up (not on data-saver/2g connections), so the first flight or zoom does not pay for it.
+- `engine/governor.ts` watches the frame intervals of the moving camera and lowers the quality on a device that cannot keep up (street render scale 3 to 2, then a larger art pixel), with hysteresis; `__handoverDebug.quality()` / `forceQuality()`.
 
 ### Behaviour notes
 

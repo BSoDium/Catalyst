@@ -28,6 +28,21 @@ export const STREET_TUNING = {
   /** Default duration (ms) of the reveal and of the animated dissolve. */
   revealMs: 700,
   dissolveMs: 900,
+  /**
+   * Native art-resolution render: map pixels per art cell along each axis. 3 is the smallest that keeps the line rules of
+   * docs/pixel-line-rules.md (the line gate, `pnpm test:street-lines`): the classify sample is then exactly one texel, a
+   * 1-cell line is 3 px wide and a dotted line keeps its dashes. 2 samples the average of a 2x2 block, which softens short
+   * dashes (dotted roads lose up to a fifth of their cells and the 2x2-block check fails); 1 loses them. The frame
+   * governor (engine/governor.ts) steps to 2 on slow devices. Costs 9 map pixels per cell, against 36 for the
+   * device-resolution render at DPR 2.
+   */
+  renderScale: 3,
+  /**
+   * Snap the map centre to the art cell grid while the zoom is steady (a pan, its inertia), so the picture translates by
+   * whole cells and thin lines do not crawl (core/snap.ts). From this map zoom up (below it the globe projection is not
+   * Mercator and the snap would be off); 0 disables.
+   */
+  snapPanFromZoom: 12,
   /** Zoom the map is capped at when no tile source works (bundled coastline and borders only). */
   cappedMaxZoom: 6,
   /** Default camera flight duration bounds (ms). */

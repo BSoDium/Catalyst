@@ -50,6 +50,7 @@ import { INSET_EASE, TUNING } from "./tuning";
 import { fromViewState } from "./view";
 import { zoomCorrection } from "../street/core/registration";
 import { markerShown } from "./visibility";
+import { perfEnd, perfStart } from "./perf";
 
 // Our ShaderMaterials write raw sRGB values and there is no lighting, so skip Three's linear-sRGB conversion;
 // otherwise ink and background drift away from the CSS colours.
@@ -214,6 +215,11 @@ export class GlobeRenderer {
   }
 
   /* ------------------------------ sizing ------------------------------ */
+
+  /** Re-derive the art pixel size and the buffers (the frame governor changed `QUALITY`). */
+  refit(): void {
+    this.resize(true);
+  }
 
   private resize(redraw: boolean) {
     if (this.disposed) return;
@@ -667,8 +673,10 @@ export class GlobeRenderer {
       this.opts.onFrame();
       return;
     }
+    const tp = perfStart();
     this.syncCamera();
     this.syncMarkers();
+    perfEnd("three.sync", tp);
     // Draw only the free area plus a margin: the rest is under the panel and masked out.
     const scissor = this.scissorOn ? this.scissorBuf : null;
     this.gl.setScissorTest(scissor !== null);
@@ -677,7 +685,10 @@ export class GlobeRenderer {
     this.gl.render(this.globe.scene, this.camera);
     this.lastRenderMs = performance.now() - t0;
     this.frames++;
+    perfEnd("three.render", t0);
+    const t1 = perfStart();
     this.opts.onFrame();
+    perfEnd("frame.callbacks", t1);
   }
 
   private syncCamera() {

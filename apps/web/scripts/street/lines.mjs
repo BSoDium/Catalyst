@@ -24,8 +24,11 @@ const args = Object.fromEntries(
   }),
 );
 
+// LINES_QUERY=hires=1 (or scale=3): run the gate against another render path (the defaults are the production ones).
+const EXTRA = process.env.LINES_QUERY ?? "";
+
 export const LIMITS = {
-  synthetic: { broken: 0, endMiss: 0.005, doubled: 0.005, thin: 0.005, dashZero: 0, dashMin: 0.2, dashSpread: 4, hollowPerStep: 2.6, hollowBroken: 0.005 },
+  synthetic: { broken: 0, endMiss: 0.005, doubled: 0.005, thin: 0.005, dashZero: 0, dashMin: 0.2, dashSpread: 4, hollowPerStep: 3.0, hollowDoubled: 0.006, hollowBroken: 0.005 },
   // z14.5 downtown HCMC: main roads are one-pixel (thin class) lines there since the LOD thinning of the style, and dual
   // carriageways, river banks and junctions put thin lines side by side (measured 0.28-0.30); 2x2 blocks that are real
   // adjacency cannot be thinned. The synthetic sweep above stays the contract for the stair remover.
@@ -66,7 +69,7 @@ const dashed = ["road-minor-dotted", "boundary-region"];
 async function synthetic(browser, dpr) {
   const { page, logs } = await open(browser, { viewport: { width: 800, height: 560 }, deviceScaleFactor: dpr });
   try {
-    await page.goto(`${BASE_URL}/dev/street-lines`);
+    await page.goto(`${BASE_URL}/dev/street-lines${EXTRA ? "?" + EXTRA : ""}`);
     await page.waitForFunction(() => window.__synthetic, null, { timeout: 90000 });
     await page.evaluate(() => window.__synthetic.ready());
     const L = LIMITS.synthetic;
@@ -81,7 +84,12 @@ async function synthetic(browser, dpr) {
           check(`${tag} endMiss`, s.endMissFrac, L.endMiss);
           check(`${tag} doubled`, s.doubledFrac, L.doubled);
           check(`${tag} thin`, s.thinFrac, L.thin);
-        } else if (zoom >= 17.5) check(`${tag} cells per step (two outlines)`, s.perStepMax, L.hollowPerStep);
+        } else if (zoom >= 17.5) {
+          // The two outlines of a hollow road: ~2 cells per step. At 3 map pixels per cell a horizontal outline that sits exactly on
+          // a cell boundary lights both rows (the 0.49 threshold prefers two cells to none): 2 of 384 lines, never more.
+          check(`${tag} lines with a doubled outline (> 2.6 cells per step)`, s.hollowDoubledFrac, L.hollowDoubled);
+          check(`${tag} cells per step (two outlines)`, s.perStepMax, L.hollowPerStep);
+        }
       }
     }
     for (const cls of dashed) {
@@ -103,7 +111,7 @@ async function real(browser, dpr) {
   const { page } = await open(browser, { viewport: { width: 800, height: 560 }, deviceScaleFactor: dpr });
   try {
     for (const view of ["106.698,10.774,14.5", "106.6995,10.7765,16.5", "106.6995,10.7765,17.5"]) {
-      await page.goto(dev("/dev/street", { source: "fallback", fallbackUrl: FALLBACK_URL, hud: 0, view, theme: "light" }));
+      await page.goto(dev("/dev/street", { source: "fallback", fallbackUrl: FALLBACK_URL, hud: 0, view, theme: "light", ...Object.fromEntries(new URLSearchParams(EXTRA)) }));
       await page.waitForFunction(() => window.__streetDebug?.map().loaded() && document.querySelector("[data-dev-street]")?.getAttribute("data-tile-state") === "fallback", null, { timeout: 60000 });
       await page.waitForFunction(() => { const m = window.__streetDebug.map(); return !m.isMoving() && m.areTilesLoaded(); });
       await page.waitForTimeout(500);

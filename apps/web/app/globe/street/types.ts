@@ -71,6 +71,16 @@ export interface StreetMapOptions {
   probeTimeoutMs?: number;
   /** Timeout of every tile request, ms (default `thresholds.requestTimeoutMs`, 10000). */
   requestTimeoutMs?: number;
+  /**
+   * Render the map at device resolution and sample the art cells from it (the sharp reveal and the sharp dissolve
+   * need it). Default false: native art-resolution rendering, one map pixel per art cell, scaled up with
+   * nearest-neighbour; `setReveal` / `setSharp` are then no-ops.
+   */
+  highResolution?: boolean;
+  /** Pan in whole art cells while the zoom is steady (default true; `STREET_TUNING.snapPanFromZoom`). Measurement knob. */
+  snapPan?: boolean;
+  /** Native mode: map pixels per art cell per axis, 1 to 3 (default `STREET_TUNING.renderScale`). */
+  renderScale?: number;
   /** Start values of the compositor's capabilities. */
   initialBlend?: number;
   initialSharp?: number;
@@ -104,7 +114,7 @@ export interface StreetMap {
    * step. `sync` renders, composites and updates the overlay before returning, so the map is never a frame behind a
    * renderer drawn in the same task.
    */
-  setCamera(view: StreetView, options?: { inset?: number; sync?: boolean }): void;
+  setCamera(view: StreetView, options?: { inset?: number; sync?: boolean; snap?: boolean }): void;
   /** The place under a CSS-px point of the container (markers, then labels), or null: what a click would select. */
   hit(x: number, y: number, kind: "mouse" | "touch"): string | null;
   /** Whether the active tile source has tiles at this point (false while connecting / capped, and outside a fallback archive's bounds). */
@@ -129,6 +139,15 @@ export interface StreetMap {
    * opaque). On the same art-pixel grid, so a Three.js globe below it shows through cell by cell.
    */
   setBlend(value: number, options?: AnimateOptions): Promise<void>;
+
+  /**
+   * false: keep rendering the map (tiles keep loading) but copy and draw nothing. The handover does this while the
+   * globe is the visible renderer, so the street map costs a hidden art-resolution map render and no pass.
+   */
+  setActive(on: boolean): void;
+
+  /** Native mode: map pixels per art cell per axis (1 to 3) from now on; the frame governor lowers it on slow devices. */
+  setRenderScale(n: number): void;
 
   getTileStatus(): TileStatus;
   /** Highest zoom the experience should offer right now (the cap while no tile source works). */

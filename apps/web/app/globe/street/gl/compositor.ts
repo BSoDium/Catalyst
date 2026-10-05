@@ -12,6 +12,7 @@
  */
 import type { Map as MLMap } from "maplibre-gl";
 import { PixelPass, type PassParams } from "./pixel-pass";
+import { perfEnd, perfStart } from "../../engine/perf";
 
 export interface CompositorStats {
   passes: number;
@@ -21,10 +22,33 @@ export interface CompositorStats {
   contextRestores: number;
 }
 
+export interface OutputSize {
+  /** Drawing buffer of the overlay canvas, px. Device mode: the container times the device pixel ratio. Native mode: the art grid (cols x rows). */
+  w: number;
+  h: number;
+  /** Size the canvas is displayed at, CSS px (native mode: the grid box, upscaled with nearest-neighbour). */
+  cssW: number;
+  cssH: number;
+}
+
 export interface CompositorHooks {
-  /** Live pass parameters for an output of the given device size. */
-  params(outW: number, outH: number, dpr: number): PassParams;
+  /** Output size now (the engine knows the grid). */
+  size(): OutputSize;
+  /** Live pass parameters for an output of the given buffer size. */
+  params(outW: number, outH: number): PassParams;
   onContextChange?(lost: boolean): void;
+}
+
+export interface CompositorOptions {
+  /**
+   * Native art-resolution mode: the map renders ONE PIXEL PER ART CELL, so the source is the art grid itself and the
+   * whole pass (classify, stair removal, present) runs on cols x rows pixels; the browser scales the canvas up with
+   * `image-rendering: pixelated`. Off ("device" mode): the map renders at device resolution and the pass samples cell
+   * centres from it (needed for the sharp reveal and the sharp dissolve, which show the device-resolution render).
+   */
+  native: boolean;
+  /** Native mode: map pixels per art cell along each axis (1, 2 or 3). The pass samples the centre of the cell bilinearly. */
+  scale?: number;
 }
 
 const SYNC_BUF = new Uint8Array(4);
@@ -41,6 +65,7 @@ export class Compositor {
   private ready = false;
   private lost = false;
   private held = false;
+  private suspended = false;
   private disposed = false;
   private size = { w: 0, h: 0 };
   private onRender = () => this.frame();
@@ -54,6 +79,7 @@ export class Compositor {
     if (this.disposed) return;
     try {
       this.pass = new PixelPass(this.gl);
+      this.pass.setNativeSource(this.options.native);
       this.lost = false;
       this.size = { w: 0, h: 0 };
       this.stats.contextRestores++;
@@ -69,6 +95,7 @@ export class Compositor {
     private map: MLMap,
     private root: HTMLElement,
     private hooks: CompositorHooks,
+    readonly options: CompositorOptions = { native: false },
   ) {
     this.canvas = document.createElement("canvas");
     this.canvas.dataset.role = "pixel-pass";
@@ -95,6 +122,7 @@ export class Compositor {
     this.gl = gl;
     this.loseExt = gl.getExtension("WEBGL_lose_context");
     this.pass = new PixelPass(gl);
+    this.pass.setNativeSource(options.native);
     this.canvas.addEventListener("webglcontextlost", this.onLost);
     this.canvas.addEventListener("webglcontextrestored", this.onRestored);
     // The map canvas keeps rendering (it feeds the copy) but is not shown.
@@ -113,34 +141,48 @@ export class Compositor {
     if (!on) this.map.triggerRepaint();
   }
 
-  /** Output size in device px: the container box times the device pixel ratio. */
-  private outSize(): { w: number; h: number; dpr: number } {
-    const dpr = window.devicePixelRatio || 1;
-    return { w: Math.max(1, Math.round(this.root.clientWidth * dpr)), h: Math.max(1, Math.round(this.root.clientHeight * dpr)), dpr };
+  /**
+   * Stop following the map (true): the map may keep rendering (tiles load) but nothing is copied or drawn. Resuming
+   * repaints once. The handover keeps the street map out of the frame while the globe is the visible renderer.
+   */
+  suspend(on: boolean): void {
+    if (on === this.suspended) return;
+    this.suspended = on;
+    if (!on) this.map.triggerRepaint();
   }
 
   private frame(): void {
-    if (!this.ready || this.isLost || this.held || !this.pass) return;
+    if (!this.ready || this.isLost || this.held || this.suspended || !this.pass) return;
     const t0 = performance.now();
     this.pass.uploadCanvas(this.map.getCanvas());
     this.stats.lastUploadMs = performance.now() - t0;
+    perfEnd("compositor.upload", t0);
+    const t1 = perfStart();
     this.draw(true);
+    perfEnd("compositor.pass", t1);
   }
 
   private draw(pool: boolean): void {
     const pass = this.pass;
     if (!pass) return;
     const t0 = performance.now();
-    const { w, h, dpr } = this.outSize();
-    const p = this.hooks.params(w, h, dpr);
+    const { w, h, cssW, cssH } = this.hooks.size();
+    const p = this.hooks.params(w, h);
     if (this.canvas.width !== w || this.canvas.height !== h) {
       this.canvas.width = w;
       this.canvas.height = h;
-      this.canvas.style.width = `${w / dpr}px`;
-      this.canvas.style.height = `${h / dpr}px`;
       pool = true;
     }
-    if (pool) pass.poolPass(p, w, h);
+    const cw = `${cssW}px`;
+    const ch = `${cssH}px`;
+    if (this.canvas.style.width !== cw) this.canvas.style.width = cw;
+    if (this.canvas.style.height !== ch) this.canvas.style.height = ch;
+    if (pool) {
+      // Native: the source holds `scale x scale` map pixels per cell; classify from its centre sample.
+      const s = this.options.native ? Math.max(1, this.options.scale ?? 1) : 1;
+      if (s === 1) pass.poolPass(p, w, h);
+      else pass.poolPass({ ...p, cellOut: s }, w * s, h * s);
+    }
     pass.presentPass(p, w, h);
     this.size = { w, h };
     this.stats.passes++;
@@ -153,14 +195,14 @@ export class Compositor {
    * Returns false when there is no source yet or the context is gone: the caller asks the map for a frame instead.
    */
   redraw(): boolean {
-    if (!this.ready || this.isLost || this.held || !this.pass || this.pass.srcW === 0) return false;
+    if (!this.ready || this.isLost || this.held || this.suspended || !this.pass || this.pass.srcW === 0) return false;
     this.draw(false);
     return true;
   }
 
   /** Re-classify and present from the cached source (palette or threshold change). */
   repool(): boolean {
-    if (!this.ready || this.isLost || this.held || !this.pass || this.pass.srcW === 0) return false;
+    if (!this.ready || this.isLost || this.held || this.suspended || !this.pass || this.pass.srcW === 0) return false;
     this.draw(true);
     return true;
   }

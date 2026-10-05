@@ -5,6 +5,7 @@
 //
 // Needs the app served with CATALYST_TILES_FALLBACK_URL=http://127.0.0.1:5240/places.pmtiles (the script starts the
 // local PMTiles server on that port) and OpenFreeMap reachable for the `auto` drills (small amounts of tile loading).
+// (A direct load frames the whole city: unified zoom about 10.3 for Ho Chi Minh City, hence the 9.5 thresholds.)
 // Drills: direct, wheel, click, failover, capped, recover, reduced, keyboard, mobile-slideover.
 import { APP, DESKTOP, MOBILE, ensureTiles, launch, openApp, settleApp, state, waitStreetOk } from "./handover-lib.mjs";
 
@@ -29,11 +30,11 @@ try {
   if (run("direct")) {
     const { page, logs } = await openApp(browser, DESKTOP, { path: "/locations/ho-chi-minh-city" });
     const first = await state(page);
-    expect("direct: starts on the globe at the regional select zoom", first.zoom < 3.5 && first.blend.shown === 0, first);
-    await page.waitForFunction(() => window.__handoverDebug.zoom() > 13, null, { timeout: 30000 });
+    expect("direct: starts framed on the city, drawn by the globe until the street map has its tiles", first.zoom > 9.5 && first.blend.shown === 0, first);
+    await page.waitForFunction(() => window.__handoverDebug.zoom() > 9.5, null, { timeout: 30000 });
     await settleApp(page);
     const end = await state(page);
-    expect("direct: ends at street scale, street drawn alone", end.blend.shown === 1 && end.suspended && end.owner === "street" && end.mapZoom > 14, end);
+    expect("direct: ends at street scale, street drawn alone", end.blend.shown === 1 && end.suspended && end.owner === "street" && end.mapZoom > 9.5, end);
     expect("direct: place is selected and panel open", await page.evaluate(() => !!document.querySelector('[data-place-link][aria-current="page"]')), null);
     noErrors("direct", logs);
     await page.context().close();
@@ -101,11 +102,11 @@ try {
     await openPlace(page, "ho-chi-minh-city");
     await page.waitForFunction(() => window.__handoverDebug.zoom() > 5, null, { timeout: 30000 });
     primaryDead = true;
-    await page.waitForFunction(() => window.__handoverDebug.zoom() > 13, null, { timeout: 30000 });
+    await page.waitForFunction(() => window.__handoverDebug.zoom() > 9.5, null, { timeout: 30000 });
     await page.waitForFunction(() => window.__handoverDebug.tile()?.state === "fallback", null, { timeout: 30000 });
     await settleApp(page);
     const s = await state(page);
-    expect("failover: the fallback serves the street view after the primary died mid-flight", s.tile === "fallback" && s.blend.shown === 1 && s.mapZoom > 13 && s.owner === "street", s);
+    expect("failover: the fallback serves the street view after the primary died mid-flight", s.tile === "fallback" && s.blend.shown === 1 && s.mapZoom > 9.5 && s.owner === "street", s);
     noErrors("failover", logs);
     await page.context().close();
   }
@@ -183,10 +184,10 @@ try {
   // --- reduced motion: jump, no dissolve animation, static ------------------------------------------------------------------
   if (run("reduced")) {
     const { page, logs } = await openApp(browser, DESKTOP, { path: "/locations/ho-chi-minh-city", reducedMotion: "reduce" });
-    await page.waitForFunction(() => window.__handoverDebug.zoom() > 13, null, { timeout: 30000 });
+    await page.waitForFunction(() => window.__handoverDebug.zoom() > 9.5, null, { timeout: 30000 });
     await settleApp(page);
     const s = await state(page);
-    expect("reduced: arrives at street scale, street alone", s.blend.shown === 1 && s.mapZoom > 14, s);
+    expect("reduced: arrives at street scale, street alone", s.blend.shown === 1 && s.mapZoom > 9.5, s);
     const ticks0 = await page.evaluate(() => window.__handoverDebug.ticks());
     await page.waitForTimeout(1500);
     expect("reduced: idle, no ticks", (await page.evaluate(() => window.__handoverDebug.ticks())) === ticks0, null);
@@ -209,7 +210,7 @@ try {
       await page.waitForTimeout(150);
     }
     expect("keyboard: focus stays on a real element through the flight", !focusedAt.some((f) => f.startsWith("BODY")), [...new Set(focusedAt)]);
-    await page.waitForFunction(() => window.__handoverDebug.zoom() > 13, null, { timeout: 30000 });
+    await page.waitForFunction(() => window.__handoverDebug.zoom() > 9.5, null, { timeout: 30000 });
     expect("keyboard: the list opens the street view", links.includes("ho-chi-minh-city"), links);
     noErrors("keyboard", logs);
     await page.context().close();

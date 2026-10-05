@@ -37,7 +37,7 @@ export interface StreetMapCanvasProps {
   /** The engine handle once it exists (and null again when it is disposed): the handover drives the capabilities here. */
   onReady?(map: StreetMap | null): void;
   /** Engine options that are not props (testing and tuning); read at creation. */
-  engineOptions?: Pick<StreetMapOptions, "minZoom" | "maxZoom" | "projection" | "forceSource" | "timings" | "thresholds" | "probeTimeoutMs" | "requestTimeoutMs" | "initialBlend" | "initialSharp" | "world">;
+  engineOptions?: Pick<StreetMapOptions, "minZoom" | "maxZoom" | "projection" | "forceSource" | "timings" | "thresholds" | "probeTimeoutMs" | "requestTimeoutMs" | "initialBlend" | "initialSharp" | "world" | "highResolution">;
 }
 
 function debugEnabled(): boolean {

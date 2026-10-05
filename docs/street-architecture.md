@@ -20,9 +20,11 @@ street/
     tile-health.ts       request scoring: error rate, timeouts, p95 latency, stalls
     tile-source-manager.ts   the state machine
     source-descriptor.ts TileJSON / PMTiles header -> descriptor, URL validation
+    palette.ts           THE palette table: named grey levels (bg, ramp-k, ink, muted) and class code -> level
+    snap.ts              pan snapping: centre quantised to whole art cells while the zoom is steady
     attribution.ts, label-place.ts, marker-visibility.ts, routes.ts
   gl/pixel-pass.ts       pass A (centre sampling), T (stair removal), B (present: reveal, sharp, blend)
-  gl/compositor.ts       overlay context, texImage2D copy per map `render`, context loss, hold
+  gl/compositor.ts       overlay context, canvas copy per map `render` (native: the map IS the art grid, 3 px per cell), suspend, context loss, hold
   style/street-style.ts  one MapLibre style for both schemas, no glyphs, no sprites, no symbol layers
   net/probe.ts           TileJSON / PMTiles header probes with timeout and real abort
   net/tile-protocols.ts  per-instance protocols `catp<N>` / `catf<N>`: timed, timeout-bounded tile requests
@@ -46,7 +48,9 @@ const map = createStreetMap(container, {
 });
 map.flyTo / jumpTo / setSelected(slug, { fly }) / setFocused / setInset / setReducedMotion
 map.setReveal(on, { center }) / setSharp(0..1) / setBlend(0..1)   // capabilities, return a Promise
-map.setCamera(view, { inset, sync }) / hit(x, y, kind) / covers(lon, lat)   // embedded use, see below
+map.setCamera(view, { inset, sync, snap }) / hit(x, y, kind) / covers(lon, lat)   // embedded use, see below
+map.setActive(false)        // keep loading tiles, copy and draw nothing (the handover while the globe is shown)
+map.setRenderScale(n)       // native mode: map pixels per art cell per axis (the frame governor lowers it)
 map.getView() / getTileStatus() / getMaxZoom() / dispose() / debug()
 ```
 React: `<StreetMapCanvas places routes selectedSlug focusedSlug initialView reducedMotion tiles insetRight onSelect onViewChange onTileStatus onReady engineOptions />`. `onReady(map)` hands the handle to the parent (null on dispose). The engine is rebuilt only when `places`, `routes` or the tile URLs change; the camera is kept.
@@ -150,9 +154,9 @@ node apps/web/scripts/street/registration.mjs
 node apps/web/scripts/street/shot.mjs name source=fallback scheme=dark
 ```
 
-## Measurements (Apple M4, Chrome for Testing 153 headless, ANGLE Metal; production build, local PMTiles)
+## Measurements (before the performance phase; current numbers and method in `docs/performance.md`) (Apple M4, Chrome for Testing 153 headless, ANGLE Metal; production build, local PMTiles)
 
-- Line gate: 165 of 165 checks (synthetic 24 angles x 16 offsets x 3 zooms at DPR 1, 1.5, 2: 0 broken one-pixel lines, 0 doubled, 0 thin; hollow roads 2.0 cells per step; dashed lines never vanish, 0.26 to 1.0 cells per step; real map: thin ink in 2x2 blocks 0.2 % to 2.9 %; idle 0 renders, 0 pass runs, 0 rAF). Hollow-road rows tolerate 1 broken line in 384 (an angle/offset tie, seen at DPR 1 and 1.5).
+- Line gate: 171 of 171 checks now at native resolution (165 of 165 in the device-resolution path this paragraph was written for; the hollow-road bound became a fraction, see `docs/performance.md` limits) (synthetic 24 angles x 16 offsets x 3 zooms at DPR 1, 1.5, 2: 0 broken one-pixel lines, 0 doubled, 0 thin; hollow roads 2.0 cells per step; dashed lines never vanish, 0.26 to 1.0 cells per step; real map: thin ink in 2x2 blocks 0.2 % to 2.9 %; idle 0 renders, 0 pass runs, 0 rAF). Hollow-road rows tolerate 1 broken line in 384 (an angle/offset tie, seen at DPR 1 and 1.5).
 - Frames (GPU-synced: jumpTo + sync render + upload + pass + readPixels, circular pan, 450 frames): 1440x900@2 p50 9.3 / p95 11.7 / max 13.7 ms; 390x844@3 emulated 6.1 / 6.8 / 8.1 ms. rAF 16.7 ms throughout. JS part p50 1.5 / 1.1 ms. JS heap 23 to 28 MB.
 - World to street flight (real OpenFreeMap): 5.6 s, 338 frames, max rAF interval 16.8 ms, 0 frames over 25 ms.
 - Failover (Playwright routing): primary blocked at start, fallback serving about 0.6 s after navigation; primary slow (tiles 8 s): fallback after 5.0 s (`stalled`); primary dies at runtime: fallback within 20 ms of the first failures; both blocked: capped, zoom eased to 6; unblocked: primary again 1.2 s after (test timings 2 s / 0.5 s; production 30 s + 4 s). No uncaught errors; no console errors for tiles missing from the archive.
@@ -164,7 +168,7 @@ node apps/web/scripts/street/shot.mjs name source=fallback scheme=dark
 - Not verified: Safari / iOS (iOS Simulator unavailable), real phones (the "mobile" row is emulation on the M4), a real DPR change, real GPU context loss, behaviour against a real Caddy/Traefik/home uplink, OpenFreeMap beyond a few sessions.
 - Gate gap: the spike's high-resolution reference comparison on the real map (per class line-miss, fragmentation) and the pan stability metrics were not ported; the synthetic part and the real-map block / idle checks were.
 - The recovery probe checks the TileJSON, not a tile: a source that serves TileJSON but slow tiles can be promoted and demoted again; the flap backoff bounds that to one failover per growing interval.
-- Phones render the map at scale min(DPR, 2) with device-resolution output (no art-resolution path); the spike's cheaper A2 path is future work. Measured on the 390x844@3 emulation (M4): frame in the dissolve band 6.7 / 8.2 / 11.9 ms.
+- Rendering: native art resolution by default (`renderScale` 3 map pixels per cell per axis, the pass runs on the `cols x rows` art grid, the canvas is scaled up with `image-rendering: pixelated`); `highResolution: true` keeps the device-resolution render the sharp reveal and dissolve need (both off by default; `setReveal`/`setSharp` are no-ops in native mode). See `docs/performance.md` for why 3, the numbers, the pan snapping, the frame governor and the budgets.
 - Outside a fallback archive's bounds the street map shows empty tiles (world lines only): the handover does not fly there, but the user can pan there. Primary-only deployments have global coverage.
 - Embedded, the registration is exact (the same maths) but the street map's globe projection is not drawn: the handover ends well before MapLibre's own globe-to-Mercator transition (zoom 12 in MapLibre; the cameras agree to under 1 px within 250 px of the centre from zoom 10).
 - Routes are drawn as dashed pixel lines on the ground (no lift, no draw-on animation, route stops are not enlarged).

@@ -17,7 +17,10 @@
  */
 import type { Polylines } from "@catalyst/geodata";
 import { createGlobe, type GlobeDebug, type GlobeHandle } from "../engine";
-import { TUNING } from "../engine/tuning";
+import { QUALITY, TUNING } from "../engine/tuning";
+import { FrameGovernor } from "../engine/governor";
+import { STREET_TUNING } from "../street/tuning";
+import { perfEnd, perfStart } from "../engine/perf";
 import { clamp } from "../engine/geo";
 import type { StreetMap, StreetTileConfig, TileStatus } from "../street/types";
 import { effectiveRadiusKm } from "../engine/framing";
@@ -94,6 +97,9 @@ export interface HandoverDebug {
   framingZoom(slug: string): number | null;
   /** The renderer swap is a dissolve (true) or a cut (false). */
   dissolve(): boolean;
+  /** Frame governor level now (0 = full quality) and a measurement hook to force one. */
+  quality(): number;
+  forceQuality(level: number): void;
   /** Cuts so far: 0 to 1 swaps to the street map, 1 to 0 swaps back, and how many frames waited for tiles. */
   cuts(): { toStreet: number; toGlobe: number; waitedFrames: number };
 }
@@ -137,6 +143,13 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
   let revealTimer = 0;
   let revealOn = false;
   let lastBlend = -1;
+  let streetActive = true;
+  // Adaptive quality (engine/governor.ts): level 1 = street map at one fewer map pixel per art cell per axis, level 2 = a larger art pixel.
+  const governor = opts.streetOptions?.governor === false ? null : new FrameGovernor();
+  let qualityLevel = 0;
+  const renderScaleFor = (level: number) => (level >= 1 ? Math.max(1, STREET_TUNING.renderScale - 1) : STREET_TUNING.renderScale);
+  /** Visible street map: pan in whole art cells (street/core/snap.ts). */
+  const snapPan = STREET_TUNING.snapPanFromZoom > 0;
   let notice: Notice | null = null;
   // The view to start from. A selected place with no view is framed on (no 0.7 s beat, no flight): a direct load.
   // Without tiles there is no street scale to frame at: a fit view degrades to the regional select zoom.
@@ -152,6 +165,7 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
   let restoring = !!tiles && (isFitView(initialView) || (initialView?.street ?? 0) > 0);
   let restoreCheck = restoring;
   let restoreTimer = 0;
+  let warmTimer = 0;
   let cutSince = 0;
   const cutStats = { toStreet: 0, toGlobe: 0, waitedFrames: 0 };
   let inFrame = false;
@@ -233,6 +247,7 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
       // The conditional form matters: Rollup only prunes a dynamic import that sits in a dead branch of an expression.
       const engine = await (import.meta.env.SSR ? Promise.reject(new Error("no street map on the server")) : import("../street/engine"));
       if (disposed || token !== streetToken) return;
+      const tc = perfStart();
       const map = engine.createStreetMap(opts.streetRoot, {
         view: mapCamera(),
         places: opts.places,
@@ -243,6 +258,9 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
         tiles,
         insetRight: renderer.getInset(),
         embedded: true,
+        // Native art-resolution render unless the sharp reveal (which shows the device-resolution render) is on.
+        highResolution: HANDOVER.revealFocus,
+        renderScale: renderScaleFor(qualityLevel),
         initialBlend: dissolve ? 0 : 1, // cut mode: always opaque, shown or hidden as a whole by `streetRoot`
         onSelect: opts.onSelect,
         onTileStatus: (s) => {
@@ -256,12 +274,15 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
         },
         ...opts.streetOptions,
       });
+      perfEnd("street.create", tc);
       if (disposed || token !== streetToken) {
         map.dispose();
         return;
       }
       street = map;
       streetState = "ready";
+      streetActive = false;
+      map.setActive(false); // hidden until the cut (or the dissolve) shows it
       map.overlay.style.opacity = "0";
       map.overlay.style.transition = fadeCss();
       lastPush = null;
@@ -352,7 +373,9 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
     const l = lastPush;
     if (l && l.lon === c.lon && l.lat === c.lat && l.zoom === c.zoom && l.inset === inset) return;
     lastPush = { ...c, inset };
-    street.setCamera(c, { inset, sync });
+    const t0 = perfStart();
+    street.setCamera(c, { inset, sync, snap: sync && snapPan });
+    perfEnd(sync ? "street.setCamera(sync)" : "street.setCamera", t0);
   }
 
   function applyOwner(next: OverlayOwner) {
@@ -442,8 +465,36 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
     }
   }
 
+  /** Apply a governor level to both renderers (the art pixel change re-fits the globe and the street grid). */
+  function applyQuality(level: number) {
+    if (level === qualityLevel) return;
+    const boost = level >= 2 ? 1 : 0;
+    qualityLevel = level;
+    street?.setRenderScale(renderScaleFor(level));
+    if (boost !== QUALITY.cellBoost) {
+      QUALITY.cellBoost = boost;
+      renderer.refit();
+      street?.resize();
+      lastPush = null;
+    }
+    renderer.requestRender();
+  }
+
   function frame() {
+    const tf = perfStart();
+    try {
+      frameInner();
+    } finally {
+      perfEnd("handover.frame", tf);
+    }
+  }
+
+  function frameInner() {
     const now = performance.now();
+    if (governor) {
+      const next = governor.sample(now);
+      if (next !== null) applyQuality(next);
+    }
     const dt = lastFrameAt ? Math.min(60, now - lastFrameAt) : 16;
     lastFrameAt = now;
     const v = view();
@@ -514,8 +565,14 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
       lastPush = null;
     }
 
+    // A map that is not shown renders (tiles load) but copies and draws nothing; the DOM overlay is not updated either.
+    if (shown > 0 !== streetActive) {
+      streetActive = shown > 0;
+      street.setActive(streetActive);
+    }
     const following = v.zoom >= HANDOVER.followZoom - 1e-9;
-    if (shown > 0 || v.zoom >= HANDOVER.blendStart - 0.02) {
+    // Hidden, the street map only follows once the camera rests (debounced below), except while a dissolve is about to start.
+    if (shown > 0 || (dissolve && v.zoom >= HANDOVER.blendStart - 0.02)) {
       window.clearTimeout(followTimer);
       followTimer = 0;
       pushCamera(shown > 0);
@@ -542,6 +599,21 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
     updateNotice();
     scheduleUnmount();
     if (shown !== target) renderer.requestRender();
+  }
+
+  // ---- chunk warm-up ---------------------------------------------------------------------------------------------------
+  // Fetching and evaluating the street chunk (MapLibre, ~450 KB gzip) is a 40+ ms task. Doing it in an idle period after
+  // the globe is up keeps it out of the first flight or zoom (the frame that mounts the street map). Skipped on data-saver
+  // connections, where the chunk stays lazy.
+  if (tiles && !import.meta.env.SSR) {
+    const conn = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+    if (!conn?.saveData && !/(^|-)2g$/.test(conn?.effectiveType ?? "")) {
+      const warm = () => {
+        if (!disposed) void import("../street/engine").catch(() => {});
+      };
+      const ric = (window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }).requestIdleCallback;
+      warmTimer = window.setTimeout(() => (ric ? ric.call(window, warm, { timeout: 4000 }) : warm()), 2500);
+    }
   }
 
   // ---- selection and flights -----------------------------------------------------------------------------------------------
@@ -626,6 +698,11 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
           return p ? placeFit(p) : null;
         },
         dissolve: () => dissolve,
+        quality: () => qualityLevel,
+        forceQuality(level) {
+          governor?.force(level, performance.now());
+          applyQuality(level);
+        },
         cuts: () => ({ ...cutStats }),
         fly(v) {
           wantStreet = !!tiles && streetState !== "failed";
@@ -637,8 +714,9 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
     dispose() {
       if (disposed) return;
       disposed = true;
+      QUALITY.cellBoost = 0; // module state: a remount starts at full quality
       streetToken++;
-      for (const t of [followTimer, unmountTimer, labelsOffTimer, revealTimer, restoreTimer]) window.clearTimeout(t);
+      for (const t of [followTimer, unmountTimer, labelsOffTimer, revealTimer, restoreTimer, warmTimer]) window.clearTimeout(t);
       street?.dispose();
       street = null;
       globe.dispose();

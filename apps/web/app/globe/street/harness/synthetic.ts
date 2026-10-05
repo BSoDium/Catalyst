@@ -10,8 +10,10 @@ import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import { INK_THRESHOLD, SOLID_FROM } from "../core/art-line";
 import { bresenhamCount, components8, count, inkMask, makeMask, type Mask } from "../core/art-measure";
 import { cellCssFor, cellDevicePx } from "../core/pixel";
-import { Compositor } from "../gl/compositor";
+import { Compositor, type OutputSize } from "../gl/compositor";
+import { buildPalette } from "../core/palette";
 import type { PassParams } from "../gl/pixel-pass";
+import { STREET_TUNING } from "../tuning";
 import { CHANNEL, SPECS, linePaint, type Spec } from "../style/street-style";
 
 export function startSynthetic(container: HTMLElement) {
@@ -20,7 +22,11 @@ const dpr = window.devicePixelRatio || 1;
 const cellCss = cellCssFor(container.clientWidth, container.clientHeight, dpr);
 const cellOut = cellDevicePx(cellCss, dpr);
 const cellEff = cellOut / dpr;
-const scaleOpt = Math.min(dpr, 2);
+/** Native art-resolution rendering (production default); `?hires=1` runs the device-resolution path instead. */
+const NATIVE = new URLSearchParams(location.search).get("hires") !== "1";
+const SCALE = Number(new URLSearchParams(location.search).get("scale") ?? STREET_TUNING.renderScale);
+const scaleOpt = NATIVE ? (SCALE * (1 + 1e-9)) / cellEff : Math.min(dpr, 2);
+const palette = buildPalette({ background: [1, 1, 1], ink: [0, 0, 0], outline: [0.5, 0.5, 0.5] });
 
 const SPEC_BY_ID = new Map<string, Spec>(SPECS.map((s) => [s.id, s]));
 const DRAW = ["waterway-major", "road-minor", "building-outline", "road-major-case", "road-major-fill", "road-medium-case", "road-medium-fill", "road-minor-dotted", "rail", "boundary-region"];
@@ -53,12 +59,25 @@ const map = new MLMap({
 });
 
 const passCfg = {
+  size(): OutputSize {
+    if (NATIVE) {
+      const cols = Math.ceil(container.clientWidth / cellEff - 1e-6);
+      const rows = Math.ceil(container.clientHeight / cellEff - 1e-6);
+      return { w: cols, h: rows, cssW: cols * cellEff, cssH: rows * cellEff };
+    }
+    const w = Math.round(container.clientWidth * dpr);
+    const h = Math.round(container.clientHeight * dpr);
+    return { w, h, cssW: w / dpr, cssH: h / dpr };
+  },
   params(): PassParams {
     return {
       bg: [1, 1, 1],
       fg: [0, 0, 0],
       muted: [0.5, 0.5, 0.5],
-      cellOut,
+      levels: palette.rgb,
+      codeLevel: palette.codeLevel,
+      toneSteps: palette.toneSteps,
+      cellOut: NATIVE ? 1 : cellOut,
       inkThreshold: INK_THRESHOLD,
       solidThreshold: SOLID_FROM,
       sharp: 0,
@@ -72,7 +91,7 @@ const passCfg = {
 let comp: Compositor | null = null;
 const ready = new Promise<void>((resolve) =>
   map.once("load", () => {
-    comp = new Compositor(map, container, passCfg);
+    comp = new Compositor(map, container, passCfg, { native: NATIVE, scale: SCALE });
     resolve();
   }),
 );
@@ -217,6 +236,8 @@ interface Summary {
   doubledFrac: number;
   /** fraction thinner than 0.85 cells per step (partial / dropped) */
   thinFrac: number;
+  /** fraction of lines with more than 2.6 cells per step (a hollow road's two outlines, one of them doubled) */
+  hollowDoubledFrac: number;
   perStepMean: number;
   perStepMax: number;
   perStepMin: number;
@@ -250,6 +271,7 @@ async function sweep(cls: string, zoom: number, opts: { bend?: number; half?: nu
     endMissFrac: results.filter((r) => !r.endsCovered).length / results.length,
     doubledFrac: results.filter((r) => r.perStep > 1.25).length / results.length,
     thinFrac: results.filter((r) => r.perStep < 0.85).length / results.length,
+    hollowDoubledFrac: results.filter((r) => r.perStep > 2.6).length / results.length,
     perStepMean: per_.reduce((a, b) => a + b, 0) / per_.length,
     perStepMax: Math.max(...per_),
     perStepMin: Math.min(...per_),
@@ -317,7 +339,7 @@ const api = {
   fan,
   dashProfile,
   ready: () => ready.then(() => true),
-  info: () => ({ cellCss: cellEff, cellOut, dpr, scale: map.getCanvas().width / container.clientWidth }),
+  info: () => ({ cellCss: cellEff, cellOut, dpr, scale: map.getCanvas().width / container.clientWidth, native: NATIVE }),
   sweep,
   dashSweep,
   dispose: () => {

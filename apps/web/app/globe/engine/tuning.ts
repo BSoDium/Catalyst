@@ -1,8 +1,11 @@
 /** Tuned constants (see docs/renderer-decision.md for how they were chosen). */
+/** Runtime quality state moved by the frame governor (engine/governor.ts): extra CSS px per art pixel. */
+export const QUALITY = { cellBoost: 0 };
+
 export const TUNING = {
-  /** Size of one art pixel in CSS px, as a function of the smaller viewport side. */
+  /** Size of one art pixel in CSS px, as a function of the smaller viewport side (+1 when the frame governor stepped down). */
   pixelSize(minSide: number, dpr: number): number {
-    const base = minSide < 520 ? 2 : 3;
+    const base = (minSide < 520 ? 2 : 3) + QUALITY.cellBoost;
     // One art pixel must be a whole number of device pixels, otherwise nearest-neighbour upscaling shimmers
     // on fractional DPRs (Android 2.625, some Windows scales).
     return Math.max(1, Math.round(base * dpr)) / dpr;

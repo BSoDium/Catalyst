@@ -194,6 +194,9 @@ export default function DevStreet() {
     if (p("rtimeout")) o.requestTimeoutMs = num(p("rtimeout"), 10000);
     if (p("blend")) o.initialBlend = num(p("blend"), 1);
     if (p("sharp")) o.initialSharp = num(p("sharp"), 0);
+    // The sharp reveal / dissolve need the device-resolution render; everything else runs at native art resolution.
+    if (p("scale")) o.renderScale = num(p("scale"), 2);
+    if (p("hires") === "1" || p("reveal") === "1" || (p("sharp") && num(p("sharp"), 0) > 0)) o.highResolution = true;
     return o as StreetMapOptions;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q.toString()]);
