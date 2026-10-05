@@ -1,0 +1,56 @@
+Catalyst Source-Available License
+Copyright (c) 2026 Elliot Négrel-Jerzy. All rights reserved, except as expressly
+granted below.
+
+This is NOT an open-source license. The source is published so that it can be
+read, learned from, and partly reused. It is not published so that the site can
+be copied.
+
+1. Scope
+   This license applies to everything in this repository, except files and
+   directories that carry their own LICENSE file (for example
+   packages/geodata, which is MIT).
+
+2. What you may do
+   a. Read, study and run the code locally for evaluation and learning.
+   b. Copy and adapt individual functions, shaders, components, algorithms or
+      other small portions into your own projects, provided that the portions
+      you take do not make up a substantial part of this project, and that you
+      keep an attribution in your source or credits, for example:
+      "Portions adapted from Catalyst by Elliot Négrel-Jerzy
+      (https://github.com/BSoDium/Catalyst)".
+   c. Take inspiration from the ideas, techniques, layout and design approach.
+      Ideas are not restricted by this license.
+
+3. What you may not do
+   a. Publish, host, deploy or distribute a copy of this project, or a
+      substantially complete portion of it, or a derivative that remains
+      substantially similar to it in structure and appearance, as a website,
+      portfolio, application or service, whether or not modified.
+   b. Present this project, its design or its content as your own work.
+   c. Use the Catalyst name, logo, or any content (text, images, artwork,
+      published places and stories) of the original site. No rights in that
+      content are granted. The content is not part of the code.
+   d. Sublicense, sell or otherwise commercialise this project as a whole.
+
+4. Third-party components
+   Dependencies and bundled third-party material remain under their own
+   licenses. Map data derived from Natural Earth is in the public domain.
+
+5. Earlier versions
+   Versions of this repository up to and including commit 34c5a96 were
+   published under the GNU General Public License, version 2. Copies obtained
+   under those terms remain available under those terms. This license applies
+   to the code written after that commit.
+
+6. Termination
+   Your rights under this license end automatically if you breach it.
+
+7. No warranty
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY ARISING FROM THE
+   USE OF THE SOFTWARE.
+
+Questions or permission requests: negreljerzy.elliot@gmail.com
