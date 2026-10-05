@@ -1,0 +1,68 @@
+:root {
+  --bg: #f2f1ec;
+  --ink: #16161a;
+  --dim: color-mix(in srgb, var(--ink) 55%, var(--bg));
+  --rule: color-mix(in srgb, var(--ink) 22%, var(--bg));
+  font: 13px/1.35 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  --bg: #0c0c0e;
+  --ink: #e8e7e1;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; background: var(--bg); color: var(--ink); overflow: hidden; overscroll-behavior: none; }
+#stage { position: fixed; inset: 0; }
+#globe { position: absolute; inset: 0; overflow: hidden; }
+.maplibregl-map { position: absolute; inset: 0; font: inherit; }
+.maplibregl-canvas { position: absolute; left: 0; top: 0; }
+.maplibregl-canvas-container.maplibregl-interactive { cursor: grab; }
+
+#labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.label {
+  position: absolute; left: 0; top: 0; visibility: hidden; opacity: 0;
+  font: 12px/1.2 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  letter-spacing: 0.01em;
+  white-space: nowrap; margin: 0; padding: 2px 5px; border: 0; border-radius: 0;
+  background: color-mix(in srgb, var(--bg) 82%, transparent); color: var(--ink);
+  pointer-events: auto; cursor: pointer;
+  transition: opacity 120ms linear;
+  will-change: transform;
+}
+.label:hover { background: var(--bg); text-decoration: underline; }
+.label:focus-visible { outline: 1px solid var(--ink); outline-offset: 1px; }
+.label.selected { background: var(--ink); color: var(--bg); }
+@media (prefers-reduced-motion: reduce) { .label { transition: none; } }
+:root[data-rm="1"] .label { transition: none; }
+
+#panel {
+  position: fixed; top: max(10px, env(safe-area-inset-top)); left: max(10px, env(safe-area-inset-left)); z-index: 5;
+  max-width: min(260px, calc(100vw - 20px)); padding: 8px 10px;
+  background: color-mix(in srgb, var(--bg) 90%, transparent); border: 1px solid var(--rule);
+}
+#panel > details > summary { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink); }
+#panel > details[open] > summary { margin-bottom: 6px; }
+#panel .row { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0; align-items: center; }
+#panel button, #panel a.btn {
+  font: inherit; color: var(--ink); background: transparent; border: 1px solid var(--rule);
+  padding: 3px 7px; cursor: pointer; text-decoration: none; min-height: 28px; display: inline-flex; align-items: center;
+}
+#panel button:hover, #panel a.btn:hover { border-color: var(--ink); }
+#panel button[aria-pressed="true"], #panel a.btn[aria-current="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+#panel label { display: inline-flex; gap: 5px; align-items: center; cursor: pointer; }
+#panel details > summary { cursor: pointer; color: var(--dim); }
+#panel details[open] > summary { margin-bottom: 4px; }
+#places { display: flex; flex-wrap: wrap; gap: 3px; }
+#places button { padding: 1px 5px; min-height: 24px; font-size: 11px; }
+
+#hud {
+  position: fixed; left: max(10px, env(safe-area-inset-left)); bottom: max(10px, env(safe-area-inset-bottom)); z-index: 5;
+  color: var(--dim); white-space: pre; font-size: 11px; pointer-events: none;
+  background: color-mix(in srgb, var(--bg) 75%, transparent); padding: 2px 4px;
+}
+#bench-out {
+  position: fixed; right: 10px; top: 10px; z-index: 6; max-width: min(420px, calc(100vw - 20px)); padding: 8px 10px;
+  background: var(--bg); border: 1px solid var(--ink); white-space: pre-wrap; font-size: 11px; max-height: 80vh; overflow: auto;
+}
+body.bench #panel { display: none; }
