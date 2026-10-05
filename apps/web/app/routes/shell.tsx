@@ -8,11 +8,14 @@ import { Globe, type GlobeViewState } from "~/globe";
 import { useIsMobile } from "~/hooks/use-is-mobile";
 import { useViewportWidth } from "~/hooks/use-viewport-width";
 import { getProjection } from "~/lib/content.server";
+import { getTilesConfig } from "~/lib/tiles-config.server";
 import { panelInset } from "~/lib/layout";
 import { buildPlaceIndex, placePath } from "~/lib/projection";
 
 export async function loader() {
-  return buildPlaceIndex(await getProjection());
+  // `tiles` is the street map's tile source configuration (CATALYST_TILES_* read at request time, see
+  // docs/street-architecture.md). Nothing in the UI uses it yet: the globe-to-street handover will.
+  return { ...buildPlaceIndex(await getProjection()), tiles: getTilesConfig() };
 }
 
 /** The place index never changes between navigations inside the shell. */

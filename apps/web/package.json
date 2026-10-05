@@ -9,7 +9,8 @@
     "build": "react-router build",
     "start": "react-router-serve ./build/server/index.js",
     "typecheck": "react-router typegen && tsc",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:street-lines": "node scripts/street/lines.mjs"
   },
   "dependencies": {
     "@catalyst/geodata": "workspace:^",
@@ -22,7 +23,9 @@
     "clsx": "^2.1.1",
     "isbot": "^5.2.2",
     "lucide-react": "^1.52.0",
+    "maplibre-gl": "^6.11.2",
     "motion": "^14.0.0",
+    "pmtiles": "^4.5.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-router": "^7.18.4",
@@ -32,6 +35,7 @@
   "devDependencies": {
     "@react-router/dev": "^7.18.4",
     "@tailwindcss/vite": "^4.3.3",
+    "@types/geojson": "^7946.0.16",
     "@types/node": "^22.0.0",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
