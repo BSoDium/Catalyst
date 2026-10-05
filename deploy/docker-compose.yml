@@ -1,0 +1,93 @@
+# Catalyst containers. Vercel is the primary deployment of web + api; this is the
+# alternative / fallback path, and the way to run the fallback tile server on a home server.
+#
+#   docker compose --profile tiles up -d          # fallback tile server ONLY (the usual case)
+#   docker compose --profile app up -d --build    # web + api
+#   docker compose --profile app --profile tiles up -d --build   # everything
+#
+# Configuration: copy .env.example to .env (same directory as this file). See docs/self-hosting.md.
+name: catalyst
+
+x-hardening: &hardening
+  init: true
+  restart: unless-stopped
+  read_only: true
+  tmpfs:
+    - /tmp:size=16m,mode=1777
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  logging:
+    driver: json-file
+    options: { max-size: "5m", max-file: "3" }   # small disks: logs are capped at 15 MB per service
+
+services:
+  # --------------------------------------------------------------------- tiles (fallback)
+  tiles:
+    <<: *hardening
+    profiles: ["tiles"]
+    build:
+      context: ./docker/tiles
+    image: catalyst-tiles:local
+    environment:
+      CORS_ALLOW_ORIGINS: ${CORS_ALLOW_ORIGINS:-*}
+    ports:
+      - "${TILES_BIND:-127.0.0.1}:${TILES_PORT:-8080}:8080"
+    volumes:
+      # Mount the DIRECTORY, not the file: replacing places.pmtiles by rename (the safe way to
+      # update it) swaps the inode, which a single-file bind mount would never see.
+      - ${TILES_DIR:-./data/tiles}:/data:ro
+    deploy:
+      resources:
+        limits: { cpus: "1.0", memory: 128M, pids: 64 }
+        reservations: { memory: 16M }
+    healthcheck:   # also defined in the image; repeated so the compose file is self-explanatory
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/places.pmtiles"]
+      interval: 30s
+      timeout: 5s
+      start_period: 5s
+      retries: 3
+
+  # --------------------------------------------------------------------- api
+  api:
+    <<: *hardening
+    profiles: ["app"]
+    build:
+      context: ..
+      dockerfile: deploy/docker/api.Dockerfile
+    image: catalyst-api:local
+    environment:
+      CATALYST_CONTENT: ${CATALYST_CONTENT:-published}
+      PORT: "3001"
+      NODE_OPTIONS: --max-old-space-size=96
+    ports:
+      - "${API_BIND:-127.0.0.1}:${API_PORT:-3001}:3001"
+    deploy:
+      resources:
+        limits: { cpus: "0.5", memory: 160M, pids: 64 }
+        reservations: { memory: 32M }
+
+  # --------------------------------------------------------------------- web
+  web:
+    <<: *hardening
+    profiles: ["app"]
+    build:
+      context: ..
+      dockerfile: deploy/docker/web.Dockerfile
+    image: catalyst-web:local
+    environment:
+      - CATALYST_CONTENT=${CATALYST_CONTENT:-published}
+      - PORT=3000
+      - NODE_OPTIONS=--max-old-space-size=192
+      # Optional. Pass-through form: a variable that is not set in .env stays UNSET inside the
+      # container instead of becoming an empty string.
+      - CATALYST_API_URL            # e.g. http://api:3001 (bundled snapshot is the fallback)
+      # Tile source contract (read by the web app; see docs/self-hosting.md)
+      - CATALYST_TILES_PRIMARY_URL
+      - CATALYST_TILES_FALLBACK_URL
+      - CATALYST_TILES_MAX_FALLBACK_ZOOM
+    ports:
+      - "${WEB_BIND:-127.0.0.1}:${WEB_PORT:-3000}:3000"
+    deploy:
+      resources:
+        limits: { cpus: "1.0", memory: 320M, pids: 128 }
+        reservations: { memory: 64M }
