@@ -117,6 +117,10 @@ The sharp reveal and the dither dissolve are unchanged: cell by cell, a cell is 
 
 Idle is zero frames (0 renders, 0 rAF calls, 0 pass runs over 1.5 s, asserted in the regression script). Pass A + T costs 1.0 ms at 2880x1800 on the M4 (isolated pass time is the same as the old rule's, 1.04 ms: at DPR 2 the centre rule reads 5 texels per cell instead of the 36 of the max-pool, and the saving pays for the staircase pass). Rendering the map at scale 1 instead of DPR (a free parameter of the compositor) takes the synced frame from 6.5 to 5.3 ms.
 
+### 3.12 Level of detail (production style)
+
+Added with the street style's LOD (`apps/web/app/globe/street/style/lod.ts`, `docs/street-architecture.md`). Rules that follow from the above: (a) a class that fades in with zoom is drawn in the TONE channel (screen-anchored lattice, tone climbing 0 to 1) and swaps to hard ink at its `full` zoom; the swap only removes stair corners. (b) A thin-class line must be exactly 1 art px wide: widths in (1, 1.6) make it two cells wide at some offsets, so ramps jump from 1 to at least 1.6 (main roads: 1 to z14.6, 1.7 at z15.2). (c) Lighter classes keep a dashed ink pattern (dash at least 1.42 line widths) instead of a smaller width. (d) At tone 1/2 the lattice is a checkerboard, so a 45 degree line can show only one parity of its cells for a short zoom span; this is the one transient where a ramping line is thinner than 8-connected, and it never applies to fully-on lines. The rail is a dashed ink line now (was a solid muted 1.8 px line, 3.3 and 5).
+
 ## 4. Before and after
 
 Crops of 380x240 CSS px, 2x, light theme unless noted, 16-colour PNGs. The first pair is the clearest test: 48 identical building outlines at 24 angles on a DPR 1 screen.
