@@ -1,7 +1,8 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import type { GlobeProps } from "./types";
 
-export type { GlobeProps, GlobeViewState } from "./types";
+export { DEFAULT_VIEW_RADIUS_KM } from "./engine/framing";
+export type { GlobeFitView, GlobeInitialView, GlobePlace, GlobeProps, GlobeViewState } from "./types";
 
 /**
  * The renderer implementation is loaded lazily and only on the client. It pulls `three` and the geodata in

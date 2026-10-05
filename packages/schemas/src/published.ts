@@ -67,6 +67,12 @@ export const publishedPlaceSchema = z
     coordinates: coordinatesSchema,
     /** Higher wins when labels collide on the globe. 0 to 100. */
     labelPriority: z.number().int().min(0).max(100),
+    /**
+     * Optional. Radius, in km, of the area around `coordinates` that should fit on screen when the place is shown
+     * (city-wide framing: roughly the distance from the centre to the edge of the built-up area). The client fits the
+     * whole circle in the free map area with a margin. Absent = the client's default (12 km).
+     */
+    viewRadiusKm: z.number().min(0.5).max(500).optional(),
     summary: z.string().trim().min(1).max(400).optional(),
     dates: publishedDatesSchema.optional(),
     /** Plain-text paragraphs. No HTML or markdown is interpreted. */
@@ -192,12 +198,12 @@ export type PublishedProjection = z.infer<typeof publishedProjectionSchema>;
 /** Light shape for lists and the globe. Derived, never stored. */
 export type PlaceSummary = Pick<
   PublishedPlace,
-  "slug" | "name" | "region" | "coordinates" | "labelPriority" | "summary"
+  "slug" | "name" | "region" | "coordinates" | "labelPriority" | "summary" | "viewRadiusKm"
 >;
 
 export function toPlaceSummary(place: PublishedPlace): PlaceSummary {
-  const { slug, name, region, coordinates, labelPriority, summary } = place;
-  return { slug, name, region, coordinates, labelPriority, summary };
+  const { slug, name, region, coordinates, labelPriority, summary, viewRadiusKm } = place;
+  return { slug, name, region, coordinates, labelPriority, summary, viewRadiusKm };
 }
 
 export const EMPTY_PROJECTION: PublishedProjection = {

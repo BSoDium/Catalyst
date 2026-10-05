@@ -4,7 +4,7 @@ import { useMatch, useNavigate, useOutlet, useParams } from "react-router";
 import type { Route } from "./+types/shell";
 import { DetailPanel, type OpenIntent } from "~/components/detail-panel";
 import { PlacesNav } from "~/components/places-nav";
-import { Globe, type GlobeViewState } from "~/globe";
+import { DEFAULT_VIEW_RADIUS_KM, Globe, type GlobeInitialView, type GlobeViewState } from "~/globe";
 import { useIsMobile } from "~/hooks/use-is-mobile";
 import { useViewportWidth } from "~/hooks/use-viewport-width";
 import { getProjection } from "~/lib/content.server";
@@ -44,6 +44,13 @@ export default function Shell({ loaderData }: Route.ComponentProps) {
 
   const slug = params.slug ?? null;
   const selectedSlug = useMemo(() => (places.some((p) => p.slug === slug) ? slug : null), [places, slug]);
+  // A direct load or reload on /locations/:slug starts ALREADY framed on the place (its view radius fitted to the free
+  // area): derived from the loader's data, so the very first frame is the final one and nothing flies. A saved view
+  // (the globe remounting after the mobile slide-over) wins. In-app selections still fly (the globe handles those).
+  const startView = useMemo<GlobeInitialView | null>(() => {
+    const p = globePlaces.find((g) => g.slug === selectedSlug);
+    return p ? { lon: p.lon, lat: p.lat, fitRadiusKm: p.viewRadiusKm ?? DEFAULT_VIEW_RADIUS_KM } : null;
+  }, [globePlaces, selectedSlug]);
 
   const close = useCallback(() => {
     void navigate("/", { preventScrollReset: true });
@@ -77,7 +84,7 @@ export default function Shell({ loaderData }: Route.ComponentProps) {
               routes={routes}
               selectedSlug={selectedSlug}
               focusedSlug={focusedSlug}
-              initialView={viewRef.current}
+              initialView={viewRef.current ?? startView}
               reducedMotion={reducedMotion}
               insetRight={insetRight}
               tiles={tiles}

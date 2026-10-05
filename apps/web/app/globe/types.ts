@@ -16,12 +16,33 @@ export interface GlobeViewState {
   street?: number;
 }
 
+/**
+ * A view given by what it should show instead of by a zoom: centred on (`lon`, `lat`) with the circle of
+ * `fitRadiusKm` around it fitted into the free map area (with a margin; see engine/framing.ts). Input only (the
+ * renderer reports plain `GlobeViewState`s). It is how a direct load starts already framed on a place, whatever the
+ * viewport and the panel.
+ */
+export interface GlobeFitView {
+  lon: number;
+  lat: number;
+  fitRadiusKm: number;
+}
+
+export type GlobeInitialView = GlobeViewState | GlobeFitView;
+
+export const isFitView = (v: GlobeInitialView | null | undefined): v is GlobeFitView => !!v && "fitRadiusKm" in v;
+
 export interface GlobePlace {
   slug: string;
   name: string;
   lat: number;
   lon: number;
   labelPriority: number;
+  /**
+   * Radius in km of the area that should fit on screen when the place is shown (published `viewRadiusKm`).
+   * Absent = `DEFAULT_VIEW_RADIUS_KM` (12 km, a typical city-wide framing).
+   */
+  viewRadiusKm?: number;
 }
 
 /** Resolved from `route.stops`: ordered points, never inferred. */
@@ -49,8 +70,11 @@ export interface GlobeProps {
   routes: GlobeRoute[];
   selectedSlug: string | null;
   focusedSlug: string | null;
-  /** View to restore when the globe is (re)mounted; null = renderer default. */
-  initialView: GlobeViewState | null;
+  /**
+   * View to start from when the globe is (re)mounted; null = renderer default. A `GlobeFitView` starts already framed
+   * on a place (direct load, reload): the first frame is the final framing, nothing flies.
+   */
+  initialView: GlobeInitialView | null;
   reducedMotion: boolean;
   /**
    * CSS px at the right edge of the globe's box that the app covers (the detail panel). The globe centres its

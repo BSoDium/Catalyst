@@ -98,7 +98,7 @@ The complete validated projection, exactly the shape of `PublishedProjection`: `
 
 ### `GET /v1/places`
 
-Array of `PlaceSummary` (`slug`, `name`, `region?`, `coordinates`, `labelPriority`, `summary?`), sorted by `slug`. Optional fields are omitted when absent.
+Array of `PlaceSummary` (`slug`, `name`, `region?`, `coordinates`, `labelPriority`, `viewRadiusKm?`, `summary?`), sorted by `slug`. Optional fields are omitted when absent.
 
 ```json
 [
@@ -106,6 +106,8 @@ Array of `PlaceSummary` (`slug`, `name`, `region?`, `coordinates`, `labelPriorit
   { "slug": "cusco", "name": "Cusco", "region": "Peru", "coordinates": { "lat": -13.52, "lon": -71.97 }, "labelPriority": 40 }
 ]
 ```
+
+`viewRadiusKm` (optional, number, 0.5 to 500, additive in schema version 1): the radius in km of the area that should fit on screen when the place is shown, typically the centre-to-edge distance of the built-up area (Lisbon 10, Paris 14, Ho Chi Minh City 18). Clients fit the whole circle into the free map area with a margin. When absent, the web app uses 12 km, a typical city-wide framing: it is large enough that a mid-size city is seen whole (so the visitor can tell where they are) and small enough that streets stay legible. Consumers that ignore the field are unaffected, and projections without it stay valid. It is part of both `PlaceSummary` and the full place.
 
 ### `GET /v1/places/:slug`
 
@@ -118,6 +120,7 @@ The full place with `related` resolved to `{ kind, slug, title }` so a detail vi
   "region": "Portugal",
   "coordinates": { "lat": 38.72, "lon": -9.14 },
   "labelPriority": 60,
+  "viewRadiusKm": 10,
   "summary": "Demo fixture: a place with prose, dates, an image and related content.",
   "dates": { "start": "2024-03", "end": "2024-04", "label": "Demo dates" },
   "body": [

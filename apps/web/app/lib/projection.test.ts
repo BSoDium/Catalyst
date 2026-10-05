@@ -15,7 +15,10 @@ describe("buildPlaceIndex", () => {
       lat: 38.72,
       lon: -9.14,
       labelPriority: 60,
+      viewRadiusKm: 10,
     });
+    // The radius is passed to the globe only when published; Kyoto has none.
+    expect(index.globePlaces.find((p) => p.slug === "kyoto")).not.toHaveProperty("viewRadiusKm");
     // Summaries never carry body text.
     expect(index.places[0]).not.toHaveProperty("body");
   });

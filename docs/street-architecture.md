@@ -110,7 +110,29 @@ Trimmed, empty = unset, https only (plain http for localhost outside production)
 
 ## Handover (stage 2)
 
-Summary (full description and numbers in `docs/web-architecture.md`, "Handover"): the globe renderer owns one camera whose zoom extends past 6.5 into street scale; the street map follows it (registered, synchronous), is dissolved in on the art-pixel grid between internal zooms 4.6 and 5.5, takes over the overlay at 0.8, and is released again below 3.3. The chunk (about 435 KB gzip plus the worker) loads at zoom 4.0 or when a place is selected; until a tile source works the globe's zoom limit is 6.5 and a flight toward street scale waits at it. `onTileStatus` drives the limit: `capped` makes the controller ease the camera back to the globe's range and show the small notice. `GlobeViewState.street` stores street scale in the shell's saved view.
+Summary (full description and numbers in `docs/web-architecture.md`, "Handover"): the globe renderer owns one camera whose zoom extends past 6.5 into street scale; the street map follows it (registered, synchronous), replaces the globe by a clean CUT at internal zoom 5.05 once its tiles are loaded (the pixel-grid dissolve between 4.6 and 5.5 is kept behind `HANDOVER.dissolve`, off), swapping markers and labels in the same task, and is released again below 3.3. The chunk (about 435 KB gzip plus the worker) loads at zoom 4.0 or when a place is selected; until a tile source works the globe's zoom limit is 6.5 and a flight toward street scale waits at it. `onTileStatus` drives the limit: `capped` makes the controller ease the camera back to the globe's range and show the small notice. `GlobeViewState.street` stores street scale in the shell's saved view.
+
+## Level of detail (street style)
+
+`street/style/lod.ts` is the one table to tune (`LOD`: `from`, `full`, final dash per class); `street-style.ts` builds a **final** layer per class (hard ink, from `full`) and a **ramp** layer (`<id>-ramp`, `RAMP_SPECS`, same geometry, filter and widths) between `from` and `full`. The ramp is painted in the tone channel with an opacity that climbs 0 to 1 (smoothstep), which the pixel pass turns into the screen-anchored Bayer lattice of fills: a function of the screen cell and the tone only, so cells are only ever ADDED as you zoom in (no swimming; `scripts/street/lod-check.mjs` forces the tone through 0..1 on the real pipeline: 0 cells switch off, about 200 to 600 cells added per 1/16 step). Widths are untouched (art px, floor 1): lighter weight is density and pattern. Both schemas map to the same classes (Protomaps keeps trunk, primary, secondary and tertiary under `major_road`, so the classes are split on `kind_detail`; links, sidewalks, crossings, platforms and underground rail are dropped or lightened identically).
+
+| Class | from | full | final look |
+|---|---|---|---|
+| motorway, trunk | 5.5 | 8.5 | solid 1 px |
+| primary | 9.5 | 12.5 | solid 1 px |
+| secondary | 11.8 | 14.2 | solid 1 px |
+| tertiary | 13 | 15.5 | solid 1 px, 1.7 px from z16 |
+| residential / minor | 14.4 | 16.4 | dotted `[1.8, 2.4]`, solid ramp 16.6 to 17.4 |
+| junction links | 14.8 | 16.6 | dotted `[1.8, 3.6]` |
+| service, track | 15.4 | 16.8 | dotted `[1.8, 3.6]` |
+| paths | 15.9 | 17 | dotted `[1.8, 3.6]` |
+| rail | 12.5 | 14.5 | dashed `[3, 2.2]` (was a solid muted 1.8 px line) |
+| rivers (lines) / lakes / small water outlines | 9 / 7.5 / 12 | 11.5 / 10 / 14 | solid 1 px (the sea outline is always drawn) |
+| canal / stream | 13 / 14 | 15 / 16 | dashed |
+| region border | 4.5 | 6.5 | dashed (country borders unchanged) |
+| building outline / fill | 16.6 / 15.8 | 17.4 / 17.5 | 1 px / lattice tone up to 0.16 |
+
+Main roads are 1 art px up to z14.6 and hollow only once the casing holds two outlines and a 2 px interior (z16.9 and up). Measurements and before/after are in `docs/street-zoom/style-*`; `node scripts/street/lod.mjs --tag=after` regenerates them (line cells per 1000 art cells with fills hidden, vector line features rendered).
 
 ## Dev route and checks
 
@@ -120,6 +142,8 @@ Summary (full description and numbers in `docs/web-architecture.md`, "Handover")
 node apps/web/scripts/street/serve-tiles.mjs prototypes/street-zoom/public/hcmc.pmtiles 5240   # local Range server
 CATALYST_TILES_FALLBACK_URL=http://127.0.0.1:5240/places.pmtiles pnpm --filter @catalyst/web dev   # then BASE_URL=...
 pnpm --filter @catalyst/web test:street-lines     # the line regression gate (needs the dev server on BASE_URL, Chrome)
+node apps/web/scripts/street/lod-check.mjs      # ramp stability (tone 0..1 only adds cells)
+node apps/web/scripts/street/lod.mjs --tag=after # LOD screenshots + line density per zoom/theme/place
 node apps/web/scripts/street/failover.mjs         # failover drills with Playwright routing
 node apps/web/scripts/street/perf.mjs all         # frames, idle, context loss, 20 cycles, flight (prefer a CATALYST_DEV_ROUTES=1 build)
 node apps/web/scripts/street/registration.mjs

@@ -3,7 +3,7 @@
  * React component talks to; it is imported dynamically so that `three` stays in its own client chunk.
  */
 import type { Polylines } from "@catalyst/geodata";
-import type { GlobePlace, GlobeProps, GlobeRoute, GlobeViewState } from "../types";
+import { isFitView, type GlobeInitialView, type GlobePlace, type GlobeProps, type GlobeRoute, type GlobeViewState } from "../types";
 import { readTheme } from "./colors";
 import { LabelLayer } from "./label-layer";
 import { labelPriorityFloor } from "./labels";
@@ -28,7 +28,7 @@ interface GlobeOptions {
   routes: readonly GlobeRoute[];
   coastlines: Polylines;
   borders: Polylines;
-  initialView: GlobeViewState | null;
+  initialView: GlobeInitialView | null;
   selectedSlug: string | null;
   reducedMotion: boolean;
   /** `GlobeProps.insetRight` at start. */
@@ -128,9 +128,12 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
   };
 
   const selectedAtStart = opts.selectedSlug ? places.get(opts.selectedSlug) : undefined;
-  const start: StartView | null = opts.initialView
-    ? { lon: opts.initialView.lon, lat: opts.initialView.lat, zoom01: opts.initialView.zoom, street: opts.initialView.street }
-    : selectedAtStart
+  const iv = opts.initialView;
+  const start: StartView | null = isFitView(iv)
+    ? { lon: iv.lon, lat: iv.lat, zoom01: null, fitRadiusKm: iv.fitRadiusKm }
+    : iv
+      ? { lon: iv.lon, lat: iv.lat, zoom01: iv.zoom, street: iv.street }
+      : selectedAtStart
       ? { lon: selectedAtStart.lon, lat: selectedAtStart.lat, zoom01: null }
       : null;
 

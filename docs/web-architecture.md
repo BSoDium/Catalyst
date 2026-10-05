@@ -273,15 +273,27 @@ pushes the registered camera and the globe's animated inset into the street map 
 (`__handoverDebug.registrationError`, projection of a place by each renderer, across wheel zoom and flights): under
 1e-9 px in the dissolve band; the pixels agree too (below).
 
-**Bands** (`HANDOVER`, zoom `zu`; hysteresis everywhere, a function of position, not a state machine):
+**Cut (default) or dissolve** (`HANDOVER.dissolve`, default `false`). The pixel-art dissolve between the renderers is
+parked until the fade is mastered; the code path is intact (`HANDOVER.dissolve = true`, or `?globe-debug&dissolve=1` for
+tests). In cut mode there is no blend at all: the street map is created opaque and shown or hidden as a whole.
+Past `cutZoom` (5.05; back below `cutBackZoom` 4.8, hysteresis) the controller renders the street map synchronously for
+the exact camera and waits until its tiles for it are loaded (`map.areTilesLoaded()`, polling frames; after
+`cutMaxWaitMs` = 500 it swaps anyway, so the globe never stalls), then does ONE swap in a single task, hence one paint:
+street root visible, globe labels hidden, street markers and labels shown, Three.js suspended, all transitions off. Going
+back, the Three.js frame (and its labels) is drawn synchronously for the current camera BEFORE the street map is hidden.
+No frame ever shows both label layers or neither (asserted per animation frame by `scripts/globe/framing.mjs cut`).
+The two renderers are registered to under a pixel, so only the line style changes at the cut.
+
+**Bands** (`HANDOVER`, zoom `zu`; hysteresis everywhere, a function of position, not a state machine). Rows marked
+(dissolve) apply only with `HANDOVER.dissolve = true`:
 
 | zu | |
 | --- | --- |
 | below 4.0 (3.3 on the way back, after 2.5 s) | street map not loaded / released |
 | 4.0 | chunk requested, map created (also when a place is selected) |
 | 4.3 | the map follows the camera while invisible (trailing 140 ms), so its tiles are ready |
-| 4.6 to 5.5 | pixel-grid dither dissolve: `blendAt(zu)` (smoothstep) drives `StreetMap.setBlend`, slew-limited to 450 ms per full swing |
-| 5.5 and up | the street map alone; the Three.js scene is suspended (no draw calls, the camera still ticks) |
+| 4.6 to 5.5 (dissolve) | pixel-grid dither dissolve: `blendAt(zu)` (smoothstep) drives `StreetMap.setBlend`, slew-limited to 450 ms per full swing |
+| 5.05 and up (cut; 5.5 with the dissolve) | the street map alone; the Three.js scene is suspended (no draw calls, the camera still ticks) |
 | 3.7 to 4.6 | the globe's lifted route arcs flatten onto the ground (`routeLift`), ahead of the dissolve |
 
 The dissolve is on the art-pixel grid (Bayer, the street pass's `blend`), so lines morph rather than cross-fade:
@@ -307,30 +319,51 @@ unavailable right now." (a `role="status"` paragraph at the bottom left of the m
 within 0.6 of the limit or a place is selected. When tiles come back the limit lifts and the notice goes. A place
 outside the fallback archive's bounds is not flown to at street scale (`StreetMap.covers`).
 
-**Selecting a place** (marker, label, list, URL, `setSelected(slug, true)`): a flight to the place, to street scale
+**Framing: the view radius.** A place's framing comes from its published `viewRadiusKm` (optional, 0.5 to 500; default
+`DEFAULT_VIEW_RADIUS_KM` = 12 km, a typical city-wide framing: a mid-size city is seen whole, so you can tell where
+you are, with streets still legible). `engine/framing.ts`: the circle of that radius must fit the FREE area (box width
+minus `insetRight`, by height) with a 25 % margin:
+
+```
+circlePx = min(width - insetRight, height) / 2 / 1.25
+zu       = log2( circlePx * 6371.0088 / radiusKm * 2*pi / 512 )          // = radiusPxToZoom(px per radian)
+```
+
+The unified zoom has one scale at the view centre (`512 * 2^zu / (2 pi)` px per radian, any latitude: the Mercator
+`log2 cos lat` cancels the stretch), so the formula is latitude independent. The result is clamped to the whole-globe
+fit below and the street map's maximum above (`selectionZoom`); without a street map it stays the regional select zoom 3.2
+(never zooming out). The renderer uses the inset it is HEADING for (`getInsetTarget`), so a selection that opens the
+panel lands on the framing for the panel's width (the canvas applies the inset before the selection). Examples at
+1440x900 with the panel open (free 720x900): Lisbon (10 km) zu 11.1, Paris (14 km) 10.65 and Ho Chi Minh City (18 km)
+10.3. Selections, list selections and direct loads all use it.
+
+**Selecting a place** (marker, label, list, `setSelected(slug, true)`): a flight to the place's framing, to street scale
 when `tiles` are configured and the street map is not known to fail (the street map is mounted at once and the
 flight waits at the limit if it has to), else to the select zoom 3.2 as before. Street flights keep the pan ahead of
 the zoom (the target stays near the centre while the scale explodes), pull back to the cruise zoom between two
-distant street-scale places, and last 0.9 to 6.5 s (about 5 s from the world). Direct load of `/locations/:slug`: the
-globe starts at the place at 3.2 (as before), and after 0.7 s flies into street scale; the street map starts loading
-at once. With the panel open (`insetRight`), both renderers use the same shifted centre; the selected place lands in
+distant street-scale places, and last 0.9 to 6.5 s (about 5 s from the world). Direct load or reload of
+`/locations/:slug` does NOT fly: the shell derives `initialView = { lon, lat, fitRadiusKm }` (`GlobeFitView`) from the
+loader's places, the renderer computes the framing on its first sized frame, and from the very first frame the camera
+is the final one (constant; asserted by sampling every animation frame). The street map may not be ready at first
+paint: the Three.js globe is drawn at its own maximum (6.5) centred on the place, with the panel's inset, and the cut
+happens when the street map is ready (never a flight, never a blank). A saved view (mobile remount) wins over the fit view. With the panel open (`insetRight`), both renderers use the same shifted centre; the selected place lands in
 the middle of the free left half. Mobile: the slide-over unmounts the globe, so there is no flight with the panel open
 and a direct load of a place URL shows the world after the panel is closed (as before).
 
-**Focus circle** (`HANDOVER.revealFocus`, one constant, true): at street scale, 450 ms after arrival, the street pass
-opens `setReveal` around the selected place: inside a circle (up to 280 CSS px, feathered, Bayer-masked) the vector
-render shows instead of the pixel art. Judged on the screenshots (light, dark): subtle, reads as "focus here", keeps
-the pixel look everywhere else; off under reduced motion; closes when the selection clears. Set the constant to
-`false` to remove it.
+**Focus circle** (`HANDOVER.revealFocus`, one constant, now `false`): at street scale, 450 ms after arrival, the street
+pass can open `setReveal` around the selected place: inside a circle (up to 280 CSS px, feathered, Bayer-masked) the
+vector render shows instead of the pixel art. With the cut and the city-wide framing it looked wrong on the
+screenshots (anti-aliased source lines over the pixel art read as doubled lines, e.g. the Seine in Paris), so it is
+off by default; the code stays and comes back with the dissolve.
 
 **Lifecycle**: both renderers are created and disposed by the controller. The mobile slide-over unmounting the
 globe disposes the street map too (two contexts); the view comes back identical including the street scale
-(`GlobeViewState.street`): a restored street view keeps Three suspended, mounts the street map first and shows it
-without a dissolve once ready (12 s cap, then the view is clamped to 6.5). Context loss: Three and the street
+(`GlobeViewState.street`): a restored street view (or a framed start view) mounts the street map at once while the globe is drawn at 6.5, and
+swaps without a dissolve once ready (12 s cap, then the view is clamped to 6.5). Context loss: Three and the street
 renderers keep their own recovery; either one lost sets `data-state="lost"`; a lost street context makes the street
 map unusable (retreat to the globe). WebGL2 missing for the street map = street unavailable, the globe is unaffected.
 
-**Reduced motion**: flights are jumps; the dissolve is instant (no slew); no focus circle; overlay swap instant;
+**Reduced motion**: flights are jumps; the swap is instant (as always); no focus circle; overlay swap instant;
 routes static. **Idle**: zero rAF calls, zero ticks, zero street renders in all states (measured at world, held
 mid-dissolve and street scale; the follow debounce is a timer, not a frame loop). **Phones**: art pixel 2 CSS px
 (both renderers use the globe's rule); the street map renders its source at `min(DPR, 2)` and presents at device
@@ -371,6 +404,15 @@ world round trips, 3 live at street scale (Three + 2) and 1 after (43 created, 4
   panel keep default touch behaviour. There is no keyboard handling on purpose (the canvas is not focusable).
 - Debug introspection: `window.__globeDebug` exists only with `?globe-debug` in the URL or
   `sessionStorage["globe-debug"] = "1"`; the browser checks use it.
+
+### Framing and cut checks (`scripts/globe/framing.mjs`)
+
+`BASE_URL=http://localhost:5173 [SHOTS=1] node apps/web/scripts/globe/framing.mjs [reload|flight|cut|panel|reduced|mobile]`
+(real OpenFreeMap tiles; `SHOTS=1` writes `docs/screenshots/framing-<slug>-{light,dark,mobile}.png`). `reload`: reload of
+`/locations/{lisbon,paris,ho-chi-minh-city}`, light and dark, camera identical on every animation frame from the first,
+one cut; `flight`: a list selection ends at the reload view; `cut`: through a flight in and back out, per frame the
+street root and the globe labels are only ever 0 or 1, never both and never neither, Three.js suspended whenever the
+street map shows; `panel`: framing with the panel open is wider by log2(900/720); `reduced`; `mobile`.
 
 ### Handover checks (`scripts/globe/handover-*.mjs`)
 

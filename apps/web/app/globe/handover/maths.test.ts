@@ -10,7 +10,8 @@ import {
   overlayOwner,
   routeLift,
   slew,
-  streetSelectZoom,
+  cutWanted,
+  selectionZoom,
   toMapZoom,
   zoomCeiling,
 } from "./maths";
@@ -83,9 +84,15 @@ describe("registration of the unified zoom", () => {
       expect(toMapZoom(5, lat)).toBeCloseTo(5 + Math.log2(Math.cos((lat * Math.PI) / 180)), 12);
     }
   });
-  it("selects at the street zoom for the latitude, deeper than the globe maximum", () => {
-    expect(streetSelectZoom(10.8)).toBeGreaterThan(GLOBE_MAX_ZOOM);
-    expect(toMapZoom(streetSelectZoom(48.9), 48.9)).toBeCloseTo(HANDOVER.streetMapZoom, 12);
+  it("selection zoom: exactly the framing with a street map (in or out), capped by its maximum", () => {
+    expect(selectionZoom(10.8, 38.7, true, 2)).toBe(10.8);
+    expect(selectionZoom(10.8, 38.7, true, 14)).toBe(10.8); // zooms out to the framing too
+    expect(toMapZoom(selectionZoom(30, 48.9, true, 2), 48.9)).toBeCloseTo(TUNING.streetMapMaxZoom, 12);
+  });
+  it("selection zoom without a street map: the regional select zoom, never zooming out, or the framing if further out", () => {
+    expect(selectionZoom(10.8, 38.7, false, 1)).toBe(TUNING.selectZoom);
+    expect(selectionZoom(10.8, 38.7, false, 5)).toBe(5);
+    expect(selectionZoom(2.4, 38.7, false, 1)).toBe(2.4);
   });
   it("ceiling: the globe's maximum without a street map, the street map's maximum with one", () => {
     expect(zoomCeiling(30, false)).toBe(TUNING.maxZoom);
@@ -98,5 +105,23 @@ describe("route arcs", () => {
     expect(routeLift(3)).toBe(1);
     expect(routeLift(HANDOVER.routeFlat.end)).toBe(0);
     expect(HANDOVER.routeFlat.end).toBeLessThanOrEqual(HANDOVER.blendStart);
+  });
+});
+
+describe("cut", () => {
+  it("is off below the threshold, on above it, and holds with hysteresis in between", () => {
+    expect(cutWanted(false, HANDOVER.cutZoom - 0.01, true)).toBe(false);
+    expect(cutWanted(false, HANDOVER.cutZoom, true)).toBe(true);
+    expect(cutWanted(true, HANDOVER.cutZoom - 0.01, true)).toBe(true);
+    expect(cutWanted(true, HANDOVER.cutBackZoom - 0.01, true)).toBe(false);
+  });
+  it("hysteresis band is non-empty and sits inside the mount-to-globe-max range", () => {
+    expect(HANDOVER.cutBackZoom).toBeLessThan(HANDOVER.cutZoom);
+    expect(HANDOVER.cutBackZoom).toBeGreaterThan(HANDOVER.followZoom);
+    expect(HANDOVER.cutZoom).toBeLessThan(GLOBE_MAX_ZOOM);
+  });
+  it("an unusable street map shows nothing, unless the camera is still above the globe's maximum (retreat)", () => {
+    expect(cutWanted(true, 5.5, false)).toBe(false);
+    expect(cutWanted(true, GLOBE_MAX_ZOOM + 1, false)).toBe(true);
   });
 });

@@ -9,8 +9,13 @@
  *
  *   zu <  mountZoom                street chunk not loaded (unmounted again below `unmountZoom`)
  *        followZoom ..             the street map follows the camera, invisible, to have its tiles ready
+ *   CUT (default, `HANDOVER.dissolve = false`):
+ *        zu >= cutZoom             as soon as the street map has its tiles for the camera (or `cutMaxWaitMs` passed):
+ *                                  ONE instant swap of renderer, markers and labels; Three.js is suspended (no frames)
+ *        zu <  cutBackZoom         the same swap the other way (hysteresis: no flapping at the threshold)
+ *   DISSOLVE (`HANDOVER.dissolve = true`, kept for when the fade is mastered):
  *        blendStart .. blendEnd    pixel-grid (Bayer) dissolve from the Three.js render to the street render
- *   zu >= blendEnd                 the street map alone is drawn; Three.js is suspended (no frames)
+ *        zu >= blendEnd            the street map alone is drawn; Three.js is suspended (no frames)
  */
 import { TUNING } from "../engine/tuning";
 import { clamp } from "../engine/geo";
@@ -26,7 +31,18 @@ export const HANDOVER = {
   followZoom: 4.3,
   /** Trailing debounce of the invisible follow (ms): tiles for where the camera rests, not for every frame of a drag. */
   followDebounceMs: 140,
-  /** The dissolve is a function of zoom between these two. */
+  /**
+   * false (default): a clean CUT between the renderers at `cutZoom`; true: the dither dissolve below. The dissolve
+   * code path is kept (and works) to be reintroduced once the fade is right; `boolean`, not a literal, so it can be switched.
+   */
+  dissolve: false as boolean,
+  /** CUT: the zoom from which the street map replaces the globe (the middle of the dissolve range: both are registered there). */
+  cutZoom: 5.05,
+  /** CUT: the street map gives way to the globe again below this zoom (hysteresis against flapping at the threshold). */
+  cutBackZoom: 4.8,
+  /** CUT: how long to wait for the street map's tiles past the threshold before swapping anyway (ms): never a stalled globe. */
+  cutMaxWaitMs: 500,
+  /** DISSOLVE: the blend is a function of zoom between these two. */
   blendStart: 4.6,
   blendEnd: 5.5,
   /** Slew limit of the dissolve value: a full 0 to 1 swing takes at least this long (fast flicks, availability changes). */
@@ -36,12 +52,12 @@ export const HANDOVER = {
   overlayOut: 0.65,
   /** The globe's lifted route arcs flatten onto the ground between these zooms, ahead of the dissolve. */
   routeFlat: { start: 3.7, end: 4.6 },
-  /** MapLibre zoom a selected place is flown to. */
-  streetMapZoom: 14.5,
-  /** Sharp-focus circle around the selected place at street scale: set false to switch the effect off for good. */
-  revealFocus: true,
-  /** Direct load on a place: the globe shows it for this long before the flight into street scale starts (ms). */
-  arrivalDelayMs: 700,
+  /**
+   * Sharp-focus circle around the selected place at street scale. OFF by default: with the cut and the city-wide framing
+   * the anti-aliased source render inside the circle sits over the pixel art and reads as doubled lines (the Seine,
+   * the boulevards) rather than as a focus. Reintroduce together with the dissolve.
+   */
+  revealFocus: false,
   /** Delay after arrival before the focus circle opens (ms). */
   revealDelayMs: 450,
 } as const;
@@ -82,9 +98,24 @@ export function overlayOwner(previous: OverlayOwner, blend: number): OverlayOwne
 export const toMapZoom = (zu: number, lat: number) => zu + zoomCorrection(lat);
 export const fromMapZoom = (zm: number, lat: number) => zm - zoomCorrection(lat);
 
-/** Unified zoom of the street scale a selected place is flown to. */
-export function streetSelectZoom(lat: number): number {
-  return fromMapZoom(HANDOVER.streetMapZoom, lat);
+/**
+ * Unified zoom a selection flies to, given `fit` (the zoom at which the place's view radius fits the free area, see
+ * engine/framing.ts). With the street map possible: exactly the framing (it may zoom out as well as in), at most the
+ * street map's maximum. Without it: the regional select zoom, never zooming out (as before street scale existed), or
+ * the framing if that is further out.
+ */
+export function selectionZoom(fit: number, lat: number, streetPossible: boolean, current: number): number {
+  if (streetPossible) return Math.min(fit, zoomCeiling(lat, true));
+  return Math.max(current, Math.min(fit, TUNING.selectZoom));
+}
+
+/**
+ * CUT mode: whether the street map should be the one shown, with hysteresis (`showing`: it is now). A street map
+ * that is not usable shows nothing, unless the camera is still up there (retreat), as for the dissolve.
+ */
+export function cutWanted(showing: boolean, zu: number, streetOk: boolean): boolean {
+  if (!streetOk && !(zu > GLOBE_MAX_ZOOM + 1e-6)) return false;
+  return showing ? zu >= HANDOVER.cutBackZoom : zu >= HANDOVER.cutZoom;
 }
 
 /** Highest unified zoom the experience offers at a latitude: the street map's maximum, or the globe's when there is no street. */

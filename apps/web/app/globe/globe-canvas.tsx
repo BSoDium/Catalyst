@@ -48,6 +48,16 @@ function streetDebugOptions(): Record<string, unknown> | undefined {
   }
 }
 
+/** Test-only: `?dissolve=1` runs the dither dissolve between the renderers instead of the default cut. */
+function dissolveForTests(): boolean | undefined {
+  try {
+    const q = new URLSearchParams(location.search).get("dissolve") ?? sessionStorage.getItem("dissolve");
+    return q === null ? undefined : q === "1";
+  } catch {
+    return undefined;
+  }
+}
+
 /** Test-only: `?no-street` (or sessionStorage "no-street" = "1") runs the globe alone, as before street scale existed. */
 function streetDisabledForTests(): boolean {
   try {
@@ -124,6 +134,7 @@ export default function GlobeCanvas({
           },
           onContextChange: (lost) => setStatus(lost ? "lost" : "ready"),
           streetOptions: debugEnabled() ? streetDebugOptions() : undefined,
+          dissolve: debugEnabled() ? dissolveForTests() : undefined,
         });
         appliedSelection.current = now.selectedSlug;
         handleRef.current = handle;
@@ -150,6 +161,12 @@ export default function GlobeCanvas({
     };
   }, [places, routes, tilesKey]);
 
+  // The inset first: a selection that opens the panel flies to a framing computed for the panel's width, so the
+  // renderer must already know the inset it is heading for (effects run in declaration order).
+  useEffect(() => {
+    handleRef.current?.setInset(insetRight);
+  }, [insetRight]);
+
   useEffect(() => {
     const handle = handleRef.current;
     if (!handle || selectedSlug === appliedSelection.current) return;
@@ -164,10 +181,6 @@ export default function GlobeCanvas({
   useEffect(() => {
     handleRef.current?.setReducedMotion(reducedMotion);
   }, [reducedMotion]);
-
-  useEffect(() => {
-    handleRef.current?.setInset(insetRight);
-  }, [insetRight]);
 
   return (
     <div data-globe="three" data-state={status} className="relative size-full overflow-hidden select-none">

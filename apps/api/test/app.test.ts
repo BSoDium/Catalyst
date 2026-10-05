@@ -35,7 +35,7 @@ const KNOWN = ["/health", ...STATIC, "/v1/places/lisbon"];
 // Strict response schemas, independent of the server code, to assert that
 // nothing outside the contract allowlist can appear in a response.
 const placeSummarySchema = publishedPlaceSchema
-  .pick({ slug: true, name: true, region: true, coordinates: true, labelPriority: true, summary: true })
+  .pick({ slug: true, name: true, region: true, coordinates: true, labelPriority: true, summary: true, viewRadiusKm: true })
   .strict();
 const placeDetailSchema = publishedPlaceSchema
   .extend({
@@ -91,6 +91,11 @@ describe("endpoints (demo content)", () => {
     expect(slugs).toHaveLength(11);
     // Summaries must not carry detail-only fields.
     for (const p of body) expect(Object.keys(p)).not.toContain("body");
+    // The optional view radius passes through when set and is omitted when absent.
+    const radius = Object.fromEntries((body as { slug: string; viewRadiusKm?: number }[]).map((p) => [p.slug, p.viewRadiusKm]));
+    expect(radius["lisbon"]).toBe(10);
+    expect(radius["kyoto"]).toBeUndefined();
+    expect(Object.keys(body.find((p) => p.slug === "kyoto")!)).not.toContain("viewRadiusKm");
   });
 
   it("GET /v1/places/:slug returns the full place with resolved related items", async () => {
@@ -98,6 +103,7 @@ describe("endpoints (demo content)", () => {
     expect(res.status).toBe(200);
     const place = placeDetailSchema.parse(await res.json()) as PlaceDetailResponse;
     expect(place.name).toBe("Lisbon");
+    expect(place.viewRadiusKm).toBe(10);
     expect(place.body.length).toBeGreaterThan(0);
     expect(place.related).toEqual([
       { kind: "article", slug: "demo-article", title: "Demo article" },

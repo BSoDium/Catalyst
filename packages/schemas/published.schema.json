@@ -52,6 +52,11 @@
             "minimum": 0,
             "maximum": 100
           },
+          "viewRadiusKm": {
+            "type": "number",
+            "minimum": 0.5,
+            "maximum": 500
+          },
           "summary": {
             "type": "string",
             "minLength": 1,

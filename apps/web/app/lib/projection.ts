@@ -45,6 +45,7 @@ function toGlobePlace(place: PlaceSummary): GlobePlace {
     lat: place.coordinates.lat,
     lon: place.coordinates.lon,
     labelPriority: place.labelPriority,
+    ...(place.viewRadiusKm !== undefined ? { viewRadiusKm: place.viewRadiusKm } : {}),
   };
 }
 

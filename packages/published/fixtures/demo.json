@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "places": [
-    { "slug": "lisbon", "name": "Lisbon", "region": "Portugal", "coordinates": { "lat": 38.72, "lon": -9.14 }, "labelPriority": 60,
+    { "slug": "lisbon", "name": "Lisbon", "region": "Portugal", "coordinates": { "lat": 38.72, "lon": -9.14 }, "labelPriority": 60, "viewRadiusKm": 10,
       "summary": "Demo fixture: a place with prose, dates, an image and related content.",
       "dates": { "start": "2024-03", "end": "2024-04", "label": "Demo dates" },
       "body": ["Demo fixture text. This paragraph exists only to exercise the detail panel layout.", "A second demo paragraph, to check reading width and spacing."],
@@ -21,11 +21,11 @@
       "body": [], "images": [], "related": [] },
     { "slug": "hanoi", "name": "Hanoi", "region": "Vietnam", "coordinates": { "lat": 21.03, "lon": 105.85 }, "labelPriority": 30,
       "body": [], "images": [], "related": [] },
-    { "slug": "ho-chi-minh-city", "name": "Ho Chi Minh City", "region": "Vietnam", "coordinates": { "lat": 10.82, "lon": 106.63 }, "labelPriority": 25,
+    { "slug": "ho-chi-minh-city", "name": "Ho Chi Minh City", "region": "Vietnam", "coordinates": { "lat": 10.82, "lon": 106.63 }, "labelPriority": 25, "viewRadiusKm": 18,
       "body": [], "images": [], "related": [] },
     { "slug": "hue", "name": "Huế", "region": "Vietnam", "coordinates": { "lat": 16.46, "lon": 107.59 }, "labelPriority": 20,
       "body": [], "images": [], "related": [] },
-    { "slug": "paris", "name": "Paris", "region": "France", "coordinates": { "lat": 48.86, "lon": 2.35 }, "labelPriority": 65,
+    { "slug": "paris", "name": "Paris", "region": "France", "coordinates": { "lat": 48.86, "lon": 2.35 }, "labelPriority": 65, "viewRadiusKm": 14,
       "body": [], "images": [], "related": [] }
   ],
   "routes": [

@@ -17,6 +17,7 @@ import type { GlobePlace, GlobeRoute } from "../types";
 import type { GlobeTheme } from "./colors";
 import { attachControls, type ControlsHost, type PointerKind } from "./controls";
 import { watchDevicePixelRatio } from "./dpr";
+import { radiusFitZoom } from "./framing";
 import {
   DEG,
   FOV_DEG,
@@ -91,6 +92,8 @@ export interface StartView {
   zoom01: number | null;
   /** Street-scale levels beyond `zoom01` = 1 (`GlobeViewState.street`). */
   street?: number;
+  /** Frame the circle of this radius (km) around the view centre instead (`GlobeFitView`); `zoom01` is ignored. */
+  fitRadiusKm?: number;
 }
 
 export interface FlyOptions {
@@ -300,6 +303,7 @@ export class GlobeRenderer {
   private startView(): ViewState {
     const s = this.start;
     if (!s) return { lon: 15, lat: 28, zoom: this.minZoom };
+    if (s.fitRadiusKm !== undefined) return { lon: s.lon, lat: s.lat, zoom: Math.max(this.minZoom, this.fitZoomFor(s.fitRadiusKm)) };
     if (s.zoom01 === null) return { lon: s.lon, lat: s.lat, zoom: TUNING.selectZoom };
     return fromViewState({ lon: s.lon, lat: s.lat, zoom: s.zoom01, street: s.street }, this.minZoom, TUNING.maxZoom);
   }
@@ -307,6 +311,18 @@ export class GlobeRenderer {
   /** The animated inset now (CSS px). */
   getInset() {
     return this.inset;
+  }
+  /** The inset the animation is heading for (CSS px): what framing a place for the panel must use. */
+  getInsetTarget() {
+    return this.insetTarget;
+  }
+  /**
+   * Unified zoom at which the circle of `radiusKm` fits the free area once the inset has settled (unclamped above;
+   * not below the whole-globe fit). See engine/framing.ts.
+   */
+  fitZoomFor(radiusKm: number): number {
+    const z = radiusFitZoom(radiusKm, this.width, this.height, this.insetTarget);
+    return Math.max(z, fitZoom(freeWidth(this.width, clampInset(this.insetTarget, this.width)), this.height, TUNING.fitMargin));
   }
   isFlying() {
     return this.flight !== null;
