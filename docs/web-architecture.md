@@ -240,9 +240,9 @@ effect, so they are separate client chunks fetched after hydration. Production b
 
 ### Behaviour notes
 
-- Markers are GL points at true coordinates, sized in whole art pixels: normal 3, route stop 5, focused 7,
-  selected 9 (ring with centre dot). The far side is hidden by the depth-writing disc; picking and labels use
-  the same front-hemisphere test, so far-side markers can be neither seen nor clicked.
+- Markers are GL points sized in whole art pixels: normal 3, route stop 5, focused 7, selected 9 (ring with
+  centre dot). They are shown or hidden as a whole, from their centre only (see "Marker clipping fix" below);
+  picking and labels use the same answer, so hidden markers can be neither seen nor clicked.
 - Routes: only the lines in the `routes` prop are drawn, as great-circle arcs lifted above the surface through
   the route's ordered points. All routes are drawn complete and static; only the route that contains the
   newly selected place plays the 2.2 s draw-on, and only when motion is allowed. The route containing the
@@ -271,6 +271,7 @@ CATALYST_CONTENT=demo PORT=5174 pnpm --filter @catalyst/web start
 CHROME_PATH=/path/to/chrome OUT_DIR=/tmp/shots node apps/web/scripts/globe/check.mjs    # desktop behaviours (JSON)
 CHROME_PATH=/path/to/chrome OUT_DIR=/tmp/shots node apps/web/scripts/globe/mobile.mjs   # 390x844@3x touch, unmount/restore, 20 cycles
 CHROME_PATH=/path/to/chrome node apps/web/scripts/globe/bench.mjs desktop|mobile [seconds] [panel]
+CHROME_PATH=/path/to/chrome node apps/web/scripts/globe/markers.mjs [quick]              # markers whole-or-absent regression (exit 1 on failure)
 ```
 
 `BASE_URL` overrides `http://localhost:5174`. The places list is visually hidden, so the scripts open places like a
@@ -343,3 +344,38 @@ DPR together: buffer 375x250 at pixel size 3.2), real GPU context loss.
 Also not verified for the floating UI: a real screen reader (VoiceOver/NVDA) on the places list, Safari and Firefox rendering of `:has(:focus-visible)`, CSS `mask-image` on a pixelated canvas and progressive `backdrop-filter`, and the cost of the panel's backdrop blur on weak GPUs. The `/articles` scrim screenshot repeats the single demo article in the DOM (test-only) so the page can scroll.
 
 Screenshots (1280x800, demo content): `docs/screenshots/overview-light.png`, `overview-dark.png`, `panel-open.png`, `scrim-articles.png`.
+
+### Marker clipping fix
+
+Bug: markers were depth-tested against the globe disc (radius 0.998; markers at 1.0). A GL point has ONE depth
+for all its pixels, while the disc's depth changes across the footprint, and on a surface tilted toward the
+camera that change is larger than the 0.002 gap. The pixels on the side nearer the screen centre failed the test, so
+markers in the upper half lost their bottom and those in the lower half their top (the 9 px selected ring lost
+whole edges), and the cut also disagreed with the CPU test used for labels and picking. Measured on the old build over
+about 1,150 views of the 11 demo places, 512 of 805 on-screen markers were missing 1 to 7 of their 9 pixels.
+
+Fix (`engine/visibility.ts`, `marker-layer.ts`, `renderer.ts`): the renderer projects each place on the CPU (the
+projection labels and picking already used), snaps it to its art pixel, and decides visibility from the CENTRE only:
+front hemisphere and at least `TUNING.markerLimbClearance` (4 art pixels, the half-size of the selected ring) inside the
+globe's silhouette, so a drawn marker never reaches the limb. The marker is then drawn at that pixel centre with no
+depth test, last of all (after the horizon outline), so nothing can cut it; a hidden one is clipped away entirely.
+`project()` returns that same cell and flag, so drawing, label anchors and picking cannot disagree (before, the GPU
+point was unsnapped and could sit one pixel off the label anchor). The decision uses the unsnapped centre, so it does not
+flicker with pixel snapping, and the markers are placed on a pixel centre, so a 3, 5, 7 or 9 px point always covers its
+whole block. Markers are hidden about 12 css px before the limb: earlier than the geometric horizon, later than labels
+(which drop at `facing < 0.08`).
+
+Routes had the same cause in a milder form (1 to 3 route pixels missing in 26 of 100 tilted views). They now
+skip the depth test and are hidden by an analytic ray-vs-disc test on the centre line (`routeMaterial`), so a dash is
+cut across its length or not at all; the pixel set equals the depth-off render in every sampled view and is empty beyond
+the horizon. Not changed: the graticule, borders and coastlines (1 px, no footprint), and the GL scissor under the detail
+panel, which cuts at the panel edge by design (masked there).
+
+Evidence and checks: `docs/screenshots/markers-before.png` / `markers-after.png` (same 9 views, 3x enlarged crops:
+centre, north, south, near the limb, selected, high zoom; before and after). `scripts/globe/markers.mjs` draws markers
+in pure red/blue (`__globeDebug.setMarkerProbe`) and compares the whole drawing buffer pixel for pixel with the expected
+block of every shown marker (and nothing for hidden ones) over 9,252 views per run: full rotations at 7 latitudes and
+three zooms, each place walked from 50 to 100 degrees off-centre along four bearings, desktop and 2 px mobile art pixels,
+nothing selected and Reykjavik, Cape Town and Hanoi (route stops) selected. Old build (quick mode): 1,440 failures over
+2,256 views; new build (full mode): 0 over 46,260 views. Unit tests: `visibility.test.ts`. Frame time unchanged (bench desktop, GPU-synced
+p50 2.1 to 2.4 ms before and after, JS render p50 0.2 to 0.3 ms); idle still 0 rAF, 0 `gl.clear`.

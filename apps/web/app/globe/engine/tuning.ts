@@ -18,6 +18,11 @@ export const TUNING = {
   allLabelsZoom: 3.0,
   /** Route draw-on animation duration, ms. */
   routeDrawMs: 2200,
+  /**
+   * A marker is hidden, as a whole, once its centre is closer than this to the globe's silhouette, in art pixels
+   * (the half-size of the largest marker, so a drawn marker never overhangs the limb).
+   */
+  markerLimbClearance: 4,
   /** Pick radius in CSS px per pointer type. */
   pickRadius: { mouse: 12, touch: 22 },
   /** Extra hit area around a label in CSS px per pointer type (touch targets reach about 44 px). */

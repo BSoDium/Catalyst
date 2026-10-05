@@ -14,13 +14,11 @@ import type { GlobeTheme } from "./colors";
 import type { ViewBasis } from "./geo";
 import { zoomToRadiusPx } from "./geo";
 import { graticuleSegments, polylinesToSegments } from "./geometry";
-import { lineMaterial, occluderMaterial, silhouetteMaterial } from "./materials";
+import { OCCLUDER_RADIUS, lineMaterial, occluderMaterial, silhouetteMaterial } from "./materials";
 import { MarkerLayer } from "./marker-layer";
 import { RouteLayer } from "./route-layer";
 import { TUNING } from "./tuning";
 
-/** The occluder is a hair inside the lines (radius 1) so lines on the near side never z-fight with it. */
-const OCCLUDER_RADIUS = 0.998;
 /** Route dash period in art pixels. */
 const ROUTE_DASH_PX = 7;
 
@@ -59,7 +57,8 @@ export class GlobeScene {
     this.geometries.push(disc);
     this.add(new Mesh(disc, this.occluder), 0);
 
-    // Each layer is drawn in a fixed order (renderOrder) over the disc: grid, borders, coast, routes, markers.
+    // Each layer is drawn in a fixed order (renderOrder) over the disc: grid, borders, coast, routes, horizon outline,
+    // markers (last, so nothing can draw over a marker).
     this.add(new LineSegments(this.track(segmentGeometry(graticuleSegments(15, 3))), this.graticule), 1);
     this.add(new LineSegments(this.track(segmentGeometry(polylinesToSegments(data.borders, 1))), this.borders), 2);
     this.add(new LineSegments(this.track(segmentGeometry(polylinesToSegments(data.coastlines, 1))), this.coast), 3);

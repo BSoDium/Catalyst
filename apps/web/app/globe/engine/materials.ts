@@ -3,11 +3,14 @@
  * `ColorManagement` note in renderer.ts. Visibility of borders is ordered-dither coverage, not alpha, so the
  * output never contains a blended pixel.
  */
-import { Color, ShaderMaterial } from "three";
+import { Color, ShaderMaterial, Vector2 } from "three";
 
 const PASS_THROUGH_VERTEX = /* glsl */ `
   void main() { gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
 `;
+
+/** The globe disc is a hair inside the lines (radius 1) so lines on the near side never z-fight with it. */
+export const OCCLUDER_RADIUS = 0.998;
 
 const DITHER_GLSL = /* glsl */ `
   float dither2(vec2 a) { return fract(a.x * 0.5 + a.y * a.y * 0.75); }
@@ -48,17 +51,32 @@ export function occluderMaterial(): ShaderMaterial {
   });
 }
 
+/**
+ * Markers are screen-space sprites placed by the CPU: `position` = (buffer-pixel centre x, y, shown), see
+ * marker-layer.ts. Sitting exactly on a pixel centre, an odd-sized point covers a whole `size x size` block
+ * with no rasterisation ties. There is no depth test and no depth write: whether a marker is drawn is decided
+ * once per marker from its centre, so the globe's depth can never cut part of it.
+ */
 export function markerMaterial(): ShaderMaterial {
   return new ShaderMaterial({
-    uniforms: { uColor: { value: new Color() }, uFill: { value: new Color() } },
+    uniforms: { uColor: { value: new Color() }, uFill: { value: new Color() }, uBuf: { value: new Vector2(1, 1) } },
+    depthTest: false,
+    depthWrite: false,
     vertexShader: /* glsl */ `
-      attribute float aState; varying float vState; varying float vSize;
+      attribute float aState; uniform vec2 uBuf; varying float vState; varying float vSize;
       void main() {
         vState = aState;
         // normal 3, route stop 5, focused 7, selected 9 (buffer pixels)
         float s = aState < 0.5 ? 3.0 : (aState < 1.5 ? 9.0 : (aState < 2.5 ? 5.0 : 7.0));
-        vSize = s; gl_PointSize = s;
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        vSize = s;
+        if (position.z < 0.5) {
+          // Hidden as a whole: outside the clip volume, so nothing is rasterised.
+          gl_PointSize = 0.0;
+          gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+          return;
+        }
+        gl_PointSize = s;
+        gl_Position = vec4(position.x / uBuf.x * 2.0 - 1.0, 1.0 - position.y / uBuf.y * 2.0, 0.0, 1.0);
       }`,
     fragmentShader: /* glsl */ `
       uniform vec3 uColor; uniform vec3 uFill; varying float vState; varying float vSize;
@@ -79,6 +97,11 @@ export function markerMaterial(): ShaderMaterial {
 /**
  * Route: great-circle arcs drawn as a 2x2 px dashed stroke. The dash period is set per frame in world units so
  * dashes keep a constant on-screen length at any zoom; `uProgress` is the draw-on front (radians).
+ *
+ * Hidden behind the globe by an analytic test on the line itself (does the ray from the camera to this point
+ * enter the occluder sphere first?), NOT by the depth buffer: the stroke's off-centre pixels carry the centre line's
+ * depth, so on a tilted surface the depth test cut part of a 2x2 dash. The test depends only on the position along
+ * the line, so a dash is cut across its length or not at all. Depth test and write are off.
  */
 export function routeMaterial(): ShaderMaterial {
   return new ShaderMaterial({
@@ -89,19 +112,35 @@ export function routeMaterial(): ShaderMaterial {
       uPeriod: { value: 0.016 },
       uPixel: { value: [0.01, 0.01] },
     },
+    depthTest: false,
+    depthWrite: false,
     vertexShader: /* glsl */ `
-      attribute float aDist; attribute vec2 aOff; uniform vec2 uPixel; varying float vDist;
+      attribute float aDist; attribute vec2 aOff; uniform vec2 uPixel; varying float vDist; varying vec3 vPos;
       void main() {
         vDist = aDist;
+        vPos = position;
         vec4 c = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
         c.xy += aOff * uPixel * c.w;
         gl_Position = c;
       }`,
     fragmentShader: /* glsl */ `
-      uniform vec3 uColor; uniform float uProgress; uniform float uOffset; uniform float uPeriod; varying float vDist;
+      uniform vec3 uColor; uniform float uProgress; uniform float uOffset; uniform float uPeriod;
+      varying float vDist; varying vec3 vPos;
+      // True when the occluder sphere lies between the camera and p.
+      bool behindGlobe(vec3 p) {
+        vec3 v = p - cameraPosition;
+        float len = length(v);
+        vec3 u = v / len;
+        float b = dot(cameraPosition, u);
+        float disc = b * b - (dot(cameraPosition, cameraPosition) - ${(OCCLUDER_RADIUS * OCCLUDER_RADIUS).toFixed(6)});
+        if (disc <= 0.0) return false;
+        float t = -b - sqrt(disc); // first hit
+        return t > 0.0 && t < len;
+      }
       void main() {
         if (vDist > uProgress) discard;
         if (fract((vDist - uOffset) / uPeriod) > 0.62) discard;
+        if (behindGlobe(vPos)) discard;
         gl_FragColor = vec4(uColor, 1.0);
       }`,
   });

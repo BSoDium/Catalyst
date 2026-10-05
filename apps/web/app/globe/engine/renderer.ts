@@ -3,7 +3,10 @@
  *
  * - Pixelation: the drawing buffer is `cssSize / pixelSize` and the canvas is upscaled with
  *   `image-rendering: pixelated`. Lines are 1 buffer pixel wide, antialiasing is off.
- * - A depth-writing disc hides every line, marker and route on the far hemisphere.
+ * - A depth-writing disc hides the graticule, borders and coastlines on the far hemisphere. Markers and routes are
+ *   not depth-tested against it (a depth test cuts the off-centre pixels of a sprite or a stroke on a tilted
+ *   surface): markers are placed and shown or hidden as a whole on the CPU (`visibility.ts`), routes are hidden
+ *   by an analytic test on the line itself (see materials.ts).
  * - Frames are only scheduled when something changed or animates (`requestRender` / `tick`). While the tab is
  *   hidden or the GL context is lost nothing is scheduled; the first frame after recovery repaints.
  * - Imperative and framework-free: React only owns the lifecycle (see ../globe-canvas.tsx).
@@ -24,6 +27,7 @@ import {
   viewBasis,
   zoomToRadiusPx,
   type ScreenPoint,
+  type ViewBasis,
   type ViewState,
 } from "./geo";
 import { isRouteStop, routeForPlace } from "./geometry";
@@ -43,6 +47,7 @@ import {
 import { GlobeScene } from "./scene";
 import { INSET_EASE, TUNING } from "./tuning";
 import { zoomFrom01 } from "./view";
+import { markerShown } from "./visibility";
 
 // Our ShaderMaterials write raw sRGB values and there is no lighting, so skip Three's linear-sRGB conversion;
 // otherwise ink and background drift away from the CSS colours.
@@ -204,6 +209,7 @@ export class GlobeRenderer {
       top: `${this.canvasTop}px`,
     });
     this.globe.routes.setPixelSize(this.bufW, this.bufH);
+    this.globe.markers.setBufferSize(this.bufW, this.bufH);
     this.applyInset();
     if (!this.sized) {
       this.sized = true;
@@ -362,17 +368,41 @@ export class GlobeRenderer {
 
   /* ------------------------------ projection / picking ------------------------------ */
 
-  /** Container CSS px, snapped to the art pixel the marker is drawn in. */
-  project(lon: number, lat: number): ScreenPoint {
-    const cw = this.bufW * this.pixel;
-    const ch = this.bufH * this.pixel;
-    const p = projectLonLat(lon, lat, viewBasis(this.view, ch), cw, ch, MARKER_RADIUS, cw / 2 - this.shiftBuf * this.pixel);
+  /**
+   * Where a place's marker is: the art-pixel cell (`col`, `row` in drawing-buffer pixels, row 0 at the top) its
+   * centre falls in, and whether the marker is drawn at all. The ONE source for drawing, labels and picking.
+   * Visible = front hemisphere and clear of the limb (`visibility.ts`), decided from the unsnapped centre.
+   */
+  private markerCell(lon: number, lat: number, basis: ViewBasis) {
     const P = this.pixel;
+    const cw = this.bufW * P;
+    const ch = this.bufH * P;
+    const centreX = cw / 2 - this.shiftBuf * P;
+    const p = projectLonLat(lon, lat, basis, cw, ch, MARKER_RADIUS, centreX);
+    const shown = markerShown(p, basis, centreX, ch / 2, TUNING.markerLimbClearance * P);
+    return { col: Math.floor(p.x / P), row: Math.floor(p.y / P), shown, facing: p.facing };
+  }
+
+  /** Container CSS px of the art pixel the marker is drawn in (its centre), and whether it is drawn. */
+  project(lon: number, lat: number): ScreenPoint {
+    const P = this.pixel;
+    const c = this.markerCell(lon, lat, viewBasis(this.view, this.bufH * P));
     return {
-      ...p,
-      x: (Math.floor(p.x / P) + 0.5) * P + this.canvasLeft,
-      y: (Math.floor(p.y / P) + 0.5) * P + this.canvasTop,
+      x: (c.col + 0.5) * P + this.canvasLeft,
+      y: (c.row + 0.5) * P + this.canvasTop,
+      visible: c.shown,
+      facing: c.shown ? c.facing : 0,
     };
+  }
+
+  /** Per frame, before drawing: hand every marker its cell and visibility. */
+  private syncMarkers() {
+    const basis = viewBasis(this.view, this.bufH * this.pixel);
+    this.places.forEach((place, i) => {
+      const c = this.markerCell(place.lon, place.lat, basis);
+      this.globe.markers.setScreen(i, c.col, c.row, c.shown);
+    });
+    this.globe.markers.commitScreen();
   }
 
   /** Nearest front-hemisphere marker within `radius` CSS px; ties go to the higher label priority. */
@@ -514,6 +544,7 @@ export class GlobeRenderer {
     if (this.disposed || this.lost || !this.sized) return;
     this.cancelFrame();
     this.syncCamera();
+    this.syncMarkers();
     // Draw only the free area plus a margin: the rest is under the panel and masked out.
     const scissor = this.scissorOn ? this.scissorBuf : null;
     this.gl.setScissorTest(scissor !== null);
@@ -565,6 +596,12 @@ export class GlobeRenderer {
   /** Measurement only: turn the inset scissor off to compare its cost. */
   setScissorEnabled(on: boolean) {
     this.scissorOn = on;
+    this.requestRender();
+  }
+
+  /** Measurement only: draw markers in pure red / blue (see `MarkerLayer.setProbe`). */
+  setMarkerProbe(on: boolean) {
+    this.globe.markers.setProbe(on);
     this.requestRender();
   }
 
