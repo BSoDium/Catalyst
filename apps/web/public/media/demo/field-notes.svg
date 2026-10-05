@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 600" width="960" height="600" role="img">
+  <title>Abstract monochrome grid</title>
+  <style>
+    .bg { fill: #ececec; }
+    .l { stroke: #0a0a0a; stroke-width: 1; opacity: 0.18; }
+    .s { stroke: #0a0a0a; stroke-width: 2; opacity: 0.85; fill: none; }
+    .f { fill: #0a0a0a; opacity: 0.85; }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #151515; }
+      .l { stroke: #f5f5f5; opacity: 0.16; }
+      .s { stroke: #f5f5f5; }
+      .f { fill: #f5f5f5; }
+    }
+  </style>
+  <rect class="bg" width="960" height="600"/>
+  <g class="l">
+    <path d="M0 60H960M0 120H960M0 180H960M0 240H960M0 300H960M0 360H960M0 420H960M0 480H960M0 540H960"/>
+    <path d="M80 0V600M160 0V600M240 0V600M320 0V600M400 0V600M480 0V600M560 0V600M640 0V600M720 0V600M800 0V600M880 0V600"/>
+  </g>
+  <rect class="s" x="160" y="120" width="320" height="240"/>
+  <rect class="s" x="480" y="240" width="240" height="180"/>
+  <path class="s" d="M160 360L480 120M480 360L720 240"/>
+  <circle class="f" cx="160" cy="120" r="6"/>
+  <circle class="f" cx="480" cy="360" r="6"/>
+  <circle class="f" cx="720" cy="420" r="6"/>
+</svg>
