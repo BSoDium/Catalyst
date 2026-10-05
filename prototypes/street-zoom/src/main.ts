@@ -47,7 +47,14 @@ async function main() {
   const { createStreet } = await import("./street");
   const { runBench, idleCheck, isolatedCosts } = await import("./bench");
   const street: Street = await createStreet(cfg, document.getElementById("map")!, document.getElementById("labels")!);
-  w.__app = { street, cfg, bench: { run: (o: Parameters<typeof runBench>[1]) => runBench(street, o), idle: (ms: number) => idleCheck(street, ms), isolated: (n?: number) => isolatedCosts(street, n) } };
+  const integrity = () => import("./integrity");
+  w.__app = { street, cfg, integrity: {
+    classes: async () => (await integrity()).CLASSES,
+    static: async (o: Omit<Parameters<Awaited<ReturnType<typeof integrity>>["measureStatic"]>[1], "legacyWidths">) => (await integrity()).measureStatic(street, { ...o, legacyWidths: cfg.widths === "legacy", thinStairs: cfg.thin > 0 && cfg.thinMode === "stairs" }),
+    motion: async (o: Omit<Parameters<Awaited<ReturnType<typeof integrity>>["measureMotion"]>[1], "legacyWidths">) => (await integrity()).measureMotion(street, { ...o, legacyWidths: cfg.widths === "legacy", thinStairs: cfg.thin > 0 && cfg.thinMode === "stairs" }),
+    fillChurn: async (o: Parameters<Awaited<ReturnType<typeof integrity>>["measureFillChurn"]>[1]) => (await integrity()).measureFillChurn(street, o),
+    snapshot: async () => (await integrity()).snapshotCodes(street),
+  }, bench: { run: (o: Parameters<typeof runBench>[1]) => runBench(street, o), idle: (ms: number) => idleCheck(street, ms), isolated: (n?: number) => isolatedCosts(street, n) } };
 
   const views = document.getElementById("views")!;
   for (const [name, v] of Object.entries(NAMED_VIEWS)) {

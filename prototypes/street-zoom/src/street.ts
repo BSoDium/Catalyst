@@ -12,8 +12,9 @@ import { DEGRADED, ErrorWindow, chooseSource, clampedZoom, probe, retryDelayMs, 
 import { RevealState, artPixelCss, cellDevicePx, over, parseCssColor, type Rgb } from "./core/pixel";
 import { CopyCompositor, InlineCompositor, type Compositor, type PassConfig } from "./gl/compositors";
 import type { PassParams } from "./gl/pixelPass";
+import { SOLID_FROM } from "./core/artLine";
 import { HudLabels, type LabelSource } from "./labels";
-import { buildMonoStyle, graticule, type Schema } from "./style/monoStyle";
+import { applyCell, buildMonoStyle, graticule, type Schema } from "./style/monoStyle";
 
 export const OFM_TILEJSON = "https://tiles.openfreemap.org/planet";
 export const PMTILES_FILE = "/hcmc.pmtiles";
@@ -139,8 +140,12 @@ export async function createStreet(cfg: AppConfig, container: HTMLElement, label
 
   const native = cfg.compositor === "none" && new URLSearchParams(location.search).get("native") === "1";
   let schema: Schema = SCHEMA[cfg.chain[0]!];
+  /** art cell in CSS px actually used by the pass (whole device px / dpr); the style's art widths follow it */
+  let styleCell = cellDevicePx(cfg.px ?? artPixelCss(Math.min(container.clientWidth, container.clientHeight)), window.devicePixelRatio || 1) / (window.devicePixelRatio || 1);
   const styleFor = (kind: "pm" | "ofm" | null) =>
     buildMonoStyle({
+      widths: cfg.widths,
+      cellCss: styleCell,
       schema: kind ? SCHEMA[kind] : schema,
       tilesUrl: kind ? tilesUrlFor(kind) : null,
       coastlines: fc(coast),
@@ -169,6 +174,8 @@ export async function createStreet(cfg: AppConfig, container: HTMLElement, label
     touchPitch: false,
     fadeDuration: 0,
     canvasContextAttributes: { antialias: false, preserveDrawingBuffer: false },
+    // the line-integrity harness renders a high-resolution reference of the same map (docs/pixel-line-rules.md)
+    maxCanvasSize: [8192, 8192],
   });
   map.touchZoomRotate.disableRotation();
   if (native) map.getCanvas().style.imageRendering = "pixelated";
@@ -192,6 +199,10 @@ export async function createStreet(cfg: AppConfig, container: HTMLElement, label
     params(outW: number, outH: number, d: number): PassParams {
       cellCss = cfg.px ?? artPixelCss(Math.min(outW, outH) / d);
       const cellOut = cellDevicePx(cellCss, d);
+      if (cfg.widths === "art" && Math.abs(cellOut / d - styleCell) > 1e-6) {
+        styleCell = cellOut / d;
+        queueMicrotask(() => applyCell(map, styleCell));
+      }
       let focus = { x: 0, y: 0, radius: 0, feather: 1 };
       if (selected && reveal.value > 0) {
         const p = map.project([selected.lon, selected.lat]);
@@ -205,6 +216,12 @@ export async function createStreet(cfg: AppConfig, container: HTMLElement, label
         muted: palette.muted,
         cellOut,
         inkThreshold: cfg.inkThreshold,
+        solidThreshold: cfg.solid ?? (cfg.rule === "legacy" || cfg.widths === "legacy" ? 1.1 : SOLID_FROM),
+        anyThreshold: cfg.anyThreshold,
+        rule: cfg.rule,
+        thinIters: cfg.thin,
+      thinMode: cfg.thinMode,
+        pattern: cfg.pattern,
         dither,
         sharp: sharpAll,
         focus,

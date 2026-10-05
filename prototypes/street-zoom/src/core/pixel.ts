@@ -21,14 +21,17 @@ export function cellDevicePx(artCss: number, dpr: number): number {
   return Math.max(1, Math.round(artCss * dpr));
 }
 
-/** 8x8 Bayer matrix value 0..63 by bit interleaving (identical to the GLSL). */
+/**
+ * 8x8 Bayer matrix value 0..63 by bit interleaving (identical to the GLSL). This is the standard recursive matrix
+ * (B2 = [[0,2],[3,1]], B2n = 4 Bn + B2); the spike's first version interleaved x instead of y and drew vertical
+ * stripes at half tone.
+ */
 export function bayer8(x: number, y: number): number {
-  const a = x & 7;
-  const b = (x ^ y) & 7;
-  // interleave bits of b (even) and a (odd), reversed: standard bit-reversal construction
+  const hi = y & 7;
+  const lo = (x ^ y) & 7;
   let v = 0;
   for (let i = 0; i < 3; i++) {
-    v = (v << 2) | (((b >> (2 - i)) & 1) << 1) | ((a >> (2 - i)) & 1);
+    v = (v << 2) | (((hi >> (2 - i)) & 1) << 1) | ((lo >> (2 - i)) & 1);
   }
   return ((v & 1) << 5) | ((v & 2) << 3) | ((v & 4) << 1) | ((v & 8) >> 1) | ((v & 16) >> 3) | ((v & 32) >> 5);
 }

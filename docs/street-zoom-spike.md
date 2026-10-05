@@ -12,7 +12,7 @@ Status: spike result, 2026-10-05. Prototype: `prototypes/street-zoom` (`@catalys
 
 ## What was built
 
-`prototypes/street-zoom` (Vite + TypeScript strict, 56 unit tests, `typecheck` and `test` pass):
+`prototypes/street-zoom` (Vite + TypeScript strict, 95 unit tests after the line-integrity work, `typecheck` and `test` pass):
 
 | File | Role |
 |---|---|
@@ -351,3 +351,13 @@ node prototypes/street-zoom/scripts/registration.mjs               # also needs 
 node prototypes/street-zoom/scripts/session-bytes.mjs pm|ofm
 node prototypes/street-zoom/scripts/zoom-bytes.mjs public/hcmc.pmtiles 106.70,10.776,10 14
 ```
+
+## Line integrity (added 2026-10-05)
+
+The owner reported lines that disappear and a look closer to a downscaled hi-res image than to an old LCD. Full spec, comparison and numbers: **`docs/pixel-line-rules.md`**. In short:
+
+- **Cause.** The pass max-pooled anti-aliased lines drawn at their nominal CSS width (0.6 to 1 px). At DPR 1 the peak coverage of a hairline falls under the 0.5 threshold: 9.6 % of minor-road polylines and 32.8 % of building outlines came out broken (synthetic, 384 lines per row), and real-map building outlines were split into 1.54x as many pieces as the native raster. At DPR 2 the same rule thickened lines: 86 % of minor roads were above 1.25 cells per step. This also explains the "2 pixel doubles" and the uneven dotted lines listed under "What is worse than Three.js" above.
+- **Fix, now the default.** Widths authored in art pixels with a floor of one; pass A decides by sampling the cell centre (native rasterisation, threshold only); a staircase remover leaves every one-pixel line at one cell per step. Dotted lines are 1 px ink dashes, fills use a screen-anchored "clean" lattice, hollow roads are two exact 1 px outlines. Measured at DPR 1/2: 0 broken, 0 doubled, 0.96 cells per step (0.90 to 1.05), under 0.1 % of line cells missing, pan stability 1.04x the native raster, zero cell changes inside fills, idle still 0 frames; cost unchanged (pass 1.04 ms, synced frame 6.5 ms vs 7.0 before).
+- **Tried and rejected:** conservative max-pool (never drops, always doubles), supersample plus Zhang-Suen thinning (shimmers under pan: 1.4x to 1.9x the native change rate, 4.7 % reversals, cuts 4.7 % of line cells), ridge detection (74 % to 79 % broken on MapLibre's flat-profile lines). A native art-resolution render with the same rule matches the quality at less than half the cost (2.8 vs 6.5 ms) but cannot feed the sharp reveal, so it is the option for phones. Vertex-stage grid snapping was not built.
+- **Regression gate.** `pnpm --filter @catalyst/prototype-street-zoom test:lines` (Playwright, 211 checks, exit 1 on violation; the old rule fails 108 of them). `?rule=legacy&widths=legacy&pattern=bayer8` restores the spike's rendering for before/after comparisons.
+- Screenshots: `docs/street-zoom/line-*-before.png` and `line-*-after.png`. The older screenshots above show the pre-fix look.

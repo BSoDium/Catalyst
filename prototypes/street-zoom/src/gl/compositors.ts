@@ -32,6 +32,10 @@ export interface Compositor {
   needsMapFrame: boolean;
   /** Block until the GPU has finished this context's queued work (benchmark only). */
   sync(): void;
+  /** Called synchronously at the end of every composited frame (measurement hooks read the art image here). */
+  onFrame: ((c: Compositor) => void) | null;
+  /** The finished art image as class codes (see `CODE`), row 0 = top. A GPU stall: measurement and tests only. */
+  readCodes(): { cols: number; rows: number; codes: Uint8Array } | null;
   dispose(): void;
 }
 
@@ -43,6 +47,7 @@ export class CopyCompositor implements Compositor {
   readonly kind = "copy" as const;
   readonly stats: CompositorStats = { passes: 0, lastPassMs: 0, lastUploadMs: 0 };
   readonly needsMapFrame = false;
+  onFrame: ((c: Compositor) => void) | null = null;
   readonly canvas: HTMLCanvasElement;
   private gl: WebGL2RenderingContext;
   private pass: PixelPass;
@@ -108,8 +113,10 @@ export class CopyCompositor implements Compositor {
       }
       this.canvas.style.width = `${(cols * p.cellOut) / dpr}px`;
       this.canvas.style.height = `${(rows * p.cellOut) / dpr}px`;
+      this.pass.poolPass(p, w, h);
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-      this.pass.poolPass(p, w, h, false);
+      // art-only output: the art texture is presented 1:1, CSS stretches it with image-rendering: pixelated
+      this.pass.presentPass({ ...p, cellOut: 1, sharp: 0, focus: { x: 0, y: 0, radius: 0, feather: 1 } }, cols, rows);
     } else {
       if (this.canvas.width !== w || this.canvas.height !== h) {
         this.canvas.width = w;
@@ -118,7 +125,7 @@ export class CopyCompositor implements Compositor {
       this.canvas.style.width = `${rect.width}px`;
       this.canvas.style.height = `${rect.height}px`;
       if (pool) {
-        this.pass.poolPass(p, w, h, true);
+        this.pass.poolPass(p, w, h);
       }
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);
       this.pass.presentPass(p, w, h);
@@ -127,6 +134,11 @@ export class CopyCompositor implements Compositor {
     if (this.syncAfterPass) gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4));
     this.stats.passes++;
     this.stats.lastPassMs = performance.now() - t0;
+    if (pool) this.onFrame?.(this);
+  }
+
+  readCodes() {
+    return this.ready && this.pass.artW > 0 ? this.pass.readCodes() : null;
   }
 
   redraw(): boolean {
@@ -182,6 +194,7 @@ export class InlineCompositor implements Compositor, CustomLayerInterface {
   readonly renderingMode = "2d" as const;
   readonly stats: CompositorStats = { passes: 0, lastPassMs: 0, lastUploadMs: 0 };
   needsMapFrame = false;
+  onFrame: ((c: Compositor) => void) | null = null;
   private pass: PixelPass | null = null;
   private gl: WebGL2RenderingContext | null = null;
   private lastFb: WebGLFramebuffer | null = null;
@@ -226,7 +239,7 @@ export class InlineCompositor implements Compositor, CustomLayerInterface {
     pass.copyFromFramebuffer(w, h);
     this.stats.lastUploadMs = performance.now() - t0;
     const p = this.config.params(w, h, dpr);
-    pass.poolPass(p, w, h, true);
+    pass.poolPass(p, w, h);
     gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
     pass.presentPass(p, w, h);
     this.lastFb = fb;
@@ -250,6 +263,10 @@ export class InlineCompositor implements Compositor, CustomLayerInterface {
     gl.colorMask(cm[0]!, cm[1]!, cm[2]!, cm[3]!);
     this.stats.passes++;
     this.stats.lastPassMs = performance.now() - t0;
+  }
+
+  readCodes() {
+    return this.pass && this.pass.artW > 0 ? this.pass.readCodes() : null;
   }
 
   sync(): void {

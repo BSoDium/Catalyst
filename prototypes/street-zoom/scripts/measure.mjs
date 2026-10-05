@@ -10,7 +10,7 @@ const [w, h] = (args.size ?? "1440x900").split("x").map(Number);
 const dpr = Number(args.dpr ?? 2);
 const throttle = Number(args.throttle ?? 1);
 const dur = Number(args.dur ?? 8000);
-const px = args.px ? `&px=${args.px}` : "";
+const px = (args.px ? `&px=${args.px}` : "") + (args.extra ? `&${args.extra}` : "");
 
 const VIEWS = {
   world: { lon: 100, lat: 14, zoom: 2.4 },

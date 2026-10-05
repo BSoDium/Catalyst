@@ -1,4 +1,5 @@
-import type { Schema } from "./style/monoStyle";
+import type { LineRule } from "./gl/pixelPass";
+import type { Schema, WidthMode } from "./style/monoStyle";
 
 export type CompositorKind = "none" | "copy-art" | "copy-device" | "inline";
 
@@ -17,6 +18,19 @@ export interface AppConfig {
   sharpAll: number;
   dither: boolean;
   inkThreshold: number;
+  /** line rule of pass A (docs/pixel-line-rules.md); default "centre". Before the line rules this was "legacy" (rule=legacy&widths=legacy&pattern=bayer8) */
+  rule: LineRule;
+  /** R above this is solid ink; null = rule default (ridge 0.95, others: all ink may be thinned) */
+  solid: number | null;
+  /** ink threshold of the "any" rule */
+  anyThreshold: number;
+  /** thinning iterations on thin ink cells */
+  thin: number;
+  thinMode: "stairs" | "zs";
+  /** "art": line widths in art pixels with a minimum of one; "legacy": the spike's nominal CSS widths */
+  widths: WidthMode;
+  /** stipple style for tone fills */
+  pattern: "bayer8" | "clean";
   reducedMotion: boolean | null;
   projection: "globe" | "mercator";
   /** tile source fail-over chain, first healthy wins (default: just `source`) */
@@ -52,6 +66,7 @@ export function parseConfig(search: string): AppConfig {
   let view = { ...DEFAULT_VIEW };
   const v = q.get("view")?.split(",").map(Number);
   if (v && v.length === 3 && v.every(Number.isFinite)) view = { lon: v[0]!, lat: v[1]!, zoom: v[2]! };
+  const rule = (["legacy", "any", "centre", "ridge"] as const).find((r) => r === q.get("rule")) ?? "centre";
   const rm = q.get("rm");
   const px = num("px");
   const scale = num("scale");
@@ -61,13 +76,20 @@ export function parseConfig(search: string): AppConfig {
     compositor,
     theme,
     px: px !== null && px >= 1 && px <= 8 ? px : null,
-    scale: scale !== null && scale >= 0.5 && scale <= 4 ? scale : null,
+    scale: scale !== null && scale >= 0.2 && scale <= 4 ? scale : null,
     view,
     select: q.get("select"),
     reveal: q.get("reveal") === "on" ? "on" : q.get("reveal") === "off" ? "off" : "auto",
     sharpAll: Math.min(1, Math.max(0, num("sharp") ?? 0)),
     dither: q.get("dither") !== "0",
-    inkThreshold: Math.min(0.95, Math.max(0.05, num("ink") ?? 0.5)),
+    inkThreshold: Math.min(0.95, Math.max(0.05, num("ink") ?? (rule === "legacy" ? 0.5 : 0.49 * 0.75))),
+    solid: num("solid"),
+    anyThreshold: Math.min(0.95, Math.max(0.02, num("any") ?? 0.25)),
+    rule,
+    thin: Math.min(4, Math.max(0, Math.round(num("thin") ?? (rule === "centre" ? 1 : 0)))),
+    thinMode: q.get("thinmode") === "zs" ? "zs" : "stairs",
+    widths: q.get("widths") === "legacy" ? "legacy" : "art",
+    pattern: q.get("pattern") === "bayer8" ? "bayer8" : "clean",
     reducedMotion: rm === "1" ? true : rm === "0" ? false : null,
     projection: q.get("proj") === "mercator" ? "mercator" : "globe",
     chain: chainFrom(q.get("chain"), source),
