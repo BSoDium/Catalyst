@@ -1,0 +1,47 @@
+import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
+import { buildJsonSchema } from "./generate-json-schema";
+import { EMPTY_PROJECTION, parsePublishedProjection } from "./published";
+
+const place = {
+  slug: "a",
+  name: "A",
+  coordinates: { lat: 1, lon: 2 },
+  labelPriority: 0,
+  body: [],
+  images: [],
+  related: [],
+};
+
+describe("published projection", () => {
+  it("accepts the empty projection", () => {
+    expect(parsePublishedProjection(EMPTY_PROJECTION)).toEqual(EMPTY_PROJECTION);
+  });
+
+  it("rejects unknown fields so private data cannot leak through", () => {
+    const bad = { ...EMPTY_PROJECTION, places: [{ ...place, sourceStepId: 123 }] };
+    expect(() => parsePublishedProjection(bad)).toThrow(/sourceStepId|Unrecognized/);
+  });
+
+  it("rejects dangling references", () => {
+    const bad = {
+      ...EMPTY_PROJECTION,
+      places: [{ ...place, related: [{ kind: "article", slug: "nope" }] }],
+      routes: [{ id: "r", title: "R", stops: ["a", "missing"] }],
+    };
+    expect(() => parsePublishedProjection(bad)).toThrow(/unknown/);
+  });
+
+  it("requires alt text on images", () => {
+    const bad = {
+      ...EMPTY_PROJECTION,
+      places: [{ ...place, images: [{ src: "/media/x.jpg", alt: " " }] }],
+    };
+    expect(() => parsePublishedProjection(bad)).toThrow();
+  });
+
+  it("keeps the committed JSON Schema in sync (run `pnpm --filter @catalyst/schemas build:contract`)", () => {
+    const committed = readFileSync(new URL("../published.schema.json", import.meta.url), "utf8");
+    expect(committed).toBe(buildJsonSchema());
+  });
+});

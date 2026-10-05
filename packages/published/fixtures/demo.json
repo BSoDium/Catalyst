@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "places": [
+    { "slug": "lisbon", "name": "Lisbon", "region": "Portugal", "coordinates": { "lat": 38.72, "lon": -9.14 }, "labelPriority": 60,
+      "summary": "Demo fixture: a place with prose, dates, an image and related content.",
+      "dates": { "start": "2024-03", "end": "2024-04", "label": "Demo dates" },
+      "body": ["Demo fixture text. This paragraph exists only to exercise the detail panel layout.", "A second demo paragraph, to check reading width and spacing."],
+      "images": [{ "src": "/media/demo/field-notes.svg", "alt": "Abstract monochrome grid used as a demo fixture image", "width": 960, "height": 600, "caption": "Demo fixture image" }],
+      "related": [{ "kind": "article", "slug": "demo-article" }, { "kind": "project", "slug": "demo-project" }] },
+    { "slug": "reykjavik", "name": "Reykjavík", "region": "Iceland", "coordinates": { "lat": 64.15, "lon": -21.94 }, "labelPriority": 50,
+      "body": [], "images": [], "related": [] },
+    { "slug": "kyoto", "name": "Kyoto", "region": "Japan", "coordinates": { "lat": 35.01, "lon": 135.77 }, "labelPriority": 70,
+      "summary": "Demo fixture: summary only, no prose.", "body": [], "images": [], "related": [{ "kind": "artwork", "slug": "demo-artwork" }] },
+    { "slug": "cusco", "name": "Cusco", "region": "Peru", "coordinates": { "lat": -13.52, "lon": -71.97 }, "labelPriority": 40,
+      "body": [], "images": [], "related": [] },
+    { "slug": "cape-town", "name": "Cape Town", "region": "South Africa", "coordinates": { "lat": -33.92, "lon": 18.42 }, "labelPriority": 55,
+      "body": [], "images": [], "related": [] },
+    { "slug": "vancouver", "name": "Vancouver", "region": "Canada", "coordinates": { "lat": 49.28, "lon": -123.12 }, "labelPriority": 45,
+      "body": [], "images": [], "related": [] },
+    { "slug": "wellington", "name": "Wellington", "region": "New Zealand", "coordinates": { "lat": -41.29, "lon": 174.78 }, "labelPriority": 35,
+      "body": [], "images": [], "related": [] },
+    { "slug": "hanoi", "name": "Hanoi", "region": "Vietnam", "coordinates": { "lat": 21.03, "lon": 105.85 }, "labelPriority": 30,
+      "body": [], "images": [], "related": [] },
+    { "slug": "ho-chi-minh-city", "name": "Ho Chi Minh City", "region": "Vietnam", "coordinates": { "lat": 10.82, "lon": 106.63 }, "labelPriority": 25,
+      "body": [], "images": [], "related": [] },
+    { "slug": "hue", "name": "Huế", "region": "Vietnam", "coordinates": { "lat": 16.46, "lon": 107.59 }, "labelPriority": 20,
+      "body": [], "images": [], "related": [] },
+    { "slug": "paris", "name": "Paris", "region": "France", "coordinates": { "lat": 48.86, "lon": 2.35 }, "labelPriority": 65,
+      "body": [], "images": [], "related": [] }
+  ],
+  "routes": [
+    { "id": "demo-route-vietnam", "title": "Demo route (curated stop order)", "stops": ["hanoi", "hue", "ho-chi-minh-city"] }
+  ],
+  "projects": [
+    { "slug": "demo-project", "title": "Demo project", "summary": "Demo fixture entry.", "date": "2024", "placeSlugs": ["lisbon"] }
+  ],
+  "articles": [
+    { "slug": "demo-article", "title": "Demo article", "summary": "Demo fixture entry.", "date": "2024-04-02", "placeSlugs": ["lisbon"] }
+  ],
+  "artworks": [
+    { "slug": "demo-artwork", "title": "Demo artwork", "placeSlugs": ["kyoto"] }
+  ]
+}

@@ -1,10 +1,17 @@
 .DS_Store
+node_modules/
 .env
-/node_modules/
+.env.*
+!.env.example
+*.log
 
-# React Router
-/.react-router/
-/build/
+# Build output
+build/
+dist/
+.react-router/
+.vercel/
+.turbo/
 
-*storybook.log
-storybook-static
+# Local tooling
+.claude/
+coverage/

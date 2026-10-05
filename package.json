@@ -1,0 +1,22 @@
+{
+  "name": "catalyst",
+  "private": true,
+  "description": "Catalyst: a personal archive organized around places.",
+  "packageManager": "pnpm@10.5.2",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @catalyst/web dev",
+    "dev:api": "pnpm --filter @catalyst/api dev",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test": "pnpm -r --if-present test",
+    "build": "pnpm --filter @catalyst/web build && pnpm --filter @catalyst/api build",
+    "validate:published": "pnpm --filter @catalyst/published validate",
+    "check:leaks": "node scripts/check-public-leaks.mjs"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0"
+  },
+  "license": "SEE LICENSE IN LICENSE"
+}
