@@ -51,19 +51,6 @@ export function fadeZone(width: number, inset: number): FadeZone {
   return { start: edge - 0.4 * margin * k, end: edge + margin * k };
 }
 
-/** Width of the GL scissor in buffer pixels, or null when there is no inset (draw everything). */
-export function scissorBufWidth(
-  width: number,
-  inset: number,
-  pixel: number,
-  canvasLeft: number,
-  bufW: number,
-): number | null {
-  if (clampInset(inset, width) <= 0) return null;
-  // Container x -> canvas x is `x - canvasLeft`; round up so the last partly covered art pixel is drawn.
-  return clamp(Math.ceil((fadeZone(width, inset).end - canvasLeft) / pixel), 1, bufW);
-}
-
 /** `mask-image` value that dissolves the right edge, shifted by `offset` px (the canvas is offset in its box). */
 export function fadeMask(width: number, inset: number, offset = 0): string | null {
   if (clampInset(inset, width) <= 0) return null;

@@ -36,9 +36,6 @@ function sweepInPage({ places, views, selected, stops }) {
   const failures = [];
   const stat = { views: 0, shownMarkerFrames: 0, hiddenMarkerFrames: 0, clippedByCanvasEdge: 0 };
   d.setMarkerProbe(true);
-  // With the detail panel open the GL scissor cuts drawing at the panel's edge by design (it is masked there):
-  // turn it off so only the globe's own occlusion is under test.
-  d.setScissor(false);
   for (const v of views) {
     d.setView({ lon: v.lon, lat: v.lat, zoom: v.zoom ?? d.minZoom() + 0.3 });
     d.renderNow();
@@ -101,7 +98,6 @@ function sweepInPage({ places, views, selected, stops }) {
     }
   }
   d.setMarkerProbe(false);
-  d.setScissor(true);
   return { failures: failures.slice(0, 12), failureCount: failures.length, stat };
 }
 

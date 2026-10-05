@@ -312,7 +312,7 @@ const round = (v) => ({ lon: +v.lon.toFixed(2), lat: +v.lat.toFixed(2), zoom: +v
   out.panelAnim = { samples: samples.filter((_, i) => i % 2 === 0), final: samples.at(-1) };
   await sleep(2200);
   const opened = await dbg(page, (d) => ({ k: d.project("kyoto"), minZoom: d.minZoom(), inset: d.inset() }));
-  out.panelOpenAfterFlight = { kyotoXY: [Math.round(opened.k.x), Math.round(opened.k.y)], minZoom: +opened.minZoom.toFixed(3), scissorBuf: opened.inset.scissorBuf, bufW: opened.inset.bufW };
+  out.panelOpenAfterFlight = { kyotoXY: [Math.round(opened.k.x), Math.round(opened.k.y)], minZoom: +opened.minZoom.toFixed(3), bufW: opened.inset.bufW };
   // picking at the shifted position
   await page.mouse.click(opened.k.x, opened.k.y);
   out.panelPick = { url: new URL(page.url()).pathname };
@@ -324,7 +324,7 @@ const round = (v) => ({ lon: +v.lon.toFixed(2), lat: +v.lat.toFixed(2), zoom: +v
   await page.keyboard.press("Escape");
   await sleep(900);
   const closed = await dbg(page, (d) => ({ k: d.project("kyoto"), inset: d.inset() }));
-  out.panelClosed = { kyotoXY: [Math.round(closed.k.x), Math.round(closed.k.y)], inset: closed.inset.inset, scissorBuf: closed.inset.scissorBuf };
+  out.panelClosed = { kyotoXY: [Math.round(closed.k.x), Math.round(closed.k.y)], inset: closed.inset.inset };
   out.panelLogs = logs;
   await page.close();
 }

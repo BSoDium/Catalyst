@@ -66,6 +66,13 @@ export interface HandoverOptions {
   streetOptions?: Record<string, unknown>;
   /** Testing: override `HANDOVER.dissolve` (true = the dither dissolve instead of the cut). */
   dissolve?: boolean;
+  /**
+   * Called ONCE, when the first correct frame has been drawn: the final framing of a direct load. With a start view at
+   * street scale it waits for the street map to be shown (the cut), but at most `HANDOVER.revealWaitMs`, then reveals
+   * whichever correct frame exists (the globe at its own maximum; the cut still applies later). The host keeps the stage
+   * invisible until then (a fade from the page colour instead of a flash of planet). Never called after `dispose`.
+   */
+  onReveal?(): void;
 }
 
 export interface HandoverDebug {
@@ -166,6 +173,11 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
   let restoreCheck = restoring;
   let restoreTimer = 0;
   let warmTimer = 0;
+  // First reveal (opts.onReveal): see tryReveal.
+  const needsStreet = restoring;
+  const createdAt = performance.now();
+  let revealed = !opts.onReveal;
+  let revealWaitTimer = 0;
   let cutSince = 0;
   const cutStats = { toStreet: 0, toGlobe: 0, waitedFrames: 0 };
   let inFrame = false;
@@ -455,11 +467,27 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
     return 0;
   }
 
+  /**
+   * Reveal the stage (once) when there is a correct frame to show: the street map's cut for a start at street scale, the
+   * globe's first frame otherwise; a start that needs the street map gives it `revealWaitMs`, then shows the globe.
+   */
+  function tryReveal(force: boolean) {
+    if (revealed || disposed || !renderer) return;
+    const streetUp = shown >= 1 && !!street;
+    if (!streetUp && renderer.frameCount() === 0) return; // nothing drawn yet: nothing to show
+    const waiting = needsStreet && !streetUp && !streetDead();
+    if (waiting && !force && performance.now() - createdAt < HANDOVER.revealWaitMs) return;
+    revealed = true;
+    window.clearTimeout(revealWaitTimer);
+    opts.onReveal?.();
+  }
+
   function onFrame() {
     if (disposed || !renderer || inFrame) return;
     inFrame = true;
     try {
       frame();
+      tryReveal(false);
     } finally {
       inFrame = false;
     }
@@ -640,6 +668,8 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
     updateNotice();
   }
 
+  if (!revealed) revealWaitTimer = window.setTimeout(() => tryReveal(true), HANDOVER.revealWaitMs);
+
   return {
     setSelected: select,
     setFocused(slug) {
@@ -716,7 +746,7 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
       disposed = true;
       QUALITY.cellBoost = 0; // module state: a remount starts at full quality
       streetToken++;
-      for (const t of [followTimer, unmountTimer, labelsOffTimer, revealTimer, restoreTimer, warmTimer]) window.clearTimeout(t);
+      for (const t of [followTimer, unmountTimer, labelsOffTimer, revealTimer, restoreTimer, warmTimer, revealWaitTimer]) window.clearTimeout(t);
       street?.dispose();
       street = null;
       globe.dispose();

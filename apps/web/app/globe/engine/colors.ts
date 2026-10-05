@@ -2,6 +2,8 @@
  * Theme colours are read from the app's CSS variables (docs/design-tokens.md), so light and dark follow
  * `prefers-color-scheme` and any future token change reaches the globe without touching this code.
  */
+import { activeLevels, buildRamp, roleColor } from "./palette";
+
 export type Rgb = readonly [number, number, number];
 
 export interface Rgba {
@@ -12,12 +14,14 @@ export interface Rgba {
 export interface GlobeTheme {
   /** Page colour. Also the ocean (the disc body): the globe is only ever drawn as linework on the page colour. */
   background: Rgb;
-  /** Linework, markers, route. */
+  /** Linework, markers, route (the palette's ink). */
   ink: Rgb;
-  /** Horizon outline. */
+  /** Horizon outline (the palette's `soft` level). */
   outline: Rgb;
-  /** Graticule dots. */
+  /** Graticule dots (the palette's `faint` level). */
   grid: Rgb;
+  /** The shared grey ramp (engine/palette.ts): page colour ... ink. Borders step through it as they fade in. */
+  ramp: readonly Rgb[];
 }
 
 const byte = (v: string) => Math.min(255, Math.max(0, Number(v))) / 255;
@@ -80,20 +84,18 @@ function readToken(host: HTMLElement, name: string): Rgba | null {
   return parseCssColor(value) ?? parseCssColor(getComputedStyle(host).getPropertyValue(name));
 }
 
+/**
+ * The theme comes from the two tokens `--background` and `--foreground` only; every other colour of the map is a level
+ * of the grey ramp derived from them (engine/palette.ts), so the globe and the street map share one palette.
+ */
 export function readTheme(host: HTMLElement): GlobeTheme {
   const dark = matchMedia("(prefers-color-scheme: dark)").matches;
   const fb = dark ? FALLBACK.dark : FALLBACK.light;
   const opaque = (name: string, fallback: Rgb): Rgb => readToken(host, name)?.rgb ?? fallback;
-  const background = opaque("--background", fb.background);
-  const ink = opaque("--foreground", fb.ink);
-  const blended = (name: string, base: Rgb, mix: number): Rgb => {
-    const c = readToken(host, name);
-    return c ? over(c, base) : over({ rgb: ink, a: mix }, base);
-  };
-  return {
-    background,
-    ink,
-    outline: blended("--globe-limb", background, 0.3),
-    grid: blended("--globe-grid", background, 0.14),
-  };
+  return themeFromTokens(opaque("--background", fb.background), opaque("--foreground", fb.ink));
+}
+
+export function themeFromTokens(background: Rgb, ink: Rgb, levels: number = activeLevels()): GlobeTheme {
+  const ramp = buildRamp(background, ink, levels);
+  return { background, ink, outline: roleColor(ramp, "soft"), grid: roleColor(ramp, "faint"), ramp };
 }

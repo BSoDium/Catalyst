@@ -1,7 +1,7 @@
 import { PerspectiveCamera, Vector3 } from "three";
 import { describe, expect, it } from "vitest";
 import { FOV_DEG, fitZoom, lonLatToVec3, projectLonLat, viewBasis } from "./geo";
-import { clampInset, fadeMask, fadeZone, freeWidth, insetShiftBuf, renderMargin, scissorBufWidth } from "./inset";
+import { clampInset, fadeMask, fadeZone, freeWidth, insetShiftBuf, renderMargin } from "./inset";
 import { cubicBezier } from "./motion";
 
 describe("inset maths", () => {
@@ -28,7 +28,7 @@ describe("inset maths", () => {
   });
 });
 
-describe("fade zone, scissor and mask", () => {
+describe("fade zone and mask", () => {
   it("anchors the zone on the panel edge and covers a margin beyond it", () => {
     const z = fadeZone(1440, 720);
     expect(z.end).toBeCloseTo(720 + renderMargin(1440));
@@ -42,21 +42,8 @@ describe("fade zone, scissor and mask", () => {
     // a 4 px inset yields a zone of about 2 px: it grows smoothly from nothing
     expect(fadeZone(1440, 4).end - 1436).toBeLessThan(3);
   });
-  it("has no scissor and no mask without an inset", () => {
-    expect(scissorBufWidth(1440, 0, 3, 0, 480)).toBeNull();
+  it("has no mask without an inset", () => {
     expect(fadeMask(1440, 0)).toBeNull();
-  });
-  it("scissors to the free area plus the margin, never beyond the buffer", () => {
-    const w = scissorBufWidth(1440, 720, 3, 0, 480)!;
-    expect(w * 3).toBeGreaterThanOrEqual(720 + renderMargin(1440));
-    expect(w * 3).toBeLessThan(720 + renderMargin(1440) + 3);
-    expect(scissorBufWidth(1440, 100, 3, 0, 480)).toBeLessThanOrEqual(480);
-  });
-  it("makes the scissor at least as wide as the opaque part of the mask", () => {
-    for (const inset of [10, 120, 400, 720, 1100]) {
-      const z = fadeZone(1440, inset);
-      expect(scissorBufWidth(1440, inset, 3, -1, 481)! * 3 + -1).toBeGreaterThanOrEqual(Math.min(z.end, 481 * 3 - 1) - 1e-6);
-    }
   });
   it("builds a gradient that is opaque on the left and transparent at the end", () => {
     const m = fadeMask(1440, 720)!;

@@ -19,7 +19,11 @@ The navbar has no surface of its own: it floats over the page and a gradient scr
 | `--border-strong` | `rgb(0 0 0 / .4)` | `rgb(255 255 255 / .45)` | outlined buttons, globe outline |
 | `--ring` | `#0a0a0a` | `#f5f5f5` | focus ring (2px outline, 2px offset, all focusable elements) |
 | `--primary` / `--primary-foreground` | `#0a0a0a` / `#fbfbfb` | `#f5f5f5` / `#0a0a0a` | default button |
-| `--globe-grid`, `--globe-limb` | `rgb(0 0 0 / .12)`, `rgb(0 0 0 / .3)` | `rgb(255 255 255 / .14)`, `rgb(255 255 255 / .34)` | globe graticule and 1 px horizon line (read from CSS variables by the engine) |
+| `--globe-grid`, `--globe-limb` | `rgb(0 0 0 / .12)`, `rgb(0 0 0 / .3)` | `rgb(255 255 255 / .14)`, `rgb(255 255 255 / .34)` | no longer read by the map: the graticule and the horizon outline are the palette's `faint` and `soft` levels (below); the tokens remain for any other use |
+
+### Map palette
+
+The globe and the street map draw with one grey palette derived from `--background` and `--foreground` only (OKLab interpolation, `app/globe/engine/palette.ts`, `PALETTE_LEVELS` = 8 levels: page colour, 6 greys, ink). Named roles: `wash` (fills), `faint` (graticule), `soft` (rail, paths, horizon), `mid` (minor roads, region borders), `strong` (major roads, rivers), `ink` (coast, country borders, markers, routes). On a light page the ramp is eased so the first levels are light; on a dark page it is linear in OKLab lightness. A token change reaches both renderers with no code change, light and dark. Spec and comparison: `docs/pixel-line-rules.md` section 7 and `docs/palette/`.
 
 The globe's ocean has no token of its own: it is `--background` (the disc and the clear colour are exactly the page colour, so the canvas never shows a seam). The detail panel uses `--background` at 85% with a backdrop blur.
 

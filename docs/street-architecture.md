@@ -20,10 +20,10 @@ street/
     tile-health.ts       request scoring: error rate, timeouts, p95 latency, stalls
     tile-source-manager.ts   the state machine
     source-descriptor.ts TileJSON / PMTiles header -> descriptor, URL validation
-    palette.ts           THE palette table: named grey levels (bg, ramp-k, ink, muted) and class code -> level
+    palette.ts           the level encoding between the style and the pass (the grey ramp itself is engine/palette.ts, shared with the globe)
     snap.ts              pan snapping: centre quantised to whole art cells while the zoom is steady
     attribution.ts, label-place.ts, marker-visibility.ts, routes.ts
-  gl/pixel-pass.ts       pass A (centre sampling), T (stair removal), B (present: reveal, sharp, blend)
+  gl/pixel-pass.ts       pass A (centre sampling, palette level), T (stair removal), E (tile fade ease), B (present: reveal, sharp, blend)
   gl/compositor.ts       overlay context, canvas copy per map `render` (native: the map IS the art grid, 3 px per cell), suspend, context loss, hold
   style/street-style.ts  one MapLibre style for both schemas, no glyphs, no sprites, no symbol layers
   net/probe.ts           TileJSON / PMTiles header probes with timeout and real abort
@@ -116,9 +116,13 @@ Trimmed, empty = unset, https only (plain http for localhost outside production)
 
 Summary (full description and numbers in `docs/web-architecture.md`, "Handover"): the globe renderer owns one camera whose zoom extends past 6.5 into street scale; the street map follows it (registered, synchronous), replaces the globe by a clean CUT at internal zoom 5.05 once its tiles are loaded (the pixel-grid dissolve between 4.6 and 5.5 is kept behind `HANDOVER.dissolve`, off), swapping markers and labels in the same task, and is released again below 3.3. The chunk (about 435 KB gzip plus the worker) loads at zoom 4.0 or when a place is selected; until a tile source works the globe's zoom limit is 6.5 and a flight toward street scale waits at it. `onTileStatus` drives the limit: `capped` makes the controller ease the camera back to the globe's range and show the small notice. `GlobeViewState.street` stores street scale in the shell's saved view.
 
+## Palette and tone (2026-10-05)
+
+One grey palette for both renderers (`engine/palette.ts`, spec in `docs/pixel-line-rules.md` section 7, comparison of N = 4, 6, 8, 10 in `docs/palette/compare-*.png`): `PALETTE_LEVELS` = 8 levels derived from `--background` and `--foreground` in OKLab, named roles wash, faint, soft, mid, strong, ink. The style paints level-encoded colours (`core/palette.ts`), the pass quantises to a level per cell without smoothing, the presenter looks the level up. Fills (water, parks, buildings) are flat washes; lines carry their class's tone (coast and borders ink, major roads strong, minor roads mid, rail, paths and links soft). Debug override of the count: `?levels=N` on a `?globe-debug` page or sessionStorage `palette-levels` (the synthetic gate takes `LINES_QUERY=levels=N`).
+
 ## Level of detail (street style)
 
-`street/style/lod.ts` is the one table to tune (`LOD`: `from`, `full`, final dash per class); `street-style.ts` builds a **final** layer per class (hard ink, from `full`) and a **ramp** layer (`<id>-ramp`, `RAMP_SPECS`, same geometry, filter and widths) between `from` and `full`. The ramp is painted in the tone channel with an opacity that climbs 0 to 1 (smoothstep), which the pixel pass turns into the screen-anchored Bayer lattice of fills: a function of the screen cell and the tone only, so cells are only ever ADDED as you zoom in (no swimming; `scripts/street/lod-check.mjs` forces the tone through 0..1 on the real pipeline: 0 cells switch off, about 200 to 600 cells added per 1/16 step). Widths are untouched (art px, floor 1): lighter weight is density and pattern. Both schemas map to the same classes (Protomaps keeps trunk, primary, secondary and tertiary under `major_road`, so the classes are split on `kind_detail`; links, sidewalks, crossings, platforms and underground rail are dropped or lightened identically).
+`street/style/lod.ts` is the one table to tune (`LOD`: `from`, `full`, `role`, final dash per class); `street-style.ts` builds ONE layer per class from `from`. Its colour is a zoom `step` expression: the class enters at the faintest palette level and steps up through the levels, in steps of equal zoom length, to its role's level at `full` (the final look). It is the same line (width, dashes, filter) from the first zoom, only its tone changes, so the fade adds, removes and moves no cell: `scripts/street/lod-check.mjs` forces the levels 1..7 on the real pipeline and counts 0 cells that differ (the dither ramp this replaces added about 200 to 600 cells per 1/16 step, which read as noise). Widths are untouched (art px, floor 1): the weight is the tone, the dashes of minor roads, paths and rail are their final look. Both schemas map to the same classes (Protomaps keeps trunk, primary, secondary and tertiary under `major_road`, so the classes are split on `kind_detail`; links, sidewalks, crossings, platforms and underground rail are dropped or lightened identically).
 
 | Class | from | full | final look |
 |---|---|---|---|
@@ -146,11 +150,15 @@ Main roads are 1 art px up to z14.6 and hollow only once the casing holds two ou
 node apps/web/scripts/street/serve-tiles.mjs prototypes/street-zoom/public/hcmc.pmtiles 5240   # local Range server
 CATALYST_TILES_FALLBACK_URL=http://127.0.0.1:5240/places.pmtiles pnpm --filter @catalyst/web dev   # then BASE_URL=...
 pnpm --filter @catalyst/web test:street-lines     # the line regression gate (needs the dev server on BASE_URL, Chrome)
-node apps/web/scripts/street/lod-check.mjs      # ramp stability (tone 0..1 only adds cells)
+node apps/web/scripts/street/lod-check.mjs      # tone ramp: levels 1..7 change no cell
 node apps/web/scripts/street/lod.mjs --tag=after # LOD screenshots + line density per zoom/theme/place
 node apps/web/scripts/street/failover.mjs         # failover drills with Playwright routing
 node apps/web/scripts/street/perf.mjs all         # frames, idle, context loss, 20 cycles, flight (prefer a CATALYST_DEV_ROUTES=1 build)
 node apps/web/scripts/street/registration.mjs
+node apps/web/scripts/street/tile-fade.mjs        # tile fade: no ghost in motion, intermediate levels at rest, idle after
+node apps/web/scripts/street/palette-compare.mjs  # N = 4, 6, 8, 10 contact sheets (docs/palette/)
+node apps/web/scripts/globe/stale-check.mjs       # stale soft edge + no dashed coast/border on the live map
+node apps/web/scripts/globe/reload-fade.mjs       # reload fade of a direct place load
 node apps/web/scripts/street/shot.mjs name source=fallback scheme=dark
 ```
 
@@ -174,3 +182,12 @@ node apps/web/scripts/street/shot.mjs name source=fallback scheme=dark
 - Routes are drawn as dashed pixel lines on the ground (no lift, no draw-on animation, route stops are not enlarged).
 - Markers: normal 3, focused 7, selected 9 art pixels like the globe; labels use the spike's HUD style (selected/focused solid, others dotted and muted).
 - Mapbox is out of scope.
+
+## Tile fade (2026-10-05)
+
+Owner: "tiles loading and unloading is brutal, no animation at all". MapLibre has no per-tile or per-layer opacity for vector tiles (`fadeDuration` is for symbols and rasters, `raster-fade-duration` is for rasters, and a layer paint transition cannot know a tile just arrived), and a custom layer would have to re-implement tile tessellation. So the fade is a stage of the art-resolution pass (pass E, `gl/pixel-pass.ts`, driven by `gl/compositor.ts`, constants `TILE_FADE`):
+
+- The classifier writes the target art image as before. Pass E keeps the PRESENTED levels (two small ping-pong textures) and moves every cell at most one level towards the target per tick; the presenter reads the presented levels. A tick is 32 ms, and the loop stops by itself after `levels - 1` ticks, so a fade of the whole palette takes about 220 ms and an idle map costs no frame (asserted: 0 renders, 0 rAF).
+- It only runs while the camera RESTS (no `move` event of the map for 100 ms) and not under reduced motion. During any movement the presented image is the classified one, taken at once (step 255): an eased image of a moving map would smear, and a motion compensated one would need a flow estimate for no visible gain. So content that appears or disappears at a resting camera (tiles arriving after a flight, a pan or a zoom has stopped; tiles replaced by sharper ones; unloading) eases through the grey levels, and nothing ever ghosts or trails while panning or zooming.
+- Limits: a tile that arrives within 100 ms of the camera stopping, or while it moves, pops in as before (with a network source tiles mostly arrive later; the local PMTiles are often faster than that). A line that moves by one cell when a sharper tile replaces an over-zoomed one cross-fades over those 220 ms (two cells at half tone) rather than being redrawn in place. Native art-resolution mode only (the device-resolution mode, off by default, presents unfaded). `StreetMapOptions.tileFade: false` turns it off.
+- Check: `scripts/street/tile-fade.mjs` (delayed tiles): a pan and zoom presents exactly the classified image on all 40 frames; tiles arriving at a resting camera show intermediate levels (peak 1,830 cells at once), never move a cell more than one level per tick, converge, and leave the map idle; with the fade off or under reduced motion no intermediate level appears. `scripts/street/tile-fade-shots.mjs` made `docs/palette/tile-fade.png`.

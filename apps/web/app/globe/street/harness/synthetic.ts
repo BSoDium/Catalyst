@@ -14,10 +14,18 @@ import { Compositor, type OutputSize } from "../gl/compositor";
 import { buildPalette } from "../core/palette";
 import type { PassParams } from "../gl/pixel-pass";
 import { STREET_TUNING } from "../tuning";
-import { CHANNEL, SPECS, linePaint, type Spec } from "../style/street-style";
+import { ERASE, roleLevel } from "../core/palette";
+import { setActiveLevels } from "../../engine/palette";
+import { LOD, levelAt } from "../style/lod";
+import { SPECS, linePaint, type Spec } from "../style/street-style";
 
 export function startSynthetic(container: HTMLElement) {
 setWorkerUrl(workerUrl);
+// `?levels=N` runs the whole sweep with an N-level palette (the line rules do not depend on it: the gate runs at several N).
+{
+  const q = new URLSearchParams(location.search).get("levels");
+  if (q && Number.isFinite(Number(q))) setActiveLevels(Number(q));
+}
 const dpr = window.devicePixelRatio || 1;
 const cellCss = cellCssFor(container.clientWidth, container.clientHeight, dpr);
 const cellOut = cellDevicePx(cellCss, dpr);
@@ -26,13 +34,13 @@ const cellEff = cellOut / dpr;
 const NATIVE = new URLSearchParams(location.search).get("hires") !== "1";
 const SCALE = Number(new URLSearchParams(location.search).get("scale") ?? STREET_TUNING.renderScale);
 const scaleOpt = NATIVE ? (SCALE * (1 + 1e-9)) / cellEff : Math.min(dpr, 2);
-const palette = buildPalette({ background: [1, 1, 1], ink: [0, 0, 0], outline: [0.5, 0.5, 0.5] });
+const palette = buildPalette({ background: [1, 1, 1], ink: [0, 0, 0] });
 
 const SPEC_BY_ID = new Map<string, Spec>(SPECS.map((s) => [s.id, s]));
 const DRAW = ["waterway-major", "road-minor", "building-outline", "road-major-case", "road-major-fill", "road-medium-case", "road-medium-fill", "road-minor-dotted", "rail", "boundary-region"];
 
 function layers() {
-  const out: unknown[] = [{ id: "background", type: "background", paint: { "background-color": CHANNEL.erase } }];
+  const out: unknown[] = [{ id: "background", type: "background", paint: { "background-color": ERASE } }];
   for (const id of DRAW) {
     const lp = linePaint(SPEC_BY_ID.get(id)!, cellEff);
     out.push({ id, type: "line", source: "lines", filter: ["==", ["get", "cls"], id], ...lp });
@@ -71,12 +79,8 @@ const passCfg = {
   },
   params(): PassParams {
     return {
-      bg: [1, 1, 1],
-      fg: [0, 0, 0],
-      muted: [0.5, 0.5, 0.5],
       levels: palette.rgb,
-      codeLevel: palette.codeLevel,
-      toneSteps: palette.toneSteps,
+      limbLevel: palette.limbLevel,
       cellOut: NATIVE ? 1 : cellOut,
       inkThreshold: INK_THRESHOLD,
       solidThreshold: SOLID_FROM,
@@ -118,6 +122,16 @@ interface LineResult extends LineCase {
   perStep: number;
   blocks: number;
   endsCovered: boolean;
+  /** share of the line's cells whose palette level is not the one the class has at this zoom */
+  wrongLevel: number;
+}
+
+/** The level a class is painted at a zoom: the fade-in table for classes with a level of detail, else the role's level. */
+function expectedLevel(cls: string, zoom: number): number | null {
+  const spec = SPEC_BY_ID.get(cls);
+  if (!spec || spec.ch === "erase") return null;
+  // (the harness draws a class outside its zoom range too, where the style's colour is its first, faintest step)
+  return spec.lod ? Math.max(1, levelAt(LOD[spec.lod], zoom)) : roleLevel(spec.role ?? "ink");
 }
 
 const BOX = 30; // cells per slot side
@@ -133,7 +147,7 @@ function endpoints(c: LineCase, cx: number, cy: number): P[] {
   return [p0, [cx + c.ox, cy + c.oy], [cx + c.ox + Math.cos(b) * c.half, cy + c.oy + Math.sin(b) * c.half]];
 }
 
-function captureCodes(): Promise<{ cols: number; rows: number; codes: Uint8Array }> {
+function captureCodes(): Promise<{ cols: number; rows: number; codes: Uint8Array; levels: Uint8Array }> {
   return new Promise((resolve, reject) => {
     const t = setTimeout(() => reject(new Error("timeout")), 15000);
     comp!.onFrame = () => {
@@ -218,7 +232,10 @@ async function runBatch(cases: LineCase[], zoom: number, expect: (c: LineCase) =
         }
       }
     }
-    results.push({ ...c, comps: n, cells, perStep: cells / Math.max(1, steps), blocks: cells ? blk / cells : 0, endsCovered: near(pts[0]!) && near(pts[pts.length - 1]!) });
+    let wrong = 0;
+    const want = expectedLevel(c.cls, zoom);
+    if (want !== null) for (let y = 0; y < BOX; y++) for (let x = 0; x < BOX; x++) if (box.data[y * BOX + x] && art.levels[(sy * BOX + y) * art.cols + sx * BOX + x] !== want) wrong++;
+    results.push({ ...c, comps: n, cells, perStep: cells / Math.max(1, steps), blocks: cells ? blk / cells : 0, endsCovered: near(pts[0]!) && near(pts[pts.length - 1]!), wrongLevel: cells ? wrong / cells : 0 });
     void expect;
   });
   return results;
@@ -238,6 +255,8 @@ interface Summary {
   thinFrac: number;
   /** fraction of lines with more than 2.6 cells per step (a hollow road's two outlines, one of them doubled) */
   hollowDoubledFrac: number;
+  /** fraction of lines with any cell at a palette level other than the class's */
+  wrongLevelFrac: number;
   perStepMean: number;
   perStepMax: number;
   perStepMin: number;
@@ -272,6 +291,7 @@ async function sweep(cls: string, zoom: number, opts: { bend?: number; half?: nu
     doubledFrac: results.filter((r) => r.perStep > 1.25).length / results.length,
     thinFrac: results.filter((r) => r.perStep < 0.85).length / results.length,
     hollowDoubledFrac: results.filter((r) => r.perStep > 2.6).length / results.length,
+    wrongLevelFrac: results.filter((r) => r.wrongLevel > 0).length / results.length,
     perStepMean: per_.reduce((a, b) => a + b, 0) / per_.length,
     perStepMax: Math.max(...per_),
     perStepMin: Math.min(...per_),

@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from "react";
-import type { GlobeProps } from "./types";
+import { isFitView, type GlobeProps } from "./types";
 
 export { DEFAULT_VIEW_RADIUS_KM } from "./engine/framing";
 export type { GlobeFitView, GlobeInitialView, GlobePlace, GlobeProps, GlobeViewState } from "./types";
@@ -10,7 +10,7 @@ export type { GlobeFitView, GlobeInitialView, GlobePlace, GlobeProps, GlobeViewS
  */
 const GlobeImpl = lazy(() => import("./globe-canvas"));
 
-/** Fixed-aspect disc outline: shown until the renderer has loaded. No layout shift. */
+/** Fixed-aspect disc outline: shown until the renderer has loaded. No layout shift. (Not shown on a direct load of a place: the first paint is the page colour.) */
 function GlobeLoading({ insetRight }: { insetRight: number }) {
   return (
     <div data-globe="loading" style={{ paddingRight: insetRight }} className="grid size-full place-items-center">
@@ -28,7 +28,7 @@ export function Globe(props: GlobeProps) {
   useEffect(() => setMounted(true), []);
   if (!mounted) return null;
   return (
-    <Suspense fallback={<GlobeLoading insetRight={props.insetRight} />}>
+    <Suspense fallback={isFitView(props.initialView) ? null : <GlobeLoading insetRight={props.insetRight} />}>
       <GlobeImpl {...props} />
     </Suspense>
   );

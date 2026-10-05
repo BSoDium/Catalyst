@@ -1,11 +1,14 @@
 /**
- * Monochrome MapLibre style for the pixel pass. Hand-written (no `protomaps-themes-base`: it emits coloured fills and
- * label layers that need glyphs; this one paints only the four channels the pass understands):
+ * Greyscale MapLibre style for the pixel pass. Hand-written (no `protomaps-themes-base`: it emits coloured fills and
+ * label layers that need glyphs). Every layer is painted in a plain colour that ENCODES a palette level (core/palette.ts):
  *
- *   R  hard ink          (#ff0000)               -> foreground, never dithered
- *   G  foreground tone   (#00ff00 * opacity)     -> screen-anchored lattice (fills)
- *   B  muted tone        (#0000ff * opacity)     -> muted colour (graticule, rail)
- *   black                (#000000)               -> erases (hollow road interiors, route halos)
+ *   lines    rgb(255, G, 0) at an opacity of 0.75 (a one-pixel line the pass may thin) or 1: G = level / LEVEL_SCALE
+ *   fills    rgb(0, 0, B), opaque: B = level / LEVEL_SCALE
+ *   black    (#000000)               -> erases to the page colour (hollow road interiors, route halos)
+ *
+ * The level is a ROLE of the shared grey palette (engine/palette.ts: wash, faint, soft, mid, strong, ink), so the style
+ * does not know how many greys there are. A class that fades in with zoom is ONE layer whose colour steps through the
+ * levels (a zoom `step` expression), from the faintest up to its role's level: no ramp layers, no dither.
  *
  * Two tile schemas map to one visual spec, so the look is identical whichever source is active:
  *   "protomaps"    Protomaps basemap v4 (the PMTiles fallback)
@@ -18,7 +21,9 @@
 import type { ExpressionSpecification, LayerSpecification, Map as MLMap, StyleSpecification } from "maplibre-gl";
 import { DESIGN_CELL_CSS, THIN_INK, artStops, cssStops, hollowFillStops, inkOpacityFor, inkOpacityStops, type Stops } from "../core/art-line";
 import type { Schema } from "../core/source-descriptor";
-import { FILL_LOD, LOD, rampStops, type LodEntry, type LodKey } from "./lod";
+import { activeLevels, roleLevel, type Role } from "../core/palette";
+import { ERASE, fillColor, lineColor } from "../core/palette";
+import { FILL_LOD, LOD, stepZoom, type LodKey } from "./lod";
 
 export type { Schema };
 
@@ -45,7 +50,25 @@ export interface StreetStyleOptions {
   cellCss?: number;
 }
 
-export const CHANNEL = { ink: "#ff0000", fg: "#00ff00", muted: "#0000ff", erase: "#000000" } as const;
+/** Fade stops of a colour over zoom: level k from `at[k]` (ascending zooms), as a MapLibre `step` expression. */
+function stepColors(levels: number[], zooms: number[], color: (level: number) => string): string | ExpressionSpecification {
+  if (levels.length === 1) return color(levels[0]!);
+  return ["step", ["zoom"], color(levels[0]!), ...levels.slice(1).flatMap((lv, i) => [zooms[i + 1]!, color(lv)])] as unknown as ExpressionSpecification;
+}
+
+/** Colour of a fade-in over zoom: the faintest level first, stepping up to the role's level at `full` (equal zoom steps). */
+export function fadeInColor(e: { from: number; full: number; role: Role }, color: (level: number) => string, n: number = activeLevels()): string | ExpressionSpecification {
+  const final = roleLevel(e.role, n);
+  const levels = Array.from({ length: final }, (_, i) => i + 1);
+  return stepColors(levels, levels.map((k) => stepZoom(e, k, n)), color);
+}
+
+/** Colour of a fade-out over zoom [from, gone]: the role's level first, stepping down to the faintest one (the layer ends at `gone`). */
+export function fadeOutColor(e: { from: number; gone: number; role: Role }, color: (level: number) => string, n: number = activeLevels()): string | ExpressionSpecification {
+  const start = roleLevel(e.role, n);
+  const levels = Array.from({ length: start }, (_, i) => start - i);
+  return stepColors(levels, levels.map((_, i) => e.from + (i / start) * (e.gone - e.from)), color);
+}
 
 /** Handover zoom per schema: the PMTiles extract only has tiles around the place, OpenFreeMap is global. */
 export const DEFAULT_HANDOFF: Record<Schema, number> = { protomaps: 8.5, openmaptiles: 4.5 };
@@ -56,10 +79,10 @@ const zoomInterp = (stops: Stops, base = 1.5): ExpressionSpecification =>
 export interface Spec {
   id: string;
   type: "fill" | "line";
-  /** which channel */
-  ch: keyof typeof CHANNEL;
-  /** constant tone, or fade stops over zoom */
-  tone?: number | Stops;
+  /** which paint: a level-encoded line (`ink`), a level-encoded fill, or the erasing page colour */
+  ch: "ink" | "fill" | "erase";
+  /** the tone this layer ends up with (lines without a `lod` entry are always at it; `lod` and `fade` take it from their table) */
+  role?: Role;
   /** nominal CSS width (or stops) before the art floor */
   width?: number | Stops;
   minzoom?: number;
@@ -67,18 +90,16 @@ export interface Spec {
   /** schema specific source layer + filter */
   pm?: { layer: string; filter?: unknown[] };
   omt?: { layer: string; filter?: unknown[] };
-  /** dash pattern in line widths (= art px). Tone lines become full-strength ink dashes; undefined = solid */
+  /** dash pattern in line widths (= art px); undefined = solid */
   dash?: readonly number[];
-  /** tone lines drawn solid at full strength even though `tone` is set (rail) */
-  solid?: boolean;
   /** width in art px (a number, or stops over zoom), overriding the nominal CSS width */
   artW?: number | Stops;
   /** this casing is hollowed out by the interior spec of the given id; from that zoom it is two thin outlines */
   hollowBy?: string;
-  /** level of detail class: the spec is the FINAL look (from `LOD[lod].full`), a ramp layer is derived (RAMP_SPECS) */
+  /** level of detail class (lod.ts): fades in over [from, full] in tone, final look from `full` */
   lod?: LodKey;
-  /** (ramp layers) the entry whose tone ramp this layer draws */
-  ramp?: LodEntry;
+  /** (fills) fade-in range and tone */
+  fade?: { from: number; full: number; role: Role };
   /** this is the erasing interior of a hollow road whose casing follows these ART-pixel stops */
   hollowOf?: Stops;
 }
@@ -139,52 +160,52 @@ const LAKE_PM = ["any", ["==", ["get", "kind"], "lake"], detailIn(["lake"])] as 
 const LAKE_OMT = kindIn("class", ["lake"]);
 
 export const SPECS: Spec[] = [
-  // --- areas (tones first, ink on top) ---
+  // --- areas: flat washes (tones first, lines on top) ---
   {
-    id: "water-fill", type: "fill", ch: "fg", tone: [[8, 0], [10, 0.14]], minzoom: 8,
+    id: "water-fill", type: "fill", ch: "fill", fade: FILL_LOD.water, minzoom: FILL_LOD.water.from,
     pm: { layer: "water", filter: POLY as never }, omt: { layer: "water" },
   },
   {
-    id: "park-fill", type: "fill", ch: "fg", tone: [[9, 0], [12, 0.09]], minzoom: 9,
+    id: "park-fill", type: "fill", ch: "fill", fade: FILL_LOD.park, minzoom: FILL_LOD.park.from,
     pm: { layer: "landuse", filter: kindIn("kind", ["park", "forest", "wood", "grass", "garden", "nature_reserve", "golf_course", "cemetery", "farmland"]) as never },
     omt: { layer: "park" },
   },
   {
-    id: "building-fill", type: "fill", ch: "fg", tone: [[FILL_LOD.building.from, 0], [FILL_LOD.building.to, FILL_LOD.building.tone]], minzoom: FILL_LOD.building.from,
+    id: "building-fill", type: "fill", ch: "fill", fade: FILL_LOD.building, minzoom: FILL_LOD.building.from,
     pm: { layer: "buildings" }, omt: { layer: "building" },
   },
-  // --- lines: dashes and muted ---
+  // --- lighter lines (soft and mid), many of them dashed ---
   {
-    id: "waterway-minor", type: "line", ch: "fg", tone: 0.5, width: 1, lod: "stream", dash: LOD.stream.dash,
+    id: "waterway-minor", type: "line", ch: "ink", width: 1, lod: "stream", dash: LOD.stream.dash,
     pm: { layer: "water", filter: ["all", LINE, kindIn("kind", ["stream", "drain", "ditch"])] as never },
     omt: { layer: "waterway", filter: kindIn("class", ["stream", "drain", "ditch"]) as never },
   },
   {
-    id: "boundary-region", type: "line", ch: "fg", tone: 0.4, width: 1, lod: "regionBorder", dash: LOD.regionBorder.dash,
+    id: "boundary-region", type: "line", ch: "ink", width: 1, lod: "regionBorder", dash: LOD.regionBorder.dash,
     pm: { layer: "boundaries", filter: ["==", ["get", "kind"], "region"] as never },
-    omt: { layer: "boundary", filter: ["all", [">=", ["get", "admin_level"], 3], ["<=", ["get", "admin_level"], 6], ["!=", ["get", "maritime"], 1]] as never },
+    omt: { layer: "boundary", filter: ["all", [">=", ["to-number", ["get", "admin_level"], 99], 3], ["<=", ["to-number", ["get", "admin_level"], 99], 6], ["!=", ["get", "maritime"], 1]] as never },
   },
   {
-    id: "road-minor-dotted", type: "line", ch: "fg", tone: 0.33, width: 1, lod: "minor", maxzoom: LOD.minorSolid.full, dash: LOD.minor.dash,
+    id: "road-minor-dotted", type: "line", ch: "ink", width: 1, lod: "minor", maxzoom: LOD.minorSolid.full, dash: LOD.minor.dash,
     pm: { layer: "roads", filter: MINOR_PM }, omt: { layer: "transportation", filter: MINOR_OMT },
   },
   {
-    id: "road-link-dotted", type: "line", ch: "fg", tone: 0.25, width: 1, lod: "link", dash: LOD.link.dash,
+    id: "road-link-dotted", type: "line", ch: "ink", width: 1, lod: "link", dash: LOD.link.dash,
     pm: { layer: "roads", filter: LINK_PM }, omt: { layer: "transportation", filter: LINK_OMT },
   },
   {
-    id: "road-other-dotted", type: "line", ch: "fg", tone: 0.25, width: 1, lod: "service", dash: LOD.service.dash,
+    id: "road-other-dotted", type: "line", ch: "ink", width: 1, lod: "service", dash: LOD.service.dash,
     pm: { layer: "roads", filter: SERVICE_PM }, omt: { layer: "transportation", filter: SERVICE_OMT },
   },
   {
-    id: "path-dotted", type: "line", ch: "fg", tone: 0.25, width: 1, lod: "path", dash: LOD.path.dash,
+    id: "path-dotted", type: "line", ch: "ink", width: 1, lod: "path", dash: LOD.path.dash,
     pm: { layer: "roads", filter: PATH_PM }, omt: { layer: "transportation", filter: PATH_OMT },
   },
   {
-    id: "rail", type: "line", ch: "fg", tone: 0.8, width: 1, lod: "rail", dash: LOD.rail.dash,
+    id: "rail", type: "line", ch: "ink", width: 1, lod: "rail", dash: LOD.rail.dash,
     pm: { layer: "roads", filter: RAIL_PM }, omt: { layer: "transportation", filter: RAIL_OMT },
   },
-  // --- lines: hard ink ---
+  // --- heavier lines ---
   {
     id: "road-minor", type: "line", ch: "ink", width: 0.8, lod: "minorSolid",
     pm: { layer: "roads", filter: MINOR_PM }, omt: { layer: "transportation", filter: MINOR_OMT },
@@ -218,7 +239,7 @@ export const SPECS: Spec[] = [
     pm: { layer: "buildings" }, omt: { layer: "building" },
   },
   {
-    id: "water-edge", type: "line", ch: "ink", width: HAIR, minzoom: 0,
+    id: "water-edge", type: "line", ch: "ink", role: "ink", width: HAIR, minzoom: 0,
     pm: { layer: "water", filter: ["all", POLY, SEA_PM] as never },
     omt: { layer: "water", filter: SEA_OMT as never },
   },
@@ -236,40 +257,20 @@ export const SPECS: Spec[] = [
     omt: { layer: "waterway", filter: kindIn("class", ["river"]) as never },
   },
   {
-    id: "waterway-canal", type: "line", ch: "fg", tone: 0.6, width: 1, lod: "canal", dash: LOD.canal.dash,
+    id: "waterway-canal", type: "line", ch: "ink", width: 1, lod: "canal", dash: LOD.canal.dash,
     pm: { layer: "water", filter: ["all", LINE, kindIn("kind", ["canal"])] as never },
     omt: { layer: "waterway", filter: kindIn("class", ["canal"]) as never },
   },
   {
-    id: "boundary-country", type: "line", ch: "ink", width: HAIR, minzoom: 3.3,
+    id: "boundary-country", type: "line", ch: "ink", role: "ink", width: HAIR, minzoom: 3.3,
     pm: { layer: "boundaries", filter: ["==", ["get", "kind"], "country"] as never },
     omt: { layer: "boundary", filter: ["all", ["==", ["get", "admin_level"], 2], ["!=", ["get", "maritime"], 1]] as never },
   },
 ];
 
-/**
- * The ramp layer of every spec with a level of detail: the same geometry, filter and widths, painted in the TONE
- * channel with an opacity that climbs from 0 at `from` to 1 at `full`, where the final ink spec takes over.
- */
-export const RAMP_SPECS: Spec[] = SPECS.filter((s) => s.type === "line" && s.lod).map((s) => ({
-  ...s,
-  id: `${s.id}-ramp`,
-  ch: "fg" as const,
-  tone: undefined,
-  ramp: LOD[s.lod!],
-  lod: undefined,
-  minzoom: LOD[s.lod!].from,
-  maxzoom: LOD[s.lod!].full,
-  hollowBy: undefined,
-  hollowOf: undefined,
-  solid: undefined,
-  dash: LOD[s.lod!].dash,
-  width: s.width ?? 1,
-}));
-
-/** Final-look zoom range of a spec: ink from `full` (or its own minzoom/maxzoom for classes without a ramp). */
+/** Final-look zoom range of a spec: a class with a level of detail exists from `from` (its fade-in is part of the layer). */
 export function zoomRangeOf(spec: Spec): { minzoom?: number; maxzoom?: number } {
-  const min = spec.lod ? LOD[spec.lod].full : spec.minzoom;
+  const min = spec.lod ? LOD[spec.lod].from : spec.minzoom;
   return { ...(min ? { minzoom: min } : {}), ...(spec.maxzoom ? { maxzoom: spec.maxzoom } : {}) };
 }
 
@@ -288,7 +289,9 @@ function artWidthPaint(spec: Spec, cellCss: number): number | ExpressionSpecific
 }
 
 /** Layer ids of the lines that follow the art cell (world data and routes included). */
-const CELL_LAYERS = ["world-coast", "world-coast-band", "world-borders", "world-borders-band", "graticule"] as const;
+const CELL_LAYERS = ["world-coast", "world-borders", "graticule"] as const;
+/** The graticule eases out through the palette levels between these map zooms (regional scale to street scale). */
+export const GRATICULE_FADE = { from: 6.5, gone: 9.5 } as const;
 /**
  * A route is two art pixels wide, dashed with the globe's 7 px period (62 % ink): the same stroke the Three.js globe
  * draws, so the curated routes keep their weight through the handover. Its erasing halo is four art pixels wide.
@@ -298,7 +301,7 @@ const ROUTE_HALO_ART = 4;
 
 /** Re-apply the art widths after the art cell size changed (viewport crossing 520 px, DPR change). */
 export function applyCell(map: MLMap, cellCss: number): void {
-  for (const spec of [...SPECS, ...RAMP_SPECS]) {
+  for (const spec of SPECS) {
     if (spec.type !== "line" || !map.getLayer(spec.id)) continue;
     map.setPaintProperty(spec.id, "line-width", artWidthPaint(spec, cellCss) as never);
   }
@@ -326,49 +329,35 @@ function build(spec: Spec, schema: Schema, handoff: number, cellCss: number): La
     ...(src.filter ? { filter: src.filter } : {}),
   };
   if (spec.type === "fill") {
-    const tone = spec.tone ?? 1;
+    const fade = spec.fade ?? { from: 0, full: 0, role: spec.role ?? "wash" };
     return {
       ...base,
       type: "fill",
-      paint: { "fill-color": CHANNEL[spec.ch], "fill-opacity": typeof tone === "number" ? tone : zoomInterp(tone), "fill-antialias": false },
+      paint: { "fill-color": fadeInColor(fade, fillColor), "fill-opacity": 1, "fill-antialias": false },
     } as LayerSpecification;
   }
   return { ...base, type: "line", ...linePaint(spec, cellCss) } as LayerSpecification;
 }
 
-/** Layout and paint of a line spec: the one place widths, dashes and opacity are decided. */
+/** Layout and paint of a line spec: the one place widths, dashes, colour (level) and opacity (thin / wide) are decided. */
 export function linePaint(spec: Spec, cellCss: number): { layout: Record<string, unknown>; paint: Record<string, unknown> } {
-  if (spec.ramp) {
-    // Ramp layer: the class in the tone channel. The pass dithers it with the screen-anchored lattice of the tone, so it
-    // fades in without swimming; the width is the final one (art px, floor 1) and the dashes are the final dashes.
-    const dash = spec.dash ? { "line-dasharray": spec.dash } : {};
-    const opacity = ["interpolate", ["linear"], ["zoom"], ...rampStops(spec.ramp).flatMap(([z, v]) => [z, v])] as unknown as ExpressionSpecification;
-    return {
-      layout: { "line-cap": "butt", "line-join": "miter" },
-      paint: { "line-color": CHANNEL.fg, "line-opacity": opacity, "line-width": artWidthPaint(spec, cellCss), ...dash },
-    };
+  const dash = spec.dash ? { "line-dasharray": spec.dash } : {};
+  const layout = { "line-cap": "butt", "line-join": "miter" };
+  if (spec.ch === "erase") {
+    return { layout, paint: { "line-color": ERASE, "line-opacity": 1, "line-width": artWidthPaint(spec, cellCss) } };
   }
-  const toneLine = spec.tone !== undefined;
-  // A dashed "tone" line is a one-pixel INK dash (hard threshold, stair-thinned like every thin line); a muted line
-  // (rail) stays in the muted channel at full strength. Tone dithering is for fills only.
-  const ch: keyof typeof CHANNEL = toneLine && spec.ch === "fg" ? "ink" : spec.ch;
-  let opacity: number | ExpressionSpecification = toneLine ? (spec.ch === "muted" ? 1 : THIN_INK) : 1;
-  if (spec.ch === "ink") {
-    // one-pixel lines are painted weaker than wide ones: that is how the pass knows which cells it may thin
-    const w = artWidthStopsOf(spec);
-    const fill = spec.hollowBy ? SPECS.find((x) => x.id === spec.hollowBy) : undefined;
-    const fillStops = fill ? artWidthStopsOf(fill) : null;
-    const hollowFrom = fillStops && typeof fillStops !== "number" ? (fillStops.find(([, v]) => v > 0)?.[0] ?? null) : null;
-    opacity =
-      typeof w === "number"
-        ? inkOpacityFor(w)
-        : (["interpolate", ["linear"], ["zoom"], ...inkOpacityStops(w, 1.5, 0.25, hollowFrom).flatMap(([z, v]) => [z, v])] as unknown as ExpressionSpecification);
-  }
-  const dash = toneLine && !spec.solid && spec.dash ? { "line-dasharray": spec.dash } : {};
-  return {
-    layout: { "line-cap": "butt", "line-join": "miter" },
-    paint: { "line-color": CHANNEL[ch], "line-opacity": opacity, "line-width": artWidthPaint(spec, cellCss), ...dash },
-  };
+  // The colour is the tone: a class with a level of detail fades in through the levels, any other line has its role's level.
+  const color = spec.lod ? fadeInColor(LOD[spec.lod], lineColor) : lineColor(roleLevel(spec.role ?? "ink"));
+  // One-pixel lines are painted weaker than wide ones: that is how the pass knows which cells it may thin.
+  const w = artWidthStopsOf(spec);
+  const fill = spec.hollowBy ? SPECS.find((x) => x.id === spec.hollowBy) : undefined;
+  const fillStops = fill ? artWidthStopsOf(fill) : null;
+  const hollowFrom = fillStops && typeof fillStops !== "number" ? (fillStops.find(([, v]) => v > 0)?.[0] ?? null) : null;
+  const opacity: number | ExpressionSpecification =
+    typeof w === "number"
+      ? inkOpacityFor(w)
+      : (["interpolate", ["linear"], ["zoom"], ...inkOpacityStops(w, 1.5, 0.25, hollowFrom).flatMap(([z, v]) => [z, v])] as unknown as ExpressionSpecification);
+  return { layout, paint: { "line-color": color, "line-opacity": opacity, "line-width": artWidthPaint(spec, cellCss), ...dash } };
 }
 
 export function graticule(stepDeg = 15, sampleDeg = 3): GeoJSON.FeatureCollection {
@@ -391,42 +380,39 @@ export function buildStreetStyle(o: StreetStyleOptions): StyleSpecification {
   const handoff = o.handoffZoom ?? DEFAULT_HANDOFF[o.schema];
   const noTiles = o.tiles === null;
   const cell = o.cellCss ?? DESIGN_CELL_CSS;
-  const tileLayers = noTiles ? [] : [...SPECS, ...RAMP_SPECS].map((s) => build(s, o.schema, handoff, cell)).filter((l): l is LayerSpecification => l !== null);
+  const tileLayers = noTiles ? [] : SPECS.map((s) => build(s, o.schema, handoff, cell)).filter((l): l is LayerSpecification => l !== null);
 
-  // Layer order: background, graticule, tile tones, tile ink, routes, world ink.
-  const inkIds = new Set(SPECS.filter((s) => s.ch === "ink" || s.ch === "erase").map((s) => s.id));
-  const tones = tileLayers.filter((l) => !inkIds.has(l.id));
-  const inks = tileLayers.filter((l) => inkIds.has(l.id));
+  // Layer order: background, graticule, tile fills, tile lines, routes, world lines.
+  const lineIds = new Set(SPECS.filter((s) => s.ch !== "fill").map((s) => s.id));
+  const tones = tileLayers.filter((l) => !lineIds.has(l.id));
+  const lines = tileLayers.filter((l) => lineIds.has(l.id));
+  const ink = lineColor(roleLevel("ink"));
+  // World-scale coastline (110m) up to the hand-over zoom, then the tile geometry: one solid ink line on both sides. (A
+  // dashed band between the two used to dither the handover; it read as a dotted coast, see docs/palette/.)
   const worldCoastInk: LayerSpecification = {
-    id: "world-coast", type: "line", source: "coast", maxzoom: noTiles ? 24 : handoff - 0.5,
-    paint: { "line-color": CHANNEL.ink, "line-width": cell, "line-opacity": THIN_INK },
+    id: "world-coast", type: "line", source: "coast", maxzoom: noTiles ? 24 : handoff,
+    paint: { "line-color": ink, "line-width": cell, "line-opacity": THIN_INK },
   } as LayerSpecification;
-  const worldCoastBand: LayerSpecification = {
-    id: "world-coast-band", type: "line", source: "coast", minzoom: noTiles ? 24 : handoff - 0.5, maxzoom: noTiles ? 24 : handoff,
-    paint: { "line-color": CHANNEL.ink, "line-opacity": THIN_INK, "line-width": cell, "line-dasharray": [2, 2] },
-  } as LayerSpecification;
-  const bordersInk = (min: number, max: number): LayerSpecification => ({
-    id: "world-borders", type: "line", source: "borders", minzoom: min, maxzoom: max,
-    paint: { "line-color": CHANNEL.ink, "line-width": cell, "line-opacity": THIN_INK },
+  // Country borders are full ink at street scale at every latitude (the globe eases them in below that, engine/scene.ts).
+  const bordersInk = (max: number): LayerSpecification => ({
+    id: "world-borders", type: "line", source: "borders", maxzoom: max,
+    paint: { "line-color": ink, "line-width": cell, "line-opacity": THIN_INK },
   }) as LayerSpecification;
-  const bordersBand: LayerSpecification = {
-    id: "world-borders-band", type: "line", source: "borders", minzoom: 3, maxzoom: 3.3,
-    paint: { "line-color": CHANNEL.ink, "line-opacity": THIN_INK, "line-width": cell, "line-dasharray": [2, 2] },
-  } as LayerSpecification;
+  // Graticule: the faint level, easing out through the levels while the map zooms from regional to street scale.
   const grid: LayerSpecification = {
-    id: "graticule", type: "line", source: "grid", maxzoom: 9,
-    paint: { "line-color": CHANNEL.muted, "line-width": cell, "line-dasharray": [1.5, 2.5] },
+    id: "graticule", type: "line", source: "grid", maxzoom: GRATICULE_FADE.gone,
+    paint: { "line-color": fadeOutColor({ ...GRATICULE_FADE, role: "faint" }, lineColor) as never, "line-opacity": THIN_INK, "line-width": cell, "line-dasharray": [1.5, 2.5] },
   } as LayerSpecification;
   // Curated routes: an erasing halo (so a route reads over a road of the same ink) and a dashed two-pixel ink line.
   const routesHalo: LayerSpecification = {
     id: "routes-halo", type: "line", source: "routes",
     layout: { "line-cap": "butt", "line-join": "round" },
-    paint: { "line-color": CHANNEL.erase, "line-width": ROUTE_HALO_ART * cell },
+    paint: { "line-color": ERASE, "line-width": ROUTE_HALO_ART * cell },
   } as LayerSpecification;
   const routesLine: LayerSpecification = {
     id: "routes-line", type: "line", source: "routes",
     layout: { "line-cap": "butt", "line-join": "miter" },
-    paint: { "line-color": CHANNEL.ink, "line-opacity": 1, "line-width": ROUTE_ART * cell, "line-dasharray": [2.2, 1.3] },
+    paint: { "line-color": ink, "line-opacity": 1, "line-width": ROUTE_ART * cell, "line-dasharray": [2.2, 1.3] },
   } as LayerSpecification;
 
   const sources: StyleSpecification["sources"] = {
@@ -450,16 +436,14 @@ export function buildStreetStyle(o: StreetStyleOptions): StyleSpecification {
     projection: { type: o.projection ?? "globe" },
     sources,
     layers: [
-      { id: "background", type: "background", paint: { "background-color": CHANNEL.erase } },
+      { id: "background", type: "background", paint: { "background-color": ERASE } },
       grid,
       ...tones,
-      ...inks,
+      ...lines,
       routesHalo,
       routesLine,
       worldCoastInk,
-      worldCoastBand,
-      bordersBand,
-      bordersInk(3.3, noTiles ? 24 : 8),
+      bordersInk(noTiles ? 24 : 8),
     ],
   };
 }

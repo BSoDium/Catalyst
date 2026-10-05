@@ -77,6 +77,11 @@ export interface StreetMapOptions {
    * nearest-neighbour; `setReveal` / `setSharp` are then no-ops.
    */
   highResolution?: boolean;
+  /**
+   * Tile fade (default true, always off under reduced motion): while the camera rests, content that appears or disappears
+   * eases through the grey levels instead of popping (gl/compositor.ts `TILE_FADE`). `false` is an A/B and test knob.
+   */
+  tileFade?: boolean;
   /** Pan in whole art cells while the zoom is steady (default true; `STREET_TUNING.snapPanFromZoom`). Measurement knob. */
   snapPan?: boolean;
   /** Native mode: map pixels per art cell per axis, 1 to 3 (default `STREET_TUNING.renderScale`). */
@@ -171,7 +176,11 @@ export interface StreetDebug {
   project(slug: string): { x: number; y: number } | null;
   shown(): { markers: string[]; labels: string[] };
   /** Art class codes of the last frame (a GPU stall). */
-  readCodes(): { cols: number; rows: number; codes: Uint8Array } | null;
+  readCodes(): { cols: number; rows: number; codes: Uint8Array; levels: Uint8Array } | null;
+  /** The palette level actually presented per cell (after the tile fade), row 0 = top; `readCodes` is the classified target. */
+  readPresentedLevels(): Uint8Array | null;
+  /** Fade ticks still pending (0 = presented is the target). */
+  easing(): number;
   gpuSync(): void;
   lastPassMs(): number;
   /** Lose or restore the `map` or the `overlay` context through WEBGL_lose_context. */

@@ -95,6 +95,8 @@ A road is hollow only when its casing is at least **4 art px** (two 1-pixel outl
 
 Minor tracks, paths, canals, region borders and the 3-to-3.3 zoom border band are **1 px ink dashes** along the line, never a tone dithered by the Bayer matrix (the old look was a dither wash that made lines vanish at some angles). Dash arrays are in line widths, which are art pixels: minor road `[1.8, 2.4]`, other roads and paths `[1.8, 3.6]`, canal `[6, 1.5]`, region border `[4, 1.5]`, graticule `[1.5, 2.5]`. Measured: zero polylines without ink at any angle or offset, 0.26 to 1.0 cells per step.
 
+> Palette update (section 7): sections 3.7, 3.9 and 3.12 below describe the 1-bit look that the spike measured and are superseded where they say "no grey ramp" or "dither": fills are flat tone washes now and fades go through the palette levels. Every line rule (3.1 to 3.6, 3.8, 3.10, 3.11) is unchanged and independent of the number of levels.
+
 ### 3.7 Pattern fills (parks, water, buildings)
 
 1. Fills are a function of the **screen cell and the tone only**: `lit = bayer8(cell) < round(tone x 16) x 4` (the "clean" style: tone quantised to sixteenths, so the Bayer thresholds trace regular dot lattices: 1/16 one dot per 4x4, 1/4 every other pixel, 1/2 a checkerboard). It never depends on world coordinates, zoom or time.
@@ -107,7 +109,7 @@ Pan by 0.25 art px per frame: the number of cells that change per frame must be 
 
 ### 3.9 Colours (tokens)
 
-The pass only knows three colours, read from the CSS tokens: `--background`, `--foreground`, and `--globe-limb` composited over `--background` for muted lines (rail, graticule, the globe limb). No other colour, no grey ramp. The only grey the user sees is muted and it is a flat colour, not a mix. Light and dark use the same code path.
+Spike: three colours read from the CSS tokens (`--background`, `--foreground`, `--globe-limb` for muted lines), no grey ramp. Production: two tokens and a grey palette derived from them, section 7.
 
 ### 3.10 Reveal and dissolve
 
@@ -119,7 +121,7 @@ Idle is zero frames (0 renders, 0 rAF calls, 0 pass runs over 1.5 s, asserted in
 
 ### 3.12 Level of detail (production style)
 
-Added with the street style's LOD (`apps/web/app/globe/street/style/lod.ts`, `docs/street-architecture.md`). Rules that follow from the above: (a) a class that fades in with zoom is drawn in the TONE channel (screen-anchored lattice, tone climbing 0 to 1) and swaps to hard ink at its `full` zoom; the swap only removes stair corners. (b) A thin-class line must be exactly 1 art px wide: widths in (1, 1.6) make it two cells wide at some offsets, so ramps jump from 1 to at least 1.6 (main roads: 1 to z14.6, 1.7 at z15.2). (c) Lighter classes keep a dashed ink pattern (dash at least 1.42 line widths) instead of a smaller width. (d) At tone 1/2 the lattice is a checkerboard, so a 45 degree line can show only one parity of its cells for a short zoom span; this is the one transient where a ramping line is thinner than 8-connected, and it never applies to fully-on lines. The rail is a dashed ink line now (was a solid muted 1.8 px line, 3.3 and 5).
+Added with the street style's LOD (`apps/web/app/globe/street/style/lod.ts`, `docs/street-architecture.md`). Rules that follow from the above: (a) [superseded by section 7.4: a class that fades in is the same line from its first zoom, painted in a lighter palette level that steps up to its role's level; no lattice, no cell is added or removed by the fade]. (b) A thin-class line must be exactly 1 art px wide: widths in (1, 1.6) make it two cells wide at some offsets, so ramps jump from 1 to at least 1.6 (main roads: 1 to z14.6, 1.7 at z15.2). (c) Lighter classes keep a dashed ink pattern (dash at least 1.42 line widths) instead of a smaller width. (d) At tone 1/2 the lattice is a checkerboard, so a 45 degree line can show only one parity of its cells for a short zoom span; this is the one transient where a ramping line is thinner than 8-connected, and it never applies to fully-on lines. The rail is a dashed ink line now (was a solid muted 1.8 px line, 3.3 and 5).
 
 ## 4. Before and after
 
@@ -168,3 +170,47 @@ DPR 2 versions of the fan are `line-fan-before-dpr2.png` and `line-fan-after-dpr
 Unit tests (pure logic, `pnpm --filter @catalyst/prototype-street-zoom test`): width ramps and the 1 px floor, the hollow-interior derivation, the reference rasteriser, 8-connected components, staircase removal (stairs become one cell per step and never disconnect a line), Bayer and "clean" tone patterns, the style-level invariants (no line layer below one art pixel, every dashed line in ink, hollow casings).
 
 A production port should additionally run the synthetic check on its own engine (any engine that can draw a polyline in a plain colour into a canvas works: the pass only needs the red channel), on the real device matrix (DPR 1, 1.5, 2, 3) and with the OS zoom levels.
+
+## 7. Palette (production, 2026-10-05)
+
+Owner feedback after trying the 1-bit look: the fade-in of features "goes from dashed to nearly continuous to continuous; the start is plain noise", borders appear and disappear without animation, and a richer grey palette was expected. Implemented in `apps/web/app/globe/engine/palette.ts` (the shared, pure palette: both renderers use it), `street/core/palette.ts` (how a level travels from the style to the pass), `street/style/lod.ts` (the tone ramps), `street/gl/pixel-pass.ts`, `engine/scene.ts` (the globe). Evidence and the comparison are in `docs/palette/`.
+
+### 7.1 Levels and roles
+
+Input: `--background` and `--foreground` (light and dark). Output: `PALETTE_LEVELS` colours (one constant, default 8, `MAX_LEVELS` 12) from the page colour (level 0) to the ink (last level), interpolated in OKLab. On a light page the ramp is eased (`(k/(n-1))^1.35`), so the first levels, which are the washes and the first step of every fade, are light; on a dark page it is linear in OKLab lightness, because the same lightness step reads weaker on a dark ground. Named roles resolve to levels by position along the ramp (`roleLevel`; roles closer than one level share it, so the same code serves any N):
+
+| role | position | used for |
+| --- | --- | --- |
+| bg | 0 | page, ocean, erased interiors |
+| wash | 0.12 | water, park and building fills (flat) |
+| faint | 0.27 | graticule |
+| soft | 0.42 | rail, paths, service roads, links, streams, canals, the horizon outline |
+| mid | 0.60 | tertiary and residential roads, region borders, building outlines, small water outlines |
+| strong | 0.80 | motorway to secondary roads, rivers, lakes |
+| ink | 1 | coastline, country borders, markers, routes |
+
+With N = 8 the levels are 0 bg, 1 wash, 2 faint, 3 soft, 4 mid, 5 (between), 6 strong, 7 ink.
+
+### 7.2 Encoding and quantisation (nothing here knows about lines)
+
+The MapLibre style paints plain colours that encode a level: lines `rgb(255, G, 0)` at opacity 0.75 (thin) or 1 (wide) with `G = level / 12`, fills `rgb(0, 0, B)`, `B = level / 12`, black erases. The pass reads the cell centre exactly as before (threshold on R decides line or not, 3.3), then the level: lines `round(G / R * 12)` (the ratio is the level whatever the coverage of an antialiased edge texel), fills `round(B * 12)`. The art texture holds `(level, line class)` per cell. Quantisation is a rounding of the encoded value: **no smoothing between cells, no blend, no antialiased grey**; stair removal acts on the line class and moves a cell to level 0 as before. The synthetic gate checks that every cell of a line is at its class's level (0 wrong in 384 lines per row) at N = 4, 8 and 12.
+
+### 7.3 Fills
+
+Water, parks and buildings are flat tone washes (`wash`), not Bayer lattices: the lattice read as noise under zoom and a flat grey reads as a surface. The lattice code (`toneLit`, the Bayer threshold) is kept for the dissolve between renderers only. Sections 3.7 and 5 describing the stipple and shower-door effect no longer apply to the street map.
+
+### 7.4 Tone ramps instead of dither ramps
+
+A class that fades in with zoom (`LOD`, `from` to `full`) is one layer, the same line from its first zoom, whose colour is a zoom `step` expression: it enters at level 1 (the faintest) and steps up through the levels, in steps of equal zoom length, to its role's level at `full` (`rampLevel`). Measured (`scripts/street/lod-check.mjs`, real map): forcing the layers through levels 1 to 7, 0 line cells are added, removed or moved (the dither ramp it replaces added 200 to 600 cells per 1/16 step); the tests assert one level at a time, monotonic, equal step length, for N = 3, 4, 6, 8, 10, 12. The final dashes of minor roads, paths and rail are unchanged (dash at least 1.42 widths). Thin lines are 1 art px wide throughout the fade (3.12 b).
+
+### 7.5 Globe
+
+Borders: not drawn below internal zoom 3.0, then the faintest level, one more level per `(3.5 - 3.0) / (N - 1)` of zoom, full ink from 3.5, both ways (was: off, a 50% dither band to 3.3, solid). The graticule is the `faint` level (dotted as before) and eases out through the levels in the street map between map zoom 6.5 and 9.5 (the globe is not drawn there). Coastline, markers, routes: ink; horizon outline: `soft`. The world coastline runs solid up to the tile coastline (a dashed 0.5 zoom band between them used to show dotted coasts at northern latitudes, because the cut to the street map at internal zoom 5.05 falls inside it where `map zoom = globe zoom + log2 cos(lat)` is 4 to 4.5; guarded by a style test and `scripts/globe/stale-check.mjs`).
+
+### 7.6 Choosing N
+
+`docs/palette/compare-light.png` and `compare-dark.png`: N = 4, 6, 8, 10 on the same frames (world, then Ho Chi Minh City and Lisbon at city-wide z10.5, district z13, street z15.5). N = 4: the hierarchy collapses (tertiary, residential and major roads share a level, washes are too heavy: 1/3 of the way to the ink). N = 6: works, but wash and faint merge and a fade has only 4 steps. N = 8 (default): six distinct tones for the six roles, washes light, 6 steps for the longest fade. N = 10: visually the same as 8, longer fades, the first levels get close to the page colour. Default 8, change `PALETTE_LEVELS` in `engine/palette.ts` (`?levels=N` with `?globe-debug`, or sessionStorage `palette-levels`, overrides it for checks).
+
+### 7.7 Tile fade
+
+While the camera rests, content that appears or disappears (tiles loading, unloading) is presented through the levels: an ease pass between the classifier and the presenter moves each cell at most one level per 32 ms towards its target. It never runs while the picture moves, so nothing ghosts; reduced motion disables it. Details in `docs/street-architecture.md`.

@@ -28,7 +28,7 @@ const args = Object.fromEntries(
 const EXTRA = process.env.LINES_QUERY ?? "";
 
 export const LIMITS = {
-  synthetic: { broken: 0, endMiss: 0.005, doubled: 0.005, thin: 0.005, dashZero: 0, dashMin: 0.2, dashSpread: 4, hollowPerStep: 3.0, hollowDoubled: 0.006, hollowBroken: 0.005 },
+  synthetic: { broken: 0, endMiss: 0.005, doubled: 0.005, thin: 0.005, dashZero: 0, dashMin: 0.2, dashSpread: 4, hollowPerStep: 3.0, hollowDoubled: 0.006, hollowBroken: 0.005, wrongLevel: 0.005 },
   // z14.5 downtown HCMC: main roads are one-pixel (thin class) lines there since the LOD thinning of the style, and dual
   // carriageways, river banks and junctions put thin lines side by side (measured 0.28-0.30); 2x2 blocks that are real
   // adjacency cannot be thinned. The synthetic sweep above stays the contract for the stair remover.
@@ -80,6 +80,8 @@ async function synthetic(browser, dpr) {
         const tag = `synthetic dpr${dpr} ${cls} z${zoom}`;
         // hollow roads: two outlines that touch at a measure-zero angle/offset tie (1 line of 384) are tolerated, 0.5 % like the ends
         check(`${tag} broken`, s.brokenFrac, onePx ? L.broken : L.hollowBroken);
+        // the palette level is the class's whatever the angle and offset (quantisation has no smoothing between cells)
+        check(`${tag} lines with a cell at the wrong palette level`, s.wrongLevelFrac, L.wrongLevel);
         if (onePx) {
           check(`${tag} endMiss`, s.endMissFrac, L.endMiss);
           check(`${tag} doubled`, s.doubledFrac, L.doubled);
@@ -119,6 +121,11 @@ async function real(browser, dpr) {
         const dbg = window.__streetDebug;
         const art = dbg.readCodes();
         const { cols, rows, codes } = art;
+        // palette: how many distinct levels the picture uses, and whether the tile fade has settled on the classified image
+        const seen = new Set(art.levels);
+        const presented = dbg.readPresentedLevels();
+        let unsettled = 0;
+        for (let i = 0; i < art.levels.length; i++) if (presented[i] !== art.levels[i]) unsettled++;
         const at = (x, y) => (x < 0 || y < 0 || x >= cols || y >= rows ? 0 : codes[y * cols + x] === 1 ? 1 : 0);
         // thin ink cells (class 1) in a fully inked 2x2 block: the stair remover must have left none
         let thin = 0, blk = 0, ink = 0;
@@ -129,10 +136,12 @@ async function real(browser, dpr) {
           thin++;
           if ((at(x + 1, y) && at(x, y + 1) && at(x + 1, y + 1)) || (at(x - 1, y) && at(x, y - 1) && at(x - 1, y - 1)) || (at(x + 1, y) && at(x, y - 1) && at(x + 1, y - 1)) || (at(x - 1, y) && at(x, y + 1) && at(x - 1, y + 1))) blk++;
         }
-        return { ink, thin, blk };
+        return { ink, thin, blk, distinct: seen.size, unsettled };
       });
       const tag = `real dpr${dpr} z${view.split(",")[2]}`;
       check(`${tag} has ink`, r.ink, 200, ">=");
+      check(`${tag} palette levels in use`, r.distinct, view.endsWith("14.5") ? 3 : 2, ">=");
+      check(`${tag} cells still fading after the map settled`, r.unsettled, 0);
       check(`${tag} thin-ink cells in 2x2 blocks`, r.thin ? r.blk / r.thin : 0, view.endsWith("14.5") ? LIMITS.real.blocksCity : LIMITS.real.blocks);
       if (dpr === 2 && view.endsWith("14.5")) {
         const before = await page.evaluate(() => ({ r: window.__streetDebug.renders(), raf: window.__raf.calls, p: window.__streetDebug.passes() }));

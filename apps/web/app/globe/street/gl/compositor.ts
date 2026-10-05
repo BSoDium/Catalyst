@@ -31,11 +31,26 @@ export interface OutputSize {
   cssH: number;
 }
 
+/**
+ * Tile fade: while the camera rests, cells that appear or disappear (tiles loading and unloading) ease through the grey
+ * levels instead of popping; while it moves (or under reduced motion) the picture is presented as classified, so nothing
+ * ghosts or smears. One level per tick, a tick every `tickMs`; the loop stops by itself when it has converged, so an idle
+ * map costs no frame.
+ */
+export const TILE_FADE = {
+  /** The camera counts as resting this long (ms) after its last movement. */
+  steadyMs: 100,
+  /** Time between two one-level steps (ms): a fade across all 8 levels takes about 7 x this. */
+  tickMs: 32,
+} as const;
+
 export interface CompositorHooks {
   /** Output size now (the engine knows the grid). */
   size(): OutputSize;
   /** Live pass parameters for an output of the given buffer size. */
   params(outW: number, outH: number): PassParams;
+  /** The camera has not moved for a while (the tile fade only runs then). Absent = never steady (no fade). */
+  steady?(): boolean;
   onContextChange?(lost: boolean): void;
 }
 
@@ -67,6 +82,11 @@ export class Compositor {
   private held = false;
   private suspended = false;
   private disposed = false;
+  private fadeOn = true;
+  /** Ease ticks still to run (0 = presented = classified). */
+  private easeLeft = 0;
+  private easeRaf = 0;
+  private easeLast = 0;
   private size = { w: 0, h: 0 };
   private onRender = () => this.frame();
   private onLost = (e: Event) => {
@@ -138,7 +158,48 @@ export class Compositor {
   /** Keep the last presented frame (true) or resume following the map (false; repaints once). */
   hold(on: boolean): void {
     this.held = on;
+    this.stopEase();
+    this.pass?.resetEase();
     if (!on) this.map.triggerRepaint();
+  }
+
+  /** Tile fade on or off (off: reduced motion); turning it off finishes any fade in progress at once. */
+  setFade(on: boolean): void {
+    this.fadeOn = on;
+    if (on) return;
+    this.stopEase();
+    if (this.ready && !this.isLost && this.pass && this.pass.srcW > 0) {
+      this.pass.ease(255);
+      this.draw(false);
+    }
+  }
+
+  private stopEase(): void {
+    this.easeLeft = 0;
+    if (this.easeRaf) cancelAnimationFrame(this.easeRaf);
+    this.easeRaf = 0;
+  }
+
+  /** Ease tick loop: a one-level step every `tickMs`, until the presented image has reached the target. */
+  private easeTick = (ts: number) => {
+    this.easeRaf = 0;
+    if (this.disposed || !this.pass || this.isLost || this.held || this.suspended) return;
+    if (ts - this.easeLast >= TILE_FADE.tickMs - 2) {
+      this.easeLast = ts;
+      this.pass.ease(1);
+      this.easeLeft--;
+      this.draw(false);
+    }
+    if (this.easeLeft > 0 && !document.hidden) this.easeRaf = requestAnimationFrame(this.easeTick);
+    else if (this.easeLeft > 0) this.stopEase();
+  };
+
+  private startEase(levels: number): void {
+    this.easeLeft = levels;
+    if (!this.easeRaf && !document.hidden) {
+      this.easeLast = performance.now();
+      this.easeRaf = requestAnimationFrame(this.easeTick);
+    }
   }
 
   /**
@@ -148,6 +209,8 @@ export class Compositor {
   suspend(on: boolean): void {
     if (on === this.suspended) return;
     this.suspended = on;
+    this.stopEase();
+    this.pass?.resetEase();
     if (!on) this.map.triggerRepaint();
   }
 
@@ -160,6 +223,22 @@ export class Compositor {
     const t1 = perfStart();
     this.draw(true);
     perfEnd("compositor.pass", t1);
+  }
+
+  /**
+   * The new classified image is in; present it, instantly while the picture moves (and under reduced motion), else ease
+   * towards it. Easing never runs during motion: an eased image of a moving map would smear.
+   */
+  private present(levels: number): void {
+    const pass = this.pass!;
+    const ease = this.fadeOn && this.options.native && this.hooks.steady?.() === true;
+    if (!ease) {
+      this.stopEase();
+      pass.ease(255);
+    } else {
+      pass.ease(1);
+      this.startEase(levels - 1);
+    }
   }
 
   private draw(pool: boolean): void {
@@ -182,6 +261,7 @@ export class Compositor {
       const s = this.options.native ? Math.max(1, this.options.scale ?? 1) : 1;
       if (s === 1) pass.poolPass(p, w, h);
       else pass.poolPass({ ...p, cellOut: s }, w * s, h * s);
+      this.present(p.levels.length);
     }
     pass.presentPass(p, w, h);
     this.size = { w, h };
@@ -208,8 +288,18 @@ export class Compositor {
   }
 
   /** The finished art image as class codes (row 0 = top). A GPU stall: tests and measurement only. */
-  readCodes(): { cols: number; rows: number; codes: Uint8Array } | null {
+  readCodes(): { cols: number; rows: number; codes: Uint8Array; levels: Uint8Array } | null {
     return this.ready && !this.isLost && this.pass && this.pass.artW > 0 ? this.pass.readCodes() : null;
+  }
+
+  /** The presented palette level of every cell (after easing), row 0 = top. A GPU stall: tests and measurement only. */
+  readPresentedLevels(): Uint8Array | null {
+    return this.ready && !this.isLost && this.pass && this.pass.artW > 0 ? this.pass.readPresentedLevels() : null;
+  }
+
+  /** Ease ticks still to run (0 = the presented image is the classified one). Measurement. */
+  get easing(): number {
+    return this.easeLeft;
   }
 
   /** Block until the GPU has finished this context's queued work (benchmark only). */
@@ -230,6 +320,7 @@ export class Compositor {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
+    this.stopEase();
     this.ready = false;
     this.map.off("render", this.onRender);
     this.canvas.removeEventListener("webglcontextlost", this.onLost);

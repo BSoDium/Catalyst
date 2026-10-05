@@ -10,7 +10,8 @@ import {
   type ShaderMaterial,
 } from "three";
 import type { GlobePlace, GlobeRoute } from "../types";
-import type { GlobeTheme } from "./colors";
+import type { GlobeTheme, Rgb } from "./colors";
+import { borderLevel } from "./palette";
 import type { ViewBasis } from "./geo";
 import { zoomToRadiusPx } from "./geo";
 import { graticuleSegments, polylinesToSegments } from "./geometry";
@@ -42,7 +43,10 @@ export class GlobeScene {
   private materials: ShaderMaterial[] = [];
   private occluder = occluderMaterial();
   private graticule = lineMaterial(1, 3);
-  private borders = lineMaterial(0);
+  private borders = lineMaterial(1);
+  private bordersLines: LineSegments | null = null;
+  private ramp: readonly Rgb[] = [];
+  private borderLevelNow = -1;
   private coast = lineMaterial(1);
   private silhouette = silhouetteMaterial();
 
@@ -61,7 +65,8 @@ export class GlobeScene {
     // Each layer is drawn in a fixed order (renderOrder) over the disc: grid, borders, coast, routes, horizon outline,
     // markers (last, so nothing can draw over a marker).
     this.add(new LineSegments(this.track(segmentGeometry(graticuleSegments(15, 3))), this.graticule), 1);
-    this.add(new LineSegments(this.track(segmentGeometry(polylinesToSegments(data.borders, 1))), this.borders), 2);
+    this.bordersLines = new LineSegments(this.track(segmentGeometry(polylinesToSegments(data.borders, 1))), this.borders);
+    this.add(this.bordersLines, 2);
     this.add(new LineSegments(this.track(segmentGeometry(polylinesToSegments(data.coastlines, 1))), this.coast), 3);
 
     this.routes = new RouteLayer(this.scene, data.routes);
@@ -93,7 +98,8 @@ export class GlobeScene {
     // The disc is the ocean: exactly the page colour, so the far side stays hidden without a visible body.
     this.occluder.uniforms.uColor!.value.setRGB(...t.background);
     this.graticule.uniforms.uColor!.value.setRGB(...t.grid);
-    this.borders.uniforms.uColor!.value.setRGB(...t.ink);
+    this.ramp = t.ramp;
+    this.borderLevelNow = -1;
     this.coast.uniforms.uColor!.value.setRGB(...t.ink);
     this.silhouette.uniforms.uColor!.value.setRGB(...t.outline);
     this.markers.applyTheme(t);
@@ -104,15 +110,21 @@ export class GlobeScene {
   syncCamera(basis: ViewBasis, zoom: number, pixel: number) {
     this.routes.setLift(routeLift(zoom));
     this.routes.setPeriod((ROUTE_DASH_PX * pixel) / zoomToRadiusPx(zoom));
-    // Borders: off, then a dotted 50% dither, then solid. Stepped (not a smooth ramp) because a low-coverage
-    // dither on 1px lines reads as noise instead of a fade.
-    const b = TUNING.borderZoom;
-    this.borders.uniforms.uCoverage!.value = zoom < b.start ? 0 : zoom < b.end ? 0.5 : 1;
+    // Borders: not drawn, then the faintest grey level, stepping up through the palette to full ink. The fade is TONE (a
+    // line is always solid), never a dither: a low-coverage dither on 1px lines reads as noise instead of a fade.
+    this.setBorderLevel(borderLevel(zoom, this.ramp.length, TUNING.borderZoom));
     const u = this.silhouette.uniforms;
     u.uC!.value = basis.c;
     u.uE!.value = basis.east;
     u.uN!.value = basis.north;
     u.uInvD!.value = 1 / basis.d;
+  }
+
+  private setBorderLevel(level: number) {
+    if (level === this.borderLevelNow || !this.bordersLines) return;
+    this.borderLevelNow = level;
+    this.bordersLines.visible = level > 0;
+    if (level > 0) this.borders.uniforms.uColor!.value.setRGB(...this.ramp[level]!);
   }
 
   dispose() {

@@ -11,8 +11,10 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { createHandover, type HandoverDebug, type HandoverHandle, type Notice } from "./handover/controller";
+import { HANDOVER } from "./handover/maths";
+import { applyDebugLevels } from "./engine/palette";
 import { enablePerf, perfEnd, perfStart } from "./engine/perf";
-import type { GlobeProps } from "./types";
+import { isFitView, type GlobeProps } from "./types";
 
 type Status = "loading" | "ready" | "unavailable" | "lost";
 
@@ -88,6 +90,12 @@ export default function GlobeCanvas({
   const handleRef = useRef<HandoverHandle | null>(null);
   const [status, setStatus] = useState<Status>("loading");
   const [notice, setNotice] = useState<Notice | null>(null);
+  // A direct load or reload on a place starts framed on it: its first paint is the page colour only (no flash of planet),
+  // then the stage fades in once the final frame is drawn (handover `onReveal`). Any other mount (home, the globe coming
+  // back from the mobile slide-over with a saved view) shows at once. Decided on the first render, so the server-rendered
+  // shell and the hydrated one agree and nothing moves.
+  const [veil] = useState(() => isFitView(initialView));
+  const [revealed, setRevealed] = useState(!veil);
 
   // `initialView` is read once; afterwards this tracks the latest view so that re-creating the engine
   // (only when `places` or `routes` change) keeps the camera where it was.
@@ -108,6 +116,7 @@ export default function GlobeCanvas({
     let cancelled = false;
     let handle: HandoverHandle | null = null;
 
+    if (debugEnabled()) applyDebugLevels();
     void (async () => {
       try {
         const geo = await loadGeodata();
@@ -136,6 +145,7 @@ export default function GlobeCanvas({
             perfEnd("react.onViewChange", t0);
           },
           onContextChange: (lost) => setStatus(lost ? "lost" : "ready"),
+          onReveal: veil ? () => setRevealed(true) : undefined,
           streetOptions: debugEnabled() ? streetDebugOptions() : undefined,
           dissolve: debugEnabled() ? dissolveForTests() : undefined,
         });
@@ -152,6 +162,7 @@ export default function GlobeCanvas({
         if (cancelled) return;
         if (!isWebGLUnavailable(e)) console.error("Globe failed to start", e);
         setStatus("unavailable");
+        setRevealed(true);
       }
     })();
 
@@ -186,8 +197,10 @@ export default function GlobeCanvas({
     handleRef.current?.setReducedMotion(reducedMotion);
   }, [reducedMotion]);
 
+  // Fade in from the page colour (the stage itself is transparent over it): opacity only, no layout. Instant when reduced.
+  const fade = revealed ? (reducedMotion ? undefined : { transition: `opacity ${HANDOVER.fadeInMs}ms var(--ease-standard, cubic-bezier(0.2, 0, 0, 1))` }) : { opacity: 0 };
   return (
-    <div data-globe="three" data-state={status} className="relative size-full overflow-hidden select-none">
+    <div data-globe="three" data-state={status} data-revealed={revealed ? "" : undefined} style={fade} className="relative size-full overflow-hidden select-none">
       <div ref={stageRef} aria-hidden="true" className="absolute inset-0 overflow-hidden" />
       <div ref={labelsRef} aria-hidden="true" />
       <div ref={streetRef} aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden" />

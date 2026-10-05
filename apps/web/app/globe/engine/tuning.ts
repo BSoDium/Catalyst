@@ -10,8 +10,11 @@ export const TUNING = {
     // on fractional DPRs (Android 2.625, some Windows scales).
     return Math.max(1, Math.round(base * dpr)) / dpr;
   },
-  /** Borders: hidden below `start`, dotted (50%) from `start`, solid from `end`. Zoom = internal globe zoom. */
-  borderZoom: { start: 3.0, end: 3.3 },
+  /**
+   * Borders fade in with zoom through the palette's grey levels: not drawn below `start`, the faintest level just above
+   * it, one level more every (end - start) / levels of zoom, full ink from `end` (both ways). Zoom = internal globe zoom.
+   */
+  borderZoom: { start: 3.0, end: 3.5 },
   maxZoom: 6.5,
   /** Street map's maximum MapLibre zoom (STREET_TUNING.maxZoom); the unified camera's range ends there. */
   streetMapMaxZoom: 17.5,

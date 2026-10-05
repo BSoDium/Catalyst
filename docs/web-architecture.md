@@ -226,14 +226,15 @@ engine); every other initial chunk is byte-identical. `grep WebGLRenderer build/
 8. Unmount (effect cleanup, including the mobile slide-over): cancel rAF, remove all listeners
    (ResizeObserver, DPR media query, visibility, pointer, theme), dispose geometries, materials and the
    renderer, `forceContextLoss()`, remove the canvas and the label nodes. Safe to call twice.
-9. Theme: colours are resolved from the CSS variables `--background`, `--foreground`, `--globe-limb` and
-   `--globe-grid` through a probe element, and re-read on `prefers-color-scheme` changes (the clear colour, the disc
+9. Theme: colours are resolved from the two CSS variables `--background` and `--foreground` through a probe element
+   (every other colour is a level of the shared grey palette derived from them, `engine/palette.ts`, see
+   `docs/pixel-line-rules.md` section 7; `--globe-limb` and `--globe-grid` are no longer read), and re-read on `prefers-color-scheme` changes (the clear colour, the disc
    and every material are updated). Labels use the same variables directly in CSS.
    **The ocean is the page colour**: the disc is drawn in exactly `--background` (opaque, depth-writing, so the far
    side never shows through) and the clear colour is the same, so the canvas has no seam against the page, light or
-   dark. Everything else is linework drawn on top: coastlines and borders in `--foreground`, the graticule in
-   `--globe-grid`, and a 1 px horizon line in `--globe-limb` (30% of the ink; kept because it still reads as the
-   globe's edge). Verified: the screenshot pixel in open ocean, at the page edge and inside the disc is
+   dark. Everything else is linework drawn on top: coastlines in the ink, borders stepping up through the palette levels
+   as you zoom in (below), the graticule in the `faint` level, and a 1 px horizon line in the `soft` level (kept
+   because it still reads as the globe's edge). Verified: the screenshot pixel in open ocean, at the page edge and inside the disc is
    `rgb(251 251 251)` in light and `rgb(10 10 10)` in dark, equal to the computed page background.
 10. Inset (`GlobeProps.insetRight`, pure maths in `engine/inset.ts`, unit-tested in `inset.test.ts`):
     - Projection centre: the camera uses `setViewOffset` to render the window of a same-sized virtual frame shifted
@@ -249,13 +250,19 @@ engine); every other initial chunk is byte-identical. `grep WebGLRenderer build/
       inset and `1440 - panelLeft` agree within the sampling jitter at 88/173/257 ms). Other changes (a viewport
       resize while open) and `reducedMotion` apply at once. The initial inset is read at creation, so a direct load
       of `/locations/:slug` starts centred.
-    - Scissor and fade (stretch): while an inset is set, the GL scissor limits drawing to the free area plus a
-      margin (`renderMargin`: 10% of the width, 96 to 240 px) beyond the panel edge, in low-res buffer pixels, and the
-      canvas and the label layer get a CSS `mask-image` gradient that dissolves the map across that margin, so it
-      looks like the map continues under the translucent panel and fades instead of being cut. The zone is anchored
-      on the panel's edge and grows with the inset, so it is continuous while the panel slides. **Measured effect on
-      cost: none** (see the measurements below); it is kept because it is correct, never slower, and may help
-      weaker GPUs with larger buffers. Debug hook: `__globeDebug.setScissor(false)`.
+    - Fade: while an inset is set, the canvas and the label layer get a CSS `mask-image` gradient that dissolves the
+      map across a margin beyond the panel edge (`renderMargin`: 10% of the width, 96 to 240 px), so it looks like the
+      map continues under the translucent panel and fades instead of being cut. The zone is anchored on the panel's
+      edge and grows with the inset, so it is continuous while the panel slides. The whole buffer is always drawn:
+      there used to be a GL scissor limited to the free area plus the margin, which measured no gain (below) and is
+      gone, with its `setScissor` hook.
+    - **Stale edge (fixed).** At street scale with the panel open the soft edge showed an image that did not move with
+      the zoom, with borders in it. Cause: the Three.js canvas is suspended while the street map is shown (cut), but it
+      kept its last frame on screen, and the street canvas dissolves into whatever is underneath at the same edge. A
+      suspended canvas is now `opacity: 0` (not `visibility: hidden`: the canvas is the pointer target at every scale and
+      hidden elements get no pointer events; shown again by the next frame it draws, `GlobeRenderer.setSuspended` and
+      `renderNow`). `scripts/globe/stale-check.mjs` removes the Three.js canvas from the page and requires the strip
+      to be pixel-identical (the old build changes 3,114 pixels), and requires the edge to follow the zoom.
 
 11. Street scale: see the next section. Unmounting (the mobile slide-over, a route change) disposes both renderers.
 
@@ -401,7 +408,10 @@ world round trips, 3 live at street scale (Three + 2) and 1 after (43 created, 4
   newly selected place plays the 2.2 s draw-on, and only when motion is allowed. The route containing the
   selected place is matched by coordinates (the seam type has no slugs on routes) and its stops get the
   5 px marker.
-- Borders: hidden below zoom 3.0, 50% dither to 3.3, solid above (thresholds from the renderer decision).
+- Borders: not drawn below internal zoom 3.0, then the faintest palette level, one level more every
+  (3.5 - 3.0) / (levels - 1) of zoom up to full ink at 3.5, and the same backwards on the way out: a fade in TONE, never a
+  dither (`TUNING.borderZoom`, `engine/palette.ts borderLevel`; the old 50% dither band read as noise and the border
+  popped in and out).
 - Labels: HTML overlay (`aria-hidden`, no tab stops: a visual duplicate of the places list, extra tab stops
   would only repeat it). Labels are `pointer-events: none`; the canvas pointer handler hit-tests them
   (grown by 2 px for mouse, 12 px for touch), so a drag that starts on a label still rotates, and a click
@@ -455,9 +465,31 @@ CHROME_PATH=/path/to/chrome node apps/web/scripts/globe/markers.mjs [quick]     
 
 These Three.js-only scripts run with the street map off (`no-street`). `BASE_URL` overrides `http://localhost:5174`. The places list is visually hidden, so the scripts open places like a
 keyboard user (`page.focus` on `[data-place-link]` + Enter). `bench.mjs ... panel` opens `/locations/kyoto` with the
-panel open and repeats both passes with the scissor off. `check.mjs` also covers the inset (direct load, animation vs
+panel open. `check.mjs` also covers the inset (direct load, animation vs
 panel position, picking, close, reduced motion) and the ocean colour in both schemes. The scripts install their instrumentation before app code runs:
 a rAF call counter, WebGL context created/lost counters and a counter on `gl.clear` (Three issues one per frame).
+
+## Reload fade (direct load of a place)
+
+A direct load or reload of `/locations/:slug` used to show the whole planet for a moment and then jump to the framed city.
+Now the first paint is the page colour only (black in the dark theme, `--background` in the light one), and the stage
+fades in once the final framed view is drawn. No camera motion, no layout shift.
+
+- `Globe` renders nothing on the server and on the first client render; for a fit view (`isFitView(initialView)`, i.e. a
+  direct load of a place) the `Suspense` fallback is `null` (no disc outline) and `GlobeCanvas` renders its root with
+  `opacity: 0` (`veil`, decided on the first render, so the server markup and the hydrated one agree). A saved view
+  (the globe coming back from the mobile slide-over) and the home page are not veiled.
+- The handover controller calls `onReveal` ONCE (`tryReveal`): when the street map has been cut in (a start at street
+  scale: `restoring`, `shown >= 1`), or at the globe's first frame when the start needs no street map; a start that needs
+  the street map waits at most `HANDOVER.revealWaitMs` (1500 ms), then reveals whichever correct frame exists (the globe at
+  its own maximum, centred on the place); if the street map becomes ready later, the usual cut applies. A dead street
+  map (no tiles, failure) reveals the globe at once. WebGL unavailable also reveals (the status message must show).
+- The fade is `opacity` over `HANDOVER.fadeInMs` (500 ms, `--ease-standard`); under reduced motion there is no
+  transition (instant). The place panel is untouched.
+- Check: `scripts/globe/reload-fade.mjs` samples every animation frame from navigation: first paint transparent; never
+  visible away from the final framing; no camera motion; 450 ms fade (instant with reduced motion); the final frame is the
+  street map; with the street chunk delayed by 4 s the globe frame is revealed after the wait (1.9 s), not before.
+  Measured on the M4 (local PMTiles): reveal at 0.62 to 0.65 s after navigation.
 
 ## Production globe measurements
 
@@ -473,11 +505,11 @@ change and synchronous render per rAF, 1.5 s warm-up then 10 s measured (600 fra
 | Viewport (drawing buffer) | fps | rAF interval | `renderer.render` JS | Render + labels JS | Render + labels + 1px `readPixels` (GPU sync) |
 | --- | --- | --- | --- | --- | --- |
 | 1440x900 @2x (480x300) | 60 | 16.7 / 16.7 / 16.8 | 0.2 / 0.3 / 0.6 | 0.4 / 0.5 / 1.2 | 2.3 / 2.5 / 3.0 |
-| 1440x900 @2x, panel open (inset 720, scissor on) | 60 | 16.7 / 16.8 / 16.8 | 0.2 / 0.3 / 0.6 | 0.4 / 0.5 / 1.2 | 2.0 / 2.3 / 2.6 (second run 1.8 / 2.8 / 4.4) |
-| 1440x900 @2x, panel open, scissor off | 60 | 16.7 / 16.8 / 16.8 | 0.2 / 0.3 / 0.4 | 0.3 / 0.4 / 0.5 | 2.0 / 2.3 / 5.4 |
+| 1440x900 @2x, panel open (inset 720, scissor on; historical) | 60 | 16.7 / 16.8 / 16.8 | 0.2 / 0.3 / 0.6 | 0.4 / 0.5 / 1.2 | 2.0 / 2.3 / 2.6 (second run 1.8 / 2.8 / 4.4) |
+| 1440x900 @2x, panel open, scissor off (the shipped state) | 60 | 16.7 / 16.8 / 16.8 | 0.2 / 0.3 / 0.4 | 0.3 / 0.4 / 0.5 | 2.0 / 2.3 / 5.4 |
 | 390x844 @3x, emulated (195x422) | 60 | 16.7 / 16.7 / 16.8 | 0.2 / 0.3 / 0.6 | 0.4 / 0.5 / 1.2 | 2.0 / 2.9 / 4.5 |
 
-The scissor changes nothing measurable on this GPU: the GPU-synced time with the panel open is 2.0 ms p50 with it
+(Historical, the reason the scissor was removed.) The scissor changes nothing measurable on this GPU: the GPU-synced time with the panel open is 2.0 ms p50 with it
 and without it (run to run noise is larger than the difference). The buffer is only 480x300 and the scene is
 vertex-bound, so skipping the covered strip saves almost no fragment work. The panel itself adds the CSS cost of a
 backdrop blur over the canvas, which does not show in these numbers (they time the WebGL path only) and which only
@@ -504,7 +536,7 @@ Measured behaviour (same build, same environment):
 | 20 open/close cycles (mobile) | WebGL contexts created 23 / lost 22 (live 1), canvases in the DOM 1, view unchanged; 23 = 1 WebGL probe (lost at once) + 22 globes (initial, one restore, 20 cycles) |
 | Panel, direct load (`/locations/kyoto`, 1440x900) | inset 720, centre shift 120 buffer px, Kyoto drawn at (362, 452) CSS px: the middle of the left half is (360, 450); the 2 px offset is the snap to the 3 px art grid |
 | Panel opening from `/` | inset ramps 0, 390, 607, 698, 720 at 0, 88, 173, 257, 343 ms while the panel's left edge goes 1440, 1052, 834, 742, 720: the two sum to 1440 throughout |
-| Panel closing | inset back to 0, scissor off, Kyoto returns to (722, 452), the middle of the full width |
+| Panel closing | inset back to 0, Kyoto returns to (722, 452), the middle of the full width |
 | Panel, reduced motion | after two frames: inset 720 at once and the panel at x = 720 (no animation) |
 | Panel, idle | 0 rAF over 2.5 s with the panel open |
 | Panel, picking | a click at the marker's shifted position keeps the place selected (no navigation elsewhere) |
@@ -547,8 +579,8 @@ whole block. Markers are hidden about 12 css px before the limb: earlier than th
 Routes had the same cause in a milder form (1 to 3 route pixels missing in 26 of 100 tilted views). They now
 skip the depth test and are hidden by an analytic ray-vs-disc test on the centre line (`routeMaterial`), so a dash is
 cut across its length or not at all; the pixel set equals the depth-off render in every sampled view and is empty beyond
-the horizon. Not changed: the graticule, borders and coastlines (1 px, no footprint), and the GL scissor under the detail
-panel, which cuts at the panel edge by design (masked there).
+the horizon. Not changed: the graticule, borders and coastlines (1 px, no footprint), (the GL scissor under the detail panel that
+was listed here is gone, see "Stale edge").
 
 Evidence and checks: `docs/screenshots/markers-before.png` / `markers-after.png` (same 9 views, 3x enlarged crops:
 centre, north, south, near the limb, selected, high zoom; before and after). `scripts/globe/markers.mjs` draws markers

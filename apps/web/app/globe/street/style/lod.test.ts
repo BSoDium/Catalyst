@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { expInterp } from "../core/art-line";
-import { toneLit } from "../core/art-line";
-import { FILL_LOD, LOD, finalAt, quantisedTone, rampStops, toneAt, visibleAt, type LodKey } from "./lod";
-import { RAMP_SPECS, SPECS, buildStreetStyle, linePaint, type Schema } from "./street-style";
+import { roleLevel } from "../../engine/palette";
+import { FILL_LOD, LOD, finalAt, levelAt, progressAt, stepZoom, visibleAt, type LodKey } from "./lod";
+import { decodeLevel, levelOfPaint } from "./probe";
+import { SPECS, buildStreetStyle, linePaint, type Schema } from "./street-style";
 
 const KEYS = Object.keys(LOD) as LodKey[];
+const LEVEL_COUNTS = [3, 4, 6, 8, 10, 12];
 const empty: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
 const TILES = { tiles: ["cat-p1://https://tiles.example/{z}/{x}/{y}.pbf"], minzoom: 0, maxzoom: 14, bounds: null };
 const make = (schema: Schema) => buildStreetStyle({ schema, tiles: TILES, coastlines: empty, borders: empty, graticule: empty, routes: empty });
@@ -17,35 +19,6 @@ describe("LOD table", () => {
       expect(e.from, k).toBeGreaterThanOrEqual(3);
       expect(e.full, k).toBeGreaterThan(e.from + 0.5);
       expect(e.full, k).toBeLessThanOrEqual(17.5 + 1e-9); // the street map stops at z17.5
-    }
-  });
-  it("no class is visible below its fromZoom, and every class is at tone 1 from its fullZoom", () => {
-    for (const k of KEYS) {
-      const e = LOD[k];
-      for (let z = 0; z <= e.from; z += 0.1) {
-        expect(toneAt(e, z), `${k} z${z}`).toBe(0);
-        expect(visibleAt(e, z), `${k} z${z}`).toBe(false);
-      }
-      for (let z = e.full; z <= 20; z += 0.1) expect(toneAt(e, z), `${k} z${z}`).toBe(1);
-      expect(finalAt(e, e.full)).toBe(true);
-      expect(finalAt(e, e.full - 0.01)).toBe(false);
-    }
-  });
-  it("the tone is monotonic with zoom (a class never gets lighter as you approach)", () => {
-    for (const k of KEYS) {
-      let prev = 0;
-      for (let z = 0; z <= 20; z += 0.05) {
-        const t = toneAt(LOD[k], z);
-        expect(t, `${k} z${z}`).toBeGreaterThanOrEqual(prev - 1e-12);
-        prev = t;
-      }
-    }
-  });
-  it("the opacity stops of the style reproduce the table", () => {
-    for (const k of KEYS) {
-      const stops = rampStops(LOD[k]);
-      for (let z = LOD[k].from; z <= LOD[k].full; z += 0.07) expect(expInterp(stops, z, 1), `${k} z${z}`).toBeCloseTo(toneAt(LOD[k], z), 1);
-      for (let i = 1; i < stops.length; i++) expect(stops[i]![0]).toBeGreaterThan(stops[i - 1]![0]);
     }
   });
   it("roads appear by rank: motorways first, then primary, secondary, tertiary, residential, service, paths", () => {
@@ -61,6 +34,16 @@ describe("LOD table", () => {
     expect(LOD.buildingOutline.from).toBeGreaterThanOrEqual(16);
     expect(FILL_LOD.building.from).toBeGreaterThanOrEqual(15.5);
   });
+  it("tone follows the hierarchy: major roads at least as strong as minor roads, rail and paths softer, borders stronger than washes", () => {
+    for (const n of LEVEL_COUNTS) {
+      const lv = (k: LodKey) => roleLevel(LOD[k].role, n);
+      expect(lv("highway"), `n=${n}`).toBeGreaterThanOrEqual(lv("medium"));
+      expect(lv("medium"), `n=${n}`).toBeGreaterThanOrEqual(lv("service"));
+      expect(lv("service"), `n=${n}`).toBeGreaterThanOrEqual(roleLevel(FILL_LOD.water.role, n));
+      expect(lv("rail"), `n=${n}`).toBeLessThanOrEqual(lv("minor"));
+      expect(lv("river"), `n=${n}`).toBeGreaterThanOrEqual(lv("minor"));
+    }
+  });
   it("minor classes keep a dashed final pattern whose dashes can catch a cell centre on a diagonal", () => {
     for (const k of ["minor", "link", "service", "path", "rail", "canal", "stream", "regionBorder"] as const) {
       const d = LOD[k].dash;
@@ -70,76 +53,84 @@ describe("LOD table", () => {
   });
 });
 
-describe("ramp = screen-anchored ordered dither", () => {
-  it("coverage only ever grows with the tone: a cell lit at one zoom stays lit as the class gets stronger", () => {
-    for (let cy = 0; cy < 16; cy++)
-      for (let cx = 0; cx < 16; cx++) {
-        let lit = false;
-        for (let z = 6; z <= 16; z += 0.02) {
-          const now = toneLit(toneAt(LOD.highway, z), cx, cy);
-          if (lit) expect(now, `cell ${cx},${cy} z${z.toFixed(2)}`).toBe(true);
-          lit ||= now;
+describe("tone ramp (the fade-in goes through the grey levels, never through a dither)", () => {
+  for (const n of LEVEL_COUNTS) {
+    it(`n=${n}: not drawn below from, the faintest level just above it, the role's level from full`, () => {
+      for (const k of KEYS) {
+        const e = LOD[k];
+        const final = roleLevel(e.role, n);
+        for (let z = 0; z <= e.from; z += 0.1) expect(levelAt(e, z, n), `${k} z${z}`).toBe(0);
+        expect(levelAt(e, e.from + 1e-3, n), k).toBe(1);
+        for (let z = e.full; z <= 20; z += 0.1) expect(levelAt(e, z, n), `${k} z${z}`).toBe(final);
+        expect(finalAt(e, e.full)).toBe(true);
+        expect(finalAt(e, e.full - 0.01)).toBe(false);
+        expect(visibleAt(e, e.from)).toBe(false);
+      }
+    });
+    it(`n=${n}: the level only goes up with zoom, one level at a time, in steps of equal zoom length`, () => {
+      for (const k of KEYS) {
+        const e = LOD[k];
+        let prev = 0;
+        for (let z = e.from - 0.2; z <= e.full + 0.2; z += 0.01) {
+          const lv = levelAt(e, z, n);
+          expect(lv - prev, `${k} z${z.toFixed(2)}`).toBeGreaterThanOrEqual(0);
+          expect(lv - prev, `${k} z${z.toFixed(2)}`).toBeLessThanOrEqual(1);
+          prev = lv;
+        }
+        const final = roleLevel(e.role, n);
+        for (let l = 2; l <= final; l++) {
+          expect(stepZoom(e, l, n) - stepZoom(e, l - 1, n), k).toBeCloseTo((e.full - e.from) / final, 9);
+          expect(levelAt(e, stepZoom(e, l, n) + 1e-6, n), k).toBe(l);
+          expect(levelAt(e, stepZoom(e, l, n) - 1e-6, n), k).toBe(l - 1);
         }
       }
-  });
-  it("consecutive frames at slightly different zoom differ by newly lit cells only", () => {
-    for (const k of KEYS) {
-      const e = LOD[k];
-      for (let z = e.from; z < e.full; z += 0.05) {
-        const a = quantisedTone(toneAt(e, z));
-        const b = quantisedTone(toneAt(e, z + 0.02));
-        for (let cy = 0; cy < 8; cy++) for (let cx = 0; cx < 8; cx++) if (toneLit(a, cx, cy)) expect(toneLit(b, cx, cy)).toBe(true);
-      }
-    }
-  });
-  it("the first visible zoom lights something and the last ramp frame lights every cell", () => {
-    for (const k of KEYS) {
-      const e = LOD[k];
-      const lights = (t: number) => { let n = 0; for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) if (toneLit(t, x, y)) n++; return n; };
-      expect(lights(quantisedTone(toneAt(e, e.full - 1e-3)))).toBeGreaterThanOrEqual(60);
-      expect(lights(quantisedTone(toneAt(e, e.from + 0.9 * (e.full - e.from))))).toBeGreaterThan(lights(quantisedTone(toneAt(e, e.from + 0.1 * (e.full - e.from)))));
-    }
+    });
+  }
+  it("progress is 0 at from, 1 at full", () => {
+    expect(progressAt(LOD.major, LOD.major.from)).toBe(0);
+    expect(progressAt(LOD.major, LOD.major.full)).toBe(1);
   });
 });
 
 describe("style wiring of the LOD", () => {
-  it("every class has a final spec and a ramp spec: the ramp ends where the final look starts, and both share geometry", () => {
-    for (const spec of SPECS.filter((s) => s.lod)) {
-      const ramp = RAMP_SPECS.find((r) => r.id === `${spec.id}-ramp`)!;
-      expect(ramp, spec.id).toBeDefined();
-      expect(ramp.minzoom).toBe(LOD[spec.lod!].from);
-      expect(ramp.maxzoom).toBe(LOD[spec.lod!].full);
-      expect(ramp.pm).toBe(spec.pm);
-      expect(ramp.omt).toBe(spec.omt);
-      expect(ramp.ch).toBe("fg");
-    }
-  });
-  for (const schema of ["protomaps", "openmaptiles"] as const) {
-    it(`${schema}: no layer of a class exists below its fromZoom, the ink starts at fullZoom, the ramp ends there`, () => {
-      const st = make(schema);
-      const byId = new Map((st.layers as unknown as L[]).map((l) => [l.id, l]));
+  it("every class is ONE layer that exists from `from`: no ramp layers, no tone-channel layers", () => {
+    for (const schema of ["protomaps", "openmaptiles"] as const) {
+      const st = make(schema).layers as unknown as L[];
+      expect(st.some((l) => /-ramp$/.test(l.id))).toBe(false);
+      const byId = new Map(st.map((l) => [l.id, l]));
       for (const spec of SPECS.filter((s) => s.lod)) {
         const e = LOD[spec.lod!];
-        const ramp = byId.get(`${spec.id}-ramp`)!;
-        const fin = byId.get(spec.id)!;
-        expect(ramp.minzoom, ramp.id).toBe(e.from);
-        expect(ramp.maxzoom, ramp.id).toBe(e.full);
-        expect(fin.minzoom, fin.id).toBe(e.full);
-        expect(ramp.paint["line-color"]).toBe("#00ff00");
+        expect(byId.get(spec.id)!.minzoom, `${schema} ${spec.id}`).toBe(e.from);
       }
-    });
-  }
+    }
+  });
+  it("the colour of a class at a zoom is the level the table says (every N)", () => {
+    for (const spec of SPECS.filter((s) => s.lod && s.type === "line")) {
+      const e = LOD[spec.lod!];
+      const color = linePaint(spec, 3).paint["line-color"];
+      for (let z = e.from + 1e-3; z <= e.full + 1; z += 0.05) expect(levelOfPaint(color, z), `${spec.id} z${z.toFixed(2)}`).toBe(levelAt(e, z));
+    }
+  });
+  it("fills fade in through the levels up to their wash", () => {
+    for (const spec of SPECS.filter((s) => s.type === "fill")) {
+      const st = (make("openmaptiles").layers as unknown as L[]).find((l) => l.id === spec.id)!;
+      const f = spec.fade!;
+      expect(st.minzoom).toBe(f.from);
+      expect(levelOfPaint(st.paint["fill-color"], f.from + 1e-3), spec.id).toBe(1);
+      expect(levelOfPaint(st.paint["fill-color"], f.full + 1), spec.id).toBe(roleLevel(f.role));
+      expect(st.paint["fill-opacity"]).toBe(1);
+    }
+  });
   it("the two schemas expose the same layers (identical look), with the same zoom ranges", () => {
     // the world-data layers and the sea outline follow the per-schema hand-over zoom (the one deliberate difference)
     const tiles = (st: L[]) => st.filter((l) => !/^world-|^water-edge$/.test(l.id)).map((l) => [l.id, l.minzoom, l.maxzoom]);
     expect(tiles(make("protomaps").layers as unknown as L[])).toEqual(tiles(make("openmaptiles").layers as unknown as L[]));
   });
-  it("ramp layers keep the one-art-pixel floor and never paint below it", () => {
-    for (const r of RAMP_SPECS) {
-      const { paint } = linePaint(r, 3);
-      const w = paint["line-width"];
+  it("lines keep the one-art-pixel floor through their whole fade-in", () => {
+    for (const spec of SPECS.filter((s) => s.lod && s.type === "line")) {
+      const w = linePaint(spec, 3).paint["line-width"];
       const at = (z: number) => (typeof w === "number" ? w : expInterp(((w as unknown[]).slice(3) as number[]).reduce<[number, number][]>((acc, v, i, arr) => (i % 2 === 0 ? [...acc, [v, arr[i + 1]!]] : acc), []), z, 1.5));
-      for (let z = r.minzoom!; z < r.maxzoom!; z += 0.25) expect(at(z), `${r.id} z${z}`).toBeGreaterThanOrEqual(3 - 1e-9);
+      for (let z = LOD[spec.lod!].from; z < LOD[spec.lod!].full; z += 0.25) expect(at(z), `${spec.id} z${z}`).toBeGreaterThanOrEqual(3 - 1e-9);
     }
   });
   it("nothing road-like is drawn below country scale", () => {
@@ -147,10 +138,36 @@ describe("style wiring of the LOD", () => {
     const road = st.filter((l) => /^(road|path|rail)/.test(l.id) && !/fill$/.test(l.id));
     for (const l of road) expect(l.minzoom ?? 0, l.id).toBeGreaterThanOrEqual(5.5);
   });
-  it("the sea keeps its outline at every zoom; lakes and small water ramp in", () => {
+  it("the sea keeps its outline at every zoom; lakes and small water fade in", () => {
     const st = make("openmaptiles").layers as unknown as L[];
     const sea = st.find((l) => l.id === "water-edge")!;
     expect(sea.maxzoom).toBeUndefined();
-    expect(st.find((l) => l.id === "water-edge-detail-ramp")).toBeDefined();
+    expect(st.find((l) => l.id === "water-edge-detail")!.minzoom).toBe(LOD.waterDetail.from);
+  });
+});
+
+describe("regression: the coast is never dashed (owner report: coasts dotted around zoom 5 at northern latitudes)", () => {
+  // Cause: a dashed [2,2] "band" layer between the world coastline and the tile coast, which the cut to the street map
+  // exposes at latitudes where map zoom = globe zoom + log2(cos lat) falls in the band. It is gone: the world coastline
+  // runs solid up to the tile coast's first zoom, and nothing dashes a coast or a country border.
+  for (const schema of ["protomaps", "openmaptiles"] as const) {
+    it(`${schema}: world coast, sea outline and borders are solid ink, and the coast has no gap or band`, () => {
+      const st = make(schema).layers as unknown as L[];
+      for (const id of ["world-coast", "water-edge", "world-borders", "boundary-country"]) {
+        const l = st.find((x) => x.id === id)!;
+        expect(l, id).toBeDefined();
+        expect(l.paint["line-dasharray"], id).toBeUndefined();
+        expect(levelOfPaint(l.paint["line-color"], 0), id).toBe(roleLevel("ink"));
+      }
+      expect(st.some((l) => /band/.test(l.id))).toBe(false);
+      const world = st.find((l) => l.id === "world-coast")!;
+      const edge = st.find((l) => l.id === "water-edge")!;
+      expect(world.maxzoom).toBe(edge.minzoom);
+    });
+  }
+  it("the only dashed world layer is the graticule", () => {
+    const st = make("openmaptiles").layers as unknown as L[];
+    const dashed = st.filter((l) => /^(world-|graticule|routes-)/.test(l.id) && l.paint["line-dasharray"]).map((l) => l.id);
+    expect(dashed.sort()).toEqual(["graticule", "routes-line"]);
   });
 });

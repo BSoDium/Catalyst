@@ -188,6 +188,7 @@ export default function DevStreet() {
     const src = p("source");
     if (src === "primary" || src === "fallback") o.forceSource = src;
     if (p("projection") === "mercator") o.projection = "mercator";
+    if (p("tileFade") === "0") o.tileFade = false;
     if (p("timings")) o.timings = pairs(p("timings"));
     if (p("thresholds")) o.thresholds = pairs(p("thresholds"));
     if (p("ptimeout")) o.probeTimeoutMs = num(p("ptimeout"), 3000);

@@ -64,10 +64,8 @@ export interface GlobeDebug {
   gpuSync(): void;
   info(): ReturnType<GlobeRenderer["renderInfo"]>;
   loseContext(lose: boolean): void;
-  /** Inset state: current / target inset (CSS px), centre shift and scissor width (buffer px; null = none). */
+  /** Inset state: current / target inset (CSS px), centre shift (buffer px). */
   inset(): ReturnType<GlobeRenderer["insetInfo"]>;
-  /** Measurement only: turn the scissor on or off. */
-  setScissor(on: boolean): void;
   /** Measurement only: draw marker ink in pure red and fill in pure blue, for pixel readouts. */
   setMarkerProbe(on: boolean): void;
 }
@@ -219,7 +217,6 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
       info: () => renderer.renderInfo(),
       loseContext: (lose) => renderer.loseContext(lose),
       inset: () => renderer.insetInfo(),
-      setScissor: (on) => renderer.setScissorEnabled(on),
       setMarkerProbe: (on) => renderer.setMarkerProbe(on),
     }),
     dispose() {

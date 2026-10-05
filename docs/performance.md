@@ -119,6 +119,25 @@ Headless (60 Hz) medians of the budget run, for the same scenarios, are in `budg
 | `GOVERNOR` (window 90, slow 26 ms, fast 18.5 ms, dwell 4 s, calm 10 s) | `engine/governor.ts` | the adaptive quality steps |
 | `HANDOVER.mountZoom / followZoom / followDebounceMs / unmountDelayMs` | `handover/maths.ts` | when the street map exists and follows while hidden |
 | `HANDOVER.revealFocus` | same | true restores the device-resolution render (and its cost) for the sharp reveal |
-| `PALETTE_LEVELS`, `TONE_STEPS` | `street/core/palette.ts` | the grey ramp |
+| `PALETTE_LEVELS` (8) | `globe/engine/palette.ts` | the grey ramp (both renderers); `?levels=N` with `?globe-debug` overrides it for checks |
+| `TILE_FADE` (`steadyMs` 100, `tickMs` 32), `StreetMapOptions.tileFade` | `street/gl/compositor.ts` | the tile fade |
 | `?globe-debug` + `sessionStorage street-opts` | | `{"snapPan":false}`, `{"governor":false}`, `{"highResolution":true}`, `{"renderScale":2}` for A/B runs |
 | Tile cache / workers | MapLibre defaults | left as is: tiles are not the bottleneck (parse happens in the worker); revisit with a phone |
+
+## Palette, tone ramps and tile fade (2026-10-05)
+
+What changed for the frame: the pass writes a palette level per cell instead of a class code (same texture reads), the lattice maths for fills is gone (flat washes), the fade-in ramp layers are gone (one MapLibre layer per class instead of two: about a third fewer layers drawn when a class is ramping), and there is one more tiny pass at art resolution (pass E, 480x300 cells at 1440x900: one texel read and one write per cell, a ping-pong pair of RGBA8 textures) that runs every map frame. The Three.js scissor is gone (it measured no gain, `web-architecture.md`). The tile fade loop (rAF, one pass per 32 ms for at most `levels - 1` ticks) runs only after content changed at a resting camera and ends by itself.
+
+A/B on the same machine and session, production builds of HEAD `ef74d89` (before) and this work (after), headless (60 Hz), `run.mjs --repeat 2`, two interleaved rounds, GPU timer queries (noisy, frequency ramp), medians of the two rounds:
+
+| Scenario | before: main / raf ms per frame, GPU mean / p95 ms | after |
+|---|---|---|
+| S2 flight to HCMC | 2.9 / 1.8, 2.5 / 5.7 | 3.2 / 1.8, 2.9 / 7.1 (max interval 33 to 50 ms in both: the one-off map creation) |
+| S4 street pan | 2.2 / 1.3, 2.9 / 4.1 | 2.3 / 1.4, 2.9 / 3.6 |
+| S5 street pan, panel open | 2.5 / 1.3, 3.5 / 4.4 | 2.7 / 1.4, 3.4 / 4.7 |
+
+No difference outside the noise (about 20 %); no missed vsync in S4 and S5, 0.8 % dropped frames in S5 in both. `pnpm --filter @catalyst/web perf` (clean production build, one pass of every scenario): all budgets pass, idle 0 draws and 0 app rAF; S1 main 2.10 ms, GPU 0.26; S4 main 2.41 / raf 1.48 / GPU 2.90 (p95 3.61); S5-open main 2.74 / GPU 3.09; mobile S4 main 2.41. The street engine chunk is unchanged in size within 1 % (total client JS gzip 837 KB against 845 KB, the latter built with the dev routes).
+
+A bug the budget run caught during this work: hiding the suspended Three.js canvas with `visibility: hidden` also removed it as the pointer target (no pan at street scale, S4/S5 recorded zero frames); it is `opacity: 0` now and `scripts/globe/stale-check.mjs` drags the map to prove it.
+
+Reload fade: the stage is transparent until the final frame is drawn (opacity only, no extra frame work); the page colour is painted first. Reveal 0.62 to 0.65 s after navigation with the local archive.

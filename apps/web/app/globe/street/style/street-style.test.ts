@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { expInterp } from "../core/art-line";
-import { CHANNEL, DEFAULT_HANDOFF, SPECS, buildStreetStyle, graticule, layerIds, linePaint, type Schema } from "./street-style";
+import { roleLevel } from "../../engine/palette";
+import { ERASE, MAX_LEVELS } from "../core/palette";
+import { GRATICULE_FADE, DEFAULT_HANDOFF, SPECS, buildStreetStyle, graticule, layerIds, linePaint, type Schema } from "./street-style";
+import { decodeLevel, levelOfPaint } from "./probe";
 
 const empty: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
 const TILES = { tiles: ["cat-p1://https://tiles.example/{z}/{x}/{y}.pbf"], minzoom: 0, maxzoom: 14, bounds: null };
@@ -15,12 +18,21 @@ describe("buildStreetStyle", () => {
         expect(new Set(ids).size).toBe(ids.length);
         expect(s.layers[0]).toMatchObject({ id: "background", type: "background" });
       });
-      it("paints only the four pass channels (no other colours)", () => {
-        const allowed = new Set<string>(Object.values(CHANNEL));
+      it("paints only level-encoded colours (no other colours), every level inside the palette", () => {
         for (const l of s.layers) {
           const p = (l.paint ?? {}) as Record<string, unknown>;
-          for (const k of ["line-color", "fill-color", "background-color"]) if (typeof p[k] === "string") expect(allowed.has(p[k] as string)).toBe(true);
+          for (const k of ["line-color", "fill-color", "background-color"]) {
+            if (p[k] === undefined) continue;
+            const colors = typeof p[k] === "string" ? [p[k] as string] : (p[k] as unknown[]).filter((v) => typeof v === "string" && v.startsWith("rgb")) as string[];
+            for (const c of colors) {
+              if (c === ERASE) continue;
+              expect(c, l.id).toMatch(/^rgb\((255,\d+,0|0,0,\d+)\)$/);
+              expect(decodeLevel(c), l.id).toBeGreaterThanOrEqual(1);
+              expect(decodeLevel(c), l.id).toBeLessThan(MAX_LEVELS);
+            }
+          }
         }
+        void levelOfPaint;
       });
       it("has no text layers (labels are HTML) and no glyphs/sprite", () => {
         expect(s.layers.some((l) => l.type === "symbol")).toBe(false);
@@ -31,13 +43,13 @@ describe("buildStreetStyle", () => {
         const ids = layerIds(s);
         expect(ids.indexOf("road-major-case")).toBeLessThan(ids.indexOf("road-major-fill"));
         const fill = s.layers.find((l) => l.id === "road-major-fill") as { paint: Record<string, unknown> };
-        expect(fill.paint["line-color"]).toBe(CHANNEL.erase);
+        expect(fill.paint["line-color"]).toBe(ERASE);
       });
       it("hands the world coastline over to tile water at the schema's hand-over zoom", () => {
         const h = DEFAULT_HANDOFF[schema];
         const world = s.layers.find((l) => l.id === "world-coast") as { maxzoom: number };
         const edge = s.layers.find((l) => l.id === "water-edge") as { minzoom: number };
-        expect(world.maxzoom).toBeLessThan(edge.minzoom);
+        expect(world.maxzoom).toBe(edge.minzoom);
         expect(edge.minzoom).toBe(h);
       });
       it("is a globe with a single tile source whose tile URLs carry the instance's protocol", () => {
@@ -51,7 +63,7 @@ describe("buildStreetStyle", () => {
         expect(ids.indexOf("routes-line")).toBeGreaterThan(ids.indexOf("building-outline"));
         expect(ids.indexOf("routes-line")).toBeLessThan(ids.indexOf("world-coast"));
         const halo = s.layers.find((l) => l.id === "routes-halo") as { paint: Record<string, unknown> };
-        expect(halo.paint["line-color"]).toBe(CHANNEL.erase);
+        expect(halo.paint["line-color"]).toBe(ERASE);
         const line = s.layers.find((l) => l.id === "routes-line") as { paint: Record<string, unknown> };
         expect((line.paint["line-dasharray"] as number[])[0]).toBeGreaterThanOrEqual(1.42);
       });
@@ -104,18 +116,29 @@ describe("line rules: widths in art pixels", () => {
       for (let z = 0; z <= 18; z += 0.25) expect(evalPaint(paint["line-width"], z), `${spec.id} z${z}`).toBeGreaterThanOrEqual(CELL - 1e-9);
     }
   });
-  it("tone lines are floored at one art pixel too and are never tone-dithered: ink dashes (thin class) or a solid muted line", () => {
-    for (const spec of SPECS.filter((s) => s.type === "line" && s.tone !== undefined)) {
+  it("dashed lines are one-pixel ink dashes (thin class), never dithered: they keep the one-pixel floor and long-enough dashes", () => {
+    for (const spec of SPECS.filter((s) => s.type === "line" && s.dash)) {
       const { paint } = linePaint(spec, CELL);
       expect(evalPaint(paint["line-width"], 15)).toBeGreaterThanOrEqual(CELL - 1e-9);
-      expect(paint["line-opacity"]).toBe(spec.ch === "muted" ? 1 : 0.75);
-      expect(paint["line-color"]).toBe(spec.ch === "muted" ? CHANNEL.muted : CHANNEL.ink);
-      if (spec.dash && !spec.solid) {
-        const dash = paint["line-dasharray"] as number[];
-        // a dash must be long enough to catch a cell centre on a diagonal (cell diagonal = 1.42 art px)
-        expect(dash[0]!).toBeGreaterThanOrEqual(1.42);
-      }
+      expect(paint["line-opacity"]).toBe(0.75);
+      // a dash must be long enough to catch a cell centre on a diagonal (cell diagonal = 1.42 art px)
+      expect((paint["line-dasharray"] as number[])[0]!).toBeGreaterThanOrEqual(1.42);
     }
+  });
+  it("the graticule eases out through the palette levels, from the faint level down to the faintest, then is gone", () => {
+    const g = make("openmaptiles").layers.find((l) => l.id === "graticule") as unknown as { maxzoom: number; paint: Record<string, unknown> };
+    expect(g.maxzoom).toBe(GRATICULE_FADE.gone);
+    const start = levelOfPaint(g.paint["line-color"], 0);
+    expect(start).toBe(roleLevel("faint"));
+    let prev = start;
+    for (let z = 0; z < GRATICULE_FADE.gone; z += 0.05) {
+      const lv = levelOfPaint(g.paint["line-color"], z);
+      expect(lv).toBeLessThanOrEqual(prev);
+      expect(prev - lv).toBeLessThanOrEqual(1);
+      prev = lv;
+    }
+    expect(prev).toBe(1);
+    expect(levelOfPaint(g.paint["line-color"], GRATICULE_FADE.from - 0.01)).toBe(start);
   });
   it("widths follow the art cell: a 2 px cell (phones) halves the CSS widths, the art widths stay", () => {
     const spec = SPECS.find((s) => s.id === "road-major-case")!;
@@ -148,14 +171,6 @@ describe("line rules: widths in art pixels", () => {
         }
       }
       expect(evalPaint(fill, 18) / CELL).toBeGreaterThan(0);
-    }
-  });
-  it("the art style still paints only the four pass channels", () => {
-    const allowed = new Set<string>(Object.values(CHANNEL));
-    const st = buildStreetStyle({ schema: "protomaps", tiles: TILES, coastlines: empty, borders: empty, graticule: empty, routes: empty, cellCss: 3 });
-    for (const l of st.layers) {
-      const p = (l.paint ?? {}) as Record<string, unknown>;
-      for (const k of ["line-color", "fill-color", "background-color"]) if (typeof p[k] === "string") expect(allowed.has(p[k] as string)).toBe(true);
     }
   });
 });

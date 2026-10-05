@@ -60,6 +60,10 @@ export const HANDOVER = {
   revealFocus: false,
   /** Delay after arrival before the focus circle opens (ms). */
   revealDelayMs: 450,
+  /** A direct load framed at street scale waits this long (ms) for the street map before it shows the globe's frame instead. */
+  revealWaitMs: 1500,
+  /** The stage fades in from the page colour over this long (ms), instantly under reduced motion. */
+  fadeInMs: 500,
 } as const;
 
 /** The Three.js globe's own maximum internal zoom: above it only the street map can draw. */

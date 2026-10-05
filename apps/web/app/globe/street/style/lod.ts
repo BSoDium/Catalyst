@@ -1,19 +1,21 @@
 /**
  * Level of detail of the street map, as DATA: one row per feature class, tuned in this one place.
  *
- * A class has three phases over zoom:
+ * A class has two phases over zoom:
  *   z <= from        not drawn at all (the layer does not exist below `from`)
- *   from < z < full  RAMP: the class is drawn in the foreground-TONE channel, whose coverage the pixel pass turns into a
- *                    screen-anchored Bayer lattice (`toneLit`: a function of the screen cell and the tone only, so it
- *                    never swims; as the tone rises, cells only get ADDED). The tone climbs 0 -> 1 with `ease`.
- *   z >= full        the class's final look: hard one-pixel ink (solid, or dashed when `dash` is set), thinned and
+ *   from < z < full  FADE-IN IN TONE: the class is drawn in its final shape (same width, same dashes) but in a lighter
+ *                    grey. It enters at the faintest palette level and steps up through the levels (`rampLevel`, equal
+ *                    steps of zoom) until it reaches the level of its `role` at `full`. A cell only ever changes by one
+ *                    level at a time and no cell is ever added or removed by the fade: it is the same line from the
+ *                    first zoom, so there is no dither, no noise, no swimming.
+ *   z >= full        the class's final look: its role's level, solid (or dashed when `dash` is set), thinned and
  *                    widened by the rules of docs/pixel-line-rules.md.
  *
- * Widths are untouched by the ramp (art pixels, floor 1): lighter weight comes from density and pattern, never from
- * sub-pixel widths. At tone 1 the ramp draws exactly the cells of the final line (before staircase removal), so the
- * hand-over from the ramp to the ink is invisible apart from the removal of stair corners.
+ * Widths are untouched by the fade (art pixels, floor 1): the weight is the tone. Which level a role is depends on the
+ * number of levels (engine/palette.ts).
  */
-import type { Stops } from "../core/art-line";
+import type { Role } from "../../engine/palette";
+import { activeLevels, rampLevel, rampStepZoom, roleLevel } from "../../engine/palette";
 
 export type LodKey =
   | "highway" // motorway, trunk
@@ -35,60 +37,57 @@ export type LodKey =
   | "buildingOutline";
 
 export interface LodEntry {
-  /** first zoom at which the class is drawn (tone just above 0) */
+  /** first zoom at which the class is drawn (at the faintest level) */
   from: number;
-  /** zoom at which the ramp is complete and the final ink look takes over */
+  /** zoom at which the fade-in is complete and the class has its role's level */
   full: number;
+  /** the tone the class ends up with */
+  role: Role;
   /** final pattern in line widths (= art px); undefined = solid */
   dash?: readonly number[];
 }
 
 export const LOD: Record<LodKey, LodEntry> = {
-  highway: { from: 5.5, full: 8.5 },
-  major: { from: 9.5, full: 12.5 },
-  secondary: { from: 11.8, full: 14.2 },
-  medium: { from: 13, full: 15.5 },
-  minor: { from: 14.4, full: 16.4, dash: [1.8, 2.4] },
-  minorSolid: { from: 16.6, full: 17.4 },
-  link: { from: 14.8, full: 16.6, dash: [1.8, 3.6] },
-  service: { from: 15.4, full: 16.8, dash: [1.8, 3.6] },
-  path: { from: 15.9, full: 17, dash: [1.8, 3.6] },
-  rail: { from: 12.5, full: 14.5, dash: [3, 2.2] },
-  river: { from: 9, full: 11.5 },
-  canal: { from: 13, full: 15, dash: [6, 1.5] },
-  stream: { from: 14, full: 16, dash: [3, 1.5] },
-  lake: { from: 7.5, full: 10 },
-  waterDetail: { from: 12, full: 14 },
-  regionBorder: { from: 4.5, full: 6.5, dash: [4, 1.5] },
-  buildingOutline: { from: 16.6, full: 17.4 },
+  highway: { from: 5.5, full: 8.5, role: "strong" },
+  major: { from: 9.5, full: 12.5, role: "strong" },
+  secondary: { from: 11.8, full: 14.2, role: "strong" },
+  medium: { from: 13, full: 15.5, role: "mid" },
+  minor: { from: 14.4, full: 16.4, role: "mid", dash: [1.8, 2.4] },
+  minorSolid: { from: 16.6, full: 17.4, role: "mid" },
+  link: { from: 14.8, full: 16.6, role: "soft", dash: [1.8, 3.6] },
+  service: { from: 15.4, full: 16.8, role: "soft", dash: [1.8, 3.6] },
+  path: { from: 15.9, full: 17, role: "soft", dash: [1.8, 3.6] },
+  rail: { from: 12.5, full: 14.5, role: "soft", dash: [3, 2.2] },
+  river: { from: 9, full: 11.5, role: "strong" },
+  canal: { from: 13, full: 15, role: "soft", dash: [6, 1.5] },
+  stream: { from: 14, full: 16, role: "soft", dash: [3, 1.5] },
+  lake: { from: 7.5, full: 10, role: "strong" },
+  waterDetail: { from: 12, full: 14, role: "mid" },
+  regionBorder: { from: 4.5, full: 6.5, role: "mid", dash: [4, 1.5] },
+  buildingOutline: { from: 16.6, full: 17.4, role: "mid" },
 };
 
-/** Fills (tones, already dithered by the pass) fade in over these zoom ranges: [from, to, tone at `to`]. */
+/** Fills (flat tone washes) fade in over these zoom ranges, stepping through the levels up to their role. */
 export const FILL_LOD = {
-  building: { from: 15.8, to: 17.5, tone: 0.16 },
-} as const;
+  water: { from: 8, full: 10, role: "wash" },
+  park: { from: 9, full: 12, role: "wash" },
+  building: { from: 15.8, full: 17.5, role: "wash" },
+} as const satisfies Record<string, { from: number; full: number; role: Role }>;
 
-/** Tone 0..1 of a class in its ramp: smoothstep from `from` to `full` (0 below, 1 above). */
-export function toneAt(e: LodEntry, z: number): number {
-  if (z <= e.from) return 0;
-  if (z >= e.full) return 1;
-  const t = (z - e.from) / (e.full - e.from);
-  return t * t * (3 - 2 * t);
+/** Progress 0..1 of a fade over [from, full] (0 at or below `from`, 1 at or above `full`). */
+export const progressAt = (e: { from: number; full: number }, z: number): number => (z <= e.from ? 0 : z >= e.full ? 1 : (z - e.from) / (e.full - e.from));
+
+/** The palette level of a class at a zoom: 0 = not drawn, 1 = the faintest level ... the role's level from `full` on. */
+export function levelAt(e: { from: number; full: number; role: Role }, z: number, n: number = activeLevels()): number {
+  return rampLevel(progressAt(e, z), roleLevel(e.role, n));
 }
 
-/** True when the class is drawn at all at this zoom (ramp or final). */
-export const visibleAt = (e: LodEntry, z: number): boolean => z > e.from;
+/** Zoom at which the class enters level `k` (1 .. its final level). */
+export const stepZoom = (e: { from: number; full: number; role: Role }, k: number, n: number = activeLevels()): number =>
+  rampStepZoom(e.from, e.full, roleLevel(e.role, n), k);
 
-/** True when the class is in its final ink look at this zoom. */
-export const finalAt = (e: LodEntry, z: number): boolean => z >= e.full;
+/** True when the class is drawn at all at this zoom (fading in or final). */
+export const visibleAt = (e: { from: number }, z: number): boolean => z > e.from;
 
-/** `line-opacity` stops of the ramp layer (tone over zoom), sampled densely enough to follow the easing. */
-export function rampStops(e: LodEntry, step = 0.25): Stops {
-  const out: [number, number][] = [[e.from, 0]];
-  for (let z = Math.ceil((e.from + 1e-6) / step) * step; z < e.full - 1e-6; z += step) out.push([Math.round(z * 1000) / 1000, toneAt(e, z)]);
-  out.push([e.full, 1]);
-  return out;
-}
-
-/** The tone the pass actually uses: quantised to sixteenths, like `toneLit` in core/art-line. */
-export const quantisedTone = (t: number): number => Math.floor(t * 16 + 0.5) / 16;
+/** True when the class is in its final look at this zoom. */
+export const finalAt = (e: { full: number }, z: number): boolean => z >= e.full;

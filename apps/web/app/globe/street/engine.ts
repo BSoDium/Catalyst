@@ -15,6 +15,7 @@
 import { Map as MLMap, setWorkerUrl, type StyleSpecification } from "maplibre-gl";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import { readTheme, type GlobeTheme } from "../engine/colors";
+import { applyDebugLevels } from "../engine/palette";
 import { watchDevicePixelRatio } from "../engine/dpr";
 import { INSET_EASE } from "../engine/tuning";
 import { perfEnd, perfStart } from "../engine/perf";
@@ -25,7 +26,7 @@ import { cellCssFor, cellDevicePx, EasedValue, revealRadiusDevice } from "./core
 import { isPmtilesUrl, type SourceDescriptor } from "./core/source-descriptor";
 import { TileSourceManager, type SourceId, type TileStatus } from "./core/tile-source-manager";
 import { routeFeatures } from "./core/routes";
-import { Compositor, type OutputSize } from "./gl/compositor";
+import { Compositor, TILE_FADE, type OutputSize } from "./gl/compositor";
 import { buildPalette } from "./core/palette";
 import { snapCenter } from "./core/snap";
 import type { PassParams } from "./gl/pixel-pass";
@@ -93,6 +94,7 @@ const STEADY_ZOOM = 3e-4;
 
 export function createStreetMap(container: HTMLElement, opts: StreetMapOptions): StreetMap {
   if (!isWebGL2Available()) throw new StreetUnavailableError();
+  applyDebugLevels();
   const tAll = perfStart();
   const instance = ++instances;
   if (!workerReady) {
@@ -142,6 +144,8 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
   let heldZoom: number | null = null;
   /** false: the host shows something else; the map renders (tiles load) but no overlay work and no pass happen. */
   let active = true;
+  /** When the camera last moved (any `move` event of the map): the tile fade only runs while it rests. */
+  let lastMoveAt = 0;
   let selected = opts.selectedSlug;
   let focused = opts.focusedSlug;
   const places = new Map(opts.places.map((p) => [p.slug, p]));
@@ -293,6 +297,7 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
         const h = Math.max(1, Math.round(root.clientHeight * dpr));
         return { w, h, cssW: w / dpr, cssH: h / dpr };
       },
+      steady: () => performance.now() - lastMoveAt > TILE_FADE.steadyMs,
       params(outW: number, outH: number): PassParams {
         const dpr = native ? 1 : dprNow();
         const palette = buildPalette(theme);
@@ -306,12 +311,8 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
           }
         }
         return {
-          bg: theme.background,
-          fg: theme.ink,
-          muted: theme.outline,
           levels: palette.rgb,
-          codeLevel: palette.codeLevel,
-          toneSteps: palette.toneSteps,
+          limbLevel: palette.limbLevel,
           cellOut: native ? 1 : cellDevicePx(cellCss, dpr),
           inkThreshold: INK_THRESHOLD,
           solidThreshold: SOLID_FROM,
@@ -327,6 +328,7 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
   );
   perfEnd("street.create.compositor", tComp);
   compositor.canvas.setAttribute("aria-hidden", "true");
+  compositor.setFade(!reduced && opts.tileFade !== false);
   root.append(hudRoot, attributionEl);
 
   const tHud = perfStart();
@@ -512,6 +514,9 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
   };
   let lastMask: string | null = null;
 
+  onMap("move", () => {
+    lastMoveAt = performance.now();
+  });
   onMap("render", () => {
     renders++;
     if (active) syncOverlay();
@@ -720,6 +725,7 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
       sharpV.reducedMotion = on;
       blendV.reducedMotion = on;
       hud.setReducedMotion(on);
+      compositor.setFade(!on && opts.tileFade !== false);
       if (on) {
         for (const v of [revealV, sharpV, blendV]) v.set(v.target);
         settle();
@@ -793,6 +799,8 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
         },
         shown: () => hud.shown(),
         readCodes: () => compositor.readCodes(),
+        readPresentedLevels: () => compositor.readPresentedLevels(),
+        easing: () => compositor.easing,
         gpuSync: () => compositor.sync(),
         lastPassMs: () => compositor.stats.lastPassMs,
         loseContext(which, lose) {

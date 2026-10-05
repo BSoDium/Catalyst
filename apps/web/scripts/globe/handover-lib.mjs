@@ -12,9 +12,13 @@ export const SOURCE = process.env.SOURCE ?? "fallback";
 export const HCMC = { lon: 106.7009, lat: 10.7769 };
 
 /** Open the app with the debug hooks on. `opts.street` is passed to the street engine (JSON), e.g. { forceSource: "fallback" }. */
-export async function openApp(browser, contextOptions, { path = "/", colorScheme = "light", reducedMotion = "no-preference", street, wait = true } = {}) {
+export async function openApp(browser, contextOptions, { path = "/", colorScheme = "light", reducedMotion = "no-preference", street, wait = true, levels = null } = {}) {
   const { ctx, page, logs } = await openStreet(browser, contextOptions, { colorScheme, reducedMotion });
   const opts = street ?? (SOURCE === "auto" ? undefined : { forceSource: SOURCE });
+  await page.addInitScript((n) => {
+    if (n) sessionStorage.setItem("palette-levels", String(n));
+    else sessionStorage.removeItem("palette-levels");
+  }, levels);
   await page.addInitScript((o) => {
     sessionStorage.setItem("globe-debug", "1");
     if (o) sessionStorage.setItem("street-opts", JSON.stringify(o));

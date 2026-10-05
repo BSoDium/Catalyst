@@ -32,7 +32,7 @@ import {
   type ViewState,
 } from "./geo";
 import { isRouteStop, routeForPlace } from "./geometry";
-import { clampInset, fadeMask, freeWidth, insetShiftBuf, scissorBufWidth } from "./inset";
+import { clampInset, fadeMask, freeWidth, insetShiftBuf } from "./inset";
 import {
   createFlight,
   cubicBezier,
@@ -129,10 +129,8 @@ export class GlobeRenderer {
   private inset: number;
   private insetTarget: number;
   private insetAnim: { from: number; to: number; start: number } | null = null;
-  /** Projection-centre shift (buffer px) and scissor width (buffer px, null = none) derived from `inset`. */
+  /** Projection-centre shift (buffer px) derived from `inset`. */
   private shiftBuf = 0;
-  private scissorBuf: number | null = null;
-  private scissorOn = true;
   private containerMask: string | null = null;
   private reduced: boolean;
   private disposed = false;
@@ -258,14 +256,13 @@ export class GlobeRenderer {
 
   /**
    * Everything that depends on the inset: the projection-centre shift, the minimum zoom (the whole globe fits
-   * the free area), the GL scissor and the dissolving right edge. Cheap; called on resize and per tween frame.
+   * the free area) and the dissolving right edge. Cheap; called on resize and per tween frame.
    */
   private applyInset() {
     const { width: w, height: h, pixel: P } = this;
     const inset = clampInset(this.inset, w);
     this.shiftBuf = insetShiftBuf(inset, P);
     this.minZoom = fitZoom(freeWidth(w, inset), h, TUNING.fitMargin);
-    this.scissorBuf = scissorBufWidth(w, inset, P, this.canvasLeft, this.bufW);
     this.containerMask = fadeMask(w, inset);
     const mask = fadeMask(w, inset, this.canvasLeft) ?? "";
     this.canvas.style.maskImage = mask;
@@ -374,9 +371,12 @@ export class GlobeRenderer {
   setSuspended(on: boolean) {
     if (on === this.suspended) return;
     this.suspended = on;
-    // A canvas that never drew is black: keep it out of sight until it has.
-    if (this.frames === 0) this.canvas.style.visibility = on ? "hidden" : "";
-    if (!on) this.requestRender();
+    // A suspended canvas keeps its last frame, which is stale as soon as the camera moves: it must not show through the
+    // street map's dissolving edge (the inset fade) or anywhere else. Made transparent here (NOT `visibility: hidden`: the
+    // canvas is the pointer target at every scale and a hidden element gets no pointer events), shown again by the next drawn
+    // frame (renderNow), never before: a canvas that never drew is black.
+    if (on) this.canvas.style.opacity = "0";
+    else this.requestRender();
   }
   isSuspended() {
     return this.suspended;
@@ -677,14 +677,13 @@ export class GlobeRenderer {
     this.syncCamera();
     this.syncMarkers();
     perfEnd("three.sync", tp);
-    // Draw only the free area plus a margin: the rest is under the panel and masked out.
-    const scissor = this.scissorOn ? this.scissorBuf : null;
-    this.gl.setScissorTest(scissor !== null);
-    if (scissor !== null) this.gl.setScissor(0, 0, scissor, this.bufH);
+    // The whole buffer is drawn: a GL scissor limited to the free area saved nothing measurable (docs/web-architecture.md)
+    // and left the area outside it stale, which the CSS edge-fade mask then revealed.
     const t0 = performance.now();
     this.gl.render(this.globe.scene, this.camera);
     this.lastRenderMs = performance.now() - t0;
     this.frames++;
+    if (this.canvas.style.opacity === "0") this.canvas.style.opacity = "";
     perfEnd("three.render", t0);
     const t1 = perfStart();
     this.opts.onFrame();
@@ -734,21 +733,15 @@ export class GlobeRenderer {
     gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4));
   }
 
-  /** Measurement only: turn the inset scissor off to compare its cost. */
-  setScissorEnabled(on: boolean) {
-    this.scissorOn = on;
-    this.requestRender();
-  }
-
   /** Measurement only: draw markers in pure red / blue (see `MarkerLayer.setProbe`). */
   setMarkerProbe(on: boolean) {
     this.globe.markers.setProbe(on);
     this.requestRender();
   }
 
-  /** Inset state for checks: current inset, centre shift and scissor width. */
+  /** Inset state for checks: current inset and centre shift. */
   insetInfo() {
-    return { inset: this.inset, target: this.insetTarget, shiftBuf: this.shiftBuf, scissorBuf: this.scissorBuf, bufW: this.bufW, pixel: this.pixel };
+    return { inset: this.inset, target: this.insetTarget, shiftBuf: this.shiftBuf, bufW: this.bufW, pixel: this.pixel };
   }
 
   /** Draw-call and triangle counts of the last frame (WebGLRenderer.info). */
