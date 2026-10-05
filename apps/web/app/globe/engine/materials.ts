@@ -111,15 +111,18 @@ export function routeMaterial(): ShaderMaterial {
       uOffset: { value: 0 },
       uPeriod: { value: 0.016 },
       uPixel: { value: [0.01, 0.01] },
+      uLift: { value: 1 },
     },
     depthTest: false,
     depthWrite: false,
     vertexShader: /* glsl */ `
-      attribute float aDist; attribute vec2 aOff; uniform vec2 uPixel; varying float vDist; varying vec3 vPos;
+      attribute float aDist; attribute vec2 aOff; uniform vec2 uPixel; uniform float uLift; varying float vDist; varying vec3 vPos;
       void main() {
         vDist = aDist;
-        vPos = position;
-        vec4 c = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        // uLift scales the arc's height above the surface: 1 = lifted arc, 0 = on the ground (street scale).
+        vec3 p = normalize(position) * (1.0 + (length(position) - 1.0) * uLift);
+        vPos = p;
+        vec4 c = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
         c.xy += aOff * uPixel * c.w;
         gl_Position = c;
       }`,

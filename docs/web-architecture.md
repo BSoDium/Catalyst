@@ -116,10 +116,17 @@ other way in. Without JavaScript the globe screen shows no list (the globe itsel
 
 ## Globe seam (`app/globe/`)
 
-`types.ts` defines `GlobeViewState`, `GlobePlace`, `GlobeRoute` and `GlobeProps` (renderer-agnostic, frozen).
+`types.ts` defines `GlobeViewState`, `GlobePlace`, `GlobeRoute`, `GlobeTiles` and `GlobeProps` (renderer-agnostic).
 `index.tsx` exports `Globe`: `React.lazy` of `globe-canvas.tsx`, mounted only on the client, with a fixed-aspect
-disc outline as the Suspense fallback. `globe-canvas.tsx` is the production globe: standalone Three.js, no
-MapLibre (decision and tuned constants in `docs/renderer-decision.md`).
+disc outline as the Suspense fallback. `globe-canvas.tsx` is the production globe: Three.js for world to regional
+scale (decision and tuned constants in `docs/renderer-decision.md`) and, when `tiles` is given, a lazily loaded street
+map it hands over to (see "Handover" below). The seam extends compatibly:
+
+- `GlobeViewState.zoom` stays in [0, 1] (fit zoom to the Three.js globe's closest view); the optional `street` field
+  carries extra zoom LEVELS beyond that (street scale, about 0 to 11). It is absent on every view that has not gone
+  past the regional scale, so older saved views are valid. (`zoom`, `street`) is one continuous scale.
+- `GlobeProps.tiles?: GlobeTiles | null` (primary URL, optional fallback PMTiles URL, max fallback zoom: the shell
+  loader's `tiles`). Absent or null = world and regional scale only, exactly as before.
 
 Lifecycle expectations for any implementation:
 
@@ -127,7 +134,8 @@ Lifecycle expectations for any implementation:
    is never resized or translated for the panel: the app passes `insetRight` and the implementation centres itself
    on the free area (see "Inset" below). Handle resize anyway.
 2. Read `initialView` once at mount. Report every view change through `onViewChange`; the shell keeps
-   the latest in a ref. If `selectedSlug` changes after mount, move the camera to that place (and report it).
+   the latest in a ref. If `selectedSlug` changes after mount, move the camera to that place (and report it): into
+   street scale when `tiles` work and cover the place, else to the regional scale.
 3. On mobile the shell UNMOUNTS the globe while the slide-over is open and remounts it on close with the saved
    view: free GPU/WebGL resources in cleanup and tolerate rapid mount/unmount.
 4. `focusedSlug` is a highlight request from the list (hover/focus); `selectedSlug` is the open place (or null).
@@ -152,7 +160,10 @@ To swap renderers, point the `lazy(() => import(...))` in `globe/index.tsx` at a
 
 | File | Role |
 | --- | --- |
-| `globe-canvas.tsx` | React lifecycle only: root `div[data-globe="three"][data-state]`, dynamic imports, prop forwarding, status message |
+| `globe-canvas.tsx` | React lifecycle only: root `div[data-globe="three"][data-state]`, geodata import, prop forwarding, status message and the street-unavailable notice |
+| `handover/controller.ts` | `createHandover()`: owns the globe AND the lazily created street map; one camera, the dissolve, overlays, tile-state reactions |
+| `handover/maths.ts` | pure handover maths and the `HANDOVER` constants (bands, hysteresis, slew, overlay owner, ceilings); `maths.test.ts` |
+| `street/**` | the street map (docs/street-architecture.md); only `street/engine.ts` and what it imports are in its lazy chunk |
 | `engine/index.ts` | `createGlobe()`: wires renderer + labels + view reporting; `WebGLUnavailableError`; debug introspection |
 | `engine/renderer.ts` | `GlobeRenderer`: WebGLRenderer, camera, sizing (ResizeObserver, DPR), frame scheduling, context loss, visibility, picking |
 | `engine/scene.ts`, `materials.ts`, `marker-layer.ts`, `route-layer.ts` | what is drawn: disc, graticule, borders, coastlines, routes, markers, horizon outline; GLSL |
@@ -162,22 +173,28 @@ To swap renderers, point the `lazy(() => import(...))` in `globe/index.tsx` at a
 | `engine/labels.ts`, `label-layer.ts` | pure label collision (`placeLabels`), DOM overlay |
 | `engine/colors.ts`, `dpr.ts`, `webgl.ts` | CSS-variable theme, `devicePixelRatio` watcher, WebGL probe |
 
-Everything under `engine/` is framework-free. Pure parts are unit-tested (`engine/*.test.ts`: projection,
+Everything under `engine/` and `handover/` is framework-free. Pure parts are unit-tested (`engine/*.test.ts`: projection,
 labels, routes and vertex buffers, flights/inertia, view mapping, colour parsing, DPR watcher).
 
 ### Loading
 
-`three` and the geodata are never imported on the server or in the main bundle. `globe-canvas.tsx` imports
-`./engine` (which statically imports `three`) and `@catalyst/geodata` with dynamic `import()` inside its
-effect, so they are separate client chunks fetched after hydration. Production build, min + gzip:
+`three` and the geodata are never imported on the server or in the main bundle: `globe-canvas` is the lazy chunk
+(Three.js, the engine and the handover controller are statically inside it) and `@catalyst/geodata` is a dynamic
+import in its effect. The street map is a SEPARATE lazy chunk, fetched by the controller only when the camera gets
+close or a place is selected, and never on the server (the import sits in a dead branch of a conditional expression,
+which is what Rollup needs to drop it; `build/server` contains no MapLibre). Production build, min + gzip:
 
 | Chunk | Raw | gzip |
 | --- | --- | --- |
-| engine (three + our code) | 550 KB | 139.9 KB |
+| `globe-canvas` (three + engine + handover) | 570.6 KB | 147.4 KB |
+| before the handover (`globe-canvas` 3.5 KB + engine 555.4 KB) | 558.9 KB | 143.6 KB |
 | geodata coastlines 110m / borders 50m | 37 KB / 37 KB | 15.0 KB / 14.1 KB |
-| `globe-canvas` (React part) | 3.3 KB | 1.5 KB |
+| street engine (MapLibre, PMTiles, pass), lazy | 1,096 KB | 304 KB |
+| MapLibre worker, lazy | 508 KB | (146 KB) |
 
-`grep WebGLRenderer build/client/assets/*.js` matches only the engine chunk.
+The initial JS of the world view grew by 11.8 KB raw, 3.9 KB gzip (the handover controller and the extended
+engine); every other initial chunk is byte-identical. `grep WebGLRenderer build/client/assets/*.js` matches only
+`globe-canvas`; `grep -l maplibre build/server -r` matches nothing.
 
 ### Lifecycle
 
@@ -197,8 +214,8 @@ effect, so they are separate client chunks fetched after hydration. Production b
    frame and defers work; the first visible moment repaints once.
 5. After each frame the label overlay is re-placed and the view is reported (`onViewChange`, deduplicated).
    `GlobeViewState.zoom` is linear in internal zoom between the fit-to-window zoom (0) and 6.5 (1).
-6. Props (the inset is item 10): `selectedSlug` changes after mount rotate the camera to the place (never zooms out below 3.2; a jump
-   under reduced motion) and play the draw-on of that place's route; `focusedSlug` highlights the marker and
+6. Props (the inset is item 10): `selectedSlug` changes after mount fly the camera to the place (never zooms out below
+   3.2; into street scale when possible, see "Handover"; a jump under reduced motion) and play the draw-on of that place's route; `focusedSlug` highlights the marker and
    forces its label; `reducedMotion` takes effect live (route becomes static, inertia off, label fades off).
 7. WebGL context loss: `webglcontextlost` is prevented, frames stop, the root shows a status message
    (`data-state="lost"`). On `webglcontextrestored` Three re-initialises its state and re-uploads buffers and
@@ -238,6 +255,100 @@ effect, so they are separate client chunks fetched after hydration. Production b
       cost: none** (see the measurements below); it is kept because it is correct, never slower, and may help
       weaker GPUs with larger buffers. Debug hook: `__globeDebug.setScissor(false)`.
 
+11. Street scale: see the next section. Unmounting (the mobile slide-over, a route change) disposes both renderers.
+
+## Handover (globe to street)
+
+Goal: one system. The user zooms from the world to a city in the same 1-bit pixel look, and the swap between
+renderers is not noticeable. Code: `app/globe/handover/` (+ small extensions in `engine/` and `street/`).
+
+**One camera, owned by the globe.** `GlobeRenderer` keeps the view in its internal zoom `zu`, whose range now goes
+past the Three.js globe's maximum (6.5) up to the street map's maximum: above 6.5 the same number is the street
+camera through the registration `zoom_map = zu + log2 cos(lat)`. The globe canvas stays the pointer target at every
+scale (drag, wheel, pinch, tap, inertia, flights are the existing, tuned code), the street map is `embedded`
+(transparent root, no pointer events, host-driven camera). So a gesture that crosses the threshold is the same
+gesture: nothing is handed over, only what is drawn changes. After every camera tick (`onFrame`) the controller
+pushes the registered camera and the globe's animated inset into the street map and renders it synchronously
+(`StreetMap.setCamera(..., { sync: true })`), so both renderers show the same instant. Measured registration
+(`__handoverDebug.registrationError`, projection of a place by each renderer, across wheel zoom and flights): under
+1e-9 px in the dissolve band; the pixels agree too (below).
+
+**Bands** (`HANDOVER`, zoom `zu`; hysteresis everywhere, a function of position, not a state machine):
+
+| zu | |
+| --- | --- |
+| below 4.0 (3.3 on the way back, after 2.5 s) | street map not loaded / released |
+| 4.0 | chunk requested, map created (also when a place is selected) |
+| 4.3 | the map follows the camera while invisible (trailing 140 ms), so its tiles are ready |
+| 4.6 to 5.5 | pixel-grid dither dissolve: `blendAt(zu)` (smoothstep) drives `StreetMap.setBlend`, slew-limited to 450 ms per full swing |
+| 5.5 and up | the street map alone; the Three.js scene is suspended (no draw calls, the camera still ticks) |
+| 3.7 to 4.6 | the globe's lifted route arcs flatten onto the ground (`routeLift`), ahead of the dissolve |
+
+The dissolve is on the art-pixel grid (Bayer, the street pass's `blend`), so lines morph rather than cross-fade:
+the same coastline in both renderers is simply the same cells. Measured at several zooms and three regions
+(`handover-shots.mjs seam`, art pixels of 3 CSS px, DPR 2): 95.9 to 99.9 % of the globe's ink cells have street ink
+within one art pixel of the same view, no doubled lines (the missing few percent are the dotted graticule and the
+route's different dash phase); the other way round (street to globe) 77 to 96 %, the rest being street-only detail.
+The route stroke was made 2 art pixels with the globe's 7 px dash period so its weight survives the handover.
+
+**Overlay**: markers and labels are one behaviour. The street map's overlay uses the globe's look when embedded
+(`OverlayLook "globe"`: same marker sizes and ring, same type, same collision code `engine/labels.ts`, same
+priorities: at street scale every label may show, collisions decide). Ownership flips once at dissolve 0.8 (back at
+0.65), as a 120 ms opacity cross-fade of the two DOM layers (reduced motion: instant); picking follows the owner
+(`pickOverride`). `focusedSlug` and the selection are forwarded to both.
+
+**Tile state** (`StreetMap.onTileStatus`): the zoom limit is the street map's maximum only while a tile source works
+(`primary`/`fallback`), else the globe's 6.5. While the chunk or the first probe is pending a flight toward street
+scale waits at 6.5 with its clock paused and resumes (no spinner, no blank: the globe is on screen). If the sources
+die (`capped`), the street map is lost or its context is lost while the camera is at street scale, the camera eases
+back to 6.5 (the controller flies it; the engine's own ease is off when embedded), then the dissolve returns to the
+globe, then the limit drops. `capped` (or a failed chunk, or no WebGL2) shows the small notice "Street detail is
+unavailable right now." (a `role="status"` paragraph at the bottom left of the map, empty otherwise) when the user is
+within 0.6 of the limit or a place is selected. When tiles come back the limit lifts and the notice goes. A place
+outside the fallback archive's bounds is not flown to at street scale (`StreetMap.covers`).
+
+**Selecting a place** (marker, label, list, URL, `setSelected(slug, true)`): a flight to the place, to street scale
+when `tiles` are configured and the street map is not known to fail (the street map is mounted at once and the
+flight waits at the limit if it has to), else to the select zoom 3.2 as before. Street flights keep the pan ahead of
+the zoom (the target stays near the centre while the scale explodes), pull back to the cruise zoom between two
+distant street-scale places, and last 0.9 to 6.5 s (about 5 s from the world). Direct load of `/locations/:slug`: the
+globe starts at the place at 3.2 (as before), and after 0.7 s flies into street scale; the street map starts loading
+at once. With the panel open (`insetRight`), both renderers use the same shifted centre; the selected place lands in
+the middle of the free left half. Mobile: the slide-over unmounts the globe, so there is no flight with the panel open
+and a direct load of a place URL shows the world after the panel is closed (as before).
+
+**Focus circle** (`HANDOVER.revealFocus`, one constant, true): at street scale, 450 ms after arrival, the street pass
+opens `setReveal` around the selected place: inside a circle (up to 280 CSS px, feathered, Bayer-masked) the vector
+render shows instead of the pixel art. Judged on the screenshots (light, dark): subtle, reads as "focus here", keeps
+the pixel look everywhere else; off under reduced motion; closes when the selection clears. Set the constant to
+`false` to remove it.
+
+**Lifecycle**: both renderers are created and disposed by the controller. The mobile slide-over unmounting the
+globe disposes the street map too (two contexts); the view comes back identical including the street scale
+(`GlobeViewState.street`): a restored street view keeps Three suspended, mounts the street map first and shows it
+without a dissolve once ready (12 s cap, then the view is clamped to 6.5). Context loss: Three and the street
+renderers keep their own recovery; either one lost sets `data-state="lost"`; a lost street context makes the street
+map unusable (retreat to the globe). WebGL2 missing for the street map = street unavailable, the globe is unaffected.
+
+**Reduced motion**: flights are jumps; the dissolve is instant (no slew); no focus circle; overlay swap instant;
+routes static. **Idle**: zero rAF calls, zero ticks, zero street renders in all states (measured at world, held
+mid-dissolve and street scale; the follow debounce is a timer, not a frame loop). **Phones**: art pixel 2 CSS px
+(both renderers use the globe's rule); the street map renders its source at `min(DPR, 2)` and presents at device
+resolution (the spike's cheaper art-resolution path is not implemented, see docs/street-architecture.md).
+
+**Accessibility**: unchanged. All overlays and canvases are `aria-hidden` and inert (the street root is `inert`
+while it is not visible, so its attribution links are not tab stops then), the places list is the keyboard path to
+street view (verified: Enter on a list link, focus stays on a real element through the whole flight). No live
+region announces the switch to street view (it would be noise); only the unavailable notice is a live region.
+
+**Measurements** (Apple M4, Chrome for Testing 153 headless, production build, local PMTiles, 1440x900@2; 390x844@3 emulated):
+Ho Chi Minh City flight from the world: 4.9 s; rAF interval p50 16.7, p95 16.8, max 33.4 ms; 2 frames over 25 ms on
+desktop and 1 on mobile, all at the flight START (zoom 2.5 to 2.7, where the street map is created; the dissolve and
+street scale have none); JS heap 11 to 37 MB. GPU-synced frame in the dissolve band (Three.js render + registered
+street render + pass, circular pan, 300 frames): desktop p50 10.1 / p95 12.2 / max 17.5 ms, mobile 6.7 / 8.2 / 11.9 ms.
+Contexts: 20 slide-over open/close cycles, 0 live while open and 1 after (22 created, 21 lost); 20 world to street to
+world round trips, 3 live at street scale (Three + 2) and 1 after (43 created, 42 lost). `scripts/globe/handover-*.mjs`.
+
 ### Behaviour notes
 
 - Markers are GL points sized in whole art pixels: normal 3, route stop 5, focused 7, selected 9 (ring with
@@ -261,6 +372,23 @@ effect, so they are separate client chunks fetched after hydration. Production b
 - Debug introspection: `window.__globeDebug` exists only with `?globe-debug` in the URL or
   `sessionStorage["globe-debug"] = "1"`; the browser checks use it.
 
+### Handover checks (`scripts/globe/handover-*.mjs`)
+
+Need Chrome for Testing and the app on `BASE_URL` (default :5175) with `CATALYST_TILES_FALLBACK_URL=http://127.0.0.1:5240/places.pmtiles`
+(`pnpm dev` with that variable, or a build started with `NODE_ENV=development`: production refuses plain-http tile
+URLs); the scripts start the local PMTiles server themselves. The fallback source is pinned by default (deterministic,
+offline); `SOURCE=auto` runs the real chain (OpenFreeMap).
+
+```
+node apps/web/scripts/globe/handover-drills.mjs [direct wheel click failover retreat capped recover reduced keyboard mobile-slideover]
+node apps/web/scripts/globe/handover-perf.mjs  flight|frames|idle|leaks|all [desktop|mobile]
+OUT_DIR=/tmp/shots node apps/web/scripts/globe/handover-shots.mjs dissolve|seam|flight [desktop|mobile]
+```
+
+`?globe-debug` (or `sessionStorage["globe-debug"]`) also exposes `window.__handoverDebug` (both renderers, dissolve,
+overlay owner, limit, registration error, `forceBlend`, `fly`); `street-opts` (JSON in the URL or sessionStorage)
+passes options to the street engine; `?no-street` runs the globe alone (the older Three.js-only scripts below do).
+
 ### Browser checks (`scripts/globe/`)
 
 Need a Chrome binary (Playwright "Chrome for Testing") and the production server running with demo content:
@@ -274,7 +402,7 @@ CHROME_PATH=/path/to/chrome node apps/web/scripts/globe/bench.mjs desktop|mobile
 CHROME_PATH=/path/to/chrome node apps/web/scripts/globe/markers.mjs [quick]              # markers whole-or-absent regression (exit 1 on failure)
 ```
 
-`BASE_URL` overrides `http://localhost:5174`. The places list is visually hidden, so the scripts open places like a
+These Three.js-only scripts run with the street map off (`no-street`). `BASE_URL` overrides `http://localhost:5174`. The places list is visually hidden, so the scripts open places like a
 keyboard user (`page.focus` on `[data-place-link]` + Enter). `bench.mjs ... panel` opens `/locations/kyoto` with the
 panel open and repeats both passes with the scissor off. `check.mjs` also covers the inset (direct load, animation vs
 panel position, picking, close, reduced motion) and the ocean colour in both schemes. The scripts install their instrumentation before app code runs:

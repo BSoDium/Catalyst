@@ -56,16 +56,41 @@ export interface Flight {
   duration: number;
   /** Zoom-out pull-back (zoom units) at mid flight on long hops. */
   dip: number;
+  /** Street-scale flight: the pull-back is exactly `dip` below the straight zoom ramp (see `sampleFlight`). */
+  street: boolean;
+  /** The pan runs between these fractions of the time (0 and 1 = with the zoom). Narrower on flights to or from street scale. */
+  panSpan: readonly [number, number];
 }
 
-export function createFlight(from: ViewState, to: ViewState, now: number): Flight {
+/** Zoom above which a flight is a street-scale flight (the Three.js globe's own maximum). */
+const STREET_FLIGHT_FROM = 6.5;
+/** Fraction of the flight in which the pan completes when it ends at street scale (the zoom keeps going). */
+const STREET_PAN_BY = 0.65;
+
+/**
+ * Zoom at which `angleRad` of arc spans roughly a screen of `viewPx` px: the cruise level of a hop. Deeper than this
+ * the destination is off screen, so a hop between two street-scale places must pull back at least to it.
+ */
+export function cruiseZoom(angleRad: number, viewPx: number): number {
+  return Math.log2((viewPx * 2 * Math.PI) / (512 * Math.max(angleRad, 1e-7)));
+}
+
+export function createFlight(from: ViewState, to: ViewState, now: number, viewPx = 900): Flight {
   const angle = angularDistance(from.lon, from.lat, to.lon, to.lat);
+  const street = Math.max(from.zoom, to.zoom) > STREET_FLIGHT_FROM;
+  const dz = Math.abs(to.zoom - from.zoom);
+  let dip = Math.min(1.4, (angle / Math.PI) * 2.2);
+  if (street) dip = Math.max(dip, Math.min(from.zoom, to.zoom) - (cruiseZoom(angle, viewPx) - 0.7));
   return {
     from: { ...from },
     to: { ...to, lon: from.lon + shortestLonDelta(from.lon, to.lon) },
     start: now,
-    duration: flightDuration(angle, to.zoom - from.zoom),
-    dip: Math.min(1.4, (angle / Math.PI) * 2.2),
+    // World-scale flights keep their duration; street scale adds time per zoom level crossed (about 5 s from the world).
+    duration: street ? clamp(900 + 700 * (angle / Math.PI) + 320 * dz, 900, 6500) : flightDuration(angle, to.zoom - from.zoom),
+    dip,
+    street,
+    // Zooming in: the pan is done early (the target stays near the centre while the scale explodes); zooming out: late.
+    panSpan: !street || to.zoom === from.zoom ? [0, 1] : to.zoom > from.zoom ? [0, STREET_PAN_BY] : [1 - STREET_PAN_BY, 1],
   };
 }
 
@@ -73,15 +98,19 @@ export function sampleFlight(f: Flight, now: number, minZoom: number): { view: V
   const t = clamp((now - f.start) / f.duration, 0, 1);
   if (t >= 1) return { view: { ...f.to }, done: true };
   const e = easeInOutCubic(t);
+  const [p0, p1] = f.panSpan;
+  const ep = p0 === 0 && p1 === 1 ? e : easeInOutCubic(clamp((t - p0) / (p1 - p0), 0, 1));
   const mid = (f.from.zoom + f.to.zoom) / 2;
   const zoomMid = Math.max(minZoom, Math.min(f.from.zoom, f.to.zoom) - f.dip);
-  // Quadratic dip towards zoomMid at t = 0.5 while the endpoints stay eased.
+  // Quadratic dip towards zoomMid at t = 0.5 while the endpoints stay eased. Over a street-scale zoom range that rule
+  // would undershoot far below both ends early on, so there the pull-back is just `dip` off the straight ramp.
   const bump = 4 * e * (1 - e);
+  const depth = f.street ? f.dip : Math.max(0, mid - zoomMid);
   return {
     view: {
-      lon: f.from.lon + (f.to.lon - f.from.lon) * e,
-      lat: f.from.lat + (f.to.lat - f.from.lat) * e,
-      zoom: f.from.zoom + (f.to.zoom - f.from.zoom) * e - bump * Math.max(0, mid - zoomMid),
+      lon: f.from.lon + (f.to.lon - f.from.lon) * ep,
+      lat: f.from.lat + (f.to.lat - f.from.lat) * ep,
+      zoom: f.from.zoom + (f.to.zoom - f.from.zoom) * e - bump * depth,
     },
     done: false,
   };

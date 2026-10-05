@@ -17,6 +17,7 @@ import { graticuleSegments, polylinesToSegments } from "./geometry";
 import { OCCLUDER_RADIUS, lineMaterial, occluderMaterial, silhouetteMaterial } from "./materials";
 import { MarkerLayer } from "./marker-layer";
 import { RouteLayer } from "./route-layer";
+import { routeLift } from "../handover/maths";
 import { TUNING } from "./tuning";
 
 /** Route dash period in art pixels. */
@@ -101,6 +102,7 @@ export class GlobeScene {
 
   /** Per-frame uniforms that depend on the camera. */
   syncCamera(basis: ViewBasis, zoom: number, pixel: number) {
+    this.routes.setLift(routeLift(zoom));
     this.routes.setPeriod((ROUTE_DASH_PX * pixel) / zoomToRadiusPx(zoom));
     // Borders: off, then a dotted 50% dither, then solid. Stepped (not a smooth ramp) because a low-coverage
     // dither on 1px lines reads as noise instead of a fade.

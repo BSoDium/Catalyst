@@ -1,6 +1,6 @@
 # Street map (`apps/web/app/globe/street/`)
 
-Status: stage 1 of 2, 2026-10-05. The production street-scale renderer, built from `docs/street-zoom-spike.md` and `docs/pixel-line-rules.md` (variant F). It is NOT wired into the UI yet: stage 2 (the globe-to-street handover) integrates it. The shell loader already carries the tile configuration (`loaderData.tiles`).
+Status: stage 2 of 2, 2026-10-05. The production street-scale renderer, built from `docs/street-zoom-spike.md` and `docs/pixel-line-rules.md` (variant F), now integrated: the globe hands over to it (`app/globe/handover/`, described in `docs/web-architecture.md`, "Handover"). The shell passes `loaderData.tiles` to `<Globe tiles>`. `/dev/street` and `/dev/street-lines` remain, as development-only routes.
 
 ## What it is
 
@@ -29,7 +29,7 @@ street/
   overlay/hud-layer.ts   markers, labels, leader lines, hit testing
   harness/synthetic.ts   line-connectivity harness (dev route /dev/street-lines), not in the engine chunk
 ```
-Outside the folder: `app/lib/tiles-config.server.ts` (+ test), `app/routes/dev-street.tsx`, `dev-street-lines.tsx`, one line in `routes.ts`, the loader line in `routes/shell.tsx`, `apps/web/scripts/street/*`.
+Outside the folder: `app/globe/handover/` (the integration), `app/lib/tiles-config.server.ts` (+ test), `app/routes/dev-street.tsx`, `dev-street-lines.tsx`, the dev routes in `routes.ts` (absent from production builds), the loader and the `tiles` prop in `routes/shell.tsx`, `apps/web/scripts/street/*` and `scripts/globe/handover-*.mjs`.
 
 The engine imports pure helpers from `../engine/` (tuning, geo, inset, visibility, dpr, colors, view) instead of copying them. Build side effect: Rollup hoists `geo` (2 KB) and `tuning` (0.4 KB) into tiny shared chunks used by both the globe engine and the street engine.
 
@@ -46,11 +46,22 @@ const map = createStreetMap(container, {
 });
 map.flyTo / jumpTo / setSelected(slug, { fly }) / setFocused / setInset / setReducedMotion
 map.setReveal(on, { center }) / setSharp(0..1) / setBlend(0..1)   // capabilities, return a Promise
+map.setCamera(view, { inset, sync }) / hit(x, y, kind) / covers(lon, lat)   // embedded use, see below
 map.getView() / getTileStatus() / getMaxZoom() / dispose() / debug()
 ```
 React: `<StreetMapCanvas places routes selectedSlug focusedSlug initialView reducedMotion tiles insetRight onSelect onViewChange onTileStatus onReady engineOptions />`. `onReady(map)` hands the handle to the parent (null on dispose). The engine is rebuilt only when `places`, `routes` or the tile URLs change; the camera is kept.
 
 Accessibility is the globe's: map, pass canvas and overlay are `aria-hidden` and have no tab stop (the MapLibre canvas has its `tabindex`/`aria-label` removed, keyboard handling off); the only exposed content is the attribution (real links) and a `role="status"` message when WebGL is unavailable or a context is lost. The place list stays the accessible path.
+
+## Embedded use (the handover)
+
+`createStreetMap(container, { embedded: true, ... })` is how the handover controller uses the engine; `StreetMapCanvas` (React wrapper, `/dev/street`) stays standalone. Embedded means:
+
+- the map root is transparent (`setBlend` < 1 shows the Three.js globe underneath, cell by cell) and takes no pointer events (the globe canvas keeps all input); `hit(x, y, kind)` answers what a click at a container point would select, so the host routes picking;
+- the host owns the camera: `setCamera(view, { inset, sync })` jumps the camera and applies the globe's animated inset in the same step (no easing: the engine's own padding ease is off), `sync` renders, composites and updates the overlay before returning. The engine does not ease the camera back to the cap when `capped` (the host reads `getMaxZoom()` and does it); the style swap on a source transition still happens;
+- the overlay uses the globe's look (`OverlayLook "globe"`: markers 3 / focused 7 solid / selected 9 ring with dot, the globe's label type, background, selection inversion, `engine/labels.ts` placement, no leader lines, every label eligible at street scale) instead of the spike's boxed HUD (`"hud"`, still the standalone default);
+- `covers(lon, lat)`: whether the active source has tiles there (false while connecting or capped, and outside the bounds of a fallback archive). The host does not fly to street scale for an uncovered place.
+- Routes are 2 art pixels wide with a 7 px dash period (62 % ink), the Three.js globe's stroke, so a route keeps its weight through the dissolve (1 px before stage 2).
 
 ## Lifecycle
 
@@ -97,17 +108,13 @@ Trimmed, empty = unset, https only (plain http for localhost outside production)
 
 `zoom_map = zoom_globe + log2(cos lat)` (`core/registration.ts`: `registerGlobeToMap`, `registerMapToGlobe`, `globeViewToMap`, `mapToGlobeView` for the app's [0, 1] zoom). `zoom_globe` is the globe's internal zoom. Measured (`scripts/street/registration.mjs`, live MapLibre globe vs the globe model `engine/geo.ts`, 1440x900, 5x5 grid of +-8 degrees): with the correction the mean AND max difference are under 0.001 px in all nine cases (lat 10.8, 40, 60; globe zoom 2.6 to 5.5); without it 1.1 px (lat 10.8, z2.6) up to 350 px (lat 60, z5.5), matching the spike's raw column. The spike's 1.3 px residual came from its prototype globe; the production model coincides with MapLibre's. This compares projections, not Three pixels (the globe's own tests tie the model to the Three camera). Unit tests add an analytic Mercator check (under 1 px mean within 250 px of the centre from z10 at every latitude).
 
-## For the handover worker
+## Handover (stage 2)
 
-- Mount `<StreetMapCanvas>` under the Three canvas in the same box (it fills its container, transparent where `setBlend` < 1) or drive `createStreetMap` yourself; lazy-load it when the user zooms past about globe zoom 5 or opens a place (the chunk is about 435 KB gzip plus the worker).
-- Start the street map at `globeViewToMap(view, { minZoom: globe.getMinZoom(), maxZoom: 6.5 })` with the same `insetRight`; hand back with `mapToGlobeView`.
-- Dissolve between the engines on the art-pixel grid with `setBlend` (0 transparent to 1 opaque; Bayer, same grid as the globe's pixels). Fade `map.overlay` (markers, labels) alongside. `setReveal(true)` opens the sharp circle around the selected place after arrival, `setSharp` dissolves the whole pixel art into the vector render. All are instant under reduced motion (a static dissolve).
-- Respect `onTileStatus`: when `state === "capped"`, `maxZoom` is 6; do not offer street scale (the engine already eases back). Do not offer street scale for a place outside the fallback boxes while on `fallback`.
-- `onSelect` is the only navigation request, as for the globe.
+Summary (full description and numbers in `docs/web-architecture.md`, "Handover"): the globe renderer owns one camera whose zoom extends past 6.5 into street scale; the street map follows it (registered, synchronous), is dissolved in on the art-pixel grid between internal zooms 4.6 and 5.5, takes over the overlay at 0.8, and is released again below 3.3. The chunk (about 435 KB gzip plus the worker) loads at zoom 4.0 or when a place is selected; until a tile source works the globe's zoom limit is 6.5 and a flight toward street scale waits at it. `onTileStatus` drives the limit: `capped` makes the controller ease the camera back to the globe's range and show the small notice. `GlobeViewState.street` stores street scale in the shell's saved view.
 
 ## Dev route and checks
 
-`/dev/street` (and `/dev/street-lines`) exist only in development or a build made with `CATALYST_DEV_ROUTES=1`; otherwise they are not in `routes.ts` and their loaders answer 404. Query: `source=primary|fallback`, `chaos=block-primary|slow-primary|block-all` (+ `chaos-after`, `chaos-heal`, `chaos-slow`), `view`, `select`, `inset`, `rm=1`, `theme`, `reveal=1`, `sharp`, `blend`, `fallbackUrl`, `primaryUrl`, `timings=`, `thresholds=`.
+`/dev/street` (and `/dev/street-lines`) exist only in development or a build made with `CATALYST_DEV_ROUTES=1`; otherwise they are not in `routes.ts` (a production build contains none of their code) and their loaders answer 404. Query: `source=primary|fallback`, `chaos=block-primary|slow-primary|block-all` (+ `chaos-after`, `chaos-heal`, `chaos-slow`), `view`, `select`, `inset`, `rm=1`, `theme`, `reveal=1`, `sharp`, `blend`, `fallbackUrl`, `primaryUrl`, `timings=`, `thresholds=`.
 
 ```
 node apps/web/scripts/street/serve-tiles.mjs prototypes/street-zoom/public/hcmc.pmtiles 5240   # local Range server
@@ -133,7 +140,9 @@ node apps/web/scripts/street/shot.mjs name source=fallback scheme=dark
 - Not verified: Safari / iOS (iOS Simulator unavailable), real phones (the "mobile" row is emulation on the M4), a real DPR change, real GPU context loss, behaviour against a real Caddy/Traefik/home uplink, OpenFreeMap beyond a few sessions.
 - Gate gap: the spike's high-resolution reference comparison on the real map (per class line-miss, fragmentation) and the pan stability metrics were not ported; the synthetic part and the real-map block / idle checks were.
 - The recovery probe checks the TileJSON, not a tile: a source that serves TileJSON but slow tiles can be promoted and demoted again; the flap backoff bounds that to one failover per growing interval.
-- Phones render the map at scale min(DPR, 2) with device-resolution output (no art-resolution path); the spike's cheaper A2 path is future work.
+- Phones render the map at scale min(DPR, 2) with device-resolution output (no art-resolution path); the spike's cheaper A2 path is future work. Measured on the 390x844@3 emulation (M4): frame in the dissolve band 6.7 / 8.2 / 11.9 ms.
+- Outside a fallback archive's bounds the street map shows empty tiles (world lines only): the handover does not fly there, but the user can pan there. Primary-only deployments have global coverage.
+- Embedded, the registration is exact (the same maths) but the street map's globe projection is not drawn: the handover ends well before MapLibre's own globe-to-Mercator transition (zoom 12 in MapLibre; the cameras agree to under 1 px within 250 px of the centre from zoom 10).
 - Routes are drawn as dashed pixel lines on the ground (no lift, no draw-on animation, route stops are not enlarged).
 - Markers: normal 3, focused 7, selected 9 art pixels like the globe; labels use the spike's HUD style (selected/focused solid, others dotted and muted).
 - Mapbox is out of scope.

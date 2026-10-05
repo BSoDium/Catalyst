@@ -14,7 +14,7 @@ import { buildPlaceIndex, placePath } from "~/lib/projection";
 
 export async function loader() {
   // `tiles` is the street map's tile source configuration (CATALYST_TILES_* read at request time, see
-  // docs/street-architecture.md). Nothing in the UI uses it yet: the globe-to-street handover will.
+  // docs/street-architecture.md). The globe hands over to the street map with it (docs/web-architecture.md).
   return { ...buildPlaceIndex(await getProjection()), tiles: getTilesConfig() };
 }
 
@@ -28,7 +28,7 @@ export function shouldRevalidate() {
  * places (`PlacesNav`, visually hidden until focused), and the detail panel (whose content is the child route).
  */
 export default function Shell({ loaderData }: Route.ComponentProps) {
-  const { places, globePlaces, routes } = loaderData;
+  const { places, globePlaces, routes, tiles } = loaderData;
   const params = useParams();
   const navigate = useNavigate();
   const outlet = useOutlet();
@@ -80,6 +80,7 @@ export default function Shell({ loaderData }: Route.ComponentProps) {
               initialView={viewRef.current}
               reducedMotion={reducedMotion}
               insetRight={insetRight}
+              tiles={tiles}
               onSelect={select}
               onViewChange={saveView}
             />

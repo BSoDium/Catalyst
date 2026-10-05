@@ -46,7 +46,8 @@ import {
 } from "./motion";
 import { GlobeScene } from "./scene";
 import { INSET_EASE, TUNING } from "./tuning";
-import { zoomFrom01 } from "./view";
+import { fromViewState } from "./view";
+import { zoomCorrection } from "../street/core/registration";
 import { markerShown } from "./visibility";
 
 // Our ShaderMaterials write raw sRGB values and there is no lighting, so skip Three's linear-sRGB conversion;
@@ -65,12 +66,19 @@ export interface RendererOptions {
   borders: Polylines;
   theme: GlobeTheme;
   reducedMotion: boolean;
+  /** Initial zoom limit (see `setZoomLimit`); default the Three.js globe's maximum. */
+  zoomLimit?: number;
   /** CSS px covered by UI on the right edge of the container at start; the globe centres on the rest. */
   insetRight: number;
   /** Called synchronously after every drawn frame (labels and view reporting hang off it). */
   onFrame(): void;
   /** A label under the point (the labels are DOM, so the controller knows them), or null. */
   pickLabel(x: number, y: number, kind: PointerKind): string | null;
+  /**
+   * Replaces picking altogether (markers and labels) when it returns a value other than `undefined`; `null` = nothing.
+   * The handover uses it while the street map's overlay is the visible one.
+   */
+  pickOverride?(x: number, y: number, kind: PointerKind): string | null | undefined;
   onSelect(slug: string): void;
   /** The GL context was lost (true) or restored (false). */
   onContextChange(lost: boolean): void;
@@ -81,6 +89,16 @@ export interface StartView {
   lat: number;
   /** In [0, 1] (`GlobeViewState` zoom); null = the select zoom. */
   zoom01: number | null;
+  /** Street-scale levels beyond `zoom01` = 1 (`GlobeViewState.street`). */
+  street?: number;
+}
+
+export interface FlyOptions {
+  /**
+   * Allow the target to be above the current zoom limit (the street map is on its way): the flight then waits at the
+   * limit, its clock paused, until the limit is lifted, instead of being cut short.
+   */
+  beyondLimit?: boolean;
 }
 
 export class GlobeRenderer {
@@ -97,6 +115,11 @@ export class GlobeRenderer {
   private canvasLeft = 0;
   private canvasTop = 0;
   private minZoom = 1;
+  /** Highest zoom reachable now (the globe's maximum unless the street map is available); see `setZoomLimit`. */
+  private zoomLimit: number = TUNING.maxZoom;
+  /** Skip drawing the Three.js scene (the street map covers it); the camera, flights and `onFrame` still run. */
+  private suspended = false;
+  private flightLast = 0;
   private pixel = 3;
   /** Current (animated) and target inset, CSS px; see `setInset`. */
   private inset: number;
@@ -118,6 +141,7 @@ export class GlobeRenderer {
   private dirty = false;
   private raf = 0;
   private frames = 0;
+  private ticks = 0;
   private lastRenderMs = 0;
   private loseExt: WEBGL_lose_context | null = null;
   private cleanups: (() => void)[] = [];
@@ -128,6 +152,7 @@ export class GlobeRenderer {
   private selected: string | null = null;
   private focused: string | null = null;
   private flight: Flight | null = null;
+  private flightBeyond = false;
   private velocity: Velocity = STILL;
   private inertiaLast = 0;
 
@@ -136,6 +161,7 @@ export class GlobeRenderer {
     start: StartView | null,
   ) {
     this.reduced = opts.reducedMotion;
+    this.zoomLimit = opts.zoomLimit ?? TUNING.maxZoom;
     this.inset = this.insetTarget = Math.max(0, opts.insetRight);
     this.start = start;
     this.theme = opts.theme;
@@ -215,7 +241,7 @@ export class GlobeRenderer {
       this.sized = true;
       this.view = this.clampView(this.startView());
     } else {
-      this.view = { ...this.view, zoom: clamp(this.view.zoom, this.minZoom, TUNING.maxZoom) };
+      this.view = { ...this.view, zoom: clamp(this.view.zoom, this.minZoom, this.maxZoomAt(this.view.lat)) };
     }
     // Resizing clears the drawing buffer: repaint synchronously so there is no blank frame.
     if (redraw) this.renderNow();
@@ -254,7 +280,7 @@ export class GlobeRenderer {
       this.inset = next;
       if (this.sized) {
         this.applyInset();
-        this.view = { ...this.view, zoom: clamp(this.view.zoom, this.minZoom, TUNING.maxZoom) };
+        this.view = { ...this.view, zoom: clamp(this.view.zoom, this.minZoom, this.maxZoomAt(this.view.lat)) };
       }
     }
     this.requestRender();
@@ -274,8 +300,16 @@ export class GlobeRenderer {
   private startView(): ViewState {
     const s = this.start;
     if (!s) return { lon: 15, lat: 28, zoom: this.minZoom };
-    const zoom = s.zoom01 === null ? TUNING.selectZoom : zoomFrom01(s.zoom01, this.minZoom, TUNING.maxZoom);
-    return { lon: s.lon, lat: s.lat, zoom };
+    if (s.zoom01 === null) return { lon: s.lon, lat: s.lat, zoom: TUNING.selectZoom };
+    return fromViewState({ lon: s.lon, lat: s.lat, zoom: s.zoom01, street: s.street }, this.minZoom, TUNING.maxZoom);
+  }
+
+  /** The animated inset now (CSS px). */
+  getInset() {
+    return this.inset;
+  }
+  isFlying() {
+    return this.flight !== null;
   }
 
   getMinZoom() {
@@ -287,12 +321,48 @@ export class GlobeRenderer {
 
   /* ------------------------------ camera API ------------------------------ */
 
-  private clampView(v: ViewState): ViewState {
-    return {
-      lon: normalizeLon(v.lon),
-      lat: clamp(v.lat, -TUNING.maxLat, TUNING.maxLat),
-      zoom: clamp(v.zoom, this.minZoom, TUNING.maxZoom),
-    };
+  /** Highest internal zoom at a latitude: the zoom limit, and never past the street map's own maximum. */
+  private maxZoomAt(lat: number): number {
+    return Math.min(this.zoomLimit, TUNING.streetMapMaxZoom - zoomCorrection(lat));
+  }
+
+  private clampView(v: ViewState, beyondLimit = false): ViewState {
+    const lat = clamp(v.lat, -TUNING.maxLat, TUNING.maxLat);
+    const top = beyondLimit ? TUNING.streetMapMaxZoom - zoomCorrection(lat) : this.maxZoomAt(lat);
+    return { lon: normalizeLon(v.lon), lat, zoom: clamp(v.zoom, this.minZoom, top) };
+  }
+
+  /**
+   * Highest zoom reachable (default: the Three.js globe's maximum). The handover raises it to the street map's
+   * maximum while a tile source works. Lowering it below the current zoom clamps the view at once.
+   */
+  setZoomLimit(zoom: number) {
+    this.zoomLimit = zoom;
+    const next = this.clampView(this.view);
+    if (next.zoom !== this.view.zoom) {
+      this.view = next;
+      this.requestRender();
+    }
+  }
+  getZoomLimit() {
+    return this.zoomLimit;
+  }
+
+  /** True while the Three.js scene is not being drawn. */
+  setSuspended(on: boolean) {
+    if (on === this.suspended) return;
+    this.suspended = on;
+    // A canvas that never drew is black: keep it out of sight until it has.
+    if (this.frames === 0) this.canvas.style.visibility = on ? "hidden" : "";
+    if (!on) this.requestRender();
+  }
+  isSuspended() {
+    return this.suspended;
+  }
+
+  /** The view the Three.js scene is drawn with: the globe cannot go closer than its own maximum. */
+  private drawView(): ViewState {
+    return this.view.zoom > TUNING.maxZoom ? { ...this.view, zoom: TUNING.maxZoom } : this.view;
   }
 
   setView(v: Partial<ViewState>) {
@@ -303,15 +373,26 @@ export class GlobeRenderer {
   }
 
   /** Animated camera move; a jump under reduced motion. */
-  flyTo(v: Partial<ViewState>) {
-    const to = this.clampView({ ...this.view, ...v });
+  flyTo(v: Partial<ViewState>, o?: FlyOptions) {
+    const beyond = o?.beyondLimit === true;
+    const to = this.clampView({ ...this.view, ...v }, beyond);
     if (this.reduced) {
-      this.setView(to);
+      this.flight = null;
+      this.velocity = STILL;
+      this.view = this.clampView(to);
+      this.requestRender();
       return;
     }
     this.velocity = STILL;
-    this.flight = createFlight(this.view, to, performance.now());
+    this.flight = createFlight(this.view, to, performance.now(), this.height);
+    this.flightBeyond = beyond;
+    this.flightLast = performance.now();
     this.requestRender();
+  }
+
+  /** The target of the flight in progress, or null. */
+  flightTarget(): ViewState | null {
+    return this.flight ? { ...this.flight.to } : null;
   }
 
   setReducedMotion(on: boolean) {
@@ -383,10 +464,19 @@ export class GlobeRenderer {
     return { col: Math.floor(p.x / P), row: Math.floor(p.y / P), shown, facing: p.facing };
   }
 
+  /** Where the globe model puts a place for the CURRENT view (not capped at the globe's maximum zoom, not snapped), container CSS px. */
+  projectExact(lon: number, lat: number): { x: number; y: number } {
+    const P = this.pixel;
+    const cw = this.bufW * P;
+    const ch = this.bufH * P;
+    const p = projectLonLat(lon, lat, viewBasis(this.view, ch), cw, ch, MARKER_RADIUS, cw / 2 - this.shiftBuf * P);
+    return { x: p.x + this.canvasLeft, y: p.y + this.canvasTop };
+  }
+
   /** Container CSS px of the art pixel the marker is drawn in (its centre), and whether it is drawn. */
   project(lon: number, lat: number): ScreenPoint {
     const P = this.pixel;
-    const c = this.markerCell(lon, lat, viewBasis(this.view, this.bufH * P));
+    const c = this.markerCell(lon, lat, viewBasis(this.drawView(), this.bufH * P));
     return {
       x: (c.col + 0.5) * P + this.canvasLeft,
       y: (c.row + 0.5) * P + this.canvasTop,
@@ -397,7 +487,7 @@ export class GlobeRenderer {
 
   /** Per frame, before drawing: hand every marker its cell and visibility. */
   private syncMarkers() {
-    const basis = viewBasis(this.view, this.bufH * this.pixel);
+    const basis = viewBasis(this.drawView(), this.bufH * this.pixel);
     this.places.forEach((place, i) => {
       const c = this.markerCell(place.lon, place.lat, basis);
       this.globe.markers.setScreen(i, c.col, c.row, c.shown);
@@ -432,7 +522,10 @@ export class GlobeRenderer {
       panPixels: (dx, dy) => this.panPixels(dx, dy),
       zoomBy: (d) => this.setView({ zoom: this.view.zoom + d }),
       fling: (samples, now) => this.fling(samples, now),
-      pickAt: (x, y, kind) => this.pick(x, y, TUNING.pickRadius[kind]) ?? this.opts.pickLabel(x, y, kind),
+      pickAt: (x, y, kind) => {
+        const over = this.opts.pickOverride?.(x, y, kind);
+        return over !== undefined ? over : (this.pick(x, y, TUNING.pickRadius[kind]) ?? this.opts.pickLabel(x, y, kind));
+      },
       select: (slug) => this.opts.onSelect(slug),
     };
   }
@@ -509,15 +602,25 @@ export class GlobeRenderer {
       const t = clamp((now - a.start) / TUNING.insetMs, 0, 1);
       this.inset = t >= 1 ? a.to : a.from + (a.to - a.from) * easeInset(t);
       this.applyInset();
-      this.view = { ...this.view, zoom: clamp(this.view.zoom, this.minZoom, TUNING.maxZoom) };
+      this.view = { ...this.view, zoom: clamp(this.view.zoom, this.minZoom, this.maxZoomAt(this.view.lat)) };
       if (t >= 1) this.insetAnim = null;
       else more = true;
     }
     if (this.flight) {
+      const dt = now - this.flightLast;
+      this.flightLast = now;
       const s = sampleFlight(this.flight, now, this.minZoom);
-      this.view = this.clampView(s.view);
-      if (s.done) this.flight = null;
-      else more = true;
+      const lat = clamp(s.view.lat, -TUNING.maxLat, TUNING.maxLat);
+      if (this.flightBeyond && s.view.zoom > this.maxZoomAt(lat) + 1e-6) {
+        // The street map is not available yet: hold at the limit and pause the flight's clock; it resumes from here.
+        this.flight = { ...this.flight, start: this.flight.start + dt };
+        this.view = this.clampView(s.view);
+        more = true;
+      } else {
+        this.view = this.clampView(s.view, this.flightBeyond);
+        if (s.done) this.flight = null;
+        else more = true;
+      }
     }
     if (!isStill(this.velocity)) {
       const dt = now - this.inertiaLast;
@@ -543,6 +646,11 @@ export class GlobeRenderer {
   renderNow() {
     if (this.disposed || this.lost || !this.sized) return;
     this.cancelFrame();
+    if (this.suspended) {
+      this.ticks++;
+      this.opts.onFrame();
+      return;
+    }
     this.syncCamera();
     this.syncMarkers();
     // Draw only the free area plus a margin: the rest is under the panel and masked out.
@@ -557,7 +665,8 @@ export class GlobeRenderer {
   }
 
   private syncCamera() {
-    const b = viewBasis(this.view, this.bufH * this.pixel);
+    const v = this.drawView();
+    const b = viewBasis(v, this.bufH * this.pixel);
     const cam = this.camera;
     cam.fov = FOV_DEG;
     cam.aspect = this.bufW / this.bufH;
@@ -572,14 +681,19 @@ export class GlobeRenderer {
     else cam.clearViewOffset();
     cam.updateProjectionMatrix();
     cam.updateMatrixWorld();
-    this.globe.syncCamera(b, this.view.zoom, this.pixel);
+    this.globe.syncCamera(b, v.zoom, this.pixel);
   }
 
   /* ------------------------------ diagnostics ------------------------------ */
 
-  /** Frames drawn since creation. */
+  /** Frames drawn since creation (suspended ticks are not frames). */
   frameCount() {
     return this.frames;
+  }
+
+  /** Camera ticks since creation, drawn or suspended. */
+  tickCount() {
+    return this.ticks + this.frames;
   }
 
   /** JS time of the last `WebGLRenderer.render` call, ms. */

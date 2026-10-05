@@ -136,7 +136,7 @@ const summary = [];
 let failed = 0;
 
 async function run(label, contextOptions, selectSlug) {
-  const { page, logs } = await open(b, contextOptions);
+  const { page, logs } = await open(b, contextOptions, "/");
   await waitGlobe(page);
   if (selectSlug) {
     // Select like a keyboard user (the list is visually hidden), then wait for the flight to end.

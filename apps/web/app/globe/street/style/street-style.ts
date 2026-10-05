@@ -223,9 +223,13 @@ function artWidthPaint(spec: Spec, cellCss: number): number | ExpressionSpecific
 }
 
 /** Layer ids of the lines that follow the art cell (world data and routes included). */
-const CELL_LAYERS = ["world-coast", "world-coast-band", "world-borders", "world-borders-band", "graticule", "routes-line"] as const;
-/** The erasing halo under a route is three art pixels wide. */
-const ROUTE_HALO_ART = 3;
+const CELL_LAYERS = ["world-coast", "world-coast-band", "world-borders", "world-borders-band", "graticule"] as const;
+/**
+ * A route is two art pixels wide, dashed with the globe's 7 px period (62 % ink): the same stroke the Three.js globe
+ * draws, so the curated routes keep their weight through the handover. Its erasing halo is four art pixels wide.
+ */
+const ROUTE_ART = 2;
+const ROUTE_HALO_ART = 4;
 
 /** Re-apply the art widths after the art cell size changed (viewport crossing 520 px, DPR change). */
 export function applyCell(map: MLMap, cellCss: number): void {
@@ -234,6 +238,7 @@ export function applyCell(map: MLMap, cellCss: number): void {
     map.setPaintProperty(spec.id, "line-width", artWidthPaint(spec, cellCss) as never);
   }
   for (const id of CELL_LAYERS) if (map.getLayer(id)) map.setPaintProperty(id, "line-width", cellCss);
+  if (map.getLayer("routes-line")) map.setPaintProperty("routes-line", "line-width", ROUTE_ART * cellCss);
   if (map.getLayer("routes-halo")) map.setPaintProperty("routes-halo", "line-width", ROUTE_HALO_ART * cellCss);
 }
 
@@ -337,7 +342,7 @@ export function buildStreetStyle(o: StreetStyleOptions): StyleSpecification {
     id: "graticule", type: "line", source: "grid", maxzoom: 9,
     paint: { "line-color": CHANNEL.muted, "line-width": cell, "line-dasharray": [1.5, 2.5] },
   } as LayerSpecification;
-  // Curated routes: an erasing halo (so a route reads over a road of the same ink) and a dashed one-pixel ink line.
+  // Curated routes: an erasing halo (so a route reads over a road of the same ink) and a dashed two-pixel ink line.
   const routesHalo: LayerSpecification = {
     id: "routes-halo", type: "line", source: "routes",
     layout: { "line-cap": "butt", "line-join": "round" },
@@ -346,7 +351,7 @@ export function buildStreetStyle(o: StreetStyleOptions): StyleSpecification {
   const routesLine: LayerSpecification = {
     id: "routes-line", type: "line", source: "routes",
     layout: { "line-cap": "butt", "line-join": "miter" },
-    paint: { "line-color": CHANNEL.ink, "line-opacity": THIN_INK, "line-width": cell, "line-dasharray": [3, 2] },
+    paint: { "line-color": CHANNEL.ink, "line-opacity": 1, "line-width": ROUTE_ART * cell, "line-dasharray": [2.2, 1.3] },
   } as LayerSpecification;
 
   const sources: StyleSpecification["sources"] = {

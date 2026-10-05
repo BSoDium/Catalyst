@@ -10,6 +10,8 @@ export const TUNING = {
   /** Borders: hidden below `start`, dotted (50%) from `start`, solid from `end`. Zoom = internal globe zoom. */
   borderZoom: { start: 3.0, end: 3.3 },
   maxZoom: 6.5,
+  /** Street map's maximum MapLibre zoom (STREET_TUNING.maxZoom); the unified camera's range ends there. */
+  streetMapMaxZoom: 17.5,
   /** Latitude clamp for the view centre. */
   maxLat: 82,
   /** Zoom used when rotating to a selected place (never zooms out). */

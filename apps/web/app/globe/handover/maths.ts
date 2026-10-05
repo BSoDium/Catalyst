@@ -1,0 +1,104 @@
+/**
+ * Pure maths of the globe-to-street handover (unit tested, no DOM, no GL). The controller (controller.ts) applies it.
+ *
+ * ONE camera: the globe renderer owns the view, in its INTERNAL zoom (`zu`, globe zoom levels). Its range goes beyond
+ * the Three.js globe's own maximum (6.5): above it the same number is the street map's camera through
+ * `registerGlobeToMap` (`zoom_map = zu + log2 cos lat`). Everything below is a function of that one number, so the
+ * dissolve is scrubbable in both directions, needs no state machine to flap, and a gesture, a flight or a restored
+ * view all behave the same.
+ *
+ *   zu <  mountZoom                street chunk not loaded (unmounted again below `unmountZoom`)
+ *        followZoom ..             the street map follows the camera, invisible, to have its tiles ready
+ *        blendStart .. blendEnd    pixel-grid (Bayer) dissolve from the Three.js render to the street render
+ *   zu >= blendEnd                 the street map alone is drawn; Three.js is suspended (no frames)
+ */
+import { TUNING } from "../engine/tuning";
+import { clamp } from "../engine/geo";
+import { zoomCorrection } from "../street/core/registration";
+
+export const HANDOVER = {
+  /** The street chunk is requested and the map created from here (the chunk is large: start early). */
+  mountZoom: 4.0,
+  /** ... and released below this, after `unmountDelayMs` (hysteresis: the chunk and tiles stay warm while the user hovers). */
+  unmountZoom: 3.3,
+  unmountDelayMs: 2500,
+  /** From here the street map follows the camera while still invisible, so its tiles are loaded when the dissolve starts. */
+  followZoom: 4.3,
+  /** Trailing debounce of the invisible follow (ms): tiles for where the camera rests, not for every frame of a drag. */
+  followDebounceMs: 140,
+  /** The dissolve is a function of zoom between these two. */
+  blendStart: 4.6,
+  blendEnd: 5.5,
+  /** Slew limit of the dissolve value: a full 0 to 1 swing takes at least this long (fast flicks, availability changes). */
+  dissolveMs: 450,
+  /** Markers and labels switch to the street map's own overlay once the dissolve is this far (with hysteresis). */
+  overlayIn: 0.8,
+  overlayOut: 0.65,
+  /** The globe's lifted route arcs flatten onto the ground between these zooms, ahead of the dissolve. */
+  routeFlat: { start: 3.7, end: 4.6 },
+  /** MapLibre zoom a selected place is flown to. */
+  streetMapZoom: 14.5,
+  /** Sharp-focus circle around the selected place at street scale: set false to switch the effect off for good. */
+  revealFocus: true,
+  /** Direct load on a place: the globe shows it for this long before the flight into street scale starts (ms). */
+  arrivalDelayMs: 700,
+  /** Delay after arrival before the focus circle opens (ms). */
+  revealDelayMs: 450,
+} as const;
+
+/** The Three.js globe's own maximum internal zoom: above it only the street map can draw. */
+export const GLOBE_MAX_ZOOM = TUNING.maxZoom;
+
+const smooth = (t: number) => t * t * (3 - 2 * t);
+
+/** Dissolve target (0 = Three.js only, 1 = street only) for a zoom. */
+export function blendAt(zu: number): number {
+  const { blendStart: a, blendEnd: b } = HANDOVER;
+  return smooth(clamp((zu - a) / (b - a), 0, 1));
+}
+
+/** How lifted the globe's route arcs are at a zoom: 1 on the globe, 0 on the ground (as the street draws them). */
+export function routeLift(zu: number): number {
+  const { start, end } = HANDOVER.routeFlat;
+  return 1 - smooth(clamp((zu - start) / (end - start), 0, 1));
+}
+
+/** Move `current` towards `target` by at most one full swing per `ms` (0 ms = instant). */
+export function slew(current: number, target: number, dtMs: number, ms: number = HANDOVER.dissolveMs): number {
+  if (ms <= 0) return target;
+  const step = Math.max(0, dtMs) / ms;
+  return current < target ? Math.min(target, current + step) : Math.max(target, current - step);
+}
+
+export type OverlayOwner = "globe" | "street";
+
+/** Who draws markers and labels, with hysteresis on the dissolve value. */
+export function overlayOwner(previous: OverlayOwner, blend: number): OverlayOwner {
+  if (previous === "globe") return blend >= HANDOVER.overlayIn ? "street" : "globe";
+  return blend <= HANDOVER.overlayOut ? "globe" : "street";
+}
+
+/** The street map's Mercator zoom for a unified zoom at a latitude, and back. */
+export const toMapZoom = (zu: number, lat: number) => zu + zoomCorrection(lat);
+export const fromMapZoom = (zm: number, lat: number) => zm - zoomCorrection(lat);
+
+/** Unified zoom of the street scale a selected place is flown to. */
+export function streetSelectZoom(lat: number): number {
+  return fromMapZoom(HANDOVER.streetMapZoom, lat);
+}
+
+/** Highest unified zoom the experience offers at a latitude: the street map's maximum, or the globe's when there is no street. */
+export function zoomCeiling(lat: number, streetOk: boolean): number {
+  return streetOk ? fromMapZoom(TUNING.streetMapMaxZoom, lat) : GLOBE_MAX_ZOOM;
+}
+
+/** Whether the street map should exist, with hysteresis. `wanted`: a place is selected or a street view is being restored. */
+export function mountWanted(mounted: boolean, zu: number, wanted: boolean): boolean {
+  if (wanted) return true;
+  return mounted ? zu >= HANDOVER.unmountZoom : zu >= HANDOVER.mountZoom;
+}
+
+/** Dissolve target given availability: a street that is not usable shows nothing, unless the camera is still up there (retreat). */
+export function blendTarget(zu: number, streetOk: boolean): number {
+  return streetOk || zu > GLOBE_MAX_ZOOM + 1e-6 ? blendAt(zu) : 0;
+}

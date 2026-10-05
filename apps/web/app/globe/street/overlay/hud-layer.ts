@@ -11,6 +11,7 @@
  * Markers are drawn WHOLE or not at all (core/marker-visibility.ts); labels are placed by priority around them
  * (core/label-place.ts); selected and focused places are always shown.
  */
+import { placeLabels as placeGlobeLabels, type Placement } from "../../engine/labels";
 import { labelPriorityFloor, placeLabels, snapToCell, type Candidate, type Placed, type Side } from "../core/label-place";
 import { markerDrawn, type MarkerViewport } from "../core/marker-visibility";
 import type { MapView } from "../core/registration";
@@ -69,10 +70,28 @@ const BOX_STYLE: Partial<CSSStyleDeclaration> = {
   willChange: "transform",
 };
 
+/**
+ * `hud`: the spike's boxed labels with leader lines (standalone street map). `globe`: exactly the globe's markers and
+ * labels (same sizes, same type, same placement code and priorities), used when the street map is embedded in the
+ * handover so nothing changes in kind when the overlay hands over.
+ */
+export type OverlayLook = "hud" | "globe";
+
+const GLOBE_BOX_STYLE: Partial<CSSStyleDeclaration> = {
+  padding: "2px 5px",
+  font: "12px/1.2 var(--font-mono, ui-monospace, Menlo, monospace)",
+  letterSpacing: "0.01em",
+  textTransform: "none",
+  background: "color-mix(in srgb, var(--background) 82%, transparent)",
+  color: "var(--foreground)",
+  border: "0",
+};
+
 export class HudLayer {
   private items = new Map<string, Item>();
   private svg: SVGSVGElement;
   private previous = new Map<string, Side>();
+  private previousGlobe = new Map<string, Placement>();
   private selectedId: string | null = null;
   private focusedId: string | null = null;
   private cellCss = 3;
@@ -84,6 +103,7 @@ export class HudLayer {
     private root: HTMLElement,
     places: readonly HudPlace[],
     reducedMotion: boolean,
+    private look: OverlayLook = "hud",
   ) {
     this.reduced = reducedMotion;
     Object.assign(root.style, { position: "absolute", inset: "0", overflow: "hidden", pointerEvents: "none" } satisfies Partial<CSSStyleDeclaration>);
@@ -104,7 +124,7 @@ export class HudLayer {
         boxSizing: "border-box",
       } satisfies Partial<CSSStyleDeclaration>);
       const box = document.createElement("div");
-      Object.assign(box.style, BOX_STYLE);
+      Object.assign(box.style, BOX_STYLE, this.look === "globe" ? GLOBE_BOX_STYLE : {});
       box.textContent = place.name;
       const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
       line.setAttribute("stroke", "var(--foreground)");
@@ -163,6 +183,22 @@ export class HudLayer {
       const focused = slug === this.focusedId && !selected;
       it.size = this.sizeOf(slug);
       const px = it.size * c;
+      if (this.look === "globe") {
+        // The globe's markers: normal and focused are solid squares, the selected one a ring around a gap and a dot.
+        Object.assign(it.marker.style, {
+          width: `${px}px`,
+          height: `${px}px`,
+          background: selected ? `linear-gradient(var(--foreground), var(--foreground)) center / ${c}px ${c}px no-repeat, var(--background)` : "var(--foreground)",
+          border: selected ? `${c}px solid var(--foreground)` : "0",
+        } satisfies Partial<CSSStyleDeclaration>);
+        Object.assign(it.box.style, {
+          background: selected ? "var(--foreground)" : GLOBE_BOX_STYLE.background,
+          color: selected ? "var(--background)" : "var(--foreground)",
+          boxShadow: focused ? "inset 0 0 0 1px var(--foreground)" : "none",
+        } satisfies Partial<CSSStyleDeclaration>);
+        it.box.setAttribute("data-state", selected ? "selected" : focused ? "focused" : "");
+        continue;
+      }
       const ring = selected || focused;
       Object.assign(it.marker.style, {
         width: `${px}px`,
@@ -251,6 +287,10 @@ export class HudLayer {
     const labelled = new Set(cands.map((c) => c.id));
     const obstacles: { id: string; x: number; y: number }[] = [];
     for (const [slug, it] of this.items) if (it.at && !labelled.has(slug)) obstacles.push({ id: slug, x: it.at.x, y: it.at.y });
+    if (this.look === "globe") {
+      this.applyGlobe(frame, cands, obstacles);
+      return;
+    }
     const placed = placeLabels(cands, { w: frame.width, h: frame.height }, {
       previous: this.previous,
       markerHalf: (STREET_TUNING.markerCells.normal * frame.cellCss) / 2 + 2,
@@ -258,6 +298,54 @@ export class HudLayer {
       obstacles,
     });
     this.apply(frame, placed);
+  }
+
+  /** Placement and drawing with the globe's rules (engine/labels.ts, no leader lines). */
+  private applyGlobe(frame: HudFrame, cands: readonly Candidate[], obstacles: readonly { id: string; x: number; y: number }[]): void {
+    const byCand = new Map(cands.map((c) => [c.id, c]));
+    const inputs = [
+      ...cands.map((c) => ({ id: c.id, x: c.x, y: c.y, width: c.w, height: c.h, priority: c.priority, visible: true, facing: 1, forced: c.forced })),
+      // Drawn markers without a label still keep labels off them: same as the globe's "hidden-by-priority places".
+      ...obstacles.map((o) => ({ id: o.id, x: o.x, y: o.y, width: 0, height: 0, priority: -1, visible: true, facing: 1, forced: false })),
+    ];
+    const placed = placeGlobeLabels(inputs, { width: frame.width, height: frame.height, markerRadius: 6, gap: 9, previous: this.previousGlobe }).filter((l) => byCand.has(l.id));
+    const byId = new Map(placed.map((p) => [p.id, p]));
+    const next = new Map<string, Placement>();
+    for (const [slug, it] of this.items) {
+      const at = it.at;
+      it.line.style.visibility = "hidden";
+      if (!at) {
+        it.marker.style.visibility = "hidden";
+        this.hideLabel(it);
+        continue;
+      }
+      const half = (it.size * frame.cellCss) / 2;
+      const mt = `translate(${at.x - half}px, ${at.y - half}px)`;
+      if (mt !== it.markerTransform) {
+        it.marker.style.transform = mt;
+        it.markerTransform = mt;
+      }
+      it.marker.style.visibility = "visible";
+      const pl = byId.get(slug);
+      if (!pl) {
+        this.hideLabel(it);
+        continue;
+      }
+      next.set(slug, pl.placement);
+      const left = Math.round(pl.x);
+      const top = Math.round(pl.y);
+      const t = `translate(${left}px, ${top}px)`;
+      if (t !== it.transform) {
+        it.box.style.transform = t;
+        it.transform = t;
+      }
+      if (!it.labelBox) {
+        it.box.style.visibility = "visible";
+        it.box.style.opacity = "1";
+      }
+      it.labelBox = { x: left, y: top, w: it.w, h: it.h };
+    }
+    this.previousGlobe = next;
   }
 
   private apply(frame: HudFrame, placed: Placed[]): void {

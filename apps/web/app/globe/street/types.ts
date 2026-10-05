@@ -49,6 +49,14 @@ export interface StreetMapOptions {
   /** The map's or the overlay's WebGL context was lost (true) or both are back (false). */
   onContextChange?(lost: boolean): void;
 
+  /**
+   * Embedded in the globe handover (app/globe/handover): the host owns the camera and the input. The map root is
+   * transparent (so `setBlend` shows the globe underneath), takes no pointer events, never eases the camera back to
+   * the cap by itself (the host reads `getMaxZoom()` and does it) and does not animate the inset (the host passes the
+   * animated value through `setCamera`).
+   */
+  embedded?: boolean;
+
   // ---- advanced / testing -------------------------------------------------------------------------------------
   minZoom?: number;
   maxZoom?: number;
@@ -91,6 +99,16 @@ export interface StreetMap {
   readonly canvas: HTMLCanvasElement;
 
   jumpTo(view: Partial<StreetView>): void;
+  /**
+   * Host-driven camera (embedded use): jump to `view` and, when given, apply `inset` (CSS px, no easing) in the same
+   * step. `sync` renders, composites and updates the overlay before returning, so the map is never a frame behind a
+   * renderer drawn in the same task.
+   */
+  setCamera(view: StreetView, options?: { inset?: number; sync?: boolean }): void;
+  /** The place under a CSS-px point of the container (markers, then labels), or null: what a click would select. */
+  hit(x: number, y: number, kind: "mouse" | "touch"): string | null;
+  /** Whether the active tile source has tiles at this point (false while connecting / capped, and outside a fallback archive's bounds). */
+  covers(lon: number, lat: number): boolean;
   flyTo(view: Partial<StreetView>, options?: FlyOptions): void;
   /** Highlight the selected place. `fly` also moves the camera there (zoom: given, else at least 14.5; a jump under reduced motion). */
   setSelected(slug: string | null, options?: { fly?: boolean; zoom?: number }): void;

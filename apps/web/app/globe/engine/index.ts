@@ -7,7 +7,7 @@ import type { GlobePlace, GlobeProps, GlobeRoute, GlobeViewState } from "../type
 import { readTheme } from "./colors";
 import { LabelLayer } from "./label-layer";
 import { labelPriorityFloor } from "./labels";
-import { GlobeRenderer, type StartView } from "./renderer";
+import { GlobeRenderer, type RendererOptions, type StartView } from "./renderer";
 import { TUNING } from "./tuning";
 import { sameView, toViewState } from "./view";
 import { isWebGLAvailable } from "./webgl";
@@ -37,6 +37,12 @@ interface GlobeOptions {
   onViewChange: GlobeProps["onViewChange"];
   /** The GL context was lost (true) or restored (false). */
   onContextChange(lost: boolean): void;
+  /** Initial zoom limit (see `GlobeRenderer.setZoomLimit`). */
+  zoomLimit?: number;
+  /** After every camera tick (drawn or not), once the labels and the view report are updated. The handover hangs off it. */
+  onFrame?(): void;
+  /** See `RendererOptions.pickOverride`. */
+  pickOverride?: RendererOptions["pickOverride"];
 }
 
 /** Read-only introspection for automated checks (exposed on `window` only with `?globe-debug`). */
@@ -50,6 +56,8 @@ export interface GlobeDebug {
   project(slug: string): { x: number; y: number; visible: boolean } | null;
   labelsShown(): string[];
   frames(): number;
+  /** Camera ticks, drawn or suspended (idle must not increase it). */
+  ticks(): number;
   isAnimating(): boolean;
   /** One synchronous frame (render + label update); returns the JS ms of the render call alone. */
   renderNow(): number;
@@ -65,8 +73,12 @@ export interface GlobeDebug {
 }
 
 export interface GlobeHandle {
-  /** Highlight or clear the selected place; `fly` rotates the camera to it (a jump under reduced motion). */
-  setSelected(slug: string | null, fly: boolean): void;
+  /** The renderer, for the handover controller that sits next to this module (the app never touches it). */
+  readonly renderer: GlobeRenderer;
+  /** Pause or resume updating the label overlay (it is hidden while the street map's overlay is the visible one). */
+  setLabelsActive(on: boolean): void;
+  /** Highlight or clear the selected place. The camera is not moved: the handover controller flies it (handover/controller.ts). */
+  setSelected(slug: string | null): void;
   setFocused(slug: string | null): void;
   setReducedMotion(on: boolean): void;
   /** `GlobeProps.insetRight` changed. */
@@ -90,6 +102,7 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
   let lastReported: GlobeViewState | null = null;
   let lastMask: string | null = null;
 
+  let labelsActive = true;
   const syncOverlay = () => {
     const v = renderer.getView();
     // Labels dissolve with the canvas at the panel's edge.
@@ -99,21 +112,24 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
       opts.labelsRoot.style.maskImage = mask ?? "";
       opts.labelsRoot.style.setProperty("-webkit-mask-image", mask ?? "");
     }
-    labels.update(
-      renderer,
-      renderer.getVisibleSize(),
-      labelPriorityFloor(v.zoom, renderer.getMinZoom(), TUNING.allLabelsZoom),
-    );
+    if (labelsActive) {
+      labels.update(
+        renderer,
+        renderer.getVisibleSize(),
+        labelPriorityFloor(Math.min(v.zoom, TUNING.maxZoom), renderer.getMinZoom(), TUNING.allLabelsZoom),
+      );
+    }
     const next = toViewState(v, renderer.getMinZoom(), TUNING.maxZoom);
     if (!sameView(lastReported, next)) {
       lastReported = next;
       opts.onViewChange(next);
     }
+    opts.onFrame?.();
   };
 
   const selectedAtStart = opts.selectedSlug ? places.get(opts.selectedSlug) : undefined;
   const start: StartView | null = opts.initialView
-    ? { lon: opts.initialView.lon, lat: opts.initialView.lat, zoom01: opts.initialView.zoom }
+    ? { lon: opts.initialView.lon, lat: opts.initialView.lat, zoom01: opts.initialView.zoom, street: opts.initialView.street }
     : selectedAtStart
       ? { lon: selectedAtStart.lon, lat: selectedAtStart.lat, zoom01: null }
       : null;
@@ -128,9 +144,11 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
         borders: opts.borders,
         theme: readTheme(opts.stage),
         reducedMotion: opts.reducedMotion,
+        zoomLimit: opts.zoomLimit,
         insetRight: opts.insetRight,
         onFrame: syncOverlay,
         pickLabel: (x, y, kind) => labels.hit(x, y, TUNING.labelSlop[kind]),
+        pickOverride: opts.pickOverride,
         onSelect: opts.onSelect,
         onContextChange: opts.onContextChange,
       },
@@ -156,13 +174,14 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
   });
 
   return {
-    setSelected(slug, fly) {
+    renderer,
+    setLabelsActive(on) {
+      labelsActive = on;
+      if (on) renderer.requestRender();
+    },
+    setSelected(slug) {
       renderer.setSelected(slug, true);
       labels.setSelected(slug);
-      const place = slug ? places.get(slug) : undefined;
-      if (place && fly) {
-        renderer.flyTo({ lon: place.lon, lat: place.lat, zoom: Math.max(renderer.getView().zoom, TUNING.selectZoom) });
-      }
     },
     setFocused(slug) {
       renderer.setFocused(slug);
@@ -177,6 +196,7 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
       minZoom: () => renderer.getMinZoom(),
       maxZoom: () => TUNING.maxZoom,
       view: () => renderer.getView(),
+      ticks: () => renderer.tickCount(),
       setView: (v) => renderer.setView(v),
       project(slug) {
         const p = places.get(slug);

@@ -6,8 +6,14 @@
 export interface GlobeViewState {
   lon: number;
   lat: number;
-  /** In [0, 1]. 0 = whole globe, 1 = closest. */
+  /** In [0, 1]. 0 = whole globe, 1 = the closest the world-scale globe goes (regional scale). */
   zoom: number;
+  /**
+   * Street scale: extra zoom levels beyond `zoom` = 1 (>= 0, about 0 to 11). Absent (or 0) on every view that
+   * has not gone past the regional scale, so views saved before street scale existed stay valid. Together,
+   * (`zoom`, `street`) is one continuous zoom scale: the renderer decides which engine draws it.
+   */
+  street?: number;
 }
 
 export interface GlobePlace {
@@ -23,6 +29,19 @@ export interface GlobeRoute {
   id: string;
   title: string;
   points: { lat: number; lon: number }[];
+}
+
+/**
+ * Where street-scale map tiles come from (all public URLs). Renderer-agnostic restatement of the shell loader's
+ * `tiles`; with `null`/`undefined` the globe stays at world and regional scale.
+ */
+export interface GlobeTiles {
+  /** TileJSON (z/x/y) or `.pmtiles` URL of the primary source. */
+  primaryUrl: string;
+  /** `.pmtiles` archive used when the primary fails, or null. */
+  fallbackPmtilesUrl: string | null;
+  /** Highest zoom served from the fallback archive. */
+  maxFallbackZoom: number;
 }
 
 export interface GlobeProps {
@@ -43,6 +62,12 @@ export interface GlobeProps {
    * map's right edge into the page; the box stays full width. 0 = no inset.
    */
   insetRight: number;
+  /**
+   * Street-scale tile configuration. When present, zooming past the regional scale (or selecting a place) continues
+   * into a street map in the same pixel look, handed over with a dither dissolve; when the tiles are unavailable the
+   * zoom stops at the regional scale and a small notice says so. Optional: omitted = no street scale.
+   */
+  tiles?: GlobeTiles | null;
   onSelect(slug: string): void;
   onViewChange(view: GlobeViewState): void;
 }

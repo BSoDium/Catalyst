@@ -29,7 +29,7 @@ export const MOBILE = {
  * Open a page with instrumentation installed BEFORE any app code runs: rAF call counter, WebGL context
  * created/lost counters, WebGL `clear` counter (Three issues exactly one per frame), console capture.
  */
-export async function open(browser, contextOptions, path = "/", { debug = true } = {}) {
+export async function open(browser, contextOptions, path = "/", { debug = true, noStreet = true } = {}) {
   const ctx = await browser.newContext(contextOptions);
   const page = await ctx.newPage();
   const logs = [];
@@ -38,6 +38,8 @@ export async function open(browser, contextOptions, path = "/", { debug = true }
   });
   page.on("pageerror", (e) => logs.push(`pageerror: ${e.message}`));
   if (debug) await page.addInitScript(() => sessionStorage.setItem("globe-debug", "1"));
+  // The Three.js-only measurements below predate street scale: they run with the street map switched off.
+  if (noStreet) await page.addInitScript(() => sessionStorage.setItem("no-street", "1"));
   await page.addInitScript(() => {
     const raf = window.requestAnimationFrame.bind(window);
     window.__raf = { calls: 0 };

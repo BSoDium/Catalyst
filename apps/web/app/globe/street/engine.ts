@@ -96,7 +96,13 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
   // ---- DOM -----------------------------------------------------------------------------------------------------
   const root = document.createElement("div");
   root.dataset.streetRoot = "";
-  Object.assign(root.style, { position: "absolute", inset: "0", overflow: "hidden", background: "var(--background)" } satisfies Partial<CSSStyleDeclaration>);
+  Object.assign(root.style, {
+    position: "absolute",
+    inset: "0",
+    overflow: "hidden",
+    background: opts.embedded ? "transparent" : "var(--background)",
+    pointerEvents: opts.embedded ? "none" : "",
+  } satisfies Partial<CSSStyleDeclaration>);
   const mapEl = document.createElement("div");
   mapEl.setAttribute("aria-hidden", "true");
   Object.assign(mapEl.style, { position: "absolute", inset: "0" } satisfies Partial<CSSStyleDeclaration>);
@@ -268,6 +274,7 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
     hudRoot,
     opts.places.map((p) => ({ slug: p.slug, name: p.name, lat: p.lat, lon: p.lon, labelPriority: p.labelPriority })),
     reduced,
+    opts.embedded ? "globe" : "hud",
   );
   hud.setCell(cellCss);
   hud.setSelected(selected);
@@ -385,7 +392,7 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
       // A swap blanks the tile layers for a few frames: keep the last overlay frame until the new tiles land.
       holdOverlay();
       map.setStyle(buildStyle(d), { diff: false });
-      applyZoomCap(status.maxZoom);
+      if (!opts.embedded) applyZoomCap(status.maxZoom);
     }
     if (previous?.state !== status.state || previous?.source !== status.source) canvasBox.dataset.tileState = status.state;
     opts.onTileStatus?.(status);
@@ -417,7 +424,8 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
         cellCss,
         project: (lon, lat) => map.project([lon, lat]),
       },
-      HudLayer.priorityFloor(v.zoom),
+      // Embedded in the handover the overlay only shows from regional scale, where the globe already shows every label.
+      opts.embedded ? 0 : HudLayer.priorityFloor(v.zoom),
     );
     // The map dissolves into the page under the covered strip (same mask as the globe's).
     const mask = fadeMask(w, pad());
@@ -591,6 +599,22 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
       const duration = o?.durationMs ?? flightMs(t);
       map.flyTo({ center: [t.lon, t.lat], zoom: t.zoom, duration: reduced ? 0 : duration, essential: true, curve: 1.5 });
     },
+    setCamera(v, o) {
+      if (o?.inset !== undefined) {
+        inset = clampInset(o.inset, root.clientWidth || 1);
+        attributionEl.style.right = `${8 + inset}px`;
+      }
+      const right = 2 * insetShiftBuf(inset, cellCss) * cellCss;
+      map.jumpTo({ center: [v.lon, v.lat], zoom: v.zoom, padding: { top: 0, bottom: 0, left: 0, right } });
+      if (o?.sync) map.redraw();
+    },
+    hit: (x, y, kind) => hud.hit(x, y, kind),
+    covers(lon, lat) {
+      const st = manager.status;
+      if (!st.source) return false;
+      const b = descriptors[st.source]?.bounds;
+      return !b || (lon >= b[0] && lon <= b[2] && lat >= b[1] && lat <= b[3]);
+    },
     setSelected(slug, o) {
       selected = slug;
       hud.setSelected(slug);
@@ -619,7 +643,7 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
       const was = inset;
       inset = clampInset(px, root.clientWidth || 1);
       // 0 <-> positive eases like the panel's slide; any other change (a viewport resize) applies at once.
-      setPadding(inset, (was === 0) !== (inset === 0));
+      setPadding(inset, (was === 0) !== (inset === 0) && !opts.embedded);
       attributionEl.style.right = `${8 + inset}px`;
     },
     getView: viewNow,

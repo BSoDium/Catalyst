@@ -93,6 +93,11 @@ export class RouteLayer {
     for (const e of this.entries) e.material.uniforms.uPeriod!.value = period;
   }
 
+  /** 1 = lifted arcs, 0 = flat on the ground (handover: they flatten before the street map takes over). */
+  setLift(lift: number) {
+    for (const e of this.entries) e.material.uniforms.uLift!.value = lift;
+  }
+
   /** One buffer pixel in clip space (y flipped), for the 2x2 stroke. */
   setPixelSize(bufW: number, bufH: number) {
     for (const e of this.entries) e.material.uniforms.uPixel!.value = [2 / bufW, -2 / bufH];

@@ -17,7 +17,7 @@ export const STREET_TUNING = {
   markerLimbClearance: TUNING.markerLimbClearance,
   /** MapLibre zoom range of the street map. 17.5 over-zooms OpenFreeMap (z14) and the fallback cleanly. */
   minZoom: 2,
-  maxZoom: 17.5,
+  maxZoom: TUNING.streetMapMaxZoom,
   /** Zoom from which every label may show (subject to collisions); below it a priority floor applies. */
   allLabelsZoom: 8,
   /** Marker sizes in art pixels (same sizes as the globe's GL points: normal 3, focused 7, selected 9). */
