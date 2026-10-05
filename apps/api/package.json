@@ -1,0 +1,31 @@
+{
+  "name": "@catalyst/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Read-only public API serving the curated Catalyst content projection.",
+  "exports": {
+    "./contract": "./src/contract.ts"
+  },
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "node dist/server.mjs",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "build": "node scripts/build.mjs"
+  },
+  "dependencies": {
+    "@catalyst/published": "workspace:*",
+    "@catalyst/schemas": "workspace:*",
+    "hono": "^4.13.12"
+  },
+  "devDependencies": {
+    "@hono/node-server": "^2.1.3",
+    "@types/node": "^22.0.0",
+    "esbuild": "^0.28.2",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0",
+    "zod": "^4.1.0"
+  }
+}
