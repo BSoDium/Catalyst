@@ -1,0 +1,28 @@
+{
+  "name": "@catalyst/geodata",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Compact world coastline and country-border polylines (Natural Earth, public domain) for the globe.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./coastlines": "./src/coastlines.ts",
+    "./borders": "./src/borders.ts"
+  },
+  "scripts": {
+    "generate": "tsx scripts/generate.ts",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/geojson": "^7946.0.16",
+    "@types/node": "^22.0.0",
+    "@types/topojson-client": "^3.1.0",
+    "@types/topojson-specification": "^1.0.0",
+    "topojson-client": "^3.1.0",
+    "tsx": "^4.20.0",
+    "vitest": "^3.2.0",
+    "world-atlas": "^2.0.2"
+  },
+  "license": "MIT"
+}
