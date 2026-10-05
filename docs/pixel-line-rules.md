@@ -177,19 +177,20 @@ Owner feedback after trying the 1-bit look: the fade-in of features "goes from d
 
 ### 7.1 Levels and roles
 
-Input: `--background` and `--foreground` (light and dark). Output: `PALETTE_LEVELS` colours (one constant, default 8, `MAX_LEVELS` 12) from the page colour (level 0) to the ink (last level), interpolated in OKLab. On a light page the ramp is eased (`(k/(n-1))^1.35`), so the first levels, which are the washes and the first step of every fade, are light; on a dark page it is linear in OKLab lightness, because the same lightness step reads weaker on a dark ground. Named roles resolve to levels by position along the ramp (`roleLevel`; roles closer than one level share it, so the same code serves any N):
+Input: `--background` and `--foreground` (light and dark). Output: `PALETTE_LEVELS` colours (one constant, default **12** since the contrast pass, `MAX_LEVELS` 12) from the page colour (level 0) to the full ink (the last level), interpolated in OKLab. The levels in between are the **map ramp**: they only reach `MAP_CONTRAST` of the way from the page colour to the ink (0.55 on a light page, 0.58 on a dark one, `engine/palette.ts`, the one knob for how loud the map is, read by both renderers). The last level, the full ink, is outside the map ramp: only markers, labels, the selected place and its route use it. On a light page the map ramp is slightly eased (`MAP_CONTRAST x (k/peak)^1.15`), on a dark page linear in OKLab lightness (the same step reads weaker on a dark ground). Named roles resolve to levels by position along the map ramp (`roleLevel`; roles closer than one level share it, so the same code serves any N):
 
-| role | position | used for |
-| --- | --- | --- |
-| bg | 0 | page, ocean, erased interiors |
-| wash | 0.12 | water, park and building fills (flat) |
-| faint | 0.27 | graticule |
-| soft | 0.42 | rail, paths, service roads, links, streams, canals, the horizon outline |
-| mid | 0.60 | tertiary and residential roads, region borders, building outlines, small water outlines |
-| strong | 0.80 | motorway to secondary roads, rivers, lakes |
-| ink | 1 | coastline, country borders, markers, routes |
+| role | position on the map ramp | level at N = 12 | contrast against the page, light / dark | used for |
+| --- | --- | --- | --- | --- |
+| bg | 0 | 0 | 1.0 | page, ocean, erased interiors |
+| wash | 0.12 | 1 | 1.10 / 1.08 | building fills, the first step of every fade-in |
+| faint | 0.27 | 3 | 1.42 / 1.40 | graticule |
+| soft | 0.42 | 4 | 1.65 / 1.66 | rail, paths, service roads, links, streams, canals, the horizon outline, **the dots of parks and the dashes of water** |
+| mid | 0.60 | 6 | 2.31 / 2.46 | tertiary and residential roads, region borders, building outlines, small water outlines |
+| strong | 0.80 | 8 | 3.39 / 3.71 | motorway to secondary roads, rivers, lakes |
+| peak | 1 | 10 | 5.23 / 5.51 | coastlines, country borders: the loudest the map gets |
+| ink | (last level) | 11 | 19.13 / 18.16 | markers, labels, the selected place, routes |
 
-With N = 8 the levels are 0 bg, 1 wash, 2 faint, 3 soft, 4 mid, 5 (between), 6 strong, 7 ink.
+Before the contrast pass the map topped out at the ink (coast and borders at 19:1, major roads at 13:1 at N = 8). Now the map's loudest tone is 5.2:1 and a marker (ink) is 3.66:1 / 3.29:1 above it (WCAG 1.4.11 asks 3), so the map recedes and the places stand out. `engine/readability.test.ts` asserts these numbers from the tokens in `app.css`.
 
 ### 7.2 Encoding and quantisation (nothing here knows about lines)
 
@@ -197,7 +198,9 @@ The MapLibre style paints plain colours that encode a level: lines `rgb(255, G, 
 
 ### 7.3 Fills
 
-Water, parks and buildings are flat tone washes (`wash`), not Bayer lattices: the lattice read as noise under zoom and a flat grey reads as a surface. The lattice code (`toneLit`, the Bayer threshold) is kept for the dissolve between renderers only. Sections 3.7 and 5 describing the stipple and shower-door effect no longer apply to the street map.
+Water and green areas are **screen-anchored patterns** again, painted in a dimmed level (`soft`, below every road class), with no flat base. Owner feedback on the flat washes: parks read as lakes. Now: green (parks, woods, grass, gardens, cemeteries, farmland) is a sparse regular lattice of single dots, one cell in eight (a dot every 4 cells, alternate rows of dots offset by 2); water (sea, lakes, river polygons) is short horizontal dashes of 3 cells with 3 off in rows 4 cells apart, alternate rows offset by half a period, also one cell in eight. A dot lattice and a dashed row pattern are different motifs at the same density, so they read as green against water at a glance in both themes at city-wide (z10-11), district (z13) and street (z15+) scale. Buildings stay a flat `wash` (level 1). The lattice is a function of the **art cell only** (`patternLit` in `gl/pixel-pass.ts`): never of world coordinates, zoom or time, so a pattern never swims when the map pans (the shower-door stipple of 3.7, now regular and dim). The tone, not the lattice, fades with zoom (7.4): no Bayer, no dither, no cell added by a fade.
+
+Encoding (`core/palette.ts`): a fill is `rgb(0, 0, B)`, `B = pattern x 16 + level`, R = G = 0 so a line over a fill never pollutes its own level. Anti-aliased strokes scale B where they cover a texel (an erasing route halo or hollow road interior towards 0, a line by its opacity), which garbled the code in the texels at the stroke edge into isolated high-level cells next to every route. The pass therefore reads the code from the cleanest texel of the cell (highest B among the texels without red), and a centre texel that is fully erased stays erased. The line gate checks it on the real map (7.10).
 
 ### 7.4 Tone ramps instead of dither ramps
 
@@ -205,12 +208,46 @@ A class that fades in with zoom (`LOD`, `from` to `full`) is one layer, the same
 
 ### 7.5 Globe
 
-Borders: not drawn below internal zoom 3.0, then the faintest level, one more level per `(3.5 - 3.0) / (N - 1)` of zoom, full ink from 3.5, both ways (was: off, a 50% dither band to 3.3, solid). The graticule is the `faint` level (dotted as before) and eases out through the levels in the street map between map zoom 6.5 and 9.5 (the globe is not drawn there). Coastline, markers, routes: ink; horizon outline: `soft`. The world coastline runs solid up to the tile coastline (a dashed 0.5 zoom band between them used to show dotted coasts at northern latitudes, because the cut to the street map at internal zoom 5.05 falls inside it where `map zoom = globe zoom + log2 cos(lat)` is 4 to 4.5; guarded by a style test and `scripts/globe/stale-check.mjs`).
+Borders: not drawn below internal zoom 3.0, then the faintest level, one more level per `(3.5 - 3.0) / (peakLevel - 1)` of zoom, the `peak` level from 3.5, both ways (was: off, a 50% dither band to 3.3, solid ink). The graticule is the `faint` level (dotted as before) and eases out through the levels in the street map between map zoom 6.5 and 9.5 (the globe is not drawn there). Coastline: `peak` (the street map's world coastline, sea outline and country borders are `peak` too, so the cut shows the same line); markers and routes: full ink; horizon outline: `soft`. The globe draws no water or land fills: the ocean is the page colour, so there is nothing on the globe that could pop at the cut. The world coastline runs solid up to the tile coastline (a dashed 0.5 zoom band between them used to show dotted coasts at northern latitudes, because the cut to the street map at internal zoom 5.05 falls inside it where `map zoom = globe zoom + log2 cos(lat)` is 4 to 4.5; guarded by a style test and `scripts/globe/stale-check.mjs`).
 
 ### 7.6 Choosing N
 
-`docs/palette/compare-light.png` and `compare-dark.png`: N = 4, 6, 8, 10 on the same frames (world, then Ho Chi Minh City and Lisbon at city-wide z10.5, district z13, street z15.5). N = 4: the hierarchy collapses (tertiary, residential and major roads share a level, washes are too heavy: 1/3 of the way to the ink). N = 6: works, but wash and faint merge and a fade has only 4 steps. N = 8 (default): six distinct tones for the six roles, washes light, 6 steps for the longest fade. N = 10: visually the same as 8, longer fades, the first levels get close to the page colour. Default 8, change `PALETTE_LEVELS` in `engine/palette.ts` (`?levels=N` with `?globe-debug`, or sessionStorage `palette-levels`, overrides it for checks).
+`docs/palette/compare-light.png` and `compare-dark.png`: N = 4, 6, 8, 10 on the same frames (world, then Ho Chi Minh City and Lisbon at city-wide z10.5, district z13, street z15.5). N = 4: the hierarchy collapses (tertiary, residential and major roads share a level, washes are too heavy: 1/3 of the way to the ink). N = 6: works, but wash and faint merge and a fade has only 4 steps. N = 8 (default): six distinct tones for the six roles, washes light, 6 steps for the longest fade. N = 10: visually the same as 8, longer fades, the first levels get close to the page colour. **Default is now 12** (contrast pass, 7.8): the map ramp only spans `MAP_CONTRAST` of the range, so 10 map greys are needed to keep the roles and the fade steps distinct (the same hierarchy at N = 8 would have 6 map greys). Change `PALETTE_LEVELS` in `engine/palette.ts` (`?levels=N` with `?globe-debug`, or sessionStorage `palette-levels`, overrides it for checks).
 
 ### 7.7 Tile fade
 
 While the camera rests, content that appears or disappears (tiles loading, unloading) is presented through the levels: an ease pass between the classifier and the presenter moves each cell at most one level per 32 ms towards its target. It never runs while the picture moves, so nothing ghosts; reduced motion disables it. Details in `docs/street-architecture.md`.
+
+### 7.8 Map contrast (the map recedes, places stand out)
+
+Owner: "everything is too high contrast; dim everything towards a fainter grey, because labels and markers are not shown as important enough". One knob, `MAP_CONTRAST` (0.55 on a light page, 0.58 on a dark one, `engine/palette.ts`), is the share of the way from the page colour to the ink that the loudest map tone (`peak`) reaches; both renderers read it (the globe's coast and borders, the street map's roads, rails, fills, graticule). Measured contrast ratios (WCAG, from the tokens; `engine/readability.test.ts`):
+
+| | light | dark |
+| --- | --- | --- |
+| map max (`peak`: coast, country borders) against the page | 5.23:1 (was 19.1:1, the ink) | 5.51:1 (was 18.2:1) |
+| major roads (`strong`) / minor roads (`mid`) against the page | 3.39 / 2.31 (was 13.0 / 3.9 at N = 8) | 3.71 / 2.46 (was 12.6 / 5.4) |
+| parks and water patterns, paths, rail (`soft`) | 1.65 | 1.66 |
+| marker, route, label ink against the map max | 3.66:1 | 3.29:1 (WCAG 1.4.11 non-text, 3:1) |
+| label text on its 82 % page plate, with a full-ink route right under it | at least 7:1 (asserted) | same |
+| selected label (page colour on an opaque ink plate) | 19.1:1 | 18.2:1 |
+| attribution and muted label text (muted foreground) on the plate, over the peak and over ink | at least 4.5:1 (asserted) | same |
+| nav links (muted foreground) under the scrim (about 80 % page colour), over the peak | at least 4.5:1 (asserted) | same |
+
+The attribution plate went from 80 % to 90 % of the page colour: at 80 % a route line under the 10 px text left 4.3:1 on a light page. Labels needed no change: they already sit on an 82 % page plate (selected: an opaque ink plate). The class hierarchy still reads (roads 3.4 / 2.3 / 1.7 against the page for strong / mid / soft in light, 3.7 / 2.5 / 1.7 in dark; rail and paths at the soft end), and `lines.mjs` still passes 229 of 229 checks: the line rules do not depend on levels (7.2), only the expected role levels moved. Screenshots: `docs/palette/paris-city-before-after.png`, `world-before-after.png`, `lisbon-park-vs-water-before-after.png`, `scales-after.png`.
+
+### 7.9 Sea ease (the sea no longer loads in one step)
+
+Owner: "the sea background (grey) loads brutally with no animation when zooming in; it should also animate when zooming out."
+
+Diagnosis (`scripts/street/sea-ease.mjs`: the camera over the open sea off Lisbon, map zoom 3 to 11 in steps of 0.25, zooming in and then out across the globe-to-street cut; the metric is the mean palette level of the non-line cells in the middle of the street map's art image):
+
+- The cause was the fill's role. The water fill faded in "over zoom 8 to 10" through the levels up to its role, but the role was `wash` = level 1, so the fade had **one** step: a layer that starts at map zoom 8 and is, at its first zoom, already at its final tone. Measured on the build before: tone 0.000 at map zoom 7.75, 0.964 at 8.0, 1.000 from 8.75: **96 % of the whole change in one 0.25 zoom step**, in both directions (out is the same function of zoom), and a +27 / 255 jump of the luma of the sea in dark, +20 in light. It was a layer minzoom edge, not tile loading (tiles are loaded before the measure) and not the handover cut (nothing is drawn by the street map for the sea below 8).
+- Tile arrivals at a resting camera were already eased (7.7); during a zoom a child tile replaces the overscaled parent in the same tone, so it does not pop.
+- The globe draws no sea fill (the ocean is the page colour), so the cut itself cannot pop on the globe side.
+
+Fix: the sea is a dimmed pattern (7.3) at the `soft` level (4 steps at N = 12, was 1) and its fade runs over 4.8 zoom steps (5.2 to 10, `FILL_LOD.water`) starting 0.7 zoom after the hand-over to tile geometry (`seaFade`: the PMTiles extract, whose hand-over is at 8.5, starts at 9.2 so that the extract's tile edges are never shown as a flat region). Measured after: tone 0.000 at 5.0, 0.081 at 5.25, 0.190 at 6.5, 0.351 at 7.75, 0.450 at 9.0, 0.496 from 9.75; the largest step between two samples 0.124 (25 % of a total that is itself one eighth of the cells, about 1.4 / 255 of luma per step), identical zooming in and out. Reduced motion runs the same sweep to the same numbers: the ramp is a function of zoom, not of time, so there is nothing to skip; the tile ease is off (`tile-fade.mjs` asserts it). Evidence: `docs/palette/sea-ease-before-dark.png`, `sea-ease-after-dark.png` and the light pair (12 crops of open sea, the first row zooming in, the second zooming out, with the fill tone under each).
+
+### 7.10 Gate additions
+
+`scripts/street/lines.mjs` real-map rows (z14.5, DPR 1 and 2): lit fill cells present (at least 100); the share of fill cells off the dot or dash lattices at most 0.5 % (measured 0.08 %: a cell in the anti-aliased fringe of a route halo can read a scaled code; the first version of the pass produced 20 of them, shown as isolated bright dots along the route); the share above the `soft` level at most 0.5 %; after panning by a fractional number of cells the lattices still hold (0 off). The synthetic rows (every cell of a line at its class's level, at N = 4, 8, 12) are unchanged.
+

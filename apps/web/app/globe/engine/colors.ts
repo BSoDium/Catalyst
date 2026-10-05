@@ -14,8 +14,10 @@ export interface Rgba {
 export interface GlobeTheme {
   /** Page colour. Also the ocean (the disc body): the globe is only ever drawn as linework on the page colour. */
   background: Rgb;
-  /** Linework, markers, route (the palette's ink). */
+  /** Markers and the route: the palette's full ink (the loudest thing on the map). */
   ink: Rgb;
+  /** Coastlines and fully faded-in borders: the palette's `peak` level, which stays well below the ink (`MAP_CONTRAST`). */
+  coast: Rgb;
   /** Horizon outline (the palette's `soft` level). */
   outline: Rgb;
   /** Graticule dots (the palette's `faint` level). */
@@ -97,5 +99,5 @@ export function readTheme(host: HTMLElement): GlobeTheme {
 
 export function themeFromTokens(background: Rgb, ink: Rgb, levels: number = activeLevels()): GlobeTheme {
   const ramp = buildRamp(background, ink, levels);
-  return { background, ink, outline: roleColor(ramp, "soft"), grid: roleColor(ramp, "faint"), ramp };
+  return { background, ink, coast: roleColor(ramp, "peak"), outline: roleColor(ramp, "soft"), grid: roleColor(ramp, "faint"), ramp };
 }

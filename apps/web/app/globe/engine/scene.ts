@@ -100,7 +100,7 @@ export class GlobeScene {
     this.graticule.uniforms.uColor!.value.setRGB(...t.grid);
     this.ramp = t.ramp;
     this.borderLevelNow = -1;
-    this.coast.uniforms.uColor!.value.setRGB(...t.ink);
+    this.coast.uniforms.uColor!.value.setRGB(...t.coast);
     this.silhouette.uniforms.uColor!.value.setRGB(...t.outline);
     this.markers.applyTheme(t);
     this.routes.applyTheme(t);
@@ -110,7 +110,7 @@ export class GlobeScene {
   syncCamera(basis: ViewBasis, zoom: number, pixel: number) {
     this.routes.setLift(routeLift(zoom));
     this.routes.setPeriod((ROUTE_DASH_PX * pixel) / zoomToRadiusPx(zoom));
-    // Borders: not drawn, then the faintest grey level, stepping up through the palette to full ink. The fade is TONE (a
+    // Borders: not drawn, then the faintest grey level, stepping up through the palette to the peak level (the coastline's). The fade is TONE (a
     // line is always solid), never a dither: a low-coverage dither on 1px lines reads as noise instead of a fade.
     this.setBorderLevel(borderLevel(zoom, this.ramp.length, TUNING.borderZoom));
     const u = this.silhouette.uniforms;

@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { CODE } from "./art-line";
-import { LEVEL_SCALE, buildPalette, codeOf, fillColor, lineColor } from "./palette";
-import { MAX_LEVELS, PALETTE_LEVELS, ROLES, borderLevel, buildRamp, mixOklab, rampLevel, roleLevel, srgbToOklab } from "../../engine/palette";
+import { LEVEL_SCALE, PATTERN, buildPalette, codeOf, fillColor, lineColor } from "./palette";
+import { MAX_LEVELS, PALETTE_LEVELS, ROLES, borderLevel, buildRamp, mixOklab, peakLevel, rampLevel, roleLevel, srgbToOklab } from "../../engine/palette";
+import { decodeLevel, decodePattern } from "../style/probe";
 import { TUNING } from "../../engine/tuning";
 
 const light = { background: [0.984, 0.984, 0.984], ink: [0.039, 0.039, 0.039] } as const;
@@ -16,17 +17,29 @@ describe("palette ramp", () => {
       expect(r[r.length - 1]).toEqual(t.ink);
     }
   });
-  it("steps monotonically in OKLab lightness between background and foreground, never shrinking towards the ink (growing on a light page, equal on a dark one)", () => {
-    for (const n of [4, 6, 8, 10]) {
+  it("steps monotonically in OKLab lightness from the background to the peak, never shrinking on a light page, equal on a dark one", () => {
+    for (const n of [4, 6, 8, 10, 12]) {
       for (const t of [light, dark]) {
         const r = buildRamp(t.background, t.ink, n);
         const L = r.map((c) => srgbToOklab(c)[0]);
         const dir = Math.sign(L[n - 1]! - L[0]!);
-        const steps = L.slice(1).map((v, i) => (v - L[i]!) * dir);
+        const steps = L.slice(1, n - 1).map((v, i) => (v - L[i]!) * dir);
         for (const s of steps) expect(s).toBeGreaterThan(0);
         for (let i = 1; i < steps.length; i++) expect(steps[i]!).toBeGreaterThanOrEqual(steps[i - 1]! - 1e-4);
-        // the first step is a real, visible step (at least 3 % of lightness) even with 10 levels
-        expect(steps[0]!).toBeGreaterThan(0.03);
+        // the first step is a real, visible step (at least 2 % of lightness) even with 12 levels
+        expect(steps[0]!).toBeGreaterThan(0.02);
+      }
+    }
+  });
+  it("keeps the map well below the ink: the peak level is at most 70 % of the way to the ink, markers and labels keep the full ink", () => {
+    for (const n of [4, 8, 12]) {
+      for (const t of [light, dark]) {
+        const r = buildRamp(t.background, t.ink, n);
+        const L = r.map((c) => srgbToOklab(c)[0]);
+        const share = (L[n - 2]! - L[0]!) / (L[n - 1]! - L[0]!);
+        expect(share).toBeGreaterThan(0.4);
+        expect(share).toBeLessThan(0.7);
+        expect(r[n - 1]).toEqual(t.ink);
       }
     }
   });
@@ -49,14 +62,16 @@ describe("roles", () => {
       }
       expect(roleLevel("bg", n)).toBe(0);
       expect(roleLevel("ink", n)).toBe(n - 1);
-      for (const role of ["wash", "faint", "soft", "mid", "strong"] as const) {
+      for (const role of ["wash", "faint", "soft", "mid", "strong", "peak"] as const) {
         expect(roleLevel(role, n)).toBeGreaterThanOrEqual(1);
         expect(roleLevel(role, n)).toBeLessThanOrEqual(n - 2);
       }
+      expect(roleLevel("peak", n)).toBe(peakLevel(n));
     }
   });
-  it("keeps the six tones distinct once there are enough levels", () => {
-    expect(new Set((["wash", "faint", "soft", "mid", "strong", "ink"] as const).map((r) => roleLevel(r, 8))).size).toBe(6);
+  it("keeps the seven tones distinct once there are enough levels, and the ink alone above the map", () => {
+    expect(new Set((["wash", "faint", "soft", "mid", "strong", "peak", "ink"] as const).map((r) => roleLevel(r, PALETTE_LEVELS))).size).toBe(7);
+    expect(roleLevel("ink", PALETTE_LEVELS) - roleLevel("peak", PALETTE_LEVELS)).toBe(1);
   });
 });
 
@@ -78,12 +93,19 @@ describe("fade ramp", () => {
 });
 
 describe("level encoding", () => {
-  it("round-trips through the style colours and the pass maths (G / R, B)", () => {
+  it("round-trips through the style colours and the pass maths (G / R for lines, pattern x 16 + level in B for fills)", () => {
     for (let l = 1; l < MAX_LEVELS; l++) {
       const [, g] = /rgb\(255,(\d+),0\)/.exec(lineColor(l))!.map(Number);
-      const [, b] = /rgb\(0,0,(\d+)\)/.exec(fillColor(l))!.map(Number);
       for (const r of [0.75, 1, 0.4]) expect(Math.floor((((g! / 255) * r) / r) * LEVEL_SCALE + 0.5)).toBe(l);
-      expect(Math.floor((b! / 255) * LEVEL_SCALE + 0.5)).toBe(l);
+      for (const pat of Object.keys(PATTERN) as (keyof typeof PATTERN)[]) {
+        const c = fillColor(l, pat);
+        const [, rr, gg, bb] = /rgb\((\d+),(\d+),(\d+)\)/.exec(c)!.map(Number);
+        expect([rr, gg]).toEqual([0, 0]); // a line drawn over a fill can never pollute its own level
+        expect(bb! & 15).toBe(l);
+        expect(bb! >> 4).toBe(PATTERN[pat]);
+        expect(decodeLevel(c)).toBe(l);
+        expect(decodePattern(c)).toBe(PATTERN[pat]);
+      }
     }
   });
   it("builds the pass palette for a theme", () => {
@@ -101,13 +123,13 @@ describe("level encoding", () => {
 
 describe("globe borders ease in through the levels (never a dither, both ways)", () => {
   for (const n of [4, 6, 8, 10]) {
-    it(`n=${n}: not drawn below the start, the faintest level above it, full ink from the end, one level at a time`, () => {
+    it(`n=${n}: not drawn below the start, the faintest level above it, the peak level (below the ink) from the end, one level at a time`, () => {
       const b = TUNING.borderZoom;
       expect(borderLevel(b.start - 0.5, n, b)).toBe(0);
       expect(borderLevel(b.start, n, b)).toBe(0);
       expect(borderLevel(b.start + 1e-6, n, b)).toBe(1);
-      expect(borderLevel(b.end, n, b)).toBe(n - 1);
-      expect(borderLevel(b.end + 2, n, b)).toBe(n - 1);
+      expect(borderLevel(b.end, n, b)).toBe(n - 2);
+      expect(borderLevel(b.end + 2, n, b)).toBe(n - 2);
       let prev = 0;
       for (let z = b.start - 0.1; z <= b.end + 0.1; z += 0.002) {
         const l = borderLevel(z, n, b);

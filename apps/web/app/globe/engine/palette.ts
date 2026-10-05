@@ -1,20 +1,25 @@
 /**
  * THE grey palette of the map, shared by the Three.js globe and the street renderer so the two read as one system.
  *
- * Two CSS tokens (`--background`, `--foreground`; light and dark) are the only input. `PALETTE_LEVELS` evenly spaced
- * greys between them, interpolated in OKLab (so equal steps look equal in both themes, and the dark theme is not a
- * lighter copy of the light one). Level 0 is the page colour, the last level the ink. Everything else is a named ROLE
- * that resolves to one of the levels for the current count, so the number of levels is one constant: roles that are
- * closer than a level apart simply share it.
+ * Two CSS tokens (`--background`, `--foreground`; light and dark) are the only input. `PALETTE_LEVELS` greys between
+ * them, interpolated in OKLab (so equal steps look equal in both themes, and the dark theme is not a lighter copy of the
+ * light one). Level 0 is the page colour, the LAST level the full ink, and the levels in between form the MAP RAMP: they
+ * only reach `MAP_CONTRAST` of the way from the page colour to the ink. So everything the map draws (coastlines, borders,
+ * roads, rail, fills, graticule) tops out well below the ink, and the ink itself is kept for what must stand out: markers,
+ * labels, the selected place and its route. `MAP_CONTRAST` is THE knob of how loud the map is, for both renderers.
+ *
+ * Everything else is a named ROLE that resolves to one of the levels for the current count, so the number of levels is one
+ * constant: roles that are closer than a level apart simply share it.
  *
  *   role    position   used for
  *   bg      0          page, ocean, erased interiors
- *   wash    0.12       water, park and building fills; the first step of every fade-in
- *   faint   0.27       graticule, soft fills
- *   soft    0.42       rail, paths, service roads, streams, canals, the horizon outline
+ *   wash    0.12       building fills; the first step of every fade-in
+ *   faint   0.27       graticule, the dots of parks
+ *   soft    0.42       rail, paths, service roads, streams, canals, the horizon outline, the dashes of water
  *   mid     0.60       minor roads, region borders, building outlines, tertiary roads
  *   strong  0.80       major roads, rivers, lakes
- *   ink     1          coastline, country borders, markers, routes
+ *   peak    1          coastline, country borders: the loudest the map gets (MAP_CONTRAST of the way to the ink)
+ *   ink     (last)     markers, labels, the selected place, routes: the full foreground
  *
  * Fades are TONE ramps: a feature that appears with zoom starts at the faintest level and steps through the levels up
  * to its role's level (`rampLevel`), it never dithers. Quantising to levels involves no smoothing between cells; the
@@ -24,18 +29,27 @@
 
 export type Rgb = readonly [number, number, number];
 
-/** Total number of levels, page colour and ink included. Compared at 4, 6, 8 and 10 in docs/palette/. */
-export const PALETTE_LEVELS = 8;
+/** Total number of levels, page colour and ink included. Compared at 4, 6, 8, 10 and 12 in docs/palette/; 12 because the map ramp only spans MAP_CONTRAST of the range, and fades need small steps. */
+export const PALETTE_LEVELS = 12;
 /** Capacity of the shader's palette array and of the style's level encoding. */
 export const MAX_LEVELS = 12;
 /** Smallest ramp that still has a faintest level, a middle and the ink. */
 export const MIN_LEVELS = 3;
 
-export const ROLES = ["bg", "wash", "faint", "soft", "mid", "strong", "ink"] as const;
+/**
+ * How far from the page colour to the ink the loudest map content (the `peak` level: coastlines, country borders) gets,
+ * 0..1 in OKLab. 1 would draw the map in full ink (the first palette build); the owner asked for a recessive map, where
+ * markers, labels and the selection are the only full-ink things. Tuned by eye in both themes (docs/palette/).
+ */
+export const MAP_CONTRAST = 0.55;
+/** The dark page needs a little more than the light one for the same recession (equal lightness steps read weaker on a dark ground). */
+export const MAP_CONTRAST_DARK = 0.58;
+
+export const ROLES = ["bg", "wash", "faint", "soft", "mid", "strong", "peak", "ink"] as const;
 export type Role = (typeof ROLES)[number];
 
-/** Position of each role along the ramp from the page colour (0) to the ink (1). */
-export const ROLE_POSITION: Record<Role, number> = { bg: 0, wash: 0.12, faint: 0.27, soft: 0.42, mid: 0.6, strong: 0.8, ink: 1 };
+/** Position of each role along the MAP ramp (page colour 0 to `peak` 1). `ink` is not on it: it is the last level. */
+export const ROLE_POSITION: Record<Exclude<Role, "ink">, number> = { bg: 0, wash: 0.12, faint: 0.27, soft: 0.42, mid: 0.6, strong: 0.8, peak: 1 };
 
 export const clampLevels = (n: number): number => Math.min(MAX_LEVELS, Math.max(MIN_LEVELS, Math.round(n)));
 
@@ -49,12 +63,16 @@ export function setActiveLevels(n: number | null): void {
   active = n === null ? PALETTE_LEVELS : clampLevels(n);
 }
 
-/** Level index of a role: 0 for the page colour, at least 1 for every other role, `n - 1` for the ink. */
+/** Highest level of the map ramp (`peak`): one below the ink. */
+export const peakLevel = (n: number = activeLevels()): number => clampLevels(n) - 2;
+
+/** Level index of a role: 0 for the page colour, `n - 1` for the ink, 1 .. `n - 2` for the map roles (`peak` = `n - 2`). */
 export function roleLevel(role: Role, n: number = activeLevels()): number {
   const count = clampLevels(n);
   if (role === "bg") return 0;
   if (role === "ink") return count - 1;
-  return Math.min(count - 2, Math.max(1, Math.round(ROLE_POSITION[role] * (count - 1))));
+  const top = count - 2;
+  return Math.min(top, Math.max(1, Math.round(ROLE_POSITION[role] * top)));
 }
 
 /**
@@ -119,25 +137,30 @@ export function mixOklab(a: Rgb, b: Rgb, t: number): Rgb {
 }
 
 /**
- * On a light page the ramp is eased: level k sits at (k / (n - 1)) ** RAMP_GAMMA of the way in OKLab, so the first levels
- * (the washes of water and parks, the first step of every fade-in) are light and the steps grow towards the ink, where the
- * line hierarchy (strong against ink) needs the contrast. On a dark page the ramp is linear in OKLab lightness: the same
- * lightness difference reads weaker on a dark ground, so the first levels need the full step to be seen at all.
+ * On a light page the map ramp is eased: map level k sits at `MAP_CONTRAST * (k / peak) ** RAMP_GAMMA` of the way from the
+ * page colour to the ink in OKLab, so the first levels (the first step of every fade-in) are light and the steps grow
+ * towards the peak, where the line hierarchy (strong against peak) needs the contrast. On a dark page the ramp is linear in
+ * OKLab lightness: the same lightness difference reads weaker on a dark ground, so the first levels need the full step to
+ * be seen at all. The last level is the ink itself, outside that ramp.
  */
-export const RAMP_GAMMA = 1.35;
+export const RAMP_GAMMA = 1.15;
 
-/** The ramp: `n` colours from the page colour to the ink, interpolated in OKLab (eased on a light page, see `RAMP_GAMMA`). */
-export function buildRamp(background: Rgb, ink: Rgb, n: number = activeLevels()): Rgb[] {
+/** The map contrast for a theme: how far (0..1) the peak level is from the page colour towards the ink. */
+export const mapContrastFor = (background: Rgb, ink: Rgb): number => (srgbToOklab(ink)[0] < srgbToOklab(background)[0] ? MAP_CONTRAST : MAP_CONTRAST_DARK);
+
+/** The ramp: `n` colours from the page colour to the ink, interpolated in OKLab (map levels eased on a light page, see `RAMP_GAMMA`). */
+export function buildRamp(background: Rgb, ink: Rgb, n: number = activeLevels(), contrast: number = mapContrastFor(background, ink)): Rgb[] {
   const count = clampLevels(n);
   const light = srgbToOklab(ink)[0] < srgbToOklab(background)[0];
   const gamma = light ? RAMP_GAMMA : 1;
-  return Array.from({ length: count }, (_, k) => (k === 0 ? background : k === count - 1 ? ink : mixOklab(background, ink, (k / (count - 1)) ** gamma)));
+  const top = count - 2;
+  return Array.from({ length: count }, (_, k) => (k === 0 ? background : k === count - 1 ? ink : mixOklab(background, ink, contrast * (k / top) ** gamma)));
 }
 
 /** Colour of a role in a ramp built by `buildRamp`. */
 export const roleColor = (ramp: readonly Rgb[], role: Role): Rgb => ramp[roleLevel(role, ramp.length)]!;
 
-/** Level of the country borders at an internal globe zoom: a tone fade-in over `TUNING.borderZoom` (see tuning.ts). */
+/** Level of the country borders at an internal globe zoom: a tone fade-in over `TUNING.borderZoom` (see tuning.ts) up to the `peak` level. */
 export function borderLevel(zoom: number, levels: number, range: { readonly start: number; readonly end: number }): number {
-  return rampLevel((zoom - range.start) / (range.end - range.start), levels - 1);
+  return rampLevel((zoom - range.start) / (range.end - range.start), peakLevel(levels));
 }

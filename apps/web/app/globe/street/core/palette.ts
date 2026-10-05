@@ -6,7 +6,10 @@
  *   LINES   R = ink strength: `THIN_INK` (0.75, a one-pixel line the pass may thin) or 1 (a wide line);
  *           G = R x level / LEVEL_SCALE.  The pass reads the level as G / R, which is exact whatever the coverage of an
  *           antialiased edge texel and whatever R is, so the quantisation to levels has no smoothing between cells.
- *   FILLS   B = level / LEVEL_SCALE (fills are opaque and not antialiased, so B is exact);
+ *   FILLS   B = (pattern x 16 + level) / 255, R = G = 0 (fills are opaque and not antialiased, so B is exact). R = G = 0 keeps
+ *           a line that is drawn over a fill (and shows 25 % of it through its opacity) readable: only B is polluted, and
+ *           lines never read B. The pass lights the cells of the fill that its PATTERN lattice selects (a function of the
+ *           screen cell only, so it never moves under pan or zoom) at the fill's level, the others stay page colour.
  *   ERASE   black: the page colour (hollow road interiors, route halos).
  * The art texture the pass writes holds, per cell, the level in R and the line class (none / thin / solid) in G.
  */
@@ -23,8 +26,18 @@ const byte = (v: number) => Math.round(Math.min(1, Math.max(0, v)) * 255);
 
 /** MapLibre colour of a line at a level (opacity carries thin / solid). */
 export const lineColor = (level: number): string => `rgb(255,${byte(level / LEVEL_SCALE)},0)`;
-/** MapLibre colour of an opaque fill at a level. */
-export const fillColor = (level: number): string => `rgb(0,0,${byte(level / LEVEL_SCALE)})`;
+/**
+ * Screen-anchored fill patterns (a lattice of lit art cells, evaluated by the pass from the cell coordinates only). The
+ * ids are the values written to the G channel of a fill; keep them in step with `patternLit` in gl/pixel-pass.ts.
+ *   flat    every cell of the fill is lit (building washes)
+ *   green   parks, woods, grass: a sparse regular lattice of single dots, a dot every 4 cells, alternate rows offset by 2
+ *   water   sea, lakes, rivers: short horizontal dashes in rows 4 cells apart, alternate rows offset by half a period
+ */
+export const PATTERN = { flat: 0, green: 1, water: 2 } as const;
+export type Pattern = keyof typeof PATTERN;
+
+/** MapLibre colour of an opaque fill at a level, with the pattern that selects which of its cells are lit. */
+export const fillColor = (level: number, pattern: Pattern = "flat"): string => `rgb(0,0,${PATTERN[pattern] * 16 + level})`;
 /** The erasing colour: the page colour. */
 export const ERASE = "#000000";
 

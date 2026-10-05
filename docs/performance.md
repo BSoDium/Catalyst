@@ -141,3 +141,8 @@ No difference outside the noise (about 20 %); no missed vsync in S4 and S5, 0.8 
 A bug the budget run caught during this work: hiding the suspended Three.js canvas with `visibility: hidden` also removed it as the pointer target (no pan at street scale, S4/S5 recorded zero frames); it is `opacity: 0` now and `scripts/globe/stale-check.mjs` drags the map to prove it.
 
 Reload fade: the stage is transparent until the final frame is drawn (opacity only, no extra frame work); the page colour is painted first. Reveal 0.62 to 0.65 s after navigation with the local archive.
+
+## Palette contrast and fill patterns (2026-10-06)
+
+The pass gained a cleanest-texel scan for fill codes (up to 9 reads per cell, only for cells whose centre carries a fill or any red; empty cells return at once) and the fills are evaluated as lattices (two integer tests). `pnpm --filter @catalyst/web perf` (headless, 3 repeats) meets every budget, e.g. desktop s4 gpuMean 2.84 ms (budget 4.5), gpuP95 3.77 (8), s5-open gpuMean 3.20 (5), mobile s4 mainMs 2.51 (5), crawl residual 0. Not run against a second build, so there is no A/B for the scan itself; the budget margin is the evidence.
+

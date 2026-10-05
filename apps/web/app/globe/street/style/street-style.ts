@@ -22,7 +22,7 @@ import type { ExpressionSpecification, LayerSpecification, Map as MLMap, StyleSp
 import { DESIGN_CELL_CSS, THIN_INK, artStops, cssStops, hollowFillStops, inkOpacityFor, inkOpacityStops, type Stops } from "../core/art-line";
 import type { Schema } from "../core/source-descriptor";
 import { activeLevels, roleLevel, type Role } from "../core/palette";
-import { ERASE, fillColor, lineColor } from "../core/palette";
+import { ERASE, fillColor, lineColor, type Pattern } from "../core/palette";
 import { FILL_LOD, LOD, stepZoom, type LodKey } from "./lod";
 
 export type { Schema };
@@ -70,6 +70,12 @@ export function fadeOutColor(e: { from: number; gone: number; role: Role }, colo
   return stepColors(levels, levels.map((_, i) => e.from + (i / start) * (e.gone - e.from)), color);
 }
 
+/** The sea fill's fade for a hand-over zoom: the same shape as `FILL_LOD.water` (which is authored for the OpenFreeMap hand-over), shifted. */
+export const seaFade = (handoff: number): { from: number; full: number; role: Role; pattern: Pattern } => {
+  const shift = handoff - DEFAULT_HANDOFF.openmaptiles;
+  return { ...FILL_LOD.water, from: FILL_LOD.water.from + shift, full: FILL_LOD.water.full + shift };
+};
+
 /** Handover zoom per schema: the PMTiles extract only has tiles around the place, OpenFreeMap is global. */
 export const DEFAULT_HANDOFF: Record<Schema, number> = { protomaps: 8.5, openmaptiles: 4.5 };
 
@@ -99,7 +105,7 @@ export interface Spec {
   /** level of detail class (lod.ts): fades in over [from, full] in tone, final look from `full` */
   lod?: LodKey;
   /** (fills) fade-in range and tone */
-  fade?: { from: number; full: number; role: Role };
+  fade?: { from: number; full: number; role: Role; pattern: Pattern };
   /** this is the erasing interior of a hollow road whose casing follows these ART-pixel stops */
   hollowOf?: Stops;
 }
@@ -239,7 +245,7 @@ export const SPECS: Spec[] = [
     pm: { layer: "buildings" }, omt: { layer: "building" },
   },
   {
-    id: "water-edge", type: "line", ch: "ink", role: "ink", width: HAIR, minzoom: 0,
+    id: "water-edge", type: "line", ch: "ink", role: "peak", width: HAIR, minzoom: 0,
     pm: { layer: "water", filter: ["all", POLY, SEA_PM] as never },
     omt: { layer: "water", filter: SEA_OMT as never },
   },
@@ -262,7 +268,7 @@ export const SPECS: Spec[] = [
     omt: { layer: "waterway", filter: kindIn("class", ["canal"]) as never },
   },
   {
-    id: "boundary-country", type: "line", ch: "ink", role: "ink", width: HAIR, minzoom: 3.3,
+    id: "boundary-country", type: "line", ch: "ink", role: "peak", width: HAIR, minzoom: 3.3,
     pm: { layer: "boundaries", filter: ["==", ["get", "kind"], "country"] as never },
     omt: { layer: "boundary", filter: ["all", ["==", ["get", "admin_level"], 2], ["!=", ["get", "maritime"], 1]] as never },
   },
@@ -316,6 +322,10 @@ function build(spec: Spec, schema: Schema, handoff: number, cellCss: number): La
   let minzoom = zoomRangeOf(spec).minzoom;
   // tile based water edges only take over from the world-scale geodata coastline at the hand-over zoom
   if (spec.id === "water-edge") minzoom = handoff;
+  // The sea fill eases in from just after the hand-over to tile geometry, whichever schema (and so hand-over zoom) is active:
+  // the PMTiles extract only has tiles around its place, so a fill that started earlier would show the tile edges.
+  const fillFade = spec.id === "water-fill" ? seaFade(handoff) : spec.fade;
+  if (spec.id === "water-fill") minzoom = fillFade!.from;
   if (spec.hollowOf) {
     const w = artWidthStopsOf(spec);
     if (typeof w !== "number") minzoom = w.find(([, v]) => v > 0)?.[0] ?? minzoom;
@@ -329,11 +339,11 @@ function build(spec: Spec, schema: Schema, handoff: number, cellCss: number): La
     ...(src.filter ? { filter: src.filter } : {}),
   };
   if (spec.type === "fill") {
-    const fade = spec.fade ?? { from: 0, full: 0, role: spec.role ?? "wash" };
+    const fade = fillFade ?? { from: 0, full: 0, role: spec.role ?? "wash", pattern: "flat" as Pattern };
     return {
       ...base,
       type: "fill",
-      paint: { "fill-color": fadeInColor(fade, fillColor), "fill-opacity": 1, "fill-antialias": false },
+      paint: { "fill-color": fadeInColor(fade, (lv) => fillColor(lv, fade.pattern)), "fill-opacity": 1, "fill-antialias": false },
     } as LayerSpecification;
   }
   return { ...base, type: "line", ...linePaint(spec, cellCss) } as LayerSpecification;
@@ -347,7 +357,7 @@ export function linePaint(spec: Spec, cellCss: number): { layout: Record<string,
     return { layout, paint: { "line-color": ERASE, "line-opacity": 1, "line-width": artWidthPaint(spec, cellCss) } };
   }
   // The colour is the tone: a class with a level of detail fades in through the levels, any other line has its role's level.
-  const color = spec.lod ? fadeInColor(LOD[spec.lod], lineColor) : lineColor(roleLevel(spec.role ?? "ink"));
+  const color = spec.lod ? fadeInColor(LOD[spec.lod], lineColor) : lineColor(roleLevel(spec.role ?? "peak"));
   // One-pixel lines are painted weaker than wide ones: that is how the pass knows which cells it may thin.
   const w = artWidthStopsOf(spec);
   const fill = spec.hollowBy ? SPECS.find((x) => x.id === spec.hollowBy) : undefined;
@@ -387,16 +397,18 @@ export function buildStreetStyle(o: StreetStyleOptions): StyleSpecification {
   const tones = tileLayers.filter((l) => !lineIds.has(l.id));
   const lines = tileLayers.filter((l) => lineIds.has(l.id));
   const ink = lineColor(roleLevel("ink"));
-  // World-scale coastline (110m) up to the hand-over zoom, then the tile geometry: one solid ink line on both sides. (A
+  // The map's own loudest tone (coastlines, borders) stays below the ink, which is kept for routes (and markers and labels).
+  const peak = lineColor(roleLevel("peak"));
+  // World-scale coastline (110m) up to the hand-over zoom, then the tile geometry: one solid peak line on both sides. (A
   // dashed band between the two used to dither the handover; it read as a dotted coast, see docs/palette/.)
   const worldCoastInk: LayerSpecification = {
     id: "world-coast", type: "line", source: "coast", maxzoom: noTiles ? 24 : handoff,
-    paint: { "line-color": ink, "line-width": cell, "line-opacity": THIN_INK },
+    paint: { "line-color": peak, "line-width": cell, "line-opacity": THIN_INK },
   } as LayerSpecification;
-  // Country borders are full ink at street scale at every latitude (the globe eases them in below that, engine/scene.ts).
+  // Country borders are peak at street scale at every latitude (the globe eases them in below that, engine/scene.ts).
   const bordersInk = (max: number): LayerSpecification => ({
     id: "world-borders", type: "line", source: "borders", maxzoom: max,
-    paint: { "line-color": ink, "line-width": cell, "line-opacity": THIN_INK },
+    paint: { "line-color": peak, "line-width": cell, "line-opacity": THIN_INK },
   }) as LayerSpecification;
   // Graticule: the faint level, easing out through the levels while the map zooms from regional to street scale.
   const grid: LayerSpecification = {

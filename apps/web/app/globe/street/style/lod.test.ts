@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { expInterp } from "../core/art-line";
 import { roleLevel } from "../../engine/palette";
+import { PATTERN } from "../core/palette";
 import { FILL_LOD, LOD, finalAt, levelAt, progressAt, stepZoom, visibleAt, type LodKey } from "./lod";
-import { decodeLevel, levelOfPaint } from "./probe";
-import { SPECS, buildStreetStyle, linePaint, type Schema } from "./street-style";
+import { decodeLevel, decodePattern, levelOfPaint } from "./probe";
+import { DEFAULT_HANDOFF, SPECS, buildStreetStyle, linePaint, seaFade, type Schema } from "./street-style";
 
 const KEYS = Object.keys(LOD) as LodKey[];
 const LEVEL_COUNTS = [3, 4, 6, 8, 10, 12];
@@ -121,10 +122,54 @@ describe("style wiring of the LOD", () => {
       expect(st.paint["fill-opacity"]).toBe(1);
     }
   });
+  it("water and green areas are distinct patterns in a dimmed level (below the roads), buildings a flat wash", () => {
+    const st = make("openmaptiles").layers as unknown as L[];
+    const pat = (id: string, z: number) => {
+      const c = st.find((l) => l.id === id)!.paint["fill-color"] as unknown;
+      if (typeof c === "string") return decodePattern(c); // a single level: a constant colour
+      const a = c as unknown[];
+      let out = a[2] as string;
+      for (let i = 3; i < a.length; i += 2) if (z >= (a[i] as number)) out = a[i + 1] as string;
+      return decodePattern(out);
+    };
+    expect(pat("water-fill", 12)).toBe(PATTERN.water);
+    expect(pat("park-fill", 12)).toBe(PATTERN.green);
+    expect(pat("building-fill", 18)).toBe(PATTERN.flat);
+    expect(PATTERN.water).not.toBe(PATTERN.green);
+    for (const n of LEVEL_COUNTS) {
+      // with only three or four levels the map has one or two greys and the roles collapse: never louder, strictly dimmer once there is room
+      const cmp = n >= 6 ? "toBeLessThan" : "toBeLessThanOrEqual";
+      expect(roleLevel(FILL_LOD.water.role, n), `n=${n}`)[cmp](roleLevel(LOD.major.role, n));
+      expect(roleLevel(FILL_LOD.park.role, n), `n=${n}`)[cmp](roleLevel(LOD.major.role, n));
+    }
+  });
+  it("the sea eases in from just after the globe-to-street cut over a wide zoom range, one level at a time, in both directions", () => {
+    expect(FILL_LOD.water.from).toBeGreaterThanOrEqual(5);
+    expect(FILL_LOD.water.from).toBeLessThanOrEqual(5.5);
+    expect(FILL_LOD.water.full - FILL_LOD.water.from).toBeGreaterThanOrEqual(4);
+    let prev = 0;
+    for (let z = FILL_LOD.water.from - 0.5; z <= FILL_LOD.water.full + 0.5; z += 0.01) {
+      const lv = levelAt(FILL_LOD.water, z);
+      expect(lv - prev).toBeGreaterThanOrEqual(0);
+      expect(lv - prev).toBeLessThanOrEqual(1);
+      prev = lv;
+    }
+    expect(levelAt(FILL_LOD.water, FILL_LOD.water.from + 1e-3)).toBe(1);
+    expect(prev).toBe(roleLevel(FILL_LOD.water.role));
+  });
   it("the two schemas expose the same layers (identical look), with the same zoom ranges", () => {
     // the world-data layers and the sea outline follow the per-schema hand-over zoom (the one deliberate difference)
-    const tiles = (st: L[]) => st.filter((l) => !/^world-|^water-edge$/.test(l.id)).map((l) => [l.id, l.minzoom, l.maxzoom]);
+    const tiles = (st: L[]) => st.filter((l) => !/^world-|^water-edge$|^water-fill$/.test(l.id)).map((l) => [l.id, l.minzoom, l.maxzoom]);
     expect(tiles(make("protomaps").layers as unknown as L[])).toEqual(tiles(make("openmaptiles").layers as unknown as L[]));
+  });
+  it("the sea fill starts 0.7 zoom after the hand-over to tile geometry in either schema, with the same ramp shape", () => {
+    for (const schema of ["protomaps", "openmaptiles"] as const) {
+      const l = (make(schema).layers as unknown as L[]).find((x) => x.id === "water-fill")!;
+      expect(l.minzoom).toBeCloseTo(DEFAULT_HANDOFF[schema] + 0.7, 6);
+      const e = seaFade(DEFAULT_HANDOFF[schema]);
+      expect(e.full - e.from).toBeCloseTo(FILL_LOD.water.full - FILL_LOD.water.from, 6);
+    }
+    expect(seaFade(DEFAULT_HANDOFF.openmaptiles).from).toBe(FILL_LOD.water.from);
   });
   it("lines keep the one-art-pixel floor through their whole fade-in", () => {
     for (const spec of SPECS.filter((s) => s.lod && s.type === "line")) {
@@ -151,13 +196,13 @@ describe("regression: the coast is never dashed (owner report: coasts dotted aro
   // exposes at latitudes where map zoom = globe zoom + log2(cos lat) falls in the band. It is gone: the world coastline
   // runs solid up to the tile coast's first zoom, and nothing dashes a coast or a country border.
   for (const schema of ["protomaps", "openmaptiles"] as const) {
-    it(`${schema}: world coast, sea outline and borders are solid ink, and the coast has no gap or band`, () => {
+    it(`${schema}: world coast, sea outline and borders are solid peak-tone lines, and the coast has no gap or band`, () => {
       const st = make(schema).layers as unknown as L[];
       for (const id of ["world-coast", "water-edge", "world-borders", "boundary-country"]) {
         const l = st.find((x) => x.id === id)!;
         expect(l, id).toBeDefined();
         expect(l.paint["line-dasharray"], id).toBeUndefined();
-        expect(levelOfPaint(l.paint["line-color"], 0), id).toBe(roleLevel("ink"));
+        expect(levelOfPaint(l.paint["line-color"], 0), id).toBe(roleLevel("peak"));
       }
       expect(st.some((l) => /band/.test(l.id))).toBe(false);
       const world = st.find((l) => l.id === "world-coast")!;

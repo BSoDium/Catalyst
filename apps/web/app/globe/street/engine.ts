@@ -128,7 +128,8 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
     padding: "1px 4px",
     font: "10px/1.3 var(--font-mono, ui-monospace, Menlo, monospace)",
     color: "var(--muted-foreground, var(--foreground))",
-    background: "color-mix(in srgb, var(--background) 80%, transparent)",
+    // 90 % plate: 10 px muted text stays above 4.5:1 even over a route line (engine/readability.test.ts)
+    background: "color-mix(in srgb, var(--background) 90%, transparent)",
     pointerEvents: "auto",
   } satisfies Partial<CSSStyleDeclaration>);
   root.append(mapEl);

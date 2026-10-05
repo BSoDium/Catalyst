@@ -57,8 +57,41 @@ uniform int uMaxLevel;       // highest level (the ink)
 uniform int uLimbLevel;      // level of the 1 art px limb where the disc edge straddles a cell
 uniform int uNativeArt;      // 1: the source IS the art grid (one texel per cell, nearest): alpha between 0 and 1 is the disc edge
 out vec4 o;
+// Screen-anchored fill patterns (core/palette.ts PATTERN): a function of the art cell only, so a fill never moves under pan
+// or zoom and never depends on world coordinates, time or tone.
+bool patternLit(int pattern, ivec2 c) {
+  if (pattern == 1) {
+    // green: a dot every 4 cells, the odd rows of dots shifted by 2 (a regular quincunx lattice, 1 cell in 8)
+    int x = c.x & 3, y = c.y & 3;
+    return (x == 0 && y == 0) || (x == 2 && y == 2);
+  }
+  if (pattern == 2) {
+    // water: dashes of 3 cells with 3 off, in rows 4 cells apart, alternate rows shifted by half a period (1 cell in 8)
+    int shift = ((c.y >> 2) & 1) * 3;
+    return (c.y & 3) == 0 && ((c.x + shift) % 6) < 3;
+  }
+  return true;
+}
 vec2 uvOfOut(vec2 outPx) { return outPx * uScale / vec2(uSrcSize); }
 vec4 centre(ivec2 cell) { return texture(uSrc, uvOfOut((vec2(cell) + 0.5) * float(uCellOut))); }
+// The fill of a cell: B = pattern x 16 + level (core/palette.ts). Anti-aliased strokes scale B where they cover a texel: an
+// erasing stroke (route halo, hollow road interior) scales it towards 0, a line scales it by its opacity. Either garbles the
+// code (pattern 2 level 4 = 36 becomes 27 = pattern 1 level 11) in the texels at the edge of the stroke, so the code is read
+// from the cleanest texel of the cell: the highest B among the texels that carry no line. A centre texel that is fully erased
+// (B = 0, no red) is an erased cell whatever its neighbours hold, which keeps the centre rule for the erasing strokes.
+float fillCode(ivec2 cell, vec4 mx) {
+  if (mx.r <= 0.004 && mx.b < 0.5 / 255.0) return 0.0;
+  int n = max(1, int(floor(float(uCellOut) * uScale + 0.5)));   // source texels per cell and axis
+  vec2 base = vec2(cell) * float(uCellOut) * uScale;
+  float best = 0.0;
+  for (int j = 0; j < n; j++) {
+    for (int i = 0; i < n; i++) {
+      vec4 t = texture(uSrc, (base + vec2(float(i), float(j)) + 0.5) / vec2(uSrcSize));
+      if (t.r < 0.03) best = max(best, t.b);
+    }
+  }
+  return floor(best * 255.0 + 0.5);
+}
 
 void main() {
   ivec2 cell = ivec2(gl_FragCoord.xy);
@@ -80,7 +113,10 @@ void main() {
       // G / R is the level whatever the coverage of an antialiased edge texel (both are scaled by it)
       level = clamp(int(floor(mx.g / mx.r * uLevelScale + 0.5)), 1, uMaxLevel);
     } else {
-      level = clamp(int(floor(mx.b * uLevelScale + 0.5)), 0, uMaxLevel);   // fills: opaque, not antialiased
+      // fills: opaque, not antialiased; B = pattern x 16 + level (the level of the lit cells of the pattern)
+      int code = int(fillCode(cell, mx));
+      level = clamp(code & 15, 0, uMaxLevel);
+      if (level > 0 && !patternLit(code >> 4, cell)) level = 0;
     }
     if (level == 0 && (aMin < 0.5 || (uNativeArt == 1 && mx.a < 0.98))) level = uLimbLevel;
   }
@@ -166,8 +202,8 @@ void main() {
     vec2 uv = (vec2(p) + 0.5) / vec2(uOutSize);
     vec4 s = texture(uSrc, uv);
     vec3 c = uPal[0];
-    float fill = floor(s.b * uLevelScale + 0.5);
-    if (fill > 0.5) c = uPal[clamp(int(fill), 0, ${MAX_LEVELS - 1})];
+    int fill = int(floor(s.b * 255.0 + 0.5)) & 15;   // B = pattern x 16 + level (the sharp render shows patterns as flat tones)
+    if (fill > 0) c = uPal[clamp(fill, 0, ${MAX_LEVELS - 1})];
     if (s.r > 0.02) {
       int lv = clamp(int(floor(s.g / s.r * uLevelScale + 0.5)), 1, ${MAX_LEVELS - 1});
       c = mix(c, uPal[lv], clamp(s.r / 0.75, 0.0, 1.0));   // one-pixel lines are painted at 0.75 (THIN_INK)

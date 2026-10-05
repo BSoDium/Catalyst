@@ -15,6 +15,7 @@
  * number of levels (engine/palette.ts).
  */
 import type { Role } from "../../engine/palette";
+import type { Pattern } from "../core/palette";
 import { activeLevels, rampLevel, rampStepZoom, roleLevel } from "../../engine/palette";
 
 export type LodKey =
@@ -67,12 +68,18 @@ export const LOD: Record<LodKey, LodEntry> = {
   buildingOutline: { from: 16.6, full: 17.4, role: "mid" },
 };
 
-/** Fills (flat tone washes) fade in over these zoom ranges, stepping through the levels up to their role. */
+/**
+ * Fills fade in over these zoom ranges, stepping through the levels up to their role. Water and green areas are screen-
+ * anchored PATTERNS (core/palette.ts: dashes for water, a dot lattice for parks and woods) painted in a dimmed level, so
+ * they read as green or water at a glance in both themes; buildings are a flat wash. The sea starts right after the
+ * globe-to-street cut (map zoom 3.5 to 5 depending on latitude) and climbs slowly through the levels, so it is never a
+ * single step: see docs/palette/ (sea ease).
+ */
 export const FILL_LOD = {
-  water: { from: 8, full: 10, role: "wash" },
-  park: { from: 9, full: 12, role: "wash" },
-  building: { from: 15.8, full: 17.5, role: "wash" },
-} as const satisfies Record<string, { from: number; full: number; role: Role }>;
+  water: { from: 5.2, full: 10, role: "soft", pattern: "water" },
+  park: { from: 8.6, full: 11.6, role: "soft", pattern: "green" },
+  building: { from: 15.8, full: 17.5, role: "wash", pattern: "flat" },
+} as const satisfies Record<string, { from: number; full: number; role: Role; pattern: Pattern }>;
 
 /** Progress 0..1 of a fade over [from, full] (0 at or below `from`, 1 at or above `full`). */
 export const progressAt = (e: { from: number; full: number }, z: number): number => (z <= e.from ? 0 : z >= e.full ? 1 : (z - e.from) / (e.full - e.from));

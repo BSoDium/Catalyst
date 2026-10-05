@@ -32,7 +32,8 @@ export const LIMITS = {
   // z14.5 downtown HCMC: main roads are one-pixel (thin class) lines there since the LOD thinning of the style, and dual
   // carriageways, river banks and junctions put thin lines side by side (measured 0.28-0.30); 2x2 blocks that are real
   // adjacency cannot be thinned. The synthetic sweep above stays the contract for the stair remover.
-  real: { blocks: 0.06, blocksCity: 0.35 },
+  // fillMaxLevel: the `soft` role at the default 12 levels (engine/palette.ts): water and park patterns never get louder than the paths
+  real: { blocks: 0.06, blocksCity: 0.35, fillMaxLevel: 4, fillStray: 0.005 },
 };
 
 const failures = [];
@@ -117,7 +118,7 @@ async function real(browser, dpr) {
       await page.waitForFunction(() => window.__streetDebug?.map().loaded() && document.querySelector("[data-dev-street]")?.getAttribute("data-tile-state") === "fallback", null, { timeout: 60000 });
       await page.waitForFunction(() => { const m = window.__streetDebug.map(); return !m.isMoving() && m.areTilesLoaded(); });
       await page.waitForTimeout(500);
-      const r = await page.evaluate(() => {
+      const r = await page.evaluate((FILL_MAX) => {
         const dbg = window.__streetDebug;
         const art = dbg.readCodes();
         const { cols, rows, codes } = art;
@@ -136,13 +137,47 @@ async function real(browser, dpr) {
           thin++;
           if ((at(x + 1, y) && at(x, y + 1) && at(x + 1, y + 1)) || (at(x - 1, y) && at(x, y - 1) && at(x - 1, y - 1)) || (at(x + 1, y) && at(x, y - 1) && at(x + 1, y - 1)) || (at(x - 1, y) && at(x, y + 1) && at(x - 1, y + 1))) blk++;
         }
-        return { ink, thin, blk, distinct: seen.size, unsettled };
-      });
+        // fills (code 3) are screen-anchored patterns (core/palette.ts PATTERN): at city scale there are no flat building washes yet, so
+        // every lit fill cell must sit on the dot lattice of the parks or on the dash rows of the water (mirrors `patternLit` in the pass)
+        const green = (x, y) => ((x & 3) === 0 && (y & 3) === 0) || ((x & 3) === 2 && (y & 3) === 2);
+        const water = (x, y) => (y & 3) === 0 && (x + ((y >> 2) & 1) * 3) % 6 < 3;
+        let fill = 0, offLattice = 0, loud = 0;
+        for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
+          if (codes[y * cols + x] !== 3) continue;
+          fill++;
+          if (!green(x, y) && !water(x, y)) offLattice++;
+          if (art.levels[y * cols + x] > FILL_MAX) loud++;
+        }
+        return { ink, thin, blk, distinct: seen.size, unsettled, fill, offLattice, loud };
+      }, LIMITS.real.fillMaxLevel);
       const tag = `real dpr${dpr} z${view.split(",")[2]}`;
       check(`${tag} has ink`, r.ink, 200, ">=");
       check(`${tag} palette levels in use`, r.distinct, view.endsWith("14.5") ? 3 : 2, ">=");
       check(`${tag} cells still fading after the map settled`, r.unsettled, 0);
       check(`${tag} thin-ink cells in 2x2 blocks`, r.thin ? r.blk / r.thin : 0, view.endsWith("14.5") ? LIMITS.real.blocksCity : LIMITS.real.blocks);
+      if (view.endsWith("14.5")) {
+        check(`${tag} lit fill cells (water / park patterns)`, r.fill, 100, ">=");
+        // A cell inside the anti-aliased fringe of a route halo can read a scaled code (a handful per view, next to the route), hence a share, not zero.
+        check(`${tag} fill cells off the pattern lattices (screen-anchored), share`, r.offLattice / Math.max(1, r.fill), LIMITS.real.fillStray);
+        check(`${tag} fill cells above the dimmed fill level (soft), share`, r.loud / Math.max(1, r.fill), LIMITS.real.fillStray);
+        // pan by a fractional number of cells: the patterns are a function of the screen cell, so the lattices still hold
+        await page.evaluate(() => window.__streetDebug.map().jumpTo({ center: [106.7015, 10.7762] }));
+        await page.waitForFunction(() => { const m = window.__streetDebug.map(); return !m.isMoving() && m.areTilesLoaded(); });
+        await page.waitForTimeout(500);
+        const p2 = await page.evaluate(() => {
+          const { cols, rows, codes } = window.__streetDebug.readCodes();
+          const green = (x, y) => ((x & 3) === 0 && (y & 3) === 0) || ((x & 3) === 2 && (y & 3) === 2);
+          const water = (x, y) => (y & 3) === 0 && (x + ((y >> 2) & 1) * 3) % 6 < 3;
+          let fill = 0, off = 0;
+          for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) if (codes[y * cols + x] === 3) { fill++; if (!green(x, y) && !water(x, y)) off++; }
+          return { fill, off };
+        });
+        check(`${tag} after a pan: fill cells off the pattern lattices, share`, p2.off / Math.max(1, p2.fill), LIMITS.real.fillStray);
+        check(`${tag} after a pan: lit fill cells`, p2.fill, 100, ">=");
+        await page.evaluate(() => window.__streetDebug.map().jumpTo({ center: [106.698, 10.774] }));
+        await page.waitForFunction(() => { const m = window.__streetDebug.map(); return !m.isMoving() && m.areTilesLoaded(); });
+        await page.waitForTimeout(500);
+      }
       if (dpr === 2 && view.endsWith("14.5")) {
         const before = await page.evaluate(() => ({ r: window.__streetDebug.renders(), raf: window.__raf.calls, p: window.__streetDebug.passes() }));
         await page.waitForTimeout(1500);

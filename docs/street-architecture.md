@@ -118,7 +118,7 @@ Summary (full description and numbers in `docs/web-architecture.md`, "Handover")
 
 ## Palette and tone (2026-10-05)
 
-One grey palette for both renderers (`engine/palette.ts`, spec in `docs/pixel-line-rules.md` section 7, comparison of N = 4, 6, 8, 10 in `docs/palette/compare-*.png`): `PALETTE_LEVELS` = 8 levels derived from `--background` and `--foreground` in OKLab, named roles wash, faint, soft, mid, strong, ink. The style paints level-encoded colours (`core/palette.ts`), the pass quantises to a level per cell without smoothing, the presenter looks the level up. Fills (water, parks, buildings) are flat washes; lines carry their class's tone (coast and borders ink, major roads strong, minor roads mid, rail, paths and links soft). Debug override of the count: `?levels=N` on a `?globe-debug` page or sessionStorage `palette-levels` (the synthetic gate takes `LINES_QUERY=levels=N`).
+One grey palette for both renderers (`engine/palette.ts`, spec in `docs/pixel-line-rules.md` section 7, comparison of N = 4, 6, 8, 10 in `docs/palette/compare-*.png`): `PALETTE_LEVELS` = 12 levels derived from `--background` and `--foreground` in OKLab; the 10 map levels only reach `MAP_CONTRAST` of the way to the ink (the map recedes), the last level is the full ink (markers, labels, selection, routes). Named roles wash, faint, soft, mid, strong, peak, ink. The style paints level-encoded colours (`core/palette.ts`), the pass quantises to a level per cell without smoothing, the presenter looks the level up. Lines carry their class's tone (coast and borders peak, major roads strong, minor roads mid, rail, paths and links soft). Fills: buildings are a flat wash; **water and green areas are screen-anchored patterns** (`PATTERN` in `core/palette.ts`, evaluated by `patternLit` in the pass from the art cell only): green = a sparse dot lattice, water = short horizontal dashes, both one cell in eight in the `soft` level, so parks never read as lakes. The pattern id travels with the level in the fill colour (`B = pattern x 16 + level`); the pass reads it from the cleanest texel of the cell so anti-aliased erasing strokes cannot garble it. **The sea eases in over zoom**: the water fill is one layer whose colour steps through the levels from the faintest one at map zoom `handoff + 0.7` (5.2 for OpenFreeMap, 9.2 for the PMTiles extract, whose tiles only exist around its place) to `soft` 4.8 zoom later (`seaFade` in `street-style.ts`), so it is never a single step, in both directions, and nothing is drawn where the globe is shown. Debug override of the count: `?levels=N` on a `?globe-debug` page or sessionStorage `palette-levels` (the synthetic gate takes `LINES_QUERY=levels=N`).
 
 ## Level of detail (street style)
 
@@ -138,7 +138,8 @@ One grey palette for both renderers (`engine/palette.ts`, spec in `docs/pixel-li
 | rivers (lines) / lakes / small water outlines | 9 / 7.5 / 12 | 11.5 / 10 / 14 | solid 1 px (the sea outline is always drawn) |
 | canal / stream | 13 / 14 | 15 / 16 | dashed |
 | region border | 4.5 | 6.5 | dashed (country borders unchanged) |
-| building outline / fill | 16.6 / 15.8 | 17.4 / 17.5 | 1 px / lattice tone up to 0.16 |
+| building outline / fill | 16.6 / 15.8 | 17.4 / 17.5 | 1 px / flat wash |
+| water fill (pattern: dashes) / park fill (pattern: dots) | 5.2 (+ handoff - 4.5) / 8.6 | 10 (+ same) / 11.6 | `soft` level, one cell in eight |
 
 Main roads are 1 art px up to z14.6 and hollow only once the casing holds two outlines and a 2 px interior (z16.9 and up). Measurements and before/after are in `docs/street-zoom/style-*`; `node scripts/street/lod.mjs --tag=after` regenerates them (line cells per 1000 art cells with fills hidden, vector line features rendered).
 
@@ -157,6 +158,8 @@ node apps/web/scripts/street/perf.mjs all         # frames, idle, context loss, 
 node apps/web/scripts/street/registration.mjs
 node apps/web/scripts/street/tile-fade.mjs        # tile fade: no ghost in motion, intermediate levels at rest, idle after
 node apps/web/scripts/street/palette-compare.mjs  # N = 4, 6, 8, 10 contact sheets (docs/palette/)
+node apps/web/scripts/street/palette-shots.mjs after views=paris-sel,lisbon-z13  # the same views in both themes (before/after evidence)
+node apps/web/scripts/street/sea-ease.mjs after scheme=dark   # sea tone and its largest step, zooming in and out across the globe cut (docs/palette/sea-ease-*)
 node apps/web/scripts/globe/stale-check.mjs       # stale soft edge + no dashed coast/border on the live map
 node apps/web/scripts/globe/reload-fade.mjs       # reload fade of a direct place load
 node apps/web/scripts/street/shot.mjs name source=fallback scheme=dark
