@@ -58,6 +58,30 @@ export const publishedDatesSchema = z
 
 export const relatedRefSchema = z.object({ kind: contentKindSchema, slug: slugSchema }).strict();
 
+/**
+ * Automatic place grouping. Groups are derived by the private export (never authored one by one), so the contract only
+ * describes their shape. Levels, from the widest: continent, subregion (UN geoscheme), region (an informal, owner-edited
+ * grouping such as the Balkans), country, area (places close together inside one country).
+ */
+export const groupKindSchema = z.enum(["continent", "subregion", "region", "country", "area"]);
+
+export const publishedGroupSchema = z
+  .object({
+    /** Unique across groups AND distinct from every place slug (the globe addresses both by slug). */
+    slug: slugSchema,
+    name: z.string().trim().min(1).max(120),
+    kind: groupKindSchema,
+    /** The enclosing group. Absent on a root group. Chains must not cycle. */
+    parent: slugSchema.optional(),
+    /** Centre of the bounding circle of every place in the group. */
+    coordinates: coordinatesSchema,
+    /** Radius, in km, of the circle around `coordinates` that covers every descendant place (and its own view radius). */
+    viewRadiusKm: z.number().min(0.5).max(20000),
+    /** Higher wins when labels collide on the globe. 0 to 100. */
+    labelPriority: z.number().int().min(0).max(100),
+  })
+  .strict();
+
 export const publishedPlaceSchema = z
   .object({
     slug: slugSchema,
@@ -73,6 +97,11 @@ export const publishedPlaceSchema = z
      * whole circle in the free map area with a margin. Absent = the client's default (12 km).
      */
     viewRadiusKm: z.number().min(0.5).max(500).optional(),
+    /**
+     * Optional. Slug of the innermost group that contains the place (see `groups`). Absent when the place is not part
+     * of any group (for instance the only place of its continent).
+     */
+    group: slugSchema.optional(),
     summary: z.string().trim().min(1).max(400).optional(),
     dates: publishedDatesSchema.optional(),
     /** Plain-text paragraphs. No HTML or markdown is interpreted. */
@@ -114,6 +143,8 @@ const projectionShape = z
   .object({
     schemaVersion: z.literal(SCHEMA_VERSION),
     places: z.array(publishedPlaceSchema),
+    /** Additive in schema version 1: absent means no groups. */
+    groups: z.array(publishedGroupSchema).default([]),
     routes: z.array(publishedRouteSchema),
     projects: z.array(publishedContentItemSchema),
     articles: z.array(publishedContentItemSchema),
@@ -132,6 +163,52 @@ export const publishedProjectionSchema = projectionShape.superRefine((p, ctx) =>
       ctx.addIssue({ code: "custom", path: ["places", i, "slug"], message: `duplicate place slug "${place.slug}"` });
     }
     placeSlugs.add(place.slug);
+  });
+
+  // --- groups: unique slugs, resolvable parents, no cycles, no empty groups ---------------------------------------------
+  const groupBySlug = new Map<string, PublishedGroup>();
+  p.groups.forEach((g, i) => {
+    if (groupBySlug.has(g.slug)) {
+      ctx.addIssue({ code: "custom", path: ["groups", i, "slug"], message: `duplicate group slug "${g.slug}"` });
+    } else {
+      groupBySlug.set(g.slug, g);
+    }
+    if (placeSlugs.has(g.slug)) {
+      ctx.addIssue({ code: "custom", path: ["groups", i, "slug"], message: `group slug "${g.slug}" is also a place slug` });
+    }
+  });
+  p.groups.forEach((g, i) => {
+    if (g.parent !== undefined && !groupBySlug.has(g.parent)) {
+      ctx.addIssue({ code: "custom", path: ["groups", i, "parent"], message: `unknown group "${g.parent}"` });
+    }
+  });
+  // A group on a cycle never reaches a root: walk up with a visited set.
+  p.groups.forEach((g, i) => {
+    const seen = new Set<string>([g.slug]);
+    for (let cur = g.parent; cur !== undefined; cur = groupBySlug.get(cur)?.parent) {
+      if (seen.has(cur)) {
+        ctx.addIssue({ code: "custom", path: ["groups", i, "parent"], message: `the parent chain of group "${g.slug}" contains a cycle` });
+        break;
+      }
+      seen.add(cur);
+    }
+  });
+  const populated = new Set<string>();
+  p.places.forEach((place, i) => {
+    if (place.group === undefined) return;
+    if (!groupBySlug.has(place.group)) {
+      ctx.addIssue({ code: "custom", path: ["places", i, "group"], message: `unknown group "${place.group}"` });
+      return;
+    }
+    // Mark the whole chain; the visited set keeps this finite even when a cycle was reported above.
+    for (let cur: string | undefined = place.group; cur !== undefined && !populated.has(cur); cur = groupBySlug.get(cur)?.parent) {
+      populated.add(cur);
+    }
+  });
+  p.groups.forEach((g, i) => {
+    if (!populated.has(g.slug)) {
+      ctx.addIssue({ code: "custom", path: ["groups", i], message: `group "${g.slug}" contains no place (empty groups are not allowed)` });
+    }
   });
 
   const byKind = {
@@ -190,6 +267,8 @@ export type ContentKind = z.infer<typeof contentKindSchema>;
 export type PublishedImage = z.infer<typeof publishedImageSchema>;
 export type PublishedDates = z.infer<typeof publishedDatesSchema>;
 export type RelatedRef = z.infer<typeof relatedRefSchema>;
+export type GroupKind = z.infer<typeof groupKindSchema>;
+export type PublishedGroup = z.infer<typeof publishedGroupSchema>;
 export type PublishedPlace = z.infer<typeof publishedPlaceSchema>;
 export type PublishedRoute = z.infer<typeof publishedRouteSchema>;
 export type PublishedContentItem = z.infer<typeof publishedContentItemSchema>;
@@ -198,17 +277,18 @@ export type PublishedProjection = z.infer<typeof publishedProjectionSchema>;
 /** Light shape for lists and the globe. Derived, never stored. */
 export type PlaceSummary = Pick<
   PublishedPlace,
-  "slug" | "name" | "region" | "coordinates" | "labelPriority" | "summary" | "viewRadiusKm"
+  "slug" | "name" | "region" | "coordinates" | "labelPriority" | "summary" | "viewRadiusKm" | "group"
 >;
 
 export function toPlaceSummary(place: PublishedPlace): PlaceSummary {
-  const { slug, name, region, coordinates, labelPriority, summary, viewRadiusKm } = place;
-  return { slug, name, region, coordinates, labelPriority, summary, viewRadiusKm };
+  const { slug, name, region, coordinates, labelPriority, summary, viewRadiusKm, group } = place;
+  return { slug, name, region, coordinates, labelPriority, summary, viewRadiusKm, group };
 }
 
 export const EMPTY_PROJECTION: PublishedProjection = {
   schemaVersion: SCHEMA_VERSION,
   places: [],
+  groups: [],
   routes: [],
   projects: [],
   articles: [],

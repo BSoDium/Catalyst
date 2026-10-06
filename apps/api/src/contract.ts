@@ -14,19 +14,31 @@
  */
 import type {
   ContentKind,
+  GroupKind,
   PlaceSummary,
+  PublishedGroup,
   PublishedContentItem,
   PublishedPlace,
   PublishedProjection,
   PublishedRoute,
 } from "@catalyst/schemas";
 
-export type { ContentKind, PlaceSummary, PublishedContentItem, PublishedPlace, PublishedProjection, PublishedRoute };
+export type {
+  ContentKind,
+  GroupKind,
+  PlaceSummary,
+  PublishedContentItem,
+  PublishedGroup,
+  PublishedPlace,
+  PublishedProjection,
+  PublishedRoute,
+};
 
 export type ApiContentMode = "published" | "demo";
 
 export interface ContentCounts {
   places: number;
+  groups: number;
   routes: number;
   projects: number;
   articles: number;
@@ -63,6 +75,16 @@ export type ProjectionResponse = PublishedProjection;
 /** GET /v1/places (sorted by slug) */
 export type PlacesResponse = PlaceSummary[];
 
+/** GET /v1/groups (sorted by slug): the automatic place hierarchy, flat; `parent` links it into a tree. */
+export type GroupsResponse = PublishedGroup[];
+
+/** A group of a place's chain with its display name resolved. */
+export interface ResolvedGroupRef {
+  slug: string;
+  name: string;
+  kind: GroupKind;
+}
+
 /** A related content item with its display title resolved. */
 export interface ResolvedRelatedItem {
   kind: ContentKind;
@@ -73,6 +95,8 @@ export interface ResolvedRelatedItem {
 /** GET /v1/places/:slug */
 export type PlaceDetailResponse = Omit<PublishedPlace, "related"> & {
   related: ResolvedRelatedItem[];
+  /** The place's groups from the innermost (the place's own `group`) to the root; empty when it has none. */
+  groupChain: ResolvedGroupRef[];
 };
 
 /** GET /v1/routes (authored order) */

@@ -3,7 +3,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import {
   contentKindSchema,
+  groupKindSchema,
   parsePublishedProjection,
+  publishedGroupSchema,
   publishedContentItemSchema,
   publishedPlaceSchema,
   publishedRouteSchema,
@@ -29,17 +31,18 @@ afterEach(() => {
 const demoApp = () => createApp(loadContent({ CATALYST_CONTENT: "demo" }));
 const emptyApp = () => createApp(loadContent({}));
 
-const STATIC = ["/v1/projection", "/v1/places", "/v1/routes", "/v1/projects", "/v1/articles", "/v1/artworks"];
+const STATIC = ["/v1/projection", "/v1/places", "/v1/groups", "/v1/routes", "/v1/projects", "/v1/articles", "/v1/artworks"];
 const KNOWN = ["/health", ...STATIC, "/v1/places/lisbon"];
 
 // Strict response schemas, independent of the server code, to assert that
 // nothing outside the contract allowlist can appear in a response.
 const placeSummarySchema = publishedPlaceSchema
-  .pick({ slug: true, name: true, region: true, coordinates: true, labelPriority: true, summary: true, viewRadiusKm: true })
+  .pick({ slug: true, name: true, region: true, coordinates: true, labelPriority: true, summary: true, viewRadiusKm: true, group: true })
   .strict();
 const placeDetailSchema = publishedPlaceSchema
   .extend({
     related: z.array(z.object({ kind: contentKindSchema, slug: slugSchema, title: z.string().min(1) }).strict()),
+    groupChain: z.array(z.object({ slug: slugSchema, name: z.string().min(1), kind: groupKindSchema }).strict()),
   })
   .strict();
 
@@ -58,7 +61,7 @@ function demoSummary() {
   return { slug: p.slug, name: p.name, coordinates: p.coordinates, labelPriority: p.labelPriority };
 }
 function demoDetailFixture() {
-  return { ...loadDemoProjection().places[0]!, related: [] };
+  return { ...loadDemoProjection().places[0]!, related: [], groupChain: [] };
 }
 
 describe("endpoints (demo content)", () => {
@@ -69,7 +72,7 @@ describe("endpoints (demo content)", () => {
       ok: true,
       schemaVersion: 1,
       content: "demo",
-      counts: { places: 11, routes: 1, projects: 1, articles: 1, artworks: 1 },
+      counts: { places: 18, groups: 8, routes: 1, projects: 1, articles: 1, artworks: 1 },
     });
     expect(res.headers.get("cache-control")).toBe("no-store");
   });
@@ -88,7 +91,7 @@ describe("endpoints (demo content)", () => {
     const parsed = z.array(placeSummarySchema).parse(body);
     const slugs = parsed.map((p) => p.slug);
     expect(slugs).toEqual([...slugs].sort());
-    expect(slugs).toHaveLength(11);
+    expect(slugs).toHaveLength(18);
     // Summaries must not carry detail-only fields.
     for (const p of body) expect(Object.keys(p)).not.toContain("body");
     // The optional view radius passes through when set and is omitted when absent.
@@ -96,6 +99,30 @@ describe("endpoints (demo content)", () => {
     expect(radius["lisbon"]).toBe(10);
     expect(radius["kyoto"]).toBeUndefined();
     expect(Object.keys(body.find((p) => p.slug === "kyoto")!)).not.toContain("viewRadiusKm");
+    // The group slug passes through when the place is in a group and is omitted when it is in none.
+    const group = Object.fromEntries((body as { slug: string; group?: string }[]).map((p) => [p.slug, p.group]));
+    expect(group["zagreb"]).toBe("croatia");
+    expect(group["cape-town"]).toBeUndefined();
+    expect(Object.keys(body.find((p) => p.slug === "cape-town")!)).not.toContain("group");
+  });
+
+  it("GET /v1/groups returns the hierarchy sorted by slug, strictly", async () => {
+    const res = await demoApp().request("/v1/groups");
+    expect(res.status).toBe(200);
+    const groups = z.array(publishedGroupSchema).parse(await res.json());
+    const slugs = groups.map((g) => g.slug);
+    expect(slugs).toEqual([...slugs].sort());
+    expect(slugs).toEqual(["americas", "asia", "balkans", "croatia", "da-nang-area", "europe", "south-eastern-asia", "vietnam"]);
+    expect(groups.map((g) => g.kind)).toEqual(expect.arrayContaining(["continent", "subregion", "region", "country", "area"]));
+    expect(groups.find((g) => g.slug === "balkans")).toMatchObject({ kind: "region", parent: "europe" });
+    expect(groups.find((g) => g.slug === "europe")).not.toHaveProperty("parent");
+    expect(groups).toEqual([...loadDemoProjection().groups].sort((a, b) => (a.slug < b.slug ? -1 : 1)));
+  });
+
+  it("GET /v1/projection carries the groups and each place's group", async () => {
+    const body = (await (await demoApp().request("/v1/projection")).json()) as PublishedProjection;
+    expect(body.groups).toHaveLength(8);
+    expect(body.places.find((p) => p.slug === "split")?.group).toBe("croatia");
   });
 
   it("GET /v1/places/:slug returns the full place with resolved related items", async () => {
@@ -109,8 +136,29 @@ describe("endpoints (demo content)", () => {
       { kind: "article", slug: "demo-article", title: "Demo article" },
       { kind: "project", slug: "demo-project", title: "Demo project" },
     ]);
+    expect(place.group).toBe("europe");
+    expect(place.groupChain).toEqual([{ slug: "europe", name: "Europe", kind: "continent" }]);
     const kyoto = placeDetailSchema.parse(await (await demoApp().request("/v1/places/kyoto")).json());
     expect(kyoto.related).toEqual([{ kind: "artwork", slug: "demo-artwork", title: "Demo artwork" }]);
+  });
+
+  it("GET /v1/places/:slug resolves the group chain from the innermost group to the root", async () => {
+    const detail = async (slug: string) => placeDetailSchema.parse(await (await demoApp().request(`/v1/places/${slug}`)).json());
+    expect((await detail("zagreb")).groupChain).toEqual([
+      { slug: "croatia", name: "Croatia", kind: "country" },
+      { slug: "balkans", name: "Balkans", kind: "region" },
+      { slug: "europe", name: "Europe", kind: "continent" },
+    ]);
+    expect((await detail("hoi-an")).groupChain.map((g) => `${g.kind}:${g.slug}`)).toEqual([
+      "area:da-nang-area",
+      "country:vietnam",
+      "subregion:south-eastern-asia",
+      "continent:asia",
+    ]);
+    // A place in no group has an empty chain and no `group`.
+    const capeTown = await detail("cape-town");
+    expect(capeTown.groupChain).toEqual([]);
+    expect(capeTown).not.toHaveProperty("group");
   });
 
   it("every place in the projection has a detail endpoint that parses strictly", async () => {
@@ -141,10 +189,10 @@ describe("committed (published) content", () => {
 
     const health = await json<HealthResponse>(await app.request("/health"));
     expect(health.content).toBe("published");
-    expect(health.counts).toEqual({ places: 0, routes: 0, projects: 0, articles: 0, artworks: 0 });
+    expect(health.counts).toEqual({ places: 0, groups: 0, routes: 0, projects: 0, articles: 0, artworks: 0 });
 
     expect(await (await app.request("/v1/projection")).json()).toEqual(EMPTY_PROJECTION);
-    for (const path of ["/v1/places", "/v1/routes", "/v1/projects", "/v1/articles", "/v1/artworks"]) {
+    for (const path of ["/v1/places", "/v1/groups", "/v1/routes", "/v1/projects", "/v1/articles", "/v1/artworks"]) {
       const res = await app.request(path);
       expect(res.status, path).toBe(200);
       expect(await res.json(), path).toEqual([]);
@@ -277,7 +325,7 @@ describe("ETag and conditional requests", () => {
     }
     const miss = await app.request("/v1/places", { headers: { "If-None-Match": '"stale"' } });
     expect(miss.status).toBe(200);
-    expect((await miss.json()) as unknown[]).toHaveLength(11);
+    expect((await miss.json()) as unknown[]).toHaveLength(18);
   });
 
   it("is a content hash: stable across instances, different per resource and per content", async () => {

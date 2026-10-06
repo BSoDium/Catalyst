@@ -21,7 +21,7 @@ There is no import endpoint, no admin or write endpoint, no authentication and n
 | Format | `application/json; charset=UTF-8`, compact JSON. |
 | Paths | Exact match, no trailing slash. `/v1/places/` is a 404. |
 | Auth / cookies | None. No `Set-Cookie` is ever sent. |
-| Ordering | `/v1/places` is sorted by slug. Everything else keeps the authored order (routes and stop order are curated). |
+| Ordering | `/v1/places` and `/v1/groups` are sorted by slug. Everything else keeps the authored order (routes and stop order are curated). |
 
 ### Response headers
 
@@ -78,7 +78,7 @@ Liveness plus a summary of what is loaded. `200` when content is valid, `503` ot
   "ok": true,
   "schemaVersion": 1,
   "content": "demo",
-  "counts": { "places": 11, "routes": 1, "projects": 1, "articles": 1, "artworks": 1 }
+  "counts": { "places": 18, "groups": 8, "routes": 1, "projects": 1, "articles": 1, "artworks": 1 }
 }
 ```
 
@@ -90,15 +90,15 @@ Liveness plus a summary of what is loaded. `200` when content is valid, `503` ot
 
 ### `GET /v1/projection`
 
-The complete validated projection, exactly the shape of `PublishedProjection`: `schemaVersion`, `places` (full objects, authored order), `routes`, `projects`, `articles`, `artworks`. This is what the globe loads. With the committed (empty) content:
+The complete validated projection, exactly the shape of `PublishedProjection`: `schemaVersion`, `places` (full objects, authored order), `groups` (the automatic place hierarchy, see below), `routes`, `projects`, `articles`, `artworks`. This is what the globe loads. With the committed (empty) content:
 
 ```json
-{ "schemaVersion": 1, "places": [], "routes": [], "projects": [], "articles": [], "artworks": [] }
+{ "schemaVersion": 1, "places": [], "groups": [], "routes": [], "projects": [], "articles": [], "artworks": [] }
 ```
 
 ### `GET /v1/places`
 
-Array of `PlaceSummary` (`slug`, `name`, `region?`, `coordinates`, `labelPriority`, `viewRadiusKm?`, `summary?`), sorted by `slug`. Optional fields are omitted when absent.
+Array of `PlaceSummary` (`slug`, `name`, `region?`, `coordinates`, `labelPriority`, `viewRadiusKm?`, `group?`, `summary?`), sorted by `slug`. Optional fields are omitted when absent.
 
 ```json
 [
@@ -109,9 +109,36 @@ Array of `PlaceSummary` (`slug`, `name`, `region?`, `coordinates`, `labelPriorit
 
 `viewRadiusKm` (optional, number, 0.5 to 500, additive in schema version 1): the radius in km of the area that should fit on screen when the place is shown, typically the centre-to-edge distance of the built-up area (Lisbon 10, Paris 14, Ho Chi Minh City 18). Clients fit the whole circle into the free map area with a margin. When absent, the web app uses 12 km, a typical city-wide framing: it is large enough that a mid-size city is seen whole (so the visitor can tell where they are) and small enough that streets stay legible. Consumers that ignore the field are unaffected, and projections without it stay valid. It is part of both `PlaceSummary` and the full place.
 
+### `GET /v1/groups`
+
+The automatic place hierarchy, flat, sorted by `slug` (`PublishedGroup[]`). Groups are derived by the private content repo from the published places (nobody authors them one by one) and `parent` links them into a tree. Empty array when there are no groups.
+
+```json
+[
+  { "slug": "balkans", "name": "Balkans", "kind": "region", "parent": "europe", "coordinates": { "lat": 45.464, "lon": 17.511 }, "viewRadiusKm": 279.9, "labelPriority": 80 },
+  { "slug": "europe", "name": "Europe", "kind": "continent", "coordinates": { "lat": 53.139, "lon": 0.024 }, "viewRadiusKm": 1935.7, "labelPriority": 90 }
+]
+```
+
+| Field | Meaning |
+| --- | --- |
+| `slug` | kebab-case, unique across groups and **never equal to a place slug** (the globe addresses groups and places by slug). |
+| `name` | 1 to 120 characters. Comes from a static country/continent table, an owner-edited region list, or a published place name (`"<place> area"`). |
+| `kind` | `continent`, `subregion`, `region` (informal, e.g. Balkans), `country` or `area` (places close together inside one country), from widest to narrowest. |
+| `parent` | Slug of the enclosing group; absent on a root group. No cycles. |
+| `coordinates` | Centre of the group's bounding circle. |
+| `viewRadiusKm` | 0.5 to 20000. Radius of the circle around `coordinates` that covers every descendant place, including each place's own view radius, with a 10% margin. Fit it on screen to show the whole group. |
+| `labelPriority` | 0 to 100, like places (continent 90 down to area 55). |
+
+Guarantees (validated by `parsePublishedProjection` and by the private export): every `parent` and every place `group` resolves, parent chains never cycle, group slugs are unique and distinct from place slugs, and **no group is empty**: each has at least one descendant place. A level with only one child is skipped when the hierarchy is built, so a chain of identical squares never appears. A place that is the only one of its continent (and country, and so on) belongs to no group and has no `group` field.
+
+`group` on a place (summary, detail and projection) is the slug of the **innermost** group that contains it. Walk `parent` to get the rest of the chain.
+
+**Additive in schema version 1.** `groups` and `group` are new optional fields; `schemaVersion` stays `1` and projections without them stay valid (`groups` then defaults to `[]`). Consumers that ignore them are unaffected. The only observable change for existing clients is that `/health` counts gained `groups`, `/v1/places` summaries gained the optional `group`, and `/v1/places/:slug` gained `groupChain`.
+
 ### `GET /v1/places/:slug`
 
-The full place with `related` resolved to `{ kind, slug, title }` so a detail view needs no second request. Unknown slug: `404`.
+The full place with `related` resolved to `{ kind, slug, title }` and its group chain resolved to `{ slug, name, kind }` so a detail view needs no second request. `groupChain` runs from the innermost group (the place's own `group`) to the root and is `[]` for a place in no group. Unknown slug: `404`.
 
 ```json
 {
@@ -121,6 +148,7 @@ The full place with `related` resolved to `{ kind, slug, title }` so a detail vi
   "coordinates": { "lat": 38.72, "lon": -9.14 },
   "labelPriority": 60,
   "viewRadiusKm": 10,
+  "group": "europe",
   "summary": "Demo fixture: a place with prose, dates, an image and related content.",
   "dates": { "start": "2024-03", "end": "2024-04", "label": "Demo dates" },
   "body": [
@@ -133,7 +161,8 @@ The full place with `related` resolved to `{ kind, slug, title }` so a detail vi
   "related": [
     { "kind": "article", "slug": "demo-article", "title": "Demo article" },
     { "kind": "project", "slug": "demo-project", "title": "Demo project" }
-  ]
+  ],
+  "groupChain": [{ "slug": "europe", "name": "Europe", "kind": "continent" }]
 }
 ```
 

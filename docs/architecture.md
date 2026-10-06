@@ -14,11 +14,17 @@ Catalyst is a personal archive organized around places. Two repositories, three 
 
 1. **Source snapshot** (private: `source/`, `archive/`). Imported Polarsteps trips and steps keyed by stable Polarsteps ids. Machine-owned, one-way, never edited by hand. Imported text is source material only.
 2. **Editorial content** (private: `editorial/`). Hand-written places, routes and linked content with explicit `status` (`draft` default, `published`, `unpublished`). A place may reference several source steps. Sync can never change it.
-3. **Published projection** (public: `packages/published/data/projection.json`). An allowlisted export of records explicitly marked published. This is the only content the website and API know about. Contract: `packages/schemas` (zod) and the generated `published.schema.json`.
+3. **Published projection** (public: `packages/published/data/projection.json`). An allowlisted export of records explicitly marked published, plus the place hierarchy derived from them. This is the only content the website and API know about. Contract: `packages/schemas` (zod) and the generated `published.schema.json`.
 
 ## Publication flow
 
 `export` in the private repo maps editorial records field by field into the contract, validates them (JSON Schema + cross-references), and opens or updates a PR here. **Merging that PR is the publication step.** It triggers redeploys of both Vercel projects.
+
+## Place grouping (automatic hierarchy)
+
+Places are grouped automatically: everything in the Balkans shows as "Balkans" from far away, above it a continent, and a group's square grows and its children appear as you zoom in. Nobody defines the groups. The private export derives them from the **published** places only (never drafts) and ships them in the projection as `groups` (plus an optional `group` slug on each place): `place -> [area] -> country -> [informal region | UN subregion] -> continent`, with single-child levels skipped so no chain of identical squares appears. Hand-authored places (no source step, for instance where family lives) are first-class: they are grouped by their country, which is derived from their coordinates when not given. Group names come only from static tables, an owner-edited region list and published place names, never from raw source text, so nothing new can leak.
+
+The contract change is additive within schema version 1 (`groups` defaults to `[]`, `group` is optional). The public side only validates and serves it: `PublishedGroup` and the cross-reference rules (parents, cycles, slug clashes, no empty groups) in `packages/schemas`, `GET /v1/groups` and a resolved `groupChain` on place detail in `apps/api` ([api-contract.md](api-contract.md#get-v1groups)). The web app currently only passes the data through (`groups` in the shell loader, `groupSlug` on `GlobePlace`); rendering it is a separate piece of work. Algorithm and configuration live in the private repo's `docs/grouping.md`.
 
 ## Deployables
 

@@ -43,6 +43,11 @@ export interface GlobePlace {
    * Absent = `DEFAULT_VIEW_RADIUS_KM` (12 km, a typical city-wide framing).
    */
   viewRadiusKm?: number;
+  /**
+   * Slug of the innermost automatic group that contains the place (published `group`), or absent when the place is in no
+   * group. Data only: grouping is not rendered yet.
+   */
+  groupSlug?: string;
 }
 
 /** Resolved from `route.stops`: ordered points, never inferred. */

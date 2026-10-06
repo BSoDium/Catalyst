@@ -16,14 +16,19 @@ describe("buildPlaceIndex", () => {
       lon: -9.14,
       labelPriority: 60,
       viewRadiusKm: 10,
+      groupSlug: "europe",
     });
     // The radius is passed to the globe only when published; Kyoto has none.
     expect(index.globePlaces.find((p) => p.slug === "kyoto")).not.toHaveProperty("viewRadiusKm");
+    // The group slug is passed on only when the place is in a group (Cape Town is in none).
+    expect(index.globePlaces.find((p) => p.slug === "cape-town")).not.toHaveProperty("groupSlug");
+    expect(index.groups).toEqual(demo.groups);
+    expect(index.groups.length).toBeGreaterThan(0);
     // Summaries never carry body text.
     expect(index.places[0]).not.toHaveProperty("body");
   });
   it("is empty for an empty projection", () => {
-    expect(buildPlaceIndex(EMPTY_PROJECTION)).toEqual({ places: [], globePlaces: [], routes: [] });
+    expect(buildPlaceIndex(EMPTY_PROJECTION)).toEqual({ places: [], globePlaces: [], groups: [], routes: [] });
   });
 });
 

@@ -57,6 +57,11 @@
             "minimum": 0.5,
             "maximum": 500
           },
+          "group": {
+            "type": "string",
+            "maxLength": 80,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+          },
           "summary": {
             "type": "string",
             "minLength": 1,
@@ -164,6 +169,79 @@
           "body",
           "images",
           "related"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "groups": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "slug": {
+            "type": "string",
+            "maxLength": 80,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "continent",
+              "subregion",
+              "region",
+              "country",
+              "area"
+            ]
+          },
+          "parent": {
+            "type": "string",
+            "maxLength": 80,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+          },
+          "coordinates": {
+            "type": "object",
+            "properties": {
+              "lat": {
+                "type": "number",
+                "minimum": -90,
+                "maximum": 90
+              },
+              "lon": {
+                "type": "number",
+                "minimum": -180,
+                "maximum": 180
+              }
+            },
+            "required": [
+              "lat",
+              "lon"
+            ],
+            "additionalProperties": false
+          },
+          "viewRadiusKm": {
+            "type": "number",
+            "minimum": 0.5,
+            "maximum": 20000
+          },
+          "labelPriority": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "kind",
+          "coordinates",
+          "viewRadiusKm",
+          "labelPriority"
         ],
         "additionalProperties": false
       }

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { toPlaceSummary, type ContentKind, type PublishedProjection } from "@catalyst/schemas";
-import type { ContentCounts, PlaceDetailResponse } from "./contract";
+import type { ContentCounts, PlaceDetailResponse, ResolvedGroupRef } from "./contract";
 
 export interface Entry {
   body: string;
@@ -26,6 +26,7 @@ export interface Snapshot {
 export const STATIC_PATHS = [
   "/v1/projection",
   "/v1/places",
+  "/v1/groups",
   "/v1/routes",
   "/v1/projects",
   "/v1/articles",
@@ -46,12 +47,28 @@ export function buildSnapshot(p: PublishedProjection): Snapshot {
     artwork: new Map(p.artworks.map((i) => [i.slug, i.title])),
   };
 
+  const groupBySlug = new Map(p.groups.map((g) => [g.slug, g]));
+  /** Innermost to root. Projection validation rules out cycles; the visited set keeps this finite regardless. */
+  const chainOf = (leaf: string | undefined): ResolvedGroupRef[] => {
+    const chain: ResolvedGroupRef[] = [];
+    const seen = new Set<string>();
+    for (let cur = leaf; cur !== undefined && !seen.has(cur); ) {
+      const g = groupBySlug.get(cur);
+      if (!g) break;
+      seen.add(cur);
+      chain.push({ slug: g.slug, name: g.name, kind: g.kind });
+      cur = g.parent;
+    }
+    return chain;
+  };
+
   const entries = new Map<string, Entry>();
   entries.set("/v1/projection", entry(p));
   entries.set(
     "/v1/places",
     entry([...p.places].sort((a, b) => (a.slug < b.slug ? -1 : a.slug > b.slug ? 1 : 0)).map(toPlaceSummary)),
   );
+  entries.set("/v1/groups", entry([...p.groups].sort((a, b) => (a.slug < b.slug ? -1 : a.slug > b.slug ? 1 : 0))));
   entries.set("/v1/routes", entry(p.routes));
   entries.set("/v1/projects", entry(p.projects));
   entries.set("/v1/articles", entry(p.articles));
@@ -66,6 +83,7 @@ export function buildSnapshot(p: PublishedProjection): Snapshot {
         // Referential integrity is guaranteed by projection validation.
         title: titles[r.kind].get(r.slug) ?? r.slug,
       })),
+      groupChain: chainOf(place.group),
     };
     entries.set(`/v1/places/${place.slug}`, entry(detail));
   }
@@ -74,6 +92,7 @@ export function buildSnapshot(p: PublishedProjection): Snapshot {
     entries,
     counts: {
       places: p.places.length,
+      groups: p.groups.length,
       routes: p.routes.length,
       projects: p.projects.length,
       articles: p.articles.length,

@@ -6,6 +6,7 @@ import type {
   ContentKind,
   PlaceSummary,
   PublishedContentItem,
+  PublishedGroup,
   PublishedImage,
   PublishedPlace,
   PublishedProjection,
@@ -35,6 +36,8 @@ export const relatedHref = (kind: ContentKind, slug: string) => `${KIND_PATHS[ki
 export interface PlaceIndex {
   places: PlaceSummary[];
   globePlaces: GlobePlace[];
+  /** The automatic place hierarchy as published (flat; `parent` links it into a tree). Empty when there are no groups. */
+  groups: PublishedGroup[];
   routes: GlobeRoute[];
 }
 
@@ -46,6 +49,7 @@ function toGlobePlace(place: PlaceSummary): GlobePlace {
     lon: place.coordinates.lon,
     labelPriority: place.labelPriority,
     ...(place.viewRadiusKm !== undefined ? { viewRadiusKm: place.viewRadiusKm } : {}),
+    ...(place.group !== undefined ? { groupSlug: place.group } : {}),
   };
 }
 
@@ -63,7 +67,7 @@ export function resolveRoutes(projection: PublishedProjection): GlobeRoute[] {
 
 export function buildPlaceIndex(projection: PublishedProjection): PlaceIndex {
   const places = projection.places.map(toPlaceSummary);
-  return { places, globePlaces: places.map(toGlobePlace), routes: resolveRoutes(projection) };
+  return { places, globePlaces: places.map(toGlobePlace), groups: projection.groups, routes: resolveRoutes(projection) };
 }
 
 interface RelatedLink {

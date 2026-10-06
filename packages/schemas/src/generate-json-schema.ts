@@ -6,10 +6,12 @@ import { publishedProjectionStructureSchema } from "./published";
 /**
  * Emits the language-neutral contract consumed by the private content repo.
  * JSON Schema cannot express cross-references (route stops, related links);
- * those are enforced by `parsePublishedProjection` in this repo's CI.
+ * those (group parents and cycles, empty groups, slug clashes) are enforced by `parsePublishedProjection` in this
+ * repo's CI, and re-implemented in the private repo's export gate.
  */
 export function buildJsonSchema(): string {
-  const schema = z.toJSONSchema(publishedProjectionStructureSchema, { target: "draft-2020-12" });
+  // io "input": `groups` has a default, so as an INPUT it is optional. Old projections (without `groups`) stay valid.
+  const schema = z.toJSONSchema(publishedProjectionStructureSchema, { target: "draft-2020-12", io: "input" });
   return `${JSON.stringify({ title: "Catalyst published projection", ...schema }, null, 2)}\n`;
 }
 

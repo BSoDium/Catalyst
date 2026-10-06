@@ -6,7 +6,7 @@ import { parsePublishedProjection } from "@catalyst/schemas";
 const target = process.argv[2] ?? fileURLToPath(new URL("../data/projection.json", import.meta.url));
 try {
   const p = parsePublishedProjection(JSON.parse(readFileSync(target, "utf8")));
-  console.log(`ok: ${target} (${p.places.length} places, ${p.routes.length} routes)`);
+  console.log(`ok: ${target} (${p.places.length} places, ${p.groups.length} groups, ${p.routes.length} routes)`);
 } catch (e) {
   console.error((e as Error).message);
   process.exit(1);
