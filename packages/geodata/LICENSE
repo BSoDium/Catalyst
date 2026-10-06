@@ -21,5 +21,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 Data notice: the coastline and border datasets in data/ are derived from
-Natural Earth (public domain, https://www.naturalearthdata.com) via the
-`world-atlas` package (ISC).
+Natural Earth (public domain, https://www.naturalearthdata.com): the borders
+from the classified boundary-lines files of natural-earth-vector v5.1.2, the
+coastlines via the `world-atlas` package (ISC). See README.md for provenance.

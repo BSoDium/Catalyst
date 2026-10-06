@@ -1,0 +1,27 @@
+{
+  "naturalEarthVector": {
+    "repository": "https://github.com/nvkelso/natural-earth-vector",
+    "tag": "v5.1.2",
+    "commit": "f1890d9f152c896d250a77557a5751a93d494776",
+    "commitDate": "2022-05-13",
+    "fetched": "2026-10-06",
+    "license": "public domain (https://www.naturalearthdata.com/about/terms-of-use/)"
+  },
+  "files": {
+    "borders-50m": {
+      "file": "ne_50m_admin_0_boundary_lines_land.geojson",
+      "url": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/f1890d9f152c896d250a77557a5751a93d494776/geojson/ne_50m_admin_0_boundary_lines_land.geojson",
+      "sha256": "2faac4f6b34386f3d21b6e018cf151f241f00e5c936d44dd17d7d9bfb147fa48"
+    },
+    "borders-110m": {
+      "file": "ne_110m_admin_0_boundary_lines_land.geojson",
+      "url": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/f1890d9f152c896d250a77557a5751a93d494776/geojson/ne_110m_admin_0_boundary_lines_land.geojson",
+      "sha256": "d42479fd79552cca4eec7f85fcdca717a790d29ff06be7676f1af0568c6d3f7c"
+    },
+    "countries-50m": {
+      "file": "ne_50m_admin_0_countries.geojson",
+      "url": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/f1890d9f152c896d250a77557a5751a93d494776/geojson/ne_50m_admin_0_countries.geojson",
+      "sha256": "3e458fc036ad0a66411f2c1e6cac49c5d7bfb81cb1123bc513b22511a2b7fdeb"
+    }
+  }
+}
