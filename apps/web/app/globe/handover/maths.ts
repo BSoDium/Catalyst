@@ -23,12 +23,12 @@ import { zoomCorrection } from "../street/core/registration";
 
 export const HANDOVER = {
   /** The street chunk is requested and the map created from here (the chunk is large: start early). */
-  mountZoom: 4.0,
+  mountZoom: 2.6,
   /** ... and released below this, after `unmountDelayMs` (hysteresis: the chunk and tiles stay warm while the user hovers). */
-  unmountZoom: 3.3,
+  unmountZoom: 1.9,
   unmountDelayMs: 2500,
   /** From here the street map follows the camera while still invisible, so its tiles are loaded when the dissolve starts. */
-  followZoom: 4.3,
+  followZoom: 3.0,
   /** Trailing debounce of the invisible follow (ms): tiles for where the camera rests, not for every frame of a drag. */
   followDebounceMs: 140,
   /**
@@ -37,21 +37,32 @@ export const HANDOVER = {
    */
   dissolve: false as boolean,
   /** CUT: the zoom from which the street map replaces the globe (the middle of the dissolve range: both are registered there). */
-  cutZoom: 5.05,
+  cutZoom: 3.7,
   /** CUT: the street map gives way to the globe again below this zoom (hysteresis against flapping at the threshold). */
-  cutBackZoom: 4.8,
-  /** CUT: how long to wait for the street map's tiles past the threshold before swapping anyway (ms): never a stalled globe. */
-  cutMaxWaitMs: 500,
+  cutBackZoom: 3.45,
+  /**
+   * CUT: how long to wait for the street map's tiles past the threshold before swapping anyway (ms): never a stalled globe. A short wait
+   * only: the street map keeps the bundled world lines under its tile lines while tiles load (`WORLD_PLACEHOLDER_BELOW` in
+   * street/style/street-style.ts), so a swap onto a half-loaded map shows the globe's own lines and the tile lines cross-fade in when
+   * they arrive; the wait just avoids the second transition on a normal connection. (The world-scale tiles are heavy: a z3 tile holds
+   * every region border of a continent, a second or more on a slow network.)
+   */
+  cutMaxWaitMs: 1200,
+  /**
+   * CUT: the swap is a tone cross-fade of this many ms (about a quarter of a second: the loudest map tone is 10 levels of the 24 ms ease). Going to the street
+   * map it starts from the globe's last frame, going back it eases to the globe's frames; 0 or reduced motion: an instant swap.
+   */
+  crossfadeMs: 300,
   /** DISSOLVE: the blend is a function of zoom between these two. */
-  blendStart: 4.6,
-  blendEnd: 5.5,
+  blendStart: 3.3,
+  blendEnd: 4.1,
   /** Slew limit of the dissolve value: a full 0 to 1 swing takes at least this long (fast flicks, availability changes). */
   dissolveMs: 450,
   /** Markers and labels switch to the street map's own overlay once the dissolve is this far (with hysteresis). */
   overlayIn: 0.8,
   overlayOut: 0.65,
   /** The globe's lifted route arcs flatten onto the ground between these zooms, ahead of the dissolve. */
-  routeFlat: { start: 3.7, end: 4.6 },
+  routeFlat: { start: 2.5, end: 3.3 },
   /**
    * Sharp-focus circle around the selected place at street scale. OFF by default: with the cut and the city-wide framing
    * the anti-aliased source render inside the circle sits over the pixel art and reads as doubled lines (the Seine,

@@ -2,11 +2,12 @@
  * Public contract of the street map. Type-only: importing this file costs nothing at runtime.
  * Like everything under app/globe/, nothing here imports from the rest of the app.
  */
-import type { GlobePlace, GlobeRoute } from "../types";
+import type { LodTree } from "../engine/lod-tree";
+import type { GlobeGroup, GlobePlace, GlobeRoute } from "../types";
 import type { HealthThresholds } from "./core/tile-health";
 import type { ManagerTimings, SourceId, TileReason, TileState, TileStatus } from "./core/tile-source-manager";
 
-export type { GlobePlace, GlobeRoute, HealthThresholds, ManagerTimings, SourceId, TileReason, TileState, TileStatus };
+export type { GlobeGroup, GlobePlace, GlobeRoute, HealthThresholds, ManagerTimings, SourceId, TileReason, TileState, TileStatus };
 
 /** MapLibre camera: zoom is the MapLibre zoom (512 px tiles); use `core/registration` to convert from/to the globe. */
 export interface StreetView {
@@ -32,6 +33,13 @@ export interface StreetMapOptions {
   /** Initial camera. */
   view: StreetView;
   places: readonly GlobePlace[];
+  /** The automatic place hierarchy (standalone use; the globe look draws it: group squares and labels). Ignored when `lod` is given. */
+  groups?: readonly GlobeGroup[];
+  /**
+   * The semantic-zoom tree to draw (engine/lod-tree.ts). The handover passes the globe's own, so both overlays decide from the
+   * same state and the cut shows the same squares and markers. Default: a tree of `places` and `groups`.
+   */
+  lod?: LodTree;
   routes: readonly GlobeRoute[];
   selectedSlug: string | null;
   focusedSlug: string | null;
@@ -43,6 +51,8 @@ export interface StreetMapOptions {
    */
   insetRight: number;
   onSelect(slug: string): void;
+  /** A group's square or label was clicked (globe look): the host flies to frame it. */
+  onSelectGroup?(slug: string): void;
   onViewChange?(view: StreetView): void;
   /** Every tile source transition (including the first, `connecting`). `maxZoom` tells how far the experience may go. */
   onTileStatus?(status: TileStatus): void;
@@ -128,6 +138,8 @@ export interface StreetMap {
   /** Highlight the selected place. `fly` also moves the camera there (zoom: given, else at least 14.5; a jump under reduced motion). */
   setSelected(slug: string | null, options?: { fly?: boolean; zoom?: number }): void;
   setFocused(slug: string | null): void;
+  /** Highlight (or clear) the group under the pointer. */
+  setHovered(slug: string | null): void;
   setReducedMotion(on: boolean): void;
   setInset(px: number): void;
   getView(): StreetView;
@@ -150,6 +162,17 @@ export interface StreetMap {
    * globe is the visible renderer, so the street map costs a hidden art-resolution map render and no pass.
    */
   setActive(on: boolean): void;
+  /**
+   * The globe-to-street cut: start the presented image from the Three.js globe's canvas (same art grid, `grid` = where its cells sit, CSS
+   * px from the container's corner, and its cell size), so the swap is a tone cross-fade instead of a pop. Call right after
+   * `setActive(true)`, in the task that drew the canvas, before `setCamera`. False when it cannot (the swap is instant then).
+   */
+  seedFrom(canvas: HTMLCanvasElement, grid: { cell: number; left: number; top: number }): boolean;
+  /**
+   * The street-to-globe cut: while the host keeps the camera in step, eases the presented image towards the globe's canvas (call after
+   * every globe frame, same task). `crossfadeTo(null)` resumes following the map. `debug().easing()` is 0 once it has arrived.
+   */
+  crossfadeTo(canvas: HTMLCanvasElement | null, grid?: { cell: number; left: number; top: number }): void;
 
   /** Native mode: map pixels per art cell per axis (1 to 3) from now on; the frame governor lowers it on slow devices. */
   setRenderScale(n: number): void;
@@ -174,20 +197,26 @@ export interface StreetDebug {
   cellCss(): number;
   /** Projected snapped marker centre (client coordinates) if drawn. */
   project(slug: string): { x: number; y: number } | null;
-  shown(): { markers: string[]; labels: string[] };
+  shown(): { markers: string[]; labels: string[]; groups: string[] };
+  /** The declutter clusters as the overlay drew them: per drawn node, alpha, tone level, the box (groups), its members and its snapped cell centre (container CSS px). */
+  lod(): { slug: string; kind: string; alpha: number; level: number; box: { x0: number; y0: number; x1: number; y1: number }; members: number; total: number; x: number; y: number; shown: boolean }[];
   /** Art class codes of the last frame (a GPU stall). */
   readCodes(): { cols: number; rows: number; codes: Uint8Array; levels: Uint8Array } | null;
   /** The palette level actually presented per cell (after the tile fade), row 0 = top; `readCodes` is the classified target. */
   readPresentedLevels(): Uint8Array | null;
-  /** Fade ticks still pending (0 = presented is the target). */
+  /** Fade ticks still pending (0 = presented is the target and the ease loop has stopped). */
   easing(): number;
+  /** Ease passes so far, the warp of the last map frame (kind, match radius, largest displacement in cells) and the CPU ms of its mesh. */
+  easeStats(): { eases: number; warp: { kind: string; radius: number; maxShift: number }; meshMs: number };
   gpuSync(): void;
+  /** Per-pass GPU timers (EXT_disjoint_timer_query_webgl2) on or off, and their means in ms per pass name: measurement only. */
+  profile(on: boolean): boolean;
+  passTimings(): Record<string, { ms: number; n: number }>;
   lastPassMs(): number;
   /** Lose or restore the `map` or the `overlay` context through WEBGL_lose_context. */
   loseContext(which: "map" | "overlay", lose: boolean): void;
   contexts(): { mapLost: boolean; overlayLost: boolean; overlayLosses: number; overlayRestores: number };
   tile(): { status: TileStatus; failures: Record<SourceId, number>; health: Record<string, unknown> };
-  attribution(): string;
   /** The MapLibre map (tests and measurement only). */
   map(): import("maplibre-gl").Map;
   /** Synchronous map render (benchmark). */

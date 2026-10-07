@@ -22,3 +22,29 @@ export function levelOfPaint(v: unknown, z: number): number {
   return decodeLevel(out);
 }
 
+
+/**
+ * Evaluate the subset of MapLibre filter / expression syntax the street style uses against one feature (tests only: it lets a
+ * unit test ask "does this boundary feature get drawn?" without a GL context). Missing properties are null, like MapLibre's `get`.
+ */
+export function evalFilter(expr: unknown, props: Record<string, unknown>, geometry: "LineString" | "Polygon" | "MultiPolygon" | "Point" = "LineString"): unknown {
+  if (!Array.isArray(expr)) return expr;
+  const [op, ...a] = expr as [string, ...unknown[]];
+  const ev = (x: unknown) => evalFilter(x, props, geometry);
+  switch (op) {
+    case "literal": return a[0];
+    case "get": return props[a[0] as string] ?? null;
+    case "has": return props[a[0] as string] !== undefined;
+    case "geometry-type": return geometry;
+    case "all": return a.every((x) => ev(x) === true);
+    case "any": return a.some((x) => ev(x) === true);
+    case "!": return ev(a[0]) !== true;
+    case "==": return ev(a[0]) === ev(a[1]);
+    case "!=": return ev(a[0]) !== ev(a[1]);
+    case ">=": return (ev(a[0]) as number) >= (ev(a[1]) as number);
+    case "<=": return (ev(a[0]) as number) <= (ev(a[1]) as number);
+    case "to-number": { const v = ev(a[0]); const n = typeof v === "number" ? v : Number(v); return Number.isFinite(n) && v !== null ? n : ev(a[1]); }
+    case "in": { const hay = ev(a[1]); return Array.isArray(hay) ? hay.includes(ev(a[0])) : false; }
+    default: throw new Error(`evalFilter: unsupported operator ${op}`);
+  }
+}

@@ -12,6 +12,7 @@ import { spawn } from "node:child_process";
 import { createServer } from "node:net";
 import { fileURLToPath } from "node:url";
 import { mkdirSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { launch } from "./lib.mjs";
 import { runScenarios } from "./runner.mjs";
 import { BUDGETS, CRAWL_BUDGET, IDLE_BUDGET, MOBILE_BUDGETS } from "./budgets.mjs";
@@ -58,6 +59,23 @@ if (!base) {
     await new Promise((r) => setTimeout(r, 200));
   }
 }
+
+/**
+ * macOS: how busy the GPU is with everything else (IOAccelerator "Device Utilization %"), or null. The GPU numbers are timer queries, so
+ * another process that keeps the GPU at 60 % (a page with a WebGL globe open in a browser) inflates them 2 to 4 times, the world view
+ * (s1) included: measured 0.3 ms quiet and 1.4 busy for the same build.
+ */
+function gpuBusyPercent() {
+  try {
+    const t = execFileSync("ioreg", ["-r", "-d", "1", "-c", "IOAccelerator"], { encoding: "utf8", timeout: 5000 });
+    const m = t.match(/"Device Utilization %"=(\d+)/);
+    return m ? Number(m[1]) : null;
+  } catch {
+    return null;
+  }
+}
+const busyBefore = gpuBusyPercent();
+const GPU_BUSY = 30;
 
 const median = (a) => {
   const v = a.filter((x) => typeof x === "number" && !Number.isNaN(x)).sort((x, y) => x - y);
@@ -132,7 +150,8 @@ try {
     const on = crawl.find((x) => x.snap === "on");
     const off = crawl.find((x) => x.snap === "off");
     check("desktop", "crawl(snapped)", "residualMean", on.residualMean, CRAWL_BUDGET.snapResidualMean);
-    check("desktop", "crawl(snapped)", "changedShare", on.changedShare, CRAWL_BUDGET.snapChangedShare);
+    check("desktop", "crawl(snapped)", "changedPerCell", on.changedPerCell, CRAWL_BUDGET.snapChangedPerCell);
+    rows.push(`  info  snapped: ${on.movedCells} cells travelled, changedShare ${on.changedShare} (the share of frames that cross a cell boundary: it scales with drag speed / art pixel, not a quality number)`);
     rows.push(`  info  unsnapped reference: residualMean ${off.residualMean}, changedShare ${off.changedShare} (the snap is worth ${(off.residualMean - on.residualMean).toFixed(3)})`);
     if (!(off.residualMean >= CRAWL_BUDGET.unsnappedMustExceed)) failures.push("crawl: the unsnapped control shows no crawl, the metric is not measuring what it should");
   }
@@ -146,6 +165,7 @@ try {
   await tiles.stop();
 }
 console.log(rows.join("\n"));
+if ((busyBefore ?? 0) >= GPU_BUSY) console.log(`\n  note  the GPU was ${busyBefore}% busy before this run started (with nothing of ours running): other processes use it, and every gpuMean / gpuP95 above is inflated (a quiet machine measures about a third). Rerun when it is idle before reading a GPU failure as a regression.`);
 if (failures.length) {
   console.error(`\n${failures.length} budget(s) exceeded:\n  ${failures.join("\n  ")}`);
   exit = 1;

@@ -24,7 +24,8 @@ import { perfEnd, perfStart } from "../engine/perf";
 import { clamp } from "../engine/geo";
 import type { StreetMap, StreetTileConfig, TileStatus } from "../street/types";
 import { effectiveRadiusKm } from "../engine/framing";
-import { isFitView, type GlobeInitialView, type GlobePlace, type GlobeProps, type GlobeRoute } from "../types";
+import { LodTree, buildLodNodes } from "../engine/lod-tree";
+import { isFitView, type GlobeGroup, type GlobeInitialView, type GlobePlace, type GlobeProps, type GlobeRoute } from "../types";
 import {
   GLOBE_MAX_ZOOM,
   HANDOVER,
@@ -35,6 +36,7 @@ import {
   selectionZoom,
   slew,
   toMapZoom,
+  zoomCeiling,
   type OverlayOwner,
 } from "./maths";
 
@@ -46,6 +48,8 @@ export interface HandoverOptions {
   /** Receives the street map. Positioned, `inset: 0`, `pointer-events: none`, above `stage` and below `labelsRoot`. */
   streetRoot: HTMLElement;
   places: readonly GlobePlace[];
+  /** The automatic hierarchy (empty = no grouping: every place is a marker at every zoom). */
+  groups: readonly GlobeGroup[];
   routes: readonly GlobeRoute[];
   coastlines: Polylines;
   borders: Polylines;
@@ -100,6 +104,8 @@ export interface HandoverDebug {
   fly(view: { lon: number; lat: number; zoom: number }): void;
   /** Select a place as a click would (highlight and fly to its framing). */
   select(slug: string | null): void;
+  /** Click a group as a pointer would: fly to frame its circle. */
+  selectGroup(slug: string): void;
   /** The zoom the place's view radius is framed at now (free area, inset target), unclamped by the street range. */
   framingZoom(slug: string): number | null;
   /** The renderer swap is a dissolve (true) or a cut (false). */
@@ -109,6 +115,8 @@ export interface HandoverDebug {
   forceQuality(level: number): void;
   /** Cuts so far: 0 to 1 swaps to the street map, 1 to 0 swaps back, and how many frames waited for tiles. */
   cuts(): { toStreet: number; toGlobe: number; waitedFrames: number };
+  /** The cut to the street map is wanted but waits for its tiles (at most `cutMaxWaitMs`): the picture is about to change. */
+  cutPending(): boolean;
 }
 
 export interface HandoverHandle {
@@ -125,6 +133,9 @@ type StreetState = "none" | "loading" | "ready" | "failed";
 
 export function createHandover(opts: HandoverOptions): HandoverHandle {
   const places = new Map(opts.places.map((p) => [p.slug, p]));
+  // One semantic-zoom tree for both renderers: what is drawn (and in which tone) is decided from the same state, so the cut
+  // shows the same squares and markers.
+  const lod = new LodTree(buildLodNodes(opts.places, opts.groups));
   const tiles = opts.tiles;
   const dissolve = opts.dissolve ?? HANDOVER.dissolve;
   let reduced = opts.reducedMotion;
@@ -181,6 +192,8 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
   let cutSince = 0;
   const cutStats = { toStreet: 0, toGlobe: 0, waitedFrames: 0 };
   let inFrame = false;
+  /** Street-to-globe cut: while now < this, the street map stays on screen and eases its picture towards the globe's (HANDOVER.crossfadeMs). */
+  let fadeOutUntil = 0;
   let retreating = false;
   /** A flight toward street scale is under way (or wanted): keeps the street map mounted. */
   let wantStreet = false;
@@ -194,6 +207,7 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
     labelsRoot: opts.labelsRoot,
     places: opts.places,
     routes: opts.routes,
+    lod,
     coastlines: opts.coastlines,
     borders: opts.borders,
     initialView,
@@ -202,6 +216,8 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
     insetRight: opts.insetRight,
     zoomLimit: restoring ? Infinity : GLOBE_MAX_ZOOM,
     onSelect: opts.onSelect,
+    onSelectGroup: (slug) => selectGroup(slug),
+    onHover: (slug) => street?.setHovered(slug),
     onViewChange: opts.onViewChange,
     onContextChange: (lost) => {
       globeLost = lost;
@@ -247,7 +263,7 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
   // ---- street map: lazy create / dispose --------------------------------------------------------------------------------
   const mapCamera = () => {
     const v = view();
-    return { lon: v.lon, lat: v.lat, zoom: clamp(toMapZoom(v.zoom, v.lat), 2, TUNING.streetMapMaxZoom) };
+    return { lon: v.lon, lat: v.lat, zoom: clamp(toMapZoom(v.zoom, v.lat), STREET_TUNING.minZoom, TUNING.streetMapMaxZoom) };
   };
 
   async function mountStreet() {
@@ -263,6 +279,7 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
       const map = engine.createStreetMap(opts.streetRoot, {
         view: mapCamera(),
         places: opts.places,
+        lod,
         routes: opts.routes,
         selectedSlug: selected,
         focusedSlug: focused,
@@ -275,6 +292,7 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
         renderScale: renderScaleFor(qualityLevel),
         initialBlend: dissolve ? 0 : 1, // cut mode: always opaque, shown or hidden as a whole by `streetRoot`
         onSelect: opts.onSelect,
+        onSelectGroup: (slug) => selectGroup(slug),
         onTileStatus: (s) => {
           tile = s;
           reconcile();
@@ -311,6 +329,7 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
   }
 
   function unmountStreet() {
+    fadeOutUntil = 0;
     streetToken++;
     street?.dispose();
     street = null;
@@ -428,7 +447,7 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
     if (!wants && shown <= 0 && !unmountTimer) {
       unmountTimer = window.setTimeout(() => {
         unmountTimer = 0;
-        if (!mountWanted(true, view().zoom, wantStreet || restoring) && shown <= 0) unmountStreet();
+        if (!mountWanted(true, view().zoom, wantStreet || restoring) && shown <= 0 && !crossfading()) unmountStreet();
       }, HANDOVER.unmountDelayMs);
     }
     if (wants && unmountTimer) {
@@ -506,6 +525,37 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
       lastPush = null;
     }
     renderer.requestRender();
+  }
+
+  // ---- the cut as a tone cross-fade --------------------------------------------------------------------------------------------
+  // Both renderers draw on the same art grid with the same palette, so a cut can be a cross-fade of TONES instead of an instant swap:
+  // going in, the street map starts its presented image from the globe's last frame (`seedFrom`) and every cell steps to the street
+  // image at the ease's pace (about a quarter of a second); going out, the street map stays on screen and steps towards the globe's
+  // frames until it is the globe (`crossfadeTo`), then it is hidden. Both are skipped under reduced motion (the swap stays instant).
+  const globeGrid = () => {
+    const g = renderer.pixelGrid();
+    return { cell: g.cell, left: g.left, top: g.top };
+  };
+  const crossfading = () => fadeOutUntil > 0;
+  function endCrossfade() {
+    if (!fadeOutUntil) return;
+    fadeOutUntil = 0;
+    street?.crossfadeTo(null);
+  }
+  /** One frame of the street-to-globe cross-fade: the globe has just drawn (this task), the street map follows its camera and eases towards it. */
+  function crossfadeFrame(now: number) {
+    if (!street) return endCrossfade();
+    pushCamera(true);
+    street.crossfadeTo(renderer.canvas, globeGrid());
+    if (now >= fadeOutUntil) {
+      endCrossfade();
+      street.setActive(false);
+      streetActive = false;
+      opts.streetRoot.style.opacity = "0";
+      opts.streetRoot.inert = true;
+    } else {
+      renderer.requestRender(); // frames are on demand: keep the globe drawing until the street map has arrived
+    }
   }
 
   function frame() {
@@ -586,21 +636,35 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
       globe.setLabelsActive(true);
       renderer.setSuspended(false);
       renderer.renderNow();
+      // The street map stays on screen a quarter of a second and steps its tones towards the globe's frames (a cross-fade, not a click).
+      if (!reduced && HANDOVER.crossfadeMs > 0 && streetOk() && !streetLost) {
+        fadeOutUntil = performance.now() + HANDOVER.crossfadeMs;
+        crossfadeFrame(now);
+      }
     }
     // Cut to the street map: it is rendered synchronously for this exact camera, then everything flips below.
+    let seedWanted = false;
     if (!dissolve && prevShown < 1 && shown >= 1) {
       cutStats.toStreet++;
       lastPush = null;
+      // The street map was still on screen (a cut back that is not over yet): its picture continues, nothing to seed.
+      if (crossfading()) endCrossfade();
+      else seedWanted = !reduced && HANDOVER.crossfadeMs > 0;
     }
+    const fading = crossfading();
+    if (fading && shown < 1 && prevShown < 1 && forced === null && !streetLost) crossfadeFrame(now);
 
     // A map that is not shown renders (tiles load) but copies and draws nothing; the DOM overlay is not updated either.
-    if (shown > 0 !== streetActive) {
-      streetActive = shown > 0;
+    const wantActive = shown > 0 || crossfading();
+    if (wantActive !== streetActive) {
+      streetActive = wantActive;
       street.setActive(streetActive);
     }
+    // The globe drew this frame in this task (it is not suspended while shown < 1): the street map starts from it.
+    if (seedWanted && streetActive) street.seedFrom(renderer.canvas, globeGrid());
     const following = v.zoom >= HANDOVER.followZoom - 1e-9;
     // Hidden, the street map only follows once the camera rests (debounced below), except while a dissolve is about to start.
-    if (shown > 0 || (dissolve && v.zoom >= HANDOVER.blendStart - 0.02)) {
+    if (shown > 0 || crossfading() || (dissolve && v.zoom >= HANDOVER.blendStart - 0.02)) {
       window.clearTimeout(followTimer);
       followTimer = 0;
       pushCamera(shown > 0);
@@ -619,7 +683,7 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
       void street.setBlend(blend, { animate: false });
     }
     renderer.setSuspended(shown >= 1 && !streetLost);
-    const visible = shown > 0;
+    const visible = shown > 0 || crossfading();
     opts.streetRoot.style.opacity = visible ? "1" : "0";
     if (opts.streetRoot.inert === visible) opts.streetRoot.inert = !visible;
     applyOwner(overlayOwner(owner, shown));
@@ -664,6 +728,28 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
     const zoom = selectionZoom(placeFit(place), place.lat, possible, v.zoom);
     retreating = false;
     renderer.flyTo({ lon: place.lon, lat: place.lat, zoom }, { beyondLimit: possible });
+    if (possible && streetState === "none") void mountStreet();
+    updateNotice();
+  }
+
+  /**
+   * A group's square (or label) was clicked: fly the camera to frame its circle (`GROUP_FRAMING_MARGIN`, the free area and
+   * the inset), so its children appear. Into street scale when the group is small enough to need it and the street map can
+   * show it, else at most the globe's own maximum. Nothing is selected: a group has no detail page.
+   */
+  function selectGroup(slug: string) {
+    const i = lod.indexOf(slug);
+    if (i < 0 || !lod.isGroup[i]) return;
+    const lat = lod.lat[i]!;
+    const lon = lod.lon[i]!;
+    const fit = renderer.fitZoomForGroup(i);
+    const v = view();
+    const needsStreet = fit > GLOBE_MAX_ZOOM + 1e-3;
+    const possible = needsStreet && !!tiles && streetState !== "failed" && tile?.state !== "capped" && (!tileOk() || (street ? street.covers(lon, lat) : true));
+    wantStreet = possible;
+    const zoom = possible ? Math.min(fit, zoomCeiling(lat, true)) : Math.max(v.zoom, Math.min(fit, GLOBE_MAX_ZOOM));
+    retreating = false;
+    renderer.flyTo({ lon, lat, zoom }, { beyondLimit: possible });
     if (possible && streetState === "none") void mountStreet();
     updateNotice();
   }
@@ -723,6 +809,7 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
         ticks: () => renderer.tickCount(),
         revealOpen: () => revealOn,
         select: (slug) => select(slug, true),
+        selectGroup: (slug) => selectGroup(slug),
         framingZoom: (slug) => {
           const p = places.get(slug);
           return p ? placeFit(p) : null;
@@ -734,6 +821,7 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
           applyQuality(level);
         },
         cuts: () => ({ ...cutStats }),
+        cutPending: () => !dissolve && forced === null && cutSince > 0 && shown < 1,
         fly(v) {
           wantStreet = !!tiles && streetState !== "failed";
           renderer.flyTo(v, { beyondLimit: wantStreet });

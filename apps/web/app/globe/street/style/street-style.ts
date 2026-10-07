@@ -23,7 +23,7 @@ import { DESIGN_CELL_CSS, THIN_INK, artStops, cssStops, hollowFillStops, inkOpac
 import type { Schema } from "../core/source-descriptor";
 import { activeLevels, roleLevel, type Role } from "../core/palette";
 import { ERASE, fillColor, lineColor, type Pattern } from "../core/palette";
-import { FILL_LOD, LOD, stepZoom, type LodKey } from "./lod";
+import { FILL_LOD, LOD, stepZoom, toneLevel, type LodKey } from "./lod";
 
 export type { Schema };
 
@@ -57,8 +57,8 @@ function stepColors(levels: number[], zooms: number[], color: (level: number) =>
 }
 
 /** Colour of a fade-in over zoom: the faintest level first, stepping up to the role's level at `full` (equal zoom steps). */
-export function fadeInColor(e: { from: number; full: number; role: Role }, color: (level: number) => string, n: number = activeLevels()): string | ExpressionSpecification {
-  const final = roleLevel(e.role, n);
+export function fadeInColor(e: { from: number; full: number; role: Role; at?: number }, color: (level: number) => string, n: number = activeLevels()): string | ExpressionSpecification {
+  const final = toneLevel(e, n);
   const levels = Array.from({ length: final }, (_, i) => i + 1);
   return stepColors(levels, levels.map((k) => stepZoom(e, k, n)), color);
 }
@@ -76,8 +76,30 @@ export const seaFade = (handoff: number): { from: number; full: number; role: Ro
   return { ...FILL_LOD.water, from: FILL_LOD.water.from + shift, full: FILL_LOD.water.full + shift };
 };
 
+/**
+ * Zoom at which the tile boundary takes over from the bundled Natural Earth country borders (and so where the latter end): the
+ * coastline's hand-over, but never before 5. OpenMapTiles itself switches its boundary DATA from Natural Earth (z0 to z4 tiles, whose
+ * lines follow the globe's) to OpenStreetMap (z5 and up) there, so drawing tile lines earlier would add a second, differently
+ * registered Natural Earth line for no gain, and the one swap a viewer can see (the border moves by up to tens of km where a
+ * frontier is disputed, `scripts/street/border-register.mjs`) happens once.
+ */
+export const BORDER_TILE_MINZOOM = 1;
+export const borderHandoff = (handoff: number): number => Math.max(handoff, BORDER_TILE_MINZOOM);
+
+/**
+ * The bundled world lines (110m coast, 50m borders: the globe's own data) as a PLACEHOLDER under the tile lines, for a source whose tiles
+ * are global (the tile coast is drawn from the first zoom): below this MapLibre zoom they are drawn WHILE tiles are loading
+ * (`placeholderLayers`, switched by the engine from `map.areTilesLoaded()`), so a slow network shows the globe's lines until the real ones
+ * arrive and the temporal ease cross-fades one to the other, instead of an empty map. They are hidden once the tiles are in: never two
+ * geometries of one coast at once. Above this zoom the parent tiles of MapLibre already stand in for the missing ones.
+ */
+export const WORLD_PLACEHOLDER_BELOW = 5;
+export const PLACEHOLDER_LAYERS = ["world-coast", "world-borders"] as const;
+/** Whether a style with this hand-over zoom keeps the world lines as a (hidden until needed) placeholder. */
+export const hasPlaceholder = (handoff: number, hasTiles: boolean): boolean => hasTiles && handoff < WORLD_PLACEHOLDER_BELOW;
+
 /** Handover zoom per schema: the PMTiles extract only has tiles around the place, OpenFreeMap is global. */
-export const DEFAULT_HANDOFF: Record<Schema, number> = { protomaps: 8.5, openmaptiles: 4.5 };
+export const DEFAULT_HANDOFF: Record<Schema, number> = { protomaps: 8.5, openmaptiles: 1 };
 
 const zoomInterp = (stops: Stops, base = 1.5): ExpressionSpecification =>
   ["interpolate", ["exponential", base], ["zoom"], ...stops.flatMap(([z, v]) => [z, v])] as ExpressionSpecification;
@@ -114,6 +136,21 @@ const LINE = ["==", ["geometry-type"], "LineString"] as const;
 const POLY = ["any", ["==", ["geometry-type"], "Polygon"], ["==", ["geometry-type"], "MultiPolygon"]] as const;
 const kindIn = (key: string, v: string[]) => ["in", ["get", key], ["literal", v]] as const;
 
+/**
+ * ONE line per frontier (owner report: a second, wavy line next to the Mauritania / Western Sahara / Morocco / Algeria border).
+ * Both tile schemas carry the same frontier several times: the de-facto border (`admin_level` 2, `disputed` 0), disputed or claimed
+ * lines (`disputed` 1: the Moroccan wall, Kashmir's LoC / LAC, Crimea, the West Bank, ... drawn on top of or beside the real line,
+ * sometimes tens of km away) and maritime limits (`maritime` 1: the territorial sea, along the coast). Only the de-facto land border
+ * is drawn, solid, at every zoom; disputed and maritime lines are never drawn (a dotted claim line beside the border reads as a
+ * second border, and a world map with a single clear line is the point). OpenMapTiles: `disputed` and `maritime` are 0 / 1 numbers
+ * (a missing value is not 1); Protomaps: `disputed` is a boolean and there is no maritime boundary in the layer.
+ */
+export const COUNTRY_BORDER_OMT = ["all", ["==", ["get", "admin_level"], 2], ["!=", ["get", "maritime"], 1], ["!=", ["get", "disputed"], 1]] as never;
+export const COUNTRY_BORDER_PM = ["all", ["==", ["get", "kind"], "country"], ["!=", ["get", "disputed"], true]] as never;
+/** Regional borders (admin 3 to 6) get the same rule: no maritime, no disputed duplicates. */
+const REGION_BORDER_OMT = ["all", [">=", ["to-number", ["get", "admin_level"], 99], 3], ["<=", ["to-number", ["get", "admin_level"], 99], 6], ["!=", ["get", "maritime"], 1], ["!=", ["get", "disputed"], 1]] as never;
+const REGION_BORDER_PM = ["all", ["==", ["get", "kind"], "region"], ["!=", ["get", "disputed"], true]] as never;
+
 /** Nominal hairline in CSS px (floored to one art pixel). */
 const HAIR = 0.6;
 const MAJOR_CASE: Stops = [[5, HAIR], [12, 1.1], [14, 2.2], [15, 3.4], [16, 7], [17, 14], [18, 30]];
@@ -126,7 +163,15 @@ const MED_CASE: Stops = [[12, HAIR], [14, 1], [15, 2], [16, 5], [17, 10], [18, 2
  * holds two outlines and a 2 px interior (4 art px, about z16.9 for main roads and z17.4 for tertiary roads).
  * Never below 1.
  */
-const MAJOR_ART: Stops = [[5, 1], [14.6, 1], [15.2, 1.7], [16, 2.4], [17, 4.2], [18, 9]];
+const SECONDARY_ART: Stops = [[5, 1], [14.6, 1], [15.2, 1.7], [16, 2.4], [17, 4.2], [18, 9]];
+/**
+ * Motorways, trunks and primary roads (the road hierarchy, owner report "everything is the same"): TWO art pixels wide from z9 (the
+ * city framings are 10 to 11.4 on a desktop, 8.8 to 10.2 on a phone), one pixel below it; the width steps in 0.01 of zoom so no
+ * intermediate width (1.25 to 1.6, where a line is one or two cells wide depending on its offset) is ever drawn. From z15.2 the
+ * ramp is the old one (the hollow road at 4 art px, z16.9, is unchanged). A two-pixel line is a wide class (never thinned).
+ */
+export const MAJOR_WIDE_FROM = 9;
+const MAJOR_ART: Stops = [[5, 1], [MAJOR_WIDE_FROM, 1], [MAJOR_WIDE_FROM + 0.01, 2], [15.2, 2], [16, 2.4], [17, 4.2], [18, 9]];
 const MED_ART: Stops = [[12, 1], [15.4, 1], [16, 1.7], [17, 3], [18, 7]];
 const MED_FILL: Stops = [[16.4, 0], [17, 3], [18, 14]];
 
@@ -173,8 +218,15 @@ export const SPECS: Spec[] = [
   },
   {
     id: "park-fill", type: "fill", ch: "fill", fade: FILL_LOD.park, minzoom: FILL_LOD.park.from,
-    pm: { layer: "landuse", filter: kindIn("kind", ["park", "forest", "wood", "grass", "garden", "nature_reserve", "golf_course", "cemetery", "farmland"]) as never },
+    pm: { layer: "landuse", filter: kindIn("kind", ["forest", "wood", "grass", "nature_reserve", "cemetery", "farmland"]) as never },
     omt: { layer: "park" },
+  },
+  // Urban green (public parks, gardens, golf courses). OpenMapTiles keeps them in `landcover` (class grass), NOT in `park`
+  // (protected areas only: Bois de Boulogne yes, the Tuileries no), Protomaps in `landuse`; they start with the city framing.
+  {
+    id: "green-fill", type: "fill", ch: "fill", fade: FILL_LOD.green, minzoom: FILL_LOD.green.from,
+    pm: { layer: "landuse", filter: kindIn("kind", ["park", "garden", "golf_course"]) as never },
+    omt: { layer: "landcover", filter: kindIn("subclass", ["park", "garden", "golf_course", "village_green", "recreation_ground"]) as never },
   },
   {
     id: "building-fill", type: "fill", ch: "fill", fade: FILL_LOD.building, minzoom: FILL_LOD.building.from,
@@ -188,8 +240,8 @@ export const SPECS: Spec[] = [
   },
   {
     id: "boundary-region", type: "line", ch: "ink", width: 1, lod: "regionBorder", dash: LOD.regionBorder.dash,
-    pm: { layer: "boundaries", filter: ["==", ["get", "kind"], "region"] as never },
-    omt: { layer: "boundary", filter: ["all", [">=", ["to-number", ["get", "admin_level"], 99], 3], ["<=", ["to-number", ["get", "admin_level"], 99], 6], ["!=", ["get", "maritime"], 1]] as never },
+    pm: { layer: "boundaries", filter: REGION_BORDER_PM },
+    omt: { layer: "boundary", filter: REGION_BORDER_OMT },
   },
   {
     id: "road-minor-dotted", type: "line", ch: "ink", width: 1, lod: "minor", maxzoom: LOD.minorSolid.full, dash: LOD.minor.dash,
@@ -225,7 +277,7 @@ export const SPECS: Spec[] = [
     pm: { layer: "roads", filter: MAJOR_PM }, omt: { layer: "transportation", filter: MAJOR_OMT },
   },
   {
-    id: "road-secondary-case", type: "line", ch: "ink", width: MAJOR_CASE, artW: MAJOR_ART, lod: "secondary", hollowBy: "road-major-fill",
+    id: "road-secondary-case", type: "line", ch: "ink", width: MAJOR_CASE, artW: SECONDARY_ART, lod: "secondary", hollowBy: "road-major-fill",
     pm: { layer: "roads", filter: SECONDARY_PM }, omt: { layer: "transportation", filter: SECONDARY_OMT },
   },
   {
@@ -268,9 +320,9 @@ export const SPECS: Spec[] = [
     omt: { layer: "waterway", filter: kindIn("class", ["canal"]) as never },
   },
   {
-    id: "boundary-country", type: "line", ch: "ink", role: "peak", width: HAIR, minzoom: 3.3,
-    pm: { layer: "boundaries", filter: ["==", ["get", "kind"], "country"] as never },
-    omt: { layer: "boundary", filter: ["all", ["==", ["get", "admin_level"], 2], ["!=", ["get", "maritime"], 1]] as never },
+    id: "boundary-country", type: "line", ch: "ink", role: "peak", width: HAIR, minzoom: BORDER_TILE_MINZOOM,
+    pm: { layer: "boundaries", filter: COUNTRY_BORDER_PM },
+    omt: { layer: "boundary", filter: COUNTRY_BORDER_OMT },
   },
 ];
 
@@ -322,6 +374,9 @@ function build(spec: Spec, schema: Schema, handoff: number, cellCss: number): La
   let minzoom = zoomRangeOf(spec).minzoom;
   // tile based water edges only take over from the world-scale geodata coastline at the hand-over zoom
   if (spec.id === "water-edge") minzoom = handoff;
+  // the same for country borders: the bundled Natural Earth lines up to the hand-over, the tile lines from it. Never both at once (two
+  // geometries of the same frontier, up to tens of km apart where it is disputed, read as a doubled border).
+  if (spec.id === "boundary-country") minzoom = borderHandoff(handoff);
   // The sea fill eases in from just after the hand-over to tile geometry, whichever schema (and so hand-over zoom) is active:
   // the PMTiles extract only has tiles around its place, so a fill that started earlier would show the tile edges.
   const fillFade = spec.id === "water-fill" ? seaFade(handoff) : spec.fade;
@@ -389,6 +444,7 @@ export function graticule(stepDeg = 15, sampleDeg = 3): GeoJSON.FeatureCollectio
 export function buildStreetStyle(o: StreetStyleOptions): StyleSpecification {
   const handoff = o.handoffZoom ?? DEFAULT_HANDOFF[o.schema];
   const noTiles = o.tiles === null;
+  const placeholder = hasPlaceholder(handoff, !noTiles);
   const cell = o.cellCss ?? DESIGN_CELL_CSS;
   const tileLayers = noTiles ? [] : SPECS.map((s) => build(s, o.schema, handoff, cell)).filter((l): l is LayerSpecification => l !== null);
 
@@ -402,12 +458,15 @@ export function buildStreetStyle(o: StreetStyleOptions): StyleSpecification {
   // World-scale coastline (110m) up to the hand-over zoom, then the tile geometry: one solid peak line on both sides. (A
   // dashed band between the two used to dither the handover; it read as a dotted coast, see docs/palette/.)
   const worldCoastInk: LayerSpecification = {
-    id: "world-coast", type: "line", source: "coast", maxzoom: noTiles ? 24 : handoff,
+    id: "world-coast", type: "line", source: "coast", maxzoom: noTiles ? 24 : placeholder ? WORLD_PLACEHOLDER_BELOW : handoff,
+    ...(placeholder ? { layout: { visibility: "none" } } : {}),
     paint: { "line-color": peak, "line-width": cell, "line-opacity": THIN_INK },
   } as LayerSpecification;
-  // Country borders are peak at street scale at every latitude (the globe eases them in below that, engine/scene.ts).
+  // Country borders are peak at street scale at every latitude (the globe eases them in below that, engine/scene.ts). Natural Earth
+  // lines run up to the hand-over zoom (where the tile boundary takes over), exactly like the coastline: one line per frontier.
   const bordersInk = (max: number): LayerSpecification => ({
     id: "world-borders", type: "line", source: "borders", maxzoom: max,
+    ...(placeholder ? { layout: { visibility: "none" } } : {}),
     paint: { "line-color": peak, "line-width": cell, "line-opacity": THIN_INK },
   }) as LayerSpecification;
   // Graticule: the faint level, easing out through the levels while the map zooms from regional to street scale.
@@ -455,7 +514,7 @@ export function buildStreetStyle(o: StreetStyleOptions): StyleSpecification {
       routesHalo,
       routesLine,
       worldCoastInk,
-      bordersInk(noTiles ? 24 : 8),
+      bordersInk(noTiles ? 24 : placeholder ? WORLD_PLACEHOLDER_BELOW : borderHandoff(handoff)),
     ],
   };
 }

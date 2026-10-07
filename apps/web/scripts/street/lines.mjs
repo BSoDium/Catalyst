@@ -87,6 +87,11 @@ async function synthetic(browser, dpr) {
           check(`${tag} endMiss`, s.endMissFrac, L.endMiss);
           check(`${tag} doubled`, s.doubledFrac, L.doubled);
           check(`${tag} thin`, s.thinFrac, L.thin);
+        } else if (cls === "road-major-case" && zoom < 16) {
+          // The road hierarchy (motorway, trunk and primary are 2 art px wide from z9): a two-pixel band sampled at cell centres is 2 cells per
+          // step along an axis and 2 / cos(angle) = 2.83 at 45 degrees; it never breaks, is never one cell thin and never a three-cell smear.
+          check(`${tag} cells per step (a two-pixel band, 2 to 2.83)`, s.perStepMin, 1.8, ">=");
+          check(`${tag} cells per step (a two-pixel band, 2 to 2.83), max`, s.perStepMax, 3.1);
         } else if (zoom >= 17.5) {
           // The two outlines of a hollow road: ~2 cells per step. At 3 map pixels per cell a horizontal outline that sits exactly on
           // a cell boundary lights both rows (the 0.49 threshold prefers two cells to none): 2 of 384 lines, never more.

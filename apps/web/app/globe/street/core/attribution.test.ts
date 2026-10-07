@@ -2,26 +2,29 @@ import { describe, expect, it } from "vitest";
 import { attributionFor, attributionText } from "./attribution";
 
 const OFM = "https://tiles.openfreemap.org/planet";
-const text = (i: Parameters<typeof attributionFor>[0]) => attributionText(attributionFor(i));
+const text = (primaryUrl: string, fallbackPmtilesUrl: string | null = null) => attributionText(attributionFor({ primaryUrl, fallbackPmtilesUrl }));
 
-describe("attribution per active source", () => {
-  it("primary on OpenFreeMap credits OSM, OpenFreeMap and OpenMapTiles", () => {
-    expect(text({ state: "primary", source: "primary", primaryUrl: OFM, primaryIsPmtiles: false })).toBe("© OpenStreetMap contributors · OpenFreeMap · OpenMapTiles");
+describe("attribution per tile configuration", () => {
+  it("an OpenFreeMap primary credits OSM, OpenFreeMap and OpenMapTiles (the required wording), then Natural Earth", () => {
+    expect(text(OFM)).toBe("© OpenStreetMap contributors · OpenFreeMap · OpenMapTiles · Natural Earth");
   });
-  it("the fallback credits OSM and Protomaps", () => {
-    expect(text({ state: "fallback", source: "fallback", primaryUrl: OFM, primaryIsPmtiles: false })).toBe("© OpenStreetMap contributors · Protomaps");
+  it("a fallback archive adds Protomaps", () => {
+    expect(text(OFM, "https://t.example/x.pmtiles")).toBe("© OpenStreetMap contributors · OpenFreeMap · OpenMapTiles · Protomaps · Natural Earth");
   });
   it("a PMTiles primary is Protomaps data; a self-hosted TileJSON primary carries OSM only", () => {
-    expect(text({ state: "primary", source: "primary", primaryUrl: "https://t.example/x.pmtiles", primaryIsPmtiles: true })).toBe("© OpenStreetMap contributors · Protomaps");
-    expect(text({ state: "primary", source: "primary", primaryUrl: "https://tiles.example.org/planet", primaryIsPmtiles: false })).toBe("© OpenStreetMap contributors");
+    expect(text("https://t.example/x.pmtiles")).toBe("© OpenStreetMap contributors · Protomaps · Natural Earth");
+    expect(text("https://tiles.example.org/planet")).toBe("© OpenStreetMap contributors · Natural Earth");
   });
-  it("while connecting or capped only the bundled public-domain lines are drawn", () => {
-    expect(text({ state: "capped", source: null, primaryUrl: OFM, primaryIsPmtiles: false })).toBe("Natural Earth");
-    expect(text({ state: "connecting", source: null, primaryUrl: OFM, primaryIsPmtiles: false })).toBe("Natural Earth");
+  it("without a street map only the bundled public-domain lines are shown", () => {
+    expect(attributionText(attributionFor(null))).toBe("Natural Earth");
   });
-  it("links the OSM copyright page", () => {
-    const parts = attributionFor({ state: "primary", source: "primary", primaryUrl: OFM, primaryIsPmtiles: false });
+  it("every credit links over https, and OSM links its copyright page", () => {
+    const parts = attributionFor({ primaryUrl: OFM, fallbackPmtilesUrl: "https://t.example/x.pmtiles" });
     expect(parts[0]!.href).toBe("https://www.openstreetmap.org/copyright");
-    expect(parts.every((p) => p.href?.startsWith("https://"))).toBe(true);
+    expect(parts.map((p) => p.href)).toEqual(expect.arrayContaining(["https://openfreemap.org", "https://openmaptiles.org"]));
+    expect(parts.every((p) => p.href.startsWith("https://") && p.note.length > 0)).toBe(true);
+  });
+  it("a malformed primary URL does not throw", () => {
+    expect(text("not a url")).toBe("© OpenStreetMap contributors · Natural Earth");
   });
 });

@@ -1,10 +1,10 @@
 # Street map (`apps/web/app/globe/street/`)
 
-Status: stage 2 of 2, 2026-10-05. The production street-scale renderer, built from `docs/street-zoom-spike.md` and `docs/pixel-line-rules.md` (variant F), now integrated: the globe hands over to it (`app/globe/handover/`, described in `docs/web-architecture.md`, "Handover"). The shell passes `loaderData.tiles` to `<Globe tiles>`. `/dev/street` and `/dev/street-lines` remain, as development-only routes.
+Status: stage 2 of 2, 2026-10-05; 2026-10-07: earlier cut with a cross-fade, road hierarchy, temporal ease (sections "Handover", "Road hierarchy", "Temporal ease"). The production street-scale renderer, built from `docs/street-zoom-spike.md` and `docs/pixel-line-rules.md` (variant F), now integrated: the globe hands over to it (`app/globe/handover/`, described in `docs/web-architecture.md`, "Handover"). The shell passes `loaderData.tiles` to `<Globe tiles>`. `/dev/street` and `/dev/street-lines` remain, as development-only routes.
 
 ## What it is
 
-A client-only, lazily loaded module: MapLibre draws four plain channels, a separate overlay WebGL context turns them into 1-bit pixel art (3 CSS px art pixel, 2 on phones; the globe's own `TUNING.pixelSize`), an HTML overlay draws markers and boxed labels, a tile source manager keeps the map on a working source, attribution is HTML outside the pass.
+A client-only, lazily loaded module: MapLibre draws four plain channels, a separate overlay WebGL context turns them into 1-bit pixel art (2.5 CSS px art pixel on desktop, 2 on phones: `ART_PIXEL`, the globe's own `TUNING.pixelSize`), a pixel-art canvas overlay draws the detection boxes and their labels (the globe's `BoxScene`), a tile source manager keeps the map on a working source, the data credits are a pixel-art info button and a modal dialog (HTML, outside the pass and the engine).
 
 ```
 street/
@@ -28,7 +28,7 @@ street/
   style/street-style.ts  one MapLibre style for both schemas, no glyphs, no sprites, no symbol layers
   net/probe.ts           TileJSON / PMTiles header probes with timeout and real abort
   net/tile-protocols.ts  per-instance protocols `catp<N>` / `catf<N>`: timed, timeout-bounded tile requests
-  overlay/hud-layer.ts   markers, labels, leader lines, hit testing
+  overlay/hud-layer.ts   the detection boxes of places and groups, labels and chips (engine/box-scene.ts), hit testing
   harness/synthetic.ts   line-connectivity harness (dev route /dev/street-lines), not in the engine chunk
 ```
 Outside the folder: `app/globe/handover/` (the integration), `app/lib/tiles-config.server.ts` (+ test), `app/routes/dev-street.tsx`, `dev-street-lines.tsx`, the dev routes in `routes.ts` (absent from production builds), the loader and the `tiles` prop in `routes/shell.tsx`, `apps/web/scripts/street/*` and `scripts/globe/handover-*.mjs`.
@@ -50,12 +50,13 @@ map.flyTo / jumpTo / setSelected(slug, { fly }) / setFocused / setInset / setRed
 map.setReveal(on, { center }) / setSharp(0..1) / setBlend(0..1)   // capabilities, return a Promise
 map.setCamera(view, { inset, sync, snap }) / hit(x, y, kind) / covers(lon, lat)   // embedded use, see below
 map.setActive(false)        // keep loading tiles, copy and draw nothing (the handover while the globe is shown)
+map.seedFrom(globeCanvas, grid) / map.crossfadeTo(globeCanvas | null, grid)   // the cut as a tone cross-fade, both ways (see "Temporal ease")
 map.setRenderScale(n)       // native mode: map pixels per art cell per axis (the frame governor lowers it)
 map.getView() / getTileStatus() / getMaxZoom() / dispose() / debug()
 ```
 React: `<StreetMapCanvas places routes selectedSlug focusedSlug initialView reducedMotion tiles insetRight onSelect onViewChange onTileStatus onReady engineOptions />`. `onReady(map)` hands the handle to the parent (null on dispose). The engine is rebuilt only when `places`, `routes` or the tile URLs change; the camera is kept.
 
-Accessibility is the globe's: map, pass canvas and overlay are `aria-hidden` and have no tab stop (the MapLibre canvas has its `tabindex`/`aria-label` removed, keyboard handling off); the only exposed content is the attribution (real links) and a `role="status"` message when WebGL is unavailable or a context is lost. The place list stays the accessible path.
+Accessibility is the globe's: map, pass canvas and overlay are `aria-hidden` and have no tab stop (the MapLibre canvas has its `tabindex`/`aria-label` removed, keyboard handling off); the only exposed content is the info button (a real `<button>`, below) and a `role="status"` message when WebGL is unavailable or a context is lost. The place list stays the accessible path.
 
 ## Embedded use (the handover)
 
@@ -63,7 +64,7 @@ Accessibility is the globe's: map, pass canvas and overlay are `aria-hidden` and
 
 - the map root is transparent (`setBlend` < 1 shows the Three.js globe underneath, cell by cell) and takes no pointer events (the globe canvas keeps all input); `hit(x, y, kind)` answers what a click at a container point would select, so the host routes picking;
 - the host owns the camera: `setCamera(view, { inset, sync })` jumps the camera and applies the globe's animated inset in the same step (no easing: the engine's own padding ease is off), `sync` renders, composites and updates the overlay before returning. The engine does not ease the camera back to the cap when `capped` (the host reads `getMaxZoom()` and does it); the style swap on a source transition still happens;
-- the overlay uses the globe's look (`OverlayLook "globe"`: markers 3 / focused 7 solid / selected 9 ring with dot, the globe's label type, background, selection inversion, `engine/labels.ts` placement, no leader lines, every label eligible at street scale) instead of the spike's boxed HUD (`"hud"`, still the standalone default);
+- the overlay is the globe's: `HudLayer` is a thin host of `engine/box-scene.ts`, so places and groups are rectangles (the cut of the place hierarchy, `engine/lod-tree.ts`, evaluated from the unified camera registered from the map's), labels are pixel text with the group chip, on the same art-pixel canvas, font and rules as the globe ("Detection boxes and pixel text" in `docs/web-architecture.md`); the spike's boxed HUD and the leader lines are gone (`OverlayLook` is kept for the option only). Routes are drawn only while the selected place is one of their stops (`routesForPlace`);
 - `covers(lon, lat)`: whether the active source has tiles there (false while connecting or capped, and outside the bounds of a fallback archive). The host does not fly to street scale for an uncovered place.
 - Routes are 2 art pixels wide with a 7 px dash period (62 % ink), the Three.js globe's stroke, so a route keeps its weight through the dissolve (1 px before stage 2).
 
@@ -94,7 +95,7 @@ Accessibility is the globe's: map, pass canvas and overlay are `aria-hidden` and
 - `onTileStatus({ state, source, reason, detail, maxZoom, at })`. When `capped` the engine clamps the camera to `maxZoom` (eases back, jump under reduced motion) and reports it; the handover decides the UX. A pinned source (`forceSource`) disables probing, failover and recovery.
 - Fallback coverage: tiles outside the extracted boxes are empty tiles (no error, no log). Requests are limited to `maxFallbackZoom`; beyond it the map over-zooms.
 - A 200 answer to a range request is treated as a failure and aborted (never downloads the whole archive).
-- Attribution per active source: primary on OpenFreeMap "© OpenStreetMap contributors · OpenFreeMap · OpenMapTiles"; fallback "© OpenStreetMap contributors · Protomaps"; a custom TileJSON primary "© OpenStreetMap contributors"; while connecting or capped "Natural Earth". It moves left of the inset.
+- Attribution is an info button, not a ribbon: a pixel-art "i" (`components/attribution-button.tsx`, picture in `components/info-button-art.ts`) drawn on the art-pixel grid at the maps' own cell size in the label font (Tiny5), bottom right, left of the detail panel's inset. Rest: ink outline on the page colour with a one-cell shadow; hover: inverted; pressed: one cell down into the shadow; keyboard focus: a one-cell ring. It is a real `<button aria-label="Map credits">` of at least 44 CSS px (the picture is about 35), so touch and keyboard work; it opens a native modal `<dialog>` (focus trapped by `showModal()`, Escape or a click outside closes it, focus returns to the button, Motion fade, none under reduced motion) that lists the credits with links. The credits (`core/attribution.ts`) follow the tile configuration, not the active source: an OpenFreeMap primary "© OpenStreetMap contributors", "OpenFreeMap", "OpenMapTiles"; a fallback archive or a PMTiles primary adds "Protomaps"; a self-hosted TileJSON primary "© OpenStreetMap contributors" only; always "Natural Earth" (public domain, the globe's and the lowest zooms' lines, a courtesy). The button is rendered by the globe (`globe-canvas.tsx`, so it is there on the globe too) and by `StreetMapCanvas`, not by the engine.
 
 ## Environment contract
 
@@ -114,7 +115,7 @@ Trimmed, empty = unset, https only (plain http for localhost outside production)
 
 ## Handover (stage 2)
 
-Summary (full description and numbers in `docs/web-architecture.md`, "Handover"): the globe renderer owns one camera whose zoom extends past 6.5 into street scale; the street map follows it (registered, synchronous), replaces the globe by a clean CUT at internal zoom 5.05 once its tiles are loaded (the pixel-grid dissolve between 4.6 and 5.5 is kept behind `HANDOVER.dissolve`, off), swapping markers and labels in the same task, and is released again below 3.3. The chunk (about 435 KB gzip plus the worker) loads at zoom 4.0 or when a place is selected; until a tile source works the globe's zoom limit is 6.5 and a flight toward street scale waits at it. `onTileStatus` drives the limit: `capped` makes the controller ease the camera back to the globe's range and show the small notice. `GlobeViewState.street` stores street scale in the shell's saved view.
+Summary (full description in `docs/web-architecture.md`, "Handover"; the numbers below are current, that file may still quote the old cut at 5.05): the globe renderer owns one camera whose zoom extends past 6.5 into street scale; the street map follows it (registered, synchronous) and takes over from the globe at internal zoom `cutZoom` **3.7** (was 5.05; back below `cutBackZoom` 3.45, hysteresis), once its tiles are loaded or `cutMaxWaitMs` 1200 ms have passed, swapping markers and labels in the same task. The swap is a **tone cross-fade of about 300 ms** (`crossfadeMs`; see "Temporal ease and the cut"), not a click; the pixel-grid dissolve (blend 3.3 to 4.1) stays behind `HANDOVER.dissolve`, off. The chunk (about 435 KB gzip plus the worker) loads at zoom **2.6** (`mountZoom`, was 4.0), the map follows the camera invisibly from **3.0** (`followZoom`, was 4.3) so its tiles are ready at the cut, and it is released again below 1.9. In map zoom the cut is 3.7 + log2 cos(lat): 3.2 at 46 degrees, 2.4 at 60, 1.2 at 78 (`STREET_TUNING.minZoom` is 1). Why 3.7: the globe's own borders have reached the peak level at 3.5 (`TUNING.borderZoom`, asserted in `handover/maths.test.ts`), the cut sits after that and well before the old 5.05 (the test asserts at least 1.3 zoom levels earlier); the 3.5 to 4.2 range of the brief maps to the same picture, the street map draws the same coast and borders from the first tile zoom (`DEFAULT_HANDOFF.openmaptiles` 1) and keeps the bundled world lines under them while tiles load (`WORLD_PLACEHOLDER_BELOW`), so an early cut never shows an emptier map than the globe it replaces. `scripts/street/cut-seam.mjs` measures the seam (1440x900 @1, light, OpenFreeMap; share of the globe's coast and border cells that have a street cell within one art cell / the reverse): Europe 91 % / 88 % at 3.7 against 87 % / 73 % at the old 5.05, Borneo 94 % / 81 % against 84 % / 49 % (the street map draws more than the globe's 110m coast, the unmatched cells are detail the cross-fade brings in). Until a tile source works the globe's zoom limit is 6.5 and a flight toward street scale waits at it. `onTileStatus` drives the limit: `capped` makes the controller ease the camera back to the globe's range and show the small notice. `GlobeViewState.street` stores street scale in the shell's saved view.
 
 ## Palette and tone (2026-10-05)
 
@@ -122,24 +123,75 @@ One grey palette for both renderers (`engine/palette.ts`, spec in `docs/pixel-li
 
 ## Level of detail (street style)
 
-`street/style/lod.ts` is the one table to tune (`LOD`: `from`, `full`, `role`, final dash per class); `street-style.ts` builds ONE layer per class from `from`. Its colour is a zoom `step` expression: the class enters at the faintest palette level and steps up through the levels, in steps of equal zoom length, to its role's level at `full` (the final look). It is the same line (width, dashes, filter) from the first zoom, only its tone changes, so the fade adds, removes and moves no cell: `scripts/street/lod-check.mjs` forces the levels 1..7 on the real pipeline and counts 0 cells that differ (the dither ramp this replaces added about 200 to 600 cells per 1/16 step, which read as noise). Widths are untouched (art px, floor 1): the weight is the tone, the dashes of minor roads, paths and rail are their final look. Both schemas map to the same classes (Protomaps keeps trunk, primary, secondary and tertiary under `major_road`, so the classes are split on `kind_detail`; links, sidewalks, crossings, platforms and underground rail are dropped or lightened identically).
+`street/style/lod.ts` is the one table to tune (`LOD`: `from`, `full`, `role`, final dash per class); `street-style.ts` builds ONE layer per class from `from`. Its colour is a zoom `step` expression: the class enters at the faintest palette level and steps up through the levels, in steps of equal zoom length, to its role's level at `full` (the final look). It is the same line (width, dashes, filter) from the first zoom, only its tone changes, so the fade adds, removes and moves no cell: `scripts/street/lod-check.mjs` forces the levels 1..7 on the real pipeline and counts 0 cells that differ (the dither ramp this replaces added about 200 to 600 cells per 1/16 step, which read as noise). Widths are untouched by the fade (art px, floor 1): the weight is the tone, the dashes of minor roads, paths and rail are their final look; the one width step of the road hierarchy (motorway, trunk and primary, 2 px from z9) is below. Both schemas map to the same classes (Protomaps keeps trunk, primary, secondary and tertiary under `major_road`, so the classes are split on `kind_detail`; links, sidewalks, crossings, platforms and underground rail are dropped or lightened identically).
 
-| Class | from | full | final look |
-|---|---|---|---|
-| motorway, trunk | 5.5 | 8.5 | solid 1 px |
-| primary | 9.5 | 12.5 | solid 1 px |
-| secondary | 11.8 | 14.2 | solid 1 px |
-| tertiary | 13 | 15.5 | solid 1 px, 1.7 px from z16 |
-| residential / minor | 14.4 | 16.4 | dotted `[1.8, 2.4]`, solid ramp 16.6 to 17.4 |
-| junction links | 14.8 | 16.6 | dotted `[1.8, 3.6]` |
-| service, track | 15.4 | 16.8 | dotted `[1.8, 3.6]` |
-| paths | 15.9 | 17 | dotted `[1.8, 3.6]` |
-| rail | 12.5 | 14.5 | dashed `[3, 2.2]` (was a solid muted 1.8 px line) |
-| rivers (lines) / lakes / small water outlines | 9 / 7.5 / 12 | 11.5 / 10 / 14 | solid 1 px (the sea outline is always drawn) |
-| canal / stream | 13 / 14 | 15 / 16 | dashed |
-| region border | 4.5 | 6.5 | dashed (country borders unchanged) |
-| building outline / fill | 16.6 / 15.8 | 17.4 / 17.5 | 1 px / flat wash |
-| water fill (pattern: dashes) / park fill (pattern: dots) | 5.2 (+ handoff - 4.5) / 8.6 | 10 (+ same) / 11.6 | `soft` level, one cell in eight |
+### Road hierarchy (2026-10-07)
+
+Owner: dense is fine, but roads must not all look the same colour. Before, motorway, trunk, primary and secondary were all the `strong` level (8 of 12) and tertiary and residential `mid` (6): at Paris framing (map zoom 10.6) the map read as one weight. Now the class is told by **tone and width**, inside the line rules (one art pixel floor, centre sampling, no antialiased grey: tone is a palette level, never a width below 1 and never a half-covered cell):
+
+| Class | tone at `full` (level of 12; named role) | width (art px) | from > full (was) | final look |
+|---|---|---|---|---|
+| motorway, trunk | 10 (`peak`, the loudest the map gets; still `MAP_CONTRAST` below the ink of labels, markers and boxes) | 2 from z9 (1 below), hollow from z16.9 | 5.5 > 8.5 (same) | solid |
+| primary | 9 (`at` 0.9) | 2 from z9, hollow from z16.9 | 8.6 > 9.7 (9.5 > 12.5) | solid |
+| secondary | 7 (`at` 0.7) | 1, 1.7 from z15.2 | 9 > 10.2 (11.8 > 14.2) | solid |
+| tertiary | 5 (`at` 0.5) | 1, 1.7 from z16 | 10.9 > 11.7 (13 > 15.5) | solid |
+| residential, unclassified | 4 (`soft`) | 1 | 12.2 > 14.2 (14.4 > 16.4) | dotted `[1.8, 2.4]`, solid 16.6 to 17.4 |
+| service, track | 4 | 1 | 13.4 > 15.4 (15.4 > 16.8) | dotted `[1.8, 3.6]` |
+| junction links | 4 | 1 | 10.2 > 12.2 (14.8 > 16.6) | dotted `[1.8, 3.6]` |
+| rail | 4 | 1 | 10.2 > 12.2 (12.5 > 14.5) | dashed `[3, 2.2]` |
+| paths | 3 (`faint`) | 1 | 14.6 > 16.4 (15.9 > 17) | dotted `[1.8, 3.6]` |
+
+Tone by zoom band (the level a class is painted at; the minor classes enter later and stay lower; `node` script in the tests prints the same: `levelAt`):
+
+| class | z9 | 9.5 | 10 | 10.5 | 11 | 12 | 13 | 14 | 15 | 16+ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| motorway, trunk | 10 | 10 | 10 | 10 | 10 | 10 | 10 | 10 | 10 | 10 |
+| primary | 4 | 8 | 9 | 9 | 9 | 9 | 9 | 9 | 9 | 9 |
+| secondary | 0 | 3 | 6 | 7 | 7 | 7 | 7 | 7 | 7 | 7 |
+| tertiary | 0 | 0 | 0 | 0 | 1 | 5 | 5 | 5 | 5 | 5 |
+| residential | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 4 | 4 | 4 |
+| service | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 4 | 4 |
+| links, rail | 0 | 0 | 0 | 1 | 2 | 4 | 4 | 4 | 4 | 4 |
+| paths | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 3 |
+
+The finer tiers need more than the six named roles, so a `LodEntry` may carry `at` (0 to 1 along the map ramp, `toneLevel` in `lod.ts`); `fadeInColor` ramps up to that level like to a role's. The two-pixel width is `MAJOR_ART` in `street-style.ts`: it steps from 1 to 2 within 0.01 of zoom at `MAJOR_WIDE_FROM` 9 (no width between 1.25 and 1.6, where a line is one or two cells wide depending on its offset), `inkOpacityStops` samples a hair before every width stop so the ink class switches with it, and a two-pixel line is a wide class (never thinned). Adjacent tiers differ by at least 0.04 of OKLab lightness in both themes and the three loudest by 0.06 (asserted in `lod.test.ts` with the tone, width and ordering of every tier, and that no road reaches the ink). The line gate runs the two-pixel band (`road-major-case` below z16: 1.8 to 3.1 cells per step, never broken) and passes 241 of 241. Evidence: `docs/street-zoom/city-paris-desktop-<light|dark>-after.png` (and the other cities and viewports of `city-frames.mjs`); the "before" files are the single-weight map.
+
+Other classes of the same table (unchanged by the hierarchy): rivers 7 > 9.2 (9 > 11.5), lakes 5.5 > 8 (7.5 > 10), small water outlines 11.2 > 13.2 (12 > 14), canal 12 > 13.8 and stream 13 > 15 (13 > 15, 14 > 16), building outline 16.6 > 17.4, region borders **3.8 > 5.2 (was 4.5 > 6.5)** dashed `mid`, country borders see "Borders". Fills: water 1.7 > 6.5 (5.2 > 10 at the old hand-over; `seaFade` shifts it per schema), park (dots) 6.4 > 8.8 (8.6 > 11.6), urban green (dots; parks, gardens, golf) 9.6 > 11.2 (new in the city-framing pass), building fill 15.8 > 17.5 (flat wash). Every fade-in is kept, only earlier: the class still enters at the faintest level and steps up in equal zoom lengths, adding, removing and moving no cell (`lod-check.mjs`: 0 cells over levels 1 to 7, re-run after this change).
+
+### Tuned to the framing of a click (2026-10-06)
+
+Owner: "streets inside cities should start loading earlier ... I sometimes can't see streets at all". The camera of a click is `engine/framing.ts`: a circle of the place's `viewRadiusKm` (12 km by default, 10 to 18 typical) fits the free viewport with a 25 % margin. In MapLibre zoom (unified zoom + `log2 cos lat`, `scripts/street/city-frames.mjs --table=1`):
+
+| viewport | 10 km | 12 km | 14 km | 18 km |
+|---|---|---|---|---|
+| 1440x900, panel closed (Lisbon / Paris / HCMC) | 11.10 / 10.85 / 11.43 | 10.84 / 10.59 / 11.17 | 10.62 / 10.37 / 10.95 | 10.25 / 10.01 / 10.59 |
+| 1440x900, panel 50 % open | 10.78 / 10.53 / 11.11 | 10.52 / 10.27 / 10.85 | 10.29 / 10.05 / 10.63 | 9.93 / 9.68 / 10.26 |
+| 390x844 phone | 9.89 / 9.65 / 10.23 | 9.63 / 9.39 / 9.96 | 9.41 / 9.16 / 9.74 | 9.05 / 8.80 / 9.38 |
+
+The old table drew primary roads at about a third of their tone and no secondary road at all there (secondary started at 11.8): "motorways and a few faint roads". The new one is bounded by the DATA: MapLibre draws the tiles of zoom floor(map zoom), and OpenMapTiles tiles hold primary roads from z8, secondary from z9, **tertiary from z11, residential and paths from z12, service from z13** (probed with `scripts/street/border-probe.mjs`-style tile dumps; Protomaps is the same within a level; a vector source cannot ask for tiles one zoom deeper, MapLibre throws for a vector `tileSize` other than 512). So below 11 a city is its arterials (primary, secondary, trunks, ramps, rail, rivers, parks) and tertiary roads start the moment they exist (10.9, full at 11.9); residential streets cannot show before z12 and start there dotted at the faintest level. At the framing zooms: primary in full, secondary in full or one level short, links, rail, rivers, parks and water showing (asserted in `lod.test.ts` from `radiusFitZoom`), and `green-fill` adds urban parks (OpenMapTiles keeps them in `landcover`, not in the `park` layer, which is protected areas only; Protomaps `landuse`).
+
+Far-zoom calm is kept by construction: nothing road-like below z5.5, no road but motorways and trunks below z8.6 (primary from 8.6, secondary from 9; river lines from 7 and lake outlines from 5.5 are water). Ink cells per 1000 (800x500 CSS px, 3 px cells, fills hidden, light, `scripts/street/lod.mjs`, before > after; most added cells are in levels 1 to 4, contrast 1.1 to 1.7):
+
+| zoom | 3.5 | 5.5 | 6.5 | 7.5 | 8 | 8.5 | 9 | 9.5 | 10 | 10.5 | 11 | 11.5 | 12 | 13 | 15 | 16+ |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Paris | 42>40 | 123>123 | 55>54 | 41>41 | 37>37 | 36>36 | 62>187 | 111>182 | 104>172 | 91>187 | 87>209 | 68>186 | 100>151 | 94>149 | 57>118 | same |
+| Lisbon | 28>27 | 56>55 | 36>35 | | 30>30 | | | | 81>105 | | 60>127 | | | 67>142 | 43>80 | same |
+| Bucharest | | 95>91 | | 46>46 | 40>40 | | 64>119 | 75>111 | 78>111 | 66>104 | 59>131 | | 90>126 | 90>145 | | |
+| Ho Chi Minh City (Protomaps) | | | | | 47>47 | | | | 93>132 | | 75>175 | | | 139>194 | 74>95 | same |
+
+(That table was measured with the table of the city-framing pass, before the hierarchy.) Re-measured with the hierarchy at 2 px cells (800x500 CSS px at DPR 1, so 100,000 cells; the table above counts bigger cells, the two are not comparable), Paris, line cells per 1000: z5.5 129, z8.5 53, **z9 202**, 9.5 276, 10 262, 10.5 273, 11 288, 12 202, 13 176, 15 127, 16 82. The jump at z9 is the two-pixel motorways, trunks and primaries together with the secondary roads entering. World and country scale (z8.5 and below) is within 4 % everywhere (the small differences at 3.5 to 6.5 are the border fix below), z9 to 13 is 1.3 to 3 times denser, z16 and up is untouched. Evidence: `docs/street-zoom/city-<place>-<desktop|desktop-panel|mobile>-<light|dark>-<before|after>.png` (Lisbon, Paris, Bucharest, Ho Chi Minh City at the 12 km framing of each viewport) and `zoomout-paris-before-after.png` (z5.5, 7.5, 9, 10.5, 12). `node scripts/street/city-frames.mjs --tag=after`, `node scripts/street/lod-layers.mjs` (ink cells per class at a zoom, the tool for the next tuning round).
+
+## Borders: one line per frontier (2026-10-06)
+
+Owner: a second, "wavy and complex" line beside the Mauritania / Western Sahara / Morocco / Algeria border. Cause, from the live tiles (`scripts/street/border-probe.mjs -13,24 3,5,7,9`): the OpenMapTiles `boundary` layer carries the same frontier several times. Besides the de-facto border (`admin_level` 2, `disputed` 0, `maritime` 0) there are **disputed lines** (`disputed` 1: here "Mur de securite marocain", the Moroccan wall, 70 % of it 11 to 180 km beside the real border; Kashmir's LoC and LAC, Arunachal, Crimea, the West Bank, Guyana / Suriname, Olivenza, ...) and **maritime limits** (`maritime` 1). The style drew every land line (`maritime` excluded only), and ALSO the bundled Natural Earth lines up to z8 (`world-borders`), so from the globe-to-street cut two different geometries of one frontier were drawn on top of each other. Protomaps has the same `disputed` flag (a boolean; `unrecognized_country` and `overlay_limit` kinds are not drawn).
+
+Rule (`street-style.ts`: `COUNTRY_BORDER_OMT`, `COUNTRY_BORDER_PM`, `borderHandoff`):
+
+- A country border is a **de-facto land line only**: OpenMapTiles `admin_level` 2, not `maritime` 1, not `disputed` 1 (a missing flag is not disputed: Kosovo / Serbia has none); Protomaps `kind` country, `disputed` not true. Regional borders (`admin_level` 3 to 6) follow the same exclusions. Solid, peak tone, from its first zoom. Disputed and maritime lines are never drawn, at any zoom (a dotted claim line beside the border reads as a second border).
+- One source per zoom: the bundled Natural Earth borders (`world-borders`) run up to `borderHandoff` and the tile boundary (`boundary-country`) starts there, like the coastline: `max(handoff, 5)`, i.e. 5 for OpenFreeMap (which itself switches its boundary DATA from Natural Earth, z0 to z4, to OpenStreetMap, z5 and up, there) and 8.5 for the PMTiles extract. Never both.
+- Cost of the rule: frontiers that OpenStreetMap only carries as disputed lines have no line from z5 on (the China / India line of actual control, most of Kashmir, Arunachal, the Crimean isthmus, the West Bank). The alternative, a faint dotted claim line, would put a second line beside the Moroccan wall again, and the data cannot tell "only line" from "claim beside a border" (`disputed_name` is free text).
+- Registration across the cut (`scripts/street/border-register.mjs`, 7.3 km per art cell at z5): 95.0 % of the Natural Earth length (what the globe draws) is within one cell of a tile line, 96.9 % within two; 3.1 % is farther than two cells, all of it disputed frontiers: Kashmir and Aksai Chin (75 to 80 E, 35 N: up to 52 cells), Arunachal / Tibet (95 E, 30 N), Crimea, the Morocco / Western Sahara line that Natural Earth has and OpenStreetMap (Morocco, wall excluded) has not (a line that disappears at z5), Mauritania's northern corner. The other way, 99.4 % of the tile lines are within two cells of a Natural Earth line. Those stretches jump or vanish once, at the cut; the globe's own data is outside the style (`engine/`).
+- Checks: `style/street-style.test.ts` (filters evaluated with `probe.evalFilter` against real attribute sets of both schemas, one source per zoom for every hand-over), `node scripts/street/border-check.mjs` (live tiles: no disputed or maritime feature is rendered in 7 regions although the data holds them), before and after PNGs `docs/street-zoom/border-<ws|kashmir|crimea|cyprus|kosovo|israel>-before-after.png` (`border-shots.mjs`). No doubled line remains in Western Sahara, Kosovo / Serbia, Cyprus, Israel / Palestine or Crimea; Kashmir has fewer lines, not two.
 
 Main roads are 1 art px up to z14.6 and hollow only once the casing holds two outlines and a 2 px interior (z16.9 and up). Measurements and before/after are in `docs/street-zoom/style-*`; `node scripts/street/lod.mjs --tag=after` regenerates them (line cells per 1000 art cells with fills hidden, vector line features rendered).
 
@@ -156,7 +208,13 @@ node apps/web/scripts/street/lod.mjs --tag=after # LOD screenshots + line densit
 node apps/web/scripts/street/failover.mjs         # failover drills with Playwright routing
 node apps/web/scripts/street/perf.mjs all         # frames, idle, context loss, 20 cycles, flight (prefer a CATALYST_DEV_ROUTES=1 build)
 node apps/web/scripts/street/registration.mjs
-node apps/web/scripts/street/tile-fade.mjs        # tile fade: no ghost in motion, intermediate levels at rest, idle after
+node apps/web/scripts/street/tile-fade.mjs        # temporal ease: no ghost in motion, tiles fade in/out at rest and in motion, first load, idle after
+node apps/web/scripts/street/ease-twin.mjs        # GPU ease pass against its CPU twin (core/ease.ts) on random frames
+node apps/web/scripts/street/warp-check.mjs       # the camera warp (core/warp.ts) against MapLibre's projection
+node apps/web/scripts/street/cut-fade.mjs         # the globe <-> street cut as a cross-fade (needs the app route, SOURCE=primary for the slow-tile drill)
+node apps/web/scripts/street/cut-seam.mjs         # globe vs street coast / borders around the cut zoom, contact sheets
+node apps/web/scripts/street/fade-sheet.mjs       # docs/street-zoom/fade-paris-*.png: consecutive frames, slow first load / pan / departure
+node apps/web/scripts/street/city-frames.mjs --tag=after   # Paris, Lisbon, Bucharest, HCMC at the framing of a click (the road hierarchy)
 node apps/web/scripts/street/palette-compare.mjs  # N = 4, 6, 8, 10 contact sheets (docs/palette/)
 node apps/web/scripts/street/palette-shots.mjs after views=paris-sel,lisbon-z13  # the same views in both themes (before/after evidence)
 node apps/web/scripts/street/sea-ease.mjs after scheme=dark   # sea tone and its largest step, zooming in and out across the globe cut (docs/palette/sea-ease-*)
@@ -182,15 +240,41 @@ node apps/web/scripts/street/shot.mjs name source=fallback scheme=dark
 - Rendering: native art resolution by default (`renderScale` 3 map pixels per cell per axis, the pass runs on the `cols x rows` art grid, the canvas is scaled up with `image-rendering: pixelated`); `highResolution: true` keeps the device-resolution render the sharp reveal and dissolve need (both off by default; `setReveal`/`setSharp` are no-ops in native mode). See `docs/performance.md` for why 3, the numbers, the pan snapping, the frame governor and the budgets.
 - Outside a fallback archive's bounds the street map shows empty tiles (world lines only): the handover does not fly there, but the user can pan there. Primary-only deployments have global coverage.
 - Embedded, the registration is exact (the same maths) but the street map's globe projection is not drawn: the handover ends well before MapLibre's own globe-to-Mercator transition (zoom 12 in MapLibre; the cameras agree to under 1 px within 250 px of the centre from zoom 10).
+- The cut is a tone cross-fade of about 300 ms between two images of the same grid; it is not motion compensated across the renderers (both are registered to under a thousandth of a pixel at the cut, so nothing needs to move). Where the globe's data and the tiles disagree (disputed borders, `Borders`), those cells fade out and in rather than move.
 - Routes are drawn as dashed pixel lines on the ground (no lift, no draw-on animation, route stops are not enlarged).
-- Markers: normal 3, focused 7, selected 9 art pixels like the globe; labels use the spike's HUD style (selected/focused solid, others dotted and muted).
+- Markers: superseded by the detection boxes (rectangles, pixel text; see `docs/web-architecture.md`).
 - Mapbox is out of scope.
 
-## Tile fade (2026-10-05)
+## Temporal ease: tile arrival, tile departure and the cut (2026-10-07)
 
-Owner: "tiles loading and unloading is brutal, no animation at all". MapLibre has no per-tile or per-layer opacity for vector tiles (`fadeDuration` is for symbols and rasters, `raster-fade-duration` is for rasters, and a layer paint transition cannot know a tile just arrived), and a custom layer would have to re-implement tile tessellation. So the fade is a stage of the art-resolution pass (pass E, `gl/pixel-pass.ts`, driven by `gl/compositor.ts`, constants `TILE_FADE`):
+Owner: "tiles loading and unloading is brutal" (2026-10-05), then: on a first load or a slow network tiles must not pop in or out, in motion or at rest, and the globe-to-street cut must be a fade. MapLibre has no per-tile or per-layer opacity for vector tiles (`fadeDuration` is for symbols and rasters; a layer paint transition cannot know a tile just arrived), and a custom layer would re-implement tile tessellation. So the fade is a stage of the art-resolution pass: a **motion-compensated temporal ease** (`core/ease.ts` is the reference, `FRAG_EASE` in `gl/pixel-pass.ts` its GPU twin, `core/warp.ts` the camera warp, `gl/compositor.ts` the driver, `TILE_FADE` / `EASE` the constants).
 
-- The classifier writes the target art image as before. Pass E keeps the PRESENTED levels (two small ping-pong textures) and moves every cell at most one level towards the target per tick; the presenter reads the presented levels. A tick is 32 ms, and the loop stops by itself after `levels - 1` ticks, so a fade of the whole palette takes about 220 ms and an idle map costs no frame (asserted: 0 renders, 0 rAF).
-- It only runs while the camera RESTS (no `move` event of the map for 100 ms) and not under reduced motion. During any movement the presented image is the classified one, taken at once (step 255): an eased image of a moving map would smear, and a motion compensated one would need a flow estimate for no visible gain. So content that appears or disappears at a resting camera (tiles arriving after a flight, a pan or a zoom has stopped; tiles replaced by sharper ones; unloading) eases through the grey levels, and nothing ever ghosts or trails while panning or zooming.
-- Limits: a tile that arrives within 100 ms of the camera stopping, or while it moves, pops in as before (with a network source tiles mostly arrive later; the local PMTiles are often faster than that). A line that moves by one cell when a sharper tile replaces an over-zoomed one cross-fades over those 220 ms (two cells at half tone) rather than being redrawn in place. Native art-resolution mode only (the device-resolution mode, off by default, presents unfaded). `StreetMapOptions.tileFade: false` turns it off.
-- Check: `scripts/street/tile-fade.mjs` (delayed tiles): a pan and zoom presents exactly the classified image on all 40 frames; tiles arriving at a resting camera show intermediate levels (peak 1,830 cells at once), never move a cell more than one level per tick, converge, and leave the map idle; with the fade off or under reduced motion no intermediate level appears. `scripts/street/tile-fade-shots.mjs` made `docs/palette/tile-fade.png`.
+What the stage knows per frame: T (the classified image of this frame, palette levels, plus which lit cells are LINES and which are screen-anchored FILL patterns), Tp (the previous classified image), P (the image presented at the previous frame) and W, where every cell of this frame was in the previous one. W comes from the two cameras (`buildWarpMesh`: a 16-cell mesh over the art grid, interpolated bilinearly in the shader): the exact affine Web Mercator map from z10.5 up, the perspective globe model of `engine/geo.ts` below it (the one the handover registers the street map against). `scripts/street/warp-check.mjs` compares the mesh with MapLibre's own projection for random pans and zooms: worst mean 0.014 cell and max 0.074 at z11 (Mercator), 0.027 and 0.235 on the globe projection (the match radius is 2).
+
+The rule, per cell (step = whole levels to move this frame, from elapsed time at `EASE.msPerLevel` 24 ms per level, so the whole palette (10 levels) takes about a quarter of a second, frame rate independent, a frame counts for at most 100 ms):
+
+1. T = 0 and the warped P shows a line: if a lit line cell of T within `radius` (2 cells while the camera moved, 0 at rest) has a level of at least P - 1, the line only MOVED (one cell over, a dash that slid): cleared at once. Otherwise it was removed: it fades out, `step` levels per tick.
+2. T > 0: look in Tp, around the warped position, for a cell of the same level. Found: same content, so its presented tone (not its target) is the base and the fade continues while it slides ("tone follows the content": a tile that arrived mid-pan keeps fading in as it moves). Not found: new content or a changed tone, base = the warped P. Either way the cell moves from its base towards T by at most `step` levels.
+3. A cell the previous frame did not show at all (a pan uncovered it, or the globe had no ground there) takes the target at once; a camera jump larger than `EASE.jumpCells` (30 cells) drops the previous image (a cut, not a double exposure).
+4. Fill patterns (water dashes, park dots) are a function of the screen cell, so they are tracked on the screen with the lattice-sized radius `FILL_RADIUS` 4; a line over a fill takes over from the fill's tone (no dip). The louder of the line and fill parts wins.
+
+With the identity warp the rule reduces to "move every cell towards its target by at most `step` levels". After the last map frame a settle loop (rAF, one ease pass per whole level of progress, none in a hidden tab) finishes the fade with the camera fixed and stops by itself: an idle map costs no frame (asserted: 0 renders, 0 passes, 0 eases, 0 rAF). Reduced motion, `tileFade: false` and the device-resolution mode present the classified image as it is.
+
+Slow network and first load: a style swap keeps the presented image (`hold`) and what arrives afterwards eases in; while tiles are loading below z5 the bundled world coast and borders (the globe's own lines) are drawn as a placeholder (`PLACEHOLDER_LAYERS`, switched on from `map.areTilesLoaded()`), so the map is never empty and the real tile lines cross-fade over them (never both at rest: they are hidden once the tiles are in).
+
+### The cut as a cross-fade
+
+Both renderers draw on the same art grid with the same palette, so the cut is the same mechanism with another image as the source:
+
+- globe to street: right after `setActive(true)`, in the task that drew the globe canvas, the controller calls `seedFrom(globeCanvas, grid)`: the compositor classifies the Three.js canvas into the presented image (`levelsFromCanvas`) and the first street frame shows it exactly, then every cell crosses over to the street image at the ease's pace (about 300 ms, `HANDOVER.crossfadeMs`);
+- street to globe: the street map stays on screen (`streetRoot` opacity 1) and `crossfadeTo(globeCanvas, grid)` is called after every globe frame (the camera keeps in step); the globe's classified canvas is the target, and when `easing()` is 0 or `crossfadeMs` passed the map is hidden;
+- reduced motion, no native grid or a lost context: an instant swap as before. Idle after the cross-fade is zero (`scripts/globe/handover-perf.mjs idle`: 0 rAF calls, 0 ticks, 0 renders, 0 passes at world, just past the cut and at street scale).
+
+### Checks
+
+`node scripts/street/ease-twin.mjs` (GPU against the CPU twin on random frames of lines, dashes, fills, arrivals, removals and tone steps over identity, whole-cell, fractional, zoom and globe warps: at most 2 cells of 13,500 differ, from a float32 `floor()` on an exact boundary), `warp-check.mjs`, `tile-fade.mjs` (ghosting in pan, zoom and zoom-pan at z4.5, 6.5, 9 and street scale: worst 0.28 % trail cells; arrival at rest, mid-pan and mid-zoom through at least 3 levels with no cell moving more than 4 in a frame; first load on a slow network: 29,449 cells mid-fade, 3.7 to 3.9 s; removal: 11,818 of 11,824 cells through at least 3 levels; idle after; off and reduced motion: never an intermediate level), `cut-fade.mjs` (seed: 0 of 324,000 cells differ from the globe's; forward: 9 levels seen, no cell moves more than 3 in a frame, settled in about 250 ms; back: the street map stays and eases to the globe through 9 levels, then hides; slow tiles: never empty, tile lines cross-fade in with 10 levels, max step 3; reduced motion: instant), `cut-seam.mjs` (how much of the globe's coast and borders the street map redraws within one cell, per zoom around the cut, and the contact sheets of both renderers side by side). Evidence: `docs/street-zoom/fade-paris-<first|pan|leave>-<light|dark>.png` (`scripts/street/fade-sheet.mjs`: consecutive changing frames of Paris at city framing: slow first load, a pan with 700 ms tiles, roads hidden at rest), `docs/palette/tone-fade-sequence.png`.
+
+Cost (1440x900 @2, GPU timer queries, Paris z12.4, 120 pan frames with a zoom wobble, two interleaved rounds): the ease pass 1.3 to 1.5 ms against 0.8 to 1.2 ms for the pass-through of `tileFade: false`, pool 1.2 to 1.9 against 0.8 to 1.0 ms (timer noise is about 20 %); the CPU side is the warp mesh, 0.1 ms per frame. `docs/performance.md` has the budgets.
+
+Limits: a line that moves by more than the match radius between two frames (a very fast flick that is not a jump) fades out where it was and in where it is rather than moving; dashes that slide along a road are the limit of the "louder than its target" check (264 cells worst frame); a fill pattern edge that moves by more than 4 cells in a frame fades. Native art-resolution mode only. Not run on Safari / iOS or a real phone.
+

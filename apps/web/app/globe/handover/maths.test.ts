@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { TUNING } from "../engine/tuning";
+import { borderLevel, peakLevel } from "../engine/palette";
+import { EASE } from "../street/core/ease";
+import { DEFAULT_HANDOFF, borderHandoff } from "../street/style/street-style";
+import { STREET_TUNING } from "../street/tuning";
 import {
   GLOBE_MAX_ZOOM,
   HANDOVER,
@@ -102,9 +106,42 @@ describe("registration of the unified zoom", () => {
 
 describe("route arcs", () => {
   it("are lifted on the globe and flat before the dissolve starts", () => {
-    expect(routeLift(3)).toBe(1);
+    expect(routeLift(HANDOVER.routeFlat.start - 0.1)).toBe(1);
     expect(routeLift(HANDOVER.routeFlat.end)).toBe(0);
     expect(HANDOVER.routeFlat.end).toBeLessThanOrEqual(HANDOVER.blendStart);
+  });
+});
+
+describe("the early cut (owner: the switch to the high-resolution coast and borders came too late)", () => {
+  it("is at least a zoom and a half before the old cut (5.05), after the globe's own border ramp has finished", () => {
+    expect(HANDOVER.cutZoom).toBeLessThanOrEqual(5.05 - 1.3);
+    // the globe draws its borders from TUNING.borderZoom.start and has them at the peak level from .end: at the cut (and at the cut back) both
+    // renderers are at, or one level short of, the same tone, so the swap changes the geometry only
+    for (const z of [HANDOVER.cutZoom, HANDOVER.cutBackZoom]) {
+      expect(borderLevel(z, 12, TUNING.borderZoom), `zoom ${z}`).toBeGreaterThanOrEqual(peakLevel(12) - 1);
+    }
+    expect(borderLevel(HANDOVER.cutZoom, 12, TUNING.borderZoom)).toBe(peakLevel(12));
+  });
+  it("the street map's tile coast takes over from the first zoom it can have at the cut, at any latitude the app reaches", () => {
+    // the cut in MapLibre zoom: unified zoom + log2 cos(lat). At 70 degrees it is the lowest a place can be framed at
+    const lowest = toMapZoom(HANDOVER.cutBackZoom, 70);
+    expect(DEFAULT_HANDOFF.openmaptiles).toBeLessThanOrEqual(lowest);
+    expect(borderHandoff(DEFAULT_HANDOFF.openmaptiles)).toBeLessThanOrEqual(lowest);
+    expect(lowest).toBeGreaterThanOrEqual(STREET_TUNING.minZoom);
+  });
+  it("the map is created and follows before the cut, so its tiles are in when the camera gets there", () => {
+    expect(HANDOVER.mountZoom).toBeLessThan(HANDOVER.followZoom);
+    expect(HANDOVER.followZoom).toBeLessThanOrEqual(HANDOVER.cutBackZoom - 0.3);
+    expect(HANDOVER.cutBackZoom).toBeLessThan(HANDOVER.cutZoom);
+    expect(HANDOVER.routeFlat.end).toBeLessThanOrEqual(HANDOVER.cutZoom);
+  });
+  it("waits a moment for the tiles but not long: the world lines stand in for them while they load", () => {
+    expect(HANDOVER.cutMaxWaitMs).toBeGreaterThanOrEqual(500);
+    expect(HANDOVER.cutMaxWaitMs).toBeLessThanOrEqual(2500);
+  });
+  it("the swap is a tone cross-fade of a quarter of a second: as long as the loudest map tone takes to climb", () => {
+    expect(HANDOVER.crossfadeMs).toBeGreaterThanOrEqual(EASE.msPerLevel * peakLevel(12));
+    expect(HANDOVER.crossfadeMs).toBeLessThanOrEqual(400);
   });
 });
 

@@ -1,407 +1,186 @@
 /**
- * HTML overlay for places: boxed mono labels with a 1 px leader line and square markers snapped to the art grid, in
- * the HUD style of the spike. The pass never sees text; this layer reads the same projection as the map, so it stays
- * aligned during flights because it is updated from the map's own `render` event.
+ * Overlay of the street map: the DETECTION BOXES of the places and groups (engine/lod-tree.ts decides which, in screen
+ * space; engine/box-scene.ts draws them as pixel art on a canvas of the map's own art cells, the same class and font as the
+ * globe's overlay, so nothing changes in kind when the renderers hand over). The pass never sees them; this layer reads the
+ * same camera as the map, so it stays aligned during flights because it is updated from the map's own `render` event.
  *
  * Accessibility (the globe's rule): the root is `aria-hidden`, nothing here has a tab stop or a role. The accessible
  * place list (`PlacesNav`) remains the dependable path; this layer is a visual duplicate plus pointer input.
  * The root is `pointer-events: none`; clicks reach it through `hit()`, consulted by the engine on a map click, so a
- * drag that starts on a label still pans and the touch target can be larger than the label.
- *
- * Markers are drawn WHOLE or not at all (core/marker-visibility.ts); labels are placed by priority around them
- * (core/label-place.ts); selected and focused places are always shown.
+ * drag that starts on a box still pans and the touch target can be larger than the label.
  */
-import { placeLabels as placeGlobeLabels, type Placement } from "../../engine/labels";
-import { labelPriorityFloor, placeLabels, snapToCell, type Candidate, type Placed, type Side } from "../core/label-place";
-import { markerDrawn, type MarkerViewport } from "../core/marker-visibility";
-import type { MapView } from "../core/registration";
+import type { Rgb } from "../../engine/colors";
+import { BoxScene } from "../../engine/box-scene";
+import { boxHitDistance, snapBox } from "../../engine/group-square";
+import { LOD, type LodCamera, type LodTree } from "../../engine/lod-tree";
+import { NodeScreen } from "../../engine/node-screen";
+import { labelPriorityFloor } from "../core/label-place";
 import { STREET_TUNING } from "../tuning";
 
-export interface HudPlace {
-  slug: string;
-  name: string;
-  lat: number;
-  lon: number;
-  labelPriority: number;
-}
-
 export interface HudFrame {
-  view: MapView;
   width: number;
   height: number;
-  centreX: number;
   cellCss: number;
-  /** Projects lon/lat to CSS px in the container (the map's own projection, padding included). */
-  project(lon: number, lat: number): { x: number; y: number };
+  /** The camera of the detection boxes for this frame (unified zoom registered from the map's, the container's projection space, free area, cell). */
+  cam: LodCamera;
 }
 
-interface Item {
-  place: HudPlace;
-  marker: HTMLDivElement;
-  box: HTMLDivElement;
-  line: SVGLineElement;
-  w: number;
-  h: number;
-  /** Snapped marker centre when drawn. */
-  at: { x: number; y: number } | null;
-  size: number;
-  labelBox: { x: number; y: number; w: number; h: number } | null;
-  transform: string;
-  markerTransform: string;
-}
-
-const BOX_STYLE: Partial<CSSStyleDeclaration> = {
-  position: "absolute",
-  left: "0",
-  top: "0",
-  visibility: "hidden",
-  opacity: "0",
-  whiteSpace: "nowrap",
-  margin: "0",
-  padding: "1px 5px 2px",
-  font: "11px/1.25 var(--font-mono, ui-monospace, Menlo, monospace)",
-  letterSpacing: "0.06em",
-  textTransform: "uppercase",
-  background: "var(--background)",
-  color: "var(--foreground)",
-  border: "1px solid var(--foreground)",
-  pointerEvents: "none",
-  userSelect: "none",
-  willChange: "transform",
-};
-
-/**
- * `hud`: the spike's boxed labels with leader lines (standalone street map). `globe`: exactly the globe's markers and
- * labels (same sizes, same type, same placement code and priorities), used when the street map is embedded in the
- * handover so nothing changes in kind when the overlay hands over.
- */
+/** Kept for the engine's option: there is one look now (the detection boxes). */
 export type OverlayLook = "hud" | "globe";
 
-const GLOBE_BOX_STYLE: Partial<CSSStyleDeclaration> = {
-  padding: "2px 5px",
-  font: "12px/1.2 var(--font-mono, ui-monospace, Menlo, monospace)",
-  letterSpacing: "0.01em",
-  textTransform: "none",
-  background: "color-mix(in srgb, var(--background) 82%, transparent)",
-  color: "var(--foreground)",
-  border: "0",
-};
-
 export class HudLayer {
-  private items = new Map<string, Item>();
-  private svg: SVGSVGElement;
-  private previous = new Map<string, Side>();
-  private previousGlobe = new Map<string, Placement>();
-  private selectedId: string | null = null;
-  private focusedId: string | null = null;
-  private cellCss = 3;
+  private scene: BoxScene;
+  private selectedIdx = -1;
+  private focusedIdx = -1;
   private reduced: boolean;
   private lastFrame: HudFrame | null = null;
   private lastMinPriority = 0;
+  /** Where the visible nodes are (rectangles in whole cells, container CSS px); filled by `update`. */
+  readonly screen: NodeScreen;
 
   constructor(
-    private root: HTMLElement,
-    places: readonly HudPlace[],
+    root: HTMLElement,
+    private lod: LodTree,
     reducedMotion: boolean,
-    private look: OverlayLook = "hud",
+    _look: OverlayLook = "globe",
   ) {
     this.reduced = reducedMotion;
-    Object.assign(root.style, { position: "absolute", inset: "0", overflow: "hidden", pointerEvents: "none" } satisfies Partial<CSSStyleDeclaration>);
-    this.svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    this.svg.setAttribute("width", "100%");
-    this.svg.setAttribute("height", "100%");
-    Object.assign(this.svg.style, { position: "absolute", inset: "0", overflow: "visible", pointerEvents: "none" } satisfies Partial<CSSStyleDeclaration>);
-    root.appendChild(this.svg);
-    for (const place of places) {
-      const marker = document.createElement("div");
-      Object.assign(marker.style, {
-        position: "absolute",
-        left: "0",
-        top: "0",
-        visibility: "hidden",
-        pointerEvents: "none",
-        willChange: "transform",
-        boxSizing: "border-box",
-      } satisfies Partial<CSSStyleDeclaration>);
-      const box = document.createElement("div");
-      Object.assign(box.style, BOX_STYLE, this.look === "globe" ? GLOBE_BOX_STYLE : {});
-      box.textContent = place.name;
-      const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-      line.setAttribute("stroke", "var(--foreground)");
-      line.setAttribute("stroke-width", "1");
-      line.setAttribute("shape-rendering", "crispEdges");
-      line.style.visibility = "hidden";
-      root.appendChild(marker);
-      root.appendChild(box);
-      this.svg.appendChild(line);
-      this.items.set(place.slug, { place, marker, box, line, w: 80, h: 18, at: null, size: STREET_TUNING.markerCells.normal, labelBox: null, transform: "", markerTransform: "" });
-    }
-    this.setReducedMotion(reducedMotion);
-    this.remeasure();
-    this.restyle();
+    this.screen = new NodeScreen(lod.size);
+    this.scene = new BoxScene(root, lod);
   }
 
-  /** Measure label boxes (call at start and after web fonts load). */
-  remeasure(): void {
-    for (const it of this.items.values()) {
-      it.w = it.box.offsetWidth || it.w;
-      it.h = it.box.offsetHeight || it.h;
-    }
-  }
-
-  setReducedMotion(on: boolean): void {
-    this.reduced = on;
-    const transition = on ? "none" : "opacity var(--duration-fast, 120ms) linear";
-    for (const it of this.items.values()) it.box.style.transition = transition;
-  }
-
-  setSelected(slug: string | null): void {
-    this.selectedId = slug;
-    this.restyle();
-  }
-
-  setFocused(slug: string | null): void {
-    this.focusedId = slug;
-    this.restyle();
-  }
-
-  setCell(cellCss: number): void {
-    if (cellCss === this.cellCss) return;
-    this.cellCss = cellCss;
-    this.restyle();
-  }
-
-  private sizeOf(slug: string): number {
-    const m = STREET_TUNING.markerCells;
-    return slug === this.selectedId ? m.selected : slug === this.focusedId ? m.focused : m.normal;
-  }
-
-  private restyle(): void {
-    const c = this.cellCss;
-    for (const [slug, it] of this.items) {
-      const selected = slug === this.selectedId;
-      const focused = slug === this.focusedId && !selected;
-      it.size = this.sizeOf(slug);
-      const px = it.size * c;
-      if (this.look === "globe") {
-        // The globe's markers: normal and focused are solid squares, the selected one a ring around a gap and a dot.
-        Object.assign(it.marker.style, {
-          width: `${px}px`,
-          height: `${px}px`,
-          background: selected ? `linear-gradient(var(--foreground), var(--foreground)) center / ${c}px ${c}px no-repeat, var(--background)` : "var(--foreground)",
-          border: selected ? `${c}px solid var(--foreground)` : "0",
-        } satisfies Partial<CSSStyleDeclaration>);
-        Object.assign(it.box.style, {
-          background: selected ? "var(--foreground)" : GLOBE_BOX_STYLE.background,
-          color: selected ? "var(--background)" : "var(--foreground)",
-          boxShadow: focused ? "inset 0 0 0 1px var(--foreground)" : "none",
-        } satisfies Partial<CSSStyleDeclaration>);
-        it.box.setAttribute("data-state", selected ? "selected" : focused ? "focused" : "");
-        continue;
-      }
-      const ring = selected || focused;
-      Object.assign(it.marker.style, {
-        width: `${px}px`,
-        height: `${px}px`,
-        background: ring ? "linear-gradient(var(--foreground), var(--foreground)) center / " + 3 * c + "px " + 3 * c + "px no-repeat" : "var(--foreground)",
-        border: ring ? `${c}px solid var(--foreground)` : "0",
-      } satisfies Partial<CSSStyleDeclaration>);
-      const strong = selected || focused;
-      Object.assign(it.box.style, {
-        background: selected ? "var(--foreground)" : "var(--background)",
-        color: selected ? "var(--background)" : strong ? "var(--foreground)" : "var(--muted-foreground, var(--foreground))",
-        border: strong ? "1px solid var(--foreground)" : "1px dotted var(--border-strong, var(--foreground))",
-        textTransform: strong ? "uppercase" : "none",
-        letterSpacing: strong ? "0.06em" : "0.02em",
-      } satisfies Partial<CSSStyleDeclaration>);
-      it.box.setAttribute("data-state", selected ? "selected" : focused ? "focused" : "");
-    }
-    this.remeasure();
-    // sizes changed: re-place on the next frame
+  /** The theme (palette ramp). Redraws on the next update. */
+  setTheme(theme: { ramp: readonly Rgb[] }): void {
+    this.scene.setTheme(theme);
     if (this.lastFrame) this.update(this.lastFrame, this.lastMinPriority);
   }
 
-  /** Slugs of the shown markers and labels (debug and tests). */
-  shown(): { markers: string[]; labels: string[] } {
-    const markers: string[] = [];
-    const labels: string[] = [];
-    for (const [slug, it] of this.items) {
-      if (it.at) markers.push(slug);
-      if (it.labelBox) labels.push(slug);
-    }
-    return { markers, labels };
+  /** Nothing to measure any more (the label font is baked into the bundle); kept so callers need not know. */
+  remeasure(): void {}
+
+  setReducedMotion(on: boolean): void {
+    this.reduced = on;
   }
 
-  /** Snapped marker centre of a place if it is drawn (CSS px in the container). */
+  setSelected(slug: string | null): void {
+    this.selectedIdx = this.lod.indexOf(slug);
+    this.scene.setSelected(slug);
+    if (this.lastFrame) this.update(this.lastFrame, this.lastMinPriority);
+  }
+
+  setFocused(slug: string | null): void {
+    this.focusedIdx = this.lod.indexOf(slug);
+    this.scene.setFocused(slug);
+    if (this.lastFrame) this.update(this.lastFrame, this.lastMinPriority);
+  }
+
+  /** The node under the pointer (highlight only). */
+  setHovered(slug: string | null): void {
+    this.scene.setHovered(slug);
+    if (this.lastFrame) this.update(this.lastFrame, this.lastMinPriority);
+  }
+
+  setCell(_cellCss: number): void {}
+
+  /** Slugs of the drawn rectangles of places (`markers`) and of groups (`groups`), and the labels shown (`labels`): debug and tests. */
+  shown(): { markers: string[]; labels: string[]; groups: string[] } {
+    const lod = this.lod;
+    const markers: string[] = [];
+    const groups: string[] = [];
+    for (let k = 0; k < lod.count; k++) {
+      const i = lod.visible[k]!;
+      if (!this.screen.shown[i]) continue;
+      (lod.isGroup[i] ? groups : markers).push(lod.slug[i]!);
+    }
+    return { markers, labels: [...this.scene.shown()], groups };
+  }
+
+  /** The centre of a node's drawn rectangle (CSS px in the container), or null when it is not drawn. */
   markerAt(slug: string): { x: number; y: number } | null {
-    return this.items.get(slug)?.at ?? null;
+    const i = this.lod.indexOf(slug);
+    return i < 0 || !this.screen.shown[i] ? null : { x: this.screen.x[i]!, y: this.screen.y[i]! };
+  }
+
+  /** Cells of every rectangle and label drawn in the last frame (checks): the same shape as the globe's. */
+  labelCells() {
+    return this.scene.snapshot();
+  }
+
+  /** Canvas drawing counters (frames drawn, frames skipped because nothing changed). */
+  stats() {
+    return this.scene.stats();
+  }
+
+  /** What the last frame drew per node (alpha, tone, rectangle, members): debug and the check that compares it with the globe's. */
+  snapshot(): { slug: string; kind: string; alpha: number; level: number; box: { x0: number; y0: number; x1: number; y1: number }; members: number; total: number; x: number; y: number; shown: boolean }[] {
+    const lod = this.lod;
+    const out = [];
+    for (let k = 0; k < lod.count; k++) {
+      const i = lod.visible[k]!;
+      out.push({
+        slug: lod.slug[i]!,
+        kind: lod.kind[i]!,
+        alpha: lod.alpha[i]!,
+        level: lod.level[i]!,
+        box: { x0: this.screen.bx0[i]!, y0: this.screen.by0[i]!, x1: this.screen.bx1[i]!, y1: this.screen.by1[i]! },
+        members: lod.members[i]!,
+        total: lod.total[i]!,
+        x: this.screen.x[i]!,
+        y: this.screen.y[i]!,
+        shown: !!this.screen.shown[i],
+      });
+    }
+    return out;
   }
 
   /**
-   * The place under a CSS-px point. Markers win within the pick radius of the pointer type; labels are grown by the
-   * label slop. The nearest wins when several are in reach.
+   * The node under a CSS-px point: a label (grown by the label slop of the pointer type) first, else a rectangle's border band
+   * (never its interior, so the rectangles inside stay clickable; the smallest rectangle wins).
    */
   hit(x: number, y: number, kind: "mouse" | "touch"): string | null {
-    let best: string | null = null;
-    let bestD = Infinity;
-    const R = STREET_TUNING.pickRadius[kind];
-    const slop = STREET_TUNING.labelSlop[kind];
-    for (const [slug, it] of this.items) {
-      if (it.at) {
-        const d = Math.hypot(x - it.at.x, y - it.at.y);
-        if (d <= R && d < bestD) {
-          bestD = d;
-          best = slug;
-        }
-      }
-      const b = it.labelBox;
-      if (b && x >= b.x - slop && x <= b.x + b.w + slop && y >= b.y - slop && y <= b.y + b.h + slop) {
-        const d = Math.hypot(x - (b.x + b.w / 2), y - (b.y + b.h / 2));
-        if (d < bestD) {
-          bestD = d;
-          best = slug;
-        }
+    const label = this.scene.hit(x, y, STREET_TUNING.labelSlop[kind]);
+    if (label) return label;
+    const lod = this.lod;
+    let best = -1;
+    let bestArea = Infinity;
+    for (let k = 0; k < lod.count; k++) {
+      const i = lod.visible[k]!;
+      if (!this.screen.shown[i] || lod.alpha[i]! < LOD.pickAlphaMin) continue;
+      const box = { x0: this.screen.bx0[i]!, y0: this.screen.by0[i]!, x1: this.screen.bx1[i]!, y1: this.screen.by1[i]! };
+      if (boxHitDistance(x, y, box, null, kind) > 0) continue;
+      const area = (box.x1 - box.x0) * (box.y1 - box.y0);
+      if (area < bestArea || (area === bestArea && best >= 0 && lod.priority[i]! > lod.priority[best]!)) {
+        bestArea = area;
+        best = i;
       }
     }
-    return best;
+    return best >= 0 ? lod.slug[best]! : null;
   }
 
-  /** Re-place everything for the current camera. `minPriority` hides low-priority labels (zoom-dependent reveal). */
+  /** Re-place everything for the current camera. `minPriority` hides the labels of low-priority places (zoom-dependent reveal). */
   update(frame: HudFrame, minPriority: number): void {
     this.lastFrame = frame;
     this.lastMinPriority = minPriority;
-    const vp: MarkerViewport = { width: frame.width, height: frame.height, centreX: frame.centreX };
-    const cands: Candidate[] = [];
-    for (const [slug, it] of this.items) {
-      const p = frame.project(it.place.lon, it.place.lat);
-      const snapped = { x: snapToCell(p.x, frame.cellCss), y: snapToCell(p.y, frame.cellCss) };
-      it.size = this.sizeOf(slug);
-      const forced = slug === this.selectedId || slug === this.focusedId;
-      const drawn = Number.isFinite(p.x) && markerDrawn(it.place, snapped, it.size, frame.view, vp, frame.cellCss);
-      it.at = drawn ? snapped : null;
-      if (drawn && (forced || it.place.labelPriority >= minPriority)) {
-        cands.push({ id: slug, x: snapped.x, y: snapped.y, w: it.w, h: it.h, priority: it.place.labelPriority, forced });
-      }
+    const lod = this.lod;
+    lod.update(frame.cam, this.selectedIdx, this.focusedIdx, this.reduced);
+    const cell = frame.cellCss;
+    const cols = Math.ceil(frame.width / cell);
+    const rows = Math.ceil(frame.height / cell);
+    const screen = this.screen;
+    for (let k = 0; k < lod.count; k++) {
+      const i = lod.visible[k]!;
+      const r = snapBox(lod.boxX0[i]!, lod.boxY0[i]!, lod.boxX1[i]!, lod.boxY1[i]!, cell);
+      screen.bx0[i] = r.c0 * cell;
+      screen.by0[i] = r.r0 * cell;
+      screen.bx1[i] = r.c1 * cell;
+      screen.by1[i] = r.r1 * cell;
+      screen.x[i] = (screen.bx0[i]! + screen.bx1[i]!) / 2;
+      screen.y[i] = (screen.by0[i]! + screen.by1[i]!) / 2;
+      const drawn = (lod.isGroup[i] ? lod.members[i]! > 0 : !!lod.shown[i]) && r.c1 > 0 && r.r1 > 0 && r.c0 < cols && r.r0 < rows;
+      screen.shown[i] = drawn ? 1 : 0;
+      screen.facing[i] = 1;
     }
-    // Markers that are drawn but whose label is suppressed by priority still count as obstacles.
-    const labelled = new Set(cands.map((c) => c.id));
-    const obstacles: { id: string; x: number; y: number }[] = [];
-    for (const [slug, it] of this.items) if (it.at && !labelled.has(slug)) obstacles.push({ id: slug, x: it.at.x, y: it.at.y });
-    if (this.look === "globe") {
-      this.applyGlobe(frame, cands, obstacles);
-      return;
-    }
-    const placed = placeLabels(cands, { w: frame.width, h: frame.height }, {
-      previous: this.previous,
-      markerHalf: (STREET_TUNING.markerCells.normal * frame.cellCss) / 2 + 2,
-      gap: Math.round(22 / frame.cellCss) * frame.cellCss,
-      obstacles,
-    });
-    this.apply(frame, placed);
-  }
-
-  /** Placement and drawing with the globe's rules (engine/labels.ts, no leader lines). */
-  private applyGlobe(frame: HudFrame, cands: readonly Candidate[], obstacles: readonly { id: string; x: number; y: number }[]): void {
-    const byCand = new Map(cands.map((c) => [c.id, c]));
-    const inputs = [
-      ...cands.map((c) => ({ id: c.id, x: c.x, y: c.y, width: c.w, height: c.h, priority: c.priority, visible: true, facing: 1, forced: c.forced })),
-      // Drawn markers without a label still keep labels off them: same as the globe's "hidden-by-priority places".
-      ...obstacles.map((o) => ({ id: o.id, x: o.x, y: o.y, width: 0, height: 0, priority: -1, visible: true, facing: 1, forced: false })),
-    ];
-    const placed = placeGlobeLabels(inputs, { width: frame.width, height: frame.height, markerRadius: 6, gap: 9, previous: this.previousGlobe }).filter((l) => byCand.has(l.id));
-    const byId = new Map(placed.map((p) => [p.id, p]));
-    const next = new Map<string, Placement>();
-    for (const [slug, it] of this.items) {
-      const at = it.at;
-      it.line.style.visibility = "hidden";
-      if (!at) {
-        it.marker.style.visibility = "hidden";
-        this.hideLabel(it);
-        continue;
-      }
-      const half = (it.size * frame.cellCss) / 2;
-      const mt = `translate(${at.x - half}px, ${at.y - half}px)`;
-      if (mt !== it.markerTransform) {
-        it.marker.style.transform = mt;
-        it.markerTransform = mt;
-      }
-      it.marker.style.visibility = "visible";
-      const pl = byId.get(slug);
-      if (!pl) {
-        this.hideLabel(it);
-        continue;
-      }
-      next.set(slug, pl.placement);
-      const left = Math.round(pl.x);
-      const top = Math.round(pl.y);
-      const t = `translate(${left}px, ${top}px)`;
-      if (t !== it.transform) {
-        it.box.style.transform = t;
-        it.transform = t;
-      }
-      if (!it.labelBox) {
-        it.box.style.visibility = "visible";
-        it.box.style.opacity = "1";
-      }
-      it.labelBox = { x: left, y: top, w: it.w, h: it.h };
-    }
-    this.previousGlobe = next;
-  }
-
-  private apply(frame: HudFrame, placed: Placed[]): void {
-    const byId = new Map(placed.map((p) => [p.id, p]));
-    const nextPrev = new Map<string, Side>();
-    for (const [slug, it] of this.items) {
-      const at = it.at;
-      if (!at) {
-        it.marker.style.visibility = "hidden";
-        this.hideLabel(it);
-        continue;
-      }
-      const half = (it.size * frame.cellCss) / 2;
-      const mt = `translate(${at.x - half}px, ${at.y - half}px)`;
-      if (mt !== it.markerTransform) {
-        it.marker.style.transform = mt;
-        it.markerTransform = mt;
-      }
-      it.marker.style.visibility = "visible";
-      const pl = byId.get(slug);
-      if (!pl) {
-        this.hideLabel(it);
-        continue;
-      }
-      nextPrev.set(slug, pl.side);
-      const left = Math.round(pl.left);
-      const top = Math.round(pl.top);
-      const t = `translate(${left}px, ${top}px)`;
-      if (t !== it.transform) {
-        it.box.style.transform = t;
-        it.transform = t;
-      }
-      if (!it.labelBox) {
-        it.box.style.visibility = "visible";
-        it.box.style.opacity = "1";
-      }
-      it.labelBox = { x: left, y: top, w: it.w, h: it.h };
-      // leader: from the marker centre to the nearest corner of the box
-      const cx = left > at.x ? left : left + it.w;
-      const cy = top < at.y ? top + it.h : top;
-      it.line.setAttribute("x1", String(Math.round(at.x) + 0.5));
-      it.line.setAttribute("y1", String(Math.round(at.y) + 0.5));
-      it.line.setAttribute("x2", String(Math.round(cx) + 0.5));
-      it.line.setAttribute("y2", String(Math.round(cy) + 0.5));
-      it.line.style.visibility = "visible";
-    }
-    this.previous = nextPrev;
-  }
-
-  private hideLabel(it: Item): void {
-    if (it.labelBox) {
-      it.box.style.visibility = "hidden";
-      it.box.style.opacity = "0";
-      it.labelBox = null;
-    }
-    it.line.style.visibility = "hidden";
+    this.scene.update(screen, minPriority, { cols, rows, cell, left: 0, top: 0 });
   }
 
   /** Priority floor for a zoom (the globe's rule, with the street map's "all labels" zoom). */
@@ -410,12 +189,6 @@ export class HudLayer {
   }
 
   dispose(): void {
-    for (const it of this.items.values()) {
-      it.marker.remove();
-      it.box.remove();
-      it.line.remove();
-    }
-    this.items.clear();
-    this.svg.remove();
+    this.scene.dispose();
   }
 }

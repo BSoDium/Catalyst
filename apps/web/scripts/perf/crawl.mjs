@@ -35,7 +35,7 @@ async function run(browser, snap) {
     const tick = () => {
       if (window.__crawl.stop) return;
       const r = dbg.readCodes();
-      if (r) frames.push({ cols: r.cols, rows: r.rows, codes: r.codes.slice(), lng: dbg.map().getCenter().lng, passes: dbg.passes() });
+      if (r) { const c = dbg.map().getCenter(); frames.push({ cols: r.cols, rows: r.rows, codes: r.codes.slice(), lng: c.lng, lat: c.lat, passes: dbg.passes() }); }
       requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
@@ -88,6 +88,15 @@ async function run(browser, snap) {
       out.shifts[key] = (out.shifts[key] ?? 0) + 1;
     }
     out.trace = fr.slice(0, 12).map((f) => `${f.lng.toFixed(7)}/${f.passes}`);
+    // How far the map travelled, in art cells (Web Mercator world px at the final zoom / the cell size): the most frames a rigid pan can change.
+    if (fr.length > 1) {
+      const d = window.__handoverDebug.street().debug();
+      const m = d.map();
+      const w = 512 * 2 ** m.getZoom();
+      const merc = (lat) => 0.5 - Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360)) / (2 * Math.PI);
+      const a = fr[0], b = fr[fr.length - 1];
+      out.movedCells = (Math.abs(b.lng - a.lng) / 360 * w + Math.abs(merc(b.lat) - merc(a.lat)) * w) / d.cellCss();
+    }
     return out;
   });
   if (args.debug) console.error(res.trace.join(" "));
@@ -98,6 +107,9 @@ async function run(browser, snap) {
     snap,
     pairs: res.pairs,
     changedShare: +(res.changed / Math.max(1, res.pairs)).toFixed(3),
+    // changed frames per art cell the map travelled: a rigid pan changes a frame only when a cell boundary is crossed, so at most 1
+    movedCells: +(res.movedCells ?? 0).toFixed(1),
+    changedPerCell: +(res.changed / Math.max(1, res.movedCells ?? 1)).toFixed(3),
     residualMean: +mean(res.residual).toFixed(4),
     residualP95: +(s[Math.floor(s.length * 0.95)] ?? 0).toFixed(4),
     churnCellsPerChangedFrame: +mean(res.churn).toFixed(1),

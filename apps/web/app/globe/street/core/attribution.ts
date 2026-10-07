@@ -1,46 +1,64 @@
 /**
- * Attribution for the ACTIVE tile source (HTML, outside the shader pass, always visible). Pure; the engine renders
- * the parts as links. Licence background: docs/street-zoom-spike.md ("Data attribution and licences").
+ * The data credits of the map, shown by the info button's dialog (components/attribution-button.tsx). Pure.
+ * Licence background: docs/street-zoom-spike.md ("Data attribution and licences").
  */
-import type { SourceId, TileState } from "./tile-source-manager";
+import { isPmtilesUrl } from "./source-descriptor";
 
 export interface AttributionPart {
+  /** The credit as the licence words it: kept verbatim in the dialog. */
   text: string;
-  href: string | null;
+  href: string;
+  /** What the source provides, in a sentence. */
+  note: string;
 }
 
-const OSM: AttributionPart = { text: "© OpenStreetMap contributors", href: "https://www.openstreetmap.org/copyright" };
-const OFM: AttributionPart = { text: "OpenFreeMap", href: "https://openfreemap.org" };
-const OMT: AttributionPart = { text: "OpenMapTiles", href: "https://openmaptiles.org" };
-const PROTOMAPS: AttributionPart = { text: "Protomaps", href: "https://protomaps.com" };
-const NATURAL_EARTH: AttributionPart = { text: "Natural Earth", href: "https://www.naturalearthdata.com" };
+const OSM: AttributionPart = {
+  text: "© OpenStreetMap contributors",
+  href: "https://www.openstreetmap.org/copyright",
+  note: "The street map data, available under the Open Database Licence (ODbL).",
+};
+const OFM: AttributionPart = { text: "OpenFreeMap", href: "https://openfreemap.org", note: "Serves the map tiles." };
+const OMT: AttributionPart = { text: "OpenMapTiles", href: "https://openmaptiles.org", note: "The schema of the map tiles." };
+const PROTOMAPS: AttributionPart = { text: "Protomaps", href: "https://protomaps.com", note: "Serves the backup extract of the map, used when the main tile server cannot be reached." };
+const NATURAL_EARTH: AttributionPart = {
+  text: "Natural Earth",
+  href: "https://www.naturalearthdata.com",
+  note: "The coastlines and country borders of the globe. Public domain; credited as a courtesy.",
+};
 
-export interface AttributionInput {
-  state: TileState;
-  source: SourceId | null;
-  /** The configured primary URL (decides OpenFreeMap vs a custom source) and whether it is a PMTiles archive. */
+/** The tile configuration the credits depend on (`StreetTileConfig`, or null when no street map is configured). */
+export interface AttributionTiles {
   primaryUrl: string;
-  primaryIsPmtiles: boolean;
+  fallbackPmtilesUrl: string | null;
 }
+
+const isOpenFreeMap = (url: string): boolean => {
+  try {
+    const host = new URL(url).hostname;
+    return host === "openfreemap.org" || host.endsWith(".openfreemap.org");
+  } catch {
+    return false;
+  }
+};
 
 /**
- * Primary on OpenFreeMap: "© OpenStreetMap contributors · OpenFreeMap · OpenMapTiles". Fallback (or a PMTiles
- * primary, which is Protomaps schema): "© OpenStreetMap contributors · Protomaps". A self-hosted TileJSON primary
- * carries OSM only. While connecting or capped only the bundled Natural Earth lines are drawn (public domain; the
- * credit is a courtesy), because OSM data is not on screen then.
+ * Every source the configuration can show: OpenStreetMap with OpenFreeMap and OpenMapTiles for an OpenFreeMap primary
+ * (a PMTiles primary is Protomaps' schema; a self-hosted TileJSON primary carries OSM only), plus Protomaps when a
+ * fallback archive is configured, plus Natural Earth, whose lines are the globe's and the street map's lowest zooms.
+ * The list is the union rather than the active source, so it is always complete and needs no tile status.
  */
-export function attributionFor(input: AttributionInput): AttributionPart[] {
-  if (input.source === "fallback" || (input.source === "primary" && input.primaryIsPmtiles)) return [OSM, PROTOMAPS];
-  if (input.source === "primary") {
-    let host = "";
-    try {
-      host = new URL(input.primaryUrl).hostname;
-    } catch {
-      host = "";
+export function attributionFor(tiles: AttributionTiles | null): AttributionPart[] {
+  const parts: AttributionPart[] = [];
+  if (tiles) {
+    parts.push(OSM);
+    if (isPmtilesUrl(tiles.primaryUrl)) parts.push(PROTOMAPS);
+    else {
+      if (isOpenFreeMap(tiles.primaryUrl)) parts.push(OFM, OMT);
+      if (tiles.fallbackPmtilesUrl) parts.push(PROTOMAPS);
     }
-    return host === "openfreemap.org" || host.endsWith(".openfreemap.org") ? [OSM, OFM, OMT] : [OSM];
   }
-  return [NATURAL_EARTH];
+  parts.push(NATURAL_EARTH);
+  return parts;
 }
 
 export const attributionText = (parts: readonly AttributionPart[]): string => parts.map((p) => p.text).join(" · ");

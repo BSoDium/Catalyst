@@ -1,6 +1,7 @@
 /**
  * The street map engine: MapLibre (globe -> Web Mercator) drawing plain channels, the pixel-pass compositor on a
- * separate overlay context, an HTML overlay of markers and labels, the tile source manager and the attribution.
+ * separate overlay context, an HTML overlay of markers and labels, the tile source manager. (The credits are the host's
+ * info button, components/attribution-button.tsx.)
  * Imperative and framework-free; `street-map-canvas.tsx` is the React lifecycle around it. This module (and
  * everything it imports) is the lazy street chunk: it never loads on the server or with the globe.
  *
@@ -18,22 +19,25 @@ import { readTheme, type GlobeTheme } from "../engine/colors";
 import { applyDebugLevels } from "../engine/palette";
 import { watchDevicePixelRatio } from "../engine/dpr";
 import { INSET_EASE } from "../engine/tuning";
+import { LodTree, buildLodNodes, newLodCamera, setLodCamera } from "../engine/lod-tree";
+import { registerMapToGlobe } from "./core/registration";
 import { perfEnd, perfStart } from "../engine/perf";
 import { clampInset, fadeMask, insetShiftBuf } from "../engine/inset";
-import { attributionFor, attributionText } from "./core/attribution";
 import { INK_THRESHOLD, SOLID_FROM } from "./core/art-line";
 import { cellCssFor, cellDevicePx, EasedValue, revealRadiusDevice } from "./core/pixel";
 import { isPmtilesUrl, type SourceDescriptor } from "./core/source-descriptor";
 import { TileSourceManager, type SourceId, type TileStatus } from "./core/tile-source-manager";
 import { routeFeatures } from "./core/routes";
-import { Compositor, TILE_FADE, type OutputSize } from "./gl/compositor";
+import { isRouteStop, routesForPlace } from "../engine/geometry";
+import { Compositor, type OutputSize } from "./gl/compositor";
+import type { WarpCamera } from "./core/warp";
 import { buildPalette } from "./core/palette";
 import { snapCenter } from "./core/snap";
 import type { PassParams } from "./gl/pixel-pass";
 import { createTileNetwork } from "./net/tile-protocols";
 import { probeSource, type ProbeConfig, type ProbeOutcome } from "./net/probe";
 import { HudLayer } from "./overlay/hud-layer";
-import { applyCell, buildStreetStyle, graticule, type StyleTiles } from "./style/street-style";
+import { DEFAULT_HANDOFF, PLACEHOLDER_LAYERS, WORLD_PLACEHOLDER_BELOW, applyCell, buildStreetStyle, graticule, hasPlaceholder, type StyleTiles } from "./style/street-style";
 import { STREET_TUNING } from "./tuning";
 import type { AnimateOptions, FlyOptions, RevealOptions, StreetDebug, StreetMap, StreetMapOptions, StreetView } from "./types";
 
@@ -118,20 +122,6 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
   const hudRoot = document.createElement("div");
   hudRoot.dataset.streetOverlay = "";
   hudRoot.setAttribute("aria-hidden", "true");
-  const attributionEl = document.createElement("div");
-  attributionEl.dataset.streetAttribution = "";
-  Object.assign(attributionEl.style, {
-    position: "absolute",
-    bottom: "6px",
-    right: "8px",
-    zIndex: "2",
-    padding: "1px 4px",
-    font: "10px/1.3 var(--font-mono, ui-monospace, Menlo, monospace)",
-    color: "var(--muted-foreground, var(--foreground))",
-    // 90 % plate: 10 px muted text stays above 4.5:1 even over a route line (engine/readability.test.ts)
-    background: "color-mix(in srgb, var(--background) 90%, transparent)",
-    pointerEvents: "auto",
-  } satisfies Partial<CSSStyleDeclaration>);
   root.append(mapEl);
   container.append(root);
 
@@ -145,8 +135,6 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
   let heldZoom: number | null = null;
   /** false: the host shows something else; the map renders (tiles load) but no overlay work and no pass happen. */
   let active = true;
-  /** When the camera last moved (any `move` event of the map): the tile fade only runs while it rests. */
-  let lastMoveAt = 0;
   let selected = opts.selectedSlug;
   let focused = opts.focusedSlug;
   const places = new Map(opts.places.map((p) => [p.slug, p]));
@@ -190,7 +178,15 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
 
   let world: { coastlines: GeoJSON.FeatureCollection; borders: GeoJSON.FeatureCollection } = opts.world ?? { coastlines: EMPTY_FC, borders: EMPTY_FC };
   const grid = graticule(15, 3);
-  const routes = routeFeatures(opts.routes);
+  // Curated routes are drawn only while the selected place is one of their stops (engine/geometry.ts `routesForPlace`).
+  const routesOf = (slug: string | null) => routeFeatures(routesForPlace(opts.routes, slug ? opts.places.find((p) => p.slug === slug) : undefined));
+  let routes = routesOf(opts.selectedSlug);
+  // The stops of the shown routes are drawn at any zoom (the route would otherwise run between missing markers).
+  let lodRef: LodTree;
+  const syncRouteStops = (slug: string | null) =>
+    lodRef.setExtraForced(
+      routesForPlace(opts.routes, slug ? opts.places.find((p) => p.slug === slug) : undefined).flatMap((r) => opts.places.filter((p) => isRouteStop(r, p)).map((p) => lodRef.indexOf(p.slug))),
+    );
   const descriptors: Partial<Record<SourceId, SourceDescriptor>> = {};
 
   // ---- tile network + source manager ----------------------------------------------------------------------------
@@ -226,8 +222,14 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
 
   const styleTiles = (d: SourceDescriptor | undefined): StyleTiles | null =>
     d ? { tiles: net.styleTiles(d), minzoom: d.minzoom, maxzoom: d.maxzoom, bounds: d.bounds } : null;
-  const buildStyle = (d: SourceDescriptor | undefined): StyleSpecification =>
-    buildStreetStyle({
+  /** The active style keeps the world lines as a hidden placeholder (street/style/street-style.ts WORLD_PLACEHOLDER_BELOW). */
+  let placeholderStyle = false;
+  let placeholderOn = false;
+  const buildStyle = (d: SourceDescriptor | undefined): StyleSpecification => {
+    const schema = d?.schema ?? "openmaptiles";
+    placeholderStyle = hasPlaceholder(DEFAULT_HANDOFF[schema], d !== undefined);
+    placeholderOn = false;
+    return buildStreetStyle({
       schema: d?.schema ?? "openmaptiles",
       tiles: styleTiles(d),
       coastlines: world.coastlines,
@@ -237,6 +239,7 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
       projection: opts.projection ?? "globe",
       cellCss: mapCell(),
     });
+  };
 
   // ---- map -----------------------------------------------------------------------------------------------------
   const sizeMapBox = () => {
@@ -298,7 +301,19 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
         const h = Math.max(1, Math.round(root.clientHeight * dpr));
         return { w, h, cssW: w / dpr, cssH: h / dpr };
       },
-      steady: () => performance.now() - lastMoveAt > TILE_FADE.steadyMs,
+      camera: (): WarpCamera => {
+        // The projection centre moves with the padding (the host's inset, the grid's overhang): the same maths as MapLibre's edge insets.
+        const c = map.getCenter();
+        const pd = map.getPadding();
+        return {
+          lon: c.lng,
+          lat: c.lat,
+          zoom: map.getZoom(),
+          cx: (artGrid.cssW + (pd.left ?? 0) - (pd.right ?? 0)) / 2,
+          cy: (artGrid.cssH + (pd.top ?? 0) - (pd.bottom ?? 0)) / 2,
+          cell: mapCell(),
+        };
+      },
       params(outW: number, outH: number): PassParams {
         const dpr = native ? 1 : dprNow();
         const palette = buildPalette(theme);
@@ -330,15 +345,19 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
   perfEnd("street.create.compositor", tComp);
   compositor.canvas.setAttribute("aria-hidden", "true");
   compositor.setFade(!reduced && opts.tileFade !== false);
-  root.append(hudRoot, attributionEl);
+  root.append(hudRoot);
 
   const tHud = perfStart();
-  const hud = new HudLayer(
-    hudRoot,
-    opts.places.map((p) => ({ slug: p.slug, name: p.name, lat: p.lat, lon: p.lon, labelPriority: p.labelPriority })),
-    reduced,
-    opts.embedded ? "globe" : "hud",
-  );
+  // The semantic-zoom hierarchy: the globe's (shared with it, so the set drawn is the same on both sides of the handover)
+  // when embedded, else one of our own (places only, unless `groups` are given).
+  const lod = opts.lod ?? new LodTree(buildLodNodes(opts.places, opts.groups ?? []));
+  lodRef = lod;
+  syncRouteStops(selected);
+  const lodCam = newLodCamera();
+  const applyTones = (t: GlobeTheme) => lod.setTones(t.ramp.length);
+  applyTones(theme);
+  const hud = new HudLayer(hudRoot, lod, reduced, opts.embedded ? "globe" : "hud");
+  hud.setTheme(theme);
   perfEnd("street.create.hud", tHud);
   const tRest = perfStart();
   hud.setCell(cellCss);
@@ -393,29 +412,6 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
     return new Promise<void>((resolve) => waiters.push({ value, resolve }));
   };
 
-  // ---- attribution ---------------------------------------------------------------------------------------------
-  let attributionKey = "";
-  const renderAttribution = (status: TileStatus) => {
-    const parts = attributionFor({ state: status.state, source: status.source, primaryUrl: opts.tiles.primaryUrl, primaryIsPmtiles });
-    const key = parts.map((p) => p.text).join("|");
-    if (key === attributionKey) return;
-    attributionKey = key;
-    attributionEl.replaceChildren();
-    parts.forEach((p, i) => {
-      if (i > 0) attributionEl.append(" · ");
-      if (p.href) {
-        const a = document.createElement("a");
-        a.href = p.href;
-        a.textContent = p.text;
-        a.target = "_blank";
-        a.rel = "noopener noreferrer";
-        a.style.color = "inherit";
-        attributionEl.append(a);
-      } else attributionEl.append(p.text);
-    });
-    attributionEl.dataset.streetAttribution = parts.map((p) => p.text).join(" · ");
-  };
-
   // ---- tile source transitions ---------------------------------------------------------------------------------
   let holdTimer = 0;
   const holdOverlay = () => {
@@ -451,7 +447,6 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
 
   function applyStatus(status: TileStatus, previous: TileStatus | null) {
     if (disposed) return;
-    renderAttribution(status);
     if (status.state !== "connecting") {
       const d = status.source ? descriptors[status.source] : undefined;
       // A swap blanks the tile layers for a few frames: keep the last overlay frame until the new tiles land.
@@ -486,16 +481,13 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
   const syncOverlayInner = () => {
     const w = root.clientWidth;
     const h = root.clientHeight;
+    if (w <= 0 || h <= 0) return; // a container that is not laid out (a route change hid it): nothing to place, and a zero-size image throws
     const v = viewNow();
+    // The declutter clusters read the unified camera (the globe's own zoom), registered from the map's, projected in the
+    // container's own space with the projection centre the map uses; the free area is the box minus the inset the host passed.
+    setLodCamera(lodCam, registerMapToGlobe(v), { width: w, height: h, centreX: (w - pad()) / 2 }, w - clampInset(inset, w), cellCss);
     hud.update(
-      {
-        view: v,
-        width: w,
-        height: h,
-        centreX: (w - pad()) / 2,
-        cellCss,
-        project: (lon, lat) => map.project([lon, lat]),
-      },
+      { width: w, height: h, cellCss, cam: lodCam },
       // Embedded in the handover the overlay only shows from regional scale, where the globe already shows every label.
       opts.embedded ? 0 : HudLayer.priorityFloor(v.zoom),
     );
@@ -515,17 +507,29 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
   };
   let lastMask: string | null = null;
 
-  onMap("move", () => {
-    lastMoveAt = performance.now();
-  });
+  /** The world lines stand in for tiles that are not there yet (and only then): the ease cross-fades them to the tile lines when those arrive. */
+  const updatePlaceholder = () => {
+    if (!placeholderStyle) return;
+    const want = map.getZoom() < WORLD_PLACEHOLDER_BELOW && !map.areTilesLoaded();
+    if (want === placeholderOn) return;
+    placeholderOn = want;
+    for (const id of PLACEHOLDER_LAYERS) if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", want ? "visible" : "none");
+  };
   onMap("render", () => {
     renders++;
+    updatePlaceholder();
     if (active) syncOverlay();
   });
+  /** A place opens its page; a group (its square or its label) is the host's to frame. */
+  const selectNode = (slug: string) => {
+    const i = lod.indexOf(slug);
+    if (i >= 0 && lod.isGroup[i]) opts.onSelectGroup?.(slug);
+    else opts.onSelect(slug);
+  };
   onMap("click", (e: { point: { x: number; y: number }; originalEvent?: Event }) => {
     const touch = (e.originalEvent as PointerEvent | undefined)?.pointerType === "touch";
     const hit = hud.hit(e.point.x, e.point.y, touch ? "touch" : "mouse");
-    if (hit) opts.onSelect(hit);
+    if (hit) selectNode(hit);
   });
   onMap("mousemove", (e: { point: { x: number; y: number }; originalEvent?: MouseEvent }) => {
     if (e.originalEvent && e.originalEvent.buttons) return;
@@ -585,6 +589,8 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
   const scheme = matchMedia("(prefers-color-scheme: dark)");
   const onScheme = () => {
     theme = readTheme(root);
+    applyTones(theme);
+    hud.setTheme(theme);
     if (!compositor.repool()) map.triggerRepaint();
   };
   scheme.addEventListener("change", onScheme);
@@ -652,8 +658,6 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
   // The initial inset is read at creation (a direct load with the panel open starts centred).
   inset = clampInset(opts.insetRight, root.clientWidth || 1);
   map.setPadding(padObj(inset > 0 ? 2 * insetShiftBuf(inset, cellCss) * cellCss : 0));
-  renderAttribution(manager.status);
-  attributionEl.style.right = `${8 + Math.max(0, inset)}px`;
 
   // ---- go ------------------------------------------------------------------------------------------------------------
   void (async () => {
@@ -684,7 +688,6 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
     setCamera(v, o) {
       if (o?.inset !== undefined) {
         inset = clampInset(o.inset, root.clientWidth || 1);
-        attributionEl.style.right = `${8 + inset}px`;
       }
       const right = 2 * insetShiftBuf(inset, cellCss) * cellCss;
       // Steady zoom: the centre moves by whole art cells (core/snap.ts), so the picture translates rigidly. The map zoom
@@ -711,6 +714,9 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
     setSelected(slug, o) {
       selected = slug;
       hud.setSelected(slug);
+      routes = routesOf(slug);
+      syncRouteStops(slug);
+      (map.getSource("routes") as { setData?(d: unknown): void } | undefined)?.setData?.(routes);
       const place = slug ? places.get(slug) : undefined;
       if (place && o?.fly) map_.flyTo({ lon: place.lon, lat: place.lat, zoom: o.zoom ?? Math.max(map.getZoom(), 14.5) });
       else map.triggerRepaint();
@@ -719,6 +725,9 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
       focused = slug;
       hud.setFocused(slug);
       map.triggerRepaint();
+    },
+    setHovered(slug) {
+      hud.setHovered(slug);
     },
     setReducedMotion(on) {
       reduced = on;
@@ -738,7 +747,6 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
       inset = clampInset(px, root.clientWidth || 1);
       // 0 <-> positive eases like the panel's slide; any other change (a viewport resize) applies at once.
       setPadding(inset, (was === 0) !== (inset === 0) && !opts.embedded);
-      attributionEl.style.right = `${8 + inset}px`;
     },
     getView: viewNow,
     setReveal(on, o?: RevealOptions) {
@@ -754,6 +762,8 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
       compositor.suspend(!on);
       if (on) map.triggerRepaint();
     },
+    seedFrom: (canvas, g) => compositor.seed(canvas, g),
+    crossfadeTo: (canvas, g) => compositor.crossfadeTo(canvas, g),
     getTileStatus: () => manager.status,
     getMaxZoom: () => manager.status.maxZoom,
     resize() {
@@ -790,7 +800,7 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
       return {
         renders: () => renders,
         passes: () => compositor.stats.passes,
-        isAnimating: () => animating() || map.isMoving(),
+        isAnimating: () => animating() || map.isMoving() || compositor.easing > 0,
         cellCss: () => cellCss,
         project(slug) {
           const at = hud.markerAt(slug);
@@ -799,10 +809,14 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
           return { x: r.left + at.x, y: r.top + at.y };
         },
         shown: () => hud.shown(),
+        lod: () => hud.snapshot(),
         readCodes: () => compositor.readCodes(),
         readPresentedLevels: () => compositor.readPresentedLevels(),
         easing: () => compositor.easing,
+        easeStats: () => ({ eases: compositor.stats.eases, warp: { ...compositor.stats.lastWarp }, meshMs: compositor.stats.lastMeshMs }),
         gpuSync: () => compositor.sync(),
+        profile: (on) => compositor.profile(on),
+        passTimings: () => compositor.timings(),
         lastPassMs: () => compositor.stats.lastPassMs,
         loseContext(which, lose) {
           if (which === "overlay") compositor.loseContext(lose);
@@ -818,7 +832,6 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
           overlayRestores: compositor.stats.contextRestores,
         }),
         tile: () => manager.debug() as ReturnType<StreetDebug["tile"]>,
-        attribution: () => attributionText(attributionFor({ state: manager.status.state, source: manager.status.source, primaryUrl: opts.tiles.primaryUrl, primaryIsPmtiles })),
         map: () => map,
         renderNow() {
           map.redraw();

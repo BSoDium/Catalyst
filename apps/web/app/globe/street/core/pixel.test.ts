@@ -3,10 +3,17 @@ import { TUNING } from "../../engine/tuning";
 import { EasedValue, cellCssFor, cellDevicePx, maskCoverage, revealRadiusDevice, sharpFraction, showsSharp } from "./pixel";
 
 describe("sizes follow the globe's tuning", () => {
-  it("is 3 CSS px on desktop and 2 below 520 px, rounded to whole device pixels", () => {
-    expect(cellCssFor(1440, 900, 2)).toBe(3);
+  it("is ART_PIXEL: 2.5 CSS px on desktop at an even DPR (5 device px at DPR 2), 2 below 520 px, always whole device pixels", () => {
+    expect(cellCssFor(1440, 900, 2)).toBe(2.5);
     expect(cellCssFor(390, 844, 3)).toBe(2);
+    expect(cellCssFor(1440, 900, 1)).toBe(2); // 2.5 is not a whole device pixel at DPR 1: ties go down, never coarser
+    expect(cellCssFor(1440, 900, 4)).toBe(2.5);
+    for (const dpr of [1, 1.25, 1.5, 2, 2.625, 3, 4]) {
+      const cell = cellCssFor(1440, 900, dpr);
+      expect(Number.isInteger(Math.round(cell * dpr * 1e6) / 1e6)).toBe(true);
+    }
     expect(cellDevicePx(3, 2)).toBe(6);
+    expect(cellDevicePx(2.5, 2)).toBe(5);
     expect(cellDevicePx(2, 2.625)).toBe(5);
     expect(cellDevicePx(0.1, 1)).toBe(1);
   });

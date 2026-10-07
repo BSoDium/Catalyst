@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { expInterp } from "../core/art-line";
 import { roleLevel } from "../../engine/palette";
 import { ERASE, MAX_LEVELS } from "../core/palette";
-import { GRATICULE_FADE, DEFAULT_HANDOFF, SPECS, buildStreetStyle, graticule, layerIds, linePaint, type Schema } from "./street-style";
-import { decodeLevel, levelOfPaint } from "./probe";
+import { BORDER_TILE_MINZOOM, GRATICULE_FADE, DEFAULT_HANDOFF, SPECS, WORLD_PLACEHOLDER_BELOW, borderHandoff, hasPlaceholder, buildStreetStyle, graticule, layerIds, linePaint, type Schema } from "./street-style";
+import { decodeLevel, evalFilter, levelOfPaint } from "./probe";
 
 const empty: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
 const TILES = { tiles: ["cat-p1://https://tiles.example/{z}/{x}/{y}.pbf"], minzoom: 0, maxzoom: 14, bounds: null };
@@ -47,10 +47,17 @@ describe("buildStreetStyle", () => {
       });
       it("hands the world coastline over to tile water at the schema's hand-over zoom", () => {
         const h = DEFAULT_HANDOFF[schema];
-        const world = s.layers.find((l) => l.id === "world-coast") as { maxzoom: number };
+        const world = s.layers.find((l) => l.id === "world-coast") as { maxzoom: number; layout?: { visibility?: string } };
         const edge = s.layers.find((l) => l.id === "water-edge") as { minzoom: number };
-        expect(world.maxzoom).toBe(edge.minzoom);
         expect(edge.minzoom).toBe(h);
+        if (hasPlaceholder(h, true)) {
+          // global tiles: the tile coast is drawn from the first zoom; the world coast is a placeholder under it (hidden until tiles are loading)
+          expect(world.maxzoom).toBe(WORLD_PLACEHOLDER_BELOW);
+          expect(world.layout?.visibility).toBe("none");
+        } else {
+          expect(world.maxzoom).toBe(edge.minzoom);
+          expect(world.layout).toBeUndefined();
+        }
       });
       it("is a globe with a single tile source whose tile URLs carry the instance's protocol", () => {
         expect(s.projection).toEqual({ type: "globe" });
@@ -174,3 +181,87 @@ describe("line rules: widths in art pixels", () => {
     }
   });
 });
+
+describe("borders: one line per frontier (owner report: a wavy second line beside the Mauritania / Western Sahara / Morocco / Algeria border)", () => {
+  // Real attributes of OpenFreeMap (OpenMapTiles) boundary features, read from its tiles (scripts/street/border-probe.mjs).
+  const OMT = {
+    deFactoLand: { admin_level: 2, disputed: 0, maritime: 0, adm0_l: "DZA", adm0_r: "MAR" }, // Morocco / Algeria
+    kosovoSerbia: { admin_level: 2, maritime: 0, adm0_l: "XKK", adm0_r: "SRB" }, // no `disputed` at all
+    moroccanWall: { admin_level: 2, disputed: 1, maritime: 0, disputed_name: "Murdesecuritemarocain" }, // the berm beside the Mauritania / Western Sahara border
+    kashmirLoc: { admin_level: 2, disputed: 1, maritime: 0, disputed_name: "LineofControl" },
+    crimeaClaim: { admin_level: 2, disputed: 1, maritime: 1, claimed_by: "RU" },
+    territorialSea: { admin_level: 2, disputed: 0, maritime: 1, adm0_r: "ESP" },
+    disputedSea: { admin_level: 2, disputed: 1, maritime: 1 },
+    region: { admin_level: 4, disputed: 0, maritime: 0 },
+    regionAtSea: { admin_level: 4, disputed: 0, maritime: 1 },
+    disputedRegion: { admin_level: 4, disputed: 1, maritime: 0 },
+  };
+  const PM = {
+    deFactoLand: { kind: "country", kind_detail: 2, disputed: false },
+    noFlag: { kind: "country", kind_detail: 2 },
+    disputed: { kind: "country", kind_detail: 2, disputed: true, brk_a3: "B07" },
+    region: { kind: "region", kind_detail: 4 },
+    disputedRegion: { kind: "region", kind_detail: 4, disputed: true },
+    county: { kind: "county", kind_detail: 6 },
+  };
+  const filterOf = (id: string, schema: Schema) => {
+    const spec = SPECS.find((x) => x.id === id)!;
+    return (schema === "protomaps" ? spec.pm : spec.omt)!.filter;
+  };
+  const drawn = (id: string, schema: Schema, props: Record<string, unknown>) => evalFilter(filterOf(id, schema), props) === true;
+
+  it("OpenMapTiles: the de-facto land border is the one solid country line; disputed, claimed and maritime lines are never drawn", () => {
+    expect(drawn("boundary-country", "openmaptiles", OMT.deFactoLand)).toBe(true);
+    expect(drawn("boundary-country", "openmaptiles", OMT.kosovoSerbia)).toBe(true);
+    for (const k of ["moroccanWall", "kashmirLoc", "crimeaClaim", "territorialSea", "disputedSea", "region"] as const) expect(drawn("boundary-country", "openmaptiles", OMT[k]), k).toBe(false);
+  });
+  it("Protomaps: the same rule (disputed is a boolean there, and a missing flag is not disputed)", () => {
+    expect(drawn("boundary-country", "protomaps", PM.deFactoLand)).toBe(true);
+    expect(drawn("boundary-country", "protomaps", PM.noFlag)).toBe(true);
+    for (const k of ["disputed", "region", "county"] as const) expect(drawn("boundary-country", "protomaps", PM[k]), k).toBe(false);
+  });
+  it("region borders follow the same rule in both schemas: no maritime, no disputed duplicates, and never a country line", () => {
+    expect(drawn("boundary-region", "openmaptiles", OMT.region)).toBe(true);
+    for (const k of ["regionAtSea", "disputedRegion", "deFactoLand", "moroccanWall"] as const) expect(drawn("boundary-region", "openmaptiles", OMT[k]), k).toBe(false);
+    expect(drawn("boundary-region", "protomaps", PM.region)).toBe(true);
+    for (const k of ["disputedRegion", "deFactoLand", "disputed"] as const) expect(drawn("boundary-region", "protomaps", PM[k]), k).toBe(false);
+  });
+  it("a feature is never drawn twice: no OpenMapTiles boundary passes both the country and the region filter", () => {
+    for (const [k, props] of Object.entries(OMT)) {
+      expect(drawn("boundary-country", "openmaptiles", props) && drawn("boundary-region", "openmaptiles", props), k).toBe(false);
+    }
+    for (const level of [0, 1, 2, 3, 4, 5, 6, 7, 8, 10]) for (const disputed of [0, 1, undefined]) for (const maritime of [0, 1, undefined]) {
+      const props = { admin_level: level, disputed, maritime };
+      expect(drawn("boundary-country", "openmaptiles", props) && drawn("boundary-region", "openmaptiles", props)).toBe(false);
+    }
+  });
+  it("the bundled Natural Earth borders and the tile boundary never overlap in zoom: one source per zoom, both schemas, any hand-over", () => {
+    for (const schema of ["protomaps", "openmaptiles"] as const) {
+      const st = make(schema).layers as unknown as { id: string; minzoom?: number; maxzoom?: number }[];
+      const world = st.find((l) => l.id === "world-borders")!;
+      const tile = st.find((l) => l.id === "boundary-country")!;
+      expect(tile.minzoom, schema).toBe(borderHandoff(DEFAULT_HANDOFF[schema]));
+      // a source with global tiles keeps the world borders only as a placeholder (hidden, switched on while tiles load: see WORLD_PLACEHOLDER_BELOW)
+      expect(world.maxzoom, schema).toBe(hasPlaceholder(DEFAULT_HANDOFF[schema], true) ? WORLD_PLACEHOLDER_BELOW : tile.minzoom);
+      expect(tile.maxzoom).toBeUndefined();
+    }
+    for (const handoff of [3, 4.5, 5, 6, 8.5]) {
+      const st = buildStreetStyle({ schema: "openmaptiles", tiles: TILES, coastlines: empty, borders: empty, graticule: empty, routes: empty, handoffZoom: handoff }).layers as unknown as { id: string; minzoom?: number; maxzoom?: number }[];
+      expect(st.find((l) => l.id === "world-borders")!.maxzoom, `handoff ${handoff}`).toBe(hasPlaceholder(handoff, true) ? WORLD_PLACEHOLDER_BELOW : st.find((l) => l.id === "boundary-country")!.minzoom);
+      expect(st.find((l) => l.id === "boundary-country")!.minzoom).toBeGreaterThanOrEqual(BORDER_TILE_MINZOOM);
+    }
+  });
+  it("without a tile source the world borders run at every zoom (nothing to hand over to)", () => {
+    const s = buildStreetStyle({ schema: "openmaptiles", tiles: null, coastlines: empty, borders: empty, graticule: empty, routes: empty });
+    expect((s.layers.find((l) => l.id === "world-borders") as { maxzoom: number }).maxzoom).toBe(24);
+  });
+  it("the country line is solid at the loudest map tone from its first zoom (no dotted claim line, no fade): same look in both schemas", () => {
+    for (const schema of ["protomaps", "openmaptiles"] as const) {
+      const l = (make(schema).layers as unknown as L[]).find((x) => x.id === "boundary-country")!;
+      expect(l.paint["line-dasharray"]).toBeUndefined();
+      expect(levelOfPaint(l.paint["line-color"], 5.01)).toBe(roleLevel("peak"));
+    }
+  });
+});
+
+type L = { id: string; minzoom?: number; maxzoom?: number; paint: Record<string, unknown> };

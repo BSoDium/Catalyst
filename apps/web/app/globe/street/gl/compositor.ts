@@ -13,6 +13,8 @@
 import type { Map as MLMap } from "maplibre-gl";
 import { PixelPass, type PassParams } from "./pixel-pass";
 import { perfEnd, perfStart } from "../../engine/perf";
+import { EASE, matchRadius, stepBudget } from "../core/ease";
+import { buildWarpMesh, type WarpCamera, type WarpMesh } from "../core/warp";
 
 export interface CompositorStats {
   passes: number;
@@ -20,6 +22,12 @@ export interface CompositorStats {
   lastUploadMs: number;
   contextLosses: number;
   contextRestores: number;
+  /** ease passes run (map frames and settle ticks) */
+  eases: number;
+  /** the warp of the last map frame: kind, match radius, largest displacement in cells */
+  lastWarp: { kind: string; radius: number; maxShift: number };
+  /** CPU ms of the last warp mesh build */
+  lastMeshMs: number;
 }
 
 export interface OutputSize {
@@ -32,16 +40,17 @@ export interface OutputSize {
 }
 
 /**
- * Tile fade: while the camera rests, cells that appear or disappear (tiles loading and unloading) ease through the grey
- * levels instead of popping; while it moves (or under reduced motion) the picture is presented as classified, so nothing
- * ghosts or smears. One level per tick, a tick every `tickMs`; the loop stops by itself when it has converged, so an idle
- * map costs no frame.
+ * Tile fade (temporal ease, core/ease.ts): content that appears or disappears for any reason other than the camera moving it (a tile
+ * arriving after a slow request, a tile leaving, a tone step, the globe-to-street cut) goes through the grey levels at `msPerLevel`
+ * per level, at rest AND while the camera pans or zooms (the previous presented image is looked up where the camera had it). The
+ * ease keeps running by itself after the last map frame until the presented image has reached the classified one (`settle`), then
+ * the loop stops: an idle map costs no frame.
  */
 export const TILE_FADE = {
-  /** The camera counts as resting this long (ms) after its last movement. */
-  steadyMs: 100,
-  /** Time between two one-level steps (ms): a fade across all 8 levels takes about 7 x this. */
-  tickMs: 32,
+  /** Time per palette level of a fade (ms): the loudest map tone is reached in about a quarter of a second. */
+  msPerLevel: EASE.msPerLevel,
+  /** A gap since the last ease pass longer than this (ms) is idle time, not fade time: the fade restarts with one frame of progress. */
+  idleGapMs: 250,
 } as const;
 
 export interface CompositorHooks {
@@ -49,8 +58,11 @@ export interface CompositorHooks {
   size(): OutputSize;
   /** Live pass parameters for an output of the given buffer size. */
   params(outW: number, outH: number): PassParams;
-  /** The camera has not moved for a while (the tile fade only runs then). Absent = never steady (no fade). */
-  steady?(): boolean;
+  /**
+   * The camera of the frame the map just rendered, for the motion compensation of the ease (core/warp.ts). Absent: the camera is
+   * taken as fixed, so every change eases (correct at rest, ghosts while moving).
+   */
+  camera?(): WarpCamera | null;
   onContextChange?(lost: boolean): void;
 }
 
@@ -70,7 +82,16 @@ const SYNC_BUF = new Uint8Array(4);
 
 export class Compositor {
   readonly canvas: HTMLCanvasElement;
-  readonly stats: CompositorStats = { passes: 0, lastPassMs: 0, lastUploadMs: 0, contextLosses: 0, contextRestores: 0 };
+  readonly stats: CompositorStats = {
+    passes: 0,
+    lastPassMs: 0,
+    lastUploadMs: 0,
+    contextLosses: 0,
+    contextRestores: 0,
+    eases: 0,
+    lastWarp: { kind: "identity", radius: 0, maxShift: 0 },
+    lastMeshMs: 0,
+  };
   /** Called synchronously at the end of every composited frame with a fresh map upload (measurement hooks read the art here). */
   onFrame: (() => void) | null = null;
   private gl: WebGL2RenderingContext;
@@ -83,10 +104,18 @@ export class Compositor {
   private suspended = false;
   private disposed = false;
   private fadeOn = true;
-  /** Ease ticks still to run (0 = presented = classified). */
-  private easeLeft = 0;
+  /** Settle loop: ease passes keep running (identity warp) until this time, so a fade that started on the last map frame finishes. */
+  private settleUntil = 0;
   private easeRaf = 0;
+  /** Time of the last ease pass and the fraction of a level not yet spent (the budget is time based, not frame based). */
   private easeLast = 0;
+  private carry = 0;
+  /** Camera of the presented image (null: none known, the next pair is taken as identity). */
+  private prevCam: WarpCamera | null = null;
+  /** A seed was just written: the next ease shows it as is (no progress), then crosses over to the classified image. */
+  private seeded = false;
+  /** Another renderer's image is the target (the street-to-globe cut): map frames are ignored. */
+  private external = false;
   private size = { w: 0, h: 0 };
   private onRender = () => this.frame();
   private onLost = (e: Event) => {
@@ -155,11 +184,13 @@ export class Compositor {
     return this.lost || this.gl.isContextLost();
   }
 
-  /** Keep the last presented frame (true) or resume following the map (false; repaints once). */
+  /**
+   * Keep the last presented frame (true) or resume following the map (false; repaints once). The presented image is kept (and the
+   * camera it was drawn for), so what arrives while the overlay was held eases in instead of popping (a style swap: the first load).
+   */
   hold(on: boolean): void {
     this.held = on;
-    this.stopEase();
-    this.pass?.resetEase();
+    this.stopSettle();
     if (!on) this.map.triggerRepaint();
   }
 
@@ -167,55 +198,62 @@ export class Compositor {
   setFade(on: boolean): void {
     this.fadeOn = on;
     if (on) return;
-    this.stopEase();
+    this.stopSettle();
     if (this.ready && !this.isLost && this.pass && this.pass.srcW > 0) {
       this.pass.ease(255);
       this.draw(false);
     }
   }
 
-  private stopEase(): void {
-    this.easeLeft = 0;
+  private stopSettle(): void {
+    this.settleUntil = 0;
     if (this.easeRaf) cancelAnimationFrame(this.easeRaf);
     this.easeRaf = 0;
   }
 
-  /** Ease tick loop: a one-level step every `tickMs`, until the presented image has reached the target. */
-  private easeTick = (ts: number) => {
+  /**
+   * Settle loop (rAF): after the last map frame the ease keeps running with the camera fixed until every cell has reached its
+   * target. One pass per whole level of progress (about every `msPerLevel`), none while the tab is hidden; it stops by itself.
+   */
+  private settleTick = () => {
     this.easeRaf = 0;
     if (this.disposed || !this.pass || this.isLost || this.held || this.suspended) return;
-    if (ts - this.easeLast >= TILE_FADE.tickMs - 2) {
-      this.easeLast = ts;
-      this.pass.ease(1);
-      this.easeLeft--;
+    const now = performance.now();
+    const { step, carry } = stepBudget(this.carry, now - this.easeLast);
+    if (step >= 1) {
+      this.carry = carry;
+      this.easeLast = now;
+      this.pass.ease(step, null, 0);
+      this.stats.eases++;
       this.draw(false);
     }
-    if (this.easeLeft > 0 && !document.hidden) this.easeRaf = requestAnimationFrame(this.easeTick);
-    else if (this.easeLeft > 0) this.stopEase();
+    if (now < this.settleUntil && !document.hidden) this.easeRaf = requestAnimationFrame(this.settleTick);
+    else this.settleUntil = 0;
   };
 
-  private startEase(levels: number): void {
-    this.easeLeft = levels;
-    if (!this.easeRaf && !document.hidden) {
-      this.easeLast = performance.now();
-      this.easeRaf = requestAnimationFrame(this.easeTick);
-    }
+  private startSettle(levels: number): void {
+    this.settleUntil = performance.now() + levels * TILE_FADE.msPerLevel + 80;
+    if (!this.easeRaf && !document.hidden) this.easeRaf = requestAnimationFrame(this.settleTick);
   }
 
   /**
    * Stop following the map (true): the map may keep rendering (tiles load) but nothing is copied or drawn. Resuming
-   * repaints once. The handover keeps the street map out of the frame while the globe is the visible renderer.
+   * repaints once. The handover keeps the street map out of the frame while the globe is the visible renderer. What was presented
+   * is stale by then (the camera moved), so the next image is taken as it is unless the host seeds one (`seed`).
    */
   suspend(on: boolean): void {
     if (on === this.suspended) return;
     this.suspended = on;
-    this.stopEase();
-    this.pass?.resetEase();
+    this.stopSettle();
+    this.pass?.invalidate();
+    this.prevCam = null;
+    this.seeded = false;
+    this.external = false;
     if (!on) this.map.triggerRepaint();
   }
 
   private frame(): void {
-    if (!this.ready || this.isLost || this.held || this.suspended || !this.pass) return;
+    if (!this.ready || this.isLost || this.held || this.suspended || this.external || !this.pass) return;
     const t0 = performance.now();
     this.pass.uploadCanvas(this.map.getCanvas());
     this.stats.lastUploadMs = performance.now() - t0;
@@ -226,19 +264,90 @@ export class Compositor {
   }
 
   /**
-   * The new classified image is in; present it, instantly while the picture moves (and under reduced motion), else ease
-   * towards it. Easing never runs during motion: an eased image of a moving map would smear.
+   * The new classified image is in: present it through the temporal ease (core/ease.ts). The previous presented image is warped by
+   * the camera delta since it was drawn, so a line that only moved keeps its tone and a tile that arrived (or left) fades in (out)
+   * at `msPerLevel` per level, whether the camera rests or moves. Under reduced motion (and without the native grid) the classified
+   * image is presented as it is.
    */
   private present(levels: number): void {
     const pass = this.pass!;
-    const ease = this.fadeOn && this.options.native && this.hooks.steady?.() === true;
-    if (!ease) {
-      this.stopEase();
+    const cam = this.hooks.camera?.() ?? null;
+    if (!this.fadeOn || !this.options.native) {
+      this.stopSettle();
       pass.ease(255);
-    } else {
-      pass.ease(1);
-      this.startEase(levels - 1);
+      this.prevCam = cam;
+      return;
     }
+    const now = performance.now();
+    let mesh: WarpMesh | null = null;
+    let radius = 0;
+    if (pass.valid && this.prevCam && cam) {
+      if (Math.abs(this.prevCam.cell - cam.cell) > 1e-9) pass.invalidate(); // another grid: nothing to look up
+      else {
+        const t = performance.now();
+        mesh = buildWarpMesh(this.prevCam, cam, pass.artW, pass.artH);
+        this.stats.lastMeshMs = performance.now() - t;
+        radius = matchRadius(mesh);
+        this.stats.lastWarp = { kind: mesh.kind, radius, maxShift: mesh.maxShift };
+        if (mesh.maxShift > EASE.jumpCells) {
+          // a camera jump: the previous image is of another view, take this one as it is
+          pass.invalidate();
+          mesh = null;
+          radius = 0;
+        }
+      }
+    }
+    // The time since the last pass is fade time while a fade is running; a longer gap was idle (or a pause), a frame of progress then.
+    const gap = now - this.easeLast;
+    const dt = this.seeded ? 0 : gap > TILE_FADE.idleGapMs ? 8 : gap;
+    this.seeded = false;
+    const { step, carry } = stepBudget(this.carry, dt);
+    this.carry = carry;
+    this.easeLast = now;
+    pass.ease(step, mesh, radius);
+    this.stats.eases++;
+    this.prevCam = cam;
+    this.startSettle(levels - 1);
+  }
+
+  /**
+   * Start the presented image from ANOTHER renderer's canvas (the Three.js globe, which draws on the same art grid): the globe-to-street
+   * cut. Call right after `suspend(false)` and in the task that drew the canvas (a WebGL canvas is cleared once composited), before
+   * the camera is pushed: the first frame the map renders afterwards shows the seed exactly, then every cell crosses over to the
+   * street image at the ease's pace. `grid` is where the canvas's art cells sit (`left` and `top` in CSS px from the container's
+   * corner, `cell` its CSS px per cell). Returns false when it cannot (no native grid, a lost context): the cut is then instant.
+   */
+  seed(canvas: HTMLCanvasElement, grid: { cell: number; left: number; top: number }): boolean {
+    if (!this.ready || this.isLost || !this.pass || !this.options.native || !this.fadeOn) return false;
+    const { w, h } = this.hooks.size();
+    const p = this.hooks.params(w, h);
+    this.pass.uploadCanvasSource(canvas);
+    this.pass.levelsFromCanvas("presented", p.levels, w, h, [-grid.left / grid.cell, -grid.top / grid.cell]);
+    this.prevCam = null; // the seed was drawn for the camera the host is about to push
+    this.seeded = true;
+    this.carry = 0;
+    return true;
+  }
+
+  /**
+   * The street-to-globe cut: while the host keeps the camera in step, make the OTHER renderer's canvas the target. Each call
+   * classifies the canvas (same task as its drawing) and eases the presented image towards it; the host hides this renderer once
+   * `easing` is 0. Pass null to resume following the map.
+   */
+  crossfadeTo(canvas: HTMLCanvasElement | null, grid?: { cell: number; left: number; top: number }): void {
+    if (!canvas || !grid) {
+      this.external = false;
+      return;
+    }
+    if (!this.ready || this.isLost || !this.pass || !this.options.native || !this.fadeOn || this.held || this.suspended) return;
+    this.external = true;
+    const { w, h } = this.hooks.size();
+    const p = this.hooks.params(w, h);
+    this.pass.uploadCanvasSource(canvas);
+    this.pass.levelsFromCanvas("target", p.levels, w, h, [-grid.left / grid.cell, -grid.top / grid.cell]);
+    this.present(p.levels.length);
+    this.pass.presentPass(p, w, h);
+    this.stats.passes++;
   }
 
   private draw(pool: boolean): void {
@@ -297,9 +406,17 @@ export class Compositor {
     return this.ready && !this.isLost && this.pass && this.pass.artW > 0 ? this.pass.readPresentedLevels() : null;
   }
 
-  /** Ease ticks still to run (0 = the presented image is the classified one). Measurement. */
+  /** Settle ticks (about `msPerLevel` each) still to run: 0 = the presented image has reached the classified one and the loop has stopped. Measurement. */
   get easing(): number {
-    return this.easeLeft;
+    return this.settleUntil > 0 ? Math.max(1, Math.ceil((this.settleUntil - performance.now()) / TILE_FADE.msPerLevel)) : 0;
+  }
+
+  /** Per-pass GPU timers on or off (measurement only), and their means in ms per pass name. */
+  profile(on: boolean): boolean {
+    return this.pass?.profile(on) ?? false;
+  }
+  timings(): Record<string, { ms: number; n: number }> {
+    return this.pass?.timings() ?? {};
   }
 
   /** Block until the GPU has finished this context's queued work (benchmark only). */
@@ -320,7 +437,7 @@ export class Compositor {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
-    this.stopEase();
+    this.stopSettle();
     this.ready = false;
     this.map.off("render", this.onRender);
     this.canvas.removeEventListener("webglcontextlost", this.onLost);

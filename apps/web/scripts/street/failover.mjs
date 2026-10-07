@@ -35,7 +35,11 @@ try {
     const s = await statuses(page);
     expect("A primary blocked -> fallback", s.at(-1).state === "fallback" && s.at(-1).reason === "probe-failed", { ms_from_navigation: dt, s });
     await page.waitForFunction(() => window.__streetDebug.map().areTilesLoaded());
-    expect("A attribution switches to Protomaps", (await page.evaluate(() => window.__streetDebug.attribution())).includes("Protomaps"), null);
+    await page.click("[data-attribution]");
+    const credits = await page.locator("dialog[open]").innerText();
+    expect("A the info button opens the credits (OpenStreetMap, Protomaps)", credits.includes("OpenStreetMap contributors") && credits.includes("Protomaps"), credits);
+    await page.keyboard.press("Escape");
+    await page.waitForSelector("dialog[open]", { state: "detached" });
     expect("A no page errors", !logs.some((l) => l.startsWith("pageerror")), logs.slice(0, 5));
     await page.context().close();
   }
@@ -86,9 +90,8 @@ try {
     await page.goto(dev("/dev/street", { fallbackUrl: FALLBACK_URL, hud: 0, timings: fast }));
     await waitState(page, "capped");
     await page.waitForTimeout(1500);
-    const st = await page.evaluate(() => ({ max: window.__street.getMaxZoom(), zoom: window.__street.getView().zoom, attribution: window.__streetDebug.attribution(), status: window.__street.getTileStatus() }));
+    const st = await page.evaluate(() => ({ max: window.__street.getMaxZoom(), zoom: window.__street.getView().zoom, status: window.__street.getTileStatus() }));
     expect("D both blocked -> capped, zoom capped", st.status.state === "capped" && st.max === 6 && st.zoom <= 6.01, st);
-    expect("D attribution shows only the bundled data", st.attribution === "Natural Earth", st.attribution);
     const t0 = await page.evaluate(() => performance.now());
     blocked = false;
     await waitState(page, "primary", 30000);

@@ -4,10 +4,11 @@
  * that never reaches the server or the globe), forwards prop changes to it and disposes it on unmount.
  *
  * Accessibility: the map, the pass canvas and the marker/label overlay are decoration plus pointer input and are
- * `aria-hidden` (the engine marks them); the only exposed text is the attribution (real links, always visible) and
- * the status message when WebGL is unavailable or the context was lost. The place list is the accessible path.
+ * `aria-hidden` (the engine marks them); the only exposed content is the attribution button (opens the credits, real
+ * links) and the status message when WebGL is unavailable or the context was lost. The place list is the accessible path.
  */
 import { useEffect, useRef, useState } from "react";
+import { AttributionButton } from "~/components/attribution-button";
 import type { GlobePlace, GlobeRoute } from "../types";
 import type { StreetDebug, StreetMap, StreetMapOptions, StreetTileConfig, StreetView, TileStatus } from "./types";
 
@@ -164,6 +165,7 @@ export default function StreetMapCanvasImpl({
       data-tile-state={tileState}
       className="relative size-full overflow-hidden select-none"
     >
+      <AttributionButton tiles={tiles} insetRight={insetRight} reducedMotion={reducedMotion} />
       {(status === "unavailable" || status === "lost") && (
         <p
           role="status"

@@ -84,9 +84,16 @@ export function inkOpacityStops(widthArt: Stops, base = 1.5, step = 0.25, hollow
   if (hollowFrom !== null && hollowFrom > z0 && hollowFrom < z1) {
     // make the switch sharp at the hollow zoom, not one sample later
     out.push([hollowFrom - 1e-3, inkOpacityFor(expInterp(widthArt, hollowFrom - 1e-3, base))], [hollowFrom, THIN_INK]);
-    out.sort((a, b) => a[0] - b[0]);
   }
-  return out;
+  // A width that STEPS (two stops a hair apart, e.g. 1 to 2 art px at z9) must switch the ink class with it: sample every stop and a hair
+  // before it, so a 2 px line is never painted at the thin ink strength between two coarse samples.
+  for (const [z] of widthArt) {
+    if (z <= z0 || z >= z1) continue;
+    for (const zz of [z - 1e-3, z]) if (!hollowFrom || zz < hollowFrom - 1e-3 || zz >= hollowFrom) out.push([Math.round(zz * 1000) / 1000, hollowFrom !== null && zz >= hollowFrom ? THIN_INK : inkOpacityFor(expInterp(widthArt, zz, base))]);
+  }
+  out.sort((a, b) => a[0] - b[0]);
+  // strictly ascending stops (MapLibre requires it): drop a sample that repeats a zoom
+  return out.filter((p, i) => i === 0 || p[0] > out[i - 1]![0]);
 }
 
 export interface HollowOptions {

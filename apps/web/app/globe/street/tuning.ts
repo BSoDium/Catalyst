@@ -5,7 +5,7 @@
 import { TUNING } from "../engine/tuning";
 
 export const STREET_TUNING = {
-  /** Art pixel size in CSS px: 3 on desktop, 2 below 520 px, a whole number of device px (the globe's rule). */
+  /** Art pixel size in CSS px: `ART_PIXEL` (engine/tuning.ts), a whole number of device px (the globe's rule). */
   pixelSize: TUNING.pixelSize,
   /** Hit slop around labels and markers in CSS px per pointer type (the globe's values). */
   labelSlop: TUNING.labelSlop,
@@ -15,8 +15,11 @@ export const STREET_TUNING = {
   maxLat: TUNING.maxLat,
   /** A marker is hidden, as a whole, closer than this to the globe silhouette, in art pixels (the globe's value). */
   markerLimbClearance: TUNING.markerLimbClearance,
-  /** MapLibre zoom range of the street map. 17.5 over-zooms OpenFreeMap (z14) and the fallback cleanly. */
-  minZoom: 2,
+  /**
+   * MapLibre zoom range of the street map. 17.5 over-zooms OpenFreeMap (z14) and the fallback cleanly. The minimum is 1: the cut to the
+   * street map is at unified zoom 3.7, which is map zoom 3.7 + log2 cos(lat): 1.9 at 70 degrees, 1.2 at 78, so the map can follow the globe there.
+   */
+  minZoom: 1,
   maxZoom: TUNING.streetMapMaxZoom,
   /** Zoom from which every label may show (subject to collisions); below it a priority floor applies. */
   allLabelsZoom: 8,

@@ -19,7 +19,7 @@ try {
     throw e;
   }
   await page.screenshot({ path: `${OUT_DIR}/${name}.png` });
-  console.log(JSON.stringify({ tile: await page.evaluate(() => window.__streetDebug.tile().status), attribution: await page.evaluate(() => window.__streetDebug.attribution()), logs }, null, 1));
+  console.log(JSON.stringify({ tile: await page.evaluate(() => window.__streetDebug.tile().status), logs }, null, 1));
 } finally {
   await browser.close();
   await tiles.stop();

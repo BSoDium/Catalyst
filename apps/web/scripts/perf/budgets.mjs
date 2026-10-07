@@ -24,7 +24,10 @@ export const BUDGETS = {
   "s2-hcmc": { missed: 4, maxMs: 80, mainMs: 4.2, rafMs: 2.4, gpuMean: 4.5, gpuP95: 9, dropPct: 3, heapMB: 90 },
   "s3-in": { missed: 4, maxMs: 90, mainMs: 3.2, rafMs: 1.8, gpuMean: 3.5, gpuP95: 8, dropPct: 4, heapMB: 90 },
   "s3-out": { missed: 3, maxMs: 50, mainMs: 3.0, rafMs: 2.0, gpuMean: 3.0, gpuP95: 7, dropPct: 1, heapMB: 100 },
-  s4: { missed: 1, maxRatio: 1.8, mainMs: 3.4, rafMs: 2.3, gpuMean: 4.5, gpuP95: 8, dropPct: 0.5, heapMB: 90 },
+  // s4 heapMB 110 (was 90): the heap is the UNCOLLECTED size at the end of the run, so it depends on when the GC last ran: the same
+  // build measured 55 to 96 MB over runs at a 2.5 px art pixel and 94 MB three times at 3 px (2026-10-06), i.e. it did not move with
+  // the art pixel size; frame time (gpu, main, raf) is what the budget protects.
+  s4: { missed: 1, maxRatio: 1.8, mainMs: 3.4, rafMs: 2.3, gpuMean: 4.5, gpuP95: 8, dropPct: 0.5, heapMB: 110 },
   "s5-open": { missed: 1, maxRatio: 1.8, mainMs: 3.6, rafMs: 2.3, gpuMean: 5, gpuP95: 8, dropPct: 1.5, heapMB: 90 },
 };
 /** Emulated 390x844 @3 (headless, 60 Hz). No GPU budget: the timer query is too noisy on this path to separate anything. */
@@ -34,5 +37,11 @@ export const MOBILE_BUDGETS = {
 };
 /** Idle: not one frame, not one animation-frame request of the app. */
 export const IDLE_BUDGET = { draws: 0, appRafCalls: 0 };
-/** Pan stability (crawl.mjs), snapped: the picture only translates. */
-export const CRAWL_BUDGET = { snapResidualMean: 0, snapChangedShare: 0.35, unsnappedMustExceed: 0.1 };
+/**
+ * Pan stability (crawl.mjs), snapped: the picture only translates. `snapChangedPerCell`: frames whose art image changed, per art cell the
+ * map travelled. A rigid whole-cell pan changes a frame only when a cell boundary is crossed, so this is at most 1 (about 0.7 to 0.95 measured:
+ * frames that cross both axes at once count once); a frame that changes without a crossing (a re-sampled line, a flickering dash) raises it.
+ * It replaces a limit on the SHARE of changed frames (was 0.35): that share is the drag speed over the art pixel size and the frame rate
+ * ((36 + 18 px/s) / (2.5 px x 60 Hz) = 0.36 at the 2.5 px art pixel), a property of the test and the display, not of the renderer.
+ */
+export const CRAWL_BUDGET = { snapResidualMean: 0, snapChangedPerCell: 1.05, unsnappedMustExceed: 0.1 };
