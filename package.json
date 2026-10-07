@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "pnpm --filter @catalyst/web dev",
+    "dev:demo": "pnpm --filter @catalyst/web dev:demo",
     "dev:api": "pnpm --filter @catalyst/api dev",
     "typecheck": "pnpm -r --if-present typecheck",
     "test": "pnpm -r --if-present test",
@@ -16,7 +17,8 @@
     "check:leaks": "node scripts/check-public-leaks.mjs",
     "tiles:plan": "node deploy/tiles/extract-places.mjs --dry-run",
     "tiles:extract": "node deploy/tiles/extract-places.mjs",
-    "test:deploy": "node --test deploy/tiles/*.test.mjs"
+    "test:deploy": "node --test deploy/tiles/*.test.mjs",
+    "test:scripts": "node --test scripts/lib/*.test.mjs"
   },
   "devDependencies": {
     "typescript": "^5.9.0"
