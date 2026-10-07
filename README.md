@@ -90,6 +90,7 @@ No secrets exist in this repository or in either Vercel project. The Polarsteps 
 
 ## Documentation
 
+- [Owner's guide](docs/owner-guide.md): day-to-day recipes (add, edit, hide, preview, sync, publish, roll back), secrets, groups, Vercel, troubleshooting, cheat sheet
 - [Architecture overview](docs/architecture.md): layers, data flow, invariants, deployment
 - [Web architecture](docs/web-architecture.md): routing, data, focus management, globe lifecycle, measurements
 - [Design tokens](docs/design-tokens.md)
