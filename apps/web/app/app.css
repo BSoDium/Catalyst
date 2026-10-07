@@ -1,0 +1,263 @@
+@import "tailwindcss";
+
+/*
+ * Catalyst design tokens. Documented in docs/design-tokens.md.
+ * Colors are CSS variables so light/dark follow `prefers-color-scheme`.
+ * The names match shadcn/ui's contract so selectively added components work unchanged.
+ */
+
+:root {
+  color-scheme: light dark;
+
+  /* Color: monochrome. */
+  --background: #fbfbfb;
+  --foreground: #0a0a0a;
+  --muted-foreground: #595959;
+  --border: rgb(0 0 0 / 0.14);
+  --border-strong: rgb(0 0 0 / 0.4);
+  --ring: #0a0a0a;
+  --primary: #0a0a0a;
+  --primary-foreground: #fbfbfb;
+  --accent: #ececec;
+  --accent-foreground: #0a0a0a;
+  --globe-grid: rgb(0 0 0 / 0.12);
+  --globe-limb: rgb(0 0 0 / 0.3);
+
+  /* Radii. */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.875rem;
+
+  /* Motion. Mirrored in app/lib/tokens.ts (seconds); a test keeps them in sync. */
+  --duration-fast: 120ms;
+  --duration-base: 220ms;
+  --duration-slow: 360ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Layout. */
+  --navbar-height: 3.5rem;
+  /* The nav scrim fades content out under the floating nav (see `.nav-scrim`). */
+  --scrim-height: calc(var(--navbar-height) + 2.5rem);
+  /* Width of the places list when it is revealed by keyboard focus. */
+  --list-width: 18rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #f5f5f5;
+    --muted-foreground: #a3a3a3;
+    --border: rgb(255 255 255 / 0.16);
+    --border-strong: rgb(255 255 255 / 0.45);
+    --ring: #f5f5f5;
+    --primary: #f5f5f5;
+    --primary-foreground: #0a0a0a;
+    --accent: #1f1f1f;
+    --accent-foreground: #f5f5f5;
+    --globe-grid: rgb(255 255 255 / 0.14);
+    --globe-limb: rgb(255 255 255 / 0.34);
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-ring: var(--ring);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+}
+
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+
+  /* Type scale. */
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1.125rem;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.375rem;
+  --text-base: 1rem;
+  --text-base--line-height: 1.65rem;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.75rem;
+  --text-xl: 1.375rem;
+  --text-xl--line-height: 1.875rem;
+  --text-2xl: 1.75rem;
+  --text-2xl--line-height: 2.125rem;
+  --text-3xl: 2.25rem;
+  --text-3xl--line-height: 2.5rem;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  html {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    min-height: 100dvh;
+    margin: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+
+  :target {
+    scroll-margin-top: calc(var(--navbar-height) + 1.5rem);
+  }
+
+  ::selection {
+    background: var(--foreground);
+    color: var(--background);
+  }
+}
+
+@layer components {
+  /* Small caps / label style: mono, uppercase, tracked. */
+  .label {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    line-height: var(--text-xs--line-height);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+  }
+
+  /*
+   * Nav scrim: dims whatever scrolls under the floating nav so its text stays readable. A fixed band (never
+   * catches pointer events) between the content/panel (z 30) and the nav (z 40). Two parts, no hard edge:
+   *  1. the band itself: the page colour fading to transparent through an eased multi-stop gradient;
+   *  2. three child layers of progressive backdrop blur, each masked to a shorter strip, so the blur is
+   *     strongest at the top and tapers off (their blurs add up).
+   * Over the globe the band equals the page colour, so it is invisible there.
+   */
+  .nav-scrim {
+    position: fixed;
+    inset: 0 0 auto 0;
+    z-index: 35;
+    height: var(--scrim-height);
+    pointer-events: none;
+    background: linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--background) 96%, transparent) 0%,
+      color-mix(in srgb, var(--background) 95%, transparent) 8%,
+      color-mix(in srgb, var(--background) 91%, transparent) 16%,
+      color-mix(in srgb, var(--background) 85%, transparent) 24%,
+      color-mix(in srgb, var(--background) 77%, transparent) 32%,
+      color-mix(in srgb, var(--background) 67%, transparent) 40%,
+      color-mix(in srgb, var(--background) 56%, transparent) 48%,
+      color-mix(in srgb, var(--background) 45%, transparent) 56%,
+      color-mix(in srgb, var(--background) 34%, transparent) 64%,
+      color-mix(in srgb, var(--background) 23%, transparent) 72%,
+      color-mix(in srgb, var(--background) 14%, transparent) 80%,
+      color-mix(in srgb, var(--background) 7%, transparent) 88%,
+      color-mix(in srgb, var(--background) 2%, transparent) 95%,
+      transparent 100%
+    );
+  }
+
+  .nav-scrim > span {
+    position: absolute;
+    inset: 0;
+  }
+
+  .nav-scrim > span:nth-child(1) {
+    -webkit-backdrop-filter: blur(1.5px);
+    backdrop-filter: blur(1.5px);
+    -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 55%, transparent 100%);
+    mask-image: linear-gradient(to bottom, #000 0%, #000 55%, transparent 100%);
+  }
+
+  .nav-scrim > span:nth-child(2) {
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+    -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 30%, transparent 75%);
+    mask-image: linear-gradient(to bottom, #000 0%, #000 30%, transparent 75%);
+  }
+
+  .nav-scrim > span:nth-child(3) {
+    -webkit-backdrop-filter: blur(9px);
+    backdrop-filter: blur(9px);
+    -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 10%, transparent 50%);
+    mask-image: linear-gradient(to bottom, #000 0%, #000 10%, transparent 50%);
+  }
+
+  /*
+   * The places list: always in the DOM and the accessibility tree, visually hidden like a skip link, and revealed as
+   * a compact floating overlay while keyboard focus is inside it (:focus-visible, so a pointer user whose click
+   * moved focus there does not get a surprise popup). It is also shown when the globe cannot run (no WebGL), as
+   * the only way to reach the places by pointer.
+   */
+  .places-nav {
+    position: fixed;
+    top: calc(var(--navbar-height) + 0.5rem);
+    left: 1rem;
+    z-index: 45;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .places-nav:has(:focus-visible),
+  main:has([data-globe][data-state="unavailable"]) .places-nav {
+    width: min(var(--list-width), calc(100vw - 2rem));
+    height: auto;
+    max-height: calc(100dvh - var(--navbar-height) - 1.5rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    clip-path: none;
+    white-space: normal;
+    background: var(--background);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-lg);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  /* No blur, and a band that stays solid longer. */
+  .nav-scrim > span {
+    display: none;
+  }
+
+  .nav-scrim {
+    background: linear-gradient(
+      to bottom,
+      var(--background) 0%,
+      var(--background) 50%,
+      color-mix(in srgb, var(--background) 80%, transparent) 65%,
+      color-mix(in srgb, var(--background) 40%, transparent) 82%,
+      transparent 100%
+    );
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

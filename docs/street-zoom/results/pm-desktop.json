@@ -1,0 +1,642 @@
+{
+ "env": {
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36",
+  "gl": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+  "dpr": 2,
+  "projection": "globe"
+ },
+ "src": "pm",
+ "size": "1440x900",
+ "dpr": 2,
+ "throttle": 1,
+ "durMs": 8000,
+ "rows": [
+  {
+   "comp": "none",
+   "scale": 2,
+   "views": {
+    "world": {
+     "frames": 481,
+     "seconds": 8,
+     "fps": 60.13,
+     "rafIntervalMs": {
+      "p50": 16.7,
+      "p95": 16.7,
+      "max": 16.8
+     },
+     "jsMs": {
+      "p50": 1.6,
+      "p95": 2.3,
+      "max": 3.3
+     },
+     "syncedMs": {
+      "p50": 8.7,
+      "p95": 10.7,
+      "max": 16.7
+     },
+     "compositeJsMs": {
+      "p50": 0,
+      "p95": 0,
+      "max": 0
+     },
+     "uploadJsMs": {
+      "p50": 0,
+      "p95": 0,
+      "max": 0
+     },
+     "heapMB": 15.74,
+     "projection": "globe",
+     "idle": {
+      "renders": 0,
+      "rafCalls": 0,
+      "passes": 0
+     },
+     "isolated": null
+    },
+    "region": {
+     "frames": 481,
+     "seconds": 8,
+     "fps": 60.13,
+     "rafIntervalMs": {
+      "p50": 16.7,
+      "p95": 16.8,
+      "max": 16.8
+     },
+     "jsMs": {
+      "p50": 1.4,
+      "p95": 2.2,
+      "max": 2.7
+     },
+     "syncedMs": {
+      "p50": 8.4,
+      "p95": 10.3,
+      "max": 24.5
+     },
+     "compositeJsMs": {
+      "p50": 0,
+      "p95": 0,
+      "max": 0
+     },
+     "uploadJsMs": {
+      "p50": 0,
+      "p95": 0,
+      "max": 0
+     },
+     "heapMB": 35.08,
+     "projection": "globe",
+     "idle": {
+      "renders": 0,
+      "rafCalls": 0,
+      "passes": 0
+     },
+     "isolated": null
+    },
+    "street": {
+     "frames": 481,
+     "seconds": 8,
+     "fps": 60.13,
+     "rafIntervalMs": {
+      "p50": 16.7,
+      "p95": 16.8,
+      "max": 16.8
+     },
+     "jsMs": {
+      "p50": 1.2,
+      "p95": 1.8,
+      "max": 3.1
+     },
+     "syncedMs": {
+      "p50": 5.5,
+      "p95": 10.2,
+      "max": 19.2
+     },
+     "compositeJsMs": {
+      "p50": 0,
+      "p95": 0,
+      "max": 0
+     },
+     "uploadJsMs": {
+      "p50": 0,
+      "p95": 0,
+      "max": 0
+     },
+     "heapMB": 20.06,
+     "projection": "mercator",
+     "idle": {
+      "renders": 0,
+      "rafCalls": 0,
+      "passes": 0
+     },
+     "isolated": null
+    }
+   }
+  },
+  {
+   "comp": "copy-art",
+   "scale": 1,
+   "views": {
+    "world": {
+     "frames": 481,
+     "seconds": 8,
+     "fps": 60.13,
+     "rafIntervalMs": {
+      "p50": 16.7,
+      "p95": 16.8,
+      "max": 16.8
+     },
+     "jsMs": {
+      "p50": 1.3,
+      "p95": 2,
+      "max": 2.6
+     },
+     "syncedMs": {
+      "p50": 4.8,
+      "p95": 7.2,
+      "max": 14.3
+     },
+     "compositeJsMs": {
+      "p50": 0.1,
+      "p95": 0.2,
+      "max": 0.2
+     },
+     "uploadJsMs": {
+      "p50": 0,
+      "p95": 0.1,
+      "max": 0.2
+     },
+     "heapMB": 17.78,
+     "projection": "globe",
+     "idle": {
+      "renders": 0,
+      "rafCalls": 0,
+      "passes": 0
+     },
+     "isolated": {
+      "uploadMs": 0.43,
+      "passMs": 0.04
+     }
+    },
+    "region": {
+     "frames": 481,
+     "seconds": 8,
+     "fps": 60.13,
+     "rafIntervalMs": {
+      "p50": 16.7,
+      "p95": 16.7,
+      "max": 16.8
+     },
+     "jsMs": {
+      "p50": 1.5,
+      "p95": 1.9,
+      "max": 2.8
+     },
+     "syncedMs": {
+      "p50": 4.4,
+      "p95": 5,
+      "max": 6.1
+     },
+     "compositeJsMs": {
+      "p50": 0.1,
+      "p95": 0.1,
+      "max": 0.3
+     },
+     "uploadJsMs": {
+      "p50": 0,
+      "p95": 0.1,
+      "max": 0.2
+     },
+     "heapMB": 35.47,
+     "projection": "globe",
+     "idle": {
+      "renders": 0,
+      "rafCalls": 0,
+      "passes": 0
+     },
+     "isolated": {
+      "uploadMs": 0.51,
+      "passMs": 0.19
+     }
+    },
+    "street": {
+     "frames": 481,
+     "seconds": 8,
+     "fps": 60.13,
+     "rafIntervalMs": {
+      "p50": 16.7,
+      "p95": 16.7,
+      "max": 16.8
+     },
+     "jsMs": {
+      "p50": 1.1,
+      "p95": 1.7,
+      "max": 2.3
+     },
+     "syncedMs": {
+      "p50": 3.4,
+      "p95": 5,
+      "max": 7.8
+     },
+     "compositeJsMs": {
+      "p50": 0,
+      "p95": 0.1,
+      "max": 0.2
+     },
+     "uploadJsMs": {
+      "p50": 0,
+      "p95": 0.1,
+      "max": 0.2
+     },
+     "heapMB": 40.4,
+     "projection": "mercator",
+     "idle": {
+      "renders": 0,
+      "rafCalls": 0,
+      "passes": 0
+     },
+     "isolated": {
+      "uploadMs": 0.41,
+      "passMs": 0.04
+     }
+    }
+   }
+  },
+  {
+   "comp": "copy-device",
+   "scale": 1,
+   "views": {
+    "world": {
+     "frames": 481,
+     "seconds": 8,
+     "fps": 60.13,
+     "rafIntervalMs": {
+      "p50": 16.7,
+      "p95": 16.7,
+      "max": 16.8
+     },
+     "jsMs": {
+      "p50": 1.5,
+      "p95": 2.4,
+      "max": 3.2
+     },
+     "syncedMs": {
+      "p50": 5.3,
+      "p95": 7.7,
+      "max": 10
+     },
+     "compositeJsMs": {
+      "p50": 0.1,
+      "p95": 0.2,
+      "max": 0.3
+     },
+     "uploadJsMs": {
+      "p50": 0,
+      "p95": 0.1,
+      "max": 0.2
+     },
+     "heapMB": 14.44,
+     "projection": "globe",
+     "idle": {
+      "renders": 0,
+      "rafCalls": 0,
+      "passes": 0
+     },
+     "isolated": {
+      "uploadMs": 0.35,
+      "passMs": 0.75
+     }
+    },
+    "region": {
+     "frames": 481,
+     "seconds": 8,
+     "fps": 60.13,
+     "rafIntervalMs": {
+      "p50": 16.7,
+      "p95": 16.8,
+      "max": 16.8
+     },
+     "jsMs": {
+      "p50": 1.4,
+      "p95": 2.2,
+      "max": 2.9
+     },
+     "syncedMs": {
+      "p50": 6,
+      "p95": 7.9,
+      "max": 10
+     },
+     "compositeJsMs": {
+      "p50": 0.1,
+      "p95": 0.2,
+      "max": 0.2
+     },
+     "uploadJsMs": {
+      "p50": 0,
+      "p95": 0.1,
+      "max": 0.2
+     },
+     "heapMB": 39.02,
+     "projection": "globe",
+     "idle": {
+      "renders": 0,
+      "rafCalls": 0,
+      "passes": 0
+     },
+     "isolated": {
+      "uploadMs": 0.22,
+      "passMs": 0.88
+     }
+    },
+    "street": {
+     "frames": 481,
+     "seconds": 8,
+     "fps": 60.13,
+     "rafIntervalMs": {
+      "p50": 16.7,
+      "p95": 16.7,
+      "max": 16.8
+     },
+     "jsMs": {
+      "p50": 1,
+      "p95": 1.6,
+      "max": 2
+     },
+     "syncedMs": {
+      "p50": 5.9,
+      "p95": 6.8,
+      "max": 10
+     },
+     "compositeJsMs": {
+      "p50": 0,
+      "p95": 0.1,
+      "max": 0.2
+     },
+     "uploadJsMs": {
+      "p50": 0,
+      "p95": 0.1,
+      "max": 0.2
+     },
+     "heapMB": 30.17,
+     "projection": "mercator",
+     "idle": {
+      "renders": 0,
+      "rafCalls": 0,
+      "passes": 0
+     },
+     "isolated": {
+      "uploadMs": 0.29,
+      "passMs": 1.02
+     }
+    }
+   }
+  },
+  {
+   "comp": "copy-device",
+   "scale": 2,
+   "views": {
+    "world": {
+     "frames": 481,
+     "seconds": 8,
+     "fps": 60.13,
+     "rafIntervalMs": {
+      "p50": 16.7,
+      "p95": 16.8,
+      "max": 16.8
+     },
+     "jsMs": {
+      "p50": 1.3,
+      "p95": 1.8,
+      "max": 2.6
+     },
+     "syncedMs": {
+      "p50": 7.7,
+      "p95": 10.6,
+      "max": 11.5
+     },
+     "compositeJsMs": {
+      "p50": 0.1,
+      "p95": 0.2,
+      "max": 0.3
+     },
+     "uploadJsMs": {
+      "p50": 0,
+      "p95": 0.1,
+      "max": 0.3
+     },
+     "heapMB": 38.85,
+     "projection": "globe",
+     "idle": {
+      "renders": 0,
+      "rafCalls": 0,
+      "passes": 0
+     },
+     "isolated": {
+      "uploadMs": 0.53,
+      "passMs": 1.43
+     }
+    },
+    "region": {
+     "frames": 481,
+     "seconds": 8,
+     "fps": 60.13,
+     "rafIntervalMs": {
+      "p50": 16.7,
+      "p95": 16.7,
+      "max": 16.8
+     },
+     "jsMs": {
+      "p50": 1.4,
+      "p95": 1.9,
+      "max": 2.2
+     },
+     "syncedMs": {
+      "p50": 7.6,
+      "p95": 10.1,
+      "max": 11.3
+     },
+     "compositeJsMs": {
+      "p50": 0,
+      "p95": 0.1,
+      "max": 0.2
+     },
+     "uploadJsMs": {
+      "p50": 0,
+      "p95": 0.1,
+      "max": 0.2
+     },
+     "heapMB": 23.48,
+     "projection": "globe",
+     "idle": {
+      "renders": 0,
+      "rafCalls": 0,
+      "passes": 0
+     },
+     "isolated": {
+      "uploadMs": 0.44,
+      "passMs": 1.25
+     }
+    },
+    "street": {
+     "frames": 481,
+     "seconds": 8,
+     "fps": 60.13,
+     "rafIntervalMs": {
+      "p50": 16.7,
+      "p95": 16.7,
+      "max": 16.8
+     },
+     "jsMs": {
+      "p50": 0.9,
+      "p95": 1.6,
+      "max": 2
+     },
+     "syncedMs": {
+      "p50": 6.7,
+      "p95": 9.5,
+      "max": 10.5
+     },
+     "compositeJsMs": {
+      "p50": 0,
+      "p95": 0.1,
+      "max": 0.2
+     },
+     "uploadJsMs": {
+      "p50": 0,
+      "p95": 0.1,
+      "max": 0.2
+     },
+     "heapMB": 22.28,
+     "projection": "mercator",
+     "idle": {
+      "renders": 0,
+      "rafCalls": 0,
+      "passes": 0
+     },
+     "isolated": {
+      "uploadMs": 0.42,
+      "passMs": 1.26
+     }
+    }
+   }
+  },
+  {
+   "comp": "inline",
+   "scale": 2,
+   "views": {
+    "world": {
+     "frames": 481,
+     "seconds": 8,
+     "fps": 60.13,
+     "rafIntervalMs": {
+      "p50": 16.7,
+      "p95": 16.7,
+      "max": 16.8
+     },
+     "jsMs": {
+      "p50": 1.8,
+      "p95": 2.7,
+      "max": 3.4
+     },
+     "syncedMs": {
+      "p50": 9.6,
+      "p95": 11.5,
+      "max": 13.8
+     },
+     "compositeJsMs": {
+      "p50": 0.5,
+      "p95": 0.9,
+      "max": 1.5
+     },
+     "uploadJsMs": {
+      "p50": 0.5,
+      "p95": 0.9,
+      "max": 1.5
+     },
+     "heapMB": 25.26,
+     "projection": "globe",
+     "idle": {
+      "renders": 0,
+      "rafCalls": 0,
+      "passes": 0
+     },
+     "isolated": null
+    },
+    "region": {
+     "frames": 481,
+     "seconds": 8,
+     "fps": 60.13,
+     "rafIntervalMs": {
+      "p50": 16.7,
+      "p95": 16.8,
+      "max": 16.8
+     },
+     "jsMs": {
+      "p50": 1.9,
+      "p95": 2.9,
+      "max": 4.1
+     },
+     "syncedMs": {
+      "p50": 8.9,
+      "p95": 11.8,
+      "max": 14.9
+     },
+     "compositeJsMs": {
+      "p50": 0.5,
+      "p95": 0.9,
+      "max": 2.1
+     },
+     "uploadJsMs": {
+      "p50": 0.4,
+      "p95": 0.8,
+      "max": 2.1
+     },
+     "heapMB": 17.92,
+     "projection": "globe",
+     "idle": {
+      "renders": 0,
+      "rafCalls": 0,
+      "passes": 0
+     },
+     "isolated": null
+    },
+    "street": {
+     "frames": 481,
+     "seconds": 8,
+     "fps": 60.13,
+     "rafIntervalMs": {
+      "p50": 16.7,
+      "p95": 16.7,
+      "max": 16.8
+     },
+     "jsMs": {
+      "p50": 1.2,
+      "p95": 2.4,
+      "max": 3
+     },
+     "syncedMs": {
+      "p50": 8.8,
+      "p95": 10.7,
+      "max": 13.3
+     },
+     "compositeJsMs": {
+      "p50": 0.4,
+      "p95": 1,
+      "max": 1.6
+     },
+     "uploadJsMs": {
+      "p50": 0.4,
+      "p95": 0.9,
+      "max": 1.6
+     },
+     "heapMB": 44.99,
+     "projection": "mercator",
+     "idle": {
+      "renders": 0,
+      "rafCalls": 0,
+      "passes": 0
+     },
+     "isolated": null
+    }
+   }
+  }
+ ]
+}

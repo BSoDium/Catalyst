@@ -1,10 +1,23 @@
 .DS_Store
+node_modules/
 .env
-/node_modules/
+.env.*
+!.env.example
+*.log
 
-# React Router
-/.react-router/
-/build/
+# Build output
+build/
+dist/
+.react-router/
+.vercel/
+.turbo/
 
-*storybook.log
-storybook-static
+# Local tooling
+.claude/
+coverage/
+
+# LOCAL PREVIEW of the owner's real places (written by `pnpm export:preview` in the private repo). Includes
+# unpublished drafts: never commit it. scripts/check-public-leaks.mjs fails if it is tracked or ends up in a build.
+packages/published/data/preview.projection.json
+# Screenshots of the preview show real place positions: keep them local.
+docs/screenshots/preview-*.png

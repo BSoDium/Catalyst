@@ -1,0 +1,4 @@
+# Local deployment state: never commit
+.env
+data/
+*.pmtiles

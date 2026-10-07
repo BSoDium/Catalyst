@@ -1,0 +1,264 @@
+{
+ "env": {
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36",
+  "gl": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+  "dpr": 2,
+  "projection": "globe"
+ },
+ "src": "ofm",
+ "size": "1440x900",
+ "dpr": 2,
+ "throttle": 1,
+ "durMs": 8000,
+ "rows": [
+  {
+   "comp": "none",
+   "scale": 2,
+   "views": {
+    "world": {
+     "frames": 481,
+     "seconds": 8,
+     "fps": 60.13,
+     "rafIntervalMs": {
+      "p50": 16.7,
+      "p95": 16.7,
+      "max": 16.8
+     },
+     "jsMs": {
+      "p50": 1.4,
+      "p95": 2.2,
+      "max": 3.6
+     },
+     "syncedMs": {
+      "p50": 4.6,
+      "p95": 6.1,
+      "max": 7.8
+     },
+     "compositeJsMs": {
+      "p50": 0,
+      "p95": 0,
+      "max": 0
+     },
+     "uploadJsMs": {
+      "p50": 0,
+      "p95": 0,
+      "max": 0
+     },
+     "heapMB": 18.24,
+     "projection": "globe",
+     "idle": {
+      "renders": 0,
+      "rafCalls": 0,
+      "passes": 0
+     },
+     "isolated": null
+    },
+    "region": {
+     "frames": 481,
+     "seconds": 8,
+     "fps": 60.13,
+     "rafIntervalMs": {
+      "p50": 16.7,
+      "p95": 16.7,
+      "max": 16.8
+     },
+     "jsMs": {
+      "p50": 1.2,
+      "p95": 2.2,
+      "max": 2.7
+     },
+     "syncedMs": {
+      "p50": 5,
+      "p95": 7.2,
+      "max": 10.4
+     },
+     "compositeJsMs": {
+      "p50": 0,
+      "p95": 0,
+      "max": 0
+     },
+     "uploadJsMs": {
+      "p50": 0,
+      "p95": 0,
+      "max": 0
+     },
+     "heapMB": 40.52,
+     "projection": "globe",
+     "idle": {
+      "renders": 0,
+      "rafCalls": 0,
+      "passes": 0
+     },
+     "isolated": null
+    },
+    "street": {
+     "frames": 481,
+     "seconds": 8,
+     "fps": 60.13,
+     "rafIntervalMs": {
+      "p50": 16.7,
+      "p95": 16.7,
+      "max": 16.8
+     },
+     "jsMs": {
+      "p50": 0.7,
+      "p95": 1.3,
+      "max": 1.8
+     },
+     "syncedMs": {
+      "p50": 4,
+      "p95": 5.3,
+      "max": 10.4
+     },
+     "compositeJsMs": {
+      "p50": 0,
+      "p95": 0,
+      "max": 0
+     },
+     "uploadJsMs": {
+      "p50": 0,
+      "p95": 0,
+      "max": 0
+     },
+     "heapMB": 46.46,
+     "projection": "mercator",
+     "idle": {
+      "renders": 0,
+      "rafCalls": 0,
+      "passes": 0
+     },
+     "isolated": null
+    }
+   }
+  },
+  {
+   "comp": "copy-device",
+   "scale": 2,
+   "views": {
+    "world": {
+     "frames": 481,
+     "seconds": 8,
+     "fps": 60.13,
+     "rafIntervalMs": {
+      "p50": 16.7,
+      "p95": 16.7,
+      "max": 16.8
+     },
+     "jsMs": {
+      "p50": 1.2,
+      "p95": 1.9,
+      "max": 2.3
+     },
+     "syncedMs": {
+      "p50": 8.6,
+      "p95": 10.8,
+      "max": 12.3
+     },
+     "compositeJsMs": {
+      "p50": 0.1,
+      "p95": 0.2,
+      "max": 0.2
+     },
+     "uploadJsMs": {
+      "p50": 0,
+      "p95": 0.1,
+      "max": 0.2
+     },
+     "heapMB": 35.43,
+     "projection": "globe",
+     "idle": {
+      "renders": 0,
+      "rafCalls": 0,
+      "passes": 0
+     },
+     "isolated": {
+      "uploadMs": 0.39,
+      "passMs": 1.23
+     }
+    },
+    "region": {
+     "frames": 481,
+     "seconds": 8,
+     "fps": 60.13,
+     "rafIntervalMs": {
+      "p50": 16.7,
+      "p95": 16.7,
+      "max": 16.8
+     },
+     "jsMs": {
+      "p50": 1.5,
+      "p95": 2.1,
+      "max": 2.4
+     },
+     "syncedMs": {
+      "p50": 9.3,
+      "p95": 11.1,
+      "max": 13.8
+     },
+     "compositeJsMs": {
+      "p50": 0,
+      "p95": 0.1,
+      "max": 0.2
+     },
+     "uploadJsMs": {
+      "p50": 0,
+      "p95": 0.1,
+      "max": 0.2
+     },
+     "heapMB": 22.3,
+     "projection": "globe",
+     "idle": {
+      "renders": 0,
+      "rafCalls": 0,
+      "passes": 0
+     },
+     "isolated": {
+      "uploadMs": 0.36,
+      "passMs": 1.26
+     }
+    },
+    "street": {
+     "frames": 481,
+     "seconds": 8,
+     "fps": 60.13,
+     "rafIntervalMs": {
+      "p50": 16.7,
+      "p95": 16.7,
+      "max": 16.8
+     },
+     "jsMs": {
+      "p50": 0.8,
+      "p95": 1.2,
+      "max": 2
+     },
+     "syncedMs": {
+      "p50": 8.5,
+      "p95": 9.7,
+      "max": 10.6
+     },
+     "compositeJsMs": {
+      "p50": 0,
+      "p95": 0.1,
+      "max": 0.2
+     },
+     "uploadJsMs": {
+      "p50": 0,
+      "p95": 0.1,
+      "max": 0.2
+     },
+     "heapMB": 32,
+     "projection": "mercator",
+     "idle": {
+      "renders": 0,
+      "rafCalls": 0,
+      "passes": 0
+     },
+     "isolated": {
+      "uploadMs": 0.47,
+      "passMs": 1.37
+     }
+    }
+   }
+  }
+ ]
+}

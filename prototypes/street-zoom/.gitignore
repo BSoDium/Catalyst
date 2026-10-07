@@ -1,0 +1,3 @@
+*.pmtiles
+.env.local
+dist/

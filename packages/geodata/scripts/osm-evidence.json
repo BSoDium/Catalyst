@@ -1,0 +1,473 @@
+{
+ "source": "Compared with the OpenMapTiles boundary layer (admin_level 2) of OpenFreeMap planet z5 tiles, 2026-10-06, tolerance one art cell (3 CSS px at the hand-over zoom 5); regenerate with apps/web/scripts/geo/border-osm.mjs --emit. Feature numbers index the features of the pinned ne_50m_admin_0_boundary_lines_land.geojson (scripts/sources.json).",
+ "keep": [
+  {
+   "feature": 1,
+   "id": 1746705331,
+   "pair": "Ethiopia / Somalia",
+   "class": "Indefinite",
+   "why": "OSM draws it as a land border (97 % within one cell, 100 % within eight)"
+  },
+  {
+   "feature": 2,
+   "id": 1746705323,
+   "pair": "Israel / Palestine",
+   "class": "Disputed",
+   "why": "OSM draws it as a land border (100 % within one cell, 100 % within eight)"
+  },
+  {
+   "feature": 3,
+   "id": 1746709121,
+   "pair": "Israel / Palestine",
+   "class": "Disputed",
+   "why": "OSM draws it as a land border (100 % within one cell, 100 % within eight)"
+  },
+  {
+   "feature": 4,
+   "id": 1746705327,
+   "pair": "Israel / Lebanon",
+   "class": "Disputed",
+   "why": "OSM draws it as a land border (100 % within one cell, 100 % within eight)"
+  },
+  {
+   "feature": 10,
+   "id": 1746708623,
+   "pair": "North Korea / South Korea",
+   "class": "Line of control",
+   "why": "OSM draws it as a land border (100 % within one cell, 100 % within eight)"
+  },
+  {
+   "feature": 12,
+   "id": 1746705329,
+   "pair": "Ethiopia / Kenya",
+   "class": "Disputed",
+   "why": "OSM draws it as a land border (100 % within one cell, 100 % within eight)"
+  },
+  {
+   "feature": 16,
+   "id": 1746705371,
+   "pair": "Israel / Lebanon",
+   "class": "Disputed",
+   "why": "OSM draws it as a land border (100 % within one cell, 100 % within eight)"
+  },
+  {
+   "feature": 206,
+   "id": 1746707747,
+   "pair": "Guyana / Venezuela",
+   "class": "Disputed",
+   "why": "OSM draws it as a land border (100 % within one cell, 100 % within eight)"
+  },
+  {
+   "feature": 261,
+   "id": 1746708045,
+   "pair": "Algeria / Morocco",
+   "class": "Indefinite",
+   "why": "OSM draws it as a land border (51 % within one cell, 100 % within eight)"
+  },
+  {
+   "feature": 340,
+   "id": 1746705335,
+   "pair": "Malawi / Tanzania",
+   "class": "Disputed",
+   "why": "OSM draws it as a land border (100 % within one cell, 100 % within eight)"
+  },
+  {
+   "feature": 353,
+   "id": 1746705347,
+   "pair": "Guyana / Suriname",
+   "class": "Disputed",
+   "why": "OSM draws it as a land border (100 % within one cell, 100 % within eight)"
+  },
+  {
+   "feature": 354,
+   "id": 1746705345,
+   "pair": "France / Suriname",
+   "class": "Disputed",
+   "why": "OSM draws it as a land border (100 % within one cell, 100 % within eight)"
+  },
+  {
+   "feature": 373,
+   "id": 1746708915,
+   "pair": "Brazil / Uruguay",
+   "class": "Disputed",
+   "why": "OSM draws it as a land border (100 % within one cell, 100 % within eight)"
+  },
+  {
+   "feature": 375,
+   "id": 1746708703,
+   "pair": "Argentina / Chile",
+   "class": "Indefinite",
+   "why": "OSM draws it as a land border (90 % within one cell, 100 % within eight)"
+  }
+ ],
+ "drop": [
+  {
+   "feature": 13,
+   "id": 1746705265,
+   "pair": "?",
+   "why": "OSM has no land border here (0 % within one cell; maritime 100 %, disputed 0 %)"
+  },
+  {
+   "feature": 95,
+   "id": 1746705273,
+   "pair": "Malaysia / Singapore",
+   "why": "OSM has no land border here (0 % within one cell; maritime 100 %, disputed 0 %)"
+  },
+  {
+   "feature": 124,
+   "id": 1746708423,
+   "pair": "China / India",
+   "why": "OSM has no land border here (0 % within one cell; maritime 0 %, disputed 100 %)"
+  },
+  {
+   "feature": 344,
+   "id": 1746705295,
+   "pair": "China / Macao",
+   "why": "OSM has no land border here (0 % within one cell; maritime 0 %, disputed 0 %)"
+  },
+  {
+   "feature": 345,
+   "id": 1746708389,
+   "pair": "China / Hong Kong",
+   "why": "OSM has no land border here (0 % within one cell; maritime 0 %, disputed 0 %)"
+  }
+ ],
+ "cuts": [
+  {
+   "feature": 27,
+   "id": 1746705475,
+   "pair": "Norway / Sweden",
+   "osm": "maritime",
+   "km": 48,
+   "from": [
+    11.377,
+    59.049
+   ],
+   "to": [
+    10.912,
+    58.946
+   ],
+   "why": "OSM carries this stretch only as a maritime line"
+  },
+  {
+   "feature": 35,
+   "id": 1746705547,
+   "pair": "Georgia / Russia",
+   "osm": "disputed",
+   "km": 42,
+   "from": [
+    44.083,
+    42.612
+   ],
+   "to": [
+    43.746,
+    42.644
+   ],
+   "why": "OSM carries this stretch only as a disputed line"
+  },
+  {
+   "feature": 44,
+   "id": 1746705661,
+   "pair": "Denmark / Germany",
+   "osm": "maritime",
+   "km": 20,
+   "from": [
+    8.393,
+    55.097
+   ],
+   "to": [
+    8.53,
+    54.971
+   ],
+   "why": "OSM carries this stretch only as a maritime line"
+  },
+  {
+   "feature": 44,
+   "id": 1746705661,
+   "pair": "Denmark / Germany",
+   "osm": "maritime",
+   "km": 18,
+   "from": [
+    9.557,
+    54.848
+   ],
+   "to": [
+    9.74,
+    54.826
+   ],
+   "why": "OSM carries this stretch only as a maritime line"
+  },
+  {
+   "feature": 94,
+   "id": 1746706355,
+   "pair": "Bhutan / India",
+   "osm": "disputed",
+   "km": 136,
+   "from": [
+    92.053,
+    27.001
+   ],
+   "to": [
+    91.612,
+    27.707
+   ],
+   "why": "OSM carries this stretch only as a disputed line"
+  },
+  {
+   "feature": 110,
+   "id": 1746706543,
+   "pair": "Bangladesh / Myanmar",
+   "osm": "maritime",
+   "km": 28,
+   "from": [
+    92.272,
+    20.99
+   ],
+   "to": [
+    92.324,
+    20.792
+   ],
+   "why": "OSM carries this stretch only as a maritime line"
+  },
+  {
+   "feature": 136,
+   "id": 1746706893,
+   "pair": "Finland / Sweden",
+   "osm": "maritime",
+   "km": 18,
+   "from": [
+    24.189,
+    65.637
+   ],
+   "to": [
+    24.116,
+    65.505
+   ],
+   "why": "OSM carries this stretch only as a maritime line"
+  },
+  {
+   "feature": 144,
+   "id": 1746706973,
+   "pair": "Portugal / Spain",
+   "osm": "disputed",
+   "km": 42,
+   "from": [
+    -7.313,
+    38.551
+   ],
+   "to": [
+    -7.141,
+    38.818
+   ],
+   "why": "OSM carries this stretch only as a disputed line"
+  },
+  {
+   "feature": 176,
+   "id": 1746707371,
+   "pair": "India / Myanmar",
+   "osm": "disputed",
+   "km": 374,
+   "from": [
+    97.303,
+    28.086
+   ],
+   "to": [
+    95.369,
+    26.706
+   ],
+   "why": "OSM carries this stretch only as a disputed line"
+  },
+  {
+   "feature": 238,
+   "id": 1746707825,
+   "pair": "Argentina / Chile",
+   "osm": "maritime",
+   "km": 128,
+   "from": [
+    -68.462,
+    -54.895
+   ],
+   "to": [
+    -66.661,
+    -55.069
+   ],
+   "why": "OSM carries this stretch only as a maritime line"
+  },
+  {
+   "feature": 238,
+   "id": 1746707825,
+   "pair": "Argentina / Chile",
+   "osm": "maritime",
+   "km": 12,
+   "from": [
+    -66.608,
+    -55.082
+   ],
+   "to": [
+    -66.476,
+    -55.114
+   ],
+   "why": "OSM carries this stretch only as a maritime line"
+  },
+  {
+   "feature": 249,
+   "id": 1746708375,
+   "pair": "Canada / United States of America",
+   "osm": "maritime",
+   "km": 154,
+   "from": [
+    -130.622,
+    54.709
+   ],
+   "to": [
+    -130.063,
+    55.83
+   ],
+   "why": "OSM carries this stretch only as a maritime line"
+  },
+  {
+   "feature": 272,
+   "id": 1746709045,
+   "pair": "Egypt / Sudan",
+   "osm": "disputed",
+   "km": 372,
+   "from": [
+    33.301,
+    21.996
+   ],
+   "to": [
+    36.871,
+    21.997
+   ],
+   "why": "OSM carries this stretch only as a disputed line"
+  },
+  {
+   "feature": 317,
+   "id": 1746707717,
+   "pair": "Guatemala / Mexico",
+   "osm": "maritime",
+   "km": 70,
+   "from": [
+    -88.197,
+    18.414
+   ],
+   "to": [
+    -87.826,
+    18.181
+   ],
+   "why": "OSM carries this stretch only as a maritime line"
+  },
+  {
+   "feature": 351,
+   "id": 1746708409,
+   "pair": "S. Sudan / Sudan",
+   "osm": "disputed",
+   "km": 58,
+   "from": [
+    24.366,
+    8.835
+   ],
+   "to": [
+    24.63,
+    9.151
+   ],
+   "why": "OSM carries this stretch only as a disputed line"
+  },
+  {
+   "feature": 351,
+   "id": 1746708409,
+   "pair": "S. Sudan / Sudan",
+   "osm": "disputed",
+   "km": 34,
+   "from": [
+    24.661,
+    9.284
+   ],
+   "to": [
+    24.775,
+    9.515
+   ],
+   "why": "OSM carries this stretch only as a disputed line"
+  },
+  {
+   "feature": 351,
+   "id": 1746708409,
+   "pair": "S. Sudan / Sudan",
+   "osm": "disputed",
+   "km": 20,
+   "from": [
+    24.785,
+    9.544
+   ],
+   "to": [
+    24.789,
+    9.692
+   ],
+   "why": "OSM carries this stretch only as a disputed line"
+  },
+  {
+   "feature": 360,
+   "id": 1746708429,
+   "pair": "China / India",
+   "osm": "disputed",
+   "km": 96,
+   "from": [
+    79.219,
+    32.501
+   ],
+   "to": [
+    78.547,
+    32.572
+   ],
+   "why": "OSM carries this stretch only as a disputed line"
+  },
+  {
+   "feature": 364,
+   "id": 1746708443,
+   "pair": "China / India",
+   "osm": "disputed",
+   "km": 12,
+   "from": [
+    79.841,
+    30.942
+   ],
+   "to": [
+    79.91,
+    30.898
+   ],
+   "why": "OSM carries this stretch only as a disputed line"
+  },
+  {
+   "feature": 371,
+   "id": 1746708369,
+   "pair": "India / Pakistan",
+   "osm": "maritime",
+   "km": 110,
+   "from": [
+    68.77,
+    24.31
+   ],
+   "to": [
+    68.165,
+    23.857
+   ],
+   "why": "OSM carries this stretch only as a maritime line"
+  },
+  {
+   "feature": 389,
+   "id": 1746708553,
+   "pair": "China / Pakistan",
+   "osm": "disputed",
+   "km": 112,
+   "from": [
+    75.974,
+    36.382
+   ],
+   "to": [
+    75.327,
+    36.919
+   ],
+   "why": "OSM carries this stretch only as a disputed line"
+  }
+ ]
+}

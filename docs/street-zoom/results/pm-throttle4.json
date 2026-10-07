@@ -1,0 +1,273 @@
+{
+ "env": {
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36",
+  "gl": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+  "dpr": 2,
+  "projection": "globe"
+ },
+ "src": "pm",
+ "size": "1440x900",
+ "dpr": 2,
+ "throttle": 4,
+ "durMs": 8000,
+ "rows": [
+  {
+   "comp": "none",
+   "scale": 2,
+   "views": {
+    "street": {
+     "frames": 481,
+     "seconds": 8,
+     "fps": 60.13,
+     "rafIntervalMs": {
+      "p50": 16.7,
+      "p95": 16.8,
+      "max": 16.8
+     },
+     "jsMs": {
+      "p50": 1.4,
+      "p95": 2.5,
+      "max": 4.7
+     },
+     "syncedMs": {
+      "p50": 3.8,
+      "p95": 9.4,
+      "max": 16.4
+     },
+     "compositeJsMs": {
+      "p50": 0,
+      "p95": 0,
+      "max": 0
+     },
+     "uploadJsMs": {
+      "p50": 0,
+      "p95": 0,
+      "max": 0
+     },
+     "heapMB": 26.57,
+     "projection": "mercator",
+     "idle": {
+      "renders": 0,
+      "rafCalls": 0,
+      "passes": 0
+     },
+     "isolated": null
+    },
+    "block": {
+     "frames": 481,
+     "seconds": 8,
+     "fps": 60.13,
+     "rafIntervalMs": {
+      "p50": 16.7,
+      "p95": 16.7,
+      "max": 16.8
+     },
+     "jsMs": {
+      "p50": 1.3,
+      "p95": 2.5,
+      "max": 3.6
+     },
+     "syncedMs": {
+      "p50": 3.9,
+      "p95": 7.2,
+      "max": 10.4
+     },
+     "compositeJsMs": {
+      "p50": 0,
+      "p95": 0,
+      "max": 0
+     },
+     "uploadJsMs": {
+      "p50": 0,
+      "p95": 0,
+      "max": 0
+     },
+     "heapMB": 39.31,
+     "projection": "mercator",
+     "idle": {
+      "renders": 0,
+      "rafCalls": 0,
+      "passes": 0
+     },
+     "isolated": null
+    }
+   }
+  },
+  {
+   "comp": "copy-art",
+   "scale": 1,
+   "views": {
+    "street": {
+     "frames": 481,
+     "seconds": 8,
+     "fps": 60.13,
+     "rafIntervalMs": {
+      "p50": 16.7,
+      "p95": 16.7,
+      "max": 16.8
+     },
+     "jsMs": {
+      "p50": 1.5,
+      "p95": 2.4,
+      "max": 3.7
+     },
+     "syncedMs": {
+      "p50": 3.2,
+      "p95": 4.6,
+      "max": 7.2
+     },
+     "compositeJsMs": {
+      "p50": 0,
+      "p95": 0.6,
+      "max": 0.9
+     },
+     "uploadJsMs": {
+      "p50": 0,
+      "p95": 0.3,
+      "max": 0.8
+     },
+     "heapMB": 40.82,
+     "projection": "mercator",
+     "idle": {
+      "renders": 0,
+      "rafCalls": 0,
+      "passes": 0
+     },
+     "isolated": {
+      "uploadMs": 0.13,
+      "passMs": 0.04
+     }
+    },
+    "block": {
+     "frames": 481,
+     "seconds": 8,
+     "fps": 60.13,
+     "rafIntervalMs": {
+      "p50": 16.7,
+      "p95": 16.8,
+      "max": 16.8
+     },
+     "jsMs": {
+      "p50": 1,
+      "p95": 1.8,
+      "max": 2.7
+     },
+     "syncedMs": {
+      "p50": 2.6,
+      "p95": 3.4,
+      "max": 4.7
+     },
+     "compositeJsMs": {
+      "p50": 0,
+      "p95": 0.4,
+      "max": 0.8
+     },
+     "uploadJsMs": {
+      "p50": 0,
+      "p95": 0.2,
+      "max": 0.8
+     },
+     "heapMB": 51.15,
+     "projection": "mercator",
+     "idle": {
+      "renders": 0,
+      "rafCalls": 0,
+      "passes": 0
+     },
+     "isolated": {
+      "uploadMs": 0.14,
+      "passMs": 0.03
+     }
+    }
+   }
+  },
+  {
+   "comp": "copy-device",
+   "scale": 2,
+   "views": {
+    "street": {
+     "frames": 481,
+     "seconds": 8,
+     "fps": 60.13,
+     "rafIntervalMs": {
+      "p50": 16.7,
+      "p95": 16.8,
+      "max": 16.8
+     },
+     "jsMs": {
+      "p50": 1.2,
+      "p95": 2.1,
+      "max": 3.2
+     },
+     "syncedMs": {
+      "p50": 6.1,
+      "p95": 10.5,
+      "max": 12
+     },
+     "compositeJsMs": {
+      "p50": 0,
+      "p95": 0.6,
+      "max": 0.8
+     },
+     "uploadJsMs": {
+      "p50": 0,
+      "p95": 0.1,
+      "max": 0.8
+     },
+     "heapMB": 51.9,
+     "projection": "mercator",
+     "idle": {
+      "renders": 0,
+      "rafCalls": 0,
+      "passes": 0
+     },
+     "isolated": {
+      "uploadMs": 0.39,
+      "passMs": 1.47
+     }
+    },
+    "block": {
+     "frames": 481,
+     "seconds": 8,
+     "fps": 60.13,
+     "rafIntervalMs": {
+      "p50": 16.7,
+      "p95": 16.8,
+      "max": 16.8
+     },
+     "jsMs": {
+      "p50": 1.5,
+      "p95": 3,
+      "max": 3.7
+     },
+     "syncedMs": {
+      "p50": 7.2,
+      "p95": 12.1,
+      "max": 16.5
+     },
+     "compositeJsMs": {
+      "p50": 0,
+      "p95": 0.6,
+      "max": 0.8
+     },
+     "uploadJsMs": {
+      "p50": 0,
+      "p95": 0.4,
+      "max": 0.9
+     },
+     "heapMB": 42.7,
+     "projection": "mercator",
+     "idle": {
+      "renders": 0,
+      "rafCalls": 0,
+      "passes": 0
+     },
+     "isolated": {
+      "uploadMs": 0.51,
+      "passMs": 1.6
+     }
+    }
+   }
+  }
+ ]
+}

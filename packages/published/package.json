@@ -1,0 +1,14 @@
+{
+  "name": "@catalyst/published",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "validate": "tsx src/validate-cli.ts"
+  },
+  "dependencies": { "@catalyst/schemas": "workspace:*" },
+  "devDependencies": { "tsx": "^4.20.0", "vitest": "^3.2.0", "@types/node": "^22.0.0" }
+}

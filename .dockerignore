@@ -1,4 +1,37 @@
-.react-router
-build
-node_modules
+# Build context filter for deploy/docker/{web,api}.Dockerfile (context = repo root).
+# Keep the context small and keep secrets, build output and large binaries out of image layers.
+
+.git
+.github
+.claude
+.DS_Store
+**/.DS_Store
+
+# Dependencies and build output are produced inside the image
+**/node_modules
+**/build
+**/dist
+**/.react-router
+**/.vercel
+**/.turbo
+**/coverage
+*.log
+
+# Secrets and local env
+.env
+.env.*
+!.env.example
+deploy/**/.env
+deploy/**/.env.*
+
+# Large or irrelevant to the images
+*.pmtiles
+docs
+deploy
+scripts
 README.md
+LICENSE
+
+# Prototypes are workspace members, so pnpm needs their manifests, nothing else
+prototypes/**
+!prototypes/*/package.json

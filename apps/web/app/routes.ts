@@ -1,0 +1,15 @@
+import { index, layout, route, type RouteConfig } from "@react-router/dev/routes";
+
+// `/dev/street` (the street map on its own, for checks and measurements) exists only in development or in a build made
+// with CATALYST_DEV_ROUTES=1; its loader answers 404 anywhere else. See docs/street-architecture.md.
+const devRoutes =
+  process.env.NODE_ENV !== "production" || process.env.CATALYST_DEV_ROUTES === "1" ? [route("dev/street", "routes/dev-street.tsx"), route("dev/street-lines", "routes/dev-street-lines.tsx")] : [];
+
+export default [
+  // Pathless layout: `/` and `/locations/:slug` share one globe instance.
+  layout("routes/shell.tsx", [index("routes/home.tsx"), route("locations/:slug", "routes/location.tsx")]),
+  route("projects", "routes/projects.tsx"),
+  route("articles", "routes/articles.tsx"),
+  route("artworks", "routes/artworks.tsx"),
+  ...devRoutes,
+] satisfies RouteConfig;

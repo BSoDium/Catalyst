@@ -1,0 +1,49 @@
+name: ci
+
+# Checks every change to the code. No secrets, no deployment, no network beyond the package registry.
+# Not run here (needs Chrome, a GPU and local tiles): `pnpm perf` and the Playwright scripts in
+# apps/web/scripts; they stay on the owner's pre-release checklist (docs/owner-guide.md).
+# To gate merges, mark the `check` job as required in the branch protection of the default branch.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      # Reads the version from "packageManager" in package.json.
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm typecheck
+
+      - run: pnpm test
+
+      # Not part of `pnpm test`: the leak helpers and the tile extraction plan.
+      - run: pnpm test:scripts
+
+      - run: pnpm test:deploy
+
+      - run: pnpm build
+
+      # Needs the build output: scans the bundles, the tracked files and the committed projection.
+      - run: pnpm check:leaks

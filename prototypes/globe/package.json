@@ -1,0 +1,27 @@
+{
+  "name": "@catalyst/prototype-globe",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Renderer comparison prototype: Three.js vs MapLibre GL globe. Not deployed.",
+  "scripts": {
+    "dev": "vite --port 5180 --strictPort",
+    "build": "vite build",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@catalyst/geodata": "workspace:*",
+    "@catalyst/published": "workspace:*",
+    "@catalyst/schemas": "workspace:*",
+    "maplibre-gl": "^6.11.2",
+    "three": "^0.186.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/three": "^0.186.0",
+    "playwright-core": "^1.63.0",
+    "vite": "^7.3.6",
+    "vitest": "^3.2.0"
+  }
+}
