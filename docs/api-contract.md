@@ -231,11 +231,11 @@ Two Vercel projects, one per app, from this one repo. Both need a **Root Directo
 
 ### Owner checklist (click by click)
 
-The first PR of the rebuild failed its Vercel check because the one project that existed, `catalyst` (formerly `bsodium`, the old Yarn app at the repository root), still had **Root Directory empty**. At the repo root there is no app any more (a pnpm workspace with a `build` script that builds both), so no preset can succeed there. See "Evidence" below.
+The first PR of the rebuild failed its Vercel check because the one project that existed, `catalyst` (formerly `bsodium`, the old Yarn app at the repository root; now renamed `catalyst-v1`, to be confirmed: check that the old `catalyst` project is gone), still had **Root Directory empty**. At the repo root there is no app any more (a pnpm workspace with a `build` script that builds both), so no preset can succeed there. See "Evidence" below.
 
-Web project (reuse the existing `catalyst` project):
+Web project (reuse the existing project, now `catalyst-v1`):
 
-1. vercel.com, team `photonsquid`, project `catalyst`, **Settings**, **Build and Deployment**.
+1. vercel.com, team `photonsquid`, project `catalyst-v1`, **Settings**, **Build and Deployment**.
 2. **Root Directory**: type `apps/web`, Save. Leave **Include source files outside of the Root Directory** enabled (the default); it must be on.
 3. **Framework Preset**: `React Router` (the committed `apps/web/vercel.json` also says so; the file wins).
 4. Clear every override: **Install Command**, **Build Command**, **Output Directory**, **Development Command** all left on their defaults (toggles off). A leftover `yarn install`, `corepack yarn build` or `dist`/`build` from the old app breaks the build.
@@ -292,7 +292,7 @@ Per the Vercel monorepo docs (fetched 2026-10-03, `vercel.com/docs/monorepos`):
 - Requirements: the project is connected to a **GitHub** repository; the monorepo uses npm, yarn, pnpm or Bun workspaces (pnpm is detected from the root lockfile and `packageManager`); every workspace package has a **unique `name`**; dependencies between packages are **explicitly declared** in each `package.json`; packages are covered by the workspace definition. Files outside the workspace globs count as global changes and redeploy everything.
 - This repo meets them: `pnpm-workspace.yaml` includes `apps/*`, `packages/*` and `prototypes/*`; `@catalyst/api` declares `@catalyst/schemas` and `@catalyst/published` as `workspace:*`. Any package added under `prototypes/*` needs its own unique name, or it will confuse the graph.
 - To turn the behaviour off: project **Settings > Build and Deployment > Root Directory > Skip deployment** toggle. If the requirements cannot be met, use the **Ignored Build Step** setting instead (its cancelled builds do count against build limits).
-- Optional filtered install (installs only this app and its workspace dependencies), as `installCommand` in `apps/api/vercel.json` or in project settings: `pnpm install --filter @catalyst/api...`. Not required, so no `vercel.json` is committed.
+- Optional filtered install (installs only this app and its workspace dependencies), as `installCommand` in `apps/api/vercel.json` or in project settings: `pnpm install --filter @catalyst/api...`. Not required, so no install-command override is committed (`apps/*/vercel.json` only pin the framework preset).
 
 **Dependency graph consequence.** `@catalyst/published` is a dependency of both the API and the web app, so a change to published content (`packages/published/**`) affects **both** projects and redeploys both. This is intended: they must move together. Conversely a change confined to `apps/web` does not redeploy the API. If the web app declares `@catalyst/api` (even as a devDependency, for the types), changes in `apps/api` will also redeploy web; that is the price of typed access and is acceptable because `contract.ts` is stable.
 

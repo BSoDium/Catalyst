@@ -1,47 +1,35 @@
-# Handoff (2026-10-07)
+# Handoff (2026-10-07, second session)
 
-State of the rebuild on branch `feat/places-archive-rebuild` (draft PR #234) and what is left. Written when the weekly budget ran out, for whoever continues.
+State of the rebuild on branch `feat/places-archive-rebuild` (draft PR #234) and what is left.
 
 ## Verified at handoff
 
-- `pnpm typecheck` clean, `pnpm test` green (web 583, api 32, schemas 28, published 11, geodata 105), `pnpm build` and `pnpm check:leaks` pass.
-- Private repo (`catalyst-content`): 489 tests green, everything pushed to `origin main`.
+- `pnpm typecheck` clean, `pnpm test` green (web 586), `pnpm build` and `pnpm check:leaks` pass (see the PR for the exact run).
+- Private repo (`catalyst-content`): 504 tests green, typecheck clean, everything pushed to `origin main`.
 - Not verified: Safari/iOS, real phones, reduced motion in a browser.
+
+## Done this session
+
+- **Camera centres on the bounding box** (`cb2e704`): every camera move to a place uses `placeFraming(place)`; marker and label stay on `coordinates`. `scripts/globe/groups.mjs` reads the cut (3.7 up, 3.45 back) from `handover/maths.ts` and checks both sides of each threshold. The old failure was a stale constant, not a regression.
+- **Owner's guide** ([owner-guide.md](owner-guide.md), `0fc9c92`).
+- **Self-review of both repos**: private repo `docs/self-review-2026-10.md` (ranked actions, 42 doc corrections, suggested order of work). Its doc corrections were applied except two that need a decision: the street line gate count (`performance.md` says 171 of 171, `street-architecture.md` 241 of 241; rerun `pnpm test:street-lines` and pick one) and the `web-architecture.md` rule against importing app code from `globe/`.
+- **Content model v2, owner approved D1 to D5**; phase P0 done in the private repo (`b9402fd`: `src/vault/model`, `DocumentStore`, `SourceReader`; export and preview bytes unchanged). P1 (`vault migrate`, shadow `content/`) is not started.
+- **Vercel failure diagnosed from the real build log** (`vercel inspect --logs`): the deployment fails at the repo root with `Failed to resolve "@remix-run/dev"`, i.e. Root Directory is still empty. The project is now named `catalyst-v1`.
+- **GPU budgets rerun** (headless, machine not idle: 48 % then 34 % GPU busy before the run, WindowServer and other apps). The three rows that failed before (`s2-hcmc`, `s3-in`, `s3-out`) pass in both runs. Remaining: `s4 gpuMean` 5.05 and 4.71 (budget 4.5) and `s5-open gpuMean` 5.13 once (budget 5). Frame time, main thread, heap and drops pass. Not conclusive: rerun with the other GPU users closed, and `--headed` for the 120 Hz number.
 
 ## Open items, in priority order
 
-1. **Vercel deployment fails** (the only failing check on the PR). Evidence-based cause (about 85 %): the Vercel project still has Root Directory empty and builds the old app. Owner action in the dashboard, with the checklist in [api-contract.md](api-contract.md#deployment-on-vercel): Root Directory `apps/web`, keep "Include source files outside of the Root Directory", clear Install/Build/Output overrides, redeploy; second project with Root Directory `apps/api`. `apps/web/vercel.json` and `apps/api/vercel.json` are in the repo.
-2. **Push the public branch** if not done (`git push`), then update the PR description and mark it ready.
-3. **GPU budgets**: `pnpm --filter @catalyst/web perf` fails some `gpuP95` rows (s2-hcmc, s3-in, s3-out) while the report says the GPU was about 46 % busy before the run with nothing of ours running. Rerun on an idle machine (close browser panes and other GPU users) before treating it as a regression; if it still fails, the cost is probably the new ease stage (`gl/pixel-pass.ts` `FRAG_EASE`) at tile-heavy views. Frame time, main-thread and heap budgets pass.
-4. **Camera centre on the box**: `placeFraming(place)` in `apps/web/app/globe/engine/framing.ts` exists but the camera still centres on the recorded GPS point (`handover/controller.ts` around lines 174 and 389, `routes/shell.tsx` line 53). Call `placeFraming` there so a selected city is centred on its bounding box.
-5. **`scripts/globe/groups.mjs` check** "across the real cut the drawn set is the same on both sides" failed at zoom 4.9 before the cut moved (now `cutZoom` 3.7). Rerun and adapt the check to the new cut.
-6. **Review the bounding boxes** (private repo `config/bboxes.json`): 24 boxes have a side over 45 km, some are whole municipalities (Quito 87 x 95 km, Tupiza, Caïdat de Bir Gandouz, London = Greater London, Mostar only 5 x 6 km). Fix by hand-setting `bbox` or `viewRadiusKm` on the editorial place, or `pnpm geocode-bboxes --refresh <slug>`. 34 places have no box and keep the radius (list in the private repo's commit `54ec349` message trail and `docs/publication-export.md`).
-7. **Camera/selection ring**: boxes that are selected, focused or hovered got a second inner ring because every box is now full ink. Keep or drop (owner's call).
-8. **Credits follow the tile configuration**, not the active source (info button on `AttributionButton`). Owner decision pending.
-9. **Phone testing**: `pnpm dev` now binds to all interfaces (see [performance.md](performance.md#testing-on-a-phone)); restart a running dev server to pick it up. There is no on-screen perf overlay; use `?globe-debug` and `__perf`.
-10. **Content model v2** (private repo `docs/content-model-v2.md`, migration plan next to it): owner decisions D1 to D5 are still open; nothing is migrated.
-11. **Nothing is published yet** (0 published places, so the public site shows an empty globe). Publishing is by PR from the private repo's `publish.yml`.
-12. **Not started**: the self-review report on modularity and cleanliness of both repos; the owner's guide (how to add, exclude and publish places, preview, sync, secrets, groups, troubleshooting). Both were requested by the owner. Suggested order: owner's guide first (mostly assembling existing docs: README, `editorial-workflow.md`, `publication-export.md`, `grouping.md`, `sync-invariants.md`), then the review (dead code, duplication, module boundaries, test gaps, doc accuracy).
+1. **Vercel (owner action).** Dashboard, project `catalyst-v1`: Root Directory `apps/web`, keep "Include source files outside of the Root Directory", clear Install/Build/Output overrides, redeploy. Then a second project, Root Directory `apps/api`. Checklist in [api-contract.md](api-contract.md#deployment-on-vercel).
+2. **Push and mark the PR ready** once the Vercel checks are green.
+3. **Review the bounding boxes** (private `config/bboxes.json`): 24 boxes have a side over 45 km (Quito 87 x 94 km is the whole canton, Tupiza, Caïdat de Bir Gandouz, Leticia, London = Greater London, Houston, ...), Mostar matched a 5 x 6 km local community instead of the city. 34 places have no box (the `status: "fallback"` entries of that file) and keep their radius. Fix by hand-setting `bbox` or `viewRadiusKm` on the editorial place, or `pnpm geocode-bboxes --refresh <slug>`. Proposed actions were sent to the owner in chat.
+4. **GPU budgets on a truly idle machine** (above), then decide whether the ease stage (`gl/pixel-pass.ts` `FRAG_EASE`) needs a cheaper path at tile-heavy views.
+5. **Content model v2, next phase**: P1 shadow (`vault migrate`); first make `SourceReader` list steps so `propose`, `coverage`, `scaffold` and `curate-cli` stop reading `source/trips/**` directly (details in the self-review, 3.3).
+6. **Self-review actions** (ranked in the report): CI for both repos, dead web code and the three upward imports (`engine/scene.ts`, `engine/renderer.ts`, the two canvases importing `components/attribution-button`), conformance test between the private golden projection and the public zod schema, splitting `handover/controller.ts` and `street/engine.ts` around pure, tested decisions.
+7. **Phone testing**: `pnpm dev` binds to all interfaces ([performance.md](performance.md#testing-on-a-phone)). There is no on-screen perf overlay; use `?globe-debug` and `__perf`.
+8. **Nothing is published yet** (0 published places, the public site shows an empty globe). Publishing is by PR from the private repo's `publish.yml`; merging that PR is the act of publishing.
 
-## Done in the last session (for orientation)
+## Decisions taken
 
-- Rectangles: opacity fades (no shade changes), background-coloured masked minimum squares, bold name plus separate regular counter, full-contrast ink by default.
-- City boxes: optional `bbox` in the contract, Nominatim-derived cache in the private repo, export derives `viewRadiusKm` from it, web consumes it.
-- Resolution doubling bug: the frame governor misread input-event frame intervals as slowness and never recovered. Fixed with a frame clock, plus regression tests (`engine/governor.test.ts`).
-- Empty circle on reload: removed; the canvas stays at opacity 0 until its first drawn frame (`scripts/globe/first-frames.mjs`).
-- Info button and credits dialog replace the attribution ribbon.
-- Street map: road hierarchy by tone and width, detail earlier, globe-to-street cut at zoom 3.7 as a cross-fade, motion-compensated tile fades (documented in [street-architecture.md](street-architecture.md#temporal-ease-tile-arrival-tile-departure-and-the-cut-2026-10-07)). That worker was cut off by a usage limit during its final doc edits, so re-read that section and `docs/performance.md` for accuracy.
-
-## Pending owner decisions (content model v2)
-
-Full reasoning: private repo `docs/content-model-v2.md` section 9. None is approved yet, so nothing may be migrated. Recommended answers are listed first; the next agent should present them to the owner as ONE confirmation ("adopt all recommendations?"), not as separate questions, and start phase P0 of `docs/content-model-v2-migration.md` once confirmed.
-
-| # | Decision | Recommended | Alternatives |
-|---|---|---|---|
-| D1 | Where the editable vault lives | `content/<kind>/<slug>/index.md` bundles, images next to the document; `source/` and `archive/` stay outside so Obsidian never indexes them | keep `editorial/` as the root; folder notes (`slug/slug.md`, shorter wikilinks, duplicated slug) |
-| D2 | How places inherit position, country and dates from Polarsteps steps | Values are written in the file; per-field opt-in `follow` with a lock and a drift report; text only through an explicit `pull` | always live (upstream changes silently move places); never inherit (copy only, no drift report) |
-| D3 | How Markdown reaches the public repo | Typed, schema-validated blocks (no HTML on the public side; small renderer and an additive contract change) | pre-rendered HTML (opaque string to trust or re-sanitise); sanitised Markdown source (parser in the public bundle) |
-| D4 | Published images | Content-hashed URLs plus a `sharp` optimiser (resize, strip metadata, immutable caching); originals stay out of Git | keep path-identity URLs and manual exiftool stripping |
-| D5 | Timing | Migrate now, before the first publication, with the contract change bundled | publish v1 first, migrate later |
-
-Also pending, smaller: keep or drop the extra inner ring on selected/focused/hovered boxes (default: keep), and whether credits follow the tile configuration or the active source (default: configuration).
+- Content model v2: D1 to D5 adopted as recommended (see private `docs/content-model-v2.md` section 9).
+- Boxes that are selected, focused or hovered keep the extra inner ring.
+- Credits follow the tile configuration, not the active source.

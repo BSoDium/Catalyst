@@ -49,11 +49,11 @@ Both read the same bundled projection. The web app can optionally fetch it from 
 
 ## Importer (private repo)
 
-Runs from the private repo's GitHub Actions workflow (daily cron plus manual dispatch), never from browser-reachable routes. It calls the unofficial Python client `remuzel/polarsteps-api` through a thin bridge behind a replaceable `SourceAdapter`. See the private repo's `docs/import-contract.md` and `docs/sync-invariants.md`.
+Runs from the private repo's GitHub Actions workflow (daily cron plus manual dispatch), never from browser-reachable routes. It reads the website's own `currentuser` endpoint (one GET per run with the owner's session cookie) through a replaceable `SourceAdapter` (`PolarstepsWebAdapter`). The earlier Python client and bridge were dropped. See the private repo's `docs/import-contract.md` and `docs/sync-invariants.md`.
 
 Key invariants: upsert by stable id; prior versions archived before replacement; absence from a complete fetch marks a record missing (never deletes); incomplete or failed fetches make no deletion decisions and no writes for that trip; source removal only raises human-review flags; the token exists only in workflow secrets.
 
-Risk: the client uses undocumented endpoints and a session cookie, may break at any time, may conflict with Polarsteps' terms (account suspension is possible), and has no license (so it is pinned by commit and installed in CI, not vendored). The site is insulated from all of this because it serves the last merged projection.
+Risk: the endpoint is undocumented and used with the owner's own session cookie; it may change at any time and may conflict with Polarsteps' terms (account suspension is possible). No third-party client is used any more. The site is insulated from all of this because it serves the last merged projection.
 
 ## Scheduling caveat
 

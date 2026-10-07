@@ -173,9 +173,16 @@ To swap renderers, point the `lazy(() => import(...))` in `globe/index.tsx` at a
 | `engine/scene.ts`, `materials.ts`, `route-layer.ts` | what is drawn: disc, graticule, borders, coastlines, routes (only those through the selected place), horizon outline; GLSL. Places and groups are NOT drawn here: they are rectangles on the pixel overlay (below) |
 | `engine/controls.ts` | pointer input: drag, wheel, pinch, tap (canvas only) |
 | `engine/motion.ts` | pure flight and inertia maths |
+| `engine/framing.ts` | pure camera framing: `placeFraming(place)` (centre and radius of the place's bounding box, else its point and `viewRadiusKm`) and the zoom that fits that circle in the free area |
+| `engine/inset.ts` | pure maths of the right-hand inset (`insetRight`): the projection centre shifted by whole buffer pixels |
+| `engine/governor.ts` | adaptive frame-budget governor: steps render quality down on slow frames and back up (docs/performance.md) |
+| `engine/palette.ts` | the one grey palette of both renderers (`PALETTE_LEVELS`, `MAP_CONTRAST`, roles `wash` .. `ink`) built from the CSS tokens |
+| `engine/visibility.ts` | whole-marker visibility: front hemisphere and footprint inside the silhouette, one answer for picking, labels and GPU |
+| `engine/perf.ts` | opt-in phase timers for the performance scripts (`window.__perf`, off unless the debug hooks are on) |
+| `engine/lod-stress.ts` | deterministic synthetic place hierarchy for the performance checks only (`?globe-debug&lod-stress=N`) |
 | `engine/geo.ts`, `geometry.ts`, `view.ts`, `tuning.ts` | pure projection/zoom maths, vertex builders, `GlobeViewState` <-> internal zoom, tuned constants |
 | `engine/lod-tree.ts`, `box-scene.ts`, `pixel-labels.ts`, `pixel-buffer.ts`, `pixel-font/`, `country-names.ts`, `group-square.ts`, `node-screen.ts` | the detection boxes: the cut of the place hierarchy, the pixel-art drawing of boxes, labels and chips, the font, the hit area ("Detection boxes" below) |
-| `engine/labels.ts` | the zoom-dependent label priority floor (`labelPriorityFloor`); its collision code is kept for the street HUD tests |
+| `engine/labels.ts` | the zoom-dependent label priority floor (`labelPriorityFloor`); its collision code (`placeLabels`) is only exercised by its own tests (dead code, to be removed) |
 | `engine/colors.ts`, `dpr.ts`, `webgl.ts` | CSS-variable theme, `devicePixelRatio` watcher, WebGL probe |
 
 Everything under `engine/` and `handover/` is framework-free. Pure parts are unit-tested (`engine/*.test.ts`: projection,
@@ -288,10 +295,12 @@ pushes the registered camera and the globe's animated inset into the street map 
 **Cut (default) or dissolve** (`HANDOVER.dissolve`, default `false`). The pixel-art dissolve between the renderers is
 parked until the fade is mastered; the code path is intact (`HANDOVER.dissolve = true`, or `?globe-debug&dissolve=1` for
 tests). In cut mode there is no blend at all: the street map is created opaque and shown or hidden as a whole.
-Past `cutZoom` (5.05; back below `cutBackZoom` 4.8, hysteresis) the controller renders the street map synchronously for
+Past `cutZoom` (3.7; back below `cutBackZoom` 3.45, hysteresis) the controller renders the street map synchronously for
 the exact camera and waits until its tiles for it are loaded (`map.areTilesLoaded()`, polling frames; after
-`cutMaxWaitMs` = 500 it swaps anyway, so the globe never stalls), then does ONE swap in a single task, hence one paint:
-street root visible, globe labels hidden, street markers and labels shown, Three.js suspended, all transitions off. Going
+`cutMaxWaitMs` = 1200 it swaps anyway, so the globe never stalls), then swaps in a single task, hence one paint:
+street root visible, globe labels hidden, street markers and labels shown, Three.js suspended, all transitions off. The
+swap is a ~300 ms tone cross-fade of the picture (`HANDOVER.crossfadeMs`, `seedFrom` / `crossfadeTo`; instant under
+reduced motion), not a click. Going
 back, the Three.js frame (and its labels) is drawn synchronously for the current camera BEFORE the street map is hidden.
 No frame ever shows both label layers or neither (asserted per animation frame by `scripts/globe/framing.mjs cut`).
 The two renderers are registered to under a pixel, so only the line style changes at the cut.
@@ -301,12 +310,12 @@ The two renderers are registered to under a pixel, so only the line style change
 
 | zu | |
 | --- | --- |
-| below 4.0 (3.3 on the way back, after 2.5 s) | street map not loaded / released |
-| 4.0 | chunk requested, map created (also when a place is selected) |
-| 4.3 | the map follows the camera while invisible (trailing 140 ms), so its tiles are ready |
-| 4.6 to 5.5 (dissolve) | pixel-grid dither dissolve: `blendAt(zu)` (smoothstep) drives `StreetMap.setBlend`, slew-limited to 450 ms per full swing |
-| 5.05 and up (cut; 5.5 with the dissolve) | the street map alone; the Three.js scene is suspended (no draw calls, the camera still ticks) |
-| 3.7 to 4.6 | the globe's lifted route arcs flatten onto the ground (`routeLift`), ahead of the dissolve |
+| below `mountZoom` 2.6 (`unmountZoom` 1.9 on the way back, after 2.5 s) | street map not loaded / released |
+| 2.6 | chunk requested, map created (also when a place is selected) |
+| `followZoom` 3.0 | the map follows the camera while invisible (trailing 140 ms), so its tiles are ready |
+| `blendStart` 3.3 to `blendEnd` 4.1 (dissolve) | pixel-grid dither dissolve: `blendAt(zu)` (smoothstep) drives `StreetMap.setBlend`, slew-limited to 450 ms per full swing |
+| 3.7 and up (cut; 4.1 with the dissolve) | the street map alone; the Three.js scene is suspended (no draw calls, the camera still ticks) |
+| 2.5 to 3.3 (`HANDOVER.routeFlat`) | the globe's lifted route arcs flatten onto the ground (`routeLift`), ahead of the dissolve |
 
 The dissolve is on the art-pixel grid (Bayer, the street pass's `blend`), so lines morph rather than cross-fade:
 the same coastline in both renderers is simply the same cells. Measured at several zooms and three regions
@@ -316,7 +325,7 @@ route's different dash phase); the other way round (street to globe) 77 to 96 %,
 The route stroke was made 2 art pixels with the globe's 7 px dash period so its weight survives the handover.
 
 **Overlay**: markers and labels are one behaviour. The street map's overlay uses the globe's look when embedded
-(`OverlayLook "globe"`: same marker sizes and ring, same type, same collision code `engine/labels.ts`, same
+(`OverlayLook "globe"`: same marker sizes and ring, same type, same box and pixel-label drawing (`engine/box-scene.ts`, `pixel-labels.ts`), same
 priorities: at street scale every label may show, collisions decide). Ownership flips once at dissolve 0.8 (back at
 0.65), as a 120 ms opacity cross-fade of the two DOM layers (reduced motion: instant); picking follows the owner
 (`pickOverride`). `focusedSlug` and the selection are forwarded to both.
@@ -390,8 +399,8 @@ map unusable (retreat to the globe). WebGL2 missing for the street map = street 
 **Reduced motion**: flights are jumps; the swap is instant (as always); no focus circle; overlay swap instant;
 routes static. **Idle**: zero rAF calls, zero ticks, zero street renders in all states (measured at world, held
 mid-dissolve and street scale; the follow debounce is a timer, not a frame loop). **Phones**: art pixel 2 CSS px
-(both renderers use the globe's rule); the street map renders its source at `min(DPR, 2)` and presents at device
-resolution (the spike's cheaper art-resolution path is not implemented, see docs/street-architecture.md).
+(both renderers use the globe's rule); the street map renders at native art resolution by default (`renderScale` 3);
+`highResolution` is the device-resolution path (see docs/street-architecture.md).
 
 **Accessibility**: unchanged. All overlays and canvases are `aria-hidden` and inert (the street root is `inert`
 while it is not visible); the one exception is the map credits button, a sibling of those layers (not inside an
@@ -409,7 +418,7 @@ world round trips, 3 live at street scale (Three + 2) and 1 after (43 created, 4
 
 ### Performance behaviour of the handover (see `docs/performance.md`)
 
-- The street map is created at unified zoom 4.0 (or at the click of a place) and released 2.5 s after the camera leaves its range. While the globe is the shown renderer the map is **inactive** (`StreetMap.setActive(false)`): tiles keep loading, but there is no canvas copy, no pass and no overlay work, and the camera is only pushed to it once the camera rests (140 ms debounce). From the cut it is pushed on every tick, snapped to the art-cell grid (`street/core/snap.ts`) while the zoom is steady.
+- The street map is created at unified zoom 2.6 (`mountZoom`, or at the click of a place) and released 2.5 s after the camera leaves its range. While the globe is the shown renderer the map is **inactive** (`StreetMap.setActive(false)`): tiles keep loading, but there is no canvas copy, no pass and no overlay work, and the camera is only pushed to it once the camera rests (140 ms debounce). From the cut it is pushed on every tick, snapped to the art-cell grid (`street/core/snap.ts`) while the zoom is steady.
 - The street map renders at native art resolution (3 map pixels per cell per axis), like the globe. `highResolution` follows `HANDOVER.revealFocus` (off).
 - The street chunk is fetched and evaluated in an idle period 2.5 s after the globe is up (not on data-saver/2g connections), so the first flight or zoom does not pay for it.
 - `engine/governor.ts` watches what frames COST while the camera moves and lowers the quality on a device that cannot keep up (street render scale 3 to 2, then a larger art pixel), with hysteresis; it recovers (see `docs/performance.md`, "Adaptive frame-budget governor"), logs every change (`console.info`) and keeps them in `history`; `__handoverDebug.quality()` / `forceQuality()`. The art pixel size is otherwise a function of the viewport only: `TUNING.pixelSize(minSide, dpr)` (test `engine/tuning.test.ts`).

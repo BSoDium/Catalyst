@@ -16,6 +16,7 @@ packages/
   geodata/        Coastline/border datasets for the globe + the generator script
 prototypes/
   globe/          Renderer comparison (Three.js vs MapLibre). Not deployed; kept as evidence.
+  street-zoom/    Spike of the street map pass (not deployed; source of the line rules and of docs/street-zoom-spike.md)
 docs/             Architecture, contracts, decisions (see below)
 ```
 
@@ -32,7 +33,7 @@ Polarsteps ──(one-way, daily, GitHub Actions)──▶ private repo: source/
                                        apps/api  and  apps/web  redeploy
 ```
 
-The website keeps working from the last merged projection if Polarsteps, the client library or the importer breaks.
+The website keeps working from the last merged projection if Polarsteps or the importer breaks.
 
 ## Quick start
 
@@ -71,7 +72,7 @@ To try a production build with the preview on your machine only: `pnpm build && 
 | `pnpm test:scripts` | Tests of the repo scripts (leak-check helpers) |
 | `pnpm check:leaks` | After `pnpm build`: fail on private vocabulary, a tracked/unignored preview file, or preview places inside a bundle |
 | `pnpm build` | Production builds of both Vercel projects (`apps/web`, `apps/api`) |
-| `pnpm validate:published [file]` | Validate a projection against the contract incl. cross-references |
+| `pnpm validate:published ["$PWD/file"]` | Validate a projection against the contract incl. cross-references (default: the committed projection; pass an absolute path, pnpm runs the script in `packages/published`) |
 | `pnpm --filter @catalyst/schemas build:contract` | Regenerate `published.schema.json` (a test fails if it is stale) |
 | `pnpm --filter @catalyst/geodata generate` | Regenerate the globe datasets from Natural Earth |
 
@@ -95,6 +96,11 @@ No secrets exist in this repository or in either Vercel project. The Polarsteps 
 - [Web architecture](docs/web-architecture.md): routing, data, focus management, globe lifecycle, measurements
 - [Design tokens](docs/design-tokens.md)
 - [Renderer decision](docs/renderer-decision.md): why standalone Three.js, with benchmarks
+- [Street map architecture](docs/street-architecture.md): the street-scale renderer (pixel pass, style, handover, palette, road hierarchy)
+- [Pixel line rules](docs/pixel-line-rules.md): the line and palette spec the street renderer follows
+- [Performance](docs/performance.md): investigation, fixes, measurements and the budget check of the globe and street renderers
+- [Self-hosting](docs/self-hosting.md): containers and the fallback tile server
+- [Handoff](docs/handoff.md): state of the rebuild and what is left
 - [API contract](docs/api-contract.md): endpoints, caching, Vercel setup, monorepo build behaviour
 - Private repo docs (privacy model, import contract, sync invariants, editorial workflow, publication, database migration plan) live in the content repository.
 

@@ -16,16 +16,22 @@ street/
     art-line.ts          widths in art px (floor 1), ink classes, hollow roads, Bayer lattices
     art-measure.ts       masks, components, stair remover, reference rasteriser (tests and gate only)
     pixel.ts             cell size, focus-mask coverage, EasedValue (reveal / dissolve)
+    ease.ts              the temporal ease (tile arrival / departure, tone steps, the cut): CPU twin of the pass's `FRAG_EASE`
+    warp.ts              camera-delta warp for the ease: where a cell of this frame was in the previous one (Mercator or globe mesh)
     registration.ts      globe <-> map camera (log2 cos lat)
     tile-health.ts       request scoring: error rate, timeouts, p95 latency, stalls
     tile-source-manager.ts   the state machine
     source-descriptor.ts TileJSON / PMTiles header -> descriptor, URL validation
     palette.ts           the level encoding between the style and the pass (the grey ramp itself is engine/palette.ts, shared with the globe)
     snap.ts              pan snapping: centre quantised to whole art cells while the zoom is steady
-    attribution.ts, label-place.ts, marker-visibility.ts, routes.ts
+    attribution.ts, routes.ts
+    label-place.ts       only `labelPriorityFloor` is used (hud-layer); `placeLabels` and `snapToCell` are test-only
+    marker-visibility.ts test-only (no production importer)
   gl/pixel-pass.ts       pass A (centre sampling, palette level), T (stair removal), E (tile fade ease), B (present: reveal, sharp, blend)
   gl/compositor.ts       overlay context, canvas copy per map `render` (native: the map IS the art grid, 3 px per cell), suspend, context loss, hold
   style/street-style.ts  one MapLibre style for both schemas, no glyphs, no sprites, no symbol layers
+  style/lod.ts           the level-of-detail table (`LOD`: `from`, `full`, `role`, dashes per class), the one place to tune
+  style/probe.ts         test helpers: read a palette level / pattern back out of a style paint
   net/probe.ts           TileJSON / PMTiles header probes with timeout and real abort
   net/tile-protocols.ts  per-instance protocols `catp<N>` / `catf<N>`: timed, timeout-bounded tile requests
   overlay/hud-layer.ts   the detection boxes of places and groups, labels and chips (engine/box-scene.ts), hit testing
@@ -115,7 +121,7 @@ Trimmed, empty = unset, https only (plain http for localhost outside production)
 
 ## Handover (stage 2)
 
-Summary (full description in `docs/web-architecture.md`, "Handover"; the numbers below are current, that file may still quote the old cut at 5.05): the globe renderer owns one camera whose zoom extends past 6.5 into street scale; the street map follows it (registered, synchronous) and takes over from the globe at internal zoom `cutZoom` **3.7** (was 5.05; back below `cutBackZoom` 3.45, hysteresis), once its tiles are loaded or `cutMaxWaitMs` 1200 ms have passed, swapping markers and labels in the same task. The swap is a **tone cross-fade of about 300 ms** (`crossfadeMs`; see "Temporal ease and the cut"), not a click; the pixel-grid dissolve (blend 3.3 to 4.1) stays behind `HANDOVER.dissolve`, off. The chunk (about 435 KB gzip plus the worker) loads at zoom **2.6** (`mountZoom`, was 4.0), the map follows the camera invisibly from **3.0** (`followZoom`, was 4.3) so its tiles are ready at the cut, and it is released again below 1.9. In map zoom the cut is 3.7 + log2 cos(lat): 3.2 at 46 degrees, 2.4 at 60, 1.2 at 78 (`STREET_TUNING.minZoom` is 1). Why 3.7: the globe's own borders have reached the peak level at 3.5 (`TUNING.borderZoom`, asserted in `handover/maths.test.ts`), the cut sits after that and well before the old 5.05 (the test asserts at least 1.3 zoom levels earlier); the 3.5 to 4.2 range of the brief maps to the same picture, the street map draws the same coast and borders from the first tile zoom (`DEFAULT_HANDOFF.openmaptiles` 1) and keeps the bundled world lines under them while tiles load (`WORLD_PLACEHOLDER_BELOW`), so an early cut never shows an emptier map than the globe it replaces. `scripts/street/cut-seam.mjs` measures the seam (1440x900 @1, light, OpenFreeMap; share of the globe's coast and border cells that have a street cell within one art cell / the reverse): Europe 91 % / 88 % at 3.7 against 87 % / 73 % at the old 5.05, Borneo 94 % / 81 % against 84 % / 49 % (the street map draws more than the globe's 110m coast, the unmatched cells are detail the cross-fade brings in). Until a tile source works the globe's zoom limit is 6.5 and a flight toward street scale waits at it. `onTileStatus` drives the limit: `capped` makes the controller ease the camera back to the globe's range and show the small notice. `GlobeViewState.street` stores street scale in the shell's saved view.
+Summary (full description in `docs/web-architecture.md`, "Handover"; the numbers below are current): the globe renderer owns one camera whose zoom extends past 6.5 into street scale; the street map follows it (registered, synchronous) and takes over from the globe at internal zoom `cutZoom` **3.7** (was 5.05; back below `cutBackZoom` 3.45, hysteresis), once its tiles are loaded or `cutMaxWaitMs` 1200 ms have passed, swapping markers and labels in the same task. The swap is a **tone cross-fade of about 300 ms** (`crossfadeMs`; see "Temporal ease: tile arrival, tile departure and the cut"), not a click; the pixel-grid dissolve (blend 3.3 to 4.1) stays behind `HANDOVER.dissolve`, off. The chunk (about 305 KB gzip plus the 146 KB MapLibre worker, 451 KB in all, see Measurements) loads at zoom **2.6** (`mountZoom`, was 4.0), the map follows the camera invisibly from **3.0** (`followZoom`, was 4.3) so its tiles are ready at the cut, and it is released again below 1.9. In map zoom the cut is 3.7 + log2 cos(lat): 3.2 at 46 degrees, 2.7 at 60, 1.4 at 78 (`STREET_TUNING.minZoom` is 1). Why 3.7: the globe's own borders have reached the peak level at 3.5 (`TUNING.borderZoom`, asserted in `handover/maths.test.ts`), the cut sits after that and well before the old 5.05 (the test asserts at least 1.3 zoom levels earlier); the 3.5 to 4.2 range of the brief maps to the same picture, the street map draws the same coast and borders from the first tile zoom (`DEFAULT_HANDOFF.openmaptiles` 1) and keeps the bundled world lines under them while tiles load (`WORLD_PLACEHOLDER_BELOW`), so an early cut never shows an emptier map than the globe it replaces. `scripts/street/cut-seam.mjs` measures the seam (1440x900 @1, light, OpenFreeMap; share of the globe's coast and border cells that have a street cell within one art cell / the reverse): Europe 91 % / 88 % at 3.7 against 87 % / 73 % at the old 5.05, Borneo 94 % / 81 % against 84 % / 49 % (the street map draws more than the globe's 110m coast, the unmatched cells are detail the cross-fade brings in). Until a tile source works the globe's zoom limit is 6.5 and a flight toward street scale waits at it. `onTileStatus` drives the limit: `capped` makes the controller ease the camera back to the globe's range and show the small notice. `GlobeViewState.street` stores street scale in the shell's saved view.
 
 ## Palette and tone (2026-10-05)
 
@@ -160,7 +166,7 @@ Other classes of the same table (unchanged by the hierarchy): rivers 7 > 9.2 (9 
 
 ### Tuned to the framing of a click (2026-10-06)
 
-Owner: "streets inside cities should start loading earlier ... I sometimes can't see streets at all". The camera of a click is `engine/framing.ts`: a circle of the place's `viewRadiusKm` (12 km by default, 10 to 18 typical) fits the free viewport with a 25 % margin. In MapLibre zoom (unified zoom + `log2 cos lat`, `scripts/street/city-frames.mjs --table=1`):
+Owner: "streets inside cities should start loading earlier ... I sometimes can't see streets at all". The camera of a click is `placeFraming(place)` (`engine/framing.ts`): the centre of the place's bounding box and the radius that fits its larger half-extent, else the recorded point and `viewRadiusKm` (12 km by default); that circle fits the free viewport with a 25 % margin. The table below is for places without a box; boxed places frame wider (several have sides over 45 km, see `handoff.md`). In MapLibre zoom (unified zoom + `log2 cos lat`, `scripts/street/city-frames.mjs --table=1`):
 
 | viewport | 10 km | 12 km | 14 km | 18 km |
 |---|---|---|---|---|
