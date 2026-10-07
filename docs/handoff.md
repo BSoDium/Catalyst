@@ -26,7 +26,7 @@ State of the rebuild on branch `feat/places-archive-rebuild` (draft PR #234) and
 3. **Bounding boxes**: decided 2026-10-07 to keep the dynamic OSM-derived boxes with as few manual overrides as possible; some cities are legitimately large. No size limit is enforced. Only a clearly wrong match (Mostar matched a 5 x 6 km local community) is worth a fix, ideally in the geocoding query rather than by hand. 34 places have no box (the `status: "fallback"` entries of the private `config/bboxes.json`) and keep their radius.
 4. **GPU budgets**: accepted as is (2026-10-07). The remaining `s4`/`s5-open` `gpuMean` overruns are marginal; the owner will check a low-end phone instead of chasing the budget further.
 5. **Content model v2, P1** (in progress, private repo): `SourceReader` listing first, then `vault migrate` (shadow `content/` beside `editorial/`). See the private `docs/content-model-v2-migration.md`.
-6. **CI for the private repo** (public CI and the layering test are done), then the other self-review actions (ranked in the private report): dead web code (`engine/labels.ts`, `street/core/label-place.ts`, `marker-visibility.ts`, dead exports), conformance test between the private golden projection and the public zod schema, splitting `handover/controller.ts` and `street/engine.ts` around pure, tested decisions.
+6. **Self-review actions** (ranked in the private report; public CI, the layering test and the dead web code are done): conformance test between the private golden projection and the public zod schema, splitting `handover/controller.ts` and `street/engine.ts` around pure, tested decisions (issues #235 to #238).
 7. **Phone testing**: `pnpm dev` binds to all interfaces ([performance.md](performance.md#testing-on-a-phone)). There is no on-screen perf overlay; use `?globe-debug` and `__perf`.
 8. **Nothing is published yet** (0 published places, the public site shows an empty globe). Publishing is by PR from the private repo's `publish.yml`; merging that PR is the act of publishing.
 
@@ -42,6 +42,18 @@ Owner feedback from the dev build, kept out of this PR and stacked on top as `fe
 6. Targets: the convex hull of the box and its label, plus slop, innermost wins (`hit-area.ts`).
 
 Not verified: Safari/iOS, a real touch screen (the touch slop and the 44 px target are by arithmetic and unit tests only), reduced motion in a browser for the new dim rule, the street scale (only the shared `BoxScene` code path, the street overlay itself was not driven), and the GPU budgets (not rerun).
+
+Round 2 (2026-10-08, same branch, owner feedback; details in [web-architecture.md](web-architecture.md), "Binary visibility, timed transitions", and [street-architecture.md](street-architecture.md), "Binary layers"):
+
+1. A label that cannot sit above its box nests inside it, off the outline (`labelCell`, `INSIDE_MARGIN`); the hit hull follows it.
+2. The sea texture waits for a flat view (`street/core/flatness.ts`: bulge of 4 px or less, about unified zoom 8.3 on a 900 px screen); the graticule stays until then.
+3. Box arms and dashes scale with the box (arm 3 to 14 cells, gap 2 to 9; a tiny box is solid), `dashingFor`.
+4. Everything is binary with timed transitions (`engine/fade.ts`, 200 ms, hysteresis on every threshold, loop runs until the last transition ends, reduced motion instant). The collision dim is binary too.
+5. The same principle for the rest of the map: globe borders, street road classes, fills, sea, graticule are switches (`street/style/layer-switch.ts`); the ease already was timed. Inventory and decisions in web-architecture.md. The street style's old tone ramps (`from`/`full`) are replaced by a switch zoom `on` per class (about 30 % of the old span): the look of a class at rest is its old final look, appearing a little later than its first faint tone did.
+6. A node with no drawn ancestor is never dimmed or faded by its parent (London under an open Europe). Consequence to confirm with the owner: at rest a box that loses its label to a neighbour and has no drawn group above it stays at full opacity without a name (hover shows it); only boxes inside a drawn group are dimmed.
+7. Dead web code removed (`engine/labels.ts`, `street/core/label-place.ts`, `marker-visibility.ts` with their tests, the orphan exports, the unused locals, the `from` parameter of `bboxFitRadiusKm`); `MERCATOR_FROM` now exists once (`street/core/warp.ts`).
+
+Not verified in round 2: Safari/iOS, touch, reduced motion in a real browser (unit tests and the `reduced` check only), the GPU cost of the new transitions (no perf budget was run). `tile-fade.mjs ghostlow` fails on `z4.5 zoom` (390 trail cells in the one frame at z5.0 where MapLibre swaps tile level; no layer is switched in that range) and could not be compared with HEAD.
 
 ## Decisions taken
 

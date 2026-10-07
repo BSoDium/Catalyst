@@ -211,8 +211,8 @@ files `../tuning` and `../../types`.
 | `engine/lod-stress.ts` | deterministic synthetic place hierarchy for the performance checks only (`?globe-debug&lod-stress=N`) |
 | `engine/geo.ts`, `geometry.ts`, `view.ts`, `tuning.ts` | pure projection/zoom maths, vertex builders, `GlobeViewState` <-> internal zoom, tuned constants |
 | `engine/lod-tree.ts`, `box-scene.ts`, `pixel-labels.ts`, `pixel-buffer.ts`, `pixel-font/` (+ `stretch.ts`), `country-names.ts`, `group-square.ts`, `node-screen.ts` | the detection boxes: the cut of the place hierarchy, the pixel-art drawing of boxes, labels and chips, the font, the hit area ("Detection boxes" below) |
-| `engine/hit-area.ts`, `label-plan.ts` | what is a click and hover target (the convex hull of a box and its label, plus slop; innermost wins) and which labels are drawn (no priority floor; a box that loses its label is dimmed): "Targets and labels" below |
-| `engine/labels.ts` | `placeLabels`, only exercised by its own tests (dead code, to be removed); the zoom-dependent priority floor that used to live here is gone |
+| `engine/fade.ts` | the one animation primitive: timed on/off transitions (`FadeArray`, `FADE_MS` 200, the ease, the hysteresis switch); "Binary visibility" below |
+| `engine/hit-area.ts`, `label-plan.ts` | what is a click and hover target (the convex hull of a box and its label, plus slop; innermost wins) and which labels are drawn (no priority floor; a box that loses its label is dimmed only under a drawn group): "Targets and labels" below |
 | `engine/colors.ts`, `dpr.ts`, `webgl.ts` | CSS-variable theme, `devicePixelRatio` watcher, WebGL probe |
 
 Everything under `engine/` and `handover/` is framework-free. Pure parts are unit-tested (`engine/*.test.ts`: projection,
@@ -464,10 +464,9 @@ world round trips, 3 live at street scale (Three + 2) and 1 after (43 created, 4
   none on the world view, none while nothing is selected, in the globe and the street map alike. The shown route plays
   the 2.2 s draw-on once when motion is allowed; under reduced motion it is complete and static. Its stops are drawn
   even inside a closed group (`LodTree.setExtraForced`). Hidden lines are not rendered at all (`RouteLayer.show`).
-- Borders: not drawn below internal zoom 3.0, then the faintest palette level, one level more every
-  (3.5 - 3.0) / (levels - 1) of zoom up to full ink at 3.5, and the same backwards on the way out: a fade in TONE, never a
-  dither (`TUNING.borderZoom`, `engine/palette.ts borderLevel`; the old 50% dither band read as noise and the border
-  popped in and out).
+- Borders: ON from internal zoom 3.25 (a hysteresis of 0.05 each side), off below; the fade between is a timed TONE ramp (the faintest palette
+  level stepping up to full ink over 200 ms, and the same backwards), never a dither and never a grey at rest (`TUNING.borderZoom`,
+  `engine/palette.ts bordersWanted / borderLevel`, `GlobeScene.syncCamera`; "Binary visibility" below).
 - Labels: drawn on the pixel overlay canvas (`aria-hidden`, no tab stops: a visual duplicate of the places list, extra tab
   stops would only repeat it), see "Detection boxes". The canvas is `pointer-events: none`; the canvas pointer handler
   hit-tests the targets of the drawn nodes (`BoxScene.hit`: the convex hull of a box and its label plus slop, "Targets and labels"),
@@ -539,47 +538,24 @@ the free area with the framing's 25 % margin. A group is the union of the TRUE b
 axis aligned in screen space, hollow, one art pixel thick, snapped to whole cells (`snapBox`), at least `LOD.minBoxCells`
 across on each axis.
 
-**Box outline** (2026-10-07, `drawBox`, `edgeLit` in `engine/pixel-labels.ts`). At rest only the four corners are full lines: each
-corner has an arm of `CORNER_ARM` = 3 solid cells along both of its edges, and the rest of each edge is dashes, `DASH_ON` 2 cells lit
-and `DASH_OFF` 2 dark counted from the end of an arm and mirrored from the other corner (the pattern is anchored at the corners, so
-it does not slide when a box grows; the two halves meet in the middle with at most one longer dash). A minimum box (9 cells) is
-four corner brackets. A hovered, focused or selected box (`solid`) is ONE uninterrupted solid line. Every state is one cell thick:
-there is no second ring and no width doubling, and the interior mask always starts one cell inside the outline. Same code in the globe
-and the street overlay (one `BoxScene`), so the two renderers cannot differ. The line-grid rules of `docs/pixel-line-rules.md` hold: whole
-cells, one cell thick, palette ink at the node's opacity, the dashes are cells that are simply not written.
+**Box outline** (2026-10-07, sized by the box 2026-10-08; `drawBox`, `edgeLit`, `dashingFor` in `engine/pixel-labels.ts`). At rest only the four corners are full lines: each corner has a solid ARM along both of its edges and the rest of each edge is dashes, `BOX_STYLE.dashOn` 2 cells lit then a gap of dark cells, counted from the end of an arm and mirrored from the other corner (the pattern is anchored at the corners, so it does not slide when a box grows). The arm and the gap scale with the box's on-screen size, by its smaller side in cells (so the four corners match): arm 10 % of it, between 3 and 14 cells; gap 3.5 % of it, between 2 and 9 cells. A big box therefore has long, noticeable arms (up to 14 cells, 35 CSS px) and scarce dashes (2 on, 9 off), a mid box 4 to 6 cells of arm and a 2 to 3 cell gap, a minimum box (9 cells) four corner brackets of 3 cells. An edge too short to hold two arms and one gap (7 cells and under) is a plain solid outline: the arms never overflow or overlap. A hovered, focused or selected box (`solid`) is ONE uninterrupted solid line. Every state is one cell thick: there is no second ring and no width doubling, and the interior mask always starts one cell inside the outline. Same code in the globe and the street overlay (one `BoxScene`), so the two renderers cannot differ. The line-grid rules of `docs/pixel-line-rules.md` hold: whole cells, one cell thick, palette ink at the node's opacity, the dashes are cells that are simply not written. Tests: `pixel-labels.test.ts` (geometry at sizes 1 to 1000, symmetry, monotonic growth, limits, tiny boxes).
 
-**Minimum size and mask.** A box smaller than `LOD.minBoxCells` (9 cells, 22.5 CSS px at 2.5 px; was 14, the owner found it
-too big) is drawn at that size, outlined, with its interior MASKED in the page colour (the colour of the ocean and the
-background: black in the dark theme, white in the light one, never a grey), so the small area reads as an outlined area that is
-empty and the fill does not catch the eye. As its true side grows from 1x to 1.6x the minimum (`fillFadeFrom/To`) the mask fades
-out by OPACITY and only the outline stays, so you can see through it (`LodTree.fillAlpha`). A box bigger than 1.6x the smaller
-free side fades out (gone at 2.2x: you are inside it). Reduced motion: the mask (and the "inside" fade) switch on or off with a
-hysteresis band instead of fading.
+**Minimum size and mask.** A box smaller than `LOD.minBoxCells` (9 cells, 22.5 CSS px at 2.5 px; was 14, the owner found it too big) is drawn at that size, outlined, with its interior MASKED in the page colour (the colour of the ocean and the background: black in the dark theme, white in the light one, never a grey), so the small area reads as an outlined area that is empty and the fill does not catch the eye. As its true side grows from 1x to 1.6x the minimum (`fillFadeFrom/To`) the mask is SWITCHED OFF (a binary state with a hysteresis band, `fillHyst`; the way out is a timed 200 ms opacity transition, "Binary visibility"), and only the outline stays, so you can see through it (`LodTree.fillAlpha`). A box bigger than 2.2x the smaller free side is hidden (shown again below 1.6x: you are inside it), also a timed transition with a hysteresis. Reduced motion: the same states, switched instantly.
 
 **Contrast and fades are opacity.** Rectangles and label text are the full foreground ink (`--foreground`, the last palette
 level) at opacity 1 whenever the node is fully visible, in both themes: the map beneath is a recessive grey, the boxes are not.
 A fade is NEVER a darker or lighter shade of grey: shades have a visible minimum that occludes the map right after a node appears
 and right before it goes, which breaks the fade. Everything a node draws (outline, interior mask, label plate, text) is
-composited at the node's alpha (`LodTree.alpha`, a continuous function of the camera, quantised to 1/64 for drawing) over what
+composited at the node's alpha (`LodTree.alpha`, the node's own timed opacity, never a function of the camera or of its parent, quantised to 1/64 for drawing) over what
 is underneath, per art cell: `PixelBuffer` holds straight-alpha RGBA per cell and does the "over" blend, the canvas composites
-it over the map. The art-pixel grid is untouched (no sub-pixel position, no smoothing). Fades are driven by the camera, so they
-run through the existing on-demand frame loop (idle = zero rAF); under reduced motion they are switches. The selected, focused
+it over the map. The art-pixel grid is untouched (no sub-pixel position, no smoothing). Fades are driven by TIME ("Binary visibility"), and the on-demand
+frame loop runs until the last one has ended (idle = zero rAF); under reduced motion they are switches. The selected, focused
 or hovered box is drawn on top as one uninterrupted solid line (see "Box outline"); it is never thicker than another box.
 
-**The cut** (declutter, not a hierarchy overlay). The published group tree is the cluster tree and a dynamic, screen-space cut
-decides which nodes are drawn: only places that pass the visibility rule (front hemisphere, clear of the limb) count; a group
-is shown as ONE box when its children, each as the box and the label it would be drawn with, are closer than `LOD.sepPx` (30 CSS
-px, a signed gap, `sepClosedPx` 10 = fully closed) and opens into its children when they separate. Between the two the
-alphas cross-fade as opacity (no dither; a camera jittering around the threshold only moves the opacity by a hair and never
-changes the set); alphas along a branch always sum to 1, so nothing pops and no place is ever missing. A lone place is its own
-rectangle at every zoom, a country with two distant places shows two rectangles, ten places 50 km apart are one box ("10
-entries") until you zoom in, continents and subregions only appear on crowded views, and every group is open from street scale.
-Reduced motion: no cross-fade, a group opens at `(sepClosedPx + sepPx) / 2 + 3 px` and closes 6 px lower. Cost: one projection
-of every place plus a traversal of the open groups only (18 nodes 5 us, 1,000 nodes 65 us, 5,000 nodes 250 us per
-evaluation); cached until the camera, the forced nodes or the theme change; idle map = zero frames and zero canvas draws.
+**The cut** (declutter, not a hierarchy overlay). The published group tree is the cluster tree and a dynamic, screen-space cut decides which nodes are WANTED drawn: only places that pass the visibility rule (front hemisphere, clear of the limb) count; a group is shown as ONE box when its children, each as the box and the label it would be drawn with, are closer than `LOD.sepPx` (30 CSS px, a signed gap) and opens into its children when they are apart again; it closes again at `sepClosedPx` (10) or less and keeps its state in between (a hysteresis band, so a camera jittering around the threshold cannot flap). The decision is BINARY (a node is wanted or not): the cross-fade between a group and its places is two timed transitions that start together over the same 200 ms, their opacities summing to exactly 1 on the way (a smoothstep of a linear progress), whatever the camera does. A lone place is its own rectangle at every zoom, a country with two distant places shows two rectangles, ten places 50 km apart are one box ("10 entries") until you zoom in, continents and subregions only appear on crowded views, and every group is open from street scale. A node's opacity never depends on its parent's: a node with no drawn ancestor is at full opacity ("Binary visibility"). Reduced motion: no transition, the same decisions. Cost: one projection of every place plus a traversal of the open groups only (18 nodes 5 us, 1,000 nodes 65 us, 5,000 nodes 250 us per evaluation; the retargeting pass is one more loop over the nodes); cached until the camera, the forced nodes or the theme change; idle map = zero frames and zero canvas draws.
 
 **Labels.** Text only, no surrounding rectangle, tab or outline: left-justified on the box's left edge, just above its top edge,
-on a plate of the page colour (one cell of room around the text, no border) so nothing shows behind it. A place's label is its
+on a plate of the page colour (one cell of room around the text, no border) so nothing shows behind it. When the top of the screen leaves no room above the box, the label nests INSIDE the box, in its inner top-left corner: the plate starts `INSIDE_MARGIN` (1) cell inside the outline, so the first letter is 3 cells from the left edge line and never on it (`labelCell`); the hit hull follows the plate, which is then inside the box. A place's label is its
 name; when it is the ONLY place of its country (`countryCode`, counted over the whole projection, not what is in view) the
 country follows after a comma ("Bogotá, Colombia", `Intl.DisplayNames(["en"], {type: "region"})`; a missing or unknown code
 adds nothing, silently). The name is set in the BOLD weight. A group's label continues with its COUNTER, "<N> entries" ("1 entry"),
@@ -592,12 +568,8 @@ opens its page, a group flies to frame it. The places list (`PlacesNav`) stays t
 under their groups as headings.
 
 **Targets and labels** (`engine/label-plan.ts`, `engine/hit-area.ts`, tests `label-plan.test.ts`, `hit-area.test.ts`, check
-`scripts/globe/groups.mjs targets`). The rule, in one sentence: every box that is drawn is clickable, and it either has its label or
-is dimmed; there is never a full-opacity box without a name.
-- Labels. EVERY drawn node (opacity at least `LOD.labelAlphaMin`) wants its label. Placement is greedy by score (selected, focused and
-  hovered first, then places before groups, then priority); a label whose plate would overlap a placed one (a cell of clearance) is
-  left out, and then its BOX is dimmed: its opacity is capped at `LOD.unlabelledAlpha` (0.4). A dimmed box is still a target and its
-  label shows while it is hovered, focused or selected. There is no zoom-dependent priority floor any more.
+`scripts/globe/groups.mjs targets`). The rule, in one sentence: every box that is drawn is clickable; it has its label, or it is nameless (its name shows on hover) and is then dimmed only if a group above it is drawn.
+- Labels. EVERY node the cut wants drawn wants its label. Placement is greedy by score (selected, focused and hovered first, then places before groups, then priority); a label that is drawn keeps its place against a challenger of up to `LOD.labelHold` (20) more score (hysteresis); a label whose plate would overlap a placed one (a cell of clearance) is left out. Its box is then DIMMED (opacity capped at `LOD.unlabelledAlpha`, 0.4) only when some group above it is drawn: then it is one of several boxes crowded in another and the dim says "secondary". A node with NO drawn ancestor (London on a view where Europe is open) is the top level of what is drawn and stays at full opacity, named or not (2026-10-08, owner: London was seen at low opacity while its parent group was not drawn; the collision dim had been applied whatever the ancestors). So at rest the only dimmed boxes are forced ones inside a drawn group (a route stop, say). The label and the dim are binary states with timed transitions (a hover that ends fades the name of a loser out over 200 ms); a hovered, focused or selected node is labelled and undimmed at once. A dimmed or nameless box is still a target and its label shows while it is hovered, focused or selected. There is no zoom-dependent priority floor any more.
   *Root cause of the Houston / New York bug* (isolated places, drawn at full opacity, no label, "not clickable"): the label priority
   floor (`labelPriorityFloor`, 60 at the whole-globe zoom falling to 0 at zoom 3) was applied to the LABEL only, never to the box, and every
   place of the owner's content has the default priority 50, so from the minimum zoom to zoom about 2.9 every place that was not inside a
@@ -613,9 +585,9 @@ is dimmed; there is never a full-opacity box without a name.
 - Overlaps. Of the targets that contain the point the SMALLEST (by box area) wins, so a group never steals a click on a place inside it; when
   none contains it, the NEAREST within the slop wins, then the smallest, then the highest priority, then the slug (so the order of the
   nodes never matters). A node below `LOD.pickAlphaMin` (0.3) is not a target; a dimmed box is picked at its undimmed opacity.
-- Regression. `label-plan.test.ts` (isolated low-priority places are labelled, a loser is dimmed and still picked, forced nodes always labelled),
+- Regression. `label-plan.test.ts` (isolated low-priority places are labelled, a loser under no drawn group is not dimmed and one under a drawn group is, hysteresis, forced nodes always labelled),
   `hit-area.test.ts` (hull, gap triangle, slop, nesting, big boxes, order independence) and, in a browser over a sweep of 200 views,
-  `groups.mjs targets` (no nameless full-opacity box; hovering the box, the label and the gap shows the pointer and the hover state). With the
+  `groups.mjs targets` (at rest no node dimmed or half-faded, none below full opacity without a drawn ancestor; hovering the box, the label and the gap shows the pointer and the hover state). With the
   old floor restored the check fails on Houston and San Pedro de Atacama at world and mid zoom (negative control, done once).
 
 **Pixel text.** `PixelBuffer` is a level image whose cells are the art pixels; `PixelOverlay` shows it on a `cols x rows`
@@ -669,11 +641,49 @@ engine now also cuts every segment into pieces of at most 1 degree (`engine/geom
 blink; on the current dataset it passes with and without the engine cut (the data no longer has long chords), so
 the unit tests are the regression guard for the engine part.
 
+### Binary visibility, timed transitions (2026-10-08)
+
+Owner: appearance and disappearance of boxes, labels and other map content was driven continuously by the camera, so a camera that came to rest between two states left labels half transparent and greyish. The rule now, everywhere in the map:
+
+1. **A thing is on or off.** The camera only decides a TARGET, from the camera with a HYSTERESIS band wherever a threshold exists (no flicker when the camera jitters around it).
+2. **Its opacity runs to the target by TIME** (`engine/fade.ts`: `FADE_MS` 200 ms, a smoothstep of a linear progress, so two things that swap and start together sum to exactly 1 on the way), whatever the camera does. A reversal turns around from where the value is. A pause (a hidden tab) counts as one frame, not as the whole transition.
+3. **The resting frame is always fully on or fully off.** The on-demand frame loop keeps running until every transition has ended (`LodTree.animating`, `GlobeScene.animating`; the street engine asks MapLibre for repaints while `HudLayer.animating`), then stops: idle is still zero frames. While the street map owns the view the globe's loop does not spin on transitions it cannot advance.
+4. **Reduced motion** is an instant switch (`step(.., instant)`), the same decisions.
+5. **Geometry is not faded.** A place that crosses the globe's limb, or a group left without a visible place, vanishes at once (a fading box would be drawn mirrored behind the globe); positions and sizes follow the camera continuously.
+6. **A node's opacity never depends on its parent's.** A node with no drawn ancestor is at full opacity (London under an open Europe); a group that is opening does not count as an ancestor of the places replacing it.
+
+Per node the tree keeps four timed values (`LodTree.life`, `mask`, `label`, `dim`): the node itself and its interior mask (set by the cut), its label and its dim (set by the label plan, `BoxScene`). A node that has just appeared (`born`) starts with its label and dim already in their state, so only the node itself fades in. Hysteresis values: group open/close `sepPx` 30 / `sepClosedPx` 10 (and `boxMaxFrom/To`), box hidden for being bigger than the screen `sizeFadeTo` 2.2 / back `sizeFadeFrom` 1.6, mask off at 1.6x the minimum / on again at `fillHyst` (0.3 / 0.7 of its smoothstep), label held against `labelHold` 20 score, borders `TUNING.borderZoom` 3.25 +- 0.05, street layers 0.05 zoom each side (`street/style/layer-switch.ts`). Tests: `fade.test.ts` (every property of the primitive), `lod-tree.test.ts` ("timed transitions": opening over the fade time, a camera that stops mid-way still ends resolved, frame-length independence, reversal, pause, idle), `label-plan.test.ts`, `layer-switch.test.ts`, `flatness.test.ts`, `palette.test.ts`. Browser: `groups.mjs timed` (a camera that opens a crowd and stops: 12 frames mid-transition, done at 204 ms, the last frame resolved and the loop stopped) and `groups.mjs at-rest` (wheel bursts with momentum, flings, every threshold of four paths landed on from both sides, the borders' threshold: every box, mask, label and layer fully on or off, nothing dimmed, no frame pending), `street/lod-check.mjs` for the street map.
+
+**Sea texture and graticule: the flatness of the view.** The street map is a MapLibre globe up to its zoom 12, so the earth is visibly curved for a long stretch of the street map's zoom range (the street map takes over from the Three.js globe at the cut, internal zoom 3.7). The sea texture (dashes in rows, anchored to the screen) used to ease in from map zoom 5.2 while the graticule eased out between 6.5 and 9.5: both showed together on a curved earth, a weird flat look. Now the graticule (parallels and meridians) is on while the earth is curved and the sea texture takes over once the view is close to flat, one binary swap that the street map's temporal ease cross-fades by time. "Close to flat" is a measure on the screen, not a bare zoom: the BULGE, `(h/2)^2 / (2R)` CSS px, the height by which the surface falls away at the top or bottom edge of a view `h` px high (R the apparent radius of the globe at the unified zoom). The view is flat at a bulge of 4 px or less (`FLAT.flatPx`), curved again at 6 px or more (`curvedPx`, the hysteresis): unified zoom 8.28 on a 900 px tall view (the latitude cancels in the unified zoom: map zoom 8.28 at the equator, 7.78 at 45 degrees), 8.1 on a 844 px phone, 9.6 on a 1400 px screen. `street/core/flatness.ts`, `layer-switch.ts`; the sea texture is further held back to `handoff + 0.7` for a tile source that only covers a place.
+
+**Inventory of every continuous function of the camera that controls opacity, width, tone or visibility of map content, and what was decided** (2026-10-08):
+
+| Where | Was | Decision |
+| --- | --- | --- |
+| Detection boxes: group to places (`lod-tree.ts`) | opacity a smoothstep of the camera ("openness"), partition of unity | binary cut with hysteresis, timed 200 ms swap (sum 1 on the way) |
+| Box bigger than the screen | opacity fade between 1.6x and 2.2x | binary with hysteresis (hidden at 2.2x, back below 1.6x), timed |
+| Interior mask of a minimum box | opacity fade between 1x and 1.6x the minimum | binary with hysteresis, timed |
+| Labels and the collision dim (`box-scene.ts`, `label-plan.ts`) | label alpha followed the node's, dim applied to every collision loser | binary, timed; dim only under a drawn group; label held by hysteresis |
+| Globe country borders (`scene.ts`) | grey level a staircase over zoom 3.0 to 3.5 | on/off at 3.25 +- 0.05, tone ramp run by time |
+| Street road, river, lake, border classes (`street/style/lod.ts`) | tone a staircase over a zoom range (12 classes, up to 4 zoom levels long) | binary layer switch at `on` with hysteresis, the ease fades the cells by time |
+| Street fills: parks, green, buildings | tone ramps | the same |
+| Street sea texture | tone ramp from map zoom 5.2 to 10 | binary, by the flatness of the view |
+| Street graticule | tone ramp out between 6.5 and 9.5 | binary, on while curved, off when flat |
+| Tile arrival and departure (`street/core/ease.ts`) | already timed: a level per 24 ms, run to the end by the settle loop | kept; verified to converge (`lod-check.mjs`, `tile-fade.mjs`, `cut-fade.mjs`) |
+| Globe to street cut and back (`handover/`) | cross-fade of 300 ms by time, hysteresis 3.7 / 3.45 | kept (already binary and timed) |
+| Overlay owner switch, reload fade, panel inset | CSS transitions or time-based tweens | kept (time) |
+| Line widths along their ramps, the 1 to 2 px step of main roads at z9, hollow roads from z16 | continuous in zoom | legitimately continuous: geometry. The z9 step is within 0.01 of zoom (a width, never an intermediate one) |
+| Sea outline and country borders: world lines to tile lines at the hand-over zoom | a hard switch between two data sources | kept: binary, cross-faded by the ease |
+| World placeholder lines while tiles load | binary on `areTilesLoaded()` | kept |
+| Lift of route arcs on the globe (`routeLift`), route draw-on (2.2 s) | geometry, and a time-based animation | kept |
+
+Fixed on the way: (a) the first version of the street layer switch set `layout.visibility` on EVERY tile layer from the switch's `on` set, so the always-on layers (coast, country borders, the erasing interiors of hollow roads) were hidden: from space only the graticule, the outline and the boxes were left, layers came back one by one while zooming in, and at street scale every big road was a solid band with no hierarchy. Only the switched layers (`switched(spec)`) take the state now; regression tests in `lod.test.ts` and, on the real app, `scripts/street/lod-check.mjs` (always-on layers visible, map never empty, along the whole path). (b) While the street map owns the view the globe's frame loop is suspended; the new transitions must not keep it spinning (a stuck border fade did, found by `settleApp` timing out).
+
 ### Checks of the boxes (`scripts/globe/groups.mjs`, `markers.mjs`)
 
-`groups.mjs [lod|cases|pixels|empty|reduced|pick|cost|idle|handover|shots]` (demo content: `pnpm dev:demo`; `handover` also
-needs the local tile server) checks the cut (alphas sum to 1 along every branch, no jump, tone entry, 10 close places = one box
-that opens, a lone place, two distant places), the pixels (every outline cell present, only palette colours), reduced motion,
+`groups.mjs [lod|cases|pixels|empty|timed|at-rest|reduced|pick|targets|cost|idle|handover|shots]` (demo content: `pnpm dev:demo`, `lod`, `cases` and `handover` need it; `targets` and `at-rest` run on any content, your preview included; `handover` also
+needs the local tile server) checks the cut (at rest every node fully drawn, exactly one level per branch, 10 close places = one box
+that opens, a lone place, two distant places, the timed transitions), the pixels (every outline cell present, only palette colours), reduced motion,
 picking (border and label plate yes, interior no), cost, idle (0 frames, 0 canvas draws) and that the globe and the street overlay
 draw the same boxes in the same tones at one camera. `SHOTS=1 ... groups.mjs shots` writes `docs/screenshots/clusters-world-{light,dark}.png`
 and `clusters-opening.png` (a cluster opening through a zoom). `markers.mjs [quick]` is the whole-or-nothing sweep for rectangles:
