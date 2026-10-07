@@ -1,8 +1,11 @@
 import { loadProjection, type ContentMode } from "@catalyst/published";
 import type { PublishedProjection } from "@catalyst/schemas";
 
+/** The API serves bundled content only: `published` or `demo`. It never serves the local `preview` file. */
+export type ApiMode = Exclude<ContentMode, "preview">;
+
 export type ContentState =
-  | { status: "ready"; mode: ContentMode; projection: PublishedProjection }
+  | { status: "ready"; mode: ApiMode; projection: PublishedProjection }
   | { status: "invalid"; reason: string };
 
 export interface ContentEnv {
@@ -10,7 +13,7 @@ export interface ContentEnv {
 }
 
 /** Unset or empty means `published`. Anything unrecognised is an error, never a silent fallback. */
-export function resolveMode(raw: string | undefined): ContentMode {
+export function resolveMode(raw: string | undefined): ApiMode {
   const value = raw?.trim();
   if (value === undefined || value === "" || value === "published") return "published";
   if (value === "demo") return "demo";
@@ -24,7 +27,7 @@ export function resolveMode(raw: string | undefined): ContentMode {
  */
 export function loadContent(
   env: ContentEnv,
-  load: (mode: ContentMode) => PublishedProjection = loadProjection,
+  load: (mode: ApiMode) => PublishedProjection = loadProjection,
 ): ContentState {
   try {
     const mode = resolveMode(env.CATALYST_CONTENT);

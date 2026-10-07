@@ -98,7 +98,7 @@ The complete validated projection, exactly the shape of `PublishedProjection`: `
 
 ### `GET /v1/places`
 
-Array of `PlaceSummary` (`slug`, `name`, `region?`, `coordinates`, `labelPriority`, `viewRadiusKm?`, `group?`, `summary?`), sorted by `slug`. Optional fields are omitted when absent.
+Array of `PlaceSummary` (`slug`, `name`, `region?`, `coordinates`, `labelPriority`, `bbox?`, `viewRadiusKm?`, `group?`, `countryCode?`, `summary?`), sorted by `slug`. Optional fields are omitted when absent.
 
 ```json
 [
@@ -107,7 +107,11 @@ Array of `PlaceSummary` (`slug`, `name`, `region?`, `coordinates`, `labelPriorit
 ]
 ```
 
-`viewRadiusKm` (optional, number, 0.5 to 500, additive in schema version 1): the radius in km of the area that should fit on screen when the place is shown, typically the centre-to-edge distance of the built-up area (Lisbon 10, Paris 14, Ho Chi Minh City 18). Clients fit the whole circle into the free map area with a margin. When absent, the web app uses 12 km, a typical city-wide framing: it is large enough that a mid-size city is seen whole (so the visitor can tell where they are) and small enough that streets stay legible. Consumers that ignore the field are unaffected, and projections without it stay valid. It is part of both `PlaceSummary` and the full place.
+`bbox` (optional, `[west, south, east, north]`, additive in schema version 1): the whole extent of the area the place names, in WGS84 degrees (GeoJSON order). For a city it is the city as a whole, not the neighbourhood where the author happened to be: a place whose `coordinates` sit in the north of Houston carries the box of all of Houston. The private export takes it from OpenStreetMap administrative boundaries (a committed cache, never fetched at export time) or from a hand-set editorial value. Rules, validated by `parsePublishedProjection` and by the private export: four finite numbers, longitudes in -180 to 180, latitudes in -90 to 90, `west < east` and `south < north` (a box never crosses the antimeridian). The box is **not** required to contain `coordinates`, and generally does not have the same centre: `coordinates` stays the marker and label anchor, the box is the framing. When `bbox` is present, clients should fit it (centred on the box); when absent there is no known extent and they fall back to `viewRadiusKm`. It carries no source text, only numbers; the underlying boundaries are © OpenStreetMap contributors (ODbL). It is part of both `PlaceSummary` and the full place; consumers that ignore it are unaffected and projections without it stay valid.
+
+`viewRadiusKm` (optional, number, 0.5 to 500, additive in schema version 1): the radius in km of the area that should fit on screen when the place is shown. **When `bbox` is present it is derived from the box**: the radius of the circle centred on the box that covers it (half its diagonal, rounded to 0.1 and clamped to 0.5 to 500), a convenience for clients that frame with a circle; it is then NOT a circle around `coordinates`. Without `bbox` it is the authored city-wide framing around `coordinates`, typically the centre-to-edge distance of the built-up area (Lisbon 10, Paris 14, Ho Chi Minh City 18). Clients fit the whole circle into the free map area with a margin. When absent, the web app uses 12 km, a typical city-wide framing: it is large enough that a mid-size city is seen whole (so the visitor can tell where they are) and small enough that streets stay legible. Consumers that ignore the field are unaffected, and projections without it stay valid. It is part of both `PlaceSummary` and the full place.
+
+`countryCode` (optional, string, additive in schema version 1): the ISO 3166-1 alpha-2 country code of the place, uppercase (`XK` for Kosovo is allowed; pattern `^[A-Z]{2}$`). It is **derived** by the private export for every published place, never authored in the projection: an explicit editorial value wins, else the majority country of the place's source steps, else a lookup of its approved coordinates in static country borders. It carries no source text. It is omitted when the country cannot be determined. It is part of `PlaceSummary`, the full place and the projection; consumers that ignore it are unaffected and projections without it stay valid. The web app uses it to label a country on the globe when exactly one place belongs to it.
 
 ### `GET /v1/groups`
 
@@ -127,7 +131,7 @@ The automatic place hierarchy, flat, sorted by `slug` (`PublishedGroup[]`). Grou
 | `kind` | `continent`, `subregion`, `region` (informal, e.g. Balkans), `country` or `area` (places close together inside one country), from widest to narrowest. |
 | `parent` | Slug of the enclosing group; absent on a root group. No cycles. |
 | `coordinates` | Centre of the group's bounding circle. |
-| `viewRadiusKm` | 0.5 to 20000. Radius of the circle around `coordinates` that covers every descendant place, including each place's own view radius, with a 10% margin. Fit it on screen to show the whole group. |
+| `viewRadiusKm` | 0.5 to 20000. Radius of the circle around `coordinates` that covers every descendant place (for a place with a `bbox`: its whole box), including each place's own view radius, with a 10% margin. Fit it on screen to show the whole group. |
 | `labelPriority` | 0 to 100, like places (continent 90 down to area 55). |
 
 Guarantees (validated by `parsePublishedProjection` and by the private export): every `parent` and every place `group` resolves, parent chains never cycle, group slugs are unique and distinct from place slugs, and **no group is empty**: each has at least one descendant place. A level with only one child is skipped when the hierarchy is built, so a chain of identical squares never appears. A place that is the only one of its continent (and country, and so on) belongs to no group and has no `group` field.
@@ -147,8 +151,10 @@ The full place with `related` resolved to `{ kind, slug, title }` and its group 
   "region": "Portugal",
   "coordinates": { "lat": 38.72, "lon": -9.14 },
   "labelPriority": 60,
+  "bbox": [-9.25, 38.664, -9.07, 38.776],
   "viewRadiusKm": 10,
   "group": "europe",
+  "countryCode": "PT",
   "summary": "Demo fixture: a place with prose, dates, an image and related content.",
   "dates": { "start": "2024-03", "end": "2024-04", "label": "Demo dates" },
   "body": [
@@ -192,7 +198,7 @@ Arrays of content items (`slug`, `title`, `summary?`, `date?`, `url?` (https onl
 
 | Variable | Values | Default | Notes |
 | --- | --- | --- | --- |
-| `CATALYST_CONTENT` | `published` \| `demo` | `published` (unset or empty) | `demo` serves placeholder fixtures for local development. **Leave it unset in production.** Any other value is a startup error, never a silent fallback. |
+| `CATALYST_CONTENT` | `published` \| `demo` | `published` (unset or empty) | `demo` serves placeholder fixtures for local development. **Leave it unset in production.** Any other value is a startup error, never a silent fallback. This includes `preview`: the local preview of unpublished drafts is a web-dev-only mode and the API never serves it. |
 | `PORT` | number | `3001` | Local dev server and built artifact only. Ignored on Vercel. |
 
 No secrets. See `apps/api/.env.example`.
@@ -221,17 +227,51 @@ pnpm --filter @catalyst/api build && pnpm --filter @catalyst/api start   # self-
 
 ## Deployment on Vercel
 
+Two Vercel projects, one per app, from this one repo. Both need a **Root Directory** (a dashboard setting no file in the repo can set) and **Include source files outside of the Root Directory** (the apps import `packages/*`). Everything else is in the repo: `apps/web/vercel.json` and `apps/api/vercel.json` pin the Framework Preset (`react-router`, `hono`), the Node version comes from `engines`, the package manager from `packageManager` and `pnpm-lock.yaml`.
+
+### Owner checklist (click by click)
+
+The first PR of the rebuild failed its Vercel check because the one project that existed, `catalyst` (formerly `bsodium`, the old Yarn app at the repository root), still had **Root Directory empty**. At the repo root there is no app any more (a pnpm workspace with a `build` script that builds both), so no preset can succeed there. See "Evidence" below.
+
+Web project (reuse the existing `catalyst` project):
+
+1. vercel.com, team `photonsquid`, project `catalyst`, **Settings**, **Build and Deployment**.
+2. **Root Directory**: type `apps/web`, Save. Leave **Include source files outside of the Root Directory** enabled (the default); it must be on.
+3. **Framework Preset**: `React Router` (the committed `apps/web/vercel.json` also says so; the file wins).
+4. Clear every override: **Install Command**, **Build Command**, **Output Directory**, **Development Command** all left on their defaults (toggles off). A leftover `yarn install`, `corepack yarn build` or `dist`/`build` from the old app breaks the build.
+5. **Node.js Version**: `22.x` or newer (the repo's `engines` is `>=22`; Vercel then uses 24.x and says so in the build log, which is fine). **Settings, Environment Variables**: none needed; make sure no `CATALYST_CONTENT=demo`/`preview` is set (only `published`, the default, is allowed in production).
+6. Redeploy: **Deployments**, the failed one, the three dots, **Redeploy** (or push a commit). Expect `Detected pnpm-lock.yaml`, `Running "pnpm install"` at the repo root, then the React Router build, status Ready.
+
+API project (new):
+
+1. vercel.com, team `photonsquid`, **Add New**, **Project**, import the same GitHub repository.
+2. Name `catalyst-api`; **Root Directory**: `apps/api`; **Include source files outside of the Root Directory**: on. Framework Preset: `Hono` (pinned by `apps/api/vercel.json`; `Other` fails with "No Output Directory named public"). No overrides, no environment variables. Deploy.
+3. Leave **Settings, Build and Deployment, Root Directory, Skip deployment** as it is (it skips a project that a push did not affect, see "Monorepo build behaviour").
+
+After both are green, the PR shows two Vercel checks, one per project.
+
 ### Project settings
 
-| Setting | Value |
-| --- | --- |
-| Git repository | this repo (GitHub-connected) |
-| Root Directory | `apps/api` |
-| Framework Preset | Hono (or Other) |
-| Node.js version | 22.x (matches `.nvmrc`) |
-| Install Command | default, or `pnpm install --filter @catalyst/api...` (see below) |
-| Build / Output | defaults; no `vercel.json` is needed |
-| Environment variables | none. `CATALYST_CONTENT` unset in Production, Preview and Development |
+| Setting | Web (`apps/web`) | API (`apps/api`) |
+| --- | --- | --- |
+| Git repository | this repo (GitHub-connected) | same |
+| Root Directory | `apps/web` | `apps/api` |
+| Include source files outside of the Root Directory | on | on |
+| Framework Preset | React Router (pinned in `vercel.json`) | Hono (pinned in `vercel.json`; not `Other`) |
+| Node.js version | `engines` `>=22`: Vercel uses 24.x (`.nvmrc` says 22, local and CI-style checks ran on 22 and 26) | same |
+| Install Command | default (`pnpm install` at the workspace root, from `pnpm-lock.yaml`) | default, or `pnpm install --filter @catalyst/api...` (see below) |
+| Build / Output | defaults. The web build applies `@vercel/react-router` only when `VERCEL=1` (`react-router.config.ts`); the API's `build` script emits `dist/`, which Vercel ignores | defaults |
+| Environment variables | none required: `CATALYST_CONTENT` unset (`published`); optionally `CATALYST_TILES_*` (docs/self-hosting.md, section 6) | none |
+
+### Evidence (what was reproduced, 2026-10-06)
+
+The check cannot be read without Vercel access, so the cause was reproduced instead:
+
+- The Vercel bot comment on the PR carries the project metadata: one project (`prj_bWZMUhylXdrg9k95Wsq58Cah9XDx`), `rootDirectory: null`, a monorepo. The same project built the old app at the repo root with a green deployment (PR #227). The last three deployments of the rebuild branch (`e94751d`, `1dec39e`, `aae202e`) all failed.
+- `git archive` of the pushed head (`aae202e`), `pnpm install --frozen-lockfile` and `VERCEL=1 pnpm run build` pass on Node 22 with pnpm 9 and 10 (web and API), and the built web server answers `/` with 200: the committed tree itself builds.
+- The Vercel CLI (`vercel build`, offline, with a hand-written `.vercel/project.json` carrying the settings) on that tree: Root Directory empty fails whatever the preset (React Router: `Failed to resolve "@remix-run/dev"`, Other: `No Output Directory named "public" found`, Vite: `No Output Directory named "dist" found`); Root Directory `apps/web` with React Router succeeds and emits the Build Output API (static assets, one SSR function per route); Root Directory `apps/api` succeeds with Hono and fails with Other.
+
+What is not known: the literal error line of the failed deployment (log not readable), and whether the project's saved Install/Build Command overrides, if any, add a second failure. The checklist clears them either way.
 
 The deploy entry is `apps/api/src/index.ts`: it imports `hono` and has `export default app`, which is what Vercel's zero-config Hono support looks for. Per the Vercel Hono docs, `serveStatic` is ignored there and static assets would have to live in `public/`; this API serves none (images are served by the web app).
 
@@ -264,12 +304,11 @@ Verified locally:
 - The built bundle (`dist/server.mjs`, copied outside the repo with no `node_modules`) runs under plain node and serves every endpoint, 304, HEAD, OPTIONS and 405s correctly. The bundled `dist/index.mjs` default export works as a fetch handler.
 - `pnpm dev` serves on port 3001.
 
+Verified with the Vercel CLI offline (`vercel build`, see "Evidence" above): with Root Directory `apps/api` and the Hono preset the entry bundles together with the workspace packages and the projection (`.vercel/output/functions/index.func`), and the `build` script emitting `dist/` does no harm.
+
 Not verifiable without Vercel access (no credentials were used, nothing was deployed):
 
-- Whether Vercel's Hono builder bundles the workspace TypeScript sources (`@catalyst/schemas`, `@catalyst/published`, JSON imports) when building `src/index.ts`. The docs do not say. The `build` script proves the entry is bundleable by esbuild, and the entry is kept minimal, but that is not proof about Vercel's own pipeline.
-- Whether Vercel's builder is happy with the `build` script emitting `dist/` (the output is unused by Vercel). If it misbehaves, rename the script (for example `bundle`) and keep the root `build` script pointing at it.
-- The CDN honouring `s-maxage` / `stale-while-revalidate` as documented, and the automatic skip of unaffected projects in this specific repo layout.
-
-If the first deploy fails to resolve workspace packages, the fallback that needs no change to the API contract is to deploy with Root Directory `apps/api` and an Install/Build Command that runs the esbuild bundle, or to compile the workspace packages to JS. Decide that only from the actual build log.
+- A real deployment: the function's runtime behaviour on Vercel (cold start, the content being found at runtime), the CDN honouring `s-maxage` / `stale-while-revalidate` as documented, and the automatic skip of unaffected projects in this specific repo layout.
+- The literal log of the failed web deployment, and the dashboard's saved overrides (the checklist clears them).
 
 Optionally, the web project can discover this API's preview URL with Vercel Related Projects (`relatedProjects` in `apps/web/vercel.json`), so web previews call the matching API preview rather than production.

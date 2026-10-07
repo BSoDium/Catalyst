@@ -37,7 +37,7 @@ const KNOWN = ["/health", ...STATIC, "/v1/places/lisbon"];
 // Strict response schemas, independent of the server code, to assert that
 // nothing outside the contract allowlist can appear in a response.
 const placeSummarySchema = publishedPlaceSchema
-  .pick({ slug: true, name: true, region: true, coordinates: true, labelPriority: true, summary: true, viewRadiusKm: true, group: true })
+  .pick({ slug: true, name: true, region: true, coordinates: true, labelPriority: true, summary: true, bbox: true, viewRadiusKm: true, group: true, countryCode: true })
   .strict();
 const placeDetailSchema = publishedPlaceSchema
   .extend({
@@ -99,11 +99,21 @@ describe("endpoints (demo content)", () => {
     expect(radius["lisbon"]).toBe(10);
     expect(radius["kyoto"]).toBeUndefined();
     expect(Object.keys(body.find((p) => p.slug === "kyoto")!)).not.toContain("viewRadiusKm");
+    // The optional bounding box passes through unchanged when set and is omitted when absent.
+    const bbox = Object.fromEntries((body as { slug: string; bbox?: number[] }[]).map((p) => [p.slug, p.bbox]));
+    expect(bbox["lisbon"]).toEqual([-9.25, 38.664, -9.07, 38.776]);
+    expect(bbox["kyoto"]).toBeUndefined();
+    expect(Object.keys(body.find((p) => p.slug === "kyoto")!)).not.toContain("bbox");
     // The group slug passes through when the place is in a group and is omitted when it is in none.
     const group = Object.fromEntries((body as { slug: string; group?: string }[]).map((p) => [p.slug, p.group]));
     expect(group["zagreb"]).toBe("croatia");
     expect(group["cape-town"]).toBeUndefined();
     expect(Object.keys(body.find((p) => p.slug === "cape-town")!)).not.toContain("group");
+    // The derived country code passes through on every demo place.
+    const country = Object.fromEntries((body as { slug: string; countryCode?: string }[]).map((p) => [p.slug, p.countryCode]));
+    expect(country["lisbon"]).toBe("PT");
+    expect(country["cape-town"]).toBe("ZA");
+    expect(Object.values(country).every((c) => /^[A-Z]{2}$/.test(c ?? ""))).toBe(true);
   });
 
   it("GET /v1/groups returns the hierarchy sorted by slug, strictly", async () => {
@@ -131,12 +141,14 @@ describe("endpoints (demo content)", () => {
     const place = placeDetailSchema.parse(await res.json()) as PlaceDetailResponse;
     expect(place.name).toBe("Lisbon");
     expect(place.viewRadiusKm).toBe(10);
+    expect(place.bbox).toEqual([-9.25, 38.664, -9.07, 38.776]);
     expect(place.body.length).toBeGreaterThan(0);
     expect(place.related).toEqual([
       { kind: "article", slug: "demo-article", title: "Demo article" },
       { kind: "project", slug: "demo-project", title: "Demo project" },
     ]);
     expect(place.group).toBe("europe");
+    expect(place.countryCode).toBe("PT");
     expect(place.groupChain).toEqual([{ slug: "europe", name: "Europe", kind: "continent" }]);
     const kyoto = placeDetailSchema.parse(await (await demoApp().request("/v1/places/kyoto")).json());
     expect(kyoto.related).toEqual([{ kind: "artwork", slug: "demo-artwork", title: "Demo artwork" }]);
@@ -360,6 +372,12 @@ describe("startup failure", () => {
     const state = loadContent({ CATALYST_CONTENT: "staging" });
     expect(state.status).toBe("invalid");
     if (state.status === "invalid") expect(state.reason).toContain("CATALYST_CONTENT");
+  });
+
+  it("does not support the web app's local preview mode: published or demo only", () => {
+    const state = loadContent({ CATALYST_CONTENT: "preview" });
+    expect(state.status).toBe("invalid");
+    if (state.status === "invalid") expect(state.reason).toContain('expected "published" or "demo"');
   });
 
   it("serves 503 on /health and every data endpoint, without leaking details", async () => {

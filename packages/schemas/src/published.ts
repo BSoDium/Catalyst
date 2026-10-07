@@ -32,6 +32,21 @@ export const coordinatesSchema = z
   })
   .strict();
 
+/**
+ * Bounding box of an area, `[west, south, east, north]` in WGS84 degrees (the order of GeoJSON and of MapLibre's
+ * `LngLatBoundsLike`). Axis-aligned in longitude/latitude and never crossing the antimeridian: `west < east` and
+ * `south < north` are enforced. The box does not have to contain a point (see `publishedPlaceSchema.bbox`).
+ */
+export const bboxSchema = z
+  .tuple([
+    z.number().min(-180).max(180),
+    z.number().min(-90).max(90),
+    z.number().min(-180).max(180),
+    z.number().min(-90).max(90),
+  ])
+  .refine(([west, , east]) => west < east, "bbox: west must be strictly less than east (no antimeridian crossing)")
+  .refine(([, south, , north]) => south < north, "bbox: south must be strictly less than north");
+
 export const contentKindSchema = z.enum(["project", "article", "artwork"]);
 
 export const publishedImageSchema = z
@@ -92,9 +107,18 @@ export const publishedPlaceSchema = z
     /** Higher wins when labels collide on the globe. 0 to 100. */
     labelPriority: z.number().int().min(0).max(100),
     /**
-     * Optional. Radius, in km, of the area around `coordinates` that should fit on screen when the place is shown
-     * (city-wide framing: roughly the distance from the centre to the edge of the built-up area). The client fits the
-     * whole circle in the free map area with a margin. Absent = the client's default (12 km).
+     * Optional. The whole extent of the area the place names (for a city: the city, not the neighbourhood the author
+     * happened to be in), `[west, south, east, north]` in WGS84 degrees. When present it is THE framing of the place:
+     * the client fits this box, centred on the box (which is generally NOT `coordinates`). The box need not contain
+     * `coordinates`; `coordinates` stays the label/marker anchor. Absent = no known extent: use `viewRadiusKm`.
+     */
+    bbox: bboxSchema.optional(),
+    /**
+     * Optional. Radius, in km, of the area that should fit on screen when the place is shown. With `bbox` present it
+     * is DERIVED from the box (the radius of the circle centred on the box that covers it, i.e. half its diagonal,
+     * clamped to this range) and describes that circle, not a circle around `coordinates`. Without `bbox` it is the
+     * authored city-wide framing around `coordinates` (roughly the centre-to-edge distance of the built-up area).
+     * Absent = the client's default (12 km).
      */
     viewRadiusKm: z.number().min(0.5).max(500).optional(),
     /**
@@ -102,6 +126,15 @@ export const publishedPlaceSchema = z
      * of any group (for instance the only place of its continent).
      */
     group: slugSchema.optional(),
+    /**
+     * Optional. ISO 3166-1 alpha-2 country code, uppercase (`XK` for Kosovo is allowed). DERIVED by the private export
+     * for every published place (explicit editorial value, else the majority of its steps, else its coordinates), never
+     * authored in the projection. Absent when the country is unknown.
+     */
+    countryCode: z
+      .string()
+      .regex(/^[A-Z]{2}$/, "ISO 3166-1 alpha-2, uppercase")
+      .optional(),
     summary: z.string().trim().min(1).max(400).optional(),
     dates: publishedDatesSchema.optional(),
     /** Plain-text paragraphs. No HTML or markdown is interpreted. */
@@ -263,6 +296,8 @@ export const publishedProjectionSchema = projectionShape.superRefine((p, ctx) =>
 });
 
 export type Coordinates = z.infer<typeof coordinatesSchema>;
+/** `[west, south, east, north]`, WGS84 degrees. */
+export type Bbox = z.infer<typeof bboxSchema>;
 export type ContentKind = z.infer<typeof contentKindSchema>;
 export type PublishedImage = z.infer<typeof publishedImageSchema>;
 export type PublishedDates = z.infer<typeof publishedDatesSchema>;
@@ -277,12 +312,12 @@ export type PublishedProjection = z.infer<typeof publishedProjectionSchema>;
 /** Light shape for lists and the globe. Derived, never stored. */
 export type PlaceSummary = Pick<
   PublishedPlace,
-  "slug" | "name" | "region" | "coordinates" | "labelPriority" | "summary" | "viewRadiusKm" | "group"
+  "slug" | "name" | "region" | "coordinates" | "labelPriority" | "summary" | "bbox" | "viewRadiusKm" | "group" | "countryCode"
 >;
 
 export function toPlaceSummary(place: PublishedPlace): PlaceSummary {
-  const { slug, name, region, coordinates, labelPriority, summary, viewRadiusKm, group } = place;
-  return { slug, name, region, coordinates, labelPriority, summary, viewRadiusKm, group };
+  const { slug, name, region, coordinates, labelPriority, summary, bbox, viewRadiusKm, group, countryCode } = place;
+  return { slug, name, region, coordinates, labelPriority, summary, bbox, viewRadiusKm, group, countryCode };
 }
 
 export const EMPTY_PROJECTION: PublishedProjection = {

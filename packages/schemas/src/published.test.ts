@@ -41,6 +41,75 @@ describe("published projection", () => {
     });
   });
 
+  describe("bbox (optional extent of the area a place names)", () => {
+    const parse = (extra: object) => parsePublishedProjection({ ...EMPTY_PROJECTION, places: [{ ...place, ...extra }] });
+    // Houston as given by OpenStreetMap, while the place's own point sits in the north of the city.
+    const houston = [-95.91, 29.54, -95.01, 30.11];
+
+    it("is optional: projections without it stay valid and the key stays absent", () => {
+      expect(parse({}).places[0]).not.toHaveProperty("bbox");
+    });
+    it("accepts [west, south, east, north] in WGS84 degrees, kept as given", () => {
+      expect(parse({ bbox: houston }).places[0]!.bbox).toEqual(houston);
+      expect(parse({ bbox: [-180, -90, 180, 90] }).places[0]!.bbox).toEqual([-180, -90, 180, 90]);
+    });
+    it("does not require the box to contain the place's coordinates", () => {
+      expect(() => parse({ bbox: [10, 10, 11, 11] })).not.toThrow();
+    });
+    it("rejects the wrong length, non-numbers and out-of-range values", () => {
+      const bad: unknown[] = [
+        [1, 2, 3],
+        [1, 2, 3, 4, 5],
+        ["1", 2, 3, 4],
+        [null, 2, 3, 4],
+        [Number.NaN, 2, 3, 4],
+        [-180.1, 0, 1, 1],
+        [0, 0, 180.1, 1],
+        [0, -90.1, 1, 1],
+        [0, 0, 1, 90.1],
+        { west: 0, south: 0, east: 1, north: 1 },
+        "0,0,1,1",
+      ];
+      for (const v of bad) expect(() => parse({ bbox: v }), JSON.stringify(v)).toThrow();
+    });
+    it("requires west < east and south < north (no antimeridian crossing, no empty box)", () => {
+      for (const v of [[2, 0, 1, 1], [1, 0, 1, 1], [0, 2, 1, 1], [0, 1, 1, 1], [179, 0, -179, 1]]) {
+        expect(() => parse({ bbox: v }), JSON.stringify(v)).toThrow();
+      }
+    });
+    it("is kept on the place summary only when set", () => {
+      expect(toPlaceSummary(parse({ bbox: houston }).places[0]!).bbox).toEqual(houston);
+      expect(JSON.stringify(toPlaceSummary(parse({}).places[0]!))).not.toContain("bbox");
+    });
+    it("is described by the generated JSON Schema as a 4-number array (ordering rules are zod-only)", () => {
+      const schema = JSON.parse(buildJsonSchema());
+      const bbox = schema.properties.places.items.properties.bbox;
+      expect(bbox.type).toBe("array");
+      expect(bbox.prefixItems).toHaveLength(4);
+      expect(bbox.minItems).toBe(4);
+      expect(bbox.maxItems).toBe(4);
+      expect(schema.properties.places.items.required).not.toContain("bbox");
+    });
+  });
+
+  describe("countryCode (derived country of a place)", () => {
+    const parse = (extra: object) => parsePublishedProjection({ ...EMPTY_PROJECTION, places: [{ ...place, ...extra }] });
+
+    it("is optional: projections without it stay valid and the key stays absent", () => {
+      expect(parse({}).places[0]).not.toHaveProperty("countryCode");
+    });
+    it("accepts uppercase ISO 3166-1 alpha-2 codes, XK (Kosovo) included", () => {
+      for (const v of ["FR", "XK", "NZ"]) expect(parse({ countryCode: v }).places[0]!.countryCode).toBe(v);
+    });
+    it("rejects anything else", () => {
+      for (const v of ["fr", "F", "FRA", "F1", "", " FR", null, 33]) expect(() => parse({ countryCode: v }), String(v)).toThrow();
+    });
+    it("is kept on the place summary only when set", () => {
+      expect(toPlaceSummary(parse({ countryCode: "FR" }).places[0]!).countryCode).toBe("FR");
+      expect(JSON.stringify(toPlaceSummary(parse({}).places[0]!))).not.toContain("countryCode");
+    });
+  });
+
   describe("groups (automatic place hierarchy)", () => {
     const group = (slug: string, extra: object = {}) => ({
       slug,
