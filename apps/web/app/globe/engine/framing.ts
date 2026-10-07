@@ -61,8 +61,8 @@ export function bboxExtentsKm(bbox: Bbox | readonly number[] | undefined | null)
 
 /**
  * The view radius that frames a bounding box with the framing formula below unchanged: the circle of this radius has as its
- * radius the farthest extent of the box from the point the camera is centred on (`from`: the place's recorded point, whose
- * flight the handover centres on; the box's centre when absent), so the whole box is on screen with `FRAMING_MARGIN` of room
+ * radius the farthest extent of the box from the point the camera is centred on (`from`; the box's centre when absent, which
+ * is where the camera goes: `placeFraming`), so the whole box is on screen with `FRAMING_MARGIN` of room
  * and, when the point is the box's centre, the box's longer side takes 1 / (1 + margin) of the smaller free side. Clamped like
  * any view radius; null for no (valid) box.
  */
@@ -83,6 +83,9 @@ export function bboxFitRadiusKm(bbox: Bbox | readonly number[] | undefined | nul
  * Where the camera goes to "focus this place" and the view radius to fit there: the centre of the place's bounding box and the
  * radius that frames it when it has one (the contract: the client fits the box, centred on the box, which is not necessarily the
  * recorded point), else the recorded point and its (clamped, defaulted) view radius. Pure; feeds `radiusFitZoom` unchanged.
+ * Every camera move to a place (selection flight, direct load, retreat) takes its centre and zoom from here; the marker and the
+ * label stay on the recorded point (`lat`, `lon`). Boxes crossing the antimeridian are not supported (west < east is required,
+ * so the centre is the plain mean of the longitudes; an invalid box falls back to the point).
  */
 export function placeFraming(place: { lat: number; lon: number; viewRadiusKm?: number | undefined; bbox?: Bbox | readonly number[] | undefined }): { lon: number; lat: number; radiusKm: number } {
   const ext = bboxExtentsKm(place.bbox);

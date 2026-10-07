@@ -18,6 +18,7 @@ import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import { readTheme, type GlobeTheme } from "../engine/colors";
 import { applyDebugLevels } from "../engine/palette";
 import { watchDevicePixelRatio } from "../engine/dpr";
+import { placeFraming } from "../engine/framing";
 import { INSET_EASE } from "../engine/tuning";
 import { LodTree, buildLodNodes, newLodCamera, setLodCamera } from "../engine/lod-tree";
 import { registerMapToGlobe } from "./core/registration";
@@ -718,7 +719,7 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
       syncRouteStops(slug);
       (map.getSource("routes") as { setData?(d: unknown): void } | undefined)?.setData?.(routes);
       const place = slug ? places.get(slug) : undefined;
-      if (place && o?.fly) map_.flyTo({ lon: place.lon, lat: place.lat, zoom: o.zoom ?? Math.max(map.getZoom(), 14.5) });
+      if (place && o?.fly) map_.flyTo({ lon: placeFraming(place).lon, lat: placeFraming(place).lat, zoom: o.zoom ?? Math.max(map.getZoom(), 14.5) });
       else map.triggerRepaint();
     },
     setFocused(slug) {

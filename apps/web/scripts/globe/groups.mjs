@@ -23,7 +23,7 @@
 import fs from "node:fs";
 import { execFileSync } from "node:child_process";
 import { launch, open, waitGlobe, DESKTOP, MOBILE, sleep } from "./_lib.mjs";
-import { ensureTiles, openApp, settleApp, setCamera, waitStreetOk } from "./handover-lib.mjs";
+import { HCMC, ensureTiles, openApp, settleApp, setCamera, waitStreetOk } from "./handover-lib.mjs";
 
 const only = process.argv.slice(2);
 const run = (n) => only.length === 0 || only.includes(n);
@@ -468,17 +468,29 @@ try {
     await compare("Da Nang area, zoom 6.4", { lon: 108.2, lat: 16, zoom: 6.4 });
     await compare("Balkans, zoom 5.3", { lon: 17.5, lat: 45.4, zoom: 5.3 });
     await compare("Europe, zoom 5.06", { lon: 10, lat: 48, zoom: 5.06 });
-    await setCamera(page, { lon: 107, lat: 16, zoom: 4.9 });
+    // The globe-to-street cut and its way back are `HANDOVER.cutZoom` and `cutBackZoom` (app/globe/handover/maths.ts): read, never copied.
+    const maths = fs.readFileSync(new URL("../../app/globe/handover/maths.ts", import.meta.url), "utf8");
+    const cutZoom = Number(/\bcutZoom:\s*([\d.]+)/.exec(maths)?.[1]);
+    const cutBackZoom = Number(/\bcutBackZoom:\s*([\d.]+)/.exec(maths)?.[1]);
+    expect(`the cut zooms are read from the source (${cutZoom}, back ${cutBackZoom})`, cutZoom > 0 && cutBackZoom > 0 && cutBackZoom < cutZoom, { cutZoom, cutBackZoom });
+    // Ho Chi Minh City: inside the local tile extract, so the street map can really take over at the cut. The zoom goes up through the
+    // cut and back down through the way back (hysteresis: the owner flips at `cutZoom` going in and at `cutBackZoom` going out), each
+    // time straddling the threshold by a hair, where the drawn set must not change (further away it legitimately does: groups open and close).
+    const view = { lon: HCMC.lon, lat: HCMC.lat };
+    const EDGE = 0.04;
+    await setCamera(page, { ...view, zoom: cutZoom - 0.3 });
     await settleApp(page);
     const seq = [];
-    for (const z of [4.9, 5.0, 5.04, 5.06, 5.2, 5.0, 4.9]) {
-      await setCamera(page, { lon: 107, lat: 16, zoom: z });
+    for (const z of [cutZoom - 0.3, cutZoom - EDGE, cutZoom + EDGE, cutZoom + 0.3, cutBackZoom + EDGE, cutBackZoom - EDGE, cutBackZoom - 0.3]) {
+      await setCamera(page, { ...view, zoom: z });
       await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
       await settleApp(page);
       seq.push(await page.evaluate(() => ({ z: window.__handoverDebug.zoom(), owner: window.__handoverDebug.owner(), set: (window.__handoverDebug.owner() === "street" ? window.__handoverDebug.street().debug().lod() : window.__handoverDebug.globe.lod()).map((n) => n.slug).sort().join(",") })));
     }
     console.log("     across the cut:", seq.map((s) => `${s.z.toFixed(2)} ${s.owner}`).join(" | "));
-    expect("across the real cut the drawn set is the same on both sides", seq.every((s) => s.set === seq[0].set || s.z > 5), seq);
+    expect("the globe owns the view below the cut and the street map above it, and again the globe below the way back", seq[1].owner === "globe" && seq[2].owner === "street" && seq[4].owner === "street" && seq[5].owner === "globe", seq);
+    expect(`across the real cut the drawn set is the same on both sides (${seq[1].set.split(",").length} nodes)`, seq[1].set !== "" && seq[1].set === seq[2].set, [seq[1], seq[2]]);
+    expect(`across the way back the drawn set is the same on both sides (${seq[4].set.split(",").length} nodes)`, seq[4].set !== "" && seq[4].set === seq[5].set, [seq[4], seq[5]]);
     expect("no console errors", logs.length === 0, logs);
     await page.context().close();
     await tiles.stop();

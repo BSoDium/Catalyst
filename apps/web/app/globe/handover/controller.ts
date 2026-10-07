@@ -23,7 +23,7 @@ import { STREET_TUNING } from "../street/tuning";
 import { perfEnd, perfStart } from "../engine/perf";
 import { clamp } from "../engine/geo";
 import type { StreetMap, StreetTileConfig, TileStatus } from "../street/types";
-import { effectiveRadiusKm } from "../engine/framing";
+import { placeFraming } from "../engine/framing";
 import { LodTree, buildLodNodes } from "../engine/lod-tree";
 import { isFitView, type GlobeGroup, type GlobeInitialView, type GlobePlace, type GlobeProps, type GlobeRoute } from "../types";
 import {
@@ -172,8 +172,9 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
   // The view to start from. A selected place with no view is framed on (no 0.7 s beat, no flight): a direct load.
   // Without tiles there is no street scale to frame at: a fit view degrades to the regional select zoom.
   const startPlace = opts.selectedSlug ? places.get(opts.selectedSlug) : undefined;
+  const startFraming = startPlace ? placeFraming(startPlace) : null;
   let initialView: GlobeInitialView | null =
-    opts.initialView ?? (startPlace ? { lon: startPlace.lon, lat: startPlace.lat, fitRadiusKm: effectiveRadiusKm(startPlace.viewRadiusKm) } : null);
+    opts.initialView ?? (startFraming ? { lon: startFraming.lon, lat: startFraming.lat, fitRadiusKm: startFraming.radiusKm } : null);
   if (isFitView(initialView) && !tiles) initialView = null;
   /**
    * The start view may be at street scale (a saved street view, or a place's framing): the street map is wanted from
@@ -372,12 +373,16 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
     const target = renderer.flightTarget();
     if (target && target.zoom > GLOBE_MAX_ZOOM + 1e-3 && !retreating && (streetDead() || (tileOk() && selected && street && !coversSelected()))) {
       const p = selected ? places.get(selected) : undefined;
-      renderer.flyTo({ lon: p?.lon ?? target.lon, lat: p?.lat ?? target.lat, zoom: Math.min(GLOBE_MAX_ZOOM, Math.max(TUNING.selectZoom, v.zoom)) });
+      const c = p ? placeFraming(p) : target;
+      renderer.flyTo({ lon: c.lon, lat: c.lat, zoom: Math.min(GLOBE_MAX_ZOOM, Math.max(TUNING.selectZoom, v.zoom)) });
     }
     // 3. reduced motion cannot wait in a flight: when the street becomes usable, jump to the place that asked for it
     if (wantStreet && streetOk() && !renderer.isFlying() && coversSelected()) {
       const p = selected ? places.get(selected) : undefined;
-      if (p && v.zoom < placeZoom(p) - 0.5) renderer.flyTo({ lon: p.lon, lat: p.lat, zoom: placeZoom(p) });
+      if (p && v.zoom < placeZoom(p) - 0.5) {
+        const c = placeFraming(p);
+        renderer.flyTo({ lon: c.lon, lat: c.lat, zoom: placeZoom(p) });
+      }
     }
     if (restoring && (streetOk() || streetDead())) {
       restoring = false;
@@ -387,13 +392,15 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
     renderer.requestRender();
   }
 
-  /** Zoom a selection of `p` ends at with a street map: its view radius fitted to the free area (inset target included). */
-  const placeFit = (p: GlobePlace) => renderer.fitZoomFor(effectiveRadiusKm(p.viewRadiusKm));
-  const placeZoom = (p: GlobePlace) => selectionZoom(placeFit(p), p.lat, true, view().zoom);
+  /** Zoom a selection of `p` ends at with a street map: its framing radius (its bounding box, else its view radius) fitted to the free area (inset target included). */
+  const placeFit = (p: GlobePlace) => renderer.fitZoomFor(placeFraming(p).radiusKm);
+  const placeZoom = (p: GlobePlace) => selectionZoom(placeFit(p), placeFraming(p).lat, true, view().zoom);
 
+  /** Whether the street map covers where the camera goes for the selected place (the centre of its bounding box, not its recorded point). */
   const coversSelected = () => {
     const p = selected ? places.get(selected) : undefined;
-    return !!p && !!street && street.covers(p.lon, p.lat);
+    const c = p && placeFraming(p);
+    return !!c && !!street && street.covers(c.lon, c.lat);
   };
 
   // ---- the per-tick work ---------------------------------------------------------------------------------------------------
@@ -725,9 +732,10 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
     // (no verdict yet) the flight starts anyway and waits at the regional scale if it has to.
     const possible = !!tiles && streetState !== "failed" && tile?.state !== "capped" && (!tileOk() || coversSelected() || !street);
     wantStreet = possible;
-    const zoom = selectionZoom(placeFit(place), place.lat, possible, v.zoom);
+    const c = placeFraming(place);
+    const zoom = selectionZoom(placeFit(place), c.lat, possible, v.zoom);
     retreating = false;
-    renderer.flyTo({ lon: place.lon, lat: place.lat, zoom }, { beyondLimit: possible });
+    renderer.flyTo({ lon: c.lon, lat: c.lat, zoom }, { beyondLimit: possible });
     if (possible && streetState === "none") void mountStreet();
     updateNotice();
   }

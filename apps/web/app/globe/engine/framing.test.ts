@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_VIEW_RADIUS_KM, EARTH_RADIUS_KM, FRAMING_MARGIN, bboxExtentsKm, effectiveRadiusKm, placeFraming, radiusFitZoom } from "./framing";
+import { DEFAULT_VIEW_RADIUS_KM, EARTH_RADIUS_KM, FRAMING_MARGIN, bboxExtentsKm, bboxFitRadiusKm, effectiveRadiusKm, placeFraming, radiusFitZoom } from "./framing";
 import { zoomToRadiusPx } from "./geo";
 
 /** Circle radius in px that a zoom gives to `km`. */
@@ -64,6 +64,34 @@ describe("placeFraming and bounding boxes", () => {
     expect(placeFraming({ lat: 1, lon: 2, viewRadiusKm: 30 })).toEqual({ lon: 2, lat: 1, radiusKm: 30 });
     expect(placeFraming({ lat: 1, lon: 2 })).toEqual({ lon: 2, lat: 1, radiusKm: DEFAULT_VIEW_RADIUS_KM });
     expect(placeFraming({ lat: 1, lon: 2, viewRadiusKm: 9999, bbox: [5, 5, 1, 1] })).toEqual({ lon: 2, lat: 1, radiusKm: 500 });
+  });
+  it("centres the camera on the box, not on the recorded point, which stays where it is", () => {
+    // the recorded point sits in the north-east corner of the box: the box's centre is well away from it
+    const place = { lat: 30.05, lon: -95.15, viewRadiusKm: 12, bbox: box };
+    const f = placeFraming(place);
+    expect(f.lon).toBeCloseTo((box[0] + box[2]) / 2, 9);
+    expect(f.lat).toBeCloseTo((box[1] + box[3]) / 2, 9);
+    expect(Math.hypot(f.lon - place.lon, f.lat - place.lat)).toBeGreaterThan(0.3);
+    expect(place.lat).toBe(30.05);
+    expect(place.lon).toBe(-95.15);
+    // the radius frames the box around ITS centre: the same as fitting it with no `from` point
+    expect(f.radiusKm).toBeCloseTo(bboxFitRadiusKm(box)!, 9);
+    // fitting it from the (off-centre) recorded point instead would need a larger circle
+    expect(bboxFitRadiusKm(box, place)!).toBeGreaterThan(f.radiusKm);
+  });
+  it("falls back to the point and the view radius for an absent or invalid box, at any latitude", () => {
+    for (const bbox of [undefined, [], [1, 2, 3], [0, 0, 0, 1], [5, 5, 1, 1], [0, 0, 1, Number.NaN], [-181, 0, 1, 1]]) {
+      expect(placeFraming({ lat: 48.85, lon: 2.35, viewRadiusKm: 14, bbox })).toEqual({ lon: 2.35, lat: 48.85, radiusKm: 14 });
+    }
+  });
+  it("assumes no antimeridian crossing: a crossing box ([west > east]) is rejected, a box up to 180 is centred plainly", () => {
+    // a Fiji-like box across the antimeridian is not a box here: the point and the radius are used
+    expect(bboxExtentsKm([179.5, -17, -179.5, -16])).toBeNull();
+    expect(placeFraming({ lat: -16.5, lon: 179.9, viewRadiusKm: 20, bbox: [179.5, -17, -179.5, -16] })).toEqual({ lon: 179.9, lat: -16.5, radiusKm: 20 });
+    // a box that ends at 180 is centred on the plain mean of its longitudes, no wrapping
+    const f = placeFraming({ lat: -16.5, lon: 179.9, bbox: [179, -17, 180, -16] });
+    expect(f.lon).toBeCloseTo(179.5, 9);
+    expect(f.lat).toBeCloseTo(-16.5, 9);
   });
   it("km extents: a degree of latitude is 111 km, a degree of longitude shrinks with the cosine of the latitude", () => {
     const eq = bboxExtentsKm([0, -1, 2, 1])!;

@@ -6,6 +6,7 @@ import type { Polylines } from "@catalyst/geodata";
 import { isFitView, type GlobeInitialView, type GlobePlace, type GlobeProps, type GlobeRoute, type GlobeViewState } from "../types";
 import { readTheme } from "./colors";
 import { BoxScene } from "./box-scene";
+import { placeFraming } from "./framing";
 import type { LodTree } from "./lod-tree";
 import { labelPriorityFloor } from "./labels";
 import { GlobeRenderer, type RendererOptions, type StartView } from "./renderer";
@@ -162,13 +163,14 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
   };
 
   const selectedAtStart = opts.selectedSlug ? places.get(opts.selectedSlug) : undefined;
+  const framingAtStart = selectedAtStart && placeFraming(selectedAtStart);
   const iv = opts.initialView;
   const start: StartView | null = isFitView(iv)
     ? { lon: iv.lon, lat: iv.lat, zoom01: null, fitRadiusKm: iv.fitRadiusKm }
     : iv
       ? { lon: iv.lon, lat: iv.lat, zoom01: iv.zoom, street: iv.street }
-      : selectedAtStart
-      ? { lon: selectedAtStart.lon, lat: selectedAtStart.lat, zoom01: null }
+      : framingAtStart
+      ? { lon: framingAtStart.lon, lat: framingAtStart.lat, zoom01: null }
       : null;
 
   try {

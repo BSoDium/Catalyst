@@ -48,9 +48,9 @@ export interface PlaceIndex {
  */
 function toGlobePlace(place: PlaceSummary): GlobePlace {
   const bbox = bboxExtentsKm(place.bbox) ? place.bbox : undefined;
-  // With a box, the view radius is the one that frames the whole box seen from the recorded point the camera flies to (the
-  // published `viewRadiusKm` then describes the circle around the box's centre, not around the point).
-  const viewRadiusKm = (bbox && bboxFitRadiusKm(bbox, place.coordinates)) ?? place.viewRadiusKm;
+  // With a box, the view radius is the one that frames the whole box around its centre, where the camera flies to
+  // (`placeFraming`); the recorded point stays the anchor of the marker and the label (`lat`, `lon`).
+  const viewRadiusKm = (bbox && bboxFitRadiusKm(bbox)) ?? place.viewRadiusKm;
   return {
     slug: place.slug,
     name: place.name,

@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import type { GlobeProps } from "./types";
 
-export { DEFAULT_VIEW_RADIUS_KM } from "./engine/framing";
+export { DEFAULT_VIEW_RADIUS_KM, placeFraming } from "./engine/framing";
 export type { GlobeFitView, GlobeGroup, GlobeGroupKind, GlobeInitialView, GlobePlace, GlobeProps, GlobeViewState } from "./types";
 
 /**

@@ -18,7 +18,7 @@ describe("buildPlaceIndex", () => {
       lat: 38.72,
       lon: -9.14,
       labelPriority: 60,
-      viewRadiusKm: bboxFitRadiusKm(lisbon.bbox, lisbon.coordinates),
+      viewRadiusKm: bboxFitRadiusKm(lisbon.bbox),
       groupSlug: "europe",
       countryCode: "PT",
       // the demo's Lisbon has a published box: it is passed on, and the view radius frames it
@@ -47,8 +47,9 @@ describe("buildPlaceIndex", () => {
     const box = [-9.3, 38.69, -9.09, 38.8] as const;
     const placed = withBox(box);
     expect(placed.bbox).toEqual(box);
-    // the view radius frames the box (its larger half extent seen from the recorded point), not the author's radius
-    expect(placed.viewRadiusKm).toBeCloseTo(bboxFitRadiusKm(box, { lat: lisbon.coordinates.lat, lon: lisbon.coordinates.lon })!, 9);
+    // the view radius frames the box around its centre (its larger half extent), not the author's radius; the point stays the anchor
+    expect(placed.viewRadiusKm).toBeCloseTo(bboxFitRadiusKm(box)!, 9);
+    expect([placed.lat, placed.lon]).toEqual([lisbon.coordinates.lat, lisbon.coordinates.lon]);
     expect(placed.viewRadiusKm).not.toBe(lisbon.viewRadiusKm);
     // an invalid box is dropped and the old radius stays
     for (const bad of [undefined, [1, 2, 3], [-9.09, 38.69, -9.3, 38.8], "x", [Number.NaN, 0, 1, 1]]) {

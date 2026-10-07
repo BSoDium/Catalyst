@@ -332,11 +332,16 @@ within 0.6 of the limit or a place is selected. When tiles come back the limit l
 outside the fallback archive's bounds is not flown to at street scale (`StreetMap.covers`).
 
 **Framing: the bounding box.** A place with a published `bbox` (`[west, south, east, north]`, the true extent of the city or area
-it sits in) is framed on that box: `bboxFitRadiusKm` (`engine/framing.ts`) turns it into the view radius the formula below
-fits (the box's larger half extent, seen from the recorded point the camera flies to, so the whole box is on screen with the
-25 % margin), and `lib/projection.ts` hands that radius to the globe as the place's `viewRadiusKm`, so every framing consumer
-frames the box with the unchanged formula. `placeFraming` (same file) gives the box-centred equivalent (centre and radius) for
-callers that fly to the box centre instead of the point. Without a (valid) `bbox` the next paragraph applies, as before.
+it sits in) is framed on that box, and the camera CENTRES ON THE CENTRE OF THE BOX, not on the recorded GPS point (which can
+sit anywhere in the city). `placeFraming(place)` (`engine/framing.ts`, pure) returns the centre and the radius to fit: the
+centre of the box (the plain mean of its longitudes and latitudes; boxes crossing the antimeridian are not supported and
+are rejected as invalid) and `bboxFitRadiusKm` (the box's larger half extent, so the whole box is on screen with the 25 %
+margin, fed to the formula below unchanged). Every camera move to a place takes its centre and zoom from it: the selection
+flight, the direct-load fit view (`routes/shell.tsx`, `handover/controller.ts`), the retreat and the reduced-motion jump, the
+street map's coverage test (`covers`) and the latitude correction of the street zoom. `lib/projection.ts` also hands the same
+radius to the globe as the place's `viewRadiusKm`. The marker, its label and the routes stay on the recorded point
+(`GlobePlace.lat` / `lon`); only the camera moves to the box. Without a (valid) `bbox`, `placeFraming` returns the point and
+its view radius, and the next paragraph applies, as before.
 
 **Framing: the view radius.** A place's framing comes from its published `viewRadiusKm` (optional, 0.5 to 500; default
 `DEFAULT_VIEW_RADIUS_KM` = 12 km, a typical city-wide framing: a mid-size city is seen whole, so you can tell where
@@ -365,8 +370,8 @@ distant street-scale places, and last 0.9 to 6.5 s (about 5 s from the world). D
 loader's places, the renderer computes the framing on its first sized frame, and from the very first frame the camera
 is the final one (constant; asserted by sampling every animation frame). The street map may not be ready at first
 paint: the Three.js globe is drawn at its own maximum (6.5) centred on the place, with the panel's inset, and the cut
-happens when the street map is ready (never a flight, never a blank). A saved view (mobile remount) wins over the fit view. With the panel open (`insetRight`), both renderers use the same shifted centre; the selected place lands in
-the middle of the free left half. Mobile: the slide-over unmounts the globe, so there is no flight with the panel open
+happens when the street map is ready (never a flight, never a blank). A saved view (mobile remount) wins over the fit view. With the panel open (`insetRight`), both renderers use the same shifted centre; the selected place's
+bounding box (its framing centre; the point when it has no box) lands in the middle of the free left half. Mobile: the slide-over unmounts the globe, so there is no flight with the panel open
 and a direct load of a place URL shows the world after the panel is closed (as before).
 
 **Focus circle** (`HANDOVER.revealFocus`, one constant, now `false`): at street scale, 450 ms after arrival, the street

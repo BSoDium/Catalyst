@@ -53,8 +53,10 @@ export interface GlobePlace {
   /**
    * The true bounding box `[west, south, east, north]` (degrees, WGS84; no antimeridian crossing) of the city or area the place
    * sits in (published `bbox`), independent of where its recorded point lies. When present it is the place's rectangle on the
-   * map (engine/lod-tree.ts); absent or invalid = a square of `viewRadiusKm` around the point. The projection mapping
-   * (lib/projection.ts) also sets `viewRadiusKm` to the radius that frames this box, so every framing consumer frames the box.
+   * map (engine/lod-tree.ts); absent or invalid = a square of `viewRadiusKm` around the point. The camera centres on the
+   * centre of this box (`placeFraming`, engine/framing.ts), not on `lat`/`lon`, which stay the anchor of the marker and the
+   * label. The projection mapping (lib/projection.ts) also sets `viewRadiusKm` to the radius that frames this box around its
+   * centre, so every framing consumer frames the box.
    */
   bbox?: readonly [number, number, number, number];
   /**
