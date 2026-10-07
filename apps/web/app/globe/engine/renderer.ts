@@ -47,7 +47,7 @@ import {
   type Flight,
   type Velocity,
 } from "./motion";
-import { boxHitDistance, snapBox } from "./group-square";
+import { snapBox } from "./group-square";
 import { LOD, newLodCamera, setLodCamera, type LodTree } from "./lod-tree";
 import { NodeScreen } from "./node-screen";
 import { GlobeScene } from "./scene";
@@ -80,7 +80,7 @@ export interface RendererOptions {
   insetRight: number;
   /** Called synchronously after every drawn frame (labels and view reporting hang off it). */
   onFrame(): void;
-  /** A label under the point (the labels are DOM, so the controller knows them), or null. */
+  /** The node under the point (its box and label, engine/hit-area.ts), or null. */
   pickLabel(x: number, y: number, kind: PointerKind): string | null;
   /**
    * Replaces picking altogether (markers and labels) when it returns a value other than `undefined`; `null` = nothing.
@@ -623,30 +623,6 @@ export class GlobeRenderer {
     return { markers: 0, groups: this.drawnBoxes };
   }
 
-  /**
-   * The node whose BORDER BAND is under the point (never its interior, so the rectangles inside a rectangle stay clickable);
-   * the smallest rectangle wins. Labels are consulted by the caller first (`controlsHost`). Uses the rectangles of the
-   * last drawn frame, i.e. exactly what is on screen.
-   */
-  pickBox(x: number, y: number, kind: PointerKind): string | null {
-    const lod = this.lod;
-    const screen = this.nodeScreen;
-    let best = -1;
-    let bestArea = Infinity;
-    for (let k = 0; k < lod.count; k++) {
-      const i = lod.visible[k]!;
-      if (!screen.shown[i] || lod.alpha[i]! < LOD.pickAlphaMin) continue;
-      const box = { x0: screen.bx0[i]!, y0: screen.by0[i]!, x1: screen.bx1[i]!, y1: screen.by1[i]! };
-      if (boxHitDistance(x, y, box, null, kind) > 0) continue;
-      const area = (box.x1 - box.x0) * (box.y1 - box.y0);
-      if (area < bestArea || (area === bestArea && best >= 0 && lod.priority[i]! > lod.priority[best]!)) {
-        bestArea = area;
-        best = i;
-      }
-    }
-    return best >= 0 ? lod.slug[best]! : null;
-  }
-
   /* ------------------------------ input ------------------------------ */
 
   private controlsHost(): ControlsHost {
@@ -660,7 +636,7 @@ export class GlobeRenderer {
       fling: (samples, now) => this.fling(samples, now),
       pickAt: (x, y, kind) => {
         const over = this.opts.pickOverride?.(x, y, kind);
-        return over !== undefined ? over : (this.opts.pickLabel(x, y, kind) ?? this.pickBox(x, y, kind));
+        return over !== undefined ? over : this.opts.pickLabel(x, y, kind);
       },
       hover: (slug) => {
         this.setHovered(slug);

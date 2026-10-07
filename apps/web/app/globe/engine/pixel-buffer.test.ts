@@ -57,8 +57,8 @@ describe("PixelBuffer", () => {
     for (let y = 0; y < 12; y++) for (let x = 0; x < 30; x++) seen.add(b.get(x, y));
     expect([...seen].sort((p, q) => p - q)).toEqual([9, CLEAR]);
     expect(b.get(2, 7)).toBe(9); // the foot of the H stem is the row above the baseline row
-    expect(b.get(2, 3)).toBe(9); // top of the H: 5 rows
-    expect(b.get(2, 2)).toBe(CLEAR);
+    expect(b.get(2, 1)).toBe(9); // top of the H: 7 rows
+    expect(b.get(2, 0)).toBe(CLEAR);
   });
   it("bold text is the regular one double struck: a 2-cell stem, each cell written once", () => {
     const regular = new PixelBuffer(30, 12);

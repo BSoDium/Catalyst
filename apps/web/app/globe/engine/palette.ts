@@ -14,8 +14,8 @@
  *   role    position   used for
  *   bg      0          page, ocean, erased interiors
  *   wash    0.12       building fills; the first step of every fade-in
- *   faint   0.27       graticule, the dots of parks
- *   soft    0.42       rail, paths, service roads, streams, canals, the horizon outline, the dashes of water
+ *   faint   0.27       graticule, the horizon outline, the dots of parks
+ *   soft    0.42       rail, paths, service roads, streams, canals, the dashes of water
  *   mid     0.60       minor roads, region borders, building outlines, tertiary roads
  *   strong  0.80       major roads, rivers, lakes
  *   peak    1          coastline, country borders: the loudest the map gets (MAP_CONTRAST of the way to the ink)

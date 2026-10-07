@@ -108,12 +108,3 @@ export function placeLabels(cands: readonly Candidate[], viewport: { w: number; 
 export function snapToCell(v: number, cellCss: number): number {
   return Math.floor(v / cellCss) * cellCss + cellCss / 2;
 }
-
-/**
- * Priority a label needs to be shown (unless selected or focused): high on a continental view, falling linearly to 0
- * by `fullZoom`, so zooming in reveals progressively less important places (the globe's rule).
- */
-export function labelPriorityFloor(zoom: number, minZoom: number, fullZoom: number, maxFloor = 60): number {
-  const t = fullZoom > minZoom ? Math.min(1, Math.max(0, (zoom - minZoom) / (fullZoom - minZoom))) : 1;
-  return maxFloor * (1 - t);
-}

@@ -23,6 +23,7 @@
  *     the same art resolution, no grey. It is not designed on the grid, so its quality is lower (strokes can be uneven);
  *     without a DOM (tests, server) a box is drawn instead.
  */
+import { stretched } from "./stretch";
 import { TINY5_DATA } from "./tiny5-data";
 
 /** One glyph: `rows` are the bitmap rows from the top, bit `w - 1 - x` of a row is the pixel at column `x`. */
@@ -37,8 +38,9 @@ export interface Glyph {
   rows: readonly number[];
 }
 
-export const FONT_CAP = 5;
-export const FONT_X_HEIGHT = 4;
+/** Rows of a capital and of a lowercase letter, AFTER the stretch (`stretch.ts`: Tiny5's own 5 and 4 rows made taller). */
+export const FONT_CAP = 7;
+export const FONT_X_HEIGHT = 5;
 /** Rows above the baseline that every line has at least (a capital); below it: no minimum. */
 export const LINE_MIN_TOP = FONT_CAP;
 /** Size in px (= pixels) at which the system font is rasterised for glyphs the pixel font cannot give. */
@@ -50,13 +52,16 @@ function parse(): Map<number, Glyph> {
   const m = new Map<number, Glyph>();
   for (const entry of TINY5_DATA.split(";")) {
     const [cp, adv, left, top, w, rows] = entry.split(":");
-    m.set(parseInt(cp!, 16), {
-      adv: +adv!,
-      left: +left!,
-      top: +top!,
-      w: +w!,
-      rows: rows ? rows.split(",").map((h) => parseInt(h, 16)) : [],
-    });
+    m.set(
+      parseInt(cp!, 16),
+      stretched({
+        adv: +adv!,
+        left: +left!,
+        top: +top!,
+        w: +w!,
+        rows: rows ? rows.split(",").map((h) => parseInt(h, 16)) : [],
+      }),
+    );
   }
   return m;
 }

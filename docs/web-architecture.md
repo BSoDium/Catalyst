@@ -210,8 +210,9 @@ files `../tuning` and `../../types`.
 | `engine/perf.ts` | opt-in phase timers for the performance scripts (`window.__perf`, off unless the debug hooks are on) |
 | `engine/lod-stress.ts` | deterministic synthetic place hierarchy for the performance checks only (`?globe-debug&lod-stress=N`) |
 | `engine/geo.ts`, `geometry.ts`, `view.ts`, `tuning.ts` | pure projection/zoom maths, vertex builders, `GlobeViewState` <-> internal zoom, tuned constants |
-| `engine/lod-tree.ts`, `box-scene.ts`, `pixel-labels.ts`, `pixel-buffer.ts`, `pixel-font/`, `country-names.ts`, `group-square.ts`, `node-screen.ts` | the detection boxes: the cut of the place hierarchy, the pixel-art drawing of boxes, labels and chips, the font, the hit area ("Detection boxes" below) |
-| `engine/labels.ts` | the zoom-dependent label priority floor (`labelPriorityFloor`); its collision code (`placeLabels`) is only exercised by its own tests (dead code, to be removed) |
+| `engine/lod-tree.ts`, `box-scene.ts`, `pixel-labels.ts`, `pixel-buffer.ts`, `pixel-font/` (+ `stretch.ts`), `country-names.ts`, `group-square.ts`, `node-screen.ts` | the detection boxes: the cut of the place hierarchy, the pixel-art drawing of boxes, labels and chips, the font, the hit area ("Detection boxes" below) |
+| `engine/hit-area.ts`, `label-plan.ts` | what is a click and hover target (the convex hull of a box and its label, plus slop; innermost wins) and which labels are drawn (no priority floor; a box that loses its label is dimmed): "Targets and labels" below |
+| `engine/labels.ts` | `placeLabels`, only exercised by its own tests (dead code, to be removed); the zoom-dependent priority floor that used to live here is gone |
 | `engine/colors.ts`, `dpr.ts`, `webgl.ts` | CSS-variable theme, `devicePixelRatio` watcher, WebGL probe |
 
 Everything under `engine/` and `handover/` is framework-free. Pure parts are unit-tested (`engine/*.test.ts`: projection,
@@ -469,8 +470,8 @@ world round trips, 3 live at street scale (Three + 2) and 1 after (43 created, 4
   popped in and out).
 - Labels: drawn on the pixel overlay canvas (`aria-hidden`, no tab stops: a visual duplicate of the places list, extra tab
   stops would only repeat it), see "Detection boxes". The canvas is `pointer-events: none`; the canvas pointer handler
-  hit-tests the label plates (grown by 2 px for mouse, 12 px for touch) and then the rectangles' border bands, so a drag
-  that starts on a label still rotates, and a click or tap on one selects (a place) or flies to frame it (a group).
+  hit-tests the targets of the drawn nodes (`BoxScene.hit`: the convex hull of a box and its label plus slop, "Targets and labels"),
+  so a drag that starts on a label or a box still rotates, and a click or tap on one selects (a place) or flies to frame it (a group).
 - Input: drag (inertia stops cleanly; none under reduced motion; none after a pinch), wheel and trackpad pinch,
   two-finger pinch, tap/click. `touch-action: none` is set on the canvas only; the container, the places list and the
   panel keep default touch behaviour. There is no keyboard handling on purpose (the canvas is not focusable).
@@ -538,6 +539,15 @@ the free area with the framing's 25 % margin. A group is the union of the TRUE b
 axis aligned in screen space, hollow, one art pixel thick, snapped to whole cells (`snapBox`), at least `LOD.minBoxCells`
 across on each axis.
 
+**Box outline** (2026-10-07, `drawBox`, `edgeLit` in `engine/pixel-labels.ts`). At rest only the four corners are full lines: each
+corner has an arm of `CORNER_ARM` = 3 solid cells along both of its edges, and the rest of each edge is dashes, `DASH_ON` 2 cells lit
+and `DASH_OFF` 2 dark counted from the end of an arm and mirrored from the other corner (the pattern is anchored at the corners, so
+it does not slide when a box grows; the two halves meet in the middle with at most one longer dash). A minimum box (9 cells) is
+four corner brackets. A hovered, focused or selected box (`solid`) is ONE uninterrupted solid line. Every state is one cell thick:
+there is no second ring and no width doubling, and the interior mask always starts one cell inside the outline. Same code in the globe
+and the street overlay (one `BoxScene`), so the two renderers cannot differ. The line-grid rules of `docs/pixel-line-rules.md` hold: whole
+cells, one cell thick, palette ink at the node's opacity, the dashes are cells that are simply not written.
+
 **Minimum size and mask.** A box smaller than `LOD.minBoxCells` (9 cells, 22.5 CSS px at 2.5 px; was 14, the owner found it
 too big) is drawn at that size, outlined, with its interior MASKED in the page colour (the colour of the ocean and the
 background: black in the dark theme, white in the light one, never a grey), so the small area reads as an outlined area that is
@@ -554,7 +564,7 @@ composited at the node's alpha (`LodTree.alpha`, a continuous function of the ca
 is underneath, per art cell: `PixelBuffer` holds straight-alpha RGBA per cell and does the "over" blend, the canvas composites
 it over the map. The art-pixel grid is untouched (no sub-pixel position, no smoothing). Fades are driven by the camera, so they
 run through the existing on-demand frame loop (idle = zero rAF); under reduced motion they are switches. The selected, focused
-or hovered box is drawn on top with a second ring just inside its outline (the full ink everywhere would otherwise lose it).
+or hovered box is drawn on top as one uninterrupted solid line (see "Box outline"); it is never thicker than another box.
 
 **The cut** (declutter, not a hierarchy overlay). The published group tree is the cluster tree and a dynamic, screen-space cut
 decides which nodes are drawn: only places that pass the visibility rule (front hemisphere, clear of the limb) count; a group
@@ -577,11 +587,36 @@ N being the number of places below it, in the regular weight after a gap of `TEX
 as the name, with no plate or inversion of its own (the inverted chip is gone). The counter is a separate text run on
 purpose: it will grow into publication types and other stats, and the plate just widens. Places and groups
 look identical (same tone, same states): selected, focused and hovered are the full ink for the outline, the fill and the
-text. Placement is greedy by priority (selected > place > group); a label that would overlap one already placed is left out
-(its box stays), labels may run past a tiny box to the right, and low-priority places have no label on the world view (the
-zoom-dependent floor). Click targets: the label plate and the border band (6 px mouse, 12 px touch) of a box, never its
-interior, so the boxes inside a box stay clickable; a place opens its page, a group flies to frame it. The places list
-(`PlacesNav`) stays the dependable keyboard path and nests the places under their groups as headings.
+text. Labels may run past a tiny box to the right. Which labels are drawn and what is clickable is "Targets and labels" below; a place
+opens its page, a group flies to frame it. The places list (`PlacesNav`) stays the dependable keyboard path and nests the places
+under their groups as headings.
+
+**Targets and labels** (`engine/label-plan.ts`, `engine/hit-area.ts`, tests `label-plan.test.ts`, `hit-area.test.ts`, check
+`scripts/globe/groups.mjs targets`). The rule, in one sentence: every box that is drawn is clickable, and it either has its label or
+is dimmed; there is never a full-opacity box without a name.
+- Labels. EVERY drawn node (opacity at least `LOD.labelAlphaMin`) wants its label. Placement is greedy by score (selected, focused and
+  hovered first, then places before groups, then priority); a label whose plate would overlap a placed one (a cell of clearance) is
+  left out, and then its BOX is dimmed: its opacity is capped at `LOD.unlabelledAlpha` (0.4). A dimmed box is still a target and its
+  label shows while it is hovered, focused or selected. There is no zoom-dependent priority floor any more.
+  *Root cause of the Houston / New York bug* (isolated places, drawn at full opacity, no label, "not clickable"): the label priority
+  floor (`labelPriorityFloor`, 60 at the whole-globe zoom falling to 0 at zoom 3) was applied to the LABEL only, never to the box, and every
+  place of the owner's content has the default priority 50, so from the minimum zoom to zoom about 2.9 every place that was not inside a
+  group was a full-ink box with no name. And the only targets of a box were its border band (6 px) and its label, so with no label a
+  25 px box had a 13 px dead square in the middle: a click on "the square" missed. The floor was meant to declutter, but the cut already
+  does that (a group closes when its children, boxes and labels, are within 30 px), so the floor only withheld names.
+- Targets. A node's target is the CONVEX HULL of its box and its label plate, grown by `HIT.slop` (4 px mouse, 14 px touch, so a touch
+  target is at least about 44 px across even for a minimum box): the box including its interior, the label, and the gap between them (when
+  a label is wider than its box the hull fills the triangle under the label's right end down to the box's bottom-right corner). Hover
+  over the whole target shows the pointer cursor and the hover state (the solid outline and the label); a click selects. A BIG box (wider
+  or taller than `HIT.bigBoxFrac` = 0.45 of the map's smaller side, where a group opens anyway) is an outline you are inside, not an
+  object: its interior is not a target, only its border band (6 px mouse, 12 px touch) and its label.
+- Overlaps. Of the targets that contain the point the SMALLEST (by box area) wins, so a group never steals a click on a place inside it; when
+  none contains it, the NEAREST within the slop wins, then the smallest, then the highest priority, then the slug (so the order of the
+  nodes never matters). A node below `LOD.pickAlphaMin` (0.3) is not a target; a dimmed box is picked at its undimmed opacity.
+- Regression. `label-plan.test.ts` (isolated low-priority places are labelled, a loser is dimmed and still picked, forced nodes always labelled),
+  `hit-area.test.ts` (hull, gap triangle, slop, nesting, big boxes, order independence) and, in a browser over a sweep of 200 views,
+  `groups.mjs targets` (no nameless full-opacity box; hovering the box, the label and the gap shows the pointer and the hover state). With the
+  old floor restored the check fails on Houston and San Pedro de Atacama at world and mid zoom (negative control, done once).
 
 **Pixel text.** `PixelBuffer` is a level image whose cells are the art pixels; `PixelOverlay` shows it on a `cols x rows`
 canvas upscaled with `image-rendering: pixelated`. Boxes, plates and glyphs are written into it at whole-cell positions, one
@@ -591,10 +626,17 @@ set of boxes and labels, their cells or their tones changed (frame signature), a
   `engine/pixel-font/OFL.txt`, no attribution needed at runtime). Chosen over the other pixel fonts on npm because it has a FULL
   lowercase set (Silkscreen is capitals only), is drawn on a real pixel grid (the vector "pixel" fonts blur when snapped) and has
   the Latin Extended-A/B letters. `scripts/font/bake-pixel-font.mjs` (`pnpm --filter @catalyst/web bake:font`) bakes it to bit rows
-  (`pixel-font/tiny5-data.ts`, 23 KB source, no font file is shipped; the baked glyph bitmaps are a derivative of the font and fall under the same OFL, kept with `OFL.txt`). Size: 5 art-pixel capitals, 4 x-height, 6 with an i dot, 1 below
-  the baseline: at 2.5 CSS px that is 12.5 CSS px of capital, a comfortable 17 px type; the owner's "about 7 to 9 art px" would
-  be a 25 px type at this resolution, so the smallest-but-one pixel font was kept. Never forced to uppercase.
-- Weights: Tiny5 has one face. BOLD (place and group names) is derived on the pixel grid by a 1-cell horizontal double strike
+  (`pixel-font/tiny5-data.ts`, 23 KB source, no font file is shipped; the baked glyph bitmaps are a derivative of the font and fall under the same OFL, kept with `OFL.txt`). Size (2026-10-07, owner: the bold name was thick and hardly readable):
+  Tiny5 is drawn for 5 rows of capital and 4 of x-height, where a 2-cell bold stem is 2 of 5 rows and closes the counters. It is made
+  TALLER on the same grid by `pixel-font/stretch.ts` when the table is parsed: 7 rows for a capital, a digit or an ascender, 5 for a lowercase
+  letter, 7 with the dot of an i (1 gap row), a descender unchanged (1 below the baseline); widths, advances and 1-cell stems are Tiny5's
+  (the proportions of a 5 x 7 character LCD). At 2.5 CSS px a capital is 17.5 CSS px (about 24 px type). Which rows are repeated is decided per
+  glyph body (what is above the first blank row when that is a mark of at most 3 rows: the dot of an i, an accent), exhaustively, at the lowest cost: never
+  a row of a horizontal bar (the bars of E, B, e stay one cell), never a blank gap, rows whose ink lies inside a neighbour's are free, spread evenly; a letter
+  and its accented form share a body, so their bodies get the same rows. Everything downstream (layout, the label plate height `MIN_TOP`, the
+  cut's label-aware gaps, hit areas, Vietnamese composition) reads the stretched table, so nothing else knows. Never forced to uppercase.
+  Bold keeps the same double strike (2 of 7 rows now).
+- Weights: Tiny5 has one face (taller since the stretch above). BOLD (place and group names) is derived on the pixel grid by a 1-cell horizontal double strike
   (`pixel-font.ts` `emboldened`): every ink pixel also lights the cell to its right unless that would close a one-pixel gap
   (`#.#` stays `#.##`, so the counters of o, e, a survive), stems become 2 cells, a glyph is one column wider and its advance one
   larger. `measureText(text, bold)` and `forEachInk(..., bold)` share the flag, so layout and drawing cannot disagree, and a cell

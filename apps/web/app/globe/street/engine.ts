@@ -1,7 +1,7 @@
 /**
  * The street map engine: MapLibre (globe -> Web Mercator) drawing plain channels, the pixel-pass compositor on a
  * separate overlay context, an HTML overlay of markers and labels, the tile source manager. (The credits are the host's
- * info button, components/attribution-button.tsx.)
+ * "Credits" link, components/attribution-button.tsx.)
  * Imperative and framework-free; `street-map-canvas.tsx` is the React lifecycle around it. This module (and
  * everything it imports) is the lazy street chunk: it never loads on the server or with the globe.
  *
@@ -487,11 +487,7 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
     // The declutter clusters read the unified camera (the globe's own zoom), registered from the map's, projected in the
     // container's own space with the projection centre the map uses; the free area is the box minus the inset the host passed.
     setLodCamera(lodCam, registerMapToGlobe(v), { width: w, height: h, centreX: (w - pad()) / 2 }, w - clampInset(inset, w), cellCss);
-    hud.update(
-      { width: w, height: h, cellCss, cam: lodCam },
-      // Embedded in the handover the overlay only shows from regional scale, where the globe already shows every label.
-      opts.embedded ? 0 : HudLayer.priorityFloor(v.zoom),
-    );
+    hud.update({ width: w, height: h, cellCss, cam: lodCam });
     // The map dissolves into the page under the covered strip (same mask as the globe's).
     const mask = fadeMask(w, pad());
     if (mask !== lastMask) {

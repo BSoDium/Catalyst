@@ -226,7 +226,7 @@ describe("places that are not crowded are never merged", () => {
       p("p3", "e", 52.2, 21),
       p("p4", "e", 50, 36),
     ]);
-    const a = evaluate(t, camAt(15, 50, 4.2));
+    const a = evaluate(t, camAt(15, 50, 4.5));
     expect(a.has("eu")).toBe(false);
     expect(a.has("w") || a.has("e")).toBe(false);
     for (const s of ["p1", "p2", "p3", "p4"]) expect(a.get(s), s).toBe(1);

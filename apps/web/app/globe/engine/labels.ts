@@ -180,13 +180,3 @@ export function placeLabels(inputs: readonly LabelInput[], opts: PlaceOptions): 
   }
   return out;
 }
-
-
-/**
- * Priority a label needs to be shown (unless selected or focused). Starts high on the whole-globe view and
- * falls linearly to 0 by `fullZoom`, so zooming in reveals progressively less important places.
- */
-export function labelPriorityFloor(zoom: number, minZoom: number, fullZoom: number, maxFloor = 60): number {
-  const t = fullZoom > minZoom ? Math.min(1, Math.max(0, (zoom - minZoom) / (fullZoom - minZoom))) : 1;
-  return maxFloor * (1 - t);
-}

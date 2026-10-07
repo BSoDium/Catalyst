@@ -89,6 +89,8 @@ export const LOD = {
   pickAlphaMin: 0.3,
   /** Labels are not drawn below this alpha (the node's own minimum: a label fades in and out with its rectangle, it does not pop in at a threshold). */
   labelAlphaMin: 0.06,
+  /** A drawn box whose label lost its place to a better one is dimmed to this fraction of its opacity (it stays a target; its label shows on hover). */
+  unlabelledAlpha: 0.4,
   /** Label priority: selected and focused first, then places before groups. */
   placePriorityBonus: 30,
 } as const;

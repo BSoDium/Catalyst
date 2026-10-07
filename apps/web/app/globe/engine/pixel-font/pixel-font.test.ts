@@ -16,7 +16,7 @@ function ascii(text: string, bold = false): string[] {
 }
 
 describe("the baked font", () => {
-  it("is Tiny5: 5 px capitals, 4 px x-height, on the pixel grid", () => {
+  it("is Tiny5 made taller: 7 px capitals, 5 px x-height, on the pixel grid", () => {
     expect(glyphFor("H").top).toBe(FONT_CAP);
     expect(glyphFor("H").rows.length).toBe(FONT_CAP);
     expect(glyphFor("x").top).toBe(FONT_X_HEIGHT);
@@ -34,7 +34,7 @@ describe("the baked font", () => {
     forEachInk("Paris Hà Nội", 3, 12, (x, y) => {
       expect(Number.isInteger(x) && Number.isInteger(y)).toBe(true);
     });
-    expect(ascii("l")).toEqual(["#", "#", "#", "#", "#"]); // a stem is exactly one pixel wide
+    expect(ascii("l")).toEqual(Array(7).fill("#")); // a stem is exactly one pixel wide, as tall as a capital
     expect(ascii("I").every((r) => r.length <= 3)).toBe(true);
   });
 });
@@ -109,7 +109,7 @@ describe("metrics", () => {
 
 describe("the bold weight: a 1-cell horizontal double strike of the one Tiny5 face", () => {
   it("every ink pixel also lights the cell to its right, unless that closes a one-pixel gap: stems are 2 px, counters stay open", () => {
-    expect(ascii("l", true)).toEqual(["##", "##", "##", "##", "##"]);
+    expect(ascii("l", true)).toEqual(Array(7).fill("##"));
     expect(ascii("H", true).length).toBe(ascii("H").length);
     for (const ch of "nouaeHmw") {
       const regular = glyphFor(ch);
@@ -156,6 +156,6 @@ describe("the bold weight: a 1-cell horizontal double strike of the one Tiny5 fa
   it("the regular weight is unchanged by the bold cache", () => {
     glyphWeight("a", true);
     expect(glyphFor("a").rows).toEqual(glyphWeight("a", false).rows);
-    expect(ascii("l")).toEqual(["#", "#", "#", "#", "#"]);
+    expect(ascii("l")).toEqual(Array(7).fill("#"));
   });
 });

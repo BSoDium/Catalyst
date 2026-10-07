@@ -9,7 +9,7 @@
  * `pixel-font/pixel-font.ts` (Tiny5, OFL).
  *
  * The look is an object detector's: every place and every group is a RECTANGLE (its bounding box, one cell thick, in the full
- * ink), whose interior is MASKED to the page colour (a fill that looks like nothing: the area is outlined with its contents
+ * ink: solid corner arms with dashes between them at rest, one solid line when hovered, focused or selected), whose interior is MASKED to the page colour (a fill that looks like nothing: the area is outlined with its contents
  * hidden) while the rectangle is clamped to the minimum size, and hollow once it has its true size. Its LABEL is text only: no
  * outline, no tab. It sits just above the rectangle's top edge, left-justified on the rectangle's left edge, on a plate of the
  * page colour (one cell of room around the text, so nothing shows behind it): the name in the BOLD weight and, for a group,
@@ -30,7 +30,7 @@ export interface LabelTones {
   bg: number;
   /** The full ink (the last level): rectangles and text. */
   ink: number;
-  /** The loudest map level (`peak`), below the ink (the info button's shadow). */
+  /** The loudest map level (`peak`), below the ink. */
   text: number;
 }
 
@@ -70,8 +70,8 @@ export interface LabelLayout {
 export const LABEL_PAD = 1;
 /** Empty cells between the name and its counter: wide enough that the two runs, one bold and one regular, read as separate blocks (5 cells = 12.5 CSS px at 2.5 px). */
 export const TEXT_GAP = 5;
-/** Rows every label reserves above the baseline (a capital, an i dot, a t) and below it (descenders), so plates of plain text are all the same height and sit the same way on the box. */
-const MIN_TOP = 6;
+/** Rows every label reserves above the baseline (a capital, the dot of an i: both 7 since the type was made taller) and below it (descenders), so plates of plain text are all the same height and sit the same way on the box. */
+const MIN_TOP = 7;
 const MIN_BOTTOM = 1;
 
 const cache = new Map<string, LabelLayout>();
@@ -118,22 +118,45 @@ export interface BoxStyle {
   alpha: number;
   /** Opacity of the interior mask (0..1; 0 = hollow): the page colour over what is inside, so the area looks empty. */
   fillAlpha: number;
-  /** A second outline just inside the first (the selected, focused or hovered box). */
-  ring?: boolean;
+  /** One uninterrupted line all round (the hovered, focused or selected box); else the four corners are solid and the rest of each edge is dashed. */
+  solid?: boolean;
+}
+
+/** The resting outline: each corner has an arm of this many solid cells along both of its edges, the rest of the edge is dashes. */
+export const CORNER_ARM = 3;
+/** Dashes between the corner arms: this many cells lit, then this many dark, counted from the end of an arm (so a dash pattern is anchored at the corners and does not slide when the box grows). */
+export const DASH_ON = 2;
+export const DASH_OFF = 2;
+
+/** Whether cell `i` of an edge of `n` cells is part of the line: the corner arms and, when `solid`, everything; else the dashes between the arms. Symmetric: the edge reads the same from both ends. */
+export function edgeLit(i: number, n: number, solid: boolean): boolean {
+  if (solid) return true;
+  const d = Math.min(i, n - 1 - i); // distance from the nearest corner
+  if (d < CORNER_ARM) return true;
+  return (d - CORNER_ARM) % (DASH_ON + DASH_OFF) >= DASH_OFF;
 }
 
 /**
- * A box: a one-cell outline in the ink around the cells of `rect` and, inside it, the interior mask in the page colour. The
- * mask stops short of the outline (and of the ring), so a translucent outline is composited over the map exactly like an
- * opaque one is.
+ * A box: a one-cell outline in the ink around the cells of `rect` and, inside it, the interior mask in the page colour. At rest
+ * the four corners are solid and the rest of each edge is dashed (so a map of boxes is quiet); hovered, focused or selected
+ * (`solid`) it is one uninterrupted line. It is one cell thick in every state: nothing doubles. The mask stops short of the
+ * outline, so a translucent outline is composited over the map exactly like an opaque one is.
  */
 export function drawBox(buf: PixelBuffer, rect: CellRect, tones: LabelTones, style: BoxStyle): void {
   const w = rect.c1 - rect.c0;
   const h = rect.r1 - rect.r0;
-  const t = style.ring ? 2 : 1;
-  if (style.fillAlpha > 0) buf.fillRect(rect.c0 + t, rect.r0 + t, w - 2 * t, h - 2 * t, tones.bg, style.fillAlpha);
-  buf.strokeRect(rect.c0, rect.r0, w, h, tones.ink, false, style.alpha);
-  if (style.ring) buf.strokeRect(rect.c0 + 1, rect.r0 + 1, w - 2, h - 2, tones.ink, false, style.alpha);
+  if (style.fillAlpha > 0) buf.fillRect(rect.c0 + 1, rect.r0 + 1, w - 2, h - 2, tones.bg, style.fillAlpha);
+  const solid = !!style.solid;
+  for (let i = 0; i < w; i++) {
+    if (!edgeLit(i, w, solid)) continue;
+    buf.set(rect.c0 + i, rect.r0, tones.ink, style.alpha);
+    if (h > 1) buf.set(rect.c0 + i, rect.r1 - 1, tones.ink, style.alpha);
+  }
+  for (let j = 1; j < h - 1; j++) {
+    if (!edgeLit(j, h, solid)) continue;
+    buf.set(rect.c0, rect.r0 + j, tones.ink, style.alpha);
+    if (w > 1) buf.set(rect.c1 - 1, rect.r0 + j, tones.ink, style.alpha);
+  }
 }
 
 /**

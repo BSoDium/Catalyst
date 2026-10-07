@@ -10,12 +10,14 @@
 //           every branch sum to 1 (one level per branch), no alpha jump, nodes enter and leave through the faintest tone
 // cases     three hand-made cases (`?lod-cases`): 10 close places = one box (chip "10 entries") that opens on zoom into ten boxes, a lone place =
 //           its own rectangle at every zoom, a country with two far apart places = two rectangles and no group
-// pixels    the boxes are drawn on the pixel canvas as whole cells: every outline cell is there, nothing but palette colours
+// pixels    the boxes are drawn on the pixel canvas as whole cells: the corner arms and dashes of every outline are there, nothing but palette colours
 //           is on the canvas (no grey), and the canvas is exactly cols x rows cells scaled by the cell
 // empty     `?no-groups`: every place is its own rectangle at every zoom, no group (the globe as it was before groups)
 // reduced   reduced motion: every alpha is 0 or 1 (no cross-fade), one switch per box
-// pick      click a box's border = flies to frame its circle (its places appear), the interior is not a hit area, the label plate is, a
+// pick      click a small box (its border or its inside) = flies to frame its circle (its places appear), the label plate is a hit area, a
 //           place's rectangle inside opens its page, hover highlights the box
+// targets   whatever the content (demo or your preview): over a sweep of views every box that is drawn at pick opacity has a label or is dimmed
+//           (never a nameless full-opacity box), and hovering its box, its label and the gap between them shows the pointer and the node's hover state
 // cost      the cost of the cluster pass with 18, 186, 1000 and 5000 nodes
 // idle      no frames, no rAF, no label canvas redraw while nothing moves
 // handover  the same boxes and dots are drawn by the globe's and the street overlay's drawing of one camera
@@ -209,17 +211,28 @@ try {
               const near = (c) => Math.abs(img.data[i] - c[0]) <= 4 && Math.abs(img.data[i + 1] - c[1]) <= 4 && Math.abs(img.data[i + 2] - c[2]) <= 4;
               if (!near(inkAndBg[0]) && !near(inkAndBg[1])) stat.offPalette++;
             }
+            const drawnCells = new Map(d.labelCells().map((t) => [t.slug, t]));
             for (const n of d.lod()) {
-              if (!n.shown || n.alpha < 0.99) continue;
+              const cellInfo = drawnCells.get(n.slug);
+              if (!n.shown || n.alpha < 0.99 || !cellInfo || cellInfo.dimmed) continue; // a box dimmed for lack of its label is drawn translucent
+              n.solid = cellInfo.solid;
               stat.boxes++;
               const c0 = Math.round((n.box.x0 - (rect.left - rootRect.left)) / P);
               const c1 = Math.round((n.box.x1 - (rect.left - rootRect.left)) / P);
               const r0 = Math.round((n.box.y0 - (rect.top - rootRect.top)) / P);
               const r1 = Math.round((n.box.y1 - (rect.top - rootRect.top)) / P);
               const opaque = (x, y) => x >= 0 && y >= 0 && x < canvas.width && y < canvas.height && img.data[(y * canvas.width + x) * 4 + 3] === 255;
+              // The outline at rest: the four corner arms (3 cells each way) solid, the rest of each edge dashed (2 on, 2 off from the arm's end, mirrored);
+              // the hovered, focused or selected box (drawn solid) is one uninterrupted line.
+              const solid = !!n.solid;
+              const lit = (i, len) => {
+                if (solid) return true;
+                const dd = Math.min(i, len - 1 - i);
+                return dd < 3 || (dd - 3) % 4 >= 2;
+              };
               let missing = 0;
-              for (let x = c0; x < c1; x++) for (const y of [r0, r1 - 1]) if (x >= 0 && x < canvas.width && y >= 0 && y < canvas.height && !opaque(x, y)) missing++;
-              for (let y = r0; y < r1; y++) for (const x of [c0, c1 - 1]) if (x >= 0 && x < canvas.width && y >= 0 && y < canvas.height && !opaque(x, y)) missing++;
+              for (let x = c0; x < c1; x++) for (const y of [r0, r1 - 1]) if (lit(x - c0, c1 - c0) && x >= 0 && x < canvas.width && y >= 0 && y < canvas.height && !opaque(x, y)) missing++;
+              for (let y = r0; y < r1; y++) for (const x of [c0, c1 - 1]) if (lit(y - r0, r1 - r0) && x >= 0 && x < canvas.width && y >= 0 && y < canvas.height && !opaque(x, y)) missing++;
               if (missing) {
                 stat.outlineMissing++;
                 stat.first ??= { n: n.slug, view: v, missing, c0, c1, r0, r1 };
@@ -229,7 +242,7 @@ try {
           void mainRect;
           return stat;
         });
-        expect(`${name} ${scheme}: ${res.views} views, ${res.boxes} boxes: every outline cell is drawn, whole cells`, res.outlineMissing === 0 && res.boxes > 10, res);
+        expect(`${name} ${scheme}: ${res.views} views, ${res.boxes} boxes: every lit cell of the outline (corner arms and dashes, solid when hovered) is drawn, whole cells`, res.outlineMissing === 0 && res.boxes > 10, res);
         expect(`${name} ${scheme}: at rest, nothing on the label canvas but the page colour and the ink, fully opaque (a fade is opacity: unit-tested)`, res.offPalette === 0, res);
         expect(`${name} ${scheme}: the label canvas is cols x rows cells scaled by exactly one cell`, res.scaleOk, res);
         expect(`${name} ${scheme}: no console errors`, logs.length === 0, logs);
@@ -302,14 +315,14 @@ try {
     await page.mouse.move(hoverBorder.x, hoverBorder.y);
     await sleep(150);
     expect("hover on a box's border shows the pointer cursor", (await page.evaluate(() => document.querySelector("canvas").style.cursor)) === "pointer", null);
+    // The interior of a box is part of its target (the convex hull of the box and its label, engine/hit-area.ts); a point well outside is not.
     await page.mouse.move((b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2);
     await sleep(150);
-    expect("the interior is not a hit area (cursor grab)", (await page.evaluate(() => document.querySelector("canvas").style.cursor)) === "grab", null);
+    expect("hover inside a small box shows the pointer cursor (the hull includes the box)", (await page.evaluate(() => document.querySelector("canvas").style.cursor)) === "pointer", null);
+    await page.mouse.move(b.x1 + 60, b.y1 + 60);
+    await sleep(150);
+    expect("well outside the box and its label the cursor is grab", (await page.evaluate(() => document.querySelector("canvas").style.cursor)) === "grab", null);
     const v0 = await view();
-    await page.mouse.click((b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2);
-    await sleep(300);
-    const v1 = await view();
-    expect("a click on the interior does not move the camera", Math.abs(v1.zoom - v0.zoom) < 1e-9, { v0, v1 });
     // the border: flies to frame the group's circle, its places show
     await page.mouse.click(hoverBorder.x, hoverBorder.y);
     await page.waitForFunction(() => !window.__globeDebug.isAnimating(), null, { timeout: 8000 });
@@ -342,6 +355,98 @@ try {
     await page.mouse.click(one.box.x0 + 1, (one.box.y0 + one.box.y1) / 2);
     await page.waitForURL(/\/locations\/crowd-3/, { timeout: 4000 }).catch(() => {});
     expect("a click on a place's rectangle selects the place (/locations/:slug)", page.url().includes("/locations/crowd-3"), page.url());
+    expect("no console errors", logs.filter((l) => !/404/.test(l)).length === 0, logs);
+    await page.context().close();
+  }
+
+  /* --------------------------------------------------------------------------------------------- targets */
+  if (run("targets")) {
+    const { page, logs } = await openGlobe(browser, DESKTOP);
+    const cell = await page.evaluate(() => window.__globeDebug.inset().pixel);
+    const origin = await page.evaluate(() => {
+      const r = document.querySelector("canvas").getBoundingClientRect();
+      return { left: r.left, top: r.top };
+    });
+    const minZoom = await page.evaluate(() => window.__globeDebug.minZoom());
+    const PICK_ALPHA = 0.3; // LOD.pickAlphaMin
+    let seen = 0;
+    const nameless = [];
+    const samples = [];
+    for (const lon of [-120, -80, -40, 0, 20, 60, 100, 140]) {
+      for (const lat of [-25, 10, 30, 45, 60]) {
+        for (const dz of [0, 0.3, 0.7, 1.1, 1.6]) {
+          const cells = await page.evaluate(
+            ({ lon, lat, zoom }) => {
+              window.__globeDebug.setView({ lon, lat, zoom });
+              window.__globeDebug.renderNow();
+              return window.__globeDebug.labelCells();
+            },
+            { lon, lat, zoom: minZoom + dz },
+          );
+          for (const c of cells) {
+            if (c.alpha < PICK_ALPHA && !c.dimmed) continue; // below it a node is not a target
+            seen++;
+            if (!c.label && !c.dimmed && !c.solid) nameless.push({ lon, lat, dz, slug: c.slug, alpha: c.alpha });
+            if (c.dimmed && c.alpha > 0.41) nameless.push({ lon, lat, dz, slug: c.slug, dimmedAlpha: c.alpha });
+          }
+          if (samples.length < 40 && dz > 0 && cells.length) samples.push({ lon, lat, zoom: minZoom + dz });
+        }
+      }
+    }
+    expect(`every drawn box has a label or is dimmed, never a nameless full-opacity box (${seen} drawn boxes over the sweep)`, nameless.length === 0, nameless.slice(0, 5));
+
+    // Hover: the box, its label and the gap between them are one target; the hovered node is drawn solid.
+    const ptOf = (cx, cy) => ({ x: origin.left + cx * cell, y: origin.top + cy * cell });
+    let tested = 0;
+    const bad = [];
+    for (const v of samples.slice(0, 12)) {
+      const cells = await page.evaluate((v) => {
+        window.__globeDebug.setView(v);
+        window.__globeDebug.renderNow();
+        return window.__globeDebug.labelCells();
+      }, v);
+      const plateOf = (o) => (o.label ? { c0: o.label.col - 1, r0: o.label.row, c1: o.label.col - 1 + o.label.w, r1: o.label.row + o.label.h } : null);
+      const BIG = Math.floor(0.45 * Math.min(1440, 900) / cell); // HIT.bigBoxFrac of the smaller side, in cells: a big box has no interior target
+      const isBig = (o) => Math.max(o.rect.c1 - o.rect.c0, o.rect.r1 - o.rect.r0) > BIG;
+      const near = (r, x, y, m) => x >= r.c0 - m && x <= r.c1 + m && y >= r.r0 - m && y <= r.r1 + m;
+      const inOthers = (c, x, y) =>
+        cells.some((o) => {
+          if (o === c) return false; // any other drawn node, however faint, may share the point: those probes are skipped
+          const r = o.rect;
+          const pl = plateOf(o);
+          if (pl && near(pl, x, y, 4)) return true;
+          if (!isBig(o)) return near(pl ? { c0: Math.min(r.c0, pl.c0), r0: Math.min(r.r0, pl.r0), c1: Math.max(r.c1, pl.c1), r1: Math.max(r.r1, pl.r1) } : r, x, y, 4); // the hull lies inside the bounding box of the box and its label
+          return near(r, x, y, 5) && !(x > r.c0 + 5 && x < r.c1 - 5 && y > r.r0 + 5 && y < r.r1 - 5);
+        });
+      for (const c of cells) {
+        if (c.alpha < 0.9 || !c.label || isBig(c)) continue;
+        const r = c.rect;
+        const pl = { c0: c.label.col - 1, r0: c.label.row, c1: c.label.col - 1 + c.label.w, r1: c.label.row + c.label.h };
+        const probes = [
+          ["box", (r.c0 + r.c1) / 2, (r.r0 + r.r1) / 2],
+          ["label", (pl.c0 + pl.c1) / 2, (pl.r0 + pl.r1) / 2],
+        ];
+        // the triangle under a label that is wider than its box, between the box's top-right corner and the label's bottom-right corner
+        if (pl.c1 - r.c1 > 8) probes.push(["gap", r.c1 + (pl.c1 - r.c1) * 0.3, r.r0 + 2]);
+        for (const [what, cx, cy] of probes) {
+          if (inOthers(c, cx, cy) || cx < 6 || cy < 6 || cx > 1440 / cell - 6 || cy > 900 / cell - 6) continue; // another node shares the point, or it is at the edge of the viewport
+          const p = ptOf(cx, cy);
+          await page.mouse.move(p.x, p.y);
+          await sleep(60);
+          const cursor = await page.evaluate(() => document.querySelector("canvas").style.cursor);
+          const hovered = (await page.evaluate(() => window.__globeDebug.labelCells())).filter((o) => o.solid).map((o) => o.slug);
+          tested++;
+          if (cursor !== "pointer" || !hovered.includes(c.slug)) bad.push({ slug: c.slug, what, cursor, hovered, view: v, alpha: c.alpha, at: [cx, cy], picked: await page.evaluate(([x, y]) => window.__globeDebug.pick(x, y), [p.x - origin.left, p.y - origin.top]) });
+        }
+        await page.mouse.move(2, 2);
+        if (tested > 60) break;
+      }
+    }
+    expect(`hovering a box, its label and the gap under a wide label shows the pointer and the hover state (${tested} probes)`, tested > 10 && bad.length === 0, bad.slice(0, 5));
+    // far from every target: the grab cursor, nothing hovered
+    await page.mouse.move(origin.left + 3, origin.top + 3);
+    await sleep(80);
+    expect("away from every target the cursor is grab", (await page.evaluate(() => document.querySelector("canvas").style.cursor)) === "grab", null);
     expect("no console errors", logs.filter((l) => !/404/.test(l)).length === 0, logs);
     await page.context().close();
   }

@@ -1,14 +1,12 @@
 /**
  * Street map constants. Everything that also exists on the globe is READ from the globe's tuning so the two never
- * diverge (art pixel size, marker/label hit slop, inset animation, latitude clamp); the rest is street specific.
+ * diverge (art pixel size, inset animation, latitude clamp); the rest is street specific.
  */
 import { TUNING } from "../engine/tuning";
 
 export const STREET_TUNING = {
   /** Art pixel size in CSS px: `ART_PIXEL` (engine/tuning.ts), a whole number of device px (the globe's rule). */
   pixelSize: TUNING.pixelSize,
-  /** Hit slop around labels and markers in CSS px per pointer type (the globe's values). */
-  labelSlop: TUNING.labelSlop,
   pickRadius: TUNING.pickRadius,
   /** Duration (ms) of the centre shift when the right inset appears or disappears (the globe's value). */
   insetMs: TUNING.insetMs,
@@ -21,8 +19,6 @@ export const STREET_TUNING = {
    */
   minZoom: 1,
   maxZoom: TUNING.streetMapMaxZoom,
-  /** Zoom from which every label may show (subject to collisions); below it a priority floor applies. */
-  allLabelsZoom: 8,
   /** Marker sizes in art pixels (same sizes as the globe's GL points: normal 3, focused 7, selected 9). */
   markerCells: { normal: 3, focused: 7, selected: 9 },
   /** Sharp reveal: radius is `min(revealMaxCss, revealFraction * min(width, height))`; the edge feathers by 40%. */

@@ -51,8 +51,6 @@ export const TUNING = {
   routeFlat: { start: 2.5, end: 3.3 },
   /** Zoom used when rotating to a selected place (never zooms out). */
   selectZoom: 3.2,
-  /** Zoom from which every label may show (subject to collisions). */
-  allLabelsZoom: 3.0,
   /** Route draw-on animation duration, ms. */
   routeDrawMs: 2200,
   /**
@@ -62,8 +60,6 @@ export const TUNING = {
   markerLimbClearance: 4,
   /** Pick radius in CSS px per pointer type. */
   pickRadius: { mouse: 12, touch: 22 },
-  /** Extra hit area around a label in CSS px per pointer type (touch targets reach about 44 px). */
-  labelSlop: { mouse: 2, touch: 12 },
   /**
    * Duration (ms) of the globe's re-centring when the right inset appears or disappears. Mirrors `--duration-slow`
    * (the detail panel's slide), together with `INSET_EASE`; `app/lib/tokens.test.ts` keeps them in sync.

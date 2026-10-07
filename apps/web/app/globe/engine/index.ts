@@ -8,7 +8,6 @@ import { readTheme } from "./colors";
 import { BoxScene } from "./box-scene";
 import { placeFraming } from "./framing";
 import type { LodTree } from "./lod-tree";
-import { labelPriorityFloor } from "./labels";
 import { GlobeRenderer, type RendererOptions, type StartView } from "./renderer";
 import { TUNING } from "./tuning";
 import { sameView, toViewState } from "./view";
@@ -67,6 +66,8 @@ export interface GlobeDebug {
   labelsShown(): string[];
   /** The boxes as drawn in the last frame: per node, its rectangle and label in cells, text, chip and tones. */
   labelCells(): ReturnType<BoxScene["snapshot"]>;
+  /** The node a click or hover at a container CSS-px point would pick (engine/hit-area.ts), or null. */
+  pick(x: number, y: number, kind?: "mouse" | "touch"): string | null;
   /** Frames the label canvas drew / skipped (nothing changed) since creation. */
   labelStats(): { drawn: number; skipped: number };
   /** The theme's palette, level 0 (page colour) to the ink, as [r, g, b] 0..255. */
@@ -152,7 +153,7 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
       opts.labelsRoot.style.setProperty("-webkit-mask-image", mask ?? "");
     }
     if (labelsActive) {
-      labels.update(renderer.nodeScreen, labelPriorityFloor(Math.min(v.zoom, TUNING.maxZoom), renderer.getMinZoom(), TUNING.allLabelsZoom), renderer.pixelGrid());
+      labels.update(renderer.nodeScreen, renderer.pixelGrid());
     }
     const next = toViewState(v, renderer.getMinZoom(), TUNING.maxZoom);
     if (!sameView(lastReported, next)) {
@@ -187,7 +188,7 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
         zoomLimit: opts.zoomLimit,
         insetRight: opts.insetRight,
         onFrame: syncOverlay,
-        pickLabel: (x, y, kind) => labels.hit(x, y, TUNING.labelSlop[kind]),
+        pickLabel: (x, y, kind) => labels.hit(x, y, kind),
         pickOverride: opts.pickOverride,
         onSelect: opts.onSelect,
         onSelectGroup: opts.onSelectGroup,
@@ -258,6 +259,7 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
       },
       labelsShown: () => [...labels.shown()],
       labelCells: () => labels.snapshot(),
+      pick: (x, y, kind = "mouse") => labels.hit(x, y, kind),
       labelStats: () => labels.stats(),
       ramp: () => renderer.getTheme().ramp.map((c) => c.map((v) => Math.round(v * 255))),
       frames: () => renderer.frameCount(),

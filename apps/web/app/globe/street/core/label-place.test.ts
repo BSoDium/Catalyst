@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { labelPriorityFloor, placeLabels, snapToCell, type Candidate, type Side } from "./label-place";
+import { placeLabels, snapToCell, type Candidate, type Side } from "./label-place";
 
 const vp = { w: 800, h: 600 };
 const c = (id: string, x: number, y: number, priority = 1, extra: Partial<Candidate> = {}): Candidate => ({ id, x, y, w: 80, h: 16, priority, ...extra });
@@ -72,13 +72,5 @@ describe("snapToCell", () => {
     expect(snapToCell(10, 3)).toBe(10.5);
     expect(snapToCell(9, 3)).toBe(10.5);
     expect(snapToCell(8.99, 3)).toBe(7.5);
-  });
-});
-
-describe("labelPriorityFloor", () => {
-  it("falls linearly from 60 to 0 over the zoom range", () => {
-    expect(labelPriorityFloor(2, 2, 8)).toBe(60);
-    expect(labelPriorityFloor(5, 2, 8)).toBe(30);
-    expect(labelPriorityFloor(9, 2, 8)).toBe(0);
   });
 });

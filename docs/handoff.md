@@ -32,7 +32,16 @@ State of the rebuild on branch `feat/places-archive-rebuild` (draft PR #234) and
 
 ## Stacked branch: globe polish (not part of PR #234)
 
-Owner feedback from the dev build, kept out of this PR and stacked on top as `feat/globe-polish`: larger pixel font instead of bold, dashed boxes with solid corners, unlabelled squares (Houston, New York) with no label and no click target, a low-contrast "Credits ↗" link instead of the info chip, a fainter globe outline, a larger hit area (label plus the gap to the box, pointer cursor).
+Owner feedback from the dev build, kept out of this PR and stacked on top as `feat/globe-polish`. Implemented (2026-10-07, details in [web-architecture.md](web-architecture.md), "Targets and labels", "Box outline", "Pixel text", and [design-tokens.md](design-tokens.md)):
+
+1. Type: Tiny5 made taller on the same grid (7-row capitals, 5-row lowercase) instead of relying on a heavy bold (`pixel-font/stretch.ts`).
+2. Boxes: solid corner arms with dashes between them at rest, one uninterrupted solid line on hover or selection, no ring and no doubling (`drawBox`).
+3. Unlabelled, unclickable squares (Houston, New York): the label priority floor withheld the name of every priority-50 place on the world view, and the only target of a small box was its border and label. The floor is gone; a box that loses a label collision is dimmed and still clickable (`label-plan.ts`).
+4. Credits: a dim text link "Credits" with an up-right arrow instead of the "i" chip (`--subtle-foreground`).
+5. Globe outline: the `faint` palette level instead of `soft`.
+6. Targets: the convex hull of the box and its label, plus slop, innermost wins (`hit-area.ts`).
+
+Not verified: Safari/iOS, a real touch screen (the touch slop and the 44 px target are by arithmetic and unit tests only), reduced motion in a browser for the new dim rule, the street scale (only the shared `BoxScene` code path, the street overlay itself was not driven), and the GPU budgets (not rerun).
 
 ## Decisions taken
 

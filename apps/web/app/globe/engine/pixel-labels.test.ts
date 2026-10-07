@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CLEAR, MIXED, PixelBuffer } from "./pixel-buffer";
-import { ALPHA_STEPS, LABEL_PAD, TEXT_GAP, chipText, drawBox, drawLabel, labelCell, labelLayout, labelTones, quantAlpha } from "./pixel-labels";
+import { ALPHA_STEPS, CORNER_ARM, LABEL_PAD, TEXT_GAP, chipText, drawBox, edgeLit, drawLabel, labelCell, labelLayout, labelTones, quantAlpha } from "./pixel-labels";
 import { measureText } from "./pixel-font/pixel-font";
 
 const T = labelTones(12);
@@ -60,29 +60,62 @@ describe("boxes: full ink outline, opacity for fades", () => {
   const rect = { c0: 1, r0: 1, c1: 8, r1: 6 };
   it("a hollow box is a one-cell outline in the full ink, nothing inside", () => {
     const b = new PixelBuffer(10, 8);
-    drawBox(b, rect, T, { alpha: 1, fillAlpha: 0 });
+    drawBox(b, rect, T, { alpha: 1, fillAlpha: 0, solid: true });
     const k = T.ink.toString(36);
     expect(b.dump()).toEqual(["..........", `.${k.repeat(7)}..`, `.${k}.....${k}..`, `.${k}.....${k}..`, `.${k}.....${k}..`, `.${k.repeat(7)}..`, "..........", ".........."]);
   });
   it("a masked box (clamped to the minimum) has the PAGE colour inside a one-cell ink outline: it reads as an area, empty", () => {
     const b = new PixelBuffer(8, 6);
-    drawBox(b, { c0: 1, r0: 1, c1: 7, r1: 5 }, T, { alpha: 1, fillAlpha: 1 });
+    drawBox(b, { c0: 1, r0: 1, c1: 7, r1: 5 }, T, { alpha: 1, fillAlpha: 1, solid: true });
     const k = T.ink.toString(36);
     expect(b.dump()).toEqual(["........", `.${k.repeat(6)}.`, `.${k}0000${k}.`, `.${k}0000${k}.`, `.${k.repeat(6)}.`, "........"]);
   });
-  it("the selected, focused or hovered box has a second ring just inside the first", () => {
-    const b = new PixelBuffer(12, 10);
-    drawBox(b, { c0: 1, r0: 1, c1: 11, r1: 9 }, T, { alpha: 1, fillAlpha: 1, ring: true });
+  it("at rest the four corners are solid and the rest of each edge is dashed", () => {
+    const b = new PixelBuffer(24, 16);
+    drawBox(b, { c0: 1, r0: 1, c1: 23, r1: 15 }, T, { alpha: 1, fillAlpha: 0 });
     const k = T.ink.toString(36);
-    expect(b.dump()[1]).toBe(`.${k.repeat(10)}.`);
-    expect(b.dump()[2]).toBe(`.${k}${k.repeat(8)}${k}.`);
-    expect(b.dump()[3]).toBe(`.${k}${k}000000${k}${k}.`);
+    const d = b.dump();
+    // 22 cells across: an arm of 3, then off off on on off off, the two middle cells meeting in one longer dash, mirrored
+    const row = (n: number) => Array.from({ length: n }, (_, i) => (edgeLit(i, n, false) ? k : ".")).join("");
+    expect(row(22)).toBe(`${k.repeat(CORNER_ARM)}..${k.repeat(2)}..${k.repeat(4)}..${k.repeat(2)}..${k.repeat(CORNER_ARM)}`);
+    expect(d[1]).toBe(`.${row(22)}.`);
+    expect(d[14]).toBe(`.${row(22)}.`);
+    // the left edge of 14 rows reads the same way down
+    expect(d.slice(1, 15).map((r) => r[1]).join("")).toBe(row(14));
+    // all four corner cells and the whole of each corner's arms are lit; the middle of each edge has gaps
+    for (const [x, y] of [[1, 1], [22, 1], [1, 14], [22, 14]] as const) expect(b.get(x, y)).toBe(T.ink);
+    expect(b.get(5, 1)).toBe(CLEAR);
+    expect(b.get(12, 14)).not.toBe(CLEAR);
+    expect(b.get(1, 4)).toBe(CLEAR);
+  });
+  it("the edge pattern is the same from both ends and anchored at the corners", () => {
+    for (const n of [9, 10, 11, 14, 22, 37]) {
+      const cells = Array.from({ length: n }, (_, i) => edgeLit(i, n, false));
+      expect(cells).toEqual([...cells].reverse());
+      for (let i = 0; i < Math.min(CORNER_ARM, n); i++) expect(cells[i]).toBe(true);
+      expect(Array.from({ length: n }, (_, i) => edgeLit(i, n, true)).every(Boolean)).toBe(true);
+    }
+    // a minimum box (9 cells) is four corner brackets
+    expect(Array.from({ length: 9 }, (_, i) => edgeLit(i, 9, false)).filter(Boolean)).toHaveLength(2 * CORNER_ARM);
+  });
+  it("the selected, focused or hovered box is one uninterrupted line, one cell thick: no ring, no doubling", () => {
+    const b = new PixelBuffer(12, 10);
+    drawBox(b, { c0: 1, r0: 1, c1: 11, r1: 9 }, T, { alpha: 1, fillAlpha: 1, solid: true });
+    const k = T.ink.toString(36);
+    const d = b.dump();
+    expect(d[1]).toBe(`.${k.repeat(10)}.`);
+    expect(d[2]).toBe(`.${k}${"0".repeat(8)}${k}.`); // the mask starts right inside the outline
+    expect(d[8]).toBe(`.${k.repeat(10)}.`);
+    for (let y = 1; y < 9; y++) {
+      expect(d[y]![1]).toBe(k);
+      expect(d[y]![10]).toBe(k);
+    }
   });
   it("a fade is opacity, not shade: every outline cell is the ink colour at the node's alpha, whatever the alpha", () => {
     for (const a of [1 / 64, 0.1, 0.25, 0.5, 0.9, 1]) {
       const b = new PixelBuffer(10, 8);
       b.setRamp(RAMP);
-      drawBox(b, rect, T, { alpha: a, fillAlpha: a });
+      drawBox(b, rect, T, { alpha: a, fillAlpha: a, solid: true });
       let cells = 0;
       for (let y = 0; y < 8; y++)
         for (let x = 0; x < 10; x++) {
@@ -98,7 +131,7 @@ describe("boxes: full ink outline, opacity for fades", () => {
   });
   it("the mask stops at the outline: outline cells are composited over the map alone, interior cells over the map alone", () => {
     const b = new PixelBuffer(10, 8);
-    drawBox(b, rect, T, { alpha: 0.5, fillAlpha: 0.5 });
+    drawBox(b, rect, T, { alpha: 0.5, fillAlpha: 0.5, solid: true });
     expect(b.alphaAt(1, 1)).toBeCloseTo(0.5, 2); // a corner: one write, not two
     expect(b.alphaAt(4, 3)).toBeCloseTo(0.5, 2);
   });
