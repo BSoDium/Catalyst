@@ -231,24 +231,26 @@ Two Vercel projects, one per app, from this one repo. Both need a **Root Directo
 
 ### Owner checklist (click by click)
 
-The first PR of the rebuild failed its Vercel check because the one project that existed, `catalyst` (formerly `bsodium`, the old Yarn app at the repository root; now renamed `catalyst-v1`, to be confirmed: check that the old `catalyst` project is gone), still had **Root Directory empty**. At the repo root there is no app any more (a pnpm workspace with a `build` script that builds both), so no preset can succeed there. See "Evidence" below.
+**Plan (owner's decision, 2026-10-07).** The existing project `catalyst-v1` (formerly `catalyst`, formerly `bsodium`) is the old Yarn app at the repository root and was renamed on purpose: it stays the v1 site. The rebuild gets two NEW projects, created after this branch is merged, because the dashboard only offers a Root Directory that exists on the default branch (`apps/web` does not exist on `main` yet). The web project is served on a temporary `v2.bsodium.fr` until it replaces the main domain.
 
-Web project (reuse the existing project, now `catalyst-v1`):
+Until the merge, the PR's Vercel check (project `catalyst-v1`, Root Directory empty) keeps failing, with `Failed to resolve "@remix-run/dev"` in the build log; that is expected and not a defect of this branch (see "Evidence"). After the merge, `catalyst-v1` would also fail on every push to `main`: disconnect its Git repository, or set an Ignored Build Step on it, once v2 is live.
 
-1. vercel.com, team `photonsquid`, project `catalyst-v1`, **Settings**, **Build and Deployment**.
-2. **Root Directory**: type `apps/web`, Save. Leave **Include source files outside of the Root Directory** enabled (the default); it must be on.
+Web project (new, e.g. `catalyst-v2`):
+
+1. vercel.com, team `photonsquid`, **Add New**, **Project**, import the GitHub repository.
+2. **Root Directory**: `apps/web`. Leave **Include source files outside of the Root Directory** enabled (the default); it must be on.
 3. **Framework Preset**: `React Router` (the committed `apps/web/vercel.json` also says so; the file wins).
-4. Clear every override: **Install Command**, **Build Command**, **Output Directory**, **Development Command** all left on their defaults (toggles off). A leftover `yarn install`, `corepack yarn build` or `dist`/`build` from the old app breaks the build.
-5. **Node.js Version**: `22.x` or newer (the repo's `engines` is `>=22`; Vercel then uses 24.x and says so in the build log, which is fine). **Settings, Environment Variables**: none needed; make sure no `CATALYST_CONTENT=demo`/`preview` is set (only `published`, the default, is allowed in production).
-6. Redeploy: **Deployments**, the failed one, the three dots, **Redeploy** (or push a commit). Expect `Detected pnpm-lock.yaml`, `Running "pnpm install"` at the repo root, then the React Router build, status Ready.
+4. Leave every override off: **Install Command**, **Build Command**, **Output Directory**, **Development Command** on their defaults.
+5. **Node.js Version**: `22.x` or newer (the repo's `engines` is `>=22`; Vercel then uses 24.x and says so in the build log, which is fine). **Environment Variables**: none needed; never set `CATALYST_CONTENT=demo`/`preview` (only `published`, the default, is allowed in production).
+6. Deploy. Expect `Detected pnpm-lock.yaml`, `Running "pnpm install"` at the repo root, then the React Router build, status Ready. Add the domain `v2.bsodium.fr` under **Settings, Domains**.
 
-API project (new):
+API project (new, e.g. `catalyst-v2-api`):
 
-1. vercel.com, team `photonsquid`, **Add New**, **Project**, import the same GitHub repository.
-2. Name `catalyst-api`; **Root Directory**: `apps/api`; **Include source files outside of the Root Directory**: on. Framework Preset: `Hono` (pinned by `apps/api/vercel.json`; `Other` fails with "No Output Directory named public"). No overrides, no environment variables. Deploy.
+1. Same repository, **Add New**, **Project**.
+2. **Root Directory**: `apps/api`; **Include source files outside of the Root Directory**: on. Framework Preset: `Hono` (pinned by `apps/api/vercel.json`; `Other` fails with "No Output Directory named public"). No overrides, no environment variables. Deploy.
 3. Leave **Settings, Build and Deployment, Root Directory, Skip deployment** as it is (it skips a project that a push did not affect, see "Monorepo build behaviour").
 
-After both are green, the PR shows two Vercel checks, one per project.
+After both are green, every PR shows two Vercel checks, one per project.
 
 ### Project settings
 
