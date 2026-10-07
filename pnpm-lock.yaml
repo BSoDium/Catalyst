@@ -49,7 +49,7 @@ importers:
   apps/web:
     dependencies:
       '@catalyst/geodata':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../packages/geodata
       '@catalyst/published':
         specifier: workspace:*
@@ -245,7 +245,7 @@ importers:
   prototypes/street-zoom:
     dependencies:
       '@catalyst/geodata':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../packages/geodata
       maplibre-gl:
         specifier: ^6.11.2

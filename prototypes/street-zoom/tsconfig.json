@@ -1,5 +1,5 @@
 {
   "extends": "../../tsconfig.base.json",
-  "compilerOptions": { "lib": ["ES2023", "DOM", "DOM.Iterable"], "types": ["vite/client", "node", "geojson"] },
+  "compilerOptions": { "noUnusedLocals": false, "lib": ["ES2023", "DOM", "DOM.Iterable"], "types": ["vite/client", "node", "geojson"] },
   "include": ["src", "scripts", "vite.config.ts"]
 }

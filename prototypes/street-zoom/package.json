@@ -14,7 +14,7 @@
     "test:lines:quick": "node scripts/line-regression.mjs --serve --quick"
   },
   "dependencies": {
-    "@catalyst/geodata": "workspace:^",
+    "@catalyst/geodata": "workspace:*",
     "maplibre-gl": "^6.11.2",
     "pmtiles": "^4.5.0"
   },
