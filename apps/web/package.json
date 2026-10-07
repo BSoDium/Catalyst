@@ -16,7 +16,7 @@
     "bake:font": "node scripts/font/bake-pixel-font.mjs"
   },
   "dependencies": {
-    "@catalyst/geodata": "workspace:^",
+    "@catalyst/geodata": "workspace:*",
     "@catalyst/published": "workspace:*",
     "@catalyst/schemas": "workspace:*",
     "@radix-ui/react-slot": "^1.3.3",

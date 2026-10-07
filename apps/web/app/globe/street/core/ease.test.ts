@@ -97,11 +97,11 @@ describe("ease at rest (identity warp): every cell moves towards its target by a
 });
 
 describe("ease while the camera moves: the previous image is looked up where the camera had it", () => {
-  const cam = (x: number): WarpCamera => ({ lon: 0, lat: 0, zoom: 14, cx: (W * 2) / 2, cy: (H * 2) / 2, cell: 2 }); // lon is moved below
+  const cam = (): WarpCamera => ({ lon: 0, lat: 0, zoom: 14, cx: (W * 2) / 2, cy: (H * 2) / 2, cell: 2 }); // lon is moved below
   const camAt = (cells: number): WarpCamera => {
     // a pan to the east by `cells`: lon grows by cells * cell css px / (512 * 2^zoom) * 360
     const lon = ((cells * 2) / (512 * 2 ** 14)) * 360;
-    return { ...cam(0), lon };
+    return { ...cam(), lon };
   };
   it("a fully presented line that moves by whole cells keeps its tone at once, and leaves nothing behind", () => {
     const prevTarget = img();

@@ -142,7 +142,7 @@ export class Compositor {
 
   constructor(
     private map: MLMap,
-    private root: HTMLElement,
+    root: HTMLElement,
     private hooks: CompositorHooks,
     readonly options: CompositorOptions = { native: false },
   ) {

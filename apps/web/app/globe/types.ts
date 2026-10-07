@@ -3,6 +3,8 @@
  * these types; the implementation behind `Globe` can be swapped freely.
  * Nothing under app/globe/ may import from the rest of the app.
  */
+import type { ComponentType } from "react";
+
 export interface GlobeViewState {
   lon: number;
   lat: number;
@@ -113,6 +115,16 @@ export interface GlobeTiles {
   maxFallbackZoom: number;
 }
 
+/**
+ * What the app-supplied attribution control receives (see `GlobeProps.attribution`): the tile configuration that decides
+ * which sources are credited (null = the globe alone), the right inset the control stays clear of, and the motion preference.
+ */
+export interface GlobeAttributionProps {
+  tiles: { primaryUrl: string; fallbackPmtilesUrl: string | null } | null;
+  insetRight: number;
+  reducedMotion: boolean;
+}
+
 export interface GlobeProps {
   places: GlobePlace[];
   /**
@@ -147,6 +159,12 @@ export interface GlobeProps {
    * zoom stops at the regional scale and a small notice says so. Optional: omitted = no street scale.
    */
   tiles?: GlobeTiles | null;
+  /**
+   * The map's credits control (the info button and its dialog), supplied by the app because it is app UI: the globe
+   * renders it, absolutely positioned in its box, and never imports it. Optional: omitted = no credits control
+   * (the app must pass one wherever the maps are shown, they carry licence-required credits).
+   */
+  attribution?: ComponentType<GlobeAttributionProps>;
   onSelect(slug: string): void;
   onViewChange(view: GlobeViewState): void;
 }

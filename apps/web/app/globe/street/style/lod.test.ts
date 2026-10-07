@@ -6,7 +6,7 @@ import { PATTERN } from "../core/palette";
 import { radiusFitZoom } from "../../engine/framing";
 import { zoomCorrection } from "../core/registration";
 import { FILL_LOD, LOD, finalAt, levelAt, progressAt, stepZoom, toneLevel, visibleAt, type LodKey } from "./lod";
-import { decodeLevel, decodePattern, levelOfPaint } from "./probe";
+import { decodePattern, levelOfPaint } from "./probe";
 import { DEFAULT_HANDOFF, MAJOR_WIDE_FROM, SPECS, WORLD_PLACEHOLDER_BELOW, hasPlaceholder, artWidthStopsOf, buildStreetStyle, linePaint, seaFade, type Schema } from "./street-style";
 
 const KEYS = Object.keys(LOD) as LodKey[];

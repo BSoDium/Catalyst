@@ -26,8 +26,8 @@ import {
   fitZoom,
   normalizeLon,
   projectLonLat,
-  projectUnit,
   viewBasis,
+  zoomCorrection,
   zoomToRadiusPx,
   type ScreenPoint,
   type ViewBasis,
@@ -53,7 +53,6 @@ import { NodeScreen } from "./node-screen";
 import { GlobeScene } from "./scene";
 import { INSET_EASE, TUNING } from "./tuning";
 import { fromViewState } from "./view";
-import { zoomCorrection } from "../street/core/registration";
 import { markerShown } from "./visibility";
 import { perfEnd, perfStart } from "./perf";
 
@@ -166,14 +165,12 @@ export class GlobeRenderer {
   private focused: string | null = null;
   private hovered = -1;
   private drawnBoxes = 0;
-  private routeStops: ReadonlySet<string> = new Set();
   /** Semantic zoom: what is drawn this frame, and where (per node index; see `syncNodes`). */
   private lod: LodTree;
   private lodCam = newLodCamera();
   private selIdx = -1;
   private focIdx = -1;
   readonly nodeScreen: NodeScreen;
-  private scratch = { x: 0, y: 0, visible: false, facing: 0 };
   private flight: Flight | null = null;
   private flightBeyond = false;
   private velocity: Velocity = STILL;
@@ -516,7 +513,6 @@ export class GlobeRenderer {
   private refreshMarkers() {
     const stops = new Set<string>();
     for (const route of this.selectedRoutes()) for (const p of this.places) if (isRouteStop(route, p)) stops.add(p.slug);
-    this.routeStops = stops;
     this.lod.setExtraForced([...stops].map((slug) => this.lod.indexOf(slug)));
   }
 

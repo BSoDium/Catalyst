@@ -1,6 +1,13 @@
 /** Mapping between the app's `GlobeViewState` and the internal (unified) zoom, in globe zoom levels. */
-import { clamp, type ViewState } from "./geo";
+import { clamp, smoothstep, type ViewState } from "./geo";
+import { TUNING } from "./tuning";
 import type { GlobeViewState } from "../types";
+
+/** How lifted the globe's route arcs are at a zoom: 1 on the globe, 0 on the ground (as the street draws them). */
+export function routeLift(zu: number): number {
+  const { start, end } = TUNING.routeFlat;
+  return 1 - smoothstep(clamp((zu - start) / (end - start), 0, 1));
+}
 
 /** 0 = whole globe fits, 1 = the closest the Three.js globe goes. Linear in zoom levels, so it is stable across viewport sizes. */
 export function zoomTo01(zoom: number, minZoom: number, maxZoom: number): number {

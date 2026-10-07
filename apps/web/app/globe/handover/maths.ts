@@ -18,8 +18,11 @@
  *        zu >= blendEnd            the street map alone is drawn; Three.js is suspended (no frames)
  */
 import { TUNING } from "../engine/tuning";
-import { clamp } from "../engine/geo";
-import { zoomCorrection } from "../street/core/registration";
+import { clamp, smoothstep, zoomCorrection } from "../engine/geo";
+import { routeLift } from "../engine/view";
+
+// The route-arc lift is engine maths (the engine draws the arcs and must not import this layer); re-exported here.
+export { routeLift };
 
 export const HANDOVER = {
   /** The street chunk is requested and the map created from here (the chunk is large: start early). */
@@ -62,7 +65,7 @@ export const HANDOVER = {
   overlayIn: 0.8,
   overlayOut: 0.65,
   /** The globe's lifted route arcs flatten onto the ground between these zooms, ahead of the dissolve. */
-  routeFlat: { start: 2.5, end: 3.3 },
+  routeFlat: TUNING.routeFlat,
   /**
    * Sharp-focus circle around the selected place at street scale. OFF by default: with the cut and the city-wide framing
    * the anti-aliased source render inside the circle sits over the pixel art and reads as doubled lines (the Seine,
@@ -80,18 +83,12 @@ export const HANDOVER = {
 /** The Three.js globe's own maximum internal zoom: above it only the street map can draw. */
 export const GLOBE_MAX_ZOOM = TUNING.maxZoom;
 
-const smooth = (t: number) => t * t * (3 - 2 * t);
+const smooth = smoothstep;
 
 /** Dissolve target (0 = Three.js only, 1 = street only) for a zoom. */
 export function blendAt(zu: number): number {
   const { blendStart: a, blendEnd: b } = HANDOVER;
   return smooth(clamp((zu - a) / (b - a), 0, 1));
-}
-
-/** How lifted the globe's route arcs are at a zoom: 1 on the globe, 0 on the ground (as the street draws them). */
-export function routeLift(zu: number): number {
-  const { start, end } = HANDOVER.routeFlat;
-  return 1 - smooth(clamp((zu - start) / (end - start), 0, 1));
 }
 
 /** Move `current` towards `target` by at most one full swing per `ms` (0 ms = instant). */

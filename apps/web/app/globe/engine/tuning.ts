@@ -47,6 +47,8 @@ export const TUNING = {
   streetMapMaxZoom: 17.5,
   /** Latitude clamp for the view centre. */
   maxLat: 82,
+  /** The globe's lifted route arcs flatten onto the ground between these (internal) zooms, ahead of the handover's dissolve (`routeLift`). */
+  routeFlat: { start: 2.5, end: 3.3 },
   /** Zoom used when rotating to a selected place (never zooms out). */
   selectZoom: 3.2,
   /** Zoom from which every label may show (subject to collisions). */

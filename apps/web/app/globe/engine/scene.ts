@@ -17,7 +17,7 @@ import { zoomToRadiusPx } from "./geo";
 import { graticuleSegments, polylinesToSegments } from "./geometry";
 import { OCCLUDER_RADIUS, lineMaterial, occluderMaterial, silhouetteMaterial } from "./materials";
 import { RouteLayer } from "./route-layer";
-import { routeLift } from "../handover/maths";
+import { routeLift } from "./view";
 import { TUNING } from "./tuning";
 
 /** Route dash period in art pixels. */

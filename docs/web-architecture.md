@@ -131,6 +131,12 @@ map it hands over to (see "Handover" below). The seam extends compatibly:
   past the regional scale, so older saved views are valid. (`zoom`, `street`) is one continuous scale.
 - `GlobeProps.tiles?: GlobeTiles | null` (primary URL, optional fallback PMTiles URL, max fallback zoom: the shell
   loader's `tiles`). Absent or null = world and regional scale only, exactly as before.
+- `GlobeProps.attribution?: ComponentType<GlobeAttributionProps>`: the map's credits control (the pixel-art "i" button
+  and its dialog) is app UI, so the app hands it in and the globe renders it in its box (bottom right, clear of
+  `insetRight`); the globe never imports it. `StreetMapCanvas` takes the same prop. The app passes
+  `components/attribution-slot.tsx` (a lazy wrapper around `attribution-button.tsx`, so the button stays out of the
+  main bundle) in `routes/shell.tsx` and `routes/dev-street.tsx`. Omitted = no credits control: pass it wherever the
+  maps are shown, the credits are licence-required.
 
 Lifecycle expectations for any implementation:
 
@@ -156,7 +162,29 @@ Lifecycle expectations for any implementation:
    implementation may skip drawing under the covered strip and dissolve the map's right edge into the page.
 
 To swap renderers, point the `lazy(() => import(...))` in `globe/index.tsx` at another module. Do not change
-`types.ts` or import app code from `globe/`.
+`types.ts` (other than additive optional props such as `attribution`) or import app code from `globe/`.
+
+### Layering
+
+```
+engine/    framework-free Three.js globe          imports neither handover/ nor street/
+street/    the MapLibre pass                       imports engine/, not handover/
+handover/  owns both renderers, one camera         imports engine/ and street/
+globe/*    the seam (index.tsx, types.ts) and the React canvases (globe-canvas.tsx, street/street-map-canvas.tsx)
+           imports nothing from the rest of the app (components, routes, lib, hooks)
+```
+
+`app/globe/layering.test.ts` scans the import specifiers and fails on a violation of the three rules above (test files
+are exempt from the first two: a test may read another layer's constants). Shared maths lives at the lowest layer that
+needs it: `zoomCorrection` (`log2 cos lat`) in `engine/geo.ts` (re-exported by `street/core/registration.ts`),
+`routeLift` in `engine/view.ts` with its constants `TUNING.routeFlat` (`HANDOVER.routeFlat` aliases it).
+
+Known exceptions, in the other direction (app code reaching past the `globe/index.tsx` seam), pinned by the same test so a
+new one is a decision: `components/attribution-button.tsx`, `components/credits-dialog.tsx` and
+`components/info-button-art.ts` use engine internals (colours, pixel labels, pixel font, tuning, credits data);
+`lib/projection.ts` uses `engine/framing`; `lib/tiles-config.server.ts` uses `street/types`; the dev routes use
+`engine/geo` and `street/harness/synthetic`. Inside `street/`, `core/` is "pure" but still imports the constant and type
+files `../tuning` and `../../types`.
 
 ## Production globe
 
@@ -164,9 +192,10 @@ To swap renderers, point the `lazy(() => import(...))` in `globe/index.tsx` at a
 
 | File | Role |
 | --- | --- |
-| `globe-canvas.tsx` | React lifecycle only: root `div[data-globe="three"][data-state]`, geodata import, prop forwarding, status message and the street-unavailable notice |
+| `globe-canvas.tsx` | React lifecycle only: root `div[data-globe="three"][data-state]`, geodata import, prop forwarding, status message, the street-unavailable notice and the app-supplied `attribution` slot |
 | `handover/controller.ts` | `createHandover()`: owns the globe AND the lazily created street map; one camera, the dissolve, overlays, tile-state reactions |
 | `handover/maths.ts` | pure handover maths and the `HANDOVER` constants (bands, hysteresis, slew, overlay owner, ceilings); `maths.test.ts` |
+| `layering.test.ts` | pins the layering rules of this directory (see "Layering") |
 | `street/**` | the street map (docs/street-architecture.md); only `street/engine.ts` and what it imports are in its lazy chunk |
 | `engine/index.ts` | `createGlobe()`: wires renderer + labels + view reporting; `WebGLUnavailableError`; debug introspection |
 | `engine/renderer.ts` | `GlobeRenderer`: WebGLRenderer, camera, sizing (ResizeObserver, DPR), frame scheduling, context loss, visibility, picking |

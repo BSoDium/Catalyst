@@ -16,6 +16,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { data, useLoaderData, useSearchParams } from "react-router";
+import { AttributionSlot } from "~/components/attribution-slot";
 import { StreetMapCanvas, type StreetMap, type StreetMapOptions, type StreetTileConfig, type StreetView, type TileStatus } from "~/globe/street";
 import { projectLonLat, viewBasis } from "~/globe/engine/geo";
 import { getTilesConfig } from "~/lib/tiles-config.server";
@@ -220,6 +221,7 @@ export default function DevStreet() {
           reducedMotion={reduced}
           tiles={tiles}
           insetRight={num(p("inset"), 0)}
+          attribution={AttributionSlot}
           onSelect={setSelected}
           onViewChange={setCurrent}
           onTileStatus={(s) => {

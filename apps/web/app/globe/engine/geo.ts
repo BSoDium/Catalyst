@@ -2,6 +2,8 @@
  * Pure geometry helpers shared by both renderers, the label layer and the tests.
  * Coordinate convention (unit sphere, Y up): lon 0 / lat 0 is +Z, lon +90 is +X, north is +Y.
  */
+import { TUNING } from "./tuning";
+
 export const DEG = Math.PI / 180;
 export type Vec3 = readonly [number, number, number];
 
@@ -11,6 +13,18 @@ const TILE_SIZE = 512;
 export const FOV_DEG = 36.87;
 
 export const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+
+/** Smoothstep of a value already in [0, 1]. */
+export const smoothstep = (t: number) => t * t * (3 - 2 * t);
+
+/**
+ * `log2(cos(lat))`, the zoom offset between the globe's internal zoom and MapLibre's zoom at a centre latitude (always
+ * <= 0; see `street/core/registration.ts` for the registration it belongs to). The latitude is clamped to the view's own
+ * `TUNING.maxLat` so the value stays finite near the poles.
+ */
+export function zoomCorrection(lat: number): number {
+  return Math.log2(Math.cos(clamp(lat, -TUNING.maxLat, TUNING.maxLat) * DEG));
+}
 
 /** Wrap a longitude into [-180, 180). */
 export function normalizeLon(lon: number): number {

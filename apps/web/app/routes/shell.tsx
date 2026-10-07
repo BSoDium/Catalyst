@@ -2,6 +2,7 @@ import { useReducedMotion } from "motion/react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useMatch, useNavigate, useOutlet, useParams } from "react-router";
 import type { Route } from "./+types/shell";
+import { AttributionSlot } from "~/components/attribution-slot";
 import { DetailPanel, type OpenIntent } from "~/components/detail-panel";
 import { PlacesNav } from "~/components/places-nav";
 import { Globe, placeFraming, type GlobeInitialView, type GlobeViewState } from "~/globe";
@@ -92,6 +93,7 @@ export default function Shell({ loaderData }: Route.ComponentProps) {
               reducedMotion={reducedMotion}
               insetRight={insetRight}
               tiles={tiles}
+              attribution={AttributionSlot}
               onSelect={select}
               onViewChange={saveView}
             />

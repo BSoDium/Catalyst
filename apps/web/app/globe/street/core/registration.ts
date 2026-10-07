@@ -15,9 +15,8 @@
  * `GlobeViewState.zoom`; the `...View` variants convert with the globe's own mapping (`engine/view.ts`).
  */
 import type { GlobeViewState } from "../../types";
-import { DEG, clamp, type ViewState } from "../../engine/geo";
+import { zoomCorrection, type ViewState } from "../../engine/geo";
 import { zoomFrom01, zoomTo01 } from "../../engine/view";
-import { STREET_TUNING } from "../tuning";
 
 export interface MapView {
   lon: number;
@@ -26,11 +25,9 @@ export interface MapView {
   zoom: number;
 }
 
-/** `log2(cos(lat))`, the zoom offset between the two engines at a centre latitude (always <= 0). */
-export function zoomCorrection(lat: number): number {
-  const c = Math.cos(clamp(lat, -STREET_TUNING.maxLat, STREET_TUNING.maxLat) * DEG);
-  return Math.log2(c);
-}
+// `log2(cos(lat))`, the zoom offset between the two engines at a centre latitude (always <= 0). It is projection maths,
+// so it lives in `engine/geo.ts` (the engine must not import this layer); re-exported here for the street code.
+export { zoomCorrection };
 
 /** Globe camera (internal zoom) to the MapLibre camera that frames the same ground. */
 export function registerGlobeToMap(globe: ViewState): MapView {

@@ -7,9 +7,8 @@
  * `aria-hidden` (the engine marks them); the only exposed content is the attribution button (opens the credits, real
  * links) and the status message when WebGL is unavailable or the context was lost. The place list is the accessible path.
  */
-import { useEffect, useRef, useState } from "react";
-import { AttributionButton } from "~/components/attribution-button";
-import type { GlobePlace, GlobeRoute } from "../types";
+import { useEffect, useRef, useState, type ComponentType } from "react";
+import type { GlobeAttributionProps, GlobePlace, GlobeRoute } from "../types";
 import type { StreetDebug, StreetMap, StreetMapOptions, StreetTileConfig, StreetView, TileStatus } from "./types";
 
 type Status = "loading" | "ready" | "unavailable" | "lost";
@@ -32,6 +31,8 @@ export interface StreetMapCanvasProps {
   reducedMotion: boolean;
   tiles: StreetTileConfig;
   insetRight: number;
+  /** The app's credits control (see `GlobeProps.attribution`); omitted = none. */
+  attribution?: ComponentType<GlobeAttributionProps>;
   onSelect(slug: string): void;
   onViewChange?(view: StreetView): void;
   onTileStatus?(status: TileStatus): void;
@@ -60,6 +61,7 @@ export default function StreetMapCanvasImpl({
   reducedMotion,
   tiles,
   insetRight,
+  attribution: Attribution,
   onSelect,
   onViewChange,
   onTileStatus,
@@ -165,7 +167,7 @@ export default function StreetMapCanvasImpl({
       data-tile-state={tileState}
       className="relative size-full overflow-hidden select-none"
     >
-      <AttributionButton tiles={tiles} insetRight={insetRight} reducedMotion={reducedMotion} />
+      {Attribution && <Attribution tiles={tiles} insetRight={insetRight} reducedMotion={reducedMotion} />}
       {(status === "unavailable" || status === "lost") && (
         <p
           role="status"

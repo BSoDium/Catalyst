@@ -10,7 +10,6 @@
  * when WebGL is unavailable or the context was lost.
  */
 import { useEffect, useRef, useState } from "react";
-import { AttributionButton } from "~/components/attribution-button";
 import { createHandover, type HandoverDebug, type HandoverHandle, type Notice } from "./handover/controller";
 import { HANDOVER } from "./handover/maths";
 import { casesHierarchy, stressHierarchy } from "./engine/lod-stress";
@@ -105,6 +104,7 @@ export default function GlobeCanvas({
   reducedMotion,
   insetRight,
   tiles,
+  attribution: Attribution,
   onSelect,
   onViewChange,
 }: GlobeProps) {
@@ -241,7 +241,7 @@ export default function GlobeCanvas({
       >
         {notice && status === "ready" ? "Street detail is unavailable right now." : null}
       </p>
-      <AttributionButton tiles={tilesKey ? (tiles ?? null) : null} insetRight={insetRight} reducedMotion={reducedMotion} />
+      {Attribution && <Attribution tiles={tilesKey ? (tiles ?? null) : null} insetRight={insetRight} reducedMotion={reducedMotion} />}
       {(status === "unavailable" || status === "lost") && (
         <p
           role="status"
