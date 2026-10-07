@@ -125,7 +125,7 @@ try {
     const afterCut = r.samples.filter((x) => r.cutAt !== null && x.t >= r.cutAt);
     const minLit = Math.min(...afterCut.map((x) => x.lit));
     const maxLit = Math.max(...afterCut.map((x) => x.lit));
-    check("slow: the street map is never empty while its tiles are late (the world placeholder is drawn)", afterCut.length > 3 && minLit > 2000, `(lit target cells between ${minLit} and ${maxLit})`);
+    check("slow: the street map is never empty while its tiles are late (the world placeholder is drawn)", afterCut.length > 3 && minLit > 1000, /* the globe's own coast, borders and graticule: about 1.7k cells here; region lines (on from map z4.2 since the layer switch) add the rest at higher zooms */ `(lit target cells between ${minLit} and ${maxLit})`);
     check("slow: the tile lines cross-fade in when they arrive (>= 3 intermediate levels, no cell jumps more than 4)", r.levels.length >= 3 && r.maxStep <= 4, `(levels seen ${r.levels.join(",")}, max step ${r.maxStep})`);
     await ctx.close();
   }
