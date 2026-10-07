@@ -6,6 +6,10 @@ import { execFileSync } from "node:child_process";
 import { readdirSync, readFileSync, statSync, existsSync } from "node:fs";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import { PREVIEW_FILE, findPreviewLeaks, previewFilesInRepoListing } from "./lib/preview-leaks.mjs";
+
+// Also guards the LOCAL preview file (the owner's real places incl. unpublished drafts, written by `pnpm export:preview`):
+// it may exist on a developer machine only if git ignores it, and none of its places may appear in a production bundle.
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 
@@ -42,6 +46,7 @@ const targets = [
 
 const failures = [];
 let scanned = 0;
+const bundleFiles = [];
 for (const [label, rel] of targets) {
   const dir = join(root, rel);
   if (!existsSync(dir)) {
@@ -52,6 +57,7 @@ for (const [label, rel] of targets) {
     if (/\.(png|jpe?g|webp|ico|woff2?|map)$/i.test(file)) continue;
     const text = readFileSync(file, "utf8");
     scanned++;
+    if (label !== "published projection") bundleFiles.push({ file: relative(root, file), text });
     for (const word of FORBIDDEN) {
       if (text.includes(word)) failures.push(`${label}: "${word}" found in ${relative(root, file)}`);
     }
@@ -63,6 +69,19 @@ const tracked = execFileSync("git", ["ls-files", "--cached", "--others", "--excl
 for (const f of tracked) {
   if (/(^|\/)\.env(\.|$)/.test(f) && !f.endsWith(".env.example")) failures.push(`tracked env file: ${f}`);
   if (/^(source|archive|editorial)\//.test(f)) failures.push(`private-layer path tracked: ${f}`);
+}
+
+// The local preview file: never tracked, never untracked-and-unignored (`tracked` above lists both kinds).
+for (const f of previewFilesInRepoListing(tracked)) failures.push(`preview file is tracked or not git-ignored: ${f} (it holds unpublished drafts; it must be ignored, see .gitignore)`);
+
+// If the preview file exists here, none of its places may be inside a production bundle. Skipped otherwise.
+const previewPath = join(root, PREVIEW_FILE);
+if (existsSync(previewPath)) {
+  try {
+    failures.push(...findPreviewLeaks(bundleFiles, JSON.parse(readFileSync(previewPath, "utf8"))));
+  } catch (e) {
+    failures.push(`preview file is unreadable (${e.message.split("\n")[0]}); delete it or re-run \`pnpm export:preview\``);
+  }
 }
 
 // The projection must satisfy the strict contract (unknown keys are errors).
