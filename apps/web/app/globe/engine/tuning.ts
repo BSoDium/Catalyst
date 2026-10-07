@@ -38,10 +38,11 @@ export const TUNING = {
     return Math.max(1, Math.round(base * dpr - 1e-9)) / dpr;
   },
   /**
-   * Borders fade in with zoom through the palette's grey levels: not drawn below `start`, the faintest level just above
-   * it, one level more every (end - start) / levels of zoom, full ink from `end` (both ways). Zoom = internal globe zoom.
+   * Country borders are ON from `on` (internal globe zoom) and OFF below, with a hysteresis of `band` each side; the fade between the two
+   * states is a timed tone ramp through the palette's grey levels (`FADE_MS`), not a function of zoom. The middle of the old ramp (3.0 to
+   * 3.5); the street cut is at 3.7, so the borders are at their peak level well before it.
    */
-  borderZoom: { start: 3.0, end: 3.5 },
+  borderZoom: { on: 3.25, band: 0.05 },
   maxZoom: 6.5,
   /** Street map's maximum MapLibre zoom (STREET_TUNING.maxZoom); the unified camera's range ends there. */
   streetMapMaxZoom: 17.5,

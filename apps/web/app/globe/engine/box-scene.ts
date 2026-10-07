@@ -9,14 +9,17 @@
  *  - every drawn node is a RECTANGLE one cell thick in the full ink (places and groups alike): at rest the four corners are solid
  *    and the rest of each edge is dashed, and the selected, focused or hovered one is a single solid line (nothing doubles); its
  *    interior is masked in the page colour while it is clamped to the minimum size and hollow once it is bigger. Fades are OPACITY: the outline, the mask, the plate and the text are all composited at the node's alpha
- *    (`lod.alpha`, quantised to 1/`ALPHA_STEPS`) over what is underneath, so a faint node never darkens or lightens the map;
+ *    (`lod.alpha`, quantised to 1/`ALPHA_STEPS`) over what is underneath, so a faint node never darkens or lightens the map. The state is BINARY
+ *    (a node, its label and its dim are each on or off; the camera and the label plan only decide which) and the opacity runs to it by TIME
+ *    (engine/fade.ts, owned by the tree), so a resting frame is never half way;
  *  - every rectangle has a LABEL, text only, just above its top edge and left-justified on its left edge, on a plate of the
  *    page colour: the name in bold (a place that is alone in its country: and the country) and, for a group, its counter
  *    ("12 entries", regular weight) after a clear gap, on the same baseline;
  *  - labels are placed greedily by priority (selected, focused and hovered first, then places, then groups); one that would
- *    overlap a label already placed is left out and its rectangle is dimmed to `LOD.unlabelledAlpha` of its opacity (it is
- *    still a target, and its label shows while it is hovered). There is NO zoom-dependent priority floor: every node that is
- *    drawn is labelled or dimmed, never a full-opacity box without a name (docs/web-architecture.md, "Targets and labels").
+ *    overlap a label already placed is left out (it is still a target, and its label shows while it is hovered), and when a group above it
+ *    is drawn its rectangle is dimmed to `LOD.unlabelledAlpha` of its opacity (engine/label-plan.ts). There is NO zoom-dependent priority
+ *    floor (docs/web-architecture.md, "Targets and labels"). Where a label goes: just above the box, or nested inside it when the top of the
+ *    grid leaves no room (`labelCell`).
  * The canvas is only touched when the set of rectangles and labels, their cells or their tones changed: an idle map does nothing.
  *
  * Accessibility: the overlay is a visual duplicate of the place list (the accessible path): the canvas has no focus, role or
@@ -44,16 +47,20 @@ export interface PixelGrid {
 interface Item {
   i: number;
   rect: CellRect;
-  /** Opacity of the node (outline, plate, text) and of its interior mask, quantised. */
+  /** Opacity of the box (outline) and of its interior mask, quantised, the dim included. */
   alpha: number;
   fillAlpha: number;
+  /** Opacity of the label (plate and text), quantised: the node's own times its label's. */
+  labelAlpha: number;
+  /** The cut wants the node drawn (else it is fading out). */
+  wanted: boolean;
   state: LabelState;
   forced: boolean;
   layout: LabelLayout;
   label: { col: number; row: number; inside: boolean };
-  /** Whether the label is drawn (alpha, priority floor and collisions). */
+  /** Whether the label is drawn (it is wanted, or it is fading out). */
   labelled: boolean;
-  /** The label lost its place to a better one: the box is drawn at `LOD.unlabelledAlpha` of its opacity. */
+  /** The label lost its place to a better one and a group above is drawn: the box is dimmed (its target; the dim itself is a timed fade). */
   dimmed: boolean;
   score: number;
 }
@@ -126,11 +133,17 @@ export class BoxScene {
       label: t.labelled ? { col: t.label.col, row: t.label.row, w: t.layout.w, h: t.layout.h, baseline: t.label.row + t.layout.baseline, inside: t.label.inside, chipCol: t.layout.chipW ? t.label.col + t.layout.chipX : null, chipW: t.layout.chipW } : null,
       text: lod.text[t.i]!,
       chip: lod.chip[t.i]!,
+      /** Opacity of the box as drawn (dim included), of its mask and of its label. */
       alpha: t.alpha,
       fillAlpha: t.fillAlpha,
+      labelAlpha: t.labelAlpha,
+      /** The cut wants it drawn (else it is fading out). */
+      wanted: t.wanted,
       solid: forcedState(t.state),
-      /** A drawn box whose label lost its place to a better one (the box is dimmed, still a target). */
+      /** The label is not drawn and a group above is: the box is dimmed (still a target). */
       dimmed: t.dimmed,
+      /** Some group above the node is drawn (it is wanted and has places in view). */
+      parented: lod.hasDrawnAncestor(t.i),
     }));
   }
 
@@ -167,41 +180,66 @@ export class BoxScene {
         r1: Math.round((screen.by1[i]! - grid.top) / cell),
       };
       const state: LabelState = { selected: i === this.selected, focused: i === this.focused && i !== this.selected, hover: i === this.hovered && i !== this.selected };
-      const forced = forcedState(state);
-      const group = !!lod.isGroup[i];
+      const wanted = lod.life.target[i] === 1;
+      // The selected, focused and hovered node is the full ink at once (a node that is on its way out keeps its own fade).
+      const forced = forcedState(state) && wanted;
       const layout = labelLayout(lod.text[i]!, lod.chip[i]!);
-      const alpha = lod.alpha[i]!;
-      const labelled = forced || alpha >= LOD.labelAlphaMin;
       items.push({
         i,
         rect,
-        alpha: quantAlpha(forced ? 1 : alpha),
-        fillAlpha: quantAlpha(lod.fillAlpha[i]!),
+        alpha: 0,
+        fillAlpha: 0,
+        labelAlpha: 0,
+        wanted,
         state,
         forced,
         layout,
         label: labelCell(rect, layout.h),
-        labelled,
+        labelled: false,
         dimmed: false,
-        score: (forced ? 1000 : 0) + lod.priority[i]! + (group ? 0 : LOD.placePriorityBonus) + (alpha >= 0.5 ? 0 : -100),
+        score: (forced ? 1000 : 0) + lod.priority[i]! + (lod.isGroup[i] ? 0 : LOD.placePriorityBonus),
       });
     }
-    // Which labels are drawn, and which boxes are dimmed for lack of one (engine/label-plan.ts: no priority floor).
+    // Which labels are wanted, and which boxes are dimmed for lack of one (engine/label-plan.ts). Only the nodes the cut wants take part:
+    // one that is fading out keeps the label state it had and goes with its node.
+    const planned = items.filter((t) => t.wanted);
     const plan = planLabels(
-      items.map((t) => ({
-        alpha: t.alpha,
+      planned.map((t) => ({
         forced: t.forced,
         score: t.score,
         plate: { x0: t.label.col - LABEL_PAD, y0: t.label.row, x1: t.label.col - LABEL_PAD + t.layout.w, y1: t.label.row + t.layout.h },
         key: lod.slug[t.i]!,
+        held: lod.label.target[t.i] === 1,
+        parented: lod.hasDrawnAncestor(t.i),
       })),
     );
-    items.forEach((t, n) => {
+    planned.forEach((t, n) => {
       const p = plan[n]!;
-      t.labelled = p.labelled;
-      t.dimmed = p.dimmed;
-      t.alpha = quantAlpha(p.alpha);
+      const i = t.i;
+      if (t.forced) {
+        lod.label.snap(i, true);
+        lod.dim.snap(i, false);
+      } else if (lod.born[i]) {
+        // A node that has just appeared starts in its label and dim state; only the node itself fades in.
+        lod.label.snap(i, p.labelled);
+        lod.dim.snap(i, p.dimmed);
+      } else {
+        lod.label.set(i, p.labelled);
+        lod.dim.set(i, p.dimmed);
+      }
+      lod.born[i] = 0;
     });
+    for (const t of items) {
+      const i = t.i;
+      const life = lod.alpha[i]!;
+      const dim = t.forced ? 0 : lod.dim.value(i);
+      const boxAlpha = t.forced ? 1 : life * (1 - (1 - LOD.unlabelledAlpha) * dim);
+      t.alpha = quantAlpha(boxAlpha);
+      t.fillAlpha = quantAlpha(t.forced ? lod.mask.value(i) : lod.fillAlpha[i]! * (1 - (1 - LOD.unlabelledAlpha) * dim));
+      t.labelAlpha = quantAlpha(t.forced ? 1 : life * lod.label.value(i));
+      t.labelled = t.labelAlpha >= LOD.labelAlphaMin;
+      t.dimmed = t.wanted && lod.dim.target[i] === 1;
+    }
 
     const targets: Target[] = [];
     const labelledSet = new Set<number>();
@@ -209,23 +247,24 @@ export class BoxScene {
     let h = HASH_SEED;
     for (const t of items) {
       h = hashStep(hashStep(hashStep(hashStep(h, t.i), t.rect.c0 * 4096 + t.rect.r0), t.rect.c1 * 4096 + t.rect.r1), Math.round(t.alpha * ALPHA_STEPS) * 16 + (t.state.selected ? 1 : 0) + (t.state.focused ? 2 : 0) + (t.state.hover ? 4 : 0) + (t.labelled ? 8 : 0));
-      h = hashStep(h, Math.round(t.fillAlpha * ALPHA_STEPS));
+      h = hashStep(hashStep(h, Math.round(t.fillAlpha * ALPHA_STEPS)), Math.round(t.labelAlpha * ALPHA_STEPS));
       if (t.labelled) {
         h = hashStep(hashStep(h, t.label.col), t.label.row + 100000 * lod.total[t.i]!);
         labelledSet.add(t.i);
       }
       const box = { x0: grid.left + t.rect.c0 * cell, y0: grid.top + t.rect.r0 * cell, x1: grid.left + t.rect.c1 * cell, y1: grid.top + t.rect.r1 * cell };
       const plate = t.labelled ? { x0: grid.left + (t.label.col - LABEL_PAD) * cell, y0: grid.top + t.label.row * cell, x1: grid.left + (t.label.col - LABEL_PAD + t.layout.w) * cell, y1: grid.top + (t.label.row + t.layout.h) * cell } : null;
+      // A target at its node's own opacity (a dimmed box is picked as if it were not dimmed).
       targets.push({ id: t.i, box, plate, alpha: lod.alpha[t.i]!, priority: lod.priority[t.i]!, big: isBigBox(box, mapMinSide), slug: lod.slug[t.i]! });
     }
     h = hashStep(hashStep(h, items.length), grid.cols * 4096 + grid.rows);
-    // Painter's order: faint first, forced last, so a fading node is composited under a strong one.
+    // Painter's order: lower score first, forced last, so a strong node is composited over a weak one.
     const paint = [...items].sort((a, b) => Number(a.forced) - Number(b.forced) || a.score - b.score);
     this.overlay.frame(h, (buf) => {
       for (const t of paint) drawBox(buf, t.rect, this.tones, { alpha: t.alpha, fillAlpha: t.fillAlpha, solid: t.forced });
       for (const t of paint) {
         if (!t.labelled) continue;
-        drawLabel(buf, t.label.col, t.label.row, lod.text[t.i]!, lod.chip[t.i]!, t.layout, t.alpha, this.tones);
+        drawLabel(buf, t.label.col, t.label.row, lod.text[t.i]!, lod.chip[t.i]!, t.layout, t.labelAlpha, this.tones);
       }
     });
     this.last = items;

@@ -78,12 +78,19 @@ export interface GlobeDebug {
   isAnimating(): boolean;
   /** One synchronous frame (render + label update); returns the JS ms of the render call alone. */
   renderNow(): number;
+  /** Run every timed transition (boxes, masks, labels, dims, borders) to its end and draw the resting frame: for checks that sample a camera instantly. */
+  settle(): void;
+  /**
+   * The state of every timed thing for the CURRENT frame, for the at-rest checks: the borders' fade (0..1) and their target, whether any
+   * transition is still running, and a frame is pending.
+   */
+  layers(): { borders: { value: number; on: boolean }; animating: boolean; framePending: boolean };
   gpuSync(): void;
   info(): ReturnType<GlobeRenderer["renderInfo"]>;
   loseContext(lose: boolean): void;
   /** Inset state: current / target inset (CSS px), centre shift (buffer px). */
   inset(): ReturnType<GlobeRenderer["insetInfo"]>;
-  /** The semantic zoom for the CURRENT camera: one entry per drawn node (alpha, tone level, size in CSS px, and whether its centre is shown), in tree order. Allocates; for checks. */
+  /** The semantic zoom for the CURRENT camera: one entry per drawn node (alpha, tone level, size in CSS px, whether its centre is shown, and whether the cut wants it), in tree order. Allocates; for checks. */
   lod(): LodDebugNode[];
   /** Evaluations / cache hits / nodes visited by the last evaluation, and the nodes and squares drawn in the last frame. */
   lodStats(): { evaluations: number; cacheHits: number; visited: number; nodes: number; groups: number; drawnMarkers: number; drawnGroups: number };
@@ -98,7 +105,12 @@ export interface GlobeDebug {
 export interface LodDebugNode {
   slug: string;
   kind: string;
+  /** The node's own opacity now (0..1): 0 or 1 at rest, in between only while its timed transition runs. */
   alpha: number;
+  /** The cut wants it drawn (else it is fading out). */
+  wanted: boolean;
+  /** Opacity of its interior mask now, node alpha included. */
+  fillAlpha: number;
   level: number;
   /** A marker is drawn (it passed the whole-or-nothing rule) or a box touches the buffer, in the last frame. */
   shown: boolean;
@@ -268,6 +280,14 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
         renderer.renderNow();
         return renderer.lastRenderJsMs();
       },
+      settle() {
+        lod.settle();
+        renderer.settleBorders();
+        renderer.renderNow();
+        lod.settle();
+        renderer.renderNow();
+      },
+      layers: () => ({ ...renderer.layerState(), animating: lod.animating || renderer.layerState().animating, framePending: renderer.isAnimating() }),
       gpuSync: () => renderer.gpuSync(),
       info: () => renderer.renderInfo(),
       loseContext: (lose) => renderer.loseContext(lose),
@@ -282,6 +302,8 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
             slug: t.slug[i]!,
             kind: t.kind[i]!,
             alpha: t.alpha[i]!,
+            wanted: t.life.target[i] === 1,
+            fillAlpha: t.fillAlpha[i]!,
             level: t.level[i]!,
             shown: !!sc.shown[i],
             x: sc.x[i]!,

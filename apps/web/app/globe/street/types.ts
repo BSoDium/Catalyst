@@ -200,6 +200,8 @@ export interface StreetDebug {
   shown(): { markers: string[]; labels: string[]; groups: string[] };
   /** The declutter clusters as the overlay drew them: per drawn node, alpha, tone level, the box (groups), its members and its snapped cell centre (container CSS px). */
   lod(): { slug: string; kind: string; alpha: number; level: number; box: { x0: number; y0: number; x1: number; y1: number }; members: number; total: number; x: number; y: number; shown: boolean }[];
+  /** The binary layers of the style (road classes, fills, graticule, sea texture) that are on now, and whether the view counts as flat (style/layer-switch.ts). */
+  layers(): { on: string[]; flat: boolean };
   /** Art class codes of the last frame (a GPU stall). */
   readCodes(): { cols: number; rows: number; codes: Uint8Array; levels: Uint8Array } | null;
   /** The palette level actually presented per cell (after the tile fade), row 0 = top; `readCodes` is the classified target. */

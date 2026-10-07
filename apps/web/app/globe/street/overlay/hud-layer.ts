@@ -138,11 +138,17 @@ export class HudLayer {
     return this.scene.hit(x, y, kind);
   }
 
+  /** Some timed transition of the boxes (engine/fade.ts) has not reached its end: the host must keep drawing frames. */
+  get animating(): boolean {
+    return this.lod.animating;
+  }
+
   /** Re-place everything for the current camera. */
   update(frame: HudFrame): void {
     this.lastFrame = frame;
     const lod = this.lod;
     lod.update(frame.cam, this.selectedIdx, this.focusedIdx, this.reduced);
+    lod.advance(performance.now());
     const cell = frame.cellCss;
     const cols = Math.ceil(frame.width / cell);
     const rows = Math.ceil(frame.height / cell);

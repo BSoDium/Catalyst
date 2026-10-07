@@ -17,12 +17,9 @@ const camAt = (lon: number, lat: number, zoom: number, free = W, cell = CELL): L
   return c;
 };
 
-/** Alphas of every drawn node; each call is a distinct camera (never a cache hit between calls). */
+/** Opacity of every drawn node at REST for a camera (every transition run to its end); each call is a distinct camera (never a cache hit between calls). */
 function evaluate(tree: LodTree, cam: LodCamera, reduced = false) {
-  tree.update({ ...cam, zoom: cam.zoom + 1e-12 * Math.random() }, -1, -1, reduced);
-  const out = new Map<string, number>();
-  for (let k = 0; k < tree.count; k++) out.set(tree.slug[tree.visible[k]!]!, tree.alpha[tree.visible[k]!]!);
-  return out;
+  return tree.alphas({ ...cam, zoom: cam.zoom + 1e-12 * Math.random() }, reduced);
 }
 
 const chain = (tree: LodTree, i: number) => {
@@ -113,68 +110,62 @@ describe("a crowd of places is one rectangle that opens on zoom", () => {
     expect(tree.members[tree.indexOf("de")]).toBe(10);
   });
 
-  it("zooming in, the group's rectangle fades out while the ten places' rectangles come in, never missing: the alphas sum to 1", () => {
-    let boxGone = -1;
-    let allIn = -1;
+  it("zooming in, the cut swaps the group's rectangle for the ten places' rectangles at once: at rest each node is fully drawn or not at all, never missing", () => {
+    let swapped = -1;
     for (let z = 2.7; z <= 9; z += 0.01) {
       const a = evaluate(tree, camAt(9.8, 50.7, z));
       const box = a.get("de") ?? 0;
-      let best = 0;
-      for (let k = 0; k < 10; k++) best = Math.max(best, a.get(`de-${k}`) ?? 0);
-      const sum = box + best;
-      expect(sum, `z ${z.toFixed(2)}`).toBeGreaterThanOrEqual(1 - LOD.alphaMin - 1e-6);
-      expect(sum).toBeLessThanOrEqual(1 + 1e-6);
-      if (box === 0 && boxGone < 0) boxGone = z;
-      if (best === 1 && allIn < 0 && box === 0) allIn = z;
+      const places = [...a.keys()].filter((k) => k.startsWith("de-")).length;
+      // binary: every opacity is 1 (a node that is not drawn is not in the map)
+      for (const [slug, alpha] of a) expect(alpha, `${slug} at ${z.toFixed(2)}`).toBe(1);
+      // exactly one level: the group or its places, never both, never neither
+      expect(box === 1 ? places === 0 : places === 10, `z ${z.toFixed(2)}`).toBe(true);
+      if (box === 0 && swapped < 0) swapped = z;
     }
-    expect(boxGone).toBeGreaterThan(3);
-    expect(allIn).toBeGreaterThanOrEqual(boxGone - 1e-9);
-    expect(allIn).toBeLessThan(8);
-    // and then there are ten rectangles
-    const a = evaluate(tree, camAt(9.8, 50.7, 9));
-    expect([...a.keys()].filter((k) => k.startsWith("de-")).length).toBe(10);
+    expect(swapped).toBeGreaterThan(3);
+    expect(swapped).toBeLessThan(8);
   });
 
-  it("alpha never jumps: steps of 0.01 zoom change a node's alpha by less than 0.2, and nodes enter at a low opacity", () => {
-    let prev = new Map<string, number>();
-    for (let z = 2.7; z <= 8; z += 0.01) {
-      const a = evaluate(tree, camAt(9.8, 50.7, z));
-      for (const [slug, alpha] of a) {
-        const before = prev.get(slug);
-        if (before !== undefined) expect(Math.abs(alpha - before), `${slug} at ${z.toFixed(2)}`).toBeLessThan(0.2);
-        else if (z > 2.72) expect(alpha, `${slug} enters at ${alpha}`).toBeLessThan(0.3);
-      }
-      prev = a;
-    }
-  });
-
-  it("is the same going in and going out (alpha is a function of the camera, not of history)", () => {
-    const zs = [2.7, 3.4, 4.2, 5, 6, 7.5];
-    const norm = (m: Map<string, number>) => [...m].map(([k, v]) => [k, +v.toFixed(6)]).sort();
+  it("is a function of the camera and of the history only through the hysteresis band: going in and out agree outside it", () => {
+    const zs = [2.7, 2.8, 8, 9];
+    const norm = (m: Map<string, number>) => [...m.keys()].sort();
     const inward = zs.map((z) => norm(evaluate(tree, camAt(9.8, 50.7, z))));
     const outward = [...zs].reverse().map((z) => norm(evaluate(tree, camAt(9.8, 50.7, z)))).reverse();
     expect(outward).toEqual(inward);
   });
 
-  it("no flapping: a camera jittering around the opening zoom only moves the opacity by a hair and never changes the set", () => {
-    let mid = 0;
-    for (let z = 2.7; z <= 8; z += 0.001) {
-      evaluate(tree, camAt(9.8, 50.7, z));
-      if (tree.alpha[tree.indexOf("de")]! < 0.5) {
-        mid = z;
+  it("opens at a higher zoom than it closes (hysteresis), and a camera jittering around the opening zoom never changes the set after the first switch", () => {
+    const setAt = (z: number) => [...evaluate(tree, camAt(9.8, 50.7, z)).keys()].sort().join();
+    let openZ = 0;
+    for (let z = 2.7; z <= 9; z += 0.001) {
+      if (!evaluate(tree, camAt(9.8, 50.7, z)).has("de")) {
+        openZ = z;
         break;
       }
     }
-    expect(mid).toBeGreaterThan(0);
-    const alphas: number[] = [];
-    const sets = new Set<string>();
-    for (let k = 0; k < 60; k++) {
-      const a = evaluate(tree, camAt(9.8, 50.7, mid + (k % 2 ? 1 : -1) * 0.002));
-      sets.add([...a.keys()].sort().join());
-      alphas.push(tree.alpha[tree.indexOf("de")]!);
+    expect(openZ).toBeGreaterThan(0);
+    let closeZ = 0;
+    for (let z = 9; z >= 2.7; z -= 0.001) {
+      if (evaluate(tree, camAt(9.8, 50.7, z)).has("de")) {
+        closeZ = z;
+        break;
+      }
     }
-    expect(sets.size).toBe(1);
-    expect(Math.max(...alphas) - Math.min(...alphas)).toBeLessThan(0.05);
+    expect(closeZ).toBeGreaterThan(0);
+    expect(closeZ).toBeLessThan(openZ);
+    // jitter around the opening zoom, starting closed: the set changes at most once
+    evaluate(tree, camAt(9.8, 50.7, 2.7));
+    const sets: string[] = [];
+    for (let k = 0; k < 80; k++) sets.push(setAt(openZ + (k % 2 ? 1 : -1) * 0.002));
+    let changes = 0;
+    for (let k = 1; k < sets.length; k++) if (sets[k] !== sets[k - 1]) changes++;
+    expect(changes).toBeLessThanOrEqual(1);
+    // inside the band the state is whatever it was
+    const mid = (openZ + closeZ) / 2;
+    evaluate(tree, camAt(9.8, 50.7, 2.7));
+    expect(evaluate(tree, camAt(9.8, 50.7, mid)).has("de")).toBe(true);
+    evaluate(tree, camAt(9.8, 50.7, 9));
+    expect(evaluate(tree, camAt(9.8, 50.7, mid)).has("de")).toBe(false);
   });
 });
 
@@ -252,23 +243,28 @@ describe("only members that pass the visibility rule count", () => {
 });
 
 describe("size rules", () => {
-  it("a place's own rectangle fades out once it is much bigger than the screen (you are inside it)", () => {
+  it("a place's own rectangle is hidden once it is much bigger than the screen (you are inside it), shown again a bit below, with nothing in between", () => {
     const t = new LodTree([p("city", undefined, 10, 10, 12)]);
-    const sizeAt = (z: number) => {
+    const probe = (z: number) => {
       const a = evaluate(t, camAt(10, 10, z));
       return { a: a.get("city") ?? 0, side: (t.boxX1[0]! - t.boxX0[0]!) / H };
     };
-    let prevA = 1;
-    let seenPartial = false;
+    let hiddenAt = -1;
     for (let z = 5; z <= 16; z += 0.05) {
-      const { a, side } = sizeAt(z);
+      const { a, side } = probe(z);
+      expect([0, 1], `z ${z}`).toContain(a);
       if (side < LOD.sizeFadeFrom) expect(a).toBe(1);
       if (side >= LOD.sizeFadeTo) expect(a).toBe(0);
-      if (a > 0 && a < 1) seenPartial = true;
-      expect(a).toBeLessThanOrEqual(prevA + 1e-9);
-      prevA = a;
+      if (a === 0 && hiddenAt < 0) hiddenAt = z;
     }
-    expect(seenPartial).toBe(true);
+    expect(hiddenAt).toBeGreaterThan(5);
+    // coming back out it stays hidden until the box is below sizeFadeFrom (hysteresis)
+    let shownAt = -1;
+    for (let z = 16; z >= 5; z -= 0.05) {
+      const { a } = probe(z);
+      if (a === 1 && shownAt < 0) shownAt = z;
+    }
+    expect(shownAt).toBeLessThan(hiddenAt);
   });
   it("a group wider than boxMaxTo of the screen is open whatever its places' spacing; street scale opens everything", () => {
     const t = new LodTree([g("c", "continent", undefined, 20, 30, 4000), p("a", "c", 0, 20), p("b", "c", 0.1, 20.2), p("far1", "c", 40, 60), p("far2", "c", 41, 61)]);
@@ -322,18 +318,32 @@ describe("the demo hierarchy", () => {
     expect(evaluate(tree, camAt(174.8, -41.3, 2.7)).get("wellington")).toBe(1);
   });
 
-  it("each branch always shows exactly one level (the alphas along a chain sum to 1) while zooming into a place", () => {
+  it("each branch always shows exactly one level at rest (the opacities along a chain sum to 1) while zooming into a place", () => {
     for (const [lon, lat] of [[108.3, 16], [16, 44.6], [2.35, 48.86]] as const) {
       for (let z = 2.7; z <= 13; z += 0.02) {
         const a = evaluate(tree, camAt(lon, lat, z));
+        for (const [slug, alpha] of a) expect(alpha, `${slug} at ${z.toFixed(2)}`).toBe(1);
         for (let i = 0; i < tree.size; i++) {
-          if (tree.isGroup[i] || !a.has(tree.slug[i]!)) continue;
+          if (tree.isGroup[i] || !tree.shown[i]) continue;
+          // a place's own huge rectangle is hidden without anything to hand over to (street scale): that is the only way under 1
+          if ((tree.boxX1[i]! - tree.boxX0[i]!) / H >= LOD.sizeFadeFrom) continue;
           const total = chain(tree, i).reduce((acc, c) => acc + (a.get(tree.slug[c]!) ?? 0), 0);
-          // a place's own huge rectangle fades without anything to hand over to (street scale): that is the only way under 1
-          const own = tree.boxX1[i]! - tree.boxX0[i]!;
-          if (own / H >= LOD.sizeFadeFrom) continue;
-          expect(total, `${tree.slug[i]} at ${z.toFixed(2)}`).toBeGreaterThanOrEqual(1 - 6 * LOD.alphaMin);
-          expect(total).toBeLessThanOrEqual(1 + 1e-6);
+          expect(total, `${tree.slug[i]} at ${z.toFixed(2)}`).toBe(1);
+        }
+      }
+    }
+  });
+
+  it("a node with no drawn ancestor is at full opacity at rest, wherever the camera is (regression: London at low opacity while its parent group was not drawn)", () => {
+    for (let lon = -180; lon <= 180; lon += 20) {
+      for (const lat of [-40, 0, 25, 50]) {
+        for (let z = 2.7; z <= 12; z += 0.5) {
+          const a = evaluate(tree, camAt(lon, lat, z));
+          for (const [slug, alpha] of a) {
+            const i = tree.indexOf(slug);
+            expect(alpha, `${slug} at ${lon},${lat},${z}`).toBe(1);
+            expect(tree.hasDrawnAncestor(i), `${slug}: a node and its ancestor are both drawn`).toBe(false);
+          }
         }
       }
     }
@@ -342,6 +352,7 @@ describe("the demo hierarchy", () => {
   it("selected and focused places are always drawn at full alpha, even inside a closed group", () => {
     const hue = tree.indexOf("hue");
     tree.update({ ...camAt(107, 16, 2.7), zoom: 2.7000001 }, hue, tree.indexOf("kyoto"), false);
+    tree.settle();
     const drawn = new Map<string, number>();
     for (let k = 0; k < tree.count; k++) drawn.set(tree.slug[tree.visible[k]!]!, tree.alpha[tree.visible[k]!]!);
     expect(drawn.get("hue")).toBe(1);
@@ -359,8 +370,18 @@ describe("the demo hierarchy", () => {
 
 describe("reduced motion", () => {
   const tree = new LodTree(germany());
-  it("no cross-fade: every alpha is 0 or 1 at every zoom", () => {
-    for (let z = 2.7; z <= 9; z += 0.02) for (const [slug, alpha] of evaluate(tree, camAt(9.8, 50.7, z), true)) expect(alpha, `${slug} at ${z}`).toBe(1);
+  it("the same targets, and no transition: the very next frame is the resting frame", () => {
+    const cam = camAt(9.8, 50.7, 2.7);
+    tree.alphas(cam);
+    const open = camAt(9.8, 50.7, 9);
+    tree.update(open, -1, -1, true);
+    tree.advance(5000);
+    const a = new Map<string, number>();
+    for (let k = 0; k < tree.count; k++) a.set(tree.slug[tree.visible[k]!]!, tree.alpha[tree.visible[k]!]!);
+    expect([...a.values()].every((v) => v === 1)).toBe(true);
+    expect([...a.keys()].filter((s) => s.startsWith("de-")).length).toBe(10);
+    expect(a.has("de")).toBe(false);
+    expect(tree.animating).toBe(false);
   });
   it("switches once, with a hysteresis band: going in switches higher than going out", () => {
     const zs: number[] = [];
@@ -383,6 +404,173 @@ describe("reduced motion", () => {
     }
     expect(back.length).toBe(1);
     expect(back[0]!).toBeLessThan(zs[0]!);
+  });
+});
+
+describe("timed transitions: the camera decides a target, the clock runs it", () => {
+  const FADE = 200;
+  const dump = (t: LodTree) => {
+    const out = new Map<string, number>();
+    for (let k = 0; k < t.count; k++) out.set(t.slug[t.visible[k]!]!, t.alpha[t.visible[k]!]!);
+    return out;
+  };
+  /** Park the tree at the closed crowd, then set the camera of the open one: returns the clock reading of the switch. */
+  function openingTree() {
+    const t = new LodTree(germany());
+    t.alphas(camAt(9.8, 50.7, 2.7));
+    t.advance(1000); // the clock starts
+    t.born.fill(0); // the box scene has seen what appeared
+    t.update(camAt(9.8, 50.7, 9), -1, -1, false);
+    return t;
+  }
+
+  it("the group goes out and its places come in over the same fixed time, their opacities summing to 1 all along", () => {
+    const t = openingTree();
+    expect(t.animating).toBe(true);
+    let now = 1000;
+    let steps = 0;
+    while (t.animating && steps++ < 100) {
+      now += 16;
+      t.advance(now);
+      const a = dump(t);
+      const box = a.get("de") ?? 0;
+      let place = 0;
+      for (let k = 0; k < 10; k++) place = Math.max(place, a.get(`de-${k}`) ?? 0);
+      // while both are drawn they sum to 1 (a node below LOD.alphaMin is not drawn at all)
+      expect(box + place, `t ${now - 1000}`).toBeGreaterThanOrEqual(1 - 2 * LOD.alphaMin);
+      expect(box + place).toBeLessThanOrEqual(1 + 1e-6);
+    }
+    expect(now - 1000).toBeGreaterThanOrEqual(FADE - 16);
+    expect(now - 1000).toBeLessThanOrEqual(FADE + 32);
+    const end = dump(t);
+    expect(end.has("de")).toBe(false);
+    expect([...end.values()].every((v) => v === 1)).toBe(true);
+    expect(end.size).toBe(10);
+  });
+
+  it("the camera stops mid-transition and nothing else happens: every transition still runs to its end, so the resting frame is fully drawn or not at all", () => {
+    const t = openingTree();
+    t.advance(1016);
+    t.advance(1032); // the camera has now stopped for good: no more `update`
+    const mid = dump(t);
+    expect([...mid.values()].some((v) => v > 0 && v < 1)).toBe(true);
+    let now = 1032;
+    while (t.animating) {
+      now += 16;
+      t.advance(now);
+      expect(now).toBeLessThan(3000);
+    }
+    expect([...dump(t).values()].every((v) => v === 1)).toBe(true);
+    // and the mask, which has its own timed transition
+    for (let k = 0; k < t.count; k++) {
+      const i = t.visible[k]!;
+      expect(t.fillAlpha[i] === 0 || t.fillAlpha[i] === t.alpha[i]).toBe(true);
+    }
+  });
+
+  it("the duration does not depend on how many frames it takes", () => {
+    const run = (dt: number) => {
+      const t = openingTree();
+      let now = 1000;
+      while (t.animating) {
+        now += dt;
+        t.advance(now);
+      }
+      return now - 1000;
+    };
+    for (const dt of [4, 8, 16, 33, 50]) expect(run(dt) - FADE, `dt ${dt}`).toBeLessThanOrEqual(dt);
+  });
+
+  it("a reversal mid-way turns around from where the value is: no jump, and it still ends fully on or fully off", () => {
+    const t = openingTree();
+    t.advance(1048);
+    const before = dump(t).get("de") ?? 0;
+    expect(before).toBeGreaterThan(0);
+    expect(before).toBeLessThan(1);
+    t.update(camAt(9.8, 50.7, 2.7), -1, -1, false); // back to the crowd
+    t.advance(1049);
+    expect(Math.abs((dump(t).get("de") ?? 0) - before)).toBeLessThan(0.1);
+    let now = 1049;
+    while (t.animating) {
+      now += 16;
+      t.advance(now);
+    }
+    const end = dump(t);
+    expect([...end.keys()]).toEqual(["de"]);
+    expect(end.get("de")).toBe(1);
+  });
+
+  it("a pause (a hidden tab, an idle page) counts as one frame, not as the whole transition", () => {
+    const t = openingTree();
+    t.advance(1016);
+    t.advance(60_000);
+    expect(t.animating).toBe(true); // a minute of nothing did not complete it
+  });
+
+  it("an idle tree is not animating, and an unchanged camera starts nothing", () => {
+    const t = new LodTree(germany());
+    t.alphas(camAt(9.8, 50.7, 2.7));
+    t.advance(1000);
+    expect(t.animating).toBe(false);
+    t.update(camAt(9.8, 50.7, 2.7), -1, -1, false);
+    expect(t.animating).toBe(false);
+  });
+
+  it("opacities at rest are 0 or 1 for every node, mask included, at every camera of a sweep (no resting half state)", () => {
+    const t = new LodTree(germany());
+    for (let z = 2.7; z <= 12; z += 0.013) {
+      t.alphas(camAt(9.8, 50.7, z));
+      for (let k = 0; k < t.count; k++) {
+        const i = t.visible[k]!;
+        expect(t.alpha[i], `${t.slug[i]} at ${z.toFixed(3)}`).toBe(1);
+        expect(t.fillAlpha[i] === 0 || t.fillAlpha[i] === 1, `${t.slug[i]} mask at ${z.toFixed(3)}`).toBe(true);
+      }
+    }
+  });
+
+  it("a place that leaves the front hemisphere vanishes at once (a fade would draw it mirrored behind the globe)", () => {
+    const t = new LodTree([p("a", undefined, 0, 0), p("b", undefined, 0, 100)]);
+    t.alphas(camAt(30, 0, 3));
+    t.advance(1000);
+    expect(dump(t).has("a")).toBe(true);
+    t.update(camAt(150, 0, 3), -1, -1, false);
+    t.advance(1016);
+    expect(dump(t).has("a")).toBe(false);
+  });
+
+  it("a node that has just appeared is flagged `born` so its label and dim start in their state", () => {
+    const t = openingTree();
+    expect(t.born[t.indexOf("de-0")]).toBe(1);
+    expect(t.born[t.indexOf("de")]).toBe(0);
+  });
+});
+
+describe("the dim needs a drawn ancestor", () => {
+  const nodes = [g("c", "country", undefined, 40, 0, 300), p("a", "c", 40, 0), p("b", "c", 40, 0.05)];
+  it("a place inside a group that is drawn has one; a place with the group open has none", () => {
+    const t = new LodTree(nodes);
+    t.alphas(camAt(0, 40, 2.7)); // closed: the group is drawn
+    expect(t.hasDrawnAncestor(t.indexOf("a"))).toBe(true);
+    t.alphas(camAt(0, 40, 11)); // open: only the places
+    expect(t.hasDrawnAncestor(t.indexOf("a"))).toBe(false);
+    expect(t.hasDrawnAncestor(t.indexOf("c"))).toBe(false);
+  });
+  it("a group that is opening does not count as an ancestor of the places replacing it", () => {
+    const t = new LodTree(nodes);
+    t.alphas(camAt(0, 40, 2.7));
+    t.advance(1000);
+    t.update(camAt(0, 40, 11), -1, -1, false);
+    t.advance(1016);
+    expect(t.alpha[t.indexOf("c")]).toBeGreaterThan(0); // still on screen, fading
+    expect(t.hasDrawnAncestor(t.indexOf("a"))).toBe(false);
+  });
+  it("a place that is wanted (a route stop, the selected) inside a drawn group does have one", () => {
+    const t = new LodTree(nodes);
+    t.update(camAt(0, 40, 2.7), t.indexOf("a"), -1, false);
+    t.settle();
+    expect(t.alpha[t.indexOf("c")]).toBe(1);
+    expect(t.alpha[t.indexOf("a")]).toBe(1);
+    expect(t.hasDrawnAncestor(t.indexOf("a"))).toBe(true);
   });
 });
 
@@ -537,35 +725,54 @@ describe("minimum size and its fill", () => {
     expect(t.alpha[0]).toBe(1);
     expect(t.fillAlpha[0]).toBe(1);
   });
-  it("the mask fades by OPACITY as the true side goes from 1x to 1.6x the minimum, leaving the hollow outline", () => {
+  it("the mask is switched off as the true side goes from 1x to 1.6x the minimum, leaving the hollow outline: binary at rest, with a hysteresis band", () => {
     const t = one();
-    const values: number[] = [];
-    let hollowAt = -1;
-    let fullUntil = -1;
-    for (let z = 2; z <= 8; z += 0.005) {
+    const fillAt = (z: number) => {
       evaluate(t, camAt(20, 10, z));
-      const ratio = t.side[0]! / (LOD.minBoxCells * CELL);
-      const f = t.fillAlpha[0]!;
-      values.push(f);
-      if (ratio <= LOD.fillFadeFrom) expect(f, `ratio ${ratio}`).toBeCloseTo(1, 6);
-      if (ratio >= LOD.fillFadeTo) expect(f, `ratio ${ratio}`).toBe(0);
-      if (f > 1 - 1e-6 && ratio <= LOD.fillFadeFrom + 1e-9) fullUntil = z;
-      if (f === 0 && hollowAt < 0) hollowAt = z;
+      return { f: t.fillAlpha[0]!, ratio: t.side[0]! / (LOD.minBoxCells * CELL) };
+    };
+    const up: number[] = [];
+    let prev = 1;
+    for (let z = 2; z <= 9; z += 0.005) {
+      const { f, ratio } = fillAt(z);
+      expect([0, 1], `z ${z}`).toContain(f);
+      if (ratio <= LOD.fillFadeFrom) expect(f).toBe(1);
+      if (ratio >= LOD.fillFadeTo) expect(f).toBe(0);
+      if (f !== prev) up.push(z);
+      prev = f;
     }
-    expect(fullUntil).toBeGreaterThan(0);
-    expect(hollowAt).toBeGreaterThan(fullUntil);
-    // monotone non-increasing with zoom (the box only grows) and continuous: many distinct opacities, no step of more than a few percent
-    for (let k = 1; k < values.length; k++) {
-      expect(values[k]!).toBeLessThanOrEqual(values[k - 1]! + 1e-9);
-      expect(values[k - 1]! - values[k]!).toBeLessThan(0.1);
+    expect(up).toHaveLength(1); // one switch on the way in
+    const down: number[] = [];
+    for (let z = 9; z >= 2; z -= 0.005) {
+      const { f } = fillAt(z);
+      if (f !== prev) down.push(z);
+      prev = f;
     }
-    expect(new Set(values.map((v) => +v.toFixed(3))).size).toBeGreaterThan(30);
+    expect(down).toHaveLength(1);
+    expect(down[0]!).toBeLessThan(up[0]!); // hysteresis: it comes back lower than it went
     // a box bigger than the minimum is only its outline
     evaluate(t, camAt(20, 10, 9));
     expect(t.fillAlpha[0]).toBe(0);
     expect(side(t, "a")).toBeGreaterThan(LOD.minBoxCells * CELL * LOD.fillFadeTo);
   });
-  it("the mask follows the node's own fade: it is never more opaque than the node", () => {
+  it("the mask is timed too: it fades out over the fade time when it is switched off, whatever the camera does", () => {
+    const t = one();
+    t.alphas(camAt(20, 10, 2.7));
+    expect(t.fillAlpha[0]).toBe(1);
+    t.advance(1000);
+    t.update(camAt(20, 10, 9), -1, -1, false);
+    t.advance(1050);
+    expect(t.fillAlpha[0]).toBeGreaterThan(0);
+    expect(t.fillAlpha[0]).toBeLessThan(1);
+    let now = 1050;
+    while (t.animating) {
+      now += 16;
+      t.advance(now);
+    }
+    expect(t.fillAlpha[0]).toBe(0);
+    expect(t.alpha[0]).toBe(1);
+  });
+  it("the mask follows the node's own opacity: it is never more opaque than the node", () => {
     const t = new LodTree(germany());
     for (let z = 2.7; z <= 6; z += 0.02) {
       evaluate(t, camAt(10, 50.7, z));
@@ -574,24 +781,6 @@ describe("minimum size and its fill", () => {
         expect(t.fillAlpha[i]!).toBeLessThanOrEqual(t.alpha[i]! + 1e-6);
       }
     }
-  });
-  it("reduced motion: the mask switches on or off at once, with a hysteresis band", () => {
-    const t = one();
-    const f = (z: number) => {
-      evaluate(t, camAt(20, 10, z), true);
-      return t.fillAlpha[0]!;
-    };
-    let on = true;
-    const flips: number[] = [];
-    for (let z = 2; z <= 8; z += 0.01) {
-      const v = f(z);
-      expect(v === 0 || v === t.alpha[0]).toBe(true);
-      if ((v > 0) !== on) {
-        flips.push(z);
-        on = v > 0;
-      }
-    }
-    expect(flips.length).toBe(1);
   });
   it("a closed group is masked while its box is about the minimum and hollow once it is bigger", () => {
     const t = new LodTree(germany());
@@ -677,8 +866,6 @@ describe("bounding box rectangles (place bbox) and the radius fallback", () => {
   it("framing: the radius that frames the box is its larger half extent seen from the point, with the old fallback when absent", () => {
     const ext = bboxExtentsKm(HOUSTON)!;
     expect(bboxFitRadiusKm(HOUSTON)).toBeCloseTo(Math.max(ext.halfXKm, ext.halfYKm), 9);
-    expect(bboxFitRadiusKm(HOUSTON, { lat: ext.lat, lon: ext.lon })).toBeCloseTo(bboxFitRadiusKm(HOUSTON)!, 9);
-    expect(bboxFitRadiusKm(HOUSTON, { lat: 29.55, lon: -95.75 })!).toBeGreaterThan(bboxFitRadiusKm(HOUSTON)!);
     expect(bboxFitRadiusKm(undefined)).toBeNull();
     expect(bboxFitRadiusKm([5, 5, 1, 1])).toBeNull();
   });

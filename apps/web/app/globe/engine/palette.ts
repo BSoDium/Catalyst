@@ -21,12 +21,13 @@
  *   peak    1          coastline, country borders: the loudest the map gets (MAP_CONTRAST of the way to the ink)
  *   ink     (last)     markers, labels, the selected place, routes: the full foreground
  *
- * Fades are TONE ramps: a feature that appears with zoom starts at the faintest level and steps through the levels up
- * to its role's level (`rampLevel`), it never dithers. Quantising to levels involves no smoothing between cells; the
+ * Fades are TONE ramps: a line that appears or goes starts at the faintest level and steps through the levels up to its role's
+ * level (`rampLevel`, driven by TIME: a feature is on or off, never half way, engine/fade.ts), it never dithers. Quantising to levels involves no smoothing between cells; the
  * line rules of docs/pixel-line-rules.md (1 art-pixel floor, centre sampling, no antialiased grey, stair removal) do not
  * look at levels at all.
  */
 
+import { hysteresis } from "./fade";
 export type Rgb = readonly [number, number, number];
 
 /** Total number of levels, page colour and ink included. Compared at 4, 6, 8, 10 and 12 in docs/palette/; 12 because the map ramp only spans MAP_CONTRAST of the range, and fades need small steps. */
@@ -77,16 +78,13 @@ export function roleLevel(role: Role, n: number = activeLevels()): number {
 
 /**
  * The level a fade-in is at, as a staircase of `finalLevel` equal steps over t in (0, 1]: 0 at t <= 0 (not drawn), 1 just
- * above 0 (the faintest level), `finalLevel` at t >= 1. Equal steps in t (zoom) keep every step the same length.
+ * above 0 (the faintest level), `finalLevel` at t >= 1. Equal steps in t (time) keep every step the same length.
  */
 export function rampLevel(t: number, finalLevel: number): number {
   if (!(t > 0)) return 0;
   if (t >= 1) return finalLevel;
   return Math.min(finalLevel, Math.max(1, Math.ceil(t * finalLevel)));
 }
-
-/** Zoom at which a fade-in over [from, full] with `finalLevel` steps enters level `k` (1..finalLevel). */
-export const rampStepZoom = (from: number, full: number, finalLevel: number, k: number): number => from + ((k - 1) / finalLevel) * (full - from);
 
 /**
  * Checks only: `?levels=N` or sessionStorage "palette-levels" overrides the level count, and only on pages in debug mode
@@ -160,7 +158,10 @@ export function buildRamp(background: Rgb, ink: Rgb, n: number = activeLevels(),
 /** Colour of a role in a ramp built by `buildRamp`. */
 export const roleColor = (ramp: readonly Rgb[], role: Role): Rgb => ramp[roleLevel(role, ramp.length)]!;
 
-/** Level of the country borders at an internal globe zoom: a tone fade-in over `TUNING.borderZoom` (see tuning.ts) up to the `peak` level. */
-export function borderLevel(zoom: number, levels: number, range: { readonly start: number; readonly end: number }): number {
-  return rampLevel((zoom - range.start) / (range.end - range.start), peakLevel(levels));
+/** Whether the country borders are wanted at an internal globe zoom: on from `range.on + band`, off again below `range.on - band` (a hysteresis, in between it keeps its state). */
+export const bordersWanted = (was: boolean, zoom: number, range: { readonly on: number; readonly band: number }): boolean => hysteresis(was, zoom, range.on - range.band, range.on + range.band);
+
+/** Level of the country borders for a fade value 0..1 (engine/fade.ts): 0 = not drawn, then the faintest grey level, stepping up to the `peak` level. */
+export function borderLevel(fade: number, levels: number): number {
+  return rampLevel(fade, peakLevel(levels));
 }

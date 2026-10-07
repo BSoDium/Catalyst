@@ -48,7 +48,7 @@ import {
   type Velocity,
 } from "./motion";
 import { snapBox } from "./group-square";
-import { LOD, newLodCamera, setLodCamera, type LodTree } from "./lod-tree";
+import { newLodCamera, setLodCamera, type LodTree } from "./lod-tree";
 import { NodeScreen } from "./node-screen";
 import { GlobeScene } from "./scene";
 import { INSET_EASE, TUNING } from "./tuning";
@@ -592,6 +592,7 @@ export class GlobeRenderer {
    */
   private syncNodes() {
     const lod = this.lodFrame();
+    lod.advance(performance.now());
     const P = this.pixel;
     const screen = this.nodeScreen;
     let boxes = 0;
@@ -616,6 +617,16 @@ export class GlobeRenderer {
   /** Ids of the routes drawn now: only those through the selected place (checks). */
   routesShown(): string[] {
     return this.globe.routes.shown();
+  }
+
+  /** The globe layers' timed state (checks): the borders' fade value now and whether it is going to / at the on state. */
+  layerState() {
+    return { borders: this.globe.borderState(), animating: this.globe.animating };
+  }
+
+  /** Run the borders' fade to its end (checks). */
+  settleBorders() {
+    this.globe.settleBorders();
   }
 
   /** Rectangles drawn in the last frame: measurement. */
@@ -767,9 +778,13 @@ export class GlobeRenderer {
     // animation was caused by an input event, and its interval says nothing about the device.
     FRAME_CLOCK.live = true;
     FRAME_CLOCK.continuous = this.chained;
-    const more = this.advance(performance.now());
+    const moving = this.advance(performance.now());
     this.renderNow();
     FRAME_CLOCK.continuous = false;
+    // A timed transition of the boxes or of the borders (engine/fade.ts) that has not reached its end keeps the loop going, camera or not.
+    // While the street map owns the view the globe draws nothing and its transitions are not advanced here (the street engine runs the
+    // boxes' own), so they must not keep this loop spinning.
+    const more = moving || (!this.suspended && (this.lod.animating || this.globe.animating));
     this.chained = more;
     if (more) this.requestRender();
   };
@@ -801,6 +816,8 @@ export class GlobeRenderer {
     this.opts.onFrame();
     perfEnd("frame.callbacks", t1);
     FRAME_CLOCK.workMs = performance.now() - w0;
+    // Whoever drew this frame (the tick, a resize, a check), the transitions run to their end.
+    if (this.lod.animating || this.globe.animating) this.requestRender();
   }
 
   private syncCamera() {
@@ -820,7 +837,7 @@ export class GlobeRenderer {
     else cam.clearViewOffset();
     cam.updateProjectionMatrix();
     cam.updateMatrixWorld();
-    this.globe.syncCamera(b, v.zoom, this.pixel);
+    this.globe.syncCamera(b, v.zoom, this.pixel, performance.now(), this.reduced);
   }
 
   /* ------------------------------ diagnostics ------------------------------ */

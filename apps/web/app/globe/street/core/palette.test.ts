@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { CODE } from "./art-line";
 import { LEVEL_SCALE, PATTERN, buildPalette, codeOf, fillColor, lineColor } from "./palette";
-import { MAX_LEVELS, PALETTE_LEVELS, ROLES, borderLevel, buildRamp, mixOklab, peakLevel, rampLevel, roleLevel, srgbToOklab } from "../../engine/palette";
+import { MAX_LEVELS, PALETTE_LEVELS, ROLES, bordersWanted, borderLevel, buildRamp, mixOklab, peakLevel, rampLevel, roleLevel, srgbToOklab } from "../../engine/palette";
 import { decodeLevel, decodePattern } from "../style/probe";
 import { TUNING } from "../../engine/tuning";
 
@@ -121,22 +121,35 @@ describe("level encoding", () => {
   });
 });
 
-describe("globe borders ease in through the levels (never a dither, both ways)", () => {
+describe("globe borders: on or off by zoom, a timed tone ramp between (never a dither, never a resting grey)", () => {
+  const b = TUNING.borderZoom;
   for (const n of [4, 6, 8, 10]) {
-    it(`n=${n}: not drawn below the start, the faintest level above it, the peak level (below the ink) from the end, one level at a time`, () => {
-      const b = TUNING.borderZoom;
-      expect(borderLevel(b.start - 0.5, n, b)).toBe(0);
-      expect(borderLevel(b.start, n, b)).toBe(0);
-      expect(borderLevel(b.start + 1e-6, n, b)).toBe(1);
-      expect(borderLevel(b.end, n, b)).toBe(n - 2);
-      expect(borderLevel(b.end + 2, n, b)).toBe(n - 2);
+    it(`n=${n}: not drawn at fade 0, the faintest level just above it, the peak level (below the ink) at 1, one level at a time`, () => {
+      expect(borderLevel(0, n)).toBe(0);
+      expect(borderLevel(1e-6, n)).toBe(1);
+      expect(borderLevel(1, n)).toBe(n - 2);
       let prev = 0;
-      for (let z = b.start - 0.1; z <= b.end + 0.1; z += 0.002) {
-        const l = borderLevel(z, n, b);
+      for (let v = 0; v <= 1; v += 0.002) {
+        const l = borderLevel(v, n);
         expect(l - prev).toBeGreaterThanOrEqual(0);
         expect(l - prev).toBeLessThanOrEqual(1);
         prev = l;
       }
     });
   }
+  it("the zoom decides on or off with a hysteresis band", () => {
+    expect(bordersWanted(false, b.on - 1, b)).toBe(false);
+    expect(bordersWanted(false, b.on + 1, b)).toBe(true);
+    expect(bordersWanted(false, b.on, b)).toBe(false); // zooming in: the band counts against
+    expect(bordersWanted(true, b.on, b)).toBe(true); // zooming out: so it does
+    expect(bordersWanted(true, b.on - b.band, b)).toBe(false);
+    let on = false;
+    let flips = 0;
+    for (let k = 0; k < 100; k++) {
+      const next = bordersWanted(on, b.on + (k % 2 ? 0.03 : -0.03), b);
+      if (next !== on) flips++;
+      on = next;
+    }
+    expect(flips).toBe(0);
+  });
 });

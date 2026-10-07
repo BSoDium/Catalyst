@@ -5,44 +5,44 @@ import { HANDOVER } from "../../handover/maths";
 import { PATTERN } from "../core/palette";
 import { radiusFitZoom } from "../../engine/framing";
 import { zoomCorrection } from "../core/registration";
-import { FILL_LOD, LOD, finalAt, levelAt, progressAt, stepZoom, toneLevel, visibleAt, type LodKey } from "./lod";
+import { FILL_LOD, LOD, levelAt, toneLevel, visibleAt, type LodKey } from "./lod";
+import { LayerSwitch, ZOOM_BAND, switchRules } from "./layer-switch";
 import { decodePattern, levelOfPaint } from "./probe";
-import { DEFAULT_HANDOFF, MAJOR_WIDE_FROM, SPECS, WORLD_PLACEHOLDER_BELOW, hasPlaceholder, artWidthStopsOf, buildStreetStyle, linePaint, seaFade, type Schema } from "./street-style";
+import { DEFAULT_HANDOFF, MAJOR_WIDE_FROM, SPECS, WORLD_PLACEHOLDER_BELOW, hasPlaceholder, artWidthStopsOf, buildStreetStyle, linePaint, seaFrom, type Schema } from "./street-style";
 
 const KEYS = Object.keys(LOD) as LodKey[];
 const LEVEL_COUNTS = [3, 4, 6, 8, 10, 12];
 const empty: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
 const TILES = { tiles: ["cat-p1://https://tiles.example/{z}/{x}/{y}.pbf"], minzoom: 0, maxzoom: 14, bounds: null };
 const make = (schema: Schema) => buildStreetStyle({ schema, tiles: TILES, coastlines: empty, borders: empty, graticule: empty, routes: empty });
-type L = { id: string; minzoom?: number; maxzoom?: number; paint: Record<string, unknown> };
+type L = { id: string; minzoom?: number; maxzoom?: number; layout?: { visibility?: string }; paint: Record<string, unknown> };
 
 describe("LOD table", () => {
-  it("every class has from < full, in a sane range", () => {
+  it("every class has a switch zoom in a sane range, and an `off` only where it hands over to another class", () => {
     for (const k of KEYS) {
       const e = LOD[k];
-      expect(e.from, k).toBeGreaterThanOrEqual(3);
-      expect(e.full, k).toBeGreaterThan(e.from + 0.5);
-      expect(e.full, k).toBeLessThanOrEqual(17.5 + 1e-9); // the street map stops at z17.5
+      expect(e.on, k).toBeGreaterThanOrEqual(4);
+      expect(e.on, k).toBeLessThanOrEqual(17.5 + 1e-9); // the street map stops at z17.5
+      if (e.off !== undefined) expect(e.off, k).toBeGreaterThan(e.on);
     }
+    expect(Object.entries(LOD).filter(([, e]) => e.off !== undefined).map(([k]) => k)).toEqual(["minor"]);
+    expect(LOD.minor.off).toBe(LOD.minorSolid.on); // dotted residential streets hand over to solid ones at one zoom, never both, never neither
   });
   it("roads appear by rank: motorways first, then primary, secondary, tertiary, residential, service, paths", () => {
     const order: LodKey[] = ["highway", "major", "secondary", "medium", "minor", "service", "path"];
-    for (let i = 1; i < order.length; i++) {
-      expect(LOD[order[i]!].from, order[i]).toBeGreaterThan(LOD[order[i - 1]!].from);
-      expect(LOD[order[i]!].full, order[i]).toBeGreaterThan(LOD[order[i - 1]!].full);
-    }
-    // far-zoom calm (owner, earlier pass): nothing road-like below z5.5, nothing but motorways and trunks below z8.5
-    expect(LOD.highway.from).toBeGreaterThanOrEqual(5);
-    expect(LOD.major.from).toBeGreaterThanOrEqual(8.5);
+    for (let i = 1; i < order.length; i++) expect(LOD[order[i]!].on, order[i]).toBeGreaterThan(LOD[order[i - 1]!].on);
+    // far-zoom calm (owner, earlier pass): nothing road-like below z6, nothing but motorways and trunks below z8.5
+    expect(LOD.highway.on).toBeGreaterThanOrEqual(6);
+    expect(LOD.major.on).toBeGreaterThanOrEqual(8.5);
     // rivers: the tile data holds the big ones from z4 (probed with scripts/street/layer-probe.mjs), the line starts as the regions do
-    expect(LOD.river.from).toBeGreaterThanOrEqual(5);
+    expect(LOD.river.on).toBeGreaterThanOrEqual(5);
     // the tile data bounds how early a class can show (OpenMapTiles: tertiary from z11, residential from z12, service from z13)
-    expect(LOD.medium.from).toBeGreaterThanOrEqual(10.5);
-    expect(LOD.minor.from).toBeGreaterThanOrEqual(12);
-    expect(LOD.service.from).toBeGreaterThanOrEqual(13);
-    expect(LOD.path.from).toBeGreaterThanOrEqual(14);
-    expect(LOD.buildingOutline.from).toBeGreaterThanOrEqual(16);
-    expect(FILL_LOD.building.from).toBeGreaterThanOrEqual(15.5);
+    expect(LOD.medium.on).toBeGreaterThanOrEqual(10.5);
+    expect(LOD.minor.on).toBeGreaterThanOrEqual(12);
+    expect(LOD.service.on).toBeGreaterThanOrEqual(13);
+    expect(LOD.path.on).toBeGreaterThanOrEqual(14);
+    expect(LOD.buildingOutline.on).toBeGreaterThanOrEqual(16);
+    expect(FILL_LOD.building.on).toBeGreaterThanOrEqual(15.5);
   });
   it("tone follows the hierarchy: major roads at least as strong as minor roads, rail and paths softer, borders stronger than washes", () => {
     for (const n of LEVEL_COUNTS) {
@@ -54,7 +54,7 @@ describe("LOD table", () => {
       expect(lv("river"), `n=${n}`).toBeGreaterThanOrEqual(lv("minor"));
     }
   });
-  it("minor classes keep a dashed final pattern whose dashes can catch a cell centre on a diagonal", () => {
+  it("minor classes keep a dashed pattern whose dashes can catch a cell centre on a diagonal", () => {
     for (const k of ["minor", "link", "service", "path", "rail", "canal", "stream", "regionBorder"] as const) {
       const d = LOD[k].dash;
       expect(d, k).toBeDefined();
@@ -63,87 +63,95 @@ describe("LOD table", () => {
   });
 });
 
-describe("tone ramp (the fade-in goes through the grey levels, never through a dither)", () => {
+describe("a class is on or off, never half way (no tone ramp over zoom)", () => {
   for (const n of LEVEL_COUNTS) {
-    it(`n=${n}: not drawn below from, the faintest level just above it, the role's level from full`, () => {
+    it(`n=${n}: not drawn below its switch zoom, its role's level from it, and nothing in between`, () => {
       for (const k of KEYS) {
         const e = LOD[k];
         const final = toneLevel(e, n);
-        for (let z = 0; z <= e.from; z += 0.1) expect(levelAt(e, z, n), `${k} z${z}`).toBe(0);
-        expect(levelAt(e, e.from + 1e-3, n), k).toBe(1);
-        for (let z = e.full; z <= 20; z += 0.1) expect(levelAt(e, z, n), `${k} z${z}`).toBe(final);
-        expect(finalAt(e, e.full)).toBe(true);
-        expect(finalAt(e, e.full - 0.01)).toBe(false);
-        expect(visibleAt(e, e.from)).toBe(false);
-      }
-    });
-    it(`n=${n}: the level only goes up with zoom, one level at a time, in steps of equal zoom length`, () => {
-      for (const k of KEYS) {
-        const e = LOD[k];
-        let prev = 0;
-        for (let z = e.from - 0.2; z <= e.full + 0.2; z += 0.01) {
-          const lv = levelAt(e, z, n);
-          expect(lv - prev, `${k} z${z.toFixed(2)}`).toBeGreaterThanOrEqual(0);
-          expect(lv - prev, `${k} z${z.toFixed(2)}`).toBeLessThanOrEqual(1);
-          prev = lv;
-        }
-        const final = toneLevel(e, n);
-        for (let l = 2; l <= final; l++) {
-          expect(stepZoom(e, l, n) - stepZoom(e, l - 1, n), k).toBeCloseTo((e.full - e.from) / final, 9);
-          expect(levelAt(e, stepZoom(e, l, n) + 1e-6, n), k).toBe(l);
-          expect(levelAt(e, stepZoom(e, l, n) - 1e-6, n), k).toBe(l - 1);
-        }
+        for (let z = 0; z < e.on; z += 0.1) expect(levelAt(e, z, n), `${k} z${z}`).toBe(0);
+        for (let z = e.on; z <= (e.off ?? 20) - 0.01; z += 0.1) expect(levelAt(e, z, n), `${k} z${z}`).toBe(final);
+        expect(visibleAt(e, e.on - 0.01)).toBe(false);
+        expect(visibleAt(e, e.on)).toBe(true);
       }
     });
   }
-  it("progress is 0 at from, 1 at full", () => {
-    expect(progressAt(LOD.major, LOD.major.from)).toBe(0);
-    expect(progressAt(LOD.major, LOD.major.full)).toBe(1);
+  it("a class that hands over (dotted to solid residential streets) is on in exactly one of the two at every zoom", () => {
+    for (let z = 12; z <= 17.5; z += 0.01) expect(Number(visibleAt(LOD.minor, z)) + Number(visibleAt(LOD.minorSolid, z)), `z ${z.toFixed(2)}`).toBe(z >= LOD.minor.on ? 1 : 0);
   });
 });
 
 describe("style wiring of the LOD", () => {
-  it("every class is ONE layer that exists from `from`: no ramp layers, no tone-channel layers", () => {
+  it("every class is ONE layer with one constant colour: no ramp layers, no tone-channel layers, no zoom `step` colour, no static minzoom (the layer switch owns it)", () => {
     for (const schema of ["protomaps", "openmaptiles"] as const) {
       const st = make(schema).layers as unknown as L[];
       expect(st.some((l) => /-ramp$/.test(l.id))).toBe(false);
       const byId = new Map(st.map((l) => [l.id, l]));
       for (const spec of SPECS.filter((s) => s.lod)) {
-        const e = LOD[spec.lod!];
-        expect(byId.get(spec.id)!.minzoom, `${schema} ${spec.id}`).toBe(e.from);
+        const l = byId.get(spec.id)!;
+        expect(l.minzoom, `${schema} ${spec.id}`).toBeUndefined();
+        expect(typeof l.paint["line-color"], `${schema} ${spec.id}`).toBe("string");
+        expect(levelOfPaint(l.paint["line-color"], 0), `${schema} ${spec.id}`).toBe(toneLevel(LOD[spec.lod!]));
       }
     }
   });
-  it("the colour of a class at a zoom is the level the table says (every N)", () => {
-    for (const spec of SPECS.filter((s) => s.lod && s.type === "line")) {
-      const e = LOD[spec.lod!];
-      const color = linePaint(spec, 3).paint["line-color"];
-      for (let z = e.from + 1e-3; z <= e.full + 1; z += 0.05) expect(levelOfPaint(color, z), `${spec.id} z${z.toFixed(2)}`).toBe(levelAt(e, z));
+  it("the layers that start on follow the switch for the camera the style is built for (a style swap shows no flash)", () => {
+    const sw = new LayerSwitch(switchRules(seaFrom(DEFAULT_HANDOFF.openmaptiles)));
+    sw.update({ zoom: 11.5, unifiedZoom: 11.5, heightPx: 900 });
+    const st = buildStreetStyle({ schema: "openmaptiles", tiles: TILES, coastlines: empty, borders: empty, graticule: empty, routes: empty, visible: sw.visibleIds() }).layers as unknown as L[];
+    const vis = (id: string) => st.find((l) => l.id === id)!.layout?.visibility !== "none";
+    expect(vis("road-highway-case")).toBe(true);
+    expect(vis("road-medium-case")).toBe(true);
+    expect(vis("road-minor-dotted")).toBe(false); // 12.8
+    expect(vis("building-fill")).toBe(false); // 16.3
+    expect(vis("water-fill")).toBe(true); // flat at 11.5
+    expect(vis("graticule")).toBe(false); // so the graticule is gone
+    // and without a switch state everything is on (tests, tools)
+    const all = make("openmaptiles").layers as unknown as L[];
+    expect(all.filter((l) => !/^world-/.test(l.id)).every((l) => l.layout?.visibility !== "none")).toBe(true); // (the world lines are placeholders, hidden until tiles are loading)
+  });
+  it("regression (owner: from space everything but the graticule vanished, then came back layer by layer): with NOTHING switched on, only the switched layers are hidden; the coast, the country borders and every other always-on layer stay visible", () => {
+    for (const schema of ["protomaps", "openmaptiles"] as const) {
+      const st = buildStreetStyle({ schema, tiles: TILES, coastlines: empty, borders: empty, graticule: empty, routes: empty, visible: new Set() }).layers as unknown as L[];
+      const hidden = st.filter((l) => l.layout?.visibility === "none").map((l) => l.id);
+      const switchedIds = new Set([...SPECS.filter((s) => s.lod || s.fade).map((s) => s.id), "graticule"]);
+      for (const id of hidden) expect(switchedIds.has(id) || /^world-/.test(id), `${schema} ${id} must not be hidden by the switch`).toBe(true);
+      for (const id of ["water-edge", "boundary-country", "road-major-fill", "road-medium-fill", "routes-line", "routes-halo", "background"]) expect(hidden.includes(id), `${schema} ${id}`).toBe(false);
+      for (const id of switchedIds) expect(hidden.includes(id), `${schema} ${id}`).toBe(true);
     }
   });
-  it("fills fade in through the levels up to their wash", () => {
+  it("regression (owner: street-scale London, no road hierarchy, every road the same band): built for a street zoom the style has every road class on with its own tone and a width ordered down the hierarchy, and the erasing interiors that make big roads hollow are on", () => {
+    const sw = new LayerSwitch(switchRules(seaFrom(DEFAULT_HANDOFF.openmaptiles)));
+    sw.update({ zoom: 17.2, unifiedZoom: 17.2 - zoomCorrection(51.5), heightPx: 900 });
+    const st = buildStreetStyle({ schema: "openmaptiles", tiles: TILES, coastlines: empty, borders: empty, graticule: empty, routes: empty, visible: sw.visibleIds() }).layers as unknown as L[];
+    const on = (id: string) => st.find((l) => l.id === id)!.layout?.visibility !== "none";
+    const tiers = ["road-highway-case", "road-major-case", "road-secondary-case", "road-medium-case", "road-minor"];
+    for (const id of [...tiers, "road-major-fill", "road-medium-fill", "road-link-dotted", "road-other-dotted", "path-dotted"]) expect(on(id), id).toBe(true);
+    expect(on("road-minor-dotted")).toBe(false); // handed over to the solid one
+    const tone = (id: string) => levelOfPaint(st.find((l) => l.id === id)!.paint["line-color"], 17.2);
+    const tones = tiers.map(tone);
+    for (let i = 1; i < tones.length; i++) expect(tones[i]!, tiers[i]).toBeLessThanOrEqual(tones[i - 1]!);
+    expect(new Set(tones).size).toBeGreaterThanOrEqual(4); // distinct tones: 10, 9, 7, 5, 4
+    const width = (id: string) => artWidthStopsOf(SPECS.find((s) => s.id === id)!);
+    const w = (id: string) => { const v = width(id); return typeof v === "number" ? v : expInterp(v, 17.2, 1.5); };
+    expect(w("road-major-case")).toBeGreaterThan(w("road-medium-case"));
+    expect(w("road-medium-case")).toBeGreaterThan(w("road-minor"));
+  });
+  it("fills are constant patterns at their wash level", () => {
     for (const spec of SPECS.filter((s) => s.type === "fill")) {
       const st = (make("openmaptiles").layers as unknown as L[]).find((l) => l.id === spec.id)!;
       const f = spec.fade!;
-      expect(st.minzoom).toBe(f.from);
-      expect(levelOfPaint(st.paint["fill-color"], f.from + 1e-3), spec.id).toBe(1);
-      expect(levelOfPaint(st.paint["fill-color"], f.full + 1), spec.id).toBe(roleLevel(f.role));
+      expect(st.minzoom, spec.id).toBeUndefined();
+      expect(levelOfPaint(st.paint["fill-color"], 0), spec.id).toBe(roleLevel(f.role));
       expect(st.paint["fill-opacity"]).toBe(1);
     }
   });
   it("water and green areas are distinct patterns in a dimmed level (below the roads), buildings a flat wash", () => {
     const st = make("openmaptiles").layers as unknown as L[];
-    const pat = (id: string, z: number) => {
-      const c = st.find((l) => l.id === id)!.paint["fill-color"] as unknown;
-      if (typeof c === "string") return decodePattern(c); // a single level: a constant colour
-      const a = c as unknown[];
-      let out = a[2] as string;
-      for (let i = 3; i < a.length; i += 2) if (z >= (a[i] as number)) out = a[i + 1] as string;
-      return decodePattern(out);
-    };
-    expect(pat("water-fill", 12)).toBe(PATTERN.water);
-    expect(pat("park-fill", 12)).toBe(PATTERN.green);
-    expect(pat("building-fill", 18)).toBe(PATTERN.flat);
+    const pat = (id: string) => decodePattern(st.find((l) => l.id === id)!.paint["fill-color"] as string);
+    expect(pat("water-fill")).toBe(PATTERN.water);
+    expect(pat("park-fill")).toBe(PATTERN.green);
+    expect(pat("building-fill")).toBe(PATTERN.flat);
     expect(PATTERN.water).not.toBe(PATTERN.green);
     for (const n of LEVEL_COUNTS) {
       // with only three or four levels the map has one or two greys and the roles collapse: never louder, strictly dimmer once there is room
@@ -152,51 +160,34 @@ describe("style wiring of the LOD", () => {
       expect(roleLevel(FILL_LOD.park.role, n), `n=${n}`)[cmp](toneLevel(LOD.major, n));
     }
   });
-  it("the sea eases in from just after the globe-to-street cut over a wide zoom range, one level at a time, in both directions", () => {
-    expect(FILL_LOD.water.from).toBeGreaterThanOrEqual(DEFAULT_HANDOFF.openmaptiles + 0.5);
-    expect(FILL_LOD.water.from).toBeLessThanOrEqual(DEFAULT_HANDOFF.openmaptiles + 1);
-    expect(FILL_LOD.water.full - FILL_LOD.water.from).toBeGreaterThanOrEqual(4);
-    let prev = 0;
-    for (let z = FILL_LOD.water.from - 0.5; z <= FILL_LOD.water.full + 0.5; z += 0.01) {
-      const lv = levelAt(FILL_LOD.water, z);
-      expect(lv - prev).toBeGreaterThanOrEqual(0);
-      expect(lv - prev).toBeLessThanOrEqual(1);
-      prev = lv;
-    }
-    expect(levelAt(FILL_LOD.water, FILL_LOD.water.from + 1e-3)).toBe(1);
-    expect(prev).toBe(roleLevel(FILL_LOD.water.role));
-  });
   it("the two schemas expose the same layers (identical look), with the same zoom ranges", () => {
     // the world-data layers, the sea outline and the tile country border follow the per-schema hand-over zoom (the one deliberate difference)
-    const tiles = (st: L[]) => st.filter((l) => !/^world-|^water-edge$|^water-fill$|^boundary-country$/.test(l.id)).map((l) => [l.id, l.minzoom, l.maxzoom]);
+    const tiles = (st: L[]) => st.filter((l) => !/^world-|^water-edge$|^boundary-country$/.test(l.id)).map((l) => [l.id, l.minzoom, l.maxzoom]);
     expect(tiles(make("protomaps").layers as unknown as L[])).toEqual(tiles(make("openmaptiles").layers as unknown as L[]));
   });
-  it("the sea fill starts 0.7 zoom after the hand-over to tile geometry in either schema, with the same ramp shape", () => {
-    for (const schema of ["protomaps", "openmaptiles"] as const) {
-      const l = (make(schema).layers as unknown as L[]).find((x) => x.id === "water-fill")!;
-      expect(l.minzoom).toBeCloseTo(DEFAULT_HANDOFF[schema] + 0.7, 6);
-      const e = seaFade(DEFAULT_HANDOFF[schema]);
-      expect(e.full - e.from).toBeCloseTo(FILL_LOD.water.full - FILL_LOD.water.from, 6);
-    }
-    expect(seaFade(DEFAULT_HANDOFF.openmaptiles).from).toBe(FILL_LOD.water.from);
+  it("the sea texture may start 0.7 zoom after the hand-over to tile geometry in either schema (a source whose tiles only cover a place must not show their edges)", () => {
+    for (const schema of ["protomaps", "openmaptiles"] as const) expect(seaFrom(DEFAULT_HANDOFF[schema])).toBeCloseTo(DEFAULT_HANDOFF[schema] + 0.7, 9);
+    const rule = (h: number) => switchRules(seaFrom(h)).find((r) => r.id === "water-fill")!;
+    expect(rule(DEFAULT_HANDOFF.protomaps).on).toBeGreaterThan(rule(DEFAULT_HANDOFF.openmaptiles).on);
   });
-  it("lines keep the one-art-pixel floor through their whole fade-in", () => {
+  it("lines keep the one-art-pixel floor wherever they are on", () => {
     for (const spec of SPECS.filter((s) => s.lod && s.type === "line")) {
       const w = linePaint(spec, 3).paint["line-width"];
       const at = (z: number) => (typeof w === "number" ? w : expInterp(((w as unknown[]).slice(3) as number[]).reduce<[number, number][]>((acc, v, i, arr) => (i % 2 === 0 ? [...acc, [v, arr[i + 1]!]] : acc), []), z, 1.5));
-      for (let z = LOD[spec.lod!].from; z < LOD[spec.lod!].full; z += 0.25) expect(at(z), `${spec.id} z${z}`).toBeGreaterThanOrEqual(3 - 1e-9);
+      for (let z = LOD[spec.lod!].on; z < LOD[spec.lod!].on + 3; z += 0.25) expect(at(z), `${spec.id} z${z}`).toBeGreaterThanOrEqual(3 - 1e-9);
     }
   });
   it("nothing road-like is drawn below country scale", () => {
-    const st = make("protomaps").layers as unknown as L[];
-    const road = st.filter((l) => /^(road|path|rail)/.test(l.id) && !/fill$/.test(l.id));
-    for (const l of road) expect(l.minzoom ?? 0, l.id).toBeGreaterThanOrEqual(5.5);
+    for (const spec of SPECS.filter((s) => /^(road|path|rail)/.test(s.id) && !/fill$/.test(s.id))) {
+      const on = spec.lod ? LOD[spec.lod].on : (spec.minzoom ?? 0);
+      expect(on, spec.id).toBeGreaterThanOrEqual(6);
+    }
   });
-  it("the sea keeps its outline at every zoom; lakes and small water fade in", () => {
+  it("the sea keeps its outline at every zoom; lakes and small water switch on", () => {
     const st = make("openmaptiles").layers as unknown as L[];
     const sea = st.find((l) => l.id === "water-edge")!;
     expect(sea.maxzoom).toBeUndefined();
-    expect(st.find((l) => l.id === "water-edge-detail")!.minzoom).toBe(LOD.waterDetail.from);
+    expect(switchRules(1.7).find((r) => r.id === "water-edge-detail")!.on).toBe(LOD.waterDetail.on);
   });
 });
 
@@ -232,8 +223,8 @@ describe("a city reads as a city at the zoom the app frames it at (owner: street
   // latitude correction. Public geography: Lisbon, Paris, Bucharest, Ho Chi Minh City.
   const CITIES = { lisbon: 38.7, paris: 48.9, bucharest: 44.4, hcmc: 10.8 };
   const framing = (km: number, lat: number, w: number, h: number, inset: number) => radiusFitZoom(km, w, h, inset) + zoomCorrection(lat);
-  const finalLevel = (k: LodKey) => toneLevel(LOD[k]);
-  const lv = (k: LodKey, z: number) => levelAt(LOD[k], z);
+  /** On, as the layer switch settles when the camera arrives from below (it zooms in to a city): the hysteresis band counts against. */
+  const on = (e: { on: number; off?: number }, z: number) => z >= e.on + ZOOM_BAND && (e.off === undefined || z < e.off);
 
   it("the framing zoom table is what the style is tuned to: 10.0 to 11.4 on a 1440x900 desktop for 10 to 18 km", () => {
     const zs = Object.values(CITIES).flatMap((lat) => [10, 12, 14, 18].map((km) => framing(km, lat, 1440, 900, 0)));
@@ -242,42 +233,34 @@ describe("a city reads as a city at the zoom the app frames it at (owner: street
     expect(framing(12, CITIES.paris, 1440, 900, 0)).toBeCloseTo(10.59, 1);
     expect(framing(12, CITIES.hcmc, 1440, 900, 0)).toBeCloseTo(11.17, 1);
   });
-  it("desktop, default 12 km radius, panel closed or open: primary and secondary roads are (nearly) in full, links, rail, rivers and parks show", () => {
+  it("desktop, default 12 km radius, panel closed or open: motorways, primary and secondary roads, links, rail, rivers, lakes and parks are on", () => {
     for (const lat of Object.values(CITIES)) for (const inset of [0, 720]) {
       const z = framing(12, lat, 1440, 900, inset);
-      expect(lv("highway", z)).toBe(finalLevel("highway"));
-      expect(lv("major", z), `lat ${lat} inset ${inset} z${z.toFixed(2)}`).toBe(finalLevel("major"));
-      expect(lv("secondary", z), `lat ${lat} inset ${inset}`).toBeGreaterThanOrEqual(finalLevel("secondary") - 1);
-      for (const k of ["link", "rail", "river", "lake"] as const) expect(lv(k, z), `${k} lat ${lat} inset ${inset}`).toBeGreaterThanOrEqual(1);
-      expect(levelAt(FILL_LOD.park, z), `park lat ${lat}`).toBeGreaterThanOrEqual(2);
-      expect(levelAt(FILL_LOD.green, z), `green lat ${lat}`).toBeGreaterThanOrEqual(1);
-      expect(levelAt(FILL_LOD.water, z), `water lat ${lat}`).toBe(roleLevel(FILL_LOD.water.role));
+      for (const k of ["highway", "major", "secondary", "link", "rail", "river", "lake"] as const) expect(on(LOD[k], z), `${k} lat ${lat} inset ${inset} z${z.toFixed(2)}`).toBe(true);
+      expect(on(FILL_LOD.park, z), `park lat ${lat}`).toBe(true);
     }
   });
-  it("every framing a person can get (10 to 18 km, desktop with or without the panel, a phone): motorways in full and primary roads drawn", () => {
+  it("every framing a person can get (10 to 18 km, desktop with or without the panel, a phone): motorways and primary roads are on", () => {
     for (const lat of Object.values(CITIES)) for (const km of [10, 12, 14, 18]) for (const [w, h, inset] of [[1440, 900, 0], [1440, 900, 720], [390, 844, 0]] as const) {
       const z = framing(km, lat, w, h, inset);
-      expect(lv("highway", z), `${km} km ${w}x${h} inset ${inset} lat ${lat} z${z.toFixed(2)}`).toBe(finalLevel("highway"));
-      expect(lv("major", z), `${km} km ${w}x${h} inset ${inset} lat ${lat} z${z.toFixed(2)}`).toBeGreaterThanOrEqual(1);
+      expect(on(LOD.highway, z), `${km} km ${w}x${h} inset ${inset} lat ${lat} z${z.toFixed(2)}`).toBe(true);
+      expect(on(LOD.major, z), `${km} km ${w}x${h} inset ${inset} lat ${lat} z${z.toFixed(2)}`).toBe(true);
     }
   });
-  it("tertiary roads start as soon as their tiles exist (OpenMapTiles z11) and are in full a zoom later; residential streets follow dotted, low tone first", () => {
-    expect(LOD.medium.from).toBeLessThan(11);
-    expect(LOD.medium.full - 11).toBeLessThanOrEqual(1);
-    expect(lv("medium", framing(12, CITIES.hcmc, 1440, 900, 0))).toBeGreaterThanOrEqual(2); // 11.17: tertiary under way where the framing is the closest
-    expect(LOD.minor.from).toBeLessThanOrEqual(12.5);
-    expect(levelAt(LOD.minor, 12.6)).toBeGreaterThanOrEqual(1);
-    expect(levelAt(LOD.minor, 12.6)).toBeLessThan(finalLevel("minor"));
+  it("tertiary roads switch on as soon as their tiles exist (OpenMapTiles z11), so the closest framing has them; residential streets follow dotted a zoom or two later", () => {
+    expect(LOD.medium.on).toBeLessThan(11.2);
+    expect(on(LOD.medium, framing(12, CITIES.hcmc, 1440, 900, 0))).toBe(true); // 11.17: the closest typical framing
+    expect(LOD.minor.on).toBeLessThanOrEqual(13);
     expect(LOD.minor.dash).toBeDefined();
   });
-  it("far zoom is as calm as before: of the roads only motorways and trunks below z8.5, none below z5.5 (rivers and region borders started earlier on purpose)", () => {
-    for (let z = 0; z <= 8.5; z += 0.1) for (const k of ["major", "secondary", "medium", "minor", "link", "service", "path", "rail", "canal", "stream", "waterDetail"] as const) expect(lv(k, z), `${k} z${z.toFixed(1)}`).toBe(0);
-    for (let z = 0; z <= 5.5; z += 0.1) expect(lv("highway", z)).toBe(0);
+  it("far zoom is as calm as before: of the roads only motorways and trunks below z8.5, none below z6 (rivers and region borders started earlier on purpose)", () => {
+    for (let z = 0; z <= 8.5; z += 0.1) for (const k of ["major", "secondary", "medium", "minor", "link", "service", "path", "rail", "canal", "stream", "waterDetail"] as const) expect(levelAt(LOD[k], z), `${k} z${z.toFixed(1)}`).toBe(0);
+    for (let z = 0; z <= 6; z += 0.1) expect(levelAt(LOD.highway, z)).toBe(0);
   });
-  it("the tone hierarchy at the framing: arterials louder than links and rail, and the tone only ever goes up with zoom", () => {
+  it("the tone hierarchy at the framing: arterials louder than links and rail", () => {
     for (const z of [9, 9.5, 10, 10.5, 11, 11.5]) {
-      expect(lv("major", z)).toBeGreaterThanOrEqual(lv("link", z));
-      expect(lv("secondary", z)).toBeGreaterThanOrEqual(lv("rail", z));
+      expect(levelAt(LOD.major, z)).toBeGreaterThanOrEqual(levelAt(LOD.link, z));
+      expect(levelAt(LOD.secondary, z)).toBeGreaterThanOrEqual(levelAt(LOD.rail, z));
     }
   });
 });
@@ -392,36 +375,28 @@ describe("earlier detail (owner: a country fills the screen before the region li
   ];
   const fillZoom = (km: number, lat: number) => radiusFitZoom(km, 1440, 900, 0, 0) + zoomCorrection(lat);
 
-  it("the region lines are at 70 % of their tone or more when a country fills the screen", () => {
+  it("the region lines are on when a country fills the screen", () => {
     for (const [name, km, lat] of COUNTRIES) {
       const z = fillZoom(km, lat);
-      const level = levelAt(LOD.regionBorder, z);
-      expect(level / toneLevel(LOD.regionBorder), `${name} z${z.toFixed(2)}`).toBeGreaterThanOrEqual(0.7);
+      expect(z, `${name} z${z.toFixed(2)}`).toBeGreaterThanOrEqual(LOD.regionBorder.on + ZOOM_BAND);
     }
   });
-  it("the ramps start as the street map takes over from the globe and are earlier than before by the measured shift", () => {
+  it("the switch zooms are earlier than the ramps they replace were at their middle, and not before the data exists", () => {
     // before (HEAD aae202e): region 4.5..6.5, lake 7.5..10, river 8.6..10.4, rail 10.2..12.2, park 8.4..10.6, sea 5.2..10
     const BEFORE = { regionBorder: [4.5, 6.5], lake: [7.5, 10], river: [8.6, 10.4], rail: [10.2, 12.2] } as const;
-    expect(LOD.regionBorder.from).toBeLessThanOrEqual(BEFORE.regionBorder[0] - 0.6);
-    expect(LOD.regionBorder.full).toBeLessThanOrEqual(BEFORE.regionBorder[1] - 1.3);
-    expect(LOD.lake.from).toBeLessThanOrEqual(BEFORE.lake[0] - 1.9);
-    expect(LOD.river.from).toBeLessThanOrEqual(BEFORE.river[0] - 1.5);
-    expect(FILL_LOD.park.from).toBeLessThanOrEqual(8.4 - 1.9);
-    expect(FILL_LOD.water.from).toBeLessThanOrEqual(5.2 - 3);
+    for (const k of Object.keys(BEFORE) as (keyof typeof BEFORE)[]) expect(LOD[k].on, k).toBeLessThanOrEqual((BEFORE[k][0] + BEFORE[k][1]) / 2 - 0.5);
+    expect(FILL_LOD.park.on).toBeLessThanOrEqual((8.4 + 10.6) / 2 - 0.5);
     // none of them starts before the data exists (OpenMapTiles): lakes z3, rivers z4, parks z5 (rail, z8, stays where it was: it only adds clutter at the city framing)
-    expect(LOD.lake.from).toBeGreaterThanOrEqual(3);
-    expect(LOD.river.from).toBeGreaterThanOrEqual(4);
-    expect(FILL_LOD.park.from).toBeGreaterThanOrEqual(5);
+    expect(LOD.lake.on).toBeGreaterThanOrEqual(3);
+    expect(LOD.river.on).toBeGreaterThanOrEqual(4);
+    expect(FILL_LOD.park.on).toBeGreaterThanOrEqual(5);
   });
   it("the region lines start just after the cut at the equator (and later further north, where the cut is at a lower map zoom): the globe never gets them", () => {
-    expect(LOD.regionBorder.from).toBeGreaterThanOrEqual(toMapZoomAtCut(0) - 0.01);
-    expect(levelAt(LOD.regionBorder, LOD.regionBorder.from + 1e-3)).toBe(1);
+    expect(LOD.regionBorder.on).toBeGreaterThanOrEqual(toMapZoomAtCut(0) - 0.01);
   });
-  it("far zoom stays calm: the region lines are the faintest levels for the first third of their ramp, and roads have not moved", () => {
-    const third = LOD.regionBorder.from + (LOD.regionBorder.full - LOD.regionBorder.from) / 3;
-    expect(levelAt(LOD.regionBorder, third)).toBeLessThanOrEqual(Math.ceil(toneLevel(LOD.regionBorder) / 3) + 1);
-    expect(LOD.highway.from).toBe(5.5);
-    expect(LOD.major.from).toBeGreaterThanOrEqual(8.5);
+  it("far zoom stays calm: roads have not moved", () => {
+    expect(LOD.highway.on).toBeGreaterThanOrEqual(6);
+    expect(LOD.major.on).toBeGreaterThanOrEqual(8.5);
   });
 });
 

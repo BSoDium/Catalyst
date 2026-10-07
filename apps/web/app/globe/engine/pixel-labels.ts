@@ -44,8 +44,6 @@ export interface LabelState {
   hover: boolean;
 }
 
-export const NO_STATE: LabelState = { selected: false, focused: false, hover: false };
-
 /** The text of a group's counter: "<N> entries", "1 entry" when singular. */
 export const chipText = (count: number): string => `${count} ${count === 1 ? "entry" : "entries"}`;
 
@@ -122,24 +120,51 @@ export interface BoxStyle {
   solid?: boolean;
 }
 
-/** The resting outline: each corner has an arm of this many solid cells along both of its edges, the rest of the edge is dashes. */
-export const CORNER_ARM = 3;
-/** Dashes between the corner arms: this many cells lit, then this many dark, counted from the end of an arm (so a dash pattern is anchored at the corners and does not slide when the box grows). */
-export const DASH_ON = 2;
-export const DASH_OFF = 2;
+/**
+ * The resting outline: each corner has a solid ARM along both of its edges and the rest of the edge is DASHES (`DASH_ON` cells lit, then
+ * a gap), counted from the end of an arm and mirrored from the other corner, so the pattern is anchored at the corners and does not slide
+ * when a box grows. How long the arms and the gaps are depends on the box's on-screen size (`dashingFor`): a big box has long, noticeable
+ * arms and scarce dashes, a small one short arms and denser dashes, a tiny one just a solid outline.
+ */
+export const BOX_STYLE = {
+  /** Cells lit in every dash. */
+  dashOn: 2,
+  /** Corner arm in cells: `frac` of the box's smaller side, between `min` and `max`. */
+  arm: { frac: 0.1, min: 3, max: 14 },
+  /** Gap between dashes in cells: `frac` of the box's smaller side, between `min` and `max`. */
+  gap: { frac: 0.035, min: 2, max: 9 },
+} as const;
 
-/** Whether cell `i` of an edge of `n` cells is part of the line: the corner arms and, when `solid`, everything; else the dashes between the arms. Symmetric: the edge reads the same from both ends. */
-export function edgeLit(i: number, n: number, solid: boolean): boolean {
-  if (solid) return true;
+/** How one box is dashed: arm length and gap, in cells. */
+export interface Dashing {
+  arm: number;
+  gap: number;
+}
+
+const clampInt = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, Math.round(v)));
+
+/** The arm and gap of a box of `w x h` cells (by the smaller side: both axes share them, so the four corners match). */
+export function dashingFor(w: number, h: number): Dashing {
+  const side = Math.min(w, h);
+  return { arm: clampInt(side * BOX_STYLE.arm.frac, BOX_STYLE.arm.min, BOX_STYLE.arm.max), gap: clampInt(side * BOX_STYLE.gap.frac, BOX_STYLE.gap.min, BOX_STYLE.gap.max) };
+}
+
+/**
+ * Whether cell `i` of an edge of `n` cells is part of the line: the corner arms and, when `solid`, everything; else the dashes between
+ * the arms. Symmetric: the edge reads the same from both ends. An edge too short to hold two arms and a gap between them is solid
+ * (the arms never overflow or overlap: a tiny box degrades to a plain outline).
+ */
+export function edgeLit(i: number, n: number, solid: boolean, dash: Dashing = dashingFor(n, n)): boolean {
+  if (solid || n < 2 * dash.arm + dash.gap) return true;
   const d = Math.min(i, n - 1 - i); // distance from the nearest corner
-  if (d < CORNER_ARM) return true;
-  return (d - CORNER_ARM) % (DASH_ON + DASH_OFF) >= DASH_OFF;
+  if (d < dash.arm) return true;
+  return (d - dash.arm) % (BOX_STYLE.dashOn + dash.gap) >= dash.gap;
 }
 
 /**
  * A box: a one-cell outline in the ink around the cells of `rect` and, inside it, the interior mask in the page colour. At rest
- * the four corners are solid and the rest of each edge is dashed (so a map of boxes is quiet); hovered, focused or selected
- * (`solid`) it is one uninterrupted line. It is one cell thick in every state: nothing doubles. The mask stops short of the
+ * the four corners are solid and the rest of each edge is dashed (so a map of boxes is quiet; `dashingFor` sizes the arms and the
+ * gaps by the box's size); hovered, focused or selected (`solid`) it is one uninterrupted line. It is one cell thick in every state: nothing doubles. The mask stops short of the
  * outline, so a translucent outline is composited over the map exactly like an opaque one is.
  */
 export function drawBox(buf: PixelBuffer, rect: CellRect, tones: LabelTones, style: BoxStyle): void {
@@ -147,13 +172,14 @@ export function drawBox(buf: PixelBuffer, rect: CellRect, tones: LabelTones, sty
   const h = rect.r1 - rect.r0;
   if (style.fillAlpha > 0) buf.fillRect(rect.c0 + 1, rect.r0 + 1, w - 2, h - 2, tones.bg, style.fillAlpha);
   const solid = !!style.solid;
+  const dash = dashingFor(w, h);
   for (let i = 0; i < w; i++) {
-    if (!edgeLit(i, w, solid)) continue;
+    if (!edgeLit(i, w, solid, dash)) continue;
     buf.set(rect.c0 + i, rect.r0, tones.ink, style.alpha);
     if (h > 1) buf.set(rect.c0 + i, rect.r1 - 1, tones.ink, style.alpha);
   }
   for (let j = 1; j < h - 1; j++) {
-    if (!edgeLit(j, h, solid)) continue;
+    if (!edgeLit(j, h, solid, dash)) continue;
     buf.set(rect.c0, rect.r0 + j, tones.ink, style.alpha);
     if (w > 1) buf.set(rect.c1 - 1, rect.r0 + j, tones.ink, style.alpha);
   }
@@ -170,13 +196,26 @@ export function drawLabel(buf: PixelBuffer, col: number, row: number, text: stri
   if (chip && layout.chipW) buf.text(chip, col + layout.chipX, row + layout.baseline, tones.ink, alpha);
 }
 
+/** Cells of room between the inside of a box's outline and a label nested in it, besides the plate's own `LABEL_PAD`. */
+export const INSIDE_MARGIN = 1;
+
+/** Where a label goes: its anchor column (the text starts there), the row of its plate's top, and whether it sits inside the box. */
+export interface LabelSpot {
+  col: number;
+  row: number;
+  inside: boolean;
+}
+
 /**
- * Where the label (`h` cells high) of a box goes: its plate's last row is the row just above the box's top edge, the anchor
- * on the box's left edge; inside the box (below the top edge) when it would leave the top of the grid.
+ * Where the label (`h` cells high) of a box goes: its plate's last row is the row just above the box's top edge, the anchor on the box's
+ * left edge. When that would leave the top of the grid the label goes INSIDE the box, nested in its inner top-left corner: the plate
+ * starts `INSIDE_MARGIN` cells inside the outline (its own `LABEL_PAD` of room comes on top), so no letter sits on the outline or touches
+ * it. The plate, and with it the hit hull, is then inside the box.
  */
-export function labelCell(rect: CellRect, h: number): { col: number; row: number; inside: boolean } {
+export function labelCell(rect: CellRect, h: number): LabelSpot {
   const row = rect.r0 - h;
-  return row >= 0 ? { col: rect.c0, row, inside: false } : { col: rect.c0, row: rect.r0 + 1, inside: true };
+  if (row >= 0) return { col: rect.c0, row, inside: false };
+  return { col: rect.c0 + 1 + INSIDE_MARGIN + LABEL_PAD, row: rect.r0 + 1 + INSIDE_MARGIN, inside: true };
 }
 
 /* ------------------------------------------------------------------------------------------------------------------ DOM */

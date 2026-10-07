@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CLEAR, MIXED, PixelBuffer } from "./pixel-buffer";
-import { ALPHA_STEPS, CORNER_ARM, LABEL_PAD, TEXT_GAP, chipText, drawBox, edgeLit, drawLabel, labelCell, labelLayout, labelTones, quantAlpha } from "./pixel-labels";
+import { ALPHA_STEPS, BOX_STYLE, INSIDE_MARGIN, LABEL_PAD, TEXT_GAP, chipText, dashingFor, drawBox, edgeLit, drawLabel, labelCell, labelLayout, labelTones, quantAlpha } from "./pixel-labels";
 import { measureText } from "./pixel-font/pixel-font";
 
 const T = labelTones(12);
@@ -47,12 +47,32 @@ describe("label geometry (whole cells)", () => {
   it("the name is drawn as written: lowercase stays lowercase", () => {
     expect(measureText("minimum", true).w).toBeLessThanOrEqual(measureText("MINIMUM", true).w);
   });
-  it("sits just above the box's top edge, on its left edge; inside the box when it would leave the top of the grid", () => {
+  it("sits just above the box's top edge, on its left edge", () => {
     const rect = { c0: 10, r0: 30, c1: 40, r1: 50 };
     const at = labelCell(rect, 9);
     expect(at).toEqual({ col: 10, row: 21, inside: false });
     expect(at.row + 9).toBe(rect.r0); // the plate's last row is the row above the edge
-    expect(labelCell({ c0: 5, r0: 3, c1: 30, r1: 30 }, 9)).toEqual({ col: 5, row: 4, inside: true });
+  });
+  it("when it would leave the top of the grid it nests INSIDE the box, off the outline: the plate starts a cell inside, the text two", () => {
+    const rect = { c0: 5, r0: 3, c1: 30, r1: 30 };
+    const at = labelCell(rect, 9);
+    expect(at.inside).toBe(true);
+    // the text starts after the outline cell, the margin and the plate's own pad: never on the left edge column
+    expect(at.col).toBe(rect.c0 + 1 + INSIDE_MARGIN + LABEL_PAD);
+    expect(at.col).toBeGreaterThan(rect.c0 + 1);
+    expect(at.col - LABEL_PAD).toBeGreaterThan(rect.c0); // the plate (the hit hull's label) is inside too
+    expect(at.row).toBe(rect.r0 + 1 + INSIDE_MARGIN);
+    expect(at.row).toBeGreaterThan(rect.r0);
+  });
+  it("a nested label's glyphs never touch the outline or the left edge, for any box position", () => {
+    for (const r0 of [-4, 0, 2, 5]) {
+      const rect = { c0: 12, r0, c1: 60, r1: r0 + 40 };
+      const h = labelLayout("Bulgaria", "6 entries").h;
+      const at = labelCell(rect, h);
+      if (!at.inside) continue;
+      expect(at.col - LABEL_PAD).toBe(rect.c0 + 1 + INSIDE_MARGIN);
+      expect(at.col).toBeGreaterThanOrEqual(rect.c0 + 1 + INSIDE_MARGIN);
+    }
   });
 });
 
@@ -71,32 +91,78 @@ describe("boxes: full ink outline, opacity for fades", () => {
     expect(b.dump()).toEqual(["........", `.${k.repeat(6)}.`, `.${k}0000${k}.`, `.${k}0000${k}.`, `.${k.repeat(6)}.`, "........"]);
   });
   it("at rest the four corners are solid and the rest of each edge is dashed", () => {
-    const b = new PixelBuffer(24, 16);
-    drawBox(b, { c0: 1, r0: 1, c1: 23, r1: 15 }, T, { alpha: 1, fillAlpha: 0 });
+    const b = new PixelBuffer(60, 48);
+    const w = 58;
+    const h = 46;
+    drawBox(b, { c0: 1, r0: 1, c1: 1 + w, r1: 1 + h }, T, { alpha: 1, fillAlpha: 0 });
     const k = T.ink.toString(36);
     const d = b.dump();
-    // 22 cells across: an arm of 3, then off off on on off off, the two middle cells meeting in one longer dash, mirrored
-    const row = (n: number) => Array.from({ length: n }, (_, i) => (edgeLit(i, n, false) ? k : ".")).join("");
-    expect(row(22)).toBe(`${k.repeat(CORNER_ARM)}..${k.repeat(2)}..${k.repeat(4)}..${k.repeat(2)}..${k.repeat(CORNER_ARM)}`);
-    expect(d[1]).toBe(`.${row(22)}.`);
-    expect(d[14]).toBe(`.${row(22)}.`);
-    // the left edge of 14 rows reads the same way down
-    expect(d.slice(1, 15).map((r) => r[1]).join("")).toBe(row(14));
+    const dash = dashingFor(w, h);
+    const row = (n: number) => Array.from({ length: n }, (_, i) => (edgeLit(i, n, false, dash) ? k : ".")).join("");
+    expect(d[1]).toBe(`.${row(w)}.`);
+    expect(d[h]).toBe(`.${row(w)}.`);
+    // the left edge reads the same way down, with the same arm and gap
+    expect(d.slice(1, 1 + h).map((r) => r[1]).join("")).toBe(row(h));
     // all four corner cells and the whole of each corner's arms are lit; the middle of each edge has gaps
-    for (const [x, y] of [[1, 1], [22, 1], [1, 14], [22, 14]] as const) expect(b.get(x, y)).toBe(T.ink);
-    expect(b.get(5, 1)).toBe(CLEAR);
-    expect(b.get(12, 14)).not.toBe(CLEAR);
-    expect(b.get(1, 4)).toBe(CLEAR);
+    for (const [x, y] of [[1, 1], [w, 1], [1, h], [w, h]] as const) expect(b.get(x, y)).toBe(T.ink);
+    for (let i = 0; i < dash.arm; i++) expect(b.get(1 + i, 1)).toBe(T.ink);
+    expect(b.get(1 + dash.arm, 1)).toBe(CLEAR); // the first gap starts right after the arm
+    expect(row(w)).toContain("."); // not a solid line
   });
-  it("the edge pattern is the same from both ends and anchored at the corners", () => {
-    for (const n of [9, 10, 11, 14, 22, 37]) {
+  it("a dash is DASH_ON cells lit then `gap` dark, counted from the end of an arm", () => {
+    const n = 100;
+    const { arm, gap } = dashingFor(n, n);
+    const cells = Array.from({ length: n }, (_, i) => edgeLit(i, n, false));
+    for (let i = 0; i < arm; i++) expect(cells[i]).toBe(true);
+    for (let i = arm; i < arm + gap; i++) expect(cells[i]).toBe(false);
+    for (let i = arm + gap; i < arm + gap + BOX_STYLE.dashOn; i++) expect(cells[i]).toBe(true);
+    expect(cells[arm + gap + BOX_STYLE.dashOn]).toBe(false);
+  });
+  it("the edge pattern is the same from both ends and anchored at the corners, at every size", () => {
+    for (const n of [1, 2, 5, 8, 9, 10, 11, 14, 22, 37, 60, 120, 300]) {
       const cells = Array.from({ length: n }, (_, i) => edgeLit(i, n, false));
-      expect(cells).toEqual([...cells].reverse());
-      for (let i = 0; i < Math.min(CORNER_ARM, n); i++) expect(cells[i]).toBe(true);
+      expect(cells, `n=${n}`).toEqual([...cells].reverse());
+      const { arm } = dashingFor(n, n);
+      if (n >= 2 * arm + dashingFor(n, n).gap) for (let i = 0; i < arm; i++) expect(cells[i], `n=${n} i=${i}`).toBe(true);
       expect(Array.from({ length: n }, (_, i) => edgeLit(i, n, true)).every(Boolean)).toBe(true);
     }
-    // a minimum box (9 cells) is four corner brackets
-    expect(Array.from({ length: 9 }, (_, i) => edgeLit(i, 9, false)).filter(Boolean)).toHaveLength(2 * CORNER_ARM);
+  });
+  it("a big box has longer arms and scarcer dashes than a small one; both stay within their limits", () => {
+    const sizes = [9, 12, 20, 40, 80, 160, 400, 1000];
+    const out = sizes.map((s) => dashingFor(s, s));
+    for (let i = 1; i < out.length; i++) {
+      expect(out[i]!.arm).toBeGreaterThanOrEqual(out[i - 1]!.arm);
+      expect(out[i]!.gap).toBeGreaterThanOrEqual(out[i - 1]!.gap);
+    }
+    expect(out[out.length - 1]!.arm).toBeGreaterThan(out[0]!.arm);
+    expect(out[out.length - 1]!.gap).toBeGreaterThan(out[0]!.gap);
+    for (const { arm, gap } of out) {
+      expect(arm).toBeGreaterThanOrEqual(BOX_STYLE.arm.min);
+      expect(arm).toBeLessThanOrEqual(BOX_STYLE.arm.max);
+      expect(gap).toBeGreaterThanOrEqual(BOX_STYLE.gap.min);
+      expect(gap).toBeLessThanOrEqual(BOX_STYLE.gap.max);
+    }
+    // a big box's arms are noticeable (at least 12 cells) while its dashes are a small share of the edge
+    const big = dashingFor(300, 300);
+    expect(big.arm).toBeGreaterThanOrEqual(12);
+    let lit = 0;
+    for (let i = 0; i < 300; i++) if (edgeLit(i, 300, false)) lit++;
+    expect(lit - 2 * big.arm).toBeLessThan(0.3 * 300); // the dashes between the arms light less than a third of the edge
+  });
+  it("a tiny box never has overflowing or overlapping arms: it degrades to a plain solid outline", () => {
+    for (let n = 1; n <= 7; n++) expect(Array.from({ length: n }, (_, i) => edgeLit(i, n, false)).every(Boolean), `n=${n}`).toBe(true);
+    // wherever it is dashed, two arms and a gap fit: the arms never overlap
+    for (let n = 1; n <= 400; n++) {
+      const { arm, gap } = dashingFor(n, n);
+      const lit = Array.from({ length: n }, (_, i) => edgeLit(i, n, false));
+      if (!lit.every(Boolean)) expect(n).toBeGreaterThanOrEqual(2 * arm + gap);
+    }
+    // a box that is wide and short follows its smaller side, so the four corners match
+    expect(dashingFor(400, 12)).toEqual(dashingFor(12, 12));
+    // drawn: a 7 x 7 box is a complete outline
+    const b = new PixelBuffer(9, 9);
+    drawBox(b, { c0: 1, r0: 1, c1: 8, r1: 8 }, T, { alpha: 1, fillAlpha: 0 });
+    for (let i = 1; i < 8; i++) for (const [x, y] of [[i, 1], [i, 7], [1, i], [7, i]] as const) expect(b.get(x, y)).toBe(T.ink);
   });
   it("the selected, focused or hovered box is one uninterrupted line, one cell thick: no ring, no doubling", () => {
     const b = new PixelBuffer(12, 10);

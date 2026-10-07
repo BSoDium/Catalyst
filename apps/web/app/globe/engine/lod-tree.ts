@@ -11,31 +11,36 @@
  *     square around the point with a half side of `viewRadiusKm / 1.25` km (so the box of a place the camera is framed on
  *     fits the free area with the existing 25 % margin). Either way it is at least `LOD.minBoxCells` art cells across (per
  *     axis), so a far away place is a small rectangle, never a dot. A group's rectangle is the union of the TRUE boxes of its
- *     visible places, clamped to the same minimum, `padCells` of room around it. A rectangle bigger than `LOD.sizeFadeFrom` of the smaller free side fades out (gone at `sizeFadeTo`): you are
- *     inside it, it is just an outline.
+ *     visible places, clamped to the same minimum, `padCells` of room around it. A rectangle bigger than `LOD.sizeFadeTo` times the smaller free side is hidden
+ *     (shown again below `sizeFadeFrom`): you are inside it, it is just an outline.
  *   - THE FILL. A rectangle drawn at the minimum size (larger than its true box) has its interior MASKED in the page colour
  *     (so the small area reads as outlined and empty, like an erased marker dot); as its true side goes from `fillFadeFrom`
- *     to `fillFadeTo` times the minimum the mask fades out, leaving the hollow outline you can see through. `fillAlpha` is
- *     its OPACITY per node (0 = hollow), already multiplied by the node's alpha.
+ *     to `fillFadeTo` times the minimum the mask is switched off (a hysteresis band, `fillHyst`), leaving the hollow outline you can
+ *     see through. `fillAlpha` is its OPACITY per node (0 = hollow), already multiplied by the node's alpha.
  *   - THE CUT. Every place that passes the visibility rule (front hemisphere, clear of the limb: engine/visibility.ts) counts.
  *     Top down from the roots, a group OPENS (is replaced by its children) when its children, each as the rectangle and the
  *     label it would be drawn with, do not collide: the nearest two are `LOD.sepPx` or more apart (a signed gap: negative when
- *     they overlap); the group is closed at a gap of `sepClosedPx` or less and open from `sepPx`, and the cross-fade between
- *     is the hysteresis (a camera jittering around the threshold cannot flap, it only moves the tone). A group with
- *     one visible place is that place's rectangle. A group box bigger than `boxMaxFrom` of the screen opens whatever the
- *     spacing, and every group is open from street scale (`forceOpenZoom`: places at the same spot cannot be told apart).
+ *     they overlap); it CLOSES again at `LOD.sepClosedPx` or less, and in between it keeps the state it has (a hysteresis band, so a
+ *     camera jittering around the threshold cannot flap). A group with one visible place is that place's rectangle. A group box
+ *     bigger than `boxMaxFrom` of the screen opens whatever the spacing, and every group is open from street scale
+ *     (`forceOpenZoom`: places at the same spot cannot be told apart).
  *   - So a place alone, and a group whose members are spread out, are never boxed together: a lone place is its own rectangle
  *     at every zoom, a country with two distant places shows two rectangles, ten places 50 km apart are one rectangle (the
  *     group, with a chip "10 entries") until you zoom in, and continents and subregions are only drawn on crowded views.
  *
- *   c(g)      = openness, 0 (the group's rectangle) to 1 (its children), a smoothstep of rho (or of the box size)
- *   e(root) = 1,  e(child) = e(parent) * c(parent),  alpha(g) = e(g) * (1 - c(g)) * fade(g),  alpha(place) = e(place) * fade
+ * BINARY STATE, TIMED TRANSITIONS (docs/web-architecture.md, "Binary visibility"). The cut decides only a TARGET per node: drawn or
+ * not, with the hysteresis above (the same for the box that is "bigger than the screen", `sizeFadeFrom` .. `sizeFadeTo`, and for the
+ * interior mask, `fillHyst`). The opacity of a node is its own `FadeArray` value (engine/fade.ts), run towards the target by TIME over
+ * `FADE_MS` whatever the camera does, so at rest every node is fully drawn or not drawn at all, never half way, and the group that
+ * closes and the places that come in swap over the same 200 ms (their opacities sum to 1 on the way). A node's opacity never depends on
+ * its parent's: a place whose ancestors are all open (none is drawn) is drawn at full opacity, London under an open Europe included.
+ * The one thing that is not timed is geometry: a place that goes over the globe's limb, and a group left without a visible place,
+ * vanish at once (a fading box there would be drawn at a mirrored position behind the globe).
  *
- * so along any root-to-leaf branch the alphas of the rectangles on it ALWAYS sum to 1 (a partition of unity; `fade` is the
- * "you are inside it" fade of a place's own huge box, which has no children to hand over to): the children come in, inside
- * the group's rectangle, exactly as fast as it goes out; nothing pops and no place is ever missing. Alpha is a continuous
- * function of the camera and IS the opacity the rectangle, its mask and its label are drawn with (engine/pixel-labels.ts:
- * a real alpha blend per art cell, never a shade of grey); reduced motion switches at once (`reducedBand` hysteresis).
+ *   alpha(node) = ease(progress(node)),  progress runs 0 -> 1 (target drawn) or 1 -> 0 (target hidden) at 1 / FADE_MS per ms
+ *
+ * The alpha is the opacity the rectangle, its mask and its label are drawn with (engine/pixel-labels.ts: a real alpha blend per art
+ * cell, never a shade of grey). Reduced motion: the same targets, and the transition is an instant switch.
  *
  * The camera is the unified one (`zu`, street/core/registration.ts), projected here with the globe model (the street map
  * is registered to it under a pixel), so both renderers get the same decision. Cost per camera change: one projection of
@@ -45,6 +50,7 @@
 import { DEFAULT_VIEW_RADIUS_KM, EARTH_RADIUS_KM, bboxExtentsKm, type Bbox } from "./framing";
 import { lonLatToVec3, viewBasis, projectUnit, zoomToRadiusPx, focalPx, type ScreenPoint } from "./geo";
 import { placeLabelTexts } from "./country-names";
+import { FadeArray, clockStep, easeFade } from "./fade";
 import { chipText, labelLayout } from "./pixel-labels";
 import { TUNING } from "./tuning";
 import { markerShown } from "./visibility";
@@ -58,41 +64,43 @@ export const LOD = {
   halfSideDivisor: 1.25,
   /** A box is at least this many art cells across (9 cells = 22 CSS px at 2.5 px): far away places are small rectangles, not dots. */
   minBoxCells: 9,
-  /** The fill of a box at the minimum size fades while its TRUE side goes from this to `fillFadeTo` times the minimum (hollow from there). */
+  /** The mask of a box at the minimum size: its TRUE side as a multiple of the minimum goes from `fillFadeFrom` (masked) to `fillFadeTo` (hollow); the switch has the hysteresis `fillHyst`. */
   fillFadeFrom: 1,
   fillFadeTo: 1.6,
+  /** The mask is switched off once `1 - smoothstep(side ratio)` falls to `off` and back on once it rises to `on`; in between it keeps its state. */
+  fillHyst: { off: 0.3, on: 0.7 },
   /** A group's rectangle has this many cells of room around the union of its places' rectangles (so a child's outline never coincides with it). */
   padCells: 2,
   /**
    * Two sibling rectangles (each with the label it carries) whose signed gap is below this, in CSS px, "collide": the group
-   * above them stays one rectangle. `sepClosedPx` or less = closed, `sepPx` or more = open, a smoothstep between: the
-   * cross-fade, about 0.4 zoom levels for a pair. Raise `sepPx` to cluster more, lower it to show more rectangles.
+   * above them stays one rectangle. A group CLOSES at a gap of `sepClosedPx` or less and OPENS at `sepPx` or more; in between it
+   * keeps its state (hysteresis). Raise `sepPx` to cluster more, lower it to show more rectangles.
    */
   sepPx: 30,
   sepClosedPx: 10,
-  /** A group's rectangle wider (or taller) than this fraction of the smaller free side starts to open whatever the spacing (fully open at `boxMaxTo`). */
+  /** A group's rectangle wider (or taller) than `boxMaxTo` of the smaller free side opens whatever the spacing; it may close again below `boxMaxFrom`. */
   boxMaxFrom: 0.45,
   boxMaxTo: 0.6,
-  /** A rectangle bigger than this multiple of the smaller free side fades out (gone at `sizeFadeTo`): you are inside it. */
+  /** A rectangle bigger than `sizeFadeTo` times the smaller free side is hidden (you are inside it); it comes back below `sizeFadeFrom`. */
   sizeFadeFrom: 1.6,
   sizeFadeTo: 2.2,
-  /** Every group is open from this unified zoom (street scale: places at the same spot cannot be told apart); closed below `forceOpenZoom - forceOpenSpan`. */
+  /** Every group is open from this unified zoom (street scale: places at the same spot cannot be told apart); closed again below `forceOpenZoom - forceOpenSpan`. */
   forceOpenZoom: 13,
   forceOpenSpan: 0.5,
-  /** A node with alpha below this is not drawn at all. */
+  /** A node with alpha below this is not drawn at all (the last frames of a fade). */
   alphaMin: 0.06,
-  /** Reduced motion: a group opens at a gap of `mid + band` and closes below `mid - band`, `mid` being half way between `sepClosedPx` and `sepPx` (CSS px). */
-  reducedBand: 3,
   /** A place with neither a bounding box nor a view radius gets this radius (km; framing.ts `DEFAULT_VIEW_RADIUS_KM`). */
   defaultPlaceRadiusKm: DEFAULT_VIEW_RADIUS_KM,
   /** A node can be picked once it is at least this opaque (a ghost mid-fade is not a target). */
   pickAlphaMin: 0.3,
-  /** Labels are not drawn below this alpha (the node's own minimum: a label fades in and out with its rectangle, it does not pop in at a threshold). */
+  /** A label is not drawn below this opacity (the last frames of its fade). */
   labelAlphaMin: 0.06,
-  /** A drawn box whose label lost its place to a better one is dimmed to this fraction of its opacity (it stays a target; its label shows on hover). */
+  /** A box whose label lost its place to a better one, while a group above it is drawn, is dimmed to this fraction of its opacity (a binary state, engine/label-plan.ts; it stays a target, its label shows on hover). */
   unlabelledAlpha: 0.4,
   /** Label priority: selected and focused first, then places before groups. */
   placePriorityBonus: 30,
+  /** A label that is drawn keeps its place against a challenger of up to this much more score (hysteresis of the label plan). */
+  labelHold: 20,
 } as const;
 
 const smooth = (t: number) => {
@@ -208,17 +216,30 @@ export class LodTree {
   private readonly groups: Int32Array;
   private readonly bySlug = new Map<string, number>();
 
-  // ---- the result of the last `update` (valid until the next one) -------------------------------------------------------
-  /** Number of nodes drawn (alpha at least `LOD.alphaMin`, or forced). */
+  // ---- the result of the last `update` / `advance` (valid until the next one) ----------------------------------------------
+  /** Number of nodes drawn (alpha at least `LOD.alphaMin`). */
   count = 0;
-  /** Their indices, in traversal order (parents before children). */
+  /** Their indices, parents before children. */
   readonly visible: Int32Array;
-  /** Alpha per node index (only meaningful for visible ones). */
+  /** Alpha per node index (only meaningful for visible ones): the node's own timed opacity, never its parent's. */
   readonly alpha: Float32Array;
   /** Alpha as a palette step per node index (1 .. the ink level): a debugging summary, drawing uses `alpha`. */
   readonly level: Uint8Array;
   /** Opacity of the interior mask per node index (0 = hollow .. 1), node alpha included. */
   readonly fillAlpha: Float32Array;
+  /**
+   * The timed on/off values (engine/fade.ts), one per node, shared by every host of the tree (the globe's and the street map's
+   * overlay), so the picture does not restart at the handover: the node itself (`life`, set by the cut), its interior mask
+   * (`mask`, set by the cut), its label and its dim (`label`, `dim`, set by the box scene's label plan).
+   */
+  readonly life: FadeArray;
+  readonly mask: FadeArray;
+  readonly label: FadeArray;
+  readonly dim: FadeArray;
+  /** The label position (index of the candidate, engine/pixel-labels.ts `labelCandidates`) a node's label has, kept while it fades out. */
+  readonly labelSlot: Int8Array;
+  /** 1 for a node that has just appeared (its label and dim start in their state instead of fading towards it); the box scene clears it. */
+  readonly born: Uint8Array;
   /** Side in CSS px of a node's TRUE box (a place: its extent without the minimum; a group: the union of its places' drawn boxes, without the padding). */
   readonly side: Float64Array;
   /** Visible places below a group (a group's rectangle wraps only these). */
@@ -246,13 +267,17 @@ export class LodTree {
   cacheHits = 0;
 
   private inkTop = 11;
+  /** Persistent decisions (the hysteresis memory): a group is open, a node's box is hidden for being bigger than the screen, an interior mask is on. */
   private readonly open: Uint8Array;
-  /** Reduced motion: whether a node's fill is on (switches with a hysteresis band instead of fading). */
+  private readonly decided: Uint8Array;
+  private readonly bigHidden: Uint8Array;
   private readonly fillOn: Uint8Array;
-  private readonly seen: Uint32Array;
-  private epoch = 0;
+  /** What the last evaluation wants drawn, and the mask each of those wants. */
+  private readonly want: Uint8Array;
+  private readonly wantFill: Uint8Array;
+  /** Node indices by depth, parents first: the order of `visible`. */
+  private readonly byDepth: Int32Array;
   private readonly stack: Int32Array;
-  private readonly stackE: Float32Array;
   private readonly sx0: Float64Array;
   private readonly sy0: Float64Array;
   private readonly sx1: Float64Array;
@@ -263,6 +288,8 @@ export class LodTree {
   private lastForced0 = -2;
   private lastForced1 = -2;
   private lastReduced = false;
+  private lastNow = 0;
+  private rebuild = true;
   /** More places that are always drawn (the stops of the selected place's routes); set by `setExtraForced`. */
   private extra: number[] = [];
   private scratch: ScreenPoint = { x: 0, y: 0, visible: false, facing: 0 };
@@ -353,8 +380,19 @@ export class LodTree {
     this.alpha = new Float32Array(n);
     this.level = new Uint8Array(n);
     this.fillAlpha = new Float32Array(n);
+    this.life = new FadeArray(n);
+    this.mask = new FadeArray(n);
+    this.label = new FadeArray(n);
+    this.dim = new FadeArray(n);
+    this.labelSlot = new Int8Array(n);
+    this.born = new Uint8Array(n);
     this.side = new Float64Array(n);
     this.fillOn = new Uint8Array(n);
+    this.want = new Uint8Array(n);
+    this.wantFill = new Uint8Array(n);
+    this.decided = new Uint8Array(n);
+    this.bigHidden = new Uint8Array(n);
+    this.byDepth = Int32Array.from({ length: n }, (_, i) => i).sort((a, b) => this.depth[a]! - this.depth[b]! || a - b);
     this.members = new Int32Array(n);
     this.boxX0 = new Float64Array(n);
     this.boxY0 = new Float64Array(n);
@@ -368,9 +406,7 @@ export class LodTree {
     this.py = new Float64Array(n);
     this.shown = new Uint8Array(n);
     this.open = new Uint8Array(n);
-    this.seen = new Uint32Array(n);
     this.stack = new Int32Array(n + 1);
-    this.stackE = new Float32Array(n + 1);
     let widest = 1;
     for (let g = 0; g < n; g++) widest = Math.max(widest, counts[g + 1]! - counts[g]!);
     this.sx0 = new Float64Array(widest);
@@ -411,8 +447,9 @@ export class LodTree {
   }
 
   /**
-   * Evaluate the camera: fills `count`, `visible`, `alpha`, `level`, `members` and the rectangles. `forced0` and `forced1`
-   * (node indices or -1: the selected and the focused place) are always drawn at full alpha. Cached while nothing changed.
+   * Decide the cut for a camera: what each node WANTS (drawn or not) and the geometry of every rectangle (`members`, the
+   * `box*` arrays, `side`). `forced0` and `forced1` (node indices or -1: the selected and the focused place) are always wanted.
+   * Cached while the camera and the forced nodes are the same. It sets targets only; the opacities are `advance`'s.
    */
   update(cam: LodCamera, forced0: number, forced1: number, reduced: boolean): number {
     const k = this.key;
@@ -446,20 +483,102 @@ export class LodTree {
     this.lastForced1 = forced1;
     this.lastReduced = reduced;
     this.evaluations++;
-    this.evaluate(cam, forced0, forced1, reduced);
+    this.evaluate(cam, forced0, forced1);
+    this.retarget();
+    this.rebuild = true;
     return this.count;
   }
 
-  /** Alpha of every drawn node for a camera, for tests and checks (allocates; not for frames). */
+  /** True while some transition (a node, a mask, a label, a dim) has not reached its target: the host's frame loop must keep going. */
+  get animating(): boolean {
+    return this.life.moving || this.mask.moving || this.label.moving || this.dim.moving;
+  }
+
+  /**
+   * Move every transition forward to the clock reading `now` (ms, any origin) and refresh the drawn list, `alpha` and `fillAlpha`.
+   * Call it once per frame after `update`. Returns `animating`. A reduced-motion camera switches at once.
+   */
+  advance(now: number): boolean {
+    const dt = clockStep(this.lastNow, now);
+    this.lastNow = now;
+    const instant = this.lastReduced;
+    const moved = this.animating;
+    if (moved) {
+      this.life.step(dt, instant);
+      this.mask.step(dt, instant);
+      this.label.step(dt, instant);
+      this.dim.step(dt, instant);
+    }
+    if (moved || this.rebuild) this.build();
+    return this.animating;
+  }
+
+  /** Run every transition to its end now (tests and the checks' resting frame; the next `advance` redraws). */
+  settle(): void {
+    this.life.settle();
+    this.mask.settle();
+    this.label.settle();
+    this.dim.settle();
+    this.build();
+  }
+
+  /**
+   * Whether some ancestor group of node `i` is drawn: the cut wants its box and it has places in view. A group on its way out
+   * (it opened) does not count, so the places that replace it are not treated as its subordinates while it fades.
+   */
+  hasDrawnAncestor(i: number): boolean {
+    for (let a = this.parent[i]!; a >= 0; a = this.parent[a]!) if (this.members[a]! > 0 && this.life.target[a] === 1) return true;
+    return false;
+  }
+
+  /** Alpha of every drawn node at rest for a camera, for tests and checks (allocates; not for frames). */
   alphas(cam: LodCamera, reduced = false): Map<string, number> {
     this.keyValid = false;
     this.update(cam, -1, -1, reduced);
+    this.settle();
     const out = new Map<string, number>();
     for (let j = 0; j < this.count; j++) out.set(this.slug[this.visible[j]!]!, this.alpha[this.visible[j]!]!);
     return out;
   }
 
-  private evaluate(cam: LodCamera, forced0: number, forced1: number, reduced: boolean) {
+  /** Hand the cut's wants to the transitions, and snap what must not fade (geometry: a limb crossing, a group left empty). */
+  private retarget() {
+    for (let i = 0; i < this.size; i++) {
+      const on = this.want[i] === 1;
+      const geometry = this.isGroup[i] ? this.members[i]! > 0 : this.shown[i] === 1;
+      if (!geometry) {
+        // Nothing to draw it from: a fade would show it where the globe's far side is, mirrored. It goes at once.
+        this.life.snap(i, false);
+        this.mask.snap(i, false);
+        continue;
+      }
+      if (on && this.life.target[i] === 0 && this.life.p[i] === 0) {
+        // Just appeared: its interior, its label and its dim begin in their state, so only the node itself fades in.
+        this.born[i] = 1;
+        this.mask.snap(i, this.wantFill[i] === 1);
+      } else if (on) this.mask.set(i, this.wantFill[i] === 1);
+      this.life.set(i, on);
+    }
+  }
+
+  /** The drawn list (parents first), the opacities and the mask opacities from the transitions' state. */
+  private build() {
+    this.rebuild = false;
+    let count = 0;
+    for (const i of this.byDepth) {
+      const p = this.life.p[i]!;
+      if (p === 0) continue;
+      const a = easeFade(p);
+      if (a < LOD.alphaMin) continue;
+      this.alpha[i] = a;
+      this.level[i] = Math.max(1, Math.min(this.inkTop, Math.round(a * this.inkTop)));
+      this.fillAlpha[i] = a * this.mask.value(i);
+      this.visible[count++] = i;
+    }
+    this.count = count;
+  }
+
+  private evaluate(cam: LodCamera, forced0: number, forced1: number) {
     const cell = cam.cell;
     const minHalf = (LOD.minBoxCells * cell) / 2;
     const pad = LOD.padCells * cell;
@@ -538,83 +657,66 @@ export class LodTree {
       y1[g] = cy + hy;
     }
 
-    // 2. top down: a group opens when its children do not collide (or when its rectangle would be too big)
+    // 2. top down: which nodes the cut wants drawn. A group opens when its children do not collide (or its rectangle is too big),
+    // closes when they are well apart again, and keeps its state in between.
     const stack = this.stack;
-    const stackE = this.stackE;
-    const epoch = ++this.epoch;
+    const want = this.want;
+    want.fill(0);
     let sp = 0;
-    let count = 0;
     let visited = 0;
-    for (let r = this.roots.length - 1; r >= 0; r--) {
-      stack[sp] = this.roots[r]!;
-      stackE[sp++] = 1;
-    }
+    for (let r = this.roots.length - 1; r >= 0; r--) stack[sp++] = this.roots[r]!;
     const ref = cam.refPx;
     const sepPx = LOD.sepPx;
+    const sepMid = (sepPx + LOD.sepClosedPx) / 2;
     while (sp > 0) {
-      sp--;
-      const i = stack[sp]!;
-      const e = stackE[sp]!;
+      const i = stack[--sp]!;
       visited++;
       const w = x1[i]! - x0[i]!;
       const h = y1[i]! - y0[i]!;
       const frac = Math.max(w, h) / ref;
-      // a rectangle bigger than the screen is an outline you are inside: it fades out
-      let inside = 1 - smooth((frac - LOD.sizeFadeFrom) / (LOD.sizeFadeTo - LOD.sizeFadeFrom));
-      if (reduced) inside = inside >= 0.5 ? 1 : 0; // no fade under reduced motion: it is simply there or not
+      // a rectangle bigger than the screen is an outline you are inside: hidden (with a hysteresis band)
+      const hidden = this.bigHidden[i]! ? frac > LOD.sizeFadeFrom : frac >= LOD.sizeFadeTo;
+      this.bigHidden[i] = hidden ? 1 : 0;
       if (!this.isGroup[i]) {
-        const a = e * inside;
-        if (this.shown[i] && a >= LOD.alphaMin) this.emit(i, a, count++, epoch, cam, reduced);
+        if (this.shown[i] && !hidden) this.mark(i, cam);
         continue;
       }
       const n = members[i]!;
       if (n === 0) continue;
-      // openness
-      let c = 1;
+      let open = true;
       if (n > 1) {
         const gap = this.nearestGap(i, cam);
-        if (reduced) {
-          let st = this.open[i]!;
-          if (st === 0 && (gap >= (sepPx + LOD.sepClosedPx) / 2 + LOD.reducedBand || frac >= LOD.boxMaxTo || cam.zoom >= LOD.forceOpenZoom)) st = 1;
-          else if (st === 1 && gap < (sepPx + LOD.sepClosedPx) / 2 - LOD.reducedBand && frac < LOD.boxMaxFrom && cam.zoom < LOD.forceOpenZoom) st = 0;
-          this.open[i] = st;
-          c = st;
-        } else {
-          const bySpacing = gap === Infinity ? 1 : smooth((gap - LOD.sepClosedPx) / (sepPx - LOD.sepClosedPx));
-          const bySize = smooth((frac - LOD.boxMaxFrom) / (LOD.boxMaxTo - LOD.boxMaxFrom));
-          const byZoom = smooth((cam.zoom - (LOD.forceOpenZoom - LOD.forceOpenSpan)) / LOD.forceOpenSpan);
-          c = Math.max(bySpacing, bySize, byZoom);
-          this.open[i] = c > 0.5 ? 1 : 0; // keeps the reduced-motion switch coherent when the preference flips
-        }
-      } else this.open[i] = 1;
-      const a = e * (1 - c);
-      // a group of one visible place is that place's rectangle (c = 1); its own rectangle is drawn only when it is shut
-      if (a * inside >= LOD.alphaMin) this.emit(i, a * inside, count++, epoch, cam, reduced);
-      const ec = e * c;
-      if (ec >= LOD.alphaMin) {
+        const deep = cam.zoom >= LOD.forceOpenZoom;
+        // strongly open (children well apart, rectangle too big, street scale) / strongly closed; in between the state is kept
+        if (gap >= sepPx || frac >= LOD.boxMaxTo || deep) this.open[i] = 1;
+        else if (gap <= LOD.sepClosedPx && frac <= LOD.boxMaxFrom && cam.zoom < LOD.forceOpenZoom - LOD.forceOpenSpan) this.open[i] = 0;
+        else if (!this.decided[i]) this.open[i] = gap >= sepMid || frac >= (LOD.boxMaxFrom + LOD.boxMaxTo) / 2 || cam.zoom >= LOD.forceOpenZoom - LOD.forceOpenSpan / 2 ? 1 : 0;
+        this.decided[i] = 1;
+        open = this.open[i] === 1;
+      } else this.open[i] = 1; // a group of one visible place is that place's rectangle
+      if (open) {
         const from = this.childStart[i]!;
-        const to = this.childStart[i + 1]!;
-        for (let j = to - 1; j >= from; j--) {
-          stack[sp] = this.childList[j]!;
-          stackE[sp++] = ec;
-        }
-      }
+        for (let j = this.childStart[i + 1]! - 1; j >= from; j--) stack[sp++] = this.childList[j]!;
+      } else if (!hidden) this.mark(i, cam);
     }
-    // The selected, the focused place and the stops of the shown routes are always drawn.
+    // The selected, the focused place and the stops of the shown routes are always wanted.
     const extra = this.extra;
     for (let n = 0; n < 2 + extra.length; n++) {
       const i = n === 0 ? forced0 : n === 1 ? forced1 : extra[n - 2]!;
       if (i < 0 || i >= this.size || this.isGroup[i]) continue;
-      if (this.seen[i] === epoch) {
-        this.alpha[i] = 1;
-        this.level[i] = this.inkTop;
-        this.fillAlpha[i] = this.fillFor(i, 1, cam, reduced);
-      } else {
-        this.emit(i, 1, count++, epoch, cam, reduced);
-      }
+      this.mark(i, cam);
     }
-    this.count = count;
     this.visited = visited;
+  }
+
+  /** Node `i` is wanted drawn, with the interior mask the switch (with its hysteresis) says. */
+  private mark(i: number, cam: LodCamera) {
+    this.want[i] = 1;
+    const minSide = LOD.minBoxCells * cam.cell;
+    const f = 1 - smooth((this.side[i]! / minSide - LOD.fillFadeFrom) / (LOD.fillFadeTo - LOD.fillFadeFrom));
+    const on = this.fillOn[i]! ? f > LOD.fillHyst.off : f > LOD.fillHyst.on;
+    this.fillOn[i] = on ? 1 : 0;
+    this.wantFill[i] = this.fillOn[i]!;
   }
 
   /**
@@ -660,31 +762,6 @@ export class LodTree {
       }
     }
     return best;
-  }
-
-  /** Record node `i` as drawn with opacity `a`, and its interior mask (from the node's true size). */
-  private emit(i: number, a: number, slot: number, epoch: number, cam: LodCamera, reduced: boolean) {
-    this.seen[i] = epoch;
-    this.level[i] = Math.max(1, Math.min(this.inkTop, Math.round(a * this.inkTop)));
-    this.fillAlpha[i] = this.fillFor(i, a, cam, reduced);
-    this.alpha[i] = a;
-    this.visible[slot] = i;
-  }
-
-  /**
-   * The opacity of the interior mask of a rectangle: the page colour at the node's alpha while the rectangle is CLAMPED to the
-   * minimum size (drawn larger than its true box), fading to hollow as its true side goes from `fillFadeFrom` to `fillFadeTo`
-   * times the minimum. Reduced motion: on or off, with a hysteresis band.
-   */
-  private fillFor(i: number, a: number, cam: LodCamera, reduced: boolean): number {
-    const minSide = LOD.minBoxCells * cam.cell;
-    const f = 1 - smooth((this.side[i]! / minSide - LOD.fillFadeFrom) / (LOD.fillFadeTo - LOD.fillFadeFrom));
-    if (reduced) {
-      const on = this.fillOn[i]! ? f > 0.3 : f > 0.7;
-      this.fillOn[i] = on ? 1 : 0;
-      return on ? a : 0;
-    }
-    return f * a;
   }
 }
 
