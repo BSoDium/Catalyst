@@ -1,5 +1,5 @@
 /**
- * The data credits of the map, shown by the info button's dialog (components/attribution-button.tsx). Pure.
+ * The data credits of the map, shown by the Credits link's dialog (components/attribution-button.tsx). Pure.
  * Licence background: docs/street-zoom-spike.md ("Data attribution and licences").
  */
 import { isPmtilesUrl } from "./source-descriptor";
