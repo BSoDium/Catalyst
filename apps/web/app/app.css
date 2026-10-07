@@ -13,7 +13,7 @@
   --background: #fbfbfb;
   --foreground: #0a0a0a;
   --muted-foreground: #595959;
-  /* Quieter than muted text, still AA against the page (4.9:1): the map credits link. Dimmer by colour, never by opacity. */
+  /* Quieter than muted text, still AA against the page (4.9:1): the map credits line. Dimmer by colour, never by opacity. */
   --subtle-foreground: #6f6f6f;
   --border: rgb(0 0 0 / 0.14);
   --border-strong: rgb(0 0 0 / 0.4);
@@ -123,14 +123,6 @@
     outline: 2px solid var(--ring);
     outline-offset: 2px;
     border-radius: var(--radius-sm);
-  }
-
-  /* The map's "Credits" link sits over the map: a page-colour halo keeps its dim text readable on a coastline (colour, not opacity). */
-  .credits-link {
-    text-shadow:
-      0 0 3px var(--background),
-      0 0 3px var(--background),
-      0 0 6px var(--background);
   }
 
   :target {

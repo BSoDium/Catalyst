@@ -35,9 +35,9 @@ try {
     const s = await statuses(page);
     expect("A primary blocked -> fallback", s.at(-1).state === "fallback" && s.at(-1).reason === "probe-failed", { ms_from_navigation: dt, s });
     await page.waitForFunction(() => window.__streetDebug.map().areTilesLoaded());
-    await page.click("[data-attribution]");
+    await page.click("[data-attribution] button");
     const credits = await page.locator("dialog[open]").innerText();
-    expect("A the Credits link opens the credits (OpenStreetMap, Protomaps)", credits.includes("OpenStreetMap contributors") && credits.includes("Protomaps"), credits);
+    expect("A the credits line's See more button opens the credits (OpenStreetMap, Protomaps)", credits.includes("OpenStreetMap contributors") && credits.includes("Protomaps"), credits);
     await page.keyboard.press("Escape");
     await page.waitForSelector("dialog[open]", { state: "detached" });
     expect("A no page errors", !logs.some((l) => l.startsWith("pageerror")), logs.slice(0, 5));

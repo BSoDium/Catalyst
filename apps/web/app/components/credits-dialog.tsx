@@ -15,9 +15,10 @@ interface CreditsDialogProps {
 }
 
 /**
- * The map's data credits in a native modal `<dialog>`: `showModal()` makes the rest of the page inert (the focus trap), the
+ * The map's data credits in a native modal `<dialog>` (opened by the credits line's "See more" button, components/attribution-button.tsx): `showModal()` makes the rest of the page inert (the focus trap), the
  * top layer puts it above the globe and the detail panel, Escape and a click outside the panel close it. Motion fades it in
  * and out (instant under reduced motion). The links are real, with the credit wording the licences ask for.
+ * Its borders are the soft `--border` hairline (the card's), not the strong one of the outlined buttons.
  * Rendered in a portal on `document.body`, so no `aria-hidden` or faded ancestor of the globe reaches it.
  */
 export function CreditsDialog({ open, credits, reducedMotion, onClose, onClosed }: CreditsDialogProps) {
@@ -74,7 +75,7 @@ export function CreditsDialog({ open, credits, reducedMotion, onClose, onClosed 
             animate={{ y: 0 }}
             exit={reducedMotion ? undefined : { y: 8 }}
             transition={fade}
-            className="w-full max-w-md rounded-md border border-border-strong bg-background p-5 sm:p-6"
+            className="w-full max-w-md rounded-md border border-border bg-background p-5 sm:p-6"
           >
             <h2 id={headingId} className="text-lg font-medium">
               Map credits
@@ -92,7 +93,7 @@ export function CreditsDialog({ open, credits, reducedMotion, onClose, onClosed 
               ))}
             </ul>
             <div className="mt-6 flex justify-end">
-              <Button variant="outline" size="sm" onClick={onClose}>
+              <Button variant="outline" size="sm" className="border-border" onClick={onClose}>
                 Close
               </Button>
             </div>

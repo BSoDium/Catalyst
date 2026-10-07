@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { attributionFor, attributionText } from "./attribution";
+import { attributionFor, attributionLine, attributionText } from "./attribution";
 
 const OFM = "https://tiles.openfreemap.org/planet";
 const text = (primaryUrl: string, fallbackPmtilesUrl: string | null = null) => attributionText(attributionFor({ primaryUrl, fallbackPmtilesUrl }));
@@ -26,5 +26,19 @@ describe("attribution per tile configuration", () => {
   });
   it("a malformed primary URL does not throw", () => {
     expect(text("not a url")).toBe("© OpenStreetMap contributors · Natural Earth");
+  });
+  it("the one-line summary abbreviates the main contributors in priority order and leaves the schema to the dialog", () => {
+    const line = (primaryUrl: string, fallbackPmtilesUrl: string | null = null) => attributionLine(attributionFor({ primaryUrl, fallbackPmtilesUrl }));
+    expect(line(OFM)).toEqual(["© OpenStreetMap", "OpenFreeMap", "Natural Earth"]);
+    expect(line(OFM, "https://t.example/x.pmtiles")).toEqual(["© OpenStreetMap", "OpenFreeMap", "Protomaps", "Natural Earth"]);
+    expect(line("https://t.example/x.pmtiles")).toEqual(["© OpenStreetMap", "Protomaps", "Natural Earth"]);
+    expect(line("https://tiles.example.org/planet")).toEqual(["© OpenStreetMap", "Natural Earth"]);
+    expect(attributionLine(attributionFor(null))).toEqual(["Natural Earth"]);
+  });
+  it("every credit of the dialog is still there, and the courtesy credit is always the last one of the line", () => {
+    const parts = attributionFor({ primaryUrl: OFM, fallbackPmtilesUrl: "https://t.example/x.pmtiles" });
+    expect(parts.map((p) => p.text)).toContain("OpenMapTiles");
+    expect(attributionLine(parts).at(-1)).toBe("Natural Earth");
+    expect(attributionLine(parts).length).toBeLessThan(parts.length);
   });
 });
