@@ -70,11 +70,14 @@ To try a production build with the preview on your machine only: `pnpm build && 
 | `pnpm typecheck` | Type-check every package |
 | `pnpm test` | Unit tests across the workspace |
 | `pnpm test:scripts` | Tests of the repo scripts (leak-check helpers) |
+| `pnpm test:deploy` | Tests of the tile extraction plan (`deploy/tiles`) |
 | `pnpm check:leaks` | After `pnpm build`: fail on private vocabulary, a tracked/unignored preview file, or preview places inside a bundle |
 | `pnpm build` | Production builds of both Vercel projects (`apps/web`, `apps/api`) |
-| `pnpm validate:published ["$PWD/file"]` | Validate a projection against the contract incl. cross-references (default: the committed projection; pass an absolute path, pnpm runs the script in `packages/published`) |
+| `pnpm validate:published [file]` | Validate a projection against the contract incl. cross-references (default: the committed projection; a relative path is relative to the directory you typed the command in, run it from the repo root) |
 | `pnpm --filter @catalyst/schemas build:contract` | Regenerate `published.schema.json` (a test fails if it is stale) |
 | `pnpm --filter @catalyst/geodata generate` | Regenerate the globe datasets from Natural Earth |
+
+GitHub Actions (`.github/workflows/ci.yml`) runs `pnpm install --frozen-lockfile`, `typecheck`, `test`, `test:scripts`, `test:deploy`, `build` and `check:leaks` on every pull request and on pushes to `main`. It needs no secret. The browser, GPU and local-tile checks (`pnpm perf`, the Playwright scripts) are not part of it.
 
 ## Environment variables
 

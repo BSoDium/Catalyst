@@ -158,7 +158,7 @@ pnpm dev                                     # http://localhost:5173
 - Production build on your machine only, with the preview: `pnpm build && CATALYST_CONTENT=preview CATALYST_ALLOW_PREVIEW=1 pnpm --filter @catalyst/web start`.
 - Rehearse the real export without touching the public repo: `pnpm export --out out` in **[private]** (`out/` is git-ignored; delete it after). `pnpm export --out ../catalyst` really writes `projection.json` into your public working tree: normally leave that to CI.
 
-Before merging a publication PR, if you want more than the Vercel checks (the public repo has no GitHub CI): **[public]** `pnpm validate:published && pnpm typecheck && pnpm test && pnpm build && pnpm check:leaks`.
+Every pull request and every push to `main` runs the `ci` workflow (`.github/workflows/ci.yml`: install, `typecheck`, `test`, `test:scripts`, `test:deploy`, `build`, `check:leaks`; no secret needed). To make it a gate, mark the `check` job as required in the branch protection of `main` (GitHub setting, not in the repo). Before merging a publication PR you can run the same checks locally: **[public]** `pnpm validate:published && pnpm typecheck && pnpm test && pnpm test:scripts && pnpm test:deploy && pnpm build && pnpm check:leaks`.
 
 ### Phone testing
 
@@ -285,7 +285,7 @@ Two NEW projects from this repo (team `photonsquid`), created after the rebuild 
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | Public site shows an empty globe | Nothing is published yet (`projection.json` has 0 places); expected until the first publication PR is merged | Publish (section 5). To see your places meanwhile, section 3. |
-| Empty globe in `pnpm dev` although you made a preview | `CATALYST_CONTENT` set in your shell (`published` wins over the preview); or the preview file is invalid and the server fell back to empty (the dev server log says `[content] bundled "preview" projection is invalid`) | `unset CATALYST_CONTENT`; `pnpm validate:published "$PWD/packages/published/data/preview.projection.json"` (absolute path: pnpm runs it inside `packages/published`, so a relative path fails); re-run `pnpm export:preview --out ../catalyst` |
+| Empty globe in `pnpm dev` although you made a preview | `CATALYST_CONTENT` set in your shell (`published` wins over the preview); or the preview file is invalid and the server fell back to empty (the dev server log says `[content] bundled "preview" projection is invalid`) | `unset CATALYST_CONTENT`; `pnpm validate:published packages/published/data/preview.projection.json` (from the repo root); re-run `pnpm export:preview --out ../catalyst` |
 | Preview badge missing | The badge exists in dev only and only for preview or demo. Either the file did not exist when `pnpm dev` started (the startup line says "no local preview yet"), or `CATALYST_CONTENT` is set, or you are on a production build (`build`/`start`: no badge by design) | Run the export, restart `pnpm dev`, `unset CATALYST_CONTENT` |
 | `export:preview` refuses | `--out` is not the root of the public checkout (needs `packages/published`), or `preview.projection.json` is not git-ignored there | Use `--out ../catalyst`; check `.gitignore` of the public repo |
 | `pnpm validate` fails | Read the `ERROR [code]` lines. Common: `image-required` (published place without an approved image), `coordinates-required`, `media-metadata` (run `exiftool -all=`), `media-too-large` / `media-too-large-dimensions`, `media-missing`, `published-refs-unpublished` (a published record points at a non-published one), `filename-mismatch` (file name must equal slug), `duplicate-slug`, `unknown-country-code`, `curation-invalid` | Fix the file; media codes are only warnings for drafts. Code list: [editorial-workflow.md](../../catalyst-content/docs/editorial-workflow.md#validation-codes) |
@@ -341,9 +341,9 @@ pnpm dev                                     # preview if present, else publishe
 CATALYST_DEV_HOST=localhost pnpm dev         # this machine only
 pnpm dev:demo                                # made-up placeholder data
 pnpm dev:api                                 # API on :3001
-pnpm typecheck && pnpm test && pnpm test:scripts
-pnpm build && pnpm check:leaks               # production builds, then the leak scan
-pnpm validate:published ["$PWD/path/to/projection.json"]   # absolute path if you pass one
+pnpm typecheck && pnpm test && pnpm test:scripts && pnpm test:deploy
+pnpm build && pnpm check:leaks               # production builds, then the leak scan (what the ci workflow runs)
+pnpm validate:published [path/to/projection.json]          # default: the committed projection; run from the repo root
 pnpm --filter @catalyst/schemas build:contract            # regenerate published.schema.json after a contract change
 pnpm --filter @catalyst/web perf             # performance budgets (run on an idle machine)
 pnpm tiles:plan                              # optional: fallback tile server planning (docs/self-hosting.md)
