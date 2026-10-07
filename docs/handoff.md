@@ -60,3 +60,8 @@ Not verified in round 2: Safari/iOS, touch, reduced motion in a real browser (un
 - Content model v2: D1 to D5 adopted as recommended (see private `docs/content-model-v2.md` section 9).
 - Selected/hovered box styling: superseded by the globe polish branch (dashed boxes with solid corners, solid on hover or selection; no width change, no inner ring).
 - Credits follow the tile configuration, not the active source.
+
+## Stacked branch: credits line and idle rotation (`feat/credits-rotation`, on top of `feat/globe-polish`, 2026-10-08)
+
+1. Credits: the "Credits" link is a one-line mono summary ("© OpenStreetMap · OpenFreeMap · Natural Earth", derived from `core/attribution.ts`, clipped from the end on narrow screens) plus a "See more" button with an up-left arrow, in the same card as the dev badge (`lib/map-card.ts`, `MAP_CARD`). The dialog's borders are the soft `--border`. Details: [street-architecture.md](street-architecture.md) (attribution), [design-tokens.md](design-tokens.md) ("Map card and credits line"). To confirm with the owner: the line says "© OpenStreetMap" (the licence wording "© OpenStreetMap contributors" is in the dialog), and the dim text on the card's 80 % plate is 3.7:1 worst case over a full-strength map line in light (4.9:1 over the plain page).
+2. Idle rotation: [web-architecture.md](web-architecture.md) "Idle rotation", [performance.md](performance.md) "Idle rotation". Off in every `?globe-debug` page unless `?rotate` / `?spin-idle=MS`, so the zero-frame checks are unchanged. Not verified: Safari/iOS, real touch, real reduced motion, GPU cost.

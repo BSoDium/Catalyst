@@ -9,6 +9,7 @@ import { BoxScene } from "./box-scene";
 import { placeFraming } from "./framing";
 import type { LodTree } from "./lod-tree";
 import { GlobeRenderer, type RendererOptions, type StartView } from "./renderer";
+import { SPIN } from "./idle-spin";
 import { TUNING } from "./tuning";
 import { sameView, toViewState } from "./view";
 import { isWebGLAvailable } from "./webgl";
@@ -85,6 +86,8 @@ export interface GlobeDebug {
    * transition is still running, and a frame is pending.
    */
   layers(): { borders: { value: number; on: boolean }; animating: boolean; framePending: boolean };
+  /** The idle rotation: turning now, why not (null = allowed), whether its timer is armed, and the configured delay and speed. */
+  spin(): ReturnType<GlobeRenderer["spinInfo"]> & { idleMs: number; degPerSec: number; enabled: boolean };
   gpuSync(): void;
   info(): ReturnType<GlobeRenderer["renderInfo"]>;
   loseContext(lose: boolean): void;
@@ -288,6 +291,7 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
         renderer.renderNow();
       },
       layers: () => ({ ...renderer.layerState(), animating: lod.animating || renderer.layerState().animating, framePending: renderer.isAnimating() }),
+      spin: () => ({ ...renderer.spinInfo(), idleMs: SPIN.idleMs, degPerSec: SPIN.degPerSec, enabled: SPIN.enabled }),
       gpuSync: () => renderer.gpuSync(),
       info: () => renderer.renderInfo(),
       loseContext: (lose) => renderer.loseContext(lose),
