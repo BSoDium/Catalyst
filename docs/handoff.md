@@ -31,3 +31,17 @@ State of the rebuild on branch `feat/places-archive-rebuild` (draft PR #234) and
 - Empty circle on reload: removed; the canvas stays at opacity 0 until its first drawn frame (`scripts/globe/first-frames.mjs`).
 - Info button and credits dialog replace the attribution ribbon.
 - Street map: road hierarchy by tone and width, detail earlier, globe-to-street cut at zoom 3.7 as a cross-fade, motion-compensated tile fades (documented in [street-architecture.md](street-architecture.md#temporal-ease-tile-arrival-tile-departure-and-the-cut-2026-10-07)). That worker was cut off by a usage limit during its final doc edits, so re-read that section and `docs/performance.md` for accuracy.
+
+## Pending owner decisions (content model v2)
+
+Full reasoning: private repo `docs/content-model-v2.md` section 9. None is approved yet, so nothing may be migrated. Recommended answers are listed first; the next agent should present them to the owner as ONE confirmation ("adopt all recommendations?"), not as separate questions, and start phase P0 of `docs/content-model-v2-migration.md` once confirmed.
+
+| # | Decision | Recommended | Alternatives |
+|---|---|---|---|
+| D1 | Where the editable vault lives | `content/<kind>/<slug>/index.md` bundles, images next to the document; `source/` and `archive/` stay outside so Obsidian never indexes them | keep `editorial/` as the root; folder notes (`slug/slug.md`, shorter wikilinks, duplicated slug) |
+| D2 | How places inherit position, country and dates from Polarsteps steps | Values are written in the file; per-field opt-in `follow` with a lock and a drift report; text only through an explicit `pull` | always live (upstream changes silently move places); never inherit (copy only, no drift report) |
+| D3 | How Markdown reaches the public repo | Typed, schema-validated blocks (no HTML on the public side; small renderer and an additive contract change) | pre-rendered HTML (opaque string to trust or re-sanitise); sanitised Markdown source (parser in the public bundle) |
+| D4 | Published images | Content-hashed URLs plus a `sharp` optimiser (resize, strip metadata, immutable caching); originals stay out of Git | keep path-identity URLs and manual exiftool stripping |
+| D5 | Timing | Migrate now, before the first publication, with the contract change bundled | publish v1 first, migrate later |
+
+Also pending, smaller: keep or drop the extra inner ring on selected/focused/hovered boxes (default: keep), and whether credits follow the tile configuration or the active source (default: configuration).
