@@ -93,13 +93,8 @@ describe("globe layering", () => {
       }
     }
     expect(reaching.sort()).toEqual([
-      "components/attribution-button.tsx -> ~/globe/engine/colors",
-      "components/attribution-button.tsx -> ~/globe/engine/pixel-labels",
-      "components/attribution-button.tsx -> ~/globe/engine/tuning",
       "components/attribution-button.tsx -> ~/globe/street/core/attribution",
       "components/credits-dialog.tsx -> ~/globe/street/core/attribution",
-      "components/info-button-art.ts -> ~/globe/engine/pixel-buffer",
-      "components/info-button-art.ts -> ~/globe/engine/pixel-font/pixel-font",
       "lib/projection.ts -> ~/globe/engine/framing",
       "routes/dev-street-lines.tsx -> ~/globe/street/harness/synthetic",
       "routes/dev-street.tsx -> ~/globe/engine/geo",
