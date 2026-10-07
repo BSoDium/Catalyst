@@ -29,7 +29,7 @@ export const MOBILE = {
  * Open a page with instrumentation installed BEFORE any app code runs: rAF call counter, WebGL context
  * created/lost counters, WebGL `clear` counter (Three issues exactly one per frame), console capture.
  */
-export async function open(browser, contextOptions, path = "/", { debug = true, noStreet = true } = {}) {
+export async function open(browser, contextOptions, path = "/", { debug = true, noStreet = true, noGroups = true } = {}) {
   const ctx = await browser.newContext(contextOptions);
   const page = await ctx.newPage();
   const logs = [];
@@ -40,6 +40,9 @@ export async function open(browser, contextOptions, path = "/", { debug = true, 
   if (debug) await page.addInitScript(() => sessionStorage.setItem("globe-debug", "1"));
   // The Three.js-only measurements below predate street scale: they run with the street map switched off.
   if (noStreet) await page.addInitScript(() => sessionStorage.setItem("no-street", "1"));
+  // ... and before the group squares (semantic zoom of the place hierarchy): every place is a marker at every zoom, as these checks expect.
+  // `groups.mjs` turns this off.
+  if (noGroups) await page.addInitScript(() => sessionStorage.setItem("no-groups", "1"));
   await page.addInitScript(() => {
     const raf = window.requestAnimationFrame.bind(window);
     window.__raf = { calls: 0 };

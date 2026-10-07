@@ -3,9 +3,9 @@ import { describe, expect, it } from "vitest";
 import { MAP_CONTRAST, MAP_CONTRAST_DARK, PALETTE_LEVELS, buildRamp, roleLevel, type Rgb } from "./palette";
 
 /**
- * What the HUD (labels, markers, attribution, nav) needs from the map behind it: the map recedes (its loudest level is well
+ * What the HUD (labels, markers, nav) needs from the map behind it: the map recedes (its loudest level is well
  * below the ink) and the text over it stays AA-readable even when the brightest map tone is right under it. The tokens are read
- * from app.css, the plates from the code that draws them (overlay/hud-layer.ts, street/engine.ts, app.css `.nav-scrim`).
+ * from app.css, the plates from the code that draws them (overlay/hud-layer.ts, app.css `.nav-scrim`).
  */
 const css = readFileSync(new URL("../../app.css", import.meta.url), "utf8");
 const token = (scheme: "light" | "dark", name: string): Rgb => {
@@ -45,7 +45,7 @@ for (const scheme of ["light", "dark"] as const) {
     it("a selected label (page colour on a solid ink plate) is opaque, so its ratio does not depend on the map", () => {
       expect(contrast(bg, fg)).toBeGreaterThanOrEqual(15);
     });
-    it("muted label text and the attribution (muted foreground on the 90 % plate) are at least 4.5:1 over the peak and over ink", () => {
+    it("muted text (muted foreground on a 90 % page plate) are at least 4.5:1 over the peak and over ink", () => {
       for (const under of behind) expect(contrast(muted, over(bg, 0.9, under))).toBeGreaterThanOrEqual(4.5);
     });
     it("nav links (muted foreground under the nav scrim, about 80 % page colour at the text) are at least 4.5:1 over the peak", () => {

@@ -32,6 +32,13 @@ export type GlobeInitialView = GlobeViewState | GlobeFitView;
 
 export const isFitView = (v: GlobeInitialView | null | undefined): v is GlobeFitView => !!v && "fitRadiusKm" in v;
 
+/**
+ * Whether the globe's first paint is the page colour alone, with the pixel-art globe fading in once its first frame is drawn:
+ * every start but a remount with a saved view (a reload or a direct load: no view, or a view fitted on a place). Nothing else
+ * may show before that frame: no placeholder, no unfinished full-resolution canvas.
+ */
+export const startsVeiled = (v: GlobeInitialView | null | undefined): boolean => !v || isFitView(v);
+
 export interface GlobePlace {
   slug: string;
   name: string;
@@ -44,10 +51,44 @@ export interface GlobePlace {
    */
   viewRadiusKm?: number;
   /**
+   * The true bounding box `[west, south, east, north]` (degrees, WGS84; no antimeridian crossing) of the city or area the place
+   * sits in (published `bbox`), independent of where its recorded point lies. When present it is the place's rectangle on the
+   * map (engine/lod-tree.ts); absent or invalid = a square of `viewRadiusKm` around the point. The projection mapping
+   * (lib/projection.ts) also sets `viewRadiusKm` to the radius that frames this box, so every framing consumer frames the box.
+   */
+  bbox?: readonly [number, number, number, number];
+  /**
    * Slug of the innermost automatic group that contains the place (published `group`), or absent when the place is in no
-   * group. Data only: grouping is not rendered yet.
+   * group (or the group is not in `GlobeProps.groups`). The place is a child of that group in the semantic zoom: its marker
+   * appears when the group's square has grown enough to hand over to its contents. A place with no group is a root: always
+   * drawn, like before groups existed.
    */
   groupSlug?: string;
+  /** ISO 3166-1 alpha-2 country code, uppercase (published `countryCode`). Absent when the country is unknown. */
+  countryCode?: string;
+}
+
+/** Level of the automatic place hierarchy, widest first: continent > subregion | region > country > area > place. */
+export type GlobeGroupKind = "continent" | "subregion" | "region" | "country" | "area";
+
+/**
+ * A node of the automatic place hierarchy (published `groups`): a region, country or area that stands for the places
+ * below it. The globe draws it as a hollow square (see "Semantic zoom" in docs/web-architecture.md) that grows as you zoom
+ * in, hands over to the squares and markers of its children, and fades away. Groups have no detail page: clicking one
+ * flies the camera to frame its circle. Group slugs never clash with place slugs.
+ */
+export interface GlobeGroup {
+  slug: string;
+  name: string;
+  kind: GlobeGroupKind;
+  /** Slug of the enclosing group; absent on a root (a continent). An unknown parent makes a root. */
+  parent?: string;
+  lat: number;
+  lon: number;
+  /** Radius in km of the circle around (`lat`, `lon`) that covers every place of the group: the footprint of its square. */
+  viewRadiusKm: number;
+  /** Higher wins when labels collide, 0 to 100 (continents first). */
+  labelPriority: number;
 }
 
 /** Resolved from `route.stops`: ordered points, never inferred. */
@@ -72,6 +113,13 @@ export interface GlobeTiles {
 
 export interface GlobeProps {
   places: GlobePlace[];
+  /**
+   * The automatic place hierarchy, flat (`parent` links it into a tree). Empty = no grouping: every place is drawn as a
+   * marker at every zoom, exactly as before groups existed. Semantic zoom: only the top level (continents and places in
+   * no group) is drawn on the whole globe; zooming in swaps each group for its children, one level at a time, with a
+   * cross-fade (engine/lod-tree.ts). Rebuilding the renderer is needed when this changes (pass a stable array).
+   */
+  groups: GlobeGroup[];
   routes: GlobeRoute[];
   selectedSlug: string | null;
   focusedSlug: string | null;

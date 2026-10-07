@@ -82,8 +82,10 @@ try {
     await settleApp(page);
     const at = await page.evaluate(() => window.__handoverDebug.street().debug().project("hanoi"));
     expect("click: the street overlay shows Hanoi", !!at, at);
-    if (at) {
-      await page.mouse.click(at.x, at.y);
+    // a place is a detection box: it is picked by its border band (or its label), never its interior (the boxes inside stay clickable)
+    const box = await page.evaluate(() => window.__handoverDebug.street().debug().lod().find((n) => n.slug === "hanoi" && n.shown)?.box ?? null);
+    if (at && box) {
+      await page.mouse.click(box.x0, (box.y0 + box.y1) / 2);
       await page.waitForURL(/\/locations\/hanoi$/, { timeout: 5000 }).catch(() => {});
       expect("click: selects the place from the street overlay", new URL(page.url()).pathname === "/locations/hanoi", page.url());
     }

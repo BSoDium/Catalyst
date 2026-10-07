@@ -10,7 +10,7 @@ import { useViewportWidth } from "~/hooks/use-viewport-width";
 import { getProjection } from "~/lib/content.server";
 import { getTilesConfig } from "~/lib/tiles-config.server";
 import { panelInset } from "~/lib/layout";
-import { buildPlaceIndex, placePath } from "~/lib/projection";
+import { buildPlaceIndex, placePath, toGlobeGroups } from "~/lib/projection";
 
 export async function loader() {
   // `tiles` is the street map's tile source configuration (CATALYST_TILES_* read at request time, see
@@ -28,7 +28,8 @@ export function shouldRevalidate() {
  * places (`PlacesNav`, visually hidden until focused), and the detail panel (whose content is the child route).
  */
 export default function Shell({ loaderData }: Route.ComponentProps) {
-  const { places, globePlaces, routes, tiles } = loaderData;
+  const { places, globePlaces, groups, routes, tiles } = loaderData;
+  const globeGroups = useMemo(() => toGlobeGroups(groups), [groups]);
   const params = useParams();
   const navigate = useNavigate();
   const outlet = useOutlet();
@@ -81,6 +82,7 @@ export default function Shell({ loaderData }: Route.ComponentProps) {
           {globeActive && (
             <Globe
               places={globePlaces}
+              groups={globeGroups}
               routes={routes}
               selectedSlug={selectedSlug}
               focusedSlug={focusedSlug}
@@ -98,7 +100,7 @@ export default function Shell({ loaderData }: Route.ComponentProps) {
             </p>
           )}
         </div>
-        <PlacesNav places={places} currentSlug={selectedSlug} onFocusSlug={setFocusedSlug} onOpen={markUserIntent} />
+        <PlacesNav places={places} groups={groups} currentSlug={selectedSlug} onFocusSlug={setFocusedSlug} onOpen={markUserIntent} />
       </main>
       <DetailPanel
         open={isOpen}

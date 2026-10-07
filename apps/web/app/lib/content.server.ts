@@ -7,6 +7,10 @@ import { loadProjection, type ContentMode } from "@catalyst/published";
  * Source order: `CATALYST_API_URL` (if set) -> bundled snapshot. The API path is
  * best-effort: any failure (network, timeout, HTTP status, invalid payload)
  * logs one short warning and serves the bundled snapshot. It never throws.
+ *
+ * Modes (`CATALYST_CONTENT`): `published` (default, the only one a deployment serves), `preview` (the owner's
+ * local, git-ignored file with real places incl. drafts; dev only, never uses the API) and `demo` (placeholder
+ * fixture; explicit opt-in only).
  */
 export interface ContentSource {
   getProjection(): Promise<PublishedProjection>;
@@ -14,6 +18,8 @@ export interface ContentSource {
 
 export interface ContentSourceOptions {
   mode?: ContentMode;
+  /** Injectable for tests. Default: `loadProjection` from @catalyst/published. */
+  load?: (mode: ContentMode) => PublishedProjection;
   apiUrl?: string;
   fetch?: typeof fetch;
   timeoutMs?: number;
@@ -27,8 +33,11 @@ export interface ContentSourceOptions {
 
 const DEFAULTS = { timeoutMs: 2000, ttlMs: 60_000, failureTtlMs: 15_000 } as const;
 
+/** Anything but an explicit `demo` or `preview` is `published`: demo and preview are never the default. */
 export function contentModeFromEnv(env: Record<string, string | undefined>): ContentMode {
-  return env.CATALYST_CONTENT === "demo" ? "demo" : "published";
+  if (env.CATALYST_CONTENT === "demo") return "demo";
+  if (env.CATALYST_CONTENT === "preview") return "preview";
+  return "published";
 }
 
 function describeError(error: unknown): string {
@@ -49,15 +58,23 @@ export function createContentSource(options: ContentSourceOptions = {}): Content
     now = Date.now,
     warn = (message: string) => console.warn(message),
   } = options;
-  const apiUrl = options.apiUrl?.trim().replace(/\/+$/, "") || undefined;
+  // A preview is local data only: it never comes from (or is mixed with) the API.
+  const apiUrl = mode === "preview" ? undefined : options.apiUrl?.trim().replace(/\/+$/, "") || undefined;
+  const load = options.load ?? loadProjection;
 
   let snapshot: PublishedProjection | undefined;
+  let lastError: string | undefined;
   const getSnapshot = (): PublishedProjection => {
-    if (snapshot) return snapshot;
+    // The preview file is re-read on every call (dev only, ~150 small records) so a fresh `export:preview`
+    // shows up on reload without restarting the server. Bundled modes are loaded once.
+    if (snapshot && mode !== "preview") return snapshot;
     try {
-      snapshot = loadProjection(mode);
+      snapshot = load(mode);
+      lastError = undefined;
     } catch (error) {
-      console.error(`[content] bundled "${mode}" projection is invalid: ${describeError(error)}`);
+      const message = describeError(error);
+      if (message !== lastError) console.error(`[content] bundled "${mode}" projection is invalid: ${message}`);
+      lastError = message;
       snapshot = EMPTY_PROJECTION;
     }
     return snapshot;
@@ -116,6 +133,11 @@ function getContentSource(): ContentSource {
     apiUrl: process.env.CATALYST_API_URL,
   });
   return defaultSource;
+}
+
+/** The mode this server process runs in (from `CATALYST_CONTENT`); used by the dev-only badge. */
+export function getContentMode(): ContentMode {
+  return contentModeFromEnv(process.env);
 }
 
 export function getProjection(): Promise<PublishedProjection> {

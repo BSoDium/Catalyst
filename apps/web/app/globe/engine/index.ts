@@ -5,7 +5,8 @@
 import type { Polylines } from "@catalyst/geodata";
 import { isFitView, type GlobeInitialView, type GlobePlace, type GlobeProps, type GlobeRoute, type GlobeViewState } from "../types";
 import { readTheme } from "./colors";
-import { LabelLayer } from "./label-layer";
+import { BoxScene } from "./box-scene";
+import type { LodTree } from "./lod-tree";
 import { labelPriorityFloor } from "./labels";
 import { GlobeRenderer, type RendererOptions, type StartView } from "./renderer";
 import { TUNING } from "./tuning";
@@ -26,6 +27,8 @@ interface GlobeOptions {
   labelsRoot: HTMLElement;
   places: readonly GlobePlace[];
   routes: readonly GlobeRoute[];
+  /** The semantic-zoom hierarchy (shared with the street overlay): what is drawn at the current zoom. */
+  lod: LodTree;
   coastlines: Polylines;
   borders: Polylines;
   initialView: GlobeInitialView | null;
@@ -34,6 +37,10 @@ interface GlobeOptions {
   /** `GlobeProps.insetRight` at start. */
   insetRight: number;
   onSelect: GlobeProps["onSelect"];
+  /** A group's square or label was clicked (the handover flies to frame it). */
+  onSelectGroup(slug: string): void;
+  /** The pointer is over a group (slug) or nothing (null); both overlays highlight it. */
+  onHover?(slug: string | null): void;
   onViewChange: GlobeProps["onViewChange"];
   /** The GL context was lost (true) or restored (false). */
   onContextChange(lost: boolean): void;
@@ -54,7 +61,15 @@ export interface GlobeDebug {
   setView(view: { lon?: number; lat?: number; zoom?: number }): void;
   /** Viewport (client) coordinates of a place and whether it is on the visible hemisphere. */
   project(slug: string): { x: number; y: number; visible: boolean } | null;
+  /** Like `project` for any lon/lat (a point of the map, not a place): the snapped cell centre in client px and whether it passes the whole-or-nothing rule. */
+  projectAt(lon: number, lat: number): { x: number; y: number; visible: boolean };
   labelsShown(): string[];
+  /** The boxes as drawn in the last frame: per node, its rectangle and label in cells, text, chip and tones. */
+  labelCells(): ReturnType<BoxScene["snapshot"]>;
+  /** Frames the label canvas drew / skipped (nothing changed) since creation. */
+  labelStats(): { drawn: number; skipped: number };
+  /** The theme's palette, level 0 (page colour) to the ink, as [r, g, b] 0..255. */
+  ramp(): number[][];
   frames(): number;
   /** Camera ticks, drawn or suspended (idle must not increase it). */
   ticks(): number;
@@ -66,8 +81,32 @@ export interface GlobeDebug {
   loseContext(lose: boolean): void;
   /** Inset state: current / target inset (CSS px), centre shift (buffer px). */
   inset(): ReturnType<GlobeRenderer["insetInfo"]>;
-  /** Measurement only: draw marker ink in pure red and fill in pure blue, for pixel readouts. */
-  setMarkerProbe(on: boolean): void;
+  /** The semantic zoom for the CURRENT camera: one entry per drawn node (alpha, tone level, size in CSS px, and whether its centre is shown), in tree order. Allocates; for checks. */
+  lod(): LodDebugNode[];
+  /** Evaluations / cache hits / nodes visited by the last evaluation, and the nodes and squares drawn in the last frame. */
+  lodStats(): { evaluations: number; cacheHits: number; visited: number; nodes: number; groups: number; drawnMarkers: number; drawnGroups: number };
+  /** Ids of the routes drawn now (only the ones through the selected place). */
+  routesShown(): string[];
+  /** Hierarchy in tree order: slug, kind, parent slug (or null), radius km. */
+  tree(): { slug: string; kind: string; parent: string | null; radiusKm: number }[];
+  /** Measurement: cost in ms of `n` forced semantic-zoom evaluations at the current camera (the pure O(visible) pass, no drawing). */
+  benchLod(n: number): { msPerEval: number; visited: number; nodes: number };
+}
+
+export interface LodDebugNode {
+  slug: string;
+  kind: string;
+  alpha: number;
+  level: number;
+  /** A marker is drawn (it passed the whole-or-nothing rule) or a box touches the buffer, in the last frame. */
+  shown: boolean;
+  /** Container CSS px of the snapped cell centre (a place) or of the box (a group) in the last frame. */
+  x: number;
+  y: number;
+  /** The node's rectangle, container CSS px, whole cells; for a group, the visible places it wraps and the places below it. */
+  box: { x0: number; y0: number; x1: number; y1: number };
+  members: number;
+  total: number;
 }
 
 export interface GlobeHandle {
@@ -78,6 +117,8 @@ export interface GlobeHandle {
   /** Highlight or clear the selected place. The camera is not moved: the handover controller flies it (handover/controller.ts). */
   setSelected(slug: string | null): void;
   setFocused(slug: string | null): void;
+  /** Highlight (or clear) the group under the pointer. */
+  setHovered(slug: string | null): void;
   setReducedMotion(on: boolean): void;
   /** `GlobeProps.insetRight` changed. */
   setInset(px: number): void;
@@ -90,11 +131,10 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
   if (!isWebGLAvailable()) throw new WebGLUnavailableError();
 
   const places = new Map(opts.places.map((p) => [p.slug, p]));
-  const labels = new LabelLayer(
-    opts.labelsRoot,
-    opts.places.map((p) => ({ id: p.slug, text: p.name, lon: p.lon, lat: p.lat, priority: p.labelPriority })),
-    opts.reducedMotion,
-  );
+  const lod = opts.lod;
+  const labels = new BoxScene(opts.labelsRoot, lod);
+  const theme0 = readTheme(opts.stage);
+  labels.setTheme(theme0);
 
   let renderer: GlobeRenderer;
   let lastReported: GlobeViewState | null = null;
@@ -111,11 +151,7 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
       opts.labelsRoot.style.setProperty("-webkit-mask-image", mask ?? "");
     }
     if (labelsActive) {
-      labels.update(
-        renderer,
-        renderer.getVisibleSize(),
-        labelPriorityFloor(Math.min(v.zoom, TUNING.maxZoom), renderer.getMinZoom(), TUNING.allLabelsZoom),
-      );
+      labels.update(renderer.nodeScreen, labelPriorityFloor(Math.min(v.zoom, TUNING.maxZoom), renderer.getMinZoom(), TUNING.allLabelsZoom), renderer.pixelGrid());
     }
     const next = toViewState(v, renderer.getMinZoom(), TUNING.maxZoom);
     if (!sameView(lastReported, next)) {
@@ -141,9 +177,10 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
         container: opts.stage,
         places: opts.places,
         routes: opts.routes,
+        lod,
         coastlines: opts.coastlines,
         borders: opts.borders,
-        theme: readTheme(opts.stage),
+        theme: theme0,
         reducedMotion: opts.reducedMotion,
         zoomLimit: opts.zoomLimit,
         insetRight: opts.insetRight,
@@ -151,6 +188,11 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
         pickLabel: (x, y, kind) => labels.hit(x, y, TUNING.labelSlop[kind]),
         pickOverride: opts.pickOverride,
         onSelect: opts.onSelect,
+        onSelectGroup: opts.onSelectGroup,
+        onHover: (slug) => {
+          labels.setHovered(slug);
+          opts.onHover?.(slug);
+        },
         onContextChange: opts.onContextChange,
       },
       start,
@@ -165,14 +207,13 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
 
   // Colours come from CSS variables that switch with the OS colour scheme.
   const scheme = matchMedia("(prefers-color-scheme: dark)");
-  const onScheme = () => renderer.setTheme(readTheme(opts.stage));
+  const onScheme = () => {
+    const t = readTheme(opts.stage);
+    labels.setTheme(t);
+    renderer.setTheme(t);
+  };
   scheme.addEventListener("change", onScheme);
   let disposed = false;
-  void document.fonts?.ready.then(() => {
-    if (disposed) return;
-    labels.remeasure();
-    renderer.requestRender();
-  });
 
   return {
     renderer,
@@ -188,9 +229,12 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
       renderer.setFocused(slug);
       labels.setFocused(slug);
     },
+    setHovered(slug) {
+      renderer.setHovered(slug);
+      labels.setHovered(slug);
+    },
     setReducedMotion(on) {
       renderer.setReducedMotion(on);
-      labels.setReducedMotion(on);
     },
     setInset: (px) => renderer.setInset(px),
     debug: () => ({
@@ -199,6 +243,10 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
       view: () => renderer.getView(),
       ticks: () => renderer.tickCount(),
       setView: (v) => renderer.setView(v),
+      projectAt(lon, lat) {
+        const p = renderer.project(lon, lat);
+        return { x: p.x, y: p.y, visible: p.visible };
+      },
       project(slug) {
         const p = places.get(slug);
         if (!p) return null;
@@ -207,6 +255,9 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
         return { x: r.left + s.x, y: r.top + s.y, visible: s.visible };
       },
       labelsShown: () => [...labels.shown()],
+      labelCells: () => labels.snapshot(),
+      labelStats: () => labels.stats(),
+      ramp: () => renderer.getTheme().ramp.map((c) => c.map((v) => Math.round(v * 255))),
       frames: () => renderer.frameCount(),
       isAnimating: () => renderer.isAnimating(),
       renderNow() {
@@ -217,7 +268,51 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
       info: () => renderer.renderInfo(),
       loseContext: (lose) => renderer.loseContext(lose),
       inset: () => renderer.insetInfo(),
-      setMarkerProbe: (on) => renderer.setMarkerProbe(on),
+      lod() {
+        const t = renderer.lodFrame();
+        const sc = renderer.nodeScreen;
+        const out: LodDebugNode[] = [];
+        for (let k = 0; k < t.count; k++) {
+          const i = t.visible[k]!;
+          out.push({
+            slug: t.slug[i]!,
+            kind: t.kind[i]!,
+            alpha: t.alpha[i]!,
+            level: t.level[i]!,
+            shown: !!sc.shown[i],
+            x: sc.x[i]!,
+            y: sc.y[i]!,
+            box: { x0: sc.bx0[i]!, y0: sc.by0[i]!, x1: sc.bx1[i]!, y1: sc.by1[i]! },
+            members: t.members[i]!,
+            total: t.total[i]!,
+          });
+        }
+        return out;
+      },
+      lodStats() {
+        const d = renderer.drawnCounts();
+        return {
+          evaluations: lod.evaluations,
+          cacheHits: lod.cacheHits,
+          visited: lod.visited,
+          nodes: lod.size,
+          groups: lod.groupCount,
+          drawnMarkers: d.markers,
+          drawnGroups: d.groups,
+        };
+      },
+      routesShown: () => renderer.routesShown(),
+      tree: () => Array.from({ length: lod.size }, (_, i) => ({ slug: lod.slug[i]!, kind: lod.kind[i]!, parent: lod.parent[i]! >= 0 ? lod.slug[lod.parent[i]!]! : null, radiusKm: lod.radiusKm[i]! })),
+      benchLod(n) {
+        const cam = renderer.lodCameraNow();
+        const t0 = performance.now();
+        for (let k = 0; k < n; k++) {
+          cam.zoom += (k & 1 ? -1 : 1) * 1e-9; // defeat the cache: every call is a real evaluation
+          lod.update(cam, -1, -1, false);
+        }
+        const dt = performance.now() - t0;
+        return { msPerEval: dt / n, visited: lod.visited, nodes: lod.size };
+      },
     }),
     dispose() {
       if (disposed) return;

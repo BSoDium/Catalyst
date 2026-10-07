@@ -3,7 +3,7 @@
  * `ColorManagement` note in renderer.ts. Visibility of borders is ordered-dither coverage, not alpha, so the
  * output never contains a blended pixel.
  */
-import { Color, ShaderMaterial, Vector2 } from "three";
+import { Color, ShaderMaterial } from "three";
 
 const PASS_THROUGH_VERTEX = /* glsl */ `
   void main() { gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
@@ -51,48 +51,11 @@ export function occluderMaterial(): ShaderMaterial {
   });
 }
 
-/**
- * Markers are screen-space sprites placed by the CPU: `position` = (buffer-pixel centre x, y, shown), see
- * marker-layer.ts. Sitting exactly on a pixel centre, an odd-sized point covers a whole `size x size` block
- * with no rasterisation ties. There is no depth test and no depth write: whether a marker is drawn is decided
- * once per marker from its centre, so the globe's depth can never cut part of it.
- */
-export function markerMaterial(): ShaderMaterial {
-  return new ShaderMaterial({
-    uniforms: { uColor: { value: new Color() }, uFill: { value: new Color() }, uBuf: { value: new Vector2(1, 1) } },
-    depthTest: false,
-    depthWrite: false,
-    vertexShader: /* glsl */ `
-      attribute float aState; uniform vec2 uBuf; varying float vState; varying float vSize;
-      void main() {
-        vState = aState;
-        // normal 3, route stop 5, focused 7, selected 9 (buffer pixels)
-        float s = aState < 0.5 ? 3.0 : (aState < 1.5 ? 9.0 : (aState < 2.5 ? 5.0 : 7.0));
-        vSize = s;
-        if (position.z < 0.5) {
-          // Hidden as a whole: outside the clip volume, so nothing is rasterised.
-          gl_PointSize = 0.0;
-          gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
-          return;
-        }
-        gl_PointSize = s;
-        gl_Position = vec4(position.x / uBuf.x * 2.0 - 1.0, 1.0 - position.y / uBuf.y * 2.0, 0.0, 1.0);
-      }`,
-    fragmentShader: /* glsl */ `
-      uniform vec3 uColor; uniform vec3 uFill; varying float vState; varying float vSize;
-      void main() {
-        vec2 q = floor(gl_PointCoord * vSize) - floor(vSize * 0.5); // integer offset from the centre
-        float r = max(abs(q.x), abs(q.y));
-        if (vState > 0.5 && vState < 1.5) {
-          // selected: hollow ring, 1px gap, centre dot
-          if (r == 4.0 || r == 0.0) { gl_FragColor = vec4(uColor, 1.0); return; }
-          if (r < 4.0) { gl_FragColor = vec4(uFill, 1.0); return; }
-          discard;
-        }
-        gl_FragColor = vec4(uColor, 1.0);
-      }`,
-  });
-}
+/** Capacity of the tone ramp uniform (the palette's `MAX_LEVELS`). */
+export const RAMP_SLOTS = 12;
+
+/** A `uRamp` uniform value: one colour per palette level. */
+export const newRampUniform = () => ({ value: Array.from({ length: RAMP_SLOTS }, () => new Color()) });
 
 /**
  * Route: great-circle arcs drawn as a 2x2 px dashed stroke. The dash period is set per frame in world units so

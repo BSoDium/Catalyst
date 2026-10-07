@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_VIEW_RADIUS_KM, EARTH_RADIUS_KM, FRAMING_MARGIN, effectiveRadiusKm, radiusFitZoom } from "./framing";
+import { DEFAULT_VIEW_RADIUS_KM, EARTH_RADIUS_KM, FRAMING_MARGIN, bboxExtentsKm, effectiveRadiusKm, placeFraming, radiusFitZoom } from "./framing";
 import { zoomToRadiusPx } from "./geo";
 
 /** Circle radius in px that a zoom gives to `km`. */
@@ -46,5 +46,33 @@ describe("effectiveRadiusKm", () => {
     expect(effectiveRadiusKm(0.1)).toBe(0.5);
     expect(effectiveRadiusKm(9999)).toBe(500);
     expect(effectiveRadiusKm(14)).toBe(14);
+  });
+});
+
+describe("placeFraming and bounding boxes", () => {
+  const box = [-95.8, 29.5, -95.1, 30.1] as const;
+  it("frames the box, centred on the box, with the unchanged fit formula: its longer side takes 1 / (1 + margin) of the smaller free side", () => {
+    const f = placeFraming({ lat: 29.76, lon: -95.37, viewRadiusKm: 12, bbox: box });
+    const ext = bboxExtentsKm(box)!;
+    expect(f.lon).toBeCloseTo(-95.45, 9);
+    expect(f.lat).toBeCloseTo(29.8, 9);
+    expect(f.radiusKm).toBeCloseTo(Math.max(ext.halfXKm, ext.halfYKm), 9);
+    const z = radiusFitZoom(f.radiusKm, 1440, 900, 0);
+    expect(pxFor(z, 2 * Math.max(ext.halfXKm, ext.halfYKm)) / 2 / (900 / 2 / (1 + FRAMING_MARGIN))).toBeCloseTo(1, 6);
+  });
+  it("falls back to the point and its radius (clamped, defaulted) when there is no valid box", () => {
+    expect(placeFraming({ lat: 1, lon: 2, viewRadiusKm: 30 })).toEqual({ lon: 2, lat: 1, radiusKm: 30 });
+    expect(placeFraming({ lat: 1, lon: 2 })).toEqual({ lon: 2, lat: 1, radiusKm: DEFAULT_VIEW_RADIUS_KM });
+    expect(placeFraming({ lat: 1, lon: 2, viewRadiusKm: 9999, bbox: [5, 5, 1, 1] })).toEqual({ lon: 2, lat: 1, radiusKm: 500 });
+  });
+  it("km extents: a degree of latitude is 111 km, a degree of longitude shrinks with the cosine of the latitude", () => {
+    const eq = bboxExtentsKm([0, -1, 2, 1])!;
+    expect(eq.halfYKm).toBeCloseTo(111.19, 1);
+    expect(eq.halfXKm).toBeCloseTo(111.19, 1);
+    const north = bboxExtentsKm([0, 59, 2, 61])!;
+    expect(north.halfXKm / north.halfYKm).toBeCloseTo(0.5, 2);
+    expect(bboxExtentsKm(undefined)).toBeNull();
+    expect(bboxExtentsKm([1, 2, 3])).toBeNull();
+    expect(bboxExtentsKm([0, 0, 0, 1])).toBeNull();
   });
 });

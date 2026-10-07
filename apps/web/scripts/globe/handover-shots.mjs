@@ -74,9 +74,9 @@ try {
   if (want("dissolve")) {
     for (const scheme of ["light", "dark"]) {
       const { page } = await openApp(browser, profile, { path: "/", colorScheme: scheme });
-      await setCamera(page, { lon: 106.7, lat: 10.8, zoom: 4.4 });
+      await setCamera(page, { lon: 106.7, lat: 10.8, zoom: 3.2 });
       await waitStreetOk(page);
-      await setCamera(page, { lon: 106.7, lat: 10.8, zoom: 5.05 });
+      await setCamera(page, { lon: 106.7, lat: 10.8, zoom: 3.75 });
       await settleApp(page);
       for (const b of [0, 0.25, 0.5, 0.75, 1]) {
         await page.evaluate((v) => window.__handoverDebug.forceBlend(v), b);

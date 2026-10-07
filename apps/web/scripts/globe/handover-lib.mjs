@@ -47,7 +47,11 @@ export async function settleApp(page, timeout = 60000) {
       const d = window.__handoverDebug;
       if (!d) return false;
       const b = d.blend();
-      if (Math.abs(b.shown - b.target) > 1e-6 || d.globe.isAnimating()) return false;
+      // Dissolve mode: `shown` slews to `target`. Cut mode: `shown` is 0 or 1, and `target` (a function of zoom) is a plain 0 or 1 outside the
+      // dissolve band only: there it must match too, inside the band the cut waits on tiles, so look at `cutPending` and the cross-fade instead.
+      const inBand = b.target > 1e-6 && b.target < 1 - 1e-6;
+      if (((d.dissolve() || !inBand) && Math.abs(b.shown - b.target) > 1e-6) || d.globe.isAnimating()) return false;
+      if (!d.dissolve() && (d.cutPending() || d.street()?.debug().easing() > 0)) return false; // the cut waits for tiles, or its cross-fade is running
       const s = d.street();
       if (!s) return true;
       const m = s.debug().map();

@@ -16,7 +16,6 @@ import type { ViewBasis } from "./geo";
 import { zoomToRadiusPx } from "./geo";
 import { graticuleSegments, polylinesToSegments } from "./geometry";
 import { OCCLUDER_RADIUS, lineMaterial, occluderMaterial, silhouetteMaterial } from "./materials";
-import { MarkerLayer } from "./marker-layer";
 import { RouteLayer } from "./route-layer";
 import { routeLift } from "../handover/maths";
 import { TUNING } from "./tuning";
@@ -36,7 +35,6 @@ function segmentGeometry(positions: Float32Array): BufferGeometry {
  */
 export class GlobeScene {
   readonly scene = new Scene();
-  readonly markers: MarkerLayer;
   readonly routes: RouteLayer;
 
   private geometries: BufferGeometry[] = [];
@@ -70,8 +68,6 @@ export class GlobeScene {
     this.add(new LineSegments(this.track(segmentGeometry(polylinesToSegments(data.coastlines, 1))), this.coast), 3);
 
     this.routes = new RouteLayer(this.scene, data.routes);
-    this.markers = new MarkerLayer(data.places);
-    this.scene.add(this.markers.points);
 
     const N = 360;
     const angle = new Float32Array(N);
@@ -102,7 +98,6 @@ export class GlobeScene {
     this.borderLevelNow = -1;
     this.coast.uniforms.uColor!.value.setRGB(...t.coast);
     this.silhouette.uniforms.uColor!.value.setRGB(...t.outline);
-    this.markers.applyTheme(t);
     this.routes.applyTheme(t);
   }
 
@@ -129,7 +124,6 @@ export class GlobeScene {
 
   dispose() {
     this.routes.dispose();
-    this.markers.dispose();
     for (const g of this.geometries) g.dispose();
     for (const m of this.materials) m.dispose();
     this.geometries = [];

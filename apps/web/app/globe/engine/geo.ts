@@ -64,7 +64,7 @@ export function radiusPxToZoom(radiusPx: number): number {
 }
 
 /** Focal length in px for a viewport height. */
-function focalPx(viewportHeight: number, fovDeg = FOV_DEG): number {
+export function focalPx(viewportHeight: number, fovDeg = FOV_DEG): number {
   return viewportHeight / 2 / Math.tan((fovDeg * DEG) / 2);
 }
 
@@ -135,13 +135,36 @@ export function projectLonLat(
   centreX = width / 2,
 ): ScreenPoint {
   const p = lonLatToVec3(lon, lat);
-  const pc = dot(p, basis.c);
+  return projectUnit(p[0], p[1], p[2], basis, height, radius, centreX);
+}
+
+/**
+ * `projectLonLat` for a point already on the unit sphere (`lonLatToVec3`): no trigonometry, and `out` can be reused so a frame allocates nothing. The operations and their
+ * order are the same, so the result is bit-identical to `projectLonLat` of the same lon/lat (the LOD tree keeps one
+ * unit vector per node and projects the visible ones with this).
+ */
+export function projectUnit(
+  px: number,
+  py: number,
+  pz: number,
+  basis: ViewBasis,
+  height: number,
+  radius = 1,
+  centreX = 0,
+  out: ScreenPoint = { x: 0, y: 0, visible: false, facing: 0 },
+): ScreenPoint {
+  const { c, east, north } = basis;
+  const pc = px * c[0] + py * c[1] + pz * c[2];
   const depth = basis.d - pc * radius;
-  const sx = centreX + (basis.f * radius * dot(p, basis.east)) / depth;
-  const sy = height / 2 - (basis.f * radius * dot(p, basis.north)) / depth;
+  const sx = centreX + (basis.f * radius * (px * east[0] + py * east[1] + pz * east[2])) / depth;
+  const sy = height / 2 - (basis.f * radius * (px * north[0] + py * north[1] + pz * north[2])) / depth;
   const horizon = 1 / basis.d;
   const visible = pc > horizon + 1e-4;
-  return { x: sx, y: sy, visible, facing: visible ? clamp((pc - horizon) / (1 - horizon), 0, 1) : 0 };
+  out.x = sx;
+  out.y = sy;
+  out.visible = visible;
+  out.facing = visible ? clamp((pc - horizon) / (1 - horizon), 0, 1) : 0;
+  return out;
 }
 
 /* ------------------------------------------------------------------ */

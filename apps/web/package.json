@@ -4,14 +4,16 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "CATALYST_CONTENT=demo react-router dev --port 5173",
+    "dev": "node scripts/dev.mjs",
+    "dev:demo": "CATALYST_CONTENT=demo react-router dev --port 5173",
     "dev:published": "CATALYST_CONTENT=published react-router dev --port 5173",
     "build": "react-router build",
     "start": "react-router-serve ./build/server/index.js",
     "typecheck": "react-router typegen && tsc",
     "test": "vitest run",
     "test:street-lines": "node scripts/street/lines.mjs",
-    "perf": "node scripts/perf/budget.mjs"
+    "perf": "node scripts/perf/budget.mjs",
+    "bake:font": "node scripts/font/bake-pixel-font.mjs"
   },
   "dependencies": {
     "@catalyst/geodata": "workspace:^",
@@ -34,6 +36,7 @@
     "three": "^0.186.1"
   },
   "devDependencies": {
+    "@fontsource/tiny5": "^5.3.0",
     "@react-router/dev": "^7.18.4",
     "@tailwindcss/vite": "^4.3.3",
     "@types/geojson": "^7946.0.16",
@@ -42,6 +45,7 @@
     "@types/react-dom": "^19.3.0",
     "@types/three": "^0.186.0",
     "@vercel/react-router": "^1.3.7",
+    "fontkit": "^2.0.4",
     "playwright-core": "^1.63.0",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.9.0",

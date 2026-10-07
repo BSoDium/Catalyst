@@ -20,10 +20,66 @@ function setup(fetchImpl: typeof fetch, overrides: Parameters<typeof createConte
 }
 
 describe("contentModeFromEnv", () => {
-  it("is demo only when explicitly requested", () => {
+  it("is demo or preview only when explicitly requested; everything else is published", () => {
     expect(contentModeFromEnv({ CATALYST_CONTENT: "demo" })).toBe("demo");
+    expect(contentModeFromEnv({ CATALYST_CONTENT: "preview" })).toBe("preview");
     expect(contentModeFromEnv({ CATALYST_CONTENT: "published" })).toBe("published");
     expect(contentModeFromEnv({})).toBe("published");
+    expect(contentModeFromEnv({ CATALYST_CONTENT: "" })).toBe("published");
+    expect(contentModeFromEnv({ CATALYST_CONTENT: "Demo" })).toBe("published");
+    expect(contentModeFromEnv({ CATALYST_CONTENT: "auto" })).toBe("published");
+  });
+});
+
+describe("preview mode", () => {
+  it("serves the local preview projection, never calls the API even when one is configured, and re-reads on every call", async () => {
+    const fetchMock = vi.fn();
+    const load = vi.fn((_mode: string) => demo);
+    const source = createContentSource({ mode: "preview", apiUrl: "https://api.test", fetch: fetchMock as unknown as typeof fetch, load });
+    expect(await source.getProjection()).toEqual(demo);
+    await source.getProjection();
+    expect(load).toHaveBeenCalledTimes(2);
+    expect(load).toHaveBeenCalledWith("preview");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("falls back to the empty projection and logs the reason once when the file is missing or refused", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const load = () => {
+        throw new Error("preview projection not found: run `pnpm export:preview --out <this repo>` in the private content repo");
+      };
+      const source = createContentSource({ mode: "preview", load });
+      const first = await source.getProjection();
+      expect(first.places).toEqual([]);
+      await source.getProjection();
+      expect(error).toHaveBeenCalledTimes(1);
+      expect(String(error.mock.calls[0]?.[0])).toContain("pnpm export:preview");
+    } finally {
+      error.mockRestore();
+    }
+  });
+
+  it("is refused in production with the real loader (no file is ever served)", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const prev = { node: process.env.NODE_ENV, allow: process.env.CATALYST_ALLOW_PREVIEW };
+    try {
+      process.env.NODE_ENV = "production";
+      delete process.env.CATALYST_ALLOW_PREVIEW;
+      const result = await createContentSource({ mode: "preview" }).getProjection();
+      expect(result.places).toEqual([]);
+      expect(String(error.mock.calls[0]?.[0])).toContain("refused in production");
+    } finally {
+      process.env.NODE_ENV = prev.node;
+      if (prev.allow !== undefined) process.env.CATALYST_ALLOW_PREVIEW = prev.allow;
+      error.mockRestore();
+    }
+  });
+
+  it("the default mode of the source stays published", async () => {
+    const load = vi.fn((_mode: string) => demo);
+    await createContentSource({ load }).getProjection();
+    expect(load).toHaveBeenCalledWith("published");
   });
 });
 

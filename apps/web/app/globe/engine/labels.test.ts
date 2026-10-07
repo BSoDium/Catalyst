@@ -132,3 +132,34 @@ describe("labelPriorityFloor", () => {
     expect(labelPriorityFloor(3, 3.5, 3)).toBe(0);
   });
 });
+
+describe("placeLabels: per-label placements, gap and obstacle size", () => {
+  const base2 = { width: 1000, height: 600 };
+  const mk = (id: string, x: number, y: number, priority: number, extra: Partial<LabelInput> = {}): LabelInput => ({ id, x, y, width: 80, height: 18, priority, visible: true, facing: 1, ...extra });
+
+  it("tries only the label's own placements, in order, with its own gap", () => {
+    const [top] = placeLabels([mk("g", 500, 300, 50, { placements: ["top", "bottom"], gap: 3 })], base2);
+    expect(top!.placement).toBe("top");
+    expect(top!.y).toBe(300 - 3 - 18);
+    expect(top!.x).toBe(500 - 40);
+    const [bottom] = placeLabels([mk("g", 500, 300, 50, { placements: ["bottom"], gap: 3 })], base2);
+    expect(bottom!.placement).toBe("bottom");
+    expect(bottom!.y).toBe(303);
+  });
+  it("drops a label whose own placements are all taken, instead of falling back to the default sides", () => {
+    const out = placeLabels([mk("a", 500, 300, 90, { placements: ["top"], gap: 3, markerRadius: 0 }), mk("b", 500, 300, 10, { placements: ["top"], gap: 3, markerRadius: 0 })], base2);
+    expect(out.map((l) => l.id)).toEqual(["a"]);
+  });
+  it("an input with markerRadius 0 is no obstacle for other labels", () => {
+    // a lower-priority label sits where the high one's default marker box would have been
+    const sq = { placements: ["top" as const], gap: 3 };
+    const withObstacle = placeLabels([mk("sq", 500, 300, 90, sq), mk("l", 480, 300, 10, { placements: ["right"], gap: 0 })], base2);
+    const without = placeLabels([mk("sq", 500, 300, 90, { ...sq, markerRadius: 0 }), mk("l", 480, 300, 10, { placements: ["right"], gap: 0 })], base2);
+    expect(withObstacle.map((l) => l.id)).not.toContain("l");
+    expect(without.map((l) => l.id)).toContain("l");
+  });
+  it("the previous placement is only reused when it is one of the label's own", () => {
+    const out = placeLabels([mk("g", 500, 300, 50, { placements: ["top", "bottom"], gap: 3 })], { ...base2, previous: new Map([["g", "right" as const]]) });
+    expect(out[0]!.placement).toBe("top");
+  });
+});

@@ -2,13 +2,40 @@
 /** Runtime quality state moved by the frame governor (engine/governor.ts): extra CSS px per art pixel. */
 export const QUALITY = { cellBoost: 0 };
 
+/**
+ * THE art pixel: the size in CSS px of one cell of the pixel grid that the globe, the street map and the pixel text all
+ * draw on (one constant, shared by both renderers and the labels). Desktop 2.5 (was 3), phones 2: a modest increase in
+ * resolution, so the pixel effect is a little less visible and the type has more rows (docs/web-architecture.md, "Art
+ * pixel size"). Change THIS to tune it; `pixelSize` below keeps it a whole number of device pixels.
+ */
+export const ART_PIXEL: { desktop: number; phone: number; phoneBelow: number } = { desktop: 2.5, phone: 2, phoneBelow: 520 };
+
+/** Checks only: `?art-px=N` (or sessionStorage "art-px") overrides the desktop art pixel, on pages in debug mode. Call before the renderers are built. */
+export function applyDebugArtPixel(): void {
+  try {
+    const debug = new URLSearchParams(location.search).has("globe-debug") || sessionStorage.getItem("globe-debug") === "1";
+    if (!debug) return;
+    const q = new URLSearchParams(location.search).get("art-px") ?? sessionStorage.getItem("art-px");
+    const n = Number(q);
+    if (q && Number.isFinite(n) && n >= 1 && n <= 6) {
+      ART_PIXEL.desktop = n;
+      ART_PIXEL.phone = Math.min(ART_PIXEL.phone, n);
+    }
+  } catch {
+    // no storage: keep the default
+  }
+}
+
 export const TUNING = {
-  /** Size of one art pixel in CSS px, as a function of the smaller viewport side (+1 when the frame governor stepped down). */
+  /**
+   * Size of one art pixel in CSS px, as a function of the smaller viewport side (+1 when the frame governor stepped
+   * down): `ART_PIXEL`, rounded to a whole number of device pixels, because otherwise nearest-neighbour upscaling shimmers
+   * (2.5 is 5 device px at DPR 2 but 2.5 at DPR 1: ties go DOWN, so DPR 1 gets 2 CSS px, never a coarser 3; Android's
+   * 2.625 and Windows' 1.25 and 1.5 get the nearest whole device size).
+   */
   pixelSize(minSide: number, dpr: number): number {
-    const base = (minSide < 520 ? 2 : 3) + QUALITY.cellBoost;
-    // One art pixel must be a whole number of device pixels, otherwise nearest-neighbour upscaling shimmers
-    // on fractional DPRs (Android 2.625, some Windows scales).
-    return Math.max(1, Math.round(base * dpr)) / dpr;
+    const base = (minSide < ART_PIXEL.phoneBelow ? ART_PIXEL.phone : ART_PIXEL.desktop) + QUALITY.cellBoost;
+    return Math.max(1, Math.round(base * dpr - 1e-9)) / dpr;
   },
   /**
    * Borders fade in with zoom through the palette's grey levels: not drawn below `start`, the faintest level just above

@@ -2,8 +2,8 @@
 
 React 19 + TypeScript (strict), React Router v7 framework mode with SSR, Tailwind CSS 4, shadcn/ui
 (Button only, trimmed), Motion for React (`motion/react`). No LLM features. Deployed as its own Vercel
-project (root directory `apps/web`); the `@vercel/react-router` preset is applied only when `VERCEL` is set,
-so local builds keep the plain `build/server/index.js` layout.
+project (root directory `apps/web`, `apps/web/vercel.json` pins the React Router preset); the `@vercel/react-router`
+preset is applied only when `VERCEL` is set, so local builds keep the plain `build/server/index.js` layout.
 
 ## Commands
 
@@ -11,7 +11,8 @@ Run from the repo root with `pnpm --filter @catalyst/web <script>` or inside `ap
 
 | Script | What it does |
 | --- | --- |
-| `dev` | dev server on :5173 with `CATALYST_CONTENT=demo` (placeholder fixtures) |
+| `dev` | dev server on :5173 via `scripts/dev.mjs`: the local **preview** when `packages/published/data/preview.projection.json` exists, else the published snapshot (empty) with a one-line hint. Never demo. Extra args go to `react-router dev` (`pnpm dev --port 5180`). An explicit `CATALYST_CONTENT` wins |
+| `dev:demo` | dev server with `CATALYST_CONTENT=demo` (made-up placeholder places; the only way to get them) |
 | `dev:published` | dev server with the real bundled snapshot (empty until the content repo publishes) |
 | `build` / `start` | production build / `react-router-serve` (set `PORT`) |
 | `typecheck` | `react-router typegen && tsc` |
@@ -23,14 +24,15 @@ Run from the repo root with `pnpm --filter @catalyst/web <script>` or inside `ap
 
 | Variable | Meaning |
 | --- | --- |
-| `CATALYST_CONTENT` | `published` (default) or `demo`: which bundled projection `@catalyst/published` serves |
+| `CATALYST_CONTENT` | `published` (default), `preview` (the git-ignored local file of the owner's real places incl. drafts; dev only; ignores `CATALYST_API_URL`; re-read on every request) or `demo` (placeholder fixture). See the content modes table in `architecture.md` |
+| `CATALYST_ALLOW_PREVIEW` | `1` lets a production-mode process read the preview file, for local `react-router-serve` testing only; without it `preview` is refused when `NODE_ENV=production` (the server logs why and serves the empty state) |
 | `CATALYST_API_URL` | optional. If set, `${url}/v1/projection` is fetched (2s timeout, validated with `parsePublishedProjection`); any failure logs one warning and serves the bundled snapshot |
 
 ## Structure
 
 ```
 app/
-  root.tsx            html shell, SkipLinks, page-wide nav scrim, Navbar, MotionConfig, global 404 ErrorBoundary
+  root.tsx            html shell, SkipLinks, page-wide nav scrim, Navbar, MotionConfig, global 404 ErrorBoundary; dev-only content badge (loader returns the mode only when import.meta.env.DEV)
   routes.ts           pathless layout (shell) wrapping `/` and `/locations/:slug`; /projects /articles /artworks
   routes/shell.tsx    layout: full-bleed globe + PlacesNav + detail panel; owns focusedSlug, the saved GlobeViewState
                       and the panel inset passed to the globe
@@ -119,8 +121,8 @@ other way in. Without JavaScript the globe screen shows no list (the globe itsel
 ## Globe seam (`app/globe/`)
 
 `types.ts` defines `GlobeViewState`, `GlobePlace`, `GlobeRoute`, `GlobeTiles` and `GlobeProps` (renderer-agnostic).
-`index.tsx` exports `Globe`: `React.lazy` of `globe-canvas.tsx`, mounted only on the client, with a fixed-aspect
-disc outline as the Suspense fallback. `globe-canvas.tsx` is the production globe: Three.js for world to regional
+`index.tsx` exports `Globe`: `React.lazy` of `globe-canvas.tsx`, mounted only on the client, with NO Suspense fallback
+(nothing but the page colour shows until the first pixel-art frame fades in; see "Reload fade"). `globe-canvas.tsx` is the production globe: Three.js for world to regional
 scale (decision and tuned constants in `docs/renderer-decision.md`) and, when `tiles` is given, a lazily loaded street
 map it hands over to (see "Handover" below). The seam extends compatibly:
 
@@ -168,11 +170,12 @@ To swap renderers, point the `lazy(() => import(...))` in `globe/index.tsx` at a
 | `street/**` | the street map (docs/street-architecture.md); only `street/engine.ts` and what it imports are in its lazy chunk |
 | `engine/index.ts` | `createGlobe()`: wires renderer + labels + view reporting; `WebGLUnavailableError`; debug introspection |
 | `engine/renderer.ts` | `GlobeRenderer`: WebGLRenderer, camera, sizing (ResizeObserver, DPR), frame scheduling, context loss, visibility, picking |
-| `engine/scene.ts`, `materials.ts`, `marker-layer.ts`, `route-layer.ts` | what is drawn: disc, graticule, borders, coastlines, routes, markers, horizon outline; GLSL |
+| `engine/scene.ts`, `materials.ts`, `route-layer.ts` | what is drawn: disc, graticule, borders, coastlines, routes (only those through the selected place), horizon outline; GLSL. Places and groups are NOT drawn here: they are rectangles on the pixel overlay (below) |
 | `engine/controls.ts` | pointer input: drag, wheel, pinch, tap (canvas only) |
 | `engine/motion.ts` | pure flight and inertia maths |
 | `engine/geo.ts`, `geometry.ts`, `view.ts`, `tuning.ts` | pure projection/zoom maths, vertex builders, `GlobeViewState` <-> internal zoom, tuned constants |
-| `engine/labels.ts`, `label-layer.ts` | pure label collision (`placeLabels`), DOM overlay |
+| `engine/lod-tree.ts`, `box-scene.ts`, `pixel-labels.ts`, `pixel-buffer.ts`, `pixel-font/`, `country-names.ts`, `group-square.ts`, `node-screen.ts` | the detection boxes: the cut of the place hierarchy, the pixel-art drawing of boxes, labels and chips, the font, the hit area ("Detection boxes" below) |
+| `engine/labels.ts` | the zoom-dependent label priority floor (`labelPriorityFloor`); its collision code is kept for the street HUD tests |
 | `engine/colors.ts`, `dpr.ts`, `webgl.ts` | CSS-variable theme, `devicePixelRatio` watcher, WebGL probe |
 
 Everything under `engine/` and `handover/` is framework-free. Pure parts are unit-tested (`engine/*.test.ts`: projection,
@@ -201,7 +204,7 @@ engine); every other initial chunk is byte-identical. `grep WebGLRenderer build/
 ### Lifecycle
 
 1. Server and first client render: `Globe` renders `null`. After hydration `React.lazy` loads `globe-canvas`
-   and the disc outline shows (`data-state="loading"`).
+   (nothing is shown meanwhile, `data-state="loading"`, root veiled).
 2. Effect (deps `places`, `routes`): load engine + geodata in parallel. If the effect was cleaned up meanwhile
    (React StrictMode, fast unmount) nothing is created. `createGlobe` probes WebGL once per page
    (`isWebGLAvailable`, a throwaway context that is released at once); without WebGL the root shows a calm
@@ -328,6 +331,13 @@ unavailable right now." (a `role="status"` paragraph at the bottom left of the m
 within 0.6 of the limit or a place is selected. When tiles come back the limit lifts and the notice goes. A place
 outside the fallback archive's bounds is not flown to at street scale (`StreetMap.covers`).
 
+**Framing: the bounding box.** A place with a published `bbox` (`[west, south, east, north]`, the true extent of the city or area
+it sits in) is framed on that box: `bboxFitRadiusKm` (`engine/framing.ts`) turns it into the view radius the formula below
+fits (the box's larger half extent, seen from the recorded point the camera flies to, so the whole box is on screen with the
+25 % margin), and `lib/projection.ts` hands that radius to the globe as the place's `viewRadiusKm`, so every framing consumer
+frames the box with the unchanged formula. `placeFraming` (same file) gives the box-centred equivalent (centre and radius) for
+callers that fly to the box centre instead of the point. Without a (valid) `bbox` the next paragraph applies, as before.
+
 **Framing: the view radius.** A place's framing comes from its published `viewRadiusKm` (optional, 0.5 to 500; default
 `DEFAULT_VIEW_RADIUS_KM` = 12 km, a typical city-wide framing: a mid-size city is seen whole, so you can tell where
 you are, with streets still legible). `engine/framing.ts`: the circle of that radius must fit the FREE area (box width
@@ -379,7 +389,8 @@ mid-dissolve and street scale; the follow debounce is a timer, not a frame loop)
 resolution (the spike's cheaper art-resolution path is not implemented, see docs/street-architecture.md).
 
 **Accessibility**: unchanged. All overlays and canvases are `aria-hidden` and inert (the street root is `inert`
-while it is not visible, so its attribution links are not tab stops then), the places list is the keyboard path to
+while it is not visible); the one exception is the map credits button, a sibling of those layers (not inside an
+`aria-hidden` subtree) that is always focusable, and the places list is the keyboard path to
 street view (verified: Enter on a list link, focus stays on a real element through the whole flight). No live
 region announces the switch to street view (it would be noise); only the unavailable notice is a live region.
 
@@ -396,28 +407,27 @@ world round trips, 3 live at street scale (Three + 2) and 1 after (43 created, 4
 - The street map is created at unified zoom 4.0 (or at the click of a place) and released 2.5 s after the camera leaves its range. While the globe is the shown renderer the map is **inactive** (`StreetMap.setActive(false)`): tiles keep loading, but there is no canvas copy, no pass and no overlay work, and the camera is only pushed to it once the camera rests (140 ms debounce). From the cut it is pushed on every tick, snapped to the art-cell grid (`street/core/snap.ts`) while the zoom is steady.
 - The street map renders at native art resolution (3 map pixels per cell per axis), like the globe. `highResolution` follows `HANDOVER.revealFocus` (off).
 - The street chunk is fetched and evaluated in an idle period 2.5 s after the globe is up (not on data-saver/2g connections), so the first flight or zoom does not pay for it.
-- `engine/governor.ts` watches the frame intervals of the moving camera and lowers the quality on a device that cannot keep up (street render scale 3 to 2, then a larger art pixel), with hysteresis; `__handoverDebug.quality()` / `forceQuality()`.
+- `engine/governor.ts` watches what frames COST while the camera moves and lowers the quality on a device that cannot keep up (street render scale 3 to 2, then a larger art pixel), with hysteresis; it recovers (see `docs/performance.md`, "Adaptive frame-budget governor"), logs every change (`console.info`) and keeps them in `history`; `__handoverDebug.quality()` / `forceQuality()`. The art pixel size is otherwise a function of the viewport only: `TUNING.pixelSize(minSide, dpr)` (test `engine/tuning.test.ts`).
 
 ### Behaviour notes
 
-- Markers are GL points sized in whole art pixels: normal 3, route stop 5, focused 7, selected 9 (ring with
-  centre dot). They are shown or hidden as a whole, from their centre only (see "Marker clipping fix" below);
-  picking and labels use the same answer, so hidden markers can be neither seen nor clicked.
+- There are no dot markers any more: every place and group is a RECTANGLE on the pixel overlay ("Detection boxes"). A
+  rectangle is shown or hidden as a whole, from its place's centre only (see "Marker clipping fix" below, which still
+  describes the rule); picking and labels use the same answer, so a hidden place can be neither seen nor clicked.
 - Routes: only the lines in the `routes` prop are drawn, as great-circle arcs lifted above the surface through
-  the route's ordered points. All routes are drawn complete and static; only the route that contains the
-  newly selected place plays the 2.2 s draw-on, and only when motion is allowed. The route containing the
-  selected place is matched by coordinates (the seam type has no slugs on routes) and its stops get the
-  5 px marker.
+  the route's ordered points, and ONLY the routes that have the SELECTED place as one of their stops
+  (`routesForPlace`, engine/geometry.ts; the stop is matched by coordinates, the seam type has no slugs on routes):
+  none on the world view, none while nothing is selected, in the globe and the street map alike. The shown route plays
+  the 2.2 s draw-on once when motion is allowed; under reduced motion it is complete and static. Its stops are drawn
+  even inside a closed group (`LodTree.setExtraForced`). Hidden lines are not rendered at all (`RouteLayer.show`).
 - Borders: not drawn below internal zoom 3.0, then the faintest palette level, one level more every
   (3.5 - 3.0) / (levels - 1) of zoom up to full ink at 3.5, and the same backwards on the way out: a fade in TONE, never a
   dither (`TUNING.borderZoom`, `engine/palette.ts borderLevel`; the old 50% dither band read as noise and the border
   popped in and out).
-- Labels: HTML overlay (`aria-hidden`, no tab stops: a visual duplicate of the places list, extra tab stops
-  would only repeat it). Labels are `pointer-events: none`; the canvas pointer handler hit-tests them
-  (grown by 2 px for mouse, 12 px for touch), so a drag that starts on a label still rotates, and a click
-  or tap on a label selects. Collision layer: priority order, selected and focused forced, markers are
-  obstacles, front hemisphere only. A zoom-dependent priority floor (60 on the whole globe, 0 from zoom 3.0)
-  reveals lower-priority places as you zoom in.
+- Labels: drawn on the pixel overlay canvas (`aria-hidden`, no tab stops: a visual duplicate of the places list, extra tab
+  stops would only repeat it), see "Detection boxes". The canvas is `pointer-events: none`; the canvas pointer handler
+  hit-tests the label plates (grown by 2 px for mouse, 12 px for touch) and then the rectangles' border bands, so a drag
+  that starts on a label still rotates, and a click or tap on one selects (a place) or flies to frame it (a group).
 - Input: drag (inertia stops cleanly; none under reduced motion; none after a pinch), wheel and trackpad pinch,
   two-finger pinch, tap/click. `touch-action: none` is set on the canvas only; the container, the places list and the
   panel keep default touch behaviour. There is no keyboard handling on purpose (the canvas is not focusable).
@@ -427,6 +437,7 @@ world round trips, 3 live at street scale (Three + 2) and 1 after (43 created, 4
 ### Framing and cut checks (`scripts/globe/framing.mjs`)
 
 `BASE_URL=http://localhost:5173 [SHOTS=1] node apps/web/scripts/globe/framing.mjs [reload|flight|cut|panel|reduced|mobile]`
+These browser checks (this one and the street ones) look up the demo fixture's places by slug (`lisbon`, `paris`, ...): serve the app with `pnpm dev:demo`, not `pnpm dev` (which shows your preview or the empty published state).
 (real OpenFreeMap tiles; `SHOTS=1` writes `docs/screenshots/framing-<slug>-{light,dark,mobile}.png`). `reload`: reload of
 `/locations/{lisbon,paris,ho-chi-minh-city}`, light and dark, camera identical on every animation frame from the first,
 one cut; `flight`: a list selection ends at the reload view; `cut`: through a flight in and back out, per frame the
@@ -469,6 +480,122 @@ panel open. `check.mjs` also covers the inset (direct load, animation vs
 panel position, picking, close, reduced motion) and the ocean colour in both schemes. The scripts install their instrumentation before app code runs:
 a rAF call counter, WebGL context created/lost counters and a counter on `gl.clear` (Three issues one per frame).
 
+## Detection boxes and pixel text (2026-10-06)
+
+Owner: the map should read like a classifier's output. EVERYTHING is a rectangle, there are no dot markers, and the text is
+pixel type on the same grid as the map. Code: `app/globe/engine/{lod-tree,box-scene,pixel-labels,pixel-buffer,country-names,group-square,node-screen}.ts`
+and `engine/pixel-font/`, shared by the Three.js globe and the street map's `overlay/hud-layer.ts` (one `BoxScene` class, so
+both draw exactly the same thing on both sides of the handover).
+
+**Geometry** (`LodTree`, pure, unit tested). A place is the bounding box of its extent. With a published `bbox` it is that
+box (`GlobePlace.bbox`): the box's own width and height in km at the local scale of the unified camera, centred on the box's
+centre, not on the recorded point (a city's rectangle is the whole city, wherever the entry's point is). Without one it is a
+square around the point, half side `viewRadiusKm / 1.25` (12 km by default), so the box of a place the camera is framed on fits
+the free area with the framing's 25 % margin. A group is the union of the TRUE boxes of the visible places below it. All are
+axis aligned in screen space, hollow, one art pixel thick, snapped to whole cells (`snapBox`), at least `LOD.minBoxCells`
+across on each axis.
+
+**Minimum size and mask.** A box smaller than `LOD.minBoxCells` (9 cells, 22.5 CSS px at 2.5 px; was 14, the owner found it
+too big) is drawn at that size, outlined, with its interior MASKED in the page colour (the colour of the ocean and the
+background: black in the dark theme, white in the light one, never a grey), so the small area reads as an outlined area that is
+empty and the fill does not catch the eye. As its true side grows from 1x to 1.6x the minimum (`fillFadeFrom/To`) the mask fades
+out by OPACITY and only the outline stays, so you can see through it (`LodTree.fillAlpha`). A box bigger than 1.6x the smaller
+free side fades out (gone at 2.2x: you are inside it). Reduced motion: the mask (and the "inside" fade) switch on or off with a
+hysteresis band instead of fading.
+
+**Contrast and fades are opacity.** Rectangles and label text are the full foreground ink (`--foreground`, the last palette
+level) at opacity 1 whenever the node is fully visible, in both themes: the map beneath is a recessive grey, the boxes are not.
+A fade is NEVER a darker or lighter shade of grey: shades have a visible minimum that occludes the map right after a node appears
+and right before it goes, which breaks the fade. Everything a node draws (outline, interior mask, label plate, text) is
+composited at the node's alpha (`LodTree.alpha`, a continuous function of the camera, quantised to 1/64 for drawing) over what
+is underneath, per art cell: `PixelBuffer` holds straight-alpha RGBA per cell and does the "over" blend, the canvas composites
+it over the map. The art-pixel grid is untouched (no sub-pixel position, no smoothing). Fades are driven by the camera, so they
+run through the existing on-demand frame loop (idle = zero rAF); under reduced motion they are switches. The selected, focused
+or hovered box is drawn on top with a second ring just inside its outline (the full ink everywhere would otherwise lose it).
+
+**The cut** (declutter, not a hierarchy overlay). The published group tree is the cluster tree and a dynamic, screen-space cut
+decides which nodes are drawn: only places that pass the visibility rule (front hemisphere, clear of the limb) count; a group
+is shown as ONE box when its children, each as the box and the label it would be drawn with, are closer than `LOD.sepPx` (30 CSS
+px, a signed gap, `sepClosedPx` 10 = fully closed) and opens into its children when they separate. Between the two the
+alphas cross-fade as opacity (no dither; a camera jittering around the threshold only moves the opacity by a hair and never
+changes the set); alphas along a branch always sum to 1, so nothing pops and no place is ever missing. A lone place is its own
+rectangle at every zoom, a country with two distant places shows two rectangles, ten places 50 km apart are one box ("10
+entries") until you zoom in, continents and subregions only appear on crowded views, and every group is open from street scale.
+Reduced motion: no cross-fade, a group opens at `(sepClosedPx + sepPx) / 2 + 3 px` and closes 6 px lower. Cost: one projection
+of every place plus a traversal of the open groups only (18 nodes 5 us, 1,000 nodes 65 us, 5,000 nodes 250 us per
+evaluation); cached until the camera, the forced nodes or the theme change; idle map = zero frames and zero canvas draws.
+
+**Labels.** Text only, no surrounding rectangle, tab or outline: left-justified on the box's left edge, just above its top edge,
+on a plate of the page colour (one cell of room around the text, no border) so nothing shows behind it. A place's label is its
+name; when it is the ONLY place of its country (`countryCode`, counted over the whole projection, not what is in view) the
+country follows after a comma ("Bogotá, Colombia", `Intl.DisplayNames(["en"], {type: "region"})`; a missing or unknown code
+adds nothing, silently). The name is set in the BOLD weight. A group's label continues with its COUNTER, "<N> entries" ("1 entry"),
+N being the number of places below it, in the regular weight after a gap of `TEXT_GAP` (5 cells), on exactly the same baseline
+as the name, with no plate or inversion of its own (the inverted chip is gone). The counter is a separate text run on
+purpose: it will grow into publication types and other stats, and the plate just widens. Places and groups
+look identical (same tone, same states): selected, focused and hovered are the full ink for the outline, the fill and the
+text. Placement is greedy by priority (selected > place > group); a label that would overlap one already placed is left out
+(its box stays), labels may run past a tiny box to the right, and low-priority places have no label on the world view (the
+zoom-dependent floor). Click targets: the label plate and the border band (6 px mouse, 12 px touch) of a box, never its
+interior, so the boxes inside a box stay clickable; a place opens its page, a group flies to frame it. The places list
+(`PlacesNav`) stays the dependable keyboard path and nests the places under their groups as headings.
+
+**Pixel text.** `PixelBuffer` is a level image whose cells are the art pixels; `PixelOverlay` shows it on a `cols x rows`
+canvas upscaled with `image-rendering: pixelated`. Boxes, plates and glyphs are written into it at whole-cell positions, one
+cell thick, as a palette level and an opacity: no sub-pixel position, no anti-aliasing grey. The canvas is only touched when the
+set of boxes and labels, their cells or their tones changed (frame signature), and only the changed region is uploaded.
+- Font: **Tiny5** (The Tiny5 Project Authors, github.com/Gissio/font_tiny5, SIL Open Font License 1.1, from `@fontsource/tiny5`; licence text in
+  `engine/pixel-font/OFL.txt`, no attribution needed at runtime). Chosen over the other pixel fonts on npm because it has a FULL
+  lowercase set (Silkscreen is capitals only), is drawn on a real pixel grid (the vector "pixel" fonts blur when snapped) and has
+  the Latin Extended-A/B letters. `scripts/font/bake-pixel-font.mjs` (`pnpm --filter @catalyst/web bake:font`) bakes it to bit rows
+  (`pixel-font/tiny5-data.ts`, 23 KB source, no font file is shipped; the baked glyph bitmaps are a derivative of the font and fall under the same OFL, kept with `OFL.txt`). Size: 5 art-pixel capitals, 4 x-height, 6 with an i dot, 1 below
+  the baseline: at 2.5 CSS px that is 12.5 CSS px of capital, a comfortable 17 px type; the owner's "about 7 to 9 art px" would
+  be a 25 px type at this resolution, so the smallest-but-one pixel font was kept. Never forced to uppercase.
+- Weights: Tiny5 has one face. BOLD (place and group names) is derived on the pixel grid by a 1-cell horizontal double strike
+  (`pixel-font.ts` `emboldened`): every ink pixel also lights the cell to its right unless that would close a one-pixel gap
+  (`#.#` stays `#.##`, so the counters of o, e, a survive), stems become 2 cells, a glyph is one column wider and its advance one
+  larger. `measureText(text, bold)` and `forEachInk(..., bold)` share the flag, so layout and drawing cannot disagree, and a cell
+  is emitted once (a translucent bold string is evenly translucent).
+- Coverage (`pixel-font.ts`): the font's own glyphs (Latin, Latin Extended-A/B, Greek, Cyrillic: Nikšić, Chișinău, Sighișoara,
+  Málaga, Bogotá, Thessaloniki); Vietnamese letters composed in the font's style from base letter, horn and tone marks (Huế);
+  anything else (Arabic, CJK) is the system font rasterised at 8 px and thresholded at 50 % at art resolution, no grey. It is not
+  designed on the grid, so its strokes can be uneven: documented, rare in place names.
+
+**Art pixel size** (`ART_PIXEL` in `engine/tuning.ts`, the ONE constant the globe, the street map, the pixel text and the
+frame governor read; the street pass takes it through `STREET_TUNING.pixelSize`). Owner: "a little higher resolution, the pixel
+effect a little less visible". 3 CSS px (6 device px at DPR 2) became **2.5 px** on desktop (5 device px at DPR 2, 2 px at DPR 1
+because ties go down, never coarser) and stays 2 px on phones; `pixelSize()` always rounds to whole device pixels, so
+nearest-neighbour scaling never shimmers (DPR 1.25, 1.5, 2.625 get the nearest whole device size). One line to change it;
+`?globe-debug&art-px=3` overrides it for comparisons. `docs/screenshots/resolution-comparison.png` compares 3, 2.5 and 2 px on
+the demo (map and text): 2 px reads almost smooth and makes the type small; 2.5 px keeps the character and the text is clearer
+than at 3. GPU-synced globe frame on an M4, p50 over 60 frames: 0.6 / 0.7 to 1.3 / 0.8 to 1.1 ms for 3 / 2.5 / 2 px, all noise at this
+level; `pnpm --filter @catalyst/web perf` passes every frame-time budget at 2.5 px (see `docs/performance.md`). The street pass
+internals (line gate thresholds, crawl budget) belong to the street style: after the change `perf` reports
+`desktop crawl(snapped) changedShare 0.35 > 0.35` (the budget sits exactly on the value) and nothing else.
+
+**Far-zoom border flicker (investigated).** At far zoom the Alaska / Canada border flickered and the middle of the USA / Canada
+border was missing, and it came back when zooming in. Cause: a GL line is a straight chord through the globe and the occluder disc
+is 0.002 under the surface, so any border segment longer than about 7 degrees sank into the disc in its middle; the globe's border
+data had 10 to 40 degree segments (the 49th parallel is one straight segment), and which pixels survived changed with the camera:
+flicker. It is a DATASET cause first (fixed in `packages/geodata`, whose borders now have no segment over 4 degrees), and the
+engine now also cuts every segment into pieces of at most 1 degree (`engine/geometry.ts MAX_CHORD_DEG`, tested in
+`geometry.test.ts`), so it no longer depends on the data. `scripts/globe/borders.mjs` samples the 49 N border (122.5 W to
+97 W) and the 141 W meridian over 96 views per theme and size and over 60-frame drags, and requires a pixel at every sample and no
+blink; on the current dataset it passes with and without the engine cut (the data no longer has long chords), so
+the unit tests are the regression guard for the engine part.
+
+### Checks of the boxes (`scripts/globe/groups.mjs`, `markers.mjs`)
+
+`groups.mjs [lod|cases|pixels|empty|reduced|pick|cost|idle|handover|shots]` (demo content: `pnpm dev:demo`; `handover` also
+needs the local tile server) checks the cut (alphas sum to 1 along every branch, no jump, tone entry, 10 close places = one box
+that opens, a lone place, two distant places), the pixels (every outline cell present, only palette colours), reduced motion,
+picking (border and label plate yes, interior no), cost, idle (0 frames, 0 canvas draws) and that the globe and the street overlay
+draw the same boxes in the same tones at one camera. `SHOTS=1 ... groups.mjs shots` writes `docs/screenshots/clusters-world-{light,dark}.png`
+and `clusters-opening.png` (a cluster opening through a zoom). `markers.mjs [quick]` is the whole-or-nothing sweep for rectangles:
+thousands of views rotating every place across the limb, at overview, mid and high zoom, desktop and phone, nothing selected and
+selected: every shown outline complete, nothing on the canvas outside the shown boxes and label plates, the far side never drawn,
+every box centred on the cell the place projects to.
+
 ## Reload fade (direct load of a place)
 
 A direct load or reload of `/locations/:slug` used to show the whole planet for a moment and then jump to the framed city.
@@ -476,9 +603,12 @@ Now the first paint is the page colour only (black in the dark theme, `--backgro
 fades in once the final framed view is drawn. No camera motion, no layout shift.
 
 - `Globe` renders nothing on the server and on the first client render; for a fit view (`isFitView(initialView)`, i.e. a
-  direct load of a place) the `Suspense` fallback is `null` (no disc outline) and `GlobeCanvas` renders its root with
-  `opacity: 0` (`veil`, decided on the first render, so the server markup and the hydrated one agree). A saved view
-  (the globe coming back from the mobile slide-over) and the home page are not veiled.
+  direct load of a place or of the home page: `startsVeiled(initialView)`) the `Suspense` fallback is `null` and there is no
+  placeholder of any kind (the old full-resolution disc outline, shown for a few frames before the pixel-art globe was ready,
+  is gone), and `GlobeCanvas` renders its root with `opacity: 0` (`veil`, decided on the first render, so the server markup and
+  the hydrated one agree). The WebGL canvas is itself created with `opacity: 0` and only made visible by the first frame it
+  draws (`renderer.renderNow`), so an undrawn (black) or unfinished canvas can never be presented whatever the stage does.
+  Only a saved view (the globe coming back from the mobile slide-over) is not veiled.
 - The handover controller calls `onReveal` ONCE (`tryReveal`): when the street map has been cut in (a start at street
   scale: `restoring`, `shown >= 1`), or at the globe's first frame when the start needs no street map; a start that needs
   the street map waits at most `HANDOVER.revealWaitMs` (1500 ms), then reveals whichever correct frame exists (the globe at
@@ -486,7 +616,9 @@ fades in once the final framed view is drawn. No camera motion, no layout shift.
   map (no tiles, failure) reveals the globe at once. WebGL unavailable also reveals (the status message must show).
 - The fade is `opacity` over `HANDOVER.fadeInMs` (500 ms, `--ease-standard`); under reduced motion there is no
   transition (instant). The place panel is untouched.
-- Check: `scripts/globe/reload-fade.mjs` samples every animation frame from navigation: first paint transparent; never
+- Check: `scripts/globe/first-frames.mjs [path] [scheme]` samples every animation frame of a load of the home page: no
+  placeholder or loading element at any frame, the stage and the WebGL canvas never on screen before the first drawn frame,
+  and the globe does appear (also with reduced motion). `scripts/globe/reload-fade.mjs` samples every animation frame from navigation: first paint transparent; never
   visible away from the final framing; no camera motion; 450 ms fade (instant with reduced motion); the final frame is the
   street map; with the street chunk delayed by 4 s the globe frame is revealed after the wait (1.9 s), not before.
   Measured on the M4 (local PMTiles): reveal at 0.62 to 0.65 s after navigation.

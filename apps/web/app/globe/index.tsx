@@ -1,8 +1,8 @@
 import { lazy, Suspense, useEffect, useState } from "react";
-import { isFitView, type GlobeProps } from "./types";
+import type { GlobeProps } from "./types";
 
 export { DEFAULT_VIEW_RADIUS_KM } from "./engine/framing";
-export type { GlobeFitView, GlobeInitialView, GlobePlace, GlobeProps, GlobeViewState } from "./types";
+export type { GlobeFitView, GlobeGroup, GlobeGroupKind, GlobeInitialView, GlobePlace, GlobeProps, GlobeViewState } from "./types";
 
 /**
  * The renderer implementation is loaded lazily and only on the client. It pulls `three` and the geodata in
@@ -10,25 +10,17 @@ export type { GlobeFitView, GlobeInitialView, GlobePlace, GlobeProps, GlobeViewS
  */
 const GlobeImpl = lazy(() => import("./globe-canvas"));
 
-/** Fixed-aspect disc outline: shown until the renderer has loaded. No layout shift. (Not shown on a direct load of a place: the first paint is the page colour.) */
-function GlobeLoading({ insetRight }: { insetRight: number }) {
-  return (
-    <div data-globe="loading" style={{ paddingRight: insetRight }} className="grid size-full place-items-center">
-      <div className="aspect-square h-[min(72%,78vw)] rounded-full border border-border-strong" />
-    </div>
-  );
-}
-
 /**
- * Client-only globe. Renders nothing on the server so that server and first
- * client render match; the placeholder disc outline appears right after hydration.
+ * Client-only globe. Renders nothing on the server so that server and first client render match, and nothing while the
+ * renderer loads: the page colour is all there is until the first pixel-art frame fades in (globe-canvas.tsx). There is no
+ * placeholder: an outline of the planet at screen resolution, shown for a few frames, is the one thing that must not appear.
  */
 export function Globe(props: GlobeProps) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   if (!mounted) return null;
   return (
-    <Suspense fallback={isFitView(props.initialView) ? null : <GlobeLoading insetRight={props.insetRight} />}>
+    <Suspense fallback={null}>
       <GlobeImpl {...props} />
     </Suspense>
   );

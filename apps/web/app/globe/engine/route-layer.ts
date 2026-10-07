@@ -20,10 +20,10 @@ interface Entry {
 const MARCH_PX_PER_S = 30;
 
 /**
- * Curated routes only: one line per entry of the `routes` prop, built from its ordered points.
- * Every route is drawn complete and static; only the one the selected place belongs to is animated
- * (draw-on, once) and only when motion is allowed. Idle cost is zero: `advance` reports `false` when
- * nothing is animating.
+ * Curated routes only: one line per entry of the `routes` prop, built from its ordered points. A route is NOT drawn
+ * unless one of its stops is the selected place (`show`): none on the world view, none while nothing is selected. The
+ * selected place's routes play their draw-on once when motion is allowed, else they are complete and static. Idle cost is
+ * zero: hidden lines are not rendered, and `advance` reports `false` when nothing is animating.
  */
 export class RouteLayer {
   private entries: Entry[] = [];
@@ -44,20 +44,31 @@ export class RouteLayer {
       const line = new LineSegments(g, material);
       line.renderOrder = 4;
       line.frustumCulled = false;
+      line.visible = false;
       scene.add(line);
       this.entries.push({ route, line, material, length: b.length, drawStart: null });
     }
   }
 
-  /** Begin the draw-on for `routeId` (null stops any animation and completes everything). */
-  animate(routeId: string | null, now: number) {
+  /**
+   * Show exactly the routes in `ids` (none when empty) and hide every other. With `animate` the shown routes draw on from
+   * the start (`now`), else they are complete.
+   */
+  show(ids: ReadonlySet<string>, animate: boolean, now: number) {
     for (const e of this.entries) {
-      e.drawStart = e.route.id === routeId ? now : null;
-      this.set(e, e.route.id === routeId ? 0 : e.length + 1, 0);
+      const on = ids.has(e.route.id);
+      e.line.visible = on;
+      e.drawStart = on && animate ? now : null;
+      this.set(e, on && animate ? 0 : e.length + 1, 0);
     }
   }
 
-  /** Reduced motion: complete and static. */
+  /** Ids of the routes shown now (measurement and tests). */
+  shown(): string[] {
+    return this.entries.filter((e) => e.line.visible).map((e) => e.route.id);
+  }
+
+  /** Reduced motion: the shown routes are complete and static. */
   finishAll() {
     for (const e of this.entries) {
       e.drawStart = null;

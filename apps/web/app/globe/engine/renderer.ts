@@ -17,7 +17,8 @@ import type { GlobePlace, GlobeRoute } from "../types";
 import type { GlobeTheme } from "./colors";
 import { attachControls, type ControlsHost, type PointerKind } from "./controls";
 import { watchDevicePixelRatio } from "./dpr";
-import { radiusFitZoom } from "./framing";
+import { FRAME_CLOCK } from "./governor";
+import { groupFitZoom, radiusFitZoom } from "./framing";
 import {
   DEG,
   FOV_DEG,
@@ -25,13 +26,14 @@ import {
   fitZoom,
   normalizeLon,
   projectLonLat,
+  projectUnit,
   viewBasis,
   zoomToRadiusPx,
   type ScreenPoint,
   type ViewBasis,
   type ViewState,
 } from "./geo";
-import { isRouteStop, routeForPlace } from "./geometry";
+import { isRouteStop, routesForPlace } from "./geometry";
 import { clampInset, fadeMask, freeWidth, insetShiftBuf } from "./inset";
 import {
   createFlight,
@@ -45,6 +47,9 @@ import {
   type Flight,
   type Velocity,
 } from "./motion";
+import { boxHitDistance, snapBox } from "./group-square";
+import { LOD, newLodCamera, setLodCamera, type LodTree } from "./lod-tree";
+import { NodeScreen } from "./node-screen";
 import { GlobeScene } from "./scene";
 import { INSET_EASE, TUNING } from "./tuning";
 import { fromViewState } from "./view";
@@ -64,6 +69,8 @@ export interface RendererOptions {
   container: HTMLElement;
   places: readonly GlobePlace[];
   routes: readonly GlobeRoute[];
+  /** The semantic-zoom hierarchy (places and groups): decides, per frame, which markers and squares are drawn. Shared with the street overlay. */
+  lod: LodTree;
   coastlines: Polylines;
   borders: Polylines;
   theme: GlobeTheme;
@@ -82,6 +89,10 @@ export interface RendererOptions {
    */
   pickOverride?(x: number, y: number, kind: PointerKind): string | null | undefined;
   onSelect(slug: string): void;
+  /** A group's square (or label) was clicked: the handover flies the camera to frame its circle. */
+  onSelectGroup(slug: string): void;
+  /** The pointer is over a group (its slug) or not (null): highlight only. */
+  onHover?(slug: string | null): void;
   /** The GL context was lost (true) or restored (false). */
   onContextChange(lost: boolean): void;
 }
@@ -153,6 +164,16 @@ export class GlobeRenderer {
   private placeBySlug = new Map<string, GlobePlace>();
   private selected: string | null = null;
   private focused: string | null = null;
+  private hovered = -1;
+  private drawnBoxes = 0;
+  private routeStops: ReadonlySet<string> = new Set();
+  /** Semantic zoom: what is drawn this frame, and where (per node index; see `syncNodes`). */
+  private lod: LodTree;
+  private lodCam = newLodCamera();
+  private selIdx = -1;
+  private focIdx = -1;
+  readonly nodeScreen: NodeScreen;
+  private scratch = { x: 0, y: 0, visible: false, facing: 0 };
   private flight: Flight | null = null;
   private flightBeyond = false;
   private velocity: Velocity = STILL;
@@ -169,6 +190,8 @@ export class GlobeRenderer {
     this.theme = opts.theme;
     this.places = opts.places;
     this.routes = opts.routes;
+    this.lod = opts.lod;
+    this.nodeScreen = new NodeScreen(opts.lod.size);
     for (const p of opts.places) this.placeBySlug.set(p.slug, p);
 
     this.gl = new WebGLRenderer({
@@ -186,6 +209,9 @@ export class GlobeRenderer {
       display: "block",
       outline: "none",
       cursor: "grab",
+      // A canvas that has not drawn yet is opaque black (alpha: false): invisible until the first frame is on it (`renderNow`),
+      // so no unfinished frame is ever presented, whatever the stage's own opacity does.
+      opacity: "0",
     } satisfies Partial<CSSStyleDeclaration>);
     this.canvas.setAttribute("aria-hidden", "true");
     opts.container.append(this.canvas);
@@ -242,7 +268,6 @@ export class GlobeRenderer {
       top: `${this.canvasTop}px`,
     });
     this.globe.routes.setPixelSize(this.bufW, this.bufH);
-    this.globe.markers.setBufferSize(this.bufW, this.bufH);
     this.applyInset();
     if (!this.sized) {
       this.sized = true;
@@ -325,7 +350,17 @@ export class GlobeRenderer {
    */
   fitZoomFor(radiusKm: number): number {
     const z = radiusFitZoom(radiusKm, this.width, this.height, this.insetTarget);
-    return Math.max(z, fitZoom(freeWidth(this.width, clampInset(this.insetTarget, this.width)), this.height, TUNING.fitMargin));
+    return Math.max(z, this.wholeFit());
+  }
+  /**
+   * The zoom a flight to group `i` ends at: its circle (`viewRadiusKm`) fits the free area with `GROUP_FRAMING_MARGIN` of room,
+   * which is far more than the box needs to open: its children are showing on arrival.
+   */
+  fitZoomForGroup(i: number): number {
+    return Math.max(groupFitZoom(this.lod.radiusKm[i]!, this.width, this.height, this.insetTarget), this.wholeFit());
+  }
+  private wholeFit() {
+    return fitZoom(freeWidth(this.width, clampInset(this.insetTarget, this.width)), this.height, TUNING.fitMargin);
   }
   isFlying() {
     return this.flight !== null;
@@ -428,8 +463,14 @@ export class GlobeRenderer {
     this.requestRender();
   }
 
+  getTheme(): GlobeTheme {
+    return this.theme;
+  }
+
   setTheme(theme: GlobeTheme) {
     this.theme = theme;
+    // Tones of the semantic zoom: group squares in map levels per kind (below the ink), a place marker the ink.
+    this.lod.setTones(theme.ramp.length);
     this.gl.setClearColor(new Color(...theme.background), 1);
     this.globe.applyTheme(theme);
     this.requestRender();
@@ -440,33 +481,43 @@ export class GlobeRenderer {
   /** `animateRoute`: play the draw-on of the selected place's route (ignored under reduced motion). */
   setSelected(slug: string | null, animateRoute: boolean) {
     this.selected = slug;
+    this.selIdx = this.lod.indexOf(slug);
     this.selectRoute(slug, animateRoute);
   }
 
   setFocused(slug: string | null) {
     if (slug === this.focused) return;
     this.focused = slug;
+    this.focIdx = this.lod.indexOf(slug);
     this.refreshMarkers();
     this.requestRender();
   }
 
-  private selectedRoute(): GlobeRoute | null {
-    return routeForPlace(this.routes, this.selected ? this.placeBySlug.get(this.selected) : undefined);
+  /** Highlight (full ink) the node under the pointer. */
+  setHovered(slug: string | null) {
+    const next = this.lod.indexOf(slug);
+    if (next === this.hovered) return;
+    this.hovered = next;
+    this.requestRender();
+  }
+
+  /** The routes through the selected place: the only ones drawn (engine/geometry.ts `routesForPlace`). */
+  private selectedRoutes(): GlobeRoute[] {
+    return routesForPlace(this.routes, this.selected ? this.placeBySlug.get(this.selected) : undefined);
   }
 
   private selectRoute(slug: string | null, animate: boolean) {
-    const route = this.selectedRoute();
-    if (this.reduced || !animate || !slug) this.globe.routes.finishAll();
-    else this.globe.routes.animate(route?.id ?? null, performance.now());
+    const routes = this.selectedRoutes();
+    this.globe.routes.show(new Set(routes.map((r) => r.id)), animate && !this.reduced && !!slug, performance.now());
     this.refreshMarkers();
     this.requestRender();
   }
 
   private refreshMarkers() {
     const stops = new Set<string>();
-    const route = this.selectedRoute();
-    if (route) for (const p of this.places) if (isRouteStop(route, p)) stops.add(p.slug);
-    this.globe.markers.setStates(this.selected, this.focused, stops);
+    for (const route of this.selectedRoutes()) for (const p of this.places) if (isRouteStop(route, p)) stops.add(p.slug);
+    this.routeStops = stops;
+    this.lod.setExtraForced([...stops].map((slug) => this.lod.indexOf(slug)));
   }
 
   /* ------------------------------ projection / picking ------------------------------ */
@@ -507,30 +558,97 @@ export class GlobeRenderer {
     };
   }
 
-  /** Per frame, before drawing: hand every marker its cell and visibility. */
-  private syncMarkers() {
-    const basis = viewBasis(this.drawView(), this.bufH * this.pixel);
-    this.places.forEach((place, i) => {
-      const c = this.markerCell(place.lon, place.lat, basis);
-      this.globe.markers.setScreen(i, c.col, c.row, c.shown);
-    });
-    this.globe.markers.commitScreen();
+  /** The art-pixel grid of the canvas: what the pixel-text overlay must match cell for cell (engine/pixel-labels.ts). */
+  pixelGrid() {
+    return { cols: this.bufW, rows: this.bufH, cell: this.pixel, left: this.canvasLeft, top: this.canvasTop };
   }
 
-  /** Nearest front-hemisphere marker within `radius` CSS px; ties go to the higher label priority. */
-  pick(x: number, y: number, radius: number): string | null {
-    let best: GlobePlace | null = null;
-    let bestD = radius;
-    for (const place of this.places) {
-      const p = this.project(place.lon, place.lat);
-      if (!p.visible) continue;
-      const d = Math.hypot(p.x - x, p.y - y);
-      if (d < bestD || (d === bestD && best && place.labelPriority > best.labelPriority)) {
-        bestD = d;
-        best = place;
+  /**
+   * The camera of the declutter clusters for this frame: the unified view (NOT capped at the globe's maximum zoom) in the
+   * canvas's own projection space (the one `syncNodes` projects the markers in), so the tree decides from exactly the cells
+   * the markers are drawn in.
+   */
+  private lodCamera() {
+    const P = this.pixel;
+    const cw = this.bufW * P;
+    const ch = this.bufH * P;
+    setLodCamera(this.lodCam, this.view, { width: cw, height: ch, centreX: cw / 2 - this.shiftBuf * P }, freeWidth(cw, this.inset), P);
+    return this.lodCam;
+  }
+
+  /** A copy of the camera of the declutter clusters for the current view (measurement). */
+  lodCameraNow() {
+    return { ...this.lodCamera() };
+  }
+
+  /** The tree evaluated for the current camera (cached: free when a frame has just been drawn). */
+  lodFrame(): LodTree {
+    this.lod.update(this.lodCamera(), this.selIdx, this.focIdx, this.reduced);
+    return this.lod;
+  }
+
+  /**
+   * Per frame, before drawing: evaluate the detection boxes (engine/lod-tree.ts) and hand every DRAWN node its rectangle in
+   * whole art cells (`snapBox`): a place and a group are the same kind of thing. The label layer draws them on the pixel
+   * canvas, and picking reads these rectangles, so what is drawn, labelled and clickable cannot disagree. A node is drawn
+   * whole or not at all: the tree counted only places that passed the whole-or-nothing visibility rule (`markerShown`).
+   * O(drawn nodes): nothing else is touched or allocated.
+   */
+  private syncNodes() {
+    const lod = this.lodFrame();
+    const P = this.pixel;
+    const screen = this.nodeScreen;
+    let boxes = 0;
+    for (let k = 0; k < lod.count; k++) {
+      const i = lod.visible[k]!;
+      const r = snapBox(lod.boxX0[i]!, lod.boxY0[i]!, lod.boxX1[i]!, lod.boxY1[i]!, P);
+      screen.bx0[i] = r.c0 * P + this.canvasLeft;
+      screen.by0[i] = r.r0 * P + this.canvasTop;
+      screen.bx1[i] = r.c1 * P + this.canvasLeft;
+      screen.by1[i] = r.r1 * P + this.canvasTop;
+      screen.x[i] = (screen.bx0[i]! + screen.bx1[i]!) / 2;
+      screen.y[i] = (screen.by0[i]! + screen.by1[i]!) / 2;
+      // Drawn = the node's places passed the visibility rule and its rectangle touches the buffer.
+      const drawn = (lod.isGroup[i] ? lod.members[i]! > 0 : !!lod.shown[i]) && r.c1 > 0 && r.r1 > 0 && r.c0 < this.bufW && r.r0 < this.bufH;
+      screen.shown[i] = drawn ? 1 : 0;
+      screen.facing[i] = 1;
+      if (drawn) boxes++;
+    }
+    this.drawnBoxes = boxes;
+  }
+
+  /** Ids of the routes drawn now: only those through the selected place (checks). */
+  routesShown(): string[] {
+    return this.globe.routes.shown();
+  }
+
+  /** Rectangles drawn in the last frame: measurement. */
+  drawnCounts() {
+    return { markers: 0, groups: this.drawnBoxes };
+  }
+
+  /**
+   * The node whose BORDER BAND is under the point (never its interior, so the rectangles inside a rectangle stay clickable);
+   * the smallest rectangle wins. Labels are consulted by the caller first (`controlsHost`). Uses the rectangles of the
+   * last drawn frame, i.e. exactly what is on screen.
+   */
+  pickBox(x: number, y: number, kind: PointerKind): string | null {
+    const lod = this.lod;
+    const screen = this.nodeScreen;
+    let best = -1;
+    let bestArea = Infinity;
+    for (let k = 0; k < lod.count; k++) {
+      const i = lod.visible[k]!;
+      if (!screen.shown[i] || lod.alpha[i]! < LOD.pickAlphaMin) continue;
+      const box = { x0: screen.bx0[i]!, y0: screen.by0[i]!, x1: screen.bx1[i]!, y1: screen.by1[i]! };
+      if (boxHitDistance(x, y, box, null, kind) > 0) continue;
+      const area = (box.x1 - box.x0) * (box.y1 - box.y0);
+      if (area < bestArea || (area === bestArea && best >= 0 && lod.priority[i]! > lod.priority[best]!)) {
+        bestArea = area;
+        best = i;
       }
     }
-    return best?.slug ?? null;
+    return best >= 0 ? lod.slug[best]! : null;
   }
 
   /* ------------------------------ input ------------------------------ */
@@ -546,9 +664,17 @@ export class GlobeRenderer {
       fling: (samples, now) => this.fling(samples, now),
       pickAt: (x, y, kind) => {
         const over = this.opts.pickOverride?.(x, y, kind);
-        return over !== undefined ? over : (this.pick(x, y, TUNING.pickRadius[kind]) ?? this.opts.pickLabel(x, y, kind));
+        return over !== undefined ? over : (this.opts.pickLabel(x, y, kind) ?? this.pickBox(x, y, kind));
       },
-      select: (slug) => this.opts.onSelect(slug),
+      hover: (slug) => {
+        this.setHovered(slug);
+        this.opts.onHover?.(slug);
+      },
+      select: (slug) => {
+        const i = this.lod.indexOf(slug);
+        if (i >= 0 && this.lod.isGroup[i]) this.opts.onSelectGroup(slug);
+        else this.opts.onSelect(slug);
+      },
     };
   }
 
@@ -656,11 +782,23 @@ export class GlobeRenderer {
     return more;
   }
 
+  /** Whether the last tick asked for another frame: the next tick is then part of a running animation (see `FRAME_CLOCK`). */
+  private chained = false;
+
   private tick = () => {
     this.raf = 0;
-    if (this.disposed || this.hidden || this.lost) return;
+    if (this.disposed || this.hidden || this.lost) {
+      this.chained = false;
+      return;
+    }
+    // The frame governor (engine/governor.ts) must tell a slow device from a quiet one: a frame that is not part of a running
+    // animation was caused by an input event, and its interval says nothing about the device.
+    FRAME_CLOCK.live = true;
+    FRAME_CLOCK.continuous = this.chained;
     const more = this.advance(performance.now());
     this.renderNow();
+    FRAME_CLOCK.continuous = false;
+    this.chained = more;
     if (more) this.requestRender();
   };
 
@@ -668,14 +806,16 @@ export class GlobeRenderer {
   renderNow() {
     if (this.disposed || this.lost || !this.sized) return;
     this.cancelFrame();
+    const w0 = performance.now();
     if (this.suspended) {
       this.ticks++;
       this.opts.onFrame();
+      FRAME_CLOCK.workMs = performance.now() - w0;
       return;
     }
     const tp = perfStart();
     this.syncCamera();
-    this.syncMarkers();
+    this.syncNodes();
     perfEnd("three.sync", tp);
     // The whole buffer is drawn: a GL scissor limited to the free area saved nothing measurable (docs/web-architecture.md)
     // and left the area outside it stale, which the CSS edge-fade mask then revealed.
@@ -688,6 +828,7 @@ export class GlobeRenderer {
     const t1 = perfStart();
     this.opts.onFrame();
     perfEnd("frame.callbacks", t1);
+    FRAME_CLOCK.workMs = performance.now() - w0;
   }
 
   private syncCamera() {
@@ -733,11 +874,6 @@ export class GlobeRenderer {
     gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4));
   }
 
-  /** Measurement only: draw markers in pure red / blue (see `MarkerLayer.setProbe`). */
-  setMarkerProbe(on: boolean) {
-    this.globe.markers.setProbe(on);
-    this.requestRender();
-  }
 
   /** Inset state for checks: current inset and centre shift. */
   insetInfo() {

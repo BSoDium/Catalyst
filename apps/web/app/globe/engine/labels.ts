@@ -22,6 +22,12 @@ export interface LabelInput {
   facing?: number;
   /** Selected / focused places: always placed, ahead of everything else. */
   forced?: boolean;
+  /** Placements to try, in order, instead of `PlaceOptions.placements` (a group's label sits above or below its square's edge). */
+  placements?: readonly Placement[];
+  /** Distance between the anchor and the label box edge, instead of `PlaceOptions.gap`. */
+  gap?: number;
+  /** Half-size of the obstacle this input makes for other labels, instead of `PlaceOptions.markerRadius`; 0 = none. */
+  markerRadius?: number;
 }
 
 export interface PlaceOptions {
@@ -42,6 +48,8 @@ export interface PlaceOptions {
   minFacing?: number;
   /** Keep labels fully inside the viewport (minus this margin). */
   edgeMargin?: number;
+  /** Fixed rectangles (CSS px) that labels must not cover, like the tab of a cluster box. */
+  obstacles?: readonly { x0: number; y0: number; x1: number; y1: number }[];
 }
 
 export interface PlacedLabel {
@@ -128,7 +136,9 @@ export function placeLabels(inputs: readonly LabelInput[], opts: PlaceOptions): 
   const markerRect = new Map<string, Rect>();
   for (const l of inputs) {
     if (!l.visible) continue;
-    const r = { x0: l.x - markerRadius, y0: l.y - markerRadius, x1: l.x + markerRadius, y1: l.y + markerRadius };
+    const m = l.markerRadius ?? markerRadius;
+    if (m <= 0) continue;
+    const r = { x0: l.x - m, y0: l.y - m, x1: l.x + m, y1: l.y + m };
     markerRect.set(l.id, r);
     markers.add(r);
   }
@@ -139,16 +149,19 @@ export function placeLabels(inputs: readonly LabelInput[], opts: PlaceOptions): 
   );
 
   const placed = new RectGrid();
+  for (const o of opts.obstacles ?? []) placed.add({ x0: o.x0 - padding, y0: o.y0 - padding, x1: o.x1 + padding, y1: o.y1 + padding });
   const out: PlacedLabel[] = [];
   const inside = (r: Rect) =>
     r.x0 >= edgeMargin && r.y0 >= edgeMargin && r.x1 <= width - edgeMargin && r.y1 <= height - edgeMargin;
 
   for (const l of ordered) {
+    const own = l.placements ?? placements;
+    const g = l.gap ?? gap;
     const prev = previous?.get(l.id);
-    const order = prev ? [prev, ...placements.filter((p) => p !== prev)] : placements;
+    const order = prev && own.includes(prev) ? [prev, ...own.filter((p) => p !== prev)] : own;
     let chosen: { p: Placement; r: Rect } | null = null;
     for (const p of order) {
-      const r = boxFor(l, p, gap);
+      const r = boxFor(l, p, g);
       const padded = { x0: r.x0 - padding, y0: r.y0 - padding, x1: r.x1 + padding, y1: r.y1 + padding };
       if (!l.forced && !inside(r)) continue;
       if (placed.hits(padded)) continue;
@@ -159,7 +172,7 @@ export function placeLabels(inputs: readonly LabelInput[], opts: PlaceOptions): 
     if (!chosen && l.forced) {
       // Selected/focused label is always shown: take the preferred side even if it overlaps something.
       const p = order[0] ?? "right";
-      chosen = { p, r: boxFor(l, p, gap) };
+      chosen = { p, r: boxFor(l, p, g) };
     }
     if (!chosen) continue;
     placed.add({ x0: chosen.r.x0 - padding, y0: chosen.r.y0 - padding, x1: chosen.r.x1 + padding, y1: chosen.r.y1 + padding });

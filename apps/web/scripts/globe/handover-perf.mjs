@@ -3,8 +3,8 @@
 //   BASE_URL=http://localhost:5175 node apps/web/scripts/globe/handover-perf.mjs [flight|frames|idle|leaks|all] [desktop|mobile]
 //
 // flight  scripted world -> street flight of the selected place: rAF interval p50/p95/max, frames over 25 ms, heap
-// frames  GPU-synced cost of one frame in the dissolve band (both renderers), circular pan
-// idle    ticks / rAF calls / street renders over 2.5 s with no input at world, mid-dissolve (held) and street scale
+// frames  GPU-synced cost of one frame around the cut (both renderers), circular pan
+// idle    ticks / rAF calls / street renders over 2.5 s with no input at world, just past the cut (held, the cut fade over) and street scale
 // leaks   20 open/close cycles of the mobile slide-over and 20 handover round trips: live WebGL contexts return to baseline
 // Prefer a production build for numbers (the dev server adds overhead): pnpm --filter @catalyst/web build + start.
 import { DESKTOP, MOBILE, ensureTiles, launch, openApp, settleApp, state, waitStreetOk } from "./handover-lib.mjs";
@@ -100,14 +100,15 @@ try {
     };
     const idle = {};
     await settleApp(page);
+    await page.waitForTimeout(4500); // the street chunk warm-up (idle callback 2.5 s after load) and its tile requests are not idle time
     const w = await sample("world");
     idle[w[0]] = w[1];
-    await page.evaluate(() => window.__handoverDebug.globe.setView({ lon: 106.7, lat: 10.8, zoom: 4.4 }));
+    await page.evaluate(() => window.__handoverDebug.globe.setView({ lon: 106.7, lat: 10.8, zoom: 3.2 }));
     await waitStreetOk(page);
-    await page.evaluate(() => window.__handoverDebug.globe.setView({ lon: 106.7, lat: 10.8, zoom: 5.05 }));
+    await page.evaluate(() => window.__handoverDebug.globe.setView({ lon: 106.7, lat: 10.8, zoom: 3.75 }));
     await settleApp(page);
     await page.waitForTimeout(800);
-    const m = await sample("mid-dissolve (zoom 5.05, held)");
+    const m = await sample("just past the cut (zoom 3.75, held)");
     idle[m[0]] = m[1];
     await page.evaluate(() => window.__handoverDebug.globe.setView({ lon: 106.7, lat: 10.8, zoom: 12 }));
     await settleApp(page);

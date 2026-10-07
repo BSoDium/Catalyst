@@ -10,11 +10,14 @@
  * when WebGL is unavailable or the context was lost.
  */
 import { useEffect, useRef, useState } from "react";
+import { AttributionButton } from "~/components/attribution-button";
 import { createHandover, type HandoverDebug, type HandoverHandle, type Notice } from "./handover/controller";
 import { HANDOVER } from "./handover/maths";
+import { casesHierarchy, stressHierarchy } from "./engine/lod-stress";
 import { applyDebugLevels } from "./engine/palette";
+import { applyDebugArtPixel } from "./engine/tuning";
 import { enablePerf, perfEnd, perfStart } from "./engine/perf";
-import { isFitView, type GlobeProps } from "./types";
+import { startsVeiled, type GlobeProps } from "./types";
 
 type Status = "loading" | "ready" | "unavailable" | "lost";
 
@@ -70,10 +73,31 @@ function streetDisabledForTests(): boolean {
   }
 }
 
+/** Test-only: `?no-groups` (or sessionStorage "no-groups" = "1") draws every place as a marker, as before groups existed. */
+function noGroupsForTests(): boolean {
+  try {
+    return new URLSearchParams(location.search).has("no-groups") || sessionStorage.getItem("no-groups") === "1";
+  } catch {
+    return false;
+  }
+}
+const groupsForTests = () => debugEnabled() && noGroupsForTests();
+
+/** Test-only: `?lod-stress=N` replaces the hierarchy by a synthetic one of about N nodes (performance checks). */
+function lodStressCount(): number {
+  try {
+    const n = Number(new URLSearchParams(location.search).get("lod-stress"));
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  } catch {
+    return 0;
+  }
+}
+
 const isWebGLUnavailable = (e: unknown) => e instanceof Error && e.name === "WebGLUnavailableError";
 
 export default function GlobeCanvas({
   places,
+  groups,
   routes,
   selectedSlug,
   focusedSlug,
@@ -90,11 +114,11 @@ export default function GlobeCanvas({
   const handleRef = useRef<HandoverHandle | null>(null);
   const [status, setStatus] = useState<Status>("loading");
   const [notice, setNotice] = useState<Notice | null>(null);
-  // A direct load or reload on a place starts framed on it: its first paint is the page colour only (no flash of planet),
-  // then the stage fades in once the final frame is drawn (handover `onReveal`). Any other mount (home, the globe coming
-  // back from the mobile slide-over with a saved view) shows at once. Decided on the first render, so the server-rendered
-  // shell and the hydrated one agree and nothing moves.
-  const [veil] = useState(() => isFitView(initialView));
+  // A reload or direct load (on a place, or on the home page) paints the page colour only: no placeholder, no flash of planet,
+  // no unfinished frame. The stage fades in once the first pixel-art frame is drawn (handover `onReveal`; the WebGL canvas
+  // itself is invisible until it has drawn, engine/renderer.ts). Only the globe coming back from the mobile slide-over with a
+  // saved view shows at once. Decided on the first render, so the server-rendered shell and the hydrated one agree.
+  const [veil] = useState(() => startsVeiled(initialView));
   const [revealed, setRevealed] = useState(!veil);
 
   // `initialView` is read once; afterwards this tracks the latest view so that re-creating the engine
@@ -116,17 +140,23 @@ export default function GlobeCanvas({
     let cancelled = false;
     let handle: HandoverHandle | null = null;
 
-    if (debugEnabled()) applyDebugLevels();
+    if (debugEnabled()) {
+      applyDebugLevels();
+      applyDebugArtPixel();
+    }
     void (async () => {
       try {
         const geo = await loadGeodata();
         if (cancelled) return;
         const now = latest.current;
+        const stress = debugEnabled() ? lodStressCount() : 0;
+        const synthetic = stress ? stressHierarchy(stress) : debugEnabled() && new URLSearchParams(location.search).has("lod-cases") ? casesHierarchy() : null;
         handle = createHandover({
           stage,
           labelsRoot,
           streetRoot,
-          places,
+          places: synthetic ? synthetic.places : places,
+          groups: synthetic ? synthetic.groups : groupsForTests() ? [] : groups,
           routes,
           coastlines: geo.coastlines,
           borders: geo.borders,
@@ -174,7 +204,7 @@ export default function GlobeCanvas({
       handle?.dispose();
       setNotice(null);
     };
-  }, [places, routes, tilesKey]);
+  }, [places, groups, routes, tilesKey]);
 
   // The inset first: a selection that opens the panel flies to a framing computed for the panel's width, so the
   // renderer must already know the inset it is heading for (effects run in declaration order).
@@ -211,15 +241,7 @@ export default function GlobeCanvas({
       >
         {notice && status === "ready" ? "Street detail is unavailable right now." : null}
       </p>
-      {status === "loading" && (
-        <div
-          aria-hidden="true"
-          style={{ right: insetRight }}
-          className="pointer-events-none absolute inset-y-0 left-0 grid place-items-center"
-        >
-          <div className="aspect-square h-[min(72%,78vw)] rounded-full border border-border-strong" />
-        </div>
-      )}
+      <AttributionButton tiles={tilesKey ? (tiles ?? null) : null} insetRight={insetRight} reducedMotion={reducedMotion} />
       {(status === "unavailable" || status === "lost") && (
         <p
           role="status"

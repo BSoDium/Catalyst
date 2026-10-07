@@ -1,103 +1,90 @@
-// Regression check: every marker is drawn AS A WHOLE or not at all, never half-clipped by the globe.
+// Regression check: every detection box is drawn AS A WHOLE or not at all, never half-clipped by the globe's limb, and nothing else is on
+// the pixel canvas.
 //   CHROME_PATH=... BASE_URL=http://localhost:5174 node apps/web/scripts/globe/markers.mjs [quick]
 //
-// How: the debug hook `setMarkerProbe(true)` draws marker ink in pure red and marker fill in pure blue, so marker
-// pixels can be told from the (identical-looking) linework under them. For hundreds of views, the drawing buffer is
-// read back and compared, pixel for pixel, with the pattern each SHOWN marker should have (3x3 block; 5x5 route
-// stop; 7x7 focused; 9x9 ring with centre dot when selected), centred on the cell `project()` reports. So:
-//   - a shown marker must have its full footprint (a missing pixel = a partial marker),
-//   - a hidden marker must have no pixel at all (and far-side markers must be hidden),
-//   - the drawn cell equals the label/pick anchor cell.
-// Independently of the app's own visibility answer, an on-canvas marker within 40 deg of the view centre must be shown and one
-// beyond 95 deg must be hidden. Sweeps: the view rotates all the way round at several latitudes (so every marker
-// crosses the limb, northern and southern ones), and each place is walked from 50 to 100 deg off-centre along four
-// bearings; at overview, mid and high zoom; desktop and a 2 px-art-pixel mobile viewport; unselected and with a place
-// selected (ring marker + route stops). Exits 1 on any failure.
+// How: for hundreds of views the label canvas (the pixel overlay: engine/box-scene.ts) is read back and compared, cell for cell, with what
+// the cluster tree says is drawn (`__globeDebug.lod()` and `labelCells()`):
+//   - every shown node's rectangle outline is complete (a missing cell = a partial box),
+//   - no opaque cell lies outside the union of the shown outlines and the shown label plates (no stray or half-hidden box),
+//   - a place the tree reports as shown is on the front hemisphere and clear of the limb (independently of the tree's own answer,
+//     a place within 40 degrees of the view centre must be shown and one beyond 95 must not be),
+//   - the drawn rectangle is centred on the cell `project()` reports for the place (the label and pick anchor).
+// Sweeps: the view rotates all the way round at several latitudes (so every place crosses the limb, northern and southern ones), and each
+// place is walked from 50 to 100 degrees off-centre along four bearings; at overview, mid and high zoom; desktop and a 2 px-art-pixel
+// mobile viewport; unselected and with a place selected (inked rectangle, route stops). Exits 1 on any failure.
 import fs from "node:fs";
 import { launch, open, waitGlobe, DESKTOP, MOBILE, sleep } from "./_lib.mjs";
 
 const quick = process.argv.includes("quick");
 const demo = JSON.parse(fs.readFileSync(new URL("../../../../packages/published/fixtures/demo.json", import.meta.url), "utf8"));
-const places = demo.places.map((p) => ({ slug: p.slug, lat: p.coordinates.lat, lon: p.coordinates.lon }));
-const routeStops = Object.fromEntries(demo.routes.map((r) => [r.id, r.stops]));
+const places = demo.places.map((p) => ({ slug: p.slug, lat: p.coordinates.lat, lon: p.coordinates.lon, bbox: p.bbox ?? null }));
 
-/** Runs in the page: sweep `views` (each {lon, lat, zoom|null}) and compare with the expected patterns. */
-function sweepInPage({ places, views, selected, stops }) {
+/** Runs in the page: sweep `views` (each {lon, lat, zoom|null}) and compare the canvas with the tree. */
+function sweepInPage({ places, views }) {
   const d = window.__globeDebug;
-  const canvas = document.querySelector("canvas");
-  const gl = canvas.getContext("webgl2");
+  const root = document.querySelector('[data-globe="three"] > div:nth-child(2)');
+  const canvas = root.querySelector("canvas");
+  const ctx = canvas.getContext("2d");
   const W = canvas.width;
   const H = canvas.height;
   const P = d.inset().pixel;
-  const buf = new Uint8Array(W * H * 4);
+  const main = document.querySelector("canvas").getBoundingClientRect();
+  const rootRect = root.getBoundingClientRect();
+  const left = main.left - rootRect.left;
+  const top = main.top - rootRect.top;
   const DEG = Math.PI / 180;
   const vec = (lon, lat) => [Math.cos(lat * DEG) * Math.sin(lon * DEG), Math.sin(lat * DEG), Math.cos(lat * DEG) * Math.cos(lon * DEG)];
-  const sizeOf = (slug) => (slug === selected ? 9 : stops.includes(slug) ? 5 : 3);
   const failures = [];
-  const stat = { views: 0, shownMarkerFrames: 0, hiddenMarkerFrames: 0, clippedByCanvasEdge: 0 };
-  d.setMarkerProbe(true);
+  const stat = { views: 0, shownBoxFrames: 0, hiddenPlaceFrames: 0, clippedByCanvasEdge: 0 };
   for (const v of views) {
     d.setView({ lon: v.lon, lat: v.lat, zoom: v.zoom ?? d.minZoom() + 0.3 });
     d.renderNow();
-    gl.readPixels(0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+    const img = ctx.getImageData(0, 0, W, H);
     stat.views++;
     const view = d.view();
-    const rect = canvas.getBoundingClientRect();
-    // Expected picture: later markers are drawn over earlier ones, as on the GPU.
-    const exp = new Uint8Array(W * H);
-    const cells = [];
+    const nodes = d.lod().filter((n) => n.shown);
+    const allow = new Uint8Array(W * H);
+    const mark = (c0, r0, c1, r1) => {
+      for (let y = Math.max(0, r0); y < Math.min(H, r1); y++) for (let x = Math.max(0, c0); x < Math.min(W, c1); x++) allow[y * W + x] = 1;
+    };
+    for (const n of nodes) {
+      const c0 = Math.round((n.box.x0 - left) / P);
+      const c1 = Math.round((n.box.x1 - left) / P);
+      const r0 = Math.round((n.box.y0 - top) / P);
+      const r1 = Math.round((n.box.y1 - top) / P);
+      stat.shownBoxFrames++;
+      // the outline must be complete (cells outside the canvas are clipped, not missing)
+      let missing = 0;
+      const opaque = (x, y) => img.data[(y * W + x) * 4 + 3] !== 0; // present: fades are opacity, so an outline cell is translucent mid-fade
+      for (let x = c0; x < c1; x++) for (const y of [r0, r1 - 1]) { if (x < 0 || y < 0 || x >= W || y >= H) { stat.clippedByCanvasEdge++; continue; } if (!opaque(x, y)) missing++; }
+      for (let y = r0; y < r1; y++) for (const x of [c0, c1 - 1]) { if (x < 0 || y < 0 || x >= W || y >= H) { stat.clippedByCanvasEdge++; continue; } if (!opaque(x, y)) missing++; }
+      if (missing) failures.push({ kind: "partial box", slug: n.slug, missing, view });
+      mark(c0, r0, c1, r1); // generous: the whole rectangle (interior cells are only ever fill, a label plate or nested boxes)
+    }
+    for (const t of d.labelCells()) if (t.label) mark(t.label.col - 1, t.label.row, t.label.col - 1 + t.label.w, t.label.row + t.label.h);
+    // nothing opaque may lie outside the shown outlines' rectangles and the label plates
+    let stray = 0;
+    let first = null;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (img.data[(y * W + x) * 4 + 3] !== 0 && !allow[y * W + x]) { stray++; first ??= { x, y }; }
+    if (stray) failures.push({ kind: "stray cells outside every shown box and label", cells: stray, first, view });
+    // the place rule, independent of the tree
     const vc = vec(view.lon, view.lat);
+    const shownSlugs = new Set(nodes.filter((n) => n.kind === "place").map((n) => n.slug));
     for (const p of places) {
       const s = d.project(p.slug);
-      const col = Math.round((s.x - rect.left) / P - 0.5);
-      const row = Math.round((s.y - rect.top) / P - 0.5);
       const ang = Math.acos(Math.min(1, Math.max(-1, vec(p.lon, p.lat).reduce((a, x, i) => a + x * vc[i], 0)))) / DEG;
-      cells.push({ slug: p.slug, col, row, shown: s.visible, ang });
-      const onCanvas = col >= 0 && row >= 0 && col < W && row < H;
-      if (ang < 40 && onCanvas && !s.visible) failures.push({ kind: "front marker hidden", slug: p.slug, ang: +ang.toFixed(1), view });
-      if (ang > 95 && s.visible) failures.push({ kind: "far-side marker shown", slug: p.slug, ang: +ang.toFixed(1), view });
-      if (!s.visible) {
-        stat.hiddenMarkerFrames++;
-        continue;
+      if (!s.visible) stat.hiddenPlaceFrames++;
+      if (ang > 95 && shownSlugs.has(p.slug)) failures.push({ kind: "far-side place drawn", slug: p.slug, ang: +ang.toFixed(1), view });
+      if (shownSlugs.has(p.slug)) {
+        const n = nodes.find((x) => x.slug === p.slug);
+        const cx = (n.box.x0 + n.box.x1) / 2 + left + rootRect.left;
+        const cy = (n.box.y0 + n.box.y1) / 2 + top + rootRect.top;
+        // a place with a bounding box is centred on the box's centre, not on its recorded point
+        const at = p.bbox ? d.projectAt((p.bbox[0] + p.bbox[2]) / 2, (p.bbox[1] + p.bbox[3]) / 2) : s;
+        if (Math.abs(cx - at.x) > P + 0.5 || Math.abs(cy - at.y) > P + 0.5) failures.push({ kind: "rectangle not centred on the projected cell", slug: p.slug, dx: cx - at.x, dy: cy - at.y, view });
       }
-      stat.shownMarkerFrames++;
-      const size = sizeOf(p.slug);
-      const h = (size - 1) / 2;
-      for (let dy = -h; dy <= h; dy++)
-        for (let dx = -h; dx <= h; dx++) {
-          const x = col + dx;
-          const y = row + dy;
-          if (x < 0 || y < 0 || x >= W || y >= H) {
-            stat.clippedByCanvasEdge++;
-            continue;
-          }
-          const r = Math.max(Math.abs(dx), Math.abs(dy));
-          exp[y * W + x] = size === 9 && r > 0 && r < 4 ? 2 : 1; // 1 = ink (red), 2 = fill (blue)
-        }
-    }
-    let bad = 0;
-    let first = null;
-    for (let y = 0; y < H; y++)
-      for (let x = 0; x < W; x++) {
-        const i = (H - 1 - y) * W * 4 + x * 4;
-        const r = buf[i], g = buf[i + 1], b = buf[i + 2];
-        const got = r > 200 && g < 40 && b < 40 ? 1 : b > 200 && r < 40 && g < 40 ? 2 : 0;
-        if (got !== exp[y * W + x]) {
-          bad++;
-          first ??= { x, y, got, want: exp[y * W + x] };
-        }
-      }
-    if (bad) {
-      let near = null;
-      let nd = Infinity;
-      for (const c of cells) {
-        const dist = Math.hypot(c.col - first.x, c.row - first.y);
-        if (dist < nd) [nd, near] = [dist, c];
-      }
-      failures.push({ kind: "footprint mismatch (partial or stray marker)", pixels: bad, first, nearest: near, view });
     }
   }
-  d.setMarkerProbe(false);
   return { failures: failures.slice(0, 12), failureCount: failures.length, stat };
 }
 
@@ -132,7 +119,7 @@ const summary = [];
 let failed = 0;
 
 async function run(label, contextOptions, selectSlug) {
-  const { page, logs } = await open(b, contextOptions, "/");
+  const { page, logs } = await open(b, contextOptions, "/", { noGroups: false });
   await waitGlobe(page);
   if (selectSlug) {
     // Select like a keyboard user (the list is visually hidden), then wait for the flight to end.
@@ -142,9 +129,7 @@ async function run(label, contextOptions, selectSlug) {
     await page.waitForFunction(() => !window.__globeDebug.isAnimating(), null, { timeout: 8000 });
     await sleep(300);
   }
-  const route = selectSlug ? demo.routes.find((r) => r.stops.includes(selectSlug)) : null;
-  const stops = route ? route.stops.filter((s) => s !== selectSlug) : [];
-  const res = await page.evaluate(sweepInPage, { places, views: buildViews(), selected: selectSlug ?? null, stops });
+  const res = await page.evaluate(sweepInPage, { places, views: buildViews() });
   const consoleProblems = logs.filter((l) => !/favicon/.test(l));
   const ok = res.failureCount === 0 && consoleProblems.length === 0;
   if (!ok) failed++;
@@ -157,6 +142,6 @@ for (const slug of quick ? ["reykjavik"] : ["reykjavik", "cape-town", "hanoi"]) 
 await run("mobile (2 px art pixel), nothing selected", MOBILE, null);
 
 console.log(JSON.stringify(summary, null, 1));
-console.log(failed ? `FAIL: ${failed} run(s) with partial / stray markers` : "PASS: every marker whole or absent in every view");
+console.log(failed ? `FAIL: ${failed} run(s) with partial / stray boxes` : "PASS: every box whole or absent in every view");
 await b.close();
 process.exit(failed ? 1 : 0);

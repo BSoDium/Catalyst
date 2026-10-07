@@ -7,6 +7,7 @@ import {
   lonLatToVec3,
   normalizeLon,
   projectLonLat,
+  projectUnit,
   radiusPxToZoom,
   sampleRoute,
   shortestLonDelta,
@@ -144,5 +145,27 @@ describe("sampleRoute", () => {
     const s = sampleRoute([[0, 0], [0, 0]]);
     expect(s.length).toBe(0);
     expect(s.positions.length).toBeGreaterThanOrEqual(6);
+  });
+});
+
+describe("projectUnit", () => {
+  it("is bit-identical to projectLonLat for the same point (the LOD tree keeps unit vectors)", () => {
+    for (const view of [{ lon: 10, lat: 20, zoom: 2.5 }, { lon: -120, lat: -40, zoom: 5 }, { lon: 170, lat: 70, zoom: 6.4 }]) {
+      const basis = viewBasis(view, 900);
+      for (const [lon, lat] of [[0, 0], [12.3, 45.6], [-100, 33], [179, -80], [60, 10]] as const) {
+        const a = projectLonLat(lon, lat, basis, 1440, 900, 1, 700);
+        const v = lonLatToVec3(lon, lat);
+        const b = projectUnit(v[0], v[1], v[2], basis, 900, 1, 700);
+        expect(b).toEqual(a);
+      }
+    }
+  });
+  it("fills the object it is given", () => {
+    const out = { x: 0, y: 0, visible: false, facing: 0 };
+    const basis = viewBasis({ lon: 0, lat: 0, zoom: 3 }, 900);
+    const r = projectUnit(0, 0, 1, basis, 900, 1, 720, out);
+    expect(r).toBe(out);
+    expect(out.x).toBeCloseTo(720, 6);
+    expect(out.visible).toBe(true);
   });
 });

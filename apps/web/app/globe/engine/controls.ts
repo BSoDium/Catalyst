@@ -20,6 +20,8 @@ export interface ControlsHost {
   /** Place under a container-relative CSS-px point (labels first, then markers), or null. */
   pickAt(x: number, y: number, kind: PointerKind): string | null;
   select(slug: string): void;
+  /** The mouse is over this node (a group is highlighted) or over nothing (null); mouse only, never while a button is down. */
+  hover?(slug: string | null): void;
 }
 
 const TAP_SLOP: Record<PointerKind, number> = { mouse: 4, touch: 8 };
@@ -77,7 +79,9 @@ export function attachControls(canvas: HTMLCanvasElement, container: HTMLElement
     if (!prev) {
       if (e.pointerType === "mouse") {
         const p = local(e);
-        canvas.style.cursor = host.pickAt(p.x, p.y, "mouse") ? "pointer" : "grab";
+        const hit = host.pickAt(p.x, p.y, "mouse");
+        canvas.style.cursor = hit ? "pointer" : "grab";
+        host.hover?.(hit);
       }
       return;
     }
@@ -117,6 +121,9 @@ export function attachControls(canvas: HTMLCanvasElement, container: HTMLElement
   };
   on("pointerup", end);
   on("pointercancel", end);
+  on("pointerleave", (e) => {
+    if (e.pointerType === "mouse" && !pointers.has(e.pointerId)) host.hover?.(null);
+  });
 
   on(
     "wheel",
