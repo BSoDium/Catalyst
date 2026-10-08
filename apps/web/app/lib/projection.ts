@@ -12,6 +12,7 @@ import type {
   PublishedProjection,
 } from "@catalyst/schemas";
 import { toPlaceSummary } from "@catalyst/schemas";
+import { stripCountry } from "~/globe/engine/country-names";
 import { bboxExtentsKm, bboxFitRadiusKm } from "~/globe/engine/framing";
 import type { GlobeGroup, GlobePlace, GlobeRoute } from "~/globe/types";
 import { formatDates, type FormattedDates } from "./dates";
@@ -53,7 +54,9 @@ function toGlobePlace(place: PlaceSummary): GlobePlace {
   const viewRadiusKm = (bbox && bboxFitRadiusKm(bbox)) ?? place.viewRadiusKm;
   return {
     slug: place.slug,
-    name: place.name,
+    // The map label says the name alone and adds the country itself when hovered or selected: a name that already ends in its own
+    // country (", United Kingdom") would say it twice. Display only, the content is not changed.
+    name: stripCountry(place.name, place.countryCode),
     lat: place.coordinates.lat,
     lon: place.coordinates.lon,
     labelPriority: place.labelPriority,
