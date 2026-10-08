@@ -14,10 +14,10 @@
  *   role    position   used for
  *   bg      0          page, ocean, erased interiors
  *   wash    0.12       building fills; the first step of every fade-in
- *   faint   0.27       graticule, the horizon outline, the dots of parks
- *   soft    0.42       rail, paths, service roads, streams, canals, the dashes of water
- *   mid     0.60       minor roads, region borders, building outlines, tertiary roads
- *   strong  0.80       major roads, rivers, lakes
+ *   faint   0.27       graticule, the horizon outline, the dots of parks, junction links (road tiers between the roles use `at`, lod.ts: residential, service and paths 0.2, tertiary 0.4)
+ *   soft    0.42       rail, streams, canals, the dashes of water
+ *   mid     0.60       secondary roads (0.6), region borders, building outlines
+ *   strong  0.80       primary roads, rivers, lakes
  *   peak    1          coastline, country borders: the loudest the map gets (MAP_CONTRAST of the way to the ink)
  *   ink     (last)     markers, labels, the selected place, routes: the full foreground
  *
@@ -164,4 +164,20 @@ export const bordersWanted = (was: boolean, zoom: number, range: { readonly on: 
 /** Level of the country borders for a fade value 0..1 (engine/fade.ts): 0 = not drawn, then the faintest grey level, stepping up to the `peak` level. */
 export function borderLevel(fade: number, levels: number): number {
   return rampLevel(fade, peakLevel(levels));
+}
+
+/* ------------------------------------------------------------------ text contrast ------------------------------------------------------------------ */
+
+const luminance = (c: Rgb) => 0.2126 * toLinear(c[0]) + 0.7152 * toLinear(c[1]) + 0.0722 * toLinear(c[2]);
+
+/** WCAG contrast ratio of two sRGB colours (1 .. 21). */
+export const contrastRatio = (a: Rgb, b: Rgb): number => (Math.max(luminance(a), luminance(b)) + 0.05) / (Math.min(luminance(a), luminance(b)) + 0.05);
+
+/** WCAG AA for text that is not large. */
+export const AA_TEXT = 4.5;
+
+/** The lowest level of a ramp whose contrast with the page colour (level 0) is AA for text: the dimmest a label may be (light page: the peak level, dark page: one below). */
+export function textFloorLevel(ramp: readonly Rgb[], min: number = AA_TEXT): number {
+  for (let k = 1; k < ramp.length; k++) if (contrastRatio(ramp[k]!, ramp[0]!) >= min) return k;
+  return ramp.length - 1;
 }

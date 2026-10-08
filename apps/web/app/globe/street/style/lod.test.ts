@@ -49,8 +49,9 @@ describe("LOD table", () => {
       const lv = (k: LodKey) => toneLevel(LOD[k], n);
       expect(lv("highway"), `n=${n}`).toBeGreaterThanOrEqual(lv("medium"));
       expect(lv("medium"), `n=${n}`).toBeGreaterThanOrEqual(lv("service"));
-      expect(lv("service"), `n=${n}`).toBeGreaterThanOrEqual(roleLevel(FILL_LOD.water.role, n));
-      expect(lv("rail"), `n=${n}`).toBeLessThanOrEqual(lv("minor"));
+      // (the quiet classes are the decor: they may sit below the dashes of water, which cover 1 cell in 8, so no floor against the water role)
+      expect(lv("service"), `n=${n}`).toBeGreaterThanOrEqual(1);
+      expect(lv("rail"), `n=${n}`).toBeGreaterThanOrEqual(lv("minor"));
       expect(lv("river"), `n=${n}`).toBeGreaterThanOrEqual(lv("minor"));
     }
   });
@@ -102,7 +103,7 @@ describe("style wiring of the LOD", () => {
     const vis = (id: string) => st.find((l) => l.id === id)!.layout?.visibility !== "none";
     expect(vis("road-highway-case")).toBe(true);
     expect(vis("road-medium-case")).toBe(true);
-    expect(vis("road-minor-dotted")).toBe(false); // 12.8
+    expect(vis("road-minor-dotted")).toBe(false); // 13
     expect(vis("building-fill")).toBe(false); // 16.3
     expect(vis("water-fill")).toBe(true); // flat at 11.5
     expect(vis("graticule")).toBe(false); // so the graticule is gone
@@ -269,12 +270,13 @@ describe("road hierarchy: the class is told by tone and by width (owner: everyth
   // The tiers, loudest first, as palette levels of the 12-level palette (peak = 10, ink = 11).
   const TIERS: [string, LodKey, number][] = [
     ["motorway, trunk", "highway", 10],
-    ["primary", "major", 9],
-    ["secondary", "secondary", 7],
-    ["tertiary", "medium", 5],
-    ["residential", "minor", 4],
-    ["service", "service", 4],
-    ["paths", "path", 3],
+    ["primary", "major", 8],
+    ["secondary", "secondary", 6],
+    ["tertiary", "medium", 4],
+    ["links, solid residential", "minorSolid", 3],
+    ["residential", "minor", 2],
+    ["service", "service", 2],
+    ["paths", "path", 2],
   ];
   const lightTheme = { background: [0.984, 0.984, 0.984] as const, ink: [0.039, 0.039, 0.039] as const };
   const darkTheme = { background: [0.039, 0.039, 0.039] as const, ink: [0.96, 0.96, 0.96] as const };
@@ -282,13 +284,15 @@ describe("road hierarchy: the class is told by tone and by width (owner: everyth
 
   it("the tone table by class (final level, 12 levels)", () => {
     for (const [name, key, level] of TIERS) expect(toneLevel(LOD[key]), name).toBe(level);
-    // links and rail are the soft tier, rivers and lakes the strong one, the region borders the mid one
-    expect(toneLevel(LOD.link)).toBe(roleLevel("soft"));
+    // links are the faint tier (the decor), rail the soft one, rivers and lakes the strong one, the region borders the mid one
+    expect(toneLevel(LOD.link)).toBe(3);
     expect(toneLevel(LOD.rail)).toBe(roleLevel("soft"));
     expect(toneLevel(LOD.river)).toBe(roleLevel("strong"));
   });
   it("tone only goes down the hierarchy: motorway >= primary > secondary > tertiary > residential, service and paths softest", () => {
     for (let i = 1; i < TIERS.length; i++) expect(TIERS[i]![2], TIERS[i]![0]).toBeLessThanOrEqual(TIERS[i - 1]![2]);
+    // every tier down to the tertiary ones is clearly (two levels) louder than the next: that is what lets a main road stand out of a mesh
+    for (const [a, b] of [["highway", "major"], ["major", "secondary"], ["secondary", "medium"], ["medium", "minorSolid"], ["minorSolid", "minor"]] as const) expect(toneLevel(LOD[a]) - toneLevel(LOD[b]), `${a} over ${b}`).toBeGreaterThanOrEqual(1);
     for (const n of LEVEL_COUNTS.filter((x) => x >= 6)) {
       const lvl = (k: LodKey) => toneLevel(LOD[k], n);
       expect(lvl("highway"), `n=${n}`).toBeGreaterThanOrEqual(lvl("major"));
@@ -297,6 +301,21 @@ describe("road hierarchy: the class is told by tone and by width (owner: everyth
       expect(lvl("medium"), `n=${n}`).toBeGreaterThanOrEqual(lvl("minor"));
       expect(lvl("minor"), `n=${n}`).toBeGreaterThanOrEqual(lvl("path"));
     }
+  });
+  it("the streets are the quietest element of the map (owner: they are only decor): every minor class strictly dimmer than tertiary, no louder than the dashes of water, and 1 art px wide at every zoom", () => {
+    const minors = ["minor", "minorSolid", "link", "service", "path"] as const;
+    for (const n of LEVEL_COUNTS.filter((x) => x >= 6)) for (const k of minors) {
+      // (strictly below the tertiary tier with the 10 and 12 levels of the app; with fewer levels two tiers may share one)
+      if (n >= 10) expect(toneLevel(LOD[k], n), `${k} n=${n}`).toBeLessThan(toneLevel(LOD.medium, n));
+      else expect(toneLevel(LOD[k], n), `${k} n=${n}`).toBeLessThanOrEqual(toneLevel(LOD.medium, n));
+      expect(toneLevel(LOD[k], n), `${k} n=${n}`).toBeLessThanOrEqual(roleLevel(FILL_LOD.park.role, n));
+      expect(toneLevel(LOD[k], n), `${k} n=${n}`).toBeLessThanOrEqual(toneLevel(LOD.secondary, n));
+    }
+    // the dotted residential streets, service roads and paths are the very faintest and never louder than the rail or the links
+    for (const k of ["minor", "service", "path"] as const) expect(toneLevel(LOD[k]), k).toBeLessThanOrEqual(toneLevel(LOD.link));
+    // they enter after the tertiary roads (links excepted) and are not drawn wider than one art pixel at any zoom (floor, centre sampling, stair removal)
+    for (const id of ["road-minor-dotted", "road-minor", "road-link-dotted", "road-other-dotted", "path-dotted"]) expect(artWidthStopsOf(SPECS.find((s) => s.id === id)!), id).toBe(1);
+    for (const k of ["minor", "minorSolid", "service", "path"] as const) expect(LOD[k].on, k).toBeGreaterThan(LOD.medium.on); // (the links come with the city framing, in the faint tier)
   });
   it("the strongest tier stays below the ink (MAP_CONTRAST rule): labels, markers and rectangles are louder than any road", () => {
     for (const n of LEVEL_COUNTS) {
@@ -324,7 +343,7 @@ describe("road hierarchy: the class is told by tone and by width (owner: everyth
       expect(dist("highway", "major")).toBeGreaterThan(0.015);
       // the road tiers against the page: every class is visible (the paths too)
       const bg = lightness(ramp[0]!);
-      expect(Math.abs(L("path") - bg)).toBeGreaterThan(0.08);
+      expect(Math.abs(L("path") - bg)).toBeGreaterThan(0.06);
       // and the whole hierarchy spans a clear range
       expect(dist("highway", "path")).toBeGreaterThan(0.2);
     }

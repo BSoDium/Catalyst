@@ -16,7 +16,7 @@ import type { PassParams } from "../gl/pixel-pass";
 import { STREET_TUNING } from "../tuning";
 import { ERASE, roleLevel } from "../core/palette";
 import { setActiveLevels } from "../../engine/palette";
-import { LOD, levelAt } from "../style/lod";
+import { LOD, toneLevel } from "../style/lod";
 import { SPECS, linePaint, type Spec } from "../style/street-style";
 
 export function startSynthetic(container: HTMLElement) {
@@ -126,12 +126,12 @@ interface LineResult extends LineCase {
   wrongLevel: number;
 }
 
-/** The level a class is painted at a zoom: the fade-in table for classes with a level of detail, else the role's level. */
-function expectedLevel(cls: string, zoom: number): number | null {
+/** The level a class is painted at: its constant tone (lod.ts; a class has no tone ramp any more), else its role's level. */
+function expectedLevel(cls: string, _zoom: number): number | null {
   const spec = SPEC_BY_ID.get(cls);
   if (!spec || spec.ch === "erase") return null;
-  // (the harness draws a class outside its zoom range too, where the style's colour is its first, faintest step)
-  return spec.lod ? Math.max(1, levelAt(LOD[spec.lod], zoom)) : roleLevel(spec.role ?? "ink");
+  // (the harness draws every class at every zoom, with the style built for it: its one constant colour, whatever the layer switch says)
+  return spec.lod ? toneLevel(LOD[spec.lod]) : roleLevel(spec.role ?? "ink");
 }
 
 const BOX = 30; // cells per slot side
