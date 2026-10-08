@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { loadDemoProjection } from "@catalyst/published";
 import { EMPTY_PROJECTION, type PublishedProjection } from "@catalyst/schemas";
 import { bboxFitRadiusKm } from "~/globe/engine/framing";
-import { buildPlaceIndex, getPlaceDetail, imageSize, listContent, placeEntries, relatedHref, resolveRoutes } from "./projection";
+import { buildPlaceIndex, getPlaceDetail, imageSize, placeEntries, resolveRoutes } from "./projection";
 
 const demo = loadDemoProjection();
 
@@ -137,34 +137,28 @@ describe("getPlaceDetail", () => {
   it("returns null for unknown slugs", () => {
     expect(getPlaceDetail(demo, "nope")).toBeNull();
   });
-  it("resolves related titles and hrefs", () => {
+  it("lists the linked entries grouped by kind, as summaries without a body", () => {
     const place = getPlaceDetail(demo, "lisbon");
-    expect(place?.related).toEqual([
-      { kind: "article", slug: "demo-article", title: "Demo article", href: "/articles#demo-article" },
-      { kind: "project", slug: "demo-project", title: "Demo project", href: "/projects#demo-project" },
+    expect(place?.entries.map((g) => [g.kind, g.entries.map((e) => e.slug)])).toEqual([
+      ["article", ["demo-article"]],
+      ["project", ["demo-project"]],
     ]);
+    expect(place?.entries[0]?.entries[0]).toMatchObject({ href: "/articles/demo-article", index: 1, title: "Demo article" });
+    expect(place?.entries[0]?.entries[0]).not.toHaveProperty("body");
     expect(place?.dates).toEqual({ text: "Demo dates", dateTime: "2024-03" });
+    expect(place?.coordinates).toEqual(demo.places.find((p) => p.slug === "lisbon")!.coordinates);
+  });
+  it("includes a poem linked only from the entry's side", () => {
+    expect(getPlaceDetail(demo, "hue")?.entries.map((g) => g.kind)).toEqual(["poem"]);
   });
   it("leaves optional sections empty rather than inventing them", () => {
     const place = getPlaceDetail(demo, "reykjavik");
-    expect(place).toMatchObject({ summary: undefined, dates: null, body: [], images: [], related: [] });
-  });
-});
-
-describe("listContent", () => {
-  it("resolves place names for each item", () => {
-    const [project] = listContent(demo, "project");
-    expect(project?.places).toEqual([{ slug: "lisbon", name: "Lisbon", href: "/locations/lisbon" }]);
-  });
-  it("returns an empty list for empty collections", () => {
-    expect(listContent(EMPTY_PROJECTION, "artwork")).toEqual([]);
+    expect(place).toMatchObject({ dates: null, body: [], images: [], entries: [] });
+    expect(place).not.toHaveProperty("summary");
   });
 });
 
 describe("helpers", () => {
-  it("builds anchor hrefs from kind and slug", () => {
-    expect(relatedHref("artwork", "x")).toBe("/artworks#x");
-  });
   it("only reports image size when both dimensions are authored", () => {
     expect(imageSize({ src: "/media/a.svg", alt: "a", width: 10, height: 5 })).toEqual({ width: 10, height: 5 });
     expect(imageSize({ src: "/media/a.svg", alt: "a", width: 10 })).toBeNull();

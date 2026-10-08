@@ -4,8 +4,8 @@
  */
 import type {
   ContentKind,
+  Coordinates,
   PlaceSummary,
-  PublishedContentItem,
   PublishedGroup,
   PublishedImage,
   PublishedPlace,
@@ -16,25 +16,10 @@ import { stripCountry } from "~/globe/engine/country-names";
 import { bboxExtentsKm, bboxFitRadiusKm } from "~/globe/engine/framing";
 import type { GlobeEntryRef, GlobeGroup, GlobePlace, GlobeRoute } from "~/globe/types";
 import { formatDates, type FormattedDates } from "./dates";
+import { COLLECTIONS, entriesOfPlace, type EntryGroup } from "./entries";
 
-const KIND_PATHS: Record<ContentKind, string> = {
-  project: "/projects",
-  article: "/articles",
-  artwork: "/artworks",
-  poem: "/poems",
-};
-
-export const KIND_LABELS: Record<ContentKind, string> = {
-  project: "Project",
-  article: "Article",
-  artwork: "Artwork",
-  poem: "Poem",
-};
-
-const COLLECTIONS = { project: "projects", article: "articles", artwork: "artworks", poem: "poems" } as const;
-
-export const placePath = (slug: string) => `/locations/${slug}`;
-export const relatedHref = (kind: ContentKind, slug: string) => `${KIND_PATHS[kind]}#${slug}`;
+// Entries (lists, one entry, the kinds' paths and labels) live in ./entries; the place helpers below re-export what callers use.
+export { KIND_LABELS, placePath } from "./entries";
 
 /** What the globe and the place list need: summaries only. */
 export interface PlaceIndex {
@@ -157,66 +142,34 @@ export function buildPlaceIndex(projection: PublishedProjection): PlaceIndex {
   return { places, globePlaces: places.map((p) => toGlobePlace(p, entries.get(p.slug))), groups: projection.groups, routes: resolveRoutes(projection) };
 }
 
-interface RelatedLink {
-  kind: ContentKind;
-  slug: string;
-  title: string;
-  href: string;
-}
-
 export interface PlaceDetailData {
   slug: string;
   name: string;
   region?: string;
+  coordinates: Coordinates;
   summary?: string;
   dates: FormattedDates | null;
   body: string[];
   images: PublishedImage[];
-  related: RelatedLink[];
+  /** The entries linked to the place (its `related` and the entries' `placeSlugs`, each once), grouped by kind. Summaries: no body. */
+  entries: EntryGroup[];
 }
 
-/** Full place with related titles resolved. Unresolvable references are dropped. */
+/** Full place with its linked entries resolved. Unresolvable references are dropped. */
 export function getPlaceDetail(projection: PublishedProjection, slug: string): PlaceDetailData | null {
   const place: PublishedPlace | undefined = projection.places.find((p) => p.slug === slug);
   if (!place) return null;
-  const related = place.related.flatMap((ref) => {
-    const item = projection[COLLECTIONS[ref.kind]].find((i) => i.slug === ref.slug);
-    return item ? [{ kind: ref.kind, slug: ref.slug, title: item.title, href: relatedHref(ref.kind, ref.slug) }] : [];
-  });
   return {
     slug: place.slug,
     name: place.name,
-    region: place.region,
-    summary: place.summary,
+    ...(place.region !== undefined ? { region: place.region } : {}),
+    coordinates: place.coordinates,
+    ...(place.summary !== undefined ? { summary: place.summary } : {}),
     dates: formatDates(place.dates),
     body: place.body,
     images: place.images,
-    related,
+    entries: entriesOfPlace(projection, place.slug),
   };
-}
-
-export interface ContentListItem {
-  slug: string;
-  title: string;
-  summary?: string;
-  date?: string;
-  url?: string;
-  places: { slug: string; name: string; href: string }[];
-}
-
-export function listContent(projection: PublishedProjection, kind: ContentKind): ContentListItem[] {
-  const names = new Map(projection.places.map((p) => [p.slug, p.name]));
-  return projection[COLLECTIONS[kind]].map((item: PublishedContentItem) => ({
-    slug: item.slug,
-    title: item.title,
-    summary: item.summary,
-    date: item.date,
-    url: item.url,
-    places: item.placeSlugs.flatMap((slug) => {
-      const name = names.get(slug);
-      return name ? [{ slug, name, href: placePath(slug) }] : [];
-    }),
-  }));
 }
 
 /** Width/height only when authored: never invented. */
