@@ -66,6 +66,8 @@ export interface TrackItem {
   variants: readonly Sized[];
   /** Changes whenever the list of ways of writing the label changes (its text); a changed list forgets the slot's variant. */
   vkey: number;
+  /** Rectangles the plate must also stay clear of when it is planned (a peek: the other boxes, `PlanItem.avoid`). */
+  avoid?: readonly Plate[] | undefined;
 }
 
 export interface Placed {
@@ -191,7 +193,7 @@ export class LabelTracker {
     if (plan.length) {
       const sub: PlanItem[] = plan.map((n) => {
         const it = items[n]!;
-        return { score: it.score, area: it.area, key: it.key, rect: it.rect, variants: it.variants, prev: mem.prev(it.id) };
+        return { score: it.score, area: it.area, key: it.key, rect: it.rect, variants: it.variants, prev: mem.prev(it.id), avoid: it.avoid };
       });
       const res = planLabels(sub, grid, units, full ? [] : fixed);
       plan.forEach((n, k) => {

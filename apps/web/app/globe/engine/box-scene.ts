@@ -20,6 +20,10 @@
  *    is engine/label-track.ts: a label keeps its slot while the camera moves (it follows its box), the plan runs when the camera has settled, a
  *    new box is labelled at once in the gaps of the others, and hover never re-plans anything: the hovered label is written longer where it is
  *    (it may overlay its neighbours);
+ *  - a PEEK (a place drawn inside a closed group, engine/lod-tree.ts) is a normal box with a normal label, except that its label ranks below
+ *    every other (it takes the room that is left and never displaces another label) and that it is OPTIONAL: when the planner cannot place
+ *    its label without overlapping another, the peek is dropped on the spot (never drawn over others, and not offered again until the camera
+ *    has changed enough: `LodTree.dropPeek`), so the rule "every box has its label, none over another" holds for peeks too;
  *  - text sizes are measured once per string (engine/label-text.ts) and everything else, the plan, the hit hull, works in CSS px.
  * The canvas is only touched when the set of rectangles, their cells or their tones changed, and the labels' elements only when a value changed:
  * an idle map does nothing.
@@ -32,10 +36,10 @@
 import type { Rgb } from "./colors";
 import { isBigBox, pickNode, type PointerKind, type Target } from "./hit-area";
 import { LabelLayer, type LabelMode } from "./label-dom";
-import { PX_UNITS, pxUnits } from "./label-plan";
+import { PX_UNITS, peeksToDrop, pxUnits, type PeekCheck } from "./label-plan";
 import { LabelTracker, SlotMemory, anchored, slotPosition, type Placed, type TrackItem } from "./label-track";
 import { expandedLabel, labelVariants, type LabelText } from "./label-text";
-import { LOD, type LodTree } from "./lod-tree";
+import { LOD, labelScoreOf, type LodTree } from "./lod-tree";
 import type { NodeScreen } from "./node-screen";
 import { textFloorLevel } from "./palette";
 import { ALPHA_STEPS, HASH_SEED, PixelOverlay, drawBox, hashStep, labelTones, quantAlpha, type CellRect, type LabelTones } from "./pixel-labels";
@@ -225,6 +229,8 @@ export class BoxScene {
         solid: mode === "selected",
         /** Some group above the node is drawn (it is wanted and has places in view). */
         parented: lod.hasDrawnAncestor(t.i),
+        /** The node is a peek: a place drawn inside its closed group on purpose (so `parented` is expected). */
+        peek: lod.isPeek(t.i),
       };
     });
   }
@@ -239,6 +245,8 @@ export class BoxScene {
     return { drawn: this.overlay.drawn, skipped: this.overlay.skipped, labelWrites: this.layer.writes, replans: this.replans, partials: this.partials };
   }
   private replans = 0;
+  /** The last plan dropped a peek. */
+  private dropped = false;
   private partials = 0;
 
   /**
@@ -290,8 +298,14 @@ export class BoxScene {
   /** Re-plan every label now, as if the camera had been at rest for `TRACK.settleMs` (checks, and a host that jumped the camera). */
   settle() {
     if (!this.frame || this.disposed) return;
-    this.tracker.settleNow();
-    this.run(performance.now());
+    // A peek dropped by a plan changes the set the next plan sees (and so its stability signature, which postpones a full plan): plan again until a full
+    // plan has run and dropped none, as the timer does at rest.
+    for (let k = 0; k < 4; k++) {
+      this.tracker.settleNow();
+      this.dropped = false;
+      this.run(performance.now());
+      if (this.tracker.info.full && !this.dropped) break; // (a plan runs in full only on rectangles that did not change since the last step)
+    }
   }
 
   /** Stop the labels' timer and forget what is owed: the overlay is not the one on screen (the other renderer owns the picture). */
@@ -338,13 +352,16 @@ export class BoxScene {
         wanted: lod.life.target[i] === 1,
         variants: this.variants(i),
         place: { x: 0, y: 0, variant: 0, cand: 0, inside: false, overlap: false, moved: false, fresh: false },
-        score: (i === this.selected ? 1000 : 0) + lod.priority[i]! + (lod.isGroup[i] ? 0 : LOD.placePriorityBonus),
+        score: this.scoreOf(i),
       });
     }
     // Where every label goes (engine/label-track.ts decides WHEN the plan runs: only the nodes the cut wants take part; one that is fading out
     // keeps its slot and goes with its node).
     const planned = items.filter((t) => t.wanted);
-    const track: TrackItem[] = planned.map((t) => ({
+    // A peek's plate also keeps clear of the other boxes (the planner looks at plates only): their rectangles, a few px wider, except its host's.
+    const pad = LOD.peek.gapPx.leave;
+    const boxPlates = planned.map((t) => ({ x0: t.px.c0 - pad, y0: t.px.r0 - pad, x1: t.px.c1 + pad, y1: t.px.r1 + pad }));
+    const track: TrackItem[] = planned.map((t, n) => ({
       id: t.i,
       key: lod.slug[t.i]!,
       rect: t.px,
@@ -352,6 +369,7 @@ export class BoxScene {
       area: (t.px.c1 - t.px.c0) * (t.px.r1 - t.px.r0),
       variants: t.variants,
       vkey: this.vkey(t.i),
+      avoid: lod.isPeek(t.i) ? boxPlates.filter((_, m) => m !== n && planned[m]!.i !== lod.peekHost[t.i]) : undefined,
     }));
     const placed: Placed[] = this.tracker.step(now, track, view, units.inset);
     if (this.tracker.info.full) this.replans++;
@@ -369,9 +387,36 @@ export class BoxScene {
       const p = slotPosition(mem, t.i, t.px, size, view, units);
       t.place = { x: p.x, y: p.y, variant: v, cand: mem.set[t.i] ? mem.cand[t.i]! : 0, inside: false, overlap: false, moved: false, fresh: false };
     }
-    this.last = items;
+    // A peek is optional: it is dropped when its label could only go over others or another label landed on its box (`peeksToDrop`), never drawn
+    // over them, and not offered again until the camera has changed enough (`LodTree.dropPeek`).
+    let kept = items;
+    const checks: PeekCheck[] = planned.map((t, n) => ({
+      box: { x0: t.px.c0, y0: t.px.r0, x1: t.px.c1, y1: t.px.r1 },
+      plate: { x0: t.place.x, y0: t.place.y, x1: t.place.x + placed[n]!.w, y1: t.place.y + placed[n]!.h },
+      peek: lod.isPeek(t.i),
+      host: lod.peekHost[t.i]! >= 0 ? planned.findIndex((u) => u.i === lod.peekHost[t.i]) : -1,
+      overlap: t.place.overlap,
+      onScreen: t.px.c1 > 0 && t.px.r1 > 0 && t.px.c0 < view.cols && t.px.r0 < view.rows,
+    }));
+    for (const k of peeksToDrop(checks)) {
+      const t = planned[k]!;
+      lod.dropPeek(t.i);
+      this.dropped = true;
+      this.mem.set[t.i] = 0;
+      if (kept === items) kept = items.slice();
+      kept.splice(kept.indexOf(t), 1);
+    }
+    this.last = kept;
     this.present(this.tracker.info.changed);
     this.arm();
+  }
+
+  /** Placement order of node `i`'s label: the selected first, then by priority (places before groups); a peek's label after every other, and below its host's. */
+  private scoreOf(i: number): number {
+    const lod = this.lod;
+    const own = (i === this.selected ? 1000 : 0) + lod.priority[i]! + (lod.isGroup[i] ? 0 : LOD.placePriorityBonus);
+    const host = lod.peekHost[i]!;
+    return labelScoreOf(own, host < 0 ? null : lod.priority[host]! + (host === this.selected ? 1000 : 0));
   }
 
   /** Re-draw the states (hover, focus, selection) from the last plan: no planning. */
@@ -417,7 +462,9 @@ export class BoxScene {
     this.layer.end();
     h = hashStep(hashStep(h, items.length), grid.cols * 4096 + grid.rows);
     // Painter's order: lower score first, forced last, so a strong node is composited over a weak one.
-    const paint = [...items].sort((a, b) => Number(this.modeOf(a.i, a.wanted) !== "rest") - Number(this.modeOf(b.i, b.wanted) !== "rest") || a.score - b.score);
+    // A peek is composited over its host (its masked interior over the host's outline), over everything but the forced.
+    const peek = (t: Item) => Number(lod.isPeek(t.i));
+    const paint = [...items].sort((a, b) => Number(this.modeOf(a.i, a.wanted) !== "rest") - Number(this.modeOf(b.i, b.wanted) !== "rest") || peek(a) - peek(b) || a.score - b.score);
     this.overlay.frame(h, (buf) => {
       for (const t of paint) {
         const mode = this.modeOf(t.i, t.wanted);

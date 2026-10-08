@@ -28,6 +28,15 @@
  *     at every zoom, a country with two distant places shows two rectangles, ten places 50 km apart are one rectangle (the
  *     group, with a chip "10 entries") until you zoom in, and continents and subregions are only drawn on crowded views.
  *
+ *   - THE PEEK. After the cut (so it never feeds back into the open and close decisions above) the most important PLACES under a group that
+ *     stays CLOSED may be drawn too, as small boxes with their label next to the group's box (`peekPass`, `LOD.peek`): a country of six
+ *     cities is not a closed box with nothing in it for two zoom levels. The group stays ONE box with the total in its chip. Greedy by
+ *     importance (`labelPriority`, then the true size of the place, then the slug: a camera independent order), a candidate is accepted
+ *     when its host is big enough, it keeps a clear gap from every other drawn box and label (with a way to write its own label), the host
+ *     has room for it, and the screen is under its box budget. Accepted peeks keep their place with a hysteresis (accept at the enter gap,
+ *     keep down to the leave gap), so a camera that jitters cannot flap them. A peek is a normal node otherwise: wanted, the same timed
+ *     transition, picked like any box; when its group opens it simply stays.
+ *
  * BINARY STATE, TIMED TRANSITIONS (docs/web-architecture.md, "Binary visibility"). The cut decides only a TARGET per node: drawn or
  * not, with the hysteresis above (the same for the box that is "bigger than the screen", `sizeFadeFrom` .. `sizeFadeTo`, and for the
  * interior mask, `fillHyst`). The opacity of a node is its own `FadeArray` value (engine/fade.ts), run towards the target by TIME over
@@ -95,7 +104,43 @@ export const LOD = {
   pickAlphaMin: 0.3,
   /** Label priority: selected and focused first, then places before groups. */
   placePriorityBonus: 30,
+  /**
+   * The PEEK pass: places drawn inside a closed group (docs/web-architecture.md, "Peeks: progressive disclosure of a closed group").
+   * Every number is in CSS px of the host's space unless said otherwise.
+   */
+  peek: {
+    /** Kinds of group that may show peeks. Continents do not: the world view stays calm. */
+    hostKinds: ["subregion", "region", "country", "area"] as readonly GroupKind[],
+    /** The host's rectangle (its larger side) must be at least `enter` for a new peek, and keeps the peeks it has down to `leave`. */
+    hostMinPx: { enter: 90, leave: 80 },
+    /** At most this many peeks per host. */
+    perHost: 3,
+    /** Clear gap from every other drawn box and label (the larger of the gaps along x and y): to be accepted / to be kept. */
+    gapPx: { enter: 8, leave: 3 },
+    /** A peek's box is at most this part of its host's larger side: accepted / kept (a peek is a SMALL box). */
+    maxHostFrac: { enter: 0.4, leave: 0.5 },
+    /** Boxes on the screen (a 1440 x 900 free area; scaled by the free area, within `budgetMin`..`budgetMax`): a new peek needs fewer than `budget`, a kept one fewer than `budget + budgetKeep`. */
+    budget: 30,
+    budgetKeep: 4,
+    budgetRefArea: 1440 * 900,
+    budgetMin: 8,
+    budgetMax: 60,
+    /** A peek dropped by the label planner (no room for its label) is not tried again until the camera zoomed by `banZoom` or its place moved by `banPx`. */
+    banZoom: 0.2,
+    banPx: 48,
+    /** A peek's label ranks this far below everything else (and below its host's): it takes only the room that is left, it never displaces another label. */
+    labelScoreDrop: 100,
+  },
 } as const;
+
+/**
+ * Placement order of a label (engine/label-plan.ts: higher first) from its `own` score: a PEEK's label ranks below its host's and after every
+ * other label (it only takes the room that is left; the planner never gives another label's place to an optional box). `host` is the
+ * host's score for a peek, null for every other node.
+ */
+export function labelScoreOf(own: number, host: number | null): number {
+  return host === null ? own : Math.min(own, host - 1) - LOD.peek.labelScoreDrop;
+}
 
 const smooth = (t: number) => {
   const x = t < 0 ? 0 : t > 1 ? 1 : t;
@@ -136,6 +181,8 @@ export interface LodCamera {
   centreX: number;
   /** Smaller side of the free map area (free width, height): the unit of the size rules. */
   refPx: number;
+  /** Width of the free map area, centred on `centreX` (the area the detail panel leaves): the screen of the peek pass. */
+  freeWidth: number;
   /** CSS px per art pixel. */
   cell: number;
 }
@@ -155,10 +202,11 @@ export function setLodCamera(
   cam.height = space.height;
   cam.centreX = space.centreX;
   cam.refPx = Math.max(1, Math.min(freeWidthPx, space.height));
+  cam.freeWidth = Math.max(1, freeWidthPx);
   cam.cell = cell;
 }
 
-export const newLodCamera = (): LodCamera => ({ lon: 0, lat: 0, zoom: 0, width: 1, height: 1, centreX: 0.5, refPx: 1, cell: 3 });
+export const newLodCamera = (): LodCamera => ({ lon: 0, lat: 0, zoom: 0, width: 1, height: 1, centreX: 0.5, refPx: 1, freeWidth: 1, cell: 3 });
 
 /**
  * Half side in CSS px of the box of a place of `radiusKm` at a node whose cosine to the view centre is `pc`: the local scale
@@ -234,6 +282,11 @@ export class LodTree {
   readonly side: Float64Array;
   /** Visible places below a group (a group's rectangle wraps only these). */
   readonly members: Int32Array;
+  /**
+   * The PEEKS of the last evaluation: the host group (index) of a place the peek pass drew inside a closed group, -1 for every other node.
+   * A peek is wanted like any node; this says WHY it is drawn under a drawn group (`isPeek`).
+   */
+  readonly peekHost: Int32Array;
   /** Rectangle of a drawn node (host projection space, CSS px, unsnapped). */
   readonly boxX0: Float64Array;
   readonly boxY0: Float64Array;
@@ -273,6 +326,29 @@ export class LodTree {
   private readonly sx1: Float64Array;
   private readonly sy1: Float64Array;
   private readonly order: Int32Array;
+  // ---- the peek pass: static order, the memory between evaluations, and scratch ----
+  /** Places by importance, camera independent: `priority` descending, then the true size in km descending, then the slug. */
+  private readonly peekOrder: Int32Array;
+  /** Group kinds that may host peeks. */
+  private readonly hostKind: Uint8Array;
+  /** A place was a peek in the last evaluation (the incumbent, kept with the leave thresholds), also while it is wanted for another reason. */
+  private readonly peekMem: Uint8Array;
+  /** Per group in the current pass: 0 not a host, 1 may take new peeks, 2 only keeps the ones it has (between the host size thresholds). */
+  private readonly hostState: Uint8Array;
+  private readonly hostCount: Uint8Array;
+  /** Which of the six plate positions a peek's label took (-1: none): an incumbent tries it first, so a position does not flip between two that are both free. */
+  private readonly peekCand: Int8Array;
+  /** A dropped peek's ban: the zoom and the place's position when the label planner refused it (NaN: none). */
+  private readonly banZoom: Float64Array;
+  private readonly banX: Float64Array;
+  private readonly banY: Float64Array;
+  /** Obstacles of the pass: rectangles (4 numbers each), the node they belong to and 0 for its box, 1 for its label's plate, 2 for the reserved box of an incumbent. */
+  private obs: Float64Array;
+  private obsOwner: Int32Array;
+  private obsKind: Uint8Array;
+  private nObs = 0;
+  /** The zoom of the last evaluation (the ban's reference). */
+  private lastZoom = 0;
   private key = new Float64Array(10);
   private keyValid = false;
   private lastForced0 = -2;
@@ -401,6 +477,30 @@ export class LodTree {
     this.sx1 = new Float64Array(widest);
     this.sy1 = new Float64Array(widest);
     this.order = new Int32Array(widest);
+
+    this.peekHost = new Int32Array(n).fill(-1);
+    this.hostKind = Uint8Array.from(list, (x) => (x.kind !== "place" && LOD.peek.hostKinds.includes(x.kind as GroupKind) ? 1 : 0));
+    this.peekMem = new Uint8Array(n);
+    this.peekCand = new Int8Array(n).fill(-1);
+    this.hostState = new Uint8Array(n);
+    this.hostCount = new Uint8Array(n);
+    this.banZoom = new Float64Array(n).fill(NaN);
+    this.banX = new Float64Array(n);
+    this.banY = new Float64Array(n);
+    this.obs = new Float64Array(12 * n + 8);
+    this.obsOwner = new Int32Array(3 * n + 2);
+    this.obsKind = new Uint8Array(3 * n + 2);
+    // true size of a place in km, camera independent: a bounding box's larger side, else the square of its view radius
+    const sizeKm = (i: number) => (this.halfXKm[i]! > 0 ? 2 * Math.max(this.halfXKm[i]!, this.halfYKm[i]!) : (2 * this.radiusKm[i]!) / LOD.halfSideDivisor);
+    this.peekOrder = Int32Array.from(this.places).sort((a, b) => {
+      const pa = this.priority[a]!;
+      const pb = this.priority[b]!;
+      if (pa !== pb) return pb - pa;
+      const sa = sizeKm(a);
+      const sb = sizeKm(b);
+      if (sa !== sb) return sb - sa;
+      return this.slug[a]! < this.slug[b]! ? -1 : this.slug[a]! > this.slug[b]! ? 1 : 0;
+    });
   }
 
   indexOf(slug: string | null | undefined): number {
@@ -450,6 +550,7 @@ export class LodTree {
       k[5] === cam.width &&
       k[6] === cam.centreX &&
       k[7] === cam.cell &&
+      k[8] === cam.freeWidth &&
       forced0 === this.lastForced0 &&
       forced1 === this.lastForced1 &&
       reduced === this.lastReduced
@@ -465,6 +566,7 @@ export class LodTree {
     k[5] = cam.width;
     k[6] = cam.centreX;
     k[7] = cam.cell;
+    k[8] = cam.freeWidth;
     this.keyValid = true;
     this.lastForced0 = forced0;
     this.lastForced1 = forced1;
@@ -512,6 +614,30 @@ export class LodTree {
   hasDrawnAncestor(i: number): boolean {
     for (let a = this.parent[i]!; a >= 0; a = this.parent[a]!) if (this.members[a]! > 0 && this.life.target[a] === 1) return true;
     return false;
+  }
+
+  /** Node `i` is a peek in the last evaluation: a place the peek pass wants drawn inside a closed group. It has a drawn ancestor by design. */
+  isPeek(i: number): boolean {
+    return this.peekHost[i]! >= 0;
+  }
+
+  /**
+   * The label planner could not place the label of peek `i` without overlapping another (engine/box-scene.ts): the peek is dropped at
+   * once (never drawn over others) and not tried again until the camera has moved enough for the answer to change (`LOD.peek.banZoom`,
+   * `banPx`). Does nothing for a node that is not a peek.
+   */
+  dropPeek(i: number): void {
+    if (this.peekHost[i]! < 0) return;
+    this.peekHost[i] = -1;
+    this.peekMem[i] = 0;
+    this.want[i] = 0;
+    this.banZoom[i] = this.lastZoom;
+    this.banX[i] = this.px[i]!;
+    this.banY[i] = this.py[i]!;
+    this.life.snap(i, false);
+    this.mask.snap(i, false);
+    this.keyValid = false;
+    this.build(); // the drawn list now: the next frame of the other overlay must not see it
   }
 
   /** Alpha of every drawn node at rest for a camera, for tests and checks (allocates; not for frames). */
@@ -688,7 +814,180 @@ export class LodTree {
       if (i < 0 || i >= this.size || this.isGroup[i]) continue;
       this.mark(i, cam);
     }
+    this.lastZoom = cam.zoom;
+    this.peekPass(cam);
     this.visited = visited;
+  }
+
+  /**
+   * The PEEK pass (see the header): after the cut, the most important places under the groups that stayed CLOSED are wanted too.
+   *
+   * Two sweeps over the places in importance order (`peekOrder`, independent of the camera and of the input order): first the places that
+   * were peeks in the last evaluation (the incumbents, judged with the LEAVE thresholds), then the others (the ENTER thresholds), so a peek
+   * is only given up when it fails the lenient test and only taken when it passes the strict one: a hysteresis in every number (host size,
+   * gap, share of the host, budget). The obstacles are the boxes and the label plates (at their first candidate, above the box's top-left
+   * corner) of every node the cut wants, then of every peek accepted so far. Cost: O(places) for the sweeps (an ancestor walk and
+   * cheap tests each), the geometry only for a place that passed them all, against the boxes on screen.
+   */
+  private peekPass(cam: LodCamera) {
+    const P = LOD.peek;
+    const n = this.size;
+    const want = this.want;
+    const peekHost = this.peekHost;
+    peekHost.fill(-1);
+    const hs = this.hostState;
+    hs.fill(0);
+    let hosts = 0;
+    for (const g of this.groups) {
+      if (!want[g] || !this.hostKind[g]) continue;
+      const side = Math.max(this.boxX1[g]! - this.boxX0[g]!, this.boxY1[g]! - this.boxY0[g]!);
+      const st = side >= P.hostMinPx.enter ? 1 : side >= P.hostMinPx.leave ? 2 : 0;
+      hs[g] = st;
+      if (st) hosts++;
+    }
+    if (!hosts) {
+      for (const p of this.places) if (!want[p]) this.peekMem[p] = 0;
+      return;
+    }
+    this.hostCount.fill(0);
+    const x0 = this.boxX0;
+    const y0 = this.boxY0;
+    const x1 = this.boxX1;
+    const y1 = this.boxY1;
+    // the screen: the free area (centred on the projection centre), and the boxes on it
+    const vx0 = cam.centreX - cam.freeWidth / 2;
+    const vx1 = vx0 + cam.freeWidth;
+    const vy0 = 0;
+    const vy1 = cam.height;
+    const budget = Math.max(P.budgetMin, Math.min(P.budgetMax, Math.round((P.budget * cam.freeWidth * cam.height) / P.budgetRefArea)));
+    let boxes = 0;
+    this.nObs = 0;
+    for (let i = 0; i < n; i++) {
+      if (!want[i]) continue;
+      if (x1[i]! > vx0 && x0[i]! < vx1 && y1[i]! > vy0 && y0[i]! < vy1) boxes++;
+      if (x1[i]! < vx0 - 400 || x0[i]! > vx1 + 400 || y1[i]! < vy0 - 400 || y0[i]! > vy1 + 400) continue; // (an obstacle is only worth keeping near the screen)
+      this.addObstacle(i, 0, x0[i]!, y0[i]!, x1[i]!, y1[i]!);
+      const tx = x0[i]! - LABEL_TYPE.padX;
+      this.addObstacle(i, 1, tx, y0[i]! - this.labelH[i]! - LABEL_TYPE.boxGap, tx + this.labelW[i]!, y0[i]! - LABEL_TYPE.boxGap);
+    }
+    // The boxes of the incumbents are reserved while the incumbents are judged (obstacles of kind 2, for the PLATES only): a more important peek
+    // does not put its label over a less important one it is about to keep, which would drop it for nothing and bring it back a step later.
+    for (const p of this.places) {
+      if (!want[p] && this.peekMem[p] === 1 && this.shown[p] === 1) this.addObstacle(p, 2, x0[p]!, y0[p]!, x1[p]!, y1[p]!);
+    }
+    const plate = { x: 0, y: 0 };
+    for (let pass = 0; pass < 2; pass++) {
+      const keep = pass === 0;
+      const gap = keep ? P.gapPx.leave : P.gapPx.enter;
+      const frac = keep ? P.maxHostFrac.leave : P.maxHostFrac.enter;
+      const room = keep ? budget + P.budgetKeep : budget;
+      for (const p of this.peekOrder) {
+        if (want[p] || keep !== (this.peekMem[p] === 1)) continue; // wanted for another reason (kept in memory), or not of this sweep
+        // the host: the one drawn group above it, if it can host
+        let h = -1;
+        for (let a = this.parent[p]!; a >= 0; a = this.parent[a]!) {
+          if (want[a]) {
+            h = hs[a] === 0 || (!keep && hs[a] !== 1) ? -1 : a;
+            break;
+          }
+        }
+        const ok = h >= 0 && this.shown[p] === 1 && this.hostCount[h]! < P.perHost && boxes < room && !this.peekBanned(p, cam);
+        // its box small beside the host, clear of everything, with a label that fits on the screen
+        let fits = false;
+        if (ok) {
+          const bx0 = x0[p]!;
+          const by0 = y0[p]!;
+          const bx1 = x1[p]!;
+          const by1 = y1[p]!;
+          const on = bx1 > vx0 && bx0 < vx1 && by1 > vy0 && by0 < vy1;
+          const hostSide = Math.max(x1[h]! - x0[h]!, y1[h]! - y0[h]!);
+          if (Math.max(bx1 - bx0, by1 - by0) <= frac * hostSide && this.peekClear(bx0, by0, bx1, by1, gap, h, p, false)) {
+            // the label must fit on the screen (the planner's positions are all on it): with the gap to spare to be taken, exactly to be kept, so a
+            // box on the edge of the screen does not flap; a box wholly off it has no position and is not a peek
+            const m = keep ? 0 : gap;
+            fits = this.peekPlate(p, vx0 + m, vy0 + m, vx1 - m, vy1 - m, gap, h, keep, plate);
+            if (fits) {
+              peekHost[p] = h;
+              this.hostCount[h]!++;
+              this.mark(p, cam);
+              this.addObstacle(p, 0, bx0, by0, bx1, by1);
+              this.addObstacle(p, 1, plate.x, plate.y, plate.x + this.labelW[p]!, plate.y + this.labelH[p]!);
+              if (on) boxes++;
+            }
+          }
+        }
+        this.peekMem[p] = fits ? 1 : 0;
+      }
+    }
+  }
+
+  private addObstacle(owner: number, kind: number, x0: number, y0: number, x1: number, y1: number) {
+    const k = this.nObs++;
+    const o = this.obs;
+    o[4 * k] = x0;
+    o[4 * k + 1] = y0;
+    o[4 * k + 2] = x1;
+    o[4 * k + 3] = y1;
+    this.obsOwner[k] = owner;
+    this.obsKind[k] = kind;
+  }
+
+  /**
+   * The rectangle keeps `gap` px from every obstacle (the larger of the gaps along x and y), except the box of its `host`. The reserved boxes of the
+   * incumbents other than `own` count only when `reserved` (a plate while the incumbents are judged).
+   */
+  private peekClear(ax0: number, ay0: number, ax1: number, ay1: number, gap: number, host: number, own: number, reserved: boolean): boolean {
+    const o = this.obs;
+    for (let k = 0; k < this.nObs; k++) {
+      const kind = this.obsKind[k];
+      if (kind === 0 && this.obsOwner[k] === host) continue;
+      if (kind === 2 && (!reserved || this.obsOwner[k] === own)) continue;
+      const dx = Math.max(o[4 * k]! - ax1, ax0 - o[4 * k + 2]!);
+      const dy = Math.max(o[4 * k + 1]! - ay1, ay0 - o[4 * k + 3]!);
+      if ((dx > dy ? dx : dy) < gap) return false;
+    }
+    return true;
+  }
+
+  /**
+   * The first of the positions of place `p`'s label (the planner's own: above and below the box on each side, then right and left, with the
+   * same room to the box) that is inside `[bx0, bx1] x [by0, by1]` and clear of every obstacle by `gap`; false when there is none.
+   */
+  private peekPlate(p: number, bx0: number, by0: number, bx1: number, by1: number, gap: number, host: number, keep: boolean, out: { x: number; y: number }): boolean {
+    const w = this.labelW[p]!;
+    const h = this.labelH[p]!;
+    const r0 = this.boxX0[p]!;
+    const t0 = this.boxY0[p]!;
+    const r1 = this.boxX1[p]!;
+    const t1 = this.boxY1[p]!;
+    const g = LABEL_TYPE.boxGap;
+    const bleed = LABEL_TYPE.padX;
+    const mine = keep ? this.peekCand[p]! : -1;
+    for (let t = 0; t < 7; t++) {
+      // the position it had first (while kept), then the six in the planner's order
+      const c = t === 0 ? mine : t - 1;
+      if (c < 0 || (t > 0 && c === mine)) continue;
+      const x = c === 0 || c === 2 ? r0 - bleed : c === 1 || c === 3 ? r1 - w + bleed : c === 4 ? r1 + g : r0 - w - g;
+      const y = c < 2 ? t0 - h - g : c < 4 ? t1 + g : t0;
+      if (x < bx0 || y < by0 || x + w > bx1 || y + h > by1) continue;
+      if (!this.peekClear(x, y, x + w, y + h, gap, host, p, keep)) continue;
+      out.x = x;
+      out.y = y;
+      this.peekCand[p] = c;
+      return true;
+    }
+    return false;
+  }
+
+  /** The label planner refused peek `p` and the camera has not moved enough since for the answer to change. */
+  private peekBanned(p: number, cam: LodCamera): boolean {
+    const z = this.banZoom[p]!;
+    if (Number.isNaN(z)) return false;
+    if (Math.abs(cam.zoom - z) > LOD.peek.banZoom || Math.hypot(this.px[p]! - this.banX[p]!, this.py[p]! - this.banY[p]!) > LOD.peek.banPx) {
+      this.banZoom[p] = NaN;
+      return false;
+    }
+    return true;
   }
 
   /** Node `i` is wanted drawn, with the interior mask the switch (with its hysteresis) says. */

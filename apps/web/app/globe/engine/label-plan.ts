@@ -80,6 +80,12 @@ export interface PlanItem {
   rect: CellRect;
   variants: readonly Sized[];
   prev: Prev | null;
+  /**
+   * Rectangles this node's plate must stay clear of, as well as the plates already placed (the boxes of the other nodes, for a PEEK: the
+   * planner otherwise looks at plates only). A position that touches one is not a candidate; when none is left the plate goes over others
+   * as a last resort and the caller drops the peek (`peeksToDrop`).
+   */
+  avoid?: readonly Plate[] | undefined;
 }
 
 export interface PlanResult {
@@ -146,12 +152,14 @@ export function planLabels(items: readonly PlanItem[], grid: GridSize, units: Pl
     const spots: LabelSpot[][] = [];
     const spotsOf = (v: number) => (spots[v] ??= labelCandidates(t.rect, t.variants[v]!.w, t.variants[v]!.h, grid, spotUnits));
     /** The first (variant, candidate) in priority order, ranked below `before`, that is free with `pad` more room, or null. */
+    const avoid = t.avoid;
+    const clear = (x: number, y: number, w: number, h: number, pad: number) => free(x, y, w, h, pad) && (!avoid || !avoid.some((p) => hits(p, x, y, w, h, 0)));
     const first = (pad: number, before = Infinity): { v: number; s: LabelSpot } | null => {
       for (let v = 0; v < count; v++) {
         const { w, h } = t.variants[v]!;
         for (const s of spotsOf(v)) {
           if (rank(v, s.id) >= before) return null;
-          if (free(s.x, s.y, w, h, clearance + pad)) return { v, s };
+          if (clear(s.x, s.y, w, h, clearance + pad)) return { v, s };
         }
       }
       return null;
@@ -161,7 +169,7 @@ export function planLabels(items: readonly PlanItem[], grid: GridSize, units: Pl
     if (chosen && prev && prev.cand >= 0 && prev.variant < count) {
       const { w, h } = t.variants[prev.variant]!;
       const same = spotsOf(prev.variant).find((s) => s.id === prev.cand);
-      if (same && free(same.x, same.y, w, h, clearance) && rank(chosen.v, chosen.s.id) < rank(prev.variant, prev.cand)) {
+      if (same && clear(same.x, same.y, w, h, clearance) && rank(chosen.v, chosen.s.id) < rank(prev.variant, prev.cand)) {
         // a better choice exists: take it only when it is free with room to spare
         chosen = first(upgradeMargin, rank(prev.variant, prev.cand)) ?? { v: prev.variant, s: same };
       }
@@ -215,5 +223,40 @@ export function planLabels(items: readonly PlanItem[], grid: GridSize, units: Pl
     placed.push({ x0: pick.x, y0: pick.y, x1: pick.x + w, y1: pick.y + h });
     out[n] = { variant: pick.v, x: pick.x, y: pick.y, w, h, cand: pick.cand, inside: pick.inside, overlap: true };
   }
+  return out;
+}
+
+/** What `peeksToDrop` needs of a drawn node, in the same unit as the plan: its box, its planned plate, and how it came to be there. */
+export interface PeekCheck {
+  box: Plate;
+  plate: Plate;
+  /** The node is a peek (a place drawn inside a closed group). */
+  peek: boolean;
+  /** Index (in the same list) of the peek's host, else -1. */
+  host: number;
+  /** The planner could only put the plate over others. */
+  overlap: boolean;
+  /** The box touches the screen: a peek that is off it is left alone (nothing of it is seen; its slot is found when it comes in). */
+  onScreen: boolean;
+}
+
+/**
+ * The peeks that must not be drawn after a plan: a peek is OPTIONAL, so it goes when its label could only be put over others, when another
+ * node's plate lands on its box, or when its plate lands on another node's box (its host's outline excepted: the peek is inside it).
+ * Returns indices into `nodes`. Pure.
+ */
+export function peeksToDrop(nodes: readonly PeekCheck[]): number[] {
+  const out: number[] = [];
+  const touch = (a: Plate, b: Plate) => a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0;
+  nodes.forEach((p, k) => {
+    if (!p.peek || !p.onScreen) return;
+    let bad = p.overlap;
+    for (let j = 0; j < nodes.length && !bad; j++) {
+      if (j === k) continue;
+      const q = nodes[j]!;
+      bad = touch(q.plate, p.box) || (j !== p.host && touch(p.plate, q.box));
+    }
+    if (bad) out.push(k);
+  });
   return out;
 }

@@ -118,6 +118,8 @@ export interface LodDebugNode {
   alpha: number;
   /** The cut wants it drawn (else it is fading out). */
   wanted: boolean;
+  /** A place drawn inside its closed group on purpose (a peek, engine/lod-tree.ts): it has a drawn ancestor by design. */
+  peek: boolean;
   /** Opacity of its interior mask now, node alpha included. */
   fillAlpha: number;
   level: number;
@@ -321,6 +323,7 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
             kind: t.kind[i]!,
             alpha: t.alpha[i]!,
             wanted: t.life.target[i] === 1,
+            peek: t.isPeek(i),
             fillAlpha: t.fillAlpha[i]!,
             level: t.level[i]!,
             shown: !!sc.shown[i],

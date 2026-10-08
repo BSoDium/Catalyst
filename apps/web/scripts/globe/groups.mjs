@@ -1,6 +1,6 @@
 // Checks for the detection boxes (every place and group is a rectangle; the hierarchy is cut in screen space), Playwright + headless Chrome with the GPU.
 //
-//   CHROME_PATH=... BASE_URL=http://localhost:5174 [SHOTS=1] node apps/web/scripts/globe/groups.mjs [lod|cases|pixels|empty|timed|at-rest|reduced|pick|targets|flicker|cost|idle|handover|shots]
+//   CHROME_PATH=... BASE_URL=http://localhost:5174 [SHOTS=1] node apps/web/scripts/globe/groups.mjs [lod|cases|pixels|empty|timed|at-rest|reduced|pick|targets|flicker|peek|cost|idle|handover|shots]
 //
 // Serve the app with demo content (`pnpm dev:demo`, or a production build with CATALYST_CONTENT=demo): the demo projection has
 // a hierarchy (3 continents, a region, a subregion, 3 countries, an area; 18 places). `handover` also needs the local tile server
@@ -26,6 +26,10 @@
 //           shows the pointer and the node's hover state; the label is a real DOM element (text, opacity, place) for every drawn box
 // flicker   a scripted pan and zoom of 181 frames over a crowded view: the labels keep their slots (slot changes per label, jumps, the worst frame), the
 //           plan runs once when the camera stops, and hovering label after label re-plans nothing and moves no other label
+// peek      (the owner's preview, or any content with a closed group of several places) PEEKS: places drawn inside a closed group (docs/web-architecture.md,
+//           "Peeks"). Over zoom sweeps at Western Europe, the Balkans, Iberia and Central Europe: some peeks are drawn inside a closed host whose chip keeps the
+//           total, at most 3 per host and about 30 boxes on screen, every drawn box (peeks included) has its label, none half-faded at rest, no label over
+//           another, a click on a peek picks the place and one on the host's margin the host, and a slow zoom never makes a peek flicker
 // cost      the cost of the cluster pass with 18, 186, 1000 and 5000 nodes
 // idle      no frames, no rAF, no label canvas redraw while nothing moves
 // handover  the same boxes and dots are drawn by the globe's and the street overlay's drawing of one camera
@@ -57,6 +61,13 @@ const at = (page, v) =>
     window.__globeDebug.settle(); // every timed transition run to its end: the resting frame of this camera
     return window.__globeDebug.lod();
   }, v);
+
+/** Whether `slug` is below the group `ancestor` in the tree list of the debug hook. */
+function underGroup(tree, slug, ancestor) {
+  const parent = new Map(tree.map((n) => [n.slug, n.parent]));
+  for (let c = parent.get(slug); c; c = parent.get(c)) if (c === ancestor) return true;
+  return false;
+}
 
 const browser = await launch();
 try {
@@ -100,7 +111,7 @@ try {
           for (let z = minZoom; z <= 6.5; z += 0.02) {
             d.setView({ lon, lat, zoom: z });
             d.settle();
-            out.push({ z, nodes: d.lod().map((n) => [n.slug, n.alpha]) });
+            out.push({ z, nodes: d.lod().filter((n) => !n.peek).map((n) => [n.slug, n.alpha]) }); // (a peek is drawn inside its closed group on purpose: its own checks are `peek`)
           }
           return out;
         },
@@ -146,7 +157,7 @@ try {
           d.settle();
           const l = d.lod();
           const box = l.find((n) => n.slug === "case-crowd");
-          const dots = l.filter((n) => n.slug.startsWith("crowd-"));
+          const dots = l.filter((n) => n.slug.startsWith("crowd-") && !n.peek);
           out.push({ z, box: box ? box.alpha : 0, dots: dots.length, dotAlpha: dots.length ? Math.min(...dots.map((n) => n.alpha)) : 0 });
         }
         return out;
@@ -322,7 +333,7 @@ try {
           const tick = () => {
             const l = d.lod();
             const box = l.find((n) => n.slug === "case-crowd");
-            const dots = l.filter((n) => n.slug.startsWith("crowd-"));
+            const dots = l.filter((n) => n.slug.startsWith("crowd-") && !n.peek);
             out.push({ t: Math.round(performance.now() - t0), box: box ? box.alpha : 0, dots: dots.length ? Math.max(...dots.map((n) => n.alpha)) : 0, n: dots.length, animating: d.layers().animating });
             if (performance.now() - t0 < 700) requestAnimationFrame(tick);
             else resolve(out);
@@ -643,6 +654,131 @@ try {
     await page.mouse.move(origin.left + 3, origin.top + 3);
     await sleep(80);
     expect("away from every target the cursor is grab", (await page.evaluate(() => document.querySelector("canvas").style.cursor)) === "grab", null);
+    expect("no console errors", logs.filter((l) => !/404/.test(l)).length === 0, logs);
+    await page.context().close();
+  }
+
+  /* ------------------------------------------------------------------------------------------------- peek */
+  if (run("peek")) {
+    const { page, logs } = await openGlobe(browser, DESKTOP);
+    const origin = await page.evaluate(() => {
+      const r = document.querySelector('[data-globe="three"] > div:nth-child(2)').getBoundingClientRect();
+      return { left: r.left, top: r.top };
+    });
+    void origin;
+    const tree = await page.evaluate(() => window.__globeDebug.tree());
+    const have = (slug) => tree.some((n) => n.slug === slug);
+    const GROUPS = [
+      ["western-europe", 5, 46],
+      ["balkans", 19.9, 43.5],
+      ["iberia", -3.6, 40.3],
+      ["central-europe", 17.5, 49.5],
+    ].filter(([slug]) => have(slug));
+    expect(`the preview (or any content) has the groups of the complaint (${GROUPS.map((g) => g[0]).join(", ")})`, GROUPS.length >= 1, tree.filter((n) => n.kind !== "place").map((n) => n.slug));
+    const states = [];
+    const bad = [];
+    const flips = [];
+    let peekFrames = 0;
+    let maxBoxes = 0;
+    let maxPerHost = 0;
+    let picked = 0;
+    const read = () =>
+      page.evaluate(() => {
+        const d = window.__globeDebug;
+        return { cells: d.labelCells(), lod: d.lod(), dom: d.labelsDom() };
+      });
+    for (const [slug, lon, lat] of GROUPS) {
+      // 1. a resting sweep, zoom 3 to 7.5: what is drawn at each step
+      let first = -1;
+      let open = -1;
+      for (let z = 3; z <= 7.5; z += 0.1) {
+        await page.evaluate((v) => {
+          window.__globeDebug.setView(v);
+          window.__globeDebug.settle();
+        }, { lon, lat, zoom: z });
+        const r = await read();
+        const host = r.cells.find((c) => c.slug === slug);
+        const peeks = r.cells.filter((c) => c.peek);
+        if (first < 0 && peeks.some((c) => tree.find((n) => n.slug === c.slug)?.parent && underGroup(tree, c.slug, slug))) first = z;
+        if (first >= 0 && open < 0 && !host) open = z;
+        const onScreen = r.cells.filter((c) => c.box.x1 > 0 && c.box.x0 < 1440 && c.box.y1 > 0 && c.box.y0 < 900);
+        maxBoxes = Math.max(maxBoxes, onScreen.length);
+        if (onScreen.length > 34 && peeks.length) bad.push({ slug, z, why: `${onScreen.length} boxes on screen with peeks` });
+        const perHost = new Map();
+        for (const c of peeks) {
+          peekFrames++;
+          let h = tree.find((n) => n.slug === c.slug)?.parent;
+          while (h && !r.cells.some((x) => x.slug === h)) h = tree.find((n) => n.slug === h)?.parent;
+          perHost.set(h, (perHost.get(h) ?? 0) + 1);
+          if (!c.parented) bad.push({ slug, z, peek: c.slug, why: "a peek without a drawn host" });
+          if (c.alpha !== 1 || (c.fillAlpha !== 0 && c.fillAlpha !== 1)) bad.push({ slug, z, peek: c.slug, why: `half-faded at rest (alpha ${c.alpha}, mask ${c.fillAlpha})` });
+          if (!c.label || c.label.w <= 0) bad.push({ slug, z, peek: c.slug, why: "a peek without a label" });
+          else if (c.label.overlap) bad.push({ slug, z, peek: c.slug, why: "a peek whose label is over another" });
+          const el = r.dom.find((x) => x.slug === c.slug);
+          if (!el || el.opacity !== 1) bad.push({ slug, z, peek: c.slug, why: "no label element, or not opaque" });
+          const hostCell = r.cells.find((x) => x.slug === h);
+          if (hostCell) {
+            const cx = (c.box.x0 + c.box.x1) / 2;
+            const cy = (c.box.y0 + c.box.y1) / 2;
+            if (!(cx > hostCell.box.x0 && cx < hostCell.box.x1 && cy > hostCell.box.y0 && cy < hostCell.box.y1)) bad.push({ slug, z, peek: c.slug, why: "a peek outside its host's box" });
+            // the host stays one box with the TOTAL in its chip
+            const node = r.lod.find((n) => n.slug === h);
+            if (hostCell.chip !== `${node.total} entries`) bad.push({ slug, z, host: h, why: `chip ${hostCell.chip} is not the total ${node.total}` });
+          }
+        }
+        for (const v of perHost.values()) maxPerHost = Math.max(maxPerHost, v);
+        // every drawn box, peeks included: a label, no two plates overlapping unless one is the last resort (and then it is no peek)
+        for (const c of r.cells) if (!c.label || c.label.w <= 0) bad.push({ slug, z, node: c.slug, why: "a box without a label" });
+        for (let i = 0; i < r.cells.length; i++)
+          for (let j = i + 1; j < r.cells.length; j++) {
+            const p = r.cells[i].label;
+            const q = r.cells[j].label;
+            if (p && q && !p.overlap && !q.overlap && p.x < q.x + q.w && p.x + p.w > q.x && p.y < q.y + q.h && p.y + p.h > q.y) bad.push({ slug, z, a: r.cells[i].slug, b: r.cells[j].slug, why: "two plates overlap", p: [p.x, p.y, p.w, p.h, p.cand, r.cells[i].peek], q: [q.x, q.y, q.w, q.h, q.cand, r.cells[j].peek] });
+          }
+        // picking, once per group, at the first view with a peek inside a host: the peek's centre picks the place, the host's own margin the host
+        if (picked < GROUPS.length && peeks.length && host && z > first - 1e-9 && !states.includes(slug)) {
+          states.push(slug);
+          const c = peeks[0];
+          const got = await page.evaluate(([x, y]) => window.__globeDebug.pick(x, y), [(c.box.x0 + c.box.x1) / 2, (c.box.y0 + c.box.y1) / 2]);
+          // a point on the host's left edge away from every peek
+          const ys = [0.2, 0.35, 0.5, 0.65, 0.8].map((f) => host.box.y0 + (host.box.y1 - host.box.y0) * f);
+          const free = ys.find((y) => r.cells.every((o) => o === host || o.box.x0 > host.box.x0 + 30 || o.box.y0 > y + 30 || o.box.y1 < y - 30));
+          const edge = free === undefined ? null : await page.evaluate(([x, y]) => window.__globeDebug.pick(x, y), [host.box.x0 + 1, free]);
+          picked++;
+          if (got !== c.slug || (edge !== null && edge !== slug)) bad.push({ slug, z, why: "picking", peek: c.slug, got, edge });
+        }
+      }
+      states.length = 0;
+      expect(`${slug}: the first peek is at zoom ${first.toFixed(2)}, before the group opens (${open < 0 ? "never in range" : open.toFixed(2)})`, first > 0 && (open < 0 || open - first >= 0.3), { first, open });
+      // 2. a slow zoom with the clock running (no settle): a peek that goes does not come back within a few percent of scale
+      const series = await page.evaluate(
+        async ({ lon, lat }) => {
+          const d = window.__globeDebug;
+          const out = [];
+          for (let z = 3; z <= 7; z += 0.01) {
+            d.setView({ lon, lat, zoom: z });
+            d.renderNow();
+            out.push({ z, want: d.lod().filter((n) => n.peek && n.wanted).map((n) => n.slug) });
+          }
+          return out;
+        },
+        { lon, lat },
+      );
+      let prev = new Set();
+      const gone = new Map();
+      for (const s of series) {
+        const now = new Set(s.want);
+        for (const k of prev) if (!now.has(k)) gone.set(k, s.z);
+        for (const k of now) {
+          if (gone.has(k) && s.z - gone.get(k) < 0.06) flips.push({ slug, k, gone: gone.get(k), back: s.z });
+          gone.delete(k);
+        }
+        prev = now;
+      }
+    }
+    expect(`peeks over ${GROUPS.length} groups (${peekFrames} peeks drawn at rest): every one has a drawn host with its total in the chip, a label element, a plate over nothing, full opacity; every box has a label; at most 3 per host (${maxPerHost}) and ${maxBoxes} boxes on screen at most`, peekFrames > 0 && bad.length === 0 && maxPerHost <= 3, bad.slice(0, 6));
+    expect(`a click on a peek picks the place, one on the host's margin the host (${picked} groups)`, picked >= 1 && !bad.some((b) => b.why === "picking"), bad.filter((b) => b.why === "picking"));
+    expect(`a slow zoom (0.01 steps, frames without settling) never shows a peek that goes and comes back within 0.06 of zoom (${flips.length})`, flips.length === 0, flips.slice(0, 4));
     expect("no console errors", logs.filter((l) => !/404/.test(l)).length === 0, logs);
     await page.context().close();
   }

@@ -17,9 +17,16 @@ const camAt = (lon: number, lat: number, zoom: number, free = W, cell = CELL): L
   return c;
 };
 
-/** Opacity of every drawn node at REST for a camera (every transition run to its end); each call is a distinct camera (never a cache hit between calls). */
-function evaluate(tree: LodTree, cam: LodCamera, reduced = false) {
+/** Opacity of every drawn node at REST for a camera (every transition run to its end), PEEKS included; each call is a distinct camera (never a cache hit between calls). */
+function evaluateAll(tree: LodTree, cam: LodCamera, reduced = false) {
   return tree.alphas({ ...cam, zoom: cam.zoom + 1e-12 * Math.random() }, reduced);
+}
+
+/** What the CUT draws at rest: the same without the peeks (places drawn inside a closed group, `peek.test.ts`), whose own rules are tested apart. */
+function evaluate(tree: LodTree, cam: LodCamera, reduced = false) {
+  const a = evaluateAll(tree, cam, reduced);
+  for (const slug of [...a.keys()]) if (tree.isPeek(tree.indexOf(slug))) a.delete(slug);
+  return a;
 }
 
 const chain = (tree: LodTree, i: number) => {
@@ -338,11 +345,12 @@ describe("the demo hierarchy", () => {
     for (let lon = -180; lon <= 180; lon += 20) {
       for (const lat of [-40, 0, 25, 50]) {
         for (let z = 2.7; z <= 12; z += 0.5) {
-          const a = evaluate(tree, camAt(lon, lat, z));
+          const a = evaluateAll(tree, camAt(lon, lat, z));
           for (const [slug, alpha] of a) {
             const i = tree.indexOf(slug);
             expect(alpha, `${slug} at ${lon},${lat},${z}`).toBe(1);
-            expect(tree.hasDrawnAncestor(i), `${slug}: a node and its ancestor are both drawn`).toBe(false);
+            // a node and its ancestor are never both drawn, except a PEEK: it is drawn inside its closed group on purpose
+            expect(tree.hasDrawnAncestor(i), `${slug}: a node and its ancestor are both drawn`).toBe(tree.isPeek(i));
           }
         }
       }
