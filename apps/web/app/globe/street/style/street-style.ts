@@ -151,12 +151,15 @@ const MED_CASE: Stops = [[12, HAIR], [14, 1], [15, 2], [16, 5], [17, 10], [18, 2
  */
 const SECONDARY_ART: Stops = [[5, 1], [14.6, 1], [15.2, 1.7], [16, 2.4], [17, 4.2], [18, 9]];
 /**
- * Motorways, trunks and primary roads (the road hierarchy, owner report "everything is the same"): TWO art pixels wide from z9 (the
- * city framings are 10 to 11.4 on a desktop, 8.8 to 10.2 on a phone), one pixel below it; the width steps in 0.01 of zoom so no
- * intermediate width (1.25 to 1.6, where a line is one or two cells wide depending on its offset) is ever drawn. From z15.2 the
- * ramp is the old one (the hollow road at 4 art px, z16.9, is unchanged). A two-pixel line is a wide class (never thinned).
+ * Motorways, trunks and primary roads (the road hierarchy, owner report "everything is the same"): ONE art pixel wide up to the
+ * neighbourhood scale, TWO from z13. They were two pixels wide from z9 until 2026-10-08, which with the primary roads of a big city
+ * (Paris, London, New York: z10 tiles hold hundreds of km of them) made the city overview a mesh of grey lines ("the density is too high and the
+ * roads are too thick", measured by `scripts/street/lod-density.mjs`: 15 to 20 % of the cells lit at z9.5 to 12, now 4 to 8 %, and about
+ * 11 % at the 2 px peak at z13 to 14). The width steps in 0.01 of zoom so no intermediate width (1.25 to 1.6, where a line is one or two
+ * cells wide depending on its offset) is ever drawn. From z15.2 the ramp is the old one (the hollow road at 4 art px, z16.9, is unchanged).
+ * A two-pixel line is a wide class (never thinned).
  */
-export const MAJOR_WIDE_FROM = 9;
+export const MAJOR_WIDE_FROM = 13;
 const MAJOR_ART: Stops = [[5, 1], [MAJOR_WIDE_FROM, 1], [MAJOR_WIDE_FROM + 0.01, 2], [15.2, 2], [16, 2.4], [17, 4.2], [18, 9]];
 const MED_ART: Stops = [[12, 1], [15.4, 1], [16, 1.7], [17, 3], [18, 7]];
 const MED_FILL: Stops = [[16.4, 0], [17, 3], [18, 14]];

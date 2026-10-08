@@ -34,6 +34,12 @@ describe("LOD table", () => {
     // far-zoom calm (owner, earlier pass): nothing road-like below z6, nothing but motorways and trunks below z8.5
     expect(LOD.highway.on).toBeGreaterThanOrEqual(6);
     expect(LOD.major.on).toBeGreaterThanOrEqual(8.5);
+    // city-overview calm (owner 2026-10-08, "the density is too high before the roads clear out"): primary roads from z10, secondary from z11.4,
+    // links, rail and tertiary after that, residential streets near z14, service roads and paths past it
+    expect(LOD.major.on).toBeGreaterThanOrEqual(9.8);
+    expect(LOD.secondary.on).toBeGreaterThanOrEqual(11.2);
+    for (const k of ["link", "rail"] as const) expect(LOD[k].on, k).toBeGreaterThanOrEqual(11.6);
+    expect(LOD.medium.on).toBeGreaterThanOrEqual(12.4);
     // rivers: the tile data holds the big ones from z4 (probed with scripts/street/layer-probe.mjs), the line starts as the regions do
     expect(LOD.river.on).toBeGreaterThanOrEqual(5);
     // the tile data bounds how early a class can show (OpenMapTiles: tertiary from z11, residential from z12, service from z13)
@@ -41,6 +47,8 @@ describe("LOD table", () => {
     expect(LOD.minor.on).toBeGreaterThanOrEqual(12);
     expect(LOD.service.on).toBeGreaterThanOrEqual(13);
     expect(LOD.path.on).toBeGreaterThanOrEqual(14);
+    // the full network is there from z14: everything down to the residential streets (dotted) is on by then, service roads and paths are the decor of the street scale
+    for (const k of ["highway", "major", "secondary", "medium", "link", "rail", "minor"] as const) expect(LOD[k].on, k).toBeLessThanOrEqual(14 - ZOOM_BAND);
     expect(LOD.buildingOutline.on).toBeGreaterThanOrEqual(16);
     expect(FILL_LOD.building.on).toBeGreaterThanOrEqual(15.5);
   });
@@ -98,14 +106,14 @@ describe("style wiring of the LOD", () => {
   });
   it("the layers that start on follow the switch for the camera the style is built for (a style swap shows no flash)", () => {
     const sw = new LayerSwitch(switchRules(seaFrom(DEFAULT_HANDOFF.openmaptiles)));
-    sw.update({ zoom: 11.5, unifiedZoom: 11.5, heightPx: 900 });
+    sw.update({ zoom: 13, unifiedZoom: 13, heightPx: 900 });
     const st = buildStreetStyle({ schema: "openmaptiles", tiles: TILES, coastlines: empty, borders: empty, graticule: empty, routes: empty, visible: sw.visibleIds() }).layers as unknown as L[];
     const vis = (id: string) => st.find((l) => l.id === id)!.layout?.visibility !== "none";
     expect(vis("road-highway-case")).toBe(true);
     expect(vis("road-medium-case")).toBe(true);
-    expect(vis("road-minor-dotted")).toBe(false); // 13
+    expect(vis("road-minor-dotted")).toBe(false); // 13.9
     expect(vis("building-fill")).toBe(false); // 16.3
-    expect(vis("water-fill")).toBe(true); // flat at 11.5
+    expect(vis("water-fill")).toBe(true); // flat at 13
     expect(vis("graticule")).toBe(false); // so the graticule is gone
     // and without a switch state everything is on (tests, tools)
     const all = make("openmaptiles").layers as unknown as L[];
@@ -238,28 +246,38 @@ describe("a city reads as a city at the zoom the app frames it at (owner: street
     expect(framing(12, CITIES.paris, 1440, 900, 0)).toBeCloseTo(10.59, 1);
     expect(framing(12, CITIES.hcmc, 1440, 900, 0)).toBeCloseTo(11.17, 1);
   });
-  it("desktop, default 12 km radius, panel closed or open: motorways, primary and secondary roads, links, rail, rivers, lakes and parks are on", () => {
+  it("desktop, default 12 km radius, panel closed or open: motorways, primary roads, rivers, lakes and parks are on, and nothing finer (owner 2026-10-08: the city overview is calm)", () => {
     for (const lat of Object.values(CITIES)) for (const inset of [0, 720]) {
       const z = framing(12, lat, 1440, 900, inset);
-      for (const k of ["highway", "major", "secondary", "link", "rail", "river", "lake"] as const) expect(on(LOD[k], z), `${k} lat ${lat} inset ${inset} z${z.toFixed(2)}`).toBe(true);
+      for (const k of ["highway", "major", "river", "lake"] as const) expect(on(LOD[k], z), `${k} lat ${lat} inset ${inset} z${z.toFixed(2)}`).toBe(true);
       expect(on(FILL_LOD.park, z), `park lat ${lat}`).toBe(true);
+      for (const k of ["secondary", "medium", "link", "rail", "minor", "minorSolid", "service", "path"] as const) expect(on(LOD[k], z), `${k} lat ${lat} inset ${inset} z${z.toFixed(2)}`).toBe(false);
     }
   });
-  it("every framing a person can get (10 to 18 km, desktop with or without the panel, a phone): motorways and primary roads are on", () => {
+  it("every framing a person can get (10 to 18 km, desktop with or without the panel, a phone): motorways are on, and primary roads on a desktop at 10 to 12 km (the phone framings are 8.8 to 10.2, the primary roads wait for the region scale there)", () => {
     for (const lat of Object.values(CITIES)) for (const km of [10, 12, 14, 18]) for (const [w, h, inset] of [[1440, 900, 0], [1440, 900, 720], [390, 844, 0]] as const) {
       const z = framing(km, lat, w, h, inset);
       expect(on(LOD.highway, z), `${km} km ${w}x${h} inset ${inset} lat ${lat} z${z.toFixed(2)}`).toBe(true);
-      expect(on(LOD.major, z), `${km} km ${w}x${h} inset ${inset} lat ${lat} z${z.toFixed(2)}`).toBe(true);
+    }
+    for (const lat of Object.values(CITIES)) for (const km of [10, 12]) for (const inset of [0, 720]) {
+      const z = framing(km, lat, 1440, 900, inset);
+      expect(on(LOD.major, z), `${km} km inset ${inset} lat ${lat} z${z.toFixed(2)}`).toBe(true);
     }
   });
-  it("tertiary roads switch on as soon as their tiles exist (OpenMapTiles z11), so the closest framing has them; residential streets follow dotted a zoom or two later", () => {
-    expect(LOD.medium.on).toBeLessThan(11.2);
-    expect(on(LOD.medium, framing(12, CITIES.hcmc, 1440, 900, 0))).toBe(true); // 11.17: the closest typical framing
-    expect(LOD.minor.on).toBeLessThanOrEqual(13);
+  it("tertiary roads wait for the neighbourhood scale (their tiles exist from OpenMapTiles z11, but the city overview would be a mesh), residential streets follow dotted near z14", () => {
+    expect(LOD.medium.on).toBeGreaterThan(11.5);
+    expect(on(LOD.medium, framing(12, CITIES.hcmc, 1440, 900, 0))).toBe(false); // 11.17: the closest typical framing
+    expect(LOD.minor.on).toBeLessThanOrEqual(14);
     expect(LOD.minor.dash).toBeDefined();
   });
-  it("far zoom is as calm as before: of the roads only motorways and trunks below z8.5, none below z6 (rivers and region borders started earlier on purpose)", () => {
-    for (let z = 0; z <= 8.5; z += 0.1) for (const k of ["major", "secondary", "medium", "minor", "link", "service", "path", "rail", "canal", "stream", "waterDetail"] as const) expect(levelAt(LOD[k], z), `${k} z${z.toFixed(1)}`).toBe(0);
+  it("the city overview (map zoom 8 to 11.3) draws the major network only: motorways and trunks, primary roads from z10, all at one art pixel", () => {
+    for (let z = 8; z <= 11.3; z += 0.05) {
+      const drawn = (["highway", "major", "secondary", "medium", "minor", "minorSolid", "link", "service", "path", "rail"] as const).filter((k) => visibleAt(LOD[k], z));
+      expect(drawn, `z${z.toFixed(2)}`).toEqual(z >= LOD.major.on ? ["highway", "major"] : ["highway"]);
+    }
+  });
+  it("far zoom is as calm as before: of the roads only motorways and trunks below z9.8, none below z6 (rivers and region borders started earlier on purpose)", () => {
+    for (let z = 0; z <= 9.7; z += 0.1) for (const k of ["major", "secondary", "medium", "minor", "link", "service", "path", "rail", "canal", "stream", "waterDetail"] as const) expect(levelAt(LOD[k], z), `${k} z${z.toFixed(1)}`).toBe(0);
     for (let z = 0; z <= 6; z += 0.1) expect(levelAt(LOD.highway, z)).toBe(0);
   });
   it("the tone hierarchy at the framing: arterials louder than links and rail", () => {
@@ -365,12 +383,18 @@ describe("road hierarchy: the class is told by tone and by width (owner: everyth
       expect(dist("highway", "path")).toBeGreaterThan(0.18);
     }
   });
-  it("widths: motorway, trunk and primary are 2 art px from z9, every other class 1 px at the city framings (10 to 11.4 on a desktop)", () => {
+  it("widths: motorway, trunk and primary are 1 art px at the city overview and framings (up to 11.4 on a desktop) and 2 from MAJOR_WIDE_FROM, every other class 1 px", () => {
     const widthAt = (id: string, z: number) => {
       const w = artWidthStopsOf(SPECS.find((s) => s.id === id)!);
       return typeof w === "number" ? w : expInterp(w, z, 1.5);
     };
-    for (const z of [MAJOR_WIDE_FROM + 0.05, 9.5, 10, 10.6, 11.4, 12, 14.5]) {
+    for (const z of [8, 9, 9.5, 10, 10.6, 11.4, 12, MAJOR_WIDE_FROM - 0.02]) {
+      expect(widthAt("road-highway-case", z), `highway z${z}`).toBe(1);
+      expect(widthAt("road-major-case", z), `primary z${z}`).toBe(1);
+      expect(widthAt("road-secondary-case", z), `secondary z${z}`).toBe(1);
+      expect(widthAt("road-medium-case", z), `tertiary z${z}`).toBe(1);
+    }
+    for (const z of [MAJOR_WIDE_FROM + 0.05, 13.5, 14.5]) {
       expect(widthAt("road-highway-case", z), `highway z${z}`).toBe(2);
       expect(widthAt("road-major-case", z), `primary z${z}`).toBe(2);
       expect(widthAt("road-secondary-case", z), `secondary z${z}`).toBe(1);
@@ -378,12 +402,14 @@ describe("road hierarchy: the class is told by tone and by width (owner: everyth
       expect(widthAt("road-minor", z), `residential z${z}`).toBeLessThanOrEqual(1.0001);
     }
     // below the step they are one pixel, and the step is abrupt (no width between 1.25 and 1.6 where a line is one or two cells wide by offset)
-    expect(widthAt("road-highway-case", 8.9)).toBe(1);
+    expect(widthAt("road-highway-case", MAJOR_WIDE_FROM - 0.2)).toBe(1);
     expect(widthAt("road-highway-case", MAJOR_WIDE_FROM + 0.01)).toBe(2);
     const w = (z: number) => widthAt("road-major-case", z);
     for (let z = MAJOR_WIDE_FROM - 0.2; z < MAJOR_WIDE_FROM + 0.2; z += 0.001) expect([1, 2].some((v) => Math.abs(w(z) - v) < 0.2) || z > MAJOR_WIDE_FROM - 1e-9 && z < MAJOR_WIDE_FROM + 0.011).toBe(true);
-    // the framings the app uses: the step is below the lowest desktop city framing (10.0) and the lowest phone one (8.8 + 0.2)
-    expect(MAJOR_WIDE_FROM).toBeLessThan(9.2);
+    // the framings the app uses (10.0 to 11.4 on a desktop, 8.8 to 10.2 on a phone) and the zooms between them and the region: one art pixel (owner
+    // 2026-10-08: two-pixel roads made the city overview a mesh); the step is after the tertiary roads' own tiles (z11) and before the street scale
+    expect(MAJOR_WIDE_FROM).toBeGreaterThanOrEqual(12);
+    expect(MAJOR_WIDE_FROM).toBeLessThanOrEqual(13);
   });
   it("the two-pixel roads are a wide ink class (never thinned) from the step on, a thin one below it", () => {
     const spec = SPECS.find((s) => s.id === "road-major-case")!;
@@ -394,8 +420,9 @@ describe("road hierarchy: the class is told by tone and by width (owner: everyth
       return v;
     };
     expect(at(8.5)).toBeCloseTo(THIN_INK, 6);
+    expect(at(11)).toBeCloseTo(THIN_INK, 6);
     expect(at(MAJOR_WIDE_FROM + 0.02)).toBe(1);
-    expect(at(12)).toBe(1);
+    expect(at(13.5)).toBe(1);
   });
 });
 
@@ -418,11 +445,12 @@ describe("earlier detail (owner: a country fills the screen before the region li
     }
   });
   it("the switch zooms are earlier than the ramps they replace were at their middle, and not before the data exists", () => {
-    // before (HEAD aae202e): region 4.5..6.5, lake 7.5..10, river 8.6..10.4, rail 10.2..12.2, park 8.4..10.6, sea 5.2..10
-    const BEFORE = { regionBorder: [4.5, 6.5], lake: [7.5, 10], river: [8.6, 10.4], rail: [10.2, 12.2] } as const;
+    // before (HEAD aae202e): region 4.5..6.5, lake 7.5..10, river 8.6..10.4, park 8.4..10.6, sea 5.2..10 (rail, 10.2..12.2, is a road class: it left
+    // this list when the city overview was calmed, 2026-10-08)
+    const BEFORE = { regionBorder: [4.5, 6.5], lake: [7.5, 10], river: [8.6, 10.4] } as const;
     for (const k of Object.keys(BEFORE) as (keyof typeof BEFORE)[]) expect(LOD[k].on, k).toBeLessThanOrEqual((BEFORE[k][0] + BEFORE[k][1]) / 2 - 0.5);
     expect(FILL_LOD.park.on).toBeLessThanOrEqual((8.4 + 10.6) / 2 - 0.5);
-    // none of them starts before the data exists (OpenMapTiles): lakes z3, rivers z4, parks z5 (rail, z8, stays where it was: it only adds clutter at the city framing)
+    // none of them starts before the data exists (OpenMapTiles): lakes z3, rivers z4, parks z5 (rail, z8: it only adds clutter, it enters with the links)
     expect(LOD.lake.on).toBeGreaterThanOrEqual(3);
     expect(LOD.river.on).toBeGreaterThanOrEqual(4);
     expect(FILL_LOD.park.on).toBeGreaterThanOrEqual(5);

@@ -72,6 +72,31 @@ describe("a layer is on or off, with a hysteresis band", () => {
       }
     }
   });
+  it("zooming OUT the minor classes leave before the major ones, each one exactly a band under its switch zoom (the hysteresis never keeps a class alive longer); zooming in they arrive in rank order, a band above it", () => {
+    const RANK = ["road-highway-case", "road-major-case", "road-secondary-case", "road-medium-case", "road-minor-dotted", "road-other-dotted", "path-dotted"] as const;
+    const KEY = { "road-highway-case": "highway", "road-major-case": "major", "road-secondary-case": "secondary", "road-medium-case": "medium", "road-minor-dotted": "minor", "road-other-dotted": "service", "path-dotted": "path" } as const;
+    const STEP = 0.005;
+    const out = mk();
+    out.update(view(17.4));
+    const left = new Map<string, number>();
+    for (let z = 17.4; z >= 5; z -= STEP) for (const c of out.update(view(z))) if (!c.visible && !left.has(c.id)) left.set(c.id, z);
+    const arrived = new Map<string, number>();
+    const into = mk();
+    into.update(view(5));
+    for (let z = 5; z <= 17.4; z += STEP) for (const c of into.update(view(z))) if (c.visible && !arrived.has(c.id)) arrived.set(c.id, z);
+    for (const id of RANK) {
+      const on = LOD[KEY[id]].on;
+      expect(left.get(id)!, `${id} leaves`).toBeLessThan(on - ZOOM_BAND + 1e-9);
+      expect(left.get(id)!, `${id} leaves`).toBeGreaterThan(on - ZOOM_BAND - 2 * STEP);
+      expect(arrived.get(id)!, `${id} arrives`).toBeGreaterThan(on + ZOOM_BAND - 1e-9);
+      expect(arrived.get(id)!, `${id} arrives`).toBeLessThan(on + ZOOM_BAND + 2 * STEP);
+    }
+    // zooming out the finest class leaves first, the motorways last; zooming in the other way round
+    for (let i = 1; i < RANK.length; i++) {
+      expect(left.get(RANK[i]!)!, `${RANK[i]} leaves before ${RANK[i - 1]}`).toBeGreaterThan(left.get(RANK[i - 1]!)!);
+      expect(arrived.get(RANK[i]!)!, `${RANK[i]} arrives after ${RANK[i - 1]}`).toBeGreaterThan(arrived.get(RANK[i - 1]!)!);
+    }
+  });
   it("fills (parks, green areas, buildings) follow their switch zoom", () => {
     const sw = mk();
     sw.update(view(FILL_LOD.park.on - 0.5));
