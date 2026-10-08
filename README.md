@@ -98,6 +98,7 @@ No secrets exist in this repository or in either Vercel project. The Polarsteps 
 - [Architecture overview](docs/architecture.md): layers, data flow, invariants, deployment
 - [Web architecture](docs/web-architecture.md): routing, data, focus management, globe lifecycle, measurements
 - [Design tokens](docs/design-tokens.md)
+- [Design system](docs/design-system.md)
 - [Renderer decision](docs/renderer-decision.md): why standalone Three.js, with benchmarks
 - [Street map architecture](docs/street-architecture.md): the street-scale renderer (pixel pass, style, handover, palette, road hierarchy)
 - [Pixel line rules](docs/pixel-line-rules.md): the line and palette spec the street renderer follows

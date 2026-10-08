@@ -1,10 +1,12 @@
 # Design tokens
 
+The UI system built on these tokens (frames, micro-labels, kind coding, components) is in [design-system.md](design-system.md); this file keeps the values.
+
 Source of truth: `apps/web/app/app.css`. Colors, radii, motion and layout are CSS variables on `:root`;
 Tailwind 4 reads them through `@theme` / `@theme inline`. Light and dark follow `prefers-color-scheme`
-(no toggle). Names match shadcn/ui's contract so selectively added components work unchanged.
+(no toggle for visitors; `[data-scheme="light"|"dark"]` forces a scheme on a subtree and is set only by the dev styleguide). Names match shadcn/ui's contract so selectively added components work unchanged.
 
-Principles: monochrome, generous spacing, clear hierarchy. System fonts only (no remote font requests).
+Principles: monochrome with one accent, generous spacing, clear hierarchy. System fonts only (no remote font requests).
 The navbar has no surface of its own: it floats over the page and a gradient scrim keeps it readable (see "Nav scrim").
 
 ## Color
@@ -28,8 +30,10 @@ The globe and the street map draw with one grey palette derived from `--backgrou
 
 The globe's ocean has no token of its own: it is `--background` (the disc and the clear colour are exactly the page colour, so the canvas never shows a seam). The detail panel uses `--background` at 85% with a backdrop blur.
 
+UI-system additions (2026-10-08, values and use in design-system.md): `--surface` (`#f4f4f4` / `#121212`, the panel plate), `--line-faint` (grid and tick texture), the one accent `--signal` (`#00698c` / `#38d4f5`, 5.6:1 and 10.6:1 on the surface) with `--signal-foreground` and `--signal-wash`, the `--inverse-*` set (an inverted frame's rebinding), and a faint hue per kind (`--kind-article|project|artwork|poem|place`, decorative only). `design-system.test.ts` keeps the four copies of the colour list (light, dark, and the two forced-scheme rules) identical and asserts the AA pairs.
+
 Tailwind utilities: `bg-background`, `text-foreground`, `text-muted-foreground`, `border-border`, `bg-accent`, etc.
-There is no accent hue and no destructive color on purpose.
+The map and the globe stay monochrome: the accent `--signal` and the kind hues are for the data-display UI only, and there is no destructive color on purpose (an error is the word ERROR in a bracket and an inverted tag).
 
 ### Sky
 
@@ -72,6 +76,8 @@ Light scheme: kept (dark specks of 11 and 24 levels below the page colour on 251
 | `text-xl` | 22 / 30 px | item titles |
 | `text-2xl` | 28 / 34 px | panel headings |
 | `text-3xl` | 36 / 40 px | page headings |
+| `text-4xl` | 48 / 52 px | full-screen entry title |
+| `text-micro` | 11 / 16 px | micro-labels (mono, uppercase, 0.12em: `.ds-micro`), the floor for any text |
 
 ## Spacing
 
@@ -86,12 +92,15 @@ Layout variables:
 | `--navbar-height` | `3.5rem` |
 | `--scrim-height` | `calc(var(--navbar-height) + 2.5rem)` |
 | `--list-width` | `18rem` (the places list when revealed by keyboard focus) |
+| `--panel-pad`, `--grid-gap` | `1.5rem`, `1rem` (panel padding; the 12-column grid's gutter) |
+| `--control-h`, `--control-h-sm` | `2.75rem` below md (44 px touch rule); `2.25rem` / `2rem` from md |
+| `--hairline`, `--bracket-len`, `--bracket-w`, `--tick-step` | `1px`, `10px`, `1px`, `8px` (frames and tick scales) |
 
 The desktop detail panel is `50vw` wide (`md:w-1/2`, from 768px) and full height; there is no panel width token.
 
 ## Radii
 
-`--radius-sm` 0.25rem (focus outline, small elements), `--radius-md` 0.5rem (buttons, images), `--radius-lg` 0.875rem (the revealed places list).
+All three are `0` (2026-10-08): square edges are the system. The names stay so shadcn-style classes (`rounded-md`) and the map card's `rounded-sm` resolve to square; do not add a non-zero radius (`design-system.test.ts` scans `components/ui`).
 
 ## Motion
 
@@ -101,6 +110,7 @@ The desktop detail panel is `50vw` wide (`md:w-1/2`, from 768px) and full height
 | `--duration-base` | 220ms | `duration.base` = 0.22 | mobile slide-over |
 | `--duration-slow` | 360ms | `duration.slow` = 0.36 | desktop panel slide and the globe's re-centring (`TUNING.insetMs`) |
 | `--ease-standard` | `cubic-bezier(.2, 0, 0, 1)` | `easeStandard` | everything |
+| `--duration-scan` | 1600ms | not mirrored | the loading skeleton's ambient sweep (off under reduced motion; not a state change) |
 
 The seconds values live in `apps/web/app/lib/tokens.ts`; `tokens.test.ts` fails if they drift from the CSS, and if the globe's re-centring duration and easing drift from `--duration-slow` and `--ease-standard`.
 
