@@ -33,14 +33,17 @@ Statuses cached by the CDN: 200, 404, 410, 301, 302, 307, 308 (only with a cachi
 
 **Payload sizes** (measured with `buildSnapshot`; bytes, raw / gzip):
 
-| Endpoint | Published today (empty) | Demo (18 places) | Preview data (146 places, 47 groups) | Est. 150 places | Est. 500 places |
-| --- | --- | --- | --- | --- | --- |
-| `/v1/projection` | 97 / 87 | 5,801 / 1,608 | 41,548 / 9,031 | ~43 KB / ~9.5 KB | ~145 KB / ~32 KB |
-| `/v1/places` | 2 / 22 | 2,952 / 904 | 28,749 / 7,541 | ~29.5 KB / ~7.7 KB | ~98 KB / ~26 KB |
-| `/v1/groups` | 2 / 22 | 1,219 / 411 | 7,596 / 1,686 | ~7.8 KB / ~1.7 KB | ~26 KB / ~5.5 KB |
-| `/v1/places/:slug` | - | 355 avg, 881 max | 411 avg, 571 max | ~0.4 KB | ~0.4 KB |
-| `/v1/routes`, `projects`, `articles`, `artworks` | 2 | 71 to 124 | 2 (still empty) | small | small (grow with content) |
-| `/health`, any 404/405 | ~150 | ~150 | ~150 | ~150 | ~150 |
+| Endpoint | Published today (empty) | Demo (18 places, 4 entries) | Preview data (146 places, 47 groups, no entries) | Est. 150 places | Est. 500 places | Est. 146 places + 100 entries of 3 KB |
+| --- | --- | --- | --- | --- | --- | --- |
+| `/v1/projection` | 108 / 92 | 9,606 / 2,702 | 41,548 / 9,031 | ~43 KB / ~9.5 KB | ~145 KB / ~32 KB | **~397 KB / ~140 to 165 KB** |
+| `/v1/places` | 2 / 22 | 2,952 / 904 | 28,749 / 7,541 | ~29.5 KB / ~7.7 KB | ~98 KB / ~26 KB | same as 146 places |
+| `/v1/groups` | 2 / 22 | 1,219 / 411 | 7,596 / 1,686 | ~7.8 KB / ~1.7 KB | ~26 KB / ~5.5 KB | same |
+| `/v1/places/:slug` | - | 355 avg, 881 max | 411 avg, 571 max | ~0.4 KB | ~0.4 KB | ~0.4 KB |
+| `/v1/projects`, `articles`, `artworks`, `poems` (summaries, no body) | 2 | 370 to 581 | 2 (still empty) | small | small | ~16 KB / ~5 KB each for 25 entries |
+| `/v1/<kind>/:slug` (detail, with body) | - | 0.9 to 1.5 KB | - | - | - | ~3.6 KB / ~2 KB |
+| `/health`, any 404/405 | ~150 | ~150 | ~150 | ~150 | ~150 | ~150 |
+
+Measured 2026-10-08 after the entry contract extension (poems, `cover`, `tags`, `meta`, `body` blocks; [api-contract.md](api-contract.md), "Entries"). The last column is synthetic: 25 entries of each of the four kinds, a body of about 3 KB each (5 blocks), a cover, 4 tags, 3 meta, 2 places, plus the preview's 146 places (random dictionary words: about 2.3:1 gzip, a bit pessimistic compared with prose). Entries cost about **3.5 KB raw / 1.3 to 1.6 KB gzip each** in the projection. `/v1/projection` is the only endpoint whose size grows with the bodies; the lists carry no body and the details are one entry each. Server side, the 100-entry snapshot is about 790 KB of pre-serialised strings and the function bundle grows by the projection size (the bundle is 832 KB today with the demo fixture inlined); validation plus snapshot take about 3 ms.
 
 The 150 and 500 columns scale the preview file linearly (about 285 B per place in `/v1/projection`, 197 B per place in the list, 162 B per group, groups about a third of places). Every response also carries about 0.5 KB of headers.
 
@@ -53,11 +56,15 @@ The 150 and 500 columns scale the preview file linearly (about 285 B per place i
 | Any cacheable GET that HITs | CDN Requests | 1,000,000 | 33k | 0.39 |
 | `/v1/projection`, cache-busted, 150 places | Fast Origin Transfer (10 GB / ~43.5 KB) | ~230,000 | 7.7k | 0.09 |
 | `/v1/projection`, cache-busted, 500 places | Fast Origin Transfer | ~69,000 | 2.3k | 0.03 |
+| `/v1/projection`, cache-busted, 146 places + 100 entries of 3 KB | Fast Origin Transfer (10 GB / ~397 KB) | **~25,000** (about 100,000 if FOT counts compressed bytes) | 0.8k | 0.01 |
+| `/v1/<kind>` list (25 summaries) / `/v1/<kind>/:slug` detail, cache-busted | FOT (10 GB / 16 KB) / Function Invocations (10 GB / 3.6 KB is 2.9M, above the 1M cap) | ~600,000 / 1,000,000 | | |
 | `/v1/places`, cache-busted, 150 / 500 places | Fast Origin Transfer | ~330,000 / ~100,000 | | |
 | `/v1/groups`, cache-busted, 150 / 500 places | invocations / FOT | 1,000,000 / ~380,000 | | |
 | `/v1/places/:slug`, `/health`, 404, 405, OPTIONS | Function Invocations | 1,000,000 | 33k | 0.39 |
 
 Fast Origin Transfer is assumed to count uncompressed function output (compression happens at the CDN); if it counts compressed bytes the cache-busted rows improve by about 4x. Active CPU (14,400 s / 5 ms = 2.9M requests) and memory (1M requests x 10 ms x 2 GB is about 5.6 of 360 GB-h) never bind before the rows above.
+
+**What the entry contract changes in this table.** Before it, a cache-busted `/v1/projection` could pull the 10 GB of Fast Origin Transfer in about 230,000 requests; with 100 published entries of 3 KB it takes about 25,000 (4 to 5 minutes at 100 req/s). That is one tenth of the margin, so **the firewall's per-IP rate limit and path allowlist matter more, not less**, and nothing else in the mitigation list changes: the CDN Requests cap (1M) still binds first for HIT traffic, and the web app still does not call the API at runtime (step 5), so legitimate load is unchanged. Fast Data Transfer (100 GB) is not affected in practice: 100 GB is about 650,000 full compressed projections. If the real content grows past roughly 1 MB of projection, split the heavy endpoint instead of raising limits (see api-contract.md, "Payload size and cost"), or take option 14 (prebuilt static JSON), which removes the function and FOT from the equation.
 
 **Time to exhaust 1M requests:** 1 req/s: 11.6 days. 10 req/s: 28 hours. 100 req/s (one laptop with a `curl` loop): **under 3 hours**. "A few days" is optimistic for a motivated client.
 
@@ -129,14 +136,28 @@ Net: roughly one day of work, a documented softening of the 404/405/OPTIONS part
 | `api-rate-limit` (120 requests per 60 s per IP, deny) | 150 requests in a row: 110 passed (about 14 earlier test requests already counted), 40 got 403; back to 200 after the window |
 | `api-no-query` (experiment, deny when the raw path contains `?`) | **Does not work**: `?cb=123` still returned 200, so `raw_path` excludes the query string. The rule was removed again; cache-busting stays covered by the per-IP rate limit only |
 
+**Entry endpoints (poems and the `:slug` details of projects, articles, artworks and poems).** The live `api-allowlist` rule was published with the older regex (`/health`, `/v1/(projection|places|groups|routes|projects|articles|artworks)` and `/v1/places/<slug>`), so until it is edited the new endpoints are denied by the firewall (403) in production. Update it when the API with the entry contract is deployed (owner action, same condition as above, new regex; the method condition is unchanged):
+
+```bash
+vercel firewall rules edit "api-allowlist" \
+  --condition '{"type":"path","op":"re","value":"^/(health|v1/(projection|places|groups|routes|projects|articles|artworks|poems)|v1/(places|projects|articles|artworks|poems)/[a-z0-9]+(-[a-z0-9]+)*)$","neg":true}' \
+  --or \
+  --condition '{"type":"method","op":"ninc","value":["GET","HEAD","OPTIONS"]}' --yes
+vercel firewall publish --yes
+```
+
+Check the exact flags of `rules edit` with `vercel firewall rules edit --help` first (not run as part of the entry work; the CLI was not used). Verify afterwards: `/v1/poems` and `/v1/poems/<slug>` answer 200 or the app's JSON 404, `/v1/poems/` and `/v1/groups/x` answer 403.
+
 Live rules: `vercel firewall rules list` from a directory linked to the project (`vercel link --project catalyst-v2-api`). To undo one: `vercel firewall rules remove <name> --yes` then `vercel firewall publish --yes`. The CLI subcommand is `vercel firewall rules add` (the plain `firewall add` shown in the help text does not exist in CLI 52). The commands below were the plan; rule 1 was created directly in deny mode (the traffic view is unavailable on this plan, so a log-only phase could not be read) and verified by the tests above.
 
 **Step 2. Firewall rules (owner action).** Dashboard: Project `catalyst-v2-api` > **Firewall** > **Configure** > **Add New... > Rule**; **Review Changes** > **Publish**. Or CLI from a directory linked to the project (read the draft with `vercel firewall diff`, apply with `vercel firewall publish --yes`). Create them in **log** mode first, watch the Firewall tab for 10 minutes, then switch to deny. Order matters: put the deny rule first so junk never reaches the rate limiter.
 
 ```bash
 # Rule 1: allowlist of paths and methods (deny everything else). Slugs are lowercase kebab-case.
+# The path regex is pinned by a test (apps/api/test/app.test.ts, "firewall allowlist"): it must match every path the app
+# serves (lists, projection and one detail per place and per entry of the four kinds) and nothing more.
 vercel firewall rules add "api-allowlist" \
-  --condition '{"type":"path","op":"re","value":"^/(health|v1/(projection|places|groups|routes|projects|articles|artworks)|v1/places/[a-z0-9]+(-[a-z0-9]+)*)$","neg":true}' \
+  --condition '{"type":"path","op":"re","value":"^/(health|v1/(projection|places|groups|routes|projects|articles|artworks|poems)|v1/(places|projects|articles|artworks|poems)/[a-z0-9]+(-[a-z0-9]+)*)$","neg":true}' \
   --or \
   --condition '{"type":"method","op":"ninc","value":["GET","HEAD","OPTIONS"]}' \
   --action log --yes
