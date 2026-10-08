@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
-import { toPlaceSummary, type ContentKind, type PublishedProjection } from "@catalyst/schemas";
-import type { ContentCounts, PlaceDetailResponse, ResolvedGroupRef } from "./contract";
+import { toContentSummary, toPlaceSummary, type ContentKind, type PublishedContentItem, type PublishedProjection } from "@catalyst/schemas";
+import type { ContentCounts, ContentDetailResponse, PlaceDetailResponse, ResolvedGroupRef } from "./contract";
 
 export interface Entry {
   body: string;
@@ -31,7 +31,19 @@ export const STATIC_PATHS = [
   "/v1/projects",
   "/v1/articles",
   "/v1/artworks",
+  "/v1/poems",
 ] as const;
+
+/**
+ * Collections of entries: their list path, the singular `kind` and the detail path prefix (`<list path>/:slug`).
+ * Authored order for lists; every item has a detail endpoint.
+ */
+export const CONTENT_COLLECTIONS = [
+  { key: "projects", kind: "project", list: "/v1/projects" },
+  { key: "articles", kind: "article", list: "/v1/articles" },
+  { key: "artworks", kind: "artwork", list: "/v1/artworks" },
+  { key: "poems", kind: "poem", list: "/v1/poems" },
+] as const satisfies readonly { key: keyof PublishedProjection; kind: ContentKind; list: string }[];
 
 export const HEALTH_PATH = "/health";
 
@@ -45,7 +57,9 @@ export function buildSnapshot(p: PublishedProjection): Snapshot {
     project: new Map(p.projects.map((i) => [i.slug, i.title])),
     article: new Map(p.articles.map((i) => [i.slug, i.title])),
     artwork: new Map(p.artworks.map((i) => [i.slug, i.title])),
+    poem: new Map(p.poems.map((i) => [i.slug, i.title])),
   };
+  const placeNames = new Map(p.places.map((pl) => [pl.slug, pl.name]));
 
   const groupBySlug = new Map(p.groups.map((g) => [g.slug, g]));
   /** Innermost to root. Projection validation rules out cycles; the visited set keeps this finite regardless. */
@@ -70,9 +84,20 @@ export function buildSnapshot(p: PublishedProjection): Snapshot {
   );
   entries.set("/v1/groups", entry([...p.groups].sort((a, b) => (a.slug < b.slug ? -1 : a.slug > b.slug ? 1 : 0))));
   entries.set("/v1/routes", entry(p.routes));
-  entries.set("/v1/projects", entry(p.projects));
-  entries.set("/v1/articles", entry(p.articles));
-  entries.set("/v1/artworks", entry(p.artworks));
+  for (const { key, kind, list } of CONTENT_COLLECTIONS) {
+    const items: PublishedContentItem[] = p[key];
+    // Lists are summaries (no body), authored order; the detail endpoint carries the whole entry.
+    entries.set(list, entry(items.map(toContentSummary)));
+    for (const item of items) {
+      const detail: ContentDetailResponse = {
+        kind,
+        ...item,
+        // Referential integrity is guaranteed by projection validation.
+        places: item.placeSlugs.map((slug) => ({ slug, name: placeNames.get(slug) ?? slug })),
+      };
+      entries.set(`${list}/${item.slug}`, entry(detail));
+    }
+  }
 
   for (const place of p.places) {
     const detail: PlaceDetailResponse = {
@@ -97,6 +122,7 @@ export function buildSnapshot(p: PublishedProjection): Snapshot {
       projects: p.projects.length,
       articles: p.articles.length,
       artworks: p.artworks.length,
+      poems: p.poems.length,
     },
   };
 }

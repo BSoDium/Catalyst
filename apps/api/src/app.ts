@@ -2,11 +2,13 @@ import { Hono, type Context } from "hono";
 import { SCHEMA_VERSION } from "@catalyst/schemas";
 import type { ApiError, HealthResponse, HealthUnavailableResponse } from "./contract";
 import type { ContentState } from "./content";
-import { buildSnapshot, HEALTH_PATH, STATIC_PATHS, type Entry, type Snapshot } from "./snapshot";
+import { buildSnapshot, CONTENT_COLLECTIONS, HEALTH_PATH, STATIC_PATHS, type Entry, type Snapshot } from "./snapshot";
 
 export const CACHE_CONTROL = "public, s-maxage=300, stale-while-revalidate=86400";
 const ALLOWED_METHODS = "GET, HEAD, OPTIONS";
 const PLACE_PREFIX = "/v1/places/";
+/** Detail endpoints: `/v1/places/:slug` and `/v1/<projects|articles|artworks|poems>/:slug`. */
+const DETAIL_PREFIXES: readonly string[] = [PLACE_PREFIX, ...CONTENT_COLLECTIONS.map((c) => `${c.list}/`)];
 
 /** True when an If-None-Match header matches `etag` (weak comparison, per RFC 9110). */
 export function ifNoneMatchHits(header: string | undefined, etag: string): boolean {
@@ -31,7 +33,7 @@ export function createApp(state: ContentState): Hono {
 
   const isKnownPath = (path: string): boolean => {
     if (path === HEALTH_PATH || (STATIC_PATHS as readonly string[]).includes(path)) return true;
-    if (!snapshot) return path.startsWith(PLACE_PREFIX) && path.length > PLACE_PREFIX.length;
+    if (!snapshot) return DETAIL_PREFIXES.some((prefix) => path.startsWith(prefix) && path.length > prefix.length);
     return snapshot.entries.has(path);
   };
 
@@ -90,7 +92,7 @@ export function createApp(state: ContentState): Hono {
       return c.json(body, 503);
     });
     for (const path of STATIC_PATHS) app.get(path, unavailable);
-    app.get(`${PLACE_PREFIX}:slug`, unavailable);
+    for (const prefix of DETAIL_PREFIXES) app.get(`${prefix}:slug`, unavailable);
   } else {
     const ready = snapshot;
 
@@ -115,7 +117,7 @@ export function createApp(state: ContentState): Hono {
       return c.body(hit.body, 200);
     };
     for (const path of STATIC_PATHS) app.get(path, serve);
-    app.get(`${PLACE_PREFIX}:slug`, serve);
+    for (const prefix of DETAIL_PREFIXES) app.get(`${prefix}:slug`, serve);
   }
 
   app.notFound((c) => fail(c, 404, "not_found", `No resource at ${c.req.path}`));
