@@ -1,9 +1,14 @@
 @import "tailwindcss";
 
 /*
- * Catalyst design tokens. Documented in docs/design-tokens.md.
- * Colors are CSS variables so light/dark follow `prefers-color-scheme`.
- * The names match shadcn/ui's contract so selectively added components work unchanged.
+ * Catalyst design tokens. Documented in docs/design-tokens.md (values) and docs/design-system.md (the UI system).
+ * Colors are CSS variables so light/dark follow `prefers-color-scheme`; `[data-scheme="light" | "dark"]` forces a scheme
+ * on an element and its subtree (the dev styleguide `/dev/design`, and nothing else). The names match shadcn/ui's contract
+ * so selectively added components work unchanged. Radius 0 everywhere: square edges are the system.
+ *
+ * Structure matters to tests (readability.test.ts slices this file by text): the first root rule is the light scheme, the
+ * dark media rule is the dark one, and the two `[data-scheme]` rules after the theme blocks repeat them (design-system.test.ts
+ * keeps the four lists identical). Do not write the literal selector or media text of those rules in a comment above them.
  */
 
 :root {
@@ -25,16 +30,44 @@
   --globe-grid: rgb(0 0 0 / 0.12);
   --globe-limb: rgb(0 0 0 / 0.3);
 
-  /* Radii. */
-  --radius-sm: 0.25rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.875rem;
+  /* UI system (docs/design-system.md). Surfaces: the panel plate is a step off the page, never a shadow. */
+  --surface: #f4f4f4;
+  --line-faint: rgb(0 0 0 / 0.07);
+  /* The one accent: a signal cyan. Text and fills of it are AA on the page, the surface and the accent grey. */
+  --signal: #00698c;
+  --signal-foreground: #fbfbfb;
+  --signal-wash: rgb(0 105 140 / 0.08);
+  /* The opposite scheme's page tokens: what an inverted frame rebinds the tokens to (a cycle-free swap). */
+  --inverse-background: #0a0a0a;
+  --inverse-foreground: #fbfbfb;
+  --inverse-muted: #a3a3a3;
+  --inverse-border: rgb(255 255 255 / 0.3);
+  --inverse-signal: #38d4f5;
+  /* Faint hue per entry kind: decorative and redundant (a glyph and a word always carry the kind); never used for text. */
+  --kind-article: oklch(0.58 0.1 275);
+  --kind-project: oklch(0.58 0.1 150);
+  --kind-artwork: oklch(0.58 0.1 55);
+  --kind-poem: oklch(0.58 0.1 340);
+  --kind-place: var(--muted-foreground);
+
+  /* Radii: none. Square edges everywhere; the names stay so shadcn-style classes (`rounded-md`) resolve to 0. */
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+
+  /* Frames and marks. */
+  --hairline: 1px;
+  --bracket-len: 10px;
+  --bracket-w: 1px;
+  --tick-step: 8px;
 
   /* Motion. Mirrored in app/lib/tokens.ts (seconds); a test keeps them in sync. */
   --duration-fast: 120ms;
   --duration-base: 220ms;
   --duration-slow: 360ms;
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  /* Ambient loop of the loading scan (not a state change; off under reduced motion). */
+  --duration-scan: 1600ms;
 
   /* Layout. */
   --navbar-height: 3.5rem;
@@ -42,6 +75,18 @@
   --scrim-height: calc(var(--navbar-height) + 2.5rem);
   /* Width of the places list when it is revealed by keyboard focus. */
   --list-width: 18rem;
+  /* Panel grid: 12 columns on a 4 px base; control heights follow the touch rule (44 px below md). */
+  --panel-pad: 1.5rem;
+  --grid-gap: 1rem;
+  --control-h: 2.75rem;
+  --control-h-sm: 2.75rem;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --control-h: 2.25rem;
+    --control-h-sm: 2rem;
+  }
 }
 
 @media (prefers-color-scheme: dark) {
@@ -59,6 +104,22 @@
     --accent-foreground: #f5f5f5;
     --globe-grid: rgb(255 255 255 / 0.14);
     --globe-limb: rgb(255 255 255 / 0.34);
+
+    --surface: #121212;
+    --line-faint: rgb(255 255 255 / 0.09);
+    --signal: #38d4f5;
+    --signal-foreground: #0a0a0a;
+    --signal-wash: rgb(56 212 245 / 0.09);
+    --inverse-background: #f5f5f5;
+    --inverse-foreground: #0a0a0a;
+    --inverse-muted: #595959;
+    --inverse-border: rgb(0 0 0 / 0.3);
+    --inverse-signal: #00698c;
+    --kind-article: oklch(0.76 0.1 275);
+    --kind-project: oklch(0.76 0.1 150);
+    --kind-artwork: oklch(0.76 0.1 55);
+    --kind-poem: oklch(0.76 0.1 340);
+    --kind-place: var(--muted-foreground);
   }
 }
 
@@ -98,6 +159,96 @@
   --text-2xl--line-height: 2.125rem;
   --text-3xl: 2.25rem;
   --text-3xl--line-height: 2.5rem;
+  --text-4xl: 3rem;
+  --text-4xl--line-height: 3.25rem;
+  /* Micro-labels: codes, coordinates, timestamps, status brackets (mono, uppercase, tracked). 11 px is the floor. */
+  --text-micro: 0.6875rem;
+  --text-micro--line-height: 1rem;
+  --tracking-micro: 0.12em;
+}
+
+@theme inline {
+  --color-surface: var(--surface);
+  --color-line-faint: var(--line-faint);
+  --color-signal: var(--signal);
+  --color-signal-foreground: var(--signal-foreground);
+  --color-signal-wash: var(--signal-wash);
+  --color-kind-article: var(--kind-article);
+  --color-kind-project: var(--kind-project);
+  --color-kind-artwork: var(--kind-artwork);
+  --color-kind-poem: var(--kind-poem);
+  --color-kind-place: var(--kind-place);
+}
+
+/*
+ * Forced schemes (the dev styleguide's toggle and its side-by-side views; production never sets the attribute). They repeat
+ * the two lists above on purpose: CSS cannot share one declaration list between a media query and an attribute selector
+ * without `light-dark()`, which would change the structure the map's contrast tests read. design-system.test.ts fails on drift.
+ */
+:root[data-scheme="light"],
+[data-scheme="light"] {
+  color-scheme: light;
+  --background: #fbfbfb;
+  --foreground: #0a0a0a;
+  --muted-foreground: #595959;
+  --subtle-foreground: #6f6f6f;
+  --border: rgb(0 0 0 / 0.14);
+  --border-strong: rgb(0 0 0 / 0.4);
+  --ring: #0a0a0a;
+  --primary: #0a0a0a;
+  --primary-foreground: #fbfbfb;
+  --accent: #ececec;
+  --accent-foreground: #0a0a0a;
+  --globe-grid: rgb(0 0 0 / 0.12);
+  --globe-limb: rgb(0 0 0 / 0.3);
+  --surface: #f4f4f4;
+  --line-faint: rgb(0 0 0 / 0.07);
+  --signal: #00698c;
+  --signal-foreground: #fbfbfb;
+  --signal-wash: rgb(0 105 140 / 0.08);
+  --inverse-background: #0a0a0a;
+  --inverse-foreground: #fbfbfb;
+  --inverse-muted: #a3a3a3;
+  --inverse-border: rgb(255 255 255 / 0.3);
+  --inverse-signal: #38d4f5;
+  --kind-article: oklch(0.58 0.1 275);
+  --kind-project: oklch(0.58 0.1 150);
+  --kind-artwork: oklch(0.58 0.1 55);
+  --kind-poem: oklch(0.58 0.1 340);
+  --kind-place: var(--muted-foreground);
+}
+
+:root[data-scheme="dark"],
+[data-scheme="dark"] {
+  color-scheme: dark;
+  --background: #0a0a0a;
+  --foreground: #f5f5f5;
+  --muted-foreground: #a3a3a3;
+  --subtle-foreground: #8a8a8a;
+  --border: rgb(255 255 255 / 0.16);
+  --border-strong: rgb(255 255 255 / 0.45);
+  --ring: #f5f5f5;
+  --primary: #f5f5f5;
+  --primary-foreground: #0a0a0a;
+  --accent: #1f1f1f;
+  --accent-foreground: #f5f5f5;
+  --globe-grid: rgb(255 255 255 / 0.14);
+  --globe-limb: rgb(255 255 255 / 0.34);
+  --surface: #121212;
+  --line-faint: rgb(255 255 255 / 0.09);
+  --signal: #38d4f5;
+  --signal-foreground: #0a0a0a;
+  --signal-wash: rgb(56 212 245 / 0.09);
+  --inverse-background: #f5f5f5;
+  --inverse-foreground: #0a0a0a;
+  --inverse-muted: #595959;
+  --inverse-border: rgb(0 0 0 / 0.3);
+  --inverse-signal: #00698c;
+  --kind-article: oklch(0.76 0.1 275);
+  --kind-project: oklch(0.76 0.1 150);
+  --kind-artwork: oklch(0.76 0.1 55);
+  --kind-poem: oklch(0.76 0.1 340);
+  --kind-place: var(--muted-foreground);
 }
 
 @layer base {
@@ -144,6 +295,498 @@
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--muted-foreground);
+  }
+
+  /*
+   * UI system (docs/design-system.md). Class names are `ds-*`; the React parts are in components/ui/. Anything decorative here
+   * (grid texture, scan sweep, hatch, ticks) is non-essential: removing it must leave every piece of information in place.
+   */
+
+  /* Micro-label: mono, uppercase, tracked, tabular, slashed zero. The unit of the annotation language. */
+  .ds-micro {
+    font-family: var(--font-mono);
+    font-size: var(--text-micro);
+    line-height: var(--text-micro--line-height);
+    letter-spacing: var(--tracking-micro);
+    text-transform: uppercase;
+    font-variant-numeric: tabular-nums slashed-zero;
+    color: var(--muted-foreground);
+  }
+
+  .ds-micro[data-tone="strong"] {
+    color: var(--foreground);
+  }
+
+  .ds-micro[data-tone="signal"] {
+    color: var(--signal);
+  }
+
+  /* Kind coding: each kind binds one faint hue; the glyph and the word carry the meaning, never the hue. */
+  [data-kind="article"] {
+    --kind: var(--kind-article);
+  }
+
+  [data-kind="project"] {
+    --kind: var(--kind-project);
+  }
+
+  [data-kind="artwork"] {
+    --kind: var(--kind-artwork);
+  }
+
+  [data-kind="poem"] {
+    --kind: var(--kind-poem);
+  }
+
+  [data-kind="place"] {
+    --kind: var(--kind-place);
+  }
+
+  /*
+   * Frame: a hairline box with corner brackets. The brackets are one pseudo-element painting eight 1 px strokes (two per
+   * corner) over the border, so there is no extra markup. Variants: plain, active (strong line, signal brackets, faint
+   * signal wash), inverted (the opposite scheme's tokens, rebound for the subtree so every child reads correctly).
+   */
+  .ds-frame {
+    --ds-bracket: var(--foreground);
+    position: relative;
+    border: var(--hairline) solid var(--border);
+    background: var(--surface);
+    color: var(--foreground);
+  }
+
+  .ds-frame[data-brackets]::after {
+    content: "";
+    position: absolute;
+    inset: calc(var(--hairline) * -1);
+    pointer-events: none;
+    background:
+      linear-gradient(var(--ds-bracket), var(--ds-bracket)) top left / var(--bracket-len) var(--bracket-w) no-repeat,
+      linear-gradient(var(--ds-bracket), var(--ds-bracket)) top left / var(--bracket-w) var(--bracket-len) no-repeat,
+      linear-gradient(var(--ds-bracket), var(--ds-bracket)) top right / var(--bracket-len) var(--bracket-w) no-repeat,
+      linear-gradient(var(--ds-bracket), var(--ds-bracket)) top right / var(--bracket-w) var(--bracket-len) no-repeat,
+      linear-gradient(var(--ds-bracket), var(--ds-bracket)) bottom left / var(--bracket-len) var(--bracket-w) no-repeat,
+      linear-gradient(var(--ds-bracket), var(--ds-bracket)) bottom left / var(--bracket-w) var(--bracket-len) no-repeat,
+      linear-gradient(var(--ds-bracket), var(--ds-bracket)) bottom right / var(--bracket-len) var(--bracket-w) no-repeat,
+      linear-gradient(var(--ds-bracket), var(--ds-bracket)) bottom right / var(--bracket-w) var(--bracket-len) no-repeat;
+  }
+
+  .ds-frame[data-variant="active"] {
+    --ds-bracket: var(--signal);
+    border-color: var(--border-strong);
+    background: linear-gradient(var(--signal-wash), var(--signal-wash)), var(--surface);
+  }
+
+  .ds-frame[data-variant="inverted"] {
+    --ds-bracket: var(--inverse-foreground);
+    --background: var(--inverse-background);
+    --foreground: var(--inverse-foreground);
+    --muted-foreground: var(--inverse-muted);
+    --subtle-foreground: var(--inverse-muted);
+    --border: var(--inverse-border);
+    --border-strong: var(--inverse-border);
+    --ring: var(--inverse-foreground);
+    --signal: var(--inverse-signal);
+    --surface: var(--inverse-background);
+    --accent: color-mix(in srgb, var(--inverse-foreground) 14%, var(--inverse-background));
+    --accent-foreground: var(--inverse-foreground);
+    --primary: var(--inverse-foreground);
+    --primary-foreground: var(--inverse-background);
+    background: var(--inverse-background);
+    border-color: var(--inverse-background);
+  }
+
+  /* The plate has no border to overprint, so its brackets sit 4 px inside it, like a viewfinder. */
+  .ds-frame[data-variant="inverted"][data-brackets]::after {
+    inset: 4px;
+  }
+
+  .ds-frame[data-variant="inverted"]::selection,
+  .ds-frame[data-variant="inverted"] ::selection {
+    background: var(--inverse-foreground);
+    color: var(--inverse-background);
+  }
+
+  /* Interactive frames (cards): the line and the brackets answer the pointer, no movement. */
+  .ds-frame[data-interactive] {
+    transition:
+      border-color var(--duration-fast) var(--ease-standard),
+      background-color var(--duration-fast) var(--ease-standard);
+  }
+
+  .ds-frame[data-interactive]:hover,
+  .ds-frame[data-interactive]:has(:focus-visible) {
+    border-color: var(--border-strong);
+    --ds-bracket: var(--signal);
+  }
+
+  /* Divider: a hairline, optionally hung with a tick scale (minor every 8 px, major every 40 px). */
+  .ds-divider {
+    height: 0;
+    border: 0;
+    border-top: var(--hairline) solid var(--border);
+    margin: 0;
+  }
+
+  .ds-divider[data-ticks] {
+    height: 7px;
+    background-image:
+      repeating-linear-gradient(to right, var(--border-strong) 0 1px, transparent 1px var(--tick-step)),
+      repeating-linear-gradient(to right, var(--foreground) 0 1px, transparent 1px calc(var(--tick-step) * 5));
+    background-size:
+      100% 4px,
+      100% 7px;
+    background-repeat: no-repeat;
+    background-position:
+      0 0,
+      0 0;
+  }
+
+  /* Data row: KEY ........ value. The leader is the key's own ::after, so the markup stays a plain dl > div > dt + dd. */
+  .ds-data-row {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    min-height: 1.5rem;
+  }
+
+  .ds-data-row > dt {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: baseline;
+    gap: 0.5rem;
+    min-width: 0;
+  }
+
+  .ds-data-row > dt::after {
+    content: "";
+    flex: 1 1 0.75rem;
+    min-width: 0.75rem;
+    border-bottom: 1px dotted var(--border-strong);
+    transform: translateY(-0.2em);
+  }
+
+  .ds-data-row > dd {
+    flex: 0 1 auto;
+    max-width: 65%;
+    margin: 0;
+    text-align: right;
+    overflow-wrap: anywhere;
+  }
+
+  /* Metadata strip: items separated by hairlines, wrapping on narrow screens. */
+  .ds-strip {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0;
+    border-block: var(--hairline) solid var(--border);
+  }
+
+  .ds-strip > div {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 0.125rem;
+    padding: 0.5rem 0.75rem;
+    border-inline-end: var(--hairline) solid var(--border);
+  }
+
+  .ds-strip > div:first-child {
+    padding-inline-start: 0;
+  }
+
+  .ds-strip > div:last-child {
+    border-inline-end: 0;
+  }
+
+  .ds-strip dd {
+    margin: 0;
+  }
+
+  /* Tag: a square outlined chip. */
+  .ds-tag {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.5rem;
+    padding-inline: 0.5rem;
+    border: var(--hairline) solid var(--border-strong);
+    background: transparent;
+    color: var(--foreground);
+  }
+
+  a.ds-tag {
+    position: relative;
+    transition: background-color var(--duration-fast) var(--ease-standard);
+  }
+
+  a.ds-tag:hover {
+    background: var(--accent);
+  }
+
+  /* 44 px touch target without making the chip taller. */
+  a.ds-tag::before {
+    content: "";
+    position: absolute;
+    inset: -0.625rem -0.25rem;
+  }
+
+  @media (min-width: 768px) {
+    a.ds-tag::before {
+      inset: -0.25rem;
+    }
+  }
+
+  /* Status: bracketed text. The word carries the state; the tone only adds. */
+  .ds-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5ch;
+    color: var(--foreground);
+  }
+
+  .ds-status[data-tone="signal"] {
+    color: var(--signal);
+  }
+
+  .ds-status[data-tone="muted"] {
+    color: var(--muted-foreground);
+  }
+
+  .ds-status[data-tone="solid"] {
+    padding-inline: 0.375rem;
+    background: var(--foreground);
+    color: var(--background);
+  }
+
+  .ds-status[data-tone="signal-solid"] {
+    padding-inline: 0.375rem;
+    background: var(--signal);
+    color: var(--signal-foreground);
+  }
+
+  /* Kind tag: a square glyph cell and the kind's word. */
+  .ds-kind-glyph {
+    display: inline-grid;
+    place-items: center;
+    width: 1.25rem;
+    height: 1.25rem;
+    flex: none;
+    border: var(--hairline) solid var(--border-strong);
+    background: color-mix(in srgb, var(--kind, transparent) 18%, transparent);
+    color: var(--foreground);
+  }
+
+  .ds-kind-glyph[data-solid] {
+    border-color: var(--foreground);
+    background: var(--foreground);
+    color: var(--background);
+  }
+
+  /* Buttons (components/ui/button.tsx). Square, mono caps, 1 px lines, no shadow. */
+  .ds-button {
+    --ds-button-bg: transparent;
+    --ds-button-fg: var(--foreground);
+    --ds-button-line: var(--border-strong);
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: var(--control-h);
+    padding-inline: 1rem;
+    border: var(--hairline) solid var(--ds-button-line);
+    background: var(--ds-button-bg);
+    color: var(--ds-button-fg);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    line-height: var(--text-xs--line-height);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+      background-color var(--duration-fast) var(--ease-standard),
+      color var(--duration-fast) var(--ease-standard),
+      border-color var(--duration-fast) var(--ease-standard);
+  }
+
+  .ds-button[data-size="sm"] {
+    min-height: var(--control-h-sm);
+    padding-inline: 0.75rem;
+  }
+
+  .ds-button[data-variant="primary"] {
+    --ds-button-bg: var(--primary);
+    --ds-button-fg: var(--primary-foreground);
+    --ds-button-line: var(--primary);
+  }
+
+  .ds-button[data-variant="primary"]:hover {
+    --ds-button-bg: color-mix(in srgb, var(--primary) 82%, var(--background));
+  }
+
+  .ds-button[data-variant="secondary"]:hover,
+  .ds-button[data-variant="ghost"]:hover {
+    --ds-button-bg: var(--accent);
+  }
+
+  .ds-button[data-variant="ghost"] {
+    --ds-button-line: transparent;
+  }
+
+  .ds-button[data-variant="ghost"]:hover {
+    --ds-button-line: var(--border);
+  }
+
+  .ds-button[data-variant="link"] {
+    --ds-button-line: transparent;
+    padding-inline: 0.25rem;
+    text-decoration: underline;
+    text-underline-offset: 0.3em;
+  }
+
+  .ds-button[data-variant="link"]:hover {
+    text-decoration: none;
+  }
+
+  .ds-button[data-pressed="true"] {
+    --ds-button-bg: var(--foreground);
+    --ds-button-fg: var(--background);
+    --ds-button-line: var(--foreground);
+  }
+
+  .ds-button[data-pressed="true"]:hover {
+    --ds-button-bg: color-mix(in srgb, var(--foreground) 82%, var(--background));
+  }
+
+  .ds-button:disabled,
+  .ds-button[aria-disabled="true"] {
+    --ds-button-fg: var(--muted-foreground);
+    --ds-button-line: var(--border);
+    --ds-button-bg: transparent;
+    cursor: not-allowed;
+  }
+
+  .ds-button[data-icon] {
+    width: var(--control-h);
+    padding-inline: 0;
+  }
+
+  .ds-button[data-icon][data-size="sm"] {
+    width: var(--control-h-sm);
+  }
+
+  /* Segmented control: buttons butted together (shared 1 px lines, also when it wraps on a phone), the pressed one inverted. */
+  .ds-segmented {
+    display: inline-flex;
+    flex-wrap: wrap;
+    max-width: 100%;
+    padding: 0 var(--hairline) var(--hairline) 0;
+  }
+
+  .ds-segmented > .ds-button {
+    margin: 0 calc(var(--hairline) * -1) calc(var(--hairline) * -1) 0;
+  }
+
+  /* Decorative textures: faint, behind content, never carrying information. */
+  .ds-grid-bg {
+    background-image:
+      linear-gradient(to right, var(--line-faint) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--line-faint) 1px, transparent 1px);
+    background-size: 16px 16px;
+  }
+
+  .ds-hatch {
+    background-image: repeating-linear-gradient(135deg, var(--line-faint) 0 1px, transparent 1px 6px);
+  }
+
+  /* Loading: a skeleton with a slow scan sweep. The sweep is ambient and stops under reduced motion. */
+  .ds-skeleton {
+    position: relative;
+    overflow: hidden;
+    background-color: var(--accent);
+    background-image: repeating-linear-gradient(135deg, var(--line-faint) 0 1px, transparent 1px 6px);
+  }
+
+  .ds-skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to right, transparent, var(--border-strong) 50%, transparent);
+    transform: translateX(-100%);
+    animation: ds-scan var(--duration-scan) linear infinite;
+    opacity: 0.5;
+  }
+
+  @keyframes ds-scan {
+    to {
+      transform: translateX(100%);
+    }
+  }
+
+  /* Generative cover art (components/ui/cover-art.tsx): four tonal levels of the ink, tinted by the kind, one signal mark. */
+  .ds-cover {
+    display: block;
+    width: 100%;
+    height: 100%;
+    shape-rendering: crispEdges;
+    background: var(--accent);
+  }
+
+  .ds-cover [data-l="1"] {
+    fill: color-mix(in srgb, var(--kind, var(--foreground)) 22%, transparent);
+  }
+
+  .ds-cover [data-l="2"] {
+    fill: color-mix(in srgb, var(--foreground) 20%, transparent);
+  }
+
+  .ds-cover [data-l="3"] {
+    fill: color-mix(in srgb, var(--foreground) 42%, transparent);
+  }
+
+  .ds-cover [data-l="m"] {
+    fill: var(--signal);
+  }
+
+  /* Panel grid: 12 columns, the span set per element (`--span`, `--span-md`) so no class is generated per width. */
+  .ds-grid {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: var(--grid-gap);
+  }
+
+  .ds-col {
+    grid-column: span var(--span, 12);
+  }
+
+  @media (min-width: 768px) {
+    .ds-col {
+      grid-column: span var(--span-md, var(--span, 12));
+    }
+  }
+
+  @media (forced-colors: active) {
+    .ds-frame[data-brackets]::after {
+      background: none;
+      border: 1px solid CanvasText;
+    }
+
+    .ds-button {
+      border-color: ButtonText;
+    }
+
+    .ds-button[data-pressed="true"] {
+      forced-color-adjust: none;
+      background: Highlight;
+      color: HighlightText;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ds-skeleton::after {
+      animation: none;
+    }
   }
 
   /*

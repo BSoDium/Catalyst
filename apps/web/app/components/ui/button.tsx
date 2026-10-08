@@ -1,40 +1,49 @@
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
-import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "~/lib/utils";
 
 /**
- * shadcn/ui Button, trimmed to the variants this app uses.
- * Minimum 44px hit area on touch viewports (`min-h-11`), compact on desktop.
+ * Button of the UI system (docs/design-system.md, "Buttons"): square, mono caps, 1 px lines, no shadow; styles are `.ds-button` in
+ * app.css. Variants: `primary` (filled), `secondary` (outlined), `ghost` (no line until hover), `link` (inline text action).
+ * `default` and `outline` are the shadcn names this file used to export, kept as aliases of `primary` and `secondary`.
+ * The minimum height is 44 px below `md` (`--control-h`), 36 px (32 for `sm`) above.
  */
-const buttonVariants = cva(
-  "inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors duration-(--duration-fast) outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50",
-  {
-    variants: {
-      variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/85",
-        outline: "border border-border-strong bg-transparent hover:bg-accent hover:text-accent-foreground",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-foreground underline underline-offset-4 hover:no-underline",
-      },
-      size: {
-        default: "min-h-11 px-4 py-2 md:min-h-9",
-        sm: "min-h-11 px-3 md:min-h-8",
-      },
-    },
-    defaultVariants: { variant: "default", size: "default" },
-  },
-);
+export type ButtonVariant = "primary" | "secondary" | "ghost" | "link" | "default" | "outline";
+export type ButtonSize = "default" | "sm";
 
-function Button({
-  className,
-  variant,
-  size,
-  asChild = false,
-  ...props
-}: React.ComponentProps<"button"> & VariantProps<typeof buttonVariants> & { asChild?: boolean }) {
+const ALIAS: Record<ButtonVariant, "primary" | "secondary" | "ghost" | "link"> = {
+  primary: "primary",
+  default: "primary",
+  secondary: "secondary",
+  outline: "secondary",
+  ghost: "ghost",
+  link: "link",
+};
+
+export type ButtonProps = React.ComponentProps<"button"> & {
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  asChild?: boolean;
+  /** Set by `Toggle`: the pressed state is drawn inverted. */
+  pressed?: boolean;
+  /** Square icon button (set by `IconButton`). */
+  icon?: boolean;
+};
+
+function Button({ className, variant = "primary", size = "default", asChild = false, pressed, icon, type, ...props }: ButtonProps) {
   const Comp = asChild ? Slot : "button";
-  return <Comp data-slot="button" className={cn(buttonVariants({ variant, size }), className)} {...props} />;
+  return (
+    <Comp
+      data-slot="button"
+      data-variant={ALIAS[variant]}
+      data-size={size}
+      data-icon={icon ? "" : undefined}
+      data-pressed={pressed === undefined ? undefined : String(pressed)}
+      type={asChild ? undefined : (type ?? "button")}
+      className={cn("ds-button", className)}
+      {...props}
+    />
+  );
 }
 
 export { Button };
