@@ -892,8 +892,9 @@
  * schemes: tests in globe/engine/readability.test.ts); there is no underline and no text-shadow. Hovered or focused: the plate and text do not
  * change (the box's own colour logic does), only the stacking order so that the label is not covered by a neighbour. Selected: INVERTED, the
  * foreground as the plate and the page colour as the text, with no feather (high contrast already; the second line is the page colour mixed 28 %
- * toward the foreground, still AA on it). A label glides to a new place only when a re-plan moved it while the camera was at rest
- * (`data-glide`); prefers-reduced-motion is honoured by the global rule below.
+ * toward the foreground, still AA on it). A label has no CSS transition: it moves by `transform` only, and the motion (the glide to a new
+ * slot, a critically damped spring relative to the label's box) is computed per frame in engine/label-track.ts, so a label is always on its
+ * way to its place and never snaps; reduced motion (the host's own flag) makes it instant.
  */
 .map-label {
   font-family: var(--font-mono);
@@ -931,11 +932,6 @@
 
 .map-halo[data-mode="selected"] {
   display: none;
-}
-
-.map-label[data-glide],
-.map-halo[data-glide] {
-  transition: transform 150ms var(--ease-standard);
 }
 
 @media (forced-colors: active) {

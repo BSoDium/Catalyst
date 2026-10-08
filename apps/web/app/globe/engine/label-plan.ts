@@ -13,8 +13,8 @@
  *      overlap.
  *
  * Stable between plans: a node's previous choice is kept while it is still free, and only given up for a better one (a wider label, an earlier
- * position) when that one is free with `upgradeMargin` extra room, so a camera that moves a plate by a pixel cannot flip two labels back and
- * forth. A choice that stops being free is replaced at once. (Between plans, when the plan runs at all, is engine/label-track.ts.)
+ * position) when that one is free with `upgradeMargin` extra room (and not at all while the choice is a moment old: `PlanItem.hold`), so a
+ * camera that moves a plate by a pixel cannot flip two labels back and forth. A choice that stops being free is replaced at once. (Between plans, when the plan runs at all, is engine/label-track.ts.)
  *
  * Units: the geometry is unit-free. The labels of the boxes plan in CSS px (`PX_UNITS`, with the box line's thickness as `inset`); the pixel
  * text of the map keeps the whole-cell version (`CELL_UNITS`), used by the tests of the planner as well.
@@ -80,6 +80,8 @@ export interface PlanItem {
   rect: CellRect;
   variants: readonly Sized[];
   prev: Prev | null;
+  /** The choice in `prev` was made a moment ago (engine/label-track.ts `dwellMs`): it is kept while it is still free, whatever better position there is. */
+  hold?: boolean | undefined;
   /**
    * Rectangles this node's plate must stay clear of, as well as the plates already placed: the BOXES of the other nodes (`boxesToAvoid`; the
    * planner otherwise looks at plates only, and a label would land on a neighbour's outline). A position that touches one comes after every
@@ -177,8 +179,8 @@ export function planLabels(items: readonly PlanItem[], grid: GridSize, units: Pl
       const { w, h } = t.variants[prev.variant]!;
       const same = spotsOf(prev.variant).find((s) => s.id === prev.cand);
       if (same && free(same.x, same.y, w, h, clearance) && rank(chosen.v, chosen.s.id) < rank(prev.variant, prev.cand)) {
-        // a better choice exists: take it only when it is free with room to spare
-        chosen = first(upgradeMargin, rank(prev.variant, prev.cand)) ?? { v: prev.variant, s: same };
+        // a better choice exists: take it only when it is free with room to spare, and not at all while the choice is a moment old
+        chosen = t.hold ? { v: prev.variant, s: same } : (first(upgradeMargin, rank(prev.variant, prev.cand)) ?? { v: prev.variant, s: same });
       }
     }
     if (chosen) {

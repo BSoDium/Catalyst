@@ -145,9 +145,14 @@ export class HudLayer {
     return this.scene.hit(x, y, kind);
   }
 
-  /** Some timed transition of the boxes (engine/fade.ts) has not reached its end: the host must keep drawing frames. */
+  /** Some timed transition of the boxes (engine/fade.ts) or a label's glide to its place (engine/label-track.ts) has not reached its end: the host must keep drawing frames. */
   get animating(): boolean {
-    return this.lod.animating;
+    return this.lod.animating || this.scene.animating;
+  }
+
+  /** What to call to get a frame when a plan run by the labels' own timer on a map at rest started a glide. */
+  setWake(fn: (() => void) | null): void {
+    this.scene.setWake(fn);
   }
 
   /** Re-place everything for the current camera. */

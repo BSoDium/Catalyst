@@ -18,9 +18,10 @@
  *    half way;
  *  - EVERY rectangle has a LABEL, never a box without a name: the name on a first line and, under it, a smaller second line (a place's country
  *    and the entries linked to it by kind, a group's "<N> places" and the entries below it: engine/label-sub.ts). The text never depends on the
- *    state. Where it goes is engine/label-plan.ts, WHEN it is re-planned is engine/label-track.ts: a label keeps its slot while the camera moves
- *    (it follows its box), the plan runs when the camera has settled, a new box is labelled at once in the gaps of the others, and hover never
- *    re-plans anything (the hovered label looks as it did: the box's own colour logic is what changes);
+ *    state. Where it goes is engine/label-plan.ts, WHEN it is re-planned and how it gets there is engine/label-track.ts: a label has a slot
+ *    (sticky), the plan runs continuously at a bounded rate (every 100 ms while the camera moves, once more when it stops), a plate that changes
+ *    slot GLIDES (a spring relative to its box, per frame: it never snaps and never lags behind its box), a new box is labelled at once in the
+ *    gaps of the others, and hover never re-plans anything (the hovered label looks as it did: the box's own colour logic is what changes);
  *  - a group that opens and the children it opens into (engine/lod-tree.ts) are one cross-fade: their boxes AND their labels run on the nodes'
  *    own timed opacity (`lod.alpha`, set in the same `update`, the same duration and ease), so the group's box and label go 1 -> 0 exactly as its
  *    children's come 0 -> 1 and the sum of a group's opacity and any child's never exceeds 1. Nothing here adds a fade of its own: a label has no
@@ -39,7 +40,7 @@ import type { Rgb } from "./colors";
 import { isBigBox, pickAlpha, pickNode, type PointerKind, type Target } from "./hit-area";
 import { LabelLayer, type LabelMode } from "./label-dom";
 import { PX_UNITS, boxesToAvoid, pxUnits } from "./label-plan";
-import { LabelTracker, SlotMemory, slotPosition, type Placed, type TrackItem } from "./label-track";
+import { LabelTracker, SlotMemory, type Placed, type TrackItem } from "./label-track";
 import { subText } from "./label-sub";
 import { labelVariants, type LabelText } from "./label-text";
 import { LOD, type LodTree } from "./lod-tree";
@@ -60,10 +61,13 @@ export interface PixelGrid {
   top: number;
 }
 
-/** Where a node's label is: the plate's top-left corner in container CSS px, the way it is written and where it came from. */
+/** Where a node's label is: the plate's top-left corner in container CSS px AS DRAWN (its slot's place plus what is left of its glide), the way it is written and where it came from. */
 interface Place {
   x: number;
   y: number;
+  /** What is left of the glide to the slot's place (px); both 0 at rest. */
+  gx: number;
+  gy: number;
   variant: number;
   cand: number;
   inside: boolean;
@@ -117,7 +121,6 @@ export class BoxScene {
   private timer = 0;
   /** `lod.evaluations` when this scene last planned: a re-plan from a timer only runs on the camera it saw. */
   private evalStamp = -1;
-  private reduced = false;
   private parked = false;
   private disposed = false;
   // per node, computed on first use
@@ -152,8 +155,22 @@ export class BoxScene {
 
   /** Reduced motion: labels jump to a new place instead of gliding. */
   setReducedMotion(on: boolean) {
-    this.reduced = on;
+    this.tracker.instant = on;
   }
+
+  /**
+   * Some label has not arrived at its place yet (a glide in progress): the host must keep drawing frames, and stop when this is false (an idle
+   * map draws none).
+   */
+  get animating(): boolean {
+    return !this.parked && !this.disposed && this.tracker.gliding > 0;
+  }
+
+  /** What the host does to get a frame drawn (`update` called) when a plan run by the scene's own timer started a glide on a map that is at rest. */
+  setWake(fn: (() => void) | null) {
+    this.wake = fn;
+  }
+  private wake: (() => void) | null = null;
 
   setSelected(slug: string | null) {
     const next = this.lod.indexOf(slug);
@@ -205,8 +222,12 @@ export class BoxScene {
         box: { x0: t.px.c0, y0: t.px.r0, x1: t.px.c1, y1: t.px.r1 },
         /** The label's plate in container CSS px (top-left corner and size), the name and the second line as written, and where it is. */
         label: {
+          /** The plate as DRAWN (and picked) now; `tx`, `ty` is where its slot puts it (the same at rest), `glide` the distance between the two. */
           x: v.x,
           y: v.y,
+          tx: v.x - t.place.gx,
+          ty: v.y - t.place.gy,
+          glide: Math.hypot(t.place.gx, t.place.gy),
           w: v.size.w,
           h: v.size.h,
           inside: t.place.inside,
@@ -243,9 +264,9 @@ export class BoxScene {
     return this.layer.snapshot();
   }
 
-  /** Canvas and label drawing counters (frames drawn, frames skipped because nothing changed; element writes). */
+  /** Canvas and label drawing counters (frames drawn, frames skipped because nothing changed; element writes, plans run; labels still gliding, a plan owed). */
   stats() {
-    return { drawn: this.overlay.drawn, skipped: this.overlay.skipped, labelWrites: this.layer.writes, replans: this.replans, partials: this.partials };
+    return { drawn: this.overlay.drawn, skipped: this.overlay.skipped, labelWrites: this.layer.writes, replans: this.replans, partials: this.partials, gliding: this.tracker.gliding, owed: this.tracker.dueAt !== null };
   }
   private replans = 0;
   private partials = 0;
@@ -289,7 +310,7 @@ export class BoxScene {
     return this.room ? { cols: this.room.w, rows: this.room.h } : { cols: g.cols * g.cell + 2 * g.left, rows: g.rows * g.cell + 2 * g.top };
   }
 
-  /** Re-plan every label now, as if the camera had been at rest for `TRACK.settleMs` (checks, and a host that jumped the camera). */
+  /** Re-plan every label now and end every glide, as if the camera had been at rest for good (checks, and a host that jumped the camera). */
   settle() {
     if (!this.frame || this.disposed) return;
     this.tracker.settleNow();
@@ -339,7 +360,7 @@ export class BoxScene {
         px: { c0: screen.bx0[i]!, r0: screen.by0[i]!, c1: screen.bx1[i]!, r1: screen.by1[i]! },
         wanted: lod.life.target[i] === 1,
         variants: this.variants(i),
-        place: { x: 0, y: 0, variant: 0, cand: 0, inside: false, overlap: false, moved: false, fresh: false },
+        place: { x: 0, y: 0, gx: 0, gy: 0, variant: 0, cand: 0, inside: false, overlap: false, moved: false, fresh: false },
         score: (i === this.selected ? 1000 : 0) + lod.priority[i]! + (lod.isGroup[i] ? 0 : LOD.placePriorityBonus),
       });
     }
@@ -363,29 +384,37 @@ export class BoxScene {
     this.partials += this.tracker.info.partial;
     planned.forEach((t, n) => {
       const p = placed[n]!;
-      t.place = { x: p.x, y: p.y, variant: p.variant, cand: p.cand, inside: p.inside, overlap: p.overlap, moved: p.moved, fresh: p.fresh };
+      t.place = { x: p.x, y: p.y, gx: p.gx, gy: p.gy, variant: p.variant, cand: p.cand, inside: p.inside, overlap: p.overlap, moved: p.moved, fresh: p.fresh };
     });
-    for (const t of items) {
-      if (t.wanted) continue;
-      // fading out: the slot it had, followed to its box
-      const mem = this.mem;
+    // fading out: the slot it had, followed to its box, and the glide it had going on
+    const fading = items.filter((t) => !t.wanted);
+    const mem = this.mem;
+    const followed = this.tracker.follow(
+      now,
+      fading.map((t) => {
+        const v = mem.set[t.i] ? Math.min(mem.variant[t.i]!, t.variants.length - 1) : 0;
+        return { id: t.i, rect: t.px, size: t.variants[v]! };
+      }),
+      view,
+      units.inset,
+    );
+    fading.forEach((t, k) => {
+      const p = followed[k]!;
       const v = mem.set[t.i] ? Math.min(mem.variant[t.i]!, t.variants.length - 1) : 0;
-      const size = t.variants[v]!;
-      const p = slotPosition(mem, t.i, t.px, size, view, units);
-      t.place = { x: p.x, y: p.y, variant: v, cand: mem.set[t.i] ? mem.cand[t.i]! : 0, inside: false, overlap: false, moved: false, fresh: false };
-    }
+      t.place = { x: p.x, y: p.y, gx: p.gx, gy: p.gy, variant: v, cand: mem.set[t.i] ? mem.cand[t.i]! : 0, inside: false, overlap: false, moved: false, fresh: false };
+    });
     this.last = items;
-    this.present(this.tracker.info.changed);
+    this.present();
     this.arm();
   }
 
-  /** Re-draw the states (hover, focus, selection) from the last plan: no planning. */
+  /** Re-draw the states (hover, focus, selection) from the last plan: no planning, no motion. */
   private represent() {
-    if (this.frame && this.last.length) this.present(true);
+    if (this.frame && this.last.length) this.present();
   }
 
   /** Draw the boxes on the canvas and write the labels' elements and the hit targets from the last plan and the current states. */
-  private present(moving: boolean) {
+  private present() {
     const frame = this.frame;
     if (!frame) return;
     const { grid } = frame;
@@ -395,7 +424,6 @@ export class BoxScene {
     const targets: Target[] = [];
     const mapMinSide = Math.min(grid.cols, grid.rows) * cell;
     let h = HASH_SEED;
-    const glideOk = !moving && !this.reduced;
     this.layer.begin();
     for (const t of items) {
       const mode = this.modeOf(t.i, t.wanted);
@@ -413,7 +441,6 @@ export class BoxScene {
         mode,
         over: t.place.overlap && !forced,
         alpha,
-        glide: glideOk && t.place.moved && !t.place.fresh && t.wanted,
       });
       h = hashStep(hashStep(hashStep(hashStep(h, t.i), t.rect.c0 * 4096 + t.rect.r0), t.rect.c1 * 4096 + t.rect.r1), Math.round(alpha * ALPHA_STEPS) * 16 + (mode === "selected" ? 1 : 0) + (forced ? 2 : 0));
       h = hashStep(h, Math.round(fillAlpha * ALPHA_STEPS));
@@ -434,7 +461,7 @@ export class BoxScene {
     this.targets = targets;
   }
 
-  /** Arm the timer of the re-plan that is owed once the camera has settled: an idle map draws no frames, so nothing else would run it. */
+  /** Arm the timer of the re-plan that is owed (the last one after the camera stopped, or a young slot waiting out its dwell): an idle map draws no frames, so nothing else would run it. */
   private arm() {
     if (this.timer || this.parked || this.disposed) return;
     const due = this.tracker.dueAt;
@@ -458,6 +485,7 @@ export class BoxScene {
       return;
     }
     this.run(now);
+    if (this.animating) this.wake?.(); // a plan the timer ran started a glide: the frames must come
   };
 
   dispose() {
