@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { THIN_INK, expInterp } from "../core/art-line";
-import { MAP_CONTRAST_DARK, buildRamp, peakLevel, roleLevel, srgbToOklab } from "../../engine/palette";
+import { MAP_CONTRAST_DARK, buildRamp, coastLevel, peakLevel, roleLevel, srgbToOklab } from "../../engine/palette";
 import { HANDOVER } from "../../handover/maths";
 import { PATTERN } from "../core/palette";
 import { radiusFitZoom } from "../../engine/framing";
@@ -201,13 +201,13 @@ describe("regression: the coast is never dashed (owner report: coasts dotted aro
   // exposes at latitudes where map zoom = globe zoom + log2(cos lat) falls in the band. It is gone: the world coastline
   // runs solid up to the tile coast's first zoom, and nothing dashes a coast or a country border.
   for (const schema of ["protomaps", "openmaptiles"] as const) {
-    it(`${schema}: world coast, sea outline and borders are solid peak-tone lines, and the coast has no gap or band`, () => {
+    it(`${schema}: world coast, sea outline and borders are solid coast-tone lines, and the coast has no gap or band`, () => {
       const st = make(schema).layers as unknown as L[];
       for (const id of ["world-coast", "water-edge", "world-borders", "boundary-country"]) {
         const l = st.find((x) => x.id === id)!;
         expect(l, id).toBeDefined();
         expect(l.paint["line-dasharray"], id).toBeUndefined();
-        expect(levelOfPaint(l.paint["line-color"], 0), id).toBe(roleLevel("peak"));
+        expect(levelOfPaint(l.paint["line-color"], 0), id).toBe(roleLevel("coast"));
       }
       expect(st.some((l) => /band/.test(l.id))).toBe(false);
       const world = st.find((l) => l.id === "world-coast")!;
@@ -272,11 +272,11 @@ describe("a city reads as a city at the zoom the app frames it at (owner: street
 
 describe("road hierarchy: the class is told by tone and by width (owner: everything was the same colour)", () => {
   // The tiers, loudest first, as palette levels of the 12-level palette (peak = 10, ink = 11). Lowered by about two levels on 2026-10-08
-  // (was 10, 8, 6, 4, 3, 2, 2, 2): the streets are decor, the boxes and labels (peak and ink) must dominate them.
+  // (was 10, 8, 6, 4, 3, 2, 2, 2), then primary and secondary raised a level on the same day (7, 6, 5, 3, 2, 1, 1, 1) when the ramp above level 3 was washed out, to keep the tiers apart: the streets are decor, the boxes and labels (peak and ink) must dominate them.
   const TIERS: [string, LodKey, number][] = [
     ["motorway, trunk", "highway", 7],
-    ["primary", "major", 5],
-    ["secondary", "secondary", 4],
+    ["primary", "major", 6],
+    ["secondary", "secondary", 5],
     ["tertiary", "medium", 3],
     ["links, solid residential", "minorSolid", 2],
     ["residential", "minor", 1],
@@ -325,7 +325,7 @@ describe("road hierarchy: the class is told by tone and by width (owner: everyth
     for (const id of ["road-minor-dotted", "road-minor", "road-link-dotted", "road-other-dotted", "path-dotted"]) expect(artWidthStopsOf(SPECS.find((s) => s.id === id)!), id).toBe(1);
     for (const k of ["minor", "minorSolid", "service", "path"] as const) expect(LOD[k].on, k).toBeGreaterThan(LOD.medium.on); // (the links come with the city framing, in the faint tier)
   });
-  it("the strongest road tier stays well below the ink AND below the peak (owner 2026-10-08: the box, at rest the peak level, must dominate the streets; the peak is for coastlines, borders and boxes)", () => {
+  it("the strongest road tier stays well below the ink AND below the coast and the peak (owner 2026-10-08: the box, at rest the peak level, must dominate the streets; the coast level is the map's loudest, for coastlines and borders)", () => {
     for (const n of LEVEL_COUNTS) {
       const ink = n - 1;
       for (const [name, key] of TIERS) expect(toneLevel(LOD[key], n), `${name} n=${n}`).toBeLessThan(ink);
@@ -333,8 +333,10 @@ describe("road hierarchy: the class is told by tone and by width (owner: everyth
       if (n >= 6) expect(toneLevel(LOD.highway, n), `n=${n}`).toBeLessThan(peakLevel(n));
       else expect(toneLevel(LOD.highway, n), `n=${n}`).toBeLessThanOrEqual(peakLevel(n));
     }
-    // 12 levels: three levels below the box's peak, so a box is plainly louder than the loudest road (ratio of lightness steps, both themes)
+    for (const n of LEVEL_COUNTS.filter((x) => x >= 8)) expect(toneLevel(LOD.highway, n), `n=${n}`).toBeLessThan(coastLevel(n));
+    // 12 levels: three levels below the box's peak and two below the coast, so a box is plainly louder than the loudest road (ratio of lightness steps, both themes)
     expect(peakLevel(12) - toneLevel(LOD.highway, 12)).toBeGreaterThanOrEqual(3);
+    expect(coastLevel(12) - toneLevel(LOD.highway, 12)).toBeGreaterThanOrEqual(2);
     for (const t of [lightTheme, darkTheme]) {
       const ramp = buildRamp(t.background as never, t.ink as never, 12);
       const top = lightness(ramp[toneLevel(LOD.highway)]!);
@@ -344,15 +346,15 @@ describe("road hierarchy: the class is told by tone and by width (owner: everyth
       expect(Math.abs(top - bgL) / Math.abs(inkL - bgL)).toBeLessThanOrEqual(MAP_CONTRAST_DARK + 1e-6);
     }
   });
-  it("tone separation: adjacent tiers differ by at least 0.04 of OKLab lightness (light and dark) from the tertiary up, 0.035 below it (the light ramp's bottom steps are 0.033 to 0.043)", () => {
+  it("tone separation: adjacent tiers differ by at least 0.02 of OKLab lightness (light and dark) from the primary up to the secondary, 0.03 between secondary and tertiary, 0.035 below it (RELAXED on 2026-10-08, the map wash: they were 0.045 / 0.045 / 0.04; the faint end of the ramp is fixed and the tiers above it now rise to a coast at 3.1:1 instead of 5.2:1, so the steps shrank; the widths and the dashes carry the rest)", () => {
     for (const t of [lightTheme, darkTheme]) {
       const ramp = buildRamp(t.background as never, t.ink as never, 12);
       const L = (k: LodKey) => lightness(ramp[toneLevel(LOD[k])]!);
       const dist = (a: LodKey, b: LodKey) => Math.abs(L(a) - L(b));
-      // (the 12-level ramp has steps of 0.040 to 0.053 of lightness above level 1 in light, 0.048 in dark; the road tiers were two levels apart
-      // before 2026-10-08 and are one or two apart now, so this was 0.06 for the three loudest)
-      expect(dist("major", "secondary")).toBeGreaterThan(0.045);
-      expect(dist("secondary", "medium")).toBeGreaterThan(0.045);
+      // (the 12-level ramp has steps of 0.040 to 0.053 of lightness up to level 3 in light, 0.048 in dark, and 0.024 to 0.04 from level 3 to the coast
+      // since the wash of 2026-10-08; the road tiers are one or two levels apart)
+      expect(dist("major", "secondary")).toBeGreaterThan(0.02);
+      expect(dist("secondary", "medium")).toBeGreaterThan(0.03);
       expect(dist("medium", "minorSolid")).toBeGreaterThan(0.04);
       expect(dist("minorSolid", "minor")).toBeGreaterThan(0.035);
       expect(dist("highway", "major")).toBeGreaterThan(0.015);
@@ -360,7 +362,7 @@ describe("road hierarchy: the class is told by tone and by width (owner: everyth
       const bg = lightness(ramp[0]!);
       expect(Math.abs(L("path") - bg)).toBeGreaterThan(0.03);
       // and the whole hierarchy spans a clear range
-      expect(dist("highway", "path")).toBeGreaterThan(0.2);
+      expect(dist("highway", "path")).toBeGreaterThan(0.18);
     }
   });
   it("widths: motorway, trunk and primary are 2 art px from z9, every other class 1 px at the city framings (10 to 11.4 on a desktop)", () => {
