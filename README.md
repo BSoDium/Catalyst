@@ -105,6 +105,7 @@ No secrets exist in this repository or in either Vercel project. The Polarsteps 
 - [Self-hosting](docs/self-hosting.md): containers and the fallback tile server
 - [Handoff](docs/handoff.md): state of the rebuild and what is left
 - [API contract](docs/api-contract.md): endpoints, caching, Vercel setup, monorepo build behaviour
+- [Entry content model](docs/content-entry-model.md): how vault documents (header + Markdown) map onto the entries of the contract (articles, projects, artworks, poems, typed body blocks)
 - Private repo docs (privacy model, import contract, sync invariants, editorial workflow, publication, database migration plan) live in the content repository.
 
 ## License

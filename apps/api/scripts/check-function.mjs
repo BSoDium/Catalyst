@@ -42,17 +42,29 @@ try {
   const probe = `
     const { default: app } = await import("./index.mjs");
     if (typeof app?.fetch !== "function") throw new Error("the default export is not a fetch handler");
-    const expectations = [["GET", "/health", 200], ["GET", "/v1/projection", 200], ["GET", "/v1/places", 200], ["GET", "/nope", 404], ["POST", "/v1/places", 405]];
+    const demo = process.env.CATALYST_CONTENT === "demo";
+    const expectations = [["GET", "/health", 200], ["GET", "/v1/projection", 200], ["GET", "/v1/places", 200], ["GET", "/v1/poems", 200], ["GET", "/nope", 404], ["GET", "/v1/poems/nope", 404], ["GET", "/v1/projects/nope", 404], ["POST", "/v1/places", 405]];
+    // The demo content is inlined in the bundle too: the entry detail endpoints must answer from it.
+    if (demo) expectations.push(["GET", "/v1/poems/demo-poem", 200], ["GET", "/v1/projects/demo-project", 200], ["GET", "/v1/articles/demo-article", 200], ["GET", "/v1/artworks/demo-artwork", 200], ["GET", "/v1/places/lisbon", 200]);
     for (const [method, path, status] of expectations) {
       const res = await app.fetch(new Request("http://localhost" + path, { method }));
       if (res.status !== status) throw new Error(method + " " + path + " answered " + res.status + ", expected " + status);
     }
+    if (demo) {
+      const poem = await (await app.fetch(new Request("http://localhost/v1/poems/demo-poem"))).json();
+      if (poem.kind !== "poem" || !Array.isArray(poem.body) || !poem.body.some((b) => b.type === "verse")) throw new Error("the demo poem detail has no verse block");
+      const list = await (await app.fetch(new Request("http://localhost/v1/poems"))).json();
+      if (!Array.isArray(list) || list.length === 0 || "body" in list[0]) throw new Error("/v1/poems must list summaries without a body");
+    }
   `;
-  const env = { ...process.env };
-  delete env.CATALYST_CONTENT;
-  const run = spawnSync(process.execPath, ["--input-type=module", "-e", probe], { cwd: dir, env, encoding: "utf8", timeout: 30_000 });
-  if (run.status !== 0) fail(`the bundled function does not run on its own:\n${run.stderr || run.stdout}`);
-  console.log("check-function: index.mjs + dist/index.mjs run standalone (/health, /v1/projection, /v1/places, 404, 405).");
+  for (const content of [undefined, "demo"]) {
+    const env = { ...process.env };
+    delete env.CATALYST_CONTENT;
+    if (content) env.CATALYST_CONTENT = content;
+    const run = spawnSync(process.execPath, ["--input-type=module", "-e", probe], { cwd: dir, env, encoding: "utf8", timeout: 30_000 });
+    if (run.status !== 0) fail(`the bundled function does not run on its own (content: ${content ?? "published"}):\n${run.stderr || run.stdout}`);
+  }
+  console.log("check-function: index.mjs + dist/index.mjs run standalone (/health, /v1/projection, /v1/places, /v1/poems, 404, 405; entry details with demo content).");
 } finally {
   rmSync(dir, { recursive: true, force: true });
 }

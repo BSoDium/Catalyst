@@ -8,7 +8,7 @@ There is no import endpoint, no admin or write endpoint, no authentication and n
 
 **The published contract is independent of how content is stored upstream.** In v1 the content is files: a private content repo opens a PR against this repo that updates `packages/published/data/projection.json`. Later it may be database-backed editing. In both cases the projection schema, the endpoints and the response shapes below stay the same. Consumers must not be able to tell which backend produced the data.
 
-- Everything is under `/v1`. Within v1 changes are additive only: new optional fields and new endpoints. Removing or retyping a field, or changing an error code, needs `/v2` (which would run alongside `/v1` for a deprecation period).
+- Everything is under `/v1`. Within v1 changes are additive only: new optional fields, new endpoints, and new members of a closed set where the section says so (the entry kinds gained `poem`; clients should treat an unknown kind as "something to list, not to render specially"). Removing or retyping a field, or changing an error code, needs `/v2` (which would run alongside `/v1` for a deprecation period).
 - `schemaVersion` (currently `1`) is in `/health` and `/v1/projection`.
 - `GET /health` is operational, not part of the content contract. Do not build features on it.
 - Response types are exported from `apps/api/src/contract.ts` as **types only**. The web app may `import type { ... } from "@catalyst/api/contract"`. Never import runtime code from `@catalyst/api` into the client.
@@ -21,7 +21,7 @@ There is no import endpoint, no admin or write endpoint, no authentication and n
 | Format | `application/json; charset=UTF-8`, compact JSON. |
 | Paths | Exact match, no trailing slash. `/v1/places/` is a 404. |
 | Auth / cookies | None. No `Set-Cookie` is ever sent. |
-| Ordering | `/v1/places` and `/v1/groups` are sorted by slug. Everything else keeps the authored order (routes and stop order are curated). |
+| Ordering | `/v1/places` and `/v1/groups` are sorted by slug. Everything else keeps the authored order (routes and stop order are curated, and so are the lists of entries). |
 
 ### Response headers
 
@@ -58,7 +58,7 @@ All non-2xx JSON responses share one envelope:
 
 | Status | `error.code` | When |
 | --- | --- | --- |
-| 404 | `not_found` | Unknown path or unknown place slug. |
+| 404 | `not_found` | Unknown path, unknown place slug, or unknown entry slug (also an entry slug under the wrong kind). |
 | 405 | `method_not_allowed` | Known path, method other than GET/HEAD/OPTIONS. |
 | 503 | `content_unavailable` | The projection failed validation at startup (see below). |
 | 500 | `internal_error` | Unexpected failure; the message is generic, details only go to server logs. |
@@ -78,7 +78,7 @@ Liveness plus a summary of what is loaded. `200` when content is valid, `503` ot
   "ok": true,
   "schemaVersion": 1,
   "content": "demo",
-  "counts": { "places": 18, "groups": 8, "routes": 1, "projects": 1, "articles": 1, "artworks": 1 }
+  "counts": { "places": 18, "groups": 8, "routes": 1, "projects": 1, "articles": 1, "artworks": 1, "poems": 1 }
 }
 ```
 
@@ -90,11 +90,13 @@ Liveness plus a summary of what is loaded. `200` when content is valid, `503` ot
 
 ### `GET /v1/projection`
 
-The complete validated projection, exactly the shape of `PublishedProjection`: `schemaVersion`, `places` (full objects, authored order), `groups` (the automatic place hierarchy, see below), `routes`, `projects`, `articles`, `artworks`. This is what the globe loads. With the committed (empty) content:
+The complete validated projection, exactly the shape of `PublishedProjection`: `schemaVersion`, `places` (full objects, authored order), `groups` (the automatic place hierarchy, see below), `routes`, `projects`, `articles`, `artworks`, `poems`. This is what the globe loads. It is always the **complete** projection: entries (`projects`, `articles`, `artworks`, `poems`) are full objects with their `body`, unlike the list endpoints below. With the committed (empty) content:
 
 ```json
-{ "schemaVersion": 1, "places": [], "groups": [], "routes": [], "projects": [], "articles": [], "artworks": [] }
+{ "schemaVersion": 1, "places": [], "groups": [], "routes": [], "projects": [], "articles": [], "artworks": [], "poems": [] }
 ```
+
+`groups` and `poems` default to `[]` when a projection file omits them (see "Entries"), so the committed file does not have to carry `poems` yet; the response always does.
 
 ### `GET /v1/places`
 
@@ -182,17 +184,114 @@ Explicitly curated routes; stops are place slugs in travel order. Routes are nev
 [{ "id": "demo-route-vietnam", "title": "Demo route (curated stop order)", "stops": ["hanoi", "hue", "ho-chi-minh-city"] }]
 ```
 
-### `GET /v1/projects`, `GET /v1/articles`, `GET /v1/artworks`
+### Entries: `projects`, `articles`, `artworks`, `poems`
 
-Arrays of content items (`slug`, `title`, `summary?`, `date?`, `url?` (https only), `placeSlugs`).
+An **entry** is a published piece of content that can be linked to places. There are four kinds: `project` (a development project), `article`, `artwork` and `poem` (`ContentKind`). Each kind has its own collection in the projection and its own pair of endpoints, with the same shape (`PublishedContentItem`):
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `slug` | kebab-case, max 80 | Unique within its kind (two kinds may reuse a slug). |
+| `title` | 1 to 160 | |
+| `summary` | optional, 1 to 500 | Plain text. |
+| `date` | optional `YYYY`, `YYYY-MM` or `YYYY-MM-DD` | |
+| `url` | optional, https only, max 2000 | The entry's external destination (live demo, repository, original publication). No credentials, no whitespace. |
+| `cover` | optional `{ src, alt, width?, height? }` | Image shown in lists and on top of the entry. `src` is a `/media/...` path, `alt` is required (1 to 300), `width` and `height` go together or not at all. |
+| `tags` | optional, max 12 | Unique lowercase kebab-case tags (`open-source`), max 40 characters each. |
+| `meta` | optional, max 10 `{ label, value }` | Kind-specific facts as plain text, see below. |
+| `body` | optional, max 200 blocks | The content as typed blocks, see below. **Detail and projection only.** |
+| `placeSlugs` | array, max 100 | The places the entry is linked to (each must exist). |
+
+`meta` is free-form but small: `label` 1 to 40 characters, `value` 1 to 200, one line of plain text each, labels unique within the entry (case-insensitive). The expected conventions, which the web app can rely on but the schema does not enforce: **project** `Stack`, `Status`, `Repository`; **artwork** `Medium`, `Year`, `Dimensions`; **article** `Publication`; **poem** `Language`. A `meta` value is never a link; the clickable destination of an entry is `url` or a `link` block.
+
+#### Body blocks
+
+`body` is a flat array of blocks. Every block is an object with a `type` and is `.strict()`. **All text is plain text:** no HTML, no markdown and no escape sequence is interpreted anywhere, so `<b>` and `*x*` are displayed as written. Text fields reject control characters (a line feed, and for `code` a tab too, is allowed only where noted) and the bidirectional override and isolate characters (U+202A to U+202E, U+2066 to U+2069). Text is trimmed, except in `verse` and `code`, where indentation is content.
+
+| `type` | Fields | Notes |
+| --- | --- | --- |
+| `paragraph` | `text` (1 to 5000) | A line feed inside the text is a hard line break. |
+| `heading` | `level` (`2` or `3`), `text` (1 to 160, one line) | The entry's title is the level 1. |
+| `list` | `ordered` (boolean), `items` (1 to 50 strings, 1 to 1000 each) | Flat: no nested lists. |
+| `quote` | `text` (1 to 2000), `cite?` (1 to 200, one line) | |
+| `image` | `src`, `alt`, `width?`, `height?`, `caption?` (1 to 300, one line) | Same rules as `cover`; `alt` required. |
+| `verse` | `stanzas`: 1 to 60 stanzas of 1 to 60 lines (each 1 to 300 characters, one line, with a visible character) | For poems. Line and stanza breaks are the structure and leading spaces in a line are kept (indentation). Not trimmed. |
+| `code` | `language?` (`^[a-z0-9+#-]{1,20}$`), `code` (1 to 10000) | Verbatim: line feeds and tabs allowed, not trimmed. The language is a label; no highlighting is implied. |
+| `link` | `title` (1 to 160), `url` (https), `description?` (1 to 300) | A block-level link card. https only, max 2000, no credentials or whitespace. |
+| `divider` | none | A thematic break. |
+
+Limits on the whole body: at most **200 blocks** and **60,000 characters** of text in total (media paths and URLs do not count). `media` paths follow one rule for place images, covers and image blocks: `/media/` followed by plain file names (`[A-Za-z0-9_-]` first, then `[A-Za-z0-9._-]`), separated by single slashes; `..`, `.`, empty and dot-leading segments are rejected, so a path cannot leave `/media/`.
+
+**Not in the contract (yet).** There is no inline emphasis or inline link inside a text field, no nested lists, no tables, no callouts and no entry-to-entry references. They would be new **optional** fields or new block types in a later additive change (for example a `spans` array next to `text`, which renderers that do not know it can ignore in favour of `text`). Until then a text is one plain string.
+
+All of this is **additive in schema version 1**: `poems`, `cover`, `tags`, `meta` and `body` are new and optional, `schemaVersion` stays `1`, and a projection that has none of them stays valid (`poems` defaults to `[]`, like `groups`). The only observable changes for existing clients: `/health` counts gained `poems`, `contentKindSchema` and the `kind` of a place's `related` refs gained `poem` (clients with an exhaustive switch over kinds must handle it), the list endpoints gained fields, `url` and media paths are validated slightly more strictly (https without credentials or whitespace; no `..` segments in `/media/` paths: nothing that was a sane value is affected), and there are new endpoints.
+
+#### `GET /v1/projects`, `GET /v1/articles`, `GET /v1/artworks`, `GET /v1/poems`
+
+Arrays of **summaries**, in authored order: the entry without its `body` (`ContentItemsResponse`: `slug`, `title`, `summary?`, `date?`, `url?`, `cover?`, `tags?`, `meta?`, `placeSlugs`). Optional fields are omitted when absent. A list entry is roughly 0.4 to 0.7 KB (summary, cover, tags, meta), which is what a list page needs; fetch the detail (or the projection) for the text.
 
 ```json
-[{ "slug": "demo-project", "title": "Demo project", "summary": "Demo fixture entry.", "date": "2024", "placeSlugs": ["lisbon"] }]
+[
+  {
+    "slug": "demo-poem",
+    "title": "Demo poem",
+    "summary": "Demo fixture entry: a poem set in verse blocks.",
+    "date": "2022-11",
+    "cover": { "src": "/media/demo/cover-poem.svg", "alt": "Abstract short lines grouped in two stanzas, a demo fixture cover", "width": 960, "height": 600 },
+    "tags": ["demo", "verse"],
+    "meta": [{ "label": "Language", "value": "English (placeholder)" }],
+    "placeSlugs": ["hue"]
+  }
+]
 ```
 
+#### `GET /v1/projects/:slug`, `GET /v1/articles/:slug`, `GET /v1/artworks/:slug`, `GET /v1/poems/:slug`
+
+The complete entry (`ContentDetailResponse`): every field of the table above **including `body`**, plus `kind` and `places`, the entry's places resolved to `{ slug, name }` in the order of `placeSlugs`, so a detail view needs no second request. `placeSlugs` is kept. An unknown slug, or a slug that belongs to another kind (`/v1/projects/demo-poem`), is `404`. Slugs are lowercase kebab-case; `/v1/poems/Demo-Poem` is a 404.
+
 ```json
-[{ "slug": "demo-artwork", "title": "Demo artwork", "placeSlugs": ["kyoto"] }]
+{
+  "kind": "poem",
+  "slug": "demo-poem",
+  "title": "Demo poem",
+  "summary": "Demo fixture entry: a poem set in verse blocks.",
+  "date": "2022-11",
+  "cover": { "src": "/media/demo/cover-poem.svg", "alt": "Abstract short lines grouped in two stanzas, a demo fixture cover", "width": 960, "height": 600 },
+  "tags": ["demo", "verse"],
+  "meta": [{ "label": "Language", "value": "English (placeholder)" }],
+  "body": [
+    {
+      "type": "verse",
+      "stanzas": [
+        ["Demo fixture verse, line one,", "placeholder words in a row,", "    an indented line follows,", "the stanza ends here."],
+        ["A second stanza begins,", "made up to check spacing,", "between lines and between stanzas."]
+      ]
+    },
+    { "type": "divider" },
+    { "type": "paragraph", "text": "A placeholder note on the poem, in prose." }
+  ],
+  "placeSlugs": ["hue"],
+  "places": [{ "slug": "hue", "name": "Huế" }]
+}
 ```
+
+A place's `related` (`{ kind, slug }`, resolved to `{ kind, slug, title }` in `GET /v1/places/:slug`) may now have `kind: "poem"`. Both directions of the link are valid (an entry lists `placeSlugs`, a place lists `related`); the web app merges them.
+
+#### Payload size and cost
+
+The projection is **bundled** into the web app and into the API function, and `/v1/projection` serves all of it, so entry bodies are paid for in three places: the API bundle (`dist/index.mjs`, parsed at cold start), the web server bundle, and every `/v1/projection` response. Measured with `buildSnapshot` (bytes):
+
+| | raw | gzip | brotli |
+| --- | --- | --- | --- |
+| Committed projection today (empty) | 108 | 92 | 71 |
+| Demo fixture, `/v1/projection` (18 places, 8 groups, 4 entries) | 9,606 | 2,702 | 2,223 |
+| Demo: the four entries with their bodies, as lists / as details | 1,853 / ~4,340 | | |
+| 100 entries (25 per kind) with a ~3 KB body each, cover, 4 tags, 3 meta, 2 places, **entries only** | ~355,000 | 130,000 to 155,000 | 115,000 to 136,000 |
+| Same, one list (25 summaries) | ~16,000 | ~5,200 | ~4,600 |
+| Same, one detail | ~3,600 | ~1,900 to 2,000 | |
+
+Each entry costs about 3.5 KB raw in the projection (body 3 KB plus cover, meta and tags) and about 1.3 to 1.6 KB gzipped. The compressed figures come from random dictionary words (about 2.3:1, pessimistic) and are consistent with the ratio of real prose (2.5 to 3:1); source code and verse compress somewhat worse than prose. To budget a whole site, add the places: the owner's preview (146 places, 47 groups) is about 41.5 KB raw and 9 KB gzipped, so **146 places plus 100 entries of 3 KB is about 400 KB raw, 140 to 165 KB gzipped**. The server also pre-serialises every response at startup (the projection, the lists, one detail per entry and per place): that is about 790 KB of strings in memory for the 100-entry case and a module load of a few milliseconds (zod validation of the 100 entries took about 1 ms, building the snapshot about 2 ms), which is negligible next to the 20 ms module load of the bundle itself.
+
+The consequence for the free Vercel quota is in [api-cost-and-abuse.md](api-cost-and-abuse.md) (section 2): `/v1/projection` is the only endpoint whose size grows with the bodies, and a cache-busted client would pull about 400 KB per request from the function. The detail and list endpoints stay small (a few KB). Budget rules that keep the numbers in this table valid: no body above 60,000 characters (enforced), at most 200 blocks (enforced), covers and images are `/media/` files served by the web app, never inlined; if the real content ever approaches 1 MB of projection, split `/v1/projection` (not an incompatible change: a new endpoint) rather than raising a limit.
 
 ## Configuration
 

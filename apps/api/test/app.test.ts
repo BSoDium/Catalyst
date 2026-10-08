@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import {
@@ -8,6 +9,7 @@ import {
   publishedGroupSchema,
   publishedContentItemSchema,
   publishedPlaceSchema,
+  toContentSummary,
   publishedRouteSchema,
   slugSchema,
   EMPTY_PROJECTION,
@@ -15,9 +17,11 @@ import {
 } from "@catalyst/schemas";
 import { loadDemoProjection, loadPublishedProjection } from "@catalyst/published";
 import { CACHE_CONTROL, createApp } from "../src/app";
+import { buildSnapshot } from "../src/snapshot";
 import { loadContent } from "../src/content";
 import type {
   ApiError,
+  ContentDetailResponse,
   HealthResponse,
   HealthUnavailableResponse,
   PlaceDetailResponse,
@@ -31,8 +35,11 @@ afterEach(() => {
 const demoApp = () => createApp(loadContent({ CATALYST_CONTENT: "demo" }));
 const emptyApp = () => createApp(loadContent({}));
 
-const STATIC = ["/v1/projection", "/v1/places", "/v1/groups", "/v1/routes", "/v1/projects", "/v1/articles", "/v1/artworks"];
-const KNOWN = ["/health", ...STATIC, "/v1/places/lisbon"];
+const STATIC = ["/v1/projection", "/v1/places", "/v1/groups", "/v1/routes", "/v1/projects", "/v1/articles", "/v1/artworks", "/v1/poems"];
+const LISTS = ["projects", "articles", "artworks", "poems"] as const;
+/** One detail path per kind, plus the place detail. */
+const DETAILS = ["/v1/places/lisbon", "/v1/projects/demo-project", "/v1/articles/demo-article", "/v1/artworks/demo-artwork", "/v1/poems/demo-poem"];
+const KNOWN = ["/health", ...STATIC, ...DETAILS];
 
 // Strict response schemas, independent of the server code, to assert that
 // nothing outside the contract allowlist can appear in a response.
@@ -43,6 +50,14 @@ const placeDetailSchema = publishedPlaceSchema
   .extend({
     related: z.array(z.object({ kind: contentKindSchema, slug: slugSchema, title: z.string().min(1) }).strict()),
     groupChain: z.array(z.object({ slug: slugSchema, name: z.string().min(1), kind: groupKindSchema }).strict()),
+  })
+  .strict();
+
+const contentSummarySchema = publishedContentItemSchema.omit({ body: true }).strict();
+const contentDetailSchema = publishedContentItemSchema
+  .extend({
+    kind: contentKindSchema,
+    places: z.array(z.object({ slug: slugSchema, name: z.string().min(1) }).strict()),
   })
   .strict();
 
@@ -72,7 +87,7 @@ describe("endpoints (demo content)", () => {
       ok: true,
       schemaVersion: 1,
       content: "demo",
-      counts: { places: 18, groups: 8, routes: 1, projects: 1, articles: 1, artworks: 1 },
+      counts: { places: 18, groups: 8, routes: 1, projects: 1, articles: 1, artworks: 1, poems: 1 },
     });
     expect(res.headers.get("cache-control")).toBe("no-store");
   });
@@ -182,15 +197,75 @@ describe("endpoints (demo content)", () => {
     }
   });
 
-  it("GET /v1/routes, /v1/projects, /v1/articles, /v1/artworks", async () => {
+  it("GET /v1/routes", async () => {
+    const demo = loadDemoProjection();
+    expect(z.array(publishedRouteSchema).parse(await (await demoApp().request("/v1/routes")).json())).toEqual(demo.routes);
+  });
+
+  it("GET /v1/projects, /v1/articles, /v1/artworks, /v1/poems return strict SUMMARIES (no body), in authored order", async () => {
     const app = demoApp();
     const demo = loadDemoProjection();
-    expect(z.array(publishedRouteSchema).parse(await (await app.request("/v1/routes")).json())).toEqual(demo.routes);
-    for (const key of ["projects", "articles", "artworks"] as const) {
+    for (const key of LISTS) {
       const res = await app.request(`/v1/${key}`);
-      expect(res.status).toBe(200);
-      expect(z.array(publishedContentItemSchema).parse(await res.json())).toEqual(demo[key]);
+      expect(res.status, key).toBe(200);
+      const raw = await json<Record<string, unknown>[]>(res);
+      expect(raw.length, key).toBeGreaterThan(0);
+      for (const item of raw) expect(Object.keys(item), key).not.toContain("body");
+      const summaries = z.array(contentSummarySchema).parse(raw);
+      expect(summaries, key).toEqual(demo[key].map(toContentSummary));
+      // The summary carries what a list needs: cover, tags and the kind-specific meta.
+      for (const s of summaries) {
+        expect(s.cover, `${key}/${s.slug}`).toBeDefined();
+        expect(s.tags?.length, `${key}/${s.slug}`).toBeGreaterThan(0);
+        expect(s.meta?.length, `${key}/${s.slug}`).toBeGreaterThan(0);
+      }
     }
+    // The summaries are much smaller than the full entries they stand for.
+    const sizes = async (path: string) => (await (await app.request(path)).text()).length;
+    expect(await sizes("/v1/articles")).toBeLessThan(JSON.stringify(demo.articles).length);
+  });
+
+  it("GET /v1/<kind>/:slug returns the complete entry with its kind and its places resolved", async () => {
+    const app = demoApp();
+    const demo = loadDemoProjection();
+    const names = new Map(demo.places.map((p) => [p.slug, p.name]));
+    const kinds = { projects: "project", articles: "article", artworks: "artwork", poems: "poem" } as const;
+    for (const key of LISTS) {
+      for (const item of demo[key]) {
+        const res = await app.request(`/v1/${key}/${item.slug}`);
+        expect(res.status, `${key}/${item.slug}`).toBe(200);
+        const detail = contentDetailSchema.parse(await res.json()) as ContentDetailResponse;
+        expect(detail.kind).toBe(kinds[key]);
+        const { kind: _kind, places, ...entry } = detail;
+        expect(entry).toEqual(item);
+        expect(entry.body?.length).toBeGreaterThan(0);
+        expect(places).toEqual(item.placeSlugs.map((slug) => ({ slug, name: names.get(slug) })));
+      }
+    }
+    // An entry with two places keeps the order of placeSlugs.
+    const article = contentDetailSchema.parse(await (await app.request("/v1/articles/demo-article")).json());
+    expect(article.places).toEqual([
+      { slug: "lisbon", name: "Lisbon" },
+      { slug: "paris", name: "Paris" },
+    ]);
+  });
+
+  it("the demo poem is served as verse blocks, line breaks and stanzas intact", async () => {
+    const poem = contentDetailSchema.parse(await (await demoApp().request("/v1/poems/demo-poem")).json());
+    const verse = poem.body?.find((b) => b.type === "verse");
+    expect(verse && verse.type === "verse" ? verse.stanzas.map((s) => s.length) : []).toEqual([4, 3]);
+    expect(poem.places).toEqual([{ slug: "hue", name: "Huế" }]);
+  });
+
+  it("GET /v1/projection carries the complete entries, bodies included", async () => {
+    const body = (await (await demoApp().request("/v1/projection")).json()) as PublishedProjection;
+    expect(body.poems.map((p) => p.slug)).toEqual(["demo-poem"]);
+    for (const key of LISTS) for (const item of body[key]) expect(item.body?.length, `${key}/${item.slug}`).toBeGreaterThan(0);
+  });
+
+  it("resolves a place's related poem", async () => {
+    const hue = placeDetailSchema.parse(await (await demoApp().request("/v1/places/hue")).json());
+    expect(hue.related).toEqual([{ kind: "poem", slug: "demo-poem", title: "Demo poem" }]);
   });
 });
 
@@ -201,15 +276,15 @@ describe("committed (published) content", () => {
 
     const health = await json<HealthResponse>(await app.request("/health"));
     expect(health.content).toBe("published");
-    expect(health.counts).toEqual({ places: 0, groups: 0, routes: 0, projects: 0, articles: 0, artworks: 0 });
+    expect(health.counts).toEqual({ places: 0, groups: 0, routes: 0, projects: 0, articles: 0, artworks: 0, poems: 0 });
 
     expect(await (await app.request("/v1/projection")).json()).toEqual(EMPTY_PROJECTION);
-    for (const path of ["/v1/places", "/v1/groups", "/v1/routes", "/v1/projects", "/v1/articles", "/v1/artworks"]) {
+    for (const path of ["/v1/places", "/v1/groups", "/v1/routes", "/v1/projects", "/v1/articles", "/v1/artworks", "/v1/poems"]) {
       const res = await app.request(path);
       expect(res.status, path).toBe(200);
       expect(await res.json(), path).toEqual([]);
     }
-    expect((await app.request("/v1/places/lisbon")).status).toBe(404);
+    for (const path of ["/v1/places/lisbon", ...DETAILS.slice(1)]) expect((await app.request(path)).status, path).toBe(404);
   });
 
   it("defaults to published when CATALYST_CONTENT is unset or empty", async () => {
@@ -223,7 +298,11 @@ describe("committed (published) content", () => {
 describe("404 and 405", () => {
   it("returns a JSON error envelope for unknown paths and slugs", async () => {
     const app = demoApp();
-    for (const path of ["/", "/nope", "/v1", "/v1/", "/v2/places", "/v1/places/", "/v1/places/atlantis", "/v1/places/Lisbon", "/v1/places/lisbon/", "/v1/places/a/b", "/health/", "/admin", "/v1/import"]) {
+    for (const path of ["/", "/nope", "/v1", "/v1/", "/v2/places", "/v1/places/", "/v1/places/atlantis", "/v1/places/Lisbon", "/v1/places/lisbon/", "/v1/places/a/b", "/health/", "/admin", "/v1/import",
+      "/v1/poems/", "/v1/poems/atlantis", "/v1/poems/Demo-Poem", "/v1/poems/demo-poem/", "/v1/poems/demo-poem/body", "/v1/projects/", "/v1/projects/atlantis",
+      "/v1/articles/atlantis", "/v1/artworks/atlantis", "/v1/poem", "/v1/poem/demo-poem", "/v1/routes/demo-route-vietnam", "/v1/groups/europe", "/v1/projection/x",
+      // A slug of another kind is not found under this kind.
+      "/v1/projects/demo-poem", "/v1/poems/demo-project", "/v1/articles/demo-artwork"]) {
       const res = await app.request(path);
       expect(res.status, path).toBe(404);
       expect(res.headers.get("content-type")).toMatch(/^application\/json/);
@@ -237,7 +316,7 @@ describe("404 and 405", () => {
 
   it("does not choke on malformed percent-encoding or prototype-ish slugs", async () => {
     const app = demoApp();
-    for (const path of ["/v1/places/%E0%A4%A", "/v1/places/__proto__", "/v1/places/constructor", "/v1/places/%2e%2e%2fhealth"]) {
+    for (const path of ["/v1/places/%E0%A4%A", "/v1/places/__proto__", "/v1/places/constructor", "/v1/places/%2e%2e%2fhealth", "/v1/poems/%E0%A4%A", "/v1/poems/__proto__", "/v1/projects/constructor", "/v1/articles/toString", "/v1/artworks/%2e%2e%2fhealth", "/v1/poems/%2e%2e%2fv1%2fplaces"]) {
       expect((await app.request(path)).status, path).toBe(404);
     }
   });
@@ -269,7 +348,7 @@ describe("404 and 405", () => {
 describe("headers", () => {
   it("sets caching, CORS and nosniff on data responses, and no cookies", async () => {
     const app = demoApp();
-    for (const path of STATIC.concat("/v1/places/lisbon")) {
+    for (const path of [...STATIC, ...DETAILS]) {
       const res = await app.request(path);
       expect(res.headers.get("cache-control"), path).toBe(CACHE_CONTROL);
       expect(CACHE_CONTROL).toBe("public, s-maxage=300, stale-while-revalidate=86400");
@@ -389,7 +468,7 @@ describe("startup failure", () => {
     expect(body.ok).toBe(false);
     expect(body.error.code).toBe("content_unavailable");
     expect(JSON.stringify(body)).not.toContain("ghost");
-    for (const path of [...STATIC, "/v1/places/lisbon"]) {
+    for (const path of [...STATIC, ...DETAILS, "/v1/poems/anything"]) {
       const res = await app.request(path);
       expect(res.status, path).toBe(503);
       expect(res.headers.get("cache-control")).toBe("no-store");
@@ -485,5 +564,113 @@ describe("abuse invariants", () => {
     expect(performance.now() - started).toBeLessThan(500);
     expect(miss.status).toBe(200);
     expect(hit.status).toBe(304);
+  });
+});
+
+describe("entry details: conditional requests and ETags", () => {
+  it("answers 304 on a matching If-None-Match, and the ETag changes with the content of that entry only", async () => {
+    const app = demoApp();
+    const first = await app.request("/v1/poems/demo-poem");
+    const etag = first.headers.get("etag")!;
+    expect(etag).toMatch(/^"[0-9a-f]{32}"$/);
+    const hit = await app.request("/v1/poems/demo-poem", { headers: { "If-None-Match": etag } });
+    expect(hit.status).toBe(304);
+    expect(await hit.text()).toBe("");
+    expect(hit.headers.get("etag")).toBe(etag);
+    expect(hit.headers.get("cache-control")).toBe(CACHE_CONTROL);
+    expect((await app.request("/v1/poems/demo-poem", { headers: { "If-None-Match": '"stale"' } })).status).toBe(200);
+    // The detail and the list of the same entry are different resources.
+    expect((await app.request("/v1/poems")).headers.get("etag")).not.toBe(etag);
+
+    const projection = loadDemoProjection();
+    const edited: PublishedProjection = { ...projection, poems: projection.poems.map((p) => ({ ...p, body: [{ type: "divider" as const }] })) };
+    const other = createApp({ status: "ready", mode: "demo", projection: edited });
+    expect((await other.request("/v1/poems/demo-poem")).headers.get("etag")).not.toBe(etag);
+    expect((await other.request("/v1/articles/demo-article")).headers.get("etag")).toBe((await app.request("/v1/articles/demo-article")).headers.get("etag"));
+  });
+
+  it("treats HEAD on a detail like GET without a body", async () => {
+    const app = demoApp();
+    const get = await app.request("/v1/projects/demo-project");
+    const head = await app.request("/v1/projects/demo-project", { method: "HEAD" });
+    expect(head.status).toBe(200);
+    expect(head.headers.get("etag")).toBe(get.headers.get("etag"));
+    expect(await head.text()).toBe("");
+  });
+
+  it("answers OPTIONS preflight on a detail path", async () => {
+    const res = await demoApp().request("/v1/articles/demo-article", { method: "OPTIONS", headers: { Origin: "https://example.org", "Access-Control-Request-Method": "GET" } });
+    expect(res.status).toBe(204);
+    expect(res.headers.get("access-control-allow-methods")).toBe("GET, HEAD, OPTIONS");
+    expect((await demoApp().request("/v1/articles/atlantis", { method: "OPTIONS" })).status).toBe(404);
+  });
+});
+
+describe("snapshot", () => {
+  it("serialises one entry per list and per item, and nothing else beyond places, groups, routes and health", () => {
+    const demo = loadDemoProjection();
+    const { entries, counts } = buildSnapshot(demo);
+    const expected = [
+      "/v1/projection",
+      "/v1/places",
+      "/v1/groups",
+      "/v1/routes",
+      ...LISTS.map((k) => `/v1/${k}`),
+      ...demo.places.map((p) => `/v1/places/${p.slug}`),
+      ...LISTS.flatMap((k) => demo[k].map((i) => `/v1/${k}/${i.slug}`)),
+    ];
+    expect([...entries.keys()].sort()).toEqual([...expected].sort());
+    expect(counts).toEqual({ places: 18, groups: 8, routes: 1, projects: 1, articles: 1, artworks: 1, poems: 1 });
+  });
+
+  it("an entry with no optional field serialises to exactly its required fields (no null, no undefined keys)", () => {
+    const projection = parsePublishedProjection({ ...EMPTY_PROJECTION, poems: [{ slug: "bare", title: "Bare", placeSlugs: [] }] });
+    const { entries } = buildSnapshot(projection);
+    expect(entries.get("/v1/poems")!.body).toBe('[{"slug":"bare","title":"Bare","placeSlugs":[]}]');
+    expect(entries.get("/v1/poems/bare")!.body).toBe('{"kind":"poem","slug":"bare","title":"Bare","placeSlugs":[],"places":[]}');
+  });
+});
+
+// The live Vercel firewall rule `api-allowlist` (docs/api-cost-and-abuse.md) denies every path that does not match this
+// regular expression. The docs and the app must agree: a route the app serves but the rule denies is unreachable in
+// production, and a rule broader than the routes widens the attack surface.
+describe("firewall allowlist (docs/api-cost-and-abuse.md)", () => {
+  const doc = readFileSync(new URL("../../../docs/api-cost-and-abuse.md", import.meta.url), "utf8");
+  const documented = /"type":"path","op":"re","value":"([^"]+)","neg":true/.exec(doc)?.[1];
+
+  it("is documented", () => {
+    expect(documented).toBeDefined();
+  });
+
+  it("matches every path the app can serve, for every demo item, and nothing else", () => {
+    const allow = new RegExp(documented!);
+    const demo = loadDemoProjection();
+    const served = [...buildSnapshot(demo).entries.keys(), "/health"];
+    expect(served.length).toBe(31);
+    for (const path of served) expect(allow.test(path), path).toBe(true);
+    for (const path of [
+      "/",
+      "/v1",
+      "/v1/",
+      "/v1/places/",
+      "/v1/poems/",
+      "/v1/poems/Demo",
+      "/v1/poems/a/b",
+      "/v1/poems/-a",
+      "/v1/poems/a--b",
+      "/v1/poems/a_b",
+      "/v1/poem",
+      "/v1/groups/europe",
+      "/v1/routes/x",
+      "/v1/projection/x",
+      "/v1/places/../health",
+      "/health/",
+      "/v1/poems/demo-poem/",
+      "/v1/poems/demo-poem%0a",
+      "/v1/import",
+      "/v2/poems",
+    ]) {
+      expect(allow.test(path), path).toBe(false);
+    }
   });
 });

@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 600" width="960" height="600" role="img">
+  <title>Abstract horizontal bands (demo article cover)</title>
+  <style>
+    .bg { fill: #ececec; }
+    .l { stroke: #0a0a0a; stroke-width: 1; opacity: 0.18; }
+    .s { stroke: #0a0a0a; stroke-width: 2; opacity: 0.85; fill: none; }
+    .f { fill: #0a0a0a; opacity: 0.85; }
+    .h { fill: #0a0a0a; opacity: 0.12; }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #151515; }
+      .l { stroke: #f5f5f5; opacity: 0.16; }
+      .s { stroke: #f5f5f5; }
+      .f { fill: #f5f5f5; }
+      .h { fill: #f5f5f5; opacity: 0.12; }
+    }
+  </style>
+  <rect class="bg" width="960" height="600"/>
+  <rect class="h" x="0" y="150" width="960" height="60"/>
+  <rect class="h" x="0" y="330" width="960" height="120"/>
+  <g class="s">
+    <path d="M120 180H840M120 270H640M120 390H760M120 480H520"/>
+  </g>
+  <circle class="f" cx="840" cy="180" r="6"/>
+  <circle class="f" cx="640" cy="270" r="6"/>
+</svg>

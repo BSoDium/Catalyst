@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 600" width="960" height="600" role="img">
+  <title>Abstract nested squares (demo project cover)</title>
+  <style>
+    .bg { fill: #ececec; }
+    .l { stroke: #0a0a0a; stroke-width: 1; opacity: 0.18; }
+    .s { stroke: #0a0a0a; stroke-width: 2; opacity: 0.85; fill: none; }
+    .f { fill: #0a0a0a; opacity: 0.85; }
+    .h { fill: #0a0a0a; opacity: 0.12; }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #151515; }
+      .l { stroke: #f5f5f5; opacity: 0.16; }
+      .s { stroke: #f5f5f5; }
+      .f { fill: #f5f5f5; }
+      .h { fill: #f5f5f5; opacity: 0.12; }
+    }
+  </style>
+  <rect class="bg" width="960" height="600"/>
+  <g class="s">
+    <rect x="200" y="100" width="560" height="400"/>
+    <rect x="280" y="160" width="400" height="280"/>
+    <rect x="360" y="220" width="240" height="160"/>
+    <path d="M200 100L360 220M760 100L600 220M200 500L360 380M760 500L600 380"/>
+  </g>
+  <circle class="f" cx="480" cy="300" r="8"/>
+</svg>

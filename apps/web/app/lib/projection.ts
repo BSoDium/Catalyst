@@ -21,15 +21,17 @@ const KIND_PATHS: Record<ContentKind, string> = {
   project: "/projects",
   article: "/articles",
   artwork: "/artworks",
+  poem: "/poems",
 };
 
 export const KIND_LABELS: Record<ContentKind, string> = {
   project: "Project",
   article: "Article",
   artwork: "Artwork",
+  poem: "Poem",
 };
 
-const COLLECTIONS = { project: "projects", article: "articles", artwork: "artworks" } as const;
+const COLLECTIONS = { project: "projects", article: "articles", artwork: "artworks", poem: "poems" } as const;
 
 export const placePath = (slug: string) => `/locations/${slug}`;
 export const relatedHref = (kind: ContentKind, slug: string) => `${KIND_PATHS[kind]}#${slug}`;
