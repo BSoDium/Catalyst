@@ -121,6 +121,16 @@ Net: roughly one day of work, a documented softening of the 404/405/OPTIONS part
 
 **Step 1. Make the deployment work (repo owner; not part of this change).** Either bundle the entry so that workspace packages and the projection are inlined (the repo already has `scripts/build.mjs` producing `dist/index.mjs` with esbuild; wire Vercel to serve that bundle, for example as the function entry), or build the workspace packages to JS. Verify with `curl -i https://v2.api.bsodium.fr/health` showing `200`, then `/v1/places` twice and look for `x-vercel-cache: HIT` and an `age` header on the second call.
 
+**Step 2 status (applied 2026-10-08, with the owner's go-ahead, through the Vercel CLI).** Published to production on project `catalyst-v2-api`, tested right after against `https://v2.api.bsodium.fr`:
+
+| Rule | Result of the test |
+|---|---|
+| `api-allowlist` (deny when the path is outside the allowlist or the method is not GET, HEAD or OPTIONS) | `/health`, `/v1/places`, `/v1/projection`, `/v1/groups`: 200; `/v1/places/<slug>` reaches the app (our JSON 404 for an unknown slug); `OPTIONS` 204; `HEAD` 200; `/`, `/nope`, `/favicon.ico` and `POST /v1/places`: 403 from the firewall (not billed) |
+| `api-rate-limit` (120 requests per 60 s per IP, deny) | 150 requests in a row: 110 passed (about 14 earlier test requests already counted), 40 got 403; back to 200 after the window |
+| `api-no-query` (experiment, deny when the raw path contains `?`) | **Does not work**: `?cb=123` still returned 200, so `raw_path` excludes the query string. The rule was removed again; cache-busting stays covered by the per-IP rate limit only |
+
+Live rules: `vercel firewall rules list` from a directory linked to the project (`vercel link --project catalyst-v2-api`). To undo one: `vercel firewall rules remove <name> --yes` then `vercel firewall publish --yes`. The CLI subcommand is `vercel firewall rules add` (the plain `firewall add` shown in the help text does not exist in CLI 52). The commands below were the plan; rule 1 was created directly in deny mode (the traffic view is unavailable on this plan, so a log-only phase could not be read) and verified by the tests above.
+
 **Step 2. Firewall rules (owner action).** Dashboard: Project `catalyst-v2-api` > **Firewall** > **Configure** > **Add New... > Rule**; **Review Changes** > **Publish**. Or CLI from a directory linked to the project (read the draft with `vercel firewall diff`, apply with `vercel firewall publish --yes`). Create them in **log** mode first, watch the Firewall tab for 10 minutes, then switch to deny. Order matters: put the deny rule first so junk never reaches the rate limiter.
 
 ```bash
