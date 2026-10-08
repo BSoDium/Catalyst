@@ -52,7 +52,7 @@ import { IdleSpin, spinBlock, spinFrameMs, type SpinContext } from "./idle-spin"
 import { newLodCamera, setLodCamera, type LodTree } from "./lod-tree";
 import { NodeScreen } from "./node-screen";
 import { GlobeScene } from "./scene";
-import { INSET_EASE, TUNING } from "./tuning";
+import { INSET_EASE, SKY, TUNING } from "./tuning";
 import { fromViewState } from "./view";
 import { markerShown } from "./visibility";
 import { perfEnd, perfStart } from "./perf";
@@ -180,6 +180,11 @@ export class GlobeRenderer {
   private spin = new IdleSpin(performance.now());
   private spinTimer = 0;
   private pressed = new Set<number>();
+  /**
+   * The earth rotation angle (degrees, engine/sky.ts): where the sky is relative to the earth-fixed frame the view is expressed in. A camera orbit
+   * leaves it alone (the stars turn with the view); the idle rotation adds to it what it takes off the view's longitude (the stars stay put on screen).
+   */
+  private era: number = SKY.eraDeg;
 
   constructor(
     private opts: RendererOptions,
@@ -648,6 +653,18 @@ export class GlobeRenderer {
     this.globe.settleBorders();
   }
 
+  /** The sky (checks): the earth rotation angle, its timed on/off value and whether it is drawn; null when switched off. */
+  skyState() {
+    const s = this.globe.sky?.state();
+    return s ? { era: this.era, ...s } : null;
+  }
+
+  /** Set the earth rotation angle (checks): moves the sky relative to the earth. */
+  setSkyEra(deg: number) {
+    this.era = normalizeLon(deg);
+    this.requestRender();
+  }
+
   /** Rectangles drawn in the last frame: measurement. */
   drawnCounts() {
     return { markers: 0, groups: this.drawnBoxes };
@@ -868,7 +885,12 @@ export class GlobeRenderer {
       this.setHovered(null);
       this.opts.onHover?.(null);
     }
-    if (yaw !== 0) this.view = { ...this.view, lon: normalizeLon(this.view.lon - yaw) };
+    if (yaw !== 0) {
+      // The earth turns under a camera that stays where it is: the view's longitude goes down by what the earth's rotation angle goes up by,
+      // so the camera's longitude in the inertial frame (view + era) and with it every star on the screen does not change.
+      this.view = { ...this.view, lon: normalizeLon(this.view.lon - yaw) };
+      this.era = normalizeLon(this.era + yaw);
+    }
   }
 
   /** Whether the last tick asked for another frame: the next tick is then part of a running animation (see `FRAME_CLOCK`). */
@@ -947,7 +969,9 @@ export class GlobeRenderer {
     else cam.clearViewOffset();
     cam.updateProjectionMatrix();
     cam.updateMatrixWorld();
-    this.globe.syncCamera(b, v.zoom, this.pixel, performance.now(), this.reduced);
+    const now = performance.now();
+    this.globe.syncCamera(b, v.zoom, this.pixel, now, this.reduced);
+    this.globe.syncSky(cam, b, this.era, { w: this.bufW, h: this.bufH, shift: this.shiftBuf }, now, this.reduced);
   }
 
   /* ------------------------------ diagnostics ------------------------------ */

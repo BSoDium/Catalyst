@@ -24,6 +24,8 @@ export async function openApp(browser, contextOptions, { path = "/", colorScheme
     if (o) sessionStorage.setItem("street-opts", JSON.stringify(o));
     else sessionStorage.removeItem("street-opts");
   }, opts ?? null);
+  // Debug pages have the sky OFF by default (engine/sky.ts `applySkyFlags`); SKY=1 runs any handover check with it on.
+  if (process.env.SKY === "1") await page.addInitScript(() => sessionStorage.setItem("sky", "1"));
   await page.goto(new URL(path, APP).toString());
   if (wait) await waitHandover(page);
   return { ctx, page, logs };

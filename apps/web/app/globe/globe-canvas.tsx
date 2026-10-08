@@ -15,6 +15,7 @@ import { HANDOVER } from "./handover/maths";
 import { casesHierarchy, stressHierarchy } from "./engine/lod-stress";
 import { applyDebugLevels } from "./engine/palette";
 import { applySpinFlags } from "./engine/idle-spin";
+import { applySkyFlags } from "./engine/sky";
 import { applyDebugArtPixel } from "./engine/tuning";
 import { enablePerf, perfEnd, perfStart } from "./engine/perf";
 import { startsVeiled, type GlobeProps } from "./types";
@@ -142,6 +143,7 @@ export default function GlobeCanvas({
     let handle: HandoverHandle | null = null;
 
     applySpinFlags(); // `?no-rotate` works on any page, `?spin-idle=MS` in debug mode
+    applySkyFlags(); // `?no-sky` works on any page, `?sky` turns it on in debug mode
     if (debugEnabled()) {
       applyDebugLevels();
       applyDebugArtPixel();

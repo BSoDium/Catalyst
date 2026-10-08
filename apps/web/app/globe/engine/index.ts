@@ -88,6 +88,10 @@ export interface GlobeDebug {
   layers(): { borders: { value: number; on: boolean }; animating: boolean; framePending: boolean };
   /** The idle rotation: turning now, why not (null = allowed), whether its timer is armed, and the configured delay and speed. */
   spin(): ReturnType<GlobeRenderer["spinInfo"]> & { idleMs: number; degPerSec: number; enabled: boolean };
+  /** The sky: the earth rotation angle, its timed value (0..1), whether it is wanted and drawn, the farthest corner in earth radii; null when switched off (debug pages default to off, `?sky`). */
+  sky(): ReturnType<GlobeRenderer["skyState"]>;
+  /** Set the earth rotation angle in degrees (moves the sky against the earth) and draw. */
+  setSkyEra(deg: number): void;
   gpuSync(): void;
   info(): ReturnType<GlobeRenderer["renderInfo"]>;
   loseContext(lose: boolean): void;
@@ -288,10 +292,13 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
         renderer.settleBorders();
         renderer.renderNow();
         lod.settle();
+        renderer.settleBorders(); // a state the first frame just decided (the sky's switch) runs to its end too
         renderer.renderNow();
       },
       layers: () => ({ ...renderer.layerState(), animating: lod.animating || renderer.layerState().animating, framePending: renderer.isAnimating() }),
       spin: () => ({ ...renderer.spinInfo(), idleMs: SPIN.idleMs, degPerSec: SPIN.degPerSec, enabled: SPIN.enabled }),
+      sky: () => renderer.skyState(),
+      setSkyEra: (deg) => renderer.setSkyEra(deg),
       gpuSync: () => renderer.gpuSync(),
       info: () => renderer.renderInfo(),
       loseContext: (lose) => renderer.loseContext(lose),
