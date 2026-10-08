@@ -1,26 +1,39 @@
 // Bakes the pixel font of the map labels into a plain TypeScript table: `pnpm --filter @catalyst/web bake:font`.
 //
-// Source: Tiny5 (OFL 1.1, https://github.com/Gissio/font_tiny5) from the `@fontsource/tiny5` npm package (a dev
-// dependency: nothing of it ships to the browser except the table this script writes). Tiny5 is drawn on a pixel grid
-// (8 px em, 128 font units per pixel, 5 px caps, 4 px x-height, 1 px stems), so every glyph is rasterised here by
-// sampling its outline at the pixel centres: the result is exact, with no anti-aliasing and no dependence on a browser or
-// on font loading. The table is `app/globe/engine/pixel-font/tiny5-data.ts` (licence notice in its header, text in
-// `OFL.txt` next to it).
-//
-// Coverage: latin, latin-ext, greek and cyrillic faces of the package (Vietnamese stacked tone marks, horns and scripts
-// not in the font are handled at runtime, see app/globe/engine/pixel-font/pixel-font.ts).
+// Source: Fusion Pixel 10px Proportional (OFL 1.1, https://github.com/TakWolf/fusion-pixel-font) from the
+// `@fontsource/fusion-pixel-10px-proportional-sc` npm package (a dev dependency pinned in the lockfile: nothing of it ships to
+// the browser except the table this script writes). The font is drawn on a pixel grid (10 px em, 100 font units per pixel,
+// 7 px capitals, 5 px x-height, 1 px stems), so every glyph is rasterised here by sampling its outline at the pixel centres:
+// the result is exact, with no anti-aliasing and no dependence on a browser or on font loading. The table is
+// `app/globe/engine/pixel-font/pixel-font-data.ts` (licence notice in its header, text in `OFL.txt` next to it). The package
+// ships the whole font (a CJK font, 24,000 glyphs) as one file, so only the ranges the map's labels can use are baked:
+// Latin (Basic, Latin-1, Extended-A/B), Greek, Cyrillic, general punctuation and currency signs. What the font does not have
+// (Latin Extended-A letters such as š ł ą ő, Vietnamese stacks, other scripts) is composed or rasterised at runtime, see
+// app/globe/engine/pixel-font/pixel-font.ts.
 import * as fontkit from "fontkit";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const pkg = path.join(here, "../../node_modules/@fontsource/tiny5");
+const pkg = path.join(here, "../../node_modules/@fontsource/fusion-pixel-10px-proportional-sc");
 const outDir = path.join(here, "../../app/globe/engine/pixel-font");
-const SUBSETS = ["latin", "latin-ext", "greek", "cyrillic"];
-const PX = 128; // font units per pixel
-const ROWS_ABOVE = 11; // rows scanned above the baseline
-const ROWS_BELOW = 4;
+const FILE = path.join(pkg, "files", "fusion-pixel-10px-proportional-sc-latin-400-normal.woff");
+const EM = 10; // pixels per em
+const PX = 100; // font units per pixel
+const ROWS_ABOVE = 14; // rows scanned above the baseline
+const ROWS_BELOW = 5;
+/** The code point ranges baked (inclusive). */
+const RANGES = [
+  [0x20, 0x7e],
+  [0xa0, 0x24f],
+  [0x370, 0x3ff],
+  [0x400, 0x4ff],
+  [0x2010, 0x2027],
+  [0x2030, 0x203a],
+  [0x20a0, 0x20bf],
+  [0x2122, 0x2122],
+];
 
 /** Winding number of the closed polygons of a glyph around (x, y) (non-zero rule). */
 function inside(polys, x, y) {
@@ -75,15 +88,13 @@ function polygons(glyph) {
   return polys;
 }
 
+const font = fontkit.openSync(FILE);
+if (font.unitsPerEm !== EM * PX) throw new Error(`unexpected units per em ${font.unitsPerEm}`);
 const entries = new Map();
-let advanceCheck = 0;
-for (const subset of SUBSETS) {
-  const file = path.join(pkg, "files", `tiny5-${subset}-400-normal.woff`);
-  const font = fontkit.openSync(file);
-  const upm = font.unitsPerEm;
-  if (upm !== 8 * PX) throw new Error(`unexpected units per em ${upm}`);
-  for (const cp of font.characterSet) {
-    if (entries.has(cp) || cp < 0x20 || (cp >= 0x7f && cp < 0xa0)) continue;
+let widest = 0;
+for (const [from, to] of RANGES) {
+  for (let cp = from; cp <= to; cp++) {
+    if (!font.hasGlyphForCodePoint(cp)) continue;
     const g = font.glyphForCodePoint(cp);
     const polys = polygons(g);
     const adv = Math.round(g.advanceWidth / PX);
@@ -107,16 +118,16 @@ for (const subset of SUBSETS) {
       continue;
     }
     // trim empty rows at the top and bottom
-    let first = rows.findIndex((b) => b.some(Boolean));
-    let lastRow = rows.length - 1 - [...rows].reverse().findIndex((b) => b.some(Boolean));
+    const first = rows.findIndex((b) => b.some(Boolean));
+    const lastRow = rows.length - 1 - [...rows].reverse().findIndex((b) => b.some(Boolean));
     const top = ROWS_ABOVE - first; // rows above the baseline of the first kept row
     const kept = rows.slice(first, lastRow + 1).map((bits) => bits.slice(minX + 2, maxX + 3));
     entries.set(cp, { adv, left: minX, top, rows: kept });
-    advanceCheck = Math.max(advanceCheck, maxX - minX + 1);
+    widest = Math.max(widest, maxX - minX + 1);
   }
 }
 
-// One line per glyph: `cp:advance:left:top:row,row,...` with each row a hex number (bit 0 = rightmost pixel) and the width implied.
+// One entry per glyph: `cp:advance:left:top:width:row,row,...` with each row a hex number (bit width - 1 - x is column x).
 const lines = [];
 for (const cp of [...entries.keys()].sort((a, b) => a - b)) {
   const e = entries.get(cp);
@@ -125,21 +136,21 @@ for (const cp of [...entries.keys()].sort((a, b) => a - b)) {
   lines.push(`${cp.toString(16)}:${e.adv}:${e.left}:${e.top}:${w}:${hex.join(",")}`);
 }
 const header = `/**
- * GENERATED by scripts/font/bake-pixel-font.mjs from the Tiny5 font; do not edit.
+ * GENERATED by scripts/font/bake-pixel-font.mjs from the Fusion Pixel 10px Proportional font; do not edit.
  *
- * Tiny5, Copyright 2022-2024 The Tiny5 Project Authors (https://github.com/Gissio/font_tiny5).
+ * Fusion Pixel Font, Copyright (c) 2022, TakWolf (https://takwolf.com), with Reserved Font Name 'Fusion Pixel'.
  * Licensed under the SIL Open Font License, Version 1.1 (the text is in OFL.txt, next to this file; also
- * https://openfontlicense.org). This table is a bitmap rendering of the font's glyphs; it is distributed under the same
- * licence and is not sold by itself. The font has no Reserved Font Name.
+ * https://openfontlicense.org). This table is a bitmap rendering of a subset of the font's glyphs; it is distributed under the
+ * same licence, is not sold by itself and does not use the Reserved Font Name.
  *
  * Format: one glyph per ';'-separated entry, \`codepoint(hex):advance:left:top:width:rows\`. \`advance\` is the pen advance in
  * pixels, \`left\` the offset of the first column from the pen, \`top\` the number of rows the first row is above the baseline,
  * \`rows\` the bitmap rows from the top as hex numbers whose bit (width - 1 - x) is the pixel at column x.
  */
-export const TINY5_EM = 8;
-export const TINY5_DATA = "${lines.join(";")}";
+export const PIXEL_FONT_EM = ${EM};
+export const PIXEL_FONT_DATA = "${lines.join(";")}";
 `;
 fs.mkdirSync(outDir, { recursive: true });
-fs.writeFileSync(path.join(outDir, "tiny5-data.ts"), header);
+fs.writeFileSync(path.join(outDir, "pixel-font-data.ts"), header);
 fs.copyFileSync(path.join(pkg, "LICENSE"), path.join(outDir, "OFL.txt"));
-console.log(`${entries.size} glyphs, ${(header.length / 1024).toFixed(1)} KB, widest glyph ${advanceCheck} px -> ${outDir}`);
+console.log(`${entries.size} glyphs, ${(header.length / 1024).toFixed(1)} KB, widest glyph ${widest} px -> ${outDir}`);

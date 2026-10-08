@@ -1,30 +1,26 @@
 /**
  * The pixel font of the map labels (pure, unit tested; the DOM is touched only by the optional system-font fallback).
  *
- * Tiny5 (SIL OFL 1.1, `tiny5-data.ts`): 8 px em, 5 px caps, 4 px x-height, 1 px stems, drawn on a pixel grid, baked to bit
- * rows by `scripts/font/bake-pixel-font.mjs`. Text is drawn on the ART-PIXEL grid of the map (one glyph pixel = one art
- * pixel, 3 CSS px on a desktop, 2 on a phone), at whole-cell positions, in palette levels: no anti-aliasing, no stem thinner
- * than one map pixel.
- *
- * Weights: Tiny5 has a single face, so BOLD is derived on the pixel grid by a 1-cell horizontal double strike (`emboldened`):
- * every ink pixel also lights the cell to its right (unless that would close a one-pixel counter), so 1 px stems become 2 px,
- * the glyph is one column wider and the pen advance one larger (the gap between letters is kept). Pure bit arithmetic on the
- * baked rows, so it works for every glyph the module can produce (own, composed, fallback) and stays on whole cells. `measureText` and
- * `forEachInk` take the same `bold` flag, so layout and drawing cannot disagree. A cell is emitted once, whatever the weight.
+ * Fusion Pixel 10px Proportional (SIL OFL 1.1, `pixel-font-data.ts`): a 10 px em, 7 px capitals, 5 px x-height, 1 px stems, drawn on
+ * a pixel grid and proportional (a letter's advance is its width plus one pixel), baked to bit rows by `scripts/font/bake-pixel-font.mjs`.
+ * Text is drawn on the ART-PIXEL grid of the map (one glyph pixel = one art pixel, 2.5 CSS px on a desktop, 2 on a phone), at
+ * whole-cell positions, in palette levels: no anti-aliasing, no stem thinner than one map pixel. One weight: there is no bold.
  *
  * Coverage and the rules for what the font does not have (see docs/web-architecture.md, "Pixel text"):
- *  1. The font's own glyphs: Latin, Latin Extended-A/B (Nikšić, Chișinău, Łódź, Ñ, Ø, ...), Greek, Cyrillic, punctuation.
- *  2. Composed glyphs, drawn by this module in the font's style: Vietnamese letters (ế, ộ, ơ, ư, ạ, ẵ, ...): a letter that
- *     the font has (a, â, ă, e, ê, o, ô, u, ...), a horn (one extra pixel at the top right of the letter), a tone mark
- *     (acute, grave and tilde are cut out of á, à, ã of the same case; the hook above and the dot below are drawn here),
- *     stacked above the letter or above its circumflex/breve. Any other precomposed letter whose base and marks the font
- *     has is composed the same way.
+ *  1. The font's own glyphs: Latin (Basic, Latin-1 and about half of Extended-A: Ă ć č ě ğ ń ž ...), Greek and Cyrillic letters,
+ *     general punctuation including the ellipsis.
+ *  2. Composed glyphs, drawn by this module in the font's style from a letter the font has and a mark: the Latin Extended-A letters
+ *     the font lacks (the caron of š and ř, the cedilla and comma below of ş ș ţ ț, the ogonek of ą ę, the ring of ů, the double acute of
+ *     ő ű, the dotless ı and the dotted İ, the stroke of ł Ł, the apostrophe-like caron of ď ť ľ, the ligatures œ Œ) and Vietnamese
+ *     (ế, ộ, ơ, ư, ạ, ẵ, ...): a letter that the font has (a, â, ă, e, ê, o, ô, u, ...), a horn (one extra pixel at the top right of the
+ *     letter), a tone mark (acute, grave and tilde are cut out of á, à, ã of the same case; the hook above and the dot below are drawn
+ *     here), stacked above the letter or above its circumflex/breve. Any other precomposed letter whose base and marks the font has is
+ *     composed the same way.
  *  3. Everything else (Arabic, CJK, symbols): the system font rasterised at `FALLBACK_PX` and thresholded at 50 % coverage,
  *     the same art resolution, no grey. It is not designed on the grid, so its quality is lower (strokes can be uneven);
  *     without a DOM (tests, server) a box is drawn instead.
  */
-import { stretched } from "./stretch";
-import { TINY5_DATA } from "./tiny5-data";
+import { PIXEL_FONT_DATA } from "./pixel-font-data";
 
 /** One glyph: `rows` are the bitmap rows from the top, bit `w - 1 - x` of a row is the pixel at column `x`. */
 export interface Glyph {
@@ -32,15 +28,17 @@ export interface Glyph {
   adv: number;
   /** Offset of the first column from the pen (can be negative: a combining mark). */
   left: number;
-  /** Rows above the baseline of the first row (a lowercase letter on the baseline: 4; capitals: 5). */
+  /** Rows above the baseline of the first row (a lowercase letter on the baseline: 5; capitals: 7). */
   top: number;
   w: number;
   rows: readonly number[];
 }
 
-/** Rows of a capital and of a lowercase letter, AFTER the stretch (`stretch.ts`: Tiny5's own 5 and 4 rows made taller). */
+/** Rows of a capital and of a lowercase letter. */
 export const FONT_CAP = 7;
 export const FONT_X_HEIGHT = 5;
+/** Rows below the baseline of a descender (g, j, p, q, y, the comma, the cedilla). */
+export const FONT_DESCENT = 2;
 /** Rows above the baseline that every line has at least (a capital); below it: no minimum. */
 export const LINE_MIN_TOP = FONT_CAP;
 /** Size in px (= pixels) at which the system font is rasterised for glyphs the pixel font cannot give. */
@@ -50,18 +48,15 @@ let table: Map<number, Glyph> | null = null;
 
 function parse(): Map<number, Glyph> {
   const m = new Map<number, Glyph>();
-  for (const entry of TINY5_DATA.split(";")) {
+  for (const entry of PIXEL_FONT_DATA.split(";")) {
     const [cp, adv, left, top, w, rows] = entry.split(":");
-    m.set(
-      parseInt(cp!, 16),
-      stretched({
-        adv: +adv!,
-        left: +left!,
-        top: +top!,
-        w: +w!,
-        rows: rows ? rows.split(",").map((h) => parseInt(h, 16)) : [],
-      }),
-    );
+    m.set(parseInt(cp!, 16), {
+      adv: +adv!,
+      left: +left!,
+      top: +top!,
+      w: +w!,
+      rows: rows ? rows.split(",").map((h) => parseInt(h, 16)) : [],
+    });
   }
   return m;
 }
@@ -143,11 +138,30 @@ function markAbove(withMark: string, plain: string): { x: number; row: number }[
   return points(a).filter((p) => p.row > b.top);
 }
 
-const TONES: Record<string, { lower: [string, string]; upper: [string, string] }> = {
-  "́": { lower: ["á", "a"], upper: ["Á", "A"] },
-  "̀": { lower: ["à", "a"], upper: ["À", "A"] },
-  "̃": { lower: ["ã", "a"], upper: ["Ã", "A"] },
+/**
+ * The marks that are cut out of a precomposed donor letter of the font (the donor with the mark, and the plain letter it is built on),
+ * per case: what is above the plain letter's top is the mark, with the gap it has to the letter. The marks sit above the highest ink
+ * of the letter they are put on.
+ */
+const ABOVE: Record<string, { lower: [string, string]; upper: [string, string] }> = {
+  "\u0301": { lower: ["á", "a"], upper: ["Á", "A"] }, // acute
+  "\u0300": { lower: ["à", "a"], upper: ["À", "A"] }, // grave
+  "\u0303": { lower: ["ã", "a"], upper: ["Ã", "A"] }, // tilde
+  "\u0302": { lower: ["â", "a"], upper: ["Â", "A"] }, // circumflex
+  "\u0306": { lower: ["ă", "a"], upper: ["Ă", "A"] }, // breve
+  "\u030c": { lower: ["č", "c"], upper: ["Č", "C"] }, // caron
+  "\u030a": { lower: ["å", "a"], upper: ["Å", "A"] }, // ring
+  "\u0307": { lower: ["ċ", "c"], upper: ["Ċ", "C"] }, // dot above
 };
+
+/** The marks below the letter, cut out of a donor in the same way (what is under the donor's baseline): the cedilla, and the comma below that looks like it at this size. */
+const BELOW: Record<string, [string, string]> = {
+  "\u0327": ["ç", "c"],
+  "\u0326": ["ç", "c"],
+};
+
+/** The caron on d, t and l is drawn as a small stroke to the right of the letter, like an apostrophe (ď ť ľ). */
+const CARON_STROKE = new Set(["d", "t", "l", "D", "T", "L"]);
 
 /**
  * The hook above (ả), hand drawn in the font's style: two pixels on the upper row and one under the right one, `rel` rows
@@ -159,19 +173,100 @@ const HOOK: readonly { x: number; rel: number }[] = [
   { x: 0, rel: 2 },
 ];
 
-/** Compose a glyph for a character with a Vietnamese-style stack of marks, or null when a part is missing. */
+/** The part of a precomposed glyph that is below its baseline (a cedilla), pen-relative. */
+function markBelow(withMark: string): { x: number; row: number }[] | null {
+  const a = base().get(withMark.codePointAt(0)!);
+  return a ? points(a).filter((p) => p.row <= 0) : null;
+}
+
+/** Cyrillic letters the font lacks that are the same shape as a Latin letter of it (Ukrainian і ї, Serbian ј ѕ). */
+const LOOKALIKE: Record<string, string> = { І: "I", і: "i", Ї: "Ï", ї: "ï", Ј: "J", ј: "j", Ѕ: "S", ѕ: "s" };
+/** ... and the ones that are a Latin letter turned round (Ukrainian є Є). */
+const MIRRORED: Record<string, string> = { Є: "C", є: "c" };
+
+/** Glyphs that are not a letter plus a mark: drawn from other glyphs of the font. Null when a part is missing. */
+function special(ch: string): Glyph | null {
+  const get = (c: string) => base().get(c.codePointAt(0)!);
+  if (LOOKALIKE[ch]) return get(LOOKALIKE[ch]!) ?? null;
+  if (MIRRORED[ch]) {
+    const g = get(MIRRORED[ch]!);
+    if (!g) return null;
+    // flipped left to right inside its own width (the pen position of the ink mirrors with it: the letters here have a 1-pixel margin on the right)
+    const rows = g.rows.map((r) => {
+      let out = 0;
+      for (let x = 0; x < g.w; x++) if ((r >> x) & 1) out |= 1 << (g.w - 1 - x);
+      return out;
+    });
+    return { ...g, rows };
+  }
+  switch (ch) {
+    case "Ґ":
+    case "ґ": {
+      // Г and г with the upturn: one pixel above the right end of the bar
+      const g = get(ch === "Ґ" ? "Г" : "г");
+      if (!g) return null;
+      const grid = toGrid(g);
+      put(grid, g.left + g.w - 1, g.top + 1);
+      return fromGrid(grid);
+    }
+    case "ı": {
+      // dotless i: the body of the i, without its dot
+      const i = get("i");
+      if (!i) return null;
+      const grid = toGrid(i);
+      return fromGrid({ ...grid, top: FONT_X_HEIGHT, cells: grid.cells.slice(i.top - FONT_X_HEIGHT) });
+    }
+    case "ł":
+    case "Ł": {
+      // the stroke of the Polish l: the letter with a short diagonal through its stem (two pixels either side of it)
+      const l = get(ch === "ł" ? "l" : "L");
+      if (!l) return null;
+      const grid = toGrid(l);
+      const row = Math.round(l.top / 2);
+      if (ch === "ł") {
+        put(grid, l.left, row); // the stem of the l is its second column
+        put(grid, l.left + 2, row + 1);
+      } else {
+        put(grid, l.left + 1, row); // the stem of the L is its first column: the stroke goes to its right
+        put(grid, l.left + 2, row + 1);
+      }
+      return fromGrid(grid);
+    }
+    case "œ":
+    case "Œ":
+    case "ĳ":
+    case "Ĳ": {
+      // ligatures: the two letters, the second starting on the first's last column
+      const [first, second] = ch === "œ" ? ["o", "e"] : ch === "Œ" ? ["O", "E"] : ch === "ĳ" ? ["i", "j"] : ["I", "J"];
+      const a = get(first!);
+      const b = get(second!);
+      if (!a || !b) return null;
+      const join = ch === "œ" || ch === "Œ" ? a.adv - 1 : a.adv;
+      const grid = toGrid(a);
+      for (const p of points(b)) put(grid, p.x + join, p.row);
+      grid.adv = join + b.adv;
+      return fromGrid(grid);
+    }
+    default:
+      return null;
+  }
+}
+
+/** Compose a glyph for a character from a letter and its marks (Latin diacritics, Vietnamese stacks), or null when a part is missing. */
 function compose(ch: string): Glyph | null {
+  const sp = special(ch);
+  if (sp) return sp;
   const nfd = ch.normalize("NFD");
   if (nfd.length < 2 || nfd === ch) return null;
   const chars = [...nfd];
   const upper = chars[0]! !== chars[0]!.toLowerCase();
   let marks = chars.slice(1);
-  // 1. the letter with its shape mark (circumflex, breve) when the font has the combination
+  // 1. the letter with its shape mark (circumflex, breve) when the font has the combination: the tone marks of Vietnamese stack above it
   let letter = chars[0]!;
   for (const m of [...marks]) {
     if (m === "\u0302" || m === "\u0306") {
       const pre = (letter + m).normalize("NFC");
-      if ([...pre].length !== 1 || !hasOwnGlyph(pre)) return null;
+      if ([...pre].length !== 1 || !hasOwnGlyph(pre)) continue; // else it is a plain mark, below
       letter = pre;
       marks = marks.filter((x) => x !== m);
     }
@@ -180,7 +275,8 @@ function compose(ch: string): Glyph | null {
   const plainLetter = base().get(chars[0]!.codePointAt(0)!);
   if (!g0 || !plainLetter) return null;
   const grid = toGrid(g0);
-  const cx = Math.round(centreX(plainLetter));
+  const cxExact = centreX(plainLetter);
+  const cx = Math.round(cxExact);
   // 2. the horn: one pixel to the right of the letter, on its highest row that reaches the last column
   if (marks.includes("\u031b")) {
     const pts = points(g0);
@@ -189,27 +285,53 @@ function compose(ch: string): Glyph | null {
     grid.adv = g0.adv + 1;
     marks = marks.filter((m) => m !== "\u031b");
   }
-  // 3. dot below and tone marks: above the highest ink (letter, circumflex or horn), centred on the letter's body
+  // 3. below: the dot (Vietnamese), the cedilla and comma (a donor's), the ogonek (drawn here)
+  const right = Math.max(...points(g0).map((p) => p.x));
+  for (const m of [...marks]) {
+    if (m === "\u0323") put(grid, cx, -1); // one blank row between the baseline and the dot
+    else if (m === "\u0328") {
+      put(grid, right, 0);
+      put(grid, right - 1, -1);
+    } else if (BELOW[m]) {
+      const src = markBelow(BELOW[m]![0]);
+      const donor = base().get(BELOW[m]![1].codePointAt(0)!);
+      if (!src || !donor || !src.length) return null;
+      const c0 = centreX(donor);
+      for (const p of src) put(grid, Math.round(cxExact + p.x - c0), p.row);
+    } else continue;
+    marks = marks.filter((x) => x !== m);
+  }
+  // 4. above: the caron of d, t, l as a stroke, the others cut out of a donor, the hook drawn here; each above the highest ink
   for (const m of marks) {
-    if (m === "\u0323") {
-      put(grid, cx, -1); // one blank row between the baseline and the dot
-      continue;
-    }
     const topNow = fromGrid(grid).top;
     let pts: { x: number; rel: number }[];
-    if (m === "\u0309") pts = HOOK.map((h) => ({ ...h }));
-    else if (TONES[m]) {
-      const [withMark, plain] = TONES[m]![upper ? "upper" : "lower"];
+    if (m === "\u030c" && CARON_STROKE.has(chars[0]!)) {
+      // two pixels at the top of the letter, a blank column right of its ink (like the apostrophe of the font)
+      put(grid, right + 2, topNow);
+      put(grid, right + 2, topNow - 1);
+      grid.adv = Math.max(grid.adv, right + 4);
+      continue;
+    }
+    if (m === "\u0309") pts = HOOK.map((h) => ({ x: cx + h.x, rel: h.rel }));
+    else if (m === "\u030b") {
+      // double acute: two acutes side by side
+      const [withMark, plain] = ABOVE["\u0301"]![upper ? "upper" : "lower"];
       const src = markAbove(withMark, plain);
-      const pg = base().get(withMark.codePointAt(0)!);
       const pl = base().get(plain.codePointAt(0)!);
-      if (!src || !pg || !pl) return null;
+      if (!src || !pl) return null;
       const c0 = centreX(pl);
-      pts = src.map((p) => ({ x: Math.round(p.x - c0), rel: p.row - pl.top }));
+      pts = src.flatMap((p) => [-1, 1].map((d) => ({ x: Math.round(cxExact + p.x - c0) + d, rel: p.row - pl.top })));
+    } else if (ABOVE[m]) {
+      const [withMark, plain] = ABOVE[m]![upper ? "upper" : "lower"];
+      const src = markAbove(withMark, plain);
+      const pl = base().get(plain.codePointAt(0)!);
+      if (!src || !pl) return null;
+      const c0 = centreX(pl);
+      pts = src.map((p) => ({ x: Math.round(cxExact + p.x - c0), rel: p.row - pl.top }));
     } else return null;
     // Stacked above a circumflex or breve the mark drops its own gap row (the shape mark already has one under it).
     const drop = g0.top > plainLetter.top ? Math.min(...pts.map((p) => p.rel)) - 1 : 0;
-    for (const p of pts) put(grid, cx + p.x, topNow + p.rel - drop);
+    for (const p of pts) put(grid, p.x, topNow + p.rel - drop);
   }
   return fromGrid(grid);
 }
@@ -270,39 +392,6 @@ export function glyphFor(ch: string): Glyph {
 /** True when `ch` is drawn with the thresholded system font (the lower-quality rule 3). */
 export const usesFallback = (ch: string): boolean => !hasOwnGlyph(ch) && compose(ch) === null;
 
-/**
- * The bold face of a glyph: a 1-cell horizontal double strike that keeps one-pixel gaps open. Every ink pixel also lights the
- * cell to its right, EXCEPT when that cell is a one-pixel gap between two inks (`#.#` stays `#.##`, not `####`): a plain
- * smear fills the counters of o, e, a, u at this size and the bold name turns into blobs. One column wider, advance + 1.
- */
-export function emboldened(g: Glyph): Glyph {
-  if (!g.rows.length) return { ...g, adv: g.adv + 1 };
-  const w = g.w;
-  const rows = g.rows.map((r) => {
-    let out = 0;
-    const ink = (x: number) => x >= 0 && x < w && ((r >> (w - 1 - x)) & 1) === 1;
-    for (let x = 0; x <= w; x++) {
-      const lit = ink(x) || (ink(x - 1) && !(!ink(x) && ink(x + 1)));
-      if (lit) out |= 1 << (w - x); // column x of the (w + 1)-wide glyph
-    }
-    return out;
-  });
-  return { adv: g.adv + 1, left: g.left, top: g.top, w: w + 1, rows };
-}
-
-const boldCache = new Map<string, Glyph>();
-
-/** `glyphFor` in the requested weight. */
-export function glyphWeight(ch: string, bold: boolean): Glyph {
-  if (!bold) return glyphFor(ch);
-  let g = boldCache.get(ch);
-  if (!g) {
-    g = emboldened(glyphFor(ch));
-    boldCache.set(ch, g);
-  }
-  return g;
-}
-
 /* -------------------------------------------------------------- layout ------------------------------------------------------ */
 
 export interface TextMetrics {
@@ -316,17 +405,16 @@ export interface TextMetrics {
 
 const metricsCache = new Map<string, TextMetrics>();
 
-/** Size of a line of text in pixels (`bold`: the double-struck weight, one column wider per letter). */
-export function measureText(text: string, bold = false): TextMetrics {
-  const key = bold ? `b|${text}` : text;
-  const hit = metricsCache.get(key);
+/** Size of a line of text in pixels. */
+export function measureText(text: string): TextMetrics {
+  const hit = metricsCache.get(text);
   if (hit) return hit;
   let pen = 0;
   let right = 0;
   let top = LINE_MIN_TOP;
   let bottom = 0;
   for (const ch of text) {
-    const g = glyphWeight(ch, bold);
+    const g = glyphFor(ch);
     if (g.rows.length) {
       right = Math.max(right, pen + g.left + g.w);
       top = Math.max(top, g.top);
@@ -336,15 +424,15 @@ export function measureText(text: string, bold = false): TextMetrics {
   }
   const m = { w: Math.max(right, 0), top, bottom };
   if (metricsCache.size > 2000) metricsCache.clear();
-  metricsCache.set(key, m);
+  metricsCache.set(text, m);
   return m;
 }
 
 /** Call `put(x, y)` for every ink pixel of `text`, with the pen at column `x0` and the baseline at row `baseline`. */
-export function forEachInk(text: string, x0: number, baseline: number, put: (x: number, y: number) => void, bold = false): void {
+export function forEachInk(text: string, x0: number, baseline: number, put: (x: number, y: number) => void): void {
   let pen = x0;
   for (const ch of text) {
-    const g = glyphWeight(ch, bold);
+    const g = glyphFor(ch);
     for (let y = 0; y < g.rows.length; y++) {
       const row = g.rows[y]!;
       if (row === 0) continue;

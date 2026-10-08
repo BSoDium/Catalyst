@@ -187,9 +187,9 @@ export class PixelBuffer {
     }
   }
 
-  /** Text in the pixel font: pen at column `x`, baseline at row `baseline`, in palette `level` at opacity `alpha`; `bold` is the double-struck weight (pixel-font.ts). */
-  text(text: string, x: number, baseline: number, level: number, alpha = 1, bold = false) {
-    forEachInk(text, x, baseline, (px, py) => this.set(px, py, level, alpha), bold);
+  /** Text in the pixel font: pen at column `x`, baseline at row `baseline`, in palette `level` at opacity `alpha`. */
+  text(text: string, x: number, baseline: number, level: number, alpha = 1) {
+    forEachInk(text, x, baseline, (px, py) => this.set(px, py, level, alpha));
   }
 
   /** Number of cells that are not transparent (tests). */
