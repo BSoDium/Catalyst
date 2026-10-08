@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { bboxExtentsKm, bboxFitRadiusKm, radiusFitZoom } from "./framing";
 import { LOD, LodTree, buildLodNodes, newLodCamera, placeHalfPx, setLodCamera, type GroupKind, type LodCamera, type LodNodeInput } from "./lod-tree";
 import { projectLonLat, viewBasis } from "./geo";
-import { chipText, labelLayout } from "./pixel-labels";
+import { chipText, labelText } from "./label-text";
 
 const W = 1440;
 const H = 900;
@@ -89,15 +89,15 @@ describe("box geometry (pure)", () => {
       expect(t.side[i]).toBeCloseTo(Math.max(x1 - x0, y1 - y0), 6);
     }
   });
-  it("a group's label carries the chip \"<N> entries\", a place's does not, in whole cells", () => {
+  it("a group's label carries the chip \"<N> entries\", a place's does not, measured in CSS px", () => {
     const t = new LodTree(germany());
     const de = t.indexOf("de");
     expect(t.total[de]).toBe(10);
     expect(t.chip[de]).toBe("10 entries");
-    expect(t.labelW[de]).toBe(labelLayout("de", chipText(10)).w);
+    expect(t.labelW[de]).toBeCloseTo(labelText("de", chipText(10)).w, 4);
     expect(t.chip[t.indexOf("de-3")]).toBeNull();
-    expect(t.labelW[t.indexOf("de-3")]).toBe(labelLayout("de-3", null).w);
-    expect(labelLayout("Kraków", null).w).toBeGreaterThan(labelLayout("Kra", null).w);
+    expect(t.labelW[t.indexOf("de-3")]).toBeCloseTo(labelText("de-3", null).w, 4);
+    expect(labelText("Kraków", null).w).toBeGreaterThan(labelText("Kra", null).w);
   });
 });
 
@@ -203,7 +203,7 @@ describe("places that are not crowded are never merged", () => {
     const a = evaluate(t, camAt(0.45, 0, 6));
     const gap = t.boxX0[t.indexOf("b")]! - t.boxX1[t.indexOf("a")]!;
     expect(gap).toBeGreaterThan(LOD.sepPx);
-    expect(labelLayout(long, null).w * CELL).toBeGreaterThan(t.boxX1[t.indexOf("a")]! - t.boxX0[t.indexOf("a")]! + gap - LOD.sepClosedPx);
+    expect(labelText(long, null).w).toBeGreaterThan(t.boxX1[t.indexOf("a")]! - t.boxX0[t.indexOf("a")]! + gap - LOD.sepClosedPx);
     expect(a.has("c")).toBe(true);
     expect(a.has("a")).toBe(false);
   });
@@ -864,21 +864,21 @@ describe("bounding box rectangles (place bbox) and the radius fallback", () => {
   });
 });
 
-describe("label text: the country is appended to the only place of its country", () => {
+describe("label text: the name alone; the country is kept for the hovered or selected label", () => {
   const withCountry = (slug: string, name: string, cc: string | undefined, lat: number, lon: number): LodNodeInput => ({ ...p(slug, undefined, lat, lon), name, countryCode: cc });
-  it("a single place in its country says the country; one of several does not", () => {
+  it("every place says its name alone, whether or not it is the only one of its country, and knows its country", () => {
     const t = new LodTree([
       withCountry("bog", "Bogotá", "CO", 4.7, -74.1),
       withCountry("par", "Paris", "FR", 48.8, 2.3),
       withCountry("lyo", "Lyon", "FR", 45.7, 4.8),
       withCountry("ksv", "Pristina", "XK", 42.7, 21.2),
     ]);
-    expect(t.text[t.indexOf("bog")]).toBe("Bogotá, Colombia");
-    expect(t.text[t.indexOf("par")]).toBe("Paris");
-    expect(t.text[t.indexOf("lyo")]).toBe("Lyon");
-    expect(t.text[t.indexOf("ksv")]).toBe("Pristina, Kosovo");
+    for (const [s, n, c] of [["bog", "Bogotá", "Colombia"], ["par", "Paris", "France"], ["lyo", "Lyon", "France"], ["ksv", "Pristina", "Kosovo"]] as const) {
+      expect(t.text[t.indexOf(s)], s).toBe(n);
+      expect(t.country[t.indexOf(s)], s).toBe(c);
+    }
   });
-  it("hidden silently when the code is missing or unknown; groups never get it", () => {
+  it("no country silently when the code is missing or unknown; groups never get one", () => {
     const t = new LodTree([
       withCountry("a", "Nowhere", undefined, 0, 0),
       withCountry("b", "Elsewhere", "ZZ", 10, 10),
@@ -886,13 +886,13 @@ describe("label text: the country is appended to the only place of its country",
       { ...g("grp", "country", undefined, 4.7, -74, 100), name: "Colombia", countryCode: "CO" },
       withCountry("d", "Cali", "CO", 3.4, -76.5),
     ]);
-    for (const [s, n] of [["a", "Nowhere"], ["b", "Elsewhere"], ["c", "Malformed"], ["grp", "Colombia"]] as const) expect(t.text[t.indexOf(s)]).toBe(n);
-    expect(t.text[t.indexOf("d")]).toBe("Cali, Colombia");
+    for (const [s, n] of [["a", "Nowhere"], ["b", "Elsewhere"], ["c", "Malformed"], ["grp", "Colombia"], ["d", "Cali"]] as const) expect(t.text[t.indexOf(s)]).toBe(n);
+    for (const s of ["a", "b", "c", "grp"]) expect(t.country[t.indexOf(s)], s).toBeNull();
+    expect(t.country[t.indexOf("d")]).toBe("Colombia");
   });
-  it("the plate is wider by the appended text", () => {
+  it("the resting plate is the name's: the country does not widen it (it is only added while hovered)", () => {
     const t = new LodTree([withCountry("bog", "Bogotá", "CO", 4.7, -74.1)]);
-    expect(t.labelW[0]).toBe(labelLayout("Bogotá, Colombia", null).w);
-    expect(t.labelW[0]).toBeGreaterThan(labelLayout("Bogotá", null).w);
+    expect(t.labelW[0]).toBeCloseTo(labelText("Bogotá", null).w, 4);
   });
   it("buildLodNodes passes the country code of a place", () => {
     const nodes = buildLodNodes([{ slug: "x", name: "X", lat: 1, lon: 2, labelPriority: 5, countryCode: "CO" }], []);

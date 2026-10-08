@@ -8,7 +8,7 @@ const GRID = { cols: 600, rows: 400 };
 /** A box of `w x h` cells at (x, y) with a label. */
 const item = (key: string, x: number, y: number, extra: Partial<PlanItem> & { name?: string; chip?: string | null; w?: number; h?: number } = {}): PlanItem => {
   const { name = "Name", chip = null, w = 40, h = 30, ...rest } = extra;
-  return { forced: false, score: 80, area: w * h, key, rect: { c0: x, r0: y, c1: x + w, r1: y + h }, variants: labelVariants(name, chip), prev: null, ...rest };
+  return { score: 80, area: w * h, key, rect: { c0: x, r0: y, c1: x + w, r1: y + h }, variants: labelVariants(name, chip).map((v) => v.layout), prev: null, ...rest };
 };
 const overlaps = (a: PlanResult, b: PlanResult, pad = 0) => a.x - pad < b.x + b.w && a.x + a.w + pad > b.x && a.y - pad < b.y + b.h && a.y + a.h + pad > b.y;
 
@@ -81,17 +81,16 @@ describe("every drawn box has its label: there is no label that loses and no dim
     expect(Array.from(v.text).length).toBeGreaterThanOrEqual(6);
     expect(plan[1]!.x >= 0 && plan[1]!.y >= 0 && plan[1]!.x + plan[1]!.w <= 100 && plan[1]!.y + plan[1]!.h <= 40).toBe(true);
   });
-  it("the hovered, focused or selected node is placed first and whole, never shortened, ahead of the others", () => {
+  it("a selected node (boosted score) is placed first, ahead of a stronger neighbour", () => {
     const a = item("a", 200, 200, { score: 500, name: "A long name that will want room" });
-    const b = item("b", 210, 205, { forced: true, score: 1000, name: "Hovered Place", chip: chipText(3) });
+    const b = item("b", 210, 205, { score: 1000 + 80, name: "Selected Place", chip: chipText(3) });
     const plan = planLabels([a, b], GRID);
     expect(plan[1]).toMatchObject({ cand: SPOT.aboveLeft, variant: 0, overlap: false });
     expect(overlaps(plan[0]!, plan[1]!)).toBe(false);
   });
-  it("a hovered label stays where the pointer found it (shown whole there) instead of jumping to the first position", () => {
-    const hovered = item("a", 200, 200, { forced: true, score: 1000, name: "Argentina", prev: { variant: 2, cand: SPOT.belowRight, dx: 0, dy: 0 } });
-    const plan = planLabels([hovered], GRID)[0]!;
-    expect(plan).toMatchObject({ cand: SPOT.belowRight, variant: 0 });
+  it("the plan has no state input but the items: hovering does not exist for it (a hovered label is written longer by the host, around its slot)", () => {
+    const items = Array.from({ length: 12 }, (_, k) => item(`n${k}`, 100 + ((k * 37) % 300), 80 + ((k * 53) % 200), { name: `Place ${k}` }));
+    expect(planLabels(items, GRID)).toEqual(planLabels(items.map((t) => ({ ...t })), GRID));
   });
   it("deterministic: the same input gives the same plan", () => {
     const items = Array.from({ length: 25 }, (_, k) => item(`n${k}`, 100 + ((k * 37) % 400), 80 + ((k * 53) % 250), { name: `Place number ${k}`, score: 50 + (k % 7) }));

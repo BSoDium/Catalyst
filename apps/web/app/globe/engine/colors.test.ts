@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { over, parseCssColor, themeFromTokens, type Rgb } from "./colors";
+import { outlineLevel, over, parseCssColor, themeFromTokens, type Rgb } from "./colors";
 
 describe("parseCssColor", () => {
   it("parses computed rgb() and rgba()", () => {
@@ -37,13 +37,22 @@ describe("the horizon outline of the globe", () => {
   const lum = (c: readonly number[]) => 0.2126 * lin(c[0]!) + 0.7152 * lin(c[1]!) + 0.0722 * lin(c[2]!);
   const ratio = (a: readonly number[], b: readonly number[]) => (Math.max(lum(a), lum(b)) + 0.05) / (Math.min(lum(a), lum(b)) + 0.05);
   for (const [name, bg, ink] of [["light", [0.984, 0.984, 0.984], [0.039, 0.039, 0.039]], ["dark", [0.039, 0.039, 0.039], [0.961, 0.961, 0.961]]] as const) {
-    it(`${name}: the outline is the graticule's faint level: fainter than before (soft), still visible against the page`, () => {
+    it(`${name}: the outline is one level fainter than the graticule (was faint, 1.42:1), still visible against the page (floor 1.2:1)`, () => {
       const t = themeFromTokens(bg as unknown as Rgb, ink as unknown as Rgb, 12);
-      expect(t.outline).toEqual(t.grid);
-      const soft = t.ramp[4]!;
-      expect(ratio(t.outline, bg)).toBeLessThan(ratio(soft, bg));
-      expect(ratio(t.outline, bg)).toBeGreaterThan(1.3);
-      expect(ratio(t.outline, bg)).toBeLessThan(1.6);
+      expect(t.outline).toEqual(t.ramp[outlineLevel(12)]);
+      expect(outlineLevel(12)).toBe(2);
+      expect(t.outline).not.toEqual(t.grid);
+      expect(ratio(t.outline, bg)).toBeLessThan(ratio(t.grid, bg));
+      expect(ratio(t.outline, bg)).toBeGreaterThan(1.2);
+      expect(ratio(t.outline, bg)).toBeLessThan(1.3);
+    });
+    it(`${name}: at any palette size the outline is a map level, never the page colour, never above the graticule`, () => {
+      for (const n of [3, 4, 6, 8, 10, 12]) {
+        const t = themeFromTokens(bg as unknown as Rgb, ink as unknown as Rgb, n);
+        expect(outlineLevel(n)).toBeGreaterThanOrEqual(1);
+        expect(ratio(t.outline, bg)).toBeGreaterThan(1);
+        expect(ratio(t.outline, bg)).toBeLessThanOrEqual(ratio(t.grid, bg) + 1e-9);
+      }
     });
   }
 });

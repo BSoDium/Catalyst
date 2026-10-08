@@ -73,26 +73,27 @@ export function toneLevel(e: { role: Role; at?: number }, n: number = activeLeve
  */
 export const LOD: Record<LodKey, LodEntry> = {
   // ROAD HIERARCHY. The class is told by TONE (a constant per class, palette levels of the 12 in brackets, map-ramp position `at`) and by
-  // WIDTH (core `MAJOR_ART` in street-style.ts): motorway and trunk = the peak (10, the loudest the map gets, still `MAP_CONTRAST` below
-  // the ink of labels and markers), primary 0.8 (8), secondary 0.6 (6), tertiary 0.4 (4); then the quiet ones, the DECOR of the map:
-  // links, paths, service and the solid residential streets 0.3 (3, `faint`), the dotted residential streets, service roads and paths
-  // 0.2 (2). Every tier is two levels from its neighbour, and a street is the faintest thing on the map but the patterns of the areas.
-  // Width: motorway, trunk and primary are 2 art px from z9, every other class stays at 1 px (floor, centre sampling and stair removal
-  // untouched). Owner, 2026-10-08: "the streets are only decor, they shouldn't be this visible and noisy". The binary switch had put
-  // every class at its FINAL tone from about 30 % of the span of the old ramp (a residential street at level 4 from z12.8, where it had
-  // been at level 2 and reached 4 at z14.2), and primary and secondary were only one or two levels apart (9 and 7); the quiet classes
-  // now simply HAVE the tone they used to show most of the time, and switch on where the old ramp was at its middle or later.
-  // The spans of the removed ramp, `from .. full`, are in the comment of each row.
-  highway: { on: 6.4, role: "peak" }, // 5.5 .. 8.5
-  major: { on: 8.7, role: "strong", at: 0.8 }, // 8.6 .. 9.7; just under the phone framings (8.8 to 10.2)
-  secondary: { on: 9.35, role: "mid", at: 0.6 }, // 9 .. 10.2
-  medium: { on: 11.1, role: "soft", at: 0.4 }, // 10.9 .. 11.7
-  minor: { on: 13, off: 16.85, role: "faint", at: 0.2, dash: [1.8, 2.4] }, // 12.2 .. 14.2; solid from the next row
-  minorSolid: { on: 16.85, role: "faint", at: 0.3 }, // 16.6 .. 17.4
-  link: { on: 10.2, role: "faint", at: 0.3, dash: [1.8, 3.6] }, // 10.2 .. 12.2
-  service: { on: 14.4, role: "faint", at: 0.2, dash: [1.8, 3.6] }, // 13.4 .. 15.4
-  path: { on: 15.4, role: "faint", at: 0.2, dash: [1.8, 3.6] }, // 14.6 .. 16.4
-  rail: { on: 10.2, role: "soft", dash: [3, 2.2] }, // 10.2 .. 12.2
+  // WIDTH (core `MAJOR_ART` in street-style.ts): motorway and trunk 0.7 (7), primary 0.5 (5), secondary 0.4 (4), tertiary and rail 0.3 (3);
+  // then the quiet ones, the DECOR of the map: links and the solid residential streets 0.2 (2), the dotted residential streets, service
+  // roads and paths 0.1 (1, the lowest map level). The coast, the borders and the boxes at rest are the peak (10): a road is never louder
+  // than level 7, three levels under them. Width: motorway, trunk and primary are 2 art px from z9, every other class stays at 1 px (floor,
+  // centre sampling and stair removal untouched).
+  // History. Owner, 2026-10-08, first: "the streets are only decor, they shouldn't be this visible and noisy": the binary switch had put
+  // every class at its FINAL tone from about 30 % of the span of the old ramp, and the table was recalmed to 10, 8, 6, 4, then 3 / 2 / 2 / 2.
+  // Then again, the same day: streets "are still way too visible in big cities, they are only decor", the box and its label must stand out:
+  // every class lowered by about two levels (motorway 10 to 7, primary 8 to 5, secondary 6 to 4, tertiary 4 to 3, links and solid 3 to 2,
+  // dotted 2 to 1, rail 4 to 3), the order and the width hierarchy kept; checked in Paris, London and New York at z10 to 17, light and dark,
+  // with the box on. The spans of the removed ramp, `from .. full`, are in the comment of each row.
+  highway: { on: 6.4, role: "strong", at: 0.7 }, // 5.5 .. 8.5
+  major: { on: 8.7, role: "mid", at: 0.5 }, // 8.6 .. 9.7; just under the phone framings (8.8 to 10.2)
+  secondary: { on: 9.35, role: "soft", at: 0.4 }, // 9 .. 10.2
+  medium: { on: 11.1, role: "faint", at: 0.3 }, // 10.9 .. 11.7
+  minor: { on: 13, off: 16.85, role: "faint", at: 0.1, dash: [1.8, 2.4] }, // 12.2 .. 14.2; solid from the next row
+  minorSolid: { on: 16.85, role: "faint", at: 0.2 }, // 16.6 .. 17.4
+  link: { on: 10.2, role: "faint", at: 0.2, dash: [1.8, 3.6] }, // 10.2 .. 12.2
+  service: { on: 14.4, role: "faint", at: 0.1, dash: [1.8, 3.6] }, // 13.4 .. 15.4
+  path: { on: 15.4, role: "faint", at: 0.1, dash: [1.8, 3.6] }, // 14.6 .. 16.4
+  rail: { on: 10.2, role: "faint", at: 0.3, dash: [3, 2.2] }, // 10.2 .. 12.2
   river: { on: 7.65, role: "strong" }, // 7 .. 9.2
   canal: { on: 12.55, role: "soft", dash: [6, 1.5] }, // 12 .. 13.8
   stream: { on: 13.6, role: "soft", dash: [3, 1.5] }, // 13 .. 15

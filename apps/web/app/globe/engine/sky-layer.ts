@@ -15,16 +15,16 @@
 import { BufferAttribute, BufferGeometry, ClampToEdgeWrapping, DataTexture, DoubleSide, LinearFilter, Matrix3, type Matrix4, Mesh, Points, RedFormat, RepeatWrapping, type Scene, ShaderMaterial, UnsignedByteType, Vector2, Vector3 } from "three";
 import type { GlobeTheme } from "./colors";
 import { FadeArray, clockStep } from "./fade";
-import { BAYER4, type Mat3, bakeBand, makeStars, skyGeometry, skyTones, skyWanted } from "./sky";
+import { BAYER4, type Mat3, bakeBand, makeStars, skyGeometry, skyWanted, starTones } from "./sky";
 import { SKY } from "./tuning";
 
 const f = (n: number) => n.toFixed(6);
 
-/** The shared GLSL: the fade (a smoothstep, `skyFade`) and the Bayer threshold (`bayerThreshold`). */
+/** The shared GLSL: the fade (`skyFade`: `limb` to 1 by a smoothstep, times the layer's on/off value) and the Bayer threshold (`bayerThreshold`). */
 const COMMON = /* glsl */ `
   uniform vec2 uCentre; uniform float uRadius; uniform float uFade;
-  uniform vec3 uTone1; uniform vec3 uTone2;
-  float skyFade(vec2 px) { return smoothstep(${f(SKY.fade.from)}, ${f(SKY.fade.to)}, length(px - uCentre) / uRadius) * uFade; }
+  uniform vec3 uTone1; uniform vec3 uTone2; uniform vec3 uTone3;
+  float skyFade(vec2 px) { return (${f(SKY.fade.limb)} + ${f(1 - SKY.fade.limb)} * smoothstep(${f(SKY.fade.from)}, ${f(SKY.fade.to)}, length(px - uCentre) / uRadius)) * uFade; }
 `;
 
 const BAYER_GLSL = `const float BAYER[16] = float[16](${BAYER4.map((n) => `${n}.0`).join(", ")});`;
@@ -79,6 +79,7 @@ const starMaterial = () =>
       uFade: { value: 1 },
       uTone1: { value: new Vector3() },
       uTone2: { value: new Vector3() },
+      uTone3: { value: new Vector3() },
     },
     depthWrite: false,
     vertexShader: /* glsl */ `
@@ -92,7 +93,7 @@ const starMaterial = () =>
         if (clip.w <= 0.0 || aKeep >= skyFade(px)) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return; }
         gl_Position = vec4(clip.xy, clip.w, clip.w);
         gl_PointSize = 1.0;
-        vColor = aTier > 0.5 ? uTone2 : uTone1;
+        vColor = aTier > 1.5 ? uTone3 : (aTier > 0.5 ? uTone2 : uTone1);
       }
     `,
     fragmentShader: "varying vec3 vColor; void main() { gl_FragColor = vec4(vColor, 1.0); }",
@@ -157,11 +158,12 @@ export class SkyLayer {
   }
 
   applyTheme(t: GlobeTheme) {
-    const [dim, bright] = skyTones(t.ramp);
+    const [dim, bright, top] = starTones(t.ramp);
     for (const m of [this.band, this.stars]) {
       (m.uniforms.uTone1!.value as Vector3).set(...dim);
       (m.uniforms.uTone2!.value as Vector3).set(...bright);
     }
+    (this.stars.uniforms.uTone3!.value as Vector3).set(...top);
   }
 
   /** Whether the on/off transition has not reached its end: the frame loop must keep going. */
@@ -171,7 +173,7 @@ export class SkyLayer {
 
   /** The layer's timed value (0..1), whether it is wanted and drawn, the farthest corner in earth radii, and the silhouette in buffer px (centre, radius; y up) (checks). */
   state() {
-    return { value: this.fade.value(0), on: this.on, rhoMax: this.rhoMax, drawn: this.quad.visible, cx: this.geo.cx, cy: this.geo.cy, radius: this.geo.radius, fadeFrom: SKY.fade.from };
+    return { value: this.fade.value(0), on: this.on, rhoMax: this.rhoMax, drawn: this.quad.visible, cx: this.geo.cx, cy: this.geo.cy, radius: this.geo.radius, fadeFrom: SKY.fade.from, limb: SKY.fade.limb };
   }
 
   /** Run the transition to its end (checks). */

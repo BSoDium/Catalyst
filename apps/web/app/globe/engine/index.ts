@@ -65,12 +65,14 @@ export interface GlobeDebug {
   /** Like `project` for any lon/lat (a point of the map, not a place): the snapped cell centre in client px and whether it passes the whole-or-nothing rule. */
   projectAt(lon: number, lat: number): { x: number; y: number; visible: boolean };
   labelsShown(): string[];
-  /** The boxes as drawn in the last frame: per node, its rectangle and label in cells, text, chip and tones. */
+  /** The boxes as drawn in the last frame: per node, its rectangle in cells, its label's plate in CSS px, text, chip and state. */
   labelCells(): ReturnType<BoxScene["snapshot"]>;
+  /** The label elements as they are in the DOM now (text, transform, opacity, mode, bounding box). */
+  labelsDom(): ReturnType<BoxScene["labelsDom"]>;
   /** The node a click or hover at a container CSS-px point would pick (engine/hit-area.ts), or null. */
   pick(x: number, y: number, kind?: "mouse" | "touch"): string | null;
-  /** Frames the label canvas drew / skipped (nothing changed) since creation. */
-  labelStats(): { drawn: number; skipped: number };
+  /** Frames the box canvas drew / skipped (nothing changed), label element writes, full re-plans and labels placed in the gaps, since creation. */
+  labelStats(): ReturnType<BoxScene["stats"]>;
   /** The theme's palette, level 0 (page colour) to the ink, as [r, g, b] 0..255. */
   ramp(): number[][];
   frames(): number;
@@ -154,6 +156,7 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
   const places = new Map(opts.places.map((p) => [p.slug, p]));
   const lod = opts.lod;
   const labels = new BoxScene(opts.labelsRoot, lod);
+  labels.setReducedMotion(opts.reducedMotion);
   const theme0 = readTheme(opts.stage);
   labels.setTheme(theme0);
 
@@ -242,6 +245,7 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
     setLabelsActive(on) {
       labelsActive = on;
       if (on) renderer.requestRender();
+      else labels.park();
     },
     setSelected(slug) {
       renderer.setSelected(slug, true);
@@ -257,6 +261,7 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
     },
     setReducedMotion(on) {
       renderer.setReducedMotion(on);
+      labels.setReducedMotion(on);
     },
     setInset: (px) => renderer.setInset(px),
     debug: () => ({
@@ -278,6 +283,7 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
       },
       labelsShown: () => [...labels.shown()],
       labelCells: () => labels.snapshot(),
+      labelsDom: () => labels.labelsDom(),
       pick: (x, y, kind = "mouse") => labels.hit(x, y, kind),
       labelStats: () => labels.stats(),
       ramp: () => renderer.getTheme().ramp.map((c) => c.map((v) => Math.round(v * 255))),
@@ -294,6 +300,7 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
         lod.settle();
         renderer.settleBorders(); // a state the first frame just decided (the sky's switch) runs to its end too
         renderer.renderNow();
+        if (labelsActive) labels.settle(); // and the labels are planned for this camera, as after 160 ms of rest
       },
       layers: () => ({ ...renderer.layerState(), animating: lod.animating || renderer.layerState().animating, framePending: renderer.isAnimating() }),
       spin: () => ({ ...renderer.spinInfo(), idleMs: SPIN.idleMs, degPerSec: SPIN.degPerSec, enabled: SPIN.enabled }),

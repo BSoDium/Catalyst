@@ -2,7 +2,7 @@
  * Theme colours are read from the app's CSS variables (docs/design-tokens.md), so light and dark follow
  * `prefers-color-scheme` and any future token change reaches the globe without touching this code.
  */
-import { activeLevels, buildRamp, roleColor } from "./palette";
+import { activeLevels, buildRamp, roleColor, roleLevel } from "./palette";
 
 export type Rgb = readonly [number, number, number];
 
@@ -18,7 +18,7 @@ export interface GlobeTheme {
   ink: Rgb;
   /** Coastlines and fully faded-in borders: the palette's `peak` level, which stays well below the ink (`MAP_CONTRAST`). */
   coast: Rgb;
-  /** Horizon outline (the palette's `faint` level, the graticule's: a quiet edge, not a line). */
+  /** Horizon outline: one palette level below the graticule's `faint` (`outlineLevel`, level 2 of 12: 1.24:1 light, 1.21:1 dark against the page), a quiet edge, not a line. */
   outline: Rgb;
   /** Graticule dots (the palette's `faint` level). */
   grid: Rgb;
@@ -97,7 +97,10 @@ export function readTheme(host: HTMLElement): GlobeTheme {
   return themeFromTokens(opaque("--background", fb.background), opaque("--foreground", fb.ink));
 }
 
+/** Level of the globe's horizon outline: one below the graticule (`faint`), never the page colour. 12 levels: 2 (the graticule is 3). */
+export const outlineLevel = (levels: number): number => Math.max(1, roleLevel("faint", levels) - 1);
+
 export function themeFromTokens(background: Rgb, ink: Rgb, levels: number = activeLevels()): GlobeTheme {
   const ramp = buildRamp(background, ink, levels);
-  return { background, ink, coast: roleColor(ramp, "peak"), outline: roleColor(ramp, "faint"), grid: roleColor(ramp, "faint"), ramp };
+  return { background, ink, coast: roleColor(ramp, "peak"), outline: ramp[outlineLevel(levels)]!, grid: roleColor(ramp, "faint"), ramp };
 }

@@ -1,6 +1,6 @@
 // Checks for the detection boxes (every place and group is a rectangle; the hierarchy is cut in screen space), Playwright + headless Chrome with the GPU.
 //
-//   CHROME_PATH=... BASE_URL=http://localhost:5174 [SHOTS=1] node apps/web/scripts/globe/groups.mjs [lod|cases|pixels|empty|reduced|pick|cost|idle|handover|shots]
+//   CHROME_PATH=... BASE_URL=http://localhost:5174 [SHOTS=1] node apps/web/scripts/globe/groups.mjs [lod|cases|pixels|empty|timed|at-rest|reduced|pick|targets|flicker|cost|idle|handover|shots]
 //
 // Serve the app with demo content (`pnpm dev:demo`, or a production build with CATALYST_CONTENT=demo): the demo projection has
 // a hierarchy (3 continents, a region, a subregion, 3 countries, an area; 18 places). `handover` also needs the local tile server
@@ -23,7 +23,9 @@
 // targets   whatever the content (demo or your preview): over a sweep of views (world, continents, Europe, the Balkans, a city cluster and a grid of
 //           lon/lat/zoom), at rest, EVERY drawn box has its label (100 %: none dropped, none dimmed, each plate on the grid, no two plates overlapping
 //           unless one is the last resort) and is at full opacity, no node is half-faded, and hovering a box, its label and the gap between them
-//           shows the pointer and the node's hover state
+//           shows the pointer and the node's hover state; the label is a real DOM element (text, opacity, place) for every drawn box
+// flicker   a scripted pan and zoom of 181 frames over a crowded view: the labels keep their slots (slot changes per label, jumps, the worst frame), the
+//           plan runs once when the camera stops, and hovering label after label re-plans nothing and moves no other label
 // cost      the cost of the cluster pass with 18, 186, 1000 and 5000 nodes
 // idle      no frames, no rAF, no label canvas redraw while nothing moves
 // handover  the same boxes and dots are drawn by the globe's and the street overlay's drawing of one camera
@@ -241,8 +243,8 @@ try {
           return stat;
         });
         expect(`${name} ${scheme}: ${res.views} views, ${res.boxes} boxes: every lit cell of the outline (corner arms and dashes, solid when hovered) is drawn, whole cells`, res.outlineMissing === 0 && res.boxes > 10, res);
-        expect(`${name} ${scheme}: at rest, nothing on the label canvas but the page colour and the ink, peak and counter levels, fully opaque (a fade is opacity: unit-tested)`, res.offPalette === 0, res);
-        expect(`${name} ${scheme}: the label canvas is cols x rows cells scaled by exactly one cell`, res.scaleOk, res);
+        expect(`${name} ${scheme}: at rest, nothing on the box canvas but the page colour and the ink and peak levels, fully opaque (a fade is opacity: unit-tested)`, res.offPalette === 0, res);
+        expect(`${name} ${scheme}: the box canvas is cols x rows cells scaled by exactly one cell`, res.scaleOk, res);
         expect(`${name} ${scheme}: no console errors`, logs.length === 0, logs);
         await page.context().close();
       }
@@ -486,16 +488,20 @@ try {
       window.__globeDebug.settle();
     });
     const tab = (await page.evaluate(() => window.__globeDebug.labelCells())).find((l) => l.slug === "case-crowd");
-    const cell = await page.evaluate(() => window.__globeDebug.inset().pixel);
-    const left = await page.evaluate(() => document.querySelector("canvas").getBoundingClientRect().left);
-    const top = await page.evaluate(() => document.querySelector("canvas").getBoundingClientRect().top);
+    // label coordinates are the container's CSS px: the labels root is the origin
+    const root = await page.evaluate(() => {
+      const r = document.querySelector('[data-globe="three"] > div:nth-child(2)').getBoundingClientRect();
+      return { left: r.left, top: r.top };
+    });
     const lab = tab?.label;
     expect(
-      `the label reads "${tab?.text}" with the chip "${tab?.chip}", text only, flush on the box's top-left corner, the whole label at its first position`,
-      !!tab && !!lab && tab.text === "Crowd" && tab.chip === "10 entries" && lab.col === tab.rect.c0 && lab.row + lab.h === tab.rect.r0 && lab.chipCol > lab.col && lab.baseline === lab.row + lab.h - 5 && !lab.inside && lab.variant === 0,
+      `the label reads "${tab?.text}" with the chip "${tab?.chip}", HTML text above the box's top-left corner (7 px of clear room, the text lined up with the box's left edge), the whole label at its first position`,
+      !!tab && !!lab && tab.text === "Crowd" && tab.chip === "10 entries" && lab.text === "Crowd" && lab.chip === "10 entries" && Math.abs(lab.x + 6 - tab.box.x0) < 0.01 && Math.abs(lab.y + lab.h + 7 - tab.box.y0) < 0.01 && !lab.inside && lab.variant === 0 && lab.cand === 0,
       tab,
     );
-    await page.mouse.click(left + (lab.col + lab.w / 2) * cell, top + (lab.row + lab.h / 2) * cell);
+    const dom = (await page.evaluate(() => window.__globeDebug.labelsDom())).find((l) => l.slug === "case-crowd");
+    expect(`the DOM label is real text, "${dom?.text}" and "${dom?.chip}", at the planned place (within a device pixel)`, !!dom && dom.text === "Crowd" && dom.chip === "10 entries" && Math.abs(dom.rect.x0 - (root.left + lab.x)) <= 0.5 && Math.abs(dom.rect.y0 - (root.top + lab.y)) <= 0.5, { dom, lab, root });
+    await page.mouse.click(root.left + lab.x + lab.w / 2, root.top + lab.y + lab.h / 2);
     await page.waitForFunction(() => !window.__globeDebug.isAnimating(), null, { timeout: 8000 });
     expect("a click on the tab also flies to the group", (await view()).zoom > v0.zoom + 0.5, await view());
     // a place's rectangle: its border opens its page
@@ -510,13 +516,14 @@ try {
   /* --------------------------------------------------------------------------------------------- targets */
   if (run("targets")) {
     const { page, logs } = await openGlobe(browser, DESKTOP);
-    const cell = await page.evaluate(() => window.__globeDebug.inset().pixel);
+    // labels and targets are in the container's CSS px: the labels root is the origin
     const origin = await page.evaluate(() => {
-      const r = document.querySelector("canvas").getBoundingClientRect();
+      const r = document.querySelector('[data-globe="three"] > div:nth-child(2)').getBoundingClientRect();
       return { left: r.left, top: r.top };
     });
     const minZoom = await page.evaluate(() => window.__globeDebug.minZoom());
     let seen = 0;
+    const domBad = [];
     let shortened = 0;
     let overlapped = 0;
     let nested = 0;
@@ -541,10 +548,12 @@ try {
         ({ lon, lat, zoom }) => {
           window.__globeDebug.setView({ lon, lat, zoom });
           window.__globeDebug.settle();
-          return { cells: window.__globeDebug.labelCells() };
+          return { cells: window.__globeDebug.labelCells(), dom: window.__globeDebug.labelsDom() };
         },
         { lon: v.lon, lat: v.lat, zoom: minZoom + v.dz },
       );
+      const domOf = new Map(cells.dom.map((d) => [d.slug, d]));
+      if (cells.dom.length !== cells.cells.length) domBad.push({ wrong: "element count", dom: cells.dom.length, cells: cells.cells.length, view: v });
       const placed = [];
       for (const c of cells.cells) {
         seen++;
@@ -558,7 +567,15 @@ try {
         if (l.variant > 0) shortened++;
         if (l.overlap) overlapped++;
         if (l.inside) nested++;
-        placed.push({ slug: c.slug, x0: l.col, y0: l.row, x1: l.col + l.w, y1: l.row + l.h, overlap: l.overlap });
+        placed.push({ slug: c.slug, x0: l.x, y0: l.y, x1: l.x + l.w, y1: l.y + l.h, overlap: l.overlap });
+        // the element is really in the DOM: the same text, fully opaque, at rest, where the plan put it
+        const el = domOf.get(c.slug);
+        const wrong = !el ? "no element" : el.text !== l.text || (el.chip ?? null) !== (l.chip ?? null) ? "text" : el.opacity !== 1 ? "half opacity" : el.mode !== "rest" ? "state" : (() => {
+                // a label a re-plan moved is gliding for 150 ms: its transform is the target, its rectangle is on the way
+                const m = /translate3d\(([-\d.]+)px,\s*([-\d.]+)px/.exec(el.transform);
+                return !m || Math.abs(Number(m[1]) - l.x) > 0.3 || Math.abs(Number(m[2]) - l.y) > 0.3 ? "position" : null;
+              })();
+        if (wrong) domBad.push({ slug: c.slug, wrong, el, l });
       }
       // plates are disjoint (a cell of clearance) unless one of the two is the last resort
       for (let i = 0; i < placed.length; i++)
@@ -572,9 +589,10 @@ try {
     }
     expect(`at rest, over ${views.length} views (world, continents, Europe, the Balkans, a city cluster, a lon/lat/zoom sweep) and ${seen} drawn boxes: 100 % have their label (${unlabelled.length} without), none half-faded or dimmed (${shortened} labels shortened, ${overlapped} drawn over another as the last resort, ${nested} nested inside their box)`, seen > 20 && unlabelled.length === 0 && halfState.length === 0, { unlabelled: unlabelled.slice(0, 5), halfState: halfState.slice(0, 5) });
     expect("at rest, no two label plates overlap unless one of them is the last resort", collisions.length === 0, collisions.slice(0, 5));
+    expect(`at rest every drawn box has its label as a REAL element in the DOM: its text, fully opaque (no half-fade), at the planned place (${domBad.length} wrong); and no element without a box`, domBad.length === 0, domBad.slice(0, 5));
 
     // Hover: the box, its label and the gap between them are one target; the hovered node is drawn solid.
-    const ptOf = (cx, cy) => ({ x: origin.left + cx * cell, y: origin.top + cy * cell });
+    const ptOf = (cx, cy) => ({ x: origin.left + cx, y: origin.top + cy });
     let tested = 0;
     const bad = [];
     for (const v of samples.slice(0, 12)) {
@@ -583,31 +601,31 @@ try {
         window.__globeDebug.settle();
         return window.__globeDebug.labelCells();
       }, v);
-      const plateOf = (o) => (o.label ? { c0: o.label.col, r0: o.label.row, c1: o.label.col + o.label.w, r1: o.label.row + o.label.h } : null);
-      const BIG = Math.floor(0.45 * Math.min(1440, 900) / cell); // HIT.bigBoxFrac of the smaller side, in cells: a big box has no interior target
-      const isBig = (o) => Math.max(o.rect.c1 - o.rect.c0, o.rect.r1 - o.rect.r0) > BIG;
-      const near = (r, x, y, m) => x >= r.c0 - m && x <= r.c1 + m && y >= r.r0 - m && y <= r.r1 + m;
+      const plateOf = (o) => (o.label ? { x0: o.label.x, y0: o.label.y, x1: o.label.x + o.label.w, y1: o.label.y + o.label.h } : null);
+      const BIG = 0.45 * Math.min(1440, 900); // HIT.bigBoxFrac of the smaller side, in px: a big box has no interior target
+      const isBig = (o) => Math.max(o.box.x1 - o.box.x0, o.box.y1 - o.box.y0) > BIG;
+      const near = (r, x, y, m) => x >= r.x0 - m && x <= r.x1 + m && y >= r.y0 - m && y <= r.y1 + m;
       const inOthers = (c, x, y) =>
         cells.some((o) => {
           if (o === c) return false; // any other drawn node, however faint, may share the point: those probes are skipped
-          const r = o.rect;
+          const r = o.box;
           const pl = plateOf(o);
-          if (pl && near(pl, x, y, 4)) return true;
-          if (!isBig(o)) return near(pl ? { c0: Math.min(r.c0, pl.c0), r0: Math.min(r.r0, pl.r0), c1: Math.max(r.c1, pl.c1), r1: Math.max(r.r1, pl.r1) } : r, x, y, 4); // the hull lies inside the bounding box of the box and its label
-          return near(r, x, y, 5) && !(x > r.c0 + 5 && x < r.c1 - 5 && y > r.r0 + 5 && y < r.r1 - 5);
+          if (pl && near(pl, x, y, 10)) return true;
+          if (!isBig(o)) return near(pl ? { x0: Math.min(r.x0, pl.x0), y0: Math.min(r.y0, pl.y0), x1: Math.max(r.x1, pl.x1), y1: Math.max(r.y1, pl.y1) } : r, x, y, 10); // the hull lies inside the bounding box of the box and its label
+          return near(r, x, y, 12) && !(x > r.x0 + 12 && x < r.x1 - 12 && y > r.y0 + 12 && y < r.y1 - 12);
         });
       for (const c of cells) {
         if (c.alpha < 0.9 || !c.label || isBig(c) || c.label.overlap) continue;
-        const r = c.rect;
-        const pl = { c0: c.label.col, r0: c.label.row, c1: c.label.col + c.label.w, r1: c.label.row + c.label.h };
+        const r = c.box;
+        const pl = plateOf(c);
         const probes = [
-          ["box", (r.c0 + r.c1) / 2, (r.r0 + r.r1) / 2],
-          ["label", (pl.c0 + pl.c1) / 2, (pl.r0 + pl.r1) / 2],
+          ["box", (r.x0 + r.x1) / 2, (r.y0 + r.y1) / 2],
+          ["label", (pl.x0 + pl.x1) / 2, (pl.y0 + pl.y1) / 2],
         ];
         // the triangle under a label that is wider than its box, between the box's top-right corner and the label's bottom-right corner
-        if (pl.c1 - r.c1 > 8) probes.push(["gap", r.c1 + (pl.c1 - r.c1) * 0.3, r.r0 + 2]);
+        if (pl.x1 - r.x1 > 20) probes.push(["gap", r.x1 + (pl.x1 - r.x1) * 0.3, r.y0 + 5]);
         for (const [what, cx, cy] of probes) {
-          if (inOthers(c, cx, cy) || cx < 6 || cy < 6 || cx > 1440 / cell - 6 || cy > 900 / cell - 6) continue; // another node shares the point, or it is at the edge of the viewport
+          if (inOthers(c, cx, cy) || cx < 15 || cy < 15 || cx > 1440 - 15 || cy > 900 - 15) continue; // another node shares the point, or it is at the edge of the viewport
           const p = ptOf(cx, cy);
           await page.mouse.move(p.x, p.y);
           await sleep(60);
@@ -690,6 +708,125 @@ try {
     });
     const after = await page.evaluate(() => window.__globeDebug.labelStats());
     expect(`20 frames of a sub-pixel camera change redraw the label canvas at most once (${after.drawn - before.drawn} draws, ${after.skipped - before.skipped} skipped)`, after.drawn - before.drawn <= 1, { before, after });
+    await page.context().close();
+  }
+
+  /* ---------------------------------------------------------------------------------------------- flicker */
+  if (run("flicker")) {
+    // A scripted camera on the real app: a pan that swings both ways while the zoom breathes, one synchronous frame at a time (60 per second
+    // of the page's own clock), over a crowded view of the preview or the demo. Per frame the labels are read back (candidate position, way of
+    // writing it, plate) and the FLICKER METRIC is counted as in `label-track.test.ts` (the sweep that compares it with the plan run on every
+    // frame): a CHANGE is a label shown in two consecutive frames with another slot, a JUMP a plate that moved by more than its box did plus 4 px,
+    // VISIBILITY a label that appeared or disappeared (the camera and the cut decide it).
+    const { page, logs } = await openGlobe(browser, DESKTOP);
+    const minZoom = await page.evaluate(() => window.__globeDebug.minZoom());
+    const run1 = (start) =>
+      page.evaluate(
+        async ({ start, minZoom }) => {
+          const d = window.__globeDebug;
+          d.setView(start);
+          d.settle();
+          const frames = 180;
+          let last = new Map();
+          const out = { changes: 0, jumps: 0, visibility: 0, shown: 0, worstFrame: 0, labels: new Set(), mid: 0, domWrites: 0, frames: 0, slow: 0 };
+          const w0 = d.labelStats().labelWrites;
+          for (let f = 0; f <= frames; f++) {
+            await new Promise((r) => requestAnimationFrame(r));
+            const u = f / frames;
+            d.setView({ lon: start.lon + 14 * Math.sin(2 * Math.PI * u * 1.5), lat: start.lat + 5 * Math.sin(2 * Math.PI * u), zoom: start.zoom + 0.45 * (0.5 - 0.5 * Math.cos(2 * Math.PI * u)) });
+            d.renderNow();
+            const now = new Map();
+            for (const c of d.labelCells()) now.set(c.slug, { cand: c.label.cand, variant: c.label.variant, text: c.label.text, x: c.label.x, y: c.label.y, box: c.box, mode: c.label.mode });
+            let frameChanges = 0;
+            for (const [k, s] of now) {
+              out.labels.add(k);
+              out.shown++;
+              const p = last.get(k);
+              if (!p) {
+                if (f > 0) out.visibility++;
+                continue;
+              }
+              if (p.cand !== s.cand || p.variant !== s.variant) frameChanges++;
+              const boxMove = Math.max(Math.abs(p.box.x0 - s.box.x0), Math.abs(p.box.y0 - s.box.y0), Math.abs(p.box.x1 - s.box.x1), Math.abs(p.box.y1 - s.box.y1));
+              if (Math.max(Math.abs(p.x - s.x), Math.abs(p.y - s.y)) > boxMove + 4) out.jumps++;
+            }
+            for (const k of last.keys()) if (!now.has(k)) out.visibility++;
+            out.changes += frameChanges;
+            out.worstFrame = Math.max(out.worstFrame, frameChanges);
+            last = now;
+          }
+          out.domWrites = d.labelStats().labelWrites - w0;
+          out.labels = out.labels.size;
+          return out;
+        },
+        { start, minZoom },
+      );
+    const stat = async () => page.evaluate(() => window.__globeDebug.labelStats());
+    const starts = [
+      ["Europe", { lon: 12, lat: 47, zoom: minZoom + 1.4 }],
+      ["the Balkans", { lon: 21, lat: 43, zoom: minZoom + 2.2 }],
+      ["the Atlantic, Iberia and Morocco", { lon: -6, lat: 36, zoom: minZoom + 2.4 }],
+    ];
+    for (const [name, start] of starts) {
+      const before = await stat();
+      const r = await run1(start);
+      await sleep(450); // the camera is at rest: the plan runs once
+      const after = await stat();
+      console.log(`     ${name}: ${r.labels} labels, ${r.shown} label-frames, ${r.changes} slot changes (${(r.changes / Math.max(1, r.labels)).toFixed(2)} per label), ${r.jumps} jumps, ${r.visibility} appearances and disappearances, worst frame ${r.worstFrame}; ${r.domWrites} element writes (${(r.domWrites / 181).toFixed(1)} per frame); full re-plans ${after.replans - before.replans}, labels placed in the gaps ${after.partials - before.partials}`);
+      expect(`${name}: over a scripted pan and zoom of 181 frames a label changes its slot less than once on average (${(r.changes / Math.max(1, r.labels)).toFixed(2)}) and no frame changes more than 8`, r.labels > 5 && r.changes / r.labels < 1 && r.worstFrame <= 8, r);
+      expect(`${name}: no plate jumps against its box (${r.jumps})`, r.jumps <= Math.ceil(r.labels * 0.1), r);
+      expect(`${name}: the camera stopped: the plan ran (${after.replans - before.replans} re-plan) and the loop is still`, after.replans - before.replans >= 1 && !(await page.evaluate(() => window.__globeDebug.isAnimating())), { before, after });
+      // at rest, after the settle plan: every box has its label in the DOM, none left half way, and no two plates overlap unless one is the last resort
+      const rest = await page.evaluate(() => ({ cells: window.__globeDebug.labelCells(), dom: window.__globeDebug.labelsDom() }));
+      const domOf = new Map(rest.dom.map((x) => [x.slug, x]));
+      const missing = rest.cells.filter((c) => !domOf.get(c.slug) || domOf.get(c.slug).text !== c.label.text || domOf.get(c.slug).opacity !== 1).map((c) => c.slug);
+      let collisions = 0;
+      for (let i = 0; i < rest.cells.length; i++)
+        for (let j = i + 1; j < rest.cells.length; j++) {
+          const p = rest.cells[i].label;
+          const q = rest.cells[j].label;
+          if (!p.overlap && !q.overlap && p.x < q.x + q.w && p.x + p.w > q.x && p.y < q.y + q.h && p.y + p.h > q.y) collisions++;
+        }
+      expect(`${name}, at rest after the sweep: ${rest.cells.length} boxes, every one has its label element, fully opaque, none half-faded; ${collisions} overlapping plates`, rest.cells.length > 3 && missing.length === 0 && collisions === 0 && rest.dom.length === rest.cells.length, { missing, collisions });
+    }
+    // Hover never re-plans: hovering label after label, no other label changes its slot or its place, and nothing is re-planned.
+    {
+      await page.evaluate((v) => {
+        window.__globeDebug.setView(v);
+        window.__globeDebug.settle();
+      }, { lon: 12, lat: 47, zoom: minZoom + 1.8 });
+      await sleep(300);
+      const origin = await page.evaluate(() => {
+        const r = document.querySelector('[data-globe="three"] > div:nth-child(2)').getBoundingClientRect();
+        return { left: r.left, top: r.top };
+      });
+      const snap = () => page.evaluate(() => window.__globeDebug.labelCells().map((c) => ({ slug: c.slug, cand: c.label.cand, variant: c.label.variant, x: c.label.x, y: c.label.y, mode: c.label.mode, text: c.label.text })));
+      const base = await snap();
+      const s0 = await stat();
+      let moved = 0;
+      let expanded = 0;
+      let probes = 0;
+      for (const c of base.slice(0, 14)) {
+        const box = (await page.evaluate(() => window.__globeDebug.labelCells())).find((x) => x.slug === c.slug).box;
+        await page.mouse.move(origin.left + (box.x0 + box.x1) / 2, origin.top + (box.y0 + box.y1) / 2);
+        await sleep(40);
+        const now = await snap();
+        probes++;
+        for (const n of now) {
+          const b = base.find((x) => x.slug === n.slug);
+          if (n.mode !== "rest") {
+            if (n.text.includes(",")) expanded++;
+            continue;
+          }
+          if (!b || b.cand !== n.cand || b.variant !== n.variant || Math.abs(b.x - n.x) > 0.01 || Math.abs(b.y - n.y) > 0.01) moved++;
+        }
+      }
+      await page.mouse.move(origin.left + 3, origin.top + 3);
+      await sleep(200);
+      const s1 = await stat();
+      expect(`hover never re-plans: ${probes} hovers, ${moved} other labels moved or changed their text, ${s1.replans - s0.replans} re-plans, ${s1.partials - s0.partials} labels placed (${expanded} hovered labels were written with their country)`, probes > 5 && moved === 0 && s1.replans === s0.replans && s1.partials === s0.partials, { moved, s0, s1 });
+    }
+    expect("no console errors", logs.filter((l) => !/404/.test(l)).length === 0, logs);
     await page.context().close();
   }
 

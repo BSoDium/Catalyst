@@ -23,6 +23,7 @@
  * underneath, per art cell (`PixelBuffer`), so there is no darker or lighter shade that could occlude the map at the faintest
  * step; the art-pixel grid itself is untouched (no sub-pixel position, no smoothing).
  */
+import { chipText } from "./label-text";
 import { PixelBuffer } from "./pixel-buffer";
 import { peakLevel, roleLevel } from "./palette";
 import { FONT_CAP, FONT_DESCENT, measureText } from "./pixel-font/pixel-font";
@@ -61,8 +62,7 @@ export interface LabelState {
   hover: boolean;
 }
 
-/** The text of a group's counter: "<N> entries", "1 entry" when singular. */
-export const chipText = (count: number): string => `${count} ${count === 1 ? "entry" : "entries"}`;
+export { chipText };
 
 /**
  * Geometry of a label's plate in whole cells, relative to the plate's top-left cell: the page-colour plate spans `w x h`, the name
@@ -270,7 +270,7 @@ export interface GridSize {
   rows: number;
 }
 
-/** A place for a label's plate: the cell of its top-left corner, whether it is inside the box, and which candidate it is (`SPOT`, the priority and the identity kept between frames). */
+/** A place for a label's plate: the corner of its top-left, whether it is inside the box, and which candidate it is (`SPOT`, the priority and the identity kept between frames). */
 export interface LabelSpot {
   id: number;
   x: number;
@@ -295,54 +295,123 @@ export const SPOT = {
   aboveShift: 12, // 12, 13, 14
   belowShift: 15, // 15, 16, 17
 } as const;
+/** Number of candidate ids. */
+export const SPOT_COUNT = 18;
 
 /**
- * The places a label plate of `w x h` cells can go for a box, in priority order, each entirely on the grid (a position that would leave it
- * is not a candidate): above the box's top-left corner (the first choice: flush on the edge, left-aligned), above its top-right corner,
- * above the visible part of the top edge when the corner is off screen, nested inside the box in each of its inner corners (flush inside the
- * outline, so the text has `LABEL_PAD` cells of room to the border on both sides: only when the plate fits inside), below, to the left and to the
- * right of the box, and shifted along the top and the bottom edges (a quarter, a half and three quarters of the way). Positions are
- * relative to the VISIBLE part of the box where its corners are off the grid, so a big box zoomed into always has a label on screen.
+ * Units of the geometry. The positions are unit-free: whole cells for the pixel text (`inset` 1 cell, the default) or CSS px for the
+ * DOM labels of the boxes (engine/label-plan.ts: `inset` the thickness of the box's outline, `quant` the step the shifted positions snap to).
  */
-export function labelCandidates(rect: CellRect, w: number, h: number, grid: GridSize): LabelSpot[] {
+export interface SpotUnits {
+  /** How far a nested plate sits inside the outline (the outline's thickness). Default 1. */
+  inset?: number;
+  /** Positions along the edges are multiples of this from the visible left edge. Default 1. */
+  quant?: number;
+  /** Clear room between a plate outside the box and the box's outline (above, below, left, right). Default 0 (the pixel text is flush). */
+  gap?: number;
+  /** How far a plate aligned with a box edge sticks out past it, so that the TEXT (which has padding inside its plate) lines up with the edge. Default 0. */
+  bleed?: number;
+  /** A plate that would stick out of the grid is pulled back inside it (it slides along its box's edge, or stays at the screen's edge over the box) instead of being refused: the position of a label that is kept while its box moves. */
+  slide?: boolean;
+}
+
+/**
+ * The place of candidate `id` for a plate of `w x h` around `rect` (the same function for a position remembered from an earlier frame and for
+ * the list below), or false when it is not available: the plate would leave the grid, a nested one does not fit inside the box, or the
+ * edge is too short to shift along. `out` receives the corner and whether it is nested. Positions are relative to the VISIBLE part of the box
+ * where its corners are off the grid.
+ */
+export function spotAt(id: number, rect: CellRect, w: number, h: number, grid: GridSize, units: SpotUnits, out: { x: number; y: number; inside: boolean }): boolean {
+  const inset = units.inset ?? 1;
+  const quant = units.quant ?? 1;
+  const gap = units.gap ?? 0;
+  const bleed = units.bleed ?? 0;
   const xl = Math.max(rect.c0, 0);
   const xr = Math.min(rect.c1, grid.cols);
   const yt = Math.max(rect.r0, 0);
   const yb = Math.min(rect.r1, grid.rows);
+  let x = 0;
+  let y = 0;
+  let inside = false;
+  switch (id) {
+    case SPOT.aboveLeft:
+      x = rect.c0 - bleed;
+      y = rect.r0 - h - gap;
+      break;
+    case SPOT.aboveRight:
+      x = rect.c1 - w + bleed;
+      y = rect.r0 - h - gap;
+      break;
+    case SPOT.aboveVisibleLeft:
+      x = xl - bleed;
+      y = rect.r0 - h - gap;
+      break;
+    case SPOT.aboveVisibleRight:
+      x = xr - w + bleed;
+      y = rect.r0 - h - gap;
+      break;
+    case SPOT.insideTopLeft:
+    case SPOT.insideBottomLeft:
+    case SPOT.insideTopRight:
+    case SPOT.insideBottomRight:
+      if (!(xr - xl - 2 * inset >= w && yb - yt - 2 * inset >= h)) return false; // the plate has to fit inside the outline
+      inside = true;
+      x = id === SPOT.insideTopLeft || id === SPOT.insideBottomLeft ? xl + inset : xr - inset - w;
+      y = id === SPOT.insideTopLeft || id === SPOT.insideTopRight ? yt + inset : yb - inset - h;
+      break;
+    case SPOT.belowLeft:
+      x = rect.c0 - bleed;
+      y = rect.r1 + gap;
+      break;
+    case SPOT.belowRight:
+      x = rect.c1 - w + bleed;
+      y = rect.r1 + gap;
+      break;
+    case SPOT.left:
+      x = rect.c0 - w - gap;
+      y = rect.r0;
+      break;
+    case SPOT.right:
+      x = rect.c1 + gap;
+      y = rect.r0;
+      break;
+    default: {
+      const k = id >= SPOT.belowShift ? id - SPOT.belowShift : id - SPOT.aboveShift;
+      if (k < 0 || k > 2) return false;
+      const span = xr - w - xl;
+      if (!(span > 2 * inset)) return false;
+      x = xl + Math.round((span * (k + 1)) / 4 / quant) * quant;
+      y = id >= SPOT.belowShift ? rect.r1 + gap : rect.r0 - h - gap;
+    }
+  }
+  if (units.slide && w <= grid.cols) x = Math.max(0, Math.min(grid.cols - w, x));
+  if (units.slide && !inside && h <= grid.rows) y = Math.max(0, Math.min(grid.rows - h, y)); // a plate above a box that is near the top of the screen stays on screen, over the box's edge, instead of changing slot
+  if (x < 0 || y < 0 || x + w > grid.cols || y + h > grid.rows) return false;
+  out.x = x;
+  out.y = y;
+  out.inside = inside;
+  return true;
+}
+
+/**
+ * The places a label plate of `w x h` can go for a box, in priority order, each entirely on the grid (a position that would leave it
+ * is not a candidate): above the box's top-left corner (the first choice: flush on the edge, left-aligned), above its top-right corner,
+ * above the visible part of the top edge when the corner is off screen, nested inside the box in each of its inner corners (flush inside the
+ * outline, so the text has room to the border on both sides: only when the plate fits inside), below, to the left and to the
+ * right of the box, and shifted along the top and the bottom edges (a quarter, a half and three quarters of the way). Positions are
+ * relative to the VISIBLE part of the box where its corners are off the grid, so a big box zoomed into always has a label on screen.
+ * Two ids that land on the same place are one candidate (the first id).
+ */
+export function labelCandidates(rect: CellRect, w: number, h: number, grid: GridSize, units: SpotUnits = {}): LabelSpot[] {
   const out: LabelSpot[] = [];
   const seen = new Set<number>();
-  const add = (id: number, x: number, y: number, inside = false) => {
-    if (x < 0 || y < 0 || x + w > grid.cols || y + h > grid.rows) return;
-    const key = x * 65536 + y;
-    if (seen.has(key)) return;
+  const at = { x: 0, y: 0, inside: false };
+  for (let id = 0; id < SPOT_COUNT; id++) {
+    if (!spotAt(id, rect, w, h, grid, units, at)) continue;
+    const key = Math.round(at.x * 4) * 262144 + Math.round(at.y * 4);
+    if (seen.has(key)) continue;
     seen.add(key);
-    out.push({ id, x, y, inside });
-  };
-  const fits = xr - xl - 2 >= w && yb - yt - 2 >= h;
-  add(SPOT.aboveLeft, rect.c0, rect.r0 - h);
-  add(SPOT.aboveRight, rect.c1 - w, rect.r0 - h);
-  add(SPOT.aboveVisibleLeft, xl, rect.r0 - h);
-  add(SPOT.aboveVisibleRight, xr - w, rect.r0 - h);
-  if (fits) {
-    add(SPOT.insideTopLeft, xl + 1, yt + 1, true);
-    add(SPOT.insideBottomLeft, xl + 1, yb - 1 - h, true);
-    add(SPOT.insideTopRight, xr - 1 - w, yt + 1, true);
-    add(SPOT.insideBottomRight, xr - 1 - w, yb - 1 - h, true);
-  }
-  add(SPOT.belowLeft, rect.c0, rect.r1);
-  add(SPOT.belowRight, rect.c1 - w, rect.r1);
-  add(SPOT.left, rect.c0 - w, rect.r0);
-  add(SPOT.right, rect.c1, rect.r0);
-  const span = xr - w - xl;
-  if (span > 2) {
-    for (let k = 0; k < 3; k++) {
-      const x = xl + Math.round((span * (k + 1)) / 4);
-      add(SPOT.aboveShift + k, x, rect.r0 - h);
-    }
-    for (let k = 0; k < 3; k++) {
-      const x = xl + Math.round((span * (k + 1)) / 4);
-      add(SPOT.belowShift + k, x, rect.r1);
-    }
+    out.push({ id, x: at.x, y: at.y, inside: at.inside });
   }
   return out;
 }

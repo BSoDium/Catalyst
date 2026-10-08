@@ -58,6 +58,16 @@ describe("buildPlaceIndex", () => {
       expect(g.viewRadiusKm).toBe(lisbon.viewRadiusKm);
     }
   });
+  it("the globe's name drops a trailing ', <own country>' (display only) and never anything else", () => {
+    const paris = demo.places.find((p) => p.slug === "paris")!;
+    const named = (name: string, countryCode: string | undefined) => buildPlaceIndex({ ...demo, places: [{ ...paris, name, countryCode } as typeof paris] });
+    const a = named("Paris, France", "FR");
+    expect(a.globePlaces[0]!.name).toBe("Paris");
+    expect(a.places[0]!.name).toBe("Paris, France"); // the list and the page keep the stored name
+    expect(named("Paris, Texas", "FR").globePlaces[0]!.name).toBe("Paris, Texas");
+    expect(named("Paris, France", undefined).globePlaces[0]!.name).toBe("Paris, France");
+    expect(named("Paris", "FR").globePlaces[0]!.name).toBe("Paris");
+  });
   it("is empty for an empty projection", () => {
     expect(buildPlaceIndex(EMPTY_PROJECTION)).toEqual({ places: [], globePlaces: [], groups: [], routes: [] });
   });

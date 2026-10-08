@@ -1,7 +1,7 @@
 /**
  * Overlay of the street map: the DETECTION BOXES of the places and groups (engine/lod-tree.ts decides which, in screen
- * space; engine/box-scene.ts draws them as pixel art on a canvas of the map's own art cells, the same class and font as the
- * globe's overlay, so nothing changes in kind when the renderers hand over). The pass never sees them; this layer reads the
+ * space; engine/box-scene.ts draws the boxes as pixel art on a canvas of the map's own art cells and their labels as HTML text,
+ * the same class, labels and label plan as the globe's overlay, so nothing changes in kind when the renderers hand over). The pass never sees them; this layer reads the
  * same camera as the map, so it stays aligned during flights because it is updated from the map's own `render` event.
  *
  * Accessibility (the globe's rule): the root is `aria-hidden`, nothing here has a tab stop or a role. The accessible
@@ -44,6 +44,7 @@ export class HudLayer {
     this.reduced = reducedMotion;
     this.screen = new NodeScreen(lod.size);
     this.scene = new BoxScene(root, lod);
+    this.scene.setReducedMotion(reducedMotion);
   }
 
   /** The theme (palette ramp). Redraws on the next update. */
@@ -52,11 +53,12 @@ export class HudLayer {
     if (this.lastFrame) this.update(this.lastFrame);
   }
 
-  /** Nothing to measure any more (the label font is baked into the bundle); kept so callers need not know. */
+  /** Nothing to measure any more (the labels are measured once per string, with the page's own font); kept so callers need not know. */
   remeasure(): void {}
 
   setReducedMotion(on: boolean): void {
     this.reduced = on;
+    this.scene.setReducedMotion(on);
   }
 
   setSelected(slug: string | null): void {
@@ -98,12 +100,17 @@ export class HudLayer {
     return i < 0 || !this.screen.shown[i] ? null : { x: this.screen.x[i]!, y: this.screen.y[i]! };
   }
 
-  /** Cells of every rectangle and label drawn in the last frame (checks): the same shape as the globe's. */
+  /** Cells of every rectangle and the CSS px of every label drawn in the last frame (checks): the same shape as the globe's. */
   labelCells() {
     return this.scene.snapshot();
   }
 
-  /** Canvas drawing counters (frames drawn, frames skipped because nothing changed). */
+  /** The label elements as they are in the DOM (checks). */
+  labelsDom() {
+    return this.scene.labelsDom();
+  }
+
+  /** Canvas and label drawing counters (frames drawn, frames skipped because nothing changed; element writes, re-plans). */
   stats() {
     return this.scene.stats();
   }

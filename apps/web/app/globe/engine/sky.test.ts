@@ -23,10 +23,14 @@ import {
   skyTones,
   skyTop,
   skyWanted,
+  starTier,
+  starTones,
+  starTop,
   toneAt,
   transpose,
   viewToGalactic,
 } from "./sky";
+import { buildRamp, contrastRatio, roleColor, roleLevel } from "./palette";
 import { SKY } from "./tuning";
 
 const near = (a: number, b: number, eps = 1e-6) => expect(Math.abs(a - b)).toBeLessThan(eps);
@@ -186,16 +190,53 @@ describe("stars", () => {
     expect(Array.from(a.tier)).toEqual(Array.from(b.tier));
     expect(Array.from(makeStars(undefined, undefined, 7).position)).not.toEqual(Array.from(a.position));
   });
-  it("are unit vectors, as many as asked, with both tones and ranks in [0, 1)", () => {
+  it("are unit vectors, as many as asked, with tiers 0..2 and ranks in [0, 1)", () => {
     const s = makeStars();
     expect(s.count).toBe(SKY.stars.count);
     for (let i = 0; i < s.count; i++) {
       near(Math.hypot(s.position[i * 3]!, s.position[i * 3 + 1]!, s.position[i * 3 + 2]!), 1, 1e-5);
       expect(s.keep[i]).toBeGreaterThanOrEqual(0);
       expect(s.keep[i]).toBeLessThan(1);
+      expect([0, 1, 2]).toContain(s.tier[i]);
     }
-    const bright = s.tier.reduce((t, v) => t + v, 0) / s.count;
-    near(bright, SKY.stars.brightShare, 0.04);
+  });
+  it("have a heavy-tailed brightness: many faint, some middling, a few brighter, in the configured shares", () => {
+    const shares = SKY.stars.tierShares;
+    near(shares.reduce((a, b) => a + b, 0), 1, 1e-9);
+    expect(shares[0]).toBeGreaterThan(shares[1]!);
+    expect(shares[1]).toBeGreaterThan(shares[2]!);
+    expect(shares[0]! / shares[1]!).toBeGreaterThan(2); // each tier is several times rarer than the one below
+    expect(shares[1]! / shares[2]!).toBeGreaterThan(2);
+    const s = makeStars();
+    const n = [0, 0, 0];
+    for (let i = 0; i < s.count; i++) n[s.tier[i]!]!++;
+    shares.forEach((share, k) => near(n[k]! / s.count, share, 0.03));
+    expect(n[2]).toBeGreaterThan(100); // a few, but never none
+  });
+  it("starTier maps a uniform draw to a tier by the cumulative shares", () => {
+    const shares = [0.7, 0.2, 0.1];
+    expect([0, 0.3, 0.699].map((u) => starTier(u, shares))).toEqual([0, 0, 0]);
+    expect([0.7, 0.85, 0.899].map((u) => starTier(u, shares))).toEqual([1, 1, 1]);
+    expect([0.9, 0.99, 0.999999].map((u) => starTier(u, shares))).toEqual([2, 2, 2]);
+  });
+  it("the brighter stars are scattered at random, not on a grid: nearest-neighbour distances spread like a Poisson field", () => {
+    const s = makeStars();
+    const pts: number[][] = [];
+    for (let i = 0; i < s.count; i++) if (s.tier[i] === 2) pts.push([s.position[i * 3]!, s.position[i * 3 + 1]!, s.position[i * 3 + 2]!]);
+    const nn = pts.map((p, i) => {
+      let cos = -1;
+      pts.forEach((q, j) => {
+        if (i !== j) cos = Math.max(cos, p[0]! * q[0]! + p[1]! * q[1]! + p[2]! * q[2]!);
+      });
+      return Math.acos(Math.min(1, cos));
+    });
+    const mean = nn.reduce((a, b) => a + b, 0) / nn.length;
+    const sd = Math.sqrt(nn.reduce((a, b) => a + (b - mean) ** 2, 0) / nn.length);
+    // a regular lattice has every nearest neighbour at the same distance (sd / mean ~ 0); a Poisson field about 0.5
+    expect(sd / mean).toBeGreaterThan(0.35);
+    // and the brighter stars are not clustered on one patch of sky either: each octant of the sphere has some
+    const octants = new Set(pts.map((p) => (p[0]! > 0 ? 1 : 0) + (p[1]! > 0 ? 2 : 0) + (p[2]! > 0 ? 4 : 0)));
+    expect(octants.size).toBe(8);
   });
   it("are denser along the band than away from it", () => {
     const s = makeStars();
@@ -215,24 +256,31 @@ describe("stars", () => {
 });
 
 describe("fade, tones, dither", () => {
-  it("the fade is 0 up to the inner radius, 1 from the outer, monotonic and smooth between", () => {
-    expect(skyFade(0)).toBe(0);
-    expect(skyFade(1)).toBe(0);
-    expect(skyFade(SKY.fade.from)).toBe(0);
-    expect(skyFade(SKY.fade.to)).toBe(1);
+  it("the fade is the limb strength up to the inner radius, 1 from the outer, monotonic and smooth between", () => {
+    const { from, to, limb } = SKY.fade;
+    expect(skyFade(0)).toBeCloseTo(limb, 12);
+    expect(skyFade(from)).toBeCloseTo(limb, 12);
+    expect(skyFade(to)).toBe(1);
     expect(skyFade(9)).toBe(1);
     let last = 0;
-    for (let r = SKY.fade.from; r <= SKY.fade.to; r += 0.01) {
+    for (let r = from; r <= to; r += 0.01) {
       const f = skyFade(r);
       expect(f).toBeGreaterThanOrEqual(last);
       last = f;
     }
-    near(skyFade((SKY.fade.from + SKY.fade.to) / 2), 0.5, 1e-9);
+    near(skyFade((from + to) / 2), (1 + limb) / 2, 1e-9);
   });
-  it("nothing of the sky reaches the silhouette: the fade is 0 at and just beyond the limb", () => {
-    expect(SKY.fade.from).toBeGreaterThan(1);
-    expect(skyFade(1.0)).toBe(0);
-    expect(skyFade(1.03)).toBe(0);
+  it("the sky is only SLIGHTLY dimmed towards the earth: drawn right up to the silhouette at 50 to 60 % of its strength", () => {
+    expect(SKY.fade.from).toBeLessThanOrEqual(1.02); // from the silhouette
+    expect(SKY.fade.limb).toBeGreaterThanOrEqual(0.5);
+    expect(SKY.fade.limb).toBeLessThanOrEqual(0.6);
+    for (const rho of [1.0, 1.001, 1.03]) {
+      expect(skyFade(rho)).toBeGreaterThanOrEqual(0.5);
+      expect(skyFade(rho)).toBeLessThanOrEqual(0.6 + 0.02);
+    }
+    // never zero anywhere, and the dimming is gone from the outer radius on
+    for (let r = 0.5; r <= 3; r += 0.05) expect(skyFade(r)).toBeGreaterThan(0.49);
+    expect(skyFade(SKY.fade.to + 0.001)).toBe(1);
   });
   it("the Bayer thresholds are sixteen distinct values in (0, 1), periodic by 4 in both directions", () => {
     const t = new Set<number>();
@@ -267,7 +315,31 @@ describe("fade, tones, dither", () => {
       }
     }
   });
-  it("uses only levels below the graticule's, never the page colour for the tones", () => {
+  it("the stars add one tone, capped at the graticule's own level: never brighter than it", () => {
+    expect(starTop(12)).toBe(3);
+    expect(starTop(12)).toBe(roleLevel("faint", 12));
+    for (const n of [3, 4, 6, 8, 10, 12]) {
+      expect(starTop(n)).toBeGreaterThanOrEqual(skyTop(n));
+      expect(starTop(n)).toBeLessThanOrEqual(roleLevel("faint", n));
+      const ramp = Array.from({ length: n }, (_, i) => i);
+      const [a, b, c] = starTones(ramp);
+      expect(a).toBeGreaterThanOrEqual(1);
+      expect(b).toBe(skyTop(n));
+      expect(c).toBe(starTop(n));
+      expect(a).toBeLessThanOrEqual(b);
+      expect(b).toBeLessThanOrEqual(c);
+    }
+    // in colours: the brightest star is the graticule's contrast at most, in both themes
+    for (const [bg, ink] of [[[0.984, 0.984, 0.984], [0.039, 0.039, 0.039]], [[0.039, 0.039, 0.039], [0.961, 0.961, 0.961]]] as const) {
+      const ramp = buildRamp(bg, ink, 12);
+      const top = starTones(ramp)[2];
+      const grid = roleColor(ramp, "faint");
+      expect(top).toEqual(grid);
+      expect(contrastRatio(top, ramp[0]!)).toBeLessThan(1.5);
+      expect(contrastRatio(top, ramp[0]!)).toBeGreaterThan(contrastRatio(starTones(ramp)[1], ramp[0]!));
+    }
+  });
+  it("uses only levels below the graticule's for the band, never the page colour for the tones", () => {
     expect(skyTop(12)).toBe(2);
     for (const n of [3, 4, 6, 8, 10, 12]) {
       expect(skyTop(n)).toBeGreaterThanOrEqual(1);
