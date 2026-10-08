@@ -106,14 +106,24 @@ export const SKY = {
     noise: { octaves: [[7, 0.6], [15, 0.3], [34, 0.1]] as const, floor: 0.5, breakBelow: 0.34, breakDepth: 0.75 },
   },
   stars: {
-    count: 7000,
+    count: 20000,
     /** Star density along the band relative to the sky away from it (1 = no preference): "slightly more of them along the band". */
     bandBoost: 1.8,
-    /** Share of the stars drawn in the brighter of the two tones. */
-    brightShare: 0.2,
+    /**
+     * The shares of the stars at the three star tones, faintest first: palette levels 1 and `skyTop` (the band's two tones) and the
+     * graticule's `faint` level, the brightest anything in the sky gets (`starTop`, a cap: the boxes, labels and the graticule's own
+     * dots are never outshone). A heavy tail: many faint, some middling, a few brighter (each tier about 2 times rarer than the one
+     * below). Sums to 1. Owner (2026-10-08): "not super bright, just a bit brighter", to add noise to the band and to the open sky.
+     */
+    tierShares: [0.6, 0.28, 0.12] as const,
   },
-  /** Fade to the page colour towards the silhouette: nothing before `from`, everything from `to` (earth radii from the centre of the globe). */
-  fade: { from: 1.06, to: 1.55 },
+  /**
+   * The sky is dimmed, never removed, towards the earth: it is drawn right up to the silhouette (`from` 1) at `limb` of its strength (a
+   * slight dimming, enough that the horizon outline, a quiet ring of its own, keeps its contrast) and eases up to its full
+   * strength at `to` earth radii from the centre of the globe (smoothstep). The band's brightness is scaled by it before the dither, and
+   * a star is kept while the factor exceeds its fixed random rank (a thinning of the field, never a dimmer star).
+   */
+  fade: { from: 1, to: 1.55, limb: 0.55 },
   /** The sky is on while the farthest corner of the picture is more than `rho` radii from the globe's centre (off when it comes within `rho - band`, on again at `rho + band`): a binary state with a hysteresis, its fade runs by time. */
   onRho: { rho: 1.75, band: 0.05 },
 } as const;

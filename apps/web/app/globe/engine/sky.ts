@@ -210,17 +210,27 @@ export interface Stars {
   count: number;
   /** Unit vectors in galactic components, xyz per star. */
   position: Float32Array;
-  /** 0 = the dimmer tone, 1 = the brighter. */
+  /** 0 = the dimmest star tone, 1 = the middle one, 2 = the brightest (`starTones`). */
   tier: Float32Array;
   /** A fixed rank 0..1: the star is drawn while the fade exceeds it, so the fade thins the field out at random instead of dimming it. */
   keep: Float32Array;
 }
 
+/** The tone tier (0 = faintest) of a star from a uniform draw `u` in [0, 1): `shares` are the fractions of the field per tier, faintest first. */
+export function starTier(u: number, shares: readonly number[]): number {
+  let acc = 0;
+  for (let i = 0; i < shares.length - 1; i++) {
+    acc += shares[i]!;
+    if (u < acc) return i;
+  }
+  return shares.length - 1;
+}
+
 /**
  * The star field: `SKY.stars.count` uniform directions on the sphere, thinned so that the density is `bandBoost` times higher
- * where the band map is at its brightest (and dust lanes cut it too). Same seed, same stars, on every machine.
+ * where the band map is at its brightest (and dust lanes cut it too). Each star has a tone tier from a heavy-tailed share (`SKY.stars.tierShares`). Same seed, same stars, on every machine.
  */
-export function makeStars(map: Uint8Array = bakeBand(), cfg: { count: number; bandBoost: number; brightShare: number } = SKY.stars, seed: number = SKY.seed): Stars {
+export function makeStars(map: Uint8Array = bakeBand(), cfg: { count: number; bandBoost: number; tierShares: readonly number[] } = SKY.stars, seed: number = SKY.seed): Stars {
   const rand = mulberry32(seed ^ 0x51ed270b);
   const position = new Float32Array(cfg.count * 3);
   const tier = new Float32Array(cfg.count);
@@ -238,7 +248,7 @@ export function makeStars(map: Uint8Array = bakeBand(), cfg: { count: number; ba
     const rank = rand();
     if (gate * cfg.bandBoost > density) continue;
     position.set([x, y, z], n * 3);
-    tier[n] = bright < cfg.brightShare ? 1 : 0;
+    tier[n] = starTier(bright, cfg.tierShares);
     keep[n] = rank;
     n++;
   }
@@ -247,9 +257,12 @@ export function makeStars(map: Uint8Array = bakeBand(), cfg: { count: number; ba
 
 /* ------------------------------------------------------------------ fade, tones, dither */
 
-/** Share of the sky kept at `rho` earth radii from the globe's centre: 0 up to `fade.from`, 1 from `fade.to`, a smoothstep between. */
-export function skyFade(rho: number, fade: { from: number; to: number } = SKY.fade): number {
-  return smoothstep(clamp((rho - fade.from) / (fade.to - fade.from), 0, 1));
+/**
+ * Share of the sky kept at `rho` earth radii from the globe's centre: `fade.limb` (a slight dimming) from the silhouette to `fade.from`,
+ * easing up to 1 at `fade.to` (a smoothstep). Never 0: the sky is drawn right up to the earth's edge.
+ */
+export function skyFade(rho: number, fade: { from: number; to: number; limb: number } = SKY.fade): number {
+  return fade.limb + (1 - fade.limb) * smoothstep(clamp((rho - fade.from) / (fade.to - fade.from), 0, 1));
 }
 
 /** The 4x4 Bayer matrix (ordered dither), row-major. */
@@ -277,11 +290,20 @@ export function toneAt(v: number, threshold: number, top = 2): number {
  */
 export const skyTop = (levels: number): number => Math.max(1, roleLevel("faint", levels) - 1);
 
-/** The two tones of the sky as colours of the ramp: the dim one (level 1) and the bright one (`skyTop`). */
+/** The two tones of the sky's band as colours of the ramp: the dim one (level 1) and the bright one (`skyTop`). */
 export const skyTones = <T>(ramp: readonly T[]): [T, T] => {
   const top = skyTop(ramp.length);
   return [ramp[Math.min(1, top)]!, ramp[top]!];
 };
+
+/**
+ * The highest level any star may use: the graticule's (`faint`, level 3 of 12), the cap of the sky. The band stays below it (`skyTop`);
+ * only the few brightest stars reach it, so the sky never outshines the boxes, the labels or the graticule's dots.
+ */
+export const starTop = (levels: number): number => Math.max(skyTop(levels), roleLevel("faint", levels));
+
+/** The three tones of the stars as colours of the ramp: the band's two (level 1, `skyTop`) and `starTop`. */
+export const starTones = <T>(ramp: readonly T[]): [T, T, T] => [...skyTones(ramp), ramp[starTop(ramp.length)]!];
 
 /* ------------------------------------------------------------------ geometry on the screen */
 

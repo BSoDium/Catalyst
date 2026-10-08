@@ -8,10 +8,11 @@
 //
 // flags    a debug page has no sky, `?sky` has it, `?sky&no-sky` has none
 // rest     zero frames, zero ticks and zero rAF calls with the sky on, at rest, at the world view; the layer is fully on
-// pixels   the sky region of the drawing buffer holds only the page colour and the sky's two palette tones; both tones are below the graticule's
-//          level (and so are the palette levels it uses); nothing within the fade zone at the silhouette
+// pixels   the sky region of the drawing buffer holds only the page colour and the sky's palette tones (the band's two, below the graticule's
+//          level, and the few brightest stars at the graticule's level, never above it); the sky is drawn right up to the silhouette (a
+//          slight dimming, not a cut: lit pixels all the way to the limb)
 // parity   the GPU's picture equals the CPU's twin (`toneAt`, `sampleBand`, `skyFade`, `viewToGalactic`) pixel for pixel (band: >= 99 %), and
-//          every star the CPU projects is lit on the GPU (>= 97 %)
+//          every star the CPU projects is lit on the GPU (>= 97 %) in the tone of its tier (>= 95 %)
 // spin     the idle rotation turns the earth and does NOT move one sky pixel (the era compensates the longitude)
 // orbit    a camera orbit changes the sky; going back restores it exactly
 // timed    zooming in until the globe covers the picture switches the sky off with a TIMED transition (a few frames, then a stopped loop, off at
@@ -55,14 +56,14 @@ const readBuffer = (page) =>
 
 const geometry = (page) => page.evaluate(() => ({ ramp: window.__globeDebug.ramp(), sky: window.__globeDebug.sky() }));
 
-/** Which tone (0 page colour, 1 dim, 2 bright, -1 anything else) every pixel is, and how many of each. */
+/** Which tone (0 page colour, 1 dim, 2 bright, 3 the brightest stars' = the graticule's level, -1 anything else) every pixel is, and how many of each. */
 function tones(buf, ramp, top) {
   const same = (j, c) => buf.rgb[j] === c[0] && buf.rgb[j + 1] === c[1] && buf.rgb[j + 2] === c[2];
   const out = new Int8Array(buf.w * buf.h);
-  const count = { 0: 0, 1: 0, 2: 0, other: 0 };
+  const count = { 0: 0, 1: 0, 2: 0, 3: 0, other: 0 };
   for (let i = 0; i < out.length; i++) {
     const j = i * 3;
-    out[i] = same(j, ramp[0]) ? 0 : same(j, ramp[1]) ? 1 : same(j, ramp[top]) ? 2 : -1;
+    out[i] = same(j, ramp[0]) ? 0 : same(j, ramp[1]) ? 1 : same(j, ramp[top]) ? 2 : same(j, ramp[3]) ? 3 : -1;
     count[out[i] < 0 ? "other" : out[i]]++;
   }
   return { out, count };
@@ -128,29 +129,38 @@ try {
       const top = 2;
       const t = tones(buf, g.ramp, top);
       const { mask, g: sg } = await farMask(o.page, 1.05); // the horizon outline is a pixel or two wide on rho = 1
-      // outside the silhouette the buffer holds the sky only: page colour and the two tones, nothing else
+      // outside the silhouette the buffer holds the sky only: page colour and its tones, nothing else
       let other = 0;
       let lit = 0;
       let near = 0;
+      let nearArea = 0;
+      const skyTones = [0, 0, 0, 0];
       for (let i = 0; i < mask.length; i++) {
         if (!mask[i]) continue;
         if (t.out[i] < 0) other++;
-        else if (t.out[i] > 0) lit++;
+        else {
+          skyTones[t.out[i]]++;
+          if (t.out[i] > 0) lit++;
+        }
       }
-      // inside the fade's inner radius nothing is lit
-      const lim = sg.fadeFrom;
+      // the sky is drawn right up to the silhouette: a slight dimming, not a cut. Count the lit pixels in a ring just outside the horizon
+      // outline (a pixel or two wide, on rho = 1); the band is uneven, so no comparison with the open sky is made here (parity does that against the CPU twin)
       for (let i = 0; i < mask.length; i++) {
         const x = i % buf.w, y = Math.floor(i / buf.w);
         const rho = Math.hypot(x + 0.5 - sg.cx, buf.h - (y + 0.5) - sg.cy) / sg.radius;
-        // the horizon outline (the graticule's tone, level 3) sits on rho = 1, a pixel or two wide
-        if (rho > 1 + 3 / sg.radius && rho < lim && t.out[i] > 0) near++;
+        const ring = rho > 1 + 3 / sg.radius && rho < 1.15;
+        if (ring) {
+          nearArea++;
+          if (t.out[i] > 0) near++;
+        }
       }
-      expect(`${label}: outside the globe only the page colour and the two sky tones (${lit} lit pixels)`, other === 0 && lit > 50, { other, lit });
-      expect(`${label}: nothing lit between the silhouette and the fade's inner radius`, near === 0, { near });
+      expect(`${label}: outside the globe only the page colour and the sky tones (${lit} lit pixels)`, other === 0 && lit > 50, { other, lit });
+      expect(`${label}: the sky reaches the silhouette: lit pixels in the ring just outside the outline (${near} of ${nearArea}), not a blank halo`, near / nearArea > 0.02, { near, nearArea });
+      expect(`${label}: the brightest star tone is used (${skyTones[3]} pixels) and is the rarest of the sky tones (${skyTones[1]} / ${skyTones[2]})`, skyTones[3] > 3 && skyTones[3] < skyTones[2] && skyTones[3] < skyTones[1], skyTones);
       const gridLevel = 3;
       const lumaOf = (c) => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
       const dist = (k) => Math.abs(lumaOf(g.ramp[k]) - lumaOf(g.ramp[0]));
-      expect(`${label}: both tones are fainter than the graticule's level`, dist(1) < dist(gridLevel) && dist(2) < dist(gridLevel) && dist(1) > 0, { ramp: g.ramp.slice(0, 4) });
+      expect(`${label}: the band's two tones are fainter than the graticule's level, the brightest star is that level and nothing is above it`, dist(1) < dist(gridLevel) && dist(2) < dist(gridLevel) && dist(1) > 0 && dist(2) > dist(1), { ramp: g.ramp.slice(0, 4) });
       await o.page.context().close();
     }
   }
@@ -217,14 +227,20 @@ try {
         for (let i = 0; i < res.expected.length; i++) {
           const x = i % res.bufW, y = Math.floor(i / res.bufW);
           const rho = Math.hypot(x + 0.5 - res.g.cx, res.bufH - (y + 0.5) - res.g.cy) / res.g.radius;
-          if (rho < res.fadeFrom || starAt.has(i)) continue; // a star may sit on a band pixel; the silhouette's neighbourhood holds the outline
+          if (rho < res.fadeFrom + 3 / res.g.radius || starAt.has(i)) continue; // a star may sit on a band pixel; the silhouette holds the outline
           compared++;
           if (t.out[i] !== res.expected[i]) wrong++;
         }
         let litStars = 0;
-        for (const [x, y] of res.stars) if (t.out[y * res.bufW + x] > 0) litStars++;
+        let rightTone = 0;
+        for (const [x, y, tier] of res.stars) {
+          const got = t.out[y * res.bufW + x];
+          if (got > 0) litStars++;
+          if (got === tier + 1) rightTone++;
+        }
         expect(`parity at ${JSON.stringify(view)}: band tones equal the CPU twin (${wrong} of ${compared} differ)`, wrong / compared < 0.01, { wrong, compared });
         expect(`parity at ${JSON.stringify(view)}: ${litStars} of ${res.stars.length} projected stars are lit`, res.stars.length > 20 && litStars / res.stars.length >= 0.97, { litStars, stars: res.stars.length });
+        expect(`parity at ${JSON.stringify(view)}: ${rightTone} of ${res.stars.length} stars have the tone of their tier`, rightTone / res.stars.length >= 0.95, { rightTone, stars: res.stars.length });
       }
     }
     await page.context().close();
