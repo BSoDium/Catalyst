@@ -36,18 +36,18 @@ export interface PlanUnits {
   quant: number;
   /** Clear room between a plate outside a box and the box's outline. */
   gap: number;
-  /** How far a plate aligned with a box edge sticks out past it (the text inside has padding, so the text lines up with the edge). */
+  /** How far a plate aligned with a box edge sticks out past it (0: its edge is the box's outer edge). */
   bleed: number;
 }
 
 /** Whole art cells (the pixel text). */
 export const CELL_UNITS: PlanUnits = { clearance: 1, upgradeMargin: 2, shiftStep: 2, inset: 1, quant: 1, gap: 0, bleed: 0 };
 /**
- * CSS px (the DOM labels): 4 px between two labels, 10 px of room before a label gives its place up, `LABEL_TYPE.boxGap` of clear room between
- * a label and its box, the text lined up with the box's edge (`bleed` the plate's padding), a nested label `inset` (the outline's thickness
- * plus `LABEL_TYPE.nestInset`, set per plan from the cell) inside.
+ * CSS px (the DOM labels): 4 px between two labels, 10 px of room before a label gives its place up, `LABEL_TYPE.boxGap` (3 px) of clear room
+ * between a label and its box, the plate's edge ON the box's outer edge (`LABEL_TYPE.bleed` 0: the text starts `padX` inside it), a nested label
+ * `inset` (the outline's thickness plus `LABEL_TYPE.nestInset`, set per plan from the cell) inside.
  */
-export const PX_UNITS: PlanUnits = { clearance: 4, upgradeMargin: 10, shiftStep: 6, inset: 2.5 + LABEL_TYPE.nestInset, quant: 0.5, gap: LABEL_TYPE.boxGap, bleed: LABEL_TYPE.padX };
+export const PX_UNITS: PlanUnits = { clearance: 4, upgradeMargin: 10, shiftStep: 6, inset: 2.5 + LABEL_TYPE.nestInset, quant: 0.5, gap: LABEL_TYPE.boxGap, bleed: LABEL_TYPE.bleed };
 
 /** The units of a plan on a map whose art cell is `cell` CSS px (the box outline is one cell thick). */
 export const pxUnits = (cell: number): PlanUnits => ({ ...PX_UNITS, inset: cell + LABEL_TYPE.nestInset });
@@ -80,6 +80,12 @@ export interface PlanItem {
   rect: CellRect;
   variants: readonly Sized[];
   prev: Prev | null;
+  /**
+   * Rectangles this node's plate must stay clear of, as well as the plates already placed: the BOXES of the other nodes (`boxesToAvoid`; the
+   * planner otherwise looks at plates only, and a label would land on a neighbour's outline). A position that touches one comes after every
+   * position of the same wording that does not; it is still taken, rather than shortening the label or going over other plates.
+   */
+  avoid?: readonly Plate[] | undefined;
 }
 
 export interface PlanResult {
@@ -145,14 +151,23 @@ export function planLabels(items: readonly PlanItem[], grid: GridSize, units: Pl
     const count = t.variants.length;
     const spots: LabelSpot[][] = [];
     const spotsOf = (v: number) => (spots[v] ??= labelCandidates(t.rect, t.variants[v]!.w, t.variants[v]!.h, grid, spotUnits));
-    /** The first (variant, candidate) in priority order, ranked below `before`, that is free with `pad` more room, or null. */
+    /**
+     * The first (variant, candidate) in priority order, ranked below `before`, that is free with `pad` more room, or null. A position that touches
+     * one of the boxes to `avoid` is taken only when no position of the same wording keeps clear of them (the label is not shortened for it).
+     */
+    const avoid = t.avoid;
+    const clearOfBoxes = (x: number, y: number, w: number, h: number) => !avoid || !avoid.some((p) => hits(p, x, y, w, h, 0));
     const first = (pad: number, before = Infinity): { v: number; s: LabelSpot } | null => {
       for (let v = 0; v < count; v++) {
         const { w, h } = t.variants[v]!;
+        let touching: { v: number; s: LabelSpot } | null = null;
         for (const s of spotsOf(v)) {
-          if (rank(v, s.id) >= before) return null;
-          if (free(s.x, s.y, w, h, clearance + pad)) return { v, s };
+          if (rank(v, s.id) >= before) return touching;
+          if (!free(s.x, s.y, w, h, clearance + pad)) continue;
+          if (clearOfBoxes(s.x, s.y, w, h)) return { v, s };
+          touching ??= { v, s };
         }
+        if (touching) return touching;
       }
       return null;
     };
@@ -214,6 +229,21 @@ export function planLabels(items: readonly PlanItem[], grid: GridSize, units: Pl
     const { w, h } = t.variants[pick.v]!;
     placed.push({ x0: pick.x, y0: pick.y, x1: pick.x + w, y1: pick.y + h });
     out[n] = { variant: pick.v, x: pick.x, y: pick.y, w, h, cand: pick.cand, inside: pick.inside, overlap: true };
+  }
+  return out;
+}
+
+/**
+ * The boxes the plate of node `k` must keep clear of (`PlanItem.avoid`): every OTHER box of `boxes` (each already grown by the room to keep) that
+ * is near enough for one of its plate's positions to touch it, that is within `reach` px of node `k`'s own box (the largest distance a position of
+ * its plate can be from it: its width or height plus the gap). Pure.
+ */
+export function boxesToAvoid(boxes: readonly Plate[], k: number, reach: number): Plate[] {
+  const me = boxes[k]!;
+  const out: Plate[] = [];
+  for (let j = 0; j < boxes.length; j++) {
+    const b = boxes[j]!;
+    if (j !== k && b.x0 < me.x1 + reach && b.x1 > me.x0 - reach && b.y0 < me.y1 + reach && b.y1 > me.y0 - reach) out.push(b);
   }
   return out;
 }

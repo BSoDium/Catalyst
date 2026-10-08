@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { loadDemoProjection } from "@catalyst/published";
 import { EMPTY_PROJECTION, type PublishedProjection } from "@catalyst/schemas";
 import { bboxFitRadiusKm } from "~/globe/engine/framing";
-import { buildPlaceIndex, getPlaceDetail, imageSize, listContent, relatedHref, resolveRoutes } from "./projection";
+import { buildPlaceIndex, getPlaceDetail, imageSize, listContent, placeEntries, relatedHref, resolveRoutes } from "./projection";
 
 const demo = loadDemoProjection();
 
@@ -21,6 +21,8 @@ describe("buildPlaceIndex", () => {
       viewRadiusKm: bboxFitRadiusKm(lisbon.bbox),
       groupSlug: "europe",
       countryCode: "PT",
+      // the entries linked to it, for the second line of its label (the demo's project and article)
+      entries: [{ kind: "project", slug: "demo-project" }, { kind: "article", slug: "demo-article" }],
       // the demo's Lisbon has a published box: it is passed on, and the view radius frames it
       bbox: lisbon.bbox,
     });
@@ -70,6 +72,40 @@ describe("buildPlaceIndex", () => {
   });
   it("is empty for an empty projection", () => {
     expect(buildPlaceIndex(EMPTY_PROJECTION)).toEqual({ places: [], globePlaces: [], groups: [], routes: [] });
+  });
+});
+
+describe("placeEntries: the entries linked to each place, for the second line of its label", () => {
+  const place = demo.places[0]!;
+  const other = demo.places[1]!;
+  const item = (slug: string, placeSlugs: string[]) => ({ slug, title: slug, placeSlugs });
+  const base = { ...demo, places: [{ ...place, related: [] }, { ...other, related: [] }], projects: [], articles: [], artworks: [] };
+  it("a place with nothing linked is absent, nothing is invented", () => {
+    expect(placeEntries(base).size).toBe(0);
+    expect(buildPlaceIndex(base).globePlaces.every((p) => !("entries" in p))).toBe(true);
+  });
+  it("counts the items' placeSlugs per kind, each item once per place", () => {
+    const p = placeEntries({ ...base, articles: [item("a1", [place.slug, place.slug]), item("a2", [place.slug, other.slug])], artworks: [item("w1", [other.slug])], projects: [item("p1", [place.slug])] });
+    expect(p.get(place.slug)).toEqual([{ kind: "project", slug: "p1" }, { kind: "article", slug: "a1" }, { kind: "article", slug: "a2" }]);
+    expect(p.get(other.slug)).toEqual([{ kind: "article", slug: "a2" }, { kind: "artwork", slug: "w1" }]);
+  });
+  it("the place's own `related` links count too, and an entry linked from both sides counts once", () => {
+    const p = placeEntries({
+      ...base,
+      places: [{ ...place, related: [{ kind: "article", slug: "a1" }, { kind: "artwork", slug: "w1" }] }, { ...other, related: [] }],
+      articles: [item("a1", [place.slug])],
+      artworks: [item("w1", [])],
+    });
+    expect(p.get(place.slug)).toEqual([{ kind: "article", slug: "a1" }, { kind: "artwork", slug: "w1" }]);
+  });
+  it("a reference to an entry that does not exist is dropped", () => {
+    const p = placeEntries({ ...base, places: [{ ...place, related: [{ kind: "article", slug: "ghost" }] }, { ...other, related: [] }] });
+    expect(p.size).toBe(0);
+  });
+  it("is what the globe gets: `entries` on the place, only when it has some", () => {
+    const index = buildPlaceIndex({ ...base, projects: [item("p1", [place.slug])] });
+    expect(index.globePlaces[0]!.entries).toEqual([{ kind: "project", slug: "p1" }]);
+    expect(index.globePlaces[1]).not.toHaveProperty("entries");
   });
 });
 

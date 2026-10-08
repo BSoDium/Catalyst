@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { TUNING } from "../engine/tuning";
-import { bordersWanted, borderLevel, peakLevel } from "../engine/palette";
+import { bordersWanted, borderLevel, coastLevel, peakLevel } from "../engine/palette";
 import { EASE } from "../street/core/ease";
 import { DEFAULT_HANDOFF, borderHandoff } from "../street/style/street-style";
 import { STREET_TUNING } from "../street/tuning";
@@ -115,13 +115,13 @@ describe("route arcs", () => {
 describe("the early cut (owner: the switch to the high-resolution coast and borders came too late)", () => {
   it("is at least a zoom and a half before the old cut (5.05), after the globe's own borders are on", () => {
     expect(HANDOVER.cutZoom).toBeLessThanOrEqual(5.05 - 1.3);
-    // the globe's borders are ON from TUNING.borderZoom.on (a timed tone ramp, then the peak level), well below the cut and the cut back: at both
+    // the globe's borders are ON from TUNING.borderZoom.on (a timed tone ramp, then the coast level), well below the cut and the cut back: at both
     // renderers are at the same tone, so the swap changes the geometry only
     for (const z of [HANDOVER.cutZoom, HANDOVER.cutBackZoom]) {
       expect(bordersWanted(false, z, TUNING.borderZoom), `zoom ${z}`).toBe(true);
       expect(z).toBeGreaterThan(TUNING.borderZoom.on + TUNING.borderZoom.band + 0.1); // a fade of 200 ms is long over by the time the camera gets there
     }
-    expect(borderLevel(1, 12)).toBe(peakLevel(12));
+    expect(borderLevel(1, 12)).toBe(coastLevel(12));
   });
   it("the street map's tile coast takes over from the first zoom it can have at the cut, at any latitude the app reaches", () => {
     // the cut in MapLibre zoom: unified zoom + log2 cos(lat). At 70 degrees it is the lowest a place can be framed at

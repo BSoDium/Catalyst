@@ -2,39 +2,42 @@
  * The text of the box labels and its size in CSS px (pure apart from the injectable meter; unit tested).
  *
  * The labels of the detection boxes are HTML text in device pixels, not pixel art (the pixel font stays for text that is part of the map
- * itself, engine/pixel-labels.ts): the app's own monospace stack (`--font-mono`), small, thin, tightly set, with a
- * halo of the page colour (app.css, `.map-label`). Everything the layout needs is the SIZE of a label, which is measured once per string
- * with a 2D canvas (`measureText`; the DOM is never read back) and cached: the planner (engine/label-plan.ts), the cut of the hierarchy
- * (engine/lod-tree.ts: a label counts as part of its node) and the hit hull (engine/hit-area.ts) all work from these numbers, in CSS px.
+ * itself, engine/pixel-labels.ts): the app's own monospace stack (`--font-mono`) on a plate of the page colour with a soft feathered edge
+ * (app.css `.map-label`, `.map-halo`). Everything the layout needs is the SIZE of a label, which is measured once per string with a 2D canvas
+ * (`measureText`; the DOM is never read back) and cached: the planner (engine/label-plan.ts), the cut of the hierarchy (engine/lod-tree.ts: a
+ * label counts as part of its node) and the hit hull (engine/hit-area.ts) all work from these numbers, in CSS px.
  *
- * Label parts: the NAME (a place's name; a group's name) and, for a group, its COUNTER ("12 entries") after a gap, in a lighter and smaller
- * run of the same colour (the weight and the size say it is secondary; its colour is the page's foreground like the name's, never dimmed).
- * A label can be written several ways (`labelVariants`, widest first) for when there is no room: the whole label, without its counter, then
- * the name truncated with an ellipsis down to `MIN_LABEL_CHARS` characters. While hovered, focused or selected a place's label also names its
- * country ("Name, Country", `expandedLabel`) and nothing else about it changes.
+ * A label is TWO LINES: line 1 the NAME (14 px, weight 500), line 2 a smaller SECOND LINE (11 px, regular) when there is one: for a place its
+ * country and its linked entries split by kind, for a group its number of places and their entries (engine/label-sub.ts). The country is always
+ * there when known, hovered or not; hover and selection change the colours of the plate, never the text or its size.
+ * A label can be written several ways (`labelVariants`, widest first) for when there is no room: the whole label, without its entries, without
+ * its country / number of places (one line), then the name truncated with an ellipsis down to `MIN_LABEL_CHARS` characters.
  */
+import { subSteps, type LabelSub } from "./label-sub";
 
 /**
  * The label type and plate. One place for the numbers: the DOM layer (engine/label-dom.ts) styles with them and the planner measures with them.
- * The font is the app's monospace stack (`--font-mono`, the one of the credits line and the dev badge), thin and tightly tracked.
+ * The font is the app's monospace stack (`--font-mono`, the one of the credits line and the dev badge).
  */
 export const LABEL_TYPE = {
-  name: { size: 13, weight: 400, tracking: 0.02 },
-  count: { size: 11, weight: 300, tracking: 0.02 },
-  /** Line height of the label, px. Tight: a label is one line. */
-  lineHeight: 16,
-  /** Room between the text and the edge of its plate (the plate is the hit area, the inverted selected plate and the hover plate). */
+  /** Line 1, the name. */
+  name: { size: 14, weight: 500, tracking: 0.01, lineHeight: 18 },
+  /** Line 2, the country (or number of places) and the entries. */
+  sub: { size: 11, weight: 400, tracking: 0.02, lineHeight: 14 },
+  /** Room between the text and the edge of its plate (the plate is the hit area, the inverted selected plate and the page-colour ground of the text). */
   padX: 6,
   padY: 3,
-  /** Between the name and its counter. */
-  gap: 9,
   /** Clear room between a label outside its box and the box's outline (above, below, beside). */
-  boxGap: 7,
+  boxGap: 3,
   /** Extra room, beyond the outline's own thickness, between a nested label's plate and the box's outline. */
-  nestInset: 4,
+  nestInset: 3,
+  /** How far the plate sticks out past the box's edge it is aligned with: none, the plate's edge IS the box's outer edge (the text starts `padX` inside it). */
+  bleed: 0,
+  /** The soft edge of the plate, px: it fades out over `blur` px around the plate, starting `spread` px beyond it (app.css `.map-halo`; label-dom.ts writes it). */
+  feather: { blur: 8, spread: 3 },
 } as const;
 
-export type Run = "name" | "count";
+export type Run = "name" | "sub";
 
 /** Something that knows how wide a run of text is, in CSS px, tracking not included. */
 export interface TextMeter {
@@ -118,27 +121,27 @@ export function runWidth(text: string, run: Run): number {
 /** One way of writing a label and its size in CSS px (the plate: text, `padX` / `padY` of room all round). */
 export interface LabelText {
   name: string;
-  /** A group's counter ("12 entries"), null for a place or when it was left out for room. */
-  chip: string | null;
+  /** The second line as written (country / places and entries, or just the first of them), null for a one-line label. */
+  sub: string | null;
   w: number;
   h: number;
-  /** The name's width and where the counter starts from the plate's left. */
+  /** The width of the name and of the second line (0 without one). */
   nameW: number;
-  chipX: number;
+  subW: number;
 }
 
-/** Height of every plate. */
-export const LABEL_H = LABEL_TYPE.lineHeight + 2 * LABEL_TYPE.padY;
+/** Height of a plate with one line (the name) and with two (the name and the second line). */
+export const LABEL_H_ONE = LABEL_TYPE.name.lineHeight + 2 * LABEL_TYPE.padY;
+export const LABEL_H_TWO = LABEL_H_ONE + LABEL_TYPE.sub.lineHeight;
 
-/** The size of a label with this name and counter. */
-export function labelText(name: string, chip: string | null): LabelText {
+/** The size of a label with this name and second line (`sub` null: one line). The plate is as wide as the wider line. */
+export function labelText(name: string, sub: string | null): LabelText {
   const nameW = runWidth(name, "name");
-  const chipX = LABEL_TYPE.padX + nameW + LABEL_TYPE.gap;
-  const w = chip ? chipX + runWidth(chip, "count") + LABEL_TYPE.padX : LABEL_TYPE.padX + nameW + LABEL_TYPE.padX;
-  return { name, chip, w, h: LABEL_H, nameW, chipX };
+  const subW = sub ? runWidth(sub, "sub") : 0;
+  return { name, sub, w: Math.max(nameW, subW) + 2 * LABEL_TYPE.padX, h: sub ? LABEL_H_TWO : LABEL_H_ONE, nameW, subW };
 }
 
-/** The text of a group's counter: "<N> entries", "1 entry" when singular. */
+/** The text of a group's chip in the PIXEL text of the map ("12 entries", "1 entry"); the box labels do not use it (engine/label-sub.ts). */
 export const chipText = (count: number): string => `${count} ${count === 1 ? "entry" : "entries"}`;
 
 /** Fewest characters (the ellipsis included) a name is truncated to. */
@@ -146,35 +149,29 @@ export const MIN_LABEL_CHARS = 6;
 const TRAILING = /[\s,;:.\-–—]+$/;
 
 /**
- * The ways a label can be written, widest first: the whole label, without its counter, then the name truncated one character at a time with an
- * ellipsis, down to `MIN_LABEL_CHARS` characters (never fewer; a name of six characters or less is never truncated). Each is narrower than the one
- * before. The first is what the label wants; the others are what the plan falls back to when there is no room for it.
+ * The ways a label can be written, widest first: the whole label, then without its entries, then without its country / number of places (one line),
+ * then the name truncated one character at a time with an ellipsis, down to `MIN_LABEL_CHARS` characters (never fewer; a name of six characters or
+ * less is never truncated). Each is smaller than the one before (narrower, or as wide and lower: dropping a line a long name does not need
+ * frees height only). The first is what the label wants; the others are what the plan falls back to when there is no room for it.
  */
-export function labelVariants(name: string, chip: string | null): LabelText[] {
-  const key = `${chip ?? ""}|${name}`;
+export function labelVariants(name: string, sub: LabelSub | null): LabelText[] {
+  const key = `${sub?.lead ?? ""}|${sub?.entries ?? ""}|${name}`;
   const hit = variantCache.get(key);
   if (hit) return hit;
   const out: LabelText[] = [];
-  let last = Infinity;
-  const add = (n: string, c: string | null) => {
-    const v = labelText(n, c);
-    if (v.w >= last) return; // the shorter ways must really be narrower (the ellipsis is a wide glyph: cutting one letter does not shorten a label)
-    last = v.w;
+  let lastW = Infinity;
+  let lastH = Infinity;
+  const add = (n: string, line: string | null) => {
+    const v = labelText(n, line);
+    if (v.w > lastW || v.h > lastH || (v.w === lastW && v.h === lastH)) return; // the shorter ways must really be smaller (the ellipsis is a wide glyph: cutting one letter does not shorten a label)
+    lastW = v.w;
+    lastH = v.h;
     out.push(v);
   };
-  add(name, chip);
-  if (chip) add(name, null);
+  for (const line of subSteps(sub)) add(name, line);
   const chars = Array.from(name);
   for (let n = chars.length - 1; n >= MIN_LABEL_CHARS; n--) add(chars.slice(0, n - 1).join("").replace(TRAILING, "") + "…", null);
   if (variantCache.size > 4000) variantCache.clear();
   variantCache.set(key, out);
   return out;
-}
-
-/**
- * The label while hovered, focused or selected: the name with its country when the country is known ("Houston, United States"), and the
- * counter if it has one. Nothing else changes: it is written once, whole, never shortened (it may overlay a neighbour).
- */
-export function expandedLabel(name: string, country: string | null, chip: string | null): LabelText {
-  return labelText(country ? `${name}, ${country}` : name, chip);
 }

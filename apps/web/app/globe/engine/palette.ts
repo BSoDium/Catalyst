@@ -4,9 +4,10 @@
  * Two CSS tokens (`--background`, `--foreground`; light and dark) are the only input. `PALETTE_LEVELS` greys between
  * them, interpolated in OKLab (so equal steps look equal in both themes, and the dark theme is not a lighter copy of the
  * light one). Level 0 is the page colour, the LAST level the full ink, and the levels in between form the MAP RAMP: they
- * only reach `MAP_CONTRAST` of the way from the page colour to the ink. So everything the map draws (coastlines, borders,
- * roads, rail, fills, graticule) tops out well below the ink, and the ink itself is kept for what must stand out: markers,
- * labels, the selected place and its route. `MAP_CONTRAST` is THE knob of how loud the map is, for both renderers.
+ * only reach `MAP_CONTRAST` of the way from the page colour to the ink (the `coast` level), plus one level, `peak`, for the box at
+ * rest (`BOX_CONTRAST`). So everything the map draws (coastlines, borders, roads, rail, fills, graticule) tops out well below the
+ * boxes, and the ink itself is kept for what must stand out: markers, labels, the selected place and its route. `MAP_CONTRAST`
+ * (with `MAP_CONTRAST_DARK`) is THE knob of how loud the map is, for both renderers; `BOX_CONTRAST` is how loud a box at rest is.
  *
  * Everything else is a named ROLE that resolves to one of the levels for the current count, so the number of levels is one
  * constant: roles that are closer than a level apart simply share it.
@@ -18,7 +19,8 @@
  *   soft    0.42       rail, streams, canals, the dashes of water
  *   mid     0.60       secondary roads (0.6), region borders, building outlines
  *   strong  0.80       primary roads, rivers, lakes
- *   peak    1          coastline, country borders: the loudest the map gets (MAP_CONTRAST of the way to the ink)
+ *   coast   0.9        coastline, country borders, the water's edge: the loudest the MAP gets (MAP_CONTRAST of the way to the ink)
+ *   peak    1          the box at rest (BOX_CONTRAST of the way to the ink): one level ABOVE the coastline, so a box always reads over the map
  *   ink     (last)     markers, labels, the selected place, routes: the full foreground
  *
  * Fades are TONE ramps: a line that appears or goes starts at the faintest level and steps through the levels up to its role's
@@ -38,19 +40,34 @@ export const MAX_LEVELS = 12;
 export const MIN_LEVELS = 3;
 
 /**
- * How far from the page colour to the ink the loudest map content (the `peak` level: coastlines, country borders) gets,
- * 0..1 in OKLab. 1 would draw the map in full ink (the first palette build); the owner asked for a recessive map, where
- * markers, labels and the selection are the only full-ink things. Tuned by eye in both themes (docs/palette/).
+ * How far from the page colour to the ink the loudest MAP content (the `coast` level: coastlines, country borders, the water's edge)
+ * gets, 0..1 in OKLab: THE knob of how loud the map is. 1 would draw the map in full ink (the first palette build); 0.55 / 0.58 was
+ * the value until 2026-10-08 (then shared with the box at rest, 5.2:1 / 5.5:1 against the page), when the owner asked to wash the
+ * map out ("so that our labels and bounding boxes are even more visible"): about 40 % less in contrast ratio, 0.40 / 0.42 (3.1:1 / 3.2:1
+ * against the page). The levels between the faint end (the `faint` level, untouched: the graticule, the sky and the horizon outline live there)
+ * and the coast level are spread between the two on a convex curve (`MAP_RAMP_EXP`), so the road hierarchy keeps its order and every road, river and
+ * region border is washed out in proportion. Tuned by eye in both themes (docs/palette/).
  */
-export const MAP_CONTRAST = 0.55;
+export const MAP_CONTRAST = 0.40;
 /** The dark page needs a little more than the light one for the same recession (equal lightness steps read weaker on a dark ground). */
-export const MAP_CONTRAST_DARK = 0.58;
+export const MAP_CONTRAST_DARK = 0.42;
+/**
+ * How far to the ink the box at rest (the `peak` level) is: unchanged by the map wash of 2026-10-08, so the boxes are the loudest thing
+ * of the map's own greys by a wide margin (5.2:1 / 5.5:1 against the page, the coastline 3.1:1 / 3.2:1). The pixel labels' rest tone is this level.
+ */
+export const BOX_CONTRAST = 0.55;
+export const BOX_CONTRAST_DARK = 0.58;
+/**
+ * Shape of the stretch between the faint end and the coast level: 1 is even steps, above 1 keeps the middle levels (secondary roads,
+ * rivers, region borders) closer to the faint end and puts the rise near the coast, so the whole map is washed out and not only its top.
+ */
+export const MAP_RAMP_EXP = 1.6;
 
-export const ROLES = ["bg", "wash", "faint", "soft", "mid", "strong", "peak", "ink"] as const;
+export const ROLES = ["bg", "wash", "faint", "soft", "mid", "strong", "coast", "peak", "ink"] as const;
 export type Role = (typeof ROLES)[number];
 
-/** Position of each role along the MAP ramp (page colour 0 to `peak` 1). `ink` is not on it: it is the last level. */
-export const ROLE_POSITION: Record<Exclude<Role, "ink">, number> = { bg: 0, wash: 0.12, faint: 0.27, soft: 0.42, mid: 0.6, strong: 0.8, peak: 1 };
+/** Position of each role along the MAP ramp (page colour 0 to `peak` 1). `ink` is not on it (it is the last level), nor is `coast` (the level just under `peak`, `coastLevel`); no role is above the coast but the peak. */
+export const ROLE_POSITION: Record<Exclude<Role, "ink" | "coast">, number> = { bg: 0, wash: 0.12, faint: 0.27, soft: 0.42, mid: 0.6, strong: 0.8, peak: 1 };
 
 export const clampLevels = (n: number): number => Math.min(MAX_LEVELS, Math.max(MIN_LEVELS, Math.round(n)));
 
@@ -64,8 +81,11 @@ export function setActiveLevels(n: number | null): void {
   active = n === null ? PALETTE_LEVELS : clampLevels(n);
 }
 
-/** Highest level of the map ramp (`peak`): one below the ink. */
+/** Highest level of the map ramp (`peak`, the box at rest): one below the ink. */
 export const peakLevel = (n: number = activeLevels()): number => clampLevels(n) - 2;
+
+/** The loudest level of the MAP itself (`coast`): one below `peak` (with 3 levels there is no room and it is the peak). */
+export const coastLevel = (n: number = activeLevels()): number => Math.max(1, peakLevel(n) - 1);
 
 /** Level index of a role: 0 for the page colour, `n - 1` for the ink, 1 .. `n - 2` for the map roles (`peak` = `n - 2`). */
 export function roleLevel(role: Role, n: number = activeLevels()): number {
@@ -73,7 +93,9 @@ export function roleLevel(role: Role, n: number = activeLevels()): number {
   if (role === "bg") return 0;
   if (role === "ink") return count - 1;
   const top = count - 2;
-  return Math.min(top, Math.max(1, Math.round(ROLE_POSITION[role] * top)));
+  if (role === "coast") return coastLevel(count);
+  if (role === "peak") return top;
+  return Math.min(coastLevel(count), Math.max(1, Math.round(ROLE_POSITION[role] * top)));
 }
 
 /**
@@ -143,16 +165,35 @@ export function mixOklab(a: Rgb, b: Rgb, t: number): Rgb {
  */
 export const RAMP_GAMMA = 1.15;
 
-/** The map contrast for a theme: how far (0..1) the peak level is from the page colour towards the ink. */
-export const mapContrastFor = (background: Rgb, ink: Rgb): number => (srgbToOklab(ink)[0] < srgbToOklab(background)[0] ? MAP_CONTRAST : MAP_CONTRAST_DARK);
+/** The map contrast for a theme: how far (0..1) the `coast` level is from the page colour towards the ink. */
+export const mapContrastFor = (background: Rgb, ink: Rgb): number => (isLight(background, ink) ? MAP_CONTRAST : MAP_CONTRAST_DARK);
+/** The box-at-rest contrast for a theme: how far (0..1) the `peak` level is from the page colour towards the ink. */
+export const boxContrastFor = (background: Rgb, ink: Rgb): number => (isLight(background, ink) ? BOX_CONTRAST : BOX_CONTRAST_DARK);
+const isLight = (background: Rgb, ink: Rgb): boolean => srgbToOklab(ink)[0] < srgbToOklab(background)[0];
 
-/** The ramp: `n` colours from the page colour to the ink, interpolated in OKLab (map levels eased on a light page, see `RAMP_GAMMA`). */
-export function buildRamp(background: Rgb, ink: Rgb, n: number = activeLevels(), contrast: number = mapContrastFor(background, ink)): Rgb[] {
+/**
+ * The ramp: `n` colours from the page colour to the ink, interpolated in OKLab (map levels eased on a light page, see `RAMP_GAMMA`).
+ *
+ * Three stretches. From the page colour to `faintLevel` (the graticule, the sky, the horizon outline, the dimmest roads) the ramp is
+ * the eased one that reaches `box` at the peak level, untouched by the wash of 2026-10-08: its levels are barely above the page and
+ * are the floor that nothing may go under. From there to the `coast` level it rises (in OKLab, convexly, `MAP_RAMP_EXP`) up to `contrast`, the map's
+ * loudest tone. The peak level (the box at rest) is `box` of the way, one level above the coast, and the last level is the ink.
+ * `contrast` is the map's knob; `box` the box's.
+ */
+export function buildRamp(background: Rgb, ink: Rgb, n: number = activeLevels(), contrast: number = mapContrastFor(background, ink), box: number = boxContrastFor(background, ink)): Rgb[] {
   const count = clampLevels(n);
-  const light = srgbToOklab(ink)[0] < srgbToOklab(background)[0];
-  const gamma = light ? RAMP_GAMMA : 1;
+  const gamma = isLight(background, ink) ? RAMP_GAMMA : 1;
   const top = count - 2;
-  return Array.from({ length: count }, (_, k) => (k === 0 ? background : k === count - 1 ? ink : mixOklab(background, ink, contrast * (k / top) ** gamma)));
+  const coast = coastLevel(count);
+  const kept = Math.min(roleLevel("faint", count), coast);
+  const eased = (k: number) => box * (k / top) ** gamma;
+  const share = (k: number): number => {
+    if (k >= top) return box;
+    if (k <= kept) return Math.min(eased(k), contrast);
+    const from = Math.min(eased(kept), contrast);
+    return from + (contrast - from) * ((k - kept) / (coast - kept)) ** MAP_RAMP_EXP;
+  };
+  return Array.from({ length: count }, (_, k) => (k === 0 ? background : k === count - 1 ? ink : mixOklab(background, ink, share(k))));
 }
 
 /** Colour of a role in a ramp built by `buildRamp`. */
@@ -161,9 +202,9 @@ export const roleColor = (ramp: readonly Rgb[], role: Role): Rgb => ramp[roleLev
 /** Whether the country borders are wanted at an internal globe zoom: on from `range.on + band`, off again below `range.on - band` (a hysteresis, in between it keeps its state). */
 export const bordersWanted = (was: boolean, zoom: number, range: { readonly on: number; readonly band: number }): boolean => hysteresis(was, zoom, range.on - range.band, range.on + range.band);
 
-/** Level of the country borders for a fade value 0..1 (engine/fade.ts): 0 = not drawn, then the faintest grey level, stepping up to the `peak` level. */
+/** Level of the country borders for a fade value 0..1 (engine/fade.ts): 0 = not drawn, then the faintest grey level, stepping up to the `coast` level. */
 export function borderLevel(fade: number, levels: number): number {
-  return rampLevel(fade, peakLevel(levels));
+  return rampLevel(fade, coastLevel(levels));
 }
 
 /* ------------------------------------------------------------------ text contrast ------------------------------------------------------------------ */

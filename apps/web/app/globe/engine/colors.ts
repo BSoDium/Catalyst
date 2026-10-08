@@ -16,7 +16,7 @@ export interface GlobeTheme {
   background: Rgb;
   /** Markers and the route: the palette's full ink (the loudest thing on the map). */
   ink: Rgb;
-  /** Coastlines and fully faded-in borders: the palette's `peak` level, which stays well below the ink (`MAP_CONTRAST`). */
+  /** Coastlines and fully faded-in borders: the palette's `coast` level, the loudest the MAP gets (`MAP_CONTRAST`), one level under the box at rest (`peak`) and far below the ink. */
   coast: Rgb;
   /** Horizon outline: one palette level below the graticule's `faint` (`outlineLevel`, level 2 of 12: 1.24:1 light, 1.21:1 dark against the page), a quiet edge, not a line. */
   outline: Rgb;
@@ -102,5 +102,5 @@ export const outlineLevel = (levels: number): number => Math.max(1, roleLevel("f
 
 export function themeFromTokens(background: Rgb, ink: Rgb, levels: number = activeLevels()): GlobeTheme {
   const ramp = buildRamp(background, ink, levels);
-  return { background, ink, coast: roleColor(ramp, "peak"), outline: ramp[outlineLevel(levels)]!, grid: roleColor(ramp, "faint"), ramp };
+  return { background, ink, coast: roleColor(ramp, "coast"), outline: ramp[outlineLevel(levels)]!, grid: roleColor(ramp, "faint"), ramp };
 }

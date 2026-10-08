@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { bboxExtentsKm, bboxFitRadiusKm, radiusFitZoom } from "./framing";
 import { LOD, LodTree, buildLodNodes, newLodCamera, placeHalfPx, setLodCamera, type GroupKind, type LodCamera, type LodNodeInput } from "./lod-tree";
 import { projectLonLat, viewBasis } from "./geo";
-import { chipText, labelText } from "./label-text";
+import { subText } from "./label-sub";
+import { labelText } from "./label-text";
 
 const W = 1440;
 const H = 900;
@@ -89,13 +90,14 @@ describe("box geometry (pure)", () => {
       expect(t.side[i]).toBeCloseTo(Math.max(x1 - x0, y1 - y0), 6);
     }
   });
-  it("a group's label carries the chip \"<N> entries\", a place's does not, measured in CSS px", () => {
+  it("a group's second line says \"<N> places\", a place without a country has none, measured in CSS px", () => {
     const t = new LodTree(germany());
     const de = t.indexOf("de");
     expect(t.total[de]).toBe(10);
-    expect(t.chip[de]).toBe("10 entries");
-    expect(t.labelW[de]).toBeCloseTo(labelText("de", chipText(10)).w, 4);
-    expect(t.chip[t.indexOf("de-3")]).toBeNull();
+    expect(subText(t.sub[de]!)).toBe("10 places");
+    expect(t.labelW[de]).toBeCloseTo(labelText("de", "10 places").w, 4);
+    expect(t.labelH[de]).toBe(labelText("de", "10 places").h);
+    expect(t.sub[t.indexOf("de-3")]).toBeNull();
     expect(t.labelW[t.indexOf("de-3")]).toBeCloseTo(labelText("de-3", null).w, 4);
     expect(labelText("Kraków", null).w).toBeGreaterThan(labelText("Kra", null).w);
   });
@@ -110,20 +112,34 @@ describe("a crowd of places is one rectangle that opens on zoom", () => {
     expect(tree.members[tree.indexOf("de")]).toBe(10);
   });
 
-  it("zooming in, the cut swaps the group's rectangle for the ten places' rectangles at once: at rest each node is fully drawn or not at all, never missing", () => {
-    let swapped = -1;
+  it("zooming in, the group's rectangle is replaced by its most important places once two of them fit, and the others come in as they fit: at rest each node is fully drawn or not at all, never both a group and a place below it", () => {
+    let opened = -1;
+    let atOpen = 0;
+    let all = -1;
+    let last = 0;
     for (let z = 2.7; z <= 9; z += 0.01) {
       const a = evaluate(tree, camAt(9.8, 50.7, z));
       const box = a.get("de") ?? 0;
       const places = [...a.keys()].filter((k) => k.startsWith("de-")).length;
       // binary: every opacity is 1 (a node that is not drawn is not in the map)
       for (const [slug, alpha] of a) expect(alpha, `${slug} at ${z.toFixed(2)}`).toBe(1);
-      // exactly one level: the group or its places, never both, never neither
-      expect(box === 1 ? places === 0 : places === 10, `z ${z.toFixed(2)}`).toBe(true);
-      if (box === 0 && swapped < 0) swapped = z;
+      // the group or some of its places, never both, never neither
+      expect(box === 1 ? places === 0 : places >= 2, `z ${z.toFixed(2)}`).toBe(true);
+      if (box === 0 && opened < 0) {
+        opened = z;
+        atOpen = places;
+      }
+      // zooming in never takes a place away again
+      expect(places, `z ${z.toFixed(2)}`).toBeGreaterThanOrEqual(last);
+      last = places;
+      if (places === 10 && all < 0) all = z;
     }
-    expect(swapped).toBeGreaterThan(3);
-    expect(swapped).toBeLessThan(8);
+    expect(opened).toBeGreaterThan(3);
+    expect(opened).toBeLessThan(8);
+    // only the places that fit are drawn when it opens; they are all there before the box covers `boxMaxTo` of the screen
+    expect(atOpen).toBeGreaterThanOrEqual(2);
+    expect(atOpen).toBeLessThan(10);
+    expect(all).toBeGreaterThan(opened);
   });
 
   it("is a function of the camera and of the history only through the hysteresis band: going in and out agree outside it", () => {
@@ -196,16 +212,16 @@ describe("places that are not crowded are never merged", () => {
     const t = new LodTree([g("c", "country", undefined, 0, 0, 200), p("a", "c", 0, -0.4), p("b", "c", 0, 0.4)]);
     expect([...evaluate(t, camAt(0, 0, 2.7)).keys()]).toEqual(["c"]);
   });
-  it("two places whose rectangles are far apart but whose LABELS collide are still merged (the label counts)", () => {
-    // 85 CSS px apart: the rectangles are 60 px apart (open on their own), but a long name makes the label of the left one reach the right one
-    const long = "A very long place name indeed";
-    const t = new LodTree([{ ...g("c", "country", undefined, 0, 0, 200), name: "c" }, { ...p("a", "c", 0, 0), name: long }, p("b", "c", 0, 0.9)]);
-    const a = evaluate(t, camAt(0.45, 0, 6));
-    const gap = t.boxX0[t.indexOf("b")]! - t.boxX1[t.indexOf("a")]!;
-    expect(gap).toBeGreaterThan(LOD.sepPx);
-    expect(labelText(long, null).w).toBeGreaterThan(t.boxX1[t.indexOf("a")]! - t.boxX0[t.indexOf("a")]! + gap - LOD.sepClosedPx);
-    expect(a.has("c")).toBe(true);
-    expect(a.has("a")).toBe(false);
+  it("two places open from their group at a distance that leaves room for their labels (the gap to every box and label counts, not the boxes alone)", () => {
+    const opensAt = (spreadDeg: number) => {
+      const t = new LodTree([g("c", "country", undefined, 0, 0, 200), p("a", "c", 0, 0), p("b", "c", 0, spreadDeg)]);
+      for (let z = 2.7; z <= 12; z += 0.01) if (!evaluate(t, camAt(spreadDeg / 2, 0, z)).has("c")) return { z, gap: t.boxX0[t.indexOf("b")]! - t.boxX1[t.indexOf("a")]! };
+      return { z: Infinity, gap: 0 };
+    };
+    const near = opensAt(0.5);
+    // the boxes are clear by at least the enter gap when it opens, and a pair twice as far apart opens about a zoom level earlier
+    expect(near.gap).toBeGreaterThanOrEqual(LOD.open.gapPx.enter - 1e-6);
+    expect(opensAt(1).z).toBeLessThan(near.z - 0.5);
   });
   it("continents and subregions are only drawn when the view is crowded: a spread-out tree shows its places", () => {
     const t = new LodTree([
@@ -318,17 +334,19 @@ describe("the demo hierarchy", () => {
     expect(evaluate(tree, camAt(174.8, -41.3, 2.7)).get("wellington")).toBe(1);
   });
 
-  it("each branch always shows exactly one level at rest (the opacities along a chain sum to 1) while zooming into a place", () => {
+  it("each branch shows at most one level at rest (the opacities along a chain sum to 0 or 1, never more) while zooming into a place, and the place is there from the zoom its box covers `boxMaxTo`", () => {
     for (const [lon, lat] of [[108.3, 16], [16, 44.6], [2.35, 48.86]] as const) {
       for (let z = 2.7; z <= 13; z += 0.02) {
         const a = evaluate(tree, camAt(lon, lat, z));
         for (const [slug, alpha] of a) expect(alpha, `${slug} at ${z.toFixed(2)}`).toBe(1);
         for (let i = 0; i < tree.size; i++) {
           if (tree.isGroup[i] || !tree.shown[i]) continue;
-          // a place's own huge rectangle is hidden without anything to hand over to (street scale): that is the only way under 1
-          if ((tree.boxX1[i]! - tree.boxX0[i]!) / H >= LOD.sizeFadeFrom) continue;
           const total = chain(tree, i).reduce((acc, c) => acc + (a.get(tree.slug[c]!) ?? 0), 0);
-          expect(total, `${tree.slug[i]} at ${z.toFixed(2)}`).toBe(1);
+          expect(total, `${tree.slug[i]} at ${z.toFixed(2)}`).toBeLessThanOrEqual(1);
+          // a place's own huge rectangle is hidden without anything to hand over to (street scale): that is the only way under 1 once its group is forced open
+          if ((tree.boxX1[i]! - tree.boxX0[i]!) / H >= LOD.sizeFadeFrom) continue;
+          const group = tree.parent[i]!;
+          if (group >= 0 && (tree.boxX1[group]! - tree.boxX0[group]!) / H >= LOD.boxMaxTo && !tree.isGroup[i]) expect(total, `${tree.slug[i]} at ${z.toFixed(2)}`).toBe(1);
         }
       }
     }
@@ -342,6 +360,7 @@ describe("the demo hierarchy", () => {
           for (const [slug, alpha] of a) {
             const i = tree.indexOf(slug);
             expect(alpha, `${slug} at ${lon},${lat},${z}`).toBe(1);
+            // a node and its ancestor are never both drawn (no exemption)
             expect(tree.hasDrawnAncestor(i), `${slug}: a node and its ancestor are both drawn`).toBe(false);
           }
         }
@@ -557,13 +576,21 @@ describe("a drawn ancestor (the checks' `parented`)", () => {
     expect(t.alpha[t.indexOf("c")]).toBeGreaterThan(0); // still on screen, fading
     expect(t.hasDrawnAncestor(t.indexOf("a"))).toBe(false);
   });
-  it("a place that is wanted (a route stop, the selected) inside a drawn group does have one", () => {
+  it("a place that is wanted (a route stop, the selected) under a closed group opens the group around it: no resting state draws a group with a place below it", () => {
     const t = new LodTree(nodes);
     t.update(camAt(0, 40, 2.7), t.indexOf("a"), -1, false);
     t.settle();
-    expect(t.alpha[t.indexOf("c")]).toBe(1);
+    expect(t.alpha[t.indexOf("c")] ?? 0).toBe(0);
     expect(t.alpha[t.indexOf("a")]).toBe(1);
-    expect(t.hasDrawnAncestor(t.indexOf("a"))).toBe(true);
+    expect(t.hasDrawnAncestor(t.indexOf("a"))).toBe(false);
+    // and the same for the stops of a route, however deep the group
+    const deep = new LodTree([g("w", "continent", undefined, 40, 0, 3000), g("c", "country", "w", 40, 0, 300), p("a", "c", 40, 0), p("b", "c", 40, 0.05), p("z", "w", 10, 20)]);
+    deep.setExtraForced([deep.indexOf("a")]);
+    const alphas = deep.alphas(camAt(0, 30, 2.7));
+    expect(alphas.get("a")).toBe(1);
+    expect(alphas.has("c")).toBe(false);
+    expect(alphas.has("w")).toBe(false);
+    expect(deep.hasDrawnAncestor(deep.indexOf("a"))).toBe(false);
   });
 });
 
@@ -864,9 +891,9 @@ describe("bounding box rectangles (place bbox) and the radius fallback", () => {
   });
 });
 
-describe("label text: the name alone; the country is kept for the hovered or selected label", () => {
+describe("label text: the name on the first line, the country on the second", () => {
   const withCountry = (slug: string, name: string, cc: string | undefined, lat: number, lon: number): LodNodeInput => ({ ...p(slug, undefined, lat, lon), name, countryCode: cc });
-  it("every place says its name alone, whether or not it is the only one of its country, and knows its country", () => {
+  it("every place says its name and its country, whether or not it is the only one of its country", () => {
     const t = new LodTree([
       withCountry("bog", "Bogotá", "CO", 4.7, -74.1),
       withCountry("par", "Paris", "FR", 48.8, 2.3),
@@ -875,10 +902,10 @@ describe("label text: the name alone; the country is kept for the hovered or sel
     ]);
     for (const [s, n, c] of [["bog", "Bogotá", "Colombia"], ["par", "Paris", "France"], ["lyo", "Lyon", "France"], ["ksv", "Pristina", "Kosovo"]] as const) {
       expect(t.text[t.indexOf(s)], s).toBe(n);
-      expect(t.country[t.indexOf(s)], s).toBe(c);
+      expect(t.sub[t.indexOf(s)]?.lead, s).toBe(c);
     }
   });
-  it("no country silently when the code is missing or unknown; groups never get one", () => {
+  it("no country silently when the code is missing or unknown; a group says its places, never a country", () => {
     const t = new LodTree([
       withCountry("a", "Nowhere", undefined, 0, 0),
       withCountry("b", "Elsewhere", "ZZ", 10, 10),
@@ -887,12 +914,28 @@ describe("label text: the name alone; the country is kept for the hovered or sel
       withCountry("d", "Cali", "CO", 3.4, -76.5),
     ]);
     for (const [s, n] of [["a", "Nowhere"], ["b", "Elsewhere"], ["c", "Malformed"], ["grp", "Colombia"], ["d", "Cali"]] as const) expect(t.text[t.indexOf(s)]).toBe(n);
-    for (const s of ["a", "b", "c", "grp"]) expect(t.country[t.indexOf(s)], s).toBeNull();
-    expect(t.country[t.indexOf("d")]).toBe("Colombia");
+    for (const s of ["a", "b", "c"]) expect(t.sub[t.indexOf(s)], s).toBeNull();
+    expect(t.sub[t.indexOf("grp")]).toBeNull(); // a group says its places, never its own country (this one has none below it: nothing to say)
+    expect(t.sub[t.indexOf("d")]?.lead).toBe("Colombia");
   });
-  it("the resting plate is the name's: the country does not widen it (it is only added while hovered)", () => {
+  it("the plate is two lines: the cut counts the whole label, country line included", () => {
     const t = new LodTree([withCountry("bog", "Bogotá", "CO", 4.7, -74.1)]);
-    expect(t.labelW[0]).toBeCloseTo(labelText("Bogotá", null).w, 4);
+    expect(t.labelW[0]).toBeCloseTo(labelText("Bogotá", "Colombia").w, 4);
+    expect(t.labelH[0]).toBe(labelText("Bogotá", "Colombia").h);
+    expect(t.labelH[0]).toBeGreaterThan(labelText("Bogotá", null).h);
+  });
+  it("entries linked to places are counted by kind on the place and, distinct, on every group above it", () => {
+    const e = (kind: string, slug: string) => ({ kind, slug });
+    const t = new LodTree(buildLodNodes(
+      [
+        { slug: "a", name: "A", lat: 1, lon: 1, labelPriority: 5, groupSlug: "grp", countryCode: "FR", entries: [e("article", "x"), e("article", "y"), e("artwork", "z")] },
+        { slug: "b", name: "B", lat: 1.1, lon: 1.1, labelPriority: 5, groupSlug: "grp", countryCode: "FR", entries: [e("article", "x"), e("project", "p")] },
+      ],
+      [{ slug: "grp", name: "Grp", kind: "country", lat: 1, lon: 1, viewRadiusKm: 50, labelPriority: 50 }],
+    ));
+    expect(subText(t.sub[t.indexOf("a")]!)).toBe("France · 2 articles · 1 artwork");
+    expect(subText(t.sub[t.indexOf("b")]!)).toBe("France · 1 article · 1 software");
+    expect(subText(t.sub[t.indexOf("grp")]!)).toBe("2 places · 2 articles · 1 artwork · 1 software"); // article "x" is linked to both places: once
   });
   it("buildLodNodes passes the country code of a place", () => {
     const nodes = buildLodNodes([{ slug: "x", name: "X", lat: 1, lon: 2, labelPriority: 5, countryCode: "CO" }], []);

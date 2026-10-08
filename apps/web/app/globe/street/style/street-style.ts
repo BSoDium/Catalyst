@@ -283,7 +283,7 @@ export const SPECS: Spec[] = [
     pm: { layer: "buildings" }, omt: { layer: "building" },
   },
   {
-    id: "water-edge", type: "line", ch: "ink", role: "peak", width: HAIR, minzoom: 0,
+    id: "water-edge", type: "line", ch: "ink", role: "coast", width: HAIR, minzoom: 0,
     pm: { layer: "water", filter: ["all", POLY, SEA_PM] as never },
     omt: { layer: "water", filter: SEA_OMT as never },
   },
@@ -306,7 +306,7 @@ export const SPECS: Spec[] = [
     omt: { layer: "waterway", filter: kindIn("class", ["canal"]) as never },
   },
   {
-    id: "boundary-country", type: "line", ch: "ink", role: "peak", width: HAIR, minzoom: BORDER_TILE_MINZOOM,
+    id: "boundary-country", type: "line", ch: "ink", role: "coast", width: HAIR, minzoom: BORDER_TILE_MINZOOM,
     pm: { layer: "boundaries", filter: COUNTRY_BORDER_PM },
     omt: { layer: "boundary", filter: COUNTRY_BORDER_OMT },
   },
@@ -399,7 +399,7 @@ export function linePaint(spec: Spec, cellCss: number): { layout: Record<string,
     return { layout, paint: { "line-color": ERASE, "line-opacity": 1, "line-width": artWidthPaint(spec, cellCss) } };
   }
   // The colour is the tone: the level of the class's role (a class is on or off, never half way: lod.ts).
-  const color = lineColor(spec.lod ? toneLevel(LOD[spec.lod]) : roleLevel(spec.role ?? "peak"));
+  const color = lineColor(spec.lod ? toneLevel(LOD[spec.lod]) : roleLevel(spec.role ?? "coast"));
   // One-pixel lines are painted weaker than wide ones: that is how the pass knows which cells it may thin.
   const w = artWidthStopsOf(spec);
   const fill = spec.hollowBy ? SPECS.find((x) => x.id === spec.hollowBy) : undefined;
@@ -440,21 +440,21 @@ export function buildStreetStyle(o: StreetStyleOptions): StyleSpecification {
   const tones = tileLayers.filter((l) => !lineIds.has(l.id));
   const lines = tileLayers.filter((l) => lineIds.has(l.id));
   const ink = lineColor(roleLevel("ink"));
-  // The map's own loudest tone (coastlines, borders) stays below the ink, which is kept for routes (and markers and labels).
-  const peak = lineColor(roleLevel("peak"));
-  // World-scale coastline (110m) up to the hand-over zoom, then the tile geometry: one solid peak line on both sides. (A
+  // The map's own loudest tone (coastlines, borders) stays below the box at rest (`peak`) and the ink, which is kept for routes (and markers and labels).
+  const coastInk = lineColor(roleLevel("coast"));
+  // World-scale coastline (110m) up to the hand-over zoom, then the tile geometry: one solid coast-tone line on both sides. (A
   // dashed band between the two used to dither the handover; it read as a dotted coast, see docs/palette/.)
   const worldCoastInk: LayerSpecification = {
     id: "world-coast", type: "line", source: "coast", maxzoom: noTiles ? 24 : placeholder ? WORLD_PLACEHOLDER_BELOW : handoff,
     ...(placeholder ? { layout: { visibility: "none" } } : {}),
-    paint: { "line-color": peak, "line-width": cell, "line-opacity": THIN_INK },
+    paint: { "line-color": coastInk, "line-width": cell, "line-opacity": THIN_INK },
   } as LayerSpecification;
-  // Country borders are peak at street scale at every latitude (the globe eases them in below that, engine/scene.ts). Natural Earth
+  // Country borders are the coast tone at street scale at every latitude (the globe eases them in below that, engine/scene.ts). Natural Earth
   // lines run up to the hand-over zoom (where the tile boundary takes over), exactly like the coastline: one line per frontier.
   const bordersInk = (max: number): LayerSpecification => ({
     id: "world-borders", type: "line", source: "borders", maxzoom: max,
     ...(placeholder ? { layout: { visibility: "none" } } : {}),
-    paint: { "line-color": peak, "line-width": cell, "line-opacity": THIN_INK },
+    paint: { "line-color": coastInk, "line-width": cell, "line-opacity": THIN_INK },
   }) as LayerSpecification;
   // Graticule: the faint level, on while the earth is visibly curved and off once the view is close to flat (layer-switch.ts, core/flatness.ts).
   const grid: LayerSpecification = {

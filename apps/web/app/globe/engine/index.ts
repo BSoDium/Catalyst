@@ -65,7 +65,7 @@ export interface GlobeDebug {
   /** Like `project` for any lon/lat (a point of the map, not a place): the snapped cell centre in client px and whether it passes the whole-or-nothing rule. */
   projectAt(lon: number, lat: number): { x: number; y: number; visible: boolean };
   labelsShown(): string[];
-  /** The boxes as drawn in the last frame: per node, its rectangle in cells, its label's plate in CSS px, text, chip and state. */
+  /** The boxes as drawn in the last frame: per node, its rectangle in cells, its label's plate in CSS px, name, second line and state. */
   labelCells(): ReturnType<BoxScene["snapshot"]>;
   /** The label elements as they are in the DOM now (text, transform, opacity, mode, bounding box). */
   labelsDom(): ReturnType<BoxScene["labelsDom"]>;

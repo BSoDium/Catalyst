@@ -14,7 +14,7 @@
  */
 import type { Role } from "../../engine/palette";
 import type { Pattern } from "../core/palette";
-import { activeLevels, clampLevels, roleLevel } from "../../engine/palette";
+import { activeLevels, clampLevels, coastLevel, roleLevel } from "../../engine/palette";
 
 export type LodKey =
   | "highway" // motorway, trunk
@@ -55,7 +55,7 @@ export interface LodEntry {
 export function toneLevel(e: { role: Role; at?: number }, n: number = activeLevels()): number {
   if (e.at === undefined) return roleLevel(e.role, n);
   const top = clampLevels(n) - 2;
-  return Math.min(top, Math.max(1, Math.round(e.at * top)));
+  return Math.min(coastLevel(n), Math.max(1, Math.round(e.at * top)));
 }
 
 /**
@@ -73,20 +73,24 @@ export function toneLevel(e: { role: Role; at?: number }, n: number = activeLeve
  */
 export const LOD: Record<LodKey, LodEntry> = {
   // ROAD HIERARCHY. The class is told by TONE (a constant per class, palette levels of the 12 in brackets, map-ramp position `at`) and by
-  // WIDTH (core `MAJOR_ART` in street-style.ts): motorway and trunk 0.7 (7), primary 0.5 (5), secondary 0.4 (4), tertiary and rail 0.3 (3);
+  // WIDTH (core `MAJOR_ART` in street-style.ts): motorway and trunk 0.7 (7), primary 0.6 (6), secondary 0.5 (5), tertiary and rail 0.3 (3);
   // then the quiet ones, the DECOR of the map: links and the solid residential streets 0.2 (2), the dotted residential streets, service
-  // roads and paths 0.1 (1, the lowest map level). The coast, the borders and the boxes at rest are the peak (10): a road is never louder
-  // than level 7, three levels under them. Width: motorway, trunk and primary are 2 art px from z9, every other class stays at 1 px (floor,
-  // centre sampling and stair removal untouched).
+  // roads and paths 0.1 (1, the lowest map level). The boxes at rest are the peak (10), the coast and the borders the coast level (9): a road
+  // is never louder than level 7, two levels under the coast and three under the boxes. Width: motorway, trunk and primary are 2 art px from
+  // z9, every other class stays at 1 px (floor, centre sampling and stair removal untouched).
   // History. Owner, 2026-10-08, first: "the streets are only decor, they shouldn't be this visible and noisy": the binary switch had put
   // every class at its FINAL tone from about 30 % of the span of the old ramp, and the table was recalmed to 10, 8, 6, 4, then 3 / 2 / 2 / 2.
   // Then again, the same day: streets "are still way too visible in big cities, they are only decor", the box and its label must stand out:
   // every class lowered by about two levels (motorway 10 to 7, primary 8 to 5, secondary 6 to 4, tertiary 4 to 3, links and solid 3 to 2,
   // dotted 2 to 1, rail 4 to 3), the order and the width hierarchy kept; checked in Paris, London and New York at z10 to 17, light and dark,
   // with the box on. The spans of the removed ramp, `from .. full`, are in the comment of each row.
+  // Then, still 2026-10-08, the whole map was washed out (engine/palette.ts: levels 4 to 9 are fainter, the coast level is 3.1:1 against the
+  // page and no longer the box's tone): the level of each tier stays, but its colour is lighter (motorway 2.8:1 to 2.1:1, tertiary and
+  // below unchanged, they sit at the floor). Primary and secondary went up a level (5 to 6, 4 to 5) so the three tiers above tertiary are still
+  // told apart at the lighter ramp (secondary and tertiary were 1.5:1 and 1.4:1 otherwise).
   highway: { on: 6.4, role: "strong", at: 0.7 }, // 5.5 .. 8.5
-  major: { on: 8.7, role: "mid", at: 0.5 }, // 8.6 .. 9.7; just under the phone framings (8.8 to 10.2)
-  secondary: { on: 9.35, role: "soft", at: 0.4 }, // 9 .. 10.2
+  major: { on: 8.7, role: "mid", at: 0.6 }, // 8.6 .. 9.7; just under the phone framings (8.8 to 10.2)
+  secondary: { on: 9.35, role: "soft", at: 0.5 }, // 9 .. 10.2
   medium: { on: 11.1, role: "faint", at: 0.3 }, // 10.9 .. 11.7
   minor: { on: 13, off: 16.85, role: "faint", at: 0.1, dash: [1.8, 2.4] }, // 12.2 .. 14.2; solid from the next row
   minorSolid: { on: 16.85, role: "faint", at: 0.2 }, // 16.6 .. 17.4

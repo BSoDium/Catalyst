@@ -143,7 +143,7 @@ export class GlobeScene {
     this.routes.setLift(routeLift(zoom));
     this.routes.setPeriod((ROUTE_DASH_PX * pixel) / zoomToRadiusPx(zoom));
     // Borders: on from the zoom `TUNING.borderZoom` (a hysteresis), off below. The fade is a timed TONE (a line is always solid): the faintest
-    // grey level stepping up through the palette to the peak level (the coastline's) over `FADE_MS`, whatever the camera does, so the globe
+    // grey level stepping up through the palette to the coast level (the coastline's, `borderLevel`) over `FADE_MS`, whatever the camera does, so the globe
     // at rest never shows a half-faded border. Never a dither: a low-coverage dither on 1px lines reads as noise instead of a fade.
     this.bordersOn = bordersWanted(this.bordersOn, zoom, TUNING.borderZoom);
     if (!this.bordersSeen) {

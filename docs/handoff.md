@@ -1,72 +1,46 @@
-# Handoff (2026-10-07, second session)
+# Handoff (2026-10-08)
 
-State of the rebuild on branch `feat/places-archive-rebuild` (draft PR #234) and what is left.
+Where the project stands and what is left. Details live in the linked docs; this file only keeps the state, the open items and the decisions.
 
-## Verified at handoff
+## State
 
-- `pnpm typecheck` clean, `pnpm test` green (web 591), `pnpm build` and `pnpm check:leaks` pass (see the PR for the exact run).
-- Private repo (`catalyst-content`): 504 tests green, typecheck clean, everything pushed to `origin main`.
-- Not verified: Safari/iOS, real phones, reduced motion in a browser.
+- `main` holds the rebuild (#234), the globe polish (#239 to #241) and the API fix (#243). Open PRs, stacked: **#244** (DOM labels, sticky placement, calmer streets, skybox stars, `feat/polish-2`) and `feat/peek` (a group opens early into its most important places and cross-fades with them, base `feat/polish-2`; the first version of it, places drawn inside a closed group, was rejected by the owner and removed).
+- Deployments (Vercel team `photonsquid`): `catalyst-v2` (web, `apps/web`) at `v2.bsodium.fr`, `catalyst-v2-api` (`apps/api`) at `v2.api.bsodium.fr`. `v1.bsodium.fr` and `v1.api.bsodium.fr` redirect to the old v1 site and API (separate projects; the v1 project's pull-request and non-default-branch deployments are disabled). `v2.bsodium.fr` stays the main domain of the new site until the MVP.
+- Nothing is published yet (0 published places: the public site and API show an empty projection). Publishing is by PR from the private repo's `publish.yml`; merging that PR is the act of publishing. `pnpm dev` serves the owner's local preview (`pnpm export:preview --out ../catalyst` in the private repo), `pnpm dev:demo` the made-up fixture.
+- Checks: `pnpm typecheck`, `pnpm test`, `pnpm test:scripts`, `pnpm test:deploy`, `pnpm build`, `pnpm check:leaks` (CI runs all of them on every PR). Private repo: `pnpm typecheck`, `pnpm test`, plus the `migration-parity` workflow.
+- Not verified anywhere: Safari/iOS, real phones, real reduced motion (Chromium emulation only), the street overlay labels and `groups.mjs handover` after the label overhaul (they need the local tile server), GPU and CPU cost on a phone. The GPU budgets (`pnpm --filter @catalyst/web perf`) were last run on 2026-10-07 on a busy machine and accepted (marginal `gpuMean` overruns at street pan); they were not rerun after the label, sky and early-opening work (the cut now does a trial per group near the screen: 24 us per evaluation on the preview in Node, 200 us on 5,000 nodes, against 22 and 182 us before).
 
-## Done this session
+## Where the details are
 
-- **Camera centres on the bounding box** (`cb2e704`): every camera move to a place uses `placeFraming(place)`; marker and label stay on `coordinates`. `scripts/globe/groups.mjs` reads the cut (3.7 up, 3.45 back) from `handover/maths.ts` and checks both sides of each threshold. The old failure was a stale constant, not a regression.
-- **Owner's guide** ([owner-guide.md](owner-guide.md), `0fc9c92`).
-- **Self-review of both repos**: private repo `docs/self-review-2026-10.md` (ranked actions, 42 doc corrections, suggested order of work). Its doc corrections were applied except one that needs a decision: the street line gate count (`performance.md` says 171 of 171, `street-architecture.md` 241 of 241; rerun `pnpm test:street-lines` and pick one). The `globe/` import rule is now kept and enforced (see below).
-- **Public CI** (`.github/workflows/ci.yml`): install, `typecheck`, `test`, `test:scripts`, `test:deploy`, `build`, `check:leaks` on every PR and push to `main`, actions pinned by SHA, no secret. It could not be run locally (only each command was); the first run on GitHub is the real test. Making the `check` job a required status is a repo setting for the owner.
-- **Layering**: the three upward imports are gone (`zoomCorrection` and `routeLift` moved down into `engine/`; the credits button is handed to the globe as the `attribution` prop instead of being imported), and `app/globe/layering.test.ts` pins the rules (docs/web-architecture.md, "Layering"). Also: `validate:published` takes a path relative to where it is typed, `workspace:*` everywhere, `noUnusedLocals` on in `tsconfig.base.json` (the two prototypes opt out until their fate is decided) with the six existing errors fixed.
-- **Content model v2, owner approved D1 to D5**; phase P0 done in the private repo (`b9402fd`: `src/vault/model`, `DocumentStore`, `SourceReader`; export and preview bytes unchanged). P1 (`vault migrate`, shadow `content/`) is not started.
-- **Vercel failure diagnosed from the real build log** (`vercel inspect --logs`): the old project `catalyst-v1` (renamed on purpose, it stays the v1 site) builds at the repo root and fails with `Failed to resolve "@remix-run/dev"`. Expected until the merge; not a defect of this branch.
-- **API on Vercel answered 500 on every path (2026-10-08, hotfix `fix/api-vercel-runtime`)**: the Hono preset picked `src/app.ts` and compiled it file by file, so the function imported `@catalyst/schemas` as raw `.ts` (`ERR_MODULE_NOT_FOUND`). The function is now the esbuild bundle through `apps/api/index.mjs`, guarded by `apps/api/scripts/check-function.mjs` (end of `pnpm build`). The earlier "verified with `vercel build`" claim was incomplete: that output had never been executed. Details and what only the preview deployment can prove: [api-contract.md](api-contract.md#incident-500-function_invocation_failed-on-every-path-2026-10-08).
-- **GPU budgets rerun** (headless, machine not idle: 48 % then 34 % GPU busy before the run, WindowServer and other apps). The three rows that failed before (`s2-hcmc`, `s3-in`, `s3-out`) pass in both runs. Remaining: `s4 gpuMean` 5.05 and 4.71 (budget 4.5) and `s5-open gpuMean` 5.13 once (budget 5). Frame time, main thread, heap and drops pass. Not conclusive: rerun with the other GPU users closed, and `--headed` for the 120 Hz number.
+| Topic | Doc |
+|---|---|
+| Layers, publication flow, content modes | [architecture.md](architecture.md) |
+| Day-to-day (add, hide, preview, sync, publish, secrets, troubleshooting) | [owner-guide.md](owner-guide.md) |
+| Globe engine: LOD, labels in device pixels, sticky placement, binary visibility, the early opening of groups, idle rotation, skybox, framing | [web-architecture.md](web-architecture.md) |
+| Street map: palette, road hierarchy, binary layers, tile ease, the cut at zoom 3.7 | [street-architecture.md](street-architecture.md) |
+| Tokens (colours, label type, map card, sky) | [design-tokens.md](design-tokens.md) |
+| Frame cost, budgets, phone testing | [performance.md](performance.md) |
+| API contract, Vercel setup, the 500 incident of 2026-10-08 | [api-contract.md](api-contract.md) |
+| API quota, abuse, the firewall rules applied | [api-cost-and-abuse.md](api-cost-and-abuse.md) |
+| Private repo: content model v2, importance score, bbox acceptance, self-review, route research | `catalyst-content/docs/` |
 
-## Open items, in priority order
+## Open items
 
-1. **Vercel (owner action, after the merge).** The dashboard only offers Root Directories that exist on `main`, so the two NEW v2 projects (web on `apps/web`, served on a temporary `v2.bsodium.fr`; API on `apps/api`) are created after the merge. Disconnect or ignore-build `catalyst-v1` then. Checklist in [api-contract.md](api-contract.md#deployment-on-vercel).
-2. **Mark the PR ready** once merged-ready (the Vercel check of the old project keeps failing until then, by design).
-3. **Bounding boxes**: decided 2026-10-07 to keep the dynamic OSM-derived boxes with as few manual overrides as possible; some cities are legitimately large. No size limit is enforced. Only a clearly wrong match (Mostar matched a 5 x 6 km local community) is worth a fix, ideally in the geocoding query rather than by hand. 34 places have no box (the `status: "fallback"` entries of the private `config/bboxes.json`) and keep their radius.
-4. **GPU budgets**: accepted as is (2026-10-07). The remaining `s4`/`s5-open` `gpuMean` overruns are marginal; the owner will check a low-end phone instead of chasing the budget further.
-5. **Content model v2, P1** (in progress, private repo): `SourceReader` listing first, then `vault migrate` (shadow `content/` beside `editorial/`). See the private `docs/content-model-v2-migration.md`.
-6. **Self-review actions** (ranked in the private report; public CI, the layering test and the dead web code are done): conformance test between the private golden projection and the public zod schema, splitting `handover/controller.ts` and `street/engine.ts` around pure, tested decisions (issues #235 to #238).
-7. **Phone testing**: `pnpm dev` binds to all interfaces ([performance.md](performance.md#testing-on-a-phone)). There is no on-screen perf overlay; use `?globe-debug` and `__perf`.
-8. **Nothing is published yet** (0 published places, the public site shows an empty globe). Publishing is by PR from the private repo's `publish.yml`; merging that PR is the act of publishing.
+1. **Review and merge #244, then #245** (the early opening of groups). Retarget #245 to `main` after #244.
+2. **Owner actions on Vercel:** usage alerts (team settings) and a weekly look at the Usage page for the first month; disconnect or ignore-build the v1 project's Git link when convenient. The firewall rules (allowlist deny, 120 requests per minute per IP) are live; one of the three free custom rules is left.
+3. **Content model v2** (private repo): P0 and P1 are done (shadow `content/`, parity gates, CI job). Next: P2 (flip to `content/` as the source) after a week of real use and one real edit in Obsidian or VS Code; issue Catalyst-content#2 tracks P2 to P4.
+4. **Importance ranking** (private `config/population.json`, 85 of 146 places matched): 61 places share the same priority today because nothing is published and no entry links to a place. It improves by itself as items are linked; unmatched places can get a manual offset (an authored `labelPriority` is an offset around 50) only if something looks wrong.
+5. **Bounding boxes:** automatic acceptance rule (`config/publish.json` `bboxAcceptance`: type and size limits); rejected boxes fall back to a point with the default radius. Quito and Stara Zagora are true cities dropped by it (their OSM boxes are a county and a state district); Rissani, Akhfennir, Samaipata, Sucre, Ipiales and Diama are rural but accepted. Edit the thresholds or set a hand `bbox` for one place. Mostar matched a local community (5 x 6 km).
+6. **Routes: skipped by the owner** (they would only look right with road snapping). The research is kept in the private repo (`docs/route-display-research.md`).
+7. **Large-scale review items** are tracked as issues: #235 (split the renderer orchestration units), #236 (bbox / `viewRadiusKm` contract and a conformance test), #237 (fate of `prototypes/*`), #238 (dev-only loaders out of the API bundle), and Catalyst-content #1 to #3.
+8. **Known test gaps:** `tile-fade.mjs ghostlow` fails at `z4.5 zoom` (about 15 % trail cells in the one frame where MapLibre swaps tile level; no baseline), `sea-ease.mjs` was not updated for the binary switches, `street/lod-check.mjs` has one failure ("out z8 sea XOR graticule"), `markers.mjs` errors on preview content (passes on demo), and the street-line gate count differs between docs (171 vs 241: rerun `pnpm test:street-lines` and fix one number).
 
-## Stacked branch: globe polish (not part of PR #234)
+## Decisions taken (owner)
 
-Owner feedback from the dev build, kept out of this PR and stacked on top as `feat/globe-polish`. Implemented (2026-10-07, details in [web-architecture.md](web-architecture.md), "Targets and labels", "Box outline", "Pixel text", and [design-tokens.md](design-tokens.md)):
-
-1. Type: Tiny5 made taller on the same grid (7-row capitals, 5-row lowercase) instead of relying on a heavy bold (`pixel-font/stretch.ts`). SUPERSEDED 2026-10-08: Fusion Pixel 10px, one weight, no stretch (docs/web-architecture.md, "Pixel text").
-2. Boxes: solid corner arms with dashes between them at rest, one uninterrupted solid line on hover or selection, no ring and no doubling (`drawBox`).
-3. Unlabelled, unclickable squares (Houston, New York): the label priority floor withheld the name of every priority-50 place on the world view, and the only target of a small box was its border and label. The floor is gone; a box that loses a label collision was dimmed and still clickable (`label-plan.ts`). SUPERSEDED 2026-10-08: no box is dimmed and none lacks a label (candidate positions, a shorter label, then drawn on top).
-4. Credits: a dim text link "Credits" with an up-right arrow instead of the "i" chip (`--subtle-foreground`).
-5. Globe outline: the `faint` palette level instead of `soft`.
-6. Targets: the convex hull of the box and its label, plus slop, innermost wins (`hit-area.ts`).
-
-Not verified: Safari/iOS, a real touch screen (the touch slop and the 44 px target are by arithmetic and unit tests only), reduced motion in a browser for the new dim rule, the street scale (only the shared `BoxScene` code path, the street overlay itself was not driven), and the GPU budgets (not rerun).
-
-Round 2 (2026-10-08, same branch, owner feedback; details in [web-architecture.md](web-architecture.md), "Binary visibility, timed transitions", and [street-architecture.md](street-architecture.md), "Binary layers"):
-
-1. A label that cannot sit above its box nests inside it, off the outline (`labelCell`, `INSIDE_MARGIN`); the hit hull follows it.
-2. The sea texture waits for a flat view (`street/core/flatness.ts`: bulge of 4 px or less, about unified zoom 8.3 on a 900 px screen); the graticule stays until then.
-3. Box arms and dashes scale with the box (arm 3 to 14 cells, gap 2 to 9; a tiny box is solid), `dashingFor`.
-4. Everything is binary with timed transitions (`engine/fade.ts`, 200 ms, hysteresis on every threshold, loop runs until the last transition ends, reduced motion instant). The collision dim is binary too.
-5. The same principle for the rest of the map: globe borders, street road classes, fills, sea, graticule are switches (`street/style/layer-switch.ts`); the ease already was timed. Inventory and decisions in web-architecture.md. The street style's old tone ramps (`from`/`full`) are replaced by a switch zoom `on` per class (about 30 % of the old span): the look of a class at rest is its old final look, appearing a little later than its first faint tone did. Correction (2026-10-08, owner: the streets inside cities are noisy, the hierarchy got lost): giving every class its FINAL tone at 30 % of the old span made residential streets level 4 from z12.8 and compressed primary/secondary/tertiary (9/7/5); the road tiers are now constant and equally spaced (10/8/6/4, links 3, residential, service and paths 2) and the minor classes switch on later (street-architecture.md, "Road hierarchy").
-6. A node with no drawn ancestor is never dimmed or faded by its parent (London under an open Europe). (The consequence noted here, a box without a name, no longer exists: every drawn box has its label, 2026-10-08.)
-7. Dead web code removed (`engine/labels.ts`, `street/core/label-place.ts`, `marker-visibility.ts` with their tests, the orphan exports, the unused locals, the `from` parameter of `bboxFitRadiusKm`); `MERCATOR_FROM` now exists once (`street/core/warp.ts`).
-
-Not verified in round 2: Safari/iOS, touch, reduced motion in a real browser (unit tests and the `reduced` check only), the GPU cost of the new transitions (no perf budget was run). `tile-fade.mjs ghostlow` fails on `z4.5 zoom` (390 trail cells in the one frame at z5.0 where MapLibre swaps tile level; no layer is switched in that range) and could not be compared with HEAD.
-
-## Decisions taken
-
-- Content model v2: D1 to D5 adopted as recommended (see private `docs/content-model-v2.md` section 9).
-- Selected/hovered box styling: superseded by the globe polish branch (dashed boxes with solid corners, solid on hover or selection; no width change, no inner ring).
-- Credits follow the tile configuration, not the active source.
-
-## Stacked branch: credits line and idle rotation (`feat/credits-rotation`, on top of `feat/globe-polish`, 2026-10-08)
-
-1. Credits: the "Credits" link is a one-line mono summary ("© OpenStreetMap · OpenFreeMap · Natural Earth", derived from `core/attribution.ts`, clipped from the end on narrow screens) then a middle dot and a "See more" button with an up-left arrow, in the same card as the dev badge (`lib/map-card.ts`, `MAP_CARD`). The dialog's borders are the soft `--border`. Details: [street-architecture.md](street-architecture.md) (attribution), [design-tokens.md](design-tokens.md) ("Map card and credits line"). To confirm with the owner: the line says "© OpenStreetMap" (the licence wording "© OpenStreetMap contributors" is in the dialog), and the dim text on the card's 80 % plate is 3.7:1 worst case over a full-strength map line in light (4.9:1 over the plain page).
-2. Idle rotation: [web-architecture.md](web-architecture.md) "Idle rotation", [performance.md](performance.md) "Idle rotation". Off in every `?globe-debug` page unless `?rotate` / `?spin-idle=MS`, so the zero-frame checks are unchanged. Not verified: Safari/iOS, real touch, real reduced motion, GPU cost.
-
-## Stacked branch: skybox (`feat/skybox`, on top of `feat/credits-rotation`, 2026-10-08)
-
-A faint pixel-art Milky Way and star field behind the earth in the globe view: [web-architecture.md](web-architecture.md) "Skybox", [design-tokens.md](design-tokens.md) "Sky" (the tuning table), [performance.md](performance.md) "Skybox". Inertial celestial frame (galactic pole RA 192.86 / Dec +27.13, plane inclined 62.9 degrees to the equator); a camera orbit moves the sky with the view, the idle rotation does not move it at all (ERA compensates the longitude); palette levels 1 and 2, below the graticule; fades to the page colour towards the silhouette; a timed binary switch off when the globe fills the picture (gone before the street cut). Debug pages have it OFF unless `?sky` (the older pixel checks), `?no-sky` switches it off anywhere, `SKY=1` runs any script with it on. To confirm with the owner: how faint (the tones are the two lowest palette levels; `fade`, `band.gain` in `tuning.ts`), the band being absent from most orbit angles (the visible window is 56 x 37 degrees minus the earth, the band covers about a quarter of the sky), no real star catalogue (none could be checked), the light scheme kept. Not verified: Safari/iOS and other GPUs than the M4's, a phone, real reduced motion, no performance budget was run.
+- Content model v2: D1 to D5 as recommended (private `docs/content-model-v2.md` section 9).
+- Boxes: dim at rest, hover changes colour only, selected changes colour and switches to a solid line; width never changes. Dashes anchored to one corner per edge; arm and gap scale with the box (kept).
+- Credits follow the tile configuration; the line is monospace with a middle dot before "See more".
+- Vercel: v1 stays as is; v2 web and API are separate projects from this repo.
+- Bounding boxes: dynamic, OSM-derived, as few manual overrides as possible; routes skipped; GPU budgets accepted.
+- Groups: no peeks (owner, after seeing them: a group and the cities inside it must never be visible together). A group opens early into its most important children that fit and its box and label fade out exactly as they fade in; the rest come in as you zoom. The private design note `lod-importance-design.md` still describes the peeks (section 3, work packages W1 to W4): the client part is superseded by [web-architecture.md](web-architecture.md#opening-a-group-into-its-most-important-children-2026-10-08).
+- Importance: population from Natural Earth, step counts never count (privacy), an authored `labelPriority` is an offset around 50, group names keep the authored priority.

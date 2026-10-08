@@ -250,7 +250,7 @@ describe("borders: one line per frontier (owner report: a wavy second line besid
     for (const schema of ["protomaps", "openmaptiles"] as const) {
       const l = (make(schema).layers as unknown as L[]).find((x) => x.id === "boundary-country")!;
       expect(l.paint["line-dasharray"]).toBeUndefined();
-      expect(levelOfPaint(l.paint["line-color"], 5.01)).toBe(roleLevel("peak"));
+      expect(levelOfPaint(l.paint["line-color"], 5.01)).toBe(roleLevel("coast"));
     }
   });
 });
