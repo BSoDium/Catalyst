@@ -79,7 +79,7 @@ describe("placeEntries: the entries linked to each place, for the second line of
   const place = demo.places[0]!;
   const other = demo.places[1]!;
   const item = (slug: string, placeSlugs: string[]) => ({ slug, title: slug, placeSlugs });
-  const base = { ...demo, places: [{ ...place, related: [] }, { ...other, related: [] }], projects: [], articles: [], artworks: [] };
+  const base = { ...demo, places: [{ ...place, related: [] }, { ...other, related: [] }], projects: [], articles: [], artworks: [], poems: [] };
   it("a place with nothing linked is absent, nothing is invented", () => {
     expect(placeEntries(base).size).toBe(0);
     expect(buildPlaceIndex(base).globePlaces.every((p) => !("entries" in p))).toBe(true);
