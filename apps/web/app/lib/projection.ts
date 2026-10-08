@@ -14,7 +14,7 @@ import type {
 import { toPlaceSummary } from "@catalyst/schemas";
 import { stripCountry } from "~/globe/engine/country-names";
 import { bboxExtentsKm, bboxFitRadiusKm } from "~/globe/engine/framing";
-import type { GlobeGroup, GlobePlace, GlobeRoute } from "~/globe/types";
+import type { GlobeEntryRef, GlobeGroup, GlobePlace, GlobeRoute } from "~/globe/types";
 import { formatDates, type FormattedDates } from "./dates";
 
 const KIND_PATHS: Record<ContentKind, string> = {
@@ -47,14 +47,14 @@ export interface PlaceIndex {
  * `bbox` is the contract's optional extent of the area the place names (`[west, south, east, north]`, WGS84 degrees). It is
  * passed on when it is a plain box and becomes the place's rectangle on the map; otherwise it is dropped and the radius applies.
  */
-function toGlobePlace(place: PlaceSummary): GlobePlace {
+function toGlobePlace(place: PlaceSummary, entries?: readonly GlobeEntryRef[]): GlobePlace {
   const bbox = bboxExtentsKm(place.bbox) ? place.bbox : undefined;
   // With a box, the view radius is the one that frames the whole box around its centre, where the camera flies to
   // (`placeFraming`); the recorded point stays the anchor of the marker and the label (`lat`, `lon`).
   const viewRadiusKm = (bbox && bboxFitRadiusKm(bbox)) ?? place.viewRadiusKm;
   return {
     slug: place.slug,
-    // The map label says the name alone and adds the country itself when hovered or selected: a name that already ends in its own
+    // The map label says the name on its first line and the country on its second: a name that already ends in its own
     // country (", United Kingdom") would say it twice. Display only, the content is not changed.
     name: stripCountry(place.name, place.countryCode),
     lat: place.coordinates.lat,
@@ -64,7 +64,31 @@ function toGlobePlace(place: PlaceSummary): GlobePlace {
     ...(bbox ? { bbox } : {}),
     ...(place.group !== undefined ? { groupSlug: place.group } : {}),
     ...(place.countryCode !== undefined ? { countryCode: place.countryCode } : {}),
+    ...(entries && entries.length ? { entries } : {}),
   };
+}
+
+/**
+ * The entries linked to every place, by place slug: the content items' `placeSlugs` and the places' own `related` refs, each (kind, slug) once
+ * per place, only those that resolve to a published item. Pure. Places with none are absent from the map. (`PlaceSummary` has no `related`, so
+ * this reads the full projection; the contract is unchanged.)
+ */
+export function placeEntries(projection: PublishedProjection): Map<string, GlobeEntryRef[]> {
+  const out = new Map<string, Map<string, GlobeEntryRef>>();
+  const add = (place: string, kind: ContentKind, slug: string) => {
+    const refs = out.get(place) ?? new Map<string, GlobeEntryRef>();
+    out.set(place, refs);
+    refs.set(`${kind}\u0000${slug}`, { kind, slug });
+  };
+  const known = new Set(projection.places.map((p) => p.slug));
+  const kinds = Object.keys(COLLECTIONS) as ContentKind[];
+  for (const kind of kinds) {
+    const items = projection[COLLECTIONS[kind]];
+    const exists = new Set(items.map((i) => i.slug));
+    for (const item of items) for (const place of item.placeSlugs) if (known.has(place)) add(place, kind, item.slug);
+    for (const place of projection.places) for (const r of place.related) if (r.kind === kind && exists.has(r.slug)) add(place.slug, kind, r.slug);
+  }
+  return new Map([...out].map(([place, refs]) => [place, [...refs.values()]]));
 }
 
 /** The published hierarchy as the globe's groups (coordinates flattened, optional parent kept only when present). */
@@ -127,7 +151,8 @@ export function resolveRoutes(projection: PublishedProjection): GlobeRoute[] {
 
 export function buildPlaceIndex(projection: PublishedProjection): PlaceIndex {
   const places = projection.places.map(toPlaceSummary);
-  return { places, globePlaces: places.map(toGlobePlace), groups: projection.groups, routes: resolveRoutes(projection) };
+  const entries = placeEntries(projection);
+  return { places, globePlaces: places.map((p) => toGlobePlace(p, entries.get(p.slug))), groups: projection.groups, routes: resolveRoutes(projection) };
 }
 
 interface RelatedLink {

@@ -70,6 +70,19 @@ export interface GlobePlace {
   groupSlug?: string;
   /** ISO 3166-1 alpha-2 country code, uppercase (published `countryCode`). Absent when the country is unknown. */
   countryCode?: string;
+  /**
+   * The entries (published articles, projects, artworks; poems later) linked to the place, each once. The place's label counts them by kind in
+   * its second line ("France · 2 articles · 1 artwork · 3 software") and a group's label counts the distinct ones below it. Absent or empty =
+   * none linked: the label then shows only the country. Derived by the web app from the projection (`lib/projection.ts` `placeEntries`), never
+   * invented.
+   */
+  entries?: readonly GlobeEntryRef[];
+}
+
+/** An entry linked to a place: its kind (`article`, `project`, `artwork`, or a kind the labels do not know yet, which they ignore) and its slug. */
+export interface GlobeEntryRef {
+  kind: string;
+  slug: string;
 }
 
 /** Level of the automatic place hierarchy, widest first: continent > subregion | region > country > area > place. */

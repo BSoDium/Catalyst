@@ -48,19 +48,33 @@ for (const scheme of ["light", "dark"] as const) {
     it("muted text (muted foreground on a 90 % page plate) are at least 4.5:1 over the peak and over ink", () => {
       for (const under of behind) expect(contrast(muted, over(bg, 0.9, under))).toBeGreaterThanOrEqual(4.5);
     });
-    it("map labels (app.css `.map-label`): the text is the full foreground in every state, never dimmed; selected is inverted; AA with room to spare in this scheme", () => {
-      const rules = [...css.matchAll(/\.map-label[^{]*\{[^}]*\}/g)].map((m) => m[0]);
-      expect(rules.length).toBeGreaterThanOrEqual(4);
+    it("map labels (app.css `.map-label`): a plate of the page colour in EVERY state, the name in the foreground, the second line in the muted foreground, AA on the plate; selected is inverted", () => {
+      const rules = [...css.replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/\.map-(?:label|halo)[^{]*\{[^}]*\}/g)].map((m) => m[0]);
+      expect(rules.length).toBeGreaterThanOrEqual(6);
       const all = rules.join("\n");
-      expect(all).toMatch(/\.map-label \{[^}]*color: var\(--foreground\)/);
+      // at rest: the foreground on a page-colour plate, the second line muted
+      expect(all).toMatch(/\.map-label \{[^}]*color: var\(--foreground\);[^}]*background: var\(--background\)/);
+      expect(all).toMatch(/\.map-label-sub \{[^}]*color: var\(--muted-foreground\)/);
+      // hovered or focused: the text and the plate do not change (only the stacking order), never an underline
+      const hover = /\.map-label\[data-mode="hover"\] \{([^}]*)\}/.exec(all)?.[1] ?? "";
+      expect(hover).toMatch(/z-index/);
+      expect(hover).not.toMatch(/background|color|shadow|underline|decoration/);
+      expect(all).not.toMatch(/underline|text-decoration|inset 0 -1px/);
+      // selected: inverted, the second line the page colour mixed 28 % toward the foreground
       expect(all).toMatch(/\[data-mode="selected"\] \{[^}]*background: var\(--foreground\);[^}]*color: var\(--background\)/);
-      expect(all).toMatch(/\[data-mode="hover"\] \{[^}]*background: var\(--background\)/);
-      expect(all).toMatch(/text-shadow:[^;]*var\(--background\)/); // the halo is the page colour
-      expect(all).not.toMatch(/opacity|muted-foreground|subtle-foreground/); // no dimming in any state
+      expect(all).toMatch(/\[data-mode="selected"\] \.map-label-sub \{[^}]*color-mix\(in srgb, var\(--background\) 72%, var\(--foreground\)\)/);
+      // the feather: a separate element, none when selected; the text has no shadow of its own
+      expect(all).toMatch(/\.map-halo\[data-mode="selected"\] \{[^}]*display: none/);
+      expect(all).not.toMatch(/text-shadow/);
+      expect(all).not.toMatch(/opacity/); // no dimming in any state
       expect(css).toMatch(/\.map-label \{\s*font-family: var\(--font-mono\)/);
-      expect(contrast(fg, bg)).toBeGreaterThanOrEqual(15); // at rest and hovered: foreground on the page (halo)
+      // the feather is the page colour (engine/label-dom.ts)
+      expect(readFileSync(new URL("./label-dom.ts", import.meta.url), "utf8")).toMatch(/var\(--background\)/);
+      const invertedSub = over(bg, 0.72, fg);
+      expect(contrast(fg, bg)).toBeGreaterThanOrEqual(15); // the name on the plate, at rest and hovered
       expect(contrast(bg, fg)).toBeGreaterThanOrEqual(15); // selected: page colour on the foreground plate
-      expect(contrast(fg, peak)).toBeGreaterThanOrEqual(3); // a glyph right over the loudest map line
+      expect(contrast(muted, bg)).toBeGreaterThanOrEqual(4.5); // the second line (11 px) on the plate: AA
+      expect(contrast(invertedSub, fg)).toBeGreaterThanOrEqual(4.5); // ... and on the inverted plate
     });
     it("the credits line (subtle foreground in the map card's 80 % page plate) is dimmer than muted text by colour, yet AA against the page and at least 3.5:1 over the loudest map tone", () => {
       const subtle = token(scheme, "--subtle-foreground");

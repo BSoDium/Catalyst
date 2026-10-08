@@ -240,61 +240,77 @@
 
 /*
  * Map labels: the names of the detection boxes, HTML text in the app's monospace stack (`--font-mono`, the credits line's and the dev badge's) (engine/label-dom.ts creates and positions the
- * elements; size, weight and tracking come from LABEL_TYPE in engine/label-text.ts because the planner measures with the same numbers).
- * Colour is the page's foreground at full strength in every state (a name and its counter are told apart by size and weight, never dimmed);
- * the text-shadow is a halo of the page colour, so a label reads over map lines without a plate. Hovered or focused: a plate of the page colour
- * (it may overlay a neighbour) and an underline; selected: inverted, the foreground as the plate and the page colour as the text (19:1 / 18:1).
- * A label drawn over another because nothing was free also gets the plate. A label glides to a new place only when a re-plan moved it while
- * the camera was at rest (`data-glide`); prefers-reduced-motion is honoured by the global rule below.
+ * elements; sizes, weights and tracking come from LABEL_TYPE in engine/label-text.ts because the planner measures with the same numbers).
+ * Two lines: the name (line 1, 14 px, weight 500) and a second line (11 px, regular: the country or number of places, and the linked entries by kind).
+ * EVERY label sits on a plate of the page colour, selected or not, hovered or not (a label must read over coastlines, borders and the graticule in
+ * both schemes), and the plate has a feathered edge: `.map-halo`, a transparent twin of the plate in a layer BELOW the box canvas whose
+ * box-shadow (the page colour, engine/label-dom.ts `featherShadow`, LABEL_TYPE.feather) fades out over about 8 px, so it dims the map around the
+ * text but never a box's own outline. The text is the foreground (names, 19:1) and the muted foreground (second line, AA on the plate in both
+ * schemes: tests in globe/engine/readability.test.ts); there is no underline and no text-shadow. Hovered or focused: the plate and text do not
+ * change (the box's own colour logic does), only the stacking order so that the label is not covered by a neighbour. Selected: INVERTED, the
+ * foreground as the plate and the page colour as the text, with no feather (high contrast already; the second line is the page colour mixed 28 %
+ * toward the foreground, still AA on it). A label glides to a new place only when a re-plan moved it while the camera was at rest
+ * (`data-glide`); prefers-reduced-motion is honoured by the global rule below.
  */
 .map-label {
   font-family: var(--font-mono);
   color: var(--foreground);
-  text-shadow:
-    0 0 2px var(--background),
-    0 0 2px var(--background),
-    0 0 4px var(--background);
+  background: var(--background);
   contain: layout style;
   z-index: 0;
 }
 
+.map-label-sub {
+  color: var(--muted-foreground);
+}
+
 .map-label[data-over] {
-  background: var(--background);
-  text-shadow: none;
   z-index: 1;
 }
 
 .map-label[data-mode="hover"] {
-  background: var(--background);
-  text-shadow: none;
-  box-shadow: inset 0 -1px 0 var(--foreground);
   z-index: 2;
 }
 
 .map-label[data-mode="selected"] {
   background: var(--foreground);
   color: var(--background);
-  text-shadow: none;
   z-index: 3;
 }
 
-.map-label[data-glide] {
+.map-label[data-mode="selected"] .map-label-sub {
+  color: color-mix(in srgb, var(--background) 72%, var(--foreground));
+}
+
+.map-halo {
+  z-index: 0;
+}
+
+.map-halo[data-mode="selected"] {
+  display: none;
+}
+
+.map-label[data-glide],
+.map-halo[data-glide] {
   transition: transform 150ms var(--ease-standard);
 }
 
 @media (forced-colors: active) {
   .map-label {
     color: CanvasText;
-    text-shadow: none;
+    background: Canvas;
   }
 
-  .map-label[data-over],
-  .map-label[data-mode="hover"] {
-    background: Canvas;
+  .map-label-sub {
+    color: CanvasText;
   }
 
   .map-label[data-mode="selected"] {
     background: CanvasText;
+    color: Canvas;
+  }
+
+  .map-label[data-mode="selected"] .map-label-sub {
     color: Canvas;
   }
 }
