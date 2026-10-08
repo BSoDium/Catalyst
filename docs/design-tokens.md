@@ -31,6 +31,25 @@ The globe's ocean has no token of its own: it is `--background` (the disc and th
 Tailwind utilities: `bg-background`, `text-foreground`, `text-muted-foreground`, `border-border`, `bg-accent`, etc.
 There is no accent hue and no destructive color on purpose.
 
+### Sky
+
+The globe's skybox (`SKY` in `app/globe/engine/tuning.ts`; architecture in web-architecture.md, "Skybox") uses no colour of its own: its tones are palette levels, so a token change reaches it. All of it is BELOW the graticule and the horizon outline (`faint`, level 3): the sky's two tones are levels 1 and 2 (`skyTop(levels)`, one below `faint`), measured dark 20 and 31 on the page's 10 (graticule 43), light 240 and 227 on 251 (graticule 213). Stars: the dim tone for four in five, the brighter one for the rest. Quantised with a 4x4 Bayer dither on the art cell, never a gradient.
+
+| Constant | Value | Meaning |
+| --- | --- | --- |
+| `fade.from`, `fade.to` | 1.06, 1.55 | earth radii from the disc's centre: no sky before `from`, all of it from `to` (smoothstep, applied before the dither; stars are thinned at random) |
+| `onRho.rho`, `band` | 1.75, 0.05 | the sky is on while the picture's farthest corner is beyond this many radii (hysteresis +-band); timed 200 ms switch |
+| `band.gain` | 0.9 | brightest the band gets, of the top tone (1 = the second tone solid) |
+| `band.brightness` | edge 0.5, core 1 | anticentre and galactic centre |
+| `band.thicknessDeg` | edge 5.5, core 10 | 1 sigma half thickness in degrees of galactic latitude |
+| `band.bulge`, `band.rift` | 0.5 share, 7 deg; depth 0.8, 2.6 deg wide | nuclear bulge and the Great Rift dust lane |
+| `band.noise` | 3 octaves, floor 0.5, breaks below 0.34 | mottling and dust breaks |
+| `stars.count`, `bandBoost`, `brightShare` | 7000, 1.8, 0.2 | about 100 to 130 in view at the whole-globe view; up to 1.8x denser along the band |
+| `eraDeg` | 70 | the earth rotation angle at load (the sky's one placement against the earth) |
+| `seed` | `0x5ca1ab1e` | every random choice |
+
+Light scheme: kept (dark specks of 11 and 24 levels below the page colour on 251), because at those values it reads as the same barely-there haze as the dark one and the stipple does not compete with the boxes; `?no-sky` is the off switch.
+
 ### Map card and credits line
 
 `MAP_CARD` (`app/lib/map-card.ts`) is the small card that sits over the map: `rounded-sm border border-border bg-background/80 px-1.5 py-0.5 font-mono text-[10px] leading-4 tracking-wide backdrop-blur-sm`. Two things use it, so they match: the dev-only content badge (`PREVIEW local data not published`, bottom left, muted text, above the credits on phones) and the credits line. A test (`components/map-card.test.ts`) fails if either drops a class of it. Colour is not part of it.

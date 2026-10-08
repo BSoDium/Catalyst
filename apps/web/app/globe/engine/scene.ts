@@ -5,6 +5,7 @@ import {
   LineLoop,
   LineSegments,
   Mesh,
+  type PerspectiveCamera,
   Scene,
   SphereGeometry,
   type ShaderMaterial,
@@ -18,6 +19,8 @@ import { zoomToRadiusPx } from "./geo";
 import { graticuleSegments, polylinesToSegments } from "./geometry";
 import { OCCLUDER_RADIUS, lineMaterial, occluderMaterial, silhouetteMaterial } from "./materials";
 import { RouteLayer } from "./route-layer";
+import { SKY_STATE, viewToGalactic } from "./sky";
+import { SkyLayer } from "./sky-layer";
 import { routeLift } from "./view";
 import { TUNING } from "./tuning";
 
@@ -31,12 +34,14 @@ function segmentGeometry(positions: Float32Array): BufferGeometry {
 }
 
 /**
- * Everything drawn: disc, graticule, borders, coastlines, routes, markers, horizon outline.
+ * Everything drawn: sky, disc, graticule, borders, coastlines, routes, markers, horizon outline.
  * Owns its GL-side resources (`dispose` frees them all). Knows nothing about input, DOM or scheduling.
  */
 export class GlobeScene {
   readonly scene = new Scene();
   readonly routes: RouteLayer;
+  /** The Milky Way and the stars behind the earth (engine/sky-layer.ts), or null when the page switched them off (`applySkyFlags`). */
+  readonly sky: SkyLayer | null;
 
   private geometries: BufferGeometry[] = [];
   private materials: ShaderMaterial[] = [];
@@ -74,6 +79,7 @@ export class GlobeScene {
     this.add(new LineSegments(this.track(segmentGeometry(polylinesToSegments(data.coastlines, 1))), this.coast), 3);
 
     this.routes = new RouteLayer(this.scene, data.routes);
+    this.sky = SKY_STATE.enabled ? new SkyLayer(this.scene) : null;
 
     const N = 360;
     const angle = new Float32Array(N);
@@ -105,11 +111,12 @@ export class GlobeScene {
     this.coast.uniforms.uColor!.value.setRGB(...t.coast);
     this.silhouette.uniforms.uColor!.value.setRGB(...t.outline);
     this.routes.applyTheme(t);
+    this.sky?.applyTheme(t);
   }
 
   /** Whether the borders' fade has not reached its end: the frame loop must keep going. */
   get animating(): boolean {
-    return this.borderFade.moving;
+    return this.borderFade.moving || (this.sky?.animating ?? false);
   }
 
   /** The borders' fade now (0..1) and whether they are wanted (checks). */
@@ -117,9 +124,18 @@ export class GlobeScene {
     return { value: this.borderFade.value(0), on: this.bordersOn };
   }
 
-  /** Run the borders' fade to its end (checks). */
+  /** Run the borders' and the sky's fades to their end (checks). */
   settleBorders() {
     this.borderFade.settle();
+    this.sky?.settle();
+  }
+
+  /**
+   * Per-frame sky: the view-to-galactic matrix of this camera at the earth rotation angle `era`, and where the earth's silhouette is in
+   * the buffer. Call after the camera's matrices are current. `bufW`, `bufH` and `shiftBuf` are the drawing buffer and the inset's shift (buffer px).
+   */
+  syncSky(camera: PerspectiveCamera, basis: ViewBasis, era: number, buf: { w: number; h: number; shift: number }, now: number, instant: boolean) {
+    this.sky?.sync({ viewToGal: viewToGalactic(basis, era), projInv: camera.projectionMatrixInverse, d: basis.d, bufW: buf.w, bufH: buf.h, shiftBuf: buf.shift }, now, instant);
   }
 
   /** Per-frame uniforms that depend on the camera. `now` is the clock (ms) the border fade runs on; `instant`: reduced motion. */
@@ -153,6 +169,7 @@ export class GlobeScene {
 
   dispose() {
     this.routes.dispose();
+    this.sky?.dispose();
     for (const g of this.geometries) g.dispose();
     for (const m of this.materials) m.dispose();
     this.geometries = [];

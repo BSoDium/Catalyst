@@ -38,6 +38,8 @@ export async function open(browser, contextOptions, path = "/", { debug = true, 
   });
   page.on("pageerror", (e) => logs.push(`pageerror: ${e.message}`));
   if (debug) await page.addInitScript(() => sessionStorage.setItem("globe-debug", "1"));
+  // Debug pages have the sky OFF by default (their pixel assertions predate it); SKY=1 runs any check with it on.
+  if (process.env.SKY === "1") await page.addInitScript(() => sessionStorage.setItem("sky", "1"));
   // The Three.js-only measurements below predate street scale: they run with the street map switched off.
   if (noStreet) await page.addInitScript(() => sessionStorage.setItem("no-street", "1"));
   // ... and before the group squares (semantic zoom of the place hierarchy): every place is a marker at every zoom, as these checks expect.

@@ -98,6 +98,10 @@ Headed (120 Hz), Apple M4, medians of 3 (S4 p95 from the same runs). GPU = timer
 
 Headless (60 Hz) medians of the budget run, for the same scenarios, are in `budgets.mjs`; the `S4` GPU there is 2.8 ms after against 8.9 before (the GPU timer reads about twice as high headless because the GPU downclocks between 60 Hz frames). The remaining stalls are the one-off street map creation (section below).
 
+## Skybox
+
+The Milky Way and stars behind the earth (web-architecture.md, "Skybox") are drawn inside frames that happen anyway and add none. Idle: zero rAF, zero frames, zero `gl.clear` with the sky on (`sky.mjs rest`, `groups.mjs idle at-rest` and `handover-perf.mjs idle`, all run with `SKY=1` and without). Per frame: one full-buffer triangle (a matrix, `atan`, `asin`, one 8-bit texture fetch, a Bayer lookup per pixel) and 7,000 one-pixel points (vertex work only), drawn after the disc with the depth test at the far plane, so the pixels the earth covers fail early and a globe that fills the picture switches the layer off. The GPU-synced `renderNow` (400 frames of a turning globe, p50): 0.4 to 0.5 ms with and without it at 1440 x 900 @2, 0.5 to 0.6 ms at 390 x 844 @3, equal within the 0.1 ms resolution of the timer (p95 noise 1 to 3.8 ms either way). Memory: a 16 KB texture, 140 KB of star attributes. Bundle: the globe chunk grew by 11.2 KB raw and 3.7 KB gzip (the main chunk is byte-identical). Not measured: a real low-end phone; no performance budget was run for this change.
+
 ## Testing on a phone
 
 The scripts above cannot show a slow GPU (see "Limits"), so the real check is a real phone on the dev server.

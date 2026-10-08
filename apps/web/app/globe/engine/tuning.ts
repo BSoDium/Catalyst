@@ -73,5 +73,50 @@ export const TUNING = {
   maxFlingPxPerMs: 2.2,
 } as const;
 
+/**
+ * The skybox (engine/sky.ts, engine/sky-layer.ts; docs/web-architecture.md "Skybox", docs/design-tokens.md "Sky"): the Milky Way and a sparse
+ * star field behind the earth, a few palette levels BELOW the graticule (`faint`), faded to the page colour towards the earth's silhouette.
+ * Angles in degrees, radii in earth radii on screen (1 = the silhouette), tones as palette levels (`skyTop`), densities as fractions.
+ */
+export const SKY = {
+  /**
+   * The earth rotation angle at load (GMST, degrees): the right ascension of the Greenwich meridian. It is a fixed number so the sky is the
+   * same on every visit; it is the ONLY thing that places the sky relative to the earth. The idle rotation adds to it (renderer `era`), a
+   * camera orbit does not. Chosen so the opening view (lon 15, lat 28) has the band crossing the wings of the globe on a slant.
+   */
+  eraDeg: 70,
+  /** Seed of every random choice of the sky (noise lattice, star positions, tiers and keep ranks). */
+  seed: 0x5ca1ab1e,
+  /** The baked band map in galactic coordinates: `cols` over longitude 0..360, `rows` over latitude +-`bMaxDeg` (zero beyond). */
+  map: { cols: 256, rows: 64, bMaxDeg: 45 },
+  band: {
+    /** Brightest value the map reaches (0..1 of the top tone): the galactic centre. */
+    gain: 0.9,
+    /** The band's brightness and thickness fall off from the galactic centre with this width (degrees of galactic longitude). */
+    centreSpreadDeg: 55,
+    /** Half-thickness (1 sigma, degrees of galactic latitude) at the anticentre and at the galactic centre. */
+    thicknessDeg: { edge: 5.5, core: 10 },
+    /** Brightness at the anticentre and at the galactic centre (0..1 of `gain`). */
+    brightness: { edge: 0.5, core: 1 },
+    /** The nuclear bulge: an extra blob on the galactic centre. */
+    bulge: { sigmaDeg: 7, share: 0.5 },
+    /** The Great Rift: a dust lane along the band, wavy, from galactic longitude `fromDeg` to `toDeg`. */
+    rift: { fromDeg: -25, toDeg: 80, widthDeg: 2.6, depth: 0.8, waveDeg: 1.8, wavePeriodDeg: 55 },
+    /** Coarse value noise (octaves: frequency per radian, weight): mottling, and dust breaks where it dips below `breakBelow`. */
+    noise: { octaves: [[7, 0.6], [15, 0.3], [34, 0.1]] as const, floor: 0.5, breakBelow: 0.34, breakDepth: 0.75 },
+  },
+  stars: {
+    count: 7000,
+    /** Star density along the band relative to the sky away from it (1 = no preference): "slightly more of them along the band". */
+    bandBoost: 1.8,
+    /** Share of the stars drawn in the brighter of the two tones. */
+    brightShare: 0.2,
+  },
+  /** Fade to the page colour towards the silhouette: nothing before `from`, everything from `to` (earth radii from the centre of the globe). */
+  fade: { from: 1.06, to: 1.55 },
+  /** The sky is on while the farthest corner of the picture is more than `rho` radii from the globe's centre (off when it comes within `rho - band`, on again at `rho + band`): a binary state with a hysteresis, its fade runs by time. */
+  onRho: { rho: 1.75, band: 0.05 },
+} as const;
+
 /** `cubic-bezier` control points of the app's standard easing (`--ease-standard`). */
 export const INSET_EASE = [0.2, 0, 0, 1] as const;
