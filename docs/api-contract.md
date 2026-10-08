@@ -208,7 +208,7 @@ No secrets. See `apps/api/.env.example`.
 The content is selected and validated once, when the module loads, and every response body is serialised then. If validation fails (bad projection, bad `CATALYST_CONTENT`):
 
 - the details are logged with `console.error` (visible in Vercel function logs);
-- on Vercel (`src/index.ts`) the app still starts but answers `503 content_unavailable` on `/health` and every `/v1/*` endpoint. There is no separate startup phase to abort on a serverless platform, and a crash would surface as an opaque platform error instead of this one;
+- on Vercel (`src/index.ts`, bundled into `dist/index.mjs`) the app still starts but answers `503 content_unavailable` on `/health` and every `/v1/*` endpoint. There is no separate startup phase to abort on a serverless platform, and a crash would surface as an opaque platform error instead of this one;
 - the node server (`src/server.ts`, used by `pnpm dev` and the built artifact) exits with code 1 instead.
 
 Because the same validation runs in the content repo and in CI, a bad projection should never reach a deployment.
@@ -262,7 +262,7 @@ After both are green, every PR shows two Vercel checks, one per project.
 | Framework Preset | React Router (pinned in `vercel.json`) | Hono (pinned in `vercel.json`; not `Other`) |
 | Node.js version | `engines` `>=22`: Vercel uses 24.x (`.nvmrc` says 22, local and CI-style checks ran on 22 and 26) | same |
 | Install Command | default (`pnpm install` at the workspace root, from `pnpm-lock.yaml`) | default, or `pnpm install --filter @catalyst/api...` (see below) |
-| Build / Output | defaults. The web build applies `@vercel/react-router` only when `VERCEL=1` (`react-router.config.ts`); the API's `build` script emits `dist/`, which Vercel ignores | defaults |
+| Build / Output | defaults. The web build applies `@vercel/react-router` only when `VERCEL=1` (`react-router.config.ts`); the API's `build` script emits `dist/` and then runs `scripts/check-function.mjs`; the function IS `dist/index.mjs` (through `index.mjs`), so the default build command must stay (the `build` script is what produces the function) | defaults |
 | Environment variables | none required: `CATALYST_CONTENT` unset (`published`); optionally `CATALYST_TILES_*` (docs/self-hosting.md, section 6) | none |
 
 ### Evidence (what was reproduced, 2026-10-06)
@@ -275,7 +275,7 @@ The check cannot be read without Vercel access, so the cause was reproduced inst
 
 What is not known: the literal error line of the failed deployment (log not readable), and whether the project's saved Install/Build Command overrides, if any, add a second failure. The checklist clears them either way.
 
-The deploy entry is `apps/api/src/index.ts`: it imports `hono` and has `export default app`, which is what Vercel's zero-config Hono support looks for. Per the Vercel Hono docs, `serveStatic` is ignored there and static assets would have to live in `public/`; this API serves none (images are served by the web app).
+The deploy entry is `apps/api/index.mjs`, a two-line re-export of `dist/index.mjs`: the esbuild bundle of `src/index.ts` that `pnpm build` (`scripts/build.mjs`) emits, with `@catalyst/schemas`, `@catalyst/published`, zod, hono and the projection inlined. Why not `src/index.ts` itself: see "Incident" below. Vercel's Hono preset looks for the first of `app`, `index`, `server`, `src/app`, `src/index`, `src/server` (any of `js cjs mjs ts cts mts`, root before `src/`) that imports `hono`, so the root `index.mjs` wins over everything under `src/`; it only passes that check because of the `import("hono")` type annotation in a comment, which must stay. Do not add a root `app.*` (it would be picked first). Per the Vercel Hono docs, `serveStatic` is ignored there and static assets would have to live in `public/`; this API serves none (images are served by the web app).
 
 ### How a new projection reaches the API
 
@@ -298,19 +298,38 @@ Per the Vercel monorepo docs (fetched 2026-10-03, `vercel.com/docs/monorepos`):
 
 **Dependency graph consequence.** `@catalyst/published` is a dependency of both the API and the web app, so a change to published content (`packages/published/**`) affects **both** projects and redeploys both. This is intended: they must move together. Conversely a change confined to `apps/web` does not redeploy the API. If the web app declares `@catalyst/api` (even as a devDependency, for the types), changes in `apps/api` will also redeploy web; that is the price of typed access and is acceptable because `contract.ts` is stable.
 
+### Incident: 500 `FUNCTION_INVOCATION_FAILED` on every path (2026-10-08)
+
+The first production deployment of `catalyst-v2-api` (Root Directory `apps/api`, preset Hono, from `main` at `d07ddd1`, Node 24.x) built green and answered 500 on every path, including `/health`. The runtime log (`vercel logs -p catalyst-v2-api`):
+
+```
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/var/task/apps/api/node_modules/@catalyst/schemas/src/index.ts' imported from /var/task/apps/api/src/app.js
+```
+
+Root cause, two stacked defects of the setup, both visible in the build log (`vercel inspect <url> --logs`):
+
+1. **Wrong entry.** The build log says `Multiple entrypoints found: src/app.ts, src/index.ts. Using src/app.ts.` Both files import `hono`, and the preset prefers `src/app` over `src/index`. `src/app.ts` only exports `createApp`, not a default app, and never loads the content. Even with its imports fixed, the function would not have served anything.
+2. **No bundling.** The preset (builder `@vercel/node`) compiles each traced `.ts` file to a `.js` file with `tsc` and keeps the import specifiers: relative ones stay extension-less (`./snapshot`) and the workspace packages are still imported by their `exports`, which point at raw sources (`@catalyst/schemas` -> `./src/index.ts`). The function holds `packages/schemas/src/index.js`, nothing at `.../src/index.ts`, so the import fails (and Node does not strip types under `node_modules` anyway).
+
+The earlier "Verified with the Vercel CLI offline ... the entry bundles together with the workspace packages" claim here was **incomplete and wrong**: a `vercel build` that succeeds only shows that the build step passes and that `.vercel/output/functions/index.func` exists. That output was never executed. It contains no `@catalyst/published`, no default export and a handler (`apps/api/src/app.js`) that cannot be imported, which executing it shows at once.
+
+Fix: the function is the esbuild bundle that already ran standalone under plain node (`dist/index.mjs`), selected through the root `apps/api/index.mjs` (see above). The resulting function contains exactly `apps/api/index.mjs` and `apps/api/dist/index.mjs`, no `node_modules` (`.vc-config.json`: handler `apps/api/index.mjs`, no `filePathMap`). The packages keep exporting `.ts` sources (the web app and the tests rely on that).
+
+Guard: `scripts/check-function.mjs` (the tail of `pnpm build`, hence CI and the Vercel build; also `pnpm --filter @catalyst/api check:function`). It checks that the preset's entry detection yields `index.mjs`, then copies `index.mjs` and `dist/index.mjs` alone into an empty temp directory (no `node_modules`, no sources), imports the default export and requests `/health`, `/v1/projection`, `/v1/places`, a 404 and a 405. Verified to fail when the bundle leaves `@catalyst/schemas` external (`ERR_MODULE_NOT_FOUND`) and when a root `app.ts` is added.
+
 ### What is and is not verified
 
-Verified locally:
+Verified locally (Node 26.10; the project runs Node 24.x on Vercel, no other Node was available; the bundle targets node22 and CI runs 22):
 
-- `typecheck` and the vitest suite pass.
-- The built bundle (`dist/server.mjs`, copied outside the repo with no `node_modules`) runs under plain node and serves every endpoint, 304, HEAD, OPTIONS and 405s correctly. The bundled `dist/index.mjs` default export works as a fetch handler.
-- `pnpm dev` serves on port 3001.
+- `typecheck`, the vitest suites, `pnpm build` (including `check-function.mjs`) and `check:leaks` pass.
+- Reproduction before the fix: `vercel build` (CLI 52.0.0, offline, hand-written `.vercel/project.json` with `rootDirectory: apps/api`, preset `hono`, in a scratch copy) prints the same `Multiple entrypoints found ... Using src/app.ts` line as the production build and emits handler `apps/api/src/app.js`. Importing that handler in a copy of `index.func` (with the `filePathMap` symlinks restored, as in the lambda) fails with the production error: `Cannot find module '.../apps/api/node_modules/@catalyst/schemas/src/index.ts' imported from .../apps/api/src/app.js`.
+- After the fix: the same `vercel build` prints `Multiple entrypoints found: index.mjs, src/app.ts, src/index.ts. Using index.mjs.` and emits handler `apps/api/index.mjs`. The default export of that handler, run from a copy of `index.func`, answers `/health` 200, `/v1/projection` 200, `/v1/places` 200 (`[]`: the committed projection is empty), `/nope` 404 and `POST /v1/places` 405, all as JSON.
+- `pnpm dev` is untouched (`tsx watch src/server.ts`).
 
-Verified with the Vercel CLI offline (`vercel build`, see "Evidence" above): with Root Directory `apps/api` and the Hono preset the entry bundles together with the workspace packages and the projection (`.vercel/output/functions/index.func`), and the `build` script emitting `dist/` does no harm.
+Not verifiable without a real deployment:
 
-Not verifiable without Vercel access (no credentials were used, nothing was deployed):
-
-- A real deployment: the function's runtime behaviour on Vercel (cold start, the content being found at runtime), the CDN honouring `s-maxage` / `stale-while-revalidate` as documented, and the automatic skip of unaffected projects in this specific repo layout.
-- The literal log of the failed web deployment, and the dashboard's saved overrides (the checklist clears them).
+- Vercel's own launcher and runtime (the local check calls the default export's `fetch` directly) and Node 24; the Vercel build uses CLI 62.1.0, the local check CLI 52.0.0, so a difference in the Hono builder between them is possible. The PR's preview deployment of the API project is the real proof: `curl -i <preview-url>/health` must answer 200 with `{"ok":true,"schemaVersion":1,"content":"published",...}`, `/v1/places` 200, `/nope` 404 JSON. Its build log must say `Using index.mjs`.
+- The CDN honouring `s-maxage` / `stale-while-revalidate` as documented, and the automatic skip of unaffected projects in this specific repo layout.
+- The dashboard's saved overrides (the checklist clears them).
 
 Optionally, the web project can discover this API's preview URL with Vercel Related Projects (`relatedProjects` in `apps/web/vercel.json`), so web previews call the matching API preview rather than production.
