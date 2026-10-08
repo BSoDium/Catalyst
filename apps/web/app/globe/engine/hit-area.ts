@@ -15,7 +15,8 @@
  * Overlaps (a group's box over its children, two neighbours): of the targets that contain the point (distance 0) the SMALLEST
  * wins, so the innermost, most specific node is chosen and a group never steals a click on a place inside it; when none
  * contains it, the NEAREST target within the slop wins (then the smallest, then the highest priority, then the slug, so the
- * answer never depends on the order of the nodes). A node that is almost faded out is not a target (`LOD.pickAlphaMin`).
+ * answer never depends on the order of the nodes). A node that is almost faded in or out is not a target (`LOD.pickAlphaMin`), and one on its way
+ * out only while it is half there (`pickAlpha`, `LOD.pickFadingMin`): a cross-fading group never steals a click from its children.
  *
  * Touch: the slop is larger so that a target is about 44 CSS px across (a minimum box is 22 px, its label adds height).
  */
@@ -163,6 +164,13 @@ export function pickNode(targets: readonly Target[], x: number, y: number, kind:
   }
   return best ? best.id : -1;
 }
+
+/**
+ * The opacity a node is judged by (`Target.alpha`): its own while the cut still wants it, and while it is on its way OUT only if it is still at
+ * least `fadingMin` opaque (0 below): in a cross-fade the group that is leaving stops taking clicks from the children that replace it as soon as
+ * it is half gone, while a child is a target from `pickNode`'s `minAlpha` on.
+ */
+export const pickAlpha = (alpha: number, wanted: boolean, fadingMin: number): number => (wanted || alpha >= fadingMin ? alpha : 0);
 
 /** Area of a target's box (the tie-break between nested nodes: the smaller is the more specific). */
 function hullArea(t: Target): number {

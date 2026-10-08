@@ -4,11 +4,11 @@ Where the project stands and what is left. Details live in the linked docs; this
 
 ## State
 
-- `main` holds the rebuild (#234), the globe polish (#239 to #241) and the API fix (#243). Open PRs, stacked: **#244** (DOM labels, sticky placement, calmer streets, skybox stars, `feat/polish-2`) and the **peek** branch `feat/peek` (important places drawn inside closed groups, base `feat/polish-2`).
+- `main` holds the rebuild (#234), the globe polish (#239 to #241) and the API fix (#243). Open PRs, stacked: **#244** (DOM labels, sticky placement, calmer streets, skybox stars, `feat/polish-2`) and `feat/peek` (a group opens early into its most important places and cross-fades with them, base `feat/polish-2`; the first version of it, places drawn inside a closed group, was rejected by the owner and removed).
 - Deployments (Vercel team `photonsquid`): `catalyst-v2` (web, `apps/web`) at `v2.bsodium.fr`, `catalyst-v2-api` (`apps/api`) at `v2.api.bsodium.fr`. `v1.bsodium.fr` and `v1.api.bsodium.fr` redirect to the old v1 site and API (separate projects; the v1 project's pull-request and non-default-branch deployments are disabled). `v2.bsodium.fr` stays the main domain of the new site until the MVP.
 - Nothing is published yet (0 published places: the public site and API show an empty projection). Publishing is by PR from the private repo's `publish.yml`; merging that PR is the act of publishing. `pnpm dev` serves the owner's local preview (`pnpm export:preview --out ../catalyst` in the private repo), `pnpm dev:demo` the made-up fixture.
 - Checks: `pnpm typecheck`, `pnpm test`, `pnpm test:scripts`, `pnpm test:deploy`, `pnpm build`, `pnpm check:leaks` (CI runs all of them on every PR). Private repo: `pnpm typecheck`, `pnpm test`, plus the `migration-parity` workflow.
-- Not verified anywhere: Safari/iOS, real phones, real reduced motion (Chromium emulation only), the street overlay labels and `groups.mjs handover` after the label overhaul (they need the local tile server), GPU and CPU cost on a phone. The GPU budgets (`pnpm --filter @catalyst/web perf`) were last run on 2026-10-07 on a busy machine and accepted (marginal `gpuMean` overruns at street pan); they were not rerun after the label, sky and peek work.
+- Not verified anywhere: Safari/iOS, real phones, real reduced motion (Chromium emulation only), the street overlay labels and `groups.mjs handover` after the label overhaul (they need the local tile server), GPU and CPU cost on a phone. The GPU budgets (`pnpm --filter @catalyst/web perf`) were last run on 2026-10-07 on a busy machine and accepted (marginal `gpuMean` overruns at street pan); they were not rerun after the label, sky and early-opening work (the cut now does a trial per group near the screen: 24 us per evaluation on the preview in Node, 200 us on 5,000 nodes, against 22 and 182 us before).
 
 ## Where the details are
 
@@ -16,7 +16,7 @@ Where the project stands and what is left. Details live in the linked docs; this
 |---|---|
 | Layers, publication flow, content modes | [architecture.md](architecture.md) |
 | Day-to-day (add, hide, preview, sync, publish, secrets, troubleshooting) | [owner-guide.md](owner-guide.md) |
-| Globe engine: LOD, labels in device pixels, sticky placement, binary visibility, peeks, idle rotation, skybox, framing | [web-architecture.md](web-architecture.md) |
+| Globe engine: LOD, labels in device pixels, sticky placement, binary visibility, the early opening of groups, idle rotation, skybox, framing | [web-architecture.md](web-architecture.md) |
 | Street map: palette, road hierarchy, binary layers, tile ease, the cut at zoom 3.7 | [street-architecture.md](street-architecture.md) |
 | Tokens (colours, label type, map card, sky) | [design-tokens.md](design-tokens.md) |
 | Frame cost, budgets, phone testing | [performance.md](performance.md) |
@@ -26,7 +26,7 @@ Where the project stands and what is left. Details live in the linked docs; this
 
 ## Open items
 
-1. **Review and merge #244, then the peek PR.** Retarget the peek PR to `main` after #244.
+1. **Review and merge #244, then #245** (the early opening of groups). Retarget #245 to `main` after #244.
 2. **Owner actions on Vercel:** usage alerts (team settings) and a weekly look at the Usage page for the first month; disconnect or ignore-build the v1 project's Git link when convenient. The firewall rules (allowlist deny, 120 requests per minute per IP) are live; one of the three free custom rules is left.
 3. **Content model v2** (private repo): P0 and P1 are done (shadow `content/`, parity gates, CI job). Next: P2 (flip to `content/` as the source) after a week of real use and one real edit in Obsidian or VS Code; issue Catalyst-content#2 tracks P2 to P4.
 4. **Importance ranking** (private `config/population.json`, 85 of 146 places matched): 61 places share the same priority today because nothing is published and no entry links to a place. It improves by itself as items are linked; unmatched places can get a manual offset (an authored `labelPriority` is an offset around 50) only if something looks wrong.
@@ -42,4 +42,5 @@ Where the project stands and what is left. Details live in the linked docs; this
 - Credits follow the tile configuration; the line is monospace with a middle dot before "See more".
 - Vercel: v1 stays as is; v2 web and API are separate projects from this repo.
 - Bounding boxes: dynamic, OSM-derived, as few manual overrides as possible; routes skipped; GPU budgets accepted.
-- Importance: peek-only client design, population from Natural Earth, step counts never count (privacy), an authored `labelPriority` is an offset around 50, group names keep the authored priority.
+- Groups: no peeks (owner, after seeing them: a group and the cities inside it must never be visible together). A group opens early into its most important children that fit and its box and label fade out exactly as they fade in; the rest come in as you zoom. The private design note `lod-importance-design.md` still describes the peeks (section 3, work packages W1 to W4): the client part is superseded by [web-architecture.md](web-architecture.md#opening-a-group-into-its-most-important-children-2026-10-08).
+- Importance: population from Natural Earth, step counts never count (privacy), an authored `labelPriority` is an offset around 50, group names keep the authored priority.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { PX_UNITS, planLabels, pxUnits, type PlanItem, type Prev } from "./label-plan";
-import { LabelTracker, SlotMemory, TRACK, anchored, slotPosition, type Placed, type TrackItem } from "./label-track";
+import { LabelTracker, SlotMemory, TRACK, slotPosition, type Placed, type TrackItem } from "./label-track";
 import { SPOT } from "./pixel-labels";
 
 const VIEW = { cols: 800, rows: 600 };
@@ -201,27 +201,7 @@ describe("sticky across plans and shared across overlays", () => {
   });
 });
 
-describe("hover and selection are not plan inputs: the label is written longer around its slot", () => {
-  const grid = VIEW;
-  const units = pxUnits(2.5);
-  const rect = { c0: 400, r0: 100, c1: 450, r1: 140 };
-  it("a label anchored on the box's left edge grows to the right, one anchored on its right edge grows to the left", () => {
-    const wide = { w: 160, h: 16 };
-    const left = anchored(SPOT.aboveLeft, rect, wide, { x: 400 - BLEED, y: 100 - 16 - GAP }, grid, units);
-    expect(left).toEqual({ x: 400 - BLEED, y: 100 - 16 - GAP });
-    const right = anchored(SPOT.aboveRight, rect, wide, { x: 410, y: 100 - 16 - GAP }, grid, units);
-    expect(right.x).toBe(450 - 160 + BLEED);
-    expect(right.y).toBe(100 - 16 - GAP);
-  });
-  it("it never leaves the screen: it is pulled back inside", () => {
-    const r = { c0: 740, r0: 100, c1: 790, r1: 140 };
-    const p = anchored(SPOT.aboveLeft, r, { w: 160, h: 16 }, { x: 740, y: 84 }, grid, units);
-    expect(p.x + 160).toBeLessThanOrEqual(800);
-    expect(p.x).toBeGreaterThanOrEqual(0);
-  });
-  it("a label drawn over others (no candidate) keeps its place", () => {
-    expect(anchored(-1, rect, { w: 120, h: 16 }, { x: 410, y: 90 }, grid, units)).toEqual({ x: 410, y: 90 });
-  });
+describe("a node that is fading out", () => {
   it("a node that is only fading out keeps the slot it had, followed to its box", () => {
     const t = tracker();
     t.step(0, [box(1, 100, 100)], VIEW, INSET);

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { HIT, convexHull, distanceToHull, isBigBox, nodeHull, outlineDistance, pickNode, targetDistance, type Rect, type Target } from "./hit-area";
+import { HIT, convexHull, distanceToHull, isBigBox, nodeHull, outlineDistance, pickAlpha, pickNode, targetDistance, type Rect, type Target } from "./hit-area";
+import { LOD } from "./lod-tree";
 
 // A small box (25 px) at (100, 100) with a label plate much wider than it, sitting just above its top edge.
 const box: Rect = { x0: 100, y0: 100, x1: 125, y1: 125 };
@@ -132,5 +133,36 @@ describe("outline distance", () => {
     expect(outlineDistance(100, 200, r)).toBe(0);
     expect(outlineDistance(150, 200, r)).toBe(50);
     expect(outlineDistance(90, 200, r)).toBe(10);
+  });
+});
+
+describe("a group that is cross-fading out does not steal a click from the children that replace it", () => {
+  it("pickAlpha: a node the cut still wants keeps its opacity; one on its way out only counts while it is at least half there", () => {
+    expect(pickAlpha(0.2, true, LOD.pickFadingMin)).toBe(0.2);
+    expect(pickAlpha(0.7, false, LOD.pickFadingMin)).toBe(0.7);
+    expect(pickAlpha(0.5, false, LOD.pickFadingMin)).toBe(0.5);
+    expect(pickAlpha(0.49, false, LOD.pickFadingMin)).toBe(0);
+    expect(pickAlpha(0.06, false, LOD.pickFadingMin)).toBe(0);
+  });
+  it("over a group's box and the child it opens into, along the whole cross-fade: the child from the first frame it is a target, the group only until it is half gone, never neither in the middle", () => {
+    const group = target(1, { x0: 100, y0: 100, x1: 300, y1: 300 }, null, { big: false });
+    const child = target(2, { x0: 180, y0: 180, x1: 205, y1: 205 }, null);
+    let both = 0;
+    for (let p = 0; p <= 1.0001; p += 0.02) {
+      // the child comes in as the group goes out: smoothstep of a linear progress, the group's opacity 1 - the child's
+      const eased = p * p * (3 - 2 * p);
+      const g = { ...group, alpha: pickAlpha(1 - eased, false, LOD.pickFadingMin) };
+      const c = { ...child, alpha: pickAlpha(eased, true, LOD.pickFadingMin) };
+      const onChild = pickNode([g, c], 190, 190, "mouse", LOD.pickAlphaMin);
+      const onGroupOnly = pickNode([g, c], 120, 120, "mouse", LOD.pickAlphaMin);
+      // a click on the child's own spot: the child once it is a target (the smaller target wins over the group), else the group while it still is one
+      if (eased >= LOD.pickAlphaMin) expect(onChild).toBe(2);
+      else expect(onChild).toBe(1 - eased >= LOD.pickFadingMin ? 1 : -1);
+      // a click elsewhere in the group's box: the group, until it is half gone
+      expect(onGroupOnly).toBe(1 - eased >= LOD.pickFadingMin ? 1 : -1);
+      if (g.alpha > 0 && c.alpha > 0) both++;
+    }
+    // the group and the child are both targets for a while (so a click is never lost in the middle of the fade)
+    expect(both).toBeGreaterThan(0);
   });
 });

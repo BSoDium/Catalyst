@@ -187,20 +187,21 @@ Owner feedback after trying the 1-bit look: the fade-in of features "goes from d
 
 ### 7.1 Levels and roles
 
-Input: `--background` and `--foreground` (light and dark). Output: `PALETTE_LEVELS` colours (one constant, default **12** since the contrast pass, `MAX_LEVELS` 12) from the page colour (level 0) to the full ink (the last level), interpolated in OKLab. The levels in between are the **map ramp**: they only reach `MAP_CONTRAST` of the way from the page colour to the ink (0.55 on a light page, 0.58 on a dark one, `engine/palette.ts`, the one knob for how loud the map is, read by both renderers). The last level, the full ink, is outside the map ramp: only markers, labels, the selected place and its route use it. On a light page the map ramp is slightly eased (`MAP_CONTRAST x (k/peak)^1.15`), on a dark page linear in OKLab lightness (the same step reads weaker on a dark ground). Named roles resolve to levels by position along the map ramp (`roleLevel`; roles closer than one level share it, so the same code serves any N):
+Input: `--background` and `--foreground` (light and dark). Output: `PALETTE_LEVELS` colours (one constant, default **12** since the contrast pass, `MAX_LEVELS` 12) from the page colour (level 0) to the full ink (the last level), interpolated in OKLab. The levels in between are the **map ramp**: the map levels (1 to the `coast` level, 9 at N = 12) only reach `MAP_CONTRAST` of the way from the page colour to the ink (0.40 on a light page, 0.42 on a dark one since 2026-10-08, was 0.55 / 0.58; `engine/palette.ts`, the one knob for how loud the map is, read by both renderers), and ONE more level, `peak` (10), is the box at rest, which keeps `BOX_CONTRAST` (0.55 / 0.58, the old value). The last level, the full ink, is outside the map ramp: only markers, labels, the selected place and its route use it. The ramp has three stretches: up to the `faint` level (3: the graticule, the horizon outline, the sky, the dimmest roads) it is the eased ramp of before, untouched (on a light page `BOX_CONTRAST x (k/peak)^1.15`, on a dark page linear in OKLab lightness: the same step reads weaker on a dark ground); from `faint` to `coast` it rises convexly (`MAP_RAMP_EXP` 1.6) up to `MAP_CONTRAST`, so the middle levels (roads, rivers, region borders, water and park patterns) are washed out in proportion and not only the top; `peak` and `ink` are above. Named roles resolve to levels by position along the map ramp (`roleLevel`; roles closer than one level share it, so the same code serves any N):
 
 | role | position on the map ramp | level at N = 12 | contrast against the page, light / dark | used for |
 | --- | --- | --- | --- | --- |
 | bg | 0 | 0 | 1.0 | page, ocean, erased interiors |
 | wash | 0.12 | 1 | 1.10 / 1.08 | building fills, the first step of every fade-in |
 | faint | 0.27 | 3 | 1.42 / 1.40 | graticule (the globe's horizon outline is the level below, 2: 1.24 / 1.21) |
-| soft | 0.42 | 4 | 1.65 / 1.66 | rail, paths, service roads, links, streams, canals, **the dots of parks and the dashes of water** |
-| mid | 0.60 | 6 | 2.31 / 2.46 | tertiary and residential roads, region borders, building outlines, small water outlines |
-| strong | 0.80 | 8 | 3.39 / 3.71 | motorway to secondary roads, rivers, lakes |
-| peak | 1 | 10 | 5.23 / 5.51 | coastlines, country borders: the loudest the map gets |
+| soft | 0.42 | 4 | 1.48 / 1.45 | rail, paths, service roads, links, streams, canals, **the dots of parks and the dashes of water** |
+| mid | 0.60 | 6 | 1.81 / 1.79 | tertiary and residential roads, region borders, building outlines, small water outlines |
+| strong | 0.80 | 8 | 2.52 / 2.55 | motorway to secondary roads, rivers, lakes |
+| coast | 0.9 (the level under peak) | 9 | 3.12 / 3.18 (was 5.23 / 5.51) | coastlines, country borders, the water's edge: the loudest the MAP gets |
+| peak | 1 | 10 | 5.23 / 5.51 (unchanged) | the box at rest (and the pixel labels' rest tone): above the coast by a wide margin, so a box reads over the map |
 | ink | (last level) | 11 | 19.13 / 18.16 | markers, labels, the selected place, routes |
 
-Before the contrast pass the map topped out at the ink (coast and borders at 19:1, major roads at 13:1 at N = 8). Now the map's loudest tone is 5.2:1 and a marker (ink) is 3.66:1 / 3.29:1 above it (WCAG 1.4.11 asks 3), so the map recedes and the places stand out. `engine/readability.test.ts` asserts these numbers from the tokens in `app.css`.
+The 2026-10-08 wash (7.8) moved the coast from 5.2:1 to 3.1:1 and the roads and patterns by about a quarter of their contrast above the page; levels 1 to 3 (1.10 / 1.24 / 1.42 light, 1.08 / 1.20 / 1.39 dark) are the floor and did not move. Before the contrast pass the map topped out at the ink (coast and borders at 19:1, major roads at 13:1 at N = 8). Then the map's loudest tone was 5.2:1 and a marker (ink) 3.66:1 / 3.29:1 above it (WCAG 1.4.11 asks 3). Now the map's loudest tone (`coast`) is 3.1:1 / 3.2:1 and the ink is 6.1:1 / 5.7:1 above it; the box at rest keeps the old 5.2:1 / 5.5:1. `engine/readability.test.ts` asserts these numbers from the tokens in `app.css`.
 
 ### 7.2 Encoding and quantisation (nothing here knows about lines)
 
@@ -218,7 +219,7 @@ A class that fades in with zoom (`LOD`, `from` to `full`) is one layer, the same
 
 ### 7.5 Globe
 
-Borders: not drawn below internal zoom 3.0, then the faintest level, one more level per `(3.5 - 3.0) / (peakLevel - 1)` of zoom, the `peak` level from 3.5, both ways (was: off, a 50% dither band to 3.3, solid ink). The graticule is the `faint` level (dotted as before) and eases out through the levels in the street map between map zoom 6.5 and 9.5 (the globe is not drawn there). Coastline: `peak` (the street map's world coastline, sea outline and country borders are `peak` too, so the cut shows the same line); markers and routes: full ink; horizon outline: palette level 2, one below `faint` (was `soft` until 2026-10-07 and `faint` until 2026-10-08: the owner found the ring of the full-globe view still too visible; level 2 is 1.24:1 light and 1.21:1 dark against the page, floor 1.2:1, `colors.test.ts`). The globe draws no water or land fills: the ocean is the page colour, so there is nothing on the globe that could pop at the cut. The world coastline runs solid up to the tile coastline (a dashed 0.5 zoom band between them used to show dotted coasts at northern latitudes, because the cut to the street map at internal zoom 5.05 falls inside it where `map zoom = globe zoom + log2 cos(lat)` is 4 to 4.5; guarded by a style test and `scripts/globe/stale-check.mjs`).
+Borders: not drawn below internal zoom 3.0, then the faintest level, one more level per `(3.5 - 3.0) / (coastLevel - 1)` of zoom, the `coast` level from 3.5, both ways (was: off, a 50% dither band to 3.3, solid ink). The graticule is the `faint` level (dotted as before) and eases out through the levels in the street map between map zoom 6.5 and 9.5 (the globe is not drawn there). Coastline: `coast` (the street map's world coastline, sea outline and country borders are `coast` too, so the cut shows the same line; until 2026-10-08 this was `peak`, shared with the box at rest); markers and routes: full ink; horizon outline: palette level 2, one below `faint` (was `soft` until 2026-10-07 and `faint` until 2026-10-08: the owner found the ring of the full-globe view still too visible; level 2 is 1.24:1 light and 1.21:1 dark against the page, floor 1.2:1, `colors.test.ts`). The globe draws no water or land fills: the ocean is the page colour, so there is nothing on the globe that could pop at the cut. The world coastline runs solid up to the tile coastline (a dashed 0.5 zoom band between them used to show dotted coasts at northern latitudes, because the cut to the street map at internal zoom 5.05 falls inside it where `map zoom = globe zoom + log2 cos(lat)` is 4 to 4.5; guarded by a style test and `scripts/globe/stale-check.mjs`).
 
 The sky behind the globe (2026-10-08, web-architecture.md "Skybox") follows the same rules: palette levels 1 and 2 only (below `faint`), one cell per star, the Milky Way a Bayer-dithered stipple that is a function of the screen cell and the tone, never a gradient, faded to the page colour by density.
 
@@ -232,7 +233,7 @@ Content that appears or disappears for any reason other than the camera moving i
 
 ### 7.8 Map contrast (the map recedes, places stand out)
 
-Owner: "everything is too high contrast; dim everything towards a fainter grey, because labels and markers are not shown as important enough". One knob, `MAP_CONTRAST` (0.55 on a light page, 0.58 on a dark one, `engine/palette.ts`), is the share of the way from the page colour to the ink that the loudest map tone (`peak`) reaches; both renderers read it (the globe's coast and borders, the street map's roads, rails, fills, graticule). Measured contrast ratios (WCAG, from the tokens; `engine/readability.test.ts`):
+Owner: "everything is too high contrast; dim everything towards a fainter grey, because labels and markers are not shown as important enough". One knob, `MAP_CONTRAST` (first 0.55 on a light page and 0.58 on a dark one; 0.40 / 0.42 since 2026-10-08, see the end of this section), is the share of the way from the page colour to the ink that the loudest map tone (`coast`) reaches; both renderers read it (the globe's coast and borders, the street map's roads, rails, fills, graticule). Measured contrast ratios (first pass; the 2026-10-08 values are in the table below it) (WCAG, from the tokens; `engine/readability.test.ts`):
 
 | | light | dark |
 | --- | --- | --- |
@@ -246,6 +247,24 @@ Owner: "everything is too high contrast; dim everything towards a fainter grey, 
 | nav links (muted foreground) under the scrim (about 80 % page colour), over the peak | at least 4.5:1 (asserted) | same |
 
 The muted-text plate went from 80 % to 90 % of the page colour: at 80 % a route line under the 10 px text left 4.3:1 on a light page (it was the attribution ribbon's, since replaced by the info button, whose dialog is ordinary HTML text). Labels needed no change: they already sit on an 82 % page plate (selected: an opaque ink plate). The class hierarchy still reads (roads 3.4 / 2.3 / 1.7 against the page for strong / mid / soft in light, 3.7 / 2.5 / 1.7 in dark; rail and paths at the soft end), and `lines.mjs` still passes 229 of 229 checks: the line rules do not depend on levels (7.2), only the expected role levels moved. Screenshots: `docs/palette/paris-city-before-after.png`, `world-before-after.png`, `lisbon-park-vs-water-before-after.png`, `scales-after.png`.
+
+**Map wash (2026-10-08, light and dark).** Owner, looking at the light globe over Europe and Africa: "wash out and fade the colours of the map overall a little bit more: all the borders, the shape of the continents, the roads, etc., so that our labels and bounding boxes are even more visible and there is more contrast". The coast and borders were the same tone as the box at rest (`peak`, 5.2:1), so they competed with it. Now: a new role `coast` (level 9 of 12, `MAP_CONTRAST` 0.40 / 0.42) for the coastlines, country borders and the water's edge (globe and street map), and `peak` (level 10, `BOX_CONTRAST` 0.55 / 0.58) kept for the box at rest alone; the levels between `faint` and `coast` are lowered on a convex curve (`MAP_RAMP_EXP` 1.6). Levels 1 to 3 are not touched (the graticule, the horizon outline and the skybox live there, and a class cannot go under 1.10 / 1.08: the floor). Contrast against the page (WCAG ratio), light / dark; asserted in `engine/colors.test.ts` and `street/core/palette.test.ts`:
+
+| class | before | now | floor kept |
+| --- | --- | --- | --- |
+| coastline, country borders, water's edge (`coast`; was `peak`) | 5.23 / 5.51 | 3.12 / 3.18 (about 40 % less) | 1.5 |
+| box at rest (`peak`) | 5.23 / 5.51 | 5.23 / 5.51 (unchanged: now 1.7 times the coast) | |
+| rivers, lakes (`strong`, level 8) | 3.39 / 3.71 | 2.52 / 2.55 | |
+| motorway, trunk (level 7) | 2.78 / 3.03 | 2.10 / 2.10 | |
+| region borders, building outlines (`mid`, level 6); primary roads (level 6, was 5) | 2.31 / 2.46 (primary 1.94 / 2.01) | 1.81 / 1.79 | |
+| secondary roads (level 5, was 4) | 1.65 / 1.66 | 1.61 / 1.58 | |
+| parks and water patterns, rail's old tone (`soft`, level 4) | 1.65 / 1.66 | 1.48 / 1.45 | |
+| tertiary, rail, graticule (`faint`, level 3) | 1.42 / 1.39 | 1.42 / 1.39 (the floor) | |
+| links, solid residential (2); dotted residential, service, paths (1) | 1.24 / 1.20; 1.10 / 1.08 | same | 1.08 (as today) |
+| horizon outline (2) | 1.24 / 1.21 | same | 1.2 |
+| ink (markers, labels, route, selected box) | 19.1 / 18.2 | same | |
+
+The road tiers keep their order: motorway 7, primary 6, secondary 5, tertiary 3 (primary and secondary went up one level each, at the lighter ramp the old levels 5 and 4 were 1.61 and 1.48, too close to tertiary's 1.42 to read as tiers). `lod.test.ts` relaxed, and only where needed: OKLab separation of adjacent tiers 0.02 (primary / secondary) and 0.03 (secondary / tertiary) where it was 0.045 and 0.045; motorway to path span 0.18 where it was 0.2. The line rules do not read levels, so none changed. Checked (before / after, light and dark, boxes on) at the world view, Europe and the Mediterranean, a continental view, and Paris and London at street zoom.
 
 ### 7.9 Sea ease (the sea no longer loads in one step)
 

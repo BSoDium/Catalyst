@@ -40,7 +40,7 @@ export const TUNING = {
   /**
    * Country borders are ON from `on` (internal globe zoom) and OFF below, with a hysteresis of `band` each side; the fade between the two
    * states is a timed tone ramp through the palette's grey levels (`FADE_MS`), not a function of zoom. The middle of the old ramp (3.0 to
-   * 3.5); the street cut is at 3.7, so the borders are at their peak level well before it.
+   * 3.5); the street cut is at 3.7, so the borders are at their coast level well before it.
    */
   borderZoom: { on: 3.25, band: 0.05 },
   maxZoom: 6.5,

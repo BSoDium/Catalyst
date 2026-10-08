@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { pickNode } from "./hit-area";
-import { CLEARANCE, UPGRADE_MARGIN, planLabels, type PlanItem, type PlanResult } from "./label-plan";
+import { CLEARANCE, UPGRADE_MARGIN, boxesToAvoid, planLabels, pxUnits, type PlanItem, type PlanResult } from "./label-plan";
 import { LOD } from "./lod-tree";
 import { SPOT, chipText, labelVariants } from "./pixel-labels";
 
@@ -152,5 +152,37 @@ describe("a box is always a target, labelled or not", () => {
     const plate = { x0: 100, y0: 125, x1: 190, y1: 150 };
     const t = { id: 2, box, plate, alpha: 1, priority: 50, big: false, slug: "b" };
     expect(pickNode([t], 150, 138, "mouse", LOD.pickAlphaMin)).toBe(2);
+  });
+});
+
+describe("a label keeps clear of the other nodes' boxes (PlanItem.avoid, boxesToAvoid)", () => {
+  const PX = { cols: 1440, rows: 900 };
+  const rect = { c0: 600, r0: 400, c1: 623, r1: 423 };
+  const variants = labelVariants("Valencia", null).map((v) => v.layout);
+  it("the planner takes the first position that touches none of the rectangles it is told to avoid; with none left, the first position of the wording", () => {
+    const free = planLabels([{ score: 1, area: 1, key: "p", rect, variants, prev: null }], PX, pxUnits(2.5))[0]!;
+    expect(free.cand).toBe(0);
+    const avoid = [{ x0: free.x - 5, y0: free.y - 5, x1: free.x + free.w + 5, y1: free.y + free.h + 5 }];
+    const moved = planLabels([{ score: 1, area: 1, key: "p", rect, variants, prev: null, avoid }], PX, pxUnits(2.5))[0]!;
+    expect(moved.overlap).toBe(false);
+    expect(moved.cand).not.toBe(0);
+    expect(moved.x < avoid[0]!.x1 && moved.x + moved.w > avoid[0]!.x0 && moved.y < avoid[0]!.y1 && moved.y + moved.h > avoid[0]!.y0).toBe(false);
+    // a wall of rectangles all around: no position keeps clear of them, the first one is taken all the same (not a last resort: it is over no plate, and the label is not shortened)
+    const wall = [{ x0: 0, y0: 0, x1: 1440, y1: 900 }];
+    const walled = planLabels([{ score: 1, area: 1, key: "p", rect, variants, prev: null, avoid: wall }], PX, pxUnits(2.5))[0]!;
+    expect(walled.overlap).toBe(false);
+    expect(walled.cand).toBe(free.cand);
+    expect(walled.variant).toBe(0);
+  });
+  it("boxesToAvoid: the other boxes within reach of a node's own box, never its own", () => {
+    const boxes = [
+      { x0: 100, y0: 100, x1: 130, y1: 130 },
+      { x0: 160, y0: 100, x1: 190, y1: 130 }, // 30 px to the right
+      { x0: 600, y0: 600, x1: 630, y1: 630 }, // far
+    ];
+    expect(boxesToAvoid(boxes, 0, 50)).toEqual([boxes[1]]);
+    expect(boxesToAvoid(boxes, 0, 10)).toEqual([]);
+    expect(boxesToAvoid(boxes, 2, 50)).toEqual([]);
+    expect(boxesToAvoid(boxes, 1, 1000)).toEqual([boxes[0], boxes[2]]);
   });
 });

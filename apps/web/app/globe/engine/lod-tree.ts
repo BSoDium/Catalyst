@@ -18,31 +18,32 @@
  *     to `fillFadeTo` times the minimum the mask is switched off (a hysteresis band, `fillHyst`), leaving the hollow outline you can
  *     see through. `fillAlpha` is its OPACITY per node (0 = hollow), already multiplied by the node's alpha.
  *   - THE CUT. Every place that passes the visibility rule (front hemisphere, clear of the limb: engine/visibility.ts) counts.
- *     Top down from the roots, a group OPENS (is replaced by its children) when its children, each as the rectangle and the
- *     label it would be drawn with, do not collide: the nearest two are `LOD.sepPx` or more apart (a signed gap: negative when
- *     they overlap); it CLOSES again at `LOD.sepClosedPx` or less, and in between it keeps the state it has (a hysteresis band, so a
- *     camera jittering around the threshold cannot flap). A group with one visible place is that place's rectangle. A group box
- *     bigger than `boxMaxFrom` of the screen opens whatever the spacing, and every group is open from street scale
- *     (`forceOpenZoom`: places at the same spot cannot be told apart).
+ *     Top down from the roots, a group is either ONE rectangle (closed) or REPLACED by some of its children (open), never both: no node is
+ *     ever drawn together with a drawn ancestor. A group OPENS EARLY, as soon as at least `LOD.open.quota` (2; all of them when it has
+ *     fewer) of its MOST IMPORTANT children (`labelPriority`, then the true size, then the slug; a child group is as important as the
+ *     most important place below it) can be drawn, each as the rectangle and the label it would be drawn with, clear of every other
+ *     drawn rectangle and label (`gapPx.enter`) and within the screen's box budget. When it opens, ONLY the children that pass that test
+ *     are drawn (the others stay hidden, still counted by the group's total, and come in as the zoom lets them in); a child group is
+ *     judged the same way once it is drawn (a closed child opens when its own top children fit). It closes again, with an easier
+ *     test (`gapPx.leave`, the budget plus `budgetKeep`), when fewer than the quota still pass: a hysteresis, so a camera jittering around a
+ *     threshold cannot flap. A group box bigger than `boxMaxTo` of the screen opens whatever the spacing, with ALL its children (it may
+ *     close again below `boxMaxFrom`), and every group is open from street scale (`forceOpenZoom`: places at the same spot cannot be told
+ *     apart). A group with one visible child is that child's rectangle. The decisions are taken group by group in a camera independent
+ *     order (importance, then depth, then slug: a parent before its children), each against what the groups before it left drawn, so
+ *     the result never depends on the order of the input and a group's choice never depends on a group decided after it.
  *   - So a place alone, and a group whose members are spread out, are never boxed together: a lone place is its own rectangle
  *     at every zoom, a country with two distant places shows two rectangles, ten places 50 km apart are one rectangle (the
- *     group, with a chip "10 entries") until you zoom in, and continents and subregions are only drawn on crowded views.
- *
- *   - THE PEEK. After the cut (so it never feeds back into the open and close decisions above) the most important PLACES under a group that
- *     stays CLOSED may be drawn too, as small boxes with their label next to the group's box (`peekPass`, `LOD.peek`): a country of six
- *     cities is not a closed box with nothing in it for two zoom levels. The group stays ONE box with the total in its chip. Greedy by
- *     importance (`labelPriority`, then the true size of the place, then the slug: a camera independent order), a candidate is accepted
- *     when its host is big enough, it keeps a clear gap from every other drawn box and label (with a way to write its own label), the host
- *     has room for it, and the screen is under its box budget. Accepted peeks keep their place with a hysteresis (accept at the enter gap,
- *     keep down to the leave gap), so a camera that jitters cannot flap them. A peek is a normal node otherwise: wanted, the same timed
- *     transition, picked like any box; when its group opens it simply stays.
+ *     group, whose second line says "10 places") until its two most important ones fit, and continents and subregions are only drawn on
+ *     crowded views.
  *
  * BINARY STATE, TIMED TRANSITIONS (docs/web-architecture.md, "Binary visibility"). The cut decides only a TARGET per node: drawn or
  * not, with the hysteresis above (the same for the box that is "bigger than the screen", `sizeFadeFrom` .. `sizeFadeTo`, and for the
  * interior mask, `fillHyst`). The opacity of a node is its own `FadeArray` value (engine/fade.ts), run towards the target by TIME over
- * `FADE_MS` whatever the camera does, so at rest every node is fully drawn or not drawn at all, never half way, and the group that
- * closes and the places that come in swap over the same 200 ms (their opacities sum to 1 on the way). A node's opacity never depends on
- * its parent's: a place whose ancestors are all open (none is drawn) is drawn at full opacity, London under an open Europe included.
+ * `FADE_MS` whatever the camera does, so at rest every node is fully drawn or not drawn at all, never half way. A group that opens and the
+ * children it opens into are retargeted in the SAME `update` (one clock, one duration, one ease, a smoothstep of a linear progress): the group
+ * goes 1 -> 0 exactly as its children go 0 -> 1, the sum of the group's opacity and any one child's is 1 on the way (never both at full
+ * opacity), and a reversal keeps the pair in step. A node's opacity never depends on its parent's: a place whose ancestors are all open
+ * (none is drawn) is drawn at full opacity, London under an open Europe included.
  * The one thing that is not timed is geometry: a place that goes over the globe's limb, and a group left without a visible place,
  * vanish at once (a fading box there would be drawn at a mirrored position behind the globe).
  *
@@ -60,7 +61,8 @@ import { DEFAULT_VIEW_RADIUS_KM, EARTH_RADIUS_KM, bboxExtentsKm, type Bbox } fro
 import { lonLatToVec3, viewBasis, projectUnit, zoomToRadiusPx, focalPx, type ScreenPoint } from "./geo";
 import { countryName } from "./country-names";
 import { FadeArray, clockStep, easeFade } from "./fade";
-import { LABEL_TYPE, chipText, labelText } from "./label-text";
+import { groupSub, nodeEntryCounts, placeSub, subText, type EntryRef, type LabelSub } from "./label-sub";
+import { LABEL_TYPE, labelText } from "./label-text";
 import { TUNING } from "./tuning";
 import { markerShown } from "./visibility";
 
@@ -80,14 +82,7 @@ export const LOD = {
   fillHyst: { off: 0.3, on: 0.7 },
   /** A group's rectangle has this many cells of room around the union of its places' rectangles (so a child's outline never coincides with it). */
   padCells: 2,
-  /**
-   * Two sibling rectangles (each with the label it carries) whose signed gap is below this, in CSS px, "collide": the group
-   * above them stays one rectangle. A group CLOSES at a gap of `sepClosedPx` or less and OPENS at `sepPx` or more; in between it
-   * keeps its state (hysteresis). Raise `sepPx` to cluster more, lower it to show more rectangles.
-   */
-  sepPx: 30,
-  sepClosedPx: 10,
-  /** A group's rectangle wider (or taller) than `boxMaxTo` of the smaller free side opens whatever the spacing; it may close again below `boxMaxFrom`. */
+  /** A group's rectangle wider (or taller) than `boxMaxTo` of the smaller free side opens whatever the spacing, with all its children; it may close again below `boxMaxFrom`. */
   boxMaxFrom: 0.45,
   boxMaxTo: 0.6,
   /** A rectangle bigger than `sizeFadeTo` times the smaller free side is hidden (you are inside it); it comes back below `sizeFadeFrom`. */
@@ -100,47 +95,40 @@ export const LOD = {
   alphaMin: 0.06,
   /** A place with neither a bounding box nor a view radius gets this radius (km; framing.ts `DEFAULT_VIEW_RADIUS_KM`). */
   defaultPlaceRadiusKm: DEFAULT_VIEW_RADIUS_KM,
-  /** A node can be picked once it is at least this opaque (a ghost mid-fade is not a target). */
+  /** A node can be picked once it is at least this opaque (a ghost mid-fade is not a target) ... */
   pickAlphaMin: 0.3,
+  /** ... except a node on its way OUT (the cut no longer wants it): it is a target only while it is still at least this opaque, so a fading group never steals a click from the children that replace it. */
+  pickFadingMin: 0.5,
   /** Label priority: selected and focused first, then places before groups. */
   placePriorityBonus: 30,
   /**
-   * The PEEK pass: places drawn inside a closed group (docs/web-architecture.md, "Peeks: progressive disclosure of a closed group").
-   * Every number is in CSS px of the host's space unless said otherwise.
+   * EARLY OPENING of a closed group (docs/web-architecture.md, "Opening a group into its most important children"). Every length is in CSS px of
+   * the host's space.
    */
-  peek: {
-    /** Kinds of group that may show peeks. Continents do not: the world view stays calm. */
-    hostKinds: ["subregion", "region", "country", "area"] as readonly GroupKind[],
-    /** The host's rectangle (its larger side) must be at least `enter` for a new peek, and keeps the peeks it has down to `leave`. */
-    hostMinPx: { enter: 90, leave: 80 },
-    /** At most this many peeks per host. */
-    perHost: 3,
-    /** Clear gap from every other drawn box and label (the larger of the gaps along x and y): to be accepted / to be kept. */
+  open: {
+    /** A group opens when at least this many of its most important children fit (all of them when it has fewer). */
+    quota: 2,
+    /** Clear gap from every other drawn box and label (the larger of the gaps along x and y): a child is taken at `enter`, kept down to `leave`. */
     gapPx: { enter: 8, leave: 3 },
-    /** A peek's box is at most this part of its host's larger side: accepted / kept (a peek is a SMALL box). */
-    maxHostFrac: { enter: 0.4, leave: 0.5 },
-    /** Boxes on the screen (a 1440 x 900 free area; scaled by the free area, within `budgetMin`..`budgetMax`): a new peek needs fewer than `budget`, a kept one fewer than `budget + budgetKeep`. */
+    /** Boxes on the screen (a 1440 x 900 free area; scaled by the free area, within `budgetMin`..`budgetMax`): a new child needs fewer than `budget`, a kept one fewer than `budget + budgetKeep`. */
     budget: 30,
     budgetKeep: 4,
     budgetRefArea: 1440 * 900,
     budgetMin: 8,
     budgetMax: 60,
-    /** A peek dropped by the label planner (no room for its label) is not tried again until the camera zoomed by `banZoom` or its place moved by `banPx`. */
-    banZoom: 0.2,
-    banPx: 48,
-    /** A peek's label ranks this far below everything else (and below its host's): it takes only the room that is left, it never displaces another label. */
-    labelScoreDrop: 100,
+    /**
+     * An incumbent (a node drawn in the last evaluation as a child of an open group) is kept WITHOUT a geometry test while the zoom is at most
+     * this many levels below the zoom it was taken at: what was clear when it came in stays, so zooming in never takes a node away again
+     * (the true extents of two neighbours can grow into each other faster than the gap grows), and a camera that jitters cannot flap it. Below
+     * that it keeps only while it passes the LEAVE test.
+     */
+    stickyZoom: 0.4,
+    /** At most this many children of a group (the most important ones) are tried per evaluation: a safety for flat groups of thousands of places. */
+    maxTried: 64,
+    /** A group is judged only while its box is within this many px of the free area (further out nothing of it is seen: it stays closed, and one that pans in is judged before it is seen). */
+    judgeMarginPx: 160,
   },
 } as const;
-
-/**
- * Placement order of a label (engine/label-plan.ts: higher first) from its `own` score: a PEEK's label ranks below its host's and after every
- * other label (it only takes the room that is left; the planner never gives another label's place to an optional box). `host` is the
- * host's score for a peek, null for every other node.
- */
-export function labelScoreOf(own: number, host: number | null): number {
-  return host === null ? own : Math.min(own, host - 1) - LOD.peek.labelScoreDrop;
-}
 
 const smooth = (t: number) => {
   const x = t < 0 ? 0 : t > 1 ? 1 : t;
@@ -154,8 +142,10 @@ export interface LodNodeInput {
   kind: NodeKind;
   /** Slug of the enclosing group. */
   parent?: string | undefined;
-  /** ISO 3166-1 alpha-2 code of a place's country (a place that is alone in its country says it: engine/country-names.ts). */
+  /** ISO 3166-1 alpha-2 code of a place's country (its label's second line says it: engine/country-names.ts). */
   countryCode?: string | undefined;
+  /** The entries (articles, artworks, software...) linked to a place: its label's second line counts them by kind, a group's counts the distinct ones below it (engine/label-sub.ts). */
+  entries?: readonly EntryRef[] | undefined;
   lat: number;
   lon: number;
   radiusKm: number;
@@ -181,7 +171,7 @@ export interface LodCamera {
   centreX: number;
   /** Smaller side of the free map area (free width, height): the unit of the size rules. */
   refPx: number;
-  /** Width of the free map area, centred on `centreX` (the area the detail panel leaves): the screen of the peek pass. */
+  /** Width of the free map area, centred on `centreX` (the area the detail panel leaves): the screen of the early opening (`LOD.open`). */
   freeWidth: number;
   /** CSS px per art pixel. */
   cell: number;
@@ -243,14 +233,12 @@ export class LodTree {
   /** Index of the parent group, -1 for a root. */
   readonly parent: Int32Array;
   readonly depth: Uint8Array;
-  /** Places below each group (0 for a place): the count on a group's chip. */
+  /** Places below each group (0 for a place): the "<N> places" of a group's second line. */
   readonly total: Int32Array;
-  /** What a node's label says: the name, and the chip of a group ("12 entries"; null for a place). */
+  /** What a node's label says: the name, and the parts of its second line (engine/label-sub.ts): a place's country (the English name of its `countryCode`, when known) and entries by kind, a group's "<N> places" and the entries below it; null when there is none. */
   readonly text: string[];
-  readonly chip: (string | null)[];
-  /** The English name of a place's country (from `countryCode`), null for a group or when the code is missing or unknown: a hovered or selected label says it ("Name, Country"). */
-  readonly country: (string | null)[];
-  /** CSS px across and high of every node's label as it is written at rest (name and chip; engine/label-text.ts): part of the node for the cut. */
+  readonly sub: (LabelSub | null)[];
+  /** CSS px across and high of every node's label as it is written whole (name and second line; engine/label-text.ts): part of the node for the cut. */
   readonly labelW: Float32Array;
   readonly labelH: Float32Array;
   private readonly childStart: Int32Array;
@@ -282,11 +270,7 @@ export class LodTree {
   readonly side: Float64Array;
   /** Visible places below a group (a group's rectangle wraps only these). */
   readonly members: Int32Array;
-  /**
-   * The PEEKS of the last evaluation: the host group (index) of a place the peek pass drew inside a closed group, -1 for every other node.
-   * A peek is wanted like any node; this says WHY it is drawn under a drawn group (`isPeek`).
-   */
-  readonly peekHost: Int32Array;
+  /** Rectangle of a drawn node (host projection space, CSS px, unsnapped). */
   /** Rectangle of a drawn node (host projection space, CSS px, unsnapped). */
   readonly boxX0: Float64Array;
   readonly boxY0: Float64Array;
@@ -310,9 +294,16 @@ export class LodTree {
   cacheHits = 0;
 
   private inkTop = 11;
-  /** Persistent decisions (the hysteresis memory): a group is open, a node's box is hidden for being bigger than the screen, an interior mask is on. */
+  /**
+   * Persistent decisions (the hysteresis memory): a group is open (replaced by its children), the size trigger of a group is on, the children of an
+   * early-opened group that were drawn, a node's box is hidden for being bigger than the screen, an interior mask is on.
+   */
   private readonly open: Uint8Array;
+  private readonly sizeOpen: Uint8Array;
   private readonly decided: Uint8Array;
+  private readonly admitted: Uint8Array;
+  /** The zoom a node was taken at (the start of its tenure as a child of an open group); meaningful while `admitted`. */
+  private readonly admitZoom: Float64Array;
   private readonly bigHidden: Uint8Array;
   private readonly fillOn: Uint8Array;
   /** What the last evaluation wants drawn, and the mask each of those wants. */
@@ -320,35 +311,51 @@ export class LodTree {
   private readonly wantFill: Uint8Array;
   /** Node indices by depth, parents first: the order of `visible`. */
   private readonly byDepth: Int32Array;
-  private readonly stack: Int32Array;
-  private readonly sx0: Float64Array;
-  private readonly sy0: Float64Array;
-  private readonly sx1: Float64Array;
-  private readonly sy1: Float64Array;
-  private readonly order: Int32Array;
-  // ---- the peek pass: static order, the memory between evaluations, and scratch ----
-  /** Places by importance, camera independent: `priority` descending, then the true size in km descending, then the slug. */
-  private readonly peekOrder: Int32Array;
-  /** Group kinds that may host peeks. */
-  private readonly hostKind: Uint8Array;
-  /** A place was a peek in the last evaluation (the incumbent, kept with the leave thresholds), also while it is wanted for another reason. */
-  private readonly peekMem: Uint8Array;
-  /** Per group in the current pass: 0 not a host, 1 may take new peeks, 2 only keeps the ones it has (between the host size thresholds). */
-  private readonly hostState: Uint8Array;
-  private readonly hostCount: Uint8Array;
-  /** Which of the six plate positions a peek's label took (-1: none): an incumbent tries it first, so a position does not flip between two that are both free. */
-  private readonly peekCand: Int8Array;
-  /** A dropped peek's ban: the zoom and the place's position when the label planner refused it (NaN: none). */
-  private readonly banZoom: Float64Array;
-  private readonly banX: Float64Array;
-  private readonly banY: Float64Array;
-  /** Obstacles of the pass: rectangles (4 numbers each), the node they belong to and 0 for its box, 1 for its label's plate, 2 for the reserved box of an incumbent. */
+  // ---- the cut: the scratch of one evaluation ----
+  /** The camera of the evaluation. */
+  private cam: LodCamera = newLodCamera();
+  /**
+   * The PLAN of the evaluation: the nodes of the frontier, in the order they were decided: a root, or a node below a group that opens. A group
+   * is `open` (replaced by its children) or one more box. Trials add to it and roll back by truncating it.
+   */
+  private readonly planNode: Int32Array;
+  /** Per plan entry: -1 for a box, else the group is open and this many of its visible children (most important first) have been decided; the rest are the extras of `fillExtras`. */
+  private readonly planKids: Int32Array;
+  private nPlan = 0;
+  /** Where each node is in the plan (checked by `slotOf`: a trial that rolls back leaves stale entries). */
+  private readonly planIndex: Int32Array;
+  /** The groups above a forced place (the selected, the focused, the stops of the shown routes): they open, whatever the room, so that no group is drawn together with a place below it. */
+  private readonly mustOpen: Uint8Array;
+  /** The cut is in its GROW sweep (newcomers, ENTER thresholds), else in KEEP (the incumbents, LEAVE thresholds). */
+  private growing = false;
+  /** The nodes of the plan, by index (rebuilt at the end of the cut). */
+  private readonly planned: Uint8Array;
+  /** The visible children of the groups being judged (a stack: most important first). */
+  private readonly kidStack: Int32Array;
+  private kidTop = 0;
+  /** Scratch of `growBoxes` and `fillExtras`: the candidates. */
+  private readonly extraList: Int32Array;
+  /** Position of every node in the importance order (0 = the most important): camera independent. */
+  private readonly rank: Int32Array;
+  /** Which of the six plate positions a child's label took (-1: none): an incumbent tries it first, so a position does not flip between two that are both free. */
+  private readonly plateCand: Int8Array;
+  /** Obstacles of the judgement: rectangles (4 numbers each), the node they belong to and 0 for its box, 1 for its label's plate, 2 for the reserved box of an incumbent. */
   private obs: Float64Array;
   private obsOwner: Int32Array;
   private obsKind: Uint8Array;
   private nObs = 0;
-  /** The zoom of the last evaluation (the ban's reference). */
-  private lastZoom = 0;
+  /** A node whose obstacles no longer count (a group that opened: its children replace it). */
+  private readonly gone: Uint8Array;
+  /** Boxes on the screen so far in this evaluation (live nodes whose rectangle touches the free area), the nodes counted in it, and the box budget of the screen. */
+  private boxes = 0;
+  private readonly inBoxes: Uint8Array;
+  private budget = 0;
+  /** The free area of the evaluation (x range; y is 0 .. height) and the plate `fits` found. */
+  private vx0 = 0;
+  private vx1 = 0;
+  private vy1 = 0;
+  private plateX = 0;
+  private plateY = 0;
   private key = new Float64Array(10);
   private keyValid = false;
   private lastForced0 = -2;
@@ -360,7 +367,11 @@ export class LodTree {
   private extra: number[] = [];
   private scratch: ScreenPoint = { x: 0, y: 0, visible: false, facing: 0 };
 
-  constructor(nodes: readonly LodNodeInput[]) {
+  /** Whether groups open early (`LOD.open`). Off, a group opens only by the size rule: what the map did before (measurements and tests compare the two). */
+  private readonly early: boolean;
+
+  constructor(nodes: readonly LodNodeInput[], options: { early?: boolean } = {}) {
+    this.early = options.early !== false;
     // Duplicate slugs: the first wins (the schema forbids them; this keeps the tree well formed whatever the input).
     const list: LodNodeInput[] = [];
     for (const n of nodes) {
@@ -415,7 +426,7 @@ export class LodTree {
       for (let cur = this.parent[i]!; cur >= 0; cur = this.parent[cur]!) dpt++;
       this.depth[i] = Math.min(255, dpt);
     }
-    // Children in CSR form, in input order.
+    // Children in CSR form (put in importance order at the end of the constructor).
     const counts = new Int32Array(n + 1);
     for (let i = 0; i < n; i++) if (this.parent[i]! >= 0) counts[this.parent[i]! + 1]!++;
     for (let i = 0; i < n; i++) counts[i + 1]! += counts[i]!;
@@ -430,15 +441,15 @@ export class LodTree {
     this.groups = Int32Array.from({ length: n }, (_, i) => i).filter((i) => this.isGroup[i]);
     this.total = new Int32Array(n);
     for (const p of this.places) for (let a = this.parent[p]!; a >= 0; a = this.parent[a]!) this.total[a]!++;
-    // Label text: the name alone; the country is only said by a hovered, focused or selected label (the same for every place, whether or not it is
-    // the only one of its country).
+    // Label text: the name, and a second line that is always there when it has something to say: a place's country (the same for every place) and
+    // entries, a group's number of places and entries (engine/label-sub.ts).
     this.text = list.map((x) => x.name);
-    this.chip = list.map((_, i) => (this.isGroup[i] ? chipText(this.total[i]!) : null));
-    this.country = list.map((x) => (x.kind === "place" ? countryName(x.countryCode) : null));
+    const entries = nodeEntryCounts(this.parent, list.map((x) => x.entries));
+    this.sub = list.map((x, i) => (this.isGroup[i] ? groupSub(this.total[i]!, entries[i]) : placeSub(countryName(x.countryCode), entries[i])));
     this.labelW = new Float32Array(n);
     this.labelH = new Float32Array(n);
     for (let i = 0; i < n; i++) {
-      const t = labelText(this.text[i]!, this.chip[i]!);
+      const t = labelText(this.text[i]!, subText(this.sub[i]!));
       this.labelW[i] = t.w;
       this.labelH[i] = t.h;
     }
@@ -469,38 +480,39 @@ export class LodTree {
     this.py = new Float64Array(n);
     this.shown = new Uint8Array(n);
     this.open = new Uint8Array(n);
-    this.stack = new Int32Array(n + 1);
-    let widest = 1;
-    for (let g = 0; g < n; g++) widest = Math.max(widest, counts[g + 1]! - counts[g]!);
-    this.sx0 = new Float64Array(widest);
-    this.sy0 = new Float64Array(widest);
-    this.sx1 = new Float64Array(widest);
-    this.sy1 = new Float64Array(widest);
-    this.order = new Int32Array(widest);
+    this.sizeOpen = new Uint8Array(n);
+    this.admitted = new Uint8Array(n);
+    this.admitZoom = new Float64Array(n);
+    this.gone = new Uint8Array(n);
+    this.planNode = new Int32Array(n + 8);
+    this.planKids = new Int32Array(n + 8);
+    this.planned = new Uint8Array(n);
+    this.planIndex = new Int32Array(n).fill(-1);
+    this.mustOpen = new Uint8Array(n);
+    this.kidStack = new Int32Array(n + 8);
+    this.extraList = new Int32Array(n + 8);
+    this.inBoxes = new Uint8Array(n);
+    this.plateCand = new Int8Array(n).fill(-1);
+    this.obs = new Float64Array(4 * (4 * n + 16));
+    this.obsOwner = new Int32Array(4 * n + 16);
+    this.obsKind = new Uint8Array(4 * n + 16);
 
-    this.peekHost = new Int32Array(n).fill(-1);
-    this.hostKind = Uint8Array.from(list, (x) => (x.kind !== "place" && LOD.peek.hostKinds.includes(x.kind as GroupKind) ? 1 : 0));
-    this.peekMem = new Uint8Array(n);
-    this.peekCand = new Int8Array(n).fill(-1);
-    this.hostState = new Uint8Array(n);
-    this.hostCount = new Uint8Array(n);
-    this.banZoom = new Float64Array(n).fill(NaN);
-    this.banX = new Float64Array(n);
-    this.banY = new Float64Array(n);
-    this.obs = new Float64Array(12 * n + 8);
-    this.obsOwner = new Int32Array(3 * n + 2);
-    this.obsKind = new Uint8Array(3 * n + 2);
-    // true size of a place in km, camera independent: a bounding box's larger side, else the square of its view radius
+    // Importance, camera independent: a place's `labelPriority`, a group's is the best below it. Ties: the larger true size (km), then the slug.
+    // The children, and the roots, are kept most important first: the order the cut judges them in.
     const sizeKm = (i: number) => (this.halfXKm[i]! > 0 ? 2 * Math.max(this.halfXKm[i]!, this.halfYKm[i]!) : (2 * this.radiusKm[i]!) / LOD.halfSideDivisor);
-    this.peekOrder = Int32Array.from(this.places).sort((a, b) => {
-      const pa = this.priority[a]!;
-      const pb = this.priority[b]!;
-      if (pa !== pb) return pb - pa;
-      const sa = sizeKm(a);
-      const sb = sizeKm(b);
-      if (sa !== sb) return sb - sa;
-      return this.slug[a]! < this.slug[b]! ? -1 : this.slug[a]! > this.slug[b]! ? 1 : 0;
-    });
+    const imp = new Float64Array(n).fill(-Infinity);
+    for (const p of this.places) for (let a = p; a >= 0; a = this.parent[a]!) imp[a] = Math.max(imp[a]!, this.priority[p]!);
+    const bySlug = (a: number, b: number) => (this.slug[a]! < this.slug[b]! ? -1 : this.slug[a]! > this.slug[b]! ? 1 : 0);
+    const moreImportant = (a: number, b: number) => imp[b]! - imp[a]! || sizeKm(b) - sizeKm(a) || bySlug(a, b);
+    for (let g = 0; g < n; g++) {
+      const sorted = this.childList.slice(this.childStart[g]!, this.childStart[g + 1]!).sort(moreImportant);
+      this.childList.set(sorted, this.childStart[g]!);
+    }
+    this.roots.sort(moreImportant);
+    this.rank = new Int32Array(n);
+    Int32Array.from({ length: n }, (_, i) => i)
+      .sort(moreImportant)
+      .forEach((node, r) => (this.rank[node] = r));
   }
 
   indexOf(slug: string | null | undefined): number {
@@ -616,28 +628,12 @@ export class LodTree {
     return false;
   }
 
-  /** Node `i` is a peek in the last evaluation: a place the peek pass wants drawn inside a closed group. It has a drawn ancestor by design. */
-  isPeek(i: number): boolean {
-    return this.peekHost[i]! >= 0;
-  }
-
   /**
-   * The label planner could not place the label of peek `i` without overlapping another (engine/box-scene.ts): the peek is dropped at
-   * once (never drawn over others) and not tried again until the camera has moved enough for the answer to change (`LOD.peek.banZoom`,
-   * `banPx`). Does nothing for a node that is not a peek.
+   * Group `i` was open (replaced by its children, or by those of them that fit) in the last evaluation. False for a place, for a group that is
+   * drawn as a box, and for one whose own ancestors are closed.
    */
-  dropPeek(i: number): void {
-    if (this.peekHost[i]! < 0) return;
-    this.peekHost[i] = -1;
-    this.peekMem[i] = 0;
-    this.want[i] = 0;
-    this.banZoom[i] = this.lastZoom;
-    this.banX[i] = this.px[i]!;
-    this.banY[i] = this.py[i]!;
-    this.life.snap(i, false);
-    this.mask.snap(i, false);
-    this.keyValid = false;
-    this.build(); // the drawn list now: the next frame of the other overlay must not see it
+  isOpen(i: number): boolean {
+    return this.open[i] === 1;
   }
 
   /** Alpha of every drawn node at rest for a camera, for tests and checks (allocates; not for frames). */
@@ -765,160 +761,337 @@ export class LodTree {
       y1[g] = cy + hy;
     }
 
-    // 2. top down: which nodes the cut wants drawn. A group opens when its children do not collide (or its rectangle is too big),
-    // closes when they are well apart again, and keeps its state in between.
-    const stack = this.stack;
-    const want = this.want;
-    want.fill(0);
-    let sp = 0;
-    let visited = 0;
-    for (let r = this.roots.length - 1; r >= 0; r--) stack[sp++] = this.roots[r]!;
-    const ref = cam.refPx;
-    const sepPx = LOD.sepPx;
-    const sepMid = (sepPx + LOD.sepClosedPx) / 2;
-    while (sp > 0) {
-      const i = stack[--sp]!;
-      visited++;
-      const w = x1[i]! - x0[i]!;
-      const h = y1[i]! - y0[i]!;
-      const frac = Math.max(w, h) / ref;
-      // a rectangle bigger than the screen is an outline you are inside: hidden (with a hysteresis band)
-      const hidden = this.bigHidden[i]! ? frac > LOD.sizeFadeFrom : frac >= LOD.sizeFadeTo;
-      this.bigHidden[i] = hidden ? 1 : 0;
-      if (!this.isGroup[i]) {
-        if (this.shown[i] && !hidden) this.mark(i, cam);
-        continue;
-      }
-      const n = members[i]!;
-      if (n === 0) continue;
-      let open = true;
-      if (n > 1) {
-        const gap = this.nearestGap(i);
-        const deep = cam.zoom >= LOD.forceOpenZoom;
-        // strongly open (children well apart, rectangle too big, street scale) / strongly closed; in between the state is kept
-        if (gap >= sepPx || frac >= LOD.boxMaxTo || deep) this.open[i] = 1;
-        else if (gap <= LOD.sepClosedPx && frac <= LOD.boxMaxFrom && cam.zoom < LOD.forceOpenZoom - LOD.forceOpenSpan) this.open[i] = 0;
-        else if (!this.decided[i]) this.open[i] = gap >= sepMid || frac >= (LOD.boxMaxFrom + LOD.boxMaxTo) / 2 || cam.zoom >= LOD.forceOpenZoom - LOD.forceOpenSpan / 2 ? 1 : 0;
-        this.decided[i] = 1;
-        open = this.open[i] === 1;
-      } else this.open[i] = 1; // a group of one visible place is that place's rectangle
-      if (open) {
-        const from = this.childStart[i]!;
-        for (let j = this.childStart[i + 1]! - 1; j >= from; j--) stack[sp++] = this.childList[j]!;
-      } else if (!hidden) this.mark(i, cam);
-    }
-    // The selected, the focused place and the stops of the shown routes are always wanted.
+    // 2. top down: which nodes the cut wants drawn (`cut`), then the selected, the focused place and the stops of the shown routes, which are
+    // always wanted.
+    this.want.fill(0);
+    this.mustOpen.fill(0);
     const extra = this.extra;
+    for (let n = 0; n < 2 + extra.length; n++) {
+      const i = n === 0 ? forced0 : n === 1 ? forced1 : extra[n - 2]!;
+      if (i < 0 || i >= this.size || this.isGroup[i] || !this.shown[i]) continue;
+      for (let a = this.parent[i]!; a >= 0; a = this.parent[a]!) this.mustOpen[a] = 1;
+    }
+    this.cut(cam);
     for (let n = 0; n < 2 + extra.length; n++) {
       const i = n === 0 ? forced0 : n === 1 ? forced1 : extra[n - 2]!;
       if (i < 0 || i >= this.size || this.isGroup[i]) continue;
       this.mark(i, cam);
     }
-    this.lastZoom = cam.zoom;
-    this.peekPass(cam);
-    this.visited = visited;
+    this.visited = this.nPlan;
   }
 
   /**
-   * The PEEK pass (see the header): after the cut, the most important places under the groups that stayed CLOSED are wanted too.
+   * The CUT (see the header), depth first in importance order, in two sweeps so that what is already drawn is never displaced by what is new:
+   *   1. KEEP. The roots' rectangles are laid down as obstacles (every root is a box until it is decided), then every group that was OPEN in the last
+   *      evaluation is `resolve`d again with the LEAVE thresholds, and the extras that were drawn are kept (`fillExtras`). A group that is not open
+   *      stays a box.
+   *   2. GROW. The groups that are boxes try to open with the ENTER thresholds (`growBoxes`, most important first, the groups that just opened
+   *      tried in the next round), then the other children are added (`fillExtras`).
+   * So a camera that moves a little never trades an incumbent for a newcomer, and an incumbent is only lost when its own surroundings no longer
+   * leave it the room.
    *
-   * Two sweeps over the places in importance order (`peekOrder`, independent of the camera and of the input order): first the places that
-   * were peeks in the last evaluation (the incumbents, judged with the LEAVE thresholds), then the others (the ENTER thresholds), so a peek
-   * is only given up when it fails the lenient test and only taken when it passes the strict one: a hysteresis in every number (host size,
-   * gap, share of the host, budget). The obstacles are the boxes and the label plates (at their first candidate, above the box's top-left
-   * corner) of every node the cut wants, then of every peek accepted so far. Cost: O(places) for the sweeps (an ancestor walk and
-   * cheap tests each), the geometry only for a place that passed them all, against the boxes on screen.
+   * `resolve(g)` decides ONE group: it opens (its plan entries follow its own) or it stays a box:
+   *   - a group with ONE visible child is that child's rectangle (open, no test);
+   *   - a group whose rectangle is `boxMaxTo` of the screen, or any group from street scale, is open with ALL its children (`sizeOpen`, its own
+   *     hysteresis down to `boxMaxFrom`);
+   *   - otherwise `LOD.open`: its first `quota` children, most important first, are tried one by one (`tryKid`: a child group is itself resolved
+   *     first, so it opens into ITS top children when they fit, else it is a box if the box fits). The group opens when they were all taken (a
+   *     group never opens leaving out the most important of its children for lesser ones); else it stays one rectangle and the trial leaves no
+   *     trace (obstacles, plan, budget are rolled back).
+   * Everything a trial leaves on the screen is an obstacle for the children tried after it. Cost: the trials of the groups whose rectangle is big
+   * enough to hold two boxes and near the screen, each child against the obstacles near the screen; nothing for a group the size rule opens.
    */
-  private peekPass(cam: LodCamera) {
-    const P = LOD.peek;
-    const n = this.size;
-    const want = this.want;
-    const peekHost = this.peekHost;
-    peekHost.fill(-1);
-    const hs = this.hostState;
-    hs.fill(0);
-    let hosts = 0;
-    for (const g of this.groups) {
-      if (!want[g] || !this.hostKind[g]) continue;
-      const side = Math.max(this.boxX1[g]! - this.boxX0[g]!, this.boxY1[g]! - this.boxY0[g]!);
-      const st = side >= P.hostMinPx.enter ? 1 : side >= P.hostMinPx.leave ? 2 : 0;
-      hs[g] = st;
-      if (st) hosts++;
-    }
-    if (!hosts) {
-      for (const p of this.places) if (!want[p]) this.peekMem[p] = 0;
-      return;
-    }
-    this.hostCount.fill(0);
-    const x0 = this.boxX0;
-    const y0 = this.boxY0;
-    const x1 = this.boxX1;
-    const y1 = this.boxY1;
-    // the screen: the free area (centred on the projection centre), and the boxes on it
-    const vx0 = cam.centreX - cam.freeWidth / 2;
-    const vx1 = vx0 + cam.freeWidth;
-    const vy0 = 0;
-    const vy1 = cam.height;
-    const budget = Math.max(P.budgetMin, Math.min(P.budgetMax, Math.round((P.budget * cam.freeWidth * cam.height) / P.budgetRefArea)));
-    let boxes = 0;
+  private cut(cam: LodCamera) {
+    const O = LOD.open;
+    this.cam = cam;
+    this.gone.fill(0);
+    this.inBoxes.fill(0);
+    this.planIndex.fill(-1);
+    this.nPlan = 0;
     this.nObs = 0;
-    for (let i = 0; i < n; i++) {
-      if (!want[i]) continue;
-      if (x1[i]! > vx0 && x0[i]! < vx1 && y1[i]! > vy0 && y0[i]! < vy1) boxes++;
-      if (x1[i]! < vx0 - 400 || x0[i]! > vx1 + 400 || y1[i]! < vy0 - 400 || y0[i]! > vy1 + 400) continue; // (an obstacle is only worth keeping near the screen)
-      this.addObstacle(i, 0, x0[i]!, y0[i]!, x1[i]!, y1[i]!);
-      const tx = x0[i]! - LABEL_TYPE.padX;
-      this.addObstacle(i, 1, tx, y0[i]! - this.labelH[i]! - LABEL_TYPE.boxGap, tx + this.labelW[i]!, y0[i]! - LABEL_TYPE.boxGap);
+    this.boxes = 0;
+    this.kidTop = 0;
+    this.vx0 = cam.centreX - cam.freeWidth / 2;
+    this.vx1 = this.vx0 + cam.freeWidth;
+    this.vy1 = cam.height;
+    this.budget = Math.max(O.budgetMin, Math.min(O.budgetMax, Math.round((O.budget * cam.freeWidth * cam.height) / O.budgetRefArea)));
+    for (const r of this.roots) {
+      if (this.isGroup[r] ? this.members[r]! > 0 : this.shown[r] === 1) this.lay(r);
     }
-    // The boxes of the incumbents are reserved while the incumbents are judged (obstacles of kind 2, for the PLATES only): a more important peek
-    // does not put its label over a less important one it is about to keep, which would drop it for nothing and bring it back a step later.
-    for (const p of this.places) {
-      if (!want[p] && this.peekMem[p] === 1 && this.shown[p] === 1) this.addObstacle(p, 2, x0[p]!, y0[p]!, x1[p]!, y1[p]!);
+    this.growing = false;
+    for (const r of this.roots) {
+      if (this.isGroup[r] ? this.members[r]! === 0 : this.shown[r] === 0) continue;
+      if (!this.isGroup[r] || !this.resolve(r)) this.planBox(r);
     }
-    const plate = { x: 0, y: 0 };
-    for (let pass = 0; pass < 2; pass++) {
-      const keep = pass === 0;
-      const gap = keep ? P.gapPx.leave : P.gapPx.enter;
-      const frac = keep ? P.maxHostFrac.leave : P.maxHostFrac.enter;
-      const room = keep ? budget + P.budgetKeep : budget;
-      for (const p of this.peekOrder) {
-        if (want[p] || keep !== (this.peekMem[p] === 1)) continue; // wanted for another reason (kept in memory), or not of this sweep
-        // the host: the one drawn group above it, if it can host
-        let h = -1;
-        for (let a = this.parent[p]!; a >= 0; a = this.parent[a]!) {
-          if (want[a]) {
-            h = hs[a] === 0 || (!keep && hs[a] !== 1) ? -1 : a;
-            break;
-          }
+    this.fillExtras();
+    this.growing = true;
+    this.growBoxes();
+    this.fillExtras();
+    // the memory: what the plan drew is what the next evaluation's trials call incumbents
+    this.open.fill(0);
+    const wasPlanned = this.planned;
+    wasPlanned.fill(0);
+    for (let k = 0; k < this.nPlan; k++) if (!this.admitted[this.planNode[k]!]) this.admitZoom[this.planNode[k]!] = cam.zoom; // (a new tenure)
+    this.admitted.fill(0);
+    for (let k = 0; k < this.nPlan; k++) {
+      const i = this.planNode[k]!;
+      wasPlanned[i] = 1;
+      this.admitted[i] = 1;
+      if (this.planKids[k]! >= 0) this.open[i] = 1;
+      // what is drawn: a place that is shown, a group that stayed closed
+      else if (!this.bigHidden[i] && (this.isGroup[i] ? this.members[i]! > 0 : this.shown[i] === 1)) this.mark(i, cam);
+    }
+    // the size rule's memory of a group the cut did not reach (an ancestor is closed) starts again from "closed" when it is reached
+    for (const g of this.groups) {
+      if (wasPlanned[g]) continue;
+      this.sizeOpen[g] = 0;
+      this.decided[g] = 0;
+    }
+  }
+
+  /** The plan entry of node `i`, or -1 when it is not in the plan (entries rolled back by a trial leave a stale index: it is checked). */
+  private slotOf(i: number): number {
+    const k = this.planIndex[i]!;
+    return k >= 0 && k < this.nPlan && this.planNode[k] === i ? k : -1;
+  }
+
+  /**
+   * GROW, first half: the groups that are boxes try to open, most important first. A group that opens puts its children in the plan (the groups
+   * among them are boxes for the next round). Rounds until none opens.
+   */
+  private growBoxes() {
+    for (let round = 0; round < 8; round++) {
+      const list = this.extraList;
+      let n = 0;
+      for (let k = 0; k < this.nPlan; k++) {
+        const g = this.planNode[k]!;
+        if (this.planKids[k]! < 0 && this.isGroup[g] && this.members[g]! > 0) list[n++] = g;
+      }
+      if (n === 0) return;
+      const groups = list.subarray(0, n);
+      groups.sort((a, b) => this.rank[a]! - this.rank[b]!);
+      let opened = false;
+      for (let t = 0; t < n; t++) if (this.resolve(groups[t]!)) opened = true;
+      if (!opened) return;
+    }
+  }
+
+  /**
+   * The EXTRAS: the open groups' other children (everything after the first `quota`), which do not decide whether a group opens. Taken after
+   * every group is decided, so the most important children of all the groups come first and a less important one never takes the place of a more
+   * important one in the group next to it. All the candidates are ordered by importance (`rank`). In KEEP the extras that were drawn last time are
+   * kept (LEAVE thresholds); in GROW the others are tried (ENTER ones). A child group among them is resolved like any other (it may open into
+   * its own most important children, whose extras are the next round's).
+   */
+  private fillExtras() {
+    const O = LOD.open;
+    for (let round = 0; round < 8; round++) {
+      const cand = this.extraList;
+      let n = 0;
+      for (let k = 0; k < this.nPlan; k++) {
+        const g = this.planNode[k]!;
+        const done = this.planKids[k]!;
+        if (done < 0) continue;
+        let t = 0;
+        for (let j = this.childStart[g]!, to = this.childStart[g + 1]!; j < to && t < O.maxTried; j++) {
+          const c = this.childList[j]!;
+          if (this.isGroup[c] ? this.members[c]! === 0 : this.shown[c] === 0) continue;
+          if (t++ >= done && (this.growing ? this.slotOf(c) < 0 : this.admitted[c] === 1 && this.slotOf(c) < 0)) cand[n++] = c;
         }
-        const ok = h >= 0 && this.shown[p] === 1 && this.hostCount[h]! < P.perHost && boxes < room && !this.peekBanned(p, cam);
-        // its box small beside the host, clear of everything, with a label that fits on the screen
-        let fits = false;
-        if (ok) {
-          const bx0 = x0[p]!;
-          const by0 = y0[p]!;
-          const bx1 = x1[p]!;
-          const by1 = y1[p]!;
-          const on = bx1 > vx0 && bx0 < vx1 && by1 > vy0 && by0 < vy1;
-          const hostSide = Math.max(x1[h]! - x0[h]!, y1[h]! - y0[h]!);
-          if (Math.max(bx1 - bx0, by1 - by0) <= frac * hostSide && this.peekClear(bx0, by0, bx1, by1, gap, h, p, false)) {
-            // the label must fit on the screen (the planner's positions are all on it): with the gap to spare to be taken, exactly to be kept, so a
-            // box on the edge of the screen does not flap; a box wholly off it has no position and is not a peek
-            const m = keep ? 0 : gap;
-            fits = this.peekPlate(p, vx0 + m, vy0 + m, vx1 - m, vy1 - m, gap, h, keep, plate);
-            if (fits) {
-              peekHost[p] = h;
-              this.hostCount[h]!++;
-              this.mark(p, cam);
-              this.addObstacle(p, 0, bx0, by0, bx1, by1);
-              this.addObstacle(p, 1, plate.x, plate.y, plate.x + this.labelW[p]!, plate.y + this.labelH[p]!);
-              if (on) boxes++;
-            }
-          }
+      }
+      if (n === 0) return;
+      const list = cand.subarray(0, n);
+      list.sort((a, b) => this.rank[a]! - this.rank[b]!);
+      const start = this.nObs;
+      if (!this.growing) for (let t = 0; t < n; t++) this.addObstacle(list[t]!, 2, this.boxX0[list[t]!]!, this.boxY0[list[t]!]!, this.boxX1[list[t]!]!, this.boxY1[list[t]!]!);
+      const before = this.nPlan;
+      for (let t = 0; t < n; t++) this.tryKid(list[t]!);
+      for (let k = start; k < this.nObs; k++) if (this.obsKind[k] === 2) this.obsKind[k] = 3; // (the reservations are over)
+      if (this.nPlan === before) return;
+    }
+  }
+
+  /** Node `i` as a box with the label it would carry: its rectangle and its plate at the first position are obstacles, and it counts for the budget (a root, or a child that has to be drawn). */
+  private lay(i: number) {
+    const x0 = this.boxX0[i]!;
+    const y0 = this.boxY0[i]!;
+    const x1 = this.boxX1[i]!;
+    const y1 = this.boxY1[i]!;
+    const frac = Math.max(x1 - x0, y1 - y0) / this.cam.refPx;
+    const hidden = this.bigHidden[i]! ? frac > LOD.sizeFadeFrom : frac >= LOD.sizeFadeTo;
+    this.bigHidden[i] = hidden ? 1 : 0; // (a rectangle bigger than the screen is an outline you are inside: hidden, with a hysteresis band)
+    if (hidden) return;
+    this.countBox(i);
+    if (x1 < this.vx0 - 400 || x0 > this.vx1 + 400 || y1 < -400 || y0 > this.vy1 + 400) return; // (an obstacle is only worth keeping near the screen)
+    this.addObstacle(i, 0, x0, y0, x1, y1);
+    const tx = x0 - LABEL_TYPE.bleed;
+    this.addObstacle(i, 1, tx, y0 - this.labelH[i]! - LABEL_TYPE.boxGap, tx + this.labelW[i]!, y0 - LABEL_TYPE.boxGap);
+  }
+
+  /** Node `i` stays a box: it joins the plan. */
+  private planBox(i: number) {
+    this.planIndex[i] = this.nPlan;
+    this.planNode[this.nPlan] = i;
+    this.planKids[this.nPlan++] = -1;
+  }
+
+  /** Node `i` is a box on the screen if its rectangle touches the free area: counted once for the budget. */
+  private countBox(i: number) {
+    if (this.boxX1[i]! > this.vx0 && this.boxX0[i]! < this.vx1 && this.boxY1[i]! > 0 && this.boxY0[i]! < this.vy1) {
+      this.boxes++;
+      this.inBoxes[i] = 1;
+    }
+  }
+
+  /** Child `c` of a group that opens for good must be drawn, in whatever form: opened into its own children, else as a box. */
+  private present(c: number) {
+    if (this.isGroup[c] && this.resolve(c)) return;
+    this.planBox(c);
+    this.lay(c);
+  }
+
+  /**
+   * Decide group `g` (reached with at least one visible place; in GROW it may be a box already): true when it is OPEN, with the plan entries of
+   * what replaces it; false when it stays a box, with nothing added (the caller draws its box or leaves it out).
+   */
+  private resolve(g: number): boolean {
+    const O = LOD.open;
+    const cam = this.cam;
+    // the visible children, most important first (the children are stored in that order)
+    const base = this.kidTop;
+    let nk = 0;
+    for (let j = this.childStart[g]!, to = this.childStart[g + 1]!; j < to; j++) {
+      const c = this.childList[j]!;
+      if (this.isGroup[c] ? this.members[c]! > 0 : this.shown[c] === 1) this.kidStack[base + nk++] = c;
+    }
+    if (nk === 0) return false;
+    this.kidTop = base + nk;
+    const frac = Math.max(this.boxX1[g]! - this.boxX0[g]!, this.boxY1[g]! - this.boxY0[g]!) / cam.refPx;
+    // the size rule: strongly open (rectangle too big, street scale) / strongly closed; in between the state is kept
+    if (frac >= LOD.boxMaxTo || cam.zoom >= LOD.forceOpenZoom) this.sizeOpen[g] = 1;
+    else if (frac <= LOD.boxMaxFrom && cam.zoom < LOD.forceOpenZoom - LOD.forceOpenSpan) this.sizeOpen[g] = 0;
+    else if (!this.decided[g]) this.sizeOpen[g] = frac >= (LOD.boxMaxFrom + LOD.boxMaxTo) / 2 || cam.zoom >= LOD.forceOpenZoom - LOD.forceOpenSpan / 2 ? 1 : 0;
+    this.decided[g] = 1;
+    const k0 = this.slotOf(g);
+    if (nk === 1 || this.sizeOpen[g]) {
+      // a group with one visible child is that child's rectangle; a rectangle too big or street scale opens whatever the spacing: all its children.
+      // The incumbents are decided first, so the children are presented in that order.
+      this.gone[g] = 1;
+      this.boxes -= this.inBoxes[g]!;
+      this.inBoxes[g] = 0;
+      if (k0 >= 0) this.planKids[k0] = nk;
+      else {
+        this.planIndex[g] = this.nPlan;
+        this.planNode[this.nPlan] = g;
+        this.planKids[this.nPlan++] = nk;
+      }
+      for (let pass = 0; pass < 2; pass++) {
+        for (let t = 0; t < nk; t++) {
+          const c = this.kidStack[base + t]!;
+          if ((this.admitted[c] === 1) === (pass === 0) && this.slotOf(c) < 0) this.present(c);
         }
-        this.peekMem[p] = fits ? 1 : 0;
+      }
+      this.kidTop = base;
+      return true;
+    }
+    // the early opening: judged while its rectangle is near the screen and can hold two boxes, else it stays closed (nothing of it is seen)
+    const m = O.judgeMarginPx;
+    const w = this.boxX1[g]! - this.boxX0[g]!;
+    const h = this.boxY1[g]! - this.boxY0[g]!;
+    const holds = Math.max(w, h) >= 2 * LOD.minBoxCells * cam.cell + O.gapPx.leave;
+    const near = this.boxX1[g]! > this.vx0 - m && this.boxX0[g]! < this.vx1 + m && this.boxY1[g]! > -m && this.boxY0[g]! < this.vy1 + m;
+    const need = Math.min(O.quota, nk);
+    const wasOpen = this.open[g] === 1;
+    let ok = this.early && holds && near && (this.growing || wasOpen);
+    if (ok && !this.growing) for (let t = 0; t < need && ok; t++) ok = this.admitted[this.kidStack[base + t]!] === 1; // (a child that was not drawn is a newcomer: GROW's)
+    if (!ok) {
+      this.kidTop = base;
+      return this.mustOpen[g] === 1 && this.openEmpty(g, k0);
+    }
+    const savedObs = this.nObs;
+    const savedPlan = this.nPlan;
+    const savedBoxes = this.boxes;
+    const wasGone = this.gone[g]!;
+    this.boxes -= this.inBoxes[g]!; // the group's own rectangle goes if the children are taken
+    this.gone[g] = 1;
+    const entry = k0 >= 0 ? k0 : this.nPlan++;
+    this.planIndex[g] = entry;
+    this.planNode[entry] = g;
+    const keptKids = k0 >= 0 ? this.planKids[k0]! : 0;
+    this.planKids[entry] = need;
+    if (!this.growing) {
+      // the incumbents' rectangles are reserved while they are judged, against the plates of the others: a more important incumbent does not put
+      // its label over a less important one that is about to be kept, which would drop it for nothing and bring it back a step later
+      for (let t = 0; t < need; t++) {
+        const c = this.kidStack[base + t]!;
+        this.addObstacle(c, 2, this.boxX0[c]!, this.boxY0[c]!, this.boxX1[c]!, this.boxY1[c]!);
       }
     }
+    for (let t = 0; t < need && ok; t++) ok = this.tryKid(this.kidStack[base + t]!); // one of the first `quota` children has no place: the group stays closed
+    for (let k = savedObs; k < this.nObs; k++) if (this.obsKind[k] === 2) this.obsKind[k] = 3; // (the reservations are over)
+    this.kidTop = base;
+    if (ok) {
+      this.inBoxes[g] = 0;
+      return true;
+    }
+    // not enough room: the trial leaves no trace
+    this.nObs = savedObs;
+    this.nPlan = savedPlan;
+    this.boxes = savedBoxes;
+    this.gone[g] = wasGone;
+    if (k0 >= 0) this.planKids[k0] = keptKids;
+    else this.planIndex[g] = -1;
+    return this.mustOpen[g] === 1 && this.openEmpty(g, k0);
+  }
+
+  /** Group `g` opens although its children did not find room: a forced place is below it (`mustOpen`). Its children come in as extras, as they fit. `k0` is its plan entry, or -1. */
+  private openEmpty(g: number, k0: number): boolean {
+    this.gone[g] = 1;
+    this.boxes -= this.inBoxes[g]!;
+    this.inBoxes[g] = 0;
+    const entry = k0 >= 0 ? k0 : this.nPlan++;
+    this.planIndex[g] = entry;
+    this.planNode[entry] = g;
+    this.planKids[entry] = 0;
+    return true;
+  }
+
+  /**
+   * Child `c` of a group on trial (or an extra): a child group is resolved first (opened into its own most important children if they fit); else,
+   * or for a place, its rectangle is taken if it `fits`. In KEEP the test is the incumbent's (LEAVE thresholds), in GROW the newcomer's. Returns
+   * whether something of `c` is on the screen now, with the plan, the obstacles and the budget updated; nothing changes when not.
+   */
+  private tryKid(c: number): boolean {
+    if (this.isGroup[c] && this.resolve(c)) return true;
+    if (!this.fits(c, !this.growing)) return false;
+    if (this.slotOf(c) < 0) this.planBox(c);
+    this.bigHidden[c] = 0;
+    this.addObstacle(c, 0, this.boxX0[c]!, this.boxY0[c]!, this.boxX1[c]!, this.boxY1[c]!);
+    this.addObstacle(c, 1, this.plateX, this.plateY, this.plateX + this.labelW[c]!, this.plateY + this.labelH[c]!);
+    this.countBox(c);
+    return true;
+  }
+
+  /**
+   * Whether child `c` can be drawn as a box: the screen has room for one more box (a box off the screen is free), it keeps `gap` px (the
+   * larger of the gaps along x and y) from every other rectangle and label (those of the groups on trial are not counted: they go if their
+   * children are taken), and its label has a position (the planner's own, whole label) that keeps the same gap. `keep` is the lenient test of
+   * an incumbent: the leave gap, the budget plus `budgetKeep`. The plate it found is left in `plateX`, `plateY`.
+   */
+  private fits(c: number, keep: boolean): boolean {
+    const O = LOD.open;
+    const x0 = this.boxX0[c]!;
+    const y0 = this.boxY0[c]!;
+    const x1 = this.boxX1[c]!;
+    const y1 = this.boxY1[c]!;
+    // the screen only counts for the budget: a box off it is judged like any other (so what is drawn does not depend on where the edge is, and
+    // a box that pans in is already there), its label has its place wherever the planner will put it
+    if (keep && this.cam.zoom >= this.admitZoom[c]! - O.stickyZoom && this.plateCand[c]! >= 0) return this.plateAt(c, this.plateCand[c]!); // (an incumbent: see `stickyZoom`)
+    const onScreen = x1 > this.vx0 && x0 < this.vx1 && y1 > 0 && y0 < this.vy1;
+    if (onScreen && this.boxes >= (keep ? this.budget + O.budgetKeep : this.budget)) return false;
+    const gap = keep ? O.gapPx.leave : O.gapPx.enter;
+    if (!this.clear(x0, y0, x1, y1, gap, c, false)) return false;
+    return this.plateFor(c, gap, keep);
   }
 
   private addObstacle(owner: number, kind: number, x0: number, y0: number, x1: number, y1: number) {
@@ -933,15 +1106,16 @@ export class LodTree {
   }
 
   /**
-   * The rectangle keeps `gap` px from every obstacle (the larger of the gaps along x and y), except the box of its `host`. The reserved boxes of the
-   * incumbents other than `own` count only when `reserved` (a plate while the incumbents are judged).
+   * The rectangle keeps `gap` px from every obstacle (the larger of the gaps along x and y), except those of `own` and of a group on trial or
+   * opened (`gone`). The reserved boxes of the incumbents other than `own` count only when `reserved` (a plate while the incumbents are judged).
    */
-  private peekClear(ax0: number, ay0: number, ax1: number, ay1: number, gap: number, host: number, own: number, reserved: boolean): boolean {
+  private clear(ax0: number, ay0: number, ax1: number, ay1: number, gap: number, own: number, reserved: boolean): boolean {
     const o = this.obs;
     for (let k = 0; k < this.nObs; k++) {
-      const kind = this.obsKind[k];
-      if (kind === 0 && this.obsOwner[k] === host) continue;
-      if (kind === 2 && (!reserved || this.obsOwner[k] === own)) continue;
+      const kind = this.obsKind[k]!;
+      const owner = this.obsOwner[k]!;
+      if (kind === 3 || owner === own || this.gone[owner]) continue;
+      if (kind === 2 && !reserved) continue;
       const dx = Math.max(o[4 * k]! - ax1, ax0 - o[4 * k + 2]!);
       const dy = Math.max(o[4 * k + 1]! - ay1, ay0 - o[4 * k + 3]!);
       if ((dx > dy ? dx : dy) < gap) return false;
@@ -950,43 +1124,34 @@ export class LodTree {
   }
 
   /**
-   * The first of the positions of place `p`'s label (the planner's own: above and below the box on each side, then right and left, with the
-   * same room to the box) that is inside `[bx0, bx1] x [by0, by1]` and clear of every obstacle by `gap`; false when there is none.
+   * The first of the positions of child `c`'s label (the planner's own: above and below the box on each side, then right and left, with the
+   * same room to the box) that is clear of every obstacle by `gap`; false when there is none. An incumbent
+   * tries the position it had first. Leaves the plate in `plateX`, `plateY`.
    */
-  private peekPlate(p: number, bx0: number, by0: number, bx1: number, by1: number, gap: number, host: number, keep: boolean, out: { x: number; y: number }): boolean {
-    const w = this.labelW[p]!;
-    const h = this.labelH[p]!;
-    const r0 = this.boxX0[p]!;
-    const t0 = this.boxY0[p]!;
-    const r1 = this.boxX1[p]!;
-    const t1 = this.boxY1[p]!;
-    const g = LABEL_TYPE.boxGap;
-    const bleed = LABEL_TYPE.padX;
-    const mine = keep ? this.peekCand[p]! : -1;
+  private plateFor(c: number, gap: number, keep: boolean): boolean {
+    const w = this.labelW[c]!;
+    const h = this.labelH[c]!;
+    const mine = keep ? this.plateCand[c]! : -1;
     for (let t = 0; t < 7; t++) {
       // the position it had first (while kept), then the six in the planner's order
-      const c = t === 0 ? mine : t - 1;
-      if (c < 0 || (t > 0 && c === mine)) continue;
-      const x = c === 0 || c === 2 ? r0 - bleed : c === 1 || c === 3 ? r1 - w + bleed : c === 4 ? r1 + g : r0 - w - g;
-      const y = c < 2 ? t0 - h - g : c < 4 ? t1 + g : t0;
-      if (x < bx0 || y < by0 || x + w > bx1 || y + h > by1) continue;
-      if (!this.peekClear(x, y, x + w, y + h, gap, host, p, keep)) continue;
-      out.x = x;
-      out.y = y;
-      this.peekCand[p] = c;
+      const cand = t === 0 ? mine : t - 1;
+      if (cand < 0 || (t > 0 && cand === mine)) continue;
+      this.plateAt(c, cand);
+      if (!this.clear(this.plateX, this.plateY, this.plateX + w, this.plateY + h, gap, c, keep)) continue;
+      this.plateCand[c] = cand;
       return true;
     }
     return false;
   }
 
-  /** The label planner refused peek `p` and the camera has not moved enough since for the answer to change. */
-  private peekBanned(p: number, cam: LodCamera): boolean {
-    const z = this.banZoom[p]!;
-    if (Number.isNaN(z)) return false;
-    if (Math.abs(cam.zoom - z) > LOD.peek.banZoom || Math.hypot(this.px[p]! - this.banX[p]!, this.py[p]! - this.banY[p]!) > LOD.peek.banPx) {
-      this.banZoom[p] = NaN;
-      return false;
-    }
+  /** The plate of child `c`'s label at position `cand` (0 above-left, 1 above-right, 2 below-left, 3 below-right, 4 right, 5 left): left in `plateX`, `plateY`. Always true. */
+  private plateAt(c: number, cand: number): boolean {
+    const w = this.labelW[c]!;
+    const h = this.labelH[c]!;
+    const g = LABEL_TYPE.boxGap;
+    const bleed = LABEL_TYPE.bleed;
+    this.plateX = cand === 0 || cand === 2 ? this.boxX0[c]! - bleed : cand === 1 || cand === 3 ? this.boxX1[c]! - w + bleed : cand === 4 ? this.boxX1[c]! + g : this.boxX0[c]! - w - g;
+    this.plateY = cand < 2 ? this.boxY0[c]! - h - g : cand < 4 ? this.boxY1[c]! + g : this.boxY0[c]!;
     return true;
   }
 
@@ -999,55 +1164,11 @@ export class LodTree {
     this.fillOn[i] = on ? 1 : 0;
     this.wantFill[i] = this.fillOn[i]!;
   }
-
-  /**
-   * The signed gap, in CSS px, of the nearest two children of group `g`, each as the rectangle it would be drawn with and
-   * the tab it carries (the tab hangs on the top-left corner and can be wider than the rectangle): the larger of the gaps
-   * along x and y, so negative when they overlap on both axes (by how much), 0 when they touch. Infinity when fewer than two
-   * children have a visible place. A sweep over the rectangles sorted by left edge: O(m log m) for m children.
-   */
-  private nearestGap(g: number): number {
-    const from = this.childStart[g]!;
-    const to = this.childStart[g + 1]!;
-    const members = this.members;
-    const cap = LOD.sepPx * 4; // beyond a few times the threshold the exact value does not matter
-    let m = 0;
-    for (let j = from; j < to; j++) {
-      const c = this.childList[j]!;
-      if (this.isGroup[c] ? members[c]! === 0 : !this.shown[c]) continue;
-      // the label's plate sits just above the rectangle's top edge, flush with its left edge
-      const bx0 = this.boxX0[c]!;
-      this.sx0[m] = bx0 - LABEL_TYPE.padX;
-      this.sy0[m] = this.boxY0[c]! - this.labelH[c]! - LABEL_TYPE.boxGap;
-      this.sx1[m] = Math.max(this.boxX1[c]!, bx0 - LABEL_TYPE.padX + this.labelW[c]!);
-      this.sy1[m] = this.boxY1[c]!;
-      this.order[m] = m;
-      m++;
-    }
-    if (m < 2) return Infinity;
-    const order = this.order.subarray(0, m);
-    const sx0 = this.sx0;
-    order.sort((a, b) => sx0[a]! - sx0[b]!);
-    let best = cap;
-    for (let a = 0; a < m; a++) {
-      const ia = order[a]!;
-      const right = this.sx1[ia]!;
-      for (let b = a + 1; b < m; b++) {
-        const ib = order[b]!;
-        const dx = sx0[ib]! - right;
-        if (dx >= best) break; // every later rectangle starts further right
-        const dy = Math.max(this.sy0[ib]! - this.sy1[ia]!, this.sy0[ia]! - this.sy1[ib]!);
-        const gap = dx > dy ? dx : dy;
-        if (gap < best) best = gap;
-      }
-    }
-    return best;
-  }
 }
 
 /** Nodes of a tree from the seam's places and groups (`GlobeGroup`, `GlobePlace`). */
 export function buildLodNodes(
-  places: readonly { slug: string; name: string; lat: number; lon: number; labelPriority: number; viewRadiusKm?: number | undefined; bbox?: Bbox | undefined; groupSlug?: string | undefined; countryCode?: string | undefined }[],
+  places: readonly { slug: string; name: string; lat: number; lon: number; labelPriority: number; viewRadiusKm?: number | undefined; bbox?: Bbox | undefined; groupSlug?: string | undefined; countryCode?: string | undefined; entries?: readonly EntryRef[] | undefined }[],
   groups: readonly { slug: string; name: string; kind: GroupKind; parent?: string | undefined; lat: number; lon: number; viewRadiusKm: number; labelPriority: number }[],
 ): LodNodeInput[] {
   return [
@@ -1062,6 +1183,7 @@ export function buildLodNodes(
       radiusKm: p.viewRadiusKm ?? LOD.defaultPlaceRadiusKm,
       priority: p.labelPriority,
       countryCode: p.countryCode,
+      entries: p.entries,
       bbox: p.bbox,
     })),
   ];

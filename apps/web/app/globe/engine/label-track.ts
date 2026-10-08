@@ -17,8 +17,8 @@
  *  4. Appearing and disappearing stays binary and timed (the node's own fade, engine/fade.ts); the text variants (whole / shortened) have the
  *     planner's hysteresis (`upgradeMargin`) and change only in a re-plan.
  *
- * Hover, focus and selection are NOT inputs of the plan: the host draws the hovered label expanded (with its country) around the slot it has,
- * overlaying its neighbours if it has to (`anchored`). So moving the pointer never moves another label.
+ * Hover, focus and selection are NOT inputs of the plan, and they change neither the text nor the size of a label (the plate is inverted when
+ * selected, nothing else): moving the pointer never moves a label.
  */
 import { planLabels, type PlanItem, type PlanUnits, type Plate, type Prev, type Sized } from "./label-plan";
 import { HASH_SEED, hashStep, spotAt, type CellRect, type GridSize } from "./pixel-labels";
@@ -66,8 +66,8 @@ export interface TrackItem {
   variants: readonly Sized[];
   /** Changes whenever the list of ways of writing the label changes (its text); a changed list forgets the slot's variant. */
   vkey: number;
-  /** Rectangles the plate must also stay clear of when it is planned (a peek: the other boxes, `PlanItem.avoid`). */
-  avoid?: readonly Plate[] | undefined;
+  /** The rectangles the plate must also stay clear of when it is planned (`PlanItem.avoid`: the other nodes' boxes), built only for a node that is planned. */
+  avoid?: (() => readonly Plate[]) | undefined;
 }
 
 export interface Placed {
@@ -193,7 +193,7 @@ export class LabelTracker {
     if (plan.length) {
       const sub: PlanItem[] = plan.map((n) => {
         const it = items[n]!;
-        return { score: it.score, area: it.area, key: it.key, rect: it.rect, variants: it.variants, prev: mem.prev(it.id), avoid: it.avoid };
+        return { score: it.score, area: it.area, key: it.key, rect: it.rect, variants: it.variants, prev: mem.prev(it.id), avoid: it.avoid?.() };
       });
       const res = planLabels(sub, grid, units, full ? [] : fixed);
       plan.forEach((n, k) => {
@@ -227,20 +227,4 @@ export function slotPosition(mem: SlotMemory, id: number, rect: CellRect, size: 
     } else return { x: rect.c0 + mem.dx[id]!, y: rect.r0 + mem.dy[id]! };
   }
   return { x: rect.c0, y: rect.r0 - size.h };
-}
-
-/**
- * The plate of a label EXPANDED around the slot of its normal one (hover, focus, selection: the same label written longer, with its country):
- * the same candidate position for the new size, so it grows the way the label is anchored (a label on the box's right edge grows to the left),
- * and clamped into the room so it never leaves the screen. Not a plan: nothing else moves.
- */
-export function anchored(cand: number, rect: CellRect, size: Sized, normal: { x: number; y: number }, grid: GridSize, units: PlanUnits): { x: number; y: number } {
-  const at = { x: 0, y: 0, inside: false };
-  let x = normal.x;
-  let y = normal.y;
-  if (cand >= 0 && spotAt(cand, rect, size.w, size.h, grid, units, at)) {
-    x = at.x;
-    y = at.y;
-  }
-  return { x: Math.max(0, Math.min(grid.cols - size.w, x)), y: Math.max(0, Math.min(grid.rows - size.h, y)) };
 }
