@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { expInterp } from "../core/art-line";
 import { roleLevel } from "../../engine/palette";
 import { ERASE, MAX_LEVELS } from "../core/palette";
-import { BORDER_TILE_MINZOOM, GRATICULE_FADE, DEFAULT_HANDOFF, SPECS, WORLD_PLACEHOLDER_BELOW, borderHandoff, hasPlaceholder, buildStreetStyle, graticule, layerIds, linePaint, type Schema } from "./street-style";
+import { BORDER_TILE_MINZOOM, DEFAULT_HANDOFF, SPECS, WORLD_PLACEHOLDER_BELOW, borderHandoff, hasPlaceholder, buildStreetStyle, graticule, layerIds, linePaint, type Schema } from "./street-style";
 import { decodeLevel, evalFilter, levelOfPaint } from "./probe";
 
 const empty: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
@@ -132,20 +132,11 @@ describe("line rules: widths in art pixels", () => {
       expect((paint["line-dasharray"] as number[])[0]!).toBeGreaterThanOrEqual(1.42);
     }
   });
-  it("the graticule eases out through the palette levels, from the faint level down to the faintest, then is gone", () => {
-    const g = make("openmaptiles").layers.find((l) => l.id === "graticule") as unknown as { maxzoom: number; paint: Record<string, unknown> };
-    expect(g.maxzoom).toBe(GRATICULE_FADE.gone);
-    const start = levelOfPaint(g.paint["line-color"], 0);
-    expect(start).toBe(roleLevel("faint"));
-    let prev = start;
-    for (let z = 0; z < GRATICULE_FADE.gone; z += 0.05) {
-      const lv = levelOfPaint(g.paint["line-color"], z);
-      expect(lv).toBeLessThanOrEqual(prev);
-      expect(prev - lv).toBeLessThanOrEqual(1);
-      prev = lv;
-    }
-    expect(prev).toBe(1);
-    expect(levelOfPaint(g.paint["line-color"], GRATICULE_FADE.from - 0.01)).toBe(start);
+  it("the graticule is one constant faint-level line (no zoom ramp, no maxzoom): the layer switch turns it on and off with the flatness of the view", () => {
+    const g = make("openmaptiles").layers.find((l) => l.id === "graticule") as unknown as { maxzoom?: number; paint: Record<string, unknown> };
+    expect(g.maxzoom).toBeUndefined();
+    expect(typeof g.paint["line-color"]).toBe("string");
+    expect(levelOfPaint(g.paint["line-color"], 0)).toBe(roleLevel("faint"));
   });
   it("widths follow the art cell: a 2 px cell (phones) halves the CSS widths, the art widths stay", () => {
     const spec = SPECS.find((s) => s.id === "road-major-case")!;

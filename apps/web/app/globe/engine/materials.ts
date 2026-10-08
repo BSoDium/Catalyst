@@ -19,9 +19,6 @@ const DITHER_GLSL = /* glsl */ `
   void ditherDiscard(float coverage) { if (dither4(floor(gl_FragCoord.xy)) >= coverage) discard; }
 `;
 
-/** Marker sizes in buffer pixels. Odd, so a marker is centred on one art pixel. */
-export const MARKER_STATE = { normal: 0, selected: 1, routeStop: 2, focused: 3 } as const;
-
 export function lineMaterial(coverage: number, stipple = 0): ShaderMaterial {
   return new ShaderMaterial({
     uniforms: { uColor: { value: new Color() }, uCoverage: { value: coverage }, uStipple: { value: stipple } },
@@ -50,12 +47,6 @@ export function occluderMaterial(): ShaderMaterial {
     polygonOffsetUnits: 1,
   });
 }
-
-/** Capacity of the tone ramp uniform (the palette's `MAX_LEVELS`). */
-export const RAMP_SLOTS = 12;
-
-/** A `uRamp` uniform value: one colour per palette level. */
-export const newRampUniform = () => ({ value: Array.from({ length: RAMP_SLOTS }, () => new Color()) });
 
 /**
  * Route: great-circle arcs drawn as a 2x2 px dashed stroke. The dash period is set per frame in world units so

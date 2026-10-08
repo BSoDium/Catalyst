@@ -11,11 +11,9 @@
  */
 import type { Rgb } from "../../engine/colors";
 import { BoxScene } from "../../engine/box-scene";
-import { boxHitDistance, snapBox } from "../../engine/group-square";
-import { LOD, type LodCamera, type LodTree } from "../../engine/lod-tree";
+import { snapBox } from "../../engine/group-square";
+import { type LodCamera, type LodTree } from "../../engine/lod-tree";
 import { NodeScreen } from "../../engine/node-screen";
-import { labelPriorityFloor } from "../core/label-place";
-import { STREET_TUNING } from "../tuning";
 
 export interface HudFrame {
   width: number;
@@ -34,7 +32,6 @@ export class HudLayer {
   private focusedIdx = -1;
   private reduced: boolean;
   private lastFrame: HudFrame | null = null;
-  private lastMinPriority = 0;
   /** Where the visible nodes are (rectangles in whole cells, container CSS px); filled by `update`. */
   readonly screen: NodeScreen;
 
@@ -52,7 +49,7 @@ export class HudLayer {
   /** The theme (palette ramp). Redraws on the next update. */
   setTheme(theme: { ramp: readonly Rgb[] }): void {
     this.scene.setTheme(theme);
-    if (this.lastFrame) this.update(this.lastFrame, this.lastMinPriority);
+    if (this.lastFrame) this.update(this.lastFrame);
   }
 
   /** Nothing to measure any more (the label font is baked into the bundle); kept so callers need not know. */
@@ -65,19 +62,19 @@ export class HudLayer {
   setSelected(slug: string | null): void {
     this.selectedIdx = this.lod.indexOf(slug);
     this.scene.setSelected(slug);
-    if (this.lastFrame) this.update(this.lastFrame, this.lastMinPriority);
+    if (this.lastFrame) this.update(this.lastFrame);
   }
 
   setFocused(slug: string | null): void {
     this.focusedIdx = this.lod.indexOf(slug);
     this.scene.setFocused(slug);
-    if (this.lastFrame) this.update(this.lastFrame, this.lastMinPriority);
+    if (this.lastFrame) this.update(this.lastFrame);
   }
 
   /** The node under the pointer (highlight only). */
   setHovered(slug: string | null): void {
     this.scene.setHovered(slug);
-    if (this.lastFrame) this.update(this.lastFrame, this.lastMinPriority);
+    if (this.lastFrame) this.update(this.lastFrame);
   }
 
   setCell(_cellCss: number): void {}
@@ -134,35 +131,24 @@ export class HudLayer {
   }
 
   /**
-   * The node under a CSS-px point: a label (grown by the label slop of the pointer type) first, else a rectangle's border band
-   * (never its interior, so the rectangles inside stay clickable; the smallest rectangle wins).
+   * The node under a CSS-px point: the convex hull of a box and its label plus slop, the same rule as the globe's
+   * (engine/hit-area.ts; the innermost target containing the point, else the nearest).
    */
   hit(x: number, y: number, kind: "mouse" | "touch"): string | null {
-    const label = this.scene.hit(x, y, STREET_TUNING.labelSlop[kind]);
-    if (label) return label;
-    const lod = this.lod;
-    let best = -1;
-    let bestArea = Infinity;
-    for (let k = 0; k < lod.count; k++) {
-      const i = lod.visible[k]!;
-      if (!this.screen.shown[i] || lod.alpha[i]! < LOD.pickAlphaMin) continue;
-      const box = { x0: this.screen.bx0[i]!, y0: this.screen.by0[i]!, x1: this.screen.bx1[i]!, y1: this.screen.by1[i]! };
-      if (boxHitDistance(x, y, box, null, kind) > 0) continue;
-      const area = (box.x1 - box.x0) * (box.y1 - box.y0);
-      if (area < bestArea || (area === bestArea && best >= 0 && lod.priority[i]! > lod.priority[best]!)) {
-        bestArea = area;
-        best = i;
-      }
-    }
-    return best >= 0 ? lod.slug[best]! : null;
+    return this.scene.hit(x, y, kind);
   }
 
-  /** Re-place everything for the current camera. `minPriority` hides the labels of low-priority places (zoom-dependent reveal). */
-  update(frame: HudFrame, minPriority: number): void {
+  /** Some timed transition of the boxes (engine/fade.ts) has not reached its end: the host must keep drawing frames. */
+  get animating(): boolean {
+    return this.lod.animating;
+  }
+
+  /** Re-place everything for the current camera. */
+  update(frame: HudFrame): void {
     this.lastFrame = frame;
-    this.lastMinPriority = minPriority;
     const lod = this.lod;
     lod.update(frame.cam, this.selectedIdx, this.focusedIdx, this.reduced);
+    lod.advance(performance.now());
     const cell = frame.cellCss;
     const cols = Math.ceil(frame.width / cell);
     const rows = Math.ceil(frame.height / cell);
@@ -180,12 +166,7 @@ export class HudLayer {
       screen.shown[i] = drawn ? 1 : 0;
       screen.facing[i] = 1;
     }
-    this.scene.update(screen, minPriority, { cols, rows, cell, left: 0, top: 0 });
-  }
-
-  /** Priority floor for a zoom (the globe's rule, with the street map's "all labels" zoom). */
-  static priorityFloor(zoom: number): number {
-    return labelPriorityFloor(zoom, STREET_TUNING.minZoom, STREET_TUNING.allLabelsZoom);
+    this.scene.update(screen, { cols, rows, cell, left: 0, top: 0 });
   }
 
   dispose(): void {

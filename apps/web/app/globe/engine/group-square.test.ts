@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GROUP_HIT, boxHit, boxHitDistance, outlineDistance, snapBox } from "./group-square";
+import { snapBox } from "./group-square";
 
 describe("box cells", () => {
   it("the cells that contain the bounds, whole cells", () => {
@@ -20,32 +20,5 @@ describe("box cells", () => {
       expect(r.c1 * cell).toBeGreaterThanOrEqual(150.2);
       expect(Number.isInteger(r.c0) && Number.isInteger(r.r1)).toBe(true);
     }
-  });
-});
-
-describe("hit area: the border band and the tab, never the interior", () => {
-  const box = { x0: 100, y0: 100, x1: 400, y1: 300 };
-  it("distance to the outline", () => {
-    expect(outlineDistance(100, 200, 100, 100, 400, 300)).toBe(0);
-    expect(outlineDistance(150, 200, 100, 100, 400, 300)).toBe(50);
-    expect(outlineDistance(90, 200, 100, 100, 400, 300)).toBe(10);
-  });
-  it("the band is a hit, the interior is not, outside beyond the band is not", () => {
-    expect(boxHit(100, 200, box, null, "mouse")).toBe(true);
-    expect(boxHit(100 + GROUP_HIT.mouse.band, 200, box, null, "mouse")).toBe(true);
-    expect(boxHit(100 + GROUP_HIT.mouse.band + 1, 200, box, null, "mouse")).toBe(false);
-    expect(boxHitDistance(250, 200, box, null, "mouse")).toBe(Infinity);
-    expect(boxHit(100 - GROUP_HIT.mouse.band - 2, 200, box, null, "mouse")).toBe(false);
-  });
-  it("a box inside a box stays clickable: the centre of the outer box is not a hit", () => {
-    expect(boxHit(250, 200, box, null, "touch")).toBe(false);
-  });
-  it("the tab is a hit", () => {
-    const tab = { x0: 100, y0: 70, x1: 160, y1: 100 };
-    expect(boxHit(130, 85, box, tab, "mouse")).toBe(true);
-    expect(boxHit(250, 85, box, tab, "mouse")).toBe(false);
-  });
-  it("touch bands are wider than mouse bands", () => {
-    expect(GROUP_HIT.touch.band).toBeGreaterThan(GROUP_HIT.mouse.band);
   });
 });

@@ -48,6 +48,14 @@ for (const scheme of ["light", "dark"] as const) {
     it("muted text (muted foreground on a 90 % page plate) are at least 4.5:1 over the peak and over ink", () => {
       for (const under of behind) expect(contrast(muted, over(bg, 0.9, under))).toBeGreaterThanOrEqual(4.5);
     });
+    it("the Credits link (subtle foreground) is dimmer than muted text by colour, yet still AA against the page and over a map tone under its page-colour halo", () => {
+      const subtle = token(scheme, "--subtle-foreground");
+      expect(contrast(subtle, bg)).toBeLessThan(contrast(muted, bg));
+      expect(contrast(subtle, bg)).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(subtle, over(bg, 0.9, peak))).toBeGreaterThanOrEqual(4);
+      // dimmer by colour, never by opacity
+      expect(readFileSync(new URL("../../components/attribution-button.tsx", import.meta.url), "utf8")).not.toMatch(/className="[^"]*opacity|style=\{\{[^}]*opacity/);
+    });
     it("nav links (muted foreground under the nav scrim, about 80 % page colour at the text) are at least 4.5:1 over the peak", () => {
       expect(contrast(muted, over(bg, 0.8, peak))).toBeGreaterThanOrEqual(4.5);
     });

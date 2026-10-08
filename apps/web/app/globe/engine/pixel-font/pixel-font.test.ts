@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { FONT_CAP, FONT_X_HEIGHT, emboldened, forEachInk, glyphFor, glyphWeight, hasOwnGlyph, measureText, pixelAt, usesFallback } from "./pixel-font";
-import { TINY5_DATA } from "./tiny5-data";
+import { FONT_CAP, FONT_DESCENT, FONT_X_HEIGHT, forEachInk, glyphFor, hasOwnGlyph, measureText, pixelAt, usesFallback } from "./pixel-font";
+import { PIXEL_FONT_DATA, PIXEL_FONT_EM } from "./pixel-font-data";
 
 /** The ink of a string as ASCII art, rows from the topmost to the lowest, columns from the leftmost. */
-function ascii(text: string, bold = false): string[] {
+function ascii(text: string): string[] {
   const pts: [number, number][] = [];
-  forEachInk(text, 0, 20, (x, y) => pts.push([x, y]), bold);
+  forEachInk(text, 0, 20, (x, y) => pts.push([x, y]));
   const xs = pts.map((p) => p[0]);
   const ys = pts.map((p) => p[1]);
   const x0 = Math.min(...xs);
@@ -16,44 +16,118 @@ function ascii(text: string, bold = false): string[] {
 }
 
 describe("the baked font", () => {
-  it("is Tiny5: 5 px capitals, 4 px x-height, on the pixel grid", () => {
+  it("is Fusion Pixel 10px: 7 px capitals, 5 px x-height, a 10 px em, on the pixel grid", () => {
+    expect(PIXEL_FONT_EM).toBe(10);
     expect(glyphFor("H").top).toBe(FONT_CAP);
     expect(glyphFor("H").rows.length).toBe(FONT_CAP);
     expect(glyphFor("x").top).toBe(FONT_X_HEIGHT);
     expect(glyphFor("x").rows.length).toBe(FONT_X_HEIGHT);
   });
   it("every glyph is a clean bitmap: rows fit the width, integers, no stray bits", () => {
-    for (const entry of TINY5_DATA.split(";")) {
+    for (const entry of PIXEL_FONT_DATA.split(";")) {
       const [cp, adv, left, top, w, rows] = entry.split(":");
       const width = +w!;
       expect(Number.isInteger(+adv!) && Number.isInteger(+left!) && Number.isInteger(+top!), cp).toBe(true);
       for (const hex of rows ? rows.split(",") : []) expect(parseInt(hex, 16), cp).toBeLessThan(2 ** width);
     }
   });
-  it("one glyph pixel is one cell: the drawing is whole integer cells and nothing else", () => {
+  it("one glyph pixel is one cell: the drawing is whole integer cells and nothing else; a stem is one pixel wide", () => {
     forEachInk("Paris Hà Nội", 3, 12, (x, y) => {
       expect(Number.isInteger(x) && Number.isInteger(y)).toBe(true);
     });
-    expect(ascii("l")).toEqual(["#", "#", "#", "#", "#"]); // a stem is exactly one pixel wide
-    expect(ascii("I").every((r) => r.length <= 3)).toBe(true);
+    expect(ascii("I").length).toBe(FONT_CAP);
+    // the stem of an l is a single column
+    const l = glyphFor("l");
+    const stem = Array.from({ length: l.w }, (_, x) => Array.from({ length: l.rows.length }, (__, y) => pixelAt(l, x, y)).filter(Boolean).length);
+    expect(stem.filter((n) => n >= l.rows.length - 2).length).toBe(1);
+  });
+  it("it is proportional and not condensed: an average letter advances 5 cells, a capital 6, the owner's example is about a hundred cells wide", () => {
+    expect(glyphFor("i").adv).toBeLessThan(glyphFor("m").adv);
+    expect(glyphFor("e").adv).toBeGreaterThanOrEqual(5);
+    expect(glyphFor("H").adv).toBeGreaterThanOrEqual(6);
+    expect(measureText("London, United Kingdom").w).toBeGreaterThan(100);
+  });
+  it("no letter descends below the metrics the label layout reserves", () => {
+    for (const ch of "gjpqyçąęÇ,;()Qg") expect(glyphFor(ch).rows.length - glyphFor(ch).top, ch).toBeLessThanOrEqual(FONT_DESCENT);
   });
 });
 
 describe("coverage of the owner's names", () => {
-  const NAMES = ["Nikšić", "Chișinău", "Sighișoara", "Huế", "Málaga", "Bogotá", "Thessaloniki", "Hà Nội", "Đà Nẵng", "Reykjavík", "Łódź", "Tromsø", "Çanakkale", "Ñandú", "Zürich", "Ho Chi Minh City", "São Paulo", "Ōsaka", "Kraków", "Αθήνα", "Москва", "Київ"];
+  const NAMES = ["Nikšić", "Chișinău", "Sighișoara", "Huế", "Málaga", "Bogotá", "Thessaloniki", "Hà Nội", "Đà Nẵng", "Reykjavík", "Łódź", "Tromsø", "Çanakkale", "Ñandú", "Zürich", "Ho Chi Minh City", "São Paulo", "Ōsaka", "Kraków", "Αθήνα", "Москва", "Київ", "Україна", "Győr", "İstanbul", "Brașov", "Český Krumlov", "Åre", "Curaçao", "Côte d’Ivoire", "St. John's", "Aix-en-Provence", "Bălți", "Gdańsk", "Plzeň", "Szczecin"];
   it("none of them needs the system font", () => {
     for (const name of NAMES) for (const ch of name) expect(usesFallback(ch), `${name}: ${ch}`).toBe(false);
   });
-  it("Latin Extended-A and B, Greek and Cyrillic are in the font itself", () => {
-    for (const ch of "ĀāĂăĄąĆćČčĐđĒēĚěĞğİıŁłŃńŇňŌōŐőŒœŘřŚśŞşŠšŢţŤťŰűŹźŻżŽžȘșȚț") expect(hasOwnGlyph(ch), ch).toBe(true);
+  it("the common Latin diacritics, the apostrophes, the hyphens and the ellipsis are in the font itself", () => {
+    for (const ch of "éèêëçãñïüöôøåÉÈÊÇÃÑÏÜÖÔØÅáàâäíìîóòúùûýÿ'’-–—…") expect(hasOwnGlyph(ch), ch).toBe(true);
+    for (const ch of "ĂăĆćČčĐđĒēĚěĞğĪīŃńŇňŌōŽžŹźŻżŪū") expect(hasOwnGlyph(ch), ch).toBe(true);
     for (const ch of "ΑΒΓΔΩαβγδω") expect(hasOwnGlyph(ch), ch).toBe(true);
     for (const ch of "АБВГДабвгд") expect(hasOwnGlyph(ch), ch).toBe(true);
+  });
+  it("the Ukrainian letters the font lacks are built from its Latin look-alikes and mirrors: Київ, Україна, Ґанок", () => {
+    for (const ch of "ІіЇїЄєҐґЈјЅѕ") {
+      expect(usesFallback(ch), ch).toBe(false);
+      expect(glyphFor(ch).rows.length, ch).toBeGreaterThan(0);
+    }
+    expect(glyphFor("ї").rows).toEqual(glyphFor("ï").rows);
+    expect(glyphFor("є").rows).not.toEqual(glyphFor("c").rows); // turned round
+    expect(glyphFor("ґ").top).toBe(glyphFor("г").top + 1);
   });
   it("other scripts fall back to the thresholded system font (a box without a DOM), flagged", () => {
     expect(usesFallback("ا")).toBe(true);
     expect(usesFallback("京")).toBe(true);
     const g = glyphFor("ا");
     expect(g.rows.length).toBeGreaterThan(0);
+  });
+});
+
+describe("the Latin letters the font lacks are composed in its style", () => {
+  const COMPOSED = "šŠśŚřŘťŤďĎľĽŝŜĉĝĥĵşŞţŢșȘțȚģķļņŗąĄęĘįĮųŲůŮőŐűŰłŁıİœŒĳĲ";
+  it("every one has a bitmap and none uses the system font", () => {
+    for (const ch of COMPOSED) {
+      if (hasOwnGlyph(ch)) continue;
+      expect(glyphFor(ch).rows.length, ch).toBeGreaterThan(0);
+      expect(usesFallback(ch), ch).toBe(false);
+    }
+  });
+  it("a caron, an acute, a ring or a double acute is cut out of a donor letter and put above the letter: the body stays", () => {
+    const s = glyphFor("s");
+    const sh = glyphFor("š");
+    expect(sh.top).toBeGreaterThan(s.top);
+    expect(sh.rows.slice(sh.rows.length - s.rows.length)).toEqual(s.rows); // the body is the plain s
+    expect(glyphFor("ů").top).toBeGreaterThan(glyphFor("u").top);
+    expect(glyphFor("ő").top).toBeGreaterThan(glyphFor("o").top);
+    // same-width letters get the donor's mark at the same columns: the caron of š is the caron of č
+    const c = glyphFor("č");
+    const cp = glyphFor("c");
+    expect(sh.rows.slice(0, sh.rows.length - s.rows.length)).toEqual(c.rows.slice(0, c.rows.length - cp.rows.length));
+  });
+  it("a cedilla or comma below, and an ogonek, hang under the baseline and keep the body: ş ș ţ ț ą ę", () => {
+    for (const [composed, plain] of [["ş", "s"], ["ș", "s"], ["ţ", "t"], ["ț", "t"], ["ą", "a"], ["ę", "e"]] as const) {
+      const c = glyphFor(composed);
+      const p = glyphFor(plain);
+      expect(c.rows.length - c.top, composed).toBeGreaterThan(0);
+      expect(c.rows.length - c.top, composed).toBeLessThanOrEqual(FONT_DESCENT);
+      expect(c.top, composed).toBe(p.top);
+    }
+  });
+  it("ı is the i without its dot; İ is the I with a dot a row above the cap", () => {
+    expect(glyphFor("ı").top).toBe(FONT_X_HEIGHT);
+    expect(glyphFor("ı").rows).toEqual(glyphFor("i").rows.slice(glyphFor("i").top - FONT_X_HEIGHT));
+    expect(glyphFor("İ").top).toBeGreaterThan(FONT_CAP);
+  });
+  it("ł and Ł keep the height of l and L, with a stroke through them", () => {
+    expect(glyphFor("ł").top).toBe(glyphFor("l").top);
+    expect(glyphFor("Ł").top).toBe(FONT_CAP);
+    expect(ascii("ł").join("")).not.toBe(ascii("l").join(""));
+  });
+  it("ď, ť and ľ carry a stroke to the right of the letter, a blank column away", () => {
+    for (const [c, plain] of [["ď", "d"], ["ť", "t"], ["ľ", "l"]] as const) {
+      expect(glyphFor(c).w, c).toBeGreaterThan(glyphFor(plain).w);
+      expect(glyphFor(c).adv, c).toBeGreaterThan(glyphFor(plain).adv);
+    }
+  });
+  it("œ is the o and the e touching: one column narrower than the two letters", () => {
+    expect(glyphFor("œ").adv).toBe(glyphFor("o").adv + glyphFor("e").adv - 1);
   });
 });
 
@@ -101,61 +175,29 @@ describe("metrics", () => {
   it("width is the ink extent; descenders add rows below the baseline; a line is at least cap high", () => {
     expect(measureText("").w).toBe(0);
     expect(measureText("HHH").bottom).toBe(0);
-    expect(measureText("gjy").bottom).toBeGreaterThan(0);
+    expect(measureText("gjy").bottom).toBe(FONT_DESCENT);
     expect(measureText("x").top).toBe(FONT_CAP);
     expect(measureText("Paris").w).toBeGreaterThan(measureText("Pari").w);
   });
-});
-
-describe("the bold weight: a 1-cell horizontal double strike of the one Tiny5 face", () => {
-  it("every ink pixel also lights the cell to its right, unless that closes a one-pixel gap: stems are 2 px, counters stay open", () => {
-    expect(ascii("l", true)).toEqual(["##", "##", "##", "##", "##"]);
-    expect(ascii("H", true).length).toBe(ascii("H").length);
-    for (const ch of "nouaeHmw") {
-      const regular = glyphFor(ch);
-      const bold = emboldened(regular);
-      for (let y = 0; y < regular.rows.length; y++)
-        for (let x = 0; x <= regular.w; x++) {
-          const here = pixelAt(regular, x, y);
-          const left = pixelAt(regular, x - 1, y);
-          const closesGap = !here && pixelAt(regular, x + 1, y);
-          expect(pixelAt(bold, x, y), `${ch} ${x},${y}`).toBe(here || (left && !closesGap));
-        }
-    }
-    // the point of the rule: the counter of an o survives
-    const o = ascii("o", true);
-    expect(o.some((row) => /#\.#/.test(row))).toBe(true);
-  });
-  it("metrics stay consistent: one column wider and advance + 1 per glyph; measureText(bold) is the drawn extent", () => {
-    for (const ch of "AHiltgŁø京") {
-      const r = glyphFor(ch);
-      const b = glyphWeight(ch, true);
-      expect(b.adv, ch).toBe(r.adv + 1);
-      expect(b.w, ch).toBe(r.rows.length ? r.w + 1 : 0);
-      expect(b.top, ch).toBe(r.top);
-    }
-    for (const text of ["Paris", "Hà Nội", "Ho Chi Minh City", "Nikšić", "I", ""]) {
+  it("measureText is the drawn extent", () => {
+    for (const text of ["Paris", "Hà Nội", "Ho Chi Minh City", "Nikšić", "I", "", "Chișinău, Moldova"]) {
       const xs: number[] = [];
-      forEachInk(text, 0, 20, (x) => xs.push(x), true);
-      expect(measureText(text, true).w, text).toBe(xs.length ? Math.max(...xs) + 1 : 0);
-      expect(measureText(text, true).top).toBe(measureText(text).top);
-      expect(measureText(text, true).bottom).toBe(measureText(text).bottom);
-      if (text.length > 1) expect(measureText(text, true).w, text).toBeGreaterThan(measureText(text).w);
+      forEachInk(text, 0, 20, (x) => xs.push(x));
+      expect(measureText(text).w, text).toBe(xs.length ? Math.max(...xs) + 1 : 0);
     }
   });
-  it("a cell is emitted once, so a translucent bold string is evenly translucent", () => {
-    for (const text of ["Paris", "Hà Nội", "Tromsø", "Ho Chi Minh City"]) {
+  it("one weight: there is no bold, and a cell is emitted once so a translucent string is evenly translucent", () => {
+    for (const text of ["Paris", "Hà Nội", "Tromsø", "Ho Chi Minh City", "Chișinău"]) {
       const seen = new Set<string>();
       forEachInk(text, 0, 20, (x, y) => {
         const k = `${x},${y}`;
         expect(seen.has(k), `${text} ${k}`).toBe(false);
         seen.add(k);
-      }, true);
+      });
     }
   });
-  it("the regular weight is unchanged by the bold cache", () => {
-    glyphWeight("a", true);
-    expect(glyphFor("a").rows).toEqual(glyphWeight("a", false).rows);
-    expect(ascii("l")).toEqual(["#", "#", "#", "#", "#"]);
+  it("the ellipsis is the font's own glyph, dots on at most two rows", () => {
+    expect(hasOwnGlyph("…")).toBe(true);
+    expect(glyphFor("…").rows.length).toBeLessThanOrEqual(2);
   });
 });

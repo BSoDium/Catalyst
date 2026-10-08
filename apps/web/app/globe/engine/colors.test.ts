@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { over, parseCssColor } from "./colors";
+import { over, parseCssColor, themeFromTokens, type Rgb } from "./colors";
 
 describe("parseCssColor", () => {
   it("parses computed rgb() and rgba()", () => {
@@ -30,4 +30,20 @@ describe("over", () => {
     expect(r[0]).toBeCloseTo(0.5);
     expect(over({ rgb: [0.2, 0.3, 0.4], a: 1 }, [1, 1, 1])).toEqual([0.2, 0.3, 0.4]);
   });
+});
+
+describe("the horizon outline of the globe", () => {
+  const lin = (c: number) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+  const lum = (c: readonly number[]) => 0.2126 * lin(c[0]!) + 0.7152 * lin(c[1]!) + 0.0722 * lin(c[2]!);
+  const ratio = (a: readonly number[], b: readonly number[]) => (Math.max(lum(a), lum(b)) + 0.05) / (Math.min(lum(a), lum(b)) + 0.05);
+  for (const [name, bg, ink] of [["light", [0.984, 0.984, 0.984], [0.039, 0.039, 0.039]], ["dark", [0.039, 0.039, 0.039], [0.961, 0.961, 0.961]]] as const) {
+    it(`${name}: the outline is the graticule's faint level: fainter than before (soft), still visible against the page`, () => {
+      const t = themeFromTokens(bg as unknown as Rgb, ink as unknown as Rgb, 12);
+      expect(t.outline).toEqual(t.grid);
+      const soft = t.ramp[4]!;
+      expect(ratio(t.outline, bg)).toBeLessThan(ratio(soft, bg));
+      expect(ratio(t.outline, bg)).toBeGreaterThan(1.3);
+      expect(ratio(t.outline, bg)).toBeLessThan(1.6);
+    });
+  }
 });

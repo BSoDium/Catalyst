@@ -8,7 +8,6 @@ import { readTheme } from "./colors";
 import { BoxScene } from "./box-scene";
 import { placeFraming } from "./framing";
 import type { LodTree } from "./lod-tree";
-import { labelPriorityFloor } from "./labels";
 import { GlobeRenderer, type RendererOptions, type StartView } from "./renderer";
 import { TUNING } from "./tuning";
 import { sameView, toViewState } from "./view";
@@ -67,6 +66,8 @@ export interface GlobeDebug {
   labelsShown(): string[];
   /** The boxes as drawn in the last frame: per node, its rectangle and label in cells, text, chip and tones. */
   labelCells(): ReturnType<BoxScene["snapshot"]>;
+  /** The node a click or hover at a container CSS-px point would pick (engine/hit-area.ts), or null. */
+  pick(x: number, y: number, kind?: "mouse" | "touch"): string | null;
   /** Frames the label canvas drew / skipped (nothing changed) since creation. */
   labelStats(): { drawn: number; skipped: number };
   /** The theme's palette, level 0 (page colour) to the ink, as [r, g, b] 0..255. */
@@ -77,12 +78,19 @@ export interface GlobeDebug {
   isAnimating(): boolean;
   /** One synchronous frame (render + label update); returns the JS ms of the render call alone. */
   renderNow(): number;
+  /** Run every timed transition (boxes, masks, labels, dims, borders) to its end and draw the resting frame: for checks that sample a camera instantly. */
+  settle(): void;
+  /**
+   * The state of every timed thing for the CURRENT frame, for the at-rest checks: the borders' fade (0..1) and their target, whether any
+   * transition is still running, and a frame is pending.
+   */
+  layers(): { borders: { value: number; on: boolean }; animating: boolean; framePending: boolean };
   gpuSync(): void;
   info(): ReturnType<GlobeRenderer["renderInfo"]>;
   loseContext(lose: boolean): void;
   /** Inset state: current / target inset (CSS px), centre shift (buffer px). */
   inset(): ReturnType<GlobeRenderer["insetInfo"]>;
-  /** The semantic zoom for the CURRENT camera: one entry per drawn node (alpha, tone level, size in CSS px, and whether its centre is shown), in tree order. Allocates; for checks. */
+  /** The semantic zoom for the CURRENT camera: one entry per drawn node (alpha, tone level, size in CSS px, whether its centre is shown, and whether the cut wants it), in tree order. Allocates; for checks. */
   lod(): LodDebugNode[];
   /** Evaluations / cache hits / nodes visited by the last evaluation, and the nodes and squares drawn in the last frame. */
   lodStats(): { evaluations: number; cacheHits: number; visited: number; nodes: number; groups: number; drawnMarkers: number; drawnGroups: number };
@@ -97,7 +105,12 @@ export interface GlobeDebug {
 export interface LodDebugNode {
   slug: string;
   kind: string;
+  /** The node's own opacity now (0..1): 0 or 1 at rest, in between only while its timed transition runs. */
   alpha: number;
+  /** The cut wants it drawn (else it is fading out). */
+  wanted: boolean;
+  /** Opacity of its interior mask now, node alpha included. */
+  fillAlpha: number;
   level: number;
   /** A marker is drawn (it passed the whole-or-nothing rule) or a box touches the buffer, in the last frame. */
   shown: boolean;
@@ -152,7 +165,7 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
       opts.labelsRoot.style.setProperty("-webkit-mask-image", mask ?? "");
     }
     if (labelsActive) {
-      labels.update(renderer.nodeScreen, labelPriorityFloor(Math.min(v.zoom, TUNING.maxZoom), renderer.getMinZoom(), TUNING.allLabelsZoom), renderer.pixelGrid());
+      labels.update(renderer.nodeScreen, renderer.pixelGrid());
     }
     const next = toViewState(v, renderer.getMinZoom(), TUNING.maxZoom);
     if (!sameView(lastReported, next)) {
@@ -187,7 +200,7 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
         zoomLimit: opts.zoomLimit,
         insetRight: opts.insetRight,
         onFrame: syncOverlay,
-        pickLabel: (x, y, kind) => labels.hit(x, y, TUNING.labelSlop[kind]),
+        pickLabel: (x, y, kind) => labels.hit(x, y, kind),
         pickOverride: opts.pickOverride,
         onSelect: opts.onSelect,
         onSelectGroup: opts.onSelectGroup,
@@ -258,6 +271,7 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
       },
       labelsShown: () => [...labels.shown()],
       labelCells: () => labels.snapshot(),
+      pick: (x, y, kind = "mouse") => labels.hit(x, y, kind),
       labelStats: () => labels.stats(),
       ramp: () => renderer.getTheme().ramp.map((c) => c.map((v) => Math.round(v * 255))),
       frames: () => renderer.frameCount(),
@@ -266,6 +280,14 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
         renderer.renderNow();
         return renderer.lastRenderJsMs();
       },
+      settle() {
+        lod.settle();
+        renderer.settleBorders();
+        renderer.renderNow();
+        lod.settle();
+        renderer.renderNow();
+      },
+      layers: () => ({ ...renderer.layerState(), animating: lod.animating || renderer.layerState().animating, framePending: renderer.isAnimating() }),
       gpuSync: () => renderer.gpuSync(),
       info: () => renderer.renderInfo(),
       loseContext: (lose) => renderer.loseContext(lose),
@@ -280,6 +302,8 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
             slug: t.slug[i]!,
             kind: t.kind[i]!,
             alpha: t.alpha[i]!,
+            wanted: t.life.target[i] === 1,
+            fillAlpha: t.fillAlpha[i]!,
             level: t.level[i]!,
             shown: !!sc.shown[i],
             x: sc.x[i]!,

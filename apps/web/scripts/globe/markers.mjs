@@ -38,7 +38,7 @@ function sweepInPage({ places, views }) {
   const stat = { views: 0, shownBoxFrames: 0, hiddenPlaceFrames: 0, clippedByCanvasEdge: 0 };
   for (const v of views) {
     d.setView({ lon: v.lon, lat: v.lat, zoom: v.zoom ?? d.minZoom() + 0.3 });
-    d.renderNow();
+    d.settle(); // every timed transition run to its end: the resting frame of this camera
     const img = ctx.getImageData(0, 0, W, H);
     stat.views++;
     const view = d.view();
@@ -56,12 +56,20 @@ function sweepInPage({ places, views }) {
       // the outline must be complete (cells outside the canvas are clipped, not missing)
       let missing = 0;
       const opaque = (x, y) => img.data[(y * W + x) * 4 + 3] !== 0; // present: fades are opacity, so an outline cell is translucent mid-fade
-      for (let x = c0; x < c1; x++) for (const y of [r0, r1 - 1]) { if (x < 0 || y < 0 || x >= W || y >= H) { stat.clippedByCanvasEdge++; continue; } if (!opaque(x, y)) missing++; }
-      for (let y = r0; y < r1; y++) for (const x of [c0, c1 - 1]) { if (x < 0 || y < 0 || x >= W || y >= H) { stat.clippedByCanvasEdge++; continue; } if (!opaque(x, y)) missing++; }
+      // the cells that are part of the outline: solid arms and dashes (sized by the box: arm 10 % of the smaller side in 3..14, gap 3.5 % in 2..9; a box too short for two arms and a gap is solid; engine/pixel-labels.ts `dashingFor`)
+      const clampInt = (v, lo, hi) => Math.max(lo, Math.min(hi, Math.round(v)));
+      const sideCells = Math.min(c1 - c0, r1 - r0);
+      const arm = clampInt(sideCells * 0.1, 3, 14);
+      const gap = clampInt(sideCells * 0.035, 2, 9);
+      // each edge is counted from its anchor: the top from its left corner, the bottom from its right, the left from its top, the right from its bottom (`edgeLit`)
+      const lit = (i, len) => len < 2 * arm + gap || i < arm || i >= len - arm || (i - arm) % (2 + gap) >= gap;
+      const solid = !!(d.labelCells().find((t) => t.slug === n.slug)?.solid);
+      for (let x = c0; x < c1; x++) for (const y of [r0, r1 - 1]) { if (x < 0 || y < 0 || x >= W || y >= H) { stat.clippedByCanvasEdge++; continue; } if ((solid || lit(y === r0 ? x - c0 : c1 - 1 - x, c1 - c0)) && !opaque(x, y)) missing++; }
+      for (let y = r0; y < r1; y++) for (const x of [c0, c1 - 1]) { if (x < 0 || y < 0 || x >= W || y >= H) { stat.clippedByCanvasEdge++; continue; } if ((solid || lit(x === c0 ? y - r0 : r1 - 1 - y, r1 - r0)) && !opaque(x, y)) missing++; }
       if (missing) failures.push({ kind: "partial box", slug: n.slug, missing, view });
       mark(c0, r0, c1, r1); // generous: the whole rectangle (interior cells are only ever fill, a label plate or nested boxes)
     }
-    for (const t of d.labelCells()) if (t.label) mark(t.label.col - 1, t.label.row, t.label.col - 1 + t.label.w, t.label.row + t.label.h);
+    for (const t of d.labelCells()) if (t.label) mark(t.label.col, t.label.row, t.label.col + t.label.w, t.label.row + t.label.h);
     // nothing opaque may lie outside the shown outlines' rectangles and the label plates
     let stray = 0;
     let first = null;

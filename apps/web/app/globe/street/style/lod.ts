@@ -1,22 +1,20 @@
 /**
  * Level of detail of the street map, as DATA: one row per feature class, tuned in this one place.
  *
- * A class has two phases over zoom:
- *   z <= from        not drawn at all (the layer does not exist below `from`)
- *   from < z < full  FADE-IN IN TONE: the class is drawn in its final shape (same width, same dashes) but in a lighter
- *                    grey. It enters at the faintest palette level and steps up through the levels (`rampLevel`, equal
- *                    steps of zoom) until it reaches the level of its `role` at `full`. A cell only ever changes by one
- *                    level at a time and no cell is ever added or removed by the fade: it is the same line from the
- *                    first zoom, so there is no dither, no noise, no swimming.
- *   z >= full        the class's final look: its role's level, solid (or dashed when `dash` is set), thinned and
- *                    widened by the rules of docs/pixel-line-rules.md.
+ * A class is either THERE or NOT, never half way (docs/web-architecture.md, "Binary visibility"): from its switch zoom `on` it is drawn in
+ * its final look (the level of its `role`, its width, its dashes, thinned and widened by the rules of docs/pixel-line-rules.md), below it
+ * it is not drawn. The camera only decides which (`layer-switch.ts`, with a hysteresis band so that a zoom jittering around `on` cannot
+ * flap the layer); how the picture changes is the temporal ease's job (`core/ease.ts`): the cells of a layer that has just switched fade
+ * in or out by TIME, a level per 24 ms, whatever the camera does, and the settle loop runs them to the end. So a map that comes to rest
+ * at any zoom shows each class at its final tone or not at all. (Before 2026-10-08 a class stepped through the grey levels over a zoom
+ * range, `from` to `full`, so a map at rest between the two showed it at a half tone; `on` sits near 30 % of that old span, where the
+ * ramp was already clearly visible but not yet loud, and early enough for the city framings: the table below keeps each old span.)
  *
- * Widths are untouched by the fade (art pixels, floor 1): the weight is the tone. Which level a role is depends on the
- * number of levels (engine/palette.ts).
+ * Widths are untouched (art pixels, floor 1). Which level a role is depends on the number of levels (engine/palette.ts).
  */
 import type { Role } from "../../engine/palette";
 import type { Pattern } from "../core/palette";
-import { activeLevels, clampLevels, rampLevel, rampStepZoom, roleLevel } from "../../engine/palette";
+import { activeLevels, clampLevels, roleLevel } from "../../engine/palette";
 
 export type LodKey =
   | "highway" // motorway, trunk
@@ -38,18 +36,18 @@ export type LodKey =
   | "buildingOutline";
 
 export interface LodEntry {
-  /** first zoom at which the class is drawn (at the faintest level) */
-  from: number;
-  /** zoom at which the fade-in is complete and the class has its role's level */
-  full: number;
-  /** the tone the class ends up with (the named role of the shared palette) */
+  /** the zoom from which the class is drawn, in its final look (the switch of `layer-switch.ts`) */
+  on: number;
+  /** the zoom from which it is NOT drawn any more (a class that hands over to another, like dotted to solid residential streets) */
+  off?: number;
+  /** the tone the class is drawn in (the named role of the shared palette) */
   role: Role;
   /**
    * Finer tone than the six roles allow: a position 0..1 along the MAP ramp (0 = page colour, 1 = `peak`), which resolves to the level
    * `round(at * (n - 2))` for n levels. When set it replaces `role` for the level (the road hierarchy needs more tiers than the roles).
    */
   at?: number;
-  /** final pattern in line widths (= art px); undefined = solid */
+  /** pattern in line widths (= art px); undefined = solid */
   dash?: readonly number[];
 }
 
@@ -74,58 +72,51 @@ export function toneLevel(e: { role: Role; at?: number }, n: number = activeLeve
  * but them below z8 (docs/street-architecture.md, "Level of detail").
  */
 export const LOD: Record<LodKey, LodEntry> = {
-  // ROAD HIERARCHY (owner: "really hard to distinguish which roads are major and which are small"): the class is told by TONE and by
-  // WIDTH. Tone, in map-ramp positions (level of 12 in brackets): motorway and trunk = the peak (10, the loudest the map gets, still
-  // `MAP_CONTRAST` below the ink of labels and markers), primary 0.9 (9), secondary 0.7 (7), tertiary 0.5 (5), residential and service `soft` (4),
-  // paths `faint` (3) (the dots of parks and the dashes of water are `soft` too, below the roads' ink by their 1-in-8 coverage), so every tier is one to three levels from its neighbour. Width (core `MAJOR_ART` in street-style.ts):
-  // motorway, trunk and primary are 2 art px from z9, every other class stays at 1 px (floor, centre sampling and stair removal untouched).
-  highway: { from: 5.5, full: 8.5, role: "peak" },
-  major: { from: 8.6, full: 9.7, role: "strong", at: 0.9 },
-  secondary: { from: 9, full: 10.2, role: "strong", at: 0.7 },
-  medium: { from: 10.9, full: 11.7, role: "mid", at: 0.5 },
-  minor: { from: 12.2, full: 14.2, role: "soft", dash: [1.8, 2.4] },
-  minorSolid: { from: 16.6, full: 17.4, role: "soft" },
-  link: { from: 10.2, full: 12.2, role: "soft", dash: [1.8, 3.6] },
-  service: { from: 13.4, full: 15.4, role: "soft", dash: [1.8, 3.6] },
-  path: { from: 14.6, full: 16.4, role: "faint", dash: [1.8, 3.6] },
-  rail: { from: 10.2, full: 12.2, role: "soft", dash: [3, 2.2] },
-  river: { from: 7, full: 9.2, role: "strong" },
-  canal: { from: 12, full: 13.8, role: "soft", dash: [6, 1.5] },
-  stream: { from: 13, full: 15, role: "soft", dash: [3, 1.5] },
-  lake: { from: 5.5, full: 8, role: "strong" },
-  waterDetail: { from: 11.2, full: 13.2, role: "mid" },
-  regionBorder: { from: 3.8, full: 5.2, role: "mid", dash: [4, 1.5] },
-  buildingOutline: { from: 16.6, full: 17.4, role: "mid" },
+  // ROAD HIERARCHY. The class is told by TONE (a constant per class, palette levels of the 12 in brackets, map-ramp position `at`) and by
+  // WIDTH (core `MAJOR_ART` in street-style.ts): motorway and trunk = the peak (10, the loudest the map gets, still `MAP_CONTRAST` below
+  // the ink of labels and markers), primary 0.8 (8), secondary 0.6 (6), tertiary 0.4 (4); then the quiet ones, the DECOR of the map:
+  // links, paths, service and the solid residential streets 0.3 (3, `faint`), the dotted residential streets, service roads and paths
+  // 0.2 (2). Every tier is two levels from its neighbour, and a street is the faintest thing on the map but the patterns of the areas.
+  // Width: motorway, trunk and primary are 2 art px from z9, every other class stays at 1 px (floor, centre sampling and stair removal
+  // untouched). Owner, 2026-10-08: "the streets are only decor, they shouldn't be this visible and noisy". The binary switch had put
+  // every class at its FINAL tone from about 30 % of the span of the old ramp (a residential street at level 4 from z12.8, where it had
+  // been at level 2 and reached 4 at z14.2), and primary and secondary were only one or two levels apart (9 and 7); the quiet classes
+  // now simply HAVE the tone they used to show most of the time, and switch on where the old ramp was at its middle or later.
+  // The spans of the removed ramp, `from .. full`, are in the comment of each row.
+  highway: { on: 6.4, role: "peak" }, // 5.5 .. 8.5
+  major: { on: 8.7, role: "strong", at: 0.8 }, // 8.6 .. 9.7; just under the phone framings (8.8 to 10.2)
+  secondary: { on: 9.35, role: "mid", at: 0.6 }, // 9 .. 10.2
+  medium: { on: 11.1, role: "soft", at: 0.4 }, // 10.9 .. 11.7
+  minor: { on: 13, off: 16.85, role: "faint", at: 0.2, dash: [1.8, 2.4] }, // 12.2 .. 14.2; solid from the next row
+  minorSolid: { on: 16.85, role: "faint", at: 0.3 }, // 16.6 .. 17.4
+  link: { on: 10.2, role: "faint", at: 0.3, dash: [1.8, 3.6] }, // 10.2 .. 12.2
+  service: { on: 14.4, role: "faint", at: 0.2, dash: [1.8, 3.6] }, // 13.4 .. 15.4
+  path: { on: 15.4, role: "faint", at: 0.2, dash: [1.8, 3.6] }, // 14.6 .. 16.4
+  rail: { on: 10.2, role: "soft", dash: [3, 2.2] }, // 10.2 .. 12.2
+  river: { on: 7.65, role: "strong" }, // 7 .. 9.2
+  canal: { on: 12.55, role: "soft", dash: [6, 1.5] }, // 12 .. 13.8
+  stream: { on: 13.6, role: "soft", dash: [3, 1.5] }, // 13 .. 15
+  lake: { on: 6.25, role: "strong" }, // 5.5 .. 8
+  waterDetail: { on: 11.8, role: "mid" }, // 11.2 .. 13.2
+  regionBorder: { on: 4.2, role: "mid", dash: [4, 1.5] }, // 3.8 .. 5.2
+  buildingOutline: { on: 16.85, role: "mid" }, // 16.6 .. 17.4
 };
 
 /**
- * Fills fade in over these zoom ranges, stepping through the levels up to their role. Water and green areas are screen-
- * anchored PATTERNS (core/palette.ts: dashes for water, a dot lattice for parks and woods) painted in a dimmed level, so
- * they read as green or water at a glance in both themes; buildings are a flat wash. The sea starts right after the
- * globe-to-street cut (map zoom 3.5 to 5 depending on latitude) and climbs slowly through the levels, so it is never a
- * single step: see docs/palette/ (sea ease).
+ * Fills switch on at these zooms. Water and green areas are screen-anchored PATTERNS (core/palette.ts: dashes for water, a dot lattice
+ * for parks and woods) painted in a dimmed level, so they read as green or water at a glance in both themes; buildings are a flat wash.
+ * The sea is not on this table: it is a texture for a FLAT view, so it switches on with the flatness of the view, not with a zoom
+ * (`core/flatness.ts`, `layer-switch.ts`); `water` here only carries its look.
  */
 export const FILL_LOD = {
-  water: { from: 1.7, full: 6.5, role: "soft", pattern: "water" },
-  park: { from: 6.4, full: 8.8, role: "soft", pattern: "green" },
-  green: { from: 9.6, full: 11.2, role: "soft", pattern: "green" },
-  building: { from: 15.8, full: 17.5, role: "wash", pattern: "flat" },
-} as const satisfies Record<string, { from: number; full: number; role: Role; pattern: Pattern }>;
+  water: { on: 0, role: "soft", pattern: "water" }, // the sea texture: switched by the flatness of the view
+  park: { on: 7.1, role: "soft", pattern: "green" }, // 6.4 .. 8.8
+  green: { on: 10.1, role: "soft", pattern: "green" }, // 9.6 .. 11.2
+  building: { on: 16.3, role: "wash", pattern: "flat" }, // 15.8 .. 17.5
+} as const satisfies Record<string, { on: number; role: Role; pattern: Pattern }>;
 
-/** Progress 0..1 of a fade over [from, full] (0 at or below `from`, 1 at or above `full`). */
-export const progressAt = (e: { from: number; full: number }, z: number): number => (z <= e.from ? 0 : z >= e.full ? 1 : (z - e.from) / (e.full - e.from));
+/** Whether a class is drawn at this zoom, without hysteresis (the settled answer: tests, the synthetic gate, a style built for a fixed zoom). */
+export const visibleAt = (e: { on: number; off?: number }, z: number): boolean => z >= e.on && (e.off === undefined || z < e.off);
 
-/** The palette level of a class at a zoom: 0 = not drawn, 1 = the faintest level ... the role's level from `full` on. */
-export function levelAt(e: { from: number; full: number; role: Role; at?: number }, z: number, n: number = activeLevels()): number {
-  return rampLevel(progressAt(e, z), toneLevel(e, n));
-}
-
-/** Zoom at which the class enters level `k` (1 .. its final level). */
-export const stepZoom = (e: { from: number; full: number; role: Role; at?: number }, k: number, n: number = activeLevels()): number =>
-  rampStepZoom(e.from, e.full, toneLevel(e, n), k);
-
-/** True when the class is drawn at all at this zoom (fading in or final). */
-export const visibleAt = (e: { from: number }, z: number): boolean => z > e.from;
-
-/** True when the class is in its final look at this zoom. */
-export const finalAt = (e: { full: number }, z: number): boolean => z >= e.full;
+/** The palette level a class is drawn in at a zoom: 0 when it is not drawn, else its final level. */
+export const levelAt = (e: { on: number; off?: number; role: Role; at?: number }, z: number, n: number = activeLevels()): number => (visibleAt(e, z) ? toneLevel(e, n) : 0);

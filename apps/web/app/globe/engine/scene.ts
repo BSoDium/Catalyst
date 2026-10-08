@@ -11,7 +11,8 @@ import {
 } from "three";
 import type { GlobePlace, GlobeRoute } from "../types";
 import type { GlobeTheme, Rgb } from "./colors";
-import { borderLevel } from "./palette";
+import { FadeArray, clockStep } from "./fade";
+import { borderLevel, bordersWanted } from "./palette";
 import type { ViewBasis } from "./geo";
 import { zoomToRadiusPx } from "./geo";
 import { graticuleSegments, polylinesToSegments } from "./geometry";
@@ -45,6 +46,11 @@ export class GlobeScene {
   private bordersLines: LineSegments | null = null;
   private ramp: readonly Rgb[] = [];
   private borderLevelNow = -1;
+  /** The borders are ON or OFF (decided from the zoom with a hysteresis), and their tone runs to it by time: a timed fade, never a resting grey. */
+  private borderFade = new FadeArray(1);
+  private bordersOn = false;
+  private bordersSeen = false;
+  private lastClock = 0;
   private coast = lineMaterial(1);
   private silhouette = silhouetteMaterial();
 
@@ -101,13 +107,36 @@ export class GlobeScene {
     this.routes.applyTheme(t);
   }
 
-  /** Per-frame uniforms that depend on the camera. */
-  syncCamera(basis: ViewBasis, zoom: number, pixel: number) {
+  /** Whether the borders' fade has not reached its end: the frame loop must keep going. */
+  get animating(): boolean {
+    return this.borderFade.moving;
+  }
+
+  /** The borders' fade now (0..1) and whether they are wanted (checks). */
+  borderState() {
+    return { value: this.borderFade.value(0), on: this.bordersOn };
+  }
+
+  /** Run the borders' fade to its end (checks). */
+  settleBorders() {
+    this.borderFade.settle();
+  }
+
+  /** Per-frame uniforms that depend on the camera. `now` is the clock (ms) the border fade runs on; `instant`: reduced motion. */
+  syncCamera(basis: ViewBasis, zoom: number, pixel: number, now: number, instant: boolean) {
     this.routes.setLift(routeLift(zoom));
     this.routes.setPeriod((ROUTE_DASH_PX * pixel) / zoomToRadiusPx(zoom));
-    // Borders: not drawn, then the faintest grey level, stepping up through the palette to the peak level (the coastline's). The fade is TONE (a
-    // line is always solid), never a dither: a low-coverage dither on 1px lines reads as noise instead of a fade.
-    this.setBorderLevel(borderLevel(zoom, this.ramp.length, TUNING.borderZoom));
+    // Borders: on from the zoom `TUNING.borderZoom` (a hysteresis), off below. The fade is a timed TONE (a line is always solid): the faintest
+    // grey level stepping up through the palette to the peak level (the coastline's) over `FADE_MS`, whatever the camera does, so the globe
+    // at rest never shows a half-faded border. Never a dither: a low-coverage dither on 1px lines reads as noise instead of a fade.
+    this.bordersOn = bordersWanted(this.bordersOn, zoom, TUNING.borderZoom);
+    if (!this.bordersSeen) {
+      this.bordersSeen = true; // the first frame starts in its state
+      this.borderFade.snap(0, this.bordersOn);
+    } else this.borderFade.set(0, this.bordersOn);
+    if (this.borderFade.moving) this.borderFade.step(clockStep(this.lastClock, now), instant);
+    this.lastClock = now;
+    this.setBorderLevel(borderLevel(this.borderFade.value(0), this.ramp.length));
     const u = this.silhouette.uniforms;
     u.uC!.value = basis.c;
     u.uE!.value = basis.east;

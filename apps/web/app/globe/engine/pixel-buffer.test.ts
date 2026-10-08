@@ -57,22 +57,13 @@ describe("PixelBuffer", () => {
     for (let y = 0; y < 12; y++) for (let x = 0; x < 30; x++) seen.add(b.get(x, y));
     expect([...seen].sort((p, q) => p - q)).toEqual([9, CLEAR]);
     expect(b.get(2, 7)).toBe(9); // the foot of the H stem is the row above the baseline row
-    expect(b.get(2, 3)).toBe(9); // top of the H: 5 rows
-    expect(b.get(2, 2)).toBe(CLEAR);
+    expect(b.get(2, 1)).toBe(9); // top of the H: 7 rows
+    expect(b.get(2, 0)).toBe(CLEAR);
   });
-  it("bold text is the regular one double struck: a 2-cell stem, each cell written once", () => {
-    const regular = new PixelBuffer(30, 12);
-    const bold = new PixelBuffer(30, 12);
-    regular.text("H", 2, 8, 9);
-    bold.text("H", 2, 8, 9, 1, true);
-    for (let y = 0; y < 12; y++) for (let x = 0; x < 30; x++) if (regular.get(x, y) === 9) expect(bold.get(x, y), `${x},${y}`).toBe(9);
-    expect(bold.get(2, 7)).toBe(9);
-    expect(bold.get(3, 7)).toBe(9); // the stem is 2 cells
-    expect(bold.count()).toBeGreaterThan(regular.count());
-    // translucent bold: no cell is written twice (it would come out more opaque than its neighbours)
-    const faint = new PixelBuffer(30, 12);
-    faint.text("Hà Nội", 1, 8, 9, 0.4, true);
-    for (let y = 0; y < 12; y++) for (let x = 0; x < 30; x++) if (faint.get(x, y) !== CLEAR) expect(faint.alphaAt(x, y)).toBeCloseTo(0.4, 2);
+  it("translucent text: no cell is written twice (it would come out more opaque than its neighbours)", () => {
+    const faint = new PixelBuffer(60, 12);
+    faint.text("Hà Nội", 1, 8, 9, 0.4);
+    for (let y = 0; y < 12; y++) for (let x = 0; x < 60; x++) if (faint.get(x, y) !== CLEAR) expect(faint.alphaAt(x, y)).toBeCloseTo(0.4, 2);
   });
 });
 

@@ -61,22 +61,13 @@ export function bboxExtentsKm(bbox: Bbox | readonly number[] | undefined | null)
 
 /**
  * The view radius that frames a bounding box with the framing formula below unchanged: the circle of this radius has as its
- * radius the farthest extent of the box from the point the camera is centred on (`from`; the box's centre when absent, which
- * is where the camera goes: `placeFraming`), so the whole box is on screen with `FRAMING_MARGIN` of room
- * and, when the point is the box's centre, the box's longer side takes 1 / (1 + margin) of the smaller free side. Clamped like
- * any view radius; null for no (valid) box.
+ * radius the box's longer half extent (the camera is centred on the box's centre: `placeFraming`), so the whole box is on screen
+ * with `FRAMING_MARGIN` of room and its longer side takes 1 / (1 + margin) of the smaller free side. Clamped like any view radius;
+ * null for no (valid) box.
  */
-export function bboxFitRadiusKm(bbox: Bbox | readonly number[] | undefined | null, from?: { lat: number; lon: number }): number | null {
+export function bboxFitRadiusKm(bbox: Bbox | readonly number[] | undefined | null): number | null {
   const ext = bboxExtentsKm(bbox);
-  if (!ext) return null;
-  let halfX = ext.halfXKm;
-  let halfY = ext.halfYKm;
-  if (from && Number.isFinite(from.lat) && Number.isFinite(from.lon)) {
-    // farthest edge from the point, per axis (the box is centred on `ext`, so the offset adds to the half extent)
-    halfX += Math.abs(from.lon - ext.lon) * KM_PER_DEG * Math.cos((ext.lat * Math.PI) / 180);
-    halfY += Math.abs(from.lat - ext.lat) * KM_PER_DEG;
-  }
-  return effectiveRadiusKm(Math.max(halfX, halfY));
+  return ext ? effectiveRadiusKm(Math.max(ext.halfXKm, ext.halfYKm)) : null;
 }
 
 /**

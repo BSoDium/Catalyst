@@ -53,7 +53,7 @@ Be polite to Protomaps: they ask not to hotlink their builds. The script makes o
 
 Size and cost. `pnpm tiles:plan --demo` against build `20261005` (11 placeholder places spread over the world, 20 km boxes, z0-14) reported: 2,409 region tiles, 2,234 tile entries to fetch, **about 68 MB archive, 72 MB transferred, 255 requests, 19 s**. That is about 6 MB per place, in line with the spike's 5 to 10 MB per city. To shrink it: `--radius-km 5` (roughly a quarter of the area), or `--maxzoom 13` (about half; the client over-zooms line work cleanly). If you lower `--maxzoom`, set `CATALYST_TILES_MAX_FALLBACK_ZOOM` to the same value.
 
-Data licence: (c) OpenStreetMap contributors (ODbL), basemap by Protomaps. The site keeps the credit one click away: an info button on the map opens the credits dialog (see the spike's attribution section).
+Data licence: (c) OpenStreetMap contributors (ODbL), basemap by Protomaps. The site keeps the credit one click away: a "Credits" link on the map opens the credits dialog (see the spike's attribution section).
 
 ## 3. Running it on the home server
 
@@ -171,7 +171,7 @@ Expected handling on the reading side:
 - With only the defaults the site behaves exactly as today (OpenFreeMap, no fallback). Tiles are an enhancement and the globe is the floor.
 - The fallback is only used after the primary fails its probe (health chain from the spike, 3 s timeout), and the chain re-probes the primary to recover.
 - The tile archive is global within the extracted boxes only. Outside them it has no data, which is correct: the fallback exists for the curated places. A fallback archive cannot carry the world-to-region zoom range.
-- The credits stay reachable from the map's info button, which lists the sources the configuration can show: "(c) OpenStreetMap contributors", OpenFreeMap and OpenMapTiles for the default primary, Protomaps when a fallback archive is configured (or the primary is a PMTiles archive), always Natural Earth.
+- The credits stay reachable from the map's "Credits" link, which lists the sources the configuration can show: "(c) OpenStreetMap contributors", OpenFreeMap and OpenMapTiles for the default primary, Protomaps when a fallback archive is configured (or the primary is a PMTiles archive), always Natural Earth.
 
 ## 7. Security notes and what was verified
 

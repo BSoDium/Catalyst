@@ -21,9 +21,9 @@
 import type { ExpressionSpecification, LayerSpecification, Map as MLMap, StyleSpecification } from "maplibre-gl";
 import { DESIGN_CELL_CSS, THIN_INK, artStops, cssStops, hollowFillStops, inkOpacityFor, inkOpacityStops, type Stops } from "../core/art-line";
 import type { Schema } from "../core/source-descriptor";
-import { activeLevels, roleLevel, type Role } from "../core/palette";
+import { roleLevel, type Role } from "../core/palette";
 import { ERASE, fillColor, lineColor, type Pattern } from "../core/palette";
-import { FILL_LOD, LOD, stepZoom, toneLevel, type LodKey } from "./lod";
+import { FILL_LOD, LOD, toneLevel, type LodKey } from "./lod";
 
 export type { Schema };
 
@@ -48,33 +48,19 @@ export interface StreetStyleOptions {
   projection?: "globe" | "mercator";
   /** CSS px of one art pixel (whole device px / dpr). Default 3. */
   cellCss?: number;
+  /**
+   * The switched layers (layer-switch.ts) that start on; the others start hidden. Absent: all on (tests, the synthetic gate builds its own).
+   * The engine passes the state for the camera, so a style swap does not flash a layer that should be off.
+   */
+  visible?: ReadonlySet<string>;
 }
 
-/** Fade stops of a colour over zoom: level k from `at[k]` (ascending zooms), as a MapLibre `step` expression. */
-function stepColors(levels: number[], zooms: number[], color: (level: number) => string): string | ExpressionSpecification {
-  if (levels.length === 1) return color(levels[0]!);
-  return ["step", ["zoom"], color(levels[0]!), ...levels.slice(1).flatMap((lv, i) => [zooms[i + 1]!, color(lv)])] as unknown as ExpressionSpecification;
-}
-
-/** Colour of a fade-in over zoom: the faintest level first, stepping up to the role's level at `full` (equal zoom steps). */
-export function fadeInColor(e: { from: number; full: number; role: Role; at?: number }, color: (level: number) => string, n: number = activeLevels()): string | ExpressionSpecification {
-  const final = toneLevel(e, n);
-  const levels = Array.from({ length: final }, (_, i) => i + 1);
-  return stepColors(levels, levels.map((k) => stepZoom(e, k, n)), color);
-}
-
-/** Colour of a fade-out over zoom [from, gone]: the role's level first, stepping down to the faintest one (the layer ends at `gone`). */
-export function fadeOutColor(e: { from: number; gone: number; role: Role }, color: (level: number) => string, n: number = activeLevels()): string | ExpressionSpecification {
-  const start = roleLevel(e.role, n);
-  const levels = Array.from({ length: start }, (_, i) => start - i);
-  return stepColors(levels, levels.map((_, i) => e.from + (i / start) * (e.gone - e.from)), color);
-}
-
-/** The sea fill's fade for a hand-over zoom: the same shape as `FILL_LOD.water` (which is authored for the OpenFreeMap hand-over), shifted. */
-export const seaFade = (handoff: number): { from: number; full: number; role: Role; pattern: Pattern } => {
-  const shift = handoff - DEFAULT_HANDOFF.openmaptiles;
-  return { ...FILL_LOD.water, from: FILL_LOD.water.from + shift, full: FILL_LOD.water.full + shift };
-};
+/**
+ * The zoom from which the sea texture may be drawn: just after the hand-over to tile geometry, whichever schema (and so hand-over zoom) is
+ * active (the PMTiles extract only has tiles around its place, so a fill that started earlier would show the tile edges). It is also
+ * gated by the flatness of the view (`core/flatness.ts`, `layer-switch.ts`): the texture does not read as water on a visibly curved earth.
+ */
+export const seaFrom = (handoff: number): number => handoff + 0.7;
 
 /**
  * Zoom at which the tile boundary takes over from the bundled Natural Earth country borders (and so where the latter end): the
@@ -124,10 +110,10 @@ export interface Spec {
   artW?: number | Stops;
   /** this casing is hollowed out by the interior spec of the given id; from that zoom it is two thin outlines */
   hollowBy?: string;
-  /** level of detail class (lod.ts): fades in over [from, full] in tone, final look from `full` */
+  /** level of detail class (lod.ts): on from its switch zoom in its final look (layer-switch.ts) */
   lod?: LodKey;
-  /** (fills) fade-in range and tone */
-  fade?: { from: number; full: number; role: Role; pattern: Pattern };
+  /** (fills) the tone and pattern, and the zoom from which the fill is on */
+  fade?: { on: number; role: Role; pattern: Pattern };
   /** this is the erasing interior of a hollow road whose casing follows these ART-pixel stops */
   hollowOf?: Stops;
 }
@@ -213,23 +199,23 @@ const LAKE_OMT = kindIn("class", ["lake"]);
 export const SPECS: Spec[] = [
   // --- areas: flat washes (tones first, lines on top) ---
   {
-    id: "water-fill", type: "fill", ch: "fill", fade: FILL_LOD.water, minzoom: FILL_LOD.water.from,
+    id: "water-fill", type: "fill", ch: "fill", fade: FILL_LOD.water,
     pm: { layer: "water", filter: POLY as never }, omt: { layer: "water" },
   },
   {
-    id: "park-fill", type: "fill", ch: "fill", fade: FILL_LOD.park, minzoom: FILL_LOD.park.from,
+    id: "park-fill", type: "fill", ch: "fill", fade: FILL_LOD.park,
     pm: { layer: "landuse", filter: kindIn("kind", ["forest", "wood", "grass", "nature_reserve", "cemetery", "farmland"]) as never },
     omt: { layer: "park" },
   },
   // Urban green (public parks, gardens, golf courses). OpenMapTiles keeps them in `landcover` (class grass), NOT in `park`
   // (protected areas only: Bois de Boulogne yes, the Tuileries no), Protomaps in `landuse`; they start with the city framing.
   {
-    id: "green-fill", type: "fill", ch: "fill", fade: FILL_LOD.green, minzoom: FILL_LOD.green.from,
+    id: "green-fill", type: "fill", ch: "fill", fade: FILL_LOD.green,
     pm: { layer: "landuse", filter: kindIn("kind", ["park", "garden", "golf_course"]) as never },
     omt: { layer: "landcover", filter: kindIn("subclass", ["park", "garden", "golf_course", "village_green", "recreation_ground"]) as never },
   },
   {
-    id: "building-fill", type: "fill", ch: "fill", fade: FILL_LOD.building, minzoom: FILL_LOD.building.from,
+    id: "building-fill", type: "fill", ch: "fill", fade: FILL_LOD.building,
     pm: { layer: "buildings" }, omt: { layer: "building" },
   },
   // --- lighter lines (soft and mid), many of them dashed ---
@@ -244,7 +230,7 @@ export const SPECS: Spec[] = [
     omt: { layer: "boundary", filter: REGION_BORDER_OMT },
   },
   {
-    id: "road-minor-dotted", type: "line", ch: "ink", width: 1, lod: "minor", maxzoom: LOD.minorSolid.full, dash: LOD.minor.dash,
+    id: "road-minor-dotted", type: "line", ch: "ink", width: 1, lod: "minor", dash: LOD.minor.dash,
     pm: { layer: "roads", filter: MINOR_PM }, omt: { layer: "transportation", filter: MINOR_OMT },
   },
   {
@@ -326,9 +312,9 @@ export const SPECS: Spec[] = [
   },
 ];
 
-/** Final-look zoom range of a spec: a class with a level of detail exists from `from` (its fade-in is part of the layer). */
+/** Static zoom range of a spec. A class with a level of detail has none: it is switched on and off by `layer-switch.ts`, with a hysteresis. */
 export function zoomRangeOf(spec: Spec): { minzoom?: number; maxzoom?: number } {
-  const min = spec.lod ? LOD[spec.lod].from : spec.minzoom;
+  const min = spec.lod || spec.fade ? undefined : spec.minzoom;
   return { ...(min ? { minzoom: min } : {}), ...(spec.maxzoom ? { maxzoom: spec.maxzoom } : {}) };
 }
 
@@ -348,8 +334,6 @@ function artWidthPaint(spec: Spec, cellCss: number): number | ExpressionSpecific
 
 /** Layer ids of the lines that follow the art cell (world data and routes included). */
 const CELL_LAYERS = ["world-coast", "world-borders", "graticule"] as const;
-/** The graticule eases out through the palette levels between these map zooms (regional scale to street scale). */
-export const GRATICULE_FADE = { from: 6.5, gone: 9.5 } as const;
 /**
  * A route is two art pixels wide, dashed with the globe's 7 px period (62 % ink): the same stroke the Three.js globe
  * draws, so the curated routes keep their weight through the handover. Its erasing halo is four art pixels wide.
@@ -368,7 +352,12 @@ export function applyCell(map: MLMap, cellCss: number): void {
   if (map.getLayer("routes-halo")) map.setPaintProperty("routes-halo", "line-width", ROUTE_HALO_ART * cellCss);
 }
 
-function build(spec: Spec, schema: Schema, handoff: number, cellCss: number): LayerSpecification | null {
+/** `layout.visibility` of a switched layer: on or off as the switch says (a style built for tests has them all on). */
+const visibility = (id: string, visible: ReadonlySet<string> | undefined) => (visible && !visible.has(id) ? { visibility: "none" } : {});
+/** Whether a spec is one of the switched layers (a class with a level of detail or a fill): the others (the sea outline, country borders, hollow road interiors, ...) are always on, whatever `visible` says. */
+const switched = (spec: Spec) => Boolean(spec.lod || spec.fade);
+
+function build(spec: Spec, schema: Schema, handoff: number, cellCss: number, visible: ReadonlySet<string> | undefined): LayerSpecification | null {
   const src = schema === "protomaps" ? spec.pm : spec.omt;
   if (!src) return null;
   let minzoom = zoomRangeOf(spec).minzoom;
@@ -377,10 +366,6 @@ function build(spec: Spec, schema: Schema, handoff: number, cellCss: number): La
   // the same for country borders: the bundled Natural Earth lines up to the hand-over, the tile lines from it. Never both at once (two
   // geometries of the same frontier, up to tens of km apart where it is disputed, read as a doubled border).
   if (spec.id === "boundary-country") minzoom = borderHandoff(handoff);
-  // The sea fill eases in from just after the hand-over to tile geometry, whichever schema (and so hand-over zoom) is active:
-  // the PMTiles extract only has tiles around its place, so a fill that started earlier would show the tile edges.
-  const fillFade = spec.id === "water-fill" ? seaFade(handoff) : spec.fade;
-  if (spec.id === "water-fill") minzoom = fillFade!.from;
   if (spec.hollowOf) {
     const w = artWidthStopsOf(spec);
     if (typeof w !== "number") minzoom = w.find(([, v]) => v > 0)?.[0] ?? minzoom;
@@ -394,14 +379,16 @@ function build(spec: Spec, schema: Schema, handoff: number, cellCss: number): La
     ...(src.filter ? { filter: src.filter } : {}),
   };
   if (spec.type === "fill") {
-    const fade = fillFade ?? { from: 0, full: 0, role: spec.role ?? "wash", pattern: "flat" as Pattern };
+    const look = spec.fade ?? { role: spec.role ?? "wash", pattern: "flat" as Pattern };
     return {
       ...base,
       type: "fill",
-      paint: { "fill-color": fadeInColor(fade, (lv) => fillColor(lv, fade.pattern)), "fill-opacity": 1, "fill-antialias": false },
+      layout: switched(spec) ? visibility(spec.id, visible) : {},
+      paint: { "fill-color": fillColor(toneLevel(look), look.pattern), "fill-opacity": 1, "fill-antialias": false },
     } as LayerSpecification;
   }
-  return { ...base, type: "line", ...linePaint(spec, cellCss) } as LayerSpecification;
+  const line = linePaint(spec, cellCss);
+  return { ...base, type: "line", ...line, layout: { ...line.layout, ...(switched(spec) ? visibility(spec.id, visible) : {}) } } as LayerSpecification;
 }
 
 /** Layout and paint of a line spec: the one place widths, dashes, colour (level) and opacity (thin / wide) are decided. */
@@ -411,8 +398,8 @@ export function linePaint(spec: Spec, cellCss: number): { layout: Record<string,
   if (spec.ch === "erase") {
     return { layout, paint: { "line-color": ERASE, "line-opacity": 1, "line-width": artWidthPaint(spec, cellCss) } };
   }
-  // The colour is the tone: a class with a level of detail fades in through the levels, any other line has its role's level.
-  const color = spec.lod ? fadeInColor(LOD[spec.lod], lineColor) : lineColor(roleLevel(spec.role ?? "peak"));
+  // The colour is the tone: the level of the class's role (a class is on or off, never half way: lod.ts).
+  const color = lineColor(spec.lod ? toneLevel(LOD[spec.lod]) : roleLevel(spec.role ?? "peak"));
   // One-pixel lines are painted weaker than wide ones: that is how the pass knows which cells it may thin.
   const w = artWidthStopsOf(spec);
   const fill = spec.hollowBy ? SPECS.find((x) => x.id === spec.hollowBy) : undefined;
@@ -446,7 +433,7 @@ export function buildStreetStyle(o: StreetStyleOptions): StyleSpecification {
   const noTiles = o.tiles === null;
   const placeholder = hasPlaceholder(handoff, !noTiles);
   const cell = o.cellCss ?? DESIGN_CELL_CSS;
-  const tileLayers = noTiles ? [] : SPECS.map((s) => build(s, o.schema, handoff, cell)).filter((l): l is LayerSpecification => l !== null);
+  const tileLayers = noTiles ? [] : SPECS.map((s) => build(s, o.schema, handoff, cell, o.visible)).filter((l): l is LayerSpecification => l !== null);
 
   // Layer order: background, graticule, tile fills, tile lines, routes, world lines.
   const lineIds = new Set(SPECS.filter((s) => s.ch !== "fill").map((s) => s.id));
@@ -469,10 +456,11 @@ export function buildStreetStyle(o: StreetStyleOptions): StyleSpecification {
     ...(placeholder ? { layout: { visibility: "none" } } : {}),
     paint: { "line-color": peak, "line-width": cell, "line-opacity": THIN_INK },
   }) as LayerSpecification;
-  // Graticule: the faint level, easing out through the levels while the map zooms from regional to street scale.
+  // Graticule: the faint level, on while the earth is visibly curved and off once the view is close to flat (layer-switch.ts, core/flatness.ts).
   const grid: LayerSpecification = {
-    id: "graticule", type: "line", source: "grid", maxzoom: GRATICULE_FADE.gone,
-    paint: { "line-color": fadeOutColor({ ...GRATICULE_FADE, role: "faint" }, lineColor) as never, "line-opacity": THIN_INK, "line-width": cell, "line-dasharray": [1.5, 2.5] },
+    id: "graticule", type: "line", source: "grid",
+    layout: visibility("graticule", o.visible),
+    paint: { "line-color": lineColor(roleLevel("faint")), "line-opacity": THIN_INK, "line-width": cell, "line-dasharray": [1.5, 2.5] },
   } as LayerSpecification;
   // Curated routes: an erasing halo (so a route reads over a road of the same ink) and a dashed two-pixel ink line.
   const routesHalo: LayerSpecification = {

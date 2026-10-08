@@ -74,10 +74,8 @@ describe("placeFraming and bounding boxes", () => {
     expect(Math.hypot(f.lon - place.lon, f.lat - place.lat)).toBeGreaterThan(0.3);
     expect(place.lat).toBe(30.05);
     expect(place.lon).toBe(-95.15);
-    // the radius frames the box around ITS centre: the same as fitting it with no `from` point
+    // the radius frames the box around ITS centre
     expect(f.radiusKm).toBeCloseTo(bboxFitRadiusKm(box)!, 9);
-    // fitting it from the (off-centre) recorded point instead would need a larger circle
-    expect(bboxFitRadiusKm(box, place)!).toBeGreaterThan(f.radiusKm);
   });
   it("falls back to the point and the view radius for an absent or invalid box, at any latitude", () => {
     for (const bbox of [undefined, [], [1, 2, 3], [0, 0, 0, 1], [5, 5, 1, 1], [0, 0, 1, Number.NaN], [-181, 0, 1, 1]]) {
