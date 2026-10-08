@@ -1,6 +1,8 @@
 /**
- * Vercel deploy entry (zero-config Hono: a file importing `hono` with a
- * default-exported app). Keep this file minimal; all logic lives in ./app.
+ * Vercel app module: a default-exported Hono app. It is not what Vercel runs
+ * directly: scripts/build.mjs bundles it into dist/index.mjs and ../index.mjs
+ * (the preset's entry) re-exports that bundle. Keep this file minimal; all
+ * logic lives in ./app.
  *
  * Content is validated once, at module load. On Vercel there is no separate
  * startup phase to abort, so an invalid projection is logged loudly and the

@@ -1,6 +1,6 @@
 /**
  * Node entry for local dev (`pnpm dev`) and the self-contained built artifact
- * (`pnpm build && pnpm start`). Not used by Vercel, which takes src/index.ts.
+ * (`pnpm build && pnpm start`). Not used by Vercel, which runs the bundle of src/index.ts through ../index.mjs.
  * Unlike the Vercel entry it refuses to start on invalid content.
  */
 import { serve } from "@hono/node-server";

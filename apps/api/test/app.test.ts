@@ -444,3 +444,46 @@ describe("deploy entry", () => {
     expect(res.headers.get("access-control-allow-origin")).toBe("*");
   });
 });
+
+// docs/api-cost-and-abuse.md builds its cost model on these invariants: the
+// response to a path never depends on the query string or on request noise, so
+// a cache-busting client can only ever get the same bytes (and the same cheap,
+// allocation-free handler) back, and a prebuilt static equivalent would be
+// byte-identical.
+describe("abuse invariants", () => {
+  it("ignores the query string: same status, body, ETag and Cache-Control on every known path", async () => {
+    const app = demoApp();
+    for (const path of KNOWN) {
+      const base = await app.request(path);
+      for (const qs of ["?cb=1", "?cb=2&x=%00", "?", "?" + "a".repeat(4000)]) {
+        const res = await app.request(path + qs);
+        expect(res.status, path + qs).toBe(base.status);
+        expect(await res.text(), path + qs).toBe(await base.clone().text());
+        expect(res.headers.get("etag"), path + qs).toBe(base.headers.get("etag"));
+        expect(res.headers.get("cache-control"), path + qs).toBe(base.headers.get("cache-control"));
+      }
+    }
+  });
+
+  it("answers an unknown path the same way with or without a query string (404, no-store, no ETag)", async () => {
+    const app = demoApp();
+    for (const path of ["/wp-login.php?x=1", "/.env", "/v1/places/atlantis?cb=2", "/v1?cb=3"]) {
+      const res = await app.request(path);
+      expect(res.status, path).toBe(404);
+      expect(res.headers.get("cache-control"), path).toBe("no-store");
+      expect(res.headers.get("etag"), path).toBeNull();
+    }
+  });
+
+  it("copes with a pathological If-None-Match (thousands of candidates) without erroring or slowing down", async () => {
+    const app = demoApp();
+    const etag = (await app.request("/v1/places")).headers.get("etag")!;
+    const noise = Array.from({ length: 2000 }, (_, i) => `"${i.toString(16).padStart(32, "0")}"`).join(", ");
+    const started = performance.now();
+    const miss = await app.request("/v1/places", { headers: { "If-None-Match": noise } });
+    const hit = await app.request("/v1/places", { headers: { "If-None-Match": `${noise}, ${etag}` } });
+    expect(performance.now() - started).toBeLessThan(500);
+    expect(miss.status).toBe(200);
+    expect(hit.status).toBe(304);
+  });
+});
