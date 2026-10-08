@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -24,8 +24,47 @@ describe("published package", () => {
     for (const g of demo.groups) expect(children.get(g.slug) ?? 0, g.slug).toBeGreaterThanOrEqual(2);
     expect(demo.places.filter((p) => p.group === undefined).map((p) => p.slug)).toEqual(["cape-town", "wellington"]);
   });
-  it("the committed (empty) projection has no groups", () => {
+  it("the committed (empty) projection has no groups and no poems", () => {
     expect(loadPublishedProjection().groups).toEqual([]);
+    expect(loadPublishedProjection().poems).toEqual([]);
+  });
+  it("the demo has entries of all four kinds that together use every body block type, cover, tags and meta", () => {
+    const demo = loadDemoProjection();
+    const all = [...demo.projects, ...demo.articles, ...demo.artworks, ...demo.poems];
+    expect([demo.projects.length, demo.articles.length, demo.artworks.length, demo.poems.length].every((n) => n >= 1)).toBe(true);
+    expect(new Set(all.flatMap((e) => (e.body ?? []).map((b) => b.type)))).toEqual(
+      new Set(["paragraph", "heading", "list", "quote", "image", "verse", "code", "link", "divider"]),
+    );
+    expect(demo.poems[0]!.body?.some((b) => b.type === "verse")).toBe(true);
+    for (const e of all) {
+      expect(e.cover, e.slug).toBeDefined();
+      expect(e.tags?.length, e.slug).toBeGreaterThan(0);
+      expect(e.meta?.length, e.slug).toBeGreaterThan(0);
+      expect(e.placeSlugs.length, e.slug).toBeGreaterThan(0);
+    }
+    expect(demo.places.flatMap((p) => p.related).some((r) => r.kind === "poem")).toBe(true);
+  });
+  it("every demo media path (place images, covers, image blocks) is a file shipped by the web app", () => {
+    const demo = loadDemoProjection();
+    const srcs = new Set<string>();
+    for (const p of demo.places) for (const i of p.images) srcs.add(i.src);
+    for (const e of [...demo.projects, ...demo.articles, ...demo.artworks, ...demo.poems]) {
+      if (e.cover) srcs.add(e.cover.src);
+      for (const b of e.body ?? []) if (b.type === "image") srcs.add(b.src);
+    }
+    expect(srcs.size).toBeGreaterThanOrEqual(6);
+    for (const src of srcs) {
+      expect(src.startsWith("/media/demo/"), src).toBe(true);
+      expect(existsSync(new URL(`../../../apps/web/public${src}`, import.meta.url)), src).toBe(true);
+    }
+  });
+  it("the demo text says it is placeholder content", () => {
+    const demo = loadDemoProjection();
+    for (const e of [...demo.projects, ...demo.articles, ...demo.artworks, ...demo.poems]) {
+      expect(JSON.stringify(e.summary), e.slug).toMatch(/Demo fixture/);
+      const first = e.body?.[0];
+      expect(first && "text" in first ? first.text : JSON.stringify(first), e.slug).toMatch(/Demo fixture|made up|placeholder/i);
+    }
   });
 });
 

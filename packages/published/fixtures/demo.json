@@ -24,7 +24,7 @@
     { "slug": "ho-chi-minh-city", "name": "Ho Chi Minh City", "region": "Vietnam", "coordinates": { "lat": 10.82, "lon": 106.63 }, "labelPriority": 25, "viewRadiusKm": 18, "group": "vietnam", "countryCode": "VN",
       "body": [], "images": [], "related": [] },
     { "slug": "hue", "name": "Huế", "region": "Vietnam", "coordinates": { "lat": 16.46, "lon": 107.59 }, "labelPriority": 20, "group": "vietnam", "countryCode": "VN",
-      "body": [], "images": [], "related": [] },
+      "body": [], "images": [], "related": [{ "kind": "poem", "slug": "demo-poem" }] },
     { "slug": "paris", "name": "Paris", "region": "France", "coordinates": { "lat": 48.86, "lon": 2.35 }, "labelPriority": 65, "viewRadiusKm": 14, "group": "europe", "countryCode": "FR",
       "body": [], "images": [], "related": [] },
     { "slug": "ljubljana", "name": "Ljubljana", "region": "Slovenia", "coordinates": { "lat": 46.06, "lon": 14.51 }, "labelPriority": 40, "group": "balkans", "countryCode": "SI",
@@ -56,12 +56,63 @@
     { "id": "demo-route-vietnam", "title": "Demo route (curated stop order)", "stops": ["hanoi", "hue", "ho-chi-minh-city"] }
   ],
   "projects": [
-    { "slug": "demo-project", "title": "Demo project", "summary": "Demo fixture entry.", "date": "2024", "placeSlugs": ["lisbon"] }
+    { "slug": "demo-project", "title": "Demo project", "summary": "Demo fixture entry: a software project with a cover, facts, a code block and links.", "date": "2024",
+      "url": "https://example.org/demo-project",
+      "cover": { "src": "/media/demo/cover-project.svg", "alt": "Abstract nested squares used as a demo fixture cover", "width": 960, "height": 600 },
+      "tags": ["demo", "software", "placeholder"],
+      "meta": [{ "label": "Stack", "value": "TypeScript, WebGL (placeholder)" }, { "label": "Status", "value": "Demo fixture" }, { "label": "Repository", "value": "example.org/demo-project (placeholder)" }],
+      "body": [
+        { "type": "paragraph", "text": "Demo fixture text. This project does not exist: the paragraph only exercises the entry layout." },
+        { "type": "heading", "level": 2, "text": "Demo usage" },
+        { "type": "code", "language": "ts", "code": "// Demo fixture code, not a real API.\nconst map = createDemoMap({ style: \"monochrome\" });\nmap.flyTo(\"lisbon\");" },
+        { "type": "list", "ordered": false, "items": ["Placeholder feature one", "Placeholder feature two"] },
+        { "type": "divider" },
+        { "type": "link", "title": "Demo repository", "url": "https://example.org/demo-project/source", "description": "A placeholder link, it leads nowhere real." }
+      ],
+      "placeSlugs": ["lisbon"] }
   ],
   "articles": [
-    { "slug": "demo-article", "title": "Demo article", "summary": "Demo fixture entry.", "date": "2024-04-02", "placeSlugs": ["lisbon"] }
+    { "slug": "demo-article", "title": "Demo article", "summary": "Demo fixture entry: an article with headings, lists, a quote and images.", "date": "2024-04-02",
+      "cover": { "src": "/media/demo/cover-article.svg", "alt": "Abstract horizontal bands used as a demo fixture cover", "width": 960, "height": 600 },
+      "tags": ["demo", "notes"],
+      "meta": [{ "label": "Publication", "value": "Demo fixture journal (placeholder)" }],
+      "body": [
+        { "type": "paragraph", "text": "Demo fixture text. This article is made up: it only exercises the reading layout, from the first paragraph to the last link." },
+        { "type": "heading", "level": 2, "text": "A second-level heading" },
+        { "type": "paragraph", "text": "A second placeholder paragraph, to check reading width and spacing.\nThis line follows a hard line break." },
+        { "type": "list", "ordered": true, "items": ["First placeholder step", "Second placeholder step", "Third placeholder step"] },
+        { "type": "quote", "text": "A made-up quotation, only here to see how a quote looks.", "cite": "Nobody, a demo fixture" },
+        { "type": "heading", "level": 3, "text": "A third-level heading" },
+        { "type": "image", "src": "/media/demo/figure-article.svg", "alt": "Abstract diagonal grid used as a demo fixture figure", "width": 960, "height": 600, "caption": "Demo fixture figure" },
+        { "type": "paragraph", "text": "A closing placeholder paragraph." },
+        { "type": "link", "title": "A demo link", "url": "https://example.org/demo-article" }
+      ],
+      "placeSlugs": ["lisbon", "paris"] }
   ],
   "artworks": [
-    { "slug": "demo-artwork", "title": "Demo artwork", "placeSlugs": ["kyoto"] }
+    { "slug": "demo-artwork", "title": "Demo artwork", "summary": "Demo fixture entry: an artwork with a cover and facts.", "date": "2023",
+      "cover": { "src": "/media/demo/cover-artwork.svg", "alt": "Abstract overlapping circles used as a demo fixture artwork", "width": 960, "height": 600 },
+      "tags": ["demo", "drawing"],
+      "meta": [{ "label": "Medium", "value": "Charcoal on paper (placeholder)" }, { "label": "Year", "value": "2023" }, { "label": "Dimensions", "value": "30 x 40 cm (placeholder)" }],
+      "body": [
+        { "type": "paragraph", "text": "Demo fixture text. The artwork does not exist; this commentary only exercises the layout." },
+        { "type": "image", "src": "/media/demo/cover-artwork.svg", "alt": "Abstract overlapping circles used as a demo fixture artwork", "width": 960, "height": 600, "caption": "Demo fixture image" }
+      ],
+      "placeSlugs": ["kyoto"] }
+  ],
+  "poems": [
+    { "slug": "demo-poem", "title": "Demo poem", "summary": "Demo fixture entry: a poem set in verse blocks.", "date": "2022-11",
+      "cover": { "src": "/media/demo/cover-poem.svg", "alt": "Abstract short lines grouped in two stanzas, a demo fixture cover", "width": 960, "height": 600 },
+      "tags": ["demo", "verse"],
+      "meta": [{ "label": "Language", "value": "English (placeholder)" }],
+      "body": [
+        { "type": "verse", "stanzas": [
+          ["Demo fixture verse, line one,", "placeholder words in a row,", "    an indented line follows,", "the stanza ends here."],
+          ["A second stanza begins,", "made up to check spacing,", "between lines and between stanzas."]
+        ] },
+        { "type": "divider" },
+        { "type": "paragraph", "text": "A placeholder note on the poem, in prose." }
+      ],
+      "placeSlugs": ["hue"] }
   ]
 }
