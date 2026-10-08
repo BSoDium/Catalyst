@@ -1,17 +1,18 @@
 import type { Route } from "./+types/artworks";
-import { ContentPage } from "~/components/content-page";
+import { EntryListPage } from "~/components/entry-list-page";
 import { getProjection } from "~/lib/content.server";
-import { pageMeta } from "~/lib/meta";
-import { listContent } from "~/lib/projection";
+import { listEntries } from "~/lib/entries";
+import { listMeta } from "~/lib/entry-meta";
 
+// `/artworks`: the list of artworks, summaries only (no body, so the page stays cheap however long the texts are).
 export async function loader() {
-  return { items: listContent(await getProjection(), "artwork") };
+  return { items: listEntries(await getProjection(), "artwork") };
 }
 
 export function meta(_args: Route.MetaArgs) {
-  return pageMeta({ title: "Artworks", description: "Artworks from the Catalyst archive." });
+  return listMeta("artwork");
 }
 
 export default function ArtworksRoute({ loaderData }: Route.ComponentProps) {
-  return <ContentPage heading="Artworks" items={loaderData.items} />;
+  return <EntryListPage kind="artwork" items={loaderData.items} />;
 }

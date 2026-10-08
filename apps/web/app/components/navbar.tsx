@@ -6,10 +6,11 @@ const LINKS = [
   { to: "/projects", label: "Projects" },
   { to: "/articles", label: "Articles" },
   { to: "/artworks", label: "Artworks" },
+  { to: "/poems", label: "Poems" },
 ] as const;
 
 const linkClass =
-  "pointer-events-auto inline-flex min-h-11 items-center rounded-md px-2.5 text-sm transition-colors duration-(--duration-fast)";
+  "pointer-events-auto inline-flex min-h-11 items-center px-2 text-sm sm:px-2.5 transition-colors duration-(--duration-fast)";
 
 /**
  * Floating navigation: no background, border or blur of its own (readability over scrolling content comes from

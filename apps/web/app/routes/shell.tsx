@@ -1,6 +1,6 @@
 import { useReducedMotion } from "motion/react";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { useMatch, useNavigate, useOutlet, useParams } from "react-router";
+import { useLocation, useNavigate, useOutlet } from "react-router";
 import type { Route } from "./+types/shell";
 import { AttributionSlot } from "~/components/attribution-slot";
 import { DetailPanel, type OpenIntent } from "~/components/detail-panel";
@@ -10,6 +10,7 @@ import { useIsMobile } from "~/hooks/use-is-mobile";
 import { useViewportWidth } from "~/hooks/use-viewport-width";
 import { getProjection } from "~/lib/content.server";
 import { getTilesConfig } from "~/lib/tiles-config.server";
+import { KIND_LABELS, parsePanelPath, parseView, resolveBackTarget, viewSearch, type EntryView } from "~/lib/entries";
 import { panelInset } from "~/lib/layout";
 import { buildPlaceIndex, placePath, toGlobeGroups } from "~/lib/projection";
 
@@ -25,16 +26,20 @@ export function shouldRevalidate() {
 }
 
 /**
- * Pathless layout for `/` and `/locations/:slug`: one full-bleed globe instance, the keyboard path to the
- * places (`PlacesNav`, visually hidden until focused), and the detail panel (whose content is the child route).
+ * Pathless layout for `/`, `/locations/:slug` and the entries (`/articles/:slug`, `/projects/:slug`, `/artworks/:slug`,
+ * `/poems/:slug`): one full-bleed globe instance, the keyboard path to the places (`PlacesNav`, visually hidden until
+ * focused), and the detail panel (whose content is the child route). An entry opens in the side panel or, with `?view=full`,
+ * in the full-screen container: the panel widens over the SAME globe, which stays mounted and keeps its view.
  */
 export default function Shell({ loaderData }: Route.ComponentProps) {
   const { places, globePlaces, groups, routes, tiles } = loaderData;
   const globeGroups = useMemo(() => toGlobeGroups(groups), [groups]);
-  const params = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const outlet = useOutlet();
-  const isOpen = useMatch("/locations/:slug") !== null;
+  const panelRoute = parsePanelPath(location.pathname);
+  const isOpen = panelRoute !== null;
+  const view: EntryView = panelRoute?.type === "entry" ? parseView(location.search) : "panel";
   const isMobile = useIsMobile();
   const reducedMotion = useReducedMotion() ?? false;
   const viewportWidth = useViewportWidth();
@@ -44,8 +49,14 @@ export default function Shell({ loaderData }: Route.ComponentProps) {
   const viewRef = useRef<GlobeViewState | null>(null);
   const intent = useRef<OpenIntent>({ user: false });
 
-  const slug = params.slug ?? null;
-  const selectedSlug = useMemo(() => (places.some((p) => p.slug === slug) ? slug : null), [places, slug]);
+  // The place the globe is on: the open place, or, for an entry opened from a place panel, that place (the entry's route state
+  // names it) so the selection and the camera stay where they were.
+  const slug = panelRoute?.type === "place" ? panelRoute.slug : null;
+  const cameFrom = panelRoute?.type === "entry" ? resolveBackTarget(location.state, places)?.slug ?? null : null;
+  const selectedSlug = useMemo(() => {
+    const wanted = slug ?? cameFrom;
+    return places.some((p) => p.slug === wanted) ? wanted : null;
+  }, [places, slug, cameFrom]);
   // A direct load or reload on /locations/:slug starts ALREADY framed on the place (centred on its bounding box, else on
   // its point, with the framing radius fitted to the free area): derived from the loader's data, so the very first frame
   // is the final one and nothing flies. A saved view (the globe remounting after the mobile slide-over) wins. In-app
@@ -59,6 +70,13 @@ export default function Shell({ loaderData }: Route.ComponentProps) {
   const close = useCallback(() => {
     void navigate("/", { preventScrollReset: true });
   }, [navigate]);
+  // The container is part of the URL (`?view=full`): a history entry, so Back collapses; the router state (where the visitor came from) is kept.
+  const setView = useCallback(
+    (next: EntryView) => {
+      void navigate({ pathname: location.pathname, search: viewSearch(location.search, next) }, { preventScrollReset: true, state: location.state });
+    },
+    [navigate, location.pathname, location.search, location.state],
+  );
   const select = useCallback(
     (next: string) => {
       intent.current.user = true;
@@ -76,11 +94,16 @@ export default function Shell({ loaderData }: Route.ComponentProps) {
   // On mobile the globe is unmounted while the slide-over is open and remounted with the saved view.
   const globeActive = !(isMobile && isOpen);
   // The desktop panel covers the right half: the globe centres itself on the free left half (and animates there).
+  // The inset is the same for both containers: the globe does not re-centre when the panel widens (it keeps its state, untouched).
   const insetRight = panelInset(viewportWidth, isOpen, isMobile);
+  // Full screen on desktop: the panel is the page's `main`; the globe's `main` steps aside (inert, and the skip link's `#main` moves to the panel).
+  const fullScreen = view === "full" && !isMobile;
 
   return (
     <>
-      <main id="main" tabIndex={-1} className="relative h-dvh overflow-hidden outline-none">
+      <main id={fullScreen ? undefined : "main"} tabIndex={-1} inert={fullScreen} className="relative h-dvh overflow-hidden outline-none">
+        {/* The globe page's own h1 (the panel's title is the h1 while it is open). */}
+        {!isOpen && <h1 className="sr-only">Catalyst</h1>}
         <div className="absolute inset-0">
           {globeActive && (
             <Globe
@@ -110,7 +133,11 @@ export default function Shell({ loaderData }: Route.ComponentProps) {
         open={isOpen}
         isMobile={isMobile}
         reducedMotion={reducedMotion}
-        slug={slug}
+        routeKey={panelRoute ? location.pathname : null}
+        returnSlug={slug}
+        label={panelRoute?.type === "entry" ? KIND_LABELS[panelRoute.kind] : "Place"}
+        layout={view}
+        onLayoutChange={panelRoute?.type === "entry" ? setView : undefined}
         intent={intent}
         onClose={close}
       >
