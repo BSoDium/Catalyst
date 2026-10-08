@@ -5,7 +5,7 @@
 // How: for hundreds of views the label canvas (the pixel overlay: engine/box-scene.ts) is read back and compared, cell for cell, with what
 // the cluster tree says is drawn (`__globeDebug.lod()` and `labelCells()`):
 //   - every shown node's rectangle outline is complete (a missing cell = a partial box),
-//   - no opaque cell lies outside the union of the shown outlines and the shown label plates (no stray or half-hidden box),
+//   - no opaque cell lies outside the union of the shown outlines (no stray or half-hidden box; the labels are HTML, not on the canvas),
 //   - a place the tree reports as shown is on the front hemisphere and clear of the limb (independently of the tree's own answer,
 //     a place within 40 degrees of the view centre must be shown and one beyond 95 must not be),
 //   - the drawn rectangle is centred on the cell `project()` reports for the place (the label and pick anchor).
@@ -69,12 +69,12 @@ function sweepInPage({ places, views }) {
       if (missing) failures.push({ kind: "partial box", slug: n.slug, missing, view });
       mark(c0, r0, c1, r1); // generous: the whole rectangle (interior cells are only ever fill, a label plate or nested boxes)
     }
-    for (const t of d.labelCells()) if (t.label) mark(t.label.col, t.label.row, t.label.col + t.label.w, t.label.row + t.label.h);
-    // nothing opaque may lie outside the shown outlines' rectangles and the label plates
+    // (the labels are HTML elements since 2026-10-08: nothing of them is on the pixel canvas)
+    // nothing opaque may lie outside the shown outlines' rectangles
     let stray = 0;
     let first = null;
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (img.data[(y * W + x) * 4 + 3] !== 0 && !allow[y * W + x]) { stray++; first ??= { x, y }; }
-    if (stray) failures.push({ kind: "stray cells outside every shown box and label", cells: stray, first, view });
+    if (stray) failures.push({ kind: "stray cells outside every shown box", cells: stray, first, view });
     // the place rule, independent of the tree
     const vc = vec(view.lon, view.lat);
     const shownSlugs = new Set(nodes.filter((n) => n.kind === "place").map((n) => n.slug));

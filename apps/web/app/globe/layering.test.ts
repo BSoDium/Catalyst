@@ -95,6 +95,7 @@ describe("globe layering", () => {
     expect(reaching.sort()).toEqual([
       "components/attribution-button.tsx -> ~/globe/street/core/attribution",
       "components/credits-dialog.tsx -> ~/globe/street/core/attribution",
+      "lib/projection.ts -> ~/globe/engine/country-names",
       "lib/projection.ts -> ~/globe/engine/framing",
       "routes/dev-street-lines.tsx -> ~/globe/street/harness/synthetic",
       "routes/dev-street.tsx -> ~/globe/engine/geo",

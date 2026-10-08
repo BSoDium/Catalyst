@@ -40,7 +40,7 @@
  *   alpha(node) = ease(progress(node)),  progress runs 0 -> 1 (target drawn) or 1 -> 0 (target hidden) at 1 / FADE_MS per ms
  *
  * The alpha is the opacity the rectangle, its mask and its label are drawn with (engine/pixel-labels.ts: a real alpha blend per art
- * cell, never a shade of grey). Reduced motion: the same targets, and the transition is an instant switch.
+ * cell, never a shade of grey; for the HTML label, its CSS opacity: engine/label-dom.ts). Reduced motion: the same targets, and the transition is an instant switch.
  *
  * The camera is the unified one (`zu`, street/core/registration.ts), projected here with the globe model (the street map
  * is registered to it under a pixel), so both renderers get the same decision. Cost per camera change: one projection of
@@ -49,9 +49,9 @@
  */
 import { DEFAULT_VIEW_RADIUS_KM, EARTH_RADIUS_KM, bboxExtentsKm, type Bbox } from "./framing";
 import { lonLatToVec3, viewBasis, projectUnit, zoomToRadiusPx, focalPx, type ScreenPoint } from "./geo";
-import { placeLabelTexts } from "./country-names";
+import { countryName } from "./country-names";
 import { FadeArray, clockStep, easeFade } from "./fade";
-import { chipText, labelLayout } from "./pixel-labels";
+import { LABEL_TYPE, chipText, labelText } from "./label-text";
 import { TUNING } from "./tuning";
 import { markerShown } from "./visibility";
 
@@ -197,12 +197,14 @@ export class LodTree {
   readonly depth: Uint8Array;
   /** Places below each group (0 for a place): the count on a group's chip. */
   readonly total: Int32Array;
-  /** What a node's label says: the name (a place alone in its country: and the country), and the chip of a group ("12 entries"; null for a place). */
+  /** What a node's label says: the name, and the chip of a group ("12 entries"; null for a place). */
   readonly text: string[];
   readonly chip: (string | null)[];
-  /** Cells across and high of every node's label plate (name and chip), whole cells. */
-  readonly labelW: Int16Array;
-  readonly labelH: Int16Array;
+  /** The English name of a place's country (from `countryCode`), null for a group or when the code is missing or unknown: a hovered or selected label says it ("Name, Country"). */
+  readonly country: (string | null)[];
+  /** CSS px across and high of every node's label as it is written at rest (name and chip; engine/label-text.ts): part of the node for the cut. */
+  readonly labelW: Float32Array;
+  readonly labelH: Float32Array;
   private readonly childStart: Int32Array;
   private readonly childList: Int32Array;
   private readonly roots: Int32Array;
@@ -352,14 +354,15 @@ export class LodTree {
     this.groups = Int32Array.from({ length: n }, (_, i) => i).filter((i) => this.isGroup[i]);
     this.total = new Int32Array(n);
     for (const p of this.places) for (let a = this.parent[p]!; a >= 0; a = this.parent[a]!) this.total[a]!++;
-    // Label text: a place alone in its country (counted over every place of the tree) names it.
-    const placeTexts = placeLabelTexts(list.map((x) => (x.kind === "place" ? x : { name: "" })));
-    this.text = list.map((x, i) => (x.kind === "place" ? placeTexts[i]! : x.name));
+    // Label text: the name alone; the country is only said by a hovered, focused or selected label (the same for every place, whether or not it is
+    // the only one of its country).
+    this.text = list.map((x) => x.name);
     this.chip = list.map((_, i) => (this.isGroup[i] ? chipText(this.total[i]!) : null));
-    this.labelW = new Int16Array(n);
-    this.labelH = new Int16Array(n);
+    this.country = list.map((x) => (x.kind === "place" ? countryName(x.countryCode) : null));
+    this.labelW = new Float32Array(n);
+    this.labelH = new Float32Array(n);
     for (let i = 0; i < n; i++) {
-      const t = labelLayout(this.text[i]!, this.chip[i]!);
+      const t = labelText(this.text[i]!, this.chip[i]!);
       this.labelW[i] = t.w;
       this.labelH[i] = t.h;
     }
@@ -664,7 +667,7 @@ export class LodTree {
       if (n === 0) continue;
       let open = true;
       if (n > 1) {
-        const gap = this.nearestGap(i, cam);
+        const gap = this.nearestGap(i);
         const deep = cam.zoom >= LOD.forceOpenZoom;
         // strongly open (children well apart, rectangle too big, street scale) / strongly closed; in between the state is kept
         if (gap >= sepPx || frac >= LOD.boxMaxTo || deep) this.open[i] = 1;
@@ -704,11 +707,10 @@ export class LodTree {
    * along x and y, so negative when they overlap on both axes (by how much), 0 when they touch. Infinity when fewer than two
    * children have a visible place. A sweep over the rectangles sorted by left edge: O(m log m) for m children.
    */
-  private nearestGap(g: number, cam: LodCamera): number {
+  private nearestGap(g: number): number {
     const from = this.childStart[g]!;
     const to = this.childStart[g + 1]!;
     const members = this.members;
-    const cell = cam.cell;
     const cap = LOD.sepPx * 4; // beyond a few times the threshold the exact value does not matter
     let m = 0;
     for (let j = from; j < to; j++) {
@@ -716,9 +718,9 @@ export class LodTree {
       if (this.isGroup[c] ? members[c]! === 0 : !this.shown[c]) continue;
       // the label's plate sits just above the rectangle's top edge, flush with its left edge
       const bx0 = this.boxX0[c]!;
-      this.sx0[m] = bx0;
-      this.sy0[m] = this.boxY0[c]! - this.labelH[c]! * cell;
-      this.sx1[m] = Math.max(this.boxX1[c]!, bx0 + this.labelW[c]! * cell);
+      this.sx0[m] = bx0 - LABEL_TYPE.padX;
+      this.sy0[m] = this.boxY0[c]! - this.labelH[c]! - LABEL_TYPE.boxGap;
+      this.sx1[m] = Math.max(this.boxX1[c]!, bx0 - LABEL_TYPE.padX + this.labelW[c]!);
       this.sy1[m] = this.boxY1[c]!;
       this.order[m] = m;
       m++;
