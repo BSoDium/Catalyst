@@ -15,7 +15,7 @@ interface AttributionButtonProps {
 
 /**
  * The map's credits: ONE line of mono text with the main contributors ("© OpenStreetMap · OpenFreeMap · Natural Earth", from the
- * same list as the dialog, so it follows the tile configuration), then a "See more" button with an up-left arrow that opens the
+ * same list as the dialog, so it follows the tile configuration), then a middle dot (the same separator as between the credits) and a "See more" button with an up-left arrow that opens the
  * credits dialog (`CreditsDialog`). Both sit in the dev badge's card (`MAP_CARD`), bottom right of the map, left of the detail
  * panel's inset.
  *
@@ -45,7 +45,7 @@ export function AttributionButton({ tiles, insetRight, reducedMotion }: Attribut
           bottom: "max(0.5rem, env(safe-area-inset-bottom))",
           maxWidth: `calc(100% - ${insetRight}px - 1rem)`,
         }}
-        className={cn(MAP_CARD, "absolute z-20 flex items-center gap-2 text-subtle-foreground")}
+        className={cn(MAP_CARD, "absolute z-20 flex items-center gap-[1ch] text-subtle-foreground")}
       >
         <p className="h-4 min-w-0 overflow-hidden select-text">
           {line.map((name, i) => (
@@ -55,6 +55,10 @@ export function AttributionButton({ tiles, insetRight, reducedMotion }: Attribut
             </span>
           ))}
         </p>
+        {/* the same middle dot as between the credits, outside the clipped text so that it stays beside the button on a narrow screen */}
+        <span aria-hidden="true" className="shrink-0 select-none">
+          ·
+        </span>
         <button
           ref={buttonRef}
           type="button"
