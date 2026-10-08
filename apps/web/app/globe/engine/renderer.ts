@@ -48,6 +48,7 @@ import {
   type Velocity,
 } from "./motion";
 import { snapBox } from "./group-square";
+import { IdleSpin, spinBlock, spinFrameMs, type SpinContext } from "./idle-spin";
 import { newLodCamera, setLodCamera, type LodTree } from "./lod-tree";
 import { NodeScreen } from "./node-screen";
 import { GlobeScene } from "./scene";
@@ -175,6 +176,10 @@ export class GlobeRenderer {
   private flightBeyond = false;
   private velocity: Velocity = STILL;
   private inertiaLast = 0;
+  /** Idle rotation of the unzoomed world view (engine/idle-spin.ts): the clock, the timer that wakes the frame loop, the pointers held down. */
+  private spin = new IdleSpin(performance.now());
+  private spinTimer = 0;
+  private pressed = new Set<number>();
 
   constructor(
     private opts: RendererOptions,
@@ -221,6 +226,12 @@ export class GlobeRenderer {
     this.cleanups.push(() => ro.disconnect());
     this.cleanups.push(watchDevicePixelRatio(() => this.resize(true)));
     this.listen(document, "visibilitychange", () => this.setHidden(document.hidden));
+    // Any input anywhere on the page restarts the idle clock and stops the idle rotation (passive: nothing here may delay a gesture).
+    for (const type of ["pointerdown", "pointermove", "pointerup", "pointercancel", "wheel", "touchstart", "keydown"]) {
+      window.addEventListener(type, this.onInput, { passive: true, capture: true });
+      this.cleanups.push(() => window.removeEventListener(type, this.onInput, { capture: true }));
+    }
+    this.cleanups.push(() => window.clearTimeout(this.spinTimer));
     this.listen(this.canvas, "webglcontextlost", () => this.onContextLost());
     this.listen(this.canvas, "webglcontextrestored", () => this.onContextRestored());
     this.cleanups.push(attachControls(this.canvas, opts.container, this.controlsHost()));
@@ -299,6 +310,7 @@ export class GlobeRenderer {
   setInset(px: number) {
     const next = Math.max(0, px);
     if (next === this.insetTarget) return;
+    this.noteActivity();
     const toggles = (this.insetTarget === 0) !== (next === 0);
     this.insetTarget = next;
     if (this.sized && toggles && !this.reduced) {
@@ -389,6 +401,7 @@ export class GlobeRenderer {
    */
   setZoomLimit(zoom: number) {
     this.zoomLimit = zoom;
+    this.noteActivity();
     const next = this.clampView(this.view);
     if (next.zoom !== this.view.zoom) {
       this.view = next;
@@ -403,6 +416,7 @@ export class GlobeRenderer {
   setSuspended(on: boolean) {
     if (on === this.suspended) return;
     this.suspended = on;
+    this.noteActivity();
     // A suspended canvas keeps its last frame, which is stale as soon as the camera moves: it must not show through the
     // street map's dissolving edge (the inset fade) or anywhere else. Made transparent here (NOT `visibility: hidden`: the
     // canvas is the pointer target at every scale and a hidden element gets no pointer events), shown again by the next drawn
@@ -420,6 +434,7 @@ export class GlobeRenderer {
   }
 
   setView(v: Partial<ViewState>) {
+    this.noteActivity();
     this.flight = null;
     this.velocity = STILL;
     this.view = this.clampView({ ...this.view, ...v });
@@ -428,6 +443,7 @@ export class GlobeRenderer {
 
   /** Animated camera move; a jump under reduced motion. */
   flyTo(v: Partial<ViewState>, o?: FlyOptions) {
+    this.noteActivity();
     const beyond = o?.beyondLimit === true;
     const to = this.clampView({ ...this.view, ...v }, beyond);
     if (this.reduced) {
@@ -451,6 +467,7 @@ export class GlobeRenderer {
 
   setReducedMotion(on: boolean) {
     this.reduced = on;
+    this.noteActivity();
     if (on) {
       if (this.flight) this.view = this.clampView(this.flight.to);
       this.flight = null;
@@ -478,6 +495,7 @@ export class GlobeRenderer {
   /** `animateRoute`: play the draw-on of the selected place's route (ignored under reduced motion). */
   setSelected(slug: string | null, animateRoute: boolean) {
     this.selected = slug;
+    this.noteActivity();
     this.selIdx = this.lod.indexOf(slug);
     this.selectRoute(slug, animateRoute);
   }
@@ -485,6 +503,7 @@ export class GlobeRenderer {
   setFocused(slug: string | null) {
     if (slug === this.focused) return;
     this.focused = slug;
+    this.noteActivity();
     this.focIdx = this.lod.indexOf(slug);
     this.refreshMarkers();
     this.requestRender();
@@ -699,7 +718,10 @@ export class GlobeRenderer {
 
   private setHidden(hidden: boolean) {
     this.hidden = hidden;
+    this.noteActivity();
     if (hidden) {
+      window.clearTimeout(this.spinTimer);
+      this.spinTimer = 0;
       this.cancelFrame();
       this.dirty = true;
     } else if (this.dirty) {
@@ -710,6 +732,7 @@ export class GlobeRenderer {
 
   private onContextLost() {
     this.lost = true;
+    this.noteActivity();
     this.cancelFrame();
     this.dirty = true;
     this.opts.onContextChange(true);
@@ -720,6 +743,7 @@ export class GlobeRenderer {
     // That reset also drops the clear colour, so it is set again.
     this.gl.setClearColor(new Color(...this.theme.background), 1);
     this.lost = false;
+    this.noteActivity();
     this.opts.onContextChange(false);
     this.dirty = false;
     this.requestRender();
@@ -765,6 +789,88 @@ export class GlobeRenderer {
     return more;
   }
 
+  /* ------------------------------ idle rotation ------------------------------ */
+
+  /** One object, refilled on each call: the pointer events that ask must not allocate. */
+  private spinCtx: SpinContext = { reduced: false, hidden: false, lost: false, suspended: false, selected: false, focused: false, inset: 0, zoom: 0, minZoom: 0, busy: false };
+  private spinContext(): SpinContext {
+    const c = this.spinCtx;
+    c.reduced = this.reduced;
+    c.hidden = this.hidden;
+    c.lost = this.lost;
+    c.suspended = this.suspended;
+    c.selected = this.selected !== null;
+    c.focused = this.focused !== null;
+    c.inset = this.insetTarget;
+    c.zoom = this.view.zoom;
+    c.minZoom = this.minZoom;
+    c.busy = this.flight !== null || !isStill(this.velocity) || this.insetAnim !== null || this.pressed.size > 0;
+    return c;
+  }
+
+  /** Why the globe is not turning (checks), or null while it is allowed to. */
+  spinInfo() {
+    return { spinning: this.spin.spinning, blockedBy: spinBlock(this.spinContext()), timerArmed: this.spinTimer !== 0 };
+  }
+
+  /** Input or camera motion, or any change of the conditions: the globe stops turning now and the idle clock restarts. */
+  private noteActivity() {
+    const was = this.spin.spinning;
+    this.spin.activity(performance.now());
+    if (was) {
+      window.clearTimeout(this.spinTimer);
+      this.spinTimer = 0;
+    }
+    // Nothing is waiting (a block just lifted: a pointer released, a place deselected ...): look at when it may start. With a timer pending that is a no-op.
+    this.armSpin();
+  }
+
+  private onInput = (e: Event) => {
+    if (e instanceof PointerEvent) {
+      if (e.type === "pointerdown") this.pressed.add(e.pointerId);
+      else if (e.type === "pointerup" || e.type === "pointercancel" || (e.pointerType === "mouse" && e.buttons === 0)) this.pressed.delete(e.pointerId);
+    }
+    this.noteActivity();
+  };
+
+  /**
+   * Wake the frame loop when the idle delay is over, or, while turning, for the next redraw: with a timer, never a rAF chain, so
+   * the loop is asleep in between (a redraw every `spinFrameMs`, about three a second) and an unconditionally idle page stays at zero frames.
+   */
+  private armSpin() {
+    if (this.disposed || (!this.spin.spinning && this.spinTimer)) return; // the pending timer looks again when it fires
+    window.clearTimeout(this.spinTimer);
+    this.spinTimer = 0;
+    const wait = this.spin.spinning ? spinFrameMs(this.pixel, zoomToRadiusPx(this.view.zoom)) : this.spin.wait(performance.now(), this.spinContext());
+    if (wait !== null) this.spinTimer = window.setTimeout(this.onSpinTimer, wait);
+  }
+
+  private onSpinTimer = () => {
+    this.spinTimer = 0;
+    if (this.disposed) return;
+    if (!this.spin.spinning) {
+      const wait = this.spin.wait(performance.now(), this.spinContext());
+      if (wait === null) return;
+      if (wait > 0) {
+        this.spinTimer = window.setTimeout(this.onSpinTimer, wait);
+        return;
+      }
+    }
+    this.requestRender(); // the tick turns the globe (`stepSpin`)
+  };
+
+  /** Once per tick: turn the globe by the idle rotation's step for now. Writes the view directly (`setView` would count as input). */
+  private stepSpin(now: number) {
+    const was = this.spin.spinning;
+    const yaw = this.spin.step(now, this.spinContext());
+    if (!was && this.spin.spinning) {
+      // The pointer has not moved for the whole delay, but whatever was under it is about to slide away: drop the hover highlight.
+      this.setHovered(null);
+      this.opts.onHover?.(null);
+    }
+    if (yaw !== 0) this.view = { ...this.view, lon: normalizeLon(this.view.lon - yaw) };
+  }
+
   /** Whether the last tick asked for another frame: the next tick is then part of a running animation (see `FRAME_CLOCK`). */
   private chained = false;
 
@@ -778,7 +884,10 @@ export class GlobeRenderer {
     // animation was caused by an input event, and its interval says nothing about the device.
     FRAME_CLOCK.live = true;
     FRAME_CLOCK.continuous = this.chained;
-    const moving = this.advance(performance.now());
+    const now = performance.now();
+    const moving = this.advance(now);
+    if (moving) this.spin.activity(now); // a flight, inertia or the inset slide is camera motion: not idle
+    this.stepSpin(now);
     this.renderNow();
     FRAME_CLOCK.continuous = false;
     // A timed transition of the boxes or of the borders (engine/fade.ts) that has not reached its end keeps the loop going, camera or not.
@@ -787,6 +896,7 @@ export class GlobeRenderer {
     const more = moving || (!this.suspended && (this.lod.animating || this.globe.animating));
     this.chained = more;
     if (more) this.requestRender();
+    else this.armSpin();
   };
 
   /** Synchronous render (also used by resize and by the measurement hooks). */

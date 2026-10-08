@@ -48,11 +48,14 @@ for (const scheme of ["light", "dark"] as const) {
     it("muted text (muted foreground on a 90 % page plate) are at least 4.5:1 over the peak and over ink", () => {
       for (const under of behind) expect(contrast(muted, over(bg, 0.9, under))).toBeGreaterThanOrEqual(4.5);
     });
-    it("the Credits link (subtle foreground) is dimmer than muted text by colour, yet still AA against the page and over a map tone under its page-colour halo", () => {
+    it("the credits line (subtle foreground in the map card's 80 % page plate) is dimmer than muted text by colour, yet AA against the page and at least 3.5:1 over the loudest map tone", () => {
       const subtle = token(scheme, "--subtle-foreground");
+      const plate = Number(/bg-background\/(\d+)/.exec(readFileSync(new URL("../../lib/map-card.ts", import.meta.url), "utf8"))?.[1]) / 100;
+      expect(plate).toBeGreaterThan(0.7);
       expect(contrast(subtle, bg)).toBeLessThan(contrast(muted, bg));
       expect(contrast(subtle, bg)).toBeGreaterThanOrEqual(4.5);
-      expect(contrast(subtle, over(bg, 0.9, peak))).toBeGreaterThanOrEqual(4);
+      // worst case: a full-strength peak line under every glyph, unblurred (the card blurs what is behind it, and map lines are one art pixel thin)
+      expect(contrast(subtle, over(bg, plate, peak))).toBeGreaterThanOrEqual(3.5);
       // dimmer by colour, never by opacity
       expect(readFileSync(new URL("../../components/attribution-button.tsx", import.meta.url), "utf8")).not.toMatch(/className="[^"]*opacity|style=\{\{[^}]*opacity/);
     });

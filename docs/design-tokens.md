@@ -15,9 +15,9 @@ The navbar has no surface of its own: it floats over the page and a gradient scr
 | `--foreground` | `#0a0a0a` | `#f5f5f5` | text, primary fill |
 | `--accent` | `#ececec` | `#1f1f1f` | hover and selected rows |
 | `--muted-foreground` | `#595959` | `#a3a3a3` | secondary text (AA: 6.8:1 light, 7.9:1 dark) |
-| `--subtle-foreground` | `#6f6f6f` | `#8a8a8a` | the map's "Credits" link: dimmer than muted text by COLOUR (4.9:1 light, 5.7:1 dark against the page; muted is 6.8 / 7.9), never by opacity; hover and keyboard focus raise it to `--foreground` |
+| `--subtle-foreground` | `#6f6f6f` | `#8a8a8a` | the map's credits line: dimmer than muted text by COLOUR (4.9:1 light, 5.7:1 dark against the page; muted is 6.8 / 7.9), never by opacity; hover and keyboard focus raise it to `--foreground` |
 | `--border` | `rgb(0 0 0 / .14)` | `rgb(255 255 255 / .16)` | hairlines |
-| `--border-strong` | `rgb(0 0 0 / .4)` | `rgb(255 255 255 / .45)` | outlined buttons, globe outline |
+| `--border-strong` | `rgb(0 0 0 / .4)` | `rgb(255 255 255 / .45)` | outlined buttons (not the credits dialog, which uses `--border`) |
 | `--ring` | `#0a0a0a` | `#f5f5f5` | focus ring (2px outline, 2px offset, all focusable elements) |
 | `--primary` / `--primary-foreground` | `#0a0a0a` / `#fbfbfb` | `#f5f5f5` / `#0a0a0a` | default button |
 | `--globe-grid`, `--globe-limb` | `rgb(0 0 0 / .12)`, `rgb(0 0 0 / .3)` | `rgb(255 255 255 / .14)`, `rgb(255 255 255 / .34)` | no longer read by the map: the graticule and the horizon outline are both the palette's `faint` level (below; the outline was `soft` until 2026-10-07, when the owner found the globe's ring too visible); the tokens remain for any other use |
@@ -31,13 +31,11 @@ The globe's ocean has no token of its own: it is `--background` (the disc and th
 Tailwind utilities: `bg-background`, `text-foreground`, `text-muted-foreground`, `border-border`, `bg-accent`, etc.
 There is no accent hue and no destructive color on purpose.
 
-### Map credits link
+### Map card and credits line
 
-`AttributionButton` (`components/attribution-button.tsx`) is a plain text link, "Credits" followed by a small up-right arrow (lucide `ArrowUpRight`,
-`aria-hidden`), at the bottom right of the map, left of the detail panel's inset. It is a `<button aria-haspopup="dialog">` that opens the credits
-dialog (accessible name "Credits"; 32 px high on desktop, 44 px below `md`). Rest colour `--subtle-foreground` at full opacity, a page-colour
-text halo (`.credits-link`) so it reads over a coastline, `--foreground` on hover and on keyboard focus plus the global focus ring. The
-pixel-art "i" chip it replaced is gone (`info-button-art.ts` deleted).
+`MAP_CARD` (`app/lib/map-card.ts`) is the small card that sits over the map: `rounded-sm border border-border bg-background/80 px-1.5 py-0.5 font-mono text-[10px] leading-4 tracking-wide backdrop-blur-sm`. Two things use it, so they match: the dev-only content badge (`PREVIEW local data not published`, bottom left, muted text, above the credits on phones) and the credits line. A test (`components/map-card.test.ts`) fails if either drops a class of it. Colour is not part of it.
+
+`AttributionButton` (`components/attribution-button.tsx`) is the credits line: one line of selectable mono text with the main contributors ("© OpenStreetMap · OpenFreeMap · Natural Earth", from `core/attribution.ts`), in the dim `--subtle-foreground` at full opacity, then a "See more" button with a lucide `ArrowUpLeft` (`aria-hidden`), at the bottom right of the map, left of the detail panel's inset. The text is clipped, never wrapped, when the screen is narrow (last items first). The button is a `<button aria-haspopup="dialog" aria-label="See more credits">` that opens the credits dialog; it is 16 px high with an invisible `::after` that makes the touch target 44 px below `md`. Hover and keyboard focus raise the colour to `--foreground`, plus the global focus ring. The text halo of the old link (`.credits-link`) is gone: the card's plate does its job (worst case, a full-strength peak map line under a glyph, is 3.7:1 in light; `readability.test.ts`, which reads the plate from `MAP_CARD`). The credits dialog uses `--border` (the card's hairline) for its panel and its Close button, not `--border-strong`.
 
 ## Typography
 

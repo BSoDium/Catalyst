@@ -131,8 +131,8 @@ map it hands over to (see "Handover" below). The seam extends compatibly:
   past the regional scale, so older saved views are valid. (`zoom`, `street`) is one continuous scale.
 - `GlobeProps.tiles?: GlobeTiles | null` (primary URL, optional fallback PMTiles URL, max fallback zoom: the shell
   loader's `tiles`). Absent or null = world and regional scale only, exactly as before.
-- `GlobeProps.attribution?: ComponentType<GlobeAttributionProps>`: the map's credits control (the pixel-art "i" button
-  and its dialog) is app UI, so the app hands it in and the globe renders it in its box (bottom right, clear of
+- `GlobeProps.attribution?: ComponentType<GlobeAttributionProps>`: the map's credits control (the credits line with its
+  "See more" button, and the dialog behind it) is app UI, so the app hands it in and the globe renders it in its box (bottom right, clear of
   `insetRight`); the globe never imports it. `StreetMapCanvas` takes the same prop. The app passes
   `components/attribution-slot.tsx` (a lazy wrapper around `attribution-button.tsx`, so the button stays out of the
   main bundle) in `routes/shell.tsx` and `routes/dev-street.tsx`. Omitted = no credits control: pass it wherever the
@@ -180,8 +180,7 @@ needs it: `zoomCorrection` (`log2 cos lat`) in `engine/geo.ts` (re-exported by `
 `routeLift` in `engine/view.ts` with its constants `TUNING.routeFlat` (`HANDOVER.routeFlat` aliases it).
 
 Known exceptions, in the other direction (app code reaching past the `globe/index.tsx` seam), pinned by the same test so a
-new one is a decision: `components/attribution-button.tsx`, `components/credits-dialog.tsx` and
-`components/info-button-art.ts` use engine internals (colours, pixel labels, pixel font, tuning, credits data);
+new one is a decision: `components/attribution-button.tsx` and `components/credits-dialog.tsx` use the credits data (`street/core/attribution`);
 `lib/projection.ts` uses `engine/framing`; `lib/tiles-config.server.ts` uses `street/types`; the dev routes use
 `engine/geo` and `street/harness/synthetic`. Inside `street/`, `core/` is "pure" but still imports the constant and type
 files `../tuning` and `../../types`.
@@ -204,6 +203,7 @@ files `../tuning` and `../../types`.
 | `engine/motion.ts` | pure flight and inertia maths |
 | `engine/framing.ts` | pure camera framing: `placeFraming(place)` (centre and radius of the place's bounding box, else its point and `viewRadiusKm`) and the zoom that fits that circle in the free area |
 | `engine/inset.ts` | pure maths of the right-hand inset (`insetRight`): the projection centre shifted by whole buffer pixels |
+| `engine/idle-spin.ts` | pure idle rotation of the unzoomed world view: the idle clock, when it may run, the yaw step and the redraw period, the page flags ("Idle rotation" below) |
 | `engine/governor.ts` | adaptive frame-budget governor: steps render quality down on slow frames and back up (docs/performance.md) |
 | `engine/palette.ts` | the one grey palette of both renderers (`PALETTE_LEVELS`, `MAP_CONTRAST`, roles `wash` .. `ink`) built from the CSS tokens |
 | `engine/visibility.ts` | whole-marker visibility: front hemisphere and footprint inside the silhouette, one answer for picking, labels and GPU |
@@ -251,7 +251,7 @@ engine); every other initial chunk is byte-identical. `grep WebGLRenderer build/
    only then fits the minimum zoom and applies the start view (so a remount never fits a 1px globe).
    Start view: `initialView` if given, else the selected place at the select zoom, else the default.
 4. Frames are on demand: `requestRender()` schedules at most one rAF; the tick advances flight, inertia and
-   route draw-on and reschedules only while something is still animating. Idle = no rAF, no GL calls.
+   route draw-on and reschedules only while something is still animating. Idle = no rAF, no GL calls, until the idle rotation starts (8 s of rest on the unzoomed world view; `engine/idle-spin.ts`).
    Resize renders synchronously (resizing clears the buffer). `visibilitychange` hidden cancels the pending
    frame and defers work; the first visible moment repaints once.
 5. After each frame the label overlay is re-placed and the view is reported (`onViewChange`, deduplicated).
@@ -428,7 +428,7 @@ map unusable (retreat to the globe). WebGL2 missing for the street map = street 
 
 **Reduced motion**: flights are jumps; the swap is instant (as always); no focus circle; overlay swap instant;
 routes static. **Idle**: zero rAF calls, zero ticks, zero street renders in all states (measured at world, held
-mid-dissolve and street scale; the follow debounce is a timer, not a frame loop). **Phones**: art pixel 2 CSS px
+mid-dissolve and street scale; the follow debounce is a timer, not a frame loop). The one exception is the world view after 8 s without input: the idle rotation ("Idle rotation" below), off in every debug page. **Phones**: art pixel 2 CSS px
 (both renderers use the globe's rule); the street map renders at native art resolution by default (`renderScale` 3);
 `highResolution` is the device-resolution path (see docs/street-architecture.md).
 
@@ -476,6 +476,17 @@ world round trips, 3 live at street scale (Three + 2) and 1 after (43 created, 4
   panel keep default touch behaviour. There is no keyboard handling on purpose (the canvas is not focusable).
 - Debug introspection: `window.__globeDebug` exists only with `?globe-debug` in the URL or
   `sessionStorage["globe-debug"] = "1"`; the browser checks use it.
+
+### Idle rotation (2026-10-08)
+
+When the globe is **fully unzoomed** and nobody has touched anything for **8 s** (`SPIN.idleMs`), the earth turns slowly **eastward** (its surface moves to the right, like the planet; the view's longitude decreases) at **1.2 degrees a second** (one turn in five minutes, `SPIN.degPerSec`). Code: the pure decisions in `engine/idle-spin.ts` (`spinBlock`, `yawStepDeg`, `spinFrameMs`, `IdleSpin`), wired in `engine/renderer.ts` (`stepSpin`, `armSpin`, `noteActivity`); tests `engine/idle-spin.test.ts`; browser check `scripts/globe/idle-spin.mjs`.
+
+- **When it may run** (`spinBlock`, first reason wins): rotation not disabled (`?no-rotate`, below); no reduced motion; the tab visible; the GL context alive; the globe not suspended (the street map does not own the picture); no place selected; no place focused from the list; no inset (detail panel closed; the mobile slide-over unmounts the globe anyway); **zoom at most 0.15 levels above the whole-globe fit** (`SPIN.unzoomedSlack`: a wheel at the minimum lands exactly on the fit, the slack absorbs rounding; the fit zoom is per screen and per inset, 2.70 at 1440x900, so "unzoomed" means the whole globe in the window); no drag, pressed pointer, flight, inertia or inset slide.
+- **The idle clock** restarts on any pointer down, move, up or cancel, wheel, touch start or key press anywhere on the window (passive capture listeners, `renderer.onInput`), on every camera change (`setView`, `flyTo`, a tick that advances a flight, inertia or the inset slide) and on every change of a condition above (selection, focus, inset, reduced motion, visibility, suspension, zoom limit, context loss and restore). Transitions of the boxes that the rotation itself causes are NOT activity.
+- **Stopping is instant**: the input handler clears the turning flag and its timer in the same task, so the next tick moves nothing and no easing is involved; the view is exactly where the last frame left it. The next start is a full delay later. A pointer held down keeps it from starting; a hover highlight is dropped when it starts (the box would slide away from the pointer).
+- **Cost, through the existing on-demand loop**: no rAF chain. A `setTimeout` wakes the loop for the idle delay (a timer is not a frame: rest stays at zero frames before it) and then once per `spinFrameMs` (the time the disc's centre takes to move one art pixel: 180 to 230 ms at 1440x900, bounded to 50 to 500 ms; about 4 to 5 frames a second including the 200 ms box transitions that the limb crossings start, against 60 for a running animation). Each frame is the normal one with the camera's longitude changed: the cut, the borders and the labels follow as for any camera move. The step is wall-clock based (`dt` capped at 1 s), so a throttled timer never jumps the globe. The frame governor sees these frames as non-continuous (cost = their own work) with gaps over 100 ms, which restart its window: it neither degrades nor is disturbed, and its level stays as it was.
+- **Flags** (`applySpinFlags`, `?`-param or sessionStorage key): `no-rotate` switches it off on any page. Pages in debug mode (`?globe-debug`, which every browser check runs in) have it OFF by default, because the checks assert zero frames at rest for longer than 8 s; `rotate` turns it back on there, `spin-idle=MS` (100 to 600000, debug pages only) turns it on with a shorter delay. `__globeDebug.spin()` reports `{ spinning, blockedBy, timerArmed, idleMs, degPerSec, enabled }`.
+- **The zero-frame idle checks** (`perf` idle, `groups.mjs idle`, `handover-perf.mjs idle`, `check.mjs` section 9) therefore run unchanged and still assert zero frames: they run in debug mode with the rotation off. `idle-spin.mjs` asserts the new behaviour with the delay shortened to 1.5 s: zero frames and zero rAF calls before the delay, an eastward turn at the configured speed in slow redraws after it, stops on a pointer move, a key, a wheel notch and a click, no start while a pointer is held, never with a place selected or focused, with the panel open (direct load), zoomed past the slack (and it turns inside it), under reduced motion (Chromium's emulation) or in a hidden tab, `?no-rotate`, and a tap on a phone viewport.
 
 ### Framing and cut checks (`scripts/globe/framing.mjs`)
 
@@ -625,7 +636,7 @@ Fixed on the way: (a) the first version of the street layer switch set `layout.v
 
 ### Checks of the boxes (`scripts/globe/groups.mjs`, `markers.mjs`)
 
-`groups.mjs [lod|cases|pixels|empty|timed|at-rest|reduced|pick|targets|cost|idle|handover|shots]` (demo content: `pnpm dev:demo`, `lod`, `cases` and `handover` need it; `targets` and `at-rest` run on any content, your preview included; `handover` also
+`idle-spin.mjs [start|input|blocked|reduced|hidden|flags|mobile]` checks the idle rotation (above; any content). `groups.mjs [lod|cases|pixels|empty|timed|at-rest|reduced|pick|targets|cost|idle|handover|shots]` (demo content: `pnpm dev:demo`, `lod`, `cases` and `handover` need it; `targets` and `at-rest` run on any content, your preview included; `handover` also
 needs the local tile server) checks the cut (at rest every node fully drawn, exactly one level per branch, 10 close places = one box
 that opens, a lone place, two distant places, the timed transitions), the pixels (every outline cell present, only palette colours), reduced motion,
 picking (border and label plate yes, interior no), the label rule (`targets`: at rest 100 % of the drawn boxes have a label on a sweep of 288 views of the preview and of the demo), cost, idle (0 frames, 0 canvas draws) and that the globe and the street overlay
@@ -694,7 +705,7 @@ Measured behaviour (same build, same environment):
 
 | Check | Result |
 | --- | --- |
-| Idle, 4 s without input (also after moving the pointer) | 0 rAF calls, 0 `gl.clear` (no frames), `isAnimating() === false` |
+| Idle, 4 s without input (also after moving the pointer) | 0 rAF calls, 0 `gl.clear` (no frames), `isAnimating() === false` (measured in debug mode; a visitor's page starts the idle rotation after 8 s, see "Idle rotation") |
 | Drag with fling, then rest | frames while flinging, then 0 rAF over the next 1.5 s |
 | Route draw-on | animating while drawing; idle again after it ends |
 | Reduced motion (`emulateMedia`) | selecting Hanoi landed on its exact coordinates in under two frames, `isAnimating() === false`, 0 rAF over 2.5 s, route static |
