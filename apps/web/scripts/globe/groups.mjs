@@ -20,9 +20,10 @@
 // reduced   reduced motion: every alpha is 0 or 1 (no cross-fade), one switch per box
 // pick      click a small box (its border or its inside) = flies to frame its circle (its places appear), the label plate is a hit area, a
 //           place's rectangle inside opens its page, hover highlights the box
-// targets   whatever the content (demo or your preview): over a sweep of views, at rest, no node is dimmed or half-faded, no drawn node that has
-//           no drawn ancestor is below full opacity (London under an open Europe), a dimmed node always has a drawn ancestor, and hovering a box,
-//           its label and the gap between them shows the pointer and the node's hover state
+// targets   whatever the content (demo or your preview): over a sweep of views (world, continents, Europe, the Balkans, a city cluster and a grid of
+//           lon/lat/zoom), at rest, EVERY drawn box has its label (100 %: none dropped, none dimmed, each plate on the grid, no two plates overlapping
+//           unless one is the last resort) and is at full opacity, no node is half-faded, and hovering a box, its label and the gap between them
+//           shows the pointer and the node's hover state
 // cost      the cost of the cluster pass with 18, 186, 1000 and 5000 nodes
 // idle      no frames, no rAF, no label canvas redraw while nothing moves
 // handover  the same boxes and dots are drawn by the globe's and the street overlay's drawing of one camera
@@ -178,7 +179,7 @@ try {
           const mainRect = document.querySelector("canvas").getBoundingClientRect();
           const rootRect = root.getBoundingClientRect();
           const ramp = d.ramp(); // 0..255 per level
-          const inkAndBg = [ramp[0], ramp[ramp.length - 1]];
+          const inkAndBg = [ramp[0], ramp[ramp.length - 1], ramp[ramp.length - 2], ramp[ramp.length - 3]]; // the page colour, the ink, the peak level (boxes and text at rest) and the level a counter may use
           const stat = { views: 0, boxes: 0, outlineMissing: 0, offPalette: 0, scaleOk: true, first: null };
           const rect = canvas.getBoundingClientRect();
           if (Math.abs(rect.width - canvas.width * P) > 0.01 || Math.abs(rect.height - canvas.height * P) > 0.01) stat.scaleOk = false;
@@ -192,7 +193,7 @@ try {
             const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
             // Mid-fade, a label's text over its plate is two translucent marks of the two colours: optically right, but a blend in the
             // canvas's straight-alpha bytes. The palette is judged on views at rest (every drawn node and interior mask fully opaque or absent).
-            const atRest = d.labelCells().every((t) => t.alpha === 1 && (t.fillAlpha === 0 || t.fillAlpha === 1) && (!t.label || t.labelAlpha === 1));
+            const atRest = d.labelCells().every((t) => t.alpha === 1 && (t.fillAlpha === 0 || t.fillAlpha === 1));
             for (let i = 0; i < img.data.length && atRest; i += 4) {
               if (img.data[i + 3] === 0) continue;
               stat.cells = (stat.cells ?? 0) + 1;
@@ -201,12 +202,12 @@ try {
                 continue;
               }
               const near = (c) => Math.abs(img.data[i] - c[0]) <= 4 && Math.abs(img.data[i + 1] - c[1]) <= 4 && Math.abs(img.data[i + 2] - c[2]) <= 4;
-              if (!near(inkAndBg[0]) && !near(inkAndBg[1])) stat.offPalette++;
+              if (!inkAndBg.some(near)) stat.offPalette++;
             }
             const drawnCells = new Map(d.labelCells().map((t) => [t.slug, t]));
             for (const n of d.lod()) {
               const cellInfo = drawnCells.get(n.slug);
-              if (!n.shown || n.alpha < 0.99 || !cellInfo || cellInfo.alpha < 0.99) continue; // a box dimmed for lack of its label (under a drawn group) is translucent
+              if (!n.shown || n.alpha < 0.99 || !cellInfo || cellInfo.alpha < 0.99) continue;
               n.solid = cellInfo.solid;
               stat.boxes++;
               const c0 = Math.round((n.box.x0 - (rect.left - rootRect.left)) / P);
@@ -214,22 +215,22 @@ try {
               const r0 = Math.round((n.box.y0 - (rect.top - rootRect.top)) / P);
               const r1 = Math.round((n.box.y1 - (rect.top - rootRect.top)) / P);
               const opaque = (x, y) => x >= 0 && y >= 0 && x < canvas.width && y < canvas.height && img.data[(y * canvas.width + x) * 4 + 3] === 255;
-              // The outline at rest: the four corner arms solid, the rest of each edge dashed (2 on, then a gap, from the arm's end, mirrored); the arm
+              // The outline at rest: the four corner arms solid, the rest of each edge dashed (2 on, then a gap, from the arm's end, anchored to the edge's own corner); the arm
               // and the gap grow with the box's smaller side (`dashingFor`, engine/pixel-labels.ts: arm 10 % in 3..14 cells, gap 3.5 % in 2..9), a box
-              // too short for two arms and a gap is solid; the hovered, focused or selected box (drawn solid) is one uninterrupted line.
+              // too short for two arms and a gap is solid; the selected box (drawn solid) is one uninterrupted line.
               const solid = !!n.solid;
               const side = Math.min(c1 - c0, r1 - r0);
               const clampInt = (v, lo, hi) => Math.max(lo, Math.min(hi, Math.round(v)));
               const arm = clampInt(side * 0.1, 3, 14);
               const gap = clampInt(side * 0.035, 2, 9);
+              // each edge is counted from its anchor: top from its left corner, bottom from its right, left from its top, right from its bottom (`edgeLit`)
               const lit = (i, len) => {
                 if (solid || len < 2 * arm + gap) return true;
-                const dd = Math.min(i, len - 1 - i);
-                return dd < arm || (dd - arm) % (2 + gap) >= gap;
+                return i < arm || i >= len - arm || (i - arm) % (2 + gap) >= gap;
               };
               let missing = 0;
-              for (let x = c0; x < c1; x++) for (const y of [r0, r1 - 1]) if (lit(x - c0, c1 - c0) && x >= 0 && x < canvas.width && y >= 0 && y < canvas.height && !opaque(x, y)) missing++;
-              for (let y = r0; y < r1; y++) for (const x of [c0, c1 - 1]) if (lit(y - r0, r1 - r0) && x >= 0 && x < canvas.width && y >= 0 && y < canvas.height && !opaque(x, y)) missing++;
+              for (let x = c0; x < c1; x++) for (const y of [r0, r1 - 1]) if (lit(y === r0 ? x - c0 : c1 - 1 - x, c1 - c0) && x >= 0 && x < canvas.width && y >= 0 && y < canvas.height && !opaque(x, y)) missing++;
+              for (let y = r0; y < r1; y++) for (const x of [c0, c1 - 1]) if (lit(x === c0 ? y - r0 : r1 - 1 - y, r1 - r0) && x >= 0 && x < canvas.width && y >= 0 && y < canvas.height && !opaque(x, y)) missing++;
               if (missing) {
                 stat.outlineMissing++;
                 stat.first ??= { n: n.slug, view: v, missing, c0, c1, r0, r1 };
@@ -240,7 +241,7 @@ try {
           return stat;
         });
         expect(`${name} ${scheme}: ${res.views} views, ${res.boxes} boxes: every lit cell of the outline (corner arms and dashes, solid when hovered) is drawn, whole cells`, res.outlineMissing === 0 && res.boxes > 10, res);
-        expect(`${name} ${scheme}: at rest, nothing on the label canvas but the page colour and the ink, fully opaque (a fade is opacity: unit-tested)`, res.offPalette === 0, res);
+        expect(`${name} ${scheme}: at rest, nothing on the label canvas but the page colour and the ink, peak and counter levels, fully opaque (a fade is opacity: unit-tested)`, res.offPalette === 0, res);
         expect(`${name} ${scheme}: the label canvas is cols x rows cells scaled by exactly one cell`, res.scaleOk, res);
         expect(`${name} ${scheme}: no console errors`, logs.length === 0, logs);
         await page.context().close();
@@ -377,7 +378,7 @@ try {
       if (!quiet) bad.push({ what, bad: "the frame loop never went quiet", layers: r.layers });
       for (const c of r.cells) {
         boxes++;
-        const why = c.alpha !== 1 ? `box alpha ${c.alpha}` : c.fillAlpha !== 0 && c.fillAlpha !== 1 ? `mask ${c.fillAlpha}` : c.labelAlpha !== 0 && c.labelAlpha !== 1 ? `label ${c.labelAlpha}` : c.dimmed ? "dimmed" : null;
+        const why = c.alpha !== 1 ? `box alpha ${c.alpha}` : c.fillAlpha !== 0 && c.fillAlpha !== 1 ? `mask ${c.fillAlpha}` : !c.label ? "no label" : null;
         if (why) bad.push({ what, slug: c.slug, why, view: r.view });
       }
       for (const n of r.lod) if (n.alpha !== 1 || (n.fillAlpha !== 0 && n.fillAlpha !== 1)) bad.push({ what, slug: n.slug, why: `lod alpha ${n.alpha} mask ${n.fillAlpha}` });
@@ -442,7 +443,7 @@ try {
       await page.evaluate((z) => window.__globeDebug.setView({ lon: 10, lat: 47, zoom: z }), z);
       await check(`borders at zoom ${z}`);
     }
-    expect(`at rest after the camera stops (${frames} resting frames, ${boxes} boxes, ${thresholds} thresholds): every box, mask, label and layer is fully on or fully off, nothing dimmed, no frame pending`, frames > 30 && bad.length === 0, bad.slice(0, 6));
+    expect(`at rest after the camera stops (${frames} resting frames, ${boxes} boxes, ${thresholds} thresholds): every box, mask and layer is fully on or fully off, every box has its label, no frame pending`, frames > 30 && bad.length === 0, bad.slice(0, 6));
     expect("no console errors", logs.filter((l) => !/404/.test(l)).length === 0, logs);
     await page.context().close();
   }
@@ -490,11 +491,11 @@ try {
     const top = await page.evaluate(() => document.querySelector("canvas").getBoundingClientRect().top);
     const lab = tab?.label;
     expect(
-      `the label reads "${tab?.text}" with the chip "${tab?.chip}", text only, just above the box's top-left corner on the same baseline`,
-      !!tab && !!lab && tab.text === "Crowd" && tab.chip === "10 entries" && lab.col === tab.rect.c0 && lab.row + lab.h === tab.rect.r0 && lab.chipCol > lab.col && lab.baseline === lab.row + lab.h - 2 && !lab.inside,
+      `the label reads "${tab?.text}" with the chip "${tab?.chip}", text only, flush on the box's top-left corner, the whole label at its first position`,
+      !!tab && !!lab && tab.text === "Crowd" && tab.chip === "10 entries" && lab.col === tab.rect.c0 && lab.row + lab.h === tab.rect.r0 && lab.chipCol > lab.col && lab.baseline === lab.row + lab.h - 5 && !lab.inside && lab.variant === 0,
       tab,
     );
-    await page.mouse.click(left + (lab.col - 1 + lab.w / 2) * cell, top + (lab.row + lab.h / 2) * cell);
+    await page.mouse.click(left + (lab.col + lab.w / 2) * cell, top + (lab.row + lab.h / 2) * cell);
     await page.waitForFunction(() => !window.__globeDebug.isAnimating(), null, { timeout: 8000 });
     expect("a click on the tab also flies to the group", (await view()).zoom > v0.zoom + 0.5, await view());
     // a place's rectangle: its border opens its page
@@ -516,33 +517,61 @@ try {
     });
     const minZoom = await page.evaluate(() => window.__globeDebug.minZoom());
     let seen = 0;
-    let nameless = 0;
+    let shortened = 0;
+    let overlapped = 0;
+    let nested = 0;
     const halfState = [];
+    const unlabelled = [];
+    const collisions = [];
     const samples = [];
-    for (const lon of [-120, -80, -40, 0, 20, 60, 100, 140]) {
-      for (const lat of [-25, 10, 30, 45, 60]) {
-        for (const dz of [0, 0.3, 0.7, 1.1, 1.6]) {
-          const cells = await page.evaluate(
-            ({ lon, lat, zoom }) => {
-              window.__globeDebug.setView({ lon, lat, zoom });
-              window.__globeDebug.settle();
-              return window.__globeDebug.labelCells();
-            },
-            { lon, lat, zoom: minZoom + dz },
-          );
-          for (const c of cells) {
-            seen++;
-            if (!c.label && !c.solid) nameless++;
-            // At rest nothing is half way: a node is fully drawn, its mask and its label are on or off, and the only dimmed box is one with a drawn
-            // group above it (an unlabelled box that has none, London under an open Europe, is drawn at full opacity).
-            const bad = c.alpha !== 1 && !(c.dimmed && c.parented) ? "half-faded" : c.dimmed && !c.parented ? "dimmed without a drawn ancestor" : !c.parented && c.alpha < 1 ? "below full with no drawn ancestor" : c.fillAlpha !== 0 && c.fillAlpha !== c.alpha ? "half mask" : c.labelAlpha !== 0 && c.labelAlpha !== 1 ? "half label" : null;
-            if (bad) halfState.push({ lon, lat, dz, slug: c.slug, bad, alpha: c.alpha, fill: c.fillAlpha, label: c.labelAlpha, dimmed: c.dimmed, parented: c.parented });
-          }
-          if (samples.length < 40 && dz > 0 && cells.length) samples.push({ lon, lat, zoom: minZoom + dz });
+    const NAMED = {
+      world: { lon: 10, lat: 30, dz: 0 },
+      "continents (Europe and Africa)": { lon: 12, lat: 30, dz: 0.4 },
+      "Asia and the Pacific": { lon: 105, lat: 15, dz: 0.4 },
+      "the Americas": { lon: -70, lat: 0, dz: 0.4 },
+      Europe: { lon: 12, lat: 47, dz: 1.4 },
+      "the Balkans": { lon: 21, lat: 43, dz: 2.2 },
+      "a city cluster (London, Brussels, Paris)": { lon: 1, lat: 50.5, dz: 3 },
+      "Paris and Switzerland": { lon: 5, lat: 47, dz: 3.4 },
+    };
+    const views = Object.entries(NAMED).map(([name, v]) => ({ name, ...v }));
+    for (const lon of [-120, -80, -40, 0, 20, 60, 100, 140]) for (const lat of [-25, 10, 30, 45, 60]) for (const dz of [0, 0.3, 0.7, 1.1, 1.6, 2.4, 3.2]) views.push({ name: "sweep", lon, lat, dz });
+    for (const v of views) {
+      const cells = await page.evaluate(
+        ({ lon, lat, zoom }) => {
+          window.__globeDebug.setView({ lon, lat, zoom });
+          window.__globeDebug.settle();
+          return { cells: window.__globeDebug.labelCells() };
+        },
+        { lon: v.lon, lat: v.lat, zoom: minZoom + v.dz },
+      );
+      const placed = [];
+      for (const c of cells.cells) {
+        seen++;
+        const l = c.label;
+        // At rest nothing is half way (a node is fully drawn, its mask on or off) and EVERY drawn box has its label: none dropped, none dimmed.
+        const bad = c.alpha !== 1 ? "half-faded" : c.fillAlpha !== 0 && c.fillAlpha !== c.alpha ? "half mask" : !l ? "no label" : l.w <= 0 ? "empty label" : null;
+        if (bad) {
+          (bad === "no label" || bad === "empty label" ? unlabelled : halfState).push({ ...v, slug: c.slug, bad, alpha: c.alpha, fill: c.fillAlpha });
+          continue;
         }
+        if (l.variant > 0) shortened++;
+        if (l.overlap) overlapped++;
+        if (l.inside) nested++;
+        placed.push({ slug: c.slug, x0: l.col, y0: l.row, x1: l.col + l.w, y1: l.row + l.h, overlap: l.overlap });
       }
+      // plates are disjoint (a cell of clearance) unless one of the two is the last resort
+      for (let i = 0; i < placed.length; i++)
+        for (let j = i + 1; j < placed.length; j++) {
+          const p = placed[i];
+          const q = placed[j];
+          if (p.overlap || q.overlap) continue;
+          if (p.x0 < q.x1 && p.x1 > q.x0 && p.y0 < q.y1 && p.y1 > q.y0) collisions.push({ ...v, a: p.slug, b: q.slug });
+        }
+      if (v.name === "sweep" && v.dz > 0 && cells.cells.length && samples.length < 40) samples.push({ lon: v.lon, lat: v.lat, zoom: minZoom + v.dz });
     }
-    expect(`at rest, over ${seen} drawn boxes: none half-faded, none dimmed or below full opacity without a drawn group above it, masks and labels on or off (${nameless} boxes show no name, still full opacity and clickable)`, seen > 20 && halfState.length === 0, halfState.slice(0, 5));
+    expect(`at rest, over ${views.length} views (world, continents, Europe, the Balkans, a city cluster, a lon/lat/zoom sweep) and ${seen} drawn boxes: 100 % have their label (${unlabelled.length} without), none half-faded or dimmed (${shortened} labels shortened, ${overlapped} drawn over another as the last resort, ${nested} nested inside their box)`, seen > 20 && unlabelled.length === 0 && halfState.length === 0, { unlabelled: unlabelled.slice(0, 5), halfState: halfState.slice(0, 5) });
+    expect("at rest, no two label plates overlap unless one of them is the last resort", collisions.length === 0, collisions.slice(0, 5));
 
     // Hover: the box, its label and the gap between them are one target; the hovered node is drawn solid.
     const ptOf = (cx, cy) => ({ x: origin.left + cx * cell, y: origin.top + cy * cell });
@@ -554,7 +583,7 @@ try {
         window.__globeDebug.settle();
         return window.__globeDebug.labelCells();
       }, v);
-      const plateOf = (o) => (o.label ? { c0: o.label.col - 1, r0: o.label.row, c1: o.label.col - 1 + o.label.w, r1: o.label.row + o.label.h } : null);
+      const plateOf = (o) => (o.label ? { c0: o.label.col, r0: o.label.row, c1: o.label.col + o.label.w, r1: o.label.row + o.label.h } : null);
       const BIG = Math.floor(0.45 * Math.min(1440, 900) / cell); // HIT.bigBoxFrac of the smaller side, in cells: a big box has no interior target
       const isBig = (o) => Math.max(o.rect.c1 - o.rect.c0, o.rect.r1 - o.rect.r0) > BIG;
       const near = (r, x, y, m) => x >= r.c0 - m && x <= r.c1 + m && y >= r.r0 - m && y <= r.r1 + m;
@@ -568,9 +597,9 @@ try {
           return near(r, x, y, 5) && !(x > r.c0 + 5 && x < r.c1 - 5 && y > r.r0 + 5 && y < r.r1 - 5);
         });
       for (const c of cells) {
-        if (c.alpha < 0.9 || !c.label || isBig(c)) continue;
+        if (c.alpha < 0.9 || !c.label || isBig(c) || c.label.overlap) continue;
         const r = c.rect;
-        const pl = { c0: c.label.col - 1, r0: c.label.row, c1: c.label.col - 1 + c.label.w, r1: c.label.row + c.label.h };
+        const pl = { c0: c.label.col, r0: c.label.row, c1: c.label.col + c.label.w, r1: c.label.row + c.label.h };
         const probes = [
           ["box", (r.c0 + r.c1) / 2, (r.r0 + r.r1) / 2],
           ["label", (pl.c0 + pl.c1) / 2, (pl.r0 + pl.r1) / 2],
@@ -583,7 +612,7 @@ try {
           await page.mouse.move(p.x, p.y);
           await sleep(60);
           const cursor = await page.evaluate(() => document.querySelector("canvas").style.cursor);
-          const hovered = (await page.evaluate(() => window.__globeDebug.labelCells())).filter((o) => o.solid).map((o) => o.slug);
+          const hovered = (await page.evaluate(() => window.__globeDebug.labelCells())).filter((o) => o.active).map((o) => o.slug);
           tested++;
           if (cursor !== "pointer" || !hovered.includes(c.slug)) bad.push({ slug: c.slug, what, cursor, hovered, view: v, alpha: c.alpha, at: [cx, cy], picked: await page.evaluate(([x, y]) => window.__globeDebug.pick(x, y), [p.x - origin.left, p.y - origin.top]) });
         }

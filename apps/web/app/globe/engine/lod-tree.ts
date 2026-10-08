@@ -93,14 +93,8 @@ export const LOD = {
   defaultPlaceRadiusKm: DEFAULT_VIEW_RADIUS_KM,
   /** A node can be picked once it is at least this opaque (a ghost mid-fade is not a target). */
   pickAlphaMin: 0.3,
-  /** A label is not drawn below this opacity (the last frames of its fade). */
-  labelAlphaMin: 0.06,
-  /** A box whose label lost its place to a better one, while a group above it is drawn, is dimmed to this fraction of its opacity (a binary state, engine/label-plan.ts; it stays a target, its label shows on hover). */
-  unlabelledAlpha: 0.4,
   /** Label priority: selected and focused first, then places before groups. */
   placePriorityBonus: 30,
-  /** A label that is drawn keeps its place against a challenger of up to this much more score (hysteresis of the label plan). */
-  labelHold: 20,
 } as const;
 
 const smooth = (t: number) => {
@@ -229,17 +223,11 @@ export class LodTree {
   readonly fillAlpha: Float32Array;
   /**
    * The timed on/off values (engine/fade.ts), one per node, shared by every host of the tree (the globe's and the street map's
-   * overlay), so the picture does not restart at the handover: the node itself (`life`, set by the cut), its interior mask
-   * (`mask`, set by the cut), its label and its dim (`label`, `dim`, set by the box scene's label plan).
+   * overlay), so the picture does not restart at the handover: the node itself (`life`, set by the cut) and its interior mask
+   * (`mask`, set by the cut). A label is always on with its node (engine/label-plan.ts), so it has no transition of its own.
    */
   readonly life: FadeArray;
   readonly mask: FadeArray;
-  readonly label: FadeArray;
-  readonly dim: FadeArray;
-  /** The label position (index of the candidate, engine/pixel-labels.ts `labelCandidates`) a node's label has, kept while it fades out. */
-  readonly labelSlot: Int8Array;
-  /** 1 for a node that has just appeared (its label and dim start in their state instead of fading towards it); the box scene clears it. */
-  readonly born: Uint8Array;
   /** Side in CSS px of a node's TRUE box (a place: its extent without the minimum; a group: the union of its places' drawn boxes, without the padding). */
   readonly side: Float64Array;
   /** Visible places below a group (a group's rectangle wraps only these). */
@@ -382,10 +370,6 @@ export class LodTree {
     this.fillAlpha = new Float32Array(n);
     this.life = new FadeArray(n);
     this.mask = new FadeArray(n);
-    this.label = new FadeArray(n);
-    this.dim = new FadeArray(n);
-    this.labelSlot = new Int8Array(n);
-    this.born = new Uint8Array(n);
     this.side = new Float64Array(n);
     this.fillOn = new Uint8Array(n);
     this.want = new Uint8Array(n);
@@ -489,9 +473,9 @@ export class LodTree {
     return this.count;
   }
 
-  /** True while some transition (a node, a mask, a label, a dim) has not reached its target: the host's frame loop must keep going. */
+  /** True while some transition (a node, a mask) has not reached its target: the host's frame loop must keep going. */
   get animating(): boolean {
-    return this.life.moving || this.mask.moving || this.label.moving || this.dim.moving;
+    return this.life.moving || this.mask.moving;
   }
 
   /**
@@ -506,8 +490,6 @@ export class LodTree {
     if (moved) {
       this.life.step(dt, instant);
       this.mask.step(dt, instant);
-      this.label.step(dt, instant);
-      this.dim.step(dt, instant);
     }
     if (moved || this.rebuild) this.build();
     return this.animating;
@@ -517,8 +499,6 @@ export class LodTree {
   settle(): void {
     this.life.settle();
     this.mask.settle();
-    this.label.settle();
-    this.dim.settle();
     this.build();
   }
 
@@ -553,8 +533,7 @@ export class LodTree {
         continue;
       }
       if (on && this.life.target[i] === 0 && this.life.p[i] === 0) {
-        // Just appeared: its interior, its label and its dim begin in their state, so only the node itself fades in.
-        this.born[i] = 1;
+        // Just appeared: its interior begins in its state, so only the node itself fades in.
         this.mask.snap(i, this.wantFill[i] === 1);
       } else if (on) this.mask.set(i, this.wantFill[i] === 1);
       this.life.set(i, on);
@@ -735,11 +714,11 @@ export class LodTree {
     for (let j = from; j < to; j++) {
       const c = this.childList[j]!;
       if (this.isGroup[c] ? members[c]! === 0 : !this.shown[c]) continue;
-      // the label's plate sits just above the rectangle's top edge, one cell left of its left edge
+      // the label's plate sits just above the rectangle's top edge, flush with its left edge
       const bx0 = this.boxX0[c]!;
-      this.sx0[m] = bx0 - cell;
+      this.sx0[m] = bx0;
       this.sy0[m] = this.boxY0[c]! - this.labelH[c]! * cell;
-      this.sx1[m] = Math.max(this.boxX1[c]!, bx0 + (this.labelW[c]! - 1) * cell);
+      this.sx1[m] = Math.max(this.boxX1[c]!, bx0 + this.labelW[c]! * cell);
       this.sy1[m] = this.boxY1[c]!;
       this.order[m] = m;
       m++;

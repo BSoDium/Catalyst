@@ -61,14 +61,15 @@ function sweepInPage({ places, views }) {
       const sideCells = Math.min(c1 - c0, r1 - r0);
       const arm = clampInt(sideCells * 0.1, 3, 14);
       const gap = clampInt(sideCells * 0.035, 2, 9);
-      const lit = (i, len) => len < 2 * arm + gap || Math.min(i, len - 1 - i) < arm || (Math.min(i, len - 1 - i) - arm) % (2 + gap) >= gap;
+      // each edge is counted from its anchor: the top from its left corner, the bottom from its right, the left from its top, the right from its bottom (`edgeLit`)
+      const lit = (i, len) => len < 2 * arm + gap || i < arm || i >= len - arm || (i - arm) % (2 + gap) >= gap;
       const solid = !!(d.labelCells().find((t) => t.slug === n.slug)?.solid);
-      for (let x = c0; x < c1; x++) for (const y of [r0, r1 - 1]) { if (x < 0 || y < 0 || x >= W || y >= H) { stat.clippedByCanvasEdge++; continue; } if ((solid || lit(x - c0, c1 - c0)) && !opaque(x, y)) missing++; }
-      for (let y = r0; y < r1; y++) for (const x of [c0, c1 - 1]) { if (x < 0 || y < 0 || x >= W || y >= H) { stat.clippedByCanvasEdge++; continue; } if ((solid || lit(y - r0, r1 - r0)) && !opaque(x, y)) missing++; }
+      for (let x = c0; x < c1; x++) for (const y of [r0, r1 - 1]) { if (x < 0 || y < 0 || x >= W || y >= H) { stat.clippedByCanvasEdge++; continue; } if ((solid || lit(y === r0 ? x - c0 : c1 - 1 - x, c1 - c0)) && !opaque(x, y)) missing++; }
+      for (let y = r0; y < r1; y++) for (const x of [c0, c1 - 1]) { if (x < 0 || y < 0 || x >= W || y >= H) { stat.clippedByCanvasEdge++; continue; } if ((solid || lit(x === c0 ? y - r0 : r1 - 1 - y, r1 - r0)) && !opaque(x, y)) missing++; }
       if (missing) failures.push({ kind: "partial box", slug: n.slug, missing, view });
       mark(c0, r0, c1, r1); // generous: the whole rectangle (interior cells are only ever fill, a label plate or nested boxes)
     }
-    for (const t of d.labelCells()) if (t.label) mark(t.label.col - 1, t.label.row, t.label.col - 1 + t.label.w, t.label.row + t.label.h);
+    for (const t of d.labelCells()) if (t.label) mark(t.label.col, t.label.row, t.label.col + t.label.w, t.label.row + t.label.h);
     // nothing opaque may lie outside the shown outlines' rectangles and the label plates
     let stray = 0;
     let first = null;

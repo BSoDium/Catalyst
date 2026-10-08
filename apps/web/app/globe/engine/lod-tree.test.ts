@@ -419,7 +419,6 @@ describe("timed transitions: the camera decides a target, the clock runs it", ()
     const t = new LodTree(germany());
     t.alphas(camAt(9.8, 50.7, 2.7));
     t.advance(1000); // the clock starts
-    t.born.fill(0); // the box scene has seen what appeared
     t.update(camAt(9.8, 50.7, 9), -1, -1, false);
     return t;
   }
@@ -537,15 +536,9 @@ describe("timed transitions: the camera decides a target, the clock runs it", ()
     t.advance(1016);
     expect(dump(t).has("a")).toBe(false);
   });
-
-  it("a node that has just appeared is flagged `born` so its label and dim start in their state", () => {
-    const t = openingTree();
-    expect(t.born[t.indexOf("de-0")]).toBe(1);
-    expect(t.born[t.indexOf("de")]).toBe(0);
-  });
 });
 
-describe("the dim needs a drawn ancestor", () => {
+describe("a drawn ancestor (the checks' `parented`)", () => {
   const nodes = [g("c", "country", undefined, 40, 0, 300), p("a", "c", 40, 0), p("b", "c", 40, 0.05)];
   it("a place inside a group that is drawn has one; a place with the group open has none", () => {
     const t = new LodTree(nodes);
