@@ -5,9 +5,15 @@ import { sleep, waitQuiet } from "./lib.mjs";
 
 const HCMC = { lon: 106.7009, lat: 10.7769 };
 
-/** Mouse drag along `pathAt(i/n)` for `ms`, one event per ~16 ms. */
+/**
+ * Mouse drag along `pathAt(i/n)` for `ms`, one event per ~16 ms. The pointer arrives and rests for `HOVER_MS` before it is pressed, as a hand
+ * does (a move and a press in the same millisecond never happen on a real mouse): the app takes the one-off 30 ms cost of the first layout change
+ * after the first mouse move in that rest (engine/hover-warm.ts), not in the middle of the drag it is being measured on.
+ */
+const HOVER_MS = 150;
 async function drag(page, start, pathAt, ms, { release = true } = {}) {
   await page.mouse.move(start.x, start.y);
+  await sleep(HOVER_MS);
   await page.mouse.down();
   const t0 = Date.now();
   let i = 0;

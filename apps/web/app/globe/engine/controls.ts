@@ -6,6 +6,7 @@
  * `touch-action: none` is set on the canvas only, so a finger that starts anywhere else (list, panel, page)
  * still scrolls normally.
  */
+import { warmHover } from "./hover-warm";
 import type { DragSample } from "./motion";
 
 export type PointerKind = "mouse" | "touch";
@@ -39,6 +40,8 @@ export function attachControls(canvas: HTMLCanvasElement, container: HTMLElement
   let drag: Drag | null = null;
   let pinchDist = 0;
   const cleanups: (() => void)[] = [];
+  // The first layout change after the first mouse move blocks a macOS renderer for 30 ms once (engine/hover-warm.ts): take it before the first drag.
+  cleanups.push(warmHover(canvas.ownerDocument.defaultView ?? canvas, canvas.ownerDocument as never));
 
   const on = <K extends keyof HTMLElementEventMap>(
     type: K,
