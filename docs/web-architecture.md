@@ -19,6 +19,8 @@ Run from the repo root with `pnpm --filter @catalyst/web <script>` or inside `ap
 | `test` | vitest (pure logic only; `vitest.config.ts` does not boot the React Router plugin) |
 | `test:street-lines` | the line regression gate of the street pass (needs the dev routes, `docs/pixel-line-rules.md`) |
 | `perf` | performance budgets against a production build, exit 1 when exceeded (`docs/performance.md`; `-- --headed` for the real display) |
+| `check:prod` | production readiness check (`scripts/prod/check.mjs`): headers, CSP with zero violations in Chrome, head tags, sitemap, robots, 404/405, icons, CLS, no-JS reading. Needs a production build and Chrome; `-- --base URL` checks a running deployment. See "Production readiness" |
+| `brand` | redraws the share image and the icons in `public/` from the hand-written SVG (`scripts/brand/build.mjs`, headless Chrome) |
 
 ## Environment
 
@@ -26,36 +28,51 @@ Run from the repo root with `pnpm --filter @catalyst/web <script>` or inside `ap
 | --- | --- |
 | `CATALYST_CONTENT` | `published` (default), `preview` (the git-ignored local file of the owner's real places incl. drafts; dev only; ignores `CATALYST_API_URL`; re-read on every request) or `demo` (placeholder fixture). See the content modes table in `architecture.md` |
 | `CATALYST_ALLOW_PREVIEW` | `1` lets a production-mode process read the preview file, for local `react-router-serve` testing only; without it `preview` is refused when `NODE_ENV=production` (the server logs why and serves the empty state) |
+| `CATALYST_SITE_URL` | optional, default `https://v2.bsodium.fr`. The site's public origin: canonical and Open Graph URLs, the sitemap and robots.txt are built on it. Only `https://` (or `http://localhost`) is accepted; a path or query is dropped; a bad value warns once and the default is used |
+| `CATALYST_CSP_CONNECT_EXTRA` | optional. Extra origins (space or comma separated) added to the CSP `connect-src`: a tile host the primary TileJSON points at that is not its own, or, one day, the API origin when the browser calls it. Invalid entries are dropped. See "Production readiness" |
 | `CATALYST_API_URL` | optional. If set, `${url}/v1/projection` is fetched (2s timeout, validated with `parsePublishedProjection`); any failure logs one warning and serves the bundled snapshot |
 
 ## Structure
 
 ```
 app/
-  root.tsx            html shell, SkipLinks, page-wide nav scrim, Navbar, MotionConfig, global 404 ErrorBoundary; dev-only content badge (loader returns the mode only when import.meta.env.DEV)
+  root.tsx            html shell (`lang`, theme-color per scheme, icons, manifest), SkipLinks, page-wide nav scrim, Navbar, NavProgress, MotionConfig, root ErrorBoundary (404 page, error page); loader returns `siteUrl`; dev-only content badge (the mode only when import.meta.env.DEV)
+  entry.server.tsx    per-response CSP nonce, security headers, cache policy, X-Robots-Tag off the production host (lib/security-headers.ts); `handleDataRequest`, `handleError`
+  entry.client.tsx    the stock hydration entry
   routes.ts           pathless layout (shell) wrapping `/`, `/locations/:slug` and the entries `/{articles,projects,artworks,poems}/:slug`;
-                      the lists /projects /articles /artworks /poems (no globe)
+                      the lists /projects /articles /artworks /poems (no globe); resource routes `/sitemap.xml` and `/robots.txt`
   routes/shell.tsx    layout: full-bleed globe + PlacesNav + detail panel; owns focusedSlug, the saved GlobeViewState,
                       the panel inset passed to the globe and the container of an entry (`?view=full`)
   routes/home.tsx     `/` (renders nothing in the panel slot; meta only)
   routes/location.tsx `/locations/:slug` loader (404 via data()), meta, PlaceDetail, route ErrorBoundary
   routes/entry-{article,project,artwork,poem}.tsx   `/<kind>/:slug`: loader (lib/entry-loader.server.ts), meta, EntryRoute; no error boundary (404 -> root)
   routes/{projects,articles,artworks,poems}.tsx     the lists: summaries -> EntryListPage
+  routes/{sitemap,robots}.ts   resource routes (no UI): the crawlers' files, built from the projection and `CATALYST_SITE_URL`
+  routes/search-index.ts   `/search-index.json` (no UI): titles, kinds, tags and one-line summaries of places and entries, for the quick search
   routes/dev-design.tsx   DEV ONLY `/dev/design`: the UI system's styleguide (guarded like `/dev/street`; docs/design-system.md)
   components/         navbar, nav-scrim, skip-links, places-nav, detail-panel, place-detail, entry-list-page,
-                      not-found-page, ui/ (the UI system: Frame, MicroLabel, KindTag, Button, CoverArt, ... see docs/design-system.md)
-  components/entry/   entry-view (the one view for both containers), blocks (the body renderer), entry-route (route glue), entry-list-card
+                      not-found-page, error-page, nav-progress, ui/ (the UI system: Frame, MicroLabel, KindTag, Button, CoverArt, ... see docs/design-system.md)
+  components/entry/   entry-view (the one view for both containers), blocks (the body renderer), toc (full-screen contents with scroll-spy), entry-route (route glue), entry-list-card
+  components/         + search-palette (Cmd/Ctrl-K combobox, mounted by the navbar), archive-empty (the home page when no place is published)
   lib/content.server.ts   ContentSource + bundled/API sources + cache (server only)
   lib/projection.ts       pure selectors: place index, routes -> points, place detail (with its entries)
   lib/entries.ts          pure selectors of entries: lists (summaries), one entry with body/places/related/neighbours, entries of a place, `?view`/panel-path parsing
   lib/entry-blocks.ts     pure parts of the body renderer: grouping, outline numbering, ids/keys, safe media and https URLs
+  lib/reading.ts          reading time from the body's text, the table of contents (outline of >= 3 headings), scroll-spy's active section
+  lib/entry-list.ts       list pages: tag counts, `?tag=` parsing/serialising, filtering, grouping by year (`shouldGroupByYear`)
+  lib/search.ts           search index (built on the server from the projection), accent-folding matcher/ranker, grouping of results
+  lib/clipboard.ts        `copyText` (Clipboard API, `execCommand` fallback) and `shareUrl`
   lib/entry-meta.ts, entry-revalidate.ts, entry-loader.server.ts   head tags of entry/list routes, the no-refetch-on-query rule, the entry loader
-  lib/dates.ts            authored-date formatting; lib/meta.ts; lib/tokens.ts; lib/utils.ts (cn)
+  lib/dates.ts            authored-date formatting; lib/tokens.ts; lib/utils.ts (cn)
+  lib/site.ts, site.server.ts   site name/description/URL (`CATALYST_SITE_URL`), default share image, theme colours, "is this the production host"
+  lib/meta.ts, json-ld.ts, sitemap.ts   head tags of every page (title template, canonical, Open Graph, Twitter card), schema.org JSON-LD, sitemap.xml/robots.txt bodies
+  lib/security-headers.ts, error-status.ts   the CSP and the other headers (pure), the status an error boundary reports
   lib/{entry-kind,labelling,cover-art,contrast}.ts   pure helpers of the UI system (kinds, micro-label formatters, seeded cover art, WCAG contrast)
   lib/layout.ts           `panelInset()`: CSS px of the globe covered by the desktop panel (half the viewport)
   hooks/use-is-mobile.ts  matchMedia via useSyncExternalStore (server snapshot: false)
   hooks/use-viewport-width.ts  layout viewport width via useSyncExternalStore (server snapshot: 0)
   globe/              the renderer seam + the production Three.js globe (see below); imports nothing from the rest of the app
+  scripts/prod/       production readiness check (`check:prod`); scripts/brand/ the share image and icons
   scripts/entries/    Playwright check of the entry views (demo content): panel, full screen, place panel, 404s, lists, 390 px
   scripts/globe/      Playwright browser checks and the frame-time benchmark for the production build (see below)
 ```
@@ -70,13 +87,105 @@ app/
   (message, link to `/`, a plain inline list of all places); the shell and globe stay mounted. Status is a real 404.
 - Unmatched URLs fall to the root `ErrorBoundary` (404 page inside the navbar).
 - The list pages (`/projects`, `/articles`, `/artworks`, `/poems`) are plain pages outside the shell: an `EntryCard` grid (cover, kind,
-  code, date, places, summary, tags) whose cards keep `id={slug}` anchors (`/projects#slug`) and link to the entry route; an empty
-  collection shows the intentional `StatePanel` ("Nothing here yet"). Loaders return summaries only (`listEntries`: no body).
+  code, date, places, summary, tags; 1 / 2 / 3 columns) whose cards keep `id={slug}` anchors (`/projects#slug`) and link to the entry
+  route; an empty collection shows the intentional `StatePanel` ("Nothing here yet"). Loaders return summaries only (`listEntries`: no
+  body). **Tag filter:** a row of links (`?tag=rail`, one tag; "All" clears it) above the grid, the selected one `aria-current="true"` and
+  inverted; the URL is the state (shareable, a reload and the Back button work, the server renders the filtered list, no script
+  needed); an unknown tag shows everything; the count line reads `002 / 005 entries` and a polite status says what is shown. The row
+  scrolls sideways on a phone and wraps from `md`; more than 12 tags fold behind "+N more". **Year groups:** newest first, with a year
+  heading (h2, the cards then h3) only when the years hold two entries or more on average (`shouldGroupByYear`): a heading over every
+  single card would be a timeline, so a sparse list stays one grid, newest first. The loaders do not change (the query is read in the
+  component) and `root.tsx` has `shouldRevalidate() => false`, so a chip or `?view` toggle fetches nothing.
+- **The empty home.** With no published place the shell still draws the globe (sky, rotation) and `ArchiveEmpty`, a HUD card at the
+  bottom left: `[ ARCHIVE / 000 ENTRIES ]`, a short line and the four lists with their counts. The counts are real (`countEntries` in
+  the shell loader): a projection with entries but no places says so and links to them. On a phone the card is compact (two columns of links).
 - Loaders return only what the page needs; optional sections (dates, summary, body, images, related) are
   omitted when empty. Dates are shown as authored (`label`, else `start–end`), never reformatted.
 - `content.server.ts`: `getProjection()` -> `ContentSource`. Validated projections are cached in module scope
-  (API success 60s, fallback 15s, concurrent callers share one request). Meta tags: title, description and
-  Open Graph text tags only (`lib/meta.ts`); `<html lang="en">`.
+  (API success 60s, fallback 15s, concurrent callers share one request). Head tags: see "Production readiness" below.
+
+## Production readiness
+
+What a deployment needs beyond the features, in one place. Everything here is verified by `pnpm --filter @catalyst/web check:prod` (a production build served by `react-router-serve`, Chrome driven by Playwright) except where "not verified" says otherwise.
+
+### Site identity, head tags and sharing
+
+- `lib/site.ts` holds the name, the description, the home title (`Catalyst · A personal archive organized around places`), the default share image and the theme colours; `CATALYST_SITE_URL` (server env, default `https://v2.bsodium.fr`) is the origin of every absolute URL. The root loader returns it as `siteUrl`, so a route's `meta` (server and client) reads it from `matches` (`metaBase(args)` in `lib/meta.ts`) and the two agree.
+- Every route's `meta` goes through `pageMeta`: title `<Page> · Catalyst`, description, `<link rel="canonical">` (origin + path, never the query: `?view=full` is the same page), `og:site_name/type/title/description/url/locale/image(+type,width,height,alt)`, `twitter:card summary_large_image/title/description/image/image:alt`. An entry is `og:type article` (+ `article:published_time`, `article:tag`) when it is an article, `website` otherwise.
+- The share image of an entry is its authored cover when scrapers can read the format (png, jpg, gif, webp: never SVG, which Facebook, X, LinkedIn and Slack do not render), absolute; else `public/og-default.png` (1200x630, 28 kB). A place uses its first raster image the same way. Covers are authored paths under `/media/` (the contract), never external URLs.
+- `<html lang="en">`, `color-scheme`, `theme-color` for each scheme (`#fbfbfb` / `#0a0a0a`, kept equal to `--background` by a test), the SVG and `.ico` favicons, `apple-touch-icon.png` (180), `manifest.webmanifest` (192, 512 and a maskable 512 PNG; dark theme and background colours: a manifest cannot vary by scheme).
+- JSON-LD, from published fields only (no author, publisher or invented date): the home page is a `WebSite`; an article an `Article` (`headline` capped at 110 characters); a project `SoftwareSourceCode` when its `url` is a repository on a known forge, else `CreativeWork`; an artwork `CreativeWork`; a poem `CreativeWork` with `genre: "Poem"`. Each has `url`, `datePublished` (the authored partial ISO date), `image` (raster covers only), `keywords` (tags), `contentLocation` (its places) and `isPartOf` the site. `lib/json-ld.ts`; React Router escapes the script's content.
+- Not-found and error pages carry `noindex` (their status is 404/5xx anyway).
+- The brand files are drawn, not downloaded: `apps/web/scripts/brand/og.svg` is hand-written in the language of `design-system.md` (near-black page, 16 px grid, hairline globe, corner brackets, mono micro-labels, one cyan route); the icons are the navbar's Orbit glyph (lucide, ISC) with cyan satellites. `pnpm --filter @catalyst/web brand` renders them with headless Chrome and, if `pngquant` is installed, palette-quantizes them. Edit the SVG, run it, commit the PNGs.
+
+### Crawlers: sitemap.xml and robots.txt
+
+Resource routes (`routes/sitemap.ts`, `routes/robots.ts`; no static copies in `public/`, which would shadow them). `/sitemap.xml` lists `/`, the four lists, every entry and every place of the projection (absolute URLs on `CATALYST_SITE_URL`, `lastmod` = the authored date when there is one: an entry's `date`, a place's `dates.end` or `start`; the content has no edit time), `application/xml`, `s-maxage=3600` + `stale-while-revalidate=86400`. The protocol's 50,000-URL limit is far away (one file). `/robots.txt` allows everything and names the sitemap **only on the production host**: when the request's host (`x-forwarded-host`, else `host`) is not the host of `CATALYST_SITE_URL`, or `VERCEL_ENV` is `preview` or `development`, it answers `Disallow: /` and the pages carry `X-Robots-Tag: noindex, nofollow`. So preview deployments, the `*.vercel.app` address of production and localhost never get indexed, with no environment to remember.
+
+### Security headers
+
+Applied to every HTML document and data response by `entry.server.tsx` (`lib/security-headers.ts`, unit-tested) and, for the static ones, repeated in `apps/web/vercel.json` so that what Vercel serves without our code (assets, media, icons, resource routes, the CDN's own 404s) has them too. A test keeps the two lists equal.
+
+| Header | Value | Why |
+| --- | --- | --- |
+| `Content-Security-Policy` | per response, below | documents only (a nonce cannot live in a static file) |
+| `X-Content-Type-Options` | `nosniff` | no MIME sniffing |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` | outgoing links get the origin, not the path |
+| `Permissions-Policy` | accelerometer, autoplay, bluetooth, browsing-topics, camera, display-capture, geolocation, gyroscope, hid, magnetometer, microphone, midi, payment, serial, usb, xr-spatial-tracking all `()`; `fullscreen=(self)` | the app uses none of them |
+| `X-Frame-Options` | `DENY` | legacy twin of `frame-ancestors 'none'` |
+| `Cross-Origin-Opener-Policy` | `same-origin` | no cross-origin window handles; nothing here opens or is opened as a popup (checked: the street map, workers and tiles run fine under it) |
+| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` | `vercel.json` only (meaningless over plain http) |
+| `X-Robots-Tag` | `noindex, nofollow` | off the production host only |
+
+The CSP is **enforced** (not report-only) and was verified with zero violations on the home page, a place, an entry, a list, the 404 page, mobile, and the street map on real OpenFreeMap tiles and on the local PMTiles fallback (`securitypolicyviolation` events and console, read by `check:prod`):
+
+| Directive | Value | Reason |
+| --- | --- | --- |
+| `default-src` | `'none'` | anything not listed below is refused |
+| `script-src` | `'self' 'nonce-<per response>'` | our files, and the inline scripts React Router writes (router state, module loader) and React's streaming completion scripts (`nonce` is given to `<ServerRouter>` and to `renderToPipeableStream`). No `unsafe-inline`, no `unsafe-eval`. The schema library (zod, which probes `new Function` and would be reported as a violation) is not in the browser bundle: `lib/projection.ts` has its own 3-line `toPlaceSummary`, a test keeps it equal to the contract's |
+| `style-src` | `'self'` | the one stylesheet; no inline `<style>` |
+| `style-src-attr` | `'unsafe-inline'` | React and the label overlay put `style=""` on elements (positions, sizes, CSS variables); measured: without it, 24 violations in one run of the home page with the street map open. Attributes cannot run script |
+| `img-src` | `'self' data: blob:` | our images; `data:` and `blob:` are MapLibre's documented needs for sprites and raster sources (neither is used today: removing them gave no violation) |
+| `font-src` | `'self'` | the type is the system stack; this is a guard |
+| `connect-src` | `'self'` + the origin of `CATALYST_TILES_PRIMARY_URL` (default `https://tiles.openfreemap.org`) + the origin of `CATALYST_TILES_FALLBACK_URL` + `CATALYST_CSP_CONNECT_EXTRA` | route data and the tile requests (TileJSON, `.pbf`, PMTiles range reads). Computed from `getTilesConfig()` at request time, like the config itself |
+| `worker-src` | `'self' blob:` | MapLibre's tile worker is a hashed file of ours (`setWorkerUrl`); `blob:` is its fallback |
+| `manifest-src` | `'self'` | the web manifest |
+| `object-src` / `base-uri` / `form-action` | `'none'` / `'self'` / `'self'` | no plugins, no `<base>` tricks, no form posts elsewhere |
+| `frame-ancestors` | `'none'` | nobody frames the site |
+| `upgrade-insecure-requests` | when the page came over https | skipped on plain-http localhost, where it would break the local run |
+
+**Adding a tile host.** Change `CATALYST_TILES_PRIMARY_URL` / `CATALYST_TILES_FALLBACK_URL` (docs/self-hosting.md): their origins enter `connect-src` by themselves. If the primary TileJSON names tiles on a *different* host, add that origin to `CATALYST_CSP_CONNECT_EXTRA` (e.g. `https://tiles2.example.com`); a blocked host shows as a `connect-src` violation in the console and the street map falling back to the globe floor. Origins are validated (host name or IP and port only: nothing that could end a directive).
+
+The Vite dev server sends no CSP (its inline preamble and HMR socket are not ours); everything else is the same. `/media/*` also gets a restrictive CSP (`default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; sandbox`) in `vercel.json`, so an SVG opened directly cannot run script.
+
+### Errors and states
+
+- Root `ErrorBoundary`: a 404 draws `NotFoundPage`; anything else draws `ErrorPage` (`StatePanel` error state: `ERR / 500`, a plain sentence, "Try again" for 5xx, "Back to the globe"). The page never shows a message or a stack (React Router already strips them from a production build; only a dev server shows the message); the server logs the error (`handleError`, skipping aborted requests). Statuses are real: 404 for an unknown slug, an unknown place, an unmatched address or a slug of another kind; 500 for a loader or render error; 405 for a request no route accepts.
+- JavaScript off: the lists, the entries and the places are server-rendered and navigate with plain links (the entry's text is in the HTML, and its panel is visible without script). Only the globe needs JavaScript: `routes/shell.tsx` has a `<noscript>` note in the globe's area ("The globe needs JavaScript", with links to the four lists). It sits in the shell rather than in `root.tsx` so that it never covers a page that works without script.
+- "Skip to content" is the first tab stop everywhere and moves focus to `#main`; checked on a list and an entry.
+- Navigation pending: `NavProgress` shows a 2 px signal line along the top edge (and a polite "Loading" for screen readers) once a navigation has been pending for 150 ms; under `prefers-reduced-motion` the line is static.
+- Reduced motion: `MotionConfig reducedMotion="user"` and the global CSS rule, as before.
+
+### Caching
+
+| What | `Cache-Control` | Why |
+| --- | --- | --- |
+| HTML documents | `private, no-cache` | each carries a per-response CSP nonce: a CDN copy would replay it to everyone and void the policy. Rendering is cheap (the projection is bundled, or reused for 60 s from the API); `no-store` is avoided so the back/forward cache still works |
+| Client navigation data (`*.data`) | `public, max-age=0, s-maxage=60, stale-while-revalidate=300` | JSON without a nonce, so it can be shared for a minute (the API projection's own reuse time); a deploy replaces the CDN's copies. Not set on the dev server |
+| `/assets/*` | `public, max-age=31536000, immutable` | content-hashed (pinned in `vercel.json`; `react-router-serve` does it too) |
+| `/media/*` | `public, max-age=3600, stale-while-revalidate=604800` | authored names are not content-hashed, so an image replaced under the same name appears within an hour |
+| icons, manifest, share image | `public, max-age=86400, stale-while-revalidate=604800` | stable names |
+| sitemap.xml, robots.txt | `public, max-age=0, s-maxage=3600, stale-while-revalidate=86400` | |
+
+No web font is loaded (system stacks), so there is nothing to preload; the one stylesheet (48 kB, 9.8 kB gzip) is linked in the head by React Router. The globe is a lazy chunk (`globe-canvas`, then `engine`): it is not preloaded and not on the critical path of the lists or of an entry's HTML. Measured CLS in Chrome (`check:prod`): 0.0000 on the home page, a place, an entry, a list, the 404 page, mobile, and both street-map passes (the globe's box is reserved by the page layout; the canvas mounts into it).
+
+JavaScript (gzip) that the HTML of each page preloads, from `check:prod`: home 179 kB, a list 137 kB, an entry 187 kB, a place 185 kB (of which the React Router and React DOM entry is 67 kB and the detail panel with Motion 44 kB). The lazily loaded globe is `globe-canvas` 173 kB + `engine` 304 kB. Total client JS 705 kB gzip by this script's count (733 kB before the schema library left the browser bundle: the `projection` chunk went from 100 kB, 29 kB gzip, to 0.9 kB). `docs/performance.md` has no JS size budget; these are the numbers to compare against.
+
+### Verifying
+
+`pnpm --filter @catalyst/web build && pnpm --filter @catalyst/web check:prod` starts the production build twice or three times (default site URL on localhost; `CATALYST_SITE_URL` equal to localhost to see the open robots.txt; NODE_ENV=development at run time with the local PMTiles fallback, as `perf` does, since a production runtime refuses plain-http tiles) and prints PASS/FAIL per assertion; it uses the demo content (explicit opt-in) and needs network access for OpenFreeMap. `-- --base https://v2.bsodium.fr --site https://v2.bsodium.fr` runs the HTTP and browser checks against a live deployment (not the two-server ones); with demo-less real content, the entry and place checks use whatever the sitemap lists.
+
+Not verified: how Vercel merges the `vercel.json` headers with the ones our server sets (we set the same values twice on purpose and never two different CSPs); HSTS and the `*.vercel.app` robots behaviour on a real deployment; Safari and Firefox (CSP and COOP were exercised in Chromium only); real link previews on social networks.
 
 ## Layout, navigation and panel
 
@@ -147,9 +256,9 @@ other way in. Without JavaScript the globe screen shows no list (the globe itsel
   refetches the entry. The toggle (`ExpandToggle` in the panel header, desktop only: the phone's slide-over is full screen already)
   navigates with PUSH, so Back collapses. The router state is kept across the toggle.
 - **One component, two layouts.** `components/entry/entry-view.tsx` gets `layout="panel" | "full"` and nothing else differs: the
-  same data, the same DOM and focus order (header, details, cover, body, places/related/neighbours). In `panel` every block spans the
-  12 columns; in `full` the title (8) and the details frame (4) share the first row, the cover and body (8) and the places/related
-  aside (4) the second, in a `max-w-6xl` column. A render test asserts the two layouts have the same text in the same order.
+  same data, the same DOM and focus order (header, details, cover, body, places, related cards, neighbours). In `panel` every block
+  spans the 12 columns; in `full` the title (8) and the details frame (4) share the first row, the cover and body (8) and the aside
+  (4: places, contents) the second, in a `max-w-6xl` column; the related cards and the neighbours close both, full width. A render test asserts the two layouts have the same text in the same order.
 - **One container element.** `DetailPanel` does not remount when the layout changes: only `md:w-1/2` becomes `md:w-full` (a width
   transition on `--duration-base` and `--ease-standard`, collapsed to ~0 by the global reduced-motion rule) and the background
   loses its translucency and blur (no blur of a live canvas over the whole screen). Closing from full screen keeps the layout it
@@ -170,9 +279,34 @@ other way in. Without JavaScript the globe screen shows no list (the globe itsel
   directions of the entry/place link are merged everywhere. The index code (`ARTICLE / 0004`) is the 1-based position of the entry in
   its kind's collection in authored order: deterministic and decorative (it shifts if entries are inserted before it; the slug is the
   id). A project's `Status` fact is drawn as the entry's status tag; a poem's `Language` fact sets `lang` on the body.
+- **Reading aids (`lib/reading.ts`, tested).** *Reading time*: words of paragraphs, headings, lists and quotes at 220 words a minute,
+  shown as `N MIN READ` in the header for articles that do not author a `Reading time` fact (the authored one wins). *Contents*: the
+  numbered outline when the body has three headings or more; in the markup of both layouts (same DOM, same order) and shown only in the
+  full view (`[data-layout="panel"] [data-slot="entry-toc"]` is `display: none`), sticky under the navbar in the aside, plain `#id` links,
+  `aria-current="location"` on the section being read (a scroll listener on the panel's scroller, `activeSection`), and a "Jump to
+  contents" skip link after the copy-link button saves the keyboard the way through the text. *Heading anchors*: a `#` link per heading,
+  labelled "Link to section: <text>", drawn on hover and focus (always on touch screens), 44 px hit area by `::before`. *Copy link*:
+  `CopyButton` (also the code blocks' button): the label turns to "Copied" for two seconds and a polite status says it (no toast), the
+  clipboard API with an `execCommand` fallback; the address is the entry's canonical path without `?view`; drawn only once hydrated.
+  *Typography*: body text 18 / 28 (`.ds-prose`), blocks of text limited to `48ch` (about 65 characters a line in the system sans),
+  `text-wrap: pretty` on text and `balance` on headings. *Print*: the globe, navigation and panel controls are hidden, the panel flows as
+  a page in ink on white, link addresses are printed after external links (`@media print` at the end of `app.css`).
+- **Related and neighbours.** `getEntryDetail().related` ranks every other entry by `relatedScore` (4 per shared place, 2 per shared
+  tag, +1 for the same kind when something else is shared; ties in the kind then authored order), at most `RELATED_LIMIT` (6), and the
+  view shows the best three as compact cards at the end, then the previous/next entry of the kind as two cells. `EntryRef` carries the
+  summary, date and cover so a tile needs no other fetch. Tags on an entry link to the kind's list filtered by that tag.
+- **Navigation feedback.** While another entry or place loads, the panel's content stays, dimmed and `aria-busy` (only when the
+  path changes: a `?view` toggle is not a page); the top line of `NavProgress` shows after 150 ms.
+- **Quick search.** `components/search-palette.tsx`, mounted by the navbar (a trigger button from `sm` up, and Cmd/Ctrl-K anywhere): a
+  modal `<dialog>` with an ARIA combobox (the input keeps the focus, `aria-activedescendant` follows the highlighted option, arrows /
+  Home / End move, Enter opens, Escape closes), results grouped into places and the four kinds, with the same glyphs. The index
+  (`/search-index.json`, built from the projection by `buildSearchIndex`: titles, kind, region or code and date, tags and summaries, never
+  a body) is fetched once when the palette first opens and searched in the browser (`searchItems`: accents and case folded, every word
+  must match, a word that starts a title word ranks above one inside it, then the tags and the summary). Nothing is rendered before the
+  first open. The index route is cached at the CDN like the sitemap (an hour, then revalidated).
 - **Head.** `entryMeta`: title, summary as description, `og:type` article for articles, and `og:image` (made absolute with the
   request's origin) only when the entry has an authored cover on a safe `/media/` path.
-- **Browser check:** `apps/web/scripts/entries/check.mjs` (demo content; see the file header). Run against `pnpm dev:demo`.
+- **Browser check:** `apps/web/scripts/entries/check.mjs` (demo content; see the file header). Run against `pnpm dev:demo`; with `BASE_URL_EMPTY` set to a server on the empty published content it also checks the empty home and list. Sections 8 and 9 cover the reading aids, the filter, related entries, print, the empty home and the quick search.
 
 ## Globe seam (`app/globe/`)
 

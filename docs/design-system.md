@@ -50,6 +50,7 @@ No web font is added. The sans and mono stacks of `design-tokens.md` are system 
 | Panel title | sans 600 | 28 / 34 (`text-2xl`); card title 22 / 30 | sentence |
 | Summary | sans | 18 / 28, muted | sentence |
 | Body | sans | 16 / 26.4 | sentence |
+| Reading text (entry body, `.ds-prose`) | sans | 18 / 28, blocks limited to `48ch` (about 65 characters), `text-wrap: pretty`; headings `balance` | sentence |
 | Secondary | sans | 14 / 22 | sentence |
 | Buttons, values | mono | 12 / 18, 0.08em | buttons uppercase |
 | **Micro-label** (`.ds-micro`, `MicroLabel`) | mono, tabular, slashed zero | 11 / 16, 0.12em | UPPERCASE |
@@ -98,8 +99,9 @@ All in `app/components/ui/`, importable from `~/components/ui` (barrel) or by fi
 | `TagList` | `ul` of square outlined chips | static or links (44 px hit area on phones via `::before`) |
 | `Stack`, `Grid`, `Col` | flex column with a 4 px-scale gap; the 12-column grid; a column with `span` / `spanMd` | |
 | `Skeleton`, `StatePanel` | skeleton block with a scan sweep; the three non-content states; `headingLevel` (1 to 4) and `titleId` (focus target) | `state` loading (polite `role=status`, `aria-busy`), empty, error (`role=alert`, `ERR / 500` code, `[ ERROR ]`, a retry action) |
-| `EntryCard` | cover (authored image or generated) + kind tag and `№ 0042` + title + two-line summary + status + metadata strip + tags (`tags`, `linkState`, `id` are optional) | one link (the title), stretched over the card with `::after`; hover and focus-within brackets |
-| `Glyph`, `RegMark` | the glyph set (5 kinds, close, expand, collapse, arrows) and the registration crosshair | decorative (`aria-hidden`) |
+| `EntryCard` | cover (authored image or generated, always 16:9) + kind tag and `№ 0042` + title + two-line summary + status + metadata strip + tags (`tags`, `linkState`, `id` are optional) | one link (the title), stretched over the card with `::after`; hover and focus-within brackets; `orientation="horizontal"` puts the cover beside the text inside an `@container` of 28 rem or more (the place panel), `priority` loads the image at once (the first cards of a list) |
+| `CopyButton` | ghost button that copies a string (or a function of the window) and confirms in place: its word turns to `Copied` (or `Not copied`) for 2 s, a polite status says it; no toast | drawn only once hydrated; clipboard API with an `execCommand` fallback; `glyph`, `label` (the accessible name), `announcement` |
+| `Glyph`, `RegMark` | the glyph set (5 kinds, close, expand, collapse, arrows, copy, link, check, search, hash) and the registration crosshair | decorative (`aria-hidden`) |
 
 ### Generative cover art
 
@@ -120,13 +122,14 @@ Same content, two layouts; `layout` only changes the grid, never the data, the D
   h1#panel-heading (text-2xl; text-3xl / 4xl full)                 // the view's one h1, focus target
   summary
   Frame: DataList (meta pairs) + TagList + "Open host" primary button (https only, new tab note)
-  Cover: authored image (width/height set) or CoverArt seeded by the slug, in a Frame
+  Cover: authored image (width/height set) or CoverArt seeded by the slug, in a Frame, always 1.91:1
   Body: BlockRenderer (h2 / h3, paragraphs, lists, quote, image, verse, code, link cards, divider)
-  01 PLACES (links to /locations/:slug)  02 RELATED  prev / next of the kind
+  01 PLACES (links to /locations/:slug)  02 CONTENTS (full screen: sticky, scroll-spy)
+  03 RELATED (three EntryCards)  PREVIOUS / NEXT of the kind (two cells)
 ```
 
 Panel: one column. Full screen: title (8 columns) with the details frame (4), then reading column (8: cover and body) with the aside
-(4: places, related, neighbours). The header row of the container (Close, `ExpandToggle`) is the panel's, not the view's: it must stay
+(4: places, then the sticky contents); the related cards and the neighbours close both layouts at full width. The header row of the container (Close, `ExpandToggle`) is the panel's, not the view's: it must stay
 clear of the navbar's links (and, in full screen, of its logo). The footer toggle of the first sketch was dropped: two controls with
 the same name are noise, the header one is always reachable. The `PanelMock` in `routes/dev-design.tsx` is the early sketch of the
 shape. Lists of entries use `EntryCard` (via `EntryListCard`) in a `Grid` (`Col spanMd={6}`); an empty list is a `StatePanel`
@@ -142,17 +145,34 @@ horizontally scrollable focusable `pre`, a copy button that exists only once hyd
 is shown as plain text), `divider` (a `hr` with ticks; leading, trailing and repeated dividers are dropped). The pure parts live in
 `lib/entry-blocks.ts`.
 
+### Reading aids, lists, search (docs/web-architecture.md has the mechanics)
+
+- **Reading.** Computed `N MIN READ` micro-label for articles without an authored `Reading time`; a numbered **contents** (>= 3
+  headings) in the full view only (same markup in the panel, hidden by CSS), the current section marked `aria-current="location"` with a
+  signal tick, a "Jump to contents" skip link after the copy-link button; a `#` **anchor** on every heading (hover, focus, always on
+  touch); **Copy link** under the summary and **Copy** on code blocks (`CopyButton`); tags are links to the kind's filtered list.
+- **Lists.** A **tag filter** row of square chips (`ds-filter`: hairline, hover grey, selected = inverted fill and `aria-current`) with
+  a mono count each, above a 1 / 2 / 3 column grid; **year headings** (signal year, tick rule, count) only where years group entries.
+  The state is the URL (`?tag=`); on a phone the row scrolls sideways.
+- **Empty states.** Home with no place: the globe stays and `ArchiveEmpty` (a Frame with `[ ARCHIVE / 000 ENTRIES ]`, a tick divider, one
+  line and the four lists with counts) sits bottom left; a list with no entries and a place with none use the empty `StatePanel` / a
+  one-line Frame ("ENTRIES / 000").
+- **Search.** A modal dialog on the surface Frame: a combobox input with the glyph, an `ESC` button, group labels in micro type with a
+  rule, rows of kind glyph + title + micro second line, the highlighted one on the hover grey with a 2 px signal tick, a footer of key
+  hints and the result count. The trigger is a 44 px icon button with `⌘ K` / `Ctrl K` from `lg`.
+- **Print.** Ink on white, no globe, navigation, controls, contents, related cards or neighbours; external link addresses are written out.
+
 ## Accessibility rules
 
 - Contrast: all text AA (4.5:1) in both schemes on the page, the surface and, for muted text, the hover grey; body text 7:1 or more; control outlines 2.8:1 or more; the hairlines are deliberately quiet (decorative). `--subtle-foreground` only on the page and the surface. Enforced by `design-system.test.ts`.
 - Hue never carries meaning: kind = glyph + word, status = the bracketed word, error = the word and an inverted tag, selected = inverted fill and `aria-pressed`.
-- Touch targets 44 px below `md` (`--control-h`, link tags' `::before`, related rows `min-h-11`).
+- Touch targets 44 px below `md` (`--control-h`, link tags' and heading anchors' `::before`, filter chips and related rows `min-h-11`).
 - Keyboard: DOM order is reading order (header controls, title, sections, footer); one tab stop per card; toggles are real buttons with `aria-pressed`; Escape behaviour stays the panel's.
 - Focus is always visible (global ring); no component removes the outline except the card link, whose frame shows the focus instead (`:has(:focus-visible)` brackets and line).
 - No text in images: covers are generated art with no glyphs and are `aria-hidden`; authored images need `alt`.
 - Decoration (grid, hatch, ticks, registration marks, brackets) is `aria-hidden` or pure CSS and removable without losing information. Forced colours: brackets fall back to a plain border, pressed buttons use `Highlight`.
 - Reduced motion: no ambient animation, transitions collapse to ~0.
-- Live regions: loading is `role=status`, errors `role=alert`.
+- Live regions: loading is `role=status`, errors `role=alert`, the list filter, the search results and "Copied" are polite statuses.
 
 ## Dev styleguide
 
