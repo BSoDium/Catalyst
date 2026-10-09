@@ -11,12 +11,21 @@ import type {
   PublishedPlace,
   PublishedProjection,
 } from "@catalyst/schemas";
-import { toPlaceSummary } from "@catalyst/schemas";
 import { stripCountry } from "~/globe/engine/country-names";
 import { bboxExtentsKm, bboxFitRadiusKm } from "~/globe/engine/framing";
 import type { GlobeEntryRef, GlobeGroup, GlobePlace, GlobeRoute } from "~/globe/types";
 import { formatDates, type FormattedDates } from "./dates";
 import { COLLECTIONS, entriesOfPlace, type EntryGroup } from "./entries";
+
+/**
+ * The light shape of a place for lists and the globe. The same pick as `toPlaceSummary` of `@catalyst/schemas` (a test keeps them equal), written here
+ * because importing that function would drag the whole schema library (zod, about 29 kB gzip, and its `new Function` probe, which a
+ * strict Content-Security-Policy reports as a violation) into the browser bundle for three lines.
+ */
+export function toPlaceSummary(place: PublishedPlace): PlaceSummary {
+  const { slug, name, region, coordinates, labelPriority, summary, bbox, viewRadiusKm, group, countryCode } = place;
+  return { slug, name, region, coordinates, labelPriority, summary, bbox, viewRadiusKm, group, countryCode };
+}
 
 // Entries (lists, one entry, the kinds' paths and labels) live in ./entries; the place helpers below re-export what callers use.
 export { KIND_LABELS, placePath } from "./entries";

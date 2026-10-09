@@ -3,14 +3,15 @@ import { EntryListPage } from "~/components/entry-list-page";
 import { getProjection } from "~/lib/content.server";
 import { listEntries } from "~/lib/entries";
 import { listMeta } from "~/lib/entry-meta";
+import { metaBase } from "~/lib/meta";
 
 // `/poems`: the list of poems, summaries only (no body, so the page stays cheap however long the texts are).
 export async function loader() {
   return { items: listEntries(await getProjection(), "poem") };
 }
 
-export function meta(_args: Route.MetaArgs) {
-  return listMeta("poem");
+export function meta(args: Route.MetaArgs) {
+  return listMeta("poem", metaBase(args));
 }
 
 export default function PoemsRoute({ loaderData }: Route.ComponentProps) {

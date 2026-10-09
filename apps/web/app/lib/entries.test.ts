@@ -3,6 +3,7 @@ import { loadDemoProjection } from "@catalyst/published";
 import { EMPTY_PROJECTION, type PublishedContentItem, type PublishedProjection } from "@catalyst/schemas";
 import {
   CONTENT_KINDS,
+  countEntries,
   entriesOfPlace,
   entryLanguage,
   entryPath,
@@ -13,6 +14,8 @@ import {
   parsePanelPath,
   parseView,
   RELATED_LIMIT,
+  relatedScore,
+  RELATED_WEIGHTS,
   resolveBackTarget,
   splitMeta,
   viewSearch,
@@ -117,6 +120,40 @@ describe("getEntryDetail", () => {
   });
   it("an entry without a place relates nothing", () => {
     expect(getEntryDetail(world({ articles: [item("a"), item("b")] }), "article", "a")!.related).toEqual([]);
+  });
+});
+
+describe("countEntries", () => {
+  it("counts each kind, zero for the empty projection", () => {
+    expect(countEntries(EMPTY_PROJECTION)).toEqual({ article: 0, project: 0, artwork: 0, poem: 0 });
+    expect(countEntries(world({ articles: [item("a"), item("b")], poems: [item("v")] }))).toEqual({ article: 2, project: 0, artwork: 0, poem: 1 });
+  });
+});
+
+describe("relatedScore", () => {
+  const a = { kind: "article" as const, places: ["p1", "p2"], tags: ["Rail", "bus"] };
+  it("adds 4 per shared place and 2 per shared tag", () => {
+    expect(relatedScore(a, { kind: "poem", places: ["p1"], tags: [] })).toBe(RELATED_WEIGHTS.place);
+    expect(relatedScore(a, { kind: "poem", places: ["p1", "p2"], tags: ["rail"] })).toBe(2 * RELATED_WEIGHTS.place + RELATED_WEIGHTS.tag);
+    expect(relatedScore(a, { kind: "poem", places: [], tags: ["RAIL", "bus", "bus"] })).toBe(2 * RELATED_WEIGHTS.tag);
+  });
+  it("counts the same kind only when something else is shared", () => {
+    expect(relatedScore(a, { kind: "article", places: [], tags: [] })).toBe(0);
+    expect(relatedScore(a, { kind: "article", places: ["p1"], tags: [] })).toBe(RELATED_WEIGHTS.place + RELATED_WEIGHTS.kind);
+  });
+  it("is zero for strangers and ignores blank tags", () => {
+    expect(relatedScore(a, { kind: "project", places: ["z"], tags: ["", "other"] })).toBe(0);
+    expect(relatedScore({ ...a, tags: [""] }, { kind: "project", places: [], tags: [""] })).toBe(0);
+  });
+});
+
+describe("related entries, ranked", () => {
+  it("puts the entry that shares a place and a tag before one that shares a place only, and finds tag-only relations", () => {
+    const projection = world({
+      places: [place("p1")],
+      articles: [item("a", ["p1"], { tags: ["rail"] }), item("only-place", ["p1"]), item("both", ["p1"], { tags: ["rail"] }), item("only-tag", [], { tags: ["Rail"] }), item("none", [], { tags: ["x"] })],
+    });
+    expect(getEntryDetail(projection, "article", "a")!.related.map((r) => r.slug)).toEqual(["both", "only-place", "only-tag"]);
   });
 });
 

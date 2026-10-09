@@ -56,6 +56,11 @@ export function loader() {
   return { siteUrl: getSiteUrl(), devContentMode: import.meta.env.DEV ? getContentMode() : null };
 }
 
+/** The site origin and the dev badge never change while the app runs: no navigation (a `?view=full` toggle, a filter chip, a tag link) reloads them. */
+export function shouldRevalidate() {
+  return false;
+}
+
 export default function App({ loaderData }: Route.ComponentProps) {
   // "user": transform/layout animations are disabled when the OS asks for reduced motion.
   return (

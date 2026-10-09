@@ -95,4 +95,35 @@ describe("EntryView", () => {
       }
     }
   });
+  it("ends with the most related entries as cards and the neighbours of the kind", () => {
+    const html = render("article", "demo-article", "panel");
+    expect(html).toContain('data-slot="entry-more"');
+    expect(html).toContain('aria-labelledby="entry-related"');
+    expect(html).toContain('data-slot="entry-neighbours"');
+    expect(html.indexOf('data-slot="entry-more"')).toBeGreaterThan(html.indexOf('data-slot="entry-body"'));
+  });
+  it("has the contents in both layouts (same markup) for a body with three headings, none for a short one", () => {
+    for (const layout of ["panel", "full"] as const) {
+      const html = render("article", "demo-article", layout);
+      expect(html).toContain('data-slot="entry-toc"');
+      expect(html).toContain('href="#body-ljubljana-21-40"');
+      expect(html).toContain("Jump to contents");
+    }
+    expect(render("poem", "demo-poem", "full")).not.toContain('data-slot="entry-toc"');
+  });
+  it("links each tag to the filtered list of its kind", () => {
+    expect(render("article", "demo-article", "panel")).toContain('href="/articles?tag=night-trains"');
+    expect(render("project", "demo-project", "panel")).toMatch(/href="\/projects\?tag=/);
+  });
+  it("draws the copy-link button only once hydrated (nothing to press without scripts)", () => {
+    expect(render("article", "demo-article", "panel")).not.toContain("Copy link");
+  });
+  it("shows a computed reading time unless the entry authors one", () => {
+    const entry = getEntryDetail(demo, "article", "demo-article")!;
+    const words = Array.from({ length: 660 }, (_, i) => `w${i}`).join(" ");
+    const noFact = { ...entry, meta: entry.meta.filter((m) => m.label !== "Reading time"), body: [{ type: "paragraph" as const, text: words }] };
+    const html = renderToStaticMarkup(createElement(StaticRouter, { location: "/" }, createElement(EntryView, { entry: noFact, layout: "panel" })));
+    expect(html).toContain("3 min read");
+    expect(render("article", "demo-article", "panel")).not.toContain("min read");
+  });
 });

@@ -1,5 +1,6 @@
 import { Orbit } from "lucide-react";
 import { NavLink } from "react-router";
+import { SearchPalette } from "~/components/search-palette";
 import { cn } from "~/lib/utils";
 
 const LINKS = [
@@ -24,7 +25,8 @@ export function Navbar() {
         <NavLink to="/" end aria-label="Catalyst, home" className={cn(linkClass, "-ml-1 min-w-11 justify-center")}>
           <Orbit aria-hidden="true" strokeWidth={1.75} className="size-6" />
         </NavLink>
-        <nav aria-label="Primary">
+        <nav aria-label="Primary" className="flex items-center">
+          <SearchPalette />
           <ul className="flex items-center">
             {LINKS.map((link) => (
               <li key={link.to}>

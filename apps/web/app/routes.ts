@@ -24,5 +24,10 @@ export default [
   route("articles", "routes/articles.tsx"),
   route("artworks", "routes/artworks.tsx"),
   route("poems", "routes/poems.tsx"),
+  // Resource routes (no UI): the crawlers' files. `manifest.webmanifest`, the favicons and the share image are static files in public/.
+  route("sitemap.xml", "routes/sitemap.ts"),
+  route("robots.txt", "routes/robots.ts"),
+  // The quick search's index (titles and tags of the places and entries), fetched when the palette first opens.
+  route("search-index.json", "routes/search-index.ts"),
   ...devRoutes,
 ] satisfies RouteConfig;

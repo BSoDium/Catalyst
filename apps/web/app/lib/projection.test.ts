@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { loadDemoProjection } from "@catalyst/published";
-import { EMPTY_PROJECTION, type PublishedProjection } from "@catalyst/schemas";
+import { EMPTY_PROJECTION, toPlaceSummary as schemaToPlaceSummary, type PublishedProjection } from "@catalyst/schemas";
 import { bboxFitRadiusKm } from "~/globe/engine/framing";
-import { buildPlaceIndex, getPlaceDetail, imageSize, placeEntries, resolveRoutes } from "./projection";
+import { buildPlaceIndex, getPlaceDetail, imageSize, placeEntries, resolveRoutes, toPlaceSummary } from "./projection";
 
 const demo = loadDemoProjection();
 
@@ -22,7 +22,7 @@ describe("buildPlaceIndex", () => {
       groupSlug: "europe",
       countryCode: "PT",
       // the entries linked to it, for the second line of its label (the demo's project and article)
-      entries: [{ kind: "project", slug: "demo-project" }, { kind: "article", slug: "demo-article" }],
+      entries: [{ kind: "project", slug: "label-collision-engine" }, { kind: "article", slug: "morocco-coast-bus" }],
       // the demo's Lisbon has a published box: it is passed on, and the view radius frames it
       bbox: lisbon.bbox,
     });
@@ -140,20 +140,27 @@ describe("getPlaceDetail", () => {
   it("lists the linked entries grouped by kind, as summaries without a body", () => {
     const place = getPlaceDetail(demo, "lisbon");
     expect(place?.entries.map((g) => [g.kind, g.entries.map((e) => e.slug)])).toEqual([
-      ["article", ["demo-article"]],
-      ["project", ["demo-project"]],
+      ["article", ["morocco-coast-bus"]],
+      ["project", ["label-collision-engine"]],
     ]);
-    expect(place?.entries[0]?.entries[0]).toMatchObject({ href: "/articles/demo-article", index: 1, title: "Demo article" });
+    expect(place?.entries[0]?.entries[0]).toMatchObject({ href: "/articles/morocco-coast-bus", index: 3, title: "Eleven hours of Atlantic coast, by bus" });
     expect(place?.entries[0]?.entries[0]).not.toHaveProperty("body");
-    expect(place?.dates).toEqual({ text: "Demo dates", dateTime: "2024-03" });
+    expect(place?.dates).toEqual({ text: "Spring 2024", dateTime: "2024-03" });
     expect(place?.coordinates).toEqual(demo.places.find((p) => p.slug === "lisbon")!.coordinates);
   });
-  it("includes a poem linked only from the entry's side", () => {
-    expect(getPlaceDetail(demo, "hue")?.entries.map((g) => g.kind)).toEqual(["poem"]);
+  it("includes entries linked from only one side, whichever it is", () => {
+    // Huế: the short note and the poem name it in `related`, the long train article and the artwork only list it in their `placeSlugs`
+    expect(getPlaceDetail(demo, "hue")?.entries.map((g) => [g.kind, g.entries.map((e) => e.slug)])).toEqual([
+      ["article", ["rain-at-the-citadel-gate", "vietnam-by-rail"]],
+      ["artwork", ["monsoon-index"]],
+      ["poem", ["citadel-rain"]],
+    ]);
+    // Vancouver: the poem lists no place there, the place names the poem
+    expect(getPlaceDetail(demo, "vancouver")?.entries.map((g) => [g.kind, g.entries.map((e) => e.slug)])).toEqual([["poem", ["demo-poem"]]]);
   });
   it("leaves optional sections empty rather than inventing them", () => {
     const place = getPlaceDetail(demo, "reykjavik");
-    expect(place).toMatchObject({ dates: null, body: [], images: [], entries: [] });
+    expect(place).toMatchObject({ dates: null, body: [], images: [] });
     expect(place).not.toHaveProperty("summary");
   });
 });
@@ -162,5 +169,11 @@ describe("helpers", () => {
   it("only reports image size when both dimensions are authored", () => {
     expect(imageSize({ src: "/media/a.svg", alt: "a", width: 10, height: 5 })).toEqual({ width: 10, height: 5 });
     expect(imageSize({ src: "/media/a.svg", alt: "a", width: 10 })).toBeNull();
+  });
+});
+
+describe("toPlaceSummary", () => {
+  it("is the contract's own pick (the browser bundle carries this copy, not the schema library)", () => {
+    for (const place of loadDemoProjection().places) expect(toPlaceSummary(place)).toEqual(schemaToPlaceSummary(place));
   });
 });

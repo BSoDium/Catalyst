@@ -31,6 +31,13 @@ interface EntryCardProps {
   id?: string;
   /** Heading level of the title; pick the one that fits the page's outline. */
   headingLevel?: 2 | 3 | 4;
+  /**
+   * `horizontal`: the cover beside the text once the nearest `@container` ancestor is 28 rem wide (the place panel's rows); it stacks
+   * below that. Default `vertical`: the cover on top (the grids).
+   */
+  orientation?: "vertical" | "horizontal";
+  /** The first cards of a page: the image loads at once instead of lazily. */
+  priority?: boolean;
   className?: string;
 }
 
@@ -39,7 +46,8 @@ interface EntryCardProps {
  * metadata strip. One link (the title) stretched over the card by a pseudo-element, so the whole card is clickable and the
  * tab order still has a single stop per card.
  */
-export function EntryCard({ kind, index, title, summary, href, image, seed, meta, tags, status, linkState, id, headingLevel = 3, className }: EntryCardProps) {
+export function EntryCard({ kind, index, title, summary, href, image, seed, meta, tags, status, linkState, id, headingLevel = 3, orientation = "vertical", priority, className }: EntryCardProps) {
+  const horizontal = orientation === "horizontal";
   const Heading = `h${headingLevel}` as "h2" | "h3" | "h4";
   const link = href ? (
     href.startsWith("/") ? (
@@ -55,15 +63,21 @@ export function EntryCard({ kind, index, title, summary, href, image, seed, meta
     title
   );
   return (
-    <Frame as="article" id={id} data-kind={kind} interactive={!!href} padding="none" className={cn("flex min-w-0 flex-col", className)}>
-      <div className="border-b border-border">
+    <Frame as="article" id={id} data-kind={kind} data-orientation={orientation} interactive={!!href} padding="none" className={cn("flex min-w-0 flex-col", horizontal && "@md:flex-row", className)}>
+      <div className={cn("border-b border-border", horizontal && "@md:w-[38%] @md:shrink-0 @md:border-r @md:border-b-0")}>
         {image ? (
-          <img src={image.src} alt={image.alt} loading="lazy" decoding="async" className="aspect-video w-full object-cover" />
+          <img
+            src={image.src}
+            alt={image.alt}
+            loading={priority ? "eager" : "lazy"}
+            decoding="async"
+            className={cn("aspect-video w-full object-cover", horizontal && "@md:h-full @md:min-h-full")}
+          />
         ) : (
-          <CoverArt seed={seed ?? title} kind={kind} />
+          <CoverArt seed={seed ?? title} kind={kind} cols={48} rows={27} className={horizontal ? "@md:h-full" : undefined} />
         )}
       </div>
-      <div className="flex flex-1 flex-col gap-3 p-4">
+      <div className="flex min-w-0 flex-1 flex-col gap-3 p-4">
         <div className="flex items-center justify-between gap-3">
           <KindTag kind={kind} />
           <span className="ds-micro">№ {formatIndex(index)}</span>

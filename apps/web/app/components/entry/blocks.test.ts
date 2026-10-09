@@ -10,7 +10,7 @@ const render = (blocks: PublishedBodyBlock[], lang?: string) => renderToStaticMa
 describe("BlockRenderer", () => {
   it("renders paragraphs with hard line breaks and escapes everything", () => {
     const html = render([{ type: "paragraph", text: "one\ntwo <b>x</b> & \"q\"" }]);
-    expect(html).toContain("<p class=\"m-0\">one<br/>two &lt;b&gt;x&lt;/b&gt; &amp; &quot;q&quot;</p>");
+    expect(html).toContain("<p class=\"m-0 max-w-[48ch]\">one<br/>two &lt;b&gt;x&lt;/b&gt; &amp; &quot;q&quot;</p>");
     expect(html).not.toContain("<b>");
   });
   it("maps headings to h2/h3 with numbering and unique ids", () => {
