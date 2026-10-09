@@ -6,6 +6,7 @@ export function NotFoundPage() {
   return (
     <main id="main" tabIndex={-1} className="mx-auto max-w-2xl px-6 pt-[calc(var(--navbar-height)+3rem)] pb-24 outline-none">
       <title>Page not found · Catalyst</title>
+      <meta name="robots" content="noindex" />
       <StatePanel
         state="empty"
         headingLevel={1}

@@ -766,6 +766,13 @@
     }
   }
 
+  /* From lg a column may span differently again (`--span-lg`, the list pages' three-up grid); without it the md span stays. */
+  @media (min-width: 1024px) {
+    .ds-col {
+      grid-column: span var(--span-lg, var(--span-md, var(--span, 12)));
+    }
+  }
+
   @media (forced-colors: active) {
     .ds-frame[data-brackets]::after {
       background: none;
@@ -881,6 +888,180 @@
   }
 }
 
+/* Entry reading, filters and rows (docs/design-system.md, "Entry view", "Lists"). */
+@layer components {
+  /* Reading text: 18 / 28 on the 4 px grid; a measure of about 65 characters is set per block (`max-w-[48ch]`); no widows or orphans. */
+  .ds-prose {
+    font-size: 1.125rem;
+    line-height: 1.75rem;
+    font-kerning: normal;
+  }
+
+  .ds-prose p,
+  .ds-prose li,
+  .ds-prose blockquote {
+    text-wrap: pretty;
+    overflow-wrap: anywhere;
+  }
+
+  .ds-prose [data-slot="verse"] {
+    text-wrap: wrap;
+    font-size: 0.9375rem;
+  }
+
+  /* Heading anchor: the `#` link of a section. Drawn on hover and focus; always on devices without hover. */
+  .ds-anchor {
+    position: relative;
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    align-self: center;
+    justify-content: center;
+    width: 1.25rem;
+    height: 1.25rem;
+    color: var(--muted-foreground);
+    opacity: 0;
+    border: var(--hairline) solid transparent;
+    transition:
+      opacity var(--duration-fast) var(--ease-standard),
+      border-color var(--duration-fast) var(--ease-standard);
+  }
+
+  /* 44 px hit area without a bigger glyph. */
+  .ds-anchor::before {
+    content: "";
+    position: absolute;
+    inset: -0.8125rem;
+  }
+
+  .ds-heading:hover .ds-anchor,
+  .ds-anchor:focus-visible {
+    opacity: 1;
+  }
+
+  .ds-anchor:hover {
+    border-color: var(--border-strong);
+    color: var(--foreground);
+  }
+
+  @media (hover: none) {
+    .ds-anchor {
+      opacity: 0.55;
+    }
+  }
+
+  /* The contents belong to the full-screen view: the same markup is in the panel, where it is not shown. */
+  [data-layout="panel"] [data-slot="entry-toc"],
+  [data-layout="panel"] .ds-toc-skip {
+    display: none !important;
+  }
+
+  /* A row of links (places, contents): the hover grey and a signal tick on the left edge. */
+  .ds-row,
+  .ds-toc-link {
+    position: relative;
+    transition: background-color var(--duration-fast) var(--ease-standard);
+  }
+
+  .ds-row:hover,
+  .ds-toc-link:hover {
+    background: var(--accent);
+  }
+
+  .ds-toc-link[aria-current="location"] {
+    font-weight: 500;
+  }
+
+  .ds-toc-link[aria-current="location"]::before {
+    content: "";
+    position: absolute;
+    inset-block: 0.375rem;
+    left: -0.625rem;
+    width: 2px;
+    background: var(--signal);
+  }
+
+  /* The filter chips of a list: a tag that selects. Selected = inverted fill (and aria-current), like a pressed toggle. */
+  .ds-filter {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 2.75rem;
+    padding-inline: 0.75rem;
+    border: var(--hairline) solid var(--border-strong);
+    background: transparent;
+    color: var(--foreground);
+    text-decoration: none;
+    transition:
+      background-color var(--duration-fast) var(--ease-standard),
+      color var(--duration-fast) var(--ease-standard);
+  }
+
+  .ds-filter {
+    flex: none;
+    white-space: nowrap;
+  }
+
+  /* The chips: one row that scrolls sideways on a phone (it bleeds to the screen edges), wrapped from md. */
+  .ds-filter-row {
+    margin: 0 calc(var(--panel-pad) * -1);
+    padding: 0 var(--panel-pad) 0.25rem;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  @media (min-width: 768px) {
+    .ds-filter-row {
+      flex-wrap: wrap;
+      margin: 0;
+      padding: 0;
+      overflow-x: visible;
+    }
+  }
+
+  .ds-filter:hover {
+    background: var(--accent);
+  }
+
+  .ds-filter[aria-current="true"] {
+    background: var(--foreground);
+    border-color: var(--foreground);
+    color: var(--background);
+  }
+
+  .ds-filter .ds-micro {
+    color: inherit;
+  }
+
+  .ds-filter [data-count] {
+    opacity: 1;
+    color: var(--muted-foreground);
+  }
+
+  .ds-filter[aria-current="true"] [data-count] {
+    color: inherit;
+  }
+
+  @media (min-width: 768px) {
+    .ds-filter {
+      min-height: 2rem;
+    }
+  }
+
+  /* A year heading of a list: `2026 ---------------- 02`, the year in the signal colour. */
+  .ds-year {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+  }
+}
+
+/* Entry headings are focus targets by script, not controls: no ring on them (the panel announces the change). */
+h1[tabindex="-1"]:focus,
+h1[tabindex="-1"]:focus-visible {
+  outline: none;
+}
+
 /*
  * Map labels: the names of the detection boxes, HTML text in the app's monospace stack (`--font-mono`, the credits line's and the dev badge's) (engine/label-dom.ts creates and positions the
  * elements; sizes, weights and tracking come from LABEL_TYPE in engine/label-text.ts because the planner measures with the same numbers).
@@ -979,5 +1160,131 @@
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/*
+ * Page-level loading (components/nav-progress.tsx): a 2 px signal line along the top edge while a navigation is pending, shown only after a
+ * short delay (a fast one never flashes it). The one ambient loop besides the skeleton sweep. Reduced motion: the same line, still.
+ */
+.nav-progress {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 50;
+  height: 2px;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-standard);
+}
+
+.nav-progress[data-active] {
+  opacity: 1;
+}
+
+.nav-progress::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--signal);
+  transform: translateX(-100%);
+  animation: nav-progress-sweep 1100ms var(--ease-standard) infinite;
+}
+
+@keyframes nav-progress-sweep {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-progress::after {
+    animation: none;
+    transform: none;
+    opacity: 0.6;
+  }
+}
+
+/*
+ * Print (an entry, a list): the page without its chrome, in ink on white. The globe, the navigation, the panel's controls and every
+ * interactive decoration are hidden (`print:hidden` in the markup); the panel, which is `fixed` on screen, flows as a normal page, and
+ * the colours are the light scheme's whatever the visitor's scheme is.
+ */
+@media print {
+  :root {
+    color-scheme: light;
+    --background: #fff;
+    --foreground: #000;
+    --muted-foreground: #404040;
+    --surface: #fff;
+    --accent: #fff;
+    --border: rgb(0 0 0 / 0.3);
+    --border-strong: rgb(0 0 0 / 0.6);
+    --signal: #000;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+  }
+
+  [data-panel] {
+    position: static !important;
+    display: block !important;
+    width: auto !important;
+    height: auto !important;
+    transform: none !important;
+    border: 0 !important;
+    background: #fff !important;
+  }
+
+  [data-panel] > div {
+    position: static !important;
+    height: auto !important;
+    overflow: visible !important;
+    padding-top: 0 !important;
+  }
+
+  [data-slot="entry-view"] {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+
+  [data-slot="entry-view"] .ds-grid {
+    display: block;
+  }
+
+  [data-slot="entry-view"] .ds-col {
+    margin-bottom: 1rem;
+  }
+
+  img,
+  pre,
+  figure,
+  blockquote,
+  .ds-frame {
+    break-inside: avoid;
+  }
+
+  h2,
+  h3 {
+    break-after: avoid;
+  }
+
+  .ds-skeleton::after,
+  .nav-progress,
+  .nav-scrim,
+  #app > header,
+  main:has([data-globe]),
+  [data-dev-content-badge],
+  [data-slot="skip-links"] {
+    display: none !important;
+  }
+
+  /* A link's address after its text, where the destination is not obvious. */
+  [data-slot="entry-body"] a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    font-size: 0.75em;
+    word-break: break-all;
   }
 }

@@ -2,6 +2,7 @@ import { useReducedMotion } from "motion/react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useOutlet } from "react-router";
 import type { Route } from "./+types/shell";
+import { ArchiveEmpty } from "~/components/archive-empty";
 import { AttributionSlot } from "~/components/attribution-slot";
 import { DetailPanel, type OpenIntent } from "~/components/detail-panel";
 import { PlacesNav } from "~/components/places-nav";
@@ -10,14 +11,15 @@ import { useIsMobile } from "~/hooks/use-is-mobile";
 import { useViewportWidth } from "~/hooks/use-viewport-width";
 import { getProjection } from "~/lib/content.server";
 import { getTilesConfig } from "~/lib/tiles-config.server";
-import { KIND_LABELS, parsePanelPath, parseView, resolveBackTarget, viewSearch, type EntryView } from "~/lib/entries";
+import { countEntries, KIND_LABELS, parsePanelPath, parseView, resolveBackTarget, viewSearch, type EntryView } from "~/lib/entries";
 import { panelInset } from "~/lib/layout";
 import { buildPlaceIndex, placePath, toGlobeGroups } from "~/lib/projection";
 
 export async function loader() {
   // `tiles` is the street map's tile source configuration (CATALYST_TILES_* read at request time, see
   // docs/street-architecture.md). The globe hands over to the street map with it (docs/web-architecture.md).
-  return { ...buildPlaceIndex(await getProjection()), tiles: getTilesConfig() };
+  const projection = await getProjection();
+  return { ...buildPlaceIndex(projection), entryCounts: countEntries(projection), tiles: getTilesConfig() };
 }
 
 /** The place index never changes between navigations inside the shell. */
@@ -32,7 +34,7 @@ export function shouldRevalidate() {
  * in the full-screen container: the panel widens over the SAME globe, which stays mounted and keeps its view.
  */
 export default function Shell({ loaderData }: Route.ComponentProps) {
-  const { places, globePlaces, groups, routes, tiles } = loaderData;
+  const { places, globePlaces, groups, routes, tiles, entryCounts } = loaderData;
   const globeGroups = useMemo(() => toGlobeGroups(groups), [groups]);
   const location = useLocation();
   const navigate = useNavigate();
@@ -121,11 +123,17 @@ export default function Shell({ loaderData }: Route.ComponentProps) {
               onViewChange={saveView}
             />
           )}
-          {places.length === 0 && (
-            <p className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 text-center text-sm text-muted-foreground">
-              Nothing on the globe yet.
+          {/* Only the globe needs JavaScript: the lists, the entries and the places are server-rendered pages that read and navigate without it. */}
+          <noscript>
+            <p className="absolute inset-y-0 left-0 m-0 flex w-full items-center justify-center px-6 text-center text-sm text-muted-foreground md:w-1/2 [&_a]:underline">
+              <span className="max-w-xs">
+                The globe needs JavaScript. The <a href="/articles">articles</a>, <a href="/projects">projects</a>, <a href="/artworks">artworks</a> and{" "}
+                <a href="/poems">poems</a> are readable without it.
+              </span>
             </p>
-          )}
+          </noscript>
+          {/* No place published: the globe stays, with a HUD card that says so and opens the lists. */}
+          {places.length === 0 && !isOpen && <ArchiveEmpty counts={entryCounts} />}
         </div>
         <PlacesNav places={places} groups={groups} currentSlug={selectedSlug} onFocusSlug={setFocusedSlug} onOpen={markUserIntent} />
       </main>

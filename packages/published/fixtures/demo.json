@@ -2,35 +2,35 @@
   "schemaVersion": 1,
   "places": [
     { "slug": "lisbon", "name": "Lisbon", "region": "Portugal", "coordinates": { "lat": 38.72, "lon": -9.14 }, "labelPriority": 60, "bbox": [-9.25, 38.664, -9.07, 38.776], "viewRadiusKm": 10, "group": "europe", "countryCode": "PT",
-      "summary": "Demo fixture: a place with prose, dates, an image and related content.",
-      "dates": { "start": "2024-03", "end": "2024-04", "label": "Demo dates" },
-      "body": ["Demo fixture text. This paragraph exists only to exercise the detail panel layout.", "A second demo paragraph, to check reading width and spacing."],
-      "images": [{ "src": "/media/demo/field-notes.svg", "alt": "Abstract monochrome grid used as a demo fixture image", "width": 960, "height": 600, "caption": "Demo fixture image" }],
-      "related": [{ "kind": "article", "slug": "demo-article" }, { "kind": "project", "slug": "demo-project" }] },
+      "summary": "A hilly city on a wide river mouth, used as a base for slow walks, long afternoons of writing and the planning of slower bus rides.",
+      "dates": { "start": "2024-03", "end": "2024-04", "label": "Spring 2024" },
+      "body": ["Lisbon is the city I keep returning to for no good reason, which is the best reason. The hills do the work of a gym, the light does the work of a therapist, and the trams do whatever they like.", "Most of what is filed here was written elsewhere and edited here, at a café table with a view of a laundry line and a slice of river. It is a good city for finishing things."],
+      "images": [{ "src": "/media/demo/field-notes.svg", "alt": "A page of a grid notebook, drawn as a plain monochrome grid", "width": 960, "height": 600, "caption": "A page of the notebook that goes everywhere" }],
+      "related": [{ "kind": "article", "slug": "morocco-coast-bus" }, { "kind": "project", "slug": "label-collision-engine" }] },
     { "slug": "reykjavik", "name": "Reykjavík", "region": "Iceland", "coordinates": { "lat": 64.15, "lon": -21.94 }, "labelPriority": 50, "group": "europe", "countryCode": "IS",
-      "body": [], "images": [], "related": [] },
+      "body": [], "images": [], "related": [{ "kind": "poem", "slug": "demo-poem" }] },
     { "slug": "kyoto", "name": "Kyoto", "region": "Japan", "coordinates": { "lat": 35.01, "lon": 135.77 }, "labelPriority": 70, "group": "asia", "countryCode": "JP",
-      "summary": "Demo fixture: summary only, no prose.", "body": [], "images": [], "related": [{ "kind": "artwork", "slug": "demo-artwork" }] },
+      "summary": "A week in the old capital, in a very small apartment, a printmaking studio and too many temples to count.", "body": [], "images": [], "related": [{ "kind": "artwork", "slug": "demo-artwork" }] },
     { "slug": "cusco", "name": "Cusco", "region": "Peru", "coordinates": { "lat": -13.52, "lon": -71.97 }, "labelPriority": 40, "group": "americas", "countryCode": "PE",
-      "body": [], "images": [], "related": [] },
+      "body": [], "images": [], "related": [{ "kind": "article", "slug": "altiplano-crossing" }, { "kind": "artwork", "slug": "altiplano-sediment" }, { "kind": "poem", "slug": "cuesta-arriba" }] },
     { "slug": "cape-town", "name": "Cape Town", "region": "South Africa", "coordinates": { "lat": -33.92, "lon": 18.42 }, "labelPriority": 55, "countryCode": "ZA",
       "body": [], "images": [], "related": [] },
     { "slug": "vancouver", "name": "Vancouver", "region": "Canada", "coordinates": { "lat": 49.28, "lon": -123.12 }, "labelPriority": 45, "group": "americas", "countryCode": "CA",
-      "body": [], "images": [], "related": [] },
+      "body": [], "images": [], "related": [{ "kind": "poem", "slug": "demo-poem" }] },
     { "slug": "wellington", "name": "Wellington", "region": "New Zealand", "coordinates": { "lat": -41.29, "lon": 174.78 }, "labelPriority": 35, "countryCode": "NZ",
-      "body": [], "images": [], "related": [] },
+      "body": [], "images": [], "related": [{ "kind": "project", "slug": "weather-ledger" }] },
     { "slug": "hanoi", "name": "Hanoi", "region": "Vietnam", "coordinates": { "lat": 21.03, "lon": 105.85 }, "labelPriority": 30, "group": "vietnam", "countryCode": "VN",
-      "body": [], "images": [], "related": [] },
+      "body": [], "images": [], "related": [{ "kind": "article", "slug": "vietnam-by-rail" }] },
     { "slug": "ho-chi-minh-city", "name": "Ho Chi Minh City", "region": "Vietnam", "coordinates": { "lat": 10.82, "lon": 106.63 }, "labelPriority": 25, "viewRadiusKm": 18, "group": "vietnam", "countryCode": "VN",
       "body": [], "images": [], "related": [] },
     { "slug": "hue", "name": "Huế", "region": "Vietnam", "coordinates": { "lat": 16.46, "lon": 107.59 }, "labelPriority": 20, "group": "vietnam", "countryCode": "VN",
-      "body": [], "images": [], "related": [{ "kind": "poem", "slug": "demo-poem" }] },
+      "body": [], "images": [], "related": [{ "kind": "article", "slug": "rain-at-the-citadel-gate" }, { "kind": "poem", "slug": "citadel-rain" }] },
     { "slug": "paris", "name": "Paris", "region": "France", "coordinates": { "lat": 48.86, "lon": 2.35 }, "labelPriority": 65, "viewRadiusKm": 14, "group": "europe", "countryCode": "FR",
       "body": [], "images": [], "related": [] },
     { "slug": "ljubljana", "name": "Ljubljana", "region": "Slovenia", "coordinates": { "lat": 46.06, "lon": 14.51 }, "labelPriority": 40, "group": "balkans", "countryCode": "SI",
       "body": [], "images": [], "related": [] },
     { "slug": "zagreb", "name": "Zagreb", "region": "Croatia", "coordinates": { "lat": 45.81, "lon": 15.98 }, "labelPriority": 45, "group": "croatia", "countryCode": "HR",
-      "body": [], "images": [], "related": [] },
+      "body": [], "images": [], "related": [{ "kind": "project", "slug": "timetable-diff" }, { "kind": "artwork", "slug": "night-platform-split" }] },
     { "slug": "split", "name": "Split", "region": "Croatia", "coordinates": { "lat": 43.51, "lon": 16.44 }, "labelPriority": 35, "group": "croatia", "countryCode": "HR",
       "body": [], "images": [], "related": [] },
     { "slug": "belgrade", "name": "Belgrade", "region": "Serbia", "coordinates": { "lat": 44.79, "lon": 20.45 }, "labelPriority": 40, "group": "balkans", "countryCode": "RS",
@@ -56,63 +56,419 @@
     { "id": "demo-route-vietnam", "title": "Demo route (curated stop order)", "stops": ["hanoi", "hue", "ho-chi-minh-city"] }
   ],
   "projects": [
-    { "slug": "demo-project", "title": "Demo project", "summary": "Demo fixture entry: a software project with a cover, facts, a code block and links.", "date": "2024",
-      "url": "https://example.org/demo-project",
-      "cover": { "src": "/media/demo/cover-project.svg", "alt": "Abstract nested squares used as a demo fixture cover", "width": 960, "height": 600 },
-      "tags": ["demo", "software", "placeholder"],
-      "meta": [{ "label": "Stack", "value": "TypeScript, WebGL (placeholder)" }, { "label": "Status", "value": "Demo fixture" }, { "label": "Repository", "value": "example.org/demo-project (placeholder)" }],
-      "body": [
-        { "type": "paragraph", "text": "Demo fixture text. This project does not exist: the paragraph only exercises the entry layout." },
-        { "type": "heading", "level": 2, "text": "Demo usage" },
-        { "type": "code", "language": "ts", "code": "// Demo fixture code, not a real API.\nconst map = createDemoMap({ style: \"monochrome\" });\nmap.flyTo(\"lisbon\");" },
-        { "type": "list", "ordered": false, "items": ["Placeholder feature one", "Placeholder feature two"] },
-        { "type": "divider" },
-        { "type": "link", "title": "Demo repository", "url": "https://example.org/demo-project/source", "description": "A placeholder link, it leads nowhere real." }
+    {
+      "slug": "demo-project",
+      "title": "Pixel Globe",
+      "summary": "A tiny globe renderer that draws the Earth as dithered pixels: one fragment shader, no textures, and an API small enough to read in an afternoon.",
+      "date": "2026-04",
+      "url": "https://example.org/pixel-globe",
+      "cover": { "src": "/media/demo/cover-pixel-globe.svg", "alt": "A pixel-art globe lit from the upper left, dithered continents, a faint orbit ring and one cyan location marker", "width": 1200, "height": 630 },
+      "tags": ["webgl", "pixel-art", "globe", "typescript", "glsl", "open-source"],
+      "meta": [
+        { "label": "Stack", "value": "TypeScript, WebGL 2, GLSL" },
+        { "label": "Status", "value": "Active" },
+        { "label": "Repository", "value": "example.org/pixel-globe" },
+        { "label": "License", "value": "MIT" },
+        { "label": "Size", "value": "14 KB gzipped, no dependencies" }
       ],
-      "placeSlugs": ["lisbon"] }
+      "body": [
+        {"type":"paragraph","text":"Pixel Globe started on a flight over Iceland with a laptop at ten percent battery and a simple question: how little code does it take to make a globe that looks hand-drawn? The answer turned out to be one fragment shader, one uniform for rotation and a four-by-four dither matrix, plus a stubborn refusal to load a single texture."},
+        {"type":"heading","level":2,"text":"How it works"},
+        {"type":"paragraph","text":"Each pixel on screen is mapped back to a point on the sphere. Land and sea come from a small noise function instead of an image, then the result is quantised to four tones and ordered-dithered with a Bayer matrix. The cost is the same at any resolution, and the look is the same on a phone and on a wall."},
+        {"type":"code","language":"glsl","code":"// Fragment shader, simplified: one sphere, one light, four tones.\n// fbm() and rotate() are small helpers defined above the main function.\nprecision highp float;\nuniform vec2 uResolution;\nuniform float uYaw;\nuniform float uTilt;\nuniform float uCell;\n\nconst mat4 BAYER = mat4(\n   0.0,  8.0,  2.0, 10.0,\n  12.0,  4.0, 14.0,  6.0,\n   3.0, 11.0,  1.0,  9.0,\n  15.0,  7.0, 13.0,  5.0) / 16.0;\n\nfloat land(vec3 p) {\n  return smoothstep(0.48, 0.52, fbm(p * 2.4 + vec3(8.0, 3.0, 0.0)));\n}\n\nvoid main() {\n  vec2 uv = (gl_FragCoord.xy - 0.5 * uResolution) / (0.5 * uResolution.y);\n  float d2 = dot(uv, uv);\n  if (d2 > 1.0) { discard; }\n\n  vec3 n = rotate(vec3(uv, sqrt(1.0 - d2)), uYaw, uTilt);\n  float light = max(dot(n, normalize(vec3(-0.45, 0.55, 0.7))), 0.0);\n  float tone = mix(0.2, 1.0, light) * mix(0.35, 1.0, land(n));\n\n  ivec2 cell = ivec2(mod(floor(gl_FragCoord.xy / uCell), 4.0));\n  gl_FragColor = vec4(vec3(step(BAYER[cell.x][cell.y], tone)), 1.0);\n}"},
+        {"type":"heading","level":2,"text":"Using it"},
+        {"type":"code","language":"ts","code":"import { createGlobe } from \"pixel-globe\";\n\nconst globe = createGlobe(document.querySelector(\"canvas\")!, {\n  cell: 6, // size of one \"pixel\", in CSS pixels\n  tones: 4,\n  accent: \"#38d4f5\",\n});\n\nglobe.markers.add({ id: \"paris\", lat: 48.86, lon: 2.35, accent: true });\nglobe.rotateTo({ lat: 48.86, lon: 2.35 }, { duration: 900 });\n\n// Everything is a plain function of time: pause it and nothing moves.\nglobe.pause();"},
+        {"type":"image","src":"/media/demo/fig-globe-wire.svg","alt":"The pixel globe rotated, dark dithered continents on pale paper with a cyan marker","width":960,"height":600,"caption":"The globe at rest: four tones, one marker."},
+        {"type":"heading","level":2,"text":"Changelog"},
+        {"type":"list","ordered":false,"items":["0.9.0: markers accept an accent flag and a leader-line label.","0.8.2: fixed a seam at the antimeridian when the globe is tilted past 60 degrees.","0.8.0: respects prefers-reduced-motion, where rotation becomes a jump cut.","0.7.0: ordered dithering replaces the old noise dither, and the output shrinks by a third.","0.6.0: first public version."]},
+        {"type":"divider"},
+        {"type":"heading","level":2,"text":"A control plate"},
+        {"type":"image","src":"/media/demo/fig-globe-hud.svg","alt":"An interface plate: a dithered panel with a crosshair on the left, rows of dotted-leader data on the right","width":960,"height":600,"caption":"The control plate used in the demo: a crosshair, a dithered field and a column of readouts."},
+        {"type":"link","title":"Source code","url":"https://example.org/pixel-globe/source","description":"The repository, with the shader split into small, commented functions."},
+        {"type":"link","title":"Live demo","url":"https://example.org/pixel-globe/demo","description":"Drag to rotate, press space to pause."}
+      ],
+      "placeSlugs": ["paris", "reykjavik"]
+    },
+    {
+      "slug": "timetable-diff",
+      "title": "Timetable Diff",
+      "summary": "A command-line tool that compares two public transit feeds and says, in plain language, which trains were added, retimed or quietly removed.",
+      "date": "2025-11",
+      "url": "https://example.org/timetable-diff",
+      "tags": ["typescript", "cli", "gtfs", "rail", "tooling"],
+      "meta": [
+        { "label": "Stack", "value": "TypeScript, Node.js" },
+        { "label": "Status", "value": "Active" },
+        { "label": "Repository", "value": "example.org/timetable-diff" },
+        { "label": "License", "value": "Apache-2.0" },
+        { "label": "Platforms", "value": "macOS, Linux" }
+      ],
+      "body": [
+        {"type":"paragraph","text":"I wrote Timetable Diff after arriving at a platform for a train that, according to last month's feed, existed. It does one thing: it takes two GTFS snapshots and tells you what changed, in sentences."},
+        {"type":"heading","level":2,"text":"A typical run"},
+        {"type":"code","language":"sh","code":"$ timetable-diff feeds/2026-03.zip feeds/2026-04.zip --route \"Ljubljana - Belgrade\"\n\n~ 2 trains retimed\n  Night 41   Ljubljana 21:40 -> 21:55   (+15 min)\n  Night 42   Belgrade  06:12 -> 06:30   (+18 min)\n- 1 train removed\n  Regional 6012   Zagreb 04:30   (Mon-Fri)\n+ 1 train added\n  Express 810     Zagreb 05:05   (daily)"},
+        {"type":"heading","level":2,"text":"The core"},
+        {"type":"paragraph","text":"Trips are matched by their identifier and stop sequence, not by their departure time, so a train that merely leaves fifteen minutes later is reported as retimed instead of one train removed and another added. Night trains are the awkward case: they belong to the date they depart, not to the date they arrive."},
+        {"type":"code","language":"ts","code":"export function diffStops(before: StopTime[], after: StopTime[]): StopChange[] {\n  const index = new Map(before.map((s) => [`${s.trainId}:${s.stopSequence}`, s] as const));\n  const changes: StopChange[] = [];\n\n  for (const next of after) {\n    const key = `${next.trainId}:${next.stopSequence}`;\n    const prev = index.get(key);\n    if (!prev) { changes.push({ kind: \"added\", stop: next }); continue; }\n    if (prev.departure !== next.departure) changes.push({ kind: \"retimed\", stop: next, shiftMinutes: minutes(next.departure) - minutes(prev.departure) });\n    index.delete(key);\n  }\n\n  for (const gone of index.values()) changes.push({ kind: \"removed\", stop: gone });\n  return changes;\n}"},
+        {"type":"heading","level":2,"text":"Changelog"},
+        {"type":"list","ordered":false,"items":["1.2.0: a --since flag compares against the last feed saved in a folder.","1.1.0: night trains are grouped by their departure date, not the calendar day.","1.0.0: stable output format and a JSON mode for scripts."]},
+        {"type":"divider"},
+        {"type":"link","title":"Repository","url":"https://example.org/timetable-diff/source","description":"Source, issues and a folder of sample feeds."},
+        {"type":"link","title":"Sample feeds","url":"https://example.org/timetable-diff/examples","description":"Two small, invented feeds to try the tool without downloading anything."}
+      ],
+      "placeSlugs": ["belgrade", "zagreb"]
+    },
+    {
+      "slug": "label-collision-engine",
+      "title": "Collide, a label collision engine for maps",
+      "summary": "A small engine, written in Rust and compiled to WebAssembly, that places thousands of map labels without overlaps and without making the map flicker.",
+      "date": "2023-02",
+      "url": "https://example.org/collide",
+      "cover": { "src": "/media/demo/cover-collide.svg", "alt": "Rectangular map labels with leader lines to anchor points, a few overlapping pairs outlined in cyan", "width": 1200, "height": 630 },
+      "tags": ["cartography", "rust", "webassembly", "labels", "algorithms"],
+      "meta": [
+        { "label": "Stack", "value": "Rust, WebAssembly, TypeScript" },
+        { "label": "Status", "value": "Paused" },
+        { "label": "Repository", "value": "example.org/collide" },
+        { "label": "Benchmark", "value": "12,000 labels in about 4 ms, on a laptop" }
+      ],
+      "body": [
+        {"type":"paragraph","text":"Placing labels on a map looks like a layout problem and behaves like a negotiation. Every label wants the best spot, every spot is wanted by three labels, and the moment you move the camera the whole deal has to be renegotiated. Collide is the engine I wrote to make that negotiation fast and, more importantly, stable."},
+        {"type":"heading","level":2,"text":"The idea"},
+        {"type":"paragraph","text":"Labels are ranked by priority, tried in order against up to eight candidate positions, and tested against a spatial grid of the ones already placed. A label that loses is not removed but demoted to a faint state, so it can return as soon as there is room. A short hysteresis window keeps a label from toggling on and off while you pan."},
+        {"type":"image","src":"/media/demo/fig-labels-before.svg","alt":"Map labels before collision resolution: overlapping boxes outlined in cyan among well-spaced ones","width":960,"height":600,"caption":"Before: twenty labels, several collisions (outlined)."},
+        {"type":"image","src":"/media/demo/fig-labels-after.svg","alt":"The same labels after resolution: no overlap, the moved label framed in cyan","width":960,"height":600,"caption":"After: no overlaps, one label moved to its second-best position."},
+        {"type":"heading","level":2,"text":"The core loop"},
+        {"type":"code","language":"rust","code":"pub fn place(labels: &mut [Label], grid: &mut Grid, zoom: f32) -> usize {\n    labels.sort_by(|a, b| b.priority.total_cmp(&a.priority));\n    let mut placed = 0;\n\n    for label in labels.iter_mut() {\n        label.state = State::Hidden;\n        for candidate in label.candidates(zoom) {\n            if grid.is_free(&candidate.rect) {\n                grid.insert(label.id, candidate.rect);\n                label.anchor = candidate;\n                label.state = State::Visible;\n                placed += 1;\n                break;\n            }\n        }\n    }\n    placed\n}"},
+        {"type":"paragraph","text":"The grid is a flat vector of cell lists, so a collision test touches at most four cells. On a mid-range laptop that is the difference between a frame budget you notice and one you do not."},
+        {"type":"heading","level":2,"text":"Status"},
+        {"type":"paragraph","text":"The project is paused, not abandoned: the engine works, the benchmarks are honest, and the remaining work is a proper test suite for the awkward cases around the antimeridian. Bug reports with a screenshot are welcome."},
+        {"type":"link","title":"Repository","url":"https://example.org/collide/source","description":"Rust crate, WebAssembly build and the benchmark harness."},
+        {"type":"link","title":"Benchmark notes","url":"https://example.org/collide/benchmarks","description":"How the numbers were measured, and how to reproduce them."}
+      ],
+      "placeSlugs": ["lisbon", "ljubljana"]
+    },
+    {
+      "slug": "weather-ledger",
+      "title": "Weather Ledger",
+      "summary": "Turns a year of daily weather readings into a pen-plotter drawing: one line per week, one hill per storm. Archived after a year of Wellington winds.",
+      "date": "2021-06",
+      "url": "https://example.org/weather-ledger",
+      "tags": ["python", "generative-art", "pen-plotter", "weather", "archived"],
+      "meta": [
+        { "label": "Stack", "value": "Python, NumPy, SVG" },
+        { "label": "Status", "value": "Archived" },
+        { "label": "Repository", "value": "example.org/weather-ledger" },
+        { "label": "Output", "value": "One A3 plot, 52 lines" }
+      ],
+      "body": [
+        {"type":"paragraph","text":"Weather Ledger began as a way to remember a windy year. Fifty-two lines, one for each week, are drawn from the daily readings of a single station, and the storms show up as hills that hide the lines behind them. It was never meant to be a library, only a small script and a long afternoon at the plotter."},
+        {"type":"heading","level":2,"text":"From readings to lines"},
+        {"type":"code","language":"python","code":"import numpy as np\n\n\ndef weekly_lines(readings, width=297, height=420, step=0.5):\n    \"\"\"One polyline per week: wind speed becomes vertical displacement.\"\"\"\n    weeks = np.array_split(np.asarray(readings, dtype=float), 52)\n    x = np.arange(0, width, step)\n    lines = []\n    for i, week in enumerate(weeks):\n        samples = np.interp(x, np.linspace(0, width, len(week)), week)\n        y = 10 + i * (height - 20) / 51 - samples * 0.35\n        lines.append(np.column_stack([x, y]))\n    return lines"},
+        {"type":"image","src":"/media/demo/fig-ledger-plot.svg","alt":"A pen-plotter drawing of thirty fine lines with a gentle swell, one line in cyan","width":960,"height":600,"caption":"The plot, as drawn: fifty-two weeks of wind."},
+        {"type":"heading","level":2,"text":"Why it is archived"},
+        {"type":"paragraph","text":"The script did what I wanted, and the year it describes is over. I keep the repository public in case the approach is useful to someone with a different station and a different year, but I no longer accept changes."},
+        {"type":"link","title":"Repository (read-only)","url":"https://example.org/weather-ledger/source","description":"The script, a sample dataset and the settings of the plotter."}
+      ],
+      "placeSlugs": ["wellington"]
+    }
   ],
   "articles": [
-    { "slug": "demo-article", "title": "Demo article", "summary": "Demo fixture entry: an article with headings, lists, a quote and images.", "date": "2024-04-02",
-      "cover": { "src": "/media/demo/cover-article.svg", "alt": "Abstract horizontal bands used as a demo fixture cover", "width": 960, "height": 600 },
-      "tags": ["demo", "notes"],
-      "meta": [{ "label": "Publication", "value": "Demo fixture journal (placeholder)" }],
-      "body": [
-        { "type": "paragraph", "text": "Demo fixture text. This article is made up: it only exercises the reading layout, from the first paragraph to the last link." },
-        { "type": "heading", "level": 2, "text": "A second-level heading" },
-        { "type": "paragraph", "text": "A second placeholder paragraph, to check reading width and spacing.\nThis line follows a hard line break." },
-        { "type": "list", "ordered": true, "items": ["First placeholder step", "Second placeholder step", "Third placeholder step"] },
-        { "type": "quote", "text": "A made-up quotation, only here to see how a quote looks.", "cite": "Nobody, a demo fixture" },
-        { "type": "heading", "level": 3, "text": "A third-level heading" },
-        { "type": "image", "src": "/media/demo/figure-article.svg", "alt": "Abstract diagonal grid used as a demo fixture figure", "width": 960, "height": 600, "caption": "Demo fixture figure" },
-        { "type": "paragraph", "text": "A closing placeholder paragraph." },
-        { "type": "link", "title": "A demo link", "url": "https://example.org/demo-article" }
+    {
+      "slug": "demo-article",
+      "title": "Night trains through the Balkans",
+      "summary": "Four nights between Ljubljana, Zagreb, Split and Belgrade by sleeper, and what the timetable never says about couchettes, border stamps and the hour before dawn.",
+      "date": "2026-03-14",
+      "cover": { "src": "/media/demo/cover-night-trains.svg", "alt": "Two railway tracks running to a single lamp on a hazy horizon, drawn in pixels and dithered grey on black, with one cyan signal light", "width": 1200, "height": 630 },
+      "tags": ["night-trains", "balkans", "rail", "slow-travel", "field-notes"],
+      "meta": [
+        { "label": "Publication", "value": "Marginalia, issue 12" },
+        { "label": "Reading time", "value": "6 min" },
+        { "label": "Written", "value": "On board, March 2026" }
       ],
-      "placeSlugs": ["lisbon", "paris"] }
+      "body": [
+        {"type":"paragraph","text":"I did not plan to take the night train four times in one week. The first was a question of arithmetic: a late meeting in Ljubljana, a morning one in Zagreb, and a bed that moved at 120 kilometres an hour was cheaper than a hotel and a taxi. The other three were habit. The fourth went south from Zagreb to the coast at Split, and it is the only one where I slept all the way. By the third night I had stopped checking the time and started checking the sound of the wheels."},
+        {"type":"heading","level":2,"text":"Ljubljana, 21:40"},
+        {"type":"paragraph","text":"The platform is nearly empty and the board still lists the departure in a typeface that has not changed since before I could read. A man sells coffee from a cart that he locks with a bicycle chain. When the train arrives it comes in slowly, almost politely, a long line of blue and grey carriages with their lights already on. My compartment is a couchette for six: three bunks on each side, a folding table, a window that opens exactly as far as a hand."},
+        {"type":"quote","text":"A night train is the only kind of travel where the destination is allowed to be a surprise to the passenger and not to the driver.","cite":"Overheard in a corridor, somewhere after midnight"},
+        {"type":"image","src":"/media/demo/fig-night-trains-platform.svg","alt":"An empty platform in perspective, posts with lamps on both sides, one lamp in cyan, faint reflections on the floor","width":960,"height":600,"caption":"The last platform lamps before the dark, Ljubljana, 21:52."},
+        {"type":"heading","level":2,"text":"What I would pack again"},
+        {"type":"list","ordered":false,"items":["A scarf, even in March: carriage heating has opinions of its own.","Earplugs and a sleep mask, in that order of importance.","A paper copy of the connection, because phones die in exactly the corridor where the conductor asks.","Small change for the platform tap and a bottle that survives being dropped.","A sandwich that does not need a table."]},
+        {"type":"paragraph","text":"Six bunks, five strangers, one ladder. The unspoken rules take about ten minutes to learn: the lowest bunks are for sitting during the day, the middle ones stay folded up until everyone has eaten, and nobody speaks after the conductor has collected the passports. I learned the last one by being the only person still talking."},
+        {"type":"divider"},
+        {"type":"heading","level":2,"text":"Belgrade, 06:12"},
+        {"type":"paragraph","text":"I wake to a grey light and the smell of a coffee I did not make. The river is somewhere to the left, the city is somewhere ahead, and the train stops twice more for reasons nobody explains. A woman across from me folds a blanket into a perfect square, the way you do when you have done it a hundred times. We do not exchange a word, and it is one of the better conversations of the trip."},
+        {"type":"image","src":"/media/demo/fig-night-trains-board.svg","alt":"A departures board reduced to bars and cells, several rows outlined in cyan where a time changed","width":960,"height":600,"caption":"A departures board reduced to its bones. The outlined rows are the ones that changed."},
+        {"type":"link","title":"Notes on couchette etiquette","url":"https://example.org/notes/couchette-etiquette","description":"A checklist I keep for every sleeper, revised after each trip."},
+        {"type":"link","title":"Timetable Diff, the tool behind these notes","url":"https://example.org/timetable-diff","description":"A small command-line tool that shows what changed between two timetable feeds."}
+      ],
+      "placeSlugs": ["ljubljana", "zagreb", "belgrade", "split"]
+    },
+    {
+      "slug": "rain-at-the-citadel-gate",
+      "title": "Rain at the citadel gate",
+      "summary": "A short note on waiting out a morning downpour under a stone gate in Huế, with three strangers, a thermos of tea and no reason to leave.",
+      "date": "2024-06",
+      "tags": ["vietnam", "rain", "short-note"],
+      "meta": [
+        { "label": "Publication", "value": "Marginalia, issue 10" },
+        { "label": "Reading time", "value": "1 min" }
+      ],
+      "body": [
+        {"type":"paragraph","text":"It started at ten past six, and not gently. Four of us stood under the gate, a monk, a schoolboy, a man with a basket of limes and me, watching the moat turn into a second sky. Nobody mentioned the time. Somebody produced a thermos and four small cups, and we drank in a silence that felt less like politeness than like agreement."},
+        {"type":"paragraph","text":"When it stopped, forty minutes later, the monk bowed slightly to the weather and walked off, and the rest of us followed in opposite directions."}
+      ],
+      "placeSlugs": ["hue"]
+    },
+    {
+      "slug": "morocco-coast-bus",
+      "title": "Eleven hours of Atlantic coast, by bus",
+      "summary": "A slow bus south along the Atlantic coast of Morocco: grilled fish at a roadside stop, a driver who knew every dog by name, and a view that refused to repeat itself.",
+      "date": "2023-10",
+      "cover": { "src": "/media/demo/cover-morocco-coast.svg", "alt": "A dashed road on a cliff above the sea, wave lines receding to a dithered sky, a small cyan bus on the road", "width": 1200, "height": 630 },
+      "tags": ["morocco", "bus", "atlantic-coast", "travel-notes"],
+      "meta": [
+        { "label": "Publication", "value": "Marginalia, issue 9" },
+        { "label": "Reading time", "value": "5 min" }
+      ],
+      "body": [
+        {"type":"paragraph","text":"The ticket said eleven hours, which turned out to be an estimate, a hope and a threat at the same time. I had come from Paris by way of a long evening in Lisbon, where I bought a book I would not read and a notebook I would fill, and I boarded the bus in the last hour of the morning with a bag of oranges and no plan for lunch."},
+        {"type":"heading","level":2,"text":"The coast, in order"},
+        {"type":"paragraph","text":"For the first hour the sea is a rumour. You see it as a flatness at the end of a street, then as a band of lighter grey above the rooftops, then, past a roundabout, it is simply there, enormous and unconcerned, and the bus leans toward it like a plant."},
+        {"type":"image","src":"/media/demo/fig-coast-road.svg","alt":"The coast road mirrored: a dashed road on a cliff on the right, dark sea lines on the left and a cyan bus","width":960,"height":600,"caption":"The road hugs the cliff for most of the afternoon."},
+        {"type":"paragraph","text":"Every stop has its own economy. At the first, women sell bread still warm from a wall oven. At the second, a boy sells phone chargers, then sunglasses, then a single pair of socks, with the same expression. At the third, which is only a wide place in the gravel, the driver gets out, lights nothing, and looks at the water for exactly four minutes."},
+        {"type":"quote","text":"You are not late. The road is long, that is all.","cite":"The driver, to a passenger checking her watch"},
+        {"type":"heading","level":2,"text":"The day, in numbers"},
+        {"type":"list","ordered":true,"items":["Departure at 08:10, which in practice meant 08:50.","First tea at 10:20, poured from a thermos the size of a child.","Lunch at 13:45: grilled fish and bread at a stop with no name.","The long hill at 15:30, where everyone stopped talking.","Arrival at 19:15, in the last of the light."]},
+        {"type":"divider"},
+        {"type":"paragraph","text":"I think about that bus more than about most of the places it took me to. Not because anything happened, but because for eleven hours nothing was required of me except to look, and I had forgotten how much of the world is available to anyone willing to sit still on its edge."},
+        {"type":"image","src":"/media/demo/fig-coast-swell.svg","alt":"Stacked swell lines on pale paper, one line in cyan","width":960,"height":600,"caption":"Notes in the margin of the ticket: swell lines, mostly."},
+        {"type":"link","title":"How I plan slow coastal routes","url":"https://example.org/notes/slow-coast-routes","description":"Timetables, stops and a short list of questions to ask before boarding."}
+      ],
+      "placeSlugs": ["lisbon", "paris"]
+    },
+    {
+      "slug": "altiplano-crossing",
+      "title": "Crossing the altiplano at four thousand metres",
+      "summary": "A bus, a thin coat and a headache: crossing the Andean altiplano in one long day, and what four thousand metres does to appetite, humour and the sense of scale.",
+      "date": "2022",
+      "cover": { "src": "/media/demo/cover-altiplano.svg", "alt": "Six layers of stair-stepped mountain ridges fading into dithered haze under a small cyan sun", "width": 1200, "height": 630 },
+      "tags": ["peru", "altiplano", "high-altitude", "bus", "travel-notes"],
+      "meta": [
+        { "label": "Publication", "value": "Marginalia, issue 4" },
+        { "label": "Reading time", "value": "6 min" },
+        { "label": "Highest point", "value": "About 4,300 m" }
+      ],
+      "body": [
+        {"type":"paragraph","text":"Altitude is not a number until it becomes a sensation. At 3,400 metres, Cusco is a city with a slight breathlessness and a strong opinion about coca tea. At 4,300, on the highest pass of the road south, it is a pressure behind the eyes and a sudden interest in sitting down."},
+        {"type":"heading","level":2,"text":"Before the pass"},
+        {"type":"paragraph","text":"The bus leaves Cusco at dawn, when the stone streets are still blue and the market women are arranging pyramids of potatoes in colours I did not know a potato could have. We climb through a valley of terraces and eucalyptus, and then, quite abruptly, the trees stop. The land opens into a plateau so wide and so pale that the horizon seems to be a matter of opinion."},
+        {"type":"image","src":"/media/demo/fig-altiplano-ridges.svg","alt":"Five dithered ridge lines on pale paper, the nearest the darkest","width":960,"height":600,"caption":"Ridges behind ridges, as the light flattens toward noon."},
+        {"type":"heading","level":2,"text":"What the body does"},
+        {"type":"list","ordered":false,"items":["Appetite goes first, then the ability to estimate distance.","Sentences get shorter. Jokes get worse and are appreciated more.","A walk of two hundred metres feels like a negotiation.","Sleep comes easily and is full of strange, bright dreams."]},
+        {"type":"quote","text":"The mountain does not care about your plan, but it will let you borrow its silence.","cite":"A line from my notebook, written with cold hands"},
+        {"type":"paragraph","text":"At the pass we stop for ten minutes. People photograph the sign with the number on it, then each other, then nothing in particular. A girl sells hot corn from a bucket. The wind has an edge I will describe for the rest of the year as thin."},
+        {"type":"divider"},
+        {"type":"heading","level":2,"text":"After"},
+        {"type":"paragraph","text":"By late afternoon the plateau tilts and starts to hold water: a lake like a sheet of lead, flocks of small animals the colour of the ground, one lone house with smoke going straight up. I fall asleep for forty minutes and wake with the clear conviction that I have been somewhere, and not merely moved."},
+        {"type":"image","src":"/media/demo/fig-altiplano-night.svg","alt":"Close, layered lines of a plateau at night, a cyan line near the bottom","width":960,"height":600,"caption":"Night on the plateau, every line a hill."},
+        {"type":"link","title":"Gear list for high-altitude bus days","url":"https://example.org/notes/altitude-gear","description":"What stayed in the bag, what saved the day, and what I would leave at home."}
+      ],
+      "placeSlugs": ["cusco"]
+    },
+    {
+      "slug": "vietnam-by-rail",
+      "title": "Notes on a thousand-mile train that was meant to take a day and a half, including a long and unplanned stop in a rainstorm",
+      "summary": "Hanoi to Ho Chi Minh City by rail, written up two years later from a notebook stained with tea: delays, bunks, and the small kindness of strangers with snacks.",
+      "date": "2021-11",
+      "tags": ["vietnam", "rail", "delays", "timetables", "travel-notes", "long-read"],
+      "meta": [
+        { "label": "Publication", "value": "Marginalia, issue 2" },
+        { "label": "Reading time", "value": "9 min" }
+      ],
+      "body": [
+        {"type":"paragraph","text":"The timetable promised thirty-two hours. The notebook I kept says thirty-nine, which is not a complaint but a measurement. I am writing this up two years after the fact, with the pages still faintly stained with tea, and the memory is kinder than the notebook, which is exactly why I trust the notebook."},
+        {"type":"heading","level":2,"text":"Hanoi to Huế: the first night"},
+        {"type":"paragraph","text":"Hard sleepers, six to a compartment, a ladder that doubles as a shoe rack. A family shares a bag of tangerines with me before the train has cleared the suburbs. I give them my last pack of biscuits, which is a poor trade, and everybody pretends it is an even one."},
+        {"type":"heading","level":2,"text":"The stop in the rain"},
+        {"type":"paragraph","text":"Somewhere south of Huế the rain arrives sideways. The train slows to a walking pace, then stops in a field. For three hours there is nothing to see but water and one patient buffalo, and nothing to do but listen to the carriage settle into a long, collective exhale. At some point the lights go out, and someone starts to hum."},
+        {"type":"image","src":"/media/demo/fig-vietnam-line.svg","alt":"A single track running to a lamp at the horizon, ink on pale paper, a cyan signal light","width":960,"height":600,"caption":"A single track, a single lamp: the whole of the afternoon."},
+        {"type":"quote","text":"A delay is just the train telling you the country is bigger than your plan.","cite":"A fellow passenger, translated generously"},
+        {"type":"paragraph","text":"We reach Da Nang eleven hours late and Ho Chi Minh City on the second morning, in a heat that feels like being returned to a body I had mislaid. I step off the train with sore knees, an empty bag of tangerines and an unreasonable fondness for everyone I have ever shared a compartment with."},
+        {"type":"heading","level":3,"text":"What I would do differently"},
+        {"type":"list","ordered":true,"items":["Book the lower bunk, and pay no attention to the person who says it is noisier.","Bring more food than seems sensible, and give half of it away.","Keep the notebook dry, or accept the tea."]}
+      ],
+      "placeSlugs": ["hanoi", "hue", "da-nang", "ho-chi-minh-city"]
+    }
   ],
   "artworks": [
-    { "slug": "demo-artwork", "title": "Demo artwork", "summary": "Demo fixture entry: an artwork with a cover and facts.", "date": "2023",
-      "cover": { "src": "/media/demo/cover-artwork.svg", "alt": "Abstract overlapping circles used as a demo fixture artwork", "width": 960, "height": 600 },
-      "tags": ["demo", "drawing"],
-      "meta": [{ "label": "Medium", "value": "Charcoal on paper (placeholder)" }, { "label": "Year", "value": "2023" }, { "label": "Dimensions", "value": "30 x 40 cm (placeholder)" }],
-      "body": [
-        { "type": "paragraph", "text": "Demo fixture text. The artwork does not exist; this commentary only exercises the layout." },
-        { "type": "image", "src": "/media/demo/cover-artwork.svg", "alt": "Abstract overlapping circles used as a demo fixture artwork", "width": 960, "height": 600, "caption": "Demo fixture image" }
+    {
+      "slug": "demo-artwork",
+      "title": "Signal Study No. 3",
+      "summary": "A two-colour risograph print of two overlapping halftone discs, one black and one cyan, studying what happens where two signals cross.",
+      "date": "2026-01-17",
+      "cover": { "src": "/media/demo/cover-signal-study.svg", "alt": "Two overlapping halftone discs, one black and one cyan, with registration marks and a crop frame like a printed proof", "width": 1200, "height": 630 },
+      "tags": ["risograph", "print", "halftone", "edition", "signal"],
+      "meta": [
+        { "label": "Medium", "value": "Two-colour risograph, black and cyan, on 100 g paper" },
+        { "label": "Year", "value": "2026" },
+        { "label": "Dimensions", "value": "42 × 59.4 cm" },
+        { "label": "Edition", "value": "25 numbered, 3 artist proofs" }
       ],
-      "placeSlugs": ["kyoto"] }
+      "body": [
+        {"type":"paragraph","text":"Signal Study No. 3 is the third in a small series about interference. Two discs of dots, rotated against each other, produce a moiré that neither disc contains on its own, and the print is mostly an excuse to look at that third pattern."},
+        {"type":"image","src":"/media/demo/fig-signal-study-detail.svg","alt":"Detail of the print: black and cyan halftone dots overlapping at a different angle","width":960,"height":600,"caption":"Detail at 400 percent. The cyan dots are rotated by 31 degrees against the black ones."},
+        {"type":"paragraph","text":"It was printed in two passes at a small studio in Kyoto, black first and cyan second. The registration is deliberately a little loose: the paper moved by about a millimetre between passes, and I decided to keep the drift rather than correct it."},
+        {"type":"heading","level":2,"text":"Technical notes"},
+        {"type":"list","ordered":false,"items":["Halftone screens at 35 and 45 lines per inch, rotated by 14 and 45 degrees.","Black ink on the first pass, cyan on the second, no varnish.","Each print is numbered in pencil on the lower margin."]},
+        {"type":"link","title":"Edition and availability","url":"https://example.org/prints/signal-study-3","description":"Remaining prints, framing options and shipping."}
+      ],
+      "placeSlugs": ["kyoto"]
+    },
+    {
+      "slug": "night-platform-split",
+      "title": "Night Platform, Split",
+      "summary": "A dithered pixel drawing of a station platform at night, made from a photograph I never took and a memory of lamps that were slightly too bright.",
+      "date": "2025-11",
+      "tags": ["dither", "pixel-art", "night", "platform"],
+      "meta": [
+        { "label": "Medium", "value": "Dithered digital print on matte paper" },
+        { "label": "Year", "value": "2025" },
+        { "label": "Dimensions", "value": "3000 × 2000 px, printed at 50 × 33 cm" },
+        { "label": "Edition", "value": "Open edition" }
+      ],
+      "body": [
+        {"type":"paragraph","text":"The platform is empty, the lamps are on, and the last train has either left or not yet arrived. I drew it from memory in a single evening, one lamp at a time, and then let a four-by-four dither decide how much light each part of the floor would keep."},
+        {"type":"image","src":"/media/demo/fig-night-platform-1.svg","alt":"A night platform in perspective, six pairs of lamp posts, one cyan lamp","width":960,"height":600,"caption":"First version: six pairs of posts, one lamp in cyan."},
+        {"type":"paragraph","text":"The second version reverses the plate. On pale paper the lamps become the darkest things in the picture, which is the opposite of how I remember them, and for that reason it is the one I look at longer."},
+        {"type":"image","src":"/media/demo/fig-night-platform-2.svg","alt":"The same platform reversed to pale paper, ten pairs of posts, one cyan lamp","width":960,"height":600,"caption":"Second version: ten pairs of posts on pale paper."},
+        {"type":"quote","text":"The light is a schedule: it tells you how long you have been waiting.","cite":"From the notes for this piece"},
+        {"type":"link","title":"Print shop","url":"https://example.org/prints/night-platform","description":"Open edition, available in two sizes."}
+      ],
+      "placeSlugs": ["split", "zagreb"]
+    },
+    {
+      "slug": "monsoon-index",
+      "title": "Monsoon Index",
+      "summary": "A diptych of rooftops in the rain, drawn pixel by pixel in two moods, one dark and one pale, with the same street under both.",
+      "date": "2024-08",
+      "cover": { "src": "/media/demo/cover-monsoon-index.svg", "alt": "Rooftops under a dithered storm sky, thin diagonal rain streaks and ripples on a wet street", "width": 1200, "height": 630 },
+      "tags": ["pixel-art", "rain", "diptych", "vietnam"],
+      "meta": [
+        { "label": "Medium", "value": "Pixel drawing, archival pigment print" },
+        { "label": "Year", "value": "2024" },
+        { "label": "Dimensions", "value": "24 × 32 cm, diptych" },
+        { "label": "Edition", "value": "Unique" }
+      ],
+      "body": [
+        {"type":"paragraph","text":"Monsoon Index is a pair of drawings of the same roofline in the same rain: the first at night, the second at the pale hour just after dawn. The rain is one stroke repeated a hundred times, each slightly out of line, and the single cyan stroke is the one I could not stop looking at."},
+        {"type":"image","src":"/media/demo/fig-monsoon-1.svg","alt":"Study 1: rooftops and rain under a dithered sky","width":960,"height":600,"caption":"Study 1: rooftops and rain under a dithered sky."},
+        {"type":"image","src":"/media/demo/fig-monsoon-2.svg","alt":"Study 2: dark rooftops and rain on pale paper","width":960,"height":600,"caption":"Study 2: dark rooftops and rain on pale paper."},
+        {"type":"paragraph","text":"I made the first study in Huế during a week of storms and the second a few days later in Hội An, where the same weather arrived politer and with a smell of woodsmoke. The title comes from a habit: I kept a daily tally of the hours of rain, and an index seemed the honest name for it."},
+        {"type":"link","title":"About the diptych","url":"https://example.org/prints/monsoon-index","description":"Notes on the two studies and how they were framed."}
+      ],
+      "placeSlugs": ["da-nang", "hoi-an", "hue"]
+    },
+    {
+      "slug": "altiplano-sediment",
+      "title": "Altiplano Sediment",
+      "summary": "Twelve pen-plotter drawings of stacked contour lines made from notes taken on the Andean plateau: each plate hides the line behind it, like layers of sediment.",
+      "date": "2022",
+      "cover": { "src": "/media/demo/cover-sediment.svg", "alt": "Stacked wavy contour lines, each hiding the one behind, with a single cyan line in the lower half", "width": 1200, "height": 630 },
+      "tags": ["plotter", "series", "landscape", "ink", "andes"],
+      "meta": [
+        { "label": "Medium", "value": "Black ink on cotton paper, pen plotter" },
+        { "label": "Year", "value": "2022" },
+        { "label": "Dimensions", "value": "30 × 40 cm, each plate" },
+        { "label": "Edition", "value": "Series of 12, one of each" },
+        { "label": "Series", "value": "Altiplano Sediment, plates 1 to 12" }
+      ],
+      "body": [
+        {"type":"paragraph","text":"The series begins with a long bus ride and a notebook of profiles: the outline of a ridge, redrawn every few minutes as the road moved. Back at the plotter, the profiles became lines, and the lines were stacked from the back of the page to the front, each one erasing what lay behind it."},
+        {"type":"heading","level":2,"text":"Four of the twelve plates"},
+        {"type":"image","src":"/media/demo/fig-sediment-1.svg","alt":"Plate 1 of the series: eighteen layered lines, a cyan line near the top","width":960,"height":600,"caption":"Plate 1. Eighteen lines, the first drawn in the morning haze."},
+        {"type":"image","src":"/media/demo/fig-sediment-4.svg","alt":"Plate 4 of the series: twenty-two layered lines on pale paper","width":960,"height":600,"caption":"Plate 4. A flatter plate, from the long stretch before the pass."},
+        {"type":"image","src":"/media/demo/fig-sediment-8.svg","alt":"Plate 8 of the series: tall swells in twenty-eight lines","width":960,"height":600,"caption":"Plate 8. The tallest swells of the series, near the highest point."},
+        {"type":"image","src":"/media/demo/fig-sediment-12.svg","alt":"Plate 12 of the series: fourteen lines with large swells, one cyan","width":960,"height":600,"caption":"Plate 12. Fourteen lines and large hills: the last view before the descent."},
+        {"type":"paragraph","text":"Each plate takes about forty minutes to draw, and the plotter's small mistakes, a hesitation at the top of a hill, a slightly doubled line, are part of the work. I keep a log of them, mostly to remind myself that the machine has a hand too."},
+        {"type":"quote","text":"Land is what remains when you stop describing it.","cite":"A note pinned above the plotter"},
+        {"type":"list","ordered":true,"items":["Collect profiles on the road, by hand, without looking at the paper.","Smooth and resample them into forty-odd points per line.","Stack the lines, back to front, and let each hide the one behind.","Plot in black ink; keep one line in a second colour for the final plate."]},
+        {"type":"link","title":"The full series","url":"https://example.org/prints/altiplano-sediment","description":"All twelve plates, with the processing notes for each."}
+      ],
+      "placeSlugs": ["cusco"]
+    }
   ],
   "poems": [
-    { "slug": "demo-poem", "title": "Demo poem", "summary": "Demo fixture entry: a poem set in verse blocks.", "date": "2022-11",
-      "cover": { "src": "/media/demo/cover-poem.svg", "alt": "Abstract short lines grouped in two stanzas, a demo fixture cover", "width": 960, "height": 600 },
-      "tags": ["demo", "verse"],
-      "meta": [{ "label": "Language", "value": "English (placeholder)" }],
-      "body": [
-        { "type": "verse", "stanzas": [
-          ["Demo fixture verse, line one,", "placeholder words in a row,", "    an indented line follows,", "the stanza ends here."],
-          ["A second stanza begins,", "made up to check spacing,", "between lines and between stanzas."]
-        ] },
-        { "type": "divider" },
-        { "type": "paragraph", "text": "A placeholder note on the poem, in prose." }
+    {
+      "slug": "demo-poem",
+      "title": "Layover",
+      "summary": "Nine hours in an airport between two flights: a poem about benches, announcements and the strange tenderness of being in no place at all.",
+      "date": "2025-10",
+      "cover": { "src": "/media/demo/cover-layover.svg", "alt": "Short white lines grouped in stanzas, one of them cyan, beside a dithered shadow at the right edge", "width": 1200, "height": 630 },
+      "tags": ["layover", "airports", "travel", "free-verse"],
+      "meta": [
+        { "label": "Language", "value": "English" },
+        { "label": "Form", "value": "Free verse, six stanzas" },
+        { "label": "Written", "value": "In transit, October 2025" }
       ],
-      "placeSlugs": ["hue"] }
+      "body": [
+        {"type":"verse","stanzas":[["Gate 14 has been closed since noon,","and the sign above it has forgotten","which city it was meant to promise."],["I count the windows. I count the planes.","A child lies flat on the carpet","and conducts the whole terminal,","with one finger, as if the announcements, the trolleys and the slow doors were waiting for his count."],["Somebody's suitcase turns on the belt","alone, a small patient animal,","making the circuit it was told to make","and finding it enough."],["    We are all between things here:","    between flights, between coffees,","    between the person who left","    and the one who will land."],["The announcer apologises in three languages","and means it in none, and then, once,","in a fourth, quietly, to nobody,","as if to the weather itself."],["Outside, the light does that long, flat thing","it does at the edge of the world, and I think:","this is the only hour of the trip that is mine,","        and I have spent it waiting for the others."]]},
+        {"type":"divider"},
+        {"type":"paragraph","text":"Written on a nine-hour layover in Keflavík, on the back of a boarding pass. The last line was the first one I had."}
+      ],
+      "placeSlugs": ["reykjavik"]
+    },
+    {
+      "slug": "citadel-rain",
+      "title": "Citadel, rain",
+      "summary": "A three-line poem about a rainy morning at an old gate, where the moat holds on to the sky for a moment before letting it go.",
+      "date": "2024-06-19",
+      "tags": ["haiku", "rain"],
+      "meta": [
+        { "label": "Language", "value": "English" },
+        { "label": "Form", "value": "Haiku-like, 5-7-5" }
+      ],
+      "body": [
+        {"type":"verse","stanzas":[["Rain on the old gate.","The moat keeps the sky a while,","then lets it go home."]]}
+      ],
+      "placeSlugs": ["hue"]
+    },
+    {
+      "slug": "cuesta-arriba",
+      "title": "Cuesta arriba",
+      "summary": "Un poema breve sobre subir a cuatro mil metros: la respiración como unidad de medida, y el paisaje como única respuesta.",
+      "date": "2023-09",
+      "tags": ["altitude", "andes", "spanish"],
+      "meta": [
+        { "label": "Language", "value": "Spanish" },
+        { "label": "Form", "value": "Free verse, three stanzas" },
+        { "label": "Written", "value": "Cusco, September 2023" }
+      ],
+      "body": [
+        {"type":"verse","stanzas":[["Subir no es un verbo: es una cuenta.","Un paso, un aire. Otro paso, otro aire.","La montaña no cuenta; nos deja contar."],["    Aquí arriba las palabras pesan menos","    y las preguntas pesan más.","    Una mujer vende maíz tostado","    como quien vende el tiempo en bolsitas."],["Y al final del camino no hay nada","que merezca ese nombre:","un viento, una cresta, un perro dormido,","    y esta manera de estar vivos","    a cuatro mil trescientos metros de todo."]]},
+        {"type":"divider"},
+        {"type":"paragraph","text":"Escrito en la terraza de un hostal, con un té de coca y las manos frías."}
+      ],
+      "placeSlugs": ["cusco"]
+    },
+    {
+      "slug": "quai-de-nuit",
+      "title": "Quai de nuit",
+      "summary": "Un poème sur l'attente d'un train de nuit dans une gare presque vide : les lampes, le froid, et cette façon de partir avant d'être parti.",
+      "date": "2021-03",
+      "cover": { "src": "/media/demo/cover-voie-b.svg", "alt": "Short black lines grouped in four stanzas on pale paper, one line in cyan", "width": 1200, "height": 630 },
+      "tags": ["night-train", "station", "paris"],
+      "meta": [
+        { "label": "Language", "value": "French" },
+        { "label": "Form", "value": "Free verse, four stanzas" },
+        { "label": "Written", "value": "Paris, March 2021" }
+      ],
+      "body": [
+        {"type":"verse","stanzas":[["Voie B, vingt-deux heures dix.","Les lampes tiennent le quai","comme des mains tiennent une tasse."],["Personne ne parle. Un homme lit","le tableau des départs","comme on relit une lettre","dont on connaît déjà la fin."],["    Le train n'est pas encore là","    mais je suis déjà parti :","    c'est ça, une gare,","    un endroit pour partir avant le départ."],["Puis la lumière jaune, le bruit des freins,","la porte qui s'ouvre sur un couloir étroit","et cette promesse minuscule :","demain, une autre ville, un autre matin."]]},
+        {"type":"divider"},
+        {"type":"paragraph","text":"Écrit sur un quai, un soir de mars, pendant que le train avait vingt minutes de retard."}
+      ],
+      "placeSlugs": ["paris"]
+    }
   ]
 }

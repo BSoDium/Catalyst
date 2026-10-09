@@ -4,7 +4,7 @@ Design note for the private content repo's next export step. It maps a vault doc
 
 Kinds: `article`, `project` (a development project), `artwork`, `poem`. `poem` is new on both sides: the private envelope's `type` enum and the editorial content kinds (`EditorialContent`, `kindSets`, `DroppedRecord.kind`, importance links, `contentOf`) need it, and the mapper needs a `poems` collection (published poems only, sorted by slug, like the other three).
 
-Conformance sample: `packages/published/fixtures/demo.json` (placeholder data) has one entry of each kind and uses **every** block type. A private test can export a vault that reproduces it and compare, and it validates against `packages/schemas/published.schema.json` with ajv in strict mode (checked).
+Conformance sample: `packages/published/fixtures/demo.json` (made-up demo data) has 17 realistic entries (5 articles, 4 projects, 4 artworks, 4 poems) with covers, tags, kind-specific meta and bodies that use **every** block type. A private test can export a vault that reproduces it and compare, and it validates against `packages/schemas/published.schema.json` with ajv in strict mode (checked).
 
 ## 1. Header to fields
 

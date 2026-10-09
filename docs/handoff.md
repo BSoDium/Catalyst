@@ -20,6 +20,11 @@ Open points: the index code is the position in the kind (shifts when entries are
 are shown at full column width (a cap may be wanted once real covers exist); Safari/iOS and real phones were not tried; the
 `open.test.ts` sweeps over the owner's preview data fail in this tree (globe engine, not touched by this work).
 
+## Production readiness (branch `feat/entry-polish`)
+
+Added: site identity and head tags on every route (canonical, Open Graph, Twitter card, JSON-LD), a default 1200x630 share image, favicons and a web manifest, `sitemap.xml` and `robots.txt` (open only on the production host), an enforced nonce-based CSP and the other security headers (`entry.server.tsx`, `vercel.json`), a root error boundary with a real 500 page, a pending-navigation line, a no-JS note on the globe, and `pnpm --filter @catalyst/web check:prod`. The schema library no longer ships in the browser bundle (-29 kB gzip). Details and the header tables: [web-architecture.md, Production readiness](web-architecture.md#production-readiness).
+Owner: nothing is required (the default site URL is `https://v2.bsodium.fr`); set `CATALYST_SITE_URL` only when the domain changes. Not verified: Vercel's own merging of `vercel.json` headers, Safari and Firefox, real link previews.
+
 ## Where the details are
 
 | Topic | Doc |

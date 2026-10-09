@@ -1,6 +1,6 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useMemo } from "react";
 import type { PublishedBodyBlock } from "@catalyst/schemas";
-import { Button, Divider, Frame, Glyph, MicroLabel } from "~/components/ui";
+import { CopyButton, Divider, Frame, Glyph, MicroLabel } from "~/components/ui";
 import {
   buildOutline,
   dedupeKeys,
@@ -31,7 +31,7 @@ export function BlockRenderer({ blocks, lang, idPrefix = "body", className }: { 
   const outline = useMemo(() => new Map(buildOutline(blocks, idPrefix).map((o) => [o.index, o])), [blocks, idPrefix]);
   if (groups.length === 0) return null;
   return (
-    <div data-slot="entry-body" lang={lang} className={cn("flex min-w-0 flex-col gap-5", className)}>
+    <div data-slot="entry-body" lang={lang} className={cn("ds-prose flex min-w-0 flex-col gap-6", className)}>
       {groups.map((group) =>
         group.type === "links" ? (
           <ul key={group.key} className="m-0 flex list-none flex-col gap-3 p-0">
@@ -69,7 +69,7 @@ function BlockView({ block, heading }: { block: Exclude<Block, { type: "link" }>
   switch (block.type) {
     case "paragraph":
       return (
-        <p className="m-0">
+        <p className="m-0 max-w-[48ch]">
           <Lines text={block.text} />
         </p>
       );
@@ -79,8 +79,8 @@ function BlockView({ block, heading }: { block: Exclude<Block, { type: "link" }>
       return <ListView ordered={block.ordered} items={block.items} />;
     case "quote":
       return (
-        <figure className="m-0 border-l border-border-strong pl-4">
-          <blockquote className="m-0 text-lg">
+        <figure className="m-0 max-w-[48ch] border-l border-border-strong pl-4">
+          <blockquote className="m-0 text-xl/8">
             <p className="m-0">
               <Lines text={block.text} />
             </p>
@@ -109,14 +109,18 @@ function HeadingView({ item }: { item: OutlineItem }) {
     <Tag
       id={item.id}
       className={cn(
-        "m-0 flex scroll-mt-24 items-baseline gap-3 font-semibold tracking-tight",
-        item.level === 2 ? "mt-3 border-t border-border pt-4 text-xl" : "mt-1 text-base",
+        "ds-heading group m-0 flex max-w-[48ch] scroll-mt-24 items-baseline gap-3 font-semibold tracking-tight text-balance",
+        item.level === 2 ? "mt-4 border-t border-border pt-5 text-xl" : "mt-2 text-base",
       )}
     >
       <span aria-hidden="true" className="ds-micro shrink-0" data-tone="signal">
         &sect;&nbsp;{item.number}
       </span>
       <span className="min-w-0">{item.text}</span>
+      {/* A link to the section, for sharing and for the keyboard: always there for assistive tech, drawn on hover and focus (always on touch screens). */}
+      <a href={`#${item.id}`} aria-label={`Link to section: ${item.text}`} className="ds-anchor print:hidden">
+        <Glyph name="hash" size={12} />
+      </a>
     </Tag>
   );
 }
@@ -125,7 +129,7 @@ function ListView({ ordered, items }: { ordered: boolean; items: readonly string
   const Tag = ordered ? "ol" : "ul";
   const keys = dedupeKeys(items);
   return (
-    <Tag className={cn("m-0 flex flex-col gap-1.5 pl-6", ordered ? "list-decimal marker:font-mono marker:text-sm" : "list-[square]", "marker:text-muted-foreground")}>
+    <Tag className={cn("m-0 flex max-w-[48ch] flex-col gap-2 pl-6", ordered ? "list-decimal marker:font-mono marker:text-sm" : "list-[square]", "marker:text-muted-foreground")}>
       {items.map((item, i) => (
         <li key={keys[i]} className="pl-1">
           <Lines text={item} />
@@ -186,51 +190,17 @@ function VerseView({ stanzas }: { stanzas: readonly (readonly string[])[] }) {
 function CodeView({ block }: { block: Extract<Block, { type: "code" }> }) {
   return (
     <Frame role="figure" aria-label={block.language ? `Code, ${block.language}` : "Code"} padding="none" className="min-w-0">
-      <div className="flex min-h-9 items-center justify-between gap-3 border-b border-border px-3">
+      <div className="flex min-h-9 items-center justify-between gap-3 border-b border-border pr-1 pl-3 md:min-h-10">
         <MicroLabel tone="strong">{block.language ?? "code"}</MicroLabel>
-        <CopyButton text={block.code} />
+        <CopyButton text={block.code} label="Copy code" announcement="Code copied to the clipboard">
+          Copy
+        </CopyButton>
       </div>
       {/* Focusable so that the keyboard can scroll a line wider than the column. */}
-      <pre tabIndex={0} className="m-0 overflow-x-auto p-3 font-mono text-[0.8125rem] leading-relaxed">
+      <pre tabIndex={0} className="m-0 overflow-x-auto p-4 font-mono text-[0.8125rem] leading-5">
         <code>{block.code}</code>
       </pre>
     </Frame>
-  );
-}
-
-/** Copies the code. Rendered only where the clipboard API exists, and only after hydration (without scripts there is nothing to press). */
-function CopyButton({ text }: { text: string }) {
-  const [available, setAvailable] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  useEffect(() => {
-    setAvailable(typeof navigator !== "undefined" && typeof navigator.clipboard?.writeText === "function");
-    return () => clearTimeout(timer.current);
-  }, []);
-  if (!available) return null;
-  return (
-    <>
-      <Button
-        variant="ghost"
-        size="sm"
-        aria-label="Copy code"
-        onClick={() => {
-          navigator.clipboard.writeText(text).then(
-            () => {
-              setCopied(true);
-              clearTimeout(timer.current);
-              timer.current = setTimeout(() => setCopied(false), 2000);
-            },
-            () => setCopied(false),
-          );
-        }}
-      >
-        {copied ? "Copied" : "Copy"}
-      </Button>
-      <span role="status" className="sr-only">
-        {copied ? "Code copied to the clipboard" : ""}
-      </span>
-    </>
   );
 }
 

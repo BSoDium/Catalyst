@@ -84,11 +84,15 @@ export interface EntryRef {
   title: string;
   href: string;
   index: number;
+  /** What a tile of the entry shows (related entries, neighbours): optional, a ref stays valid without them. */
+  summary?: string;
+  date?: string;
+  cover?: PublishedCover;
 }
 
 export interface EntryDetail extends EntrySummary {
   body: PublishedBodyBlock[];
-  /** Entries that share a place with this one (other entries only), at most `RELATED_LIMIT`. */
+  /** Other entries that share a place or a tag with this one, the most related first (`relatedScore`), at most `RELATED_LIMIT`. */
   related: EntryRef[];
   /** Previous and next in the same kind, authored order. */
   prev: EntryRef | null;
@@ -98,7 +102,7 @@ export interface EntryDetail extends EntrySummary {
 /** What an entry route's loader returns. */
 export interface EntryLoaderData {
   entry: EntryDetail;
-  /** The site's origin as the request saw it: the share image URL is made absolute with it (see `pageMeta`). */
+  /** The site's origin (`CATALYST_SITE_URL`, not the request's host): what absolute URLs in the head tags are built on (see `pageMeta`). */
   origin: string;
 }
 
@@ -169,7 +173,29 @@ const toRef = (kind: ContentKind, item: PublishedContentItem, position: number):
   title: item.title,
   href: entryPath(kind, item.slug),
   index: position + 1,
+  ...(item.summary !== undefined ? { summary: item.summary } : {}),
+  ...(item.date !== undefined ? { date: item.date } : {}),
+  ...(item.cover !== undefined ? { cover: item.cover } : {}),
 });
+
+/** Weights of `relatedScore`: a shared place says more than a shared tag; the same kind only breaks a tie. */
+export const RELATED_WEIGHTS = { place: 4, tag: 2, kind: 1 } as const;
+
+/**
+ * How related two entries are: 4 per shared place, 2 per shared tag (tags compare case-insensitively), plus 1 when they are of
+ * the same kind, but only when something else is shared (the kind alone relates nothing). 0 means unrelated.
+ */
+export function relatedScore(
+  a: { kind: ContentKind; places: Iterable<string>; tags: readonly string[] },
+  b: { kind: ContentKind; places: Iterable<string>; tags: readonly string[] },
+): number {
+  const places = new Set(a.places);
+  const sharedPlaces = new Set([...b.places].filter((p) => places.has(p))).size;
+  const tags = new Set(a.tags.map((t) => t.trim().toLowerCase()));
+  const sharedTags = new Set(b.tags.map((t) => t.trim().toLowerCase()).filter((t) => t !== "" && tags.has(t))).size;
+  const base = sharedPlaces * RELATED_WEIGHTS.place + sharedTags * RELATED_WEIGHTS.tag;
+  return base > 0 && a.kind === b.kind ? base + RELATED_WEIGHTS.kind : base;
+}
 
 // --- Selectors ------------------------------------------------------------------------------------------------------------------
 
@@ -177,6 +203,11 @@ const toRef = (kind: ContentKind, item: PublishedContentItem, position: number):
 export function listEntries(projection: PublishedProjection, kind: ContentKind): EntrySummary[] {
   const l = lookups(projection);
   return projection[COLLECTIONS[kind]].map((item, position) => toSummary(kind, item, position, l));
+}
+
+/** How many entries each kind has (the archive's size, whatever their places): the empty home page says it. */
+export function countEntries(projection: PublishedProjection): Record<ContentKind, number> {
+  return Object.fromEntries(CONTENT_KINDS.map((kind) => [kind, projection[COLLECTIONS[kind]].length])) as Record<ContentKind, number>;
 }
 
 /** One entry with its body, its places, the entries that share a place with it and its neighbours in the kind. Null when the slug does not exist under that kind. */
@@ -189,15 +220,23 @@ export function getEntryDetail(projection: PublishedProjection, kind: ContentKin
   const summary = toSummary(kind, item, position, l);
   const mine = new Set(summary.places.map((p) => p.slug));
 
-  const related: EntryRef[] = [];
-  if (mine.size > 0) {
-    for (const k of CONTENT_KINDS) {
-      projection[COLLECTIONS[k]].forEach((other, i) => {
-        if (related.length >= RELATED_LIMIT || (k === kind && other.slug === slug)) return;
-        if (placeLinks(k, other, l.byPlace, l.relating).some((p) => mine.has(p.slug))) related.push(toRef(k, other, i));
-      });
-    }
+  // Every other entry, scored by what it shares (places, tags); the best first, ties in the system order (kind, then authored position).
+  const scored: { ref: EntryRef; score: number }[] = [];
+  for (const k of CONTENT_KINDS) {
+    projection[COLLECTIONS[k]].forEach((other, i) => {
+      if (k === kind && other.slug === slug) return;
+      const score = relatedScore(
+        { kind, places: mine, tags: summary.tags },
+        { kind: k, places: placeLinks(k, other, l.byPlace, l.relating).map((p) => p.slug), tags: other.tags ?? [] },
+      );
+      if (score > 0) scored.push({ ref: toRef(k, other, i), score });
+    });
   }
+  const related = scored
+    .map((entry, order) => ({ ...entry, order }))
+    .sort((x, y) => y.score - x.score || x.order - y.order)
+    .slice(0, RELATED_LIMIT)
+    .map((entry) => entry.ref);
   const before = items[position - 1];
   const after = items[position + 1];
   return {

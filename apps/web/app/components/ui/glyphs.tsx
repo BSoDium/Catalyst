@@ -16,6 +16,11 @@ const STROKE = {
   "arrow-right": "M2 6h8M7 3l3 3-3 3",
   "arrow-left": "M10 6H2M5 3L2 6l3 3",
   "arrow-up-right": "M3 9l6-6M4 3h5v5",
+  check: "M2 6.5l2.5 2.5L10 3.5",
+  copy: "M4.5 4.5h5v5h-5zM2.5 7.5v-5h5",
+  link: "M5 3.5H3a2.5 2.5 0 000 5h2M7 3.5h2a2.5 2.5 0 010 5H7M4.5 6h3",
+  search: "M5 2.5h3.5a1 1 0 011 1V7a1 1 0 01-1 1H5a1 1 0 01-1-1V3.5a1 1 0 011-1zM8.5 8.5l2 2",
+  hash: "M4.5 2L3.5 10M8.5 2l-1 8M2 4.5h8.5M1.5 7.5H10",
 } as const;
 
 /** Solid parts, filled with the current colour. */

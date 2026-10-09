@@ -6,14 +6,15 @@
 //   CHROME_PATH=/path/to/chrome BASE_URL=http://localhost:5370 OUT_DIR=/some/dir node scripts/entries/check.mjs
 //
 // Exit code 1 on any failed assertion. Screenshots (dark and light, desktop and 390 px) go to OUT_DIR.
+import { readFileSync } from "node:fs";
 import { BASE_URL, OUT_DIR, DESKTOP, MOBILE, launch } from "../globe/_lib.mjs";
 
-const ENTRIES = [
-  { kind: "article", path: "/articles/demo-article", title: "Demo article", code: "ARTICLE / 0001" },
-  { kind: "poem", path: "/poems/demo-poem", title: "Demo poem", code: "POEM / 0001" },
-  { kind: "project", path: "/projects/demo-project", title: "Demo project", code: "PROJECT / 0001" },
-  { kind: "artwork", path: "/artworks/demo-artwork", title: "Demo artwork", code: "ARTWORK / 0001" },
-];
+// The four legacy slugs are the first entry of their kind in the demo fixture; the whole fixture is also read, so that every entry (long
+// title, long verse line, wide code, many tags, no cover) goes through the layout checks below.
+const FIXTURE = JSON.parse(readFileSync(new URL("../../../../packages/published/fixtures/demo.json", import.meta.url), "utf8"));
+const COLLECTIONS = [["article", "articles"], ["project", "projects"], ["artwork", "artworks"], ["poem", "poems"]];
+const ALL_ENTRIES = COLLECTIONS.flatMap(([kind, key]) => FIXTURE[key].map((e, i) => ({ kind, key, slug: e.slug, title: e.title, path: `/${key}/${e.slug}`, code: `${kind.toUpperCase()} / ${String(i + 1).padStart(4, "0")}` })));
+const ENTRIES = ["demo-article", "demo-poem", "demo-project", "demo-artwork"].map((slug) => ALL_ENTRIES.find((e) => e.slug === slug));
 
 const failures = [];
 const ok = (cond, message) => {
@@ -141,8 +142,8 @@ for (const entry of ENTRIES) {
     document.querySelector("[data-panel]").__marker = "same-panel";
     document.querySelector("[data-globe]").__marker = "same-globe";
   });
-  await page.getByRole("link", { name: "Demo article" }).click();
-  await page.waitForURL("**/articles/demo-article");
+  await page.getByRole("link", { name: "Eleven hours of Atlantic coast, by bus" }).click();
+  await page.waitForURL("**/articles/morocco-coast-bus");
   await page.waitForSelector("[data-slot=entry-view]");
   const same = await page.evaluate(() => ({ panel: document.querySelector("[data-panel]")?.__marker === "same-panel", globe: document.querySelector("[data-globe]")?.__marker === "same-globe", focus: document.activeElement?.id }));
   ok(same.panel && same.globe, "place: the entry opens in the SAME panel element, the globe stays mounted");
@@ -154,8 +155,8 @@ for (const entry of ENTRIES) {
   await page.waitForSelector("[data-slot=place-view]");
   ok((await page.locator("[data-panel] h1").innerText()) === "Lisbon", "back path returns to the place panel");
   // entry -> place by its places list
-  await page.getByRole("link", { name: "Demo project" }).click();
-  await page.waitForURL("**/projects/demo-project");
+  await page.getByRole("link", { name: "Collide, a label collision engine for maps" }).click();
+  await page.waitForURL("**/projects/label-collision-engine");
   await page.locator('[data-slot=entry-view] section a[href="/locations/lisbon"]').click();
   await page.waitForURL("**/locations/lisbon");
   await page.waitForSelector("[data-slot=place-view]");
@@ -174,13 +175,22 @@ for (const path of ["/articles/nope", "/projects/demo-poem", "/poems/Demo-Poem"]
 }
 
 // --- 4. Lists ----------------------------------------------------------------------------------------------------------------------------
-for (const [path, slug] of [["/projects", "demo-project"], ["/articles", "demo-article"], ["/artworks", "demo-artwork"], ["/poems", "demo-poem"]]) {
+for (const [kind, key] of COLLECTIONS) {
+  const path = `/${key}`;
   const { ctx, page, logs } = await newPage(DESKTOP);
   await page.goto(`${BASE_URL}${path}`);
-  ok((await page.locator(`#${slug}`).count()) === 1, `${path}: card anchored by slug #${slug}`);
+  const slugs = FIXTURE[key].map((e) => e.slug);
+  const found = await Promise.all(slugs.map((slug) => page.locator(`#${slug}`).count()));
+  ok(found.every((n) => n === 1), `${path}: one card per demo ${kind} (${slugs.length}), each anchored by its slug`);
   ok(outline(await headingLevels(page)), `${path}: one h1, cards at level 2`);
+  const slug = slugs[0];
   const href = await page.locator(`#${slug} a`).first().getAttribute("href");
   ok(href === `${path}/${slug}`, `${path}: the card links to ${href}`);
+  const covers = await page.evaluate(() => [...document.querySelectorAll("main img")].filter((i) => i.getClientRects().length).map((i) => i.complete && i.naturalWidth > 0));
+  ok(covers.every(Boolean), `${path}: every authored cover in the list loaded (${covers.length} images)`);
+  const wide = await overflow(page);
+  ok(wide <= 0, `${path}: no horizontal overflow on desktop (${wide})`);
+  await page.screenshot({ path: `${OUT_DIR}/list-${key}-desktop-dark.png`, fullPage: true });
   await page.locator(`#${slug} a`).first().click();
   await page.waitForURL(`**${path}/${slug}`);
   await waitPanel(page);
@@ -198,7 +208,7 @@ if (process.env.BASE_URL_EMPTY) {
 
 // --- 5. 390 px: no horizontal overflow, slide-over, no expand toggle ----------------------------------------------------------------------
 for (const scheme of ["dark", "light"]) {
-  for (const path of [...ENTRIES.map((e) => e.path), "/locations/lisbon", "/articles", "/poems", "/projects", "/artworks"]) {
+  for (const path of [...ALL_ENTRIES.map((e) => e.path), "/locations/lisbon", "/locations/cusco", "/locations/zagreb", "/articles", "/poems", "/projects", "/artworks"]) {
     const { ctx, page, logs } = await newPage(MOBILE, scheme);
     await page.goto(`${BASE_URL}${path}`);
     await page.waitForTimeout(700);
@@ -208,10 +218,16 @@ for (const scheme of ["dark", "light"]) {
       await page.waitForSelector("[role=dialog]");
       ok((await page.getByRole("button", { name: "Full screen" }).count()) === 0 || !(await page.getByRole("button", { name: "Full screen" }).isVisible()), `390px ${path}: no expand toggle (the slide-over is full screen)`);
       ok(await page.evaluate(() => document.activeElement?.id === "panel-heading"), `390px ${path}: focus moves to the heading`);
-      if (path.startsWith("/articles") || path === "/locations/lisbon" || path === "/poems/demo-poem") await page.screenshot({ path: `${OUT_DIR}/${path.slice(1).replace(/\//g, "-")}-${scheme}-390.png` });
-    } else if (path === "/poems" || path === "/articles") await page.screenshot({ path: `${OUT_DIR}/list${path.replace("/", "-")}-${scheme}-390.png` });
+      if (/^\/(articles|projects|artworks|poems)\//.test(path) || path.startsWith("/locations/")) await page.screenshot({ path: `${OUT_DIR}/${path.slice(1).replace(/\//g, "-")}-${scheme}-390.png` });
+    } else if (path === "/poems" || path === "/articles" || path === "/projects" || path === "/artworks") await page.screenshot({ path: `${OUT_DIR}/list${path.replace("/", "-")}-${scheme}-390.png` });
     // 44 px targets
-    const small = await page.evaluate(() => [...document.querySelectorAll("a, button")].filter((e) => e.getClientRects().length && !e.closest("[inert]") && !e.classList.contains("sr-only")).map((e) => ({ t: (e.getAttribute("aria-label") || e.textContent || "").trim().slice(0, 24), h: e.getBoundingClientRect().height, w: e.getBoundingClientRect().width })).filter((r) => r.h < 43.5 && r.w < 43.5 && r.t));
+    const small = await page.evaluate(() => [...document.querySelectorAll("a, button")].filter((e) => e.getClientRects().length && !e.closest("[inert]") && !e.classList.contains("sr-only")).map((e) => {
+      // A control may reach 44 px with a ::before hit area (tag links, heading anchors): count the larger of the two boxes.
+      const pseudo = getComputedStyle(e, "::before");
+      const grown = pseudo.position === "absolute" ? { h: parseFloat(pseudo.height) || 0, w: parseFloat(pseudo.width) || 0 } : { h: 0, w: 0 };
+      const box = e.getBoundingClientRect();
+      return { t: (e.getAttribute("aria-label") || e.textContent || "").trim().slice(0, 24), h: Math.max(box.height, grown.h), w: Math.max(box.width, grown.w) };
+    }).filter((r) => r.h < 43.5 && r.w < 43.5 && r.t));
     ok(small.length === 0, `390px ${scheme} ${path}: targets are 44 px (${small.map((s) => `${s.t}:${Math.round(s.w)}x${Math.round(s.h)}`).join(", ")})`);
     ok(logs.length === 0, `390px ${scheme} ${path}: no console errors${logs.length ? ` (${logs.join(" | ")})` : ""}`);
     await ctx.close();
@@ -237,6 +253,147 @@ for (const scheme of ["dark", "light"]) {
   await page.waitForTimeout(60);
   const w = await page.evaluate(() => Math.round(document.querySelector("[data-panel]").getBoundingClientRect().width));
   ok(w >= 1438, `reduced motion: the container switches at once (${w}px after 60 ms)`);
+  await ctx.close();
+}
+
+// --- 7. Every demo entry, in the panel and in full screen: its title, nothing wider than its container, every image loaded ------------------------------
+// (what the richer content can break: a very long title, long verse lines, wide code, many tags, a cover or no cover, many images).
+for (const entry of ALL_ENTRIES) {
+  for (const layout of ["panel", "full"]) {
+    const { ctx, page, logs } = await newPage(DESKTOP);
+    await page.goto(`${BASE_URL}${entry.path}${layout === "full" ? "?view=full" : ""}`);
+    await waitPanel(page);
+    await page.waitForTimeout(500);
+    // let every lazy image load before measuring
+    await page.evaluate(async () => {
+      const panel = document.querySelector("[data-panel]");
+      for (const img of panel.querySelectorAll("img")) img.loading = "eager";
+      for (let y = 0; y < panel.scrollHeight; y += 600) { panel.scrollTo?.(0, y); window.scrollTo(0, y); await new Promise((r) => setTimeout(r, 40)); }
+      await Promise.all([...panel.querySelectorAll("img")].map((img) => (img.complete ? null : new Promise((r) => { img.onload = img.onerror = r; }))));
+      panel.scrollTo?.(0, 0);
+      window.scrollTo(0, 0);
+    });
+    const t = `${entry.path}${layout === "full" ? " (full)" : ""}`;
+    ok((await page.locator("[data-panel] h1").innerText()) === entry.title, `${t}: the h1 is the title`);
+    ok(outline(await headingLevels(page)), `${t}: one h1, no skipped heading level`);
+    const m = await page.evaluate(() => {
+      const panel = document.querySelector("[data-panel]");
+      const box = panel.getBoundingClientRect();
+      const wide = [...panel.querySelectorAll("*")]
+        .filter((e) => !e.closest("pre") && e.getClientRects().length && e.getBoundingClientRect().right > box.right + 1)
+        .map((e) => `${e.tagName.toLowerCase()}.${String(e.className).slice(0, 30)}`);
+      const images = [...panel.querySelectorAll("img")].map((i) => i.complete && i.naturalWidth > 0);
+      const pre = [...panel.querySelectorAll("pre")].map((p) => ({ scrolls: p.scrollWidth > p.clientWidth, focusable: p.tabIndex >= 0 }));
+      return { wide: wide.slice(0, 4), images, pre, overflow: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth };
+    });
+    ok(m.wide.length === 0 && m.overflow <= 0, `${t}: nothing wider than the panel (${m.wide.join(", ") || "ok"}, page overflow ${m.overflow})`);
+    ok(m.images.every(Boolean), `${t}: every image loaded (${m.images.length})`);
+    ok(m.pre.every((p) => !p.scrolls || p.focusable), `${t}: a code block that scrolls is focusable (${m.pre.length} blocks)`);
+    ok(logs.length === 0, `${t}: no console errors${logs.length ? ` (${logs.join(" | ")})` : ""}`);
+    if (layout === "full" || ["demo-poem", "vietnam-by-rail", "timetable-diff", "altiplano-sediment", "citadel-rain", "cuesta-arriba", "quai-de-nuit", "rain-at-the-citadel-gate"].includes(entry.slug)) {
+      await page.screenshot({ path: `${OUT_DIR}/entry-${entry.slug}-${layout}.png`, fullPage: false });
+    }
+    await ctx.close();
+  }
+}
+
+// --- 8. Polish: reading aids, filters, related entries, the empty home, print ------------------------------------------------------------------
+{
+  const { ctx, page, logs } = await newPage({ ...DESKTOP, permissions: ["clipboard-read", "clipboard-write"] });
+  // reading time (computed when no authored fact), contents (full only), copy link, anchors
+  // (every demo article authors a `Reading time` fact, so the computed "N min read" is covered by lib/reading.test.ts and only its absence is checked here)
+  await page.goto(`${BASE_URL}/articles/rain-at-the-citadel-gate`);
+  await waitPanel(page);
+  await page.goto(`${BASE_URL}/articles/demo-article?view=full`);
+  await waitPanel(page);
+  ok((await page.locator("[data-slot=entry-reading]").count()) === 0, "an authored Reading time fact is not repeated by the computed one");
+  ok((await page.locator("[data-slot=entry-toc] a").count()) === 3, "full screen: the contents list the three sections");
+  await page.locator("[data-slot=entry-toc] a").nth(2).click();
+  await page.waitForFunction(() => location.hash === "#body-belgrade-06-12");
+  ok((await page.locator("[data-slot=entry-toc] a[aria-current=location]").innerText()).includes("Belgrade"), "the contents mark the section being read (scroll-spy)");
+  ok((await page.locator("#body-belgrade-06-12 a[aria-label^='Link to section']").getAttribute("href")) === "#body-belgrade-06-12", "a heading has an accessible anchor link");
+  await page.locator("button", { hasText: "Copy link" }).click();
+  await page.waitForSelector("button[data-state=copied]");
+  ok((await page.evaluate(() => navigator.clipboard.readText())).endsWith("/articles/demo-article"), "copy link: the clipboard holds the entry's address, without ?view");
+  // related by shared places and tags, and the neighbours, at the end
+  const related = await page.locator("[data-slot=entry-more] section a").evaluateAll((as) => as.map((a) => a.getAttribute("href")));
+  ok(related.length >= 2 && related.every((h) => h.startsWith("/")), `related entries are cards at the end of the entry (${related.join(", ")})`);
+  ok((await page.locator("[data-slot=entry-neighbours] a[rel=next]").count()) === 1, "the next article of the kind is linked");
+  ok(logs.length === 0, `polish: no console errors${logs.length ? ` (${logs.join(" | ")})` : ""}`);
+  // panel: no contents, but the same entry
+  await page.goto(`${BASE_URL}/articles/demo-article`);
+  await waitPanel(page);
+  ok(!(await page.locator("[data-slot=entry-toc]").isVisible()), "the contents are not shown in the side panel");
+  await ctx.close();
+}
+{
+  const { ctx, page } = await newPage(DESKTOP);
+  // list filter: URL addressable, server rendered, one h1, the chips come first in the tab order
+  await page.goto(`${BASE_URL}/articles`);
+  await page.locator("[data-slot=tag-filter] a", { hasText: /^rail/i }).first().click();
+  await page.waitForURL("**/articles?tag=rail");
+  await page.waitForFunction(() => document.querySelectorAll("main article").length === 2);
+  ok((await page.locator("main article").count()) === 2, "list: ?tag=rail keeps the two articles tagged rail");
+  ok((await page.locator("[data-slot=tag-filter] a[aria-current=true]").count()) === 1, "list: the selected tag is aria-current");
+  const ssr = await page.request.get(`${BASE_URL}/articles?tag=rail`).then((r) => r.text());
+  ok((ssr.match(/<article/g) ?? []).length === 2, "list: the filter is server rendered (works without scripts)");
+  ok(outline(await headingLevels(page)), "list: one h1 and no skipped heading level while filtered");
+  await page.goto(`${BASE_URL}/articles?tag=unknown-tag`);
+  ok((await page.locator("main article").count()) === 5, "list: an unknown tag shows everything");
+  await ctx.close();
+}
+if (process.env.BASE_URL_EMPTY) {
+  const { ctx, page, logs } = await newPage(DESKTOP);
+  await page.goto(process.env.BASE_URL_EMPTY);
+  await waitGlobeMounted(page);
+  await page.waitForTimeout(800);
+  ok((await page.locator("[data-slot=archive-empty]").count()) === 1 && (await page.locator("[data-globe]").count()) === 1, "empty home: the globe stays and the archive card is there");
+  ok(/ARCHIVE \/ 000 ENTRIES/i.test(await page.locator("[data-slot=archive-empty]").innerText()), "empty home: the card says 000 entries");
+  ok((await page.locator("[data-slot=archive-empty] a").count()) === 4, "empty home: the card opens the four lists");
+  ok((await page.locator("h1").count()) === 1, "empty home: one h1");
+  await page.screenshot({ path: `${OUT_DIR}/home-empty-dark.png` });
+  ok(logs.length === 0, `empty home: no console errors${logs.length ? ` (${logs.join(" | ")})` : ""}`);
+  await ctx.close();
+}
+{
+  // a place with no entry says so
+  const { ctx, page } = await newPage(DESKTOP);
+  await page.goto(`${BASE_URL}/locations/bangkok`);
+  await waitPanel(page);
+  ok(/Nothing is linked to this place/.test(await page.locator("[data-slot=place-entries]").innerText()), "a place without entries says so");
+  // print: the chrome goes, the entry stays
+  await page.goto(`${BASE_URL}/poems/cuesta-arriba?view=full`);
+  await waitPanel(page);
+  await waitGlobeMounted(page);
+  await page.emulateMedia({ media: "print" });
+  const printed = await page.evaluate(() => ({ nav: getComputedStyle(document.querySelector("#app > header")).display, globe: getComputedStyle(document.querySelector("main")).display, panel: getComputedStyle(document.querySelector("[data-panel]")).position }));
+  ok(printed.nav === "none" && printed.globe === "none" && printed.panel === "static", `print: navigation and globe hidden, the entry flows as a page (${JSON.stringify(printed)})`);
+  await ctx.close();
+}
+
+// --- 9. Quick search (Cmd/Ctrl + K): an accessible combobox over the places and entries ---------------------------------------------------------
+{
+  const { ctx, page, logs } = await newPage(DESKTOP);
+  await page.goto(`${BASE_URL}/articles`);
+  await page.waitForTimeout(600);
+  await page.keyboard.press("Control+k");
+  await page.waitForSelector("dialog[open]");
+  ok(await page.evaluate(() => document.activeElement?.getAttribute("role") === "combobox"), "search: Ctrl+K opens a modal dialog with the combobox focused");
+  await page.keyboard.type("hue");
+  await page.waitForFunction(() => document.querySelectorAll("[role=option]").length > 0);
+  ok((await page.locator("[role=option]").first().innerText()).includes("Huế"), "search: accents are folded (hue finds Huế)");
+  ok((await page.locator("input[role=combobox]").getAttribute("aria-activedescendant")) === (await page.locator("[role=option][aria-selected=true]").getAttribute("id")), "search: aria-activedescendant follows the highlighted option");
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("ArrowUp");
+  await page.keyboard.press("Enter");
+  await page.waitForURL("**/locations/hue");
+  ok((await page.locator("dialog").count()) === 0, "search: Enter opens the result and closes the palette");
+  await page.keyboard.press("Control+k");
+  await page.waitForSelector("dialog[open]");
+  await page.keyboard.press("Escape");
+  await page.waitForFunction(() => !document.querySelector("dialog"));
+  ok(true, "search: Escape closes it");
+  ok(logs.length === 0, `search: no console errors${logs.length ? ` (${logs.join(" | ")})` : ""}`);
   await ctx.close();
 }
 

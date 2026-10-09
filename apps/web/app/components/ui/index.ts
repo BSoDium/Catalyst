@@ -1,6 +1,7 @@
 /** The UI system (docs/design-system.md). Import from here or from the file; both tree-shake. */
 export { Button, type ButtonProps, type ButtonSize, type ButtonVariant } from "./button";
 export { CoverArt } from "./cover-art";
+export { CopyButton } from "./copy-button";
 export { DataList, DataRow } from "./data-row";
 export { Divider } from "./divider";
 export { EntryCard } from "./entry-card";

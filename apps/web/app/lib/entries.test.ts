@@ -3,6 +3,7 @@ import { loadDemoProjection } from "@catalyst/published";
 import { EMPTY_PROJECTION, type PublishedContentItem, type PublishedProjection } from "@catalyst/schemas";
 import {
   CONTENT_KINDS,
+  countEntries,
   entriesOfPlace,
   entryLanguage,
   entryPath,
@@ -13,6 +14,8 @@ import {
   parsePanelPath,
   parseView,
   RELATED_LIMIT,
+  relatedScore,
+  RELATED_WEIGHTS,
   resolveBackTarget,
   splitMeta,
   viewSearch,
@@ -42,20 +45,26 @@ describe("listEntries", () => {
       slug: "demo-article",
       href: "/articles/demo-article",
       index: 1,
-      title: "Demo article",
-      date: "2024-04-02",
-      tags: ["demo", "notes"],
-      cover: { src: "/media/demo/cover-article.svg", width: 960, height: 600 },
-      meta: [{ label: "Publication", value: "Demo fixture journal (placeholder)" }],
+      title: "Night trains through the Balkans",
+      date: "2026-03-14",
+      tags: ["night-trains", "balkans", "rail", "slow-travel", "field-notes"],
+      cover: { src: "/media/demo/cover-night-trains.svg", width: 1200, height: 630 },
+      meta: [
+        { label: "Publication", value: "Marginalia, issue 12" },
+        { label: "Reading time", value: "6 min" },
+        { label: "Written", value: "On board, March 2026" },
+      ],
       places: [
-        { slug: "lisbon", name: "Lisbon", href: "/locations/lisbon" },
-        { slug: "paris", name: "Paris", href: "/locations/paris" },
+        { slug: "ljubljana", name: "Ljubljana", href: "/locations/ljubljana" },
+        { slug: "zagreb", name: "Zagreb", href: "/locations/zagreb" },
+        { slug: "belgrade", name: "Belgrade", href: "/locations/belgrade" },
+        { slug: "split", name: "Split", href: "/locations/split" },
       ],
     });
     expect(article).not.toHaveProperty("body");
   });
   it("lists poems, and nothing for an empty collection", () => {
-    expect(listEntries(demo, "poem").map((e) => e.slug)).toEqual(["demo-poem"]);
+    expect(listEntries(demo, "poem").map((e) => e.slug)).toEqual(["demo-poem", "citadel-rain", "cuesta-arriba", "quai-de-nuit"]);
     for (const kind of CONTENT_KINDS) expect(listEntries(EMPTY_PROJECTION, kind)).toEqual([]);
   });
   it("numbers entries by their position in the kind, from 1, in authored order", () => {
@@ -81,9 +90,10 @@ describe("getEntryDetail", () => {
   it("carries the body blocks as authored, the places resolved and the code index", () => {
     const poem = getEntryDetail(demo, "poem", "demo-poem")!;
     expect(poem.body[0]).toMatchObject({ type: "verse" });
-    expect(poem.places).toEqual([expect.objectContaining({ slug: "hue", href: "/locations/hue" })]);
+    // its own place first, then the place that only names it in `related` (Vancouver)
+    expect(poem.places).toEqual([expect.objectContaining({ slug: "reykjavik", href: "/locations/reykjavik" }), expect.objectContaining({ slug: "vancouver", href: "/locations/vancouver" })]);
     expect(poem.index).toBe(1);
-    expect(poem.tags).toEqual(["demo", "verse"]);
+    expect(poem.tags).toEqual(["layover", "airports", "travel", "free-verse"]);
   });
   it("gives an entry without a body an empty one", () => {
     expect(getEntryDetail(world({ projects: [item("p")] }), "project", "p")!.body).toEqual([]);
@@ -110,6 +120,40 @@ describe("getEntryDetail", () => {
   });
   it("an entry without a place relates nothing", () => {
     expect(getEntryDetail(world({ articles: [item("a"), item("b")] }), "article", "a")!.related).toEqual([]);
+  });
+});
+
+describe("countEntries", () => {
+  it("counts each kind, zero for the empty projection", () => {
+    expect(countEntries(EMPTY_PROJECTION)).toEqual({ article: 0, project: 0, artwork: 0, poem: 0 });
+    expect(countEntries(world({ articles: [item("a"), item("b")], poems: [item("v")] }))).toEqual({ article: 2, project: 0, artwork: 0, poem: 1 });
+  });
+});
+
+describe("relatedScore", () => {
+  const a = { kind: "article" as const, places: ["p1", "p2"], tags: ["Rail", "bus"] };
+  it("adds 4 per shared place and 2 per shared tag", () => {
+    expect(relatedScore(a, { kind: "poem", places: ["p1"], tags: [] })).toBe(RELATED_WEIGHTS.place);
+    expect(relatedScore(a, { kind: "poem", places: ["p1", "p2"], tags: ["rail"] })).toBe(2 * RELATED_WEIGHTS.place + RELATED_WEIGHTS.tag);
+    expect(relatedScore(a, { kind: "poem", places: [], tags: ["RAIL", "bus", "bus"] })).toBe(2 * RELATED_WEIGHTS.tag);
+  });
+  it("counts the same kind only when something else is shared", () => {
+    expect(relatedScore(a, { kind: "article", places: [], tags: [] })).toBe(0);
+    expect(relatedScore(a, { kind: "article", places: ["p1"], tags: [] })).toBe(RELATED_WEIGHTS.place + RELATED_WEIGHTS.kind);
+  });
+  it("is zero for strangers and ignores blank tags", () => {
+    expect(relatedScore(a, { kind: "project", places: ["z"], tags: ["", "other"] })).toBe(0);
+    expect(relatedScore({ ...a, tags: [""] }, { kind: "project", places: [], tags: [""] })).toBe(0);
+  });
+});
+
+describe("related entries, ranked", () => {
+  it("puts the entry that shares a place and a tag before one that shares a place only, and finds tag-only relations", () => {
+    const projection = world({
+      places: [place("p1")],
+      articles: [item("a", ["p1"], { tags: ["rail"] }), item("only-place", ["p1"]), item("both", ["p1"], { tags: ["rail"] }), item("only-tag", [], { tags: ["Rail"] }), item("none", [], { tags: ["x"] })],
+    });
+    expect(getEntryDetail(projection, "article", "a")!.related.map((r) => r.slug)).toEqual(["both", "only-place", "only-tag"]);
   });
 });
 
@@ -145,7 +189,7 @@ describe("entryLanguage", () => {
   const lang = (value: string, label = "Language") => entryLanguage([{ label, value }]);
   it("maps a language name, with or without a note, to its tag", () => {
     expect(lang("English")).toBe("en");
-    expect(lang("English (placeholder)")).toBe("en");
+    expect(lang("English (draft)")).toBe("en");
     expect(lang("Français")).toBe("fr");
     expect(lang("espanol")).toBe("es");
   });
@@ -161,8 +205,9 @@ describe("entryLanguage", () => {
     expect(lang("English", "Medium")).toBeUndefined();
     expect(entryLanguage([])).toBeUndefined();
   });
-  it("reads the demo poem", () => {
-    expect(entryLanguage(getEntryDetail(demo, "poem", "demo-poem")!.meta)).toBe("en");
+  it("reads the language of the demo poems", () => {
+    const language = (slug: string) => entryLanguage(getEntryDetail(demo, "poem", slug)!.meta);
+    expect([language("demo-poem"), language("citadel-rain"), language("cuesta-arriba"), language("quai-de-nuit")]).toEqual(["en", "en", "es", "fr"]);
   });
 });
 

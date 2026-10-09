@@ -15,6 +15,7 @@
     "build": "pnpm --filter @catalyst/web build && pnpm --filter @catalyst/api build",
     "validate:published": "pnpm --filter @catalyst/published validate",
     "check:leaks": "node scripts/check-public-leaks.mjs",
+    "check:prod": "pnpm --filter @catalyst/web check:prod",
     "tiles:plan": "node deploy/tiles/extract-places.mjs --dry-run",
     "tiles:extract": "node deploy/tiles/extract-places.mjs",
     "test:deploy": "node --test deploy/tiles/*.test.mjs",

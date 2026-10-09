@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, type ReactNode, type RefObject } from "react";
-import { useNavigationType } from "react-router";
+import { useLocation, useNavigation, useNavigationType } from "react-router";
 import { NavScrim } from "~/components/nav-scrim";
 import { ExpandToggle } from "~/components/ui/toggle";
 import { IconButton } from "~/components/ui/icon-button";
@@ -99,6 +99,11 @@ export function DetailPanel({ open, isMobile, reducedMotion, routeKey, returnSlu
   const navigationType = useNavigationType();
   const navigationTypeRef = useRef(navigationType);
   navigationTypeRef.current = navigationType;
+  // A navigation whose loader is still running (another entry, another place): the content stays, dimmed and marked busy, until the new one arrives.
+  // Only when the path changes: toggling the container (`?view=full`) is not a new page.
+  const navigation = useNavigation();
+  const here = useLocation().pathname;
+  const loading = navigation.state === "loading" && navigation.location.pathname !== here;
 
   // Move focus to the heading: always for the modal, only after a user action on desktop (a places link, a marker, a link in the panel).
   useEffect(() => {
@@ -164,11 +169,11 @@ export function DetailPanel({ open, isMobile, reducedMotion, routeKey, returnSlu
           )}
         >
           {/* Desktop: fades the content that scrolls under the nav links (hidden on mobile, where the header is static). */}
-          <NavScrim className="absolute z-10 hidden md:block" />
+          <NavScrim className="absolute z-10 hidden md:block print:hidden" />
           {/* Full screen: the panel reaches the page's left edge, where the navbar's logo floats above it, so the controls start after the logo. */}
           <div
             className={cn(
-              "flex min-h-16 shrink-0 items-center justify-between gap-4 px-6 pt-2 md:absolute md:inset-x-0 md:top-0 md:z-20 md:h-(--navbar-height) md:min-h-0 md:justify-start md:pt-0",
+              "flex min-h-16 shrink-0 items-center justify-between gap-4 px-6 pt-2 print:hidden md:absolute md:inset-x-0 md:top-0 md:z-20 md:h-(--navbar-height) md:min-h-0 md:justify-start md:pt-0",
               full && "md:pl-[4.5rem]",
             )}
           >
@@ -187,7 +192,9 @@ export function DetailPanel({ open, isMobile, reducedMotion, routeKey, returnSlu
           </div>
           <div
             ref={scrollRef}
-            className="min-h-0 flex-1 overflow-y-auto overscroll-contain md:pt-[calc(var(--navbar-height)+1rem)]"
+            aria-busy={loading || undefined}
+            data-loading={loading ? "" : undefined}
+            className="min-h-0 flex-1 overflow-y-auto overscroll-contain transition-opacity duration-(--duration-base) ease-(--ease-standard) data-loading:opacity-60 md:pt-[calc(var(--navbar-height)+1rem)]"
           >
             {children}
           </div>

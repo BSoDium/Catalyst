@@ -72,6 +72,17 @@ export function PlaceDetail({ place }: { place: PlaceDetailData }) {
             ))}
           </Stack>
         )}
+        {count === 0 && (
+          <section aria-labelledby="place-entries" data-slot="place-entries">
+            <SectionHeader index={1} title="Entries" id="place-entries" as="h2" meta="00" />
+            <Frame padding="md" className="mt-4" data-state="empty">
+              <Stack gap={3}>
+                <MicroLabel>Entries / 000</MicroLabel>
+                <p className="m-0 text-sm text-muted-foreground">Nothing is linked to this place yet. Articles, projects, artworks and poems that mention it will be listed here.</p>
+              </Stack>
+            </Frame>
+          </section>
+        )}
         {count > 0 && (
           <section aria-labelledby="place-entries" data-slot="place-entries">
             <SectionHeader index={1} title="Entries" id="place-entries" as="h2" meta={String(count).padStart(2, "0")} />
@@ -83,10 +94,10 @@ export function PlaceDetail({ place }: { place: PlaceDetailData }) {
                     <MicroLabel tone="strong">{group.label}</MicroLabel>
                     <MicroLabel>{String(group.entries.length).padStart(2, "0")}</MicroLabel>
                   </h3>
-                  <ul className="m-0 grid list-none grid-cols-1 gap-4 p-0 @md:grid-cols-2">
+                  <ul className="m-0 grid list-none grid-cols-1 gap-4 p-0">
                     {group.entries.map((entry) => (
                       <li key={entry.slug} className="min-w-0">
-                        <EntryListCard entry={entry} linkState={{ from: place.slug }} headingLevel={4} />
+                        <EntryListCard entry={entry} linkState={{ from: place.slug }} headingLevel={4} orientation="horizontal" />
                       </li>
                     ))}
                   </ul>

@@ -4,7 +4,7 @@ import type { Route } from "./+types/location";
 import type { loader as shellLoader } from "./shell";
 import { PlaceDetail, PlaceNotFound } from "~/components/place-detail";
 import { getProjection } from "~/lib/content.server";
-import { pageMeta } from "~/lib/meta";
+import { isScrapableImage, metaBase, pageMeta } from "~/lib/meta";
 import { getPlaceDetail } from "~/lib/projection";
 
 export async function loader({ params }: Route.LoaderArgs) {
@@ -13,11 +13,19 @@ export async function loader({ params }: Route.LoaderArgs) {
   return { place };
 }
 
-export function meta({ loaderData }: Route.MetaArgs) {
-  const place = loaderData?.place;
-  if (!place) return pageMeta({ title: "Place not found", description: "There is no place at this address." });
+export function meta(args: Route.MetaArgs) {
+  const place = args.loaderData?.place;
+  const base = metaBase(args);
+  if (!place) return pageMeta({ ...base, title: "Place not found", description: "There is no place at this address.", noindex: true });
   const fallback = place.region ? `${place.name}, ${place.region}` : place.name;
-  return pageMeta({ title: place.name, description: place.summary ?? fallback });
+  // The first authored image of the place is its share image when scrapers can read its format (else the site's default one).
+  const first = place.images.find((i) => isScrapableImage(i.src));
+  return pageMeta({
+    ...base,
+    title: place.name,
+    description: place.summary ?? fallback,
+    image: first ? { src: first.src, alt: first.alt, width: first.width, height: first.height } : undefined,
+  });
 }
 
 export default function LocationRoute({ loaderData }: Route.ComponentProps) {

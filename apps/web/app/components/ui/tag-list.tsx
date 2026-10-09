@@ -1,3 +1,4 @@
+import { Link } from "react-router";
 import { cn } from "~/lib/utils";
 
 interface Tag {
@@ -14,9 +15,15 @@ export function TagList({ tags, label, className }: { tags: readonly Tag[]; labe
       {tags.map((tag) => (
         <li key={tag.label}>
           {tag.href ? (
-            <a href={tag.href} className="ds-tag ds-micro" data-tone="strong">
-              {tag.label}
-            </a>
+            tag.href.startsWith("/") ? (
+              <Link to={tag.href} className="ds-tag ds-micro" data-tone="strong">
+                {tag.label}
+              </Link>
+            ) : (
+              <a href={tag.href} className="ds-tag ds-micro" data-tone="strong">
+                {tag.label}
+              </a>
+            )
           ) : (
             <span className="ds-tag ds-micro" data-tone="strong">
               {tag.label}

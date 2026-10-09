@@ -87,7 +87,7 @@ describe("endpoints (demo content)", () => {
       ok: true,
       schemaVersion: 1,
       content: "demo",
-      counts: { places: 18, groups: 8, routes: 1, projects: 1, articles: 1, artworks: 1, poems: 1 },
+      counts: { places: 18, groups: 8, routes: 1, projects: 4, articles: 5, artworks: 4, poems: 4 },
     });
     expect(res.headers.get("cache-control")).toBe("no-store");
   });
@@ -159,14 +159,14 @@ describe("endpoints (demo content)", () => {
     expect(place.bbox).toEqual([-9.25, 38.664, -9.07, 38.776]);
     expect(place.body.length).toBeGreaterThan(0);
     expect(place.related).toEqual([
-      { kind: "article", slug: "demo-article", title: "Demo article" },
-      { kind: "project", slug: "demo-project", title: "Demo project" },
+      { kind: "article", slug: "morocco-coast-bus", title: "Eleven hours of Atlantic coast, by bus" },
+      { kind: "project", slug: "label-collision-engine", title: "Collide, a label collision engine for maps" },
     ]);
     expect(place.group).toBe("europe");
     expect(place.countryCode).toBe("PT");
     expect(place.groupChain).toEqual([{ slug: "europe", name: "Europe", kind: "continent" }]);
     const kyoto = placeDetailSchema.parse(await (await demoApp().request("/v1/places/kyoto")).json());
-    expect(kyoto.related).toEqual([{ kind: "artwork", slug: "demo-artwork", title: "Demo artwork" }]);
+    expect(kyoto.related).toEqual([{ kind: "artwork", slug: "demo-artwork", title: "Signal Study No. 3" }]);
   });
 
   it("GET /v1/places/:slug resolves the group chain from the innermost group to the root", async () => {
@@ -215,11 +215,13 @@ describe("endpoints (demo content)", () => {
       expect(summaries, key).toEqual(demo[key].map(toContentSummary));
       // The summary carries what a list needs: cover, tags and the kind-specific meta.
       for (const s of summaries) {
-        expect(s.cover, `${key}/${s.slug}`).toBeDefined();
         expect(s.tags?.length, `${key}/${s.slug}`).toBeGreaterThan(0);
         expect(s.meta?.length, `${key}/${s.slug}`).toBeGreaterThan(0);
       }
     }
+    // Most entries have an authored cover; the others rely on the generated art (both paths are in the demo).
+    const covers = LISTS.flatMap((key) => demo[key]).filter((e) => e.cover).length;
+    expect(covers).toBe(10);
     // The summaries are much smaller than the full entries they stand for.
     const sizes = async (path: string) => (await (await app.request(path)).text()).length;
     expect(await sizes("/v1/articles")).toBeLessThan(JSON.stringify(demo.articles).length);
@@ -242,30 +244,40 @@ describe("endpoints (demo content)", () => {
         expect(places).toEqual(item.placeSlugs.map((slug) => ({ slug, name: names.get(slug) })));
       }
     }
-    // An entry with two places keeps the order of placeSlugs.
+    // An entry with several places keeps the order of placeSlugs.
     const article = contentDetailSchema.parse(await (await app.request("/v1/articles/demo-article")).json());
     expect(article.places).toEqual([
-      { slug: "lisbon", name: "Lisbon" },
-      { slug: "paris", name: "Paris" },
+      { slug: "ljubljana", name: "Ljubljana" },
+      { slug: "zagreb", name: "Zagreb" },
+      { slug: "belgrade", name: "Belgrade" },
+      { slug: "split", name: "Split" },
     ]);
   });
 
   it("the demo poem is served as verse blocks, line breaks and stanzas intact", async () => {
     const poem = contentDetailSchema.parse(await (await demoApp().request("/v1/poems/demo-poem")).json());
     const verse = poem.body?.find((b) => b.type === "verse");
-    expect(verse && verse.type === "verse" ? verse.stanzas.map((s) => s.length) : []).toEqual([4, 3]);
-    expect(poem.places).toEqual([{ slug: "hue", name: "Huế" }]);
+    expect(verse && verse.type === "verse" ? verse.stanzas.map((s) => s.length) : []).toEqual([3, 4, 4, 4, 4, 4]);
+    expect(poem.places).toEqual([{ slug: "reykjavik", name: "Reykjavík" }]);
+    // indentation is part of the poem: leading spaces survive the round trip
+    expect(verse && verse.type === "verse" ? verse.stanzas[3]![0] : "").toBe("    We are all between things here:");
   });
 
   it("GET /v1/projection carries the complete entries, bodies included", async () => {
     const body = (await (await demoApp().request("/v1/projection")).json()) as PublishedProjection;
-    expect(body.poems.map((p) => p.slug)).toEqual(["demo-poem"]);
+    expect(body.poems.map((p) => p.slug)).toEqual(["demo-poem", "citadel-rain", "cuesta-arriba", "quai-de-nuit"]);
     for (const key of LISTS) for (const item of body[key]) expect(item.body?.length, `${key}/${item.slug}`).toBeGreaterThan(0);
   });
 
   it("resolves a place's related poem", async () => {
     const hue = placeDetailSchema.parse(await (await demoApp().request("/v1/places/hue")).json());
-    expect(hue.related).toEqual([{ kind: "poem", slug: "demo-poem", title: "Demo poem" }]);
+    expect(hue.related).toEqual([
+      { kind: "article", slug: "rain-at-the-citadel-gate", title: "Rain at the citadel gate" },
+      { kind: "poem", slug: "citadel-rain", title: "Citadel, rain" },
+    ]);
+    // a back-link can also exist on the place only (the poem does not list Vancouver)
+    const vancouver = placeDetailSchema.parse(await (await demoApp().request("/v1/places/vancouver")).json());
+    expect(vancouver.related).toEqual([{ kind: "poem", slug: "demo-poem", title: "Layover" }]);
   });
 });
 
@@ -620,7 +632,7 @@ describe("snapshot", () => {
       ...LISTS.flatMap((k) => demo[k].map((i) => `/v1/${k}/${i.slug}`)),
     ];
     expect([...entries.keys()].sort()).toEqual([...expected].sort());
-    expect(counts).toEqual({ places: 18, groups: 8, routes: 1, projects: 1, articles: 1, artworks: 1, poems: 1 });
+    expect(counts).toEqual({ places: 18, groups: 8, routes: 1, projects: 4, articles: 5, artworks: 4, poems: 4 });
   });
 
   it("an entry with no optional field serialises to exactly its required fields (no null, no undefined keys)", () => {
@@ -646,7 +658,7 @@ describe("firewall allowlist (docs/api-cost-and-abuse.md)", () => {
     const allow = new RegExp(documented!);
     const demo = loadDemoProjection();
     const served = [...buildSnapshot(demo).entries.keys(), "/health"];
-    expect(served.length).toBe(31);
+    expect(served.length).toBe(44);
     for (const path of served) expect(allow.test(path), path).toBe(true);
     for (const path of [
       "/",
