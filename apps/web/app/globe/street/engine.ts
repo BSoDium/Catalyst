@@ -372,6 +372,7 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
   hud.setTheme(theme);
   perfEnd("street.create.hud", tHud);
   const tRest = perfStart();
+  hud.setWake(() => map.triggerRepaint());
   hud.setCell(cellCss);
   hud.setSelected(selected);
   hud.setFocused(focused);

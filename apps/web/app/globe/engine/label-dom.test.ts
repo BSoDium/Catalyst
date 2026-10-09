@@ -31,7 +31,7 @@ class FakeEl {
   }
 }
 
-const view = (extra: Partial<LabelView> = {}): LabelView => ({ x: 10, y: 20, w: 60, h: 24, name: "Paris", sub: null, mode: "rest", over: false, alpha: 1, glide: false, ...extra });
+const view = (extra: Partial<LabelView> = {}): LabelView => ({ x: 10, y: 20, w: 60, h: 24, name: "Paris", sub: null, mode: "rest", over: false, alpha: 1, ...extra });
 let root: FakeEl;
 let layer: LabelLayer;
 
@@ -103,7 +103,6 @@ describe("the label layer: real text in pooled elements, positioned by transform
     frame(() => layer.put(1, "a", view()));
     const w = layer.writes;
     frame(() => layer.put(1, "a", view()));
-    frame(() => layer.put(1, "a", view({ glide: false })));
     expect(layer.writes).toBe(w);
     frame(() => layer.put(1, "a", view({ x: 11 })));
     expect(layer.writes).toBe(w + 1); // the plate and its feather move together: one write
@@ -142,29 +141,14 @@ describe("the label layer: real text in pooled elements, positioned by transform
   });
 });
 
-describe("gliding: a transition only for a label a re-plan moved at rest", () => {
-  it("the glide attribute is set with the move that needs it and removed with the next move that does not", () => {
+describe("moving: only a transform, no CSS transition (the motion is computed per frame)", () => {
+  it("a moved label gets a new transform for the plate and its feather and no glide attribute or transition", () => {
     frame(() => layer.put(1, "a", view()));
+    frame(() => layer.put(1, "a", view({ x: 50 })));
+    expect(el().style.transform).toBe(halo().style.transform);
+    expect(el().style.transform).toContain("50px");
     expect("glide" in el().dataset).toBe(false);
-    frame(() => layer.put(1, "a", view({ x: 50, glide: true })));
-    expect("glide" in el().dataset).toBe(true);
-    expect("glide" in halo().dataset).toBe(true); // the feather glides with the plate
-    frame(() => layer.put(1, "a", view({ x: 52, glide: false })));
-    expect("glide" in el().dataset).toBe(false);
-    expect("glide" in halo().dataset).toBe(false);
-  });
-  it("a still frame never cancels a glide that is running (the attribute only changes with a move)", () => {
-    frame(() => layer.put(1, "a", view()));
-    frame(() => layer.put(1, "a", view({ x: 50, glide: true })));
-    frame(() => layer.put(1, "a", view({ x: 50, glide: false })));
-    expect("glide" in el().dataset).toBe(true);
-  });
-  it("a released element does not keep its glide for the next label", () => {
-    frame(() => layer.put(1, "a", view()));
-    frame(() => layer.put(1, "a", view({ x: 50, glide: true })));
-    frame(() => undefined);
-    frame(() => layer.put(2, "b", view({ x: 7 })));
-    expect("glide" in el().dataset).toBe(false);
+    expect(el().style.transition ?? "").toBe("");
   });
 });
 

@@ -2,7 +2,8 @@
  * The labels of the boxes as HTML, in device pixels (the DOM half of engine/box-scene.ts; the only part of the labels that touches the DOM).
  *
  * Two pooled elements per drawn label, positioned by `transform: translate3d(x, y, 0)` ONLY (no layout, no paint: a moving label is a compositor
- * move), rounded to whole device pixels so the text stays sharp:
+ * move), rounded to whole device pixels so the text stays sharp. There is no CSS transition: the motion of a label (its glide to a new slot)
+ * is computed per frame (engine/label-track.ts) and arrives here as a position:
  *  - `div.map-label`: the PLATE and its text, two lines (`span.map-label-name`, `span.map-label-sub`, sized by `LABEL_TYPE`, engine/label-text.ts).
  *    The plate is the page colour at rest and hovered, inverted (foreground colour) selected (app.css `.map-label`);
  *  - `div.map-halo`: the FEATHER, a transparent box of the plate's size whose shadow fades out around it (`LABEL_TYPE.feather`, app.css
@@ -38,8 +39,6 @@ export interface LabelView {
   over: boolean;
   /** The node's own opacity (its timed fade), 0..1. */
   alpha: number;
-  /** Glide to the new position (a short transition) instead of jumping: a re-plan of a camera at rest. */
-  glide: boolean;
 }
 
 interface Slot {
@@ -58,7 +57,6 @@ interface Slot {
   mode: LabelMode | "";
   over: boolean;
   alpha: number;
-  glide: boolean;
   used: boolean;
   shown: boolean;
   slug: string;
@@ -107,7 +105,6 @@ export class LabelLayer {
       s.mode = "";
       s.over = false;
       s.alpha = NaN;
-      s.glide = false;
     }
     s.used = true;
     if (!s.shown) {
@@ -159,17 +156,6 @@ export class LabelLayer {
     const x = Math.round(v.x * d) / d;
     const y = Math.round(v.y * d) / d;
     if (x !== s.x || y !== s.y) {
-      // the glide attribute changes only together with a move: a running transition is never cut by a frame that moves nothing
-      if (v.glide !== s.glide) {
-        if (v.glide) {
-          s.el.dataset.glide = "";
-          s.halo.dataset.glide = "";
-        } else {
-          delete s.el.dataset.glide;
-          delete s.halo.dataset.glide;
-        }
-        s.glide = v.glide;
-      }
       const t = `translate3d(${x}px,${y}px,0)`;
       s.el.style.transform = t;
       s.halo.style.transform = t;
@@ -186,8 +172,6 @@ export class LabelLayer {
       this.live.delete(id);
       s.el.style.display = "none";
       s.halo.style.display = "none";
-      delete s.el.dataset.glide;
-      delete s.halo.dataset.glide;
       delete s.el.dataset.over;
       s.shown = false;
       if (this.pool.length < POOL_KEEP) this.pool.push(s);
@@ -227,7 +211,7 @@ export class LabelLayer {
     halo.className = "map-halo";
     Object.assign(halo.style, { position: "absolute", left: "0", top: "0", display: "none", boxSizing: "border-box", boxShadow: featherShadow(), pointerEvents: "none", willChange: "transform" } satisfies Partial<CSSStyleDeclaration>);
     this.halos.append(halo);
-    return { el, nameEl, subEl, halo, x: NaN, y: NaN, w: NaN, h: NaN, name: "", sub: null, mode: "", over: false, alpha: NaN, glide: false, used: false, shown: false, slug: "" };
+    return { el, nameEl, subEl, halo, x: NaN, y: NaN, w: NaN, h: NaN, name: "", sub: null, mode: "", over: false, alpha: NaN, used: false, shown: false, slug: "" };
   }
 
   /** Number of labels shown. */
@@ -249,7 +233,6 @@ export class LabelLayer {
         sub: s.subEl.textContent || null,
         mode: s.el.dataset.mode ?? "",
         over: "over" in s.el.dataset,
-        glide: "glide" in s.el.dataset,
         opacity: Number(s.el.style.opacity || 1),
         transform: s.el.style.transform,
         rect: { x0: r.left, y0: r.top, x1: r.right, y1: r.bottom },

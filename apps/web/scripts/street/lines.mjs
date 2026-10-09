@@ -64,6 +64,10 @@ if (!(await up())) {
 
 const classes = ["road-minor", "building-outline", "road-major-case", "road-medium-case"];
 const zooms = [13, 15, 17.5];
+// Motorway, trunk and primary roads are one art pixel wide below z13 (`MAJOR_WIDE_FROM`, 2026-10-08: they were two from z9) and two from there on:
+// the primary class is swept on both sides of the step.
+const MAJOR_WIDE_FROM = 13;
+const zoomsOf = (cls) => (cls === "road-major-case" ? [12, 13.5, 15, 17.5] : zooms);
 const expected = { "road-major-case": { 17.5: 2 }, "road-medium-case": { 17.5: 2 } };
 const dashed = ["road-minor-dotted", "boundary-region"];
 
@@ -75,9 +79,9 @@ async function synthetic(browser, dpr) {
     await page.evaluate(() => window.__synthetic.ready());
     const L = LIMITS.synthetic;
     for (const cls of classes) {
-      for (const zoom of zooms) {
+      for (const zoom of zoomsOf(cls)) {
         const s = await page.evaluate(([c, z, e]) => window.__synthetic.sweep(c, z, { expected: e }), [cls, zoom, expected[cls]?.[zoom]]);
-        const onePx = ["road-minor", "building-outline"].includes(cls);
+        const onePx = ["road-minor", "building-outline"].includes(cls) || (cls === "road-major-case" && zoom < MAJOR_WIDE_FROM);
         const tag = `synthetic dpr${dpr} ${cls} z${zoom}`;
         // hollow roads: two outlines that touch at a measure-zero angle/offset tie (1 line of 384) are tolerated, 0.5 % like the ends
         check(`${tag} broken`, s.brokenFrac, onePx ? L.broken : L.hollowBroken);
@@ -88,7 +92,7 @@ async function synthetic(browser, dpr) {
           check(`${tag} doubled`, s.doubledFrac, L.doubled);
           check(`${tag} thin`, s.thinFrac, L.thin);
         } else if (cls === "road-major-case" && zoom < 16) {
-          // The road hierarchy (motorway, trunk and primary are 2 art px wide from z9): a two-pixel band sampled at cell centres is 2 cells per
+          // The road hierarchy (motorway, trunk and primary are 2 art px wide from z13): a two-pixel band sampled at cell centres is 2 cells per
           // step along an axis and 2 / cos(angle) = 2.83 at 45 degrees; it never breaks, is never one cell thin and never a three-cell smear.
           check(`${tag} cells per step (a two-pixel band, 2 to 2.83)`, s.perStepMin, 1.8, ">=");
           check(`${tag} cells per step (a two-pixel band, 2 to 2.83), max`, s.perStepMax, 3.1);

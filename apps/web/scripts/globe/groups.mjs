@@ -16,16 +16,18 @@
 // timed     a camera that opens a group and then STOPS: the boxes cross-fade by time (about 200 ms, whatever the camera does) and every transition
 //           ends: the frame loop runs until they have, the last frame is fully drawn or not at all (no frozen half-faded frame)
 // at-rest   (also in `targets` form for the preview data) wheel zoom with inertia, then let go, over the world -> continent -> city path and at the
-//           thresholds: after the camera stops, no label, box, mask or layer has an opacity strictly between 0 and 1, and no frame is pending
+//           thresholds: after the camera stops, no label, box, mask or layer has an opacity strictly between 0 and 1, every label is exactly at its
+//           target (the glides have ended, no plan is owed), and no frame is pending
 // reduced   reduced motion: every alpha is 0 or 1 (no cross-fade), one switch per box
 // pick      click a small box (its border or its inside) = flies to frame its circle (its places appear), the label plate is a hit area, a
 //           place's rectangle inside opens its page, hover highlights the box
 // targets   whatever the content (demo or your preview): over a sweep of views (world, continents, Europe, the Balkans, a city cluster and a grid of
 //           lon/lat/zoom), at rest, EVERY drawn box has its label (100 %: none dropped, none dimmed, each plate on the grid, no two plates overlapping
 //           unless one is the last resort) and is at full opacity, no node is half-faded, and hovering a box, its label and the gap between them
-//           shows the pointer and the node's hover state; the label is a real DOM element (text, opacity, place) for every drawn box
-// flicker   a scripted pan and zoom of 181 frames over a crowded view: the labels keep their slots (slot changes per label, jumps, the worst frame), the
-//           plan runs once when the camera stops, and hovering label after label re-plans nothing and moves no other label
+//           shows the pointer and the node's hover state; the label is a real DOM element (text, opacity, place) for every drawn box; at rest every label is exactly at its target (no glide left)
+// flicker   a scripted pan and zoom of 181 frames over a crowded view: the labels move all the time and never teleport (a plate that moves by more
+//           than its box plus a small glide step in one frame: 0), a slot change is a glide (slot changes per label, the worst frame), the plan runs at
+//           a bounded rate, the loop is quiet after the labels arrived (none gliding, none owed), and hovering label after label re-plans nothing
 // open      (the owner's preview, or any content with a group of several places) a group OPENS EARLY into its most important places and cross-fades with
 //           them (docs/web-architecture.md, "Opening a group into its most important children"). At Western Europe, the Balkans, Iberia, Central Europe
 //           and Italy: a slow zoom sweep at rest, at every frame NO drawn node has a drawn ancestor, every box is fully drawn with its label element opaque
@@ -378,13 +380,15 @@ try {
     const rest = async () => {
       // the camera has stopped: wait for the frame loop to go quiet (twice in a row), then read the frame
       for (let i = 0; i < 80; i++) {
+        // quiet = no transition, no frame pending, and the labels have ARRIVED (no glide left, no plan owed)
         const q = await page.evaluate(() => {
           const l = window.__globeDebug.layers();
-          return !l.animating && !l.framePending;
+          const s = window.__globeDebug.labelStats();
+          return !l.animating && !l.framePending && s.gliding === 0 && !s.owed;
         });
         if (q) {
           await sleep(80);
-          if (await page.evaluate(() => !window.__globeDebug.layers().framePending)) return true;
+          if (await page.evaluate(() => !window.__globeDebug.layers().framePending && window.__globeDebug.labelStats().gliding === 0)) return true;
         }
         await sleep(50);
       }
@@ -403,7 +407,8 @@ try {
       if (!quiet) bad.push({ what, bad: "the frame loop never went quiet", layers: r.layers });
       for (const c of r.cells) {
         boxes++;
-        const why = c.alpha !== 1 ? `box alpha ${c.alpha}` : c.fillAlpha !== 0 && c.fillAlpha !== 1 ? `mask ${c.fillAlpha}` : !c.label ? "no label" : null;
+        // at rest every label is EXACTLY at its target offset (no half-glided plate)
+        const why = c.alpha !== 1 ? `box alpha ${c.alpha}` : c.fillAlpha !== 0 && c.fillAlpha !== 1 ? `mask ${c.fillAlpha}` : !c.label ? "no label" : c.label.glide !== 0 || c.label.tx !== c.label.x || c.label.ty !== c.label.y ? `label ${c.label.glide} px from its target` : null;
         if (why) bad.push({ what, slug: c.slug, why, view: r.view });
       }
       for (const n of r.lod) if (n.alpha !== 1 || (n.fillAlpha !== 0 && n.fillAlpha !== 1)) bad.push({ what, slug: n.slug, why: `lod alpha ${n.alpha} mask ${n.fillAlpha}` });
@@ -468,7 +473,7 @@ try {
       await page.evaluate((z) => window.__globeDebug.setView({ lon: 10, lat: 47, zoom: z }), z);
       await check(`borders at zoom ${z}`);
     }
-    expect(`at rest after the camera stops (${frames} resting frames, ${boxes} boxes, ${thresholds} thresholds): every box, mask and layer is fully on or fully off, every box has its label, no frame pending`, frames > 30 && bad.length === 0, bad.slice(0, 6));
+    expect(`at rest after the camera stops (${frames} resting frames, ${boxes} boxes, ${thresholds} thresholds): every box, mask and layer is fully on or fully off, every box has its label EXACTLY at its target (no half-glided plate), no frame pending, no plan owed`, frames > 30 && bad.length === 0, bad.slice(0, 6));
     expect("no console errors", logs.filter((l) => !/404/.test(l)).length === 0, logs);
     await page.context().close();
   }
@@ -594,8 +599,8 @@ try {
         placed.push({ slug: c.slug, x0: l.x, y0: l.y, x1: l.x + l.w, y1: l.y + l.h, overlap: l.overlap });
         // the element is really in the DOM: the same text, fully opaque, at rest, where the plan put it
         const el = domOf.get(c.slug);
-        const wrong = !el ? "no element" : el.text !== l.text || (el.sub ?? null) !== (l.sub ?? null) ? "text" : el.opacity !== 1 ? "half opacity" : el.mode !== "rest" ? "state" : (() => {
-                // a label a re-plan moved is gliding for 150 ms: its transform is the target, its rectangle is on the way
+        const wrong = !el ? "no element" : el.text !== l.text || (el.sub ?? null) !== (l.sub ?? null) ? "text" : el.opacity !== 1 ? "half opacity" : el.mode !== "rest" ? "state" : l.glide !== 0 || l.tx !== l.x || l.ty !== l.y ? `not at its target (${l.glide} px away)` : (() => {
+                // settled: every label is exactly at its target, and the element is where the label says (within a device pixel)
                 const m = /translate3d\(([-\d.]+)px,\s*([-\d.]+)px/.exec(el.transform);
                 return !m || Math.abs(Number(m[1]) - l.x) > 0.3 || Math.abs(Number(m[2]) - l.y) > 0.3 ? "position" : null;
               })();
@@ -626,7 +631,7 @@ try {
     expect(`at rest, over ${views.length} views (world, continents, Europe, the Balkans, a city cluster, a lon/lat/zoom sweep) and ${seen} drawn boxes: 100 % have their label (${unlabelled.length} without), none half-faded or dimmed (${shortened} labels shortened, ${overlapped} drawn over another as the last resort, ${nested} nested inside their box)`, seen > 20 && unlabelled.length === 0 && halfState.length === 0, { unlabelled: unlabelled.slice(0, 5), halfState: halfState.slice(0, 5) });
     expect("at rest, no two label plates overlap unless one of them is the last resort", collisions.length === 0, collisions.slice(0, 5));
     expect(`every label's layout in the real DOM: plate on the box's left edge, 3 px above it, text 6 px inside the plate, second line under the name, the planner's size equal to the element's, the feather the plate's twin (${layoutBad.length} wrong)`, layoutBad.length === 0, layoutBad.slice(0, 5));
-    expect(`at rest every drawn box has its label as a REAL element in the DOM: its text, fully opaque (no half-fade), at the planned place (${domBad.length} wrong); and no element without a box`, domBad.length === 0, domBad.slice(0, 5));
+    expect(`at rest every drawn box has its label as a REAL element in the DOM: its text, fully opaque (no half-fade), at the planned place, EXACTLY at its target offset (${domBad.length} wrong); and no element without a box`, domBad.length === 0, domBad.slice(0, 5));
 
     // Hover: the box, its label and the gap between them are one target; the hovered node is drawn solid.
     const ptOf = (cx, cy) => ({ x: origin.left + cx, y: origin.top + cy });
@@ -697,11 +702,15 @@ try {
       ["iberia", -3.6, 40.3],
       ["central-europe", 17.5, 49.5],
       ["italy", 12.5, 43.5],
+      // the areas of the multi-scale hierarchy (an area in an area in a country): their long-named boxes may open through ONE place
+      ["morocco", -11.8, 28.8, 1],
+      ["marrakesh-region", -8.2, 31.6, 1],
+      ["laayoune-area", -12.2, 27.8, 1],
     ].filter(([slug]) => have(slug));
     expect(`the preview (or any content) has the groups of the complaint (${GROUPS.map((g) => g[0]).join(", ")})`, GROUPS.length >= 1, tree.filter((n) => n.kind !== "place").map((n) => n.slug));
     const parentOf = new Map(tree.map((n) => [n.slug, n.parent]));
-    const read = () =>
-      page.evaluate(() => {
+    const read = (pg) =>
+      pg.evaluate(() => {
         const d = window.__globeDebug;
         return { cells: d.labelCells(), lod: d.lod(), dom: d.labelsDom() };
       });
@@ -712,16 +721,18 @@ try {
     const opens = [];
     let frames = 0;
     let maxBoxes = 0;
-    for (const [slug, lon, lat] of GROUPS) {
+    for (const [slug, lon, lat, minLater = 2] of GROUPS) {
       let openedAt = -1;
       let shownAtOpen = 0;
-      let wasDrawn = false;
+      let shownLater = -1;
+      // (a fresh page per group: the opening depends on what was drawn before, so the sweep starts from the world view, as a first visit does)
+      const pageG = (await openGlobe(browser, DESKTOP)).page;
       for (let z = 2.2; z <= 7.5; z += 0.05) {
-        await page.evaluate((v) => {
+        await pageG.evaluate((v) => {
           window.__globeDebug.setView(v);
           window.__globeDebug.settle();
         }, { lon, lat, zoom: z });
-        const r = await read();
+        const r = await read(pageG);
         frames++;
         const drawn = new Set(r.cells.map((c) => c.slug));
         const onScreen = r.cells.filter((c) => c.box.x1 > 0 && c.box.x0 < 1440 && c.box.y1 > 0 && c.box.y0 < 900);
@@ -741,16 +752,22 @@ try {
             const q = r.cells[j].label;
             if (p && q && !p.overlap && !q.overlap && p.x < q.x + q.w && p.x + p.w > q.x && p.y < q.y + q.h && p.y + p.h > q.y) bad.push({ slug, z, a: r.cells[i].slug, b: r.cells[j].slug, why: "two plates overlap" });
           }
-        if (drawn.has(slug)) wasDrawn = true;
-        else if (wasDrawn && openedAt < 0) {
-          openedAt = z;
-          shownAtOpen = [...drawn].filter((s) => { for (let a = parentOf.get(s); a; a = parentOf.get(a)) if (a === slug) return true; return false; }).length;
+        // OPEN = the group's own box is not drawn and something below it is (a group nested in a group can open in the very frame its parent does,
+        // so it need not have been seen as a box first; one whose box does not fit opens THROUGH its single most important place)
+        if (!drawn.has(slug)) {
+          const below = [...drawn].filter((s) => { for (let a = parentOf.get(s); a; a = parentOf.get(a)) if (a === slug) return true; return false; });
+          if (below.length > 0 && openedAt < 0) {
+            openedAt = z;
+            shownAtOpen = below.length;
+          }
+          if (openedAt > 0 && z >= openedAt + 0.29 && shownLater < 0) shownLater = below.length; // (a third of a level on: the rest has come in)
         }
       }
-      opens.push({ slug, openedAt, shownAtOpen });
+      opens.push({ slug, openedAt, shownAtOpen, shownLater, minLater });
+      await pageG.context().close();
     }
     expect(`${frames} resting frames over ${GROUPS.length} groups (zoom 2.2 to 7.5): no node drawn with a drawn ancestor, every box fully drawn with its label element opaque, no plate over another; at most ${maxBoxes} boxes on screen`, frames > 0 && bad.length === 0, bad.slice(0, 6));
-    for (const o of opens) expect(`${o.slug}: its box is replaced by ${o.shownAtOpen} of its places at zoom ${o.openedAt.toFixed(2)} (the size rule did it at 5.4 to 6.05), never both`, o.openedAt > 0 && o.openedAt < 5.2 && o.shownAtOpen >= 2, o);
+    for (const o of opens) expect(`${o.slug}: its box is replaced by ${o.shownAtOpen} of its places at zoom ${o.openedAt.toFixed(2)} (${o.shownLater} a third of a level later; the size rule alone opens them at 4.7 to 7.8), never both`, o.openedAt > 0 && o.openedAt < 5.2 && o.shownAtOpen >= 1 && o.shownLater >= o.minLater, o);
 
     // 2. The cross-fade itself, with the clock running: a slow zoom through the opening of Western Europe on a fresh page (the way in to 2.6 at rest, then
     // one step per animation frame up to 4.8), sampling the opacity of every drawn node (the tree's own value), the label elements' CSS opacity, and the
@@ -880,6 +897,11 @@ try {
       const walk = await again.page.evaluate(
         async ({ lon, lat }) => {
           const d = window.__globeDebug;
+          // (reached the way a person does: by zooming OUT from the last view, a group open through its places merges back to its box on the way)
+          for (let z = 7; z >= 2.4; z -= 0.05) {
+            d.setView({ lon, lat, zoom: z });
+            d.settle();
+          }
           d.setView({ lon, lat, zoom: 2.4 });
           d.settle();
           const out = [];
@@ -956,7 +978,12 @@ try {
     await page.evaluate(() => {
       window.__globeDebug.setView({ lon: 12, lat: 45, zoom: 4 });
     });
-    await sleep(600);
+    // the camera jumped: the labels re-plan and glide to their places (about a second), then the map is idle: wait for that, it is not idle before
+    for (let i = 0; i < 80; i++) {
+      await sleep(50);
+      if (await page.evaluate(() => { const s = window.__globeDebug.labelStats(); return s.gliding === 0 && !s.owed && !window.__globeDebug.isAnimating(); })) break;
+    }
+    await sleep(300);
     const a = await page.evaluate(() => ({ raf: window.__raf.calls, frames: window.__globeDebug.frames(), clears: window.__clears ?? 0, labels: window.__globeDebug.labelStats() }));
     await sleep(2500);
     const b = await page.evaluate(() => ({ raf: window.__raf.calls, frames: window.__globeDebug.frames(), clears: window.__clears ?? 0, labels: window.__globeDebug.labelStats() }));
@@ -984,32 +1011,39 @@ try {
   if (run("flicker")) {
     // A scripted camera on the real app: a pan that swings both ways while the zoom breathes, one synchronous frame at a time (60 per second
     // of the page's own clock), over a crowded view of the preview or the demo. Per frame the labels are read back (candidate position, way of
-    // writing it, plate) and the FLICKER METRIC is counted as in `label-track.test.ts` (the sweep that compares it with the plan run on every
-    // frame): a CHANGE is a label shown in two consecutive frames with another slot, a JUMP a plate that moved by more than its box did plus 4 px,
-    // VISIBILITY a label that appeared or disappeared (the camera and the cut decide it).
+    // writing it, plate as DRAWN, glide left) and the FLICKER METRIC is counted as in `label-track.test.ts`: a TELEPORT is a plate that moved
+    // in one frame (its nearer edge on each axis) by more than its box did plus 4 px plus what its own glide may move it by (1.1 x omega x dt x the glide left); a CHANGE is a
+    // label shown in two consecutive frames with another slot (a change is a glide, not a flicker); VISIBILITY a label that appeared or
+    // disappeared (the camera and the cut decide it).
     const { page, logs } = await openGlobe(browser, DESKTOP);
     const minZoom = await page.evaluate(() => window.__globeDebug.minZoom());
+    const OMEGA = 14; // TRACK.omega (engine/label-track.ts)
     const run1 = (start) =>
       page.evaluate(
-        async ({ start, minZoom }) => {
+        async ({ start, minZoom, OMEGA }) => {
           const d = window.__globeDebug;
           d.setView(start);
           d.settle();
           const frames = 180;
           let last = new Map();
-          const out = { changes: 0, jumps: 0, visibility: 0, shown: 0, worstFrame: 0, labels: new Set(), mid: 0, domWrites: 0, frames: 0, slow: 0 };
+          let lastT = performance.now();
+          const out = { changes: 0, teleports: 0, gliding: 0, maxStep: 0, visibility: 0, shown: 0, worstFrame: 0, labels: new Set(), mid: 0, domWrites: 0, frames: 0, slow: 0 };
           const w0 = d.labelStats().labelWrites;
           for (let f = 0; f <= frames; f++) {
             await new Promise((r) => requestAnimationFrame(r));
+            const now0 = performance.now();
+            const dt = Math.min(0.05, (now0 - lastT) / 1000);
+            lastT = now0;
             const u = f / frames;
             d.setView({ lon: start.lon + 14 * Math.sin(2 * Math.PI * u * 1.5), lat: start.lat + 5 * Math.sin(2 * Math.PI * u), zoom: start.zoom + 0.45 * (0.5 - 0.5 * Math.cos(2 * Math.PI * u)) });
             d.renderNow();
             const now = new Map();
-            for (const c of d.labelCells()) now.set(c.slug, { cand: c.label.cand, variant: c.label.variant, text: c.label.text, x: c.label.x, y: c.label.y, box: c.box, mode: c.label.mode });
+            for (const c of d.labelCells()) now.set(c.slug, { cand: c.label.cand, variant: c.label.variant, text: c.label.text, x: c.label.x, y: c.label.y, x1: c.label.x + c.label.w, y1: c.label.y + c.label.h, g: c.label.glide, box: c.box, mode: c.label.mode });
             let frameChanges = 0;
             for (const [k, s] of now) {
               out.labels.add(k);
               out.shown++;
+              if (s.g > 0) out.gliding++;
               const p = last.get(k);
               if (!p) {
                 if (f > 0) out.visibility++;
@@ -1017,7 +1051,10 @@ try {
               }
               if (p.cand !== s.cand || p.variant !== s.variant) frameChanges++;
               const boxMove = Math.max(Math.abs(p.box.x0 - s.box.x0), Math.abs(p.box.y0 - s.box.y0), Math.abs(p.box.x1 - s.box.x1), Math.abs(p.box.y1 - s.box.y1));
-              if (Math.max(Math.abs(p.x - s.x), Math.abs(p.y - s.y)) > boxMove + 4) out.jumps++;
+              // the plate's nearer edge on each axis: a text that gets shorter (a plate anchored on one edge of its box) keeps the other edge where it was
+              const step = Math.max(Math.min(Math.abs(p.x - s.x), Math.abs(p.x1 - s.x1)), Math.min(Math.abs(p.y - s.y), Math.abs(p.y1 - s.y1)));
+              out.maxStep = Math.max(out.maxStep, step - boxMove);
+              if (step > boxMove + 4 + 1.1 * OMEGA * dt * Math.max(p.g, s.g)) out.teleports++;
             }
             for (const k of last.keys()) if (!now.has(k)) out.visibility++;
             out.changes += frameChanges;
@@ -1028,7 +1065,7 @@ try {
           out.labels = out.labels.size;
           return out;
         },
-        { start, minZoom },
+        { start, minZoom, OMEGA },
       );
     const stat = async () => page.evaluate(() => window.__globeDebug.labelStats());
     const starts = [
@@ -1038,17 +1075,31 @@ try {
     ];
     for (const [name, start] of starts) {
       const before = await stat();
+      const t0 = Date.now();
       const r = await run1(start);
-      await sleep(450); // the camera is at rest: the plan runs once
+      // the camera is at rest: the last plan runs, the labels arrive, the frame loop goes quiet (poll: how long it takes)
+      const tStop = Date.now();
+      let quietAfter = -1;
+      for (let i = 0; i < 80 && quietAfter < 0; i++) {
+        const q = await page.evaluate(() => {
+          const s = window.__globeDebug.labelStats();
+          return s.gliding === 0 && !s.owed && !window.__globeDebug.isAnimating();
+        });
+        if (q) quietAfter = Date.now() - tStop;
+        else await sleep(50);
+      }
+      await sleep(150);
       const after = await stat();
-      console.log(`     ${name}: ${r.labels} labels, ${r.shown} label-frames, ${r.changes} slot changes (${(r.changes / Math.max(1, r.labels)).toFixed(2)} per label), ${r.jumps} jumps, ${r.visibility} appearances and disappearances, worst frame ${r.worstFrame}; ${r.domWrites} element writes (${(r.domWrites / 181).toFixed(1)} per frame); full re-plans ${after.replans - before.replans}, labels placed in the gaps ${after.partials - before.partials}`);
-      expect(`${name}: over a scripted pan and zoom of 181 frames a label changes its slot less than once on average (${(r.changes / Math.max(1, r.labels)).toFixed(2)}) and no frame changes more than 8`, r.labels > 5 && r.changes / r.labels < 1 && r.worstFrame <= 8, r);
-      expect(`${name}: no plate jumps against its box (${r.jumps})`, r.jumps <= Math.ceil(r.labels * 0.1), r);
-      expect(`${name}: the camera stopped: the plan ran (${after.replans - before.replans} re-plan) and the loop is still`, after.replans - before.replans >= 1 && !(await page.evaluate(() => window.__globeDebug.isAnimating())), { before, after });
-      // at rest, after the settle plan: every box has its label in the DOM, none left half way, and no two plates overlap unless one is the last resort
+      const seconds = (tStop - t0) / 1000;
+      console.log(`     ${name}: ${r.labels} labels, ${r.shown} label-frames (${r.gliding} gliding, largest step against the box ${r.maxStep.toFixed(1)} px), ${r.changes} slot changes (${(r.changes / Math.max(1, r.labels)).toFixed(2)} per label), ${r.teleports} teleports, ${r.visibility} appearances and disappearances, worst frame ${r.worstFrame}; ${r.domWrites} element writes (${(r.domWrites / 181).toFixed(1)} per frame); plans ${after.replans - before.replans} in ${seconds.toFixed(1)} s, labels placed in the gaps ${after.partials - before.partials}; quiet ${quietAfter} ms after the camera stopped`);
+      expect(`${name}: over a scripted pan and zoom of 181 frames a label changes its slot less than three times on average (${(r.changes / Math.max(1, r.labels)).toFixed(2)}; each change is a glide) and no frame changes more than max(16, 55 percent of the labels)`, r.labels > 5 && r.changes / r.labels < 3 && r.worstFrame <= Math.max(16, Math.ceil(r.labels * 0.55)), r);
+      expect(`${name}: no plate teleports against its box (${r.teleports}), the labels move (${r.gliding} label-frames gliding)`, r.teleports === 0, r);
+      expect(`${name}: re-planned at a bounded rate (${after.replans - before.replans} plans in ${seconds.toFixed(1)} s: at most one per 100 ms) and the loop is quiet ${quietAfter} ms after the camera stopped`, after.replans - before.replans >= 1 && (after.replans - before.replans) <= seconds * 10 + 8 && quietAfter >= 0 && quietAfter < 2500 && !(await page.evaluate(() => window.__globeDebug.isAnimating())), { before, after, seconds, quietAfter });
+      expect(`${name}: at rest no label is gliding and none is owed a plan`, after.gliding === 0 && !after.owed, after);
+      // at rest, after the last plan and the glides: every box has its label in the DOM, none left half way, and no two plates overlap unless one is the last resort
       const rest = await page.evaluate(() => ({ cells: window.__globeDebug.labelCells(), dom: window.__globeDebug.labelsDom() }));
       const domOf = new Map(rest.dom.map((x) => [x.slug, x]));
-      const missing = rest.cells.filter((c) => !domOf.get(c.slug) || domOf.get(c.slug).text !== c.label.text || domOf.get(c.slug).opacity !== 1).map((c) => c.slug);
+      const missing = rest.cells.filter((c) => !domOf.get(c.slug) || domOf.get(c.slug).text !== c.label.text || domOf.get(c.slug).opacity !== 1 || c.label.glide !== 0).map((c) => c.slug);
       let collisions = 0;
       for (let i = 0; i < rest.cells.length; i++)
         for (let j = i + 1; j < rest.cells.length; j++) {

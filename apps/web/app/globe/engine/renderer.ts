@@ -48,7 +48,7 @@ import {
   type Velocity,
 } from "./motion";
 import { snapBox } from "./group-square";
-import { IdleSpin, spinBlock, spinFrameMs, type SpinContext } from "./idle-spin";
+import { IdleSpin, spinBlock, spinFrameDue, type SpinContext } from "./idle-spin";
 import { newLodCamera, setLodCamera, type LodTree } from "./lod-tree";
 import { NodeScreen } from "./node-screen";
 import { GlobeScene } from "./scene";
@@ -81,6 +81,8 @@ export interface RendererOptions {
   insetRight: number;
   /** Called synchronously after every drawn frame (labels and view reporting hang off it). */
   onFrame(): void;
+  /** True while a label is still gliding to its place (engine/label-track.ts): the frame loop keeps running until it is false, and not a frame longer. */
+  labelsAnimating?(): boolean;
   /** The node under the point (its box and label, engine/hit-area.ts), or null. */
   pickLabel(x: number, y: number, kind: PointerKind): string | null;
   /**
@@ -176,9 +178,12 @@ export class GlobeRenderer {
   private flightBeyond = false;
   private velocity: Velocity = STILL;
   private inertiaLast = 0;
-  /** Idle rotation of the unzoomed world view (engine/idle-spin.ts): the clock, the timer that wakes the frame loop, the pointers held down. */
+  /** Idle rotation of the unzoomed world view (engine/idle-spin.ts): the clock and velocity, the timer that wakes the frame loop for the idle delay, the pointers held down. */
   private spin = new IdleSpin(performance.now());
   private spinTimer = 0;
+  /** Something other than the rotation's own frame chain asked for the pending frame (so it is drawn whatever `SPIN.minFrameMs` says), and when the last one was drawn. */
+  private forced = false;
+  private lastTickAt = 0;
   private pressed = new Set<number>();
   /**
    * The earth rotation angle (degrees, engine/sky.ts): where the sky is relative to the earth-fixed frame the view is expressed in. A camera orbit
@@ -315,7 +320,7 @@ export class GlobeRenderer {
   setInset(px: number) {
     const next = Math.max(0, px);
     if (next === this.insetTarget) return;
-    this.noteActivity();
+    this.noteChange();
     const toggles = (this.insetTarget === 0) !== (next === 0);
     this.insetTarget = next;
     if (this.sized && toggles && !this.reduced) {
@@ -406,7 +411,7 @@ export class GlobeRenderer {
    */
   setZoomLimit(zoom: number) {
     this.zoomLimit = zoom;
-    this.noteActivity();
+    this.noteChange();
     const next = this.clampView(this.view);
     if (next.zoom !== this.view.zoom) {
       this.view = next;
@@ -448,7 +453,7 @@ export class GlobeRenderer {
 
   /** Animated camera move; a jump under reduced motion. */
   flyTo(v: Partial<ViewState>, o?: FlyOptions) {
-    this.noteActivity();
+    this.noteChange();
     const beyond = o?.beyondLimit === true;
     const to = this.clampView({ ...this.view, ...v }, beyond);
     if (this.reduced) {
@@ -500,7 +505,7 @@ export class GlobeRenderer {
   /** `animateRoute`: play the draw-on of the selected place's route (ignored under reduced motion). */
   setSelected(slug: string | null, animateRoute: boolean) {
     this.selected = slug;
-    this.noteActivity();
+    this.noteChange();
     this.selIdx = this.lod.indexOf(slug);
     this.selectRoute(slug, animateRoute);
   }
@@ -508,7 +513,7 @@ export class GlobeRenderer {
   setFocused(slug: string | null) {
     if (slug === this.focused) return;
     this.focused = slug;
-    this.noteActivity();
+    this.noteChange();
     this.focIdx = this.lod.indexOf(slug);
     this.refreshMarkers();
     this.requestRender();
@@ -721,11 +726,27 @@ export class GlobeRenderer {
 
   requestRender() {
     if (this.disposed) return;
+    this.forced = true;
     if (this.hidden || this.lost) {
       this.dirty = true;
       return;
     }
     if (!this.raf) this.raf = requestAnimationFrame(this.tick);
+  }
+
+  /**
+   * Another frame is wanted by a running animation. While the globe turns and the camera itself is not under way (a flight, inertia or the inset slide),
+   * that animation is the boxes' own transitions that the turn causes (limb crossings), and its frames are paced like the turn's: not faster than `SPIN.minFrameMs`.
+   */
+  private keepGoing(cameraMoving: boolean) {
+    if (this.spin.spinning && !cameraMoving) this.chainSpin();
+    else this.requestRender();
+  }
+
+  /** Keep the idle rotation's frame chain going: the next frame is not forced (`requestRender` would), so `SPIN.minFrameMs` can skip it. */
+  private chainSpin() {
+    if (this.disposed || this.hidden || this.lost || this.raf) return;
+    this.raf = requestAnimationFrame(this.tick);
   }
 
   private cancelFrame() {
@@ -827,18 +848,18 @@ export class GlobeRenderer {
 
   /** Why the globe is not turning (checks), or null while it is allowed to. */
   spinInfo() {
-    return { spinning: this.spin.spinning, blockedBy: spinBlock(this.spinContext()), timerArmed: this.spinTimer !== 0 };
+    return { spinning: this.spin.spinning, phase: this.spin.phase, speed: this.spin.speed, blockedBy: spinBlock(this.spinContext()), timerArmed: this.spinTimer !== 0 };
   }
 
-  /** Input or camera motion, or any change of the conditions: the globe stops turning now and the idle clock restarts. */
+  /** An input, or a change that cannot let it go on (hidden, context lost, reduced motion, street): the globe stops turning now, with no coasting, and the idle clock restarts. */
   private noteActivity() {
-    const was = this.spin.spinning;
     this.spin.activity(performance.now());
-    if (was) {
-      window.clearTimeout(this.spinTimer);
-      this.spinTimer = 0;
-    }
-    // Nothing is waiting (a block just lifted: a pointer released, a place deselected ...): look at when it may start. With a timer pending that is a no-op.
+    this.armSpin();
+  }
+
+  /** A change that is not an input (a place selected or focused from the URL or the list, the inset, a flight, the zoom limit): the idle clock restarts and a turning globe coasts to rest. */
+  private noteChange() {
+    this.spin.settle(performance.now());
     this.armSpin();
   }
 
@@ -851,29 +872,25 @@ export class GlobeRenderer {
   };
 
   /**
-   * Wake the frame loop when the idle delay is over, or, while turning, for the next redraw: with a timer, never a rAF chain, so
-   * the loop is asleep in between (a redraw every `spinFrameMs`, about three a second) and an unconditionally idle page stays at zero frames.
+   * While idle, wake the frame loop when the idle delay is over: a timer, not a frame, so a page at rest stays at zero frames. While
+   * turning there is no timer: the frame chain itself (`tick`) carries on, one frame per display refresh.
    */
   private armSpin() {
-    if (this.disposed || (!this.spin.spinning && this.spinTimer)) return; // the pending timer looks again when it fires
-    window.clearTimeout(this.spinTimer);
-    this.spinTimer = 0;
-    const wait = this.spin.spinning ? spinFrameMs(this.pixel, zoomToRadiusPx(this.view.zoom)) : this.spin.wait(performance.now(), this.spinContext());
+    if (this.disposed || this.spin.spinning || this.spinTimer) return; // the pending timer looks again when it fires
+    const wait = this.spin.wait(performance.now(), this.spinContext());
     if (wait !== null) this.spinTimer = window.setTimeout(this.onSpinTimer, wait);
   }
 
   private onSpinTimer = () => {
     this.spinTimer = 0;
     if (this.disposed) return;
-    if (!this.spin.spinning) {
-      const wait = this.spin.wait(performance.now(), this.spinContext());
-      if (wait === null) return;
-      if (wait > 0) {
-        this.spinTimer = window.setTimeout(this.onSpinTimer, wait);
-        return;
-      }
+    const wait = this.spin.wait(performance.now(), this.spinContext());
+    if (wait === null) return;
+    if (wait > 0) {
+      this.spinTimer = window.setTimeout(this.onSpinTimer, wait);
+      return;
     }
-    this.requestRender(); // the tick turns the globe (`stepSpin`)
+    this.requestRender(); // the tick starts the turn (`stepSpin`) and keeps the frame chain going
   };
 
   /** Once per tick: turn the globe by the idle rotation's step for now. Writes the view directly (`setView` would count as input). */
@@ -888,7 +905,13 @@ export class GlobeRenderer {
     if (yaw !== 0) {
       // The earth turns under a camera that stays where it is: the view's longitude goes down by what the earth's rotation angle goes up by,
       // so the camera's longitude in the inertial frame (view + era) and with it every star on the screen does not change.
-      this.view = { ...this.view, lon: normalizeLon(this.view.lon - yaw) };
+      if (this.flight) {
+        // A flight owns the view's position (it is sampled from its endpoints each frame): the coasting turns its start instead, so the camera keeps
+        // coasting at first, the flight takes over as it proceeds, and it lands exactly on its target.
+        this.flight = { ...this.flight, from: { ...this.flight.from, lon: this.flight.from.lon - yaw } };
+      } else {
+        this.view = { ...this.view, lon: normalizeLon(this.view.lon - yaw) };
+      }
       this.era = normalizeLon(this.era + yaw);
     }
   }
@@ -902,22 +925,34 @@ export class GlobeRenderer {
       this.chained = false;
       return;
     }
+    const now = performance.now();
+    // The rotation's own frame chain follows the display (a frame per refresh) but not faster than `SPIN.minFrameMs`: a frame that nothing else asked for is skipped when it is too soon.
+    if (!this.forced && this.spin.spinning && !spinFrameDue(now, this.lastTickAt)) {
+      this.raf = requestAnimationFrame(this.tick);
+      return;
+    }
+    this.forced = false;
+    this.lastTickAt = now;
     // The frame governor (engine/governor.ts) must tell a slow device from a quiet one: a frame that is not part of a running
     // animation was caused by an input event, and its interval says nothing about the device.
     FRAME_CLOCK.live = true;
     FRAME_CLOCK.continuous = this.chained;
-    const now = performance.now();
+    const flying = this.flight !== null;
     const moving = this.advance(now);
-    if (moving) this.spin.activity(now); // a flight, inertia or the inset slide is camera motion: not idle
+    if (moving) this.spin.settle(now); // a flight, inertia or the inset slide is camera motion: not idle (a turning globe coasts to rest)
+    // The flight has just landed exactly on its target: whatever is left of the coasting is dropped, so the camera stays on it.
+    if (flying && this.flight === null) this.spin.activity(now);
     this.stepSpin(now);
     this.renderNow();
     FRAME_CLOCK.continuous = false;
     // A timed transition of the boxes or of the borders (engine/fade.ts) that has not reached its end keeps the loop going, camera or not.
     // While the street map owns the view the globe draws nothing and its transitions are not advanced here (the street engine runs the
     // boxes' own), so they must not keep this loop spinning.
-    const more = moving || (!this.suspended && (this.lod.animating || this.globe.animating));
+    const more = moving || (!this.suspended && (this.lod.animating || this.globe.animating || !!this.opts.labelsAnimating?.()));
+    // `chained` is about real animations only: the idle rotation's frames are decoration, and the frame governor must read them by their own cost, not their pace.
     this.chained = more;
-    if (more) this.requestRender();
+    if (more) this.keepGoing(moving);
+    else if (this.spin.spinning) this.chainSpin();
     else this.armSpin();
   };
 
@@ -948,8 +983,9 @@ export class GlobeRenderer {
     this.opts.onFrame();
     perfEnd("frame.callbacks", t1);
     FRAME_CLOCK.workMs = performance.now() - w0;
-    // Whoever drew this frame (the tick, a resize, a check), the transitions run to their end.
-    if (this.lod.animating || this.globe.animating) this.requestRender();
+    // Whoever drew this frame (the tick, a resize, a check), the transitions run to their end, and the idle rotation's chain (cancelled above) goes on.
+    if (this.lod.animating || this.globe.animating || this.opts.labelsAnimating?.()) this.keepGoing(false);
+    else if (this.spin.spinning) this.chainSpin();
   }
 
   private syncCamera() {

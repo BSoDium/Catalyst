@@ -62,22 +62,22 @@ export function toneLevel(e: { role: Role; at?: number }, n: number = activeLeve
  * The table is tuned to the camera the app actually uses when a place is clicked: `engine/framing.ts` fits a circle of the place's
  * `viewRadiusKm` (12 km by default, 10 to 18 typical) into the free viewport with a 25 % margin. In map zoom (`street/core/
  * registration.ts`, `scripts/street/city-frames.mjs --table=1`) that is 10.0 to 11.4 at 1440x900 for 10 to 18 km at 0 to 49 degrees
- * of latitude (9.7 to 11.1 with the 50 % detail panel open, 8.8 to 10.2 on a 390 px phone). A city has to read as a city there:
- * primary and secondary roads in full, links, rail, rivers and parks showing, tertiary and residential streets starting as soon
- * as the tiles carry them. The tile DATA bounds how early a class can be drawn at all: a tile of zoom z holds, in OpenMapTiles,
- * primary roads from z8, secondary from z9, tertiary from z11, residential and paths from z12, service from z13 (Protomaps is
- * the same within a level), and MapLibre draws the tiles of zoom floor(map zoom). So tertiary starts at 10.9, one hair before
- * its tiles exist, and rises over a single zoom level; the rest is as early as its tiles allow, with the ramps lengthened where
- * the data is already there. Far zoom is as calm as before: nothing road-like below z5.5 (motorways and trunks, sparse), nothing
- * but them below z8 (docs/street-architecture.md, "Level of detail").
+ * of latitude (9.7 to 11.1 with the 50 % detail panel open, 8.8 to 10.2 on a 390 px phone), and the box of a big city is framed lower
+ * still (London 8.7, New York 9.3 for a 500 px box). A city has to read as a city there, and CALMLY (owner, 2026-10-08: "the density is
+ * too high and the roads too thick before the roads clear out as you zoom out", every city): water, parks, the motorways and trunks, the
+ * primary roads from z10; the rest of the network is for the neighbourhood scale. The tile DATA bounds how EARLY a class can be drawn at
+ * all: a tile of zoom z holds, in OpenMapTiles, primary roads from z8, secondary from z9, tertiary from z11, residential and paths from
+ * z12, service from z13 (Protomaps is the same within a level), and MapLibre draws the tiles of zoom floor(map zoom); the table is
+ * well after that for every class but the motorways. Far zoom is as calm as before: nothing road-like below z5.5 (motorways and trunks,
+ * sparse), nothing but them below z8 (docs/street-architecture.md, "Level of detail").
  */
 export const LOD: Record<LodKey, LodEntry> = {
   // ROAD HIERARCHY. The class is told by TONE (a constant per class, palette levels of the 12 in brackets, map-ramp position `at`) and by
   // WIDTH (core `MAJOR_ART` in street-style.ts): motorway and trunk 0.7 (7), primary 0.6 (6), secondary 0.5 (5), tertiary and rail 0.3 (3);
   // then the quiet ones, the DECOR of the map: links and the solid residential streets 0.2 (2), the dotted residential streets, service
   // roads and paths 0.1 (1, the lowest map level). The boxes at rest are the peak (10), the coast and the borders the coast level (9): a road
-  // is never louder than level 7, two levels under the coast and three under the boxes. Width: motorway, trunk and primary are 2 art px from
-  // z9, every other class stays at 1 px (floor, centre sampling and stair removal untouched).
+  // is never louder than level 7, two levels under the coast and three under the boxes. Width: every class is 1 px (floor, centre sampling
+  // and stair removal untouched) except motorway, trunk and primary, 2 art px from z13 (`MAJOR_WIDE_FROM` in street-style.ts).
   // History. Owner, 2026-10-08, first: "the streets are only decor, they shouldn't be this visible and noisy": the binary switch had put
   // every class at its FINAL tone from about 30 % of the span of the old ramp, and the table was recalmed to 10, 8, 6, 4, then 3 / 2 / 2 / 2.
   // Then again, the same day: streets "are still way too visible in big cities, they are only decor", the box and its label must stand out:
@@ -88,16 +88,24 @@ export const LOD: Record<LodKey, LodEntry> = {
   // page and no longer the box's tone): the level of each tier stays, but its colour is lighter (motorway 2.8:1 to 2.1:1, tertiary and
   // below unchanged, they sit at the floor). Primary and secondary went up a level (5 to 6, 4 to 5) so the three tiers above tertiary are still
   // told apart at the lighter ramp (secondary and tertiary were 1.5:1 and 1.4:1 otherwise).
+  // Then, 2026-10-08 (the city overview), owner: "before the roads clear out as you zoom out, the density is too high and the roads are too
+  // thick ... maybe double check the level at which the smaller roads fade out, it may be a bit too high up", every city. Measured
+  // (scripts/street/lod-density.mjs, Paris, London, New York, 1440x900, OpenFreeMap): from z9.5 to z12 the lit cells of the roads alone were
+  // 15 to 20 % (2 px motorways and primaries, secondary from z9.35, links and rail from z10.2). Now the overview is the major network at 1 px,
+  // and each finer class enters one to two levels later than it did: primary 8.7 to 10, secondary 9.35 to 11.4, rail 10.2 to
+  // 11.8, links 10.2 to 12, tertiary 11.1 to 12.7, dotted residential 13 to 13.9, service 14.4 to 15.2, paths 15.4 to 16 (the width of
+  // motorways, trunks and primaries goes 1 to 2 px at z13, was z9). Tones, order and widths of the other classes untouched. Going OUT every
+  // class leaves a hysteresis band under its `on` and the finest first (layer-switch.test.ts), so the minor roads clear out well before the major ones.
   highway: { on: 6.4, role: "strong", at: 0.7 }, // 5.5 .. 8.5
-  major: { on: 8.7, role: "mid", at: 0.6 }, // 8.6 .. 9.7; just under the phone framings (8.8 to 10.2)
-  secondary: { on: 9.35, role: "soft", at: 0.5 }, // 9 .. 10.2
-  medium: { on: 11.1, role: "faint", at: 0.3 }, // 10.9 .. 11.7
-  minor: { on: 13, off: 16.85, role: "faint", at: 0.1, dash: [1.8, 2.4] }, // 12.2 .. 14.2; solid from the next row
+  major: { on: 10, role: "mid", at: 0.6 }, // 8.6 .. 9.7; was 8.7 until the city overview was calmed (2026-10-08): the phone framings (8.8 to 10.2) now see the motorways only
+  secondary: { on: 11.4, role: "soft", at: 0.5 }, // 9 .. 10.2; was 9.35
+  medium: { on: 12.7, role: "faint", at: 0.3 }, // 10.9 .. 11.7; was 11.1
+  minor: { on: 13.9, off: 16.85, role: "faint", at: 0.1, dash: [1.8, 2.4] }, // 12.2 .. 14.2; was 13; solid from the next row
   minorSolid: { on: 16.85, role: "faint", at: 0.2 }, // 16.6 .. 17.4
-  link: { on: 10.2, role: "faint", at: 0.2, dash: [1.8, 3.6] }, // 10.2 .. 12.2
-  service: { on: 14.4, role: "faint", at: 0.1, dash: [1.8, 3.6] }, // 13.4 .. 15.4
-  path: { on: 15.4, role: "faint", at: 0.1, dash: [1.8, 3.6] }, // 14.6 .. 16.4
-  rail: { on: 10.2, role: "faint", at: 0.3, dash: [3, 2.2] }, // 10.2 .. 12.2
+  link: { on: 12, role: "faint", at: 0.2, dash: [1.8, 3.6] }, // 10.2 .. 12.2; was 10.2
+  service: { on: 15.2, role: "faint", at: 0.1, dash: [1.8, 3.6] }, // 13.4 .. 15.4; was 14.4
+  path: { on: 16, role: "faint", at: 0.1, dash: [1.8, 3.6] }, // 14.6 .. 16.4; was 15.4
+  rail: { on: 11.8, role: "faint", at: 0.3, dash: [3, 2.2] }, // 10.2 .. 12.2; was 10.2
   river: { on: 7.65, role: "strong" }, // 7 .. 9.2
   canal: { on: 12.55, role: "soft", dash: [6, 1.5] }, // 12 .. 13.8
   stream: { on: 13.6, role: "soft", dash: [3, 1.5] }, // 13 .. 15

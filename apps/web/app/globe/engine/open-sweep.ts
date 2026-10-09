@@ -165,6 +165,19 @@ export const SWEEP_GROUPS: readonly { slug: string; lon: number; lat: number }[]
   { slug: "italy", lon: 12.5, lat: 43.5 },
 ];
 
+/**
+ * The areas of the multi-scale hierarchy of the Moroccan trip (an area inside an area inside a country: "Marrakesh region" > "Marrakesh area"), centred on the
+ * group's published coordinates. Their boxes carry long labels ("Marrakesh region") that do not fit where the places inside do: they open THROUGH their most
+ * important unit (`LodTree.tryKid`), so they may be open with a single node of theirs drawn.
+ */
+export const SWEEP_AREAS: readonly { slug: string; lon: number; lat: number }[] = [
+  { slug: "morocco", lon: -11.8, lat: 28.8 },
+  { slug: "marrakesh-region", lon: -8.2, lat: 31.6 },
+  { slug: "casablanca-area", lon: -6.7, lat: 33.9 },
+  { slug: "laayoune-area", lon: -12.2, lat: 27.8 },
+  { slug: "caidat-d-ait-sedrate-jbel-region", lon: -4.9, lat: 31.3 },
+];
+
 export const sweepZooms = (from = 2, to = 9, step = 0.25): number[] => {
   const out: number[] = [];
   for (let z = from; z <= to + 1e-9; z += step) out.push(Math.round(z * 1e6) / 1e6);
