@@ -42,20 +42,26 @@ describe("listEntries", () => {
       slug: "demo-article",
       href: "/articles/demo-article",
       index: 1,
-      title: "Demo article",
-      date: "2024-04-02",
-      tags: ["demo", "notes"],
-      cover: { src: "/media/demo/cover-article.svg", width: 960, height: 600 },
-      meta: [{ label: "Publication", value: "Demo fixture journal (placeholder)" }],
+      title: "Night trains through the Balkans",
+      date: "2026-03-14",
+      tags: ["night-trains", "balkans", "rail", "slow-travel", "field-notes"],
+      cover: { src: "/media/demo/cover-night-trains.svg", width: 1200, height: 630 },
+      meta: [
+        { label: "Publication", value: "Marginalia, issue 12" },
+        { label: "Reading time", value: "6 min" },
+        { label: "Written", value: "On board, March 2026" },
+      ],
       places: [
-        { slug: "lisbon", name: "Lisbon", href: "/locations/lisbon" },
-        { slug: "paris", name: "Paris", href: "/locations/paris" },
+        { slug: "ljubljana", name: "Ljubljana", href: "/locations/ljubljana" },
+        { slug: "zagreb", name: "Zagreb", href: "/locations/zagreb" },
+        { slug: "belgrade", name: "Belgrade", href: "/locations/belgrade" },
+        { slug: "split", name: "Split", href: "/locations/split" },
       ],
     });
     expect(article).not.toHaveProperty("body");
   });
   it("lists poems, and nothing for an empty collection", () => {
-    expect(listEntries(demo, "poem").map((e) => e.slug)).toEqual(["demo-poem"]);
+    expect(listEntries(demo, "poem").map((e) => e.slug)).toEqual(["demo-poem", "citadel-rain", "cuesta-arriba", "quai-de-nuit"]);
     for (const kind of CONTENT_KINDS) expect(listEntries(EMPTY_PROJECTION, kind)).toEqual([]);
   });
   it("numbers entries by their position in the kind, from 1, in authored order", () => {
@@ -81,9 +87,10 @@ describe("getEntryDetail", () => {
   it("carries the body blocks as authored, the places resolved and the code index", () => {
     const poem = getEntryDetail(demo, "poem", "demo-poem")!;
     expect(poem.body[0]).toMatchObject({ type: "verse" });
-    expect(poem.places).toEqual([expect.objectContaining({ slug: "hue", href: "/locations/hue" })]);
+    // its own place first, then the place that only names it in `related` (Vancouver)
+    expect(poem.places).toEqual([expect.objectContaining({ slug: "reykjavik", href: "/locations/reykjavik" }), expect.objectContaining({ slug: "vancouver", href: "/locations/vancouver" })]);
     expect(poem.index).toBe(1);
-    expect(poem.tags).toEqual(["demo", "verse"]);
+    expect(poem.tags).toEqual(["layover", "airports", "travel", "free-verse"]);
   });
   it("gives an entry without a body an empty one", () => {
     expect(getEntryDetail(world({ projects: [item("p")] }), "project", "p")!.body).toEqual([]);
@@ -145,7 +152,7 @@ describe("entryLanguage", () => {
   const lang = (value: string, label = "Language") => entryLanguage([{ label, value }]);
   it("maps a language name, with or without a note, to its tag", () => {
     expect(lang("English")).toBe("en");
-    expect(lang("English (placeholder)")).toBe("en");
+    expect(lang("English (draft)")).toBe("en");
     expect(lang("Français")).toBe("fr");
     expect(lang("espanol")).toBe("es");
   });
@@ -161,8 +168,9 @@ describe("entryLanguage", () => {
     expect(lang("English", "Medium")).toBeUndefined();
     expect(entryLanguage([])).toBeUndefined();
   });
-  it("reads the demo poem", () => {
-    expect(entryLanguage(getEntryDetail(demo, "poem", "demo-poem")!.meta)).toBe("en");
+  it("reads the language of the demo poems", () => {
+    const language = (slug: string) => entryLanguage(getEntryDetail(demo, "poem", slug)!.meta);
+    expect([language("demo-poem"), language("citadel-rain"), language("cuesta-arriba"), language("quai-de-nuit")]).toEqual(["en", "en", "es", "fr"]);
   });
 });
 

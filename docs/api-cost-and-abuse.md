@@ -33,17 +33,17 @@ Statuses cached by the CDN: 200, 404, 410, 301, 302, 307, 308 (only with a cachi
 
 **Payload sizes** (measured with `buildSnapshot`; bytes, raw / gzip):
 
-| Endpoint | Published today (empty) | Demo (18 places, 4 entries) | Preview data (146 places, 47 groups, no entries) | Est. 150 places | Est. 500 places | Est. 146 places + 100 entries of 3 KB |
+| Endpoint | Published today (empty) | Demo (18 places, 17 entries) | Preview data (146 places, 47 groups, no entries) | Est. 150 places | Est. 500 places | Est. 146 places + 100 entries of 3 KB |
 | --- | --- | --- | --- | --- | --- | --- |
-| `/v1/projection` | 108 / 92 | 9,606 / 2,702 | 41,548 / 9,031 | ~43 KB / ~9.5 KB | ~145 KB / ~32 KB | **~397 KB / ~140 to 165 KB** |
-| `/v1/places` | 2 / 22 | 2,952 / 904 | 28,749 / 7,541 | ~29.5 KB / ~7.7 KB | ~98 KB / ~26 KB | same as 146 places |
+| `/v1/projection` | 108 / 92 | 47,551 / 16,172 | 41,548 / 9,031 | ~43 KB / ~9.5 KB | ~145 KB / ~32 KB | **~397 KB / ~140 to 165 KB** |
+| `/v1/places` | 2 / 22 | 3,081 / 993 | 28,749 / 7,541 | ~29.5 KB / ~7.7 KB | ~98 KB / ~26 KB | same as 146 places |
 | `/v1/groups` | 2 / 22 | 1,219 / 411 | 7,596 / 1,686 | ~7.8 KB / ~1.7 KB | ~26 KB / ~5.5 KB | same |
-| `/v1/places/:slug` | - | 355 avg, 881 max | 411 avg, 571 max | ~0.4 KB | ~0.4 KB | ~0.4 KB |
-| `/v1/projects`, `articles`, `artworks`, `poems` (summaries, no body) | 2 | 370 to 581 | 2 (still empty) | small | small | ~16 KB / ~5 KB each for 25 entries |
-| `/v1/<kind>/:slug` (detail, with body) | - | 0.9 to 1.5 KB | - | - | - | ~3.6 KB / ~2 KB |
+| `/v1/places/:slug` | - | 429 avg, 1,270 max | 411 avg, 571 max | ~0.4 KB | ~0.4 KB | ~0.4 KB |
+| `/v1/projects`, `articles`, `artworks`, `poems` (summaries, no body) | 2 | 1,963 to 3,108 (4 or 5 entries each) | 2 (still empty) | small | small | ~16 KB / ~5 KB each for 25 entries |
+| `/v1/<kind>/:slug` (detail, with body) | - | 0.5 to 4.6 KB (avg 2.5 KB) | - | - | - | ~3.6 KB / ~2 KB |
 | `/health`, any 404/405 | ~150 | ~150 | ~150 | ~150 | ~150 | ~150 |
 
-Measured 2026-10-08 after the entry contract extension (poems, `cover`, `tags`, `meta`, `body` blocks; [api-contract.md](api-contract.md), "Entries"). The last column is synthetic: 25 entries of each of the four kinds, a body of about 3 KB each (5 blocks), a cover, 4 tags, 3 meta, 2 places, plus the preview's 146 places (random dictionary words: about 2.3:1 gzip, a bit pessimistic compared with prose). Entries cost about **3.5 KB raw / 1.3 to 1.6 KB gzip each** in the projection. `/v1/projection` is the only endpoint whose size grows with the bodies; the lists carry no body and the details are one entry each. Server side, the 100-entry snapshot is about 790 KB of pre-serialised strings and the function bundle grows by the projection size (the bundle is 832 KB today with the demo fixture inlined); validation plus snapshot take about 3 ms.
+Measured 2026-10-09 (the demo column after the demo fixture was filled with 17 realistic entries; the other columns 2026-10-08, after the entry contract extension (poems, `cover`, `tags`, `meta`, `body` blocks; [api-contract.md](api-contract.md), "Entries")). The last column is synthetic: 25 entries of each of the four kinds, a body of about 3 KB each (5 blocks), a cover, 4 tags, 3 meta, 2 places, plus the preview's 146 places (random dictionary words: about 2.3:1 gzip, a bit pessimistic compared with prose). Entries cost about **3.5 KB raw / 1.3 to 1.6 KB gzip each** in the projection. `/v1/projection` is the only endpoint whose size grows with the bodies; the lists carry no body and the details are one entry each. Server side, the 100-entry snapshot is about 790 KB of pre-serialised strings and the function bundle grows by the projection size (the bundle is 832 KB today with the demo fixture inlined); validation plus snapshot take about 3 ms.
 
 The 150 and 500 columns scale the preview file linearly (about 285 B per place in `/v1/projection`, 197 B per place in the list, 162 B per group, groups about a third of places). Every response also carries about 0.5 KB of headers.
 

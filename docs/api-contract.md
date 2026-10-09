@@ -78,7 +78,7 @@ Liveness plus a summary of what is loaded. `200` when content is valid, `503` ot
   "ok": true,
   "schemaVersion": 1,
   "content": "demo",
-  "counts": { "places": 18, "groups": 8, "routes": 1, "projects": 1, "articles": 1, "artworks": 1, "poems": 1 }
+  "counts": { "places": 18, "groups": 8, "routes": 1, "projects": 4, "articles": 5, "artworks": 4, "poems": 4 }
 }
 ```
 
@@ -157,18 +157,18 @@ The full place with `related` resolved to `{ kind, slug, title }` and its group 
   "viewRadiusKm": 10,
   "group": "europe",
   "countryCode": "PT",
-  "summary": "Demo fixture: a place with prose, dates, an image and related content.",
-  "dates": { "start": "2024-03", "end": "2024-04", "label": "Demo dates" },
+  "summary": "A hilly city on a wide river mouth, used as a base for slow walks, long afternoons of writing and the planning of slower bus rides.",
+  "dates": { "start": "2024-03", "end": "2024-04", "label": "Spring 2024" },
   "body": [
-    "Demo fixture text. This paragraph exists only to exercise the detail panel layout.",
-    "A second demo paragraph, to check reading width and spacing."
+    "Lisbon is the city I keep returning to for no good reason, which is the best reason. The hills do the work of a gym, the light does the work of a therapist, and the trams do whatever they like.",
+    "Most of what is filed here was written elsewhere and edited here, at a café table with a view of a laundry line and a slice of river. It is a good city for finishing things."
   ],
   "images": [
-    { "src": "/media/demo/field-notes.svg", "alt": "Abstract monochrome grid used as a demo fixture image", "width": 960, "height": 600, "caption": "Demo fixture image" }
+    { "src": "/media/demo/field-notes.svg", "alt": "A page of a grid notebook, drawn as a plain monochrome grid", "width": 960, "height": 600, "caption": "A page of the notebook that goes everywhere" }
   ],
   "related": [
-    { "kind": "article", "slug": "demo-article", "title": "Demo article" },
-    { "kind": "project", "slug": "demo-project", "title": "Demo project" }
+    { "kind": "article", "slug": "morocco-coast-bus", "title": "Eleven hours of Atlantic coast, by bus" },
+    { "kind": "project", "slug": "label-collision-engine", "title": "Collide, a label collision engine for maps" }
   ],
   "groupChain": [{ "slug": "europe", "name": "Europe", "kind": "continent" }]
 }
@@ -233,16 +233,22 @@ Arrays of **summaries**, in authored order: the entry without its `body` (`Conte
 [
   {
     "slug": "demo-poem",
-    "title": "Demo poem",
-    "summary": "Demo fixture entry: a poem set in verse blocks.",
-    "date": "2022-11",
-    "cover": { "src": "/media/demo/cover-poem.svg", "alt": "Abstract short lines grouped in two stanzas, a demo fixture cover", "width": 960, "height": 600 },
-    "tags": ["demo", "verse"],
-    "meta": [{ "label": "Language", "value": "English (placeholder)" }],
-    "placeSlugs": ["hue"]
+    "title": "Layover",
+    "summary": "Nine hours in an airport between two flights: a poem about benches, announcements and the strange tenderness of being in no place at all.",
+    "date": "2025-10",
+    "cover": { "src": "/media/demo/cover-layover.svg", "alt": "Short white lines grouped in stanzas, one of them cyan, beside a dithered shadow at the right edge", "width": 1200, "height": 630 },
+    "tags": ["layover", "airports", "travel", "free-verse"],
+    "meta": [
+      { "label": "Language", "value": "English" },
+      { "label": "Form", "value": "Free verse, six stanzas" },
+      { "label": "Written", "value": "In transit, October 2025" }
+    ],
+    "placeSlugs": ["reykjavik"]
   }
 ]
 ```
+
+The real `/v1/poems` answer has four such items (the demo has 5 articles, 4 projects, 4 artworks and 4 poems); only the first is shown.
 
 #### `GET /v1/projects/:slug`, `GET /v1/articles/:slug`, `GET /v1/artworks/:slug`, `GET /v1/poems/:slug`
 
@@ -252,25 +258,33 @@ The complete entry (`ContentDetailResponse`): every field of the table above **i
 {
   "kind": "poem",
   "slug": "demo-poem",
-  "title": "Demo poem",
-  "summary": "Demo fixture entry: a poem set in verse blocks.",
-  "date": "2022-11",
-  "cover": { "src": "/media/demo/cover-poem.svg", "alt": "Abstract short lines grouped in two stanzas, a demo fixture cover", "width": 960, "height": 600 },
-  "tags": ["demo", "verse"],
-  "meta": [{ "label": "Language", "value": "English (placeholder)" }],
+  "title": "Layover",
+  "summary": "Nine hours in an airport between two flights: a poem about benches, announcements and the strange tenderness of being in no place at all.",
+  "date": "2025-10",
+  "cover": { "src": "/media/demo/cover-layover.svg", "alt": "Short white lines grouped in stanzas, one of them cyan, beside a dithered shadow at the right edge", "width": 1200, "height": 630 },
+  "tags": ["layover", "airports", "travel", "free-verse"],
+  "meta": [
+    { "label": "Language", "value": "English" },
+    { "label": "Form", "value": "Free verse, six stanzas" },
+    { "label": "Written", "value": "In transit, October 2025" }
+  ],
   "body": [
     {
       "type": "verse",
       "stanzas": [
-        ["Demo fixture verse, line one,", "placeholder words in a row,", "    an indented line follows,", "the stanza ends here."],
-        ["A second stanza begins,", "made up to check spacing,", "between lines and between stanzas."]
+        ["Gate 14 has been closed since noon,", "and the sign above it has forgotten", "which city it was meant to promise."],
+        ["I count the windows. I count the planes.", "A child lies flat on the carpet", "and conducts the whole terminal,", "with one finger, as if the announcements, the trolleys and the slow doors were waiting for his count."],
+        ["Somebody's suitcase turns on the belt", "alone, a small patient animal,", "making the circuit it was told to make", "and finding it enough."],
+        ["    We are all between things here:", "    between flights, between coffees,", "    between the person who left", "    and the one who will land."],
+        ["The announcer apologises in three languages", "and means it in none, and then, once,", "in a fourth, quietly, to nobody,", "as if to the weather itself."],
+        ["Outside, the light does that long, flat thing", "it does at the edge of the world, and I think:", "this is the only hour of the trip that is mine,", "        and I have spent it waiting for the others."]
       ]
     },
     { "type": "divider" },
-    { "type": "paragraph", "text": "A placeholder note on the poem, in prose." }
+    { "type": "paragraph", "text": "Written on a nine-hour layover in Keflavík, on the back of a boarding pass. The last line was the first one I had." }
   ],
-  "placeSlugs": ["hue"],
-  "places": [{ "slug": "hue", "name": "Huế" }]
+  "placeSlugs": ["reykjavik"],
+  "places": [{ "slug": "reykjavik", "name": "Reykjavík" }]
 }
 ```
 
@@ -283,8 +297,10 @@ The projection is **bundled** into the web app and into the API function, and `/
 | | raw | gzip | brotli |
 | --- | --- | --- | --- |
 | Committed projection today (empty) | 108 | 92 | 71 |
-| Demo fixture, `/v1/projection` (18 places, 8 groups, 4 entries) | 9,606 | 2,702 | 2,223 |
-| Demo: the four entries with their bodies, as lists / as details | 1,853 / ~4,340 | | |
+| Demo fixture, `/v1/projection` (18 places, 8 groups, 17 entries) | 47,551 | 16,172 | 13,703 |
+| Demo: the 17 entries with their bodies (as in the projection) | 41,233 | 14,537 | 12,330 |
+| Demo: the four lists (summaries: 5 articles, 4 projects, 4 artworks, 4 poems) / the 17 details | 10,606 / 42,682 | | |
+| Demo: one detail, the shortest (a haiku-like poem) / a typical one (a 12-block article) / the longest (a 14-block project with code) | 520 / 3,348 / 4,566 | 341 / 1,597 / 2,125 | |
 | 100 entries (25 per kind) with a ~3 KB body each, cover, 4 tags, 3 meta, 2 places, **entries only** | ~355,000 | 130,000 to 155,000 | 115,000 to 136,000 |
 | Same, one list (25 summaries) | ~16,000 | ~5,200 | ~4,600 |
 | Same, one detail | ~3,600 | ~1,900 to 2,000 | |

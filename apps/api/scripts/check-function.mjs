@@ -45,7 +45,7 @@ try {
     const demo = process.env.CATALYST_CONTENT === "demo";
     const expectations = [["GET", "/health", 200], ["GET", "/v1/projection", 200], ["GET", "/v1/places", 200], ["GET", "/v1/poems", 200], ["GET", "/nope", 404], ["GET", "/v1/poems/nope", 404], ["GET", "/v1/projects/nope", 404], ["POST", "/v1/places", 405]];
     // The demo content is inlined in the bundle too: the entry detail endpoints must answer from it.
-    if (demo) expectations.push(["GET", "/v1/poems/demo-poem", 200], ["GET", "/v1/projects/demo-project", 200], ["GET", "/v1/articles/demo-article", 200], ["GET", "/v1/artworks/demo-artwork", 200], ["GET", "/v1/places/lisbon", 200]);
+    if (demo) expectations.push(["GET", "/v1/poems/demo-poem", 200], ["GET", "/v1/projects/demo-project", 200], ["GET", "/v1/articles/demo-article", 200], ["GET", "/v1/artworks/demo-artwork", 200], ["GET", "/v1/articles/morocco-coast-bus", 200], ["GET", "/v1/poems/quai-de-nuit", 200], ["GET", "/v1/places/lisbon", 200]);
     for (const [method, path, status] of expectations) {
       const res = await app.fetch(new Request("http://localhost" + path, { method }));
       if (res.status !== status) throw new Error(method + " " + path + " answered " + res.status + ", expected " + status);
@@ -54,7 +54,9 @@ try {
       const poem = await (await app.fetch(new Request("http://localhost/v1/poems/demo-poem"))).json();
       if (poem.kind !== "poem" || !Array.isArray(poem.body) || !poem.body.some((b) => b.type === "verse")) throw new Error("the demo poem detail has no verse block");
       const list = await (await app.fetch(new Request("http://localhost/v1/poems"))).json();
-      if (!Array.isArray(list) || list.length === 0 || "body" in list[0]) throw new Error("/v1/poems must list summaries without a body");
+      if (!Array.isArray(list) || list.length !== 4 || "body" in list[0]) throw new Error("/v1/poems must list the four demo poems as summaries without a body");
+      const articles = await (await app.fetch(new Request("http://localhost/v1/articles"))).json();
+      if (!Array.isArray(articles) || articles.length !== 5) throw new Error("/v1/articles must list the five demo articles");
     }
   `;
   for (const content of [undefined, "demo"]) {
