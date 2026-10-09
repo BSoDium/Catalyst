@@ -5,7 +5,7 @@
  * texture (short horizontal dashes in rows, anchored to the screen) only reads as water on a flat picture; on a curved earth it flattens
  * it ("a weird flat look"), and the parallels and meridians are what say "this is a sphere". So the graticule stays until the view is
  * close to flat and only then gives way to the sea texture, in one binary switch (a timed cross-fade by the temporal ease, not a ramp
- * over zoom).
+ * over zoom). The graticule gives way exactly when the texture comes (`style/layer-switch.ts`): where the tiles do not reach the texture yet (the Protomaps fallback hands over at 8.5, so the texture comes at 9.2) a flat view keeps its graticule.
  *
  * "Close to flat" is measured on the screen, not as a bare zoom number: the BULGE is the height in CSS px by which the surface at the
  * top or bottom edge of the view falls away from the plane through the centre, `(h / 2)^2 / (2 R)` for a view `h` px high and a globe of

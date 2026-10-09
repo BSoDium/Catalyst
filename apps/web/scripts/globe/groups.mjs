@@ -25,7 +25,7 @@
 //           lon/lat/zoom), at rest, EVERY drawn box has its label (100 %: none dropped, none dimmed, each plate on the grid, no two plates overlapping
 //           unless one is the last resort) and is at full opacity, no node is half-faded, and hovering a box, its label and the gap between them
 //           shows the pointer and the node's hover state; the label is a real DOM element (text, opacity, place) for every drawn box; at rest every label is exactly at its target (no glide left)
-// flicker   a scripted pan and zoom of 181 frames over a crowded view: the labels move all the time and never teleport (a plate that moves by more
+// flicker   a scripted pan and zoom of 3 s over a crowded view: the labels move all the time and never teleport (a plate that moves by more
 //           than its box plus a small glide step in one frame: 0), a slot change is a glide (slot changes per label, the worst frame), the plan runs at
 //           a bounded rate, the loop is quiet after the labels arrived (none gliding, none owed), and hovering label after label re-plans nothing
 // open      (the owner's preview, or any content with a group of several places) a group OPENS EARLY into its most important places and cross-fades with
@@ -1012,29 +1012,38 @@ try {
     // A scripted camera on the real app: a pan that swings both ways while the zoom breathes, one synchronous frame at a time (60 per second
     // of the page's own clock), over a crowded view of the preview or the demo. Per frame the labels are read back (candidate position, way of
     // writing it, plate as DRAWN, glide left) and the FLICKER METRIC is counted as in `label-track.test.ts`: a TELEPORT is a plate that moved
-    // in one frame (its nearer edge on each axis) by more than its box did plus 4 px plus what its own glide may move it by (1.1 x omega x dt x the glide left); a CHANGE is a
+    // in one frame (its nearer edge on each axis) by more than its box did plus `SNAP_PX` (6 px) plus what its own glide may move it by (1.1 x omega x dt x the glide left); a CHANGE is a
     // label shown in two consecutive frames with another slot (a change is a glide, not a flicker); VISIBILITY a label that appeared or
     // disappeared (the camera and the cut decide it).
     const { page, logs } = await openGlobe(browser, DESKTOP);
     const minZoom = await page.evaluate(() => window.__globeDebug.minZoom());
     const OMEGA = 14; // TRACK.omega (engine/label-track.ts)
+    // Slack of the teleport test beyond what the box moved: the box is snapped to art cells (2.5 to 3 px) and the plate to device pixels, and a plate
+    // whose wording changes in a plan (whole -> truncated) is put at its slot's place for the new width. The sweep moves a large box up to 30 px in a
+    // frame; a left-anchored label whose text got shorter was seen 4.5 px beyond the box in 1 of 3 sweeps (2026-10-09; was 4, which made the check flap:
+    // 0 or 1 teleport per sweep on the same code). A hop of a plate is tens of px (52 px in the every-frame plan of label-track.test.ts), so 6 still sees it.
+    const SNAP_PX = 6;
     const run1 = (start) =>
       page.evaluate(
-        async ({ start, minZoom, OMEGA }) => {
+        async ({ start, minZoom, OMEGA, SNAP_PX }) => {
           const d = window.__globeDebug;
           d.setView(start);
           d.settle();
-          const frames = 180;
+          // The camera is a function of TIME (3 s), not of the frame count: at 120 Hz the same path took 1.5 s, which gave 19 plans and about half the
+          // slot changes per label of a 60 Hz run (3 s, 33 plans) on the same code, so a limit set at one rate failed at the other.
+          const DURATION = 3000;
           let last = new Map();
-          let lastT = performance.now();
-          const out = { changes: 0, teleports: 0, gliding: 0, maxStep: 0, visibility: 0, shown: 0, worstFrame: 0, labels: new Set(), mid: 0, domWrites: 0, frames: 0, slow: 0 };
+          const t0 = performance.now();
+          let lastT = t0;
+          const prevChange = new Map();
+          const out = { changes: 0, reversals: 0, teleports: 0, gliding: 0, maxStep: 0, visibility: 0, shown: 0, worstFrame: 0, labels: new Set(), mid: 0, domWrites: 0, frames: 0, slow: 0 };
           const w0 = d.labelStats().labelWrites;
-          for (let f = 0; f <= frames; f++) {
+          for (let f = 0; ; f++) {
             await new Promise((r) => requestAnimationFrame(r));
             const now0 = performance.now();
             const dt = Math.min(0.05, (now0 - lastT) / 1000);
             lastT = now0;
-            const u = f / frames;
+            const u = Math.min(1, (now0 - t0) / DURATION);
             d.setView({ lon: start.lon + 14 * Math.sin(2 * Math.PI * u * 1.5), lat: start.lat + 5 * Math.sin(2 * Math.PI * u), zoom: start.zoom + 0.45 * (0.5 - 0.5 * Math.cos(2 * Math.PI * u)) });
             d.renderNow();
             const now = new Map();
@@ -1049,23 +1058,32 @@ try {
                 if (f > 0) out.visibility++;
                 continue;
               }
-              if (p.cand !== s.cand || p.variant !== s.variant) frameChanges++;
+              if (p.cand !== s.cand || p.variant !== s.variant) {
+                frameChanges++;
+                // a REVERSAL: back to the slot it left less than one dwell (350 ms) ago, a wobble
+                const to = `${s.variant}/${s.cand}`;
+                const was = prevChange.get(k);
+                if (was && was.from === to && now0 - was.t < 350) out.reversals++;
+                prevChange.set(k, { t: now0, from: `${p.variant}/${p.cand}` });
+              }
               const boxMove = Math.max(Math.abs(p.box.x0 - s.box.x0), Math.abs(p.box.y0 - s.box.y0), Math.abs(p.box.x1 - s.box.x1), Math.abs(p.box.y1 - s.box.y1));
               // the plate's nearer edge on each axis: a text that gets shorter (a plate anchored on one edge of its box) keeps the other edge where it was
               const step = Math.max(Math.min(Math.abs(p.x - s.x), Math.abs(p.x1 - s.x1)), Math.min(Math.abs(p.y - s.y), Math.abs(p.y1 - s.y1)));
               out.maxStep = Math.max(out.maxStep, step - boxMove);
-              if (step > boxMove + 4 + 1.1 * OMEGA * dt * Math.max(p.g, s.g)) out.teleports++;
+              if (step > boxMove + SNAP_PX + 1.1 * OMEGA * dt * Math.max(p.g, s.g)) out.teleports++;
             }
             for (const k of last.keys()) if (!now.has(k)) out.visibility++;
             out.changes += frameChanges;
             out.worstFrame = Math.max(out.worstFrame, frameChanges);
+            out.frames = f + 1;
             last = now;
+            if (u >= 1) break;
           }
           out.domWrites = d.labelStats().labelWrites - w0;
           out.labels = out.labels.size;
           return out;
         },
-        { start, minZoom, OMEGA },
+        { start, minZoom, OMEGA, SNAP_PX },
       );
     const stat = async () => page.evaluate(() => window.__globeDebug.labelStats());
     const starts = [
@@ -1091,8 +1109,15 @@ try {
       await sleep(150);
       const after = await stat();
       const seconds = (tStop - t0) / 1000;
-      console.log(`     ${name}: ${r.labels} labels, ${r.shown} label-frames (${r.gliding} gliding, largest step against the box ${r.maxStep.toFixed(1)} px), ${r.changes} slot changes (${(r.changes / Math.max(1, r.labels)).toFixed(2)} per label), ${r.teleports} teleports, ${r.visibility} appearances and disappearances, worst frame ${r.worstFrame}; ${r.domWrites} element writes (${(r.domWrites / 181).toFixed(1)} per frame); plans ${after.replans - before.replans} in ${seconds.toFixed(1)} s, labels placed in the gaps ${after.partials - before.partials}; quiet ${quietAfter} ms after the camera stopped`);
-      expect(`${name}: over a scripted pan and zoom of 181 frames a label changes its slot less than three times on average (${(r.changes / Math.max(1, r.labels)).toFixed(2)}; each change is a glide) and no frame changes more than max(16, 55 percent of the labels)`, r.labels > 5 && r.changes / r.labels < 3 && r.worstFrame <= Math.max(16, Math.ceil(r.labels * 0.55)), r);
+      console.log(`     ${name}: ${r.labels} labels, ${r.shown} label-frames (${r.gliding} gliding, largest step against the box ${r.maxStep.toFixed(1)} px), ${r.changes} slot changes (${(r.changes / Math.max(1, r.labels)).toFixed(2)} per label, ${r.reversals} of them back to the slot just left), ${r.teleports} teleports, ${r.visibility} appearances and disappearances, worst frame ${r.worstFrame}; ${r.domWrites} element writes (${(r.domWrites / Math.max(1, r.frames)).toFixed(1)} per frame); plans ${after.replans - before.replans} in ${seconds.toFixed(1)} s, labels placed in the gaps ${after.partials - before.partials}; quiet ${quietAfter} ms after the camera stopped`);
+      // Limits (docs/web-architecture.md, "Inertia and flicker", 2026-10-09 recalibration). Slot changes per label depend on how crowded the view is:
+      // on the owner's preview the sweeps measured 1.6 to 2.9 per label with 18 to 26 labels (a group opens only when ALL its places fit) and 2.3 to
+      // 3.4 with 38 to 49 (the early opening of groups shows twice as many labels in the same area), with the same planner; the sweep is far
+      // faster than a hand (14 degrees of longitude swing 1.5 times in 3 s). So the average limit is 4 (3 was calibrated on the 72-label synthetic
+      // sweep of label-track.test.ts, 1.68 per label, and on a view of 18 to 26 labels). The wobble is measured apart: a change back to the slot it
+      // left less than one dwell before is at most 25 percent of the changes (9 to 14 percent now, 5 to 8 percent with the old rule), and no
+      // frame changes more than max(16, 55 percent of the labels) as before. A plate that jumps is `teleports`, below.
+      expect(`${name}: over a scripted pan and zoom of 3 s a label changes its slot less than four times on average (${(r.changes / Math.max(1, r.labels)).toFixed(2)}; each change is a glide), at most 25 percent of the changes go back to the slot just left (${r.reversals} of ${r.changes}) and no frame changes more than max(16, 55 percent of the labels)`, r.labels > 5 && r.changes / r.labels < 4 && r.reversals <= 0.25 * r.changes && r.worstFrame <= Math.max(16, Math.ceil(r.labels * 0.55)), r);
       expect(`${name}: no plate teleports against its box (${r.teleports}), the labels move (${r.gliding} label-frames gliding)`, r.teleports === 0, r);
       expect(`${name}: re-planned at a bounded rate (${after.replans - before.replans} plans in ${seconds.toFixed(1)} s: at most one per 100 ms) and the loop is quiet ${quietAfter} ms after the camera stopped`, after.replans - before.replans >= 1 && (after.replans - before.replans) <= seconds * 10 + 8 && quietAfter >= 0 && quietAfter < 2500 && !(await page.evaluate(() => window.__globeDebug.isAnimating())), { before, after, seconds, quietAfter });
       expect(`${name}: at rest no label is gliding and none is owed a plan`, after.gliding === 0 && !after.owed, after);

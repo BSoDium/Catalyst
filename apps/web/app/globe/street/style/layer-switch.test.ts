@@ -156,8 +156,55 @@ describe("the graticule and the sea texture follow the flatness of the view", ()
     const sw = mk(DEFAULT_HANDOFF.protomaps);
     sw.update({ zoom: 9, unifiedZoom: flatAt + 2, heightPx: H }); // flat, but before handoff + 0.7
     expect(isOn(sw, SEA_LAYER)).toBe(false);
+    expect(isOn(sw, GRATICULE_LAYER)).toBe(true); // the graticule stays until the texture is there: never neither
     sw.update({ zoom: DEFAULT_HANDOFF.protomaps + 0.7 + ZOOM_BAND + 0.01, unifiedZoom: flatAt + 2, heightPx: H });
     expect(isOn(sw, SEA_LAYER)).toBe(true);
     expect(isOn(sw, GRATICULE_LAYER)).toBe(false);
+  });
+});
+
+describe("the sea texture XOR the graticule, at every zoom, for both schemas", () => {
+  const SCHEMAS = Object.keys(DEFAULT_HANDOFF) as (keyof typeof DEFAULT_HANDOFF)[];
+  const zoomsOf = (from: number, to: number, step: number) => {
+    const out: number[] = [];
+    for (let z = from; z <= to + 1e-9; z += step) out.push(+z.toFixed(4));
+    return out;
+  };
+  for (const schema of SCHEMAS) {
+    for (const heightPx of [600, 900, 1800]) {
+      it(`${schema}, a ${heightPx} px view: exactly one of them is on at every zoom, going in and going out`, () => {
+        const sw = new LayerSwitch(switchRules(seaFrom(DEFAULT_HANDOFF[schema])));
+        const sweep = zoomsOf(3.7, 13, 0.01);
+        for (const [dir, zs] of [["in", sweep], ["out", [...sweep].reverse()]] as const) {
+          for (const z of zs) {
+            sw.update({ zoom: z, unifiedZoom: z, heightPx });
+            expect(isOn(sw, SEA_LAYER) !== isOn(sw, GRATICULE_LAYER), `${dir} z ${z}`).toBe(true);
+          }
+        }
+      });
+    }
+    it(`${schema}: the graticule only goes when the texture comes (and the texture is never on while the view is curved)`, () => {
+      const sw = new LayerSwitch(switchRules(seaFrom(DEFAULT_HANDOFF[schema])));
+      let gone = -1;
+      let came = -1;
+      for (const z of zoomsOf(3.7, 13, 0.005)) {
+        const changes = sw.update(view(z));
+        if (changes.some((c) => c.id === GRATICULE_LAYER && !c.visible)) gone = z;
+        if (changes.some((c) => c.id === SEA_LAYER && c.visible)) came = z;
+        if (isOn(sw, SEA_LAYER)) expect(sw.flat, `z ${z}`).toBe(true);
+      }
+      expect(gone).toBe(came); // the same update
+      expect(came).toBeGreaterThanOrEqual(flatZoom(H) - 0.01);
+      expect(came).toBeGreaterThanOrEqual(seaFrom(DEFAULT_HANDOFF[schema]) - ZOOM_BAND - 0.01);
+    });
+  }
+  it("the Protomaps fallback: a flat view between the flat zoom and the tile hand-over keeps the graticule and has no texture yet", () => {
+    const sw = new LayerSwitch(switchRules(seaFrom(DEFAULT_HANDOFF.protomaps)));
+    const z = (flatZoom(H) + seaFrom(DEFAULT_HANDOFF.protomaps)) / 2;
+    expect(z).toBeGreaterThan(flatZoom(H) + 0.2); // the gap this guards (8.3 to 9.2) is not a rounding
+    sw.update(view(z));
+    expect(sw.flat).toBe(true);
+    expect(isOn(sw, GRATICULE_LAYER)).toBe(true);
+    expect(isOn(sw, SEA_LAYER)).toBe(false);
   });
 });

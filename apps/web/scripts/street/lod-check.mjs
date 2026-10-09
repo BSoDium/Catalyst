@@ -2,16 +2,18 @@
 // "Binary visibility"). A class, a fill, the graticule and the sea texture are ON or OFF (style/layer-switch.ts, decided from the camera with
 // a hysteresis) and the temporal ease fades the cells by time. This runs the real app (the handover controller, the street map, local
 // PMTiles or OpenFreeMap) through a zoom sweep, in and out, and at every zoom, once the camera has stopped and the ease has settled:
-//   - the layers that are on are the ones the table says (outside the hysteresis band), and the sea texture and the graticule are the two
-//     sides of the flatness of the view (never both, never neither)
+//   - the layers that are on are the ones the table says (outside the hysteresis band), and the sea texture and the graticule are never both
+//     and never neither (the texture only on a flat view; the graticule on a curved one and wherever the texture is not there yet)
 //   - the always-on layers (coast, country borders, the erasing road interiors) are visible and the map is never empty
 //   - the presented image IS the classified one, cell for cell (no half-faded cell rests on screen), and nothing is still easing
 // then the same through bursts of wheel events (a trackpad that lets go) landing near a threshold. Exit code 1 on a violation.
 //   BASE_URL=http://localhost:5290 [SOURCE=primary|fallback] node scripts/street/lod-check.mjs [--zooms=3.8,5,...]
-import { DESKTOP, launch, openApp, settleApp, setCamera, waitStreetOk, ensureTiles } from "../globe/handover-lib.mjs";
+import { DESKTOP, SOURCE, launch, openApp, settleApp, setCamera, waitStreetOk, ensureTiles } from "../globe/handover-lib.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => { const t = a.replace(/^--/, ""); const i = t.indexOf("="); return i < 0 ? [t, "1"] : [t.slice(0, i), t.slice(i + 1)]; }));
-const PLACE = { lon: 107.2, lat: 10.3 }; // the coast east of Ho Chi Minh City: sea, land, roads in one view
+// SOURCE=primary: the coast east of Ho Chi Minh City (sea, land, roads in one view). The local fallback archive only has tiles around the city
+// itself: there that point is open sea outside the archive (no lit cell from z11 on), so the check looks at the city centre.
+const PLACE = SOURCE === "primary" ? { lon: 107.2, lat: 10.3 } : { lon: 106.7, lat: 10.78 };
 const zooms = (args.zooms ?? "3.9,4.6,5.5,6.5,7.5,8,8.2,8.4,9,10,11,12,13,14,15").split(",").map(Number);
 const failures = [];
 const expect = (name, ok, detail) => {
@@ -52,7 +54,9 @@ for (const dir of ["in", "out"]) {
     if (!r.street) continue; // the globe owns the view below the cut: its own checks are scripts/globe/groups.mjs
     const sea = r.layers.on.includes("water-fill");
     const grid = r.layers.on.includes("graticule");
-    expect(`${dir} z${z} (map ${r.mapZoom.toFixed(2)}): sea texture XOR graticule (flat ${r.layers.flat}), ${r.layers.on.length} layers on`, sea !== grid && sea === r.layers.flat, r.layers);
+    // exactly one of the two at every zoom; the texture only while the view is flat (a flat view whose tiles do not reach the texture yet, the
+    // Protomaps fallback between its flat zoom and its hand-over + 0.7, keeps the graticule: never neither)
+    expect(`${dir} z${z} (map ${r.mapZoom.toFixed(2)}): sea texture XOR graticule (flat ${r.layers.flat}), ${r.layers.on.length} layers on`, sea !== grid && (!sea || r.layers.flat) && (r.layers.flat || grid), r.layers);
     // content is continuously present along the whole path (regression: the switch once hid the always-on layers, so from space only the graticule, the outline and the boxes were left until the switched layers came back one by one) and the always-on layers are never hidden (without the erasing road interiors every road is a solid band: no hierarchy at street scale)
     expect(`${dir} z${z}: the always-on layers are visible (hidden: ${r.hidden.join(",") || "none"}) and the map is not empty (${r.lit} lit cells)`, r.hidden.length === 0 && r.lit > 1000, { hidden: r.hidden, lit: r.lit });
     expect(`${dir} z${z}: presented == classified (${r.differ} of ${r.cells} cells differ), nothing easing, boxes all at full opacity`, r.differ === 0 && r.easing === 0 && !r.animating && r.nodes === 0, r);
