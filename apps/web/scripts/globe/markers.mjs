@@ -16,8 +16,12 @@ import fs from "node:fs";
 import { launch, open, waitGlobe, DESKTOP, MOBILE, sleep } from "./_lib.mjs";
 
 const quick = process.argv.includes("quick");
+// The places are the SERVED projection's (read from the app's own loader data below, so the owner's preview works as well as the demo); the
+// committed demo fixture is only the fallback when the page does not expose them.
 const demo = JSON.parse(fs.readFileSync(new URL("../../../../packages/published/fixtures/demo.json", import.meta.url), "utf8"));
-const places = demo.places.map((p) => ({ slug: p.slug, lat: p.coordinates.lat, lon: p.coordinates.lon, bbox: p.bbox ?? null }));
+let places = demo.places.map((p) => ({ slug: p.slug, lat: p.coordinates.lat, lon: p.coordinates.lon, bbox: p.bbox ?? null }));
+/** `quick` walks at most this many places to the limb (evenly spaced in the list: the preview has 146, each walked along two bearings at three zooms). */
+const QUICK_WALK = 24;
 
 /** Runs in the page: sweep `views` (each {lon, lat, zoom|null}) and compare the canvas with the tree. */
 function sweepInPage({ places, views }) {
@@ -80,6 +84,7 @@ function sweepInPage({ places, views }) {
     const shownSlugs = new Set(nodes.filter((n) => n.kind === "place").map((n) => n.slug));
     for (const p of places) {
       const s = d.project(p.slug);
+      if (!s) continue; // a place the engine does not know (the projection serves places the globe does not draw): nothing to compare
       const ang = Math.acos(Math.min(1, Math.max(-1, vec(p.lon, p.lat).reduce((a, x, i) => a + x * vc[i], 0)))) / DEG;
       if (!s.visible) stat.hiddenPlaceFrames++;
       if (ang > 95 && shownSlugs.has(p.slug)) failures.push({ kind: "far-side place drawn", slug: p.slug, ang: +ang.toFixed(1), view });
@@ -105,15 +110,16 @@ function destination(lon, lat, deg, bearing) {
   return { lon: ((((l2 / R + 180) % 360) + 360) % 360) - 180, lat: p2 / R };
 }
 
-function buildViews() {
+function buildViews(places) {
   const views = [];
   const zooms = [null, 3.6, 5.5];
   // 1. Spin all the way round at several latitudes: every marker crosses the limb, north and south.
   const lats = quick ? [-50, 0, 50] : [-70, -45, -20, 0, 20, 45, 70];
   for (const zoom of zooms) for (const lat of lats) for (let lon = -180; lon < 180; lon += quick ? 6 : 3) views.push({ lon, lat, zoom });
   // 2. Walk each place from 50 to 100 degrees off-centre along four bearings (it crosses the limb on each).
+  const walked = quick && places.length > QUICK_WALK ? places.filter((_, i) => i % Math.ceil(places.length / QUICK_WALK) === 0) : places;
   for (const zoom of zooms)
-    for (const p of places)
+    for (const p of walked)
       for (const bearing of quick ? [0, 180] : [0, 90, 180, 270])
         for (let deg = 50; deg <= 100; deg += quick ? 2 : 1) {
           const c = destination(p.lon, p.lat, deg, bearing);
@@ -126,6 +132,23 @@ const b = await launch();
 const summary = [];
 let failed = 0;
 
+// The served projection's places, and the places to select (a few well known ones when the content has them, else the most important).
+let selectable = quick ? ["reykjavik"] : ["reykjavik", "cape-town", "hanoi"];
+{
+  const probe = await open(b, DESKTOP, "/", { noGroups: false });
+  await waitGlobe(probe.page);
+  const served = await probe.page.evaluate(() => window.__reactRouterContext?.state?.loaderData?.["routes/shell"]?.places ?? null);
+  await probe.page.close();
+  if (served?.length) {
+    places = served.filter((p) => p.coordinates).map((p) => ({ slug: p.slug, lat: p.coordinates.lat, lon: p.coordinates.lon, bbox: p.bbox ?? null, priority: p.labelPriority ?? 0 }));
+    const have = new Set(places.map((p) => p.slug));
+    const known = selectable.filter((s) => have.has(s));
+    const want = quick ? 1 : 3;
+    selectable = known.length >= want ? known : [...known, ...[...places].sort((a, b) => b.priority - a.priority || (a.slug < b.slug ? -1 : 1)).map((p) => p.slug).filter((s) => !known.includes(s))].slice(0, want);
+  }
+  console.log(`places: ${places.length} (${served?.length ? "the served projection" : "the demo fixture"}); selected in turn: ${selectable.join(", ")}`);
+}
+
 async function run(label, contextOptions, selectSlug) {
   const { page, logs } = await open(b, contextOptions, "/", { noGroups: false });
   await waitGlobe(page);
@@ -137,7 +160,7 @@ async function run(label, contextOptions, selectSlug) {
     await page.waitForFunction(() => !window.__globeDebug.isAnimating(), null, { timeout: 8000 });
     await sleep(300);
   }
-  const res = await page.evaluate(sweepInPage, { places, views: buildViews() });
+  const res = await page.evaluate(sweepInPage, { places, views: buildViews(places) });
   const consoleProblems = logs.filter((l) => !/favicon/.test(l));
   const ok = res.failureCount === 0 && consoleProblems.length === 0;
   if (!ok) failed++;
@@ -146,7 +169,7 @@ async function run(label, contextOptions, selectSlug) {
 }
 
 await run("desktop, nothing selected", DESKTOP, null);
-for (const slug of quick ? ["reykjavik"] : ["reykjavik", "cape-town", "hanoi"]) await run(`desktop, ${slug} selected`, DESKTOP, slug);
+for (const slug of selectable) await run(`desktop, ${slug} selected`, DESKTOP, slug);
 await run("mobile (2 px art pixel), nothing selected", MOBILE, null);
 
 console.log(JSON.stringify(summary, null, 1));
