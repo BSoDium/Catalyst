@@ -8,7 +8,8 @@
  * 24 ms, run to the end by its settle loop), so the map at rest is never half way, whatever the zoom inertia did.
  *
  * Two layers follow the FLATNESS of the view instead of a zoom (`core/flatness.ts`): the graticule while the earth is visibly curved,
- * the sea texture once it is close to flat (and the tiles reach that far: `seaOn`).
+ * the sea texture once it is close to flat (and the tiles reach that far: `seaOn`). They are exactly one of the two at every zoom: the
+ * graticule is on whenever the texture is not (so a flat view whose tiles do not reach the texture yet keeps its graticule).
  */
 import { isFlat } from "../core/flatness";
 import { hysteresis } from "../../engine/fade";
@@ -74,14 +75,20 @@ export class LayerSwitch {
       this.shown.set(id, visible);
       out.push({ id, visible });
     };
+    let sea = false;
     for (const r of this.rules) {
       const reached = hysteresis(this.reached.get(r.id) ?? false, view.zoom, r.on - ZOOM_BAND, r.on + ZOOM_BAND);
       const passed = r.off === undefined ? false : hysteresis(this.passed.get(r.id) ?? false, view.zoom, r.off - ZOOM_BAND, r.off + ZOOM_BAND);
       this.reached.set(r.id, reached);
       this.passed.set(r.id, passed);
-      set(r.id, reached && !passed && (r.id !== SEA_LAYER || this.flat));
+      const on = reached && !passed && (r.id !== SEA_LAYER || this.flat);
+      if (r.id === SEA_LAYER) sea = on;
+      set(r.id, on);
     }
-    set(GRATICULE_LAYER, !this.flat);
+    // The graticule is the sea texture's other half: it goes exactly when the texture comes, never before. The view can be flat (the graticule
+    // would go) while the tiles do not reach the texture yet (`seaOn` is the hand-over zoom plus 0.7, and the Protomaps fallback hands over at 8.5
+    // while a 900 px view is flat from 8.3): between the two zooms the map would show neither water nor graticule.
+    set(GRATICULE_LAYER, !sea);
     return out;
   }
 
