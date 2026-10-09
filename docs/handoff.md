@@ -10,6 +10,16 @@ Where the project stands and what is left. Details live in the linked docs; this
 - Checks: `pnpm typecheck`, `pnpm test`, `pnpm test:scripts`, `pnpm test:deploy`, `pnpm build`, `pnpm check:leaks` (CI runs all of them on every PR). Private repo: `pnpm typecheck`, `pnpm test`, plus the `migration-parity` workflow.
 - Not verified anywhere: Safari/iOS, real phones, real reduced motion (Chromium emulation only), the street overlay labels and `groups.mjs handover` after the label overhaul (they need the local tile server), GPU and CPU cost on a phone. The GPU budgets (`pnpm --filter @catalyst/web perf`) were last run on 2026-10-07 on a busy machine and accepted (marginal `gpuMean` overruns at street pan); they were not rerun after the label, sky and early-opening work (the cut now does a trial per group near the screen: 24 us per evaluation on the preview in Node, 200 us on 5,000 nodes, against 22 and 182 us before).
 
+## Entry views (branch `feat/entry-ui`, stacked on `feat/design-system`)
+
+The data display is implemented: articles, projects, artworks and poems open at `/<kind>/:slug` in the shell's side panel (globe
+interactive) or full screen (`?view=full`, same component, same URL scheme, SSR, reload keeps it); the place panel lists its entries as
+cards; the four list pages use the card grid and an intentional empty state; the body renderer covers every block type of the contract.
+Details: [web-architecture.md](web-architecture.md#entries-in-the-shell-routes-containers-url-scheme), [design-system.md](design-system.md#entry-view-the-panel-and-the-full-screen-view). Check: `apps/web/scripts/entries/check.mjs` on `pnpm dev:demo`.
+Open points: the index code is the position in the kind (shifts when entries are inserted); no tag pages (tags are plain chips); covers
+are shown at full column width (a cap may be wanted once real covers exist); Safari/iOS and real phones were not tried; the
+`open.test.ts` sweeps over the owner's preview data fail in this tree (globe engine, not touched by this work).
+
 ## Where the details are
 
 | Topic | Doc |

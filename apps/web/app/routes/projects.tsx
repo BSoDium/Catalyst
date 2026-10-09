@@ -1,17 +1,18 @@
 import type { Route } from "./+types/projects";
-import { ContentPage } from "~/components/content-page";
+import { EntryListPage } from "~/components/entry-list-page";
 import { getProjection } from "~/lib/content.server";
-import { pageMeta } from "~/lib/meta";
-import { listContent } from "~/lib/projection";
+import { listEntries } from "~/lib/entries";
+import { listMeta } from "~/lib/entry-meta";
 
+// `/projects`: the list of projects, summaries only (no body, so the page stays cheap however long the texts are).
 export async function loader() {
-  return { items: listContent(await getProjection(), "project") };
+  return { items: listEntries(await getProjection(), "project") };
 }
 
 export function meta(_args: Route.MetaArgs) {
-  return pageMeta({ title: "Projects", description: "Projects from the Catalyst archive." });
+  return listMeta("project");
 }
 
 export default function ProjectsRoute({ loaderData }: Route.ComponentProps) {
-  return <ContentPage heading="Projects" items={loaderData.items} />;
+  return <EntryListPage kind="project" items={loaderData.items} />;
 }

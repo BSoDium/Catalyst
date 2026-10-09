@@ -23,3 +23,12 @@ export function formatDates(dates: PublishedDates | undefined): FormattedDates |
   if (end) return { text: `until ${end}`, dateTime: end };
   return null;
 }
+
+/**
+ * An entry's partial ISO date in the stamp style of the annotation language: `2024-04-02` -> `2024.04.02`, `2024-04` -> `2024.04`,
+ * `2024` -> `2024`. Only the separator changes: nothing is padded, completed or invented. Anything that is not a partial ISO date gives null.
+ */
+export function formatEntryDate(date: string | undefined): FormattedDates | null {
+  if (!date || !/^\d{4}(?:-\d{2}(?:-\d{2})?)?$/.test(date)) return null;
+  return { text: date.replaceAll("-", "."), dateTime: date };
+}

@@ -1,17 +1,18 @@
 import type { Route } from "./+types/articles";
-import { ContentPage } from "~/components/content-page";
+import { EntryListPage } from "~/components/entry-list-page";
 import { getProjection } from "~/lib/content.server";
-import { pageMeta } from "~/lib/meta";
-import { listContent } from "~/lib/projection";
+import { listEntries } from "~/lib/entries";
+import { listMeta } from "~/lib/entry-meta";
 
+// `/articles`: the list of articles, summaries only (no body, so the page stays cheap however long the texts are).
 export async function loader() {
-  return { items: listContent(await getProjection(), "article") };
+  return { items: listEntries(await getProjection(), "article") };
 }
 
 export function meta(_args: Route.MetaArgs) {
-  return pageMeta({ title: "Articles", description: "Articles from the Catalyst archive." });
+  return listMeta("article");
 }
 
 export default function ArticlesRoute({ loaderData }: Route.ComponentProps) {
-  return <ContentPage heading="Articles" items={loaderData.items} />;
+  return <EntryListPage kind="article" items={loaderData.items} />;
 }

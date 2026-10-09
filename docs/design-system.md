@@ -97,30 +97,50 @@ All in `app/components/ui/`, importable from `~/components/ui` (barrel) or by fi
 | `SectionHeader` | `01` index (signal) + heading in micro type + rule filling the row + right annotation | `as` h2, h3, h4; `meta` |
 | `TagList` | `ul` of square outlined chips | static or links (44 px hit area on phones via `::before`) |
 | `Stack`, `Grid`, `Col` | flex column with a 4 px-scale gap; the 12-column grid; a column with `span` / `spanMd` | |
-| `Skeleton`, `StatePanel` | skeleton block with a scan sweep; the three non-content states | `state` loading (polite `role=status`, `aria-busy`), empty, error (`role=alert`, `ERR / 500` code, `[ ERROR ]`, a retry action) |
-| `EntryCard` | cover (authored image or generated) + kind tag and `№ 0042` + title + two-line summary + status + metadata strip | one link (the title), stretched over the card with `::after`; hover and focus-within brackets |
+| `Skeleton`, `StatePanel` | skeleton block with a scan sweep; the three non-content states; `headingLevel` (1 to 4) and `titleId` (focus target) | `state` loading (polite `role=status`, `aria-busy`), empty, error (`role=alert`, `ERR / 500` code, `[ ERROR ]`, a retry action) |
+| `EntryCard` | cover (authored image or generated) + kind tag and `№ 0042` + title + two-line summary + status + metadata strip + tags (`tags`, `linkState`, `id` are optional) | one link (the title), stretched over the card with `::after`; hover and focus-within brackets |
 | `Glyph`, `RegMark` | the glyph set (5 kinds, close, expand, collapse, arrows) and the registration crosshair | decorative (`aria-hidden`) |
 
 ### Generative cover art
 
 `lib/cover-art.ts`: `coverArt(seed, { cols, rows, pattern })` is a pure function of the seed (FNV-1a hash, mulberry32 generator, 4x4 Bayer dither): a `Uint8Array` of tonal levels 0 to 3, plus one or two signal marks, all within the grid; sizes clamp to 4..96 cells. `coverPaths` merges horizontal runs into one SVG path per level. Same seed gives the same art on the server and in the browser (no hydration mismatch, nothing stored). Level 1 is the kind's hue at 22 %, levels 2 and 3 are the ink at 20 % and 42 %, the marks are `--signal`. Use the entry's slug or id as the seed (stable across edits).
 
-### Intended usage (for the panel and full-screen views)
+### Entry view (the panel and the full-screen view)
 
-Same content, two layouts; the toggle only changes layout, not data or focus order.
+Implemented: `components/entry/entry-view.tsx` (one component for both containers), `components/entry/blocks.tsx` (the body renderer),
+`components/place-detail.tsx` (the place), `components/entry-list-page.tsx` (the four list pages). Routes, URL scheme and focus rules:
+[web-architecture.md](web-architecture.md#entries-in-the-shell-routes-containers-url-scheme).
+
+Same content, two layouts; `layout` only changes the grid, never the data, the DOM order or the focus order.
 
 ```
-<Frame as="article" padding="none">                       // panel: half the viewport; full screen: the page
-  <header>  KindTag  MicroLabel "№ 0042"   ExpandToggle(icon)  IconButton close
-  title (h2, text-2xl; text-3xl/4xl full screen)
-  StatusTag + coordinates MicroLabel
-  MetadataStrip
-  summary, CoverArt (when no image)
-  SectionHeader 01 BODY ... SectionHeader 02 RELATED (rows: KindTag iconOnly + title + № + arrow) ... 03 DATA (DataList)
-  <footer> Divider ticks, stamp MicroLabel, ExpandToggle(showLabel), primary action
+<article aria-labelledby="panel-heading">                          // panel: half the viewport; full screen: max-w-6xl column
+  [Back to <place>]                                                // only when opened from a place panel
+  KindTag(iconOnly)  "ARTICLE / 0004"  date  [ STATUS ]            // micro-labels
+  h1#panel-heading (text-2xl; text-3xl / 4xl full)                 // the view's one h1, focus target
+  summary
+  Frame: DataList (meta pairs) + TagList + "Open host" primary button (https only, new tab note)
+  Cover: authored image (width/height set) or CoverArt seeded by the slug, in a Frame
+  Body: BlockRenderer (h2 / h3, paragraphs, lists, quote, image, verse, code, link cards, divider)
+  01 PLACES (links to /locations/:slug)  02 RELATED  prev / next of the kind
 ```
 
-Full screen: the same sections in a `Grid`, reading in `Col spanMd={8}`, related and data in `Col spanMd={4}`. The `PanelMock` in `routes/dev-design.tsx` is the working example (panel, full screen and interactive). The title element keeps `id="panel-heading"` and `tabIndex={-1}` (focus management of `detail-panel.tsx`). Lists of entries use `EntryCard` in a `Grid` (`Col spanMd={6}`).
+Panel: one column. Full screen: title (8 columns) with the details frame (4), then reading column (8: cover and body) with the aside
+(4: places, related, neighbours). The header row of the container (Close, `ExpandToggle`) is the panel's, not the view's: it must stay
+clear of the navbar's links (and, in full screen, of its logo). The footer toggle of the first sketch was dropped: two controls with
+the same name are noise, the header one is always reachable. The `PanelMock` in `routes/dev-design.tsx` is the early sketch of the
+shape. Lists of entries use `EntryCard` (via `EntryListCard`) in a `Grid` (`Col spanMd={6}`); an empty list is a `StatePanel`
+(`headingLevel` 2 under the page's h1).
+
+Body blocks (all plain text, no inner HTML anywhere; a test scans the components for it): `paragraph` (hard line breaks as `<br>`),
+`heading` (h2/h3 with a numbered micro-prefix `§ 1`, `§ 1.1` and a stable anchor id), `list` (square markers / mono numerals),
+`quote` (hairline rule, cite as micro-label), `image` (hairline frame, width/height to avoid layout shift, lazy, caption as a
+micro-label; an unsafe path is dropped), `verse` (mono face so that indentation lines up, one paragraph per stanza, a block per line
+with its leading spaces as a `ch` offset and a 2ch hanging indent when it wraps), `code` (a Frame with the language as a label, a
+horizontally scrollable focusable `pre`, a copy button that exists only once hydrated and where the clipboard API does), `link`
+(consecutive links form one list of cards; https only, `rel="noopener noreferrer"`, new-tab note for assistive tech; an invalid URL
+is shown as plain text), `divider` (a `hr` with ticks; leading, trailing and repeated dividers are dropped). The pure parts live in
+`lib/entry-blocks.ts`.
 
 ## Accessibility rules
 

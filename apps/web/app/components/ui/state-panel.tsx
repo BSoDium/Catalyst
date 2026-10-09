@@ -19,6 +19,10 @@ interface StatePanelProps {
   code?: string;
   /** A recovery action (a retry button, a link home). */
   action?: ReactNode;
+  /** The headline's level (default 3); pick the one that fits the page's outline, so a page whose h1 is followed by this panel uses 2, and a panel that is the page's content uses 1. */
+  headingLevel?: 1 | 2 | 3 | 4;
+  /** Gives the headline an id and makes it focusable by script (`tabIndex -1`), for a panel whose focus goes to its heading. */
+  titleId?: string;
   className?: string;
 }
 
@@ -27,7 +31,8 @@ interface StatePanelProps {
  * skeleton of the content's shape; empty says what is missing; error is an alert with a code, a plain sentence and a way out.
  * None of them blames the user, and none relies on colour.
  */
-export function StatePanel({ state, title, description, code, action, className }: StatePanelProps) {
+export function StatePanel({ state, title, description, code, action, headingLevel = 3, titleId, className }: StatePanelProps) {
+  const Heading = `h${headingLevel}` as "h1" | "h2" | "h3" | "h4";
   if (state === "loading") {
     return (
       <Frame role="status" aria-busy="true" data-state="loading" className={cn("flex flex-col gap-3", className)}>
@@ -51,7 +56,9 @@ export function StatePanel({ state, title, description, code, action, className 
       <div className="ds-grid-bg flex h-16 w-full items-center justify-center border border-border text-muted-foreground">
         <Glyph name={isError ? "close" : "place"} size={24} />
       </div>
-      <h3 className="m-0 text-lg font-medium tracking-tight">{title}</h3>
+      <Heading id={titleId} tabIndex={titleId ? -1 : undefined} className="m-0 text-lg font-medium tracking-tight outline-offset-4">
+        {title}
+      </Heading>
       {description && <p className="m-0 text-sm text-muted-foreground">{description}</p>}
       {action}
     </Frame>

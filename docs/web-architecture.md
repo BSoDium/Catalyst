@@ -33,23 +33,30 @@ Run from the repo root with `pnpm --filter @catalyst/web <script>` or inside `ap
 ```
 app/
   root.tsx            html shell, SkipLinks, page-wide nav scrim, Navbar, MotionConfig, global 404 ErrorBoundary; dev-only content badge (loader returns the mode only when import.meta.env.DEV)
-  routes.ts           pathless layout (shell) wrapping `/` and `/locations/:slug`; /projects /articles /artworks
-  routes/shell.tsx    layout: full-bleed globe + PlacesNav + detail panel; owns focusedSlug, the saved GlobeViewState
-                      and the panel inset passed to the globe
+  routes.ts           pathless layout (shell) wrapping `/`, `/locations/:slug` and the entries `/{articles,projects,artworks,poems}/:slug`;
+                      the lists /projects /articles /artworks /poems (no globe)
+  routes/shell.tsx    layout: full-bleed globe + PlacesNav + detail panel; owns focusedSlug, the saved GlobeViewState,
+                      the panel inset passed to the globe and the container of an entry (`?view=full`)
   routes/home.tsx     `/` (renders nothing in the panel slot; meta only)
   routes/location.tsx `/locations/:slug` loader (404 via data()), meta, PlaceDetail, route ErrorBoundary
-  routes/{projects,articles,artworks}.tsx   thin wrappers around ContentPage
+  routes/entry-{article,project,artwork,poem}.tsx   `/<kind>/:slug`: loader (lib/entry-loader.server.ts), meta, EntryRoute; no error boundary (404 -> root)
+  routes/{projects,articles,artworks,poems}.tsx     the lists: summaries -> EntryListPage
   routes/dev-design.tsx   DEV ONLY `/dev/design`: the UI system's styleguide (guarded like `/dev/street`; docs/design-system.md)
-  components/         navbar, nav-scrim, skip-links, places-nav, detail-panel, place-detail, content-page,
+  components/         navbar, nav-scrim, skip-links, places-nav, detail-panel, place-detail, entry-list-page,
                       not-found-page, ui/ (the UI system: Frame, MicroLabel, KindTag, Button, CoverArt, ... see docs/design-system.md)
+  components/entry/   entry-view (the one view for both containers), blocks (the body renderer), entry-route (route glue), entry-list-card
   lib/content.server.ts   ContentSource + bundled/API sources + cache (server only)
-  lib/projection.ts       pure selectors: place index, routes -> points, place detail, content lists
+  lib/projection.ts       pure selectors: place index, routes -> points, place detail (with its entries)
+  lib/entries.ts          pure selectors of entries: lists (summaries), one entry with body/places/related/neighbours, entries of a place, `?view`/panel-path parsing
+  lib/entry-blocks.ts     pure parts of the body renderer: grouping, outline numbering, ids/keys, safe media and https URLs
+  lib/entry-meta.ts, entry-revalidate.ts, entry-loader.server.ts   head tags of entry/list routes, the no-refetch-on-query rule, the entry loader
   lib/dates.ts            authored-date formatting; lib/meta.ts; lib/tokens.ts; lib/utils.ts (cn)
   lib/{entry-kind,labelling,cover-art,contrast}.ts   pure helpers of the UI system (kinds, micro-label formatters, seeded cover art, WCAG contrast)
   lib/layout.ts           `panelInset()`: CSS px of the globe covered by the desktop panel (half the viewport)
   hooks/use-is-mobile.ts  matchMedia via useSyncExternalStore (server snapshot: false)
   hooks/use-viewport-width.ts  layout viewport width via useSyncExternalStore (server snapshot: 0)
   globe/              the renderer seam + the production Three.js globe (see below); imports nothing from the rest of the app
+  scripts/entries/    Playwright check of the entry views (demo content): panel, full screen, place panel, 404s, lists, 390 px
   scripts/globe/      Playwright browser checks and the frame-time benchmark for the production build (see below)
 ```
 
@@ -62,7 +69,9 @@ app/
   throws `data({ message }, { status: 404 })`. Its `ErrorBoundary` renders `PlaceNotFound` inside the panel
   (message, link to `/`, a plain inline list of all places); the shell and globe stay mounted. Status is a real 404.
 - Unmatched URLs fall to the root `ErrorBoundary` (404 page inside the navbar).
-- Content pages list items with `id={slug}` anchors (`/projects#slug`); empty collections show "Nothing here yet."
+- The list pages (`/projects`, `/articles`, `/artworks`, `/poems`) are plain pages outside the shell: an `EntryCard` grid (cover, kind,
+  code, date, places, summary, tags) whose cards keep `id={slug}` anchors (`/projects#slug`) and link to the entry route; an empty
+  collection shows the intentional `StatePanel` ("Nothing here yet"). Loaders return summaries only (`listEntries`: no body).
 - Loaders return only what the page needs; optional sections (dates, summary, body, images, related) are
   omitted when empty. Dates are shown as authored (`label`, else `start–end`), never reformatted.
 - `content.server.ts`: `getProjection()` -> `ContentSource`. Validated projections are cached in module scope
@@ -74,7 +83,7 @@ app/
 ### Floating navbar and scrim
 
 - `Navbar` has no background, border or blur. Left: the `Orbit` icon (lucide-react, shadcn's icon set) as a link home,
-  accessible name "Catalyst, home". Right: text links Projects, Articles, Artworks (`aria-current="page"` on the
+  accessible name "Catalyst, home". Right: text links Projects, Articles, Artworks, Poems (`aria-current="page"` on the
   active one via `NavLink`). The `<header>` is `pointer-events-none`; only the links take the pointer. 44px targets.
 - Readability over scrolling content comes from `NavScrim` (`.nav-scrim` in `app.css`, documented in
   `docs/design-tokens.md`): a fixed, `pointer-events-none` band between content (z 30) and the nav (z 40).
@@ -96,10 +105,10 @@ other way in. Without JavaScript the globe screen shows no list (the globe itsel
 
 ### Detail panel, SSR and hydration
 
-- Desktop (`md`, 768px and up): the panel is a non-modal `aside` over the right half of the viewport (`md:w-1/2`,
+- Desktop (`md`, 768px and up): the panel is a non-modal complementary region (a `div role="complementary"`) over the right half of the viewport (`md:w-1/2`,
   full height), above the globe and below the navbar layer. It slides in from the right with Motion over
-  `duration.slow` (360 ms, the same duration and easing as the globe's re-centring). The Close button sits in the nav
-  row at the panel's left, so it cannot collide with the nav links on the right; content starts below the nav row. The
+  `duration.slow` (360 ms, the same duration and easing as the globe's re-centring). The header row (Close, and for entries the
+  expand toggle) sits in the nav row at the panel's left, so it cannot collide with the nav links on the right; content starts below the nav row. The
   panel body is the page colour at 85% with a backdrop blur, so the map faintly continues beneath it.
 - Mobile: full-screen modal slide-over (`role="dialog" aria-modal`, `inert` outside, body scroll lock), the globe is
   unmounted while it is open.
@@ -114,11 +123,56 @@ other way in. Without JavaScript the globe screen shows no list (the globe itsel
 
 ### Focus management (`components/detail-panel.tsx`)
 
-- Open: focus moves to the panel heading (`#panel-heading`, `tabIndex -1`) always on mobile, and on desktop only
-  after a user action (places link activation, globe marker select). Back/forward and direct loads do not steal focus.
-- Close (button, Escape, or history): focus returns to the place's link in the places list (which reveals the overlay
-  when the user is on the keyboard). Skipped if the user already moved focus elsewhere.
-- Escape closes (document listener while open). Close navigates to `/` (history-correct; back reopens).
+- Open: focus moves to the panel heading (`#panel-heading`, `tabIndex -1`, the view's one h1) always on mobile, and on desktop
+  only after a user action: a places link, a globe marker, or any link inside the panel (an entry card, a place link; they navigate
+  with PUSH, which the panel reads through `useNavigationType`). Back/forward (POP) and direct loads do not steal focus. The
+  effect is keyed on `routeKey` (the pathname), so toggling the container (a query change) never moves focus: it stays on the toggle.
+- Close (button, Escape, or history): for a place, focus returns to its link in the places list (which reveals the overlay
+  when the user is on the keyboard); for an entry, to the page's `main`. Skipped if the user already moved focus elsewhere.
+- Escape closes (document listener while open), in both containers. Close navigates to `/` (history-correct; back reopens).
+
+### Entries in the shell: routes, containers, URL scheme
+
+| URL | Shows |
+| --- | --- |
+| `/articles/:slug`, `/projects/:slug`, `/artworks/:slug`, `/poems/:slug` | the entry in the side panel over the globe (SSR; the globe stays interactive on the left half) |
+| the same with `?view=full` | the same entry in the full-screen container |
+| `/locations/:slug` | the place panel: its linked entries as cards grouped by kind |
+| `/articles`, ... `/poems` | the list pages (outside the shell, no globe) |
+| unknown slug, or a slug under the wrong kind (`/projects/demo-poem`) | a real 404 through the root boundary and the site's not-found page |
+
+- **The container is the URL.** `?view=full` was chosen over a nested route: the route tree stays one route per kind, the URL is
+  shareable and SSR-friendly (the server reads the query: a reload or a pasted link renders the full view at once), and the query
+  is not part of the loader's identity: `entryShouldRevalidate` returns false when only the query changes, so toggling never
+  refetches the entry. The toggle (`ExpandToggle` in the panel header, desktop only: the phone's slide-over is full screen already)
+  navigates with PUSH, so Back collapses. The router state is kept across the toggle.
+- **One component, two layouts.** `components/entry/entry-view.tsx` gets `layout="panel" | "full"` and nothing else differs: the
+  same data, the same DOM and focus order (header, details, cover, body, places/related/neighbours). In `panel` every block spans the
+  12 columns; in `full` the title (8) and the details frame (4) share the first row, the cover and body (8) and the places/related
+  aside (4) the second, in a `max-w-6xl` column. A render test asserts the two layouts have the same text in the same order.
+- **One container element.** `DetailPanel` does not remount when the layout changes: only `md:w-1/2` becomes `md:w-full` (a width
+  transition on `--duration-base` and `--ease-standard`, collapsed to ~0 by the global reduced-motion rule) and the background
+  loses its translucency and blur (no blur of a live canvas over the whole screen). Closing from full screen keeps the layout it
+  was shown with during the exit animation.
+- **The globe is untouched.** The shell passes the same `insetRight` (half the viewport) in both containers, so the globe does not
+  re-centre or resize while the panel widens; `scripts/entries/check.mjs` asserts the `[data-globe]` node and the canvases are the
+  same objects after toggling. Under the full view the globe's `main` is `inert` (no tab stops in the places list behind it).
+- **Landmarks.** Panel: `role="complementary"` labelled by the h1. Full: the same element becomes `role="main"` with `id="main"`
+  (the globe's `main` gives up the id), so "Skip to content" lands on the full view and there is one `main`. One h1 per view: the
+  entry's (or the place's) title while the panel is open; a visually hidden "Catalyst" h1 on the globe page when it is closed. Body
+  headings are h2/h3 (an h3 before any h2 is drawn as h2: the outline never skips a level); the sections after the body are h2.
+- **Place -> entry -> place.** The place panel's cards link with `state={{ from: "<place slug>" }}`; the entry shows "Back to
+  <place>" (read and validated against the shell's places by `resolveBackTarget`) and the shell keeps that place selected on the globe
+  so the camera does not move. History state survives a reload; without it the entry simply has no back link (its Places section
+  links to `/locations/:slug` anyway).
+- **Data.** `lib/entries.ts`: `listEntries` (summaries: cover, tags, meta, places, no body), `getEntryDetail` (body, places, related,
+  previous/next in the kind), `entriesOfPlace` (a place's `related` and the entries' `placeSlugs`, each once, grouped by kind). Both
+  directions of the entry/place link are merged everywhere. The index code (`ARTICLE / 0004`) is the 1-based position of the entry in
+  its kind's collection in authored order: deterministic and decorative (it shifts if entries are inserted before it; the slug is the
+  id). A project's `Status` fact is drawn as the entry's status tag; a poem's `Language` fact sets `lang` on the body.
+- **Head.** `entryMeta`: title, summary as description, `og:type` article for articles, and `og:image` (made absolute with the
+  request's origin) only when the entry has an authored cover on a safe `/media/` path.
+- **Browser check:** `apps/web/scripts/entries/check.mjs` (demo content; see the file header). Run against `pnpm dev:demo`.
 
 ## Globe seam (`app/globe/`)
 

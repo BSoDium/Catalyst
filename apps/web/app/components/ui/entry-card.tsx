@@ -8,6 +8,7 @@ import { Frame } from "./frame";
 import { KindTag } from "./kind-tag";
 import { MetadataStrip } from "./metadata-strip";
 import { StatusTag } from "./status-tag";
+import { TagList } from "./tag-list";
 
 interface EntryCardProps {
   kind: EntryKind;
@@ -21,7 +22,13 @@ interface EntryCardProps {
   image?: { src: string; alt: string };
   seed?: string;
   meta?: readonly { label: string; value: ReactNode }[];
+  /** Plain tags under the metadata (not links: the card is one link). */
+  tags?: readonly string[];
   status?: string;
+  /** Router state handed to the link (the place panel sets where the visitor came from). */
+  linkState?: unknown;
+  /** An anchor id for the card (the list pages use the entry's slug). */
+  id?: string;
   /** Heading level of the title; pick the one that fits the page's outline. */
   headingLevel?: 2 | 3 | 4;
   className?: string;
@@ -32,11 +39,11 @@ interface EntryCardProps {
  * metadata strip. One link (the title) stretched over the card by a pseudo-element, so the whole card is clickable and the
  * tab order still has a single stop per card.
  */
-export function EntryCard({ kind, index, title, summary, href, image, seed, meta, status, headingLevel = 3, className }: EntryCardProps) {
+export function EntryCard({ kind, index, title, summary, href, image, seed, meta, tags, status, linkState, id, headingLevel = 3, className }: EntryCardProps) {
   const Heading = `h${headingLevel}` as "h2" | "h3" | "h4";
   const link = href ? (
     href.startsWith("/") ? (
-      <Link to={href} className="outline-offset-4 after:absolute after:inset-0 after:content-[''] focus-visible:outline-none">
+      <Link to={href} state={linkState} className="outline-offset-4 after:absolute after:inset-0 after:content-[''] focus-visible:outline-none">
         {title}
       </Link>
     ) : (
@@ -48,7 +55,7 @@ export function EntryCard({ kind, index, title, summary, href, image, seed, meta
     title
   );
   return (
-    <Frame as="article" data-kind={kind} interactive={!!href} padding="none" className={cn("flex min-w-0 flex-col", className)}>
+    <Frame as="article" id={id} data-kind={kind} interactive={!!href} padding="none" className={cn("flex min-w-0 flex-col", className)}>
       <div className="border-b border-border">
         {image ? (
           <img src={image.src} alt={image.alt} loading="lazy" decoding="async" className="aspect-video w-full object-cover" />
@@ -66,6 +73,7 @@ export function EntryCard({ kind, index, title, summary, href, image, seed, meta
         <div className="mt-auto flex flex-col gap-2 pt-1">
           {status && <StatusTag status={status} />}
           {meta && meta.length > 0 && <MetadataStrip items={meta} />}
+          {tags && tags.length > 0 && <TagList label="Tags" tags={tags.map((label) => ({ label }))} />}
         </div>
       </div>
     </Frame>
