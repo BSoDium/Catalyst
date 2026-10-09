@@ -88,8 +88,8 @@ export interface GlobeDebug {
    * transition is still running, and a frame is pending.
    */
   layers(): { borders: { value: number; on: boolean }; animating: boolean; framePending: boolean };
-  /** The idle rotation: turning now, why not (null = allowed), whether its timer is armed, and the configured delay and speed. */
-  spin(): ReturnType<GlobeRenderer["spinInfo"]> & { idleMs: number; degPerSec: number; enabled: boolean };
+  /** The idle rotation: turning now (phase, current speed in deg/s), why not (null = allowed), whether its idle timer is armed, and the configured delay, speed and ease times. */
+  spin(): ReturnType<GlobeRenderer["spinInfo"]> & { idleMs: number; degPerSec: number; easeInMs: number; stopMs: number; enabled: boolean };
   /** The sky: the earth rotation angle, its timed value (0..1), whether it is wanted and drawn, the farthest corner in earth radii; null when switched off (debug pages default to off, `?sky`). */
   sky(): ReturnType<GlobeRenderer["skyState"]>;
   /** Set the earth rotation angle in degrees (moves the sky against the earth) and draw. */
@@ -210,6 +210,7 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
         zoomLimit: opts.zoomLimit,
         insetRight: opts.insetRight,
         onFrame: syncOverlay,
+        labelsAnimating: () => labelsActive && labels.animating,
         pickLabel: (x, y, kind) => labels.hit(x, y, kind),
         pickOverride: opts.pickOverride,
         onSelect: opts.onSelect,
@@ -229,6 +230,7 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
 
   renderer.setSelected(opts.selectedSlug, false);
   labels.setSelected(opts.selectedSlug);
+  labels.setWake(() => renderer.requestRender()); // a plan run by the labels' timer on a map at rest started a glide
 
   // Colours come from CSS variables that switch with the OS colour scheme.
   const scheme = matchMedia("(prefers-color-scheme: dark)");
@@ -300,10 +302,10 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
         lod.settle();
         renderer.settleBorders(); // a state the first frame just decided (the sky's switch) runs to its end too
         renderer.renderNow();
-        if (labelsActive) labels.settle(); // and the labels are planned for this camera, as after 160 ms of rest
+        if (labelsActive) labels.settle(); // and the labels are planned for this camera and at their places, as after the camera has been still for good
       },
       layers: () => ({ ...renderer.layerState(), animating: lod.animating || renderer.layerState().animating, framePending: renderer.isAnimating() }),
-      spin: () => ({ ...renderer.spinInfo(), idleMs: SPIN.idleMs, degPerSec: SPIN.degPerSec, enabled: SPIN.enabled }),
+      spin: () => ({ ...renderer.spinInfo(), idleMs: SPIN.idleMs, degPerSec: SPIN.degPerSec, easeInMs: SPIN.easeInMs, stopMs: SPIN.stopMs, enabled: SPIN.enabled }),
       sky: () => renderer.skyState(),
       setSkyEra: (deg) => renderer.setSkyEra(deg),
       gpuSync: () => renderer.gpuSync(),
