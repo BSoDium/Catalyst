@@ -148,6 +148,8 @@ vercel firewall publish --yes
 
 Check the exact flags of `rules edit` with `vercel firewall rules edit --help` first (not run as part of the entry work; the CLI was not used). Verify afterwards: `/v1/poems` and `/v1/poems/<slug>` answer 200 or the app's JSON 404, `/v1/poems/` and `/v1/groups/x` answer 403.
 
+**Update 2026-10-09 (entry contract, PR #246):** the live `api-allowlist` regex was edited to the one in the allowlist section (adds `poems` and the `/v1/<kind>/:slug` detail routes), published, and tested on production: `/health`, `/v1/poems` 200, `/v1/poems/nope` and `/v1/articles/nope` reach the app (our JSON 404), `/nope` and `POST /v1/poems` 403 from the firewall.
+
 Live rules: `vercel firewall rules list` from a directory linked to the project (`vercel link --project catalyst-v2-api`). To undo one: `vercel firewall rules remove <name> --yes` then `vercel firewall publish --yes`. The CLI subcommand is `vercel firewall rules add` (the plain `firewall add` shown in the help text does not exist in CLI 52). The commands below were the plan; rule 1 was created directly in deny mode (the traffic view is unavailable on this plan, so a log-only phase could not be read) and verified by the tests above.
 
 **Step 2. Firewall rules (owner action).** Dashboard: Project `catalyst-v2-api` > **Firewall** > **Configure** > **Add New... > Rule**; **Review Changes** > **Publish**. Or CLI from a directory linked to the project (read the draft with `vercel firewall diff`, apply with `vercel firewall publish --yes`). Create them in **log** mode first, watch the Firewall tab for 10 minutes, then switch to deny. Order matters: put the deny rule first so junk never reaches the rate limiter.
