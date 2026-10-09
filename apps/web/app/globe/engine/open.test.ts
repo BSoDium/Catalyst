@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { FADE_MS } from "./fade";
 import { LOD, LodTree, type GroupKind, type LodNodeInput } from "./lod-tree";
-import { SWEEP, SWEEP_CENTRES, SWEEP_GROUPS, belowGroup, camera, drawnAt, measure, nodesFromProjection, openingOf, runSweep, sweepZooms, type Drawn, type SweepRow } from "./open-sweep";
+import { SWEEP, SWEEP_AREAS, SWEEP_CENTRES, SWEEP_GROUPS, belowGroup, camera, drawnAt, measure, nodesFromProjection, openingOf, runSweep, sweepZooms, type Drawn, type SweepRow } from "./open-sweep";
 
 /**
  * The EARLY OPENING of groups (engine/lod-tree.ts `LodTree.cut`, `LOD.open`): a closed group opens into its most important children as soon as
@@ -167,6 +167,55 @@ describe("the opening rule (synthetic country of six places)", () => {
     // the countries' boxes overlap until they are forced open: the cities show through the open continent before that
     expect(throughSeen).toBe(true);
     expect(boxesSeen || throughSeen).toBe(true);
+  });
+
+  /**
+   * A country of two multi-scale areas (area inside area inside the country, long names like "Marrakesh region" > "Marrakesh area"), 50 km apart:
+   * the areas' boxes are small and their labels long, so neither box fits next to the other, but the places inside do.
+   */
+  const nested = (): LodNodeInput[] => [
+    g("co", "continent", undefined, 31, -8, 2500, 90),
+    g("ct", "country", "co", 31, -8, 600, 70),
+    g("north-region-of-the-country", "area", "ct", 31.6, -8, 60, 57),
+    g("north-area-of-the-country", "area", "north-region-of-the-country", 31.6, -8.1, 25, 55),
+    pl("n1", "north-area-of-the-country", 31.65, -8.15, 40),
+    pl("n2", "north-area-of-the-country", 31.55, -8.05, 34),
+    pl("n3", "north-region-of-the-country", 31.9, -7.6, 36),
+    g("south-region-of-the-country", "area", "ct", 31.1, -7.4, 60, 57),
+    g("south-area-of-the-country", "area", "south-region-of-the-country", 31.1, -7.4, 25, 55),
+    pl("s1", "south-area-of-the-country", 31.15, -7.45, 38),
+    pl("s2", "south-area-of-the-country", 31.05, -7.35, 34),
+    pl("s3", "south-region-of-the-country", 30.8, -7.9, 35),
+    pl("e1", "ct", 29.5, -9.5, 41),
+  ];
+
+  it("nested areas: a group opens through an area whose box and long label do not fit, into the places inside it, to any depth", () => {
+    const nodes = nested();
+    const now = openingOf(nodes, { slug: "ct", lon: -8, lat: 31 }, true, 2, 9, 0.02);
+    const before = openingOf(nodes, { slug: "ct", lon: -8, lat: 31 }, false, 2, 9, 0.02);
+    expect(now.zoom).toBeGreaterThan(0);
+    expect(before.zoom - now.zoom, `${now.zoom} vs ${before.zoom}`).toBeGreaterThanOrEqual(0.5);
+    expect(now.shown).toBeGreaterThanOrEqual(2);
+    const tree = new LodTree(nodes);
+    let throughSeen = false;
+    let last: Drawn[] = [];
+    for (const z of sweepZooms(2.5, 9, 0.01)) {
+      const d = drawnAt(tree, camera(-8, 31, z));
+      // the strict invariant, to any depth: no node under a drawn ancestor
+      for (const n of d) for (let a = tree.parent[tree.indexOf(n.slug)]!; a >= 0; a = tree.parent[a]!) expect(has(d, tree.slug[a]!), `${n.slug} under ${tree.slug[a]} at ${z}`).toBe(false);
+      // an area open through its places, its own box not drawn, a place of it drawn
+      for (const area of ["north-region-of-the-country", "south-region-of-the-country", "north-area-of-the-country", "south-area-of-the-country"]) {
+        if (tree.isOpen(tree.indexOf(area)) && !has(d, area) && belowGroup(tree, d, area).length === 1) throughSeen = true;
+      }
+      // a zoom-in never takes a drawn node away except by opening its group
+      for (const n of last) {
+        if (has(d, n.slug)) continue;
+        const i = tree.indexOf(n.slug);
+        expect(tree.isGroup[i] === 1 && tree.isOpen(i), `${n.slug} gone at ${z}`).toBe(true);
+      }
+      last = d;
+    }
+    expect(throughSeen).toBe(true);
   });
 
   it("every kind of group opens early; early:false is the size rule alone", () => {
@@ -487,6 +536,17 @@ describe.skipIf(!havePreview)("the owner's preview projection (sweeps)", () => {
     }
   });
 
+  it("the Moroccan areas (area inside area inside a country) open before the size rule did, through their most important place when their box does not fit", () => {
+    for (const grp of SWEEP_AREAS) {
+      const now = openingOf(nodes, grp, true);
+      const before = openingOf(nodes, grp, false);
+      expect(now.zoom, grp.slug).toBeGreaterThan(0);
+      expect(before.zoom - now.zoom, `${grp.slug}: ${now.zoom} vs ${before.zoom}`).toBeGreaterThanOrEqual(0.5);
+      expect(now.shown, grp.slug).toBeGreaterThanOrEqual(1);
+      expect(now.overlaps, `${grp.slug} at its opening`).toBeLessThanOrEqual(before.overlaps + 2);
+    }
+  });
+
   it("the complaint: Western Europe is never drawn together with a place of it, and as soon as its box is gone at least two of its places are drawn", () => {
     const tree = new LodTree(nodes);
     const we = tree.indexOf("western-europe");
@@ -644,7 +704,7 @@ describe.skipIf(!havePreview)("the owner's preview projection (sweeps)", () => {
         );
       }
       lines.push("", "group             opens at zoom (size rule -> early)   places shown at the opening (of the total)   boxes on screen then   overlapping pairs then");
-      for (const grp of SWEEP_GROUPS) {
+      for (const grp of [...SWEEP_GROUPS, ...SWEEP_AREAS]) {
         const now = openingOf(nodes, grp, true);
         const before = openingOf(nodes, grp, false);
         lines.push(`${grp.slug.padEnd(16)}  ${f(before.zoom)} -> ${f(now.zoom)}                      ${before.shown} -> ${now.shown} of ${now.total}                          ${before.boxes} -> ${now.boxes}              ${before.overlaps} -> ${now.overlaps}`);
