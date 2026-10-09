@@ -372,7 +372,7 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
   hud.setTheme(theme);
   perfEnd("street.create.hud", tHud);
   const tRest = perfStart();
-  hud.setWake(() => map.triggerRepaint());
+  hud.driveGlides(true); // a label's glide is a DOM transform: it must not repaint the map
   hud.setCell(cellCss);
   hud.setSelected(selected);
   hud.setFocused(focused);
@@ -500,8 +500,9 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
     // container's own space with the projection centre the map uses; the free area is the box minus the inset the host passed.
     setLodCamera(lodCam, registerMapToGlobe(v), { width: w, height: h, centreX: (w - pad()) / 2 }, w - clampInset(inset, w), cellCss);
     hud.update({ width: w, height: h, cellCss, cam: lodCam });
-    // The boxes fade by time, not by camera: the map keeps repainting (and so this runs again) until the last transition has ended.
-    if (hud.animating) map.triggerRepaint();
+    // The boxes fade by time, not by camera: the map keeps repainting (and so this runs again) until the last transition has ended. The labels'
+    // glides are not in this: they are DOM transforms the labels' own frames run (hud.driveGlides), the map has nothing to redraw for them.
+    if (hud.boxesAnimating) map.triggerRepaint();
     // The map dissolves into the page under the covered strip (same mask as the globe's).
     const mask = fadeMask(w, pad());
     if (mask !== lastMask) {

@@ -150,9 +150,17 @@ export class HudLayer {
     return this.lod.animating || this.scene.animating;
   }
 
-  /** What to call to get a frame when a plan run by the labels' own timer on a map at rest started a glide. */
-  setWake(fn: (() => void) | null): void {
-    this.scene.setWake(fn);
+  /** A timed transition of the BOXES (engine/fade.ts) has not reached its end: the picture changes, so the host must keep drawing frames. A label's glide does not count (see `driveGlides`). */
+  get boxesAnimating(): boolean {
+    return this.lod.animating;
+  }
+
+  /**
+   * The labels run the frames of their own glides (a DOM transform each, nothing for the map to redraw): the host never has to repaint its
+   * map for them, whatever started the glide (a camera move, or a plan run by the labels' own timer on a map at rest).
+   */
+  driveGlides(on: boolean): void {
+    this.scene.driveGlides(on);
   }
 
   /** Re-place everything for the current camera. */

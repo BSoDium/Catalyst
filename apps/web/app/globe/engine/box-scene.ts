@@ -38,6 +38,7 @@
  */
 import type { Rgb } from "./colors";
 import { isBigBox, pickAlpha, pickNode, type PointerKind, type Target } from "./hit-area";
+import { FrameDriver } from "./frame-driver";
 import { LabelLayer, type LabelMode } from "./label-dom";
 import { PX_UNITS, boxesToAvoid, pxUnits } from "./label-plan";
 import { LabelTracker, SlotMemory, type Placed, type TrackItem } from "./label-track";
@@ -166,11 +167,33 @@ export class BoxScene {
     return !this.parked && !this.disposed && this.tracker.gliding > 0;
   }
 
-  /** What the host does to get a frame drawn (`update` called) when a plan run by the scene's own timer started a glide on a map that is at rest. */
+  /**
+   * What the host does to get a frame drawn (`update` called) when a plan run by the scene's own timer started a glide on a map that is at rest.
+   * A host that renders something heavy per frame (a WebGL map) should rather call `driveGlides` and not wake itself: a glide moves DOM labels
+   * by `transform` only and changes nothing the host draws.
+   */
   setWake(fn: (() => void) | null) {
     this.wake = fn;
   }
   private wake: (() => void) | null = null;
+
+  /**
+   * The scene runs the frames of a glide itself (its own `requestAnimationFrame`, only while some label glides, none on an idle map), instead of
+   * asking the host for them: a gliding label is a DOM transform, so the host's own picture (the street map's WebGL canvas, a full repaint per
+   * frame) has nothing to redraw. Each frame re-runs the last placement with the clock moved on (the spring is exact for any dt; the planner's
+   * own rate limit still holds) and writes the labels that moved; the box canvas is hashed and skipped as it has not changed.
+   */
+  driveGlides(on: boolean) {
+    this.driver.enabled = on;
+    if (!on) this.driver.stop();
+  }
+  private driver = new FrameDriver({
+    request: (cb) => requestAnimationFrame(cb),
+    cancel: (id) => cancelAnimationFrame(id),
+    run: (now) => this.run(now),
+    active: () => this.animating && typeof requestAnimationFrame !== "undefined",
+    now: () => performance.now(),
+  });
 
   setSelected(slug: string | null) {
     const next = this.lod.indexOf(slug);
@@ -320,6 +343,7 @@ export class BoxScene {
   /** Stop the labels' timer and forget what is owed: the overlay is not the one on screen (the other renderer owns the picture). */
   park() {
     this.parked = true;
+    this.driver.stop();
     window.clearTimeout(this.timer);
     this.timer = 0;
     this.tracker.reset();
@@ -332,12 +356,14 @@ export class BoxScene {
     this.parked = false;
     this.frame = { screen, grid };
     this.evalStamp = this.lod.evaluations;
+    this.driver.stop(); // the host draws this frame: the next one of the glide is asked for after it
     this.run(performance.now());
   }
 
   private run(now: number) {
     const frame = this.frame;
     if (!frame || this.disposed) return;
+    this.driver.ran(now);
     const { screen, grid } = frame;
     const lod = this.lod;
     const cell = grid.cell;
@@ -406,6 +432,7 @@ export class BoxScene {
     this.last = items;
     this.present();
     this.arm();
+    this.driver.ride();
   }
 
   /** Re-draw the states (hover, focus, selection) from the last plan: no planning, no motion. */
@@ -484,12 +511,13 @@ export class BoxScene {
       this.tracker.reset();
       return;
     }
-    this.run(now);
-    if (this.animating) this.wake?.(); // a plan the timer ran started a glide: the frames must come
+    this.run(now); // (a self-driven scene has asked for the frames of a glide it started)
+    if (this.animating && !this.driver.enabled) this.wake?.(); // a plan the timer ran started a glide: the frames must come
   };
 
   dispose() {
     this.disposed = true;
+    this.driver.stop();
     window.clearTimeout(this.timer);
     this.ro?.disconnect();
     this.layer.dispose();
