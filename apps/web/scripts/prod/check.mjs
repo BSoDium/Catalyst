@@ -28,6 +28,9 @@ const flag = (name) => args.includes(`--${name}`);
 const opt = (name) => (args.includes(`--${name}`) ? args[args.indexOf(`--${name}`) + 1] : undefined);
 const webDir = fileURLToPath(new URL("../../", import.meta.url));
 const DEFAULT_SITE = "https://v2.bsodium.fr";
+/** Against a real deployment (`--base`): Vercel's CDN consumes `s-maxage` and shows clients `public, max-age=0, must-revalidate`, and the content is whatever is published (possibly nothing). */
+const deployed = Boolean(opt("base"));
+const cdnCache = (value, pattern) => (deployed ? /public, max-age=0/.test(value ?? "") || pattern.test(value ?? "") : pattern.test(value ?? ""));
 
 const failures = [];
 const ok = (cond, message) => {
@@ -128,7 +131,7 @@ section("sitemap.xml");
 const sm = await text("/sitemap.xml");
 ok(sm.res.status === 200, "sitemap.xml: 200");
 ok(/^application\/xml/.test(sm.res.headers.get("content-type") ?? ""), `sitemap.xml: content-type application/xml (${sm.res.headers.get("content-type")})`);
-ok(/s-maxage=\d+/.test(sm.res.headers.get("cache-control") ?? ""), `sitemap.xml: cache-control (${sm.res.headers.get("cache-control")})`);
+ok(cdnCache(sm.res.headers.get("cache-control"), /s-maxage=\d+/), `sitemap.xml: cache-control (${sm.res.headers.get("cache-control")})`);
 staticHeaders(sm.res, "sitemap.xml");
 const locs = [...sm.body.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
 const lastmods = [...sm.body.matchAll(/<lastmod>([^<]+)<\/lastmod>/g)].map((m) => m[1]);
@@ -140,7 +143,7 @@ const paths = locs.map((l) => l.slice(SITE.length));
 for (const p of ["/", "/projects", "/articles", "/artworks", "/poems"]) ok(paths.includes(p), `sitemap.xml lists ${p}`);
 const entryPaths = paths.filter((p) => /^\/(articles|projects|artworks|poems)\/./.test(p));
 const placePaths = paths.filter((p) => p.startsWith("/locations/"));
-ok(entryPaths.length > 0 && placePaths.length > 0, `sitemap.xml lists ${entryPaths.length} entries and ${placePaths.length} places`);
+ok(deployed || (entryPaths.length > 0 && placePaths.length > 0), `sitemap.xml lists ${entryPaths.length} entries and ${placePaths.length} places`);
 {
   // Every URL of the sitemap must answer 200 (four at a time).
   const bad = [];
@@ -218,7 +221,7 @@ section("data responses (client navigations)");
   const { res } = await text("/articles.data");
   ok(res.status === 200, "/articles.data: 200");
   staticHeaders(res, "/articles.data");
-  ok(/public/.test(res.headers.get("cache-control") ?? "") && /s-maxage=60/.test(res.headers.get("cache-control") ?? "") && /stale-while-revalidate/.test(res.headers.get("cache-control") ?? ""), `/articles.data: cache-control (${res.headers.get("cache-control")})`);
+  ok(/public/.test(res.headers.get("cache-control") ?? "") && cdnCache(res.headers.get("cache-control"), /s-maxage=60.*stale-while-revalidate|stale-while-revalidate.*s-maxage=60/), `/articles.data: cache-control (${res.headers.get("cache-control")})`);
 }
 
 // ---- 3. errors -------------------------------------------------------------------------------------------------------------------
