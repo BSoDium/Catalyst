@@ -1,9 +1,12 @@
 import { index, layout, route, type RouteConfig } from "@react-router/dev/routes";
 
-// `/dev/street` (the street map on its own, for checks and measurements) exists only in development or in a build made
-// with CATALYST_DEV_ROUTES=1; its loader answers 404 anywhere else. See docs/street-architecture.md.
+// `/dev/street` (the street map on its own, for checks and measurements) and `/dev/design` (the UI system's styleguide) exist
+// only in development or in a build made with CATALYST_DEV_ROUTES=1; their loaders answer 404 anywhere else.
+// See docs/street-architecture.md and docs/design-system.md.
 const devRoutes =
-  process.env.NODE_ENV !== "production" || process.env.CATALYST_DEV_ROUTES === "1" ? [route("dev/street", "routes/dev-street.tsx"), route("dev/street-lines", "routes/dev-street-lines.tsx")] : [];
+  process.env.NODE_ENV !== "production" || process.env.CATALYST_DEV_ROUTES === "1"
+    ? [route("dev/street", "routes/dev-street.tsx"), route("dev/street-lines", "routes/dev-street-lines.tsx"), route("dev/design", "routes/dev-design.tsx")]
+    : [];
 
 export default [
   // Pathless layout: `/` and `/locations/:slug` share one globe instance.

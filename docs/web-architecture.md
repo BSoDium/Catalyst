@@ -39,11 +39,13 @@ app/
   routes/home.tsx     `/` (renders nothing in the panel slot; meta only)
   routes/location.tsx `/locations/:slug` loader (404 via data()), meta, PlaceDetail, route ErrorBoundary
   routes/{projects,articles,artworks}.tsx   thin wrappers around ContentPage
+  routes/dev-design.tsx   DEV ONLY `/dev/design`: the UI system's styleguide (guarded like `/dev/street`; docs/design-system.md)
   components/         navbar, nav-scrim, skip-links, places-nav, detail-panel, place-detail, content-page,
-                      not-found-page, ui/button
+                      not-found-page, ui/ (the UI system: Frame, MicroLabel, KindTag, Button, CoverArt, ... see docs/design-system.md)
   lib/content.server.ts   ContentSource + bundled/API sources + cache (server only)
   lib/projection.ts       pure selectors: place index, routes -> points, place detail, content lists
   lib/dates.ts            authored-date formatting; lib/meta.ts; lib/tokens.ts; lib/utils.ts (cn)
+  lib/{entry-kind,labelling,cover-art,contrast}.ts   pure helpers of the UI system (kinds, micro-label formatters, seeded cover art, WCAG contrast)
   lib/layout.ts           `panelInset()`: CSS px of the globe covered by the desktop panel (half the viewport)
   hooks/use-is-mobile.ts  matchMedia via useSyncExternalStore (server snapshot: false)
   hooks/use-viewport-width.ts  layout viewport width via useSyncExternalStore (server snapshot: 0)

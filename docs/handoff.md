@@ -19,6 +19,7 @@ Where the project stands and what is left. Details live in the linked docs; this
 | Globe engine: LOD, labels in device pixels, sticky placement, binary visibility, the early opening of groups, idle rotation, skybox, framing | [web-architecture.md](web-architecture.md) |
 | Street map: palette, road hierarchy, binary layers, tile ease, the cut at zoom 3.7 | [street-architecture.md](street-architecture.md) |
 | Tokens (colours, label type, map card, sky) | [design-tokens.md](design-tokens.md) |
+| UI system (principles, components, styleguide `/dev/design`) | [design-system.md](design-system.md) |
 | Frame cost, budgets, phone testing | [performance.md](performance.md) |
 | API contract, Vercel setup, the 500 incident of 2026-10-08 | [api-contract.md](api-contract.md) |
 | API quota, abuse, the firewall rules applied | [api-cost-and-abuse.md](api-cost-and-abuse.md) |
