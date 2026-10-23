@@ -885,7 +885,7 @@ export class CaptionLayer {
    * placed from that camera (the boxes, the labels) waits until this is over, or it appears where the planet will be and not where it is.
    */
   get pulledBack(): boolean {
-    return this.motion.eggActive || this.zoomK > 0;
+    return this.motion.eggActive || this.zoomK > 0 || this.flightU < 1;
   }
 
   /**
@@ -934,6 +934,34 @@ export class CaptionLayer {
       this.zoomK = Math.max(0, this.zoomK - dt / shape.zoomCutMs);
     }
     return this.zoomK * shape.zoomLevels;
+  }
+
+  /**
+   * How far the camera's flight has got now, 0 to 1 (engine/flight.ts; 1: the page's own camera, no flight). During the interlude it is the timeline's own
+   * value (`CaptionMotion.eggFlight`); when the interlude is cut short it runs on to 1 at the pace the globe gives its size back (a flight cut short
+   * is flown to its end, quickly). Read with `zoomOutLevels`, once a frame.
+   */
+  flightProgress(): number {
+    if (this.pinnedFlight !== null) return this.pinnedFlight;
+    if (this.motion.eggActive) {
+      this.flightU = this.motion.eggFlight();
+      this.flightAt = -1;
+    } else if (this.flightU < 1) {
+      const now = performance.now();
+      const dt = this.flightAt < 0 ? 0 : Math.min(now - this.flightAt, 64);
+      this.flightAt = now;
+      this.flightU = Math.min(1, this.flightU + dt / (this.motion.egg?.shape ?? CINEMATIC.shape).zoomCutMs);
+    }
+    return this.flightU;
+  }
+  private flightU = 1;
+  private flightAt = -1;
+  private pinnedFlight: number | null = null;
+
+  /** Checks and captures: hold the camera at this point of its flight (null releases it). */
+  pinFlight(u: number | null): void {
+    this.pinnedFlight = u;
+    this.opts.onChange();
   }
 
   /**
@@ -1095,7 +1123,8 @@ export class CaptionLayer {
    * roll's clock goes on from where it was when the globe is drawn again.
    */
   settle(): void {
-    this.zoomK = 0; // (the pull-back is a timed thing too: nothing is drawn for it to run in)
+    this.zoomK = 0; // (the pull-back and the flight are timed things too: nothing is drawn for them to run in)
+    this.flightU = 1;
     this.motion.settle(this.want);
   }
 
@@ -1111,7 +1140,7 @@ export class CaptionLayer {
 
   /** The entrance or the orbit exit is under way: full frames (the globe's own loop) are wanted. */
   get animating(): boolean {
-    return this.built !== null && !this.failed && (this.motion.animating || this.zoomK > 0);
+    return this.built !== null && !this.failed && (this.motion.animating || this.zoomK > 0 || this.flightU < 1);
   }
 
   /** The rows are in and rolling (or turning over to the next phrase set): the caption's own capped loop draws it, nothing else. */

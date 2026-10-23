@@ -42,10 +42,10 @@ describe("the cinematic interlude: when it may play", () => {
     expect(planCinematic({ ...base, seed: 1, returning: false, played: true, forced: true })?.n).toBe(0);
     expect(planCinematic({ ...base, seed: 1, forced: true, reduced: true })).toBeNull();
   });
-  it("one word, at least twice the size, from the west, on a higher orbit than the rows'", () => {
+  it("one word, at least twice the size, from the east, on a higher orbit than the rows'", () => {
     expect(CINEMATIC.word).toBe("UNIVERSAL");
     expect(CINEMATIC.capScale).toBe(2);
-    expect(CINEMATIC.side).toBe(-1);
+    expect(CINEMATIC.side).toBe(1);
     expect(CINEMATIC.radius).toBeGreaterThan(CAPTION.radius);
   });
 });
@@ -209,6 +209,20 @@ describe("the cinematic interlude: in the caption's motion", () => {
     r.leave(t);
     expect(ended).toBe(1);
   });
+  it("the camera's flight runs from the interlude's start to the word's landing, and is over (1) outside it", () => {
+    const m = make();
+    expect(m.eggFlight()).toBe(1); // (not under way)
+    const s = plan.shape;
+    const land = s.leaveMs + s.gapMs + s.enterMs;
+    let now = run(m, at() + 20);
+    expect(m.phase).toBe("egg");
+    expect(m.eggFlight()).toBeLessThan(0.01);
+    now = run(m, at() + land / 2, now);
+    expect(m.eggFlight()).toBeGreaterThan(0.4);
+    expect(m.eggFlight()).toBeLessThan(0.6);
+    now = run(m, at() + land + 100, now);
+    expect(m.eggFlight()).toBe(1);
+  });
   it("every row leaves by the orbit exit's own path and is behind the planet when it is over", () => {
     const m = make();
     const t0 = run(m, at() + 20);
@@ -221,14 +235,14 @@ describe("the cinematic interlude: in the caption's motion", () => {
     const done = run(m, at() + plan.shape.leaveMs + 50, mid);
     starts.forEach((s, i) => expect(Math.abs(rows(m, done)[i]!)).toBeCloseTo(s, 9));
   });
-  it("the stage is empty for a beat, then the big row comes in from the west, slowly, and holds near the centre", () => {
+  it("the stage is empty for a beat, then the big row comes in from the east, slowly, and holds near the centre", () => {
     const m = make();
     const s = plan.shape;
     let now = run(m, at() + s.leaveMs + s.gapMs / 2);
     expect(m.eggTheta()).toBeNull(); // (the beat)
     now = run(m, at() + s.leaveMs + s.gapMs + 300, now);
     const early = m.eggTheta()!;
-    expect(early).toBeLessThan(0); // from the west
+    expect(early).toBeGreaterThan(0); // from the east
     expect(Math.abs(early)).toBeLessThan(2.4); // not yet in
     now = run(m, at() + s.leaveMs + s.gapMs + s.enterMs + s.holdMs / 2, now);
     expect(Math.abs(m.eggTheta()!)).toBeLessThan(0.05); // (the roll's amplitude: 2.5 degrees)
@@ -237,7 +251,7 @@ describe("the cinematic interlude: in the caption's motion", () => {
     run(m2, at() + s.leaveMs + s.gapMs + s.enterMs / 3);
     expect(Math.abs(m2.eggTheta()!)).toBeGreaterThan(1.0);
   });
-  it("goes on round to the east, is gone, and the normal showing begins again from its start, once", () => {
+  it("goes on round to the west, is gone, and the normal showing begins again from its start, once", () => {
     const m = make();
     let resumed = 0;
     m.onResume = () => resumed++;
@@ -246,8 +260,8 @@ describe("the cinematic interlude: in the caption's motion", () => {
     const wordGone = eggMs(s) - s.zoomOutMs;
     let now = run(m, at() + wordGone - 60);
     expect(m.phase).toBe("egg");
-    expect(Math.abs(m.eggTheta() ?? 9)).toBeGreaterThan(1.8); // (gone round the far side, east: the other way from where it came in)
-    expect(m.eggTheta()!).toBeGreaterThan(0);
+    expect(Math.abs(m.eggTheta() ?? 9)).toBeGreaterThan(1.8); // (gone round the far side, west: the other way from where it came in)
+    expect(m.eggTheta()!).toBeLessThan(0);
     now = run(m, at() + wordGone + 60, now);
     expect(m.eggTheta()).toBeNull(); // (gone), the globe on its way back
     expect(m.phase).toBe("egg");

@@ -27,6 +27,8 @@ import {
   cameraDistance,
   clamp,
   fitZoom,
+  focalPx,
+  radiusPxToZoom,
   silhouetteRadiusPx,
   silhouetteZoom,
   normalizeLon,
@@ -55,6 +57,7 @@ import {
 import { snapBox } from "./group-square";
 import { Grace } from "./grace";
 import { IdleSpin, SPIN, pacedByRotation, spinBlock, spinFrameDue, type SpinContext } from "./idle-spin";
+import { flightPose } from "./flight";
 import { landingScale, liftFor, placeAbove, type Placement } from "./lift";
 import { routeLift } from "./view";
 import { newLodCamera, setLodCamera, type LodTree } from "./lod-tree";
@@ -1533,7 +1536,13 @@ export class GlobeRenderer {
     // their whole parallels and the dimming's reach: a third to a half of the pixels, the rows stay centred on the equator).
     let wy0 = cy - R;
     let wy1 = cy + R;
-    if (ENERGY.captionWindow === "band" && this.lastBasis) {
+    // (a flying camera is not on the planet's axis: the window round the shell's silhouette is the whole picture)
+    const wholeX = this.flying;
+    if (wholeX) {
+      wy0 = 0;
+      wy1 = ch;
+    }
+    if (!wholeX && ENERGY.captionWindow === "band" && this.lastBasis) {
       const e = caption.extentTan(this.drawView().lat);
       if (e) {
         const perTan = silhouetteRadiusPx(this.drawView().zoom, ch) * Math.sqrt(Math.max(1.0001, this.lastBasis.d * this.lastBasis.d - 1));
@@ -1542,9 +1551,9 @@ export class GlobeRenderer {
         wy1 = Math.min(wy1, cy - e.bottom * perTan + pad);
       }
     }
-    const x0 = Math.max(0, Math.floor(cx - R));
+    const x0 = wholeX ? 0 : Math.max(0, Math.floor(cx - R));
     const y0 = Math.max(0, Math.floor(wy0));
-    const x1 = Math.min(cw, Math.ceil(cx + R));
+    const x1 = wholeX ? cw : Math.min(cw, Math.ceil(cx + R));
     const y1 = Math.min(ch, Math.ceil(wy1));
     if (x1 - x0 < 1 || y1 - y0 < 1) return;
     const cam = this.camera;
@@ -1679,6 +1688,12 @@ export class GlobeRenderer {
     if (!ring) return null;
     const alpha = this.ringPresence();
     return { ...ring.state(), overlay: this.lod.overlayAlpha, zoomAlpha: ringAlpha(this.view.zoom, this.fit, this.minZoom), presence: alpha, fit: this.fit, floor: this.minZoom, silhouettePx: silhouetteRadiusPx(this.view.zoom, this.bufH * this.pixel) };
+  }
+
+  /** Checks and captures: hold the interlude's camera at this point of its flight, 0..1 (null releases it), and draw. */
+  pinFlight(u: number | null) {
+    this.caption?.pinFlight(u);
+    this.requestRender();
   }
 
   /** Checks and captures: hold the caption's entrance at `ms` after its start (null releases it) and draw. */
@@ -1918,19 +1933,53 @@ export class GlobeRenderer {
     this.requestRender();
   }
 
+  /** The camera's flight is under way (engine/flight.ts): the camera is not on the orbit round the planet's centre. */
+  private flying = false;
+
   private syncCamera() {
     const v = this.drawView();
-    const b = viewBasis(v, this.bufH * this.pixel);
+    const h = this.bufH * this.pixel;
+    let b = viewBasis(v, h);
+    // The interlude's flight (engine/flight.ts): a free camera, whose last pose is this orbit camera; `u` is 1 outside it and then nothing differs.
+    const u = this.caption?.flightProgress() ?? 1;
+    const pose = u < 1 ? flightPose(u, { lon: v.lon, lat: v.lat, alt: b.d - 1, roll: v.roll ?? 0 }) : null;
+    this.flying = pose !== null;
+    // what the rest of the frame reads: the camera's distance from the centre, the longitude and latitude it is over, and the zoom that distance is
+    let d = b.d;
+    let lon = v.lon;
+    let lat = v.lat;
+    let zoom = v.zoom;
+    let skyBasis = b;
     const cam = this.camera;
     cam.fov = FOV_DEG;
     cam.aspect = this.bufW / this.bufH;
     // (the caption's shell is above the planet: its nearest point must be inside the near plane)
     const reach = this.caption ? this.caption.maxRadius + 0.05 : 1.05;
-    cam.near = Math.max(0.02, b.d - reach);
-    cam.far = b.d + reach;
-    cam.position.set(b.c[0] * b.d, b.c[1] * b.d, b.c[2] * b.d);
-    cam.up.set(b.north[0], b.north[1], b.north[2]);
-    cam.lookAt(0, 0, 0);
+    if (pose) {
+      const [px, py, pz] = pose.pos;
+      d = Math.hypot(px, py, pz);
+      lon = pose.lon;
+      lat = pose.lat;
+      zoom = radiusPxToZoom(focalPx(h) / Math.max(1e-3, d - 1));
+      cam.near = Math.max(0.004, (d - 1) * 0.25);
+      cam.far = d + reach;
+      cam.position.set(px, py, pz);
+      cam.up.set(pose.up[0], pose.up[1], pose.up[2]);
+      cam.lookAt(pose.target[0], pose.target[1], pose.target[2]);
+      // the horizon ring is a circle of the sphere seen from this POSITION (any pair square to it will do for its axes); the sky takes the camera's own axes
+      const c: [number, number, number] = [px / d, py / d, pz / d];
+      const e = viewBasis({ lon, lat, zoom: 0 }, h);
+      b = { c, east: e.east, north: e.north, d, f: b.f };
+      cam.updateMatrixWorld();
+      const m = cam.matrixWorld.elements;
+      skyBasis = { c: [m[8]!, m[9]!, m[10]!], east: [m[0]!, m[1]!, m[2]!], north: [m[4]!, m[5]!, m[6]!], d, f: b.f };
+    } else {
+      cam.near = Math.max(0.02, b.d - reach);
+      cam.far = b.d + reach;
+      cam.position.set(b.c[0] * b.d, b.c[1] * b.d, b.c[2] * b.d);
+      cam.up.set(b.north[0], b.north[1], b.north[2]);
+      cam.lookAt(0, 0, 0);
+    }
     // Shift the projection centre left by `shiftBuf` pixels: render the window of a same-sized virtual frame
     // that starts `shiftBuf` pixels to the right.
     // and the same up by `liftBuf` (the window starts that many pixels lower in the virtual frame).
@@ -1939,10 +1988,10 @@ export class GlobeRenderer {
     cam.updateProjectionMatrix();
     cam.updateMatrixWorld();
     const now = performance.now();
-    this.globe.syncCamera(b, v.zoom, this.pixel, now, this.reduced, v.lat, Math.max(this.width, this.height));
-    this.lastBasis = { d: b.d, lon: v.lon, lat: v.lat };
-    this.caption?.sync(b.d, v.lon, v.lat, now);
-    this.globe.syncSky(cam, b, this.era, { w: this.bufW, h: this.bufH, shift: this.shiftBuf, lift: this.liftBuf }, now, this.reduced);
+    this.globe.syncCamera(b, zoom, this.pixel, now, this.reduced, lat, Math.max(this.width, this.height));
+    this.lastBasis = { d, lon, lat };
+    this.caption?.sync(d, lon, lat, now);
+    this.globe.syncSky(cam, skyBasis, this.era, { w: this.bufW, h: this.bufH, shift: this.shiftBuf, lift: this.liftBuf }, now, this.reduced);
   }
 
   /* ------------------------------ diagnostics ------------------------------ */

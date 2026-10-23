@@ -65,8 +65,8 @@ export const CINEMATIC = {
    * gone (the whole is `eggMs`: about 24 s, begun at 13 s in; the idle hold at 30 s waits for it, `Renderer.freezeWhenIdle`).
    */
   shape: { leaveMs: 500, gapMs: 400, enterMs: 19350, ease: 1, holdMs: 1000, exitMs: 1450, ampDeg: 2.5, zoomLevels: 0.7, zoomInMs: 6000, zoomOutMs: 1400, zoomCutMs: 700 },
-  /** The side the word comes in from: west (-1), the way the planet turns, so it follows the surface round. */
-  side: -1 as 1 | -1,
+  /** The side the word comes in from: EAST (1), as the studio's does. */
+  side: 1 as 1 | -1,
   /**
    * When it begins, as the number of cycles of the first showing that go by first (a cycle is 6.9 s): the second time the first row would leave,
    * 13 s in (a visitor has settled; it is about 24 s long and the idle hold at 30 s waits for it).

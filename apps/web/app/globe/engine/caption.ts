@@ -1210,6 +1210,16 @@ export class CaptionMotion {
     return Math.min(smooth(t / s.zoomInMs), smooth((eggMs(s) - t) / s.zoomOutMs));
   }
 
+  /**
+   * How far the camera's flight has got, 0 to 1 (engine/flight.ts): linear in the interlude's clock from its start to the moment the word lands (the rows'
+   * leaving, the empty stage and the word's entrance), 1 from then on; 1 too outside the interlude (the page's own camera).
+   */
+  eggFlight(): number {
+    if (this.phase !== "egg" || !this.egg || this.eggAt < 0) return 1;
+    const s = this.egg.shape;
+    return clamp((this.clock - this.eggAt) / (s.leaveMs + s.gapMs + s.enterMs), 0, 1);
+  }
+
   /** Where the big row starts, radians behind the planet (the layer: it follows the camera's tilt). */
   setEggStart(rad: number): void {
     this.eggStart = rad;

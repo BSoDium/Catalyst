@@ -122,6 +122,8 @@ export interface GlobeDebug {
   pinCaption(ms: number | null): void;
   /** Hold every caption line at `deg` degrees east of its place (null releases it): the limb close-ups. */
   pinCaptionAngle(deg: number | null): void;
+  /** Hold the interlude's camera at this point of its flight, 0..1 (null releases it). */
+  pinFlight(u: number | null): void;
   /** Lay the caption on a shell of this radius (1.001: on the surface, over the graticule's parallels; null: the tuned one): the alignment check. */
   captionRadius(r: number | null): void;
   /** The seed of the sides the caption's lines come in from, per entrance (null: all from the east): captures and checks. */
@@ -401,6 +403,7 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
       showcase: (on) => renderer.setShowcase(on),
       pinCaption: (ms) => renderer.pinCaption(ms),
       pinCaptionAngle: (deg) => renderer.pinCaptionAngle(deg),
+      pinFlight: (u) => renderer.pinFlight(u),
       captionRadius: (r) => renderer.setCaptionRadius(r),
       captionSeed: (seed) => renderer.setCaptionSeed(seed),
       captionSwap: () => renderer.swapCaption(),
