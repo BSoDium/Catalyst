@@ -19,11 +19,11 @@ const frame = (u: number) => {
   const up = unit(p.up);
   return { p, f, up, right: unit(cross(f, up)) };
 };
-/** The word's middle and its ends at progress u: on the equator shell, the page at longitude 0, the interlude's own path from its start (138 degrees east). */
+/** The word's middle and its ends at progress u: on the equator shell, the page at longitude 0, the interlude's own path from its start (its leading end at `leadStartLon`). */
 const wordAt = (u: number) => {
   const s = CINEMATIC.shape;
   const t = Math.max(0, u * (s.leaveMs + s.gapMs + s.enterMs) - s.leaveMs - s.gapMs);
-  const lon = (eggX(t, (138 * Math.PI) / 180, s) * DEG) * CINEMATIC.side;
+  const lon = (eggX(t, ((CINEMATIC.leadStartLon + 42) * Math.PI) / 180, s) * DEG) * CINEMATIC.side;
   const at = (l: number) => lonLatToVec3(l, 0).map((x) => x * CINEMATIC.radius);
   return { centre: at(lon), lead: at(lon - 42), trail: at(lon + 42) };
 };
@@ -47,7 +47,7 @@ describe("the camera's flight", () => {
       }
     });
   }
-  it("is over Greece at its first key, the horizon level (up is the local vertical) and the earth below the line of sight", () => {
+  it("is over Greece at its first key, the horizon level (up is the local vertical), aimed along it with the earth in the lower part of the picture", () => {
     const k = FLIGHT.keys[0]!;
     const { p, f, up } = frame(k.u);
     expect(len(p.pos) - 1).toBeCloseTo(k.alt, 6);
@@ -55,23 +55,48 @@ describe("the camera's flight", () => {
     expect(p.lat).toBeCloseTo(k.lat, 6);
     const c = unit(p.pos);
     expect(dot(up, c)).toBeGreaterThan(0.8); // (a roll of a few degrees tips it off the vertical a little)
-    // aimed at or above the horizon's dip, give or take a few degrees: the earth is in the lower part of the picture
+    // along the horizon, tipped up a few degrees: the line of sight is that much above the horizon's dip
     const dip = Math.asin(-dot(f, c)) * DEG;
-    expect(dip).toBeLessThan(Math.acos(1 / len(p.pos)) * DEG + 3);
-    expect(dip).toBeGreaterThan(Math.acos(1 / len(p.pos)) * DEG - 20);
+    const hd = Math.acos(1 / len(p.pos)) * DEG;
+    expect(dip).toBeLessThan(hd - 3);
+    expect(dip).toBeGreaterThan(hd - 9);
   });
-  it("brings the word's leading end into the picture at the start (the picture is 37 degrees tall and about 59 wide) and keeps the whole word in it, near the middle, all the way", () => {
-    const first = FLIGHT.keys[0]!.u;
-    const lead = seen(first, wordAt(first).lead);
-    expect(lead.ahead).toBe(true);
-    expect(Math.abs(lead.yaw)).toBeLessThan(29);
-    expect(Math.abs(lead.pitch)).toBeLessThan(18.4);
-    for (let u = first; u <= 0.95; u += 0.01) {
+  /** The planet's limb in the flight's bearing, as seen from the camera at u: where in the picture the horizon is. */
+  const horizonSeen = (u: number) => {
+    const { p } = frame(u);
+    const d = len(p.pos);
+    const cu = unit(p.pos);
+    const e = unit(cross([0, 1, 0], cu));
+    const n = cross(cu, e);
+    const bearing = FLIGHT.keys[0]!.bearing / DEG;
+    const alpha = Math.acos(1 / d);
+    const t = [n[0]! * Math.cos(bearing) + e[0]! * Math.sin(bearing), n[1]! * Math.cos(bearing) + e[1]! * Math.sin(bearing), n[2]! * Math.cos(bearing) + e[2]! * Math.sin(bearing)];
+    return seen(u, [cu[0]! * Math.cos(alpha) + t[0]! * Math.sin(alpha), cu[1]! * Math.cos(alpha) + t[1]! * Math.sin(alpha), cu[2]! * Math.cos(alpha) + t[2]! * Math.sin(alpha)]);
+  };
+  it("holds the horizon in the picture, below its middle, while the camera backs away and climbs: the planet stays in view as the word rises from the limb", () => {
+    for (let u = FLIGHT.keys[0]!.u; u <= FLIGHT.keys[1]!.u + 1e-9; u += 0.01) {
+      const h = horizonSeen(u);
+      expect(h.pitch).toBeLessThan(0);
+      expect(h.pitch).toBeGreaterThan(-15);
+      expect(Math.abs(h.yaw)).toBeLessThan(10);
+    }
+  });
+  it("brings the word into the picture once it has come over the horizon and keeps its leading end in it to the end (the picture is 37 degrees tall and about 59 wide)", () => {
+    for (let u = 0.3; u <= 0.97; u += 0.01) {
+      const lead = seen(u, wordAt(u).lead);
+      expect(lead.ahead).toBe(true);
+      expect(Math.abs(lead.yaw)).toBeLessThan(45);
+      expect(Math.abs(lead.pitch)).toBeLessThan(28);
+    }
+  });
+  it("is in the space view well before the word has settled: from 0.88 the planet is in the middle and the whole word is across the picture in front of it", () => {
+    for (let u = 0.88; u <= 1; u += 0.02) {
+      const planet = seen(u, [0, 0, 0]);
+      expect(Math.abs(planet.yaw)).toBeLessThan(8);
+      expect(Math.abs(planet.pitch)).toBeLessThan(8);
       const w = wordAt(u);
-      const mid = seen(u, w.centre);
-      expect(mid.ahead).toBe(true);
-      expect(Math.abs(mid.yaw)).toBeLessThan(34);
-      expect(Math.abs(mid.pitch)).toBeLessThan(25);
+      expect(Math.abs(seen(u, w.lead).yaw)).toBeLessThan(34);
+      expect(Math.abs(seen(u, w.trail).yaw)).toBeLessThan(34);
     }
   });
   it("is a spline, not a lock: the look does not depend on the word, and it is the same whatever the word does", () => {

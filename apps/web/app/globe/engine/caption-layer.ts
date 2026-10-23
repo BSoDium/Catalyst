@@ -1241,7 +1241,8 @@ export class CaptionLayer {
       let on = false;
       let start = 0;
       if (v.set === EGG) {
-        if (eggTheta !== null) {
+        // (not before the camera is in place: `CINEMATIC.wordFromU`)
+        if (eggTheta !== null && this.flightU >= CINEMATIC.wordFromU) {
           theta = eggTheta;
           start = b.egg!.start;
           on = true;

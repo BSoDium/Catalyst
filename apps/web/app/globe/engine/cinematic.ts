@@ -66,12 +66,17 @@ export const CINEMATIC = {
    */
   shape: { leaveMs: 500, gapMs: 400, enterMs: 19350, ease: 1, holdMs: 1000, exitMs: 1450, ampDeg: 2.5, zoomLevels: 0.7, zoomInMs: 6000, zoomOutMs: 1400, zoomCutMs: 700 },
   /**
-   * Where the word starts: the longitude its LEADING end (the west one) begins at, degrees east, in the earth's own frame, not the page's: just at the
-   * horizon of the flight's first camera, which is over Greece (22 E) at 0.15 earth radii, where the equatorial shell is seen about 3 degrees above the
-   * limb at 110 E and 16 degrees below level at 90 E. The U comes over the horizon there as the camera begins to back away. (The word's start, relative
-   * to the page's meridian, is worked out from this and its own span: `CaptionLayer.sync`.)
+   * Where the word starts: the longitude its LEADING end (the west one) begins at, degrees east, in the earth's own frame, not the page's. The flight's
+   * first camera is over Greece (22 E) at 0.15 earth radii, from where the equatorial shell is seen only up to about 111 E: the word starts BEYOND that
+   * (135 E), so that it is hidden when the camera arrives and comes up over the horizon about three seconds in, as the studio's does. (The start, relative
+   * to the page's meridian, is worked out from this and the word's span: `CaptionLayer.sync`.)
    */
-  leadStartLon: 96,
+  leadStartLon: 135,
+  /**
+   * The word is not drawn before this point of the flight (0..1): while the camera dives in from the page's view it could be seen from the high camera,
+   * beside the planet, and would be seen to appear. The camera is in place at 0.1.
+   */
+  wordFromU: 0.1,
   /** The side the word comes in from: EAST (1), as the studio's does. */
   side: 1 as 1 | -1,
   /**

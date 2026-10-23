@@ -38,6 +38,13 @@ export interface FlightKey {
   pitch: number;
   /** Degrees; positive leans the planet's north to the left on the screen (`ViewState.roll`). */
   roll: number;
+  /**
+   * How much the camera looks along the HORIZON instead of at `look` (0..1), and towards which compass bearing (degrees from north, 90 east): the point
+   * looked at is then the planet's limb in that direction as seen from the camera, wherever it flies, so the camera can back away and climb with the
+   * horizon staying where it is in the picture (with a negative `pitch`, a few degrees below the middle).
+   */
+  horizon: number;
+  bearing: number;
 }
 
 /** The pose the flight ends on (and, at its start, the page's): the orbit camera's. */
@@ -66,11 +73,15 @@ export interface FlightPose {
  */
 export const FLIGHT = {
   keys: [
-    { u: 0.1, lon: 22, lat: 36, alt: 0.15, look: [106, 8, 2], level: 1, pitch: 3, roll: -6 },
-    { u: 0.32, lon: 13, lat: 39, alt: 0.6, look: [74, 6, 1.9], level: 1, pitch: 5, roll: -3 },
-    { u: 0.52, lon: 5, lat: 40, alt: 1.8, look: [42, 4, 1.6], level: 0.7, pitch: 8, roll: 0 },
-    { u: 0.73, lon: -1, lat: 34, alt: 2.8, look: [10, 2, 1], level: 0.3, pitch: 4, roll: 3 },
-    { u: 0.88, lon: 0, lat: 28, alt: 3.1, look: [0, 0, 0.35], level: 0.1, pitch: 0, roll: 3 },
+    // the opening: over Greece, the horizon level and in the lower part of the picture, the letters about to come up over it
+    { u: 0.1, lon: 22, lat: 36, alt: 0.15, look: [106, 8, 2], level: 1, pitch: -6, roll: -6, horizon: 1, bearing: 85 },
+    // backing away west over Italy, climbing, the horizon held: the planet stays in the picture while the word rises from the limb
+    { u: 0.4, lon: 14, lat: 38, alt: 0.6, look: [106, 8, 2], level: 1, pitch: -6, roll: -4, horizon: 1, bearing: 85 },
+    // the camera leaves the limb and turns towards the word and the planet together
+    { u: 0.56, lon: 7, lat: 36, alt: 1.3, look: [50, 6, 1.5], level: 0.9, pitch: -3, roll: -2, horizon: 0.7, bearing: 85 },
+    { u: 0.7, lon: 2, lat: 26, alt: 2.4, look: [14, 2, 0.9], level: 0.5, pitch: 0, roll: 2, horizon: 0, bearing: 85 },
+    // the space view, reached with the word still on its way in: the letters line up in front of the planet over the last part
+    { u: 0.82, lon: 0, lat: 12, alt: 3.2, look: [0, 0, 0.1], level: 0.15, pitch: 0, roll: 8, horizon: 0, bearing: 85 },
   ] satisfies readonly FlightKey[],
 };
 
@@ -78,6 +89,7 @@ const sub = (a: Vec3, b: Vec3): Vec3 => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 const dot = (a: Vec3, b: Vec3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 const cross = (a: Vec3, b: Vec3): Vec3 => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 const scale = (a: Vec3, k: number): Vec3 => [a[0] * k, a[1] * k, a[2] * k];
+const len = (a: Vec3) => Math.hypot(a[0], a[1], a[2]);
 const unit = (a: Vec3): Vec3 => {
   const l = Math.hypot(a[0], a[1], a[2]) || 1;
   return [a[0] / l, a[1] / l, a[2] / l];
@@ -129,20 +141,20 @@ export function flightPose(u: number, end: FlightEnd): FlightPose {
   const k = FLIGHT.keys;
   const altEnd = Math.max(0.02, end.alt);
   // the knots: the pose it starts from (the page's: the end's), the keys, the end; each a vector
-  // [lon, lat, alt, look lon, look lat, look radius, level, pitch, roll]
+  // [lon, lat, alt, look lon, look lat, look radius, level, pitch, roll, horizon, bearing]
   const first = k[0]!;
   const last = k[k.length - 1]!;
-  const rows: number[][] = [[unwrap(end.lon, first.lon), end.lat, altEnd, first.look[0], first.look[1], 0, 0, 0, end.roll]];
+  const rows: number[][] = [[unwrap(end.lon, first.lon), end.lat, altEnd, first.look[0], first.look[1], 0, 0, 0, end.roll, 0, first.bearing]];
   const times = [0];
   let lon = rows[0]![0]!;
   let look = first.look[0];
   for (const key of k) {
     lon = unwrap(key.lon, lon);
     look = unwrap(key.look[0], look);
-    rows.push([lon, key.lat, Math.min(key.alt, end.alt * 0.9), look, key.look[1], key.look[2], key.level, key.pitch * DEG, key.roll * DEG]);
+    rows.push([lon, key.lat, Math.min(key.alt, end.alt * 0.9), look, key.look[1], key.look[2], key.level, key.pitch * DEG, key.roll * DEG, key.horizon, key.bearing]);
     times.push(key.u);
   }
-  rows.push([unwrap(end.lon, lon), end.lat, altEnd, look, last.look[1], 0, 0, 0, end.roll]);
+  rows.push([unwrap(end.lon, lon), end.lat, altEnd, look, last.look[1], 0, 0, 0, end.roll, 0, last.bearing]);
   times.push(1);
   const v = spline(
     rows.map((r, i) => ({ u: times[i]!, v: r })),
@@ -153,6 +165,19 @@ export function flightPose(u: number, end: FlightEnd): FlightPose {
   const pos = scale(lonLatToVec3(lonNow, latNow), 1 + Math.max(0.02, v[2]!));
   // the look: a point at that longitude and latitude, at that radius from the planet's centre (0: the centre itself)
   let target: Vec3 = scale(lonLatToVec3(v[3]!, Math.max(-89, Math.min(89, v[4]!))), Math.max(0, v[5]!));
+  // along the horizon: the planet's limb in the bearing, from here (the tangent point of the sight line that just grazes the planet)
+  const horizon = Math.min(1, Math.max(0, v[9]!));
+  if (horizon > 0) {
+    const d = len(pos);
+    const cu = unit(pos);
+    const e = unit(cross([0, 1, 0], cu));
+    const n = cross(cu, e);
+    const b = v[10]! * DEG;
+    const alpha = Math.acos(Math.min(1, 1 / Math.max(1.0001, d)));
+    const t: Vec3 = [n[0] * Math.cos(b) + e[0] * Math.sin(b), n[1] * Math.cos(b) + e[1] * Math.sin(b), n[2] * Math.cos(b) + e[2] * Math.sin(b)];
+    const limb: Vec3 = [cu[0] * Math.cos(alpha) + t[0] * Math.sin(alpha), cu[1] * Math.cos(alpha) + t[1] * Math.sin(alpha), cu[2] * Math.cos(alpha) + t[2] * Math.sin(alpha)];
+    target = [target[0] + (limb[0] - target[0]) * horizon, target[1] + (limb[1] - target[1]) * horizon, target[2] + (limb[2] - target[2]) * horizon];
+  }
   const level = Math.min(1, Math.max(0, v[6]!));
   const pitch = v[7]!;
   const roll = v[8]!;
