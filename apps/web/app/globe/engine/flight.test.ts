@@ -25,7 +25,7 @@ const wordAt = (u: number) => {
   const t = Math.max(0, u * (s.leaveMs + s.gapMs + s.enterMs) - s.leaveMs - s.gapMs);
   const lon = (eggX(t, ((CINEMATIC.leadStartLon + 42) * Math.PI) / 180, s) * DEG) * CINEMATIC.side;
   const at = (l: number) => lonLatToVec3(l, 0).map((x) => x * CINEMATIC.radius);
-  return { centre: at(lon), lead: at(lon - 42), trail: at(lon + 42) };
+  return { centre: at(lon), lead: at(lon - 42), trail: at(lon + 42), at, lon };
 };
 /** Where a point is in the picture: the angles to the right and up of the line of sight. */
 const seen = (u: number, point: readonly number[]) => {
@@ -81,12 +81,16 @@ describe("the camera's flight", () => {
       expect(Math.abs(h.yaw)).toBeLessThan(10);
     }
   });
-  it("brings the word into the picture once it has come over the horizon and keeps its leading end in it to the end (the picture is 37 degrees tall and about 59 wide)", () => {
+  it("keeps part of the word in the picture from the moment it has come over the horizon to the end (the picture is 37 degrees tall and about 59 wide; the word is 84 degrees long, and the camera is inside its ring for the first half, so its ends are off to the sides)", () => {
     for (let u = 0.3; u <= 0.97; u += 0.01) {
-      const lead = seen(u, wordAt(u).lead);
-      expect(lead.ahead).toBe(true);
-      expect(Math.abs(lead.yaw)).toBeLessThan(45);
-      expect(Math.abs(lead.pitch)).toBeLessThan(28);
+      const w = wordAt(u);
+      // (a point for each letter, from the leading end to the trailing one)
+      const points = Array.from({ length: 9 }, (_, i) => w.at(w.lon - 42 + (84 * i) / 8));
+      const inPicture = points.some((pt) => {
+        const s = seen(u, pt);
+        return s.ahead && Math.abs(s.yaw) < 28 && Math.abs(s.pitch) < 18.4;
+      });
+      expect(inPicture, `u = ${u.toFixed(2)}`).toBe(true);
     }
   });
   it("is in the space view well before the word has settled: from 0.88 the planet is in the middle and the whole word is across the picture in front of it", () => {
