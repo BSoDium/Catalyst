@@ -40,8 +40,16 @@ export const CINEMATIC = {
    * heights (the rows' is a fifth of one; 0.5 was too much) and the bevel is `bevelCaps` wide and deep.
    */
   outline: { light: "#0078d7", dark: "#4aa3f5" },
-  face: "#ffffff",
-  sideColor: { light: "#c3c8d1", dark: "#646b79" },
+  /**
+   * The metal is NEUTRAL and follows the theme as the filled land does (the ink's side): SILVER on the dark page, GRAPHITE on the light one, so that the
+   * letters stand out against either; the blue is the rim only (and the places' lights at the chord), the page's one accent. `back` is the letters' backs
+   * (towards the planet, out of the sun).
+   */
+  face: { light: "#5d626a", dark: "#d4d7dc" },
+  sideColor: { light: "#8e949e", dark: "#5b6068" },
+  back: { light: "#2c2f33", dark: "#2a2d32" },
+  /** The studio the metal reflects, a vertical gradient from above (`hi`) to below (`lo`), per theme. */
+  env: { light: { hi: "#e6e8eb", lo: "#202225" }, dark: { hi: "#ffffff", lo: "#3a3d42" } },
   depthCaps: 0.3,
   bevelCaps: 0.036,
   /** The bevel is a quarter circle in this many steps (a few more triangles, a bevel that catches the light along its width). */
@@ -53,7 +61,7 @@ export const CINEMATIC = {
    * `albedo * (ambient + diffuse * key + filler * fill)`), `reflect` its brightness. `inside`: how much of the light the backs of the letters (towards the planet, not in the sun) keep. `edgeShine` and
    * `faceShine`: how bright the thin strip lights of the studio are in the bevel's reflection and in a face's (the glints that run along the edges).
    */
-  light: { key: [-0.45, 0.65, 0.62] as const, fill: [0.6, -0.3, 0.4] as const, ambient: 0.5, diffuse: 0.5, filler: 0.14, specular: 0.22, shininess: 90, metal: 0.55, faceMetal: 0.38, reflect: 0.85, inside: 0.78, edgeShine: 1.6, faceShine: 0.25 },
+  light: { key: [-0.5, 0.45, 0.74] as const, fill: [0.6, -0.3, 0.4] as const, ambient: 0.5, diffuse: 0.5, filler: 0.14, specular: 0.22, shininess: 90, metal: 0.55, faceMetal: 0.38, reflect: 0.85, inside: 0.78, edgeShine: 1.6, faceShine: 0.25 },
   radius: 2,
   capScale: 2,
   maxCapScale: 6,
@@ -82,6 +90,8 @@ export const CINEMATIC = {
   wordFromU: 0.1,
   /** The continents are filled with the ink for the whole interlude (the planet's disc, `GlobeScene.setLand`), eased in over `inMs` and out over `outMs`. */
   land: { inMs: 900, outMs: 1400, cutMs: 600 },
+  /** The places' lights come up through the dither when the word lands (the chord), over `inMs`, and go over `outMs`. */
+  city: { inMs: 240, outMs: 500 },
   /** The side the word comes in from: EAST (1), as the studio's does. */
   side: 1 as 1 | -1,
   /**

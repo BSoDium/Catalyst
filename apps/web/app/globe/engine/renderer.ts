@@ -57,6 +57,7 @@ import {
 import { snapBox } from "./group-square";
 import { Grace } from "./grace";
 import { IdleSpin, SPIN, pacedByRotation, spinBlock, spinFrameDue, type SpinContext } from "./idle-spin";
+import { CINEMATIC } from "./cinematic";
 import { blendPose, flightOffsetShare, flightPose } from "./flight";
 import { landingScale, liftFor, placeAbove, type Placement } from "./lift";
 import { routeLift } from "./view";
@@ -1941,6 +1942,8 @@ export class GlobeRenderer {
     this.requestRender();
   }
 
+  private sunVec = new Vector3();
+
   /** The `--interlude` the page's hero is following (0 outside the interlude). */
   private interludeVar = 0;
 
@@ -2007,6 +2010,7 @@ export class GlobeRenderer {
     // (the continents are filled for the whole interlude)
     const land = this.caption?.landShare() ?? 0;
     this.globe.setLand(land);
+    this.globe.setCity(this.caption?.cityShare() ?? 0);
     // the page's own hero steps back with it (app.css `--interlude`): written when it moves by a hundredth
     if (Math.abs(land - this.interludeVar) >= 0.01 || (land === 0 && this.interludeVar !== 0)) {
       this.interludeVar = land;
@@ -2018,6 +2022,9 @@ export class GlobeRenderer {
     else cam.clearViewOffset();
     cam.updateProjectionMatrix();
     cam.updateMatrixWorld();
+    // the sun: one direction in the camera's frame (the letters' key light), which is a direction in the earth's frame for the planet
+    const sun = this.sunVec.set(...CINEMATIC.light.key).normalize().transformDirection(cam.matrixWorld);
+    this.globe.setSun(sun.x, sun.y, sun.z);
     const now = performance.now();
     this.globe.syncCamera(b, zoom, this.pixel, now, this.reduced, lat, Math.max(this.width, this.height));
     // (the caption's lines stay on the page's meridian and latitude; only what is hidden is the flying camera's)

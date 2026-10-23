@@ -8,6 +8,7 @@ import {
   LinearFilter,
   LineSegments,
   Mesh,
+  Points,
   RedFormat,
   RepeatWrapping,
   UnsignedByteType,
@@ -24,7 +25,7 @@ import type { ViewBasis } from "./geo";
 import { zoomToRadiusPx } from "./geo";
 import { LAND_H, LAND_W, landMask } from "./land";
 import { GRATICULE_STEP_DEG, graticuleSegments, polylinesToSegments } from "./geometry";
-import { OCCLUDER_RADIUS, lineMaterial, occluderMaterial, silhouetteMaterial } from "./materials";
+import { OCCLUDER_RADIUS, cityMaterial, lineMaterial, occluderMaterial, silhouetteMaterial } from "./materials";
 import { RouteLayer } from "./route-layer";
 import { SKY_STATE, viewToGalactic } from "./sky";
 import { SkyLayer } from "./sky-layer";
@@ -34,6 +35,8 @@ import { TUNING } from "./tuning";
 
 /** How much of the ink the filled land has (the rest is the page's colour): near the ink, as the letters' metal is. */
 const LAND_SHARE = 0.86;
+/** The most lights (places) the planet shows at the chord. */
+const CITY_LIGHTS = 16;
 
 function segmentGeometry(positions: Float32Array): BufferGeometry {
   const g = new BufferGeometry();
@@ -54,6 +57,8 @@ export class GlobeScene {
   private geometries: BufferGeometry[] = [];
   private materials: ShaderMaterial[] = [];
   private occluder = occluderMaterial();
+  private city = cityMaterial();
+  private cityNow = 0;
   private coastData: Polylines | null = null;
   private landTex: DataTexture | null = null;
   private landNow = 0;
@@ -77,7 +82,7 @@ export class GlobeScene {
     coastlines: Polylines;
     borders: Polylines;
   }) {
-    this.materials.push(this.occluder, this.graticule, this.borders, this.coast, this.silhouette);
+    this.materials.push(this.occluder, this.city, this.graticule, this.borders, this.coast, this.silhouette);
     this.coastData = data.coastlines;
 
     const disc = new SphereGeometry(OCCLUDER_RADIUS, 96, 48);
@@ -91,6 +96,22 @@ export class GlobeScene {
     this.add(this.bordersLines, 2);
     this.add(new LineSegments(this.track(segmentGeometry(polylinesToSegments(data.coastlines, 1))), this.coast), 3);
 
+    // the places' lights: a dot for each of the owner's places, one for those within two degrees of another (a city and its districts are one light), a few
+    const lights: number[] = [];
+    const taken = new Set<string>();
+    for (const pl of data.places) {
+      const key = `${Math.round(pl.lon / 2)},${Math.round(pl.lat / 2)}`;
+      if (taken.has(key) || lights.length >= CITY_LIGHTS * 3) continue;
+      taken.add(key);
+      const cl = Math.cos((pl.lat * Math.PI) / 180);
+      const lam = (pl.lon * Math.PI) / 180;
+      lights.push(1.003 * cl * Math.sin(lam), 1.003 * Math.sin((pl.lat * Math.PI) / 180), 1.003 * cl * Math.cos(lam));
+    }
+    if (lights.length) {
+      const cityPoints = new Points(this.track(segmentGeometry(new Float32Array(lights))), this.city);
+      cityPoints.frustumCulled = false;
+      this.add(cityPoints as unknown as Mesh, 7);
+    }
     this.routes = new RouteLayer(this.scene, data.routes);
     this.sky = SKY_STATE.enabled ? new SkyLayer(this.scene) : null;
 
@@ -122,6 +143,9 @@ export class GlobeScene {
     this.landFill = [0, 1, 2].map((i) => t.background[i]! + (t.ink[i]! - t.background[i]!) * LAND_SHARE) as unknown as Rgb;
     this.occluder.uniforms.uFill!.value.setRGB(...this.landFill);
     this.borders.uniforms.uAlt!.value.setRGB(...t.background);
+    // the accent, as the page has it in this scheme (app.css `--palette-blue`; the lighter step on the dark page)
+    if (t.scheme === "dark") this.city.uniforms.uColor!.value.setRGB(0.29, 0.64, 0.96);
+    else this.city.uniforms.uColor!.value.setRGB(0, 0.47, 0.84);
     this.graticule.uniforms.uColor!.value.setRGB(...t.grid);
     this.ramp = t.ramp;
     this.borderLevelNow = -1;
@@ -147,6 +171,20 @@ export class GlobeScene {
     tex.needsUpdate = true;
     this.landTex = tex;
     this.occluder.uniforms.uLandMap!.value = tex;
+  }
+
+  /** The sun's direction in the earth's frame (the planet's light; the letters have the same one in the camera's frame). */
+  setSun(x: number, y: number, z: number) {
+    this.occluder.uniforms.uSun!.value = [x, y, z];
+    this.city.uniforms.uSun!.value = [x, y, z];
+  }
+
+  /** The places' lights, 0 (out) to 1: they come up through the dither. */
+  setCity(k: number) {
+    const x = Math.min(1, Math.max(0, k));
+    if (Math.abs(x - this.cityNow) < 0.01 && !(x === 0 && this.cityNow !== 0)) return;
+    this.cityNow = x;
+    this.city.uniforms.uCity!.value = x;
   }
 
   /**

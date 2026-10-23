@@ -42,24 +42,39 @@ export function lineMaterial(coverage: number, stipple = 0): ShaderMaterial {
 /** The globe disc: writes the page colour and depth, so everything behind it is hidden and the ocean is invisible. */
 export function occluderMaterial(): ShaderMaterial {
   return new ShaderMaterial({
-    // `uLandMap`: the continents as a picture (engine/land.ts, equirectangular, 255 on land); `uLand`: how much of the land is filled with `uFill` (0: not at all,
-    // the ocean and the land are both the page's colour, as the globe always was; 1: filled). The map is looked up by the direction of the fragment on the
-    // sphere (the scene is in the earth's frame), so the fill is the earth's own.
-    uniforms: { uColor: { value: new Color() }, uFill: { value: new Color() }, uLand: { value: 0 }, uLandMap: { value: null } },
+    // The disc is the page's colour (the sea), and, for the cinematic interlude, a 1-bit picture of a planet lit by one sun (`uSun`, the direction towards it in
+    // the earth's frame; the letters of the word are lit from the same side):
+    //  - the LAND (`uLandMap`, engine/land.ts, equirectangular, 255 on land; looked up by the direction of the fragment, the scene being in the earth's frame)
+    //    is `uFill` (the ink) in an ordered dither whose density follows the light: solid on the day side, falling across the terminator to a fifth at night,
+    //    so the continents stay legible in the dark;
+    //  - the SEA near the limb on the lit side has a thin dithered glow (the atmosphere), in the same ink, thinning to nothing.
+    // The dither is the one the lines use (`dither4` on the buffer's own pixels, which are the art's). `uLand` is how much of all this is there (0: none, the
+    // globe as it always was).
+    uniforms: { uColor: { value: new Color() }, uFill: { value: new Color() }, uLand: { value: 0 }, uLandMap: { value: null }, uSun: { value: [0, 0, 1] } },
     vertexShader: /* glsl */ `
       varying vec3 vDir;
       void main() { vDir = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
     `,
     fragmentShader: /* glsl */ `
-      uniform vec3 uColor; uniform vec3 uFill; uniform float uLand; uniform sampler2D uLandMap;
+      uniform vec3 uColor; uniform vec3 uFill; uniform float uLand; uniform sampler2D uLandMap; uniform vec3 uSun;
       varying vec3 vDir;
+      ${DITHER_GLSL}
+      bool lit(float coverage) { return dither4(floor(gl_FragCoord.xy)) < coverage; }
       void main() {
         vec3 col = uColor;
         if (uLand > 0.001) {
-          vec3 d = normalize(vDir);
-          vec2 uv = vec2(atan(d.x, d.z) * 0.15915494 + 0.5, asin(clamp(d.y, -1.0, 1.0)) * 0.31830989 + 0.5);
-          float m = smoothstep(0.42, 0.58, texture2D(uLandMap, uv).r);
-          col = mix(uColor, uFill, m * uLand);
+          vec3 n = normalize(vDir);
+          float d = dot(n, uSun);
+          vec2 uv = vec2(atan(n.x, n.z) * 0.15915494 + 0.5, asin(clamp(n.y, -1.0, 1.0)) * 0.31830989 + 0.5);
+          float land = smoothstep(0.42, 0.58, texture2D(uLandMap, uv).r);
+          // the light: solid above 0.10, down to a fifth below -0.20
+          float day = mix(0.2, 1.0, smoothstep(-0.20, 0.10, d));
+          float ink = land > 0.5 ? day : 0.0;
+          // the atmosphere: the sea within a few degrees of the limb, on the lit side, in a dither that thins outwards (0.45 at the limb)
+          float towardsEye = clamp(dot(n, normalize(cameraPosition - vDir)), 0.0, 1.0);
+          float rim = smoothstep(0.34, 0.0, towardsEye) * smoothstep(-0.1, 0.45, d) * 0.45;
+          ink = max(ink, land > 0.5 ? 0.0 : rim);
+          if (lit(ink * uLand)) col = uFill;
         }
         gl_FragColor = vec4(col, 1.0);
       }
@@ -67,6 +82,34 @@ export function occluderMaterial(): ShaderMaterial {
     polygonOffset: true,
     polygonOffsetFactor: 1,
     polygonOffsetUnits: 1,
+  });
+}
+
+/**
+ * The lights of the places (the studio's frame has the cities' lights on the night side): a dot for each of the owner's places, 3 by 3 art pixels on the
+ * night side and 2 by 2 on the day side, in the accent, coming up through the dither as `uCity` goes from 0 to 1. On the sphere a hair above the land, hidden
+ * behind the planet by the depth buffer (the disc writes it).
+ */
+export function cityMaterial(): ShaderMaterial {
+  return new ShaderMaterial({
+    uniforms: { uColor: { value: new Color() }, uCity: { value: 0 }, uSun: { value: [0, 0, 1] } },
+    vertexShader: /* glsl */ `
+      uniform vec3 uSun;
+      void main() {
+        gl_PointSize = dot(normalize(position), uSun) < 0.0 ? 3.0 : 2.0;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform vec3 uColor; uniform float uCity;
+      ${DITHER_GLSL}
+      void main() {
+        if (dither4(floor(gl_FragCoord.xy)) >= uCity) discard;
+        gl_FragColor = vec4(uColor, 1.0);
+      }
+    `,
+    depthTest: true,
+    depthWrite: false,
   });
 }
 

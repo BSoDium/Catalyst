@@ -3877,7 +3877,7 @@ h1[tabindex="-1"]:focus-visible {
    * The picture is the point then; the page's own text is a ghost under it and comes back with it. Opacity only, the compositor's.
    */
   .landing-hero {
-    opacity: calc(1 - (1 - var(--hero-quiet, 0.12)) * var(--interlude, 0));
+    opacity: calc(1 - (1 - var(--hero-quiet, 0.06)) * var(--interlude, 0));
   }
   /* (and the plate behind the text is gone, not just faint: over the filled land it left a band) */
   .landing-hero::before {

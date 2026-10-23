@@ -195,22 +195,20 @@ const EGG_FRAG = /* glsl */ `
   uniform vec3 uFace;
   uniform vec3 uOutline;
   uniform vec3 uSide;
+  uniform vec3 uBack;
+  uniform vec3 uEnvHi;
+  uniform vec3 uEnvLo;
   varying vec3 vNormal;
   varying vec3 vView;
   varying float vKind;
+  // The studio: a vertical gradient from above to below (no band: a band across a flat face reads as cheap chrome), a soft box where the sun is, and THIN strip
+  // lights a few degrees wide, which a face does not reflect (it is one direction) but the bevel, whose normal turns quickly round every contour, crosses one after
+  // another as the word moves: the shine that runs along the edges of a metal object.
   vec3 studio(vec3 r) {
-    float h = r.y;
-    vec3 sky = mix(vec3(0.78, 0.84, 0.94), vec3(1.0), smoothstep(0.0, 0.9, h));
-    vec3 floorTone = vec3(0.38, 0.4, 0.45);
-    vec3 c = mix(floorTone, sky, smoothstep(-0.3, 0.12, h));
-    float band = (h + 0.1) / 0.13;
-    c *= 1.0 - 0.38 * exp(-band * band);
-    c += 1.1 * pow(max(dot(r, normalize(vec3(-0.55, 0.62, 0.56))), 0.0), 18.0);
-    c += 0.6 * pow(max(dot(r, normalize(vec3(0.62, 0.28, 0.73))), 0.0), 30.0);
+    vec3 c = mix(uEnvLo, uEnvHi, smoothstep(-0.5, 0.8, r.y));
+    c += 0.3 * pow(max(dot(r, normalize(vec3(${CINEMATIC.light.key.map((x) => x.toFixed(3)).join(", ")}))), 0.0), 14.0);
     return c;
   }
-  // THIN strip lights (a few degrees wide): a surface whose reflection crosses one flashes, and the edges, whose normals turn quickly along the bevel, do so one
-  // after another as the word moves: the shine that runs along the edges of a metal object. They are not in what a flat face reflects (it is one direction, nearly).
   float strips(vec3 r) {
     float s = 0.0;
     s += smoothstep(0.9935, 0.9985, dot(r, normalize(vec3(-0.35, 0.82, 0.45))));
@@ -222,7 +220,8 @@ const EGG_FRAG = /* glsl */ `
   }
   void main() {
     vec3 n = normalize(vNormal);
-    vec3 albedo = vKind < 0.5 ? uFace : (vKind < 1.5 ? uOutline : uSide);
+    // face, the rim (the accent), the walls, the back (towards the planet: out of the sun, its own tone)
+    vec3 albedo = vKind < 0.5 ? uFace : (vKind < 1.5 ? uOutline : (vKind < 3.5 ? uSide : uBack));
     vec3 key = normalize(vec3(${CINEMATIC.light.key.map((x) => x.toFixed(3)).join(", ")}));
     vec3 fill = normalize(vec3(${CINEMATIC.light.fill.map((x) => x.toFixed(3)).join(", ")}));
     float diff = max(dot(n, key), 0.0);
@@ -231,13 +230,11 @@ const EGG_FRAG = /* glsl */ `
     float spec = pow(max(dot(n, h), 0.0), ${CINEMATIC.light.shininess.toFixed(1)}) * ${CINEMATIC.light.specular.toFixed(3)} * (vKind < 1.5 ? 1.0 : 0.6);
     vec3 lit = albedo * (${CINEMATIC.light.ambient.toFixed(3)} + ${CINEMATIC.light.diffuse.toFixed(3)} * diff + ${CINEMATIC.light.filler.toFixed(3)} * fil);
     vec3 rv = reflect(normalize(vView), n);
-    // the inside of the letters (their backs, towards the planet) is not in the sun: darker, and less of a mirror
-    float inside = vKind > 3.5 ? ${CINEMATIC.light.inside.toFixed(3)} : 1.0;
     float rim = vKind > 0.5 && vKind < 1.5 ? ${CINEMATIC.light.edgeShine.toFixed(3)} : ${CINEMATIC.light.faceShine.toFixed(3)};
-    vec3 refl = albedo * studio(rv) * ${CINEMATIC.light.reflect.toFixed(3)} * inside + vec3(strips(rv) * rim);
-    // (the face stays the lighter, the metal is in the bevel and the walls: a face that mirrors the dark band under the horizon reads as steel against the bright land)
-    float metal = vKind < 0.5 ? ${CINEMATIC.light.faceMetal.toFixed(3)} : (vKind > 3.5 ? ${CINEMATIC.light.metal.toFixed(3)} * 0.5 : ${CINEMATIC.light.metal.toFixed(3)});
-    vec3 col = mix(lit * inside, refl, metal) + vec3(spec * inside);
+    vec3 refl = albedo * studio(rv) * ${CINEMATIC.light.reflect.toFixed(3)} + vec3(strips(rv) * rim);
+    // the metal is in the walls and the bevel; the faces stay the lighter, and the backs hardly mirror
+    float metal = vKind < 0.5 ? ${CINEMATIC.light.faceMetal.toFixed(3)} : (vKind > 3.5 ? ${CINEMATIC.light.metal.toFixed(3)} * 0.4 : ${CINEMATIC.light.metal.toFixed(3)});
+    vec3 col = mix(lit, refl, metal) + vec3(spec * (vKind > 3.5 ? 0.3 : 1.0));
     gl_FragColor = vec4(min(col, vec3(1.0)), 1.0);
   }
 `;
@@ -605,6 +602,9 @@ export class CaptionLayer {
   private eggFace = { value: [1, 1, 1] as number[] };
   private eggOutline = { value: [0.7, 0.5, 0.1] as number[] };
   private eggSide = { value: [0.5, 0.5, 0.5] as number[] };
+  private eggBack = { value: [0.2, 0.2, 0.2] as number[] };
+  private eggEnvHi = { value: [1, 1, 1] as number[] };
+  private eggEnvLo = { value: [0.2, 0.2, 0.2] as number[] };
   /** The far slices (layer below this) that carry the text colour in mode `edge` (0: none). */
   private edgeLayer = { value: 0 };
   /** Slices of the thickness now (the quality governor lowers them; `CAPTION.slices` is the best) and the most the canvas is drawn at. */
@@ -717,6 +717,9 @@ export class CaptionLayer {
         uFace: this.eggFace,
         uOutline: this.eggOutline,
         uSide: this.eggSide,
+        uBack: this.eggBack,
+        uEnvHi: this.eggEnvHi,
+        uEnvLo: this.eggEnvLo,
         uBaseLat: { value: 0 },
         uBelow: { value: 0 },
         uAbove: { value: 0 },
@@ -851,7 +854,10 @@ export class CaptionLayer {
     this.edgeLayer.value = this.sideMode === "edge" ? (CAPTION.colors.edgeSlices - 0.5) / (this.slices - 1) : 0;
     this.dimColor.value = [...theme.background];
     const dark = 0.2126 * theme.background[0] + 0.7152 * theme.background[1] + 0.0722 * theme.background[2] < 0.5;
-    this.eggFace.value = [...hex(CINEMATIC.face)];
+    this.eggFace.value = [...hex(dark ? CINEMATIC.face.dark : CINEMATIC.face.light)];
+    this.eggBack.value = [...hex(dark ? CINEMATIC.back.dark : CINEMATIC.back.light)];
+    this.eggEnvHi.value = [...hex(dark ? CINEMATIC.env.dark.hi : CINEMATIC.env.light.hi)];
+    this.eggEnvLo.value = [...hex(dark ? CINEMATIC.env.dark.lo : CINEMATIC.env.light.lo)];
     this.eggOutline.value = [...hex(dark ? CINEMATIC.outline.dark : CINEMATIC.outline.light)];
     this.eggSide.value = [...hex(dark ? CINEMATIC.sideColor.dark : CINEMATIC.sideColor.light)];
     this.dimAlpha = dark ? CAPTION.dim.alpha.dark : CAPTION.dim.alpha.light;
@@ -951,6 +957,23 @@ export class CaptionLayer {
   private landK = 0;
   private landAt = -1;
   private landWant = false;
+
+  /**
+   * How much the places' lights are up now, 0 to 1: they come up through the dither over `CINEMATIC.city.inMs` when the word has landed (the chord), the
+   * one accent, and go with the end of the interlude (or a cut) over `outMs`.
+   */
+  cityShare(): number {
+    const want = this.motion.eggActive && this.flightU >= 1;
+    const now = performance.now();
+    const dt = this.cityAt < 0 ? 0 : Math.min(now - this.cityAt, 64);
+    this.cityAt = want || this.cityK > 0 ? now : -1;
+    this.cityK = Math.min(1, Math.max(0, this.cityK + (want ? dt / CINEMATIC.city.inMs : -dt / CINEMATIC.city.outMs)));
+    this.cityWant = want;
+    return this.cityK;
+  }
+  private cityK = 0;
+  private cityAt = -1;
+  private cityWant = false;
 
   /** Play the interlude now (the key U with `?cinematic`): false when it cannot (the rows are not rolling, or one is under way, or there is none planned). */
   playInterlude(retries = 6): boolean {
@@ -1192,6 +1215,7 @@ export class CaptionLayer {
     this.flightU = 1;
     this.cutK = 0;
     this.landK = 0;
+    this.cityK = 0;
     this.motion.settle(this.want);
   }
 
@@ -1207,7 +1231,7 @@ export class CaptionLayer {
 
   /** The entrance or the orbit exit is under way: full frames (the globe's own loop) are wanted. */
   get animating(): boolean {
-    return this.built !== null && !this.failed && (this.motion.animating || this.zoomK > 0 || this.flightU < 1 || (this.landWant ? this.landK < 1 : this.landK > 0));
+    return this.built !== null && !this.failed && (this.motion.animating || this.zoomK > 0 || this.flightU < 1 || (this.landWant ? this.landK < 1 : this.landK > 0) || (this.cityWant ? this.cityK < 1 : this.cityK > 0));
   }
 
   /** The rows are in and rolling (or turning over to the next phrase set): the caption's own capped loop draws it, nothing else. */
@@ -1282,7 +1306,6 @@ export class CaptionLayer {
     let any = false;
     const bands = this.dimMode === "bands" && this.dimAlpha > 0;
     let presence = 0;
-    let eggPresence = 0;
     let eggTheta: number | null = null;
     if (b.egg) {
       // (the word's start, east of the page's meridian: its leading end at `CINEMATIC.leadStartLon`, a span of the word beyond it)
@@ -1317,8 +1340,7 @@ export class CaptionLayer {
       if (hidden) continue;
       any = true;
       const p = dimPresence(theta, start);
-      if (v.set === EGG) eggPresence = p;
-      else presence += p;
+      if (v.set !== EGG) presence += p;
       // The earth's axis is y: a line's own meridian is the view's (`lon`), turned by the entrance's `theta` (east positive, west negative).
       this.tmp.makeRotationY((lon * Math.PI) / 180 + theta);
       v.mesh.matrix.copy(this.tmp);
@@ -1339,8 +1361,9 @@ export class CaptionLayer {
     // The block's ellipse: its strength is the mean presence of the rows (a row that is on its way in or out is half of one).
     if (this.ellipse) {
       const rowsE = presence / Math.max(1, b.pieces.length);
-      const egg = eggPresence > rowsE;
-      const e = this.dimMode === "ellipse" && this.dimAlpha > 0 ? Math.max(rowsE, eggPresence) : 0;
+      // (the interlude's word is lit and contrasted enough: no dimming of the planet behind it, which was a band across the filled land)
+      const egg = false;
+      const e = this.dimMode === "ellipse" && this.dimAlpha > 0 ? rowsE : 0;
       this.ellipse.visible = e > 0.01;
       if (this.ellipse.visible) this.updateEllipse(lat, egg);
       this.ellipseU.uAlpha.value = this.dimAlpha * Math.min(1, e);
