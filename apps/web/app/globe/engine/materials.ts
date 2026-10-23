@@ -24,16 +24,16 @@ const DITHER_GLSL = /* glsl */ `
 
 export function lineMaterial(coverage: number, stipple = 0): ShaderMaterial {
   return new ShaderMaterial({
-    uniforms: { uColor: { value: new Color() }, uCoverage: { value: coverage }, uStipple: { value: stipple } },
+    // `uAlt` / `uAltAmt`: the colour the line is taken towards (the borders, over the land the interlude fills, are the page's colour: the fill is the ink's)
+    uniforms: { uColor: { value: new Color() }, uCoverage: { value: coverage }, uStipple: { value: stipple }, uAlt: { value: new Color() }, uAltAmt: { value: 0 } },
     vertexShader: PASS_THROUGH_VERTEX,
     fragmentShader: /* glsl */ `
-      uniform vec3 uColor; uniform float uCoverage; uniform float uStipple;
+      uniform vec3 uColor; uniform float uCoverage; uniform float uStipple; uniform vec3 uAlt; uniform float uAltAmt;
       ${DITHER_GLSL}
       void main() {
         ditherDiscard(uCoverage);
-        // Regular stipple (every n-th pixel on the diagonal) reads as a dotted line at any angle.
         if (uStipple > 0.0 && mod(floor(gl_FragCoord.x) + floor(gl_FragCoord.y), uStipple) > 0.5) discard;
-        gl_FragColor = vec4(uColor, 1.0);
+        gl_FragColor = vec4(mix(uColor, uAlt, uAltAmt), 1.0);
       }
     `,
   });
@@ -42,9 +42,28 @@ export function lineMaterial(coverage: number, stipple = 0): ShaderMaterial {
 /** The globe disc: writes the page colour and depth, so everything behind it is hidden and the ocean is invisible. */
 export function occluderMaterial(): ShaderMaterial {
   return new ShaderMaterial({
-    uniforms: { uColor: { value: new Color() } },
-    vertexShader: PASS_THROUGH_VERTEX,
-    fragmentShader: "uniform vec3 uColor; void main() { gl_FragColor = vec4(uColor, 1.0); }",
+    // `uLandMap`: the continents as a picture (engine/land.ts, equirectangular, 255 on land); `uLand`: how much of the land is filled with `uFill` (0: not at all,
+    // the ocean and the land are both the page's colour, as the globe always was; 1: filled). The map is looked up by the direction of the fragment on the
+    // sphere (the scene is in the earth's frame), so the fill is the earth's own.
+    uniforms: { uColor: { value: new Color() }, uFill: { value: new Color() }, uLand: { value: 0 }, uLandMap: { value: null } },
+    vertexShader: /* glsl */ `
+      varying vec3 vDir;
+      void main() { vDir = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform vec3 uColor; uniform vec3 uFill; uniform float uLand; uniform sampler2D uLandMap;
+      varying vec3 vDir;
+      void main() {
+        vec3 col = uColor;
+        if (uLand > 0.001) {
+          vec3 d = normalize(vDir);
+          vec2 uv = vec2(atan(d.x, d.z) * 0.15915494 + 0.5, asin(clamp(d.y, -1.0, 1.0)) * 0.31830989 + 0.5);
+          float m = smoothstep(0.42, 0.58, texture2D(uLandMap, uv).r);
+          col = mix(uColor, uFill, m * uLand);
+        }
+        gl_FragColor = vec4(col, 1.0);
+      }
+    `,
     polygonOffset: true,
     polygonOffsetFactor: 1,
     polygonOffsetUnits: 1,

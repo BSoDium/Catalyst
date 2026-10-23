@@ -3,7 +3,7 @@ import { WORD_OUTLINES } from "./cinematic-glyphs";
 import { CINEMATIC } from "./cinematic";
 import { buildWordGeometry, glyphPolygons, KIND } from "./cinematic-word";
 
-const opts = { bevelCaps: CINEMATIC.bevelCaps, depthCaps: CINEMATIC.depthCaps };
+const opts = { bevelCaps: CINEMATIC.bevelCaps, depthCaps: CINEMATIC.depthCaps, bevelSegments: CINEMATIC.bevelSegments };
 
 describe("the interlude's word, baked", () => {
   it("is the word the interlude says, from the page's face", () => {
@@ -67,7 +67,7 @@ describe("the interlude's word, solid", () => {
     const kinds = [0, 0, 0, 0, 0];
     for (let i = 0; i < kind.count; i += 3) kinds[kind.getX(i)!]!++;
     const edges = WORD_OUTLINES.contours.reduce((a, c) => a + c.length / 2, 0);
-    expect(kinds[KIND.outline]).toBe(edges * 2);
+    expect(kinds[KIND.outline]).toBe(edges * 2 * CINEMATIC.bevelSegments);
     expect(kinds[KIND.wall]).toBe(edges * 2);
     // (the same polygons, inset and not: earcut may drop a sliver from one of them)
     expect(Math.abs(kinds[KIND.face]! - kinds[KIND.back]!)).toBeLessThanOrEqual(6);

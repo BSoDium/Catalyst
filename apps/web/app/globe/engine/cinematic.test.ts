@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CAPTION_FACE, CaptionMotion, DRIFT, cycleMs, eggMs, eggX, entranceMs, placeEgg, shellXY, type CinematicPlan } from "./caption";
+import { CAPTION_FACE, CaptionMotion, lineHidden, DRIFT, cycleMs, eggMs, eggX, entranceMs, placeEgg, shellXY, type CinematicPlan } from "./caption";
 import { CINEMATIC, planCinematic } from "./cinematic";
 import { SOUND } from "./cinematic-sound";
 import { markPlayed, visitState } from "./visit";
@@ -123,8 +123,18 @@ describe("the cinematic interlude: the big row's trajectory", () => {
     expect(eggX(0, start, s)).toBe(start);
     expect(eggX(s.enterMs, start, s)).toBeCloseTo((s.ampDeg * Math.PI) / 180, 12);
     expect(eggX(s.enterMs + s.holdMs, start, s)).toBeCloseTo(-(s.ampDeg * Math.PI) / 180, 12);
-    expect(eggX(tIn, start, s)).toBeCloseTo(-start, 12);
-    expect(eggX(tIn + 1000, start, s)).toBe(-start);
+    // (it ends `exitExtraDeg` farther round than it came in from: the shell is higher than the planet, and the last frames would show it beside the disc)
+    const endAt = -(start + (s.exitExtraDeg * Math.PI) / 180);
+    expect(eggX(tIn, start, s)).toBeCloseTo(endAt, 12);
+    expect(eggX(tIn + 1000, start, s)).toBeCloseTo(endAt, 12);
+  });
+  it("ends with the whole word behind the planet for the camera it ends on, so that its last frames do not show it beside the disc", () => {
+    const rad = Math.PI / 180;
+    const startRad = (CINEMATIC.leadStartLon + 42) * rad; // (a span of 84 degrees, as the word has at a desktop's size)
+    const endAt = eggX(tIn + 1, startRad, s);
+    for (const d of [3.4, 4.4, 6]) expect(lineHidden(endAt, { halfSpan: 42 * rad, baseLat: 0 }, d, 0, CINEMATIC.radius)).toBe(true);
+    // and before that: it is seen going behind the limb, with the nearest point of it, not all at once
+    expect(lineHidden(-startRad, { halfSpan: 42 * rad, baseLat: 0 }, 4.4, 0, CINEMATIC.radius)).toBe(false);
   });
   it("only ever moves on: monotone from behind the planet on one side to behind it on the other", () => {
     let last = Infinity;

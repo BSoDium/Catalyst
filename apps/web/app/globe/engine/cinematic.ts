@@ -43,18 +43,21 @@ export const CINEMATIC = {
   face: "#ffffff",
   sideColor: { light: "#e2e5ea", dark: "#3a3e47" },
   depthCaps: 0.3,
-  bevelCaps: 0.035,
+  bevelCaps: 0.05,
+  /** The bevel is a quarter circle in this many steps (a few more triangles, a bevel that catches the light along its width). */
+  bevelSegments: 3,
   /**
    * The light, in the CAMERA's frame (x right, y up, z towards the viewer), so it comes from the same side of the screen wherever the word is on its
    * orbit: a key light from the upper left and in front, a weak fill from the lower right, an ambient share, and a sharp highlight (Blinn-Phong) and a REFLECTION
-   * of a procedural studio (engine/caption-layer.ts `studio`) that makes the surfaces read as polished metal: `metal` is its share of the surface (the rest is
-   * `albedo * (ambient + diffuse * key + filler * fill)`), `reflect` its brightness.
+   * of a procedural studio (engine/caption-layer.ts `studio`) that makes the surfaces read as polished metal: `metal` is its share of the surface (`faceMetal` on the faces, which stay the lighter) (the rest is
+   * `albedo * (ambient + diffuse * key + filler * fill)`), `reflect` its brightness. `inside`: how much of the light the backs of the letters (towards the planet, not in the sun) keep. `edgeShine` and
+   * `faceShine`: how bright the thin strip lights of the studio are in the bevel's reflection and in a face's (the glints that run along the edges).
    */
-  light: { key: [-0.45, 0.65, 0.62] as const, fill: [0.6, -0.3, 0.4] as const, ambient: 0.55, diffuse: 0.55, filler: 0.16, specular: 0.35, shininess: 90, metal: 0.55, reflect: 1.1 },
+  light: { key: [-0.45, 0.65, 0.62] as const, fill: [0.6, -0.3, 0.4] as const, ambient: 0.5, diffuse: 0.5, filler: 0.14, specular: 0.22, shininess: 90, metal: 0.55, faceMetal: 0.3, reflect: 0.85, inside: 0.5, edgeShine: 1.6, faceShine: 0.25 },
   radius: 2,
   capScale: 2,
   maxCapScale: 6,
-  fill: 1.85,
+  fill: 2.05,
   maxHalfScreen: 0.47,
   /**
    * The timing (engine/caption.ts `EggShape`, ms), made to the sound's length (`SOUND` in cinematic-sound.ts: 24.1 s, a long crescendo and its final chord
@@ -64,7 +67,7 @@ export const CINEMATIC = {
    * LEANS over the first `zoomInMs`, stays so for as long as the word is on the stage, and comes back upright over the `zoomOutMs` AFTER it has
    * gone (the whole is `eggMs`: about 24 s, begun at 13 s in; the idle hold at 30 s waits for it, `Renderer.freezeWhenIdle`).
    */
-  shape: { leaveMs: 500, gapMs: 400, enterMs: 19350, ease: 1, holdMs: 1000, exitMs: 1450, ampDeg: 2.5, zoomLevels: 0.7, zoomInMs: 6000, zoomOutMs: 1400, zoomCutMs: 700 },
+  shape: { leaveMs: 500, gapMs: 400, enterMs: 19350, ease: 1, holdMs: 1000, exitMs: 1450, ampDeg: 2.5, exitExtraDeg: 14, zoomLevels: 0.7, zoomInMs: 6000, zoomOutMs: 1400, zoomCutMs: 700 },
   /**
    * Where the word starts: the longitude its LEADING end (the west one) begins at, degrees east, in the earth's own frame, not the page's. The flight's
    * first camera is over Greece (22 E) at 0.15 earth radii, from where the equatorial shell is seen only up to about 111 E: the word starts BEYOND that
@@ -77,6 +80,8 @@ export const CINEMATIC = {
    * beside the planet, and would be seen to appear. The camera is in place at 0.1.
    */
   wordFromU: 0.1,
+  /** The continents are filled with the ink for the whole interlude (the planet's disc, `GlobeScene.setLand`), eased in over `inMs` and out over `outMs`. */
+  land: { inMs: 900, outMs: 1400 },
   /** The side the word comes in from: EAST (1), as the studio's does. */
   side: 1 as 1 | -1,
   /**

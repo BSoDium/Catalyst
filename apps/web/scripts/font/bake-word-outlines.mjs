@@ -27,7 +27,7 @@ const WEIGHT = Number(process.argv[3] ?? 800);
 /** The closest two letters' outlines come, cap heights. */
 const GAP = Number(process.argv[4] ?? 0.085);
 /** How much wider than the face draws them the letters are, and the stroke added to keep the horizontal bars up with the stems (cap heights). */
-const WIDE = Number(process.argv[5] ?? 1.28);
+const WIDE = Number(process.argv[5] ?? 1.45);
 const EMBOLDEN = 0.01;
 const CAP_PX = 800;
 /** The simplification tolerance, cap heights. */

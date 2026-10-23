@@ -3,8 +3,14 @@ import {
   BufferAttribute,
   BufferGeometry,
   LineLoop,
+  ClampToEdgeWrapping,
+  DataTexture,
+  LinearFilter,
   LineSegments,
   Mesh,
+  RedFormat,
+  RepeatWrapping,
+  UnsignedByteType,
   type PerspectiveCamera,
   Scene,
   SphereGeometry,
@@ -16,6 +22,7 @@ import { FadeArray, clockStep } from "./fade";
 import { borderLevel, bordersWanted } from "./palette";
 import type { ViewBasis } from "./geo";
 import { zoomToRadiusPx } from "./geo";
+import { LAND_H, LAND_W, landMask } from "./land";
 import { GRATICULE_STEP_DEG, graticuleSegments, polylinesToSegments } from "./geometry";
 import { OCCLUDER_RADIUS, lineMaterial, occluderMaterial, silhouetteMaterial } from "./materials";
 import { RouteLayer } from "./route-layer";
@@ -24,6 +31,9 @@ import { SkyLayer } from "./sky-layer";
 import { routeLift } from "./view";
 import { TUNING } from "./tuning";
 
+
+/** How much of the ink the filled land has (the rest is the page's colour): near the ink, as the letters' metal is. */
+const LAND_SHARE = 0.86;
 
 function segmentGeometry(positions: Float32Array): BufferGeometry {
   const g = new BufferGeometry();
@@ -44,6 +54,10 @@ export class GlobeScene {
   private geometries: BufferGeometry[] = [];
   private materials: ShaderMaterial[] = [];
   private occluder = occluderMaterial();
+  private coastData: Polylines | null = null;
+  private landTex: DataTexture | null = null;
+  private landNow = 0;
+  private landFill: Rgb = [0, 0, 0];
   private graticule = lineMaterial(1, 3);
   private borders = lineMaterial(1);
   private bordersLines: LineSegments | null = null;
@@ -64,6 +78,7 @@ export class GlobeScene {
     borders: Polylines;
   }) {
     this.materials.push(this.occluder, this.graticule, this.borders, this.coast, this.silhouette);
+    this.coastData = data.coastlines;
 
     const disc = new SphereGeometry(OCCLUDER_RADIUS, 96, 48);
     this.geometries.push(disc);
@@ -103,6 +118,10 @@ export class GlobeScene {
   applyTheme(t: GlobeTheme) {
     // The disc is the ocean: exactly the page colour, so the far side stays hidden without a visible body.
     this.occluder.uniforms.uColor!.value.setRGB(...t.background);
+    // the land the interlude fills: the ink, taken a little towards the page (a fill of the full ink is the loudest thing on the page), and the borders over it the page's
+    this.landFill = [0, 1, 2].map((i) => t.background[i]! + (t.ink[i]! - t.background[i]!) * LAND_SHARE) as unknown as Rgb;
+    this.occluder.uniforms.uFill!.value.setRGB(...this.landFill);
+    this.borders.uniforms.uAlt!.value.setRGB(...t.background);
     this.graticule.uniforms.uColor!.value.setRGB(...t.grid);
     this.ramp = t.ramp;
     this.borderLevelNow = -1;
@@ -110,6 +129,37 @@ export class GlobeScene {
     this.silhouette.uniforms.uColor!.value.setRGB(...t.outline);
     this.routes.applyTheme(t);
     this.sky?.applyTheme(t);
+  }
+
+  /**
+   * Make the land mask now (engine/land.ts: a few milliseconds and 2 MB; the interlude is planned, so it is done before it begins and not in the frame
+   * that starts it). Idempotent.
+   */
+  prepareLand() {
+    if (this.landTex || !this.coastData) return;
+    const tex = new DataTexture(landMask(this.coastData), LAND_W, LAND_H, RedFormat, UnsignedByteType);
+    tex.magFilter = LinearFilter;
+    tex.minFilter = LinearFilter;
+    tex.wrapS = RepeatWrapping;
+    tex.wrapT = ClampToEdgeWrapping;
+    tex.generateMipmaps = false;
+    tex.unpackAlignment = 1;
+    tex.needsUpdate = true;
+    this.landTex = tex;
+    this.occluder.uniforms.uLandMap!.value = tex;
+  }
+
+  /**
+   * The continents are filled with the ink, 0 (not at all) to 1: the borders go to the page's colour over it so that they stay seen, the coastlines
+   * (the ink's own tone) are the fill's edge. A change of a hundredth or more is written.
+   */
+  setLand(k: number) {
+    const x = Math.min(1, Math.max(0, k));
+    if (x > 0 && !this.landTex) this.prepareLand();
+    if (Math.abs(x - this.landNow) < 0.01 && !(x === 0 && this.landNow !== 0)) return;
+    this.landNow = x;
+    this.occluder.uniforms.uLand!.value = x;
+    this.borders.uniforms.uAltAmt!.value = x;
   }
 
   /** Whether the borders' fade has not reached its end: the frame loop must keep going. */
@@ -171,6 +221,7 @@ export class GlobeScene {
   }
 
   dispose() {
+    this.landTex?.dispose();
     this.routes.dispose();
     this.sky?.dispose();
     for (const g of this.geometries) g.dispose();

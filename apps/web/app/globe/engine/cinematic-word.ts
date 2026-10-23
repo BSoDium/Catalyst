@@ -9,8 +9,8 @@
  * `(east, north, radial)`, with east and north in cap heights (the strip is the same scale both ways). Triangles wind counter-clockwise seen from
  * outside, in `(east, north, radial)`, which is right-handed like the world, so the faces are culled as any mesh's are.
  *
- * The outline is mitred inwards by `bevelCaps` (a vertex moves along the corner's mitre): the front face is that smaller outline, and a chamfer at 45
- * degrees joins it to the true outline a bevel's depth behind the front. The walls run from there straight to the back, which is the true outline, flat
+ * The outline is mitred inwards by `bevelCaps` (a vertex moves along the corner's mitre): the front face is that smaller outline, and a ROUNDED bevel (a quarter
+ * circle in `bevelSegments` steps, so that it catches the light along its width) joins it to the true outline a bevel's depth behind the front. The walls run from there straight to the back, which is the true outline, flat
  * and sharp-edged (a bevel on the back read as a rounded word from behind). The front chamfer is the word's OUTLINE (`kind` 1), the walls its thickness (2).
  */
 import { BufferAttribute, BufferGeometry, ShapeUtils, Vector2 } from "three";
@@ -116,7 +116,7 @@ function ringOf(c: readonly P[], b: number, cornerCos = Math.cos((35 * Math.PI) 
  * Build the word. `bevelCaps`: the bevel's width and depth, cap heights; `depthCaps`: the thickness, cap heights (the strip's `uDepth` is that many caps
  * in planet radii: the chamfers' share of it is the same at every size).
  */
-export function buildWordGeometry(o: { bevelCaps: number; depthCaps: number }, contours: readonly (readonly number[])[] = WORD_OUTLINES.contours): WordMesh {
+export function buildWordGeometry(o: { bevelCaps: number; depthCaps: number; bevelSegments?: number }, contours: readonly (readonly number[])[] = WORD_OUTLINES.contours): WordMesh {
   const { widthCaps, aboveCaps, belowCaps } = WORD_OUTLINES;
   const b = o.bevelCaps;
   const zFront = 1;
@@ -155,6 +155,12 @@ export function buildWordGeometry(o: { bevelCaps: number; depthCaps: number }, c
     tri(a, c, d, k);
   };
 
+  const segs = Math.max(1, o.bevelSegments ?? 1);
+  /** A point of the bevel's quarter circle: how much of the inset is left (1 at the face, 0 at the wall), how far back, and the normal's share outward and forward. */
+  const profile = (j: number) => {
+    const th = (Math.PI / 2) * (j / segs);
+    return { inset: 1 - Math.sin(th), dz: (b / o.depthCaps) * (1 - Math.cos(th)), sn: Math.sin(th), cn: Math.cos(th) };
+  };
   for (const g of glyphPolygons(contours)) {
     const rings = [ringOf(g.outer, b), ...g.holes.map((h) => ringOf(h, b))];
     // the front: the inset outlines, outer then holes, triangulated; the back: the true ones
@@ -185,8 +191,15 @@ export function buildWordGeometry(o: { bevelCaps: number; depthCaps: number }, c
         const I1 = r.i[k1]!;
         const O0 = r.o[k]!;
         const O1 = r.o[k1]!;
-        // the front chamfer (45 degrees: outward and forward in equal parts)
-        quad([I0[0], I0[1], zFront, s0[0], s0[1], 1], [I1[0], I1[1], zFront, s1[0], s1[1], 1], [O1[0], O1[1], zFrontEdge, s1[0], s1[1], 1], [O0[0], O0[1], zFrontEdge, s0[0], s0[1], 1], KIND.outline);
+        // the front bevel: a quarter circle from the front's smaller outline (inset b, at the front) to the true outline (a bevel's depth behind it), its
+        // normal turning from straight out of the face to straight out of the wall
+        for (let j = 0; j < segs; j++) {
+          const a = profile(j);
+          const c = profile(j + 1);
+          const at = (P: P, Q: P, q: { inset: number; dz: number }) => [Q[0] + (P[0] - Q[0]) * q.inset, Q[1] + (P[1] - Q[1]) * q.inset, zFront - q.dz] as const;
+          const v = (P: P, Q: P, q: ReturnType<typeof profile>, sm: P) => [...at(P, Q, q), sm[0] * q.sn, sm[1] * q.sn, q.cn];
+          quad(v(I0, O0, a, s0), v(I1, O1, a, s1), v(I1, O1, c, s1), v(I0, O0, c, s0), KIND.outline);
+        }
         // the wall, straight to the back
         quad([O0[0], O0[1], zFrontEdge, s0[0], s0[1], 0], [O1[0], O1[1], zFrontEdge, s1[0], s1[1], 0], [O1[0], O1[1], zBack, s1[0], s1[1], 0], [O0[0], O0[1], zBack, s0[0], s0[1], 0], KIND.wall);
       }

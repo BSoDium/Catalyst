@@ -801,6 +801,11 @@ export interface EggShape {
   exitMs: number;
   ampDeg: number;
   /**
+   * The word leaves round the far side to this many degrees BEYOND where it came in from (it came in from `start`, it ends at `-(start + exitExtraDeg)`): the
+   * shell it is on is higher than the planet's, and a word that ends where it began is seen beside the planet's disc for its last few frames, and then gone.
+   */
+  exitExtraDeg: number;
+  /**
    * The globe pulls back while it lasts (everything on it, the word included, is smaller: a smoothstep of `zoomInMs` from where the interlude
    * begins, held while the word is on the stage, and back in the `zoomOutMs` that follow its exit), by `zoomLevels` levels of zoom (2^-levels of its size). `zoomCutMs`: how long a cut-short interlude
    * (a gesture) takes to give the size back.
@@ -825,7 +830,14 @@ export interface CinematicPlan {
 export const eggMs = (s: EggShape): number => s.leaveMs + s.gapMs + s.enterMs + s.holdMs + s.exitMs + s.zoomOutMs;
 
 /** The row's trajectory in the interlude: `rowX` with the interlude's own shape. `tau`: ms since the big row's entrance began. */
-export const eggX = (tau: number, start: number, s: EggShape): number => rowX(tau, start, (s.ampDeg * Math.PI) / 180, { ms: s.enterMs, ease: s.ease, dwellMs: s.holdMs, exitMs: s.exitMs });
+export const eggX = (tau: number, start: number, s: EggShape): number => {
+  const amp = (s.ampDeg * Math.PI) / 180;
+  const x = rowX(tau, start, amp, { ms: s.enterMs, ease: s.ease, dwellMs: s.holdMs, exitMs: s.exitMs });
+  // (the exit's share of the way is stretched, so that the word ends `exitExtraDeg` farther round than the row's own exit does, and still moves as it does)
+  if (x >= -amp) return x;
+  const k = (start + (s.exitExtraDeg * Math.PI) / 180 - amp) / Math.max(1e-6, start - amp);
+  return -amp + (x + amp) * k;
+};
 
 /** How the caption leaves: a fade (the interaction's exit: cheap) or the orbit (the lines travel behind the planet). */
 export type CaptionExit = "fade" | "orbit";

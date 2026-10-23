@@ -209,6 +209,17 @@ const EGG_FRAG = /* glsl */ `
     c += 0.6 * pow(max(dot(r, normalize(vec3(0.62, 0.28, 0.73))), 0.0), 30.0);
     return c;
   }
+  // THIN strip lights (a few degrees wide): a surface whose reflection crosses one flashes, and the edges, whose normals turn quickly along the bevel, do so one
+  // after another as the word moves: the shine that runs along the edges of a metal object. They are not in what a flat face reflects (it is one direction, nearly).
+  float strips(vec3 r) {
+    float s = 0.0;
+    s += smoothstep(0.9935, 0.9985, dot(r, normalize(vec3(-0.35, 0.82, 0.45))));
+    s += smoothstep(0.9935, 0.9985, dot(r, normalize(vec3(0.55, 0.15, 0.82))));
+    s += smoothstep(0.9935, 0.9985, dot(r, normalize(vec3(-0.78, -0.1, 0.62))));
+    s += smoothstep(0.9935, 0.9985, dot(r, normalize(vec3(0.15, -0.55, 0.82))));
+    s += smoothstep(0.9935, 0.9985, dot(r, normalize(vec3(0.82, 0.55, 0.15))));
+    return s;
+  }
   void main() {
     vec3 n = normalize(vNormal);
     vec3 albedo = vKind < 0.5 ? uFace : (vKind < 1.5 ? uOutline : uSide);
@@ -219,8 +230,14 @@ const EGG_FRAG = /* glsl */ `
     vec3 h = normalize(key + vec3(0.0, 0.0, 1.0));
     float spec = pow(max(dot(n, h), 0.0), ${CINEMATIC.light.shininess.toFixed(1)}) * ${CINEMATIC.light.specular.toFixed(3)} * (vKind < 1.5 ? 1.0 : 0.6);
     vec3 lit = albedo * (${CINEMATIC.light.ambient.toFixed(3)} + ${CINEMATIC.light.diffuse.toFixed(3)} * diff + ${CINEMATIC.light.filler.toFixed(3)} * fil);
-    vec3 refl = albedo * studio(reflect(normalize(vView), n)) * ${CINEMATIC.light.reflect.toFixed(3)};
-    vec3 col = mix(lit, refl, ${CINEMATIC.light.metal.toFixed(3)}) + vec3(spec);
+    vec3 rv = reflect(normalize(vView), n);
+    // the inside of the letters (their backs, towards the planet) is not in the sun: darker, and less of a mirror
+    float inside = vKind > 3.5 ? ${CINEMATIC.light.inside.toFixed(3)} : 1.0;
+    float rim = vKind > 0.5 && vKind < 1.5 ? ${CINEMATIC.light.edgeShine.toFixed(3)} : ${CINEMATIC.light.faceShine.toFixed(3)};
+    vec3 refl = albedo * studio(rv) * ${CINEMATIC.light.reflect.toFixed(3)} * inside + vec3(strips(rv) * rim);
+    // (the face stays the lighter, the metal is in the bevel and the walls: a face that mirrors the dark band under the horizon reads as steel against the bright land)
+    float metal = vKind < 0.5 ? ${CINEMATIC.light.faceMetal.toFixed(3)} : (vKind > 3.5 ? ${CINEMATIC.light.metal.toFixed(3)} * 0.5 : ${CINEMATIC.light.metal.toFixed(3)});
+    vec3 col = mix(lit * inside, refl, metal) + vec3(spec * inside);
     gl_FragColor = vec4(min(col, vec3(1.0)), 1.0);
   }
 `;
@@ -910,6 +927,28 @@ export class CaptionLayer {
     return Math.min(1 - x * x * (3 - 2 * x), 1 - y * y * (3 - 2 * y));
   }
 
+  /** An interlude is planned for this page (the globe makes what it needs of it, such as the land's picture, ahead of time). */
+  get eggPlanned(): boolean {
+    return this.motion.egg !== null;
+  }
+
+  /**
+   * How much the continents are filled with the ink now, 0 to 1: the whole of the interlude (the flight, the word, the globe coming back), eased in and
+   * out (`CINEMATIC.land`). Read once a frame, after `flightProgress` and `zoomOutLevels`.
+   */
+  landShare(): number {
+    const want = this.motion.eggActive || this.zoomK > 0 || this.flightU < 1;
+    const now = performance.now();
+    const dt = this.landAt < 0 ? 0 : Math.min(now - this.landAt, 64);
+    this.landAt = want || this.landK > 0 ? now : -1;
+    this.landK = Math.min(1, Math.max(0, this.landK + (want ? dt / CINEMATIC.land.inMs : -dt / CINEMATIC.land.outMs)));
+    this.landWant = want;
+    return this.landK * this.landK * (3 - 2 * this.landK);
+  }
+  private landK = 0;
+  private landAt = -1;
+  private landWant = false;
+
   /** Play the interlude now (the key U with `?cinematic`): false when it cannot (the rows are not rolling, or one is under way, or there is none planned). */
   playInterlude(retries = 6): boolean {
     const b = this.built;
@@ -1138,6 +1177,7 @@ export class CaptionLayer {
   settle(): void {
     this.zoomK = 0; // (the pull-back and the flight are timed things too: nothing is drawn for them to run in)
     this.flightU = 1;
+    this.landK = 0;
     this.motion.settle(this.want);
   }
 
@@ -1153,7 +1193,7 @@ export class CaptionLayer {
 
   /** The entrance or the orbit exit is under way: full frames (the globe's own loop) are wanted. */
   get animating(): boolean {
-    return this.built !== null && !this.failed && (this.motion.animating || this.zoomK > 0 || this.flightU < 1);
+    return this.built !== null && !this.failed && (this.motion.animating || this.zoomK > 0 || this.flightU < 1 || (this.landWant ? this.landK < 1 : this.landK > 0));
   }
 
   /** The rows are in and rolling (or turning over to the next phrase set): the caption's own capped loop draws it, nothing else. */
@@ -1595,7 +1635,7 @@ export class CaptionLayer {
     // the big row of the cinematic interlude (only when one is planned: no texture is made for nothing)
     const eggRuns = planned ? clean([{ text: CINEMATIC.word }]) : null;
     // (the word is a solid mesh made from baked outlines: no face to load, no texture to draw; its box comes with the mesh)
-    const eggWord = planned ? buildWordGeometry({ bevelCaps: CINEMATIC.bevelCaps, depthCaps: CINEMATIC.depthCaps }) : null;
+    const eggWord = planned ? buildWordGeometry({ bevelCaps: CINEMATIC.bevelCaps, depthCaps: CINEMATIC.depthCaps, bevelSegments: CINEMATIC.bevelSegments }) : null;
     this.failed = false;
     const emPx = CAPTION.texCap / CAPTION_FACE.capEm;
     const probe = document.createElement("canvas").getContext("2d");

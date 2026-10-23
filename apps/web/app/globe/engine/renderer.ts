@@ -322,6 +322,14 @@ export class GlobeRenderer {
         this.showcaseActive = false;
       }
     }
+    // The interlude fills the continents: their picture is made when one is planned, in an idle moment, and not in the frame that starts it.
+    if (this.caption?.eggPlanned) {
+      const make = () => {
+        if (!this.disposed) this.globe.prepareLand();
+      };
+      if (typeof requestIdleCallback === "function") requestIdleCallback(make, { timeout: 4000 });
+      else window.setTimeout(make, 1500);
+    }
     if (opts.showcase && this.showcaseActive) {
       // The home screen opens in its showcase: the boxes are out from the first frame (nothing fades), and the caption comes in with the first frame.
       this.showcaseOn = true;
@@ -1989,6 +1997,8 @@ export class GlobeRenderer {
     // and the same up by `liftBuf` (the window starts that many pixels lower in the virtual frame).
     // (the flight keeps the page's layout offset at its two ends only: `flightOffsetShare`)
     const k = pose ? flightOffsetShare(u) : 1;
+    // (the continents are filled for the whole interlude)
+    this.globe.setLand(this.caption?.landShare() ?? 0);
     this.camShift = this.shiftBuf * k;
     this.camLift = this.liftBuf * k;
     if (this.camShift || this.camLift) cam.setViewOffset(this.bufW, this.bufH, this.camShift, this.camLift, this.bufW, this.bufH);
