@@ -28,6 +28,16 @@ export const MOBILE = {
     "Mozilla/5.0 (iPhone; CPU iPhone OS 26_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.1 Mobile/15E148 Safari/604.1",
 };
 
+/** A Pixel 7 as Chrome reports it (412 x 915 CSS px at 2.625, Android UA, touch). The CPU is slowed by `throttle` (runner.mjs), the GPU is the Mac's own. */
+export const PIXEL7 = {
+  viewport: { width: 412, height: 915 },
+  deviceScaleFactor: 2.625,
+  isMobile: true,
+  hasTouch: true,
+  userAgent: "Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36",
+};
+export const PROFILES = { desktop: DESKTOP, mobile: MOBILE, pixel7: PIXEL7 };
+
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /** `uncapped`: no vsync and no frame rate limit, so rAF intervals measure cost instead of the display's pace. */

@@ -1,6 +1,6 @@
 // Run scenarios against a running production server and print the JSON report.
 //
-//   node apps/web/scripts/perf/run.mjs --base http://localhost:5304 [--scenarios s1,s2-hcmc] [--device desktop|mobile]
+//   node apps/web/scripts/perf/run.mjs --base http://localhost:5304 [--scenarios s1,s2-hcmc] [--device desktop|mobile|pixel7]
 //        [--scheme light|dark] [--headed] [--uncapped] [--no-trace] [--out DIR] [--label NAME] [--repeat N]
 //        [--street-opts '{"highResolution":true}'] [--throttle 4] [--quiet]
 //

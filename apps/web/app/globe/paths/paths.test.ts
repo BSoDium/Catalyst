@@ -128,6 +128,18 @@ describe("network and buffers", () => {
   };
   const net = buildNetwork([route]);
 
+  it("a mount with the same routes takes the network and the buffers the page already built (the loader's array is a new object each time it revalidates)", () => {
+    const again = buildNetwork(JSON.parse(JSON.stringify([route])) as GlobeRoute[]); // same content, a different array of different objects
+    expect(again).toBe(net);
+    expect(buildNetwork([route])).toBe(net);
+    expect(buildBuffers(again)).toBe(buildBuffers(net));
+    // another content is another network: a moved stop, another mode, another polyline
+    expect(buildNetwork([{ ...route, points: [A, B, { ...C, lat: C.lat + 0.001 }] }])).not.toBe(net);
+    expect(buildNetwork([{ ...route, legs: [{ mode: "rail", polyline: poly }, { mode: "flight" }] }])).not.toBe(net);
+    expect(buildNetwork([{ ...route, legs: [{ mode: "road", polyline: encodePolyline5(wiggle(A, B, 200)) }, { mode: "flight" }] }])).not.toBe(net);
+    expect(buildNetwork([route, { ...route, id: "s" }])).not.toBe(net);
+  });
+
   it("one leg per consecutive pair, polylines decoded once, arcs for the rest", () => {
     expect(net.legs.map((l) => [l.mode, l.arc])).toEqual([["road", false], ["flight", true]]);
     expect(net.legs[0]!.lonlat.length / 2).toBe(300);

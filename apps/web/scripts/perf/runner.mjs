@@ -1,7 +1,7 @@
 // The scenario runner shared by run.mjs and budget.mjs (library; no CLI).
 //
 import { mkdirSync, writeFileSync } from "node:fs";
-import { DESKTOP, MOBILE, launch, measure, openPage } from "./lib.mjs";
+import { DESKTOP, PROFILES, launch, measure, openPage } from "./lib.mjs";
 import { SCENARIOS } from "./scenarios.mjs";
 
 /**
@@ -9,7 +9,7 @@ import { SCENARIOS } from "./scenarios.mjs";
  * `browser` may be passed to reuse one; otherwise one is launched and closed.
  */
 export async function runScenarios({ base, scenarios, device = "desktop", scheme = "light", headed = false, uncapped = false, trace = true, out = null, label = "run", repeat = 1, streetOpts = null, throttle = null, browser: given = null }) {
-  const profile = device === "mobile" ? MOBILE : DESKTOP;
+  const profile = PROFILES[device] ?? DESKTOP;
   const want = scenarios ?? SCENARIOS.map((s) => s.id);
   const browser = given ?? (await launch({ headed, uncapped }));
   const results = { throttle, label, base, version: browser.version(), device, scheme, headed, uncapped, scenarios: {} };

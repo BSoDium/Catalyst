@@ -96,6 +96,11 @@ Frame cost: `renderNow()` JS time p50 below the 0.1 ms timer resolution and p95 
 
 `check.mjs perf` against `origin/main` and this branch, same session, GPU-synced frame (p50 / p95): main 0.4 to 0.5 ms / 3.7 to 4.0 ms at 225 and 2,000 legs; trails 0.4 to 0.8 ms / 3.6 to 4.3 ms (p50 up to 0.1 ms at 2,000 legs, from the three instances being always on and the fragment's palette lookup; the p95 is the sync's noise floor on this machine, identical on both). `renderNow()` JS p50 under the timer resolution, p95 0.1 ms, unchanged. Still one draw call; buffers 187,849 bytes for the demo (info grew from 3 to 4 floats a vertex: 17.1 MB instead of 15.4 MB at 2,000 legs).
 
+## The paths' cost (2026-10-22)
+
+- Only the main line of each leg is sent through the vertex stage until the rail ticks come on (zoom 5.5): instances 1 and 2 (the ticks) were always discarded by the fragment shader before that, so the vertex and raster work at the world and continent views is a third of what it was. Same pixels (checked on the settled world and continent frames); the saving was not measurable on a fast desktop GPU.
+- The network (`buildNetwork`: every leg decoded and simplified into its levels) and its buffers (`buildBuffers`) are built once per page for the same routes (a hash of their content, not the array: the loader's is a new object at each revalidation), not at every mount of the globe. A phone mounts it again each time a place's panel closes; that was about three quarters of the mount ([performance.md](performance.md), "A phone's CPU on a Mac").
+
 ## Not verified
 
 Safari; any phone GPU; the pixel pass on the street map beyond screenshots of the demo and the owner's preview data at a world-ish street zoom (the street checks in `scripts/street` were not run: they need tile servers); the street map's gradient at city zoom with many tiles (line-progress across tile boundaries was seen to be continuous on one 260 km leg only); colour-vision simulation is the doc's model, not a person.
