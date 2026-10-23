@@ -48,6 +48,7 @@ import {
   hex,
   captionFont,
   dimPresence,
+  eggX,
   entranceStart,
   lineHidden,
   lineOf,
@@ -75,6 +76,7 @@ import {
 } from "./caption";
 import { CINEMATIC, cinematicForced, notePlayed, planForPage } from "./cinematic";
 import { buildWordGeometry } from "./cinematic-word";
+import { lonLatToVec3 } from "./geo";
 import { prepareSound, SOUND, startSound, type SoundHandle } from "./cinematic-sound";
 import { OCCLUDER_RADIUS } from "./materials";
 import { CAPTION, ENERGY } from "./tuning";
@@ -288,6 +290,9 @@ const BAND_FRAG = /* glsl */ `
   }
 `;
 
+/** An angle brought into -pi..pi. */
+const wrapRad = (a: number): number => a - 2 * Math.PI * Math.round(a / (2 * Math.PI));
+
 /** The `set` of the big row of the cinematic interlude (engine/cinematic.ts): not a phrase set, not a fixed row. */
 const EGG = -2;
 
@@ -342,7 +347,7 @@ export interface CaptionState {
    */
   cycle: { sets: number; current: number; swapping: boolean; waiting: boolean; paused: boolean; swaps: number; lastOut: number[]; lastIn: number[] };
   /** The cinematic interlude: planned, under way, how many levels of zoom the globe is pulled back by, the big row's turn (radians; null: not on the stage) and whether its strip is drawn. */
-  egg: { planned: boolean; active: boolean; zoomOut: number; theta: number | null; drawn: boolean; slices: number; depth: number; dpr: number };
+  egg: { planned: boolean; active: boolean; zoomOut: number; theta: number | null; drawn: boolean; slices: number; depth: number; dpr: number; halfSpanDeg: number; startDeg: number; flight: number };
   /** The baselines' latitudes of the rows now in view, top to bottom (degrees). */
   baselines: number[];
   texture: { width: number; height: number }[];
@@ -894,7 +899,9 @@ export class CaptionLayer {
    */
   ringShare(): number {
     const x = Math.min(1, this.zoomK * 5);
-    return 1 - x * x * (3 - 2 * x);
+    // (and the moment the camera leaves the page's own, the ring is not round anything: it goes in the first moments of the dive)
+    const y = Math.min(1, (1 - this.flightU) * 30);
+    return Math.min(1 - x * x * (3 - 2 * x), 1 - y * y * (3 - 2 * y));
   }
 
   /** Play the interlude now (the key U with `?cinematic`): false when it cannot (the rows are not rolling, or one is under way, or there is none planned). */
@@ -957,6 +964,29 @@ export class CaptionLayer {
   private flightU = 1;
   private flightAt = -1;
   private pinnedFlight: number | null = null;
+
+  /**
+   * Where the word is at progress `u` of the flight, in the earth's frame (radii), for the camera to look at: its middle and its leading end (the
+   * end it moves with). Anchored to the view's own meridian (`pageLon`, degrees), as the mesh is, whatever the camera does. The word's own timeline at
+   * that point: a function of `u`, the same one the interlude runs by. Null when there is no word.
+   */
+  flightWordAt(u: number, pageLon: number): { centre: [number, number, number]; lead: [number, number, number] } | null {
+    const b = this.built;
+    if (!b?.egg) return null;
+    const shape = this.motion.egg?.shape ?? CINEMATIC.shape;
+    const side = this.motion.egg?.side ?? CINEMATIC.side;
+    const land = shape.leaveMs + shape.gapMs + shape.enterMs;
+    const t = Math.max(0, u * land - shape.leaveMs - shape.gapMs);
+    const theta = side * eggX(t, b.egg.start, shape);
+    const lon = pageLon + (theta * 180) / Math.PI;
+    const half = (b.egg.place.halfSpan * 180) / Math.PI;
+    const r = CINEMATIC.radius;
+    const at = (l: number): [number, number, number] => {
+      const p = lonLatToVec3(l, 0);
+      return [p[0] * r, p[1] * r, p[2] * r];
+    };
+    return { centre: at(lon), lead: at(lon - side * half) };
+  }
 
   /** Checks and captures: hold the camera at this point of its flight (null releases it). */
   pinFlight(u: number | null): void {
@@ -1171,10 +1201,14 @@ export class CaptionLayer {
    * Per frame, after the camera is current: turn every line to where the clock has it. `lon` and `lat` are the view's longitude and latitude
    * (degrees: the lines are centred on the view's meridian; their parallels are FIXED, on the equator's side, and never move for the camera's
    * tilt: `lat` is only the camera's, for what is hidden and for where the dimming sits), `d` the camera's distance, `now` the clock the
-   * entrance runs on (the same one `show` and `hide` were given).
+   * entrance runs on (the same one `show` and `hide` were given). `cam`: the camera's own longitude and latitude, when it is not over the view's (the
+   * interlude's flight): the lines stay on the view's meridian, and it is only what is hidden that is the camera's.
    */
-  sync(d: number, lon: number, lat: number, now: number): void {
+  sync(d: number, lon: number, lat: number, now: number, cam?: { lon: number; lat: number }): void {
     this.viewLat = lat;
+    // (what is hidden, and how thick, is for the camera: while the interlude's camera flies, it is not on the page's meridian)
+    const camLat = cam ? cam.lat : lat;
+    const dLon = cam ? wrapRad(((lon - cam.lon) * Math.PI) / 180) : 0;
     const b = this.built;
     if (!b || this.failed) return;
     if (this.motion.waiting) this.motion.begin(now, CAPTION.enter.loadDelayMs);
@@ -1214,8 +1248,8 @@ export class CaptionLayer {
     let eggPresence = 0;
     let eggTheta: number | null = null;
     if (b.egg) {
-      // (for any camera distance: the globe is pulled back while it lasts)
-      b.egg.start = entranceStart({ baseLat: b.egg.place.baseLat, halfSpan: b.egg.place.halfSpan }, this.viewLat, undefined, CINEMATIC.radius);
+      // (the word's start, east of the page's meridian: its leading end at `CINEMATIC.leadStartLon`, a span of the word beyond it)
+      b.egg.start = (((((CINEMATIC.leadStartLon + (b.egg.place.halfSpan * 180) / Math.PI - lon) % 360) + 360) % 360) * Math.PI) / 180;
       this.motion.setEggStart(b.egg.start);
       eggTheta = this.motion.eggTheta();
     }
@@ -1238,7 +1272,8 @@ export class CaptionLayer {
         start = this.rowStart(v.row);
         on = true;
       }
-      const hidden = !on || lineHidden(theta, v.line, d, lat, this.radiusOf(v));
+      const thetaCam = wrapRad(theta + dLon);
+      const hidden = !on || lineHidden(thetaCam, v.line, d, camLat, this.radiusOf(v));
       v.mesh.visible = !hidden;
       v.band.visible = false;
       if (hidden) continue;
@@ -1251,7 +1286,7 @@ export class CaptionLayer {
       v.mesh.matrix.copy(this.tmp);
       v.mesh.matrixWorldNeedsUpdate = true;
       // only as many slices as the side of the letters needs from here (the interlude's word is a solid mesh: no slices)
-      const ns = v.set === EGG ? v.n : this.slicesFor(theta, v.line.halfSpan, v.line.baseLat, lat);
+      const ns = v.set === EGG ? v.n : this.slicesFor(thetaCam, v.line.halfSpan, v.line.baseLat, camLat);
       if (ns !== v.n) {
         v.n = ns;
         v.mesh.geometry = this.unitFor(ns);
@@ -1459,7 +1494,7 @@ export class CaptionLayer {
       parallelsFor: 0,
       capCells: this.sizing ? (CAPTION.capR * this.sizing.r) / this.sizing.cell : 0,
       seed: this.motion.seed,
-      egg: { planned: this.motion.egg !== null, active: this.motion.eggActive, zoomOut: this.zoomK * (this.motion.egg?.shape ?? CINEMATIC.shape).zoomLevels, theta: this.motion.eggTheta(), drawn: (b?.variants ?? []).some((v) => v.set === EGG && v.mesh.visible), slices: (b?.variants ?? []).find((v) => v.set === EGG)?.n ?? 0, depth: (b?.variants ?? []).find((v) => v.set === EGG)?.material.uniforms.uDepth!.value ?? 0, dpr: this.dprNow },
+      egg: { planned: this.motion.egg !== null, active: this.motion.eggActive, zoomOut: this.zoomK * (this.motion.egg?.shape ?? CINEMATIC.shape).zoomLevels, theta: this.motion.eggTheta(), drawn: (b?.variants ?? []).some((v) => v.set === EGG && v.mesh.visible), slices: (b?.variants ?? []).find((v) => v.set === EGG)?.n ?? 0, depth: (b?.variants ?? []).find((v) => v.set === EGG)?.material.uniforms.uDepth!.value ?? 0, dpr: this.dprNow, halfSpanDeg: b?.egg ? (b.egg.place.halfSpan * 180) / Math.PI : 0, startDeg: b?.egg ? (b.egg.start * 180) / Math.PI : 0, flight: this.flightU },
       lines: shown.map((v) => ({
         text: v.line.text,
         parent: v.row,

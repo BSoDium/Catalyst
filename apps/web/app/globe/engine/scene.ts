@@ -103,6 +103,8 @@ export class GlobeScene {
   applyTheme(t: GlobeTheme) {
     // The disc is the ocean: exactly the page colour, so the far side stays hidden without a visible body.
     this.occluder.uniforms.uColor!.value.setRGB(...t.background);
+    this.background = t.background;
+    this.groundNow = 0;
     this.graticule.uniforms.uColor!.value.setRGB(...t.grid);
     this.ramp = t.ramp;
     this.borderLevelNow = -1;
@@ -110,6 +112,25 @@ export class GlobeScene {
     this.silhouette.uniforms.uColor!.value.setRGB(...t.outline);
     this.routes.applyTheme(t);
     this.sky?.applyTheme(t);
+  }
+
+  /** The page's colour and how much of the ground's tone the disc has now (see `setGround`). */
+  private background: Rgb = [0, 0, 0];
+  private groundNow = 0;
+
+  /**
+   * The disc takes a tone of its own, 0 (the page's colour: the ocean is invisible, the map is lines in the void) to 1 (a ground: a step of blue towards
+   * the ink's side, light on a dark page and dark on a light one), for the interlude's camera flight, where the earth has a horizon and a surface under
+   * it that must be seen. A change of a hundredth or more is written (a uniform, nothing per frame at rest).
+   */
+  setGround(k: number) {
+    const x = Math.min(1, Math.max(0, k));
+    if (Math.abs(x - this.groundNow) < 0.01 && !(x === 0 && this.groundNow !== 0)) return;
+    this.groundNow = x;
+    const [r, g, b] = this.background;
+    const dark = 0.2126 * r + 0.7152 * g + 0.0722 * b < 0.5;
+    const to: Rgb = dark ? [0.09, 0.125, 0.21] : [0.82, 0.87, 0.95];
+    this.occluder.uniforms.uColor!.value.setRGB(r + (to[0] - r) * x, g + (to[1] - g) * x, b + (to[2] - b) * x);
   }
 
   /** Whether the borders' fade has not reached its end: the frame loop must keep going. */

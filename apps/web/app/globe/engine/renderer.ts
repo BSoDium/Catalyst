@@ -57,7 +57,7 @@ import {
 import { snapBox } from "./group-square";
 import { Grace } from "./grace";
 import { IdleSpin, SPIN, pacedByRotation, spinBlock, spinFrameDue, type SpinContext } from "./idle-spin";
-import { flightPose } from "./flight";
+import { flightGroundShare, flightOffsetShare, flightPose } from "./flight";
 import { landingScale, liftFor, placeAbove, type Placement } from "./lift";
 import { routeLift } from "./view";
 import { newLodCamera, setLodCamera, type LodTree } from "./lod-tree";
@@ -1430,7 +1430,7 @@ export class GlobeRenderer {
   private capFrames = 0;
   /** JS ms spent in the caption's own frames (checks). */
   private capMs = 0;
-  private lastBasis: { d: number; lon: number; lat: number } | null = null;
+  private lastBasis: { d: number; lon: number; lat: number; cam?: { lon: number; lat: number } } | null = null;
 
   private armCaption() {
     const c = this.caption;
@@ -1477,7 +1477,7 @@ export class GlobeRenderer {
       this.capSkip = 0;
       const t0 = performance.now();
       const b = this.lastBasis!;
-      c.sync(b.d, b.lon, b.lat, ts);
+      c.sync(b.d, b.lon, b.lat, ts, b.cam);
       this.renderCrispCaption();
       this.capFrames++;
       const js = performance.now() - t0;
@@ -1557,7 +1557,7 @@ export class GlobeRenderer {
     const y1 = Math.min(ch, Math.ceil(wy1));
     if (x1 - x0 < 1 || y1 - y0 < 1) return;
     const cam = this.camera;
-    cam.setViewOffset(this.bufW, this.bufH, this.shiftBuf + x0 / P, this.liftBuf + y0 / P, (x1 - x0) / P, (y1 - y0) / P);
+    cam.setViewOffset(this.bufW, this.bufH, this.camShift + x0 / P, this.camLift + y0 / P, (x1 - x0) / P, (y1 - y0) / P);
     cam.updateProjectionMatrix();
     const rect = this.captionRect;
     rect.w = x1 - x0;
@@ -1571,7 +1571,7 @@ export class GlobeRenderer {
     rect.at.y = y0;
     caption.renderCrisp(cam, rect, window.devicePixelRatio || 1);
     this.capDrawnAny = performance.now();
-    if (this.shiftBuf || this.liftBuf) cam.setViewOffset(this.bufW, this.bufH, this.shiftBuf, this.liftBuf, this.bufW, this.bufH);
+    if (this.camShift || this.camLift) cam.setViewOffset(this.bufW, this.bufH, this.camShift, this.camLift, this.bufW, this.bufH);
     else cam.clearViewOffset();
     cam.updateProjectionMatrix();
   }
@@ -1933,6 +1933,10 @@ export class GlobeRenderer {
     this.requestRender();
   }
 
+  /** The projection's shift and lift in buffer px as the camera is drawn with now: the page's (`shiftBuf`, `liftBuf`) except during the flight. */
+  private camShift = 0;
+  private camLift = 0;
+
   /** The camera's flight is under way (engine/flight.ts): the camera is not on the orbit round the planet's centre. */
   private flying = false;
 
@@ -1942,7 +1946,7 @@ export class GlobeRenderer {
     let b = viewBasis(v, h);
     // The interlude's flight (engine/flight.ts): a free camera, whose last pose is this orbit camera; `u` is 1 outside it and then nothing differs.
     const u = this.caption?.flightProgress() ?? 1;
-    const pose = u < 1 ? flightPose(u, { lon: v.lon, lat: v.lat, alt: b.d - 1, roll: v.roll ?? 0 }) : null;
+    const pose = u < 1 ? flightPose(u, { lon: v.lon, lat: v.lat, alt: b.d - 1, roll: v.roll ?? 0 }, (uu) => this.caption?.flightWordAt(uu, v.lon) ?? null) : null;
     this.flying = pose !== null;
     // what the rest of the frame reads: the camera's distance from the centre, the longitude and latitude it is over, and the zoom that distance is
     let d = b.d;
@@ -1983,15 +1987,22 @@ export class GlobeRenderer {
     // Shift the projection centre left by `shiftBuf` pixels: render the window of a same-sized virtual frame
     // that starts `shiftBuf` pixels to the right.
     // and the same up by `liftBuf` (the window starts that many pixels lower in the virtual frame).
-    if (this.shiftBuf || this.liftBuf) cam.setViewOffset(this.bufW, this.bufH, this.shiftBuf, this.liftBuf, this.bufW, this.bufH);
+    // (the flight keeps the page's layout offset at its two ends only: `flightOffsetShare`)
+    const k = pose ? flightOffsetShare(u) : 1;
+    this.globe.setGround(pose ? flightGroundShare(u) : 0);
+    this.camShift = this.shiftBuf * k;
+    this.camLift = this.liftBuf * k;
+    if (this.camShift || this.camLift) cam.setViewOffset(this.bufW, this.bufH, this.camShift, this.camLift, this.bufW, this.bufH);
     else cam.clearViewOffset();
     cam.updateProjectionMatrix();
     cam.updateMatrixWorld();
     const now = performance.now();
     this.globe.syncCamera(b, zoom, this.pixel, now, this.reduced, lat, Math.max(this.width, this.height));
-    this.lastBasis = { d, lon, lat };
-    this.caption?.sync(d, lon, lat, now);
-    this.globe.syncSky(cam, skyBasis, this.era, { w: this.bufW, h: this.bufH, shift: this.shiftBuf, lift: this.liftBuf }, now, this.reduced);
+    // (the caption's lines stay on the page's meridian and latitude; only what is hidden is the flying camera's)
+    const over = pose ? { lon, lat } : undefined;
+    this.lastBasis = { d, lon: v.lon, lat: v.lat, cam: over };
+    this.caption?.sync(d, v.lon, v.lat, now, over);
+    this.globe.syncSky(cam, skyBasis, this.era, { w: this.bufW, h: this.bufH, shift: this.camShift, lift: this.camLift }, now, this.reduced);
   }
 
   /* ------------------------------ diagnostics ------------------------------ */
