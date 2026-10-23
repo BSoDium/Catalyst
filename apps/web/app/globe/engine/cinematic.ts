@@ -62,7 +62,7 @@ export const CINEMATIC = {
    * `faceShine`: how bright the thin strip lights of the studio are in the bevel's reflection and in a face's (the glints that run along the edges).
    */
   light: { key: [-0.5, 0.45, 0.74] as const, fill: [0.6, -0.3, 0.4] as const, ambient: 0.5, diffuse: 0.5, filler: 0.14, specular: 0.22, shininess: 90, metal: 0.55, faceMetal: 0.38, reflect: 0.85, inside: 0.78, edgeShine: 1.6, faceShine: 0.25 },
-  radius: 2,
+  radius: 1.5,
   capScale: 2,
   maxCapScale: 6,
   fill: 2.05,

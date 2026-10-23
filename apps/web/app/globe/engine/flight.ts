@@ -76,9 +76,9 @@ export const FLIGHT = {
     // the opening: over Greece, the horizon level and in the lower part of the picture, the letters about to come up over it
     { u: 0.1, lon: 22, lat: 36, alt: 0.15, look: [106, 8, 2], level: 1, pitch: -6, roll: -6, horizon: 1, bearing: 85 },
     // backing away west over Italy, climbing, the horizon held: the planet stays in the picture while the word rises from the limb
-    { u: 0.4, lon: 14, lat: 38, alt: 0.6, look: [106, 8, 2], level: 1, pitch: -6, roll: -4, horizon: 1, bearing: 85 },
+    { u: 0.38, lon: 14, lat: 38, alt: 0.62, look: [106, 8, 2], level: 1, pitch: -6, roll: -4, horizon: 1, bearing: 85 },
     // the camera leaves the limb and turns towards the word and the planet together
-    { u: 0.56, lon: 7, lat: 36, alt: 1.3, look: [50, 6, 1.5], level: 0.9, pitch: -3, roll: -2, horizon: 0.7, bearing: 85 },
+    { u: 0.54, lon: 7, lat: 36, alt: 1.5, look: [50, 6, 1.5], level: 0.9, pitch: -3, roll: -2, horizon: 0.7, bearing: 85 },
     { u: 0.7, lon: 2, lat: 26, alt: 2.4, look: [14, 2, 0.9], level: 0.5, pitch: 0, roll: 2, horizon: 0, bearing: 85 },
     // the space view, reached with the word still on its way in: the letters line up in front of the planet over the last part
     { u: 0.82, lon: 0, lat: 12, alt: 3.2, look: [0, 0, 0.1], level: 0.15, pitch: 0, roll: 8, horizon: 0, bearing: 85 },

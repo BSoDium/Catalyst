@@ -133,8 +133,8 @@ describe("the cinematic interlude: the big row's trajectory", () => {
     const startRad = (CINEMATIC.leadStartLon + 42) * rad; // (a span of 84 degrees, as the word has at a desktop's size)
     const endAt = eggX(tIn + 1, startRad, s);
     for (const d of [3.4, 4.4, 6]) expect(lineHidden(endAt, { halfSpan: 42 * rad, baseLat: 0 }, d, 0, CINEMATIC.radius)).toBe(true);
-    // and before that: it is seen going behind the limb, with the nearest point of it, not all at once
-    expect(lineHidden(-startRad, { halfSpan: 42 * rad, baseLat: 0 }, 4.4, 0, CINEMATIC.radius)).toBe(false);
+    // and with room to spare: a few frames of it behind the planet before it is dropped, not the instant it was hidden
+    expect(lineHidden(endAt + 5 * rad, { halfSpan: 42 * rad, baseLat: 0 }, 4.4, 0, CINEMATIC.radius)).toBe(true);
   });
   it("only ever moves on: monotone from behind the planet on one side to behind it on the other", () => {
     let last = Infinity;
