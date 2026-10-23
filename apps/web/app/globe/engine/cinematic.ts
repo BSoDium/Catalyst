@@ -41,9 +41,9 @@ export const CINEMATIC = {
    */
   outline: { light: "#0078d7", dark: "#4aa3f5" },
   face: "#ffffff",
-  sideColor: { light: "#e2e5ea", dark: "#3a3e47" },
+  sideColor: { light: "#c3c8d1", dark: "#646b79" },
   depthCaps: 0.3,
-  bevelCaps: 0.05,
+  bevelCaps: 0.036,
   /** The bevel is a quarter circle in this many steps (a few more triangles, a bevel that catches the light along its width). */
   bevelSegments: 3,
   /**
@@ -53,7 +53,7 @@ export const CINEMATIC = {
    * `albedo * (ambient + diffuse * key + filler * fill)`), `reflect` its brightness. `inside`: how much of the light the backs of the letters (towards the planet, not in the sun) keep. `edgeShine` and
    * `faceShine`: how bright the thin strip lights of the studio are in the bevel's reflection and in a face's (the glints that run along the edges).
    */
-  light: { key: [-0.45, 0.65, 0.62] as const, fill: [0.6, -0.3, 0.4] as const, ambient: 0.5, diffuse: 0.5, filler: 0.14, specular: 0.22, shininess: 90, metal: 0.55, faceMetal: 0.3, reflect: 0.85, inside: 0.5, edgeShine: 1.6, faceShine: 0.25 },
+  light: { key: [-0.45, 0.65, 0.62] as const, fill: [0.6, -0.3, 0.4] as const, ambient: 0.5, diffuse: 0.5, filler: 0.14, specular: 0.22, shininess: 90, metal: 0.55, faceMetal: 0.38, reflect: 0.85, inside: 0.78, edgeShine: 1.6, faceShine: 0.25 },
   radius: 2,
   capScale: 2,
   maxCapScale: 6,
