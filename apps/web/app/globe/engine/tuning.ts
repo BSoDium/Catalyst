@@ -342,7 +342,8 @@ export const RING = {
  * - `idleFreezeMs`: after this long with no input the roll, the ring's turn and the idle rotation stop (the composition stays; any input, the
  *   tab coming back to the front or the globe coming back into view starts them again). 0: never.
  * - `holdWhenBlurred`, `holdWhenOffscreen`, `holdOnSaveData`: the same stop when the window has lost focus, the globe is scrolled out of
- *   view, or the browser says the data saver is on.
+ *   view, or the browser says the data saver is on. A window that lost focus is only held after `blurGraceMs` of it (30 s: an interlude of
+ *   21 s plays through, and a click into another window and back never stops anything; a tab that is hidden stops at once, it draws nothing).
  * - `gpu`: the context's `powerPreference` (creation time).
  */
 export const ENERGY = {
@@ -351,6 +352,7 @@ export const ENERGY = {
   captionWindow: "band" as "band" | "planet",
   idleFreezeMs: 30000,
   holdWhenBlurred: true,
+  blurGraceMs: 30000,
   holdWhenOffscreen: true,
   holdOnSaveData: true,
   gpu: "low-power" as "low-power" | "high-performance" | "default",

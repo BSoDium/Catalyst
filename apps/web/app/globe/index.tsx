@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import type { GlobeProps } from "./types";
 
 export { DEFAULT_VIEW_RADIUS_KM, placeFraming } from "./engine/framing";
+export { noteVisit } from "./engine/visit";
 export { ringPhrases, type RingIdentity } from "./ring-text";
 export type {
   GlobeAttributionProps,

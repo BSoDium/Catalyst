@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { IdleSpin, SPIN, SPIN_DEFAULTS, applySpinFlags, easeInAngle, spinBlock, spinFrameDue, stopAngle, stopSpeed, type SpinContext } from "./idle-spin";
+import { IdleSpin, SPIN, SPIN_DEFAULTS, applySpinFlags, easeInAngle, pacedByRotation, spinBlock, spinFrameDue, stopAngle, stopSpeed, type SpinContext } from "./idle-spin";
 import { zoomToRadiusPx } from "./geo";
 
 const rest: SpinContext = { reduced: false, hidden: false, lost: false, suspended: false, selected: false, focused: false, inset: 0, zoom: 2.7, minZoom: 2.7, busy: false };
@@ -331,5 +331,18 @@ describe("idle rotation: page flags", () => {
     stub("");
     applySpinFlags();
     expect(SPIN.idleMs).toBe(SPIN_DEFAULTS.idleMs);
+  });
+});
+
+describe("pacedByRotation: the rotation's slow pace never holds back a timed picture", () => {
+  it("paces the frames of a turning globe that nothing else needs", () => {
+    expect(pacedByRotation({ spinning: true, forced: false, captionAnimating: false })).toBe(true);
+  });
+  it("does not pace a frame that was asked for, or a globe that is not turning", () => {
+    expect(pacedByRotation({ spinning: true, forced: true, captionAnimating: false })).toBe(false);
+    expect(pacedByRotation({ spinning: false, forced: false, captionAnimating: false })).toBe(false);
+  });
+  it("does not pace the frames of an animating caption (the interlude's pull-back and lean: it ran at 5 to 10 a second behind the rotation's pace)", () => {
+    expect(pacedByRotation({ spinning: true, forced: false, captionAnimating: true })).toBe(false);
   });
 });

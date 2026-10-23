@@ -64,6 +64,7 @@ export interface CspInput {
  *  - img-src: ours, `data:` and `blob:` (canvas and map rasters). font-src: ours (the self-hosted files of `public/fonts/`: the three families of the page, display, reading
  *    and metadata type, and the two faces the globe's caption can be set in, which it loads itself; every other glyph is the system stack's, so no
  *    font host is ever needed).
+ *  - media-src: ours (the faint sound of the home screen's easter egg, `public/audio/`).
  */
 export function buildCsp({ nonce, connectOrigins, upgradeInsecure }: CspInput): string {
   const connect = ["'self'", ...new Set(connectOrigins)];
@@ -74,6 +75,7 @@ export function buildCsp({ nonce, connectOrigins, upgradeInsecure }: CspInput): 
     "style-src-attr 'unsafe-inline'",
     "img-src 'self' data: blob:",
     "font-src 'self'",
+    "media-src 'self'",
     `connect-src ${connect.join(" ")}`,
     "worker-src 'self' blob:",
     "manifest-src 'self'",

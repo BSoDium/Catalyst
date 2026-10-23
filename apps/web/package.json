@@ -15,7 +15,8 @@
     "perf": "node scripts/perf/budget.mjs",
     "check:prod": "node scripts/prod/check.mjs",
     "brand": "node scripts/brand/build.mjs",
-    "bake:font": "node scripts/font/bake-pixel-font.mjs"
+    "bake:font": "node scripts/font/bake-pixel-font.mjs",
+    "bake:word": "node scripts/font/bake-word-outlines.mjs"
   },
   "dependencies": {
     "@catalyst/geodata": "workspace:*",

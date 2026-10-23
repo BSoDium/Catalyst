@@ -53,7 +53,8 @@ import {
   type Velocity,
 } from "./motion";
 import { snapBox } from "./group-square";
-import { IdleSpin, SPIN, spinBlock, spinFrameDue, type SpinContext } from "./idle-spin";
+import { Grace } from "./grace";
+import { IdleSpin, SPIN, pacedByRotation, spinBlock, spinFrameDue, type SpinContext } from "./idle-spin";
 import { landingScale, liftFor, placeAbove, type Placement } from "./lift";
 import { routeLift } from "./view";
 import { newLodCamera, setLodCamera, type LodTree } from "./lod-tree";
@@ -347,8 +348,9 @@ export class GlobeRenderer {
       // no location: no overlay
     }
     // The energy pass: what makes the resting home screen stand still (docs/performance.md, "Energy").
-    this.listen(window, "blur", () => this.setBlurred(true));
-    this.listen(window, "focus", () => this.setBlurred(false));
+    this.listen(window, "blur", () => this.blurGrace.start());
+    this.listen(window, "focus", () => this.blurGrace.cancel());
+    this.cleanups.push(() => this.blurGrace.dispose());
     if (typeof IntersectionObserver !== "undefined") {
       const io = new IntersectionObserver((entries) => {
         const last = entries[entries.length - 1];
@@ -671,7 +673,12 @@ export class GlobeRenderer {
 
   /** The view the Three.js scene is drawn with: the globe cannot go closer than its own maximum. */
   private drawView(): ViewState {
-    return this.view.zoom > TUNING.maxZoom ? { ...this.view, zoom: TUNING.maxZoom } : this.view;
+    // (the cinematic interlude pulls the globe back for a while: below the page's floor, for the picture only)
+    const back = this.caption?.zoomOutLevels() ?? 0;
+    // (and it leans the planet, the words and the stars together, as the studio's globe does: the same eased value, `CaptionLayer.rollRad`)
+    const roll = this.caption?.rollRad() ?? 0;
+    const zoom = Math.min(this.view.zoom, TUNING.maxZoom) - back;
+    return zoom === this.view.zoom && roll === 0 ? this.view : { ...this.view, zoom, ...(roll !== 0 ? { roll } : {}) };
   }
 
   setView(v: Partial<ViewState>) {
@@ -1043,7 +1050,7 @@ export class GlobeRenderer {
    * that animation is the boxes' own transitions that the turn causes (limb crossings), and its frames are paced like the turn's: not faster than `SPIN.minFrameMs`.
    */
   private keepGoing(cameraMoving: boolean) {
-    if (this.spin.spinning && !cameraMoving) this.chainSpin();
+    if (!cameraMoving && pacedByRotation({ spinning: this.spin.spinning, forced: false, captionAnimating: this.caption?.animating ?? false })) this.chainSpin();
     else this.requestRender();
   }
 
@@ -1152,6 +1159,15 @@ export class GlobeRenderer {
       if (t >= 1) this.latSnap = null;
       else more = true;
     }
+    if (this.overlayHeld) {
+      // (the globe is still on its way home from the interlude: the boxes begin to fade in when it has arrived, and not before)
+      if (this.caption?.pulledBack) more = true;
+      else {
+        this.overlayHeld = false;
+        this.lod.setSuppressed(false);
+        more = true;
+      }
+    }
     if (this.showcaseOn) this.guardCaption(now);
     if (this.latSnap) more = true;
     if (this.globe.routes.advance(now)) more = true;
@@ -1209,6 +1225,8 @@ export class GlobeRenderer {
 
   private idleFrozen = false;
   private blurred = false;
+  /** A window that lost focus is held only after `ENERGY.blurGraceMs` of it (engine/grace.ts). */
+  private blurGrace = new Grace(ENERGY.blurGraceMs, (on) => this.setBlurred(on));
   private offscreen = false;
   private freezeTimer = 0;
   private paceTimer = 0;
@@ -1224,11 +1242,18 @@ export class GlobeRenderer {
     window.clearTimeout(this.freezeTimer);
     this.freezeTimer = 0;
     if (!(ENERGY.idleFreezeMs > 0) || this.disposed) return;
-    this.freezeTimer = window.setTimeout(() => {
-      this.freezeTimer = 0;
-      this.settleThenHold();
-    }, ENERGY.idleFreezeMs);
+    this.freezeTimer = window.setTimeout(this.freezeWhenIdle, ENERGY.idleFreezeMs);
   }
+
+  /** The idle period has run out: hold, unless the cinematic interlude is under way (it is 21 s long and may begin late: it is not idle, the hold waits for its end). */
+  private freezeWhenIdle = () => {
+    this.freezeTimer = 0;
+    if (this.caption?.interluding) {
+      this.freezeTimer = window.setTimeout(this.freezeWhenIdle, 1000);
+      return;
+    }
+    this.settleThenHold();
+  };
 
   /**
    * The idle budget is spent: the rows ease to the middle of the globe, fully visible (`CAPTION.park`), and only then does everything stop; a
@@ -1357,7 +1382,7 @@ export class GlobeRenderer {
     if (this.disposed || this.hidden || this.lost) return;
     const now = performance.now();
     // The rotation's own frame chain follows the display (a frame per refresh) but not faster than `SPIN.minFrameMs`: a frame that nothing else asked for is skipped when it is too soon.
-    if (!this.forced && this.spin.spinning && !spinFrameDue(now, this.lastTickAt, { ...SPIN, minFrameMs: Math.max(SPIN.minFrameMs, ENERGY.spinFrameMs) })) {
+    if (pacedByRotation({ spinning: this.spin.spinning, forced: this.forced, captionAnimating: this.caption?.animating ?? false }) && !spinFrameDue(now, this.lastTickAt, { ...SPIN, minFrameMs: Math.max(SPIN.minFrameMs, ENERGY.spinFrameMs) })) {
       // (paced by a timer: no wake at the display's rate for a frame that is not due)
       if (!this.paceTimer) {
         const wait = Math.max(4, Math.max(SPIN.minFrameMs, ENERGY.spinFrameMs) - (now - this.lastTickAt));
@@ -1501,7 +1526,7 @@ export class GlobeRenderer {
     // The window covers the SHELL's silhouette, not a fixed share of the planet's (the shell is above the surface: a row near the limb is
     // farther from the centre than the planet is wide; a window cut through it shows as a vertical edge on the letters).
     const dist = cameraDistance(this.drawView().zoom, ch);
-    const R = silhouetteRadiusPx(this.drawView().zoom, ch) * shellWindowFactor(dist) * 1.03 + 4;
+    const R = silhouetteRadiusPx(this.drawView().zoom, ch) * shellWindowFactor(dist, caption.maxRadius) * 1.03 + 4;
     const cx = cw / 2 - this.shiftBuf * P;
     const cy = ch / 2 - this.liftBuf * P;
     // The window: the planet's whole box (`planet`) or only its horizontal reach by the caption's own vertical band (`band`: the rows' edges over
@@ -1591,7 +1616,7 @@ export class GlobeRenderer {
     ring.update({
       cx: (this.bufW * P) / 2 - this.shiftBuf * P + this.canvasLeft,
       cy: ch / 2 - this.liftBuf * P + this.canvasTop,
-      r: silhouetteRadiusPx(this.view.zoom, ch),
+      r: silhouetteRadiusPx(this.drawView().zoom, ch),
       alpha,
       width: this.width,
       height: this.height,
@@ -1643,7 +1668,9 @@ export class GlobeRenderer {
    */
   private ringPresence(): number {
     const a = this.textFits ? ringAlpha(this.view.zoom, this.fit, this.minZoom) : 0;
-    return this.showcaseActive ? a * (1 - this.lod.overlayAlpha) : a;
+    // (and it is out for the whole of the cinematic interlude, while the globe is pulled back: `CaptionLayer.ringShare`)
+    const share = this.ringCut ? 0 : (this.caption?.ringShare() ?? 1);
+    return (this.showcaseActive ? a * (1 - this.lod.overlayAlpha) : a) * share;
   }
 
   /** The ring's state (checks): shown, tone, glyphs, size of its canvas; null when there is none. */
@@ -1818,8 +1845,18 @@ export class GlobeRenderer {
     this.applyShowcase();
   }
 
+  /**
+   * The overlay stays out after the showcase ends because a gesture cut the cinematic interlude short: the globe is still coming back to its size
+   * (`CaptionLayer.pulledBack`), and the boxes are placed from the page's camera, so they would fade in where the planet WILL be. They wait for it.
+   */
+  private overlayHeld = false;
+  /** The interlude was cut short by a gesture: the ring, already out, does not come back for the boxes' arrival (it would flash, then fade again). */
+  private ringCut = false;
+
   private applyShowcase() {
-    this.lod.setSuppressed(this.showcaseOn);
+    this.overlayHeld = !this.showcaseOn && !this.reduced && !!this.caption?.pulledBack;
+    this.ringCut = this.showcaseOn ? false : this.ringCut || this.overlayHeld;
+    this.lod.setSuppressed(this.showcaseOn || this.overlayHeld);
     const now = performance.now();
     if (this.showcaseOn) this.guardCaption(now);
     else {
@@ -1888,7 +1925,7 @@ export class GlobeRenderer {
     cam.fov = FOV_DEG;
     cam.aspect = this.bufW / this.bufH;
     // (the caption's shell is above the planet: its nearest point must be inside the near plane)
-    const reach = this.caption ? CAPTION.radius + 0.05 : 1.05;
+    const reach = this.caption ? this.caption.maxRadius + 0.05 : 1.05;
     cam.near = Math.max(0.02, b.d - reach);
     cam.far = b.d + reach;
     cam.position.set(b.c[0] * b.d, b.c[1] * b.d, b.c[2] * b.d);

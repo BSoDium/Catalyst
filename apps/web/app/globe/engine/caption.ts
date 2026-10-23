@@ -39,6 +39,8 @@ export interface CaptionRun {
   style?: CaptionStyleKey;
   /** In a palette's pastel text tone, not the secondary text tone. */
   accent?: CaptionHue;
+  /** Thickened by this many caps (a stroke in the face colour) instead of the face's own: the cinematic interlude's word is heavier than the rows. */
+  embolden?: number;
 }
 
 /** What the caption says: phrase sets that take turns in the upper rows, each set a few rows, and the rows under them that stay (the call to action). */
@@ -98,7 +100,7 @@ export const CAPTION_FACE = {
 } as const;
 
 /** `#rrggbb` as 0..1 channels. */
-const hex = (h: string): [number, number, number] => [parseInt(h.slice(1, 3), 16) / 255, parseInt(h.slice(3, 5), 16) / 255, parseInt(h.slice(5, 7), 16) / 255];
+export const hex = (h: string): [number, number, number] => [parseInt(h.slice(1, 3), 16) / 255, parseInt(h.slice(3, 5), 16) / 255, parseInt(h.slice(5, 7), 16) / 255];
 
 /**
  * The colours of the caption for a theme, all solid (alpha 1). The look (round 9): the letters are TEXT-coloured (the secondary text tone:
@@ -279,7 +281,7 @@ export function splitRuns(runs: readonly CaptionRun[], measure: (run: CaptionRun
 }
 
 /** Arc width of a text in longitude (radians) on the parallel at `lat` (degrees) for a cap height `capR`. */
-export const spanOf = (widthEm: number, capR: number, lat: number): number => (widthEm * capR) / CAPTION_FACE.capEm / (CAPTION.radius * Math.cos(clamp(lat, -85, 85) * DEG));
+export const spanOf = (widthEm: number, capR: number, lat: number, r: number = CAPTION.radius): number => (widthEm * capR) / CAPTION_FACE.capEm / (r * Math.cos(clamp(lat, -85, 85) * DEG));
 
 /**
  * The rows of the caption as pieces: each at the caption's one cap height and never under `minCapPx`
@@ -447,6 +449,41 @@ export function minScaleFor(pieces: readonly CaptionPiece[], rPx: number): numbe
 }
 
 /**
+ * The cinematic interlude's one big row on its own shell of radius `r` (a higher orbit than the rows': it floats clear of the surface and curves
+ * round the limb), centred on the equator (a single row's baseline is half its cap height under it): the largest cap height in `[minCap, maxCap]`
+ * (planet radii) whose row, rolling through `ampRad` either way, stays in front of the shell's horizon (the same share of it as the rows) and
+ * reaches no farther than `fill` of the planet's silhouette radius on the screen for any camera inside the band (the rows' own limit is
+ * `CAPTION.maxHalfWidth`; the big word may overhang the disc a little: on the equator, level with the page's own text nowhere). The smallest
+ * is returned when none fits (a very small planet).
+ */
+export function placeEgg(box: PieceBox, d: number, r: number, o: { fill: number; minCap: number; maxCap: number; ampRad: number }): Placement {
+  const sil = 1 / Math.sqrt(Math.max(1.0001, d * d - 1));
+  const hard = (CAPTION.hardSpanDeg * DEG) / 2;
+  const psi = shellHorizon(d, r) * CAPTION.visibleFraction;
+  const at = (cap: number): Placement => {
+    const baseLat = -cap / r / DEG / 2;
+    return { baseLat, capR: cap, halfSpan: spanOf(box.widthEm, cap, baseLat, r) / 2, y: shellY(0, baseLat, 0, d, r) };
+  };
+  const fits = (cap: number): boolean => {
+    const p = at(cap);
+    const room = Math.min(hard, visibleHalfSpan(CAPTION.band.deg, p.baseLat, psi), visibleHalfSpan(-CAPTION.band.deg, p.baseLat, psi));
+    if (p.halfSpan + o.ampRad > room + 1e-9) return false;
+    for (const cam of [CAPTION.band.deg, -CAPTION.band.deg, 0]) if (Math.abs(shellXY(Math.min(p.halfSpan, Math.PI / 2), p.baseLat, cam, d, r)[0]) > o.fill * sil + 1e-9) return false;
+    return true;
+  };
+  if (fits(o.maxCap)) return at(o.maxCap);
+  if (!fits(o.minCap)) return at(o.minCap);
+  let lo = o.minCap;
+  let hi = o.maxCap;
+  for (let it = 0; it < 30; it++) {
+    const mid = (lo + hi) / 2;
+    if (fits(mid)) lo = mid;
+    else hi = mid;
+  }
+  return at(lo);
+}
+
+/**
  * Lay the caption out: the pieces (`planPieces`) on their fixed parallels (`placeRows`) at the static fit (`fitScale`). The layer does the same
  * steps itself; this is the whole of it in one call, for tests and checks.
  */
@@ -459,8 +496,8 @@ export function layoutCaption(input: Pick<LayoutInput, "rows" | "caps" | "measur
 
 
 /** A piece at its placement, as the line the strip is built from. */
-export function lineOf(p: CaptionPiece, pl: Placement, into?: CaptionLine): CaptionLine {
-  const capLat = pl.capR / CAPTION.radius;
+export function lineOf(p: CaptionPiece, pl: Placement, into?: CaptionLine, r: number = CAPTION.radius): CaptionLine {
+  const capLat = pl.capR / r;
   const line = into ?? ({} as CaptionLine);
   line.runs = p.runs;
   line.text = p.text;
@@ -604,14 +641,14 @@ export const faceTowardsViewer = (psi: number, d: number, r: number = CAPTION.ra
  * shell's horizon. The central angle from the view axis to the point of the parallel `baseLat` at longitude offset `a` from the view's centre is
  * `acos(sin(vl) sin(L) + cos(vl) cos(L) cos(a))`; the line's nearest point is at the offset `max(0, |theta| - halfSpan)`.
  */
-export function lineHidden(theta: number, line: Pick<CaptionLine, "halfSpan" | "baseLat">, d: number, viewLat: number): boolean {
+export function lineHidden(theta: number, line: Pick<CaptionLine, "halfSpan" | "baseLat">, d: number, viewLat: number, r: number = CAPTION.radius): boolean {
   const off = Math.max(0, Math.abs(theta) - line.halfSpan);
   const vl = viewLat * DEG;
   const L = line.baseLat * DEG;
   // (the band stands above its baseline: take the latitude nearest the view's own, so a band that straddles the limb counts as seen)
   const cos = Math.sin(vl) * Math.sin(L) + Math.cos(vl) * Math.cos(L) * Math.cos(Math.min(off, Math.PI));
   // (hidden only once all of it is behind the planet's body: past the horizon of the strip's face a row is seen from behind, and goes round)
-  return Math.acos(clamp(cos, -1, 1)) >= occludedAngle(d);
+  return Math.acos(clamp(cos, -1, 1)) >= occludedAngle(d, r);
 }
 
 /* ------------------------------------------------------------------ the entrance */
@@ -630,11 +667,11 @@ export const easeInCubic = (p: number): number => {
  * `r / d` (`d` at its largest, `START_D`: the farther the camera, the less is hidden); the line starts that far plus its own half width.
  * (A parallel near the pole can be seen from the other side of the planet over the pole: then it starts at the farthest, 180 degrees.)
  */
-export function entranceStart(line: Pick<CaptionLine, "halfSpan" | "baseLat">, viewLat: number, dMax: number = START_D): number {
+export function entranceStart(line: Pick<CaptionLine, "halfSpan" | "baseLat">, viewLat: number, dMax: number = START_D, r: number = CAPTION.radius): number {
   const vl = viewLat * DEG;
   const L = line.baseLat * DEG;
   const denom = Math.cos(vl) * Math.cos(L);
-  const need = denom > 1e-6 ? (Math.cos(occludedAngle(dMax)) - Math.sin(vl) * Math.sin(L)) / denom : -1;
+  const need = denom > 1e-6 ? (Math.cos(occludedAngle(dMax, r)) - Math.sin(vl) * Math.sin(L)) / denom : -1;
   const hidden = Math.acos(clamp(need, -1, 1));
   return Math.min(Math.PI, Math.max(CAPTION.enter.fromDeg * DEG, hidden + line.halfSpan + 4 * DEG));
 }
@@ -672,6 +709,17 @@ export const DRIFT = {
   ease: 2.2,
 } as const;
 
+/**
+ * How a row's trajectory is shaped: how long its entrance takes and the slope it starts with (`DRIFT.ease`: in distances over its duration), and
+ * optionally the roll's and the exit's durations (`CAPTION.cycle` when absent). The regular rows use the defaults; the cinematic row its own.
+ */
+export interface EnterShape {
+  ms: number;
+  ease: number;
+  dwellMs?: number;
+  exitMs?: number;
+}
+
 /** The roll's velocity, radians per ms (constant). */
 export const driftVelocity = (): number => (2 * DRIFT.amp) / CAPTION.cycle.dwellMs;
 
@@ -694,14 +742,14 @@ function hermite(p: number, x0: number, x1: number, m0: number, m1: number): num
  * Where a row is, `tau` ms after ITS entrance began (negative: not begun, hidden at `start`): `x` of the trajectory above, `start` the
  * magnitude of the angle it comes in from. A function of time only.
  */
-export function rowX(tau: number, start: number, amp: number = DRIFT.amp): number {
-  const Ein = CAPTION.enter.ms;
-  const T = CAPTION.cycle.dwellMs;
-  const Eout = CAPTION.cycle.exitMs;
+export function rowX(tau: number, start: number, amp: number = DRIFT.amp, enter: EnterShape = { ms: CAPTION.enter.ms, ease: DRIFT.ease }): number {
+  const Ein = enter.ms;
+  const T = enter.dwellMs ?? CAPTION.cycle.dwellMs;
+  const Eout = enter.exitMs ?? CAPTION.cycle.exitMs;
   const v = (2 * amp) / T;
   const D = Math.max(1e-6, start - amp);
   if (tau <= 0) return start;
-  if (tau < Ein) return hermite(tau / Ein, start, amp, -DRIFT.ease * D, -v * Ein);
+  if (tau < Ein) return hermite(tau / Ein, start, amp, -enter.ease * D, -v * Ein);
   if (tau < Ein + T) return amp - v * (tau - Ein);
   if (tau < Ein + T + Eout) return hermite((tau - Ein - T) / Eout, -amp, -start, -v * Eout, -DRIFT.ease * D);
   return -start;
@@ -737,7 +785,47 @@ export function dimPresence(theta: number, start: number, amp: number = DRIFT.am
   return clamp(1 - Math.max(0, Math.abs(theta) - amp) / (start - amp), 0, 1);
 }
 
-export type CaptionPhase = "hidden" | "in" | "out" | "fade" | "rest";
+export type CaptionPhase = "hidden" | "in" | "out" | "fade" | "rest" | "egg";
+
+/**
+ * The cinematic interlude's timing (engine/cinematic.ts has the values): every row leaves round the orbit (`leaveMs`), the stage is empty for `gapMs`,
+ * then ONE big row comes in (`enterMs`, a long ease that starts at `ease` and lands at the roll's own speed through `ampDeg`), holds, rolling
+ * gently through `ampDeg` (`holdMs`), and leaves (`exitMs`); the normal entrance follows.
+ */
+export interface EggShape {
+  leaveMs: number;
+  gapMs: number;
+  enterMs: number;
+  ease: number;
+  holdMs: number;
+  exitMs: number;
+  ampDeg: number;
+  /**
+   * The globe pulls back while it lasts (everything on it, the word included, is smaller: a smoothstep of `zoomInMs` from where the interlude
+   * begins, held while the word is on the stage, and back in the `zoomOutMs` that follow its exit), by `zoomLevels` levels of zoom (2^-levels of its size). `zoomCutMs`: how long a cut-short interlude
+   * (a gesture) takes to give the size back.
+   */
+  zoomLevels: number;
+  zoomInMs: number;
+  zoomOutMs: number;
+  zoomCutMs: number;
+}
+
+/** The interlude as planned for a session: after cycle `n` of the first showing has begun to leave, from the side `side` (-1 west, +1 east). */
+export interface CinematicPlan {
+  n: number;
+  shape: EggShape;
+  side: 1 | -1;
+}
+
+/**
+ * Time the whole interlude takes, ms: the rows leave, the stage is empty, the word comes in, holds and goes, and THEN the globe gives its size and its
+ * lean back (`zoomOutMs`: owner, 2026-10-23, "do not untilt the view until the word has left").
+ */
+export const eggMs = (s: EggShape): number => s.leaveMs + s.gapMs + s.enterMs + s.holdMs + s.exitMs + s.zoomOutMs;
+
+/** The row's trajectory in the interlude: `rowX` with the interlude's own shape. `tau`: ms since the big row's entrance began. */
+export const eggX = (tau: number, start: number, s: EggShape): number => rowX(tau, start, (s.ampDeg * Math.PI) / 180, { ms: s.enterMs, ease: s.ease, dwellMs: s.holdMs, exitMs: s.exitMs });
 
 /** How the caption leaves: a fade (the interaction's exit: cheap) or the orbit (the lines travel behind the planet). */
 export type CaptionExit = "fade" | "orbit";
@@ -772,6 +860,23 @@ export class CaptionMotion {
    */
   seed: number | null = null;
   private entrances = 0;
+
+  /**
+   * The rare cinematic interlude (engine/cinematic.ts). Null: none (reduced motion, a visitor who must not see it, a session that has seen it).
+   * Once the first showing's clock reaches the plan's moment the interlude begins (`onCinematic` is told, once); when it is over (or cut short by
+   * a showing) the plan is spent and the normal entrance follows (`onResume`).
+   */
+  egg: CinematicPlan | null = null;
+  onCinematic: (() => void) | null = null;
+  /** The interlude is over, ran out or cut short (once per interlude): what it started (the sound) lets go. */
+  onCinematicEnd: (() => void) | null = null;
+  onResume: (() => void) | null = null;
+  /** The clock reading (ms) when the interlude began; negative: not under way. */
+  private eggAt = -1;
+  /** How far behind the planet the big row starts (set every frame by the layer: it follows the camera's tilt like every row's) and where it was when a leaving cut it short. */
+  private eggStart = 0;
+  private eggFrozen: number | null = null;
+  private eggFrom: number[] = [];
 
   /** Checks and captures: a seed again from its first entrance (the same seed, the same sides), drawn at once. */
   reseed(seed: number | null): void {
@@ -820,7 +925,7 @@ export class CaptionMotion {
 
   /** Begin parking at `now`: each row eases from where it is to the middle in `CAPTION.park.parkMs` (a smoothstep: no velocity at either end). */
   beginPark(now: number): void {
-    if (this.parking || this.parked) return;
+    if (this.parking || this.parked || this.phase === "egg") return;
     const from = this.starts.map((s, i) => this.angle(now, i, s));
     if (this.phase === "in") this.phase = "rest"; // (an entrance still under way is cut short: the rows go on from where they are)
     this.parking = { t0: now, from };
@@ -877,6 +982,7 @@ export class CaptionMotion {
   enter(now: number | null): void {
     if (this.phase === "in") return;
     this.enterFrom = null;
+    if (this.eggAt >= 0) this.dropEgg(); // (a showing restarts the clock: an interlude that began is over, and is not shown again)
     if (this.phase === "out" && now !== null) {
       // (a leaving cut short goes on from where each line is: its sides are the ones it left by)
       this.enterFrom = this.starts.map((s, i) => this.angle(now, i, s));
@@ -924,6 +1030,10 @@ export class CaptionMotion {
   leave(now: number, exit: CaptionExit = "fade"): void {
     if (this.phase === "hidden" || this.phase === "out" || this.phase === "fade") return;
     // each line goes on from where it is now (an entrance cut short keeps every line where it had got to)
+    this.eggFrozen = this.phase === "egg" ? this.eggTheta() : null; // (the big row stays where it is for the fade)
+    // (an interlude cut short is over for its sound at once: it lets go over a fade of its own, not at the length of the file; the plan itself is
+    // dropped later, by the next showing)
+    if (this.phase === "egg") this.onCinematicEnd?.();
     this.leaveAngles = this.starts.map((s, i) => this.angle(now, i, s));
     this.leaveStays = this.leaveAngles.map((a, i) => Math.abs(a - (this.starts[i] ?? 0) * this.side(i)) < 1e-9);
     this.phase = exit === "orbit" ? "out" : "fade";
@@ -936,9 +1046,11 @@ export class CaptionMotion {
    */
   tick(now: number): void {
     if (this.phase === "fade" && now - this.t0 >= CAPTION.fadeMs) this.phase = "hidden";
-    if (this.lastNow >= 0 && (this.phase === "in" || this.phase === "rest") && !this.pending && !this.frozen) {
+    if (this.lastNow >= 0 && (this.phase === "in" || this.phase === "rest" || this.phase === "egg") && !this.pending && !this.frozen) {
       this.clock += Math.min(Math.max(now - this.lastNow, 0), CAPTION.drift.maxStepMs);
       this.ticked = true;
+      if (this.egg && this.eggAt < 0 && this.phase === "rest" && this.motionAllowed && this.clock >= this.eggTrigger()) this.beginEgg(now);
+      else if (this.egg && this.phase === "egg" && this.clock - this.eggAt >= eggMs(this.egg.shape)) this.endEgg(now);
     }
     this.lastNow = now;
   }
@@ -978,6 +1090,7 @@ export class CaptionMotion {
   /** Jump to the final state (reduced motion): in place, or gone. */
   settle(on: boolean): void {
     this.phase = on ? "rest" : "hidden";
+    if (this.eggAt >= 0) this.dropEgg();
   }
 
   /** Checks and captures only: hold the entrance at `ms` after its start (null releases it). */
@@ -1042,6 +1155,12 @@ export class CaptionMotion {
         const e = p * p * (3 - 2 * p);
         return from * (1 - e) + tl * e;
       }
+      case "egg": {
+        // the interlude's first part: every row goes on round the orbit and behind the planet (the orbit exit's own path), then the stage is empty
+        const L = this.egg?.shape.leaveMs ?? 0;
+        const t = this.clock - this.eggAt;
+        return t >= L ? start : leavingAngle(t, this.eggFrom[i] ?? 0, start, L);
+      }
       case "fade":
         // the lines stay on their own turn (the camera still moves them on the screen) and the canvas fades
         return this.leaveAngles[i] ?? 0;
@@ -1060,12 +1179,97 @@ export class CaptionMotion {
   /** Something is moving (the frame loop must keep going). */
   get animating(): boolean {
     // (a pending entrance is not a frame loop: nothing moves until the first frame has given it a clock)
-    return this.pinned === null && this.pinnedAngle === null && ((this.phase === "in" && !this.pending && !this.frozen) || this.phase === "out");
+    // (the interlude pulls the globe back: it is the globe's own frames, not the caption's alone)
+    return this.pinned === null && this.pinnedAngle === null && ((this.phase === "in" && !this.pending && !this.frozen) || this.phase === "out" || (this.phase === "egg" && !this.frozen));
   }
 
   /** The steady roll is on: the rows are in and moving (a slower, capped frame loop of the caption's own: `CAPTION.drift.frameMs`). */
   get drifting(): boolean {
     return this.pinned === null && this.pinnedAngle === null && this.phase === "rest" && this.continuous && !this.frozen && !this.parked;
+  }
+
+  /* ------------------------------ the cinematic interlude ------------------------------ */
+
+  /** The interlude is under way (the rows are leaving, the stage is empty, or the big row is on it). */
+  get eggActive(): boolean {
+    return this.phase === "egg";
+  }
+
+  /**
+   * How far the globe has pulled back now, 0 to 1 (a function of the interlude's clock: smooth, 0 at its start and at its end), 0 outside it. The
+   * layer turns it into levels of zoom (`EggShape.zoomLevels`) and gives the size back at a fixed pace when the interlude is cut short.
+   */
+  eggZoom(): number {
+    if (this.phase !== "egg" || !this.egg || this.eggAt < 0) return 0;
+    const s = this.egg.shape;
+    const t = this.clock - this.eggAt;
+    const smooth = (p: number) => {
+      const x = clamp(p, 0, 1);
+      return x * x * (3 - 2 * x);
+    };
+    return Math.min(smooth(t / s.zoomInMs), smooth((eggMs(s) - t) / s.zoomOutMs));
+  }
+
+  /** Where the big row starts, radians behind the planet (the layer: it follows the camera's tilt). */
+  setEggStart(rad: number): void {
+    this.eggStart = rad;
+  }
+
+  /** Nothing is moving the rows by hand: not parking, not blending back from a park, motion is on. */
+  private get motionAllowed(): boolean {
+    return this.continuous && !this.parking && !this.parked && !this.resuming && this.pinned === null && this.pinnedAngle === null;
+  }
+
+  /** The clock reading the interlude begins at: when the first showing's first row would begin to leave, `n` turns of the sets on. */
+  private eggTrigger(): number {
+    return (this.egg?.n ?? 0) * cycleMs() + CAPTION.enter.ms + CAPTION.cycle.dwellMs;
+  }
+
+  /**
+   * Begin the interlude NOW, from the resting roll (the owner's key with `?cinematic`, so that it can be seen again, with its sound, without a reload
+   * and without a click: a key is a gesture that does not leave the presentation). False when it cannot: no plan, the rows are not rolling, or one
+   * is under way.
+   */
+  replayEgg(now: number): boolean {
+    if (!this.egg || this.phase !== "rest" || !this.motionAllowed) return false;
+    this.beginEgg(now);
+    return true;
+  }
+
+  private beginEgg(now: number): void {
+    this.eggFrom = this.starts.map((s, i) => this.angle(now, i, s));
+    this.eggAt = this.clock;
+    this.eggFrozen = null;
+    this.phase = "egg";
+    this.onCinematic?.();
+  }
+
+  /** The interlude has run its course: the normal showing begins again from its first phrase set, as an entrance does. */
+  private endEgg(now: number): void {
+    this.dropEgg();
+    this.enter(now);
+    this.onResume?.();
+  }
+
+  /** The interlude is over (it ran out, or something else took the view): spent, never again. */
+  private dropEgg(): void {
+    if (this.egg) this.onCinematicEnd?.();
+    this.egg = null;
+    this.eggAt = -1;
+    this.eggFrozen = null;
+  }
+
+  /**
+   * The turn of the big row now, radians (positive: east of the central meridian), or null while it is not on the stage (before it comes in, after
+   * it has gone, or outside the interlude). A leaving cut short holds it where it was for the fade.
+   */
+  eggTheta(): number | null {
+    if (this.eggFrozen !== null) return this.eggFrozen;
+    if (this.phase !== "egg" || !this.egg || this.eggAt < 0) return null;
+    const s = this.egg.shape;
+    const t = this.clock - this.eggAt - s.leaveMs - s.gapMs;
+    if (t <= 0 || t >= s.enterMs + s.holdMs + s.exitMs) return null;
+    return this.egg.side * eggX(t, this.eggStart, s);
   }
 }
 

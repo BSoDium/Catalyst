@@ -26,6 +26,7 @@ describe("buildCsp", () => {
     expect(csp["style-src-attr"]).toEqual(["'unsafe-inline'"]);
     expect(csp["img-src"]).toEqual(["'self'", "data:", "blob:"]);
     expect(csp["font-src"]).toEqual(["'self'"]);
+    expect(csp["media-src"]).toEqual(["'self'"]); // the easter egg's sound is a file of ours
     expect(csp["worker-src"]).toEqual(["'self'", "blob:"]);
     expect(csp["manifest-src"]).toEqual(["'self'"]);
   });
