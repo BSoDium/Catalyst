@@ -1941,6 +1941,9 @@ export class GlobeRenderer {
     this.requestRender();
   }
 
+  /** The `--interlude` the page's hero is following (0 outside the interlude). */
+  private interludeVar = 0;
+
   /** The projection's shift and lift in buffer px as the camera is drawn with now: the page's (`shiftBuf`, `liftBuf`) except during the flight. */
   private camShift = 0;
   private camLift = 0;
@@ -2002,7 +2005,13 @@ export class GlobeRenderer {
     // (the flight keeps the page's layout offset at its two ends only: `flightOffsetShare`)
     const k = pose ? flightOffsetShare(u) + (1 - flightOffsetShare(u)) * cut : 1;
     // (the continents are filled for the whole interlude)
-    this.globe.setLand(this.caption?.landShare() ?? 0);
+    const land = this.caption?.landShare() ?? 0;
+    this.globe.setLand(land);
+    // the page's own hero steps back with it (app.css `--interlude`): written when it moves by a hundredth
+    if (Math.abs(land - this.interludeVar) >= 0.01 || (land === 0 && this.interludeVar !== 0)) {
+      this.interludeVar = land;
+      this.opts.container.ownerDocument.documentElement.style.setProperty("--interlude", land.toFixed(3));
+    }
     this.camShift = this.shiftBuf * k;
     this.camLift = this.liftBuf * k;
     if (this.camShift || this.camLift) cam.setViewOffset(this.bufW, this.bufH, this.camShift, this.camLift, this.bufW, this.bufH);
@@ -2070,6 +2079,8 @@ export class GlobeRenderer {
     this.cancelFrame();
     for (const c of this.cleanups) c();
     this.cleanups = [];
+    // (the hero must not stay a ghost if the globe goes away mid-interlude)
+    if (this.interludeVar !== 0) this.opts.container.ownerDocument.documentElement.style.removeProperty("--interlude");
     this.ring?.dispose();
     this.ring = null;
     this.legIcons?.dispose();
