@@ -1,17 +1,21 @@
 /**
  * The camera's flight through the cinematic interlude (engine/cinematic.ts), after the studio's intro: it opens low over the Mediterranean, level with
- * the horizon with the earth in the bottom third of the frame, as the first letter of the word comes over the horizon from the east; then it backs
- * away, west over Italy and Spain and up, pitching to keep the letters in view (it LOOKS AT THE WORD, not at the planet), until the whole earth is in
- * the frame and the letters line up in front of it, which is the page's own camera with the interlude's pull-back and lean.
+ * the horizon with the earth along the bottom of the frame, as the first letter of the word comes over the horizon from the east; then it backs away,
+ * west over Italy and Spain and up, turning to keep the word in the frame, until the whole earth is in it and the letters line up in front of the planet,
+ * which is the page's own camera with the interlude's pull-back and lean.
  *
- * A pure function of the progress `u` (0 at the interlude's start, 1 where the word lands) and of the pose it ends on, so that at 1 the picture is
- * exactly the one the renderer would draw without a flight, and at 0 it is the page's own (the first moments are a dive from it to the first key).
+ * It is a SPLINE, not a lock: the camera's position and the point it looks at are each a smooth curve of the progress `u` through hand-set keys, and
+ * nothing in it reads where the word is (a camera that followed the word would inherit every change of its pace, and snaps when the weighting moves).
+ * The keys are set so that the word, whose own path is nearly even in `u`, stays in the frame, a little to one side: a test holds that.
  *
- * A pose is a camera POSITION above the earth (longitude, latitude, altitude in earth radii), a point it LOOKS at and a roll about the line of sight.
- * The point is `follow` (0..1) of the way from the earth's centre to a point of the word, which is `lead` (0..1) of the way from the word's middle to its
- * LEADING end (the end it moves with: the west one, for a word that comes in from the east): follow 0 is the planet's centre, as every other camera of
- * the page looks, follow 1 the word itself. The keys are interpolated by cubic Hermite splines (zero speed at both ends, finite-difference tangents
- * between), the altitude in logs (a climb by equal ratios, not equal heights).
+ * A pure function of `u` (0 at the interlude's start, 1 where the word lands) and of the pose it ends on, so that at 1 the picture is exactly the one
+ * the renderer would draw without a flight, and at 0 it is the page's own (the first moments are a dive from it to the first key).
+ *
+ * A pose is a camera POSITION above the earth (longitude, latitude, altitude in earth radii), a point it LOOKS at (longitude, latitude and radius
+ * from the planet's centre: radius 0 is the centre, as every other camera of the page looks), which way is up (the local vertical, for a level horizon,
+ * towards the planet's north), a pitch down from that line of sight and a roll about it. The keys are interpolated by cubic Hermite splines
+ * (zero speed at both ends, slopes that never overshoot between). (The altitude is linear: in logs, a climb by equal ratios, the first dive from the
+ * page's view was nearly over in the first third of its time, which read as a snap.)
  */
 import { lonLatToVec3 } from "./geo";
 
@@ -26,12 +30,11 @@ export interface FlightKey {
   lat: number;
   /** Height above the surface, earth radii. */
   alt: number;
-  /** How far the look goes from the planet's centre to the word, and from the word's middle to its leading end (both 0..1). */
-  follow: number;
-  lead: number;
+  /** The point looked at: longitude, latitude and radius from the planet's centre (earth radii: the word's shell is 2). */
+  look: readonly [number, number, number];
   /** Which way is up: 1 the local vertical (the horizon level, the earth below), 0 the planet's north (as every other camera of the page). */
   level: number;
-  /** Degrees the camera is pitched DOWN from looking at its point (the leading letter then sits above the middle of the frame, the earth fills more of it). */
+  /** Degrees the camera is pitched DOWN from the line to the look point (the earth then fills more of the frame). */
   pitch: number;
   /** Degrees; positive leans the planet's north to the left on the screen (`ViewState.roll`). */
   roll: number;
@@ -46,9 +49,6 @@ export interface FlightEnd {
   /** Radians. */
   roll: number;
 }
-
-/** Where the word is at progress `u`: its middle and its leading end, in the earth's frame (earth radii). */
-export type FlightWord = (u: number) => { centre: Vec3; lead: Vec3 } | null;
 
 export interface FlightPose {
   /** The camera's position and the point it looks at, in the earth's frame (radii), its up (the roll applied) and the position's longitude and latitude. */
@@ -66,10 +66,11 @@ export interface FlightPose {
  */
 export const FLIGHT = {
   keys: [
-    { u: 0.07, lon: 22, lat: 36, alt: 0.15, follow: 1, lead: 1, level: 1, pitch: 7, roll: -6 },
-    { u: 0.28, lon: 13, lat: 39, alt: 0.6, follow: 1, lead: 0.75, level: 1, pitch: 4, roll: -3 },
-    { u: 0.5, lon: 5, lat: 40, alt: 1.8, follow: 1, lead: 0.4, level: 0.7, pitch: 2, roll: 0 },
-    { u: 0.78, lon: -1, lat: 32, alt: 2.8, follow: 0.85, lead: 0.1, level: 0.2, pitch: 0, roll: 3 },
+    { u: 0.1, lon: 22, lat: 36, alt: 0.15, look: [106, 8, 2], level: 1, pitch: 3, roll: -6 },
+    { u: 0.32, lon: 13, lat: 39, alt: 0.6, look: [74, 6, 1.9], level: 1, pitch: 5, roll: -3 },
+    { u: 0.52, lon: 5, lat: 40, alt: 1.8, look: [42, 4, 1.6], level: 0.7, pitch: 8, roll: 0 },
+    { u: 0.73, lon: -1, lat: 34, alt: 2.8, look: [10, 2, 1], level: 0.3, pitch: 4, roll: 3 },
+    { u: 0.88, lon: 0, lat: 28, alt: 3.1, look: [0, 0, 0.35], level: 0.1, pitch: 0, roll: 3 },
   ] satisfies readonly FlightKey[],
 };
 
@@ -123,22 +124,25 @@ function spline(knots: readonly Knot[], u: number): number[] {
   });
 }
 
-/** The flight's pose at progress `u` (0..1) for a flight that ends on `end`, the word being where `word` says. */
-export function flightPose(u: number, end: FlightEnd, word: FlightWord | null): FlightPose {
+/** The flight's pose at progress `u` (0..1) for a flight that ends on `end`. */
+export function flightPose(u: number, end: FlightEnd): FlightPose {
   const k = FLIGHT.keys;
-  const lnEnd = Math.log(Math.max(1e-4, end.alt));
-  // the knots: the pose it starts from (the page's: the end's), the keys, the end; each a vector [lon, lat, ln alt, follow, lead, level, pitch, roll]
+  const altEnd = Math.max(0.02, end.alt);
+  // the knots: the pose it starts from (the page's: the end's), the keys, the end; each a vector
+  // [lon, lat, alt, look lon, look lat, look radius, level, pitch, roll]
   const first = k[0]!;
-  const rows: number[][] = [[unwrap(end.lon, first.lon), end.lat, lnEnd, 0, first.lead, 0, 0, end.roll]];
+  const last = k[k.length - 1]!;
+  const rows: number[][] = [[unwrap(end.lon, first.lon), end.lat, altEnd, first.look[0], first.look[1], 0, 0, 0, end.roll]];
   const times = [0];
   let lon = rows[0]![0]!;
+  let look = first.look[0];
   for (const key of k) {
     lon = unwrap(key.lon, lon);
-    rows.push([lon, key.lat, Math.log(Math.min(key.alt, end.alt * 0.9)), key.follow, key.lead, key.level, key.pitch * DEG, key.roll * DEG]);
+    look = unwrap(key.look[0], look);
+    rows.push([lon, key.lat, Math.min(key.alt, end.alt * 0.9), look, key.look[1], key.look[2], key.level, key.pitch * DEG, key.roll * DEG]);
     times.push(key.u);
   }
-  const last = k[k.length - 1]!;
-  rows.push([unwrap(end.lon, lon), end.lat, lnEnd, 0, last.lead, 0, 0, end.roll]);
+  rows.push([unwrap(end.lon, lon), end.lat, altEnd, look, last.look[1], 0, 0, 0, end.roll]);
   times.push(1);
   const v = spline(
     rows.map((r, i) => ({ u: times[i]!, v: r })),
@@ -146,19 +150,12 @@ export function flightPose(u: number, end: FlightEnd, word: FlightWord | null): 
   );
   const lonNow = v[0]!;
   const latNow = Math.max(-89, Math.min(89, v[1]!));
-  const pos = scale(lonLatToVec3(lonNow, latNow), 1 + Math.exp(v[2]!));
-  // the look: the planet's centre (0) towards the word's point (the middle, or the leading end by `lead`)
-  const follow = Math.min(1, Math.max(0, v[3]!));
-  const lead = Math.min(1, Math.max(0, v[4]!));
-  let target: Vec3 = [0, 0, 0];
-  const w = word?.(u);
-  if (w && follow > 0) {
-    const point: Vec3 = [w.centre[0] + (w.lead[0] - w.centre[0]) * lead, w.centre[1] + (w.lead[1] - w.centre[1]) * lead, w.centre[2] + (w.lead[2] - w.centre[2]) * lead];
-    target = scale(point, follow);
-  }
-  const pitch = v[6]!;
-  const roll = v[7]!;
-  const level = Math.min(1, Math.max(0, v[5]!));
+  const pos = scale(lonLatToVec3(lonNow, latNow), 1 + Math.max(0.02, v[2]!));
+  // the look: a point at that longitude and latitude, at that radius from the planet's centre (0: the centre itself)
+  let target: Vec3 = scale(lonLatToVec3(v[3]!, Math.max(-89, Math.min(89, v[4]!))), Math.max(0, v[5]!));
+  const level = Math.min(1, Math.max(0, v[6]!));
+  const pitch = v[7]!;
+  const roll = v[8]!;
   // the camera's up: the local vertical (horizon level) towards the planet's north by `level`, taken square to the line of sight, then the camera pitched
   // down by `pitch` about its right, then turned about the line of sight by the roll (the sign is `viewBasis`'s: at the end, with level 0 and no pitch,
   // it is the same)
@@ -199,11 +196,3 @@ export function flightOffsetShare(u: number): number {
   return Math.max(1 - sm(0, 0.08, u), sm(0.62, 1, u));
 }
 
-/** How much the planet's disc is a ground (a tone of its own, `GlobeScene.setGround`) at progress `u`: from the dive in, to the last stretch before the final shot. */
-export function flightGroundShare(u: number): number {
-  const sm = (a: number, b: number, x: number) => {
-    const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
-    return t * t * (3 - 2 * t);
-  };
-  return Math.min(sm(0, 0.07, u), 1 - sm(0.7, 1, u));
-}

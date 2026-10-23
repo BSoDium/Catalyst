@@ -57,7 +57,7 @@ import {
 import { snapBox } from "./group-square";
 import { Grace } from "./grace";
 import { IdleSpin, SPIN, pacedByRotation, spinBlock, spinFrameDue, type SpinContext } from "./idle-spin";
-import { flightGroundShare, flightOffsetShare, flightPose } from "./flight";
+import { flightOffsetShare, flightPose } from "./flight";
 import { landingScale, liftFor, placeAbove, type Placement } from "./lift";
 import { routeLift } from "./view";
 import { newLodCamera, setLodCamera, type LodTree } from "./lod-tree";
@@ -1946,7 +1946,7 @@ export class GlobeRenderer {
     let b = viewBasis(v, h);
     // The interlude's flight (engine/flight.ts): a free camera, whose last pose is this orbit camera; `u` is 1 outside it and then nothing differs.
     const u = this.caption?.flightProgress() ?? 1;
-    const pose = u < 1 ? flightPose(u, { lon: v.lon, lat: v.lat, alt: b.d - 1, roll: v.roll ?? 0 }, (uu) => this.caption?.flightWordAt(uu, v.lon) ?? null) : null;
+    const pose = u < 1 ? flightPose(u, { lon: v.lon, lat: v.lat, alt: b.d - 1, roll: v.roll ?? 0 }) : null;
     this.flying = pose !== null;
     // what the rest of the frame reads: the camera's distance from the centre, the longitude and latitude it is over, and the zoom that distance is
     let d = b.d;
@@ -1989,7 +1989,6 @@ export class GlobeRenderer {
     // and the same up by `liftBuf` (the window starts that many pixels lower in the virtual frame).
     // (the flight keeps the page's layout offset at its two ends only: `flightOffsetShare`)
     const k = pose ? flightOffsetShare(u) : 1;
-    this.globe.setGround(pose ? flightGroundShare(u) : 0);
     this.camShift = this.shiftBuf * k;
     this.camLift = this.liftBuf * k;
     if (this.camShift || this.camLift) cam.setViewOffset(this.bufW, this.bufH, this.camShift, this.camLift, this.bufW, this.bufH);

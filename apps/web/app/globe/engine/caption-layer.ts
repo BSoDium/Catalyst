@@ -48,7 +48,6 @@ import {
   hex,
   captionFont,
   dimPresence,
-  eggX,
   entranceStart,
   lineHidden,
   lineOf,
@@ -76,7 +75,6 @@ import {
 } from "./caption";
 import { CINEMATIC, cinematicForced, notePlayed, planForPage } from "./cinematic";
 import { buildWordGeometry } from "./cinematic-word";
-import { lonLatToVec3 } from "./geo";
 import { prepareSound, SOUND, startSound, type SoundHandle } from "./cinematic-sound";
 import { OCCLUDER_RADIUS } from "./materials";
 import { CAPTION, ENERGY } from "./tuning";
@@ -459,6 +457,14 @@ class CrispCanvas {
   /** Upload a texture now (its first use would do it in the middle of a frame: the first time a phrase set comes round). */
   warm(tex: CanvasTexture): void {
     this.renderer.initTexture(tex);
+  }
+
+  /** The canvas's stacking: above the hero (15) or, for the interlude, below its text and its wash (9, the hero is 10), so the word and the planet go behind the name. */
+  private z = "15";
+  setZ(z: string): void {
+    if (z === this.z) return;
+    this.z = z;
+    this.renderer.domElement.style.zIndex = z;
   }
 
   hide(): void {
@@ -965,29 +971,6 @@ export class CaptionLayer {
   private flightAt = -1;
   private pinnedFlight: number | null = null;
 
-  /**
-   * Where the word is at progress `u` of the flight, in the earth's frame (radii), for the camera to look at: its middle and its leading end (the
-   * end it moves with). Anchored to the view's own meridian (`pageLon`, degrees), as the mesh is, whatever the camera does. The word's own timeline at
-   * that point: a function of `u`, the same one the interlude runs by. Null when there is no word.
-   */
-  flightWordAt(u: number, pageLon: number): { centre: [number, number, number]; lead: [number, number, number] } | null {
-    const b = this.built;
-    if (!b?.egg) return null;
-    const shape = this.motion.egg?.shape ?? CINEMATIC.shape;
-    const side = this.motion.egg?.side ?? CINEMATIC.side;
-    const land = shape.leaveMs + shape.gapMs + shape.enterMs;
-    const t = Math.max(0, u * land - shape.leaveMs - shape.gapMs);
-    const theta = side * eggX(t, b.egg.start, shape);
-    const lon = pageLon + (theta * 180) / Math.PI;
-    const half = (b.egg.place.halfSpan * 180) / Math.PI;
-    const r = CINEMATIC.radius;
-    const at = (l: number): [number, number, number] => {
-      const p = lonLatToVec3(l, 0);
-      return [p[0] * r, p[1] * r, p[2] * r];
-    };
-    return { centre: at(lon), lead: at(lon - side * half) };
-  }
-
   /** Checks and captures: hold the camera at this point of its flight (null releases it). */
   pinFlight(u: number | null): void {
     this.pinnedFlight = u;
@@ -1408,6 +1391,8 @@ export class CaptionLayer {
 
   renderCrisp(camera: PerspectiveCamera, rect: CaptionRect, dpr: number): void {
     this.dprNow = dpr;
+    // (the interlude's word goes BEHIND the hero's name, not over it)
+    this.crisp.setZ(this.motion.eggActive || this.flightU < 1 ? "9" : "15");
     if (!this.anyVisible || !this.built || this.failed) {
       this.crisp.hide();
       return;
