@@ -937,11 +937,14 @@ export class CaptionLayer {
    * out (`CINEMATIC.land`). Read once a frame, after `flightProgress` and `zoomOutLevels`.
    */
   landShare(): number {
-    const want = this.motion.eggActive || this.zoomK > 0 || this.flightU < 1;
+    // (a flight cut short is not wanted: the fill goes with the camera's glide)
+    const want = this.motion.eggActive || (this.cutK === 0 && (this.zoomK > 0 || this.flightU < 1));
     const now = performance.now();
     const dt = this.landAt < 0 ? 0 : Math.min(now - this.landAt, 64);
     this.landAt = want || this.landK > 0 ? now : -1;
-    this.landK = Math.min(1, Math.max(0, this.landK + (want ? dt / CINEMATIC.land.inMs : -dt / CINEMATIC.land.outMs)));
+    // (cut short: the fill goes with the camera's glide, not over the natural ending's slower fade)
+    const out = this.cutK > 0 ? CINEMATIC.land.cutMs : CINEMATIC.land.outMs;
+    this.landK = Math.min(1, Math.max(0, this.landK + (want ? dt / CINEMATIC.land.inMs : -dt / out)));
     this.landWant = want;
     return this.landK * this.landK * (3 - 2 * this.landK);
   }
@@ -998,14 +1001,24 @@ export class CaptionLayer {
     if (this.motion.eggActive) {
       this.flightU = this.motion.eggFlight();
       this.flightAt = -1;
+      this.cutK = 0;
     } else if (this.flightU < 1) {
+      // cut short: the flight is held where it was and the camera glides from there to the page's own (`flightCut`), over the time the globe gives its
+      // size back; when it has arrived the flight is over
       const now = performance.now();
       const dt = this.flightAt < 0 ? 0 : Math.min(now - this.flightAt, 64);
       this.flightAt = now;
-      this.flightU = Math.min(1, this.flightU + dt / (this.motion.egg?.shape ?? CINEMATIC.shape).zoomCutMs);
+      this.cutK = Math.min(1, this.cutK + dt / (this.motion.egg?.shape ?? CINEMATIC.shape).zoomCutMs);
+      if (this.cutK >= 1) this.flightU = 1;
     }
     return this.flightU;
   }
+
+  /** How far a cut-short flight has glided to the page's own camera, 0 to 1, eased (0 outside one). */
+  flightCut(): number {
+    return this.cutK * this.cutK * (3 - 2 * this.cutK);
+  }
+  private cutK = 0;
   private flightU = 1;
   private flightAt = -1;
   private pinnedFlight: number | null = null;
@@ -1177,6 +1190,7 @@ export class CaptionLayer {
   settle(): void {
     this.zoomK = 0; // (the pull-back and the flight are timed things too: nothing is drawn for them to run in)
     this.flightU = 1;
+    this.cutK = 0;
     this.landK = 0;
     this.motion.settle(this.want);
   }

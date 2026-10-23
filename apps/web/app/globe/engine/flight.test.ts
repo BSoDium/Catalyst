@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { eggX } from "./caption";
 import { CINEMATIC } from "./cinematic";
-import { FLIGHT, flightPose, type FlightEnd } from "./flight";
+import { FLIGHT, blendPose, flightPose, type FlightEnd } from "./flight";
 import { lonLatToVec3, viewBasis } from "./geo";
 
 const end: FlightEnd = { lon: 0, lat: 8, alt: 3.4, roll: (12 * Math.PI / 180) };
@@ -149,5 +149,29 @@ describe("the camera's flight", () => {
     }
     expect(maxStepChange).toBeLessThan(0.002);
     expect(maxTurnChange).toBeLessThan(0.05);
+  });
+
+  it("glides from a pose to the page's own camera when the flight is cut short: the start is the pose, the end exactly the orbit camera, and no step between", () => {
+    const from = flightPose(0.4, end);
+    const home = flightPose(1, end);
+    const at0 = blendPose(from, home, 0);
+    const at1 = blendPose(from, home, 1);
+    for (let i = 0; i < 3; i++) {
+      expect(at0.pos[i]).toBeCloseTo(from.pos[i]!, 12);
+      expect(at1.pos[i]).toBeCloseTo(home.pos[i]!, 12);
+      expect(at1.target[i]).toBeCloseTo(home.target[i]!, 12);
+      expect(at1.up[i]).toBeCloseTo(home.up[i]!, 9);
+    }
+    // from any point of the flight: the camera moves steadily, and its up never turns over
+    for (const u of [0.1, 0.3, 0.6, 0.9]) {
+      const a = flightPose(u, end);
+      let prev = a;
+      for (let k = 0.02; k <= 1.0001; k += 0.02) {
+        const b = blendPose(a, home, Math.min(1, k));
+        expect(len(sub(b.pos, prev.pos))).toBeLessThan(0.5);
+        expect(dot(unit(b.up), unit(prev.up))).toBeGreaterThan(0.9);
+        prev = b;
+      }
+    }
   });
 });

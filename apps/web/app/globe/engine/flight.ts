@@ -221,3 +221,18 @@ export function flightOffsetShare(u: number): number {
   return Math.max(1 - sm(0, 0.08, u), sm(0.62, 1, u));
 }
 
+
+/**
+ * The pose `k` (0..1, eased by the caller) of the way from `a` to `b`: the camera glides, and so does the point it looks at and its up. For a flight cut
+ * short by a gesture: from where the camera is, to the page's own camera, in one smooth move, not the rest of the path flown in a rush.
+ */
+export function blendPose(a: FlightPose, b: FlightPose, k: number): FlightPose {
+  const mix = (x: Vec3, y: Vec3): Vec3 => [x[0] + (y[0] - x[0]) * k, x[1] + (y[1] - x[1]) * k, x[2] + (y[2] - x[2]) * k];
+  return {
+    pos: mix(a.pos, b.pos),
+    target: mix(a.target, b.target),
+    up: unit(mix(a.up, b.up)),
+    lon: a.lon + (b.lon - a.lon) * k,
+    lat: a.lat + (b.lat - a.lat) * k,
+  };
+}
