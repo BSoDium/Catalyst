@@ -6,9 +6,8 @@ import { buildWordGeometry, glyphPolygons, KIND } from "./cinematic-word";
 const opts = { bevelCaps: CINEMATIC.bevelCaps, depthCaps: CINEMATIC.depthCaps, bevelSegments: CINEMATIC.bevelSegments };
 
 describe("the interlude's word, baked", () => {
-  it("is the word the interlude says, from the page's face", () => {
+  it("is the word the interlude says, drawn as a logotype", () => {
     expect(WORD_OUTLINES.word).toBe(CINEMATIC.word);
-    expect(WORD_OUTLINES.weight).toBe(800);
     // nine capitals: U N I V E R S A L, as nine outlines and the counters of the R and the A
     expect(WORD_OUTLINES.contours.length).toBe(11);
     expect(WORD_OUTLINES.widthCaps).toBeGreaterThan(5.5);

@@ -45,11 +45,11 @@ export const CINEMATIC = {
    * letters stand out against either; the blue is the rim only (and the places' lights at the chord), the page's one accent. `back` is the letters' backs
    * (towards the planet, out of the sun).
    */
-  face: { light: "#5d626a", dark: "#d4d7dc" },
-  sideColor: { light: "#8e949e", dark: "#5b6068" },
-  back: { light: "#2c2f33", dark: "#2a2d32" },
+  face: { light: "#b3b9c3", dark: "#d4d7dc" },
+  sideColor: { light: "#8b919b", dark: "#5b6068" },
+  back: { light: "#484d55", dark: "#2a2d32" },
   /** The studio the metal reflects, a vertical gradient from above (`hi`) to below (`lo`), per theme. */
-  env: { light: { hi: "#e6e8eb", lo: "#202225" }, dark: { hi: "#ffffff", lo: "#3a3d42" } },
+  env: { light: { hi: "#f4f5f7", lo: "#8a9099" }, dark: { hi: "#ffffff", lo: "#3a3d42" } },
   depthCaps: 0.3,
   bevelCaps: 0.036,
   /** The bevel is a quarter circle in this many steps (a few more triangles, a bevel that catches the light along its width). */

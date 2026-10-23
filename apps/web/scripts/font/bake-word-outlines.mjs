@@ -1,103 +1,131 @@
-// Bakes the outlines of the cinematic interlude's word into a plain TypeScript table: `pnpm --filter @catalyst/web bake:word [word] [weight] [gap] [wide]`.
+// Bakes the outlines of the cinematic interlude's word into a plain TypeScript table: `pnpm --filter @catalyst/web bake:word [word] [gap]`.
 //
-// Source: the site's mono face (JetBrains Mono, SIL OFL 1.1, public/fonts/jetbrains-mono-5.3.0-latin-wght.woff2) at its heaviest: its capitals are squarish
-// (straight sides, flat terminals, a bowl on the R and a curve on the S and U that are nearer a rounded rectangle than a circle), which is what a studio's
-// wordmark looks like. It is a variable font in a woff2, which the font parser the repo has (fontkit) cannot instance, so each letter is drawn the way the page
-// draws text, in the Chromium the perf scripts use, at a cap height of CAP_PX pixels, and its contours are traced from that picture (marching squares at half
-// coverage) and simplified to within a thousandth of a cap height or so.
+// The letters are DRAWN, not set in a font: a studio's wordmark is a logotype with one thick stroke, wide proportions, flat apexes and square corners, which no
+// face in the repo has (the display sans is round and thin on the R; the mono has slabs and is narrow, and stretching it thins the bars). Each capital is built
+// from rectangles, a few polygons for the diagonals and a few rounded corners (`LETTERS`, in cap heights, y up), drawn in the Chromium the perf scripts use,
+// traced from that picture (marching squares at half coverage) and simplified to within a thousandth or so of a cap height, so the corners stay as drawn.
 //
-// The letters are then SET HERE, not by the font: a mono face gives every letter the same width, wide gaps and slab serifs on the I. The I is drawn as a plain
-// bar (the stem of the L, a full cap high), and every letter is placed so that the nearest points of its outline and the previous letter's are `gap` cap heights
-// apart (row by row, so a V tucks its arm over the E that follows and an A its foot under the L: the tight, even colour of a logotype). The letters are also
-// drawn WIDER than the face draws them (`wide` times, with a thin stroke added so that the bars the widening leaves relatively thin keep up with the stems):
-// a mono face's capitals are tall and narrow, a studio's are nearly square.
+// The letters are then SET HERE: each so that the nearest points of its outline and the previous letter's are `gap` cap heights apart (row by row, so a V tucks
+// its arm over the E that follows and an A its foot under the L: the tight, even colour of a logotype).
 //
 // The result is a set of closed polygons in CAP HEIGHTS (x to the right from the ink's left edge, y up from the baseline) that the engine extrudes into solid
-// letters (engine/cinematic-word.ts) without a font parser. The table is `app/globe/engine/cinematic-glyphs.ts`.
+// letters (engine/cinematic-word.ts). The table is `app/globe/engine/cinematic-glyphs.ts`.
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { launch } from "../perf/lib.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const FONT = path.join(here, "../../public/fonts/jetbrains-mono-5.3.0-latin-wght.woff2");
 const OUT = path.join(here, "../../app/globe/engine/cinematic-glyphs.ts");
 const WORD = process.argv[2] ?? "UNIVERSAL";
-const WEIGHT = Number(process.argv[3] ?? 800);
 /** The closest two letters' outlines come, cap heights. */
-const GAP = Number(process.argv[4] ?? 0.085);
-/** How much wider than the face draws them the letters are, and the stroke added to keep the horizontal bars up with the stems (cap heights). */
-const WIDE = Number(process.argv[5] ?? 1.45);
-const EMBOLDEN = 0.01;
+const GAP = Number(process.argv[3] ?? 0.17);
 const CAP_PX = 800;
 /** The simplification tolerance, cap heights. */
-const EPS = 0.0022;
+const EPS = 0.0016;
 
 const browser = await launch({});
 const page = await browser.newPage();
 await page.setContent("<canvas id=c></canvas>");
-const b64 = fs.readFileSync(FONT).toString("base64");
 const out = await page.evaluate(
-  async ({ b64, WORD, WEIGHT, GAP, WIDE, EMBOLDEN, CAP_PX, EPS }) => {
-    const face = new FontFace("Mono", `url(data:font/woff2;base64,${b64})`, { weight: "100 800" });
-    await face.load();
-    document.fonts.add(face);
-    const probe = document.createElement("canvas").getContext("2d");
-    probe.font = `${WEIGHT} 1000px Mono`;
-    const capEm = probe.measureText("H").actualBoundingBoxAscent / 1000;
-    const S = CAP_PX / capEm;
-    const font = `${WEIGHT} ${S}px Mono`;
+  async ({ WORD, GAP, CAP_PX, EPS }) => {
+    const C = CAP_PX;
+    // the strokes, cap heights: verticals a little thicker than horizontals (the eye sees equal ones as the other way)
+    const T = 0.225;
+    const H = 0.19;
+    const D = 0.28; // a diagonal, measured along the horizontal
     const pad = 40;
-    const W = Math.ceil(S * 0.6 * WIDE) + 2 * pad + 40;
-    const asc = Math.ceil(CAP_PX * 1.15) + pad;
-    const H = asc + Math.ceil(CAP_PX * 0.12) + pad;
+    const W = Math.ceil(C * 1.2) + 2 * pad;
+    const asc = Math.ceil(C * 1.08) + pad;
+    const Hh = asc + Math.ceil(C * 0.1) + pad;
     const c = document.getElementById("c");
     c.width = W;
-    c.height = H;
+    c.height = Hh;
     const g = c.getContext("2d", { willReadFrequently: true });
-    const raster = (draw) => {
-      g.clearRect(0, 0, W, H);
-      g.font = font;
-      g.fillStyle = "#000";
-      g.strokeStyle = "#000";
-      g.lineJoin = "miter";
-      g.miterLimit = 6;
-      g.lineWidth = EMBOLDEN * CAP_PX;
-      draw(g);
-      return new Uint8ClampedArray(g.getImageData(0, 0, W, H).data);
+    const X = (x) => pad + x * C;
+    const Y = (y) => asc - y * C;
+    const rect = (x0, y0, x1, y1) => g.fillRect(X(x0), Y(y1), (x1 - x0) * C, (y1 - y0) * C);
+    const poly = (pts) => {
+      g.beginPath();
+      pts.forEach(([x, y], i) => (i ? g.lineTo(X(x), Y(y)) : g.moveTo(X(x), Y(y))));
+      g.closePath();
+      g.fill();
     };
-    const A = (data, x, y) => (x < 0 || y < 0 || x >= W || y >= H ? 0 : data[(y * W + x) * 4 + 3] / 255);
+    /** A rectangle with each corner's radius (tl, tr, br, bl), cap heights. */
+    const rr = (x0, y0, x1, y1, [tl, tr, br, bl]) => {
+      g.beginPath();
+      g.moveTo(X(x0 + tl), Y(y1));
+      g.lineTo(X(x1 - tr), Y(y1));
+      if (tr) g.arc(X(x1 - tr), Y(y1 - tr), tr * C, -Math.PI / 2, 0);
+      g.lineTo(X(x1), Y(y0 + br));
+      if (br) g.arc(X(x1 - br), Y(y0 + br), br * C, 0, Math.PI / 2);
+      g.lineTo(X(x0 + bl), Y(y0));
+      if (bl) g.arc(X(x0 + bl), Y(y0 + bl), bl * C, Math.PI / 2, Math.PI);
+      g.lineTo(X(x0), Y(y1 - tl));
+      if (tl) g.arc(X(x0 + tl), Y(y1 - tl), tl * C, Math.PI, Math.PI * 1.5);
+      g.closePath();
+      g.fill();
+    };
+    const hole = (fn) => {
+      g.globalCompositeOperation = "destination-out";
+      fn();
+      g.globalCompositeOperation = "source-over";
+    };
+    /** Each letter: its width (cap heights) and how it is drawn, from its own left edge. */
+    const LETTERS = {
+      U: { w: 0.94, draw: (w) => { rr(0, 0, w, 1, [0, 0, 0.4, 0.4]); hole(() => rr(T, H, w - T, 1.01, [0, 0, 0.4 - T, 0.4 - T])); } },
+      N: { w: 0.96, draw: (w) => { rect(0, 0, T, 1); rect(w - T, 0, w, 1); poly([[0, 1], [D, 1], [w, 0], [w - D, 0]]); } },
+      I: { w: T, draw: () => rect(0, 0, T, 1) },
+      V: { w: 1.04, draw: (w) => { poly([[0, 1], [D, 1], [w / 2 + 0.11, 0], [w / 2 - 0.11, 0]]); poly([[w, 1], [w - D, 1], [w / 2 - 0.11, 0], [w / 2 + 0.11, 0]]); } },
+      E: { w: 0.74, draw: (w) => { rect(0, 0, T, 1); rect(0, 1 - H, w, 1); rect(0, 0.5 - H / 2, w * 0.86, 0.5 + H / 2); rect(0, 0, w, H); } },
+      R: {
+        w: 0.92,
+        draw: (w) => {
+          rect(0, 0, T, 1);
+          rr(0, 0.42, w, 1, [0, 0.27, 0.27, 0]);
+          hole(() => rr(T, 0.42 + H, w - T, 1 - H, [0, 0.07, 0.07, 0]));
+          poly([[0.3, 0.46], [0.3 + D, 0.46], [w, 0], [w - D, 0]]);
+        },
+      },
+      S: {
+        w: 0.86,
+        draw: (w) => {
+          const r = 0.4;
+          rr(0, 0.5 - H / 2, w, 1, [r, r, 0, 0.0]);
+          hole(() => rr(T, 0.5 + H / 2, w + 0.1, 1 - H, [0.1, 0, 0, 0]));
+          rr(0, 0, w, 0.5 + H / 2, [0, 0, r, r]);
+          hole(() => rr(-0.1, H, w - T, 0.5 - H / 2, [0, 0, 0.1, 0]));
+        },
+      },
+      A: {
+        w: 1.1,
+        draw: (w) => {
+          poly([[0, 0], [D, 0], [w / 2 + 0.13, 1], [w / 2 - 0.13, 1]]);
+          poly([[w, 0], [w - D, 0], [w / 2 - 0.13, 1], [w / 2 + 0.13, 1]]);
+          rect(0.2, 0.2, w - 0.2, 0.2 + H * 0.95);
+        },
+      },
+      L: { w: 0.72, draw: (w) => { rect(0, 0, T, 1); rect(0, 0, w, H); } },
+    };
+    const raster = (ch) => {
+      g.clearRect(0, 0, W, Hh);
+      g.fillStyle = "#000";
+      g.globalCompositeOperation = "source-over";
+      LETTERS[ch].draw(LETTERS[ch].w);
+      return new Uint8ClampedArray(g.getImageData(0, 0, W, Hh).data);
+    };
+    const A = (data, x, y) => (x < 0 || y < 0 || x >= W || y >= Hh ? 0 : data[(y * W + x) * 4 + 3] / 255);
     /** The ink's left and right edge on every row (null where there is none). */
     const profile = (data) => {
-      const left = new Array(H).fill(null);
-      const right = new Array(H).fill(null);
-      for (let y = 0; y < H; y++) {
+      const left = new Array(Hh).fill(null);
+      const right = new Array(Hh).fill(null);
+      for (let y = 0; y < Hh; y++) {
         for (let x = 0; x < W; x++) if (A(data, x, y) >= 0.5) { left[y] = x; break; }
         for (let x = W - 1; x >= 0; x--) if (A(data, x, y) >= 0.5) { right[y] = x + 1; break; }
       }
       return { left, right };
     };
-    // the stem of the L: the first run of ink on a row through its middle
-    /** A letter widened about its own left edge: drawn through a stretch, filled and stroked. */
-    const wide = (g, ch) => {
-      g.save();
-      g.translate(pad, asc);
-      g.scale(WIDE, 1);
-      g.lineWidth = (EMBOLDEN * CAP_PX) / WIDE;
-      g.fillText(ch, 0, 0);
-      g.strokeText(ch, 0, 0);
-      g.restore();
-    };
-    const L = raster((g) => wide(g, "L"));
-    const stem = (() => {
-      const y = asc - Math.round(CAP_PX * 0.5);
-      let x = 0;
-      while (x < W && A(L, x, y) < 0.5) x++;
-      const x0 = x;
-      while (x < W && A(L, x, y) >= 0.5) x++;
-      return x - x0;
-    })();
-    const glyph = (ch) => (ch === "I" ? raster((g) => g.fillRect(pad + Math.round(S * 0.2), asc - CAP_PX - EMBOLDEN * CAP_PX / 2, stem, CAP_PX + EMBOLDEN * CAP_PX)) : raster((g) => wide(g, ch)));
+    const glyph = (ch) => raster(ch);
     /** Marching squares at half coverage over one glyph's picture: its closed loops, in the picture's pixels. */
     const trace = (data) => {
       const pts = new Map();
@@ -115,7 +143,7 @@ const out = await page.evaluate(
         (adj.get(p) ?? adj.set(p, []).get(p)).push(q);
         (adj.get(q) ?? adj.set(q, []).get(q)).push(p);
       };
-      for (let y = -1; y < H; y++) {
+      for (let y = -1; y < Hh; y++) {
         for (let x = -1; x < W; x++) {
           const tl = A(data, x, y) >= 0.5 ? 1 : 0;
           const tr = A(data, x + 1, y) >= 0.5 ? 1 : 0;
@@ -211,7 +239,7 @@ const out = await page.evaluate(
       let off = 0;
       if (prev) {
         off = -Infinity;
-        for (let y = 0; y < H; y++) {
+        for (let y = 0; y < Hh; y++) {
           if (prev.prof.right[y] === null || prof.left[y] === null) continue;
           off = Math.max(off, prev.off + prev.prof.right[y] + gapPx - prof.left[y]);
         }
@@ -225,21 +253,20 @@ const out = await page.evaluate(
     const flat = contours.map((c) => c.flatMap(([x, y]) => [round(x / CAP_PX), round((asc - y) / CAP_PX)]));
     const ys = flat.flatMap((c) => c.filter((_, i) => i % 2 === 1));
     const xs = flat.flatMap((c) => c.filter((_, i) => i % 2 === 0));
-    return { contours: flat, widthCaps: Math.max(...xs), aboveCaps: Math.max(...ys), belowCaps: Math.max(0, -Math.min(...ys)), stem: stem / CAP_PX };
+    return { contours: flat, widthCaps: Math.max(...xs), aboveCaps: Math.max(...ys), belowCaps: Math.max(0, -Math.min(...ys)), stem: T };
   },
-  { b64, WORD, WEIGHT, GAP, WIDE, EMBOLDEN, CAP_PX, EPS },
+  { WORD, GAP, CAP_PX, EPS },
 );
 await browser.close();
 
 const body = `/**
- * The outlines of the cinematic interlude's word, baked by scripts/font/bake-word-outlines.mjs (do not edit): the site's mono face, JetBrains Mono
- * (SIL OFL 1.1, public/fonts/LICENSE-jetbrains-mono.txt), at weight ${WEIGHT}, traced from drawings of its letters (widened ${WIDE} times, the I a plain bar) and set with
- * the nearest points of neighbouring letters ${GAP} cap heights apart. Every contour is a closed polygon, flat \`[x0, y0, x1, y1, ...]\`, in CAP HEIGHTS: x to
- * the right from the ink's left edge, y up from the baseline. The outer contours and the holes are told apart by their winding at build time.
+ * The outlines of the cinematic interlude's word, baked by scripts/font/bake-word-outlines.mjs (do not edit): nine capitals DRAWN as a logotype (one thick
+ * stroke, wide, flat apexes, square corners; the script has the construction of each letter), traced from the drawing and set with the nearest points of
+ * neighbouring letters ${GAP} cap heights apart. Every contour is a closed polygon, flat \`[x0, y0, x1, y1, ...]\`, in CAP HEIGHTS: x to the right from the
+ * ink's left edge, y up from the baseline. The outer contours and the holes are told apart by their winding at build time.
  */
 export const WORD_OUTLINES = {
   word: ${JSON.stringify(WORD)},
-  weight: ${WEIGHT},
   /** The ink's width and its extents above and below the baseline, cap heights. */
   widthCaps: ${out.widthCaps},
   aboveCaps: ${out.aboveCaps},
@@ -248,4 +275,4 @@ export const WORD_OUTLINES = {
 } as const;
 `;
 fs.writeFileSync(OUT, body);
-console.log(`${WORD}: ${out.contours.length} contours, ${out.contours.reduce((a, c) => a + c.length / 2, 0)} points, width ${out.widthCaps} caps, above ${out.aboveCaps}, below ${out.belowCaps}, stem ${out.stem.toFixed(3)}`);
+console.log(`${WORD}: ${out.contours.length} contours, ${out.contours.reduce((a, c) => a + c.length / 2, 0)} points, width ${out.widthCaps} caps, above ${out.aboveCaps}, below ${out.belowCaps}`);
