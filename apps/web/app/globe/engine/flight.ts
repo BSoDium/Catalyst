@@ -74,7 +74,7 @@ export interface FlightPose {
 export const FLIGHT = {
   keys: [
     // the opening: over Greece, the horizon level and in the lower part of the picture, the letters about to come up over it
-    { u: 0.1, lon: 22, lat: 36, alt: 0.15, look: [106, 8, 2], level: 1, pitch: -6, roll: -6, horizon: 1, bearing: 85 },
+    { u: 0.16, lon: 22, lat: 36, alt: 0.15, look: [106, 8, 2], level: 1, pitch: -6, roll: -6, horizon: 1, bearing: 85 },
     // backing away west over Italy, climbing, the horizon held: the planet stays in the picture while the word rises from the limb
     { u: 0.38, lon: 14, lat: 38, alt: 0.62, look: [106, 8, 2], level: 1, pitch: -6, roll: -4, horizon: 1, bearing: 85 },
     // the camera leaves the limb and turns towards the word and the planet together
@@ -104,7 +104,7 @@ interface Knot {
 }
 
 /** Cubic Hermite through the knots at `u`: zero speed at the ends, central differences inside. */
-function spline(knots: readonly Knot[], u: number): number[] {
+function spline(knots: readonly Knot[], u: number, still: ReadonlySet<number> = new Set()): number[] {
   const n = knots.length;
   const x = Math.min(1, Math.max(0, u));
   let i = 0;
@@ -123,7 +123,7 @@ function spline(knots: readonly Knot[], u: number): number[] {
     // the slope at a knot: the mean of the slopes either side, none where the value turns round there (a minimum stays a minimum: no dip past it) and
     // never more than three times the smaller of the two (no overshoot)
     const slope = (j: number) => {
-      if (j === 0 || j === n - 1) return 0;
+      if (j === 0 || j === n - 1 || still.has(j)) return 0;
       const p = knots[j - 1]!;
       const c = knots[j]!;
       const q = knots[j + 1]!;
@@ -159,6 +159,8 @@ export function flightPose(u: number, end: FlightEnd): FlightPose {
   const v = spline(
     rows.map((r, i) => ({ u: times[i]!, v: r })),
     u,
+    // (the camera is momentarily still at the opening shot: the dive eases in AND out, and the departure eases out of it)
+    new Set([1]),
   );
   const lonNow = v[0]!;
   const latNow = Math.max(-89, Math.min(89, v[1]!));

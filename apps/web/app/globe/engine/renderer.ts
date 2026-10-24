@@ -324,7 +324,7 @@ export class GlobeRenderer {
       }
     }
     // The interlude fills the continents: their picture is made when one is planned, in an idle moment, and not in the frame that starts it.
-    if (this.caption?.eggPlanned) {
+    if (this.caption?.eggPlanned && CINEMATIC.planet.fill) {
       const make = () => {
         if (!this.disposed) this.globe.prepareLand();
       };
@@ -1560,10 +1560,12 @@ export class GlobeRenderer {
         wy1 = Math.min(wy1, cy - e.bottom * perTan + pad);
       }
     }
-    const x0 = wholeX ? 0 : Math.max(0, Math.floor(cx - R));
-    const y0 = Math.max(0, Math.floor(wy0));
-    const x1 = wholeX ? cw : Math.min(cw, Math.ceil(cx + R));
-    const y1 = Math.min(ch, Math.ceil(wy1));
+    // (while the interlude's word is drawn at the art's resolution the window is on the art's grid, so its pixels are the globe's)
+    const g = caption.interludePixels && P > 1 ? P : 1;
+    const x0 = wholeX ? 0 : Math.max(0, Math.floor((cx - R) / g) * g);
+    const y0 = Math.max(0, Math.floor(wy0 / g) * g);
+    const x1 = wholeX ? cw : Math.min(cw, Math.ceil((cx + R) / g) * g);
+    const y1 = Math.min(ch, Math.ceil(wy1 / g) * g);
     if (x1 - x0 < 1 || y1 - y0 < 1) return;
     const cam = this.camera;
     cam.setViewOffset(this.bufW, this.bufH, this.camShift + x0 / P, this.camLift + y0 / P, (x1 - x0) / P, (y1 - y0) / P);
@@ -1578,7 +1580,7 @@ export class GlobeRenderer {
     rect.full.h = ch;
     rect.at.x = x0;
     rect.at.y = y0;
-    caption.renderCrisp(cam, rect, window.devicePixelRatio || 1);
+    caption.renderCrisp(cam, rect, window.devicePixelRatio || 1, P);
     this.capDrawnAny = performance.now();
     if (this.camShift || this.camLift) cam.setViewOffset(this.bufW, this.bufH, this.camShift, this.camLift, this.bufW, this.bufH);
     else cam.clearViewOffset();
@@ -2009,8 +2011,9 @@ export class GlobeRenderer {
     const k = pose ? flightOffsetShare(u) + (1 - flightOffsetShare(u)) * cut : 1;
     // (the continents are filled for the whole interlude)
     const land = this.caption?.landShare() ?? 0;
-    this.globe.setLand(land);
-    this.globe.setCity(this.caption?.cityShare() ?? 0);
+    // (the filled, sun-lit planet and the places' lights are off for now, `CINEMATIC.planet`: the globe keeps its own look; the hero still steps back with `land`)
+    this.globe.setLand(CINEMATIC.planet.fill ? land : 0);
+    this.globe.setCity(CINEMATIC.planet.cities ? (this.caption?.cityShare() ?? 0) : 0);
     // the page's own hero steps back with it (app.css `--interlude`): written when it moves by a hundredth
     if (Math.abs(land - this.interludeVar) >= 0.01 || (land === 0 && this.interludeVar !== 0)) {
       this.interludeVar = land;

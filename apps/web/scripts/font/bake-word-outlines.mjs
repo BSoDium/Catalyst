@@ -1,195 +1,123 @@
-// Bakes the outlines of the cinematic interlude's word into a plain TypeScript table: `pnpm --filter @catalyst/web bake:word [word] [gap]`.
+// Bakes the outlines of the cinematic interlude's word into a plain TypeScript table: `pnpm --filter @catalyst/web bake:word [word] [weight] [opsz] [tracking]`.
 //
-// The letters are DRAWN, not set in a font: a studio's wordmark is a logotype with one thick stroke, wide proportions, flat apexes and square corners, which no
-// face in the repo has (the display sans is round and thin on the R; the mono has slabs and is narrow, and stretching it thins the bars). Each capital is built
-// from rectangles, a few polygons for the diagonals and a few rounded corners (`LETTERS`, in cap heights, y up), drawn in the Chromium the perf scripts use,
-// traced from that picture (marching squares at half coverage) and simplified to within a thousandth or so of a cap height, so the corners stay as drawn.
-//
-// The letters are then SET HERE: each so that the nearest points of its outline and the previous letter's are `gap` cap heights apart (row by row, so a V tucks
-// its arm over the E that follows and an A its foot under the L: the tight, even colour of a logotype).
-//
-// The result is a set of closed polygons in CAP HEIGHTS (x to the right from the ink's left edge, y up from the baseline) that the engine extrudes into solid
-// letters (engine/cinematic-word.ts). The table is `app/globe/engine/cinematic-glyphs.ts`.
+// Source: the page's own display face (Bricolage Grotesque, SIL OFL 1.1, public/fonts/bricolage-grotesque-5.3.0-latin-wght-opsz.woff2). It is a variable
+// font in a woff2, which the font parser the repo has (fontkit) cannot instance, so the word is drawn the way the page draws it, in the Chromium the perf
+// scripts use (the caption's weight, the given optical size, its own kerning and the caption's tracking), at a cap height of CAP_PX pixels, and its
+// contours are traced from that picture (marching squares at half coverage) and simplified to within a thousandth of a cap height. The result is a set of
+// closed polygons in CAP HEIGHTS (x to the right from the ink's left edge, y up from the baseline) that the engine extrudes into solid letters
+// (engine/cinematic-word.ts) without a font parser. The table is `app/globe/engine/cinematic-glyphs.ts`.
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { launch } from "../perf/lib.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
+const FONT = path.join(here, "../../public/fonts/bricolage-grotesque-5.3.0-latin-wght-opsz.woff2");
 const OUT = path.join(here, "../../app/globe/engine/cinematic-glyphs.ts");
 const WORD = process.argv[2] ?? "UNIVERSAL";
-/** The closest two letters' outlines come, cap heights. */
-const GAP = Number(process.argv[3] ?? 0.17);
+const WEIGHT = Number(process.argv[3] ?? 800);
+/** The optical size: 12 is the face's sturdy, wide cut (the 96 cut is narrower and finer), nearer a studio's wordmark. */
+const OPSZ = Number(process.argv[4] ?? 12);
+/** The caption's tracking for this face, em (engine/caption.ts `CAPTION_FACES.sans`). */
+const TRACKING = Number(process.argv[5] ?? 0.02);
 const CAP_PX = 800;
 /** The simplification tolerance, cap heights. */
-const EPS = 0.0016;
+const EPS = 0.0022;
 
 const browser = await launch({});
 const page = await browser.newPage();
 await page.setContent("<canvas id=c></canvas>");
+const b64 = fs.readFileSync(FONT).toString("base64");
 const out = await page.evaluate(
-  async ({ WORD, GAP, CAP_PX, EPS }) => {
-    const C = CAP_PX;
-    // the strokes, cap heights: verticals a little thicker than horizontals (the eye sees equal ones as the other way)
-    const T = 0.225;
-    const H = 0.19;
-    const D = 0.28; // a diagonal, measured along the horizontal
+  async ({ b64, WORD, WEIGHT, OPSZ, TRACKING, CAP_PX, EPS }) => {
+    // (the optical size is fixed by the face's own descriptor: a canvas sets it from the font size, which at this size is the finest cut)
+    const face = new FontFace("Bk", `url(data:font/woff2;base64,${b64})`, { weight: "200 800", variationSettings: `"opsz" ${OPSZ}` });
+    await face.load();
+    document.fonts.add(face);
+    const probe = document.createElement("canvas").getContext("2d");
+    probe.font = `${WEIGHT} 1000px Bk`;
+    const capEm = probe.measureText("H").actualBoundingBoxAscent / 1000;
+    const S = CAP_PX / capEm;
+    const font = `${WEIGHT} ${S}px Bk`;
+    probe.font = font;
+    probe.letterSpacing = `${TRACKING * S}px`;
+    const m = probe.measureText(WORD);
     const pad = 40;
-    const W = Math.ceil(C * 1.2) + 2 * pad;
-    const asc = Math.ceil(C * 1.08) + pad;
-    const Hh = asc + Math.ceil(C * 0.1) + pad;
+    const W = Math.ceil(m.width + 2 * pad);
+    const asc = Math.ceil(m.actualBoundingBoxAscent + pad);
+    const desc = Math.ceil(m.actualBoundingBoxDescent + pad);
+    const H = asc + desc;
     const c = document.getElementById("c");
     c.width = W;
-    c.height = Hh;
+    c.height = H;
     const g = c.getContext("2d", { willReadFrequently: true });
-    const X = (x) => pad + x * C;
-    const Y = (y) => asc - y * C;
-    const rect = (x0, y0, x1, y1) => g.fillRect(X(x0), Y(y1), (x1 - x0) * C, (y1 - y0) * C);
-    const poly = (pts) => {
-      g.beginPath();
-      pts.forEach(([x, y], i) => (i ? g.lineTo(X(x), Y(y)) : g.moveTo(X(x), Y(y))));
-      g.closePath();
-      g.fill();
+    g.font = font;
+    g.letterSpacing = `${TRACKING * S}px`;
+    g.fillStyle = "#000";
+    g.fillText(WORD, pad, asc);
+    const data = g.getImageData(0, 0, W, H).data;
+    const A = (x, y) => (x < 0 || y < 0 || x >= W || y >= H ? 0 : data[(y * W + x) * 4 + 3] / 255);
+    // marching squares at half coverage: every cell's segments, joined into loops through the edge points they share
+    const pts = new Map(); // edge id -> [x, y]
+    const adj = new Map(); // edge id -> [ids]
+    const H_ = (x, y) => 2 * (y * (W + 1) + x);
+    const V_ = (x, y) => 2 * (y * (W + 1) + x) + 1;
+    const point = (id, x0, y0, x1, y1) => {
+      if (pts.has(id)) return;
+      const a0 = A(x0, y0);
+      const a1 = A(x1, y1);
+      const t = a1 === a0 ? 0.5 : (0.5 - a0) / (a1 - a0);
+      pts.set(id, [x0 + (x1 - x0) * t + 0.5, y0 + (y1 - y0) * t + 0.5]);
     };
-    /** A rectangle with each corner's radius (tl, tr, br, bl), cap heights. */
-    const rr = (x0, y0, x1, y1, [tl, tr, br, bl]) => {
-      g.beginPath();
-      g.moveTo(X(x0 + tl), Y(y1));
-      g.lineTo(X(x1 - tr), Y(y1));
-      if (tr) g.arc(X(x1 - tr), Y(y1 - tr), tr * C, -Math.PI / 2, 0);
-      g.lineTo(X(x1), Y(y0 + br));
-      if (br) g.arc(X(x1 - br), Y(y0 + br), br * C, 0, Math.PI / 2);
-      g.lineTo(X(x0 + bl), Y(y0));
-      if (bl) g.arc(X(x0 + bl), Y(y0 + bl), bl * C, Math.PI / 2, Math.PI);
-      g.lineTo(X(x0), Y(y1 - tl));
-      if (tl) g.arc(X(x0 + tl), Y(y1 - tl), tl * C, Math.PI, Math.PI * 1.5);
-      g.closePath();
-      g.fill();
+    const link = (p, q) => {
+      (adj.get(p) ?? adj.set(p, []).get(p)).push(q);
+      (adj.get(q) ?? adj.set(q, []).get(q)).push(p);
     };
-    const hole = (fn) => {
-      g.globalCompositeOperation = "destination-out";
-      fn();
-      g.globalCompositeOperation = "source-over";
-    };
-    /** Each letter: its width (cap heights) and how it is drawn, from its own left edge. */
-    const LETTERS = {
-      U: { w: 0.94, draw: (w) => { rr(0, 0, w, 1, [0, 0, 0.4, 0.4]); hole(() => rr(T, H, w - T, 1.01, [0, 0, 0.4 - T, 0.4 - T])); } },
-      N: { w: 0.96, draw: (w) => { rect(0, 0, T, 1); rect(w - T, 0, w, 1); poly([[0, 1], [D, 1], [w, 0], [w - D, 0]]); } },
-      I: { w: T, draw: () => rect(0, 0, T, 1) },
-      V: { w: 1.04, draw: (w) => { poly([[0, 1], [D, 1], [w / 2 + 0.11, 0], [w / 2 - 0.11, 0]]); poly([[w, 1], [w - D, 1], [w / 2 - 0.11, 0], [w / 2 + 0.11, 0]]); } },
-      E: { w: 0.74, draw: (w) => { rect(0, 0, T, 1); rect(0, 1 - H, w, 1); rect(0, 0.5 - H / 2, w * 0.86, 0.5 + H / 2); rect(0, 0, w, H); } },
-      R: {
-        w: 0.92,
-        draw: (w) => {
-          rect(0, 0, T, 1);
-          rr(0, 0.42, w, 1, [0, 0.27, 0.27, 0]);
-          hole(() => rr(T, 0.42 + H, w - T, 1 - H, [0, 0.07, 0.07, 0]));
-          poly([[0.3, 0.46], [0.3 + D, 0.46], [w, 0], [w - D, 0]]);
-        },
-      },
-      S: {
-        w: 0.86,
-        draw: (w) => {
-          const r = 0.4;
-          rr(0, 0.5 - H / 2, w, 1, [r, r, 0, 0.0]);
-          hole(() => rr(T, 0.5 + H / 2, w + 0.1, 1 - H, [0.1, 0, 0, 0]));
-          rr(0, 0, w, 0.5 + H / 2, [0, 0, r, r]);
-          hole(() => rr(-0.1, H, w - T, 0.5 - H / 2, [0, 0, 0.1, 0]));
-        },
-      },
-      A: {
-        w: 1.1,
-        draw: (w) => {
-          poly([[0, 0], [D, 0], [w / 2 + 0.13, 1], [w / 2 - 0.13, 1]]);
-          poly([[w, 0], [w - D, 0], [w / 2 - 0.13, 1], [w / 2 + 0.13, 1]]);
-          rect(0.2, 0.2, w - 0.2, 0.2 + H * 0.95);
-        },
-      },
-      L: { w: 0.72, draw: (w) => { rect(0, 0, T, 1); rect(0, 0, w, H); } },
-    };
-    const raster = (ch) => {
-      g.clearRect(0, 0, W, Hh);
-      g.fillStyle = "#000";
-      g.globalCompositeOperation = "source-over";
-      LETTERS[ch].draw(LETTERS[ch].w);
-      return new Uint8ClampedArray(g.getImageData(0, 0, W, Hh).data);
-    };
-    const A = (data, x, y) => (x < 0 || y < 0 || x >= W || y >= Hh ? 0 : data[(y * W + x) * 4 + 3] / 255);
-    /** The ink's left and right edge on every row (null where there is none). */
-    const profile = (data) => {
-      const left = new Array(Hh).fill(null);
-      const right = new Array(Hh).fill(null);
-      for (let y = 0; y < Hh; y++) {
-        for (let x = 0; x < W; x++) if (A(data, x, y) >= 0.5) { left[y] = x; break; }
-        for (let x = W - 1; x >= 0; x--) if (A(data, x, y) >= 0.5) { right[y] = x + 1; break; }
+    for (let y = -1; y < H; y++) {
+      for (let x = -1; x < W; x++) {
+        const tl = A(x, y) >= 0.5 ? 1 : 0;
+        const tr = A(x + 1, y) >= 0.5 ? 1 : 0;
+        const br = A(x + 1, y + 1) >= 0.5 ? 1 : 0;
+        const bl = A(x, y + 1) >= 0.5 ? 1 : 0;
+        const k = tl * 8 + tr * 4 + br * 2 + bl;
+        if (k === 0 || k === 15) continue;
+        const top = H_(x, y);
+        const right = V_(x + 1, y);
+        const bottom = H_(x, y + 1);
+        const left = V_(x, y);
+        point(top, x, y, x + 1, y);
+        point(right, x + 1, y, x + 1, y + 1);
+        point(bottom, x, y + 1, x + 1, y + 1);
+        point(left, x, y, x, y + 1);
+        const centre = (A(x, y) + A(x + 1, y) + A(x + 1, y + 1) + A(x, y + 1)) / 4 >= 0.5;
+        const segs = {
+          1: [[left, bottom]], 2: [[bottom, right]], 3: [[left, right]], 4: [[top, right]],
+          5: centre ? [[left, top], [bottom, right]] : [[top, right], [left, bottom]],
+          6: [[top, bottom]], 7: [[left, top]], 8: [[left, top]], 9: [[top, bottom]],
+          10: centre ? [[top, right], [left, bottom]] : [[left, top], [bottom, right]],
+          11: [[top, right]], 12: [[left, right]], 13: [[right, bottom]], 14: [[left, bottom]],
+        }[k];
+        for (const [p, q] of segs) link(p, q);
       }
-      return { left, right };
-    };
-    const glyph = (ch) => raster(ch);
-    /** Marching squares at half coverage over one glyph's picture: its closed loops, in the picture's pixels. */
-    const trace = (data) => {
-      const pts = new Map();
-      const adj = new Map();
-      const H_ = (x, y) => 2 * (y * (W + 1) + x);
-      const V_ = (x, y) => 2 * (y * (W + 1) + x) + 1;
-      const point = (id, x0, y0, x1, y1) => {
-        if (pts.has(id)) return;
-        const a0 = A(data, x0, y0);
-        const a1 = A(data, x1, y1);
-        const t = a1 === a0 ? 0.5 : (0.5 - a0) / (a1 - a0);
-        pts.set(id, [x0 + (x1 - x0) * t + 0.5, y0 + (y1 - y0) * t + 0.5]);
-      };
-      const link = (p, q) => {
-        (adj.get(p) ?? adj.set(p, []).get(p)).push(q);
-        (adj.get(q) ?? adj.set(q, []).get(q)).push(p);
-      };
-      for (let y = -1; y < Hh; y++) {
-        for (let x = -1; x < W; x++) {
-          const tl = A(data, x, y) >= 0.5 ? 1 : 0;
-          const tr = A(data, x + 1, y) >= 0.5 ? 1 : 0;
-          const br = A(data, x + 1, y + 1) >= 0.5 ? 1 : 0;
-          const bl = A(data, x, y + 1) >= 0.5 ? 1 : 0;
-          const k = tl * 8 + tr * 4 + br * 2 + bl;
-          if (k === 0 || k === 15) continue;
-          const top = H_(x, y);
-          const right = V_(x + 1, y);
-          const bottom = H_(x, y + 1);
-          const left = V_(x, y);
-          point(top, x, y, x + 1, y);
-          point(right, x + 1, y, x + 1, y + 1);
-          point(bottom, x, y + 1, x + 1, y + 1);
-          point(left, x, y, x, y + 1);
-          const centre = (A(data, x, y) + A(data, x + 1, y) + A(data, x + 1, y + 1) + A(data, x, y + 1)) / 4 >= 0.5;
-          const segs = {
-            1: [[left, bottom]], 2: [[bottom, right]], 3: [[left, right]], 4: [[top, right]],
-            5: centre ? [[left, top], [bottom, right]] : [[top, right], [left, bottom]],
-            6: [[top, bottom]], 7: [[left, top]], 8: [[left, top]], 9: [[top, bottom]],
-            10: centre ? [[top, right], [left, bottom]] : [[left, top], [bottom, right]],
-            11: [[top, right]], 12: [[left, right]], 13: [[right, bottom]], 14: [[left, bottom]],
-          }[k];
-          for (const [p, q] of segs) link(p, q);
-        }
+    }
+    const loops = [];
+    const seen = new Set();
+    for (const start of adj.keys()) {
+      if (seen.has(start)) continue;
+      const loop = [];
+      let prev = -1;
+      let cur = start;
+      while (!seen.has(cur)) {
+        seen.add(cur);
+        loop.push(pts.get(cur));
+        const [n0, n1] = adj.get(cur);
+        const next = n0 !== prev && !seen.has(n0) ? n0 : n1 !== prev && !seen.has(n1) ? n1 : -1;
+        if (next === -1) break;
+        prev = cur;
+        cur = next;
       }
-      const loops = [];
-      const seen = new Set();
-      for (const start of adj.keys()) {
-        if (seen.has(start)) continue;
-        const loop = [];
-        let prev = -1;
-        let cur = start;
-        while (!seen.has(cur)) {
-          seen.add(cur);
-          loop.push(pts.get(cur));
-          const [n0, n1] = adj.get(cur);
-          const next = n0 !== prev && !seen.has(n0) ? n0 : n1 !== prev && !seen.has(n1) ? n1 : -1;
-          if (next === -1) break;
-          prev = cur;
-          cur = next;
-        }
-        if (loop.length > 8) loops.push(loop);
-      }
-      return loops;
-    };
+      if (loop.length > 8) loops.push(loop);
+    }
     // Douglas-Peucker on a closed loop (cut at the two points farthest apart)
     const dp = (poly, eps) => {
       const keep = new Uint8Array(poly.length);
@@ -215,6 +143,7 @@ const out = await page.evaluate(
           rec(at, j);
         }
       };
+      let a = 0;
       let b = 0;
       let far = -1;
       for (let i = 1; i < poly.length; i++) {
@@ -224,49 +153,32 @@ const out = await page.evaluate(
           b = i;
         }
       }
-      keep[0] = keep[b] = 1;
-      rec(0, b);
+      keep[a] = keep[b] = 1;
+      rec(a, b);
       rec(b, poly.length);
       return poly.filter((_, i) => keep[i]);
     };
-    // lay the letters out: each one so that the row-by-row distance to the one before is at least GAP
-    const gapPx = GAP * CAP_PX;
-    const letters = [];
-    let prev = null;
-    for (const ch of WORD) {
-      const data = glyph(ch);
-      const prof = profile(data);
-      let off = 0;
-      if (prev) {
-        off = -Infinity;
-        for (let y = 0; y < Hh; y++) {
-          if (prev.prof.right[y] === null || prof.left[y] === null) continue;
-          off = Math.max(off, prev.off + prev.prof.right[y] + gapPx - prof.left[y]);
-        }
-      } else off = -prof.left.filter((v) => v !== null).reduce((a, b) => Math.min(a, b), Infinity);
-      letters.push({ ch, data, prof, off });
-      prev = letters.at(-1);
-    }
-    const contours = [];
-    for (const l of letters) for (const loop of trace(l.data)) contours.push(dp(loop, EPS * CAP_PX).map(([x, y]) => [x + l.off, y]));
-    const round = (x) => Math.round(x * 1000) / 1000;
-    const flat = contours.map((c) => c.flatMap(([x, y]) => [round(x / CAP_PX), round((asc - y) / CAP_PX)]));
-    const ys = flat.flatMap((c) => c.filter((_, i) => i % 2 === 1));
-    const xs = flat.flatMap((c) => c.filter((_, i) => i % 2 === 0));
-    return { contours: flat, widthCaps: Math.max(...xs), aboveCaps: Math.max(...ys), belowCaps: Math.max(0, -Math.min(...ys)), stem: T };
+    const inkLeft = Math.min(...loops.flat().map((p) => p[0]));
+    const contours = loops.map((l) =>
+      dp(l, EPS * CAP_PX).flatMap(([x, y]) => [Math.round(((x - inkLeft) / CAP_PX) * 1000) / 1000, Math.round(((asc - y) / CAP_PX) * 1000) / 1000]),
+    );
+    const ys = contours.flatMap((c) => c.filter((_, i) => i % 2 === 1));
+    const xs = contours.flatMap((c) => c.filter((_, i) => i % 2 === 0));
+    return { contours, widthCaps: Math.max(...xs), aboveCaps: Math.max(...ys), belowCaps: Math.max(0, -Math.min(...ys)) };
   },
-  { WORD, GAP, CAP_PX, EPS },
+  { b64, WORD, WEIGHT, OPSZ, TRACKING, CAP_PX, EPS },
 );
 await browser.close();
 
 const body = `/**
- * The outlines of the cinematic interlude's word, baked by scripts/font/bake-word-outlines.mjs (do not edit): nine capitals DRAWN as a logotype (one thick
- * stroke, wide, flat apexes, square corners; the script has the construction of each letter), traced from the drawing and set with the nearest points of
- * neighbouring letters ${GAP} cap heights apart. Every contour is a closed polygon, flat \`[x0, y0, x1, y1, ...]\`, in CAP HEIGHTS: x to the right from the
- * ink's left edge, y up from the baseline. The outer contours and the holes are told apart by their winding at build time.
+ * The outlines of the cinematic interlude's word, baked by scripts/font/bake-word-outlines.mjs (do not edit): the page's display face, Bricolage Grotesque
+ * (SIL OFL 1.1, public/fonts/LICENSE-bricolage-grotesque.txt), at weight ${WEIGHT}, optical size ${OPSZ}, with its own kerning and the caption's tracking, traced
+ * from a drawing of it. Every contour is a closed polygon, flat \`[x0, y0, x1, y1, ...]\`, in CAP HEIGHTS: x to the right from the ink's left edge, y up from
+ * the baseline. The outer contours and the holes are told apart by their winding at build time.
  */
 export const WORD_OUTLINES = {
   word: ${JSON.stringify(WORD)},
+  weight: ${WEIGHT},
   /** The ink's width and its extents above and below the baseline, cap heights. */
   widthCaps: ${out.widthCaps},
   aboveCaps: ${out.aboveCaps},

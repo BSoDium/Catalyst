@@ -34,24 +34,21 @@ export const CINEMATIC = {
    */
   tiltDeg: 12,
   /**
-   * The word is SOLID (engine/cinematic-word.ts: a mesh with a front, a bevel, walls and a back, made from the baked outlines of the page's display face
-   * at weight 700, the optical size 12 cut: wide and sturdy, all capitals, sharp corners): a WHITE face on either page, a front bevel in BSoD blue (the site's accent, app.css `--palette-blue`: #0078d7 on the light page, a
-   * lighter step of it on the dark) that is the word's outline, and grey walls only a step from the page (`sideColor`). The thickness is `depthCaps` cap
-   * heights (the rows' is a fifth of one; 0.5 was too much) and the bevel is `bevelCaps` wide and deep.
+   * The word is SOLID (engine/cinematic-word.ts: a mesh with a front, a bevel, walls and a back, made from the baked outlines of a plain sans) and COLOURLESS:
+   * every surface is a step from the PAGE's colour towards its ink (`tone`: how far, per scheme), so that it lies in the page instead of over it. Fully lit,
+   * the face is nearly the white of the light page; on the dark page it is a deep grey that blends with the scene. What shows it is a bright OUTLINE (the
+   * front bevel, `tone.outline` of the way to the ink: the ink itself, a thin line, as the globe's own linework) and the walls, a little further than the face.
+   * `env`: the brightness of the studio the metal reflects (grey, from above to below) and `glint`: the thin strip lights' signed strength (a light edge on the
+   * dark page, a darker one on the light, where a brighter one cannot show). The thickness is `depthCaps` cap heights and the bevel is `bevelCaps` wide and deep.
+   * All of it is drawn in a few dithered levels (`levels`), on the art's own pixels (the caption's canvas is drawn at the art's resolution), as the globe is.
    */
-  outline: { light: "#0078d7", dark: "#4aa3f5" },
-  /**
-   * The metal is NEUTRAL and follows the theme as the filled land does (the ink's side): SILVER on the dark page, GRAPHITE on the light one, so that the
-   * letters stand out against either; the blue is the rim only (and the places' lights at the chord), the page's one accent. `back` is the letters' backs
-   * (towards the planet, out of the sun).
-   */
-  face: { light: "#b3b9c3", dark: "#d4d7dc" },
-  sideColor: { light: "#8b919b", dark: "#5b6068" },
-  back: { light: "#484d55", dark: "#2a2d32" },
-  /** The studio the metal reflects, a vertical gradient from above (`hi`) to below (`lo`), per theme. */
-  env: { light: { hi: "#f4f5f7", lo: "#8a9099" }, dark: { hi: "#ffffff", lo: "#3a3d42" } },
+  tone: {
+    light: { face: 0.03, side: 0.09, back: 0.2, outline: 0.88, env: { hi: 1.0, lo: 0.8 }, glint: -0.2 },
+    dark: { face: 0.09, side: 0.13, back: 0.04, outline: 0.82, env: { hi: 2.2, lo: 0.55 }, glint: 0.3 },
+  },
+  levels: 7,
   depthCaps: 0.3,
-  bevelCaps: 0.036,
+  bevelCaps: 0.05,
   /** The bevel is a quarter circle in this many steps (a few more triangles, a bevel that catches the light along its width). */
   bevelSegments: 3,
   /**
@@ -87,9 +84,15 @@ export const CINEMATIC = {
    * The word is not drawn before this point of the flight (0..1): while the camera dives in from the page's view it could be seen from the high camera,
    * beside the planet, and would be seen to appear. The camera is in place at 0.1.
    */
-  wordFromU: 0.1,
+  wordFromU: 0.16,
   /** The continents are filled with the ink for the whole interlude (the planet's disc, `GlobeScene.setLand`), eased in over `inMs` and out over `outMs`. */
   land: { inMs: 900, outMs: 1400, cutMs: 600 },
+  /**
+   * What the interlude does to the PLANET, each off for now (the globe keeps its own pixel look, outline and dither, through it; the lit planet and the
+   * lights are kept in the code for a later pass): `fill` the continents filled with the ink in a dither lit by one sun, with a dithered atmosphere (`land.ts`,
+   * `occluderMaterial`), `cities` the places' lights at the chord.
+   */
+  planet: { fill: false, cities: false },
   /** The places' lights come up through the dither when the word lands (the chord), over `inMs`, and go over `outMs`. */
   city: { inMs: 240, outMs: 500 },
   /** The side the word comes in from: EAST (1), as the studio's does. */

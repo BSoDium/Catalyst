@@ -174,4 +174,14 @@ describe("the camera's flight", () => {
       }
     }
   });
+
+  it("eases in and out of the opening shot: the camera is nearly still where the dive ends, and the dive is long and slow at both ends", () => {
+    const k = FLIGHT.keys[0]!.u;
+    const speed = (u: number) => len(sub(flightPose(u + 0.0005, end).pos, flightPose(u - 0.0005, end).pos)) / 0.001;
+    const mid = speed(k / 2);
+    expect(speed(k)).toBeLessThan(mid * 0.15); // (arrives at rest)
+    expect(speed(0.004)).toBeLessThan(mid * 0.2); // (leaves the page's camera at rest)
+    expect(speed(k + 0.01)).toBeLessThan(mid * 0.25); // (and backs away from it gently)
+    expect(k).toBeGreaterThanOrEqual(0.15); // (3.5 s: not a rush)
+  });
 });

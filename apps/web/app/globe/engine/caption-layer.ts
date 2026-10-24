@@ -45,7 +45,6 @@ import {
   CaptionMotion,
   DRIFT,
   captionColors,
-  hex,
   captionFont,
   dimPresence,
   entranceStart,
@@ -198,6 +197,7 @@ const EGG_FRAG = /* glsl */ `
   uniform vec3 uBack;
   uniform vec3 uEnvHi;
   uniform vec3 uEnvLo;
+  uniform float uGlint;
   varying vec3 vNormal;
   varying vec3 vView;
   varying float vKind;
@@ -209,6 +209,9 @@ const EGG_FRAG = /* glsl */ `
     c += 0.3 * pow(max(dot(r, normalize(vec3(${CINEMATIC.light.key.map((x) => x.toFixed(3)).join(", ")}))), 0.0), 14.0);
     return c;
   }
+  // the lines' own ordered dither, on the art's pixels (this canvas is drawn at the art's resolution)
+  float dither2(vec2 a) { return fract(a.x * 0.5 + a.y * a.y * 0.75); }
+  float dither4(vec2 a) { return dither2(0.5 * a) * 0.25 + dither2(a); }
   float strips(vec3 r) {
     float s = 0.0;
     s += smoothstep(0.9935, 0.9985, dot(r, normalize(vec3(-0.35, 0.82, 0.45))));
@@ -231,11 +234,17 @@ const EGG_FRAG = /* glsl */ `
     vec3 lit = albedo * (${CINEMATIC.light.ambient.toFixed(3)} + ${CINEMATIC.light.diffuse.toFixed(3)} * diff + ${CINEMATIC.light.filler.toFixed(3)} * fil);
     vec3 rv = reflect(normalize(vView), n);
     float rim = vKind > 0.5 && vKind < 1.5 ? ${CINEMATIC.light.edgeShine.toFixed(3)} : ${CINEMATIC.light.faceShine.toFixed(3)};
-    vec3 refl = albedo * studio(rv) * ${CINEMATIC.light.reflect.toFixed(3)} + vec3(strips(rv) * rim);
+    vec3 refl = albedo * studio(rv) * ${CINEMATIC.light.reflect.toFixed(3)} + vec3(strips(rv) * rim * uGlint);
     // the metal is in the walls and the bevel; the faces stay the lighter, and the backs hardly mirror
     float metal = vKind < 0.5 ? ${CINEMATIC.light.faceMetal.toFixed(3)} : (vKind > 3.5 ? ${CINEMATIC.light.metal.toFixed(3)} * 0.4 : ${CINEMATIC.light.metal.toFixed(3)});
-    vec3 col = mix(lit, refl, metal) + vec3(spec * (vKind > 3.5 ? 0.3 : 1.0));
-    gl_FragColor = vec4(min(col, vec3(1.0)), 1.0);
+    vec3 col = mix(lit, refl, metal) + vec3(spec * uGlint * 0.6 * (vKind > 3.5 ? 0.3 : 1.0));
+    // the outline is the line: the ink, hardly lit
+    if (vKind > 0.5 && vKind < 1.5) col = mix(col, uOutline, 0.85);
+    // a few levels, dithered on the art's pixels: the word is made of the globe's own pixels and tones
+    float L = ${CINEMATIC.levels.toFixed(1)};
+    col = clamp(col, 0.0, 1.0);
+    col = floor(col * (L - 1.0) + dither4(floor(gl_FragCoord.xy))) / (L - 1.0);
+    gl_FragColor = vec4(col, 1.0);
   }
 `;
 
@@ -388,7 +397,7 @@ class CrispCanvas {
   private lost = false;
   private shown = false;
   /** What was last written to the canvas and its style: a frame writes only what changed (a size change clears the buffer and re-runs layout). */
-  private last = { w: -1, h: -1, dpr: -1, left: NaN, top: NaN, mask: "", pos: "", size: "" };
+  private last = { w: -1, h: -1, dpr: -1, left: NaN, top: NaN, mask: "", pos: "", size: "", pixelated: false };
 
   constructor(host: HTMLElement, onRestore: () => void) {
     this.renderer = new WebGLRenderer({ antialias: true, alpha: true, powerPreference: "low-power" });
@@ -418,7 +427,7 @@ class CrispCanvas {
     this.scene.add(globe);
   }
 
-  render(camera: PerspectiveCamera, rect: CaptionRect, dpr: number): void {
+  render(camera: PerspectiveCamera, rect: CaptionRect, dpr: number, pixelated = false): void {
     if (this.lost) return;
     const r = this.renderer;
     const el = r.domElement;
@@ -434,6 +443,11 @@ class CrispCanvas {
       L.dpr = dpr;
       el.style.width = `${w}px`;
       el.style.height = `${h}px`;
+    }
+    // (the interlude's word is drawn at the globe's own pixel size and enlarged without smoothing: the art's grid)
+    if (pixelated !== L.pixelated) {
+      el.style.imageRendering = pixelated ? "pixelated" : "";
+      L.pixelated = pixelated;
     }
     if (rect.left !== L.left) {
       el.style.left = `${rect.left}px`;
@@ -605,6 +619,7 @@ export class CaptionLayer {
   private eggBack = { value: [0.2, 0.2, 0.2] as number[] };
   private eggEnvHi = { value: [1, 1, 1] as number[] };
   private eggEnvLo = { value: [0.2, 0.2, 0.2] as number[] };
+  private eggGlint = { value: 0 };
   /** The far slices (layer below this) that carry the text colour in mode `edge` (0: none). */
   private edgeLayer = { value: 0 };
   /** Slices of the thickness now (the quality governor lowers them; `CAPTION.slices` is the best) and the most the canvas is drawn at. */
@@ -720,6 +735,7 @@ export class CaptionLayer {
         uBack: this.eggBack,
         uEnvHi: this.eggEnvHi,
         uEnvLo: this.eggEnvLo,
+        uGlint: this.eggGlint,
         uBaseLat: { value: 0 },
         uBelow: { value: 0 },
         uAbove: { value: 0 },
@@ -854,12 +870,16 @@ export class CaptionLayer {
     this.edgeLayer.value = this.sideMode === "edge" ? (CAPTION.colors.edgeSlices - 0.5) / (this.slices - 1) : 0;
     this.dimColor.value = [...theme.background];
     const dark = 0.2126 * theme.background[0] + 0.7152 * theme.background[1] + 0.0722 * theme.background[2] < 0.5;
-    this.eggFace.value = [...hex(dark ? CINEMATIC.face.dark : CINEMATIC.face.light)];
-    this.eggBack.value = [...hex(dark ? CINEMATIC.back.dark : CINEMATIC.back.light)];
-    this.eggEnvHi.value = [...hex(dark ? CINEMATIC.env.dark.hi : CINEMATIC.env.light.hi)];
-    this.eggEnvLo.value = [...hex(dark ? CINEMATIC.env.dark.lo : CINEMATIC.env.light.lo)];
-    this.eggOutline.value = [...hex(dark ? CINEMATIC.outline.dark : CINEMATIC.outline.light)];
-    this.eggSide.value = [...hex(dark ? CINEMATIC.sideColor.dark : CINEMATIC.sideColor.light)];
+    // the word is colourless: each surface is a step from the page's colour towards the ink (`CINEMATIC.tone`)
+    const tone = dark ? CINEMATIC.tone.dark : CINEMATIC.tone.light;
+    const toward = (k: number): number[] => [0, 1, 2].map((i) => theme.background[i]! + (theme.ink[i]! - theme.background[i]!) * k);
+    this.eggFace.value = toward(tone.face);
+    this.eggSide.value = toward(tone.side);
+    this.eggBack.value = toward(tone.back);
+    this.eggOutline.value = toward(tone.outline);
+    this.eggEnvHi.value = [tone.env.hi, tone.env.hi, tone.env.hi];
+    this.eggEnvLo.value = [tone.env.lo, tone.env.lo, tone.env.lo];
+    this.eggGlint.value = tone.glint;
     this.dimAlpha = dark ? CAPTION.dim.alpha.dark : CAPTION.dim.alpha.light;
   }
 
@@ -1467,15 +1487,23 @@ export class CaptionLayer {
   /** The pixel ratio the caption's canvas was last drawn at (the word's slices are counted in device pixels). */
   private dprNow = 2;
 
-  renderCrisp(camera: PerspectiveCamera, rect: CaptionRect, dpr: number): void {
+  renderCrisp(camera: PerspectiveCamera, rect: CaptionRect, dpr: number, artPx = 1): void {
     this.dprNow = dpr;
     // (the interlude's word goes BEHIND the hero's name, not over it)
-    this.crisp.setZ(this.motion.eggActive || this.flightU < 1 ? "9" : "15");
+    this.crisp.setZ(this.interludePixels ? "9" : "15");
     if (!this.anyVisible || !this.built || this.failed) {
       this.crisp.hide();
       return;
     }
-    this.crisp.render(camera, rect, Math.min(dpr, ENERGY.captionDpr, this.dprCap));
+    // The interlude's word is drawn at the ART's resolution (one drawing-buffer pixel per art pixel, `artPx` CSS px) and enlarged without smoothing, so
+    // that it is made of the same pixels as the globe it lies over; the rows are crisp as ever.
+    const pixelated = this.interludePixels && artPx > 1;
+    this.crisp.render(camera, rect, pixelated ? 1 / artPx : Math.min(dpr, ENERGY.captionDpr, this.dprCap), pixelated);
+  }
+
+  /** Whether the caption's canvas is drawn at the art's resolution now: the interlude is under way, or the globe is coming back from it. */
+  get interludePixels(): boolean {
+    return this.motion.eggActive || this.flightU < 1 || this.zoomK > 0;
   }
 
   /**
