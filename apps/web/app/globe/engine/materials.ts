@@ -3,7 +3,7 @@
  * `ColorManagement` note in renderer.ts. Visibility of borders is ordered-dither coverage, not alpha, so the
  * output never contains a blended pixel.
  */
-import { BackSide, Color, ShaderMaterial } from "three";
+import { BackSide, Color, FrontSide, ShaderMaterial } from "three";
 import { LEG_MODES, MODE_STYLE } from "../paths/modes";
 import { STRAIGHT_FADE_MIX, STRAIGHT_FADE_STEPS } from "../paths/thin";
 import { SPARK, TRAIL_BANDS, TRAIL_ENTRIES, TRAIL_PER_PALETTE } from "../paths/trail";
@@ -86,14 +86,19 @@ export function occluderMaterial(): ShaderMaterial {
 }
 
 /**
- * The atmosphere (the cinematic interlude only): a thin glow round the planet's limb, in the lines' own ordered dither (1-bit pixels, never a smooth gradient).
- * It is the INSIDE of a shell a little above the surface, so it is seen only beyond the disc (the disc's depth hides the shell's far side across the middle) and
- * is brightest at the planet's own edge, thinning outwards to nothing. `uAmt` (0..1) is how much of it is there, `uSun` the sun's direction in the earth's frame: the
- * glow is stronger on the sunward side, the way a lit limb is.
+ * The MIST of the cinematic interlude: a haze that lies on the planet, thickest at the horizon and thinning smoothly upward, in the lines' own ordered dither
+ * (1-bit pixels: a dither's density is the gradient). Two layers, one material each:
+ *  - `atmosphereMaterial`: ABOVE the limb. The inside of a shell a little over the surface, so it is seen only beyond the disc (the disc's depth hides its far side
+ *    across the middle). Its density is 1 at the planet's own edge and falls smoothly to 0 at the shell's top (`uPower`: the shape of the fall), a little thicker on the
+ *    sunward side. `uCover` is its density at the edge, `uAmt` (0..1) how much of it is there.
+ *  - `mistMaterial`: ON the planet. A shell a hair over the surface (the lines are drawn at the surface), whose density grows towards the horizon: where the ground is seen
+ *    at a grazing angle the mist is deep, and it covers the coastlines and the borders in the page's own colour with a breath of the accent, so the land goes into the haze
+ *    as it recedes and comes out of it as it nears.
+ * Both are not drawn at all outside the interlude (`GlobeScene.setAtmosphere`).
  */
 export function atmosphereMaterial(): ShaderMaterial {
   return new ShaderMaterial({
-    uniforms: { uColor: { value: new Color() }, uAmt: { value: 0 }, uSun: { value: [0, 0, 1] }, uShell: { value: 1.07 }, uPower: { value: 2.0 }, uCover: { value: 0.5 } },
+    uniforms: { uColor: { value: new Color() }, uAmt: { value: 0 }, uSun: { value: [0, 0, 1] }, uShell: { value: 1.06 }, uPower: { value: 1.7 }, uCover: { value: 0.8 } },
     vertexShader: /* glsl */ `
       varying vec3 vPos;
       void main() { vPos = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
@@ -105,15 +110,46 @@ export function atmosphereMaterial(): ShaderMaterial {
       void main() {
         vec3 n = normalize(vPos);
         vec3 toEye = normalize(cameraPosition - vPos);
-        // on the far side of the shell the outward normal turns away from the eye: |n . eye| is 0 at the shell's outer edge and grows towards the planet's limb
-        float rim = pow(clamp(abs(dot(n, toEye)), 0.0, 1.0), uPower);
-        float sunward = 0.55 + 0.45 * clamp(dot(n, uSun) * 1.4 + 0.2, 0.0, 1.0);
-        float cover = rim * sunward * uCover * uAmt;
+        // on the far side of the shell the outward normal turns away from the eye: |n . eye| is 0 at the shell's outer edge and reaches "edge" where the sight line
+        // just grazes the planet; normalised by that, the height above the limb is 1 - h (1 at the planet's edge, 0 at the top of the shell)
+        float edge = sqrt(max(1.0 - 1.0 / (uShell * uShell), 1e-4));
+        float h = clamp(abs(dot(n, toEye)) / edge, 0.0, 1.0);
+        float sunward = 0.7 + 0.3 * clamp(dot(n, uSun) * 1.4 + 0.2, 0.0, 1.0);
+        float cover = pow(h, uPower) * sunward * uCover * uAmt;
         if (dither4(floor(gl_FragCoord.xy)) >= cover) discard;
         gl_FragColor = vec4(uColor, 1.0);
       }
     `,
     side: BackSide,
+    depthTest: true,
+    depthWrite: false,
+    transparent: false,
+  });
+}
+
+export function mistMaterial(): ShaderMaterial {
+  return new ShaderMaterial({
+    uniforms: { uColor: { value: new Color() }, uAmt: { value: 0 }, uCover: { value: 0.85 } },
+    vertexShader: /* glsl */ `
+      varying vec3 vPos;
+      void main() { vPos = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform vec3 uColor; uniform float uAmt; uniform float uCover;
+      varying vec3 vPos;
+      ${DITHER_GLSL}
+      void main() {
+        vec3 n = normalize(vPos);
+        vec3 toEye = normalize(cameraPosition - vPos);
+        // how grazing the ground is seen: 0 looking straight down, 1 at the horizon; the mist is deep from about half way, and smooth
+        float g = 1.0 - clamp(dot(n, toEye), 0.0, 1.0);
+        float deep = smoothstep(0.4, 1.0, g);
+        float cover = deep * deep * (3.0 - 2.0 * deep) * uCover * uAmt;
+        if (dither4(floor(gl_FragCoord.xy)) >= cover) discard;
+        gl_FragColor = vec4(uColor, 1.0);
+      }
+    `,
+    side: FrontSide,
     depthTest: true,
     depthWrite: false,
     transparent: false,

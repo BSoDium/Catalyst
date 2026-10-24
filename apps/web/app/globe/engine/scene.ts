@@ -25,7 +25,7 @@ import type { ViewBasis } from "./geo";
 import { zoomToRadiusPx } from "./geo";
 import { LAND_H, LAND_W, landMask } from "./land";
 import { GRATICULE_STEP_DEG, graticuleSegments, polylinesToSegments } from "./geometry";
-import { OCCLUDER_RADIUS, atmosphereMaterial, cityMaterial, lineMaterial, occluderMaterial, silhouetteMaterial } from "./materials";
+import { OCCLUDER_RADIUS, atmosphereMaterial, cityMaterial, mistMaterial, lineMaterial, occluderMaterial, silhouetteMaterial } from "./materials";
 import { RouteLayer } from "./route-layer";
 import { SKY_STATE, viewToGalactic } from "./sky";
 import { SkyLayer } from "./sky-layer";
@@ -59,6 +59,8 @@ export class GlobeScene {
   private occluder = occluderMaterial();
   private city = cityMaterial();
   private atmosphere = atmosphereMaterial();
+  private mist = mistMaterial();
+  private mistMesh: Mesh | null = null;
   private atmosphereMesh: Mesh | null = null;
   private atmosphereNow = 0;
   private cityNow = 0;
@@ -85,7 +87,7 @@ export class GlobeScene {
     coastlines: Polylines;
     borders: Polylines;
   }) {
-    this.materials.push(this.occluder, this.city, this.atmosphere, this.graticule, this.borders, this.coast, this.silhouette);
+    this.materials.push(this.occluder, this.city, this.atmosphere, this.mist, this.graticule, this.borders, this.coast, this.silhouette);
     this.coastData = data.coastlines;
 
     const disc = new SphereGeometry(OCCLUDER_RADIUS, 96, 48);
@@ -95,12 +97,19 @@ export class GlobeScene {
     // Each layer is drawn in a fixed order (renderOrder) over the disc: grid, borders, coast, routes, horizon outline,
     // markers (last, so nothing can draw over a marker).
     // the atmosphere shell (the cinematic interlude's: hidden, and not drawn at all, outside it)
-    const shell = new SphereGeometry(1.04, 96, 48);
+    const shell = new SphereGeometry(1.06, 96, 48);
     this.geometries.push(shell);
     this.atmosphereMesh = new Mesh(shell, this.atmosphere);
     this.atmosphereMesh.visible = false;
     this.atmosphereMesh.frustumCulled = false;
     this.add(this.atmosphereMesh, 0.5);
+    // and the mist on the ground itself, over the lines (a hair above the surface, which the lines are drawn on)
+    const skin = new SphereGeometry(1.004, 96, 48);
+    this.geometries.push(skin);
+    this.mistMesh = new Mesh(skin, this.mist);
+    this.mistMesh.visible = false;
+    this.mistMesh.frustumCulled = false;
+    this.add(this.mistMesh, 5);
 
     this.add(new LineSegments(this.track(segmentGeometry(graticuleSegments(GRATICULE_STEP_DEG, 3))), this.graticule), 1);
     this.bordersLines = new LineSegments(this.track(segmentGeometry(polylinesToSegments(data.borders, 1))), this.borders);
@@ -158,8 +167,13 @@ export class GlobeScene {
     if (t.scheme === "dark") this.city.uniforms.uColor!.value.setRGB(0.29, 0.64, 0.96);
     else this.city.uniforms.uColor!.value.setRGB(0, 0.47, 0.84);
     this.atmosphere.uniforms.uColor!.value.copy(this.city.uniforms.uColor!.value);
-    // (the accent is loud on the light page: fewer dots there)
-    this.atmosphere.uniforms.uCover!.value = t.scheme === "dark" ? 0.5 : 0.34;
+    // the mist ON the ground is the page's colour with a breath of the accent: it covers the lines as a haze, it does not paint them
+    const bg = t.background;
+    const ac = this.city.uniforms.uColor!.value as { r: number; g: number; b: number };
+    this.mist.uniforms.uColor!.value.setRGB(bg[0] + (ac.r - bg[0]) * 0.22, bg[1] + (ac.g - bg[1]) * 0.22, bg[2] + (ac.b - bg[2]) * 0.22);
+    // (the accent is loud on the light page: less of the glow there)
+    this.atmosphere.uniforms.uCover!.value = t.scheme === "dark" ? 0.8 : 0.5;
+    this.mist.uniforms.uCover!.value = t.scheme === "dark" ? 0.85 : 0.7;
     this.graticule.uniforms.uColor!.value.setRGB(...t.grid);
     this.ramp = t.ramp;
     this.borderLevelNow = -1;
@@ -201,7 +215,9 @@ export class GlobeScene {
     this.atmosphereNow = x;
     this.atmosphere.uniforms.uAmt!.value = x;
     if (shell !== undefined) this.atmosphere.uniforms.uShell!.value = shell;
+    this.mist.uniforms.uAmt!.value = x;
     if (this.atmosphereMesh) this.atmosphereMesh.visible = x > 0;
+    if (this.mistMesh) this.mistMesh.visible = x > 0;
   }
 
   /** The places' lights, 0 (out) to 1: they come up through the dither. */
