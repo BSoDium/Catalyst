@@ -166,14 +166,14 @@ export class GlobeScene {
     // the accent, as the page has it in this scheme (app.css `--palette-blue`; the lighter step on the dark page)
     if (t.scheme === "dark") this.city.uniforms.uColor!.value.setRGB(0.29, 0.64, 0.96);
     else this.city.uniforms.uColor!.value.setRGB(0, 0.47, 0.84);
-    this.atmosphere.uniforms.uColor!.value.copy(this.city.uniforms.uColor!.value);
-    // the mist ON the ground is the page's colour with a breath of the accent: it covers the lines as a haze, it does not paint them
+    // The mist is MONOCHROME and quiet: a grey, a step from the page's colour towards its ink (no accent), at a low density. The glow above the limb is that grey; the
+    // veil on the ground is the page's own colour with a trace of ink, so it covers the lines without painting anything.
     const bg = t.background;
-    const ac = this.city.uniforms.uColor!.value as { r: number; g: number; b: number };
-    this.mist.uniforms.uColor!.value.setRGB(bg[0] + (ac.r - bg[0]) * 0.22, bg[1] + (ac.g - bg[1]) * 0.22, bg[2] + (ac.b - bg[2]) * 0.22);
-    // (the accent is loud on the light page: less of the glow there)
-    this.atmosphere.uniforms.uCover!.value = t.scheme === "dark" ? 0.8 : 0.5;
-    this.mist.uniforms.uCover!.value = t.scheme === "dark" ? 0.85 : 0.7;
+    const mixTo = (k: number) => [0, 1, 2].map((i) => bg[i]! + (t.ink[i]! - bg[i]!) * k) as [number, number, number];
+    this.atmosphere.uniforms.uColor!.value.setRGB(...mixTo(0.5));
+    this.mist.uniforms.uColor!.value.setRGB(...mixTo(0.12));
+    this.atmosphere.uniforms.uCover!.value = t.scheme === "dark" ? 0.28 : 0.22;
+    this.mist.uniforms.uCover!.value = t.scheme === "dark" ? 0.42 : 0.34;
     this.graticule.uniforms.uColor!.value.setRGB(...t.grid);
     this.ramp = t.ramp;
     this.borderLevelNow = -1;
