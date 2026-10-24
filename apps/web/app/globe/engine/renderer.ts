@@ -2013,6 +2013,8 @@ export class GlobeRenderer {
     const land = this.caption?.landShare() ?? 0;
     // (the filled, sun-lit planet and the places' lights are off for now, `CINEMATIC.planet`: the globe keeps its own look; the hero still steps back with `land`)
     this.globe.setLand(CINEMATIC.planet.fill ? land : 0);
+    // the atmosphere: a thin dithered glow at the limb, for the length of the interlude (it follows the land's easing: in and out with it)
+    this.globe.setAtmosphere(land * CINEMATIC.atmosphere.amount);
     this.globe.setCity(CINEMATIC.planet.cities ? (this.caption?.cityShare() ?? 0) : 0);
     // the page's own hero steps back with it (app.css `--interlude`): written when it moves by a hundredth
     if (Math.abs(land - this.interludeVar) >= 0.01 || (land === 0 && this.interludeVar !== 0)) {

@@ -87,12 +87,12 @@ export const CINEMATIC = {
    * (135 E), so that it is hidden when the camera arrives and comes up over the horizon about three seconds in, as the studio's does. (The start, relative
    * to the page's meridian, is worked out from this and the word's span: `CaptionLayer.sync`.)
    */
-  leadStartLon: 135,
+  leadStartLon: 180,
   /**
    * The word is not drawn before this point of the flight (0..1): while the camera dives in from the page's view it could be seen from the high camera,
    * beside the planet, and would be seen to appear. The camera is in place at 0.1.
    */
-  wordFromU: 0.16,
+  wordFromU: 0.35,
   /** The continents are filled with the ink for the whole interlude (the planet's disc, `GlobeScene.setLand`), eased in over `inMs` and out over `outMs`. */
   land: { inMs: 900, outMs: 1400, cutMs: 600 },
   /**
@@ -101,6 +101,8 @@ export const CINEMATIC = {
    * `occluderMaterial`), `cities` the places' lights at the chord.
    */
   planet: { fill: false, cities: false },
+  /** The atmosphere (a thin glow of the accent round the planet's limb, in the dither): how much of it, for the whole interlude. */
+  atmosphere: { amount: 1 },
   /** The places' lights come up through the dither when the word lands (the chord), over `inMs`, and go over `outMs`. */
   city: { inMs: 240, outMs: 500 },
   /** The side the word comes in from: EAST (1), as the studio's does. */

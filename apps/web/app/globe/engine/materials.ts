@@ -3,7 +3,7 @@
  * `ColorManagement` note in renderer.ts. Visibility of borders is ordered-dither coverage, not alpha, so the
  * output never contains a blended pixel.
  */
-import { Color, ShaderMaterial } from "three";
+import { BackSide, Color, ShaderMaterial } from "three";
 import { LEG_MODES, MODE_STYLE } from "../paths/modes";
 import { STRAIGHT_FADE_MIX, STRAIGHT_FADE_STEPS } from "../paths/thin";
 import { SPARK, TRAIL_BANDS, TRAIL_ENTRIES, TRAIL_PER_PALETTE } from "../paths/trail";
@@ -82,6 +82,41 @@ export function occluderMaterial(): ShaderMaterial {
     polygonOffset: true,
     polygonOffsetFactor: 1,
     polygonOffsetUnits: 1,
+  });
+}
+
+/**
+ * The atmosphere (the cinematic interlude only): a thin glow round the planet's limb, in the lines' own ordered dither (1-bit pixels, never a smooth gradient).
+ * It is the INSIDE of a shell a little above the surface, so it is seen only beyond the disc (the disc's depth hides the shell's far side across the middle) and
+ * is brightest at the planet's own edge, thinning outwards to nothing. `uAmt` (0..1) is how much of it is there, `uSun` the sun's direction in the earth's frame: the
+ * glow is stronger on the sunward side, the way a lit limb is.
+ */
+export function atmosphereMaterial(): ShaderMaterial {
+  return new ShaderMaterial({
+    uniforms: { uColor: { value: new Color() }, uAmt: { value: 0 }, uSun: { value: [0, 0, 1] }, uShell: { value: 1.07 }, uPower: { value: 2.0 }, uCover: { value: 0.5 } },
+    vertexShader: /* glsl */ `
+      varying vec3 vPos;
+      void main() { vPos = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform vec3 uColor; uniform float uAmt; uniform vec3 uSun; uniform float uShell; uniform float uPower; uniform float uCover;
+      varying vec3 vPos;
+      ${DITHER_GLSL}
+      void main() {
+        vec3 n = normalize(vPos);
+        vec3 toEye = normalize(cameraPosition - vPos);
+        // on the far side of the shell the outward normal turns away from the eye: |n . eye| is 0 at the shell's outer edge and grows towards the planet's limb
+        float rim = pow(clamp(abs(dot(n, toEye)), 0.0, 1.0), uPower);
+        float sunward = 0.55 + 0.45 * clamp(dot(n, uSun) * 1.4 + 0.2, 0.0, 1.0);
+        float cover = rim * sunward * uCover * uAmt;
+        if (dither4(floor(gl_FragCoord.xy)) >= cover) discard;
+        gl_FragColor = vec4(uColor, 1.0);
+      }
+    `,
+    side: BackSide,
+    depthTest: true,
+    depthWrite: false,
+    transparent: false,
   });
 }
 

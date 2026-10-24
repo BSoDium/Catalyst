@@ -48,7 +48,7 @@ describe("the camera's flight", () => {
     });
   }
   it("is over Greece at its first key, the horizon level (up is the local vertical), aimed along it with the earth in the lower part of the picture", () => {
-    const k = FLIGHT.keys[0]!;
+    const k = FLIGHT.keys[1]!; // (key 0 is the approach, still out over the Levant)
     const { p, f, up } = frame(k.u);
     expect(len(p.pos) - 1).toBeCloseTo(k.alt, 6);
     expect(p.lon).toBeCloseTo(k.lon, 6);
@@ -68,13 +68,13 @@ describe("the camera's flight", () => {
     const cu = unit(p.pos);
     const e = unit(cross([0, 1, 0], cu));
     const n = cross(cu, e);
-    const bearing = FLIGHT.keys[0]!.bearing / DEG;
+    const bearing = FLIGHT.keys[1]!.bearing / DEG;
     const alpha = Math.acos(1 / d);
     const t = [n[0]! * Math.cos(bearing) + e[0]! * Math.sin(bearing), n[1]! * Math.cos(bearing) + e[1]! * Math.sin(bearing), n[2]! * Math.cos(bearing) + e[2]! * Math.sin(bearing)];
     return seen(u, [cu[0]! * Math.cos(alpha) + t[0]! * Math.sin(alpha), cu[1]! * Math.cos(alpha) + t[1]! * Math.sin(alpha), cu[2]! * Math.cos(alpha) + t[2]! * Math.sin(alpha)]);
   };
   it("holds the horizon in the picture, below its middle, while the camera backs away and climbs: the planet stays in view as the word rises from the limb", () => {
-    for (let u = FLIGHT.keys[0]!.u; u <= FLIGHT.keys[1]!.u + 1e-9; u += 0.01) {
+    for (let u = FLIGHT.keys[1]!.u; u <= FLIGHT.keys[2]!.u + 1e-9; u += 0.01) {
       const h = horizonSeen(u);
       expect(h.pitch).toBeLessThan(0);
       expect(h.pitch).toBeGreaterThan(-15);
@@ -110,7 +110,7 @@ describe("the camera's flight", () => {
     const lons = FLIGHT.keys.slice(0, 3).map((k) => flightPose(k.u, end).lon);
     for (let i = 1; i < lons.length; i++) expect(lons[i]).toBeLessThan(lons[i - 1]!);
     let last = 0;
-    for (let u = FLIGHT.keys[0]!.u; u <= 1; u += 0.02) {
+    for (let u = FLIGHT.keys[1]!.u; u <= 1; u += 0.02) {
       const alt = len(flightPose(u, end).pos) - 1;
       expect(alt).toBeGreaterThanOrEqual(last - 0.02);
       last = alt;
@@ -175,13 +175,20 @@ describe("the camera's flight", () => {
     }
   });
 
-  it("eases in and out of the opening shot: the camera is nearly still where the dive ends, and the dive is long and slow at both ends", () => {
-    const k = FLIGHT.keys[0]!.u;
+  it("eases in at the start and then NEVER STOPS: the camera goes through the opening shot on a curve, slowing a little but never to rest, and carries on", () => {
+    const k = FLIGHT.keys[1]!.u;
     const speed = (u: number) => len(sub(flightPose(u + 0.0005, end).pos, flightPose(u - 0.0005, end).pos)) / 0.001;
-    const mid = speed(k / 2);
-    expect(speed(k)).toBeLessThan(mid * 0.15); // (arrives at rest)
-    expect(speed(0.004)).toBeLessThan(mid * 0.2); // (leaves the page's camera at rest)
-    expect(speed(k + 0.01)).toBeLessThan(mid * 0.25); // (and backs away from it gently)
-    expect(k).toBeGreaterThanOrEqual(0.15); // (3.5 s: not a rush)
+    const peak = Math.max(...Array.from({ length: 60 }, (_, i) => speed(0.01 + (i * (k - 0.01)) / 59)));
+    expect(speed(0.004)).toBeLessThan(peak * 0.15); // (it leaves the page's camera at rest: an ease in)
+    // from the dive to the middle of the flight the camera is never nearly still: its slowest moment (through the opening shot) is a third of what comes after, at the least
+    let slowest = Infinity;
+    for (let u = 0.1; u <= 0.8; u += 0.01) slowest = Math.min(slowest, speed(u));
+    const after = speed(0.6);
+    expect(slowest).toBeGreaterThan(after * 0.3);
+    // and the passage through the opening shot is smooth: its speed there is within a factor of two of a tenth of the flight either side
+    expect(speed(k)).toBeGreaterThan(speed(k - 0.1) * 0.15);
+    expect(speed(k)).toBeGreaterThan(speed(k + 0.1) * 0.4);
+    // the dive is long: 6 s of a 20 s flight at least
+    expect(k).toBeGreaterThanOrEqual(0.3);
   });
 });

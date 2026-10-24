@@ -25,7 +25,7 @@ import type { ViewBasis } from "./geo";
 import { zoomToRadiusPx } from "./geo";
 import { LAND_H, LAND_W, landMask } from "./land";
 import { GRATICULE_STEP_DEG, graticuleSegments, polylinesToSegments } from "./geometry";
-import { OCCLUDER_RADIUS, cityMaterial, lineMaterial, occluderMaterial, silhouetteMaterial } from "./materials";
+import { OCCLUDER_RADIUS, atmosphereMaterial, cityMaterial, lineMaterial, occluderMaterial, silhouetteMaterial } from "./materials";
 import { RouteLayer } from "./route-layer";
 import { SKY_STATE, viewToGalactic } from "./sky";
 import { SkyLayer } from "./sky-layer";
@@ -58,6 +58,9 @@ export class GlobeScene {
   private materials: ShaderMaterial[] = [];
   private occluder = occluderMaterial();
   private city = cityMaterial();
+  private atmosphere = atmosphereMaterial();
+  private atmosphereMesh: Mesh | null = null;
+  private atmosphereNow = 0;
   private cityNow = 0;
   private coastData: Polylines | null = null;
   private landTex: DataTexture | null = null;
@@ -82,7 +85,7 @@ export class GlobeScene {
     coastlines: Polylines;
     borders: Polylines;
   }) {
-    this.materials.push(this.occluder, this.city, this.graticule, this.borders, this.coast, this.silhouette);
+    this.materials.push(this.occluder, this.city, this.atmosphere, this.graticule, this.borders, this.coast, this.silhouette);
     this.coastData = data.coastlines;
 
     const disc = new SphereGeometry(OCCLUDER_RADIUS, 96, 48);
@@ -91,6 +94,14 @@ export class GlobeScene {
 
     // Each layer is drawn in a fixed order (renderOrder) over the disc: grid, borders, coast, routes, horizon outline,
     // markers (last, so nothing can draw over a marker).
+    // the atmosphere shell (the cinematic interlude's: hidden, and not drawn at all, outside it)
+    const shell = new SphereGeometry(1.04, 96, 48);
+    this.geometries.push(shell);
+    this.atmosphereMesh = new Mesh(shell, this.atmosphere);
+    this.atmosphereMesh.visible = false;
+    this.atmosphereMesh.frustumCulled = false;
+    this.add(this.atmosphereMesh, 0.5);
+
     this.add(new LineSegments(this.track(segmentGeometry(graticuleSegments(GRATICULE_STEP_DEG, 3))), this.graticule), 1);
     this.bordersLines = new LineSegments(this.track(segmentGeometry(polylinesToSegments(data.borders, 1))), this.borders);
     this.add(this.bordersLines, 2);
@@ -146,6 +157,9 @@ export class GlobeScene {
     // the accent, as the page has it in this scheme (app.css `--palette-blue`; the lighter step on the dark page)
     if (t.scheme === "dark") this.city.uniforms.uColor!.value.setRGB(0.29, 0.64, 0.96);
     else this.city.uniforms.uColor!.value.setRGB(0, 0.47, 0.84);
+    this.atmosphere.uniforms.uColor!.value.copy(this.city.uniforms.uColor!.value);
+    // (the accent is loud on the light page: fewer dots there)
+    this.atmosphere.uniforms.uCover!.value = t.scheme === "dark" ? 0.5 : 0.34;
     this.graticule.uniforms.uColor!.value.setRGB(...t.grid);
     this.ramp = t.ramp;
     this.borderLevelNow = -1;
@@ -175,8 +189,19 @@ export class GlobeScene {
 
   /** The sun's direction in the earth's frame (the planet's light; the letters have the same one in the camera's frame). */
   setSun(x: number, y: number, z: number) {
+    this.atmosphere.uniforms.uSun!.value = [x, y, z];
     this.occluder.uniforms.uSun!.value = [x, y, z];
     this.city.uniforms.uSun!.value = [x, y, z];
+  }
+
+  /** The atmosphere, 0 (none: the shell is not drawn) to 1: a thin dithered glow round the limb, in the accent. */
+  setAtmosphere(k: number, shell?: number) {
+    const x = Math.min(1, Math.max(0, k));
+    if (Math.abs(x - this.atmosphereNow) < 0.01 && !(x === 0 && this.atmosphereNow !== 0)) return;
+    this.atmosphereNow = x;
+    this.atmosphere.uniforms.uAmt!.value = x;
+    if (shell !== undefined) this.atmosphere.uniforms.uShell!.value = shell;
+    if (this.atmosphereMesh) this.atmosphereMesh.visible = x > 0;
   }
 
   /** The places' lights, 0 (out) to 1: they come up through the dither. */

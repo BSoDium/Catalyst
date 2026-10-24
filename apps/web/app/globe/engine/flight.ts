@@ -73,15 +73,18 @@ export interface FlightPose {
  */
 export const FLIGHT = {
   keys: [
+    // the approach: out over the Levant and still high, the horizon coming up; the camera swings in WEST along the planet's surface (and the flight goes on west
+    // after the opening shot), so that it passes through the opening shot on a curve and never reverses along its own line (a reversal is a stop)
+    { u: 0.2, lon: 56, lat: 29, alt: 1.5, look: [106, 8, 2], level: 0.8, pitch: -3, roll: -4, horizon: 0.7, bearing: 85 },
     // the opening: over Greece, the horizon level and in the lower part of the picture, the letters about to come up over it
-    { u: 0.16, lon: 22, lat: 36, alt: 0.15, look: [106, 8, 2], level: 1, pitch: -6, roll: -6, horizon: 1, bearing: 85 },
+    { u: 0.35, lon: 22, lat: 36, alt: 0.15, look: [106, 8, 2], level: 1, pitch: -6, roll: -6, horizon: 1, bearing: 85 },
     // backing away west over Italy, climbing, the horizon held: the planet stays in the picture while the word rises from the limb
-    { u: 0.38, lon: 14, lat: 38, alt: 0.62, look: [106, 8, 2], level: 1, pitch: -6, roll: -4, horizon: 1, bearing: 85 },
+    { u: 0.49, lon: 7, lat: 41, alt: 0.7, look: [106, 8, 2], level: 1, pitch: -6, roll: -4, horizon: 1, bearing: 85 },
     // the camera leaves the limb and turns towards the word and the planet together
-    { u: 0.54, lon: 7, lat: 36, alt: 1.5, look: [50, 6, 1.5], level: 0.9, pitch: -3, roll: -2, horizon: 0.7, bearing: 85 },
-    { u: 0.7, lon: 2, lat: 26, alt: 2.4, look: [14, 2, 0.9], level: 0.5, pitch: 0, roll: 2, horizon: 0, bearing: 85 },
+    { u: 0.61, lon: 5, lat: 36, alt: 1.5, look: [50, 6, 1.5], level: 0.9, pitch: -3, roll: -2, horizon: 0.7, bearing: 85 },
+    { u: 0.75, lon: 2, lat: 26, alt: 2.4, look: [14, 2, 0.9], level: 0.5, pitch: 0, roll: 2, horizon: 0, bearing: 85 },
     // the space view, reached with the word still on its way in: the letters line up in front of the planet over the last part
-    { u: 0.82, lon: 0, lat: 12, alt: 3.2, look: [0, 0, 0.1], level: 0.15, pitch: 0, roll: 8, horizon: 0, bearing: 85 },
+    { u: 0.87, lon: 0, lat: 12, alt: 3.2, look: [0, 0, 0.1], level: 0.15, pitch: 0, roll: 8, horizon: 0, bearing: 85 },
   ] satisfies readonly FlightKey[],
 };
 
@@ -159,8 +162,6 @@ export function flightPose(u: number, end: FlightEnd): FlightPose {
   const v = spline(
     rows.map((r, i) => ({ u: times[i]!, v: r })),
     u,
-    // (the camera is momentarily still at the opening shot: the dive eases in AND out, and the departure eases out of it)
-    new Set([1]),
   );
   const lonNow = v[0]!;
   const latNow = Math.max(-89, Math.min(89, v[1]!));
