@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CAPTION_FACE, CaptionMotion, eggRadius, DRIFT, cycleMs, eggMs, eggX, entranceMs, placeEgg, shellXY, type CinematicPlan } from "./caption";
+import { CAPTION_FACE, CaptionMotion, eggExitShare, DRIFT, cycleMs, eggMs, eggX, entranceMs, placeEgg, shellXY, type CinematicPlan } from "./caption";
 import { CINEMATIC, planCinematic } from "./cinematic";
 import { SOUND } from "./cinematic-sound";
 import { markPlayed, visitState } from "./visit";
@@ -127,42 +127,54 @@ describe("the cinematic interlude: the big row's trajectory", () => {
     expect(eggX(tIn, start, s)).toBeCloseTo(-Math.PI, 12);
     expect(eggX(tIn + 1000, start, s)).toBeCloseTo(-Math.PI, 12);
   });
-  /** Whether any point of a word centred `centre` rad round (half a span `half`, on the equator, ring radius `r`) is seen from the axis at distance `d`: beside the disc or in front of it. */
-  const seen = (centre: number, half: number, r: number, d: number): boolean => {
-    const t = 1 / Math.sqrt(d * d - 1); // the disc's tangent radius
-    for (let i = 0; i <= 200; i++) {
-      const psi = Math.abs(centre - half + (2 * half * i) / 200);
-      const w = ((psi + Math.PI) % (2 * Math.PI)) - Math.PI; // (the true angle from the axis: it wraps round the planet)
-      const a = Math.abs(w);
-      if (a < Math.PI / 2) return true;
-      if ((r * Math.sin(a)) / (d - r * Math.cos(a)) > t) return true; // (behind the planet's middle but out beyond its limb)
-    }
-    return false;
+  /** The dissolve's amount at an angle `psi` from the view axis (what the word's shader does: smoothstep from `from` to `to`, and all of it with the exit's last stretch `q`). */
+  const dissolved = (psi: number, q: number): number => {
+    const a = CINEMATIC.dissolve.from * (Math.PI / 180);
+    const b = CINEMATIC.dissolve.to * (Math.PI / 180);
+    const t = Math.min(1, Math.max(0, (psi - a) / (b - a)));
+    const fin = Math.min(1, Math.max(0, (q - CINEMATIC.dissolve.final) / (1 - CINEMATIC.dissolve.final)));
+    return Math.max(t * t * (3 - 2 * t), fin);
   };
-  it("ends with the WHOLE word behind the planet, however it came in, and tucks its ring in to get there: no part of it is seen beside the disc, nor on the other limb", () => {
+  it("the exit ends exactly behind the planet, and by then every letter has been dissolved, whatever the word's span and the page's longitude", () => {
     const rad = Math.PI / 180;
-    const half = 57 * rad; // (a word 114 degrees long, as a desktop has it)
-    for (const lon of [-90, 0, 40, 120]) {
-      const startRad = (((CINEMATIC.leadStartLon + 57 - lon) % 360) + 360) % 360 * rad;
-      const endTheta = eggX(tIn + 1, startRad, s);
-      const rEnd = eggRadius(endTheta, s, CINEMATIC.radius, CINEMATIC.tuck.radius, CINEMATIC.tuck.from);
-      expect(rEnd).toBeCloseTo(CINEMATIC.tuck.radius, 9);
-      for (const d of [3.4, 4.4, 6, 9]) expect(seen(endTheta, half, rEnd, d), `page at ${lon} E, camera ${d}`).toBe(false);
+    for (const half of [40, 57, 70, 80]) {
+      for (const lon of [-90, 0, 40, 120]) {
+        const startRad = ((((CINEMATIC.leadStartLon + half - lon) % 360) + 360) % 360) * rad;
+        const endTheta = eggX(tIn + 1, startRad, s);
+        expect(endTheta).toBeCloseTo(-Math.PI, 9);
+        expect(eggExitShare(endTheta, s)).toBeCloseTo(1, 9);
+        // every point of the word, with the last stretch done: gone
+        for (let i = 0; i <= 100; i++) {
+          const psi = Math.abs((((Math.PI - half * rad + (2 * half * rad * i) / 100 + Math.PI) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI) - Math.PI);
+          expect(dissolved(psi, 1), `half ${half}, page ${lon} E`).toBeCloseTo(1, 9);
+          // (a word of up to 112 degrees is gone by its position alone; a longer one is finished by the exit's last stretch)
+          if (half <= 56) expect(dissolved(psi, 0), `half ${half} by position`).toBeCloseTo(1, 9);
+        }
+      }
     }
-    // and the tuck is needed: from the cameras the interlude ends on (far out) a word on the full ring shows a sliver of itself beside the disc, even right behind it
-    for (const d of [4.4, 6]) expect(seen(Math.PI, half, CINEMATIC.radius, d)).toBe(true);
   });
-  it("the ring is whole until the word is past the middle, tucks in smoothly, and never grows back", () => {
-    const rad = Math.PI / 180;
-    const startRad = 190 * rad;
-    expect(eggRadius(eggX(s.enterMs, startRad, s), s, CINEMATIC.radius, CINEMATIC.tuck.radius, CINEMATIC.tuck.from)).toBe(CINEMATIC.radius);
-    let last = Infinity;
-    for (let t = s.enterMs + s.holdMs; t <= tIn; t += 10) {
-      const r = eggRadius(eggX(t, startRad, s), s, CINEMATIC.radius, CINEMATIC.tuck.radius, CINEMATIC.tuck.from);
-      expect(r).toBeLessThanOrEqual(last + 1e-9);
-      expect(r).toBeGreaterThanOrEqual(CINEMATIC.tuck.radius - 1e-9);
-      last = r;
+  it("unloads the letters one by one: the farthest round goes first, nothing is touched before the word is past the middle, and the shape is whole until then", () => {
+    // (a point is dissolved by its angle: the one farther round is always at least as dissolved as the nearer one)
+    let last = 0;
+    for (let deg = 0; deg <= 180; deg += 2) {
+      const d = dissolved(deg * (Math.PI / 180), 0);
+      expect(d).toBeGreaterThanOrEqual(last - 1e-12);
+      last = d;
     }
+    expect(dissolved(CINEMATIC.dissolve.from * (Math.PI / 180) - 0.01, 0)).toBe(0);
+    expect(dissolved(CINEMATIC.dissolve.to * (Math.PI / 180), 0)).toBeCloseTo(1, 12);
+    // and by the time a point is beside the disc's limb (the ring is higher than the planet) it is gone: 125 degrees is where the disc hides it from the far cameras
+    expect(CINEMATIC.dissolve.to).toBeLessThan(125);
+    // the share of the exit: nothing before the middle, whole at the end, steady between
+    const rad = Math.PI / 180;
+    expect(eggExitShare(eggX(s.enterMs, 190 * rad, s), s)).toBe(0);
+    let q = 0;
+    for (let t = s.enterMs + s.holdMs; t <= tIn; t += 10) {
+      const v = eggExitShare(eggX(t, 190 * rad, s), s);
+      expect(v).toBeGreaterThanOrEqual(q - 1e-9);
+      q = v;
+    }
+    expect(q).toBeCloseTo(1, 9);
   });
   it("only ever moves on: monotone from behind the planet on one side to behind it on the other", () => {
     let last = Infinity;

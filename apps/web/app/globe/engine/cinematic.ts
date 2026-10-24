@@ -44,8 +44,8 @@ export const CINEMATIC = {
    * All of it is drawn in a few dithered levels (`levels`), on the art's own pixels (the caption's canvas is drawn at the art's resolution), as the globe is.
    */
   tone: {
-    light: { face: 0.012, side: 0.04, back: 0.09, outline: 0.5, glint: -0.26 },
-    dark: { face: 0.03, side: 0.055, back: 0.015, outline: 0.5, glint: 0.62 },
+    light: { face: 0.006, side: 0.016, back: 0.04, outline: 0.4, glint: -0.06, exposure: 1.18 },
+    dark: { face: 0.03, side: 0.055, back: 0.015, outline: 0.5, glint: 0.62, exposure: 1 },
   },
   levels: 7,
   depthCaps: 0.3,
@@ -61,8 +61,13 @@ export const CINEMATIC = {
    */
   light: { key: [-0.5, 0.45, 0.74] as const, fill: [0.6, -0.3, 0.4] as const, ambient: 0.5, diffuse: 0.5, filler: 0.14, specular: 0.22, shininess: 90, faceShine: 0.8, wallShine: 1.1, edgeShine: 1.5, outlineMix: 0.6 },
   radius: 1.5,
-  /** On its way out the ring tucks in to `tuck.radius` earth radii, from `tuck.from` of the exit (`eggRadius`): the word goes BEHIND the planet. */
-  tuck: { radius: 1.08, from: 0.3 },
+  /**
+   * On its way out the letters DISSOLVE in the art's ordered dither, one by one, as they pass behind the planet (no shrinking, no clipping line): a fragment is
+   * gone once its angle from the page's view axis (as the planet sees it) is `to` degrees, going from whole at `from`; the word's last stretch finishes what is left
+   * (`final`: the share of the exit from which everything dissolves, whatever its span). The ring is 1.5 radii above the planet: from the far cameras it is seen beside
+   * the disc up to about 125 degrees, so the dissolve is done by 124, right at the limb.
+   */
+  dissolve: { from: 96, to: 124, final: 0.9 },
   capScale: 2,
   maxCapScale: 6,
   fill: 2.05,

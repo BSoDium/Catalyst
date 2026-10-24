@@ -830,23 +830,19 @@ export const eggX = (tau: number, start: number, s: EggShape): number => {
   const x = rowX(tau, start, amp, { ms: s.enterMs, ease: s.ease, dwellMs: s.holdMs, exitMs: s.exitMs });
   // The exit's share of the way is stretched so that the word ends DIRECTLY BEHIND the planet (half a turn from the view), wherever it came in from (which
   // depends on the page's longitude), and still moves as the row's own exit does. The word is about 114 degrees long: only the middle of the far side hides
-  // all of it, and only with its ring tucked in (`eggRadius`).
+  // all of it: the letters dissolve in the art's dither as they pass behind (`eggExitShare`, the layer's shader).
   if (x >= -amp) return x;
   const k = (Math.PI - amp) / Math.max(1e-6, start - amp);
   return -amp + (x + amp) * k;
 };
 
 /**
- * The radius of the word's ring at the turn `x` (the value `eggX` gives): the full ring until the word is past the middle, then it TUCKS IN towards the planet
- * (to `rEnd`) as it goes round, so that at the end all of it is behind the disc (a word on the high ring is seen beside the planet's limb to the last: a
- * shell at 1.5 radii hides nothing of a 114 degree word, and a word that ends where it began wraps to the other side). `from`: how far through its exit the
- * tuck begins (0..1).
+ * How far through its exit the word is at the turn `x` (the value `eggX` gives), 0 (not yet past the middle) to 1 (directly behind the planet). The layer's
+ * shader dissolves the letters in the art's dither as they pass behind the planet (`CINEMATIC.dissolve`), and finishes whatever is left as this reaches 1.
  */
-export function eggRadius(x: number, s: EggShape, r0: number, rEnd: number, from: number): number {
+export function eggExitShare(x: number, s: EggShape): number {
   const amp = (s.ampDeg * Math.PI) / 180;
-  const q = x >= -amp ? 0 : Math.min(1, (-x - amp) / Math.max(1e-6, Math.PI - amp));
-  const t = Math.min(1, Math.max(0, (q - from) / Math.max(1e-6, 1 - from)));
-  return r0 + (rEnd - r0) * (t * t * (3 - 2 * t));
+  return x >= -amp ? 0 : Math.min(1, (-x - amp) / Math.max(1e-6, Math.PI - amp));
 }
 
 /** How the caption leaves: a fade (the interaction's exit: cheap) or the orbit (the lines travel behind the planet). */

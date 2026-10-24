@@ -47,7 +47,7 @@ import {
   captionColors,
   captionFont,
   dimPresence,
-  eggRadius,
+  eggExitShare,
   entranceStart,
   lineHidden,
   lineOf,
@@ -75,6 +75,7 @@ import {
 } from "./caption";
 import { CINEMATIC, cinematicForced, notePlayed, planForPage } from "./cinematic";
 import { buildWordGeometry } from "./cinematic-word";
+import { lonLatToVec3 } from "./geo";
 import { prepareSound, SOUND, startSound, type SoundHandle } from "./cinematic-sound";
 import { OCCLUDER_RADIUS } from "./materials";
 import { CAPTION, ENERGY } from "./tuning";
@@ -159,10 +160,12 @@ const EGG_VERT = /* glsl */ `
   uniform float uHalfSpan;
   uniform float uR;
   uniform float uDepth;
+  uniform vec3 uAxis;
   attribute float kind;
   varying vec3 vNormal;
   varying vec3 vView;
   varying float vKind;
+  varying float vCosPsi;
   void main() {
     float lat = uBaseLat - uBelow + position.y * (uBelow + uAbove);
     float a = (position.x * 2.0 - 1.0) * uHalfSpan;
@@ -177,6 +180,8 @@ const EGG_VERT = /* glsl */ `
     vec3 radial = vec3(cl * sa, sl, cl * ca);
     vNormal = normalMatrix * (normal.x * east + normal.y * north + normal.z * radial);
     vKind = kind;
+    // the angle from the page's view axis, in the earth's frame (the strip is turned about the earth's axis by the mesh's matrix): how far round the planet this point is
+    vCosPsi = dot(normalize((modelMatrix * vec4(p, 1.0)).xyz), uAxis);
     vec4 mv = modelViewMatrix * vec4(p, 1.0);
     vView = mv.xyz;
     gl_Position = projectionMatrix * mv;
@@ -197,18 +202,24 @@ const EGG_FRAG = /* glsl */ `
   uniform vec3 uSide;
   uniform vec3 uBack;
   uniform float uGlint;
+  uniform float uExposure;
+  uniform float uDissolve;
+  uniform float uFinal;
   varying vec3 vNormal;
   varying vec3 vView;
   varying float vKind;
+  varying float vCosPsi;
   // (the thin strip lights, a few degrees wide, are what a face does not reflect, one direction, but the bevels do, one after another as the word turns)
   // Metal in space: nothing is lit but by a few soft boxes and strips, so the surfaces are the page's own tone and show only the REFLECTION of them, which
   // slides across the faces and runs along the bevels as the word turns. The result is how much of a box the reflected direction is in (0 outside them all).
-  float box(vec3 r, vec3 d, float e) { return pow(max(dot(r, normalize(d)), 0.0), e); }
+  // BANDS, not lobes: a round box reflects as a disc on a large flat face (two planets on the letters in the far view, with nothing there). A band is the set
+  // of directions near a great circle, so it crosses a face as a straight sweep and wraps a bevel as a line.
+  float band(vec3 r, vec3 axis, float centre, float w) { return 1.0 - smoothstep(w, w * 2.2, abs(dot(r, normalize(axis)) - centre)); }
   float studio(vec3 r) {
-    float s = 0.55 * box(r, vec3(-0.5, 0.55, 0.7), 5.0);
-    s += 1.0 * box(r, vec3(0.65, 0.15, 0.75), 16.0);
-    s += 0.65 * box(r, vec3(-0.1, -0.65, 0.75), 9.0);
-    s += 0.5 * smoothstep(0.2, 0.95, r.y);
+    float s = 0.55 * band(r, vec3(-0.4, 0.8, 0.45), 0.35, 0.1);
+    s += 1.0 * band(r, vec3(0.9, 0.25, 0.35), 0.15, 0.06);
+    s += 0.6 * band(r, vec3(-0.15, -0.9, 0.4), 0.3, 0.12);
+    s += 0.45 * smoothstep(0.1, 0.95, r.y);
     return s;
   }
   // the lines' own ordered dither, on the art's pixels (this canvas is drawn at the art's resolution)
@@ -216,14 +227,20 @@ const EGG_FRAG = /* glsl */ `
   float dither4(vec2 a) { return dither2(0.5 * a) * 0.25 + dither2(a); }
   float strips(vec3 r) {
     float s = 0.0;
-    s += smoothstep(0.9935, 0.9985, dot(r, normalize(vec3(-0.35, 0.82, 0.45))));
-    s += smoothstep(0.9935, 0.9985, dot(r, normalize(vec3(0.55, 0.15, 0.82))));
-    s += smoothstep(0.9935, 0.9985, dot(r, normalize(vec3(-0.78, -0.1, 0.62))));
-    s += smoothstep(0.9935, 0.9985, dot(r, normalize(vec3(0.15, -0.55, 0.82))));
-    s += smoothstep(0.9935, 0.9985, dot(r, normalize(vec3(0.82, 0.55, 0.15))));
+    s += 1.0 - smoothstep(0.004, 0.012, abs(dot(r, normalize(vec3(-0.35, 0.82, 0.45))) - 0.1));
+    s += 1.0 - smoothstep(0.004, 0.012, abs(dot(r, normalize(vec3(0.7, 0.2, 0.7))) - 0.4));
+    s += 1.0 - smoothstep(0.004, 0.012, abs(dot(r, normalize(vec3(-0.8, -0.1, 0.6))) + 0.2));
+    s += 1.0 - smoothstep(0.004, 0.012, abs(dot(r, normalize(vec3(0.2, -0.6, 0.78))) - 0.3));
     return s;
   }
   void main() {
+    // Passing behind the planet: the letters are UNLOADED, a pixel at a time in the lines' own ordered dither, the first to pass (the farthest round) first. Only
+    // on the way out (uDissolve), and all of it at the end (uFinal).
+    if (uDissolve > 0.5) {
+      float psi = acos(clamp(vCosPsi, -1.0, 1.0));
+      float k = max(smoothstep(${((CINEMATIC.dissolve.from * Math.PI) / 180).toFixed(4)}, ${((CINEMATIC.dissolve.to * Math.PI) / 180).toFixed(4)}, psi), uFinal);
+      if (k > dither4(floor(gl_FragCoord.xy))) discard;
+    }
     vec3 n = normalize(vNormal);
     // face, the rim (the accent), the walls, the back (towards the planet: out of the sun, its own tone)
     vec3 albedo = vKind < 0.5 ? uFace : (vKind < 1.5 ? uOutline : (vKind < 3.5 ? uSide : uBack));
@@ -237,7 +254,7 @@ const EGG_FRAG = /* glsl */ `
     vec3 rv = reflect(normalize(vView), n);
     // how much each surface shines: the bevel the most (it turns the quickest), the walls, the faces, the backs (out of the light) hardly
     float gain = vKind < 0.5 ? ${CINEMATIC.light.faceShine.toFixed(3)} : (vKind < 1.5 ? ${CINEMATIC.light.edgeShine.toFixed(3)} : (vKind < 3.5 ? ${CINEMATIC.light.wallShine.toFixed(3)} : 0.25));
-    vec3 col = lit + vec3(uGlint * (studio(rv) * gain + strips(rv) * ${CINEMATIC.light.edgeShine.toFixed(3)} * (vKind > 3.5 ? 0.3 : 1.0)));
+    vec3 col = lit * uExposure + vec3(uGlint * (studio(rv) * gain + strips(rv) * ${CINEMATIC.light.edgeShine.toFixed(3)} * (vKind > 3.5 ? 0.3 : 1.0)));
     col += vec3(spec * uGlint * 0.5 * (vKind > 3.5 ? 0.3 : 1.0));
     // the outline is the line: the ink, hardly lit
     if (vKind > 0.5 && vKind < 1.5) col = mix(col, uOutline, ${CINEMATIC.light.outlineMix.toFixed(2)});
@@ -619,6 +636,9 @@ export class CaptionLayer {
   private eggSide = { value: [0.5, 0.5, 0.5] as number[] };
   private eggBack = { value: [0.2, 0.2, 0.2] as number[] };
   private eggGlint = { value: 0 };
+  private eggExposure = { value: 1 };
+  /** The uniforms of the dissolve, shared by the word's material (`EGG_VERT`, `EGG_FRAG`). */
+  private eggDissolve = { uDissolve: { value: 0 }, uFinal: { value: 0 }, uAxis: { value: [0, 0, 1] as number[] } };
   /** The far slices (layer below this) that carry the text colour in mode `edge` (0: none). */
   private edgeLayer = { value: 0 };
   /** Slices of the thickness now (the quality governor lowers them; `CAPTION.slices` is the best) and the most the canvas is drawn at. */
@@ -733,6 +753,10 @@ export class CaptionLayer {
         uSide: this.eggSide,
         uBack: this.eggBack,
         uGlint: this.eggGlint,
+        uExposure: this.eggExposure,
+        uDissolve: this.eggDissolve.uDissolve,
+        uFinal: this.eggDissolve.uFinal,
+        uAxis: this.eggDissolve.uAxis,
         uBaseLat: { value: 0 },
         uBelow: { value: 0 },
         uAbove: { value: 0 },
@@ -875,6 +899,7 @@ export class CaptionLayer {
     this.eggBack.value = toward(tone.back);
     this.eggOutline.value = toward(tone.outline);
     this.eggGlint.value = tone.glint;
+    this.eggExposure.value = tone.exposure;
     this.dimAlpha = dark ? CAPTION.dim.alpha.dark : CAPTION.dim.alpha.light;
   }
 
@@ -1077,11 +1102,8 @@ export class CaptionLayer {
 
   /** The radius of the shell a strip is on: the rows' own, or the cinematic word's higher one. */
   private radiusOf(v: Pick<Variant, "set">): number {
-    return v.set === EGG ? this.eggRadiusNow : (this.radius ?? CAPTION.radius);
+    return v.set === EGG ? CINEMATIC.radius : (this.radius ?? CAPTION.radius);
   }
-
-  /** The word's ring now (it tucks in as it leaves, `eggRadius`). */
-  private eggRadiusNow: number = CINEMATIC.radius;
 
   /** The largest shell the caption draws on (the renderer sizes the second canvas to the shell's silhouette). */
   get maxRadius(): number {
@@ -1330,10 +1352,16 @@ export class CaptionLayer {
       b.egg.start = (((((CINEMATIC.leadStartLon + (b.egg.place.halfSpan * 180) / Math.PI - lon) % 360) + 360) % 360) * Math.PI) / 180;
       this.motion.setEggStart(b.egg.start);
       eggTheta = this.motion.eggTheta();
-      // the ring tucks in as the word leaves (it must be behind the planet at the end, not beside it)
+      // the letters dissolve as they pass behind the planet (the shader, from the page's view axis); how far through its exit the word is
       const shapeNow = this.motion.egg?.shape ?? CINEMATIC.shape;
-      this.eggRadiusNow = eggTheta === null ? CINEMATIC.radius : eggRadius(eggTheta * this.motion.eggSide, shapeNow, CINEMATIC.radius, CINEMATIC.tuck.radius, CINEMATIC.tuck.from);
-      for (const v of b.variants) if (v.set === EGG) v.material.uniforms.uR!.value = this.eggRadiusNow;
+      const q = eggTheta === null ? 0 : eggExitShare(eggTheta * this.motion.eggSide, shapeNow);
+      const u = this.eggDissolve;
+      u.uDissolve!.value = q > 0 ? 1 : 0;
+      u.uFinal!.value = Math.min(1, Math.max(0, (q - CINEMATIC.dissolve.final) / Math.max(1e-6, 1 - CINEMATIC.dissolve.final)));
+      const ax = lonLatToVec3(lon, lat);
+      (u.uAxis!.value as number[])[0] = ax[0];
+      (u.uAxis!.value as number[])[1] = ax[1];
+      (u.uAxis!.value as number[])[2] = ax[2];
     }
     for (const v of b.variants) {
       let theta = 0;
