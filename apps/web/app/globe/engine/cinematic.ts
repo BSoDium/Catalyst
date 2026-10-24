@@ -44,8 +44,8 @@ export const CINEMATIC = {
    * All of it is drawn in a few dithered levels (`levels`), on the art's own pixels (the caption's canvas is drawn at the art's resolution), as the globe is.
    */
   tone: {
-    light: { face: 0.006, side: 0.016, back: 0.04, outline: 0.4, glint: -0.06, exposure: 1.18 },
-    dark: { face: 0.03, side: 0.055, back: 0.015, outline: 0.5, glint: 0.62, exposure: 1 },
+    light: { face: 0.006, side: 0.016, back: 0.04, outline: 0.4, glint: -0.62, exposure: 1.18, sky: 0, faceGain: 0.3 },
+    dark: { face: 0.03, side: 0.055, back: 0.015, outline: 0.5, glint: 0.62, exposure: 1, sky: 1, faceGain: 1 },
   },
   levels: 7,
   depthCaps: 0.3,

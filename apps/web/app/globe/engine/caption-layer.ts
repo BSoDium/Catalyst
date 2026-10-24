@@ -203,6 +203,8 @@ const EGG_FRAG = /* glsl */ `
   uniform vec3 uBack;
   uniform float uGlint;
   uniform float uExposure;
+  uniform float uSky;
+  uniform float uFaceGain;
   uniform float uDissolve;
   uniform float uFinal;
   varying vec3 vNormal;
@@ -219,7 +221,8 @@ const EGG_FRAG = /* glsl */ `
     float s = 0.55 * band(r, vec3(-0.4, 0.8, 0.45), 0.35, 0.1);
     s += 1.0 * band(r, vec3(0.9, 0.25, 0.35), 0.15, 0.06);
     s += 0.6 * band(r, vec3(-0.15, -0.9, 0.4), 0.3, 0.12);
-    s += 0.45 * smoothstep(0.1, 0.95, r.y);
+    // (the broad sky share lifts every face a little: on the dark page; on the light one it would grey them, and the form is in the bands alone)
+    s += 0.45 * uSky * smoothstep(0.1, 0.95, r.y);
     return s;
   }
   // the lines' own ordered dither, on the art's pixels (this canvas is drawn at the art's resolution)
@@ -253,7 +256,7 @@ const EGG_FRAG = /* glsl */ `
     vec3 lit = albedo * (${CINEMATIC.light.ambient.toFixed(3)} + ${CINEMATIC.light.diffuse.toFixed(3)} * diff + ${CINEMATIC.light.filler.toFixed(3)} * fil);
     vec3 rv = reflect(normalize(vView), n);
     // how much each surface shines: the bevel the most (it turns the quickest), the walls, the faces, the backs (out of the light) hardly
-    float gain = vKind < 0.5 ? ${CINEMATIC.light.faceShine.toFixed(3)} : (vKind < 1.5 ? ${CINEMATIC.light.edgeShine.toFixed(3)} : (vKind < 3.5 ? ${CINEMATIC.light.wallShine.toFixed(3)} : 0.25));
+    float gain = vKind < 0.5 ? ${CINEMATIC.light.faceShine.toFixed(3)} * uFaceGain : (vKind < 1.5 ? ${CINEMATIC.light.edgeShine.toFixed(3)} : (vKind < 3.5 ? ${CINEMATIC.light.wallShine.toFixed(3)} : 0.25));
     vec3 col = lit * uExposure + vec3(uGlint * (studio(rv) * gain + strips(rv) * ${CINEMATIC.light.edgeShine.toFixed(3)} * (vKind > 3.5 ? 0.3 : 1.0)));
     col += vec3(spec * uGlint * 0.5 * (vKind > 3.5 ? 0.3 : 1.0));
     // the outline is the line: the ink, hardly lit
@@ -637,6 +640,8 @@ export class CaptionLayer {
   private eggBack = { value: [0.2, 0.2, 0.2] as number[] };
   private eggGlint = { value: 0 };
   private eggExposure = { value: 1 };
+  private eggSky = { value: 1 };
+  private eggFaceGain = { value: 1 };
   /** The uniforms of the dissolve, shared by the word's material (`EGG_VERT`, `EGG_FRAG`). */
   private eggDissolve = { uDissolve: { value: 0 }, uFinal: { value: 0 }, uAxis: { value: [0, 0, 1] as number[] } };
   /** The far slices (layer below this) that carry the text colour in mode `edge` (0: none). */
@@ -754,6 +759,8 @@ export class CaptionLayer {
         uBack: this.eggBack,
         uGlint: this.eggGlint,
         uExposure: this.eggExposure,
+        uSky: this.eggSky,
+        uFaceGain: this.eggFaceGain,
         uDissolve: this.eggDissolve.uDissolve,
         uFinal: this.eggDissolve.uFinal,
         uAxis: this.eggDissolve.uAxis,
@@ -900,6 +907,8 @@ export class CaptionLayer {
     this.eggOutline.value = toward(tone.outline);
     this.eggGlint.value = tone.glint;
     this.eggExposure.value = tone.exposure;
+    this.eggSky.value = tone.sky;
+    this.eggFaceGain.value = tone.faceGain;
     this.dimAlpha = dark ? CAPTION.dim.alpha.dark : CAPTION.dim.alpha.light;
   }
 
