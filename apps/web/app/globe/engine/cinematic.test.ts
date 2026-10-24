@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CAPTION_FACE, CaptionMotion, lineHidden, DRIFT, cycleMs, eggMs, eggX, entranceMs, placeEgg, shellXY, type CinematicPlan } from "./caption";
+import { CAPTION_FACE, CaptionMotion, eggRadius, DRIFT, cycleMs, eggMs, eggX, entranceMs, placeEgg, shellXY, type CinematicPlan } from "./caption";
 import { CINEMATIC, planCinematic } from "./cinematic";
 import { SOUND } from "./cinematic-sound";
 import { markPlayed, visitState } from "./visit";
@@ -123,18 +123,46 @@ describe("the cinematic interlude: the big row's trajectory", () => {
     expect(eggX(0, start, s)).toBe(start);
     expect(eggX(s.enterMs, start, s)).toBeCloseTo((s.ampDeg * Math.PI) / 180, 12);
     expect(eggX(s.enterMs + s.holdMs, start, s)).toBeCloseTo(-(s.ampDeg * Math.PI) / 180, 12);
-    // (it ends `exitExtraDeg` farther round than it came in from: the shell is higher than the planet, and the last frames would show it beside the disc)
-    const endAt = -(start + (s.exitExtraDeg * Math.PI) / 180);
-    expect(eggX(tIn, start, s)).toBeCloseTo(endAt, 12);
-    expect(eggX(tIn + 1000, start, s)).toBeCloseTo(endAt, 12);
+    // (it ends DIRECTLY BEHIND the planet, half a turn from the view, wherever it came in from)
+    expect(eggX(tIn, start, s)).toBeCloseTo(-Math.PI, 12);
+    expect(eggX(tIn + 1000, start, s)).toBeCloseTo(-Math.PI, 12);
   });
-  it("ends with the whole word behind the planet for the camera it ends on, so that its last frames do not show it beside the disc", () => {
+  /** Whether any point of a word centred `centre` rad round (half a span `half`, on the equator, ring radius `r`) is seen from the axis at distance `d`: beside the disc or in front of it. */
+  const seen = (centre: number, half: number, r: number, d: number): boolean => {
+    const t = 1 / Math.sqrt(d * d - 1); // the disc's tangent radius
+    for (let i = 0; i <= 200; i++) {
+      const psi = Math.abs(centre - half + (2 * half * i) / 200);
+      const w = ((psi + Math.PI) % (2 * Math.PI)) - Math.PI; // (the true angle from the axis: it wraps round the planet)
+      const a = Math.abs(w);
+      if (a < Math.PI / 2) return true;
+      if ((r * Math.sin(a)) / (d - r * Math.cos(a)) > t) return true; // (behind the planet's middle but out beyond its limb)
+    }
+    return false;
+  };
+  it("ends with the WHOLE word behind the planet, however it came in, and tucks its ring in to get there: no part of it is seen beside the disc, nor on the other limb", () => {
     const rad = Math.PI / 180;
-    const startRad = (CINEMATIC.leadStartLon + 42) * rad; // (a span of 84 degrees, as the word has at a desktop's size)
-    const endAt = eggX(tIn + 1, startRad, s);
-    for (const d of [3.4, 4.4, 6]) expect(lineHidden(endAt, { halfSpan: 42 * rad, baseLat: 0 }, d, 0, CINEMATIC.radius)).toBe(true);
-    // and with room to spare: a few frames of it behind the planet before it is dropped, not the instant it was hidden
-    expect(lineHidden(endAt + 5 * rad, { halfSpan: 42 * rad, baseLat: 0 }, 4.4, 0, CINEMATIC.radius)).toBe(true);
+    const half = 57 * rad; // (a word 114 degrees long, as a desktop has it)
+    for (const lon of [-90, 0, 40, 120]) {
+      const startRad = (((CINEMATIC.leadStartLon + 57 - lon) % 360) + 360) % 360 * rad;
+      const endTheta = eggX(tIn + 1, startRad, s);
+      const rEnd = eggRadius(endTheta, s, CINEMATIC.radius, CINEMATIC.tuck.radius, CINEMATIC.tuck.from);
+      expect(rEnd).toBeCloseTo(CINEMATIC.tuck.radius, 9);
+      for (const d of [3.4, 4.4, 6, 9]) expect(seen(endTheta, half, rEnd, d), `page at ${lon} E, camera ${d}`).toBe(false);
+    }
+    // and the tuck is needed: from the cameras the interlude ends on (far out) a word on the full ring shows a sliver of itself beside the disc, even right behind it
+    for (const d of [4.4, 6]) expect(seen(Math.PI, half, CINEMATIC.radius, d)).toBe(true);
+  });
+  it("the ring is whole until the word is past the middle, tucks in smoothly, and never grows back", () => {
+    const rad = Math.PI / 180;
+    const startRad = 190 * rad;
+    expect(eggRadius(eggX(s.enterMs, startRad, s), s, CINEMATIC.radius, CINEMATIC.tuck.radius, CINEMATIC.tuck.from)).toBe(CINEMATIC.radius);
+    let last = Infinity;
+    for (let t = s.enterMs + s.holdMs; t <= tIn; t += 10) {
+      const r = eggRadius(eggX(t, startRad, s), s, CINEMATIC.radius, CINEMATIC.tuck.radius, CINEMATIC.tuck.from);
+      expect(r).toBeLessThanOrEqual(last + 1e-9);
+      expect(r).toBeGreaterThanOrEqual(CINEMATIC.tuck.radius - 1e-9);
+      last = r;
+    }
   });
   it("only ever moves on: monotone from behind the planet on one side to behind it on the other", () => {
     let last = Infinity;

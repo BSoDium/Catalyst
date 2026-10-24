@@ -38,13 +38,14 @@ export const CINEMATIC = {
    * every surface is a step from the PAGE's colour towards its ink (`tone`: how far, per scheme), so that it lies in the page instead of over it. Fully lit,
    * the face is nearly the white of the light page; on the dark page it is a deep grey that blends with the scene. What shows it is a bright OUTLINE (the
    * front bevel, `tone.outline` of the way to the ink: the ink itself, a thin line, as the globe's own linework) and the walls, a little further than the face.
-   * `env`: the brightness of the studio the metal reflects (grey, from above to below) and `glint`: the thin strip lights' signed strength (a light edge on the
-   * dark page, a darker one on the light, where a brighter one cannot show). The thickness is `depthCaps` cap heights and the bevel is `bevelCaps` wide and deep.
+   * The metal shows by REFLECTION only, as in space (nothing lights it but a few soft boxes and strips): `glint` is the reflections' signed strength (a light
+   * sheen on the dark page, a darker one on the light, where a brighter one cannot show), `light.faceShine`, `wallShine` and `edgeShine` how much each kind of
+   * surface takes of it. The thickness is `depthCaps` cap heights and the bevel is `bevelCaps` wide and deep.
    * All of it is drawn in a few dithered levels (`levels`), on the art's own pixels (the caption's canvas is drawn at the art's resolution), as the globe is.
    */
   tone: {
-    light: { face: 0.03, side: 0.09, back: 0.2, outline: 0.88, env: { hi: 1.0, lo: 0.8 }, glint: -0.2 },
-    dark: { face: 0.09, side: 0.13, back: 0.04, outline: 0.82, env: { hi: 2.2, lo: 0.55 }, glint: 0.3 },
+    light: { face: 0.012, side: 0.04, back: 0.09, outline: 0.5, glint: -0.26 },
+    dark: { face: 0.03, side: 0.055, back: 0.015, outline: 0.5, glint: 0.62 },
   },
   levels: 7,
   depthCaps: 0.3,
@@ -58,8 +59,10 @@ export const CINEMATIC = {
    * `albedo * (ambient + diffuse * key + filler * fill)`), `reflect` its brightness. `inside`: how much of the light the backs of the letters (towards the planet, not in the sun) keep. `edgeShine` and
    * `faceShine`: how bright the thin strip lights of the studio are in the bevel's reflection and in a face's (the glints that run along the edges).
    */
-  light: { key: [-0.5, 0.45, 0.74] as const, fill: [0.6, -0.3, 0.4] as const, ambient: 0.5, diffuse: 0.5, filler: 0.14, specular: 0.22, shininess: 90, metal: 0.55, faceMetal: 0.38, reflect: 0.85, inside: 0.78, edgeShine: 1.6, faceShine: 0.25 },
+  light: { key: [-0.5, 0.45, 0.74] as const, fill: [0.6, -0.3, 0.4] as const, ambient: 0.5, diffuse: 0.5, filler: 0.14, specular: 0.22, shininess: 90, faceShine: 0.8, wallShine: 1.1, edgeShine: 1.5, outlineMix: 0.6 },
   radius: 1.5,
+  /** On its way out the ring tucks in to `tuck.radius` earth radii, from `tuck.from` of the exit (`eggRadius`): the word goes BEHIND the planet. */
+  tuck: { radius: 1.08, from: 0.3 },
   capScale: 2,
   maxCapScale: 6,
   fill: 2.05,
@@ -72,7 +75,7 @@ export const CINEMATIC = {
    * LEANS over the first `zoomInMs`, stays so for as long as the word is on the stage, and comes back upright over the `zoomOutMs` AFTER it has
    * gone (the whole is `eggMs`: about 24 s, begun at 13 s in; the idle hold at 30 s waits for it, `Renderer.freezeWhenIdle`).
    */
-  shape: { leaveMs: 500, gapMs: 400, enterMs: 19350, ease: 1, holdMs: 1000, exitMs: 1450, ampDeg: 2.5, exitExtraDeg: 14, zoomLevels: 0.7, zoomInMs: 6000, zoomOutMs: 1400, zoomCutMs: 1000 },
+  shape: { leaveMs: 500, gapMs: 400, enterMs: 19350, ease: 1, holdMs: 1000, exitMs: 1450, ampDeg: 2.5, zoomLevels: 0.7, zoomInMs: 6000, zoomOutMs: 1400, zoomCutMs: 1000 },
   /**
    * Where the word starts: the longitude its LEADING end (the west one) begins at, degrees east, in the earth's own frame, not the page's. The flight's
    * first camera is over Greece (22 E) at 0.15 earth radii, from where the equatorial shell is seen only up to about 111 E: the word starts BEYOND that
