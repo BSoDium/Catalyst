@@ -169,3 +169,48 @@ describe("projectUnit", () => {
     expect(out.visible).toBe(true);
   });
 });
+
+describe("a view's roll (the picture turned about the line of sight)", () => {
+  const view = { lon: 12, lat: 38, zoom: 2.5 };
+  const dot = (a: readonly number[], b: readonly number[]) => a[0]! * b[0]! + a[1]! * b[1]! + a[2]! * b[2]!;
+
+  it("none, or zero, is the plain basis", () => {
+    expect(viewBasis({ ...view, roll: 0 }, 800)).toEqual(viewBasis(view, 800));
+  });
+
+  it("keeps the basis a basis: unit, perpendicular to each other and to the line of sight", () => {
+    for (const roll of [0.1, 0.21, -0.4, 1.3]) {
+      const b = viewBasis({ ...view, roll }, 800);
+      expect(dot(b.east, b.east)).toBeCloseTo(1, 12);
+      expect(dot(b.north, b.north)).toBeCloseTo(1, 12);
+      expect(dot(b.east, b.north)).toBeCloseTo(0, 12);
+      expect(dot(b.c, b.east)).toBeCloseTo(0, 12);
+      expect(dot(b.c, b.north)).toBeCloseTo(0, 12);
+    }
+  });
+
+  it("a positive roll leans the planet's north to the LEFT: the north pole is up and to the left of the centre, by the angle", () => {
+    const roll = (12 * Math.PI) / 180;
+    const b = viewBasis({ ...view, roll }, 800);
+    const pole = [0, 1, 0] as const;
+    const upright = viewBasis(view, 800);
+    // the pole's screen offset from the centre, for the upright view and for the rolled one
+    const off = (basis: typeof b) => ({ x: dot(pole, basis.east), y: dot(pole, basis.north) });
+    const a = off(upright);
+    const r = off(b);
+    expect(a.x).toBeCloseTo(0, 12); // upright: the pole is straight above the centre
+    expect(r.x).toBeLessThan(0); // rolled: it is to the left
+    expect(r.y).toBeGreaterThan(0);
+    expect(Math.atan2(-r.x, r.y)).toBeCloseTo(roll, 9); // and leans by the roll
+  });
+
+  it("the centre of the view stays where it is, and what is drawn is the same planet turned (distances from the centre are kept)", () => {
+    const roll = 0.3;
+    const rolled = viewBasis({ ...view, roll }, 800);
+    const plain = viewBasis(view, 800);
+    const p = [0.3, 0.5, Math.sqrt(1 - 0.34)] as const;
+    const radius = (b: typeof rolled) => Math.hypot(dot(p, b.east), dot(p, b.north));
+    expect(radius(rolled)).toBeCloseTo(radius(plain), 12);
+    expect(dot(rolled.c, rolled.c)).toBeCloseTo(1, 12);
+  });
+});

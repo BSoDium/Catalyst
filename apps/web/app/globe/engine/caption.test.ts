@@ -893,7 +893,7 @@ describe("faces, styles and colours", () => {
       expect(ratio(t.outline, bg)).toBeGreaterThan(1.8);
       expect(ratio(t.outline, bg)).toBeLessThan(2.3);
       expect(ratio(t.outline, t.face)).toBeGreaterThan(3);
-      expect(ratio(t.side, bg)).toBeGreaterThan(1.2); // quieter since 2026-10-21 (it was 1.7)
+      expect(ratio(t.side, bg)).toBeGreaterThan(1.1); // quieter since 2026-10-21 (it was 1.7, then 1.3)
       expect(ratio(t.side, bg)).toBeLessThan(ratio(t.outline, bg));
     }
     // a tinted word's contour and thickness derive from ITS face by the same shares as the neutral ones from the neutral face

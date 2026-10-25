@@ -11,7 +11,8 @@
  * The result is a function of the viewport, the cover and the planet at its lowest zoom (the one the home screen rests at), not of the zoom now:
  * nothing moves while the camera does.
  */
-import { LIFT } from "./tuning";
+import { clamp } from "./geo";
+import { LANDING, LIFT } from "./tuning";
 
 export interface LiftArgs {
   /** CSS px of the container's bottom that the app covers (from the container's bottom edge to the top of what covers the planet). */
@@ -39,6 +40,12 @@ export function liftFor(a: LiftArgs): number {
 }
 
 /* ------------------------------------------------------------------ placing the globe above the home screen's content */
+
+/** The share (`LANDING.desktop` to 1) of the largest planet that the home screen takes, by the width of the container, CSS px: 1 on a phone, smoothly less on a wide window. */
+export function landingScale(width: number): number {
+  const t = clamp((width - LANDING.narrowPx) / (LANDING.widePx - LANDING.narrowPx), 0, 1);
+  return 1 - (1 - LANDING.desktop) * t * t * (3 - 2 * t);
+}
 
 /** A block of the home screen over the globe (`GlobeShowcase.blocks`): across the container `x0` to `x1`, its top edge `top` px from the container's top. */
 export interface PlaceBlock {

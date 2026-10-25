@@ -1,0 +1,2 @@
+earth-grey.png: a grey, 1024 x 512, 12-step, lightly smoothed reduction (the coast pushed out over the sea) of NASA Visible Earth's "Blue Marble: Land Surface, Shallow Water, and Shaded Topography" (land_shallow_topo_2048.jpg,
+https://visibleearth.nasa.gov/images/57752), sea removed (0). NASA imagery is in the public domain (https://www.nasa.gov/nasa-brand-center/images-and-media/). Used by engine/surface.ts.

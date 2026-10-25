@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { CAPTION_BOTTOM_R, CAPTION_HALF_R, liftFor, placeAbove } from "./lift";
-import { LIFT } from "./tuning";
+import { CAPTION_BOTTOM_R, CAPTION_HALF_R, landingScale, liftFor, placeAbove } from "./lift";
+import { LANDING, LIFT } from "./tuning";
 
 describe("the lift: the planet's centre goes up so it clears what covers the bottom, as far as there is room", () => {
   // 1440 x 900, the planet 300 px in radius at the lowest zoom, the name covering the bottom 182 px.
@@ -91,5 +91,44 @@ describe("placeAbove: the biggest planet whose caption clears the content, its l
     const q = placeAbove({ ...args, blocks: [{ x0: 0, x1: 1000, top: 90 }] })!; // no room at all: the smallest planet, as high as it goes
     expect(q.r).toBe(40);
     expect(q.lift).toBeGreaterThan(0);
+  });
+});
+
+describe("a lower ceiling on the radius (landingScale) never breaks the clearance rule", () => {
+  const reachTop = (r: number) => r * 1.15 + 30;
+  // the home screen's blocks: the intro and search on the left, the section list on the right, the name across the bottom
+  const blocks = [{ x0: 40, x1: 420, top: 640 }, { x0: 780, x1: 1000, top: 380 }, { x0: 40, x1: 900, top: 760 }];
+  it("however the radius is capped, the caption's column stays off the blocks it would stand over, and its lowest line stays above them", () => {
+    for (const w of [640, 800, 1000, 1100, 1440, 1920]) {
+      const p = placeAbove({ height: 900, cx: 500, rMax: 420 * landingScale(w), reachTop, blocks })!;
+      const centreY = 900 / 2 - p.lift;
+      for (const b of blocks) {
+        const overColumn = b.x1 > 500 - CAPTION_HALF_R * p.r && b.x0 < 500 + CAPTION_HALF_R * p.r;
+        if (overColumn) expect(centreY + CAPTION_BOTTOM_R * p.r, `width ${w}, block at ${b.x0}`).toBeLessThanOrEqual(b.top - LIFT.gapPx + 1e-6);
+      }
+      expect(centreY - reachTop(p.r)).toBeGreaterThanOrEqual(LIFT.marginPx - 1e-6);
+    }
+  });
+  it("a lower cap only ever makes the planet smaller, never bigger than the uncapped one (the search steps 2 px, from a different start)", () => {
+    const free = placeAbove({ height: 900, cx: 500, rMax: 420, reachTop, blocks })!;
+    for (const w of [800, 1100, 1920]) expect(placeAbove({ height: 900, cx: 500, rMax: 420 * landingScale(w), reachTop, blocks })!.r).toBeLessThanOrEqual(free.r + 2);
+  });
+});
+
+describe("landingScale: a phone keeps the whole planet, a wide window a little less, smoothly between", () => {
+  it("is 1 up to the narrow width and `desktop` from the wide one", () => {
+    expect(landingScale(375)).toBe(1);
+    expect(landingScale(LANDING.narrowPx)).toBe(1);
+    expect(landingScale(LANDING.widePx)).toBeCloseTo(LANDING.desktop, 12);
+    expect(landingScale(2560)).toBeCloseTo(LANDING.desktop, 12);
+  });
+  it("only ever goes down as the window widens, with no step", () => {
+    let prev = 1;
+    for (let w = 300; w <= 2000; w += 10) {
+      const s = landingScale(w);
+      expect(s).toBeLessThanOrEqual(prev + 1e-12);
+      expect(prev - s).toBeLessThan(0.01);
+      prev = s;
+    }
   });
 });

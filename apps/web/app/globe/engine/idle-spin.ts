@@ -165,6 +165,15 @@ export function stopAngle(v0: number, sinceMs: number, cfg: SpinConfig = SPIN): 
   return (v0 * (cfg.stopMs / 1000) * (1 - w * w * w)) / 3;
 }
 
+/**
+ * Whether the frames of the globe's loop are PACED by the idle rotation (at most one every `ENERGY.spinFrameMs`, 10 a second: the rotation moves one art
+ * pixel every second or so, a frame changes nothing visible). Never while the caption animates (the cinematic interlude's pull-back and lean, an
+ * entrance): those are timed pictures that need every display frame, and going through the rotation's pace made the interlude run at 5 to 10 a second.
+ */
+export function pacedByRotation(o: { spinning: boolean; forced: boolean; captionAnimating: boolean }): boolean {
+  return o.spinning && !o.forced && !o.captionAnimating;
+}
+
 /** Whether a spin frame is due: at least `minFrameMs` since the previous drawn frame. */
 export function spinFrameDue(now: number, lastDrawn: number, cfg: SpinConfig = SPIN): boolean {
   return now - lastDrawn >= cfg.minFrameMs;

@@ -121,7 +121,7 @@ describe("LandingHero", () => {
   it("keeps the small line (name and hint) as decoration: aria-hidden, a second name is not a second heading", async () => {
     const html = await render();
     const mini = html.slice(html.indexOf('<p aria-hidden="true" class="hero-mini">'));
-    expect(mini).toContain("Drag to explore. Back to start after a moment.");
+    expect(mini).toContain("Drag to explore. Pause, and the page comes back.");
     // the same weights as the name: the given name heavy (the line's own 800), the family name at the thin end
     expect(mini).toMatch(/<span class="hero-mini-name"><span class="hero-mini-given">Elliot<\/span> <span class="hero-mini-family type-thin"><span>Négrel<\/span>/);
     expect(html.match(/<h[1-6][ >]/g)).toHaveLength(1);
@@ -173,6 +173,8 @@ describe("the name's travel and the collapsed name (owner, round 3, item 3)", ()
     // the collapsed name is the halves held at the ghost's boxes
     expect(src).toContain("holdName(");
     expect(src).toContain("el.style.transform = transform");
+    // born collapsed (back home from another page): held at the corner in the layout effect, before the first paint, not after it by the observer
+    expect(src).toMatch(/first && state === "collapsed"\) holdName\(root, true\)/);
   });
 
   it("makes the collapsed name 40 to 48 px on a wide screen, and no smaller than 28 px on a phone", () => {

@@ -140,6 +140,10 @@ export interface HandoverHandle {
   setShowcase(on: boolean): void;
   /** The globe has the caption (the page has the showcase and the app gave it lines). */
   hasOrbit(): boolean;
+  /** The visitor asks for the cinematic interlude (engine/cinematic.ts); false when it cannot be played now. */
+  playInterlude(): boolean;
+  /** The visitor can now ask for it: make what it needs ahead of time (the word's mesh, the sound's file); nothing is planned or played. */
+  prepareInterlude(): void;
   debug(): HandoverDebug;
   dispose(): void;
 }
@@ -808,6 +812,8 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
       globe.setShowcase(on);
     },
     hasOrbit: () => renderer.hasCaption(),
+    playInterlude: () => renderer.playInterlude(),
+    prepareInterlude: () => renderer.prepareInterlude(),
     debug(): HandoverDebug {
       const g = globe.debug();
       return {

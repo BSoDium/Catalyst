@@ -28,6 +28,7 @@ import {
   X,
   type LucideIcon,
   type LucideProps,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "~/lib/utils";
 
@@ -67,6 +68,7 @@ export const ICONS = {
   eye: Eye,
   "eye-off": EyeOff,
   info: Info,
+  sparkles: Sparkles,
 } as const satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;

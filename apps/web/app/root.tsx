@@ -1,4 +1,5 @@
 import { MotionConfig } from "motion/react";
+import { useEffect } from "react";
 import { isRouteErrorResponse, Links, Meta, Outlet, Scripts, ScrollRestoration } from "react-router";
 import type { Route } from "./+types/root";
 import { DevContentBadge } from "~/components/dev-content-badge";
@@ -8,6 +9,7 @@ import { PageNavScrim } from "~/components/nav-scrim";
 import { Navbar } from "~/components/navbar";
 import { NotFoundPage } from "~/components/not-found-page";
 import { SkipLinks } from "~/components/skip-links";
+import { noteVisit } from "~/globe";
 import { getContentMode, getProjection } from "~/lib/content.server";
 import { THEME_COLORS } from "~/lib/site";
 import { getSiteUrl } from "~/lib/site.server";
@@ -64,6 +66,8 @@ export function shouldRevalidate() {
 }
 
 export default function App({ loaderData }: Route.ComponentProps) {
+  // A one-bit note on this device that the site was visited (what lets the home screen's rare easter egg know a return; never sent anywhere).
+  useEffect(noteVisit, []);
   // "user": transform/layout animations are disabled when the OS asks for reduced motion.
   return (
     <MotionConfig reducedMotion="user">

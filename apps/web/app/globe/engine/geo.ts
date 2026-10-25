@@ -116,6 +116,12 @@ export interface ViewState {
   lon: number;
   lat: number;
   zoom: number;
+  /**
+   * A turn of the picture about the line of sight, radians: positive leans the planet's north to the LEFT on the screen (counter-clockwise). Only ever
+   * a drawing's: the renderer sets it on the view it draws with (the cinematic interlude's tilt, as the studio's globe leans); a view the visitor
+   * moves has none.
+   */
+  roll?: number;
 }
 
 export interface ViewBasis {
@@ -132,6 +138,15 @@ export function viewBasis(view: ViewState, viewportHeight: number): ViewBasis {
   // At the poles east is undefined; clamp lat elsewhere keeps |lat| < 90.
   const east = normalize(cross([0, 1, 0], c));
   const north = cross(c, east);
+  const roll = view.roll ?? 0;
+  if (roll !== 0) {
+    // the screen's right and up, turned about the line of sight: north comes to lean left for a positive roll (up' = north cos + east sin)
+    const cs = Math.cos(roll);
+    const sn = Math.sin(roll);
+    const up: [number, number, number] = [north[0] * cs + east[0] * sn, north[1] * cs + east[1] * sn, north[2] * cs + east[2] * sn];
+    const right: [number, number, number] = [east[0] * cs - north[0] * sn, east[1] * cs - north[1] * sn, east[2] * cs - north[2] * sn];
+    return { c, east: right, north: up, d: cameraDistance(view.zoom, viewportHeight), f: focalPx(viewportHeight) };
+  }
   return { c, east, north, d: cameraDistance(view.zoom, viewportHeight), f: focalPx(viewportHeight) };
 }
 

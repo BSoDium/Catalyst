@@ -133,6 +133,13 @@ export const SKY = {
  */
 export const LIFT = { gapPx: 14, marginPx: 14 } as const;
 
+/**
+ * How big the globe may be on the home screen (engine/lift.ts `landingScale`): the share of the largest planet the room allows that it takes. A phone
+ * (`narrowPx` wide or less) keeps all of it (owner, 2026-10-22: neither too big nor too small); from there to `widePx` it goes down smoothly to
+ * `desktop` (smaller: with all the room above the content the planet and its ring took about 80 % of the window's height and led over the name and the list). The caption still clears every block of the page: `placeAbove` only starts from a lower radius.
+ */
+export const LANDING = { desktop: 0.78, narrowPx: 640, widePx: 1100 } as const;
+
 /** Where the camera starts when the page gives no view: no tilt, centred on the point (lon 0, lat 0). Inside the caption's band by construction. */
 export const START_VIEW = { lon: 0, lat: 0 } as const;
 
@@ -166,11 +173,11 @@ export const CAPTION = {
   tracking: { serif: 0.05, mono: 0.03, script: 0 },
   /**
    * Where the rows sit (engine/caption.ts `rowLatitudes`): on FIXED parallels, centred on the equator and uniformly spaced, `stepCaps` cap heights
-   * from one baseline to the next; nothing recomputes them per camera tilt. A row spans at most `hardSpanDeg` of its parallel and no farther than
+   * from one baseline to the next (1.45: the gap between two rows, 0.45 cap, is about that of a word space); nothing recomputes them per camera tilt. A row spans at most `hardSpanDeg` of its parallel and no farther than
    * `visibleFraction` of the shell's horizon from the view's axis for any camera inside the band (the whole block is shrunk, statically, when
    * one would not fit: `fitScale`; the shell's radius is what is raised first).
    */
-  rows: { stepCaps: 1.7 },
+  rows: { stepCaps: 1.45 },
   /** A row's half width on the screen is at most this share of the planet's silhouette radius: the words stay over the planet, off the page's own text. */
   maxHalfWidth: 1.04,
   hardSpanDeg: 160,
@@ -238,7 +245,7 @@ export const CAPTION = {
    * (feat/palettes, PR #289: copied here, re-point to the tokens when it merges). A tinted word's contour and thickness derive from ITS face the
    * way the neutral ones derive from the neutral face (the same shares), so the whole letter is one colour. `outlineMix` is the contour's
    * share of the way from the page colour to the text colour (2.0:1 against the page in both schemes, 3.5 to 3.7:1 against the face), `sideMix`
-   * the thickness's, which is also the whole of a row seen from behind (a step closer to the page: about 1.3:1; owner, 2026-10-21: "too visible", it was 0.34 and 0.3). `sideMode`: `page` (the exact page colour for both), `mix` (by those shares), `edge`
+   * the thickness's, which is also the whole of a row seen from behind (a step closer to the page: about 1.15:1; owner, 2026-10-21: "too visible", it was 0.34 and 0.3, then 0.2 and 0.18). `sideMode`: `page` (the exact page colour for both), `mix` (by those shares), `edge`
    * (the thickness as in `mix` with a thin text-coloured line on the far `edgeSlices` slices).
    */
   colors: {
@@ -246,7 +253,7 @@ export const CAPTION = {
     accent: { light: "#246192", dark: "#84adda" },
     sideMode: "mix" as "page" | "mix" | "edge",
     outlineMix: { light: 0.42, dark: 0.37 },
-    sideMix: { light: 0.2, dark: 0.18 },
+    sideMix: { light: 0.11, dark: 0.1 },
     edgeSlices: 2,
   },
   /** Sampling: the shader looks `lodBias` levels sharper than the screen asks (negative: sharper). Texture: texels in a cap height. */
@@ -335,7 +342,8 @@ export const RING = {
  * - `idleFreezeMs`: after this long with no input the roll, the ring's turn and the idle rotation stop (the composition stays; any input, the
  *   tab coming back to the front or the globe coming back into view starts them again). 0: never.
  * - `holdWhenBlurred`, `holdWhenOffscreen`, `holdOnSaveData`: the same stop when the window has lost focus, the globe is scrolled out of
- *   view, or the browser says the data saver is on.
+ *   view, or the browser says the data saver is on. A window that lost focus is only held after `blurGraceMs` of it (30 s: an interlude of
+ *   21 s plays through, and a click into another window and back never stops anything; a tab that is hidden stops at once, it draws nothing).
  * - `gpu`: the context's `powerPreference` (creation time).
  */
 export const ENERGY = {
@@ -344,6 +352,7 @@ export const ENERGY = {
   captionWindow: "band" as "band" | "planet",
   idleFreezeMs: 30000,
   holdWhenBlurred: true,
+  blurGraceMs: 30000,
   holdWhenOffscreen: true,
   holdOnSaveData: true,
   gpu: "low-power" as "low-power" | "high-performance" | "default",

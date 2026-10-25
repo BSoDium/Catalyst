@@ -265,7 +265,7 @@ async function layoutChecks(page, label) {
   ok((await opacityOf(page, ".hero-mini")) === 1, "desktop: the small line is shown");
   const mini = await page.locator(".hero-mini").innerText();
   const nameNow = await page.locator(".hero-name").innerText();
-  ok(/Elliot/.test(nameNow) && /Négrel-Jerzy/.test(nameNow) && (await opacityOf(page, ".hero-name")) === 1 && /Drag to explore\. Back to start after a moment\./.test(mini), `desktop: the corner line is the name itself (visible, one copy) and the hint (${nameNow} / ${mini.replace(/\n/g, " ")})`);
+  ok(/Elliot/.test(nameNow) && /Négrel-Jerzy/.test(nameNow) && (await opacityOf(page, ".hero-name")) === 1 && /Drag to explore\. Pause, and the page comes back\./.test(mini), `desktop: the corner line is the name itself (visible, one copy) and the hint (${nameNow} / ${mini.replace(/\n/g, " ")})`);
   ok((await page.locator(".hero-mini-name").evaluate((e) => getComputedStyle(e).visibility)) === "hidden", "desktop: the ghost line is never painted");
   // the rows are hidden now: the header takes the sections back, so the visitor is never left without a way to the lists
   const collapsedLinks = await page.locator("header a").evaluateAll((as) => as.map((a) => a.getAttribute("href")));

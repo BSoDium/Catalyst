@@ -1,11 +1,18 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { Frame, Icon, KeyHint, KindTag } from "~/components/ui";
+import { prepareInterlude, requestInterlude, unlockSound } from "~/globe";
+import { matchesSurprise, SURPRISE } from "~/lib/interlude";
 import { groupResults, rankItems, resultsStatus, SEARCH_LABELS, type SearchItem } from "~/lib/search";
 import { cn } from "~/lib/utils";
 
 /** The palette lists this many at most; its count still says how many matched (`resultsStatus`). */
 const MAX_RESULTS = 24;
+
+/** The hidden entry that plays the cinematic interlude (`lib/interlude.ts`): one row, listed after every result, found only by typing its own words. */
+const SURPRISE_ROW = { surprise: true as const };
+type Row = SearchItem | typeof SURPRISE_ROW;
+const isSurprise = (row: Row | undefined): row is typeof SURPRISE_ROW => row !== undefined && "surprise" in row;
 
 type Load = { state: "idle" } | { state: "loading" } | { state: "error" } | { state: "ready"; items: SearchItem[] };
 
@@ -119,7 +126,14 @@ export function SearchPalette() {
 
   const matches = useMemo(() => (load.state === "ready" ? rankItems(load.items, query) : []), [load, query]);
   const results = useMemo(() => matches.slice(0, MAX_RESULTS), [matches]);
-  const { groups, flat } = useMemo(() => groupResults(results), [results]);
+  const { groups, flat: found } = useMemo(() => groupResults(results), [results]);
+  // The surprise is for a visitor who types its words, and not under reduced motion (the interlude is all motion): the last row, after what the query found.
+  const surprise = useMemo(() => matchesSurprise(query) && !(typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches), [query]);
+  // (the entry is on the list: the globe makes what the interlude needs now, while the visitor decides, so that choosing it starts it without a stall)
+  useEffect(() => {
+    if (surprise) prepareInterlude();
+  }, [surprise]);
+  const flat = useMemo<Row[]>(() => (surprise ? [...found, SURPRISE_ROW] : found), [found, surprise]);
   const current = flat[Math.min(active, flat.length - 1)];
 
   useEffect(() => setActive(0), [query]);
@@ -127,9 +141,24 @@ export function SearchPalette() {
     listRef.current?.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: "nearest" });
   }, [active, flat]);
 
-  const go = (item: SearchItem) => {
+  const go = (item: Row) => {
     hide();
+    if (isSurprise(item)) return summon();
     void navigate(item.href);
+  };
+
+  /**
+   * Play the interlude. Inside the click or the key press, so that the browser lets the sound start (`unlockSound`); the palette is closed first (it is modal and covers
+   * the page). When the home globe is not the page (a place or an entry is open, or another route) the visitor goes home and it plays when the globe has settled there.
+   */
+  const summon = () => {
+    unlockSound();
+    if (requestInterlude()) return;
+    void navigate("/");
+    let tries = 0;
+    const timer = window.setInterval(() => {
+      if (requestInterlude() || ++tries > 30) window.clearInterval(timer);
+    }, 300);
   };
 
   const onInputKey = (e: React.KeyboardEvent) => {
@@ -160,7 +189,7 @@ export function SearchPalette() {
         ? "The search could not be loaded"
         : !hasQuery
           ? ""
-          : resultsStatus(results.length, matches.length);
+          : resultsStatus(results.length + (surprise ? 1 : 0), matches.length + (surprise ? 1 : 0));
 
   return (
     <>
@@ -244,11 +273,35 @@ export function SearchPalette() {
                     </ul>
                   </li>
                 ))}
+                {surprise && (
+                  <li role="presentation">
+                    <ul role="group" aria-label="Elsewhere" className="m-0 list-none p-0">
+                      <li role="presentation" className="type-meta px-4 pt-4 pb-1 text-muted-foreground" aria-hidden="true">
+                        Elsewhere
+                      </li>
+                      <li
+                        id={`${id}-opt-${flat.indexOf(SURPRISE_ROW)}`}
+                        role="option"
+                        aria-selected={current === SURPRISE_ROW}
+                        onMouseMove={() => setActive(flat.indexOf(SURPRISE_ROW))}
+                        onClick={() => go(SURPRISE_ROW)}
+                        className={cn("flex min-h-12 cursor-pointer items-center gap-3 px-4 py-2", current === SURPRISE_ROW && "bg-accent shadow-[inset_2px_0_0_var(--signal)]")}
+                      >
+                        <Icon name="sparkles" size="control" className="shrink-0 text-muted-foreground" />
+                        <span className="flex min-w-0 flex-1 flex-col">
+                          <span className="truncate font-display text-base font-bold tracking-[-0.01em]">{SURPRISE.title}</span>
+                          <span className="ds-meta truncate">{SURPRISE.sub}</span>
+                        </span>
+                        <Icon name="arrow-right" size="control" className={cn("shrink-0", current === SURPRISE_ROW ? "opacity-100" : "opacity-0")} />
+                      </li>
+                    </ul>
+                  </li>
+                )}
               </ul>
               {!hasQuery && load.state === "ready" && (
                 <p className="m-0 px-4 py-6 text-sm text-muted-foreground">Type a name, a place, a tag. {total} places and entries are indexed.</p>
               )}
-              {hasQuery && load.state === "ready" && results.length === 0 && <p className="m-0 px-4 py-6 text-sm text-muted-foreground">Nothing matches &ldquo;{query.trim()}&rdquo;.</p>}
+              {hasQuery && load.state === "ready" && results.length === 0 && !surprise && <p className="m-0 px-4 py-6 text-sm text-muted-foreground">Nothing matches &ldquo;{query.trim()}&rdquo;.</p>}
               {load.state === "loading" && <p className="m-0 px-4 py-6 text-sm text-muted-foreground">Loading&hellip;</p>}
               {load.state === "error" && <p className="m-0 px-4 py-6 text-sm text-muted-foreground">The search could not be loaded. Close it and try again.</p>}
             </div>

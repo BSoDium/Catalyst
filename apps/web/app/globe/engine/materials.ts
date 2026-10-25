@@ -3,7 +3,7 @@
  * `ColorManagement` note in renderer.ts. Visibility of borders is ordered-dither coverage, not alpha, so the
  * output never contains a blended pixel.
  */
-import { Color, ShaderMaterial } from "three";
+import { BackSide, Color, FrontSide, NormalBlending, ShaderMaterial } from "three";
 import { LEG_MODES, MODE_STYLE } from "../paths/modes";
 import { STRAIGHT_FADE_MIX, STRAIGHT_FADE_STEPS } from "../paths/thin";
 import { SPARK, TRAIL_BANDS, TRAIL_ENTRIES, TRAIL_PER_PALETTE } from "../paths/trail";
@@ -24,16 +24,16 @@ const DITHER_GLSL = /* glsl */ `
 
 export function lineMaterial(coverage: number, stipple = 0): ShaderMaterial {
   return new ShaderMaterial({
-    uniforms: { uColor: { value: new Color() }, uCoverage: { value: coverage }, uStipple: { value: stipple } },
+    // `uAlt` / `uAltAmt`: the colour the line is taken towards (the borders, over the land the interlude fills, are the page's colour: the fill is the ink's)
+    uniforms: { uColor: { value: new Color() }, uCoverage: { value: coverage }, uStipple: { value: stipple }, uAlt: { value: new Color() }, uAltAmt: { value: 0 } },
     vertexShader: PASS_THROUGH_VERTEX,
     fragmentShader: /* glsl */ `
-      uniform vec3 uColor; uniform float uCoverage; uniform float uStipple;
+      uniform vec3 uColor; uniform float uCoverage; uniform float uStipple; uniform vec3 uAlt; uniform float uAltAmt;
       ${DITHER_GLSL}
       void main() {
         ditherDiscard(uCoverage);
-        // Regular stipple (every n-th pixel on the diagonal) reads as a dotted line at any angle.
         if (uStipple > 0.0 && mod(floor(gl_FragCoord.x) + floor(gl_FragCoord.y), uStipple) > 0.5) discard;
-        gl_FragColor = vec4(uColor, 1.0);
+        gl_FragColor = vec4(mix(uColor, uAlt, uAltAmt), 1.0);
       }
     `,
   });
@@ -42,12 +42,206 @@ export function lineMaterial(coverage: number, stipple = 0): ShaderMaterial {
 /** The globe disc: writes the page colour and depth, so everything behind it is hidden and the ocean is invisible. */
 export function occluderMaterial(): ShaderMaterial {
   return new ShaderMaterial({
-    uniforms: { uColor: { value: new Color() } },
-    vertexShader: PASS_THROUGH_VERTEX,
-    fragmentShader: "uniform vec3 uColor; void main() { gl_FragColor = vec4(uColor, 1.0); }",
+    // The disc is the page's colour (the sea), and, for the cinematic interlude, a 1-bit picture of a planet lit by one sun (`uSun`, the direction towards it in
+    // the earth's frame; the letters of the word are lit from the same side):
+    //  - the LAND (`uLandMap`, engine/land.ts, equirectangular, 255 on land; looked up by the direction of the fragment, the scene being in the earth's frame)
+    //    is `uFill` (the ink) in an ordered dither whose density follows the light: solid on the day side, falling across the terminator to a fifth at night,
+    //    so the continents stay legible in the dark;
+    //  - the SEA near the limb on the lit side has a thin dithered glow (the atmosphere), in the same ink, thinning to nothing.
+    // The dither is the one the lines use (`dither4` on the buffer's own pixels, which are the art's). `uLand` is how much of all this is there (0: none, the
+    // globe as it always was).
+    uniforms: { uColor: { value: new Color() }, uFill: { value: new Color() }, uLand: { value: 0 }, uLandMap: { value: null }, uSun: { value: [0, 0, 1] } },
+    vertexShader: /* glsl */ `
+      varying vec3 vDir;
+      void main() { vDir = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform vec3 uColor; uniform vec3 uFill; uniform float uLand; uniform sampler2D uLandMap; uniform vec3 uSun;
+      varying vec3 vDir;
+      ${DITHER_GLSL}
+      bool lit(float coverage) { return dither4(floor(gl_FragCoord.xy)) < coverage; }
+      void main() {
+        vec3 col = uColor;
+        if (uLand > 0.001) {
+          vec3 n = normalize(vDir);
+          float d = dot(n, uSun);
+          vec2 uv = vec2(atan(n.x, n.z) * 0.15915494 + 0.5, asin(clamp(n.y, -1.0, 1.0)) * 0.31830989 + 0.5);
+          float land = smoothstep(0.42, 0.58, texture2D(uLandMap, uv).r);
+          // the light: solid above 0.10, down to a fifth below -0.20
+          float day = mix(0.2, 1.0, smoothstep(-0.20, 0.10, d));
+          float ink = land > 0.5 ? day : 0.0;
+          // the atmosphere: the sea within a few degrees of the limb, on the lit side, in a dither that thins outwards (0.45 at the limb)
+          float towardsEye = clamp(dot(n, normalize(cameraPosition - vDir)), 0.0, 1.0);
+          float rim = smoothstep(0.34, 0.0, towardsEye) * smoothstep(-0.1, 0.45, d) * 0.45;
+          ink = max(ink, land > 0.5 ? 0.0 : rim);
+          if (lit(ink * uLand)) col = uFill;
+        }
+        gl_FragColor = vec4(col, 1.0);
+      }
+    `,
     polygonOffset: true,
     polygonOffsetFactor: 1,
     polygonOffsetUnits: 1,
+  });
+}
+
+/**
+ * The MIST of the cinematic interlude: a haze that lies on the planet, thickest at the horizon and thinning smoothly upward, in GREY pixels (not the ink's black and
+ * white: its colour is a step from the page's towards its ink, at a low alpha) on the art's own pixels. The haze's density is quantised to a few levels, each a flat grey, and
+ * the steps between them are the lines' ordered dither: a pixelated gradient, not a smooth one. Three layers, one material each:
+ *  - `atmosphereMaterial`: ABOVE the limb. The inside of a shell a little over the surface (a fixed height: it is a layer of the planet, so it shrinks with it), so it is seen
+ *    only beyond the disc (the disc's depth hides its far side across the middle). Its density is 1 at the planet's own edge and falls to 0 at the shell's top (`uPower`: the
+ *    shape of the fall), a little thicker on the sunward side. `uCover` is its alpha at the edge, `uAmt` (0..1) how much of it is there.
+ *  - `mistMaterial`: ON the planet. A shell a hair over the surface (the lines are drawn at the surface), whose density grows towards the horizon: where the ground is seen
+ *    at a grazing angle the mist is deep and veils the coastlines and the borders, and it BLEEDS inwards, a good part of the way to the middle, as the glow's own continuation.
+ *  (and `surfaceMaterial`, below: the land's own picture, which is there outside the interlude too, fainter, and fades with the zoom)
+ * None of them is drawn at all outside the interlude (`GlobeScene.setAtmosphere`).
+ */
+const MIST_GLSL = /* glsl */ `
+  float dither2(vec2 a) { return fract(a.x * 0.5 + a.y * a.y * 0.75); }
+  float dither4(vec2 a) { return dither2(0.5 * a) * 0.25 + dither2(a); }
+  // n (0..1) in "levels" flat steps, the step between two taken by the ordered dither on the art's pixels
+  float stepped(float n, float levels) {
+    float v = clamp(n, 0.0, 1.0) * levels;
+    return (floor(v) + (fract(v) > dither4(floor(gl_FragCoord.xy)) ? 1.0 : 0.0)) / levels;
+  }
+`;
+
+export function atmosphereMaterial(): ShaderMaterial {
+  return new ShaderMaterial({
+    uniforms: { uColor: { value: new Color() }, uAmt: { value: 0 }, uSun: { value: [0, 0, 1] }, uShell: { value: 1.03 }, uPower: { value: 1.6 }, uCover: { value: 0.5 } },
+    vertexShader: /* glsl */ `
+      varying vec3 vPos;
+      void main() { vPos = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform vec3 uColor; uniform float uAmt; uniform vec3 uSun; uniform float uShell; uniform float uPower; uniform float uCover;
+      varying vec3 vPos;
+      ${MIST_GLSL}
+      void main() {
+        // (the shell is the unit sphere scaled to uShell: the vertex is in the unit sphere's frame, so its direction is its position)
+        vec3 n = normalize(vPos);
+        vec3 toEye = normalize(cameraPosition - n * uShell);
+        // on the far side of the shell the outward normal turns away from the eye: |n . eye| is 0 at the shell's outer edge and reaches "edge" where the sight line
+        // just grazes the planet; normalised by that, the height above the limb is 1 - h (1 at the planet's edge, 0 at the top of the shell)
+        float edge = sqrt(max(1.0 - 1.0 / (uShell * uShell), 1e-4));
+        float h = clamp(abs(dot(n, toEye)) / edge, 0.0, 1.0);
+        float sunward = 0.75 + 0.25 * clamp(dot(n, uSun) * 1.4 + 0.2, 0.0, 1.0);
+        float a = stepped(pow(h, uPower) * sunward * uAmt, 3.0) * uCover;
+        if (a < 0.004) discard;
+        gl_FragColor = vec4(uColor, a);
+      }
+    `,
+    side: BackSide,
+    blending: NormalBlending,
+    depthTest: true,
+    depthWrite: false,
+    transparent: true,
+  });
+}
+
+export function mistMaterial(): ShaderMaterial {
+  return new ShaderMaterial({
+    uniforms: { uColor: { value: new Color() }, uAmt: { value: 0 }, uCover: { value: 0.85 } },
+    vertexShader: /* glsl */ `
+      varying vec3 vPos;
+      void main() { vPos = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform vec3 uColor; uniform float uAmt; uniform float uCover;
+      varying vec3 vPos;
+      ${MIST_GLSL}
+      void main() {
+        vec3 n = normalize(vPos);
+        vec3 toEye = normalize(cameraPosition - vPos);
+        // how grazing the ground is seen: 0 looking straight down, 1 at the horizon. The haze begins well in (about a fifth of the way in from the limb, a third of the
+        // way round) and is deepest at the edge, where it meets the glow above it: the glow bleeds onto the planet
+        float g = 1.0 - clamp(dot(n, toEye), 0.0, 1.0);
+        float deep = smoothstep(0.18, 1.0, g);
+        float a = stepped(deep * deep * (3.0 - 2.0 * deep) * uAmt, 3.0) * uCover;
+        if (a < 0.004) discard;
+        gl_FragColor = vec4(uColor, a);
+      }
+    `,
+    side: FrontSide,
+    blending: NormalBlending,
+    depthTest: true,
+    depthWrite: false,
+    transparent: true,
+  });
+}
+
+/**
+ * The SURFACE: the planet's own picture, a satellite view of the land (NASA's Blue Marble, public domain, smoothed) as FLAT PATCHES in a palette of a few colours, 8-bit
+ * style: the sea is the page's colour, and the land is one of three tones, by how bright the ground is (`uEarth`: the picture's brightness, looked up by the fragment's
+ * direction, the scene being in the earth's frame so that the patches turn with the planet, with NEAREST sampling at 1024 x 512, so that the patches have square, pixel-art
+ * edges, crisp however near the camera comes). `uTone0..2` are the tones (darkest ground first; each a step from the page's colour towards its ink), `uBg` the page's colour,
+ * `uStrength` (0..1) how far the tones are taken from `uBg`. The colours are SOLID (no blending): the layer is drawn UNDER the lines, which are drawn over it. `uAmt` (0..1: the
+ * scene fades it with the zoom, `engine/surface.ts`) takes pixels out of the patches in the lines' ordered dither, the page's way of a fade.
+ */
+export function surfaceMaterial(): ShaderMaterial {
+  return new ShaderMaterial({
+    uniforms: {
+      uBg: { value: new Color() },
+      uTone0: { value: new Color() },
+      uTone1: { value: new Color() },
+      uTone2: { value: new Color() },
+      uStrength: { value: 1 },
+      uAmt: { value: 0 },
+      uEarth: { value: null },
+      uLandMap: { value: null },
+    },
+    vertexShader: /* glsl */ `
+      varying vec3 vDir;
+      void main() { vDir = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform vec3 uBg; uniform vec3 uTone0; uniform vec3 uTone1; uniform vec3 uTone2; uniform float uStrength; uniform float uAmt; uniform sampler2D uEarth; uniform sampler2D uLandMap;
+      varying vec3 vDir;
+      ${DITHER_GLSL}
+      void main() {
+        vec3 n = normalize(vDir);
+        vec2 uv = vec2(atan(n.x, n.z) * 0.15915494 + 0.5, asin(clamp(n.y, -1.0, 1.0)) * 0.31830989 + 0.5);
+        // the land is the coastlines' own fill (the land mask, filtered and cut at a half: its edge falls between the texels, exactly on the drawn outline, at the art's resolution)
+        if (texture2D(uLandMap, uv).r < 0.5) discard;
+        float v = texture2D(uEarth, uv).r;
+        ditherDiscard(uAmt);
+        // the land is dark, middle or light ground (thresholds on the picture's brightness, which the picture lifts to 0.2 and over)
+        vec3 tone = v < 0.42 ? uTone0 : (v < 0.62 ? uTone1 : uTone2);
+        gl_FragColor = vec4(mix(uBg, tone, uStrength), 1.0);
+      }
+    `,
+    side: FrontSide,
+    depthTest: true,
+    depthWrite: false,
+  });
+}
+
+/**
+ * The lights of the places (the studio's frame has the cities' lights on the night side): a dot for each of the owner's places, 3 by 3 art pixels on the
+ * night side and 2 by 2 on the day side, in the accent, coming up through the dither as `uCity` goes from 0 to 1. On the sphere a hair above the land, hidden
+ * behind the planet by the depth buffer (the disc writes it).
+ */
+export function cityMaterial(): ShaderMaterial {
+  return new ShaderMaterial({
+    uniforms: { uColor: { value: new Color() }, uCity: { value: 0 }, uSun: { value: [0, 0, 1] } },
+    vertexShader: /* glsl */ `
+      uniform vec3 uSun;
+      void main() {
+        gl_PointSize = dot(normalize(position), uSun) < 0.0 ? 3.0 : 2.0;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform vec3 uColor; uniform float uCity;
+      ${DITHER_GLSL}
+      void main() {
+        if (dither4(floor(gl_FragCoord.xy)) >= uCity) discard;
+        gl_FragColor = vec4(uColor, 1.0);
+      }
+    `,
+    depthTest: true,
+    depthWrite: false,
   });
 }
 

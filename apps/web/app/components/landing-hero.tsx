@@ -171,6 +171,7 @@ export function LandingHero({ machine, away, empty, orbit = null, onCover, hasCa
   // `away` the hero is not on screen and the name just sits where the state says; reduced motion: instant, as the CSS). The collapsed name is the
   // two halves of the big name held at the ghost line's boxes: it is re-measured when the block is resized (a window, a font arriving).
   const previous = useRef<typeof state>(state);
+  const mounted = useRef(false);
   // (`holdName` again when a travel to the corner has ended: a resize or a font that arrived during its 320 ms is not lost)
   const travel = useRef<NameTravel | null>(null);
   const rootForTravel = useRef<HTMLDivElement | null>(null);
@@ -190,7 +191,14 @@ export function LandingHero({ machine, away, empty, orbit = null, onCover, hasCa
     const back = was === "collapsed" && state === "rest";
     // (a turn-around, the state flipping again while the name is on its way, is a travel like any other: `NameTravel.go` starts from where it is)
     const reduced = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (was === state) return;
+    // Born collapsed (back on the home page from another): the name goes to its corner BEFORE the first paint. The observer below only runs after it,
+    // so the big name showed for a frame or two and then collapsed in one step.
+    const first = !mounted.current;
+    mounted.current = true;
+    if (was === state) {
+      if (first && state === "collapsed") holdName(root, true);
+      return;
+    }
     if ((!toMini && !back) || reduced || typeof root.querySelector(".hero-given")?.animate !== "function") {
       travel.current!.cancel();
       holdName(root, state === "collapsed");
@@ -314,7 +322,7 @@ export function LandingHero({ machine, away, empty, orbit = null, onCover, hasCa
             <FamilyName />
           </span>
         </span>
-        <span className="hero-mini-hint">Drag to explore. Back to start after a moment.</span>
+        <span className="hero-mini-hint">Drag to explore. Pause, and the page comes back.</span>
       </p>
     </div>
   );

@@ -185,11 +185,11 @@ export class SkyLayer {
   }
 
   /** Per frame: decide on/off, advance the timed value, set the uniforms. `now` is the clock (ms) the fade runs on; `instant`: reduced motion. */
-  sync(frame: SkyFrame, now: number, instant: boolean) {
+  sync(frame: SkyFrame, now: number, instant: boolean, hold = false) {
     const geo = skyGeometry(frame.d, frame.bufW, frame.bufH, frame.shiftBuf, frame.liftBuf ?? 0);
     this.rhoMax = geo.rhoMax;
     this.geo = geo;
-    this.on = skyWanted(this.on, geo.rhoMax);
+    this.on = hold || skyWanted(this.on, geo.rhoMax);
     if (!this.seen) {
       this.seen = true; // the first frame starts in its state
       this.fade.snap(0, this.on);

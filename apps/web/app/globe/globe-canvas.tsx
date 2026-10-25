@@ -17,6 +17,7 @@ import { stressRoutes } from "./paths/stress";
 import { applyDebugLevels } from "./engine/palette";
 import { applySpinFlags } from "./engine/idle-spin";
 import { applySkyFlags } from "./engine/sky";
+import { PLAY_INTERLUDE_EVENT, PREPARE_INTERLUDE_EVENT, type PlayInterludeRequest } from "./interlude";
 import { applyRingFlags, ringText } from "./engine/ring";
 import { applyShowcaseFlags } from "./engine/caption";
 import { applyDebugArtPixel } from "./engine/tuning";
@@ -166,6 +167,27 @@ export default function GlobeCanvas({
       stage.removeEventListener("wheel", note, options);
     };
   }, [wantsInteract]);
+
+  // The visitor asks for the cinematic interlude (the search palette's "I like surprises", `lib/interlude.ts`): this globe takes the request when it is the home screen at rest
+  // (the caption is there); otherwise the palette takes the visitor home first and asks again.
+  useEffect(() => {
+    const onPlay = (e: Event) => {
+      const detail = (e as CustomEvent<PlayInterludeRequest>).detail;
+      const handle = handleRef.current;
+      if (!detail || !handle || !latest.current.showcase || !handle.hasOrbit()) return;
+      detail.handled = true;
+      handle.playInterlude();
+    };
+    const onPrepare = () => {
+      if (latest.current.showcase) handleRef.current?.prepareInterlude();
+    };
+    window.addEventListener(PLAY_INTERLUDE_EVENT, onPlay);
+    window.addEventListener(PREPARE_INTERLUDE_EVENT, onPrepare);
+    return () => {
+      window.removeEventListener(PLAY_INTERLUDE_EVENT, onPlay);
+      window.removeEventListener(PREPARE_INTERLUDE_EVENT, onPrepare);
+    };
+  }, []);
 
   useEffect(() => {
     const stage = stageRef.current;

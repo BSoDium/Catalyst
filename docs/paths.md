@@ -130,7 +130,12 @@ Owner-visible changes of 2026-10-20: see the sections above (one gradient, cell-
 - **The ring's type grows with the planet** (`ringTargetEm`, `RING.type.emPerPlanet` 0.042, from 11 to 17 CSS px): it was 11 px whatever the planet's size, which read as tiny round a big planet on a laptop's screen.
 - **The home screen gives way smoothly**: when the cover goes away (`setCover` with no blocks) the planet keeps its size and the lift is eased, as it was before the landing placement; the lowest zoom changing no longer snaps either (it used to shrink the planet and move it at once while the boxes faded in).
 
+## The home screen's globe size (2026-10-22)
+
+- The home screen's globe is a little smaller on a desktop (`LANDING`, `landingScale` in `engine/lift.ts`): 1 up to 640 px of width (phones unchanged), smoothly down to 0.78 of the largest planet that fits at 1100 px and more (0.9 was tried first and left the planet and its ring at about 60 % and 74 % of the window's height at 1440 x 900: still too much beside the name and the list; at 0.78: about 54 % and 62 %). The caption's clearance rule (`placeAbove`) is untouched: the cap only lowers the radius it starts from, and a test holds that the caption never stands over the section list or the hero at any cap.
+- Tried and dropped (owner, 2026-10-22): keeping the paths on the home screen, dimmed, with or without the lifted arcs (an arc crosses the flat ring; the ground legs alone still looked odd). The paths are hidden there, as before.
+
 ## The home screen's type (2026-10-21)
 
-- The caption's thickness and the back of its rows are closer to the page: `sideMix` 0.2 (light) and 0.18 (dark), it was 0.34 and 0.3 ("too visible"); a row seen from behind (past the horizon, curling back) is drawn whole in the thickness' tone (`gl_FrontFacing` in the caption's fragment shader).
+- The caption's thickness and the back of its rows are closer to the page still: `sideMix` 0.11 (light) and 0.1 (dark), it was 0.2 and 0.18, and 0.34 and 0.3 before that ("too visible"); a row seen from behind (past the horizon, curling back) is drawn whole in the thickness' tone (`gl_FrontFacing` in the caption's fragment shader).
 - The ring of type goes all the way round the planet again, as it did before the landing placement: the cut that masked its letters below the top of the home screen's content (`RingLayer.setCut`) is gone, and the overlay's own gradient dims what runs behind it.

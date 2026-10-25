@@ -3871,6 +3871,19 @@ h1[tabindex="-1"]:focus-visible {
     }
   }
 
+  /*
+   * The cinematic interlude (globe/engine/cinematic.ts) steps the hero BACK for its length: the engine sets `--interlude` on the root, 0 to 1, eased in and out
+   * with the filled land, and the whole hero (the name, the intro, the menu and the plate behind them, which is a child of it) goes to `--hero-quiet` of itself.
+   * The picture is the point then; the page's own text is a ghost under it and comes back with it. Opacity only, the compositor's.
+   */
+  .landing-hero {
+    opacity: calc(1 - (1 - var(--hero-quiet, 0.06)) * var(--interlude, 0));
+  }
+  /* (and the plate behind the text is gone, not just faint: over the filled land it left a band) */
+  .landing-hero::before {
+    opacity: calc(1 - var(--interlude, 0));
+  }
+
   /* Away: a place or an entry is open. Instant: the panel is arriving, the hero is not the page. */
   .landing-hero[data-hero="away"],
   .landing-hero[data-hero="away"]::before {
