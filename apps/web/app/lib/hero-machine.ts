@@ -67,6 +67,8 @@ export interface HeroMachine {
   setWorld(world: boolean): void;
   /** The visitor's focus is in the header or in a dialog: the hero stays as it is (no way back) until it is released, then the idle period starts anew. */
   hold(held: boolean): void;
+  /** The visitor asked for something only the full hero shows (the cinematic interlude): bring it back now if the view is the world view. */
+  restore(): void;
   /** Cancel the timer (the host is going away). The machine stays usable. */
   stop(): void;
 }
@@ -125,6 +127,11 @@ export function createHeroMachine({ idleMs = HERO_IDLE_MS, timers = browserTimer
       if (next === held) return;
       held = next;
       arm();
+    },
+    restore() {
+      if (!snapshot.world) return;
+      clear();
+      set({ state: "rest" });
     },
     stop: clear,
   };
