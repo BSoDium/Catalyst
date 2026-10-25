@@ -260,7 +260,7 @@ export const publishedRouteSchema = z
     /** Additive in schema version 1. When the trip happened (a month or a year is enough). */
     dates: publishedDatesSchema.optional(),
     /**
-     * Additive in schema version 1. The trip's own public page (its travel log, for instance a public Polarsteps trip): https only. Absent
+     * Additive in schema version 1. The trip's own public page (its public travel log on the trip site): https only. Absent
      * when the trip is not public: the exporter never sets it for a trip whose visibility it cannot confirm.
      */
     url: httpsUrlSchema.optional(),
