@@ -29,19 +29,23 @@ import {
 const demo = loadDemoProjection();
 
 const item = (slug: string, placeSlugs: string[] = [], extra: Partial<PublishedContentItem> = {}): PublishedContentItem => ({ slug, title: `Title ${slug}`, placeSlugs, ...extra });
-const place = (slug: string, related: { kind: "article" | "project" | "artwork" | "poem"; slug: string }[] = []) => ({ ...demo.places[0]!, slug, name: `Place ${slug}`, region: undefined, group: undefined, related });
+const place = (slug: string, related: { kind: "article" | "project" | "artwork" | "poem" | "photograph"; slug: string }[] = []) => ({ ...demo.places[0]!, slug, name: `Place ${slug}`, region: undefined, group: undefined, related });
 const world = (over: Partial<PublishedProjection>): PublishedProjection => ({ ...EMPTY_PROJECTION, ...over });
 
 describe("kinds", () => {
-  it("has a path, in the same order, for each of the four kinds, poems included", () => {
-    expect(CONTENT_KINDS).toEqual(["article", "project", "artwork", "poem"]);
+  it("has a path, in the same order, for each of the five kinds, poems and photographs included", () => {
+    expect(CONTENT_KINDS).toEqual(["article", "project", "artwork", "poem", "photograph"]);
     expect(KIND_PATHS.poem).toBe("/poetry");
+    expect(KIND_PATHS.photograph).toBe("/photography");
+    expect(entryPath("photograph", "demo-photograph")).toBe("/photography/demo-photograph");
     expect(entryPath("poem", "demo-poem")).toBe("/poetry/demo-poem");
     expect(isContentKind("poem")).toBe(true);
     expect(isContentKind("place")).toBe(false);
   });
   it("names the poems' section \"Poetry\" and counts them as poems; the singular stays \"Poem\"", () => {
-    expect(KIND_PLURALS).toEqual({ project: "Software", article: "Articles", artwork: "Artworks", poem: "Poetry" });
+    expect(KIND_PLURALS).toEqual({ project: "Software", article: "Articles", artwork: "Artworks", poem: "Poetry", photograph: "Photography" });
+    expect(KIND_LABELS.photograph).toBe("Photograph");
+    expect(KIND_NOUNS.photograph).toEqual({ one: "photograph", many: "photographs" });
     expect(KIND_LABELS.poem).toBe("Poem");
     expect(KIND_NOUNS.poem).toEqual({ one: "poem", many: "poems" });
     expect([kindCount("poem", 0), kindCount("poem", 1), kindCount("poem", 4), kindCount("article", 1)]).toEqual(["0 poems", "1 poem", "4 poems", "1 article"]);
@@ -136,8 +140,8 @@ describe("getEntryDetail", () => {
 
 describe("countEntries", () => {
   it("counts each kind, zero for the empty projection", () => {
-    expect(countEntries(EMPTY_PROJECTION)).toEqual({ article: 0, project: 0, artwork: 0, poem: 0 });
-    expect(countEntries(world({ articles: [item("a"), item("b")], poems: [item("v")] }))).toEqual({ article: 2, project: 0, artwork: 0, poem: 1 });
+    expect(countEntries(EMPTY_PROJECTION)).toEqual({ article: 0, project: 0, artwork: 0, poem: 0, photograph: 0 });
+    expect(countEntries(world({ articles: [item("a"), item("b")], poems: [item("v")] }))).toEqual({ article: 2, project: 0, artwork: 0, poem: 1, photograph: 0 });
   });
 });
 

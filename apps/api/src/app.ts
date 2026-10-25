@@ -7,7 +7,7 @@ import { buildSnapshot, CONTENT_COLLECTIONS, HEALTH_PATH, STATIC_PATHS, type Ent
 export const CACHE_CONTROL = "public, s-maxage=300, stale-while-revalidate=86400";
 const ALLOWED_METHODS = "GET, HEAD, OPTIONS";
 const PLACE_PREFIX = "/v1/places/";
-/** Detail endpoints: `/v1/places/:slug` and `/v1/<projects|articles|artworks|poems>/:slug`. */
+/** Detail endpoints: `/v1/places/:slug` and `/v1/<projects|articles|artworks|poems|photographs>/:slug`. */
 const DETAIL_PREFIXES: readonly string[] = [PLACE_PREFIX, ...CONTENT_COLLECTIONS.map((c) => `${c.list}/`)];
 
 /** True when an If-None-Match header matches `etag` (weak comparison, per RFC 9110). */

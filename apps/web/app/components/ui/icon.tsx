@@ -17,6 +17,8 @@ import {
   Feather,
   FileText,
   Hash,
+  Camera,
+  ChevronDown,
   Image as ImageIcon,
   Info,
   Link2,
@@ -38,13 +40,14 @@ import { cn } from "~/lib/utils";
  * the generated cover art. To add an icon, add it here; to change one, change it here, and every use follows.
  *
  * The kind icons are the primary coding of an entry's kind (the faint hue is only a redundant accent): article, a page of text;
- * project, a terminal prompt; artwork, an image; poem, a feather; place, a map pin.
+ * project, a terminal prompt; artwork, an image; poem, a feather; photograph, a camera; place, a map pin.
  */
 export const ICONS = {
   article: FileText,
   project: Terminal,
   artwork: ImageIcon,
   poem: Feather,
+  photograph: Camera,
   place: MapPin,
   career: Briefcase,
   close: X,
@@ -59,6 +62,7 @@ export const ICONS = {
   enter: CornerDownLeft,
   command: Command,
   check: Check,
+  "chevron-down": ChevronDown,
   "chevron-left": ChevronLeft,
   "chevron-right": ChevronRight,
   copy: Copy,

@@ -34,7 +34,7 @@ All in `app.css`; light and dark keep the map's near-black / near-white family. 
 | Hairline / control line | `--border` / `--border-strong` | 14 % / 44 % ink | 16 % / 45 % ink | strong is 3:1 or more (control outline); the hairline is decoration |
 | Texture | `--line-faint` | 7 % ink | 9 % ink | the 16 px grid and hatch only |
 | **Accent (one)** | `--signal` | `#0076d4` | `#0076d4` | BSoD blue (Windows' `#0078d7`, two steps deeper so white text on it clears AA): for large display text (24 px and up) and marks and fills, 4.2:1 on the surface (light), 4.05:1 (dark). Text under 24 px takes `--signal-text` (`#0067b8` / `#0a93ff`: 5.3:1 / 5.9:1 on the surface). Text on a fill is `--signal-foreground` (`#ffffff`, 4.6:1, both schemes). `--signal-wash` is its 8 % (light) and 12 % (dark) plate for the active Frame. |
-| Kind hues | `--kind-article` 275, `-project` 150, `-artwork` 55, `-poem` 340, `-place` (muted grey) | `oklch(.58 .10 H)` | `oklch(.76 .10 H)` | **faint and redundant** (see Kind coding) |
+| Kind hues | `--kind-article` 275, `-project` 150, `-artwork` 55, `-poem` 340, `-photograph` 215, `-place` (muted grey) | `oklch(.58 .10 H)` | `oklch(.76 .10 H)` | **faint and redundant** (see Kind coding) |
 | Call to action | `--primary` / `--primary-foreground`, `--signal-hover`, `--signal-active` | `#0076d4` / `#ffffff`, `#006cc2`, `#0064b2` | the same | the primary button: the accent's fill, white text (4.6:1 at rest, 5.4:1 hovered, 6.1:1 pressed). The fill is a 4.3:1 shape against the dark page and 4.5:1 against the light one (hovered and pressed: 3.7 / 3.3 dark, 5.2 / 5.9 light) |
 | Focus | `--ring` | `#0067b8` | `#0a93ff` | the accent's text tone, 3:1 or more on the page, the surface and the hover grey; a primary button's ring is the ink |
 | Inverse set | `--inverse-background/-foreground/-muted/-border/-signal` | the dark scheme's ink on page | and vice versa | what an inverted Frame rebinds the colour tokens to (its primary fill and ring are the accent too) |
@@ -43,7 +43,7 @@ The accent is for the call to action, for links, for focus and for state, and fo
 
 ### Kind coding
 
-Each kind has an **icon** from the icon set (article: a page of text; project: a terminal prompt; artwork: an image; poem: a feather; place: a map pin; "Icons" below) AND its word (the `project` kind's word is "Software": the contract's kind id and the section's name are separate, `lib/sections.ts`). `KindTag` draws the icon plain beside the word (no box, no tint) and is used only where kinds are mixed: the search results (glyph; the group heading says the word) and the related entries of an entry. A list of one kind, a place's entries (already grouped under "Articles", "Software") and an entry's own header do not repeat it as a tag (the entry says it once, in plain words, in its meta line). The kind hues only tint the lightest tone of a generated cover. Text is never set in a kind hue.
+Each kind has an **icon** from the icon set (article: a page of text; project: a terminal prompt; artwork: an image; poem: a feather; photograph: a camera; place: a map pin; "Icons" below) AND its word (the `project` kind's word is "Software": the contract's kind id and the section's name are separate, `lib/sections.ts`). `KindTag` draws the icon plain beside the word (no box, no tint) and is used only where kinds are mixed: the search results (glyph; the group heading says the word) and the related entries of an entry. A list of one kind, a place's entries (already grouped under "Articles", "Software") and an entry's own header do not repeat it as a tag (the entry says it once, in plain words, in its meta line). The kind hues only tint the lightest tone of a generated cover. Text is never set in a kind hue.
 
 ### Palettes
 
@@ -345,7 +345,7 @@ current one in the foreground and underlined, `aria-current="page"`), the search
 rest, there is no header at all** (its four rows are the sections and its search line is the search: docs/landing.md); the header is back,
 tabs and search, whenever the hero has stepped back, and on every other route. Centred over the viewport; while the place
 or entry panel is open beside the globe it is centred over the map (the left half), so it never meets the panel's Close and expand
-controls, and it glides with the panel. Its width decides what it shows (container query): "Globe" and the four sections always,
+controls, and it glides with the panel. Its width decides what it shows (container query; from 56 rem the sections inline, under it one "Sections" button with a sheet of every section and its count, issue #290): "Globe" and the sections always,
 the search trigger (icon and word; the icon from 22 rem, under which a 320 px phone keeps the word) always, its key hint from 36 rem. 44 px targets, the trigger as tall as the links. Over content that scrolls (lists, 404, errors) it has the
 page scrim; over the globe and the map a soft fade of its own, 85 % of the page colour at the top edge easing to nothing, only as wide
 as the row (design-tokens.md, "Nav fade"). Details and measurements: [web-architecture.md](web-architecture.md#floating-navbar-and-scrim).

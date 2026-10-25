@@ -130,6 +130,8 @@ export interface HandoverHandle {
   /** Highlight a place; `fly` also moves the camera to it (into street scale when the street map can show it). */
   setSelected(slug: string | null, fly: boolean): void;
   setFocused(slug: string | null): void;
+  /** Fly to frame a group's circle, as a click on its label does (nothing happens for an unknown slug or a place). */
+  frameGroup(slug: string): void;
   /** The "Paths" layer: every route leg faint, the selected place's in ink, on or off (both renderers). */
   setPaths(on: boolean): void;
   setReducedMotion(on: boolean): void;
@@ -777,6 +779,7 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
 
   return {
     setSelected: select,
+    frameGroup: (slug) => selectGroup(slug),
     setPaths(on) {
       pathsOn = on;
       globe.setPaths(on);

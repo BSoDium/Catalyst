@@ -145,6 +145,23 @@ describe("EntryListPage with a sensitive entry", () => {
     for (const a of artworks) expect(html).toContain(`id="${a.slug}"`);
     expect(html).toContain(`>${artworks.length} artworks<`);
   });
+  it("sets the photographs as one wall of pictures, captioned with the place and the year, and never draws generated art for one", () => {
+    const photos = listEntries(demo, "photograph");
+    const html = renderToStaticMarkup(createElement(StaticRouter, { location: "/photography" }, createElement(EntryListPage, { kind: "photograph", items: photos })));
+    expect(html).toContain('data-slot="artwork-wall" data-kind="photograph"');
+    expect(html).not.toContain("data-year=");
+    for (const p of photos) expect(html).toContain(`id="${p.slug}"`);
+    expect(html).toContain(`>${photos.length} photographs<`);
+    expect(html).toContain('href="/photography/demo-photograph"');
+    expect(html).toContain("Cusco");
+    expect(html).not.toContain("cover-art");
+    // a photograph without an image is the caption alone, not a procedural miniature
+    const bare = [{ ...photos[0]!, cover: undefined }];
+    const none = renderToStaticMarkup(createElement(StaticRouter, { location: "/photography" }, createElement(EntryListPage, { kind: "photograph", items: bare })));
+    expect(none).not.toContain("<img");
+    expect(none).not.toContain("<canvas");
+    expect(none).not.toContain("<svg");
+  });
   it("sets the poems in a grid of cells with the summary in the reading face", () => {
     const poems = listEntries(demo, "poem");
     const html = render(poems, "", "poem");

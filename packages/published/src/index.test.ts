@@ -32,7 +32,7 @@ describe("published package", () => {
     const groups = new Set(p.groups.map((g) => g.slug));
     for (const g of p.groups) if (g.parent) expect(groups.has(g.parent), `parent of ${g.slug}`).toBe(true);
     for (const pl of p.places) if (pl.group) expect(groups.has(pl.group), `group of ${pl.slug}`).toBe(true);
-    for (const e of [...p.projects, ...p.articles, ...p.artworks, ...p.poems]) {
+    for (const e of [...p.projects, ...p.articles, ...p.artworks, ...p.poems, ...p.photographs]) {
       for (const s of e.placeSlugs ?? []) expect(places.has(s), `${e.slug} -> ${s}`).toBe(true);
     }
   });
@@ -100,11 +100,23 @@ describe("published package", () => {
     expect(Math.min(...(stanzas as number[]))).toBe(1);
     expect(Math.max(...(stanzas as number[]))).toBe(6);
   });
+  it("the demo has four photographs (a landscape, a portrait and a square, one without a place), each with a cover that has dimensions and alt text", () => {
+    const demo = loadDemoProjection();
+    expect(demo.photographs.map((e) => e.slug)).toEqual(["demo-photograph", "rain-at-the-gate", "sea-wall", "platform-nine"]);
+    const ratios = demo.photographs.map((e) => Math.round((e.cover!.width! / e.cover!.height!) * 100) / 100);
+    expect(ratios).toEqual([1.5, 0.8, 1.5, 1]);
+    for (const e of demo.photographs) {
+      expect(e.cover?.alt.length, e.slug).toBeGreaterThan(20);
+      expect(e.placeSlugs.length, e.slug).toBeLessThanOrEqual(1);
+    }
+    expect(demo.photographs.filter((e) => e.placeSlugs.length === 0).map((e) => e.slug)).toEqual(["platform-nine"]);
+    expect(demo.places.flatMap((p) => p.related).filter((r) => r.kind === "photograph").length).toBe(3);
+  });
   it("every demo media path (place images, covers, image blocks) is a file shipped by the web app", () => {
     const demo = loadDemoProjection();
     const srcs = new Set<string>();
     for (const p of demo.places) for (const i of p.images) srcs.add(i.src);
-    for (const e of [...demo.projects, ...demo.articles, ...demo.artworks, ...demo.poems]) {
+    for (const e of [...demo.projects, ...demo.articles, ...demo.artworks, ...demo.poems, ...demo.photographs]) {
       if (e.cover) srcs.add(e.cover.src);
       for (const b of e.body ?? []) if (b.type === "image") srcs.add(b.src);
     }
@@ -130,7 +142,7 @@ describe("published package", () => {
     }
     // the fixture declares the generator's alt text and size for each image it uses
     const byName = new Map(MEDIA.map((m) => [mediaSrc(m.name), m]));
-    for (const e of [...demo.projects, ...demo.articles, ...demo.artworks, ...demo.poems]) {
+    for (const e of [...demo.projects, ...demo.articles, ...demo.artworks, ...demo.poems, ...demo.photographs]) {
       const used = [...(e.cover ? [e.cover] : []), ...(e.body ?? []).flatMap((b) => (b.type === "image" ? [b] : []))];
       for (const u of used) {
         const m = byName.get(u.src);
@@ -143,7 +155,7 @@ describe("published package", () => {
   it("the demo is plainly made up: every external address is on an example domain and no entry link is a real site", () => {
     const demo = loadDemoProjection();
     const urls: string[] = [];
-    for (const e of [...demo.projects, ...demo.articles, ...demo.artworks, ...demo.poems]) {
+    for (const e of [...demo.projects, ...demo.articles, ...demo.artworks, ...demo.poems, ...demo.photographs]) {
       if (e.url) urls.push(e.url);
       for (const b of e.body ?? []) if (b.type === "link") urls.push(b.url);
     }

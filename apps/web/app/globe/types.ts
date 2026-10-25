@@ -219,6 +219,11 @@ export interface GlobeProps {
   selectedSlug: string | null;
   focusedSlug: string | null;
   /**
+   * A group to frame (fly to, as a click on its label does), with no place selected: the country of an entry whose only location is its
+   * country (`?country=BR`). Followed on change; a direct load starts framed by `initialView`. Optional: omitted or null = nothing to frame.
+   */
+  framedGroup?: string | null;
+  /**
    * View to start from when the globe is (re)mounted; null = renderer default. A `GlobeFitView` starts already framed
    * on a place (direct load, reload): the first frame is the final framing, nothing flies.
    */

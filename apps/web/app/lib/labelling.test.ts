@@ -55,8 +55,8 @@ describe("statusLabel", () => {
 });
 
 describe("entry kinds", () => {
-  it("knows its five kinds", () => {
-    expect(ENTRY_KINDS).toEqual(["article", "project", "artwork", "poem", "place"]);
+  it("knows its six kinds", () => {
+    expect(ENTRY_KINDS).toEqual(["article", "project", "artwork", "poem", "photograph", "place"]);
     expect(isEntryKind("poem")).toBe(true);
     expect(isEntryKind("photo")).toBe(false);
     expect(isEntryKind(undefined)).toBe(false);

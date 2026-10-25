@@ -52,7 +52,7 @@ describe("copyrightNotice", () => {
   it("gives every demo poem, article and artwork a notice and no project one", () => {
     const demo = loadDemoProjection();
     for (const kind of CONTENT_KINDS) {
-      const items = { article: demo.articles, project: demo.projects, artwork: demo.artworks, poem: demo.poems }[kind];
+      const items = { article: demo.articles, project: demo.projects, artwork: demo.artworks, poem: demo.poems, photograph: demo.photographs }[kind];
       for (const item of items) {
         const notice = copyrightNotice(getEntryDetail(demo, kind, item.slug)!);
         expect(notice === null, `${kind}/${item.slug}`).toBe(kind === "project");

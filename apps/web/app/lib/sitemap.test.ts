@@ -6,8 +6,8 @@ import { robotsTxt, sitemapUrls, sitemapXml } from "./sitemap";
 const ORIGIN = "https://v2.bsodium.fr";
 
 describe("sitemapUrls", () => {
-  it("lists the home page and the four lists, even for an empty projection", () => {
-    expect(sitemapUrls(EMPTY_PROJECTION, ORIGIN).map((u) => u.loc)).toEqual([`${ORIGIN}/`, `${ORIGIN}/articles`, `${ORIGIN}/software`, `${ORIGIN}/artworks`, `${ORIGIN}/poetry`]);
+  it("lists the home page and the five lists, even for an empty projection", () => {
+    expect(sitemapUrls(EMPTY_PROJECTION, ORIGIN).map((u) => u.loc)).toEqual([`${ORIGIN}/`, `${ORIGIN}/articles`, `${ORIGIN}/software`, `${ORIGIN}/artworks`, `${ORIGIN}/poetry`, `${ORIGIN}/photography`]);
   });
   it("lists /career only when the projection has a career document, dated by the month it was reviewed", () => {
     expect(sitemapUrls(EMPTY_PROJECTION, ORIGIN).map((u) => u.loc)).not.toContain(`${ORIGIN}/career`);
@@ -49,12 +49,12 @@ describe("sitemapUrls", () => {
   });
   it("covers the whole demo projection", () => {
     const projection = loadDemoProjection();
-    const total = 5 + projection.places.length + projection.articles.length + projection.projects.length + projection.artworks.length + projection.poems.length + (projection.career ? 1 : 0);
+    const total = 6 + projection.places.length + projection.articles.length + projection.projects.length + projection.artworks.length + projection.poems.length + projection.photographs.length + (projection.career ? 1 : 0);
     expect(sitemapUrls(projection, ORIGIN)).toHaveLength(total);
   });
   it("percent-encodes a slug in the URL and escapes XML in the document", () => {
     const projection = { ...EMPTY_PROJECTION, articles: [{ slug: "a b&c", title: "A", placeSlugs: [] }] } as PublishedProjection;
-    const [, , , , , item] = sitemapUrls(projection, ORIGIN);
+    const [, , , , , , item] = sitemapUrls(projection, ORIGIN);
     expect(item?.loc).toBe(`${ORIGIN}/articles/a%20b%26c`);
     expect(sitemapXml([{ loc: "https://x.test/?a=1&b=2" }])).toContain("<loc>https://x.test/?a=1&amp;b=2</loc>");
   });

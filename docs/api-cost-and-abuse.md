@@ -136,11 +136,13 @@ Net: roughly one day of work, a documented softening of the 404/405/OPTIONS part
 | `api-rate-limit` (120 requests per 60 s per IP, deny) | 150 requests in a row: 110 passed (about 14 earlier test requests already counted), 40 got 403; back to 200 after the window |
 | `api-no-query` (experiment, deny when the raw path contains `?`) | **Does not work**: `?cb=123` still returned 200, so `raw_path` excludes the query string. The rule was removed again; cache-busting stays covered by the per-IP rate limit only |
 
+**`/v1/photographs` (issue #290).** The allowlist regex below and in the "Update" paragraphs now carries `photographs` (list and `/v1/photographs/:slug`). The live `api-allowlist` rule is the owner's to edit: until it is, `/v1/photographs*` answers 403 in production, exactly as `/v1/poems*` did before its update. The web app does not call it (it reads the projection on the server), so nothing user-visible depends on it.
+
 **Entry endpoints (poems and the `:slug` details of projects, articles, artworks and poems).** The live `api-allowlist` rule was published with the older regex (`/health`, `/v1/(projection|places|groups|routes|projects|articles|artworks)` and `/v1/places/<slug>`), so until it is edited the new endpoints are denied by the firewall (403) in production. Update it when the API with the entry contract is deployed (owner action, same condition as above, new regex; the method condition is unchanged):
 
 ```bash
 vercel firewall rules edit "api-allowlist" \
-  --condition '{"type":"path","op":"re","value":"^/(health|v1/(projection|places|groups|routes|projects|articles|artworks|poems)|v1/(places|projects|articles|artworks|poems)/[a-z0-9]+(-[a-z0-9]+)*)$","neg":true}' \
+  --condition '{"type":"path","op":"re","value":"^/(health|v1/(projection|places|groups|routes|projects|articles|artworks|poems|photographs)|v1/(places|projects|articles|artworks|poems|photographs)/[a-z0-9]+(-[a-z0-9]+)*)$","neg":true}' \
   --or \
   --condition '{"type":"method","op":"ninc","value":["GET","HEAD","OPTIONS"]}' --yes
 vercel firewall publish --yes
@@ -159,7 +161,7 @@ Live rules: `vercel firewall rules list` from a directory linked to the project 
 # The path regex is pinned by a test (apps/api/test/app.test.ts, "firewall allowlist"): it must match every path the app
 # serves (lists, projection and one detail per place and per entry of the four kinds) and nothing more.
 vercel firewall rules add "api-allowlist" \
-  --condition '{"type":"path","op":"re","value":"^/(health|v1/(projection|places|groups|routes|projects|articles|artworks|poems)|v1/(places|projects|articles|artworks|poems)/[a-z0-9]+(-[a-z0-9]+)*)$","neg":true}' \
+  --condition '{"type":"path","op":"re","value":"^/(health|v1/(projection|places|groups|routes|projects|articles|artworks|poems|photographs)|v1/(places|projects|articles|artworks|poems|photographs)/[a-z0-9]+(-[a-z0-9]+)*)$","neg":true}' \
   --or \
   --condition '{"type":"method","op":"ninc","value":["GET","HEAD","OPTIONS"]}' \
   --action log --yes

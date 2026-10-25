@@ -11,6 +11,7 @@ import { NotFoundPage } from "~/components/not-found-page";
 import { SkipLinks } from "~/components/skip-links";
 import { noteVisit } from "~/globe";
 import { getContentMode, getProjection } from "~/lib/content.server";
+import { countEntries } from "~/lib/entries";
 import { THEME_COLORS } from "~/lib/site";
 import { getSiteUrl } from "~/lib/site.server";
 import "./app.css";
@@ -57,7 +58,8 @@ export async function loader() {
   // Only the dev badge needs the content mode: production builds never expose it (the branch is dead code there).
   // `hasCareer`: the header, the home page's list and the search show the career page only while the projection has a career document.
   const projection = await getProjection();
-  return { siteUrl: getSiteUrl(), devContentMode: import.meta.env.DEV ? getContentMode() : null, hasCareer: projection.career !== undefined };
+  // `counts`: how many entries each section holds, for the phone header's Sections sheet.
+  return { siteUrl: getSiteUrl(), devContentMode: import.meta.env.DEV ? getContentMode() : null, hasCareer: projection.career !== undefined, counts: countEntries(projection) };
 }
 
 /** The site origin, the dev badge and whether there is a career never change while the app runs: no navigation (a `?view=full` toggle, a filter chip, a tag link) reloads them. */

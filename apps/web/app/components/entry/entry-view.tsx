@@ -72,6 +72,8 @@ export function EntryView(props: EntryViewProps) {
 function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: EntryViewProps) {
   const full = layout === "full";
   const poem = entry.kind === "poem";
+  // A photograph is the page: its picture comes straight after the title, before the dateline and the marginalia.
+  const photo = entry.kind === "photograph";
   const { status, facts } = splitMeta(entry.meta);
   const date = formatEntryDate(entry.date);
   const language = entryLanguage(entry.meta);
@@ -82,7 +84,8 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
   const reading = entry.kind === "article" && !authoredReading ? formatReadingTime(readingMinutes(entry.body)) : null;
   const hasMore = entry.related.length > 0 || !!entry.prev || !!entry.next;
   const firstPlace = entry.places[0];
-  const names = placeNames(entry.places);
+  // Only the country known (`countryCode`): its name stands where the places would, and its link frames it on the globe.
+  const names = placeNames(entry.places) ?? entry.country?.name ?? null;
   const notice = copyrightNotice(entry);
   // The images of an article or a project are figures in the flow of the text, where the author put them (wide, captioned, cross-referenced, zoomable); an artwork's and a poem's stay in the text, wide.
   const editorial = entry.kind === "article" || entry.kind === "project";
@@ -109,9 +112,10 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
       Jump to contents
     </a>
   );
-  const globeLink = firstPlace && (
-    <Link to={firstPlace.href} className="entry-link inline-block no-underline hover:underline">
-      {firstPlace.name} <Icon name="arrow-up-right" size="inline" /> open on the globe
+  const globeTarget = firstPlace ?? (entry.country?.href ? { href: entry.country.href, name: entry.country.name } : null);
+  const globeLink = globeTarget && (
+    <Link to={globeTarget.href} className="entry-link inline-block no-underline hover:underline">
+      {globeTarget.name} <Icon name="arrow-up-right" size="inline" /> open on the globe
     </Link>
   );
 
@@ -120,7 +124,7 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
           {poem ? (
             <PoemMargin entry={entry} date={date} globeLink={globeLink} skip={skip} copy={copy} />
           ) : (
-            entry.places.length > 0 && <PlacesSection entry={entry} />
+            (entry.places.length > 0 || entry.country) && <PlacesSection entry={entry} />
           )}
           {rows.length > 0 && (
             <dl data-slot="entry-details" className={cn("m-0", poem && "mt-2")}>
@@ -208,6 +212,8 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
           {entry.summary && !poem && <p className="type-standfirst mt-[1.375rem] max-w-[25.4em] md:mt-[2.125rem]">{entry.summary}</p>}
         </header>
 
+        {photo && <Cover entry={entry} />}
+
         {!poem && (
           <div data-slot="entry-dateline" className="entry-dateline flex flex-wrap items-center gap-x-6 gap-y-1 md:gap-x-12">
             {date && (
@@ -224,7 +230,7 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
         )}
 
         {!poem && marginEl}
-        {!poem && <Cover entry={entry} />}
+        {!poem && !photo && <Cover entry={entry} />}
 
         <div className="entry-text min-w-0">
           <BlockRenderer blocks={entry.body} lang={language} dropCap={editorial} figures={editorial} className="gap-[1.1em]" />
@@ -299,11 +305,11 @@ function PoemMargin({
 }
 
 /**
- * How an authored cover fills its column, by kind: an artwork's picture is the work, kept whole in its own proportions (at most 80 % of
+ * How an authored cover fills its column, by kind: an artwork's or a photograph's picture is the work, kept whole in its own proportions (at most 80 % of
  * the window tall, centred); the others are banners cropped to the share image's 1.91:1.
  */
 export function coverFit(kind: EntryDetail["kind"]): string {
-  return kind === "artwork" ? "h-auto max-h-[80dvh] object-contain" : "aspect-[1.91/1] object-cover";
+  return kind === "artwork" || kind === "photograph" ? "h-auto max-h-[80dvh] object-contain" : "aspect-[1.91/1] object-cover";
 }
 
 /**
@@ -333,7 +339,7 @@ function Cover({ entry }: { entry: EntryDetail }) {
   );
 }
 
-/** Where: the places of the entry, each a link to the place on the globe, with its region as it is published. */
+/** Where: the places of the entry, each a link to the place on the globe, with its region as it is published; or only its country, framed on the globe. */
 function PlacesSection({ entry }: { entry: EntryDetail }) {
   return (
     <section aria-labelledby="entry-places" data-slot="entry-places">
@@ -349,6 +355,17 @@ function PlacesSection({ entry }: { entry: EntryDetail }) {
             {place.region && <span>, {place.region}</span>}
           </li>
         ))}
+        {entry.places.length === 0 && entry.country && (
+          <li data-slot="entry-country">
+            {entry.country.href ? (
+              <Link to={entry.country.href} className="entry-link inline-block">
+                {entry.country.name}
+              </Link>
+            ) : (
+              entry.country.name
+            )}
+          </li>
+        )}
       </ul>
     </section>
   );

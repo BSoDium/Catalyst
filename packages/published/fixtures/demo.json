@@ -6,13 +6,13 @@
       "dates": { "start": "2024-03", "end": "2024-04", "label": "Spring 2024" },
       "body": ["Lisbon is the city I keep returning to for no good reason, which is the best reason. The hills do the work of a gym, the light does the work of a therapist, and the trams do whatever they like.", "Most of what is filed here was written elsewhere and edited here, at a café table with a view of a laundry line and a slice of river. It is a good city for finishing things."],
       "images": [{ "src": "/media/demo/field-notes.svg", "alt": "A page of a grid notebook, drawn as a plain monochrome grid", "width": 960, "height": 600, "caption": "A page of the notebook that goes everywhere" }],
-      "related": [{ "kind": "article", "slug": "morocco-coast-bus" }, { "kind": "project", "slug": "label-collision-engine" }] },
+      "related": [{ "kind": "article", "slug": "morocco-coast-bus" }, { "kind": "project", "slug": "label-collision-engine" }, { "kind": "photograph", "slug": "sea-wall" }] },
     { "slug": "reykjavik", "name": "Reykjavík", "region": "Iceland", "coordinates": { "lat": 64.15, "lon": -21.94 }, "labelPriority": 50, "group": "europe", "countryCode": "IS",
       "body": [], "images": [], "related": [{ "kind": "poem", "slug": "demo-poem" }] },
     { "slug": "kyoto", "name": "Kyoto", "region": "Japan", "coordinates": { "lat": 35.01, "lon": 135.77 }, "labelPriority": 70, "group": "asia", "countryCode": "JP",
       "summary": "A week in the old capital, in a very small apartment, a printmaking studio and too many temples to count.", "body": [], "images": [], "related": [{ "kind": "artwork", "slug": "demo-artwork" }] },
     { "slug": "cusco", "name": "Cusco", "region": "Peru", "coordinates": { "lat": -13.52, "lon": -71.97 }, "labelPriority": 40, "group": "americas", "countryCode": "PE",
-      "body": [], "images": [], "related": [{ "kind": "article", "slug": "altiplano-crossing" }, { "kind": "artwork", "slug": "altiplano-sediment" }, { "kind": "poem", "slug": "cuesta-arriba" }] },
+      "body": [], "images": [], "related": [{ "kind": "article", "slug": "altiplano-crossing" }, { "kind": "artwork", "slug": "altiplano-sediment" }, { "kind": "poem", "slug": "cuesta-arriba" }, { "kind": "photograph", "slug": "demo-photograph" }] },
     { "slug": "cape-town", "name": "Cape Town", "region": "South Africa", "coordinates": { "lat": -33.92, "lon": 18.42 }, "labelPriority": 55, "countryCode": "ZA",
       "body": [], "images": [], "related": [] },
     { "slug": "vancouver", "name": "Vancouver", "region": "Canada", "coordinates": { "lat": 49.28, "lon": -123.12 }, "labelPriority": 45, "group": "americas", "countryCode": "CA",
@@ -24,7 +24,7 @@
     { "slug": "ho-chi-minh-city", "name": "Ho Chi Minh City", "region": "Vietnam", "coordinates": { "lat": 10.82, "lon": 106.63 }, "labelPriority": 25, "viewRadiusKm": 18, "group": "vietnam", "countryCode": "VN",
       "body": [], "images": [], "related": [] },
     { "slug": "hue", "name": "Huế", "region": "Vietnam", "coordinates": { "lat": 16.46, "lon": 107.59 }, "labelPriority": 20, "group": "vietnam", "countryCode": "VN",
-      "body": [], "images": [], "related": [{ "kind": "article", "slug": "rain-at-the-citadel-gate" }, { "kind": "poem", "slug": "citadel-rain" }] },
+      "body": [], "images": [], "related": [{ "kind": "article", "slug": "rain-at-the-citadel-gate" }, { "kind": "poem", "slug": "citadel-rain" }, { "kind": "photograph", "slug": "rain-at-the-gate" }] },
     { "slug": "paris", "name": "Paris", "region": "France", "coordinates": { "lat": 48.86, "lon": 2.35 }, "labelPriority": 65, "viewRadiusKm": 14, "group": "europe", "countryCode": "FR",
       "body": [], "images": [], "related": [] },
     { "slug": "ljubljana", "name": "Ljubljana", "region": "Slovenia", "coordinates": { "lat": 46.06, "lon": 14.51 }, "labelPriority": 40, "group": "balkans", "countryCode": "SI",
@@ -537,6 +537,147 @@
       "placeSlugs": ["paris"]
     }
     ],
+  "photographs": [
+    {
+      "slug": "demo-photograph",
+      "title": "Last Light over the Ridges",
+      "summary": "A long-lens view of the last ridges of the day, the sun a small bright disc above the haze.",
+      "date": "2026-03-14",
+      "cover": {
+        "src": "/media/demo/photo-last-light.svg",
+        "alt": "Seven layers of stair-stepped ridges fading into dithered haze under a small cyan sun, a stand-in for a landscape photograph",
+        "width": 1200,
+        "height": 800
+      },
+      "tags": [
+        "landscape",
+        "dusk",
+        "mountains"
+      ],
+      "meta": [
+        {
+          "label": "Format",
+          "value": "3:2 landscape"
+        },
+        {
+          "label": "Licence",
+          "value": "Demo image, free to reuse"
+        }
+      ],
+      "body": [
+        {
+          "type": "paragraph",
+          "text": "Taken a few minutes before the sun dropped behind the last ridge. The layers are separated only by haze, which is why the nearest one is the darkest."
+        }
+      ],
+      "placeSlugs": [
+        "cusco"
+      ]
+    },
+    {
+      "slug": "rain-at-the-gate",
+      "title": "Rain at the Gate",
+      "summary": "A portrait-format frame of rooftops under a storm sky, rain drawn out into thin diagonal lines.",
+      "date": "2026-02-02",
+      "cover": {
+        "src": "/media/demo/photo-rain-gate.svg",
+        "alt": "Rooftops under a dithered storm sky with thin diagonal rain streaks, a stand-in for a portrait-format photograph",
+        "width": 960,
+        "height": 1200
+      },
+      "tags": [
+        "rain",
+        "city",
+        "street"
+      ],
+      "meta": [
+        {
+          "label": "Format",
+          "value": "4:5 portrait"
+        },
+        {
+          "label": "Licence",
+          "value": "Demo image, free to reuse"
+        }
+      ],
+      "body": [
+        {
+          "type": "paragraph",
+          "text": "A slow shutter turned the rain into lines. The photograph was taken from a covered doorway, which is the only reason the lens stayed dry."
+        }
+      ],
+      "placeSlugs": [
+        "hue"
+      ]
+    },
+    {
+      "slug": "sea-wall",
+      "title": "Sea Wall",
+      "summary": "The coast road on its cliff, a line of dashes above the swell.",
+      "date": "2025-11",
+      "cover": {
+        "src": "/media/demo/photo-sea-wall.svg",
+        "alt": "A dashed road on a cliff above the sea on pale paper, a stand-in for a landscape photograph",
+        "width": 1200,
+        "height": 800
+      },
+      "tags": [
+        "coast",
+        "road",
+        "sea"
+      ],
+      "meta": [
+        {
+          "label": "Format",
+          "value": "3:2 landscape"
+        },
+        {
+          "label": "Licence",
+          "value": "Demo image, free to reuse"
+        }
+      ],
+      "body": [
+        { "type": "paragraph", "text": "The wall runs for about two kilometres. This is the stretch where the road bends away from it and the swell arrives with nothing to break it." }
+      ],
+      "placeSlugs": [
+        "lisbon"
+      ]
+    },
+    {
+      "slug": "platform-nine",
+      "title": "Platform Nine",
+      "summary": "An empty platform at night, one lamp in a different colour from the rest.",
+      "date": "2025-09-21",
+      "cover": {
+        "src": "/media/demo/photo-platform-square.svg",
+        "alt": "An empty platform in perspective with a pair of lamp posts per bay and one cyan lamp, a stand-in for a square photograph",
+        "width": 1200,
+        "height": 1200
+      },
+      "tags": [
+        "night",
+        "trains",
+        "architecture"
+      ],
+      "meta": [
+        {
+          "label": "Format",
+          "value": "1:1 square"
+        },
+        {
+          "label": "Licence",
+          "value": "Demo image, free to reuse"
+        }
+      ],
+      "body": [
+        {
+          "type": "paragraph",
+          "text": "A photograph with no place attached: an entry does not need one, and its page then has no place link."
+        }
+      ],
+      "placeSlugs": []
+    }
+  ],
   "career": {
     "title": "Career",
     "summary": "Frontend engineer who builds interfaces for map-heavy and data-heavy products. A made-up profile: every employer, school and link on this page is invented, so the page can be designed and tested without anything real.",
