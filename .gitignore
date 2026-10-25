@@ -16,6 +16,8 @@ dist/
 .claude/
 .handoff/
 coverage/
+# Reports of the performance scripts (scripts/perf/phone.mjs, run.mjs --out)
+apps/web/perf-out/
 
 # LOCAL PREVIEW of the owner's real places (written by `pnpm export:preview` in the private repo). Includes
 # unpublished drafts: never commit it. scripts/check-public-leaks.mjs fails if it is tracked or ends up in a build.
