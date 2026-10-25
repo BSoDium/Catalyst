@@ -185,7 +185,7 @@ Explicitly curated routes; stops are place slugs in travel order. Routes are nev
    "legs": [{ "mode": "rail", "polyline": "..." }, { "mode": "flight" }] }]
 ```
 
-Each route may also carry `summary` (a line or two about the trip, 1 to 400 characters) and `dates` (the same shape as a place's `dates`; months are enough). Both are additive in schema version 1 and optional; the place panel shows them on the trip's card. A route may also carry `url` (additive, optional, https only, the shared URL rules): the trip's own public page, for instance a public Polarsteps trip; the trip's card links to it ("Follow the trip on Polarsteps" for a polarsteps.com address, "Open the trip" for any other). **The exporter sets it only for a trip it knows to be public**; a trip whose visibility it cannot confirm has no `url`.
+Each route may also carry `summary` (a line or two about the trip, 1 to 400 characters) and `dates` (the same shape as a place's `dates`; months are enough). Both are additive in schema version 1 and optional; the place panel shows them on the trip's card. A route may also carry `url` (additive, optional, https only, the shared URL rules): the trip's own public page, for instance a public Polarsteps trip; the trip's card links to it ("Follow the trip on <host>", the host read from the address). **The exporter sets it only for a trip it knows to be public**; a trip whose visibility it cannot confirm has no `url`.
 
 #### Route legs (`routes[].legs`, optional, additive in schema version 1)
 

@@ -91,11 +91,9 @@ describe("tripsOf", () => {
 });
 
 describe("tripLinkLabel", () => {
-  it("names Polarsteps for a polarsteps.com page and says 'Open the trip' for any other address", () => {
-    expect(tripLinkLabel("https://www.polarsteps.com/someone/123-trip")).toBe("Follow the trip on Polarsteps");
-    expect(tripLinkLabel("https://polarsteps.com/someone/123-trip")).toBe("Follow the trip on Polarsteps");
-    expect(tripLinkLabel("https://polarsteps.com.example.org/x")).toBe("Open the trip");
-    expect(tripLinkLabel("https://example.org/trip")).toBe("Open the trip");
+  it("names the page's host without its 'www.', and says 'Open the trip' when there is none", () => {
+    expect(tripLinkLabel("https://www.example.org/someone/123-trip")).toBe("Follow the trip on example.org");
+    expect(tripLinkLabel("https://trips.example.org/x")).toBe("Follow the trip on trips.example.org");
     expect(tripLinkLabel("not a url")).toBe("Open the trip");
   });
 });

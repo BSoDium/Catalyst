@@ -186,11 +186,14 @@ export function tripsOf(projection: PublishedProjection, slug: string, nameOf: (
   return trips;
 }
 
-/** The words of a trip's link: "Follow the trip on Polarsteps" for a Polarsteps page, "Open the trip" for any other. */
+/**
+ * The words of a trip's link: "Follow the trip on <the page's host>" ("www." left off), "Open the trip" when there is no readable host. The host is read from the
+ * address at run time, so no site's name is written in this code (`scripts/check-public-leaks.mjs` keeps the private layers' vocabulary out of the bundles).
+ */
 export function tripLinkLabel(url: string): string {
   try {
-    const host = new URL(url).hostname.toLowerCase();
-    return host === "polarsteps.com" || host.endsWith(".polarsteps.com") ? "Follow the trip on Polarsteps" : "Open the trip";
+    const host = new URL(url).hostname.toLowerCase().replace(/^www\./, "");
+    return host ? `Follow the trip on ${host}` : "Open the trip";
   } catch {
     return "Open the trip";
   }
