@@ -92,6 +92,16 @@ describe("hero machine", () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
+  it("restore brings the full hero back at once at the world view, and does nothing away from it", () => {
+    machine.interact();
+    machine.restore();
+    expect(state()).toBe("rest");
+    expect(vi.getTimerCount()).toBe(0);
+    machine.setWorld(false);
+    machine.restore();
+    expect(state()).toBe("collapsed");
+  });
+
   it("every further input restarts the idle clock", () => {
     machine.interact();
     vi.advanceTimersByTime(HERO_IDLE_MS - 100);

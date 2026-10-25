@@ -23,8 +23,8 @@ export const CINEMATIC = {
    * floats clear of the surface and curves round the limb like the studio's wordmark. Its cap height is as large as its chord allows
    * (`placeEgg`): at least `capScale` times the rows' (twice), at most `maxCapScale`, and its half width on the screen reaches `fill` of the
    * planet's silhouette radius at most (the rows' limit is 1.04: the word is on the equator, level with none of the page's text, so it may
-   * overhang the disc's sides: the studio's wordmark is about 1.8 times as wide as its globe) and `maxHalfScreen` of the stage's width (a
-   * phone's planet is nearly as wide as the screen: the word must not leave it).
+   * overhang the disc's sides: the studio's wordmark is about 1.8 times as wide as its globe) and `maxHalfScreen` of the stage's width, measured at the last shot, with the globe
+   * pulled back (a phone's planet is nearly as wide as the screen at rest: the word must not leave it, and fills it once the planet has shrunk).
    */
   word: "UNIVERSAL",
   // (the word is baked into engine/cinematic-glyphs.ts: another word, or weight, is `pnpm --filter @catalyst/web bake:word <word> <weight> <opsz>`; a test holds the two together)

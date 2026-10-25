@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import type { CoverBlock, GlobeShowcase, GlobeSignal, GlobeViewState } from "~/globe";
+import { RESTORE_HERO_EVENT, type CoverBlock, type GlobeShowcase, type GlobeSignal, type GlobeViewState } from "~/globe";
 import { cameBackHome } from "~/lib/hero-rest";
 import { createHeroMachine, HERO_IDLE_MS, isWorldView, showcaseOf, type HeroMachine } from "~/lib/hero-machine";
 
@@ -127,6 +127,12 @@ export function useLandingHero(open: boolean): LandingHero {
     sync();
   }, [open, sync]);
   useEffect(() => () => machine.stop(), [machine]);
+  // (the search palette's interlude is asked for while a gesture had put the hero away: the caption it plays on comes back)
+  useEffect(() => {
+    const restore = () => machine.restore();
+    window.addEventListener(RESTORE_HERO_EVENT, restore);
+    return () => window.removeEventListener(RESTORE_HERO_EVENT, restore);
+  }, [machine]);
   useEffect(() => watchFocusHold(machine), [machine]);
 
   return useMemo(() => ({ machine, onInteract, onView, showcase, setCover }), [machine, onInteract, onView, showcase, setCover]);

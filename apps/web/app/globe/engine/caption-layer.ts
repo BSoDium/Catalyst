@@ -1547,7 +1547,8 @@ export class CaptionLayer {
       // the big row alone, on its own higher shell: as large as its chord allows (never under twice the others' cap, never over `maxCapScale`)
       const floorCap = CAPTION.minCapPx / sizing.r;
       b.egg.place = placeEgg(b.egg.piece.box, sizing.d, CINEMATIC.radius, {
-        fill: Math.min(CINEMATIC.fill, (CINEMATIC.maxHalfScreen * (this.opts.host.clientWidth || Infinity)) / sizing.r),
+        // (the screen's limit is met where the word is seen: at the last shot, with the globe pulled back, so the planet and the word are `2^-zoomLevels` of the size they are laid out at)
+        fill: Math.min(CINEMATIC.fill, (CINEMATIC.maxHalfScreen * (this.opts.host.clientWidth || Infinity)) / (sizing.r * 2 ** -(this.motion.egg?.shape ?? CINEMATIC.shape).zoomLevels)),
         minCap: Math.max(CINEMATIC.capScale * CAPTION.capR, floorCap),
         maxCap: CINEMATIC.maxCapScale * CAPTION.capR,
         ampRad: ((this.motion.egg?.shape ?? CINEMATIC.shape).ampDeg * Math.PI) / 180,

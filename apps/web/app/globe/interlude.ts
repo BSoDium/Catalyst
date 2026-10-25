@@ -5,6 +5,9 @@
 export const PLAY_INTERLUDE_EVENT = "site:play-interlude";
 export const PREPARE_INTERLUDE_EVENT = "site:prepare-interlude";
 
+/** The interlude needs the full hero (the caption), which a gesture on the globe put away: whoever holds the hero brings it back. */
+export const RESTORE_HERO_EVENT = "site:restore-hero";
+
 export interface PlayInterludeRequest {
   /** Set by the globe that took the request. */
   handled: boolean;
@@ -15,6 +18,7 @@ export function requestInterlude(): boolean {
   if (typeof window === "undefined") return false;
   const detail: PlayInterludeRequest = { handled: false };
   window.dispatchEvent(new CustomEvent<PlayInterludeRequest>(PLAY_INTERLUDE_EVENT, { detail }));
+  if (!detail.handled) window.dispatchEvent(new Event(RESTORE_HERO_EVENT));
   return detail.handled;
 }
 
