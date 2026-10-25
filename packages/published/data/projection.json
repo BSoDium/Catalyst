@@ -7496,7 +7496,6 @@
       "slug": "city-from-above",
       "title": "A city from above",
       "summary": "Aerial view of a dense city of low buildings stretching to the mountains, a cluster of towers in the foreground under a cloudy sky.",
-      "date": "2025",
       "cover": {
         "src": "/media/photography/city-from-above.webp",
         "alt": "Aerial view of a dense city of low buildings stretching to the mountains, a cluster of towers in the foreground under a cloudy sky",
@@ -7506,13 +7505,14 @@
       "tags": [
         "travel"
       ],
-      "placeSlugs": []
+      "placeSlugs": [
+        "bogota"
+      ]
     },
     {
       "slug": "minaret-and-rooftops",
       "title": "Minaret over the rooftops",
       "summary": "A tall brick minaret and a small green-domed mosque among flat rooftops and trees, under a pale sky.",
-      "date": "2025",
       "cover": {
         "src": "/media/photography/minaret-and-rooftops.webp",
         "alt": "A tall brick minaret and a small green-domed mosque among flat rooftops and trees, under a pale sky",
@@ -7522,13 +7522,14 @@
       "tags": [
         "travel"
       ],
-      "placeSlugs": []
+      "placeSlugs": [
+        "saint-louis"
+      ]
     },
     {
       "slug": "painted-boats",
       "title": "Painted boats on the sand",
       "summary": "The raised prows of brightly painted wooden boats on a beach, covered in colourful patterns and Arabic script.",
-      "date": "2025",
       "cover": {
         "src": "/media/photography/painted-boats.webp",
         "alt": "The raised prows of brightly painted wooden boats on a beach, covered in colourful patterns and Arabic script",
@@ -7538,13 +7539,14 @@
       "tags": [
         "travel"
       ],
-      "placeSlugs": []
+      "placeSlugs": [
+        "saint-louis"
+      ]
     },
     {
       "slug": "walkway-at-dusk",
       "title": "Walkway at dusk",
       "summary": "A person walks along a wet riverside walkway beside a metal railing as the sun breaks through grey clouds.",
-      "date": "2025",
       "cover": {
         "src": "/media/photography/walkway-at-dusk.webp",
         "alt": "A person walks along a wet riverside walkway beside a metal railing as the sun breaks through grey clouds",
@@ -7554,13 +7556,14 @@
       "tags": [
         "travel"
       ],
-      "placeSlugs": []
+      "placeSlugs": [
+        "saint-louis"
+      ]
     },
     {
       "slug": "flooded-street",
       "title": "Flooded street",
       "summary": "A busy street after rain: a horse-drawn cart loaded with goods, a bus, a taxi and a man in a striped robe standing in the water.",
-      "date": "2025",
       "cover": {
         "src": "/media/photography/flooded-street.webp",
         "alt": "A busy street after rain: a horse-drawn cart loaded with goods, a bus, a taxi and a man in a striped robe standing in the water",
@@ -7570,13 +7573,14 @@
       "tags": [
         "travel"
       ],
-      "placeSlugs": []
+      "placeSlugs": [
+        "saint-louis"
+      ]
     },
     {
       "slug": "blue-facade",
       "title": "Blue facade",
       "summary": "Close view of a building facade made of pale blue vertical panels and rows of narrow windows.",
-      "date": "2025",
       "cover": {
         "src": "/media/photography/blue-facade.webp",
         "alt": "Close view of a building facade made of pale blue vertical panels and rows of narrow windows",
@@ -7586,13 +7590,14 @@
       "tags": [
         "travel"
       ],
-      "placeSlugs": []
+      "placeSlugs": [
+        "santiago-de-cali"
+      ]
     },
     {
       "slug": "concrete-terraces",
       "title": "Concrete terraces",
       "summary": "A brutalist concrete building seen from below, its stepped terraces and deep square openings repeating up the frame.",
-      "date": "2025",
       "cover": {
         "src": "/media/photography/concrete-terraces.webp",
         "alt": "A brutalist concrete building seen from below, its stepped terraces and deep square openings repeating up the frame",
@@ -7602,13 +7607,14 @@
       "tags": [
         "travel"
       ],
-      "placeSlugs": []
+      "placeSlugs": [
+        "santiago-de-cali"
+      ]
     },
     {
       "slug": "facade-grid",
       "title": "Facade grid",
       "summary": "A tall blue-grey facade of repeating square windows set in a regular grid, seen at an angle against the sky.",
-      "date": "2025",
       "cover": {
         "src": "/media/photography/facade-grid.webp",
         "alt": "A tall blue-grey facade of repeating square windows set in a regular grid, seen at an angle against the sky",
@@ -7626,7 +7632,6 @@
       "slug": "flower-bearers",
       "title": "Flower bearers",
       "summary": "Young women in embroidered red and blue dresses carry arrangements of flowers through a street at night.",
-      "date": "2025",
       "cover": {
         "src": "/media/photography/flower-bearers.webp",
         "alt": "Young women in embroidered red and blue dresses carry arrangements of flowers through a street at night",
@@ -7636,13 +7641,14 @@
       "tags": [
         "travel"
       ],
-      "placeSlugs": []
+      "placeSlugs": [
+        "popayan"
+      ]
     },
     {
       "slug": "carrying-the-float",
       "title": "Carrying the float",
       "summary": "Men in white shirts and black ties carry a heavy gilded float of candles and flowers during a procession.",
-      "date": "2025",
       "cover": {
         "src": "/media/photography/carrying-the-float.webp",
         "alt": "Men in white shirts and black ties carry a heavy gilded float of candles and flowers during a procession",
@@ -7652,13 +7658,14 @@
       "tags": [
         "travel"
       ],
-      "placeSlugs": []
+      "placeSlugs": [
+        "popayan"
+      ]
     },
     {
       "slug": "bow-of-a-boat",
       "title": "Bow of a boat",
       "summary": "The bow of a boat loaded with sacks, a small red-and-white flag on a mast, crossing a wide river under a blue sky and clouds, on the river boat towards Ecuador.",
-      "date": "2025",
       "cover": {
         "src": "/media/photography/bow-of-a-boat.webp",
         "alt": "The bow of a boat loaded with sacks, a small red-and-white flag on a mast, crossing a wide river under a blue sky and clouds",
@@ -7675,7 +7682,6 @@
       "slug": "watermelons-on-deck",
       "title": "Watermelons on deck",
       "summary": "A narrow passage between stacks of watermelons on a boat deck, bags of onions hanging overhead, on the river boat towards Ecuador.",
-      "date": "2025",
       "cover": {
         "src": "/media/photography/watermelons-on-deck.webp",
         "alt": "A narrow passage between stacks of watermelons on a boat deck, bags of onions hanging overhead",
@@ -7692,7 +7698,6 @@
       "slug": "unloading-at-the-bank",
       "title": "Unloading at the bank",
       "summary": "Seen from above, people unload crates and bundles from boats onto a muddy river bank, a cow in the corner, on the river boat towards Ecuador.",
-      "date": "2025",
       "cover": {
         "src": "/media/photography/unloading-at-the-bank.webp",
         "alt": "Seen from above, people unload crates and bundles from boats onto a muddy river bank, a cow in the corner",
@@ -7709,7 +7714,6 @@
       "slug": "orange-bus-interior",
       "title": "Orange bus interior",
       "summary": "Inside an orange bus, a passenger in a grey T-shirt steps down toward the open door.",
-      "date": "2025",
       "cover": {
         "src": "/media/photography/orange-bus-interior.webp",
         "alt": "Inside an orange bus, a passenger in a grey T-shirt steps down toward the open door",
@@ -7725,7 +7729,6 @@
       "slug": "orange-train",
       "title": "Orange train",
       "summary": "The side of a cream and orange train under overhead wires, a half-built concrete building behind it against a blue sky.",
-      "date": "2025",
       "cover": {
         "src": "/media/photography/orange-train.webp",
         "alt": "The side of a cream and orange train under overhead wires, a half-built concrete building behind it against a blue sky",
@@ -7743,7 +7746,6 @@
       "slug": "golden-hour-on-the-train",
       "title": "Golden hour on the train",
       "summary": "Low sun through the window of an ONCF carriage on the line to Safi, numbered seats in the foreground.",
-      "date": "2025",
       "cover": {
         "src": "/media/photography/golden-hour-on-the-train.webp",
         "alt": "Low sun glows through the window of a train carriage, with numbered seats in the foreground",
@@ -7761,7 +7763,6 @@
       "slug": "wake",
       "title": "Wake",
       "summary": "Three passengers lean on the rail of a ferry and watch the white wake behind it on a dark blue sea.",
-      "date": "2025",
       "cover": {
         "src": "/media/photography/wake.webp",
         "alt": "Three passengers lean on the rail of a ferry and watch the white wake behind it on a dark blue sea",
@@ -7771,13 +7772,14 @@
       "tags": [
         "travel"
       ],
-      "placeSlugs": []
+      "placeSlugs": [
+        "strait-of-gibraltar"
+      ]
     },
     {
       "slug": "pointing-at-the-hills",
       "title": "Pointing at the hills",
       "summary": "On the hills above Sinaia, at about 2,000 m: a person in a hood stands in tall grass and points across the slopes.",
-      "date": "2025",
       "cover": {
         "src": "/media/photography/pointing-at-the-hills.webp",
         "alt": "A person in a hood and light trousers stands in tall grass pointing across the hills, a pale arch of light behind them",
