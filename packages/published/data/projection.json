@@ -2019,6 +2019,25 @@
       "related": []
     },
     {
+      "slug": "puerto-espana",
+      "name": "Puerto España",
+      "coordinates": {
+        "lat": -3.88,
+        "lon": -71.45
+      },
+      "labelPriority": 42,
+      "group": "puerto-espana-area",
+      "countryCode": "PE",
+      "body": [],
+      "images": [],
+      "related": [
+        {
+          "kind": "photograph",
+          "slug": "unloading-at-the-bank"
+        }
+      ]
+    },
+    {
       "slug": "puerto-francisco-de-orellana",
       "name": "Puerto Francisco de Orellana",
       "coordinates": {
@@ -2096,7 +2115,7 @@
         "lon": -71.75
       },
       "labelPriority": 34,
-      "group": "peru",
+      "group": "puerto-espana-area",
       "countryCode": "PE",
       "body": [],
       "images": [],
@@ -3720,6 +3739,18 @@
       },
       "viewRadiusKm": 141.2,
       "labelPriority": 70
+    },
+    {
+      "slug": "puerto-espana-area",
+      "name": "Puerto España area",
+      "kind": "area",
+      "parent": "peru",
+      "coordinates": {
+        "lat": -3.785,
+        "lon": -71.6
+      },
+      "viewRadiusKm": 34.9,
+      "labelPriority": 55
     },
     {
       "slug": "quito-area",
@@ -7819,7 +7850,8 @@
     {
       "slug": "unloading-at-the-bank",
       "title": "Unloading at the bank",
-      "summary": "Seen from the boat, people unload crates and bundles onto a muddy bank of the Amazon in Peru, a cow in the corner.",
+      "summary": "Seen from the boat, people unload crates and bundles onto a muddy bank of the Amazon at Puerto España, a cow in the corner.",
+      "date": "2025-08-29",
       "cover": {
         "src": "/media/photograph/unloading-at-the-bank/photo.541adc87.webp",
         "alt": "Seen from above, people unload crates and bundles from boats onto a muddy river bank, a cow in the corner",
@@ -7832,8 +7864,9 @@
         "amazon",
         "peru"
       ],
-      "placeSlugs": [],
-      "countryCode": "PE"
+      "placeSlugs": [
+        "puerto-espana"
+      ]
     },
     {
       "slug": "wake",
