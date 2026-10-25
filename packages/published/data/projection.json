@@ -149,7 +149,7 @@
         32.2640592
       ],
       "viewRadiusKm": 4.5,
-      "group": "marrakesh-region",
+      "group": "safi-region",
       "countryCode": "MA",
       "body": [],
       "images": [],
@@ -197,7 +197,7 @@
         "lat": 4.64,
         "lon": -74.09
       },
-      "labelPriority": 44,
+      "labelPriority": 52,
       "bbox": [
         -74.2235137,
         4.505873,
@@ -209,7 +209,12 @@
       "countryCode": "CO",
       "body": [],
       "images": [],
-      "related": []
+      "related": [
+        {
+          "kind": "photograph",
+          "slug": "city-from-above"
+        }
+      ]
     },
     {
       "slug": "brasov",
@@ -226,7 +231,7 @@
         45.713487
       ],
       "viewRadiusKm": 12.2,
-      "group": "brasov-area",
+      "group": "sinaia-area",
       "countryCode": "RO",
       "body": [],
       "images": [],
@@ -289,7 +294,7 @@
         44.5413964
       ],
       "viewRadiusKm": 15.5,
-      "group": "bucharest-region",
+      "group": "sinaia-region",
       "countryCode": "RO",
       "body": [],
       "images": [],
@@ -407,7 +412,7 @@
         "lat": 33.59,
         "lon": -7.59
       },
-      "labelPriority": 42,
+      "labelPriority": 51,
       "bbox": [
         -7.723871,
         33.493342,
@@ -419,7 +424,12 @@
       "countryCode": "MA",
       "body": [],
       "images": [],
-      "related": []
+      "related": [
+        {
+          "kind": "photograph",
+          "slug": "orange-train"
+        }
+      ]
     },
     {
       "slug": "central-macedonia",
@@ -994,7 +1004,7 @@
         -3.6852526
       ],
       "viewRadiusKm": 22.7,
-      "group": "iquitos-area",
+      "group": "napo-area",
       "countryCode": "PE",
       "body": [],
       "images": [],
@@ -1367,7 +1377,7 @@
         31.7104265
       ],
       "viewRadiusKm": 13.4,
-      "group": "marrakesh-region",
+      "group": "safi-region",
       "countryCode": "MA",
       "body": [],
       "images": [],
@@ -1583,12 +1593,17 @@
         "lat": -2.49,
         "lon": -73.68
       },
-      "labelPriority": 34,
-      "group": "iquitos-area",
+      "labelPriority": 42,
+      "group": "napo-area",
       "countryCode": "PE",
       "body": [],
       "images": [],
-      "related": []
+      "related": [
+        {
+          "kind": "photograph",
+          "slug": "speedboat-on-the-napo"
+        }
+      ]
     },
     {
       "slug": "new-york",
@@ -1938,7 +1953,7 @@
         "lat": 2.44,
         "lon": -76.6
       },
-      "labelPriority": 37,
+      "labelPriority": 51,
       "bbox": [
         -76.6485077,
         2.4192676,
@@ -1950,7 +1965,16 @@
       "countryCode": "CO",
       "body": [],
       "images": [],
-      "related": []
+      "related": [
+        {
+          "kind": "photograph",
+          "slug": "carrying-the-float"
+        },
+        {
+          "kind": "photograph",
+          "slug": "flower-bearers"
+        }
+      ]
     },
     {
       "slug": "pristina",
@@ -2148,7 +2172,7 @@
         "lat": 32.29,
         "lon": -9.24
       },
-      "labelPriority": 38,
+      "labelPriority": 47,
       "bbox": [
         -9.274596,
         32.215421,
@@ -2156,11 +2180,16 @@
         32.314415
       ],
       "viewRadiusKm": 6.9,
-      "group": "marrakesh-region",
+      "group": "safi-region",
       "countryCode": "MA",
       "body": [],
       "images": [],
-      "related": []
+      "related": [
+        {
+          "kind": "photograph",
+          "slug": "golden-hour-on-the-train"
+        }
+      ]
     },
     {
       "slug": "saint-louis",
@@ -2169,7 +2198,7 @@
         "lat": 16.03,
         "lon": -16.49
       },
-      "labelPriority": 34,
+      "labelPriority": 54,
       "bbox": [
         -16.5159978,
         15.9577436,
@@ -2181,7 +2210,24 @@
       "countryCode": "SN",
       "body": [],
       "images": [],
-      "related": []
+      "related": [
+        {
+          "kind": "photograph",
+          "slug": "flooded-street"
+        },
+        {
+          "kind": "photograph",
+          "slug": "minaret-and-rooftops"
+        },
+        {
+          "kind": "photograph",
+          "slug": "painted-boats"
+        },
+        {
+          "kind": "photograph",
+          "slug": "walkway-at-dusk"
+        }
+      ]
     },
     {
       "slug": "salta",
@@ -2246,7 +2292,7 @@
         "lat": 3.44,
         "lon": -76.54
       },
-      "labelPriority": 41,
+      "labelPriority": 59,
       "bbox": [
         -76.5928361,
         3.3322025,
@@ -2258,7 +2304,20 @@
       "countryCode": "CO",
       "body": [],
       "images": [],
-      "related": []
+      "related": [
+        {
+          "kind": "photograph",
+          "slug": "blue-facade"
+        },
+        {
+          "kind": "photograph",
+          "slug": "concrete-terraces"
+        },
+        {
+          "kind": "photograph",
+          "slug": "facade-grid"
+        }
+      ]
     },
     {
       "slug": "santo-antonio-do-ica",
@@ -2429,7 +2488,7 @@
         46.288403
       ],
       "viewRadiusKm": 8.5,
-      "group": "bucharest-region",
+      "group": "sinaia-region",
       "countryCode": "RO",
       "body": [],
       "images": [],
@@ -2442,7 +2501,7 @@
         "lat": 45.36,
         "lon": 25.54
       },
-      "labelPriority": 34,
+      "labelPriority": 42,
       "bbox": [
         25.467696,
         45.2963966,
@@ -2450,11 +2509,16 @@
         45.3886114
       ],
       "viewRadiusKm": 8.1,
-      "group": "brasov-area",
+      "group": "sinaia-area",
       "countryCode": "RO",
       "body": [],
       "images": [],
-      "related": []
+      "related": [
+        {
+          "kind": "photograph",
+          "slug": "pointing-at-the-hills"
+        }
+      ]
     },
     {
       "slug": "skopje",
@@ -2519,12 +2583,17 @@
         "lat": 35.91,
         "lon": -5.76
       },
-      "labelPriority": 34,
-      "group": "tangier-area",
+      "labelPriority": 42,
+      "group": "strait-of-gibraltar-area",
       "countryCode": "MA",
       "body": [],
       "images": [],
-      "related": []
+      "related": [
+        {
+          "kind": "photograph",
+          "slug": "wake"
+        }
+      ]
     },
     {
       "slug": "tan-tan",
@@ -2562,7 +2631,7 @@
         35.8259979
       ],
       "viewRadiusKm": 11.9,
-      "group": "tangier-area",
+      "group": "strait-of-gibraltar-area",
       "countryCode": "MA",
       "body": [],
       "images": [],
@@ -3034,7 +3103,7 @@
       "slug": "ait-benhaddou-area",
       "name": "Ait Benhaddou area",
       "kind": "area",
-      "parent": "marrakesh-region",
+      "parent": "safi-region",
       "coordinates": {
         "lat": 31.25,
         "lon": -7.257
@@ -3186,18 +3255,6 @@
       "labelPriority": 70
     },
     {
-      "slug": "brasov-area",
-      "name": "Brasov area",
-      "kind": "area",
-      "parent": "bucharest-region",
-      "coordinates": {
-        "lat": 45.502,
-        "lon": 25.575
-      },
-      "viewRadiusKm": 28.6,
-      "labelPriority": 55
-    },
-    {
       "slug": "brazil",
       "name": "Brazil",
       "kind": "country",
@@ -3208,18 +3265,6 @@
       },
       "viewRadiusKm": 1338.7,
       "labelPriority": 70
-    },
-    {
-      "slug": "bucharest-region",
-      "name": "Bucharest region",
-      "kind": "area",
-      "parent": "romania",
-      "coordinates": {
-        "lat": 45.306,
-        "lon": 25.469
-      },
-      "viewRadiusKm": 136.5,
-      "labelPriority": 57
     },
     {
       "slug": "bulgaria",
@@ -3425,18 +3470,6 @@
       "labelPriority": 57
     },
     {
-      "slug": "iquitos-area",
-      "name": "Iquitos area",
-      "kind": "area",
-      "parent": "peru",
-      "coordinates": {
-        "lat": -3.185,
-        "lon": -73.537
-      },
-      "viewRadiusKm": 100,
-      "labelPriority": 55
-    },
-    {
       "slug": "italy",
       "name": "Italy",
       "kind": "country",
@@ -3521,18 +3554,6 @@
       "labelPriority": 80
     },
     {
-      "slug": "marrakesh-region",
-      "name": "Marrakesh region",
-      "kind": "area",
-      "parent": "morocco",
-      "coordinates": {
-        "lat": 31.648,
-        "lon": -8.151
-      },
-      "viewRadiusKm": 142.7,
-      "labelPriority": 57
-    },
-    {
       "slug": "mauritania",
       "name": "Mauritania",
       "kind": "country",
@@ -3615,6 +3636,18 @@
       },
       "viewRadiusKm": 80.6,
       "labelPriority": 57
+    },
+    {
+      "slug": "napo-area",
+      "name": "Napo area",
+      "kind": "area",
+      "parent": "peru",
+      "coordinates": {
+        "lat": -3.185,
+        "lon": -73.537
+      },
+      "viewRadiusKm": 100,
+      "labelPriority": 55
     },
     {
       "slug": "north-macedonia",
@@ -3725,6 +3758,18 @@
       "labelPriority": 70
     },
     {
+      "slug": "safi-region",
+      "name": "Safi region",
+      "kind": "area",
+      "parent": "morocco",
+      "coordinates": {
+        "lat": 31.648,
+        "lon": -8.151
+      },
+      "viewRadiusKm": 142.7,
+      "labelPriority": 57
+    },
+    {
       "slug": "saint-louis-area",
       "name": "Saint-Louis area",
       "kind": "area",
@@ -3797,6 +3842,30 @@
       "labelPriority": 55
     },
     {
+      "slug": "sinaia-area",
+      "name": "Sinaia area",
+      "kind": "area",
+      "parent": "sinaia-region",
+      "coordinates": {
+        "lat": 45.502,
+        "lon": 25.575
+      },
+      "viewRadiusKm": 28.6,
+      "labelPriority": 55
+    },
+    {
+      "slug": "sinaia-region",
+      "name": "Sinaia region",
+      "kind": "area",
+      "parent": "romania",
+      "coordinates": {
+        "lat": 45.306,
+        "lon": 25.469
+      },
+      "viewRadiusKm": 136.5,
+      "labelPriority": 57
+    },
+    {
       "slug": "spain",
       "name": "Spain",
       "kind": "country",
@@ -3809,8 +3878,8 @@
       "labelPriority": 70
     },
     {
-      "slug": "tangier-area",
-      "name": "Tangier area",
+      "slug": "strait-of-gibraltar-area",
+      "name": "Strait of Gibraltar area",
       "kind": "area",
       "parent": "morocco",
       "coordinates": {
@@ -7493,99 +7562,15 @@
   ],
   "photographs": [
     {
-      "slug": "city-from-above",
-      "title": "A city from above",
-      "summary": "Aerial view of a dense city of low buildings stretching to the mountains, a cluster of towers in the foreground under a cloudy sky.",
-      "cover": {
-        "src": "/media/photography/city-from-above.webp",
-        "alt": "Aerial view of a dense city of low buildings stretching to the mountains, a cluster of towers in the foreground under a cloudy sky",
-        "width": 2400,
-        "height": 3188
-      },
-      "tags": [
-        "travel"
-      ],
-      "placeSlugs": [
-        "bogota"
-      ]
-    },
-    {
-      "slug": "minaret-and-rooftops",
-      "title": "Minaret over the rooftops",
-      "summary": "A tall brick minaret and a small green-domed mosque among flat rooftops and trees, under a pale sky.",
-      "cover": {
-        "src": "/media/photography/minaret-and-rooftops.webp",
-        "alt": "A tall brick minaret and a small green-domed mosque among flat rooftops and trees, under a pale sky",
-        "width": 2400,
-        "height": 2735
-      },
-      "tags": [
-        "travel"
-      ],
-      "placeSlugs": [
-        "saint-louis"
-      ]
-    },
-    {
-      "slug": "painted-boats",
-      "title": "Painted boats on the sand",
-      "summary": "The raised prows of brightly painted wooden boats on a beach, covered in colourful patterns and Arabic script.",
-      "cover": {
-        "src": "/media/photography/painted-boats.webp",
-        "alt": "The raised prows of brightly painted wooden boats on a beach, covered in colourful patterns and Arabic script",
-        "width": 2400,
-        "height": 2402
-      },
-      "tags": [
-        "travel"
-      ],
-      "placeSlugs": [
-        "saint-louis"
-      ]
-    },
-    {
-      "slug": "walkway-at-dusk",
-      "title": "Walkway at dusk",
-      "summary": "A person walks along a wet riverside walkway beside a metal railing as the sun breaks through grey clouds.",
-      "cover": {
-        "src": "/media/photography/walkway-at-dusk.webp",
-        "alt": "A person walks along a wet riverside walkway beside a metal railing as the sun breaks through grey clouds",
-        "width": 2400,
-        "height": 3187
-      },
-      "tags": [
-        "travel"
-      ],
-      "placeSlugs": [
-        "saint-louis"
-      ]
-    },
-    {
-      "slug": "flooded-street",
-      "title": "Flooded street",
-      "summary": "A busy street after rain: a horse-drawn cart loaded with goods, a bus, a taxi and a man in a striped robe standing in the water.",
-      "cover": {
-        "src": "/media/photography/flooded-street.webp",
-        "alt": "A busy street after rain: a horse-drawn cart loaded with goods, a bus, a taxi and a man in a striped robe standing in the water",
-        "width": 2400,
-        "height": 3188
-      },
-      "tags": [
-        "travel"
-      ],
-      "placeSlugs": [
-        "saint-louis"
-      ]
-    },
-    {
       "slug": "blue-facade",
       "title": "Blue facade",
       "summary": "Close view of a building facade made of pale blue vertical panels and rows of narrow windows.",
+      "date": "2025-09-15",
       "cover": {
-        "src": "/media/photography/blue-facade.webp",
+        "src": "/media/photograph/blue-facade/photo.491ce587.webp",
         "alt": "Close view of a building facade made of pale blue vertical panels and rows of narrow windows",
-        "width": 2400,
-        "height": 3007
+        "width": 1916,
+        "height": 2400
       },
       "tags": [
         "travel"
@@ -7595,14 +7580,70 @@
       ]
     },
     {
+      "slug": "bow-of-a-boat",
+      "title": "Bow of a boat",
+      "summary": "The bow of a cargo boat loaded with sacks, a small flag on its mast, somewhere on the Amazon in Brazil.",
+      "cover": {
+        "src": "/media/photograph/bow-of-a-boat/photo.e2b95d30.webp",
+        "alt": "The bow of a boat loaded with sacks, a small red-and-white flag on a mast, crossing a wide river under a blue sky and clouds",
+        "width": 1807,
+        "height": 2400
+      },
+      "tags": [
+        "travel",
+        "river",
+        "amazon",
+        "brazil"
+      ],
+      "placeSlugs": [],
+      "countryCode": "BR"
+    },
+    {
+      "slug": "carrying-the-float",
+      "title": "Carrying the float",
+      "summary": "Men in white shirts and black ties carry a heavy gilded float of candles and flowers during a procession.",
+      "date": "2025-09-13",
+      "cover": {
+        "src": "/media/photograph/carrying-the-float/photo.cd9bb1d9.webp",
+        "alt": "Men in white shirts and black ties carry a heavy gilded float of candles and flowers during a procession",
+        "width": 1586,
+        "height": 2400
+      },
+      "tags": [
+        "travel"
+      ],
+      "placeSlugs": [
+        "popayan"
+      ]
+    },
+    {
+      "slug": "city-from-above",
+      "title": "A city from above",
+      "summary": "Aerial view of a dense city of low buildings stretching to the mountains, a cluster of towers in the foreground under a cloudy sky.",
+      "date": "2025-09",
+      "cover": {
+        "src": "/media/photograph/city-from-above/photo.b03ef3a6.webp",
+        "alt": "Aerial view of a dense city of low buildings stretching to the mountains, a cluster of towers in the foreground under a cloudy sky",
+        "width": 1807,
+        "height": 2400
+      },
+      "tags": [
+        "travel"
+      ],
+      "placeSlugs": [
+        "bogota"
+      ]
+    },
+    {
       "slug": "concrete-terraces",
       "title": "Concrete terraces",
       "summary": "A brutalist concrete building seen from below, its stepped terraces and deep square openings repeating up the frame.",
+      "date": "2025-09-15",
       "cover": {
-        "src": "/media/photography/concrete-terraces.webp",
+        "src": "/media/photograph/concrete-terraces/photo.07ad9530.webp",
         "alt": "A brutalist concrete building seen from below, its stepped terraces and deep square openings repeating up the frame",
-        "width": 2400,
-        "height": 2979
+        "width": 1934,
+        "height": 2400
       },
       "tags": [
         "travel"
@@ -7615,11 +7656,12 @@
       "slug": "facade-grid",
       "title": "Facade grid",
       "summary": "A tall blue-grey facade of repeating square windows set in a regular grid, seen at an angle against the sky.",
+      "date": "2025-09-15",
       "cover": {
-        "src": "/media/photography/facade-grid.webp",
+        "src": "/media/photograph/facade-grid/photo.85382370.webp",
         "alt": "A tall blue-grey facade of repeating square windows set in a regular grid, seen at an angle against the sky",
-        "width": 2400,
-        "height": 3223
+        "width": 1787,
+        "height": 2400
       },
       "tags": [
         "travel"
@@ -7629,137 +7671,48 @@
       ]
     },
     {
+      "slug": "flooded-street",
+      "title": "Flooded street",
+      "summary": "A busy street after rain: a horse-drawn cart loaded with goods, a bus, a taxi and a man in a striped robe standing in the water.",
+      "date": "2025-08-08",
+      "cover": {
+        "src": "/media/photograph/flooded-street/photo.06725ae1.webp",
+        "alt": "A busy street after rain: a horse-drawn cart loaded with goods, a bus, a taxi and a man in a striped robe standing in the water",
+        "width": 1807,
+        "height": 2400
+      },
+      "tags": [
+        "travel"
+      ],
+      "placeSlugs": [
+        "saint-louis"
+      ]
+    },
+    {
       "slug": "flower-bearers",
       "title": "Flower bearers",
       "summary": "Young women in embroidered red and blue dresses carry arrangements of flowers through a street at night.",
+      "date": "2025-09-13",
       "cover": {
-        "src": "/media/photography/flower-bearers.webp",
+        "src": "/media/photograph/flower-bearers/photo.853a20e3.webp",
         "alt": "Young women in embroidered red and blue dresses carry arrangements of flowers through a street at night",
-        "width": 2400,
-        "height": 3117
+        "width": 1848,
+        "height": 2400
       },
       "tags": [
         "travel"
       ],
       "placeSlugs": [
         "popayan"
-      ]
-    },
-    {
-      "slug": "carrying-the-float",
-      "title": "Carrying the float",
-      "summary": "Men in white shirts and black ties carry a heavy gilded float of candles and flowers during a procession.",
-      "cover": {
-        "src": "/media/photography/carrying-the-float.webp",
-        "alt": "Men in white shirts and black ties carry a heavy gilded float of candles and flowers during a procession",
-        "width": 2095,
-        "height": 3171
-      },
-      "tags": [
-        "travel"
-      ],
-      "placeSlugs": [
-        "popayan"
-      ]
-    },
-    {
-      "slug": "bow-of-a-boat",
-      "title": "Bow of a boat",
-      "summary": "The bow of a cargo boat loaded with sacks, a small flag on its mast, somewhere on the Amazon in Brazil.",
-      "cover": {
-        "src": "/media/photography/bow-of-a-boat.webp",
-        "alt": "The bow of a boat loaded with sacks, a small red-and-white flag on a mast, crossing a wide river under a blue sky and clouds",
-        "width": 2400,
-        "height": 3188
-      },
-      "tags": [
-        "travel",
-        "river",
-        "amazon",
-        "brazil"
-      ],
-      "placeSlugs": [],
-      "countryCode": "BR"
-    },
-    {
-      "slug": "watermelons-on-deck",
-      "title": "Watermelons on deck",
-      "summary": "A narrow passage between stacks of watermelons on the deck of a river boat on the Amazon in Brazil, bags of onions hanging overhead.",
-      "cover": {
-        "src": "/media/photography/watermelons-on-deck.webp",
-        "alt": "A narrow passage between stacks of watermelons on a boat deck, bags of onions hanging overhead",
-        "width": 2400,
-        "height": 2402
-      },
-      "tags": [
-        "travel",
-        "river",
-        "amazon",
-        "brazil"
-      ],
-      "placeSlugs": [],
-      "countryCode": "BR"
-    },
-    {
-      "slug": "unloading-at-the-bank",
-      "title": "Unloading at the bank",
-      "summary": "Seen from the boat, people unload crates and bundles onto a muddy bank of the Amazon in Peru, a cow in the corner.",
-      "cover": {
-        "src": "/media/photography/unloading-at-the-bank.webp",
-        "alt": "Seen from above, people unload crates and bundles from boats onto a muddy river bank, a cow in the corner",
-        "width": 2400,
-        "height": 3339
-      },
-      "tags": [
-        "travel",
-        "river",
-        "amazon",
-        "peru"
-      ],
-      "placeSlugs": [],
-      "countryCode": "PE"
-    },
-    {
-      "slug": "speedboat-on-the-napo",
-      "title": "Speedboat on the Napo",
-      "summary": "Inside the fast boat up the Napo, between the Amazon and the border with Ecuador.",
-      "cover": {
-        "src": "/media/photography/speedboat-on-the-napo.webp",
-        "alt": "Inside a speedboat with an orange cabin, a passenger in a grey T-shirt stepping down toward the open door at the bow",
-        "width": 2400,
-        "height": 3211
-      },
-      "tags": [
-        "travel",
-        "river"
-      ],
-      "placeSlugs": [
-        "napo"
-      ]
-    },
-    {
-      "slug": "orange-train",
-      "title": "Orange train",
-      "summary": "The side of a cream and orange train under overhead wires, a half-built concrete building behind it against a blue sky.",
-      "cover": {
-        "src": "/media/photography/orange-train.webp",
-        "alt": "The side of a cream and orange train under overhead wires, a half-built concrete building behind it against a blue sky",
-        "width": 2400,
-        "height": 3281
-      },
-      "tags": [
-        "travel"
-      ],
-      "placeSlugs": [
-        "casablanca"
       ]
     },
     {
       "slug": "golden-hour-on-the-train",
       "title": "Golden hour on the train",
       "summary": "Low sun through the window of an ONCF carriage on the line to Safi, numbered seats in the foreground.",
+      "date": "2025-07-17",
       "cover": {
-        "src": "/media/photography/golden-hour-on-the-train.webp",
+        "src": "/media/photograph/golden-hour-on-the-train/photo.22c2e6a1.webp",
         "alt": "Low sun glows through the window of a train carriage, with numbered seats in the foreground",
         "width": 2400,
         "height": 1807
@@ -7772,14 +7725,125 @@
       ]
     },
     {
+      "slug": "minaret-and-rooftops",
+      "title": "Minaret over the rooftops",
+      "summary": "A tall brick minaret and a small green-domed mosque among flat rooftops and trees, under a pale sky.",
+      "date": "2025-08-08",
+      "cover": {
+        "src": "/media/photograph/minaret-and-rooftops/photo.1fa0ddd4.webp",
+        "alt": "A tall brick minaret and a small green-domed mosque among flat rooftops and trees, under a pale sky",
+        "width": 2106,
+        "height": 2400
+      },
+      "tags": [
+        "travel"
+      ],
+      "placeSlugs": [
+        "saint-louis"
+      ]
+    },
+    {
+      "slug": "orange-train",
+      "title": "Orange train",
+      "summary": "The side of a cream and orange train under overhead wires, a half-built concrete building behind it against a blue sky.",
+      "date": "2025-07-17",
+      "cover": {
+        "src": "/media/photograph/orange-train/photo.d07a4eb8.webp",
+        "alt": "The side of a cream and orange train under overhead wires, a half-built concrete building behind it against a blue sky",
+        "width": 1756,
+        "height": 2400
+      },
+      "tags": [
+        "travel"
+      ],
+      "placeSlugs": [
+        "casablanca"
+      ]
+    },
+    {
+      "slug": "painted-boats",
+      "title": "Painted boats on the sand",
+      "summary": "The raised prows of brightly painted wooden boats on a beach, covered in colourful patterns and Arabic script.",
+      "date": "2025-08-08",
+      "cover": {
+        "src": "/media/photograph/painted-boats/photo.f8f7db58.webp",
+        "alt": "The raised prows of brightly painted wooden boats on a beach, covered in colourful patterns and Arabic script",
+        "width": 2398,
+        "height": 2400
+      },
+      "tags": [
+        "travel"
+      ],
+      "placeSlugs": [
+        "saint-louis"
+      ]
+    },
+    {
+      "slug": "pointing-at-the-hills",
+      "title": "Pointing at the hills",
+      "summary": "On the hills above Sinaia, at about 2,000 m: a person in a hood stands in tall grass and points across the slopes.",
+      "date": "2026-09-02",
+      "cover": {
+        "src": "/media/photograph/pointing-at-the-hills/photo.3abe4ba8.webp",
+        "alt": "A person in a hood and light trousers stands in tall grass pointing across the hills, a pale arch of light behind them",
+        "width": 1350,
+        "height": 2400
+      },
+      "tags": [
+        "travel"
+      ],
+      "placeSlugs": [
+        "sinaia"
+      ]
+    },
+    {
+      "slug": "speedboat-on-the-napo",
+      "title": "Speedboat on the Napo",
+      "summary": "Inside the fast boat up the Napo, between the Amazon and the border with Ecuador.",
+      "date": "2025-09-02",
+      "cover": {
+        "src": "/media/photograph/speedboat-on-the-napo/photo.0d128d32.webp",
+        "alt": "Inside a speedboat with an orange cabin, a passenger in a grey T-shirt stepping down toward the open door at the bow",
+        "width": 1794,
+        "height": 2400
+      },
+      "tags": [
+        "travel",
+        "river"
+      ],
+      "placeSlugs": [
+        "napo"
+      ]
+    },
+    {
+      "slug": "unloading-at-the-bank",
+      "title": "Unloading at the bank",
+      "summary": "Seen from the boat, people unload crates and bundles onto a muddy bank of the Amazon in Peru, a cow in the corner.",
+      "cover": {
+        "src": "/media/photograph/unloading-at-the-bank/photo.541adc87.webp",
+        "alt": "Seen from above, people unload crates and bundles from boats onto a muddy river bank, a cow in the corner",
+        "width": 1725,
+        "height": 2400
+      },
+      "tags": [
+        "travel",
+        "river",
+        "amazon",
+        "peru"
+      ],
+      "placeSlugs": [],
+      "countryCode": "PE"
+    },
+    {
       "slug": "wake",
       "title": "Wake",
       "summary": "Three passengers lean on the rail of a ferry and watch the white wake behind it on a dark blue sea.",
+      "date": "2025-07-13",
       "cover": {
-        "src": "/media/photography/wake.webp",
+        "src": "/media/photograph/wake/photo.81a40531.webp",
         "alt": "Three passengers lean on the rail of a ferry and watch the white wake behind it on a dark blue sea",
-        "width": 2400,
-        "height": 2847
+        "width": 2023,
+        "height": 2400
       },
       "tags": [
         "travel"
@@ -7789,21 +7853,41 @@
       ]
     },
     {
-      "slug": "pointing-at-the-hills",
-      "title": "Pointing at the hills",
-      "summary": "On the hills above Sinaia, at about 2,000 m: a person in a hood stands in tall grass and points across the slopes.",
+      "slug": "walkway-at-dusk",
+      "title": "Walkway at dusk",
+      "summary": "A person walks along a wet riverside walkway beside a metal railing as the sun breaks through grey clouds.",
+      "date": "2025-08-08",
       "cover": {
-        "src": "/media/photography/pointing-at-the-hills.webp",
-        "alt": "A person in a hood and light trousers stands in tall grass pointing across the hills, a pale arch of light behind them",
-        "width": 2400,
-        "height": 4267
+        "src": "/media/photograph/walkway-at-dusk/photo.66cec07d.webp",
+        "alt": "A person walks along a wet riverside walkway beside a metal railing as the sun breaks through grey clouds",
+        "width": 1807,
+        "height": 2400
       },
       "tags": [
         "travel"
       ],
       "placeSlugs": [
-        "sinaia"
+        "saint-louis"
       ]
+    },
+    {
+      "slug": "watermelons-on-deck",
+      "title": "Watermelons on deck",
+      "summary": "A narrow passage between stacks of watermelons on the deck of a river boat on the Amazon in Brazil, bags of onions hanging overhead.",
+      "cover": {
+        "src": "/media/photograph/watermelons-on-deck/photo.b971cae7.webp",
+        "alt": "A narrow passage between stacks of watermelons on a boat deck, bags of onions hanging overhead",
+        "width": 2398,
+        "height": 2400
+      },
+      "tags": [
+        "travel",
+        "river",
+        "amazon",
+        "brazil"
+      ],
+      "placeSlugs": [],
+      "countryCode": "BR"
     }
   ],
   "career": {
