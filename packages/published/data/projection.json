@@ -7711,19 +7711,22 @@
       "placeSlugs": []
     },
     {
-      "slug": "orange-bus-interior",
-      "title": "Orange bus interior",
-      "summary": "Inside an orange bus, a passenger in a grey T-shirt steps down toward the open door.",
+      "slug": "speedboat-on-the-napo",
+      "title": "Speedboat on the Napo",
+      "summary": "Inside the fast boat up the Napo, between the Amazon and the border with Ecuador.",
       "cover": {
-        "src": "/media/photography/orange-bus-interior.webp",
-        "alt": "Inside an orange bus, a passenger in a grey T-shirt steps down toward the open door",
+        "src": "/media/photography/speedboat-on-the-napo.webp",
+        "alt": "Inside a speedboat with an orange cabin, a passenger in a grey T-shirt stepping down toward the open door at the bow",
         "width": 2400,
         "height": 3211
       },
       "tags": [
-        "travel"
+        "travel",
+        "river"
       ],
-      "placeSlugs": []
+      "placeSlugs": [
+        "napo"
+      ]
     },
     {
       "slug": "orange-train",
