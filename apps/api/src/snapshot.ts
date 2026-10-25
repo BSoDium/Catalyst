@@ -32,6 +32,7 @@ export const STATIC_PATHS = [
   "/v1/articles",
   "/v1/artworks",
   "/v1/poems",
+  "/v1/photographs",
 ] as const;
 
 /**
@@ -43,6 +44,7 @@ export const CONTENT_COLLECTIONS = [
   { key: "articles", kind: "article", list: "/v1/articles" },
   { key: "artworks", kind: "artwork", list: "/v1/artworks" },
   { key: "poems", kind: "poem", list: "/v1/poems" },
+  { key: "photographs", kind: "photograph", list: "/v1/photographs" },
 ] as const satisfies readonly { key: keyof PublishedProjection; kind: ContentKind; list: string }[];
 
 export const HEALTH_PATH = "/health";
@@ -58,6 +60,7 @@ export function buildSnapshot(p: PublishedProjection): Snapshot {
     article: new Map(p.articles.map((i) => [i.slug, i.title])),
     artwork: new Map(p.artworks.map((i) => [i.slug, i.title])),
     poem: new Map(p.poems.map((i) => [i.slug, i.title])),
+    photograph: new Map(p.photographs.map((i) => [i.slug, i.title])),
   };
   const placeNames = new Map(p.places.map((pl) => [pl.slug, pl.name]));
 
@@ -123,6 +126,7 @@ export function buildSnapshot(p: PublishedProjection): Snapshot {
       articles: p.articles.length,
       artworks: p.artworks.length,
       poems: p.poems.length,
+      photographs: p.photographs.length,
     },
   };
 }

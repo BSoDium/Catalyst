@@ -68,6 +68,7 @@ export interface ContentCounts {
   articles: number;
   artworks: number;
   poems: number;
+  photographs: number;
 }
 
 /** Error envelope used by every non-2xx JSON response. */
@@ -128,7 +129,7 @@ export type PlaceDetailResponse = Omit<PublishedPlace, "related"> & {
 export type RoutesResponse = PublishedRoute[];
 
 /**
- * GET /v1/projects, /v1/articles, /v1/artworks, /v1/poems (authored order): SUMMARIES, an entry without its `body`.
+ * GET /v1/projects, /v1/articles, /v1/artworks, /v1/poems, /v1/photographs (authored order): SUMMARIES, an entry without its `body`.
  * The complete entries are in GET /v1/projection and in the detail endpoints.
  */
 export type ContentItemsResponse = PublishedContentSummary[];
@@ -140,7 +141,7 @@ export interface ResolvedPlaceRef {
 }
 
 /**
- * GET /v1/projects/:slug, /v1/articles/:slug, /v1/artworks/:slug, /v1/poems/:slug: the complete entry (`body` included)
+ * GET /v1/projects/:slug, /v1/articles/:slug, /v1/artworks/:slug, /v1/poems/:slug, /v1/photographs/:slug: the complete entry (`body` included)
  * with its kind and its places resolved, in the order of `placeSlugs`, so a detail view needs no second request.
  */
 export type ContentDetailResponse = PublishedContentItem & {

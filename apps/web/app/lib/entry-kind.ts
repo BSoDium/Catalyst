@@ -4,7 +4,7 @@
  */
 import { SECTIONS } from "./sections";
 
-export const ENTRY_KINDS = ["article", "project", "artwork", "poem", "place"] as const;
+export const ENTRY_KINDS = ["article", "project", "artwork", "poem", "photograph", "place"] as const;
 
 export type EntryKind = (typeof ENTRY_KINDS)[number];
 
@@ -14,6 +14,7 @@ export const ENTRY_KIND_LABEL: Record<EntryKind, string> = {
   project: SECTIONS.project.label,
   artwork: SECTIONS.artwork.label,
   poem: SECTIONS.poem.label,
+  photograph: SECTIONS.photograph.label,
   place: "Place",
 };
 

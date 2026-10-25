@@ -5,7 +5,7 @@ import type { ContentKind } from "@catalyst/schemas";
  *
  * Two names exist for each kind and they are NOT the same thing:
  *
- *   - the contract's kind id (`article`, `project`, `artwork`, `poem`): an interface (schemaVersion 1: the projection's `projects` /
+ *   - the contract's kind id (`article`, `project`, `artwork`, `poem`, `photograph`): an interface (schemaVersion 1: the projection's `projects` /
  *     `poems` collections, the API's `/v1/projects`, the private repo's `content/projects/`, `data-kind="project"`, the `--kind-project`
  *     token). It is never renamed here; and
  *   - the section's PUBLIC name, which is the owner's to choose and has been changed twice: the poems' section is "Poetry" (`/poetry`), the
@@ -40,4 +40,5 @@ export const SECTIONS: Readonly<Record<ContentKind, Section>> = {
   article: { slug: "articles", label: "Article", name: "Articles", noun: { one: "article", many: "articles" }, formerSlugs: [] },
   artwork: { slug: "artworks", label: "Artwork", name: "Artworks", noun: { one: "artwork", many: "artworks" }, formerSlugs: [] },
   poem: { slug: "poetry", label: "Poem", name: "Poetry", noun: { one: "poem", many: "poems" }, formerSlugs: ["poems"] },
+  photograph: { slug: "photography", label: "Photograph", name: "Photography", noun: { one: "photograph", many: "photographs" }, formerSlugs: [] },
 };

@@ -714,6 +714,10 @@ const MOTIFS = { rails, contours, coast, labels, globe, strata, riso, platform, 
 
 const COVER = [1200, 630];
 const FIGURE = [960, 600];
+/** Demo photographs: a 3:2 landscape, a 4:5 portrait and a square (the shapes a photo list has to lay out). */
+const PHOTO_LANDSCAPE = [1200, 800];
+const PHOTO_PORTRAIT = [960, 1200];
+const PHOTO_SQUARE = [1200, 1200];
 /** A small diagram: narrower than any reading column, so the figures' layout is seen not stretching a picture past its own width. */
 const SMALL = [480, 300];
 
@@ -734,6 +738,11 @@ export const MEDIA = [
   { name: "cover-layover", size: COVER, motif: "verse", plate: "dark", opts: { stanzas: 5, drift: 0.04 }, alt: "Short white lines grouped in stanzas, one of them cyan, beside a dithered shadow at the right edge" },
   { name: "cover-voie-b", size: COVER, motif: "verse", plate: "light", opts: { stanzas: 4, drift: 0.1 }, alt: "Short black lines grouped in four stanzas on pale paper, one line in cyan" },
   { name: "cover-figure-study", size: COVER, motif: "nested", plate: "dark", opts: { rects: 18 }, alt: "Rectangles nested one inside the next, each shifted a little from the last, in dithered grey on black with one cyan frame" },
+  // photographs (stand-ins: the real ones are photos, never SVG)
+  { name: "photo-last-light", size: PHOTO_LANDSCAPE, motif: "contours", plate: "dark", opts: { layers: 7 }, alt: "Seven layers of stair-stepped ridges fading into dithered haze under a small cyan sun, a stand-in for a landscape photograph" },
+  { name: "photo-rain-gate", size: PHOTO_PORTRAIT, motif: "monsoon", plate: "dark", opts: { drops: 140 }, alt: "Rooftops under a dithered storm sky with thin diagonal rain streaks, a stand-in for a portrait-format photograph" },
+  { name: "photo-sea-wall", size: PHOTO_LANDSCAPE, motif: "coast", plate: "light", opts: { dir: -1 }, alt: "A dashed road on a cliff above the sea on pale paper, a stand-in for a landscape photograph" },
+  { name: "photo-platform-square", size: PHOTO_SQUARE, motif: "platform", plate: "light", opts: { lamps: 9 }, alt: "An empty platform in perspective with a pair of lamp posts per bay and one cyan lamp, a stand-in for a square photograph" },
   // figures
   { name: "fig-night-trains-board", size: FIGURE, motif: "timetable", plate: "light", opts: { rowsN: 13 }, alt: "A departures board reduced to bars and cells, several rows outlined in cyan where a time changed" },
   { name: "fig-night-trains-ticket", size: SMALL, motif: "timetable", plate: "light", opts: { rowsN: 7 }, alt: "A small timetable reduced to bars and cells, a few rows outlined in cyan" },

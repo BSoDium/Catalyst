@@ -18,12 +18,14 @@ export default [
     route("software/:slug", "routes/entry-project.tsx"),
     route("artworks/:slug", "routes/entry-artwork.tsx"),
     route("poetry/:slug", "routes/entry-poem.tsx"),
+    route("photography/:slug", "routes/entry-photograph.tsx"),
   ]),
   // The lists (no globe).
   route("software", "routes/software.tsx"),
   route("articles", "routes/articles.tsx"),
   route("artworks", "routes/artworks.tsx"),
   route("poetry", "routes/poetry.tsx"),
+  route("photography", "routes/photography.tsx"),
   // The career page: a singleton document of the projection, not a content kind; the loader answers 404 while there is none.
   route("career", "routes/career.tsx"),
   // The sections' former addresses, before they were named "Poetry" (`/poems`) and "Software" (`/projects`): permanent redirects, query kept

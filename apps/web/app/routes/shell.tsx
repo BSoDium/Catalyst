@@ -18,7 +18,7 @@ import { buildPlaceIndex, placePath, toGlobeGroups } from "~/lib/projection";
 import { SITE, siteCaption, type KindCounts } from "~/lib/site";
 
 /** The sections the no-script text lists, in the order of the header (the names and addresses are `lib/sections.ts`'s). */
-const NOSCRIPT_KINDS = ["project", "article", "artwork", "poem"] as const;
+const NOSCRIPT_KINDS = ["project", "article", "artwork", "poem", "photograph"] as const;
 
 /** The words of the globe's ring of type: the site's identity (name, role, fields, place), the same constant the head tags and the hero read. */
 const RING_PHRASES = ringPhrases(SITE);
@@ -30,7 +30,7 @@ export async function loader() {
   // docs/street-architecture.md). The globe hands over to the street map with it (docs/web-architecture.md).
   const projection = await getProjection();
   // How much of each kind there is (the caption's third phrase set): the projection's own collections.
-  const counts: KindCounts = { project: projection.projects.length, article: projection.articles.length, artwork: projection.artworks.length, poem: projection.poems.length };
+  const counts: KindCounts = { project: projection.projects.length, article: projection.articles.length, artwork: projection.artworks.length, poem: projection.poems.length, photograph: projection.photographs.length };
   return { ...buildPlaceIndex(projection), tiles: getTilesConfig(), counts };
 }
 

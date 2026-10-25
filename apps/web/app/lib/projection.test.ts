@@ -22,7 +22,7 @@ describe("buildPlaceIndex", () => {
       groupSlug: "europe",
       countryCode: "PT",
       // the entries linked to it, for the second line of its label (the demo's project and article)
-      entries: [{ kind: "project", slug: "label-collision-engine" }, { kind: "article", slug: "morocco-coast-bus" }],
+      entries: [{ kind: "project", slug: "label-collision-engine" }, { kind: "article", slug: "morocco-coast-bus" }, { kind: "photograph", slug: "sea-wall" }],
       // the demo's Lisbon has a published box: it is passed on, and the view radius frames it
       bbox: lisbon.bbox,
     });
@@ -79,7 +79,7 @@ describe("placeEntries: the entries linked to each place, for the second line of
   const place = demo.places[0]!;
   const other = demo.places[1]!;
   const item = (slug: string, placeSlugs: string[]) => ({ slug, title: slug, placeSlugs });
-  const base = { ...demo, places: [{ ...place, related: [] }, { ...other, related: [] }], projects: [], articles: [], artworks: [], poems: [] };
+  const base = { ...demo, places: [{ ...place, related: [] }, { ...other, related: [] }], projects: [], articles: [], artworks: [], poems: [], photographs: [] };
   it("a place with nothing linked is absent, nothing is invented", () => {
     expect(placeEntries(base).size).toBe(0);
     expect(buildPlaceIndex(base).globePlaces.every((p) => !("entries" in p))).toBe(true);
@@ -142,6 +142,7 @@ describe("getPlaceDetail", () => {
     expect(place?.entries.map((g) => [g.kind, g.entries.map((e) => e.slug)])).toEqual([
       ["article", ["morocco-coast-bus"]],
       ["project", ["label-collision-engine"]],
+      ["photograph", ["sea-wall"]],
     ]);
     expect(place?.entries[0]?.entries[0]).toMatchObject({ href: "/articles/morocco-coast-bus", index: 3, title: "Eleven hours of Atlantic coast, by bus" });
     expect(place?.entries[0]?.entries[0]).not.toHaveProperty("body");
@@ -154,6 +155,7 @@ describe("getPlaceDetail", () => {
       ["article", ["rain-at-the-citadel-gate", "vietnam-by-rail"]],
       ["artwork", ["monsoon-index"]],
       ["poem", ["citadel-rain"]],
+      ["photograph", ["rain-at-the-gate"]],
     ]);
     // Vancouver: the poem lists no place there, the place names the poem
     expect(getPlaceDetail(demo, "vancouver")?.entries.map((g) => [g.kind, g.entries.map((e) => e.slug)])).toEqual([["poem", ["demo-poem"]]]);

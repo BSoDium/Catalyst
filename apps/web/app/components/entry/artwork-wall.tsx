@@ -9,6 +9,9 @@ import type { EntrySummary } from "~/lib/entries";
 /** The first pictures of a wall load at once (the first screen at four columns); the rest are lazy. */
 const EAGER = 4;
 
+/** `Lisbon`, `Lisbon, Paris`: the places of a photograph, as its caption's second line. */
+const placeNames = (entry: EntrySummary) => entry.places.slice(0, 2).map((p) => p.name).join(", ") || undefined;
+
 const fact = (entry: EntrySummary, label: string) => entry.meta.find((m) => m.label.trim().toLowerCase() === label)?.value.trim() || undefined;
 
 /** The caption's second line: the medium and the year, as authored (the `Medium` and `Year` facts; the entry's date year when no `Year`). */
@@ -25,18 +28,32 @@ export function artworkCaption(entry: Pick<EntrySummary, "meta" | "date">): { me
  * measuring and no shift, and the tab order is the reading order. The title, medium and year are a plate over the picture's foot on a
  * pointer that hovers (shown on hover and on focus) and a line under the picture on touch (always visible). One link per picture
  * (the title), stretched over it. An artwork without a cover is a generated one at 4:3. A sensitive artwork stays blurred.
+ *
+ * `/photography` is the same wall (`kind="photograph"`): the photograph IS the page, so there is no generated cover (a photograph without
+ * an image is a plate with the caption only) and the caption's second line is the place (the link back to the globe is on the entry) and the year.
  */
-export function ArtworkWall({ items, headingLevel = 2, label }: { items: readonly EntrySummary[]; headingLevel?: 2 | 3 | 4; label: string }) {
+export function ArtworkWall({
+  items,
+  headingLevel = 2,
+  label,
+  kind = "artwork",
+}: {
+  items: readonly EntrySummary[];
+  headingLevel?: 2 | 3 | 4;
+  label: string;
+  kind?: "artwork" | "photograph";
+}) {
   const Heading = `h${headingLevel}` as "h2" | "h3" | "h4";
   const covers = items.map((entry) => (entry.cover && safeMediaSrc(entry.cover.src) ? entry.cover : null));
   const ratios = covers.map((cover) => (cover ? coverRatio(cover) : RATIO_FALLBACK));
   const layouts = layoutAllTiers(ratios);
   return (
-    <div data-slot="artwork-wall" className="wall">
+    <div data-slot="artwork-wall" data-kind={kind} className="wall">
       <ul role="list" aria-label={label} className="wall-list" style={masonryListVars(layouts) as CSSProperties}>
         {items.map((entry, i) => {
           const cover = covers[i];
-          const { medium, year } = artworkCaption(entry);
+          const { medium: artMedium, year } = artworkCaption(entry);
+          const medium = kind === "photograph" ? placeNames(entry) : artMedium;
           const eager = i < EAGER;
           const image = cover ? (
             <img
@@ -50,12 +67,12 @@ export function ArtworkWall({ items, headingLevel = 2, label }: { items: readonl
           ) : null;
           return (
             <li key={entry.slug} className="wall-item" style={masonryItemVars(ratios[i]!, layouts, i) as CSSProperties}>
-              <article id={entry.slug} data-slot="entry-card" data-kind="artwork" data-ratio={ratios[i]!.toFixed(3)} className="wall-card scroll-mt-24">
+              <article id={entry.slug} data-slot="entry-card" data-kind={kind} data-ratio={ratios[i]!.toFixed(3)} className="wall-card scroll-mt-24">
                 <div className="wall-media">
                   {image && entry.sensitive === true ? (
                     <SensitiveMedia className="size-full">{image}</SensitiveMedia>
                   ) : (
-                    (image ?? <CoverArt seed={entry.slug} kind="artwork" cols={48} rows={36} className="h-full" />)
+                    (image ?? (kind === "artwork" ? <CoverArt seed={entry.slug} kind="artwork" cols={48} rows={36} className="h-full" /> : null))
                   )}
                 </div>
                 <div className="wall-caption">

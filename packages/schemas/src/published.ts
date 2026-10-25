@@ -48,8 +48,8 @@ export const bboxSchema = z
   .refine(([west, , east]) => west < east, "bbox: west must be strictly less than east (no antimeridian crossing)")
   .refine(([, south, , north]) => south < north, "bbox: south must be strictly less than north");
 
-/** Entry kinds. `poem` is additive in schema version 1 (the `poems` collection defaults to `[]`). */
-export const contentKindSchema = z.enum(["project", "article", "artwork", "poem"]);
+/** Entry kinds. `poem` and `photograph` are additive in schema version 1 (the `poems` and `photographs` collections default to `[]`). */
+export const contentKindSchema = z.enum(["project", "article", "artwork", "poem", "photograph"]);
 
 /**
  * Site-relative path under /media/, shipped with the web app. Segments are plain file names: no empty segment (`//`),
@@ -261,7 +261,7 @@ export const publishedRouteSchema = z
     }
   });
 
-// --- Entries (projects, articles, artworks, poems) ------------------------------------------------------------------------
+// --- Entries (projects, articles, artworks, poems, photographs) ------------------------------------------------------------------------
 
 /**
  * Plain-text safety rules shared by every entry text field. No HTML or markdown is ever interpreted, so what matters
@@ -788,6 +788,8 @@ const projectionShape = z
     artworks: z.array(publishedContentItemSchema),
     /** Additive in schema version 1: absent means no poems. */
     poems: z.array(publishedContentItemSchema).default([]),
+    /** Additive in schema version 1: absent means no photographs. */
+    photographs: z.array(publishedContentItemSchema).default([]),
     /** Additive in schema version 1: absent means the owner has not published a career document. */
     career: publishedCareerSchema.optional(),
   })
@@ -857,6 +859,7 @@ export const publishedProjectionSchema = projectionShape.superRefine((p, ctx) =>
     article: new Set<string>(),
     artwork: new Set<string>(),
     poem: new Set<string>(),
+    photograph: new Set<string>(),
   };
   (
     [
@@ -864,6 +867,7 @@ export const publishedProjectionSchema = projectionShape.superRefine((p, ctx) =>
       ["articles", "article"],
       ["artworks", "artwork"],
       ["poems", "poem"],
+      ["photographs", "photograph"],
     ] as const
   ).forEach(([key, kind]) => {
     p[key].forEach((item, i) => {
@@ -1004,6 +1008,7 @@ export const EMPTY_PROJECTION: PublishedProjection = {
   articles: [],
   artworks: [],
   poems: [],
+  photographs: [],
 };
 
 /** Parse and validate. Throws an Error with a readable, path-annotated message. */

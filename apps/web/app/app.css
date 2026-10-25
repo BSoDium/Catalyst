@@ -70,6 +70,7 @@
   --kind-project: oklch(0.58 0.1 150);
   --kind-artwork: oklch(0.58 0.1 55);
   --kind-poem: oklch(0.58 0.1 340);
+  --kind-photograph: oklch(0.58 0.1 215);
   --kind-place: var(--muted-foreground);
 
   /*
@@ -230,6 +231,7 @@
     --kind-project: oklch(0.76 0.1 150);
     --kind-artwork: oklch(0.76 0.1 55);
     --kind-poem: oklch(0.76 0.1 340);
+    --kind-photograph: oklch(0.76 0.1 215);
     --kind-place: var(--muted-foreground);
   /* Palette roles (dark): the text tone and a solid tint (the 600 fill mixed 16 % into the page colour, never an alpha). */
   --palette-blue-text: var(--palette-blue-500);
@@ -353,6 +355,7 @@
   --color-kind-project: var(--kind-project);
   --color-kind-artwork: var(--kind-artwork);
   --color-kind-poem: var(--kind-poem);
+  --color-kind-photograph: var(--kind-photograph);
   --color-kind-place: var(--kind-place);
   --color-palette-blue: var(--palette-blue);
   --color-palette-blue-on: var(--palette-blue-on);
@@ -421,6 +424,7 @@
   --kind-project: oklch(0.58 0.1 150);
   --kind-artwork: oklch(0.58 0.1 55);
   --kind-poem: oklch(0.58 0.1 340);
+  --kind-photograph: oklch(0.58 0.1 215);
   --kind-place: var(--muted-foreground);
   /* Palette roles (light): the text tone and a solid tint (the 600 fill mixed 10 % into the page colour, never an alpha). */
   --palette-blue-text: var(--palette-blue-700);
@@ -476,6 +480,7 @@
   --kind-project: oklch(0.76 0.1 150);
   --kind-artwork: oklch(0.76 0.1 55);
   --kind-poem: oklch(0.76 0.1 340);
+  --kind-photograph: oklch(0.76 0.1 215);
   --kind-place: var(--muted-foreground);
   /* Palette roles (dark): the text tone and a solid tint (the 600 fill mixed 16 % into the page colour, never an alpha). */
   --palette-blue-text: var(--palette-blue-500);
@@ -891,6 +896,10 @@
 
   [data-kind="poem"] {
     --kind: var(--kind-poem);
+  }
+
+  [data-kind="photograph"] {
+    --kind: var(--kind-photograph);
   }
 
   [data-kind="place"] {
@@ -2244,6 +2253,28 @@
       grid-column: 4 / -1;
     }
 
+    /* A photograph: the picture is the page, the full width of the entry right under the title; the marginalia and the text sit under it. */
+    .entry[data-kind="photograph"][data-layout="full"] .entry-grid > .entry-head {
+      grid-row: 1;
+    }
+
+    .entry[data-kind="photograph"][data-layout="full"] .entry-grid > .entry-cover {
+      grid-column: 1 / -1;
+      grid-row: 2;
+    }
+
+    .entry[data-kind="photograph"][data-layout="full"] .entry-grid > .entry-dateline {
+      grid-row: 3;
+    }
+
+    .entry[data-kind="photograph"][data-layout="full"] .entry-grid > .entry-margin {
+      grid-row: 4;
+    }
+
+    .entry[data-kind="photograph"][data-layout="full"] .entry-grid > .entry-text {
+      grid-row: 4;
+    }
+
     /* A poem: the title and the lines in 4-10, the marginalia beside the title, 34 px down (the board). */
     .entry[data-kind="poem"][data-layout="full"] .entry-grid {
       padding-top: 5.5rem;
@@ -3201,6 +3232,93 @@ h1[tabindex="-1"]:focus-visible {
   }
 
   /*
+   * Two forms of the header, chosen by the room the row has (the header is a size container). Wide: the sections inline, as words. Narrower
+   * than 56 rem (a phone, or the half of the viewport beside the open panel): the way home, ONE "Sections" button and the search; its sheet
+   * (`SectionsMenu`) lists every section with its count, so a sixth or a seventh section never has to fit in the row. The sheet is a
+   * `<details>`, a solid page-colour panel under the row, as wide as the header, with 44 px rows.
+   */
+  .nav-inline {
+    display: flex;
+    align-items: center;
+  }
+
+  .nav-sections {
+    display: none;
+  }
+
+  @container (max-width: 55.99rem) {
+    .nav-inline {
+      display: none;
+    }
+
+    .nav-sections {
+      display: block;
+    }
+  }
+
+  .nav-sections > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .nav-sections-chevron {
+    transition: transform var(--duration-fast) var(--ease-standard);
+  }
+
+  .nav-sections[open] > summary {
+    color: var(--foreground);
+  }
+
+  .nav-sections[open] .nav-sections-chevron {
+    transform: rotate(180deg);
+  }
+
+  .nav-sheet {
+    position: fixed;
+    top: var(--navbar-height);
+    left: 0;
+    /* As wide as the header (a size container, so `cqw` is its width): beside the open panel that is the globe's half, never over the panel's own controls. */
+    width: 100cqw;
+    max-height: calc(100dvh - var(--navbar-height));
+    overflow-y: auto;
+    padding: 0.25rem 1rem 1rem;
+    background: var(--background);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .nav-sheet-link {
+    display: flex;
+    min-height: 2.75rem;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-block: 0.75rem;
+    border-bottom: 1px solid var(--border);
+    font-family: var(--font-meta);
+    font-size: 0.8125rem;
+    line-height: 1.25;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    text-decoration: none;
+  }
+
+  .nav-sheet-link:hover,
+  .nav-sheet-link:focus-visible {
+    color: var(--signal-text);
+  }
+
+  .nav-sheet-link[aria-current="page"] .nav-sheet-name {
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.5em;
+  }
+
+  .nav-sheet-count {
+    color: var(--muted-foreground);
+    font-size: 0.75rem;
+    letter-spacing: 0.02em;
+  }
+
+  /*
    * With a career document the row has one more word ("Career": seven items). The same tiers, one step tighter so that the row holds
    * its width (measured: 390, 430, 768 and 1440 px, with and without the panel); under 24 rem of row (a phone narrower than 384 px) the career link
    * is left out of the header, where the home page's list and the search have it.
@@ -3618,6 +3736,18 @@ h1[tabindex="-1"]:focus-visible {
 
     .hero-row {
       font-size: 1.375rem;
+    }
+  }
+
+  /* The longest word of the rows ("Photography") in half of a 320 px phone: a step smaller, so the word keeps a gap to its arrow. */
+  @media (max-width: 23.99rem) and (min-height: 36.01rem) {
+    .hero-list ul {
+      column-gap: 0.75rem;
+    }
+
+    .hero-row {
+      gap: 0.5rem;
+      font-size: 1.0625rem;
     }
   }
 

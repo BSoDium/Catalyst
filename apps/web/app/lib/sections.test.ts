@@ -20,12 +20,15 @@ describe("the sections' table (the section's name is not the contract's kind id)
       article: { path: "/articles", label: "Article", name: "Articles", noun: { one: "article", many: "articles" } },
       artwork: { path: "/artworks", label: "Artwork", name: "Artworks", noun: { one: "artwork", many: "artworks" } },
       poem: { path: "/poetry", label: "Poem", name: "Poetry", noun: { one: "poem", many: "poems" } },
+      photograph: { path: "/photography", label: "Photograph", name: "Photography", noun: { one: "photograph", many: "photographs" } },
     });
   });
   it("keeps the contract's ids: the kind is still `project`, the collection still `projects`, and the former addresses are recorded", () => {
-    expect([...CONTENT_KINDS]).toEqual(["article", "project", "artwork", "poem"]);
+    expect([...CONTENT_KINDS]).toEqual(["article", "project", "artwork", "poem", "photograph"]);
     expect(COLLECTIONS.project).toBe("projects");
     expect(COLLECTIONS.poem).toBe("poems");
+    expect(COLLECTIONS.photograph).toBe("photographs");
+    expect(SECTIONS.photograph.formerSlugs).toEqual([]);
     expect(SECTIONS.project.formerSlugs).toEqual(["projects"]);
     expect(SECTIONS.poem.formerSlugs).toEqual(["poems"]);
   });

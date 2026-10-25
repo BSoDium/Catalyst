@@ -178,7 +178,8 @@
                     "project",
                     "article",
                     "artwork",
-                    "poem"
+                    "poem",
+                    "photograph"
                   ]
                 },
                 "slug": {
@@ -387,6 +388,13 @@
       }
     },
     "poems": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/PublishedContentItem"
+      }
+    },
+    "photographs": {
       "default": [],
       "type": "array",
       "items": {

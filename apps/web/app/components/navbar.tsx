@@ -1,11 +1,13 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { NavLink, useLocation, useMatches } from "react-router";
 import { SearchPalette, SearchTriggers } from "~/components/search-palette";
+import { SectionsMenu } from "~/components/sections-menu";
 import { CAREER_LABEL, CAREER_PATH } from "~/lib/career";
 import { KIND_PATHS, KIND_PLURALS, parsePanelPath, parseView } from "~/lib/entries";
 import { GESTURE_GUARD_CAP_MS, GESTURE_GUARD_MS, GestureGuard } from "~/lib/gesture-guard";
 import { markLeftHome, useHeroResting } from "~/lib/hero-rest";
 import { useHasCareer } from "~/lib/use-has-career";
+import { useSectionCounts } from "~/lib/use-section-counts";
 import { SITE_NAME } from "~/lib/site";
 import { cn } from "~/lib/utils";
 
@@ -76,10 +78,10 @@ function useGestureGuard(bar: boolean, onHome: boolean, ref: { current: HTMLElem
 /** The first item names the globe (the home page): the site's own name is the landing hero's headline and the document title, not the row's. */
 const HOME_LABEL = "Globe";
 
-/** The four sections, in the header's order (the hero's rows have the same): paths and names come from the kinds' tables (`Poetry` at `/poetry`). */
-const LINKS = (["project", "article", "artwork", "poem"] as const).map((kind) => ({ to: KIND_PATHS[kind], label: KIND_PLURALS[kind] }));
+/** The sections, in the header's order (the hero's rows have the same): paths and names come from the kinds' tables (`Poetry` at `/poetry`). */
+const LINKS = (["project", "article", "artwork", "poem", "photograph"] as const).map((kind) => ({ to: KIND_PATHS[kind], label: KIND_PLURALS[kind], kind }));
 
-/** The career page, after the four sections and only while the projection has a career document (`useHasCareer`). Not a content kind. */
+/** The career page, after the sections and only while the projection has a career document (`useHasCareer`). Not a content kind. */
 const CAREER_LINK = { to: CAREER_PATH, label: CAREER_LABEL } as const;
 
 interface NavbarProps {
@@ -124,7 +126,8 @@ const linkClass = "nav-link pointer-events-auto inline-flex min-h-11 min-w-11 it
 export function Navbar({ heroResting: forced, hasCareer: forcedCareer }: NavbarProps) {
   const storedCareer = useHasCareer();
   const withCareer = forcedCareer ?? storedCareer;
-  const links = withCareer ? [...LINKS, CAREER_LINK] : LINKS;
+  const links: readonly { to: string; label: string; kind?: (typeof LINKS)[number]["kind"] }[] = withCareer ? [...LINKS, CAREER_LINK] : LINKS;
+  const counts = useSectionCounts();
   const { pathname, search } = useLocation();
   const onGlobe = useMatches().some((m) => m.id === "routes/shell");
   const route = parsePanelPath(pathname);
@@ -167,7 +170,7 @@ export function Navbar({ heroResting: forced, hasCareer: forcedCareer }: NavbarP
               >
                 {HOME_LABEL}
               </NavLink>
-              <ul className="flex items-center">
+              <ul className="nav-inline">
                 {links.map((link) => (
                   <li key={link.to} data-nav-item={link.to === CAREER_PATH ? "career" : undefined}>
                     <NavLink
@@ -182,6 +185,7 @@ export function Navbar({ heroResting: forced, hasCareer: forcedCareer }: NavbarP
                   </li>
                 ))}
               </ul>
+              <SectionsMenu items={links} counts={counts} />
               <SearchTriggers />
             </nav>
           </div>

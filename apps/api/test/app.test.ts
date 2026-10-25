@@ -35,10 +35,10 @@ afterEach(() => {
 const demoApp = () => createApp(loadContent({ CATALYST_CONTENT: "demo" }));
 const emptyApp = () => createApp(loadContent({}));
 
-const STATIC = ["/v1/projection", "/v1/places", "/v1/groups", "/v1/routes", "/v1/projects", "/v1/articles", "/v1/artworks", "/v1/poems"];
-const LISTS = ["projects", "articles", "artworks", "poems"] as const;
+const STATIC = ["/v1/projection", "/v1/places", "/v1/groups", "/v1/routes", "/v1/projects", "/v1/articles", "/v1/artworks", "/v1/poems", "/v1/photographs"];
+const LISTS = ["projects", "articles", "artworks", "poems", "photographs"] as const;
 /** One detail path per kind, plus the place detail. */
-const DETAILS = ["/v1/places/lisbon", "/v1/projects/demo-project", "/v1/articles/demo-article", "/v1/artworks/demo-artwork", "/v1/poems/demo-poem"];
+const DETAILS = ["/v1/places/lisbon", "/v1/projects/demo-project", "/v1/articles/demo-article", "/v1/artworks/demo-artwork", "/v1/poems/demo-poem", "/v1/photographs/demo-photograph"];
 const KNOWN = ["/health", ...STATIC, ...DETAILS];
 
 // Strict response schemas, independent of the server code, to assert that
@@ -87,7 +87,7 @@ describe("endpoints (demo content)", () => {
       ok: true,
       schemaVersion: 1,
       content: "demo",
-      counts: { places: 18, groups: 8, routes: 4, projects: 4, articles: 5, artworks: 5, poems: 4 },
+      counts: { places: 18, groups: 8, routes: 4, projects: 4, articles: 5, artworks: 5, poems: 4, photographs: 4 },
     });
     expect(res.headers.get("cache-control")).toBe("no-store");
   });
@@ -192,6 +192,7 @@ describe("endpoints (demo content)", () => {
     expect(place.related).toEqual([
       { kind: "article", slug: "morocco-coast-bus", title: "Eleven hours of Atlantic coast, by bus" },
       { kind: "project", slug: "label-collision-engine", title: "Collide, a label collision engine for maps" },
+      { kind: "photograph", slug: "sea-wall", title: "Sea Wall" },
     ]);
     expect(place.group).toBe("europe");
     expect(place.countryCode).toBe("PT");
@@ -260,7 +261,7 @@ describe("endpoints (demo content)", () => {
     }
     // Most entries have an authored cover; the others rely on the generated art (both paths are in the demo).
     const covers = LISTS.flatMap((key) => demo[key]).filter((e) => e.cover).length;
-    expect(covers).toBe(11);
+    expect(covers).toBe(15);
     // `sensitive` (mature content) reaches the list and the detail as `true`, and only for the entry that has it.
     const flagged = (await json<{ slug: string; sensitive?: boolean }[]>(await app.request("/v1/artworks"))).filter((e) => "sensitive" in e);
     expect(flagged.map((e) => [e.slug, e.sensitive])).toEqual([["figure-study-two", true]]);
@@ -275,7 +276,7 @@ describe("endpoints (demo content)", () => {
     const app = demoApp();
     const demo = loadDemoProjection();
     const names = new Map(demo.places.map((p) => [p.slug, p.name]));
-    const kinds = { projects: "project", articles: "article", artworks: "artwork", poems: "poem" } as const;
+    const kinds = { projects: "project", articles: "article", artworks: "artwork", poems: "poem", photographs: "photograph" } as const;
     for (const key of LISTS) {
       for (const item of demo[key]) {
         const res = await app.request(`/v1/${key}/${item.slug}`);
@@ -318,6 +319,7 @@ describe("endpoints (demo content)", () => {
     expect(hue.related).toEqual([
       { kind: "article", slug: "rain-at-the-citadel-gate", title: "Rain at the citadel gate" },
       { kind: "poem", slug: "citadel-rain", title: "Citadel, rain" },
+      { kind: "photograph", slug: "rain-at-the-gate", title: "Rain at the Gate" },
     ]);
     // a back-link can also exist on the place only (the poem does not list Vancouver)
     const vancouver = placeDetailSchema.parse(await (await demoApp().request("/v1/places/vancouver")).json());
@@ -340,6 +342,7 @@ describe("committed (published) content", () => {
       articles: projection.articles.length,
       artworks: projection.artworks.length,
       poems: projection.poems.length,
+      photographs: projection.photographs.length,
     });
 
     expect(await (await app.request("/v1/projection")).json()).toEqual(projection);
@@ -351,6 +354,7 @@ describe("committed (published) content", () => {
       "/v1/articles": projection.articles,
       "/v1/artworks": projection.artworks,
       "/v1/poems": projection.poems,
+      "/v1/photographs": projection.photographs,
     } as const;
     for (const [path, items] of Object.entries(collections)) {
       const res = await app.request(path);
@@ -358,7 +362,7 @@ describe("committed (published) content", () => {
       expect(((await res.json()) as unknown[]).length, path).toBe(items.length);
     }
     // A slug that no content has is a 404 under every detail route.
-    for (const path of ["/v1/places/atlantis", "/v1/projects/atlantis", "/v1/articles/atlantis", "/v1/artworks/atlantis", "/v1/poems/atlantis"]) {
+    for (const path of ["/v1/places/atlantis", "/v1/projects/atlantis", "/v1/articles/atlantis", "/v1/artworks/atlantis", "/v1/poems/atlantis", "/v1/photographs/atlantis"]) {
       expect((await app.request(path)).status, path).toBe(404);
     }
     // The first item of each detail collection is served.
@@ -706,7 +710,7 @@ describe("snapshot", () => {
       ...LISTS.flatMap((k) => demo[k].map((i) => `/v1/${k}/${i.slug}`)),
     ];
     expect([...entries.keys()].sort()).toEqual([...expected].sort());
-    expect(counts).toEqual({ places: 18, groups: 8, routes: 4, projects: 4, articles: 5, artworks: 5, poems: 4 });
+    expect(counts).toEqual({ places: 18, groups: 8, routes: 4, projects: 4, articles: 5, artworks: 5, poems: 4, photographs: 4 });
   });
 
   it("an entry with no optional field serialises to exactly its required fields (no null, no undefined keys)", () => {
@@ -732,7 +736,7 @@ describe("firewall allowlist (docs/api-cost-and-abuse.md)", () => {
     const allow = new RegExp(documented!);
     const demo = loadDemoProjection();
     const served = [...buildSnapshot(demo).entries.keys(), "/health"];
-    expect(served.length).toBe(45);
+    expect(served.length).toBe(50);
     for (const path of served) expect(allow.test(path), path).toBe(true);
     for (const path of [
       "/",

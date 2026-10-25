@@ -72,6 +72,8 @@ export function EntryView(props: EntryViewProps) {
 function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: EntryViewProps) {
   const full = layout === "full";
   const poem = entry.kind === "poem";
+  // A photograph is the page: its picture comes straight after the title, before the dateline and the marginalia.
+  const photo = entry.kind === "photograph";
   const { status, facts } = splitMeta(entry.meta);
   const date = formatEntryDate(entry.date);
   const language = entryLanguage(entry.meta);
@@ -208,6 +210,8 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
           {entry.summary && !poem && <p className="type-standfirst mt-[1.375rem] max-w-[25.4em] md:mt-[2.125rem]">{entry.summary}</p>}
         </header>
 
+        {photo && <Cover entry={entry} />}
+
         {!poem && (
           <div data-slot="entry-dateline" className="entry-dateline flex flex-wrap items-center gap-x-6 gap-y-1 md:gap-x-12">
             {date && (
@@ -224,7 +228,7 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
         )}
 
         {!poem && marginEl}
-        {!poem && <Cover entry={entry} />}
+        {!poem && !photo && <Cover entry={entry} />}
 
         <div className="entry-text min-w-0">
           <BlockRenderer blocks={entry.body} lang={language} dropCap={editorial} figures={editorial} className="gap-[1.1em]" />
@@ -299,11 +303,11 @@ function PoemMargin({
 }
 
 /**
- * How an authored cover fills its column, by kind: an artwork's picture is the work, kept whole in its own proportions (at most 80 % of
+ * How an authored cover fills its column, by kind: an artwork's or a photograph's picture is the work, kept whole in its own proportions (at most 80 % of
  * the window tall, centred); the others are banners cropped to the share image's 1.91:1.
  */
 export function coverFit(kind: EntryDetail["kind"]): string {
-  return kind === "artwork" ? "h-auto max-h-[80dvh] object-contain" : "aspect-[1.91/1] object-cover";
+  return kind === "artwork" || kind === "photograph" ? "h-auto max-h-[80dvh] object-contain" : "aspect-[1.91/1] object-cover";
 }
 
 /**

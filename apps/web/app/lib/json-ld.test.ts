@@ -62,6 +62,10 @@ describe("entryJsonLd", () => {
     expect(plain).not.toHaveProperty("codeRepository");
     expect(entryJsonLd(entry({ kind: "project", href: "/software/a" }), ORIGIN)["@type"]).toBe("CreativeWork");
   });
+  it("types a photograph as a schema.org Photograph, with the owner's notice", () => {
+    expect(entryJsonLd(entry({ kind: "photograph", href: "/photography/a", date: "2026-03" }), ORIGIN)).toMatchObject({ "@type": "Photograph", copyrightYear: 2026 });
+  });
+
   it("types a poem as a CreativeWork of genre Poem and an artwork as a CreativeWork", () => {
     expect(entryJsonLd(entry({ kind: "poem", href: "/poetry/a" }), ORIGIN)).toMatchObject({ "@type": "CreativeWork", genre: "Poem" });
     const art = entryJsonLd(entry({ kind: "artwork", href: "/artworks/a" }), ORIGIN);
@@ -74,7 +78,7 @@ describe("entryJsonLd", () => {
   it("round-trips as JSON for every entry of the demo projection", () => {
     const projection = loadDemoProjection();
     let seen = 0;
-    for (const [kind, items] of [["article", projection.articles], ["project", projection.projects], ["artwork", projection.artworks], ["poem", projection.poems]] as const) {
+    for (const [kind, items] of [["article", projection.articles], ["project", projection.projects], ["artwork", projection.artworks], ["poem", projection.poems], ["photograph", projection.photographs]] as const) {
       for (const item of items) {
         const detail = getEntryDetail(projection, kind, item.slug)!;
         const ld = entryJsonLd(detail, ORIGIN);

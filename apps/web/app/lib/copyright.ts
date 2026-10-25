@@ -13,6 +13,7 @@ export type NoticeLanguage = "en" | "fr";
 
 const NOUNS: Partial<Record<ContentKind, Record<NoticeLanguage, string>>> = {
   poem: { en: "poem", fr: "ce poème" },
+  photograph: { en: "photograph", fr: "cette photographie" },
   article: { en: "article", fr: "ce texte" },
   // feminine: "cette œuvre" (the brief's "ce œuvre" would be wrong French)
   artwork: { en: "artwork", fr: "cette œuvre" },

@@ -98,6 +98,15 @@ const SAMPLES: Record<Exclude<EntryKind, "place">, { title: string; summary: str
     ],
     status: "draft",
   },
+  photograph: {
+    title: "Last light over the ridges",
+    summary: "A made-up photograph entry. The picture comes first, the title and the place sit under it.",
+    meta: [
+      { label: "Format", value: "3:2" },
+      { label: "Date", value: formatStamp("2026-03-14") },
+    ],
+    status: "published",
+  },
 };
 
 const SAMPLE_COORDS = formatPlaceCoordinates(12.35, 65.43);
@@ -159,6 +168,7 @@ const SWATCHES: { token: string; role: string }[] = [
   { token: "--kind-project", role: "Software hue" },
   { token: "--kind-artwork", role: "Artwork hue" },
   { token: "--kind-poem", role: "Poem hue" },
+  { token: "--kind-photograph", role: "Photograph hue" },
 ];
 
 const PAIRS: { fg: string; bg: string; need: number; use: string }[] = [
@@ -826,7 +836,7 @@ function SensitiveSample() {
 }
 
 function Cards() {
-  const kinds = ["article", "project", "artwork", "poem"] as const;
+  const kinds = ["article", "project", "artwork", "poem", "photograph"] as const;
   return (
     <Stack gap={8}>
       <Note>

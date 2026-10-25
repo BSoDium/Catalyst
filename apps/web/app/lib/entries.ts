@@ -18,10 +18,10 @@ import type {
 import { SECTIONS, type Section } from "./sections";
 
 /** The order kinds are listed in wherever they are grouped (the design system's order of kinds). */
-export const CONTENT_KINDS = ["article", "project", "artwork", "poem"] as const satisfies readonly ContentKind[];
+export const CONTENT_KINDS = ["article", "project", "artwork", "poem", "photograph"] as const satisfies readonly ContentKind[];
 
 /** The contract's collection of each kind in the projection (`projection.projects`, ...): an interface, not the section's name (`lib/sections.ts`). */
-export const COLLECTIONS = { project: "projects", article: "articles", artwork: "artworks", poem: "poems" } as const satisfies Record<ContentKind, string>;
+export const COLLECTIONS = { project: "projects", article: "articles", artwork: "artworks", poem: "poems", photograph: "photographs" } as const satisfies Record<ContentKind, string>;
 
 const fromSections = <T>(pick: (section: Section) => T) =>
   Object.fromEntries(CONTENT_KINDS.map((kind) => [kind, pick(SECTIONS[kind])])) as Record<ContentKind, T>;
