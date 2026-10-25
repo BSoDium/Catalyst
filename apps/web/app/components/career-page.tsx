@@ -1,7 +1,7 @@
 import { Link } from "react-router";
 import type { PublishedCareer, PublishedCareerEducation, PublishedCareerRole } from "@catalyst/schemas";
 import { Icon } from "~/components/ui";
-import { asOfText, careerDuration, careerPeriod, formatCareerMonth, isCurrent, languageDetail, safeLinks, safePortrait } from "~/lib/career";
+import { asOfText, careerDuration, careerIcon, careerPeriod, formatCareerMonth, isCurrent, languageDetail, safeLinks, safePortrait } from "~/lib/career";
 import { safeExternalUrl } from "~/lib/entry-blocks";
 import { placePath } from "~/lib/entries";
 import { SITE_NAME } from "~/lib/site";
@@ -207,6 +207,9 @@ function RoleItem({ role, placeKnown }: { role: PublishedCareerRole; placeKnown:
   const orgUrl = role.orgUrl ? safeExternalUrl(role.orgUrl) : null;
   return (
     <li id={role.id} data-slot="career-role" data-current={isCurrent(role) ? "true" : undefined} className="career-item">
+      <span className="career-icon" aria-hidden="true">
+        <Icon name={careerIcon(role.title, "role")} size="tile" />
+      </span>
       <div className="career-top">
         <h3 className="career-org">
           {orgUrl ? (
@@ -247,6 +250,9 @@ function RoleItem({ role, placeKnown }: { role: PublishedCareerRole; placeKnown:
 function EducationItem({ item, placeKnown }: { item: PublishedCareerEducation; placeKnown: boolean }) {
   return (
     <li id={item.id} data-slot="career-education-item" className="career-item">
+      <span className="career-icon" aria-hidden="true">
+        <Icon name={careerIcon(item.programme, "education")} size="tile" />
+      </span>
       <div className="career-top">
         <h3 className="career-org">{item.institution}</h3>
         {item.location && (

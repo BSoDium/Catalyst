@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { loadDemoProjection } from "@catalyst/published";
 import type { PublishedCareer } from "@catalyst/schemas";
-import { asOfText, careerDuration, careerJsonLd, careerPeriod, formatCareerMonth, isCurrent, languageDetail, safeLinks, safePortrait } from "./career";
+import { asOfText, careerDuration, careerIcon, careerJsonLd, careerPeriod, formatCareerMonth, isCurrent, languageDetail, safeLinks, safePortrait } from "./career";
 import { SITE } from "./site";
 
 const demo = loadDemoProjection().career!;
@@ -66,6 +66,21 @@ describe("careerDuration", () => {
     expect(careerDuration("2021", undefined)).toBeNull();
     expect(careerDuration("2021", "2022")).toBeNull();
     expect(careerDuration("2025-09", "2024-01")).toBeNull();
+  });
+});
+
+describe("careerIcon", () => {
+  it("reads a role's icon from its title, a founder before a full-stack before a front-end", () => {
+    expect(careerIcon("Founding Engineer, Frontend & UX", "role")).toBe("rocket");
+    expect(careerIcon("Full-Stack Engineer", "role")).toBe("layers");
+    expect(careerIcon("Frontend Engineer (Freelance & Internship)", "role")).toBe("code");
+    expect(careerIcon("Interface Designer", "role")).toBe("palette");
+    expect(careerIcon("Operations Lead", "role")).toBe("career");
+  });
+  it("reads an education's icon from its programme", () => {
+    expect(careerIcon("Computer Graphics & Vision", "education")).toBe("cuboid");
+    expect(careerIcon("Mathematics & Physics", "education")).toBe("sigma");
+    expect(careerIcon("History", "education")).toBe("graduation-cap");
   });
 });
 

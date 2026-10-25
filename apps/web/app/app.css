@@ -160,6 +160,7 @@
   --icon-inline: 1.1em;
   --icon-control: 1.25rem;
   --icon-large: 1.5rem;
+  --icon-tile: 1.0625rem;
 
   /* Motion. Mirrored in app/lib/tokens.ts (seconds); a test keeps them in sync. */
   --duration-fast: 120ms;
@@ -1131,6 +1132,12 @@
   .ui-icon[data-size="large"] {
     width: var(--icon-large);
     height: var(--icon-large);
+  }
+
+  .ui-icon[data-size="tile"] {
+    width: var(--icon-tile);
+    height: var(--icon-tile);
+    vertical-align: baseline;
   }
 
   /* The shortcut hint (components/ui/key-hint.tsx): a modifier icon or word, then the key, in plain mono text (no border, no
@@ -4094,21 +4101,40 @@ h1[tabindex="-1"]:focus-visible {
     min-width: 0;
   }
 
-  /* The portrait: a round avatar (not an ID photo), centred on the face; no frame. */
+  /* The portrait: a SQUARE the height of the text block beside it (name, statement, availability), so the two weigh the same. It is
+     drawn by the grid row (stretched, 1:1) and the picture fills it; on a phone the block is too tall for that, so it is a fixed small
+     square at the top. Centred on the face; no frame, no radius (the system's edges are square). */
   .career-portrait {
-    margin: clamp(2rem, 4.4cqi, 4rem) 0 0;
-    width: clamp(4.5rem, 14cqi, 8rem);
+    margin: 3.25rem 0 0;
+    width: 5.5rem;
+    aspect-ratio: 1 / 1;
   }
 
   .career-portrait img {
     display: block;
     width: 100%;
-    height: auto;
-    aspect-ratio: 1 / 1;
+    height: 100%;
     object-fit: cover;
     object-position: 50% 30%;
-    border-radius: 50%;
     background: var(--surface);
+  }
+
+  @media (min-width: 40rem) {
+    .career-id[data-portrait="true"] {
+      align-items: stretch;
+    }
+
+    .career-portrait {
+      position: relative;
+      width: auto;
+      min-width: 8rem;
+      align-self: stretch;
+    }
+
+    .career-portrait img {
+      position: absolute;
+      inset: 0;
+    }
   }
 
   /* The headline statement: the reading face, one paragraph, a comfortable measure. */
@@ -4200,14 +4226,16 @@ h1[tabindex="-1"]:focus-visible {
   /* The timeline: an ordered list hung on ONE faint rail (a hairline at its left, nothing drawn on it). No boxes and no markers: the
      type and the spacing do the grouping (organisation and place on one line, the role, the facts, the highlights, the skills). */
   .career-timeline {
+    --career-tile: 1.8125rem; /* 29 px: an odd size, so the 1 px rail runs through the exact middle pixel of the tile */
+    --career-gap: 1rem;
     margin: 0;
-    padding: 0 0 0 1.5rem;
+    padding: 0;
     list-style: none;
-    border-left: var(--hairline) solid var(--border);
   }
 
   .career-item {
-    padding: 0 0 2.75rem;
+    position: relative;
+    padding: 0 0 2.75rem calc(var(--career-tile) + var(--career-gap));
     break-inside: avoid;
   }
 
@@ -4215,12 +4243,48 @@ h1[tabindex="-1"]:focus-visible {
     padding-bottom: 0;
   }
 
+  /* The rail: from the tile's middle down to the next item (the tile hides its top). The last item's stops at its tile. */
+  .career-item::before {
+    content: "";
+    position: absolute;
+    left: calc((var(--career-tile) - var(--hairline)) / 2);
+    top: 0;
+    bottom: calc(var(--career-tile) / 2 * -1);
+    border-left: var(--hairline) solid var(--border);
+  }
+
+  .career-item:last-child::before {
+    content: none;
+  }
+
+  /* The marker: a square tile with the icon of what was done there (sized to the first line of the item, the organisation's). */
+  .career-icon {
+    position: absolute;
+    left: 0;
+    top: 0;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    box-sizing: border-box;
+    width: var(--career-tile);
+    height: var(--career-tile);
+    background: var(--surface);
+    border: var(--hairline) solid var(--border);
+    color: var(--muted-foreground);
+  }
+
+  .career-item[data-current="true"] .career-icon {
+    color: var(--signal-text);
+    border-color: var(--signal-text);
+  }
+
   .career-top {
     display: flex;
     flex-wrap: wrap;
-    align-items: baseline;
+    align-items: center;
     justify-content: space-between;
     gap: 0.125rem 1rem;
+    min-height: var(--career-tile);
   }
 
   .career-org {
@@ -4256,6 +4320,19 @@ h1[tabindex="-1"]:focus-visible {
     margin-left: 0.625rem;
     padding-left: 0.625rem;
     border-left: var(--hairline) solid var(--border);
+  }
+
+  /* On a phone the line wraps, and a divider would be left at the start of the second line: plain spacing instead. */
+  @media (max-width: 40rem) {
+    .career-meta {
+      column-gap: 1rem;
+    }
+
+    .career-meta > p + p {
+      margin-left: 0;
+      padding-left: 0;
+      border-left: 0;
+    }
   }
 
   .career-item[data-current="true"] .career-period {

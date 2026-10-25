@@ -5,6 +5,7 @@
  * cached page.
  */
 import type { PublishedCareer, PublishedCareerLanguage, PublishedCareerRole } from "@catalyst/schemas";
+import type { IconName } from "~/components/ui/icon";
 import { safeExternalUrl, safeMediaSrc } from "./entry-blocks";
 import { absoluteUrl } from "./meta";
 import { SITE } from "./site";
@@ -53,6 +54,25 @@ export function careerPeriod(start: string, end: string | undefined): CareerPeri
   const to = formatCareerMonth(end, "short") ?? end;
   if (to === from) return { text: from, start: startPart, spoken: fromLong };
   return { text: `${from} – ${to}`, start: startPart, end: { text: to, dateTime: end }, spoken: `${fromLong} to ${formatCareerMonth(end) ?? end}` };
+}
+
+/**
+ * The icon of a timeline item, chosen from the words of its title (a role) or programme (an education): what the person did there, at
+ * a glance. The first match wins; the last resort is the briefcase (a role) or the cap (a programme). Pure.
+ */
+export function careerIcon(text: string, kind: "role" | "education"): IconName {
+  const t = text.toLowerCase();
+  if (kind === "education") {
+    if (/\b(graphics|vision|3d|rendering)\b/.test(t)) return "cuboid";
+    if (/\b(math|mathematics|physics|statistics)\b/.test(t)) return "sigma";
+    return "graduation-cap";
+  }
+  if (/\b(found(?:ing|er)|co-?found(?:er)?|ceo|cto)\b/.test(t)) return "rocket";
+  if (/full[- ]?stack/.test(t)) return "layers";
+  if (/\b(back[- ]?end|devops|infrastructure|platform)\b/.test(t)) return "server";
+  if (/\b(design(?:er)?|ux|brand)\b/.test(t)) return "palette";
+  if (/\b(front[- ]?end|ui|web|software|engineer|developer)\b/.test(t)) return "code";
+  return "career";
 }
 
 /** Whether a role is the one in progress (`end: present`). */

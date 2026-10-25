@@ -6,6 +6,14 @@ import {
   ArrowUpLeft,
   ArrowUpRight,
   Briefcase,
+  Code,
+  Cuboid,
+  GraduationCap,
+  Layers,
+  Palette,
+  Rocket,
+  Server,
+  Sigma,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -50,6 +58,14 @@ export const ICONS = {
   photograph: Camera,
   place: MapPin,
   career: Briefcase,
+  code: Code,
+  cuboid: Cuboid,
+  "graduation-cap": GraduationCap,
+  layers: Layers,
+  palette: Palette,
+  rocket: Rocket,
+  server: Server,
+  sigma: Sigma,
   close: X,
   expand: Maximize2,
   collapse: Minimize2,
@@ -84,8 +100,9 @@ export type IconName = keyof typeof ICONS;
  *   inline   1.1em      beside running text or a label: it takes that text's size (a button's word, "Back to ...", the arrow of a row)
  *   control  1.25rem    inside a control or at the head of a row: icon buttons, the search field and trigger, a result's kind
  *   large    1.5rem     alone and prominent, with no text to follow (an empty state's mark)
+ *   tile     1.0625rem  inside a 29 px square tile (the career timeline's markers): 17 px centres exactly in the 27 px a 1 px border leaves
  */
-export type IconSize = "inline" | "control" | "large";
+export type IconSize = "inline" | "control" | "large" | "tile";
 
 export interface IconProps extends Omit<LucideProps, "size" | "name" | "ref"> {
   name: IconName;
