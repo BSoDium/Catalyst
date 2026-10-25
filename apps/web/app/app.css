@@ -160,7 +160,7 @@
   --icon-inline: 1.1em;
   --icon-control: 1.25rem;
   --icon-large: 1.5rem;
-  --icon-tile: 1.0625rem;
+  --icon-tile: 0.9375rem;
 
   /* Motion. Mirrored in app/lib/tokens.ts (seconds); a test keeps them in sync. */
   --duration-fast: 120ms;
@@ -4226,7 +4226,7 @@ h1[tabindex="-1"]:focus-visible {
   /* The timeline: an ordered list hung on ONE faint rail (a hairline at its left, nothing drawn on it). No boxes and no markers: the
      type and the spacing do the grouping (organisation and place on one line, the role, the facts, the highlights, the skills). */
   .career-timeline {
-    --career-tile: 1.8125rem; /* 29 px: an odd size, so the 1 px rail runs through the exact middle pixel of the tile */
+    --career-tile: 1.5625rem; /* 25 px, the height of the organisation line: an odd size, so the 1 px rail runs through the exact middle pixel of the tile */
     --career-gap: 1rem;
     margin: 0;
     padding: 0;
@@ -4273,6 +4273,11 @@ h1[tabindex="-1"]:focus-visible {
     color: var(--muted-foreground);
   }
 
+  /* A smaller icon, a heavier line: 2.25 at 15 px draws a stroke of about 1.4 px, as dense as the 1.75 of the 20 px icons. */
+  .career-icon .ui-icon {
+    stroke-width: 2.25;
+  }
+
   .career-item[data-current="true"] .career-icon {
     color: var(--signal-text);
     border-color: var(--signal-text);
@@ -4291,7 +4296,7 @@ h1[tabindex="-1"]:focus-visible {
     margin: 0;
     font-family: var(--font-display);
     font-size: 1.375rem;
-    line-height: 1.3;
+    line-height: 1.15;
     font-weight: var(--weight-heavy);
     letter-spacing: -0.01em;
     text-wrap: balance;

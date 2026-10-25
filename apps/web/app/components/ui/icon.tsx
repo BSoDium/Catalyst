@@ -100,7 +100,7 @@ export type IconName = keyof typeof ICONS;
  *   inline   1.1em      beside running text or a label: it takes that text's size (a button's word, "Back to ...", the arrow of a row)
  *   control  1.25rem    inside a control or at the head of a row: icon buttons, the search field and trigger, a result's kind
  *   large    1.5rem     alone and prominent, with no text to follow (an empty state's mark)
- *   tile     1.0625rem  inside a 29 px square tile (the career timeline's markers): 17 px centres exactly in the 27 px a 1 px border leaves
+ *   tile     0.9375rem  inside a 25 px square tile (the career timeline's markers): 15 px centres exactly in the 23 px a 1 px border leaves
  */
 export type IconSize = "inline" | "control" | "large" | "tile";
 
