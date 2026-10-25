@@ -141,6 +141,96 @@
       "path": "career/portrait.5333ec22.webp",
       "sha256": "5333ec227ba4e6d262a92af6cba505f69a50479a85a16fb2ef0009fdff5f503e",
       "bytes": 18712
+    },
+    {
+      "path": "photograph/blue-facade/photo.491ce587.webp",
+      "sha256": "491ce587255e5a6ae37747a4c4d7ce2334fd613c4aae4fb58ecd714290cbab40",
+      "bytes": 251966
+    },
+    {
+      "path": "photograph/bow-of-a-boat/photo.e2b95d30.webp",
+      "sha256": "e2b95d3003afa2197af2a076a0b1361eaeed26a05356c4d6c432b88c31fb3e40",
+      "bytes": 359300
+    },
+    {
+      "path": "photograph/carrying-the-float/photo.cd9bb1d9.webp",
+      "sha256": "cd9bb1d9a31f72dd065e33e05b023fe38c26936963f8fc29acc439bc17d5b227",
+      "bytes": 255194
+    },
+    {
+      "path": "photograph/city-from-above/photo.b03ef3a6.webp",
+      "sha256": "b03ef3a69fc362ab7c5e9e5fc984c8ed4c796667db42401c45a15a69dbd13d37",
+      "bytes": 858538
+    },
+    {
+      "path": "photograph/concrete-terraces/photo.07ad9530.webp",
+      "sha256": "07ad9530aba9816e7bdc185c21d35abdb7bca54a9c0c0756e55be586b8d60dfe",
+      "bytes": 222646
+    },
+    {
+      "path": "photograph/facade-grid/photo.85382370.webp",
+      "sha256": "8538237094d7ce025f22adbbf3c0174be8135503e96af9500af5fa69e101eb1a",
+      "bytes": 337314
+    },
+    {
+      "path": "photograph/flooded-street/photo.06725ae1.webp",
+      "sha256": "06725ae1055f98889e0792002a495f01bfd96a6ea73920ac491ec2c635fcacd0",
+      "bytes": 377946
+    },
+    {
+      "path": "photograph/flower-bearers/photo.853a20e3.webp",
+      "sha256": "853a20e3baffa926f377969757c143636b19c5f80f4c108a3c00b7c8294dd0df",
+      "bytes": 265004
+    },
+    {
+      "path": "photograph/golden-hour-on-the-train/photo.22c2e6a1.webp",
+      "sha256": "22c2e6a1c7ef8b5e6de625b520d7a5324efff11654cf6ec8315ec0eeb02921d3",
+      "bytes": 135664
+    },
+    {
+      "path": "photograph/minaret-and-rooftops/photo.1fa0ddd4.webp",
+      "sha256": "1fa0ddd450e4d96e74212d6d3f6ba12f089caab7f2da70d84b5d6b6354170c52",
+      "bytes": 287084
+    },
+    {
+      "path": "photograph/orange-train/photo.d07a4eb8.webp",
+      "sha256": "d07a4eb8e33b33886e3cf16992cc0a21bf5b175f50a7feb6c98f9670e68cad1d",
+      "bytes": 116202
+    },
+    {
+      "path": "photograph/painted-boats/photo.f8f7db58.webp",
+      "sha256": "f8f7db586a405b831f8f65d674f1ca3b43deff83d7212ab71b79065c5820c946",
+      "bytes": 563796
+    },
+    {
+      "path": "photograph/pointing-at-the-hills/photo.3abe4ba8.webp",
+      "sha256": "3abe4ba81db856f498bfa00ed5725d4c6295bfa95ac29b4ac9fe338158e1691f",
+      "bytes": 248652
+    },
+    {
+      "path": "photograph/speedboat-on-the-napo/photo.0d128d32.webp",
+      "sha256": "0d128d328a578924d7d23bf86ba8faca4faac01f9226c6cfeb9a8de642455e30",
+      "bytes": 169878
+    },
+    {
+      "path": "photograph/unloading-at-the-bank/photo.541adc87.webp",
+      "sha256": "541adc87fe08a6a82b3a7f9faf22cbe12f5edc059f341a3f4bb5a38c92a8b3b6",
+      "bytes": 834638
+    },
+    {
+      "path": "photograph/wake/photo.81a40531.webp",
+      "sha256": "81a4053183725c436ccdf55f6771de65fa09f754a0a525cfcd75a418118f4a3b",
+      "bytes": 227052
+    },
+    {
+      "path": "photograph/walkway-at-dusk/photo.66cec07d.webp",
+      "sha256": "66cec07db6a9ae008a1e9c751bef573d79d5d67b7af36779c109fa67c6f8f399",
+      "bytes": 249416
+    },
+    {
+      "path": "photograph/watermelons-on-deck/photo.b971cae7.webp",
+      "sha256": "b971cae7af77cc7c538f21fab24af8c36d888f97b6ccce8a0db86e84474f4e30",
+      "bytes": 418958
     }
   ]
 }
