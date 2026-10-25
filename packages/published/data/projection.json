@@ -7618,7 +7618,9 @@
       "tags": [
         "travel"
       ],
-      "placeSlugs": []
+      "placeSlugs": [
+        "santiago-de-cali"
+      ]
     },
     {
       "slug": "flower-bearers",
@@ -7655,7 +7657,7 @@
     {
       "slug": "bow-of-a-boat",
       "title": "Bow of a boat",
-      "summary": "The bow of a boat loaded with sacks, a small red-and-white flag on a mast, crossing a wide river under a blue sky and clouds.",
+      "summary": "The bow of a boat loaded with sacks, a small red-and-white flag on a mast, crossing a wide river under a blue sky and clouds, on the river boat towards Ecuador.",
       "date": "2025",
       "cover": {
         "src": "/media/photography/bow-of-a-boat.webp",
@@ -7664,14 +7666,15 @@
         "height": 3188
       },
       "tags": [
-        "travel"
+        "travel",
+        "river"
       ],
       "placeSlugs": []
     },
     {
       "slug": "watermelons-on-deck",
       "title": "Watermelons on deck",
-      "summary": "A narrow passage between stacks of watermelons on a boat deck, bags of onions hanging overhead.",
+      "summary": "A narrow passage between stacks of watermelons on a boat deck, bags of onions hanging overhead, on the river boat towards Ecuador.",
       "date": "2025",
       "cover": {
         "src": "/media/photography/watermelons-on-deck.webp",
@@ -7680,14 +7683,15 @@
         "height": 2402
       },
       "tags": [
-        "travel"
+        "travel",
+        "river"
       ],
       "placeSlugs": []
     },
     {
       "slug": "unloading-at-the-bank",
       "title": "Unloading at the bank",
-      "summary": "Seen from above, people unload crates and bundles from boats onto a muddy river bank, a cow in the corner.",
+      "summary": "Seen from above, people unload crates and bundles from boats onto a muddy river bank, a cow in the corner, on the river boat towards Ecuador.",
       "date": "2025",
       "cover": {
         "src": "/media/photography/unloading-at-the-bank.webp",
@@ -7696,7 +7700,8 @@
         "height": 3339
       },
       "tags": [
-        "travel"
+        "travel",
+        "river"
       ],
       "placeSlugs": []
     },
@@ -7730,12 +7735,14 @@
       "tags": [
         "travel"
       ],
-      "placeSlugs": []
+      "placeSlugs": [
+        "casablanca"
+      ]
     },
     {
       "slug": "golden-hour-on-the-train",
       "title": "Golden hour on the train",
-      "summary": "Low sun glows through the window of a train carriage, with numbered seats in the foreground.",
+      "summary": "Low sun through the window of an ONCF carriage on the line to Safi, numbered seats in the foreground.",
       "date": "2025",
       "cover": {
         "src": "/media/photography/golden-hour-on-the-train.webp",
@@ -7746,7 +7753,9 @@
       "tags": [
         "travel"
       ],
-      "placeSlugs": []
+      "placeSlugs": [
+        "safi"
+      ]
     },
     {
       "slug": "wake",
@@ -7767,7 +7776,7 @@
     {
       "slug": "pointing-at-the-hills",
       "title": "Pointing at the hills",
-      "summary": "A person in a hood and light trousers stands in tall grass pointing across the hills, a pale arch of light behind them.",
+      "summary": "On the hills above Sinaia, at about 2,000 m: a person in a hood stands in tall grass and points across the slopes.",
       "date": "2025",
       "cover": {
         "src": "/media/photography/pointing-at-the-hills.webp",
@@ -7778,7 +7787,9 @@
       "tags": [
         "travel"
       ],
-      "placeSlugs": []
+      "placeSlugs": [
+        "sinaia"
+      ]
     }
   ],
   "career": {
