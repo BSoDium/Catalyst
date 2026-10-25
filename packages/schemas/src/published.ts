@@ -182,8 +182,10 @@ export const ROUTE_LEG_LIMITS = {
   pointsPerRoute: 12_000,
   /** Decoded points of the whole projection (all routes). */
   pointsTotal: 60_000,
-  /** The first and last point of a leg lie within this distance of the leg's stops. */
+  /** The first and last point of a leg lie within this distance of the leg's stops, or on the edge of the stop's `bbox` (see `boxEdgeSlackDeg`). */
   endpointToleranceKm: 3,
+  /** A path cut at a stop's box ends one polyline unit (1e-5 degree) outside it: the slack, in degrees, of the "on the box edge" test. */
+  boxEdgeSlackDeg: 2e-5,
   /** No two consecutive points of a leg are farther apart than this. */
   maxJumpKm: 200,
 } as const;
@@ -200,7 +202,7 @@ export const publishedLegSchema = z
     mode: legModeSchema,
     /**
      * Encoded polyline, precision 5, `[lat, lon]` deltas (docs/api-contract.md, "Route legs"). Never on a `flight`
-     * (an arc costs nothing). The first and last point are within `ROUTE_LEG_LIMITS.endpointToleranceKm` of the stops.
+     * (an arc costs nothing). The first and last point are within `ROUTE_LEG_LIMITS.endpointToleranceKm` of the stops, or on the edge of a stop's `bbox`.
      */
     polyline: polylineCharsSchema.optional(),
   })
@@ -891,6 +893,7 @@ export const publishedProjectionSchema = projectionShape.superRefine((p, ctx) =>
 
   const routeIds = new Set<string>();
   const coordsBySlug = new Map(p.places.map((pl) => [pl.slug, [pl.coordinates.lat, pl.coordinates.lon] as const]));
+  const bboxBySlug = new Map(p.places.flatMap((pl) => (pl.bbox ? [[pl.slug, pl.bbox] as const] : [])));
   let totalPoints = 0;
   p.routes.forEach((route, i) => {
     if (routeIds.has(route.id)) {
@@ -911,10 +914,15 @@ export const publishedProjectionSchema = projectionShape.superRefine((p, ctx) =>
       const from = coordsBySlug.get(route.stops[j] ?? "");
       const to = coordsBySlug.get(route.stops[j + 1] ?? "");
       const tol = ROUTE_LEG_LIMITS.endpointToleranceKm;
-      if (from && haversineKm(pts[0]!, from) > tol) {
+      // A path is cut where it meets the box of a stop (the box is drawn, the path plugs into its edge): that end is far from the centre by design.
+      const atBoxEdge = (slug: string | undefined, q: readonly [number, number]) => {
+        const box = slug === undefined ? undefined : bboxBySlug.get(slug);
+        return box !== undefined && q[1] >= box[0] - ROUTE_LEG_LIMITS.boxEdgeSlackDeg && q[1] <= box[2] + ROUTE_LEG_LIMITS.boxEdgeSlackDeg && q[0] >= box[1] - ROUTE_LEG_LIMITS.boxEdgeSlackDeg && q[0] <= box[3] + ROUTE_LEG_LIMITS.boxEdgeSlackDeg;
+      };
+      if (from && haversineKm(pts[0]!, from) > tol && !atBoxEdge(route.stops[j], pts[0]!)) {
         ctx.addIssue({ code: "custom", path: ["routes", i, "legs", j, "polyline"], message: `starts more than ${tol} km from "${route.stops[j]}"` });
       }
-      if (to && haversineKm(pts[pts.length - 1]!, to) > tol) {
+      if (to && haversineKm(pts[pts.length - 1]!, to) > tol && !atBoxEdge(route.stops[j + 1], pts[pts.length - 1]!)) {
         ctx.addIssue({ code: "custom", path: ["routes", i, "legs", j, "polyline"], message: `ends more than ${tol} km from "${route.stops[j + 1]}"` });
       }
     });

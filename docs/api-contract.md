@@ -203,7 +203,7 @@ Checks (schema, `parsePublishedProjection`; the private export must enforce the 
 | `legs.length` | `stops.length - 1` |
 | characters of one polyline | 16,000 (`charsPerLeg`) |
 | decoded points: per leg / per route / in the whole projection | 2,000 / 12,000 / 60,000 (`pointsPerLeg`, `pointsPerRoute`, `pointsTotal`) |
-| first and last point | within 3 km of the leg's stops (`endpointToleranceKm`) |
+| first and last point | within 3 km of the leg's stops (`endpointToleranceKm`), or on the edge of the stop's `bbox` (a path is cut where it meets a city's box; 1e-5 degree of slack) |
 | consecutive points | less than 200 km apart (`maxJumpKm`) |
 | a `flight` | carries no `polyline` |
 

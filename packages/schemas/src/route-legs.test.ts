@@ -89,6 +89,19 @@ describe("routes[].legs", () => {
     expect(() => parse({ id: "r", title: "R", stops, legs: [{ mode: "road", polyline: farEnd }, { mode: "flight" }] })).toThrow(/ends more than 3 km/);
   });
 
+  it("accepts an end on the edge of the stop's box, however far from its centre, and nowhere else", () => {
+    // Box of "a": 0.3 degree of longitude (about 22 km) to each side of A.
+    const box: [number, number, number, number] = [A[1] - 0.3, A[0] - 0.1, A[1] + 0.3, A[0] + 0.1];
+    const withBox = (start: [number, number]) =>
+      parsePublishedProjection({
+        ...EMPTY_PROJECTION,
+        places: [{ ...places[0]!, bbox: box }, places[1]!, places[2]!],
+        routes: [{ id: "r", title: "R", stops, legs: [{ mode: "road", polyline: encodePolyline5(line(start, B)) }, { mode: "flight" }] }],
+      });
+    expect(() => withBox([A[0], box[2] + 0.00001])).not.toThrow();
+    expect(() => withBox([A[0], box[2] + 0.05])).toThrow(/starts more than 3 km/);
+  });
+
   it("refuses a jump of 200 km or more between consecutive points", () => {
     const a: [number, number] = [0, 0];
     const b: [number, number] = [0, 1.9]; // about 211 km
