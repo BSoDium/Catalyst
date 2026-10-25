@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { EMPTY_PROJECTION, encodePolyline5, type PublishedProjection } from "@catalyst/schemas";
-import { journeyText, journeysOf, roundKm, tripsOf } from "./journeys";
+import { journeyText, journeysOf, roundKm, tripLinkLabel, tripsOf } from "./journeys";
 
 const place = (slug: string, name: string, lat: number, lon: number, countryCode?: string) => ({
   slug, name, coordinates: { lat, lon }, labelPriority: 0, body: [], images: [], related: [], ...(countryCode ? { countryCode } : {}),
@@ -87,5 +87,15 @@ describe("tripsOf", () => {
     const loop: PublishedProjection = { ...projection, routes: [{ id: "loop", title: "Loop", stops: ["alpha", "beta", "alpha"] }] };
     expect(tripsOf(loop, "alpha")[0]!.visits.map((v) => v.position)).toEqual([1, 3]);
     expect(tripsOf(projection, "nowhere")).toEqual([]);
+  });
+});
+
+describe("tripLinkLabel", () => {
+  it("names Polarsteps for a polarsteps.com page and says 'Open the trip' for any other address", () => {
+    expect(tripLinkLabel("https://www.polarsteps.com/someone/123-trip")).toBe("Follow the trip on Polarsteps");
+    expect(tripLinkLabel("https://polarsteps.com/someone/123-trip")).toBe("Follow the trip on Polarsteps");
+    expect(tripLinkLabel("https://polarsteps.com.example.org/x")).toBe("Open the trip");
+    expect(tripLinkLabel("https://example.org/trip")).toBe("Open the trip");
+    expect(tripLinkLabel("not a url")).toBe("Open the trip");
   });
 });

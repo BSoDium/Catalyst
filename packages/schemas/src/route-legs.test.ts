@@ -164,3 +164,16 @@ describe("routes[].legs", () => {
     expect(p.routes.length).toBeGreaterThanOrEqual(4);
   });
 });
+
+describe("route url (the trip's own public page)", () => {
+  const base = { id: "trip", title: "Trip", stops };
+  it("accepts an https page and none at all, and refuses http, credentials and relative addresses", () => {
+    expect(() => parse({ ...base })).not.toThrow();
+    expect(parse({ ...base, url: "https://www.polarsteps.com/someone/123-trip" }).routes[0]!.url).toBe("https://www.polarsteps.com/someone/123-trip");
+    for (const url of ["http://example.org/trip", "https://user:pw@example.org/trip", "/trip", "javascript:alert(1)", "https://exa mple.org"]) expect(() => parse({ ...base, url }), url).toThrow();
+  });
+  it("is in the generated JSON Schema", () => {
+    const route = JSON.parse(buildJsonSchema()).properties.routes.items.properties;
+    expect(route.url).toMatchObject({ type: "string", maxLength: 2000 });
+  });
+});

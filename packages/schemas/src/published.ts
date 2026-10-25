@@ -208,6 +208,45 @@ export const publishedLegSchema = z
   })
   .strict();
 
+
+// --- Entries (projects, articles, artworks, poems, photographs) ------------------------------------------------------------------------
+
+/**
+ * Plain-text safety rules shared by every entry text field. No HTML or markdown is ever interpreted, so what matters
+ * here is what could confuse a reader or a renderer: control characters (a tab and a line feed are allowed only in
+ * the fields that are explicitly multi-line) and the bidirectional override/isolate characters (U+202A to U+202E,
+ * U+2066 to U+2069), which can make text read differently from how it is stored.
+ */
+// Built from strings (not regex literals) so that the escapes stay escapes, byte for byte, in the generated JSON
+// Schema: no raw bidirectional character may end up in a committed file.
+const BIDI = "\\u202A-\\u202E\\u2066-\\u2069";
+const SINGLE_LINE = new RegExp(`^[^\\u0000-\\u001F\\u007F${BIDI}]*$`, "u");
+const MULTI_LINE = new RegExp(`^[^\\u0000-\\u0008\\u000B-\\u001F\\u007F${BIDI}]*$`, "u");
+const HAS_VISIBLE = /\S/u;
+
+/** One trimmed line of plain text, 1 to `max` characters. */
+const line = (max: number) => z.string().trim().min(1).max(max).regex(SINGLE_LINE, "single line of plain text, no control characters");
+/** Trimmed plain text that may contain line feeds (a line feed is a hard line break), 1 to `max` characters. */
+const lines = (max: number) => z.string().trim().min(1).max(max).regex(MULTI_LINE, "plain text, no control characters other than line feed and tab");
+
+/**
+ * An https URL, at most 2000 characters, without whitespace, control characters or embedded credentials. `http:`,
+ * `mailto:`, `javascript:`, `data:` and relative URLs are all refused.
+ */
+export const httpsUrlSchema = z
+  .string()
+  .max(2000)
+  .regex(new RegExp(`^https://[^\\s\\u0000-\\u001F\\u007F${BIDI}]+$`, "u"), "https only, no whitespace")
+  .url()
+  .refine((u) => {
+    try {
+      const parsed = new URL(u);
+      return parsed.protocol === "https:" && parsed.username === "" && parsed.password === "";
+    } catch {
+      return false;
+    }
+  }, "https only, without credentials");
+
 /**
  * An explicitly curated route: an ordered list of published places. Routes are
  * never inferred; if it is not here, no line is drawn.
@@ -220,6 +259,11 @@ export const publishedRouteSchema = z
     summary: z.string().trim().min(1).max(400).optional(),
     /** Additive in schema version 1. When the trip happened (a month or a year is enough). */
     dates: publishedDatesSchema.optional(),
+    /**
+     * Additive in schema version 1. The trip's own public page (its travel log, for instance a public Polarsteps trip): https only. Absent
+     * when the trip is not public: the exporter never sets it for a trip whose visibility it cannot confirm.
+     */
+    url: httpsUrlSchema.optional(),
     stops: z.array(slugSchema).min(2).max(200),
     /**
      * Additive in schema version 1. One entry per consecutive pair of stops, so `stops.length - 1` entries; absent
@@ -260,44 +304,6 @@ export const publishedRouteSchema = z
       ctx.addIssue({ code: "custom", path: ["legs"], message: `at most ${ROUTE_LEG_LIMITS.pointsPerRoute} points per route, got ${total}` });
     }
   });
-
-// --- Entries (projects, articles, artworks, poems, photographs) ------------------------------------------------------------------------
-
-/**
- * Plain-text safety rules shared by every entry text field. No HTML or markdown is ever interpreted, so what matters
- * here is what could confuse a reader or a renderer: control characters (a tab and a line feed are allowed only in
- * the fields that are explicitly multi-line) and the bidirectional override/isolate characters (U+202A to U+202E,
- * U+2066 to U+2069), which can make text read differently from how it is stored.
- */
-// Built from strings (not regex literals) so that the escapes stay escapes, byte for byte, in the generated JSON
-// Schema: no raw bidirectional character may end up in a committed file.
-const BIDI = "\\u202A-\\u202E\\u2066-\\u2069";
-const SINGLE_LINE = new RegExp(`^[^\\u0000-\\u001F\\u007F${BIDI}]*$`, "u");
-const MULTI_LINE = new RegExp(`^[^\\u0000-\\u0008\\u000B-\\u001F\\u007F${BIDI}]*$`, "u");
-const HAS_VISIBLE = /\S/u;
-
-/** One trimmed line of plain text, 1 to `max` characters. */
-const line = (max: number) => z.string().trim().min(1).max(max).regex(SINGLE_LINE, "single line of plain text, no control characters");
-/** Trimmed plain text that may contain line feeds (a line feed is a hard line break), 1 to `max` characters. */
-const lines = (max: number) => z.string().trim().min(1).max(max).regex(MULTI_LINE, "plain text, no control characters other than line feed and tab");
-
-/**
- * An https URL, at most 2000 characters, without whitespace, control characters or embedded credentials. `http:`,
- * `mailto:`, `javascript:`, `data:` and relative URLs are all refused.
- */
-export const httpsUrlSchema = z
-  .string()
-  .max(2000)
-  .regex(new RegExp(`^https://[^\\s\\u0000-\\u001F\\u007F${BIDI}]+$`, "u"), "https only, no whitespace")
-  .url()
-  .refine((u) => {
-    try {
-      const parsed = new URL(u);
-      return parsed.protocol === "https:" && parsed.username === "" && parsed.password === "";
-    } catch {
-      return false;
-    }
-  }, "https only, without credentials");
 
 const dimensions = {
   width: z.number().int().positive().max(20000).optional(),

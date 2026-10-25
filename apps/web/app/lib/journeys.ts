@@ -105,6 +105,8 @@ export interface Trip {
   /** The owner's line or two about the trip, and when it was. */
   summary?: string;
   dates: FormattedDates | null;
+  /** The trip's own public page, when the route has one (`routes[].url`). */
+  url?: string;
   /** For the trip's own small map: the stops and, per leg, its mode and a few points of its path (`lon, lat` flat, capped for the whole trip). */
   stopPoints: Array<{ slug: string; name: string; lon: number; lat: number }>;
   legPaths: Array<{ mode: LegMode; points: number[] }>;
@@ -175,10 +177,21 @@ export function tripsOf(projection: PublishedProjection, slug: string, nameOf: (
       to: nameOf(places[places.length - 1]!),
       ...(route.summary ? { summary: route.summary } : {}),
       dates: formatDates(route.dates),
+      ...(route.url ? { url: route.url } : {}),
       stopPoints: places.map((p) => ({ slug: p!.slug, name: nameOf(p!), lon: p!.coordinates.lon, lat: p!.coordinates.lat })),
       legPaths,
       visits,
     });
   });
   return trips;
+}
+
+/** The words of a trip's link: "Follow the trip on Polarsteps" for a Polarsteps page, "Open the trip" for any other. */
+export function tripLinkLabel(url: string): string {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return host === "polarsteps.com" || host.endsWith(".polarsteps.com") ? "Follow the trip on Polarsteps" : "Open the trip";
+  } catch {
+    return "Open the trip";
+  }
 }
