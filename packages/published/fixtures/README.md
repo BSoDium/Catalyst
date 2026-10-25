@@ -21,6 +21,7 @@ content with real entries is all it takes to go from demo to real.
     `apps/web/scripts/entries/sensitive.mjs`. Do not mark another entry sensitive: tests assert there is exactly one.
   - 4 poems: two in English (a six-stanza poem and a haiku-like one), one in French and one in Spanish, with a `Language` fact each,
     indented lines and one long verse line: `demo-poem`, `citadel-rain`, `quai-de-nuit`, `cuesta-arriba`.
+  - 4 photographs: a 3:2 landscape, a 4:5 portrait, another landscape and a 1:1 square (stand-in SVGs, `photo-*.svg`), three linked to a place and one with none: `demo-photograph`, `rain-at-the-gate`, `sea-wall`, `platform-nine`.
 - **A made-up `career` document** (the optional top-level `career` object, see `docs/api-contract.md`): four roles at invented employers
   (Example Studio, Sample Works Ltd, Placeholder & Co, Demo Labs), an ongoing role, a role with no end, a year-only start, a role with no
   highlights, two education items (both with a place), three languages, four skill groups, three links on example domains and an abstract halftone

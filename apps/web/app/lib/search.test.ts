@@ -18,7 +18,7 @@ describe("foldText", () => {
 
 describe("buildSearchIndex", () => {
   it("has every place and every entry, places first, with their hrefs", () => {
-    const entries = demo.articles.length + demo.projects.length + demo.artworks.length + demo.poems.length;
+    const entries = demo.articles.length + demo.projects.length + demo.artworks.length + demo.poems.length + demo.photographs.length;
     // the demo has a career document: one more row, after the entries
     expect(index).toHaveLength(demo.places.length + entries + 1);
     expect(index.at(-1)).toMatchObject({ type: "career", href: "/career" });
@@ -35,7 +35,7 @@ describe("buildSearchIndex", () => {
     expect(JSON.stringify(index)).not.toContain(body.text.slice(0, 40));
   });
   it("is empty for an empty projection", () => {
-    expect(buildSearchIndex({ ...demo, places: [], articles: [], projects: [], artworks: [], poems: [], career: undefined })).toEqual([]);
+    expect(buildSearchIndex({ ...demo, places: [], articles: [], projects: [], artworks: [], poems: [], photographs: [], career: undefined })).toEqual([]);
   });
 });
 
@@ -71,7 +71,7 @@ describe("searchItems", () => {
     expect(r.findIndex((i) => foldText(i.title).includes("rain"))).toBeLessThan(r.length);
   });
   it("requires every word", () => {
-    expect(titles(searchItems(index, "night platform"))).toEqual(["Night Platform, Split"]);
+    expect(titles(searchItems(index, "night platform"))).toEqual(["Night Platform, Split", "Platform Nine"]);
     expect(searchItems(index, "night zzzz")).toEqual([]);
   });
   it("finds the poems by the section's name and by the word for one or many", () => {

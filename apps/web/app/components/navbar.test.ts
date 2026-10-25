@@ -6,6 +6,9 @@ import { describe, expect, it } from "vitest";
 import { SITE_NAME } from "~/lib/site";
 import { GESTURE_GUARD_MS, Navbar } from "./navbar";
 
+/** The header's inline row: everything before the Sections button's sheet (which repeats the sections as a list, for the narrow form). */
+const inline = (html: string) => html.slice(0, html.indexOf('data-slot="sections-menu"'));
+
 /** The navbar server-rendered at `url`; `shell` stands for the route that owns the globe (`routes/shell`). */
 async function render(url: string, { shell = true, heroResting, hasCareer }: { shell?: boolean; heroResting?: boolean; hasCareer?: boolean } = {}): Promise<string> {
   const routes = [{ id: shell ? "routes/shell" : "routes/list", path: "*", Component: () => createElement(Navbar, { heroResting, hasCareer }) }];
@@ -16,30 +19,33 @@ async function render(url: string, { shell = true, heroResting, hasCareer }: { s
 }
 
 describe("Navbar", () => {
-  it("has no logo: the first item is \"Globe\" as plain text, a link home; then the four sections, in order, then the search", async () => {
+  it("has no logo: the first item is \"Globe\" as plain text, a link home; then the five sections, in order, then the search", async () => {
     const html = await render("/articles", { shell: false });
     // the only drawing in the header is the search icon (before its word), after the links: no mark, no icon in front of the name
-    expect(html.indexOf("<svg")).toBeGreaterThan(html.indexOf('href="/poetry"'));
-    expect(html.match(/<svg/g)).toHaveLength(1);
-    const links = [...html.matchAll(/<a [^>]*href="([^"]*)"[^>]*>([^<]*)<\/a>/g)].map((m) => [m[1], m[2]]);
+    expect(html.indexOf("<svg")).toBeGreaterThan(html.indexOf('href="/photography"'));
+    // (the Sections button's chevron is the other: it is drawn only where the row has no room)
+    expect(inline(html).match(/<svg/g) ?? []).toHaveLength(0);
+    expect(html.match(/<svg/g)).toHaveLength(2);
+    const links = [...inline(html).matchAll(/<a [^>]*href="([^"]*)"[^>]*>([^<]*)<\/a>/g)].map((m) => [m[1], m[2]]);
     expect(links).toEqual([
       ["/", "Globe"],
       ["/software", "Software"],
       ["/articles", "Articles"],
       ["/artworks", "Artworks"],
       ["/poetry", "Poetry"],
+      ["/photography", "Photography"],
     ]);
     // the accessible name starts with the visible word and says what it is
     expect(html).toContain(`aria-label="Globe, ${SITE_NAME} home"`);
     expect(html.match(/aria-label="Primary"/g)).toHaveLength(1);
     // the search trigger follows the links in the DOM (so in the focus order)
-    expect(html.indexOf('data-slot="search-trigger"')).toBeGreaterThan(html.indexOf('href="/poetry"'));
+    expect(html.indexOf('data-slot="search-trigger"')).toBeGreaterThan(html.indexOf('href="/photography"'));
   });
 
-  it("adds \"Career\" after the four sections when the projection has a career document, and says so on the header for the tighter tiers", async () => {
+  it("adds \"Career\" after the five sections when the projection has a career document, and says so on the header for the tighter tiers", async () => {
     const html = await render("/articles", { shell: false, hasCareer: true });
-    const links = [...html.matchAll(/<a [^>]*href="([^"]*)"[^>]*>([^<]*)<\/a>/g)].map((m) => [m[1], m[2]]);
-    expect(links).toEqual([["/", "Globe"], ["/software", "Software"], ["/articles", "Articles"], ["/artworks", "Artworks"], ["/poetry", "Poetry"], ["/career", "Career"]]);
+    const links = [...inline(html).matchAll(/<a [^>]*href="([^"]*)"[^>]*>([^<]*)<\/a>/g)].map((m) => [m[1], m[2]]);
+    expect(links).toEqual([["/", "Globe"], ["/software", "Software"], ["/articles", "Articles"], ["/artworks", "Artworks"], ["/poetry", "Poetry"], ["/photography", "Photography"], ["/career", "Career"]]);
     expect(html).toContain("data-career");
     expect(html.indexOf('data-slot="search-trigger"')).toBeGreaterThan(html.indexOf('href="/career"'));
     // the current page is marked
@@ -66,8 +72,8 @@ describe("Navbar", () => {
 
   it("on the home page, once the hero has stepped back (its rows are hidden), brings the sections back", async () => {
     const html = await render("/", { heroResting: false });
-    const links = [...html.matchAll(/<a [^>]*href="([^"]*)"[^>]*>([^<]*)<\/a>/g)].map((m) => m[1]);
-    expect(links).toEqual(["/", "/software", "/articles", "/artworks", "/poetry"]);
+    const links = [...inline(html).matchAll(/<a [^>]*href="([^"]*)"[^>]*>([^<]*)<\/a>/g)].map((m) => m[1]);
+    expect(links).toEqual(["/", "/software", "/articles", "/artworks", "/poetry", "/photography"]);
     expect(html.match(/aria-label="Primary"/g)).toHaveLength(1);
     // the key hint is plain muted text: the command key's name in a kbd with no box, no border, no background
     const kbd = html.slice(html.indexOf("<kbd"), html.indexOf("</kbd>"));
@@ -78,7 +84,7 @@ describe("Navbar", () => {
   it("is unchanged on every other route, whatever the hero's state (it is not on the page there)", async () => {
     for (const url of ["/articles", "/poetry", "/locations/x", "/articles/x"]) {
       const html = await render(url, { shell: url.startsWith("/locations") || url.startsWith("/articles/"), heroResting: true });
-      expect([...html.matchAll(/<a [^>]*href="([^"]*)"/g)].map((m) => m[1]), url).toEqual(["/", "/software", "/articles", "/artworks", "/poetry"]);
+      expect([...inline(html).matchAll(/<a [^>]*href="([^"]*)"/g)].map((m) => m[1]), url).toEqual(["/", "/software", "/articles", "/artworks", "/poetry", "/photography"]);
       expect(html, url).toContain('aria-label="Primary"');
     }
   });
@@ -86,7 +92,7 @@ describe("Navbar", () => {
   it("offers the search as one control at every width: the icon, the word \"Search\" and the key hint, in the type of the other items, after the links", async () => {
     const html = await render("/articles", { shell: false });
     const at = html.indexOf('data-slot="search-trigger"');
-    expect(at).toBeGreaterThan(html.indexOf('href="/poetry"'));
+    expect(at).toBeGreaterThan(html.indexOf('href="/photography"'));
     expect(html.match(/data-slot="search-trigger/g)).toHaveLength(1);
     const button = html.slice(at, html.indexOf("</button>", at));
     // the icon, then the word, then the hint (empty until hydrated: its place is held), as one run of the nav type
@@ -131,6 +137,32 @@ describe("Navbar", () => {
     expect(await render("/locations/x")).toContain("nav-fade");
     expect(await render("/articles", { shell: false })).not.toContain("nav-fade");
     expect(await render("/articles/x?view=full")).not.toContain("nav-fade");
+  });
+});
+
+describe("the Sections button (phone header)", () => {
+  const css = readFileSync(new URL("../app.css", import.meta.url), "utf8");
+
+  it("is one disclosure after the inline row and before the search, with a sheet that lists every section, each with its count, and Career", async () => {
+    const html = await render("/articles", { shell: false, hasCareer: true });
+    const at = html.indexOf('data-slot="sections-menu"');
+    expect(at).toBeGreaterThan(html.indexOf('href="/career"'));
+    expect(at).toBeLessThan(html.indexOf('data-slot="search-trigger"'));
+    const details = html.slice(html.lastIndexOf("<details", at), html.indexOf("</details>", at));
+    expect(details).toContain("<summary");
+    expect(details).toMatch(/<summary[^>]*class="[^"]*min-h-11 min-w-11/);
+    expect(details).toContain("<span>Sections</span>");
+    const sheet = [...details.matchAll(/<a [^>]*href="([^"]*)"/g)].map((m) => m[1]);
+    expect(sheet).toEqual(["/software", "/articles", "/artworks", "/poetry", "/photography", "/career"]);
+    // without a data router there are no counts to say: the rows are the names alone
+    expect(details).not.toContain('data-slot="sections-count"');
+    // the current page is marked in the sheet as well
+    expect(details).toMatch(/<a [^>]*aria-current="page"[^>]*href="\/articles"|<a [^>]*href="\/articles"[^>]*aria-current="page"/);
+  });
+
+  it("swaps with the inline row by the header's own width (56 rem), never by the viewport's: beside the panel the row has half the viewport", () => {
+    expect(css).toMatch(/\.nav-sections \{\s*display: none;/);
+    expect(css).toMatch(/@container \(max-width: 55\.99rem\) \{\s*\.nav-inline \{\s*display: none;\s*\}\s*\.nav-sections \{\s*display: block;/);
   });
 });
 

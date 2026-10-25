@@ -48,8 +48,8 @@ export const bboxSchema = z
   .refine(([west, , east]) => west < east, "bbox: west must be strictly less than east (no antimeridian crossing)")
   .refine(([, south, , north]) => south < north, "bbox: south must be strictly less than north");
 
-/** Entry kinds. `poem` is additive in schema version 1 (the `poems` collection defaults to `[]`). */
-export const contentKindSchema = z.enum(["project", "article", "artwork", "poem"]);
+/** Entry kinds. `poem` and `photograph` are additive in schema version 1 (the `poems` and `photographs` collections default to `[]`). */
+export const contentKindSchema = z.enum(["project", "article", "artwork", "poem", "photograph"]);
 
 /**
  * Site-relative path under /media/, shipped with the web app. Segments are plain file names: no empty segment (`//`),
@@ -261,7 +261,7 @@ export const publishedRouteSchema = z
     }
   });
 
-// --- Entries (projects, articles, artworks, poems) ------------------------------------------------------------------------
+// --- Entries (projects, articles, artworks, poems, photographs) ------------------------------------------------------------------------
 
 /**
  * Plain-text safety rules shared by every entry text field. No HTML or markdown is ever interpreted, so what matters
@@ -497,9 +497,19 @@ export const publishedContentItemSchema = z
     /** Optional, additive in schema version 1. The entry's content as typed blocks; absent = the entry has no body. Detail only: list endpoints omit it. */
     body: publishedBodySchema.optional(),
     placeSlugs: z.array(slugSchema).max(100),
+    /**
+     * Optional, additive in schema version 1. Where the entry is, when only the country is known (a photograph without a geotag that
+     * the owner remembers only as "somewhere on the Amazon in Brazil"): ISO 3166-1 alpha-2, uppercase. A country, never a point: the
+     * web app names it and frames it on the globe, and no place lists the entry. It is authored (unlike a place's derived
+     * `countryCode`) and independent of the automatic group hierarchy, whose slugs can change.
+     */
+    countryCode: z
+      .string()
+      .regex(/^[A-Z]{2}$/, "ISO 3166-1 alpha-2, uppercase")
+      .optional(),
   })
   .strict()
-  // Shared by four collections: the generated JSON Schema declares it once (`$defs`) instead of four times.
+  // Shared by every collection: the generated JSON Schema declares it once (`$defs`) instead of four times.
   .meta({ id: "PublishedContentItem" });
 
 // --- Career (a singleton document, additive in schema version 1) -----------------------------------------------------------
@@ -788,6 +798,8 @@ const projectionShape = z
     artworks: z.array(publishedContentItemSchema),
     /** Additive in schema version 1: absent means no poems. */
     poems: z.array(publishedContentItemSchema).default([]),
+    /** Additive in schema version 1: absent means no photographs. */
+    photographs: z.array(publishedContentItemSchema).default([]),
     /** Additive in schema version 1: absent means the owner has not published a career document. */
     career: publishedCareerSchema.optional(),
   })
@@ -857,6 +869,7 @@ export const publishedProjectionSchema = projectionShape.superRefine((p, ctx) =>
     article: new Set<string>(),
     artwork: new Set<string>(),
     poem: new Set<string>(),
+    photograph: new Set<string>(),
   };
   (
     [
@@ -864,6 +877,7 @@ export const publishedProjectionSchema = projectionShape.superRefine((p, ctx) =>
       ["articles", "article"],
       ["artworks", "artwork"],
       ["poems", "poem"],
+      ["photographs", "photograph"],
     ] as const
   ).forEach(([key, kind]) => {
     p[key].forEach((item, i) => {
@@ -990,9 +1004,9 @@ export function toPlaceSummary(place: PublishedPlace): PlaceSummary {
 export type PublishedContentSummary = Omit<PublishedContentItem, "body">;
 
 export function toContentSummary(item: PublishedContentItem): PublishedContentSummary {
-  const { slug, title, summary, date, url, cover, sensitive, tags, meta, placeSlugs } = item;
+  const { slug, title, summary, date, url, cover, sensitive, tags, meta, placeSlugs, countryCode } = item;
   // `sensitive` is only ever `true` in a summary: `false` is the same as absent, and absent keys vanish in JSON.
-  return { slug, title, summary, date, url, cover, sensitive: sensitive === true ? true : undefined, tags, meta, placeSlugs };
+  return { slug, title, summary, date, url, cover, sensitive: sensitive === true ? true : undefined, tags, meta, placeSlugs, countryCode };
 }
 
 export const EMPTY_PROJECTION: PublishedProjection = {
@@ -1004,6 +1018,7 @@ export const EMPTY_PROJECTION: PublishedProjection = {
   articles: [],
   artworks: [],
   poems: [],
+  photographs: [],
 };
 
 /** Parse and validate. Throws an Error with a readable, path-annotated message. */

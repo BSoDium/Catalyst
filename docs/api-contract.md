@@ -8,7 +8,7 @@ There is no import endpoint, no admin or write endpoint, no authentication and n
 
 **The published contract is independent of how content is stored upstream.** In v1 the content is files: a private content repo opens a PR against this repo that updates `packages/published/data/projection.json`. Later it may be database-backed editing. In both cases the projection schema, the endpoints and the response shapes below stay the same. Consumers must not be able to tell which backend produced the data.
 
-- Everything is under `/v1`. Within v1 changes are additive only: new optional fields, new endpoints, and new members of a closed set where the section says so (the entry kinds gained `poem`; clients should treat an unknown kind as "something to list, not to render specially"). Removing or retyping a field, or changing an error code, needs `/v2` (which would run alongside `/v1` for a deprecation period). Clients must ignore fields they do not know; a consumer that validates strictly (JSON Schema with `additionalProperties: false`, zod `.strict()`, such as the web app with `CATALYST_API_URL` or the private repo's contract copy) must update its schema before an entry with `sensitive`, or the `career` document, is published (see "Deployment order" in the career section below).
+- Everything is under `/v1`. Within v1 changes are additive only: new optional fields, new endpoints, and new members of a closed set where the section says so (the entry kinds gained `poem` and then `photograph`; clients should treat an unknown kind as "something to list, not to render specially"). Removing or retyping a field, or changing an error code, needs `/v2` (which would run alongside `/v1` for a deprecation period). Clients must ignore fields they do not know; a consumer that validates strictly (JSON Schema with `additionalProperties: false`, zod `.strict()`, such as the web app with `CATALYST_API_URL` or the private repo's contract copy) must update its schema before an entry with `sensitive`, or the `career` document, is published (see "Deployment order" in the career section below).
 - `schemaVersion` (currently `1`) is in `/health` and `/v1/projection`.
 - `GET /health` is operational, not part of the content contract. Do not build features on it.
 - Response types are exported from `apps/api/src/contract.ts` as **types only**. The web app may `import type { ... } from "@catalyst/api/contract"`. Never import runtime code from `@catalyst/api` into the client.
@@ -78,7 +78,7 @@ Liveness plus a summary of what is loaded. `200` when content is valid, `503` ot
   "ok": true,
   "schemaVersion": 1,
   "content": "demo",
-  "counts": { "places": 18, "groups": 8, "routes": 4, "projects": 4, "articles": 5, "artworks": 5, "poems": 4 }
+  "counts": { "places": 18, "groups": 8, "routes": 4, "projects": 4, "articles": 5, "artworks": 5, "poems": 4, "photographs": 4 }
 }
 ```
 
@@ -93,10 +93,10 @@ Liveness plus a summary of what is loaded. `200` when content is valid, `503` ot
 The complete validated projection, exactly the shape of `PublishedProjection`: `schemaVersion`, `places` (full objects, authored order), `groups` (the automatic place hierarchy, see below), `routes`, `projects`, `articles`, `artworks`, `poems` and, once the owner has published it, `career` (see "The career document" below). This is what the globe loads. It is always the **complete** projection: entries (`projects`, `articles`, `artworks`, `poems`) are full objects with their `body`, unlike the list endpoints below. With the committed (empty) content:
 
 ```json
-{ "schemaVersion": 1, "places": [], "groups": [], "routes": [], "projects": [], "articles": [], "artworks": [], "poems": [] }
+{ "schemaVersion": 1, "places": [], "groups": [], "routes": [], "projects": [], "articles": [], "artworks": [], "poems": [], "photographs": [] }
 ```
 
-`groups` and `poems` default to `[]` when a projection file omits them (see "Entries"), so the committed file does not have to carry `poems` yet; the response always does. `career` is the opposite: it is **absent** (the key is not there, not `null`) unless a document is published.
+`groups`, `poems` and `photographs` default to `[]` when a projection file omits them (see "Entries"), so the committed file does not have to carry `poems` yet; the response always does. `career` is the opposite: it is **absent** (the key is not there, not `null`) unless a document is published.
 
 ### `GET /v1/places`
 
@@ -211,9 +211,11 @@ Size: the spike's pre-baked legs simplified at 50 m average about 145 points per
 
 **Private repo:** `packages/schemas/published.schema.json` is the generated contract (`pnpm --filter @catalyst/schemas build:contract`). Its copy in the private repo is byte-identical and must be copied over after this lands (the rollout order stays: public contract and renderer first, then the private schema copy, then the export). The JSON Schema cannot express the cross-checks (endpoint distance, jump, totals): the private validator re-implements them from `ROUTE_LEG_LIMITS` and `decodePolyline5` (exported by `@catalyst/schemas`).
 
-### Entries: `projects`, `articles`, `artworks`, `poems`
+### Entries: `projects`, `articles`, `artworks`, `poems`, `photographs`
 
-An **entry** is a published piece of content that can be linked to places. There are four kinds: `project` (a development project), `article`, `artwork` and `poem` (`ContentKind`). Each kind has its own collection in the projection and its own pair of endpoints, with the same shape (`PublishedContentItem`):
+An **entry** is a published piece of content that can be linked to places. An entry may also carry `countryCode` (optional, ISO 3166-1 alpha-2, uppercase) when only its country is known: a country, never a point, independent of the generated group hierarchy; it is in the summaries and the details.
+
+There are five kinds: `project` (a development project), `article`, `artwork`, `poem` and `photograph` (`ContentKind`; a photograph's `cover` is the picture itself, see [content-entry-model.md](content-entry-model.md), "Photographs", and [media-policy.md](media-policy.md)). Each kind has its own collection in the projection and its own pair of endpoints, with the same shape (`PublishedContentItem`):
 
 | Field | Type | Meaning |
 | --- | --- | --- |
@@ -251,9 +253,9 @@ Limits on the whole body: at most **200 blocks** and **60,000 characters** of te
 
 **Not in the contract (yet).** There is no inline emphasis or inline link inside a text field, no nested lists, no tables, no callouts and no entry-to-entry references. They would be new **optional** fields or new block types in a later additive change (for example a `spans` array next to `text`, which renderers that do not know it can ignore in favour of `text`). Until then a text is one plain string.
 
-All of this is **additive in schema version 1**: `poems`, `cover`, `tags`, `meta`, `body` and `sensitive` are new and optional, `schemaVersion` stays `1`, and a projection that has none of them stays valid (`poems` defaults to `[]`, like `groups`). The only observable changes for existing clients: `/health` counts gained `poems`, `contentKindSchema` and the `kind` of a place's `related` refs gained `poem` (clients with an exhaustive switch over kinds must handle it), the list endpoints gained fields, `url` and media paths are validated slightly more strictly (https without credentials or whitespace; no `..` segments in `/media/` paths: nothing that was a sane value is affected), and there are new endpoints.
+All of this is **additive in schema version 1**: `poems`, `cover`, `tags`, `meta`, `body` and `sensitive` are new and optional, `schemaVersion` stays `1`, and a projection that has none of them stays valid (`poems` defaults to `[]`, like `groups`). The only observable changes for existing clients: `/health` counts gained `poems` and `photographs`, `contentKindSchema` and the `kind` of a place's `related` refs gained `poem` and `photograph` (clients with an exhaustive switch over kinds must handle it), the list endpoints gained fields, `url` and media paths are validated slightly more strictly (https without credentials or whitespace; no `..` segments in `/media/` paths: nothing that was a sane value is affected), and there are new endpoints.
 
-#### `GET /v1/projects`, `GET /v1/articles`, `GET /v1/artworks`, `GET /v1/poems`
+#### `GET /v1/projects`, `GET /v1/articles`, `GET /v1/artworks`, `GET /v1/poems`, `GET /v1/photographs`
 
 Arrays of **summaries**, in authored order: the entry without its `body` (`ContentItemsResponse`: `slug`, `title`, `summary?`, `date?`, `url?`, `cover?`, `sensitive?`, `tags?`, `meta?`, `placeSlugs`). Optional fields are omitted when absent. A list entry is roughly 0.4 to 0.7 KB (summary, cover, tags, meta), which is what a list page needs; fetch the detail (or the projection) for the text.
 
@@ -276,9 +278,9 @@ Arrays of **summaries**, in authored order: the entry without its `body` (`Conte
 ]
 ```
 
-The real `/v1/poems` answer has four such items (the demo has 5 articles, 4 projects, 5 artworks and 4 poems); only the first is shown.
+The real `/v1/poems` answer has four such items (the demo has 5 articles, 4 projects, 5 artworks, 4 poems and 4 photographs); only the first is shown.
 
-#### `GET /v1/projects/:slug`, `GET /v1/articles/:slug`, `GET /v1/artworks/:slug`, `GET /v1/poems/:slug`
+#### `GET /v1/projects/:slug`, `GET /v1/articles/:slug`, `GET /v1/artworks/:slug`, `GET /v1/poems/:slug`, `GET /v1/photographs/:slug`
 
 The complete entry (`ContentDetailResponse`): every field of the table above **including `body`**, plus `kind` and `places`, the entry's places resolved to `{ slug, name }` in the order of `placeSlugs`, so a detail view needs no second request. `placeSlugs` is kept. An unknown slug, or a slug that belongs to another kind (`/v1/projects/demo-poem`), is `404`. Slugs are lowercase kebab-case; `/v1/poems/Demo-Poem` is a 404.
 
@@ -316,7 +318,7 @@ The complete entry (`ContentDetailResponse`): every field of the table above **i
 }
 ```
 
-A place's `related` (`{ kind, slug }`, resolved to `{ kind, slug, title }` in `GET /v1/places/:slug`) may now have `kind: "poem"`. Both directions of the link are valid (an entry lists `placeSlugs`, a place lists `related`); the web app merges them.
+A place's `related` (`{ kind, slug }`, resolved to `{ kind, slug, title }` in `GET /v1/places/:slug`) may now have `kind: "poem"` or `kind: "photograph"`. Both directions of the link are valid (an entry lists `placeSlugs`, a place lists `related`); the web app merges them.
 
 #### Payload size and cost
 

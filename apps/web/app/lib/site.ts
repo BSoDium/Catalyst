@@ -54,6 +54,7 @@ const SECTION_CAPTION_STYLE = {
   article: "heavy",
   artwork: "heavy",
   poem: "script",
+  photograph: "heavy",
 } as const satisfies Record<keyof typeof SECTIONS, NonNullable<CaptionSpan["style"]>>;
 
 
@@ -71,6 +72,12 @@ export type KindCounts = Record<keyof typeof SECTIONS, number>;
 
 const KINDS = Object.keys(SECTIONS) as (keyof typeof SECTIONS)[];
 
+/** The sections are set two to a row (software, articles / artworks, poetry / photography): the widest row stays as wide as it was with four sections, so the block of rows keeps its scale on the globe's narrow parallels. */
+const ROW_SIZE = 2;
+
+/** The `[from, to)` index ranges of the rows the sections are set in. */
+const chunk = (n: number): [number, number][] => Array.from({ length: Math.ceil(n / ROW_SIZE) }, (_, i) => [i * ROW_SIZE, Math.min(n, (i + 1) * ROW_SIZE)]);
+
 /** `n` of a kind in its own noun (singular or plural: "1 poem", "5 poems"), the number picked out. */
 const countSpans = (kind: keyof typeof SECTIONS, n: number, accent = false): CaptionSpan[] => [
   { text: String(n), style: "heavy", ...(accent ? { accent: "blue" as const } : {}) },
@@ -86,25 +93,20 @@ const countSpans = (kind: keyof typeof SECTIONS, n: number, accent = false): Cap
  * page as text, always (the caption is for the eyes: it is hidden from assistive technology).
  */
 export function siteCaption(counts?: KindCounts | null): SiteCaption {
-  const names = (a: number, b: number): CaptionRow => {
-    const one = KINDS[a]!;
-    const two = KINDS[b]!;
-    return [
-      { text: SECTIONS[one].name, style: SECTION_CAPTION_STYLE[one] },
-      { text: " \u00b7 " },
-      { text: SECTIONS[two].name, style: SECTION_CAPTION_STYLE[two] },
-    ];
-  };
+  // The sections' names, joined by a dot, `from` to `to` (exclusive) in the order of the lists.
+  const names = (from: number, to: number): CaptionRow =>
+    KINDS.slice(from, to).flatMap((kind, i): CaptionSpan[] => [...(i > 0 ? [{ text: " \u00b7 " }] : []), { text: SECTIONS[kind].name, style: SECTION_CAPTION_STYLE[kind] }]);
   const sets: CaptionRow[][] = [
     [
       [{ text: "A " }, { text: "personal archive", style: "heavy", accent: "blue" }, { text: "," }],
       [{ text: "organised around " }, { text: "places", style: "heavy", accent: "blue" }, { text: "." }],
     ],
-    [names(0, 1), names(2, 3)],
+    chunk(KINDS.length).map(([from, to]) => names(from, to)),
   ];
   if (counts && KINDS.every((k) => Number.isFinite(counts[k]) && counts[k] >= 0) && KINDS.some((k) => counts[k] > 0)) {
-    const row = (a: number, b: number): CaptionRow => [...countSpans(KINDS[a]!, counts[KINDS[a]!], true), { text: " \u00b7 " }, ...countSpans(KINDS[b]!, counts[KINDS[b]!])];
-    sets.push([row(0, 1), row(2, 3)]);
+    const row = (from: number, to: number): CaptionRow =>
+      KINDS.slice(from, to).flatMap((kind, i): CaptionSpan[] => [...(i > 0 ? [{ text: " \u00b7 " }] : []), ...countSpans(kind, counts[kind], from + i === 0)]);
+    sets.push(chunk(KINDS.length).map(([from, to]) => row(from, to)));
   }
   return {
     sets,

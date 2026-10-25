@@ -52,33 +52,33 @@ describe("LandingHero", () => {
     expect(empty).not.toContain("Drag the globe");
   });
 
-  it("is the home page's primary navigation: the four lists in a nav landmark, with an icon each that is decoration", async () => {
+  it("is the home page's primary navigation: the five lists in a nav landmark, with an icon each that is decoration", async () => {
     const html = await render();
     const nav = html.slice(html.indexOf('<nav aria-label="Primary" class="hero-list">'), html.indexOf("</nav>"));
     expect(nav).toContain("<ul>");
-    expect(nav.match(/<svg/g)).toHaveLength(4);
-    expect(nav.match(/aria-hidden="true"/g)?.length).toBe(4);
+    expect(nav.match(/<svg/g)).toHaveLength(5);
+    expect(nav.match(/aria-hidden="true"/g)?.length).toBe(5);
   });
 
-  it("has a fifth row, \"Career\", after Poetry when the projection has a career document, in the same row style", async () => {
+  it("has a sixth row, \"Career\", after Photography when the projection has a career document, in the same row style", async () => {
     const html = await render({ hasCareer: true });
     const nav = html.slice(html.indexOf('<nav aria-label="Primary" class="hero-list">'), html.indexOf("</nav>"));
     const rows = [...nav.matchAll(/<a [^>]*class="hero-row"[^>]*href="([^"]+)"[^>]*><span>([^<]+)<\/span>|<a [^>]*href="([^"]+)"[^>]*class="hero-row"[^>]*><span>([^<]+)<\/span>/g)].map((m) => [m[1] ?? m[3], m[2] ?? m[4]]);
-    expect(rows).toEqual([["/software", "Software"], ["/articles", "Articles"], ["/artworks", "Artworks"], ["/poetry", "Poetry"], ["/career", "Career"]]);
-    expect(nav.match(/<svg/g)).toHaveLength(5);
-    expect(html).toContain('data-rows="5"');
+    expect(rows).toEqual([["/software", "Software"], ["/articles", "Articles"], ["/artworks", "Artworks"], ["/poetry", "Poetry"], ["/photography", "Photography"], ["/career", "Career"]]);
+    expect(nav.match(/<svg/g)).toHaveLength(6);
+    expect(html).toContain('data-rows="6"');
     // still ONE primary navigation, and no count anywhere in the row
     expect(html.match(/aria-label="Primary"/g)).toHaveLength(1);
     expect(nav.replace(/<[^>]+>/g, "")).not.toMatch(/\d/);
   });
 
-  it("has only the four rows, and no link to /career, when there is no career document", async () => {
+  it("has only the five rows, and no link to /career, when there is no career document", async () => {
     const html = await render();
     expect(html).not.toContain("/career");
-    expect(html).toContain('data-rows="4"');
+    expect(html).toContain('data-rows="5"');
   });
 
-  it("has a labelled search button that names the shortcut, then the four lists as links in order", async () => {
+  it("has a labelled search button that names the shortcut, then the five lists as links in order", async () => {
     const html = await render();
     const search = html.indexOf('data-slot="hero-search"');
     expect(search).toBeGreaterThan(0);
@@ -96,6 +96,7 @@ describe("LandingHero", () => {
       ["/articles", "Articles"],
       ["/artworks", "Artworks"],
       ["/poetry", "Poetry"],
+      ["/photography", "Photography"],
     ]);
     // reading order: name, intro, search, the lists
     expect(html.indexOf("hero-name")).toBeLessThan(html.indexOf("hero-intro"));

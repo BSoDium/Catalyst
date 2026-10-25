@@ -10,8 +10,8 @@ import { NameTravel, type TravelHalf } from "~/lib/name-travel";
 import { SITE, SITE_FOCUS, SITE_IDENTITY } from "~/lib/site";
 import { useHasCareer } from "~/lib/use-has-career";
 
-/** The four shortcuts, in the header's order. Paths and words come from the one table the lists and the navigation use. */
-const SHORTCUTS = (["project", "article", "artwork", "poem"] as const).map((kind) => ({ to: KIND_PATHS[kind], label: KIND_PLURALS[kind] }));
+/** The sections' shortcuts, in the header's order. Paths and words come from the one table the lists and the navigation use. */
+const SHORTCUTS = (["project", "article", "artwork", "poem", "photograph"] as const).map((kind) => ({ to: KIND_PATHS[kind], label: KIND_PLURALS[kind] }));
 
 /** The fifth row, when the projection has a career document: not a content kind, so not in the caption's section names. */
 const CAREER_SHORTCUT = { to: CAREER_PATH, label: CAREER_LABEL } as const;
@@ -142,7 +142,7 @@ interface LandingHeroProps {
 /**
  * The landing hero, over the globe on the home page (docs/landing.md). All type: the owner's name (the given name at the heavy end of the
  * weight axis, the family name at the thin end), who they are and what they do in the light reading serif, a search line that opens
- * the existing palette, and the four lists as hairline rows (which are the home page's section links: the header leaves its own out
+ * the existing palette, and the lists as hairline rows (which are the home page's section links: the header leaves its own out
  * while the hero is at rest, `lib/hero-rest.ts`). Its container ignores the pointer, so the globe stays draggable beneath it; only the search line and the rows take
  * it. At rest it is the page; after a gesture on the globe it steps back to one small line (and comes back after a moment at the world
  * view): `data-hero` is `rest`, `collapsed` or `away`, and the CSS (app.css, "Landing hero") does the rest with opacity and transform.

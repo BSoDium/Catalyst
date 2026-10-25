@@ -1,6 +1,23 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { DEFAULT_SITE_URL, THEME_COLORS, isIndexableHost, requestHost, resolveSiteUrl } from "./site";
+import { DEFAULT_SITE_URL, THEME_COLORS, captionText, isIndexableHost, requestHost, resolveSiteUrl, siteCaption } from "./site";
+
+describe("siteCaption: the five sections in the rows of the globe", () => {
+  const counts = { project: 33, article: 2, artwork: 16, poem: 9, photograph: 4 };
+  it("names every section, two to a row in the order of the lists: no row is wider than the four-section caption's, and the fifth word has a row of its own", () => {
+    const text = captionText(siteCaption());
+    expect(text.sets[1]).toEqual(["Software · Articles", "Artworks · Poetry", "Photography"]);
+    expect(Math.max(...text.sets[1]!.map((r) => r.length))).toBeLessThanOrEqual("Software · Articles".length);
+  });
+  it("counts them the same way, with each section's own noun", () => {
+    const text = captionText(siteCaption(counts));
+    expect(text.sets[2]).toEqual(["33 software · 2 articles", "16 artworks · 9 poems", "4 photographs"]);
+    expect(captionText(siteCaption({ ...counts, photograph: 1 })).sets[2]!.at(-1)).toBe("1 photograph");
+  });
+  it("keeps the call to action in the two rows that stay", () => {
+    expect(captionText(siteCaption()).fixed).toEqual(["Drag to explore.", "Pick a place."]);
+  });
+});
 
 describe("resolveSiteUrl", () => {
   it("defaults to the temporary main domain", () => {

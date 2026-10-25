@@ -1,0 +1,16 @@
+# Media policy
+
+What may be published under `/media/` and how a photograph gets there. The contract only checks shapes (`mediaSrcSchema`: a `/media/` path of plain file names, at most 300 characters; every `alt` required, 1 to 300 characters; `width` and `height` both or neither, see [api-contract.md](api-contract.md), "Entries"). Everything else on this page is a rule for the **private content repo's export step**, written for the photography section (issue #290, [content-entry-model.md](content-entry-model.md), section 4b). Written 2026-10-25.
+
+## Demo media
+
+The demo fixture's pictures are generated SVGs (`packages/published/scripts/demo/generate-media.mjs`, committed under `apps/web/public/media/demo/`, at most 12 KiB each). The demo photographs (`photo-*.svg`) are stand-ins with the proportions a photo list has to lay out: 3:2, 4:5 and 1:1. **Real content never uses SVG**, and no real photograph is ever committed to this repo as a demo.
+
+## Photographs
+
+1. **Metadata is removed, all of it.** The export step re-encodes every photograph and strips EXIF, XMP and IPTC (camera, lens, settings, the owner's name embedded by a tool, thumbnails) and in particular **GPS**. A published file carries pixels and a colour profile, nothing else. The check is on the output file, not on the source: a test opens each exported image and fails on any metadata block other than the colour profile.
+2. **Location is a link, not a coordinate.** Where a photograph was taken is said by `placeSlugs` (a published place, whose coordinates are the place's own, rounded to the city), never by a position from the file and never in `meta`, `summary` or `alt` as numbers. A photograph taken somewhere that is not a published place has no location. The page then shows no place and the globe has nothing to link.
+3. **Size.** Published at the size the site shows, not the original: the long side at most 2400 px (the private repo refuses more than 3000 px or 2.5 MB: `config/publish.json`), WebP at quality about 82, usually under 900 KB a file (lighter than the original by design; the original stays with the owner). `width` and `height` are those of the published file and are always given for a photograph: the list reserves each picture's box from them before the image arrives.
+4. **Rights are the owner's, per photo.** A photograph is published only after the owner has approved it. Its licence is a fact the owner states (`meta` `Licence`); a photo that also lives on a third-party site (for instance the owner's Pexels profile) is imported only if its licence there allows publication here, checked per photo. The page carries the same copyright notice as the other creative kinds (`lib/copyright.ts`, JSON-LD `Photograph`).
+5. **Alt text and captions are written, not generated from the file name.** `alt` says what is in the picture for a person who cannot see it; the visible caption is the `title` and `summary`. People who are not the owner are not identifiable in a published photograph without their agreement; when in doubt, `sensitive: true` blurs the picture until the visitor asks for it.
+6. **Open points (the owner's):** which photographs and how many, their captions and alt texts, and whether each place gets a gallery view of its photographs. None of them changes the contract.

@@ -2,13 +2,13 @@
 
 Design note for the private content repo's next export step. It maps a vault document (`content/<kind>/<slug>/index.md`: a typed YAML header plus a Markdown body) onto the **entry** shape of the public contract (`packages/schemas/src/published.ts`, documented in [api-contract.md](api-contract.md), "Entries"). It implements decision D3 of the private `content-model-v2.md` (Markdown reaches the public repo as typed, schema-validated blocks, never as HTML) with the names and limits this repo actually accepts. Where the two differ, **this repo's contract wins**; the private profile is to be narrowed, not the contract widened. Written 2026-10-08.
 
-Kinds: `article`, `project` (a development project; the site calls its section **Software**, `/software`, and the kind, the vault `type`, the projection collection `projects` and the API's `/v1/projects` stay `project` / `projects`), `artwork`, `poem`. `poem` is new on both sides: the private envelope's `type` enum and the editorial content kinds (`EditorialContent`, `kindSets`, `DroppedRecord.kind`, importance links, `contentOf`) need it, and the mapper needs a `poems` collection (published poems only, sorted by slug, like the other three).
+Kinds: `article`, `project` (a development project; the site calls its section **Software**, `/software`, and the kind, the vault `type`, the projection collection `projects` and the API's `/v1/projects` stay `project` / `projects`), `artwork`, `poem`, `photograph` (the site calls its section **Photography**, `/photography`; see section 4b). `poem` is new on both sides: the private envelope's `type` enum and the editorial content kinds (`EditorialContent`, `kindSets`, `DroppedRecord.kind`, importance links, `contentOf`) need it, and the mapper needs a `poems` collection (published poems only, sorted by slug, like the other three).
 
-Conformance sample: `packages/published/fixtures/demo.json` (made-up demo data) has 18 realistic entries (5 articles, 4 projects, 5 artworks, 4 poems; one artwork is `sensitive`) with covers, tags, kind-specific meta and bodies that use **every** block type. A private test can export a vault that reproduces it and compare, and it validates against `packages/schemas/published.schema.json` with ajv in strict mode (checked).
+Conformance sample: `packages/published/fixtures/demo.json` (made-up demo data) has 22 realistic entries (5 articles, 4 projects, 5 artworks, 4 poems, 4 photographs; one artwork is `sensitive`) with covers, tags, kind-specific meta and bodies that use **every** block type. A private test can export a vault that reproduces it and compare, and it validates against `packages/schemas/published.schema.json` with ajv in strict mode (checked).
 
 ## 1. Header to fields
 
-The mapper builds a new object field by field, in this key order: `slug, title, summary, date, url, cover, sensitive, tags, meta, body, placeSlugs`. Optional fields are **omitted** when empty (no `[]`, no `null`).
+The mapper builds a new object field by field, in this key order: `slug, title, summary, date, url, cover, sensitive, tags, meta, body, placeSlugs, countryCode`. Optional fields are **omitted** when empty (no `[]`, no `null`).
 
 | Vault header | Contract field | Rule |
 | --- | --- | --- |
@@ -29,7 +29,7 @@ The mapper builds a new object field by field, in this key order: `slug, title, 
 
 Entry-to-entry `related` has no public field yet; it stays private (the place side already lists `related`).
 
-`meta` conventions the web app will display (the schema does not enforce them): project `Stack`, `Status`, `Repository`; artwork `Medium`, `Year`, `Dimensions`; article `Publication`; poem `Language`. A `meta` value is plain text, never a link: put a repository or demo address in `url`, or in `links`.
+`meta` conventions the web app will display (the schema does not enforce them): project `Stack`, `Status`, `Repository`; artwork `Medium`, `Year`, `Dimensions`; article `Publication`; poem `Language`; photograph `Format` and `Licence`. A `meta` value is plain text, never a link: put a repository or demo address in `url`, or in `links`.
 
 ## 2. Markdown body to `body` blocks
 
@@ -96,6 +96,20 @@ A poem document is Markdown too, but its text is verse:
 - Limits: a line is 1 to 300 characters with a visible character; a stanza has 1 to 60 lines; a verse block 1 to 60 stanzas. A longer line is an error (do not wrap automatically: a wrapped line is a different poem).
 - Prose around the poem (a note, a dedication) is ordinary `paragraph` blocks, for instance after a `divider`.
 
+## 4b. Photographs
+
+Additive in schema version 1, like `poem` before it: the kind is `photograph`, the projection collection `photographs` (defaults to `[]`, so a projection written before the kind existed stays valid), the API's `/v1/photographs`, the vault `type: photograph`. On the site the section is called **Photography** (`/photography`, entries at `/photography/:slug`; counts say "4 photographs"). The section's name, address and nouns are one row of `apps/web/app/lib/sections.ts`.
+
+A photograph document is a photograph first, so its shape is smaller than an article's:
+
+- **`cover` is the photograph** and is expected: `src` (a `/media/` path, see [media-policy.md](media-policy.md)), `alt` (required, 1 to 300 characters: say what is in the picture, not that it is a photograph) and `width` / `height` (both, in pixels of the published file: the list lays the picture out at its own proportions before it loads). An entry without a cover is valid for the schema and renders as its caption alone: the site never draws generated art for a photograph.
+- `title` is the caption's first line, `summary` one or two sentences (the standfirst), `date` the day it was taken (`YYYY-MM-DD`, or less).
+- **The place is a link, not a coordinate.** The photograph's location is `placeSlugs` (at most one is the norm), the same references every entry uses, so the page links to the place on the globe and the place's panel lists the photograph. A GPS position never reaches the contract: there is no field for it and the media pipeline removes it from the file (media-policy.md). A place that is not published has no link; the photograph then has none.
+- **Only the country known: `countryCode`.** When the owner remembers only the country (no geotag, "somewhere on the Amazon in Brazil"), the entry carries `countryCode` (ISO 3166-1 alpha-2, uppercase, any kind accepts it) and no `placeSlugs`. A code, not a group slug: the country groups are generated from the places and their slugs are not stable. The site names the country, frames it on the globe and lists the entry under no place. A GPS position, when the original has one, wins: the export links the nearest published place instead.
+- `meta` conventions (not enforced): `Format` (`3:2 landscape`), `Licence`. No camera, lens or settings: they are EXIF, and EXIF is stripped.
+- `body` is optional prose after the picture (`paragraph`, `heading`, `list`, `quote`, `link`); a longer note on how it was taken belongs there. More pictures go in `image` blocks.
+- `tags` and `sensitive` work as for every kind.
+
 ## 5. What the private gates must add
 
 Gate 1 (JSON Schema, copy of `packages/schemas/published.schema.json`, draft 2020-12, ajv strict) covers shapes, lengths, patterns, the closed block union and `additionalProperties: false`. It **cannot** express the following; Gate 2 must re-implement them (they are in `parsePublishedProjection` here):
@@ -104,7 +118,7 @@ Gate 1 (JSON Schema, copy of `packages/schemas/published.schema.json`, draft 202
 2. `tags` unique within an entry; `meta` labels unique (case-insensitive);
 3. `width` and `height` both present or both absent (cover and image blocks);
 4. no credentials in an https URL (`https://user:pw@host` matches the pattern);
-5. cross-references, per kind, now including `poem`: place `related` refs resolve to a published entry of that kind, `placeSlugs` resolve to published places, no duplicate slug within a kind, group rules as before;
+5. cross-references, per kind, now including `poem` and `photograph`: place `related` refs resolve to a published entry of that kind, `placeSlugs` resolve to published places, no duplicate slug within a kind, group rules as before;
 6. every `/media/` path (place images, covers, image blocks) exists as a file the export owns.
 Not fatal, but the gate reports it as a warning (the contract itself accepts it): 7. `sensitive: true` on an entry without a `cover` and
 without an `image` block, which can only be a mistake. `sensitive` itself is shape-checked by Gate 1 (`boolean`, optional); a value that is

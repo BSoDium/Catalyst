@@ -43,7 +43,7 @@ try {
     const { default: app } = await import("./index.mjs");
     if (typeof app?.fetch !== "function") throw new Error("the default export is not a fetch handler");
     const demo = process.env.CATALYST_CONTENT === "demo";
-    const expectations = [["GET", "/health", 200], ["GET", "/v1/projection", 200], ["GET", "/v1/places", 200], ["GET", "/v1/poems", 200], ["GET", "/nope", 404], ["GET", "/v1/poems/nope", 404], ["GET", "/v1/projects/nope", 404], ["POST", "/v1/places", 405]];
+    const expectations = [["GET", "/health", 200], ["GET", "/v1/projection", 200], ["GET", "/v1/places", 200], ["GET", "/v1/poems", 200], ["GET", "/v1/photographs", 200], ["GET", "/nope", 404], ["GET", "/v1/poems/nope", 404], ["GET", "/v1/projects/nope", 404], ["POST", "/v1/places", 405]];
     // The demo content is inlined in the bundle too: the entry detail endpoints must answer from it.
     if (demo) expectations.push(["GET", "/v1/poems/demo-poem", 200], ["GET", "/v1/projects/demo-project", 200], ["GET", "/v1/articles/demo-article", 200], ["GET", "/v1/artworks/demo-artwork", 200], ["GET", "/v1/articles/morocco-coast-bus", 200], ["GET", "/v1/poems/quai-de-nuit", 200], ["GET", "/v1/places/lisbon", 200]);
     for (const [method, path, status] of expectations) {

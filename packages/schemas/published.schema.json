@@ -178,7 +178,8 @@
                     "project",
                     "article",
                     "artwork",
-                    "poem"
+                    "poem",
+                    "photograph"
                   ]
                 },
                 "slug": {
@@ -387,6 +388,13 @@
       }
     },
     "poems": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/PublishedContentItem"
+      }
+    },
+    "photographs": {
       "default": [],
       "type": "array",
       "items": {
@@ -1099,6 +1107,10 @@
             "maxLength": 80,
             "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
           }
+        },
+        "countryCode": {
+          "type": "string",
+          "pattern": "^[A-Z]{2}$"
         }
       },
       "required": [

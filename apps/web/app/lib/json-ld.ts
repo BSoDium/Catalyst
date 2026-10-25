@@ -34,10 +34,10 @@ export function websiteJsonLd(origin: string): Json {
   };
 }
 
-/** An entry as a schema.org creative work: an article is an `Article`, a poem a `CreativeWork` of genre Poem, a project `SoftwareSourceCode` when it points at a repository. */
+/** An entry as a schema.org creative work: an article is an `Article`, a poem a `CreativeWork` of genre Poem, a photograph a `Photograph`, a project `SoftwareSourceCode` when it points at a repository. */
 export function entryJsonLd(entry: EntryDetail, origin: string): Json {
   const url = absoluteUrl(entry.href, origin);
-  const type = entry.kind === "article" ? "Article" : entry.kind === "project" && isCodeRepository(entry.url) ? "SoftwareSourceCode" : "CreativeWork";
+  const type = entry.kind === "article" ? "Article" : entry.kind === "photograph" ? "Photograph" : entry.kind === "project" && isCodeRepository(entry.url) ? "SoftwareSourceCode" : "CreativeWork";
   // a sensitive entry has no `image` at all: structured data is what a search result is built from
   const shareable = shareableCover(entry);
   const cover = shareable && isScrapableImage(shareable.src) ? absoluteUrl(shareable.src, origin) : undefined;
@@ -56,7 +56,11 @@ export function entryJsonLd(entry: EntryDetail, origin: string): Json {
     ...(entry.tags.length ? { keywords: entry.tags.join(", ") } : {}),
     ...(entry.kind === "poem" ? { genre: "Poem" } : {}),
     ...(type === "SoftwareSourceCode" && entry.url ? { codeRepository: entry.url } : {}),
-    ...(entry.places.length ? { contentLocation: entry.places.map((p) => ({ "@type": "Place", name: p.name, url: absoluteUrl(p.href, origin) })) } : {}),
+    ...(entry.places.length
+      ? { contentLocation: entry.places.map((p) => ({ "@type": "Place", name: p.name, url: absoluteUrl(p.href, origin) })) }
+      : entry.country
+        ? { contentLocation: [{ "@type": "Country", name: entry.country.name }] }
+        : {}),
     ...(notice
       ? {
           copyrightHolder: { "@type": "Person", name: notice.holder },

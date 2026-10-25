@@ -12,15 +12,15 @@ import { SITE_NAME } from "~/lib/site";
 const TAGS_SHOWN = 10;
 
 /**
- * `/software`, `/articles`, `/artworks`, `/poetry`: the section's front page, set as the contents page of a journal (docs/design-system.md,
+ * `/software`, `/articles`, `/artworks`, `/poetry`, `/photography`: the section's front page, set as the contents page of a journal (docs/design-system.md,
  * "Entry pages", "Lists"): a running head (the journal's name, the owner's, at the left; the folio, the plain count, at the right) over ONE
  * hairline, the section's name at the headline scale in a lighter weight, the tag filter in plain space, then the entries as hairline rows (`EntryRow`: date and places in
  * mono, the title heavy over a thin summary, the image where there is one), grouped by year (newest first) when a year holds more than
  * one. The filter is the URL (`?tag=rail`: a link, a reload, the back button; works without scripts) and each choice is a link. An empty
  * collection is one muted line. Each row keeps the entry's slug as its anchor id (`/articles#slug`).
  *
- * Two sections are set differently: `/artworks` is ONE brick wall of pictures (`ArtworkWall`, no year headings: the year is in each caption) and
- * `/poetry` sets the poems in two columns from 44 rem of the page's width. All four pages are the same width (100 rem), so the titles and the content keep their left edge from tab to tab, with the summary in the reading face at a larger size.
+ * Three sections are set differently: `/artworks` and `/photography` are ONE brick wall of pictures (`ArtworkWall`, no year headings: the year is in each caption) and
+ * `/poetry` sets the poems in two columns from 44 rem of the page's width. All five pages are the same width (100 rem), so the titles and the content keep their left edge from tab to tab, with the summary in the reading face at a larger size.
  */
 export function EntryListPage({ kind, items }: { kind: ContentKind; items: EntrySummary[] }) {
   const { search } = useLocation();
@@ -37,7 +37,7 @@ export function EntryListPage({ kind, items }: { kind: ContentKind; items: Entry
   // One implementation of the count noun: `kindCount` ("33 software", "1 poem").
   const total = kindCount(kind, items.length);
   let seen = 0;
-  const wall = kind === "artwork";
+  const wall = kind === "artwork" || kind === "photograph";
   const poems = kind === "poem";
 
   return (
@@ -69,7 +69,7 @@ export function EntryListPage({ kind, items }: { kind: ContentKind; items: Entry
           <StatePanel state="empty" headingLevel={2} title="Nothing here yet." />
         ) : wall ? (
           // One wall for every year, newest first: the year is in each caption, and a heading would cut the bricks.
-          <ArtworkWall items={groups.flatMap((g) => g.items)} headingLevel={2} label={KIND_PLURALS[kind]} />
+          <ArtworkWall items={groups.flatMap((g) => g.items)} headingLevel={2} label={KIND_PLURALS[kind]} kind={kind} />
         ) : (
           groups.map((group) => {
             const id = `year-${group.key}`;
