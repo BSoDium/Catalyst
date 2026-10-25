@@ -1,7 +1,7 @@
 import { Link } from "react-router";
 import type { PublishedCareer, PublishedCareerEducation, PublishedCareerRole } from "@catalyst/schemas";
 import { Icon } from "~/components/ui";
-import { asOfText, careerPeriod, formatCareerMonth, isCurrent, languageDetail, safeLinks, safePortrait } from "~/lib/career";
+import { asOfText, careerDuration, careerPeriod, formatCareerMonth, isCurrent, languageDetail, safeLinks, safePortrait } from "~/lib/career";
 import { safeExternalUrl } from "~/lib/entry-blocks";
 import { placePath } from "~/lib/entries";
 import { SITE_NAME } from "~/lib/site";
@@ -121,7 +121,13 @@ export function CareerPage({ career, places = [] }: { career: PublishedCareer; p
             {career.skills.map((g) => (
               <div key={g.group}>
                 <dt className="type-meta">{g.group}</dt>
-                <dd>{g.items.join(", ")}</dd>
+                <dd>
+                  <ul className="career-chips">
+                    {g.items.map((s) => (
+                      <li key={s}>{s}</li>
+                    ))}
+                  </ul>
+                </dd>
               </div>
             ))}
           </dl>
@@ -164,19 +170,27 @@ function Block({ id, title, count, children }: { id: string; title: string; coun
 
 function Period({ start, end }: { start: string; end: string | undefined }) {
   const p = careerPeriod(start, end);
+  const duration = careerDuration(start, end);
   return (
-    <p className="career-period type-meta">
-      <span className="sr-only">{p.spoken}</span>
-      <span aria-hidden="true">
-        <time dateTime={p.start.dateTime}>{p.start.text}</time>
-        {p.end && (
-          <>
-            {" – "}
-            {p.end.dateTime ? <time dateTime={p.end.dateTime}>{p.end.text}</time> : <span>{p.end.text}</span>}
-          </>
-        )}
-      </span>
-    </p>
+    <div className="career-strip">
+      <p className="career-period type-meta">
+        <span className="sr-only">{p.spoken}</span>
+        <span aria-hidden="true">
+          <time dateTime={p.start.dateTime}>{p.start.text}</time>
+          {p.end && (
+            <>
+              {" – "}
+              {p.end.dateTime ? <time dateTime={p.end.dateTime}>{p.end.text}</time> : <span>{p.end.text}</span>}
+            </>
+          )}
+        </span>
+      </p>
+      {duration && (
+        <span className="career-duration type-meta" aria-hidden="true">
+          {duration}
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -194,34 +208,39 @@ function RoleItem({ role, placeKnown }: { role: PublishedCareerRole; placeKnown:
   const orgUrl = role.orgUrl ? safeExternalUrl(role.orgUrl) : null;
   return (
     <li id={role.id} data-slot="career-role" data-current={isCurrent(role) ? "true" : undefined} className="career-item">
-      <Period start={role.start} end={role.end} />
-      <h3 className="career-org">
-        {orgUrl ? (
-          <a href={orgUrl} rel="noopener noreferrer" className="career-org-link">
-            {role.org}
-          </a>
-        ) : (
-          role.org
+      <div className="career-card">
+        <Period start={role.start} end={role.end} />
+        <div className="career-body">
+          <h3 className="career-org">
+            {orgUrl ? (
+              <a href={orgUrl} rel="noopener noreferrer" className="career-org-link">
+                {role.org}
+              </a>
+            ) : (
+              role.org
+            )}
+          </h3>
+          <p className="career-role">{role.title}</p>
+          <p className="career-facts type-meta">
+            <Where text={role.location} place={role.place} known={placeKnown} />
+            {role.employment && <span>{role.employment}</span>}
+          </p>
+          {role.highlights.length > 0 && (
+            <ul className="career-highlights">
+              {role.highlights.map((h, i) => (
+                <li key={i}>{h}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+        {role.skills.length > 0 && (
+          <ul className="career-stack" aria-label="Skills">
+            {role.skills.map((s) => (
+              <li key={s}>{s}</li>
+            ))}
+          </ul>
         )}
-      </h3>
-      <p className="career-role">{role.title}</p>
-      <p className="career-facts type-meta">
-        <Where text={role.location} place={role.place} known={placeKnown} />
-        {role.employment && <span>{role.employment}</span>}
-      </p>
-      {role.highlights.length > 0 && (
-        <ul className="career-highlights">
-          {role.highlights.map((h, i) => (
-            <li key={i}>{h}</li>
-          ))}
-        </ul>
-      )}
-      {role.skills.length > 0 && (
-        <p className="career-stack">
-          <span className="sr-only">Skills: </span>
-          {role.skills.join(", ")}
-        </p>
-      )}
+      </div>
     </li>
   );
 }
@@ -229,18 +248,22 @@ function RoleItem({ role, placeKnown }: { role: PublishedCareerRole; placeKnown:
 function EducationItem({ item, placeKnown }: { item: PublishedCareerEducation; placeKnown: boolean }) {
   return (
     <li id={item.id} data-slot="career-education-item" className="career-item">
-      <Period start={item.start} end={item.end} />
-      <h3 className="career-org">{item.institution}</h3>
-      <p className="career-role">
-        {item.programme}
-        {item.level && <span className="career-level"> · {item.level}</span>}
-      </p>
-      {(item.location || item.note) && (
-        <p className="career-facts type-meta">
-          {item.location && <Where text={item.location} place={item.place} known={placeKnown} />}
-          {item.note && <span>{item.note}</span>}
-        </p>
-      )}
+      <div className="career-card">
+        <Period start={item.start} end={item.end} />
+        <div className="career-body">
+          <h3 className="career-org">{item.institution}</h3>
+          <p className="career-role">
+            {item.programme}
+            {item.level && <span className="career-level"> · {item.level}</span>}
+          </p>
+          {(item.location || item.note) && (
+            <p className="career-facts type-meta">
+              {item.location && <Where text={item.location} place={item.place} known={placeKnown} />}
+              {item.note && <span>{item.note}</span>}
+            </p>
+          )}
+        </div>
+      </div>
     </li>
   );
 }

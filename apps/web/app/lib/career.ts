@@ -102,3 +102,21 @@ export function careerJsonLd(career: PublishedCareer, origin: string): Record<st
     },
   };
 }
+
+/**
+ * How long a role lasted, to the month, as `1y 2m`, `7m` or `3y` (inclusive of both months, as a CV counts them). Null when it cannot
+ * be told: a bare year, no end, or a malformed month. An ongoing role runs to `now`.
+ */
+export function careerDuration(start: string, end: string | undefined, now: Date = new Date()): string | null {
+  const month = (s: string): number | null => {
+    const m = /^(\d{4})-(\d{2})$/.exec(s);
+    return m ? Number(m[1]) * 12 + Number(m[2]) - 1 : null;
+  };
+  const from = month(start);
+  const to = end === "present" ? now.getUTCFullYear() * 12 + now.getUTCMonth() : end === undefined ? null : month(end);
+  if (from === null || to === null || to < from) return null;
+  const total = to - from + 1;
+  const years = Math.floor(total / 12);
+  const months = total % 12;
+  return [years > 0 ? `${years}y` : "", months > 0 ? `${months}m` : ""].filter(Boolean).join(" ");
+}
