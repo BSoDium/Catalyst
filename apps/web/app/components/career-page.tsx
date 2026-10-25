@@ -50,7 +50,6 @@ export function CareerPage({ career, places = [] }: { career: PublishedCareer; p
             <p className="career-summary">{career.summary}</p>
             {available && (
               <p data-slot="career-availability" className="career-availability type-meta">
-                <span className="career-dot" aria-hidden="true" />
                 <span>
                   {available.text}
                   <span className="career-asof">
@@ -71,7 +70,7 @@ export function CareerPage({ career, places = [] }: { career: PublishedCareer; p
                 loading="eager"
                 decoding="async"
                 fetchPriority="high"
-                style={{ aspectRatio: "4 / 5" }}
+                style={{ aspectRatio: "1 / 1" }}
               />
             </figure>
           )}
