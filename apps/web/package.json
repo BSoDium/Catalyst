@@ -13,6 +13,7 @@
     "test": "vitest run",
     "test:street-lines": "node scripts/street/lines.mjs",
     "perf": "node scripts/perf/budget.mjs",
+    "perf:phone": "node scripts/perf/phone.mjs",
     "check:prod": "node scripts/prod/check.mjs",
     "brand": "node scripts/brand/build.mjs",
     "bake:font": "node scripts/font/bake-pixel-font.mjs",

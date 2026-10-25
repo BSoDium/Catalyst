@@ -303,7 +303,11 @@ export class RouteLayer {
     this.mPerCell = metresPerCell(radiusPx, cssPerCell);
     this.material.uniforms.uCell!.value = cssPerCell / radiusPx;
     this.material.uniforms.uFar!.value = farOf(radiusPxToZoom(radiusPx));
-    this.material.uniforms.uTickOn!.value = radiusPxToZoom(radiusPx) >= TICK_FROM ? 1 : 0;
+    const ticks = radiusPxToZoom(radiusPx) >= TICK_FROM;
+    this.material.uniforms.uTickOn!.value = ticks ? 1 : 0;
+    // copies 1 and 2 (the rail's cross-ticks) are discarded by the fragment shader until the ticks are on: do not send them through the vertex stage
+    // and the rasteriser (a third of the work, at every view from the world to the continent, where the paths are drawn most)
+    if (this.geometry) this.geometry.instanceCount = ticks ? 3 : 1;
     const level = levelFor(this.mPerCell, this.level);
     if (level !== this.level) this.applyLevel(level);
   }

@@ -115,7 +115,54 @@ export function legLengthM(a: { lat: number; lon: number }, b: { lat: number; lo
   return pathLengthM(decoded ?? arcPoints(a, b).lonlat);
 }
 
+/**
+ * What the routes ARE, as a short key: every id, palette, point and leg (mode and polyline), hashed. The network below is a pure function of them, and
+ * it is the dearest thing the globe builds when it mounts (a phone paid about a quarter of a second, at 4x slowdown, every time the globe came back
+ * from a place), so a mount with the same routes takes the one the page already has. The loader's array is a new object whenever it revalidates, so
+ * the key is the content, not the array.
+ */
+function routesKey(routes: readonly GlobeRoute[]): string {
+  let h = 0x811c9dc5 | 0;
+  const mix = (n: number) => {
+    h = Math.imul(h ^ n, 16777619);
+  };
+  const str = (v: string) => {
+    for (let i = 0; i < v.length; i++) mix(v.charCodeAt(i));
+    mix(v.length);
+  };
+  for (const r of routes) {
+    str(r.id);
+    mix((r.palette ?? -1) + 7);
+    mix(r.points.length);
+    for (const p of r.points) {
+      mix(Math.round(p.lat * 1e6));
+      mix(Math.round(p.lon * 1e6));
+    }
+    const legs = r.legs ?? [];
+    mix(legs.length);
+    for (const l of legs) {
+      str(l?.mode ?? "");
+      str(l?.polyline ?? "");
+    }
+  }
+  return `${routes.length}:${(h >>> 0).toString(16)}`;
+}
+
+const networkByRoutes = new WeakMap<readonly GlobeRoute[], PathNetwork>();
+let lastNetwork: { key: string; net: PathNetwork } | null = null;
+
+/** The network of these routes: built once per page for the same content (see `routesKey`), shared by every mount. Read-only for its users. */
 export function buildNetwork(routes: readonly GlobeRoute[]): PathNetwork {
+  const known = networkByRoutes.get(routes);
+  if (known) return known;
+  const key = routesKey(routes);
+  const net = lastNetwork?.key === key ? lastNetwork.net : buildNetworkUncached(routes);
+  lastNetwork = { key, net };
+  networkByRoutes.set(routes, net);
+  return net;
+}
+
+function buildNetworkUncached(routes: readonly GlobeRoute[]): PathNetwork {
   const legs: PathLeg[] = [];
   const byPlace: PathNetwork["byPlace"] = new Map();
   let points = 0;
@@ -202,7 +249,18 @@ export interface PathBuffers {
   legCount: number;
 }
 
+const buffersByNetwork = new WeakMap<PathNetwork, PathBuffers>();
+
+/** The vertex buffers of a network, built once per network (a mount takes the ones the page already has: they are only ever read, and uploaded to each context). */
 export function buildBuffers(net: PathNetwork): PathBuffers {
+  const known = buffersByNetwork.get(net);
+  if (known) return known;
+  const built = buildBuffersUncached(net);
+  buffersByNetwork.set(net, built);
+  return built;
+}
+
+function buildBuffersUncached(net: PathNetwork): PathBuffers {
   const vertexCount = net.points;
   const position = new Float32Array(vertexCount * 3);
   const dist = new Float32Array(vertexCount);
