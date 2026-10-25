@@ -7665,7 +7665,7 @@
     {
       "slug": "bow-of-a-boat",
       "title": "Bow of a boat",
-      "summary": "The bow of a boat loaded with sacks, a small red-and-white flag on a mast, crossing a wide river under a blue sky and clouds, on the river boat towards Ecuador.",
+      "summary": "The bow of a cargo boat loaded with sacks, a small flag on its mast, somewhere on the Amazon in Brazil.",
       "cover": {
         "src": "/media/photography/bow-of-a-boat.webp",
         "alt": "The bow of a boat loaded with sacks, a small red-and-white flag on a mast, crossing a wide river under a blue sky and clouds",
@@ -7674,14 +7674,16 @@
       },
       "tags": [
         "travel",
-        "river"
+        "river",
+        "amazon",
+        "brazil"
       ],
       "placeSlugs": []
     },
     {
       "slug": "watermelons-on-deck",
       "title": "Watermelons on deck",
-      "summary": "A narrow passage between stacks of watermelons on a boat deck, bags of onions hanging overhead, on the river boat towards Ecuador.",
+      "summary": "A narrow passage between stacks of watermelons on the deck of a river boat on the Amazon in Brazil, bags of onions hanging overhead.",
       "cover": {
         "src": "/media/photography/watermelons-on-deck.webp",
         "alt": "A narrow passage between stacks of watermelons on a boat deck, bags of onions hanging overhead",
@@ -7690,14 +7692,16 @@
       },
       "tags": [
         "travel",
-        "river"
+        "river",
+        "amazon",
+        "brazil"
       ],
       "placeSlugs": []
     },
     {
       "slug": "unloading-at-the-bank",
       "title": "Unloading at the bank",
-      "summary": "Seen from above, people unload crates and bundles from boats onto a muddy river bank, a cow in the corner, on the river boat towards Ecuador.",
+      "summary": "Seen from the boat, people unload crates and bundles onto a muddy bank of the Amazon in Peru, a cow in the corner.",
       "cover": {
         "src": "/media/photography/unloading-at-the-bank.webp",
         "alt": "Seen from above, people unload crates and bundles from boats onto a muddy river bank, a cow in the corner",
@@ -7706,7 +7710,9 @@
       },
       "tags": [
         "travel",
-        "river"
+        "river",
+        "amazon",
+        "peru"
       ],
       "placeSlugs": []
     },
