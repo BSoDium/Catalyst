@@ -213,7 +213,9 @@ Size: the spike's pre-baked legs simplified at 50 m average about 145 points per
 
 ### Entries: `projects`, `articles`, `artworks`, `poems`, `photographs`
 
-An **entry** is a published piece of content that can be linked to places. There are five kinds: `project` (a development project), `article`, `artwork`, `poem` and `photograph` (`ContentKind`; a photograph's `cover` is the picture itself, see [content-entry-model.md](content-entry-model.md), "Photographs", and [media-policy.md](media-policy.md)). Each kind has its own collection in the projection and its own pair of endpoints, with the same shape (`PublishedContentItem`):
+An **entry** is a published piece of content that can be linked to places. An entry may also carry `countryCode` (optional, ISO 3166-1 alpha-2, uppercase) when only its country is known: a country, never a point, independent of the generated group hierarchy; it is in the summaries and the details.
+
+There are five kinds: `project` (a development project), `article`, `artwork`, `poem` and `photograph` (`ContentKind`; a photograph's `cover` is the picture itself, see [content-entry-model.md](content-entry-model.md), "Photographs", and [media-policy.md](media-policy.md)). Each kind has its own collection in the projection and its own pair of endpoints, with the same shape (`PublishedContentItem`):
 
 | Field | Type | Meaning |
 | --- | --- | --- |

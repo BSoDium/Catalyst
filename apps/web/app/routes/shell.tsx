@@ -15,6 +15,7 @@ import { getTilesConfig } from "~/lib/tiles-config.server";
 import { focusPlaceOf, KIND_PATHS, KIND_PLURALS, parsePanelPath, parseView, resolveBackTarget, viewSearch, type EntryView } from "~/lib/entries";
 import { panelInset } from "~/lib/layout";
 import { buildPlaceIndex, placePath, toGlobeGroups } from "~/lib/projection";
+import { countryGroupOf, parseCountryParam } from "~/lib/country";
 import { SITE, siteCaption, type KindCounts } from "~/lib/site";
 
 /** The sections the no-script text lists, in the order of the header (the names and addresses are `lib/sections.ts`'s). */
@@ -71,11 +72,16 @@ export default function Shell({ loaderData }: Route.ComponentProps) {
   const cameFrom = panelRoute?.type === "entry" ? resolveBackTarget(location.state, places)?.slug ?? null : null;
   // An entry's own places (its route's data): with no place it was opened from, the globe goes to the first of them.
   const matches = useMatches();
-  const entryPlaces = panelRoute?.type === "entry" ? ((matches.find((m) => (m.data as { entry?: { places?: unknown } } | undefined)?.entry?.places)?.data as { entry: { places: Array<{ slug: string }> } } | undefined)?.entry.places ?? null) : null;
+  const entryData = panelRoute?.type === "entry" ? (matches.find((m) => (m.data as { entry?: { places?: unknown } } | undefined)?.entry?.places)?.data as { entry: { places: Array<{ slug: string }>; country?: { code: string } } } | undefined)?.entry : undefined;
+  const entryPlaces = entryData?.places ?? null;
   const selectedSlug = useMemo(() => {
     const known = (s: string) => places.some((p) => p.slug === s);
     return slug ? (known(slug) ? slug : null) : focusPlaceOf(cameFrom, entryPlaces, known);
   }, [places, slug, cameFrom, entryPlaces]);
+  // A country to frame and no place to select: the home page asked for one (`/?country=BR`, the link of an entry whose only location is its
+  // country), or such an entry is open in the panel. The globe frames the country's group (`lib/country.ts`); nothing is selected.
+  const countryCode = location.pathname === "/" ? parseCountryParam(location.search) : selectedSlug === null ? (entryData?.country?.code ?? null) : null;
+  const framedGroup = useMemo(() => (countryCode ? countryGroupOf(countryCode, places, groups) : null), [countryCode, places, groups]);
   // A direct load or reload on /locations/:slug starts ALREADY framed on the place (centred on its bounding box, else on
   // its point, with the framing radius fitted to the free area): derived from the loader's data, so the very first frame
   // is the final one and nothing flies. A saved view (the globe remounting after the mobile slide-over) wins. In-app
@@ -83,8 +89,10 @@ export default function Shell({ loaderData }: Route.ComponentProps) {
   const startView = useMemo<GlobeInitialView | null>(() => {
     const p = globePlaces.find((g) => g.slug === selectedSlug);
     const f = p && placeFraming(p);
-    return f ? { lon: f.lon, lat: f.lat, fitRadiusKm: f.radiusKm } : null;
-  }, [globePlaces, selectedSlug]);
+    if (f) return { lon: f.lon, lat: f.lat, fitRadiusKm: f.radiusKm };
+    const g = framedGroup ? groups.find((x) => x.slug === framedGroup) : undefined;
+    return g ? { lon: g.coordinates.lon, lat: g.coordinates.lat, fitRadiusKm: g.viewRadiusKm } : null;
+  }, [globePlaces, selectedSlug, framedGroup, groups]);
 
   const close = useCallback(() => {
     void navigate("/", { preventScrollReset: true });
@@ -139,6 +147,7 @@ export default function Shell({ loaderData }: Route.ComponentProps) {
               routes={routes}
               selectedSlug={selectedSlug}
               focusedSlug={focusedSlug}
+              framedGroup={framedGroup}
               initialView={viewRef.current ?? startView}
               reducedMotion={reducedMotion}
               insetRight={insetRight}

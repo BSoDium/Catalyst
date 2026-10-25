@@ -497,9 +497,19 @@ export const publishedContentItemSchema = z
     /** Optional, additive in schema version 1. The entry's content as typed blocks; absent = the entry has no body. Detail only: list endpoints omit it. */
     body: publishedBodySchema.optional(),
     placeSlugs: z.array(slugSchema).max(100),
+    /**
+     * Optional, additive in schema version 1. Where the entry is, when only the country is known (a photograph without a geotag that
+     * the owner remembers only as "somewhere on the Amazon in Brazil"): ISO 3166-1 alpha-2, uppercase. A country, never a point: the
+     * web app names it and frames it on the globe, and no place lists the entry. It is authored (unlike a place's derived
+     * `countryCode`) and independent of the automatic group hierarchy, whose slugs can change.
+     */
+    countryCode: z
+      .string()
+      .regex(/^[A-Z]{2}$/, "ISO 3166-1 alpha-2, uppercase")
+      .optional(),
   })
   .strict()
-  // Shared by four collections: the generated JSON Schema declares it once (`$defs`) instead of four times.
+  // Shared by every collection: the generated JSON Schema declares it once (`$defs`) instead of four times.
   .meta({ id: "PublishedContentItem" });
 
 // --- Career (a singleton document, additive in schema version 1) -----------------------------------------------------------
@@ -994,9 +1004,9 @@ export function toPlaceSummary(place: PublishedPlace): PlaceSummary {
 export type PublishedContentSummary = Omit<PublishedContentItem, "body">;
 
 export function toContentSummary(item: PublishedContentItem): PublishedContentSummary {
-  const { slug, title, summary, date, url, cover, sensitive, tags, meta, placeSlugs } = item;
+  const { slug, title, summary, date, url, cover, sensitive, tags, meta, placeSlugs, countryCode } = item;
   // `sensitive` is only ever `true` in a summary: `false` is the same as absent, and absent keys vanish in JSON.
-  return { slug, title, summary, date, url, cover, sensitive: sensitive === true ? true : undefined, tags, meta, placeSlugs };
+  return { slug, title, summary, date, url, cover, sensitive: sensitive === true ? true : undefined, tags, meta, placeSlugs, countryCode };
 }
 
 export const EMPTY_PROJECTION: PublishedProjection = {

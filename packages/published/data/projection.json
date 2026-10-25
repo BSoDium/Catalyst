@@ -7678,7 +7678,8 @@
         "amazon",
         "brazil"
       ],
-      "placeSlugs": []
+      "placeSlugs": [],
+      "countryCode": "BR"
     },
     {
       "slug": "watermelons-on-deck",
@@ -7696,7 +7697,8 @@
         "amazon",
         "brazil"
       ],
-      "placeSlugs": []
+      "placeSlugs": [],
+      "countryCode": "BR"
     },
     {
       "slug": "unloading-at-the-bank",
@@ -7714,7 +7716,8 @@
         "amazon",
         "peru"
       ],
-      "placeSlugs": []
+      "placeSlugs": [],
+      "countryCode": "PE"
     },
     {
       "slug": "speedboat-on-the-napo",

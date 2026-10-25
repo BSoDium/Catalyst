@@ -1107,6 +1107,10 @@
             "maxLength": 80,
             "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
           }
+        },
+        "countryCode": {
+          "type": "string",
+          "pattern": "^[A-Z]{2}$"
         }
       },
       "required": [

@@ -9,8 +9,8 @@ import type { EntrySummary } from "~/lib/entries";
 /** The first pictures of a wall load at once (the first screen at four columns); the rest are lazy. */
 const EAGER = 4;
 
-/** `Lisbon`, `Lisbon, Paris`: the places of a photograph, as its caption's second line. */
-const placeNames = (entry: EntrySummary) => entry.places.slice(0, 2).map((p) => p.name).join(", ") || undefined;
+/** `Lisbon`, `Lisbon, Paris`, or only `Brazil` (the country, when that is all that is known): where a photograph is, as its caption's second line. */
+const placeNames = (entry: EntrySummary) => entry.places.slice(0, 2).map((p) => p.name).join(", ") || entry.country?.name || undefined;
 
 const fact = (entry: EntrySummary, label: string) => entry.meta.find((m) => m.label.trim().toLowerCase() === label)?.value.trim() || undefined;
 

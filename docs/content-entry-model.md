@@ -8,7 +8,7 @@ Conformance sample: `packages/published/fixtures/demo.json` (made-up demo data) 
 
 ## 1. Header to fields
 
-The mapper builds a new object field by field, in this key order: `slug, title, summary, date, url, cover, sensitive, tags, meta, body, placeSlugs`. Optional fields are **omitted** when empty (no `[]`, no `null`).
+The mapper builds a new object field by field, in this key order: `slug, title, summary, date, url, cover, sensitive, tags, meta, body, placeSlugs, countryCode`. Optional fields are **omitted** when empty (no `[]`, no `null`).
 
 | Vault header | Contract field | Rule |
 | --- | --- | --- |
@@ -105,6 +105,7 @@ A photograph document is a photograph first, so its shape is smaller than an art
 - **`cover` is the photograph** and is expected: `src` (a `/media/` path, see [media-policy.md](media-policy.md)), `alt` (required, 1 to 300 characters: say what is in the picture, not that it is a photograph) and `width` / `height` (both, in pixels of the published file: the list lays the picture out at its own proportions before it loads). An entry without a cover is valid for the schema and renders as its caption alone: the site never draws generated art for a photograph.
 - `title` is the caption's first line, `summary` one or two sentences (the standfirst), `date` the day it was taken (`YYYY-MM-DD`, or less).
 - **The place is a link, not a coordinate.** The photograph's location is `placeSlugs` (at most one is the norm), the same references every entry uses, so the page links to the place on the globe and the place's panel lists the photograph. A GPS position never reaches the contract: there is no field for it and the media pipeline removes it from the file (media-policy.md). A place that is not published has no link; the photograph then has none.
+- **Only the country known: `countryCode`.** When the owner remembers only the country (no geotag, "somewhere on the Amazon in Brazil"), the entry carries `countryCode` (ISO 3166-1 alpha-2, uppercase, any kind accepts it) and no `placeSlugs`. A code, not a group slug: the country groups are generated from the places and their slugs are not stable. The site names the country, frames it on the globe and lists the entry under no place. A GPS position, when the original has one, wins: the export links the nearest published place instead.
 - `meta` conventions (not enforced): `Format` (`3:2 landscape`), `Licence`. No camera, lens or settings: they are EXIF, and EXIF is stripped.
 - `body` is optional prose after the picture (`paragraph`, `heading`, `list`, `quote`, `link`); a longer note on how it was taken belongs there. More pictures go in `image` blocks.
 - `tags` and `sensitive` work as for every kind.

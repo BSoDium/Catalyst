@@ -62,6 +62,11 @@ describe("entryJsonLd", () => {
     expect(plain).not.toHaveProperty("codeRepository");
     expect(entryJsonLd(entry({ kind: "project", href: "/software/a" }), ORIGIN)["@type"]).toBe("CreativeWork");
   });
+  it("gives an entry known only by its country a Country as its location", () => {
+    const e = entry({ kind: "photograph", href: "/photography/a", places: [], country: { code: "BR", name: "Brazil", href: "/?country=BR" } });
+    expect(entryJsonLd(e, ORIGIN).contentLocation).toEqual([{ "@type": "Country", name: "Brazil" }]);
+  });
+
   it("types a photograph as a schema.org Photograph, with the owner's notice", () => {
     expect(entryJsonLd(entry({ kind: "photograph", href: "/photography/a", date: "2026-03" }), ORIGIN)).toMatchObject({ "@type": "Photograph", copyrightYear: 2026 });
   });

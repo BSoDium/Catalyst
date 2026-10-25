@@ -114,6 +114,7 @@ export default function GlobeCanvas({
   paths = true,
   selectedSlug,
   focusedSlug,
+  framedGroup = null,
   initialView,
   reducedMotion,
   insetRight,
@@ -146,6 +147,8 @@ export default function GlobeCanvas({
   const tilesKey = tiles && !(debugEnabled() && streetDisabledForTests()) ? JSON.stringify(tiles) : "";
   const viewRef = useRef(initialView);
   const appliedSelection = useRef(selectedSlug);
+  // The group framed by `initialView` on a direct load counts as applied: the first frame is already the framing.
+  const appliedFrame = useRef(framedGroup);
   const latest = useRef({ paths, selectedSlug, focusedSlug, reducedMotion, insetRight, ringPhrases, captionPhrases, showcase, onOrbit, onSelect, onViewChange, onInteract });
   useEffect(() => {
     latest.current = { paths, selectedSlug, focusedSlug, reducedMotion, insetRight, ringPhrases, captionPhrases, showcase, onOrbit, onSelect, onViewChange, onInteract };
@@ -304,6 +307,13 @@ export default function GlobeCanvas({
     appliedSelection.current = selectedSlug;
     handle.setSelected(selectedSlug, true);
   }, [selectedSlug]);
+
+  useEffect(() => {
+    const handle = handleRef.current;
+    if (!handle || status !== "ready" || framedGroup === appliedFrame.current) return;
+    appliedFrame.current = framedGroup;
+    if (framedGroup) handle.frameGroup(framedGroup);
+  }, [framedGroup, status]);
 
   useEffect(() => {
     handleRef.current?.setPaths(paths);

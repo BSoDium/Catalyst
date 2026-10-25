@@ -84,7 +84,8 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
   const reading = entry.kind === "article" && !authoredReading ? formatReadingTime(readingMinutes(entry.body)) : null;
   const hasMore = entry.related.length > 0 || !!entry.prev || !!entry.next;
   const firstPlace = entry.places[0];
-  const names = placeNames(entry.places);
+  // Only the country known (`countryCode`): its name stands where the places would, and its link frames it on the globe.
+  const names = placeNames(entry.places) ?? entry.country?.name ?? null;
   const notice = copyrightNotice(entry);
   // The images of an article or a project are figures in the flow of the text, where the author put them (wide, captioned, cross-referenced, zoomable); an artwork's and a poem's stay in the text, wide.
   const editorial = entry.kind === "article" || entry.kind === "project";
@@ -111,9 +112,10 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
       Jump to contents
     </a>
   );
-  const globeLink = firstPlace && (
-    <Link to={firstPlace.href} className="entry-link inline-block no-underline hover:underline">
-      {firstPlace.name} <Icon name="arrow-up-right" size="inline" /> open on the globe
+  const globeTarget = firstPlace ?? (entry.country?.href ? { href: entry.country.href, name: entry.country.name } : null);
+  const globeLink = globeTarget && (
+    <Link to={globeTarget.href} className="entry-link inline-block no-underline hover:underline">
+      {globeTarget.name} <Icon name="arrow-up-right" size="inline" /> open on the globe
     </Link>
   );
 
@@ -122,7 +124,7 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
           {poem ? (
             <PoemMargin entry={entry} date={date} globeLink={globeLink} skip={skip} copy={copy} />
           ) : (
-            entry.places.length > 0 && <PlacesSection entry={entry} />
+            (entry.places.length > 0 || entry.country) && <PlacesSection entry={entry} />
           )}
           {rows.length > 0 && (
             <dl data-slot="entry-details" className={cn("m-0", poem && "mt-2")}>
@@ -337,7 +339,7 @@ function Cover({ entry }: { entry: EntryDetail }) {
   );
 }
 
-/** Where: the places of the entry, each a link to the place on the globe, with its region as it is published. */
+/** Where: the places of the entry, each a link to the place on the globe, with its region as it is published; or only its country, framed on the globe. */
 function PlacesSection({ entry }: { entry: EntryDetail }) {
   return (
     <section aria-labelledby="entry-places" data-slot="entry-places">
@@ -353,6 +355,17 @@ function PlacesSection({ entry }: { entry: EntryDetail }) {
             {place.region && <span>, {place.region}</span>}
           </li>
         ))}
+        {entry.places.length === 0 && entry.country && (
+          <li data-slot="entry-country">
+            {entry.country.href ? (
+              <Link to={entry.country.href} className="entry-link inline-block">
+                {entry.country.name}
+              </Link>
+            ) : (
+              entry.country.name
+            )}
+          </li>
+        )}
       </ul>
     </section>
   );

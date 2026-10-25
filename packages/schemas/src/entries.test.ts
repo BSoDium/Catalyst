@@ -60,6 +60,13 @@ describe("poems and the additive entry fields", () => {
     expect(() => parsePublishedProjection({ ...EMPTY_PROJECTION, poems: [item()], photographs: [item()] })).not.toThrow();
   });
 
+  it("an entry may say its country (ISO 3166-1 alpha-2) without a place, and the summary keeps it", () => {
+    expect(parseItem({ countryCode: "BR" }).countryCode).toBe("BR");
+    for (const bad of ["br", "BRA", "B", "", "1A"]) expect(() => parseItem({ countryCode: bad }), bad).toThrow();
+    expect(toContentSummary(parseItem({ countryCode: "PE" })).countryCode).toBe("PE");
+    expect(Object.keys(JSON.parse(JSON.stringify(toContentSummary(parseItem()))))).not.toContain("countryCode");
+  });
+
   it("every object is strict: unknown keys are rejected on entries, covers, meta and every block", () => {
     expect(() => parseItem({ leaked: 1 })).toThrow();
     expect(() => parseItem({ cover: { ...image, leaked: 1 } })).toThrow();
@@ -349,10 +356,11 @@ describe("poems and the additive entry fields", () => {
     const schema = JSON.parse(buildJsonSchema()) as { required: string[]; properties: Record<string, { items: { $ref: string } }>; $defs: Record<string, Obj> };
     expect(schema.required).not.toContain("poems");
     expect(schema.required).not.toContain("groups");
-    // The four collections share one definition of an entry.
-    for (const key of ["projects", "articles", "artworks", "poems"]) expect(schema.properties[key]!.items.$ref).toBe("#/$defs/PublishedContentItem");
+    expect(schema.required).not.toContain("photographs");
+    // Every collection shares one definition of an entry.
+    for (const key of ["projects", "articles", "artworks", "poems", "photographs"]) expect(schema.properties[key]!.items.$ref).toBe("#/$defs/PublishedContentItem");
     const entry = schema.$defs.PublishedContentItem!;
-    expect(Object.keys(entry.properties)).toEqual(["slug", "title", "summary", "date", "url", "cover", "sensitive", "tags", "meta", "body", "placeSlugs"]);
+    expect(Object.keys(entry.properties)).toEqual(["slug", "title", "summary", "date", "url", "cover", "sensitive", "tags", "meta", "body", "placeSlugs", "countryCode"]);
     expect(entry.required).toEqual(["slug", "title", "placeSlugs"]);
     expect(JSON.stringify(schema)).toContain('"const":"verse"');
     expect(entry.properties.sensitive).toEqual({ type: "boolean" });

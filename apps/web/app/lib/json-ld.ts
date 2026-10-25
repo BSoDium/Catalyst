@@ -56,7 +56,11 @@ export function entryJsonLd(entry: EntryDetail, origin: string): Json {
     ...(entry.tags.length ? { keywords: entry.tags.join(", ") } : {}),
     ...(entry.kind === "poem" ? { genre: "Poem" } : {}),
     ...(type === "SoftwareSourceCode" && entry.url ? { codeRepository: entry.url } : {}),
-    ...(entry.places.length ? { contentLocation: entry.places.map((p) => ({ "@type": "Place", name: p.name, url: absoluteUrl(p.href, origin) })) } : {}),
+    ...(entry.places.length
+      ? { contentLocation: entry.places.map((p) => ({ "@type": "Place", name: p.name, url: absoluteUrl(p.href, origin) })) }
+      : entry.country
+        ? { contentLocation: [{ "@type": "Country", name: entry.country.name }] }
+        : {}),
     ...(notice
       ? {
           copyrightHolder: { "@type": "Person", name: notice.holder },

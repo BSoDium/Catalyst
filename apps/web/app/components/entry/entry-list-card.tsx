@@ -33,7 +33,7 @@ export function EntryListCard({
   priority?: boolean;
 }) {
   const date = formatEntryDate(entry.date);
-  const place = placeLine(entry.places);
+  const place = placeLine(entry.places) ?? entry.country?.name;
   const { status } = splitMeta(entry.meta);
   const cover = entry.cover && safeMediaSrc(entry.cover.src) ? { src: entry.cover.src, alt: entry.cover.alt } : undefined;
   return (

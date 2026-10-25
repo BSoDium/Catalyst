@@ -15,6 +15,7 @@ import type {
   PublishedPlace,
   PublishedProjection,
 } from "@catalyst/schemas";
+import { entryCountry, type EntryCountry } from "./country";
 import { SECTIONS, type Section } from "./sections";
 
 /** The order kinds are listed in wherever they are grouped (the design system's order of kinds). */
@@ -80,6 +81,8 @@ export interface EntrySummary {
   tags: string[];
   meta: PublishedMetaEntry[];
   places: EntryPlaceLink[];
+  /** The entry's country when only the country is known (`countryCode`): named, framed on the globe, never a point. */
+  country?: EntryCountry;
 }
 
 /** A pointer to another entry (previous/next, related). */
@@ -151,10 +154,17 @@ function placeLinks(kind: ContentKind, item: PublishedContentItem, byPlace: Map<
 interface Lookups {
   byPlace: Map<string, PublishedPlace>;
   relating: Map<string, string[]>;
+  country: (code: string | undefined) => EntryCountry | undefined;
 }
 
 function lookups(projection: PublishedProjection): Lookups {
-  return { byPlace: new Map(projection.places.map((p) => [p.slug, p])), relating: placesRelating(projection) };
+  const countries = new Map<string, EntryCountry | undefined>();
+  const country = (code: string | undefined) => {
+    if (!code) return undefined;
+    if (!countries.has(code)) countries.set(code, entryCountry(code, projection.places, projection.groups));
+    return countries.get(code);
+  };
+  return { byPlace: new Map(projection.places.map((p) => [p.slug, p])), relating: placesRelating(projection), country };
 }
 
 function toSummary(kind: ContentKind, item: PublishedContentItem, position: number, l: Lookups): EntrySummary {
@@ -172,6 +182,7 @@ function toSummary(kind: ContentKind, item: PublishedContentItem, position: numb
     tags: item.tags ?? [],
     meta: item.meta ?? [],
     places: placeLinks(kind, item, l.byPlace, l.relating),
+    ...(item.countryCode !== undefined ? { country: l.country(item.countryCode) } : {}),
   };
 }
 
