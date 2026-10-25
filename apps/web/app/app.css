@@ -4253,8 +4253,13 @@ h1[tabindex="-1"]:focus-visible {
     border-left: var(--hairline) solid var(--border);
   }
 
+  /* The last item's rail does not stop: it runs on past the item and fades out (a gradient to transparent, the one fade of the
+     page), so the timeline reads as open at the oldest end instead of cut. */
   .career-item:last-child::before {
-    content: none;
+    bottom: -2.5rem;
+    border-left: 0;
+    width: var(--hairline);
+    background: linear-gradient(to bottom, var(--border) calc(100% - 5rem), transparent);
   }
 
   /* The marker: a square tile with the icon of what was done there (sized to the first line of the item, the organisation's). */
