@@ -4288,36 +4288,54 @@ h1[tabindex="-1"]:focus-visible {
     border-color: var(--signal-text);
   }
 
+  /* From 64 rem an item is two columns: who, what and when at the left (a fixed 17 rem, so every left edge of the page, education
+     included, is one scan line), what was done (highlights, skills) at the right. The block is no longer capped; the highlights keep a
+     readable measure. */
+  @media (min-width: 64rem) {
+    .career-block:has(.career-timeline) .career-block-body {
+      max-width: 66rem;
+    }
+
+    .career-item {
+      display: grid;
+      grid-template-columns: 17rem minmax(0, 1fr);
+      column-gap: 3rem;
+      align-items: start;
+      padding-bottom: 3rem;
+    }
+
+    .career-item:last-child {
+      padding-bottom: 0;
+    }
+
+    .career-detail .career-highlights {
+      margin-top: 0;
+      max-width: 44rem;
+    }
+  }
+
   .career-top {
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
-    justify-content: space-between;
-    gap: 0.125rem 1rem;
     min-height: var(--career-tile);
   }
 
   .career-org {
     margin: 0;
     font-family: var(--font-display);
-    font-size: 1.375rem;
-    line-height: 1.15;
+    font-size: 1.5rem;
+    line-height: 1.05;
     font-weight: var(--weight-heavy);
-    letter-spacing: -0.01em;
+    letter-spacing: -0.015em;
     text-wrap: balance;
     overflow-wrap: anywhere;
   }
 
-  .career-where {
-    margin: 0;
-    color: var(--muted-foreground);
-  }
-
-  /* Employment | period | length of the stay: one muted line, a faint vertical hairline between the parts. */
+  /* When: the period, then the length of the stay in the quieter grey, joined by a middle dot (metadata has no inner rules). */
   .career-meta {
     display: flex;
     flex-wrap: wrap;
-    align-items: center;
+    align-items: baseline;
     margin: 0.5rem 0 0;
     color: var(--muted-foreground);
   }
@@ -4326,23 +4344,10 @@ h1[tabindex="-1"]:focus-visible {
     margin: 0;
   }
 
-  .career-meta > p + p {
-    margin-left: 0.625rem;
-    padding-left: 0.625rem;
-    border-left: var(--hairline) solid var(--border);
-  }
-
-  /* On a phone the line wraps, and a divider would be left at the start of the second line: plain spacing instead. */
-  @media (max-width: 40rem) {
-    .career-meta {
-      column-gap: 1rem;
-    }
-
-    .career-meta > p + p {
-      margin-left: 0;
-      padding-left: 0;
-      border-left: 0;
-    }
+  .career-meta > p + p::before {
+    content: "·";
+    margin-inline: 0.5rem;
+    color: var(--subtle-foreground);
   }
 
   .career-item[data-current="true"] .career-period {
@@ -4350,7 +4355,26 @@ h1[tabindex="-1"]:focus-visible {
   }
 
   .career-duration {
+    color: var(--subtle-foreground);
     font-variant-numeric: tabular-nums;
+  }
+
+  /* How and where: employment and place, sentence case in the mono face (the uppercase tracked label is kept for the dates). */
+  .career-facts {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0.25rem 0 0;
+    font-family: var(--font-meta);
+    font-size: 0.75rem;
+    line-height: 1.6;
+    color: var(--muted-foreground);
+    font-feature-settings: "calt" 0;
+  }
+
+  .career-facts > * + *::before {
+    content: "·";
+    margin-inline: 0.5rem;
+    color: var(--subtle-foreground);
   }
 
   /* Skills as quiet chips: a solid surface, no outline, the meta face small. */
@@ -4370,10 +4394,10 @@ h1[tabindex="-1"]:focus-visible {
 
   .career-stack li,
   .career-chips li {
-    padding: 0.0625rem 0.4375rem;
+    padding: 0.125rem 0.5rem;
     background: var(--accent);
     font-family: var(--font-meta);
-    font-size: 0.6875rem;
+    font-size: 0.75rem;
     line-height: 1.6;
     color: var(--muted-foreground);
     font-feature-settings: "calt" 0;
@@ -4441,9 +4465,9 @@ h1[tabindex="-1"]:focus-visible {
   }
 
   .career-role {
-    margin: 0.125rem 0 0;
+    margin: 0.25rem 0 0;
     font-family: var(--font-reading);
-    font-size: 1.0625rem;
+    font-size: 1.125rem;
     line-height: 1.4;
   }
 
@@ -4457,7 +4481,7 @@ h1[tabindex="-1"]:focus-visible {
     padding: 0;
     list-style: none;
     font-family: var(--font-reading);
-    font-size: 0.96875rem;
+    font-size: 1rem;
     line-height: 1.55;
   }
 
@@ -4468,7 +4492,7 @@ h1[tabindex="-1"]:focus-visible {
   }
 
   .career-highlights li + li {
-    margin-top: 0.5rem;
+    margin-top: 0.625rem;
   }
 
   .career-highlights li::before {

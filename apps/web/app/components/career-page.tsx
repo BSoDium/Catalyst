@@ -210,38 +210,44 @@ function RoleItem({ role, placeKnown }: { role: PublishedCareerRole; placeKnown:
       <span className="career-icon" aria-hidden="true">
         <Icon name={careerIcon(role.title, "role")} size="tile" />
       </span>
-      <div className="career-top">
-        <h3 className="career-org">
-          {orgUrl ? (
-            <a href={orgUrl} rel="noopener noreferrer" className="career-org-link">
-              {role.org}
-            </a>
-          ) : (
-            role.org
-          )}
-        </h3>
-        <p className="career-where type-meta">
+      <div className="career-head">
+        <div className="career-top">
+          <h3 className="career-org">
+            {orgUrl ? (
+              <a href={orgUrl} rel="noopener noreferrer" className="career-org-link">
+                {role.org}
+              </a>
+            ) : (
+              role.org
+            )}
+          </h3>
+        </div>
+        <p className="career-role">{role.title}</p>
+        <div className="career-meta type-meta">
+          <Period start={role.start} end={role.end} />
+        </div>
+        <p className="career-facts">
           <Where text={role.location} place={role.place} known={placeKnown} />
+          {role.employment && <span>{role.employment}</span>}
         </p>
       </div>
-      <p className="career-role">{role.title}</p>
-      <div className="career-meta type-meta">
-        {role.employment && <p>{role.employment}</p>}
-        <Period start={role.start} end={role.end} />
-      </div>
-      {role.highlights.length > 0 && (
-        <ul className="career-highlights">
-          {role.highlights.map((h, i) => (
-            <li key={i}>{h}</li>
-          ))}
-        </ul>
-      )}
-      {role.skills.length > 0 && (
-        <ul className="career-stack" aria-label="Skills">
-          {role.skills.map((s) => (
-            <li key={s}>{s}</li>
-          ))}
-        </ul>
+      {(role.highlights.length > 0 || role.skills.length > 0) && (
+        <div className="career-detail">
+          {role.highlights.length > 0 && (
+            <ul className="career-highlights">
+              {role.highlights.map((h, i) => (
+                <li key={i}>{h}</li>
+              ))}
+            </ul>
+          )}
+          {role.skills.length > 0 && (
+            <ul className="career-stack" aria-label="Skills">
+              {role.skills.map((s) => (
+                <li key={s}>{s}</li>
+              ))}
+            </ul>
+          )}
+        </div>
       )}
     </li>
   );
@@ -253,21 +259,23 @@ function EducationItem({ item, placeKnown }: { item: PublishedCareerEducation; p
       <span className="career-icon" aria-hidden="true">
         <Icon name={careerIcon(item.programme, "education")} size="tile" />
       </span>
-      <div className="career-top">
-        <h3 className="career-org">{item.institution}</h3>
-        {item.location && (
-          <p className="career-where type-meta">
-            <Where text={item.location} place={item.place} known={placeKnown} />
+      <div className="career-head">
+        <div className="career-top">
+          <h3 className="career-org">{item.institution}</h3>
+        </div>
+        <p className="career-role">
+          {item.programme}
+          {item.level && <span className="career-level"> · {item.level}</span>}
+        </p>
+        <div className="career-meta type-meta">
+          <Period start={item.start} end={item.end} />
+        </div>
+        {(item.location || item.note) && (
+          <p className="career-facts">
+            {item.location && <Where text={item.location} place={item.place} known={placeKnown} />}
+            {item.note && <span>{item.note}</span>}
           </p>
         )}
-      </div>
-      <p className="career-role">
-        {item.programme}
-        {item.level && <span className="career-level"> · {item.level}</span>}
-      </p>
-      <div className="career-meta type-meta">
-        {item.note && <p>{item.note}</p>}
-        <Period start={item.start} end={item.end} />
       </div>
     </li>
   );
