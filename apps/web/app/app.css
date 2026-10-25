@@ -4181,40 +4181,29 @@ h1[tabindex="-1"]:focus-visible {
     font-feature-settings: "calt" 0;
   }
 
-  /* A block: its heading at the left from 48 rem, above its content below it; a hairline closes every block's top. */
+  /* A block: its heading above its content, a faint hairline closing its top. One column at every width (no empty gutter). */
   .career-block {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 1.25rem 2rem;
-    margin-top: 3.5rem;
+    margin-top: 3rem;
     padding-top: 1rem;
-    border-top: var(--hairline) solid var(--border-strong);
+    border-top: var(--hairline) solid var(--border);
   }
 
   .career-block-title {
-    margin: 0;
+    margin: 0 0 1.5rem;
     color: var(--muted-foreground);
   }
 
   .career-block-body {
     min-width: 0;
-    max-width: 60rem;
+    max-width: 52rem;
   }
 
-  @media (min-width: 48rem) {
-    .career-block {
-      grid-template-columns: 12rem minmax(0, 1fr);
-    }
-  }
-
-  /* The timeline, drawn as a schematic: an ordered list whose items are square-cornered cards on ONE hairline rail. Each card is a
-     strip (the period at the left, the length of the stay at the right), a body, and for a role a footer of boxed skills. The rail is
-     drawn per item (so the gap between two cards never needs a spacer): it starts at the first node and ends at the last. A node is a
-     hollow square on the rail, a short tick joins it to its card; the role in progress has a filled signal node. No motion. */
+  /* The timeline: an ordered list on ONE faint rail, a small square on it for every item. No boxes: the type and the spacing do the
+     grouping (organisation and place on one line, the role, then the facts, the highlights and the skills as quiet chips). */
   .career-timeline {
-    --career-rail: 1.375rem;
-    --career-node: 0.5625rem;
-    --career-node-y: 1.125rem;
+    --career-rail: 1.25rem;
+    --career-node: 0.375rem;
+    --career-node-y: 0.6rem;
     margin: 0;
     padding: 0;
     list-style: none;
@@ -4222,7 +4211,7 @@ h1[tabindex="-1"]:focus-visible {
 
   .career-item {
     position: relative;
-    padding: 0 0 1rem var(--career-rail);
+    padding: 0 0 2rem var(--career-rail);
     break-inside: avoid;
   }
 
@@ -4236,7 +4225,7 @@ h1[tabindex="-1"]:focus-visible {
     left: calc(var(--career-node) / 2 - var(--hairline) / 2);
     top: 0;
     bottom: 0;
-    border-left: var(--hairline) solid var(--border-strong);
+    border-left: var(--hairline) solid var(--border);
   }
 
   .career-item:first-child::before {
@@ -4251,7 +4240,6 @@ h1[tabindex="-1"]:focus-visible {
     content: none;
   }
 
-  /* The node, and the tick from it to the card. */
   .career-item::after {
     content: "";
     position: absolute;
@@ -4259,42 +4247,54 @@ h1[tabindex="-1"]:focus-visible {
     top: calc(var(--career-node-y) - var(--career-node) / 2);
     width: var(--career-node);
     height: var(--career-node);
-    box-sizing: border-box;
-    background: var(--background);
-    border: var(--hairline) solid var(--foreground);
+    background: var(--subtle-foreground);
   }
 
   .career-item[data-current="true"]::after {
     background: var(--signal);
-    border-color: var(--signal);
   }
 
-  .career-card {
-    border: var(--hairline) solid var(--border-strong);
-    background: var(--background);
-    min-width: 0;
-  }
-
-  .career-card:hover,
-  .career-card:focus-within {
-    border-color: var(--foreground);
-  }
-
-  .career-strip {
+  .career-top {
     display: flex;
+    flex-wrap: wrap;
     align-items: baseline;
     justify-content: space-between;
-    gap: 1rem;
-    min-height: 2.25rem;
-    padding: 0.5rem 0.875rem;
-    align-items: center;
-    background: var(--surface);
-    border-bottom: var(--hairline) solid var(--border);
+    gap: 0.125rem 1rem;
   }
 
-  .career-period {
+  .career-org {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 1.125rem;
+    line-height: 1.3;
+    font-weight: var(--weight-heavy);
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+    overflow-wrap: anywhere;
+  }
+
+  .career-where {
     margin: 0;
     color: var(--muted-foreground);
+  }
+
+  /* Employment | period | length of the stay: one muted line, a faint vertical hairline between the parts. */
+  .career-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    margin: 0.25rem 0 0;
+    color: var(--muted-foreground);
+  }
+
+  .career-meta > p {
+    margin: 0;
+  }
+
+  .career-meta > p + p {
+    margin-left: 0.625rem;
+    padding-left: 0.625rem;
+    border-left: var(--hairline) solid var(--border);
   }
 
   .career-item[data-current="true"] .career-period {
@@ -4302,51 +4302,74 @@ h1[tabindex="-1"]:focus-visible {
   }
 
   .career-duration {
-    flex: none;
-    color: var(--muted-foreground);
     font-variant-numeric: tabular-nums;
   }
 
-  .career-body {
-    padding: 0.875rem 0.875rem 1rem;
-  }
-
-  /* Boxed chips, the one shape of a skill on the page (a role's footer, the Skills block): a hairline square, the meta face. */
+  /* Skills as quiet chips: a solid surface, no outline, the meta face small. */
   .career-stack,
   .career-chips {
     display: flex;
     flex-wrap: wrap;
     gap: 0.375rem;
-    margin: 0;
+    margin: 0.875rem 0 0;
     padding: 0;
     list-style: none;
   }
 
+  .career-chips {
+    margin-top: 0;
+  }
+
   .career-stack li,
   .career-chips li {
-    padding: 0.125rem 0.5rem;
-    border: var(--hairline) solid var(--border-strong);
+    padding: 0.0625rem 0.4375rem;
+    background: var(--accent);
     font-family: var(--font-meta);
-    font-size: 0.75rem;
-    line-height: 1.5;
+    font-size: 0.6875rem;
+    line-height: 1.6;
     color: var(--muted-foreground);
     font-feature-settings: "calt" 0;
   }
 
-  .career-stack {
-    padding: 0.625rem 0.875rem;
+  /* Skills: a group's name, then its chips, row by row. */
+  .career-skills {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: 0.875rem 1.5rem;
+    margin: 0;
+  }
+
+  .career-skills > div {
+    display: contents;
+  }
+
+  .career-skills dt {
+    padding-top: 0.125rem;
+    color: var(--muted-foreground);
+  }
+
+  .career-skills dd {
+    margin: 0;
+  }
+
+  @media (max-width: 36rem) {
+    .career-skills {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 0.375rem;
+    }
+    .career-skills dd {
+      margin-bottom: 0.75rem;
+    }
+  }
+
+  .career-footer {
+    margin-top: 3rem;
+    padding-top: 1rem;
     border-top: var(--hairline) solid var(--border);
   }
 
-  .career-org {
-    margin: 0.375rem 0 0;
-    font-family: var(--font-display);
-    font-size: 1.5rem;
-    line-height: 1.2;
-    font-weight: var(--weight-heavy);
-    letter-spacing: -0.015em;
-    text-wrap: balance;
-    overflow-wrap: anywhere;
+  .career-footer .career-block-title {
+    margin-bottom: 0.5rem;
   }
 
   .career-org-link,
@@ -4372,7 +4395,7 @@ h1[tabindex="-1"]:focus-visible {
   .career-role {
     margin: 0.125rem 0 0;
     font-family: var(--font-reading);
-    font-size: 1.125rem;
+    font-size: 1rem;
     line-height: 1.4;
   }
 
@@ -4380,13 +4403,6 @@ h1[tabindex="-1"]:focus-visible {
     color: var(--muted-foreground);
   }
 
-  .career-facts {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0 1rem;
-    margin: 0.375rem 0 0;
-    color: var(--muted-foreground);
-  }
 
   .career-highlights {
     margin: 0.875rem 0 0;
@@ -4416,43 +4432,6 @@ h1[tabindex="-1"]:focus-visible {
     border-top: var(--hairline) solid var(--muted-foreground);
   }
 
-  /* Skills: a ruled table of cells (a group's name over its chips); the cells share their hairlines. */
-  .career-skills {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
-    margin: 0;
-    border-top: var(--hairline) solid var(--border-strong);
-    border-left: var(--hairline) solid var(--border-strong);
-  }
-
-  .career-skills > div {
-    padding: 0.75rem 0.875rem 0.875rem;
-    border-right: var(--hairline) solid var(--border-strong);
-    border-bottom: var(--hairline) solid var(--border-strong);
-  }
-
-  .career-skills dt {
-    color: var(--muted-foreground);
-  }
-
-  .career-skills dd {
-    margin: 0.625rem 0 0;
-  }
-
-  .career-footer {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 1rem 2rem;
-    margin-top: 3.5rem;
-    padding-top: 1rem;
-    border-top: var(--hairline) solid var(--border-strong);
-  }
-
-  @media (min-width: 48rem) {
-    .career-footer {
-      grid-template-columns: 12rem minmax(0, 1fr);
-    }
-  }
 
   .career-links {
     display: flex;

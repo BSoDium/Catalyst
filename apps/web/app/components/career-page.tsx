@@ -172,8 +172,8 @@ function Period({ start, end }: { start: string; end: string | undefined }) {
   const p = careerPeriod(start, end);
   const duration = careerDuration(start, end);
   return (
-    <div className="career-strip">
-      <p className="career-period type-meta">
+    <>
+      <p className="career-period">
         <span className="sr-only">{p.spoken}</span>
         <span aria-hidden="true">
           <time dateTime={p.start.dateTime}>{p.start.text}</time>
@@ -186,11 +186,11 @@ function Period({ start, end }: { start: string; end: string | undefined }) {
         </span>
       </p>
       {duration && (
-        <span className="career-duration type-meta" aria-hidden="true">
+        <p className="career-duration" aria-hidden="true">
           {duration}
-        </span>
+        </p>
       )}
-    </div>
+    </>
   );
 }
 
@@ -208,39 +208,39 @@ function RoleItem({ role, placeKnown }: { role: PublishedCareerRole; placeKnown:
   const orgUrl = role.orgUrl ? safeExternalUrl(role.orgUrl) : null;
   return (
     <li id={role.id} data-slot="career-role" data-current={isCurrent(role) ? "true" : undefined} className="career-item">
-      <div className="career-card">
-        <Period start={role.start} end={role.end} />
-        <div className="career-body">
-          <h3 className="career-org">
-            {orgUrl ? (
-              <a href={orgUrl} rel="noopener noreferrer" className="career-org-link">
-                {role.org}
-              </a>
-            ) : (
-              role.org
-            )}
-          </h3>
-          <p className="career-role">{role.title}</p>
-          <p className="career-facts type-meta">
-            <Where text={role.location} place={role.place} known={placeKnown} />
-            {role.employment && <span>{role.employment}</span>}
-          </p>
-          {role.highlights.length > 0 && (
-            <ul className="career-highlights">
-              {role.highlights.map((h, i) => (
-                <li key={i}>{h}</li>
-              ))}
-            </ul>
+      <div className="career-top">
+        <h3 className="career-org">
+          {orgUrl ? (
+            <a href={orgUrl} rel="noopener noreferrer" className="career-org-link">
+              {role.org}
+            </a>
+          ) : (
+            role.org
           )}
-        </div>
-        {role.skills.length > 0 && (
-          <ul className="career-stack" aria-label="Skills">
-            {role.skills.map((s) => (
-              <li key={s}>{s}</li>
-            ))}
-          </ul>
-        )}
+        </h3>
+        <p className="career-where type-meta">
+          <Where text={role.location} place={role.place} known={placeKnown} />
+        </p>
       </div>
+      <p className="career-role">{role.title}</p>
+      <div className="career-meta type-meta">
+        {role.employment && <p>{role.employment}</p>}
+        <Period start={role.start} end={role.end} />
+      </div>
+      {role.highlights.length > 0 && (
+        <ul className="career-highlights">
+          {role.highlights.map((h, i) => (
+            <li key={i}>{h}</li>
+          ))}
+        </ul>
+      )}
+      {role.skills.length > 0 && (
+        <ul className="career-stack" aria-label="Skills">
+          {role.skills.map((s) => (
+            <li key={s}>{s}</li>
+          ))}
+        </ul>
+      )}
     </li>
   );
 }
@@ -248,21 +248,21 @@ function RoleItem({ role, placeKnown }: { role: PublishedCareerRole; placeKnown:
 function EducationItem({ item, placeKnown }: { item: PublishedCareerEducation; placeKnown: boolean }) {
   return (
     <li id={item.id} data-slot="career-education-item" className="career-item">
-      <div className="career-card">
-        <Period start={item.start} end={item.end} />
-        <div className="career-body">
-          <h3 className="career-org">{item.institution}</h3>
-          <p className="career-role">
-            {item.programme}
-            {item.level && <span className="career-level"> · {item.level}</span>}
+      <div className="career-top">
+        <h3 className="career-org">{item.institution}</h3>
+        {item.location && (
+          <p className="career-where type-meta">
+            <Where text={item.location} place={item.place} known={placeKnown} />
           </p>
-          {(item.location || item.note) && (
-            <p className="career-facts type-meta">
-              {item.location && <Where text={item.location} place={item.place} known={placeKnown} />}
-              {item.note && <span>{item.note}</span>}
-            </p>
-          )}
-        </div>
+        )}
+      </div>
+      <p className="career-role">
+        {item.programme}
+        {item.level && <span className="career-level"> · {item.level}</span>}
+      </p>
+      <div className="career-meta type-meta">
+        {item.note && <p>{item.note}</p>}
+        <Period start={item.start} end={item.end} />
       </div>
     </li>
   );
