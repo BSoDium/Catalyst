@@ -4262,6 +4262,29 @@ h1[tabindex="-1"]:focus-visible {
     background: linear-gradient(to bottom, var(--border) calc(100% - 5rem), transparent);
   }
 
+  /* And it comes in the same way: the first item's rail starts under the block's title (2 rem above its tile) and fades in. */
+  .career-item:first-child::before {
+    top: -2rem;
+    border-left: 0;
+    width: var(--hairline);
+    background: linear-gradient(to bottom, transparent, var(--border) 2rem);
+  }
+
+  .career-item:first-child:last-child::before {
+    background: linear-gradient(to bottom, transparent, var(--border) 2rem, var(--border) calc(100% - 5rem), transparent);
+  }
+
+  /* Forced colours drop gradients: the rail is then a plain hairline, cut at its ends. */
+  @media (forced-colors: active) {
+    .career-item::before,
+    .career-item:first-child::before,
+    .career-item:last-child::before,
+    .career-item:first-child:last-child::before {
+      background: none;
+      border-left: var(--hairline) solid CanvasText;
+    }
+  }
+
   /* The marker: a square tile with the icon of what was done there (sized to the first line of the item, the organisation's). */
   .career-icon {
     position: absolute;
@@ -4273,8 +4296,7 @@ h1[tabindex="-1"]:focus-visible {
     box-sizing: border-box;
     width: var(--career-tile);
     height: var(--career-tile);
-    background: var(--surface);
-    border: var(--hairline) solid var(--border);
+    background: var(--background); /* a mask, not a frame: it only keeps the rail from running through the icon */
     color: var(--muted-foreground);
   }
 
@@ -4285,7 +4307,6 @@ h1[tabindex="-1"]:focus-visible {
 
   .career-item[data-current="true"] .career-icon {
     color: var(--signal-text);
-    border-color: var(--signal-text);
   }
 
   /* From 64 rem an item is two columns: who, what and when at the left (a fixed 17 rem, so every left edge of the page, education
@@ -4311,6 +4332,24 @@ h1[tabindex="-1"]:focus-visible {
     .career-detail .career-highlights {
       margin-top: 0;
       max-width: 44rem;
+    }
+  }
+
+  /* Education and Skills side by side from 64 rem (each is short; stacked they leave the right of the page empty). Inside a pair a
+     timeline item is a single column: it has no highlights to put beside it. */
+  @media (min-width: 64rem) {
+    .career-pair:has(> .career-block + .career-block) {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      column-gap: 4rem;
+    }
+
+    .career-pair .career-block-body {
+      max-width: none;
+    }
+
+    .career-pair .career-item {
+      display: block;
     }
   }
 

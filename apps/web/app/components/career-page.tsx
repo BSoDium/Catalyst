@@ -104,34 +104,36 @@ export function CareerPage({ career, places = [] }: { career: PublishedCareer; p
         </ol>
       </Block>
 
-      {career.education.length > 0 && (
-        <Block id="education" title="Education" count={career.education.length}>
-          <ol className="career-timeline" aria-labelledby="education-h">
-            {career.education.map((e) => (
-              <EducationItem key={e.id} item={e} placeKnown={e.place !== undefined && known.has(e.place)} />
-            ))}
-          </ol>
-        </Block>
-      )}
+      <div className="career-pair">
+        {career.education.length > 0 && (
+          <Block id="education" title="Education" count={career.education.length}>
+            <ol className="career-timeline" aria-labelledby="education-h">
+              {career.education.map((e) => (
+                <EducationItem key={e.id} item={e} placeKnown={e.place !== undefined && known.has(e.place)} />
+              ))}
+            </ol>
+          </Block>
+        )}
 
-      {career.skills.length > 0 && (
-        <Block id="skills" title="Skills">
-          <dl className="career-skills">
-            {career.skills.map((g) => (
-              <div key={g.group}>
-                <dt className="type-meta">{g.group}</dt>
-                <dd>
-                  <ul className="career-chips">
-                    {g.items.map((s) => (
-                      <li key={s}>{s}</li>
-                    ))}
-                  </ul>
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </Block>
-      )}
+        {career.skills.length > 0 && (
+          <Block id="skills" title="Skills">
+            <dl className="career-skills">
+              {career.skills.map((g) => (
+                <div key={g.group}>
+                  <dt className="type-meta">{g.group}</dt>
+                  <dd>
+                    <ul className="career-chips">
+                      {g.items.map((s) => (
+                        <li key={s}>{s}</li>
+                      ))}
+                    </ul>
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </Block>
+        )}
+      </div>
 
       {links.length > 0 && (
         <footer data-slot="career-links" className="career-footer">
