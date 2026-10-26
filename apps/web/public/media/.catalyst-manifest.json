@@ -138,6 +138,46 @@
       "bytes": 212311
     },
     {
+      "path": "career/logo.240218e8.webp",
+      "sha256": "240218e82bbd1731cc7a5dd1e081685c4e430d1b146dee56710220fd85c4240c",
+      "bytes": 1956
+    },
+    {
+      "path": "career/logo.2705add5.webp",
+      "sha256": "2705add5824ccb42e99663fd6768c2437b165cc69c1149fb272a70a528dfdb05",
+      "bytes": 1032
+    },
+    {
+      "path": "career/logo.831ad92e.webp",
+      "sha256": "831ad92e6eb06fddb7755ef2cdb0fc469ed6419b17f29352ad1c602bc297fa68",
+      "bytes": 2072
+    },
+    {
+      "path": "career/logo.acd20c5f.webp",
+      "sha256": "acd20c5f8e3bc7449c66e3c4a0580865d6b6f3a0c206aa29e7acca309b9838f4",
+      "bytes": 10302
+    },
+    {
+      "path": "career/logo.c23c658f.webp",
+      "sha256": "c23c658f99f1c897090592042c5c3a1cd7534f869b8fdf51fed029383927f37b",
+      "bytes": 2082
+    },
+    {
+      "path": "career/logo.f38d6996.webp",
+      "sha256": "f38d6996b7412f7e0e7069047a28e95e43af2e12db4d724846cd6dd193966f90",
+      "bytes": 1696
+    },
+    {
+      "path": "career/logo.fa8fe680.webp",
+      "sha256": "fa8fe680d3662c65bc58db28e9d617c6ee1811a26fc1f4b1f17d8a2b5b6b770f",
+      "bytes": 2188
+    },
+    {
+      "path": "career/portrait-dark.381205c2.webp",
+      "sha256": "381205c2ff992aab419cca5a5b0e9253c6f97fb95850c7e7f457385488360b24",
+      "bytes": 12910
+    },
+    {
       "path": "career/portrait.5333ec22.webp",
       "sha256": "5333ec227ba4e6d262a92af6cba505f69a50479a85a16fb2ef0009fdff5f503e",
       "bytes": 18712
