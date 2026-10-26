@@ -36,7 +36,18 @@
     { "slug": "belgrade", "name": "Belgrade", "region": "Serbia", "coordinates": { "lat": 44.79, "lon": 20.45 }, "labelPriority": 40, "group": "balkans", "countryCode": "RS",
       "body": [], "images": [], "related": [] },
     { "slug": "bangkok", "name": "Bangkok", "region": "Thailand", "coordinates": { "lat": 13.76, "lon": 100.5 }, "labelPriority": 45, "group": "south-eastern-asia", "countryCode": "TH",
-      "body": [], "images": [], "related": [] },
+      "summary": "Two nights between a night train and a bus: canals at dawn, a market that never closes, and a plan that did not survive the heat.",
+      "dates": { "start": "2024-11", "end": "2024-11", "label": "November 2024" },
+      "body": [
+        "We arrived at five in the morning with nowhere to be, which is the best way to see a city of this size. The canals were already working, the first boats carrying rice and ice, and the street cooks were setting out their stools.",
+        "By noon it was too hot to plan anything. We ate what the person next to us was eating, crossed the river on the cheapest ferry and fell asleep in the shade of a temple wall."
+      ],
+      "images": [
+        { "src": "/media/demo/fig-night-platform-1.svg", "alt": "A night train platform, drawn as a plain monochrome sketch", "width": 960, "height": 600, "caption": "The platform at five in the morning" },
+        { "src": "/media/demo/fig-coast-road.svg", "alt": "A coast road, drawn as a plain monochrome sketch", "width": 960, "height": 600 },
+        { "src": "/media/demo/fig-monsoon-1.svg", "alt": "Rain over a street, drawn as a plain monochrome sketch", "width": 960, "height": 600, "caption": "The afternoon rain, on time" }
+      ],
+      "related": [] },
     { "slug": "da-nang", "name": "Da Nang", "region": "Vietnam", "coordinates": { "lat": 16.05, "lon": 108.22 }, "labelPriority": 22, "group": "da-nang-area", "countryCode": "VN",
       "body": [], "images": [], "related": [] },
     { "slug": "hoi-an", "name": "Hội An", "region": "Vietnam", "coordinates": { "lat": 15.88, "lon": 108.33 }, "labelPriority": 18, "group": "da-nang-area", "countryCode": "VN",

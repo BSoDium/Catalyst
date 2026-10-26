@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Trip } from "~/lib/journeys";
+import { cn } from "~/lib/utils";
 
 /** The strokes of the small map, by mode: the same patterns as the maps' lines (solid road, dashed rail, dotted ferry and flight). */
 const DASH: Record<string, string | undefined> = { road: undefined, rail: "5 3", ferry: "1.5 3", flight: "1.5 3", walk: "1.5 2", unknown: "5 4" };
 
-const W = 360;
-const H = 168;
-const PAD = 14;
+/** The map's two sizes (its own coordinate space; the SVG scales): the full card map, and the thumbnail of the trip card. */
+const SIZES = { card: { w: 360, h: 168, pad: 14 }, thumb: { w: 176, h: 128, pad: 10 } } as const;
+type MapSize = keyof typeof SIZES;
 
 interface Frame {
   x: (lon: number) => number;
@@ -18,7 +19,7 @@ interface Frame {
 }
 
 /** An equirectangular frame (longitudes shrunk by cos of the middle latitude) that fits the trip in W x H with PAD around it. */
-function frameOf(trip: Trip): Frame {
+function frameOf(trip: Trip, W: number, H: number, PAD: number): Frame {
   const lons = trip.legPaths.flatMap((l) => l.points.filter((_, i) => i % 2 === 0)).concat(trip.stopPoints.map((s) => s.lon));
   const lats = trip.legPaths.flatMap((l) => l.points.filter((_, i) => i % 2 === 1)).concat(trip.stopPoints.map((s) => s.lat));
   let lon0 = Math.min(...lons);
@@ -67,8 +68,9 @@ function coastPath(frame: Frame, coast: { positions: Float32Array; offsets: Uint
  * trip's gradient to its violet head in the patterns the maps draw, every stop a small square and the place the panel is about a ring. Decoration
  * for the eyes: the card's text says all of it.
  */
-export function TripMap({ trip, here }: { trip: Trip; here: string }) {
-  const frame = useMemo(() => frameOf(trip), [trip]);
+export function TripMap({ trip, here, size = "card", className }: { trip: Trip; here: string; size?: MapSize; className?: string }) {
+  const { w: W, h: H, pad } = SIZES[size];
+  const frame = useMemo(() => frameOf(trip, W, H, pad), [trip, W, H, pad]);
   const [coast, setCoast] = useState<{ positions: Float32Array; offsets: Uint32Array } | null>(null);
   useEffect(() => {
     let alive = true;
@@ -81,7 +83,12 @@ export function TripMap({ trip, here }: { trip: Trip; here: string }) {
   const legs = trip.legPaths.length;
   const current = trip.stopPoints.find((s) => s.slug === here);
   return (
-    <svg data-slot="trip-map" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Map of the trip, ${trip.from} to ${trip.to}`} className="block h-auto w-full bg-accent">
+    <svg
+      data-slot="trip-map"
+      viewBox={`0 0 ${W} ${H}`}
+      {...(size === "thumb" ? { "aria-hidden": true as const } : { role: "img" as const, "aria-label": `Map of the trip, ${trip.from} to ${trip.to}` })}
+      className={cn("block h-auto w-full bg-accent", className)}
+    >
       <defs>
         <clipPath id={`trip-map-clip-${trip.id}`}>
           <rect width={W} height={H} />
