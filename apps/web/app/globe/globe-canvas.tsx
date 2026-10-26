@@ -122,6 +122,7 @@ export default function GlobeCanvas({
   attribution: Attribution,
   ringPhrases,
   captionPhrases,
+  moon,
   showcase,
   onOrbit,
   onSelect,
@@ -131,6 +132,7 @@ export default function GlobeCanvas({
   const stageRef = useRef<HTMLDivElement>(null);
   const streetRef = useRef<HTMLDivElement>(null);
   const labelsRef = useRef<HTMLDivElement>(null);
+  const moonRef = useRef<HTMLDivElement>(null);
   const handleRef = useRef<HandoverHandle | null>(null);
   const [status, setStatus] = useState<Status>("loading");
   const [notice, setNotice] = useState<Notice | null>(null);
@@ -195,6 +197,7 @@ export default function GlobeCanvas({
   useEffect(() => {
     const stage = stageRef.current;
     const labelsRoot = labelsRef.current;
+    const moonRoot = moonRef.current;
     const streetRoot = streetRef.current;
     if (!stage || !labelsRoot || !streetRoot) return;
     let cancelled = false;
@@ -218,6 +221,8 @@ export default function GlobeCanvas({
         handle = createHandover({
           stage,
           labelsRoot,
+          moonRoot: moon ? (moonRoot ?? undefined) : undefined,
+          moon: moonRoot ? moon : undefined,
           streetRoot,
           places: synthetic ? synthetic.places : places,
           groups: synthetic ? synthetic.groups : groupsForTests() ? [] : groups,
@@ -280,7 +285,7 @@ export default function GlobeCanvas({
       handle?.dispose();
       setNotice(null);
     };
-  }, [places, groups, routes, tilesKey]);
+  }, [places, groups, routes, tilesKey, moon?.href]);
 
   // The inset first: a selection that opens the panel flies to a framing computed for the panel's width, so the
   // renderer must already know the inset it is heading for (effects run in declaration order).
@@ -334,6 +339,8 @@ export default function GlobeCanvas({
       <div ref={stageRef} aria-hidden="true" className="absolute inset-0 overflow-hidden" />
       <div ref={labelsRef} aria-hidden="true" />
       <div ref={streetRef} aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden" />
+      {/* The moon (a link, so not aria-hidden): above the labels, under the page's own controls; it takes the pointer only where it is. */}
+      <div ref={moonRef} className="globe-moon-root pointer-events-none absolute inset-0 overflow-hidden" />
       {/* Always in the DOM so that a change is announced; empty (and invisible) unless the street map is out. */}
       <p
         role="status"

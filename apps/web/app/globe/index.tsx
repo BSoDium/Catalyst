@@ -13,6 +13,7 @@ export type {
   GlobeGroup,
   GlobeGroupKind,
   GlobeInitialView,
+  GlobeMoon,
   GlobePlace,
   GlobeProps,
   GlobeShowcase,

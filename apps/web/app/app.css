@@ -3139,6 +3139,126 @@ h1[tabindex="-1"]:focus-visible {
   }
 }
 
+/* ---- The moon (docs/landing.md, "The moon"): the globe's link to the first version of the site. engine/moon-overlay.ts places it; this is its look. ---- */
+@layer components {
+  .globe-moon-root {
+    z-index: 2;
+  }
+
+  .globe-moon {
+    position: absolute;
+    left: 0;
+    top: 0;
+    display: block;
+    color: var(--foreground);
+    text-decoration: none;
+    border-radius: 50%;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .globe-moon[hidden] {
+    display: none;
+  }
+
+  .globe-moon-sprite {
+    display: block;
+    image-rendering: pixelated;
+  }
+
+  /* The ring is drawn outside the sprite, round it: the global focus ring would be square on a round thing. */
+  .globe-moon:focus-visible {
+    outline: 2px solid var(--signal);
+    outline-offset: 3px;
+  }
+
+  /* The card: the map label's plate and mono type, a hairline round it. Out of sight and out of the pointer's way until the moon is held. */
+  .globe-moon-card {
+    position: absolute;
+    left: 0;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    width: max-content;
+    max-width: min(16rem, 62vw);
+    padding: 0.625rem 0.75rem;
+    border: var(--hairline) solid var(--border-strong);
+    background: var(--background);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    line-height: 1.45;
+    color: var(--foreground);
+    text-align: left;
+    white-space: normal;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  .globe-moon[data-open] .globe-moon-card {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  .globe-moon-title {
+    font-family: var(--font-display);
+    font-size: 1.0625rem;
+    font-weight: var(--weight-light);
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+  }
+
+  .globe-moon-body {
+    color: var(--muted-foreground);
+  }
+
+  .globe-moon-cta {
+    margin-top: 0.125rem;
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
+
+  /* The arrow is drawn, not written: the link's name (aria-label) is the words only. */
+  .globe-moon-cta::after {
+    content: "\2197";
+    margin-inline-start: 0.25em;
+    display: inline-block;
+    text-decoration: none;
+  }
+
+  .globe-moon:hover .globe-moon-cta,
+  .globe-moon:focus-visible .globe-moon-cta {
+    color: var(--signal-text, var(--foreground));
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .globe-moon-card {
+      transition: opacity var(--duration-fast) var(--ease-standard), visibility 0s linear var(--duration-fast);
+    }
+
+    .globe-moon[data-open] .globe-moon-card {
+      transition-delay: 0s;
+    }
+  }
+
+  @media (forced-colors: active) {
+    .globe-moon-card {
+      background: Canvas;
+      color: CanvasText;
+      border-color: CanvasText;
+    }
+  }
+
+  @media print {
+    .globe-moon-root {
+      display: none;
+    }
+  }
+}
+
 /* ==================================================================================================================================
  * Landing hero and the header's type (docs/landing.md). Everything for the home page's hero is in this block, and the header's
  * `.nav-link`: the hero is `components/landing-hero.tsx`, its state `lib/hero-machine.ts`. Tokens only; no colour of its own.
@@ -3624,48 +3744,6 @@ h1[tabindex="-1"]:focus-visible {
 
   .hero-list li {
     border-top: var(--hairline) solid var(--border);
-  }
-
-  /* The archived first version (#312): one quiet line of the meta type under the rows. */
-  .hero-archive {
-    margin: 0;
-    padding-top: 0.875rem;
-    border-top: var(--hairline) solid var(--border);
-    font-family: var(--font-meta);
-    font-size: 0.75rem;
-    line-height: 1.5;
-    color: var(--muted-foreground);
-    text-wrap: pretty;
-  }
-
-  .hero-archive-link {
-    pointer-events: auto;
-    display: inline-flex;
-    align-items: center;
-    min-height: 1.5rem;
-    color: inherit;
-    text-decoration: underline;
-    text-underline-offset: 0.2em;
-    transition: color var(--duration-fast) var(--ease-standard);
-  }
-
-  /* A phone too short for it (320 x 480 would lose the top of the name): the line goes, the palette's "Version 1 (archived)" entry stays. */
-  @media (max-width: 47.99rem) and (max-height: 32rem) {
-    .hero-archive {
-      display: none;
-    }
-  }
-
-  /* The arrow is drawn, not written: a glyph in the text would be read out. */
-  .hero-archive-link::after {
-    content: "\2197";
-    margin-inline-start: 0.25em;
-    text-decoration: none;
-  }
-
-  .hero-archive-link:hover,
-  .hero-archive-link:focus-visible {
-    color: var(--foreground);
   }
 
   .hero-row {

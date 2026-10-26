@@ -16,13 +16,15 @@ import { focusPlaceOf, KIND_PATHS, KIND_PLURALS, parsePanelPath, parseView, reso
 import { panelInset } from "~/lib/layout";
 import { buildPlaceIndex, placePath, toGlobeGroups } from "~/lib/projection";
 import { countryGroupOf, parseCountryParam } from "~/lib/country";
-import { SITE, siteCaption, type KindCounts } from "~/lib/site";
+import { ARCHIVED_V1, SITE, siteCaption, type KindCounts } from "~/lib/site";
 
 /** The sections the no-script text lists, in the order of the header (the names and addresses are `lib/sections.ts`'s). */
 const NOSCRIPT_KINDS = ["project", "article", "artwork", "poem", "photograph"] as const;
 
 /** The words of the globe's ring of type: the site's identity (name, role, fields, place), the same constant the head tags and the hero read. */
 const RING_PHRASES = ringPhrases(SITE);
+/** The moon that circles the globe: a link to the first version of the site (`ARCHIVED_V1`). */
+const MOON_LINK = { href: ARCHIVED_V1.url, title: ARCHIVED_V1.title, description: ARCHIVED_V1.description, cta: ARCHIVED_V1.cta } as const;
 /** The caption that floats over the planet with it: what the site is and what to do (it replaces the hero's how-to line while the globe has the caption). */
 const NO_PHRASES = { sets: [], fixed: [] } as const;
 
@@ -154,6 +156,7 @@ export default function Shell({ loaderData }: Route.ComponentProps) {
               tiles={tiles}
               attribution={AttributionSlot}
               ringPhrases={RING_PHRASES}
+              moon={MOON_LINK}
               captionPhrases={empty ? NO_PHRASES : captionPhrases}
               showcase={hero.showcase}
               onOrbit={setOrbit}

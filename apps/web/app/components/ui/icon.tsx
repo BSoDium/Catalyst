@@ -1,5 +1,4 @@
 import {
-  Archive,
   ArrowDown,
   ArrowLeft,
   ArrowRight,
@@ -39,6 +38,7 @@ import {
   X,
   type LucideIcon,
   type LucideProps,
+  Moon,
   Sparkles,
 } from "lucide-react";
 import { cn } from "~/lib/utils";
@@ -90,7 +90,7 @@ export const ICONS = {
   "eye-off": EyeOff,
   info: Info,
   sparkles: Sparkles,
-  archive: Archive,
+  moon: Moon,
 } as const satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;

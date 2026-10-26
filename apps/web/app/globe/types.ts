@@ -151,6 +151,17 @@ export interface GlobeTiles {
  * What the app-supplied attribution control receives (see `GlobeProps.attribution`): the tile configuration that decides
  * which sources are credited (null = the globe alone), the right inset the control stays clear of, and the motion preference.
  */
+/** The moon's words and where it leads (`GlobeProps.moon`). */
+export interface GlobeMoon {
+  href: string;
+  /** The card's first line, and the start of the link's name. */
+  title: string;
+  /** What is there: one sentence. */
+  description: string;
+  /** The card's last line: the call to action, with its arrow if it has one. */
+  cta: string;
+}
+
 export interface GlobeAttributionProps {
   tiles: { primaryUrl: string; fallbackPmtilesUrl: string | null } | null;
   insetRight: number;
@@ -251,6 +262,12 @@ export interface GlobeProps {
    * (the app must pass one wherever the maps are shown, they carry licence-required credits).
    */
   attribution?: ComponentType<GlobeAttributionProps>;
+  /**
+   * A small moon that circles the planet at the world view and is a link out (docs/landing.md, "The moon"): supplied by the app because it is the site's own
+   * business (where it leads and what it says). A real link: opens in a new tab, reachable by the keyboard, and holds still while the pointer or the focus is on it
+   * to show a card with `title`, `description` and `cta`. Read once. Optional: omitted = no moon.
+   */
+  moon?: GlobeMoon;
   /**
    * The words of the mono ring of type that circles the planet when it is zoomed out (engine/ring.ts), supplied by the app because they are the
    * site's identity (`ringPhrases` in ring-text.ts builds them from it): capitals, the separator and the closing dot are the engine's.

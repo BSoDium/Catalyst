@@ -24,7 +24,7 @@ import { clamp } from "../engine/geo";
 import type { StreetMap, StreetTileConfig, TileStatus } from "../street/types";
 import { placeFraming } from "../engine/framing";
 import { LodTree, buildLodNodes } from "../engine/lod-tree";
-import { isFitView, type GlobeGroup, type GlobeInitialView, type GlobePlace, type GlobeProps, type GlobeRoute } from "../types";
+import { isFitView, type GlobeGroup, type GlobeInitialView, type GlobeMoon, type GlobePlace, type GlobeProps, type GlobeRoute } from "../types";
 import {
   GLOBE_MAX_ZOOM,
   HANDOVER,
@@ -46,6 +46,9 @@ export type Notice = "street-unavailable";
 export interface HandoverOptions {
   stage: HTMLElement;
   labelsRoot: HTMLElement;
+  /** Receives the moon (a link: not `aria-hidden`), with its words; both or neither (`GlobeProps.moon`). */
+  moonRoot?: HTMLElement;
+  moon?: GlobeMoon;
   /** Receives the street map. Positioned, `inset: 0`, `pointer-events: none`, above `stage` and below `labelsRoot`. */
   streetRoot: HTMLElement;
   places: readonly GlobePlace[];
@@ -225,6 +228,8 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
   globe = createGlobe({
     stage: opts.stage,
     labelsRoot: opts.labelsRoot,
+    moonRoot: opts.moonRoot,
+    moon: opts.moon,
     places: opts.places,
     routes: opts.routes,
     lod,

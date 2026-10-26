@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { createStaticHandler, createStaticRouter, StaticRouterProvider, type StaticHandlerContext } from "react-router";
 import { describe, expect, it } from "vitest";
 import { createHeroMachine } from "~/lib/hero-machine";
-import { ARCHIVED_V1, SITE_FOCUS, SITE_IDENTITY, SITE_NAME, SITE_TAGLINE } from "~/lib/site";
+import { SITE_FOCUS, SITE_IDENTITY, SITE_NAME, SITE_TAGLINE } from "~/lib/site";
 import { LandingHero, NAME_TRAVEL_EASE, NAME_TRAVEL_MS } from "./landing-hero";
 
 async function render(props: { away?: boolean; empty?: boolean; orbit?: boolean | null; hasCareer?: boolean } = {}, machine = createHeroMachine()): Promise<string> {
@@ -90,7 +90,7 @@ describe("LandingHero", () => {
     expect(button).toContain('aria-haspopup="dialog"');
     expect(button).toContain('aria-keyshortcuts="Control+K Meta+K"');
     expect(button).toContain('type="button"');
-    const links = [...html.matchAll(/<a [^>]*href="([^"]*)"[^>]*>(?:<span>)?([^<]*)</g)].map((m) => [m[1], m[2]]).filter(([href]) => href!.startsWith("/"));
+    const links = [...html.matchAll(/<a [^>]*href="([^"]*)"[^>]*>(?:<span>)?([^<]*)</g)].map((m) => [m[1], m[2]]);
     expect(links).toEqual([
       ["/software", "Software"],
       ["/articles", "Articles"],
@@ -102,15 +102,6 @@ describe("LandingHero", () => {
     expect(html.indexOf("hero-name")).toBeLessThan(html.indexOf("hero-intro"));
     expect(html.indexOf("hero-intro")).toBeLessThan(search);
     expect(search).toBeLessThan(html.indexOf('href="/software"'));
-  });
-
-  it("says the first version is archived and no longer maintained, with one link to it, inside the primary navigation's block", async () => {
-    const html = await render();
-    const nav = html.slice(html.indexOf('<nav aria-label="Primary" class="hero-list">'), html.indexOf("</nav>"));
-    expect(nav).toContain('<p class="hero-archive">');
-    expect(nav).toMatch(/archived and no longer maintained/);
-    expect(nav).toContain(`<a href="${ARCHIVED_V1.url}" rel="noopener" class="hero-archive-link">`);
-    expect(nav.match(/href="https?:/g)).toHaveLength(1);
   });
 
   it("shows no count, no number, no employer and no code name", async () => {

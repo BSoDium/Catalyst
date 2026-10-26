@@ -41,18 +41,19 @@ export const SITE_TITLE = `${SITE_NAME} · ${SITE.role}`;
 export const DEFAULT_SITE_URL = "https://v2.bsodium.fr";
 
 /**
- * The archived first version of the site (#312): the ONE place its address is written. The hero's last line and the search palette's "Version 1" entry read it.
- * It is the old app's own Vercel project (docs/owner-guide.md); if the archive moves, this is the one line to change.
+ * The first version of the site, kept as it was (#312): the ONE place its address and its words are written. The moon that circles the globe
+ * (`GlobeProps.moon`, docs/landing.md "The moon") and the search palette's entry read it. A way back to look at, not a warning: the words say what
+ * it is and that it stays as it was. The address is the old app's own Vercel project (docs/owner-guide.md); if the archive moves, this is the one line to change.
  */
 export const ARCHIVED_V1 = {
   url: "https://v1.bsodium.fr",
-  /** The hero's line: "<lead> <link text>". Plain: V1 is archived and no longer maintained. */
-  lead: "The first version of this site is archived and no longer maintained:",
-  linkText: "Visit the archive",
+  title: "Memory lane",
+  description: "The first version of this site, kept just as it was.",
+  /** The card's last line (an arrow is drawn after it by the stylesheet) and the palette's. */
+  cta: "Take a trip back",
   /** The palette's entry, found by these words (every typed word must begin one of them). */
-  title: "Version 1 (archived)",
-  sub: "The first version of this site, no longer maintained",
-  words: ["version", "1", "v1", "first", "old", "older", "previous", "archived", "archive", "site"],
+  sub: "The first version of this site, kept as it was",
+  words: ["memory", "lane", "moon", "version", "1", "v1", "first", "old", "older", "previous", "archived", "archive", "site", "back"],
 } as const;
 
 /** A stretch of a caption line (`GlobeProps.captionPhrases`): the words and the style they are set in (`plain` when absent). */

@@ -286,9 +286,9 @@ export function SearchPalette() {
                 ))}
                 {archive && (
                   <li role="presentation">
-                    <ul role="group" aria-label="Archive" className="m-0 list-none p-0">
+                    <ul role="group" aria-label="Elsewhere" className="m-0 list-none p-0">
                       <li role="presentation" className="type-meta px-4 pt-4 pb-1 text-muted-foreground" aria-hidden="true">
-                        Archive
+                        Elsewhere
                       </li>
                       <li
                         id={`${id}-opt-${flat.indexOf(ARCHIVE_ROW)}`}
@@ -298,7 +298,7 @@ export function SearchPalette() {
                         onClick={() => go(ARCHIVE_ROW)}
                         className={cn("flex min-h-12 cursor-pointer items-center gap-3 px-4 py-2", current === ARCHIVE_ROW && "bg-accent shadow-[inset_2px_0_0_var(--signal)]")}
                       >
-                        <Icon name="archive" size="control" className="shrink-0 text-muted-foreground" />
+                        <Icon name="moon" size="control" className="shrink-0 text-muted-foreground" />
                         <span className="flex min-w-0 flex-1 flex-col">
                           <span className="truncate font-display text-base font-bold tracking-[-0.01em]">{ARCHIVED_V1.title}</span>
                           <span className="ds-meta truncate">{ARCHIVED_V1.sub}</span>

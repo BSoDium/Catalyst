@@ -69,6 +69,7 @@ import { SHOWCASE_STATE, bandLat, inBand, shellWindowFactor, type CaptionContent
 import { CAP_HEIGHT_EM, ringAlpha, ringFloorZoom, ringRoomRadius, RING_STATE } from "./ring";
 import { RingLayer } from "./ring-layer";
 import { GlobeScene } from "./scene";
+import { moonAmount, type MoonGeometry } from "./moon";
 import { CAPTION, ENERGY, INSET_EASE, CAPTION_LOAD, RING, SKY, START_VIEW, TUNING } from "./tuning";
 import { QualityGovernor } from "./quality";
 import { FpsOverlay } from "./fps-overlay";
@@ -1213,6 +1214,36 @@ export class GlobeRenderer {
     c.minZoom = this.fit; // the world view is the whole-globe fit; the ring's regime below it is part of it
     c.busy = this.flight !== null || !isStill(this.velocity) || this.insetAnim !== null || this.liftAnim !== null || this.pressed.size > 0;
     return c;
+  }
+
+  /**
+   * What the moon (engine/moon-overlay.ts) needs of the globe now, or null while it must not show (no size yet, the context lost, the street map or the
+   * interlude has the view, a place is open). `amount` is how much the zoom lets through, `running` whether it may move (the energy pass's holds, reduced motion).
+   * Read by the overlay's own timer and after every drawn frame; allocates one small object.
+   */
+  moonFrame(): { geometry: MoonGeometry; amount: number; running: boolean; cell: number; theme: GlobeTheme } | null {
+    if (!this.sized || this.disposed || this.lost || this.suspended || this.flying || this.selected !== null || this.insetTarget > 0) return null;
+    if ((this.caption?.landShare() ?? 0) > 0) return null;
+    const P = this.pixel;
+    const cw = this.bufW * P;
+    const ch = this.bufH * P;
+    const zoom = this.drawView().zoom;
+    const amount = moonAmount(zoom, this.fit);
+    if (amount <= 0) return null;
+    return {
+      geometry: {
+        cx: cw / 2 - this.shiftBuf * P + this.canvasLeft,
+        cy: ch / 2 - this.liftBuf * P + this.canvasTop,
+        s: silhouetteRadiusPx(zoom, ch),
+        width: this.width,
+        height: this.height,
+        blocks: this.blocks,
+      },
+      amount,
+      running: !this.reduced && !this.held && !this.hidden,
+      cell: P,
+      theme: this.theme,
+    };
   }
 
   /** The idle rotation is turning the globe now (a plain read: asked every camera frame, so it builds nothing, unlike `spinInfo`). */

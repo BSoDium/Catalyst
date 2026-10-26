@@ -7,7 +7,7 @@ import { KIND_PATHS, KIND_PLURALS } from "~/lib/entries";
 import type { HeroMachine, HeroSnapshot } from "~/lib/hero-machine";
 import { setHeroResting } from "~/lib/hero-rest";
 import { NameTravel, type TravelHalf } from "~/lib/name-travel";
-import { ARCHIVED_V1, SITE, SITE_FOCUS, SITE_IDENTITY } from "~/lib/site";
+import { SITE, SITE_FOCUS, SITE_IDENTITY } from "~/lib/site";
 import { useHasCareer } from "~/lib/use-has-career";
 
 /** The sections' shortcuts, in the header's order. Paths and words come from the one table the lists and the navigation use. */
@@ -312,13 +312,6 @@ export function LandingHero({ machine, away, empty, orbit = null, onCover, hasCa
               </li>
             ))}
           </ul>
-          {/* The first version, kept as an archive (#312): a footnote under the rows, outside their list; it fades and leaves the tab order with them. */}
-          <p className="hero-archive">
-            {ARCHIVED_V1.lead}{" "}
-            <a href={ARCHIVED_V1.url} rel="noopener" className="hero-archive-link">
-              {ARCHIVED_V1.linkText}
-            </a>
-          </p>
         </nav>
       </div>
       {/* What stays when the hero has stepped back: the name as one small line and, while the way back is real, the hint. Decoration (the h1 is above). */}
