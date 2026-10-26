@@ -187,14 +187,21 @@ export function tripsOf(projection: PublishedProjection, slug: string, nameOf: (
 }
 
 /**
- * The words of a trip's link: "Follow the trip on <the page's host>" ("www." left off), "Open the trip" when there is no readable host. The host is read from the
- * address at run time, so no site's name is written in this code (`scripts/check-public-leaks.mjs` keeps the private layers' vocabulary out of the bundles).
+ * The words of a trip's link: "See the whole trip on <the page's host>" ("www." left off), "Open the trip" when there is no readable host. The host is read
+ * from the address at run time, so no site's name is written in this code (`scripts/check-public-leaks.mjs` keeps the private layers' vocabulary out of the bundles).
+ * Neutral on purpose: it reads right whether the trip is under way or over.
  */
 export function tripLinkLabel(url: string): string {
   try {
     const host = new URL(url).hostname.toLowerCase().replace(/^www\./, "");
-    return host ? `Follow the trip on ${host}` : "Open the trip";
+    return host ? `See the whole trip on ${host}` : "Open the trip";
   } catch {
     return "Open the trip";
   }
+}
+
+/** How a hop was made and how far, without the place: "by ferry · about 170 km" (the mode is left out when unknown). */
+export function hopDetail(hop: Pick<TripHop, "mode" | "km">): string {
+  const by = BY[hop.mode].trim();
+  return [by, `about ${hop.km.toLocaleString("en-US")} km`].filter(Boolean).join(" · ");
 }

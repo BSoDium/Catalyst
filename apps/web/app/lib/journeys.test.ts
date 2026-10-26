@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { EMPTY_PROJECTION, encodePolyline5, type PublishedProjection } from "@catalyst/schemas";
-import { journeyText, journeysOf, roundKm, tripLinkLabel, tripsOf } from "./journeys";
+import { hopDetail, journeyText, journeysOf, roundKm, tripLinkLabel, tripsOf } from "./journeys";
 
 const place = (slug: string, name: string, lat: number, lon: number, countryCode?: string) => ({
   slug, name, coordinates: { lat, lon }, labelPriority: 0, body: [], images: [], related: [], ...(countryCode ? { countryCode } : {}),
@@ -92,8 +92,16 @@ describe("tripsOf", () => {
 
 describe("tripLinkLabel", () => {
   it("names the page's host without its 'www.', and says 'Open the trip' when there is none", () => {
-    expect(tripLinkLabel("https://www.example.org/someone/123-trip")).toBe("Follow the trip on example.org");
-    expect(tripLinkLabel("https://trips.example.org/x")).toBe("Follow the trip on trips.example.org");
+    expect(tripLinkLabel("https://www.example.org/someone/123-trip")).toBe("See the whole trip on example.org");
+    expect(tripLinkLabel("https://trips.example.org/x")).toBe("See the whole trip on trips.example.org");
     expect(tripLinkLabel("not a url")).toBe("Open the trip");
+  });
+});
+
+describe("hopDetail", () => {
+  it("says how and how far, and only how far when the way is unknown", () => {
+    expect(hopDetail({ mode: "ferry", km: 170 })).toBe("by ferry · about 170 km");
+    expect(hopDetail({ mode: "walk", km: 10 })).toBe("on foot · about 10 km");
+    expect(hopDetail({ mode: "unknown", km: 1200 })).toBe("about 1,200 km");
   });
 });
