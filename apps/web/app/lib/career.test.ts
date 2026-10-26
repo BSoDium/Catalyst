@@ -91,7 +91,8 @@ describe("careerLogo", () => {
     expect(careerLogo("Escape Technologies")).toBe("/career-logos/escape.webp");
     expect(careerLogo("ENSEEIHT, INP Toulouse")).toBe("/career-logos/enseeiht.webp");
     expect(careerLogo("Alpen-Adria-Universität Klagenfurt")).toBe("/career-logos/aau.webp");
-    expect(careerLogo("Macrodata Labs")).toBeNull();
+    expect(careerLogo("Macrodata Labs")).toBe("/career-logos/macrodata.webp");
+    expect(careerLogo("Lycée Déodat de Séverac")).toBeNull();
   });
 });
 

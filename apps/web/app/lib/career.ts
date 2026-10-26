@@ -82,6 +82,7 @@ export function careerIcon(text: string, kind: "role" | "education"): IconName {
  * from the private repo like the portrait (docs/career-page.md). Null when there is none: the page then draws the initial.
  */
 const LOGOS: readonly (readonly [RegExp, string])[] = [
+  [/\bmacrodata\b/i, "macrodata"],
   [/\bkanop\b/i, "kanop"],
   [/\btauniqo\b/i, "tauniqo"],
   [/\bescape\b/i, "escape"],
