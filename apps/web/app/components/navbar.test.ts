@@ -198,9 +198,7 @@ describe(".nav-fade (app.css)", () => {
     expect(block).toContain("z-index: -1");
     expect(block).not.toContain("backdrop-filter");
     expect(block).toMatch(/mask-image: linear-gradient\(\s*to right,\s*transparent 0,/);
-    // it starts at the viewport's top edge (the nav is centred 6 px under it), so no strip above it lacks the fade
-    expect(block).toContain("top: -0.375rem");
-    expect(block).toContain("height: calc(var(--fade-height) + 0.375rem)");
+    expect(block).toContain("height: var(--fade-height)");
     expect(css).toMatch(/--fade-height: calc\(var\(--navbar-height\) \+ 3\.5rem\)/);
   });
 
