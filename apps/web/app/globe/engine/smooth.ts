@@ -3,9 +3,9 @@
  * glide and not a hop across the art grid, at an INTENSITY from 0 (the art grid, as the page is by default) to 1 (full coverage, no steps), to be tuned by eye until it feels like a
  * screen's pixels and not like stutter. Off by default; a bare `?smooth` is 0.5.
  *
- *  - MSAA on the globe's canvas (`antialias`; creation time: a reload), so a one-pixel line at a fraction of a pixel is a fraction of a pixel's tone. It is on or off.
+ *  - MSAA on the globe's canvas (`antialias`; creation time: a reload), so a one-pixel line at a fraction of a pixel is a fraction of a pixel's tone. It is on or off, so it is on from `MSAA_FROM` (0.5) of intensity up: below that only the blur and the moon's edge grade it.
  *  - The moon's silhouette is drawn with coverage over `amount` of a pixel: 0 is a hard edge (a pixel is in or out), 1 a pixel of coverage (engine/moon-layer.ts). Live.
- *  - A slight blur on the globe's canvas, `amount` times `blur` of an art cell (`blur` is 0.2: a fifth): the pixels' edges bleed into each other as an LCD's do, which hides a one-pixel
+ *  - A slight blur on the globe's canvas, `amount` times `blur` of an art cell (`blur` is 0.4: 0.2 of a cell at the default 0.5): the pixels' edges bleed into each other as an LCD's do, which hides a one-pixel
  *    step without hiding the grid. A CSS `filter` on the canvas, so the GPU's compositor does it. Live, and its own knob (`__smooth.blur(x)`), because the Earth wants less than the moon.
  *  - The idle rotation at the display's rate (not ten frames a second, `ENERGY.spinFrameMs`), so that there are frames to see it in. The cost: the home screen draws every frame it
  *    is turning, where it draws ten a second now.
@@ -14,7 +14,10 @@
  * Live: `window.__smooth.set(0.3)` in the console (and `.get()`), `window.__smooth.blur(0.15)` for the blur's own strength (`.getBlur()`); the moon and the blur follow at once, MSAA only after a
  * reload.
  */
-export const SMOOTH_STATE = { enabled: false, amount: 0, /** The blur at intensity 1, in art cells: the Earth was too smooth at a third, so a fifth. */ blur: 0.2 };
+export const SMOOTH_STATE = { enabled: false, amount: 0, /** The blur at intensity 1, in art cells: the Earth was too smooth at a third, so a fifth at the default 0.5 intensity. */ blur: 0.4 };
+
+/** MSAA is on or off, so it is on from this intensity up; under it the grading is the blur's alone (a 0.1 is a crisp grid with a soft edge, not MSAA's full coverage). */
+export const MSAA_FROM = 0.5;
 
 /** The default intensity of a bare `?smooth`. */
 export const SMOOTH_DEFAULT = 0.5;

@@ -69,7 +69,7 @@ import { SHOWCASE_STATE, bandLat, inBand, shellWindowFactor, type CaptionContent
 import { CAP_HEIGHT_EM, ringAlpha, ringFloorZoom, ringRoomRadius, RING_STATE } from "./ring";
 import { RingLayer } from "./ring-layer";
 import { GlobeScene } from "./scene";
-import { SMOOTH_STATE, onSmoothChange } from "./smooth";
+import { MSAA_FROM, SMOOTH_STATE, onSmoothChange } from "./smooth";
 import { MOON, inclinationFor, moonAmount, orbitAngle, rollFor, sunDirection, toEarthFrame, toRad, type Vec3 } from "./moon";
 import type { MoonSample } from "./moon-layer";
 import { CAPTION, ENERGY, INSET_EASE, CAPTION_LOAD, RING, SKY, START_VIEW, TUNING } from "./tuning";
@@ -281,7 +281,7 @@ export class GlobeRenderer {
     for (const p of opts.places) this.placeBySlug.set(p.slug, p);
 
     this.gl = new WebGLRenderer({
-      antialias: SMOOTH_STATE.enabled, // (`?smooth`: engine/smooth.ts)
+      antialias: SMOOTH_STATE.enabled && SMOOTH_STATE.amount >= MSAA_FROM, // (`?smooth`: engine/smooth.ts)
       alpha: false,
       powerPreference: ENERGY.gpu,
       preserveDrawingBuffer: false,
