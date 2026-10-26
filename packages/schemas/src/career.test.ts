@@ -117,6 +117,34 @@ describe("career (an optional singleton document, additive in schema version 1)"
     });
   });
 
+  describe("logo and the portrait's dark variant (optional pictures, additive in schema version 1)", () => {
+    const image = (extra: object = {}) => ({ src: "/media/career/logo.1a2b3c4d.webp", width: 200, height: 200, ...extra });
+    const portrait = (extra: object = {}) => ({ src: "/media/career/portrait.1a2b3c4d.webp", alt: "A smiling person in a grey jumper", width: 800, height: 800, ...extra });
+
+    it("a role and an education may carry a logo; without one the key stays absent", () => {
+      expect(parse(career()).career!.roles[0]).not.toHaveProperty("logo");
+      const withLogo = career({
+        roles: [role({ logo: image() })],
+        education: [{ id: "school", institution: "Example University", programme: "Computer Science", start: "2020", end: "2023", logo: image({ src: "/media/career/school.99887766.webp" }) }],
+      });
+      expect(parse(withLogo).career).toEqual(withLogo);
+    });
+
+    it("a logo is a /media/ file with its pixel size, and nothing else (no alt, no URL of another host)", () => {
+      for (const src of ["https://example.org/l.webp", "/media/../x.webp", "/img/l.webp", ""]) bad(career({ roles: [role({ logo: image({ src }) })] }));
+      const { width: _w, ...noWidth } = image();
+      bad(career({ roles: [role({ logo: noWidth })] }));
+      bad(career({ roles: [role({ logo: image({ width: 0 }) })] }));
+      bad(career({ roles: [role({ logo: image({ alt: "x" }) })] }));
+    });
+
+    it("the portrait may carry a dark variant, with the same rules", () => {
+      expect(parse(career({ portrait: portrait({ dark: image({ src: "/media/career/portrait-dark.55443322.webp", width: 800, height: 800 }) }) })).career!.portrait!.dark).toEqual(image({ src: "/media/career/portrait-dark.55443322.webp", width: 800, height: 800 }));
+      bad(career({ portrait: portrait({ dark: image({ src: "https://example.org/d.webp" }) }) }));
+      bad(career({ portrait: portrait({ dark: { src: "/media/career/d.webp" } }) }));
+    });
+  });
+
   describe("portrait (an optional picture, additive in schema version 1)", () => {
     const portrait = (extra: object = {}) => ({ src: "/media/career/portrait.1a2b3c4d.webp", alt: "A smiling person in a grey jumper, outdoors", width: 800, height: 1000, ...extra });
 
@@ -143,9 +171,9 @@ describe("career (an optional singleton document, additive in schema version 1)"
       bad(career({ portrait: portrait({ alt: "Write to me at someone@example.org" }) }), /e-mail/);
       bad(career({ portrait: "/media/career/portrait.webp" }));
     });
-    it("is described by the generated JSON Schema as an optional strict object with these four properties", () => {
+    it("is described by the generated JSON Schema as an optional strict object with these properties (alt, height, src, width, and an optional dark variant)", () => {
       const p = JSON.parse(buildJsonSchema()).properties.career.properties.portrait;
-      expect(Object.keys(p.properties).sort()).toEqual(["alt", "height", "src", "width"]);
+      expect(Object.keys(p.properties).sort()).toEqual(["alt", "dark", "height", "src", "width"]);
       expect(p.required.sort()).toEqual(["alt", "height", "src", "width"]);
       expect(p.additionalProperties).toBe(false);
       expect(JSON.parse(buildJsonSchema()).properties.career.required).not.toContain("portrait");

@@ -658,6 +658,19 @@ function endsAfterStart(o: { start: string; end?: string | undefined }): boolean
 }
 const ENDS_AFTER_START = "end must not be before start";
 
+/**
+ * A small picture that belongs to a career item: the organisation's or the school's logo, or the dark-scheme variant of the portrait.
+ * A `/media/` file shipped with the web app. `width` and `height` are REQUIRED (the page reserves the box). No alt text: a logo is
+ * decorative (the organisation's name is next to it), and a variant has the portrait's own alt text. Additive in schema version 1.
+ */
+export const careerImageSchema = z
+  .object({
+    src: mediaSrcSchema,
+    width: z.number().int().positive(),
+    height: z.number().int().positive(),
+  })
+  .strict();
+
 export const careerRoleSchema = z
   .object({
     /** Unique within the career; kebab-case, so the page can use it as an anchor. */
@@ -665,6 +678,8 @@ export const careerRoleSchema = z
     title: careerText(CAREER_TEXT.roleTitle),
     org: careerText(CAREER_TEXT.org),
     orgUrl: careerUrl.optional(),
+    /** Optional: the organisation's logo (a square picture; the page draws it as the item's marker). Absent = the page picks an icon. */
+    logo: careerImageSchema.optional(),
     /** Free text, the place of the work ("Paris, France"). Never a street address. */
     location: careerText(CAREER_TEXT.location),
     /** Optional: a published place of this projection (validated to resolve). */
@@ -687,6 +702,8 @@ export const careerEducationSchema = z
   .object({
     id: careerId,
     institution: careerText(CAREER_TEXT.institution),
+    /** Optional: the school's logo, as a role's. */
+    logo: careerImageSchema.optional(),
     programme: careerText(CAREER_TEXT.programme),
     /** "MEng", "MSc", "CPGE". */
     level: careerText(CAREER_TEXT.level).optional(),
@@ -747,6 +764,8 @@ export const careerPortraitSchema = z
     alt: careerText(CAREER_TEXT.portraitAlt),
     width: z.number().int().positive(),
     height: z.number().int().positive(),
+    /** Optional: the same picture drawn for the dark colour scheme (the page offers it to `prefers-color-scheme: dark`). */
+    dark: careerImageSchema.optional(),
   })
   .strict();
 
@@ -989,6 +1008,7 @@ export type PublishedCareerLanguage = z.infer<typeof careerLanguageSchema>;
 export type PublishedCareerSkillGroup = z.infer<typeof careerSkillGroupSchema>;
 export type PublishedCareerLink = z.infer<typeof careerLinkSchema>;
 export type PublishedCareerPortrait = z.infer<typeof careerPortraitSchema>;
+export type PublishedCareerImage = z.infer<typeof careerImageSchema>;
 export type PublishedCareerAvailability = z.infer<typeof careerAvailabilitySchema>;
 export type PublishedProjection = z.infer<typeof publishedProjectionSchema>;
 

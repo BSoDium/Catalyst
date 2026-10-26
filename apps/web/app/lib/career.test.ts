@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { loadDemoProjection } from "@catalyst/published";
 import type { PublishedCareer } from "@catalyst/schemas";
-import { asOfText, careerDuration, careerIcon, careerLogo, careerJsonLd, careerPeriod, formatCareerMonth, isCurrent, languageDetail, safeLinks, safePortrait } from "./career";
+import { asOfText, careerDuration, careerIcon, careerLogo, careerLogoSrc, careerJsonLd, careerPeriod, formatCareerMonth, isCurrent, languageDetail, safeLinks, safePortrait } from "./career";
 import { SITE } from "./site";
 
 const demo = loadDemoProjection().career!;
@@ -52,20 +52,22 @@ describe("careerPeriod", () => {
 });
 
 describe("careerDuration", () => {
-  const now = new Date("2026-10-25T12:00:00Z");
+  const asOf = "2026-10";
   it("counts both months, in years and months", () => {
-    expect(careerDuration("2023-04", "2025-08")).toBe("2y 5m");
-    expect(careerDuration("2019-06", "2019-09")).toBe("4m");
-    expect(careerDuration("2020-01", "2020-12")).toBe("1y");
-    expect(careerDuration("2025-09", "2025-09")).toBe("1m");
+    expect(careerDuration("2023-04", "2025-08", asOf)).toBe("2y 5m");
+    expect(careerDuration("2019-06", "2019-09", asOf)).toBe("4m");
+    expect(careerDuration("2020-01", "2020-12", asOf)).toBe("1y");
+    expect(careerDuration("2025-09", "2025-09", asOf)).toBe("1m");
   });
-  it("runs an ongoing role to now", () => {
-    expect(careerDuration("2025-09", "present", now)).toBe("1y 2m");
+  it("runs an ongoing role to the month the document was last reviewed, never to the clock", () => {
+    expect(careerDuration("2025-09", "present", "2026-10")).toBe("1y 2m");
+    expect(careerDuration("2025-09", "present", "2025-12")).toBe("4m");
+    expect(careerDuration("2025-09", "present", "bad")).toBeNull();
   });
   it("is null when it cannot be told", () => {
-    expect(careerDuration("2021", undefined)).toBeNull();
-    expect(careerDuration("2021", "2022")).toBeNull();
-    expect(careerDuration("2025-09", "2024-01")).toBeNull();
+    expect(careerDuration("2021", undefined, asOf)).toBeNull();
+    expect(careerDuration("2021", "2022", asOf)).toBeNull();
+    expect(careerDuration("2025-09", "2024-01", asOf)).toBeNull();
   });
 });
 
@@ -81,6 +83,18 @@ describe("careerIcon", () => {
     expect(careerIcon("Computer Graphics & Vision", "education")).toBe("cuboid");
     expect(careerIcon("Mathematics & Physics", "education")).toBe("sigma");
     expect(careerIcon("History", "education")).toBe("graduation-cap");
+  });
+});
+
+describe("careerLogoSrc", () => {
+  it("prefers the logo the document carries, then the site's own file by name, then none", () => {
+    expect(careerLogoSrc({ logo: { src: "/media/career/kanop.1a2b3c4d.webp" } }, "Kanop")).toBe("/media/career/kanop.1a2b3c4d.webp");
+    expect(careerLogoSrc({}, "Kanop")).toBe("/career-logos/kanop.webp");
+    expect(careerLogoSrc({}, "Nobody Inc.")).toBeNull();
+  });
+  it("checks the document's path again: a bad one falls back to the name", () => {
+    expect(careerLogoSrc({ logo: { src: "https://evil.example/l.png" } }, "Kanop")).toBe("/career-logos/kanop.webp");
+    expect(careerLogoSrc({ logo: { src: "/media/../l.png" } }, "Nobody Inc.")).toBeNull();
   });
 });
 
@@ -117,6 +131,10 @@ describe("safePortrait, safeLinks", () => {
     expect(safePortrait(none as PublishedCareer)).toBeNull();
     expect(safePortrait({ ...demo, portrait: { src: "https://evil.example/x.png", alt: "x", width: 1, height: 1 } })).toBeNull();
     expect(safePortrait({ ...demo, portrait: { src: "/media/../x.png", alt: "x", width: 1, height: 1 } })).toBeNull();
+    // a bad dark variant is dropped, the portrait stays
+    const withDark = safePortrait({ ...demo, portrait: { src: "/media/a.png", alt: "x", width: 1, height: 1, dark: { src: "https://evil.example/d.png", width: 1, height: 1 } } });
+    expect(withDark).toEqual({ src: "/media/a.png", alt: "x", width: 1, height: 1 });
+    expect(safePortrait({ ...demo, portrait: { src: "/media/a.png", alt: "x", width: 1, height: 1, dark: { src: "/media/b.png", width: 1, height: 1 } } })!.dark).toEqual({ src: "/media/b.png", width: 1, height: 1 });
   });
   it("keeps only https links without credentials", () => {
     const links = [

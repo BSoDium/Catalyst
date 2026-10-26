@@ -1,7 +1,7 @@
 <svg width="500" height="500" viewBox="0 0 500 500" fill="none" xmlns="http://www.w3.org/2000/svg">
   <style>
     :root { --bg: #e3f0ff; --skin: #a4cfff; --jacket: #0076d4; --shirt: #005093; --collar: #ffffff; --ink: #0a0a0a; }
-    @media (prefers-color-scheme: dark) { :root { --bg: #0b3256; --skin: #a4cfff; --jacket: #0067b8; --shirt: #073b6b; --collar: #e3f0ff; --ink: #050505; } }
+    @media (prefers-color-scheme: dark) { :root { --bg: #11263d; --skin: #5b7fa8; --jacket: #0c3f70; --shirt: #07264a; --collar: #a9bfd6; --ink: #02050a; } }
     .bg { fill: var(--bg) } .skin { fill: var(--skin) } .jacket { fill: var(--jacket) } .shirt { fill: var(--shirt) } .collar { fill: var(--collar) } .ink { fill: var(--ink) }
     path[stroke] { stroke: var(--ink) }
   </style>

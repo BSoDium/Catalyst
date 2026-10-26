@@ -2,7 +2,7 @@ import { Link } from "react-router";
 import type { PublishedCareer, PublishedCareerEducation, PublishedCareerRole } from "@catalyst/schemas";
 import { Icon } from "~/components/ui";
 import type { IconName } from "~/components/ui/icon";
-import { asOfText, careerDuration, careerIcon, careerLogo, careerPeriod, formatCareerMonth, isCurrent, languageDetail, safeLinks, safePortrait } from "~/lib/career";
+import { asOfText, careerDuration, careerIcon, careerLogoSrc, careerPeriod, formatCareerMonth, isCurrent, languageDetail, safeLinks, safePortrait } from "~/lib/career";
 import { safeExternalUrl } from "~/lib/entry-blocks";
 import { placePath } from "~/lib/entries";
 import { SITE_NAME } from "~/lib/site";
@@ -63,17 +63,8 @@ export function CareerPage({ career, places = [] }: { career: PublishedCareer; p
           </div>
           {portrait && (
             <figure data-slot="career-portrait" className="career-portrait">
-              <img src={portrait.src} alt="" aria-hidden="true" width={portrait.width} height={portrait.height} decoding="async" className="career-portrait-glow" />
-              <img
-                src={portrait.src}
-                alt={portrait.alt}
-                width={portrait.width}
-                height={portrait.height}
-                loading="eager"
-                decoding="async"
-                fetchPriority="high"
-                style={{ aspectRatio: "1 / 1" }}
-              />
+              <PortraitPicture portrait={portrait} alt="" decorative className="career-portrait-glow" />
+              <PortraitPicture portrait={portrait} alt={portrait.alt} eager />
             </figure>
           )}
         </div>
@@ -101,7 +92,7 @@ export function CareerPage({ career, places = [] }: { career: PublishedCareer; p
       <Block id="experience" title="Experience" count={career.roles.length}>
         <ol className="career-timeline" aria-labelledby="experience-h">
           {career.roles.map((role) => (
-            <RoleItem key={role.id} role={role} placeKnown={role.place !== undefined && known.has(role.place)} />
+            <RoleItem key={role.id} role={role} placeKnown={role.place !== undefined && known.has(role.place)} asOf={career.updated} />
           ))}
         </ol>
       </Block>
@@ -111,7 +102,7 @@ export function CareerPage({ career, places = [] }: { career: PublishedCareer; p
           <Block id="education" title="Education" count={career.education.length}>
             <ol className="career-timeline" aria-labelledby="education-h">
               {career.education.map((e) => (
-                <EducationItem key={e.id} item={e} placeKnown={e.place !== undefined && known.has(e.place)} />
+                <EducationItem key={e.id} item={e} placeKnown={e.place !== undefined && known.has(e.place)} asOf={career.updated} />
               ))}
             </ol>
           </Block>
@@ -158,6 +149,35 @@ export function CareerPage({ career, places = [] }: { career: PublishedCareer; p
   );
 }
 
+/**
+ * The portrait as a `<picture>`: with a dark variant in the document, the dark colour scheme is offered that file (the site has no
+ * scheme toggle, so `prefers-color-scheme` is the whole story). Drawn twice: once as the picture, once as its faint bleed.
+ */
+function PortraitPicture({ portrait, alt, decorative, eager, className }: { portrait: NonNullable<ReturnType<typeof safePortrait>>; alt: string; decorative?: boolean; eager?: boolean; className?: string }) {
+  const img = (
+    <img
+      src={portrait.src}
+      alt={alt}
+      aria-hidden={decorative ? "true" : undefined}
+      width={portrait.width}
+      height={portrait.height}
+      loading={eager ? "eager" : undefined}
+      decoding="async"
+      fetchPriority={eager ? "high" : undefined}
+      className={className}
+      style={eager ? { aspectRatio: "1 / 1" } : undefined}
+    />
+  );
+  return portrait.dark ? (
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcSet={portrait.dark.src} width={portrait.dark.width} height={portrait.dark.height} />
+      {img}
+    </picture>
+  ) : (
+    img
+  );
+}
+
 /** A block of the page: the heading at the left (from 48 rem; above the list below it) and its content at the right. */
 function Block({ id, title, count, children }: { id: string; title: string; count?: number; children: React.ReactNode }) {
   return (
@@ -171,9 +191,9 @@ function Block({ id, title, count, children }: { id: string; title: string; coun
   );
 }
 
-function Period({ start, end }: { start: string; end: string | undefined }) {
+function Period({ start, end, asOf }: { start: string; end: string | undefined; asOf: string }) {
   const p = careerPeriod(start, end);
-  const duration = careerDuration(start, end);
+  const duration = careerDuration(start, end, asOf);
   return (
     <>
       <p className="career-period">
@@ -201,8 +221,8 @@ function Period({ start, end }: { start: string; end: string | undefined }) {
  * The item's marker on the rail: the organisation's logo when there is one (a decorative square: the name follows), else the icon of
  * what was done there (`careerIcon`). Either sits on a page-coloured mask that keeps the rail from running through it.
  */
-function Marker({ name, icon }: { name: string; icon: IconName }) {
-  const src = careerLogo(name);
+function Marker({ item, name, icon }: { item: { logo?: { src: string } | undefined }; name: string; icon: IconName }) {
+  const src = careerLogoSrc(item, name);
   return (
     <>
       {src && <img src={src} alt="" aria-hidden="true" width={200} height={200} loading="lazy" decoding="async" className="career-glow" />}
@@ -223,11 +243,11 @@ function Where({ text, place, known }: { text: string; place: string | undefined
   );
 }
 
-function RoleItem({ role, placeKnown }: { role: PublishedCareerRole; placeKnown: boolean }) {
+function RoleItem({ role, placeKnown, asOf }: { role: PublishedCareerRole; placeKnown: boolean; asOf: string }) {
   const orgUrl = role.orgUrl ? safeExternalUrl(role.orgUrl) : null;
   return (
     <li id={role.id} data-slot="career-role" data-current={isCurrent(role) ? "true" : undefined} className="career-item">
-      <Marker name={role.org} icon={careerIcon(role.title, "role")} />
+      <Marker item={role} name={role.org} icon={careerIcon(role.title, "role")} />
       <div className="career-head">
         <div className="career-top">
           <h3 className="career-org">
@@ -244,7 +264,7 @@ function RoleItem({ role, placeKnown }: { role: PublishedCareerRole; placeKnown:
           {role.title}
         </p>
         <div className="career-meta type-meta">
-          <Period start={role.start} end={role.end} />
+          <Period start={role.start} end={role.end} asOf={asOf} />
         </div>
         <p className="career-facts">
           <Where text={role.location} place={role.place} known={placeKnown} />
@@ -273,10 +293,10 @@ function RoleItem({ role, placeKnown }: { role: PublishedCareerRole; placeKnown:
   );
 }
 
-function EducationItem({ item, placeKnown }: { item: PublishedCareerEducation; placeKnown: boolean }) {
+function EducationItem({ item, placeKnown, asOf }: { item: PublishedCareerEducation; placeKnown: boolean; asOf: string }) {
   return (
     <li id={item.id} data-slot="career-education-item" className="career-item">
-      <Marker name={item.institution} icon={careerIcon(item.programme, "education")} />
+      <Marker item={item} name={item.institution} icon={careerIcon(item.programme, "education")} />
       <div className="career-head">
         <div className="career-top">
           <h3 className="career-org">{item.institution}</h3>
@@ -286,7 +306,7 @@ function EducationItem({ item, placeKnown }: { item: PublishedCareerEducation; p
           {item.level && <span className="career-level"> · {item.level}</span>}
         </p>
         <div className="career-meta type-meta">
-          <Period start={item.start} end={item.end} />
+          <Period start={item.start} end={item.end} asOf={asOf} />
         </div>
         {(item.location || item.note) && (
           <p className="career-facts">

@@ -449,6 +449,32 @@
               "type": "integer",
               "exclusiveMinimum": 0,
               "maximum": 9007199254740991
+            },
+            "dark": {
+              "type": "object",
+              "properties": {
+                "src": {
+                  "type": "string",
+                  "maxLength": 300,
+                  "pattern": "^\\/media\\/(?:[A-Za-z0-9_-][A-Za-z0-9._-]*\\/)*[A-Za-z0-9_-][A-Za-z0-9._-]*$"
+                },
+                "width": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "height": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "src",
+                "width",
+                "height"
+              ],
+              "additionalProperties": false
             }
           },
           "required": [
@@ -508,6 +534,32 @@
                 "maxLength": 100,
                 "format": "uri",
                 "pattern": "^https:\\/\\/[^\\s\\u0000-\\u001F\\u007F\\u202A-\\u202E\\u2066-\\u2069]+$"
+              },
+              "logo": {
+                "type": "object",
+                "properties": {
+                  "src": {
+                    "type": "string",
+                    "maxLength": 300,
+                    "pattern": "^\\/media\\/(?:[A-Za-z0-9_-][A-Za-z0-9._-]*\\/)*[A-Za-z0-9_-][A-Za-z0-9._-]*$"
+                  },
+                  "width": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "height": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "src",
+                  "width",
+                  "height"
+                ],
+                "additionalProperties": false
               },
               "location": {
                 "type": "string",
@@ -583,6 +635,32 @@
                 "minLength": 1,
                 "maxLength": 60,
                 "pattern": "^[^\\u0000-\\u001F\\u007F\\u202A-\\u202E\\u2066-\\u2069]*$"
+              },
+              "logo": {
+                "type": "object",
+                "properties": {
+                  "src": {
+                    "type": "string",
+                    "maxLength": 300,
+                    "pattern": "^\\/media\\/(?:[A-Za-z0-9_-][A-Za-z0-9._-]*\\/)*[A-Za-z0-9_-][A-Za-z0-9._-]*$"
+                  },
+                  "width": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "height": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "src",
+                  "width",
+                  "height"
+                ],
+                "additionalProperties": false
               },
               "programme": {
                 "type": "string",

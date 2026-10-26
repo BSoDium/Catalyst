@@ -76,11 +76,10 @@ export function careerIcon(text: string, kind: "role" | "education"): IconName {
 }
 
 /**
- * The logo of an organisation or a school: a square file of the site's own, `public/career-logos/` (NOT `public/media/`, which belongs
- * to the content export and refuses a foreign file). A stopgap that the contract does not know: the file is found from the name the
- * owner wrote, by these patterns. The proper home is an optional `logo` of a role and of an education in the published contract, fed
- * from the private repo like the portrait (docs/career-page.md). Null when there is none: the marker then falls back to the
- * role's icon (`careerIcon`).
+ * The fallback of `careerLogoSrc`: a square file of the site's own, `public/career-logos/` (NOT `public/media/`, which belongs to the
+ * content export and refuses a foreign file), found from the name the owner wrote by these patterns. It serves while the document
+ * carries no `logo` for an item (the contract has had the field since this change: the private repo feeds it like the portrait, and
+ * a published `logo` wins). Null when there is none: the marker then falls back to the role's icon (`careerIcon`).
  */
 const LOGOS: readonly (readonly [RegExp, string])[] = [
   [/\bmacrodata\b/i, "macrodata"],
@@ -110,7 +109,21 @@ export function languageDetail(l: PublishedCareerLanguage): string {
 export function safePortrait(career: PublishedCareer): NonNullable<PublishedCareer["portrait"]> | null {
   const p = career.portrait;
   if (!p || !safeMediaSrc(p.src)) return null;
+  // a dark variant with a bad path is dropped, not the portrait
+  if (p.dark && !safeMediaSrc(p.dark.src)) {
+    const { dark: _dark, ...rest } = p;
+    return rest;
+  }
   return p;
+}
+
+/**
+ * The logo of an organisation or a school: the one the published document carries (`logo`, a `/media/` file, checked again), else a
+ * file of the site's own found from the name (below). Null = none: the marker then falls back to the role's icon.
+ */
+export function careerLogoSrc(item: { logo?: { src: string } | undefined }, name: string): string | null {
+  if (item.logo && safeMediaSrc(item.logo.src)) return item.logo.src;
+  return careerLogo(name);
 }
 
 /** The links the footer may draw: https only, no credentials (the schema says so; checked again). */
@@ -147,15 +160,16 @@ export function careerJsonLd(career: PublishedCareer, origin: string): Record<st
 
 /**
  * How long a role lasted, to the month, as `1y 2m`, `7m` or `3y` (inclusive of both months, as a CV counts them). Null when it cannot
- * be told: a bare year, no end, or a malformed month. An ongoing role runs to `now`.
+ * be told: a bare year, no end, or a malformed month. An ongoing role runs to `asOf`, the month the owner last reviewed the
+ * document (`career.updated`, authored): the page never reads the clock, so a cached page never goes stale.
  */
-export function careerDuration(start: string, end: string | undefined, now: Date = new Date()): string | null {
+export function careerDuration(start: string, end: string | undefined, asOf: string): string | null {
   const month = (s: string): number | null => {
     const m = /^(\d{4})-(\d{2})$/.exec(s);
     return m ? Number(m[1]) * 12 + Number(m[2]) - 1 : null;
   };
   const from = month(start);
-  const to = end === "present" ? now.getUTCFullYear() * 12 + now.getUTCMonth() : end === undefined ? null : month(end);
+  const to = end === "present" ? month(asOf) : end === undefined ? null : month(end);
   if (from === null || to === null || to < from) return null;
   const total = to - from + 1;
   const years = Math.floor(total / 12);
