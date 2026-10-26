@@ -459,23 +459,6 @@ class CrispCanvas {
     const globe = new Mesh(new SphereGeometry(OCCLUDER_RADIUS, 96, 48), new MeshBasicMaterial({ colorWrite: false }));
     globe.renderOrder = -1;
     this.scene.add(globe);
-    // The moon, the same way (engine/moon-layer.ts): a letter behind it is not drawn, a letter in front of it is.
-    this.moon.renderOrder = -1;
-    this.moon.visible = false;
-    this.moon.frustumCulled = false;
-    this.scene.add(this.moon);
-  }
-
-  private moon = new Mesh(new SphereGeometry(1, 32, 16), new MeshBasicMaterial({ colorWrite: false }));
-
-  /** Where the moon is (earth radii, the earth's frame) and how big, or null when it is not shown. */
-  setMoon(position: readonly [number, number, number] | null, radius: number): void {
-    this.moon.visible = position !== null;
-    if (position) {
-      this.moon.position.set(position[0], position[1], position[2]);
-      this.moon.scale.setScalar(radius);
-      this.moon.updateMatrixWorld();
-    }
   }
 
   render(camera: PerspectiveCamera, rect: CaptionRect, dpr: number, pixelated = false): void {
@@ -1637,11 +1620,6 @@ export class CaptionLayer {
 
   /** Draw the caption over the globe's frame. */
   /** The pixel ratio the caption's canvas was last drawn at (the word's slices are counted in device pixels). */
-
-  /** The moon is a body in the same space: the caption's depth pass hides what is behind it (`CrispCanvas.setMoon`). Null: no moon. */
-  setMoonOccluder(position: readonly [number, number, number] | null, radius: number): void {
-    this.crisp.setMoon(position, radius);
-  }
 
   renderCrisp(camera: PerspectiveCamera, rect: CaptionRect, dpr: number, artPx = 1): void {
     if (this.warmPending) this.warmEgg(camera);

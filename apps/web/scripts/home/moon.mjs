@@ -61,8 +61,29 @@ const open = async (options) => {
   await page.waitForTimeout(500);
   await page.evaluate(() => window.__globeDebug.pinMoon(null));
   await page.evaluate(() => window.__globeDebug.setMoonAngle(232));
+  await page.waitForTimeout(400); // (the sprite settles on its size for the new place)
   const a = await moon(page);
-  await page.waitForTimeout(2500);
+  // smooth: the sprite is moved by device pixels at the display's rate, not by whole art cells (2 to 3 CSS px) ten times a second
+  const track = await page.evaluate(
+    () =>
+      new Promise((resolve) => {
+        const el = document.querySelector("canvas[data-moon-sprite]");
+        const at = () => new DOMMatrixReadOnly(getComputedStyle(el).transform).m41 + parseFloat(el.style.width) / 2; // the sprite's centre: it does not move when the sprite's size changes by a cell
+        const xs = [at()];
+        const t0 = performance.now();
+        const step = () => {
+          xs.push(at());
+          if (performance.now() - t0 < 1500) requestAnimationFrame(step);
+          else resolve(xs);
+        };
+        requestAnimationFrame(step);
+      }),
+  );
+  const cell = await page.evaluate(() => window.__globeDebug.cell());
+  const moves = track.slice(1).filter((x, i) => x !== track[i]).length;
+  // (a frame here can be late, so the size of one step says nothing; where the sprite STANDS does: on the art grid it would be on one of a few places a cell apart)
+  const residues = new Set(track.map((x) => (((x % cell) + cell) % cell).toFixed(2)));
+  ok(moves >= 12 && residues.size >= 4, `desktop: the sprite glides: ${moves} moves in 1.5 s over ${residues.size} different places in an art cell of ${cell} px (a whole-cell move would be on one)`);
   const b = await moon(page);
   ok(b.angle > a.angle, "desktop: it moves on its own");
   await pin(page, 245);

@@ -29,7 +29,6 @@ import { zoomToRadiusPx } from "./geo";
 import { landMask } from "./land";
 import { GRATICULE_STEP_DEG, graticuleSegments, polylinesToSegments } from "./geometry";
 import { OCCLUDER_RADIUS, atmosphereMaterial, cityMaterial, surfaceMaterial, mistMaterial, lineMaterial, occluderMaterial, silhouetteMaterial } from "./materials";
-import { MoonLayer } from "./moon-layer";
 import { RouteLayer } from "./route-layer";
 import { SKY_STATE, viewToGalactic } from "./sky";
 import { SkyLayer } from "./sky-layer";
@@ -63,8 +62,6 @@ export class GlobeScene {
   readonly routes: RouteLayer;
   /** The Milky Way and the stars behind the earth (engine/sky-layer.ts), or null when the page switched them off (`applySkyFlags`). */
   readonly sky: SkyLayer | null;
-  /** The moon, a body on an orbit about the earth (engine/moon-layer.ts), or null when the page has none (no `GlobeProps.moon`, `?no-moon`, a debug page without `?moon`). */
-  readonly moon: MoonLayer | null;
 
   private geometries: BufferGeometry[] = [];
   private materials: ShaderMaterial[] = [];
@@ -106,8 +103,6 @@ export class GlobeScene {
     routes: readonly GlobeRoute[];
     coastlines: Polylines;
     borders: Polylines;
-    /** The page has a moon (`GlobeProps.moon`, and the flags allow it). */
-    moon?: boolean;
   }) {
     this.materials.push(this.occluder, this.city, this.atmosphere, this.mist, this.surface, this.graticule, this.borders, this.coast, this.silhouette);
     this.coastData = data.coastlines;
@@ -166,7 +161,6 @@ export class GlobeScene {
     }
     this.routes = new RouteLayer(this.scene, data.routes);
     this.sky = SKY_STATE.enabled ? new SkyLayer(this.scene) : null;
-    this.moon = data.moon ? new MoonLayer(this.scene) : null;
 
     const N = 360;
     const angle = new Float32Array(N);
@@ -220,7 +214,6 @@ export class GlobeScene {
     this.silhouette.uniforms.uColor!.value.setRGB(...t.outline);
     this.routes.applyTheme(t);
     this.sky?.applyTheme(t);
-    this.moon?.applyTheme(t);
   }
 
   /**
@@ -393,7 +386,6 @@ export class GlobeScene {
     this.surfaceTex?.dispose();
     this.routes.dispose();
     this.sky?.dispose();
-    this.moon?.dispose();
     for (const g of this.geometries) g.dispose();
     for (const m of this.materials) m.dispose();
     this.geometries = [];

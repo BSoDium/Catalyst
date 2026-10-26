@@ -3168,22 +3168,25 @@ h1[tabindex="-1"]:focus-visible {
     outline-offset: 3px;
   }
 
-  /* The card: the map label's plate and mono type, a hairline round it. Out of sight and out of the pointer's way until the moon is held. */
+  /*
+   * The card: a map label's own look (`.map-label`, the bounding boxes' labels): no outline, the mono type, a name over a muted second line, on a plate in the page's colour with the
+   * label's feather round it (engine/label-dom.ts `featherShadow`), so that it hides what is behind it (the globe's lines, the stars) and reads on any of it. Out of sight and out of
+   * the pointer's way until the moon is held.
+   */
   .globe-moon-card {
+    --map-label-plate: var(--background);
     position: absolute;
     left: 0;
     top: 0;
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
     width: max-content;
-    max-width: min(16rem, 62vw);
-    padding: 0.625rem 0.75rem;
-    border: var(--hairline) solid var(--border-strong);
-    background: var(--background);
+    max-width: min(17rem, 62vw);
+    box-sizing: border-box;
+    padding: 3px 6px;
+    background: var(--map-label-plate);
+    box-shadow: 0 0 3px 2px var(--map-label-plate);
     font-family: var(--font-mono);
-    font-size: 0.75rem;
-    line-height: 1.45;
     color: var(--foreground);
     text-align: left;
     white-space: normal;
@@ -3199,21 +3202,24 @@ h1[tabindex="-1"]:focus-visible {
   }
 
   .globe-moon-title {
-    font-family: var(--font-display);
-    font-size: 1.0625rem;
-    font-weight: var(--weight-light);
-    letter-spacing: -0.01em;
-    line-height: 1.2;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    line-height: 18px;
   }
 
   .globe-moon-body {
+    font-size: 11px;
+    letter-spacing: 0.02em;
+    line-height: 14px;
     color: var(--muted-foreground);
   }
 
   .globe-moon-cta {
-    margin-top: 0.125rem;
-    text-decoration: underline;
-    text-underline-offset: 0.2em;
+    font-size: 11px;
+    letter-spacing: 0.02em;
+    line-height: 14px;
+    color: var(--muted-foreground);
   }
 
   /* The arrow is drawn, not written: the link's name (aria-label) is the words only. */
@@ -3221,12 +3227,11 @@ h1[tabindex="-1"]:focus-visible {
     content: "\2197";
     margin-inline-start: 0.25em;
     display: inline-block;
-    text-decoration: none;
   }
 
   .globe-moon:hover .globe-moon-cta,
   .globe-moon:focus-visible .globe-moon-cta {
-    color: var(--signal-text, var(--foreground));
+    color: var(--foreground);
   }
 
   @media (prefers-reduced-motion: no-preference) {
@@ -3243,7 +3248,12 @@ h1[tabindex="-1"]:focus-visible {
     .globe-moon-card {
       background: Canvas;
       color: CanvasText;
-      border-color: CanvasText;
+      box-shadow: none;
+    }
+
+    .globe-moon-body,
+    .globe-moon-cta {
+      color: CanvasText;
     }
   }
 

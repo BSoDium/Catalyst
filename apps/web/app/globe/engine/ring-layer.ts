@@ -32,8 +32,6 @@ export interface RingFrame {
   /** The container's size, CSS px (the canvas never goes beyond it). */
   width: number;
   height: number;
-  /** A disc (container CSS px) the ring does not draw over: the moon, when it is in front of the plane the ring lies in. */
-  knockout?: { x: number; y: number; r: number } | undefined;
 }
 
 export interface RingState {
@@ -441,16 +439,6 @@ export class RingLayer {
       const sn = Math.sin(a) * m;
       ctx.setTransform(c, sn, -sn, c, g.x[i]! * dpr + ox, g.y[i]! * dpr + oy);
       ctx.drawImage(at.canvas, col * cw, 0, cw, ch, -CELL_W / 2, -CELL_H / 2, CELL_W, CELL_H);
-    }
-    const k = fr.knockout;
-    if (k) {
-      // a body in front of the ring hides the letters behind it
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.globalCompositeOperation = "destination-out";
-      ctx.beginPath();
-      ctx.arc((k.x - left) * dpr, (k.y - top) * dpr, k.r * dpr, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.globalCompositeOperation = "source-over";
     }
   }
 }

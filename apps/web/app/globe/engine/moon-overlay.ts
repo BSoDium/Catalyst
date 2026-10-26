@@ -23,8 +23,8 @@ export interface MoonFrame {
 
 /** The card closes this long after the pointer leaves, so that a pointer going from the moon to the card does not close it. */
 const CLOSE_MS = 160;
-/** The gap between the moon and its card, CSS px, and the card's distance to the window's edge. */
-const GAP = 10;
+/** The gap between the moon's edge and its card, CSS px (a map label's own `boxGap` is 3, and its plate's padding hangs outside it), and the card's distance to the window's edge. */
+const GAP = 6;
 const EDGE = 8;
 /** The link is never smaller than this (CSS px, a finger's width): the moon in the background is a small thing and the target should not be. */
 const MIN_TARGET = 44;
@@ -121,7 +121,10 @@ export class MoonOverlay {
     this.setOpen(false);
   }
 
-  /** Put the card on the side of the moon with room, and inside the window. */
+  /**
+   * Put the card beside the moon, as a map label sits by its box: to the RIGHT of it and centred on it vertically (to the left only where there is no room on the right), kept
+   * inside the window. The link is a little larger than the moon (a finger's width), so the card is placed from the moon's own edge, not the link's.
+   */
   private placeCard() {
     const at = this.at;
     if (!at) return;
@@ -130,11 +133,13 @@ export class MoonOverlay {
     const h = card.offsetHeight;
     const width = this.root.clientWidth;
     const height = this.root.clientHeight;
-    const right = at.x + at.r + GAP + w <= width - EDGE;
+    const link = at.r * 2; // the link's side (`r` is its half)
+    const right = at.x + at.drawn + GAP + w <= width - EDGE;
     card.dataset.side = right ? "right" : "left";
-    const dx = right ? at.r * 2 + GAP : -(w + GAP);
-    const y = Math.min(Math.max(at.y - h / 2, EDGE), Math.max(EDGE, height - h - EDGE)) - (at.y - at.r);
-    card.style.transform = `translate3d(${dx}px, ${y}px, 0)`;
+    // measured from the link's top-left corner, the moon being at its middle
+    const dx = right ? link / 2 + at.drawn + GAP : link / 2 - at.drawn - GAP - w;
+    const top = Math.min(Math.max(at.y - h / 2, EDGE), Math.max(EDGE, height - h - EDGE));
+    card.style.transform = `translate3d(${dx}px, ${top - (at.y - at.r)}px, 0)`;
   }
 
   private setOpen(on: boolean) {

@@ -13,6 +13,7 @@
  * at the planet's sides only now and then, and only while the page is being played with (the energy pass's idle hold stops it with everything else).
  */
 import { clamp, lonLatToVec3, viewBasis } from "./geo";
+import { SURFACE } from "./surface";
 
 export const MOON = {
   /** The Moon's picture: grey, 256 x 128, baked from a map of the near side (scripts/moon/bake-moon.py, public/media/moon-grey.NOTICE.txt). */
@@ -49,9 +50,22 @@ export const MOON = {
   fadeFrom: 0.25,
   fadeTo: 0.9,
   /** The Earth's tone steps (`SURFACE.tones`) times this: the moon is a small thing that is a link, and the Earth's own washes are made for a whole planet. */
-  toneBoost: 2.8,
-  /** The outline's width, in art pixels (the coastlines' is one; a disc's rim needs a little over). */
+  toneBoost: 2.6,
+  /** The outline's width, in art cells (the coastlines' is one; a disc's rim needs a little over). */
   edgePx: 1.15,
+  /** The outline's colour: this share of the way from the page's colour to the coastlines' (the coastlines' own is the loudest the map gets: on a small body it reads as a thick ring). */
+  outlineMix: 0.5,
+  /** The share of the lit pixels that carry a tone: the Earth's `SURFACE.cover` (half), and a little more, because the moon has no sea round its land to be a calm ground for it. */
+  cover: 1,
+  /**
+   * The sun, in the inertial frame, as an azimuth (toward the camera's right) and an elevation (up) from the opening camera's direction: the lit side of the moon
+   * faces it. The moon's phase is then the real one for its place on the orbit (a gibbous beside the planet), and the terminator is where the light ends.
+   */
+  sunAzimuthDeg: 52,
+  sunElevationDeg: 14,
+  /** The light's edge: `N . sun` from where a pixel is dark (it blends into the sky: nothing is drawn) to where it is lit, a smoothstep over this range. */
+  litFrom: -0.08,
+  litTo: 0.32,
 } as const;
 
 export type Vec3 = [number, number, number];
@@ -125,6 +139,150 @@ export function unhidden(behind: boolean, rho: number, s: number, r: number): nu
   if (!behind) return 1;
   const t = clamp((rho - (s - r)) / (2 * r), 0, 1);
   return t * t * (3 - 2 * t);
+}
+
+/* ------------------------------------------------------------------ light and the picture */
+
+const dot3 = (a: Vec3, b: Vec3): number => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const cross3 = (a: Vec3, b: Vec3): Vec3 => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+const norm3 = (a: Vec3): Vec3 => {
+  const l = Math.hypot(a[0], a[1], a[2]) || 1;
+  return [a[0] / l, a[1] / l, a[2] / l];
+};
+
+/** The sun's direction in the inertial frame (a unit vector): from the opening camera's direction, turned toward its right by the azimuth and up by the elevation. */
+export function sunDirection(): Vec3 {
+  const b = viewBasis({ lon: MOON.ref.lonDeg, lat: MOON.ref.latDeg, zoom: 0 }, 1);
+  const az = toRad(MOON.sunAzimuthDeg);
+  const el = toRad(MOON.sunElevationDeg);
+  return norm3([0, 1, 2].map((i) => b.c[i]! * Math.cos(az) * Math.cos(el) + b.east[i]! * Math.sin(az) * Math.cos(el) + b.north[i]! * Math.sin(el)) as Vec3);
+}
+
+/** The Moon's picture (`public/media/moon-grey.png`, baked by `scripts/moon/bake-moon.py`): grey 0..255, equirectangular, longitude 0 (the near side) in the middle. */
+export interface MoonMap {
+  width: number;
+  height: number;
+  data: Uint8Array;
+}
+
+const fract = (x: number) => x - Math.floor(x);
+const dither2 = (x: number, y: number) => fract(x * 0.5 + y * y * 0.75);
+
+/** The globe's ordered dither (engine/materials.ts `dither4`, the same function): 0 to just over 1.2 for a pixel. Period 8. */
+export function dither4(x: number, y: number): number {
+  return dither2(0.5 * x, 0.5 * y) * 0.25 + dither2(x, y);
+}
+/** The largest value `dither4` takes (a bit under it): a threshold of this keeps every pixel. */
+export const DITHER_MAX = 1.25;
+
+/** The picture's brightness (0..1) at a direction on the Moon's body: `nx` toward the east, `ny` north, `nz` toward the earth; bilinear, wrapped in longitude. */
+export function sampleMoon(map: MoonMap, nx: number, ny: number, nz: number): number {
+  const u = (Math.atan2(nx, nz) / (2 * Math.PI) + 0.5) * map.width - 0.5;
+  const v = (0.5 - Math.asin(clamp(ny, -1, 1)) / Math.PI) * map.height - 0.5;
+  const x0 = Math.floor(u);
+  const y0 = Math.floor(v);
+  const fx = u - x0;
+  const fy = v - y0;
+  const at = (x: number, y: number) => map.data[clamp(y, 0, map.height - 1) * map.width + ((x % map.width) + map.width) % map.width]!;
+  const top = at(x0, y0) * (1 - fx) + at(x0 + 1, y0) * fx;
+  const bottom = at(x0, y0 + 1) * (1 - fx) + at(x0 + 1, y0 + 1) * fx;
+  return (top * (1 - fy) + bottom * fy) / 255;
+}
+
+/** What a sprite cell is: nothing (the sky shows), the rim, one of the three tones of the ground (darkest first), the body in the page's colour (only in front of the planet). */
+export const CELL = { none: 0, outline: 1, tone0: 2, tone1: 3, tone2: 4, body: 5 } as const;
+
+/** The axes the moon is seen along and built on, in the earth-fixed frame. */
+export interface MoonAxes {
+  /** The view's own: screen right, screen up and toward the camera (a right-handed set). */
+  right: Vec3;
+  up: Vec3;
+  toward: Vec3;
+  /** The body's: east, north and toward the earth (the near side's centre): the picture's longitude 0, latitude 0. */
+  east: Vec3;
+  north: Vec3;
+  near: Vec3;
+}
+
+/**
+ * The axes for a moon at `position` (earth radii, the earth's frame) seen from `camera` whose own right and up are `camRight` and `camUp`. The sprite is the moon as the
+ * camera sees it down its ray (the moon is small and far: the perspective across its disc is not worth drawing), so the view axes are the camera's turned to the ray.
+ */
+export function moonAxes(position: Vec3, camera: Vec3, camRight: Vec3, camUp: Vec3): MoonAxes {
+  const toward = norm3([camera[0] - position[0], camera[1] - position[1], camera[2] - position[2]]);
+  // the camera's right, made square to the ray; up completes the right-handed set (right x up = toward)
+  const r = norm3([0, 1, 2].map((i) => camRight[i]! - toward[i]! * dot3(camRight, toward)) as Vec3);
+  const u = cross3(toward, r);
+  void camUp; // (the camera's up is `toward x right` already: a camera has no roll of its own between the two)
+  const near = norm3([-position[0], -position[1], -position[2]]);
+  const north = norm3([0, 1, 2].map((i) => [0, 1, 0][i]! - near[i]! * near[1]) as Vec3);
+  const east = cross3(north, near);
+  return { right: r, up: u, toward, east, north, near };
+}
+
+export interface SpriteInput {
+  /** The sprite's width and height in cells (odd). */
+  cells: number;
+  axes: MoonAxes;
+  /** The sun, unit, in the earth's frame. */
+  sun: Vec3;
+  map: MoonMap | null;
+  /** The dither's phase: the sprite's own (it is rigid: its stipple moves with it and never swims). */
+  phaseX: number;
+  phaseY: number;
+  /** The planet hides this cell (the moon is behind it and the cell is inside its silhouette). */
+  hidden?: ((i: number, j: number) => boolean) | undefined;
+  /** Paint the body in the page's colour where nothing else is drawn: the moon in front of the planet must hide the lines behind it; on the sky it must not (it blends in). */
+  opaqueBody: boolean;
+}
+
+/**
+ * The moon's sprite: `cells` x `cells` art pixels of the `CELL` values, a sphere lit by the sun and seen along its ray.
+ *  - The light is `N . sun`; the pixel is ON where the globe's ordered dither is under the light (so the terminator is a dithered edge, in pixel art, and the dark side is NOT dark:
+ *    nothing is drawn there, it is the sky, in either theme: it blends in).
+ *  - An ON pixel in the interior carries a tone of the ground (the Earth's picture treatment: three flat tones by brightness with the same cuts, `SURFACE.cuts`) in `MOON.cover` of the
+ *    cases, by the same dither; the rim is outlined in one cell where it is lit.
+ */
+export function moonSprite(input: SpriteInput): Uint8Array {
+  const { cells, axes, sun, map, phaseX, phaseY, hidden, opaqueBody } = input;
+  const out = new Uint8Array(cells * cells);
+  const c = (cells - 1) / 2;
+  const R = cells / 2;
+  const edge = 1 - MOON.edgePx / R;
+  for (let j = 0; j < cells; j++) {
+    for (let i = 0; i < cells; i++) {
+      const nx = (i - c) / R;
+      const ny = (c - j) / R;
+      const d2 = nx * nx + ny * ny;
+      if (d2 > 1) continue;
+      if (hidden?.(i, j)) continue;
+      const nz = Math.sqrt(1 - d2);
+      // the normal in the earth's frame, and the light on it
+      const n: Vec3 = [0, 1, 2].map((k) => axes.right[k]! * nx + axes.up[k]! * ny + axes.toward[k]! * nz) as Vec3;
+      const L = dot3(n, sun);
+      const t = clamp((L - MOON.litFrom) / (MOON.litTo - MOON.litFrom), 0, 1);
+      const lit = t * t * (3 - 2 * t);
+      const d = dither4(phaseX + i, phaseY + j);
+      const on = d < lit * DITHER_MAX;
+      let cell: number = CELL.none;
+      if (on) {
+        if (d2 > edge * edge) cell = CELL.outline;
+        else if (map && d < lit * DITHER_MAX * MOON.cover) {
+          const v = sampleMoon(map, dot3(n, axes.east), dot3(n, axes.north), dot3(n, axes.near));
+          cell = v < SURFACE.cuts[0] ? CELL.tone0 : v < SURFACE.cuts[1] ? CELL.tone1 : CELL.tone2;
+        }
+      }
+      if (cell === CELL.none && opaqueBody) cell = CELL.body;
+      out[j * cells + i] = cell;
+    }
+  }
+  return out;
+}
+
+/** The sprite's width in cells for a diameter in CSS px on an art grid of `cell` px: odd, at least 7. */
+export function spriteCells(diameter: number, cell: number): number {
+  const n = Math.max(7, Math.round(diameter / Math.max(1, cell)));
+  return n % 2 === 0 ? n + 1 : n;
 }
 
 /* ------------------------------------------------------------------ page flags */

@@ -121,6 +121,8 @@ export interface GlobeDebug {
   sky(): ReturnType<GlobeRenderer["skyState"]>;
   /** The moon's link: whether it is up, whether its card is out, its centre (client px), size and the orbit's angle (radians); null without a moon (no `GlobeProps.moon`, `?no-moon`, a debug page without `?moon`). */
   moon(): ReturnType<MoonOverlay["state"]> | null;
+  /** What the moon's tick last made of the globe: its sample, its sprite and the state that may keep it away (checks). */
+  moonDebug(): ReturnType<GlobeRenderer["moonDebug"]>;
   /** Hold the moon at `deg` of its orbit (null lets it run): captures and checks. */
   pinMoon(deg: number | null): void;
   /** Put the moon's clock at `deg` of its orbit and let it run from there (checks). */
@@ -317,6 +319,7 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
   }
 
   if (withMoon && opts.moon && opts.moonRoot) moonOverlay = new MoonOverlay(opts.moonRoot, opts.moon, () => renderer.moonFrame(), (on) => renderer.setMoonHeld(on));
+  renderer.setMoonListener(() => moonOverlay?.update());
   renderer.setSelected(opts.selectedSlug, false);
   labels.setSelected(opts.selectedSlug);
   labels.setWake(() => renderer.requestRender()); // a plan run by the labels' timer on a map at rest started a glide
@@ -415,6 +418,7 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
       sky: () => renderer.skyState(),
       moon: () => (moonOverlay ? { ...moonOverlay.state(), angle: renderer.moonAngleNow() } : null),
       pinMoon: (deg) => renderer.pinMoon(deg),
+      moonDebug: () => renderer.moonDebug(),
       setMoonAngle: (deg) => renderer.setMoonAngle(deg),
       ring: () => renderer.ringState(),
       caption: () => renderer.captionState(),
