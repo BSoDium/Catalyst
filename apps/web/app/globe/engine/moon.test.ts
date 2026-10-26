@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { MOON, direction, inertialPosition, moonAmount, orbitAngle, orbitBasis, rollFor, toEarthFrame, toRad, unhidden, type Vec3 } from "./moon";
+import { MOON, direction, inclinationFor, inertialPosition, moonAmount, orbitAngle, orbitBasis, rollFor, toEarthFrame, toRad, unhidden, type Vec3 } from "./moon";
+import { viewBasis } from "./geo";
 
 const dot = (a: Vec3, b: Vec3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 const len = (a: Vec3) => Math.hypot(...a);
@@ -20,32 +21,76 @@ describe("the moon's orbit", () => {
 
   it("is laid against the opening camera: its near half is on the camera's side of the planet, its far half behind it", () => {
     const camera = direction(MOON.ref.lonDeg, MOON.ref.latDeg);
-    const b = orbitBasis(MOON.rollWideDeg);
+    const b = orbitBasis(MOON.rollWideDeg, MOON.inclinationWideDeg);
     const near = inertialPosition(toRad(90), b);
     const far = inertialPosition(toRad(270), b);
     expect(dot(near, camera)).toBeGreaterThan(0);
     expect(dot(far, camera)).toBeLessThan(0);
     // a modest inclination: well in front, and not far from the line of sight
-    expect(dot(near, camera) / MOON.orbit).toBeCloseTo(Math.cos(toRad(MOON.inclinationDeg)), 5);
+    expect(dot(near, camera) / MOON.orbit).toBeCloseTo(Math.cos(toRad(MOON.inclinationWideDeg)), 5);
     // and the ends of the orbit are level with the planet, to the camera's right and left
     expect(Math.abs(dot(inertialPosition(0, b), camera))).toBeLessThan(1e-9);
   });
 
-  it("leans on a wide window and stands upright on a narrow one", () => {
+  it("is far and the moon is small in the picture: the half on the camera's side is behind the camera, the far half is in the background", () => {
+    const d = 4.3; // the camera's distance from the planet at the whole-globe view
+    const sil = 1 / Math.sqrt(d * d - 1);
+    expect(MOON.orbit).toBeGreaterThan(d);
+    const camera = direction(MOON.ref.lonDeg, MOON.ref.latDeg);
+    const b = orbitBasis(0, MOON.inclinationWideDeg);
+    // the moon's radius in the picture at the farthest and the nearest it is in front of the camera, against the planet's silhouette
+    const far = inertialPosition(toRad(270), b);
+    const farDepth = d - dot(far, camera);
+    expect(MOON.radius / farDepth / sil).toBeLessThan(0.1);
+    // the camera's side of the orbit is behind the camera (or too close to be in the picture)
+    const near = inertialPosition(toRad(90), b);
+    expect(d - dot(near, camera)).toBeLessThan(0.5);
+  });
+
+  it("comes out from behind the planet at its sides, a little above the middle: the far half's ends are beside the planet on the screen and the orbit leans up", () => {
+    const d = 5; // the camera's distance at the page's lowest zoom
+    const sil = 1 / Math.sqrt(d * d - 1);
+    const v = viewBasis({ lon: MOON.ref.lonDeg, lat: MOON.ref.latDeg, zoom: 0 }, 1);
+    for (const incl of [MOON.inclinationWideDeg, MOON.inclinationNarrowDeg]) {
+      const b = orbitBasis(0, incl);
+      const at = (deg: number) => {
+        const p = inertialPosition(toRad(deg), b);
+        const depth = d - dot(p, v.c);
+        return { x: dot(p, v.east) / depth, y: dot(p, v.north) / depth };
+      };
+      // behind the planet, in the middle of the far half: inside the silhouette (hidden)
+      const mid = at(270);
+      expect(Math.hypot(mid.x, mid.y)).toBeLessThan(sil);
+      // and beside it on both sides, above the planet's middle line, outside its silhouette
+      for (const deg of [243, 297]) {
+        const p = at(deg);
+        expect(Math.hypot(p.x, p.y)).toBeGreaterThan(sil);
+        expect(p.y).toBeGreaterThan(0);
+      }
+      // left on one side and right on the other
+      expect(at(243).x).toBeLessThan(0);
+      expect(at(297).x).toBeGreaterThan(0);
+    }
+    expect(inclinationFor(1.6)).toBe(MOON.inclinationWideDeg);
+    expect(inclinationFor(0.46)).toBe(MOON.inclinationNarrowDeg);
+  });
+
+  it("is not in the picture when the page opens: it starts on the camera's side of the orbit, behind the camera", () => {
+    const camera = direction(MOON.ref.lonDeg, MOON.ref.latDeg);
+    const p = inertialPosition(toRad(MOON.startDeg), orbitBasis(rollFor(1.6), MOON.inclinationWideDeg));
+    expect(dot(p, camera)).toBeGreaterThan(4.3 - 0.5);
+  });
+
+  it("leans a little on a wide window and is level on a narrow one, in between by a smoothstep", () => {
     expect(rollFor(1.6)).toBe(MOON.rollWideDeg);
     expect(rollFor(0.46)).toBe(MOON.rollNarrowDeg);
     const mid = rollFor((MOON.narrowAspect + MOON.wideAspect) / 2);
-    expect(mid).toBeGreaterThan(MOON.rollWideDeg);
-    expect(mid).toBeLessThan(MOON.rollNarrowDeg);
-    // on a narrow window the orbit's long axis is nearer the vertical than on a wide one
-    const camera = direction(MOON.ref.lonDeg, MOON.ref.latDeg);
-    void camera;
-    expect(Math.abs(orbitBasis(rollFor(0.46)).e1[1])).toBeGreaterThan(Math.abs(orbitBasis(rollFor(1.6)).e1[1]));
+    expect(mid).toBeGreaterThan(MOON.rollNarrowDeg);
+    expect(mid).toBeLessThan(MOON.rollWideDeg);
   });
 
-  it("is a sixth of the earth's radius, and fits in the picture the whole-globe fit leaves: the orbit is wider than the planet and the moon's own radius", () => {
+  it("is a sixth of the earth's radius", () => {
     expect(MOON.radius).toBeCloseTo(1 / 6);
-    expect(MOON.orbit).toBeGreaterThan(1 + MOON.radius);
   });
 });
 

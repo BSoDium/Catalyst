@@ -33,25 +33,39 @@ const open = async (options) => {
 
 {
   const page = await open(DESKTOP);
+  const first = await moon(page);
   const link = page.locator("a.globe-moon");
   ok((await link.count()) === 1, "desktop: exactly one moon");
   ok((await link.getAttribute("href")) === "https://v1.bsodium.fr" && (await link.getAttribute("rel")) === "noopener" && (await link.getAttribute("target")) === "_blank", "desktop: it is a link to the first version, in a new tab, noopener");
   ok(/Memory lane/.test((await link.getAttribute("aria-label")) ?? ""), "desktop: its accessible name says what it is");
-  const near = await pin(page, 90);
-  const far = await pin(page, 270);
-  ok(near.live && near.unhidden === 1, "desktop: in front of the planet it is a target");
-  ok(!far.live && far.unhidden < 0.05, "desktop: behind the planet the planet hides it, and it is no target");
-  ok(near.size > far.size * 1.4, "desktop: the near half is larger than the far half (it is nearer the camera: a real perspective)");
-  const planet = await page.evaluate(() => window.__globeDebug.captionProbe()?.radius ?? null);
-  ok(planet === null || (near.size / 2 > planet * 0.12 && near.size / 2 < planet * 0.45), "desktop: its size against the planet's is about a sixth to a quarter of it, as nearness makes it");
-  const side = await pin(page, 335);
-  ok(side.shown && side.live, "desktop: beyond the limb, behind the plane of the planet, it shows again");
+  const probe = await page.evaluate(() => window.__globeDebug.captionProbe());
+  const planet = probe?.radius ?? 0;
+  const centre = probe?.centre ?? [0, 0];
+  // an Easter egg: not in the picture when the page opens (a fresh page, the orbit's start is on the camera's side, behind the camera)
+  ok(!first.live, "desktop: the moon is not in the picture when the page opens");
+  const side = await pin(page, 245);
+  ok(side.live && side.unhidden === 1, "desktop: coming round the planet's left, behind it, it is in the sky and a target");
+  ok(side.x < centre[0] - planet * 0.9 && side.y < centre[1], "desktop: it is beside the planet, above its middle line, outside its disc");
+  ok(side.radius > 0 && side.radius < planet * 0.12, "desktop: it is small in the picture (a sixth of the planet's radius, far behind it): under an eighth of it on screen");
+  const behind = await pin(page, 270);
+  ok(!behind.live && behind.unhidden < 0.05, "desktop: in the middle of the far half the planet is in front of it and hides it");
+  const gone = await pin(page, 90);
+  ok(!gone.live, "desktop: on the camera's side of its orbit it is behind the camera and not in the picture");
+  // a real body: from the other side of the earth the planet hides it (the orbit is fixed in space, not in the picture)
+  await pin(page, 180);
+  await page.evaluate(() => window.__globeDebug.setView({ lon: 90, lat: 0 }));
+  await page.waitForTimeout(500);
+  const hidden = await moon(page);
+  ok(!hidden.live && hidden.unhidden < 0.05, "desktop: from the side it is behind, the planet hides it");
+  await page.evaluate(() => window.__globeDebug.setView({ lon: 0, lat: 0 }));
+  await page.waitForTimeout(500);
   await page.evaluate(() => window.__globeDebug.pinMoon(null));
+  await page.evaluate(() => window.__globeDebug.setMoonAngle(232));
   const a = await moon(page);
   await page.waitForTimeout(2500);
   const b = await moon(page);
-  ok(a.angle !== b.angle, "desktop: it moves on its own");
-  await pin(page, 60);
+  ok(b.angle > a.angle, "desktop: it moves on its own");
+  await pin(page, 245);
   const at = await moon(page);
   await page.mouse.move(at.x, at.y);
   await page.waitForTimeout(350);
@@ -59,15 +73,15 @@ const open = async (options) => {
   await page.screenshot({ path: `${OUT_DIR}/moon-card.png` });
   await page.mouse.move(5, 5);
   await page.waitForTimeout(400);
-  await page.evaluate(() => window.__globeDebug.pinMoon(null));
-  // (it is moving: wait for it to be on the near half, then put the pointer where it is, in the same breath)
-  for (let i = 0; i < 400 && !(await moon(page)).open; i++) {
-    const m = await moon(page);
-    const turn = ((m.angle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
-    if (m.shown && turn > 0.3 && turn < 2.8) {
+  await page.evaluate(() => window.__globeDebug.setMoonAngle(240));
+  await page.waitForTimeout(300);
+  {
+    // (it is moving: put the pointer where it is now, in the same breath)
+    for (let i = 0; i < 6 && !(await moon(page)).open; i++) {
+      const m = await moon(page);
       await page.mouse.move(m.x, m.y);
-      await page.waitForTimeout(200);
-    } else await page.waitForTimeout(250);
+      await page.waitForTimeout(250);
+    }
   }
   const h0 = await moon(page);
   await page.waitForTimeout(1500);
@@ -102,7 +116,7 @@ const open = async (options) => {
   const page = await open({ ...MOBILE, reducedMotion: "reduce" });
   const st = await moon(page);
   ok(st.shown, "phone: the moon shows");
-  ok(st.x - st.size / 2 >= 0 && st.x + st.size / 2 <= 390, "phone: it is inside the window");
+  ok(st.x + st.size / 2 > 0 && st.x - st.size / 2 < 390, "phone: it is in the window (at its edge: it is passing)");
   await page.touchscreen.tap(st.x, st.y);
   await page.waitForTimeout(400);
   ok((await moon(page)).open && page.context().pages().length === 1, "phone: the first tap shows the card and goes nowhere");

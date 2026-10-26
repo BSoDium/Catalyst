@@ -26,6 +26,8 @@ export interface MoonSample {
   r: number;
   /** In front of the plane of the planet's centre (for the ring, which has no depth: a flat circle in that plane). */
   inFront: boolean;
+  /** In the picture at all: in front of the camera, inside the far plane, and the disc touches the buffer. Otherwise nothing is drawn and the link is down. */
+  onScreen: boolean;
   /** 0..1: how much of the disc the planet leaves visible (the link over it is not a target when this is low), and how much the zoom lets through. */
   unhidden: number;
   amount: number;
@@ -39,6 +41,7 @@ export interface MoonFrame {
   /** The orbit's angle, radians, and the roll of its plane (`rollFor`), degrees. */
   angle: number;
   rollDeg: number;
+  inclinationDeg: number;
   /** The camera's distance from the earth's centre, and the zoom with its fit (`moonAmount`). */
   d: number;
   zoom: number;
@@ -105,6 +108,7 @@ export class MoonLayer {
   private disposed = false;
   private basis: OrbitBasis | null = null;
   private roll = NaN;
+  private incl = NaN;
   private v = new Vector3();
   /** The last frame's sample (null while the moon is not shown). */
   sample: MoonSample | null = null;
@@ -175,9 +179,10 @@ export class MoonLayer {
       this.sample = null;
       return null;
     }
-    if (!this.basis || this.roll !== f.rollDeg) {
+    if (!this.basis || this.roll !== f.rollDeg || this.incl !== f.inclinationDeg) {
       this.roll = f.rollDeg;
-      this.basis = orbitBasis(f.rollDeg);
+      this.incl = f.inclinationDeg;
+      this.basis = orbitBasis(f.rollDeg, f.inclinationDeg);
     }
     const p = toEarthFrame(inertialPosition(f.angle, this.basis), f.eraDeg);
     this.mesh.position.set(p[0], p[1], p[2]);
@@ -205,12 +210,15 @@ export class MoonLayer {
     const s = focal / Math.sqrt(Math.max(1e-6, f.d * f.d - 1));
     const along = (p[0] * cp.x + p[1] * cp.y + p[2] * cp.z) / f.d; // the moon's coordinate along the camera's axis
     const behind = along < 1 / f.d;
+    const onScreen = ndc.z > -1 && ndc.z < 1 && cx + r > 0 && cx - r < f.bufW && cy + r > 0 && cy - r < f.bufH;
+    this.mesh.visible = onScreen;
     const sample: MoonSample = {
       position: p,
       distance: D,
       cx,
       cy,
       r,
+      onScreen,
       inFront: along > 0,
       unhidden: unhidden(behind, Math.hypot(cx - px, cy - py), s, r),
       amount,

@@ -69,7 +69,7 @@ import { SHOWCASE_STATE, bandLat, inBand, shellWindowFactor, type CaptionContent
 import { CAP_HEIGHT_EM, ringAlpha, ringFloorZoom, ringRoomRadius, RING_STATE } from "./ring";
 import { RingLayer } from "./ring-layer";
 import { GlobeScene } from "./scene";
-import { MOON, moonAmount, orbitAngle, rollFor, toRad } from "./moon";
+import { MOON, inclinationFor, moonAmount, orbitAngle, rollFor, toRad } from "./moon";
 import type { MoonSample } from "./moon-layer";
 import { CAPTION, ENERGY, INSET_EASE, CAPTION_LOAD, RING, SKY, START_VIEW, TUNING } from "./tuning";
 import { QualityGovernor } from "./quality";
@@ -1251,6 +1251,19 @@ export class GlobeRenderer {
     this.requestRender();
   }
 
+  /** The orbit's angle now, radians (checks): pinned, or where the clock has it. */
+  moonAngleNow(): number {
+    return this.moonPinned ?? orbitAngle(this.moonMs);
+  }
+
+  /** Put the moon's clock at `deg` of its orbit and let it run from there (checks). */
+  setMoonAngle(deg: number) {
+    this.moonPinned = null;
+    this.moonMs = ((toRad(deg) - orbitAngle(0)) / (2 * Math.PI)) * MOON.periodMs;
+    this.moonAt = 0;
+    this.requestRender();
+  }
+
   /** Whether the moon may move now: not under reduced motion, not in a hold of the energy pass, not while the link's card holds it, not in a hidden tab. */
   private get moonRunning(): boolean {
     return this.moonPinned === null && !this.reduced && !this.held && !this.moonHeld && !this.hidden;
@@ -1282,10 +1295,10 @@ export class GlobeRenderer {
    */
   moonFrame(): { x: number; y: number; r: number; amount: number; unhidden: number; angle: number } | null {
     const m = this.moonSample;
-    if (!m || !this.sized || this.disposed || this.lost || this.suspended || this.flying || this.selected !== null || this.insetTarget > 0) return null;
+    if (!m || !m.onScreen || !this.sized || this.disposed || this.lost || this.suspended || this.flying || this.selected !== null || this.insetTarget > 0) return null;
     if ((this.caption?.landShare() ?? 0) > 0) return null;
     const P = this.pixel;
-    return { x: m.cx * P + this.canvasLeft, y: (this.bufH - m.cy) * P + this.canvasTop, r: m.r * P, amount: m.amount, unhidden: m.unhidden, angle: this.moonPinned ?? orbitAngle(this.moonMs) };
+    return { x: m.cx * P + this.canvasLeft, y: (this.bufH - m.cy) * P + this.canvasTop, r: m.r * P, amount: m.amount, unhidden: m.unhidden, angle: this.moonAngleNow() };
   }
 
   /** The idle rotation is turning the globe now (a plain read: asked every camera frame, so it builds nothing, unlike `spinInfo`). */
@@ -1726,7 +1739,7 @@ export class GlobeRenderer {
       width: this.width,
       height: this.height,
       // the ring is a flat circle in the plane of the planet's centre: a moon in front of that plane hides it where they cross
-      knockout: m && m.inFront ? { x: m.cx * P + this.canvasLeft, y: (this.bufH - m.cy) * P + this.canvasTop, r: m.r * P + 1 } : undefined,
+      knockout: m && m.onScreen && m.inFront ? { x: m.cx * P + this.canvasLeft, y: (this.bufH - m.cy) * P + this.canvasTop, r: m.r * P + 1 } : undefined,
     });
   }
 
@@ -2072,7 +2085,7 @@ export class GlobeRenderer {
     let reach = this.caption ? this.caption.maxRadius + 0.05 : 1.05;
     // (the moon is on an orbit wider than the caption's shell: its whole orbit is between the near and far planes while it is shown)
     const moon = this.globe.moon;
-    if (moon?.ready && moonAmount(zoom, this.fit) > 0.01) reach = Math.max(reach, MOON.orbit + MOON.radius + 0.05);
+    const moonReach = moon?.ready && moonAmount(zoom, this.fit) > 0.01 ? MOON.orbit + MOON.radius + 0.05 : 0;
     if (pose) {
       const [px, py, pz] = pose.pos;
       d = Math.hypot(px, py, pz);
@@ -2080,7 +2093,7 @@ export class GlobeRenderer {
       lat = pose.lat;
       zoom = radiusPxToZoom(focalPx(h) / Math.max(1e-3, d - 1));
       cam.near = Math.max(0.004, (d - 1) * 0.25);
-      cam.far = d + reach;
+      cam.far = d + Math.max(reach, moonReach);
       cam.position.set(px, py, pz);
       cam.up.set(pose.up[0], pose.up[1], pose.up[2]);
       cam.lookAt(pose.target[0], pose.target[1], pose.target[2]);
@@ -2093,7 +2106,7 @@ export class GlobeRenderer {
       skyBasis = { c: [m[8]!, m[9]!, m[10]!], east: [m[0]!, m[1]!, m[2]!], north: [m[4]!, m[5]!, m[6]!], d, f: b.f };
     } else {
       cam.near = Math.max(0.02, b.d - reach);
-      cam.far = b.d + reach;
+      cam.far = b.d + Math.max(reach, moonReach);
       cam.position.set(b.c[0] * b.d, b.c[1] * b.d, b.c[2] * b.d);
       cam.up.set(b.north[0], b.north[1], b.north[2]);
       cam.lookAt(0, 0, 0);
@@ -2144,9 +2157,9 @@ export class GlobeRenderer {
     const moon = this.globe.moon;
     if (!moon) return;
     const aspect = this.width / Math.max(1, this.height);
-    const sample = moon.sync({ camera: cam, bufW: this.bufW, bufH: this.bufH, eraDeg: this.era, angle: this.moonAngle(now), rollDeg: rollFor(aspect), d, zoom, fit: this.fit });
+    const sample = moon.sync({ camera: cam, bufW: this.bufW, bufH: this.bufH, eraDeg: this.era, angle: this.moonAngle(now), rollDeg: rollFor(aspect), inclinationDeg: inclinationFor(aspect), d, zoom, fit: this.fit });
     this.moonSample = sample;
-    this.caption?.setMoonOccluder(sample ? sample.position : null, MOON.radius);
+    this.caption?.setMoonOccluder(sample && sample.onScreen ? sample.position : null, MOON.radius);
   }
 
   /* ------------------------------ diagnostics ------------------------------ */

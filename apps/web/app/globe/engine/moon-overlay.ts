@@ -26,6 +26,8 @@ const CLOSE_MS = 160;
 /** The gap between the moon and its card, CSS px, and the card's distance to the window's edge. */
 const GAP = 10;
 const EDGE = 8;
+/** The link is never smaller than this (CSS px, a finger's width): the moon in the background is a small thing and the target should not be. */
+const MIN_TARGET = 44;
 /** Below this much of the moon visible (planet in front of it) or let through by the zoom, the link is not a target. */
 const LIVE = 0.6;
 
@@ -37,7 +39,7 @@ export class MoonOverlay {
   private touched = false;
   private shown = false;
   private disposed = false;
-  private at: { x: number; y: number; r: number; angle: number; unhidden: number } | null = null;
+  private at: { x: number; y: number; r: number; angle: number; unhidden: number; drawn: number } | null = null;
 
   constructor(
     private root: HTMLElement,
@@ -84,7 +86,7 @@ export class MoonOverlay {
   /** Where the moon is on the page now and whether the link is up (checks). */
   state() {
     const r = this.link.getBoundingClientRect();
-    return { shown: this.shown, live: this.shown && this.link.tabIndex === 0, open: this.open, x: r.left + r.width / 2, y: r.top + r.height / 2, size: r.width, angle: this.at?.angle ?? 0, unhidden: this.at?.unhidden ?? 0 };
+    return { shown: this.shown, live: this.shown && this.link.tabIndex === 0, open: this.open, x: r.left + r.width / 2, y: r.top + r.height / 2, size: r.width, angle: this.at?.angle ?? 0, unhidden: this.at?.unhidden ?? 0, radius: this.at?.drawn ?? 0 };
   }
 
   /** The globe drew a frame: put the link where the moon is. */
@@ -100,15 +102,15 @@ export class MoonOverlay {
       this.shown = true;
       link.hidden = false;
     }
-    const size = Math.max(2, f.r * 2);
+    const size = Math.max(MIN_TARGET, f.r * 2);
     link.style.width = link.style.height = `${size}px`;
-    link.style.transform = `translate3d(${f.x - f.r}px, ${f.y - f.r}px, 0)`;
+    link.style.transform = `translate3d(${f.x - size / 2}px, ${f.y - size / 2}px, 0)`;
     // Where the planet is in front of most of it, or the zoom has most of it away, it is not a target (and not a tab stop).
     const live = f.unhidden > LIVE && f.amount > LIVE;
     link.style.pointerEvents = live ? "auto" : "none";
     link.tabIndex = live ? 0 : -1;
     if (!live) this.setOpen(false);
-    this.at = { x: f.x, y: f.y, r: f.r, angle: f.angle, unhidden: f.unhidden };
+    this.at = { x: f.x, y: f.y, r: size / 2, angle: f.angle, unhidden: f.unhidden, drawn: f.r };
     if (this.open) this.placeCard();
   }
 

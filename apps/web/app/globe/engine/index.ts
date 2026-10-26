@@ -123,6 +123,8 @@ export interface GlobeDebug {
   moon(): ReturnType<MoonOverlay["state"]> | null;
   /** Hold the moon at `deg` of its orbit (null lets it run): captures and checks. */
   pinMoon(deg: number | null): void;
+  /** Put the moon's clock at `deg` of its orbit and let it run from there (checks). */
+  setMoonAngle(deg: number): void;
   /** The ring of type: whether it is drawn, its tone, glyphs, repeats, canvas size and the zoom numbers behind it; null when there is none (`?no-ring`, a debug page without `?ring`). */
   ring(): ReturnType<GlobeRenderer["ringState"]>;
   /** The caption (lines wrapped on the sphere): its face, lines (turn, visibility, extent), phase and the showcase's state; null without one (`?no-ring`, a debug page without `?showcase`). */
@@ -411,8 +413,9 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
       layers: () => ({ ...renderer.layerState(), animating: lod.animating || renderer.layerState().animating, framePending: renderer.isAnimating() }),
       spin: () => ({ ...renderer.spinInfo(), idleMs: SPIN.idleMs, degPerSec: SPIN.degPerSec, easeInMs: SPIN.easeInMs, stopMs: SPIN.stopMs, enabled: SPIN.enabled }),
       sky: () => renderer.skyState(),
-      moon: () => moonOverlay?.state() ?? null,
+      moon: () => (moonOverlay ? { ...moonOverlay.state(), angle: renderer.moonAngleNow() } : null),
       pinMoon: (deg) => renderer.pinMoon(deg),
+      setMoonAngle: (deg) => renderer.setMoonAngle(deg),
       ring: () => renderer.ringState(),
       caption: () => renderer.captionState(),
       showcase: (on) => renderer.setShowcase(on),

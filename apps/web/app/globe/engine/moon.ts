@@ -8,8 +8,9 @@
  * half passes over the planet's north and the far half goes behind it; a visitor who turns the globe sees the same orbit from another side, as one would. The earth-fixed
  * position the scene wants is the inertial one turned about the earth's axis by minus the earth rotation angle (`toEarthFrame`; the sky's relation, other way round).
  *
- * The distance is not the real one (60 earth radii, which is behind the camera and out of the picture): the orbit is as wide as the picture can hold,
- * `MOON.orbit`, and the body keeps its real ratio of a quarter to a sixth by `MOON.radius`.
+ * The distance is not the real one (60 earth radii: a speck, and a thing nobody could click): the orbit is far, `MOON.orbit`, and the body keeps a sixth of the earth's radius. It is
+ * an Easter egg: the near half of the orbit is behind the camera and the far half is in the background, so the moon is not in the picture when the page opens and crosses the sky
+ * at the planet's sides only now and then, and only while the page is being played with (the energy pass's idle hold stops it with everything else).
  */
 import { clamp, lonLatToVec3, viewBasis } from "./geo";
 
@@ -18,21 +19,30 @@ export const MOON = {
   mapUrl: "/media/moon-grey.png",
   /** Its radius, in earth radii: a sixth. */
   radius: 1 / 6,
-  /** The orbit's radius, in earth radii: the picture at the whole-globe view holds about 1.8 on a desktop's width. */
-  orbit: 1.7,
-  /** The orbit's plane against the screen's at the opening view, degrees: 0 is edge-on (a line through the planet), 90 face-on (a circle round it). */
-  inclinationDeg: 24,
-  /** The plane's turn about the line of sight at the opening view, degrees (counter-clockwise): a little lean on a wide window, upright on a narrow one (`rollFor`). */
-  rollWideDeg: 12,
-  rollNarrowDeg: 78,
-  /** The window's aspect (width over height) at and under which the orbit stands upright, and over which it leans as on a wide one. */
+  /**
+   * The orbit's radius, in earth radii. Far: wider than the camera's own distance from the planet (about 4.3 at the whole-globe view), so that the half of the orbit on the
+   * camera's side is BEHIND the camera and never seen, and the other half is far in the background, where the moon is small (a sixth of the earth's radius at three times its
+   * distance) and passes the planet's sides now and then. Not the real 60 (that is a speck): near enough to be a thing the picture can hold.
+   */
+  orbit: 9,
+  /**
+   * The orbit's plane against the screen's at the opening view, degrees: 0 is edge-on (a line through the planet), 90 face-on. Negative leans the far half UP: the moon comes round
+   * the planet's left from behind it a little above its middle (a point's height on the screen is `R sin(i) sin(angle)`), where there is room (the planet fills the picture's height,
+   * the sky is at its sides), drifts out of the picture, and comes back on the right.
+   */
+  inclinationWideDeg: -12,
+  inclinationNarrowDeg: -10,
+  /** The plane's turn about the line of sight at the opening view, degrees (counter-clockwise): a little lean on a wide window, level on a narrow one. */
+  rollWideDeg: 9,
+  rollNarrowDeg: 0,
+  /** The window's aspect (width over height) at and under which the orbit takes its narrow values, and over which its wide ones. */
   narrowAspect: 0.75,
   wideAspect: 1.15,
-  /** One lap, ms: slow enough to be a calm thing in the picture. */
-  periodMs: 200_000,
-  /** Where the orbit starts, and where the moon stands when it does not move (reduced motion, a held page), degrees from the right-hand end, counter-clockwise. */
-  startDeg: 205,
-  restDeg: 58,
+  /** One lap, ms. It is in the picture for a few seconds of each lap, at the planet's sides: a thing to catch, not to wait for. */
+  periodMs: 240_000,
+  /** Where the orbit starts (on the camera's side, behind the camera: not in the picture when the page opens), and where the moon stands when it does not move (reduced motion): beside the planet on the left, small. */
+  startDeg: 100,
+  restDeg: 254,
   /** The opening camera, in the inertial frame: `START_VIEW` (lon 0, lat 0) plus the earth rotation angle `SKY.eraDeg` (70). The orbit is laid against it. */
   ref: { lonDeg: 70, latDeg: 0 },
   /** Zoom (above the fit, in the globe's zoom units) where the moon starts to leave and where it is gone: it is the world view's. */
@@ -53,11 +63,20 @@ export function moonAmount(zoom: number, fit: number): number {
   return 1 - t * t * (3 - 2 * t);
 }
 
-/** The orbit's roll for a window: upright on a narrow one (the room is above the planet), leaning a little on a wide one (the room is at its sides). */
-export function rollFor(aspect: number): number {
+/** 0 on a narrow window, 1 on a wide one, a smoothstep between. */
+const wideness = (aspect: number): number => {
   const t = clamp((aspect - MOON.narrowAspect) / (MOON.wideAspect - MOON.narrowAspect), 0, 1);
-  const k = t * t * (3 - 2 * t);
-  return MOON.rollNarrowDeg + (MOON.rollWideDeg - MOON.rollNarrowDeg) * k;
+  return t * t * (3 - 2 * t);
+};
+
+/** The orbit's roll for a window: level on a narrow one, leaning a little on a wide one. */
+export function rollFor(aspect: number): number {
+  return MOON.rollNarrowDeg + (MOON.rollWideDeg - MOON.rollNarrowDeg) * wideness(aspect);
+}
+
+/** The orbit's inclination for a window: a little less steep on a narrow one, where the room above the planet is less. */
+export function inclinationFor(aspect: number): number {
+  return MOON.inclinationNarrowDeg + (MOON.inclinationWideDeg - MOON.inclinationNarrowDeg) * wideness(aspect);
 }
 
 /** The orbit's two axes in the inertial frame: the plane is spanned by them, the angle is measured from the first towards the second. */
@@ -67,7 +86,7 @@ export interface OrbitBasis {
 }
 
 /** The plane of the orbit against the reference camera: its right-hand axis, and the other leaning toward the camera by the inclination (edge-on at 0). */
-export function orbitBasis(rollDeg: number, inclinationDeg = MOON.inclinationDeg, ref: { lonDeg: number; latDeg: number } = MOON.ref): OrbitBasis {
+export function orbitBasis(rollDeg: number, inclinationDeg: number = MOON.inclinationWideDeg, ref: { lonDeg: number; latDeg: number } = MOON.ref): OrbitBasis {
   const b = viewBasis({ lon: ref.lonDeg, lat: ref.latDeg, zoom: 0, roll: toRad(rollDeg) }, 1);
   const s = Math.sin(toRad(inclinationDeg));
   const c = Math.cos(toRad(inclinationDeg));
