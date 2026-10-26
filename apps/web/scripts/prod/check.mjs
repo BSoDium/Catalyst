@@ -1,4 +1,4 @@
-// Production readiness check (docs/web-architecture.md, "Production readiness"). Serves the PRODUCTION build (`pnpm build` first)
+// Production readiness check (docs/web-architecture.md, "Production readiness"; the public leak check, scripts/check-public-leaks.mjs, runs on the same build). Serves the PRODUCTION build (`pnpm build` first)
 // the way a deployment runs it (NODE_ENV=production, `react-router-serve`) and asserts, over HTTP and in a real browser:
 //   - security headers and the nonce-based CSP on pages, data responses and errors; cache headers; content types;
 //   - head tags (title template, description, canonical, Open Graph, Twitter card, JSON-LD) on /, a list, an entry and a place;

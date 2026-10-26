@@ -7,6 +7,7 @@ import { readdirSync, readFileSync, statSync, existsSync } from "node:fs";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { PREVIEW_FILE, findPreviewLeaks, previewFilesInRepoListing } from "./lib/preview-leaks.mjs";
+import { neutralizeTripPages } from "./lib/trip-pages.mjs";
 
 // Also guards the LOCAL preview file (the owner's real places incl. unpublished drafts, written by `pnpm export:preview`):
 // it may exist on a developer machine only if git ignores it, and none of its places may appear in a production bundle.
@@ -58,8 +59,9 @@ for (const [label, rel] of targets) {
     let text = readFileSync(file, "utf8");
     scanned++;
     // A trip's own public page is meant to be public (`routes[].url`, docs/api-contract.md): that one shape, an https address on the trip site with plain path
-    // characters, is not private vocabulary. Anything else that names the site, in the projection or in a bundle, still fails.
-    if (label === "published projection") text = text.replace(/"url": "https:\/\/www\.polarsteps\.com\/[A-Za-z0-9._-]+\/[0-9]+-[A-Za-z0-9-]+"/g, '"url": "<trip page>"');
+    // characters, is not private vocabulary (lib/trip-pages.mjs). In the projection it is accepted as the value of a `url` key; in a bundle, which compiles the
+    // projection in, as the bare address. Anything else that names the site, in the projection or in a bundle, still fails.
+    text = neutralizeTripPages(text, label === "published projection" ? "projection" : "bundle");
     if (label !== "published projection") bundleFiles.push({ file: relative(root, file), text });
     for (const word of FORBIDDEN) {
       if (text.includes(word)) failures.push(`${label}: "${word}" found in ${relative(root, file)}`);

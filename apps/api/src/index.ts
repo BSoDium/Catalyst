@@ -16,7 +16,9 @@
  * this folder (such as this note) makes the project affected, so its preview is built. The
  * same goes for apps/web: the requirement is per commit, so the last commit of a pull
  * request has to touch both folders, or one of the two previews is skipped (Vercel reports it
- * as "Skipped - Not affected", and the ruleset does not count that as a success).
+ * as "Skipped - Not affected", and the ruleset does not count that as a success). A pull request
+ * that only changes scripts/ or docs/ (the public leak check, say) builds neither preview: one line
+ * in a file of each of apps/api and apps/web is enough.
  */
 import { Hono } from "hono";
 import { createApp } from "./app";
