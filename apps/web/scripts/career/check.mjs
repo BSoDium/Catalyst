@@ -10,7 +10,7 @@
 // priority, no layout shift measured), the page without horizontal scroll at 320, 390 and 1440 px in both schemes; no mailto/tel
 // link and no "@" in the text; the keyboard order and a visible focus; reduced motion (no animation or transition on the page's
 // content); print emulation (no chrome, one column, ink on white, no horizontal overflow, a PDF that is a few pages); the header,
-// hero and search entries exist with a career and none without. Screenshots go to OUT_DIR. Exit code 1 on any failed assertion.
+// hero and search entries exist with a career and none without; the head holds at eight widths from 641 to 1440 px (the portrait never hangs over the line below). Screenshots go to OUT_DIR. Exit code 1 on any failed assertion.
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { BASE_URL, OUT_DIR, DESKTOP, MOBILE, launch } from "../globe/_lib.mjs";
 
