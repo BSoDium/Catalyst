@@ -8,6 +8,7 @@ import { readTheme } from "./colors";
 import { BoxScene } from "./box-scene";
 import { placeFraming } from "./framing";
 import type { LodTree } from "./lod-tree";
+import { MOON_STATE } from "./moon";
 import { MoonOverlay } from "./moon-overlay";
 import { GlobeRenderer, type RendererOptions, type StartView } from "./renderer";
 import { SPIN } from "./idle-spin";
@@ -118,7 +119,7 @@ export interface GlobeDebug {
   spin(): ReturnType<GlobeRenderer["spinInfo"]> & { idleMs: number; degPerSec: number; easeInMs: number; stopMs: number; enabled: boolean };
   /** The sky: the earth rotation angle, its timed value (0..1), whether it is wanted and drawn, the farthest corner in earth radii; null when switched off (debug pages default to off, `?sky`). */
   sky(): ReturnType<GlobeRenderer["skyState"]>;
-  /** The moon: whether it is shown, whether its card is out, its centre (client px), size and orbit angle; null without one (no `GlobeProps.moon`). */
+  /** The moon's link: whether it is up, whether its card is out, its centre (client px), size and the orbit's angle (radians); null without a moon (no `GlobeProps.moon`, `?no-moon`, a debug page without `?moon`). */
   moon(): ReturnType<MoonOverlay["state"]> | null;
   /** Hold the moon at `deg` of its orbit (null lets it run): captures and checks. */
   pinMoon(deg: number | null): void;
@@ -240,6 +241,8 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
 
   let labelsActive = true;
   let moonOverlay: MoonOverlay | null = null;
+  // (the moon is a body in the scene and a link over it: both or neither)
+  const withMoon = MOON_STATE.enabled && !!opts.moon && !!opts.moonRoot;
   const syncOverlay = () => {
     const v = renderer.getView();
     // Labels dissolve with the canvas at the panel's edge.
@@ -258,7 +261,7 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
       lastReported = next;
       opts.onViewChange(next);
     }
-    moonOverlay?.update(performance.now());
+    moonOverlay?.update();
     opts.onFrame?.();
   };
 
@@ -295,6 +298,7 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
         coverBottom: opts.coverBottom,
         coverBlocks: opts.coverBlocks,
         showcase: opts.showcase,
+        moon: withMoon,
         onSelect: opts.onSelect,
         onSelectGroup: opts.onSelectGroup,
         onHover: (slug) => {
@@ -310,7 +314,7 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
     throw e instanceof Error && /WebGL/i.test(e.message) ? new WebGLUnavailableError() : e;
   }
 
-  if (opts.moon && opts.moonRoot) moonOverlay = new MoonOverlay(opts.moonRoot, opts.moon, () => renderer.moonFrame());
+  if (withMoon && opts.moon && opts.moonRoot) moonOverlay = new MoonOverlay(opts.moonRoot, opts.moon, () => renderer.moonFrame(), (on) => renderer.setMoonHeld(on));
   renderer.setSelected(opts.selectedSlug, false);
   labels.setSelected(opts.selectedSlug);
   labels.setWake(() => renderer.requestRender()); // a plan run by the labels' timer on a map at rest started a glide
@@ -408,7 +412,7 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
       spin: () => ({ ...renderer.spinInfo(), idleMs: SPIN.idleMs, degPerSec: SPIN.degPerSec, easeInMs: SPIN.easeInMs, stopMs: SPIN.stopMs, enabled: SPIN.enabled }),
       sky: () => renderer.skyState(),
       moon: () => moonOverlay?.state() ?? null,
-      pinMoon: (deg) => moonOverlay?.pin(deg),
+      pinMoon: (deg) => renderer.pinMoon(deg),
       ring: () => renderer.ringState(),
       caption: () => renderer.captionState(),
       showcase: (on) => renderer.setShowcase(on),

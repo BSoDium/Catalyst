@@ -19,6 +19,7 @@ import { applySpinFlags } from "./engine/idle-spin";
 import { applySkyFlags } from "./engine/sky";
 import { PLAY_INTERLUDE_EVENT, PREPARE_INTERLUDE_EVENT, type PlayInterludeRequest } from "./interlude";
 import { applyRingFlags, ringText } from "./engine/ring";
+import { applyMoonFlags } from "./engine/moon";
 import { applyShowcaseFlags } from "./engine/caption";
 import { applyDebugArtPixel } from "./engine/tuning";
 import { enablePerf, perfEnd, perfStart } from "./engine/perf";
@@ -206,6 +207,7 @@ export default function GlobeCanvas({
     applySpinFlags(); // `?no-rotate` works on any page, `?spin-idle=MS` in debug mode
     applySkyFlags(); // `?no-sky` works on any page, `?sky` turns it on in debug mode
     applyRingFlags(); // `?no-ring` works on any page, `?ring` turns it on in debug mode
+    applyMoonFlags(); // `?no-moon` works on any page, `?moon` turns it on in debug mode
     applyShowcaseFlags(); // the showcase is on every page but a debug one, where `?showcase` turns it on
     if (debugEnabled()) {
       applyDebugLevels();

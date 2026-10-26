@@ -3162,12 +3162,7 @@ h1[tabindex="-1"]:focus-visible {
     display: none;
   }
 
-  .globe-moon-sprite {
-    display: block;
-    image-rendering: pixelated;
-  }
-
-  /* The ring is drawn outside the sprite, round it: the global focus ring would be square on a round thing. */
+  /* The link is invisible (the moon is drawn in the scene under it); its focus ring is round, as the global one would be square on a round thing. */
   .globe-moon:focus-visible {
     outline: 2px solid var(--signal);
     outline-offset: 3px;

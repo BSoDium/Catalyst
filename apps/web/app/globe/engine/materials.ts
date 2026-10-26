@@ -16,7 +16,7 @@ const PASS_THROUGH_VERTEX = /* glsl */ `
 /** The globe disc is a hair inside the lines (radius 1) so lines on the near side never z-fight with it. */
 export const OCCLUDER_RADIUS = 0.998;
 
-const DITHER_GLSL = /* glsl */ `
+export const DITHER_GLSL = /* glsl */ `
   float dither2(vec2 a) { return fract(a.x * 0.5 + a.y * a.y * 0.75); }
   float dither4(vec2 a) { return dither2(0.5 * a) * 0.25 + dither2(a); }
   // Discard fragments so that roughly \`coverage\` of pixels survive (ordered dither, stays 1-bit).

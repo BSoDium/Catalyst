@@ -1,6 +1,6 @@
-// The moon (docs/landing.md, "The moon") in a browser: a real link to the first version of the site that circles the planet at the world view, goes behind the
-// planet and away from the hero's text, holds still with its card out under the pointer and the keyboard, stands still under reduced motion, takes two
-// taps on a touch screen, and stays out of the way of a place being open. Works against `pnpm dev:demo`; asserts nothing about which places there are.
+// The moon (docs/landing.md, "The moon") in a browser: a body in the globe's space, on an orbit about the planet, that is a link to the first version of the site. It is in
+// front of the planet and then behind it (and the planet hides it), is a sixth of the planet's radius, holds still with its card out under the pointer and the keyboard,
+// stands still under reduced motion, takes two taps on a touch screen, and is gone once zoomed in. Works against `pnpm dev:demo`; asserts nothing about which places there are.
 //
 //   CHROME_PATH=/path/to/chrome BASE_URL=http://localhost:5451 OUT_DIR=/tmp/moon node scripts/home/moon.mjs
 //
@@ -15,7 +15,7 @@ const ok = (cond, message) => {
   console.log(`${cond ? "PASS" : "FAIL"}  ${message}`);
   if (!cond) failures.push(message);
 };
-const URL = `${BASE_URL}/?globe-debug&ring&showcase&sky`;
+const URL = `${BASE_URL}/?globe-debug&ring&showcase&sky&moon`;
 const moon = (page) => page.evaluate(() => window.__globeDebug.moon());
 const pin = async (page, deg) => {
   await page.evaluate((d) => window.__globeDebug.pinMoon(d), deg);
@@ -39,10 +39,13 @@ const open = async (options) => {
   ok(/Memory lane/.test((await link.getAttribute("aria-label")) ?? ""), "desktop: its accessible name says what it is");
   const near = await pin(page, 90);
   const far = await pin(page, 270);
-  ok(near.shown && near.size > 40, "desktop: in front it shows, larger");
-  ok(!far.shown, "desktop: behind the planet it is hidden");
+  ok(near.live && near.unhidden === 1, "desktop: in front of the planet it is a target");
+  ok(!far.live && far.unhidden < 0.05, "desktop: behind the planet the planet hides it, and it is no target");
+  ok(near.size > far.size * 1.4, "desktop: the near half is larger than the far half (it is nearer the camera: a real perspective)");
+  const planet = await page.evaluate(() => window.__globeDebug.captionProbe()?.radius ?? null);
+  ok(planet === null || (near.size / 2 > planet * 0.12 && near.size / 2 < planet * 0.45), "desktop: its size against the planet's is about a sixth to a quarter of it, as nearness makes it");
   const side = await pin(page, 335);
-  ok(side.shown && side.size < near.size, "desktop: beyond the limb the far half shows again, smaller");
+  ok(side.shown && side.live, "desktop: beyond the limb, behind the plane of the planet, it shows again");
   await page.evaluate(() => window.__globeDebug.pinMoon(null));
   const a = await moon(page);
   await page.waitForTimeout(2500);
