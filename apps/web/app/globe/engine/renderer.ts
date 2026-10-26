@@ -58,6 +58,7 @@ import { snapBox } from "./group-square";
 import { Grace } from "./grace";
 import { IdleSpin, SPIN, SPIN_DEFAULTS, edgeSpeed, pacedByRotation, spinBlock, spinFrameDue, spinFramePeriod, type SpinContext } from "./idle-spin";
 import { CINEMATIC } from "./cinematic";
+import { INTERLUDE_STATE_EVENT, type InterludeStateDetail } from "../interlude";
 import { blendPose, flightOffsetShare, flightPose } from "./flight";
 import { SURFACE, surfaceCoverage, surfaceFade } from "./surface";
 import { landingScale, liftFor, placeAbove, type Placement } from "./lift";
@@ -2072,6 +2073,19 @@ export class GlobeRenderer {
 
   /** The `--interlude` the page's hero is following (0 outside the interlude). */
   private interludeVar = 0;
+  /** The page's hero has been told the interlude is on (it takes its collapsed look, `INTERLUDE_STATE_EVENT`). */
+  private interludeOn = false;
+
+  /**
+   * Tell the page when the interlude begins and ends (once each): on as the land comes in, off once it is on its way out and below the middle of its easing, so the
+   * name grows back while the page's text is returning and not after it.
+   */
+  private setInterludeState(land: number): void {
+    const next = this.interludeOn ? !(land < 0.4 && land < this.interludeVar) && land > 0 : land > 0.01;
+    if (next === this.interludeOn) return;
+    this.interludeOn = next;
+    window.dispatchEvent(new CustomEvent<InterludeStateDetail>(INTERLUDE_STATE_EVENT, { detail: { active: next } }));
+  }
 
   /** The projection's shift and lift in buffer px as the camera is drawn with now: the page's (`shiftBuf`, `liftBuf`) except during the flight. */
   private camShift = 0;
@@ -2148,6 +2162,7 @@ export class GlobeRenderer {
     this.globe.setCity(CINEMATIC.planet.cities ? (this.caption?.cityShare() ?? 0) : 0);
     // the page's own hero steps back with it (app.css `--interlude`): written when it moves by a hundredth
     if (Math.abs(land - this.interludeVar) >= 0.01 || (land === 0 && this.interludeVar !== 0)) {
+      this.setInterludeState(land);
       this.interludeVar = land;
       this.opts.container.ownerDocument.documentElement.style.setProperty("--interlude", land.toFixed(3));
     }
@@ -2282,6 +2297,10 @@ export class GlobeRenderer {
     this.cleanups = [];
     // (the hero must not stay a ghost if the globe goes away mid-interlude)
     if (this.interludeVar !== 0) this.opts.container.ownerDocument.documentElement.style.removeProperty("--interlude");
+    if (this.interludeOn) {
+      this.interludeOn = false;
+      window.dispatchEvent(new CustomEvent<InterludeStateDetail>(INTERLUDE_STATE_EVENT, { detail: { active: false } }));
+    }
     this.ring?.dispose();
     this.ring = null;
     this.legIcons?.dispose();

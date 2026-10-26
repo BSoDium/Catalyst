@@ -51,6 +51,8 @@ export interface HeroSnapshot {
   readonly state: HeroState;
   /** The view is the world view with nothing open: the full hero is allowed to come back (the "back to start" hint is true). */
   readonly world: boolean;
+  /** The cinematic interlude is under way: the hero takes the collapsed look (the small name, no rows) for its length, whatever its state (`setInterlude`). */
+  readonly interlude: boolean;
 }
 
 export interface HeroTimers {
@@ -67,6 +69,11 @@ export interface HeroMachine {
   setWorld(world: boolean): void;
   /** The visitor's focus is in the header or in a dialog: the hero stays as it is (no way back) until it is released, then the idle period starts anew. */
   hold(held: boolean): void;
+  /**
+   * The cinematic interlude begins or ends (the globe says so). Only the LOOK changes, not the state: the showcase stays on (the interlude plays on its caption)
+   * and the idle clock is not touched; the hero shrinks to its small name while it plays and grows back after it, if it is still at rest.
+   */
+  setInterlude(active: boolean): void;
   /** The visitor asked for something only the full hero shows (the cinematic interlude): bring it back now if the view is the world view. */
   restore(): void;
   /** Cancel the timer (the host is going away). The machine stays usable. */
@@ -79,14 +86,14 @@ const browserTimers: HeroTimers = {
 };
 
 export function createHeroMachine({ idleMs = HERO_IDLE_MS, timers = browserTimers, initial = "rest" }: { idleMs?: number; timers?: HeroTimers; initial?: HeroState } = {}): HeroMachine {
-  let snapshot: HeroSnapshot = { state: initial, world: true };
+  let snapshot: HeroSnapshot = { state: initial, world: true, interlude: false };
   let timer: unknown = null;
   let held = false;
   const listeners = new Set<() => void>();
 
   const set = (next: Partial<HeroSnapshot>) => {
     const merged = { ...snapshot, ...next };
-    if (merged.state === snapshot.state && merged.world === snapshot.world) return;
+    if (merged.state === snapshot.state && merged.world === snapshot.world && merged.interlude === snapshot.interlude) return;
     snapshot = merged;
     for (const listener of [...listeners]) listener();
   };
@@ -122,6 +129,9 @@ export function createHeroMachine({ idleMs = HERO_IDLE_MS, timers = browserTimer
       // Leaving the world view (zooming in, a place opening) is leaving the landing: the hero does not wait for a gesture to step back.
       set(world ? { world } : { world, state: "collapsed" });
       arm();
+    },
+    setInterlude(active) {
+      set({ interlude: active });
     },
     hold(next) {
       if (next === held) return;

@@ -579,7 +579,6 @@ export class PixelOverlay {
   private ctx: CanvasRenderingContext2D | null;
   private image: ImageData | null = null;
   private signature = NaN;
-  private prev = { minX: 1, maxX: 0, minY: 1, maxY: 0 };
   /** Frames drawn and skipped since creation (checks and tests). */
   drawn = 0;
   skipped = 0;
@@ -598,7 +597,7 @@ export class PixelOverlay {
       pointerEvents: "none",
       userSelect: "none",
     } satisfies Partial<CSSStyleDeclaration>);
-    this.ctx = this.canvas.getContext("2d", { willReadFrequently: false });
+    this.ctx = this.canvas.getContext("2d", { willReadFrequently: true });
     parent.append(this.canvas);
   }
 
@@ -614,7 +613,6 @@ export class PixelOverlay {
       this.canvas.height = rows;
       // The buffer's words ARE the image's pixels (straight RGBA), so a frame is uploaded without a conversion pass.
       this.image = this.ctx ? new ImageData(new Uint8ClampedArray(this.buf.data.buffer), cols, rows) : null;
-      this.prev = { minX: 1, maxX: 0, minY: 1, maxY: 0 };
     }
     Object.assign(this.canvas.style, {
       width: `${cols * cell}px`,
@@ -638,7 +636,7 @@ export class PixelOverlay {
 
   /**
    * Draw a frame: when `signature` equals the last frame's nothing is touched (the boxes did not change); else the previous
-   * frame's cells are cleared, `draw` paints the new ones, and only the changed region is uploaded. Returns whether it drew.
+   * frame's cells are cleared, `draw` paints the new ones, and the image is uploaded whole. Returns whether it drew.
    */
   frame(signature: number, draw: (buf: PixelBuffer) => void): boolean {
     if (signature === this.signature) {
@@ -648,7 +646,6 @@ export class PixelOverlay {
     this.signature = signature;
     const b = this.buf;
     if (!this.ctx || !this.image || b.cols === 0) return false;
-    this.prev = { minX: b.minX, maxX: b.maxX, minY: b.minY, maxY: b.maxY };
     b.clearDirty();
     b.resetDirty();
     draw(b);
@@ -657,16 +654,14 @@ export class PixelOverlay {
     return true;
   }
 
+  /**
+   * The whole image, every time it changes. It was the changed rectangle only (a dirty-rect `putImageData`), and on Chrome for Android, whose 2D canvas is GPU-backed,
+   * stale cells of boxes from earlier frames stayed behind as faint, partial outlines (a Pixel 7, 2026-10-26; not on a desktop). The canvas is a few tens of thousands of
+   * cells and only redrawn when a box changed, so the whole of it costs nothing, and there is no region to get wrong. The buffer's own dirty box (`PixelBuffer`) is still
+   * what the clearing of the last frame reads.
+   */
   private upload() {
-    const b = this.buf;
-    const p = this.prev;
-    const hasPrev = p.minX <= p.maxX;
-    if (!b.dirty && !hasPrev) return;
-    const x0 = Math.min(b.dirty ? b.minX : Infinity, hasPrev ? p.minX : Infinity);
-    const x1 = Math.max(b.dirty ? b.maxX : -1, hasPrev ? p.maxX : -1);
-    const y0 = Math.min(b.dirty ? b.minY : Infinity, hasPrev ? p.minY : Infinity);
-    const y1 = Math.max(b.dirty ? b.maxY : -1, hasPrev ? p.maxY : -1);
-    this.ctx!.putImageData(this.image!, 0, 0, x0, y0, x1 - x0 + 1, y1 - y0 + 1);
+    this.ctx!.putImageData(this.image!, 0, 0);
   }
 
   dispose(): void {

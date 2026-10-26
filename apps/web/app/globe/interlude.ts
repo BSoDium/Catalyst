@@ -30,3 +30,12 @@ export function prepareInterlude(): void {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new Event(PREPARE_INTERLUDE_EVENT));
 }
+
+/**
+ * The interlude begins and ends, from the globe's own frame loop (`detail.active`): the page's hero shrinks to its small name for the length of it (`HeroMachine.setInterlude`)
+ * and grows back at the end. The same island split as above, so the same kind of channel: a window event.
+ */
+export const INTERLUDE_STATE_EVENT = "site:interlude-state";
+export interface InterludeStateDetail {
+  active: boolean;
+}

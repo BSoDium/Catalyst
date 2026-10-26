@@ -428,7 +428,7 @@ map it hands over to (see "Handover" below). The seam extends compatibly:
 - `GlobeProps.tiles?: GlobeTiles | null` (primary URL, optional fallback PMTiles URL, max fallback zoom: the shell
   loader's `tiles`). Absent or null = world and regional scale only, exactly as before.
 - `GlobeProps.attribution?: ComponentType<GlobeAttributionProps>`: the map's credits control (the credits line with its
-  "See more" button from `md` up, the small "i" button below it, and the dialog behind both) is app UI, so the app hands it in and the globe renders it in its box (bottom right, clear of
+  "See more" button, full width on a phone, and the dialog behind it) is app UI, so the app hands it in and the globe renders it in its box (bottom right, clear of
   `insetRight`); the globe never imports it. `StreetMapCanvas` takes the same prop. The app passes
   `components/attribution-slot.tsx` (a lazy wrapper around `attribution-button.tsx`, so the button stays out of the
   main bundle) in `routes/shell.tsx` and `routes/dev-street.tsx`. Omitted = no credits control: pass it wherever the

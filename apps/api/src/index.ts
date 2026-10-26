@@ -2,8 +2,7 @@
  * Vercel app module: a default-exported Hono app. It is not what Vercel runs
  * directly: scripts/build.mjs bundles it into dist/index.mjs and ../index.mjs
  * (the preset's entry) re-exports that bundle. Keep this file minimal; all
- * logic lives in ./app. (These lines were touched again in #337 only so that the API's
- * Vercel preview deploys, which the repository's merge rule requires.)
+ * logic lives in ./app.
  *
  * Content is validated once, at module load. On Vercel there is no separate
  * startup phase to abort, so an invalid projection is logged loudly and the

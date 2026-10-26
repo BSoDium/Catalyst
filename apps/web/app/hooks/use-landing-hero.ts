@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { RESTORE_HERO_EVENT, type CoverBlock, type GlobeShowcase, type GlobeSignal, type GlobeViewState } from "~/globe";
+import { INTERLUDE_STATE_EVENT, RESTORE_HERO_EVENT, type CoverBlock, type InterludeStateDetail, type GlobeShowcase, type GlobeSignal, type GlobeViewState } from "~/globe";
 import { cameBackHome } from "~/lib/hero-rest";
 import { createHeroMachine, HERO_IDLE_MS, isWorldView, showcaseOf, type HeroMachine } from "~/lib/hero-machine";
 
@@ -132,6 +132,15 @@ export function useLandingHero(open: boolean): LandingHero {
     const restore = () => machine.restore();
     window.addEventListener(RESTORE_HERO_EVENT, restore);
     return () => window.removeEventListener(RESTORE_HERO_EVENT, restore);
+  }, [machine]);
+  // (the interlude's own state, from the globe: the hero takes the collapsed look while it plays)
+  useEffect(() => {
+    const on = (e: Event) => machine.setInterlude((e as CustomEvent<InterludeStateDetail>).detail.active);
+    window.addEventListener(INTERLUDE_STATE_EVENT, on);
+    return () => {
+      window.removeEventListener(INTERLUDE_STATE_EVENT, on);
+      machine.setInterlude(false);
+    };
   }, [machine]);
   useEffect(() => watchFocusHold(machine), [machine]);
 

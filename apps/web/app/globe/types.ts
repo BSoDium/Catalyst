@@ -166,8 +166,6 @@ export interface GlobeAttributionProps {
   tiles: { primaryUrl: string; fallbackPmtilesUrl: string | null } | null;
   insetRight: number;
   reducedMotion: boolean;
-  /** Which map the control sits on: the phone's credits line is shown once per page session per surface. */
-  surface: "globe" | "street";
 }
 
 /** What the app tells the globe about the home screen: it is at rest (`on`), and how much of the bottom of the globe's box it covers then. */

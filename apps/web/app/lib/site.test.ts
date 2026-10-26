@@ -2,17 +2,20 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { DEFAULT_SITE_URL, THEME_COLORS, captionText, isIndexableHost, requestHost, resolveSiteUrl, siteCaption } from "./site";
 
-describe("siteCaption: the five sections in the rows of the globe", () => {
+describe("siteCaption: four rows in view, never five", () => {
   const counts = { project: 33, article: 2, artwork: 16, poem: 9, photograph: 4 };
-  it("names every section, two to a row in the order of the lists: no row is wider than the four-section caption's, and the fifth word has a row of its own", () => {
+  it("names the five sections in two rows, the widest as wide as the counts' row of the four-section caption was (24 letters)", () => {
     const text = captionText(siteCaption());
-    expect(text.sets[1]).toEqual(["Software · Articles", "Artworks · Poetry", "Photography"]);
-    expect(Math.max(...text.sets[1]!.map((r) => r.length))).toBeLessThanOrEqual("Software · Articles".length);
+    expect(text.sets[1]).toEqual(["Software, articles, art,", "poetry & photography."]);
+    expect(Math.max(...text.sets[1]!.map((r) => r.length))).toBeLessThanOrEqual(24);
   });
-  it("counts them the same way, with each section's own noun", () => {
-    const text = captionText(siteCaption(counts));
-    expect(text.sets[2]).toEqual(["33 software · 2 articles", "16 artworks · 9 poems", "4 photographs"]);
-    expect(captionText(siteCaption({ ...counts, photograph: 1 })).sets[2]!.at(-1)).toBe("1 photograph");
+  it("counts them in two rows too: the total and how many sections hold something", () => {
+    expect(captionText(siteCaption(counts)).sets[2]).toEqual(["64 entries,", "in 5 sections."]);
+    expect(captionText(siteCaption({ ...counts, article: 0, artwork: 0, poem: 0, photograph: 0, project: 1 })).sets[2]).toEqual(["1 entry,", "in 1 section."]);
+  });
+  it("leaves the counts out when there is nothing yet, and every set is two rows", () => {
+    expect(captionText(siteCaption({ project: 0, article: 0, artwork: 0, poem: 0, photograph: 0 })).sets).toHaveLength(2);
+    for (const set of siteCaption(counts).sets) expect(set).toHaveLength(2);
   });
   it("keeps the call to action in the two rows that stay", () => {
     expect(captionText(siteCaption()).fixed).toEqual(["Drag to explore.", "Pick a place."]);
