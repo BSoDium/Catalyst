@@ -65,7 +65,7 @@ export const SPIN: SpinConfig = { ...SPIN_DEFAULTS };
  *  - a page in debug mode (`?globe-debug`, what the browser checks run in) has it OFF by default, because the checks assert zero
  *    frames at rest for longer than the idle delay; `?rotate` (or sessionStorage "rotate" = "1") turns it back on there, and
  *    `?spin-idle=MS` (100 to 600000, debug only) does too and shortens the delay.
- *  - `?spin-speed=DEG` (0.01 to 20 degrees a second, debug only) turns it on there with another cruise speed: the measurements that
+ *  - `?spin-speed=DEG` (0.01 to 20 degrees a second) sets another cruise speed (and, on a debug page, turns it on): the measurements that
  *    chose `degPerSec` (label slot changes per minute at each candidate speed, docs/web-architecture.md) run the real engine at them.
  */
 export function applySpinFlags(): void {
@@ -79,7 +79,7 @@ export function applySpinFlags(): void {
     const wanted = !debug || q.has("rotate") || sessionStorage.getItem("rotate") === "1" || flag("spin-idle") !== null || flag("spin-speed") !== null;
     if (q.has("no-rotate") || sessionStorage.getItem("no-rotate") === "1" || !wanted) SPIN.enabled = false;
     if (debug && ms >= 100 && ms <= 600_000) SPIN.idleMs = ms;
-    if (debug && speed >= 0.01 && speed <= 20) SPIN.degPerSec = speed;
+    if (speed >= 0.01 && speed <= 20) SPIN.degPerSec = speed;
   } catch {
     // no storage: keep the defaults
   }
@@ -172,6 +172,14 @@ export function stopAngle(v0: number, sinceMs: number, cfg: SpinConfig = SPIN): 
  */
 export function pacedByRotation(o: { spinning: boolean; forced: boolean; captionAnimating: boolean }): boolean {
   return o.spinning && !o.forced && !o.captionAnimating;
+}
+
+/**
+ * The frame period while turning, ms: the energy pass's `ENERGY.spinFrameMs` (100) at the cruise speed, shorter at a faster one. The disc moves one art pixel per about 270 / `degPerSec` ms (the
+ * 1.35 s of 0.2 deg a second), and a frame is wanted at least twice in that (no frame is then more than half a step late), never faster than the display (16 ms).
+ */
+export function spinFramePeriod(degPerSec: number, base: number): number {
+  return Math.min(base, Math.max(16, 135 / Math.max(degPerSec, 0.01)));
 }
 
 /** Whether a spin frame is due: at least `minFrameMs` since the previous drawn frame. */

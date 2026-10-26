@@ -56,7 +56,7 @@ import {
 } from "./motion";
 import { snapBox } from "./group-square";
 import { Grace } from "./grace";
-import { IdleSpin, SPIN, pacedByRotation, spinBlock, spinFrameDue, type SpinContext } from "./idle-spin";
+import { IdleSpin, SPIN, pacedByRotation, spinBlock, spinFrameDue, spinFramePeriod, type SpinContext } from "./idle-spin";
 import { CINEMATIC } from "./cinematic";
 import { blendPose, flightOffsetShare, flightPose } from "./flight";
 import { SURFACE, surfaceCoverage, surfaceFade } from "./surface";
@@ -69,7 +69,6 @@ import { SHOWCASE_STATE, bandLat, inBand, shellWindowFactor, type CaptionContent
 import { CAP_HEIGHT_EM, ringAlpha, ringFloorZoom, ringRoomRadius, RING_STATE } from "./ring";
 import { RingLayer } from "./ring-layer";
 import { GlobeScene } from "./scene";
-import { MSAA_FROM, SMOOTH_STATE, onSmoothChange } from "./smooth";
 import { MOON, inclinationFor, moonAmount, orbitAngle, rollFor, sunDirection, toEarthFrame, toRad, type Vec3 } from "./moon";
 import type { MoonSample } from "./moon-layer";
 import { CAPTION, ENERGY, INSET_EASE, CAPTION_LOAD, RING, SKY, START_VIEW, TUNING } from "./tuning";
@@ -281,8 +280,7 @@ export class GlobeRenderer {
     for (const p of opts.places) this.placeBySlug.set(p.slug, p);
 
     this.gl = new WebGLRenderer({
-      antialias: SMOOTH_STATE.enabled && SMOOTH_STATE.amount >= MSAA_FROM, // (`?smooth`: engine/smooth.ts)
-      alpha: false,
+            alpha: false,
       powerPreference: ENERGY.gpu,
       preserveDrawingBuffer: false,
     });
@@ -301,7 +299,6 @@ export class GlobeRenderer {
     } satisfies Partial<CSSStyleDeclaration>);
     this.canvas.setAttribute("aria-hidden", "true");
     opts.container.append(this.canvas);
-    if (SMOOTH_STATE.enabled) this.cleanups.push(onSmoothChange(() => this.requestRender()));
 
     this.globe = new GlobeScene(opts);
     // (the land's picture, 60 KB: after the first frame, in an idle moment)
@@ -1284,18 +1281,9 @@ export class GlobeRenderer {
     return !!this.moonSample?.onScreen && this.moonRunning && !this.suspended;
   }
 
-  private blurNow = "";
-  /** The smooth experiment's blur (engine/smooth.ts): `amount` times `blur` of an art cell, so that the pixels' edges bleed as an LCD's do. Written only when it changes. */
-  private applySmoothBlur() {
-    const v = SMOOTH_STATE.enabled && SMOOTH_STATE.amount > 0 ? `blur(${(SMOOTH_STATE.amount * SMOOTH_STATE.blur * this.pixel).toFixed(2)}px)` : "";
-    if (v === this.blurNow) return;
-    this.blurNow = v;
-    this.canvas.style.filter = v;
-  }
-
-  /** Something wants the display's own frames, not the idle rotation's ten a second: the caption moving, the moon in the picture, or the smooth experiment (`?smooth`). */
+  /** Something wants the display's own frames, not the idle rotation's ten a second: the caption moving, the moon in the picture. */
   private get wantsDisplayRate(): boolean {
-    return (this.caption?.animating ?? false) || this.moonWantsFrames || SMOOTH_STATE.enabled;
+    return (this.caption?.animating ?? false) || this.moonWantsFrames;
   }
 
   /** The orbit's angle for this frame, advancing its clock by the time since the last one while it may run. */
@@ -1522,10 +1510,10 @@ export class GlobeRenderer {
     if (this.disposed || this.hidden || this.lost) return;
     const now = performance.now();
     // The rotation's own frame chain follows the display (a frame per refresh) but not faster than `SPIN.minFrameMs`: a frame that nothing else asked for is skipped when it is too soon.
-    if (pacedByRotation({ spinning: this.spin.spinning, forced: this.forced, captionAnimating: this.wantsDisplayRate }) && !spinFrameDue(now, this.lastTickAt, { ...SPIN, minFrameMs: Math.max(SPIN.minFrameMs, ENERGY.spinFrameMs) })) {
+    if (pacedByRotation({ spinning: this.spin.spinning, forced: this.forced, captionAnimating: this.wantsDisplayRate }) && !spinFrameDue(now, this.lastTickAt, { ...SPIN, minFrameMs: Math.max(SPIN.minFrameMs, spinFramePeriod(SPIN.degPerSec, ENERGY.spinFrameMs)) })) {
       // (paced by a timer: no wake at the display's rate for a frame that is not due)
       if (!this.paceTimer) {
-        const wait = Math.max(4, Math.max(SPIN.minFrameMs, ENERGY.spinFrameMs) - (now - this.lastTickAt));
+        const wait = Math.max(4, Math.max(SPIN.minFrameMs, spinFramePeriod(SPIN.degPerSec, ENERGY.spinFrameMs)) - (now - this.lastTickAt));
         this.paceTimer = window.setTimeout(() => {
           this.paceTimer = 0;
           this.chainSpin();
@@ -1725,7 +1713,6 @@ export class GlobeRenderer {
       this.opts.onFrame();
       return;
     }
-    this.applySmoothBlur();
     const tp = perfStart();
     this.syncCamera();
     this.syncNodes();

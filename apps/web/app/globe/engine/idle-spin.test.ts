@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { IdleSpin, SPIN, SPIN_DEFAULTS, applySpinFlags, easeInAngle, pacedByRotation, spinBlock, spinFrameDue, stopAngle, stopSpeed, type SpinContext } from "./idle-spin";
+import { IdleSpin, SPIN, SPIN_DEFAULTS, applySpinFlags, easeInAngle, pacedByRotation, spinBlock, spinFrameDue, spinFramePeriod, stopAngle, stopSpeed, type SpinContext } from "./idle-spin";
 import { zoomToRadiusPx } from "./geo";
 
 const rest: SpinContext = { reduced: false, hidden: false, lost: false, suspended: false, selected: false, focused: false, inset: 0, zoom: 2.7, minZoom: 2.7, busy: false };
@@ -298,10 +298,10 @@ describe("idle rotation: page flags", () => {
     applySpinFlags();
     expect(SPIN.enabled).toBe(true);
   });
-  it("the cruise speed can only be changed in debug mode (?spin-speed, 0.01 to 20 deg/s, which also turns it on there)", () => {
+  it("the cruise speed can be changed on any page (?spin-speed, 0.01 to 20 deg/s; on a debug page it also turns it on)", () => {
     stub("?spin-speed=0.5");
     applySpinFlags();
-    expect(SPIN.degPerSec).toBe(SPIN_DEFAULTS.degPerSec);
+    expect(SPIN.degPerSec).toBe(0.5);
     stub("?globe-debug&spin-speed=0.5");
     applySpinFlags();
     expect(SPIN.degPerSec).toBe(0.5);
@@ -344,5 +344,14 @@ describe("pacedByRotation: the rotation's slow pace never holds back a timed pic
   });
   it("does not pace the frames of an animating caption (the interlude's pull-back and lean: it ran at 5 to 10 a second behind the rotation's pace)", () => {
     expect(pacedByRotation({ spinning: true, forced: false, captionAnimating: true })).toBe(false);
+  });
+});
+
+describe("spinFramePeriod", () => {
+  it("is the base at the cruise speed, shorter at a faster one, and never under a display frame", () => {
+    expect(spinFramePeriod(0.2, 100)).toBe(100);
+    expect(spinFramePeriod(1, 100)).toBe(100);
+    expect(spinFramePeriod(3, 100)).toBeCloseTo(45, 5);
+    expect(spinFramePeriod(20, 100)).toBe(16);
   });
 });
