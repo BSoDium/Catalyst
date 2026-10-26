@@ -54,6 +54,22 @@ function arrow(doc: Document): SVGElement {
   return svg;
 }
 
+/**
+ * Where the card goes (the window's coordinates, its top-left corner): to the RIGHT of the moon and centred on it vertically; where that does not fit, to the LEFT; where neither does (a
+ * phone: the card is wider than the room either side of a moon in the middle), BELOW it, its left edge on the moon's left edge, and where there is no room below, ABOVE it the same way.
+ * Always inside the window. `moon` is its centre and drawn radius, `w` and `h` the card's size, `width` and `height` the window's.
+ */
+export function cardPlace(moon: { x: number; y: number; r: number }, w: number, h: number, width: number, height: number): { side: "right" | "left" | "below" | "above"; x: number; y: number } {
+  const clampX = (x: number) => Math.min(Math.max(x, EDGE), Math.max(EDGE, width - w - EDGE));
+  const clampY = (y: number) => Math.min(Math.max(y, EDGE), Math.max(EDGE, height - h - EDGE));
+  const beside = moon.y - h / 2 >= EDGE - 1 && moon.y + h / 2 <= height - EDGE + 1;
+  if (beside && moon.x + moon.r + GAP + w <= width - EDGE) return { side: "right", x: moon.x + moon.r + GAP, y: clampY(moon.y - h / 2) };
+  if (beside && moon.x - moon.r - GAP - w >= EDGE) return { side: "left", x: moon.x - moon.r - GAP - w, y: clampY(moon.y - h / 2) };
+  if (moon.y + moon.r + GAP + h <= height - EDGE) return { side: "below", x: clampX(moon.x - moon.r), y: moon.y + moon.r + GAP };
+  if (moon.y - moon.r - GAP - h >= EDGE) return { side: "above", x: clampX(moon.x - moon.r), y: moon.y - moon.r - GAP - h };
+  return { side: "right", x: clampX(moon.x + moon.r + GAP), y: clampY(moon.y - h / 2) }; // no room anywhere: inside the window, over the moon if it must
+}
+
 export class MoonOverlay {
   private link: HTMLAnchorElement;
   private card: HTMLElement;
@@ -146,24 +162,18 @@ export class MoonOverlay {
   }
 
   /**
-   * Put the card beside the moon, as a map label sits by its box: to the RIGHT of it and centred on it vertically (to the left only where there is no room on the right), kept
-   * inside the window. The link is a little larger than the moon (a finger's width), so the card is placed from the moon's own edge, not the link's.
+   * Put the card beside the moon, as a map label sits by its box: to the RIGHT of it and centred on it vertically; where that does not fit, to the LEFT; where neither does (a phone:
+   * the card is wider than the room either side of a moon in the middle), BELOW it, its left edge on the moon's left edge, and where there is no room below, ABOVE it the same way.
+   * Always inside the window. The link is a little larger than the moon (a finger's width), so the card is placed from the moon's own edge, not the link's.
    */
   private placeCard() {
     const at = this.at;
     if (!at) return;
     const card = this.card;
-    const w = card.offsetWidth;
-    const h = card.offsetHeight;
-    const width = this.root.clientWidth;
-    const height = this.root.clientHeight;
-    const link = at.r * 2; // the link's side (`r` is its half)
-    const right = at.x + at.drawn + GAP + w <= width - EDGE;
-    card.dataset.side = right ? "right" : "left";
-    // measured from the link's top-left corner, the moon being at its middle
-    const dx = right ? link / 2 + at.drawn + GAP : link / 2 - at.drawn - GAP - w;
-    const top = Math.min(Math.max(at.y - h / 2, EDGE), Math.max(EDGE, height - h - EDGE));
-    card.style.transform = `translate3d(${dx}px, ${top - (at.y - at.r)}px, 0)`;
+    const place = cardPlace({ x: at.x, y: at.y, r: at.drawn }, card.offsetWidth, card.offsetHeight, this.root.clientWidth, this.root.clientHeight);
+    card.dataset.side = place.side;
+    // measured from the link's top-left corner (the moon is at its middle, `at.r` is its half side)
+    card.style.transform = `translate3d(${place.x - (at.x - at.r)}px, ${place.y - (at.y - at.r)}px, 0)`;
   }
 
   private setOpen(on: boolean) {

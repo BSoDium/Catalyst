@@ -142,6 +142,34 @@ const open = async (options) => {
 }
 
 {
+  // the card on a phone, where it fits neither right nor left of a moon in the middle: below or above it, inside the window, never over the moon
+  const page = await open(MOBILE);
+  const sides = new Set();
+  for (const deg of [236, 242, 248, 254, 260, 266, 274, 282, 290, 296]) {
+    const st = await pin(page, deg);
+    if (!st.live) continue;
+    await page.touchscreen.tap(st.x, st.y);
+    await page.waitForTimeout(250);
+    const m = await page.evaluate(() => {
+      const card = document.querySelector(".globe-moon-card");
+      const r = card.getBoundingClientRect();
+      return { side: card.dataset.side, l: r.left, t: r.top, r: r.right, b: r.bottom, w: innerWidth, h: innerHeight, open: !!document.querySelector(".globe-moon[data-open]") };
+    });
+    if (!m.open) continue;
+    sides.add(m.side);
+    const cur = await moon(page);
+    const inside = m.l >= 0 && m.t >= 0 && m.r <= m.w && m.b <= m.h;
+    const clear = cur.radius === 0 || m.r < cur.x - cur.radius || m.l > cur.x + cur.radius || m.b < cur.y - cur.radius || m.t > cur.y + cur.radius;
+    ok(inside && clear, `phone: at ${deg} degrees the card (${m.side}) is inside the window and clear of the moon`);
+    await page.evaluate(() => document.activeElement?.blur?.());
+    await page.touchscreen.tap(5, 5);
+    await page.waitForTimeout(250);
+  }
+  ok(sides.size > 0, `phone: the card was placed (${[...sides].join(", ")})`);
+  await page.close();
+}
+
+{
   const page = await open(DESKTOP);
   await page.evaluate(() => window.__globeDebug.pinMoon(90));
   await page.evaluate(() => window.__globeDebug.setView({ zoom: window.__globeDebug.fitZoom() + 2 }));

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { IdleSpin, SPIN, SPIN_DEFAULTS, applySpinFlags, easeInAngle, pacedByRotation, spinBlock, spinFrameDue, spinFramePeriod, stopAngle, stopSpeed, type SpinContext } from "./idle-spin";
+import { IdleSpin, SPIN, SPIN_DEFAULTS, applySpinFlags, easeInAngle, pacedByRotation, spinBlock, spinFrameDue, spinFramePeriod, edgeSpeed, stopAngle, stopSpeed, type SpinContext } from "./idle-spin";
 import { zoomToRadiusPx } from "./geo";
 
 const rest: SpinContext = { reduced: false, hidden: false, lost: false, suspended: false, selected: false, focused: false, inset: 0, zoom: 2.7, minZoom: 2.7, busy: false };
@@ -353,5 +353,16 @@ describe("spinFramePeriod", () => {
     expect(spinFramePeriod(1, 100)).toBe(100);
     expect(spinFramePeriod(3, 100)).toBeCloseTo(45, 5);
     expect(spinFramePeriod(20, 100)).toBe(16);
+  });
+});
+
+describe("edgeSpeed", () => {
+  it("moves the planet's edge a fixed number of px a second: faster on a small planet, never under the floor or over 3", () => {
+    expect(edgeSpeed(270, 3, 0.2)).toBeCloseTo(3 / (270 * (Math.PI / 180)), 6);
+    expect(edgeSpeed(150, 3, 0.2)).toBeGreaterThan(edgeSpeed(270, 3, 0.2));
+    expect(edgeSpeed(100000, 3, 0.2)).toBe(0.2);
+    expect(edgeSpeed(2, 3, 0.2)).toBe(3);
+    expect(edgeSpeed(0, 3, 0.2)).toBe(0.2);
+    expect(edgeSpeed(200, 0, 0.2)).toBe(0.2);
   });
 });

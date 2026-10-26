@@ -35,15 +35,17 @@ export function surfaceCoverage(landShare: number): number {
  * The planet's NIGHT, in the home screen's showcase: the earth is lit by the same sun as the moon (`sunDirection`, engine/moon.ts: fixed in the sky, so the earth turns under its
  * light and the terminator stays where it is on the screen). The light on a ground point is `N . sun` through a smoothstep from `litFrom` (dark) to `litTo` (lit); where it is dark
  * the land's ground steps to its lightest, faintest tone (`shift`: added to the picture's brightness before the cuts) and its stipple thins to `landMin` of the day's, and the
- * lines (graticule, borders, coastlines) thin to `lineMin`: a fade in the lines' own ordered dither, no blended pixel, the page's way. The sea is the page's colour by day and by
+ * lines (graticule, borders, coastlines) go towards the page's colour in a few grey steps (`lineDim`, `lineSteps`: whole pixels of a flat grey, not a dither, which would flicker on a line as it turns). The sea is the page's colour by day and by
  * night, so in either scheme the dark side goes towards the page, as the moon's does.
  */
 export const NIGHT = {
   litFrom: -0.2,
   litTo: 0.32,
   shift: 0.5,
-  landMin: 0.3,
-  lineMin: 0.3,
+  landMin: 0.55,
+  /** The lines on the dark side: their colour goes this share of the way to the page's, in `lineSteps` steps (a staircase of greys, the palette's way; not a thinning: a one-pixel line in a dither flickers as the planet turns). */
+  lineDim: 0.6,
+  lineSteps: 3,
 } as const;
 
 /** GLSL for the light on a ground point `n` (a unit vector in the earth's frame) from the sun `uSunN`, scaled by how much night there is (`uNight`: 0 is all day): 1 lit, 0 dark. */

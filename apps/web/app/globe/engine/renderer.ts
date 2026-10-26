@@ -56,7 +56,7 @@ import {
 } from "./motion";
 import { snapBox } from "./group-square";
 import { Grace } from "./grace";
-import { IdleSpin, SPIN, pacedByRotation, spinBlock, spinFrameDue, spinFramePeriod, type SpinContext } from "./idle-spin";
+import { IdleSpin, SPIN, SPIN_DEFAULTS, edgeSpeed, pacedByRotation, spinBlock, spinFrameDue, spinFramePeriod, type SpinContext } from "./idle-spin";
 import { CINEMATIC } from "./cinematic";
 import { blendPose, flightOffsetShare, flightPose } from "./flight";
 import { SURFACE, surfaceCoverage, surfaceFade } from "./surface";
@@ -1212,6 +1212,7 @@ export class GlobeRenderer {
   private spinCtx: SpinContext = { reduced: false, hidden: false, lost: false, suspended: false, selected: false, focused: false, inset: 0, zoom: 0, minZoom: 0, busy: false };
   private spinContext(): SpinContext {
     const c = this.spinCtx;
+    if (!SPIN.pinned && SPIN.edgePxPerSec > 0 && this.sized) SPIN.degPerSec = edgeSpeed(this.silhouetteFromCamera(), SPIN.edgePxPerSec, SPIN_DEFAULTS.degPerSec);
     c.reduced = this.reduced || this.held;
     c.hidden = this.hidden;
     c.lost = this.lost;
@@ -1233,6 +1234,8 @@ export class GlobeRenderer {
   private moonHeld = false;
   private moonPinned: number | null = null;
   private moonSun: Vec3 = sunDirection();
+  /** How much of the planet's night there is now (0..1; checks). */
+  private nightNow = 0;
   /** The last frame's sample of the moon (null: not shown). */
   private moonSample: MoonSample | null = null;
 
@@ -1265,7 +1268,7 @@ export class GlobeRenderer {
 
   /** What the moon's last frame made of the globe (checks): the sample and the state that may keep it away. */
   moonDebug() {
-    return { sample: this.moonSample, displayRate: this.wantsDisplayRate, ready: this.globe.moon?.ready ?? false, sized: this.sized, suspended: this.suspended, flying: this.flying, selected: this.selected, inset: this.insetTarget, zoom: this.drawView().zoom, fit: this.fit };
+    return { night: this.nightNow, sample: this.moonSample, displayRate: this.wantsDisplayRate, ready: this.globe.moon?.ready ?? false, sized: this.sized, suspended: this.suspended, flying: this.flying, selected: this.selected, inset: this.insetTarget, zoom: this.drawView().zoom, fit: this.fit };
   }
 
   /** Whether the moon may move now: not under reduced motion, not in a hold of the energy pass, not while the link's card holds it, not in a hidden tab. */
@@ -2158,7 +2161,8 @@ export class GlobeRenderer {
     this.globe.setSun(sun.x, sun.y, sun.z);
     // the planet's night (home screen, world view): the moon's sun, fixed in the sky, so the earth turns under it; gone with the zoom as the moon is
     const ns = toEarthFrame(this.moonSun, this.era);
-    this.globe.setNight(this.showcaseActive && !this.flying && land === 0 ? moonAmount(zoom, this.fit) : 0, ns[0], ns[1], ns[2]);
+    this.nightNow = this.showcaseActive && !this.flying && land === 0 ? moonAmount(zoom, this.fit) : 0;
+    this.globe.setNight(this.nightNow, ns[0], ns[1], ns[2]);
     const now = performance.now();
     this.globe.syncCamera(b, zoom, this.pixel, now, this.reduced, lat, Math.max(this.width, this.height), inInterlude);
     // (the caption's lines stay on the page's meridian and latitude; only what is hidden is the flying camera's)

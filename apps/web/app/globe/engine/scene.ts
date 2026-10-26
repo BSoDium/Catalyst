@@ -196,6 +196,7 @@ export class GlobeScene {
     this.landFill = [0, 1, 2].map((i) => t.background[i]! + (t.ink[i]! - t.background[i]!) * LAND_SHARE) as unknown as Rgb;
     this.occluder.uniforms.uFill!.value.setRGB(...this.landFill);
     this.borders.uniforms.uAlt!.value.setRGB(...t.background);
+    for (const m of [this.graticule, this.borders, this.coast]) m.uniforms.uNightTo!.value.setRGB(...t.background);
     // the accent, as the page has it in this scheme (app.css `--palette-blue`; the lighter step on the dark page)
     if (t.scheme === "dark") this.city.uniforms.uColor!.value.setRGB(0.29, 0.64, 0.96);
     else this.city.uniforms.uColor!.value.setRGB(0, 0.47, 0.84);

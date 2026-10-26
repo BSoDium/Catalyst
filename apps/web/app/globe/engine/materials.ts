@@ -28,18 +28,19 @@ export const DITHER_GLSL = /* glsl */ `
 export function lineMaterial(coverage: number, stipple = 0): ShaderMaterial {
   return new ShaderMaterial({
     // `uAlt` / `uAltAmt`: the colour the line is taken towards (the borders, over the land the interlude fills, are the page's colour: the fill is the ink's)
-    uniforms: { uColor: { value: new Color() }, uCoverage: { value: coverage }, uStipple: { value: stipple }, uAlt: { value: new Color() }, uAltAmt: { value: 0 }, uSunN: { value: [0, 0, 1] }, uNight: { value: 0 } },
+    uniforms: { uColor: { value: new Color() }, uCoverage: { value: coverage }, uStipple: { value: stipple }, uAlt: { value: new Color() }, uAltAmt: { value: 0 }, uSunN: { value: [0, 0, 1] }, uNight: { value: 0 }, uNightTo: { value: new Color() } },
     vertexShader: LIT_VERTEX,
     fragmentShader: /* glsl */ `
-      uniform vec3 uColor; uniform float uCoverage; uniform float uStipple; uniform vec3 uAlt; uniform float uAltAmt; uniform vec3 uSunN; uniform float uNight;
+      uniform vec3 uColor; uniform float uCoverage; uniform float uStipple; uniform vec3 uAlt; uniform float uAltAmt; uniform vec3 uSunN; uniform float uNight; uniform vec3 uNightTo;
       varying vec3 vDir;
       ${DITHER_GLSL}
       ${NIGHT_GLSL}
       void main() {
-        // (the night's thinning: the lines on the dark side are fewer pixels of the same dither)
-        ditherDiscard(uCoverage * mix(${NIGHT.lineMin.toFixed(2)}, 1.0, dayShare(normalize(vDir), uSunN, uNight)));
+        ditherDiscard(uCoverage);
+        // the night: the colour goes towards the page's in whole steps (a flat grey per step)
+        float dark = floor((1.0 - dayShare(normalize(vDir), uSunN, uNight)) * ${NIGHT.lineSteps.toFixed(1)} + 0.5) / ${NIGHT.lineSteps.toFixed(1)};
         if (uStipple > 0.0 && mod(floor(gl_FragCoord.x) + floor(gl_FragCoord.y), uStipple) > 0.5) discard;
-        gl_FragColor = vec4(mix(uColor, uAlt, uAltAmt), 1.0);
+        gl_FragColor = vec4(mix(mix(uColor, uAlt, uAltAmt), uNightTo, dark * ${NIGHT.lineDim.toFixed(2)}), 1.0);
       }
     `,
   });
