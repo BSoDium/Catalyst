@@ -4230,7 +4230,13 @@ h1[tabindex="-1"]:focus-visible {
      type and the spacing do the grouping (organisation and place on one line, the role, the facts, the highlights, the skills). */
   .career-timeline {
     --career-line: 1.5625rem; /* 25 px: the organisation's line (24 px type at 1.05) */
-    --career-tile: 3.4375rem; /* 55 px: the organisation's line and the role's under it (about 54 px); odd, so the 1 px rail runs through the exact middle pixel of the tile */
+    /* The marker spans the ink of the two lines beside it, measured, not guessed: from the top of the organisation's capitals (its
+       baseline sits 20 px under the item's top, its cap height is 0.66 em = 15.84 px: 4.16 px, drawn at 4) to the baseline of the role's
+       line (45.19 px: drawn at 45). That is a 41 px tile (odd, so the 1 px rail runs through its exact middle pixel) 4 px down. If
+       the organisation's or the role's size or line height changes, measure again (docs/design-system.md, "Career page"). */
+    --career-tile: 2.5625rem;
+    --career-offset: 0.25rem;
+    --career-rail-gap: 0.5rem; /* the rail stops this far from the tile, above and below */
     --career-gap: 1rem;
     margin: 0;
     padding: 0;
@@ -4247,13 +4253,13 @@ h1[tabindex="-1"]:focus-visible {
     padding-bottom: 0;
   }
 
-  /* The rail: from the tile's middle down to the next item (the tile hides its top). The last item's stops at its tile. */
+  /* The rail: from a gap under the item's tile to a gap above the next item's tile. */
   .career-item::before {
     content: "";
     position: absolute;
     left: calc((var(--career-tile) - var(--hairline)) / 2);
-    top: 0;
-    bottom: calc(var(--career-tile) / 2 * -1);
+    top: calc(var(--career-offset) + var(--career-tile) + var(--career-rail-gap));
+    bottom: calc(var(--career-rail-gap) - var(--career-offset));
     border-left: var(--hairline) solid var(--border);
   }
 
@@ -4279,7 +4285,7 @@ h1[tabindex="-1"]:focus-visible {
   .career-icon {
     position: absolute;
     left: 0;
-    top: 0;
+    top: var(--career-offset);
     z-index: 1;
     display: grid;
     place-items: center;
@@ -4288,7 +4294,7 @@ h1[tabindex="-1"]:focus-visible {
     height: var(--career-tile);
     overflow: hidden;
     border-radius: 0.25rem; /* owner exception to the system's square edges: a very small radius on the logo, nothing else on the page has one */
-    background: var(--accent); /* behind an icon; a logo covers it. The tile is also the mask that keeps the rail from running through it */
+    background: var(--accent); /* behind an icon; a logo covers it */
     color: var(--muted-foreground);
   }
 
