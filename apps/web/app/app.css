@@ -3174,7 +3174,7 @@ h1[tabindex="-1"]:focus-visible {
    * the pointer's way until the moon is held.
    */
   .globe-moon-card {
-    --map-label-plate: var(--background);
+    --map-label-plate: color-mix(in srgb, var(--background) 82%, transparent);
     position: absolute;
     left: 0;
     top: 0;

@@ -295,7 +295,7 @@ export interface GlobeProps {
   onViewChange(view: GlobeViewState): void;
   /**
    * The visitor started a gesture on the globe itself: a pointer pressed on it (a drag, a pinch's fingers, a tap on a place) or a wheel
-   * turned over it. Fired at the start of each press and for each wheel event, and only for input that reaches the globe: not for hovering, not for input
+   * turned over it. Fired at the start of each press, for each wheel event and (at most four a second) while a pressed pointer moves, so that a long drag is not idle, and only for input that reaches the globe: not for hovering, not for input
    * on the app's own controls laid over it, not for the globe's own motion (idle rotation, flights, inertia). Optional: the landing hero
    * steps back on it (`lib/hero-machine.ts`).
    */

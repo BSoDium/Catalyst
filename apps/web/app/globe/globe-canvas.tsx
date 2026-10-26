@@ -108,6 +108,9 @@ function lodStressCount(): number {
 
 const isWebGLUnavailable = (e: unknown) => e instanceof Error && e.name === "WebGLUnavailableError";
 
+/** The most often a pointer move over the stage restarts the app's idle clock (`onInteract`), ms. */
+const MOVE_NOTE_MS = 250;
+
 export default function GlobeCanvas({
   places,
   groups,
@@ -165,11 +168,23 @@ export default function GlobeCanvas({
     const stage = stageRef.current;
     if (!stage || !wantsInteract) return;
     const note = () => latest.current.onInteract?.();
+    // A drag is a gesture for as long as it lasts, not only at its start (a visitor turning the globe for longer than the hero's idle delay is not idle): a move with a
+    // button or a finger down restarts the clock, at most every `MOVE_NOTE_MS`.
+    let last = 0;
+    const noteMove = (e: PointerEvent) => {
+      if (e.pointerType === "mouse" && e.buttons === 0) return;
+      const now = performance.now();
+      if (now - last < MOVE_NOTE_MS) return;
+      last = now;
+      note();
+    };
     const options = { passive: true, capture: true } as const;
     stage.addEventListener("pointerdown", note, options);
+    stage.addEventListener("pointermove", noteMove, options);
     stage.addEventListener("wheel", note, options);
     return () => {
       stage.removeEventListener("pointerdown", note, options);
+      stage.removeEventListener("pointermove", noteMove, options);
       stage.removeEventListener("wheel", note, options);
     };
   }, [wantsInteract]);
