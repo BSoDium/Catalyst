@@ -4097,9 +4097,9 @@ h1[tabindex="-1"]:focus-visible {
     min-width: 0;
   }
 
-  /* The portrait: a SQUARE the height of the text block beside it (name, statement, availability), so the two weigh the same. It is
-     drawn by the grid row (stretched, 1:1) and the picture fills it; on a phone the block is too tall for that, so it is a fixed small
-     square at the top. Centred on the face; no frame, no radius (the system's edges are square). */
+  /* The portrait: a SQUARE about as tall as the text block beside it (name, statement, availability), so the two weigh the same:
+     from 40 rem its width follows the head's (below); on a phone it is a fixed small square. Centred on the face; the outline
+     is a hairline, no radius (the system's edges are square). */
   .career-portrait {
     position: relative;
     margin: 3.25rem 0 0;
@@ -4157,13 +4157,15 @@ h1[tabindex="-1"]:focus-visible {
 
   @media (min-width: 40rem) {
     .career-id[data-portrait="true"] {
-      align-items: stretch;
+      align-items: start;
     }
 
+    /* A size of its own, from the head's width (never from the height of the text beside it: a square that takes its width from the
+       height of a text block whose height depends on its width is a feedback loop, and at some widths it blew up, hung over the
+       line below and squeezed the text). About the height of the name block at 1440 px; 9 rem at the narrowest, 17 rem at most. */
     .career-portrait {
-      width: auto;
-      min-width: 8rem;
-      align-self: stretch;
+      width: clamp(9rem, 20cqi, 17rem);
+      margin-top: clamp(2rem, 4.4cqi, 4rem); /* the same as the name's: the top of the picture meets the top of the name */
     }
 
     .career-portrait img {
