@@ -75,6 +75,25 @@ export function careerIcon(text: string, kind: "role" | "education"): IconName {
   return "career";
 }
 
+/**
+ * The logo of an organisation or a school: a square file of the site's own, `public/career-logos/` (NOT `public/media/`, which belongs
+ * to the content export and refuses a foreign file). A stopgap that the contract does not know: the file is found from the name the
+ * owner wrote, by these patterns. The proper home is an optional `logo` of a role and of an education in the published contract, fed
+ * from the private repo like the portrait (docs/career-page.md). Null when there is none: the page then draws the initial.
+ */
+const LOGOS: readonly (readonly [RegExp, string])[] = [
+  [/\bkanop\b/i, "kanop"],
+  [/\btauniqo\b/i, "tauniqo"],
+  [/\bescape\b/i, "escape"],
+  [/\benseeiht\b/i, "enseeiht"],
+  [/\balpen-adria|\bklagenfurt\b/i, "aau"],
+];
+
+export function careerLogo(name: string): string | null {
+  const hit = LOGOS.find(([re]) => re.test(name));
+  return hit ? `/career-logos/${hit[1]}.webp` : null;
+}
+
 /** Whether a role is the one in progress (`end: present`). */
 export const isCurrent = (r: Pick<PublishedCareerRole, "end">): boolean => r.end === "present";
 

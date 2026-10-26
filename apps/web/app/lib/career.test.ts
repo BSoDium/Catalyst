@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { loadDemoProjection } from "@catalyst/published";
 import type { PublishedCareer } from "@catalyst/schemas";
-import { asOfText, careerDuration, careerIcon, careerJsonLd, careerPeriod, formatCareerMonth, isCurrent, languageDetail, safeLinks, safePortrait } from "./career";
+import { asOfText, careerDuration, careerIcon, careerLogo, careerJsonLd, careerPeriod, formatCareerMonth, isCurrent, languageDetail, safeLinks, safePortrait } from "./career";
 import { SITE } from "./site";
 
 const demo = loadDemoProjection().career!;
@@ -81,6 +81,17 @@ describe("careerIcon", () => {
     expect(careerIcon("Computer Graphics & Vision", "education")).toBe("cuboid");
     expect(careerIcon("Mathematics & Physics", "education")).toBe("sigma");
     expect(careerIcon("History", "education")).toBe("graduation-cap");
+  });
+});
+
+describe("careerLogo", () => {
+  it("finds a logo from the name the owner wrote, and none for an unknown one", () => {
+    expect(careerLogo("Kanop")).toBe("/career-logos/kanop.webp");
+    expect(careerLogo("Tauniqo.ai")).toBe("/career-logos/tauniqo.webp");
+    expect(careerLogo("Escape Technologies")).toBe("/career-logos/escape.webp");
+    expect(careerLogo("ENSEEIHT, INP Toulouse")).toBe("/career-logos/enseeiht.webp");
+    expect(careerLogo("Alpen-Adria-Universität Klagenfurt")).toBe("/career-logos/aau.webp");
+    expect(careerLogo("Macrodata Labs")).toBeNull();
   });
 });
 

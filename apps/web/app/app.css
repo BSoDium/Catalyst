@@ -1585,7 +1585,9 @@
   .nav-fade {
     position: absolute;
     z-index: -1;
-    top: 0;
+    /* The row sits a few pixels below the viewport's top edge (it is centred in the navbar's height): the fade starts 1 rem above
+       the row, past the edge, so there is no uncovered strip over which the map would show sharp. */
+    top: -1rem;
     left: -6rem;
     right: -6rem;
     height: var(--fade-height);
@@ -4212,9 +4214,16 @@ h1[tabindex="-1"]:focus-visible {
     border-top: 0;
   }
 
+  /* A block's title is editorial: the reading face at the scale of a section heading, in the foreground (not a small grey label). */
   .career-block-title {
     margin: 0 0 2rem;
-    color: var(--muted-foreground);
+    font-family: var(--font-reading);
+    font-optical-sizing: auto;
+    font-size: clamp(1.75rem, 3cqi, 2.25rem);
+    font-weight: var(--weight-medium);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    color: var(--foreground);
   }
 
   .career-block-body {
@@ -4262,24 +4271,10 @@ h1[tabindex="-1"]:focus-visible {
     background: linear-gradient(to bottom, var(--border) calc(100% - 5rem), transparent);
   }
 
-  /* And it comes in the same way: the first item's rail starts under the block's title (2 rem above its tile) and fades in. */
-  .career-item:first-child::before {
-    top: -2rem;
-    border-left: 0;
-    width: var(--hairline);
-    background: linear-gradient(to bottom, transparent, var(--border) 2rem);
-  }
-
-  .career-item:first-child:last-child::before {
-    background: linear-gradient(to bottom, transparent, var(--border) 2rem, var(--border) calc(100% - 5rem), transparent);
-  }
-
   /* Forced colours drop gradients: the rail is then a plain hairline, cut at its ends. */
   @media (forced-colors: active) {
     .career-item::before,
-    .career-item:first-child::before,
-    .career-item:last-child::before,
-    .career-item:first-child:last-child::before {
+    .career-item:last-child::before {
       background: none;
       border-left: var(--hairline) solid CanvasText;
     }
@@ -4357,6 +4352,26 @@ h1[tabindex="-1"]:focus-visible {
     display: flex;
     align-items: center;
     min-height: var(--career-tile);
+  }
+
+  /* The organisation's logo (or its initial): a square as tall as the organisation's line, no radius, then the name. */
+  .career-logo {
+    flex: none;
+    display: block;
+    width: var(--career-tile);
+    height: var(--career-tile);
+    margin-right: 0.625rem;
+    object-fit: cover;
+  }
+
+  .career-logo-initial {
+    display: grid;
+    place-items: center;
+    background: var(--accent);
+    color: var(--muted-foreground);
+    font-family: var(--font-meta);
+    font-size: 0.75rem;
+    font-weight: var(--weight-medium);
   }
 
   .career-org {

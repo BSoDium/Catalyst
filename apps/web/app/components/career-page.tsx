@@ -1,7 +1,7 @@
 import { Link } from "react-router";
 import type { PublishedCareer, PublishedCareerEducation, PublishedCareerRole } from "@catalyst/schemas";
 import { Icon } from "~/components/ui";
-import { asOfText, careerDuration, careerIcon, careerPeriod, formatCareerMonth, isCurrent, languageDetail, safeLinks, safePortrait } from "~/lib/career";
+import { asOfText, careerDuration, careerIcon, careerLogo, careerPeriod, formatCareerMonth, isCurrent, languageDetail, safeLinks, safePortrait } from "~/lib/career";
 import { safeExternalUrl } from "~/lib/entry-blocks";
 import { placePath } from "~/lib/entries";
 import { SITE_NAME } from "~/lib/site";
@@ -137,7 +137,7 @@ export function CareerPage({ career, places = [] }: { career: PublishedCareer; p
 
       {links.length > 0 && (
         <footer data-slot="career-links" className="career-footer">
-          <h2 id="links-h" className="career-block-title type-meta">
+          <h2 id="links-h" className="career-block-title">
             Elsewhere
           </h2>
           <ul aria-labelledby="links-h" className="career-links">
@@ -160,7 +160,7 @@ export function CareerPage({ career, places = [] }: { career: PublishedCareer; p
 function Block({ id, title, count, children }: { id: string; title: string; count?: number; children: React.ReactNode }) {
   return (
     <section id={id} aria-labelledby={`${id}-h`} data-slot={`career-${id}`} className="career-block">
-      <h2 id={`${id}-h`} className="career-block-title type-meta">
+      <h2 id={`${id}-h`} className="career-block-title">
         {title}
         {count !== undefined && <span className="sr-only">, {count === 1 ? "1 item" : `${count} items`}</span>}
       </h2>
@@ -195,6 +195,18 @@ function Period({ start, end }: { start: string; end: string | undefined }) {
   );
 }
 
+/** The organisation's logo, or its initial on a quiet square when there is none (every name keeps the same left edge). Decorative: the name follows it. */
+function Logo({ name }: { name: string }) {
+  const src = careerLogo(name);
+  return src ? (
+    <img src={src} alt="" width={200} height={200} loading="lazy" decoding="async" className="career-logo" />
+  ) : (
+    <span className="career-logo career-logo-initial" aria-hidden="true">
+      {name.trim().charAt(0).toUpperCase()}
+    </span>
+  );
+}
+
 function Where({ text, place, known }: { text: string; place: string | undefined; known: boolean }) {
   return known && place ? (
     <Link to={placePath(place)} className="career-place">
@@ -214,6 +226,7 @@ function RoleItem({ role, placeKnown }: { role: PublishedCareerRole; placeKnown:
       </span>
       <div className="career-head">
         <div className="career-top">
+          <Logo name={role.org} />
           <h3 className="career-org">
             {orgUrl ? (
               <a href={orgUrl} rel="noopener noreferrer" className="career-org-link">
@@ -263,6 +276,7 @@ function EducationItem({ item, placeKnown }: { item: PublishedCareerEducation; p
       </span>
       <div className="career-head">
         <div className="career-top">
+          <Logo name={item.institution} />
           <h3 className="career-org">{item.institution}</h3>
         </div>
         <p className="career-role">
