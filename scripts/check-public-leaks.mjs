@@ -55,8 +55,11 @@ for (const [label, rel] of targets) {
   }
   for (const file of walk(dir)) {
     if (/\.(png|jpe?g|webp|ico|woff2?|map)$/i.test(file)) continue;
-    const text = readFileSync(file, "utf8");
+    let text = readFileSync(file, "utf8");
     scanned++;
+    // A trip's own public page is meant to be public (`routes[].url`, docs/api-contract.md): that one shape, an https address on the trip site with plain path
+    // characters, is not private vocabulary. Anything else that names the site, in the projection or in a bundle, still fails.
+    if (label === "published projection") text = text.replace(/"url": "https:\/\/www\.polarsteps\.com\/[A-Za-z0-9._-]+\/[0-9]+-[A-Za-z0-9-]+"/g, '"url": "<trip page>"');
     if (label !== "published projection") bundleFiles.push({ file: relative(root, file), text });
     for (const word of FORBIDDEN) {
       if (text.includes(word)) failures.push(`${label}: "${word}" found in ${relative(root, file)}`);

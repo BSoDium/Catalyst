@@ -320,6 +320,12 @@
             },
             "additionalProperties": false
           },
+          "url": {
+            "type": "string",
+            "maxLength": 2000,
+            "format": "uri",
+            "pattern": "^https:\\/\\/[^\\s\\u0000-\\u001F\\u007F\\u202A-\\u202E\\u2066-\\u2069]+$"
+          },
           "stops": {
             "minItems": 2,
             "maxItems": 200,

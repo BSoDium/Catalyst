@@ -36,7 +36,18 @@
     { "slug": "belgrade", "name": "Belgrade", "region": "Serbia", "coordinates": { "lat": 44.79, "lon": 20.45 }, "labelPriority": 40, "group": "balkans", "countryCode": "RS",
       "body": [], "images": [], "related": [] },
     { "slug": "bangkok", "name": "Bangkok", "region": "Thailand", "coordinates": { "lat": 13.76, "lon": 100.5 }, "labelPriority": 45, "group": "south-eastern-asia", "countryCode": "TH",
-      "body": [], "images": [], "related": [] },
+      "summary": "Two nights between a night train and a bus: canals at dawn, a market that never closes, and a plan that did not survive the heat.",
+      "dates": { "start": "2024-11", "end": "2024-11", "label": "November 2024" },
+      "body": [
+        "We arrived at five in the morning with nowhere to be, which is the best way to see a city of this size. The canals were already working, the first boats carrying rice and ice, and the street cooks were setting out their stools.",
+        "By noon it was too hot to plan anything. We ate what the person next to us was eating, crossed the river on the cheapest ferry and fell asleep in the shade of a temple wall."
+      ],
+      "images": [
+        { "src": "/media/demo/fig-night-platform-1.svg", "alt": "A night train platform, drawn as a plain monochrome sketch", "width": 960, "height": 600, "caption": "The platform at five in the morning" },
+        { "src": "/media/demo/fig-coast-road.svg", "alt": "A coast road, drawn as a plain monochrome sketch", "width": 960, "height": 600 },
+        { "src": "/media/demo/fig-monsoon-1.svg", "alt": "Rain over a street, drawn as a plain monochrome sketch", "width": 960, "height": 600, "caption": "The afternoon rain, on time" }
+      ],
+      "related": [] },
     { "slug": "da-nang", "name": "Da Nang", "region": "Vietnam", "coordinates": { "lat": 16.05, "lon": 108.22 }, "labelPriority": 22, "group": "da-nang-area", "countryCode": "VN",
       "body": [], "images": [], "related": [] },
     { "slug": "hoi-an", "name": "Hội An", "region": "Vietnam", "coordinates": { "lat": 15.88, "lon": 108.33 }, "labelPriority": 18, "group": "da-nang-area", "countryCode": "VN",
@@ -58,6 +69,7 @@
       "title": "Down the Vietnamese coast",
       "summary": "Two weeks from the capital to the south by rail and road, with a flight home.",
       "dates": { "start": "2024-03", "end": "2024-04" },
+      "url": "https://example.org/demo-trip-vietnam",
       "stops": ["hanoi","hue","ho-chi-minh-city"],
       "legs": [
         {"mode":"rail","polyline":"olj_Coy`eSt_AkX~}@uWn}@qWb}@iWv|@gWl|@aW`|@}Vx{@yVl{@uVb{@qVxz@mVpz@kVjz@gVdz@cV~y@cV|y@aV|y@aV|y@cVbz@aVfz@eVnz@iVzz@mVf{@qVt{@wVf|@}Vz|@eWn}@kWd~@wW|~@}Wt_AiXp`AsXhaA{XbbAgY~bAqYxcAyYpdAeZheAmZ`fAwZvfA_[hgAe[|gAm[jhAs[xhAy[biA{[liA_\\piAa\\viAc\\tiAc\\riAa\\piAa\\hiA}[~hAy[thAu[fhAo[xgAi[hgAc[tfA}ZdfAuZneAkZzdAeZddA}YncAsYxbAiYbbAcYlaAyXv`AoX``AiXj_A_Xt~@wW`~@mWj}@gWv|@}Vb|@wVn{@oVzz@eVhz@_Vty@yU`y@oUlx@iU|w@aUfw@yTtv@qT`v@kTlu@aTzt@{Sht@uSts@kS`s@eSpr@_S~q@wRlq@oR|p@kRpp@eR`p@_Rvo@{Qlo@wQdo@sQ`o@sQ|n@oQ|n@qQ~n@qQdo@uQno@wQzo@{Qhp@aR|p@iRpq@qRjr@{Rfs@eSbt@qSfu@}Shv@kTlw@yTtx@gU|y@wUd{@gVl|@wVt}@eW|~@uWb`AcXfaAqXhbA_YfcAkYddAsYzdA_ZneAeZ|eAkZhfAmZnfAqZnfAqZhfAoZ|eAiZneAeZxdA{Y~cAqY`cAgYzaAwXt`AgXf_AwWz}@eWf|@qVtz@_V~x@iUjw@uTru@_T~s@kSjr@wRxp@eRho@qQ|m@_Qrl@qPpk@cPnj@uOti@mO~h@cOnh@}Nfh@{N`h@wNbh@yNjh@{Nxh@aOhi@gO`j@qO~j@{O|k@gP`m@uPfn@cQpo@sQzp@cRfr@uRps@eS~t@uShv@gTpw@uTvx@cUzy@sU|z@}Uv{@iVn|@qV`}@wVp}@_Wx}@aWz}@cWz}@aWt}@_Wf}@yVv|@uV`|@kVh{@aVjz@wUjy@iUfx@}Tbw@mT|u@aTvt@oSns@cShr@sRdq@eR`p@wQbo@kQbn@aQjm@uPvl@oPdl@iPzk@cPrk@aPrk@aPxk@aP`l@gPpl@kPfm@uP`n@}P`o@kQdp@wQlq@iRxr@wRht@kSxu@}Spw@qTdy@eUzz@{Ut|@oVj~@eWb`AyWxaAoXlcAaY|dAuYnfAgZxgAwZbiAg[hjAu[hkAa\\flAm\\`mAw\\vmA}\\hnAe]tnAk]~nAm]doAo]hoAq]foAo]boAo]|nAk]tnAi]jnAe]~mA_]nmA{\\`mAs\\plAo\\`lAg\\pkAa\\~jA{[ljAs[|iAm[jiAg[xhA_[hhAyZxgAsZfgAmZtfAeZdfA_ZpeAwY`eAqYldAiYxcAaYbcAyXlbAqXtaAgX|`A_X``AsWd_AiWf~@}Vf}@sVd|@cVb{@wU~y@kUzx@{Ttw@mTlv@_Thu@qS`t@aS|r@sRvq@eRvp@yQto@mQvn@aQ|m@wPdm@mPpl@gPdl@aPxk@}Ork@{Otk@{Ozk@}Ohl@cPxl@iPrm@sPpn@}Pro@kQ~p@{Qlr@mR`t@_Szu@wSvw@kTvy@eUx{@}U~}@yVb`AqWlbAmXpdAgYxfAaZzhA{Z|jAs[zlAk\\tnA_]hpAs]xqAe^`sAu^btAa_@`uAm_@puAs_@~uAw_@bvAw_@~uAw_@puAq_@|tAk_@`tA__@|rAq^rqAa^`pAm]hnAy\\jlAc\\hjAi[`hAmZxeAsYjcAuX|`AwWl~@yV|{@{Uly@}T`w@aTtt@cSjr@iRfp@oQdn@uPhl@_Ppj@kO~h@wNtg@gNlf@yMle@mMtd@cM`d@{Lrc@wLjc@sLhc@sLlc@uLtc@wL`d@{Lpd@cMde@iM|e@qMtf@{Mpg@eNjh@oNhi@{Nfj@eObk@qO|k@yOxl@ePpm@mPfn@uP|n@}Plo@eQ~o@iQhp@mQrp@sQxp@sQ|p@uQ~p@uQ|p@uQxp@uQrp@qQjp@mQbp@kQvo@gQjo@cQ~n@}Prn@yPdn@sPxm@oPnm@kP`m@gPxl@cPpl@_Phl@}Obl@{O~k@yO|k@yO|k@wO~k@yO`l@yOdl@{Ojl@_Prl@_Pzl@cPbm@gPnm@kPxm@oPdn@qPpn@wPzn@{Pfo@_Qro@cQzo@gQdp@kQlp@mQvp@qQzp@sQ`q@sQfq@wQhq@wQjq@yQlq@yQlq@yQlq@wQjq@yQhq@wQfq@wQdq@uQbq@sQ`q@uQ|p@qQzp@sQzp@qQxp@qQxp@oQxp@qQ|p@sQ|p@qQbq@uQdq@uQjq@wQrq@yQxq@{Q`r@aRhr@aRtr@eRzr@iRfs@mRps@qRzs@uRdt@wRnt@{Rxt@_S`u@cShu@eSpu@gSvu@kS|u@kS`v@oSfv@oShv@qSlv@qSlv@sSnv@sSpv@sSpv@sSpv@sSpv@sSpv@sSrv@sSrv@sSvv@uSxv@wS|v@wS`w@ySjw@{Spw@_T|w@cThx@gTvx@kTfy@sTxy@wTlz@aUd{@iU~{@sUz|@{U|}@iVd_AyVx`AkWzdA{X"},
