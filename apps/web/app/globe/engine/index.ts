@@ -319,7 +319,6 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
   }
 
   if (withMoon && opts.moon && opts.moonRoot) moonOverlay = new MoonOverlay(opts.moonRoot, opts.moon, () => renderer.moonFrame(), (on) => renderer.setMoonHeld(on));
-  renderer.setMoonListener(() => moonOverlay?.update());
   renderer.setSelected(opts.selectedSlug, false);
   labels.setSelected(opts.selectedSlug);
   labels.setWake(() => renderer.requestRender()); // a plan run by the labels' timer on a map at rest started a glide

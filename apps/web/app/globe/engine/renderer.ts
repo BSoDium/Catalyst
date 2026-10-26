@@ -69,9 +69,9 @@ import { SHOWCASE_STATE, bandLat, inBand, shellWindowFactor, type CaptionContent
 import { CAP_HEIGHT_EM, ringAlpha, ringFloorZoom, ringRoomRadius, RING_STATE } from "./ring";
 import { RingLayer } from "./ring-layer";
 import { GlobeScene } from "./scene";
-import { MOON, inclinationFor, inertialPosition, moonAmount, moonAxes, moonSprite, orbitAngle, orbitBasis, rollFor, spriteCells, sunDirection, toEarthFrame, toRad, unhidden, type OrbitBasis, type Vec3 } from "./moon";
-import { MoonSprite, loadMoonMap } from "./moon-sprite";
-import type { MoonMap } from "./moon";
+import { SMOOTH_STATE } from "./smooth";
+import { MOON, inclinationFor, moonAmount, orbitAngle, rollFor, sunDirection, toEarthFrame, toRad, type Vec3 } from "./moon";
+import type { MoonSample } from "./moon-layer";
 import { CAPTION, ENERGY, INSET_EASE, CAPTION_LOAD, RING, SKY, START_VIEW, TUNING } from "./tuning";
 import { QualityGovernor } from "./quality";
 import { FpsOverlay } from "./fps-overlay";
@@ -281,7 +281,7 @@ export class GlobeRenderer {
     for (const p of opts.places) this.placeBySlug.set(p.slug, p);
 
     this.gl = new WebGLRenderer({
-      antialias: false,
+      antialias: SMOOTH_STATE.enabled, // (`?smooth`: engine/smooth.ts)
       alpha: false,
       powerPreference: ENERGY.gpu,
       preserveDrawingBuffer: false,
@@ -311,20 +311,10 @@ export class GlobeRenderer {
     else window.setTimeout(loadSurface, 800);
     // (the Moon's picture, 13 KB, in the same idle moment)
     const loadMoon = () => {
-      if (this.disposed || !this.moonSprite) return;
-      void loadMoonMap(opts.container.ownerDocument, MOON.mapUrl).then((map) => {
-        if (this.disposed || !map) return;
-        this.moonMap = map;
-        this.moonTick(performance.now());
-      });
+      if (!this.disposed) this.globe.moon?.load(MOON.mapUrl, () => this.requestRender());
     };
     if (typeof requestIdleCallback === "function") requestIdleCallback(loadMoon, { timeout: 3000 });
     else window.setTimeout(loadMoon, 900);
-    // (the moon's sprite goes in before the ring, so that the ring's canvas is over it)
-    if (opts.moon) {
-      this.moonSprite = new MoonSprite(opts.container);
-      this.moonSprite.setTheme(opts.theme);
-    }
     if (opts.ringText && RING_STATE.enabled) this.ring = new RingLayer(opts.container, opts.ringText, opts.theme, this.reduced);
     if (opts.routes.length > 0) {
       this.legIcons = new TrailDotsLayer(opts.container, { lines: false, iconFromZoom: LEG_ICON_FROM_ZOOM, onTop: true });
@@ -379,11 +369,7 @@ export class GlobeRenderer {
       this.cleanups.push(() => window.removeEventListener(type, this.onInput, { capture: true }));
     }
     this.cleanups.push(() => window.clearTimeout(this.spinTimer));
-    this.cleanups.push(() => {
-      window.clearTimeout(this.moonTimer);
-      if (this.moonRaf) cancelAnimationFrame(this.moonRaf);
-      this.moonSprite?.dispose();
-    });
+
     try {
       if (new URLSearchParams(location.search).has("caption-fps")) {
         this.overlay = new FpsOverlay(opts.container, () => ({ period: this.governor.period, lateShare: this.governor.lateShare, rung: { level: this.governor.level, ...this.governor.rung }, held: this.held }));
@@ -783,7 +769,6 @@ export class GlobeRenderer {
 
   setTheme(theme: GlobeTheme) {
     this.theme = theme;
-    this.moonSprite?.setTheme(theme);
     this.ring?.setTheme(theme);
     this.caption?.setTheme(theme);
     // Tones of the semantic zoom: group squares in map levels per kind (below the ink), a place marker the ink.
@@ -1099,7 +1084,7 @@ export class GlobeRenderer {
    * that animation is the boxes' own transitions that the turn causes (limb crossings), and its frames are paced like the turn's: not faster than `SPIN.minFrameMs`.
    */
   private keepGoing(cameraMoving: boolean) {
-    if (!cameraMoving && pacedByRotation({ spinning: this.spin.spinning, forced: false, captionAnimating: this.caption?.animating ?? false })) this.chainSpin();
+    if (!cameraMoving && pacedByRotation({ spinning: this.spin.spinning, forced: false, captionAnimating: this.wantsDisplayRate })) this.chainSpin();
     else this.requestRender();
   }
 
@@ -1244,44 +1229,27 @@ export class GlobeRenderer {
 
   /* ------------------------------ the moon ------------------------------ */
 
-  /** The sprite the moon is drawn as, and its picture once it is in (engine/moon-sprite.ts); null when the page has no moon. */
-  private moonSprite: MoonSprite | null = null;
-  private moonMap: MoonMap | null = null;
-  /** The time the moon's orbit has run for, ms: it advances while the moon may move, and stands still otherwise. */
+  /** The time the moon's orbit has run for, ms: it advances on the frames that are drawn while the moon may move, and stands still otherwise. */
   private moonMs = 0;
   private moonAt = 0;
   private moonHeld = false;
   private moonPinned: number | null = null;
-  private moonTimer = 0;
-  private moonRaf = 0;
-  private moonBasis: { key: string; basis: OrbitBasis } | null = null;
   private moonSun: Vec3 = sunDirection();
-  /** What the last tick said of the moon, in the container's CSS px (null: not shown). */
-  private moonSample: { x: number; y: number; r: number; amount: number; unhidden: number; onScreen: boolean } | null = null;
-  /** Told after every tick of the moon (the link over it is moved there). */
-  private moonListener: (() => void) | null = null;
-
-  /** What the moon's tick last made of the globe (checks): the sample, the sprite and why it may not be wanted. */
-  moonDebug() {
-    return { sample: this.moonSample, sprite: this.moonSprite?.state() ?? null, sized: this.sized, lost: this.lost, suspended: this.suspended, flying: this.flying, selected: this.selected, inset: this.insetTarget, zoom: this.drawView().zoom, fit: this.fit, cells: this.moonCells };
-  }
-
-  setMoonListener(fn: (() => void) | null) {
-    this.moonListener = fn;
-  }
+  /** The last frame's sample of the moon (null: not shown). */
+  private moonSample: MoonSample | null = null;
 
   /** The moon holds still (the link's card is out under the pointer or the focus, so that it can be clicked). */
   setMoonHeld(on: boolean) {
     if (on === this.moonHeld) return;
     this.moonHeld = on;
     if (on) this.moonAt = 0;
-    else this.moonTick(performance.now());
+    else this.requestRender();
   }
 
   /** Checks and captures: hold the moon at `deg` of its orbit (null lets it run). */
   pinMoon(deg: number | null) {
     this.moonPinned = deg === null ? null : toRad(deg);
-    this.moonTick(performance.now());
+    this.requestRender();
   }
 
   /** The orbit's angle now, radians (checks): pinned, or where the clock has it. */
@@ -1294,7 +1262,12 @@ export class GlobeRenderer {
     this.moonPinned = null;
     this.moonMs = ((toRad(deg) - orbitAngle(0)) / (2 * Math.PI)) * MOON.periodMs;
     this.moonAt = 0;
-    this.moonTick(performance.now());
+    this.requestRender();
+  }
+
+  /** What the moon's last frame made of the globe (checks): the sample and the state that may keep it away. */
+  moonDebug() {
+    return { sample: this.moonSample, displayRate: this.wantsDisplayRate, ready: this.globe.moon?.ready ?? false, sized: this.sized, suspended: this.suspended, flying: this.flying, selected: this.selected, inset: this.insetTarget, zoom: this.drawView().zoom, fit: this.fit };
   }
 
   /** Whether the moon may move now: not under reduced motion, not in a hold of the energy pass, not while the link's card holds it, not in a hidden tab. */
@@ -1302,7 +1275,20 @@ export class GlobeRenderer {
     return this.moonPinned === null && !this.reduced && !this.held && !this.moonHeld && !this.hidden;
   }
 
-  /** The orbit's angle for this tick, advancing its clock by the time since the last one while it may run. */
+  /**
+   * The moon is in the picture and moving: it wants the display's own frames (not the idle rotation's ten a second), so that a body that crosses a few pixels a second glides over them
+   * (its edge is drawn with coverage: a fraction of a pixel of movement is a fraction of a pixel's tone, but only if there is a frame for it). A few seconds of each lap.
+   */
+  private get moonWantsFrames(): boolean {
+    return !!this.moonSample?.onScreen && this.moonRunning && !this.suspended;
+  }
+
+  /** Something wants the display's own frames, not the idle rotation's ten a second: the caption moving, the moon in the picture, or the smooth experiment (`?smooth`). */
+  private get wantsDisplayRate(): boolean {
+    return (this.caption?.animating ?? false) || this.moonWantsFrames || SMOOTH_STATE.enabled;
+  }
+
+  /** The orbit's angle for this frame, advancing its clock by the time since the last one while it may run. */
   private moonAngle(now: number): number {
     if (this.moonPinned !== null) return this.moonPinned;
     if (this.reduced) return toRad(MOON.restDeg);
@@ -1313,91 +1299,18 @@ export class GlobeRenderer {
     return orbitAngle(this.moonMs);
   }
 
-  /**
-   * Place the moon for `now` and draw its sprite: from the camera as the last frame set it (the camera moves only in frames, and every frame calls this), so it can run on its own
-   * between them, at the display's rate, for a smooth glide (the sprite is moved by whole DEVICE pixels, not art cells). Then arm the next tick: every display frame while the moon
-   * is in the picture and may move, a slow look while it may move and is out of it, none when it stands still (a frame of the globe moves it if the camera does).
-   */
-  private moonTick(now: number) {
-    const sprite = this.moonSprite;
-    if (!sprite || this.disposed) return;
-    window.clearTimeout(this.moonTimer);
-    this.moonTimer = 0;
-    if (this.moonRaf) cancelAnimationFrame(this.moonRaf);
-    this.moonRaf = 0;
-    const zoom = this.drawView().zoom;
-    const amount = moonAmount(zoom, this.fit);
-    const wanted = this.sized && !this.lost && !this.suspended && !this.flying && this.selected === null && this.insetTarget === 0 && (this.caption?.landShare() ?? 0) === 0 && amount > 0.01;
+  /** Place the moon for this frame (the camera's matrices are final). */
+  private syncMoon(cam: PerspectiveCamera, d: number, zoom: number, now: number) {
+    const moon = this.globe.moon;
+    if (!moon) return;
+    const wanted = this.sized && !this.lost && !this.suspended && !this.flying && this.selected === null && this.insetTarget === 0 && (this.caption?.landShare() ?? 0) === 0;
     if (!wanted) {
-      this.moonSample = null;
-      sprite.hide();
-      this.moonListener?.();
+      this.moonSample = moon.sync({ camera: cam, bufW: this.bufW, bufH: this.bufH, eraDeg: this.era, angle: 0, rollDeg: 0, inclinationDeg: 0, sun: this.moonSun, d, zoom, fit: Infinity }); // (a zoom far past the fit: nothing is drawn)
       return;
     }
-    const cam = this.camera;
-    const P = this.pixel;
-    const cw = this.bufW * P;
-    const ch = this.bufH * P;
     const aspect = this.width / Math.max(1, this.height);
-    const rollDeg = rollFor(aspect);
-    const inclDeg = inclinationFor(aspect);
-    const key = `${rollDeg}:${inclDeg}`;
-    if (this.moonBasis?.key !== key) this.moonBasis = { key, basis: orbitBasis(rollDeg, inclDeg) };
-    const p = toEarthFrame(inertialPosition(this.moonAngle(now), this.moonBasis.basis), this.era);
-    const cp = cam.position;
-    const dx = p[0] - cp.x;
-    const dy = p[1] - cp.y;
-    const dz = p[2] - cp.z;
-    const D = Math.hypot(dx, dy, dz);
-    // where it is on the container, and the radius of a sphere's silhouette in perspective, f r / sqrt(D^2 - r^2), f the vertical focal length in CSS px
-    const ndc = this.moonVec.set(p[0], p[1], p[2]).project(cam);
-    const x = (ndc.x * 0.5 + 0.5) * cw + this.canvasLeft;
-    const y = (0.5 - ndc.y * 0.5) * ch + this.canvasTop;
-    const focal = (cam.projectionMatrix.elements[5]! * ch) / 2;
-    const r = (focal * MOON.radius) / Math.sqrt(Math.max(1e-6, D * D - MOON.radius * MOON.radius));
-    // in front of the camera (the near half of the orbit is behind it: a point behind a perspective camera projects to a mirrored place), and the disc touches the container
-    const ce = cam.matrixWorld.elements;
-    const ahead = -(dx * ce[8]! + dy * ce[9]! + dz * ce[10]!);
-    const onScreen = ahead > 0.5 && x + r > 0 && x - r < this.width && y + r > 0 && y - r < this.height;
-    // the planet: its centre and silhouette on the container, and whether the moon is beyond the plane of its horizon (where it can be hidden at all) or in front of its centre's plane
-    const c0 = this.moonVec.set(0, 0, 0).project(cam);
-    const px = (c0.x * 0.5 + 0.5) * cw + this.canvasLeft;
-    const py = (0.5 - c0.y * 0.5) * ch + this.canvasTop;
-    const d = cp.length();
-    const s = silhouetteRadiusPx(zoom, ch);
-    const along = (p[0] * cp.x + p[1] * cp.y + p[2] * cp.z) / d;
-    const behind = along < 1 / d;
-    this.moonSample = { x, y, r, amount, unhidden: unhidden(behind, Math.hypot(x - px, y - py), s, r), onScreen };
-    if (onScreen) {
-      const e = cam.matrixWorld.elements;
-      const axes = moonAxes(p, [cp.x, cp.y, cp.z], [e[0]!, e[1]!, e[2]!], [e[4]!, e[5]!, e[6]!]);
-      // the sprite's size in cells (kept while the size moves by under a cell: a rigid picture does not shimmer), its corner in the container
-      const ideal = (2 * r) / P;
-      if (!this.moonCells || Math.abs(ideal - this.moonCells) > 1.2) this.moonCells = spriteCells(2 * r, P);
-      const cells = this.moonCells;
-      const half = (cells * P) / 2;
-      const left = x - half;
-      const top = y - half;
-      // the planet hides a cell when the moon is beyond its horizon plane and the cell is inside its silhouette, tested on the GLOBE's cell (the stepped limb it is drawn with)
-      const hidden = behind
-        ? (i: number, j: number) => {
-            const gx = Math.floor((left + (i + 0.5) * P - this.canvasLeft) / P);
-            const gy = Math.floor((top + (j + 0.5) * P - this.canvasTop) / P);
-            return Math.hypot((gx + 0.5) * P + this.canvasLeft - px, (gy + 0.5) * P + this.canvasTop - py) < s;
-          }
-        : undefined;
-      const sun = toEarthFrame(this.moonSun, this.era);
-      const codes = moonSprite({ cells, axes, sun, map: this.moonMap, phaseX: 0, phaseY: 0, hidden, opaqueBody: true });
-      sprite.draw(codes, cells, x, y, P, window.devicePixelRatio || 1, along > 0);
-    } else sprite.hide();
-    this.moonListener?.();
-    if (this.moonRunning && !this.suspended) {
-      if (onScreen) this.moonRaf = requestAnimationFrame((t) => this.moonTick(t));
-      else this.moonTimer = window.setTimeout(() => this.moonTick(performance.now()), 250);
-    }
+    this.moonSample = moon.sync({ camera: cam, bufW: this.bufW, bufH: this.bufH, eraDeg: this.era, angle: this.moonAngle(now), rollDeg: rollFor(aspect), inclinationDeg: inclinationFor(aspect), sun: toEarthFrame(this.moonSun, this.era), d, zoom, fit: this.fit });
   }
-  private moonCells = 0;
-  private moonVec = new Vector3();
 
   /**
    * What the link over the moon (engine/moon-overlay.ts) needs of it now, in the container's CSS px, or null while there is nothing to point at (no moon, not placed
@@ -1406,7 +1319,8 @@ export class GlobeRenderer {
   moonFrame(): { x: number; y: number; r: number; amount: number; unhidden: number; angle: number } | null {
     const m = this.moonSample;
     if (!m || !m.onScreen || !this.sized || this.disposed || this.lost || this.suspended) return null;
-    return { x: m.x, y: m.y, r: m.r, amount: m.amount, unhidden: m.unhidden, angle: this.moonAngleNow() };
+    const P = this.pixel;
+    return { x: m.cx * P + this.canvasLeft, y: (this.bufH - m.cy) * P + this.canvasTop, r: m.r * P, amount: m.amount, unhidden: m.unhidden, angle: this.moonAngleNow() };
   }
 
   /** The idle rotation is turning the globe now (a plain read: asked every camera frame, so it builds nothing, unlike `spinInfo`). */
@@ -1598,7 +1512,7 @@ export class GlobeRenderer {
     if (this.disposed || this.hidden || this.lost) return;
     const now = performance.now();
     // The rotation's own frame chain follows the display (a frame per refresh) but not faster than `SPIN.minFrameMs`: a frame that nothing else asked for is skipped when it is too soon.
-    if (pacedByRotation({ spinning: this.spin.spinning, forced: this.forced, captionAnimating: this.caption?.animating ?? false }) && !spinFrameDue(now, this.lastTickAt, { ...SPIN, minFrameMs: Math.max(SPIN.minFrameMs, ENERGY.spinFrameMs) })) {
+    if (pacedByRotation({ spinning: this.spin.spinning, forced: this.forced, captionAnimating: this.wantsDisplayRate }) && !spinFrameDue(now, this.lastTickAt, { ...SPIN, minFrameMs: Math.max(SPIN.minFrameMs, ENERGY.spinFrameMs) })) {
       // (paced by a timer: no wake at the display's rate for a frame that is not due)
       if (!this.paceTimer) {
         const wait = Math.max(4, Math.max(SPIN.minFrameMs, ENERGY.spinFrameMs) - (now - this.lastTickAt));
@@ -1622,7 +1536,7 @@ export class GlobeRenderer {
     // A timed transition of the boxes or of the borders (engine/fade.ts) that has not reached its end keeps the loop going, camera or not.
     // While the street map owns the view the globe draws nothing and its transitions are not advanced here (the street engine runs the
     // boxes' own), so they must not keep this loop spinning.
-    const more = moving || fading || (!this.suspended && (this.lod.animating || this.globe.animating || !!this.opts.labelsAnimating?.()));
+    const more = moving || fading || this.moonWantsFrames || (!this.suspended && (this.lod.animating || this.globe.animating || !!this.opts.labelsAnimating?.()));
     if (more) this.keepGoing(moving);
     else if (this.spin.spinning) this.chainSpin();
     else this.armSpin();
@@ -1821,7 +1735,7 @@ export class GlobeRenderer {
     this.opts.onFrame();
     perfEnd("frame.callbacks", t1);
     // Whoever drew this frame (the tick, a resize, a check), the transitions run to their end, and the idle rotation's chain (cancelled above) goes on.
-    if (this.lod.animating || this.globe.animating || (this.caption?.animating ?? false) || this.opts.labelsAnimating?.()) this.keepGoing(false);
+    if (this.lod.animating || this.globe.animating || (this.caption?.animating ?? false) || this.moonWantsFrames || this.opts.labelsAnimating?.()) this.keepGoing(false);
     else if (this.spin.spinning) this.chainSpin();
     this.armCaption();
   }
@@ -2187,6 +2101,8 @@ export class GlobeRenderer {
     cam.aspect = this.bufW / this.bufH;
     // (the caption's shell is above the planet: its nearest point must be inside the near plane)
     const reach = this.caption ? this.caption.maxRadius + 0.05 : 1.05;
+    // (the moon is on an orbit wider than the caption's shell: its whole orbit is between the near and far planes while it is shown)
+    const moonReach = this.globe.moon?.ready && moonAmount(zoom, this.fit) > 0.01 ? MOON.orbit + MOON.radius + 0.05 : 0;
     if (pose) {
       const [px, py, pz] = pose.pos;
       d = Math.hypot(px, py, pz);
@@ -2194,7 +2110,7 @@ export class GlobeRenderer {
       lat = pose.lat;
       zoom = radiusPxToZoom(focalPx(h) / Math.max(1e-3, d - 1));
       cam.near = Math.max(0.004, (d - 1) * 0.25);
-      cam.far = d + reach;
+      cam.far = d + Math.max(reach, moonReach);
       cam.position.set(px, py, pz);
       cam.up.set(pose.up[0], pose.up[1], pose.up[2]);
       cam.lookAt(pose.target[0], pose.target[1], pose.target[2]);
@@ -2207,7 +2123,7 @@ export class GlobeRenderer {
       skyBasis = { c: [m[8]!, m[9]!, m[10]!], east: [m[0]!, m[1]!, m[2]!], north: [m[4]!, m[5]!, m[6]!], d, f: b.f };
     } else {
       cam.near = Math.max(0.02, b.d - reach);
-      cam.far = b.d + reach;
+      cam.far = b.d + Math.max(reach, moonReach);
       cam.position.set(b.c[0] * b.d, b.c[1] * b.d, b.c[2] * b.d);
       cam.up.set(b.north[0], b.north[1], b.north[2]);
       cam.lookAt(0, 0, 0);
@@ -2249,7 +2165,7 @@ export class GlobeRenderer {
     this.lastBasis = { d, lon: v.lon, lat: v.lat, cam: over };
     this.caption?.sync(d, v.lon, v.lat, now, over);
     this.syncTagline();
-    this.moonTick(now);
+    this.syncMoon(cam, d, zoom, now);
     this.globe.syncSky(cam, skyBasis, this.era, { w: this.bufW, h: this.bufH, shift: this.camShift, lift: this.camLift }, now, this.reduced, this.flying || (this.caption?.landShare() ?? 0) > 0);
   }
 

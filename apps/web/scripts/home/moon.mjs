@@ -38,6 +38,13 @@ const open = async (options) => {
   ok((await link.count()) === 1, "desktop: exactly one moon");
   ok((await link.getAttribute("href")) === "https://v1.bsodium.fr" && (await link.getAttribute("rel")) === "noopener" && (await link.getAttribute("target")) === "_blank", "desktop: it is a link to the first version, in a new tab, noopener");
   ok(/Memory lane/.test((await link.getAttribute("aria-label")) ?? ""), "desktop: its accessible name says what it is");
+  // the moon is drawn in the globe's own canvas, so the ring of type (a canvas of its own, after it) is over it: the ring's letters are never hidden by the moon
+  const ringOver = await page.evaluate(() => {
+    const ring = document.querySelector("[data-ring]");
+    const globe = document.querySelector('[data-globe] canvas');
+    return !!ring && !!globe && (ring.compareDocumentPosition(globe) & Node.DOCUMENT_POSITION_PRECEDING) !== 0;
+  });
+  ok(ringOver, "desktop: the ring of type is over the moon (the moon is in the globe's canvas, under it)");
   const probe = await page.evaluate(() => window.__globeDebug.captionProbe());
   const planet = probe?.radius ?? 0;
   const centre = probe?.centre ?? [0, 0];
@@ -63,29 +70,18 @@ const open = async (options) => {
   await page.evaluate(() => window.__globeDebug.setMoonAngle(232));
   await page.waitForTimeout(400); // (the sprite settles on its size for the new place)
   const a = await moon(page);
-  // smooth: the sprite is moved by device pixels at the display's rate, not by whole art cells (2 to 3 CSS px) ten times a second
-  const track = await page.evaluate(
-    () =>
-      new Promise((resolve) => {
-        const el = document.querySelector("canvas[data-moon-sprite]");
-        const at = () => new DOMMatrixReadOnly(getComputedStyle(el).transform).m41 + parseFloat(el.style.width) / 2; // the sprite's centre: it does not move when the sprite's size changes by a cell
-        const xs = [at()];
-        const t0 = performance.now();
-        const step = () => {
-          xs.push(at());
-          if (performance.now() - t0 < 1500) requestAnimationFrame(step);
-          else resolve(xs);
-        };
-        requestAnimationFrame(step);
-      }),
-  );
-  const cell = await page.evaluate(() => window.__globeDebug.cell());
-  const moves = track.slice(1).filter((x, i) => x !== track[i]).length;
-  // (a frame here can be late, so the size of one step says nothing; where the sprite STANDS does: on the art grid it would be on one of a few places a cell apart)
-  const residues = new Set(track.map((x) => (((x % cell) + cell) % cell).toFixed(2)));
-  ok(moves >= 12 && residues.size >= 4, `desktop: the sprite glides: ${moves} moves in 1.5 s over ${residues.size} different places in an art cell of ${cell} px (a whole-cell move would be on one)`);
+  // smooth: the moon is drawn with coverage (a fraction of a pixel of movement is a fraction of a tone), and while it is in the picture and moving it asks for the DISPLAY's frames,
+  // not the idle rotation's ten a second (the sandbox's software GL cannot show the rate itself: a frame there takes about a tenth of a second)
+  const live = await page.evaluate(() => window.__globeDebug.moonDebug());
+  ok(live.sample?.onScreen === true && live.displayRate === true, "desktop: in the picture and moving, it asks for the display's own frames");
+  await page.evaluate(() => window.__globeDebug.pinMoon(245));
+  await page.waitForTimeout(200);
+  ok((await page.evaluate(() => window.__globeDebug.moonDebug())).displayRate === false, "desktop: held at a place it asks for none (the idle rotation's frames are the globe's)");
+  await page.evaluate(() => window.__globeDebug.setMoonAngle(232));
+  const a2 = await moon(page);
+  await page.waitForTimeout(2000);
   const b = await moon(page);
-  ok(b.angle > a.angle, "desktop: it moves on its own");
+  ok(b.angle > a2.angle, "desktop: it moves on its own");
   await pin(page, 245);
   const at = await moon(page);
   await page.mouse.move(at.x, at.y);
