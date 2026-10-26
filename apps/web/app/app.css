@@ -4101,9 +4101,34 @@ h1[tabindex="-1"]:focus-visible {
      drawn by the grid row (stretched, 1:1) and the picture fills it; on a phone the block is too tall for that, so it is a fixed small
      square at the top. Centred on the face; no frame, no radius (the system's edges are square). */
   .career-portrait {
+    position: relative;
     margin: 3.25rem 0 0;
     width: 5.5rem;
     aspect-ratio: 1 / 1;
+  }
+
+  /* The bleed: the picture again behind itself, scaled up, blurred and very faint, so its colours spill onto the page around it. The
+     head is its own stacking context so the bleed stays under the text and above the page. */
+  .career-id {
+    isolation: isolate;
+  }
+
+  /* The bleeds must never widen the page, and must not be cut by the content's own box (which is narrower than the screen on a wide
+     one): only the screen's edge cuts them, so the clip is the page's, not the career block's. */
+  html:has([data-slot="career"]) {
+    overflow-x: clip;
+  }
+
+  .career-portrait .career-portrait-glow {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border: 0;
+    background: none;
+    transform: scale(1.45);
+    filter: blur(2.5rem);
+    opacity: 0.2;
+    pointer-events: none;
   }
 
   .career-portrait img {
@@ -4123,7 +4148,6 @@ h1[tabindex="-1"]:focus-visible {
     }
 
     .career-portrait {
-      position: relative;
       width: auto;
       min-width: 8rem;
       align-self: stretch;
@@ -4247,6 +4271,7 @@ h1[tabindex="-1"]:focus-visible {
 
   .career-item {
     position: relative;
+    isolation: isolate; /* the logo's bleed (below) stays under the text and above the page */
     padding: 0 0 2.75rem calc(var(--career-tile) + var(--career-gap));
     break-inside: avoid;
   }
@@ -4298,6 +4323,21 @@ h1[tabindex="-1"]:focus-visible {
     border: var(--hairline) solid var(--border); /* an outline, so that a white logo still has a visible square */
     background: var(--accent); /* behind an icon; a logo covers it */
     color: var(--muted-foreground);
+  }
+
+  /* The bleed: the logo again behind its tile, scaled up, blurred and very faint, as if its colour spilled onto the page. */
+  .career-glow {
+    position: absolute;
+    left: 0;
+    top: var(--career-offset);
+    z-index: -1;
+    width: var(--career-tile);
+    height: var(--career-tile);
+    object-fit: cover;
+    transform: scale(2.4);
+    filter: blur(1.25rem);
+    opacity: 0.22;
+    pointer-events: none;
   }
 
   .career-icon[data-logo] {
@@ -4604,6 +4644,11 @@ h1[tabindex="-1"]:focus-visible {
   .career-portrait {
     width: 3cm;
     margin-top: 1rem;
+  }
+
+  .career-glow,
+  .career-portrait-glow {
+    display: none;
   }
 
   .career-summary,

@@ -63,6 +63,7 @@ export function CareerPage({ career, places = [] }: { career: PublishedCareer; p
           </div>
           {portrait && (
             <figure data-slot="career-portrait" className="career-portrait">
+              <img src={portrait.src} alt="" aria-hidden="true" width={portrait.width} height={portrait.height} decoding="async" className="career-portrait-glow" />
               <img
                 src={portrait.src}
                 alt={portrait.alt}
@@ -203,9 +204,12 @@ function Period({ start, end }: { start: string; end: string | undefined }) {
 function Marker({ name, icon }: { name: string; icon: IconName }) {
   const src = careerLogo(name);
   return (
-    <span className="career-icon" data-logo={src ? "true" : undefined} aria-hidden="true">
-      {src ? <img src={src} alt="" width={200} height={200} loading="lazy" decoding="async" /> : <Icon name={icon} size="large" />}
-    </span>
+    <>
+      {src && <img src={src} alt="" aria-hidden="true" width={200} height={200} loading="lazy" decoding="async" className="career-glow" />}
+      <span className="career-icon" data-logo={src ? "true" : undefined} aria-hidden="true">
+        {src ? <img src={src} alt="" width={200} height={200} loading="lazy" decoding="async" /> : <Icon name={icon} size="large" />}
+      </span>
+    </>
   );
 }
 
