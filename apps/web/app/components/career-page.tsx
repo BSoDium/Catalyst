@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import type { PublishedCareer, PublishedCareerEducation, PublishedCareerRole } from "@catalyst/schemas";
 import { Icon } from "~/components/ui";
+import type { IconName } from "~/components/ui/icon";
 import { asOfText, careerDuration, careerIcon, careerLogo, careerPeriod, formatCareerMonth, isCurrent, languageDetail, safeLinks, safePortrait } from "~/lib/career";
 import { safeExternalUrl } from "~/lib/entry-blocks";
 import { placePath } from "~/lib/entries";
@@ -195,14 +196,15 @@ function Period({ start, end }: { start: string; end: string | undefined }) {
   );
 }
 
-/** The organisation's logo, or its initial on a quiet square when there is none (every name keeps the same left edge). Decorative: the name follows it. */
-function Logo({ name }: { name: string }) {
+/**
+ * The item's marker on the rail: the organisation's logo when there is one (a decorative square: the name follows), else the icon of
+ * what was done there (`careerIcon`). Either sits on a page-coloured mask that keeps the rail from running through it.
+ */
+function Marker({ name, icon }: { name: string; icon: IconName }) {
   const src = careerLogo(name);
-  return src ? (
-    <img src={src} alt="" width={200} height={200} loading="lazy" decoding="async" className="career-logo" />
-  ) : (
-    <span className="career-logo career-logo-initial" aria-hidden="true">
-      {name.trim().charAt(0).toUpperCase()}
+  return (
+    <span className="career-icon" data-logo={src ? "true" : undefined} aria-hidden="true">
+      {src ? <img src={src} alt="" width={200} height={200} loading="lazy" decoding="async" /> : <Icon name={icon} size="tile" />}
     </span>
   );
 }
@@ -221,12 +223,9 @@ function RoleItem({ role, placeKnown }: { role: PublishedCareerRole; placeKnown:
   const orgUrl = role.orgUrl ? safeExternalUrl(role.orgUrl) : null;
   return (
     <li id={role.id} data-slot="career-role" data-current={isCurrent(role) ? "true" : undefined} className="career-item">
-      <span className="career-icon" aria-hidden="true">
-        <Icon name={careerIcon(role.title, "role")} size="tile" />
-      </span>
+      <Marker name={role.org} icon={careerIcon(role.title, "role")} />
       <div className="career-head">
         <div className="career-top">
-          <Logo name={role.org} />
           <h3 className="career-org">
             {orgUrl ? (
               <a href={orgUrl} rel="noopener noreferrer" className="career-org-link">
@@ -271,12 +270,9 @@ function RoleItem({ role, placeKnown }: { role: PublishedCareerRole; placeKnown:
 function EducationItem({ item, placeKnown }: { item: PublishedCareerEducation; placeKnown: boolean }) {
   return (
     <li id={item.id} data-slot="career-education-item" className="career-item">
-      <span className="career-icon" aria-hidden="true">
-        <Icon name={careerIcon(item.programme, "education")} size="tile" />
-      </span>
+      <Marker name={item.institution} icon={careerIcon(item.programme, "education")} />
       <div className="career-head">
         <div className="career-top">
-          <Logo name={item.institution} />
           <h3 className="career-org">{item.institution}</h3>
         </div>
         <p className="career-role">

@@ -4354,24 +4354,12 @@ h1[tabindex="-1"]:focus-visible {
     min-height: var(--career-tile);
   }
 
-  /* The organisation's logo (or its initial): a square as tall as the organisation's line, no radius, then the name. */
-  .career-logo {
-    flex: none;
+  /* A logo as the marker fills the tile (the tile is the mask: the rail stops at its edge). */
+  .career-icon img {
     display: block;
-    width: var(--career-tile);
-    height: var(--career-tile);
-    margin-right: 0.625rem;
+    width: 100%;
+    height: 100%;
     object-fit: cover;
-  }
-
-  .career-logo-initial {
-    display: grid;
-    place-items: center;
-    background: var(--accent);
-    color: var(--muted-foreground);
-    font-family: var(--font-meta);
-    font-size: 0.75rem;
-    font-weight: var(--weight-medium);
   }
 
   .career-org {
