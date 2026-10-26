@@ -4113,6 +4113,19 @@ h1[tabindex="-1"]:focus-visible {
     isolation: isolate;
   }
 
+  /* How strong the bleeds are, per scheme: on a dark page a halo glows (the light colours stand out), so it is much fainter there. */
+  [data-slot="career"] {
+    --career-halo-portrait: 0.13;
+    --career-halo-logo: 0.15;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    [data-slot="career"] {
+      --career-halo-portrait: 0.05;
+      --career-halo-logo: 0.09;
+    }
+  }
+
   /* The bleeds must never widen the page, and must not be cut by the content's own box (which is narrower than the screen on a wide
      one): only the screen's edge cuts them, so the clip is the page's, not the career block's. */
   html:has([data-slot="career"]) {
@@ -4127,7 +4140,7 @@ h1[tabindex="-1"]:focus-visible {
     background: none;
     transform: scale(1.45);
     filter: blur(2.5rem);
-    opacity: 0.2;
+    opacity: var(--career-halo-portrait);
     pointer-events: none;
   }
 
@@ -4349,7 +4362,7 @@ h1[tabindex="-1"]:focus-visible {
     object-fit: cover;
     transform: scale(2.4);
     filter: blur(1.25rem);
-    opacity: 0.22;
+    opacity: var(--career-halo-logo);
     pointer-events: none;
   }
 
