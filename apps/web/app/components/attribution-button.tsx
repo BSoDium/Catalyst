@@ -40,9 +40,9 @@ export function AttributionButton({ tiles, insetRight, reducedMotion }: Attribut
     <>
       <div
         data-attribution="card"
-        style={{ "--credits-inset": `${insetRight}px`, bottom: "max(0.5rem, env(safe-area-inset-bottom))" } as CSSProperties}
+        style={{ "--credits-inset": `${insetRight}px`, bottom: "max(0.25rem, env(safe-area-inset-bottom))" } as CSSProperties}
         className={cn(
-          "map-credits absolute right-[calc(var(--credits-inset)+0.5rem)] z-20 flex max-w-[calc(100%-var(--credits-inset)-1rem)] items-center gap-[1ch] rounded-sm px-1.5 py-0.5 font-mono text-[10px] leading-4 tracking-wide text-subtle-foreground",
+          "map-credits absolute right-[calc(var(--credits-inset)+0.5rem)] z-20 flex max-w-[calc(100%-var(--credits-inset)-1rem)] items-center gap-[1ch] rounded-sm px-1.5 py-px font-mono text-[10px] leading-4 tracking-wide text-subtle-foreground",
           // a phone: the full width, left-aligned, still one line
           "max-md:right-2 max-md:left-2 max-md:max-w-none",
         )}
@@ -72,7 +72,7 @@ export function AttributionButton({ tiles, insetRight, reducedMotion }: Attribut
           onClick={() => setOpen(true)}
         >
           See more
-          <Icon name="arrow-up-right" size="inline" />
+          <Icon name="arrow-up-right" size="inline" className="-translate-y-[2px]" />
         </button>
       </div>
       <CreditsDialog open={open} credits={credits} reducedMotion={reducedMotion} onClose={() => setOpen(false)} onClosed={() => buttonRef.current?.focus()} />

@@ -19,7 +19,7 @@ describe("map card and credits", () => {
   });
   it("the credits are not a card: the mono type of one, on a map label's own ground (`.map-credits`), with no border and no blur of its own", () => {
     const card = /<div[^>]*data-attribution="card"[^>]*>/.exec(credits())![0];
-    for (const cls of ["map-credits", "font-mono", "text-[10px]", "leading-4", "tracking-wide", "rounded-sm", "px-1.5", "py-0.5"]) expect(card, cls).toContain(cls);
+    for (const cls of ["map-credits", "font-mono", "text-[10px]", "leading-4", "tracking-wide", "rounded-sm", "px-1.5", "py-px"]) expect(card, cls).toContain(cls);
     expect(card).not.toMatch(/\bborder\b|border-border|bg-background|backdrop-blur/);
   });
 });
