@@ -4110,9 +4110,11 @@ h1[tabindex="-1"]:focus-visible {
     display: block;
     width: 100%;
     height: 100%;
+    box-sizing: border-box;
     object-fit: cover;
     object-position: 50% 30%;
     background: var(--surface);
+    border: var(--hairline) solid var(--border); /* a square around it, as the markers have */
   }
 
   @media (min-width: 40rem) {
@@ -4293,7 +4295,7 @@ h1[tabindex="-1"]:focus-visible {
     width: var(--career-tile);
     height: var(--career-tile);
     overflow: hidden;
-    border-radius: 0.25rem; /* owner exception to the system's square edges: a very small radius on the logo, nothing else on the page has one */
+    border: var(--hairline) solid var(--border); /* an outline, so that a white logo still has a visible square */
     background: var(--accent); /* behind an icon; a logo covers it */
     color: var(--muted-foreground);
   }
