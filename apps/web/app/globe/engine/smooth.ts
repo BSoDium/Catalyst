@@ -53,7 +53,8 @@ export function applySmoothFlags(): void {
   try {
     const q = new URLSearchParams(location.search);
     const asked = parseSmooth(q.has("smooth") ? q.get("smooth") : sessionStorage.getItem("smooth"));
-    if (asked === null) return;
+    // 0 is the art grid as the page is by default: not "on with nothing in it" (MSAA and display-rate frames would still be on, and look smooth).
+    if (asked === null || asked === 0) return;
     SMOOTH_STATE.enabled = true;
     SMOOTH_STATE.amount = asked;
     (window as unknown as { __smooth?: unknown }).__smooth = { get: () => SMOOTH_STATE.amount, set: setSmooth, getBlur: () => SMOOTH_STATE.blur, blur: setSmoothBlur };
