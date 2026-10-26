@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { EMPTY_PROJECTION, encodePolyline5, type PublishedProjection } from "@catalyst/schemas";
-import { journeyText, journeysOf, roundKm, tripsOf } from "./journeys";
+import { journeyText, journeysOf, roundKm, tripLinkLabel, tripsOf } from "./journeys";
 
 const place = (slug: string, name: string, lat: number, lon: number, countryCode?: string) => ({
   slug, name, coordinates: { lat, lon }, labelPriority: 0, body: [], images: [], related: [], ...(countryCode ? { countryCode } : {}),
@@ -87,5 +87,13 @@ describe("tripsOf", () => {
     const loop: PublishedProjection = { ...projection, routes: [{ id: "loop", title: "Loop", stops: ["alpha", "beta", "alpha"] }] };
     expect(tripsOf(loop, "alpha")[0]!.visits.map((v) => v.position)).toEqual([1, 3]);
     expect(tripsOf(projection, "nowhere")).toEqual([]);
+  });
+});
+
+describe("tripLinkLabel", () => {
+  it("names the page's host without its 'www.', and says 'Open the trip' when there is none", () => {
+    expect(tripLinkLabel("https://www.example.org/someone/123-trip")).toBe("Follow the trip on example.org");
+    expect(tripLinkLabel("https://trips.example.org/x")).toBe("Follow the trip on trips.example.org");
+    expect(tripLinkLabel("not a url")).toBe("Open the trip");
   });
 });

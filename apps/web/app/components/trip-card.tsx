@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import { TripMap } from "~/components/trip-map";
-import type { Trip, TripHop } from "~/lib/journeys";
+import { Icon } from "~/components/ui";
+import { tripLinkLabel, type Trip, type TripHop } from "~/lib/journeys";
 import { placePath } from "~/lib/projection";
 
 /** The first trips are open; the rest sit behind one disclosure, so a place on many routes stays short. */
@@ -36,6 +37,12 @@ export function TripCard({ trip, here }: { trip: Trip; here: string }) {
         <p className="m-0 ds-meta">Part of a trip · {where}</p>
         <h3 className="m-0 text-base font-semibold tracking-tight text-balance">{trip.title}</h3>
         <p className="m-0 ds-meta">{facts}</p>
+        {trip.url && (
+          <a href={trip.url} target="_blank" rel="noopener noreferrer" data-slot="trip-link" className="inline-flex min-h-8 items-center gap-1 text-sm font-medium underline underline-offset-4 hover:no-underline">
+            {tripLinkLabel(trip.url)}
+            <Icon name="arrow-up-right" size="inline" />
+          </a>
+        )}
         {hops.length > 0 && (
           <ul className="m-0 mt-1 flex list-none flex-col p-0">
             {hops.map((hop) => (

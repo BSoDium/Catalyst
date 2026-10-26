@@ -59,6 +59,12 @@ describe("PlaceDetail", () => {
     expect(html).not.toContain('data-slot="trip-here"');
     expect(html).not.toContain('data-slot="trip"');
   });
+  it("links the trip's own page from its card when the route has one, and shows no link when it has none", () => {
+    expect(render("hanoi")).toContain('data-slot="trip-link"');
+    expect(render("hanoi")).toContain('href="https://example.org/demo-trip-vietnam"');
+    expect(render("hanoi")).toContain('rel="noopener noreferrer"');
+    expect(route("b")).not.toContain('data-slot="trip-link"');
+  });
   it("a step with no entries is its story, open: the words, the pictures, the trip card", () => {
     const html = render("bangkok");
     expect(html).not.toContain('data-slot="place-story"');
