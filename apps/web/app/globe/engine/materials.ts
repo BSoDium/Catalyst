@@ -7,15 +7,18 @@ import { BackSide, Color, FrontSide, NormalBlending, ShaderMaterial } from "thre
 import { LEG_MODES, MODE_STYLE } from "../paths/modes";
 import { STRAIGHT_FADE_MIX, STRAIGHT_FADE_STEPS } from "../paths/thin";
 import { SPARK, TRAIL_BANDS, TRAIL_ENTRIES, TRAIL_PER_PALETTE } from "../paths/trail";
+import { NIGHT, NIGHT_GLSL, SURFACE } from "./surface";
 
-const PASS_THROUGH_VERTEX = /* glsl */ `
-  void main() { gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
+/** The lines' vertex shader: the ground point (the scene is in the earth's frame, a line's vertices are on the unit sphere) goes to the fragment. */
+const LIT_VERTEX = /* glsl */ `
+  varying vec3 vDir;
+  void main() { vDir = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
 `;
 
 /** The globe disc is a hair inside the lines (radius 1) so lines on the near side never z-fight with it. */
 export const OCCLUDER_RADIUS = 0.998;
 
-const DITHER_GLSL = /* glsl */ `
+export const DITHER_GLSL = /* glsl */ `
   float dither2(vec2 a) { return fract(a.x * 0.5 + a.y * a.y * 0.75); }
   float dither4(vec2 a) { return dither2(0.5 * a) * 0.25 + dither2(a); }
   // Discard fragments so that roughly \`coverage\` of pixels survive (ordered dither, stays 1-bit).
@@ -25,15 +28,19 @@ const DITHER_GLSL = /* glsl */ `
 export function lineMaterial(coverage: number, stipple = 0): ShaderMaterial {
   return new ShaderMaterial({
     // `uAlt` / `uAltAmt`: the colour the line is taken towards (the borders, over the land the interlude fills, are the page's colour: the fill is the ink's)
-    uniforms: { uColor: { value: new Color() }, uCoverage: { value: coverage }, uStipple: { value: stipple }, uAlt: { value: new Color() }, uAltAmt: { value: 0 } },
-    vertexShader: PASS_THROUGH_VERTEX,
+    uniforms: { uColor: { value: new Color() }, uCoverage: { value: coverage }, uStipple: { value: stipple }, uAlt: { value: new Color() }, uAltAmt: { value: 0 }, uSunN: { value: [0, 0, 1] }, uNight: { value: 0 }, uNightTo: { value: new Color() } },
+    vertexShader: LIT_VERTEX,
     fragmentShader: /* glsl */ `
-      uniform vec3 uColor; uniform float uCoverage; uniform float uStipple; uniform vec3 uAlt; uniform float uAltAmt;
+      uniform vec3 uColor; uniform float uCoverage; uniform float uStipple; uniform vec3 uAlt; uniform float uAltAmt; uniform vec3 uSunN; uniform float uNight; uniform vec3 uNightTo;
+      varying vec3 vDir;
       ${DITHER_GLSL}
+      ${NIGHT_GLSL}
       void main() {
         ditherDiscard(uCoverage);
+        // the night: the colour goes towards the page's in whole steps (a flat grey per step)
+        float dark = floor((1.0 - dayShare(normalize(vDir), uSunN, uNight)) * ${NIGHT.lineSteps.toFixed(1)} + 0.5) / ${NIGHT.lineSteps.toFixed(1)};
         if (uStipple > 0.0 && mod(floor(gl_FragCoord.x) + floor(gl_FragCoord.y), uStipple) > 0.5) discard;
-        gl_FragColor = vec4(mix(uColor, uAlt, uAltAmt), 1.0);
+        gl_FragColor = vec4(mix(mix(uColor, uAlt, uAltAmt), uNightTo, dark * ${NIGHT.lineDim.toFixed(2)}), 1.0);
       }
     `,
   });
@@ -190,6 +197,8 @@ export function surfaceMaterial(): ShaderMaterial {
       uAmt: { value: 0 },
       uEarth: { value: null },
       uLandMap: { value: null },
+      uSunN: { value: [0, 0, 1] },
+      uNight: { value: 0 },
     },
     vertexShader: /* glsl */ `
       varying vec3 vDir;
@@ -197,17 +206,22 @@ export function surfaceMaterial(): ShaderMaterial {
     `,
     fragmentShader: /* glsl */ `
       uniform vec3 uBg; uniform vec3 uTone0; uniform vec3 uTone1; uniform vec3 uTone2; uniform float uStrength; uniform float uAmt; uniform sampler2D uEarth; uniform sampler2D uLandMap;
+      uniform vec3 uSunN; uniform float uNight;
       varying vec3 vDir;
       ${DITHER_GLSL}
+      ${NIGHT_GLSL}
       void main() {
         vec3 n = normalize(vDir);
         vec2 uv = vec2(atan(n.x, n.z) * 0.15915494 + 0.5, asin(clamp(n.y, -1.0, 1.0)) * 0.31830989 + 0.5);
         // the land is the coastlines' own fill (the land mask, filtered and cut at a half: its edge falls between the texels, exactly on the drawn outline, at the art's resolution)
         if (texture2D(uLandMap, uv).r < 0.5) discard;
         float v = texture2D(uEarth, uv).r;
-        ditherDiscard(uAmt);
+        // the night: the stipple thins and the ground steps to its lightest tone, with the light (engine/surface.ts, NIGHT)
+        float k = dayShare(n, uSunN, uNight);
+        ditherDiscard(uAmt * mix(${NIGHT.landMin.toFixed(2)}, 1.0, k));
+        v += (1.0 - k) * ${NIGHT.shift.toFixed(2)};
         // the land is dark, middle or light ground (thresholds on the picture's brightness, which the picture lifts to 0.2 and over)
-        vec3 tone = v < 0.42 ? uTone0 : (v < 0.62 ? uTone1 : uTone2);
+        vec3 tone = v < ${SURFACE.cuts[0].toFixed(2)} ? uTone0 : (v < ${SURFACE.cuts[1].toFixed(2)} ? uTone1 : uTone2);
         gl_FragColor = vec4(mix(uBg, tone, uStrength), 1.0);
       }
     `,

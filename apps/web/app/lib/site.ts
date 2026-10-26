@@ -40,6 +40,22 @@ export const SITE_TITLE = `${SITE_NAME} · ${SITE.role}`;
 /** The temporary main domain of the new site; `CATALYST_SITE_URL` overrides it (the owner's move to the final domain is that one variable). */
 export const DEFAULT_SITE_URL = "https://v2.bsodium.fr";
 
+/**
+ * The first version of the site, kept as it was (#312): the ONE place its address and its words are written. The moon that circles the globe
+ * (`GlobeProps.moon`, docs/landing.md "The moon") and the search palette's entry read it. A way back to look at, not a warning: the words say what
+ * it is and that it stays as it was. The address is the old app's own Vercel project (docs/owner-guide.md); if the archive moves, this is the one line to change. (This sentence was added in #337 only so that the web preview deploys, which the repository's merge rule requires.)
+ */
+export const ARCHIVED_V1 = {
+  url: "https://v1.bsodium.fr",
+  title: "Memory lane",
+  description: "The first version of this site, kept just as it was.",
+  /** The card's last line (an arrow is drawn after it by the stylesheet) and the palette's. */
+  cta: "Take a trip back",
+  /** The palette's entry, found by these words (every typed word must begin one of them). */
+  sub: "The first version of this site, kept as it was",
+  words: ["memory", "lane", "moon", "version", "1", "v1", "first", "old", "older", "previous", "archived", "archive", "site", "back"],
+} as const;
+
 /** A stretch of a caption line (`GlobeProps.captionPhrases`): the words and the style they are set in (`plain` when absent). */
 export interface CaptionSpan {
   text: string;

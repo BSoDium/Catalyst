@@ -3139,6 +3139,135 @@ h1[tabindex="-1"]:focus-visible {
   }
 }
 
+/* ---- The moon (docs/landing.md, "The moon"): the globe's link to the first version of the site. engine/moon-overlay.ts places it; this is its look. ---- */
+@layer components {
+  .globe-moon-root {
+    z-index: 2;
+  }
+
+  .globe-moon {
+    position: absolute;
+    left: 0;
+    top: 0;
+    display: block;
+    color: var(--foreground);
+    text-decoration: none;
+    border-radius: 50%;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .globe-moon[hidden] {
+    display: none;
+  }
+
+  /* The link is invisible (the moon is drawn in the scene under it); its focus ring is round, as the global one would be square on a round thing. */
+  .globe-moon:focus-visible {
+    outline: 2px solid var(--signal);
+    outline-offset: 3px;
+  }
+
+  /*
+   * The card: a map label's own look (`.map-label`, the bounding boxes' labels): no outline, the mono type, a name over a muted second line, on a plate in the page's colour with the
+   * label's feather round it (engine/label-dom.ts `featherShadow`), so that it hides what is behind it (the globe's lines, the stars) and reads on any of it. Out of sight and out of
+   * the pointer's way until the moon is held.
+   */
+  .globe-moon-card {
+    --map-label-plate: color-mix(in srgb, var(--background) 82%, transparent);
+    position: absolute;
+    left: 0;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+    width: max-content;
+    max-width: min(17rem, 62vw);
+    box-sizing: border-box;
+    padding: 3px 6px;
+    background: var(--map-label-plate);
+    box-shadow: 0 0 3px 2px var(--map-label-plate);
+    font-family: var(--font-mono);
+    color: var(--foreground);
+    text-align: left;
+    white-space: normal;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  .globe-moon[data-open] .globe-moon-card {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  .globe-moon-title {
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    line-height: 18px;
+  }
+
+  .globe-moon-body {
+    font-size: 11px;
+    letter-spacing: 0.02em;
+    line-height: 14px;
+    color: var(--muted-foreground);
+  }
+
+  /* The way in: last, at the bottom right of the card, apart from the two lines that say what it is. */
+  .globe-moon-cta {
+    align-self: flex-end;
+    margin-top: 10px;
+    font-size: 11px;
+    letter-spacing: 0.02em;
+    line-height: 14px;
+    color: var(--muted-foreground);
+  }
+
+  /* The arrow is the rows' own (`arrow-right` of the icon set, square ends), with arms longer than the type: a station sign's. */
+  .globe-moon-arrow {
+    width: 2.2em;
+    height: 1.6em;
+    margin-inline-start: 0.5em;
+    vertical-align: -0.4em;
+  }
+
+  .globe-moon:hover .globe-moon-cta,
+  .globe-moon:focus-visible .globe-moon-cta {
+    color: var(--foreground);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .globe-moon-card {
+      transition: opacity var(--duration-fast) var(--ease-standard), visibility 0s linear var(--duration-fast);
+    }
+
+    .globe-moon[data-open] .globe-moon-card {
+      transition-delay: 0s;
+    }
+  }
+
+  @media (forced-colors: active) {
+    .globe-moon-card {
+      background: Canvas;
+      color: CanvasText;
+      box-shadow: none;
+    }
+
+    .globe-moon-body,
+    .globe-moon-cta {
+      color: CanvasText;
+    }
+  }
+
+  @media print {
+    .globe-moon-root {
+      display: none;
+    }
+  }
+}
+
 /* ==================================================================================================================================
  * Landing hero and the header's type (docs/landing.md). Everything for the home page's hero is in this block, and the header's
  * `.nav-link`: the hero is `components/landing-hero.tsx`, its state `lib/hero-machine.ts`. Tokens only; no colour of its own.

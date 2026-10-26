@@ -28,6 +28,13 @@ export interface SpinConfig {
    * centre moves one art pixel (2.5 css px) every 1.35 s.
    */
   degPerSec: number;
+  /**
+   * The cruise speed as the planet's edge moves ON THE SCREEN, CSS px a second (0: off, `degPerSec` is the speed). 0.2 deg a second is half a pixel a second on a phone's planet (one art
+   * cell in five seconds: no turn to see), so the page's speed is in pixels and the engine derives `degPerSec` from the planet's size (`edgeSpeed`), never under `degPerSec`'s own 0.2.
+   */
+  edgePxPerSec: number;
+  /** `degPerSec` is fixed (a debug page, or `?spin-speed`): the edge speed does not set it. */
+  pinned: boolean;
   /** Time to reach the cruise speed from rest (smoothstep velocity), ms. */
   easeInMs: number;
   /** Time to coast to rest when it must stop for a reason that is not an input, ms. */
@@ -48,6 +55,8 @@ export const SPIN_DEFAULTS: Readonly<SpinConfig> = {
   enabled: true,
   idleMs: 8000,
   degPerSec: 0.2,
+  edgePxPerSec: 3,
+  pinned: false,
   easeInMs: 3000,
   stopMs: 1000,
   unzoomedSlack: 0.15,
@@ -65,7 +74,7 @@ export const SPIN: SpinConfig = { ...SPIN_DEFAULTS };
  *  - a page in debug mode (`?globe-debug`, what the browser checks run in) has it OFF by default, because the checks assert zero
  *    frames at rest for longer than the idle delay; `?rotate` (or sessionStorage "rotate" = "1") turns it back on there, and
  *    `?spin-idle=MS` (100 to 600000, debug only) does too and shortens the delay.
- *  - `?spin-speed=DEG` (0.01 to 20 degrees a second, debug only) turns it on there with another cruise speed: the measurements that
+ *  - `?spin-speed=DEG` (0.01 to 20 degrees a second) sets another cruise speed (and, on a debug page, turns it on): the measurements that
  *    chose `degPerSec` (label slot changes per minute at each candidate speed, docs/web-architecture.md) run the real engine at them.
  */
 export function applySpinFlags(): void {
@@ -79,7 +88,11 @@ export function applySpinFlags(): void {
     const wanted = !debug || q.has("rotate") || sessionStorage.getItem("rotate") === "1" || flag("spin-idle") !== null || flag("spin-speed") !== null;
     if (q.has("no-rotate") || sessionStorage.getItem("no-rotate") === "1" || !wanted) SPIN.enabled = false;
     if (debug && ms >= 100 && ms <= 600_000) SPIN.idleMs = ms;
-    if (debug && speed >= 0.01 && speed <= 20) SPIN.degPerSec = speed;
+    if (speed >= 0.01 && speed <= 20) {
+      SPIN.degPerSec = speed;
+      SPIN.pinned = true;
+    }
+    if (debug) SPIN.pinned = true; // (the checks and measurements run at the speed they ask for)
   } catch {
     // no storage: keep the defaults
   }
@@ -172,6 +185,20 @@ export function stopAngle(v0: number, sinceMs: number, cfg: SpinConfig = SPIN): 
  */
 export function pacedByRotation(o: { spinning: boolean; forced: boolean; captionAnimating: boolean }): boolean {
   return o.spinning && !o.forced && !o.captionAnimating;
+}
+
+/** The cruise speed, degrees a second, that moves the planet's edge `edgePxPerSec` px a second on the screen when its silhouette is `radiusPx` CSS px: never under the configured `degPerSec`, never over 3. */
+export function edgeSpeed(radiusPx: number, edgePxPerSec: number, floor: number): number {
+  if (!(radiusPx > 1) || !(edgePxPerSec > 0)) return floor;
+  return clamp(edgePxPerSec / (radiusPx * (Math.PI / 180)), floor, 3);
+}
+
+/**
+ * The frame period while turning, ms: the energy pass's `ENERGY.spinFrameMs` (100) at the cruise speed, shorter at a faster one. The disc moves one art pixel per about 270 / `degPerSec` ms (the
+ * 1.35 s of 0.2 deg a second), and a frame is wanted at least twice in that (no frame is then more than half a step late), never faster than the display (16 ms).
+ */
+export function spinFramePeriod(degPerSec: number, base: number): number {
+  return Math.min(base, Math.max(16, 135 / Math.max(degPerSec, 0.01)));
 }
 
 /** Whether a spin frame is due: at least `minFrameMs` since the previous drawn frame. */

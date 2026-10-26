@@ -1,0 +1,68 @@
+# How the globe's 3D works: a report
+
+Written 2026-10-26, when the moon became a real object in the scene. Everything here is in `apps/web/app/globe/`; the long-form notes are in [web-architecture.md](web-architecture.md) ("Production globe", "Skybox", "Ring of type", "Caption on the sphere", "The cinematic interlude") and [street-architecture.md](street-architecture.md). This page is the map of how the pieces fit, and what is and is not 3D.
+
+## 1. The short version
+
+There are **two WebGL canvases and a few 2D layers** stacked in the globe's box, plus, past a certain zoom, a **separate map renderer**.
+
+| Layer (bottom to top) | What | Is it 3D? | Where |
+| --- | --- | --- | --- |
+| **Globe canvas** | Planet disc, land picture, graticule, borders, coastlines, sky, stars, routes, the horizon outline | **Yes**: one Three.js scene, one perspective camera | `engine/scene.ts`, `renderer.ts` |
+| **Ring of type** | The small mono text that circles the planet | **No**: a flat 2D canvas | `engine/ring-layer.ts` |
+| **Box and label overlay** | Place markers, group squares, their labels | **No**: a pixel canvas plus DOM labels, placed from the camera | `engine/box-scene.ts`, `label-dom.ts` |
+| **Street map** (past zoom 3.7) | Roads, buildings: a different renderer | 2D (Web Mercator), registered to the globe's camera | `street/`, `handover/` |
+| **Caption canvas** | "A personal archive, organised around places", the section names, and the UNIVERSAL word | **Yes**: a second Three.js renderer, same camera | `engine/caption-layer.ts` |
+| (in the globe canvas) **the moon** | A small lit sphere on a far orbit | **Yes**: a mesh in the scene, drawn with coverage so it glides | `engine/moon.ts`, `moon-layer.ts` |
+| **The moon's link** | Invisible `<a>` over the moon, and its label card | DOM, placed from the moon's projection | `engine/moon-overlay.ts` |
+| **Hero** (name, rows) | Page text | DOM | `components/landing-hero.tsx` |
+
+## 2. The globe canvas: one scene, drawn at art-pixel resolution
+
+- **One camera, one scene, in the earth's frame.** The scene is the planet; the camera orbits it (the view's longitude and latitude) at a distance set by the zoom (`cameraDistance`, field of view 36.87 degrees). The "earth turning" of the idle rotation is the camera going round and the earth rotation angle (ERA) going up by the same amount, so the stars do not move (`stepSpin`).
+- **The drawing buffer IS the art grid.** The canvas is rendered at 1/`pixelSize` of the screen (about 2 to 3 CSS px per art pixel, `TUNING.pixelSize`, always a whole number of device pixels) and scaled up with no smoothing, so every shader pixel is a pixel-art cell. Nothing is anti-aliased; tones come from a shared grey ramp (`palette.ts`), and "fades" are an ordered 4x4 dither (`dither4`, in `materials.ts`) or a staircase of tones, never an alpha blend.
+- **Layers are `renderOrder`s over a depth buffer.** The planet is an opaque sphere of radius 0.998 in the page's colour that writes depth (so the far side's lines and stars are hidden by the depth test). On it, in order: the atmosphere shell (0.5, only in the interlude), the sky (0.5 and 0.6, at the far plane), the land picture on a skin at 1.002 (0.6), graticule (1), borders (2), coastlines (3), routes, mist, the horizon outline (6), the cities' lights (7). Routes hide behind the planet by an analytic ray-sphere test instead of the depth buffer (a one-pixel line would z-fight).
+- **The land is a shader, not a texture-mapped sphere.** `surfaceMaterial` reads the Blue Marble grey (`earth-grey.png`) by direction, cuts it into three tones (0.42 / 0.62), keeps half the pixels by the dither, and cuts the land/sea edge with a 4096 x 2048 mask baked from the very coastline polylines that are drawn, so the fill sits exactly under the outline.
+- **The sky** is a full-screen triangle (the Milky Way, from a baked 256 x 64 map looked up by galactic coordinates, Bayer-dithered to two tones) plus 20,000 one-pixel points at infinity. It lives in the inertial frame; one 3x3 matrix per frame (`viewToGalactic`) turns the camera's view into it. It is only drawn where the planet does not cover the picture.
+- **Frames are on demand.** Nothing animates at rest; a frame is asked for by input, a timed fade, the idle rotation (paced to 10 a second), the caption, or (now) the moon. Holds (30 s idle, blurred window, off screen, data saver, reduced motion) stop them all.
+
+## 3. Space view and street view
+
+They are not blended in 3D; they are **one camera driving two renderers**. The globe keeps the view in one number, the unified zoom `zu`. Up to 6.5 it is the globe's zoom; above that the same number is the street map's (Web Mercator, `zoom_map = zu + log2 cos(lat)`). The globe canvas stays the pointer target throughout, so a gesture that crosses the threshold is the same gesture.
+
+At `cutZoom` 3.7 (back under 3.45, a hysteresis) the controller renders the street map for the exact camera, waits for its tiles (at most 1.2 s), then swaps in one task: street shown, globe suspended, with a ~300 ms **tone cross-fade** of the picture (a dither dissolve exists and is parked: `HANDOVER.dissolve`). The two are registered to under a pixel, so only the line style changes. So the "blend" you describe is a registered cut with a short fade, by design: both are drawn in the same 1-bit pixel look to make it unnoticeable. Details: web-architecture.md "Handover", `handover/controller.ts`.
+
+## 4. The text
+
+### The ring of type: you were right that it is not 3D
+A flat circle of text concentric with the planet's silhouette, `r (1 + 0.06)`, running clockwise, all upright to the outside. **One 2D `<canvas>` in the DOM** (not DOM text: it would be a couple of hundred elements with a rotation each every frame), above the WebGL canvas, `aria-hidden`, no pointer events. Glyphs are not drawn with `fillText` (turned text is outlines on the main thread: measured 6 to 13 ms a frame); each character is drawn once, upright, into a per-tone atlas, and a frame is `drawImage` of one atlas cell per glyph (a couple of hundred) with a rotation. It turns on its own clock (3 degrees a second) and draws inside the globe's frames when the camera moves. It has no depth: it is a flat decoration, which is why the moon's sprite is laid just under it (a moon is far behind the ring's plane) and over it only in the rare case of a camera turned round the planet.
+
+### The caption ("orbiting text"): genuinely 3D, in a second renderer
+Each line is a strip of the sphere on a **real parallel** at radius 1.25 (floating 25 % above the surface), with a texture of its words (serif, italic, mono, a script) drawn once into a small canvas. The strip is stacked 28 times from the front face down toward the planet: the front slice shows the letters and a thin outline, the ones behind are the side of the letters, so the lettering has a thickness that shows wherever the face is oblique to the view. A frame is only a rotation per line about the earth's axis; nothing is laid out or rasterised. It is drawn by a **second `WebGLRenderer`** onto a canvas of its own at the device's resolution (up to 2x, antialiased: an outlined serif is unreadable in the art-pixel buffer), over the globe's, with the same camera. That scene contains the planet (and now the moon) as **depth-only spheres**, so the planet hides what is behind it and a letter past the horizon curls behind it. Rows enter from behind the planet, roll through the central meridian at 2.9 degrees a second, and leave round the limb; phrase sets take turns.
+
+### The "UNIVERSAL" Easter egg: the same machinery, one bigger row
+It is not a separate system. The caption engine gets an extra row, the **egg**: one word in the heavy sans, white with a BSoD-blue outline, on its own shell of radius 2 (well in front of the planet, its ends curving away round the limb), as large as the picture allows. The sequence is a pure function of a seeded plan (`planCinematic`, about 21 s): the rows leave round the orbit, the stage is empty for 0.4 s, the word rises from the planet's shadow, holds and rolls, and goes on round. Meanwhile **the globe pulls back to 62 %** (the renderer subtracts the interlude's value from the zoom it draws with: `drawView()`, so the planet, ring and word shrink together) and **leans 12 degrees** (a `roll` on the drawn view). There is a sound (`cinematic-sound.ts`). It shows to returning visitors, once a session, 12 % of the time, never under reduced motion; or on demand from the palette's hidden "I like surprises".
+
+## 5. The moon
+
+An Easter egg, placed in 3D and drawn as a sprite. (My first version was a flat 2D disc over the globe; the second a mesh in the globe's scene on a close orbit; the third the same on a far one. The last is what is described here.)
+
+- **Placed in the globe's space.** A sphere of radius 1/6 of the earth's on a circular orbit of **9 earth radii**, in the **inertial frame** like the stars (so the idle rotation leaves it where it is, and turning the globe shows the same orbit from another side). 9 is wider than the camera's own distance from the planet (4 to 9, by window), so the half of the orbit on the camera's side is behind the camera and never seen, and the half beyond the planet is far in the background, where a sixth of the earth's radius is a small disc, about 6 % of the planet's on screen. It is in the picture only beside the planet, for a few seconds of a four-minute lap, comes round the left a little above the middle, goes behind the planet and comes out on the right. It starts behind the camera, so a fresh page has none, and the idle hold stops it with everything else.
+- **Lit.** A sun fixed in the inertial frame gives it the phase its place on the orbit gives it (a gibbous beside the planet). The light is `N . sun` per pixel, turned into pixels by the globe's own ordered dither, so the terminator is a dithered edge; where there is no light **nothing is drawn**: the dark side is not dark, it is the sky, in either theme (but it is a solid body in the page's colour, so it hides the stars and the band behind it: a black spot against the galaxy). The rim is outlined only where it is lit, in a colour half the way from the page's to the coastlines'.
+- **Drawn with coverage, so that it glides.** Everything else in the globe's canvas is a whole art pixel, and a slow thing in it moves a pixel at a time. The moon is a mesh in the scene (so the planet hides it by the depth buffer, exactly, at the planet's own stepped limb, on the same grid) whose pixels are NOT binary: an edge pixel is the share of it the silhouette covers, the light is smooth, the tones blend over a narrow band of the picture's brightness. A fraction of a pixel of movement is a fraction of a pixel's tone. While it is in the picture it asks for the display's own frames (a few seconds of a lap). The ring of type, a 2D canvas after the globe's, is over it. (An earlier version was a separate sprite moved in device pixels: smooth, but on a grid of its own, so it did not meet the Earth's at the limb.)
+- **The Earth's picture treatment for the ground**: the Moon's grey map read by direction (turned to face the planet), three tones by the same cuts and tone steps as the Earth's (`SURFACE`, boosted for a small body). The Earth's half-stipple read as a screen door at 13 cells, and a dither anchored to the screen would swim across a moving body, so the tones are smooth.
+- **Clickable by a real link laid over it** (`moon-overlay.ts`), never smaller than 44 px: keyboard, screen reader, middle click, two taps on touch. Hover or focus holds the moon still and shows a **card in the bounding boxes' label style**: no outline, mono type, a name over a muted line, on a page-colour plate with the label's feather that hides what is behind it, to the right of the moon and centred on it vertically.
+
+What it is not yet: **eclipsed** (the planet casts no shadow on it); at the **real distance** (60 earth radii: a speck, unclickable); **under the markers and labels** (those are a 2D overlay, so a label drawn at a world view with the labels on is painted over a moon in front of it; at the home screen's resting view they are out).
+
+- **No anti-aliasing for the Earth (tried, dropped).** `?smooth` tried MSAA, a blur and display-rate frames on the planet; MSAA is on or off, so below 0.5 of intensity nothing visibly changed and above it the Earth was too smooth, and it was removed. What is tuned instead is the idle rotation's speed: `?spin-speed=DEG` (0.01 to 20 degrees a second, default 0.2) on any page, and the frame period follows it (`spinFramePeriod`, `engine/idle-spin.ts`: 100 ms at the default, shorter at a faster one, about half the time the disc takes to move one art pixel). The moon keeps its coverage edge.
+
+## 6. What is not 3D, and what is true in 3D but looks flat
+
+- **Not 3D**: the ring, the markers and boxes and their labels (placed from the camera by `projectLonLat`, the pixel overlay), the street map, the hero.
+- **3D, drawn flat on purpose**: the planet's lines (one-pixel line segments on the sphere, drawn without lighting), the land (a shader reading a picture by direction, no geometry).
+- **The caption is 3D but cannot be seen from the side**: it lives on a shell, and the camera is always on the planet's axis at the home screen.
+
+## 7. Where to start reading
+
+`engine/renderer.ts` (`syncCamera`, `renderNow`), `engine/scene.ts` (the layers and their orders), `engine/materials.ts` (all the GLSL but the sky's and the caption's), `engine/sky-layer.ts`, `engine/caption-layer.ts`, `engine/ring-layer.ts`, `engine/cinematic.ts`, `handover/controller.ts`, `engine/moon.ts`, `engine/moon-layer.ts`.

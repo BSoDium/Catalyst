@@ -1,0 +1,6 @@
+moon-grey.png: a grey, 256 x 128, 12-step, smoothed reduction of an equirectangular map of the Moon (longitude 0, the near side, in the middle; 1024 x 512 source, stretched so the same tone cuts as earth-grey.png split it),
+made by scripts/moon/bake-moon.py. Used by engine/moon.ts and engine/moon-overlay.ts for the moon that circles the globe.
+
+SOURCE AND LICENCE, TO CONFIRM: the source map is `examples/textures/planets/moon_1024.jpg` of the three.js repository (https://github.com/mrdoob/three.js, MIT for the code). The repository does not document the
+picture's own origin; it is a lunar mosaic of the kind NASA publishes in the public domain (Clementine / Lunar Reconnaissance Orbiter), but that is not stated there. Before relying on it, replace it with a map whose
+licence is documented, e.g. NASA SVS "CGI Moon Kit" (https://svs.gsfc.nasa.gov/4720, public domain), baked with the same script.

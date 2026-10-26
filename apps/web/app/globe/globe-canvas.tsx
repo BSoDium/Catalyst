@@ -19,6 +19,7 @@ import { applySpinFlags } from "./engine/idle-spin";
 import { applySkyFlags } from "./engine/sky";
 import { PLAY_INTERLUDE_EVENT, PREPARE_INTERLUDE_EVENT, type PlayInterludeRequest } from "./interlude";
 import { applyRingFlags, ringText } from "./engine/ring";
+import { applyMoonFlags } from "./engine/moon";
 import { applyShowcaseFlags } from "./engine/caption";
 import { applyDebugArtPixel } from "./engine/tuning";
 import { enablePerf, perfEnd, perfStart } from "./engine/perf";
@@ -107,6 +108,9 @@ function lodStressCount(): number {
 
 const isWebGLUnavailable = (e: unknown) => e instanceof Error && e.name === "WebGLUnavailableError";
 
+/** The most often a pointer move over the stage restarts the app's idle clock (`onInteract`), ms. */
+const MOVE_NOTE_MS = 250;
+
 export default function GlobeCanvas({
   places,
   groups,
@@ -122,6 +126,7 @@ export default function GlobeCanvas({
   attribution: Attribution,
   ringPhrases,
   captionPhrases,
+  moon,
   showcase,
   onOrbit,
   onSelect,
@@ -131,6 +136,7 @@ export default function GlobeCanvas({
   const stageRef = useRef<HTMLDivElement>(null);
   const streetRef = useRef<HTMLDivElement>(null);
   const labelsRef = useRef<HTMLDivElement>(null);
+  const moonRef = useRef<HTMLDivElement>(null);
   const handleRef = useRef<HandoverHandle | null>(null);
   const [status, setStatus] = useState<Status>("loading");
   const [notice, setNotice] = useState<Notice | null>(null);
@@ -162,11 +168,23 @@ export default function GlobeCanvas({
     const stage = stageRef.current;
     if (!stage || !wantsInteract) return;
     const note = () => latest.current.onInteract?.();
+    // A drag is a gesture for as long as it lasts, not only at its start (a visitor turning the globe for longer than the hero's idle delay is not idle): a move with a
+    // button or a finger down restarts the clock, at most every `MOVE_NOTE_MS`.
+    let last = 0;
+    const noteMove = (e: PointerEvent) => {
+      if (e.pointerType === "mouse" && e.buttons === 0) return;
+      const now = performance.now();
+      if (now - last < MOVE_NOTE_MS) return;
+      last = now;
+      note();
+    };
     const options = { passive: true, capture: true } as const;
     stage.addEventListener("pointerdown", note, options);
+    stage.addEventListener("pointermove", noteMove, options);
     stage.addEventListener("wheel", note, options);
     return () => {
       stage.removeEventListener("pointerdown", note, options);
+      stage.removeEventListener("pointermove", noteMove, options);
       stage.removeEventListener("wheel", note, options);
     };
   }, [wantsInteract]);
@@ -195,6 +213,7 @@ export default function GlobeCanvas({
   useEffect(() => {
     const stage = stageRef.current;
     const labelsRoot = labelsRef.current;
+    const moonRoot = moonRef.current;
     const streetRoot = streetRef.current;
     if (!stage || !labelsRoot || !streetRoot) return;
     let cancelled = false;
@@ -203,6 +222,7 @@ export default function GlobeCanvas({
     applySpinFlags(); // `?no-rotate` works on any page, `?spin-idle=MS` in debug mode
     applySkyFlags(); // `?no-sky` works on any page, `?sky` turns it on in debug mode
     applyRingFlags(); // `?no-ring` works on any page, `?ring` turns it on in debug mode
+    applyMoonFlags(); // `?no-moon` works on any page, `?moon` turns it on in debug mode
     applyShowcaseFlags(); // the showcase is on every page but a debug one, where `?showcase` turns it on
     if (debugEnabled()) {
       applyDebugLevels();
@@ -218,6 +238,8 @@ export default function GlobeCanvas({
         handle = createHandover({
           stage,
           labelsRoot,
+          moonRoot: moon ? (moonRoot ?? undefined) : undefined,
+          moon: moonRoot ? moon : undefined,
           streetRoot,
           places: synthetic ? synthetic.places : places,
           groups: synthetic ? synthetic.groups : groupsForTests() ? [] : groups,
@@ -280,7 +302,7 @@ export default function GlobeCanvas({
       handle?.dispose();
       setNotice(null);
     };
-  }, [places, groups, routes, tilesKey]);
+  }, [places, groups, routes, tilesKey, moon?.href]);
 
   // The inset first: a selection that opens the panel flies to a framing computed for the panel's width, so the
   // renderer must already know the inset it is heading for (effects run in declaration order).
@@ -334,6 +356,8 @@ export default function GlobeCanvas({
       <div ref={stageRef} aria-hidden="true" className="absolute inset-0 overflow-hidden" />
       <div ref={labelsRef} aria-hidden="true" />
       <div ref={streetRef} aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden" />
+      {/* The moon (a link, so not aria-hidden): above the labels, under the page's own controls; it takes the pointer only where it is. */}
+      <div ref={moonRef} className="globe-moon-root pointer-events-none absolute inset-0 overflow-hidden" />
       {/* Always in the DOM so that a change is announced; empty (and invisible) unless the street map is out. */}
       <p
         role="status"

@@ -29,11 +29,13 @@ import { zoomToRadiusPx } from "./geo";
 import { landMask } from "./land";
 import { GRATICULE_STEP_DEG, graticuleSegments, polylinesToSegments } from "./geometry";
 import { OCCLUDER_RADIUS, atmosphereMaterial, cityMaterial, surfaceMaterial, mistMaterial, lineMaterial, occluderMaterial, silhouetteMaterial } from "./materials";
+import { MoonLayer } from "./moon-layer";
 import { RouteLayer } from "./route-layer";
 import { SKY_STATE, viewToGalactic } from "./sky";
 import { SkyLayer } from "./sky-layer";
 import { routeLift } from "./view";
 import { TUNING } from "./tuning";
+import { surfaceTones } from "./surface";
 
 
 /** How much of the ink the filled land has (the rest is the page's colour): near the ink, as the letters' metal is. */
@@ -61,6 +63,8 @@ export class GlobeScene {
   readonly routes: RouteLayer;
   /** The Milky Way and the stars behind the earth (engine/sky-layer.ts), or null when the page switched them off (`applySkyFlags`). */
   readonly sky: SkyLayer | null;
+  /** The moon, a body on an orbit about the earth (engine/moon-layer.ts), or null when the page has none (no `GlobeProps.moon`, `?no-moon`, a debug page without `?moon`). */
+  readonly moon: MoonLayer | null;
 
   private geometries: BufferGeometry[] = [];
   private materials: ShaderMaterial[] = [];
@@ -102,6 +106,8 @@ export class GlobeScene {
     routes: readonly GlobeRoute[];
     coastlines: Polylines;
     borders: Polylines;
+    /** The page has a moon (`GlobeProps.moon`, and the flags allow it). */
+    moon?: boolean;
   }) {
     this.materials.push(this.occluder, this.city, this.atmosphere, this.mist, this.surface, this.graticule, this.borders, this.coast, this.silhouette);
     this.coastData = data.coastlines;
@@ -160,6 +166,7 @@ export class GlobeScene {
     }
     this.routes = new RouteLayer(this.scene, data.routes);
     this.sky = SKY_STATE.enabled ? new SkyLayer(this.scene) : null;
+    this.moon = data.moon ? new MoonLayer(this.scene) : null;
 
     const N = 360;
     const angle = new Float32Array(N);
@@ -189,6 +196,7 @@ export class GlobeScene {
     this.landFill = [0, 1, 2].map((i) => t.background[i]! + (t.ink[i]! - t.background[i]!) * LAND_SHARE) as unknown as Rgb;
     this.occluder.uniforms.uFill!.value.setRGB(...this.landFill);
     this.borders.uniforms.uAlt!.value.setRGB(...t.background);
+    for (const m of [this.graticule, this.borders, this.coast]) m.uniforms.uNightTo!.value.setRGB(...t.background);
     // the accent, as the page has it in this scheme (app.css `--palette-blue`; the lighter step on the dark page)
     if (t.scheme === "dark") this.city.uniforms.uColor!.value.setRGB(0.29, 0.64, 0.96);
     else this.city.uniforms.uColor!.value.setRGB(0, 0.47, 0.84);
@@ -199,7 +207,7 @@ export class GlobeScene {
     this.atmosphere.uniforms.uColor!.value.setRGB(...mixTo(t.scheme === "dark" ? 0.5 : 0.3));
     this.mist.uniforms.uColor!.value.setRGB(...mixTo(t.scheme === "dark" ? 0.3 : 0.18));
     // the land's three tones: darker ground, middle, lighter, each a step from the page's colour towards its ink (the page's own two ends, no hue)
-    const tones = t.scheme === "dark" ? [0.2, 0.13, 0.07] : [0.17, 0.11, 0.06];
+    const tones = surfaceTones(t.scheme);
     this.surface.uniforms.uBg!.value.setRGB(...bg);
     this.surface.uniforms.uTone0!.value.setRGB(...mixTo(tones[0]!));
     this.surface.uniforms.uTone1!.value.setRGB(...mixTo(tones[1]!));
@@ -213,6 +221,7 @@ export class GlobeScene {
     this.silhouette.uniforms.uColor!.value.setRGB(...t.outline);
     this.routes.applyTheme(t);
     this.sky?.applyTheme(t);
+    this.moon?.applyTheme(t);
   }
 
   /**
@@ -232,6 +241,17 @@ export class GlobeScene {
     this.landTex = tex;
     this.occluder.uniforms.uLandMap!.value = tex;
     this.surface.uniforms.uLandMap!.value = tex;
+  }
+
+  /**
+   * The planet's night (engine/surface.ts, `NIGHT`): `night` 0..1 is how much of it there is (0: the globe as it always was), `sun` the direction towards the light in the earth's
+   * frame. The land's ground thins in the dither and steps to its faintest tone, and the lines go towards the page's colour in grey steps, on the dark side.
+   */
+  setNight(night: number, x: number, y: number, z: number) {
+    for (const m of [this.surface, this.graticule, this.borders, this.coast]) {
+      m.uniforms.uNight!.value = night;
+      m.uniforms.uSunN!.value = [x, y, z];
+    }
   }
 
   /** The sun's direction in the earth's frame (the planet's light; the letters have the same one in the camera's frame). */
@@ -385,6 +405,7 @@ export class GlobeScene {
     this.surfaceTex?.dispose();
     this.routes.dispose();
     this.sky?.dispose();
+    this.moon?.dispose();
     for (const g of this.geometries) g.dispose();
     for (const m of this.materials) m.dispose();
     this.geometries = [];
