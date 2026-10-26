@@ -40,6 +40,21 @@ export const SITE_TITLE = `${SITE_NAME} · ${SITE.role}`;
 /** The temporary main domain of the new site; `CATALYST_SITE_URL` overrides it (the owner's move to the final domain is that one variable). */
 export const DEFAULT_SITE_URL = "https://v2.bsodium.fr";
 
+/**
+ * The archived first version of the site (#312): the ONE place its address is written. The hero's last line and the search palette's "Version 1" entry read it.
+ * It is the old app's own Vercel project (docs/owner-guide.md); if the archive moves, this is the one line to change.
+ */
+export const ARCHIVED_V1 = {
+  url: "https://v1.bsodium.fr",
+  /** The hero's line: "<lead> <link text>". Plain: V1 is archived and no longer maintained. */
+  lead: "The first version of this site is archived and no longer maintained:",
+  linkText: "Visit the archive",
+  /** The palette's entry, found by these words (every typed word must begin one of them). */
+  title: "Version 1 (archived)",
+  sub: "The first version of this site, no longer maintained",
+  words: ["version", "1", "v1", "first", "old", "older", "previous", "archived", "archive", "site"],
+} as const;
+
 /** A stretch of a caption line (`GlobeProps.captionPhrases`): the words and the style they are set in (`plain` when absent). */
 export interface CaptionSpan {
   text: string;

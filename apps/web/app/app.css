@@ -3626,6 +3626,48 @@ h1[tabindex="-1"]:focus-visible {
     border-top: var(--hairline) solid var(--border);
   }
 
+  /* The archived first version (#312): one quiet line of the meta type under the rows. */
+  .hero-archive {
+    margin: 0;
+    padding-top: 0.875rem;
+    border-top: var(--hairline) solid var(--border);
+    font-family: var(--font-meta);
+    font-size: 0.75rem;
+    line-height: 1.5;
+    color: var(--muted-foreground);
+    text-wrap: pretty;
+  }
+
+  .hero-archive-link {
+    pointer-events: auto;
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.5rem;
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+    transition: color var(--duration-fast) var(--ease-standard);
+  }
+
+  /* A phone too short for it (320 x 480 would lose the top of the name): the line goes, the palette's "Version 1 (archived)" entry stays. */
+  @media (max-width: 47.99rem) and (max-height: 32rem) {
+    .hero-archive {
+      display: none;
+    }
+  }
+
+  /* The arrow is drawn, not written: a glyph in the text would be read out. */
+  .hero-archive-link::after {
+    content: "\2197";
+    margin-inline-start: 0.25em;
+    text-decoration: none;
+  }
+
+  .hero-archive-link:hover,
+  .hero-archive-link:focus-visible {
+    color: var(--foreground);
+  }
+
   .hero-row {
     pointer-events: auto;
     display: flex;

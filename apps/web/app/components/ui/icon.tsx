@@ -1,4 +1,5 @@
 import {
+  Archive,
   ArrowDown,
   ArrowLeft,
   ArrowRight,
@@ -89,6 +90,7 @@ export const ICONS = {
   "eye-off": EyeOff,
   info: Info,
   sparkles: Sparkles,
+  archive: Archive,
 } as const satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;
