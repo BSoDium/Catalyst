@@ -10,7 +10,7 @@
 // priority, no layout shift measured), the page without horizontal scroll at 320, 390 and 1440 px in both schemes; no mailto/tel
 // link and no "@" in the text; the keyboard order and a visible focus; reduced motion (no animation or transition on the page's
 // content); print emulation (no chrome, one column, ink on white, no horizontal overflow, a PDF that is a few pages); the header,
-// hero and search entries exist with a career and none without. Screenshots go to OUT_DIR. Exit code 1 on any failed assertion.
+// hero and search entries exist with a career and none without; the head holds at eight widths from 641 to 1440 px (the portrait never hangs over the line below). Screenshots go to OUT_DIR. Exit code 1 on any failed assertion.
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { BASE_URL, OUT_DIR, DESKTOP, MOBILE, launch } from "../globe/_lib.mjs";
 
@@ -51,7 +51,17 @@ async function open(contextOptions, colorScheme, path = "/career", base = BASE_U
   return { ctx, page, logs, response };
 }
 
-const overflow = (page) => page.evaluate(() => Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth);
+// The page's own content must not be wider than the screen. The faint bleeds behind the portrait and the logos are decoration that may spill
+// past the screen's edge (the root clips it: `overflow-x: clip`, so nobody can scroll to it), so they are left out of the measure.
+const overflow = (page) =>
+  page.evaluate(() => {
+    const bleeds = [...document.querySelectorAll(".career-glow, .career-portrait-glow")];
+    const was = bleeds.map((b) => b.style.display);
+    bleeds.forEach((b) => (b.style.display = "none"));
+    const over = Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth;
+    bleeds.forEach((b, i) => (b.style.display = was[i]));
+    return over;
+  });
 
 // --- 1. Structure (desktop, light) ------------------------------------------------------------------------------------------------
 {
@@ -143,6 +153,23 @@ for (const [name, opts] of [["desktop", DESKTOP], ["phone", MOBILE], ["narrow", 
     ok(logs.length === 0, `${name}/${scheme}: no console error${logs.length ? `: ${logs.join(" | ")}` : ""}`);
     await ctx.close();
   }
+}
+
+// --- 2b. The head across widths: the portrait is a square of its own size that never hangs over the line below nor squeezes the text -
+// (a regression: at about 820 px the square took its width from the height of the text beside it, grew to 300 px and overlapped the languages)
+for (const width of [641, 700, 768, 820, 900, 1024, 1280, 1440]) {
+  const { ctx, page } = await open({ viewport: { width, height: 1043 }, deviceScaleFactor: 1 }, "light");
+  const m = await page.evaluate(() => {
+    const q = (s) => document.querySelector(s)?.getBoundingClientRect();
+    const f = q('[data-slot="career-portrait"]'), t = q(".career-id-text"), l = q('[data-slot="career-languages"]'), n = q("#career-name");
+    return { f: [f.width, f.height, f.top, f.bottom], textW: t.width, langTop: l.top, nameTop: n.top, rem: parseFloat(getComputedStyle(document.documentElement).fontSize) };
+  });
+  const [fw, fh, , fb] = m.f;
+  ok(Math.abs(fw - fh) < 1 && fw >= 9 * m.rem - 1 && fw <= 17 * m.rem + 1, `${width}px: the portrait is a square between 9 and 17 rem (${Math.round(fw)}x${Math.round(fh)})`);
+  ok(fb <= m.langTop + 0.5, `${width}px: the portrait stays above the languages line (bottom ${Math.round(fb)}, line ${Math.round(m.langTop)})`);
+  ok(m.textW >= width * 0.55, `${width}px: the text keeps at least 55 % of the width (${Math.round(m.textW)} px)`);
+  ok(Math.abs(m.f[2] - m.nameTop) < 1.5, `${width}px: the top of the portrait meets the top of the name`);
+  await ctx.close();
 }
 
 // --- 3. Keyboard: the order of the tab stops, with a visible focus ---------------------------------------------------------------------

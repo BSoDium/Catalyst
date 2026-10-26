@@ -15,7 +15,8 @@
  * a pull request touches nothing it depends on, which then blocks the merge. A change in
  * this folder (such as this note) makes the project affected, so its preview is built. The
  * same goes for apps/web: the requirement is per commit, so the last commit of a pull
- * request has to touch both folders, or one of the two previews is skipped.
+ * request has to touch both folders, or one of the two previews is skipped (Vercel reports it
+ * as "Skipped - Not affected", and the ruleset does not count that as a success).
  */
 import { Hono } from "hono";
 import { createApp } from "./app";
