@@ -2156,6 +2156,9 @@ export class GlobeRenderer {
     // the sun: one direction in the camera's frame (the letters' key light), which is a direction in the earth's frame for the planet
     const sun = this.sunVec.set(...CINEMATIC.light.key).normalize().transformDirection(cam.matrixWorld);
     this.globe.setSun(sun.x, sun.y, sun.z);
+    // the planet's night (home screen, world view): the moon's sun, fixed in the sky, so the earth turns under it; gone with the zoom as the moon is
+    const ns = toEarthFrame(this.moonSun, this.era);
+    this.globe.setNight(this.showcaseActive && !this.flying && land === 0 ? moonAmount(zoom, this.fit) : 0, ns[0], ns[1], ns[2]);
     const now = performance.now();
     this.globe.syncCamera(b, zoom, this.pixel, now, this.reduced, lat, Math.max(this.width, this.height), inInterlude);
     // (the caption's lines stay on the page's meridian and latitude; only what is hidden is the flying camera's)

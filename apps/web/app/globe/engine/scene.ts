@@ -242,6 +242,17 @@ export class GlobeScene {
     this.surface.uniforms.uLandMap!.value = tex;
   }
 
+  /**
+   * The planet's night (engine/surface.ts, `NIGHT`): `night` 0..1 is how much of it there is (0: the globe as it always was), `sun` the direction towards the light in the earth's
+   * frame. The land's ground and the lines on the dark side thin out in the dither.
+   */
+  setNight(night: number, x: number, y: number, z: number) {
+    for (const m of [this.surface, this.graticule, this.borders, this.coast]) {
+      m.uniforms.uNight!.value = night;
+      m.uniforms.uSunN!.value = [x, y, z];
+    }
+  }
+
   /** The sun's direction in the earth's frame (the planet's light; the letters have the same one in the camera's frame). */
   setSun(x: number, y: number, z: number) {
     this.atmosphere.uniforms.uSun!.value = [x, y, z];
