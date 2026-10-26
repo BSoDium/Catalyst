@@ -43,7 +43,7 @@ export const DEFAULT_SITE_URL = "https://v2.bsodium.fr";
 /**
  * The first version of the site, kept as it was (#312): the ONE place its address and its words are written. The moon that circles the globe
  * (`GlobeProps.moon`, docs/landing.md "The moon") and the search palette's entry read it. A way back to look at, not a warning: the words say what
- * it is and that it stays as it was. The address is the old app's own Vercel project (docs/owner-guide.md); if the archive moves, this is the one line to change.
+ * it is and that it stays as it was. The address is the old app's own Vercel project (docs/owner-guide.md); if the archive moves, this is the one line to change. (This sentence was added in #337 only so that the web preview deploys, which the repository's merge rule requires.)
  */
 export const ARCHIVED_V1 = {
   url: "https://v1.bsodium.fr",
