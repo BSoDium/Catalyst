@@ -160,7 +160,6 @@
   --icon-inline: 1.1em;
   --icon-control: 1.25rem;
   --icon-large: 1.5rem;
-  --icon-tile: 0.9375rem;
 
   /* Motion. Mirrored in app/lib/tokens.ts (seconds); a test keeps them in sync. */
   --duration-fast: 120ms;
@@ -1134,11 +1133,6 @@
     height: var(--icon-large);
   }
 
-  .ui-icon[data-size="tile"] {
-    width: var(--icon-tile);
-    height: var(--icon-tile);
-    vertical-align: baseline;
-  }
 
   /* The shortcut hint (components/ui/key-hint.tsx): a modifier icon or word, then the key, in plain mono text (no border, no
      background); its space is held before hydration (the platform is only known in the browser). */
@@ -4235,7 +4229,8 @@ h1[tabindex="-1"]:focus-visible {
   /* The timeline: an ordered list hung on ONE faint rail (a hairline at its left, nothing drawn on it). No boxes and no markers: the
      type and the spacing do the grouping (organisation and place on one line, the role, the facts, the highlights, the skills). */
   .career-timeline {
-    --career-tile: 1.5625rem; /* 25 px, the height of the organisation line: an odd size, so the 1 px rail runs through the exact middle pixel of the tile */
+    --career-line: 1.5625rem; /* 25 px: the organisation's line (24 px type at 1.05) */
+    --career-tile: 3.4375rem; /* 55 px: the organisation's line and the role's under it (about 54 px); odd, so the 1 px rail runs through the exact middle pixel of the tile */
     --career-gap: 1rem;
     margin: 0;
     padding: 0;
@@ -4291,13 +4286,14 @@ h1[tabindex="-1"]:focus-visible {
     box-sizing: border-box;
     width: var(--career-tile);
     height: var(--career-tile);
-    background: var(--background); /* a mask, not a frame: it only keeps the rail from running through the icon */
+    overflow: hidden;
+    border-radius: 0.25rem; /* owner exception to the system's square edges: a very small radius on the logo, nothing else on the page has one */
+    background: var(--accent); /* behind an icon; a logo covers it. The tile is also the mask that keeps the rail from running through it */
     color: var(--muted-foreground);
   }
 
-  /* A smaller icon, a heavier line: 2.25 at 15 px draws a stroke of about 1.4 px, as dense as the 1.75 of the 20 px icons. */
-  .career-icon .ui-icon {
-    stroke-width: 2.25;
+  .career-icon[data-logo] {
+    background: var(--background);
   }
 
   .career-item[data-current="true"] .career-icon {
@@ -4314,7 +4310,7 @@ h1[tabindex="-1"]:focus-visible {
 
     .career-item {
       display: grid;
-      grid-template-columns: 17rem minmax(0, 1fr);
+      grid-template-columns: 26rem minmax(0, 1fr);
       column-gap: 3rem;
       align-items: start;
       padding-bottom: 3rem;
@@ -4330,9 +4326,9 @@ h1[tabindex="-1"]:focus-visible {
     }
   }
 
-  /* Education and Skills side by side from 64 rem (each is short; stacked they leave the right of the page empty). Inside a pair a
+  /* Education and Skills side by side from 80 rem (a half page must hold the school and its programme on one line) (each is short; stacked they leave the right of the page empty). Inside a pair a
      timeline item is a single column: it has no highlights to put beside it. */
-  @media (min-width: 64rem) {
+  @media (min-width: 80rem) {
     .career-pair:has(> .career-block + .career-block) {
       display: grid;
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -4351,7 +4347,7 @@ h1[tabindex="-1"]:focus-visible {
   .career-top {
     display: flex;
     align-items: center;
-    min-height: var(--career-tile);
+    min-height: var(--career-line);
   }
 
   /* A logo as the marker fills the tile (the tile is the mask: the rail stops at its edge). */
@@ -4511,6 +4507,9 @@ h1[tabindex="-1"]:focus-visible {
     font-family: var(--font-reading);
     font-size: 1.125rem;
     line-height: 1.4;
+    white-space: nowrap; /* one line, always: the logo spans exactly the title and this line */
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .career-level {

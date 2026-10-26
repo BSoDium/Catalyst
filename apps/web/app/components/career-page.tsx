@@ -204,7 +204,7 @@ function Marker({ name, icon }: { name: string; icon: IconName }) {
   const src = careerLogo(name);
   return (
     <span className="career-icon" data-logo={src ? "true" : undefined} aria-hidden="true">
-      {src ? <img src={src} alt="" width={200} height={200} loading="lazy" decoding="async" /> : <Icon name={icon} size="tile" />}
+      {src ? <img src={src} alt="" width={200} height={200} loading="lazy" decoding="async" /> : <Icon name={icon} size="large" />}
     </span>
   );
 }
@@ -236,7 +236,9 @@ function RoleItem({ role, placeKnown }: { role: PublishedCareerRole; placeKnown:
             )}
           </h3>
         </div>
-        <p className="career-role">{role.title}</p>
+        <p className="career-role" title={role.title}>
+          {role.title}
+        </p>
         <div className="career-meta type-meta">
           <Period start={role.start} end={role.end} />
         </div>
@@ -275,7 +277,7 @@ function EducationItem({ item, placeKnown }: { item: PublishedCareerEducation; p
         <div className="career-top">
           <h3 className="career-org">{item.institution}</h3>
         </div>
-        <p className="career-role">
+        <p className="career-role" title={item.level ? `${item.programme} · ${item.level}` : item.programme}>
           {item.programme}
           {item.level && <span className="career-level"> · {item.level}</span>}
         </p>
