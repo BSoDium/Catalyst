@@ -87,6 +87,7 @@ const LOGOS: readonly (readonly [RegExp, string])[] = [
   [/\btauniqo\b/i, "tauniqo"],
   [/\bescape\b/i, "escape"],
   [/\benseeiht\b/i, "enseeiht"],
+  [/\bd[ée]odat\b/i, "deodat"],
   [/\balpen-adria|\bklagenfurt\b/i, "aau"],
 ];
 
