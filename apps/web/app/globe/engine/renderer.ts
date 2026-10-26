@@ -1387,7 +1387,7 @@ export class GlobeRenderer {
           }
         : undefined;
       const sun = toEarthFrame(this.moonSun, this.era);
-      const codes = moonSprite({ cells, axes, sun, map: this.moonMap, phaseX: 0, phaseY: 0, hidden, opaqueBody: along > 0 });
+      const codes = moonSprite({ cells, axes, sun, map: this.moonMap, phaseX: 0, phaseY: 0, hidden, opaqueBody: true });
       sprite.draw(codes, cells, x, y, P, window.devicePixelRatio || 1, along > 0);
     } else sprite.hide();
     this.moonListener?.();

@@ -250,7 +250,14 @@ describe("the moon's sprite", () => {
     expect([...sprite([0.4, 0.1, 0.9], { phaseX: 3, phaseY: 5 })]).not.toEqual([...sprite([0.4, 0.1, 0.9], { phaseX: 4, phaseY: 5 })]);
   });
 
-  it("paints the body in the page's colour only when asked (in front of the planet), and leaves a cell the planet hides empty", () => {
+  it("a new moon with its body painted is a solid disc: it hides what is behind it (the stars) even with no light on it at all", () => {
+    const solid = sprite([0, 0, -1], { opaqueBody: true });
+    const disc = count(sprite([0, 0, 1], { opaqueBody: true }), (c) => c !== CELL.none);
+    expect(count(solid, (c) => c !== CELL.none)).toBe(disc);
+    expect(count(solid, (c) => c === CELL.body)).toBeGreaterThan(disc / 2);
+  });
+
+  it("paints the body in the page's colour only when asked, and leaves a cell the planet hides empty", () => {
     const sun: Vec3 = [1, 0, 0.001];
     const sky = sprite(sun);
     const front = sprite(sun, { opaqueBody: true });

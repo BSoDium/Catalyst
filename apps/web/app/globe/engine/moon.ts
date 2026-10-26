@@ -234,7 +234,7 @@ export interface SpriteInput {
   phaseY: number;
   /** The planet hides this cell (the moon is behind it and the cell is inside its silhouette). */
   hidden?: ((i: number, j: number) => boolean) | undefined;
-  /** Paint the body in the page's colour where nothing else is drawn: the moon in front of the planet must hide the lines behind it; on the sky it must not (it blends in). */
+  /** Paint the body in the page's colour where nothing else is drawn (the unlit side): the moon is a solid body, so it hides what is behind it, the planet's lines in front of the planet and the stars and the Milky Way on the sky: a moon with no light on it is a black spot against the galaxy, on the page's own colour it is invisible. */
   opaqueBody: boolean;
 }
 
