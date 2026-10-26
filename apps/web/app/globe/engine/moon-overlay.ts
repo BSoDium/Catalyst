@@ -11,7 +11,8 @@
  */
 import type { GlobeMoon } from "../types";
 import type { GlobeTheme } from "./colors";
-import { moonPlace, moonSprite, orbitAngle, spriteCells, toRad, MOON, type MoonGeometry } from "./moon";
+import { CELL, moonPlace, moonSprite, orbitAngle, spriteCells, toRad, MOON, type MoonGeometry, type MoonMap } from "./moon";
+import { surfaceTones } from "./surface";
 
 /** What the globe tells the overlay each time it is asked (the renderer's `moonFrame`). */
 export interface MoonFrame {
@@ -19,6 +20,8 @@ export interface MoonFrame {
   amount: number;
   running: boolean;
   cell: number;
+  /** The globe's art grid: where its buffer starts in the container (CSS px) and how many rows it has (the dither counts from the bottom). */
+  grid: { left: number; top: number; rows: number };
   theme: GlobeTheme;
 }
 
@@ -32,6 +35,27 @@ const EDGE = 8;
 
 const rgb = (c: readonly [number, number, number]) => `rgb(${Math.round(c[0] * 255)} ${Math.round(c[1] * 255)} ${Math.round(c[2] * 255)})`;
 
+/** The Moon's picture, decoded once into a grey array (the red channel of a grey PNG), or null when it cannot be had (the moon is then its outlined body). */
+async function loadMoonMap(doc: Document, url: string): Promise<MoonMap | null> {
+  try {
+    const img = doc.createElement("img");
+    img.src = url;
+    await img.decode();
+    const canvas = doc.createElement("canvas");
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx || !canvas.width || !canvas.height) return null;
+    ctx.drawImage(img, 0, 0);
+    const rgba = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    const data = new Uint8Array(canvas.width * canvas.height);
+    for (let k = 0; k < data.length; k++) data[k] = rgba[k * 4]!;
+    return { width: canvas.width, height: canvas.height, data };
+  } catch {
+    return null;
+  }
+}
+
 export class MoonOverlay {
   private link: HTMLAnchorElement;
   private canvas: HTMLCanvasElement;
@@ -44,7 +68,9 @@ export class MoonOverlay {
   private last = 0;
   private open = false;
   private touched = false;
-  private drawn = { cells: 0, theme: null as GlobeTheme | null };
+  private drawn = { cells: 0, theme: null as GlobeTheme | null, key: "" };
+  /** The Moon's picture, once it is in (`loadMoonMap`): until then, and if it never comes, the moon is its outlined body. */
+  private map: MoonMap | null = null;
   private shown = false;
   private disposed = false;
 
@@ -84,6 +110,13 @@ export class MoonOverlay {
 
     link.append(canvas, card);
     root.append(link);
+
+    void loadMoonMap(doc, MOON.mapUrl).then((map) => {
+      if (this.disposed || !map) return;
+      this.map = map;
+      this.drawn.key = ""; // paint again, with the picture
+      this.update(performance.now());
+    });
 
     link.addEventListener("pointerenter", this.onEnter);
     link.addEventListener("pointerleave", this.onLeave);
@@ -151,15 +184,19 @@ export class MoonOverlay {
   private show(f: MoonFrame, x: number, y: number, size: number, alpha: number, front: boolean) {
     const cells = spriteCells(size, f.cell);
     const px = cells * f.cell;
-    // On the art grid, like everything the globe draws: the moon's top-left corner is a whole cell.
-    const left = Math.round((x - px / 2) / f.cell) * f.cell;
-    const top = Math.round((y - px / 2) / f.cell) * f.cell;
+    // On the art grid, like everything the globe draws: the moon's top-left corner is a whole cell of the globe's buffer (`grid`), so that its stipple is the Earth's.
+    const col = Math.round((x - px / 2 - f.grid.left) / f.cell);
+    const row = Math.round((y - px / 2 - f.grid.top) / f.cell);
+    const left = f.grid.left + col * f.cell;
+    const top = f.grid.top + row * f.cell;
     const link = this.link;
     if (!this.shown) {
       this.shown = true;
       link.hidden = false;
     }
-    if (this.drawn.cells !== cells || this.drawn.theme !== f.theme) this.paint(cells, f.theme);
+    // (the dither's period is 8 cells each way: a sprite is painted again when it moves to another phase of it, not for every cell it moves)
+    const key = `${cells}:${col & 7}:${(f.grid.rows - 1 - row) & 7}`;
+    if (this.drawn.key !== key || this.drawn.theme !== f.theme) this.paint(cells, f.theme, key, col, f.grid.rows - 1 - row);
     link.style.width = link.style.height = `${px}px`;
     this.canvas.style.width = this.canvas.style.height = `${px}px`;
     link.style.transform = `translate3d(${left}px, ${top}px, 0)`;
@@ -176,25 +213,30 @@ export class MoonOverlay {
   }
   private at: { left: number; top: number; px: number; geometry: MoonGeometry } | null = null;
 
-  /** Draw the sprite for this size and theme into its canvas (one pixel per art cell; the CSS scales it up crisply). */
-  private paint(cells: number, theme: GlobeTheme) {
-    this.drawn = { cells, theme };
+  /** Draw the sprite into its canvas (one pixel per art cell; the CSS scales it up crisply), in the tones the Earth's picture has in this theme. */
+  private paint(cells: number, theme: GlobeTheme, key: string, gx0: number, gy0: number) {
+    this.drawn = { cells, theme, key };
     const ctx = this.ctx;
     const canvas = this.canvas;
-    canvas.width = canvas.height = cells;
+    if (canvas.width !== cells) canvas.width = canvas.height = cells;
     if (!ctx) return;
-    const n = theme.ramp.length;
-    const at = (k: number) => rgb(theme.ramp[Math.round((n - 1) * k)]!);
-    // On the light page the lit side is the page's own colour (the outline makes the disc, and the planet's lines do not show through); on the dark one the moon is the light thing.
-    const dark = theme.scheme === "dark";
-    const tones = [null, at(dark ? 0.8 : 0.92), dark ? at(0.6) : rgb(theme.background), at(dark ? 0.3 : 0.5), at(dark ? 0.42 : 0.36)];
-    const sprite = moonSprite(cells);
+    // The body is the page's colour (the sea), the outline the coastlines', the ground three steps from the page's colour towards its ink (`SURFACE.tones`).
+    const mix = (k: number) => rgb([0, 1, 2].map((i) => theme.background[i]! + (theme.ink[i]! - theme.background[i]!) * k) as [number, number, number]);
+    const steps = surfaceTones(theme.scheme).map((k) => Math.min(1, k * MOON.toneBoost));
+    const colours: (string | null)[] = [];
+    colours[CELL.none] = null;
+    colours[CELL.outline] = rgb(theme.coast);
+    colours[CELL.body] = rgb(theme.background);
+    colours[CELL.tone0] = mix(steps[0]!);
+    colours[CELL.tone1] = mix(steps[1]!);
+    colours[CELL.tone2] = mix(steps[2]!);
+    const sprite = moonSprite(cells, this.map, gx0, gy0);
     ctx.clearRect(0, 0, cells, cells);
     for (let j = 0; j < cells; j++) {
       for (let i = 0; i < cells; i++) {
-        const tone = tones[sprite[j * cells + i]!];
-        if (!tone) continue;
-        ctx.fillStyle = tone;
+        const colour = colours[sprite[j * cells + i]!];
+        if (!colour) continue;
+        ctx.fillStyle = colour;
         ctx.fillRect(i, j, 1, 1);
       }
     }

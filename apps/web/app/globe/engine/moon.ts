@@ -8,6 +8,7 @@
  * One half of the orbit is "in front" (it is a little larger, and over the planet) and the other "behind" (the planet hides it, softly at the limb).
  */
 import { clamp } from "./geo";
+import { SURFACE } from "./surface";
 
 /** GLSL's `smoothstep`: 0 at or below `e0`, 1 at or above `e1`, smooth between. */
 const smoothstep = (e0: number, e1: number, x: number): number => {
@@ -16,6 +17,10 @@ const smoothstep = (e0: number, e1: number, x: number): number => {
 };
 
 export const MOON = {
+  /** The Earth's tone steps (`SURFACE.tones`) times this: a ground that is a whole planet can be a faint wash, a thing 30 px across that is a link must still show its maria. */
+  toneBoost: 3.4,
+  /** The Moon's picture: grey, 256 x 128, baked from a map of the near side (scripts/moon/bake-moon.py, public/media/moon-grey.NOTICE.txt). */
+  mapUrl: "/media/moon-grey.png",
   /** One turn, ms: slow enough to be a calm thing at the edge of the picture, fast enough to be seen to move. */
   periodMs: 90_000,
   /** Where it is when it does not move (reduced motion, a frozen page), degrees: in front, to the right of the planet. */
@@ -118,31 +123,48 @@ export function moonAmount(zoom: number, fit: number): number {
   return 1 - smoothstep(fit + MOON.fadeFrom, fit + MOON.fadeTo, zoom);
 }
 
-/** The tones of the sprite, in the order of the cells' values below. */
-export type MoonTone = "outline" | "lit" | "shade" | "crater";
-export const TONES: readonly (MoonTone | null)[] = [null, "outline", "lit", "shade", "crater"];
+/** What a sprite cell is: nothing, the outline, the body (the page's colour: the sea of the Earth's picture), and the three tones of the ground, darkest first. */
+export const CELL = { none: 0, outline: 1, body: 2, tone0: 3, tone1: 4, tone2: 5 } as const;
 
-const BAYER4 = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
-/** The light: from the upper left, a little in front. */
-const LIGHT = (() => {
-  const v = [-0.55, 0.5, 0.67];
-  const l = Math.hypot(...v);
-  return v.map((n) => n / l) as [number, number, number];
-})();
-/** The maria and craters, in the disc's own unit coordinates (x right, y up) and radii: fixed (the moon shows the planet one face). */
-const CRATERS: readonly [number, number, number][] = [
-  [0.28, 0.3, 0.2],
-  [-0.12, 0.52, 0.12],
-  [0.5, -0.1, 0.14],
-  [0.05, -0.38, 0.22],
-  [-0.4, -0.12, 0.11],
-];
+/** The Moon's picture (`public/media/moon-grey.png`, baked by `scripts/moon/bake-moon.py`): grey 0..255, equirectangular, longitude 0 (the near side) in the middle. */
+export interface MoonMap {
+  width: number;
+  height: number;
+  data: Uint8Array;
+}
+
+const fract = (x: number) => x - Math.floor(x);
+const dither2 = (x: number, y: number) => fract(x * 0.5 + y * y * 0.75);
+
+/** The globe's ordered dither (engine/materials.ts `dither4`, the same function): 0..1 for a buffer pixel (`x` from the left, `y` from the BOTTOM, like `gl_FragCoord`). Period 8. */
+export function dither4(x: number, y: number): number {
+  return dither2(0.5 * x, 0.5 * y) * 0.25 + dither2(x, y);
+}
+
+/** The picture's brightness (0..1) at a direction on the Moon's near side: `nx` right, `ny` up, `nz` toward us; bilinear, wrapped in longitude. */
+export function sampleMoon(map: MoonMap, nx: number, ny: number, nz: number): number {
+  const u = (Math.atan2(nx, nz) / (2 * Math.PI) + 0.5) * map.width - 0.5;
+  const v = (0.5 - Math.asin(clamp(ny, -1, 1)) / Math.PI) * map.height - 0.5;
+  const x0 = Math.floor(u);
+  const y0 = Math.floor(v);
+  const fx = u - x0;
+  const fy = v - y0;
+  const at = (x: number, y: number) => map.data[clamp(y, 0, map.height - 1) * map.width + ((x % map.width) + map.width) % map.width]!;
+  const top = at(x0, y0) * (1 - fx) + at(x0 + 1, y0) * fx;
+  const bottom = at(x0, y0 + 1) * (1 - fx) + at(x0 + 1, y0 + 1) * fx;
+  return (top * (1 - fy) + bottom * fy) / 255;
+}
 
 /**
- * The sprite: `cells` x `cells` art pixels (odd, so there is a middle one), 0 for nothing and 1 to 4 for the tones above. A one-pixel outline, the lit side
- * as plain page colour (the planet's lines do not show through the body), the shaded side dithered into it by a 4x4 Bayer matrix like everything the globe draws.
+ * The sprite: `cells` x `cells` art pixels (odd, so there is a middle one), of the `CELL` values. It is drawn the way the globe draws the Earth's picture
+ * (engine/materials.ts `surfaceMaterial`): the body is the page's colour, and the ground is one of three flat tones by how bright the picture is (the same cuts,
+ * `SURFACE.cuts`), kept in only a share of the pixels (`SURFACE.cover`) chosen by the globe's own ordered dither, which gives the same checkered stipple. No light and
+ * no shade: the Earth has none at rest. Outlined in one pixel, as the coastlines are. Without the picture (not loaded yet, or never) it is the outlined body alone.
+ *
+ * `gx0` and `gy0` are the buffer pixel of the sprite's top-left cell, `gx` from the left and `gy` from the bottom (the buffer's own, as `gl_FragCoord` has it), so that
+ * the stipple falls on the same pixels as the Earth's wherever the moon is.
  */
-export function moonSprite(cells: number): Uint8Array {
+export function moonSprite(cells: number, map: MoonMap | null, gx0: number, gy0: number): Uint8Array {
   const out = new Uint8Array(cells * cells);
   const c = (cells - 1) / 2;
   const R = cells / 2;
@@ -153,18 +175,13 @@ export function moonSprite(cells: number): Uint8Array {
       const d2 = nx * nx + ny * ny;
       if (d2 > 1) continue;
       const edge = 1 - 1.15 / R;
-      if (d2 > edge * edge) {
-        out[j * cells + i] = 1;
-        continue;
+      let cell: number = CELL.body;
+      if (d2 > edge * edge) cell = CELL.outline;
+      else if (map && dither4(gx0 + i, gy0 - j) < SURFACE.cover) {
+        const v = sampleMoon(map, nx, ny, Math.sqrt(1 - d2));
+        cell = v < SURFACE.cuts[0] ? CELL.tone0 : v < SURFACE.cuts[1] ? CELL.tone1 : CELL.tone2;
       }
-      const nz = Math.sqrt(1 - d2);
-      const lit = nx * LIGHT[0] + ny * LIGHT[1] + nz * LIGHT[2];
-      let tone = 2;
-      if (lit < 0.42) tone = (lit + 0.25) / 0.67 > (BAYER4[(j & 3) * 4 + (i & 3)]! + 0.5) / 16 ? 2 : 3;
-      for (const [kx, ky, kr] of CRATERS) {
-        if (Math.hypot(nx - kx, ny - ky) < kr) tone = tone === 3 ? 3 : 4;
-      }
-      out[j * cells + i] = tone;
+      out[j * cells + i] = cell;
     }
   }
   return out;

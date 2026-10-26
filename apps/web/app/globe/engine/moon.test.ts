@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { MOON, moonAmount, moonDiameter, moonPlace, moonSprite, orbitAngle, semiMajor, spriteCells, toRad, type MoonGeometry } from "./moon";
+import { CELL, MOON, dither4, moonAmount, moonDiameter, moonPlace, moonSprite, orbitAngle, sampleMoon, semiMajor, spriteCells, toRad, type MoonGeometry } from "./moon";
+import { SURFACE } from "./surface";
 
 const G: MoonGeometry = { cx: 700, cy: 400, s: 320, width: 1400, height: 800, blocks: [] };
 const FRONT = toRad(90);
@@ -74,24 +75,66 @@ describe("the moon's orbit", () => {
   });
 });
 
+describe("the moon's picture", () => {
+  /** A map of two halves: dark on the left of the middle, light on the right. */
+  const map = { width: 8, height: 4, data: Uint8Array.from({ length: 32 }, (_, k) => (k % 8 < 4 ? 40 : 230)) };
+
+  it("is read by direction: longitude 0 in the middle of the map, east to the right", () => {
+    expect(sampleMoon(map, 0.9, 0, 0.1)).toBeGreaterThan(0.8);
+    expect(sampleMoon(map, -0.9, 0, 0.1)).toBeLessThan(0.3);
+  });
+
+  it("has the globe's own dither: 0..1, a quarter-step lattice with period 8, and half of the pixels under one half", () => {
+    let under = 0;
+    for (let y = 0; y < 8; y++)
+      for (let x = 0; x < 8; x++) {
+        const d = dither4(x, y);
+        expect(d).toBeGreaterThanOrEqual(0);
+        expect(d).toBeLessThan(1.25);
+        expect(dither4(x + 8, y + 8)).toBeCloseTo(d);
+        if (d < SURFACE.cover) under++;
+      }
+    expect(under).toBeGreaterThan(20);
+    expect(under).toBeLessThan(44);
+  });
+});
+
 describe("the moon's sprite", () => {
-  it("is a disc with a one-pixel outline, symmetric in its outline, lit on the upper left", () => {
-    const n = spriteCells(40, 4);
+  const n = spriteCells(40, 4);
+  const map = { width: 8, height: 4, data: Uint8Array.from({ length: 32 }, (_, k) => (k % 8 < 4 ? 40 : 230)) };
+
+  it("is a disc with a one-pixel outline round a body in the page's colour", () => {
     expect(n % 2).toBe(1);
-    const s = moonSprite(n);
+    const s = moonSprite(n, null, 0, 0);
     const at = (i: number, j: number) => s[j * n + i]!;
-    expect(at(0, 0)).toBe(0);
-    expect(at(n - 1, n - 1)).toBe(0);
     const mid = (n - 1) / 2;
-    expect(at(mid, 0)).toBe(1);
-    expect(at(0, mid)).toBe(1);
-    expect(at(n - 1, mid)).toBe(1);
-    expect(at(mid, n - 1)).toBe(1);
-    let lit = 0;
-    let shade = 0;
-    for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) (i + j < n - 1 ? (at(i, j) === 2 ? lit++ : 0) : at(i, j) === 3 ? shade++ : 0);
-    expect(lit).toBeGreaterThan(shade / 2);
-    expect(shade).toBeGreaterThan(0);
+    expect(at(0, 0)).toBe(CELL.none);
+    expect(at(n - 1, n - 1)).toBe(CELL.none);
+    for (const [i, j] of [[mid, 0], [0, mid], [n - 1, mid], [mid, n - 1]] as const) expect(at(i, j)).toBe(CELL.outline);
+    expect(at(mid, mid)).toBe(CELL.body);
+    expect([...s].filter((c) => c > CELL.body)).toHaveLength(0);
+  });
+
+  it("with the picture has the ground in three tones, in the Earth's stipple: a share of the pixels, the same share as the Earth's cover", () => {
+    const s = moonSprite(n, map, 0, 0);
+    const inside = [...s].filter((c) => c >= CELL.body);
+    const ground = inside.filter((c) => c > CELL.body);
+    expect(ground.length / inside.length).toBeGreaterThan(SURFACE.cover - 0.12);
+    expect(ground.length / inside.length).toBeLessThan(SURFACE.cover + 0.12);
+    // the picture's dark half is on the left of the disc and the light on the right
+    const mid = (n - 1) / 2;
+    const left = [...s].filter((c, k) => k % n < mid && c > CELL.body);
+    const right = [...s].filter((c, k) => k % n > mid && c > CELL.body);
+    expect(left.every((c) => c === CELL.tone0)).toBe(true);
+    expect(right.every((c) => c === CELL.tone2)).toBe(true);
+  });
+
+  it("puts the stipple where the buffer's dither does: the same pixel, the same answer wherever the sprite is", () => {
+    const a = moonSprite(n, map, 3, 20);
+    const b = moonSprite(n, map, 3 + 8, 20 + 8);
+    expect([...a]).toEqual([...b]);
+    const c = moonSprite(n, map, 4, 20);
+    expect([...a]).not.toEqual([...c]);
   });
 
   it("asks for an odd number of cells, at least nine", () => {

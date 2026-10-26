@@ -1221,7 +1221,7 @@ export class GlobeRenderer {
    * interlude has the view, a place is open). `amount` is how much the zoom lets through, `running` whether it may move (the energy pass's holds, reduced motion).
    * Read by the overlay's own timer and after every drawn frame; allocates one small object.
    */
-  moonFrame(): { geometry: MoonGeometry; amount: number; running: boolean; cell: number; theme: GlobeTheme } | null {
+  moonFrame(): { geometry: MoonGeometry; amount: number; running: boolean; cell: number; grid: { left: number; top: number; rows: number }; theme: GlobeTheme } | null {
     if (!this.sized || this.disposed || this.lost || this.suspended || this.flying || this.selected !== null || this.insetTarget > 0) return null;
     if ((this.caption?.landShare() ?? 0) > 0) return null;
     const P = this.pixel;
@@ -1242,6 +1242,7 @@ export class GlobeRenderer {
       amount,
       running: !this.reduced && !this.held && !this.hidden,
       cell: P,
+      grid: { left: this.canvasLeft, top: this.canvasTop, rows: this.bufH },
       theme: this.theme,
     };
   }

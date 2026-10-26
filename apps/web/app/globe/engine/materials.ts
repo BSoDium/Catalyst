@@ -7,6 +7,7 @@ import { BackSide, Color, FrontSide, NormalBlending, ShaderMaterial } from "thre
 import { LEG_MODES, MODE_STYLE } from "../paths/modes";
 import { STRAIGHT_FADE_MIX, STRAIGHT_FADE_STEPS } from "../paths/thin";
 import { SPARK, TRAIL_BANDS, TRAIL_ENTRIES, TRAIL_PER_PALETTE } from "../paths/trail";
+import { SURFACE } from "./surface";
 
 const PASS_THROUGH_VERTEX = /* glsl */ `
   void main() { gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
@@ -207,7 +208,7 @@ export function surfaceMaterial(): ShaderMaterial {
         float v = texture2D(uEarth, uv).r;
         ditherDiscard(uAmt);
         // the land is dark, middle or light ground (thresholds on the picture's brightness, which the picture lifts to 0.2 and over)
-        vec3 tone = v < 0.42 ? uTone0 : (v < 0.62 ? uTone1 : uTone2);
+        vec3 tone = v < ${SURFACE.cuts[0].toFixed(2)} ? uTone0 : (v < ${SURFACE.cuts[1].toFixed(2)} ? uTone1 : uTone2);
         gl_FragColor = vec4(mix(uBg, tone, uStrength), 1.0);
       }
     `,

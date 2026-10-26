@@ -34,6 +34,7 @@ import { SKY_STATE, viewToGalactic } from "./sky";
 import { SkyLayer } from "./sky-layer";
 import { routeLift } from "./view";
 import { TUNING } from "./tuning";
+import { surfaceTones } from "./surface";
 
 
 /** How much of the ink the filled land has (the rest is the page's colour): near the ink, as the letters' metal is. */
@@ -199,7 +200,7 @@ export class GlobeScene {
     this.atmosphere.uniforms.uColor!.value.setRGB(...mixTo(t.scheme === "dark" ? 0.5 : 0.3));
     this.mist.uniforms.uColor!.value.setRGB(...mixTo(t.scheme === "dark" ? 0.3 : 0.18));
     // the land's three tones: darker ground, middle, lighter, each a step from the page's colour towards its ink (the page's own two ends, no hue)
-    const tones = t.scheme === "dark" ? [0.2, 0.13, 0.07] : [0.17, 0.11, 0.06];
+    const tones = surfaceTones(t.scheme);
     this.surface.uniforms.uBg!.value.setRGB(...bg);
     this.surface.uniforms.uTone0!.value.setRGB(...mixTo(tones[0]!));
     this.surface.uniforms.uTone1!.value.setRGB(...mixTo(tones[1]!));
