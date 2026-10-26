@@ -17,6 +17,7 @@
 import { ClampToEdgeWrapping, Color, FrontSide, LinearFilter, Mesh, NoColorSpace, NormalBlending, RepeatWrapping, type Scene, ShaderMaterial, SphereGeometry, type Texture, TextureLoader, Vector3, type PerspectiveCamera } from "three";
 import type { GlobeTheme } from "./colors";
 import { MOON, inertialPosition, moonAmount, orbitBasis, toEarthFrame, unhidden, type OrbitBasis, type Vec3 } from "./moon";
+import { SMOOTH_STATE } from "./smooth";
 import { SURFACE, surfaceTones } from "./surface";
 
 /** What a frame says of the moon. Buffer pixels (the art grid, y up, as `gl_FragCoord` has them) and earth radii. */
@@ -65,13 +66,13 @@ const VERTEX = /* glsl */ `
 
 const FRAGMENT = /* glsl */ `
   uniform vec3 uBg; uniform vec3 uTone0; uniform vec3 uTone1; uniform vec3 uTone2; uniform vec3 uOutline; uniform vec3 uGhost;
-  uniform vec3 uSun; uniform vec3 uAxis; uniform float uGamma0; uniform float uEdgeAng; uniform float uAmt;
+  uniform vec3 uSun; uniform vec3 uAxis; uniform float uGamma0; uniform float uEdgeAng; uniform float uSoft; uniform float uAmt;
   uniform sampler2D uMap;
   varying vec3 vDir; varying vec3 vWorld; varying vec3 vNormal;
   void main() {
-    // the silhouette: a sphere's is where the view ray is at asin(r / D) from the line to its centre; coverage over one pixel's angle
+    // the silhouette: a sphere's is where the view ray is at asin(r / D) from the line to its centre; coverage over one pixel's angle (times uSoft: 0 is a hard edge, a pixel in or out, 1 a pixel of coverage)
     float gamma = acos(clamp(dot(normalize(vWorld - cameraPosition), uAxis), -1.0, 1.0));
-    float cover = clamp((uGamma0 - gamma) / uEdgeAng + 0.5, 0.0, 1.0);
+    float cover = clamp((uGamma0 - gamma) / (uEdgeAng * uSoft) + 0.5, 0.0, 1.0);
     if (cover <= 0.0) discard;
     // the light, smooth: no dither, no steps
     float lit = smoothstep(${MOON.litFrom.toFixed(3)}, ${MOON.litTo.toFixed(3)}, dot(normalize(vNormal), uSun));
@@ -102,6 +103,7 @@ function moonMaterial(): ShaderMaterial {
       uAxis: { value: new Vector3(0, 0, 1) },
       uGamma0: { value: 0.1 },
       uEdgeAng: { value: 0.002 },
+      uSoft: { value: 1 },
       uAmt: { value: 1 },
       uMap: { value: null },
     },
@@ -237,6 +239,7 @@ export class MoonLayer {
     (u.uSun!.value as Vector3).set(f.sun[0], f.sun[1], f.sun[2]);
     u.uGamma0!.value = Math.asin(Math.min(1, MOON.radius / D));
     u.uEdgeAng!.value = 1 / focal; // one buffer pixel
+    u.uSoft!.value = Math.max(0.02, SMOOTH_STATE.enabled ? SMOOTH_STATE.amount : 1); // (the experiment's intensity: engine/smooth.ts)
     u.uAmt!.value = amount;
     this.sample = sample;
     return sample;

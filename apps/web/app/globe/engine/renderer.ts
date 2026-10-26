@@ -69,7 +69,7 @@ import { SHOWCASE_STATE, bandLat, inBand, shellWindowFactor, type CaptionContent
 import { CAP_HEIGHT_EM, ringAlpha, ringFloorZoom, ringRoomRadius, RING_STATE } from "./ring";
 import { RingLayer } from "./ring-layer";
 import { GlobeScene } from "./scene";
-import { SMOOTH_STATE } from "./smooth";
+import { SMOOTH_STATE, onSmoothChange } from "./smooth";
 import { MOON, inclinationFor, moonAmount, orbitAngle, rollFor, sunDirection, toEarthFrame, toRad, type Vec3 } from "./moon";
 import type { MoonSample } from "./moon-layer";
 import { CAPTION, ENERGY, INSET_EASE, CAPTION_LOAD, RING, SKY, START_VIEW, TUNING } from "./tuning";
@@ -301,6 +301,7 @@ export class GlobeRenderer {
     } satisfies Partial<CSSStyleDeclaration>);
     this.canvas.setAttribute("aria-hidden", "true");
     opts.container.append(this.canvas);
+    if (SMOOTH_STATE.enabled) this.cleanups.push(onSmoothChange(() => this.requestRender()));
 
     this.globe = new GlobeScene(opts);
     // (the land's picture, 60 KB: after the first frame, in an idle moment)
@@ -1283,6 +1284,15 @@ export class GlobeRenderer {
     return !!this.moonSample?.onScreen && this.moonRunning && !this.suspended;
   }
 
+  private blurNow = "";
+  /** The smooth experiment's blur (engine/smooth.ts): `amount` times `blur` of an art cell, so that the pixels' edges bleed as an LCD's do. Written only when it changes. */
+  private applySmoothBlur() {
+    const v = SMOOTH_STATE.enabled && SMOOTH_STATE.amount > 0 ? `blur(${(SMOOTH_STATE.amount * SMOOTH_STATE.blur * this.pixel).toFixed(2)}px)` : "";
+    if (v === this.blurNow) return;
+    this.blurNow = v;
+    this.canvas.style.filter = v;
+  }
+
   /** Something wants the display's own frames, not the idle rotation's ten a second: the caption moving, the moon in the picture, or the smooth experiment (`?smooth`). */
   private get wantsDisplayRate(): boolean {
     return (this.caption?.animating ?? false) || this.moonWantsFrames || SMOOTH_STATE.enabled;
@@ -1715,6 +1725,7 @@ export class GlobeRenderer {
       this.opts.onFrame();
       return;
     }
+    this.applySmoothBlur();
     const tp = perfStart();
     this.syncCamera();
     this.syncNodes();

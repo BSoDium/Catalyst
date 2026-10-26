@@ -55,7 +55,7 @@ An Easter egg, placed in 3D and drawn as a sprite. (My first version was a flat 
 
 What it is not yet: **eclipsed** (the planet casts no shadow on it); at the **real distance** (60 earth radii: a speck, unclickable); **under the markers and labels** (those are a 2D overlay, so a label drawn at a world view with the labels on is painted over a moon in front of it; at the home screen's resting view they are out).
 
-- **The same idea for the Earth: `?smooth`.** An experiment, off by default: MSAA on the globe's canvas and the idle rotation at the display's rate. See docs/landing.md.
+- **The same idea for the Earth: `?smooth`.** An experiment, off by default, with an intensity from 0 to 1 (`?smooth=0.5`, live from the console with `window.__smooth.set(x)`): MSAA on the globe's canvas, the moon's edge coverage, a slight blur on the canvas so the pixels bleed as an LCD's do, and the idle rotation at the display's rate. See docs/landing.md.
 
 ## 6. What is not 3D, and what is true in 3D but looks flat
 
