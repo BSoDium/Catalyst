@@ -134,6 +134,7 @@ const FRAG = /* glsl */ `
   uniform float uEdgeLayer;
   uniform vec3 uSunN;
   uniform float uNight;
+  uniform float uFlip;
   uniform vec3 uNightTo;
   varying vec2 vUv;
   varying float vLayer;
@@ -152,8 +153,8 @@ const FRAG = /* glsl */ `
     vec3 side = acc ? uAccentSide : uSide;
     // a row seen from behind (past the horizon, curling back towards the planet) is the thickness' tone whole: the back of the type is quieter than its face
     vec3 col = !gl_FrontFacing ? side : (front ? (isOutline ? outl : face) : (vLayer < uEdgeLayer ? face : side));
-    // over the planet's dark side the type is a little less lit, in the same steps as the lines (NIGHT.captionDim: far less than the land's, the words stay readable)
-    float dark = floor((1.0 - dayShare(normalize(vDir), uSunN, uNight)) * ${NIGHT.lineSteps.toFixed(1)} + 0.5) / ${NIGHT.lineSteps.toFixed(1)};
+    // over the planet's wash (the dark side; the lit one on the light page) the type is a little less lit, in the same steps as the lines (NIGHT.captionDim: far less than the land's, the words stay readable)
+    float dark = floor(washOf(normalize(vDir), uSunN, uNight, uFlip) * ${NIGHT.lineSteps.toFixed(1)} + 0.5) / ${NIGHT.lineSteps.toFixed(1)};
     col = mix(col, uNightTo, dark * ${NIGHT.captionDim.toFixed(2)});
     // Premultiplied output, blended "over" (see the material): the glyph's inside is exactly 1, so an interior pixel is exactly opaque whatever
     // stacks behind it; only an edge is partly transparent (and then properly premultiplied: no bright fringe).
@@ -704,6 +705,7 @@ export class CaptionLayer {
   /** The planet's night, for the rows (`setNight`). */
   private nightSun = { value: [0, 0, 1] as number[] };
   private nightAmt = { value: 0 };
+  private nightFlip = { value: 0 };
   private nightTo = { value: [1, 1, 1] as number[] };
   private dimAlpha = 0;
   private dimMode: "ellipse" | "bands" | "none" = CAPTION.dim.mode;
@@ -862,6 +864,7 @@ export class CaptionLayer {
         uEdgeLayer: this.edgeLayer,
         uSunN: this.nightSun,
         uNight: this.nightAmt,
+        uFlip: this.nightFlip,
         uNightTo: this.nightTo,
         uBaseLat: { value: 0 },
         uBelow: { value: 0 },
@@ -950,6 +953,7 @@ export class CaptionLayer {
     this.edgeLayer.value = this.sideMode === "edge" ? (CAPTION.colors.edgeSlices - 0.5) / (this.slices - 1) : 0;
     this.dimColor.value = [...theme.background];
     this.nightTo.value = [...theme.background];
+    this.nightFlip.value = theme.scheme === "dark" ? 0 : 1;
     const dark = 0.2126 * theme.background[0] + 0.7152 * theme.background[1] + 0.0722 * theme.background[2] < 0.5;
     // the word is colourless: each surface is a step from the page's colour towards the ink (`CINEMATIC.tone`)
     const tone = dark ? CINEMATIC.tone.dark : CINEMATIC.tone.light;

@@ -1302,6 +1302,28 @@ export class GlobeRenderer {
     return orbitAngle(this.moonMs);
   }
 
+  private sunV = new Vector3();
+
+  /** Place the sun for this frame: the light's direction in the camera's frame, where the planet is on the buffer; it is shown with the planet's night (the same amount). */
+  private syncSun(cam: PerspectiveCamera, d: number, sunEarth: Vec3) {
+    const sun = this.globe.sun;
+    if (!sun) return;
+    const c0 = this.sunV.set(0, 0, 0).project(cam);
+    const cx = (c0.x * 0.5 + 0.5) * this.bufW;
+    const cy = (c0.y * 0.5 + 0.5) * this.bufH;
+    const focal = (cam.projectionMatrix.elements[5]! * this.bufH) / 2;
+    const v = this.sunV.set(sunEarth[0], sunEarth[1], sunEarth[2]).transformDirection(cam.matrixWorldInverse);
+    sun.sync({
+      bufW: this.bufW,
+      bufH: this.bufH,
+      cx,
+      cy,
+      radius: focal / Math.sqrt(Math.max(1e-6, d * d - 1)),
+      dir: [v.x, v.y, v.z],
+      amount: this.nightNow,
+    });
+  }
+
   /** Place the moon for this frame (the camera's matrices are final). */
   private syncMoon(cam: PerspectiveCamera, d: number, zoom: number, now: number) {
     const moon = this.globe.moon;
@@ -2178,7 +2200,7 @@ export class GlobeRenderer {
     // the planet's night (home screen, world view): the moon's sun, fixed in the sky, so the earth turns under it; gone with the zoom as the moon is
     const ns = toEarthFrame(this.moonSun, this.era);
     this.nightNow = this.showcaseActive && !this.flying && land === 0 ? moonAmount(zoom, this.fit) : 0;
-    // (the light page shows a softer night: `NIGHT.lightGain`)
+    // (the light page shows the wash a little softer than the dark one: `NIGHT.lightGain`)
     const shown = this.nightNow * (this.theme.scheme === "dark" ? 1 : NIGHT.lightGain);
     this.globe.setNight(shown, ns[0], ns[1], ns[2]);
     this.caption?.setNight(shown, ns);
@@ -2190,6 +2212,7 @@ export class GlobeRenderer {
     this.caption?.sync(d, v.lon, v.lat, now, over);
     this.syncTagline();
     this.syncMoon(cam, d, zoom, now);
+    this.syncSun(cam, d, ns);
     this.globe.syncSky(cam, skyBasis, this.era, { w: this.bufW, h: this.bufH, shift: this.camShift, lift: this.camLift }, now, this.reduced, this.flying || (this.caption?.landShare() ?? 0) > 0);
   }
 

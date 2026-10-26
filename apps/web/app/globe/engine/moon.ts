@@ -62,9 +62,36 @@ export const MOON = {
    */
   sunAzimuthDeg: 52,
   sunElevationDeg: 14,
+  /** On the light page the lit side is overexposed: its ground goes this share of the way to the page's colour (not all of it: the details stay). The dark side has the ground's full tones. */
+  burn: 0.55,
   /** The light's edge: `N . sun` from where a pixel is dark (the page's colour: it blends into the sky) to where it is lit, a smoothstep over this range (no dither: the moon is drawn with coverage). */
   litFrom: -0.08,
   litTo: 0.32,
+} as const;
+
+/**
+ * The sun as a sprite (engine/sun-layer.ts), in the art's pixels. Its disc is `size` of the planet's radius (at least `minR` pixels), `distance` planet radii from the planet's centre, towards where the light
+ * is on the screen but `lift` higher (the light comes from behind the camera: there is no real place for it, and the page's own content is at the sides and below), kept `keep` radii inside the picture.
+ * The crown reaches `reach` radii. Tones are shares from the page's colour to the ink: the dark page's sun is the ink's tone, the light page's is the glare that burns the colour away, and shows
+ * only its dark spots, a ghost of a rim, and the rays' slight darkness.
+ */
+export const SUN = {
+  size: 0.13,
+  minR: 5,
+  distance: 1.75,
+  lift: 0.45,
+  keep: 1.3,
+  reach: 3.2,
+  grain: 3.0,
+  spot: 0.66,
+  penumbra: 0.58,
+  limb: 0.86,
+  rays: 8,
+  longRay: 2.7,
+  shortRay: 1.5,
+  halo: 0.9,
+  dark: { spot: 0.42, mid: 0.72, ray: 0.85, halo: 0.5 },
+  light: { spot: 0.3, rim: 0.14, ray: 0.24, halo: 0.1 },
 } as const;
 
 export type Vec3 = [number, number, number];

@@ -50,8 +50,8 @@ export const NIGHT = {
   lineSteps: 3,
   /** The orbiting type over the dark side: its colour goes this share of the way to the page's at the darkest (a dimming, not a night: the words must stay readable). */
   captionDim: 0.3,
-  /** How much of the night the light page shows (the whole planet's, caption included: the scale of `uNight`): the dark page shows all of it; on the cream it was heavy and ugly, so it is a soft one step. */
-  lightGain: 0.4,
+  /** How much of the wash the light page shows (the scale of `uNight`): the light page is the day's overexposure, not a night (`washOf`): the sun's side burns towards the page's colour; a little under the dark page's, so the lit half is never blank. */
+  lightGain: 0.75,
 } as const;
 
 /** GLSL for the light on a ground point `n` (a unit vector in the earth's frame) from the sun `uSunN`, scaled by how much night there is (`uNight`: 0 is all day): 1 lit, 0 dark. */
@@ -59,5 +59,10 @@ export const NIGHT_GLSL = /* glsl */ `
   float dayShare(vec3 n, vec3 sun, float night) {
     float k = smoothstep(${NIGHT.litFrom.toFixed(2)}, ${NIGHT.litTo.toFixed(2)}, dot(n, sun));
     return mix(1.0, k, night);
+  }
+  /** How much a ground point is washed towards the page's colour, 0..1. On the dark page it is the DARK side (the day is the page's ink, the night goes towards the dark page); on the light page (\`flip\` 1) it is the LIT side, overexposed: the sun is so bright that the colours burn away. */
+  float washOf(vec3 n, vec3 sun, float night, float flip) {
+    float k = smoothstep(${NIGHT.litFrom.toFixed(2)}, ${NIGHT.litTo.toFixed(2)}, dot(n, sun));
+    return night * mix(1.0 - k, k, flip);
   }
 `;

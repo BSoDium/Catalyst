@@ -30,6 +30,7 @@ import { landMask } from "./land";
 import { GRATICULE_STEP_DEG, graticuleSegments, polylinesToSegments } from "./geometry";
 import { OCCLUDER_RADIUS, atmosphereMaterial, cityMaterial, surfaceMaterial, mistMaterial, lineMaterial, occluderMaterial, silhouetteMaterial } from "./materials";
 import { MoonLayer } from "./moon-layer";
+import { SunLayer } from "./sun-layer";
 import { RouteLayer } from "./route-layer";
 import { SKY_STATE, viewToGalactic } from "./sky";
 import { SkyLayer } from "./sky-layer";
@@ -65,6 +66,8 @@ export class GlobeScene {
   readonly sky: SkyLayer | null;
   /** The moon, a body on an orbit about the earth (engine/moon-layer.ts), or null when the page has none (no `GlobeProps.moon`, `?no-moon`, a debug page without `?moon`). */
   readonly moon: MoonLayer | null;
+  /** The sun: a sprite in the sky on the side the light comes from (engine/sun-layer.ts); with the moon's flag. */
+  readonly sun: SunLayer | null;
 
   private geometries: BufferGeometry[] = [];
   private materials: ShaderMaterial[] = [];
@@ -167,6 +170,7 @@ export class GlobeScene {
     this.routes = new RouteLayer(this.scene, data.routes);
     this.sky = SKY_STATE.enabled ? new SkyLayer(this.scene) : null;
     this.moon = data.moon ? new MoonLayer(this.scene) : null;
+    this.sun = data.moon ? new SunLayer(this.scene) : null;
 
     const N = 360;
     const angle = new Float32Array(N);
@@ -222,7 +226,10 @@ export class GlobeScene {
     this.silhouette.uniforms.uNightTo!.value.setRGB(...t.background);
     this.routes.applyTheme(t);
     this.sky?.applyTheme(t);
+    this.sun?.applyTheme(t);
     this.moon?.applyTheme(t);
+    // the light page is the party with the main lights on: the sun's side is washed out, not the dark one (`washOf`)
+    for (const m of [this.surface, this.graticule, this.borders, this.coast, this.silhouette]) m.uniforms.uFlip!.value = t.scheme === "dark" ? 0 : 1;
   }
 
   /**
@@ -406,6 +413,7 @@ export class GlobeScene {
     this.surfaceTex?.dispose();
     this.routes.dispose();
     this.sky?.dispose();
+    this.sun?.dispose();
     this.moon?.dispose();
     for (const g of this.geometries) g.dispose();
     for (const m of this.materials) m.dispose();

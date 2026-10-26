@@ -64,7 +64,7 @@ const VERTEX = /* glsl */ `
 
 const FRAGMENT = /* glsl */ `
   uniform vec3 uBg; uniform vec3 uTone0; uniform vec3 uTone1; uniform vec3 uTone2; uniform vec3 uOutline; uniform vec3 uGhost;
-  uniform vec3 uSun; uniform vec3 uAxis; uniform float uGamma0; uniform float uEdgeAng; uniform float uAmt;
+  uniform vec3 uSun; uniform vec3 uAxis; uniform float uGamma0; uniform float uEdgeAng; uniform float uAmt; uniform float uFlip;
   uniform sampler2D uMap;
   varying vec3 vDir; varying vec3 vWorld; varying vec3 vNormal;
   void main() {
@@ -79,11 +79,15 @@ const FRAGMENT = /* glsl */ `
     vec2 uv = vec2(atan(n.x, n.z) * 0.15915494 + 0.5, asin(clamp(n.y, -1.0, 1.0)) * 0.31830989 + 0.5);
     float v = texture2D(uMap, uv).r;
     vec3 ground = mix(mix(uTone0, uTone1, step(${SURFACE.cuts[0].toFixed(3)}, v)), uTone2, step(${SURFACE.cuts[1].toFixed(3)}, v));
-    // the dark side is the page's colour: the body is solid, so it hides what is behind it
+    // the dark side is the page's colour: the body is solid, so it hides what is behind it. On the light page it is the other way (uFlip): the lit side is overexposed, burnt towards
+    // the page's colour (not all the way: MOON.burn, so that its details are still there), and the dark side has the ground's full tones
     vec3 col = mix(uBg, ground, lit);
+    vec3 burnt = mix(ground, uBg, ${MOON.burn.toFixed(2)});
+    col = mix(col, mix(ground, burnt, lit), uFlip);
     // the rim: a band a pixel and a bit wide inside the silhouette, bright where lit and a ghost of a ring where not
     float rim = step(0.5, clamp((gamma - (uGamma0 - uEdgeAng * ${MOON.edgePx.toFixed(3)})) / uEdgeAng, 0.0, 1.0));
-    col = mix(col, mix(uGhost, uOutline, lit), rim);
+    vec3 rimCol = mix(mix(uGhost, uOutline, lit), mix(uOutline, mix(uOutline, uBg, ${MOON.burn.toFixed(2)}), lit), uFlip);
+    col = mix(col, rimCol, rim);
     gl_FragColor = vec4(col, uAmt);
   }
 `;
@@ -102,6 +106,7 @@ function moonMaterial(): ShaderMaterial {
       uGamma0: { value: 0.1 },
       uEdgeAng: { value: 0.002 },
       uAmt: { value: 1 },
+      uFlip: { value: 0 },
       uMap: { value: null },
     },
     vertexShader: VERTEX,
@@ -177,6 +182,7 @@ export class MoonLayer {
     const steps = surfaceTones(t.scheme);
     const u = this.material.uniforms;
     u.uBg!.value.setRGB(...bg);
+    u.uFlip!.value = t.scheme === "dark" ? 0 : 1;
     u.uTone0!.value.setRGB(...mixTo(t.ink, steps[0]! * MOON.toneBoost));
     u.uTone1!.value.setRGB(...mixTo(t.ink, steps[1]! * MOON.toneBoost));
     u.uTone2!.value.setRGB(...mixTo(t.ink, steps[2]! * MOON.toneBoost));
