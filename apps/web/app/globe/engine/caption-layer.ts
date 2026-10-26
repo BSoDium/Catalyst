@@ -79,6 +79,7 @@ import { buildWordGeometry } from "./cinematic-word";
 import { lonLatToVec3 } from "./geo";
 import { prepareSound, SOUND, startSound, type SoundHandle } from "./cinematic-sound";
 import { OCCLUDER_RADIUS } from "./materials";
+import { NIGHT, NIGHT_GLSL } from "./surface";
 import { CAPTION, ENERGY } from "./tuning";
 
 const DEG_ = Math.PI / 180;
@@ -101,6 +102,7 @@ const VERT = /* glsl */ `
   uniform float uDepth;
   varying vec2 vUv;
   varying float vLayer;
+  varying vec3 vDir;
   void main() {
     vUv = position.xy;
     vLayer = position.z;
@@ -110,6 +112,8 @@ const VERT = /* glsl */ `
     float cl = cos(lat);
     vec3 p = rs * vec3(cl * sin(a), sin(lat), cl * cos(a));
     gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+    // where this point is on the globe (the earth's frame: the strip is turned about the earth's axis by the mesh's matrix), for the planet's night
+    vDir = normalize((modelMatrix * vec4(p, 1.0)).xyz);
   }
 `;
 
@@ -128,8 +132,13 @@ const FRAG = /* glsl */ `
   uniform vec3 uAccentOutline;
   uniform vec3 uAccentSide;
   uniform float uEdgeLayer;
+  uniform vec3 uSunN;
+  uniform float uNight;
+  uniform vec3 uNightTo;
   varying vec2 vUv;
   varying float vLayer;
+  varying vec3 vDir;
+  ${NIGHT_GLSL}
   void main() {
     vec4 t = texture2D(uMap, vUv, ${CAPTION.lodBias.toFixed(2)});
     if (t.a < 0.02) discard;
@@ -143,6 +152,9 @@ const FRAG = /* glsl */ `
     vec3 side = acc ? uAccentSide : uSide;
     // a row seen from behind (past the horizon, curling back towards the planet) is the thickness' tone whole: the back of the type is quieter than its face
     vec3 col = !gl_FrontFacing ? side : (front ? (isOutline ? outl : face) : (vLayer < uEdgeLayer ? face : side));
+    // over the planet's dark side the type is a little less lit, in the same steps as the lines (NIGHT.captionDim: far less than the land's, the words stay readable)
+    float dark = floor((1.0 - dayShare(normalize(vDir), uSunN, uNight)) * ${NIGHT.lineSteps.toFixed(1)} + 0.5) / ${NIGHT.lineSteps.toFixed(1)};
+    col = mix(col, uNightTo, dark * ${NIGHT.captionDim.toFixed(2)});
     // Premultiplied output, blended "over" (see the material): the glyph's inside is exactly 1, so an interior pixel is exactly opaque whatever
     // stacks behind it; only an edge is partly transparent (and then properly premultiplied: no bright fringe).
     float a = smoothstep(0.1, 0.9, t.a);
@@ -689,6 +701,10 @@ export class CaptionLayer {
   private theme!: GlobeTheme;
   /** The dimming's colour (the page's), its strength for the scheme, and the mode (`CAPTION.dim.mode`; a check may change it). */
   private dimColor = { value: [1, 1, 1] as number[] };
+  /** The planet's night, for the rows (`setNight`). */
+  private nightSun = { value: [0, 0, 1] as number[] };
+  private nightAmt = { value: 0 };
+  private nightTo = { value: [1, 1, 1] as number[] };
   private dimAlpha = 0;
   private dimMode: "ellipse" | "bands" | "none" = CAPTION.dim.mode;
   /** The block's ellipse (one quad, mode `ellipse`) and its uniforms. */
@@ -844,6 +860,9 @@ export class CaptionLayer {
         uAccentOutline: this.accentOutline,
         uAccentSide: this.accentSide,
         uEdgeLayer: this.edgeLayer,
+        uSunN: this.nightSun,
+        uNight: this.nightAmt,
+        uNightTo: this.nightTo,
         uBaseLat: { value: 0 },
         uBelow: { value: 0 },
         uAbove: { value: 0 },
@@ -913,6 +932,12 @@ export class CaptionLayer {
     this.motion.reseed(seed);
   }
 
+  /** The planet's night (the renderer's, per frame): how much of it there is (0 is all day) and the sun's direction in the earth's frame. */
+  setNight(night: number, sun: readonly [number, number, number]): void {
+    this.nightAmt.value = night;
+    this.nightSun.value = [...sun];
+  }
+
   setTheme(theme: GlobeTheme): void {
     this.theme = theme;
     const c = captionColors(theme, this.sideMode);
@@ -924,6 +949,7 @@ export class CaptionLayer {
     this.accentSide.value = [...c.accentSide];
     this.edgeLayer.value = this.sideMode === "edge" ? (CAPTION.colors.edgeSlices - 0.5) / (this.slices - 1) : 0;
     this.dimColor.value = [...theme.background];
+    this.nightTo.value = [...theme.background];
     const dark = 0.2126 * theme.background[0] + 0.7152 * theme.background[1] + 0.0722 * theme.background[2] < 0.5;
     // the word is colourless: each surface is a step from the page's colour towards the ink (`CINEMATIC.tone`)
     const tone = dark ? CINEMATIC.tone.dark : CINEMATIC.tone.light;

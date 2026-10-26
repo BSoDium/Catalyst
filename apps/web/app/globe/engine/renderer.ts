@@ -2179,6 +2179,7 @@ export class GlobeRenderer {
     const ns = toEarthFrame(this.moonSun, this.era);
     this.nightNow = this.showcaseActive && !this.flying && land === 0 ? moonAmount(zoom, this.fit) : 0;
     this.globe.setNight(this.nightNow, ns[0], ns[1], ns[2]);
+    this.caption?.setNight(this.nightNow, ns);
     const now = performance.now();
     this.globe.syncCamera(b, zoom, this.pixel, now, this.reduced, lat, Math.max(this.width, this.height), inInterlude);
     // (the caption's lines stay on the page's meridian and latitude; only what is hidden is the flying camera's)
