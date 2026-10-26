@@ -199,15 +199,19 @@ describe("the moon's sprite", () => {
     const s = sprite([1, 0, 0.001]); // from the right
     const left = column(s, 1);
     const right = column(s, N - 2);
-    expect(left.every((c) => c === CELL.none)).toBe(true);
-    expect(right.some((c) => c !== CELL.none)).toBe(true);
-    // and the rim is only where it is lit
-    expect(s[((N - 1) / 2) * N + 0]).toBe(CELL.none);
+    // (the unlit side's interior is not there: only the faintest ring of its rim, so that it can still be found)
+    expect(left.every((c) => c === CELL.none || c === CELL.ghost)).toBe(true);
+    expect(right.some((c) => c !== CELL.none && c !== CELL.ghost)).toBe(true);
+    // and the rim is outlined only where it is lit, a ghost of a ring where it is not
+    expect(s[((N - 1) / 2) * N + 0]).toBe(CELL.ghost);
+    expect(s[((N - 1) / 2) * N + N - 1]).toBe(CELL.outline);
     expect([...s].filter((c) => c === CELL.body)).toHaveLength(0);
   });
 
-  it("is nothing at all at the new moon (the sun behind it) and the whole disc at the full (the sun behind the camera)", () => {
-    expect(count(sprite([0, 0, -1]), (c) => c !== CELL.none)).toBe(0);
+  it("is only the faint ring at the new moon (the sun behind it) and the whole disc at the full (the sun behind the camera)", () => {
+    const dark = sprite([0, 0, -1]);
+    expect(count(dark, (c) => c !== CELL.none && c !== CELL.ghost)).toBe(0);
+    expect(count(dark, (c) => c === CELL.ghost)).toBeGreaterThan(N); // a ring all the way round
     const full = sprite([0, 0, 1]);
     // every cell of the rim is outlined and the interior carries tones in about MOON.cover of its cells
     const mid = (N - 1) / 2;
@@ -222,7 +226,7 @@ describe("the moon's sprite", () => {
   it("has a terminator that is a dithered edge: between a lit and a dark cell there are cells of both, not a line", () => {
     const s = sprite([0.7071, 0, 0.7071]); // a half moon, lit from the right a little in front
     const mid = (N - 1) / 2;
-    const row = Array.from({ length: N }, (_, i) => s[(mid - 1) * N + i]!).map((c) => c !== CELL.none);
+    const row = Array.from({ length: N }, (_, i) => s[(mid - 1) * N + i]!).map((c) => c !== CELL.none && c !== CELL.ghost);
     // the lit share of the row grows to the right, and there is a stretch where it is mixed
     expect(row[0]).toBe(false); // the dark edge
     expect(row.slice(-2).some((b) => b)).toBe(true); // the lit one
@@ -234,8 +238,8 @@ describe("the moon's sprite", () => {
   it("carries the three tones by the picture's brightness, by the Earth's cuts: dark ground on the picture's dark half, light on its light half", () => {
     const s = sprite([0, 0, 1]);
     const mid = (N - 1) / 2;
-    const left = [...s].filter((c, k) => k % N < mid - 1 && c >= CELL.tone0);
-    const right = [...s].filter((c, k) => k % N > mid + 1 && c >= CELL.tone0);
+    const left = [...s].filter((c, k) => k % N < mid - 1 && c >= CELL.tone0 && c <= CELL.tone2);
+    const right = [...s].filter((c, k) => k % N > mid + 1 && c >= CELL.tone0 && c <= CELL.tone2);
     expect(left.every((c) => c === CELL.tone0)).toBe(true);
     expect(right.every((c) => c === CELL.tone2)).toBe(true);
     expect(SURFACE.cuts[0]).toBeLessThan(SURFACE.cuts[1]);

@@ -3215,18 +3215,22 @@ h1[tabindex="-1"]:focus-visible {
     color: var(--muted-foreground);
   }
 
+  /* The way in: last, at the bottom right of the card, apart from the two lines that say what it is. */
   .globe-moon-cta {
+    align-self: flex-end;
+    margin-top: 10px;
     font-size: 11px;
     letter-spacing: 0.02em;
     line-height: 14px;
     color: var(--muted-foreground);
   }
 
-  /* The arrow is drawn, not written: the link's name (aria-label) is the words only. */
-  .globe-moon-cta::after {
-    content: "\2197";
-    margin-inline-start: 0.25em;
-    display: inline-block;
+  /* The arrow is the rows' own (`arrow-right` of the icon set, square ends), with arms longer than the type: a station sign's. */
+  .globe-moon-arrow {
+    width: 2.2em;
+    height: 1.6em;
+    margin-inline-start: 0.5em;
+    vertical-align: -0.4em;
   }
 
   .globe-moon:hover .globe-moon-cta,

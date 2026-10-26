@@ -75,6 +75,7 @@ export class MoonSprite {
     c[CELL.tone1] = mix(t.ink, steps[1]! * MOON.toneBoost);
     c[CELL.tone2] = mix(t.ink, steps[2]! * MOON.toneBoost);
     c[CELL.body] = rgb(t.background);
+    c[CELL.ghost] = mix(t.coast, MOON.ghostMix);
     this.colours = c;
   }
 

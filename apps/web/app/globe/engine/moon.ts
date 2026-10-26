@@ -55,6 +55,8 @@ export const MOON = {
   edgePx: 1.15,
   /** The outline's colour: this share of the way from the page's colour to the coastlines' (the coastlines' own is the loudest the map gets: on a small body it reads as a thick ring). */
   outlineMix: 0.5,
+  /** The faintest ring: where the rim is not lit it is still drawn at this share of the way from the page's colour to the coastlines', so a moon with no light on it at all can still be found (and hovered). */
+  ghostMix: 0.13,
   /** The share of the lit pixels that carry a tone: the Earth's `SURFACE.cover` (half), and a little more, because the moon has no sea round its land to be a calm ground for it. */
   cover: 1,
   /**
@@ -189,8 +191,8 @@ export function sampleMoon(map: MoonMap, nx: number, ny: number, nz: number): nu
   return (top * (1 - fy) + bottom * fy) / 255;
 }
 
-/** What a sprite cell is: nothing (the sky shows), the rim, one of the three tones of the ground (darkest first), the body in the page's colour (only in front of the planet). */
-export const CELL = { none: 0, outline: 1, tone0: 2, tone1: 3, tone2: 4, body: 5 } as const;
+/** What a sprite cell is: nothing (the sky shows), the rim, one of the three tones of the ground (darkest first), the body in the page's colour (only in front of the planet), the faint ring of the rim where there is no light. */
+export const CELL = { none: 0, outline: 1, tone0: 2, tone1: 3, tone2: 4, body: 5, ghost: 6 } as const;
 
 /** The axes the moon is seen along and built on, in the earth-fixed frame. */
 export interface MoonAxes {
@@ -239,7 +241,7 @@ export interface SpriteInput {
 /**
  * The moon's sprite: `cells` x `cells` art pixels of the `CELL` values, a sphere lit by the sun and seen along its ray.
  *  - The light is `N . sun`; the pixel is ON where the globe's ordered dither is under the light (so the terminator is a dithered edge, in pixel art, and the dark side is NOT dark:
- *    nothing is drawn there, it is the sky, in either theme: it blends in).
+ *    nothing is drawn there, it is the sky, in either theme: it blends in; only its rim is a very faint ring, `MOON.ghostMix`).
  *  - An ON pixel in the interior carries a tone of the ground (the Earth's picture treatment: three flat tones by brightness with the same cuts, `SURFACE.cuts`) in `MOON.cover` of the
  *    cases, by the same dither; the rim is outlined in one cell where it is lit.
  */
@@ -272,7 +274,9 @@ export function moonSprite(input: SpriteInput): Uint8Array {
           cell = v < SURFACE.cuts[0] ? CELL.tone0 : v < SURFACE.cuts[1] ? CELL.tone1 : CELL.tone2;
         }
       }
-      if (cell === CELL.none && opaqueBody) cell = CELL.body;
+      // (the rim of the unlit side: a ring a few per cent from the page's colour, so that a moon with no light on it at all is still there)
+      if (cell === CELL.none && d2 > edge * edge) cell = CELL.ghost;
+      else if (cell === CELL.none && opaqueBody) cell = CELL.body;
       out[j * cells + i] = cell;
     }
   }

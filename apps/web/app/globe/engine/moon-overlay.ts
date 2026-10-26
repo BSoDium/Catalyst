@@ -31,6 +31,29 @@ const MIN_TARGET = 44;
 /** Below this much of the moon visible (planet in front of it) or let through by the zoom, the link is not a target. */
 const LIVE = 0.6;
 
+/**
+ * The call to action's arrow: the same arrow as the home page's rows (the icon set's `arrow-right`, lucide's path, drawn with the set's own square ends and stroke:
+ * `.ui-icon`, app.css), longer in the arm than the type beside it, as a station's sign is. Built here because the globe imports nothing from the app; it is decoration
+ * (`aria-hidden`: the link's name is the words).
+ */
+function arrow(doc: Document): SVGElement {
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = doc.createElementNS(NS, "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke", "currentColor");
+  svg.setAttribute("aria-hidden", "true");
+  svg.setAttribute("focusable", "false");
+  svg.setAttribute("class", "ui-icon globe-moon-arrow");
+  svg.dataset.size = "inline";
+  for (const d of ["M5 12h14", "m12 5 7 7-7 7"]) {
+    const path = doc.createElementNS(NS, "path");
+    path.setAttribute("d", d);
+    svg.append(path);
+  }
+  return svg;
+}
+
 export class MoonOverlay {
   private link: HTMLAnchorElement;
   private card: HTMLElement;
@@ -69,6 +92,7 @@ export class MoonOverlay {
     const cta = doc.createElement("span");
     cta.className = "globe-moon-cta";
     cta.textContent = moon.cta;
+    cta.append(arrow(doc));
     card.append(title, body, cta);
 
     link.append(card);
