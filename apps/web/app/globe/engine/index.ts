@@ -121,7 +121,7 @@ export interface GlobeDebug {
   sky(): ReturnType<GlobeRenderer["skyState"]>;
   /** The moon's link: whether it is up, whether its card is out, its centre (client px), size and the orbit's angle (radians); null without a moon (no `GlobeProps.moon`, `?no-moon`, a debug page without `?moon`). */
   moon(): ReturnType<MoonOverlay["state"]> | null;
-  /** What the moon's tick last made of the globe: its sample, its sprite and the state that may keep it away (checks). */
+  /** What the moon's tick last made of the globe: its sample and the state that may keep it away (checks). */
   moonDebug(): ReturnType<GlobeRenderer["moonDebug"]>;
   /** Hold the moon at `deg` of its orbit (null lets it run): captures and checks. */
   pinMoon(deg: number | null): void;

@@ -245,7 +245,7 @@ export class GlobeScene {
 
   /**
    * The planet's night (engine/surface.ts, `NIGHT`): `night` 0..1 is how much of it there is (0: the globe as it always was), `sun` the direction towards the light in the earth's
-   * frame. The land's ground and the lines on the dark side thin out in the dither.
+   * frame. The land's ground thins in the dither and steps to its faintest tone, and the lines go towards the page's colour in grey steps, on the dark side.
    */
   setNight(night: number, x: number, y: number, z: number) {
     for (const m of [this.surface, this.graticule, this.borders, this.coast]) {

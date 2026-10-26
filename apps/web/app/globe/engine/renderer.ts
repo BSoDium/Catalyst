@@ -135,7 +135,7 @@ export interface RendererOptions {
   coverBlocks?: readonly CoverBlock[];
   /** The home screen starts at rest: the caption is in and the boxes and labels are out from the first frame (`GlobeProps.showcase`). */
   showcase?: boolean;
-  /** The page has a moon (`GlobeProps.moon`; `MOON_STATE.enabled`): a body on an orbit about the planet (engine/moon.ts, moon-sprite.ts). */
+  /** The page has a moon (`GlobeProps.moon`; `MOON_STATE.enabled`): a body on an orbit about the planet (engine/moon.ts, moon-layer.ts). */
   moon?: boolean;
 }
 
@@ -280,7 +280,8 @@ export class GlobeRenderer {
     for (const p of opts.places) this.placeBySlug.set(p.slug, p);
 
     this.gl = new WebGLRenderer({
-            alpha: false,
+      antialias: false,
+      alpha: false,
       powerPreference: ENERGY.gpu,
       preserveDrawingBuffer: false,
     });
