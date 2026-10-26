@@ -9,6 +9,13 @@
  * app serves 503 (GET /health reports it) instead of crashing every request
  * into an opaque platform error. `src/server.ts` (dev server and built
  * artifact) exits non-zero instead.
+ *
+ * Deploying: the repository ruleset requires a successful "Preview - catalyst-v2-api"
+ * deployment on every pull request, and Vercel skips that project ("Not affected") when
+ * a pull request touches nothing it depends on, which then blocks the merge. A change in
+ * this folder (such as this note) makes the project affected, so its preview is built. The
+ * same goes for apps/web: the requirement is per commit, so the last commit of a pull
+ * request has to touch both folders, or one of the two previews is skipped.
  */
 import { Hono } from "hono";
 import { createApp } from "./app";

@@ -1,7 +1,8 @@
 import { Link } from "react-router";
 import type { PublishedCareer, PublishedCareerEducation, PublishedCareerRole } from "@catalyst/schemas";
 import { Icon } from "~/components/ui";
-import { asOfText, careerPeriod, formatCareerMonth, isCurrent, languageDetail, safeLinks, safePortrait } from "~/lib/career";
+import type { IconName } from "~/components/ui/icon";
+import { asOfText, careerDuration, careerIcon, careerLogo, careerPeriod, formatCareerMonth, isCurrent, languageDetail, safeLinks, safePortrait } from "~/lib/career";
 import { safeExternalUrl } from "~/lib/entry-blocks";
 import { placePath } from "~/lib/entries";
 import { SITE_NAME } from "~/lib/site";
@@ -50,7 +51,6 @@ export function CareerPage({ career, places = [] }: { career: PublishedCareer; p
             <p className="career-summary">{career.summary}</p>
             {available && (
               <p data-slot="career-availability" className="career-availability type-meta">
-                <span className="career-dot" aria-hidden="true" />
                 <span>
                   {available.text}
                   <span className="career-asof">
@@ -63,6 +63,7 @@ export function CareerPage({ career, places = [] }: { career: PublishedCareer; p
           </div>
           {portrait && (
             <figure data-slot="career-portrait" className="career-portrait">
+              <img src={portrait.src} alt="" aria-hidden="true" width={portrait.width} height={portrait.height} decoding="async" className="career-portrait-glow" />
               <img
                 src={portrait.src}
                 alt={portrait.alt}
@@ -71,7 +72,7 @@ export function CareerPage({ career, places = [] }: { career: PublishedCareer; p
                 loading="eager"
                 decoding="async"
                 fetchPriority="high"
-                style={{ aspectRatio: "4 / 5" }}
+                style={{ aspectRatio: "1 / 1" }}
               />
             </figure>
           )}
@@ -105,32 +106,40 @@ export function CareerPage({ career, places = [] }: { career: PublishedCareer; p
         </ol>
       </Block>
 
-      {career.education.length > 0 && (
-        <Block id="education" title="Education" count={career.education.length}>
-          <ol className="career-timeline" aria-labelledby="education-h">
-            {career.education.map((e) => (
-              <EducationItem key={e.id} item={e} placeKnown={e.place !== undefined && known.has(e.place)} />
-            ))}
-          </ol>
-        </Block>
-      )}
+      <div className="career-pair">
+        {career.education.length > 0 && (
+          <Block id="education" title="Education" count={career.education.length}>
+            <ol className="career-timeline" aria-labelledby="education-h">
+              {career.education.map((e) => (
+                <EducationItem key={e.id} item={e} placeKnown={e.place !== undefined && known.has(e.place)} />
+              ))}
+            </ol>
+          </Block>
+        )}
 
-      {career.skills.length > 0 && (
-        <Block id="skills" title="Skills">
-          <dl className="career-skills">
-            {career.skills.map((g) => (
-              <div key={g.group}>
-                <dt className="type-meta">{g.group}</dt>
-                <dd>{g.items.join(", ")}</dd>
-              </div>
-            ))}
-          </dl>
-        </Block>
-      )}
+        {career.skills.length > 0 && (
+          <Block id="skills" title="Skills">
+            <dl className="career-skills">
+              {career.skills.map((g) => (
+                <div key={g.group}>
+                  <dt className="type-meta">{g.group}</dt>
+                  <dd>
+                    <ul className="career-chips">
+                      {g.items.map((s) => (
+                        <li key={s}>{s}</li>
+                      ))}
+                    </ul>
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </Block>
+        )}
+      </div>
 
       {links.length > 0 && (
         <footer data-slot="career-links" className="career-footer">
-          <h2 id="links-h" className="career-block-title type-meta">
+          <h2 id="links-h" className="career-block-title">
             Elsewhere
           </h2>
           <ul aria-labelledby="links-h" className="career-links">
@@ -153,7 +162,7 @@ export function CareerPage({ career, places = [] }: { career: PublishedCareer; p
 function Block({ id, title, count, children }: { id: string; title: string; count?: number; children: React.ReactNode }) {
   return (
     <section id={id} aria-labelledby={`${id}-h`} data-slot={`career-${id}`} className="career-block">
-      <h2 id={`${id}-h`} className="career-block-title type-meta">
+      <h2 id={`${id}-h`} className="career-block-title">
         {title}
         {count !== undefined && <span className="sr-only">, {count === 1 ? "1 item" : `${count} items`}</span>}
       </h2>
@@ -164,19 +173,43 @@ function Block({ id, title, count, children }: { id: string; title: string; coun
 
 function Period({ start, end }: { start: string; end: string | undefined }) {
   const p = careerPeriod(start, end);
+  const duration = careerDuration(start, end);
   return (
-    <p className="career-period type-meta">
-      <span className="sr-only">{p.spoken}</span>
-      <span aria-hidden="true">
-        <time dateTime={p.start.dateTime}>{p.start.text}</time>
-        {p.end && (
-          <>
-            {" – "}
-            {p.end.dateTime ? <time dateTime={p.end.dateTime}>{p.end.text}</time> : <span>{p.end.text}</span>}
-          </>
-        )}
+    <>
+      <p className="career-period">
+        <span className="sr-only">{p.spoken}</span>
+        <span aria-hidden="true">
+          <time dateTime={p.start.dateTime}>{p.start.text}</time>
+          {p.end && (
+            <>
+              {" – "}
+              {p.end.dateTime ? <time dateTime={p.end.dateTime}>{p.end.text}</time> : <span>{p.end.text}</span>}
+            </>
+          )}
+        </span>
+      </p>
+      {duration && (
+        <p className="career-duration" aria-hidden="true">
+          {duration}
+        </p>
+      )}
+    </>
+  );
+}
+
+/**
+ * The item's marker on the rail: the organisation's logo when there is one (a decorative square: the name follows), else the icon of
+ * what was done there (`careerIcon`). Either sits on a page-coloured mask that keeps the rail from running through it.
+ */
+function Marker({ name, icon }: { name: string; icon: IconName }) {
+  const src = careerLogo(name);
+  return (
+    <>
+      {src && <img src={src} alt="" aria-hidden="true" width={200} height={200} loading="lazy" decoding="async" className="career-glow" />}
+      <span className="career-icon" data-logo={src ? "true" : undefined} aria-hidden="true">
+        {src ? <img src={src} alt="" width={200} height={200} loading="lazy" decoding="async" /> : <Icon name={icon} size="large" />}
       </span>
-    </p>
+    </>
   );
 }
 
@@ -194,33 +227,47 @@ function RoleItem({ role, placeKnown }: { role: PublishedCareerRole; placeKnown:
   const orgUrl = role.orgUrl ? safeExternalUrl(role.orgUrl) : null;
   return (
     <li id={role.id} data-slot="career-role" data-current={isCurrent(role) ? "true" : undefined} className="career-item">
-      <Period start={role.start} end={role.end} />
-      <h3 className="career-org">
-        {orgUrl ? (
-          <a href={orgUrl} rel="noopener noreferrer" className="career-org-link">
-            {role.org}
-          </a>
-        ) : (
-          role.org
-        )}
-      </h3>
-      <p className="career-role">{role.title}</p>
-      <p className="career-facts type-meta">
-        <Where text={role.location} place={role.place} known={placeKnown} />
-        {role.employment && <span>{role.employment}</span>}
-      </p>
-      {role.highlights.length > 0 && (
-        <ul className="career-highlights">
-          {role.highlights.map((h, i) => (
-            <li key={i}>{h}</li>
-          ))}
-        </ul>
-      )}
-      {role.skills.length > 0 && (
-        <p className="career-stack">
-          <span className="sr-only">Skills: </span>
-          {role.skills.join(", ")}
+      <Marker name={role.org} icon={careerIcon(role.title, "role")} />
+      <div className="career-head">
+        <div className="career-top">
+          <h3 className="career-org">
+            {orgUrl ? (
+              <a href={orgUrl} rel="noopener noreferrer" className="career-org-link">
+                {role.org}
+              </a>
+            ) : (
+              role.org
+            )}
+          </h3>
+        </div>
+        <p className="career-role" title={role.title}>
+          {role.title}
         </p>
+        <div className="career-meta type-meta">
+          <Period start={role.start} end={role.end} />
+        </div>
+        <p className="career-facts">
+          <Where text={role.location} place={role.place} known={placeKnown} />
+          {role.employment && <span>{role.employment}</span>}
+        </p>
+      </div>
+      {(role.highlights.length > 0 || role.skills.length > 0) && (
+        <div className="career-detail">
+          {role.highlights.length > 0 && (
+            <ul className="career-highlights">
+              {role.highlights.map((h, i) => (
+                <li key={i}>{h}</li>
+              ))}
+            </ul>
+          )}
+          {role.skills.length > 0 && (
+            <ul className="career-stack" aria-label="Skills">
+              {role.skills.map((s) => (
+                <li key={s}>{s}</li>
+              ))}
+            </ul>
+          )}
+        </div>
       )}
     </li>
   );
@@ -229,18 +276,25 @@ function RoleItem({ role, placeKnown }: { role: PublishedCareerRole; placeKnown:
 function EducationItem({ item, placeKnown }: { item: PublishedCareerEducation; placeKnown: boolean }) {
   return (
     <li id={item.id} data-slot="career-education-item" className="career-item">
-      <Period start={item.start} end={item.end} />
-      <h3 className="career-org">{item.institution}</h3>
-      <p className="career-role">
-        {item.programme}
-        {item.level && <span className="career-level"> · {item.level}</span>}
-      </p>
-      {(item.location || item.note) && (
-        <p className="career-facts type-meta">
-          {item.location && <Where text={item.location} place={item.place} known={placeKnown} />}
-          {item.note && <span>{item.note}</span>}
+      <Marker name={item.institution} icon={careerIcon(item.programme, "education")} />
+      <div className="career-head">
+        <div className="career-top">
+          <h3 className="career-org">{item.institution}</h3>
+        </div>
+        <p className="career-role" title={item.level ? `${item.programme} · ${item.level}` : item.programme}>
+          {item.programme}
+          {item.level && <span className="career-level"> · {item.level}</span>}
         </p>
-      )}
+        <div className="career-meta type-meta">
+          <Period start={item.start} end={item.end} />
+        </div>
+        {(item.location || item.note) && (
+          <p className="career-facts">
+            {item.location && <Where text={item.location} place={item.place} known={placeKnown} />}
+            {item.note && <span>{item.note}</span>}
+          </p>
+        )}
+      </div>
     </li>
   );
 }
