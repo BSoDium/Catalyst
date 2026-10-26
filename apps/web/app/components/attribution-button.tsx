@@ -68,11 +68,12 @@ export function AttributionButton({ tiles, insetRight, reducedMotion }: Attribut
           type="button"
           aria-haspopup="dialog"
           aria-label="See more credits"
-          className="relative inline-flex shrink-0 cursor-pointer touch-manipulation items-center gap-0.5 whitespace-nowrap select-none after:absolute after:-inset-x-2 after:-inset-y-3 after:content-[''] hover:text-foreground focus-visible:text-foreground md:after:hidden"
+          className="relative inline-block shrink-0 cursor-pointer touch-manipulation whitespace-nowrap select-none after:absolute after:-inset-x-2 after:-inset-y-3 after:content-[''] hover:text-foreground focus-visible:text-foreground md:after:hidden"
           onClick={() => setOpen(true)}
         >
           See more
-          <Icon name="arrow-up-right" size="inline" className="-translate-y-[2px]" />
+          {/* `align-middle`: the middle of the arrow on the baseline plus half the x-height OF THE FONT IN USE, so it is centred on the lowercase whatever the phone's mono face is (a pixel offset was right for one font only) */}
+          <Icon name="arrow-up-right" size="inline" className="ml-0.5 align-middle" />
         </button>
       </div>
       <CreditsDialog open={open} credits={credits} reducedMotion={reducedMotion} onClose={() => setOpen(false)} onClosed={() => buttonRef.current?.focus()} />
