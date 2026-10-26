@@ -219,6 +219,7 @@ export class GlobeScene {
     this.borderLevelNow = -1;
     this.coast.uniforms.uColor!.value.setRGB(...t.coast);
     this.silhouette.uniforms.uColor!.value.setRGB(...t.outline);
+    this.silhouette.uniforms.uNightTo!.value.setRGB(...t.background);
     this.routes.applyTheme(t);
     this.sky?.applyTheme(t);
     this.moon?.applyTheme(t);
@@ -245,10 +246,10 @@ export class GlobeScene {
 
   /**
    * The planet's night (engine/surface.ts, `NIGHT`): `night` 0..1 is how much of it there is (0: the globe as it always was), `sun` the direction towards the light in the earth's
-   * frame. The land's ground thins in the dither and steps to its faintest tone, and the lines go towards the page's colour in grey steps, on the dark side.
+   * frame. The land's ground thins in the dither and steps to its faintest tone, and the lines and the planet's own outline go towards the page's colour in grey steps, on the dark side.
    */
   setNight(night: number, x: number, y: number, z: number) {
-    for (const m of [this.surface, this.graticule, this.borders, this.coast]) {
+    for (const m of [this.surface, this.graticule, this.borders, this.coast, this.silhouette]) {
       m.uniforms.uNight!.value = night;
       m.uniforms.uSunN!.value = [x, y, z];
     }

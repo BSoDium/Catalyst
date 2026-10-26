@@ -405,15 +405,28 @@ export function silhouetteMaterial(): ShaderMaterial {
       uE: { value: [1, 0, 0] },
       uN: { value: [0, 1, 0] },
       uInvD: { value: 0.2 },
+      uSunN: { value: [0, 0, 1] },
+      uNight: { value: 0 },
+      uNightTo: { value: new Color() },
     },
     vertexShader: /* glsl */ `
       attribute float aAngle; uniform vec3 uC; uniform vec3 uE; uniform vec3 uN; uniform float uInvD;
+      varying vec3 vDir;
       void main() {
         float rad = sqrt(max(0.0, 1.0 - uInvD * uInvD));
         vec3 p = uC * uInvD + rad * (cos(aAngle) * uE + sin(aAngle) * uN);
+        vDir = p;
         gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
       }`,
-    fragmentShader: "uniform vec3 uColor; void main() { gl_FragColor = vec4(uColor, 1.0); }",
+    // the planet's outline goes dark with the ground it edges (the same steps as the lines: a flat grey each)
+    fragmentShader: /* glsl */ `
+      uniform vec3 uColor; uniform vec3 uSunN; uniform float uNight; uniform vec3 uNightTo;
+      varying vec3 vDir;
+      ${NIGHT_GLSL}
+      void main() {
+        float dark = floor((1.0 - dayShare(normalize(vDir), uSunN, uNight)) * ${NIGHT.lineSteps.toFixed(1)} + 0.5) / ${NIGHT.lineSteps.toFixed(1)};
+        gl_FragColor = vec4(mix(uColor, uNightTo, dark * ${NIGHT.limbDim.toFixed(2)}), 1.0);
+      }`,
     depthTest: false,
   });
 }

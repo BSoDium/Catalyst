@@ -3202,9 +3202,10 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     left: 0;
     top: 0;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    align-items: center;
     width: max-content;
-    max-width: min(17rem, 62vw);
+    max-width: min(15rem, 62vw);
     box-sizing: border-box;
     padding: 3px 6px;
     background: var(--map-label-plate);
@@ -3238,26 +3239,24 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     color: var(--muted-foreground);
   }
 
-  /* The way in: last, at the bottom right of the card, apart from the two lines that say what it is. */
-  .globe-moon-cta {
-    align-self: flex-end;
-    margin-top: 10px;
-    font-size: 11px;
-    letter-spacing: 0.02em;
-    line-height: 14px;
+  .globe-moon-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  /* The way in: a large, thin arrow at the right of the words, apart from them (a station sign's: a stem and a right-angled head); the words' own colours, raised on hover and focus. */
+  .globe-moon-arrow {
+    flex: none;
+    width: 28px;
+    height: 28px;
+    margin-inline-start: 14px;
+    stroke-width: 1.25;
     color: var(--muted-foreground);
   }
 
-  /* The arrow is the rows' own (`arrow-right` of the icon set, square ends), with arms longer than the type: a station sign's. */
-  .globe-moon-arrow {
-    width: 2.2em;
-    height: 1.6em;
-    margin-inline-start: 0.5em;
-    vertical-align: -0.4em;
-  }
-
-  .globe-moon:hover .globe-moon-cta,
-  .globe-moon:focus-visible .globe-moon-cta {
+  .globe-moon:hover .globe-moon-arrow,
+  .globe-moon:focus-visible .globe-moon-arrow {
     color: var(--foreground);
   }
 
@@ -3279,7 +3278,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     }
 
     .globe-moon-body,
-    .globe-moon-cta {
+    .globe-moon-arrow {
       color: CanvasText;
     }
   }
@@ -4005,7 +4004,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     }
   }
 
-  /* The small line that stays when the hero steps back: the board's bottom-left corner (40 px, 32 px), the hint beside it. */
+  /* The small line that stays when the hero steps back: the board's bottom-left corner (40 px, 32 px), the hint UNDER it (owner, 2026-10-26; it was beside it). */
   .hero-mini {
     --hero-mini-bottom: 2rem;
     position: absolute;
@@ -4014,10 +4013,9 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     right: var(--hero-gutter);
     margin: 0;
     display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    column-gap: 1.125rem;
-    row-gap: 0.25rem;
+    flex-direction: column;
+    align-items: flex-start;
+    row-gap: 0.5rem;
     opacity: 0;
     visibility: hidden;
     transition: opacity 60ms linear, visibility 0s linear 60ms;
@@ -4030,7 +4028,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     }
 
     body:has([data-dev-content-badge]) .hero-mini {
-      --hero-mini-bottom: 4.75rem;
+      --hero-mini-bottom: 5.75rem;
     }
   }
 
@@ -4072,6 +4070,14 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     letter-spacing: 0.06em;
     color: var(--muted-foreground);
     transition: opacity var(--hero-fade);
+  }
+
+  /* Under the name on a phone the hint is one line (48 characters between the gutters from 360 px). */
+  @media (max-width: 47.99rem) {
+    .hero-mini-hint {
+      font-size: 0.6875rem;
+      letter-spacing: 0.03em;
+    }
   }
 
   /* The way back is only real at the world view: zoomed in, the hint would be a promise. */

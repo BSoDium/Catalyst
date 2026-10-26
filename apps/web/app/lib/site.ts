@@ -92,7 +92,7 @@ const KINDS = Object.keys(SECTIONS) as (keyof typeof SECTIONS)[];
  * The caption of the home screen, set on parallels of the globe (reading serif, a few weights, the code face and a calligraphic script): four
  * rows in view at once, never more: a fifth row made the block too heavy (owner, 2026-10-26). The call to action is two rows that stay at the bottom, the biggest;
  * the two rows above take turns, every few seconds, through the phrase sets: (1) what the site is, (2) what it holds, the five sections in the order of the lists
- * as one sentence in two rows (each word in its section's face, the handwriting's "Poetry" on the top row; "articles" and "art" for Articles and Artworks, which is what a row of that width can hold: the
+ * as one sentence in two rows (each word in its section's face, the handwriting's "Poems" on the top row (no descender to meet the row under it); "articles" and "art" for Articles and Artworks, which is what a row of that width can hold: the
  * sections' own names are in the hero's rows and the header, as text) and (3) how much of it there is, from the published projection (left out when the
  * page does not know the counts). Facts about the site and interface copy, nothing about the owner; the hero's how-to line says the same in the
  * page as text, always (the caption is for the eyes: it is hidden from assistive technology).
@@ -107,7 +107,7 @@ export function siteCaption(counts?: KindCounts | null): SiteCaption {
     // (five sections in two rows no wider than the counts' row of the four-section caption (24 letters); the handwriting, bigger than the serif, is on the TOP row: it
     // has nothing above it there, so it can rise without touching a row, and it keeps its baseline on the serif's)
     [
-      [word("poem", "Poetry"), { text: ", " }, word("project", "software"), { text: ", " }, word("artwork", "art"), { text: "," }],
+      [word("poem", "Poems"), { text: ", " }, word("project", "software"), { text: ", " }, word("artwork", "art"), { text: "," }],
       [word("article", "articles"), { text: " & " }, word("photograph", "photography"), { text: "." }],
     ],
   ];
