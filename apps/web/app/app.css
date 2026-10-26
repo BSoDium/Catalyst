@@ -4308,6 +4308,19 @@ h1[tabindex="-1"]:focus-visible {
     }
   }
 
+  /* Forced colours also drop the chips' fill and make the bleeds noise: the chips get an outline, the bleeds go. */
+  @media (forced-colors: active) {
+    .career-stack li,
+    .career-chips li {
+      border: var(--hairline) solid CanvasText;
+    }
+
+    .career-glow,
+    .career-portrait-glow {
+      display: none;
+    }
+  }
+
   /* The marker: a square tile with the icon of what was done there (sized to the first line of the item, the organisation's). */
   .career-icon {
     position: absolute;

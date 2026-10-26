@@ -112,12 +112,12 @@ const overflow = (page) => page.evaluate(() => Math.max(document.documentElement
   ok(hrefs.filter((h) => h.startsWith("http")).every((h) => h.startsWith("https://")), "every external link is https");
 
   const portrait = await page.evaluate(() => {
-    const img = document.querySelector('[data-slot="career-portrait"] img');
+    const img = document.querySelector('[data-slot="career-portrait"] img:not([aria-hidden])');
     const r = img?.getBoundingClientRect();
     return img && { w: img.getAttribute("width"), h: img.getAttribute("height"), loading: img.getAttribute("loading"), priority: img.getAttribute("fetchpriority"), alt: img.getAttribute("alt"), box: [Math.round(r.width), Math.round(r.height)], cover: getComputedStyle(img).objectFit, pos: getComputedStyle(img).objectPosition };
   });
   ok(portrait && portrait.w === "800" && portrait.h === "1000" && portrait.loading === "eager" && portrait.priority === "high" && portrait.alt.length > 10, "the portrait has its size attributes, loads eagerly with high priority and has alt text");
-  ok(portrait && portrait.cover === "cover" && /^50% 0(px|%)?/.test(portrait.pos) && Math.abs(portrait.box[1] / portrait.box[0] - 1.25) < 0.02, `the portrait is 4:5, object-fit cover, top-centre (${portrait?.box.join("x")}, ${portrait?.pos})`);
+  ok(portrait && portrait.cover === "cover" && /^50% 30%/.test(portrait.pos) && Math.abs(portrait.box[1] / portrait.box[0] - 1) < 0.02, `the portrait is a square, object-fit cover, centred on the face (${portrait?.box.join("x")}, ${portrait?.pos})`);
   const cls = await page.evaluate(() => window.__cls);
   ok(cls < 0.01, `no layout shift (CLS ${cls.toFixed(4)})`);
   ok(logs.length === 0, `no console error or warning${logs.length ? `: ${logs.join(" | ")}` : ""}`);
@@ -223,7 +223,7 @@ for (const [name, opts] of [["desktop", DESKTOP], ["phone", MOBILE], ["narrow", 
     const rows = [...document.querySelectorAll(".hero-row")];
     return { hrefs: rows.map((a) => a.getAttribute("href")), labels: rows.map((a) => a.textContent.trim()), rows: document.querySelector('[data-slot="landing-hero"]').getAttribute("data-rows") };
   });
-  ok(hero.hrefs.join() === "/software,/articles,/artworks,/poetry,/career" && hero.labels.at(-1) === "Career" && hero.rows === "5", `the hero has Career as the fifth row (${hero.hrefs.join(" ")})`);
+  ok(hero.hrefs.join() === "/software,/articles,/artworks,/poetry,/photography,/career" && hero.labels.at(-1) === "Career" && hero.rows === "6", `the hero has Career as its last row (${hero.hrefs.join(" ")})`);
   await page.evaluate(() => window.dispatchEvent(new Event("site:open-search")));
   await page.waitForSelector("dialog[open] input");
   await page.keyboard.type("career");

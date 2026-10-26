@@ -85,9 +85,28 @@ describe("CareerPage", () => {
     expect(html).toContain(`alt="${demo.portrait!.alt}"`);
   });
 
+  it("offers a dark variant of the portrait to the dark colour scheme (a picture), and a plain image without one", () => {
+    expect(render({ ...demo, portrait: { ...demo.portrait!, dark: undefined } })).not.toContain("<picture");
+    expect(html).toContain("<picture");
+    const h = render({ ...demo, portrait: { ...demo.portrait!, dark: { src: "/media/demo/portrait-example-dark.svg", width: 800, height: 1000 } } });
+    expect(h).toContain('<source media="(prefers-color-scheme: dark)" srcSet="/media/demo/portrait-example-dark.svg"');
+    // the picture and its bleed both follow the scheme; only the picture has the alt text
+    expect(h.match(/<picture>/g)).toHaveLength(2);
+    expect(h.match(new RegExp(`alt="${demo.portrait!.alt}"`, "g"))).toHaveLength(1);
+  });
+
+  it("draws the logo the document carries as the marker of its item, else the site's own file by name, else an icon", () => {
+    const h = render({ ...demo, roles: [{ ...demo.roles[0]!, org: "Kanop", logo: { src: "/media/career/kanop.1a2b3c4d.webp", width: 200, height: 200 } }, { ...demo.roles[1]!, org: "Escape Technologies" }, ...demo.roles.slice(2)] });
+    expect(h).toContain('src="/media/career/kanop.1a2b3c4d.webp"');
+    expect(h).toContain('src="/career-logos/escape.webp"');
+    // a marker without a logo is an icon (an svg), one with a logo is a decorative image
+    expect(h).toMatch(/class="career-icon"[^>]*><svg/);
+    expect(h).toMatch(/class="career-icon" data-logo="true" aria-hidden="true"><img [^>]*alt=""/);
+  });
+
   it("without a portrait draws no frame and no image, the name block alone", () => {
     const h = render(without(demo, "portrait"));
-    expect(h).not.toContain("<img");
+    expect(h).not.toContain("<figure");
     expect(h).not.toContain("career-portrait");
     expect(h).toContain('data-portrait="false"');
   });

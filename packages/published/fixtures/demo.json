@@ -682,7 +682,7 @@
     "title": "Career",
     "summary": "Frontend engineer who builds interfaces for map-heavy and data-heavy products. A made-up profile: every employer, school and link on this page is invented, so the page can be designed and tested without anything real.",
     "updated": "2026-09",
-    "portrait": { "src": "/media/demo/portrait-example.svg", "alt": "An abstract halftone portrait: a round head and shoulders in dots, standing in for a photograph", "width": 800, "height": 1000 },
+    "portrait": { "src": "/media/demo/portrait-example.svg", "alt": "An abstract halftone portrait: a round head and shoulders in dots, standing in for a photograph", "width": 800, "height": 1000, "dark": { "src": "/media/demo/portrait-example-dark.svg", "width": 800, "height": 1000 } },
     "availability": { "text": "Open to example opportunities", "asOf": "2026-09" },
     "roles": [
       {
@@ -690,6 +690,7 @@
         "title": "Lead Frontend Engineer",
         "org": "Example Studio",
         "orgUrl": "https://example.org/studio",
+        "logo": { "src": "/media/demo/logo-example.svg", "width": 200, "height": 200 },
         "location": "Lisbon, Portugal",
         "place": "lisbon",
         "employment": "Permanent",
@@ -742,6 +743,7 @@
       {
         "id": "institut-exemple",
         "institution": "Institut Exemple",
+        "logo": { "src": "/media/demo/logo-example.svg", "width": 200, "height": 200 },
         "programme": "Computer Science and Applied Mathematics",
         "level": "MEng",
         "start": "2016",

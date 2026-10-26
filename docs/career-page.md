@@ -35,7 +35,7 @@ Chrome (header, skip links, scrim) hidden; ink on white whatever the scheme; one
 
 ## Portrait
 
-Contract: `career.portrait` `{ src, alt, width, height }`, all required when present ([api-contract.md](api-contract.md)). Private repo: `portrait: { file: ./portrait.webp, alt, rights: own }` in `content/career/index.md`, the file next to it; exported as `/media/career/portrait.<hash>.<ext>` with its real size, copied by the publication PR; EXIF/XMP, size, rights and alt are enforced by the private validation. The demo has an abstract SVG one.
+Contract: `career.portrait` `{ src, alt, width, height, dark? }`, the first four required when present, and an optional `logo` `{ src, width, height }` on a role and on an education ([api-contract.md](api-contract.md)): the logo is the item's marker (a file of the page's own, `public/career-logos/`, is the fallback by name), `portrait.dark` the picture for the dark colour scheme. The stay length of a role in progress runs to `career.updated`, never to the clock. Private repo: `portrait: { file: ./portrait.webp, alt, rights: own }` in `content/career/index.md`, the file next to it; exported as `/media/career/portrait.<hash>.<ext>` with its real size, copied by the publication PR; EXIF/XMP, size, rights and alt are enforced by the private validation. The demo has an abstract SVG one.
 
 ## Tests
 
