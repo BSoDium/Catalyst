@@ -5,6 +5,7 @@
  * cached page.
  */
 import type { PublishedCareer, PublishedCareerLanguage, PublishedCareerRole } from "@catalyst/schemas";
+import type { IconName } from "~/components/ui/icon";
 import { safeExternalUrl, safeMediaSrc } from "./entry-blocks";
 import { absoluteUrl } from "./meta";
 import { SITE } from "./site";
@@ -55,6 +56,47 @@ export function careerPeriod(start: string, end: string | undefined): CareerPeri
   return { text: `${from} – ${to}`, start: startPart, end: { text: to, dateTime: end }, spoken: `${fromLong} to ${formatCareerMonth(end) ?? end}` };
 }
 
+/**
+ * The icon of a timeline item, chosen from the words of its title (a role) or programme (an education): what the person did there, at
+ * a glance. The first match wins; the last resort is the briefcase (a role) or the cap (a programme). Pure.
+ */
+export function careerIcon(text: string, kind: "role" | "education"): IconName {
+  const t = text.toLowerCase();
+  if (kind === "education") {
+    if (/\b(graphics|vision|3d|rendering)\b/.test(t)) return "cuboid";
+    if (/\b(math|mathematics|physics|statistics)\b/.test(t)) return "sigma";
+    return "graduation-cap";
+  }
+  if (/\b(found(?:ing|er)|co-?found(?:er)?|ceo|cto)\b/.test(t)) return "rocket";
+  if (/full[- ]?stack/.test(t)) return "layers";
+  if (/\b(back[- ]?end|devops|infrastructure|platform)\b/.test(t)) return "server";
+  if (/\b(design(?:er)?|ux|brand)\b/.test(t)) return "palette";
+  if (/\b(front[- ]?end|ui|web|software|engineer|developer)\b/.test(t)) return "code";
+  return "career";
+}
+
+/**
+ * The logo of an organisation or a school: a square file of the site's own, `public/career-logos/` (NOT `public/media/`, which belongs
+ * to the content export and refuses a foreign file). A stopgap that the contract does not know: the file is found from the name the
+ * owner wrote, by these patterns. The proper home is an optional `logo` of a role and of an education in the published contract, fed
+ * from the private repo like the portrait (docs/career-page.md). Null when there is none: the marker then falls back to the
+ * role's icon (`careerIcon`).
+ */
+const LOGOS: readonly (readonly [RegExp, string])[] = [
+  [/\bmacrodata\b/i, "macrodata"],
+  [/\bkanop\b/i, "kanop"],
+  [/\btauniqo\b/i, "tauniqo"],
+  [/\bescape\b/i, "escape"],
+  [/\benseeiht\b/i, "enseeiht"],
+  [/\bd[ée]odat\b/i, "deodat"],
+  [/\balpen-adria|\bklagenfurt\b/i, "aau"],
+];
+
+export function careerLogo(name: string): string | null {
+  const hit = LOGOS.find(([re]) => re.test(name));
+  return hit ? `/career-logos/${hit[1]}.webp` : null;
+}
+
 /** Whether a role is the one in progress (`end: present`). */
 export const isCurrent = (r: Pick<PublishedCareerRole, "end">): boolean => r.end === "present";
 
@@ -101,4 +143,22 @@ export function careerJsonLd(career: PublishedCareer, origin: string): Record<st
       ...(sameAs.length ? { sameAs } : {}),
     },
   };
+}
+
+/**
+ * How long a role lasted, to the month, as `1y 2m`, `7m` or `3y` (inclusive of both months, as a CV counts them). Null when it cannot
+ * be told: a bare year, no end, or a malformed month. An ongoing role runs to `now`.
+ */
+export function careerDuration(start: string, end: string | undefined, now: Date = new Date()): string | null {
+  const month = (s: string): number | null => {
+    const m = /^(\d{4})-(\d{2})$/.exec(s);
+    return m ? Number(m[1]) * 12 + Number(m[2]) - 1 : null;
+  };
+  const from = month(start);
+  const to = end === "present" ? now.getUTCFullYear() * 12 + now.getUTCMonth() : end === undefined ? null : month(end);
+  if (from === null || to === null || to < from) return null;
+  const total = to - from + 1;
+  const years = Math.floor(total / 12);
+  const months = total % 12;
+  return [years > 0 ? `${years}y` : "", months > 0 ? `${months}m` : ""].filter(Boolean).join(" ");
 }

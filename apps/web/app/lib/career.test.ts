@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { loadDemoProjection } from "@catalyst/published";
 import type { PublishedCareer } from "@catalyst/schemas";
-import { asOfText, careerJsonLd, careerPeriod, formatCareerMonth, isCurrent, languageDetail, safeLinks, safePortrait } from "./career";
+import { asOfText, careerDuration, careerIcon, careerLogo, careerJsonLd, careerPeriod, formatCareerMonth, isCurrent, languageDetail, safeLinks, safePortrait } from "./career";
 import { SITE } from "./site";
 
 const demo = loadDemoProjection().career!;
@@ -48,6 +48,52 @@ describe("careerPeriod", () => {
   it("does not repeat a range that starts and ends in the same year-only text", () => {
     expect(careerPeriod("2019", "2019").text).toBe("2019");
     expect(careerPeriod("2016", "2021").text).toBe("2016 – 2021");
+  });
+});
+
+describe("careerDuration", () => {
+  const now = new Date("2026-10-25T12:00:00Z");
+  it("counts both months, in years and months", () => {
+    expect(careerDuration("2023-04", "2025-08")).toBe("2y 5m");
+    expect(careerDuration("2019-06", "2019-09")).toBe("4m");
+    expect(careerDuration("2020-01", "2020-12")).toBe("1y");
+    expect(careerDuration("2025-09", "2025-09")).toBe("1m");
+  });
+  it("runs an ongoing role to now", () => {
+    expect(careerDuration("2025-09", "present", now)).toBe("1y 2m");
+  });
+  it("is null when it cannot be told", () => {
+    expect(careerDuration("2021", undefined)).toBeNull();
+    expect(careerDuration("2021", "2022")).toBeNull();
+    expect(careerDuration("2025-09", "2024-01")).toBeNull();
+  });
+});
+
+describe("careerIcon", () => {
+  it("reads a role's icon from its title, a founder before a full-stack before a front-end", () => {
+    expect(careerIcon("Founding Engineer, Frontend & UX", "role")).toBe("rocket");
+    expect(careerIcon("Full-Stack Engineer", "role")).toBe("layers");
+    expect(careerIcon("Frontend Engineer (Freelance & Internship)", "role")).toBe("code");
+    expect(careerIcon("Interface Designer", "role")).toBe("palette");
+    expect(careerIcon("Operations Lead", "role")).toBe("career");
+  });
+  it("reads an education's icon from its programme", () => {
+    expect(careerIcon("Computer Graphics & Vision", "education")).toBe("cuboid");
+    expect(careerIcon("Mathematics & Physics", "education")).toBe("sigma");
+    expect(careerIcon("History", "education")).toBe("graduation-cap");
+  });
+});
+
+describe("careerLogo", () => {
+  it("finds a logo from the name the owner wrote, and none for an unknown one", () => {
+    expect(careerLogo("Kanop")).toBe("/career-logos/kanop.webp");
+    expect(careerLogo("Tauniqo.ai")).toBe("/career-logos/tauniqo.webp");
+    expect(careerLogo("Escape Technologies")).toBe("/career-logos/escape.webp");
+    expect(careerLogo("ENSEEIHT, INP Toulouse")).toBe("/career-logos/enseeiht.webp");
+    expect(careerLogo("Alpen-Adria-Universität Klagenfurt")).toBe("/career-logos/aau.webp");
+    expect(careerLogo("Macrodata Labs")).toBe("/career-logos/macrodata.webp");
+    expect(careerLogo("Lycée Déodat de Séverac")).toBe("/career-logos/deodat.webp");
+    expect(careerLogo("Some Other School")).toBeNull();
   });
 });
 
