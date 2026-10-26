@@ -60,7 +60,7 @@ import { IdleSpin, SPIN, SPIN_DEFAULTS, edgeSpeed, pacedByRotation, spinBlock, s
 import { CINEMATIC } from "./cinematic";
 import { INTERLUDE_STATE_EVENT, type InterludeStateDetail } from "../interlude";
 import { blendPose, flightOffsetShare, flightPose } from "./flight";
-import { SURFACE, surfaceCoverage, surfaceFade } from "./surface";
+import { NIGHT, SURFACE, surfaceCoverage, surfaceFade } from "./surface";
 import { landingScale, liftFor, placeAbove, type Placement } from "./lift";
 import { routeLift } from "./view";
 import { newLodCamera, setLodCamera, type LodTree } from "./lod-tree";
@@ -2178,8 +2178,10 @@ export class GlobeRenderer {
     // the planet's night (home screen, world view): the moon's sun, fixed in the sky, so the earth turns under it; gone with the zoom as the moon is
     const ns = toEarthFrame(this.moonSun, this.era);
     this.nightNow = this.showcaseActive && !this.flying && land === 0 ? moonAmount(zoom, this.fit) : 0;
-    this.globe.setNight(this.nightNow, ns[0], ns[1], ns[2]);
-    this.caption?.setNight(this.nightNow, ns);
+    // (the light page shows a softer night: `NIGHT.lightGain`)
+    const shown = this.nightNow * (this.theme.scheme === "dark" ? 1 : NIGHT.lightGain);
+    this.globe.setNight(shown, ns[0], ns[1], ns[2]);
+    this.caption?.setNight(shown, ns);
     const now = performance.now();
     this.globe.syncCamera(b, zoom, this.pixel, now, this.reduced, lat, Math.max(this.width, this.height), inInterlude);
     // (the caption's lines stay on the page's meridian and latitude; only what is hidden is the flying camera's)

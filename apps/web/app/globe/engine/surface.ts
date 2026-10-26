@@ -50,6 +50,8 @@ export const NIGHT = {
   lineSteps: 3,
   /** The orbiting type over the dark side: its colour goes this share of the way to the page's at the darkest (a dimming, not a night: the words must stay readable). */
   captionDim: 0.3,
+  /** How much of the night the light page shows (the whole planet's, caption included: the scale of `uNight`): the dark page shows all of it; on the cream it was heavy and ugly, so it is a soft one step. */
+  lightGain: 0.4,
 } as const;
 
 /** GLSL for the light on a ground point `n` (a unit vector in the earth's frame) from the sun `uSunN`, scaled by how much night there is (`uNight`: 0 is all day): 1 lit, 0 dark. */
