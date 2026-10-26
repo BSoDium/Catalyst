@@ -122,7 +122,7 @@ describe("LandingHero", () => {
   it("keeps the small line (name and hint) as decoration: aria-hidden, a second name is not a second heading", async () => {
     const html = await render();
     const mini = html.slice(html.indexOf('<p aria-hidden="true" class="hero-mini">'));
-    expect(mini).toContain("Drag to explore. Pause, and the page comes back.");
+    expect(mini).toContain("Drag to explore. Stop moving to reset the view.");
     // the same weights as the name: the given name heavy (the line's own 800), the family name at the thin end
     expect(mini).toMatch(/<span class="hero-mini-name"><span class="hero-mini-given">Elliot<\/span> <span class="hero-mini-family type-thin"><span>Négrel<\/span>/);
     expect(html.match(/<h[1-6][ >]/g)).toHaveLength(1);

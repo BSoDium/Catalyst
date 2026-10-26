@@ -324,7 +324,7 @@ export function LandingHero({ machine, away, empty, orbit = null, onCover, hasCa
             <FamilyName />
           </span>
         </span>
-        <span className="hero-mini-hint">Drag to explore. Pause, and the page comes back.</span>
+        <span className="hero-mini-hint">Drag to explore. Stop moving to reset the view.</span>
       </p>
     </div>
   );
