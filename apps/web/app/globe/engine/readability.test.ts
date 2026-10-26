@@ -122,9 +122,10 @@ for (const scheme of ["light", "dark"] as const) {
       expect(contrast(muted, bg)).toBeGreaterThanOrEqual(4.5); // the second line (11 px) on the plate: AA
       expect(contrast(invertedSub, fg)).toBeGreaterThanOrEqual(4.5); // ... and on the inverted plate
     });
-    it("the credits line (subtle foreground in the map card's 80 % page plate) is dimmer than muted text by colour, yet AA against the page and at least 3.5:1 over the loudest map tone", () => {
+    it("the credits line (subtle foreground on a map label's plate, `--label-plate-alpha`) is dimmer than muted text by colour, yet AA against the page and at least 3.5:1 over the loudest map tone", () => {
       const subtle = token(scheme, "--subtle-foreground");
-      const plate = Number(/bg-background\/(\d+)/.exec(readFileSync(new URL("../../lib/map-card.ts", import.meta.url), "utf8"))?.[1]) / 100;
+      const plate = numberToken(scheme, "--label-plate-alpha");
+      expect(readFileSync(new URL("../../app.css", import.meta.url), "utf8")).toMatch(/\.map-credits \{[^}]*background: var\(--map-label-plate\)/);
       expect(plate).toBeGreaterThan(0.7);
       expect(contrast(subtle, bg)).toBeLessThan(contrast(muted, bg));
       expect(contrast(subtle, bg)).toBeGreaterThanOrEqual(4.5);

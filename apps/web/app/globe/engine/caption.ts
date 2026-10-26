@@ -82,7 +82,7 @@ export const CAPTION_FACES = {
   script: {
     family: '"Caption Script"',
     fallback: '"Snell Roundhand", "Apple Chancery", "Segoe Script", cursive',
-    scale: 1.079,
+    scale: 1.5,
     dy: 0,
     tracking: 0.004 + CAPTION.tracking.script,
     /** A formal script's hairlines would vanish under a thin outline: its letters are thickened by this many caps (a stroke in the face colour). */

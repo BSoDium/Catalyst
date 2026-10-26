@@ -2834,6 +2834,26 @@ h1[tabindex="-1"]:focus-visible {
   color: var(--muted-foreground);
 }
 
+/*
+ * The map's credits (components/attribution-button.tsx): a map label's own ground, no outline (owner, 2026-10-26): the same translucent plate of the page colour
+ * (`--label-plate-alpha`) with a soft feather round it, so it is not a sticker. On the home screen's display mode (the hero at rest) there is no ground at all: the
+ * map is already under the hero's own gradient there, and the line reads on that.
+ */
+.map-credits {
+  --map-label-plate: color-mix(in srgb, var(--background) calc(var(--label-plate-alpha) * 100%), transparent);
+  background: var(--map-label-plate);
+  box-shadow: 0 0 4px 3px var(--map-label-plate);
+}
+body:has(.landing-hero[data-hero="rest"]) .map-credits {
+  background: none;
+  box-shadow: none;
+}
+@supports not (background: color-mix(in srgb, red 50%, transparent)) {
+  .map-credits {
+    --map-label-plate: var(--background);
+  }
+}
+
 /* A browser without `color-mix` gets the opaque plate (an invalid custom property would leave the text on the bare map). */
 @supports not (background: color-mix(in srgb, red 50%, transparent)) {
   .map-label {
@@ -2906,6 +2926,9 @@ h1[tabindex="-1"]:focus-visible {
 @media (prefers-reduced-transparency: reduce) {
   /* A map label's plate is opaque. */
   .map-label {
+    --map-label-plate: var(--background);
+  }
+  .map-credits {
     --map-label-plate: var(--background);
   }
 
