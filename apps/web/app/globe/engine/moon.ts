@@ -93,20 +93,22 @@ export const SUN = {
  */
 export const FLARE = {
   ghosts: [
-    { at: 0.45, size: 0.035, tone: 0.5, kind: "ring" },
-    { at: 0.85, size: 0.07, tone: 0.4, kind: "dither" },
-    { at: 1.25, size: 0.02, tone: 0.7, kind: "disc" },
-    { at: 1.7, size: 0.05, tone: 0.45, kind: "ring" },
-    { at: 2.1, size: 0.09, tone: 0.3, kind: "dither" },
+    { at: 0.45, size: 0.035, tone: 0.3, kind: "ring" },
+    { at: 0.85, size: 0.07, tone: 0.22, kind: "dither" },
+    { at: 1.25, size: 0.02, tone: 0.4, kind: "disc" },
+    { at: 1.7, size: 0.05, tone: 0.26, kind: "ring" },
+    { at: 2.1, size: 0.09, tone: 0.16, kind: "dither" },
   ],
   ringWidth: 1.5,
-  streak: 0.28,
-  streakTone: 0.6,
+  /** The streaks, in the sun's own tone (they start at the disc's edge, not across it): the horizontal one reaches `streak` of the picture's width to each side, the vertical `streakUp` of its height. */
+  streak: 0.2,
+  streakUp: 0.14,
+  streakTone: 1,
   /** The share of the ink the flare shows on the light page, where the sun is burnt out. */
-  lightShare: 0.4,
+  lightShare: 0.3,
   /** The strength goes to 0 as the sun's distance from the middle (a share of the half diagonal) goes from `edgeFrom` to `edgeTo`, and from `midTo` down to `midFrom`. */
-  edgeFrom: 0.95,
-  edgeTo: 1.3,
+  edgeFrom: 0.8,
+  edgeTo: 1.05,
   midFrom: 0.08,
   midTo: 0.3,
   /** The planet's limb softness for the flare's occlusion, a share of its angular radius. */

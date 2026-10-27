@@ -84,10 +84,13 @@ export interface SunFrame {
   visible?: number;
 }
 
+/** The sun's disc radius on the buffer, px: a fixed angle at the camera's focal length, with a floor. */
+export const sunRadius = (f: Pick<SunFrame, "focal">): number => Math.max(SUN.minR, f.focal * Math.tan((SUN.angularDeg * Math.PI) / 180));
+
 /** The sun's disc on the buffer: its centre on a whole pixel's centre (the disc is symmetric and its edge falls on the grid) and its radius, or null when it is behind the camera or its crown is wholly off the picture. Pure. */
 export function sunPlace(f: SunFrame): { x: number; y: number; r: number } | null {
   if (!f.ahead) return null;
-  const r = Math.max(SUN.minR, f.focal * Math.tan((SUN.angularDeg * Math.PI) / 180));
+  const r = sunRadius(f);
   const reach = r * (1 + SUN.halo);
   if (f.x + reach < 0 || f.x - reach > f.bufW || f.y + reach < 0 || f.y - reach > f.bufH) return null;
   return { x: Math.floor(f.x) + 0.5, y: Math.floor(f.y) + 0.5, r };
@@ -122,7 +125,7 @@ export class SunLayer {
   sync(f: SunFrame): boolean {
     const p = f.amount > 0.01 ? sunPlace(f) : null;
     this.mesh.visible = p !== null;
-    const flaring = this.flare.sync({ bufW: f.bufW, bufH: f.bufH, x: f.x, y: f.y, ahead: f.ahead, amount: f.amount, visible: f.visible ?? 1 } satisfies FlareFrame);
+    const flaring = this.flare.sync({ bufW: f.bufW, bufH: f.bufH, x: f.x, y: f.y, ahead: f.ahead, amount: f.amount, visible: f.visible ?? 1, r: sunRadius(f) } satisfies FlareFrame);
     if (!p) return flaring;
     const u = this.mat.uniforms;
     (u.uCentre!.value as Vector2).set(p.x, p.y);

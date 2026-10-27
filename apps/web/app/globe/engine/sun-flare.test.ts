@@ -16,7 +16,7 @@ describe("flarePlace", () => {
     expect(flarePlace(frame({ visible: 0 }))).toBeNull();
   });
   it("fades as the sun leaves the picture and is gone well outside it", () => {
-    expect(flarePlace(frame({ x: 400, y: 130 }))!.str).toBeGreaterThan(flarePlace(frame({ x: 480, y: 130 }))!.str);
+    expect(flarePlace(frame({ x: 380, y: 130 }))!.str).toBeGreaterThan(flarePlace(frame({ x: 430, y: 130 }))!.str);
     expect(flarePlace(frame({ x: 2000 }))).toBeNull();
   });
   it("fades as the sun comes to the middle of the picture", () => {

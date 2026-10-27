@@ -23,7 +23,7 @@ const VERTEX = /* glsl */ `
 const N = FLARE.ghosts.length;
 
 const FRAGMENT = /* glsl */ `
-  uniform vec2 uSun; uniform vec2 uMid; uniform float uUnit; uniform float uStr; uniform vec3 uBg; uniform vec3 uInk; uniform float uLight; uniform float uBufW;
+  uniform vec2 uSun; uniform vec2 uMid; uniform float uUnit; uniform float uStr; uniform vec3 uBg; uniform vec3 uInk; uniform float uLight; uniform float uBufW; uniform float uBufH; uniform float uSunR;
   const float BAYER[16] = float[16](${BAYER4.map((n) => `${n}.0`).join(", ")});
   const float AT[${N}] = float[${N}](${list(FLARE.ghosts.map((g) => g.at))});
   const float SIZE[${N}] = float[${N}](${list(FLARE.ghosts.map((g) => g.size))});
@@ -46,11 +46,15 @@ const FRAGMENT = /* glsl */ `
       else if (KIND[i] == 1) { if (r < R && t > bayer()) ink = max(ink, t); }
       else { if (r < R) ink = max(ink, t); }
     }
-    // the streak: one pixel row through the sun, a dither that thins out along it
-    float row = floor(uSun.y) + 0.5;
-    if (abs(p.y - row) < 0.5) {
-      float along = 1.0 - abs(p.x - uSun.x) / (${f(FLARE.streak)} * uBufW);
-      if (along > 0.0 && pow(along, 1.6) * ${f(FLARE.streakTone)} > bayer() * ${f(FLARE.streakTone)}) ink = max(ink, ${f(FLARE.streakTone)});
+    // the streaks: a one-pixel row and column through the sun, in its own tone, from the disc's edge out; a dither that thins out along them
+    vec2 d = abs(p - uSun);
+    if (abs(p.y - (floor(uSun.y) + 0.5)) < 0.5 && d.x > uSunR) {
+      float along = 1.0 - d.x / (${f(FLARE.streak)} * uBufW);
+      if (along > 0.0 && pow(along, 2.2) > bayer()) ink = max(ink, ${f(FLARE.streakTone)});
+    }
+    if (abs(p.x - (floor(uSun.x) + 0.5)) < 0.5 && d.y > uSunR) {
+      float along = 1.0 - d.y / (${f(FLARE.streakUp)} * uBufH);
+      if (along > 0.0 && pow(along, 2.2) > bayer()) ink = max(ink, ${f(FLARE.streakTone)});
     }
     if (ink <= 0.0) discard;
     gl_FragColor = vec4(mix(uBg, uInk, ink * (uLight > 0.5 ? ${f(FLARE.lightShare)} : 1.0)), uStr);
@@ -67,6 +71,8 @@ export interface FlareFrame {
   /** How much of the sun the zoom lets through (the night's amount), 0..1, and how much of it the planet leaves, 0..1. */
   amount: number;
   visible: number;
+  /** The sun's disc radius on the buffer, px: the streaks start at its edge. */
+  r?: number;
 }
 
 const smooth = (a: number, b: number, x: number) => {
@@ -83,7 +89,7 @@ export function planetClear(cosFromCentre: number, d: number): number {
 }
 
 /** The flare for this frame: the sun's place (a whole pixel's centre), the middle of the picture, the unit its sizes are shares of, and its strength; or null when there is none. Pure. */
-export function flarePlace(fr: FlareFrame): { sx: number; sy: number; mx: number; my: number; unit: number; str: number } | null {
+export function flarePlace(fr: FlareFrame): { sx: number; sy: number; mx: number; my: number; unit: number; str: number; r: number } | null {
   if (!fr.ahead || fr.amount <= 0.01 || fr.visible <= 0.01) return null;
   const mx = fr.bufW / 2;
   const my = fr.bufH / 2;
@@ -92,7 +98,7 @@ export function flarePlace(fr: FlareFrame): { sx: number; sy: number; mx: number
   // fades as the sun leaves the picture, and as it comes to the middle
   const str = fr.amount * fr.visible * (1 - smooth(FLARE.edgeFrom, FLARE.edgeTo, out)) * smooth(FLARE.midFrom, FLARE.midTo, out);
   if (str <= 0.01) return null;
-  return { sx: Math.floor(fr.x) + 0.5, sy: Math.floor(fr.y) + 0.5, mx, my, unit: Math.min(fr.bufW, fr.bufH), str };
+  return { sx: Math.floor(fr.x) + 0.5, sy: Math.floor(fr.y) + 0.5, mx, my, unit: Math.min(fr.bufW, fr.bufH), str, r: fr.r ?? 0 };
 }
 
 export class FlareLayer {
@@ -103,6 +109,8 @@ export class FlareLayer {
       uMid: { value: new Vector2() },
       uUnit: { value: 1 },
       uBufW: { value: 1 },
+      uBufH: { value: 1 },
+      uSunR: { value: 0 },
       uStr: { value: 1 },
       uBg: { value: new Color() },
       uInk: { value: new Color() },
@@ -144,6 +152,8 @@ export class FlareLayer {
     (u.uMid!.value as Vector2).set(p.mx, p.my);
     u.uUnit!.value = p.unit;
     u.uBufW!.value = fr.bufW;
+    u.uBufH!.value = fr.bufH;
+    u.uSunR!.value = p.r;
     u.uStr!.value = p.str;
     return true;
   }
