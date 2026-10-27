@@ -147,6 +147,8 @@ export interface HandoverHandle {
   hasOrbit(): boolean;
   /** The visitor asks for the cinematic interlude (engine/cinematic.ts); false when it cannot be played now. */
   playInterlude(): boolean;
+  /** The visitor asked for the interlude from a zoomed or turned globe: the camera goes home now. */
+  goHome(): void;
   /** The visitor can now ask for it: make what it needs ahead of time (the word's mesh, the sound's file); nothing is planned or played. */
   prepareInterlude(): void;
   debug(): HandoverDebug;
@@ -821,6 +823,7 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
     },
     hasOrbit: () => renderer.hasCaption(),
     playInterlude: () => renderer.playInterlude(),
+    goHome: () => renderer.goHome(),
     prepareInterlude: () => renderer.prepareInterlude(),
     debug(): HandoverDebug {
       const g = globe.debug();

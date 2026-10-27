@@ -58,7 +58,7 @@ import { snapBox } from "./group-square";
 import { Grace } from "./grace";
 import { IdleSpin, SPIN, SPIN_DEFAULTS, edgeSpeed, pacedByRotation, spinBlock, spinFrameDue, spinFramePeriod, type SpinContext } from "./idle-spin";
 import { CINEMATIC } from "./cinematic";
-import { INTERLUDE_STATE_EVENT, type InterludeStateDetail } from "../interlude";
+import { INTERLUDE_STATE_EVENT, interludeLook, type InterludeStateDetail } from "../interlude";
 import { blendPose, flightOffsetShare, flightPose } from "./flight";
 import { NIGHT, SURFACE, surfaceCoverage, surfaceFade } from "./surface";
 import { landingScale, liftFor, placeAbove, type Placement } from "./lift";
@@ -1856,6 +1856,12 @@ export class GlobeRenderer {
     this.caption?.prewarmInterlude();
   }
 
+  /** The visitor asked for the interlude from a zoomed or turned globe: the camera goes home now, to the world view at the equator. */
+  goHome(): void {
+    if (this.selected !== null || this.insetTarget !== 0) return;
+    this.flyTo({ zoom: this.minZoom, lat: 0 });
+  }
+
   /** The visitor asks for the cinematic interlude (the search palette's entry): false when it cannot be played now. */
   playInterlude(): boolean {
     return this.caption?.summonInterlude() ?? false;
@@ -2107,10 +2113,11 @@ export class GlobeRenderer {
 
   /**
    * Tell the page when the interlude begins and ends (once each): on as the land comes in, off once it is on its way out and below the middle of its easing, so the
-   * name grows back while the page's text is returning and not after it.
+   * name grows back while the page's text is returning and not after it. Once off, it comes on again only as the land comes IN (rising): on the way out the land is still
+   * over 0.01 for a while, and without that the state flipped on and off every frame (the name flickered between its two sizes).
    */
   private setInterludeState(land: number): void {
-    const next = this.interludeOn ? !(land < 0.4 && land < this.interludeVar) && land > 0 : land > 0.01;
+    const next = interludeLook(this.interludeOn, land, this.interludeVar);
     if (next === this.interludeOn) return;
     this.interludeOn = next;
     window.dispatchEvent(new CustomEvent<InterludeStateDetail>(INTERLUDE_STATE_EVENT, { detail: { active: next } }));

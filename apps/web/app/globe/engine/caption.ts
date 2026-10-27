@@ -1316,11 +1316,13 @@ export class CaptionMotion {
   }
 
   /**
-   * Begin the interlude NOW, from the resting roll (the visitor asks for it, the palette's "I like surprises", so that it can be seen as often as it is asked for, with its sound, without a reload). False when it cannot: no plan, the rows are not rolling, or one
+   * Begin the interlude NOW, from the resting roll (the visitor asks for it, the palette's "I like surprises", so that it can be seen as often as it is asked for, with its sound, without a reload). False when it cannot: no plan, the rows are not on the stage (still hidden), or one
    * is under way.
    */
   replayEgg(now: number): boolean {
-    if (!this.egg || this.phase !== "rest" || !this.motionAllowed || !this.eggReady()) return false;
+    if (!this.egg || (this.phase !== "rest" && this.phase !== "in") || !this.motionAllowed || !this.eggReady()) return false;
+    // (an entrance still under way is cut short, as a gesture does: the visitor asked for the interlude now, not once the rows have settled)
+    if (this.phase === "in") this.phase = "rest";
     this.beginEgg(now);
     return true;
   }

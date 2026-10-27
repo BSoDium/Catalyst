@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { INTERLUDE_STATE_EVENT, RESTORE_HERO_EVENT, type CoverBlock, type InterludeStateDetail, type GlobeShowcase, type GlobeSignal, type GlobeViewState } from "~/globe";
+import { GO_HOME_EVENT, INTERLUDE_STATE_EVENT, RESTORE_HERO_EVENT, type CoverBlock, type InterludeStateDetail, type GlobeShowcase, type GlobeSignal, type GlobeViewState } from "~/globe";
 import { cameBackHome } from "~/lib/hero-rest";
 import { createHeroMachine, HERO_IDLE_MS, isWorldView, showcaseOf, type HeroMachine } from "~/lib/hero-machine";
 
@@ -77,15 +77,24 @@ export function useLandingHero(open: boolean): LandingHero {
   const openRef = useRef(open);
 
   const sync = useCallback(() => machine.setWorld(zoomAtWorld.current && !openRef.current), [machine]);
-  const onInteract = useCallback(() => machine.interact(), [machine]);
+  const onInteract = useCallback(() => {
+    homeWanted.current = false;
+    machine.interact();
+  }, [machine]);
+  // The interlude was asked for from a zoomed globe: the globe is on its way home, and the full hero comes back as it reaches the world view (not after the idle delay).
+  const homeWanted = useRef(false);
   const onView = useCallback(
     (view: GlobeViewState) => {
       const atWorld = isWorldView(view);
       if (atWorld === zoomAtWorld.current) return;
       zoomAtWorld.current = atWorld;
       sync();
+      if (atWorld && homeWanted.current) {
+        homeWanted.current = false;
+        machine.restore();
+      }
     },
-    [sync],
+    [sync, machine],
   );
 
   // The showcase: a signal over the machine and the measured cover. The snapshot object is replaced only when a value changes.
@@ -129,7 +138,14 @@ export function useLandingHero(open: boolean): LandingHero {
   useEffect(() => () => machine.stop(), [machine]);
   // (the search palette's interlude is asked for while a gesture had put the hero away: the caption it plays on comes back)
   useEffect(() => {
-    const restore = () => machine.restore();
+    const restore = () => {
+      machine.restore();
+      // (zoomed in, but no place or entry open: the globe goes home now, once per request)
+      if (!zoomAtWorld.current && !openRef.current && !homeWanted.current) {
+        homeWanted.current = true;
+        window.dispatchEvent(new Event(GO_HOME_EVENT));
+      }
+    };
     window.addEventListener(RESTORE_HERO_EVENT, restore);
     return () => window.removeEventListener(RESTORE_HERO_EVENT, restore);
   }, [machine]);

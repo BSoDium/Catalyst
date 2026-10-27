@@ -248,7 +248,8 @@ describe("the cinematic interlude: in the caption's motion", () => {
     expect(m.replayEgg(end)).toBe(false); // (no plan: the layer makes one)
     m.egg = { ...plan, shape: { ...plan.shape } };
     run(m, end + entranceMs(2) + 100, end); // (the showing is in again)
-    expect(m.replayEgg(end + entranceMs(2) + 100)).toBe(m.phase === "rest");
+    const was = m.phase; // (the entrance may be under way: it is cut short)
+    expect(m.replayEgg(end + entranceMs(2) + 100)).toBe(was === "rest" || was === "in");
   });
   it("an interlude cut short by a gesture (the showcase ends) tells its sound at once, and an interlude that was not under way tells nothing", () => {
     const m = make();

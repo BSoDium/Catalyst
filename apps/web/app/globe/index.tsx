@@ -3,7 +3,7 @@ import type { GlobeProps } from "./types";
 
 export { DEFAULT_VIEW_RADIUS_KM, placeFraming } from "./engine/framing";
 export { noteVisit } from "./engine/visit";
-export { INTERLUDE_STATE_EVENT, prepareInterlude, requestInterlude, RESTORE_HERO_EVENT, type InterludeStateDetail } from "./interlude";
+export { GO_HOME_EVENT, INTERLUDE_STATE_EVENT, prepareInterlude, requestInterlude, RESTORE_HERO_EVENT, type InterludeStateDetail } from "./interlude";
 export { unlockSound } from "./engine/cinematic-sound";
 export { ringPhrases, type RingIdentity } from "./ring-text";
 export type {
