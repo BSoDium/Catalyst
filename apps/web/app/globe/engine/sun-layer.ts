@@ -43,6 +43,12 @@ const FRAGMENT = /* glsl */ `
       ivec2 c = ivec2(mod(floor(gl_FragCoord.xy), 4.0));
       float th = (BAYER[c.y * 4 + c.x] + 0.5) / 16.0;
       ink = floor(t * ${f(SUN.haloSteps)} + th) / ${f(SUN.haloSteps)} * (uLight > 0.5 ? ${f(SUN.light.glow)} : ${f(SUN.dark.glow)});
+      // the ring of light on the halo: a sharp inside edge and a smooth outside, a little brighter than the halo under it
+      float d = r - ${f(SUN.ring.at)};
+      float rt = 0.0;
+      if (d <= 0.0) { if (d > -${f(SUN.ring.inner)}) rt = 1.0; }
+      else { float x = 1.0 - d / ${f(SUN.ring.outer)}; if (x > 0.0) rt = floor(x * x * ${f(SUN.ring.steps)} + th) / ${f(SUN.ring.steps)}; }
+      ink = max(ink, rt * (uLight > 0.5 ? ${f(SUN.ring.light)} : ${f(SUN.ring.dark)}));
     }
     if (ink <= 0.0) discard;
     gl_FragColor = vec4(mix(uBg, uInk, ink), uAmt);

@@ -79,11 +79,13 @@ export const MOON = {
 export const SUN = {
   angularDeg: 0.6,
   minR: 3,
-  halo: 9,
+  halo: 14,
   /** The halo's inner part (where the falloff is above `core`) is a step stronger than its outer. */
   core: 0.45,
   /** The halo's steps of tone (from its edge, where it is `glow`, nearly the disc's own, down to nothing), and how fast it falls. */
   haloSteps: 6,
+  /** The ring of light on top of the halo, in disc radii from the sun's centre: sharp on its inside (`inner` wide, at full `tone`), then a smooth falloff over `outer`, in `steps` dithered steps. */
+  ring: { at: 8.5, inner: 0.3, outer: 2.6, steps: 5, dark: 0.3, light: 0.06 },
   haloFall: 2.6,
   limb: 0.88,
   dark: { disc: 1, limb: 0.8, halo: 0.16, haloCore: 0.3, glow: 0.72 },
@@ -110,8 +112,6 @@ export const FLARE = {
     { at: 2.1, size: 0.09, tone: 0.09, kind: "dither" },
     { at: 2.35, size: 0.045, tone: 0.1, kind: "ring" },
   ],
-  /** The halo ring round the sun at a distance: radius (a share of the picture's short side), tone, and its width in px; a dither one step further out softens its outer side. */
-  haloRing: { at: 0.15, tone: 0.2, width: 2, soft: 0.07, softTone: 0.08 },
   ringWidth: 1.5,
   /** The rays, in the sun's own tone, from its centre (the disc's edge) out: the horizontal ones reach `streak` of the picture's width, the vertical `streakUp` of its height, the diagonal `streakDiag` of its width; the dither thins out as `along^streakFall`. */
   streak: 0.2,

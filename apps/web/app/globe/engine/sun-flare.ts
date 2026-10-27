@@ -48,11 +48,6 @@ const FRAGMENT = /* glsl */ `
       else if (KIND[i] == 1) { if (r < R && t > bayer()) ink = max(ink, t); }
       else { if (r < R) ink = max(ink, t); }
     }
-    // the halo ring round the sun, at a distance: a ring (a circle, unlike the ghosts) with a dithered fringe outside it
-    float rs = length(p - uSun);
-    float ringR = ${f(FLARE.haloRing.at)} * uUnit;
-    if (abs(rs - ringR) < ${f(FLARE.haloRing.width / 2)}) ink = max(ink, ${f(FLARE.haloRing.tone)});
-    else if (rs > ringR && rs < ringR + ${f(FLARE.haloRing.soft)} * uUnit && bayer() > (rs - ringR) / (${f(FLARE.haloRing.soft)} * uUnit)) ink = max(ink, ${f(FLARE.haloRing.softTone)});
     // the rays: one pixel wide, from the sun's centre (the disc's edge, where they join it) out along the axes and the diagonals (a diagonal is the pixels where the two offsets are equal), a dither that thins out along them
     vec2 o = floor(p) - floor(uSun);
     vec2 a = abs(o);
