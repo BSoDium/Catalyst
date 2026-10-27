@@ -169,6 +169,13 @@ export const RIM = {
   align: 0.55,
   arc: [0.55, 0.97],
   thick: 1.3,
+  /** The lining's opacity at its thinnest: the dither's gaps keep this share of the opacity of the pixels on (`grain`: 0 gaps fully clear, 1 no grain at all), so the lining is a smooth rise in opacity as well as in density. */
+  grain: 0.45,
+  /**
+   * The SUNSET ON THE GROUND (`rimGroundMaterial`): the same light on the planet's own surface, as in the footage: the lit ground is brightest at the limb and dims inward, a smooth warm glow (`alpha` at the limb, falling
+   * with the grazing angle as `power`), over a wider arc of the limb than the lining's (`arc`, as the lining's: cosines of the angle to the sun's side), in the same colours.
+   */
+  ground: { alpha: 0.42, power: 2.6, arc: [0.15, 0.9] },
   cover: { dark: 0.9, light: 0.3 },
 } as const;
 

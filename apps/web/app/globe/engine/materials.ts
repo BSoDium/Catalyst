@@ -160,10 +160,31 @@ export function atmosphereMaterial(): ShaderMaterial {
 }
 
 /**
+ * What the rim's two layers (the atmosphere's lining and the light on the ground) know of the sun: `rimAligned()` is how near the sun is to the limb on the picture (1 on it, 0 beyond `RIM.align` of the planet's angular
+ * radius, or in front of the planet), and `rimSide(n)` the cosine, for the limb point `n`, of the angle to the sun's side of the outline. `uSunN` is the sun's direction in the earth's frame.
+ */
+const RIM_SUN_GLSL = /* glsl */ `
+  float rimAligned() {
+    vec3 axis = normalize(-cameraPosition);
+    float sunAng = acos(clamp(dot(uSunN, axis), -1.0, 1.0));
+    float limbAng = asin(clamp(1.0 / length(cameraPosition), 0.0, 1.0));
+    return 1.0 - smoothstep(0.0, ${RIM.align.toFixed(2)} * limbAng, abs(sunAng - limbAng));
+  }
+  float rimSide(vec3 n) {
+    vec3 axis = normalize(-cameraPosition);
+    vec3 perp = uSunN - axis * dot(uSunN, axis);
+    float pl = length(perp);
+    return pl > 1e-4 ? dot(n, perp / pl) : -1.0;
+  }
+  // the sun's own light along the limb: its pale gold nearest the sun (side 1), through yellow and orange to red and violet away from it
+  vec3 rimTint(float side, float from, vec3 grey, float flip) {
+    return flip > 0.5 ? grey : warm(mix(0.05, 1.0, pow(smoothstep(from, 0.995, side), 0.8)));
+  }
+`;
+
+/**
  * The RIM (`RIM`, engine/moon.ts): the atmosphere as a thin skin on the limb, a smooth film of haze, and the SILVER LINING where the sun is aligned with the limb. The same shell as the interlude's glow (the
- * inside of a sphere a little over the surface, seen only beyond the disc). `uSunN` (the sun's direction in the earth's frame) against the line from the camera through the planet's middle is how far the sun is from the
- * view's axis (`sunAng`), compared with the planet's own angular radius (`limbAng`): the lining is there while the two are near, and on the limb point nearest the sun's projection only. `uNight` is the night's amount (the rim
- * is there while the sun is), `uAmt` how much of it the interlude's own glow leaves.
+ * inside of a sphere a little over the surface, seen only beyond the disc). `uNight` is the night's amount (the rim is there while the sun is), `uAmt` how much of it the interlude's own glow leaves.
  */
 export function rimMaterial(): ShaderMaterial {
   return new ShaderMaterial({
@@ -178,6 +199,7 @@ export function rimMaterial(): ShaderMaterial {
       varying vec3 vPos;
       ${MIST_GLSL}
       ${WARM_GLSL}
+      ${RIM_SUN_GLSL}
       void main() {
         vec3 n = normalize(vPos);
         vec3 toEye = normalize(cameraPosition - n * uShell);
@@ -186,24 +208,51 @@ export function rimMaterial(): ShaderMaterial {
         float h = clamp(abs(dot(n, toEye)) / edge, 0.0, 1.0);
         // the haze: smooth and faint, on the lit limb
         float haze = pow(h, ${RIM.hazePower.toFixed(2)}) * ${RIM.haze.toFixed(3)} * smoothstep(-0.2, 0.6, dot(n, uSunN)) * uNight * uAmt;
-        // the silver lining: the sun aligned with the limb (its angle from the view's axis near the planet's angular radius), on the limb point nearest its projection
-        vec3 axis = normalize(-cameraPosition);
-        float sunAng = acos(clamp(dot(uSunN, axis), -1.0, 1.0));
-        float limbAng = asin(clamp(1.0 / length(cameraPosition), 0.0, 1.0));
-        float aligned = 1.0 - smoothstep(0.0, ${RIM.align.toFixed(2)} * limbAng, abs(sunAng - limbAng));
-        vec3 perp = uSunN - axis * dot(uSunN, axis);
-        float pl = length(perp);
-        float side = pl > 1e-4 ? dot(n, perp / pl) : -1.0;
-        float arc = smoothstep(${RIM.arc[0].toFixed(2)}, ${RIM.arc[1].toFixed(2)}, side);
-        float lin = stepped(pow(h, ${RIM.thick.toFixed(2)}) * aligned * arc * uNight * uAmt, 3.0) * uCover;
+        // the silver lining: the sun aligned with the limb, on the limb point nearest its projection. Its strength rises in density (the dither) AND in opacity: the pixels the dither leaves out keep a share of it
+        float side = rimSide(n);
+        float v = pow(h, ${RIM.thick.toFixed(2)}) * rimAligned() * smoothstep(${RIM.arc[0].toFixed(2)}, ${RIM.arc[1].toFixed(2)}, side) * uNight * uAmt;
+        float on = v > dither4(floor(gl_FragCoord.xy)) ? 1.0 : 0.0;
+        float lin = v * mix(${RIM.grain.toFixed(2)}, 1.0, on) * uCover;
         if (haze < 0.003 && lin < 0.004) discard;
-        // (the light page has no warm light: its sun is burnt out)
-        // the lining is the sun's own light along the limb: its pale gold nearest the sun (side 1), through yellow and orange to red and violet away from it (a gradient)
-        vec3 tint = uFlip > 0.5 ? uColor : warm(mix(0.05, 1.0, pow(smoothstep(${RIM.arc[0].toFixed(2)}, 0.995, side), 0.8)));
-        gl_FragColor = lin > haze ? vec4(tint, lin) : vec4(uColor, haze);
+        gl_FragColor = lin > haze ? vec4(rimTint(side, ${RIM.arc[0].toFixed(2)}, uColor, uFlip), lin) : vec4(uColor, haze);
       }
     `,
     side: BackSide,
+    blending: NormalBlending,
+    depthTest: true,
+    depthWrite: false,
+    transparent: true,
+  });
+}
+
+/**
+ * The sunset's light on the GROUND (`RIM.ground`): the other half of the picture the footage shows. A skin a hair over the surface (like the mist's), warm where the ground is seen at a grazing angle on the sun's side
+ * of the limb, brightest at the planet's edge and dimming smoothly inward: while the sun is aligned with the limb it lights the surface as well as the atmosphere, and the surface goes dim before the edge does.
+ */
+export function rimGroundMaterial(): ShaderMaterial {
+  return new ShaderMaterial({
+    uniforms: { uColor: { value: new Color() }, uSet: { value: 0 }, uAmt: { value: 1 }, uNight: { value: 0 }, uSunN: { value: [0, 0, 1] }, uFlip: { value: 0 } },
+    vertexShader: /* glsl */ `
+      varying vec3 vPos;
+      void main() { vPos = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform vec3 uColor; uniform float uAmt; uniform float uNight; uniform vec3 uSunN; uniform float uFlip;
+      varying vec3 vPos;
+      ${WARM_GLSL}
+      ${RIM_SUN_GLSL}
+      void main() {
+        vec3 n = normalize(vPos);
+        vec3 toEye = normalize(cameraPosition - vPos);
+        // how grazing the ground is seen: 0 looking straight down, 1 at the horizon
+        float g = 1.0 - clamp(dot(n, toEye), 0.0, 1.0);
+        float side = rimSide(n);
+        float a = pow(g, ${RIM.ground.power.toFixed(2)}) * rimAligned() * smoothstep(${RIM.ground.arc[0].toFixed(2)}, ${RIM.ground.arc[1].toFixed(2)}, side) * uNight * uAmt * ${RIM.ground.alpha.toFixed(2)};
+        if (a < 0.004) discard;
+        gl_FragColor = vec4(rimTint(side, ${RIM.ground.arc[0].toFixed(2)}, uColor, uFlip), a);
+      }
+    `,
+    side: FrontSide,
     blending: NormalBlending,
     depthTest: true,
     depthWrite: false,
