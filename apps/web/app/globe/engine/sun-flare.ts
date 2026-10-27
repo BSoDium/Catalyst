@@ -116,15 +116,14 @@ export function planetClear(cosFromCentre: number, d: number): number {
 }
 
 /**
- * How much of the sun's HALO the planet leaves, 1 well outside its limb to 0 once the sun's centre is a disc radius behind it, a smoothstep over the angle between (`SUN.fade`). The halo is wide (`reachRad`, the
+ * How much of the sun's HALO the planet leaves, 1 well outside its limb to 0 once the sun's centre is well behind it, a smoothstep over the angle between (`SUN.fade`, in halo reaches). The halo is wide (`reachRad`, the
  * angle it reaches from the sun's centre), so this is a long fade, unlike `planetClear`'s hair: the glow dims for the whole of the sunset. `cosFromCentre` and `d` are as in `planetClear`. Pure.
  */
 export function haloClear(cosFromCentre: number, d: number, reachRad: number): number {
   if (cosFromCentre <= 0) return 1;
   const limb = Math.asin(Math.min(1, 1 / Math.max(1.0001, d)));
   const outside = Math.acos(Math.min(1, cosFromCentre)) - limb;
-  const disc = (SUN.angularDeg * Math.PI) / 180;
-  return smooth(-SUN.fade.from * disc, SUN.fade.to * reachRad, outside);
+  return smooth(-SUN.fade.from * reachRad, SUN.fade.to * reachRad, outside);
 }
 
 /** The flare for this frame: the sun's place (a whole pixel's centre), the middle of the picture, the unit its sizes are shares of, and its strength; or null when there is none. Pure. */

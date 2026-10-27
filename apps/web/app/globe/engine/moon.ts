@@ -93,16 +93,17 @@ export const SUN = {
   /** The light page's sun is the glare that burns the colour away: only a ghost of a rim and a faint glow. */
   light: { rim: 0.16, glow: 0.18 },
   /**
-   * The halo goes with the planet's cover, slowly (`haloClear`, engine/sun-flare.ts): it is whole while the sun's centre is `to` halo-reaches outside the limb, and gone when it is
-   * `from` disc radii behind it, in a smoothstep over the angle between (the halo is wide: its fade is long, not the hair the ring of light has).
+   * The halo goes with the planet's cover, slowly (`haloClear`, engine/sun-flare.ts): it is whole while the sun's centre is `to` halo-reaches outside the limb, and gone when it is `from`
+   * halo-reaches behind it, in a smoothstep over the angle between (the halo is wide, and most of it is still in the picture while the sun's centre is behind the limb: its fade is the length of the whole sunset).
    */
-  fade: { from: 1, to: 0.6 },
+  fade: { from: 0.8, to: 1 },
   /**
    * The warm light of a low sun (a dark-page look only: on the light page the sun burns out): the tone of a pixel (0..1, the halo's steps, the flare's elements) picks a colour from the
    * ramp, the first stop it is at or over, hot and pale at the top down to a violet. `setShare` is how far the tones are pulled down as the sun sets (the planet's cover grows), so the
    * halo reddens as it goes: the stops are the colours on the black page, and a pixel's strength (`gain` times its tone) is how much of the colour it keeps.
    */
   tint: [
+    { at: 0.9, rgb: [1, 0.97, 0.86] },
     { at: 0.66, rgb: [1, 0.9, 0.55] },
     { at: 0.5, rgb: [1, 0.68, 0.26] },
     { at: 0.36, rgb: [0.96, 0.42, 0.2] },
@@ -159,16 +160,15 @@ export const FLARE = {
  *    opacity at the planet's edge, thinning with the height as `hazePower`. Near invisible, and gone with the zoom as the night is.
  *  - the SILVER LINING: the sun's light scattered by the atmosphere, there only while the sun is aligned with the limb on the picture (the angle between the sun and the line from the camera through the
  *    planet's middle within `align` of the planet's angular radius of the limb's own: gone when the sun is well outside it or dead behind the planet), and only on the part of the outline that faces the sun: whole where
- *    the limb point's direction is within `arc[1]` (a cosine) of the sun's, gone by `arc[0]`. In the warm light's colour (`warm`), thicker than the haze (the fall is `thick`), in the dither's flat steps.
+ *    the limb point's direction is within `arc[1]` (a cosine) of the sun's, gone by `arc[0]`. Coloured as the sun's own light is (`SUN.tint`): the sun's pale gold where the arc is nearest the sun, through yellow and orange to red and violet at its ends (a gradient along the limb), thicker than the haze (the fall is `thick`), in the dither's flat steps.
  */
 export const RIM = {
   shell: 0.024,
   haze: 0.1,
   hazePower: 2.2,
   align: 0.55,
-  arc: [0.8, 0.97],
+  arc: [0.55, 0.97],
   thick: 1.3,
-  warm: [1, 0.74, 0.4],
   cover: { dark: 0.9, light: 0.3 },
 } as const;
 

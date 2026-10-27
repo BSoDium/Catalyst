@@ -229,9 +229,8 @@ export class GlobeScene {
     this.surface.uniforms.uTone1!.value.setRGB(...mixTo(tones[1]!));
     this.surface.uniforms.uTone2!.value.setRGB(...mixTo(tones[2]!));
     this.atmosphere.uniforms.uCover!.value = t.scheme === "dark" ? 0.4 : 0.26;
-    // the rim: a soft grey close to the page's colour (the haze and the lining's base), and the sun's warm light on the dark page
+    // the rim: a soft grey close to the page's colour (the haze and the lining's base),
     this.rim.uniforms.uColor!.value.setRGB(...mixTo(t.scheme === "dark" ? 0.45 : 0.3));
-    this.rim.uniforms.uWarm!.value.setRGB(...RIM.warm);
     this.rim.uniforms.uCover!.value = RIM.cover[t.scheme === "dark" ? "dark" : "light"];
     this.mist.uniforms.uCover!.value = t.scheme === "dark" ? 0.36 : 0.24;
     this.graticule.uniforms.uColor!.value.setRGB(...t.grid);

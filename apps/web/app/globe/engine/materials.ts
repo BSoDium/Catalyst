@@ -8,6 +8,7 @@ import { LEG_MODES, MODE_STYLE } from "../paths/modes";
 import { STRAIGHT_FADE_MIX, STRAIGHT_FADE_STEPS } from "../paths/thin";
 import { SPARK, TRAIL_BANDS, TRAIL_ENTRIES, TRAIL_PER_PALETTE } from "../paths/trail";
 import { RIM } from "./moon";
+import { WARM_GLSL } from "./sun-flare";
 import { NIGHT, NIGHT_GLSL, SURFACE } from "./surface";
 
 /** The lines' vertex shader: the ground point (the scene is in the earth's frame, a line's vertices are on the unit sphere) goes to the fragment. */
@@ -166,16 +167,17 @@ export function atmosphereMaterial(): ShaderMaterial {
  */
 export function rimMaterial(): ShaderMaterial {
   return new ShaderMaterial({
-    uniforms: { uColor: { value: new Color() }, uWarm: { value: new Color() }, uAmt: { value: 1 }, uShell: { value: 1 + RIM.shell }, uCover: { value: RIM.cover.dark }, uNight: { value: 0 }, uSunN: { value: [0, 0, 1] }, uFlip: { value: 0 } },
+    uniforms: { uColor: { value: new Color() }, uSet: { value: 0 }, uAmt: { value: 1 }, uShell: { value: 1 + RIM.shell }, uCover: { value: RIM.cover.dark }, uNight: { value: 0 }, uSunN: { value: [0, 0, 1] }, uFlip: { value: 0 } },
     vertexShader: /* glsl */ `
       varying vec3 vPos;
       void main() { vPos = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
     `,
     fragmentShader: /* glsl */ `
-      uniform vec3 uColor; uniform vec3 uWarm; uniform float uAmt; uniform float uShell; uniform float uCover;
+      uniform vec3 uColor; uniform float uAmt; uniform float uShell; uniform float uCover;
       uniform float uNight; uniform vec3 uSunN; uniform float uFlip;
       varying vec3 vPos;
       ${MIST_GLSL}
+      ${WARM_GLSL}
       void main() {
         vec3 n = normalize(vPos);
         vec3 toEye = normalize(cameraPosition - n * uShell);
@@ -191,11 +193,14 @@ export function rimMaterial(): ShaderMaterial {
         float aligned = 1.0 - smoothstep(0.0, ${RIM.align.toFixed(2)} * limbAng, abs(sunAng - limbAng));
         vec3 perp = uSunN - axis * dot(uSunN, axis);
         float pl = length(perp);
-        float arc = pl > 1e-4 ? smoothstep(${RIM.arc[0].toFixed(2)}, ${RIM.arc[1].toFixed(2)}, dot(n, perp / pl)) : 0.0;
+        float side = pl > 1e-4 ? dot(n, perp / pl) : -1.0;
+        float arc = smoothstep(${RIM.arc[0].toFixed(2)}, ${RIM.arc[1].toFixed(2)}, side);
         float lin = stepped(pow(h, ${RIM.thick.toFixed(2)}) * aligned * arc * uNight * uAmt, 3.0) * uCover;
         if (haze < 0.003 && lin < 0.004) discard;
         // (the light page has no warm light: its sun is burnt out)
-        gl_FragColor = lin > haze ? vec4(mix(uColor, uWarm, 1.0 - uFlip), lin) : vec4(uColor, haze);
+        // the lining is the sun's own light along the limb: its pale gold nearest the sun (side 1), through yellow and orange to red and violet away from it (a gradient)
+        vec3 tint = uFlip > 0.5 ? uColor : warm(mix(0.05, 1.0, pow(smoothstep(${RIM.arc[0].toFixed(2)}, 0.995, side), 0.8)));
+        gl_FragColor = lin > haze ? vec4(tint, lin) : vec4(uColor, haze);
       }
     `,
     side: BackSide,
