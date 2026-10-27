@@ -2299,7 +2299,7 @@ export class GlobeRenderer {
     this.globe.setLand(CINEMATIC.planet.fill ? land : 0);
     // the mist: a thin grey glow at the limb and a veil that bleeds onto the ground, for the length of the interlude (they follow the land's easing: in and out with it)
     this.globe.setAtmosphere(land * CINEMATIC.atmosphere.amount);
-    // the land's own picture: at every zoom (a checkered stipple), a little stronger in the interlude
+    // the land's own picture: at every zoom, with no fade as the camera comes close (a checkered stipple), a little stronger in the interlude
     const inInterlude = this.flying || land > 0;
     this.globe.setSurface(surfaceCoverage(land));
     this.globe.setCity(CINEMATIC.planet.cities ? (this.caption?.cityShare() ?? 0) : 0);
