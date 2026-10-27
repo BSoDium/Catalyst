@@ -33,8 +33,9 @@ export function surfaceCoverage(landShare: number): number {
 export const NIGHT = {
   litFrom: -0.12,
   litTo: 0.28,
-  shift: 0.85,
-  landMin: 0.2,
+  shift: 0.45,
+  // The darkest a land cell goes on the night side, so the continents stay readable there.
+  landMin: 0.45,
   /** The lines on the dark side: their colour goes this share of the way to the page's, in `lineSteps` steps (a staircase of greys, the palette's way; not a thinning: a one-pixel line in a dither flickers as the planet turns). */
   lineDim: 0.88,
   /** The planet's own outline (the horizon ring): the same steps, a little less dim, so that the dark side's edge is still there. */
@@ -51,8 +52,8 @@ export const NIGHT = {
   shadow: 0.2,
   /** The share of the land's pixels at the darkest of the night on the LIGHT page, times the day's (a stipple that thickens to solid, where the dark page's thins to `landMin`). */
   landMax: 1.8,
-  /** The interlude's atmosphere (the glow over the limb and the veil on the ground): how much of it goes where the planet is washed (the dark side): it is darkened, not just thinned. */
-  atmosphereDim: 0.85,
+  /** The interlude's atmosphere (the glow over the limb and the veil on the ground): how much of it goes where the planet is washed (the dark side on the dark page, the sun's side on the light one): it is lit exactly as the ground is (the same terminator, in the same whole steps), and gone where the ground is dark. */
+  atmosphereDim: 1,
 } as const;
 
 /** GLSL for the light on a ground point `n` (a unit vector in the earth's frame) from the sun `uSunN`, scaled by how much night there is (`uNight`: 0 is all day): 1 lit, 0 dark. */

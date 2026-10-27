@@ -94,6 +94,7 @@ export class GlobeScene {
   private graticule = lineMaterial(1, 3);
   private borders = lineMaterial(1);
   private bordersLines: LineSegments | null = null;
+  private coastLines: LineSegments | null = null;
   private ramp: readonly Rgb[] = [];
   private borderLevelNow = -1;
   /** The borders are ON or OFF (decided from the zoom with a hysteresis), and their tone runs to it by time: a timed fade, never a resting grey. */
@@ -149,7 +150,8 @@ export class GlobeScene {
     this.add(new LineSegments(this.track(segmentGeometry(graticuleSegments(GRATICULE_STEP_DEG, 3))), this.graticule), 1);
     this.bordersLines = new LineSegments(this.track(segmentGeometry(polylinesToSegments(data.borders, 1))), this.borders);
     this.add(this.bordersLines, 2);
-    this.add(new LineSegments(this.track(segmentGeometry(polylinesToSegments(data.coastlines, 1))), this.coast), 3);
+    this.coastLines = new LineSegments(this.track(segmentGeometry(polylinesToSegments(data.coastlines, 1))), this.coast);
+    this.add(this.coastLines, 3);
 
     // the places' lights: a dot for each of the owner's places, one for those within two degrees of another (a city and its districts are one light), a few
     const lights: number[] = [];
@@ -251,6 +253,24 @@ export class GlobeScene {
     this.landTex = tex;
     this.occluder.uniforms.uLandMap!.value = tex;
     this.surface.uniforms.uLandMap!.value = tex;
+  }
+
+  /**
+   * The finer coastline (Natural Earth 50m, a lazy chunk of `@catalyst/geodata`) in place of the first one: the coastlines drawn, and the land's mask they fill (the interlude's
+   * continents, the patches' edge), are rebuilt from it. The first coast stays until this is made; one swap, whenever it arrives.
+   */
+  upgradeCoast(p: Polylines) {
+    if (this.disposed || !this.coastLines) return;
+    this.coastData = p;
+    const old = this.coastLines.geometry;
+    this.coastLines.geometry = this.track(segmentGeometry(polylinesToSegments(p, 1)));
+    this.geometries = this.geometries.filter((g) => g !== old);
+    old.dispose();
+    if (this.landTex) {
+      this.landTex.dispose();
+      this.landTex = null;
+      this.prepareLand();
+    }
   }
 
   /**
@@ -386,12 +406,13 @@ export class GlobeScene {
     // Borders: on from the zoom `TUNING.borderZoom` (a hysteresis), off below. The fade is a timed TONE (a line is always solid): the faintest
     // grey level stepping up through the palette to the coast level (the coastline's, `borderLevel`) over `FADE_MS`, whatever the camera does, so the globe
     // at rest never shows a half-faded border. Never a dither: a low-coverage dither on 1px lines reads as noise instead of a fade.
-    // (`hold`: the cinematic interlude's camera flies in and out of the borders' zoom range, which is no reason for them to come and go: they stay as they were)
-    if (!hold) this.bordersOn = bordersWanted(this.bordersOn, zoom, TUNING.borderZoom);
+    // (`hold`: the cinematic interlude's camera flies in and out of the borders' zoom range, which is no reason for them to come and go)
+    // (and the interlude's planet has them: its continents are drawn in detail, the borders go over them in the page's colour (`setLand`), so they are on for as long as it is up, and go with the zoom again after)
+    this.bordersOn = hold ? true : bordersWanted(this.bordersOn, zoom, TUNING.borderZoom);
     if (!this.bordersSeen) {
       this.bordersSeen = true; // the first frame starts in its state
       this.borderFade.snap(0, this.bordersOn);
-    } else if (!hold) this.borderFade.set(0, this.bordersOn);
+    } else this.borderFade.set(0, this.bordersOn);
     if (this.borderFade.moving) this.borderFade.step(clockStep(this.lastClock, now), instant);
     this.lastClock = now;
     this.setBorderLevel(borderLevel(this.borderFade.value(0), this.ramp.length));

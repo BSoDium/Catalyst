@@ -1,4 +1,4 @@
-export { loadCoastlines } from "./coastlines";
+export { loadCoastlines, loadDetailedCoastlines } from "./coastlines";
 export { loadBorders } from "./borders";
 export {
   decodePolylines,

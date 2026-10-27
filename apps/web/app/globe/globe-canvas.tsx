@@ -324,6 +324,19 @@ export default function GlobeCanvas({
         }
         setStatus("ready");
         latest.current.onOrbit?.(handle.hasOrbit());
+        // The finer coastline (about 110 KB gzipped) comes when the page is idle: the globe draws it, and the interlude fills the continents from it, in place of the first one.
+        const created = handle;
+        const loadDetail = () => {
+          if (cancelled) return;
+          void import("@catalyst/geodata")
+            .then((g) => g.loadDetailedCoastlines())
+            .then((p) => {
+              if (!cancelled) created.upgradeCoast(p);
+            })
+            .catch(() => {});
+        };
+        if (typeof requestIdleCallback === "function") requestIdleCallback(loadDetail, { timeout: 4000 });
+        else window.setTimeout(loadDetail, 1500);
       } catch (e) {
         if (cancelled) return;
         if (!isWebGLUnavailable(e)) console.error("Globe failed to start", e);

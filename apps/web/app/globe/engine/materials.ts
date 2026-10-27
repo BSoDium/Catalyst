@@ -128,7 +128,7 @@ export function atmosphereMaterial(): ShaderMaterial {
       void main() { vPos = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
     `,
     fragmentShader: /* glsl */ `
-      uniform vec3 uColor; uniform float uAmt; uniform vec3 uSun; uniform float uShell; uniform float uPower; uniform float uCover;
+      uniform vec3 uColor; uniform float uAmt; uniform float uShell; uniform float uPower; uniform float uCover;
       uniform float uNight; uniform vec3 uSunN; uniform float uFlip;
       varying vec3 vPos;
       ${MIST_GLSL}
@@ -141,10 +141,10 @@ export function atmosphereMaterial(): ShaderMaterial {
         // just grazes the planet; normalised by that, the height above the limb is 1 - h (1 at the planet's edge, 0 at the top of the shell)
         float edge = sqrt(max(1.0 - 1.0 / (uShell * uShell), 1e-4));
         float h = clamp(abs(dot(n, toEye)) / edge, 0.0, 1.0);
-        float sunward = 0.75 + 0.25 * clamp(dot(n, uSun) * 1.4 + 0.2, 0.0, 1.0);
-        // darkened where the planet is washed by the sun's night (the interlude keeps the day and the night: washOf)
-        float lit = 1.0 - ${NIGHT.atmosphereDim.toFixed(2)} * washOf(n, uSunN, uNight, uFlip);
-        float a = stepped(pow(h, uPower) * sunward * uAmt * lit, 3.0) * uCover;
+        // lit as the ground under it is: the same terminator (washOf), in the same whole steps as the lines', so that the glow is the ground's own light and nothing
+        // else: dark where the ground is dark, brighter only towards the limb (h)
+        float lit = 1.0 - floor(washOf(n, uSunN, uNight, uFlip) * ${NIGHT.lineSteps.toFixed(1)} + 0.5) / ${NIGHT.lineSteps.toFixed(1)} * ${NIGHT.atmosphereDim.toFixed(2)};
+        float a = stepped(pow(h, uPower) * uAmt * lit, 3.0) * uCover;
         if (a < 0.004) discard;
         gl_FragColor = vec4(uColor, a);
       }
@@ -177,7 +177,7 @@ export function mistMaterial(): ShaderMaterial {
         // way round) and is deepest at the edge, where it meets the glow above it: the glow bleeds onto the planet
         float g = 1.0 - clamp(dot(n, toEye), 0.0, 1.0);
         float deep = smoothstep(0.18, 1.0, g);
-        float lit = 1.0 - ${NIGHT.atmosphereDim.toFixed(2)} * washOf(n, uSunN, uNight, uFlip);
+        float lit = 1.0 - floor(washOf(n, uSunN, uNight, uFlip) * ${NIGHT.lineSteps.toFixed(1)} + 0.5) / ${NIGHT.lineSteps.toFixed(1)} * ${NIGHT.atmosphereDim.toFixed(2)};
         float a = stepped(deep * deep * (3.0 - 2.0 * deep) * uAmt * lit, 3.0) * uCover;
         if (a < 0.004) discard;
         gl_FragColor = vec4(uColor, a);
