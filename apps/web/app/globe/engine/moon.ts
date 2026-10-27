@@ -96,12 +96,22 @@ export const SUN = {
  */
 export const FLARE = {
   ghosts: [
+    { at: 0.3, size: 0.02, tone: 0.14, kind: "disc" },
     { at: 0.45, size: 0.035, tone: 0.17, kind: "ring" },
+    { at: 0.55, size: 0.05, tone: 0.1, kind: "dither" },
     { at: 0.85, size: 0.07, tone: 0.12, kind: "dither" },
+    { at: 0.95, size: 0.03, tone: 0.16, kind: "ring" },
+    { at: 1.1, size: 0.012, tone: 0.2, kind: "disc" },
     { at: 1.25, size: 0.02, tone: 0.22, kind: "disc" },
+    { at: 1.4, size: 0.06, tone: 0.1, kind: "dither" },
+    { at: 1.55, size: 0.04, tone: 0.13, kind: "ring" },
     { at: 1.7, size: 0.05, tone: 0.14, kind: "ring" },
+    { at: 1.85, size: 0.025, tone: 0.12, kind: "dither" },
     { at: 2.1, size: 0.09, tone: 0.09, kind: "dither" },
+    { at: 2.35, size: 0.045, tone: 0.1, kind: "ring" },
   ],
+  /** The halo ring round the sun at a distance: radius (a share of the picture's short side), tone, and its width in px; a dither one step further out softens its outer side. */
+  haloRing: { at: 0.15, tone: 0.2, width: 2, soft: 0.07, softTone: 0.08 },
   ringWidth: 1.5,
   /** The rays, in the sun's own tone, from its centre (the disc's edge) out: the horizontal ones reach `streak` of the picture's width, the vertical `streakUp` of its height, the diagonal `streakDiag` of its width; the dither thins out as `along^streakFall`. */
   streak: 0.2,
