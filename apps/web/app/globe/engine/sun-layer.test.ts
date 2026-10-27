@@ -21,6 +21,6 @@ describe("sunPlace", () => {
 
   it("is a fixed angle: it grows with the camera's focal length, and has a floor", () => {
     expect(sunPlace(frame({ focal: 600 }))!.r).toBeGreaterThan(sunPlace(frame({ focal: 300 }))!.r);
-    expect(sunPlace(frame({ focal: 10 }))!.r).toBeGreaterThanOrEqual(4);
+    expect(sunPlace(frame({ focal: 10 }))!.r).toBeGreaterThanOrEqual(3);
   });
 });

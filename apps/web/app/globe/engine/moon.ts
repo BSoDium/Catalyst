@@ -72,21 +72,22 @@ export const MOON = {
 /**
  * The sun (engine/sun-layer.ts): a point of the sky, a direction at infinity in the same frame as the light (`sunDirection`), drawn as the stars are, at the skybox's own distance (the far plane),
  * so it is in the picture only where the camera looks towards it and turns with the sky when the globe is turned. `angularDeg` is its disc's angular radius (not the real half degree: a stylised
- * sun, a seventh or so of the planet's own at the whole-globe view). The crown is a dithered halo as far as `halo` radii out, scalloped by `lobes` soft lobes, and each lobe has a short faint
- * ray as far as `ray` radii more. Tones are shares from the page's colour to the ink: the dark page's sun is the ink's tone (the crown subtler), the light page's is the glare that burns the colour
- * away, and shows only its dark spots, a ghost of a rim and the crown's faint darkness.
+ * sun, a small one: owner, 2026-10-27, "way smaller"). The crown is a faint dithered halo `halo` radii out and `rays` thin rays, each at its own random angle and of its own random length
+ * (`rayMin` to `rayMax` radii), so that they never repeat. Tones are shares from the page's colour to the ink, and the crown's are barely there (the owner: "they should nearly blend in with the
+ * background"): the dark page's sun is the ink's tone, the light page's is the glare that burns the colour away, and shows only its dark spots, a ghost of a rim and the crown's faint darkness.
  */
 export const SUN = {
-  angularDeg: 1.7,
-  minR: 4,
-  halo: 0.95,
-  ray: 0.7,
-  lobes: 9,
+  angularDeg: 0.8,
+  minR: 3,
+  halo: 0.55,
+  rays: 26,
+  rayMin: 1.1,
+  rayMax: 4.2,
   grain: 3.0,
   spot: 0.74,
   limb: 0.84,
-  dark: { core: 1, limb: 0.74, spot: 0.5, crown: 0.5 },
-  light: { spot: 0.28, rim: 0.14, crown: 0.1 },
+  dark: { core: 1, limb: 0.74, spot: 0.5, halo: 0.28, ray: 0.2 },
+  light: { spot: 0.28, rim: 0.14, halo: 0.07, ray: 0.05 },
 } as const;
 
 export type Vec3 = [number, number, number];

@@ -5,7 +5,7 @@
  * opening view: one turns the globe to its far side and the sun comes round the planet's limb, its crown first.
  *
  * One quad and one cheap fragment shader, in whole art pixels like everything on the globe: a disc of two flat tones with a few dark spots (two octaves of value noise), and a crown round it, a halo
- * scalloped by soft lobes with a short faint ray at each, as a 4x4 Bayer dither of a falloff (a pixel is on or off). Static: it asks for no frames of its own.
+ * with faint thin rays at random angles and lengths, as a 4x4 Bayer dither of a falloff (a pixel is on or off). Static: it asks for no frames of its own.
  *
  * Two looks, as the whole globe has two (`washOf`, engine/surface.ts): on the dark page it is the brightest thing there is, the ink's own tone. On the light page it is so bright that it burns the
  * colour away: the disc and the crown are the page's colour, and it shows only through its dark spots, a ghost of a rim and the crown's faint darkness.
@@ -46,14 +46,21 @@ const FRAGMENT = /* glsl */ `
       ink = uLight > 0.5 ? (spot ? ${f(SUN.light.spot)} : (rim ? ${f(SUN.light.rim)} : 0.0))
                          : (spot ? ${f(SUN.dark.spot)} : (rim ? ${f(SUN.dark.limb)} : ${f(SUN.dark.core)}));
     } else {
-      // the crown: a halo scalloped by soft lobes, a short faint ray at each, as a dither of a falloff
+      // the crown: a faint halo, and thin rays, each at its own random angle and of its own random length (one per cell of the angle: a hash of the cell), as a dither of a falloff
       float k = r - 1.0;
-      float lobe = 0.5 + 0.5 * cos(atan(q.y, q.x) * ${f(SUN.lobes)} + 0.6);
-      float ext = ${f(SUN.halo)} * (0.7 + 0.3 * lobe) + ${f(SUN.ray)} * pow(lobe, 14.0);
-      float t = pow(clamp(1.0 - k / ext, 0.0, 1.0), 1.5);
+      float u = atan(q.y, q.x) * ${f(SUN.rays / (2 * Math.PI))} + ${f(SUN.rays / 2)};
+      float cell = floor(u);
+      float at = 0.25 + 0.5 * hash(vec2(cell, 1.7));
+      float len = ${f(SUN.rayMin)} + (${f(SUN.rayMax - SUN.rayMin)}) * pow(hash(vec2(cell, 5.3)), 1.5);
+      float w = 0.07 + 0.1 * hash(vec2(cell, 9.1));
+      float across = clamp(1.0 - abs(fract(u) - at) / w, 0.0, 1.0);
+      float ray = across * pow(clamp(1.0 - k / len, 0.0, 1.0), 1.3);
+      float halo = pow(clamp(1.0 - k / ${f(SUN.halo)}, 0.0, 1.0), 2.0);
       ivec2 c = ivec2(mod(floor(gl_FragCoord.xy), 4.0));
       float th = (BAYER[c.y * 4 + c.x] + 0.5) / 16.0;
-      if (t > 0.05 && t > th) ink = uLight > 0.5 ? ${f(SUN.light.crown)} : ${f(SUN.dark.crown)};
+      bool onRay = ray > 0.05 && ray > th;
+      bool onHalo = halo > 0.05 && halo > th;
+      if (onRay || onHalo) ink = onRay ? (uLight > 0.5 ? ${f(SUN.light.ray)} : ${f(SUN.dark.ray)}) : (uLight > 0.5 ? ${f(SUN.light.halo)} : ${f(SUN.dark.halo)});
     }
     if (ink <= 0.0) discard;
     gl_FragColor = vec4(mix(uBg, uInk, ink), uAmt);
@@ -97,7 +104,7 @@ export interface SunFrame {
 export function sunPlace(f: SunFrame): { x: number; y: number; r: number } | null {
   if (!f.ahead) return null;
   const r = Math.max(SUN.minR, f.focal * Math.tan((SUN.angularDeg * Math.PI) / 180));
-  const reach = r * (1 + SUN.halo + SUN.ray);
+  const reach = r * (1 + SUN.rayMax);
   if (f.x + reach < 0 || f.x - reach > f.bufW || f.y + reach < 0 || f.y - reach > f.bufH) return null;
   return { x: Math.floor(f.x) + 0.5, y: Math.floor(f.y) + 0.5, r };
 }
@@ -133,7 +140,7 @@ export class SunLayer {
     (u.uCentre!.value as Vector2).set(p.x, p.y);
     (u.uBuf!.value as Vector2).set(f.bufW, f.bufH);
     u.uR!.value = p.r;
-    u.uExt!.value = p.r * (1 + SUN.halo + SUN.ray) + 1;
+    u.uExt!.value = p.r * (1 + SUN.rayMax) + 1;
     u.uAmt!.value = f.amount;
     return true;
   }
