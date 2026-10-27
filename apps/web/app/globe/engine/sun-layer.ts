@@ -26,7 +26,7 @@ const VERTEX = /* glsl */ `
 const f = (n: number) => n.toFixed(3);
 
 const FRAGMENT = /* glsl */ `
-  uniform vec2 uCentre; uniform float uR; uniform vec3 uBg; uniform vec3 uInk; uniform float uAmt; uniform float uLight;
+  uniform vec2 uCentre; uniform float uR; uniform vec3 uBg; uniform vec3 uInk; uniform float uAmt; uniform float uLight; uniform float uClear;
   const float BAYER[16] = float[16](${BAYER4.map((n) => `${n}.0`).join(", ")});
   void main() {
     vec2 q = (gl_FragCoord.xy - uCentre) / uR;
@@ -43,12 +43,12 @@ const FRAGMENT = /* glsl */ `
       ivec2 c = ivec2(mod(floor(gl_FragCoord.xy), 4.0));
       float th = (BAYER[c.y * 4 + c.x] + 0.5) / 16.0;
       ink = floor(t * ${f(SUN.haloSteps)} + th) / ${f(SUN.haloSteps)} * (uLight > 0.5 ? ${f(SUN.light.glow)} : ${f(SUN.dark.glow)});
-      // the ring of light on the halo: a sharp inside edge and a smooth outside, a little brighter than the halo under it
+      // the ring of light on the halo (it goes as the planet covers the sun: uClear): a sharp inside edge and a smooth outside, a little brighter than the halo under it
       float d = r - ${f(SUN.ring.at)};
       float rt = 0.0;
       if (d <= 0.0) { if (d > -${f(SUN.ring.inner)}) rt = 1.0; }
       else { float x = 1.0 - d / ${f(SUN.ring.outer)}; if (x > 0.0) rt = floor(x * x * ${f(SUN.ring.steps)} + th) / ${f(SUN.ring.steps)}; }
-      ink = max(ink, rt * (uLight > 0.5 ? ${f(SUN.ring.light)} : ${f(SUN.ring.dark)}));
+      ink = max(ink, rt * uClear * (uLight > 0.5 ? ${f(SUN.ring.light)} : ${f(SUN.ring.dark)}));
     }
     if (ink <= 0.0) discard;
     gl_FragColor = vec4(mix(uBg, uInk, ink), uAmt);
@@ -66,6 +66,7 @@ const material = () =>
       uInk: { value: new Color() },
       uAmt: { value: 1 },
       uLight: { value: 0 },
+      uClear: { value: 1 },
     },
     vertexShader: VERTEX,
     fragmentShader: FRAGMENT,
@@ -139,6 +140,8 @@ export class SunLayer {
     u.uR!.value = p.r;
     u.uExt!.value = p.r * (1 + SUN.halo) + 1;
     u.uAmt!.value = f.amount;
+    // the ring of light is a lens flare too: it goes with the sun as the planet covers it
+    u.uClear!.value = f.visible ?? 1;
     return true;
   }
 
