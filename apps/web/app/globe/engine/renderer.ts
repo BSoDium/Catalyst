@@ -71,7 +71,7 @@ import { CAP_HEIGHT_EM, ringAlpha, ringFloorZoom, ringRoomRadius, RING_STATE } f
 import { RingLayer } from "./ring-layer";
 import { GlobeScene } from "./scene";
 import { planetClear } from "./sun-flare";
-import { MOON, inclinationFor, moonAmount, orbitAngle, rollFor, sunDirection, toEarthFrame, toRad, type Vec3 } from "./moon";
+import { MOON, inclinationFor, litTurn, moonAmount, orbitAngle, rollFor, sunDirection, toEarthFrame, toRad, type Vec3 } from "./moon";
 import type { MoonSample } from "./moon-layer";
 import { CAPTION, ENERGY, INSET_EASE, CAPTION_LOAD, RING, SKY, START_VIEW, TUNING } from "./tuning";
 import { QualityGovernor } from "./quality";
@@ -190,7 +190,7 @@ export class GlobeRenderer {
   private showcaseOn = false;
   /** Whether the caption is wanted AND shown now (the showcase is on and the camera's latitude is in its band) and the camera's latitude glide towards the band, if any. */
   private captionOn = false;
-  private latSnap: { from: number; to: number; t0: number } | null = null;
+  private latSnap: { from: number; to: number; lonFrom: number; lonTo: number; t0: number; ms: number } | null = null;
   private showcaseActive = false;
   /** The planet at the lowest zoom is big enough for the ring's and the caption's letters (they have a smallest size): when it is not, they are not drawn rather than cut. */
   private textFits = true;
@@ -1188,9 +1188,10 @@ export class GlobeRenderer {
     }
     if (this.latSnap) {
       const a = this.latSnap;
-      const t = clamp((now - a.t0) / CAPTION.band.snapMs, 0, 1);
-      const e = 1 - (1 - t) ** 3;
-      this.view = this.clampView({ ...this.view, lat: a.from + (a.to - a.from) * e });
+      const t = clamp((now - a.t0) / a.ms, 0, 1);
+      // slow in, slow out (a smootherstep): the glide starts from rest, with no jump
+      const e = t * t * t * (t * (t * 6 - 15) + 10);
+      this.view = this.clampView({ ...this.view, lat: a.from + (a.to - a.from) * e, lon: a.lonFrom + (a.lonTo - a.lonFrom) * e });
       if (t >= 1) this.latSnap = null;
       else more = true;
     }
@@ -2053,7 +2054,7 @@ export class GlobeRenderer {
 
   /**
    * The caption needs the camera inside its latitude band (`CAPTION.band`: the rows are fixed parallels about the equator). While the showcase is
-   * on: a camera outside the band glides its latitude (only: never the longitude, the zoom is the page's) to the band's nearest edge, ease-out,
+   * on: a camera outside the band glides its latitude (and, when the planet is not lit at the camera's longitude, the longitude, back to the lit side: `litTurn`; never the zoom, which is the page's) to the band's nearest edge, ease-out,
    * and the entrance starts when it has landed (`show` is not called before); a camera that leaves the band under a caption (a flight) fades
    * it, and it comes back, entering again, once the camera is in the band. A gesture ends the showcase (`dropShowcase`), which drops the glide.
    * Runs every frame (a few comparisons) and when the showcase changes.
@@ -2077,14 +2078,15 @@ export class GlobeRenderer {
       return;
     }
     if (this.latSnap || this.flight !== null) return; // (the glide, or somebody else's flight, is under way: wait for it)
-    if (inBand(lat)) {
+    const turn = litTurn(this.view.lon, this.era);
+    if (inBand(lat) && turn === 0) {
       this.captionOn = true;
       caption.show(now);
       this.requestRender();
       return;
     }
     if (this.reduced) {
-      this.view = this.clampView({ ...this.view, lat: this.snapTarget(lat) });
+      this.view = this.clampView({ ...this.view, lat: this.snapTarget(lat), lon: this.view.lon + turn });
       this.captionOn = true;
       caption.show(now);
       this.requestRender();
@@ -2092,7 +2094,9 @@ export class GlobeRenderer {
     }
     this.noteChange();
     this.velocity = STILL;
-    this.latSnap = { from: lat, to: this.snapTarget(lat), t0: now };
+    const travel = Math.max(Math.abs(this.snapTarget(lat) - lat), Math.abs(turn));
+    const ms = clamp(travel * CAPTION.band.snapMsPerDeg, CAPTION.band.snapMs, CAPTION.band.snapMaxMs);
+    this.latSnap = { from: lat, to: this.snapTarget(lat), lonFrom: this.view.lon, lonTo: this.view.lon + turn, t0: now, ms };
     this.requestRender();
   }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MOON, direction, inclinationFor, inertialPosition, moonAmount, orbitAngle, orbitBasis, rollFor, sunDirection, toEarthFrame, toRad, unhidden, type Vec3 } from "./moon";
+import { MOON, direction, inclinationFor, inertialPosition, moonAmount, orbitAngle, orbitBasis, litTurn, rollFor, sunDirection, toEarthFrame, toRad, unhidden, type Vec3 } from "./moon";
 import { viewBasis } from "./geo";
 
 const dot = (a: Vec3, b: Vec3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
@@ -158,5 +158,20 @@ describe("the sun", () => {
     // a gibbous: more than half of the visible disc lit (the sun within 90 degrees of the camera's direction)
     expect(phaseAngle).toBeLessThan(Math.PI / 2);
     expect(phaseAngle).toBeGreaterThan(toRad(20)); // and not a full moon
+  });
+});
+
+describe("litTurn", () => {
+  it("is 0 at the opening camera and within the tolerance of it", () => {
+    expect(litTurn(0, 70)).toBe(0);
+    expect(litTurn(20, 70)).toBe(0);
+  });
+  it("turns back the short way to the opening camera's longitude in the inertial frame", () => {
+    expect(Math.abs(litTurn(180, 70))).toBeCloseTo(180, 5);
+    expect(litTurn(-90, 70)).toBeCloseTo(90, 5);
+    expect(litTurn(100, 70)).toBeCloseTo(-100, 5);
+  });
+  it("does not depend on the idle turn (view down, era up by the same angle)", () => {
+    expect(litTurn(-40, 110)).toBe(litTurn(0, 70));
   });
 });

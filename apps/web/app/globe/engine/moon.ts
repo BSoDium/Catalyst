@@ -12,7 +12,7 @@
  * an Easter egg: the near half of the orbit is behind the camera and the far half is in the background, so the moon is not in the picture when the page opens and crosses the sky
  * at the planet's sides only now and then, and only while the page is being played with (the energy pass's idle hold stops it with everything else).
  */
-import { clamp, lonLatToVec3, viewBasis } from "./geo";
+import { clamp, lonLatToVec3, shortestLonDelta, viewBasis } from "./geo";
 
 export const MOON = {
   /** The Moon's picture: grey, 256 x 128, baked from a map of the near side (scripts/moon/bake-moon.py, public/media/moon-grey.NOTICE.txt). */
@@ -45,6 +45,8 @@ export const MOON = {
   restDeg: 254,
   /** The opening camera, in the inertial frame: `START_VIEW` (lon 0, lat 0) plus the earth rotation angle `SKY.eraDeg` (70). The orbit is laid against it. */
   ref: { lonDeg: 70, latDeg: 0 },
+  /** How far the camera may be from the opening camera's longitude, in the inertial frame, before the home screen's return turns it back to the lit side (`litTurn`). */
+  litToleranceDeg: 25,
   /** Zoom (above the fit, in the globe's zoom units) where the moon starts to leave and where it is gone: it is the world view's. */
   fadeFrom: 0.25,
   fadeTo: 0.9,
@@ -216,6 +218,16 @@ export function sunDirection(): Vec3 {
   const az = toRad(MOON.sunAzimuthDeg);
   const el = toRad(MOON.sunElevationDeg);
   return norm3([0, 1, 2].map((i) => b.c[i]! * Math.cos(az) * Math.cos(el) + b.east[i]! * Math.sin(az) * Math.cos(el) + b.north[i]! * Math.sin(el)) as Vec3);
+}
+
+/**
+ * How far the camera's longitude must turn to bring the lit side back to the front: the planet is lit as the opening camera saw it when the camera's longitude in the inertial frame
+ * (the view's plus the earth rotation angle, which the idle turn leaves alone) is `MOON.ref.lonDeg`. 0 while the camera is within `MOON.litToleranceDeg` of that (the planet is lit
+ * enough: nothing to turn), else the shortest turn back to it. Pure.
+ */
+export function litTurn(viewLonDeg: number, eraDeg: number): number {
+  const d = shortestLonDelta(viewLonDeg + eraDeg, MOON.ref.lonDeg);
+  return Math.abs(d) <= MOON.litToleranceDeg ? 0 : d;
 }
 
 /* ------------------------------------------------------------------ page flags */
