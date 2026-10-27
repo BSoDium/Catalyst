@@ -13,7 +13,7 @@ import { BufferAttribute, BufferGeometry, Color, Mesh, NormalBlending, type Scen
 import type { GlobeTheme } from "./colors";
 import { BAYER4 } from "./sky";
 import { SUN } from "./moon";
-import { FlareLayer, WARM_GLSL, haloClear, type FlareFrame } from "./sun-flare";
+import { FlareLayer, WARM_GLSL, haloClear, sunCrescent, type FlareFrame } from "./sun-flare";
 
 const VERTEX = /* glsl */ `
   uniform vec2 uCentre; uniform float uExt; uniform vec2 uBuf;
@@ -26,7 +26,7 @@ const VERTEX = /* glsl */ `
 const f = (n: number) => n.toFixed(3);
 
 const FRAGMENT = /* glsl */ `
-  uniform vec2 uCentre; uniform float uR; uniform vec3 uBg; uniform vec3 uInk; uniform float uAmt; uniform float uLight; uniform float uClear; uniform float uHalo; uniform float uCore;
+  uniform vec2 uCentre; uniform float uR; uniform vec3 uBg; uniform vec3 uInk; uniform float uAmt; uniform float uLight; uniform float uClear; uniform float uHalo;
   ${WARM_GLSL}
   const float BAYER[16] = float[16](${BAYER4.map((n) => `${n}.0`).join(", ")});
   void main() {
@@ -47,13 +47,6 @@ const FRAGMENT = /* glsl */ `
       float th = (BAYER[c.y * 4 + c.x] + 0.5) / 16.0;
       ink = floor(t * ${f(SUN.haloSteps)} + th) / ${f(SUN.haloSteps)} * (uLight > 0.5 ? ${f(SUN.light.glow)} : ${f(SUN.dark.glow)});
       tone = ink;
-      // the dark page's sun is a blur, not a disc: a core, smooth, from the sun's white at the middle to the halo's own tone at its edge, with no edge of its own. It is at full strength until the limb reaches it, then it shrinks (uCore, in disc radii), round
-      if (uLight < 0.5 && r < uCore) {
-        float edgeTone = ${f(SUN.dark.glow)} * pow(max(0.0, 1.0 - (max(uCore, 1.0) - 1.0) / ${f(SUN.halo)}), ${f(SUN.haloFall)}) * uHalo;
-        float hold = ${f(SUN.core.hold)} * min(1.0, uCore / ${f(SUN.core.radius)});
-        float core = mix(edgeTone, 1.0, pow(1.0 - clamp((r - hold) / max(uCore - hold, 0.001), 0.0, 1.0), ${f(SUN.core.fall)}));
-        if (core > ink) { ink = core; tone = core; }
-      }
       if (r >= 1.0) {
         // the ring of light on the halo (it goes as the planet covers the sun, as the halo does: uHalo): a sharp inside edge and a smooth outside, a little brighter than the halo under it
         float d = r - ${f(SUN.ring.at)};
@@ -83,7 +76,6 @@ const material = () =>
       uLight: { value: 0 },
       uClear: { value: 1 },
       uHalo: { value: 1 },
-      uCore: { value: SUN.core.radius },
       uSet: { value: 0 },
     },
     vertexShader: VERTEX,
@@ -91,6 +83,40 @@ const material = () =>
     transparent: true,
     blending: NormalBlending,
     depthTest: true,
+    depthWrite: false,
+  });
+
+/**
+ * The blur (`SUN.core`, engine/moon.ts): its own quad over the planet, centred where the sun's visible part has its centre of mass, `uU` pixels to a disc radius of the BLOB (the sun's own, until the planet has covered half of
+ * it, then the crescent's width), `uI` as bright as the share of the sun that is in view. Smooth, not dithered; fading to nothing at its edge; in the warm light's colours.
+ */
+const BLOB_VERTEX = /* glsl */ `
+  uniform vec2 uCentre; uniform float uExt; uniform vec2 uBuf;
+  void main() {
+    vec2 px = uCentre + position.xy * uExt;
+    gl_Position = vec4(px / uBuf * 2.0 - 1.0, 0.0, 1.0);
+  }
+`;
+
+const BLOB_FRAGMENT = /* glsl */ `
+  uniform vec2 uCentre; uniform float uU; uniform float uI; uniform float uAmt; uniform vec3 uBg;
+  ${WARM_GLSL}
+  void main() {
+    float rr = length(gl_FragCoord.xy - uCentre) / uU;
+    float ink = pow(1.0 - clamp((rr - ${f(SUN.core.hold)}) / ${f(SUN.core.radius - SUN.core.hold)}, 0.0, 1.0), ${f(SUN.core.fall)});
+    if (ink <= 0.003) discard;
+    gl_FragColor = vec4(mix(uBg, warm(ink), clamp(ink * ${f(SUN.gain)}, 0.0, 1.0)), min(1.0, ink * 2.0) * uI * uAmt);
+  }
+`;
+
+const blobMaterial = () =>
+  new ShaderMaterial({
+    uniforms: { uCentre: { value: new Vector2() }, uBuf: { value: new Vector2(1, 1) }, uExt: { value: 1 }, uU: { value: 1 }, uI: { value: 1 }, uAmt: { value: 1 }, uBg: { value: new Color() }, uSet: { value: 0 } },
+    vertexShader: BLOB_VERTEX,
+    fragmentShader: BLOB_FRAGMENT,
+    transparent: true,
+    blending: NormalBlending,
+    depthTest: false,
     depthWrite: false,
   });
 
@@ -107,6 +133,9 @@ export interface SunFrame {
   amount: number;
   /** How much of the sun the planet leaves (`planetClear`, engine/sun-flare.ts), 0..1; the disc itself is hidden by the depth test, the lens flare by this. Absent: all of it. */
   visible?: number;
+  /** Where the planet's centre is on the buffer (the crescent's centre of mass is on the line from it through the sun). Absent: straight below the sun. */
+  px?: number;
+  py?: number;
   /** How far the sun's centre is outside the planet's limb, radians (`sunRise`, engine/sun-flare.ts): the blur's core shrinks to fit it. Absent: nothing in the way. */
   rise?: number;
 }
@@ -128,6 +157,10 @@ export class SunLayer {
   private mat = material();
   private geometry = new BufferGeometry();
   private flare: FlareLayer;
+  private dark = true;
+  /** The blur: over the planet, not under it. */
+  readonly blob: Mesh;
+  private blobMat = blobMaterial();
 
   constructor(scene: Scene) {
     this.flare = new FlareLayer(scene);
@@ -138,6 +171,12 @@ export class SunLayer {
     // after the planet's disc (0, the depth that hides it) and the sky (0.5, 0.6), before the moon (0.7) and the lines
     this.mesh.renderOrder = 0.65;
     scene.add(this.mesh);
+    this.blob = new Mesh(this.geometry, this.blobMat);
+    this.blob.frustumCulled = false;
+    this.blob.visible = false;
+    // over the planet's own layers (the ground glow is 5.1): the bloom of a lens is not hidden by the limb
+    this.blob.renderOrder = 5.2;
+    scene.add(this.blob);
   }
 
   applyTheme(t: GlobeTheme): void {
@@ -145,6 +184,8 @@ export class SunLayer {
     u.uBg!.value.setRGB(...t.background);
     u.uInk!.value.setRGB(...t.ink);
     u.uLight!.value = t.scheme === "dark" ? 0 : 1;
+    this.blobMat.uniforms.uBg!.value.setRGB(...t.background);
+    this.dark = t.scheme === "dark";
     this.flare.applyTheme(t);
   }
 
@@ -152,22 +193,50 @@ export class SunLayer {
   sync(f: SunFrame): boolean {
     const p = f.amount > 0.01 ? sunPlace(f) : null;
     this.mesh.visible = p !== null;
-    // how far the sun is outside the planet's limb, in disc radii (Infinity: nothing in the way), and so how much of the halo the planet leaves: nothing changes before the blob first touches the limb
-    const rise = ((f.rise ?? Infinity) * f.focal) / sunRadius(f);
+    // how far the sun is outside the planet's limb, in disc radii (Infinity: nothing in the way): what is left of it (`sunCrescent`), and how much of the halo the planet leaves
+    const sr = sunRadius(f);
+    const rise = ((f.rise ?? Infinity) * f.focal) / sr;
+    const cres = sunCrescent(rise);
     const halo = haloClear(rise);
-    const flaring = this.flare.sync({ bufW: f.bufW, bufH: f.bufH, x: f.x, y: f.y, ahead: f.ahead, amount: f.amount, visible: f.visible ?? 1, r: sunRadius(f), set: 1 - halo } satisfies FlareFrame);
-    if (!p) return flaring;
+    // the crescent's centre of mass: on the line from the planet's centre through the sun, `shift` disc radii from the sun's centre, away from the planet
+    let dx = 0;
+    let dy = 1;
+    if (f.px !== undefined && f.py !== undefined) {
+      const l = Math.hypot(f.x - f.px, f.y - f.py);
+      if (l > 1e-3) {
+        dx = (f.x - f.px) / l;
+        dy = (f.y - f.py) / l;
+      }
+    }
+    const bx = Math.floor(f.x + dx * cres.shift * sr) + 0.5;
+    const by = Math.floor(f.y + dy * cres.shift * sr) + 0.5;
+    // the blur: over the planet, where the crescent's centre of mass is, as wide as the crescent, as bright as the share of the sun that is left
+    const unit = Math.max(1, cres.width * sr);
+    const ext = SUN.core.radius * unit + 1;
+    const blob = this.dark && f.ahead && f.amount > 0.01 && cres.area > 0.003 && bx + ext > 0 && bx - ext < f.bufW && by + ext > 0 && by - ext < f.bufH;
+    this.blob.visible = blob;
+    if (blob) {
+      const b = this.blobMat.uniforms;
+      (b.uCentre!.value as Vector2).set(bx, by);
+      (b.uBuf!.value as Vector2).set(f.bufW, f.bufH);
+      b.uExt!.value = ext;
+      b.uU!.value = unit;
+      b.uI!.value = cres.area;
+      b.uAmt!.value = f.amount;
+      b.uSet!.value = 1 - halo;
+    }
+    // the lens flare comes out of the same centre, as bright as the share of the sun that is left
+    const flaring = this.flare.sync({ bufW: f.bufW, bufH: f.bufH, x: f.ahead ? bx : f.x, y: f.ahead ? by : f.y, ahead: f.ahead, amount: f.amount, visible: cres.area, r: sr, set: 1 - halo } satisfies FlareFrame);
+    if (!p) return flaring || blob;
     const u = this.mat.uniforms;
     (u.uCentre!.value as Vector2).set(p.x, p.y);
     (u.uBuf!.value as Vector2).set(f.bufW, f.bufH);
     u.uR!.value = p.r;
     u.uExt!.value = p.r * (1 + SUN.halo) + 1;
     u.uAmt!.value = f.amount;
-    // the ring of light is a lens flare too: it goes with the sun as the planet covers it
-    u.uClear!.value = f.visible ?? 1;
+    // the ring of light goes with the planet's cover as the halo does
+    u.uClear!.value = cres.area;
     u.uHalo!.value = halo;
-    // (the core's radius in disc radii: the sun's distance outside the limb and a little over; at most its full size)
-    u.uCore!.value = Math.min(SUN.core.radius, Math.max(0, rise + SUN.core.lead));
     u.uSet!.value = 1 - halo;
     return true;
   }
@@ -176,5 +245,6 @@ export class SunLayer {
     this.flare.dispose();
     this.geometry.dispose();
     this.mat.dispose();
+    this.blobMat.dispose();
   }
 }

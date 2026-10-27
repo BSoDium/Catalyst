@@ -124,6 +124,21 @@ export function haloClear(riseDisc: number): number {
 }
 
 /**
+ * What is left of the sun's disc as the planet covers it, with the limb taken as a straight line across the disc (it is a hair of curve over a disc this small). `riseDisc` is the sun's centre's distance outside the limb, in disc
+ * radii (negative once it is behind it; Infinity when nothing is in the way). `area` is the share of the disc's surface still in view, 0..1; `shift` the distance of the visible part's centre of mass from the disc's centre,
+ * in disc radii, along the normal away from the planet; `width` the widest the visible part is, across that normal, in disc radii: the disc's own (1) until the limb has reached the centre, then the crescent's, down to 0. It is
+ * 1, 0, 1 for a sun clear of the limb and 0, 1, 0 for one wholly behind it. Pure.
+ */
+export function sunCrescent(riseDisc: number): { area: number; shift: number; width: number } {
+  const a = -riseDisc; // the limb's place along the outward normal, from the sun's centre; the visible part is where x >= a
+  if (a <= -1) return { area: 1, shift: 0, width: 1 };
+  if (a >= 1) return { area: 0, shift: 1, width: 0 };
+  const s = Math.sqrt(1 - a * a);
+  const area = Math.acos(a) - a * s; // (of the unit disc, which is pi)
+  return { area: area / Math.PI, shift: area > 1e-9 ? ((2 / 3) * s * s * s) / area : 1, width: a <= 0 ? 1 : s };
+}
+
+/**
  * How far the sun's centre is outside the planet's limb, in radians: positive outside, negative behind it, +Infinity when the sun is on the far side of the view axis (nothing of the planet is in its way). The blur's core shrinks
  * to fit it (`SUN.core`). `cosFromCentre` and `d` are as in `planetClear`. Pure.
  */
