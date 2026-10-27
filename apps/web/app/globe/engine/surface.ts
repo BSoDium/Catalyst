@@ -12,7 +12,7 @@ export const SURFACE = {
   /** The brightness cuts of the picture: darker ground under the first, middle under the second, lighter above (the moon's picture, `moon-grey.png`, is baked to be read with the same). */
   cuts: [0.42, 0.62],
   /** The land's three tones, darkest ground first, each a step from the page's colour towards its ink (the page's own two ends, no hue): per scheme. The moon's tones are these. */
-  tones: { light: [0.17, 0.11, 0.06], dark: [0.2, 0.13, 0.07] },
+  tones: { light: [0.27, 0.18, 0.1], dark: [0.2, 0.13, 0.07] },
   from: 2.2,
   to: 3.2,
 } as const;
@@ -47,6 +47,9 @@ export const NIGHT = {
   lineDim: 0.88,
   /** The planet's own outline (the horizon ring): the same steps, a little less dim, so that the dark side's edge is still there. */
   limbDim: 0.8,
+  /** The same two on the LIGHT page, where they go towards the ink: the share is less, a grey line on the white goes to black much faster than a light one on the dark page fades. */
+  lineDimLight: 0.4,
+  limbDimLight: 0.35,
   lineSteps: 3,
   /** The orbiting type over the dark side: its colour goes this share of the way to the page's at the darkest (a dimming, not a night: the words must stay readable). */
   captionDim: 0.3,

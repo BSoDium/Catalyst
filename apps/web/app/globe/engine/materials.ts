@@ -40,7 +40,7 @@ export function lineMaterial(coverage: number, stipple = 0): ShaderMaterial {
         // the night: the colour goes towards the page's in whole steps (a flat grey per step)
         float dark = floor(washOf(normalize(vDir), uSunN, uNight, uFlip) * ${NIGHT.lineSteps.toFixed(1)} + 0.5) / ${NIGHT.lineSteps.toFixed(1)};
         if (uStipple > 0.0 && mod(floor(gl_FragCoord.x) + floor(gl_FragCoord.y), uStipple) > 0.5) discard;
-        gl_FragColor = vec4(mix(mix(uColor, uAlt, uAltAmt), uNightTo, dark * ${NIGHT.lineDim.toFixed(2)}), 1.0);
+        gl_FragColor = vec4(mix(mix(uColor, uAlt, uAltAmt), uNightTo, dark * mix(${NIGHT.lineDim.toFixed(2)}, ${NIGHT.lineDimLight.toFixed(2)}, uFlip)), 1.0);
       }
     `,
   });
@@ -444,7 +444,7 @@ export function silhouetteMaterial(): ShaderMaterial {
       ${NIGHT_GLSL}
       void main() {
         float dark = floor(washOf(normalize(vDir), uSunN, uNight, uFlip) * ${NIGHT.lineSteps.toFixed(1)} + 0.5) / ${NIGHT.lineSteps.toFixed(1)};
-        gl_FragColor = vec4(mix(uColor, uNightTo, dark * ${NIGHT.limbDim.toFixed(2)}), 1.0);
+        gl_FragColor = vec4(mix(uColor, uNightTo, dark * mix(${NIGHT.limbDim.toFixed(2)}, ${NIGHT.limbDimLight.toFixed(2)}, uFlip)), 1.0);
       }`,
     depthTest: false,
   });
