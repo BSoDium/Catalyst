@@ -170,6 +170,15 @@ const RIM_SUN_GLSL = /* glsl */ `
     float limbAng = asin(clamp(1.0 / length(cameraPosition), 0.0, 1.0));
     return 1.0 - smoothstep(0.0, ${RIM.align.toFixed(2)} * limbAng, abs(sunAng - limbAng));
   }
+  // the same, for the GROUND: only while the sun is above the horizon (outside the limb), whole a little way out and zero where its centre is on the limb, so a set sun lights none of the surface
+  float rimLit() {
+    vec3 axis = normalize(-cameraPosition);
+    float sunAng = acos(clamp(dot(uSunN, axis), -1.0, 1.0));
+    float limbAng = asin(clamp(1.0 / length(cameraPosition), 0.0, 1.0));
+    float w = ${RIM.align.toFixed(2)} * limbAng;
+    float above = sunAng - limbAng;
+    return smoothstep(0.0, ${RIM.ground.peak.toFixed(2)} * w, above) * (1.0 - smoothstep(${RIM.ground.peak.toFixed(2)} * w, w, above));
+  }
   float rimSide(vec3 n) {
     vec3 axis = normalize(-cameraPosition);
     vec3 perp = uSunN - axis * dot(uSunN, axis);
@@ -227,7 +236,7 @@ export function rimMaterial(): ShaderMaterial {
 
 /**
  * The sunset's light on the GROUND (`RIM.ground`): the other half of the picture the footage shows. A skin a hair over the surface (like the mist's), warm where the ground is seen at a grazing angle on the sun's side
- * of the limb, brightest at the planet's edge and dimming smoothly inward: while the sun is aligned with the limb it lights the surface as well as the atmosphere, and the surface goes dim before the edge does.
+ * of the limb, brightest at the planet's edge and dimming inward, in the dark side's own dithered levels: while the sun is just above the limb it lights the surface as well as the atmosphere, the surface goes dim before the edge does, and it is dark once the sun has set (`rimLit`).
  */
 export function rimGroundMaterial(): ShaderMaterial {
   return new ShaderMaterial({
@@ -239,6 +248,7 @@ export function rimGroundMaterial(): ShaderMaterial {
     fragmentShader: /* glsl */ `
       uniform vec3 uColor; uniform float uAmt; uniform float uNight; uniform vec3 uSunN; uniform float uFlip;
       varying vec3 vPos;
+      ${MIST_GLSL}
       ${WARM_GLSL}
       ${RIM_SUN_GLSL}
       void main() {
@@ -247,7 +257,9 @@ export function rimGroundMaterial(): ShaderMaterial {
         // how grazing the ground is seen: 0 looking straight down, 1 at the horizon
         float g = 1.0 - clamp(dot(n, toEye), 0.0, 1.0);
         float side = rimSide(n);
-        float a = pow(g, ${RIM.ground.power.toFixed(2)}) * rimAligned() * smoothstep(${RIM.ground.arc[0].toFixed(2)}, ${RIM.ground.arc[1].toFixed(2)}, side) * uNight * uAmt * ${RIM.ground.alpha.toFixed(2)};
+        // in flat levels, ordered-dithered into each other on the art's pixels, as the planet's dark side is
+        float v = pow(g, ${RIM.ground.power.toFixed(2)}) * rimLit() * smoothstep(${RIM.ground.arc[0].toFixed(2)}, ${RIM.ground.arc[1].toFixed(2)}, side) * uNight * uAmt;
+        float a = stepped(v, ${RIM.ground.steps.toFixed(1)}) * ${RIM.ground.alpha.toFixed(2)};
         if (a < 0.004) discard;
         gl_FragColor = vec4(rimTint(side, ${RIM.ground.arc[0].toFixed(2)}, uColor, uFlip), a);
       }

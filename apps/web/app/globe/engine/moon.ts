@@ -178,10 +178,12 @@ export const RIM = {
   /** The lining's opacity at its thinnest: the dither's gaps keep this share of the opacity of the pixels on (`grain`: 0 gaps fully clear, 1 no grain at all), so the lining is a smooth rise in opacity as well as in density. */
   grain: 0.45,
   /**
-   * The SUNSET ON THE GROUND (`rimGroundMaterial`): the same light on the planet's own surface, as in the footage: the lit ground is brightest at the limb and dims inward, a smooth warm glow (`alpha` at the limb, falling
-   * with the grazing angle as `power`), over a wider arc of the limb than the lining's (`arc`, as the lining's: cosines of the angle to the sun's side), in the same colours.
+   * The SUNSET ON THE GROUND (`rimGroundMaterial`): the same light on the planet's own surface, as in the footage: the lit ground is brightest at the limb and dims inward (`alpha` at the limb, falling with the grazing angle
+   * as `power`), over a wider arc of the limb than the lining's (`arc`, as the lining's: cosines of the angle to the sun's side), in the same colours, TEXTURED as the dark side of the planet is, in `steps` flat levels dithered into each
+   * other on the art's pixels (a pixel is one of the levels, never between). It is only there while the sun is ABOVE the horizon: it is whole `peak` of the alignment's width outside the limb, and zero by the time the sun's centre
+   * is on it, so a sun that has set lights only the atmosphere.
    */
-  ground: { alpha: 0.42, power: 2.6, arc: [0.15, 0.9] },
+  ground: { alpha: 0.42, power: 2.6, arc: [0.15, 0.9], peak: 0.3, steps: 4 },
   cover: { dark: 0.9, light: 0.3 },
 } as const;
 
