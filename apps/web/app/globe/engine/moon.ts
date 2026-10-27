@@ -85,10 +85,10 @@ export const SUN = {
   /** The halo's steps of tone (from its edge, where it is `glow`, nearly the disc's own, down to nothing), and how fast it falls. */
   haloSteps: 6,
   /** The ring of light on top of the halo, in disc radii from the sun's centre: sharp on its inside (`inner` wide, at full `tone`), then a smooth falloff over `outer`, in `steps` dithered steps. */
-  ring: { at: 8.5, inner: 0.3, outer: 2.6, steps: 5, dark: 0.3, light: 0.06 },
+  ring: { at: 8.5, inner: 0.3, outer: 2.6, steps: 5, dark: 0.26, light: 0.06 },
   haloFall: 2.6,
   limb: 0.88,
-  dark: { disc: 1, limb: 0.8, halo: 0.16, haloCore: 0.3, glow: 0.72 },
+  dark: { disc: 1, limb: 0.8, halo: 0.16, haloCore: 0.3, glow: 0.5 },
   light: { rim: 0.16, halo: 0.04, haloCore: 0.08, glow: 0.18 },
 } as const;
 
