@@ -149,6 +149,8 @@ export interface HandoverHandle {
   playInterlude(): boolean;
   /** The visitor asked for the interlude and the caption is away: it begins now from wherever the camera is; false while it is not ready. */
   playInterludeNow(): boolean;
+  /** The interlude was asked for while the caption is away: the caption and the ring stay away until it is ready (a few seconds at most). */
+  wantInterlude(): void;
   /** The visitor can now ask for it: make what it needs ahead of time (the word's mesh, the sound's file); nothing is planned or played. */
   prepareInterlude(): void;
   debug(): HandoverDebug;
@@ -824,6 +826,7 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
     hasOrbit: () => renderer.hasCaption(),
     playInterlude: () => renderer.playInterlude(),
     playInterludeNow: () => renderer.playInterludeNow(),
+    wantInterlude: () => renderer.wantInterlude(),
     prepareInterlude: () => renderer.prepareInterlude(),
     debug(): HandoverDebug {
       const g = globe.debug();

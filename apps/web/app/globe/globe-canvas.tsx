@@ -207,6 +207,7 @@ export default function GlobeCanvas({
       clear();
       if (handle.playInterlude()) return;
       // (the caption is not on the stage: a gesture had put the home screen away. It comes back now, and the globe goes home with it: the visitor asked for the interlude, not for the next time it is at rest)
+      handle.wantInterlude();
       window.dispatchEvent(new Event(RESTORE_HERO_EVENT));
       let tries = 0;
       held = window.setInterval(() => {

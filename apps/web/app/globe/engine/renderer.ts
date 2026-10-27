@@ -159,6 +159,9 @@ export interface FlyOptions {
   beyondLimit?: boolean;
 }
 
+/** How long the caption and the ring stay away for an interlude that is not ready yet, ms (`GlobeRenderer.wantInterlude`). */
+const EGG_WAIT_MS = 8000;
+
 /** How long the camera takes to glide from where it was into the interlude's flight, when it is asked for away from the display mode, ms (`GlobeRenderer.playInterludeNow`). */
 const CAMERA_INTRO_MS = 2200;
 
@@ -1842,7 +1845,7 @@ export class GlobeRenderer {
   private ringPresence(): number {
     const a = this.textFits ? ringAlpha(this.view.zoom, this.fit, this.minZoom) : 0;
     // (and it is out for the whole of the cinematic interlude, while the globe is pulled back: `CaptionLayer.ringShare`)
-    const share = this.ringCut ? 0 : (this.caption?.ringShare() ?? 1);
+    const share = this.ringCut || this.eggPending ? 0 : (this.caption?.ringShare() ?? 1);
     return (this.showcaseActive ? a * (1 - this.lod.overlayAlpha) : a) * share;
   }
 
@@ -1873,6 +1876,7 @@ export class GlobeRenderer {
     const b = viewBasis(v, this.bufH * this.pixel);
     const from = flightPose(1, { lon: v.lon, lat: v.lat, alt: b.d - 1, roll: v.roll ?? 0 });
     if (!caption.playEggDirect(now)) return false;
+    this.eggPending = 0;
     this.camIntro = { from, t0: now };
     this.flight = null;
     this.velocity = STILL;
@@ -1885,6 +1889,21 @@ export class GlobeRenderer {
     this.requestRender();
     return true;
   }
+  /**
+   * The interlude was asked for and the caption is away: the home screen may come back before the interlude is ready (its word is still being made), and the caption must not come onto the
+   * stage and the ring in only to be sent away again. Both stay away for `EGG_WAIT_MS` at most (`playInterludeNow` ends it); after that the usual showing comes in.
+   */
+  wantInterlude(): void {
+    this.eggPending = performance.now() + EGG_WAIT_MS;
+    window.setTimeout(() => {
+      if (this.disposed || !this.eggPending || performance.now() < this.eggPending) return;
+      this.eggPending = 0;
+      if (this.showcaseOn) this.guardCaption(performance.now());
+      this.requestRender();
+    }, EGG_WAIT_MS + 50);
+  }
+  private eggPending = 0;
+
   /** The camera the interlude began from (`playInterludeNow`) and when: the camera drawn glides from it into the flight over `CAMERA_INTRO_MS`. */
   private camIntro: { from: FlightPose; t0: number } | null = null;
 
@@ -2111,6 +2130,7 @@ export class GlobeRenderer {
       return;
     }
     if (this.latSnap || this.flight !== null) return; // (the glide, or somebody else's flight, is under way: wait for it)
+    if (this.eggPending > now) return; // (the interlude was asked for: the caption does not come in to be sent away again, `wantInterlude`)
     if (inBand(lat)) {
       this.captionOn = true;
       caption.show(now);
