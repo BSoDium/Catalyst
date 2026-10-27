@@ -1,32 +1,24 @@
 /**
- * The land's own picture (`surfaceMaterial`, engine/materials.ts: NASA's Blue Marble as a dot matrix, denser where the ground is darker, `public/media/earth-grey.png`) is a layer
- * for the UNZOOMED views: whole at the page's resting view and for the whole of the range below the country borders, and thinning out (fewer pixels, from `from` to `to`, the zoom of
- * the unified camera) only over the last stretch before the borders come on (`TUNING.borderZoom`), which take its place. At rest it is a little under its full strength (`rest`);
- * the interlude brings it to its whole (`landShare`, 0..1, the caption's own easing).
+ * The land's own picture (`surfaceMaterial`, engine/materials.ts: NASA's Blue Marble as a dot matrix, denser where the ground is darker, `public/media/earth-grey.png`) is the
+ * ground under the lines at every zoom of the globe, up to the cut to the street map (which has the same ground of its own, street/core/satellite.ts): a checkered stipple of
+ * `cover` of the land's pixels, whole art pixels of three tones, so the old-school look stays as the globe comes close (its patches grow, the stipple does not). The interlude
+ * brings it to a little more (`landShare`, 0..1, the caption's own easing).
  */
 export const SURFACE = {
   url: "/media/earth-grey.png",
-  /** The share of the land's pixels that are drawn (in the lines' ordered dither: a checkered, pixel-art stipple, the look it has half way through its fade) at the page's own view; the interlude adds `egg` to it. */
+  /** The share of the land's pixels that are drawn (in the lines' ordered dither: a checkered, pixel-art stipple, the look it has half way through its fade) at the page's own view, and at every zoom; the interlude adds `egg` to it. */
   cover: 0.5,
   egg: 0.12,
   /** The brightness cuts of the picture: darker ground under the first, middle under the second, lighter above (the moon's picture, `moon-grey.png`, is baked to be read with the same). */
   cuts: [0.42, 0.62],
   /** The land's three tones, darkest ground first, each a step from the page's colour towards its ink (the page's own two ends, no hue): per scheme. The moon's tones are these. */
   tones: { light: [0.17, 0.11, 0.06], dark: [0.2, 0.13, 0.07] },
-  from: 2.2,
-  to: 3.2,
 } as const;
 
 /** The tone steps for a scheme (`SURFACE.tones`). */
 export const surfaceTones = (scheme: "light" | "dark"): readonly number[] => SURFACE.tones[scheme];
 
-/** How much of the land's picture is there at `zoom`: 1 up to `from`, thinning smoothly to 0 at `to` (taken out in the dither, 0..1). */
-export function surfaceFade(zoom: number): number {
-  const t = Math.min(1, Math.max(0, (zoom - SURFACE.from) / (SURFACE.to - SURFACE.from)));
-  return 1 - t * t * (3 - 2 * t);
-}
-
-/** The share of the land's pixels drawn before the zoom's fade: `cover` at the page's own view, a little more in the interlude (`landShare`, 0..1, the caption's own easing). */
+/** The share of the land's pixels drawn, at every zoom (the checkered stipple stays as the globe comes close, its pixels the art's own): `cover` at the page's own view, a little more in the interlude (`landShare`, 0..1, the caption's own easing). */
 export function surfaceCoverage(landShare: number): number {
   return SURFACE.cover + SURFACE.egg * Math.min(1, Math.max(0, landShare));
 }
@@ -52,8 +44,8 @@ export const NIGHT = {
   captionDim: 0.3,
   /** How much of the wash the light page shows (the scale of `uNight`): the light page is the day's overexposure, not a night (`washOf`): the sun's side burns towards the page's colour; a little under the dark page's, so the lit half is never blank. */
   lightGain: 0.75,
-  /** The interlude's atmosphere (the glow over the limb and the veil on the ground): how much of it goes where the planet is washed (the dark side on the dark page, the sun's side on the light one): it is darkened, not just thinned. */
-  atmosphereDim: 0.85,
+  /** The interlude's atmosphere (the glow over the limb and the veil on the ground): how much of it goes where the planet is washed (the dark side on the dark page, the sun's side on the light one): it is lit exactly as the ground is (the same terminator, in the same whole steps), and gone where the ground is dark. */
+  atmosphereDim: 1,
 } as const;
 
 /** GLSL for the light on a ground point `n` (a unit vector in the earth's frame) from the sun `uSunN`, scaled by how much night there is (`uNight`: 0 is all day): 1 lit, 0 dark. */

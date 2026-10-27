@@ -31,6 +31,13 @@ const NATURAL_EARTH: AttributionPart = {
   note: "The coastlines and country borders of the globe. Public domain; credited as a courtesy.",
 };
 
+const BLUE_MARBLE: AttributionPart = {
+  text: "NASA Blue Marble",
+  short: "NASA Blue Marble",
+  href: "https://earthdata.nasa.gov/gibs",
+  note: "The satellite ground under the map, served by NASA GIBS. Public domain; credited as a courtesy.",
+};
+
 /** The tile configuration the credits depend on (`StreetTileConfig`, or null when no street map is configured). */
 export interface AttributionTiles {
   primaryUrl: string;
@@ -62,7 +69,7 @@ export function attributionFor(tiles: AttributionTiles | null): AttributionPart[
       if (tiles.fallbackPmtilesUrl) parts.push(PROTOMAPS);
     }
   }
-  parts.push(NATURAL_EARTH);
+  parts.push(BLUE_MARBLE, NATURAL_EARTH);
   return parts;
 }
 

@@ -50,8 +50,9 @@ export const lineColor = (level: number): string => `rgb(255,${byte(level / LEVE
  *   flat    every cell of the fill is lit (building washes)
  *   green   parks, woods, grass: a sparse regular lattice of single dots, a dot every 4 cells, alternate rows offset by 2
  *   water   sea, lakes, rivers: short horizontal dashes in rows 4 cells apart, alternate rows offset by half a period
+ *   checker every other cell, in a checkerboard (the satellite ground: the globe's own stipple, `core/satellite.ts`)
  */
-export const PATTERN = { flat: 0, green: 1, water: 2 } as const;
+export const PATTERN = { flat: 0, green: 1, water: 2, checker: 3 } as const;
 export type Pattern = keyof typeof PATTERN;
 
 /** MapLibre colour of an opaque fill at a level, with the pattern that selects which of its cells are lit. */
