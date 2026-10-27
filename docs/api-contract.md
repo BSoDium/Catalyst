@@ -549,3 +549,5 @@ Not verifiable without a real deployment:
 - The dashboard's saved overrides (the checklist clears them).
 
 Optionally, the web project can discover this API's preview URL with Vercel Related Projects (`relatedProjects` in `apps/web/vercel.json`), so web previews call the matching API preview rather than production.
+
+**The API project only builds when the API can have changed (2026-10-27).** `apps/api/vercel.json` has an `ignoreCommand` that skips the build (exit 0 means skip) unless the commit touches `apps/api`, `packages/schemas`, `packages/published` or the lockfile, the only inputs of the API. A web-only or docs-only commit no longer spends two of the free plan's 100 deployments a day on the API project; Vercel marks that preview "Skipped" (inactive), which the `main` ruleset's "Preview – catalyst-v2-api" rule does not count as a success, so that rule needs the API preview waived for such commits.
