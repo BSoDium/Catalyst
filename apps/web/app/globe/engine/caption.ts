@@ -1324,8 +1324,13 @@ export class CaptionMotion {
     // (an entrance still under way is cut short, as a gesture does: the visitor asked for the interlude now, not once the rows have settled)
     if (this.phase === "in") this.phase = "rest";
     this.beginEgg(now);
-    // (from a caption that was not on the stage: the rows have nothing to leave, the interlude begins with the empty stage)
-    if (skipLeave) this.eggAt -= this.egg.shape.leaveMs;
+    // (from a caption that was not on the stage: the rows have nothing to leave, the interlude begins with the empty stage. The clock is moved on past the leaving, and not
+    // the interlude's start back before it: a caption that has just come on has its clock at 0, and a start below 0 is "no interlude" to everything that reads it, so the
+    // flight, the pull-back and the ring's way out did not happen and the ring was drawn)
+    if (skipLeave) {
+      this.clock += this.egg.shape.leaveMs;
+      this.ticked = true;
+    }
     return true;
   }
 

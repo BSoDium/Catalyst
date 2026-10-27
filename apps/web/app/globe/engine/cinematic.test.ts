@@ -251,6 +251,27 @@ describe("the cinematic interlude: in the caption's motion", () => {
     const was = m.phase; // (the entrance may be under way: it is cut short)
     expect(m.replayEgg(end + entranceMs(2) + 100)).toBe(was === "rest" || was === "in");
   });
+  it("played from a caption that was not on the stage (the rows skip their leaving): the flight, the pull-back and the empty stage are under way from its first frame", () => {
+    const m = new CaptionMotion();
+    m.egg = plan;
+    m.setStarts(starts);
+    m.setFixedFrom(2);
+    m.setEggStart(2.4);
+    // (the caption comes on in the same frame: its clock is at 0, where a start moved back by the leaving would have been below 0, "no interlude")
+    m.enter(1000);
+    expect(m.replayEgg(1000, true)).toBe(true);
+    const s = plan.shape;
+    expect(m.eggRowsOut()).toBe(true);
+    expect(m.eggFlight()).toBeCloseTo(s.leaveMs / (s.leaveMs + s.gapMs + s.enterMs), 6);
+    expect(m.eggFlight()).toBeLessThan(1);
+    expect(m.eggZoom()).toBeGreaterThan(0);
+    run(m, 1000 + 500, 1000);
+    expect(m.phase).toBe("egg");
+    expect(m.eggFlight()).toBeGreaterThan(s.leaveMs / (s.leaveMs + s.gapMs + s.enterMs));
+    // and it runs its course: the rest of it, without the leaving
+    run(m, 1000 + eggMs(s) - s.leaveMs + 100, 1000 + 500);
+    expect(m.egg).toBeNull();
+  });
   it("an interlude cut short by a gesture (the showcase ends) tells its sound at once, and an interlude that was not under way tells nothing", () => {
     const m = make();
     let ended = 0;

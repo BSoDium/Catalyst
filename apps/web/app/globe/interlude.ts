@@ -8,6 +8,12 @@ export const PREPARE_INTERLUDE_EVENT = "site:prepare-interlude";
 /** The interlude needs the full hero (the caption), which a gesture on the globe put away: whoever holds the hero brings it back. */
 export const RESTORE_HERO_EVENT = "site:restore-hero";
 
+/**
+ * How long a request made away from the display mode (a zoomed or turned globe) is held while the interlude is made ready, ms: the caption and the ring stay away for that
+ * long at most (`GlobeRenderer.wantInterlude`), and then the home screen comes back as it did before.
+ */
+export const INTERLUDE_WAIT_MS = 8000;
+
 export interface PlayInterludeRequest {
   /** Set by the globe that took the request. */
   handled: boolean;

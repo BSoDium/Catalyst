@@ -58,7 +58,7 @@ import { snapBox } from "./group-square";
 import { Grace } from "./grace";
 import { IdleSpin, SPIN, SPIN_DEFAULTS, edgeSpeed, pacedByRotation, spinBlock, spinFrameDue, spinFramePeriod, type SpinContext } from "./idle-spin";
 import { CINEMATIC } from "./cinematic";
-import { INTERLUDE_STATE_EVENT, interludeLook, type InterludeStateDetail } from "../interlude";
+import { INTERLUDE_STATE_EVENT, INTERLUDE_WAIT_MS, interludeLook, type InterludeStateDetail } from "../interlude";
 import { blendPose, flightOffsetShare, flightPose, type FlightPose } from "./flight";
 import { NIGHT, SURFACE, surfaceCoverage, surfaceFade } from "./surface";
 import { landingScale, liftFor, placeAbove, type Placement } from "./lift";
@@ -158,9 +158,6 @@ export interface FlyOptions {
    */
   beyondLimit?: boolean;
 }
-
-/** How long the caption and the ring stay away for an interlude that is not ready yet, ms (`GlobeRenderer.wantInterlude`). */
-const EGG_WAIT_MS = 8000;
 
 /** How long the camera takes to glide from where it was into the interlude's flight, when it is asked for away from the display mode, ms (`GlobeRenderer.playInterludeNow`). */
 const CAMERA_INTRO_MS = 2200;
@@ -358,6 +355,7 @@ export class GlobeRenderer {
     if (opts.showcase && this.showcaseActive) {
       // The home screen opens in its showcase: the boxes are out from the first frame (nothing fades), and the caption comes in with the first frame.
       this.showcaseOn = true;
+      this.appShowcase = true;
       this.lod.setSuppressed(true, true);
       this.captionOn = true;
       this.caption?.show(null);
@@ -1208,6 +1206,8 @@ export class GlobeRenderer {
         more = true;
       }
     }
+    // (an interlude asked for away from the display mode has run its course, or was cut short: the page's word on the showcase holds again)
+    if (this.eggAsk?.stage === "playing" && !this.caption?.interluding) this.endEggAsk();
     if (this.showcaseOn) this.guardCaption(now);
     if (this.latSnap) more = true;
     if (this.globe.routes.advance(now)) more = true;
@@ -1486,6 +1486,8 @@ export class GlobeRenderer {
   private onInput = (e: Event) => {
     // A gesture ON the globe (the hero's own definition: a press or a wheel over the stage) ends the showcase at once: the boxes come back and the
     // press that began it is no click (nobody could see what was under it).
+    // (and a gesture drops an interlude asked for that has not begun yet: the visitor has taken the globe back, `wantInterlude`)
+    if ((e.type === "pointerdown" || e.type === "wheel") && this.eggAsk?.stage === "waiting" && e.target instanceof Node && this.opts.container.contains(e.target)) this.endEggAsk();
     if ((e.type === "pointerdown" || e.type === "wheel") && this.showcaseOn && e.target instanceof Node && this.opts.container.contains(e.target)) {
       this.inertPress = e.type === "pointerdown";
       this.dropShowcase();
@@ -1845,9 +1847,8 @@ export class GlobeRenderer {
   private ringPresence(): number {
     const a = this.textFits ? ringAlpha(this.view.zoom, this.fit, this.minZoom) : 0;
     // (and it is out for the whole of the cinematic interlude, while the globe is pulled back: `CaptionLayer.ringShare`)
-    // (an interlude begun away from the display mode: the ring was not there, and it is not drawn until the flight has taken over its share, `eggDirect`)
-    if (this.eggDirect && (this.caption?.ringShare() ?? 1) < 0.02) this.eggDirect = false;
-    const share = this.ringCut || this.eggPending || this.eggDirect ? 0 : (this.caption?.ringShare() ?? 1);
+    // (and while an interlude asked for away from the display mode is made ready: the ring was not there, and it does not come in to be sent away again, `wantInterlude`)
+    const share = this.ringCut || this.eggAsk?.stage === "waiting" ? 0 : (this.caption?.ringShare() ?? 1);
     return (this.showcaseActive ? a * (1 - this.lod.overlayAlpha) : a) * share;
   }
 
@@ -1865,14 +1866,33 @@ export class GlobeRenderer {
   }
 
   /**
-   * The visitor asked for the interlude and the caption is not on the stage (a zoomed or turned globe: the home screen was put away): the interlude begins NOW, from wherever the camera is.
-   * The page's own camera goes home at once (the flight ends on it), the caption comes onto the stage in the interlude with its rows already gone (`CaptionLayer.playEggDirect`: no
-   * entrance, no ring), and the camera drawn glides from where it was into the flight (`camIntro`, in `syncCamera`), so nothing of the display mode is passed through. False while the
-   * interlude is not ready (its word is being made: the caller asks again).
+   * The visitor asked for the interlude away from the display mode (a zoomed or turned globe: the home screen was put away) and it is not under way yet: the request is HELD
+   * (`eggAsk`). From that moment until the interlude has run its course (or a gesture ends it) the globe, not the page, decides whether the showcase is on: the page's own
+   * word (`setShowcase`, from the hero, which comes back with the interlude) is kept in `appShowcase` and applied only once it is over. Without that the hero's state, which
+   * changes several times in that while (it takes the interlude's look, it comes back to rest, its cover changes), turned the showcase off and on again under the interlude:
+   * off ended it, on brought the caption in (an entrance drops an interlude under way), and the visitor saw the home screen's rows and ring and then the ordinary interlude.
+   * True when the globe takes the request (false: there is a place open, or no caption: the palette takes the visitor home first).
+   */
+  wantInterlude(): boolean {
+    if (!this.caption || !this.showcaseActive || this.reduced || this.selected !== null || this.insetTarget !== 0) return false;
+    if (this.eggAsk?.stage === "playing") return true;
+    const until = performance.now() + INTERLUDE_WAIT_MS;
+    this.eggAsk = { stage: "waiting", until };
+    // (a request that could not be begun in time is dropped: the page's showcase is its own again)
+    window.setTimeout(() => {
+      if (!this.disposed && this.eggAsk?.stage === "waiting" && this.eggAsk.until === until) this.endEggAsk();
+    }, INTERLUDE_WAIT_MS + 50);
+    return true;
+  }
+
+  /**
+   * Begin the held interlude NOW, from wherever the camera is (`wantInterlude` first). The page's own camera goes home at once (the flight ends on it), the caption comes onto
+   * the stage in the interlude with its rows already gone (`CaptionLayer.playEggDirect`: no entrance, no ring), and the camera drawn glides from where it was into the flight
+   * (`camIntro`, in `syncCamera`), so nothing of the display mode is passed through. False while the interlude is not ready (its word is being made: the caller asks again).
    */
   playInterludeNow(): boolean {
     const caption = this.caption;
-    if (!caption || !this.showcaseActive || !this.sized || this.reduced || this.selected !== null || this.insetTarget !== 0) return false;
+    if (!caption || this.eggAsk?.stage !== "waiting" || !this.sized || this.selected !== null || this.insetTarget !== 0) return false;
     caption.armEggNow();
     caption.warmNow(this.camera);
     if (!caption.canPlayEggNow()) return false;
@@ -1881,8 +1901,7 @@ export class GlobeRenderer {
     const b = viewBasis(v, this.bufH * this.pixel);
     const from = flightPose(1, { lon: v.lon, lat: v.lat, alt: b.d - 1, roll: v.roll ?? 0 });
     if (!caption.playEggDirect(now)) return false;
-    this.eggPending = 0;
-    this.eggDirect = true;
+    this.eggAsk = { stage: "playing" };
     caption.flightProgress(); // (the flight's state is this frame's before anything reads the ring's share, the land's or the caption's)
     this.camIntro = { from, t0: now };
     this.flight = null;
@@ -1896,24 +1915,22 @@ export class GlobeRenderer {
     this.requestRender();
     return true;
   }
-  /**
-   * The interlude was asked for and the caption is away: the home screen may come back before the interlude is ready (its word is still being made), and the caption must not come onto the
-   * stage and the ring in only to be sent away again. Both stay away for `EGG_WAIT_MS` at most (`playInterludeNow` ends it); after that the usual showing comes in.
-   */
-  wantInterlude(): boolean {
-    if (!this.caption || !this.showcaseActive || this.reduced || this.selected !== null || this.insetTarget !== 0) return false;
-    this.eggPending = performance.now() + EGG_WAIT_MS;
-    window.setTimeout(() => {
-      if (this.disposed || !this.eggPending || performance.now() < this.eggPending) return;
-      this.eggPending = 0;
-      if (this.showcaseOn) this.guardCaption(performance.now());
-      this.requestRender();
-    }, EGG_WAIT_MS + 50);
-    return true;
+
+  /** The held request (`wantInterlude`) is over: it was dropped, cut short, or the interlude has run its course. The page's word on the showcase holds again. */
+  private endEggAsk(): void {
+    if (!this.eggAsk) return;
+    this.eggAsk = null;
+    this.applyAppShowcase();
+    this.requestRender();
   }
-  private eggPending = 0;
-  /** The interlude began away from the display mode: the ring stays out until the flight has taken its share (`ringPresence`). */
-  private eggDirect = false;
+
+  /**
+   * The interlude asked for away from the display mode, until it is over (`wantInterlude`): `waiting` while it is made ready (the caption and the ring stay away, whatever
+   * the page says), `playing` once it is under way (`playInterludeNow`).
+   */
+  private eggAsk: { stage: "waiting"; until: number } | { stage: "playing" } | null = null;
+  /** What the page last said of the showcase (`setShowcase`): applied at once, except while an interlude asked for away from the display mode holds it (`eggAsk`). */
+  private appShowcase = false;
 
   /** The camera the interlude began from (`playInterludeNow`) and when: the camera drawn glides from it into the flight over `CAMERA_INTRO_MS`. */
   private camIntro: { from: FlightPose; t0: number } | null = null;
@@ -2073,7 +2090,13 @@ export class GlobeRenderer {
    * the showcase (`?no-ring`, a debug page) this does nothing: the boxes stay.
    */
   setShowcase(on: boolean) {
-    const want = on && this.showcaseActive;
+    this.appShowcase = on;
+    // (an interlude asked for away from the display mode holds the showcase until it is over: `wantInterlude`)
+    if (!this.eggAsk) this.applyAppShowcase();
+  }
+
+  private applyAppShowcase() {
+    const want = this.appShowcase && this.showcaseActive;
     if (want === this.showcaseOn) return;
     this.showcaseOn = want;
     this.applyShowcase();
@@ -2082,6 +2105,7 @@ export class GlobeRenderer {
 
   /** The showcase ends on its own (a gesture on the globe): the same, without asking the app. */
   private dropShowcase() {
+    this.eggAsk = null; // (a gesture ends an interlude asked for, held or under way: the page's word holds again, and it is off)
     if (!this.showcaseOn) return;
     this.showcaseOn = false;
     this.applyShowcase();
@@ -2141,7 +2165,7 @@ export class GlobeRenderer {
       return;
     }
     if (this.latSnap || this.flight !== null) return; // (the glide, or somebody else's flight, is under way: wait for it)
-    if (this.eggPending > now) return; // (the interlude was asked for: the caption does not come in to be sent away again, `wantInterlude`)
+    if (this.eggAsk) return; // (an interlude was asked for: the caption does not come in to be sent away again, `wantInterlude`)
     if (inBand(lat)) {
       this.captionOn = true;
       caption.show(now);
