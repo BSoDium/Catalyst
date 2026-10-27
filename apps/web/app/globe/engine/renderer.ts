@@ -60,7 +60,7 @@ import { IdleSpin, SPIN, SPIN_DEFAULTS, edgeSpeed, pacedByRotation, spinBlock, s
 import { CINEMATIC } from "./cinematic";
 import { INTERLUDE_STATE_EVENT, INTERLUDE_WAIT_MS, interludeLook, type InterludeStateDetail } from "../interlude";
 import { blendPose, flightOffsetShare, flightPose, type FlightPose } from "./flight";
-import { NIGHT, SURFACE, surfaceCoverage, surfaceFade } from "./surface";
+import { NIGHT, SURFACE, surfaceCoverage } from "./surface";
 import { landingScale, liftFor, placeAbove, type Placement } from "./lift";
 import { routeLift } from "./view";
 import { newLodCamera, setLodCamera, type LodTree } from "./lod-tree";
@@ -2305,10 +2305,9 @@ export class GlobeRenderer {
     this.globe.setLand(CINEMATIC.planet.fill ? land : 0);
     // the mist: a thin grey glow at the limb and a veil that bleeds onto the ground, for the length of the interlude (they follow the land's easing: in and out with it)
     this.globe.setAtmosphere(land * CINEMATIC.atmosphere.amount);
-    // the land's own picture: for the unzoomed views (fading out with the zoom, where the borders come in), stronger in the interlude
-    // (not by the zoom while the interlude flies: its close shots are not a visitor's zoom)
+    // the land's own picture: at every zoom, with no fade as the camera comes close (a checkered stipple), a little stronger in the interlude
     const inInterlude = this.flying || land > 0;
-    this.globe.setSurface(surfaceFade(inInterlude ? 0 : zoom) * surfaceCoverage(land));
+    this.globe.setSurface(surfaceCoverage(land));
     this.globe.setCity(CINEMATIC.planet.cities ? (this.caption?.cityShare() ?? 0) : 0);
     // the page's own hero steps back with it (app.css `--interlude`): written when it moves by a hundredth
     if (Math.abs(land - this.interludeVar) >= 0.01 || (land === 0 && this.interludeVar !== 0)) {

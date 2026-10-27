@@ -74,6 +74,10 @@ bool patternLit(int pattern, ivec2 c) {
     int shift = ((c.y >> 2) & 1) * 3;
     return (c.y & 3) == 0 && ((c.x + shift) % 6) < 3;
   }
+  if (pattern == 3) {
+    // checker: every other cell, as a chessboard (the satellite ground's stipple, the look of the globe's picture)
+    return ((c.x + c.y) & 1) == 0;
+  }
   return true;
 }
 vec2 uvOfOut(vec2 outPx) { return outPx * uScale / vec2(uSrcSize); }

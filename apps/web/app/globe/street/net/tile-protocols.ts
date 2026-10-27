@@ -14,6 +14,7 @@
 import { addProtocol, removeProtocol, type AddProtocolAction } from "maplibre-gl";
 import { FetchSource, PMTiles } from "pmtiles";
 import type { RequestOutcome } from "../core/tile-health";
+import { createSatelliteReader } from "./satellite-source";
 import type { SourceDescriptor } from "../core/source-descriptor";
 import type { SourceId, TileSourceManager } from "../core/tile-source-manager";
 
@@ -35,6 +36,8 @@ export interface TileNetworkOptions {
 
 export interface TileNetwork {
   scheme(role: SourceId): string;
+  /** The satellite ground's tile URLs (`core/satellite.ts`): its real URL behind this instance's protocol, whose tiles come back already in the palette's fill encoding. */
+  satelliteTiles(url: string): string[];
   /** The style's tile URLs for a source: its real URLs behind this instance's protocol. */
   styleTiles(d: SourceDescriptor): string[];
   dispose(): void;
@@ -111,11 +114,18 @@ export function createTileNetwork(opts: TileNetworkOptions): TileNetwork {
       });
     };
 
+  const satelliteScheme = `cats${opts.instance}`;
+  const satellite = createSatelliteReader();
+  /** A satellite tile, read off the main thread into the palette's fill encoding and handed back as a PNG (a failed tile throws: the ground is simply not there). */
+  const satelliteHandler: AddProtocolAction = async (params, outer) => ({ data: await satellite.read(params.url.slice(satelliteScheme.length + 3), outer.signal) });
+
+  addProtocol(satelliteScheme, satelliteHandler);
   addProtocol(schemes.primary, handler("primary"));
   addProtocol(schemes.fallback, handler("fallback"));
 
   return {
     scheme: (role) => schemes[role],
+    satelliteTiles: (url) => [`${satelliteScheme}://${url}`],
     styleTiles(d) {
       const prefix = `${schemes[d.role]}://`;
       if (!d.archiveUrl) return d.tiles.map((t) => `${prefix}${t}`);
@@ -125,6 +135,8 @@ export function createTileNetwork(opts: TileNetworkOptions): TileNetwork {
     dispose() {
       if (disposed) return;
       disposed = true;
+      removeProtocol(satelliteScheme);
+      satellite.dispose();
       removeProtocol(schemes.primary);
       removeProtocol(schemes.fallback);
       archives.clear();
