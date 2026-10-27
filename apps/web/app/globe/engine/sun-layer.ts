@@ -42,7 +42,7 @@ const FRAGMENT = /* glsl */ `
       float t = pow(clamp(1.0 - (r - 1.0) / ${f(SUN.halo)}, 0.0, 1.0), ${f(SUN.haloFall)});
       ivec2 c = ivec2(mod(floor(gl_FragCoord.xy), 4.0));
       float th = (BAYER[c.y * 4 + c.x] + 0.5) / 16.0;
-      ink = floor(t * ${f(SUN.haloSteps)} + th) / ${f(SUN.haloSteps)} * (uLight > 0.5 ? ${f(SUN.light.haloCore)} : ${f(SUN.dark.haloCore)});
+      ink = floor(t * ${f(SUN.haloSteps)} + th) / ${f(SUN.haloSteps)} * (uLight > 0.5 ? ${f(SUN.light.glow)} : ${f(SUN.dark.glow)});
     }
     if (ink <= 0.0) discard;
     gl_FragColor = vec4(mix(uBg, uInk, ink), uAmt);
