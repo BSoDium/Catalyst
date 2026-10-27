@@ -28,7 +28,7 @@ import type { ViewBasis } from "./geo";
 import { zoomToRadiusPx } from "./geo";
 import { landMask } from "./land";
 import { GRATICULE_STEP_DEG, graticuleSegments, polylinesToSegments } from "./geometry";
-import { OCCLUDER_RADIUS, atmosphereMaterial, rimMaterial, rimGroundMaterial, cityMaterial, surfaceMaterial, mistMaterial, lineMaterial, occluderMaterial, silhouetteMaterial } from "./materials";
+import { OCCLUDER_RADIUS, atmosphereMaterial, rimMaterial, rimGroundMaterial, twilightMaterial, cityMaterial, surfaceMaterial, mistMaterial, lineMaterial, occluderMaterial, silhouetteMaterial } from "./materials";
 import { RIM } from "./moon";
 import { MoonLayer } from "./moon-layer";
 import { SunLayer } from "./sun-layer";
@@ -77,6 +77,7 @@ export class GlobeScene {
   private atmosphere = atmosphereMaterial();
   private rim = rimMaterial();
   private rimGround = rimGroundMaterial();
+  private twilight = twilightMaterial();
   private mist = mistMaterial();
   private surface = surfaceMaterial();
   private surfaceMesh: Mesh | null = null;
@@ -116,7 +117,7 @@ export class GlobeScene {
     /** The page has a moon (`GlobeProps.moon`, and the flags allow it). */
     moon?: boolean;
   }) {
-    this.materials.push(this.occluder, this.city, this.atmosphere, this.rim, this.rimGround, this.mist, this.surface, this.graticule, this.borders, this.coast, this.silhouette);
+    this.materials.push(this.occluder, this.city, this.atmosphere, this.rim, this.rimGround, this.twilight, this.mist, this.surface, this.graticule, this.borders, this.coast, this.silhouette);
     this.coastData = data.coastlines;
 
     const disc = new SphereGeometry(OCCLUDER_RADIUS, 96, 48);
@@ -147,6 +148,10 @@ export class GlobeScene {
     this.mistMesh.visible = false;
     this.mistMesh.frustumCulled = false;
     this.add(this.mistMesh, 5);
+    // (the twilight: a faint warm band just past the lit side's edge, over the mist's veil)
+    const twilightBand = new Mesh(skin, this.twilight);
+    twilightBand.frustumCulled = false;
+    this.add(twilightBand, 5.05);
     // (and the sunset's light on the ground, over the mist: while the sun is aligned with the limb it lights the surface too)
     const groundGlow = new Mesh(skin, this.rimGround);
     groundGlow.frustumCulled = false;
@@ -250,7 +255,7 @@ export class GlobeScene {
     this.sun?.applyTheme(t);
     this.moon?.applyTheme(t);
     // the light page's night thickens (`uFlip`: the stipple, the tones, in the surface's shader) where the dark page's fades
-    for (const m of [this.occluder, this.surface, this.graticule, this.borders, this.coast, this.silhouette, this.atmosphere, this.rim, this.rimGround, this.mist]) m.uniforms.uFlip!.value = t.scheme === "dark" ? 0 : 1;
+    for (const m of [this.occluder, this.surface, this.graticule, this.borders, this.coast, this.silhouette, this.atmosphere, this.rim, this.rimGround, this.twilight, this.mist]) m.uniforms.uFlip!.value = t.scheme === "dark" ? 0 : 1;
   }
 
   /**
@@ -295,7 +300,7 @@ export class GlobeScene {
    * frame. The land's ground thins in the dither and steps to its faintest tone, and the lines and the planet's own outline go towards the page's colour in grey steps, on the dark side.
    */
   setNight(night: number, x: number, y: number, z: number) {
-    for (const m of [this.occluder, this.surface, this.graticule, this.borders, this.coast, this.silhouette, this.atmosphere, this.rim, this.rimGround, this.mist]) {
+    for (const m of [this.occluder, this.surface, this.graticule, this.borders, this.coast, this.silhouette, this.atmosphere, this.rim, this.rimGround, this.twilight, this.mist]) {
       m.uniforms.uNight!.value = night;
       m.uniforms.uSunN!.value = [x, y, z];
     }
@@ -364,6 +369,7 @@ export class GlobeScene {
     this.atmosphere.uniforms.uAmt!.value = x;
     this.rim.uniforms.uAmt!.value = 1 - x;
     this.rimGround.uniforms.uAmt!.value = 1 - x;
+    this.twilight.uniforms.uAmt!.value = 1 - x;
     this.mist.uniforms.uAmt!.value = x;
     if (this.atmosphereMesh) this.atmosphereMesh.visible = x > 0;
     if (this.mistMesh) this.mistMesh.visible = x > 0;

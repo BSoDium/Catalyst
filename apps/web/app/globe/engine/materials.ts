@@ -272,6 +272,38 @@ export function rimGroundMaterial(): ShaderMaterial {
   });
 }
 
+/**
+ * The TWILIGHT (`RIM.twilight`): a faint warm band on the ground either side of the lit side's halfway edge, where the atmosphere has scattered the sun's light a little past the terminator and the light is a hair yellower for the air it
+ * has been through. A skin a hair over the surface (the mist's), in dithered levels on the art's pixels (the dark side's own texture). The dark page only: the light page has no warm light.
+ */
+export function twilightMaterial(): ShaderMaterial {
+  return new ShaderMaterial({
+    uniforms: { uAmt: { value: 1 }, uNight: { value: 0 }, uSunN: { value: [0, 0, 1] }, uFlip: { value: 0 } },
+    vertexShader: /* glsl */ `
+      varying vec3 vPos;
+      void main() { vPos = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform float uAmt; uniform float uNight; uniform vec3 uSunN; uniform float uFlip;
+      varying vec3 vPos;
+      ${MIST_GLSL}
+      void main() {
+        if (uFlip > 0.5) discard;
+        float d = dot(normalize(vPos), uSunN);
+        float band = smoothstep(${RIM.twilight.band[0].toFixed(2)}, ${RIM.twilight.band[1].toFixed(2)}, d) * (1.0 - smoothstep(${RIM.twilight.band[2].toFixed(2)}, ${RIM.twilight.band[3].toFixed(2)}, d));
+        float a = stepped(band * uNight * uAmt, ${RIM.twilight.steps.toFixed(1)}) * ${RIM.twilight.alpha.toFixed(2)};
+        if (a < 0.004) discard;
+        gl_FragColor = vec4(${RIM.twilight.rgb.map((x) => x.toFixed(3)).join(", ")}, a);
+      }
+    `,
+    side: FrontSide,
+    blending: NormalBlending,
+    depthTest: true,
+    depthWrite: false,
+    transparent: true,
+  });
+}
+
 export function mistMaterial(): ShaderMaterial {
   return new ShaderMaterial({
     uniforms: { uColor: { value: new Color() }, uAmt: { value: 0 }, uCover: { value: 0.85 }, uNight: { value: 0 }, uSunN: { value: [0, 0, 1] }, uFlip: { value: 0 } },
