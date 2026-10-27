@@ -11,7 +11,7 @@
  *   hidden or the GL context is lost nothing is scheduled; the first frame after recovery repaints.
  * - Imperative and framework-free: React only owns the lifecycle (see ../globe-canvas.tsx).
  */
-import { ColorManagement, Color, PerspectiveCamera, Vector3, WebGLRenderer } from "three";
+import { ColorManagement, Color, PerspectiveCamera, Vector3, Vector4, WebGLRenderer } from "three";
 import type { Polylines } from "@catalyst/geodata";
 import type { CoverBlock, GlobePlace, GlobeRoute } from "../types";
 import { TrailDotsLayer, dotLegs } from "../paths/trail-dots-layer";
@@ -1303,23 +1303,25 @@ export class GlobeRenderer {
   }
 
   private sunV = new Vector3();
+  private sunClip = new Vector4();
 
-  /** Place the sun for this frame: the light's direction in the camera's frame, where the planet is on the buffer; it is shown with the planet's night (the same amount). */
-  private syncSun(cam: PerspectiveCamera, d: number, sunEarth: Vec3) {
+  /**
+   * Place the sun for this frame: a direction at infinity (the light's, in the earth's frame), projected by the camera as the stars' are (w = the depth along the view, so a direction behind the camera is
+   * not ahead). It is shown with the planet's night (the same amount: the zoom takes both away, and the interlude and pages without the showcase have neither).
+   */
+  private syncSun(cam: PerspectiveCamera, sunEarth: Vec3) {
     const sun = this.globe.sun;
     if (!sun) return;
-    const c0 = this.sunV.set(0, 0, 0).project(cam);
-    const cx = (c0.x * 0.5 + 0.5) * this.bufW;
-    const cy = (c0.y * 0.5 + 0.5) * this.bufH;
-    const focal = (cam.projectionMatrix.elements[5]! * this.bufH) / 2;
     const v = this.sunV.set(sunEarth[0], sunEarth[1], sunEarth[2]).transformDirection(cam.matrixWorldInverse);
+    const clip = this.sunClip.set(v.x, v.y, v.z, 0).applyMatrix4(cam.projectionMatrix);
+    const ahead = clip.w > 1e-4;
     sun.sync({
       bufW: this.bufW,
       bufH: this.bufH,
-      cx,
-      cy,
-      radius: focal / Math.sqrt(Math.max(1e-6, d * d - 1)),
-      dir: [v.x, v.y, v.z],
+      x: ahead ? (clip.x / clip.w * 0.5 + 0.5) * this.bufW : 0,
+      y: ahead ? (clip.y / clip.w * 0.5 + 0.5) * this.bufH : 0,
+      ahead,
+      focal: (cam.projectionMatrix.elements[5]! * this.bufH) / 2,
       amount: this.nightNow,
     });
   }
@@ -2212,7 +2214,7 @@ export class GlobeRenderer {
     this.caption?.sync(d, v.lon, v.lat, now, over);
     this.syncTagline();
     this.syncMoon(cam, d, zoom, now);
-    this.syncSun(cam, d, ns);
+    this.syncSun(cam, ns);
     this.globe.syncSky(cam, skyBasis, this.era, { w: this.bufW, h: this.bufH, shift: this.camShift, lift: this.camLift }, now, this.reduced, this.flying || (this.caption?.landShare() ?? 0) > 0);
   }
 

@@ -70,28 +70,23 @@ export const MOON = {
 } as const;
 
 /**
- * The sun as a sprite (engine/sun-layer.ts), in the art's pixels. Its disc is `size` of the planet's radius (at least `minR` pixels), `distance` planet radii from the planet's centre, towards where the light
- * is on the screen but `lift` higher (the light comes from behind the camera: there is no real place for it, and the page's own content is at the sides and below), kept `keep` radii inside the picture.
- * The crown reaches `reach` radii. Tones are shares from the page's colour to the ink: the dark page's sun is the ink's tone, the light page's is the glare that burns the colour away, and shows
- * only its dark spots, a ghost of a rim, and the rays' slight darkness.
+ * The sun (engine/sun-layer.ts): a point of the sky, a direction at infinity in the same frame as the light (`sunDirection`), drawn as the stars are, at the skybox's own distance (the far plane),
+ * so it is in the picture only where the camera looks towards it and turns with the sky when the globe is turned. `angularDeg` is its disc's angular radius (not the real half degree: a stylised
+ * sun, a seventh or so of the planet's own at the whole-globe view). The crown is a dithered halo as far as `halo` radii out, scalloped by `lobes` soft lobes, and each lobe has a short faint
+ * ray as far as `ray` radii more. Tones are shares from the page's colour to the ink: the dark page's sun is the ink's tone (the crown subtler), the light page's is the glare that burns the colour
+ * away, and shows only its dark spots, a ghost of a rim and the crown's faint darkness.
  */
 export const SUN = {
-  size: 0.13,
-  minR: 5,
-  distance: 1.75,
-  lift: 0.45,
-  keep: 1.3,
-  reach: 3.2,
+  angularDeg: 1.7,
+  minR: 4,
+  halo: 0.95,
+  ray: 0.7,
+  lobes: 9,
   grain: 3.0,
-  spot: 0.66,
-  penumbra: 0.58,
-  limb: 0.86,
-  rays: 8,
-  longRay: 2.7,
-  shortRay: 1.5,
-  halo: 0.9,
-  dark: { spot: 0.42, mid: 0.72, ray: 0.85, halo: 0.5 },
-  light: { spot: 0.3, rim: 0.14, ray: 0.24, halo: 0.1 },
+  spot: 0.74,
+  limb: 0.84,
+  dark: { core: 1, limb: 0.74, spot: 0.5, crown: 0.5 },
+  light: { spot: 0.28, rim: 0.14, crown: 0.1 },
 } as const;
 
 export type Vec3 = [number, number, number];

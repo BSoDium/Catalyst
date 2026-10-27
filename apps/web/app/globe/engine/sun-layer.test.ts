@@ -1,34 +1,26 @@
 import { describe, expect, it } from "vitest";
 import { sunPlace, type SunFrame } from "./sun-layer";
 
-const frame = (over: Partial<SunFrame> = {}): SunFrame => ({ bufW: 400, bufH: 260, cx: 200, cy: 130, radius: 80, dir: [0.79, 0.24, 0.56], amount: 1, ...over });
+const frame = (over: Partial<SunFrame> = {}): SunFrame => ({ bufW: 400, bufH: 260, x: 300, y: 80, ahead: true, focal: 300, amount: 1, ...over });
 
 describe("sunPlace", () => {
-  it("puts the sun on the side the light comes from, above the planet's middle, off its disc", () => {
-    const p = sunPlace(frame());
-    expect(p.x).toBeGreaterThan(200 + 80);
-    expect(p.y).toBeGreaterThan(130);
-    expect(Math.hypot(p.x - 200, p.y - 130)).toBeGreaterThan(80);
+  it("is where the direction projects, on a whole pixel's centre", () => {
+    const p = sunPlace(frame({ x: 300.7, y: 80.2 }))!;
+    expect(p.x).toBe(300.5);
+    expect(p.y).toBe(80.5);
   });
 
-  it("is on a whole pixel's centre", () => {
-    const p = sunPlace(frame());
-    expect(p.x % 1).toBe(0.5);
-    expect(p.y % 1).toBe(0.5);
+  it("is not drawn when the direction is behind the camera (the light's side at the opening view)", () => {
+    expect(sunPlace(frame({ ahead: false }))).toBeNull();
   });
 
-  it("stays inside the picture, with its crown's start clear of the edge", () => {
-    for (const dir of [[1, 0, 0], [0, 1, 0], [-1, 0, 0], [0, -1, 0], [0, 0, 1]] as const) {
-      const p = sunPlace(frame({ dir: [...dir], radius: 200 }));
-      expect(p.x).toBeGreaterThanOrEqual(p.r);
-      expect(p.x).toBeLessThanOrEqual(400 - p.r);
-      expect(p.y).toBeGreaterThanOrEqual(p.r);
-      expect(p.y).toBeLessThanOrEqual(260 - p.r);
-    }
+  it("is not drawn when its crown is wholly off the picture, and is when only its edge is in", () => {
+    expect(sunPlace(frame({ x: 4000 }))).toBeNull();
+    expect(sunPlace(frame({ x: 410 }))).not.toBeNull();
   });
 
-  it("grows with the planet, and has a floor", () => {
-    expect(sunPlace(frame({ radius: 160 })).r).toBeGreaterThan(sunPlace(frame({ radius: 80 })).r);
-    expect(sunPlace(frame({ radius: 4 })).r).toBeGreaterThanOrEqual(5);
+  it("is a fixed angle: it grows with the camera's focal length, and has a floor", () => {
+    expect(sunPlace(frame({ focal: 600 }))!.r).toBeGreaterThan(sunPlace(frame({ focal: 300 }))!.r);
+    expect(sunPlace(frame({ focal: 10 }))!.r).toBeGreaterThanOrEqual(4);
   });
 });
