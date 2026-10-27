@@ -22,12 +22,15 @@ import type { ExpressionSpecification, LayerSpecification, Map as MLMap, StyleSp
 import { LEG_MODES, MODE_STYLE, RAIL_TICK_DASH, RAIL_TICK_WIDTH, dashArray, type LegMode } from "../../paths/modes";
 import { DESIGN_CELL_CSS, THIN_INK, artStops, cssStops, hollowFillStops, inkOpacityFor, inkOpacityStops, type Stops } from "../core/art-line";
 import type { Schema } from "../core/source-descriptor";
+import { SATELLITE_MAXZOOM, SATELLITE_TILE_SIZE } from "../core/satellite";
 import { roleLevel, routeColor, trailLevel, type Role } from "../core/palette";
 import { PALETTE_COUNT, SPARK, TRAIL_BANDS } from "../../paths/trail";
 import { ERASE, fillColor, lineColor, type Pattern } from "../core/palette";
 import { FILL_LOD, LOD, toneLevel, type LodKey } from "./lod";
 
 export type { Schema };
+
+export const SATELLITE_LAYER = "satellite";
 
 /** The vector source as the style sees it: tile URLs already carry the instance's protocol prefix. */
 export interface StyleTiles {
@@ -50,6 +53,8 @@ export interface StreetStyleOptions {
   heads?: GeoJSON.FeatureCollection;
   /** Keys of the legs the focus layers draw in ink: the selected place's (`legKeysAt`). */
   focusKeys?: readonly string[];
+  /** The satellite ground (`core/satellite.ts`): tile URLs already behind the protocol that puts them in the palette's encoding. Absent: none (tests, the synthetic gate). */
+  satellite?: string[];
   /** The "Paths" layer switch: false starts every path layer hidden. */
   pathsVisible?: boolean;
   /** The patterned legs (every mode but road) and the sparks are drawn cell by cell on the overlay (paths/trail-dots.ts): no MapLibre layer for them. */
@@ -619,6 +624,9 @@ export function buildStreetStyle(o: StreetStyleOptions): StyleSpecification {
     routes: { type: "geojson", data: o.routes as never, lineMetrics: true },
     heads: { type: "geojson", data: (o.heads ?? { type: "FeatureCollection", features: [] }) as never },
   };
+  if (o.satellite) {
+    sources.satellite = { type: "raster", tiles: o.satellite, tileSize: SATELLITE_TILE_SIZE, maxzoom: SATELLITE_MAXZOOM } as never;
+  }
   if (o.tiles) {
     sources.tiles = {
       type: "vector",
@@ -635,6 +643,10 @@ export function buildStreetStyle(o: StreetStyleOptions): StyleSpecification {
     sources,
     layers: [
       { id: "background", type: "background", paint: { "background-color": ERASE } },
+      // the satellite ground, under everything: nearest resampling and no fade, so that the codes reach the pixel pass exactly
+      ...(o.satellite
+        ? [{ id: SATELLITE_LAYER, type: "raster", source: "satellite", paint: { "raster-resampling": "nearest", "raster-fade-duration": 0, "raster-opacity": 1 } } as LayerSpecification]
+        : []),
       grid,
       ...tones,
       ...lines,

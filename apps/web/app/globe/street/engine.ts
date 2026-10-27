@@ -37,6 +37,7 @@ import { buildPalette } from "./core/palette";
 import { snapCenter } from "./core/snap";
 import type { PassParams } from "./gl/pixel-pass";
 import { createTileNetwork } from "./net/tile-protocols";
+import { SATELLITE_TILES } from "./core/satellite";
 import { probeSource, type ProbeConfig, type ProbeOutcome } from "./net/probe";
 import { HudLayer } from "./overlay/hud-layer";
 import { LayerSwitch, switchRules, type SwitchView } from "./style/layer-switch";
@@ -274,6 +275,7 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
     return buildStreetStyle({
       schema: d?.schema ?? "openmaptiles",
       tiles: styleTiles(d),
+      satellite: net.satelliteTiles(SATELLITE_TILES),
       coastlines: world.coastlines,
       borders: world.borders,
       graticule: grid,

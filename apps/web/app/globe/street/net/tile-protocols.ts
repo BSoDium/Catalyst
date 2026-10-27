@@ -14,6 +14,7 @@
 import { addProtocol, removeProtocol, type AddProtocolAction } from "maplibre-gl";
 import { FetchSource, PMTiles } from "pmtiles";
 import type { RequestOutcome } from "../core/tile-health";
+import { SATELLITE_TILE_SIZE, classifySatellite } from "../core/satellite";
 import type { SourceDescriptor } from "../core/source-descriptor";
 import type { SourceId, TileSourceManager } from "../core/tile-source-manager";
 
@@ -35,6 +36,8 @@ export interface TileNetworkOptions {
 
 export interface TileNetwork {
   scheme(role: SourceId): string;
+  /** The satellite ground's tile URLs (`core/satellite.ts`): its real URL behind this instance's protocol, whose tiles come back already in the palette's fill encoding. */
+  satelliteTiles(url: string): string[];
   /** The style's tile URLs for a source: its real URLs behind this instance's protocol. */
   styleTiles(d: SourceDescriptor): string[];
   dispose(): void;
@@ -111,11 +114,30 @@ export function createTileNetwork(opts: TileNetworkOptions): TileNetwork {
       });
     };
 
+  const satelliteScheme = `cats${opts.instance}`;
+  /** A satellite tile: fetched, read pixel by pixel into the fill encoding and handed back as a PNG (a failed tile throws: the ground is simply not there). */
+  const satelliteHandler: AddProtocolAction = async (params, outer) => {
+    const res = await fetch(params.url.slice(satelliteScheme.length + 3), { signal: outer.signal });
+    if (!res.ok) throw new HttpError(res.status);
+    const bitmap = await createImageBitmap(await res.blob());
+    const size = SATELLITE_TILE_SIZE;
+    const canvas = new OffscreenCanvas(size, size);
+    const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
+    ctx.drawImage(bitmap, 0, 0, size, size);
+    bitmap.close();
+    const img = ctx.getImageData(0, 0, size, size);
+    classifySatellite(img.data);
+    ctx.putImageData(img, 0, 0);
+    return { data: await (await canvas.convertToBlob({ type: "image/png" })).arrayBuffer() };
+  };
+
+  addProtocol(satelliteScheme, satelliteHandler);
   addProtocol(schemes.primary, handler("primary"));
   addProtocol(schemes.fallback, handler("fallback"));
 
   return {
     scheme: (role) => schemes[role],
+    satelliteTiles: (url) => [`${satelliteScheme}://${url}`],
     styleTiles(d) {
       const prefix = `${schemes[d.role]}://`;
       if (!d.archiveUrl) return d.tiles.map((t) => `${prefix}${t}`);
@@ -125,6 +147,7 @@ export function createTileNetwork(opts: TileNetworkOptions): TileNetwork {
     dispose() {
       if (disposed) return;
       disposed = true;
+      removeProtocol(satelliteScheme);
       removeProtocol(schemes.primary);
       removeProtocol(schemes.fallback);
       archives.clear();
