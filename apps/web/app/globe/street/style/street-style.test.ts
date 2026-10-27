@@ -3,7 +3,7 @@ import { expInterp } from "../core/art-line";
 import { roleLevel } from "../../engine/palette";
 import { ERASE, MAX_LEVELS, PALETTE_CAPACITY, TRAIL_LEVEL_BASE, lineColor, routeColor, trailLevel } from "../core/palette";
 import { PALETTE_COUNT, TRAIL_BANDS } from "../../paths/trail";
-import { BORDER_TILE_MINZOOM, DEFAULT_HANDOFF, ROUTE_LAYER_IDS, ROUTE_HEAD_ID, SPECS, gradientOf, routeGradientId, WORLD_PLACEHOLDER_BELOW, borderHandoff, hasPlaceholder, buildStreetStyle, DASH_STEPS, applyDashScale, dashScaleOf, dashStepOf, graticule, layerIds, linePaint, focusFilter, type Schema } from "./street-style";
+import { BORDER_TILE_MINZOOM, DEFAULT_HANDOFF, ROUTE_LAYER_IDS, ROUTE_HEAD_ID, SPECS, gradientOf, routeGradientId, WORLD_PLACEHOLDER_BELOW, borderHandoff, hasPlaceholder, buildStreetStyle, SEA_MASK, DASH_STEPS, applyDashScale, dashScaleOf, dashStepOf, graticule, layerIds, linePaint, focusFilter, type Schema } from "./street-style";
 import { decodeLevel, evalFilter, levelOfPaint } from "./probe";
 
 const empty: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
@@ -18,6 +18,20 @@ describe("buildStreetStyle", () => {
         const ids = layerIds(s);
         expect(new Set(ids).size).toBe(ids.length);
         expect(s.layers[0]).toMatchObject({ id: "background", type: "background" });
+      });
+      it("draws the sea's outline outside its polygon and covers it with the sea's own fill, under the other lines (the cut edges of the sea's polygons are not drawn)", () => {
+        const ids = layerIds(s);
+        const edge = ids.indexOf("water-edge");
+        const mask = ids.indexOf(SEA_MASK);
+        expect(edge).toBeGreaterThan(-1);
+        expect(mask).toBe(edge + 1);
+        const layer = (id: string) => s.layers.find((l) => l.id === id) as unknown as { paint: Record<string, unknown>; filter?: unknown; "source-layer": string };
+        expect(layer("water-edge").paint["line-offset"]).toBeLessThan(0);
+        expect(layer(SEA_MASK).paint["fill-color"]).toBe(ERASE);
+        expect(layer(SEA_MASK).filter).toEqual((s.layers.find((l) => l.id === "water-edge") as unknown as { filter?: unknown }).filter);
+        // under every road and over no road; the graticule and the sea's texture are over it
+        for (const id of ["road-major-fill", "boundary-country"]) expect(ids.indexOf(id)).toBeGreaterThan(mask);
+        for (const id of ["graticule", "water-fill"]) expect(ids.indexOf(id)).toBeGreaterThan(mask);
       });
       it("paints only level-encoded colours (no other colours), every level inside the palette", () => {
         for (const l of s.layers) {
