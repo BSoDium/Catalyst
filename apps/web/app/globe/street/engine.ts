@@ -595,7 +595,8 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
   /** The world lines stand in for tiles that are not there yet (and only then): the ease cross-fades them to the tile lines when those arrive. */
   const updatePlaceholder = () => {
     if (!placeholderStyle) return;
-    const want = map.getZoom() < WORLD_PLACEHOLDER_BELOW && !map.areTilesLoaded();
+    // (the street tiles' own source: the satellite ground's tiles come later and never mean the lines are late, or both would be drawn)
+    const want = map.getZoom() < WORLD_PLACEHOLDER_BELOW && !map.isSourceLoaded("tiles");
     if (want === placeholderOn) return;
     placeholderOn = want;
     for (const id of PLACEHOLDER_LAYERS) if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", want ? "visible" : "none");
