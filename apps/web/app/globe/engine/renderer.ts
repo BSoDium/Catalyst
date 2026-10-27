@@ -1872,6 +1872,7 @@ export class GlobeRenderer {
     const caption = this.caption;
     if (!caption || !this.showcaseActive || !this.sized || this.reduced || this.selected !== null || this.insetTarget !== 0) return false;
     caption.armEggNow();
+    caption.warmNow(this.camera);
     if (!caption.canPlayEggNow()) return false;
     const now = performance.now();
     const v = this.drawView();

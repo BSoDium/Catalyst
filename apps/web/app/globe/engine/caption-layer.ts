@@ -1163,6 +1163,11 @@ export class CaptionLayer {
     } else if (!this.eggWarm) this.opts.onChange();
   }
 
+  /** Send the word to the GPU now, with the camera of the frame: the caption is not drawn while it is away, so the frame that usually does it never comes (`playInterludeNow`). */
+  warmNow(camera: PerspectiveCamera): void {
+    if (this.warmPending && this.built?.egg) this.warmEgg(camera);
+  }
+
   /** The interlude could begin this frame from a caption that is not on the stage (`playEggDirect`): its plan is armed and its word is made and on the GPU. */
   canPlayEggNow(): boolean {
     return !this.disposed && !this.failed && !this.motion.eggActive && !!this.motion.egg && !!this.built?.egg && this.eggWarm;
