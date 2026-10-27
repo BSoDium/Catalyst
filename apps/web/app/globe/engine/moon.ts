@@ -72,24 +72,24 @@ export const MOON = {
 /**
  * The sun (engine/sun-layer.ts): a point of the sky, a direction at infinity in the same frame as the light (`sunDirection`), drawn as the stars are, at the skybox's own distance (the far plane),
  * so it is in the picture only where the camera looks towards it and turns with the sky when the globe is turned. `angularDeg` is its disc's angular radius (not the real half degree: a stylised
- * sun, a small one). It is kept simple (owner, 2026-10-27: "just a circle", after a crown of rays): a flat disc and a very subtle halo round it, `halo` radii out, a dither of a falloff in two
- * tones, so that it looks as if it glows. Tones are shares from the page's colour to the ink: the dark page's sun is the ink's tone; the light page's is the glare that burns the colour away, so it
+ * sun, a small one). A flat disc and a halo round it, `halo` radii out, a dither of a falloff in a few flat steps, with a ring of light on it, so that it looks as if it glows. Tones are shares from the page's colour to the ink: the dark page's sun is the ink's tone; the light page's is the glare that burns the colour away, so it
  * shows only a ghost of a rim and the halo's faint darkness.
  */
 export const SUN = {
   angularDeg: 0.6,
   minR: 3,
+  /** The halo's reach, in disc radii, and how fast it falls (the power of the falloff: steep near the disc, a long tail), in `haloSteps` flat steps of tone dithered into each other. */
   halo: 14,
-  /** The halo's inner part (where the falloff is above `core`) is a step stronger than its outer. */
-  core: 0.45,
-  /** The halo's steps of tone (from its edge, where it is `glow`, nearly the disc's own, down to nothing), and how fast it falls. */
+  haloFall: 2.6,
   haloSteps: 6,
   /** The ring of light on top of the halo, in disc radii from the sun's centre: sharp on its inside (`inner` wide, at full `tone`), then a smooth falloff over `outer`, in `steps` dithered steps. */
   ring: { at: 8.5, inner: 0.3, outer: 2.6, steps: 5, dark: 0.16, light: 0.04 },
-  haloFall: 2.6,
+  /** The disc's limb is a step down from its centre, from this share of its radius. */
   limb: 0.88,
-  dark: { disc: 1, limb: 0.8, halo: 0.16, haloCore: 0.3, glow: 0.72 },
-  light: { rim: 0.16, halo: 0.04, haloCore: 0.08, glow: 0.18 },
+  /** Tones, shares from the page's colour to the ink: the disc, its limb, and the halo's `glow` where it starts, at the disc's edge (nearly the disc's own on the dark page). */
+  dark: { disc: 1, limb: 0.8, glow: 0.72 },
+  /** The light page's sun is the glare that burns the colour away: only a ghost of a rim and a faint glow. */
+  light: { rim: 0.16, glow: 0.18 },
 } as const;
 
 /**
