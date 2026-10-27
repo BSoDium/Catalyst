@@ -187,7 +187,7 @@ const RIM_SUN_GLSL = /* glsl */ `
   vec3 rimTint(float side, float from, float flip) {
     vec3 w = warm(mix(0.05, 1.0, pow(smoothstep(from, 0.995, side), 0.8)));
     // (the light page: a grey with only a little of the ramp in it)
-    return flip > 0.5 ? mix(vec3(${SUN.light.lining.grey.toFixed(3)}), w * ${SUN.light.ink.toFixed(3)}, ${SUN.light.lining.warm.toFixed(3)}) : w;
+    return flip > 0.5 ? mix(vec3(${SUN.light.lining.grey.toFixed(3)}), w, ${SUN.light.lining.warm.toFixed(3)}) : w;
   }
 `;
 
