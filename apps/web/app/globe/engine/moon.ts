@@ -79,20 +79,20 @@ export const MOON = {
 export const SUN = {
   angularDeg: 0.6,
   minR: 3,
-  halo: 4.5,
+  halo: 9,
   /** The halo's inner part (where the falloff is above `core`) is a step stronger than its outer. */
   core: 0.45,
   /** The halo's steps of tone (from its edge, where it is `glow`, nearly the disc's own, down to nothing), and how fast it falls. */
-  haloSteps: 5,
-  haloFall: 1,
+  haloSteps: 6,
+  haloFall: 2.6,
   limb: 0.88,
-  dark: { disc: 1, limb: 0.8, halo: 0.16, haloCore: 0.3, glow: 0.78 },
+  dark: { disc: 1, limb: 0.8, halo: 0.16, haloCore: 0.3, glow: 0.72 },
   light: { rim: 0.16, halo: 0.04, haloCore: 0.08, glow: 0.18 },
 } as const;
 
 /**
  * The sun's lens flare (engine/sun-flare.ts). Each ghost sits `at` of the way from the sun to the middle of the picture (1 on the middle, above 1 beyond it), is `size` of the picture's short side
- * in radius, and is inked at `tone` (0..1): a `ring`, a Bayer-dithered `dither` fill or a flat `disc` (all of them hexagons: an aperture's shape; `size` is the apothem). The streak is a one-pixel row through the sun, `streak` of the picture's width to each side.
+ * in radius, and is inked at `tone` (0..1): a `ring`, a Bayer-dithered `dither` fill or a flat `disc` (all of them hexagons: an aperture's shape; `size` is the apothem). The rays are one-pixel lines out of the sun (see `streak`).
  */
 export const FLARE = {
   ghosts: [
@@ -103,17 +103,12 @@ export const FLARE = {
     { at: 2.1, size: 0.09, tone: 0.09, kind: "dither" },
   ],
   ringWidth: 1.5,
-  /** The streaks, in the sun's own tone (they start at the disc's edge, not across it): the horizontal one reaches `streak` of the picture's width to each side, the vertical `streakUp` of its height. */
+  /** The rays, in the sun's own tone, from its centre (the disc's edge) out: the horizontal ones reach `streak` of the picture's width, the vertical `streakUp` of its height, the diagonal `streakDiag` of its width; the dither thins out as `along^streakFall`. */
   streak: 0.2,
   streakUp: 0.14,
+  streakDiag: 0.09,
+  streakFall: 2.2,
   streakTone: 1,
-  /** The streaks start `gap` of the disc's radius (at least `gapMin` px) beyond its edge, are `thick` px across over the first `thickShare` of their length and one pixel after that. */
-  gap: 0.6,
-  gapMin: 2,
-  thick: 3,
-  thickShare: 0.08,
-  /** The tone of the base's outer rows (the thickness): dimmer than the line itself, so that the glow bleeds out of the sun. */
-  baseTone: 0.4,
   /** The share of the ink the flare shows on the light page, where the sun is burnt out. */
   lightShare: 0.3,
   /** The strength goes to 0 as the sun's distance from the middle (a share of the half diagonal) goes from `edgeFrom` to `edgeTo`, and from `midTo` down to `midFrom`. */

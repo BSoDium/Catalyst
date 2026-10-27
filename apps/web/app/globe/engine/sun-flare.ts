@@ -1,7 +1,7 @@
 /**
  * The sun's lens flare (docs/landing.md, "The sun"): what a lens does with a bright thing in the picture. A row of ghosts on the line from the sun through the middle of the picture
  * (the optical axis), each at a fixed share of the way along it, so that as the camera turns the ghosts slide across the picture the other way round the middle and come together
- * as the sun nears it, and a thin streak across the sun itself. It is drawn over everything (it is in the lens, not in the sky), one full-buffer quad and one cheap fragment shader,
+ * as the sun nears it, and eight thin rays out of the sun itself (up, down, left, right and the four diagonals). It is drawn over everything (it is in the lens, not in the sky), one full-buffer quad and one cheap fragment shader,
  * in whole art pixels like the rest of the globe: hexagons (an aperture's shape), rings and filled ones, whose edges fall on the grid, flat tones, and a 4x4 Bayer dither for the soft ones (a pixel is on or off).
  *
  * The planet hides the sun, and so it hides the flare: `flarePlace` takes how much of the sun the planet leaves (`visible`) and fades the whole flare with it. The flare also fades
@@ -48,19 +48,17 @@ const FRAGMENT = /* glsl */ `
       else if (KIND[i] == 1) { if (r < R && t > bayer()) ink = max(ink, t); }
       else { if (r < R) ink = max(ink, t); }
     }
-    // the streaks: a row and a column through the sun in its own tone, from a little beyond the disc's edge out: thick at the base (a few pixels across, a step down to one), and a dither that thins out along them
-    vec2 d = abs(p - uSun);
-    float from = uSunR + max(${f(FLARE.gapMin)}, ${f(FLARE.gap)} * uSunR);
-    vec2 off = abs(p - (floor(uSun) + 0.5));
-    if (d.x > from) {
-      float along = 1.0 - (d.x - from) / (${f(FLARE.streak)} * uBufW);
-      float half_ = along > 1.0 - ${f(FLARE.thickShare)} ? ${f(FLARE.thick / 2)} : 0.5;
-      if (along > 0.0 && off.y < half_ && pow(along, 2.2) > bayer()) ink = max(ink, off.y < 0.5 ? ${f(FLARE.streakTone)} : ${f(FLARE.baseTone)});
-    }
-    if (d.y > from) {
-      float along = 1.0 - (d.y - from) / (${f(FLARE.streakUp)} * uBufH);
-      float half_ = along > 1.0 - ${f(FLARE.thickShare)} ? ${f(FLARE.thick / 2)} : 0.5;
-      if (along > 0.0 && off.x < half_ && pow(along, 2.2) > bayer()) ink = max(ink, off.x < 0.5 ? ${f(FLARE.streakTone)} : ${f(FLARE.baseTone)});
+    // the rays: one pixel wide, from the sun's centre (the disc's edge, where they join it) out along the axes and the diagonals (a diagonal is the pixels where the two offsets are equal), a dither that thins out along them
+    vec2 o = floor(p) - floor(uSun);
+    vec2 a = abs(o);
+    float dist = -1.0;
+    float len = 1.0;
+    if (o.y == 0.0) { dist = a.x; len = ${f(FLARE.streak)} * uBufW; }
+    else if (o.x == 0.0) { dist = a.y; len = ${f(FLARE.streakUp)} * uBufH; }
+    else if (a.x == a.y) { dist = a.x * 1.4142; len = ${f(FLARE.streakDiag)} * uBufW; }
+    if (dist > uSunR) {
+      float along = 1.0 - (dist - uSunR) / len;
+      if (along > 0.0 && pow(along, ${f(FLARE.streakFall)}) > bayer()) ink = max(ink, ${f(FLARE.streakTone)});
     }
     if (ink <= 0.0) discard;
     gl_FragColor = vec4(mix(uBg, uInk, ink * (uLight > 0.5 ? ${f(FLARE.lightShare)} : 1.0)), uStr);
