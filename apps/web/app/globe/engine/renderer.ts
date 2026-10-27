@@ -1889,6 +1889,12 @@ export class GlobeRenderer {
     return true;
   }
 
+  /** The finer coastline has arrived (`GlobeScene.upgradeCoast`). */
+  upgradeCoast(p: Polylines) {
+    this.globe.upgradeCoast(p);
+    this.requestRender();
+  }
+
   /**
    * Begin the held interlude NOW, from wherever the camera is (`wantInterlude` first). The page's own camera goes home at once (the flight ends on it), the caption comes onto
    * the stage in the interlude with its rows already gone (`CaptionLayer.playEggDirect`: no entrance, no ring), and the camera drawn glides from where it was into the flight

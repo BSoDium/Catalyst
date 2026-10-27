@@ -1,6 +1,6 @@
 # @catalyst/geodata
 
-Compact world coastline and country-border polylines for the globe, in one wire format (`src/format.ts`: quantised to 1/100 degree, delta-coded integers) with two lazy loaders (`loadCoastlines`, `loadBorders`). Only `data/coastlines-110m.json` and `data/borders-50m.json` are loaded by the web app.
+Compact world coastline and country-border polylines for the globe, in one wire format (`src/format.ts`: quantised to 1/100 degree, delta-coded integers) with two lazy loaders (`loadCoastlines`, `loadBorders`). `data/coastlines-110m.json` and `data/borders-50m.json` are loaded by the web app up front, and `data/coastlines-50m.json` (`loadDetailedCoastlines`, about 110 KB gzipped) when the page is idle, for the views that come close.
 
 ## What the borders are
 
