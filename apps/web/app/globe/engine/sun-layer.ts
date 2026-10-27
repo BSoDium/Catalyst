@@ -51,8 +51,7 @@ const FRAGMENT = /* glsl */ `
     if (ink <= 0.0) discard;
     // the warm ramp on the dark page; on the light page the halo is a faint grey (the sun is white, and the paper has no room for light) with only a little of the ramp's colour in it
     float k = clamp(ink * ${f(SUN.gain)}, 0.0, 1.0);
-    // (the dark page's colours, less saturated and brighter: the ramp's colour kept a share of the way from white)
-    vec3 lightHalo = mix(vec3(${f(SUN.light.halo.grey)}), mix(vec3(1.0), warm(ink), ${f(SUN.light.sun.sat)}), ${f(SUN.light.halo.warm)});
+    vec3 lightHalo = mix(vec3(${f(SUN.light.halo.grey)}), warm(ink) * ${f(SUN.light.ink)}, ${f(SUN.light.halo.warm)});
     vec3 col = uLight > 0.5 ? mix(uBg, lightHalo, k * ${f(SUN.light.halo.strength)}) : mix(uBg, warm(ink), k);
     gl_FragColor = vec4(col, uAmt);
   }
@@ -103,7 +102,7 @@ const BLOB_FRAGMENT = /* glsl */ `
     if (ink <= 0.003) discard;
     float k = clamp(ink * ${f(SUN.gain)}, 0.0, 1.0) * uAmt;
     // dark page: the light is ADDED (colour times alpha), as bright as the share of the sun in view. Light page: the sun is WHITE, laid over the paper and over the grey round it (the veil, the halo), and it does NOT dim as the planet covers it (owner: "only shrink it as the crescent shrinks, not opacity"): its size is the crescent's, its whiteness is whole
-    gl_FragColor = uLight > 0.5 ? vec4(mix(vec3(1.0, 0.995, 0.975), warm(ink), ${f(SUN.light.sun.sat)}), k * 0.9) : vec4(warm(ink), k * uI);
+    gl_FragColor = uLight > 0.5 ? vec4(1.0, 0.995, 0.975, k * 0.9) : vec4(warm(ink), k * uI);
   }
 `;
 
