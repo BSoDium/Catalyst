@@ -44,8 +44,8 @@ export const NIGHT = {
   captionDim: 0.3,
   /** How much of the wash the light page shows (the scale of `uNight`): the light page is the day's overexposure, not a night (`washOf`): the sun's side burns towards the page's colour; a little under the dark page's, so the lit half is never blank. */
   lightGain: 0.75,
-  /** The interlude's atmosphere (the glow over the limb and the veil on the ground): how much of it goes where the planet is washed (the dark side on the dark page, the sun's side on the light one): it is darkened, not just thinned. */
-  atmosphereDim: 0.85,
+  /** The interlude's atmosphere (the glow over the limb and the veil on the ground): how much of it goes where the planet is washed (the dark side on the dark page, the sun's side on the light one): it is lit exactly as the ground is (the same terminator, in the same whole steps), and gone where the ground is dark. */
+  atmosphereDim: 1,
 } as const;
 
 /** GLSL for the light on a ground point `n` (a unit vector in the earth's frame) from the sun `uSunN`, scaled by how much night there is (`uNight`: 0 is all day): 1 lit, 0 dark. */
