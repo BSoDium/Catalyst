@@ -1302,6 +1302,11 @@ export class GlobeRenderer {
     return orbitAngle(this.moonMs);
   }
 
+  /** The cinematic interlude (the easter egg) has the camera or the land: the sun, the night and the moon are still there, as at rest (the zoom of its close shots is not a visitor's). */
+  private get inInterlude(): boolean {
+    return this.flying || (this.caption?.landShare() ?? 0) > 0;
+  }
+
   private sunV = new Vector3();
   private sunClip = new Vector4();
 
@@ -1330,13 +1335,13 @@ export class GlobeRenderer {
   private syncMoon(cam: PerspectiveCamera, d: number, zoom: number, now: number) {
     const moon = this.globe.moon;
     if (!moon) return;
-    const wanted = this.sized && !this.lost && !this.suspended && !this.flying && this.selected === null && this.insetTarget === 0 && (this.caption?.landShare() ?? 0) === 0;
+    const wanted = this.sized && !this.lost && !this.suspended && this.selected === null && this.insetTarget === 0;
     if (!wanted) {
       this.moonSample = moon.sync({ camera: cam, bufW: this.bufW, bufH: this.bufH, eraDeg: this.era, angle: 0, rollDeg: 0, inclinationDeg: 0, sun: this.moonSun, d, zoom, fit: Infinity }); // (a zoom far past the fit: nothing is drawn)
       return;
     }
     const aspect = this.width / Math.max(1, this.height);
-    this.moonSample = moon.sync({ camera: cam, bufW: this.bufW, bufH: this.bufH, eraDeg: this.era, angle: this.moonAngle(now), rollDeg: rollFor(aspect), inclinationDeg: inclinationFor(aspect), sun: toEarthFrame(this.moonSun, this.era), d, zoom, fit: this.fit });
+    this.moonSample = moon.sync({ camera: cam, bufW: this.bufW, bufH: this.bufH, eraDeg: this.era, angle: this.moonAngle(now), rollDeg: rollFor(aspect), inclinationDeg: inclinationFor(aspect), sun: toEarthFrame(this.moonSun, this.era), d, zoom: this.inInterlude ? this.fit : zoom, fit: this.fit });
   }
 
   /**
@@ -1345,7 +1350,7 @@ export class GlobeRenderer {
    */
   moonFrame(): { x: number; y: number; r: number; amount: number; unhidden: number; angle: number } | null {
     const m = this.moonSample;
-    if (!m || !m.onScreen || !this.sized || this.disposed || this.lost || this.suspended) return null;
+    if (!m || !m.onScreen || !this.sized || this.disposed || this.lost || this.suspended || this.inInterlude) return null;
     const P = this.pixel;
     return { x: m.cx * P + this.canvasLeft, y: (this.bufH - m.cy) * P + this.canvasTop, r: m.r * P, amount: m.amount, unhidden: m.unhidden, angle: this.moonAngleNow() };
   }
@@ -2142,7 +2147,7 @@ export class GlobeRenderer {
     // (the caption's shell is above the planet: its nearest point must be inside the near plane)
     const reach = this.caption ? this.caption.maxRadius + 0.05 : 1.05;
     // (the moon is on an orbit wider than the caption's shell: its whole orbit is between the near and far planes while it is shown)
-    const moonReach = this.globe.moon?.ready && moonAmount(zoom, this.fit) > 0.01 ? MOON.orbit + MOON.radius + 0.05 : 0;
+    const moonReach = this.globe.moon?.ready && moonAmount(this.inInterlude ? this.fit : zoom, this.fit) > 0.01 ? MOON.orbit + MOON.radius + 0.05 : 0;
     if (pose) {
       const [px, py, pz] = pose.pos;
       d = Math.hypot(px, py, pz);
@@ -2201,7 +2206,7 @@ export class GlobeRenderer {
     this.globe.setSun(sun.x, sun.y, sun.z);
     // the planet's night (home screen, world view): the moon's sun, fixed in the sky, so the earth turns under it; gone with the zoom as the moon is
     const ns = toEarthFrame(this.moonSun, this.era);
-    this.nightNow = this.showcaseActive && !this.flying && land === 0 ? moonAmount(zoom, this.fit) : 0;
+    this.nightNow = this.showcaseActive ? (this.inInterlude ? 1 : moonAmount(zoom, this.fit)) : 0;
     // (the light page shows the wash a little softer than the dark one: `NIGHT.lightGain`)
     const shown = this.nightNow * (this.theme.scheme === "dark" ? 1 : NIGHT.lightGain);
     this.globe.setNight(shown, ns[0], ns[1], ns[2]);
