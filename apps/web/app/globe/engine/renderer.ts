@@ -59,7 +59,7 @@ import { Grace } from "./grace";
 import { IdleSpin, SPIN, SPIN_DEFAULTS, edgeSpeed, pacedByRotation, spinBlock, spinFrameDue, spinFramePeriod, type SpinContext } from "./idle-spin";
 import { CINEMATIC } from "./cinematic";
 import { INTERLUDE_STATE_EVENT, interludeLook, type InterludeStateDetail } from "../interlude";
-import { blendPose, flightOffsetShare, flightPose } from "./flight";
+import { blendPose, flightOffsetShare, flightPose, type FlightPose } from "./flight";
 import { NIGHT, SURFACE, surfaceCoverage, surfaceFade } from "./surface";
 import { landingScale, liftFor, placeAbove, type Placement } from "./lift";
 import { routeLift } from "./view";
@@ -159,8 +159,8 @@ export interface FlyOptions {
   beyondLimit?: boolean;
 }
 
-/** How long the caption stays away for an interlude asked for while it was off the stage, ms (`GlobeRenderer.wantInterlude`). */
-const EGG_DIRECT_MS = 6000;
+/** How long the camera takes to glide from where it was into the interlude's flight, when it is asked for away from the display mode, ms (`GlobeRenderer.playInterludeNow`). */
+const CAMERA_INTRO_MS = 2200;
 
 export class GlobeRenderer {
   readonly canvas: HTMLCanvasElement;
@@ -1842,7 +1842,7 @@ export class GlobeRenderer {
   private ringPresence(): number {
     const a = this.textFits ? ringAlpha(this.view.zoom, this.fit, this.minZoom) : 0;
     // (and it is out for the whole of the cinematic interlude, while the globe is pulled back: `CaptionLayer.ringShare`)
-    const share = this.ringCut || this.eggPending ? 0 : (this.caption?.ringShare() ?? 1);
+    const share = this.ringCut ? 0 : (this.caption?.ringShare() ?? 1);
     return (this.showcaseActive ? a * (1 - this.lod.overlayAlpha) : a) * share;
   }
 
@@ -1860,44 +1860,33 @@ export class GlobeRenderer {
   }
 
   /**
-   * The visitor asked for the interlude and the caption is not on the stage: it will not be shown (no entrance, no ring) only to be taken away again. It stays away until the camera is home and the
-   * interlude can begin (`CaptionLayer.playEggDirect`), for `EGG_DIRECT_MS` at most, after which the usual showing comes in and the interlude follows it.
+   * The visitor asked for the interlude and the caption is not on the stage (a zoomed or turned globe: the home screen was put away): the interlude begins NOW, from wherever the camera is.
+   * The page's own camera goes home at once (the flight ends on it), the caption comes onto the stage in the interlude with its rows already gone (`CaptionLayer.playEggDirect`: no
+   * entrance, no ring), and the camera drawn glides from where it was into the flight (`camIntro`, in `syncCamera`), so nothing of the display mode is passed through. False while the
+   * interlude is not ready (its word is being made: the caller asks again).
    */
-  wantInterlude(): void {
-    this.eggPending = performance.now() + EGG_DIRECT_MS;
-  }
-  private eggPending = 0;
-  private eggPoll = 0;
-
-  /** Show the caption, or begin the interlude directly when it is what was asked for (`wantInterlude`); false while it waits for the interlude to be ready. */
-  private showCaption(now: number): boolean {
+  playInterludeNow(): boolean {
     const caption = this.caption;
-    if (!caption) return false;
-    if (this.eggPending) {
-      if (now < this.eggPending) {
-        if (caption.playEggDirect(now)) {
-          this.eggPending = 0;
-          return true;
-        }
-        if (!this.eggPoll) {
-          this.eggPoll = window.setTimeout(() => {
-            this.eggPoll = 0;
-            if (!this.disposed) this.guardCaption(performance.now());
-          }, 120);
-        }
-        return false;
-      }
-      this.eggPending = 0;
-    }
-    caption.show(now);
+    if (!caption || !this.showcaseActive || !this.sized || this.reduced || this.selected !== null || this.insetTarget !== 0 || !caption.canPlayEggNow()) return false;
+    const now = performance.now();
+    const v = this.drawView();
+    const b = viewBasis(v, this.bufH * this.pixel);
+    const from = flightPose(1, { lon: v.lon, lat: v.lat, alt: b.d - 1, roll: v.roll ?? 0 });
+    if (!caption.playEggDirect(now)) return false;
+    this.camIntro = { from, t0: now };
+    this.flight = null;
+    this.velocity = STILL;
+    this.latSnap = null;
+    this.view = this.clampView({ lon: this.view.lon, lat: 0, zoom: this.minZoom });
+    this.captionOn = true;
+    this.showcaseOn = true;
+    this.applyShowcase();
+    this.noteChange();
+    this.requestRender();
     return true;
   }
-
-  /** The visitor asked for the interlude from a zoomed or turned globe: the camera goes home now, to the world view at the equator. */
-  goHome(): void {
-    if (this.selected !== null || this.insetTarget !== 0) return;
-    this.flyTo({ zoom: this.minZoom, lat: 0 });
-  }
+  /** The camera the interlude began from (`playInterludeNow`) and when: the camera drawn glides from it into the flight over `CAMERA_INTRO_MS`. */
+  private camIntro: { from: FlightPose; t0: number } | null = null;
 
   /** The visitor asks for the cinematic interlude (the search palette's entry): false when it cannot be played now. */
   playInterlude(): boolean {
@@ -2123,8 +2112,8 @@ export class GlobeRenderer {
     }
     if (this.latSnap || this.flight !== null) return; // (the glide, or somebody else's flight, is under way: wait for it)
     if (inBand(lat)) {
-      if (!this.showCaption(now)) return;
       this.captionOn = true;
+      caption.show(now);
       this.requestRender();
       return;
     }
@@ -2178,6 +2167,15 @@ export class GlobeRenderer {
     // (a flight cut short glides from where it is to the page's own camera, which is the flight's end: its pose at 1)
     const cut = pose ? (this.caption?.flightCut() ?? 0) : 0;
     if (pose && cut > 0) pose = blendPose(pose, flightPose(1, end), cut);
+    if (this.camIntro) {
+      // asked for away from the display mode: the camera drawn glides from where it was into the flight (the page's own camera is home already)
+      const k = Math.min(1, (performance.now() - this.camIntro.t0) / CAMERA_INTRO_MS);
+      if (k >= 1) this.camIntro = null;
+      else {
+        pose = blendPose(this.camIntro.from, pose ?? flightPose(1, end), k * k * (3 - 2 * k));
+        this.requestRender();
+      }
+    }
     this.flying = pose !== null;
     // what the rest of the frame reads: the camera's distance from the centre, the longitude and latitude it is over, and the zoom that distance is
     let d = b.d;

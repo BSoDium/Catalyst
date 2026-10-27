@@ -8,9 +8,6 @@ export const PREPARE_INTERLUDE_EVENT = "site:prepare-interlude";
 /** The interlude needs the full hero (the caption), which a gesture on the globe put away: whoever holds the hero brings it back. */
 export const RESTORE_HERO_EVENT = "site:restore-hero";
 
-/** The interlude was asked for from a zoomed or turned globe: the globe goes home now (the hero brings the full home screen back when it is there). */
-export const GO_HOME_EVENT = "site:go-home";
-
 export interface PlayInterludeRequest {
   /** Set by the globe that took the request. */
   handled: boolean;

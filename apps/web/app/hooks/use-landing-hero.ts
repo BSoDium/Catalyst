@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { GO_HOME_EVENT, INTERLUDE_STATE_EVENT, RESTORE_HERO_EVENT, type CoverBlock, type InterludeStateDetail, type GlobeShowcase, type GlobeSignal, type GlobeViewState } from "~/globe";
+import { INTERLUDE_STATE_EVENT, RESTORE_HERO_EVENT, type CoverBlock, type InterludeStateDetail, type GlobeShowcase, type GlobeSignal, type GlobeViewState } from "~/globe";
 import { cameBackHome } from "~/lib/hero-rest";
 import { createHeroMachine, HERO_IDLE_MS, isWorldView, showcaseOf, type HeroMachine } from "~/lib/hero-machine";
 
@@ -81,7 +81,7 @@ export function useLandingHero(open: boolean): LandingHero {
     homeWanted.current = false;
     machine.interact();
   }, [machine]);
-  // The interlude was asked for from a zoomed globe: the globe is on its way home, and the full hero comes back as it reaches the world view (not after the idle delay).
+  // The interlude was asked for from a zoomed globe: its camera goes home, and the full hero comes back as it reaches the world view (not after the idle delay).
   const homeWanted = useRef(false);
   const onView = useCallback(
     (view: GlobeViewState) => {
@@ -140,11 +140,8 @@ export function useLandingHero(open: boolean): LandingHero {
   useEffect(() => {
     const restore = () => {
       machine.restore();
-      // (zoomed in, but no place or entry open: the globe goes home now, once per request)
-      if (!zoomAtWorld.current && !openRef.current && !homeWanted.current) {
-        homeWanted.current = true;
-        window.dispatchEvent(new Event(GO_HOME_EVENT));
-      }
+      // (zoomed in, but no place or entry open: the interlude takes the camera home, and the hero returns with it)
+      if (!zoomAtWorld.current && !openRef.current) homeWanted.current = true;
     };
     window.addEventListener(RESTORE_HERO_EVENT, restore);
     return () => window.removeEventListener(RESTORE_HERO_EVENT, restore);

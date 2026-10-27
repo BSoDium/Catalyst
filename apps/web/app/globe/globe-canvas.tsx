@@ -17,7 +17,7 @@ import { stressRoutes } from "./paths/stress";
 import { applyDebugLevels } from "./engine/palette";
 import { applySpinFlags } from "./engine/idle-spin";
 import { applySkyFlags } from "./engine/sky";
-import { GO_HOME_EVENT, PLAY_INTERLUDE_EVENT, RESTORE_HERO_EVENT, PREPARE_INTERLUDE_EVENT, type PlayInterludeRequest } from "./interlude";
+import { PLAY_INTERLUDE_EVENT, RESTORE_HERO_EVENT, PREPARE_INTERLUDE_EVENT, type PlayInterludeRequest } from "./interlude";
 import { applyRingFlags, ringText } from "./engine/ring";
 import { applyMoonFlags } from "./engine/moon";
 import { applyShowcaseFlags } from "./engine/caption";
@@ -207,11 +207,12 @@ export default function GlobeCanvas({
       clear();
       if (handle.playInterlude()) return;
       // (the caption is not on the stage: a gesture had put the home screen away. It comes back now, and the globe goes home with it: the visitor asked for the interlude, not for the next time it is at rest)
-      handle.wantInterlude();
       window.dispatchEvent(new Event(RESTORE_HERO_EVENT));
       let tries = 0;
       held = window.setInterval(() => {
-        if (handleRef.current?.playInterlude() || ++tries > 60) clear();
+        const h = handleRef.current;
+        // (the usual way from the display mode; else from wherever the camera is, once the interlude is ready: it was armed by the first try)
+        if (h?.playInterlude() || h?.playInterludeNow() || ++tries > 60) clear();
       }, 250);
     };
     const onPrepare = () => {
@@ -219,13 +220,10 @@ export default function GlobeCanvas({
     };
     window.addEventListener(PLAY_INTERLUDE_EVENT, onPlay);
     window.addEventListener(PREPARE_INTERLUDE_EVENT, onPrepare);
-    const onGoHome = () => handleRef.current?.goHome();
-    window.addEventListener(GO_HOME_EVENT, onGoHome);
     window.addEventListener("pointerdown", clear, { passive: true, capture: true });
     return () => {
       clear();
       window.removeEventListener("pointerdown", clear, { capture: true });
-      window.removeEventListener(GO_HOME_EVENT, onGoHome);
       window.removeEventListener(PLAY_INTERLUDE_EVENT, onPlay);
       window.removeEventListener(PREPARE_INTERLUDE_EVENT, onPrepare);
     };
