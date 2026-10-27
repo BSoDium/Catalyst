@@ -107,14 +107,6 @@ const smooth = (a: number, b: number, x: number) => {
   return t * t * (3 - 2 * t);
 };
 
-/** How much of the planet's disc, seen from `d` earth radii, is clear of a direction at `cos` from its centre: 1 well outside its limb, 0 behind it, a smoothstep over a hair of its width. Pure. */
-export function planetClear(cosFromCentre: number, d: number): number {
-  if (cosFromCentre <= 0) return 1;
-  const limb = 1 / Math.max(1.0001, d);
-  const sin = Math.sqrt(Math.max(0, 1 - cosFromCentre * cosFromCentre));
-  return smooth(limb * (1 - FLARE.limbSoft), limb * (1 + FLARE.limbSoft), sin);
-}
-
 /**
  * How much of the sun's HALO the planet leaves, 1 until the sun's blob first touches the limb and 0 once the sun's centre is `SUN.fade.from` disc radii behind it, a smoothstep over the distance between. `riseDisc` is the sun's
  * distance outside the limb in disc radii (`sunRise` in radians, times the focal length, over the disc's radius on the buffer); Infinity when nothing is in the way. Pure.
@@ -139,8 +131,8 @@ export function sunCrescent(riseDisc: number): { area: number; shift: number; wi
 }
 
 /**
- * How far the sun's centre is outside the planet's limb, in radians: positive outside, negative behind it, +Infinity when the sun is on the far side of the view axis (nothing of the planet is in its way). The blur's core shrinks
- * to fit it (`SUN.core`). `cosFromCentre` and `d` are as in `planetClear`. Pure.
+ * How far the sun's centre is outside the planet's limb, in radians: positive outside, negative behind it, +Infinity when the sun is on the far side of the view axis (nothing of the planet is in its way). The halo's fade and the crescent (`haloClear`, `sunCrescent`) are
+ * measured from it. `cosFromCentre` is the cosine of the angle between the sun's direction and the line from the camera through the planet's middle, `d` the camera's distance in earth radii. Pure.
  */
 export function sunRise(cosFromCentre: number, d: number): number {
   if (cosFromCentre <= 0) return Infinity;

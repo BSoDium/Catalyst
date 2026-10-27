@@ -88,8 +88,8 @@ export const SUN = {
   ring: { at: 8.5, inner: 0.3, outer: 2.6, steps: 5, dark: 0.16, light: 0.04 },
   /** The disc's limb is a step down from its centre, from this share of its radius. */
   limb: 0.88,
-  /** Tones, shares from the page's colour to the ink: the disc, its limb, and the halo's `glow` where it starts, at the disc's edge (nearly the disc's own on the dark page). */
-  dark: { disc: 1, limb: 0.8, glow: 0.72 },
+  /** The halo's tone, a share from the page's colour to the ink, where it starts, at the disc's edge (the dark page's disc is the blur: `core`). */
+  dark: { glow: 0.72 },
   /**
    * The dark page's sun is a BLUR, not a disc (owner, 2026-10-27: "you can't actually distinguish the disk"): a blob that falls off smoothly from the sun's centre, as a gaussian that is half as bright at `half` disc radii (the size the old
    * disc was) and is nothing by `radius` (a flat plateau of white reads as an octagon on a few pixels: it has none), in the warm light's colours, with no edge of its own. It is its OWN layer, over the planet (a lens's bloom is not hidden by
@@ -158,8 +158,6 @@ export const FLARE = {
   edgeTo: 1.05,
   midFrom: 0.08,
   midTo: 0.3,
-  /** The planet's limb softness for the flare's occlusion, a share of its angular radius. */
-  limbSoft: 0.04,
 } as const;
 
 /**

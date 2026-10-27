@@ -148,7 +148,7 @@ export class GlobeScene {
     this.mistMesh.visible = false;
     this.mistMesh.frustumCulled = false;
     this.add(this.mistMesh, 5);
-    // (the twilight: a faint warm band just past the lit side's edge, over the mist's veil)
+    // (the twilight: a faint red tint just past the lit side's edge, over the mist's veil)
     const twilightBand = new Mesh(skin, this.twilight);
     twilightBand.frustumCulled = false;
     this.add(twilightBand, 5.05);
@@ -239,7 +239,7 @@ export class GlobeScene {
     this.surface.uniforms.uTone1!.value.setRGB(...mixTo(tones[1]!));
     this.surface.uniforms.uTone2!.value.setRGB(...mixTo(tones[2]!));
     this.atmosphere.uniforms.uCover!.value = t.scheme === "dark" ? 0.4 : 0.26;
-    // the rim: a soft grey close to the page's colour (the haze and the lining's base),
+    // the rim: a soft grey close to the page's colour (the haze and the lining's base)
     this.rim.uniforms.uColor!.value.setRGB(...mixTo(t.scheme === "dark" ? 0.45 : 0.3));
     this.rim.uniforms.uCover!.value = RIM.cover[t.scheme === "dark" ? "dark" : "light"];
     this.rimGround.uniforms.uColor!.value.setRGB(...mixTo(t.scheme === "dark" ? 0.45 : 0.3));

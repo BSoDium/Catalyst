@@ -26,7 +26,7 @@ const VERTEX = /* glsl */ `
 const f = (n: number) => n.toFixed(3);
 
 const FRAGMENT = /* glsl */ `
-  uniform vec2 uCentre; uniform float uR; uniform vec3 uBg; uniform vec3 uInk; uniform float uAmt; uniform float uLight; uniform float uClear; uniform float uHalo;
+  uniform vec2 uCentre; uniform float uR; uniform vec3 uBg; uniform vec3 uInk; uniform float uAmt; uniform float uLight; uniform float uHalo;
   ${WARM_GLSL}
   const float BAYER[16] = float[16](${BAYER4.map((n) => `${n}.0`).join(", ")});
   void main() {
@@ -74,7 +74,6 @@ const material = () =>
       uInk: { value: new Color() },
       uAmt: { value: 1 },
       uLight: { value: 0 },
-      uClear: { value: 1 },
       uHalo: { value: 1 },
       uSet: { value: 0 },
     },
@@ -99,7 +98,7 @@ const BLOB_VERTEX = /* glsl */ `
 `;
 
 const BLOB_FRAGMENT = /* glsl */ `
-  uniform vec2 uCentre; uniform float uU; uniform float uI; uniform float uAmt; 
+  uniform vec2 uCentre; uniform float uU; uniform float uI; uniform float uAmt;
   ${WARM_GLSL}
   void main() {
     float rr = length(gl_FragCoord.xy - uCentre) / uU;
@@ -133,12 +132,10 @@ export interface SunFrame {
   /** The camera's vertical focal length in buffer pixels, and how much of the sun the zoom lets through, 0..1. */
   focal: number;
   amount: number;
-  /** How much of the sun the planet leaves (`planetClear`, engine/sun-flare.ts), 0..1; the disc itself is hidden by the depth test, the lens flare by this. Absent: all of it. */
-  visible?: number;
   /** Where the planet's centre is on the buffer (the crescent's centre of mass is on the line from it through the sun). Absent: straight below the sun. */
   px?: number;
   py?: number;
-  /** How far the sun's centre is outside the planet's limb, radians (`sunRise`, engine/sun-flare.ts): the blur's core shrinks to fit it. Absent: nothing in the way. */
+  /** How far the sun's centre is outside the planet's limb, radians (`sunRise`, engine/sun-flare.ts): what is left of the sun and its halo are measured from it. Absent: nothing in the way. */
   rise?: number;
 }
 
@@ -235,8 +232,6 @@ export class SunLayer {
     u.uR!.value = p.r;
     u.uExt!.value = p.r * (1 + SUN.halo) + 1;
     u.uAmt!.value = f.amount;
-    // the ring of light goes with the planet's cover as the halo does
-    u.uClear!.value = cres.area;
     u.uHalo!.value = halo;
     u.uSet!.value = 1 - halo;
     return true;

@@ -164,19 +164,17 @@ export function atmosphereMaterial(): ShaderMaterial {
  * radius, or in front of the planet), and `rimSide(n)` the cosine, for the limb point `n`, of the angle to the sun's side of the outline. `uSunN` is the sun's direction in the earth's frame.
  */
 const RIM_SUN_GLSL = /* glsl */ `
-  float rimAligned() {
+  // how far the sun's centre is outside the limb on the picture, radians (negative: behind it), and the width of the alignment
+  float rimAbove() {
     vec3 axis = normalize(-cameraPosition);
-    float sunAng = acos(clamp(dot(uSunN, axis), -1.0, 1.0));
-    float limbAng = asin(clamp(1.0 / length(cameraPosition), 0.0, 1.0));
-    return 1.0 - smoothstep(0.0, ${RIM.align.toFixed(2)} * limbAng, abs(sunAng - limbAng));
+    return acos(clamp(dot(uSunN, axis), -1.0, 1.0)) - asin(clamp(1.0 / length(cameraPosition), 0.0, 1.0));
   }
+  float rimWidth() { return ${RIM.align.toFixed(2)} * asin(clamp(1.0 / length(cameraPosition), 0.0, 1.0)); }
+  float rimAligned() { return 1.0 - smoothstep(0.0, rimWidth(), abs(rimAbove())); }
   // the same, for the GROUND: only while the sun is above the horizon (outside the limb), whole a little way out and zero where its centre is on the limb, so a set sun lights none of the surface
   float rimLit() {
-    vec3 axis = normalize(-cameraPosition);
-    float sunAng = acos(clamp(dot(uSunN, axis), -1.0, 1.0));
-    float limbAng = asin(clamp(1.0 / length(cameraPosition), 0.0, 1.0));
-    float w = ${RIM.align.toFixed(2)} * limbAng;
-    float above = sunAng - limbAng;
+    float w = rimWidth();
+    float above = rimAbove();
     return smoothstep(0.0, ${RIM.ground.peak.toFixed(2)} * w, above) * (1.0 - smoothstep(${RIM.ground.peak.toFixed(2)} * w, w, above));
   }
   float rimSide(vec3 n) {

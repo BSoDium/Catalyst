@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { SUN } from "./moon";
-import { flarePlace, haloClear, planetClear, sunCrescent, sunRise, type FlareFrame } from "./sun-flare";
+import { flarePlace, haloClear, sunCrescent, sunRise, type FlareFrame } from "./sun-flare";
 
 const frame = (over: Partial<FlareFrame> = {}): FlareFrame => ({ bufW: 400, bufH: 260, x: 300, y: 80, ahead: true, amount: 1, visible: 1, ...over });
 
@@ -27,22 +27,6 @@ describe("flarePlace", () => {
   });
   it("scales with how much of the sun the planet leaves", () => {
     expect(flarePlace(frame({ visible: 0.5 }))!.str).toBeCloseTo(flarePlace(frame())!.str * 0.5, 5);
-  });
-});
-
-describe("planetClear", () => {
-  it("is 1 when the sun is on the far side of the view axis, or well outside the limb", () => {
-    expect(planetClear(-0.5, 4)).toBe(1);
-    expect(planetClear(Math.cos(0.6), 4)).toBe(1);
-  });
-  it("is 0 behind the planet's disc", () => {
-    expect(planetClear(1, 4)).toBe(0);
-    expect(planetClear(Math.cos(0.1), 4)).toBe(0);
-  });
-  it("has the limb at the planet's angular radius", () => {
-    const limb = Math.asin(1 / 4);
-    expect(planetClear(Math.cos(limb), 4)).toBeGreaterThan(0.4);
-    expect(planetClear(Math.cos(limb), 4)).toBeLessThan(0.6);
   });
 });
 
