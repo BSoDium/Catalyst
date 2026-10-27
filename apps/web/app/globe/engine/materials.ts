@@ -40,7 +40,7 @@ export function lineMaterial(coverage: number, stipple = 0): ShaderMaterial {
         // the night: the colour goes towards the page's in whole steps (a flat grey per step)
         float dark = floor(washOf(normalize(vDir), uSunN, uNight, uFlip) * ${NIGHT.lineSteps.toFixed(1)} + 0.5) / ${NIGHT.lineSteps.toFixed(1)};
         if (uStipple > 0.0 && mod(floor(gl_FragCoord.x) + floor(gl_FragCoord.y), uStipple) > 0.5) discard;
-        gl_FragColor = vec4(mix(mix(uColor, uAlt, uAltAmt), uNightTo, dark * ${NIGHT.lineDim.toFixed(2)}), 1.0);
+        gl_FragColor = vec4(mix(mix(uColor, uAlt, uAltAmt), uNightTo, dark * mix(${NIGHT.lineDim.toFixed(2)}, ${NIGHT.lineDimLight.toFixed(2)}, uFlip)), 1.0);
       }
     `,
   });
@@ -57,18 +57,24 @@ export function occluderMaterial(): ShaderMaterial {
     //  - the SEA near the limb on the lit side has a thin dithered glow (the atmosphere), in the same ink, thinning to nothing.
     // The dither is the one the lines use (`dither4` on the buffer's own pixels, which are the art's). `uLand` is how much of all this is there (0: none, the
     // globe as it always was).
-    uniforms: { uColor: { value: new Color() }, uFill: { value: new Color() }, uLand: { value: 0 }, uLandMap: { value: null }, uSun: { value: [0, 0, 1] } },
+    uniforms: { uColor: { value: new Color() }, uFill: { value: new Color() }, uLand: { value: 0 }, uLandMap: { value: null }, uSun: { value: [0, 0, 1] }, uNight: { value: 0 }, uSunN: { value: [0, 0, 1] }, uFlip: { value: 0 } },
     vertexShader: /* glsl */ `
       varying vec3 vDir;
       void main() { vDir = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
     `,
     fragmentShader: /* glsl */ `
       uniform vec3 uColor; uniform vec3 uFill; uniform float uLand; uniform sampler2D uLandMap; uniform vec3 uSun;
+      uniform float uNight; uniform vec3 uSunN; uniform float uFlip;
       varying vec3 vDir;
       ${DITHER_GLSL}
+      ${NIGHT_GLSL}
       bool lit(float coverage) { return dither4(floor(gl_FragCoord.xy)) < coverage; }
       void main() {
         vec3 col = uColor;
+        // the light page's shadow: the sea on the night side is darkened in flat steps, and the step between two is the art's ordered dither (a stipple across the terminator, as the land has)
+        float sv = clamp(washOf(normalize(vDir), uSunN, uNight, uFlip), 0.0, 1.0) * ${NIGHT.lineSteps.toFixed(1)};
+        float shadow = (floor(sv) + (fract(sv) > dither4(floor(gl_FragCoord.xy)) ? 1.0 : 0.0)) / ${NIGHT.lineSteps.toFixed(1)};
+        col *= 1.0 - ${NIGHT.shadow.toFixed(2)} * uFlip * shadow;
         if (uLand > 0.001) {
           vec3 n = normalize(vDir);
           float d = dot(n, uSun);
@@ -226,11 +232,15 @@ export function surfaceMaterial(): ShaderMaterial {
         float v = texture2D(uEarth, uv).r;
         // the night: the stipple thins and the ground steps to its lightest tone, with the light (engine/surface.ts, NIGHT)
         float w = washOf(n, uSunN, uNight, uFlip);
-        ditherDiscard(uAmt * mix(1.0, ${NIGHT.landMin.toFixed(2)}, w));
-        v += w * ${NIGHT.shift.toFixed(2)};
+        // (dark page: the stipple thins and the ground steps to its lightest tone; light page, uFlip: it thickens and steps to its darkest)
+        ditherDiscard(uAmt * mix(1.0, mix(${NIGHT.landMin.toFixed(2)}, ${NIGHT.landMax.toFixed(2)}, uFlip), w));
+        v += w * ${NIGHT.shift.toFixed(2)} * (1.0 - 2.0 * uFlip);
         // the land is dark, middle or light ground (thresholds on the picture's brightness, which the picture lifts to 0.2 and over)
         vec3 tone = v < ${SURFACE.cuts[0].toFixed(2)} ? uTone0 : (v < ${SURFACE.cuts[1].toFixed(2)} ? uTone1 : uTone2);
-        gl_FragColor = vec4(mix(uBg, tone, uStrength), 1.0);
+        // the light page's shadow: the ground on the night side is darkened with the sea, in the same flat steps and the same dither between them
+        float sv = clamp(w, 0.0, 1.0) * ${NIGHT.lineSteps.toFixed(1)};
+        float shade = 1.0 - ${NIGHT.shadow.toFixed(2)} * uFlip * (floor(sv) + (fract(sv) > dither4(floor(gl_FragCoord.xy)) ? 1.0 : 0.0)) / ${NIGHT.lineSteps.toFixed(1)};
+        gl_FragColor = vec4(mix(uBg, tone, uStrength) * shade, 1.0);
       }
     `,
     side: FrontSide,
@@ -434,7 +444,7 @@ export function silhouetteMaterial(): ShaderMaterial {
       ${NIGHT_GLSL}
       void main() {
         float dark = floor(washOf(normalize(vDir), uSunN, uNight, uFlip) * ${NIGHT.lineSteps.toFixed(1)} + 0.5) / ${NIGHT.lineSteps.toFixed(1)};
-        gl_FragColor = vec4(mix(uColor, uNightTo, dark * ${NIGHT.limbDim.toFixed(2)}), 1.0);
+        gl_FragColor = vec4(mix(uColor, uNightTo, dark * mix(${NIGHT.limbDim.toFixed(2)}, ${NIGHT.limbDimLight.toFixed(2)}, uFlip)), 1.0);
       }`,
     depthTest: false,
   });

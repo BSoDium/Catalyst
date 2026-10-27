@@ -952,7 +952,7 @@ export class CaptionLayer {
     this.accentSide.value = [...c.accentSide];
     this.edgeLayer.value = this.sideMode === "edge" ? (CAPTION.colors.edgeSlices - 0.5) / (this.slices - 1) : 0;
     this.dimColor.value = [...theme.background];
-    this.nightTo.value = [...theme.background];
+    this.nightTo.value = [...(theme.scheme === "dark" ? theme.background : theme.ink)];
     this.nightFlip.value = theme.scheme === "dark" ? 0 : 1;
     const dark = 0.2126 * theme.background[0] + 0.7152 * theme.background[1] + 0.0722 * theme.background[2] < 0.5;
     // the word is colourless: each surface is a step from the page's colour towards the ink (`CINEMATIC.tone`)

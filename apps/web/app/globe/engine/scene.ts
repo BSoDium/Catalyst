@@ -202,7 +202,9 @@ export class GlobeScene {
     this.landFill = [0, 1, 2].map((i) => t.background[i]! + (t.ink[i]! - t.background[i]!) * LAND_SHARE) as unknown as Rgb;
     this.occluder.uniforms.uFill!.value.setRGB(...this.landFill);
     this.borders.uniforms.uAlt!.value.setRGB(...t.background);
-    for (const m of [this.graticule, this.borders, this.coast]) m.uniforms.uNightTo!.value.setRGB(...t.background);
+    // (what the night does to the lines goes the page's way: towards the page on the dark one, towards the ink on the light one)
+    const nightTo = t.scheme === "dark" ? t.background : t.ink;
+    for (const m of [this.graticule, this.borders, this.coast]) m.uniforms.uNightTo!.value.setRGB(...nightTo);
     // the accent, as the page has it in this scheme (app.css `--palette-blue`; the lighter step on the dark page)
     if (t.scheme === "dark") this.city.uniforms.uColor!.value.setRGB(0.29, 0.64, 0.96);
     else this.city.uniforms.uColor!.value.setRGB(0, 0.47, 0.84);
@@ -225,13 +227,13 @@ export class GlobeScene {
     this.borderLevelNow = -1;
     this.coast.uniforms.uColor!.value.setRGB(...t.coast);
     this.silhouette.uniforms.uColor!.value.setRGB(...t.outline);
-    this.silhouette.uniforms.uNightTo!.value.setRGB(...t.background);
+    this.silhouette.uniforms.uNightTo!.value.setRGB(...nightTo);
     this.routes.applyTheme(t);
     this.sky?.applyTheme(t);
     this.sun?.applyTheme(t);
     this.moon?.applyTheme(t);
-    // the light page is the party with the main lights on: the sun's side is washed out, not the dark one (`washOf`)
-    for (const m of [this.surface, this.graticule, this.borders, this.coast, this.silhouette, this.atmosphere, this.mist]) m.uniforms.uFlip!.value = t.scheme === "dark" ? 0 : 1;
+    // the light page's night thickens (`uFlip`: the stipple, the tones, in the surface's shader) where the dark page's fades
+    for (const m of [this.occluder, this.surface, this.graticule, this.borders, this.coast, this.silhouette, this.atmosphere, this.mist]) m.uniforms.uFlip!.value = t.scheme === "dark" ? 0 : 1;
   }
 
   /**
@@ -276,7 +278,7 @@ export class GlobeScene {
    * frame. The land's ground thins in the dither and steps to its faintest tone, and the lines and the planet's own outline go towards the page's colour in grey steps, on the dark side.
    */
   setNight(night: number, x: number, y: number, z: number) {
-    for (const m of [this.surface, this.graticule, this.borders, this.coast, this.silhouette, this.atmosphere, this.mist]) {
+    for (const m of [this.occluder, this.surface, this.graticule, this.borders, this.coast, this.silhouette, this.atmosphere, this.mist]) {
       m.uniforms.uNight!.value = night;
       m.uniforms.uSunN!.value = [x, y, z];
     }
