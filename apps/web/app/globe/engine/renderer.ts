@@ -70,7 +70,7 @@ import { SHOWCASE_STATE, bandLat, inBand, shellWindowFactor, type CaptionContent
 import { CAP_HEIGHT_EM, ringAlpha, ringFloorZoom, ringRoomRadius, RING_STATE } from "./ring";
 import { RingLayer } from "./ring-layer";
 import { GlobeScene } from "./scene";
-import { haloClear, planetClear } from "./sun-flare";
+import { haloClear, planetClear, sunRise } from "./sun-flare";
 import { MOON, SUN, inclinationFor, litTurn, moonAmount, orbitAngle, rollFor, sunDirection, toEarthFrame, toRad, type Vec3 } from "./moon";
 import type { MoonSample } from "./moon-layer";
 import { CAPTION, ENERGY, INSET_EASE, CAPTION_LOAD, RING, SKY, START_VIEW, TUNING } from "./tuning";
@@ -1340,6 +1340,7 @@ export class GlobeRenderer {
       visible: planetClear(-v.z, d),
       // (and how much of the wide halo: it fades with the whole sunset, not in a hair)
       halo: haloClear(-v.z, d, (SUN.angularDeg * Math.PI / 180) * SUN.halo),
+      rise: sunRise(-v.z, d),
     });
   }
 

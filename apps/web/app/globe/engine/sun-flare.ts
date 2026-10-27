@@ -126,6 +126,15 @@ export function haloClear(cosFromCentre: number, d: number, reachRad: number): n
   return smooth(-SUN.fade.from * reachRad, SUN.fade.to * reachRad, outside);
 }
 
+/**
+ * How far the sun's centre is outside the planet's limb, in radians: positive outside, negative behind it, +Infinity when the sun is on the far side of the view axis (nothing of the planet is in its way). The blur's core shrinks
+ * to fit it (`SUN.core`). `cosFromCentre` and `d` are as in `planetClear`. Pure.
+ */
+export function sunRise(cosFromCentre: number, d: number): number {
+  if (cosFromCentre <= 0) return Infinity;
+  return Math.acos(Math.min(1, cosFromCentre)) - Math.asin(Math.min(1, 1 / Math.max(1.0001, d)));
+}
+
 /** The flare for this frame: the sun's place (a whole pixel's centre), the middle of the picture, the unit its sizes are shares of, and its strength; or null when there is none. Pure. */
 export function flarePlace(fr: FlareFrame): { sx: number; sy: number; mx: number; my: number; unit: number; str: number; r: number } | null {
   if (!fr.ahead || fr.amount <= 0.01 || fr.visible <= 0.01) return null;

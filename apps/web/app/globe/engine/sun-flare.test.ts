@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { SUN } from "./moon";
-import { flarePlace, haloClear, planetClear, type FlareFrame } from "./sun-flare";
+import { flarePlace, haloClear, planetClear, sunRise, type FlareFrame } from "./sun-flare";
 
 const frame = (over: Partial<FlareFrame> = {}): FlareFrame => ({ bufW: 400, bufH: 260, x: 300, y: 80, ahead: true, amount: 1, visible: 1, ...over });
 
@@ -74,5 +74,17 @@ describe("haloClear", () => {
       expect(v).toBeLessThanOrEqual(last + 1e-9);
       last = v;
     }
+  });
+});
+
+describe("sunRise", () => {
+  const limb = Math.asin(1 / 4);
+  it("is infinite when the sun is on the far side of the view axis", () => {
+    expect(sunRise(-0.2, 4)).toBe(Infinity);
+  });
+  it("is the angle outside the limb: 0 on it, positive outside, negative behind", () => {
+    expect(sunRise(Math.cos(limb), 4)).toBeCloseTo(0, 6);
+    expect(sunRise(Math.cos(limb + 0.1), 4)).toBeCloseTo(0.1, 6);
+    expect(sunRise(Math.cos(limb - 0.1), 4)).toBeCloseTo(-0.1, 6);
   });
 });

@@ -26,7 +26,7 @@ const VERTEX = /* glsl */ `
 const f = (n: number) => n.toFixed(3);
 
 const FRAGMENT = /* glsl */ `
-  uniform vec2 uCentre; uniform float uR; uniform vec3 uBg; uniform vec3 uInk; uniform float uAmt; uniform float uLight; uniform float uClear; uniform float uHalo;
+  uniform vec2 uCentre; uniform float uR; uniform vec3 uBg; uniform vec3 uInk; uniform float uAmt; uniform float uLight; uniform float uClear; uniform float uHalo; uniform float uCore;
   ${WARM_GLSL}
   const float BAYER[16] = float[16](${BAYER4.map((n) => `${n}.0`).join(", ")});
   void main() {
@@ -47,10 +47,10 @@ const FRAGMENT = /* glsl */ `
       float th = (BAYER[c.y * 4 + c.x] + 0.5) / 16.0;
       ink = floor(t * ${f(SUN.haloSteps)} + th) / ${f(SUN.haloSteps)} * (uLight > 0.5 ? ${f(SUN.light.glow)} : ${f(SUN.dark.glow)});
       tone = ink;
-      // the dark page's sun is a blur, not a disc: a core, smooth, from the sun's white at the middle to the halo's own tone at its edge, with no edge of its own, dimming with the planet's cover
-      if (uLight < 0.5 && r < ${f(SUN.core.radius)}) {
-        float edgeTone = ${f(SUN.dark.glow)} * pow(1.0 - (${f(SUN.core.radius)} - 1.0) / ${f(SUN.halo)}, ${f(SUN.haloFall)});
-        float core = mix(edgeTone, 1.0, pow(1.0 - r / ${f(SUN.core.radius)}, ${f(SUN.core.fall)})) * mix(${f(SUN.core.dim)}, 1.0, uHalo);
+      // the dark page's sun is a blur, not a disc: a core, smooth, from the sun's white at the middle to the halo's own tone at its edge, with no edge of its own. It is at full strength until the limb reaches it, then it shrinks (uCore, in disc radii), round
+      if (uLight < 0.5 && r < uCore) {
+        float edgeTone = ${f(SUN.dark.glow)} * pow(max(0.0, 1.0 - (max(uCore, 1.0) - 1.0) / ${f(SUN.halo)}), ${f(SUN.haloFall)}) * uHalo;
+        float core = mix(edgeTone, 1.0, pow(1.0 - r / uCore, ${f(SUN.core.fall)}));
         if (core > ink) { ink = core; tone = core; }
       }
       if (r >= 1.0) {
@@ -82,6 +82,7 @@ const material = () =>
       uLight: { value: 0 },
       uClear: { value: 1 },
       uHalo: { value: 1 },
+      uCore: { value: SUN.core.radius },
       uSet: { value: 0 },
     },
     vertexShader: VERTEX,
@@ -107,6 +108,8 @@ export interface SunFrame {
   visible?: number;
   /** How much of the HALO the planet leaves (`haloClear`, engine/sun-flare.ts): the halo is wide, so its fade is long. Absent: all of it. */
   halo?: number;
+  /** How far the sun's centre is outside the planet's limb, radians (`sunRise`, engine/sun-flare.ts): the blur's core shrinks to fit it. Absent: nothing in the way. */
+  rise?: number;
 }
 
 /** The sun's disc radius on the buffer, px: a fixed angle at the camera's focal length, with a floor. */
@@ -161,6 +164,8 @@ export class SunLayer {
     // the ring of light is a lens flare too: it goes with the sun as the planet covers it
     u.uClear!.value = f.visible ?? 1;
     u.uHalo!.value = f.halo ?? 1;
+    // (the core's radius in disc radii: the sun's distance outside the limb, in the sun's own radius, and a little over; at most its full size)
+    u.uCore!.value = Math.min(SUN.core.radius, Math.max(0, ((f.rise ?? Infinity) * f.focal) / p.r + SUN.core.lead));
     u.uSet!.value = 1 - (f.halo ?? 1);
     return true;
   }

@@ -91,11 +91,11 @@ export const SUN = {
   /** Tones, shares from the page's colour to the ink: the disc, its limb, and the halo's `glow` where it starts, at the disc's edge (nearly the disc's own on the dark page). */
   dark: { disc: 1, limb: 0.8, glow: 0.72 },
   /**
-   * The dark page's sun is a BLUR, not a disc (owner, 2026-10-27: "you can't actually distinguish the disk, a round blob of light which is progressively getting dimmer"): the core is a blob of `radius` disc radii that falls
-   * smoothly from the sun's own white at the middle to the halo's own tone at its edge, as `(1 - r / radius)^fall`, with no edge of its own, and its light goes down with the planet's cover as the halo does (to `dim` of
-   * itself when the sun is gone behind the planet).
+   * The dark page's sun is a BLUR, not a disc (owner, 2026-10-27: "you can't actually distinguish the disk"): the core is a blob of up to `radius` disc radii that falls smoothly from the sun's own white at the middle to the halo's
+   * own tone at its edge, as `(1 - r / radius)^fall`, with no edge of its own. It is at full strength until the planet's limb reaches it (it does NOT dim early), and then it SHRINKS: its radius is the sun's distance
+   * outside the limb (plus `lead` disc radii: a little of it is left with the sun's centre on the limb), so the blob stays round, a smaller one, as the sun sets, and is gone once it has set.
    */
-  core: { radius: 2.4, fall: 1.6, dim: 0.35 },
+  core: { radius: 2.4, fall: 1.6, lead: 0.6 },
   /** The light page's sun is the glare that burns the colour away: only a ghost of a rim and a faint glow. */
   light: { rim: 0.16, glow: 0.18 },
   /**
