@@ -71,8 +71,10 @@ export function occluderMaterial(): ShaderMaterial {
       bool lit(float coverage) { return dither4(floor(gl_FragCoord.xy)) < coverage; }
       void main() {
         vec3 col = uColor;
-        // the light page's shadow: the sea on the night side is darkened, in flat steps (a staircase across the terminator)
-        col *= 1.0 - ${NIGHT.shadow.toFixed(2)} * uFlip * floor(washOf(normalize(vDir), uSunN, uNight, uFlip) * ${NIGHT.lineSteps.toFixed(1)} + 0.5) / ${NIGHT.lineSteps.toFixed(1)};
+        // the light page's shadow: the sea on the night side is darkened in flat steps, and the step between two is the art's ordered dither (a stipple across the terminator, as the land has)
+        float sv = clamp(washOf(normalize(vDir), uSunN, uNight, uFlip), 0.0, 1.0) * ${NIGHT.lineSteps.toFixed(1)};
+        float shadow = (floor(sv) + (fract(sv) > dither4(floor(gl_FragCoord.xy)) ? 1.0 : 0.0)) / ${NIGHT.lineSteps.toFixed(1)};
+        col *= 1.0 - ${NIGHT.shadow.toFixed(2)} * uFlip * shadow;
         if (uLand > 0.001) {
           vec3 n = normalize(vDir);
           float d = dot(n, uSun);
@@ -235,8 +237,9 @@ export function surfaceMaterial(): ShaderMaterial {
         v += w * ${NIGHT.shift.toFixed(2)} * (1.0 - 2.0 * uFlip);
         // the land is dark, middle or light ground (thresholds on the picture's brightness, which the picture lifts to 0.2 and over)
         vec3 tone = v < ${SURFACE.cuts[0].toFixed(2)} ? uTone0 : (v < ${SURFACE.cuts[1].toFixed(2)} ? uTone1 : uTone2);
-        // the light page's shadow: the ground on the night side is darkened with the sea, in the same flat steps
-        float shade = 1.0 - ${NIGHT.shadow.toFixed(2)} * uFlip * floor(w * ${NIGHT.lineSteps.toFixed(1)} + 0.5) / ${NIGHT.lineSteps.toFixed(1)};
+        // the light page's shadow: the ground on the night side is darkened with the sea, in the same flat steps and the same dither between them
+        float sv = clamp(w, 0.0, 1.0) * ${NIGHT.lineSteps.toFixed(1)};
+        float shade = 1.0 - ${NIGHT.shadow.toFixed(2)} * uFlip * (floor(sv) + (fract(sv) > dither4(floor(gl_FragCoord.xy)) ? 1.0 : 0.0)) / ${NIGHT.lineSteps.toFixed(1)};
         gl_FragColor = vec4(mix(uBg, tone, uStrength) * shade, 1.0);
       }
     `,

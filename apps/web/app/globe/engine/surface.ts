@@ -52,7 +52,7 @@ export const NIGHT = {
   captionDim: 0.3,
   /** How much of the wash the light page shows (the scale of `uNight`): a little under the dark page's, so the night half is never solid ink. */
   lightGain: 0.75,
-  /** The shadow of the night on the LIGHT page: the dark side, sea and ground alike, is darkened by this share at the darkest, in `lineSteps` flat steps (a staircase of greys across the terminator: no gradient, the art's own pixels). */
+  /** The shadow of the night on the LIGHT page: the dark side, sea and ground alike, is darkened by this share at the darkest, in `lineSteps` flat steps, the step between two taken by the art's ordered dither (a stipple across the terminator, as the land has: no gradient). */
   shadow: 0.2,
   /** The share of the land's pixels at the darkest of the night on the LIGHT page, times the day's (a stipple that thickens to solid, where the dark page's thins to `landMin`). */
   landMax: 1.8,
