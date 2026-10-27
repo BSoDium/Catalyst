@@ -92,6 +92,26 @@ export const SUN = {
   dark: { disc: 1, limb: 0.8, glow: 0.72 },
   /** The light page's sun is the glare that burns the colour away: only a ghost of a rim and a faint glow. */
   light: { rim: 0.16, glow: 0.18 },
+  /**
+   * The halo goes with the planet's cover, slowly (`haloClear`, engine/sun-flare.ts): it is whole while the sun's centre is `to` halo-reaches outside the limb, and gone when it is
+   * `from` disc radii behind it, in a smoothstep over the angle between (the halo is wide: its fade is long, not the hair the ring of light has).
+   */
+  fade: { from: 1, to: 0.6 },
+  /**
+   * The warm light of a low sun (a dark-page look only: on the light page the sun burns out): the tone of a pixel (0..1, the halo's steps, the flare's elements) picks a colour from the
+   * ramp, the first stop it is at or over, hot and pale at the top down to a violet. `setShare` is how far the tones are pulled down as the sun sets (the planet's cover grows), so the
+   * halo reddens as it goes: the stops are the colours on the black page, and a pixel's strength (`gain` times its tone) is how much of the colour it keeps.
+   */
+  tint: [
+    { at: 0.66, rgb: [1, 0.9, 0.55] },
+    { at: 0.5, rgb: [1, 0.68, 0.26] },
+    { at: 0.36, rgb: [0.96, 0.42, 0.2] },
+    { at: 0.24, rgb: [0.8, 0.24, 0.32] },
+    { at: 0.12, rgb: [0.52, 0.2, 0.5] },
+    { at: 0, rgb: [0.3, 0.16, 0.46] },
+  ],
+  setShare: 0.5,
+  gain: 1.6,
 } as const;
 
 /**
@@ -130,6 +150,26 @@ export const FLARE = {
   midTo: 0.3,
   /** The planet's limb softness for the flare's occlusion, a share of its angular radius. */
   limbSoft: 0.04,
+} as const;
+
+/**
+ * The RIM: the atmosphere as a thin layer on the planet's limb, always there while the sun is (the night's amount), the interlude's thick glow (engine/materials.ts, `atmosphereMaterial`) aside.
+ * `shell` is its height in earth radii. Quiet by default: on the sun's side of the limb a hair of grey (`quiet`, a share of the layer's own strength, thinning with `thin`, the power of its fall
+ * from the planet's edge). As the sun goes behind the planet it is the SILVER LINING: from `from` to `to` (the cosine of the angle between the sun's direction and the line from the camera through
+ * the planet's middle) the rim brightens to the whole `strength`, thickens (the fall is `thick`), takes the warm light's colour (`warm`: a stop of `SUN.tint`), and gathers towards the limb nearest the sun
+ * (`gather`: 0 a ring all round, 1 only the sun's side).
+ */
+export const RIM = {
+  shell: 0.024,
+  quiet: 0.3,
+  thin: 3.2,
+  thick: 1.4,
+  from: 0.35,
+  to: 0.97,
+  strength: 0.9,
+  gather: 0.7,
+  warm: [1, 0.74, 0.4],
+  cover: { dark: 0.9, light: 0.3 },
 } as const;
 
 export type Vec3 = [number, number, number];

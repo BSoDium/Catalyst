@@ -7,6 +7,7 @@ import { BackSide, Color, FrontSide, NormalBlending, ShaderMaterial } from "thre
 import { LEG_MODES, MODE_STYLE } from "../paths/modes";
 import { STRAIGHT_FADE_MIX, STRAIGHT_FADE_STEPS } from "../paths/thin";
 import { SPARK, TRAIL_BANDS, TRAIL_ENTRIES, TRAIL_PER_PALETTE } from "../paths/trail";
+import { RIM } from "./moon";
 import { NIGHT, NIGHT_GLSL, SURFACE } from "./surface";
 
 /** The lines' vertex shader: the ground point (the scene is in the earth's frame, a line's vertices are on the unit sphere) goes to the fragment. */
@@ -147,6 +148,56 @@ export function atmosphereMaterial(): ShaderMaterial {
         float a = stepped(pow(h, uPower) * uAmt * lit, 3.0) * uCover;
         if (a < 0.004) discard;
         gl_FragColor = vec4(uColor, a);
+      }
+    `,
+    side: BackSide,
+    blending: NormalBlending,
+    depthTest: true,
+    depthWrite: false,
+    transparent: true,
+  });
+}
+
+/**
+ * The RIM (`RIM`, engine/moon.ts): the atmosphere as a thin skin on the limb, quiet while the sun is in front and the SILVER LINING as it goes behind the planet. The same shell as the interlude's glow (the
+ * inside of a sphere a little over the surface, seen only beyond the disc), but its height is a hair, its fall steep, and where it is bright is the sun's side: `uSunN` (the sun's direction in the earth's frame)
+ * against the line from the camera through the planet's middle says how far behind the planet the sun is (`behind`), and the limb point nearest the sun's own projection is where the light gathers. `uNight`
+ * is the night's amount (it is there while the sun is), `uAmt` how much of it the interlude's own glow leaves.
+ */
+export function rimMaterial(): ShaderMaterial {
+  return new ShaderMaterial({
+    uniforms: { uColor: { value: new Color() }, uWarm: { value: new Color() }, uAmt: { value: 1 }, uShell: { value: 1 + RIM.shell }, uCover: { value: RIM.cover.dark }, uNight: { value: 0 }, uSunN: { value: [0, 0, 1] }, uFlip: { value: 0 } },
+    vertexShader: /* glsl */ `
+      varying vec3 vPos;
+      void main() { vPos = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform vec3 uColor; uniform vec3 uWarm; uniform float uAmt; uniform float uShell; uniform float uCover;
+      uniform float uNight; uniform vec3 uSunN; uniform float uFlip;
+      varying vec3 vPos;
+      ${MIST_GLSL}
+      void main() {
+        vec3 n = normalize(vPos);
+        vec3 toEye = normalize(cameraPosition - n * uShell);
+        // the height over the limb, as the glow's: 1 at the planet's edge, 0 at the shell's top
+        float edge = sqrt(max(1.0 - 1.0 / (uShell * uShell), 1e-4));
+        float h = clamp(abs(dot(n, toEye)) / edge, 0.0, 1.0);
+        // how far behind the planet the sun is (1: exactly behind its middle), and the limb point nearest its projection on the picture
+        vec3 axis = normalize(-cameraPosition);
+        float behind = dot(uSunN, axis);
+        float sunk = smoothstep(${RIM.from.toFixed(2)}, ${RIM.to.toFixed(2)}, behind);
+        vec3 perp = uSunN - axis * behind;
+        float pl = length(perp);
+        float side = pl > 1e-4 ? dot(n, perp / pl) : 1.0;
+        // a ring all round when the sun is dead behind (no side to speak of), gathering on the sun's side as it moves off the axis
+        float gather = mix(1.0, smoothstep(-0.6, 1.0, side), smoothstep(0.0, 0.4, pl) * ${RIM.gather.toFixed(2)});
+        // in front of the planet (or to its side): only a hair of haze on the lit limb
+        float quiet = ${RIM.quiet.toFixed(2)} * smoothstep(-0.1, 0.6, dot(n, uSunN));
+        float k = max(quiet, sunk * gather * ${RIM.strength.toFixed(2)});
+        float a = stepped(pow(h, mix(${RIM.thin.toFixed(2)}, ${RIM.thick.toFixed(2)}, sunk)) * k * uNight * uAmt, 3.0) * uCover;
+        if (a < 0.004) discard;
+        // silver, warming towards the sun's own light as it goes behind (the light page keeps the ink's grey: its sun is burnt out)
+        gl_FragColor = vec4(mix(uColor, uWarm, sunk * gather * (1.0 - uFlip)), a);
       }
     `,
     side: BackSide,

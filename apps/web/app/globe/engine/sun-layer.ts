@@ -13,7 +13,7 @@ import { BufferAttribute, BufferGeometry, Color, Mesh, NormalBlending, type Scen
 import type { GlobeTheme } from "./colors";
 import { BAYER4 } from "./sky";
 import { SUN } from "./moon";
-import { FlareLayer, type FlareFrame } from "./sun-flare";
+import { FlareLayer, WARM_GLSL, type FlareFrame } from "./sun-flare";
 
 const VERTEX = /* glsl */ `
   uniform vec2 uCentre; uniform float uExt; uniform vec2 uBuf;
@@ -26,32 +26,39 @@ const VERTEX = /* glsl */ `
 const f = (n: number) => n.toFixed(3);
 
 const FRAGMENT = /* glsl */ `
-  uniform vec2 uCentre; uniform float uR; uniform vec3 uBg; uniform vec3 uInk; uniform float uAmt; uniform float uLight; uniform float uClear;
+  uniform vec2 uCentre; uniform float uR; uniform vec3 uBg; uniform vec3 uInk; uniform float uAmt; uniform float uLight; uniform float uClear; uniform float uHalo;
+  ${WARM_GLSL}
   const float BAYER[16] = float[16](${BAYER4.map((n) => `${n}.0`).join(", ")});
   void main() {
     vec2 q = (gl_FragCoord.xy - uCentre) / uR;
     float r = length(q);
     // how strongly this pixel is inked, 0 (nothing: the sky shows) to 1 (the ink's own tone)
     float ink = 0.0;
+    // the tone the warm ramp is asked for (the dark page's light is warm), or none: the disc is the ink's own
+    float tone = -1.0;
     if (r < 1.0) {
       // a flat disc; on the dark page a step down on its limb, on the light page only a ghost of a rim (the rest is the glare: the page's colour)
       bool rim = r > ${f(SUN.limb)};
       ink = uLight > 0.5 ? (rim ? ${f(SUN.light.rim)} : 0.0) : (rim ? ${f(SUN.dark.limb)} : ${f(SUN.dark.disc)});
     } else {
       // the halo: a falloff from the disc's edge in a few flat steps of tone, the steps ordered-dithered into each other (a pixel is one of the steps' tones, never between)
-      float t = pow(clamp(1.0 - (r - 1.0) / ${f(SUN.halo)}, 0.0, 1.0), ${f(SUN.haloFall)});
+      // (it goes with the planet's cover, in the same dither: uHalo, 1 to 0, takes the steps out of the falloff one at a time, outermost first)
+      float t = pow(clamp(1.0 - (r - 1.0) / ${f(SUN.halo)}, 0.0, 1.0), ${f(SUN.haloFall)}) * uHalo;
       ivec2 c = ivec2(mod(floor(gl_FragCoord.xy), 4.0));
       float th = (BAYER[c.y * 4 + c.x] + 0.5) / 16.0;
       ink = floor(t * ${f(SUN.haloSteps)} + th) / ${f(SUN.haloSteps)} * (uLight > 0.5 ? ${f(SUN.light.glow)} : ${f(SUN.dark.glow)});
+      tone = ink;
       // the ring of light on the halo (it goes as the planet covers the sun: uClear): a sharp inside edge and a smooth outside, a little brighter than the halo under it
       float d = r - ${f(SUN.ring.at)};
       float rt = 0.0;
       if (d <= 0.0) { if (d > -${f(SUN.ring.inner)}) rt = 1.0; }
       else { float x = 1.0 - d / ${f(SUN.ring.outer)}; if (x > 0.0) rt = floor(x * x * ${f(SUN.ring.steps)} + th) / ${f(SUN.ring.steps)}; }
-      ink = max(ink, rt * uClear * (uLight > 0.5 ? ${f(SUN.ring.light)} : ${f(SUN.ring.dark)}));
+      float ringInk = rt * uClear * (uLight > 0.5 ? ${f(SUN.ring.light)} : ${f(SUN.ring.dark)});
+      if (ringInk > ink) { ink = ringInk; tone = ink; }
     }
     if (ink <= 0.0) discard;
-    gl_FragColor = vec4(mix(uBg, uInk, ink), uAmt);
+    vec3 col = (tone < 0.0 || uLight > 0.5) ? mix(uBg, uInk, ink) : mix(uBg, warm(tone), clamp(ink * ${f(SUN.gain)}, 0.0, 1.0));
+    gl_FragColor = vec4(col, uAmt);
   }
 `;
 
@@ -67,6 +74,8 @@ const material = () =>
       uAmt: { value: 1 },
       uLight: { value: 0 },
       uClear: { value: 1 },
+      uHalo: { value: 1 },
+      uSet: { value: 0 },
     },
     vertexShader: VERTEX,
     fragmentShader: FRAGMENT,
@@ -89,6 +98,8 @@ export interface SunFrame {
   amount: number;
   /** How much of the sun the planet leaves (`planetClear`, engine/sun-flare.ts), 0..1; the disc itself is hidden by the depth test, the lens flare by this. Absent: all of it. */
   visible?: number;
+  /** How much of the HALO the planet leaves (`haloClear`, engine/sun-flare.ts): the halo is wide, so its fade is long. Absent: all of it. */
+  halo?: number;
 }
 
 /** The sun's disc radius on the buffer, px: a fixed angle at the camera's focal length, with a floor. */
@@ -132,7 +143,7 @@ export class SunLayer {
   sync(f: SunFrame): boolean {
     const p = f.amount > 0.01 ? sunPlace(f) : null;
     this.mesh.visible = p !== null;
-    const flaring = this.flare.sync({ bufW: f.bufW, bufH: f.bufH, x: f.x, y: f.y, ahead: f.ahead, amount: f.amount, visible: f.visible ?? 1, r: sunRadius(f) } satisfies FlareFrame);
+    const flaring = this.flare.sync({ bufW: f.bufW, bufH: f.bufH, x: f.x, y: f.y, ahead: f.ahead, amount: f.amount, visible: f.visible ?? 1, r: sunRadius(f), set: 1 - (f.halo ?? 1) } satisfies FlareFrame);
     if (!p) return flaring;
     const u = this.mat.uniforms;
     (u.uCentre!.value as Vector2).set(p.x, p.y);
@@ -142,6 +153,8 @@ export class SunLayer {
     u.uAmt!.value = f.amount;
     // the ring of light is a lens flare too: it goes with the sun as the planet covers it
     u.uClear!.value = f.visible ?? 1;
+    u.uHalo!.value = f.halo ?? 1;
+    u.uSet!.value = 1 - (f.halo ?? 1);
     return true;
   }
 

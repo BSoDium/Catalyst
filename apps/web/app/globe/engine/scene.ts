@@ -28,7 +28,8 @@ import type { ViewBasis } from "./geo";
 import { zoomToRadiusPx } from "./geo";
 import { landMask } from "./land";
 import { GRATICULE_STEP_DEG, graticuleSegments, polylinesToSegments } from "./geometry";
-import { OCCLUDER_RADIUS, atmosphereMaterial, cityMaterial, surfaceMaterial, mistMaterial, lineMaterial, occluderMaterial, silhouetteMaterial } from "./materials";
+import { OCCLUDER_RADIUS, atmosphereMaterial, rimMaterial, cityMaterial, surfaceMaterial, mistMaterial, lineMaterial, occluderMaterial, silhouetteMaterial } from "./materials";
+import { RIM } from "./moon";
 import { MoonLayer } from "./moon-layer";
 import { SunLayer } from "./sun-layer";
 import { RouteLayer } from "./route-layer";
@@ -74,6 +75,7 @@ export class GlobeScene {
   private occluder = occluderMaterial();
   private city = cityMaterial();
   private atmosphere = atmosphereMaterial();
+  private rim = rimMaterial();
   private mist = mistMaterial();
   private surface = surfaceMaterial();
   private surfaceMesh: Mesh | null = null;
@@ -113,7 +115,7 @@ export class GlobeScene {
     /** The page has a moon (`GlobeProps.moon`, and the flags allow it). */
     moon?: boolean;
   }) {
-    this.materials.push(this.occluder, this.city, this.atmosphere, this.mist, this.surface, this.graticule, this.borders, this.coast, this.silhouette);
+    this.materials.push(this.occluder, this.city, this.atmosphere, this.rim, this.mist, this.surface, this.graticule, this.borders, this.coast, this.silhouette);
     this.coastData = data.coastlines;
 
     const disc = new SphereGeometry(OCCLUDER_RADIUS, 96, 48);
@@ -131,6 +133,11 @@ export class GlobeScene {
     this.atmosphereMesh.scale.setScalar(1 + SHELL);
     this.atmosphere.uniforms.uShell!.value = 1 + SHELL;
     this.add(this.atmosphereMesh, 0.5);
+    // the rim: the atmosphere as a thin skin on the limb, there while the sun is (the interlude's glow takes over from it)
+    const skinRim = new Mesh(shell, this.rim);
+    skinRim.frustumCulled = false;
+    skinRim.scale.setScalar(1 + RIM.shell);
+    this.add(skinRim, 0.5);
     // and the mist on the ground itself, over the lines (a hair above the surface, which the lines are drawn on)
     const skin = new SphereGeometry(1.004, 96, 48);
     this.geometries.push(skin);
@@ -221,6 +228,10 @@ export class GlobeScene {
     this.surface.uniforms.uTone1!.value.setRGB(...mixTo(tones[1]!));
     this.surface.uniforms.uTone2!.value.setRGB(...mixTo(tones[2]!));
     this.atmosphere.uniforms.uCover!.value = t.scheme === "dark" ? 0.4 : 0.26;
+    // the rim: silver (the glow's own grey, a step brighter), and the sun's warm light on the dark page
+    this.rim.uniforms.uColor!.value.setRGB(...mixTo(t.scheme === "dark" ? 0.75 : 0.3));
+    this.rim.uniforms.uWarm!.value.setRGB(...RIM.warm);
+    this.rim.uniforms.uCover!.value = RIM.cover[t.scheme === "dark" ? "dark" : "light"];
     this.mist.uniforms.uCover!.value = t.scheme === "dark" ? 0.36 : 0.24;
     this.graticule.uniforms.uColor!.value.setRGB(...t.grid);
     this.ramp = t.ramp;
@@ -233,7 +244,7 @@ export class GlobeScene {
     this.sun?.applyTheme(t);
     this.moon?.applyTheme(t);
     // the light page's night thickens (`uFlip`: the stipple, the tones, in the surface's shader) where the dark page's fades
-    for (const m of [this.occluder, this.surface, this.graticule, this.borders, this.coast, this.silhouette, this.atmosphere, this.mist]) m.uniforms.uFlip!.value = t.scheme === "dark" ? 0 : 1;
+    for (const m of [this.occluder, this.surface, this.graticule, this.borders, this.coast, this.silhouette, this.atmosphere, this.rim, this.mist]) m.uniforms.uFlip!.value = t.scheme === "dark" ? 0 : 1;
   }
 
   /**
@@ -278,7 +289,7 @@ export class GlobeScene {
    * frame. The land's ground thins in the dither and steps to its faintest tone, and the lines and the planet's own outline go towards the page's colour in grey steps, on the dark side.
    */
   setNight(night: number, x: number, y: number, z: number) {
-    for (const m of [this.occluder, this.surface, this.graticule, this.borders, this.coast, this.silhouette, this.atmosphere, this.mist]) {
+    for (const m of [this.occluder, this.surface, this.graticule, this.borders, this.coast, this.silhouette, this.atmosphere, this.rim, this.mist]) {
       m.uniforms.uNight!.value = night;
       m.uniforms.uSunN!.value = [x, y, z];
     }
@@ -345,6 +356,7 @@ export class GlobeScene {
     if (Math.abs(x - this.atmosphereNow) < 0.01 && !(x === 0 && this.atmosphereNow !== 0)) return;
     this.atmosphereNow = x;
     this.atmosphere.uniforms.uAmt!.value = x;
+    this.rim.uniforms.uAmt!.value = 1 - x;
     this.mist.uniforms.uAmt!.value = x;
     if (this.atmosphereMesh) this.atmosphereMesh.visible = x > 0;
     if (this.mistMesh) this.mistMesh.visible = x > 0;

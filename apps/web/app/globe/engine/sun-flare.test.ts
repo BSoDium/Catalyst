@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { flarePlace, planetClear, type FlareFrame } from "./sun-flare";
+import { SUN } from "./moon";
+import { flarePlace, haloClear, planetClear, type FlareFrame } from "./sun-flare";
 
 const frame = (over: Partial<FlareFrame> = {}): FlareFrame => ({ bufW: 400, bufH: 260, x: 300, y: 80, ahead: true, amount: 1, visible: 1, ...over });
 
@@ -42,5 +43,35 @@ describe("planetClear", () => {
     const limb = Math.asin(1 / 4);
     expect(planetClear(Math.cos(limb), 4)).toBeGreaterThan(0.4);
     expect(planetClear(Math.cos(limb), 4)).toBeLessThan(0.6);
+  });
+});
+
+describe("haloClear", () => {
+  const reach = ((SUN.angularDeg * Math.PI) / 180) * SUN.halo;
+  const limb = Math.asin(1 / 4);
+  const at = (outside: number) => haloClear(Math.cos(limb + outside), 4, reach);
+  it("is 1 for a sun on the far side of the view axis, or far outside the limb", () => {
+    expect(haloClear(-0.5, 4, reach)).toBe(1);
+    expect(at(reach)).toBe(1);
+  });
+  it("is 0 once the sun's centre is behind the planet", () => {
+    expect(haloClear(1, 4, reach)).toBe(0);
+    expect(at(-0.1)).toBe(0);
+  });
+  it("fades the halo over a wide span, far wider than the ring's hair", () => {
+    const mid = at(reach * 0.2);
+    expect(mid).toBeGreaterThan(0.05);
+    expect(mid).toBeLessThan(0.95);
+    // the halo has begun to go while the planet's own hair (`planetClear`) still leaves all of the sun
+    expect(at(reach * 0.2)).toBeLessThan(1);
+    expect(planetClear(Math.cos(limb + reach * 0.2), 4)).toBe(1);
+  });
+  it("never rises as the sun sets", () => {
+    let last = 1;
+    for (let i = 8; i >= -2; i--) {
+      const v = at((reach * i) / 8);
+      expect(v).toBeLessThanOrEqual(last + 1e-9);
+      last = v;
+    }
   });
 });
