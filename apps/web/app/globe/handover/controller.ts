@@ -149,6 +149,8 @@ export interface HandoverHandle {
   playInterlude(): boolean;
   /** The visitor asked for the interlude and the caption is away: it begins now from wherever the camera is; false while it is not ready. */
   playInterludeNow(): boolean;
+  /** The finer coastline (`@catalyst/geodata` `loadDetailedCoastlines`) has been loaded: the globe draws it, and fills the continents from it. */
+  upgradeCoast(p: Polylines): void;
   /** The interlude was asked for while the caption is away: true when the globe can begin it from where it is, and then the caption and the ring stay away until it is ready (a few seconds at most). */
   wantInterlude(): boolean;
   /** The visitor can now ask for it: make what it needs ahead of time (the word's mesh, the sound's file); nothing is planned or played. */
@@ -826,6 +828,7 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
     hasOrbit: () => renderer.hasCaption(),
     playInterlude: () => renderer.playInterlude(),
     playInterludeNow: () => renderer.playInterludeNow(),
+    upgradeCoast: (p) => renderer.upgradeCoast(p),
     wantInterlude: () => renderer.wantInterlude(),
     prepareInterlude: () => renderer.prepareInterlude(),
     debug(): HandoverDebug {

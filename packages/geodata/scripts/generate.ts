@@ -37,6 +37,8 @@ const sources = JSON.parse(readFileSync(join(root, "scripts", "sources.json"), "
 };
 
 /** Which resolution feeds which dataset. Only these two files are loaded by the web app (src/borders.ts, src/coastlines.ts). */
+/** The finer coastline (a second file, loaded on demand). */
+const DETAILED_COAST = "50m";
 const CHOSEN = { coastlines: "110m", borders: "50m" } as const;
 /** Coordinate quantisation: 1/100 degree (~1.1 km). Well below the pixel size of a pixelated globe. */
 const QUANT = 100;
@@ -189,6 +191,8 @@ if (argv.includes("--report")) {
 if (argv.includes("--no-write")) process.exit(0);
 const outputs = [
   ["coastlines", CHOSEN.coastlines, coastlines(CHOSEN.coastlines)],
+  // the finer coast, a lazy chunk of its own for the views that come close (the cinematic interlude, the globe near the street map): src/coastlines.ts `loadDetailedCoastlines`
+  ["coastlines", DETAILED_COAST, coastlines(DETAILED_COAST)],
   ["borders", CHOSEN.borders, borderLines(features50, CHOSEN.borders, evidence)],
 ] as const;
 for (const [kind, res, raw] of outputs) {
