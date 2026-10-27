@@ -13,8 +13,8 @@ export const SATELLITE_MAXZOOM = 8;
 export const SATELLITE_TILE_SIZE = 256;
 /**
  * The side, in pixels, a tile is read and re-encoded at (the layer still declares `SATELLITE_TILE_SIZE`: the map stretches it, with nearest sampling, into 2 by 2 blocks).
- * The art's cell is several screen pixels wide, so the half resolution loses nothing the picture can show, and costs a quarter of the classification and the PNG encoding
- * (about 4 ms against 15 per tile, measured), which is the bulk of the work the ground adds on the client.
+ * The art's cell is several screen pixels wide, so the half resolution loses nothing the picture can show, and costs a quarter of the classification and of
+ * the memory of the tile (the PNG encoding is a fixed 15 ms of latency either way, measured; the reading runs in a worker, net/satellite-source.ts).
  */
 export const SATELLITE_READ_SIZE = 128;
 

@@ -14,7 +14,7 @@
 import { addProtocol, removeProtocol, type AddProtocolAction } from "maplibre-gl";
 import { FetchSource, PMTiles } from "pmtiles";
 import type { RequestOutcome } from "../core/tile-health";
-import { SATELLITE_READ_SIZE, classifySatellite } from "../core/satellite";
+import { createSatelliteReader } from "./satellite-source";
 import type { SourceDescriptor } from "../core/source-descriptor";
 import type { SourceId, TileSourceManager } from "../core/tile-source-manager";
 
@@ -115,21 +115,9 @@ export function createTileNetwork(opts: TileNetworkOptions): TileNetwork {
     };
 
   const satelliteScheme = `cats${opts.instance}`;
-  /** A satellite tile: fetched, read pixel by pixel into the fill encoding and handed back as a PNG (a failed tile throws: the ground is simply not there). */
-  const satelliteHandler: AddProtocolAction = async (params, outer) => {
-    const res = await fetch(params.url.slice(satelliteScheme.length + 3), { signal: outer.signal });
-    if (!res.ok) throw new HttpError(res.status);
-    const bitmap = await createImageBitmap(await res.blob());
-    const size = SATELLITE_READ_SIZE;
-    const canvas = new OffscreenCanvas(size, size);
-    const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
-    ctx.drawImage(bitmap, 0, 0, size, size);
-    bitmap.close();
-    const img = ctx.getImageData(0, 0, size, size);
-    classifySatellite(img.data);
-    ctx.putImageData(img, 0, 0);
-    return { data: await (await canvas.convertToBlob({ type: "image/png" })).arrayBuffer() };
-  };
+  const satellite = createSatelliteReader();
+  /** A satellite tile, read off the main thread into the palette's fill encoding and handed back as a PNG (a failed tile throws: the ground is simply not there). */
+  const satelliteHandler: AddProtocolAction = async (params, outer) => ({ data: await satellite.read(params.url.slice(satelliteScheme.length + 3), outer.signal) });
 
   addProtocol(satelliteScheme, satelliteHandler);
   addProtocol(schemes.primary, handler("primary"));
@@ -148,6 +136,7 @@ export function createTileNetwork(opts: TileNetworkOptions): TileNetwork {
       if (disposed) return;
       disposed = true;
       removeProtocol(satelliteScheme);
+      satellite.dispose();
       removeProtocol(schemes.primary);
       removeProtocol(schemes.fallback);
       archives.clear();
