@@ -97,11 +97,19 @@ export const SUN = {
    */
   core: { radius: 2.4, half: 1 },
   /**
-   * The light page's sun (owner, 2026-10-27: the colour changes are for the light theme too): the same light, on paper. The sun is still burnt out (its centre is the page's own white), and what is around it is the sunset's
-   * colours as a TINT of the paper: the halo, the ring, the flare and the lining are the warm ramp (`tint`), each colour times `ink` (a darker shade, so that pale gold shows on white) and `tint` of the way from the page's colour
-   * (the blur, the lining and the ground's light multiply the paper instead of adding light to it, which a white page has no room for).
+   * The light page's sun (owner, 2026-10-27: "much whiter", "the halo very faintly tinted", "the rays white", "much more subtle"): the sun is burnt out, so it is WHITE, and what makes it visible is not colour but a little darkness round
+   * it. `veil` is a very soft, faint grey darkening round the sun (in the lens flare's quad, `reach` of the picture's width, `strength` of the way to `grey` at its middle, gone with the sun's cover as the flare is), so that the white sun and
+   * its white rays show against the paper. The `halo` is that grey too, `strength` of the way from the paper, with only `warm` of the warm ramp's colour (each colour times `ink`, a darker shade) in it. The ghosts are the ramp's
+   * colours at `ghost` strength. The lining and the ground's light are `grey` with `warm` of the ramp in them, and the twilight is `twilight` of what it is on the dark page. The dark page has none of this.
    */
-  light: { ink: 0.82, tint: 0.6 },
+  light: {
+    ink: 0.82,
+    veil: { strength: 0.12, reach: 0.22, grey: 0.45 },
+    halo: { strength: 0.3, grey: 0.5, warm: 0.2 },
+    ghost: 0.25,
+    lining: { grey: 0.55, warm: 0.3 },
+    twilight: 0.3,
+  },
   /**
    * The halo (and with it the ring of light and the warm light's reddening, `uSet`) goes with the planet's cover, over the sunset and only over it (`haloClear`, engine/sun-flare.ts): whole until the sun's DISC first touches
    * the limb (the sun's distance outside it, `rise`, in disc radii, is `to`: 1), gone when the sun's centre is `from` disc radii behind it, in a smoothstep over the distance between (the halo is wide, so most of it is still

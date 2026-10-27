@@ -9,7 +9,7 @@
  * Two looks, as the whole globe has two (`washOf`, engine/surface.ts): on the dark page it is the brightest thing there is, the ink's own tone. On the light page it is so bright that it burns the
  * colour away: the disc and the halo are the page's colour, and it shows only a ghost of a rim and the halo's faint darkness.
  */
-import { AddEquation, AdditiveBlending, BufferAttribute, BufferGeometry, Color, CustomBlending, DstColorFactor, Mesh, NormalBlending, type Scene, ShaderMaterial, Vector2, ZeroFactor } from "three";
+import { AdditiveBlending, BufferAttribute, BufferGeometry, Color, Mesh, NormalBlending, type Scene, ShaderMaterial, Vector2 } from "three";
 import type { GlobeTheme } from "./colors";
 import { BAYER4 } from "./sky";
 import { SUN } from "./moon";
@@ -49,9 +49,10 @@ const FRAGMENT = /* glsl */ `
       ink = max(ink, rt * uHalo * ${f(SUN.ring.strength)});
     }
     if (ink <= 0.0) discard;
-    // the warm ramp: on the dark page the colour as it is, on the light page a darker shade of it, tinting the paper
+    // the warm ramp on the dark page; on the light page the halo is a faint grey (the sun is white, and the paper has no room for light) with only a little of the ramp's colour in it
     float k = clamp(ink * ${f(SUN.gain)}, 0.0, 1.0);
-    vec3 col = uLight > 0.5 ? mix(uBg, warm(ink) * ${f(SUN.light.ink)}, k * ${f(SUN.light.tint)}) : mix(uBg, warm(ink), k);
+    vec3 lightHalo = mix(vec3(${f(SUN.light.halo.grey)}), warm(ink) * ${f(SUN.light.ink)}, ${f(SUN.light.halo.warm)});
+    vec3 col = uLight > 0.5 ? mix(uBg, lightHalo, k * ${f(SUN.light.halo.strength)}) : mix(uBg, warm(ink), k);
     gl_FragColor = vec4(col, uAmt);
   }
 `;
@@ -100,8 +101,8 @@ const BLOB_FRAGMENT = /* glsl */ `
     ink = max(0.0, ink - ${f(Math.exp((-0.6931 * SUN.core.radius * SUN.core.radius) / (SUN.core.half * SUN.core.half)))}) / (1.0 - ${f(Math.exp((-0.6931 * SUN.core.radius * SUN.core.radius) / (SUN.core.half * SUN.core.half)))});
     if (ink <= 0.003) discard;
     float k = clamp(ink * ${f(SUN.gain)}, 0.0, 1.0) * uI * uAmt;
-    // dark page: the light is ADDED (colour times alpha). Light page: the page has no room for more light, so the colour TINTS it (the blending multiplies what is under it): white-hot in the middle, the sunset's colours round it
-    gl_FragColor = uLight > 0.5 ? vec4(mix(vec3(1.0), warm(ink) * ${f(SUN.light.ink)}, k * ${f(SUN.light.tint)}), 1.0) : vec4(warm(ink), k);
+    // dark page: the light is ADDED (colour times alpha). Light page: the sun is WHITE, laid over the paper and over the grey round it (the veil, the halo): the paper has no room for more light, so it shows as the lighter thing
+    gl_FragColor = uLight > 0.5 ? vec4(1.0, 0.995, 0.975, k * 0.9) : vec4(warm(ink), k);
   }
 `;
 
@@ -179,13 +180,10 @@ export class SunLayer {
     u.uInk!.value.setRGB(...t.ink);
     u.uLight!.value = t.scheme === "dark" ? 0 : 1;
     this.dark = t.scheme === "dark";
-    // (the blur adds its light on the dark page and multiplies the paper on the light one)
+    // (the blur adds its light on the dark page and lays white over the paper on the light one)
     const blob = this.blobMat;
     blob.uniforms.uLight!.value = this.dark ? 0 : 1;
-    blob.blending = this.dark ? AdditiveBlending : CustomBlending;
-    blob.blendEquation = AddEquation;
-    blob.blendSrc = DstColorFactor;
-    blob.blendDst = ZeroFactor;
+    blob.blending = this.dark ? AdditiveBlending : NormalBlending;
     blob.needsUpdate = true;
     this.flare.applyTheme(t);
   }

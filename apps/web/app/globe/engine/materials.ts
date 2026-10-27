@@ -186,7 +186,8 @@ const RIM_SUN_GLSL = /* glsl */ `
   // the sun's own light along the limb: its pale gold nearest the sun (side 1), through yellow and orange to red and violet away from it
   vec3 rimTint(float side, float from, float flip) {
     vec3 w = warm(mix(0.05, 1.0, pow(smoothstep(from, 0.995, side), 0.8)));
-    return flip > 0.5 ? w * ${SUN.light.ink.toFixed(3)} : w;
+    // (the light page: a grey with only a little of the ramp in it)
+    return flip > 0.5 ? mix(vec3(${SUN.light.lining.grey.toFixed(3)}), w * ${SUN.light.ink.toFixed(3)}, ${SUN.light.lining.warm.toFixed(3)}) : w;
   }
 `;
 
@@ -289,7 +290,7 @@ export function twilightMaterial(): ShaderMaterial {
       void main() {
         float d = dot(normalize(vPos), uSunN);
         float band = smoothstep(${RIM.twilight.band[0].toFixed(2)}, ${RIM.twilight.band[1].toFixed(2)}, d) * (1.0 - smoothstep(${RIM.twilight.band[2].toFixed(2)}, ${RIM.twilight.band[3].toFixed(2)}, d));
-        float k = stepped(band * uNight * uAmt, ${RIM.twilight.steps.toFixed(1)}) * ${RIM.twilight.strength.toFixed(2)};
+        float k = stepped(band * uNight * uAmt, ${RIM.twilight.steps.toFixed(1)}) * ${RIM.twilight.strength.toFixed(2)} * mix(1.0, ${SUN.light.twilight.toFixed(2)}, uFlip);
         if (k < 0.004) discard;
         // the colour under it times this: white (nothing) to the tint
         gl_FragColor = vec4(mix(vec3(1.0), vec3(${RIM.twilight.rgb.map((x) => x.toFixed(3)).join(", ")}), k), 1.0);

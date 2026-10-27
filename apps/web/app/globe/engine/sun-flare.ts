@@ -52,6 +52,7 @@ const FRAGMENT = /* glsl */ `
     float ink = 0.0;
     // the tone the strongest element asks the warm ramp for (the ghosts go from the sun's gold to violet across the picture, the rays from white-gold to orange)
     float hue = 0.0;
+    bool ray = false;
     for (int i = 0; i < ${N}; i++) {
       // the ghost's centre on a whole pixel's centre, so that its edge falls on the grid
       vec2 g = floor(uSun + (uMid - uSun) * AT[i]) + 0.5;
@@ -77,13 +78,19 @@ const FRAGMENT = /* glsl */ `
     else if (a.x == a.y) { dist = a.x * 1.4142; len = ${f(FLARE.streakDiag)} * uBufW; }
     if (dist > uSunR) {
       float along = 1.0 - (dist - uSunR) / len;
-      if (along > 0.0 && pow(along, ${f(FLARE.streakFall)}) > bayer()) { ink = ${f(FLARE.streakTone)}; hue = mix(0.5, 0.95, along); }
+      if (along > 0.0 && pow(along, ${f(FLARE.streakFall)}) > bayer()) { ink = ${f(FLARE.streakTone)}; hue = mix(0.5, 0.95, along); ray = true; }
     }
-    if (ink <= 0.0) discard;
-    // the warm ramp: on the dark page as it is, on the light page a darker shade of it that tints the paper
-    float k = clamp(ink * ${f(SUN.gain)}, 0.0, 1.0);
-    vec3 col = uLight > 0.5 ? mix(uBg, warm(hue) * ${f(SUN.light.ink)}, k * ${f(SUN.light.tint)}) : mix(uBg, warm(hue), k);
-    gl_FragColor = vec4(col, uStr);
+    if (uLight > 0.5) {
+      // the light page: the sun's rays are WHITE, and what shows them is a very soft, faint grey darkening round the sun (the veil); the ghosts are the ramp's colours, faintly
+      float veil = pow(clamp(1.0 - length(p - uSun) / (${f(SUN.light.veil.reach)} * uBufW), 0.0, 1.0), 2.0) * ${f(SUN.light.veil.strength)};
+      if (ink <= 0.0 && veil < 0.004) discard;
+      if (ink <= 0.0) gl_FragColor = vec4(vec3(${f(SUN.light.veil.grey)}), veil * uStr);
+      else if (ray) gl_FragColor = vec4(1.0, 1.0, 1.0, uStr);
+      else gl_FragColor = vec4(mix(uBg, warm(hue) * ${f(SUN.light.ink)}, clamp(ink * ${f(SUN.gain)}, 0.0, 1.0) * ${f(SUN.light.ghost)}), uStr);
+    } else {
+      if (ink <= 0.0) discard;
+      gl_FragColor = vec4(mix(uBg, warm(hue), clamp(ink * ${f(SUN.gain)}, 0.0, 1.0)), uStr);
+    }
   }
 `;
 
