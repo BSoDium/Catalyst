@@ -1845,7 +1845,9 @@ export class GlobeRenderer {
   private ringPresence(): number {
     const a = this.textFits ? ringAlpha(this.view.zoom, this.fit, this.minZoom) : 0;
     // (and it is out for the whole of the cinematic interlude, while the globe is pulled back: `CaptionLayer.ringShare`)
-    const share = this.ringCut || this.eggPending ? 0 : (this.caption?.ringShare() ?? 1);
+    // (an interlude begun away from the display mode: the ring was not there, and it is not drawn until the flight has taken over its share, `eggDirect`)
+    if (this.eggDirect && (this.caption?.ringShare() ?? 1) < 0.02) this.eggDirect = false;
+    const share = this.ringCut || this.eggPending || this.eggDirect ? 0 : (this.caption?.ringShare() ?? 1);
     return (this.showcaseActive ? a * (1 - this.lod.overlayAlpha) : a) * share;
   }
 
@@ -1880,6 +1882,8 @@ export class GlobeRenderer {
     const from = flightPose(1, { lon: v.lon, lat: v.lat, alt: b.d - 1, roll: v.roll ?? 0 });
     if (!caption.playEggDirect(now)) return false;
     this.eggPending = 0;
+    this.eggDirect = true;
+    caption.flightProgress(); // (the flight's state is this frame's before anything reads the ring's share, the land's or the caption's)
     this.camIntro = { from, t0: now };
     this.flight = null;
     this.velocity = STILL;
@@ -1908,6 +1912,8 @@ export class GlobeRenderer {
     return true;
   }
   private eggPending = 0;
+  /** The interlude began away from the display mode: the ring stays out until the flight has taken its share (`ringPresence`). */
+  private eggDirect = false;
 
   /** The camera the interlude began from (`playInterludeNow`) and when: the camera drawn glides from it into the flight over `CAMERA_INTRO_MS`. */
   private camIntro: { from: FlightPose; t0: number } | null = null;
