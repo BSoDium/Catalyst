@@ -57,18 +57,22 @@ export function occluderMaterial(): ShaderMaterial {
     //  - the SEA near the limb on the lit side has a thin dithered glow (the atmosphere), in the same ink, thinning to nothing.
     // The dither is the one the lines use (`dither4` on the buffer's own pixels, which are the art's). `uLand` is how much of all this is there (0: none, the
     // globe as it always was).
-    uniforms: { uColor: { value: new Color() }, uFill: { value: new Color() }, uLand: { value: 0 }, uLandMap: { value: null }, uSun: { value: [0, 0, 1] } },
+    uniforms: { uColor: { value: new Color() }, uFill: { value: new Color() }, uLand: { value: 0 }, uLandMap: { value: null }, uSun: { value: [0, 0, 1] }, uNight: { value: 0 }, uSunN: { value: [0, 0, 1] }, uFlip: { value: 0 } },
     vertexShader: /* glsl */ `
       varying vec3 vDir;
       void main() { vDir = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
     `,
     fragmentShader: /* glsl */ `
       uniform vec3 uColor; uniform vec3 uFill; uniform float uLand; uniform sampler2D uLandMap; uniform vec3 uSun;
+      uniform float uNight; uniform vec3 uSunN; uniform float uFlip;
       varying vec3 vDir;
       ${DITHER_GLSL}
+      ${NIGHT_GLSL}
       bool lit(float coverage) { return dither4(floor(gl_FragCoord.xy)) < coverage; }
       void main() {
         vec3 col = uColor;
+        // the light page's shadow: the sea on the night side is darkened, in flat steps (a staircase across the terminator)
+        col *= 1.0 - ${NIGHT.shadow.toFixed(2)} * uFlip * floor(washOf(normalize(vDir), uSunN, uNight, uFlip) * ${NIGHT.lineSteps.toFixed(1)} + 0.5) / ${NIGHT.lineSteps.toFixed(1)};
         if (uLand > 0.001) {
           vec3 n = normalize(vDir);
           float d = dot(n, uSun);
@@ -231,7 +235,9 @@ export function surfaceMaterial(): ShaderMaterial {
         v += w * ${NIGHT.shift.toFixed(2)} * (1.0 - 2.0 * uFlip);
         // the land is dark, middle or light ground (thresholds on the picture's brightness, which the picture lifts to 0.2 and over)
         vec3 tone = v < ${SURFACE.cuts[0].toFixed(2)} ? uTone0 : (v < ${SURFACE.cuts[1].toFixed(2)} ? uTone1 : uTone2);
-        gl_FragColor = vec4(mix(uBg, tone, uStrength), 1.0);
+        // the light page's shadow: the ground on the night side is darkened with the sea, in the same flat steps
+        float shade = 1.0 - ${NIGHT.shadow.toFixed(2)} * uFlip * floor(w * ${NIGHT.lineSteps.toFixed(1)} + 0.5) / ${NIGHT.lineSteps.toFixed(1)};
+        gl_FragColor = vec4(mix(uBg, tone, uStrength) * shade, 1.0);
       }
     `,
     side: FrontSide,
