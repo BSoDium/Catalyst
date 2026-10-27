@@ -82,7 +82,7 @@ const FRAGMENT = /* glsl */ `
     }
     if (uLight > 0.5) {
       // the light page: the sun's rays are WHITE, and what shows them is a very soft, faint grey darkening round the sun (the veil); the ghosts are the ramp's colours, faintly
-      float veil = pow(clamp(1.0 - length(p - uSun) / (${f(SUN.light.veil.reach)} * uBufW), 0.0, 1.0), 2.0) * ${f(SUN.light.veil.strength)} * (1.0 - uSet);
+      float veil = pow(clamp(1.0 - length(p - uSun) / (${f(SUN.light.veil.reach)} * uBufW), 0.0, 1.0), ${f(SUN.light.veil.fall)}) * ${f(SUN.light.veil.strength)} * (1.0 - uSet);
       if (ink <= 0.0 && veil < 0.004) discard;
       if (ink <= 0.0) gl_FragColor = vec4(vec3(${f(SUN.light.veil.grey)}), veil * uStr);
       else if (ray) gl_FragColor = vec4(1.0, 1.0, 1.0, uStr);

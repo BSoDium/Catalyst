@@ -104,10 +104,10 @@ export const SUN = {
    */
   light: {
     ink: 0.82,
-    veil: { strength: 0.12, reach: 0.22, grey: 0.45 },
+    veil: { strength: 0.22, reach: 0.28, grey: 0.45, fall: 1.3 },
     halo: { strength: 0.3, grey: 0.5, warm: 0.2 },
     ghost: 0.25,
-    lining: { grey: 0.95, warm: 0.75 },
+    lining: { grey: 1, warm: 0.12 },
     twilight: 0.3,
   },
   /**

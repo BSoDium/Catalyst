@@ -76,6 +76,7 @@ export class GlobeScene {
   private city = cityMaterial();
   private atmosphere = atmosphereMaterial();
   private rim = rimMaterial();
+  private rimMesh: Mesh | null = null;
   private rimGround = rimGroundMaterial();
   private twilight = twilightMaterial();
   private mist = mistMaterial();
@@ -137,6 +138,7 @@ export class GlobeScene {
     this.add(this.atmosphereMesh, 0.5);
     // the rim: the atmosphere as a thin skin on the limb, there while the sun is (the interlude's glow takes over from it)
     const skinRim = new Mesh(shell, this.rim);
+    this.rimMesh = skinRim;
     skinRim.frustumCulled = false;
     skinRim.scale.setScalar(1 + RIM.shell);
     // (after the sun, 0.65: the sun's halo is behind the atmosphere, not over it)
@@ -242,6 +244,8 @@ export class GlobeScene {
     // the rim: a soft grey close to the page's colour (the haze and the lining's base)
     this.rim.uniforms.uColor!.value.setRGB(...mixTo(t.scheme === "dark" ? 0.45 : 0.3));
     this.rim.uniforms.uCover!.value = RIM.cover[t.scheme === "dark" ? "dark" : "light"];
+    // (the light page's lining is WHITE, shown by the grey veil of the lens flare (0.9): it is drawn over it; the dark page's is under the flare, as it was)
+    if (this.rimMesh) this.rimMesh.renderOrder = t.scheme === "dark" ? 0.66 : 0.95;
     this.rimGround.uniforms.uColor!.value.setRGB(...mixTo(t.scheme === "dark" ? 0.45 : 0.3));
     this.mist.uniforms.uCover!.value = t.scheme === "dark" ? 0.36 : 0.24;
     this.graticule.uniforms.uColor!.value.setRGB(...t.grid);

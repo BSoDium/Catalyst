@@ -186,7 +186,7 @@ const RIM_SUN_GLSL = /* glsl */ `
   // the sun's own light along the limb: its pale gold nearest the sun (side 1), through yellow and orange to red and violet away from it
   vec3 rimTint(float side, float from, float flip) {
     vec3 w = warm(mix(0.05, 1.0, pow(smoothstep(from, 0.995, side), 0.8)));
-    // (the light page: a grey with only a little of the ramp in it)
+    // (the light page: the lining is as WHITE as the sun, with only a hint of the ramp in it; what shows it is the grey veil behind it, which it is drawn over)
     return flip > 0.5 ? mix(vec3(${SUN.light.lining.grey.toFixed(3)}), w, ${SUN.light.lining.warm.toFixed(3)}) : w;
   }
 `;
