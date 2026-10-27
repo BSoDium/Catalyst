@@ -53,12 +53,12 @@ const FRAGMENT = /* glsl */ `
     if (d.x > from) {
       float along = 1.0 - (d.x - from) / (${f(FLARE.streak)} * uBufW);
       float half_ = along > 1.0 - ${f(FLARE.thickShare)} ? ${f(FLARE.thick / 2)} : 0.5;
-      if (along > 0.0 && off.y < half_ && pow(along, 2.2) > bayer()) ink = max(ink, ${f(FLARE.streakTone)});
+      if (along > 0.0 && off.y < half_ && pow(along, 2.2) > bayer()) ink = max(ink, off.y < 0.5 ? ${f(FLARE.streakTone)} : ${f(FLARE.baseTone)});
     }
     if (d.y > from) {
       float along = 1.0 - (d.y - from) / (${f(FLARE.streakUp)} * uBufH);
       float half_ = along > 1.0 - ${f(FLARE.thickShare)} ? ${f(FLARE.thick / 2)} : 0.5;
-      if (along > 0.0 && off.x < half_ && pow(along, 2.2) > bayer()) ink = max(ink, ${f(FLARE.streakTone)});
+      if (along > 0.0 && off.x < half_ && pow(along, 2.2) > bayer()) ink = max(ink, off.x < 0.5 ? ${f(FLARE.streakTone)} : ${f(FLARE.baseTone)});
     }
     if (ink <= 0.0) discard;
     gl_FragColor = vec4(mix(uBg, uInk, ink * (uLight > 0.5 ? ${f(FLARE.lightShare)} : 1.0)), uStr);

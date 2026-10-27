@@ -109,6 +109,8 @@ export const FLARE = {
   gapMin: 2,
   thick: 3,
   thickShare: 0.08,
+  /** The tone of the base's outer rows (the thickness): dimmer than the line itself, so that the glow bleeds out of the sun. */
+  baseTone: 0.4,
   /** The share of the ink the flare shows on the light page, where the sun is burnt out. */
   lightShare: 0.3,
   /** The strength goes to 0 as the sun's distance from the middle (a share of the half diagonal) goes from `edgeFrom` to `edgeTo`, and from `midTo` down to `midFrom`. */
