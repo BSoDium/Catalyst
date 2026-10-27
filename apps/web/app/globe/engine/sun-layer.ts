@@ -38,11 +38,11 @@ const FRAGMENT = /* glsl */ `
       bool rim = r > ${f(SUN.limb)};
       ink = uLight > 0.5 ? (rim ? ${f(SUN.light.rim)} : 0.0) : (rim ? ${f(SUN.dark.limb)} : ${f(SUN.dark.disc)});
     } else {
-      // the halo: a falloff from the disc's edge, as a Bayer dither (a pixel is on or off), a step stronger near the disc
-      float t = pow(clamp(1.0 - (r - 1.0) / ${f(SUN.halo)}, 0.0, 1.0), 2.2);
+      // the halo: a falloff from the disc's edge in a few flat steps of tone, the steps ordered-dithered into each other (a pixel is one of the steps' tones, never between)
+      float t = pow(clamp(1.0 - (r - 1.0) / ${f(SUN.halo)}, 0.0, 1.0), ${f(SUN.haloFall)});
       ivec2 c = ivec2(mod(floor(gl_FragCoord.xy), 4.0));
       float th = (BAYER[c.y * 4 + c.x] + 0.5) / 16.0;
-      if (t > 0.02 && t > th) ink = t > ${f(SUN.core)} ? (uLight > 0.5 ? ${f(SUN.light.haloCore)} : ${f(SUN.dark.haloCore)}) : (uLight > 0.5 ? ${f(SUN.light.halo)} : ${f(SUN.dark.halo)});
+      ink = floor(t * ${f(SUN.haloSteps)} + th) / ${f(SUN.haloSteps)} * (uLight > 0.5 ? ${f(SUN.light.haloCore)} : ${f(SUN.dark.haloCore)});
     }
     if (ink <= 0.0) discard;
     gl_FragColor = vec4(mix(uBg, uInk, ink), uAmt);

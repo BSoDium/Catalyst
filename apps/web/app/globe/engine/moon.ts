@@ -82,6 +82,9 @@ export const SUN = {
   halo: 4.5,
   /** The halo's inner part (where the falloff is above `core`) is a step stronger than its outer. */
   core: 0.45,
+  /** The halo's steps of tone (from its edge, where it is `haloCore`, to nothing), and how fast it falls. */
+  haloSteps: 6,
+  haloFall: 1.8,
   limb: 0.88,
   dark: { disc: 1, limb: 0.8, halo: 0.16, haloCore: 0.3 },
   light: { rim: 0.16, halo: 0.04, haloCore: 0.08 },
