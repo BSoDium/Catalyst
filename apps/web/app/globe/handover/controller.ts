@@ -149,6 +149,8 @@ export interface HandoverHandle {
   playInterlude(): boolean;
   /** The visitor asked for the interlude from a zoomed or turned globe: the camera goes home now. */
   goHome(): void;
+  /** The interlude was asked for while the caption is away: it stays away (no entrance, no ring) and the interlude begins as soon as the camera is home. */
+  wantInterlude(): void;
   /** The visitor can now ask for it: make what it needs ahead of time (the word's mesh, the sound's file); nothing is planned or played. */
   prepareInterlude(): void;
   debug(): HandoverDebug;
@@ -824,6 +826,7 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
     hasOrbit: () => renderer.hasCaption(),
     playInterlude: () => renderer.playInterlude(),
     goHome: () => renderer.goHome(),
+    wantInterlude: () => renderer.wantInterlude(),
     prepareInterlude: () => renderer.prepareInterlude(),
     debug(): HandoverDebug {
       const g = globe.debug();

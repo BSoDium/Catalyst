@@ -1142,6 +1142,26 @@ export class CaptionLayer {
     } else this.disarm();
     return ok;
   }
+  /** The interlude could begin this frame from a caption that is not on the stage (`playEggDirect`): its plan is armed and its word is made and on the GPU. */
+  canPlayEggNow(): boolean {
+    return !this.disposed && !this.failed && !this.motion.eggActive && !!this.motion.egg && !!this.built?.egg && this.eggWarm;
+  }
+
+  /**
+   * The visitor asked for the interlude while the caption was away (a zoomed or turned globe: the home screen had been put away): the caption comes onto the stage and the interlude
+   * begins in the same frame, with the rows already gone, so that nothing of the entrance is ever drawn only to be sent away again. False (nothing changed) when it cannot yet.
+   */
+  playEggDirect(now: number): boolean {
+    if (!this.canPlayEggNow()) return false;
+    this.show(now);
+    const ok = this.motion.replayEgg(now, true);
+    if (ok) {
+      this.armed = false;
+      this.opts.onChange();
+    } else this.hide(now, "fade");
+    return ok;
+  }
+
   /** A plan made for a request that could not be played is dropped: the interlude is never to begin by itself, later, for a visitor who has gone elsewhere. */
   private disarm(): void {
     if (this.armed && !this.motion.eggActive) this.motion.egg = null;

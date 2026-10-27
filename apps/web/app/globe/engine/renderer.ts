@@ -159,6 +159,9 @@ export interface FlyOptions {
   beyondLimit?: boolean;
 }
 
+/** How long the caption stays away for an interlude asked for while it was off the stage, ms (`GlobeRenderer.wantInterlude`). */
+const EGG_DIRECT_MS = 6000;
+
 export class GlobeRenderer {
   readonly canvas: HTMLCanvasElement;
 
@@ -1839,7 +1842,7 @@ export class GlobeRenderer {
   private ringPresence(): number {
     const a = this.textFits ? ringAlpha(this.view.zoom, this.fit, this.minZoom) : 0;
     // (and it is out for the whole of the cinematic interlude, while the globe is pulled back: `CaptionLayer.ringShare`)
-    const share = this.ringCut ? 0 : (this.caption?.ringShare() ?? 1);
+    const share = this.ringCut || this.eggPending ? 0 : (this.caption?.ringShare() ?? 1);
     return (this.showcaseActive ? a * (1 - this.lod.overlayAlpha) : a) * share;
   }
 
@@ -1854,6 +1857,40 @@ export class GlobeRenderer {
   /** The visitor can now ask for the interlude (the palette lists its entry): make its mesh and fetch its sound ahead of time. */
   prepareInterlude(): void {
     this.caption?.prewarmInterlude();
+  }
+
+  /**
+   * The visitor asked for the interlude and the caption is not on the stage: it will not be shown (no entrance, no ring) only to be taken away again. It stays away until the camera is home and the
+   * interlude can begin (`CaptionLayer.playEggDirect`), for `EGG_DIRECT_MS` at most, after which the usual showing comes in and the interlude follows it.
+   */
+  wantInterlude(): void {
+    this.eggPending = performance.now() + EGG_DIRECT_MS;
+  }
+  private eggPending = 0;
+  private eggPoll = 0;
+
+  /** Show the caption, or begin the interlude directly when it is what was asked for (`wantInterlude`); false while it waits for the interlude to be ready. */
+  private showCaption(now: number): boolean {
+    const caption = this.caption;
+    if (!caption) return false;
+    if (this.eggPending) {
+      if (now < this.eggPending) {
+        if (caption.playEggDirect(now)) {
+          this.eggPending = 0;
+          return true;
+        }
+        if (!this.eggPoll) {
+          this.eggPoll = window.setTimeout(() => {
+            this.eggPoll = 0;
+            if (!this.disposed) this.guardCaption(performance.now());
+          }, 120);
+        }
+        return false;
+      }
+      this.eggPending = 0;
+    }
+    caption.show(now);
+    return true;
   }
 
   /** The visitor asked for the interlude from a zoomed or turned globe: the camera goes home now, to the world view at the equator. */
@@ -2086,8 +2123,8 @@ export class GlobeRenderer {
     }
     if (this.latSnap || this.flight !== null) return; // (the glide, or somebody else's flight, is under way: wait for it)
     if (inBand(lat)) {
+      if (!this.showCaption(now)) return;
       this.captionOn = true;
-      caption.show(now);
       this.requestRender();
       return;
     }
