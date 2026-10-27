@@ -31,8 +31,9 @@ export function surfaceCoverage(landShare: number): number {
  * night, so in either scheme the dark side goes towards the page, as the moon's does.
  */
 export const NIGHT = {
-  litFrom: -0.12,
-  litTo: 0.28,
+  // (the atmosphere scatters the light a little past the terminator: more than half the planet is lit, owner, 2026-10-27; the middle of the step is at N . sun = -0.08, 4.6 degrees past it)
+  litFrom: -0.32,
+  litTo: 0.16,
   shift: 0.45,
   // The darkest a land cell goes on the night side, so the continents stay readable there.
   landMin: 0.45,

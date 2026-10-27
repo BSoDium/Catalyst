@@ -10,7 +10,7 @@
  */
 import { BufferAttribute, BufferGeometry, Color, Mesh, NormalBlending, type Scene, ShaderMaterial, Vector2 } from "three";
 import type { GlobeTheme } from "./colors";
-import { FLARE } from "./moon";
+import { FLARE, SUN } from "./moon";
 import { BAYER4 } from "./sky";
 
 const f = (n: number) => n.toFixed(3);
@@ -22,8 +22,22 @@ const VERTEX = /* glsl */ `
 
 const N = FLARE.ghosts.length;
 
+/**
+ * The warm ramp (`SUN.tint`) as a GLSL function: `warm(tone)` is the colour of a pixel of that tone, `uSet` (0..1, how far the planet has covered the sun) pulls the tone down, so the light reddens as it sets.
+ * Shared by the sun's halo and the flare, so that the two are one light.
+ */
+export const WARM_GLSL = /* glsl */ `
+  uniform float uSet;
+  vec3 warm(float tone) {
+    float t = tone * (1.0 - ${f(SUN.setShare)} * uSet);
+    ${SUN.tint.map((s, i) => `${i === 0 ? "" : "else "}if (t >= ${f(s.at)}) return vec3(${list(s.rgb)});`).join("\n    ")}
+    return vec3(${list(SUN.tint[SUN.tint.length - 1]!.rgb)});
+  }
+`;
+
 const FRAGMENT = /* glsl */ `
   uniform vec2 uSun; uniform vec2 uMid; uniform float uUnit; uniform float uStr; uniform vec3 uBg; uniform vec3 uInk; uniform float uLight; uniform float uBufW; uniform float uBufH; uniform float uSunR;
+  ${WARM_GLSL}
   const float BAYER[16] = float[16](${BAYER4.map((n) => `${n}.0`).join(", ")});
   const float AT[${N}] = float[${N}](${list(FLARE.ghosts.map((g) => g.at))});
   const float SIZE[${N}] = float[${N}](${list(FLARE.ghosts.map((g) => g.size))});
@@ -36,6 +50,9 @@ const FRAGMENT = /* glsl */ `
   void main() {
     vec2 p = gl_FragCoord.xy;
     float ink = 0.0;
+    // the tone the strongest element asks the warm ramp for (the ghosts go from the sun's gold to violet across the picture, the rays from white-gold to orange)
+    float hue = 0.0;
+    bool ray = false;
     for (int i = 0; i < ${N}; i++) {
       // the ghost's centre on a whole pixel's centre, so that its edge falls on the grid
       vec2 g = floor(uSun + (uMid - uSun) * AT[i]) + 0.5;
@@ -44,9 +61,12 @@ const FRAGMENT = /* glsl */ `
       vec2 q = abs(p - g);
       float r = max(dot(q, vec2(0.8660254, 0.5)), q.y);
       float t = TONE[i];
-      if (KIND[i] == 0) { if (abs(r - R) < ${f(FLARE.ringWidth / 2)}) ink = max(ink, t); }
-      else if (KIND[i] == 1) { if (r < R && t > bayer()) ink = max(ink, t); }
-      else { if (r < R) ink = max(ink, t); }
+      float h = clamp(0.62 - 0.22 * AT[i], 0.06, 0.62);
+      bool on = false;
+      if (KIND[i] == 0) { on = abs(r - R) < ${f(FLARE.ringWidth / 2)}; }
+      else if (KIND[i] == 1) { on = r < R && t > bayer(); }
+      else { on = r < R; }
+      if (on && t > ink) { ink = t; hue = h; }
     }
     // the rays: one pixel wide, from the sun's centre (the disc's edge, where they join it) out along the axes and the diagonals (a diagonal is the pixels where the two offsets are equal), a dither that thins out along them
     vec2 o = floor(p) - floor(uSun);
@@ -58,10 +78,19 @@ const FRAGMENT = /* glsl */ `
     else if (a.x == a.y) { dist = a.x * 1.4142; len = ${f(FLARE.streakDiag)} * uBufW; }
     if (dist > uSunR) {
       float along = 1.0 - (dist - uSunR) / len;
-      if (along > 0.0 && pow(along, ${f(FLARE.streakFall)}) > bayer()) ink = max(ink, ${f(FLARE.streakTone)});
+      if (along > 0.0 && pow(along, ${f(FLARE.streakFall)}) > bayer()) { ink = ${f(FLARE.streakTone)}; hue = mix(0.5, 0.95, along); ray = true; }
     }
-    if (ink <= 0.0) discard;
-    gl_FragColor = vec4(mix(uBg, uInk, ink * (uLight > 0.5 ? ${f(FLARE.lightShare)} : 1.0)), uStr);
+    if (uLight > 0.5) {
+      // the light page: the sun's rays are WHITE, and what shows them is a very soft, faint grey darkening round the sun (the veil); the ghosts are the ramp's colours, faintly
+      float veil = pow(clamp(1.0 - length(p - uSun) / (${f(SUN.light.veil.reach)} * uBufW), 0.0, 1.0), ${f(SUN.light.veil.fall)}) * ${f(SUN.light.veil.strength)} * (1.0 - uSet);
+      if (ink <= 0.0 && veil < 0.004) discard;
+      if (ink <= 0.0) gl_FragColor = vec4(vec3(${f(SUN.light.veil.grey)}), veil * uStr);
+      else if (ray) gl_FragColor = vec4(1.0, 1.0, 1.0, uStr);
+      else gl_FragColor = vec4(mix(uBg, warm(hue) * ${f(SUN.light.ink)}, clamp(ink * ${f(SUN.gain)}, 0.0, 1.0) * ${f(SUN.light.ghost)}), uStr);
+    } else {
+      if (ink <= 0.0) discard;
+      gl_FragColor = vec4(mix(uBg, warm(hue), clamp(ink * ${f(SUN.gain)}, 0.0, 1.0)), uStr);
+    }
   }
 `;
 
@@ -77,6 +106,8 @@ export interface FlareFrame {
   visible: number;
   /** The sun's disc radius on the buffer, px: the streaks start at its edge. */
   r?: number;
+  /** How far the planet has covered the sun's glow, 0 (none) to 1 (all): the light reddens with it (`warm`). Absent: none. */
+  set?: number;
 }
 
 const smooth = (a: number, b: number, x: number) => {
@@ -84,12 +115,36 @@ const smooth = (a: number, b: number, x: number) => {
   return t * t * (3 - 2 * t);
 };
 
-/** How much of the planet's disc, seen from `d` earth radii, is clear of a direction at `cos` from its centre: 1 well outside its limb, 0 behind it, a smoothstep over a hair of its width. Pure. */
-export function planetClear(cosFromCentre: number, d: number): number {
-  if (cosFromCentre <= 0) return 1;
-  const limb = 1 / Math.max(1.0001, d);
-  const sin = Math.sqrt(Math.max(0, 1 - cosFromCentre * cosFromCentre));
-  return smooth(limb * (1 - FLARE.limbSoft), limb * (1 + FLARE.limbSoft), sin);
+/**
+ * How much of the sun's HALO the planet leaves, 1 until the sun's blob first touches the limb and 0 once the sun's centre is `SUN.fade.from` disc radii behind it, a smoothstep over the distance between. `riseDisc` is the sun's
+ * distance outside the limb in disc radii (`sunRise` in radians, times the focal length, over the disc's radius on the buffer); Infinity when nothing is in the way. Pure.
+ */
+export function haloClear(riseDisc: number): number {
+  return smooth(-SUN.fade.from, SUN.fade.to, riseDisc);
+}
+
+/**
+ * What is left of the sun's disc as the planet covers it, with the limb taken as a straight line across the disc (it is a hair of curve over a disc this small). `riseDisc` is the sun's centre's distance outside the limb, in disc
+ * radii (negative once it is behind it; Infinity when nothing is in the way). `area` is the share of the disc's surface still in view, 0..1; `shift` the distance of the visible part's centre of mass from the disc's centre,
+ * in disc radii, along the normal away from the planet; `width` the widest the visible part is, across that normal, in disc radii: the disc's own (1) until the limb has reached the centre, then the crescent's, down to 0. It is
+ * 1, 0, 1 for a sun clear of the limb and 0, 1, 0 for one wholly behind it. Pure.
+ */
+export function sunCrescent(riseDisc: number): { area: number; shift: number; width: number } {
+  const a = -riseDisc; // the limb's place along the outward normal, from the sun's centre; the visible part is where x >= a
+  if (a <= -1) return { area: 1, shift: 0, width: 1 };
+  if (a >= 1) return { area: 0, shift: 1, width: 0 };
+  const s = Math.sqrt(1 - a * a);
+  const area = Math.acos(a) - a * s; // (of the unit disc, which is pi)
+  return { area: area / Math.PI, shift: area > 1e-9 ? ((2 / 3) * s * s * s) / area : 1, width: a <= 0 ? 1 : s };
+}
+
+/**
+ * How far the sun's centre is outside the planet's limb, in radians: positive outside, negative behind it, +Infinity when the sun is on the far side of the view axis (nothing of the planet is in its way). The halo's fade and the crescent (`haloClear`, `sunCrescent`) are
+ * measured from it. `cosFromCentre` is the cosine of the angle between the sun's direction and the line from the camera through the planet's middle, `d` the camera's distance in earth radii. Pure.
+ */
+export function sunRise(cosFromCentre: number, d: number): number {
+  if (cosFromCentre <= 0) return Infinity;
+  return Math.acos(Math.min(1, cosFromCentre)) - Math.asin(Math.min(1, 1 / Math.max(1.0001, d)));
 }
 
 /** The flare for this frame: the sun's place (a whole pixel's centre), the middle of the picture, the unit its sizes are shares of, and its strength; or null when there is none. Pure. */
@@ -109,6 +164,7 @@ export class FlareLayer {
   readonly mesh: Mesh;
   private mat = new ShaderMaterial({
     uniforms: {
+      uSet: { value: 0 },
       uSun: { value: new Vector2() },
       uMid: { value: new Vector2() },
       uUnit: { value: 1 },
@@ -159,6 +215,7 @@ export class FlareLayer {
     u.uBufH!.value = fr.bufH;
     u.uSunR!.value = p.r;
     u.uStr!.value = p.str;
+    u.uSet!.value = fr.set ?? 0;
     return true;
   }
 

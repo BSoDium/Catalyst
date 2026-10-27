@@ -85,13 +85,53 @@ export const SUN = {
   haloFall: 2.6,
   haloSteps: 6,
   /** The ring of light on top of the halo, in disc radii from the sun's centre: sharp on its inside (`inner` wide, at full `tone`), then a smooth falloff over `outer`, in `steps` dithered steps. */
-  ring: { at: 8.5, inner: 0.3, outer: 2.6, steps: 5, dark: 0.16, light: 0.04 },
-  /** The disc's limb is a step down from its centre, from this share of its radius. */
-  limb: 0.88,
-  /** Tones, shares from the page's colour to the ink: the disc, its limb, and the halo's `glow` where it starts, at the disc's edge (nearly the disc's own on the dark page). */
-  dark: { disc: 1, limb: 0.8, glow: 0.72 },
-  /** The light page's sun is the glare that burns the colour away: only a ghost of a rim and a faint glow. */
-  light: { rim: 0.16, glow: 0.18 },
+  ring: { at: 8.5, inner: 0.3, outer: 2.6, steps: 5, strength: 0.16 },
+  /** The halo's tone, where it starts, at the disc's edge (the disc itself is the blur: `core`): the warm ramp's tone, on either page. */
+  glow: 0.72,
+  /**
+   * The dark page's sun is a BLUR, not a disc (owner, 2026-10-27: "you can't actually distinguish the disk"): a blob that falls off smoothly from the sun's centre, as a gaussian that is half as bright at `half` disc radii (the size the old
+   * disc was) and is nothing by `radius` (a flat plateau of white reads as an octagon on a few pixels: it has none), in the warm light's colours, with no edge of its own. It is its OWN layer, over the planet (a lens's bloom is not hidden by
+   * the limb), and it ADDS its light (a bright centre is solid over whatever is behind it, and a dim part is a glow, never a see-through patch). While the planet covers the sun it is what the eye makes of the crescent that is left
+   * (`sunCrescent`, engine/sun-flare.ts): a blob of the crescent's width (the sun's own width until the limb has reached its centre, then as wide as the crescent), centred on the crescent's centre of mass (so it overlaps the planet, not
+   * tangent to it), as bright as the share of the sun that is left.
+   */
+  core: { radius: 2.4, half: 1 },
+  /**
+   * The light page's sun (owner, 2026-10-27: "much whiter", "the halo very faintly tinted", "the rays white", "much more subtle"): the sun is burnt out, so it is WHITE, and what makes it visible is not colour but a little darkness round
+   * it. `veil` is a very soft, faint grey darkening round the sun (in the lens flare's quad, `reach` of the picture's width, `strength` of the way to `grey` at its middle, gone with the sun's cover as the flare is), so that the white sun and
+   * its white rays show against the paper. The `halo` is that grey too, `strength` of the way from the paper, with only `warm` of the warm ramp's colour (each colour times `ink`, a darker shade) in it. The ghosts are the ramp's
+   * colours at `ghost` strength. The lining and the ground's light are `grey` with `warm` of the ramp in them, and the twilight is `twilight` of what it is on the dark page. The dark page has none of this.
+   */
+  light: {
+    ink: 0.82,
+    veil: { strength: 0.22, reach: 0.28, grey: 0.45, fall: 1.3 },
+    halo: { strength: 0.3, grey: 0.5, warm: 0.2 },
+    ghost: 0.25,
+    lining: { grey: 1, warm: 0.12 },
+    twilight: 0.3,
+  },
+  /**
+   * The halo (and with it the ring of light and the warm light's reddening, `uSet`) goes with the planet's cover, over the sunset and only over it (`haloClear`, engine/sun-flare.ts): whole until the sun's DISC first touches
+   * the limb (the sun's distance outside it, `rise`, in disc radii, is `to`: 1), gone when the sun's centre is `from` disc radii behind it, in a smoothstep over the distance between (the halo is wide, so most of it is still
+   * there when the last pixel of the sun has gone). Nothing dims or reddens before the contact (owner: "it should not dim before it starts colliding with the horizon").
+   */
+  fade: { from: 3, to: 1 },
+  /**
+   * The warm light of a low sun: the tone of a pixel (0..1, the halo's steps, the flare's elements) picks a colour from the
+   * ramp, the first stop it is at or over, hot and pale at the top down to a violet. `setShare` is how far the tones are pulled down as the sun sets (the planet's cover grows), so the
+   * halo reddens as it goes: the stops are the colours on the black page, and a pixel's strength (`gain` times its tone) is how much of the colour it keeps.
+   */
+  tint: [
+    { at: 0.9, rgb: [1, 0.97, 0.86] },
+    { at: 0.66, rgb: [1, 0.9, 0.55] },
+    { at: 0.5, rgb: [1, 0.68, 0.26] },
+    { at: 0.36, rgb: [0.96, 0.42, 0.2] },
+    { at: 0.24, rgb: [0.8, 0.24, 0.32] },
+    { at: 0.12, rgb: [0.52, 0.2, 0.5] },
+    { at: 0, rgb: [0.3, 0.16, 0.46] },
+  ],
+  setShare: 0.5,
+  gain: 1.6,
 } as const;
 
 /**
@@ -121,15 +161,45 @@ export const FLARE = {
   streakDiag: 0.09,
   streakFall: 2.2,
   streakTone: 1,
-  /** The share of the ink the flare shows on the light page, where the sun is burnt out. */
-  lightShare: 0.3,
   /** The strength goes to 0 as the sun's distance from the middle (a share of the half diagonal) goes from `edgeFrom` to `edgeTo`, and from `midTo` down to `midFrom`. */
   edgeFrom: 0.8,
   edgeTo: 1.05,
   midFrom: 0.08,
   midTo: 0.3,
-  /** The planet's limb softness for the flare's occlusion, a share of its angular radius. */
-  limbSoft: 0.04,
+} as const;
+
+/**
+ * The RIM: the atmosphere as a thin skin on the planet's limb, there while the sun is (the night's amount), the interlude's thick glow (engine/materials.ts, `atmosphereMaterial`) aside. `shell` is its
+ * height in earth radii. Two things in one shell:
+ *  - the HAZE: a film of very low opacity, SMOOTH (no dither: a stepped haze reads as grains of sand over the surface), the page's colour a step towards its ink, on the sun's side of the limb: `haze` is its
+ *    opacity at the planet's edge, thinning with the height as `hazePower`. Near invisible, and gone with the zoom as the night is.
+ *  - the SILVER LINING: the sun's light scattered by the atmosphere, there only while the sun is aligned with the limb on the picture (the angle between the sun and the line from the camera through the
+ *    planet's middle within `align` of the planet's angular radius of the limb's own: gone when the sun is well outside it or dead behind the planet), and only on the part of the outline that faces the sun: whole where
+ *    the limb point's direction is within `arc[1]` (a cosine) of the sun's, gone by `arc[0]`. Coloured as the sun's own light is (`SUN.tint`): the sun's pale gold where the arc is nearest the sun, through yellow and orange to red and violet at its ends (a gradient along the limb), thicker than the haze (the fall is `thick`), in the dither's flat steps.
+ */
+export const RIM = {
+  shell: 0.024,
+  haze: 0.1,
+  hazePower: 2.2,
+  align: 0.55,
+  arc: [0.55, 0.97],
+  thick: 1.3,
+  /** The lining's opacity at its thinnest: the dither's gaps keep this share of the opacity of the pixels on (`grain`: 0 gaps fully clear, 1 no grain at all), so the lining is a smooth rise in opacity as well as in density. */
+  grain: 0.45,
+  /**
+   * The SUNSET ON THE GROUND (`rimGroundMaterial`): the same light on the planet's own surface, as in the footage: the lit ground is brightest at the limb and dims inward (`alpha` at the limb, falling with the grazing angle
+   * as `power`; `light` times that on the light page, where a grey over the planet's light ground needs the strength to show), over a wider arc of the limb than the lining's (`arc`, as the lining's: cosines of the angle to the sun's side), in the same colours, TEXTURED as the dark side of the planet is, in `steps` flat levels dithered into each
+   * other on the art's pixels (a pixel is one of the levels, never between). It is only there while the sun is ABOVE the horizon: it is whole `peak` of the alignment's width outside the limb, and zero by the time the sun's centre
+   * is on it, so a sun that has set lights only the atmosphere.
+   */
+  ground: { alpha: 0.26, light: 2, power: 2.6, arc: [0.15, 0.9], peak: 0.3, steps: 4 },
+  /**
+   * The TWILIGHT (`twilightMaterial`): the atmosphere scatters the sun's light a little past the terminator (`NIGHT.litFrom`/`litTo` put the lit side's edge 4.6 degrees past it), and the light that gets there has been through
+   * more air, so it is redder. A faint band on the ground just either side of the halfway edge: `band` is N . sun at which it comes in, is whole, starts to go and is gone. It only TINTS what is there (it multiplies the colours under it
+   * by `rgb` taken `strength` of the way from white: black, the ocean, stays black), in `steps` dithered levels on the art's pixels, as the dark side is. The dark page only.
+   */
+  twilight: { band: [-0.34, -0.16, -0.02, 0.12], strength: 0.4, steps: 3, rgb: [1, 0.6, 0.58] },
+  cover: { dark: 0.9, light: 0.85 },
 } as const;
 
 export type Vec3 = [number, number, number];

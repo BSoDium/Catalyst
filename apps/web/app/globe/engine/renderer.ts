@@ -70,7 +70,7 @@ import { SHOWCASE_STATE, bandLat, inBand, shellWindowFactor, type CaptionContent
 import { CAP_HEIGHT_EM, ringAlpha, ringFloorZoom, ringRoomRadius, RING_STATE } from "./ring";
 import { RingLayer } from "./ring-layer";
 import { GlobeScene } from "./scene";
-import { planetClear } from "./sun-flare";
+import { sunRise } from "./sun-flare";
 import { MOON, inclinationFor, litTurn, moonAmount, orbitAngle, rollFor, sunDirection, toEarthFrame, toRad, type Vec3 } from "./moon";
 import type { MoonSample } from "./moon-layer";
 import { CAPTION, ENERGY, INSET_EASE, CAPTION_LOAD, RING, SKY, START_VIEW, TUNING } from "./tuning";
@@ -1317,6 +1317,7 @@ export class GlobeRenderer {
 
   private sunV = new Vector3();
   private sunClip = new Vector4();
+  private planetV = new Vector3();
 
   /**
    * Place the sun for this frame: a direction at infinity (the light's, in the earth's frame), projected by the camera as the stars' are (w = the depth along the view, so a direction behind the camera is
@@ -1328,6 +1329,8 @@ export class GlobeRenderer {
     const v = this.sunV.set(sunEarth[0], sunEarth[1], sunEarth[2]).transformDirection(cam.matrixWorldInverse);
     const clip = this.sunClip.set(v.x, v.y, v.z, 0).applyMatrix4(cam.projectionMatrix);
     const ahead = clip.w > 1e-4;
+    // (where the planet's centre is on the buffer: the crescent's centre of mass lies on the line from it through the sun)
+    const pc = this.planetV.set(0, 0, 0).project(cam);
     sun.sync({
       bufW: this.bufW,
       bufH: this.bufH,
@@ -1336,8 +1339,9 @@ export class GlobeRenderer {
       ahead,
       focal: (cam.projectionMatrix.elements[5]! * this.bufH) / 2,
       amount: this.nightNow,
-      // the planet stands at distance d on the view axis: how much of the sun it leaves the lens flare
-      visible: planetClear(-v.z, d),
+      rise: sunRise(-v.z, d),
+      px: (pc.x * 0.5 + 0.5) * this.bufW,
+      py: (pc.y * 0.5 + 0.5) * this.bufH,
     });
   }
 
