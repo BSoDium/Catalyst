@@ -1914,10 +1914,17 @@ export class GlobeRenderer {
     this.view = this.clampView({ lon: this.view.lon, lat: 0, zoom: this.minZoom });
     this.captionOn = true;
     this.showcaseOn = true;
+    // (the explore view's boxes and labels are out in this frame, not fading: the page's camera is home already, and they would hang in the wrong places while they went)
+    this.lod.suppressNow();
     this.applyShowcase();
     this.noteChange();
     this.requestRender();
     return true;
+  }
+
+  /** An interlude asked for away from the display mode is held or under way (`eggAsk`): the handover cuts the street map away at once, with no cross-fade that would follow the page's camera under the glide. */
+  interludeAway(): boolean {
+    return this.eggAsk !== null;
   }
 
   /** The held request (`wantInterlude`) is over: it was dropped, cut short, or the interlude has run its course. The page's word on the showcase holds again. */

@@ -660,8 +660,8 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
       globe.setLabelsActive(true);
       renderer.setSuspended(false);
       renderer.renderNow();
-      // The street map stays on screen a quarter of a second and steps its tones towards the globe's frames (a cross-fade, not a click).
-      if (!reduced && HANDOVER.crossfadeMs > 0 && streetOk() && !streetLost) {
+      // The street map stays on screen a quarter of a second and steps its tones towards the globe's frames (a cross-fade, not a click), except under an interlude asked for from it: that begins from the globe's camera and is cut at once.
+      if (!reduced && HANDOVER.crossfadeMs > 0 && !renderer.interludeAway() && streetOk() && !streetLost) {
         fadeOutUntil = performance.now() + HANDOVER.crossfadeMs;
         crossfadeFrame(now);
       }

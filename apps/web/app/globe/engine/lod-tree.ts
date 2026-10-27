@@ -689,6 +689,17 @@ export class LodTree {
     else this.overlay.set(0, !on);
   }
 
+  /**
+   * Hide every box and label IN THIS FRAME: suppressed, with the overlay and every node's own opacity snapped to out (`setSuppressed` alone lets each node fade by its own timer). For a
+   * view that changes under them at once (an interlude begun from the explore view: the page's camera goes home, and the boxes and labels would hang in the wrong places while they went).
+   */
+  suppressNow(): void {
+    this.setSuppressed(true, true);
+    for (let i = 0; i < this.size; i++) this.life.snap(i, false);
+    this.keyValid = false;
+    this.rebuild = true;
+  }
+
   /** The overlay's presence as a whole, 0..1 (`overlay`): eased like a node's opacity, run by the same clock. */
   get overlayAlpha(): number {
     return this.overlay.value(0);
