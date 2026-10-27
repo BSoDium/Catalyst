@@ -1142,6 +1142,27 @@ export class CaptionLayer {
     } else this.disarm();
     return ok;
   }
+  /**
+   * Make the interlude ready for `playEggDirect`: arm its plan, make its word and get it onto the GPU. Safe to call on every tick (unlike `summonInterlude`, which marks the word stale and begins
+   * its making over on each call, and `disarm`s when its retries run out): it begins the making once, and asks for the frame that warms it.
+   */
+  armEggNow(): void {
+    if (this.disposed || this.failed || this.motion.eggActive) return;
+    if (!this.motion.egg) {
+      this.motion.egg = onDemandPlan();
+      this.armed = true;
+      prepareSound();
+    }
+    const b = this.built;
+    if (!b) return;
+    if (!b.egg) {
+      if (b.key !== "stale") {
+        b.key = "stale";
+        void this.build();
+      }
+    } else if (!this.eggWarm) this.opts.onChange();
+  }
+
   /** The interlude could begin this frame from a caption that is not on the stage (`playEggDirect`): its plan is armed and its word is made and on the GPU. */
   canPlayEggNow(): boolean {
     return !this.disposed && !this.failed && !this.motion.eggActive && !!this.motion.egg && !!this.built?.egg && this.eggWarm;

@@ -1870,7 +1870,9 @@ export class GlobeRenderer {
    */
   playInterludeNow(): boolean {
     const caption = this.caption;
-    if (!caption || !this.showcaseActive || !this.sized || this.reduced || this.selected !== null || this.insetTarget !== 0 || !caption.canPlayEggNow()) return false;
+    if (!caption || !this.showcaseActive || !this.sized || this.reduced || this.selected !== null || this.insetTarget !== 0) return false;
+    caption.armEggNow();
+    if (!caption.canPlayEggNow()) return false;
     const now = performance.now();
     const v = this.drawView();
     const b = viewBasis(v, this.bufH * this.pixel);
