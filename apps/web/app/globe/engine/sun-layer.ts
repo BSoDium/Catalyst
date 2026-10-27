@@ -13,7 +13,7 @@ import { BufferAttribute, BufferGeometry, Color, Mesh, NormalBlending, type Scen
 import type { GlobeTheme } from "./colors";
 import { BAYER4 } from "./sky";
 import { SUN } from "./moon";
-import { FlareLayer, WARM_GLSL, type FlareFrame } from "./sun-flare";
+import { FlareLayer, WARM_GLSL, haloClear, type FlareFrame } from "./sun-flare";
 
 const VERTEX = /* glsl */ `
   uniform vec2 uCentre; uniform float uExt; uniform vec2 uBuf;
@@ -50,7 +50,8 @@ const FRAGMENT = /* glsl */ `
       // the dark page's sun is a blur, not a disc: a core, smooth, from the sun's white at the middle to the halo's own tone at its edge, with no edge of its own. It is at full strength until the limb reaches it, then it shrinks (uCore, in disc radii), round
       if (uLight < 0.5 && r < uCore) {
         float edgeTone = ${f(SUN.dark.glow)} * pow(max(0.0, 1.0 - (max(uCore, 1.0) - 1.0) / ${f(SUN.halo)}), ${f(SUN.haloFall)}) * uHalo;
-        float core = mix(edgeTone, 1.0, pow(1.0 - r / uCore, ${f(SUN.core.fall)}));
+        float hold = ${f(SUN.core.hold)} * min(1.0, uCore / ${f(SUN.core.radius)});
+        float core = mix(edgeTone, 1.0, pow(1.0 - clamp((r - hold) / max(uCore - hold, 0.001), 0.0, 1.0), ${f(SUN.core.fall)}));
         if (core > ink) { ink = core; tone = core; }
       }
       if (r >= 1.0) {
@@ -106,8 +107,6 @@ export interface SunFrame {
   amount: number;
   /** How much of the sun the planet leaves (`planetClear`, engine/sun-flare.ts), 0..1; the disc itself is hidden by the depth test, the lens flare by this. Absent: all of it. */
   visible?: number;
-  /** How much of the HALO the planet leaves (`haloClear`, engine/sun-flare.ts): the halo is wide, so its fade is long. Absent: all of it. */
-  halo?: number;
   /** How far the sun's centre is outside the planet's limb, radians (`sunRise`, engine/sun-flare.ts): the blur's core shrinks to fit it. Absent: nothing in the way. */
   rise?: number;
 }
@@ -153,7 +152,10 @@ export class SunLayer {
   sync(f: SunFrame): boolean {
     const p = f.amount > 0.01 ? sunPlace(f) : null;
     this.mesh.visible = p !== null;
-    const flaring = this.flare.sync({ bufW: f.bufW, bufH: f.bufH, x: f.x, y: f.y, ahead: f.ahead, amount: f.amount, visible: f.visible ?? 1, r: sunRadius(f), set: 1 - (f.halo ?? 1) } satisfies FlareFrame);
+    // how far the sun is outside the planet's limb, in disc radii (Infinity: nothing in the way), and so how much of the halo the planet leaves: nothing changes before the blob first touches the limb
+    const rise = ((f.rise ?? Infinity) * f.focal) / sunRadius(f);
+    const halo = haloClear(rise);
+    const flaring = this.flare.sync({ bufW: f.bufW, bufH: f.bufH, x: f.x, y: f.y, ahead: f.ahead, amount: f.amount, visible: f.visible ?? 1, r: sunRadius(f), set: 1 - halo } satisfies FlareFrame);
     if (!p) return flaring;
     const u = this.mat.uniforms;
     (u.uCentre!.value as Vector2).set(p.x, p.y);
@@ -163,10 +165,10 @@ export class SunLayer {
     u.uAmt!.value = f.amount;
     // the ring of light is a lens flare too: it goes with the sun as the planet covers it
     u.uClear!.value = f.visible ?? 1;
-    u.uHalo!.value = f.halo ?? 1;
-    // (the core's radius in disc radii: the sun's distance outside the limb, in the sun's own radius, and a little over; at most its full size)
-    u.uCore!.value = Math.min(SUN.core.radius, Math.max(0, ((f.rise ?? Infinity) * f.focal) / p.r + SUN.core.lead));
-    u.uSet!.value = 1 - (f.halo ?? 1);
+    u.uHalo!.value = halo;
+    // (the core's radius in disc radii: the sun's distance outside the limb and a little over; at most its full size)
+    u.uCore!.value = Math.min(SUN.core.radius, Math.max(0, rise + SUN.core.lead));
+    u.uSet!.value = 1 - halo;
     return true;
   }
 

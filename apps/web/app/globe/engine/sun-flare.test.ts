@@ -47,30 +47,21 @@ describe("planetClear", () => {
 });
 
 describe("haloClear", () => {
-  const reach = ((SUN.angularDeg * Math.PI) / 180) * SUN.halo;
-  const limb = Math.asin(1 / 4);
-  const at = (outside: number) => haloClear(Math.cos(limb + outside), 4, reach);
-  it("is 1 for a sun on the far side of the view axis, or far outside the limb", () => {
-    expect(haloClear(-0.5, 4, reach)).toBe(1);
-    expect(at(reach)).toBe(1);
+  it("is 1, nothing dimmed, until the sun's blob first touches the limb", () => {
+    expect(haloClear(Infinity)).toBe(1);
+    expect(haloClear(50)).toBe(1);
+    expect(haloClear(SUN.fade.to)).toBe(1);
   });
-  it("is 0 once the sun's centre is well behind the planet", () => {
-    expect(haloClear(1, 4, reach)).toBe(0);
-    expect(at(-reach)).toBe(0);
+  it("is 0 once the sun's centre is well behind the limb", () => {
+    expect(haloClear(-SUN.fade.from)).toBe(0);
+    expect(haloClear(-10)).toBe(0);
   });
-  it("fades the halo over a wide span, far wider than the ring's hair", () => {
-    const mid = at(reach * 0.2);
-    expect(mid).toBeGreaterThan(0.05);
-    expect(mid).toBeLessThan(0.95);
-    // the halo has begun to go while the planet's own hair (`planetClear`) still leaves all of the sun
-    expect(planetClear(Math.cos(limb + reach * 0.2), 4)).toBe(1);
-    // and a good share of it is still there with the sun's centre on the limb itself
-    expect(at(0)).toBeGreaterThan(0.3);
-  });
-  it("never rises as the sun sets", () => {
+  it("fades between the first contact and the full sunset, and never rises as the sun sets", () => {
+    expect(haloClear(0)).toBeGreaterThan(0.05);
+    expect(haloClear(0)).toBeLessThan(0.95);
     let last = 1;
-    for (let i = 8; i >= -2; i--) {
-      const v = at((reach * i) / 8);
+    for (let i = 10; i >= -4; i -= 0.5) {
+      const v = haloClear(i);
       expect(v).toBeLessThanOrEqual(last + 1e-9);
       last = v;
     }

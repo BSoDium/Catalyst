@@ -91,18 +91,19 @@ export const SUN = {
   /** Tones, shares from the page's colour to the ink: the disc, its limb, and the halo's `glow` where it starts, at the disc's edge (nearly the disc's own on the dark page). */
   dark: { disc: 1, limb: 0.8, glow: 0.72 },
   /**
-   * The dark page's sun is a BLUR, not a disc (owner, 2026-10-27: "you can't actually distinguish the disk"): the core is a blob of up to `radius` disc radii that falls smoothly from the sun's own white at the middle to the halo's
-   * own tone at its edge, as `(1 - r / radius)^fall`, with no edge of its own. It is at full strength until the planet's limb reaches it (it does NOT dim early), and then it SHRINKS: its radius is the sun's distance
+   * The dark page's sun is a BLUR, not a disc (owner, 2026-10-27: "you can't actually distinguish the disk"): the core is a blob of up to `radius` disc radii that is the sun's own white out to `hold` disc radii (so the bright part is the size the old disc was: owner,
+   * "did we maybe shrink the sun itself?") and falls smoothly from there to the halo's own tone at its edge, as `(1 - (r - hold) / (radius - hold))^fall`, with no edge of its own. It is at full strength until the planet's limb reaches it (it does NOT dim early), and then it SHRINKS: its radius is the sun's distance
    * outside the limb (plus `lead` disc radii: a little of it is left with the sun's centre on the limb), so the blob stays round, a smaller one, as the sun sets, and is gone once it has set.
    */
-  core: { radius: 2.4, fall: 1.6, lead: 0.6 },
+  core: { radius: 2.4, hold: 0.8, fall: 1.6, lead: 0.6 },
   /** The light page's sun is the glare that burns the colour away: only a ghost of a rim and a faint glow. */
   light: { rim: 0.16, glow: 0.18 },
   /**
-   * The halo goes with the planet's cover, slowly (`haloClear`, engine/sun-flare.ts): it is whole while the sun's centre is `to` halo-reaches outside the limb, and gone when it is `from`
-   * halo-reaches behind it, in a smoothstep over the angle between (the halo is wide, and most of it is still in the picture while the sun's centre is behind the limb: its fade is the length of the whole sunset).
+   * The halo (and with it the ring of light and the warm light's reddening, `uSet`) goes with the planet's cover, over the sunset and only over it (`haloClear`, engine/sun-flare.ts): whole until the sun's own blob first touches
+   * the limb (the sun's distance outside it, `rise`, in disc radii, is `to`: the core's radius, `core.radius`), gone when the sun's centre is `from` disc radii behind it, in a smoothstep over the distance between.
+   * Nothing dims or reddens before the contact (owner: "it should not dim before it starts colliding with the horizon").
    */
-  fade: { from: 0.8, to: 1 },
+  fade: { from: 3, to: 2.4 },
   /**
    * The warm light of a low sun (a dark-page look only: on the light page the sun burns out): the tone of a pixel (0..1, the halo's steps, the flare's elements) picks a colour from the
    * ramp, the first stop it is at or over, hot and pale at the top down to a violet. `setShare` is how far the tones are pulled down as the sun sets (the planet's cover grows), so the
