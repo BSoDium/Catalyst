@@ -516,8 +516,13 @@ function build(spec: Spec, schema: Schema, handoff: number, cellCss: number, vis
   return { ...base, type: "line", ...line, layout: { ...line.layout, ...(switched(spec) ? visibility(spec.id, visible) : {}) } } as LayerSpecification;
 }
 
-/** How far an outline drawn outside its polygon (`Spec.outside`) is moved off it, in CSS px: half the line (one cell) and a little, to the left of the ring (outside, as the tiles wind their polygons). */
-export const outsideOffset = (cellCss: number): number => -(cellCss * 0.5 + 0.1);
+/**
+ * How far an outline drawn outside its polygon (`Spec.outside`) is moved off it, in CSS px, to the left of the ring (outside, as the tiles wind their polygons): half the
+ * line and `OUTSIDE_GAP`. The gap is the slack that keeps a cut edge of the sea out of the thin slivers between two neighbouring polygons (their edges differ by a few
+ * units of the tile grid, and a pixel in a sliver is covered by neither fill: what was left was dashes that flickered as the map moved).
+ */
+export const OUTSIDE_GAP = 1.5;
+export const outsideOffset = (cellCss: number): number => -(cellCss * 0.5 + OUTSIDE_GAP);
 
 /** Layout and paint of a line spec: the one place widths, dashes, colour (level) and opacity (thin / wide) are decided. */
 export function linePaint(spec: Spec, cellCss: number): { layout: Record<string, unknown>; paint: Record<string, unknown> } {
