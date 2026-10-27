@@ -41,8 +41,8 @@ export function surfaceCoverage(landShare: number): number {
 export const NIGHT = {
   litFrom: -0.12,
   litTo: 0.28,
-  shift: 0.85,
-  landMin: 0.2,
+  shift: 0.45,
+  landMin: 0.45,
   /** The lines on the dark side: their colour goes this share of the way to the page's, in `lineSteps` steps (a staircase of greys, the palette's way; not a thinning: a one-pixel line in a dither flickers as the planet turns). */
   lineDim: 0.88,
   /** The planet's own outline (the horizon ring): the same steps, a little less dim, so that the dark side's edge is still there. */
