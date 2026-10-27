@@ -275,7 +275,8 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
     return buildStreetStyle({
       schema: d?.schema ?? "openmaptiles",
       tiles: styleTiles(d),
-      satellite: net.satelliteTiles(SATELLITE_TILES),
+      // (no satellite ground where the browser has no OffscreenCanvas, which reads the tiles: the map is as it was)
+      satellite: typeof OffscreenCanvas === "undefined" ? undefined : net.satelliteTiles(SATELLITE_TILES),
       coastlines: world.coastlines,
       borders: world.borders,
       graticule: grid,
