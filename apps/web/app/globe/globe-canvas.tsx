@@ -211,8 +211,10 @@ export default function GlobeCanvas({
       let tries = 0;
       held = window.setInterval(() => {
         const h = handleRef.current;
-        // (the usual way from the display mode; else from wherever the camera is, once the interlude is ready: it was armed by the first try)
-        if (h?.playInterlude() || h?.playInterludeNow() || ++tries > 60) clear();
+        // (from wherever the camera is, once the interlude is ready: the first try armed it, and it makes its word on its own. Asking again re-marks the word as stale and starts
+        // its making over, so the ask is repeated only when the plan has run out, every 6 s, not every tick: a build longer than a tick would never end)
+        tries++;
+        if (h?.playInterludeNow() || (tries % 24 === 0 && h?.playInterlude()) || tries > 60) clear();
       }, 250);
     };
     const onPrepare = () => {
