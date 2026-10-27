@@ -46,15 +46,19 @@ const FRAGMENT = /* glsl */ `
       else if (KIND[i] == 1) { if (r < R && t > bayer()) ink = max(ink, t); }
       else { if (r < R) ink = max(ink, t); }
     }
-    // the streaks: a one-pixel row and column through the sun, in its own tone, from the disc's edge out; a dither that thins out along them
+    // the streaks: a row and a column through the sun in its own tone, from a little beyond the disc's edge out: thick at the base (a few pixels across, a step down to one), and a dither that thins out along them
     vec2 d = abs(p - uSun);
-    if (abs(p.y - (floor(uSun.y) + 0.5)) < 0.5 && d.x > uSunR) {
-      float along = 1.0 - d.x / (${f(FLARE.streak)} * uBufW);
-      if (along > 0.0 && pow(along, 2.2) > bayer()) ink = max(ink, ${f(FLARE.streakTone)});
+    float from = uSunR + max(${f(FLARE.gapMin)}, ${f(FLARE.gap)} * uSunR);
+    vec2 off = abs(p - (floor(uSun) + 0.5));
+    if (d.x > from) {
+      float along = 1.0 - (d.x - from) / (${f(FLARE.streak)} * uBufW);
+      float half_ = along > 1.0 - ${f(FLARE.thickShare)} ? ${f(FLARE.thick / 2)} : 0.5;
+      if (along > 0.0 && off.y < half_ && pow(along, 2.2) > bayer()) ink = max(ink, ${f(FLARE.streakTone)});
     }
-    if (abs(p.x - (floor(uSun.x) + 0.5)) < 0.5 && d.y > uSunR) {
-      float along = 1.0 - d.y / (${f(FLARE.streakUp)} * uBufH);
-      if (along > 0.0 && pow(along, 2.2) > bayer()) ink = max(ink, ${f(FLARE.streakTone)});
+    if (d.y > from) {
+      float along = 1.0 - (d.y - from) / (${f(FLARE.streakUp)} * uBufH);
+      float half_ = along > 1.0 - ${f(FLARE.thickShare)} ? ${f(FLARE.thick / 2)} : 0.5;
+      if (along > 0.0 && off.x < half_ && pow(along, 2.2) > bayer()) ink = max(ink, ${f(FLARE.streakTone)});
     }
     if (ink <= 0.0) discard;
     gl_FragColor = vec4(mix(uBg, uInk, ink * (uLight > 0.5 ? ${f(FLARE.lightShare)} : 1.0)), uStr);
