@@ -72,22 +72,19 @@ export const MOON = {
 /**
  * The sun (engine/sun-layer.ts): a point of the sky, a direction at infinity in the same frame as the light (`sunDirection`), drawn as the stars are, at the skybox's own distance (the far plane),
  * so it is in the picture only where the camera looks towards it and turns with the sky when the globe is turned. `angularDeg` is its disc's angular radius (not the real half degree: a stylised
- * sun, a small one: owner, 2026-10-27, "way smaller"). The crown is a faint dithered halo `halo` radii out and `rays` thin rays, each at its own random angle and of its own random length
- * (`rayMin` to `rayMax` radii), so that they never repeat. Tones are shares from the page's colour to the ink, and the crown's are barely there (the owner: "they should nearly blend in with the
- * background"): the dark page's sun is the ink's tone, the light page's is the glare that burns the colour away, and shows only its dark spots, a ghost of a rim and the crown's faint darkness.
+ * sun, a small one). It is kept simple (owner, 2026-10-27: "just a circle", after a crown of rays): a flat disc and a very subtle halo round it, `halo` radii out, a dither of a falloff in two
+ * tones, so that it looks as if it glows. Tones are shares from the page's colour to the ink: the dark page's sun is the ink's tone; the light page's is the glare that burns the colour away, so it
+ * shows only a ghost of a rim and the halo's faint darkness.
  */
 export const SUN = {
-  angularDeg: 0.8,
+  angularDeg: 0.6,
   minR: 3,
-  halo: 0.55,
-  rays: 26,
-  rayMin: 1.1,
-  rayMax: 4.2,
-  grain: 3.0,
-  spot: 0.74,
-  limb: 0.84,
-  dark: { core: 1, limb: 0.74, spot: 0.5, halo: 0.28, ray: 0.2 },
-  light: { spot: 0.28, rim: 0.14, halo: 0.07, ray: 0.05 },
+  halo: 4.5,
+  /** The halo's inner part (where the falloff is above `core`) is a step stronger than its outer. */
+  core: 0.45,
+  limb: 0.88,
+  dark: { disc: 1, limb: 0.8, halo: 0.16, haloCore: 0.3 },
+  light: { rim: 0.16, halo: 0.04, haloCore: 0.08 },
 } as const;
 
 export type Vec3 = [number, number, number];
