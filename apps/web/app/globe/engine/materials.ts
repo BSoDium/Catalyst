@@ -3,7 +3,7 @@
  * `ColorManagement` note in renderer.ts. Visibility of borders is ordered-dither coverage, not alpha, so the
  * output never contains a blended pixel.
  */
-import { BackSide, Color, FrontSide, NormalBlending, ShaderMaterial } from "three";
+import { AddEquation, BackSide, Color, CustomBlending, DstColorFactor, FrontSide, NormalBlending, ShaderMaterial, ZeroFactor } from "three";
 import { LEG_MODES, MODE_STYLE } from "../paths/modes";
 import { STRAIGHT_FADE_MIX, STRAIGHT_FADE_STEPS } from "../paths/thin";
 import { SPARK, TRAIL_BANDS, TRAIL_ENTRIES, TRAIL_PER_PALETTE } from "../paths/trail";
@@ -273,8 +273,9 @@ export function rimGroundMaterial(): ShaderMaterial {
 }
 
 /**
- * The TWILIGHT (`RIM.twilight`): a faint warm band on the ground either side of the lit side's halfway edge, where the atmosphere has scattered the sun's light a little past the terminator and the light is a hair yellower for the air it
- * has been through. A skin a hair over the surface (the mist's), in dithered levels on the art's pixels (the dark side's own texture). The dark page only: the light page has no warm light.
+ * The TWILIGHT (`RIM.twilight`): a faint red-purple band on the ground either side of the lit side's halfway edge, where the atmosphere has scattered the sun's light a little past the terminator and the light is redder for the air it
+ * has been through. It only TINTS what is under it: it MULTIPLIES the colours there (a black ocean stays black), in dithered levels on the art's pixels (the dark side's own texture), on a skin a hair over the surface (the mist's).
+ * The dark page only: the light page has no warm light.
  */
 export function twilightMaterial(): ShaderMaterial {
   return new ShaderMaterial({
@@ -291,13 +292,17 @@ export function twilightMaterial(): ShaderMaterial {
         if (uFlip > 0.5) discard;
         float d = dot(normalize(vPos), uSunN);
         float band = smoothstep(${RIM.twilight.band[0].toFixed(2)}, ${RIM.twilight.band[1].toFixed(2)}, d) * (1.0 - smoothstep(${RIM.twilight.band[2].toFixed(2)}, ${RIM.twilight.band[3].toFixed(2)}, d));
-        float a = stepped(band * uNight * uAmt, ${RIM.twilight.steps.toFixed(1)}) * ${RIM.twilight.alpha.toFixed(2)};
-        if (a < 0.004) discard;
-        gl_FragColor = vec4(${RIM.twilight.rgb.map((x) => x.toFixed(3)).join(", ")}, a);
+        float k = stepped(band * uNight * uAmt, ${RIM.twilight.steps.toFixed(1)}) * ${RIM.twilight.strength.toFixed(2)};
+        if (k < 0.004) discard;
+        // the colour under it times this: white (nothing) to the tint
+        gl_FragColor = vec4(mix(vec3(1.0), vec3(${RIM.twilight.rgb.map((x) => x.toFixed(3)).join(", ")}), k), 1.0);
       }
     `,
     side: FrontSide,
-    blending: NormalBlending,
+    blending: CustomBlending,
+    blendEquation: AddEquation,
+    blendSrc: DstColorFactor,
+    blendDst: ZeroFactor,
     depthTest: true,
     depthWrite: false,
     transparent: true,

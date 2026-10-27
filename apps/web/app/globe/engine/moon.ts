@@ -189,10 +189,10 @@ export const RIM = {
   ground: { alpha: 0.26, power: 2.6, arc: [0.15, 0.9], peak: 0.3, steps: 4 },
   /**
    * The TWILIGHT (`twilightMaterial`): the atmosphere scatters the sun's light a little past the terminator (`NIGHT.litFrom`/`litTo` put the lit side's edge 4.6 degrees past it), and the light that gets there has been through
-   * more air, so it is a hair yellower. A faint band of warm light on the ground just either side of the halfway edge: `band` is N . sun at which it comes in, is whole, starts to go and is gone, `alpha` its strength, in
-   * `steps` dithered levels on the art's pixels, as the dark side is. The dark page only.
+   * more air, so it is redder. A faint band on the ground just either side of the halfway edge: `band` is N . sun at which it comes in, is whole, starts to go and is gone. It only TINTS what is there (it multiplies the colours under it
+   * by `rgb` taken `strength` of the way from white: black, the ocean, stays black), in `steps` dithered levels on the art's pixels, as the dark side is. The dark page only.
    */
-  twilight: { band: [-0.34, -0.16, -0.02, 0.12], alpha: 0.09, steps: 3, rgb: [1, 0.86, 0.5] },
+  twilight: { band: [-0.34, -0.16, -0.02, 0.12], strength: 0.4, steps: 3, rgb: [1, 0.68, 0.9] },
   cover: { dark: 0.9, light: 0.3 },
 } as const;
 
