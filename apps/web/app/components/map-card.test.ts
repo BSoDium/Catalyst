@@ -28,7 +28,7 @@ describe("credits line", () => {
   it("is one line of real text with the main contributors, from the same list as the dialog (the licence's 'contributors' is drawn on a screen from 480 px below md, where the line has room for it)", () => {
     const html = credits();
     const text = html.replace(/<[^>]+>/g, "");
-    expect(text).toBe("© OpenStreetMap contributors · OpenFreeMap · Natural Earth·See more");
+    expect(text).toBe("© OpenStreetMap contributors · OpenFreeMap · NASA Blue Marble · Natural Earth·See more");
     expect(html).toContain("select-text");
     expect(html).toContain("overflow-hidden");
     expect(html).toContain("whitespace-nowrap");
@@ -36,15 +36,15 @@ describe("credits line", () => {
   it("has one more middle dot, between the last credit and the button, outside the clipped text and hidden from assistive technology", () => {
     const html = credits();
     expect(html).toMatch(/<\/p><span aria-hidden="true" class="[^"]*shrink-0[^"]*">·<\/span><button/);
-    expect(html.split("·").length - 1).toBe(3); // two between the three credits, one before "See more"
+    expect(html.split("·").length - 1).toBe(4); // three between the four credits, one before "See more"
     // the line itself keeps clipping rather than wrapping: the dot is not inside it
     const line = /<p[^>]*>.*?<\/p>/.exec(html)![0];
     expect(line).toContain("overflow-hidden");
-    expect(line.split("·").length - 1).toBe(2);
+    expect(line.split("·").length - 1).toBe(3);
   });
   it("follows the tile configuration", () => {
-    expect(credits({ tiles: null }).replace(/<[^>]+>/g, "")).toBe("Natural Earth·See more");
-    expect(credits({ tiles: { primaryUrl: "https://t.example/x.pmtiles", fallbackPmtilesUrl: null } }).replace(/<[^>]+>/g, "")).toBe("© OpenStreetMap contributors · Protomaps · Natural Earth·See more");
+    expect(credits({ tiles: null }).replace(/<[^>]+>/g, "")).toBe("NASA Blue Marble · Natural Earth·See more");
+    expect(credits({ tiles: { primaryUrl: "https://t.example/x.pmtiles", fallbackPmtilesUrl: null } }).replace(/<[^>]+>/g, "")).toBe("© OpenStreetMap contributors · Protomaps · NASA Blue Marble · Natural Earth·See more");
   });
   it("sits bottom right, left of the detail panel, never wider than the room that leaves", () => {
     const html = credits({ insetRight: 720 });
