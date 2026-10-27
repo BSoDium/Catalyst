@@ -192,19 +192,34 @@ export default function GlobeCanvas({
   // The visitor asks for the cinematic interlude (the search palette's "I like surprises", `lib/interlude.ts`): this globe takes the request when it is the home screen at rest
   // (the caption is there); otherwise the palette takes the visitor home first and asks again.
   useEffect(() => {
+    // A request is held until the interlude can start: the caption may still be on its way back (the camera gliding home, the rows entering) when it arrives, and the palette must
+    // not be told it is done before it has played. Dropped when the visitor touches the globe, or after a while.
+    let held = 0;
+    const clear = () => {
+      if (held) window.clearInterval(held);
+      held = 0;
+    };
     const onPlay = (e: Event) => {
       const detail = (e as CustomEvent<PlayInterludeRequest>).detail;
       const handle = handleRef.current;
       if (!detail || !handle || !latest.current.showcase || !handle.hasOrbit()) return;
       detail.handled = true;
-      handle.playInterlude();
+      clear();
+      if (handle.playInterlude()) return;
+      let tries = 0;
+      held = window.setInterval(() => {
+        if (handleRef.current?.playInterlude() || ++tries > 60) clear();
+      }, 250);
     };
     const onPrepare = () => {
       if (latest.current.showcase) handleRef.current?.prepareInterlude();
     };
     window.addEventListener(PLAY_INTERLUDE_EVENT, onPlay);
     window.addEventListener(PREPARE_INTERLUDE_EVENT, onPrepare);
+    window.addEventListener("pointerdown", clear, { passive: true, capture: true });
     return () => {
+      clear();
+      window.removeEventListener("pointerdown", clear, { capture: true });
       window.removeEventListener(PLAY_INTERLUDE_EVENT, onPlay);
       window.removeEventListener(PREPARE_INTERLUDE_EVENT, onPrepare);
     };
