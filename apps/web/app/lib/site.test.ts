@@ -6,11 +6,13 @@ describe("siteCaption: four rows in view, never five", () => {
   const counts = { project: 33, article: 2, artwork: 16, poem: 9, photograph: 4 };
   it("names the five sections in two rows, the widest as wide as the counts' row of the four-section caption was (24 letters)", () => {
     const text = captionText(siteCaption());
-    expect(text.sets[1]).toEqual(["Poems, software, art,", "articles & photography."]);
+    expect(text.sets[1]).toEqual(["software, art, articles,", "photography & Poems."]);
     expect(Math.max(...text.sets[1]!.map((r) => r.length))).toBeLessThanOrEqual(24);
-    // the handwriting is on the top row (nothing above it to collide with), spelled with its capital
-    expect(siteCaption().sets[1]![0]![0]).toMatchObject({ text: "Poems", style: "script" });
-    expect(siteCaption().sets[1]![1]!.some((s) => s.style === "script")).toBe(false);
+    // the handwriting comes last, spelled with its capital, and nothing in the script follows it (no comma in that face)
+    const last = siteCaption().sets[1]![1]!;
+    expect(last[last.length - 2]).toMatchObject({ text: "Poems", style: "script" });
+    expect(last[last.length - 1]).toEqual({ text: "." });
+    expect(siteCaption().sets[1]![0]!.some((s) => s.style === "script")).toBe(false);
   });
   it("counts them in two rows too: the total and how many sections hold something", () => {
     expect(captionText(siteCaption(counts)).sets[2]).toEqual(["64 entries,", "in 5 sections."]);
