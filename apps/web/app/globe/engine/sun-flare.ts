@@ -2,7 +2,7 @@
  * The sun's lens flare (docs/landing.md, "The sun"): what a lens does with a bright thing in the picture. A row of ghosts on the line from the sun through the middle of the picture
  * (the optical axis), each at a fixed share of the way along it, so that as the camera turns the ghosts slide across the picture the other way round the middle and come together
  * as the sun nears it, and a thin streak across the sun itself. It is drawn over everything (it is in the lens, not in the sky), one full-buffer quad and one cheap fragment shader,
- * in whole art pixels like the rest of the globe: rings and discs whose edges fall on the grid, flat tones, and a 4x4 Bayer dither for the soft ones (a pixel is on or off).
+ * in whole art pixels like the rest of the globe: hexagons (an aperture's shape), rings and filled ones, whose edges fall on the grid, flat tones, and a 4x4 Bayer dither for the soft ones (a pixel is on or off).
  *
  * The planet hides the sun, and so it hides the flare: `flarePlace` takes how much of the sun the planet leaves (`visible`) and fades the whole flare with it. The flare also fades
  * towards the picture's edge (the sun leaving it) and as the sun comes to the middle (the ghosts would pile up on it). Like the sun, it is static: it asks for no frames of its own.
@@ -40,7 +40,9 @@ const FRAGMENT = /* glsl */ `
       // the ghost's centre on a whole pixel's centre, so that its edge falls on the grid
       vec2 g = floor(uSun + (uMid - uSun) * AT[i]) + 0.5;
       float R = max(2.0, floor(SIZE[i] * uUnit) + 0.5);
-      float r = length(p - g);
+      // the distance in the metric of a regular hexagon (flat top and bottom: an aperture's blades), so that a ring is a hexagon and a disc a filled one; R is its apothem
+      vec2 q = abs(p - g);
+      float r = max(dot(q, vec2(0.8660254, 0.5)), q.y);
       float t = TONE[i];
       if (KIND[i] == 0) { if (abs(r - R) < ${f(FLARE.ringWidth / 2)}) ink = max(ink, t); }
       else if (KIND[i] == 1) { if (r < R && t > bayer()) ink = max(ink, t); }

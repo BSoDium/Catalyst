@@ -83,7 +83,7 @@ export const SUN = {
   /** The halo's inner part (where the falloff is above `core`) is a step stronger than its outer. */
   core: 0.45,
   /** The halo's steps of tone (from its edge, where it is `haloCore`, to nothing), and how fast it falls. */
-  haloSteps: 6,
+  haloSteps: 4,
   haloFall: 1.8,
   limb: 0.88,
   dark: { disc: 1, limb: 0.8, halo: 0.16, haloCore: 0.3 },
@@ -92,7 +92,7 @@ export const SUN = {
 
 /**
  * The sun's lens flare (engine/sun-flare.ts). Each ghost sits `at` of the way from the sun to the middle of the picture (1 on the middle, above 1 beyond it), is `size` of the picture's short side
- * in radius, and is inked at `tone` (0..1): a `ring`, a Bayer-dithered `dither` disc or a flat `disc`. The streak is a one-pixel row through the sun, `streak` of the picture's width to each side.
+ * in radius, and is inked at `tone` (0..1): a `ring`, a Bayer-dithered `dither` fill or a flat `disc` (all of them hexagons: an aperture's shape; `size` is the apothem). The streak is a one-pixel row through the sun, `streak` of the picture's width to each side.
  */
 export const FLARE = {
   ghosts: [
