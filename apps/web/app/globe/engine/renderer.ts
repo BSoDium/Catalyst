@@ -1896,6 +1896,10 @@ export class GlobeRenderer {
     caption.armEggNow();
     caption.warmNow(this.camera);
     if (!caption.canPlayEggNow()) return false;
+    // (asked for from the street map, which owns the view at that zoom: the globe is drawn again from now on, the camera's leaving takes the view back from it. While the globe
+    // is suspended the caption's timed things are run to their end (`applyShowcase` and `setSuspended` settle it), and that dropped the interlude in the frame it began: its
+    // sound started and stopped, and the showcase's own entrance and ring came instead. The handover agrees from its next frame, the view being home by then.)
+    if (this.suspended) this.setSuspended(false);
     const now = performance.now();
     const v = this.drawView();
     const b = viewBasis(v, this.bufH * this.pixel);
