@@ -202,12 +202,15 @@ export default function GlobeCanvas({
     const onPlay = (e: Event) => {
       const detail = (e as CustomEvent<PlayInterludeRequest>).detail;
       const handle = handleRef.current;
-      if (!detail || !handle || !latest.current.showcase || !handle.hasOrbit()) return;
+      if (!detail || !handle || !handle.hasOrbit()) return;
+      const atRest = latest.current.showcase;
+      // (a gesture had put the home screen away: the globe takes the request when it can begin the interlude from where the camera is, with no place open; else the palette takes the visitor home first)
+      if (!atRest && !handle.wantInterlude()) return;
       detail.handled = true;
       clear();
-      if (handle.playInterlude()) return;
-      // (the caption is not on the stage: a gesture had put the home screen away. It comes back now, and the globe goes home with it: the visitor asked for the interlude, not for the next time it is at rest)
-      handle.wantInterlude();
+      if (atRest && handle.playInterlude()) return;
+      // (the caption is not on the stage: the home screen comes back with the interlude, and the globe's camera flies from wherever it is into its opening shot)
+      if (atRest) handle.wantInterlude();
       window.dispatchEvent(new Event(RESTORE_HERO_EVENT));
       let tries = 0;
       held = window.setInterval(() => {

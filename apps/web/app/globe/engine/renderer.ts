@@ -1896,7 +1896,8 @@ export class GlobeRenderer {
    * The interlude was asked for and the caption is away: the home screen may come back before the interlude is ready (its word is still being made), and the caption must not come onto the
    * stage and the ring in only to be sent away again. Both stay away for `EGG_WAIT_MS` at most (`playInterludeNow` ends it); after that the usual showing comes in.
    */
-  wantInterlude(): void {
+  wantInterlude(): boolean {
+    if (!this.caption || !this.showcaseActive || this.reduced || this.selected !== null || this.insetTarget !== 0) return false;
     this.eggPending = performance.now() + EGG_WAIT_MS;
     window.setTimeout(() => {
       if (this.disposed || !this.eggPending || performance.now() < this.eggPending) return;
@@ -1904,6 +1905,7 @@ export class GlobeRenderer {
       if (this.showcaseOn) this.guardCaption(performance.now());
       this.requestRender();
     }, EGG_WAIT_MS + 50);
+    return true;
   }
   private eggPending = 0;
 
