@@ -132,6 +132,8 @@ export interface Spec {
   fade?: { on: number; role: Role; pattern: Pattern };
   /** this is the erasing interior of a hollow road whose casing follows these ART-pixel stops */
   hollowOf?: Stops;
+  /** (lines of a polygon's outline) drawn just OUTSIDE the polygon, half a cell off it: what lies on the polygon's own side is covered by a fill drawn over it (`SEA_MASK`) */
+  outside?: boolean;
 }
 
 const LINE = ["==", ["geometry-type"], "LineString"] as const;
@@ -214,6 +216,14 @@ const SEA_PM = ["any", kindIn("kind", ["ocean", "sea"]), detailIn(["sea", "ocean
 const SEA_OMT = kindIn("class", ["ocean", "sea"]);
 const LAKE_PM = ["any", ["==", ["get", "kind"], "lake"], detailIn(["lake"])] as const;
 const LAKE_OMT = kindIn("class", ["lake"]);
+
+/**
+ * The sea's polygons are cut along a grid in the data (OpenStreetMap's water polygons, split in squares): the outline of a polygon has its cut edges in the
+ * middle of the sea, straight and ending at the coast, and the outline layer draws them (the lines that "stick out of the continents"). So the outline is drawn
+ * just outside the polygon (`Spec.outside`) and the sea's own fill (`SEA_MASK`, the page's colour) is drawn over it, right after: what is left of the outline is
+ * the coast, on the land's side, and every cut edge, which has sea on both sides, is covered.
+ */
+export const SEA_MASK = "water-sea-mask";
 
 export const SPECS: Spec[] = [
   // --- areas: flat washes (tones first, lines on top) ---
@@ -302,7 +312,7 @@ export const SPECS: Spec[] = [
     pm: { layer: "buildings" }, omt: { layer: "building" },
   },
   {
-    id: "water-edge", type: "line", ch: "ink", role: "coast", width: HAIR, minzoom: 0,
+    id: "water-edge", type: "line", ch: "ink", role: "coast", width: HAIR, minzoom: 0, outside: true,
     pm: { layer: "water", filter: ["all", POLY, SEA_PM] as never },
     omt: { layer: "water", filter: SEA_OMT as never },
   },
@@ -411,6 +421,7 @@ export function applyCell(map: MLMap, cellCss: number): void {
   for (const spec of SPECS) {
     if (spec.type !== "line" || !map.getLayer(spec.id)) continue;
     map.setPaintProperty(spec.id, "line-width", artWidthPaint(spec, cellCss) as never);
+    if (spec.outside) map.setPaintProperty(spec.id, "line-offset", outsideOffset(cellCss));
   }
   for (const id of CELL_LAYERS) if (map.getLayer(id)) map.setPaintProperty(id, "line-width", cellCss);
   for (const id of ROUTE_LAYER_IDS) {
@@ -505,6 +516,9 @@ function build(spec: Spec, schema: Schema, handoff: number, cellCss: number, vis
   return { ...base, type: "line", ...line, layout: { ...line.layout, ...(switched(spec) ? visibility(spec.id, visible) : {}) } } as LayerSpecification;
 }
 
+/** How far an outline drawn outside its polygon (`Spec.outside`) is moved off it, in CSS px: half the line (one cell) and a little, to the left of the ring (outside, as the tiles wind their polygons). */
+export const outsideOffset = (cellCss: number): number => -(cellCss * 0.5 + 0.1);
+
 /** Layout and paint of a line spec: the one place widths, dashes, colour (level) and opacity (thin / wide) are decided. */
 export function linePaint(spec: Spec, cellCss: number): { layout: Record<string, unknown>; paint: Record<string, unknown> } {
   const dash = spec.dash ? { "line-dasharray": spec.dash } : {};
@@ -514,6 +528,7 @@ export function linePaint(spec: Spec, cellCss: number): { layout: Record<string,
   }
   // The colour is the tone: the level of the class's role (a class is on or off, never half way: lod.ts).
   const color = lineColor(spec.lod ? toneLevel(LOD[spec.lod]) : roleLevel(spec.role ?? "coast"));
+  const offset = spec.outside ? { "line-offset": outsideOffset(cellCss) } : {};
   // One-pixel lines are painted weaker than wide ones: that is how the pass knows which cells it may thin.
   const w = artWidthStopsOf(spec);
   const fill = spec.hollowBy ? SPECS.find((x) => x.id === spec.hollowBy) : undefined;
@@ -523,7 +538,7 @@ export function linePaint(spec: Spec, cellCss: number): { layout: Record<string,
     typeof w === "number"
       ? inkOpacityFor(w)
       : (["interpolate", ["linear"], ["zoom"], ...inkOpacityStops(w, 1.5, 0.25, hollowFrom).flatMap(([z, v]) => [z, v])] as unknown as ExpressionSpecification);
-  return { layout, paint: { "line-color": color, "line-opacity": opacity, "line-width": artWidthPaint(spec, cellCss), ...dash } };
+  return { layout, paint: { "line-color": color, "line-opacity": opacity, "line-width": artWidthPaint(spec, cellCss), ...dash, ...offset } };
 }
 
 export function graticule(stepDeg = 15, sampleDeg = 3): GeoJSON.FeatureCollection {
@@ -542,6 +557,13 @@ export function graticule(stepDeg = 15, sampleDeg = 3): GeoJSON.FeatureCollectio
   return { type: "FeatureCollection", features: [{ type: "Feature", properties: {}, geometry: { type: "MultiLineString", coordinates: lines } }] };
 }
 
+/** The sea's fill in the page's colour, over the sea's outline (`SEA_MASK`). */
+function seaMaskLayer(schema: Schema): LayerSpecification {
+  const sea = SPECS.find((x) => x.id === "water-edge")!;
+  const src = schema === "protomaps" ? sea.pm! : sea.omt!;
+  return { id: SEA_MASK, type: "fill", source: "tiles", "source-layer": src.layer, ...(src.filter ? { filter: src.filter } : {}), paint: { "fill-color": ERASE, "fill-opacity": 1, "fill-antialias": false } } as LayerSpecification;
+}
+
 export function buildStreetStyle(o: StreetStyleOptions): StyleSpecification {
   const handoff = o.handoffZoom ?? DEFAULT_HANDOFF[o.schema];
   const noTiles = o.tiles === null;
@@ -552,7 +574,13 @@ export function buildStreetStyle(o: StreetStyleOptions): StyleSpecification {
   // Layer order: background, graticule, tile fills, tile lines, routes, world lines.
   const lineIds = new Set(SPECS.filter((s) => s.ch !== "fill").map((s) => s.id));
   const tones = tileLayers.filter((l) => !lineIds.has(l.id));
-  const lines = tileLayers.filter((l) => lineIds.has(l.id));
+  // The sea's outline and its mask (`SEA_MASK`) come right after the fills, under every other line: the mask covers the cut edges of the sea's polygons, so it must not
+  // cover a road on a bridge, and the sea's texture and the graticule (the sea's own fill is a tone) are drawn over it.
+  const seaFill = tones.filter((l) => l.id === "water-fill");
+  const seaEdge = tileLayers.filter((l) => l.id === "water-edge");
+  const seaMask: LayerSpecification[] = noTiles ? [] : [seaMaskLayer(o.schema)];
+  const fills = tones.filter((l) => l.id !== "water-fill");
+  const lines = tileLayers.filter((l) => lineIds.has(l.id) && l.id !== "water-edge");
   // The map's own loudest tone (coastlines, borders) stays below the box at rest (`peak`) and the ink, which is kept for markers and labels (the routes have their own colours).
   const coastInk = lineColor(roleLevel("coast"));
   // World-scale coastline (110m) up to the hand-over zoom, then the tile geometry: one solid coast-tone line on both sides. (A
@@ -647,8 +675,11 @@ export function buildStreetStyle(o: StreetStyleOptions): StyleSpecification {
       ...(o.satellite
         ? [{ id: SATELLITE_LAYER, type: "raster", source: "satellite", paint: { "raster-resampling": "nearest", "raster-fade-duration": 0, "raster-opacity": 1 } } as LayerSpecification]
         : []),
+      ...fills,
+      ...seaEdge,
+      ...seaMask,
       grid,
-      ...tones,
+      ...seaFill,
       ...lines,
       worldCoastInk,
       bordersInk(noTiles ? 24 : placeholder ? WORLD_PLACEHOLDER_BELOW : borderHandoff(handoff)),
