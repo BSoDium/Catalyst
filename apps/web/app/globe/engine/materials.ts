@@ -259,7 +259,7 @@ export function rimGroundMaterial(): ShaderMaterial {
         float side = rimSide(n);
         // in flat levels, ordered-dithered into each other on the art's pixels, as the planet's dark side is
         float v = pow(g, ${RIM.ground.power.toFixed(2)}) * rimLit() * smoothstep(${RIM.ground.arc[0].toFixed(2)}, ${RIM.ground.arc[1].toFixed(2)}, side) * uNight * uAmt;
-        float a = stepped(v, ${RIM.ground.steps.toFixed(1)}) * ${RIM.ground.alpha.toFixed(2)};
+        float a = stepped(v, ${RIM.ground.steps.toFixed(1)}) * ${RIM.ground.alpha.toFixed(2)} * mix(1.0, ${RIM.ground.light.toFixed(2)}, uFlip);
         if (a < 0.004) discard;
         gl_FragColor = vec4(rimTint(side, ${RIM.ground.arc[0].toFixed(2)}, uFlip), a);
       }

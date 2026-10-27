@@ -107,7 +107,7 @@ export const SUN = {
     veil: { strength: 0.12, reach: 0.22, grey: 0.45 },
     halo: { strength: 0.3, grey: 0.5, warm: 0.2 },
     ghost: 0.25,
-    lining: { grey: 0.55, warm: 0.3 },
+    lining: { grey: 0.4, warm: 0.45 },
     twilight: 0.3,
   },
   /**
@@ -188,18 +188,18 @@ export const RIM = {
   grain: 0.45,
   /**
    * The SUNSET ON THE GROUND (`rimGroundMaterial`): the same light on the planet's own surface, as in the footage: the lit ground is brightest at the limb and dims inward (`alpha` at the limb, falling with the grazing angle
-   * as `power`), over a wider arc of the limb than the lining's (`arc`, as the lining's: cosines of the angle to the sun's side), in the same colours, TEXTURED as the dark side of the planet is, in `steps` flat levels dithered into each
+   * as `power`; `light` times that on the light page, where a grey over the planet's light ground needs the strength to show), over a wider arc of the limb than the lining's (`arc`, as the lining's: cosines of the angle to the sun's side), in the same colours, TEXTURED as the dark side of the planet is, in `steps` flat levels dithered into each
    * other on the art's pixels (a pixel is one of the levels, never between). It is only there while the sun is ABOVE the horizon: it is whole `peak` of the alignment's width outside the limb, and zero by the time the sun's centre
    * is on it, so a sun that has set lights only the atmosphere.
    */
-  ground: { alpha: 0.26, power: 2.6, arc: [0.15, 0.9], peak: 0.3, steps: 4 },
+  ground: { alpha: 0.26, light: 2, power: 2.6, arc: [0.15, 0.9], peak: 0.3, steps: 4 },
   /**
    * The TWILIGHT (`twilightMaterial`): the atmosphere scatters the sun's light a little past the terminator (`NIGHT.litFrom`/`litTo` put the lit side's edge 4.6 degrees past it), and the light that gets there has been through
    * more air, so it is redder. A faint band on the ground just either side of the halfway edge: `band` is N . sun at which it comes in, is whole, starts to go and is gone. It only TINTS what is there (it multiplies the colours under it
    * by `rgb` taken `strength` of the way from white: black, the ocean, stays black), in `steps` dithered levels on the art's pixels, as the dark side is. The dark page only.
    */
   twilight: { band: [-0.34, -0.16, -0.02, 0.12], strength: 0.4, steps: 3, rgb: [1, 0.6, 0.58] },
-  cover: { dark: 0.9, light: 0.6 },
+  cover: { dark: 0.9, light: 0.85 },
 } as const;
 
 export type Vec3 = [number, number, number];
