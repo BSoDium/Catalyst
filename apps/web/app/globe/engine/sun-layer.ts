@@ -9,7 +9,7 @@
  * Two looks, as the whole globe has two (`washOf`, engine/surface.ts): on the dark page it is the brightest thing there is, the ink's own tone. On the light page it is so bright that it burns the
  * colour away: the disc and the halo are the page's colour, and it shows only a ghost of a rim and the halo's faint darkness.
  */
-import { AdditiveBlending, BufferAttribute, BufferGeometry, Color, Mesh, NormalBlending, type Scene, ShaderMaterial, Vector2 } from "three";
+import { AddEquation, AdditiveBlending, BufferAttribute, BufferGeometry, Color, CustomBlending, DstColorFactor, Mesh, NormalBlending, type Scene, ShaderMaterial, Vector2, ZeroFactor } from "three";
 import type { GlobeTheme } from "./colors";
 import { BAYER4 } from "./sky";
 import { SUN } from "./moon";
@@ -32,33 +32,26 @@ const FRAGMENT = /* glsl */ `
   void main() {
     vec2 q = (gl_FragCoord.xy - uCentre) / uR;
     float r = length(q);
-    // how strongly this pixel is inked, 0 (nothing: the sky shows) to 1 (the ink's own tone)
+    // how strongly this pixel is inked, 0 (nothing: the sky shows) to 1 (the ramp's top)
     float ink = 0.0;
-    // the tone the warm ramp is asked for (the dark page's light is warm), or none: the disc is the ink's own
-    float tone = -1.0;
-    if (r < 1.0 && uLight > 0.5) {
-      // (the light page: only a ghost of a rim; the rest is the glare, the page's colour)
-      ink = r > ${f(SUN.limb)} ? ${f(SUN.light.rim)} : 0.0;
-    } else {
-      // the halo: a falloff from the disc's edge in a few flat steps of tone, the steps ordered-dithered into each other (a pixel is one of the steps' tones, never between)
-      // (it goes with the planet's cover, in the same dither: uHalo, 1 to 0, takes the steps out of the falloff one at a time, outermost first)
-      float t = pow(clamp(1.0 - (max(r, 1.0) - 1.0) / ${f(SUN.halo)}, 0.0, 1.0), ${f(SUN.haloFall)}) * uHalo;
-      ivec2 c = ivec2(mod(floor(gl_FragCoord.xy), 4.0));
-      float th = (BAYER[c.y * 4 + c.x] + 0.5) / 16.0;
-      ink = floor(t * ${f(SUN.haloSteps)} + th) / ${f(SUN.haloSteps)} * (uLight > 0.5 ? ${f(SUN.light.glow)} : ${f(SUN.dark.glow)});
-      tone = ink;
-      if (r >= 1.0) {
-        // the ring of light on the halo (it goes as the planet covers the sun, as the halo does: uHalo): a sharp inside edge and a smooth outside, a little brighter than the halo under it
-        float d = r - ${f(SUN.ring.at)};
-        float rt = 0.0;
-        if (d <= 0.0) { if (d > -${f(SUN.ring.inner)}) rt = 1.0; }
-        else { float x = 1.0 - d / ${f(SUN.ring.outer)}; if (x > 0.0) rt = floor(x * x * ${f(SUN.ring.steps)} + th) / ${f(SUN.ring.steps)}; }
-        float ringInk = rt * uHalo * (uLight > 0.5 ? ${f(SUN.ring.light)} : ${f(SUN.ring.dark)});
-        if (ringInk > ink) { ink = ringInk; tone = ink; }
-      }
+    // the halo: a falloff from the disc's edge in a few flat steps of tone, the steps ordered-dithered into each other (a pixel is one of the steps' tones, never between)
+    // (it goes with the planet's cover, in the same dither: uHalo, 1 to 0, takes the steps out of the falloff one at a time, outermost first)
+    float t = pow(clamp(1.0 - (max(r, 1.0) - 1.0) / ${f(SUN.halo)}, 0.0, 1.0), ${f(SUN.haloFall)}) * uHalo;
+    ivec2 c = ivec2(mod(floor(gl_FragCoord.xy), 4.0));
+    float th = (BAYER[c.y * 4 + c.x] + 0.5) / 16.0;
+    ink = floor(t * ${f(SUN.haloSteps)} + th) / ${f(SUN.haloSteps)} * ${f(SUN.glow)};
+    if (r >= 1.0) {
+      // the ring of light on the halo (it goes as the planet covers the sun, as the halo does: uHalo): a sharp inside edge and a smooth outside, a little brighter than the halo under it
+      float d = r - ${f(SUN.ring.at)};
+      float rt = 0.0;
+      if (d <= 0.0) { if (d > -${f(SUN.ring.inner)}) rt = 1.0; }
+      else { float x = 1.0 - d / ${f(SUN.ring.outer)}; if (x > 0.0) rt = floor(x * x * ${f(SUN.ring.steps)} + th) / ${f(SUN.ring.steps)}; }
+      ink = max(ink, rt * uHalo * ${f(SUN.ring.strength)});
     }
     if (ink <= 0.0) discard;
-    vec3 col = (tone < 0.0 || uLight > 0.5) ? mix(uBg, uInk, ink) : mix(uBg, warm(tone), clamp(ink * ${f(SUN.gain)}, 0.0, 1.0));
+    // the warm ramp: on the dark page the colour as it is, on the light page a darker shade of it, tinting the paper
+    float k = clamp(ink * ${f(SUN.gain)}, 0.0, 1.0);
+    vec3 col = uLight > 0.5 ? mix(uBg, warm(ink) * ${f(SUN.light.ink)}, k * ${f(SUN.light.tint)}) : mix(uBg, warm(ink), k);
     gl_FragColor = vec4(col, uAmt);
   }
 `;
@@ -98,7 +91,7 @@ const BLOB_VERTEX = /* glsl */ `
 `;
 
 const BLOB_FRAGMENT = /* glsl */ `
-  uniform vec2 uCentre; uniform float uU; uniform float uI; uniform float uAmt;
+  uniform vec2 uCentre; uniform float uU; uniform float uI; uniform float uAmt; uniform float uLight;
   ${WARM_GLSL}
   void main() {
     float rr = length(gl_FragCoord.xy - uCentre) / uU;
@@ -106,13 +99,15 @@ const BLOB_FRAGMENT = /* glsl */ `
     float ink = exp(-0.6931 * rr * rr / ${f(SUN.core.half * SUN.core.half)});
     ink = max(0.0, ink - ${f(Math.exp((-0.6931 * SUN.core.radius * SUN.core.radius) / (SUN.core.half * SUN.core.half)))}) / (1.0 - ${f(Math.exp((-0.6931 * SUN.core.radius * SUN.core.radius) / (SUN.core.half * SUN.core.half)))});
     if (ink <= 0.003) discard;
-    gl_FragColor = vec4(warm(ink), clamp(ink * ${f(SUN.gain)}, 0.0, 1.0) * uI * uAmt);
+    float k = clamp(ink * ${f(SUN.gain)}, 0.0, 1.0) * uI * uAmt;
+    // dark page: the light is ADDED (colour times alpha). Light page: the page has no room for more light, so the colour TINTS it (the blending multiplies what is under it): white-hot in the middle, the sunset's colours round it
+    gl_FragColor = uLight > 0.5 ? vec4(mix(vec3(1.0), warm(ink) * ${f(SUN.light.ink)}, k * ${f(SUN.light.tint)}), 1.0) : vec4(warm(ink), k);
   }
 `;
 
 const blobMaterial = () =>
   new ShaderMaterial({
-    uniforms: { uCentre: { value: new Vector2() }, uBuf: { value: new Vector2(1, 1) }, uExt: { value: 1 }, uU: { value: 1 }, uI: { value: 1 }, uAmt: { value: 1 }, uSet: { value: 0 } },
+    uniforms: { uCentre: { value: new Vector2() }, uBuf: { value: new Vector2(1, 1) }, uExt: { value: 1 }, uU: { value: 1 }, uI: { value: 1 }, uAmt: { value: 1 }, uSet: { value: 0 }, uLight: { value: 0 } },
     vertexShader: BLOB_VERTEX,
     fragmentShader: BLOB_FRAGMENT,
     transparent: true,
@@ -184,6 +179,14 @@ export class SunLayer {
     u.uInk!.value.setRGB(...t.ink);
     u.uLight!.value = t.scheme === "dark" ? 0 : 1;
     this.dark = t.scheme === "dark";
+    // (the blur adds its light on the dark page and multiplies the paper on the light one)
+    const blob = this.blobMat;
+    blob.uniforms.uLight!.value = this.dark ? 0 : 1;
+    blob.blending = this.dark ? AdditiveBlending : CustomBlending;
+    blob.blendEquation = AddEquation;
+    blob.blendSrc = DstColorFactor;
+    blob.blendDst = ZeroFactor;
+    blob.needsUpdate = true;
     this.flare.applyTheme(t);
   }
 
@@ -211,7 +214,7 @@ export class SunLayer {
     // the blur: over the planet, where the crescent's centre of mass is, as wide as the crescent, as bright as the share of the sun that is left
     const unit = Math.max(1, cres.width * sr);
     const ext = SUN.core.radius * unit + 1;
-    const blob = this.dark && f.ahead && f.amount > 0.01 && cres.area > 0.003 && bx + ext > 0 && bx - ext < f.bufW && by + ext > 0 && by - ext < f.bufH;
+    const blob = f.ahead && f.amount > 0.01 && cres.area > 0.003 && bx + ext > 0 && bx - ext < f.bufW && by + ext > 0 && by - ext < f.bufH;
     this.blob.visible = blob;
     if (blob) {
       const b = this.blobMat.uniforms;

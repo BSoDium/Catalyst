@@ -80,8 +80,9 @@ const FRAGMENT = /* glsl */ `
       if (along > 0.0 && pow(along, ${f(FLARE.streakFall)}) > bayer()) { ink = ${f(FLARE.streakTone)}; hue = mix(0.5, 0.95, along); }
     }
     if (ink <= 0.0) discard;
-    // the dark page's light is warm; the light page's is burnt out: the ink's own ghosts
-    vec3 col = uLight > 0.5 ? mix(uBg, uInk, ink * ${f(FLARE.lightShare)}) : mix(uBg, warm(hue), clamp(ink * ${f(SUN.gain)}, 0.0, 1.0));
+    // the warm ramp: on the dark page as it is, on the light page a darker shade of it that tints the paper
+    float k = clamp(ink * ${f(SUN.gain)}, 0.0, 1.0);
+    vec3 col = uLight > 0.5 ? mix(uBg, warm(hue) * ${f(SUN.light.ink)}, k * ${f(SUN.light.tint)}) : mix(uBg, warm(hue), k);
     gl_FragColor = vec4(col, uStr);
   }
 `;

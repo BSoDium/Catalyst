@@ -85,11 +85,9 @@ export const SUN = {
   haloFall: 2.6,
   haloSteps: 6,
   /** The ring of light on top of the halo, in disc radii from the sun's centre: sharp on its inside (`inner` wide, at full `tone`), then a smooth falloff over `outer`, in `steps` dithered steps. */
-  ring: { at: 8.5, inner: 0.3, outer: 2.6, steps: 5, dark: 0.16, light: 0.04 },
-  /** The disc's limb is a step down from its centre, from this share of its radius. */
-  limb: 0.88,
-  /** The halo's tone, a share from the page's colour to the ink, where it starts, at the disc's edge (the dark page's disc is the blur: `core`). */
-  dark: { glow: 0.72 },
+  ring: { at: 8.5, inner: 0.3, outer: 2.6, steps: 5, strength: 0.16 },
+  /** The halo's tone, where it starts, at the disc's edge (the disc itself is the blur: `core`): the warm ramp's tone, on either page. */
+  glow: 0.72,
   /**
    * The dark page's sun is a BLUR, not a disc (owner, 2026-10-27: "you can't actually distinguish the disk"): a blob that falls off smoothly from the sun's centre, as a gaussian that is half as bright at `half` disc radii (the size the old
    * disc was) and is nothing by `radius` (a flat plateau of white reads as an octagon on a few pixels: it has none), in the warm light's colours, with no edge of its own. It is its OWN layer, over the planet (a lens's bloom is not hidden by
@@ -98,8 +96,12 @@ export const SUN = {
    * tangent to it), as bright as the share of the sun that is left.
    */
   core: { radius: 2.4, half: 1 },
-  /** The light page's sun is the glare that burns the colour away: only a ghost of a rim and a faint glow. */
-  light: { rim: 0.16, glow: 0.18 },
+  /**
+   * The light page's sun (owner, 2026-10-27: the colour changes are for the light theme too): the same light, on paper. The sun is still burnt out (its centre is the page's own white), and what is around it is the sunset's
+   * colours as a TINT of the paper: the halo, the ring, the flare and the lining are the warm ramp (`tint`), each colour times `ink` (a darker shade, so that pale gold shows on white) and `tint` of the way from the page's colour
+   * (the blur, the lining and the ground's light multiply the paper instead of adding light to it, which a white page has no room for).
+   */
+  light: { ink: 0.82, tint: 0.6 },
   /**
    * The halo (and with it the ring of light and the warm light's reddening, `uSet`) goes with the planet's cover, over the sunset and only over it (`haloClear`, engine/sun-flare.ts): whole until the sun's DISC first touches
    * the limb (the sun's distance outside it, `rise`, in disc radii, is `to`: 1), gone when the sun's centre is `from` disc radii behind it, in a smoothstep over the distance between (the halo is wide, so most of it is still
@@ -107,7 +109,7 @@ export const SUN = {
    */
   fade: { from: 3, to: 1 },
   /**
-   * The warm light of a low sun (a dark-page look only: on the light page the sun burns out): the tone of a pixel (0..1, the halo's steps, the flare's elements) picks a colour from the
+   * The warm light of a low sun: the tone of a pixel (0..1, the halo's steps, the flare's elements) picks a colour from the
    * ramp, the first stop it is at or over, hot and pale at the top down to a violet. `setShare` is how far the tones are pulled down as the sun sets (the planet's cover grows), so the
    * halo reddens as it goes: the stops are the colours on the black page, and a pixel's strength (`gain` times its tone) is how much of the colour it keeps.
    */
@@ -151,8 +153,6 @@ export const FLARE = {
   streakDiag: 0.09,
   streakFall: 2.2,
   streakTone: 1,
-  /** The share of the ink the flare shows on the light page, where the sun is burnt out. */
-  lightShare: 0.3,
   /** The strength goes to 0 as the sun's distance from the middle (a share of the half diagonal) goes from `edgeFrom` to `edgeTo`, and from `midTo` down to `midFrom`. */
   edgeFrom: 0.8,
   edgeTo: 1.05,
@@ -191,7 +191,7 @@ export const RIM = {
    * by `rgb` taken `strength` of the way from white: black, the ocean, stays black), in `steps` dithered levels on the art's pixels, as the dark side is. The dark page only.
    */
   twilight: { band: [-0.34, -0.16, -0.02, 0.12], strength: 0.4, steps: 3, rgb: [1, 0.6, 0.58] },
-  cover: { dark: 0.9, light: 0.3 },
+  cover: { dark: 0.9, light: 0.6 },
 } as const;
 
 export type Vec3 = [number, number, number];

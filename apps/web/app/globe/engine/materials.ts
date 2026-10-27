@@ -7,7 +7,7 @@ import { AddEquation, BackSide, Color, CustomBlending, DstColorFactor, FrontSide
 import { LEG_MODES, MODE_STYLE } from "../paths/modes";
 import { STRAIGHT_FADE_MIX, STRAIGHT_FADE_STEPS } from "../paths/thin";
 import { SPARK, TRAIL_BANDS, TRAIL_ENTRIES, TRAIL_PER_PALETTE } from "../paths/trail";
-import { RIM } from "./moon";
+import { RIM, SUN } from "./moon";
 import { WARM_GLSL } from "./sun-flare";
 import { NIGHT, NIGHT_GLSL, SURFACE } from "./surface";
 
@@ -184,8 +184,9 @@ const RIM_SUN_GLSL = /* glsl */ `
     return pl > 1e-4 ? dot(n, perp / pl) : -1.0;
   }
   // the sun's own light along the limb: its pale gold nearest the sun (side 1), through yellow and orange to red and violet away from it
-  vec3 rimTint(float side, float from, vec3 grey, float flip) {
-    return flip > 0.5 ? grey : warm(mix(0.05, 1.0, pow(smoothstep(from, 0.995, side), 0.8)));
+  vec3 rimTint(float side, float from, float flip) {
+    vec3 w = warm(mix(0.05, 1.0, pow(smoothstep(from, 0.995, side), 0.8)));
+    return flip > 0.5 ? w * ${SUN.light.ink.toFixed(3)} : w;
   }
 `;
 
@@ -221,7 +222,7 @@ export function rimMaterial(): ShaderMaterial {
         float on = v > dither4(floor(gl_FragCoord.xy)) ? 1.0 : 0.0;
         float lin = v * mix(${RIM.grain.toFixed(2)}, 1.0, on) * uCover;
         if (haze < 0.003 && lin < 0.004) discard;
-        gl_FragColor = lin > haze ? vec4(rimTint(side, ${RIM.arc[0].toFixed(2)}, uColor, uFlip), lin) : vec4(uColor, haze);
+        gl_FragColor = lin > haze ? vec4(rimTint(side, ${RIM.arc[0].toFixed(2)}, uFlip), lin) : vec4(uColor, haze);
       }
     `,
     side: BackSide,
@@ -259,7 +260,7 @@ export function rimGroundMaterial(): ShaderMaterial {
         float v = pow(g, ${RIM.ground.power.toFixed(2)}) * rimLit() * smoothstep(${RIM.ground.arc[0].toFixed(2)}, ${RIM.ground.arc[1].toFixed(2)}, side) * uNight * uAmt;
         float a = stepped(v, ${RIM.ground.steps.toFixed(1)}) * ${RIM.ground.alpha.toFixed(2)};
         if (a < 0.004) discard;
-        gl_FragColor = vec4(rimTint(side, ${RIM.ground.arc[0].toFixed(2)}, uColor, uFlip), a);
+        gl_FragColor = vec4(rimTint(side, ${RIM.ground.arc[0].toFixed(2)}, uFlip), a);
       }
     `,
     side: FrontSide,
@@ -273,7 +274,6 @@ export function rimGroundMaterial(): ShaderMaterial {
 /**
  * The TWILIGHT (`RIM.twilight`): a faint red band on the ground either side of the lit side's halfway edge, where the atmosphere has scattered the sun's light a little past the terminator and the light is redder for the air it
  * has been through. It only TINTS what is under it: it MULTIPLIES the colours there (a black ocean stays black), in dithered levels on the art's pixels (the dark side's own texture), on a skin a hair over the surface (the mist's).
- * The dark page only: the light page has no warm light.
  */
 export function twilightMaterial(): ShaderMaterial {
   return new ShaderMaterial({
@@ -287,7 +287,6 @@ export function twilightMaterial(): ShaderMaterial {
       varying vec3 vPos;
       ${MIST_GLSL}
       void main() {
-        if (uFlip > 0.5) discard;
         float d = dot(normalize(vPos), uSunN);
         float band = smoothstep(${RIM.twilight.band[0].toFixed(2)}, ${RIM.twilight.band[1].toFixed(2)}, d) * (1.0 - smoothstep(${RIM.twilight.band[2].toFixed(2)}, ${RIM.twilight.band[3].toFixed(2)}, d));
         float k = stepped(band * uNight * uAmt, ${RIM.twilight.steps.toFixed(1)}) * ${RIM.twilight.strength.toFixed(2)};
