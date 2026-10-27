@@ -99,13 +99,14 @@ export const SUN = {
   /**
    * The light page's sun (owner, 2026-10-27: "much whiter", "the halo very faintly tinted", "the rays white", "much more subtle"): the sun is burnt out, so it is WHITE, and what makes it visible is not colour but a little darkness round
    * it. `veil` is a very soft, faint grey darkening round the sun (in the lens flare's quad, `reach` of the picture's width, `strength` of the way to `grey` at its middle, gone with the sun's cover as the flare is), so that the white sun and
-   * its white rays show against the paper. The `halo` is that grey too, `strength` of the way from the paper, with only `warm` of the warm ramp's colour (each colour times `ink`, a darker shade) in it. The ghosts are the ramp's
+   * its white rays show against the paper. The sun and its halo carry the dark page's colours, less saturated and brighter (`sun.sat`: the share of the ramp's colour kept, the rest white); the `halo` is the grey too, `strength` of the way from the paper, with `warm` of that tint in it. The ghosts are the ramp's
    * colours at `ghost` strength. The lining and the ground's light are `grey` with `warm` of the ramp in them, and the twilight is `twilight` of what it is on the dark page. The dark page has none of this.
    */
   light: {
     ink: 0.82,
     veil: { strength: 0.22, reach: 0.28, grey: 0.45, fall: 1.3 },
-    halo: { strength: 0.3, grey: 0.5, warm: 0.2 },
+    halo: { strength: 0.3, grey: 0.5, warm: 0.5 },
+    sun: { sat: 0.5 },
     ghost: 0.25,
     lining: { grey: 1, warm: 0.12 },
     twilight: 0.3,
