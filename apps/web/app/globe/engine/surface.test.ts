@@ -10,7 +10,7 @@ describe("the land's picture", () => {
     expect(surfaceCoverage(1)).toBeLessThan(1);
   });
   it("fills in smoothly with the zoom over the last stretch before the borders, and stays whole to the cut to the street map", () => {
-    let last = SURFACE.cover;
+    let last: number = SURFACE.cover;
     for (let z = SURFACE.from; z <= SURFACE.to; z += 0.1) {
       const s = surfaceAmount(z, SURFACE.cover);
       expect(s).toBeGreaterThanOrEqual(last - 1e-9);
