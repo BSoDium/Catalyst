@@ -14,7 +14,7 @@
 import { addProtocol, removeProtocol, type AddProtocolAction } from "maplibre-gl";
 import { FetchSource, PMTiles } from "pmtiles";
 import type { RequestOutcome } from "../core/tile-health";
-import { SATELLITE_TILE_SIZE, classifySatellite } from "../core/satellite";
+import { SATELLITE_READ_SIZE, classifySatellite } from "../core/satellite";
 import type { SourceDescriptor } from "../core/source-descriptor";
 import type { SourceId, TileSourceManager } from "../core/tile-source-manager";
 
@@ -120,7 +120,7 @@ export function createTileNetwork(opts: TileNetworkOptions): TileNetwork {
     const res = await fetch(params.url.slice(satelliteScheme.length + 3), { signal: outer.signal });
     if (!res.ok) throw new HttpError(res.status);
     const bitmap = await createImageBitmap(await res.blob());
-    const size = SATELLITE_TILE_SIZE;
+    const size = SATELLITE_READ_SIZE;
     const canvas = new OffscreenCanvas(size, size);
     const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
     ctx.drawImage(bitmap, 0, 0, size, size);

@@ -11,6 +11,12 @@ import { PATTERN, roleLevel } from "./palette";
 export const SATELLITE_TILES = "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_ShadedRelief_Bathymetry/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpeg";
 export const SATELLITE_MAXZOOM = 8;
 export const SATELLITE_TILE_SIZE = 256;
+/**
+ * The side, in pixels, a tile is read and re-encoded at (the layer still declares `SATELLITE_TILE_SIZE`: the map stretches it, with nearest sampling, into 2 by 2 blocks).
+ * The art's cell is several screen pixels wide, so the half resolution loses nothing the picture can show, and costs a quarter of the classification and the PNG encoding
+ * (about 4 ms against 15 per tile, measured), which is the bulk of the work the ground adds on the client.
+ */
+export const SATELLITE_READ_SIZE = 128;
 
 /** Brightness (0..1, Rec. 601) cuts of the land: darker ground under the first, middle under the second, lighter above. The shaded relief is dark, so they sit low. */
 export const SATELLITE_CUTS = [0.16, 0.25] as const;
