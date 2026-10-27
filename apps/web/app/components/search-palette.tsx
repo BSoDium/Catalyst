@@ -167,7 +167,7 @@ export function SearchPalette() {
     void navigate("/");
     let tries = 0;
     const timer = window.setInterval(() => {
-      if (requestInterlude() || ++tries > 30) window.clearInterval(timer);
+      if (requestInterlude() || ++tries > 60) window.clearInterval(timer);
     }, 300);
   };
 

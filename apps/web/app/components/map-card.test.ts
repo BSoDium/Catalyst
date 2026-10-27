@@ -3,31 +3,32 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { MAP_CARD } from "~/lib/map-card";
-import { AttributionButton, CompactCreditsLine } from "./attribution-button";
+import { AttributionButton } from "./attribution-button";
 import { DevContentBadge } from "./dev-content-badge";
 
 const OFM = { primaryUrl: "https://tiles.openfreemap.org/planet", fallbackPmtilesUrl: null };
 const credits = (props: Partial<Parameters<typeof AttributionButton>[0]> = {}) =>
   renderToStaticMarkup(createElement(AttributionButton, { tiles: OFM, insetRight: 0, reducedMotion: false, ...props }));
 
-describe("map card: the dev badge and the credits line are one object", () => {
-  it("both carry every class of the shared card (border, plate, padding, radius, mono type)", () => {
+describe("map card and credits", () => {
+  it("the dev badge carries every class of the shared card (border, plate, padding, radius, mono type)", () => {
     const badge = renderToStaticMarkup(createElement(DevContentBadge, { mode: "preview" }));
-    const line = credits();
-    for (const cls of MAP_CARD.split(" ")) {
-      expect(badge, cls).toContain(cls);
-      expect(line, cls).toContain(cls);
-    }
+    for (const cls of MAP_CARD.split(" ")) expect(badge, cls).toContain(cls);
     expect(MAP_CARD).toMatch(/font-mono/);
     expect(MAP_CARD).toMatch(/border-border(?!-)/);
+  });
+  it("the credits are not a card: the mono type of one, on a map label's own ground (`.map-credits`), with no border and no blur of its own", () => {
+    const card = /<div[^>]*data-attribution="card"[^>]*>/.exec(credits())![0];
+    for (const cls of ["map-credits", "font-mono", "text-[10px]", "leading-4", "tracking-wide", "rounded-sm", "px-1.5", "py-px"]) expect(card, cls).toContain(cls);
+    expect(card).not.toMatch(/\bborder\b|border-border|bg-background|backdrop-blur/);
   });
 });
 
 describe("credits line", () => {
-  it("is one line of real text with the main contributors, from the same list as the dialog", () => {
+  it("is one line of real text with the main contributors, from the same list as the dialog (the licence's 'contributors' is drawn on a screen from 480 px below md, where the line has room for it)", () => {
     const html = credits();
     const text = html.replace(/<[^>]+>/g, "");
-    expect(text).toBe("© OpenStreetMap · OpenFreeMap · Natural Earth·See more");
+    expect(text).toBe("© OpenStreetMap contributors · OpenFreeMap · Natural Earth·See more");
     expect(html).toContain("select-text");
     expect(html).toContain("overflow-hidden");
     expect(html).toContain("whitespace-nowrap");
@@ -43,30 +44,38 @@ describe("credits line", () => {
   });
   it("follows the tile configuration", () => {
     expect(credits({ tiles: null }).replace(/<[^>]+>/g, "")).toBe("Natural Earth·See more");
-    expect(credits({ tiles: { primaryUrl: "https://t.example/x.pmtiles", fallbackPmtilesUrl: null } }).replace(/<[^>]+>/g, "")).toBe("© OpenStreetMap · Protomaps · Natural Earth·See more");
+    expect(credits({ tiles: { primaryUrl: "https://t.example/x.pmtiles", fallbackPmtilesUrl: null } }).replace(/<[^>]+>/g, "")).toBe("© OpenStreetMap contributors · Protomaps · Natural Earth·See more");
   });
   it("sits bottom right, left of the detail panel, never wider than the room that leaves", () => {
     const html = credits({ insetRight: 720 });
-    expect(html).toContain("right:calc(720px + 0.5rem)");
-    expect(html).toContain("max-width:calc(100% - 720px - 1rem)");
+    expect(html).toContain("--credits-inset:720px");
+    expect(html).toContain("right-[calc(var(--credits-inset)+0.5rem)]");
+    expect(html).toContain("max-w-[calc(100%-var(--credits-inset)-1rem)]");
     expect(html).toContain("env(safe-area-inset-bottom)");
   });
-  it("the button has a name that contains its visible label, opens a dialog, has the up-left arrow", () => {
+  it("the button has a name that contains its visible label, opens a dialog, has the up-right arrow", () => {
     const html = credits();
     const button = /<button[^>]*>.*?<\/button>/.exec(html)![0];
     expect(button).toContain('aria-label="See more credits"');
     expect(button).toContain('aria-haspopup="dialog"');
     expect(button).toContain("See more");
-    expect(button).toContain("lucide-arrow-up-left");
+    expect(button).toContain("lucide-arrow-up-right");
     expect(button).toContain('aria-hidden="true"');
-    // the card is not drawn below md (the compact button replaces it: see below), so it has no touch-target extension of its own
-    expect(button).not.toContain("max-md:");
   });
-  it("is not drawn on a phone (below md: display none, so also out of the tab order and the accessibility tree) and nothing else changes from md up", () => {
+  it("is drawn on a phone too, the full width, left-aligned and still ONE line: clipped, never wrapped", () => {
     const html = credits();
     const card = /<div[^>]*data-attribution="card"[^>]*>/.exec(html)![0];
-    expect(card).toContain("max-md:hidden");
-    expect((/class="([^"]*)"/.exec(card)?.[1] ?? "").split(" ")).not.toContain("hidden");
+    expect(card).not.toContain("max-md:hidden");
+    for (const cls of ["max-md:left-2", "max-md:right-2", "max-md:max-w-none"]) expect(card, cls).toContain(cls);
+    expect(card).not.toContain("max-md:block");
+    expect(card).toContain("env(safe-area-inset-bottom)");
+    expect(card).toContain("z-20");
+    const line = /<p[^>]*>/.exec(html)![0];
+    expect(line).toContain("h-4");
+    expect(line).toContain("overflow-hidden");
+    expect(line).not.toContain("max-md:");
+    expect(/<button[^>]*>/.exec(html)![0]).toContain("after:-inset-y-3");
+    expect(html).toContain('<span class="max-[479px]:hidden md:hidden"> contributors</span>');
   });
   it("keeps the dim colour at full opacity and raises it on hover and keyboard focus", () => {
     const html = credits();
@@ -77,62 +86,9 @@ describe("credits line", () => {
   });
 });
 
-describe("compact credits button (below md)", () => {
-  const compact = () => /<button[^>]*data-attribution="compact"[^>]*>.*?<\/button>/.exec(credits())![0];
-  it("is a real button named 'Map credits' that opens the dialog, drawn below md only, with a decorative icon", () => {
-    const b = compact();
-    expect(b).toContain('aria-label="Map credits"');
-    expect(b).toContain('aria-haspopup="dialog"');
-    expect(b).toContain('type="button"');
-    const box = /<div[^>]*class="[^"]*\bmd:hidden\b[^"]*"[^>]*>(?=<button[^>]*data-attribution="compact")/.exec(credits());
-    expect(box, "the button's box is md:hidden").not.toBeNull();
-    expect(b).toContain("lucide-info");
-    expect(b).toContain('aria-hidden="true"');
-  });
-  it("is a 28 px box with a 44 px touch target (an invisible ::after, 9 px each way outside the padding box: 26 + 18), solid tones, never an opacity", () => {
-    const b = compact();
-    expect(b).toContain("size-7");
-    expect(b).toContain("after:-inset-[9px]");
-    expect(b).toContain("bg-background");
-    expect(b).not.toMatch(/bg-background\//);
-    expect(b).toContain("text-subtle-foreground");
-    expect(b).toContain("hover:text-foreground");
-    expect(b).toContain("focus-visible:text-foreground");
-    expect(b).not.toMatch(/class="[^"]*\bopacity-/);
-    expect(b).not.toContain("backdrop-blur");
-  });
-  it("sits in the card's corner, above the safe area, and above the hero (z 20)", () => {
-    const box = /<div[^>]*[ "]md:hidden[^>]*>/.exec(credits())![0];
-    expect(box).toContain("right:0.5rem");
-    expect(box).toContain("env(safe-area-inset-bottom)");
-    expect(box).toContain("max-width:calc(100% - 1rem)");
-    expect(box).toContain("z-20");
-  });
-  it("is collapsed in the server render (the button alone: the line is shown by an effect, once per session per surface)", () => {
-    expect(credits()).not.toContain("compact-line");
-  });
-  it("the line, when shown, is the licence's wording in solid tones, real text that wraps between credits and is never clipped", () => {
-    const html = renderToStaticMarkup(createElement(CompactCreditsLine, { names: ["© OpenStreetMap contributors", "OpenFreeMap", "Natural Earth"] }));
-    expect(html.replace(/<[^>]+>/g, "")).toBe("© OpenStreetMap contributors· OpenFreeMap· Natural Earth");
-    expect(html).toContain("bg-background");
-    expect(html).not.toMatch(/bg-background\//);
-    expect(html).toContain("flex-wrap");
-    expect(html).not.toContain("overflow-hidden");
-    expect(html).not.toContain("transition");
-    expect(html).not.toMatch(/class="[^"]*\bopacity-/);
-  });
-  it("opens the same dialog as the card: there is one dialog and both buttons are wired to it", () => {
-    const src = readFileSync(new URL("./attribution-button.tsx", import.meta.url), "utf8");
-    expect(src.match(/<CreditsDialog/g)).toHaveLength(1);
-    expect(src.match(/onClick=\{\(\) => setOpen\(true\)\}/g)).toHaveLength(2);
-  });
-});
-
-describe("credits dialog", () => {
-  it("uses the soft hairline of the card, not the strong border of outlined buttons", () => {
-    const src = readFileSync(new URL("./credits-dialog.tsx", import.meta.url), "utf8");
-    expect(src).not.toContain("border-border-strong");
-    expect(src).toMatch(/rounded-md border border-border bg-background/);
-    expect(src).toMatch(/variant="outline"[^>]*className="border-border"/);
-  });
+it("has one dialog and one button wired to it (no second control for the phone)", () => {
+  const src = readFileSync(new URL("./attribution-button.tsx", import.meta.url), "utf8");
+  expect(src.match(/<CreditsDialog/g)).toHaveLength(1);
+  expect(src.match(/onClick=\{\(\) => setOpen\(true\)\}/g)).toHaveLength(1);
+  expect(credits()).not.toContain('data-attribution="compact"');
 });

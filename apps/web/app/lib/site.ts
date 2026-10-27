@@ -43,7 +43,7 @@ export const DEFAULT_SITE_URL = "https://v2.bsodium.fr";
 /**
  * The first version of the site, kept as it was (#312): the ONE place its address and its words are written. The moon that circles the globe
  * (`GlobeProps.moon`, docs/landing.md "The moon") and the search palette's entry read it. A way back to look at, not a warning: the words say what
- * it is and that it stays as it was. The address is the old app's own Vercel project (docs/owner-guide.md); if the archive moves, this is the one line to change. (This sentence was added in #337 only so that the web preview deploys, which the repository's merge rule requires.)
+ * it is and that it stays as it was. The address is the old app's own Vercel project (docs/owner-guide.md); if the archive moves, this is the one line to change.
  */
 export const ARCHIVED_V1 = {
   url: "https://v1.bsodium.fr",
@@ -88,41 +88,36 @@ export type KindCounts = Record<keyof typeof SECTIONS, number>;
 
 const KINDS = Object.keys(SECTIONS) as (keyof typeof SECTIONS)[];
 
-/** The sections are set two to a row (software, articles / artworks, poetry / photography): the widest row stays as wide as it was with four sections, so the block of rows keeps its scale on the globe's narrow parallels. */
-const ROW_SIZE = 2;
-
-/** The `[from, to)` index ranges of the rows the sections are set in. */
-const chunk = (n: number): [number, number][] => Array.from({ length: Math.ceil(n / ROW_SIZE) }, (_, i) => [i * ROW_SIZE, Math.min(n, (i + 1) * ROW_SIZE)]);
-
-/** `n` of a kind in its own noun (singular or plural: "1 poem", "5 poems"), the number picked out. */
-const countSpans = (kind: keyof typeof SECTIONS, n: number, accent = false): CaptionSpan[] => [
-  { text: String(n), style: "heavy", ...(accent ? { accent: "blue" as const } : {}) },
-  { text: ` ${n === 1 ? SECTIONS[kind].noun.one : SECTIONS[kind].noun.many}` },
-];
-
 /**
  * The caption of the home screen, set on parallels of the globe (reading serif, a few weights, the code face and a calligraphic script): four
- * rows in view at once. The call to action is two rows that stay at the bottom, the biggest; the two rows above take turns, every few seconds,
- * through the phrase sets: (1) what the site is, (2) what it holds (the sections' own public names in the order of the lists, so they cannot
- * drift from them, in two rows) and (3) how much of it there is, from the published projection with the sections' own nouns (left out when the
+ * rows in view at once, never more: a fifth row made the block too heavy (owner, 2026-10-26). The call to action is two rows that stay at the bottom, the biggest;
+ * the two rows above take turns, every few seconds, through the phrase sets: (1) what the site is, (2) what it holds, the five sections in the order of the lists
+ * as one sentence in two rows (each word in its section's face, the handwriting's "Poems" on the top row (no descender to meet the row under it); "articles" and "art" for Articles and Artworks, which is what a row of that width can hold: the
+ * sections' own names are in the hero's rows and the header, as text) and (3) how much of it there is, from the published projection (left out when the
  * page does not know the counts). Facts about the site and interface copy, nothing about the owner; the hero's how-to line says the same in the
  * page as text, always (the caption is for the eyes: it is hidden from assistive technology).
  */
 export function siteCaption(counts?: KindCounts | null): SiteCaption {
-  // The sections' names, joined by a dot, `from` to `to` (exclusive) in the order of the lists.
-  const names = (from: number, to: number): CaptionRow =>
-    KINDS.slice(from, to).flatMap((kind, i): CaptionSpan[] => [...(i > 0 ? [{ text: " \u00b7 " }] : []), { text: SECTIONS[kind].name, style: SECTION_CAPTION_STYLE[kind] }]);
+  const word = (kind: keyof typeof SECTIONS, text: string): CaptionSpan => ({ text, style: SECTION_CAPTION_STYLE[kind] });
   const sets: CaptionRow[][] = [
     [
       [{ text: "A " }, { text: "personal archive", style: "heavy", accent: "blue" }, { text: "," }],
       [{ text: "organised around " }, { text: "places", style: "heavy", accent: "blue" }, { text: "." }],
     ],
-    chunk(KINDS.length).map(([from, to]) => names(from, to)),
+    // (five sections in two rows no wider than the counts' row of the four-section caption (24 letters); the handwriting, bigger than the serif, is on the TOP row: it
+    // has nothing above it there, so it can rise without touching a row, and it keeps its baseline on the serif's)
+    [
+      [word("poem", "Poems"), { text: ", " }, word("project", "software"), { text: ", " }, word("artwork", "art"), { text: "," }],
+      [word("article", "articles"), { text: " & " }, word("photograph", "photography"), { text: "." }],
+    ],
   ];
-  if (counts && KINDS.every((k) => Number.isFinite(counts[k]) && counts[k] >= 0) && KINDS.some((k) => counts[k] > 0)) {
-    const row = (from: number, to: number): CaptionRow =>
-      KINDS.slice(from, to).flatMap((kind, i): CaptionSpan[] => [...(i > 0 ? [{ text: " \u00b7 " }] : []), ...countSpans(kind, counts[kind], from + i === 0)]);
-    sets.push(chunk(KINDS.length).map(([from, to]) => row(from, to)));
+  const total = counts ? KINDS.reduce((n, k) => n + counts[k], 0) : 0;
+  if (counts && KINDS.every((k) => Number.isFinite(counts[k]) && counts[k] >= 0) && total > 0) {
+    const kinds = KINDS.filter((k) => counts[k] > 0).length;
+    sets.push([
+      [{ text: String(total), style: "heavy", accent: "blue" }, { text: total === 1 ? " entry" : " entries" }, { text: "," }],
+      [{ text: `in ${kinds} ` }, { text: kinds === 1 ? "section" : "sections", style: "heavy" }, { text: "." }],
+    ]);
   }
   return {
     sets,

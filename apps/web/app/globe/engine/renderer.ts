@@ -11,7 +11,7 @@
  *   hidden or the GL context is lost nothing is scheduled; the first frame after recovery repaints.
  * - Imperative and framework-free: React only owns the lifecycle (see ../globe-canvas.tsx).
  */
-import { ColorManagement, Color, PerspectiveCamera, Vector3, WebGLRenderer } from "three";
+import { ColorManagement, Color, PerspectiveCamera, Vector3, Vector4, WebGLRenderer } from "three";
 import type { Polylines } from "@catalyst/geodata";
 import type { CoverBlock, GlobePlace, GlobeRoute } from "../types";
 import { TrailDotsLayer, dotLegs } from "../paths/trail-dots-layer";
@@ -58,8 +58,9 @@ import { snapBox } from "./group-square";
 import { Grace } from "./grace";
 import { IdleSpin, SPIN, SPIN_DEFAULTS, edgeSpeed, pacedByRotation, spinBlock, spinFrameDue, spinFramePeriod, type SpinContext } from "./idle-spin";
 import { CINEMATIC } from "./cinematic";
-import { blendPose, flightOffsetShare, flightPose } from "./flight";
-import { SURFACE, surfaceCoverage, surfaceFade } from "./surface";
+import { INTERLUDE_STATE_EVENT, INTERLUDE_WAIT_MS, interludeLook, type InterludeStateDetail } from "../interlude";
+import { blendPose, flightOffsetShare, flightPose, type FlightPose } from "./flight";
+import { NIGHT, SURFACE, surfaceCoverage, surfaceFade } from "./surface";
 import { landingScale, liftFor, placeAbove, type Placement } from "./lift";
 import { routeLift } from "./view";
 import { newLodCamera, setLodCamera, type LodTree } from "./lod-tree";
@@ -69,7 +70,8 @@ import { SHOWCASE_STATE, bandLat, inBand, shellWindowFactor, type CaptionContent
 import { CAP_HEIGHT_EM, ringAlpha, ringFloorZoom, ringRoomRadius, RING_STATE } from "./ring";
 import { RingLayer } from "./ring-layer";
 import { GlobeScene } from "./scene";
-import { MOON, inclinationFor, moonAmount, orbitAngle, rollFor, sunDirection, toEarthFrame, toRad, type Vec3 } from "./moon";
+import { planetClear } from "./sun-flare";
+import { MOON, inclinationFor, litTurn, moonAmount, orbitAngle, rollFor, sunDirection, toEarthFrame, toRad, type Vec3 } from "./moon";
 import type { MoonSample } from "./moon-layer";
 import { CAPTION, ENERGY, INSET_EASE, CAPTION_LOAD, RING, SKY, START_VIEW, TUNING } from "./tuning";
 import { QualityGovernor } from "./quality";
@@ -158,6 +160,9 @@ export interface FlyOptions {
   beyondLimit?: boolean;
 }
 
+/** How long the camera takes to glide from where it was into the interlude's flight, when it is asked for away from the display mode, ms (`GlobeRenderer.playInterludeNow`). */
+const CAMERA_INTRO_MS = 2200;
+
 export class GlobeRenderer {
   readonly canvas: HTMLCanvasElement;
 
@@ -188,7 +193,7 @@ export class GlobeRenderer {
   private showcaseOn = false;
   /** Whether the caption is wanted AND shown now (the showcase is on and the camera's latitude is in its band) and the camera's latitude glide towards the band, if any. */
   private captionOn = false;
-  private latSnap: { from: number; to: number; t0: number } | null = null;
+  private latSnap: { from: number; to: number; lonFrom: number; lonTo: number; t0: number; ms: number } | null = null;
   private showcaseActive = false;
   /** The planet at the lowest zoom is big enough for the ring's and the caption's letters (they have a smallest size): when it is not, they are not drawn rather than cut. */
   private textFits = true;
@@ -351,6 +356,7 @@ export class GlobeRenderer {
     if (opts.showcase && this.showcaseActive) {
       // The home screen opens in its showcase: the boxes are out from the first frame (nothing fades), and the caption comes in with the first frame.
       this.showcaseOn = true;
+      this.appShowcase = true;
       this.lod.setSuppressed(true, true);
       this.captionOn = true;
       this.caption?.show(null);
@@ -1186,9 +1192,10 @@ export class GlobeRenderer {
     }
     if (this.latSnap) {
       const a = this.latSnap;
-      const t = clamp((now - a.t0) / CAPTION.band.snapMs, 0, 1);
-      const e = 1 - (1 - t) ** 3;
-      this.view = this.clampView({ ...this.view, lat: a.from + (a.to - a.from) * e });
+      const t = clamp((now - a.t0) / a.ms, 0, 1);
+      // slow in, slow out (a smootherstep): the glide starts from rest, with no jump
+      const e = t * t * t * (t * (t * 6 - 15) + 10);
+      this.view = this.clampView({ ...this.view, lat: a.from + (a.to - a.from) * e, lon: a.lonFrom + (a.lonTo - a.lonFrom) * e });
       if (t >= 1) this.latSnap = null;
       else more = true;
     }
@@ -1201,6 +1208,8 @@ export class GlobeRenderer {
         more = true;
       }
     }
+    // (an interlude asked for away from the display mode has run its course, or was cut short: the page's word on the showcase holds again)
+    if (this.eggAsk?.stage === "playing" && !this.caption?.interluding) this.endEggAsk();
     if (this.showcaseOn) this.guardCaption(now);
     if (this.latSnap) more = true;
     if (this.globe.routes.advance(now)) more = true;
@@ -1301,17 +1310,48 @@ export class GlobeRenderer {
     return orbitAngle(this.moonMs);
   }
 
+  /** The cinematic interlude (the easter egg) has the camera or the land: the sun, the night and the moon are still there, as at rest (the zoom of its close shots is not a visitor's). */
+  private get inInterlude(): boolean {
+    return this.flying || (this.caption?.landShare() ?? 0) > 0;
+  }
+
+  private sunV = new Vector3();
+  private sunClip = new Vector4();
+
+  /**
+   * Place the sun for this frame: a direction at infinity (the light's, in the earth's frame), projected by the camera as the stars' are (w = the depth along the view, so a direction behind the camera is
+   * not ahead). It is shown with the planet's night (the same amount: the zoom takes both away, and the interlude and pages without the showcase have neither).
+   */
+  private syncSun(cam: PerspectiveCamera, sunEarth: Vec3, d: number) {
+    const sun = this.globe.sun;
+    if (!sun) return;
+    const v = this.sunV.set(sunEarth[0], sunEarth[1], sunEarth[2]).transformDirection(cam.matrixWorldInverse);
+    const clip = this.sunClip.set(v.x, v.y, v.z, 0).applyMatrix4(cam.projectionMatrix);
+    const ahead = clip.w > 1e-4;
+    sun.sync({
+      bufW: this.bufW,
+      bufH: this.bufH,
+      x: ahead ? (clip.x / clip.w * 0.5 + 0.5) * this.bufW : 0,
+      y: ahead ? (clip.y / clip.w * 0.5 + 0.5) * this.bufH : 0,
+      ahead,
+      focal: (cam.projectionMatrix.elements[5]! * this.bufH) / 2,
+      amount: this.nightNow,
+      // the planet stands at distance d on the view axis: how much of the sun it leaves the lens flare
+      visible: planetClear(-v.z, d),
+    });
+  }
+
   /** Place the moon for this frame (the camera's matrices are final). */
   private syncMoon(cam: PerspectiveCamera, d: number, zoom: number, now: number) {
     const moon = this.globe.moon;
     if (!moon) return;
-    const wanted = this.sized && !this.lost && !this.suspended && !this.flying && this.selected === null && this.insetTarget === 0 && (this.caption?.landShare() ?? 0) === 0;
+    const wanted = this.sized && !this.lost && !this.suspended && this.selected === null && this.insetTarget === 0;
     if (!wanted) {
       this.moonSample = moon.sync({ camera: cam, bufW: this.bufW, bufH: this.bufH, eraDeg: this.era, angle: 0, rollDeg: 0, inclinationDeg: 0, sun: this.moonSun, d, zoom, fit: Infinity }); // (a zoom far past the fit: nothing is drawn)
       return;
     }
     const aspect = this.width / Math.max(1, this.height);
-    this.moonSample = moon.sync({ camera: cam, bufW: this.bufW, bufH: this.bufH, eraDeg: this.era, angle: this.moonAngle(now), rollDeg: rollFor(aspect), inclinationDeg: inclinationFor(aspect), sun: toEarthFrame(this.moonSun, this.era), d, zoom, fit: this.fit });
+    this.moonSample = moon.sync({ camera: cam, bufW: this.bufW, bufH: this.bufH, eraDeg: this.era, angle: this.moonAngle(now), rollDeg: rollFor(aspect), inclinationDeg: inclinationFor(aspect), sun: toEarthFrame(this.moonSun, this.era), d, zoom: this.inInterlude ? this.fit : zoom, fit: this.fit });
   }
 
   /**
@@ -1320,7 +1360,7 @@ export class GlobeRenderer {
    */
   moonFrame(): { x: number; y: number; r: number; amount: number; unhidden: number; angle: number } | null {
     const m = this.moonSample;
-    if (!m || !m.onScreen || !this.sized || this.disposed || this.lost || this.suspended) return null;
+    if (!m || !m.onScreen || !this.sized || this.disposed || this.lost || this.suspended || this.inInterlude) return null;
     const P = this.pixel;
     return { x: m.cx * P + this.canvasLeft, y: (this.bufH - m.cy) * P + this.canvasTop, r: m.r * P, amount: m.amount, unhidden: m.unhidden, angle: this.moonAngleNow() };
   }
@@ -1450,6 +1490,8 @@ export class GlobeRenderer {
   private onInput = (e: Event) => {
     // A gesture ON the globe (the hero's own definition: a press or a wheel over the stage) ends the showcase at once: the boxes come back and the
     // press that began it is no click (nobody could see what was under it).
+    // (and a gesture drops an interlude asked for that has not begun yet: the visitor has taken the globe back, `wantInterlude`)
+    if ((e.type === "pointerdown" || e.type === "wheel") && this.eggAsk?.stage === "waiting" && e.target instanceof Node && this.opts.container.contains(e.target)) this.endEggAsk();
     if ((e.type === "pointerdown" || e.type === "wheel") && this.showcaseOn && e.target instanceof Node && this.opts.container.contains(e.target)) {
       this.inertPress = e.type === "pointerdown";
       this.dropShowcase();
@@ -1809,7 +1851,8 @@ export class GlobeRenderer {
   private ringPresence(): number {
     const a = this.textFits ? ringAlpha(this.view.zoom, this.fit, this.minZoom) : 0;
     // (and it is out for the whole of the cinematic interlude, while the globe is pulled back: `CaptionLayer.ringShare`)
-    const share = this.ringCut ? 0 : (this.caption?.ringShare() ?? 1);
+    // (and while an interlude asked for away from the display mode is made ready: the ring was not there, and it does not come in to be sent away again, `wantInterlude`)
+    const share = this.ringCut || this.eggAsk?.stage === "waiting" ? 0 : (this.caption?.ringShare() ?? 1);
     return (this.showcaseActive ? a * (1 - this.lod.overlayAlpha) : a) * share;
   }
 
@@ -1825,6 +1868,87 @@ export class GlobeRenderer {
   prepareInterlude(): void {
     this.caption?.prewarmInterlude();
   }
+
+  /**
+   * The visitor asked for the interlude away from the display mode (a zoomed or turned globe: the home screen was put away) and it is not under way yet: the request is HELD
+   * (`eggAsk`). From that moment until the interlude has run its course (or a gesture ends it) the globe, not the page, decides whether the showcase is on: the page's own
+   * word (`setShowcase`, from the hero, which comes back with the interlude) is kept in `appShowcase` and applied only once it is over. Without that the hero's state, which
+   * changes several times in that while (it takes the interlude's look, it comes back to rest, its cover changes), turned the showcase off and on again under the interlude:
+   * off ended it, on brought the caption in (an entrance drops an interlude under way), and the visitor saw the home screen's rows and ring and then the ordinary interlude.
+   * True when the globe takes the request (false: there is a place open, or no caption: the palette takes the visitor home first).
+   */
+  wantInterlude(): boolean {
+    if (!this.caption || !this.showcaseActive || this.reduced || this.selected !== null || this.insetTarget !== 0) return false;
+    if (this.eggAsk?.stage === "playing") return true;
+    const until = performance.now() + INTERLUDE_WAIT_MS;
+    this.eggAsk = { stage: "waiting", until };
+    // (a request that could not be begun in time is dropped: the page's showcase is its own again)
+    window.setTimeout(() => {
+      if (!this.disposed && this.eggAsk?.stage === "waiting" && this.eggAsk.until === until) this.endEggAsk();
+    }, INTERLUDE_WAIT_MS + 50);
+    return true;
+  }
+
+  /**
+   * Begin the held interlude NOW, from wherever the camera is (`wantInterlude` first). The page's own camera goes home at once (the flight ends on it), the caption comes onto
+   * the stage in the interlude with its rows already gone (`CaptionLayer.playEggDirect`: no entrance, no ring), and the camera drawn glides from where it was into the flight
+   * (`camIntro`, in `syncCamera`), so nothing of the display mode is passed through. False while the interlude is not ready (its word is being made: the caller asks again).
+   */
+  playInterludeNow(): boolean {
+    const caption = this.caption;
+    if (!caption || this.eggAsk?.stage !== "waiting" || !this.sized || this.selected !== null || this.insetTarget !== 0) return false;
+    caption.armEggNow();
+    caption.warmNow(this.camera);
+    if (!caption.canPlayEggNow()) return false;
+    // (asked for from the street map, which owns the view at that zoom: the globe is drawn again from now on, the camera's leaving takes the view back from it. While the globe
+    // is suspended the caption's timed things are run to their end (`applyShowcase` and `setSuspended` settle it), and that dropped the interlude in the frame it began: its
+    // sound started and stopped, and the showcase's own entrance and ring came instead. The handover agrees from its next frame, the view being home by then.)
+    if (this.suspended) this.setSuspended(false);
+    const now = performance.now();
+    const v = this.drawView();
+    const b = viewBasis(v, this.bufH * this.pixel);
+    const from = flightPose(1, { lon: v.lon, lat: v.lat, alt: b.d - 1, roll: v.roll ?? 0 });
+    if (!caption.playEggDirect(now)) return false;
+    this.eggAsk = { stage: "playing" };
+    caption.flightProgress(); // (the flight's state is this frame's before anything reads the ring's share, the land's or the caption's)
+    this.camIntro = { from, t0: now };
+    this.flight = null;
+    this.velocity = STILL;
+    this.latSnap = null;
+    this.view = this.clampView({ lon: this.view.lon, lat: 0, zoom: this.minZoom });
+    this.captionOn = true;
+    this.showcaseOn = true;
+    // (the explore view's boxes and labels are out in this frame, not fading: the page's camera is home already, and they would hang in the wrong places while they went)
+    this.lod.suppressNow();
+    this.applyShowcase();
+    this.noteChange();
+    this.requestRender();
+    return true;
+  }
+
+  /** An interlude asked for away from the display mode is held or under way (`eggAsk`): the handover cuts the street map away at once, with no cross-fade that would follow the page's camera under the glide. */
+  interludeAway(): boolean {
+    return this.eggAsk !== null;
+  }
+
+  /** The held request (`wantInterlude`) is over: it was dropped, cut short, or the interlude has run its course. The page's word on the showcase holds again. */
+  private endEggAsk(): void {
+    if (!this.eggAsk) return;
+    this.eggAsk = null;
+    this.applyAppShowcase();
+    this.requestRender();
+  }
+
+  /**
+   * The interlude asked for away from the display mode, until it is over (`wantInterlude`): `waiting` while it is made ready (the caption and the ring stay away, whatever
+   * the page says), `playing` once it is under way (`playInterludeNow`).
+   */
+  private eggAsk: { stage: "waiting"; until: number } | { stage: "playing" } | null = null;
+  /** What the page last said of the showcase (`setShowcase`): applied at once, except while an interlude asked for away from the display mode holds it (`eggAsk`). */
+  private appShowcase = false;
+
+  /** The camera the interlude began from (`playInterludeNow`) and when: the camera drawn glides from it into the flight over `CAMERA_INTRO_MS`. */
+  private camIntro: { from: FlightPose; t0: number } | null = null;
 
   /** The visitor asks for the cinematic interlude (the search palette's entry): false when it cannot be played now. */
   playInterlude(): boolean {
@@ -1981,7 +2105,13 @@ export class GlobeRenderer {
    * the showcase (`?no-ring`, a debug page) this does nothing: the boxes stay.
    */
   setShowcase(on: boolean) {
-    const want = on && this.showcaseActive;
+    this.appShowcase = on;
+    // (an interlude asked for away from the display mode holds the showcase until it is over: `wantInterlude`)
+    if (!this.eggAsk) this.applyAppShowcase();
+  }
+
+  private applyAppShowcase() {
+    const want = this.appShowcase && this.showcaseActive;
     if (want === this.showcaseOn) return;
     this.showcaseOn = want;
     this.applyShowcase();
@@ -1990,6 +2120,7 @@ export class GlobeRenderer {
 
   /** The showcase ends on its own (a gesture on the globe): the same, without asking the app. */
   private dropShowcase() {
+    this.eggAsk = null; // (a gesture ends an interlude asked for, held or under way: the page's word holds again, and it is off)
     if (!this.showcaseOn) return;
     this.showcaseOn = false;
     this.applyShowcase();
@@ -2025,7 +2156,7 @@ export class GlobeRenderer {
 
   /**
    * The caption needs the camera inside its latitude band (`CAPTION.band`: the rows are fixed parallels about the equator). While the showcase is
-   * on: a camera outside the band glides its latitude (only: never the longitude, the zoom is the page's) to the band's nearest edge, ease-out,
+   * on: a camera outside the band glides its latitude (and, when the planet is not lit at the camera's longitude, the longitude, back to the lit side: `litTurn`; never the zoom, which is the page's) to the band's nearest edge, ease-out,
    * and the entrance starts when it has landed (`show` is not called before); a camera that leaves the band under a caption (a flight) fades
    * it, and it comes back, entering again, once the camera is in the band. A gesture ends the showcase (`dropShowcase`), which drops the glide.
    * Runs every frame (a few comparisons) and when the showcase changes.
@@ -2049,14 +2180,16 @@ export class GlobeRenderer {
       return;
     }
     if (this.latSnap || this.flight !== null) return; // (the glide, or somebody else's flight, is under way: wait for it)
-    if (inBand(lat)) {
+    if (this.eggAsk) return; // (an interlude was asked for: the caption does not come in to be sent away again, `wantInterlude`)
+    const turn = litTurn(this.view.lon, this.era);
+    if (inBand(lat) && turn === 0) {
       this.captionOn = true;
       caption.show(now);
       this.requestRender();
       return;
     }
     if (this.reduced) {
-      this.view = this.clampView({ ...this.view, lat: this.snapTarget(lat) });
+      this.view = this.clampView({ ...this.view, lat: this.snapTarget(lat), lon: this.view.lon + turn });
       this.captionOn = true;
       caption.show(now);
       this.requestRender();
@@ -2064,7 +2197,9 @@ export class GlobeRenderer {
     }
     this.noteChange();
     this.velocity = STILL;
-    this.latSnap = { from: lat, to: this.snapTarget(lat), t0: now };
+    const travel = Math.max(Math.abs(this.snapTarget(lat) - lat), Math.abs(turn));
+    const ms = clamp(travel * CAPTION.band.snapMsPerDeg, CAPTION.band.snapMs, CAPTION.band.snapMaxMs);
+    this.latSnap = { from: lat, to: this.snapTarget(lat), lonFrom: this.view.lon, lonTo: this.view.lon + turn, t0: now, ms };
     this.requestRender();
   }
 
@@ -2072,6 +2207,20 @@ export class GlobeRenderer {
 
   /** The `--interlude` the page's hero is following (0 outside the interlude). */
   private interludeVar = 0;
+  /** The page's hero has been told the interlude is on (it takes its collapsed look, `INTERLUDE_STATE_EVENT`). */
+  private interludeOn = false;
+
+  /**
+   * Tell the page when the interlude begins and ends (once each): on as the land comes in, off once it is on its way out and below the middle of its easing, so the
+   * name grows back while the page's text is returning and not after it. Once off, it comes on again only as the land comes IN (rising): on the way out the land is still
+   * over 0.01 for a while, and without that the state flipped on and off every frame (the name flickered between its two sizes).
+   */
+  private setInterludeState(land: number): void {
+    const next = interludeLook(this.interludeOn, land, this.interludeVar);
+    if (next === this.interludeOn) return;
+    this.interludeOn = next;
+    window.dispatchEvent(new CustomEvent<InterludeStateDetail>(INTERLUDE_STATE_EVENT, { detail: { active: next } }));
+  }
 
   /** The projection's shift and lift in buffer px as the camera is drawn with now: the page's (`shiftBuf`, `liftBuf`) except during the flight. */
   private camShift = 0;
@@ -2091,6 +2240,15 @@ export class GlobeRenderer {
     // (a flight cut short glides from where it is to the page's own camera, which is the flight's end: its pose at 1)
     const cut = pose ? (this.caption?.flightCut() ?? 0) : 0;
     if (pose && cut > 0) pose = blendPose(pose, flightPose(1, end), cut);
+    if (this.camIntro) {
+      // asked for away from the display mode: the camera drawn glides from where it was into the flight (the page's own camera is home already)
+      const k = Math.min(1, (performance.now() - this.camIntro.t0) / CAMERA_INTRO_MS);
+      if (k >= 1) this.camIntro = null;
+      else {
+        pose = blendPose(this.camIntro.from, pose ?? flightPose(1, end), k * k * (3 - 2 * k));
+        this.requestRender();
+      }
+    }
     this.flying = pose !== null;
     // what the rest of the frame reads: the camera's distance from the centre, the longitude and latitude it is over, and the zoom that distance is
     let d = b.d;
@@ -2104,7 +2262,7 @@ export class GlobeRenderer {
     // (the caption's shell is above the planet: its nearest point must be inside the near plane)
     const reach = this.caption ? this.caption.maxRadius + 0.05 : 1.05;
     // (the moon is on an orbit wider than the caption's shell: its whole orbit is between the near and far planes while it is shown)
-    const moonReach = this.globe.moon?.ready && moonAmount(zoom, this.fit) > 0.01 ? MOON.orbit + MOON.radius + 0.05 : 0;
+    const moonReach = this.globe.moon?.ready && moonAmount(this.inInterlude ? this.fit : zoom, this.fit) > 0.01 ? MOON.orbit + MOON.radius + 0.05 : 0;
     if (pose) {
       const [px, py, pz] = pose.pos;
       d = Math.hypot(px, py, pz);
@@ -2148,6 +2306,7 @@ export class GlobeRenderer {
     this.globe.setCity(CINEMATIC.planet.cities ? (this.caption?.cityShare() ?? 0) : 0);
     // the page's own hero steps back with it (app.css `--interlude`): written when it moves by a hundredth
     if (Math.abs(land - this.interludeVar) >= 0.01 || (land === 0 && this.interludeVar !== 0)) {
+      this.setInterludeState(land);
       this.interludeVar = land;
       this.opts.container.ownerDocument.documentElement.style.setProperty("--interlude", land.toFixed(3));
     }
@@ -2162,8 +2321,11 @@ export class GlobeRenderer {
     this.globe.setSun(sun.x, sun.y, sun.z);
     // the planet's night (home screen, world view): the moon's sun, fixed in the sky, so the earth turns under it; gone with the zoom as the moon is
     const ns = toEarthFrame(this.moonSun, this.era);
-    this.nightNow = this.showcaseActive && !this.flying && land === 0 ? moonAmount(zoom, this.fit) : 0;
-    this.globe.setNight(this.nightNow, ns[0], ns[1], ns[2]);
+    this.nightNow = this.showcaseActive ? (this.inInterlude ? 1 : moonAmount(zoom, this.fit)) : 0;
+    // (the light page shows the wash a little softer than the dark one: `NIGHT.lightGain`)
+    const shown = this.nightNow * (this.theme.scheme === "dark" ? 1 : NIGHT.lightGain);
+    this.globe.setNight(shown, ns[0], ns[1], ns[2]);
+    this.caption?.setNight(shown, ns);
     const now = performance.now();
     this.globe.syncCamera(b, zoom, this.pixel, now, this.reduced, lat, Math.max(this.width, this.height), inInterlude);
     // (the caption's lines stay on the page's meridian and latitude; only what is hidden is the flying camera's)
@@ -2172,6 +2334,7 @@ export class GlobeRenderer {
     this.caption?.sync(d, v.lon, v.lat, now, over);
     this.syncTagline();
     this.syncMoon(cam, d, zoom, now);
+    this.syncSun(cam, ns, d);
     this.globe.syncSky(cam, skyBasis, this.era, { w: this.bufW, h: this.bufH, shift: this.camShift, lift: this.camLift }, now, this.reduced, this.flying || (this.caption?.landShare() ?? 0) > 0);
   }
 
@@ -2282,6 +2445,10 @@ export class GlobeRenderer {
     this.cleanups = [];
     // (the hero must not stay a ghost if the globe goes away mid-interlude)
     if (this.interludeVar !== 0) this.opts.container.ownerDocument.documentElement.style.removeProperty("--interlude");
+    if (this.interludeOn) {
+      this.interludeOn = false;
+      window.dispatchEvent(new CustomEvent<InterludeStateDetail>(INTERLUDE_STATE_EVENT, { detail: { active: false } }));
+    }
     this.ring?.dispose();
     this.ring = null;
     this.legIcons?.dispose();

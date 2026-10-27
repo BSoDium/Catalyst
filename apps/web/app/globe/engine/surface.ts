@@ -39,13 +39,21 @@ export function surfaceCoverage(landShare: number): number {
  * night, so in either scheme the dark side goes towards the page, as the moon's does.
  */
 export const NIGHT = {
-  litFrom: -0.2,
-  litTo: 0.32,
-  shift: 0.5,
-  landMin: 0.55,
+  litFrom: -0.12,
+  litTo: 0.28,
+  shift: 0.85,
+  landMin: 0.2,
   /** The lines on the dark side: their colour goes this share of the way to the page's, in `lineSteps` steps (a staircase of greys, the palette's way; not a thinning: a one-pixel line in a dither flickers as the planet turns). */
-  lineDim: 0.6,
+  lineDim: 0.88,
+  /** The planet's own outline (the horizon ring): the same steps, a little less dim, so that the dark side's edge is still there. */
+  limbDim: 0.8,
   lineSteps: 3,
+  /** The orbiting type over the dark side: its colour goes this share of the way to the page's at the darkest (a dimming, not a night: the words must stay readable). */
+  captionDim: 0.3,
+  /** How much of the wash the light page shows (the scale of `uNight`): the light page is the day's overexposure, not a night (`washOf`): the sun's side burns towards the page's colour; a little under the dark page's, so the lit half is never blank. */
+  lightGain: 0.75,
+  /** The interlude's atmosphere (the glow over the limb and the veil on the ground): how much of it goes where the planet is washed (the dark side on the dark page, the sun's side on the light one): it is darkened, not just thinned. */
+  atmosphereDim: 0.85,
 } as const;
 
 /** GLSL for the light on a ground point `n` (a unit vector in the earth's frame) from the sun `uSunN`, scaled by how much night there is (`uNight`: 0 is all day): 1 lit, 0 dark. */
@@ -53,5 +61,10 @@ export const NIGHT_GLSL = /* glsl */ `
   float dayShare(vec3 n, vec3 sun, float night) {
     float k = smoothstep(${NIGHT.litFrom.toFixed(2)}, ${NIGHT.litTo.toFixed(2)}, dot(n, sun));
     return mix(1.0, k, night);
+  }
+  /** How much a ground point is washed towards the page's colour, 0..1. On the dark page it is the DARK side (the day is the page's ink, the night goes towards the dark page); on the light page (\`flip\` 1) it is the LIT side, overexposed: the sun is so bright that the colours burn away. */
+  float washOf(vec3 n, vec3 sun, float night, float flip) {
+    float k = smoothstep(${NIGHT.litFrom.toFixed(2)}, ${NIGHT.litTo.toFixed(2)}, dot(n, sun));
+    return night * mix(1.0 - k, k, flip);
   }
 `;

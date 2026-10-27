@@ -75,7 +75,7 @@ describe("hero machine", () => {
   const state = () => machine.getSnapshot().state;
 
   it("starts at rest, at the world view, with no timer (a page nobody touches schedules nothing)", () => {
-    expect(machine.getSnapshot()).toEqual({ state: "rest", world: true });
+    expect(machine.getSnapshot()).toEqual({ state: "rest", world: true, interlude: false });
     expect(vi.getTimerCount()).toBe(0);
     vi.advanceTimersByTime(10 * HERO_IDLE_MS);
     expect(state()).toBe("rest");
@@ -150,7 +150,7 @@ describe("hero machine", () => {
 
   it("leaving the world view collapses a resting hero (a deep link to a place, then Close: the landing is not shown over a zoomed map)", () => {
     machine.setWorld(false);
-    expect(machine.getSnapshot()).toEqual({ state: "collapsed", world: false });
+    expect(machine.getSnapshot()).toEqual({ state: "collapsed", world: false, interlude: false });
     machine.setWorld(true);
     // nothing was touched since: it still waits the idle delay, it does not pop back mid-gesture
     expect(state()).toBe("collapsed");
@@ -202,7 +202,7 @@ describe("hero machine", () => {
       machine.hold(false);
       expect(vi.getTimerCount()).toBe(0);
       expect(changes).toBe(0);
-      expect(machine.getSnapshot()).toEqual({ state: "rest", world: true });
+      expect(machine.getSnapshot()).toEqual({ state: "rest", world: true, interlude: false });
     });
   });
 
@@ -255,11 +255,11 @@ describe("a place or an entry opens and closes: the hero never shows its resting
     const m = createHeroMachine();
     const seen = watch(m);
     m.setWorld(false); // the panel opens: the shell says the view is not the world view
-    expect(m.getSnapshot()).toEqual({ state: "collapsed", world: false });
+    expect(m.getSnapshot()).toEqual({ state: "collapsed", world: false, interlude: false });
     // the panel closes: the view is still the place's, so nothing changes
     m.setWorld(false);
     vi.advanceTimersByTime(HERO_IDLE_MS * 3);
-    expect(m.getSnapshot()).toEqual({ state: "collapsed", world: false });
+    expect(m.getSnapshot()).toEqual({ state: "collapsed", world: false, interlude: false });
     expect(seen).toEqual(["rest/true", "collapsed/false"]);
     m.stop();
   });
@@ -283,7 +283,21 @@ describe("a place or an entry opens and closes: the hero never shows its resting
     m.interact();
     m.setWorld(false);
     m.setWorld(false);
-    expect(m.getSnapshot()).toEqual({ state: "collapsed", world: false });
+    expect(m.getSnapshot()).toEqual({ state: "collapsed", world: false, interlude: false });
     m.stop();
+  });
+});
+
+describe("the interlude's look", () => {
+  it("is a flag apart from the state: the showcase and the idle clock are not touched, and it is announced once", () => {
+    const m = createHeroMachine({ idleMs: 8000, timers: { setTimeout: () => 1, clearTimeout: () => {} } });
+    const seen: boolean[] = [];
+    m.subscribe(() => seen.push(m.getSnapshot().interlude));
+    m.setInterlude(true);
+    m.setInterlude(true);
+    expect(m.getSnapshot()).toEqual({ state: "rest", world: true, interlude: true });
+    expect(showcaseOf(m.getSnapshot(), 100).on).toBe(true);
+    m.setInterlude(false);
+    expect(seen).toEqual([true, false]);
   });
 });

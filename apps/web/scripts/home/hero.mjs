@@ -133,7 +133,7 @@ async function geometry(page) {
       add("name-family", el(".hero-family"), true);
       add("mini-hint", el(".hero-mini-hint"), true);
     }
-    // the credits card from md up, the phone's compact "i" button below it (the other one is display: none)
+    // the credits card (one line from md up, the full width of the screen below it)
     const credits = [...document.querySelectorAll("[data-attribution]")].find((n) => n.getClientRects().length > 0) ?? null;
     const badge = el("[data-dev-content-badge]");
     return {
@@ -155,7 +155,7 @@ const hit = (a, b) => a.l < b.r - 0.5 && a.r > b.l + 0.5 && a.t < b.b - 0.5 && a
 async function layoutChecks(page, label) {
   const g = await geometry(page);
   ok(g.inks.length > 0, `${label}: the hero shows something (${g.inks.map((i) => i.name).join(", ")})`);
-  ok(g.credits !== null, `${label}: the credits (card, or the phone's "i" button) are there`);
+  ok(g.credits !== null, `${label}: the credits card is there`);
   if (g.credits) ok(!g.inks.some((i) => hit(i, g.credits)), `${label}: nothing of the hero covers the credits line`);
   if (g.badge) ok(!g.inks.some((i) => hit(i, g.badge)), `${label}: nothing of the hero covers the dev badge`);
   ok(
@@ -265,7 +265,7 @@ async function layoutChecks(page, label) {
   ok((await opacityOf(page, ".hero-mini")) === 1, "desktop: the small line is shown");
   const mini = await page.locator(".hero-mini").innerText();
   const nameNow = await page.locator(".hero-name").innerText();
-  ok(/Elliot/.test(nameNow) && /Négrel-Jerzy/.test(nameNow) && (await opacityOf(page, ".hero-name")) === 1 && /Drag to explore\. Pause, and the page comes back\./.test(mini), `desktop: the corner line is the name itself (visible, one copy) and the hint (${nameNow} / ${mini.replace(/\n/g, " ")})`);
+  ok(/Elliot/.test(nameNow) && /Négrel-Jerzy/.test(nameNow) && (await opacityOf(page, ".hero-name")) === 1 && /Drag to explore\. Stop moving to reset the view\./.test(mini), `desktop: the corner line is the name itself (visible, one copy) and the hint (${nameNow} / ${mini.replace(/\n/g, " ")})`);
   ok((await page.locator(".hero-mini-name").evaluate((e) => getComputedStyle(e).visibility)) === "hidden", "desktop: the ghost line is never painted");
   // the rows are hidden now: the header takes the sections back, so the visitor is never left without a way to the lists
   const collapsedLinks = await page.locator("header a").evaluateAll((as) => as.map((a) => a.getAttribute("href")));

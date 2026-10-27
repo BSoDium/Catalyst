@@ -2834,6 +2834,26 @@ h1[tabindex="-1"]:focus-visible {
   color: var(--muted-foreground);
 }
 
+/*
+ * The map's credits (components/attribution-button.tsx): a map label's own ground, no outline (owner, 2026-10-26): the same translucent plate of the page colour
+ * (`--label-plate-alpha`) with a soft feather round it, so it is not a sticker. On the home screen's display mode (the hero at rest) there is no ground at all: the
+ * map is already under the hero's own gradient there, and the line reads on that.
+ */
+.map-credits {
+  --map-label-plate: color-mix(in srgb, var(--background) calc(var(--label-plate-alpha) * 100%), transparent);
+  background: var(--map-label-plate);
+  box-shadow: 0 0 4px 3px var(--map-label-plate);
+}
+body:has(.landing-hero[data-hero="rest"]) .map-credits {
+  background: none;
+  box-shadow: none;
+}
+@supports not (background: color-mix(in srgb, red 50%, transparent)) {
+  .map-credits {
+    --map-label-plate: var(--background);
+  }
+}
+
 /* A browser without `color-mix` gets the opaque plate (an invalid custom property would leave the text on the bare map). */
 @supports not (background: color-mix(in srgb, red 50%, transparent)) {
   .map-label {
@@ -2906,6 +2926,9 @@ h1[tabindex="-1"]:focus-visible {
 @media (prefers-reduced-transparency: reduce) {
   /* A map label's plate is opaque. */
   .map-label {
+    --map-label-plate: var(--background);
+  }
+  .map-credits {
     --map-label-plate: var(--background);
   }
 
@@ -3179,9 +3202,10 @@ h1[tabindex="-1"]:focus-visible {
     left: 0;
     top: 0;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    align-items: center;
     width: max-content;
-    max-width: min(17rem, 62vw);
+    max-width: min(15rem, 62vw);
     box-sizing: border-box;
     padding: 3px 6px;
     background: var(--map-label-plate);
@@ -3215,26 +3239,24 @@ h1[tabindex="-1"]:focus-visible {
     color: var(--muted-foreground);
   }
 
-  /* The way in: last, at the bottom right of the card, apart from the two lines that say what it is. */
-  .globe-moon-cta {
-    align-self: flex-end;
-    margin-top: 10px;
-    font-size: 11px;
-    letter-spacing: 0.02em;
-    line-height: 14px;
+  .globe-moon-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  /* The way in: a large, thin arrow at the right of the words, apart from them (a station sign's: a stem and a right-angled head); the words' own colours, raised on hover and focus. */
+  .globe-moon-arrow {
+    flex: none;
+    width: 28px;
+    height: 28px;
+    margin-inline-start: 14px;
+    stroke-width: 1.25;
     color: var(--muted-foreground);
   }
 
-  /* The arrow is the rows' own (`arrow-right` of the icon set, square ends), with arms longer than the type: a station sign's. */
-  .globe-moon-arrow {
-    width: 2.2em;
-    height: 1.6em;
-    margin-inline-start: 0.5em;
-    vertical-align: -0.4em;
-  }
-
-  .globe-moon:hover .globe-moon-cta,
-  .globe-moon:focus-visible .globe-moon-cta {
+  .globe-moon:hover .globe-moon-arrow,
+  .globe-moon:focus-visible .globe-moon-arrow {
     color: var(--foreground);
   }
 
@@ -3256,7 +3278,7 @@ h1[tabindex="-1"]:focus-visible {
     }
 
     .globe-moon-body,
-    .globe-moon-cta {
+    .globe-moon-arrow {
       color: CanvasText;
     }
   }
@@ -3507,7 +3529,7 @@ h1[tabindex="-1"]:focus-visible {
    * gutters; the size is that share of the width over `--hero-fit`, the name's width in em), never more than a third of the viewport's
    * height (a short window) nor 30 rem. Stacked (under 48 rem) the two halves are two lines and the longer one, the family name,
    * fills the width between the gutters. The block rises by the credits' height (the
-   * card, or on a phone the 28 px "i" button, is bottom right and sits at 6 to 30 px from the bottom) plus what the "y" hangs below the line box, so no letter is ever over it.
+   * card, or on a phone its full-width line of up to two rows, sits at the bottom, 8 to 54 px from it) plus what the "y" hangs below the line box, so no letter is ever over it.
    */
   .landing-hero {
     --hero-gutter: clamp(1rem, 3.9vw, 3.5rem);
@@ -3516,7 +3538,7 @@ h1[tabindex="-1"]:focus-visible {
     --hero-fit: 6.6;
     --hero-span: 0.72;
     --hero-size: min(calc(100vw * var(--hero-span) / var(--hero-fit)), 33vh, 30rem);
-    /* The credits' top edge (0.5 rem + the card; the phone's "i" button tops out at 34 px) and a little air; a phone's dev badge sits higher (below). */
+    /* The credits' top edge (0.5 rem + the card; the phone's line is up to two rows, 46 px) and a little air; a phone's dev badge sits higher (below). */
     --hero-clear: 2.25rem;
     --hero-fade: var(--duration-base) var(--ease-standard);
     position: absolute;
@@ -3528,9 +3550,10 @@ h1[tabindex="-1"]:focus-visible {
     pointer-events: none;
   }
 
-  /* Phones: the name stacks, the family name fills the width; the credits are the small "i" button bottom right (no card) and the dev-only content badge sits raised at the left. */
+  /* Phones: the name stacks, the family name fills the width; the credits are a full-width line (up to two rows) and the dev-only content badge sits raised above it at the left. */
   @media (max-width: 47.99rem) {
     .landing-hero {
+      --hero-clear: 3.5rem;
       /* The family name (the longer line, 4.57 em at 390 px, 4.7 on the smallest) fills the width between the gutters. */
       --hero-fit: 4.7;
       /* What the stacked block holds besides the name (intro, hint, search, rows, the gaps), at its tallest: the name takes the rest of
@@ -3548,7 +3571,7 @@ h1[tabindex="-1"]:focus-visible {
     }
 
     body:has([data-dev-content-badge]) .landing-hero {
-      --hero-clear: 4.75rem;
+      --hero-clear: 5.75rem;
     }
 
     /* A fifth row (the career page: `data-rows="5"`) is one more 44 px target, its hairline and the row's padding (measured 50 px at 375 x 667, with the gap: 56), which the name gives up. The stacked
@@ -3981,7 +4004,7 @@ h1[tabindex="-1"]:focus-visible {
     }
   }
 
-  /* The small line that stays when the hero steps back: the board's bottom-left corner (40 px, 32 px), the hint beside it. */
+  /* The small line that stays when the hero steps back: the board's bottom-left corner (40 px, 32 px), the hint UNDER it (owner, 2026-10-26; it was beside it). */
   .hero-mini {
     --hero-mini-bottom: 2rem;
     position: absolute;
@@ -3990,10 +4013,9 @@ h1[tabindex="-1"]:focus-visible {
     right: var(--hero-gutter);
     margin: 0;
     display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    column-gap: 1.125rem;
-    row-gap: 0.25rem;
+    flex-direction: column;
+    align-items: flex-start;
+    row-gap: 0.5rem;
     opacity: 0;
     visibility: hidden;
     transition: opacity 60ms linear, visibility 0s linear 60ms;
@@ -4006,7 +4028,7 @@ h1[tabindex="-1"]:focus-visible {
     }
 
     body:has([data-dev-content-badge]) .hero-mini {
-      --hero-mini-bottom: 4.75rem;
+      --hero-mini-bottom: 5.75rem;
     }
   }
 
@@ -4021,7 +4043,7 @@ h1[tabindex="-1"]:focus-visible {
    * The collapsed name's place, not a second copy of it: this line is the GHOST the two halves of the real name (`.hero-given`, `.hero-family`)
    * travel to and stay on (landing-hero.tsx `travelName`: it measures these boxes, never paints them). It is set like the big name (the same face, weights,
    * tracking, and the optical size pinned at the big name's 96, so it is the same drawing at another size) at `--hero-mini-size`: 44 px on a wide
-   * screen, 9.5 vw down to 28 px on a phone, so that it clears the credits (card or "i" button), the dev badge and the hint beside it from 320 px.
+   * screen, 9.5 vw down to 28 px on a phone, so that it clears the credits (card), the dev badge and the hint beside it from 320 px.
    */
   .hero-mini-name {
     --hero-mini-size: clamp(1.75rem, 9.5vw, 2.75rem);
@@ -4048,6 +4070,14 @@ h1[tabindex="-1"]:focus-visible {
     letter-spacing: 0.06em;
     color: var(--muted-foreground);
     transition: opacity var(--hero-fade);
+  }
+
+  /* Under the name on a phone the hint is one line (48 characters between the gutters from 360 px). */
+  @media (max-width: 47.99rem) {
+    .hero-mini-hint {
+      font-size: 0.6875rem;
+      letter-spacing: 0.03em;
+    }
   }
 
   /* The way back is only real at the world view: zoomed in, the hint would be a promise. */

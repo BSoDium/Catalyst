@@ -167,7 +167,7 @@ export default function StreetMapCanvasImpl({
       data-tile-state={tileState}
       className="relative size-full overflow-hidden select-none"
     >
-      {Attribution && <Attribution tiles={tiles} insetRight={insetRight} reducedMotion={reducedMotion} surface="street" />}
+      {Attribution && <Attribution tiles={tiles} insetRight={insetRight} reducedMotion={reducedMotion} />}
       {(status === "unavailable" || status === "lost") && (
         <p
           role="status"

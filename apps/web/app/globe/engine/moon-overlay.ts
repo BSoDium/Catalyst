@@ -32,9 +32,8 @@ const MIN_TARGET = 44;
 const LIVE = 0.6;
 
 /**
- * The call to action's arrow: the same arrow as the home page's rows (the icon set's `arrow-right`, lucide's path, drawn with the set's own square ends and stroke:
- * `.ui-icon`, app.css), longer in the arm than the type beside it, as a station's sign is. Built here because the globe imports nothing from the app; it is decoration
- * (`aria-hidden`: the link's name is the words).
+ * The link's mark: the icon set's `arrow-up-right` (lucide's path, with the set's own square ends: `.ui-icon`, app.css) drawn thin and large, a station sign's arrow for a way out:
+ * a stem and a right-angled head. Built here because the globe imports nothing from the app; it is decoration (`aria-hidden`: the link's name is the words).
  */
 function arrow(doc: Document): SVGElement {
   const NS = "http://www.w3.org/2000/svg";
@@ -46,7 +45,7 @@ function arrow(doc: Document): SVGElement {
   svg.setAttribute("focusable", "false");
   svg.setAttribute("class", "ui-icon globe-moon-arrow");
   svg.dataset.size = "inline";
-  for (const d of ["M5 12h14", "m12 5 7 7-7 7"]) {
+  for (const d of ["M7 7h10v10", "M7 17 17 7"]) {
     const path = doc.createElementNS(NS, "path");
     path.setAttribute("d", d);
     svg.append(path);
@@ -99,17 +98,17 @@ export class MoonOverlay {
     const card = (this.card = doc.createElement("span"));
     card.className = "globe-moon-card";
     card.setAttribute("aria-hidden", "true");
+    // the words (a name over a second line) and, apart from them, the mark of a link: the card is as high as the words, so the moon is centred on them
+    const text = doc.createElement("span");
+    text.className = "globe-moon-text";
     const title = doc.createElement("span");
     title.className = "globe-moon-title";
     title.textContent = moon.title;
     const body = doc.createElement("span");
     body.className = "globe-moon-body";
     body.textContent = moon.description;
-    const cta = doc.createElement("span");
-    cta.className = "globe-moon-cta";
-    cta.textContent = moon.cta;
-    cta.append(arrow(doc));
-    card.append(title, body, cta);
+    text.append(title, body);
+    card.append(text, arrow(doc));
 
     link.append(card);
     root.append(link);

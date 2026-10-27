@@ -2,11 +2,10 @@
  * The moon as an object in the globe's scene (docs/landing.md, "The moon"; the maths is engine/moon.ts): a sphere a sixth of the earth's radius on a far orbit, drawn into the
  * globe's own canvas, so it is on the same art grid as the planet and the planet hides it by the depth buffer, exactly, at the planet's own stepped limb.
  *
- * Its pixels are NOT binary. Everything else on the globe is a whole pixel, which is what makes a slow thing move in steps; the moon is drawn with COVERAGE: an edge pixel is
- * the share of it the silhouette covers (a sphere's silhouette is where the view ray is at asin(r / D) from the line to its centre: one angle, exact at every place on the screen),
- * the light falls off smoothly (no dither), the tones of the ground blend over a narrow band of the picture's brightness, and the colour is a mix of the palette's tones. So when it
- * moves by a fraction of a pixel the pixels at its edge change by a fraction, and it glides on the art grid instead of hopping across it. (The frames are the display's own while
- * it is in the picture: `GlobeRenderer`.)
+ * Its pixels are whole pixels, as everything on the globe is (owner, 2026-10-26: "the moon is still heavily anti-aliased"; it had been drawn with coverage, soft edge and
+ * smooth light, to glide on the art grid): a pixel is in or out of the silhouette (a sphere's silhouette is where the view ray is at asin(r / D) from the line to its centre: one
+ * angle, exact at every place on the screen), the light is three flat steps, the ground three hard tones with the Earth's cuts, the rim a solid band. The orbit's slowness is what
+ * keeps the motion even, as it does for the planet's turn.
  *
  * What is lit and what is not: a sun fixed in the inertial frame (`MOON.sun*`) lights the side toward it; the other side is the page's colour (the body is SOLID, so it hides the
  * stars and the band behind it; on the page's own colour it is invisible), with the faintest ring on its rim so that it can still be found.
@@ -65,27 +64,31 @@ const VERTEX = /* glsl */ `
 
 const FRAGMENT = /* glsl */ `
   uniform vec3 uBg; uniform vec3 uTone0; uniform vec3 uTone1; uniform vec3 uTone2; uniform vec3 uOutline; uniform vec3 uGhost;
-  uniform vec3 uSun; uniform vec3 uAxis; uniform float uGamma0; uniform float uEdgeAng; uniform float uAmt;
+  uniform vec3 uSun; uniform vec3 uAxis; uniform float uGamma0; uniform float uEdgeAng; uniform float uAmt; uniform float uFlip;
   uniform sampler2D uMap;
   varying vec3 vDir; varying vec3 vWorld; varying vec3 vNormal;
   void main() {
-    // the silhouette: a sphere's is where the view ray is at asin(r / D) from the line to its centre; coverage over one pixel's angle
+    // the silhouette: a sphere's is where the view ray is at asin(r / D) from the line to its centre: one angle, exact at every place on the screen
     float gamma = acos(clamp(dot(normalize(vWorld - cameraPosition), uAxis), -1.0, 1.0));
-    float cover = clamp((uGamma0 - gamma) / uEdgeAng + 0.5, 0.0, 1.0);
-    if (cover <= 0.0) discard;
-    // the light, smooth: no dither, no steps
-    float lit = smoothstep(${MOON.litFrom.toFixed(3)}, ${MOON.litTo.toFixed(3)}, dot(normalize(vNormal), uSun));
-    // the ground: the picture read by direction, three tones by brightness with the Earth's cuts, blended over a narrow band so that a map's edge does not step
+    // whole pixels, as the planet's are: a pixel is in or out (the owner, 2026-10-26: the soft edge read as anti-aliasing; the speed alone keeps the motion even)
+    if (gamma > uGamma0) discard;
+    // the light, in flat steps of the same grey ramp (no blended pixel)
+    float lit = floor(smoothstep(${MOON.litFrom.toFixed(3)}, ${MOON.litTo.toFixed(3)}, dot(normalize(vNormal), uSun)) * 3.0 + 0.5) / 3.0;
+    // the ground: the picture read by direction, three tones by brightness with the Earth's cuts, hard
     vec3 n = normalize(vDir);
     vec2 uv = vec2(atan(n.x, n.z) * 0.15915494 + 0.5, asin(clamp(n.y, -1.0, 1.0)) * 0.31830989 + 0.5);
     float v = texture2D(uMap, uv).r;
-    vec3 ground = mix(mix(uTone0, uTone1, smoothstep(${(SURFACE.cuts[0] - 0.04).toFixed(3)}, ${(SURFACE.cuts[0] + 0.04).toFixed(3)}, v)), uTone2, smoothstep(${(SURFACE.cuts[1] - 0.04).toFixed(3)}, ${(SURFACE.cuts[1] + 0.04).toFixed(3)}, v));
-    // the dark side is the page's colour: the body is solid, so it hides what is behind it
+    vec3 ground = mix(mix(uTone0, uTone1, step(${SURFACE.cuts[0].toFixed(3)}, v)), uTone2, step(${SURFACE.cuts[1].toFixed(3)}, v));
+    // the dark side is the page's colour: the body is solid, so it hides what is behind it. On the light page it is the other way (uFlip): the lit side is overexposed, burnt towards
+    // the page's colour (not all the way: MOON.burn, so that its details are still there), and the dark side has the ground's full tones
     vec3 col = mix(uBg, ground, lit);
+    vec3 burnt = mix(ground, uBg, ${MOON.burn.toFixed(2)});
+    col = mix(col, mix(ground, burnt, lit), uFlip);
     // the rim: a band a pixel and a bit wide inside the silhouette, bright where lit and a ghost of a ring where not
-    float rim = clamp((gamma - (uGamma0 - uEdgeAng * ${MOON.edgePx.toFixed(3)})) / uEdgeAng, 0.0, 1.0);
-    col = mix(col, mix(uGhost, uOutline, lit), rim);
-    gl_FragColor = vec4(col, cover * uAmt);
+    float rim = step(0.5, clamp((gamma - (uGamma0 - uEdgeAng * ${MOON.edgePx.toFixed(3)})) / uEdgeAng, 0.0, 1.0));
+    vec3 rimCol = mix(mix(uGhost, uOutline, lit), mix(uOutline, mix(uOutline, uBg, ${MOON.burn.toFixed(2)}), lit), uFlip);
+    col = mix(col, rimCol, rim);
+    gl_FragColor = vec4(col, uAmt);
   }
 `;
 
@@ -103,6 +106,7 @@ function moonMaterial(): ShaderMaterial {
       uGamma0: { value: 0.1 },
       uEdgeAng: { value: 0.002 },
       uAmt: { value: 1 },
+      uFlip: { value: 0 },
       uMap: { value: null },
     },
     vertexShader: VERTEX,
@@ -178,6 +182,7 @@ export class MoonLayer {
     const steps = surfaceTones(t.scheme);
     const u = this.material.uniforms;
     u.uBg!.value.setRGB(...bg);
+    u.uFlip!.value = t.scheme === "dark" ? 0 : 1;
     u.uTone0!.value.setRGB(...mixTo(t.ink, steps[0]! * MOON.toneBoost));
     u.uTone1!.value.setRGB(...mixTo(t.ink, steps[1]! * MOON.toneBoost));
     u.uTone2!.value.setRGB(...mixTo(t.ink, steps[2]! * MOON.toneBoost));

@@ -35,7 +35,7 @@ try {
     const s = await statuses(page);
     expect("A primary blocked -> fallback", s.at(-1).state === "fallback" && s.at(-1).reason === "probe-failed", { ms_from_navigation: dt, s });
     await page.waitForFunction(() => window.__streetDebug.map().areTilesLoaded());
-    await page.click('[data-attribution="card"] button:visible, button[data-attribution="compact"]:visible');
+    await page.click('[data-attribution="card"] button:visible');
     const credits = await page.locator("dialog[open]").innerText();
     expect("A the credits line's See more button opens the credits (OpenStreetMap, Protomaps)", credits.includes("OpenStreetMap contributors") && credits.includes("Protomaps"), credits);
     await page.keyboard.press("Escape");

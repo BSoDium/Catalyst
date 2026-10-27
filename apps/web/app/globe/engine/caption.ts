@@ -82,7 +82,7 @@ export const CAPTION_FACES = {
   script: {
     family: '"Caption Script"',
     fallback: '"Snell Roundhand", "Apple Chancery", "Segoe Script", cursive',
-    scale: 1.079,
+    scale: 1.5,
     dy: 0,
     tracking: 0.004 + CAPTION.tracking.script,
     /** A formal script's hairlines would vanish under a thin outline: its letters are thickened by this many caps (a stroke in the face colour). */
@@ -1316,12 +1316,21 @@ export class CaptionMotion {
   }
 
   /**
-   * Begin the interlude NOW, from the resting roll (the visitor asks for it, the palette's "I like surprises", so that it can be seen as often as it is asked for, with its sound, without a reload). False when it cannot: no plan, the rows are not rolling, or one
+   * Begin the interlude NOW, from the resting roll (the visitor asks for it, the palette's "I like surprises", so that it can be seen as often as it is asked for, with its sound, without a reload). False when it cannot: no plan, the rows are not on the stage (still hidden), or one
    * is under way.
    */
-  replayEgg(now: number): boolean {
-    if (!this.egg || this.phase !== "rest" || !this.motionAllowed || !this.eggReady()) return false;
+  replayEgg(now: number, skipLeave = false): boolean {
+    if (!this.egg || (this.phase !== "rest" && this.phase !== "in") || !this.motionAllowed || !this.eggReady()) return false;
+    // (an entrance still under way is cut short, as a gesture does: the visitor asked for the interlude now, not once the rows have settled)
+    if (this.phase === "in") this.phase = "rest";
     this.beginEgg(now);
+    // (from a caption that was not on the stage: the rows have nothing to leave, the interlude begins with the empty stage. The clock is moved on past the leaving, and not
+    // the interlude's start back before it: a caption that has just come on has its clock at 0, and a start below 0 is "no interlude" to everything that reads it, so the
+    // flight, the pull-back and the ring's way out did not happen and the ring was drawn)
+    if (skipLeave) {
+      this.clock += this.egg.shape.leaveMs;
+      this.ticked = true;
+    }
     return true;
   }
 

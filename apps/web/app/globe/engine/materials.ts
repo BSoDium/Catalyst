@@ -28,17 +28,17 @@ export const DITHER_GLSL = /* glsl */ `
 export function lineMaterial(coverage: number, stipple = 0): ShaderMaterial {
   return new ShaderMaterial({
     // `uAlt` / `uAltAmt`: the colour the line is taken towards (the borders, over the land the interlude fills, are the page's colour: the fill is the ink's)
-    uniforms: { uColor: { value: new Color() }, uCoverage: { value: coverage }, uStipple: { value: stipple }, uAlt: { value: new Color() }, uAltAmt: { value: 0 }, uSunN: { value: [0, 0, 1] }, uNight: { value: 0 }, uNightTo: { value: new Color() } },
+    uniforms: { uColor: { value: new Color() }, uCoverage: { value: coverage }, uStipple: { value: stipple }, uAlt: { value: new Color() }, uAltAmt: { value: 0 }, uSunN: { value: [0, 0, 1] }, uNight: { value: 0 }, uFlip: { value: 0 }, uNightTo: { value: new Color() } },
     vertexShader: LIT_VERTEX,
     fragmentShader: /* glsl */ `
-      uniform vec3 uColor; uniform float uCoverage; uniform float uStipple; uniform vec3 uAlt; uniform float uAltAmt; uniform vec3 uSunN; uniform float uNight; uniform vec3 uNightTo;
+      uniform vec3 uColor; uniform float uCoverage; uniform float uStipple; uniform vec3 uAlt; uniform float uAltAmt; uniform vec3 uSunN; uniform float uNight; uniform float uFlip; uniform vec3 uNightTo;
       varying vec3 vDir;
       ${DITHER_GLSL}
       ${NIGHT_GLSL}
       void main() {
         ditherDiscard(uCoverage);
         // the night: the colour goes towards the page's in whole steps (a flat grey per step)
-        float dark = floor((1.0 - dayShare(normalize(vDir), uSunN, uNight)) * ${NIGHT.lineSteps.toFixed(1)} + 0.5) / ${NIGHT.lineSteps.toFixed(1)};
+        float dark = floor(washOf(normalize(vDir), uSunN, uNight, uFlip) * ${NIGHT.lineSteps.toFixed(1)} + 0.5) / ${NIGHT.lineSteps.toFixed(1)};
         if (uStipple > 0.0 && mod(floor(gl_FragCoord.x) + floor(gl_FragCoord.y), uStipple) > 0.5) discard;
         gl_FragColor = vec4(mix(mix(uColor, uAlt, uAltAmt), uNightTo, dark * ${NIGHT.lineDim.toFixed(2)}), 1.0);
       }
@@ -116,15 +116,17 @@ const MIST_GLSL = /* glsl */ `
 
 export function atmosphereMaterial(): ShaderMaterial {
   return new ShaderMaterial({
-    uniforms: { uColor: { value: new Color() }, uAmt: { value: 0 }, uSun: { value: [0, 0, 1] }, uShell: { value: 1.03 }, uPower: { value: 1.6 }, uCover: { value: 0.5 } },
+    uniforms: { uColor: { value: new Color() }, uAmt: { value: 0 }, uSun: { value: [0, 0, 1] }, uShell: { value: 1.03 }, uPower: { value: 1.6 }, uCover: { value: 0.5 }, uNight: { value: 0 }, uSunN: { value: [0, 0, 1] }, uFlip: { value: 0 } },
     vertexShader: /* glsl */ `
       varying vec3 vPos;
       void main() { vPos = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
     `,
     fragmentShader: /* glsl */ `
       uniform vec3 uColor; uniform float uAmt; uniform vec3 uSun; uniform float uShell; uniform float uPower; uniform float uCover;
+      uniform float uNight; uniform vec3 uSunN; uniform float uFlip;
       varying vec3 vPos;
       ${MIST_GLSL}
+      ${NIGHT_GLSL}
       void main() {
         // (the shell is the unit sphere scaled to uShell: the vertex is in the unit sphere's frame, so its direction is its position)
         vec3 n = normalize(vPos);
@@ -134,7 +136,9 @@ export function atmosphereMaterial(): ShaderMaterial {
         float edge = sqrt(max(1.0 - 1.0 / (uShell * uShell), 1e-4));
         float h = clamp(abs(dot(n, toEye)) / edge, 0.0, 1.0);
         float sunward = 0.75 + 0.25 * clamp(dot(n, uSun) * 1.4 + 0.2, 0.0, 1.0);
-        float a = stepped(pow(h, uPower) * sunward * uAmt, 3.0) * uCover;
+        // darkened where the planet is washed by the sun's night (the interlude keeps the day and the night: washOf)
+        float lit = 1.0 - ${NIGHT.atmosphereDim.toFixed(2)} * washOf(n, uSunN, uNight, uFlip);
+        float a = stepped(pow(h, uPower) * sunward * uAmt * lit, 3.0) * uCover;
         if (a < 0.004) discard;
         gl_FragColor = vec4(uColor, a);
       }
@@ -149,15 +153,17 @@ export function atmosphereMaterial(): ShaderMaterial {
 
 export function mistMaterial(): ShaderMaterial {
   return new ShaderMaterial({
-    uniforms: { uColor: { value: new Color() }, uAmt: { value: 0 }, uCover: { value: 0.85 } },
+    uniforms: { uColor: { value: new Color() }, uAmt: { value: 0 }, uCover: { value: 0.85 }, uNight: { value: 0 }, uSunN: { value: [0, 0, 1] }, uFlip: { value: 0 } },
     vertexShader: /* glsl */ `
       varying vec3 vPos;
       void main() { vPos = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
     `,
     fragmentShader: /* glsl */ `
       uniform vec3 uColor; uniform float uAmt; uniform float uCover;
+      uniform float uNight; uniform vec3 uSunN; uniform float uFlip;
       varying vec3 vPos;
       ${MIST_GLSL}
+      ${NIGHT_GLSL}
       void main() {
         vec3 n = normalize(vPos);
         vec3 toEye = normalize(cameraPosition - vPos);
@@ -165,7 +171,8 @@ export function mistMaterial(): ShaderMaterial {
         // way round) and is deepest at the edge, where it meets the glow above it: the glow bleeds onto the planet
         float g = 1.0 - clamp(dot(n, toEye), 0.0, 1.0);
         float deep = smoothstep(0.18, 1.0, g);
-        float a = stepped(deep * deep * (3.0 - 2.0 * deep) * uAmt, 3.0) * uCover;
+        float lit = 1.0 - ${NIGHT.atmosphereDim.toFixed(2)} * washOf(n, uSunN, uNight, uFlip);
+        float a = stepped(deep * deep * (3.0 - 2.0 * deep) * uAmt * lit, 3.0) * uCover;
         if (a < 0.004) discard;
         gl_FragColor = vec4(uColor, a);
       }
@@ -199,6 +206,7 @@ export function surfaceMaterial(): ShaderMaterial {
       uLandMap: { value: null },
       uSunN: { value: [0, 0, 1] },
       uNight: { value: 0 },
+      uFlip: { value: 0 },
     },
     vertexShader: /* glsl */ `
       varying vec3 vDir;
@@ -206,7 +214,7 @@ export function surfaceMaterial(): ShaderMaterial {
     `,
     fragmentShader: /* glsl */ `
       uniform vec3 uBg; uniform vec3 uTone0; uniform vec3 uTone1; uniform vec3 uTone2; uniform float uStrength; uniform float uAmt; uniform sampler2D uEarth; uniform sampler2D uLandMap;
-      uniform vec3 uSunN; uniform float uNight;
+      uniform vec3 uSunN; uniform float uNight; uniform float uFlip;
       varying vec3 vDir;
       ${DITHER_GLSL}
       ${NIGHT_GLSL}
@@ -217,9 +225,9 @@ export function surfaceMaterial(): ShaderMaterial {
         if (texture2D(uLandMap, uv).r < 0.5) discard;
         float v = texture2D(uEarth, uv).r;
         // the night: the stipple thins and the ground steps to its lightest tone, with the light (engine/surface.ts, NIGHT)
-        float k = dayShare(n, uSunN, uNight);
-        ditherDiscard(uAmt * mix(${NIGHT.landMin.toFixed(2)}, 1.0, k));
-        v += (1.0 - k) * ${NIGHT.shift.toFixed(2)};
+        float w = washOf(n, uSunN, uNight, uFlip);
+        ditherDiscard(uAmt * mix(1.0, ${NIGHT.landMin.toFixed(2)}, w));
+        v += w * ${NIGHT.shift.toFixed(2)};
         // the land is dark, middle or light ground (thresholds on the picture's brightness, which the picture lifts to 0.2 and over)
         vec3 tone = v < ${SURFACE.cuts[0].toFixed(2)} ? uTone0 : (v < ${SURFACE.cuts[1].toFixed(2)} ? uTone1 : uTone2);
         gl_FragColor = vec4(mix(uBg, tone, uStrength), 1.0);
@@ -405,15 +413,29 @@ export function silhouetteMaterial(): ShaderMaterial {
       uE: { value: [1, 0, 0] },
       uN: { value: [0, 1, 0] },
       uInvD: { value: 0.2 },
+      uSunN: { value: [0, 0, 1] },
+      uNight: { value: 0 },
+      uFlip: { value: 0 },
+      uNightTo: { value: new Color() },
     },
     vertexShader: /* glsl */ `
       attribute float aAngle; uniform vec3 uC; uniform vec3 uE; uniform vec3 uN; uniform float uInvD;
+      varying vec3 vDir;
       void main() {
         float rad = sqrt(max(0.0, 1.0 - uInvD * uInvD));
         vec3 p = uC * uInvD + rad * (cos(aAngle) * uE + sin(aAngle) * uN);
+        vDir = p;
         gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
       }`,
-    fragmentShader: "uniform vec3 uColor; void main() { gl_FragColor = vec4(uColor, 1.0); }",
+    // the planet's outline goes dark with the ground it edges (the same steps as the lines: a flat grey each)
+    fragmentShader: /* glsl */ `
+      uniform vec3 uColor; uniform vec3 uSunN; uniform float uNight; uniform float uFlip; uniform vec3 uNightTo;
+      varying vec3 vDir;
+      ${NIGHT_GLSL}
+      void main() {
+        float dark = floor(washOf(normalize(vDir), uSunN, uNight, uFlip) * ${NIGHT.lineSteps.toFixed(1)} + 0.5) / ${NIGHT.lineSteps.toFixed(1)};
+        gl_FragColor = vec4(mix(uColor, uNightTo, dark * ${NIGHT.limbDim.toFixed(2)}), 1.0);
+      }`,
     depthTest: false,
   });
 }

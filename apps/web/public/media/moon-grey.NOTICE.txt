@@ -1,6 +1,7 @@
 moon-grey.png: a grey, 256 x 128, 12-step, smoothed reduction of an equirectangular map of the Moon (longitude 0, the near side, in the middle; 1024 x 512 source, stretched so the same tone cuts as earth-grey.png split it),
-made by scripts/moon/bake-moon.py. Used by engine/moon.ts and engine/moon-overlay.ts for the moon that circles the globe.
+made by apps/web/scripts/moon/bake-moon.py. Used by engine/moon.ts and engine/moon-overlay.ts for the moon that circles the globe.
 
-SOURCE AND LICENCE, TO CONFIRM: the source map is `examples/textures/planets/moon_1024.jpg` of the three.js repository (https://github.com/mrdoob/three.js, MIT for the code). The repository does not document the
-picture's own origin; it is a lunar mosaic of the kind NASA publishes in the public domain (Clementine / Lunar Reconnaissance Orbiter), but that is not stated there. Before relying on it, replace it with a map whose
-licence is documented, e.g. NASA SVS "CGI Moon Kit" (https://svs.gsfc.nasa.gov/4720, public domain), baked with the same script.
+SOURCE AND LICENCE: `lroc_color_poles_1k.jpg` (1024 x 512, the 2019 color map) of NASA's Scientific Visualization Studio "CGI Moon Kit" (https://svs.gsfc.nasa.gov/4720, Ernie Wright, USRA; scientist Noah Petro, NASA/GSFC),
+adapted from the Lunar Reconnaissance Orbiter Camera's Hapke-normalized WAC mosaic and, outside 70 degrees of latitude, from the laser altimeter's albedo map. NASA imagery is in the public domain
+(https://www.nasa.gov/nasa-brand-center/images-and-media/); the page asks for the credit "NASA's Scientific Visualization Studio". This replaces the three.js example texture (`moon_1024.jpg`) the first version of
+the file was baked from, whose origin was not documented. The source map is not kept in the repository: download it from the page above and run the script (`python3 apps/web/scripts/moon/bake-moon.py SOURCE.jpg apps/web/public/media/moon-grey.png`).

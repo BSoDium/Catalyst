@@ -147,6 +147,10 @@ export interface HandoverHandle {
   hasOrbit(): boolean;
   /** The visitor asks for the cinematic interlude (engine/cinematic.ts); false when it cannot be played now. */
   playInterlude(): boolean;
+  /** The visitor asked for the interlude and the caption is away: it begins now from wherever the camera is; false while it is not ready. */
+  playInterludeNow(): boolean;
+  /** The interlude was asked for while the caption is away: true when the globe can begin it from where it is, and then the caption and the ring stay away until it is ready (a few seconds at most). */
+  wantInterlude(): boolean;
   /** The visitor can now ask for it: make what it needs ahead of time (the word's mesh, the sound's file); nothing is planned or played. */
   prepareInterlude(): void;
   debug(): HandoverDebug;
@@ -656,8 +660,8 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
       globe.setLabelsActive(true);
       renderer.setSuspended(false);
       renderer.renderNow();
-      // The street map stays on screen a quarter of a second and steps its tones towards the globe's frames (a cross-fade, not a click).
-      if (!reduced && HANDOVER.crossfadeMs > 0 && streetOk() && !streetLost) {
+      // The street map stays on screen a quarter of a second and steps its tones towards the globe's frames (a cross-fade, not a click), except under an interlude asked for from it: that begins from the globe's camera and is cut at once.
+      if (!reduced && HANDOVER.crossfadeMs > 0 && !renderer.interludeAway() && streetOk() && !streetLost) {
         fadeOutUntil = performance.now() + HANDOVER.crossfadeMs;
         crossfadeFrame(now);
       }
@@ -821,6 +825,8 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
     },
     hasOrbit: () => renderer.hasCaption(),
     playInterlude: () => renderer.playInterlude(),
+    playInterludeNow: () => renderer.playInterludeNow(),
+    wantInterlude: () => renderer.wantInterlude(),
     prepareInterlude: () => renderer.prepareInterlude(),
     debug(): HandoverDebug {
       const g = globe.debug();

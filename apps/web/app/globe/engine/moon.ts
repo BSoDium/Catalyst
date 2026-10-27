@@ -12,7 +12,7 @@
  * an Easter egg: the near half of the orbit is behind the camera and the far half is in the background, so the moon is not in the picture when the page opens and crosses the sky
  * at the planet's sides only now and then, and only while the page is being played with (the energy pass's idle hold stops it with everything else).
  */
-import { clamp, lonLatToVec3, viewBasis } from "./geo";
+import { clamp, lonLatToVec3, shortestLonDelta, viewBasis } from "./geo";
 
 export const MOON = {
   /** The Moon's picture: grey, 256 x 128, baked from a map of the near side (scripts/moon/bake-moon.py, public/media/moon-grey.NOTICE.txt). */
@@ -45,6 +45,8 @@ export const MOON = {
   restDeg: 254,
   /** The opening camera, in the inertial frame: `START_VIEW` (lon 0, lat 0) plus the earth rotation angle `SKY.eraDeg` (70). The orbit is laid against it. */
   ref: { lonDeg: 70, latDeg: 0 },
+  /** How far the camera may be from the opening camera's longitude, in the inertial frame, before the home screen's return turns it back to the lit side (`litTurn`). */
+  litToleranceDeg: 25,
   /** Zoom (above the fit, in the globe's zoom units) where the moon starts to leave and where it is gone: it is the world view's. */
   fadeFrom: 0.25,
   fadeTo: 0.9,
@@ -62,9 +64,72 @@ export const MOON = {
    */
   sunAzimuthDeg: 52,
   sunElevationDeg: 14,
+  /** On the light page the lit side is overexposed: its ground goes this share of the way to the page's colour (not all of it: the details stay). The dark side has the ground's full tones. */
+  burn: 0.55,
   /** The light's edge: `N . sun` from where a pixel is dark (the page's colour: it blends into the sky) to where it is lit, a smoothstep over this range (no dither: the moon is drawn with coverage). */
   litFrom: -0.08,
   litTo: 0.32,
+} as const;
+
+/**
+ * The sun (engine/sun-layer.ts): a point of the sky, a direction at infinity in the same frame as the light (`sunDirection`), drawn as the stars are, at the skybox's own distance (the far plane),
+ * so it is in the picture only where the camera looks towards it and turns with the sky when the globe is turned. `angularDeg` is its disc's angular radius (not the real half degree: a stylised
+ * sun, a small one). A flat disc and a halo round it, `halo` radii out, a dither of a falloff in a few flat steps, with a ring of light on it, so that it looks as if it glows. Tones are shares from the page's colour to the ink: the dark page's sun is the ink's tone; the light page's is the glare that burns the colour away, so it
+ * shows only a ghost of a rim and the halo's faint darkness.
+ */
+export const SUN = {
+  angularDeg: 0.6,
+  minR: 3,
+  /** The halo's reach, in disc radii, and how fast it falls (the power of the falloff: steep near the disc, a long tail), in `haloSteps` flat steps of tone dithered into each other. */
+  halo: 14,
+  haloFall: 2.6,
+  haloSteps: 6,
+  /** The ring of light on top of the halo, in disc radii from the sun's centre: sharp on its inside (`inner` wide, at full `tone`), then a smooth falloff over `outer`, in `steps` dithered steps. */
+  ring: { at: 8.5, inner: 0.3, outer: 2.6, steps: 5, dark: 0.16, light: 0.04 },
+  /** The disc's limb is a step down from its centre, from this share of its radius. */
+  limb: 0.88,
+  /** Tones, shares from the page's colour to the ink: the disc, its limb, and the halo's `glow` where it starts, at the disc's edge (nearly the disc's own on the dark page). */
+  dark: { disc: 1, limb: 0.8, glow: 0.72 },
+  /** The light page's sun is the glare that burns the colour away: only a ghost of a rim and a faint glow. */
+  light: { rim: 0.16, glow: 0.18 },
+} as const;
+
+/**
+ * The sun's lens flare (engine/sun-flare.ts). Each ghost sits `at` of the way from the sun to the middle of the picture (1 on the middle, above 1 beyond it), is `size` of the picture's short side
+ * in radius, and is inked at `tone` (0..1): a `ring`, a Bayer-dithered `dither` fill or a flat `disc` (all of them hexagons: an aperture's shape; `size` is the apothem). The rays are one-pixel lines out of the sun (see `streak`).
+ */
+export const FLARE = {
+  ghosts: [
+    { at: 0.3, size: 0.02, tone: 0.14, kind: "disc" },
+    { at: 0.45, size: 0.035, tone: 0.17, kind: "ring" },
+    { at: 0.55, size: 0.05, tone: 0.1, kind: "dither" },
+    { at: 0.85, size: 0.07, tone: 0.12, kind: "dither" },
+    { at: 0.95, size: 0.03, tone: 0.16, kind: "ring" },
+    { at: 1.1, size: 0.012, tone: 0.2, kind: "disc" },
+    { at: 1.25, size: 0.02, tone: 0.22, kind: "disc" },
+    { at: 1.4, size: 0.06, tone: 0.1, kind: "dither" },
+    { at: 1.55, size: 0.04, tone: 0.13, kind: "ring" },
+    { at: 1.7, size: 0.05, tone: 0.14, kind: "ring" },
+    { at: 1.85, size: 0.025, tone: 0.12, kind: "dither" },
+    { at: 2.1, size: 0.09, tone: 0.09, kind: "dither" },
+    { at: 2.35, size: 0.045, tone: 0.1, kind: "ring" },
+  ],
+  ringWidth: 1.5,
+  /** The rays, in the sun's own tone, from its centre (the disc's edge) out: the horizontal ones reach `streak` of the picture's width, the vertical `streakUp` of its height, the diagonal `streakDiag` of its width; the dither thins out as `along^streakFall`. */
+  streak: 0.2,
+  streakUp: 0.14,
+  streakDiag: 0.09,
+  streakFall: 2.2,
+  streakTone: 1,
+  /** The share of the ink the flare shows on the light page, where the sun is burnt out. */
+  lightShare: 0.3,
+  /** The strength goes to 0 as the sun's distance from the middle (a share of the half diagonal) goes from `edgeFrom` to `edgeTo`, and from `midTo` down to `midFrom`. */
+  edgeFrom: 0.8,
+  edgeTo: 1.05,
+  midFrom: 0.08,
+  midTo: 0.3,
+  /** The planet's limb softness for the flare's occlusion, a share of its angular radius. */
+  limbSoft: 0.04,
 } as const;
 
 export type Vec3 = [number, number, number];
@@ -153,6 +218,16 @@ export function sunDirection(): Vec3 {
   const az = toRad(MOON.sunAzimuthDeg);
   const el = toRad(MOON.sunElevationDeg);
   return norm3([0, 1, 2].map((i) => b.c[i]! * Math.cos(az) * Math.cos(el) + b.east[i]! * Math.sin(az) * Math.cos(el) + b.north[i]! * Math.sin(el)) as Vec3);
+}
+
+/**
+ * How far the camera's longitude must turn to bring the lit side back to the front: the planet is lit as the opening camera saw it when the camera's longitude in the inertial frame
+ * (the view's plus the earth rotation angle, which the idle turn leaves alone) is `MOON.ref.lonDeg`. 0 while the camera is within `MOON.litToleranceDeg` of that (the planet is lit
+ * enough: nothing to turn), else the shortest turn back to it. Pure.
+ */
+export function litTurn(viewLonDeg: number, eraDeg: number): number {
+  const d = shortestLonDelta(viewLonDeg + eraDeg, MOON.ref.lonDeg);
+  return Math.abs(d) <= MOON.litToleranceDeg ? 0 : d;
 }
 
 /* ------------------------------------------------------------------ page flags */

@@ -6,7 +6,7 @@ import { cn } from "~/lib/utils";
 /**
  * DEV ONLY: tells the developer the page is showing preview (local, unpublished) or demo (placeholder) data.
  * `import.meta.env.DEV` is a build-time constant, so production bundles drop this component's body entirely.
- * On phones it is raised above the bottom edge (the hero's clear zones are measured with it); the credits are the small "i" button at the right there, not a card. Decorative and non-interactive: hidden from assistive technology, never intercepts pointer events.
+ * On phones it is raised above the bottom edge (the hero's clear zones are measured with it); the credits are a full-width line of two rows there, which it clears. Decorative and non-interactive: hidden from assistive technology, never intercepts pointer events.
  */
 export function DevContentBadge({ mode }: { mode: ContentMode | null | undefined }) {
   const label = devBadgeLabel(mode, import.meta.env.DEV);
@@ -15,7 +15,7 @@ export function DevContentBadge({ mode }: { mode: ContentMode | null | undefined
     <div
       aria-hidden="true"
       data-dev-content-badge={mode}
-      className={cn(MAP_CARD, "pointer-events-none fixed bottom-2 left-2 max-md:bottom-10 z-50 select-none text-muted-foreground")}
+      className={cn(MAP_CARD, "pointer-events-none fixed bottom-2 left-2 max-md:bottom-16 z-50 select-none text-muted-foreground")}
     >
       {label}
     </div>

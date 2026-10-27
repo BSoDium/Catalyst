@@ -98,7 +98,7 @@ function halvesOf(root: HTMLElement): TravelHalf[] {
 }
 
 /** What the server (and the hydration pass) renders: the full hero. Stable object: a valid server snapshot. */
-const SERVER_SNAPSHOT: HeroSnapshot = { state: "rest", world: true };
+const SERVER_SNAPSHOT: HeroSnapshot = { state: "rest", world: true, interlude: false };
 
 /** Under who the owner is (`SITE_IDENTITY`): how to use the page. With no published place it must not send the visitor to a globe with nothing on it. */
 const HINT_GLOBE_LEAD = "Drag the globe to explore and pick a place, or start";
@@ -157,12 +157,14 @@ export function LandingHero({ machine, away, empty, orbit = null, onCover, hasCa
   const career = forcedCareer ?? storedCareer;
   const shortcuts = career ? [...SHORTCUTS, CAREER_SHORTCUT] : SHORTCUTS;
   const snapshot = useSyncExternalStore(machine.subscribe, machine.getSnapshot, () => SERVER_SNAPSHOT);
-  const state = away ? "away" : snapshot.state;
-  // The header reads this: while the rows are showing it carries no section links of its own.
+  // The look: the interlude (a window of 21 s at the rest state) gives the hero its collapsed look, the small name, and takes it back at the end.
+  const state = away ? "away" : snapshot.interlude ? "collapsed" : snapshot.state;
+  // The header reads this: while the rows are showing it carries no section links of its own (the interlude does not change that: the picture is the point then).
+  const resting = away ? false : snapshot.state === "rest";
   useEffect(() => {
-    setHeroResting(state === "rest");
+    setHeroResting(resting);
     return () => setHeroResting(true);
-  }, [state]);
+  }, [resting]);
   // Away, the panel's own title is the page's h1: the name stays as text, hidden, and is not a second heading.
   const Name = away ? "p" : "h1";
   const rootRef = useRef<HTMLDivElement>(null);
@@ -322,7 +324,7 @@ export function LandingHero({ machine, away, empty, orbit = null, onCover, hasCa
             <FamilyName />
           </span>
         </span>
-        <span className="hero-mini-hint">Drag to explore. Pause, and the page comes back.</span>
+        <span className="hero-mini-hint">Drag to explore. Stop moving to reset the view.</span>
       </p>
     </div>
   );
