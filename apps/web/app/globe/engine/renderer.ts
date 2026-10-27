@@ -60,7 +60,7 @@ import { IdleSpin, SPIN, SPIN_DEFAULTS, edgeSpeed, pacedByRotation, spinBlock, s
 import { CINEMATIC } from "./cinematic";
 import { INTERLUDE_STATE_EVENT, INTERLUDE_WAIT_MS, interludeLook, type InterludeStateDetail } from "../interlude";
 import { blendPose, flightOffsetShare, flightPose, type FlightPose } from "./flight";
-import { NIGHT, SURFACE, surfaceCoverage, surfaceFade } from "./surface";
+import { NIGHT, SURFACE, surfaceAmount, surfaceCoverage } from "./surface";
 import { landingScale, liftFor, placeAbove, type Placement } from "./lift";
 import { routeLift } from "./view";
 import { newLodCamera, setLodCamera, type LodTree } from "./lod-tree";
@@ -2302,7 +2302,7 @@ export class GlobeRenderer {
     // the land's own picture: for the unzoomed views (fading out with the zoom, where the borders come in), stronger in the interlude
     // (not by the zoom while the interlude flies: its close shots are not a visitor's zoom)
     const inInterlude = this.flying || land > 0;
-    this.globe.setSurface(surfaceFade(inInterlude ? 0 : zoom) * surfaceCoverage(land));
+    this.globe.setSurface(surfaceAmount(inInterlude ? 0 : zoom, surfaceCoverage(land)));
     this.globe.setCity(CINEMATIC.planet.cities ? (this.caption?.cityShare() ?? 0) : 0);
     // the page's own hero steps back with it (app.css `--interlude`): written when it moves by a hundredth
     if (Math.abs(land - this.interludeVar) >= 0.01 || (land === 0 && this.interludeVar !== 0)) {
