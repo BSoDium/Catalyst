@@ -100,9 +100,9 @@ const BLOB_FRAGMENT = /* glsl */ `
     float ink = exp(-0.6931 * rr * rr / ${f(SUN.core.half * SUN.core.half)});
     ink = max(0.0, ink - ${f(Math.exp((-0.6931 * SUN.core.radius * SUN.core.radius) / (SUN.core.half * SUN.core.half)))}) / (1.0 - ${f(Math.exp((-0.6931 * SUN.core.radius * SUN.core.radius) / (SUN.core.half * SUN.core.half)))});
     if (ink <= 0.003) discard;
-    float k = clamp(ink * ${f(SUN.gain)}, 0.0, 1.0) * uI * uAmt;
-    // dark page: the light is ADDED (colour times alpha). Light page: the sun is WHITE, laid over the paper and over the grey round it (the veil, the halo): the paper has no room for more light, so it shows as the lighter thing
-    gl_FragColor = uLight > 0.5 ? vec4(1.0, 0.995, 0.975, k * 0.9) : vec4(warm(ink), k);
+    float k = clamp(ink * ${f(SUN.gain)}, 0.0, 1.0) * uAmt;
+    // dark page: the light is ADDED (colour times alpha), as bright as the share of the sun in view. Light page: the sun is WHITE, laid over the paper and over the grey round it (the veil, the halo), and it does NOT dim as the planet covers it (owner: "only shrink it as the crescent shrinks, not opacity"): its size is the crescent's, its whiteness is whole
+    gl_FragColor = uLight > 0.5 ? vec4(1.0, 0.995, 0.975, k * 0.9) : vec4(warm(ink), k * uI);
   }
 `;
 
@@ -224,8 +224,8 @@ export class SunLayer {
       b.uAmt!.value = f.amount;
       b.uSet!.value = 1 - halo;
     }
-    // the lens flare comes out of the same centre, as bright as the share of the sun that is left
-    const flaring = this.flare.sync({ bufW: f.bufW, bufH: f.bufH, x: f.ahead ? bx : f.x, y: f.ahead ? by : f.y, ahead: f.ahead, amount: f.amount, visible: cres.area, r: sr, set: 1 - halo } satisfies FlareFrame);
+    // the lens flare comes out of the same centre, as bright as the share of the sun that is left (on the light page whole, until the sun is gone: it does not dim, only the sun's size follows the crescent)
+    const flaring = this.flare.sync({ bufW: f.bufW, bufH: f.bufH, x: f.ahead ? bx : f.x, y: f.ahead ? by : f.y, ahead: f.ahead, amount: f.amount, visible: this.dark ? cres.area : cres.area > 0.01 ? 1 : 0, r: sr, set: 1 - halo } satisfies FlareFrame);
     if (!p) return flaring || blob;
     const u = this.mat.uniforms;
     (u.uCentre!.value as Vector2).set(p.x, p.y);
