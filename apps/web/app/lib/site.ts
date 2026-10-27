@@ -104,11 +104,11 @@ export function siteCaption(counts?: KindCounts | null): SiteCaption {
       [{ text: "A " }, { text: "personal archive", style: "heavy", accent: "blue" }, { text: "," }],
       [{ text: "organised around " }, { text: "places", style: "heavy", accent: "blue" }, { text: "." }],
     ],
-    // (five sections in two rows no wider than the counts' row of the four-section caption (24 letters); the handwriting, bigger than the serif, comes LAST, with the
-    // full stop in the serif after it: the script's comma is ugly, so it never has one; it keeps its baseline on the serif's)
+    // (five sections in two rows no wider than the counts' row of the four-section caption (24 letters); the handwriting, bigger than the serif, ends the TOP row: it has
+    // nothing above it there, so it can rise without touching a row, and it has no comma after it (its comma is ugly): the comma before it is the serif's)
     [
-      [word("project", "software"), { text: ", " }, word("artwork", "art"), { text: ", " }, word("article", "articles"), { text: "," }],
-      [word("photograph", "photography"), { text: " & " }, word("poem", "Poems"), { text: "." }],
+      [word("project", "software"), { text: ", " }, word("artwork", "art"), { text: ", " }, word("poem", "Poems")],
+      [word("article", "articles"), { text: " & " }, word("photograph", "photography"), { text: "." }],
     ],
   ];
   const total = counts ? KINDS.reduce((n, k) => n + counts[k], 0) : 0;
