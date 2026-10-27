@@ -189,7 +189,7 @@ export class GlobeRenderer {
   private showcaseOn = false;
   /** Whether the caption is wanted AND shown now (the showcase is on and the camera's latitude is in its band) and the camera's latitude glide towards the band, if any. */
   private captionOn = false;
-  private latSnap: { from: number; to: number; lonFrom: number; lonTo: number; t0: number } | null = null;
+  private latSnap: { from: number; to: number; lonFrom: number; lonTo: number; t0: number; ms: number } | null = null;
   private showcaseActive = false;
   /** The planet at the lowest zoom is big enough for the ring's and the caption's letters (they have a smallest size): when it is not, they are not drawn rather than cut. */
   private textFits = true;
@@ -1187,8 +1187,9 @@ export class GlobeRenderer {
     }
     if (this.latSnap) {
       const a = this.latSnap;
-      const t = clamp((now - a.t0) / CAPTION.band.snapMs, 0, 1);
-      const e = 1 - (1 - t) ** 3;
+      const t = clamp((now - a.t0) / a.ms, 0, 1);
+      // slow in, slow out (a smootherstep): the glide starts from rest, with no jump
+      const e = t * t * t * (t * (t * 6 - 15) + 10);
       this.view = this.clampView({ ...this.view, lat: a.from + (a.to - a.from) * e, lon: a.lonFrom + (a.lonTo - a.lonFrom) * e });
       if (t >= 1) this.latSnap = null;
       else more = true;
@@ -2090,7 +2091,9 @@ export class GlobeRenderer {
     }
     this.noteChange();
     this.velocity = STILL;
-    this.latSnap = { from: lat, to: this.snapTarget(lat), lonFrom: this.view.lon, lonTo: this.view.lon + turn, t0: now };
+    const travel = Math.max(Math.abs(this.snapTarget(lat) - lat), Math.abs(turn));
+    const ms = clamp(travel * CAPTION.band.snapMsPerDeg, CAPTION.band.snapMs, CAPTION.band.snapMaxMs);
+    this.latSnap = { from: lat, to: this.snapTarget(lat), lonFrom: this.view.lon, lonTo: this.view.lon + turn, t0: now, ms };
     this.requestRender();
   }
 
