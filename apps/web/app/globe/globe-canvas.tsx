@@ -17,7 +17,7 @@ import { stressRoutes } from "./paths/stress";
 import { applyDebugLevels } from "./engine/palette";
 import { applySpinFlags } from "./engine/idle-spin";
 import { applySkyFlags } from "./engine/sky";
-import { PLAY_INTERLUDE_EVENT, PREPARE_INTERLUDE_EVENT, type PlayInterludeRequest } from "./interlude";
+import { INTERLUDE_WAIT_MS, PLAY_INTERLUDE_EVENT, RESTORE_HERO_EVENT, PREPARE_INTERLUDE_EVENT, type PlayInterludeRequest } from "./interlude";
 import { applyRingFlags, ringText } from "./engine/ring";
 import { applyMoonFlags } from "./engine/moon";
 import { applyShowcaseFlags } from "./engine/caption";
@@ -111,6 +111,9 @@ const isWebGLUnavailable = (e: unknown) => e instanceof Error && e.name === "Web
 /** The most often a pointer move over the stage restarts the app's idle clock (`onInteract`), ms. */
 const MOVE_NOTE_MS = 250;
 
+/** How often a held interlude request asks the globe again whether it can begin, ms (each try also makes it more ready). */
+const INTERLUDE_TRY_MS = 100;
+
 export default function GlobeCanvas({
   places,
   groups,
@@ -192,19 +195,55 @@ export default function GlobeCanvas({
   // The visitor asks for the cinematic interlude (the search palette's "I like surprises", `lib/interlude.ts`): this globe takes the request when it is the home screen at rest
   // (the caption is there); otherwise the palette takes the visitor home first and asks again.
   useEffect(() => {
+    // A request away from the display mode is held until the interlude can start (its word may still be being made): the palette must not be told it is done before it has
+    // played. Dropped when the visitor touches the page, or after a while.
+    let held = 0;
+    const clear = () => {
+      if (held) window.clearInterval(held);
+      held = 0;
+    };
     const onPlay = (e: Event) => {
       const detail = (e as CustomEvent<PlayInterludeRequest>).detail;
       const handle = handleRef.current;
-      if (!detail || !handle || !latest.current.showcase || !handle.hasOrbit()) return;
+      const showcase = latest.current.showcase;
+      if (!detail || !handle || !showcase || !handle.hasOrbit()) return;
+      // At rest (the caption is on the stage): the rows leave round the orbit and the interlude plays from there (the caption makes it ready itself, and asks again).
+      if (showcase.get().on) {
+        detail.handled = true;
+        handle.playInterlude();
+        return;
+      }
+      // A gesture had put the home screen away: the globe holds the request (the caption, the ring and the page's showcase stay as they are, `wantInterlude`) and begins the
+      // interlude from wherever the camera is the moment it is ready. The hero is brought back only then: brought back before, it turned the showcase on, the caption came
+      // in and the camera went home first. (With a place open the globe does not take it: the palette takes the visitor home first.)
+      if (!handle.wantInterlude()) return;
       detail.handled = true;
-      handle.playInterlude();
+      clear();
+      const begin = () => {
+        if (!handleRef.current?.playInterludeNow()) return false;
+        window.dispatchEvent(new Event(RESTORE_HERO_EVENT));
+        return true;
+      };
+      if (begin()) return;
+      let tries = 0;
+      held = window.setInterval(() => {
+        // (each try makes it more ready, without starting its word over; given up with the request's own wait, and then the home screen comes back as before)
+        if (begin()) clear();
+        else if (++tries * INTERLUDE_TRY_MS > INTERLUDE_WAIT_MS) {
+          clear();
+          window.dispatchEvent(new Event(RESTORE_HERO_EVENT));
+        }
+      }, INTERLUDE_TRY_MS);
     };
     const onPrepare = () => {
       if (latest.current.showcase) handleRef.current?.prepareInterlude();
     };
     window.addEventListener(PLAY_INTERLUDE_EVENT, onPlay);
     window.addEventListener(PREPARE_INTERLUDE_EVENT, onPrepare);
+    window.addEventListener("pointerdown", clear, { passive: true, capture: true });
     return () => {
+      clear();
+      window.removeEventListener("pointerdown", clear, { capture: true });
       window.removeEventListener(PLAY_INTERLUDE_EVENT, onPlay);
       window.removeEventListener(PREPARE_INTERLUDE_EVENT, onPrepare);
     };

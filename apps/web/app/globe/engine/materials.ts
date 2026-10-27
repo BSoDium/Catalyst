@@ -116,15 +116,17 @@ const MIST_GLSL = /* glsl */ `
 
 export function atmosphereMaterial(): ShaderMaterial {
   return new ShaderMaterial({
-    uniforms: { uColor: { value: new Color() }, uAmt: { value: 0 }, uSun: { value: [0, 0, 1] }, uShell: { value: 1.03 }, uPower: { value: 1.6 }, uCover: { value: 0.5 } },
+    uniforms: { uColor: { value: new Color() }, uAmt: { value: 0 }, uSun: { value: [0, 0, 1] }, uShell: { value: 1.03 }, uPower: { value: 1.6 }, uCover: { value: 0.5 }, uNight: { value: 0 }, uSunN: { value: [0, 0, 1] }, uFlip: { value: 0 } },
     vertexShader: /* glsl */ `
       varying vec3 vPos;
       void main() { vPos = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
     `,
     fragmentShader: /* glsl */ `
       uniform vec3 uColor; uniform float uAmt; uniform vec3 uSun; uniform float uShell; uniform float uPower; uniform float uCover;
+      uniform float uNight; uniform vec3 uSunN; uniform float uFlip;
       varying vec3 vPos;
       ${MIST_GLSL}
+      ${NIGHT_GLSL}
       void main() {
         // (the shell is the unit sphere scaled to uShell: the vertex is in the unit sphere's frame, so its direction is its position)
         vec3 n = normalize(vPos);
@@ -134,7 +136,9 @@ export function atmosphereMaterial(): ShaderMaterial {
         float edge = sqrt(max(1.0 - 1.0 / (uShell * uShell), 1e-4));
         float h = clamp(abs(dot(n, toEye)) / edge, 0.0, 1.0);
         float sunward = 0.75 + 0.25 * clamp(dot(n, uSun) * 1.4 + 0.2, 0.0, 1.0);
-        float a = stepped(pow(h, uPower) * sunward * uAmt, 3.0) * uCover;
+        // darkened where the planet is washed by the sun's night (the interlude keeps the day and the night: washOf)
+        float lit = 1.0 - ${NIGHT.atmosphereDim.toFixed(2)} * washOf(n, uSunN, uNight, uFlip);
+        float a = stepped(pow(h, uPower) * sunward * uAmt * lit, 3.0) * uCover;
         if (a < 0.004) discard;
         gl_FragColor = vec4(uColor, a);
       }
@@ -149,15 +153,17 @@ export function atmosphereMaterial(): ShaderMaterial {
 
 export function mistMaterial(): ShaderMaterial {
   return new ShaderMaterial({
-    uniforms: { uColor: { value: new Color() }, uAmt: { value: 0 }, uCover: { value: 0.85 } },
+    uniforms: { uColor: { value: new Color() }, uAmt: { value: 0 }, uCover: { value: 0.85 }, uNight: { value: 0 }, uSunN: { value: [0, 0, 1] }, uFlip: { value: 0 } },
     vertexShader: /* glsl */ `
       varying vec3 vPos;
       void main() { vPos = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
     `,
     fragmentShader: /* glsl */ `
       uniform vec3 uColor; uniform float uAmt; uniform float uCover;
+      uniform float uNight; uniform vec3 uSunN; uniform float uFlip;
       varying vec3 vPos;
       ${MIST_GLSL}
+      ${NIGHT_GLSL}
       void main() {
         vec3 n = normalize(vPos);
         vec3 toEye = normalize(cameraPosition - vPos);
@@ -165,7 +171,8 @@ export function mistMaterial(): ShaderMaterial {
         // way round) and is deepest at the edge, where it meets the glow above it: the glow bleeds onto the planet
         float g = 1.0 - clamp(dot(n, toEye), 0.0, 1.0);
         float deep = smoothstep(0.18, 1.0, g);
-        float a = stepped(deep * deep * (3.0 - 2.0 * deep) * uAmt, 3.0) * uCover;
+        float lit = 1.0 - ${NIGHT.atmosphereDim.toFixed(2)} * washOf(n, uSunN, uNight, uFlip);
+        float a = stepped(deep * deep * (3.0 - 2.0 * deep) * uAmt * lit, 3.0) * uCover;
         if (a < 0.004) discard;
         gl_FragColor = vec4(uColor, a);
       }
