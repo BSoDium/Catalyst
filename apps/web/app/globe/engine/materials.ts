@@ -273,7 +273,7 @@ export function rimGroundMaterial(): ShaderMaterial {
 }
 
 /**
- * The TWILIGHT (`RIM.twilight`): a faint red-purple band on the ground either side of the lit side's halfway edge, where the atmosphere has scattered the sun's light a little past the terminator and the light is redder for the air it
+ * The TWILIGHT (`RIM.twilight`): a faint red band on the ground either side of the lit side's halfway edge, where the atmosphere has scattered the sun's light a little past the terminator and the light is redder for the air it
  * has been through. It only TINTS what is under it: it MULTIPLIES the colours there (a black ocean stays black), in dithered levels on the art's pixels (the dark side's own texture), on a skin a hair over the surface (the mist's).
  * The dark page only: the light page has no warm light.
  */

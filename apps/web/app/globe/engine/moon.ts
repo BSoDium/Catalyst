@@ -192,7 +192,7 @@ export const RIM = {
    * more air, so it is redder. A faint band on the ground just either side of the halfway edge: `band` is N . sun at which it comes in, is whole, starts to go and is gone. It only TINTS what is there (it multiplies the colours under it
    * by `rgb` taken `strength` of the way from white: black, the ocean, stays black), in `steps` dithered levels on the art's pixels, as the dark side is. The dark page only.
    */
-  twilight: { band: [-0.34, -0.16, -0.02, 0.12], strength: 0.4, steps: 3, rgb: [1, 0.68, 0.9] },
+  twilight: { band: [-0.34, -0.16, -0.02, 0.12], strength: 0.4, steps: 3, rgb: [1, 0.6, 0.58] },
   cover: { dark: 0.9, light: 0.3 },
 } as const;
 
