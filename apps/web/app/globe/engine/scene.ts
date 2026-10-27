@@ -137,7 +137,8 @@ export class GlobeScene {
     const skinRim = new Mesh(shell, this.rim);
     skinRim.frustumCulled = false;
     skinRim.scale.setScalar(1 + RIM.shell);
-    this.add(skinRim, 0.5);
+    // (after the sun, 0.65: the sun's halo is behind the atmosphere, not over it)
+    this.add(skinRim, 0.66);
     // and the mist on the ground itself, over the lines (a hair above the surface, which the lines are drawn on)
     const skin = new SphereGeometry(1.004, 96, 48);
     this.geometries.push(skin);
@@ -228,8 +229,8 @@ export class GlobeScene {
     this.surface.uniforms.uTone1!.value.setRGB(...mixTo(tones[1]!));
     this.surface.uniforms.uTone2!.value.setRGB(...mixTo(tones[2]!));
     this.atmosphere.uniforms.uCover!.value = t.scheme === "dark" ? 0.4 : 0.26;
-    // the rim: silver (the glow's own grey, a step brighter), and the sun's warm light on the dark page
-    this.rim.uniforms.uColor!.value.setRGB(...mixTo(t.scheme === "dark" ? 0.75 : 0.3));
+    // the rim: a soft grey close to the page's colour (the haze and the lining's base), and the sun's warm light on the dark page
+    this.rim.uniforms.uColor!.value.setRGB(...mixTo(t.scheme === "dark" ? 0.45 : 0.3));
     this.rim.uniforms.uWarm!.value.setRGB(...RIM.warm);
     this.rim.uniforms.uCover!.value = RIM.cover[t.scheme === "dark" ? "dark" : "light"];
     this.mist.uniforms.uCover!.value = t.scheme === "dark" ? 0.36 : 0.24;

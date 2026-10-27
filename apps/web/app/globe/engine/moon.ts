@@ -153,21 +153,21 @@ export const FLARE = {
 } as const;
 
 /**
- * The RIM: the atmosphere as a thin layer on the planet's limb, always there while the sun is (the night's amount), the interlude's thick glow (engine/materials.ts, `atmosphereMaterial`) aside.
- * `shell` is its height in earth radii. Quiet by default: on the sun's side of the limb a hair of grey (`quiet`, a share of the layer's own strength, thinning with `thin`, the power of its fall
- * from the planet's edge). As the sun goes behind the planet it is the SILVER LINING: from `from` to `to` (the cosine of the angle between the sun's direction and the line from the camera through
- * the planet's middle) the rim brightens to the whole `strength`, thickens (the fall is `thick`), takes the warm light's colour (`warm`: a stop of `SUN.tint`), and gathers towards the limb nearest the sun
- * (`gather`: 0 a ring all round, 1 only the sun's side).
+ * The RIM: the atmosphere as a thin skin on the planet's limb, there while the sun is (the night's amount), the interlude's thick glow (engine/materials.ts, `atmosphereMaterial`) aside. `shell` is its
+ * height in earth radii. Two things in one shell:
+ *  - the HAZE: a film of very low opacity, SMOOTH (no dither: a stepped haze reads as grains of sand over the surface), the page's colour a step towards its ink, on the sun's side of the limb: `haze` is its
+ *    opacity at the planet's edge, thinning with the height as `hazePower`. Near invisible, and gone with the zoom as the night is.
+ *  - the SILVER LINING: the sun's light scattered by the atmosphere, there only while the sun is aligned with the limb on the picture (the angle between the sun and the line from the camera through the
+ *    planet's middle within `align` of the planet's angular radius of the limb's own: gone when the sun is well outside it or dead behind the planet), and only on the part of the outline that faces the sun: whole where
+ *    the limb point's direction is within `arc[1]` (a cosine) of the sun's, gone by `arc[0]`. In the warm light's colour (`warm`), thicker than the haze (the fall is `thick`), in the dither's flat steps.
  */
 export const RIM = {
   shell: 0.024,
-  quiet: 0.3,
-  thin: 3.2,
-  thick: 1.4,
-  from: 0.35,
-  to: 0.97,
-  strength: 0.9,
-  gather: 0.7,
+  haze: 0.1,
+  hazePower: 2.2,
+  align: 0.55,
+  arc: [0.8, 0.97],
+  thick: 1.3,
   warm: [1, 0.74, 0.4],
   cover: { dark: 0.9, light: 0.3 },
 } as const;
