@@ -87,6 +87,32 @@ export const SUN = {
   light: { rim: 0.16, halo: 0.04, haloCore: 0.08 },
 } as const;
 
+/**
+ * The sun's lens flare (engine/sun-flare.ts). Each ghost sits `at` of the way from the sun to the middle of the picture (1 on the middle, above 1 beyond it), is `size` of the picture's short side
+ * in radius, and is inked at `tone` (0..1): a `ring`, a Bayer-dithered `dither` disc or a flat `disc`. The streak is a one-pixel row through the sun, `streak` of the picture's width to each side.
+ */
+export const FLARE = {
+  ghosts: [
+    { at: 0.45, size: 0.035, tone: 0.5, kind: "ring" },
+    { at: 0.85, size: 0.07, tone: 0.4, kind: "dither" },
+    { at: 1.25, size: 0.02, tone: 0.7, kind: "disc" },
+    { at: 1.7, size: 0.05, tone: 0.45, kind: "ring" },
+    { at: 2.1, size: 0.09, tone: 0.3, kind: "dither" },
+  ],
+  ringWidth: 1.5,
+  streak: 0.28,
+  streakTone: 0.6,
+  /** The share of the ink the flare shows on the light page, where the sun is burnt out. */
+  lightShare: 0.4,
+  /** The strength goes to 0 as the sun's distance from the middle (a share of the half diagonal) goes from `edgeFrom` to `edgeTo`, and from `midTo` down to `midFrom`. */
+  edgeFrom: 0.95,
+  edgeTo: 1.3,
+  midFrom: 0.08,
+  midTo: 0.3,
+  /** The planet's limb softness for the flare's occlusion, a share of its angular radius. */
+  limbSoft: 0.04,
+} as const;
+
 export type Vec3 = [number, number, number];
 export const toRad = (deg: number) => (deg * Math.PI) / 180;
 

@@ -13,6 +13,7 @@ import { BufferAttribute, BufferGeometry, Color, Mesh, NormalBlending, type Scen
 import type { GlobeTheme } from "./colors";
 import { BAYER4 } from "./sky";
 import { SUN } from "./moon";
+import { FlareLayer, type FlareFrame } from "./sun-flare";
 
 const VERTEX = /* glsl */ `
   uniform vec2 uCentre; uniform float uExt; uniform vec2 uBuf;
@@ -79,6 +80,8 @@ export interface SunFrame {
   /** The camera's vertical focal length in buffer pixels, and how much of the sun the zoom lets through, 0..1. */
   focal: number;
   amount: number;
+  /** How much of the sun the planet leaves (`planetClear`, engine/sun-flare.ts), 0..1; the disc itself is hidden by the depth test, the lens flare by this. Absent: all of it. */
+  visible?: number;
 }
 
 /** The sun's disc on the buffer: its centre on a whole pixel's centre (the disc is symmetric and its edge falls on the grid) and its radius, or null when it is behind the camera or its crown is wholly off the picture. Pure. */
@@ -94,8 +97,10 @@ export class SunLayer {
   readonly mesh: Mesh;
   private mat = material();
   private geometry = new BufferGeometry();
+  private flare: FlareLayer;
 
   constructor(scene: Scene) {
+    this.flare = new FlareLayer(scene);
     this.geometry.setAttribute("position", new BufferAttribute(new Float32Array([-1, -1, 0, 1, -1, 0, 1, 1, 0, -1, -1, 0, 1, 1, 0, -1, 1, 0]), 3));
     this.mesh = new Mesh(this.geometry, this.mat);
     this.mesh.frustumCulled = false;
@@ -110,13 +115,15 @@ export class SunLayer {
     u.uBg!.value.setRGB(...t.background);
     u.uInk!.value.setRGB(...t.ink);
     u.uLight!.value = t.scheme === "dark" ? 0 : 1;
+    this.flare.applyTheme(t);
   }
 
   /** Place the sun for this frame: true when it is in the picture (the frame loop has a sun to draw). */
   sync(f: SunFrame): boolean {
     const p = f.amount > 0.01 ? sunPlace(f) : null;
     this.mesh.visible = p !== null;
-    if (!p) return false;
+    const flaring = this.flare.sync({ bufW: f.bufW, bufH: f.bufH, x: f.x, y: f.y, ahead: f.ahead, amount: f.amount, visible: f.visible ?? 1 } satisfies FlareFrame);
+    if (!p) return flaring;
     const u = this.mat.uniforms;
     (u.uCentre!.value as Vector2).set(p.x, p.y);
     (u.uBuf!.value as Vector2).set(f.bufW, f.bufH);
@@ -127,6 +134,7 @@ export class SunLayer {
   }
 
   dispose(): void {
+    this.flare.dispose();
     this.geometry.dispose();
     this.mat.dispose();
   }

@@ -70,6 +70,7 @@ import { SHOWCASE_STATE, bandLat, inBand, shellWindowFactor, type CaptionContent
 import { CAP_HEIGHT_EM, ringAlpha, ringFloorZoom, ringRoomRadius, RING_STATE } from "./ring";
 import { RingLayer } from "./ring-layer";
 import { GlobeScene } from "./scene";
+import { planetClear } from "./sun-flare";
 import { MOON, inclinationFor, moonAmount, orbitAngle, rollFor, sunDirection, toEarthFrame, toRad, type Vec3 } from "./moon";
 import type { MoonSample } from "./moon-layer";
 import { CAPTION, ENERGY, INSET_EASE, CAPTION_LOAD, RING, SKY, START_VIEW, TUNING } from "./tuning";
@@ -1309,7 +1310,7 @@ export class GlobeRenderer {
    * Place the sun for this frame: a direction at infinity (the light's, in the earth's frame), projected by the camera as the stars' are (w = the depth along the view, so a direction behind the camera is
    * not ahead). It is shown with the planet's night (the same amount: the zoom takes both away, and the interlude and pages without the showcase have neither).
    */
-  private syncSun(cam: PerspectiveCamera, sunEarth: Vec3) {
+  private syncSun(cam: PerspectiveCamera, sunEarth: Vec3, d: number) {
     const sun = this.globe.sun;
     if (!sun) return;
     const v = this.sunV.set(sunEarth[0], sunEarth[1], sunEarth[2]).transformDirection(cam.matrixWorldInverse);
@@ -1323,6 +1324,8 @@ export class GlobeRenderer {
       ahead,
       focal: (cam.projectionMatrix.elements[5]! * this.bufH) / 2,
       amount: this.nightNow,
+      // the planet stands at distance d on the view axis: how much of the sun it leaves the lens flare
+      visible: planetClear(-v.z, d),
     });
   }
 
@@ -2214,7 +2217,7 @@ export class GlobeRenderer {
     this.caption?.sync(d, v.lon, v.lat, now, over);
     this.syncTagline();
     this.syncMoon(cam, d, zoom, now);
-    this.syncSun(cam, ns);
+    this.syncSun(cam, ns, d);
     this.globe.syncSky(cam, skyBasis, this.era, { w: this.bufW, h: this.bufH, shift: this.camShift, lift: this.camLift }, now, this.reduced, this.flying || (this.caption?.landShare() ?? 0) > 0);
   }
 
