@@ -9,7 +9,7 @@
  * Two looks, as the whole globe has two (`washOf`, engine/surface.ts): on the dark page it is the brightest thing there is, the ink's own tone. On the light page it is so bright that it burns the
  * colour away: the disc and the halo are the page's colour, and it shows only a ghost of a rim and the halo's faint darkness.
  */
-import { BufferAttribute, BufferGeometry, Color, Mesh, NormalBlending, type Scene, ShaderMaterial, Vector2 } from "three";
+import { AdditiveBlending, BufferAttribute, BufferGeometry, Color, Mesh, NormalBlending, type Scene, ShaderMaterial, Vector2 } from "three";
 import type { GlobeTheme } from "./colors";
 import { BAYER4 } from "./sky";
 import { SUN } from "./moon";
@@ -88,7 +88,7 @@ const material = () =>
 
 /**
  * The blur (`SUN.core`, engine/moon.ts): its own quad over the planet, centred where the sun's visible part has its centre of mass, `uU` pixels to a disc radius of the BLOB (the sun's own, until the planet has covered half of
- * it, then the crescent's width), `uI` as bright as the share of the sun that is in view. Smooth, not dithered; fading to nothing at its edge; in the warm light's colours.
+ * it, then the crescent's width), `uI` as bright as the share of the sun that is in view. Smooth, not dithered; a gaussian fading to nothing at its edge; in the warm light's colours, ADDED to what is behind it.
  */
 const BLOB_VERTEX = /* glsl */ `
   uniform vec2 uCentre; uniform float uExt; uniform vec2 uBuf;
@@ -99,23 +99,25 @@ const BLOB_VERTEX = /* glsl */ `
 `;
 
 const BLOB_FRAGMENT = /* glsl */ `
-  uniform vec2 uCentre; uniform float uU; uniform float uI; uniform float uAmt; uniform vec3 uBg;
+  uniform vec2 uCentre; uniform float uU; uniform float uI; uniform float uAmt; 
   ${WARM_GLSL}
   void main() {
     float rr = length(gl_FragCoord.xy - uCentre) / uU;
-    float ink = pow(1.0 - clamp((rr - ${f(SUN.core.hold)}) / ${f(SUN.core.radius - SUN.core.hold)}, 0.0, 1.0), ${f(SUN.core.fall)});
+    // a gaussian, half as bright at SUN.core.half and gone at SUN.core.radius; its light is ADDED to what is behind it (AdditiveBlending: colour times alpha), as bright as the share of the sun in view
+    float ink = exp(-0.6931 * rr * rr / ${f(SUN.core.half * SUN.core.half)});
+    ink = max(0.0, ink - ${f(Math.exp((-0.6931 * SUN.core.radius * SUN.core.radius) / (SUN.core.half * SUN.core.half)))}) / (1.0 - ${f(Math.exp((-0.6931 * SUN.core.radius * SUN.core.radius) / (SUN.core.half * SUN.core.half)))});
     if (ink <= 0.003) discard;
-    gl_FragColor = vec4(mix(uBg, warm(ink), clamp(ink * ${f(SUN.gain)}, 0.0, 1.0)), min(1.0, ink * 2.0) * uI * uAmt);
+    gl_FragColor = vec4(warm(ink), clamp(ink * ${f(SUN.gain)}, 0.0, 1.0) * uI * uAmt);
   }
 `;
 
 const blobMaterial = () =>
   new ShaderMaterial({
-    uniforms: { uCentre: { value: new Vector2() }, uBuf: { value: new Vector2(1, 1) }, uExt: { value: 1 }, uU: { value: 1 }, uI: { value: 1 }, uAmt: { value: 1 }, uBg: { value: new Color() }, uSet: { value: 0 } },
+    uniforms: { uCentre: { value: new Vector2() }, uBuf: { value: new Vector2(1, 1) }, uExt: { value: 1 }, uU: { value: 1 }, uI: { value: 1 }, uAmt: { value: 1 }, uSet: { value: 0 } },
     vertexShader: BLOB_VERTEX,
     fragmentShader: BLOB_FRAGMENT,
     transparent: true,
-    blending: NormalBlending,
+    blending: AdditiveBlending,
     depthTest: false,
     depthWrite: false,
   });
@@ -184,7 +186,6 @@ export class SunLayer {
     u.uBg!.value.setRGB(...t.background);
     u.uInk!.value.setRGB(...t.ink);
     u.uLight!.value = t.scheme === "dark" ? 0 : 1;
-    this.blobMat.uniforms.uBg!.value.setRGB(...t.background);
     this.dark = t.scheme === "dark";
     this.flare.applyTheme(t);
   }

@@ -91,12 +91,13 @@ export const SUN = {
   /** Tones, shares from the page's colour to the ink: the disc, its limb, and the halo's `glow` where it starts, at the disc's edge (nearly the disc's own on the dark page). */
   dark: { disc: 1, limb: 0.8, glow: 0.72 },
   /**
-   * The dark page's sun is a BLUR, not a disc (owner, 2026-10-27: "you can't actually distinguish the disk"): a blob of `radius` disc radii that is the sun's own white out to `hold` disc radii (the size the old disc was) and
-   * falls smoothly from there to nothing at its edge, as `(1 - (r - hold) / (radius - hold))^fall`, in the warm light's colours, with no edge of its own. It is its OWN layer, over the planet (a lens's bloom is not hidden by the limb):
-   * while the planet covers the sun it is what the eye makes of the crescent that is left (`sunCrescent`, engine/sun-flare.ts): a blob of the crescent's width (the sun's own width until the limb has reached its centre, then
-   * as wide as the crescent), centred on the crescent's centre of mass (so it overlaps the planet, not tangent to it), as bright as the share of the sun that is left.
+   * The dark page's sun is a BLUR, not a disc (owner, 2026-10-27: "you can't actually distinguish the disk"): a blob that falls off smoothly from the sun's centre, as a gaussian that is half as bright at `half` disc radii (the size the old
+   * disc was) and is nothing by `radius` (a flat plateau of white reads as an octagon on a few pixels: it has none), in the warm light's colours, with no edge of its own. It is its OWN layer, over the planet (a lens's bloom is not hidden by
+   * the limb), and it ADDS its light (a bright centre is solid over whatever is behind it, and a dim part is a glow, never a see-through patch). While the planet covers the sun it is what the eye makes of the crescent that is left
+   * (`sunCrescent`, engine/sun-flare.ts): a blob of the crescent's width (the sun's own width until the limb has reached its centre, then as wide as the crescent), centred on the crescent's centre of mass (so it overlaps the planet, not
+   * tangent to it), as bright as the share of the sun that is left.
    */
-  core: { radius: 2.4, hold: 0.8, fall: 1.6 },
+  core: { radius: 2.4, half: 1 },
   /** The light page's sun is the glare that burns the colour away: only a ghost of a rim and a faint glow. */
   light: { rim: 0.16, glow: 0.18 },
   /**
