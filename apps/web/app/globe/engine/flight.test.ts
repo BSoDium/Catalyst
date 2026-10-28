@@ -126,6 +126,17 @@ describe("the camera's flight", () => {
       }
     }
   });
+  it("is the same flight turned with the planet, so the camera keeps its place to the word (which starts at a fixed angle from the page's meridian) whatever longitude the page is at", () => {
+    const wrap = (d: number) => ((((d + 180) % 360) + 360) % 360) - 180;
+    for (const lon of [-170, -90, 40, 120, 170]) {
+      for (let u = 0; u <= 1; u += 0.05) {
+        const a = flightPose(u, end);
+        const b = flightPose(u, { ...end, lon });
+        expect(Math.abs(wrap(b.lon - lon - a.lon)), `u ${u.toFixed(2)}, page ${lon} E`).toBeLessThan(1e-6);
+        expect(b.lat).toBeCloseTo(a.lat, 6);
+      }
+    }
+  });
   it("is smooth: the camera and its line of sight move without steps, and their speed changes gently (no snap)", () => {
     const N = 2000;
     let prev = frame(0);

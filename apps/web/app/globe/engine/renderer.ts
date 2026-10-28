@@ -58,9 +58,10 @@ import { snapBox } from "./group-square";
 import { Grace } from "./grace";
 import { IdleSpin, SPIN, SPIN_DEFAULTS, edgeSpeed, pacedByRotation, spinBlock, spinFrameDue, spinFramePeriod, type SpinContext } from "./idle-spin";
 import { CINEMATIC } from "./cinematic";
+import { viewToGalactic } from "./sky";
 import { INTERLUDE_STATE_EVENT, INTERLUDE_WAIT_MS, interludeLook, type InterludeStateDetail } from "../interlude";
 import { blendPose, flightOffsetShare, flightPose, type FlightPose } from "./flight";
-import { NIGHT, SURFACE, surfaceCoverage } from "./surface";
+import { LIGHTS, NIGHT, SURFACE, surfaceCoverage } from "./surface";
 import { landingScale, liftFor, placeAbove, type Placement } from "./lift";
 import { routeLift } from "./view";
 import { newLodCamera, setLodCamera, type LodTree } from "./lod-tree";
@@ -313,6 +314,14 @@ export class GlobeRenderer {
     };
     if (typeof requestIdleCallback === "function") requestIdleCallback(loadSurface, { timeout: 3000 });
     else window.setTimeout(loadSurface, 800);
+    // (the planet's lights at night, 180 KB: in a later idle moment, only where there is a night to show them in)
+    const loadLights = () => {
+      if (!this.disposed) this.globe.loadLights(LIGHTS.url, () => this.requestRender());
+    };
+    if (opts.showcase) {
+      if (typeof requestIdleCallback === "function") requestIdleCallback(loadLights, { timeout: 6000 });
+      else window.setTimeout(loadLights, 2000);
+    }
     // (the Moon's picture, 13 KB, in the same idle moment)
     const loadMoon = () => {
       if (!this.disposed) this.globe.moon?.load(MOON.mapUrl, () => this.requestRender());
@@ -344,6 +353,12 @@ export class GlobeRenderer {
         this.caption = null;
         this.showcaseActive = false;
       }
+    }
+    // An interlude planned for this visit comes close to the ground: its finer picture of the land is fetched in an idle moment, after the first one.
+    if (this.caption?.eggPlanned) {
+      const hi = () => this.loadHiSurface();
+      if (typeof requestIdleCallback === "function") requestIdleCallback(hi, { timeout: 8000 });
+      else window.setTimeout(hi, 3000);
     }
     // The interlude fills the continents when `planet.fill` is on: their picture is made when one is planned, in an idle moment, and not in the frame that starts it.
     if (this.caption?.eggPlanned && CINEMATIC.planet.fill) {
@@ -1871,6 +1886,16 @@ export class GlobeRenderer {
   /** The visitor can now ask for the interlude (the palette lists its entry): make its mesh and fetch its sound ahead of time. */
   prepareInterlude(): void {
     this.caption?.prewarmInterlude();
+    this.loadHiSurface();
+  }
+
+  /** The finer ground for the interlude's close shots (`SURFACE.hiUrl`): asked for once, when an interlude is planned or about to be asked for. */
+  private loadHiSurface(): void {
+    if (this.disposed || !this.caption) return;
+    // (134 MB on the GPU: not on a device that says it has little memory, where the ground stays the first picture)
+    const mem = (navigator as Navigator & { deviceMemory?: number }).deviceMemory;
+    if (mem !== undefined && mem < 4) return;
+    this.globe.loadSurfaceHi(SURFACE.hiUrl, () => this.requestRender());
   }
 
   /**
@@ -2229,6 +2254,7 @@ export class GlobeRenderer {
     const next = interludeLook(this.interludeOn, land, this.interludeVar);
     if (next === this.interludeOn) return;
     this.interludeOn = next;
+    if (!next) this.globe.releaseSurfaceHi(); // (its GPU memory goes with the interlude)
     window.dispatchEvent(new CustomEvent<InterludeStateDetail>(INTERLUDE_STATE_EVENT, { detail: { active: next } }));
   }
 
@@ -2310,7 +2336,6 @@ export class GlobeRenderer {
     // the mist: a thin grey glow at the limb and a veil that bleeds onto the ground, for the length of the interlude (they follow the land's easing: in and out with it)
     this.globe.setAtmosphere(land * CINEMATIC.atmosphere.amount);
     // the land's own picture: at every zoom, with no fade as the camera comes close (a checkered stipple), a little stronger in the interlude
-    const inInterlude = this.flying || land > 0;
     this.globe.setSurface(surfaceCoverage(land));
     this.globe.setCity(CINEMATIC.planet.cities ? (this.caption?.cityShare() ?? 0) : 0);
     // the page's own hero steps back with it (app.css `--interlude`): written when it moves by a hundredth
@@ -2336,7 +2361,7 @@ export class GlobeRenderer {
     this.globe.setNight(shown, ns[0], ns[1], ns[2]);
     this.caption?.setNight(shown, ns);
     const now = performance.now();
-    this.globe.syncCamera(b, zoom, this.pixel, now, this.reduced, lat, Math.max(this.width, this.height), inInterlude);
+    this.globe.syncCamera(b, zoom, this.pixel, now, this.reduced, lat, Math.max(this.width, this.height));
     // (the caption's lines stay on the page's meridian and latitude; only what is hidden is the flying camera's)
     const over = pose ? { lon, lat } : undefined;
     this.lastBasis = { d, lon: v.lon, lat: v.lat, cam: over };
@@ -2344,7 +2369,10 @@ export class GlobeRenderer {
     this.syncTagline();
     this.syncMoon(cam, d, zoom, now);
     this.syncSun(cam, ns, d);
-    this.globe.syncSky(cam, skyBasis, this.era, { w: this.bufW, h: this.bufH, shift: this.camShift, lift: this.camLift }, now, this.reduced, this.flying || (this.caption?.landShare() ?? 0) > 0);
+    // (the sky's frame, once: the globe's sky and the chrome of the interlude's letters both read it)
+    const viewToGal = viewToGalactic(skyBasis, this.era);
+    this.caption?.setSky(viewToGal);
+    this.globe.syncSky(cam, viewToGal, skyBasis.d, { w: this.bufW, h: this.bufH, shift: this.camShift, lift: this.camLift }, now, this.reduced, this.flying || (this.caption?.landShare() ?? 0) > 0);
   }
 
   /* ------------------------------ diagnostics ------------------------------ */

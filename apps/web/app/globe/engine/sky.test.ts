@@ -377,3 +377,43 @@ describe("the sky on screen", () => {
     expect(zoomed.rhoMax).toBeLessThan(SKY.onRho.rho - SKY.onRho.band);
   });
 });
+
+describe("the star map (the chrome's reflection of the sky)", () => {
+  it("has a texel for every star's direction, in the tier's brightness, and nothing else but stars", async () => {
+    const { bakeStarMap, makeStars } = await import("./sky");
+    const w = 4096;
+    const h = 2048;
+    const map = bakeStarMap(w, h);
+    const st = makeStars();
+    for (let i = 0; i < 50; i++) {
+      const x = st.position[3 * i]!, y = st.position[3 * i + 1]!, z = st.position[3 * i + 2]!;
+      const c = Math.min(w - 1, Math.floor((Math.atan2(y, x) / (2 * Math.PI) + 0.5) * w));
+      const r = Math.min(h - 1, Math.floor((Math.asin(z) / Math.PI + 0.5) * h));
+      expect(map[r * w + c]).toBeGreaterThanOrEqual(128);
+    }
+    const lit = map.reduce((n, v) => n + (v > 0 ? 1 : 0), 0);
+    expect(lit).toBeGreaterThan(st.count * 0.5);
+    expect(lit).toBeLessThanOrEqual(st.count);
+  });
+});
+
+describe("the stars' halos (the light page's chrome)", () => {
+  it("glow round a star and are dark far from every one", async () => {
+    const { bakeStarHalo, makeStars } = await import("./sky");
+    const halo = bakeStarHalo();
+    expect(halo.length).toBe(2048 * 1024);
+    const st = makeStars();
+    // (a star of the brightest tier: the light page keeps every one of them)
+    const k = Array.from(st.tier).findIndex((t) => t === 2);
+    const x = st.position[3 * k]!, y = st.position[3 * k + 1]!, z = st.position[3 * k + 2]!;
+    const c = Math.min(2047, Math.floor((Math.atan2(y, x) / (2 * Math.PI) + 0.5) * 2048));
+    const r = Math.min(1023, Math.floor((Math.asin(z) / Math.PI + 0.5) * 1024));
+    expect(halo[r * 2048 + c]).toBeGreaterThan(0);
+    // (it fades smoothly away: the neighbour two texels off is dimmer than the star's own)
+    expect(halo[r * 2048 + Math.min(2047, c + 2)]!).toBeLessThan(halo[r * 2048 + c]!);
+    // (more of the map is lit by a halo than by the stars' own texels, and not all of it)
+    const lit = halo.reduce((n, v) => n + (v > 0 ? 1 : 0), 0);
+    expect(lit).toBeGreaterThan(1000);
+    expect(lit).toBeLessThan(halo.length);
+  });
+});

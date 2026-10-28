@@ -6,6 +6,8 @@
  */
 export const SURFACE = {
   url: "/media/earth-grey.png",
+  /** The same picture at 8192 x 4096 (GIBS level 5, scripts/globe/bake-earth.py): the interlude's flight comes close to the ground, where the regular one's patches show; loaded when an interlude is planned or asked for. */
+  hiUrl: "/media/earth-grey-hi.png",
   /** The share of the land's pixels that are drawn (in the lines' ordered dither: a checkered, pixel-art stipple, the look it has half way through its fade) at the page's own view, and at every zoom; the interlude adds `egg` to it. */
   cover: 0.5,
   egg: 0.12,
@@ -55,6 +57,8 @@ export const NIGHT = {
   landMax: 1.8,
   /** The interlude's atmosphere (the glow over the limb and the veil on the ground): how much of it goes where the planet is washed (the dark side on the dark page, the sun's side on the light one): it is lit exactly as the ground is (the same terminator, in the same whole steps), and gone where the ground is dark. */
   atmosphereDim: 1,
+  /** The power the interlude's atmosphere's light (1 lit, 0 dark, in whole steps) is taken to: above 1 it falls away faster towards the dark, so that on the night side, and in the half-lit fringe of the terminator, it is hardly there, as the planet's own rim is not (the day side, lit 1, is as it was). */
+  atmosphereFall: 2.5,
 } as const;
 
 /** GLSL for the light on a ground point `n` (a unit vector in the earth's frame) from the sun `uSunN`, scaled by how much night there is (`uNight`: 0 is all day): 1 lit, 0 dark. */
@@ -69,3 +73,23 @@ export const NIGHT_GLSL = /* glsl */ `
     return night * (1.0 - k);
   }
 `;
+
+/**
+ * The planet's LIGHTS at night (`lightsMaterial`, engine/materials.ts): NASA's Black Marble (the VIIRS night lights, public domain, scripts/globe/bake-lights.py) as a 2048 x 1024 map of how bright
+ * the lights are, drawn on the dark side only, in the night's own whole steps, as art pixels in the ordered dither (a pixel is a light or it is not), in a warm yellow (`color`), mixed `strength` of the way from the page's colour (they are faint, never the focus), at most `cover` of the pixels where the map is at its brightest.
+ */
+export const LIGHTS = {
+  url: "/media/earth-lights.png",
+  color: [1, 0.82, 0.45] as const,
+  strength: 0.5,
+  cover: 0.9,
+  /**
+   * The HEAT of a cluster: the map's green channel is how packed the lights are round a texel (0..1). From `from` to `to` of it (a smoothstep) a light goes from `color` to `core`, a near white, at `coreStrength`
+   * (brighter than `strength`: the core of a big cluster is the brightest thing of the night side), and the pixels of a packed place are kept more (`dense`: up to that much more coverage).
+   */
+  core: [1, 0.97, 0.88] as const,
+  coreStrength: 0.9,
+  from: 0.3,
+  to: 0.85,
+  dense: 0.6,
+} as const;

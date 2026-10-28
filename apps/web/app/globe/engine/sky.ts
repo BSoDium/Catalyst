@@ -255,6 +255,84 @@ export function makeStars(map: Uint8Array = bakeBand(), cfg: { count: number; ba
   return { count: cfg.count, position, tier, keep };
 }
 
+let defaultStarField: Stars | null = null;
+
+/** The star field with the page's own settings, made once (the sky layer draws it as points, the chrome of the interlude's letters reflects it): same seed, same stars. */
+export function defaultStars(): Stars {
+  return (defaultStarField ??= makeStars());
+}
+
+let bakedStars: { w: number; h: number; map: Uint8Array } | null = null;
+
+/**
+ * The stars as an equirectangular map in the band's own frame (column: longitude `atan2(y, x)`, row: latitude `asin(z)`, the whole sphere), a byte per texel: the brightness of the tier of the
+ * star there (a faint one 0.5, a middle one 0.8, the brightest 1), each star one texel (0.09 degrees at the default size), read without smoothing: a star is a hard little square. For a REFLECTION of the sky (engine/caption-layer.ts), which is read by direction and not drawn as points. Baked once.
+ */
+export function bakeStarMap(w = 4096, h = 2048): Uint8Array {
+  if (bakedStars && bakedStars.w === w && bakedStars.h === h) return bakedStars.map;
+  const map = new Uint8Array(w * h);
+  const st = defaultStars();
+  const level = [128, 205, 255];
+  for (let i = 0; i < st.count; i++) {
+    const x = st.position[3 * i]!, y = st.position[3 * i + 1]!, z = st.position[3 * i + 2]!;
+    const c = Math.min(w - 1, Math.floor((Math.atan2(y, x) / (2 * Math.PI) + 0.5) * w));
+    const r = Math.min(h - 1, Math.floor((Math.asin(Math.max(-1, Math.min(1, z))) / Math.PI + 0.5) * h));
+    const v = level[Math.min(2, st.tier[i]!)]!;
+    const k = r * w + c;
+    if (map[k]! < v) map[k] = v;
+  }
+  bakedStars = { w, h, map };
+  return map;
+}
+
+let bakedHalo: Uint8Array | null = null;
+
+/**
+ * The stars' HALOS as a 2048 x 1024 map (the same frame as `bakeStarMap`): each star adds a round gaussian of its own (a `HALO_SIGMA` texels wide on the SPHERE: the longitude's texel is stretched by the latitude's cosine, so that
+ * it is round everywhere but the poles), as bright as its tier, summed and clipped, so that a star is a soft glow that fades smoothly away from it (a splat) and a tight cluster a brighter one. For the light page's chrome
+ * (engine/caption-layer.ts): a grey veil round a white dot, as the light page's sun is, read with a smooth filter. Baked once (a few ms).
+ */
+export const HALO_SIGMA = 1.5;
+/** The light page shows only the stars of this tier and brighter (`bakeStarHalo`, engine/caption-layer.ts): fewer of them, as the owner asked (2026-10-28). */
+export const LIGHT_MIN_TIER = 1;
+/** And of the stars at that tier only this share is drawn there (a fixed pick by the star's index): a little fewer still. */
+export const LIGHT_TIER_KEEP = 0.55;
+export function bakeStarHalo(minTier = 1): Uint8Array {
+  if (bakedHalo) return bakedHalo;
+  const w = 2048;
+  const h = 1024;
+  const acc = new Float32Array(w * h);
+  const st = defaultStars();
+  const weight = [0.5, 0.8, 1];
+  const R = Math.ceil(HALO_SIGMA * 3);
+  for (let i = 0; i < st.count; i++) {
+    if (st.tier[i]! < minTier) continue; // (the faintest stars have no halo: the light page shows fewer, `LIGHT_MIN_TIER`)
+    if (st.tier[i]! === minTier && ((Math.imul(i, 2654435761) >>> 0) % 1000) / 1000 >= LIGHT_TIER_KEEP) continue; // (and a share of the next tier: `LIGHT_TIER_KEEP`)
+    const x = st.position[3 * i]!;
+    const y = st.position[3 * i + 1]!;
+    const z = st.position[3 * i + 2]!;
+    const fx = (Math.atan2(y, x) / (2 * Math.PI) + 0.5) * w - 0.5;
+    const fy = (Math.asin(Math.max(-1, Math.min(1, z))) / Math.PI + 0.5) * h - 0.5;
+    const cosLat = Math.max(0.05, Math.sqrt(Math.max(0, 1 - z * z)));
+    const rx = Math.min(40, Math.ceil(R / cosLat));
+    const wt = weight[Math.min(2, st.tier[i]!)]!;
+    for (let dy = -R; dy <= R; dy++) {
+      const r = Math.round(fy) + dy;
+      if (r < 0 || r >= h) continue;
+      for (let dx = -rx; dx <= rx; dx++) {
+        const c = (((Math.round(fx) + dx) % w) + w) % w;
+        const ex = (c - fx) * cosLat;
+        const ey = r - fy;
+        acc[r * w + c]! += wt * Math.exp(-(ex * ex + ey * ey) / (2 * HALO_SIGMA * HALO_SIGMA));
+      }
+    }
+  }
+  const out = new Uint8Array(w * h);
+  for (let i = 0; i < out.length; i++) out[i] = Math.min(255, Math.round(acc[i]! * 255));
+  bakedHalo = out;
+  return out;
+}
+
 /* ------------------------------------------------------------------ fade, tones, dither */
 
 /**

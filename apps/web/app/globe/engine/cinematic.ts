@@ -53,7 +53,7 @@ export const CINEMATIC = {
   depthCaps: 0.3,
   bevelCaps: 0.05,
   /** The bevel is a quarter circle in this many steps (a few more triangles, a bevel that catches the light along its width). */
-  bevelSegments: 3,
+  bevelSegments: 6,
   /**
    * The light, in the CAMERA's frame (x right, y up, z towards the viewer), so it comes from the same side of the screen wherever the word is on its
    * orbit: a key light from the upper left and in front, a weak fill from the lower right, an ambient share, and a sharp highlight (Blinn-Phong) and a REFLECTION
@@ -76,13 +76,13 @@ export const CINEMATIC = {
   maxHalfScreen: 0.47,
   /**
    * The timing (engine/caption.ts `EggShape`, ms), made to the sound's length (`SOUND` in cinematic-sound.ts: 24.1 s, a long crescendo and its final chord
-   * 20.25 s in, which is where the word lands: 0.5 + 0.4 + 19.35): the rows leave in `leaveMs`, the stage is empty for `gapMs`, the word comes in in `enterMs` (a very
+   * 20.25 s in, which is where the CAMERA lands and the picture is level: 0.5 + 0.4 + 19.35; the word lands `wordLateMs` after it and is still drifting into place as the chord sounds): the rows leave in `leaveMs`, the stage is empty for `gapMs`, the word comes in in `enterMs` (a very
    * long ease from `ease`: 1, against 2.2 for the regular rows, that lands at the roll's own speed), holds rolling through `ampDeg` for `holdMs` (long enough to read the studio's small line under the globe),
    * and leaves in `exitMs`. The globe pulls back by `zoomLevels` levels of zoom (0.7: to 62 % of its size, the word and the ring with it) and
    * LEANS over the first `zoomInMs`, stays so for as long as the word is on the stage, and comes back upright over the `zoomOutMs` AFTER it has
    * gone (the whole is `eggMs`: about 24 s, begun at 13 s in; the idle hold at 30 s waits for it, `Renderer.freezeWhenIdle`).
    */
-  shape: { leaveMs: 500, gapMs: 400, enterMs: 19350, ease: 1, holdMs: 3400, exitMs: 1450, ampDeg: 2.5, zoomLevels: 1, zoomInMs: 6000, zoomOutMs: 1400, zoomCutMs: 1000, levelMs: 5500 },
+  shape: { leaveMs: 500, gapMs: 400, enterMs: 19350, ease: 1, holdMs: 3400, exitMs: 1450, ampDeg: 2.5, zoomLevels: 1, zoomInMs: 6000, zoomOutMs: 1400, zoomCutMs: 1000, levelMs: 5500, wordLateMs: 2400 },
   /**
    * Where the word starts: the longitude its LEADING end (the west one) begins at, degrees east, in the earth's own frame, not the page's. The flight's
    * first camera is over Greece (22 E) at 0.15 earth radii, from where the equatorial shell is seen only up to about 111 E: the word starts BEYOND that
@@ -105,7 +105,7 @@ export const CINEMATIC = {
    */
   planet: { fill: false, cities: false },
   /** The atmosphere (a thin grey glow round the planet's limb): how much of it, for the whole interlude. `dim`: the letters seen through it (a sight line that passes within `reach` planet radii of the limb before reaching them) dim by up to `amount` into the page's colour (dark page) or a grey `lightTone` of the way to the ink (light page: the page's white would lighten them). */
-  atmosphere: { amount: 1, dim: { amount: 0.85, reach: 0.16, lightTone: 0.5 } },
+  atmosphere: { amount: 1, dim: { amount: 0.85, reach: 0.16, lightTone: 0.5, shell: 0.05 }, glow: { dark: { tone: 0.5, cover: 0.4 }, light: { tone: 0.3, cover: 0.26 } } },
   /**
    * The studio's small line under the globe, a parody of its own ("A COMCAST COMPANY"), set in the page's light sans in wide-spaced capitals: it comes in over `inMs` once the
    * word has landed and goes with its exit over `outMs`. `gap`: how far under the planet's centre its middle is, in planet radii (the studio's is 1.24); `size`: its height, planet
