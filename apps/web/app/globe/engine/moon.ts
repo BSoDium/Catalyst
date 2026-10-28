@@ -84,8 +84,8 @@ export const SUN = {
   halo: 14,
   haloFall: 2.6,
   haloSteps: 6,
-  /** The ring of light on top of the halo, in disc radii from the sun's centre: sharp on its inside (`inner` wide, at full `tone`), then a smooth falloff over `outer`, in `steps` dithered steps. */
-  ring: { at: 8.5, inner: 0.3, outer: 2.6, steps: 5, strength: 0.16 },
+  /** The ring of light on top of the halo, in disc radii from the sun's centre: sharp on its inside (`inner` wide, at full `tone`), then a smooth falloff over `outer`, in `steps` dithered steps. It is a lens's: it goes with the sun's visible share (`fade`: gone when the sun is hidden, whole from the second number of its area), and the soft halo stays. */
+  ring: { at: 8.5, inner: 0.3, outer: 2.6, steps: 5, strength: 0.16, fade: [0, 0.25] as const },
   /** The halo's tone, where it starts, at the disc's edge (the disc itself is the blur: `core`): the warm ramp's tone, on either page. */
   glow: 0.72,
   /**

@@ -27,7 +27,7 @@ const f = (n: number) => n.toFixed(3);
 const vec = (c: readonly number[]) => `vec3(${c.map(f).join(", ")})`;
 
 const FRAGMENT = /* glsl */ `
-  uniform vec2 uCentre; uniform float uR; uniform vec3 uBg; uniform vec3 uInk; uniform float uAmt; uniform float uLight; uniform float uHalo;
+  uniform vec2 uCentre; uniform float uR; uniform vec3 uBg; uniform vec3 uInk; uniform float uAmt; uniform float uLight; uniform float uHalo; uniform float uRing;
   ${WARM_GLSL}
   const float BAYER[16] = float[16](${BAYER4.map((n) => `${n}.0`).join(", ")});
   void main() {
@@ -49,7 +49,8 @@ const FRAGMENT = /* glsl */ `
       float rt = 0.0;
       if (d <= 0.0) { if (d > -${f(SUN.ring.inner)}) rt = 1.0; }
       else { float x = 1.0 - d / ${f(SUN.ring.outer)}; if (x > 0.0) rt = floor(x * x * ${f(SUN.ring.steps)} + th) / ${f(SUN.ring.steps)}; }
-      ink = max(ink, rt * uHalo * ${f(SUN.ring.strength)});
+      // (and with how much of the sun is in view, uRing: the ring is a lens's, light straight into the lens; with the sun hidden it means nothing, and only the soft halo is left, as the sun's coming)
+      ink = max(ink, rt * uHalo * uRing * ${f(SUN.ring.strength)});
     }
     if (ink <= 0.0) discard;
     // the warm ramp on the dark page; on the light page the halo is a faint grey (the sun is white, and the paper has no room for light) with only a little of the ramp's colour in it
@@ -74,6 +75,7 @@ const material = () =>
       uAmt: { value: 1 },
       uLight: { value: 0 },
       uHalo: { value: 1 },
+      uRing: { value: 1 },
       uSet: { value: 0 },
     },
     vertexShader: VERTEX,
@@ -257,6 +259,10 @@ export class SunLayer {
     u.uExt!.value = p.r * (1 + SUN.halo) + 1;
     u.uAmt!.value = f.amount;
     u.uHalo!.value = 1 - SUN.cover.halo * (1 - halo);
+    // the lens's ring goes with the sun's visible share: whole above `SUN.ring.fade[1]` of it, gone when it is hidden
+    const [r0, r1] = SUN.ring.fade;
+    const rt = Math.min(1, Math.max(0, (cres.area - r0) / (r1 - r0)));
+    u.uRing!.value = rt * rt * (3 - 2 * rt);
     u.uSet!.value = (1 - halo) * SUN.cover.halo;
     return true;
   }
