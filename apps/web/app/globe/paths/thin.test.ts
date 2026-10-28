@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fadeStraight, OFF_ZOOM, STRAIGHT_FADE_STEPS, straightFadeLevel, thinLegs, thinZoomOf, type ThinLeg } from "./thin";
+import { fadeStraight, mercatorPx, OFF_ZOOM, STRAIGHT_FADE_STEPS, straightFadeLevel, thinLegs, thinZoomFor, thinZoomOf, windowFor, type ThinLeg } from "./thin";
 
 const leg = (key: string, a: [number, number], b: [number, number], lit = false): ThinLeg => ({ key, parts: [[a, b]], lit });
 
@@ -55,5 +55,44 @@ describe("fadeStraight: straight lines quieten with the share of the screen they
     const ground: ThinLeg = { key: "g", parts: [[[0, 0], [30, 0]]] };
     const lit: ThinLeg = { key: "l", parts: [[[0, 0], [30, 0]]], straight: true, lit: true };
     expect(fadeStraight([ground, lit], 8, 1000)).toBeNull();
+  });
+});
+
+describe("thinZoomFor: a hysteresis on the quarter steps", () => {
+  it("keeps the step in force until the zoom is past the middle by the hysteresis, and quantises as before without one", () => {
+    expect(thinZoomFor(5.2, null)).toBe(thinZoomOf(5.2));
+    expect(thinZoomFor(5.14, 5)).toBe(5); // past the middle (5.125) but inside the hysteresis
+    expect(thinZoomFor(5.2, 5)).toBe(5.25);
+    expect(thinZoomFor(5.11, 5.25)).toBe(5.25);
+  });
+});
+
+describe("the window the thinning works in", () => {
+  it("is null when it would take in the world, and a box round the view otherwise", () => {
+    expect(windowFor(0, 0, 1000, 2, null)).toBeNull();
+    const w = windowFor(100000, 100000, 1000, 8, null)!;
+    expect(w.window.x1 - w.window.x0).toBe(2500);
+    expect(w.window.x0).toBeLessThan(100000 - 500);
+    expect(w.window.x1).toBeGreaterThan(100000 + 500);
+  });
+  it("stays on its grid point while the centre moves less than 3/4 of a step, then moves", () => {
+    const a = windowFor(100000, 100000, 1000, 8, null)!;
+    const near = windowFor(100000 + 0.7 * 500, 100000, 1000, 8, a.anchor)!;
+    expect(near.anchor).toEqual(a.anchor);
+    const far = windowFor(100000 + 0.8 * 500, 100000, 1000, 8, a.anchor)!;
+    expect(far.anchor.ix).toBe(a.anchor.ix + 1);
+  });
+  it("leaves out the cells of a leg outside it (the leg is kept, it is not on the screen) but not those inside, and keeps the length", () => {
+    const [cx, cy] = mercatorPx(10, 45, 9);
+    const w = windowFor(cx, cy, 1000, 9, null)!.window;
+    const inside = leg("in", [10, 45], [10.2, 45.1]);
+    const copy = leg("copy", [10.01, 45.005], [10.19, 45.095]);
+    const outside = leg("out", [60, 10], [60.5, 10.2]);
+    const outCopy = leg("outCopy", [60.01, 10.005], [60.49, 10.195]);
+    const kept = thinLegs([inside, copy, outside, outCopy], 9, 2.5, w)!;
+    expect(kept.has("in")).toBe(true);
+    expect(kept.has("copy")).toBe(false);
+    expect(kept.has("out")).toBe(true);
+    expect(kept.has("outCopy")).toBe(true);
   });
 });

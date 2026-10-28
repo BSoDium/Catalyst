@@ -35,6 +35,7 @@ import { SunLayer } from "./sun-layer";
 import { RouteLayer } from "./route-layer";
 import { SKY_STATE, viewToGalactic } from "./sky";
 import { SkyLayer } from "./sky-layer";
+import { perfEnd, perfStart } from "./perf";
 import { routeLift } from "./view";
 import { TUNING } from "./tuning";
 import { surfaceTones } from "./surface";
@@ -427,11 +428,13 @@ export class GlobeScene {
   kept: ReadonlySet<string> | null = null;
 
   /** Per-frame uniforms that depend on the camera. `now` is the clock (ms) the border fade runs on; `instant`: reduced motion. */
-  syncCamera(basis: ViewBasis, zoom: number, pixel: number, now: number, instant: boolean, lat = 0, view = 0, hold = false) {
+  syncCamera(basis: ViewBasis, zoom: number, pixel: number, now: number, instant: boolean, lat = 0, view = 0, hold = false, lon?: number) {
     this.routes.setLift(routeLift(zoom));
     this.routes.setScale(pixel, zoomToRadiusPx(zoom));
     // the Web Mercator zoom with the scale the centre has on the globe (the unified zoom less log2 of the secant of the latitude)
-    this.kept = this.routes.setThinning(zoom + Math.log2(Math.max(0.05, Math.cos((lat * Math.PI) / 180))), pixel, view);
+    const tp = perfStart();
+    this.kept = this.routes.setThinning(zoom + Math.log2(Math.max(0.05, Math.cos((lat * Math.PI) / 180))), pixel, view, lon === undefined ? undefined : { lon, lat });
+    perfEnd("paths.thin", tp);
     // Borders: on from the zoom `TUNING.borderZoom` (a hysteresis), off below. The fade is a timed TONE (a line is always solid): the faintest
     // grey level stepping up through the palette to the coast level (the coastline's, `borderLevel`) over `FADE_MS`, whatever the camera does, so the globe
     // at rest never shows a half-faded border. Never a dither: a low-coverage dither on 1px lines reads as noise instead of a fade.
