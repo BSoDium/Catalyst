@@ -27,7 +27,7 @@ const f = (n: number) => n.toFixed(3);
 const vec = (c: readonly number[]) => `vec3(${c.map(f).join(", ")})`;
 
 const FRAGMENT = /* glsl */ `
-  uniform vec2 uCentre; uniform float uR; uniform vec3 uBg; uniform vec3 uInk; uniform float uAmt; uniform float uLight; uniform float uHalo; uniform float uRing; uniform float uSoft; uniform float uK; uniform float uHot;
+  uniform vec2 uCentre; uniform float uR; uniform vec3 uBg; uniform vec3 uInk; uniform float uAmt; uniform float uLight; uniform float uHalo; uniform float uRing; uniform float uSoft; uniform float uK;
   ${WARM_GLSL}
   const float BAYER[16] = float[16](${BAYER4.map((n) => `${n}.0`).join(", ")});
   void main() {
@@ -53,8 +53,6 @@ const FRAGMENT = /* glsl */ `
       // (and with how much of the sun is in view, uRing: the ring is a lens's, light straight into the lens; with the sun hidden it means nothing, and only the soft halo is left, as the sun's coming)
       ink = max(ink, rt * uHalo * uRing * ${f(SUN.ring.strength)});
     }
-    // half-way through the sunset the air next to the sun is as bright as the sun's centre (uHot, dark page): the inner tones go to the ramp's whitest, the further out the less
-    if (uLight < 0.5 && uHot > 0.0 && r >= 1.0) ink = mix(ink, ${f(SUN.hot.tone)}, uHot * smoothstep(${f(SUN.hot.from)}, 1.0, t0));
     if (ink <= 0.0) discard;
     // the warm ramp on the dark page; on the light page the halo is a faint grey (the sun is white, and the paper has no room for light) with only a little of the ramp's colour in it
     float k = clamp(ink * ${f(SUN.gain)}, 0.0, 1.0);
@@ -80,7 +78,6 @@ const material = () =>
       uHalo: { value: 1 },
       uRing: { value: 1 },
       uSoft: { value: 1 },
-      uHot: { value: 0 },
       uK: { value: 1 },
       uSet: { value: 0 },
     },
@@ -275,7 +272,6 @@ export class SunLayer {
     u.uK!.value = Math.max(k, 1e-3);
     u.uSoft!.value = SUN.cover.hidden + (1 - SUN.cover.hidden) * k;
     u.uSet!.value = (1 - halo) * SUN.cover.halo;
-    u.uHot!.value = 4 * cres.area * (1 - cres.area);
     return true;
   }
 

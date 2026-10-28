@@ -18,6 +18,8 @@ import { FadeArray, clockStep } from "./fade";
 import { BAYER4, type Mat3, bakeBand, defaultStars, skyGeometry, skyWanted, starTones } from "./sky";
 import { SKY } from "./tuning";
 
+const vec = (c: readonly number[]) => `vec3(${c.map((n) => n.toFixed(3)).join(", ")})`;
+
 const f = (n: number) => n.toFixed(6);
 
 /** The shared GLSL: the fade (`skyFade`: `limb` to 1 by a smoothstep, times the layer's on/off value) and the Bayer threshold (`bayerThreshold`). */
@@ -80,10 +82,11 @@ const starMaterial = () =>
       uTone1: { value: new Vector3() },
       uTone2: { value: new Vector3() },
       uTone3: { value: new Vector3() },
+      uBg: { value: new Vector3() },
     },
     depthWrite: false,
     vertexShader: /* glsl */ `
-      attribute float aTier; attribute float aKeep;
+      attribute float aTier; attribute float aKeep; attribute float aHue; attribute float aGlow; uniform vec3 uBg;
       uniform mat3 uViewToGal; uniform vec2 uBuf;
       ${COMMON}
       varying vec3 vColor;
@@ -93,7 +96,11 @@ const starMaterial = () =>
         if (clip.w <= 0.0 || aKeep >= skyFade(px)) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return; }
         gl_Position = vec4(clip.xy, clip.w, clip.w);
         gl_PointSize = 1.0;
-        vColor = aTier > 1.5 ? uTone3 : (aTier > 0.5 ? uTone2 : uTone1);
+        vec3 base = aTier > 1.5 ? uTone3 : (aTier > 0.5 ? uTone2 : uTone1);
+        // a very slight tint, bluer or more purple (SKY.stars.tint), as a share of the tone
+        // the star's own brightness: its tone scaled from the page's colour (under 1 dimmer, over 1 a little brighter)
+        base = clamp(mix(uBg, base, aGlow), 0.0, 1.0);
+        vColor = base * (1.0 + (aHue < 0.0 ? -aHue * ${vec(SKY.stars.tint.blue)} : aHue * ${vec(SKY.stars.tint.purple)}));
       }
     `,
     fragmentShader: "varying vec3 vColor; void main() { gl_FragColor = vec4(vColor, 1.0); }",
@@ -150,6 +157,8 @@ export class SkyLayer {
     g.setAttribute("position", new BufferAttribute(s.position, 3));
     g.setAttribute("aTier", new BufferAttribute(s.tier, 1));
     g.setAttribute("aKeep", new BufferAttribute(s.keep, 1));
+    g.setAttribute("aHue", new BufferAttribute(s.hue, 1));
+    g.setAttribute("aGlow", new BufferAttribute(s.glow, 1));
     this.points = new Points(g, this.stars);
     this.points.renderOrder = 0.6;
     this.points.frustumCulled = false;
@@ -169,6 +178,7 @@ export class SkyLayer {
     (this.stars.uniforms.uTone1!.value as Vector3).set(...lifted(dim));
     (this.stars.uniforms.uTone2!.value as Vector3).set(...lifted(bright));
     (this.stars.uniforms.uTone3!.value as Vector3).set(...lifted(top));
+    (this.stars.uniforms.uBg!.value as Vector3).set(...t.background);
   }
 
   /** Whether the on/off transition has not reached its end: the frame loop must keep going. */

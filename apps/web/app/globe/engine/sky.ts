@@ -214,7 +214,33 @@ export interface Stars {
   tier: Float32Array;
   /** A fixed rank 0..1: the star is drawn while the fade exceeds it, so the fade thins the field out at random instead of dimming it. */
   keep: Float32Array;
+  /** A fixed tint: the whole part is the kind (0 none, 1 bluer, 2 purple, 3 redder), the fraction its strength 0..1 (`starHue`, `SKY.stars.tint`). */
+  hue: Float32Array;
+  /** A fixed brightness factor of the star's tone, about 0.15..1.3: 1 is its tier's tone as it is, under 1 is dimmer (towards the page's colour), over 1 a little brighter (`SKY.stars.glow`). */
+  glow: Float32Array;
 }
+
+/** The tint of a star from a uniform draw `u` in [0, 1): kind (0 none, 1 blue, 2 purple, 3 red) by `SKY.stars.tint.shares`, plus a strength in [0, 1) within the kind's share of the draw. */
+export function starHue(u: number): number {
+  let from = 0;
+  const shares = SKY.stars.tint.shares;
+  for (let k = 0; k < shares.length; k++) {
+    if (u < from + shares[k]! || k === shares.length - 1) return k + Math.min(0.999, Math.max(0, (u - from) / shares[k]!));
+    from += shares[k]!;
+  }
+  return 0;
+}
+
+/** The brightness factor of a star from a uniform draw `u` in [0, 1): the first `SKY.stars.glow.faint.share` of them are barely visible (`faint.range`), the rest spread over `range`. */
+export function starGlow(u: number): number {
+  const { faint, range } = SKY.stars.glow;
+  return u < faint.share ? faint.range[0] + (faint.range[1] - faint.range[0]) * (u / faint.share) : range[0] + (range[1] - range[0]) * ((u - faint.share) / (1 - faint.share));
+}
+
+const smooth01 = (t: number): number => {
+  const u = Math.min(1, Math.max(0, t));
+  return u * u * (3 - 2 * u);
+};
 
 /** The tone tier (0 = faintest) of a star from a uniform draw `u` in [0, 1): `shares` are the fractions of the field per tier, faintest first. */
 export function starTier(u: number, shares: readonly number[]): number {
@@ -235,6 +261,8 @@ export function makeStars(map: Uint8Array = bakeBand(), cfg: { count: number; ba
   const position = new Float32Array(cfg.count * 3);
   const tier = new Float32Array(cfg.count);
   const keep = new Float32Array(cfg.count);
+  const hue = new Float32Array(cfg.count);
+  const glow = new Float32Array(cfg.count);
   let n = 0;
   while (n < cfg.count) {
     const z = rand() * 2 - 1;
@@ -242,17 +270,24 @@ export function makeStars(map: Uint8Array = bakeBand(), cfg: { count: number; ba
     const r = Math.sqrt(1 - z * z);
     const x = r * Math.cos(phi), y = r * Math.sin(phi);
     const { l, b } = galacticLonLat([x, y, z]);
-    const density = 1 + (cfg.bandBoost - 1) * Math.min(1, sampleBand(map, l, b) / SKY.band.gain);
+    // patchy: the band's share of the density, times a slow noise over the sky that leaves clumps and bare patches (`SKY.stars.patch`)
+    const clump = fbm([x, y, z], seed ^ 0x7a3c, SKY.stars.patch.octaves);
+    const patch = SKY.stars.patch.floor + (1 - SKY.stars.patch.floor) * smooth01((clump - SKY.stars.patch.from) / (SKY.stars.patch.to - SKY.stars.patch.from));
+    const density = (1 + (cfg.bandBoost - 1) * Math.min(1, sampleBand(map, l, b) / SKY.band.gain)) * patch;
     const gate = rand();
     const bright = rand();
     const rank = rand();
+    const tint = rand();
+    const g = rand();
     if (gate * cfg.bandBoost > density) continue;
     position.set([x, y, z], n * 3);
     tier[n] = starTier(bright, cfg.tierShares);
     keep[n] = rank;
+    hue[n] = starHue(tint);
+    glow[n] = starGlow(g);
     n++;
   }
-  return { count: cfg.count, position, tier, keep };
+  return { count: cfg.count, position, tier, keep, hue, glow };
 }
 
 let defaultStarField: Stars | null = null;
