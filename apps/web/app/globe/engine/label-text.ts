@@ -2,7 +2,7 @@
  * The text of the box labels and its size in CSS px (pure apart from the injectable meter; unit tested).
  *
  * The labels of the detection boxes are HTML text in device pixels, not pixel art (the pixel font stays for text that is part of the map
- * itself, engine/pixel-labels.ts): the app's own monospace stack (`--font-mono`) on a plate of the page colour with a soft feathered edge
+ * itself, engine/pixel-labels.ts): the app's own monospace stack (`--font-mono`) on an opaque plate of the page colour with a sharp edge
  * (app.css `.map-label`, engine/label-plate.ts). Everything the layout needs is the SIZE of a label, which is measured once per string with a 2D canvas
  * (`measureText`; the DOM is never read back) and cached: the planner (engine/label-plan.ts), the cut of the hierarchy (engine/lod-tree.ts: a
  * label counts as part of its node) and the hit hull (engine/hit-area.ts) all work from these numbers, in CSS px.
@@ -41,12 +41,6 @@ export const LABEL_TYPE = {
    */
   bleed: 6,
   bleedY: 3,
-  /**
-   * The soft edge of the plate, px (label-dom.ts writes it as a `box-shadow` of the plate's own colour): the plate's translucent colour goes on
-   * `spread` px beyond the plate and fades out over `blur` px more. Small on purpose, 1 to 2 px: the plate is a translucent ground, not a halo
-   * that dims the map around the text.
-   */
-  feather: { blur: 2, spread: 1 },
 } as const;
 
 export type Run = "name" | "sub";

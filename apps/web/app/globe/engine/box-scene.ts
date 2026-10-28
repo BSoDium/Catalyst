@@ -7,8 +7,8 @@
  *    nearest-neighbour): a rectangle one cell thick, corners solid and the rest of each edge dashed (anchored to the box's edges), its colour
  *    its STATE (the `peak` level at rest, the ink hovered or focused) and the selected one a solid line in the ink; its interior masked in the
  *    page colour while it is clamped to the minimum size, hollow once it is bigger. They are part of the map.
- *  - the LABELS are HTML text in device pixels (engine/label-dom.ts): the UI font on a translucent plate of the page colour with a 1 to 2 px
- *    feather (app.css `.map-label`, `--label-plate-alpha`, engine/label-plate.ts). They are not part of the map's pixels and do not move
+ *  - the LABELS are HTML text in device pixels (engine/label-dom.ts): the UI font on an opaque plate of the page colour with a sharp edge
+ *    (app.css `.map-label`). They are not part of the map's pixels and do not move
  *    like them: a label follows the PROJECTED rectangle of its box (`NodeScreen.fx0..fy1`), not the one snapped to art cells that is drawn, so
  *    with the earth spinning labels glide smoothly instead of stepping by a cell (2026-10-13; the lattice of 2026-10-12 was taken back for
  *    the labels). The pixel text pipeline stays for text that is part of the map (route labels, later).

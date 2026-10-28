@@ -47,11 +47,8 @@ describe("label size (CSS px, measured once per string)", () => {
     expect(LABEL_TYPE.bleed).toBe(LABEL_TYPE.padX);
     expect(LABEL_TYPE.bleedY).toBe(LABEL_TYPE.padY);
     expect(LABEL_TYPE.padX).toBeGreaterThanOrEqual(5);
-    // the feather of the translucent plate is 1 to 2 px: no halo that dims the map around the text
-    expect(LABEL_TYPE.feather.blur).toBeGreaterThanOrEqual(1);
-    expect(LABEL_TYPE.feather.blur).toBeLessThanOrEqual(2);
-    expect(LABEL_TYPE.feather.spread).toBeGreaterThanOrEqual(1);
-    expect(LABEL_TYPE.feather.spread).toBeLessThanOrEqual(2);
+    // the plate has a sharp edge (2026-10-28): no feather token any more
+    expect("feather" in LABEL_TYPE).toBe(false);
     expect(runFont("name", "system-ui")).toBe(`${LABEL_TYPE.name.weight} ${LABEL_TYPE.name.size}px system-ui`);
     expect(runFont("sub", "system-ui")).toBe(`${LABEL_TYPE.sub.weight} ${LABEL_TYPE.sub.size}px system-ui`);
   });

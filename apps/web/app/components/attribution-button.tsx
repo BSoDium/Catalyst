@@ -17,7 +17,7 @@ interface AttributionButtonProps {
  * the tile configuration), then a middle dot (the same separator as between the credits) and a "See more" button with an up-right arrow (`Icon`, inline size) that opens
  * the credits dialog (`CreditsDialog`).
  *
- *  - No outline (owner, 2026-10-26): the ground is a map label's own (`.map-credits`, app.css): the translucent page-colour plate with a soft feather. On the home
+ *  - No outline (owner, 2026-10-26): the ground is the map credits' own (`.map-credits`, app.css): the translucent page-colour plate with a soft feather (the map labels' plates are opaque and sharp since 2026-10-28; the credits line was not part of that request). On the home
  *    screen's display mode (the hero at rest) there is none at all: the map is under the hero's own gradient there.
  *  - The line is real, selectable text in the dim `--subtle-foreground` (less contrast, never less opacity). The button is a real
  *    `<button aria-haspopup="dialog">` named "See more credits"; hover and keyboard focus raise it to the foreground, and the global focus ring shows on keyboard focus.
