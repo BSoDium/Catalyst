@@ -220,7 +220,7 @@ const EGG_ENV = { band: 2.3, stars: 0.95, sky: 0.45, edge: { contrast: 0.9, rim:
  * warm ramp (`SUN.tint`), so that it steps outwards from white-gold through yellow and amber to red, as the sun's halo does. `unit`: the centre's angular size, radians; `reach`: where the
  * falloff is gone, in units; `fall`: its power; `gain`: how bright the centre is (the ramp's strength is `gain` times the falloff, as the halo's is); `lightMix`: how much of the colour the light page's letters take.
  */
-const SUN_GLINT = { unit: 0.075, reach: 7, fall: 1.8, gain: 2.4, hot: 1.6, light: { veil: 0.75, spot: 1 } } as const;
+const SUN_GLINT = { unit: 0.075, reach: 7, fall: 1.8, gain: 2.4, hot: 1.6, light: { veil: 0.55, spot: 1, edge: [1.5, 1.8] } } as const;
 
 /**
  * Lit like polished metal: a key light and a weak fill fixed in the camera's frame (`CINEMATIC.light`), and a REFLECTION of a studio, a procedural
@@ -328,7 +328,7 @@ const EGG_FRAG = /* glsl */ `
       sunAdd = sunCol;
       // (the light page's sun: the falloff as a grey veil and the centre as a white spot, the same amount of it)
       sunVeil = fall * seen;
-      sunSpot = hot * seen;
+      sunSpot = (1.0 - smoothstep(${SUN_GLINT.light.edge[0].toFixed(2)}, ${SUN_GLINT.light.edge[1].toFixed(2)}, u)) * seen;
     }
     // the outline is the line: the ink, hardly lit
     if (vKind > 0.5 && vKind < 1.5) col = mix(col, uOutline, ${CINEMATIC.light.outlineMix.toFixed(2)});
