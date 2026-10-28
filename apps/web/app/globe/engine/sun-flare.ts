@@ -37,7 +37,7 @@ export const WARM_GLSL = /* glsl */ `
 `;
 
 const FRAGMENT = /* glsl */ `
-  uniform vec2 uSun; uniform vec2 uMid; uniform float uUnit; uniform float uStr; uniform float uRay; uniform vec3 uBg; uniform vec3 uInk; uniform float uLight; uniform float uBufW; uniform float uBufH; uniform float uSunR;
+  uniform vec2 uSun; uniform vec2 uMid; uniform float uUnit; uniform float uStr; uniform float uRay; uniform vec3 uBg; uniform vec3 uInk; uniform float uLight; uniform float uBufW; uniform float uBufH; uniform float uSunR; uniform float uLen;
   ${WARM_GLSL}
   const float BAYER[16] = float[16](${BAYER4.map((n) => `${n}.0`).join(", ")});
   const float AT[${N}] = float[${N}](${list(FLARE.ghosts.map((g) => g.at))});
@@ -74,9 +74,9 @@ const FRAGMENT = /* glsl */ `
     vec2 a = abs(o);
     float dist = -1.0;
     float len = 1.0;
-    if (o.y == 0.0) { dist = a.x; len = ${f(FLARE.streak)} * uBufW; }
-    else if (o.x == 0.0) { dist = a.y; len = ${f(FLARE.streakUp)} * uBufH; }
-    else if (a.x == a.y) { dist = a.x * 1.4142; len = ${f(FLARE.streakDiag)} * uBufW; }
+    if (o.y == 0.0) { dist = a.x; len = ${f(FLARE.streak)} * uLen * uBufW; }
+    else if (o.x == 0.0) { dist = a.y; len = ${f(FLARE.streakUp)} * uLen * uBufH; }
+    else if (a.x == a.y) { dist = a.x * 1.4142; len = ${f(FLARE.streakDiag)} * uLen * uBufW; }
     if (dist > uSunR) {
       float along = 1.0 - (dist - uSunR) / len;
       if (along > 0.0 && pow(along, ${f(FLARE.streakFall)}) > bayer()) { ink = ${f(FLARE.streakTone)}; hue = 0.95; ray = true; }
@@ -112,6 +112,8 @@ export interface FlareFrame {
   r?: number;
   /** How far the planet has covered the sun's glow, 0 (none) to 1 (all): the light reddens with it (`warm`). Absent: none. */
   set?: number;
+  /** How long the rays are, as a share of their full length, 0..1: the sun's visible radius (the root of its area). Absent: whole. */
+  size?: number;
 }
 
 const smooth = (a: number, b: number, x: number) => {
@@ -162,7 +164,7 @@ export function rayStart(r: number, area: number, width: number, disc: number): 
 }
 
 /** The flare for this frame: the sun's place (a whole pixel's centre), the middle of the picture, the unit its sizes are shares of, and its strength; or null when there is none. Pure. */
-export function flarePlace(fr: FlareFrame): { sx: number; sy: number; mx: number; my: number; unit: number; str: number; ray: number; r: number } | null {
+export function flarePlace(fr: FlareFrame): { sx: number; sy: number; mx: number; my: number; unit: number; str: number; ray: number; r: number; len: number } | null {
   if (!fr.ahead || fr.amount <= 0.01 || fr.visible <= 0.01) return null;
   const mx = fr.bufW / 2;
   const my = fr.bufH / 2;
@@ -174,7 +176,7 @@ export function flarePlace(fr: FlareFrame): { sx: number; sy: number; mx: number
   // the rays are the sun's own: as bright as ever as the planet covers it for now (SUN.cover.dim: 0; they go with the flare), and the same while it is clear
   const ray = fade * (1 - SUN.cover.dim * (1 - fr.visible));
   if (str <= 0.01) return null;
-  return { sx: Math.floor(fr.x) + 0.5, sy: Math.floor(fr.y) + 0.5, mx, my, unit: Math.min(fr.bufW, fr.bufH), str, ray, r: fr.r ?? 0 };
+  return { sx: Math.floor(fr.x) + 0.5, sy: Math.floor(fr.y) + 0.5, mx, my, unit: Math.min(fr.bufW, fr.bufH), str, ray, r: fr.r ?? 0, len: fr.size ?? 1 };
 }
 
 export class FlareLayer {
@@ -188,6 +190,7 @@ export class FlareLayer {
       uBufW: { value: 1 },
       uBufH: { value: 1 },
       uSunR: { value: 0 },
+      uLen: { value: 1 },
       uStr: { value: 1 },
       uRay: { value: 1 },
       uBg: { value: new Color() },
@@ -232,6 +235,7 @@ export class FlareLayer {
     u.uBufW!.value = fr.bufW;
     u.uBufH!.value = fr.bufH;
     u.uSunR!.value = p.r;
+    u.uLen!.value = p.len;
     u.uStr!.value = p.str;
     u.uRay!.value = p.ray;
     u.uSet!.value = fr.set ?? 0;

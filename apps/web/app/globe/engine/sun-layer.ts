@@ -253,7 +253,7 @@ export class SunLayer {
     }
     // the lens flare comes out of the same centre, as bright as the share of the sun that is left (on the light page whole, until the sun is gone: it does not dim, only the sun's size follows the crescent)
     const rayStartPx = rayStart(sr, cres.area, cres.width, SUN.cover.disc);
-    const flaring = this.flare.sync({ bufW: f.bufW, bufH: f.bufH, x: f.ahead ? bx : f.x, y: f.ahead ? by : f.y, ahead: f.ahead, amount: f.amount, visible: this.dark ? cres.area : cres.area > 0.01 ? 1 : 0, r: rayStartPx, set: (1 - halo) * SUN.cover.redden } satisfies FlareFrame);
+    const flaring = this.flare.sync({ bufW: f.bufW, bufH: f.bufH, x: f.ahead ? bx : f.x, y: f.ahead ? by : f.y, ahead: f.ahead, amount: f.amount, visible: this.dark ? cres.area : cres.area > 0.01 ? 1 : 0, r: rayStartPx, size: Math.sqrt(cres.area), set: (1 - halo) * SUN.cover.redden } satisfies FlareFrame);
     if (!p) return flaring || blob;
     const u = this.mat.uniforms;
     (u.uCentre!.value as Vector2).set(p.x, p.y);
