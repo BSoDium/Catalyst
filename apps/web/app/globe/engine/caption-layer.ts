@@ -167,7 +167,8 @@ const FRAG = /* glsl */ `
     // a row seen from behind (past the horizon, curling back towards the planet) is the thickness' tone whole: the back of the type is quieter than its face
     vec3 col = !gl_FrontFacing ? side : (front ? (isOutline ? outl : face) : (vLayer < uEdgeLayer ? face : side));
     // over the planet's wash (the dark side; the lit one on the light page) the type is a little less lit, in the same steps as the lines (NIGHT.captionDim: far less than the land's, the words stay readable)
-    float dark = floor(washOf(normalize(vDir), uSunN, uNight, uFlip) * ${NIGHT.lineSteps.toFixed(1)} + 0.5) / ${NIGHT.lineSteps.toFixed(1)};
+    // (smooth, not in steps: the type is a solid object lit by the sun: washOf is its Lambert, falling away from the sun's side)
+    float dark = washOf(normalize(vDir), uSunN, uNight, uFlip);
     col = mix(col, uNightTo, dark * ${NIGHT.captionDim.toFixed(2)});
     // Premultiplied output, blended "over" (see the material): the glyph's inside is exactly 1, so an interior pixel is exactly opaque whatever
     // stacks behind it; only an edge is partly transparent (and then properly premultiplied: no bright fringe).

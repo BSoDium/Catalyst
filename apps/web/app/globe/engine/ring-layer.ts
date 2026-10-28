@@ -20,6 +20,7 @@
 import type { GlobeTheme } from "./colors";
 import { GlyphBuffer, placeGlyphs, ringLayout, ringPhase, ringTone, type RingLayout } from "./ring";
 import { CAPTION, RING } from "./tuning";
+import { NIGHT } from "./surface";
 
 export interface RingFrame {
   /** Centre of the planet on the container, CSS px. */
@@ -32,6 +33,9 @@ export interface RingFrame {
   /** The container's size, CSS px (the canvas never goes beyond it). */
   width: number;
   height: number;
+  /** The sun in the camera's frame (x right, y up, z towards the camera) and how much night there is (`setNight`'s, 0 is all day): the letters are lit as the limb they stand on is. Absent: no night. */
+  sun?: readonly [number, number, number];
+  night?: number;
 }
 
 export interface RingState {
@@ -421,20 +425,31 @@ export class RingLayer {
     // The atlas cell is drawn at `ATLAS_EM`; a letter is `g.em`. The cell's centre is the capital's centre: each letter turns about it to its
     // angle (clockwise from twelve o'clock), its top pointing away from the planet.
     const lv = Math.min(level, levels - 1);
-    const atlas = this.atlas(lv, dpr);
-    if (!atlas) return;
-    const hlAtlas = this.hlMode !== "none" && this.hlEnd > 0 ? this.atlas(lv, dpr, true) : null;
+    // the planet's night on the type: a letter at angle `a` stands over the limb's point (sin a, cos a, 0) in the camera's frame, lit as that point of the planet is (the same smoothstep, the same whole steps as the lines), and its tone goes `NIGHT.ringDim` of the way to the night's (the page's on the dark page, the ink on the light one)
+    const night = fr.sun ? (fr.night ?? 0) : 0;
+    const sun = fr.sun ?? [0, 0, 1];
+    const nightLevel = this.theme.scheme === "dark" ? 0 : levels - 1;
+    const atlasFor = (l: number, hl: boolean): Atlas | null => this.atlas(l, dpr, hl);
     const m = (dpr * g.em) / ATLAS_EM;
     const ox = -left * dpr;
     const oy = -top * dpr;
     const cw = CELL_W * dpr;
     const ch = CELL_H * dpr;
+    const useHl = this.hlMode !== "none" && this.hlEnd > 0;
     for (let i = 0; i < g.count; i++) {
-      const hl = hlAtlas !== null && g.idx[i]! < this.hlEnd;
-      const at = hl ? hlAtlas! : atlas;
+      const a = g.angle[i]!;
+      let l = lv;
+      if (night > 0.001) {
+        const dot = Math.sin(a) * sun[0] + Math.cos(a) * sun[1];
+        const x = Math.min(1, Math.max(0, (dot - NIGHT.litFrom) / (NIGHT.litTo - NIGHT.litFrom)));
+        const dark = Math.round(night * (1 - x * x * (3 - 2 * x)) * NIGHT.lineSteps) / NIGHT.lineSteps;
+        l = Math.round(lv + (nightLevel - lv) * dark * NIGHT.ringDim);
+      }
+      const hl = useHl && g.idx[i]! < this.hlEnd;
+      const at = atlasFor(l, hl);
+      if (!at) continue;
       const col = at.col.get(g.code[i]!);
       if (col === undefined) continue;
-      const a = g.angle[i]!;
       const c = Math.cos(a) * m;
       const sn = Math.sin(a) * m;
       ctx.setTransform(c, sn, -sn, c, g.x[i]! * dpr + ox, g.y[i]! * dpr + oy);

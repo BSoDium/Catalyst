@@ -1364,6 +1364,9 @@ export class GlobeRenderer {
   }
 
   private sunV = new Vector3();
+  /** The sun in the camera's frame and the night shown, as of the last frame: the ring of type is lit by them. */
+  private sunView: [number, number, number] = [0, 0, 1];
+  private nightShown = 0;
   private sunClip = new Vector4();
   private planetV = new Vector3();
 
@@ -1376,6 +1379,7 @@ export class GlobeRenderer {
     if (!sun) return;
     const v = this.sunV.set(sunEarth[0], sunEarth[1], sunEarth[2]).transformDirection(cam.matrixWorldInverse);
     const clip = this.sunClip.set(v.x, v.y, v.z, 0).applyMatrix4(cam.projectionMatrix);
+    this.sunView = [v.x, v.y, v.z];
     const ahead = clip.w > 1e-4;
     // (where the planet's centre is on the buffer: the crescent's centre of mass lies on the line from it through the sun)
     const pc = this.planetV.set(0, 0, 0).project(cam);
@@ -1854,6 +1858,8 @@ export class GlobeRenderer {
       alpha,
       width: this.width,
       height: this.height,
+      sun: this.sunView,
+      night: this.nightShown,
     });
   }
 
@@ -2407,6 +2413,7 @@ export class GlobeRenderer {
     // (the light page shows the wash a little softer than the dark one: `NIGHT.lightGain`)
     const shown = this.nightNow * (this.theme.scheme === "dark" ? 1 : NIGHT.lightGain);
     this.globe.setNight(shown, ns[0], ns[1], ns[2]);
+    this.nightShown = shown;
     this.caption?.setNight(shown, ns);
     const now = performance.now();
     this.globe.syncCamera(b, zoom, this.pixel, now, this.reduced, lat, Math.max(this.width, this.height), lon);

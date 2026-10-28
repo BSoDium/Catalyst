@@ -48,7 +48,9 @@ export const NIGHT = {
   limbDimLight: 0.35,
   lineSteps: 3,
   /** The orbiting type over the dark side: its colour goes this share of the way to the page's at the darkest (a dimming, not a night: the words must stay readable). */
-  captionDim: 0.3,
+  captionDim: 0.65,
+  /** The flat ring of type: the tone of a letter goes this share of the way to the night's, by how dark the limb under it is (owner, 2026-10-28: dimmed where the earth is). */
+  ringDim: 0.6,
   /** How much of the wash the light page shows (the scale of `uNight`): a little under the dark page's, so the night half is never solid ink. */
   lightGain: 0.75,
   /** The shadow of the night on the LIGHT page: the dark side, sea and ground alike, is darkened by this share at the darkest, in `lineSteps` flat steps, the step between two taken by the art's ordered dither (a stipple across the terminator, as the land has: no gradient). */
