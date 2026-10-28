@@ -213,7 +213,7 @@ const EGG_VERT = /* glsl */ `
 `;
 
 /** The environment of the metal (`EGG_FRAG` `galaxy`): how bright the Milky Way's band is in it (the band map is 0..1: brighter here than on the globe's sky, so that the metal shows it), the stars' (the globe's own star field, `bakeStarMap`; `starsLight` of that on the light page, where they are too visible at full strength and the spotlights carry the effect) and the broad lift of the page's own sky; `edge`: what the bevel does to the reflection that a flat face does not (`contrast`: the bevel reflects the environment that much harder, as a polished curve does; `rim`: a fresnel sheen, the bevel brightens smoothly towards the grazing angle, across its width; `wall`: the share of both that the walls take). */
-const EGG_ENV = { band: 2.3, stars: 0.95, starsLight: 0.85, sky: 0.45, edge: { contrast: 0.9, rim: 0.7, wall: 0.5 } } as const;
+const EGG_ENV = { band: 2.3, stars: 0.95, starsLight: 0.5, sky: 0.45, edge: { contrast: 0.9, rim: 0.7, wall: 0.5 } } as const;
 
 /**
  * The sun as the metal reflects it (`EGG_FRAG`), as the globe's own sun looks, less its rays: a very bright, hot centre and a falloff round it, whose strength picks the colour from the
@@ -289,8 +289,13 @@ const EGG_FRAG = /* glsl */ `
     vec3 g = uViewToGal * r;
     vec2 uv = vec2(atan(g.y, g.x) / 6.283185307 + 0.5, asin(clamp(g.z, -1.0, 1.0)) / ${((SKY.map.bMaxDeg * Math.PI) / 180).toFixed(6)} * 0.5 + 0.5);
     float band = texture2D(uBand, uv).r;
+    return ${EGG_ENV.band.toFixed(2)} * band + ${EGG_ENV.sky.toFixed(2)} * uSky * smoothstep(0.1, 0.95, r.y);
+  }
+  // The star field in the metal (the globe's own, one texel a star): on the light page starsLight of the dark page's strength.
+  float stars(vec3 r) {
+    vec3 g = uViewToGal * r;
     float st = texture2D(uStars, vec2(atan(g.y, g.x) / 6.283185307 + 0.5, asin(clamp(g.z, -1.0, 1.0)) / 3.141592654 + 0.5)).r;
-    return ${EGG_ENV.band.toFixed(2)} * band + ${EGG_ENV.stars.toFixed(2)} * st * mix(1.0, ${EGG_ENV.starsLight.toFixed(2)}, uLight) + ${EGG_ENV.sky.toFixed(2)} * uSky * smoothstep(0.1, 0.95, r.y);
+    return ${EGG_ENV.stars.toFixed(2)} * st * mix(1.0, ${EGG_ENV.starsLight.toFixed(2)}, uLight);
   }
   // the lines' own ordered dither, on the art's pixels (this canvas is drawn at the art's resolution)
   float dither2(vec2 a) { return fract(a.x * 0.5 + a.y * a.y * 0.75); }
@@ -321,7 +326,11 @@ const EGG_FRAG = /* glsl */ `
     float edgeK = vKind > 0.5 && vKind < 1.5 ? 1.0 : (vKind > 1.5 && vKind < 3.5 ? ${EGG_ENV.edge.wall.toFixed(2)} : 0.0);
     float fres = pow(1.0 - clamp(dot(n, -normalize(vView)), 0.0, 1.0), 3.0);
     float env = galaxy(rv) * (1.0 + edgeK * ${EGG_ENV.edge.contrast.toFixed(2)}) + edgeK * fres * ${EGG_ENV.edge.rim.toFixed(2)} * (0.35 + uSky);
-    vec3 col = lit * uExposure + vec3(uGlint * env * gain * (vKind > 3.5 ? 0.3 : 1.0));
+    // The stars take the face's own shine, not uFaceGain's (the light page damps a face's reflection to 0.3 so that the sky's band does not grey it; a star is a dark point on a white face, and at 0.3 of its
+    // strength it was under one level of the word's seven and was lost); the bevel's contrast is theirs too.
+    float starGain = vKind < 0.5 ? ${CINEMATIC.light.faceShine.toFixed(3)} : gain;
+    float starEnv = stars(rv) * (1.0 + edgeK * ${EGG_ENV.edge.contrast.toFixed(2)});
+    vec3 col = lit * uExposure + vec3(uGlint * (env * gain + starEnv * starGain) * (vKind > 3.5 ? 0.3 : 1.0));
     col += vec3(spec * uGlint * 0.5 * (vKind > 3.5 ? 0.3 : 1.0));
     vec3 sunAdd = vec3(0.0);
     float sunVeil = 0.0;
