@@ -83,9 +83,9 @@ const FRAGMENT = /* glsl */ `
     }
     if (uLight > 0.5) {
       // the light page: the sun's rays are WHITE, and what shows them is a very soft, faint grey darkening round the sun (the veil); the ghosts are the ramp's colours, faintly
-      float veil = pow(clamp(1.0 - length(p - uSun) / (${f(SUN.light.veil.reach)} * uBufW), 0.0, 1.0), ${f(SUN.light.veil.fall)}) * ${f(SUN.light.veil.strength)} * (1.0 - uSet);
+      float veil = pow(clamp(1.0 - length(p - uSun) / (${f(SUN.light.veil.reach)} * uBufW), 0.0, 1.0), ${f(SUN.light.veil.fall)}) * ${f(SUN.light.veil.strength)} * (1.0 - uSet) * uStr;
       if (ink <= 0.0 && veil < 0.004) discard;
-      if (ink <= 0.0) gl_FragColor = vec4(vec3(${f(SUN.light.veil.grey)}), veil * uStr);
+      if (ink <= 0.0) gl_FragColor = vec4(vec3(${f(SUN.light.veil.grey)}), veil);
       // (the rays are the sun's own white at all times: OPAQUE pixels, the strength taken out in the dither, not a see-through white)
       else if (ray) { if (bayer() >= uRay) discard; gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0); }
       else gl_FragColor = vec4(mix(uBg, warm(hue) * ${f(SUN.light.ink)}, clamp(ink * ${f(SUN.gain)}, 0.0, 1.0) * ${f(SUN.light.ghost)}), uStr);
@@ -108,6 +108,8 @@ export interface FlareFrame {
   /** How much of the sun the zoom lets through (the night's amount), 0..1, and how much of it the planet leaves, 0..1. */
   amount: number;
   visible: number;
+  /** How far the rays follow `visible` as the planet covers the sun, 0..1. Absent: `SUN.cover.dim` (the dark page's rays hardly dim). */
+  rayDim?: number;
   /** The sun's disc radius on the buffer, px: the streaks start at its edge. */
   r?: number;
   /** How far the planet has covered the sun's glow, 0 (none) to 1 (all): the light reddens with it (`warm`). Absent: none. */
@@ -165,7 +167,7 @@ export function rayStart(r: number, area: number, width: number, disc: number): 
 
 /** The flare for this frame: the sun's place (a whole pixel's centre), the middle of the picture, the unit its sizes are shares of, and its strength; or null when there is none. Pure. */
 export function flarePlace(fr: FlareFrame): { sx: number; sy: number; mx: number; my: number; unit: number; str: number; ray: number; r: number; len: number } | null {
-  if (!fr.ahead || fr.amount <= 0.01 || fr.visible <= 0.01) return null;
+  if (!fr.ahead || fr.amount <= 0.01 || fr.visible <= 0.001) return null;
   const mx = fr.bufW / 2;
   const my = fr.bufH / 2;
   const half = Math.hypot(mx, my);
@@ -174,8 +176,8 @@ export function flarePlace(fr: FlareFrame): { sx: number; sy: number; mx: number
   const fade = fr.amount * (1 - smooth(FLARE.edgeFrom, FLARE.edgeTo, out)) * smooth(FLARE.midFrom, FLARE.midTo, out);
   const str = fade * fr.visible;
   // the rays are the sun's own: as bright as ever as the planet covers it for now (SUN.cover.dim: 0; they go with the flare), and the same while it is clear
-  const ray = fade * (1 - SUN.cover.dim * (1 - fr.visible));
-  if (str <= 0.01) return null;
+  const ray = fade * (1 - (fr.rayDim ?? SUN.cover.dim) * (1 - fr.visible));
+  if (str <= 0.001) return null;
   return { sx: Math.floor(fr.x) + 0.5, sy: Math.floor(fr.y) + 0.5, mx, my, unit: Math.min(fr.bufW, fr.bufH), str, ray, r: fr.r ?? 0, len: fr.size ?? 1 };
 }
 

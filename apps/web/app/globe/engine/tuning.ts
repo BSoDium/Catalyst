@@ -108,7 +108,7 @@ export const SKY = {
     noise: { octaves: [[7, 0.6], [15, 0.3], [34, 0.1]] as const, floor: 0.5, breakBelow: 0.34, breakDepth: 0.75 },
   },
   stars: {
-    count: 20000,
+    count: 12000,
     /** Star density along the band relative to the sky away from it (1 = no preference): "slightly more of them along the band". */
     bandBoost: 6,
     /**
@@ -125,7 +125,7 @@ export const SKY = {
      */
     patch: { octaves: [[1.6, 1], [4, 0.6]] as const, from: 0.38, to: 0.62, floor: 0.25 },
     /** Variety of brightness (owner, 2026-10-28): each star's tone is scaled from the page's colour by a factor, 1 = its tier's tone, over 1 a little brighter, under 1 dimmer. `faint.share` of them are barely visible (`faint.range`); the rest spread evenly over `range`. */
-    glow: { faint: { share: 0.2, range: [0.08, 0.4] as const }, range: [0.5, 1.45] as const },
+    glow: { faint: { share: 0.4, range: [0.08, 0.4] as const }, range: [0.5, 1.45] as const },
     /** Each star's tint: a slight shift of its tone, as a share of each channel, towards blue, purple or red, times a strength 0..1. `shares` are the stars of each kind: none, blue, purple, red (sums to 1). */
     tint: { shares: [0.55, 0.2, 0.1, 0.15] as const, blue: [-0.09, -0.03, 0.1] as const, purple: [0.06, -0.08, 0.09] as const, red: [0.12, -0.05, -0.1] as const },
   },

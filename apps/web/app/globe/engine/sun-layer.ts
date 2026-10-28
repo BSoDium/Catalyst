@@ -9,7 +9,7 @@
  * Two looks, as the whole globe has two (`washOf`, engine/surface.ts): on the dark page it is the brightest thing there is, the ink's own tone. On the light page it is so bright that it burns the
  * colour away: the disc and the halo are the page's colour, and it shows only a ghost of a rim and the halo's faint darkness.
  */
-import { AddEquation, BufferAttribute, BufferGeometry, Color, Mesh, NormalBlending, OneFactor, OneMinusSrcAlphaFactor, CustomBlending, type Scene, ShaderMaterial, Vector2 } from "three";
+import { AddEquation, BufferAttribute, BufferGeometry, Color, Mesh, OneFactor, OneMinusSrcAlphaFactor, CustomBlending, type Scene, ShaderMaterial, Vector2 } from "three";
 import type { GlobeTheme } from "./colors";
 import { BAYER4 } from "./sky";
 import { SUN } from "./moon";
@@ -57,10 +57,12 @@ const FRAGMENT = /* glsl */ `
     // the warm ramp on the dark page; on the light page the halo is a faint grey (the sun is white, and the paper has no room for light) with only a little of the ramp's colour in it
     float k = clamp(ink * ${f(SUN.gain)}, 0.0, 1.0);
     vec3 lightHalo = mix(vec3(${f(SUN.light.halo.grey)}), warm(ink) * ${f(SUN.light.ink)}, ${f(SUN.light.halo.warm)});
-    vec3 col = uLight > 0.5 ? mix(uBg, lightHalo, k * ${f(SUN.light.halo.strength)}) : mix(uBg, warm(ink), k);
-    // (the fade is the dither's, not a blend: this layer is OPAQUE, so that it is drawn with the opaque things, in renderOrder, BEFORE the planet's lines and the routes, which are over it, not under)
+    // (the fade is the dither's, not a blend: a pixel is on or off)
     if (uAmt < 0.999 && th >= uAmt) discard;
-    gl_FragColor = vec4(col, 1.0);
+    // the halo is a lens's, over the planet like the blob (premultiplied, as the blob's): dark page, its light is laid over it, translucent; light page, the grey is laid over it
+    // (translucent, unlike the sun's disc. Light page: the grey is laid over what is behind by its own strength, exactly the old mix over the sky, and already see-through over the planet. Dark page: the light is whole, so over the sky it is as bright as ever, but only SUN.haloOpacity of it hides what is behind)
+    if (uLight > 0.5) { float a = k * ${f(SUN.light.halo.strength)}; gl_FragColor = vec4(lightHalo * a, a); }
+    else gl_FragColor = vec4(warm(ink) * k, k * ${f(SUN.haloOpacity)});
   }
 `;
 
@@ -83,9 +85,12 @@ const material = () =>
     },
     vertexShader: VERTEX,
     fragmentShader: FRAGMENT,
-    transparent: false,
-    blending: NormalBlending,
-    depthTest: true,
+    transparent: true,
+    blending: CustomBlending,
+    blendEquation: AddEquation,
+    blendSrc: OneFactor,
+    blendDst: OneMinusSrcAlphaFactor,
+    depthTest: false,
     depthWrite: false,
   });
 
@@ -183,6 +188,8 @@ export class SunLayer {
   private geometry = new BufferGeometry();
   private flare: FlareLayer;
   private dark = true;
+  /** How much of the sun's light is in the picture now, 0..1 (the eye's iris closes with it: `SUN.light.iris`). */
+  glare = 0;
   /** The blur: over the planet, not under it. */
   readonly blob: Mesh;
   private blobMat = blobMaterial();
@@ -193,8 +200,8 @@ export class SunLayer {
     this.mesh = new Mesh(this.geometry, this.mat);
     this.mesh.frustumCulled = false;
     this.mesh.visible = false;
-    // after the planet's disc (0, the depth that hides it) and the sky (0.5, 0.6), before the moon (0.7) and the lines
-    this.mesh.renderOrder = 0.65;
+    // over the planet's own layers (the ground glow is 5.1), under the blur (5.2): the halo and the ring are a lens's, not hidden by the limb
+    this.mesh.renderOrder = 5.15;
     scene.add(this.mesh);
     this.blob = new Mesh(this.geometry, this.blobMat);
     this.blob.frustumCulled = false;
@@ -224,6 +231,7 @@ export class SunLayer {
     const rise = ((f.rise ?? Infinity) * f.focal) / sr;
     const cres = sunCrescent(rise);
     const halo = haloClear(rise);
+    this.glare = p !== null ? f.amount * Math.sqrt(cres.area) : 0;
     // the crescent's centre of mass: on the line from the planet's centre through the sun, `shift` disc radii from the sun's centre, away from the planet
     let dx = 0;
     let dy = 1;
@@ -253,12 +261,13 @@ export class SunLayer {
     }
     // the lens flare comes out of the same centre, as bright as the share of the sun that is left (on the light page whole, until the sun is gone: it does not dim, only the sun's size follows the crescent)
     const rayStartPx = rayStart(sr, cres.area, cres.width, SUN.cover.disc);
-    const flaring = this.flare.sync({ bufW: f.bufW, bufH: f.bufH, x: f.ahead ? bx : f.x, y: f.ahead ? by : f.y, ahead: f.ahead, amount: f.amount, visible: this.dark ? cres.area : cres.area > 0.01 ? 1 : 0, r: rayStartPx, size: Math.sqrt(cres.area), set: (1 - halo) * SUN.cover.redden } satisfies FlareFrame);
+    const flaring = this.flare.sync({ bufW: f.bufW, bufH: f.bufH, x: f.ahead ? bx : f.x, y: f.ahead ? by : f.y, ahead: f.ahead, amount: f.amount, visible: this.dark ? cres.area : Math.sqrt(cres.area), rayDim: this.dark ? undefined : 1, r: rayStartPx, size: Math.sqrt(cres.area), set: (1 - halo) * SUN.cover.redden } satisfies FlareFrame);
     if (!p) return flaring || blob;
     const u = this.mat.uniforms;
-    (u.uCentre!.value as Vector2).set(p.x, p.y);
+    // the halo and the ring are round what is left of the sun, not the whole one: centred where the visible part's centre of mass is, their inner edge the crescent's width (as the blur is)
+    (u.uCentre!.value as Vector2).set(bx, by);
     (u.uBuf!.value as Vector2).set(f.bufW, f.bufH);
-    u.uR!.value = p.r;
+    u.uR!.value = unit;
     u.uExt!.value = p.r * (1 + SUN.halo) + 1;
     u.uAmt!.value = f.amount;
     u.uHalo!.value = 1 - SUN.cover.halo * (1 - halo);
@@ -269,7 +278,8 @@ export class SunLayer {
     u.uRing!.value = seen;
     // the halo is in proportion to the sun that is left: its reach goes with the sun's visible radius (the root of its area), its light with the same share, so that it is gone when the sun is
     const k = Math.sqrt(cres.area);
-    u.uK!.value = Math.max(k, 1e-3);
+    // (in units of `unit`: the reach is still SUN.halo disc radii times k)
+    u.uK!.value = Math.max(k * (sr / unit), 1e-3);
     u.uSoft!.value = SUN.cover.hidden + (1 - SUN.cover.hidden) * k;
     u.uSet!.value = (1 - halo) * SUN.cover.halo;
     return true;
