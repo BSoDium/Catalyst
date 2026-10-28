@@ -340,7 +340,14 @@ export function SearchPalette() {
               {load.state === "loading" && <p className="m-0 px-4 py-6 text-sm text-muted-foreground">Loading&hellip;</p>}
               {load.state === "error" && <p className="m-0 px-4 py-6 text-sm text-muted-foreground">The search could not be loaded. Close it and try again.</p>}
             </div>
-            <div className="flex items-center justify-between gap-3 border-t border-border px-4 py-2 text-sm text-muted-foreground">
+            {/* On a touch screen the footer's keys are gone (below) and, with no query, there is no count either: an empty bar under the panel read as a cropped panel, so it is out of the picture
+                (still in the tree: the keyboard line below is for assistive technology). */}
+            <div
+              className={cn(
+                "flex items-center justify-between gap-3 border-t border-border px-4 py-2 text-sm text-muted-foreground",
+                !(hasQuery && load.state === "ready") && "[@media(pointer:coarse)]:sr-only",
+              )}
+            >
               <span>
                 {/* The keys are for a keyboard: a touch screen (a coarse pointer) has none of them, and the close icon is its way out. The
                     screen-reader line below stays (a keyboard can be attached to anything). */}
