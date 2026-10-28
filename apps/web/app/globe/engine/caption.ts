@@ -812,6 +812,18 @@ export interface EggShape {
   zoomCutMs: number;
   /** The lean and the camera's height are put right (upright, level with the word) over the last `levelMs` before the word lands, and stay so: the lockup. */
   levelMs: number;
+  /**
+   * The word lands this much LATER than the camera does (ms, taken from the hold): its entrance takes `enterMs + wordLateMs`, so that it goes on moving, slowly, through the camera's last settling instead of standing
+   * still before the camera has arrived, and moves a little slower the whole way; the roll that follows is shorter, and as gentle (its amplitude is the share of `ampDeg` that the hold keeps). 0 or absent: the word lands with the camera.
+   */
+  wordLateMs?: number;
+}
+
+/** The word's own timing in the interlude: the entrance and the hold as the word has them (`EggShape.wordLateMs`), and the roll's amplitude for that hold, radians. */
+export function eggWord(s: EggShape): { enterMs: number; holdMs: number; amp: number } {
+  const late = Math.max(0, Math.min(s.wordLateMs ?? 0, s.holdMs * 0.8));
+  const holdMs = s.holdMs - late;
+  return { enterMs: s.enterMs + late, holdMs, amp: ((s.ampDeg * Math.PI) / 180) * (holdMs / Math.max(1, s.holdMs)) };
 }
 
 /** The interlude as planned for a session: after cycle `n` of the first showing has begun to leave, from the side `side` (-1 west, +1 east). */
@@ -833,8 +845,9 @@ export const eggMs = (s: EggShape): number => s.leaveMs + s.gapMs + s.enterMs + 
 
 /** The row's trajectory in the interlude: `rowX` with the interlude's own shape. `tau`: ms since the big row's entrance began. */
 export const eggX = (tau: number, start: number, s: EggShape): number => {
-  const amp = (s.ampDeg * Math.PI) / 180;
-  const x = rowX(tau, start, amp, { ms: s.enterMs, ease: s.ease, dwellMs: s.holdMs, exitMs: s.exitMs });
+  const w = eggWord(s);
+  const amp = w.amp;
+  const x = rowX(tau, start, amp, { ms: w.enterMs, ease: s.ease, dwellMs: w.holdMs, exitMs: s.exitMs });
   // The exit's share of the way is stretched so that the word ends DIRECTLY BEHIND the planet (half a turn from the view), wherever it came in from (which
   // depends on the page's longitude), and still moves as the row's own exit does. The word is about 114 degrees long: only the middle of the far side hides
   // all of it: the letters dissolve in the art's dither as they pass behind (`eggExitShare`, the layer's shader).
@@ -848,7 +861,7 @@ export const eggX = (tau: number, start: number, s: EggShape): number => {
  * shader dissolves the letters in the art's dither as they pass behind the planet (`CINEMATIC.dissolve`), and finishes whatever is left as this reaches 1.
  */
 export function eggExitShare(x: number, s: EggShape): number {
-  const amp = (s.ampDeg * Math.PI) / 180;
+  const amp = eggWord(s).amp;
   return x >= -amp ? 0 : Math.min(1, (-x - amp) / Math.max(1e-6, Math.PI - amp));
 }
 

@@ -147,13 +147,16 @@ export function flightPose(u: number, end: FlightEnd): FlightPose {
   // [lon, lat, alt, look lon, look lat, look radius, level, pitch, roll, horizon, bearing]
   const first = k[0]!;
   const last = k[k.length - 1]!;
-  const rows: number[][] = [[unwrap(end.lon, first.lon), end.lat, altEnd, first.look[0], first.look[1], 0, 0, 0, end.roll, 0, first.bearing]];
+  // (the keys are set for a page at longitude 0, and the word's path is the page's too (`CaptionLayer.sync`): for any other the whole choreography is turned about the
+  // axis with it, so that the camera and the word keep their places to each other, whichever way the visitor has turned the planet)
+  const turn = end.lon;
+  const rows: number[][] = [[unwrap(end.lon, first.lon + turn), end.lat, altEnd, first.look[0], first.look[1], 0, 0, 0, end.roll, 0, first.bearing]];
   const times = [0];
   let lon = rows[0]![0]!;
-  let look = first.look[0];
+  let look = first.look[0] + turn;
   for (const key of k) {
-    lon = unwrap(key.lon, lon);
-    look = unwrap(key.look[0], look);
+    lon = unwrap(key.lon + turn, lon);
+    look = unwrap(key.look[0] + turn, look);
     rows.push([lon, key.lat, Math.min(key.alt, end.alt * 0.9), look, key.look[1], key.look[2], key.level, key.pitch * DEG, key.roll * DEG, key.horizon, key.bearing]);
     times.push(key.u);
   }
