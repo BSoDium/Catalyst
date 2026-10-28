@@ -143,10 +143,7 @@ for (const i of ids) pens[i] = `<g id="pen-${i}" class="pen">\n      ${outline(D
 const hem = parse(D.shirt).find(onEdge);
 const penHem = hem ? pen([hem], true) : "";
 
-// Hatching: a second pen (its own seed, so the outlines keep their look) fills a shape with slanted strokes, as the paper study does.
-let hs = 11;
-const hrnd = () => ((hs = (hs + 0x6d2b79f5) | 0), (((t) => ((t ^ (t >>> 15)) * (1 | t)))(hs) >>> 0) / 4294967296);
-const hr = (a, b) => a + hrnd() * (b - a);
+// Hatching: plain slanted lines at equal intervals, as the paper study has them.
 const clips = [];
 function hatch(id, d, { angle = -62, gap = 5, w = 1.5 } = {}) {
   const pts = parse(d).flatMap((g) => [g.a, g.b, ...(g.c1 ? [g.c1, g.c2] : [])]);
@@ -154,12 +151,12 @@ function hatch(id, d, { angle = -62, gap = 5, w = 1.5 } = {}) {
   const cx = (Math.min(...xs) + Math.max(...xs)) / 2, cy = (Math.min(...ys) + Math.max(...ys)) / 2;
   const R = Math.hypot(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) / 2 + 4;
   const a = (angle * Math.PI) / 180, u = [Math.cos(a), Math.sin(a)], n = [-u[1], u[0]], lines = [];
-  for (let k = -R; k < R; k += gap * hr(0.75, 1.3)) {
-    const c = [cx + n[0] * k, cy + n[1] * k], bow = hr(-1.5, 1.5), m = [c[0] + n[0] * bow, c[1] + n[1] * bow];
-    lines.push(`<path d="M${P([c[0] - u[0] * R, c[1] - u[1] * R])}Q${P(m)} ${P([c[0] + u[0] * R, c[1] + u[1] * R])}" style="stroke-width:${f(hr(w * 0.75, w * 1.25))}" />`);
+  for (let k = -R; k < R; k += gap) {
+    const c = [cx + n[0] * k, cy + n[1] * k];
+    lines.push(`<path d="M${P([c[0] - u[0] * R, c[1] - u[1] * R])}L${P([c[0] + u[0] * R, c[1] + u[1] * R])}" />`);
   }
   clips.push(`<clipPath id="h-${id}"><path d="${d}" /></clipPath>`);
-  return `<g class="hatch hatch-${id}" clip-path="url(#h-${id})">\n      ${lines.join("\n      ")}\n    </g>`;
+  return `<g class="hatch hatch-${id}" style="stroke-width:${w}" clip-path="url(#h-${id})">\n      ${lines.join("\n      ")}\n    </g>`;
 }
 const hHair = hatch("hair", D.hair, { gap: 5.5, w: 1.7 });
 const hShade = hatch("shade", D["chin-shadow"], { gap: 4, w: 1.4 });
