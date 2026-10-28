@@ -40,7 +40,7 @@ describe("icons: one library, one wrapper", () => {
   });
 
   it("imports the icon library in one file only: components ask `Icon` for a name", () => {
-    const importers = sources().filter((f) => /from "lucide-react"/.test(read(f)));
+    const importers = sources().filter((f) => /from "(?:lucide-react|@carbon\/icons-react)"/.test(read(f)));
     expect(importers).toEqual(["components/ui/icon.tsx"]);
   });
 
@@ -113,7 +113,9 @@ describe("Icon", () => {
     expect(html({ name: "search" })).toContain('data-size="control"');
     expect(html({ name: "arrow-right", size: "inline" })).toContain('data-size="inline"');
     expect(html({ name: "close", size: "large" })).toContain('data-size="large"');
-    expect(html({ name: "search" })).toContain('class="lucide lucide-search ui-icon"');
+    // the header's three come from Carbon (filled shapes), the rest from lucide
+    expect(html({ name: "search" })).toMatch(/class="ui-icon"/);
+    expect(html({ name: "copy" })).toContain('class="lucide lucide-copy ui-icon"');
   });
 
   it("renders every name in the set", () => {

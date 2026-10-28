@@ -1,6 +1,6 @@
+import { ArrowLeft as CarbonArrowLeft, ChevronDown as CarbonChevronDown, Search as CarbonSearch, type CarbonIconType } from "@carbon/icons-react";
 import {
   ArrowDown,
-  ArrowLeft,
   ArrowRight,
   ArrowUp,
   ArrowUpLeft,
@@ -26,14 +26,12 @@ import {
   FileText,
   Hash,
   Camera,
-  ChevronDown,
   Image as ImageIcon,
   Info,
   Link2,
   Maximize2,
   MapPin,
   Minimize2,
-  Search,
   Terminal,
   X,
   type LucideIcon,
@@ -41,10 +39,14 @@ import {
   Moon,
   Sparkles,
 } from "lucide-react";
+import type { ComponentType } from "react";
 import { cn } from "~/lib/utils";
 
 /**
- * The icon set of the UI system: ONE library (lucide-react, already a dependency), each icon under the name the interface uses for it.
+ * The icon set of the UI system: lucide-react, each icon under the name the interface uses for it, with the header's three (the way back's
+ * arrow, the selector's chevron, the search) from IBM's Carbon (`@carbon/icons-react`, Apache-2.0): square-ended, drawn on a pixel grid, they sit
+ * beside the header's mono type as lucide's rounder shapes did not (2026-10-28, owner). Carbon's are filled shapes, so the stroke tokens do not apply.
+ * This is the only file that imports either library.
  * Nothing is drawn by hand: a test (`icon.test.ts`) fails on an inline `<svg>` anywhere in the components outside the brand mark and
  * the generated cover art. To add an icon, add it here; to change one, change it here, and every use follows.
  *
@@ -71,7 +73,7 @@ export const ICONS = {
   expand: Maximize2,
   collapse: Minimize2,
   "arrow-right": ArrowRight,
-  "arrow-left": ArrowLeft,
+  "arrow-left": CarbonArrowLeft,
   "arrow-up": ArrowUp,
   "arrow-down": ArrowDown,
   "arrow-up-right": ArrowUpRight,
@@ -79,19 +81,19 @@ export const ICONS = {
   enter: CornerDownLeft,
   command: Command,
   check: Check,
-  "chevron-down": ChevronDown,
+  "chevron-down": CarbonChevronDown,
   "chevron-left": ChevronLeft,
   "chevron-right": ChevronRight,
   copy: Copy,
   link: Link2,
   hash: Hash,
-  search: Search,
+  search: CarbonSearch,
   eye: Eye,
   "eye-off": EyeOff,
   info: Info,
   sparkles: Sparkles,
   moon: Moon,
-} as const satisfies Record<string, LucideIcon>;
+} as const satisfies Record<string, LucideIcon | CarbonIconType>;
 
 export type IconName = keyof typeof ICONS;
 
@@ -112,6 +114,6 @@ export interface IconProps extends Omit<LucideProps, "size" | "name" | "ref"> {
 
 /** Decorative by default (`aria-hidden`): the control or the text that holds an icon carries the accessible name. */
 export function Icon({ name, size = "control", className, ...rest }: IconProps) {
-  const Component = ICONS[name];
+  const Component = ICONS[name] as ComponentType<Record<string, unknown>>;
   return <Component aria-hidden="true" focusable="false" data-size={size} className={cn("ui-icon", className)} {...rest} />;
 }

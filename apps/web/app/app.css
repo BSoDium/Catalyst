@@ -171,6 +171,14 @@
 
   /* Layout. */
   --navbar-height: 3.5rem;
+  /* The narrow header (a phone, or the half beside the panel): the selector is the page's title in the bar, in the drawer rows' size; the search is
+     proportionate to it, mono capitals with a 20 px icon; the index is as tall as the title's capitals (`--nav-index`: Bricolage's capitals are
+     0.66 em and JetBrains Mono's digits 0.74 em, so 0.66 / 0.74 of the title's size, measured with canvas `actualBoundingBox`). */
+  --nav-title: 1.5rem;
+  --nav-index: calc(var(--nav-title) * 0.892);
+  --nav-mono: 0.875rem;
+  --nav-mono-track: 0.08em;
+  --nav-icon: 1.25rem;
   /* The nav scrim fades content out under the floating nav (see `.nav-scrim`); the nav's own fade over the globe is a little taller (`.nav-fade`). */
   --scrim-height: calc(var(--navbar-height) + 2.5rem);
   --fade-height: calc(var(--navbar-height) + 3.5rem);
@@ -181,6 +189,14 @@
   --grid-gap: 1rem;
   --control-h: 2.75rem;
   --control-h-sm: 2.75rem;
+}
+
+@media (max-width: 767.98px) {
+  /* The phone's bar is 52 px: the 20 px search icon then sits 16 px from the top edge and 16 px from the right one (the gutter), and the title's
+     capitals 18 px from the top and 16 px from the left, so each control is nested in its corner at one distance (docs/web-architecture.md, "Header"). */
+  :root {
+    --navbar-height: 3.25rem;
+  }
 }
 
 @media (min-width: 768px) {
@@ -603,6 +619,13 @@
 @layer base {
   * {
     border-color: var(--border);
+  }
+
+  /* Tailwind 4's reset gives buttons the default arrow; an enabled control that does something shows the pointer (a disabled one keeps the arrow). */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  summary {
+    cursor: pointer;
   }
 
   html {
@@ -2476,6 +2499,46 @@
     color: var(--muted-foreground);
   }
 
+  /* Where the header is the narrow form (under 56 rem: the bar's selector, a title-sized "05 Poetry"), the list's head repeats it, so it goes:
+     the site's name, the rule and the big title are not drawn (the title stays in the page for assistive technology, search and the document
+     outline, clipped; print keeps all of it), and the folio, "4 poems", is one small mono line above the filter. The career page's running head
+     ("Career", "Updated ...") goes the same way: its "Updated" moves under the availability line (`.career-updated`). */
+  .career-updated {
+    display: none;
+  }
+
+  @media screen and (max-width: 55.99rem) {
+    [data-slot="list-head"] .list-running {
+      justify-content: flex-start;
+      padding-bottom: 0;
+      border-bottom: 0;
+    }
+
+    [data-slot="list-head"] .list-running > span:first-child {
+      display: none;
+    }
+
+    [data-slot="list-head"] .list-title {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+
+    [data-slot="career-head"] .list-running {
+      display: none;
+    }
+
+    .career-updated {
+      display: block;
+      margin: 0.5rem 0 0;
+      color: var(--muted-foreground);
+    }
+  }
+
   .list-title {
     margin: clamp(2rem, 4.4cqi, 4rem) 0 0;
     font-family: var(--font-reading);
@@ -2776,6 +2839,92 @@
 .nav-link:focus-visible,
 [data-slot^="search-trigger"]:hover {
   color: var(--signal-text);
+}
+
+/*
+ * The narrow header's bar (the header is under 56 rem wide: a phone, or the half beside the open panel; docs/web-architecture.md, "Header").
+ * Two zones on one grid: the selector (`SectionsMenu`) at the left edge and the search at the right edge, on the same 1 rem gutter as the drawer's rows. Unlayered: the links carry utilities
+ * (`min-w-11`, `justify-center`) that would otherwise centre their words in their 44 px boxes and push them off the gutter. The targets
+ * stay 44 px: only the drawn word and icon are aligned to the edge.
+ */
+@container (max-width: 55.99rem) {
+  [data-slot="site-header"] nav {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    width: 100%;
+    padding-inline: 0.5rem;
+  }
+
+  /* Two zones: the selector at the left edge (always; its own padding is taken back, so the index starts on the 1 rem gutter, where the drawer's
+     rows do) and the search at the right edge. "Globe" is a section like the others here: a row of the drawer, so the row's own link is not drawn. */
+  [data-slot="site-header"] nav {
+    grid-template-columns: 1fr auto;
+  }
+
+  [data-slot="site-header"] nav > [data-nav="home"] {
+    display: none;
+  }
+
+  [data-slot="site-header"] nav > .nav-sections {
+    justify-self: start;
+    margin-inline-start: -0.5rem;
+  }
+
+  [data-slot="site-header"] [data-slot="search-trigger"] {
+    position: relative;
+    z-index: 3;
+    justify-self: end;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding-inline: 0;
+    font-size: var(--nav-mono);
+    letter-spacing: var(--nav-mono-track);
+  }
+
+  [data-slot="site-header"] [data-slot="search-trigger"] .ds-kbd {
+    display: none;
+  }
+
+  /* The word stays at every width; the icon in front of it is from 22 rem of header (the smallest phones keep the word alone, as the row always did). */
+  [data-slot="site-header"] [data-slot="search-trigger"] .ui-icon {
+    display: none;
+  }
+}
+
+@container (min-width: 22rem) and (max-width: 55.99rem) {
+  [data-slot="site-header"] [data-slot="search-trigger"] .ui-icon {
+    display: inline-block;
+    width: var(--nav-icon);
+    height: var(--nav-icon);
+  }
+}
+
+/* The drawer is open: the page behind it does not scroll (the veil catches the touches). */
+html[data-nav-open] {
+  overflow: hidden;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .nav-veil {
+    background: var(--background) !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+
+  .nav-sheet-tail {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+}
+
+@media (forced-colors: active) {
+  .nav-sheet-tail {
+    display: none;
+  }
+
+  .nav-sheet {
+    border-bottom: 1px solid CanvasText;
+  }
 }
 
 .nav-link[aria-current="page"] {
@@ -3386,7 +3535,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
 
   /*
    * Two forms of the header, chosen by the room the row has (the header is a size container). Wide: the sections inline, as words. Narrower
-   * than 56 rem (a phone, or the half of the viewport beside the open panel): the way home, ONE "Sections" button and the search; its sheet
+   * than 56 rem (a phone, or the half of the viewport beside the open panel): ONE selector at the left ("Globe" is its first row, then the sections) and the search; its drawer
    * (`SectionsMenu`) lists every section with its count, so a sixth or a seventh section never has to fit in the row. The sheet is a
    * `<details>`, a solid page-colour panel under the row, as wide as the header, with 44 px rows.
    */
@@ -3409,66 +3558,268 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     }
   }
 
+  /*
+   * The narrow header's selector and drawer (`SectionsMenu`). The selector is the bar's centre and its one strong word: no box, no plate (the
+   * header's fade is the ground), the section's index in mono and muted, its name in the display face, and a chevron. Open, the chevron
+   * turns and the index takes the accent (the state's colour, as the current row's index does in the drawer). It is not a `.nav-link`: no
+   * accent on hover, no capitals. A 44 px target.
+   */
+  .nav-sections {
+    /* The drawer's clock: a little slower than the page's own transitions, the way out quicker than the way in (`CLOSE_MS` in sections-menu.tsx mirrors `--nav-close`). */
+    --nav-open: 280ms;
+    --nav-close: 180ms;
+  }
+
+  .nav-sel {
+    z-index: 3;
+    gap: 0.5rem;
+    min-height: 2.75rem;
+    padding-inline: 0.5rem;
+    color: var(--foreground);
+  }
+
+  /* The index and the name share a BASELINE (as in the drawer's rows), the pair is centred in the 44 px target, the chevron on the name's body. */
+  .nav-sel-label {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.625rem;
+  }
+
+  .nav-sel-index {
+    font-family: var(--font-meta);
+    font-size: var(--nav-index);
+    line-height: 1;
+    letter-spacing: 0;
+    color: var(--muted-foreground);
+    transition: color var(--duration-fast) var(--ease-standard);
+  }
+
+  /* The smallest phones (under 22 rem of header) have no room for the index beside "Globe" and the longest name: the name alone. */
+  @container (max-width: 21.99rem) {
+    .nav-sel-index {
+      display: none;
+    }
+  }
+
+  .nav-sel-name {
+    font-family: var(--font-display);
+    font-size: var(--nav-title);
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: -0.015em;
+  }
+
+  .nav-sel-name-none {
+    font-weight: 500;
+    color: var(--muted-foreground);
+  }
+
   .nav-sections > summary::-webkit-details-marker {
     display: none;
   }
 
-  .nav-sections-chevron {
-    transition: transform var(--duration-fast) var(--ease-standard);
+  /* The chevron sits in the label, on the title's baseline, and is lifted so that its middle is the middle of the title's lower-case letters (the
+     x-height, 0.522 em in Bricolage): a replaced element rests on the baseline by its bottom edge, so it is moved DOWN by half the difference. */
+  .nav-sections .nav-sections-chevron {
+    width: var(--nav-icon);
+    height: var(--nav-icon);
+    translate: 0 calc((var(--nav-icon) - var(--nav-title) * 0.522) / 2);
+    transition: transform var(--nav-open) var(--ease-standard);
   }
 
-  .nav-sections[open] > summary {
-    color: var(--foreground);
+  .nav-sections[open]:not([data-closing]) .nav-sel-index {
+    color: var(--signal-text);
   }
 
-  .nav-sections[open] .nav-sections-chevron {
+  .nav-sections[open]:not([data-closing]) .nav-sections-chevron {
     transform: rotate(180deg);
+  }
+
+  /*
+   * The drawer: a solid page-colour body (as wide as the header: a size container, so beside the open panel it never covers the panel's
+   * controls), the grip (a ruler of ticks, `--tick-step`), and under it a tail that melts from the solid colour into the blurred page: no
+   * bottom border. It opens by a wipe from the top (`clip-path`, with the tail outside the box: a negative bottom inset), the rows settling
+   * in 22 ms after one another, and closes quicker (`--nav-close`, no stagger). Entering is `@starting-style`: from `display: none` with
+   * no script, the browser's own instant toggle is what a visitor gets. The veil dims the page behind it and catches the press that closes it.
+   */
+  .nav-veil {
+    display: none;
+  }
+
+  .nav-sections[data-js] .nav-veil {
+    display: block;
+    position: fixed;
+    z-index: 1;
+    top: 0;
+    left: 0;
+    width: 100cqw;
+    height: 100dvh;
+    touch-action: none;
+    background: color-mix(in srgb, var(--background) 78%, transparent);
+    transition: opacity var(--nav-open) var(--ease-standard);
+  }
+
+  .nav-sections[data-js]:not([data-closing]) .nav-veil {
+    opacity: 1;
+  }
+
+  [data-slot="site-header"]:not([data-globe]) .nav-sections[data-js] .nav-veil {
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+  }
+
+  .nav-sections[data-closing] .nav-veil {
+    opacity: 0;
+    transition-duration: var(--nav-close);
   }
 
   .nav-sheet {
     position: fixed;
+    z-index: 2;
     top: var(--navbar-height);
     left: 0;
-    /* As wide as the header (a size container, so `cqw` is its width): beside the open panel that is the globe's half, never over the panel's own controls. */
     width: 100cqw;
-    max-height: calc(100dvh - var(--navbar-height));
-    overflow-y: auto;
-    padding: 0.25rem 1rem 1rem;
     background: var(--background);
-    border-bottom: 1px solid var(--border);
+    clip-path: inset(0 0 -4rem 0);
+    transition: clip-path var(--nav-open) var(--ease-standard);
   }
 
+  .nav-sections[data-closing] .nav-sheet {
+    clip-path: inset(0 0 100% 0);
+    transition-duration: var(--nav-close);
+  }
+
+  .nav-sheet-scroll {
+    max-height: calc(100dvh - var(--navbar-height) - 4rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0.25rem max(1rem, env(safe-area-inset-right)) 0 max(1rem, env(safe-area-inset-left));
+  }
+
+  .nav-sheet-grip {
+    height: 5px;
+    margin: 0.875rem max(1rem, env(safe-area-inset-right)) 0.875rem max(1rem, env(safe-area-inset-left));
+    background: repeating-linear-gradient(90deg, var(--border-strong) 0 1px, transparent 1px var(--tick-step));
+  }
+
+  .nav-sheet-tail {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    height: 4rem;
+    pointer-events: none;
+    background: linear-gradient(
+      to bottom,
+      var(--background) 0%,
+      color-mix(in srgb, var(--background) 82%, transparent) 25%,
+      color-mix(in srgb, var(--background) 45%, transparent) 55%,
+      color-mix(in srgb, var(--background) 12%, transparent) 82%,
+      transparent 100%
+    );
+    -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 30%, transparent 100%);
+    mask-image: linear-gradient(to bottom, #000 0%, #000 30%, transparent 100%);
+  }
+
+  /* The blur is for the lists and the entries: over the globe's canvas it would cost a composited layer for a drawer that is open a few seconds. */
+  [data-slot="site-header"]:not([data-globe]) .nav-sheet-tail {
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+  }
+
+  /* One baseline: the index, the title and the count all sit on the title's. */
   .nav-sheet-link {
     display: flex;
-    min-height: 2.75rem;
+    min-height: 3.5rem;
     align-items: baseline;
-    justify-content: space-between;
-    gap: 1rem;
-    padding-block: 0.75rem;
+    gap: 0.625rem;
+    position: relative;
+    padding-block: 0.875rem;
     border-bottom: 1px solid var(--border);
-    font-family: var(--font-meta);
-    font-size: 0.8125rem;
-    line-height: 1.25;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
     text-decoration: none;
+    translate: 0 0;
+    opacity: 1;
+    transition:
+      translate var(--nav-open) var(--ease-standard) calc(var(--i, 0) * 22ms),
+      opacity var(--nav-open) var(--ease-standard) calc(var(--i, 0) * 22ms),
+      background-color var(--duration-fast) var(--ease-standard);
   }
 
-  .nav-sheet-link:hover,
+  li:last-child > .nav-sheet-link {
+    border-bottom: 0;
+  }
+
+  .nav-sections[data-closing] .nav-sheet-link {
+    translate: 0 -5px;
+    opacity: 0;
+    transition-duration: var(--nav-close), var(--nav-close), var(--nav-close);
+    transition-delay: 0s;
+  }
+
+  .nav-sheet-link:active {
+    background: var(--surface);
+  }
+
   .nav-sheet-link:focus-visible {
     color: var(--signal-text);
   }
 
-  .nav-sheet-link[aria-current="page"] .nav-sheet-name {
-    text-decoration: underline;
-    text-decoration-thickness: 1px;
-    text-underline-offset: 0.5em;
+  /* The same size as the selector's index (`--nav-index`, as tall as the title's capitals), in a column as wide as its two digits (0.6 em each in a
+     mono face) and the same gap to the name, so the index and the name of every row sit exactly where the selector's do, one over the other. */
+  .nav-sheet-index {
+    flex: none;
+    width: calc(var(--nav-index) * 1.2);
+    font-family: var(--font-meta);
+    font-size: var(--nav-index);
+    line-height: 1;
+    letter-spacing: 0;
+    color: var(--muted-foreground);
+  }
+
+  .nav-sheet-name {
+    flex: 1;
+    font-family: var(--font-display);
+    font-size: var(--nav-title);
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: -0.015em;
+  }
+
+  .nav-sheet-link[aria-current="page"]::before {
+    content: "";
+    position: absolute;
+    left: calc(-1 * max(1rem, env(safe-area-inset-left, 0px)));
+    top: 0.5rem;
+    bottom: 0.5rem;
+    width: 2px;
+    background: var(--signal-text);
+  }
+
+  .nav-sheet-link[aria-current="page"] .nav-sheet-index {
+    color: var(--signal-text);
   }
 
   .nav-sheet-count {
+    font-family: var(--font-meta);
     color: var(--muted-foreground);
     font-size: 0.75rem;
+    line-height: 1;
     letter-spacing: 0.02em;
+  }
+
+  @starting-style {
+    .nav-sections[data-js][open] .nav-veil {
+      opacity: 0;
+    }
+
+    .nav-sections[open] .nav-sheet {
+      clip-path: inset(0 0 100% 0);
+    }
+
+    .nav-sections[open] .nav-sheet-link {
+      translate: 0 -5px;
+      opacity: 0;
+    }
   }
 
   /*
@@ -4247,16 +4598,13 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
  * ================================================================================================================================== */
 
 @layer components {
-  /* The name block and the portrait: beside each other at every width (the portrait is optional; without it the text takes the room). */
+  /* The name block and the portrait: beside each other from 40 rem, the portrait ABOVE the name below it (it never shrinks to a thumbnail beside a
+     tall column of text: it is either a proper square or it moves; the portrait is optional, without it the text takes the room). */
   .career-id {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     gap: 1.5rem 2rem;
     align-items: start;
-  }
-
-  .career-id[data-portrait="true"] {
-    grid-template-columns: minmax(0, 1fr) auto;
   }
 
   .career-name {
@@ -4276,8 +4624,8 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     --portrait-bleed-x: -44%;
     --portrait-bleed-y: -14%;
     position: relative;
-    margin: 3.25rem 0 0;
-    width: 5.5rem;
+    margin: 0;
+    width: 9rem;
     aspect-ratio: 1 / 1;
   }
 
@@ -4338,17 +4686,76 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     /* No box of its own: the picture draws its own frame (the blueprint's hand-penned square, whose lines cross at the corners). */
   }
 
-  @media (min-width: 40rem) {
+  /* Stacked (under 40 rem): the portrait is the BACKDROP of the head. It spans the head's width as a square (the picture's own frame), under the
+     running head's rule, and the name and the statement are drawn over its lower part, from about two thirds down (36 % of the width of overlap):
+     a gradient from the page colour, solid behind the statement and soft behind the name, keeps the type readable (the same eased fall as the
+     nav's scrim). The name has no top margin of its own there (that one lines its top up with the portrait's beside it). The DOM keeps the name
+     first: the picture is decorative to the reading order, `order: -1` puts it first. */
+  @media (max-width: 39.99rem) {
     .career-id[data-portrait="true"] {
-      align-items: start;
+      row-gap: 0;
     }
 
-    /* A size of its own, from the head's width (never from the height of the text beside it: a square that takes its width from the
-       height of a text block whose height depends on its width is a feedback loop, and at some widths it blew up, hung over the
-       line below and squeezed the text). About the height of the name block at 1440 px; 9 rem at the narrowest, 17 rem at most. */
+    .career-id[data-portrait="true"] .career-name {
+      margin-top: 0;
+    }
+
     .career-portrait {
-      width: clamp(9rem, 20cqi, 17rem);
-      margin-top: clamp(2rem, 4.4cqi, 4rem); /* the same as the name's: the top of the picture meets the top of the name */
+      order: -1;
+      width: 100%;
+      /* The pen's overshoot rises 14 % of the square above its frame (`--portrait-bleed-y`): 12 % of it is cleared (with the 0.5 rem under the bar that is the whole of it, the last pixels of the longest lines run into the bar's own fade)
+         (a % margin is a share of the head's width, the square's own side). */
+      margin: 12% 0 -36%;
+    }
+
+    .career-portrait::after {
+      content: "";
+      position: absolute;
+      inset: 30% 0 0;
+      pointer-events: none;
+      background: linear-gradient(
+        to bottom,
+        transparent 0%,
+        color-mix(in srgb, var(--background) 8%, transparent) 14%,
+        color-mix(in srgb, var(--background) 30%, transparent) 29%,
+        color-mix(in srgb, var(--background) 58%, transparent) 43%,
+        color-mix(in srgb, var(--background) 82%, transparent) 56%,
+        color-mix(in srgb, var(--background) 94%, transparent) 68%,
+        var(--background) 82%
+      );
+    }
+
+    .career-id-text {
+      position: relative;
+      z-index: 1;
+    }
+  }
+
+  /* Beside the text (from 40 rem): the portrait takes the HEIGHT of the text block, a square from the top of the name down to the bottom of the
+     block, as far as a column reserved for it allows. No feedback loop: the column (`--portrait-col`, from the head's width) is reserved as
+     padding on the text, so the text's width, and so its height, never depends on the picture; the picture is positioned out of the flow
+     with a height of "the block's, less the name's top margin" capped at the column, and its width follows by `aspect-ratio`. (A square sized
+     from the text's height in the flow blew up at about 820 px: it widened the column, which made the text taller, which made it wider.)
+     The column is 11 rem at the narrowest and 22 rem at most; a taller block than that has a picture the width of the column, top-aligned. */
+  @media (min-width: 40rem) {
+    .career-id[data-portrait="true"] {
+      --portrait-col: clamp(11rem, 34cqi, 22rem);
+      --portrait-top: clamp(2rem, 4.4cqi, 4rem); /* the same as the name's: the top of the picture meets the top of the name */
+      position: relative;
+    }
+
+    .career-id[data-portrait="true"] .career-id-text {
+      padding-inline-end: calc(var(--portrait-col) + 2rem);
+    }
+
+    .career-portrait {
+      order: 0;
+      position: absolute;
+      top: var(--portrait-top);
+      right: 0;
+      width: auto;
+      height: min(calc(100% - var(--portrait-top)), var(--portrait-col));
+      margin: 0;
     }
   }
 

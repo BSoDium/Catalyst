@@ -55,6 +55,7 @@ export function SearchTriggers() {
     <button
       type="button"
       onClick={openSearch}
+      aria-label="Search"
       aria-keyshortcuts="Control+K Meta+K"
       aria-haspopup="dialog"
       data-slot="search-trigger"

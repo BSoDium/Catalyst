@@ -32,7 +32,7 @@ export function CareerPage({ career, places = [] }: { career: PublishedCareer; p
       data-layout="full"
       data-slot="career"
       aria-labelledby="career-name"
-      className="entry career mx-auto max-w-[90rem] px-4 pt-[calc(var(--navbar-height)+3rem)] pb-24 outline-none md:px-14 print:max-w-none print:p-0"
+      className="entry career mx-auto max-w-[90rem] px-4 pt-[calc(var(--navbar-height)+0.5rem)] min-[56rem]:pt-[calc(var(--navbar-height)+3rem)] pb-24 outline-none md:px-14 print:max-w-none print:p-0"
     >
       <header data-slot="career-head" className="list-head">
         <p className="list-running type-meta">
@@ -58,6 +58,11 @@ export function CareerPage({ career, places = [] }: { career: PublishedCareer; p
                     · <time dateTime={available.asOf}>{asOfText(available.asOf)}</time>
                   </span>
                 </span>
+              </p>
+            )}
+            {updated && (
+              <p data-slot="career-updated" className="career-updated type-meta">
+                Updated <time dateTime={career.updated}>{updated}</time>
               </p>
             )}
           </div>

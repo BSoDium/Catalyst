@@ -20,6 +20,7 @@
     "bake:word": "node scripts/font/bake-word-outlines.mjs"
   },
   "dependencies": {
+    "@carbon/icons-react": "^11.91.0",
     "@catalyst/geodata": "workspace:*",
     "@catalyst/published": "workspace:*",
     "@catalyst/schemas": "workspace:*",
