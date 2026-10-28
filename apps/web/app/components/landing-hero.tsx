@@ -232,8 +232,10 @@ export function LandingHero({ machine, away, empty, orbit = null, onCover, hasCa
     if (!changed || !root || state !== "collapsed" || travel.current?.isRunning) return;
     const halves = HALVES.map(([from]) => root.querySelector<HTMLElement>(from)).filter((el): el is HTMLElement => !!el);
     const reduced = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    // (measured BEFORE any transition is declared: `finalTransforms` clears the transform to read the rest position, and a transition then would be read half way)
+    const finals = finalTransforms(root);
     if (!reduced) for (const el of halves) el.style.transition = "transform 240ms cubic-bezier(0.2, 0, 0, 1)";
-    holdName(root, true);
+    for (const { el, transform } of finals) el.style.transform = transform;
     const done = window.setTimeout(() => {
       for (const el of halves) el.style.removeProperty("transition");
     }, 300);
