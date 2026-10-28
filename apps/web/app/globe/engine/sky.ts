@@ -255,6 +255,29 @@ export function makeStars(map: Uint8Array = bakeBand(), cfg: { count: number; ba
   return { count: cfg.count, position, tier, keep };
 }
 
+let bakedStars: { w: number; h: number; map: Uint8Array } | null = null;
+
+/**
+ * The stars as an equirectangular map in the band's own frame (column: longitude `atan2(y, x)`, row: latitude `asin(z)`, the whole sphere), a byte per texel: the brightness of the tier of the
+ * star there (a faint one 0.5, a middle one 0.8, the brightest 1), each star one texel (0.09 degrees at the default size), read without smoothing: a star is a hard little square. For a REFLECTION of the sky (engine/caption-layer.ts), which is read by direction and not drawn as points. Baked once.
+ */
+export function bakeStarMap(w = 4096, h = 2048): Uint8Array {
+  if (bakedStars && bakedStars.w === w && bakedStars.h === h) return bakedStars.map;
+  const map = new Uint8Array(w * h);
+  const st = makeStars();
+  const level = [128, 205, 255];
+  for (let i = 0; i < st.count; i++) {
+    const x = st.position[3 * i]!, y = st.position[3 * i + 1]!, z = st.position[3 * i + 2]!;
+    const c = Math.min(w - 1, Math.floor((Math.atan2(y, x) / (2 * Math.PI) + 0.5) * w));
+    const r = Math.min(h - 1, Math.floor((Math.asin(Math.max(-1, Math.min(1, z))) / Math.PI + 0.5) * h));
+    const v = level[Math.min(2, st.tier[i]!)]!;
+    const k = r * w + c;
+    if (map[k]! < v) map[k] = v;
+  }
+  bakedStars = { w, h, map };
+  return map;
+}
+
 /* ------------------------------------------------------------------ fade, tones, dither */
 
 /**

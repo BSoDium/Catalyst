@@ -9,7 +9,7 @@ import { STRAIGHT_FADE_MIX, STRAIGHT_FADE_STEPS } from "../paths/thin";
 import { SPARK, TRAIL_BANDS, TRAIL_ENTRIES, TRAIL_PER_PALETTE } from "../paths/trail";
 import { RIM, SUN } from "./moon";
 import { WARM_GLSL } from "./sun-flare";
-import { NIGHT, NIGHT_GLSL, SURFACE } from "./surface";
+import { LIGHTS, NIGHT, NIGHT_GLSL, SURFACE } from "./surface";
 
 /** The lines' vertex shader: the ground point (the scene is in the earth's frame, a line's vertices are on the unit sphere) goes to the fragment. */
 const LIT_VERTEX = /* glsl */ `
@@ -145,7 +145,7 @@ export function atmosphereMaterial(): ShaderMaterial {
         float h = clamp(abs(dot(n, toEye)) / edge, 0.0, 1.0);
         // lit as the ground under it is: the same terminator (washOf), in the same whole steps as the lines', so that the glow is the ground's own light and nothing
         // else: dark where the ground is dark, brighter only towards the limb (h)
-        float lit = 1.0 - floor(washOf(n, uSunN, uNight, uFlip) * ${NIGHT.lineSteps.toFixed(1)} + 0.5) / ${NIGHT.lineSteps.toFixed(1)} * ${NIGHT.atmosphereDim.toFixed(2)};
+        float lit = pow(1.0 - floor(washOf(n, uSunN, uNight, uFlip) * ${NIGHT.lineSteps.toFixed(1)} + 0.5) / ${NIGHT.lineSteps.toFixed(1)} * ${NIGHT.atmosphereDim.toFixed(2)}, ${NIGHT.atmosphereFall.toFixed(2)});
         float a = stepped(pow(h, uPower) * uAmt * lit, 3.0) * uCover;
         if (a < 0.004) discard;
         gl_FragColor = vec4(uColor, a);
@@ -327,7 +327,7 @@ export function mistMaterial(): ShaderMaterial {
         // way round) and is deepest at the edge, where it meets the glow above it: the glow bleeds onto the planet
         float g = 1.0 - clamp(dot(n, toEye), 0.0, 1.0);
         float deep = smoothstep(0.18, 1.0, g);
-        float lit = 1.0 - floor(washOf(n, uSunN, uNight, uFlip) * ${NIGHT.lineSteps.toFixed(1)} + 0.5) / ${NIGHT.lineSteps.toFixed(1)} * ${NIGHT.atmosphereDim.toFixed(2)};
+        float lit = pow(1.0 - floor(washOf(n, uSunN, uNight, uFlip) * ${NIGHT.lineSteps.toFixed(1)} + 0.5) / ${NIGHT.lineSteps.toFixed(1)} * ${NIGHT.atmosphereDim.toFixed(2)}, ${NIGHT.atmosphereFall.toFixed(2)});
         float a = stepped(deep * deep * (3.0 - 2.0 * deep) * uAmt * lit, 3.0) * uCover;
         if (a < 0.004) discard;
         gl_FragColor = vec4(uColor, a);
@@ -391,6 +391,41 @@ export function surfaceMaterial(): ShaderMaterial {
         float sv = clamp(w, 0.0, 1.0) * ${NIGHT.lineSteps.toFixed(1)};
         float shade = 1.0 - ${NIGHT.shadow.toFixed(2)} * uFlip * (floor(sv) + (fract(sv) > dither4(floor(gl_FragCoord.xy)) ? 1.0 : 0.0)) / ${NIGHT.lineSteps.toFixed(1)};
         gl_FragColor = vec4(mix(uBg, tone, uStrength) * shade, 1.0);
+      }
+    `,
+    side: FrontSide,
+    depthTest: true,
+    depthWrite: false,
+  });
+}
+
+/**
+ * The planet's lights at night (`LIGHTS`, engine/surface.ts): `uLights` is the map of them (by the fragment's direction, as the surface's picture is), `uColor` their colour (solid, faint: the scene mixes it
+ * from the page's colour). A pixel is a light where the map is bright and the ground is dark (`washOf`, in the night's whole steps), chosen by the lines' ordered dither: `uCover` of the pixels at most.
+ */
+export function lightsMaterial(): ShaderMaterial {
+  return new ShaderMaterial({
+    uniforms: { uColor: { value: new Color() }, uCore: { value: new Color() }, uLights: { value: null }, uCover: { value: 1 }, uSunN: { value: [0, 0, 1] }, uNight: { value: 0 }, uFlip: { value: 0 } },
+    vertexShader: /* glsl */ `
+      varying vec3 vDir;
+      void main() { vDir = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform vec3 uColor; uniform vec3 uCore; uniform sampler2D uLights; uniform float uCover;
+      uniform vec3 uSunN; uniform float uNight; uniform float uFlip;
+      varying vec3 vDir;
+      ${DITHER_GLSL}
+      ${NIGHT_GLSL}
+      void main() {
+        vec3 n = normalize(vDir);
+        vec2 uv = vec2(atan(n.x, n.z) * 0.15915494 + 0.5, asin(clamp(n.y, -1.0, 1.0)) * 0.31830989 + 0.5);
+        float dark = floor(clamp(washOf(n, uSunN, uNight, uFlip), 0.0, 1.0) * ${NIGHT.lineSteps.toFixed(1)} + 0.5) / ${NIGHT.lineSteps.toFixed(1)};
+        vec4 m = texture2D(uLights, uv);
+        // the heat: the more packed the lights are round this one (the map's green), the whiter and brighter it is, and the likelier it is to be drawn
+        float heat = smoothstep(${LIGHTS.from.toFixed(2)}, ${LIGHTS.to.toFixed(2)}, m.g);
+        float cover = m.r * dark * uCover * (1.0 + ${LIGHTS.dense.toFixed(2)} * heat);
+        if (cover < 0.02 || dither4(floor(gl_FragCoord.xy)) >= cover) discard;
+        gl_FragColor = vec4(mix(uColor, uCore, heat), 1.0);
       }
     `,
     side: FrontSide,

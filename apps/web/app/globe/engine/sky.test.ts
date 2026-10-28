@@ -377,3 +377,22 @@ describe("the sky on screen", () => {
     expect(zoomed.rhoMax).toBeLessThan(SKY.onRho.rho - SKY.onRho.band);
   });
 });
+
+describe("the star map (the chrome's reflection of the sky)", () => {
+  it("has a texel for every star's direction, in the tier's brightness, and nothing else but stars", async () => {
+    const { bakeStarMap, makeStars } = await import("./sky");
+    const w = 4096;
+    const h = 2048;
+    const map = bakeStarMap(w, h);
+    const st = makeStars();
+    for (let i = 0; i < 50; i++) {
+      const x = st.position[3 * i]!, y = st.position[3 * i + 1]!, z = st.position[3 * i + 2]!;
+      const c = Math.min(w - 1, Math.floor((Math.atan2(y, x) / (2 * Math.PI) + 0.5) * w));
+      const r = Math.min(h - 1, Math.floor((Math.asin(z) / Math.PI + 0.5) * h));
+      expect(map[r * w + c]).toBeGreaterThanOrEqual(128);
+    }
+    const lit = map.reduce((n, v) => n + (v > 0 ? 1 : 0), 0);
+    expect(lit).toBeGreaterThan(st.count * 0.5);
+    expect(lit).toBeLessThanOrEqual(st.count);
+  });
+});
