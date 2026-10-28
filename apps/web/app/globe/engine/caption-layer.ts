@@ -220,7 +220,7 @@ const EGG_ENV = { band: 2.3, stars: 0.95, sky: 0.45, edge: { contrast: 0.9, rim:
  * warm ramp (`SUN.tint`), so that it steps outwards from white-gold through yellow and amber to red, as the sun's halo does. `unit`: the centre's angular size, radians; `reach`: where the
  * falloff is gone, in units; `fall`: its power; `gain`: how bright the centre is (the ramp's strength is `gain` times the falloff, as the halo's is); `lightMix`: how much of the colour the light page's letters take.
  */
-const SUN_GLINT = { unit: 0.075, reach: 7, fall: 1.8, gain: 2.4, hot: 1.6, lightMix: 0.85 } as const;
+const SUN_GLINT = { unit: 0.075, reach: 7, fall: 1.8, gain: 2.4, hot: 1.6, light: { veil: 0.75, spot: 1 } } as const;
 
 /**
  * Lit like polished metal: a key light and a weak fill fixed in the camera's frame (`CINEMATIC.light`), and a REFLECTION of a studio, a procedural
@@ -246,6 +246,7 @@ const EGG_FRAG = /* glsl */ `
   uniform vec3 uGlow;
   uniform vec3 uSunDir;
   uniform float uSunAmt;
+  uniform float uLight;
   uniform sampler2D uBand;
   uniform sampler2D uStars;
   uniform mat3 uViewToGal;
@@ -307,6 +308,8 @@ const EGG_FRAG = /* glsl */ `
     vec3 col = lit * uExposure + vec3(uGlint * env * gain * (vKind > 3.5 ? 0.3 : 1.0));
     col += vec3(spec * uGlint * 0.5 * (vKind > 3.5 ? 0.3 : 1.0));
     vec3 sunAdd = vec3(0.0);
+    float sunVeil = 0.0;
+    float sunSpot = 0.0;
     // The SUN in the metal: the globe's sun (the skybox's, at infinity, in the camera's frame here) is in the chrome wherever the reflected direction meets it, in its own warm
     // colours (the halo's ramp: gold at the core, reddening as the planet covers it) and only while the planet is not between the letter and the sun (a letter on the far side
     // of the planet's shadow has no sun to show). A hard disc and a tight halo, as in a mirror; the backs hardly. On the light page
@@ -320,8 +323,12 @@ const EGG_FRAG = /* glsl */ `
       float fall = pow(clamp(1.0 - u / ${SUN_GLINT.reach.toFixed(1)}, 0.0, 1.0), ${SUN_GLINT.fall.toFixed(2)});
       float hot = 1.0 - smoothstep(0.6, 1.1, u);
       vec3 sunCol = warmSmooth(clamp(fall + hot, 0.0, 1.0)) * (clamp(fall * ${SUN_GLINT.gain.toFixed(2)}, 0.0, 1.0) + hot * ${SUN_GLINT.hot.toFixed(2)});
-      sunCol *= clear * uSunAmt * (vKind > 3.5 ? 0.3 : 1.0);
+      float seen = clear * uSunAmt * (vKind > 3.5 ? 0.3 : 1.0);
+      sunCol *= seen;
       sunAdd = sunCol;
+      // (the light page's sun: the falloff as a grey veil and the centre as a white spot, the same amount of it)
+      sunVeil = fall * seen;
+      sunSpot = hot * seen;
     }
     // the outline is the line: the ink, hardly lit
     if (vKind > 0.5 && vKind < 1.5) col = mix(col, uOutline, ${CINEMATIC.light.outlineMix.toFixed(2)});
@@ -339,15 +346,26 @@ const EGG_FRAG = /* glsl */ `
         haze = max(haze, inAir);
         col = mix(col, mix(uHaze, uGlow, inAir), haze);
         sunAdd *= 1.0 - haze;
+        sunVeil *= 1.0 - haze;
+        sunSpot *= 1.0 - haze;
       }
     }
     // a few levels, dithered on the art's pixels: the word is made of the globe's own pixels and tones
     float L = ${CINEMATIC.levels.toFixed(1)};
     col = clamp(col, 0.0, 1.0);
     col = floor(col * (L - 1.0) + dither4(floor(gl_FragCoord.xy))) / (L - 1.0);
-    // the sun's reflection goes over the levels, smooth (a few dozen steps, dithered: a gradient, not rings); on the light page, a warm tint of the letter instead of a light
-    sunAdd = floor(sunAdd * 31.0 + dither4(floor(gl_FragCoord.xy))) / 31.0;
-    col = uGlint < 0.0 ? mix(col, min(sunAdd, vec3(1.0)) * ${SUN.light.ink.toFixed(2)}, clamp(max(sunAdd.r, max(sunAdd.g, sunAdd.b)) * ${SUN_GLINT.lightMix.toFixed(2)}, 0.0, 1.0)) : clamp(col + sunAdd, 0.0, 1.0);
+    // the sun's reflection goes over the levels, smooth (a few dozen steps, dithered: a gradient, not rings). On the light page the sun is burnt out, as the sky's is (a grey veil that fades the white,
+    // a pure white spot on it), and not coloured.
+    float sd = dither4(floor(gl_FragCoord.xy));
+    if (uLight > 0.5) {
+      float veilQ = floor(sunVeil * 31.0 + sd) / 31.0;
+      float spotQ = floor(sunSpot * 31.0 + sd) / 31.0;
+      col = mix(col, vec3(${SUN.light.veil.grey.toFixed(3)}), clamp(veilQ * ${SUN_GLINT.light.veil.toFixed(2)}, 0.0, 1.0));
+      col = mix(col, vec3(1.0), clamp(spotQ * ${SUN_GLINT.light.spot.toFixed(2)}, 0.0, 1.0));
+    } else {
+      sunAdd = floor(sunAdd * 31.0 + sd) / 31.0;
+      col = clamp(col + sunAdd, 0.0, 1.0);
+    }
     gl_FragColor = vec4(col, 1.0);
   }
 `;
@@ -752,6 +770,8 @@ export class CaptionLayer {
   /** The sun in the camera's frame, how much of it there is (the planet's night: none without it) and how far the planet has covered it (the warm ramp's `uSet`): per frame in `renderCrisp`. */
   private eggSunDir = { value: new Vector3(0, 0, 1) };
   private eggSunAmt = { value: 0 };
+  /** 1 on the light page (the sun in the metal is the light page's, grey and white), else 0 (`setTheme`). */
+  private eggLight = { value: 0 };
   private eggSet = { value: 0 };
   /** The galaxy the chrome reflects: the sky's band map and the star map (this canvas is a context of its own: its own textures of the same baked bytes), made when the word's material is, not before (`eggSkyTextures`). */
   private eggSkyTex: { band: DataTexture; stars: DataTexture } | null = null;
@@ -892,6 +912,7 @@ export class CaptionLayer {
         uGlow: this.eggGlow,
         uSunDir: this.eggSunDir,
         uSunAmt: this.eggSunAmt,
+        uLight: this.eggLight,
         uSet: this.eggSet,
         uBand: { value: this.eggSkyTextures().band },
         uStars: { value: this.eggSkyTextures().stars },
@@ -1057,6 +1078,7 @@ export class CaptionLayer {
     this.eggGlint.value = tone.glint;
     this.eggExposure.value = tone.exposure;
     this.eggSky.value = tone.sky;
+    this.eggLight.value = dark ? 0 : 1;
     this.eggFaceGain.value = tone.faceGain;
     this.eggHaze.value = dark ? [...theme.background] : toward(CINEMATIC.atmosphere.dim.lightTone);
     // the glow's own colour at the limb: the grey the globe draws it in (a step from the page's colour towards its ink) at its cover (engine/scene.ts `applyTheme`)
