@@ -4714,17 +4714,29 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     .career-portrait::after {
       content: "";
       position: absolute;
-      inset: 30% 0 0;
+      /* The viewport's full width (the picture's pen overshoots spill past the box on both sides), from 16 % down the box to well below the
+         picture's own bottom edge (`--portrait-bleed-y` below the box): the frame's bottom line is at 68 % of the scrim, the fade out that
+         follows is long and eased, so the scrim's end never shows against the blurred copy of the portrait behind it. */
+      top: 16%;
+      bottom: -40%;
+      left: calc(50% - 50vw);
+      width: 100vw;
       pointer-events: none;
       background: linear-gradient(
         to bottom,
         transparent 0%,
-        color-mix(in srgb, var(--background) 8%, transparent) 14%,
-        color-mix(in srgb, var(--background) 30%, transparent) 29%,
-        color-mix(in srgb, var(--background) 58%, transparent) 43%,
-        color-mix(in srgb, var(--background) 82%, transparent) 56%,
-        color-mix(in srgb, var(--background) 94%, transparent) 68%,
-        var(--background) 82%
+        color-mix(in srgb, var(--background) 8%, transparent) 11%,
+        color-mix(in srgb, var(--background) 30%, transparent) 23%,
+        color-mix(in srgb, var(--background) 58%, transparent) 34%,
+        color-mix(in srgb, var(--background) 82%, transparent) 44%,
+        color-mix(in srgb, var(--background) 94%, transparent) 54%,
+        var(--background) 68%,
+        color-mix(in srgb, var(--background) 94%, transparent) 74%,
+        color-mix(in srgb, var(--background) 76%, transparent) 80%,
+        color-mix(in srgb, var(--background) 50%, transparent) 86%,
+        color-mix(in srgb, var(--background) 24%, transparent) 92%,
+        color-mix(in srgb, var(--background) 6%, transparent) 97%,
+        transparent 100%
       );
     }
 
