@@ -118,6 +118,8 @@ export const SKY = {
      * below). Sums to 1. Owner (2026-10-08): "not super bright, just a bit brighter", to add noise to the band and to the open sky.
      */
     tierShares: [0.6, 0.28, 0.12] as const,
+    /** On the dark page the stars' tones go this share of the way to the ink (owner, 2026-10-28: "a bit brighter"). The band keeps its own. */
+    darkLift: 0.2,
   },
   /**
    * The sky is dimmed, never removed, towards the earth: it is drawn right up to the silhouette (`from` 1) at `limb` of its strength (a

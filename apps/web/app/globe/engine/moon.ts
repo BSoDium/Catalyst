@@ -137,6 +137,11 @@ export const SUN = {
    */
   cover: { dim: 0, redden: 0, halo: 0, hidden: 0, disc: 0.8, discColour: [1, 0.985, 0.93] as const },
   gain: 1.6,
+  /**
+   * The halo next to the sun at the sunset's half-way (owner, 2026-10-28: the air by the sun should light up as bright as the sun's own centre, near white): when about half of the sun is in view the halo's inner
+   * tones (the falloff over `from`, 1 at the disc's edge) are pulled to `tone` (the warm ramp's whitest stop) as `4 * area * (1 - area)`, 0 with the sun whole or gone, 1 at half. Dark page only.
+   */
+  hot: { tone: 0.95, from: 0.35 },
 } as const;
 
 /**

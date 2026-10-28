@@ -161,11 +161,14 @@ export class SkyLayer {
 
   applyTheme(t: GlobeTheme) {
     const [dim, bright, top] = starTones(t.ramp);
-    for (const m of [this.band, this.stars]) {
-      (m.uniforms.uTone1!.value as Vector3).set(...dim);
-      (m.uniforms.uTone2!.value as Vector3).set(...bright);
-    }
-    (this.stars.uniforms.uTone3!.value as Vector3).set(...top);
+    (this.band.uniforms.uTone1!.value as Vector3).set(...dim);
+    (this.band.uniforms.uTone2!.value as Vector3).set(...bright);
+    // the stars alone are a little brighter on the dark page (`SKY.stars.darkLift`)
+    const lift = t.scheme === "dark" ? SKY.stars.darkLift : 0;
+    const lifted = (c: readonly number[]): [number, number, number] => [0, 1, 2].map((i) => c[i]! + (t.ink[i]! - c[i]!) * lift) as [number, number, number];
+    (this.stars.uniforms.uTone1!.value as Vector3).set(...lifted(dim));
+    (this.stars.uniforms.uTone2!.value as Vector3).set(...lifted(bright));
+    (this.stars.uniforms.uTone3!.value as Vector3).set(...lifted(top));
   }
 
   /** Whether the on/off transition has not reached its end: the frame loop must keep going. */
