@@ -46,8 +46,12 @@ export const TUNING = {
   streetMapMaxZoom: 17.5,
   /** Latitude clamp for the view centre. */
   maxLat: 82,
-  /** The globe's lifted route arcs flatten onto the ground between these (internal) zooms, ahead of the handover's dissolve (`routeLift`). */
-  routeFlat: { start: 2.5, end: 3.3 },
+  /**
+   * The globe's lifted route arcs flatten onto the ground between these (internal) zooms (`routeLift`). They end flat exactly where the street map takes
+   * over (`HANDOVER.cutZoom`, 3.7: its paths lie on the ground), so the swap has nothing to jump; owner: they flattened much too early (2.5 to 3.3), the
+   * arcs are still a fifth up at 3.5 now (60 % at 3.3, where they were flat). The camera is far above them all the way (about 1.6 radii at 3.7, arcs are at most 0.37 high).
+   */
+  routeFlat: { start: 3.0, end: 3.7 },
   /** Zoom used when rotating to a selected place (never zooms out). */
   selectZoom: 3.2,
   /** Route draw-on animation duration, ms. */
