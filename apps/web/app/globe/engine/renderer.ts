@@ -33,10 +33,12 @@ import {
   silhouetteZoom,
   normalizeLon,
   projectLonLat,
+  projectUnit,
   viewBasis,
   zoomCorrection,
   zoomToRadiusPx,
   type ScreenPoint,
+  capReaches,
   type ViewBasis,
   type ViewState,
 } from "./geo";
@@ -184,6 +186,8 @@ export class GlobeRenderer {
   private ring: RingLayer | null = null;
   /** The pictures of the modes on the legs (street/overlay/trail-dots-layer.ts, lines off: the shader draws the lines): a canvas over the globe's, null without routes. */
   private legIcons: TrailDotsLayer | null = null;
+  /** The point `capReaches` projects, reused (a frame allocates nothing for it). */
+  private capProbe: ScreenPoint = { x: 0, y: 0, visible: false, facing: 0 };
   /** The caption: lines wrapped on a sphere in the globe's own scene (engine/caption-layer.ts), when the showcase is on this page. */
   private caption: CaptionLayer | null = null;
   /**
@@ -1816,6 +1820,12 @@ export class GlobeRenderer {
   private syncLegIcons() {
     const icons = this.legIcons;
     if (!icons) return;
+    const tp = perfStart();
+    this.drawLegIcons(icons);
+    perfEnd("paths.icons", tp);
+  }
+
+  private drawLegIcons(icons: TrailDotsLayer) {
     const routes = this.globe.routes;
     const shown = routes.visible;
     icons.setVisible(shown);
@@ -1844,6 +1854,15 @@ export class GlobeRenderer {
       v.zoom,
       camera,
       lift,
+      {
+        reach: (cap) => capReaches(cap, basis, cw, ch, cx, cy, this.capProbe),
+        at: (x, y, z, l, out) => {
+          const s = projectUnit(x, y, z, basis, ch, 1 + l, cx, this.capProbe, cy);
+          out.x = s.x;
+          out.y = s.y;
+          return s.visible;
+        },
+      },
     );
   }
 
@@ -2336,7 +2355,7 @@ export class GlobeRenderer {
     this.globe.setNight(shown, ns[0], ns[1], ns[2]);
     this.caption?.setNight(shown, ns);
     const now = performance.now();
-    this.globe.syncCamera(b, zoom, this.pixel, now, this.reduced, lat, Math.max(this.width, this.height), inInterlude);
+    this.globe.syncCamera(b, zoom, this.pixel, now, this.reduced, lat, Math.max(this.width, this.height), inInterlude, lon);
     // (the caption's lines stay on the page's meridian and latitude; only what is hidden is the flying camera's)
     const over = pose ? { lon, lat } : undefined;
     this.lastBasis = { d, lon: v.lon, lat: v.lat, cam: over };

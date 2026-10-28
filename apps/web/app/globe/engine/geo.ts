@@ -180,6 +180,22 @@ export function projectLonLat(
 }
 
 /**
+ * Whether anything within `cap.rho` radians of the unit vector `cap.u` may be on a canvas `width` x `height` CSS px (the projection centre at `cx`, `cy`),
+ * so that what is out of reach can be skipped without projecting a point of it. Conservative: never false for a cap that has a visible point on the canvas.
+ * Behind the planet: the nearest point of the cap is past the horizon. Off the screen: the projection of a point of the sphere moves by at most `f / (d - 1)`
+ * px (the scale at the view's centre, which is the largest the sphere has) per radian, so no point of the cap is farther from the cap's centre than that
+ * times `rho`; a cap whose centre is behind the limb but whose edge is not is always reached.
+ */
+export function capReaches(cap: { u: Vec3; rho: number }, basis: ViewBasis, width: number, height: number, cx: number, cy: number, out: ScreenPoint): boolean {
+  const pc = cap.u[0] * basis.c[0] + cap.u[1] * basis.c[1] + cap.u[2] * basis.c[2];
+  if (Math.acos(clamp(pc, -1, 1)) - cap.rho > Math.acos(1 / basis.d) + 1e-3) return false;
+  if (pc <= 1 / basis.d + 1e-4) return true;
+  projectUnit(cap.u[0], cap.u[1], cap.u[2], basis, height, 1, cx, out, cy);
+  const reach = (basis.f / (basis.d - 1)) * cap.rho + 2;
+  return out.x + reach >= 0 && out.x - reach <= width && out.y + reach >= 0 && out.y - reach <= height;
+}
+
+/**
  * `projectLonLat` for a point already on the unit sphere (`lonLatToVec3`): no trigonometry, and `out` can be reused so a frame allocates nothing. The operations and their
  * order are the same, so the result is bit-identical to `projectLonLat` of the same lon/lat (the LOD tree keeps one
  * unit vector per node and projects the visible ones with this).
