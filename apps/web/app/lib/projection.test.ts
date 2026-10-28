@@ -119,6 +119,17 @@ describe("resolveRoutes", () => {
       { lat: 10.82, lon: 106.63 },
     ]);
   });
+  it("carries the box of each stop (a plain one only), which every leg is cropped to", () => {
+    const box = [-9.25, 38.664, -9.07, 38.776] as const;
+    const withBox = {
+      ...demo,
+      places: demo.places.map((p) => (p.slug === "lisbon" ? { ...p, bbox: [...box] as [number, number, number, number] } : p.slug === "paris" ? { ...p, bbox: [2, 49, 1, 48] as [number, number, number, number] } : p)),
+      routes: [{ id: "r", title: "r", stops: ["lisbon", "paris", "kyoto"] }],
+    } as PublishedProjection;
+    const [route] = resolveRoutes(withBox);
+    expect(route?.boxes?.[0]).toEqual(box);
+    expect(route?.boxes?.[1]).toBeUndefined(); // west >= east: not a box
+  });
   it("skips unresolvable stops and drops routes with fewer than two points", () => {
     const broken = {
       ...demo,

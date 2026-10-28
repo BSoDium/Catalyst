@@ -7,6 +7,7 @@
 import type { GlobeRoute } from "../types";
 import { lonLatToVec3 } from "../engine/geo";
 import { MODE_STYLE, isLegMode, type LegMode } from "./modes";
+import { cropToBoxes } from "./crop";
 import { decodePolyline5 } from "./polyline";
 import { EARTH_RADIUS_M, simplify } from "./simplify";
 import { paletteOf } from "./trail";
@@ -138,6 +139,11 @@ function routesKey(routes: readonly GlobeRoute[]): string {
       mix(Math.round(p.lat * 1e6));
       mix(Math.round(p.lon * 1e6));
     }
+    // the boxes the legs are cropped to are part of what the network is
+    for (const b of r.boxes ?? []) {
+      mix(b ? 1 : 0);
+      if (b) for (const v of b) mix(Math.round(v * 1e6));
+    }
     const legs = r.legs ?? [];
     mix(legs.length);
     for (const l of legs) {
@@ -188,6 +194,11 @@ function buildNetworkUncached(routes: readonly GlobeRoute[]): PathNetwork {
         lonlat = a2.lonlat;
         lift = a2.lift;
       }
+      // every mode ends where it meets the boxes of its stops (paths/crop.ts); a lifted arc keeps its arch, set down on the ground at the cut
+      const cropped = cropToBoxes(lonlat, lift, route.boxes?.[i], route.boxes?.[i + 1]);
+      if (!cropped) continue;
+      lonlat = cropped.lonlat;
+      lift = cropped.lift;
       const n = lonlat.length / 2;
       const lengthM = pathLengthM(lonlat);
       if (n < 2 || !(lengthM > 0)) continue;
