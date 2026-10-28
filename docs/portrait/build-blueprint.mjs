@@ -101,30 +101,55 @@ function outline(d) {
   return out.map((r) => pen(r, true)).join("\n      ");
 }
 
-// a straight line drawn by hand: wobble, and a little past both ends
-const line = (x1, y1, x2, y2, o = [3, 19], cls = "") => {
-  const t = unit([x2 - x1, y2 - y1]), a = range(...o), b = range(...o), m = [(x1 + x2) / 2, (y1 + y2) / 2], nn = [-t[1], t[0]], w = range(-1.4, 1.4);
-  return `<path ${cls ? `class="${cls}" ` : ""}d="M${f(x1 - t[0] * a)} ${f(y1 - t[1] * a)}Q${f(m[0] + nn[0] * w)} ${f(m[1] + nn[1] * w)} ${f(x2 + t[0] * b)} ${f(y2 + t[1] * b)}" style="stroke-width:${f(range(2.3, 3))}" />`;
-};
-const guide = (x1, y1, x2, y2) => line(x1, y1, x2, y2, [0, 0]).replace(/ style="[^"]*"/, "");
-
 const F = 0; // the frame is the 500-unit square; the pen runs past it into the margin (MX at the sides, MY above and below)
 const MX = 220, MY = 70; // the margin the pen may run into: wide at the sides, short above and below
 const ids = ["jacket", "neck", "collar", "shirt", "head", "chin-shadow", "hair"];
 const D = Object.fromEntries(ids.map((i) => [i, get(i)]));
 const open = (id) => svg.match(new RegExp(`<path id="${id}"[^>]*?d="([^"]+)"`))[1];
 
-// construction lines through the key heights, like the paper study
-const guides = [
-  [0, 54, 500, 56], [0, 130, 500, 129], [0, 140, 500, 141], [0, 189, 500, 188], [0, 212, 500, 213], [0, 246, 500, 244], [0, 262, 500, 259],
-  [319, 0, 321, 500], [209, 0, 207, 500], [186, 0, 184, 500], [279, 0, 281, 500],
+// Construction lines: each one is the prolongation of a straight edge of the drawing (the slanted edge of a shoulder, the long side of the face,
+// the neck, the shirt, the hair, an eye, the nose bridge...), run right across the frame, then a short way out of it and faded.
+const EDGES = [
+  [[0, 373.5], [54.1249, 311.165]], // left shoulder
+  [[500, 401.276], [406.747, 298.198]], // right shoulder
+  [[187, 81.5], [156.5, 175]], // the face's left side
+  [[186.5, 343.5], [195.5, 246]], // the neck's left side
+  [[279.5, 338], [279.5, 499.5]], // the shirt's right edge
+  [[171.5, 499.5], [186.5, 343.5]], // the shirt's left edge
+  [[278.5, 256], [142.027, 266.803]], // the jacket's edge at the neck
+  [[195.5, 246], [280, 233]], // the line of the chin
+  [[181.5, 60.5], [276, 56.5]], // the top of the hair
+  [[313.5, 84.5], [329.5, 126]], // the back of the hair
+  [[185, 140], [184, 159]], // the left eye
+  [[234, 140], [233, 159]], // the right eye
+  [[194.709, 146], [187.209, 181.5]], // the nose bridge
 ];
-// tangents of the drawing, run right across the frame: the slanted edge of each shoulder, and the long straight side of the face
-const tangent = (a, b) => {
+// (the old free-hand guides drew 44 numbers from the pen; they are spent here so that the outlines and the frame keep the drawing they had)
+for (let i = 0; i < 44; i++) rnd();
+let gs = 23;
+const grnd = () => ((gs = (gs + 0x6d2b79f5) | 0), (((t) => ((t ^ (t >>> 15)) * (1 | t)))(gs) >>> 0) / 4294967296);
+const gr = (a, b) => a + grnd() * (b - a);
+const inner = [], outer = [];
+for (const [a, b] of EDGES) {
   const u = unit([b[0] - a[0], b[1] - a[1]]);
-  return `<path d="M${P([a[0] - u[0] * 900, a[1] - u[1] * 900])}L${P([a[0] + u[0] * 900, a[1] + u[1] * 900])}" />`;
-};
-const G = [...guides.map((g) => guide(...g)), tangent([0, 373.5], [54.1249, 311.165]), tangent([500, 401.276], [406.747, 298.198]), tangent([187, 81.5], [156.5, 175])].join("\n      ");
+  // where the line is inside the 500-unit frame (slab method)
+  let t0 = -Infinity, t1 = Infinity;
+  for (const k of [0, 1]) {
+    if (Math.abs(u[k]) < 1e-9) continue;
+    const s = [(0 - a[k]) / u[k], (500 - a[k]) / u[k]].sort((x, y) => x - y);
+    t0 = Math.max(t0, s[0]); t1 = Math.min(t1, s[1]);
+  }
+  const at = (t) => [a[0] + u[0] * t, a[1] + u[1] * t];
+  inner.push(`<path d="M${P(at(t0))}L${P(at(t1))}" />`);
+  // out of the frame by the side it leaves through: far past the sides, a little past the top and the bottom (always less than the frame's own lines)
+  for (const [t, dir] of [[t0, -1], [t1, 1]]) {
+    const e = at(t), sideExit = e[0] < 1 || e[0] > 499, len = sideExit ? gr(35, 95) : gr(10, 28);
+    const o = [e[0] + u[0] * dir * len, e[1] + u[1] * dir * len];
+    outer.push(tail(e, o, 1.5, "--frame"));
+  }
+}
+const G = inner.join("\n      ");
+const guideTails = outer.join("\n      ");
 
 const FACE = `${D.head} ${D.neck}`;
 const r = (a) => a;
@@ -170,15 +195,15 @@ const result = `<svg width="${500 + 2 * MX}" height="${500 + 2 * MY}" viewBox="$
        docs/portrait/build-blueprint.mjs (a seeded pen: the same drawing every run). -->
   <style>
     /* Monochrome greys; the blues are the jacket and the faintly blue skin. The pen's blue-grey sits close to the ground, never black. */
-    :root { --bg: #eeeeee; --skin: #a4cfff; --jacket: #1a88e0; --shirt: #4a4a4a; --collar: #ffffff; --ink: #0a0a0a;
-            --hair: #3a4a60; --hatch-hair: #0a0a0a; --shade: #78a2d6; --hatch-shade: #4a74a8; --hatch-shirt: #2e2e2e;
-            --line: #5b6d85; --frame: #d8d8d8; --g-bg: #cdcdcd; --g-skin: #7bb0ee; --g-jacket: #4aa6ee; --g-shirt: #6a6a6a; }
-    @media (prefers-color-scheme: dark) { :root { --bg: #161616; --skin: #82a8d2; --jacket: #135086; --shirt: #262626; --collar: #bdbdbd; --ink: #050505;
-            --hair: #26364a; --hatch-hair: #0a1018; --shade: #5f86b2; --hatch-shade: #3f628a; --hatch-shirt: #3a3a3a;
-            --line: #8398b3; --frame: #313131; --g-bg: #333333; --g-skin: #9dbde0; --g-jacket: #2a72b4; --g-shirt: #3f3f3f; } }
+    :root { --bg: #eeeeee; --skin: #86b4ec; --jacket: #1a88e0; --shirt: #4a4a4a; --collar: #ffffff; --ink: #0a0a0a; --mark: #0a0a0a;
+            --hair: #3a4a60; --hatch-hair: #0a0a0a; --shade: #5f8fcb; --hatch-shade: #3d6aa3; --hatch-shirt: #2e2e2e;
+            --line: #5b6d85; --frame: #d8d8d8; --g-bg: #cdcdcd; --g-skin: #6ea2e2; --g-jacket: #4aa6ee; --g-shirt: #6a6a6a; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #161616; --skin: #4f6f96; --jacket: #135086; --shirt: #262626; --collar: #bdbdbd; --ink: #050505; --mark: #eef3f9;
+            --hair: #26364a; --hatch-hair: #0a1018; --shade: #3d5a7e; --hatch-shade: #2c4560; --hatch-shirt: #3a3a3a;
+            --line: #8398b3; --frame: #313131; --g-bg: #333333; --g-skin: #7f9fc6; --g-jacket: #2a72b4; --g-shirt: #3f3f3f; } }
     .bg { fill: var(--bg) } .skin { fill: var(--skin) } .jacket { fill: var(--jacket) } .shirt { fill: var(--shirt) } .collar { fill: var(--collar) }
     .hair { fill: var(--hair) } .shade { fill: var(--shade) }
-    path[stroke] { stroke: var(--ink) }
+    path[stroke] { stroke: var(--mark) }
     .pen path { stroke: var(--line); stroke-linecap: round; stroke-linejoin: round; fill: none }
     #pen-frame path { stroke: var(--frame) }
     .hatch { stroke-linecap: round; fill: none }
@@ -236,6 +261,9 @@ const result = `<svg width="${500 + 2 * MX}" height="${500 + 2 * MY}" viewBox="$
     </g>
     <g id="pen-hem" class="pen" clip-path="url(#c-frame)">
       ${penHem}
+    </g>
+    <g id="guide-tails" class="guides">
+      ${guideTails}
     </g>
   </g>
 </svg>

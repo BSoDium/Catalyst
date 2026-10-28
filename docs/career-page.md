@@ -21,9 +21,9 @@ Running head over one hairline (the document's title at the left, "Updated Month
 2. **Experience**: an ordered list, newest first as authored, two columns from 64 rem (who, when and where at the left in a fixed 26 rem; highlights and skills at the right), one faint 1 px rail with a 41 px marker per item (the organisation's logo, else the role's icon) (`careerIcon` picks the icon from the title: rocket for a founder, layers for full-stack, code for front-end, palette for design, briefcase otherwise; education: cuboid, sigma, cap; the role in progress is accent-coloured), no boxes; each item: organisation (h3, linked to `orgUrl` when there is one) with the location at the right (linked to the place's page when the place exists), role title, one muted line `employment | period (`<time>`) | length of the stay`, highlights, role skills as quiet chips.
 3. **Education**: the same timeline.
 4. **Skills**: groups as a definition list, items comma separated (compact).
-5. **Elsewhere**: the document's public links (GitHub, ...), https only, `rel="me noopener noreferrer"`. No contact channel anywhere (the contract has none; a Copy-email button is a later task).
+5. **Socials**: the document's public links (GitHub, ...), https only, `rel="me noopener noreferrer"`. No contact channel anywhere (the contract has none; a Copy-email button is a later task).
 
-Headings: h1 name; h2 Languages (visually a label), Experience, Education, Skills, Elsewhere; h3 organisation or institution. Periods: `Sep 2025 – Present`, a missing end shows the start alone, a year-only date stays a year. Solid colours of the page tokens only (no opacity), no animation at all (so reduced motion has nothing to switch off), no layout shift (sizes known).
+Headings: h1 name; h2 Languages (visually a label), Experience, Education, Skills, Socials; h3 organisation or institution. Periods: `Sep 2025 – Present`, a missing end shows the start alone, a year-only date stays a year. Solid colours of the page tokens only (no opacity), no animation at all (so reduced motion has nothing to switch off), no layout shift (sizes known).
 
 ## Head tags and structured data
 

@@ -3232,7 +3232,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   }
 
   /*
-   * The way in: the same arrow as ever (a square with a diagonal and the two sides of a head, a station sign's), never stretched: square, an icon's size (16 px, owner, 2026-10-29: 28 was still too big, 38 before it; the words are 46 px tall, the title and the second line, which wraps to two lines at the card's width), at the top right, level with the title, apart from the words. Drawn edge to edge in its box,
+   * The way in: the same arrow as ever (a square with a diagonal and the two sides of a head, a station sign's), never stretched: square, an icon's size (16 px, owner, 2026-10-29: 28 was still too big, 38 before it; 4 px in from the card's top and right edges; the words are 46 px tall, the title and the second line, which wraps to two lines at the card's width), at the top right, level with the title, apart from the words. Drawn edge to edge in its box,
    * with a stroke of its own that does not scale (1.5 px: the weight of the title's letters), in the words' own colours, raised on hover and focus.
    */
   .globe-moon-card .globe-moon-arrow[data-size] {
@@ -3240,7 +3240,8 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     align-self: flex-start;
     width: 16px;
     height: 16px;
-    margin-top: 1px;
+    margin-top: 4px;
+    margin-inline-end: 4px; /* off the card's top and right edges: it does not hug them */
     margin-inline-start: 14px;
     overflow: visible;
     stroke-width: 1.5px;
@@ -4288,13 +4289,13 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
 
   /* How strong the bleeds are, per scheme: on a dark page a halo glows (the light colours stand out), so it is much fainter there. */
   [data-slot="career"] {
-    --career-halo-portrait: 0.13;
+    --career-halo-portrait: 0.22;
     --career-halo-logo: 0.15;
   }
 
   @media (prefers-color-scheme: dark) {
     [data-slot="career"] {
-      --career-halo-portrait: 0.05;
+      --career-halo-portrait: 0.1;
       --career-halo-logo: 0.09;
     }
   }
@@ -4307,10 +4308,11 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
 
   .career-portrait .career-portrait-glow {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    top: var(--portrait-bleed-y);
+    left: var(--portrait-bleed-x);
+    width: 188%;
+    max-width: none;
+    height: 128%;
     z-index: -1;
     border: 0;
     background: none;
