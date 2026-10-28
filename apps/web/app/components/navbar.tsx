@@ -78,6 +78,9 @@ function useGestureGuard(bar: boolean, onHome: boolean, ref: { current: HTMLElem
 /** The first item names the globe (the home page): the site's own name is the landing hero's headline and the document title, not the row's. */
 const HOME_LABEL = "Globe";
 
+/** In the narrow form's drawer "Globe" is a section like the others, the first: the home page, and the places on it. */
+const HOME_ITEM = { to: "/", label: HOME_LABEL } as const;
+
 /** The sections, in the header's order (the hero's rows have the same): paths and names come from the kinds' tables (`Poetry` at `/poetry`). */
 const LINKS = (["project", "article", "artwork", "poem", "photograph"] as const).map((kind) => ({ to: KIND_PATHS[kind], label: KIND_PLURALS[kind], kind }));
 
@@ -99,7 +102,7 @@ interface NavbarProps {
 const linkClass = "nav-link pointer-events-auto inline-flex min-h-11 min-w-11 items-center justify-center";
 
 /**
- * The navigation, centred at the top of the viewport; no logo. Its parts, in reading and focus order: "Globe" (the way home: the globe is
+ * The navigation, centred at the top of the viewport; no logo. (In the narrow form, a phone or the half beside the panel, it is the section selector at the left and the search at the right: "Globe" is a row of the selector's drawer, `SectionsMenu`.) Its parts, in reading and focus order: "Globe" (the way home: the globe is
  * the home page; the site's name is the landing hero's headline), the four sections, the search trigger.
  *
  * On the home page, while the landing hero is at rest, there is NO header at all (owner, 2026-10-13): the hero's four rows are the
@@ -144,7 +147,6 @@ export function Navbar({ heroResting: forced, hasCareer: forcedCareer }: NavbarP
     if (pathname !== "/") markLeftHome();
   }, [pathname]);
   useGestureGuard(bar, pathname === "/", headerRef);
-
   return (
     <>
       {bar && (
@@ -152,6 +154,7 @@ export function Navbar({ heroResting: forced, hasCareer: forcedCareer }: NavbarP
           ref={headerRef}
           data-slot="site-header"
           data-career={withCareer ? "" : undefined}
+          data-globe={onGlobe ? "" : undefined}
           className={cn(
             "@container pointer-events-none fixed top-0 right-0 left-0 z-40",
             "md:transition-[right] md:duration-(--duration-slow) md:ease-(--ease-standard)",
@@ -165,6 +168,7 @@ export function Navbar({ heroResting: forced, hasCareer: forcedCareer }: NavbarP
               <NavLink
                 to="/"
                 end
+                data-nav="home"
                 aria-label={`${HOME_LABEL}, ${SITE_NAME} home`}
                 className={({ isActive }) => cn(linkClass, isActive ? "text-foreground underline decoration-1 underline-offset-8" : "text-muted-foreground")}
               >
@@ -185,7 +189,7 @@ export function Navbar({ heroResting: forced, hasCareer: forcedCareer }: NavbarP
                   </li>
                 ))}
               </ul>
-              <SectionsMenu items={links} counts={counts} />
+              <SectionsMenu items={[HOME_ITEM, ...links]} counts={counts} />
               <SearchTriggers />
             </nav>
           </div>

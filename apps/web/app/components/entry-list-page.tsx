@@ -47,7 +47,7 @@ export function EntryListPage({ kind, items }: { kind: ContentKind; items: Entry
       data-surface="reading"
       data-layout="full"
       data-list={kind}
-      className="entry mx-auto max-w-[100rem] px-4 pt-[calc(var(--navbar-height)+3rem)] pb-24 outline-none md:px-14"
+      className="entry mx-auto max-w-[100rem] px-4 pt-[calc(var(--navbar-height)+1.5rem)] min-[56rem]:pt-[calc(var(--navbar-height)+3rem)] pb-24 outline-none md:px-14"
     >
       <header data-slot="list-head" className="list-head">
         <p className="list-running type-meta">

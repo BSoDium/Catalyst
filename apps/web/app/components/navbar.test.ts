@@ -5,6 +5,7 @@ import { createStaticHandler, createStaticRouter, StaticRouterProvider, type Sta
 import { describe, expect, it } from "vitest";
 import { SITE_NAME } from "~/lib/site";
 import { GESTURE_GUARD_MS, Navbar } from "./navbar";
+import { CLOSE_MS } from "./sections-menu";
 
 /** The header's inline row: everything before the Sections button's sheet (which repeats the sections as a list, for the narrow form). */
 const inline = (html: string) => html.slice(0, html.indexOf('data-slot="sections-menu"'));
@@ -26,7 +27,7 @@ describe("Navbar", () => {
     // (the Sections button's chevron is the other: it is drawn only where the row has no room)
     expect(inline(html).match(/<svg/g) ?? []).toHaveLength(0);
     expect(html.match(/<svg/g)).toHaveLength(2);
-    const links = [...inline(html).matchAll(/<a [^>]*href="([^"]*)"[^>]*>([^<]*)<\/a>/g)].map((m) => [m[1], m[2]]);
+    const links = [...inline(html).matchAll(/<a [^>]*href="([^"]*)"[^>]*>(?:<svg.*?<\/svg>)?([^<]*)<\/a>/g)].map((m) => [m[1], m[2]]);
     expect(links).toEqual([
       ["/", "Globe"],
       ["/software", "Software"],
@@ -44,7 +45,7 @@ describe("Navbar", () => {
 
   it("adds \"Career\" after the five sections when the projection has a career document, and says so on the header for the tighter tiers", async () => {
     const html = await render("/articles", { shell: false, hasCareer: true });
-    const links = [...inline(html).matchAll(/<a [^>]*href="([^"]*)"[^>]*>([^<]*)<\/a>/g)].map((m) => [m[1], m[2]]);
+    const links = [...inline(html).matchAll(/<a [^>]*href="([^"]*)"[^>]*>(?:<svg.*?<\/svg>)?([^<]*)<\/a>/g)].map((m) => [m[1], m[2]]);
     expect(links).toEqual([["/", "Globe"], ["/software", "Software"], ["/articles", "Articles"], ["/artworks", "Artworks"], ["/poetry", "Poetry"], ["/photography", "Photography"], ["/career", "Career"]]);
     expect(html).toContain("data-career");
     expect(html.indexOf('data-slot="search-trigger"')).toBeGreaterThan(html.indexOf('href="/career"'));
@@ -72,7 +73,7 @@ describe("Navbar", () => {
 
   it("on the home page, once the hero has stepped back (its rows are hidden), brings the sections back", async () => {
     const html = await render("/", { heroResting: false });
-    const links = [...inline(html).matchAll(/<a [^>]*href="([^"]*)"[^>]*>([^<]*)<\/a>/g)].map((m) => m[1]);
+    const links = [...inline(html).matchAll(/<a [^>]*href="([^"]*)"[^>]*>(?:<svg.*?<\/svg>)?([^<]*)<\/a>/g)].map((m) => m[1]);
     expect(links).toEqual(["/", "/software", "/articles", "/artworks", "/poetry", "/photography"]);
     expect(html.match(/aria-label="Primary"/g)).toHaveLength(1);
     // the key hint is plain muted text: the command key's name in a kbd with no box, no border, no background
@@ -150,14 +151,50 @@ describe("the Sections button (phone header)", () => {
     expect(at).toBeLessThan(html.indexOf('data-slot="search-trigger"'));
     const details = html.slice(html.lastIndexOf("<details", at), html.indexOf("</details>", at));
     expect(details).toContain("<summary");
-    expect(details).toMatch(/<summary[^>]*class="[^"]*min-h-11 min-w-11/);
-    expect(details).toContain("<span>Sections</span>");
+    // the control says where the visitor is: the section's index and name, with an accessible name that says what it opens
+    expect(details).toMatch(/<summary aria-label="Articles, sections" class="nav-sel /);
+    expect(details).toContain('<span class="nav-sel-label"><span aria-hidden="true" class="nav-sel-index">03</span><span class="nav-sel-name">Articles</span><svg');
+    // the veil, the sheet and its grip are in the disclosure (the veil only draws once the script has run)
+    expect(details).toContain('data-slot="sections-veil"');
+    expect(details).toContain("nav-sheet-grip");
+    expect(details).not.toMatch(/border-b|nav-sheet-border/);
     const sheet = [...details.matchAll(/<a [^>]*href="([^"]*)"/g)].map((m) => m[1]);
-    expect(sheet).toEqual(["/software", "/articles", "/artworks", "/poetry", "/photography", "/career"]);
+    // "Globe" is a section like the others in the drawer: the first row
+    expect(sheet).toEqual(["/", "/software", "/articles", "/artworks", "/poetry", "/photography", "/career"]);
     // without a data router there are no counts to say: the rows are the names alone
     expect(details).not.toContain('data-slot="sections-count"');
     // the current page is marked in the sheet as well
     expect(details).toMatch(/<a [^>]*aria-current="page"[^>]*href="\/articles"|<a [^>]*href="\/articles"[^>]*aria-current="page"/);
+  });
+
+  it("says \"01 Globe\" on the home page and on a place, and \"Sections\" where the visitor is in no section (a 404)", async () => {
+    for (const url of ["/", "/locations/x"]) {
+      const html = await render(url, { heroResting: false });
+      const at = html.indexOf('data-slot="sections-menu"');
+      const summary = html.slice(html.indexOf("<summary", at), html.indexOf("</summary>", at));
+      expect(summary, url).toContain('aria-label="Globe, sections"');
+      expect(summary, url).toContain('<span aria-hidden="true" class="nav-sel-index">01</span><span class="nav-sel-name">Globe</span><svg');
+    }
+    const html = await render("/nope", { shell: false });
+    const at = html.indexOf('data-slot="sections-menu"');
+    const summary = html.slice(html.indexOf("<summary", at), html.indexOf("</summary>", at));
+    expect(summary).toContain('aria-label="Sections"');
+    expect(summary).toContain('<span class="nav-sel-name nav-sel-name-none">Sections</span>');
+    expect(summary).not.toContain("nav-sel-index");
+  });
+
+  it("plays its way out for as long as the stylesheet says (the `open` attribute is removed after it), and the way out is quicker than the way in", () => {
+    const open = Number(/--nav-open: (\d+)ms;/.exec(css)?.[1]);
+    const close = Number(/--nav-close: (\d+)ms;/.exec(css)?.[1]);
+    expect(close).toBe(CLOSE_MS);
+    expect(close).toBeLessThan(open);
+  });
+
+  it("is two zones in the narrow bar, the selector always at the left (the home link is a row of the drawer, not drawn) and the search at the right", () => {
+    expect(css).toMatch(/\[data-slot="site-header"\] nav \{\s*grid-template-columns: 1fr auto;/);
+    expect(css).toMatch(/nav > \[data-nav="home"\] \{\s*display: none;/);
+    expect(css).toMatch(/nav > \.nav-sections \{\s*justify-self: start;/);
+    expect(css).not.toContain("nav-back-icon");
   });
 
   it("swaps with the inline row by the header's own width (56 rem), never by the viewport's: beside the panel the row has half the viewport", () => {
