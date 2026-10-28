@@ -136,6 +136,16 @@ export function useLandingHero(open: boolean): LandingHero {
     sync();
   }, [open, sync]);
   useEffect(() => () => machine.stop(), [machine]);
+  // `?hero-log`: the hero's state changes to the console, with the time since the last one (for a bug that cannot be seen from outside: what put the name back big, and when)
+  useEffect(() => {
+    if (typeof location === "undefined" || !new URLSearchParams(location.search).has("hero-log")) return;
+    let at = performance.now();
+    return machine.subscribe(() => {
+      const now = performance.now();
+      console.log(`[hero] +${Math.round(now - at)}ms`, JSON.stringify(machine.getSnapshot()));
+      at = now;
+    });
+  }, [machine]);
   // (the search palette's interlude is asked for while a gesture had put the hero away: the caption it plays on comes back)
   useEffect(() => {
     const restore = () => {

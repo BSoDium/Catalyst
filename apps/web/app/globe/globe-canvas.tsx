@@ -182,11 +182,22 @@ export default function GlobeCanvas({
       last = now;
       note();
     };
+    const noteGesture = () => {
+      const now = performance.now();
+      if (now - last < MOVE_NOTE_MS) return;
+      last = now;
+      note();
+    };
     const options = { passive: true, capture: true } as const;
     stage.addEventListener("pointerdown", note, options);
     stage.addEventListener("pointermove", noteMove, options);
     stage.addEventListener("wheel", note, options);
+    // Safari's trackpad pinch is `gesturestart` / `gesturechange`, not a wheel: without them a pinch was no gesture to the app, the hero's idle clock ran on while the visitor zoomed, and the name came back big under their fingers
+    stage.addEventListener("gesturestart", note, options);
+    stage.addEventListener("gesturechange", noteGesture, options);
     return () => {
+      stage.removeEventListener("gesturestart", note, options);
+      stage.removeEventListener("gesturechange", noteGesture, options);
       stage.removeEventListener("pointerdown", note, options);
       stage.removeEventListener("pointermove", noteMove, options);
       stage.removeEventListener("wheel", note, options);
