@@ -220,7 +220,23 @@ const EGG_ENV = { band: 2.3, stars: 0.95, sky: 0.45, edge: { contrast: 0.9, rim:
  * warm ramp (`SUN.tint`), so that it steps outwards from white-gold through yellow and amber to red, as the sun's halo does. `unit`: the centre's angular size, radians; `reach`: where the
  * falloff is gone, in units; `fall`: its power; `gain`: how bright the centre is (the ramp's strength is `gain` times the falloff, as the halo's is); `lightMix`: how much of the colour the light page's letters take.
  */
-const SUN_GLINT = { unit: 0.075, reach: 7, fall: 1.8, gain: 2.4, hot: 1.6, light: { veil: 0.55, spot: 1, edge: [1.5, 1.8] } } as const;
+const SUN_GLINT = { unit: 0.075, reach: 7, fall: 1.5, gain: 2.4, hot: 1.6, core: [0.2, 1.7], light: { veil: 0.55, spot: 1, edge: [1.0, 2.3] } } as const;
+
+/**
+ * The light page's SPOTLIGHTS in the metal (`EGG_FRAG`): the studio's intro has lights round the word that reflect in it; on the dark page the stars do that, on the light one they are too visible and do not sell
+ * the effect, so a few small sources do (and the stars are off there). Each is a direction in the camera's frame (x right, y up, z towards the viewer), a size (radians, the centre's) and a strength; they are soft (a veil
+ * and a spot, as the light page's sun, with a soft edge, not a mirror's hard one) and the same however the word is turned, as the sun is not.
+ */
+const SPOTS = [
+  { at: [-0.7, 0.5, 0.5], size: 0.07, i: 0.9 },
+  { at: [0.6, 0.65, 0.45], size: 0.05, i: 0.8 },
+  { at: [0.05, 0.9, 0.4], size: 0.04, i: 0.7 },
+  { at: [-0.9, -0.05, 0.4], size: 0.05, i: 0.7 },
+  { at: [0.9, 0.0, 0.4], size: 0.06, i: 0.8 },
+  { at: [0.45, -0.6, 0.65], size: 0.045, i: 0.6 },
+  { at: [-0.4, -0.55, 0.7], size: 0.04, i: 0.6 },
+  { at: [-0.2, 0.3, 0.95], size: 0.035, i: 0.5 },
+] as const;
 
 /**
  * Lit like polished metal: a key light and a weak fill fixed in the camera's frame (`CINEMATIC.light`), and a REFLECTION of a studio, a procedural
@@ -274,7 +290,7 @@ const EGG_FRAG = /* glsl */ `
     vec2 uv = vec2(atan(g.y, g.x) / 6.283185307 + 0.5, asin(clamp(g.z, -1.0, 1.0)) / ${((SKY.map.bMaxDeg * Math.PI) / 180).toFixed(6)} * 0.5 + 0.5);
     float band = texture2D(uBand, uv).r;
     float st = texture2D(uStars, vec2(atan(g.y, g.x) / 6.283185307 + 0.5, asin(clamp(g.z, -1.0, 1.0)) / 3.141592654 + 0.5)).r;
-    return ${EGG_ENV.band.toFixed(2)} * band + ${EGG_ENV.stars.toFixed(2)} * st + ${EGG_ENV.sky.toFixed(2)} * uSky * smoothstep(0.1, 0.95, r.y);
+    return ${EGG_ENV.band.toFixed(2)} * band + ${EGG_ENV.stars.toFixed(2)} * st * (1.0 - uLight) + ${EGG_ENV.sky.toFixed(2)} * uSky * smoothstep(0.1, 0.95, r.y);
   }
   // the lines' own ordered dither, on the art's pixels (this canvas is drawn at the art's resolution)
   float dither2(vec2 a) { return fract(a.x * 0.5 + a.y * a.y * 0.75); }
@@ -321,7 +337,7 @@ const EGG_FRAG = /* glsl */ `
       float u = acos(clamp(dot(rv, uSunDir), -1.0, 1.0)) / ${SUN_GLINT.unit.toFixed(4)};
       // the falloff from the hot centre: its strength is the tone the ramp is asked for (white-gold, yellow, amber, orange, red, in steps) and how much of it there is
       float fall = pow(clamp(1.0 - u / ${SUN_GLINT.reach.toFixed(1)}, 0.0, 1.0), ${SUN_GLINT.fall.toFixed(2)});
-      float hot = 1.0 - smoothstep(0.6, 1.1, u);
+      float hot = 1.0 - smoothstep(${SUN_GLINT.core[0].toFixed(2)}, ${SUN_GLINT.core[1].toFixed(2)}, u);
       vec3 sunCol = warmSmooth(clamp(fall + hot, 0.0, 1.0)) * (clamp(fall * ${SUN_GLINT.gain.toFixed(2)}, 0.0, 1.0) + hot * ${SUN_GLINT.hot.toFixed(2)});
       float seen = clear * uSunAmt * (vKind > 3.5 ? 0.3 : 1.0);
       sunCol *= seen;
@@ -329,6 +345,15 @@ const EGG_FRAG = /* glsl */ `
       // (the light page's sun: the falloff as a grey veil and the centre as a white spot, the same amount of it)
       sunVeil = fall * seen;
       sunSpot = (1.0 - smoothstep(${SUN_GLINT.light.edge[0].toFixed(2)}, ${SUN_GLINT.light.edge[1].toFixed(2)}, u)) * seen;
+      // the light page's spotlights (the studio's lights round the word): soft veils and spots, in the same grey and white
+      const vec4 SPOT[${SPOTS.length}] = vec4[${SPOTS.length}](${SPOTS.map((p) => `vec4(${p.at.map((x) => x.toFixed(3)).join(", ")}, ${p.size.toFixed(3)})`).join(", ")});
+      const float SPOT_I[${SPOTS.length}] = float[${SPOTS.length}](${SPOTS.map((p) => p.i.toFixed(2)).join(", ")});
+      float back = (vKind > 3.5 ? 0.3 : 1.0) * uLight;
+      for (int i = 0; i < ${SPOTS.length}; i++) {
+        float us = acos(clamp(dot(rv, normalize(SPOT[i].xyz)), -1.0, 1.0)) / SPOT[i].w;
+        sunVeil = max(sunVeil, pow(clamp(1.0 - us / ${SUN_GLINT.reach.toFixed(1)}, 0.0, 1.0), ${SUN_GLINT.fall.toFixed(2)}) * SPOT_I[i] * back);
+        sunSpot = max(sunSpot, (1.0 - smoothstep(0.3, 1.5, us)) * SPOT_I[i] * back);
+      }
     }
     // the outline is the line: the ink, hardly lit
     if (vKind > 0.5 && vKind < 1.5) col = mix(col, uOutline, ${CINEMATIC.light.outlineMix.toFixed(2)});
