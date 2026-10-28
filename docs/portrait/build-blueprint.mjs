@@ -195,12 +195,12 @@ const result = `<svg width="${500 + 2 * MX}" height="${500 + 2 * MY}" viewBox="$
        docs/portrait/build-blueprint.mjs (a seeded pen: the same drawing every run). -->
   <style>
     /* Monochrome greys; the blues are the jacket and the faintly blue skin. The pen's blue-grey sits close to the ground, never black. */
-    :root { --bg: #eeeeee; --skin: #86b4ec; --jacket: #1a88e0; --shirt: #4a4a4a; --collar: #ffffff; --ink: #0a0a0a; --mark: #0a0a0a;
-            --hair: #3a4a60; --hatch-hair: #0a0a0a; --shade: #5f8fcb; --hatch-shade: #3d6aa3; --hatch-shirt: #2e2e2e;
-            --line: #5b6d85; --frame: #d8d8d8; --g-bg: #cdcdcd; --g-skin: #6ea2e2; --g-jacket: #4aa6ee; --g-shirt: #6a6a6a; }
-    @media (prefers-color-scheme: dark) { :root { --bg: #161616; --skin: #4f6f96; --jacket: #135086; --shirt: #262626; --collar: #bdbdbd; --ink: #050505; --mark: #eef3f9;
-            --hair: #26364a; --hatch-hair: #0a1018; --shade: #3d5a7e; --hatch-shade: #2c4560; --hatch-shirt: #3a3a3a;
-            --line: #8398b3; --frame: #313131; --g-bg: #333333; --g-skin: #7f9fc6; --g-jacket: #2a72b4; --g-shirt: #3f3f3f; } }
+    :root { --bg: #eeeeee; --skin: #a4cfff; --jacket: #2f9aee; --shirt: #4a4a4a; --collar: #ffffff; --ink: #0a0a0a; --mark: #0a0a0a;
+            --hair: #3a4a60; --hatch-hair: #0a0a0a; --shade: #78a2d6; --hatch-shade: #4a74a8; --hatch-shirt: #2e2e2e;
+            --line: #5b6d85; --frame: #d8d8d8; --g-bg: #cdcdcd; --g-skin: #7bb0ee; --g-jacket: #5cb2f2; --g-shirt: #6a6a6a; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #161616; --skin: #82a8d2; --jacket: #1a63a3; --shirt: #262626; --collar: #bdbdbd; --ink: #050505; --mark: #050505;
+            --hair: #26364a; --hatch-hair: #0a1018; --shade: #5f86b2; --hatch-shade: #3f628a; --hatch-shirt: #3a3a3a;
+            --line: #8398b3; --frame: #313131; --g-bg: #333333; --g-skin: #9dbde0; --g-jacket: #3484c8; --g-shirt: #3f3f3f; } }
     .bg { fill: var(--bg) } .skin { fill: var(--skin) } .jacket { fill: var(--jacket) } .shirt { fill: var(--shirt) } .collar { fill: var(--collar) }
     .hair { fill: var(--hair) } .shade { fill: var(--shade) }
     path[stroke] { stroke: var(--mark) }
