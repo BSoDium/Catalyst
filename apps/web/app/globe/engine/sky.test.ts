@@ -403,7 +403,9 @@ describe("the stars' halos (the light page's chrome)", () => {
     const halo = bakeStarHalo();
     expect(halo.length).toBe(2048 * 1024);
     const st = makeStars();
-    const x = st.position[0]!, y = st.position[1]!, z = st.position[2]!;
+    // (a star of the brightest tier: the light page keeps every one of them)
+    const k = Array.from(st.tier).findIndex((t) => t === 2);
+    const x = st.position[3 * k]!, y = st.position[3 * k + 1]!, z = st.position[3 * k + 2]!;
     const c = Math.min(2047, Math.floor((Math.atan2(y, x) / (2 * Math.PI) + 0.5) * 2048));
     const r = Math.min(1023, Math.floor((Math.asin(z) / Math.PI + 0.5) * 1024));
     expect(halo[r * 2048 + c]).toBeGreaterThan(0);

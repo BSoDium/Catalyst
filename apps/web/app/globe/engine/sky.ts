@@ -295,6 +295,8 @@ let bakedHalo: Uint8Array | null = null;
 export const HALO_SIGMA = 1.5;
 /** The light page shows only the stars of this tier and brighter (`bakeStarHalo`, engine/caption-layer.ts): fewer of them, as the owner asked (2026-10-28). */
 export const LIGHT_MIN_TIER = 1;
+/** And of the stars at that tier only this share is drawn there (a fixed pick by the star's index): a little fewer still. */
+export const LIGHT_TIER_KEEP = 0.55;
 export function bakeStarHalo(minTier = 1): Uint8Array {
   if (bakedHalo) return bakedHalo;
   const w = 2048;
@@ -305,6 +307,7 @@ export function bakeStarHalo(minTier = 1): Uint8Array {
   const R = Math.ceil(HALO_SIGMA * 3);
   for (let i = 0; i < st.count; i++) {
     if (st.tier[i]! < minTier) continue; // (the faintest stars have no halo: the light page shows fewer, `LIGHT_MIN_TIER`)
+    if (st.tier[i]! === minTier && ((Math.imul(i, 2654435761) >>> 0) % 1000) / 1000 >= LIGHT_TIER_KEEP) continue; // (and a share of the next tier: `LIGHT_TIER_KEEP`)
     const x = st.position[3 * i]!;
     const y = st.position[3 * i + 1]!;
     const z = st.position[3 * i + 2]!;

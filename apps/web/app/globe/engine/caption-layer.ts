@@ -365,8 +365,10 @@ const EGG_FRAG = /* glsl */ `
       // the light page's stars: a white dot (the star's texel) in a grey halo (the blurred map), as the sun is
       vec3 gs = uViewToGal * rv;
       vec2 suv = vec2(atan(gs.y, gs.x) / 6.283185307 + 0.5, asin(clamp(gs.z, -1.0, 1.0)) / 3.141592654 + 0.5);
-      sunVeil = max(sunVeil, pow(texture2D(uStarHalo, suv).r, 1.3) * ${EGG_ENV.starHalo.toFixed(2)} * back);
-      sunSpot = max(sunSpot, step(${LIGHT_STAR_MIN.toFixed(2)}, texture2D(uStars, suv).r) * back);
+      float hv = texture2D(uStarHalo, suv).r;
+      sunVeil = max(sunVeil, pow(hv, 1.3) * ${EGG_ENV.starHalo.toFixed(2)} * back);
+      // (a star is drawn where its tier is shown and its own halo is there: the map of stars has them all, the halos only the ones the light page keeps)
+      sunSpot = max(sunSpot, step(${LIGHT_STAR_MIN.toFixed(2)}, texture2D(uStars, suv).r) * step(0.5, hv) * back);
       for (int i = 0; i < ${SPOTS.length}; i++) {
         float us = acos(clamp(dot(rv, normalize(SPOT[i].xyz)), -1.0, 1.0)) / SPOT[i].w;
         sunVeil = max(sunVeil, pow(clamp(1.0 - us / ${SUN_GLINT.reach.toFixed(1)}, 0.0, 1.0), ${SUN_GLINT.fall.toFixed(2)}) * SPOT_I[i] * back);
