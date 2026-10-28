@@ -212,8 +212,8 @@ const EGG_VERT = /* glsl */ `
   }
 `;
 
-/** The environment of the metal (`EGG_FRAG` `galaxy`): how bright the Milky Way's band is in it (the band map is 0..1: brighter here than on the globe's sky, so that the metal shows it), the stars' (the globe's own star field, `bakeStarMap`) and the broad lift of the page's own sky; `edge`: what the bevel does to the reflection that a flat face does not (`contrast`: the bevel reflects the environment that much harder, as a polished curve does; `rim`: a fresnel sheen, the bevel brightens smoothly towards the grazing angle, across its width; `wall`: the share of both that the walls take). */
-const EGG_ENV = { band: 2.3, stars: 0.95, sky: 0.45, edge: { contrast: 0.9, rim: 0.7, wall: 0.5 } } as const;
+/** The environment of the metal (`EGG_FRAG` `galaxy`): how bright the Milky Way's band is in it (the band map is 0..1: brighter here than on the globe's sky, so that the metal shows it), the stars' (the globe's own star field, `bakeStarMap`; `starsLight` of that on the light page, where they are too visible at full strength and the spotlights carry the effect) and the broad lift of the page's own sky; `edge`: what the bevel does to the reflection that a flat face does not (`contrast`: the bevel reflects the environment that much harder, as a polished curve does; `rim`: a fresnel sheen, the bevel brightens smoothly towards the grazing angle, across its width; `wall`: the share of both that the walls take). */
+const EGG_ENV = { band: 2.3, stars: 0.95, starsLight: 0.35, sky: 0.45, edge: { contrast: 0.9, rim: 0.7, wall: 0.5 } } as const;
 
 /**
  * The sun as the metal reflects it (`EGG_FRAG`), as the globe's own sun looks, less its rays: a very bright, hot centre and a falloff round it, whose strength picks the colour from the
@@ -224,7 +224,7 @@ const SUN_GLINT = { unit: 0.075, reach: 7, fall: 1.5, gain: 2.4, hot: 1.6, core:
 
 /**
  * The light page's SPOTLIGHTS in the metal (`EGG_FRAG`): the studio's intro has lights round the word that reflect in it; on the dark page the stars do that, on the light one they are too visible and do not sell
- * the effect, so a few small sources do (and the stars are off there). Each is a direction in the camera's frame (x right, y up, z towards the viewer), a size (radians, the centre's) and a strength; they are soft (a veil
+ * the effect alone, so a few small sources do too (and the stars are dimmer there, `EGG_ENV.starsLight`). Each is a direction in the camera's frame (x right, y up, z towards the viewer), a size (radians, the centre's) and a strength; they are soft (a veil
  * and a spot, as the light page's sun, with a soft edge, not a mirror's hard one) and the same however the word is turned, as the sun is not.
  */
 const SPOTS = [
@@ -290,7 +290,7 @@ const EGG_FRAG = /* glsl */ `
     vec2 uv = vec2(atan(g.y, g.x) / 6.283185307 + 0.5, asin(clamp(g.z, -1.0, 1.0)) / ${((SKY.map.bMaxDeg * Math.PI) / 180).toFixed(6)} * 0.5 + 0.5);
     float band = texture2D(uBand, uv).r;
     float st = texture2D(uStars, vec2(atan(g.y, g.x) / 6.283185307 + 0.5, asin(clamp(g.z, -1.0, 1.0)) / 3.141592654 + 0.5)).r;
-    return ${EGG_ENV.band.toFixed(2)} * band + ${EGG_ENV.stars.toFixed(2)} * st * (1.0 - uLight) + ${EGG_ENV.sky.toFixed(2)} * uSky * smoothstep(0.1, 0.95, r.y);
+    return ${EGG_ENV.band.toFixed(2)} * band + ${EGG_ENV.stars.toFixed(2)} * st * mix(1.0, ${EGG_ENV.starsLight.toFixed(2)}, uLight) + ${EGG_ENV.sky.toFixed(2)} * uSky * smoothstep(0.1, 0.95, r.y);
   }
   // the lines' own ordered dither, on the art's pixels (this canvas is drawn at the art's resolution)
   float dither2(vec2 a) { return fract(a.x * 0.5 + a.y * a.y * 0.75); }
