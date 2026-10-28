@@ -117,6 +117,12 @@ export interface GlobeRoute {
   title: string;
   points: { lat: number; lon: number }[];
   /**
+   * The bounding box (`[west, south, east, north]`, degrees) of each of `points`' places, positionally (`points.length` entries, a place with no
+   * valid box is `undefined`; the array itself is absent when no stop has one). Every leg, of every mode, is cropped to the outside of the boxes of
+   * its two stops, so it ends where it meets them (`globe/paths/crop.ts`).
+   */
+  boxes?: (readonly [number, number, number, number] | undefined)[];
+  /**
    * One per consecutive pair of `points` (`points.length - 1`): how the leg is travelled and, optionally, its geometry
    * (a precision-5 polyline, docs/api-contract.md "Route legs"). Absent, or a leg without a polyline: the geodesic arc.
    */

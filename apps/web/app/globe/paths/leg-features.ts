@@ -7,6 +7,7 @@ import type { GlobeRoute } from "../types";
 import { lonLatToVec3, vec3ToLonLat, DEG } from "../engine/geo";
 import { isLegMode } from "./modes";
 import { paletteOf } from "./trail";
+import { cropToBoxes } from "./crop";
 import { decodePolyline5 } from "./polyline";
 import { legKey } from "./thin";
 
@@ -115,6 +116,12 @@ export function legFeatures(routes: readonly GlobeRoute[], stepDeg = 0.5): GeoJS
         }
       }
       pts ??= greatCircle([a.lon, a.lat], [b.lon, b.lat], stepDeg);
+      // every mode ends where it meets the boxes of its stops, as on the globe (paths/crop.ts)
+      const flat = new Float64Array(pts.length * 2);
+      pts.forEach((p, k) => flat.set(p, k * 2));
+      const cropped = cropToBoxes(flat, null, route.boxes?.[i], route.boxes?.[i + 1]);
+      if (!cropped) continue;
+      pts = Array.from({ length: cropped.lonlat.length / 2 }, (_, k) => [cropped.lonlat[k * 2]!, cropped.lonlat[k * 2 + 1]!] as LonLat);
       features.push({
         type: "Feature",
         properties: { id: route.id, key: legKey(route.id, i), mode, pal, arc: !usedPolyline },

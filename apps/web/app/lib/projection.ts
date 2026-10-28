@@ -139,14 +139,18 @@ export function buildPlaceTree(places: readonly PlaceSummary[], groups: readonly
 export function resolveRoutes(projection: PublishedProjection): GlobeRoute[] {
   const bySlug = new Map(projection.places.map((p) => [p.slug, p]));
   return projection.routes.flatMap((route, order) => {
-    const points = route.stops.flatMap((slug) => {
+    const resolved = route.stops.flatMap((slug) => {
       const place = bySlug.get(slug);
-      return place ? [{ lat: place.coordinates.lat, lon: place.coordinates.lon }] : [];
+      return place ? [place] : [];
     });
+    const points = resolved.map((place) => ({ lat: place.coordinates.lat, lon: place.coordinates.lon }));
     if (points.length < 2) return [];
+    // The box of each stop, the one the map draws (`toGlobePlace`: only a plain box counts): every leg is cropped to it, whatever its mode.
+    const boxes = resolved.map((place) => (bboxExtentsKm(place.bbox) ? place.bbox : undefined));
+    const withBoxes = boxes.some((b) => b) ? { boxes } : {};
     // Legs are positional: they only mean something when every stop resolved (the contract guarantees it; a stale one is dropped).
     const legs = route.legs && points.length === route.stops.length ? { legs: route.legs.map((l) => ({ mode: l.mode, ...(l.polyline ? { polyline: l.polyline } : {}) })) } : {};
-    return [{ id: route.id, title: route.title, points, palette: paletteOf(order), ...legs }];
+    return [{ id: route.id, title: route.title, points, palette: paletteOf(order), ...withBoxes, ...legs }];
   });
 }
 
