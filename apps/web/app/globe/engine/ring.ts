@@ -16,6 +16,7 @@
 import { clamp, DEG, silhouetteZoom, smoothstep } from "./geo";
 import { rampLevel, roleLevel } from "./palette";
 import { RING } from "./tuning";
+import { NIGHT } from "./surface";
 
 /* ------------------------------------------------------------------ page flags */
 
@@ -230,4 +231,16 @@ export function placeGlyphs(out: GlyphBuffer, p: PlaceArgs): number {
 /** The ring's turn at `elapsedMs` of its own clock, radians clockwise (the direction and speed of `RING`). */
 export function ringPhase(elapsedMs: number): number {
   return (RING.startDeg + RING.direction * RING.degPerSec * (elapsedMs / 1000)) * DEG;
+}
+
+/**
+ * The tone of a ring letter under the planet's night, as a (fractional, in 1/8) palette level: a letter at `angle` (radians clockwise from twelve o'clock) stands over the limb's point (sin, cos, 0) in the camera's frame, lit as that point of the planet is; its
+ * level `lv` goes `NIGHT.ringDim` of the way to `nightLevel` (the page's on the dark page, the ink's on the light one) by how dark it is, never under 1 (level 0 is the page's own colour: an opaque letter of it would hide what is behind). Pure.
+ */
+export function ringNightLevel(lv: number, nightLevel: number, night: number, angle: number, sun: readonly [number, number, number]): number {
+  if (night <= 0.001) return lv;
+  const dot = Math.sin(angle) * sun[0] + Math.cos(angle) * sun[1];
+  const x = clamp((dot - NIGHT.litFrom) / (NIGHT.litTo - NIGHT.litFrom), 0, 1);
+  const lf = lv + (nightLevel - lv) * night * (1 - x * x * (3 - 2 * x)) * NIGHT.ringDim;
+  return Math.max(Math.min(1, lv), Math.round(lf * 8) / 8);
 }

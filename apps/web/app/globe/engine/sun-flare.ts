@@ -167,7 +167,9 @@ export function rayStart(r: number, area: number, width: number, disc: number): 
 
 /** The flare for this frame: the sun's place (a whole pixel's centre), the middle of the picture, the unit its sizes are shares of, and its strength; or null when there is none. Pure. */
 export function flarePlace(fr: FlareFrame): { sx: number; sy: number; mx: number; my: number; unit: number; str: number; ray: number; r: number; len: number } | null {
-  if (!fr.ahead || fr.amount <= 0.01 || fr.visible <= 0.001) return null;
+  // (the light page's flare fades with the sun down to its last pixel, `rayDim` set: its cut-off is fine; the dark page's rays do not dim, so it keeps the old one)
+  const cut = fr.rayDim === undefined ? 0.01 : 0.001;
+  if (!fr.ahead || fr.amount <= 0.01 || fr.visible <= cut) return null;
   const mx = fr.bufW / 2;
   const my = fr.bufH / 2;
   const half = Math.hypot(mx, my);
@@ -177,7 +179,7 @@ export function flarePlace(fr: FlareFrame): { sx: number; sy: number; mx: number
   const str = fade * fr.visible;
   // the rays are the sun's own: as bright as ever as the planet covers it for now (SUN.cover.dim: 0; they go with the flare), and the same while it is clear
   const ray = fade * (1 - (fr.rayDim ?? SUN.cover.dim) * (1 - fr.visible));
-  if (str <= 0.001) return null;
+  if (str <= cut) return null;
   return { sx: Math.floor(fr.x) + 0.5, sy: Math.floor(fr.y) + 0.5, mx, my, unit: Math.min(fr.bufW, fr.bufH), str, ray, r: fr.r ?? 0, len: fr.size ?? 1 };
 }
 
@@ -216,6 +218,11 @@ export class FlareLayer {
     // over the sun, the moon and the lines: the flare is in the lens
     this.mesh.renderOrder = 0.9;
     scene.add(this.mesh);
+  }
+
+  /** Out of the picture (the flare is switched off). */
+  hide(): void {
+    this.mesh.visible = false;
   }
 
   applyTheme(t: GlobeTheme): void {

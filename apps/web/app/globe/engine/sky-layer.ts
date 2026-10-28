@@ -223,7 +223,6 @@ export class SkyLayer {
     for (const u of [this.band.uniforms, this.stars.uniforms]) {
       (u.uCentre!.value as Vector2).set(geo.cx, geo.cy);
       u.uRadius!.value = geo.radius;
-      u.uFade!.value = v;
     }
     this.stars.uniforms.uFade!.value = v * (1 - SUN.dark.iris.stars * this.exposure);
     this.band.uniforms.uFade!.value = v * (1 - SUN.dark.iris.band * this.exposure);

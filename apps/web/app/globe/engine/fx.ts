@@ -56,3 +56,10 @@ export function applyFxFlags(): void {
     /* keep the defaults */
   }
 }
+
+/** The iris's next value: eased toward `target` over `closeMs` (closing) or `openMs` (opening) in `dt` ms, the whole way at once under reduced motion, snapped when it is within 0.002. Pure. */
+export function irisStep(iris: number, target: number, dt: number, closeMs: number, openMs: number, reduced: boolean): number {
+  const ms = target > iris ? closeMs : openMs;
+  const next = reduced ? target : iris + (target - iris) * (1 - Math.exp((-dt / ms) * 3));
+  return Math.abs(target - next) < 0.002 ? target : next;
+}

@@ -18,9 +18,8 @@
  * sized to the ring's bounding box (grown, rarely shrunk), not to the window.
  */
 import type { GlobeTheme } from "./colors";
-import { GlyphBuffer, placeGlyphs, ringLayout, ringPhase, ringTone, type RingLayout } from "./ring";
+import { GlyphBuffer, placeGlyphs, ringLayout, ringNightLevel, ringPhase, ringTone, type RingLayout } from "./ring";
 import { CAPTION, RING } from "./tuning";
-import { NIGHT } from "./surface";
 import { FX } from "./fx";
 
 export interface RingFrame {
@@ -431,6 +430,10 @@ export class RingLayer {
     const sun = fr.sun ?? [0, 0, 1];
     const nightLevel = this.theme.scheme === "dark" ? 0 : levels - 1;
     const atlasFor = (l: number, hl: boolean): Atlas | null => this.atlas(l, dpr, hl);
+    // (the atlases are empty after a theme or a highlight change: every level the night can reach is made now, together, not one by one in the frames that first need it)
+    if (this.atlases.size === 0 && night > 0.001) {
+      for (let l = Math.max(1, Math.min(lv, nightLevel)); l <= Math.max(lv, nightLevel); l++) for (const hl of [false, true]) if (hl ? this.hlMode !== "none" && this.hlEnd > 0 : true) atlasFor(l, hl);
+    }
     const m = (dpr * g.em) / ATLAS_EM;
     const ox = -left * dpr;
     const oy = -top * dpr;
@@ -440,12 +443,7 @@ export class RingLayer {
     for (let i = 0; i < g.count; i++) {
       const a = g.angle[i]!;
       // the letter's tone, between two of the palette's levels (a fraction): drawn as the lower one whole and the upper one over it by the fraction, so that the night comes over the type smoothly, not click by click
-      let lf = lv;
-      if (night > 0.001) {
-        const dot = Math.sin(a) * sun[0] + Math.cos(a) * sun[1];
-        const x = Math.min(1, Math.max(0, (dot - NIGHT.litFrom) / (NIGHT.litTo - NIGHT.litFrom)));
-        lf = lv + (nightLevel - lv) * night * (1 - x * x * (3 - 2 * x)) * NIGHT.ringDim;
-      }
+      let lf = ringNightLevel(lv, nightLevel, night, a, sun);
       if (!FX.on.ringBlend) lf = Math.round(lf);
       const lo = Math.floor(lf + 1e-6);
       const frac = lf - lo;

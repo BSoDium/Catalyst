@@ -74,7 +74,7 @@ import { CAP_HEIGHT_EM, ringAlpha, ringFloorZoom, ringRoomRadius, RING_STATE } f
 import { RingLayer } from "./ring-layer";
 import { GlobeScene } from "./scene";
 import { sunRise } from "./sun-flare";
-import { FX } from "./fx";
+import { FX, irisStep } from "./fx";
 import { MOON, SUN, inclinationFor, litTurn, moonAmount, orbitAngle, rollFor, sunDirection, toEarthFrame, toRad, type Vec3 } from "./moon";
 import type { MoonSample } from "./moon-layer";
 import { CAPTION, ENERGY, INSET_EASE, CAPTION_LOAD, RING, SKY, START_VIEW, TUNING } from "./tuning";
@@ -1355,9 +1355,7 @@ export class GlobeRenderer {
     const dt = this.irisAt > 0 ? Math.min(100, Math.max(0, now - this.irisAt)) : 0;
     this.irisAt = now;
     const target = this.irisTarget;
-    const ms = target > this.iris ? SUN.light.iris.closeMs : SUN.light.iris.openMs;
-    const next = this.reduced ? target : this.iris + (target - this.iris) * (1 - Math.exp(-dt / ms * 3));
-    const settled = Math.abs(target - next) < 0.002 ? target : next;
+    const settled = irisStep(this.iris, target, dt, SUN.light.iris.closeMs, SUN.light.iris.openMs, this.reduced);
     if (settled !== this.iris) {
       this.iris = settled;
       this.applyClear();
@@ -2425,7 +2423,7 @@ export class GlobeRenderer {
     this.syncTagline();
     this.syncMoon(cam, d, zoom, now);
     this.syncSun(cam, ns, d);
-    this.irisTarget = FX.on.iris ? (this.globe.sun?.glare ?? 0) : 0;
+    this.irisTarget = FX.on.iris && (this.theme.scheme === "light" || this.globe.sky) ? (this.globe.sun?.glare ?? 0) : 0;
     this.stepIris(now);
     this.globe.sky?.setExposure(this.theme.scheme === "dark" ? this.iris : 0);
     // (the sky's frame, once: the globe's sky and the chrome of the interlude's letters both read it)

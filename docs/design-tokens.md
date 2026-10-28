@@ -71,7 +71,7 @@ The globe's skybox (`SKY` in `app/globe/engine/tuning.ts`; architecture in web-a
 | `band.thicknessDeg` | edge 5.5, core 10 | 1 sigma half thickness in degrees of galactic latitude |
 | `band.bulge`, `band.rift` | 0.5 share, 7 deg; depth 0.8, 2.6 deg wide | nuclear bulge and the Great Rift dust lane |
 | `band.noise` | 3 octaves, floor 0.5, breaks below 0.34 | mottling and dust breaks |
-| `stars.count`, `bandBoost`, `tierShares` | 20000, 1.8, [0.6, 0.28, 0.12] | about 430 to 510 in view at the whole-globe view on a desktop (about 46 lit pixels at the brightest tone); up to 1.8x denser along the band. Tones: level 1, level 2, level 3 (the graticule's: the cap). One cell each, no sparkles. Owner 2026-10-08: "not super bright, just a bit brighter", for noise over the band and the open sky |
+| `stars.count`, `bandBoost`, `tierShares` | 12000 (20000 until 2026-10-28), 1.8, [0.6, 0.28, 0.12] | about 260 to 310 in view at the whole-globe view on a desktop (about 46 lit pixels at the brightest tone); up to 1.8x denser along the band. Tones: level 1, level 2, level 3 (the graticule's: the cap). One cell each, no sparkles. Owner 2026-10-08: "not super bright, just a bit brighter", for noise over the band and the open sky |
 | `eraDeg` | 70 | the earth rotation angle at load (the sky's one placement against the earth) |
 | `seed` | `0x5ca1ab1e` | every random choice (positions, tiers, keep ranks) |
 

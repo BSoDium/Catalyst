@@ -262,7 +262,9 @@ export class SunLayer {
     }
     // the lens flare comes out of the same centre, as bright as the share of the sun that is left (on the light page whole, until the sun is gone: it does not dim, only the sun's size follows the crescent)
     const rayStartPx = rayStart(sr, cres.area, cres.width, SUN.cover.disc);
-    const flaring = FX.on.flare ? this.flare.sync({ bufW: f.bufW, bufH: f.bufH, x: f.ahead ? bx : f.x, y: f.ahead ? by : f.y, ahead: f.ahead, amount: f.amount, visible: this.dark ? cres.area : Math.sqrt(cres.area), rayDim: this.dark ? undefined : 1, r: rayStartPx, size: Math.sqrt(cres.area), set: (1 - halo) * SUN.cover.redden } satisfies FlareFrame) : (this.flare.sync({ bufW: f.bufW, bufH: f.bufH, x: 0, y: 0, ahead: false, amount: 0, visible: 0 }), false);
+    let flaring = false;
+    if (FX.on.flare) flaring = this.flare.sync({ bufW: f.bufW, bufH: f.bufH, x: f.ahead ? bx : f.x, y: f.ahead ? by : f.y, ahead: f.ahead, amount: f.amount, visible: this.dark ? cres.area : Math.sqrt(cres.area), rayDim: this.dark ? undefined : 1, r: rayStartPx, size: Math.sqrt(cres.area), set: (1 - halo) * SUN.cover.redden } satisfies FlareFrame);
+    else this.flare.hide();
     if (!p) return flaring || blob;
     const u = this.mat.uniforms;
     // the halo and the ring are round what is left of the sun, not the whole one: centred where the visible part's centre of mass is, their inner edge the crescent's width (as the blur is)
