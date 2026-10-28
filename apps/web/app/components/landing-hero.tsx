@@ -48,15 +48,15 @@ function finalTransforms(root: HTMLElement): { el: HTMLElement; transform: strin
     const el = root.querySelector<HTMLElement>(from);
     const ghost = root.querySelector<HTMLElement>(to);
     if (!el || !ghost) continue;
-    // (no transition while it is read: a half that is gliding, from the hint going or coming, would be read part of the way, and "none" would set a transition off towards the big name that a quick turn-around then leaves half done)
-    const prevTransition = el.style.transition;
-    const prev = el.style.transform;
-    el.style.transition = "none";
-    el.style.transform = "none";
-    const a = textBox(el);
-    const o = el.getBoundingClientRect();
-    el.style.transform = prev;
-    el.style.transition = prevTransition;
+    // The half's REST boxes are worked out from where it is drawn now and the transform it has now (computed: a glide or a travel in progress included), without touching it:
+    // the version that set `transform: none` on the live element to read it started a transition from the BIG name whenever a glide was running (a quick zoom in and out
+    // within its 240 ms: the name swelled to its full size and shrank again).
+    const m = new DOMMatrix(getComputedStyle(el).transform);
+    const s0 = m.a > 1e-3 ? m.a : 1;
+    const oc = el.getBoundingClientRect();
+    const ac = textBox(el);
+    const o = { left: oc.left - m.e, top: oc.top - m.f };
+    const a = { left: o.left + (ac.left - oc.left) / s0, top: o.top + (ac.top - oc.top) / s0, width: ac.width / s0 };
     const b = textBox(ghost);
     if (!(a.width > 0) || !(b.width > 0)) continue;
     const s = b.width / a.width;
@@ -82,6 +82,7 @@ function holdName(root: HTMLElement, collapsed: boolean): void {
  */
 function halvesOf(root: HTMLElement): TravelHalf[] {
   return finalTransforms(root).map(({ el, transform }) => ({
+    id: el,
     final: transform,
     setInline: (value) => (value === null ? el.style.removeProperty("transform") : (el.style.transform = value)),
     computed: () => getComputedStyle(el).transform,

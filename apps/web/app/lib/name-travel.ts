@@ -18,6 +18,8 @@ export interface TravelAnimation {
 
 /** One half of the name, as the choreography sees it. */
 export interface TravelHalf {
+  /** What this half IS across calls (its element): the caller may build new `TravelHalf` objects for every travel, and a running one is matched by this. Absent: the object itself. */
+  id?: unknown;
   /** The transform the half holds when it is the collapsed name (measured at the ghost line). */
   final: string;
   /** Set (a string) or remove (null) the half's own inline transform. */
@@ -27,6 +29,8 @@ export interface TravelHalf {
   /** Run an animation of its transform from `from` to `to`. */
   animate(from: string, to: string): TravelAnimation;
 }
+
+const same = (a: TravelHalf, b: TravelHalf) => a === b || (a.id !== undefined && a.id === b.id);
 
 export const IDENTITY_TRANSFORM = "translate(0px, 0px) scale(1)";
 
@@ -53,7 +57,7 @@ export class NameTravel {
   go(halves: readonly TravelHalf[], toCorner: boolean): void {
     // where each half is now, read BEFORE anything is cancelled (a cancelled animation takes its picture with it)
     const now = new Map<TravelHalf, string>();
-    for (const h of halves) if (this.running.some((r) => r.half === h)) now.set(h, h.computed());
+    for (const h of halves) if (this.running.some((r) => same(r.half, h))) now.set(h, h.computed());
     this.cancel();
     let pending = 0;
     const done = () => {
