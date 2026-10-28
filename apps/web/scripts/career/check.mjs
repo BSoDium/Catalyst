@@ -126,7 +126,7 @@ const overflow = (page) =>
     const r = img?.getBoundingClientRect();
     return img && { w: img.getAttribute("width"), h: img.getAttribute("height"), loading: img.getAttribute("loading"), priority: img.getAttribute("fetchpriority"), alt: img.getAttribute("alt"), box: [Math.round(r.width), Math.round(r.height)], cover: getComputedStyle(img).objectFit, pos: getComputedStyle(img).objectPosition };
   });
-  ok(portrait && portrait.w === "800" && portrait.h === "1000" && portrait.loading === "eager" && portrait.priority === "high" && portrait.alt.length > 10, "the portrait has its size attributes, loads eagerly with high priority and has alt text");
+  ok(portrait && portrait.w === "800" && portrait.h === "800" && portrait.loading === "eager" && portrait.priority === "high" && portrait.alt.length > 10, "the portrait has its size attributes, loads eagerly with high priority and has alt text");
   ok(portrait && portrait.cover === "cover" && /^50% 30%/.test(portrait.pos) && Math.abs(portrait.box[1] / portrait.box[0] - 1) < 0.02, `the portrait is a square, object-fit cover, centred on the face (${portrait?.box.join("x")}, ${portrait?.pos})`);
   const cls = await page.evaluate(() => window.__cls);
   ok(cls < 0.01, `no layout shift (CLS ${cls.toFixed(4)})`);

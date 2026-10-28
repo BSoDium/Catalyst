@@ -348,7 +348,7 @@ A curriculum vitae as data, for the page recruiters read. It is **one optional t
   "title": "Career",
   "summary": "Frontend engineer who builds interfaces for map-heavy and data-heavy products.",
   "updated": "2026-09",
-  "portrait": { "src": "/media/demo/portrait-example.svg", "alt": "An abstract halftone portrait ...", "width": 800, "height": 1000, "dark": { "src": "/media/demo/portrait-example-dark.svg", "width": 800, "height": 1000 } },
+  "portrait": { "src": "/media/demo/portrait-example.svg", "alt": "A hand-penned blueprint portrait ...", "width": 800, "height": 800, "dark": { "src": "/media/demo/portrait-example-dark.svg", "width": 800, "height": 800 } },
   "availability": { "text": "Open to example opportunities", "asOf": "2026-09" },
   "roles": [
     {

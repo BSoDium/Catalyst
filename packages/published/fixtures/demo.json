@@ -694,7 +694,7 @@
     "title": "Career",
     "summary": "Frontend engineer who builds interfaces for map-heavy and data-heavy products. A made-up profile: every employer, school and link on this page is invented, so the page can be designed and tested without anything real.",
     "updated": "2026-09",
-    "portrait": { "src": "/media/demo/portrait-example.svg", "alt": "An abstract halftone portrait: a round head and shoulders in dots, standing in for a photograph", "width": 800, "height": 1000, "dark": { "src": "/media/demo/portrait-example-dark.svg", "width": 800, "height": 1000 } },
+    "portrait": { "src": "/media/demo/portrait-example.svg", "alt": "A hand-penned blueprint portrait: a head and shoulders in grey and blue inside a square frame whose lines run past the corners", "width": 800, "height": 800, "dark": { "src": "/media/demo/portrait-example-dark.svg", "width": 800, "height": 800 } },
     "availability": { "text": "Open to example opportunities", "asOf": "2026-09" },
     "roles": [
       {

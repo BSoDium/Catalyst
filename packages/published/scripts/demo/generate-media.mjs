@@ -787,7 +787,7 @@ export const mediaByName = (name) => {
 // --- CLI -------------------------------------------------------------------------------------------------------------------------
 
 /** Files that belong in the media folder besides the generated ones (referenced by the fixture's places). */
-/** (`portrait-example.svg` is the career portrait of the demo: a hand-drawn abstract halftone head, 4:5.) */
+/** (`portrait-example.svg` is the career portrait of the demo: the blueprint of docs/portrait/portrait.svg, copied: one file for both schemes, 800 x 800.) */
 const KEEP = new Set(["field-notes.svg", "portrait-example.svg", "portrait-example-dark.svg", "logo-example.svg"]);
 
 function main(check) {
