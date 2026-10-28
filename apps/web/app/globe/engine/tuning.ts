@@ -110,7 +110,7 @@ export const SKY = {
   stars: {
     count: 20000,
     /** Star density along the band relative to the sky away from it (1 = no preference): "slightly more of them along the band". */
-    bandBoost: 1.8,
+    bandBoost: 6,
     /**
      * The shares of the stars at the three star tones, faintest first: palette levels 1 and `skyTop` (the band's two tones) and the
      * graticule's `faint` level, the brightest anything in the sky gets (`starTop`, a cap: the boxes, labels and the graticule's own
@@ -118,6 +118,16 @@ export const SKY = {
      * below). Sums to 1. Owner (2026-10-08): "not super bright, just a bit brighter", to add noise to the band and to the open sky.
      */
     tierShares: [0.6, 0.28, 0.12] as const,
+    /** On the dark page the stars' tones go this share of the way to the ink (owner, 2026-10-28: "a bit brighter"). The band keeps its own. */
+    darkLift: 0.2,
+    /**
+     * Patchiness (owner, 2026-10-28): a slow noise over the sky scales the density from `floor` (bare) to 1 (clumped) between the noise values `from` and `to`, so that the stars are not spread evenly, and the band holds far more of them (`bandBoost`).
+     */
+    patch: { octaves: [[1.6, 1], [4, 0.6]] as const, from: 0.38, to: 0.62, floor: 0.25 },
+    /** Variety of brightness (owner, 2026-10-28): each star's tone is scaled from the page's colour by a factor, 1 = its tier's tone, over 1 a little brighter, under 1 dimmer. `faint.share` of them are barely visible (`faint.range`); the rest spread evenly over `range`. */
+    glow: { faint: { share: 0.2, range: [0.08, 0.4] as const }, range: [0.5, 1.45] as const },
+    /** Each star's tint: a slight shift of its tone, as a share of each channel, towards blue, purple or red, times a strength 0..1. `shares` are the stars of each kind: none, blue, purple, red (sums to 1). */
+    tint: { shares: [0.55, 0.2, 0.1, 0.15] as const, blue: [-0.09, -0.03, 0.1] as const, purple: [0.06, -0.08, 0.09] as const, red: [0.12, -0.05, -0.1] as const },
   },
   /**
    * The sky is dimmed, never removed, towards the earth: it is drawn right up to the silhouette (`from` 1) at `limb` of its strength (a

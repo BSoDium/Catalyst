@@ -186,6 +186,11 @@ const RIM_SUN_GLSL = /* glsl */ `
     float pl = length(perp);
     return pl > 1e-4 ? dot(n, perp / pl) : -1.0;
   }
+  // the sunset's half-way (RIM.hot): 1 while the sun's centre is on the limb on the picture, gone by RIM.hot.reach sun radii, times how near the limb point is to the sun (n0 to n1: the cosines it comes in and is whole at). Dark page only
+  float rimHot(float side, float n0, float n1, float flip) {
+    float sunR = ${((SUN.angularDeg * Math.PI) / 180).toFixed(5)};
+    return (flip > 0.5 ? 0.0 : 1.0) * (1.0 - smoothstep(0.0, ${RIM.hot.reach.toFixed(2)} * sunR, abs(rimAbove()))) * smoothstep(n0, n1, side);
+  }
   // the sun's own light along the limb: its pale gold nearest the sun (side 1), through yellow and orange to red and violet away from it
   vec3 rimTint(float side, float from, float flip) {
     vec3 w = warm(mix(0.05, 1.0, pow(smoothstep(from, 0.995, side), 0.8)));
@@ -226,7 +231,11 @@ export function rimMaterial(): ShaderMaterial {
         float on = v > dither4(floor(gl_FragCoord.xy)) ? 1.0 : 0.0;
         float lin = v * mix(${RIM.grain.toFixed(2)}, 1.0, on) * uCover;
         if (haze < 0.003 && lin < 0.004) discard;
-        gl_FragColor = lin > haze ? vec4(rimTint(side, ${RIM.arc[0].toFixed(2)}, uFlip), lin) : vec4(uColor, haze);
+        // half-way through the sunset the lining next to the sun is near white and near opaque (RIM.hot): as bright as the sun's centre
+        float hot = rimHot(side, ${RIM.hot.near[0].toFixed(3)}, ${RIM.hot.near[1].toFixed(3)}, uFlip);
+        vec3 tint = mix(rimTint(side, ${RIM.arc[0].toFixed(2)}, uFlip), vec3(${RIM.hot.white.map((x) => x.toFixed(3)).join(", ")}), hot);
+        lin = mix(lin, max(lin, v > 0.0 ? 1.0 : 0.0), hot * ${RIM.hot.lift.toFixed(2)} * smoothstep(0.0, 0.3, v));
+        gl_FragColor = lin > haze ? vec4(tint, lin) : vec4(uColor, haze);
       }
     `,
     side: BackSide,
@@ -262,9 +271,11 @@ export function rimGroundMaterial(): ShaderMaterial {
         float side = rimSide(n);
         // in flat levels, ordered-dithered into each other on the art's pixels, as the planet's dark side is
         float v = pow(g, ${RIM.ground.power.toFixed(2)}) * rimLit() * smoothstep(${RIM.ground.arc[0].toFixed(2)}, ${RIM.ground.arc[1].toFixed(2)}, side) * uNight * uAmt;
-        float a = stepped(v, ${RIM.ground.steps.toFixed(1)}) * ${RIM.ground.alpha.toFixed(2)} * mix(1.0, ${RIM.ground.light.toFixed(2)}, uFlip);
+        // at the sunset's half-way (RIM.hot) the ground's light rises with the lining's: stronger, and towards white, over the wider arc of the ground
+        float hot = rimHot(side, ${RIM.hot.groundNear[0].toFixed(3)}, ${RIM.hot.groundNear[1].toFixed(3)}, uFlip);
+        float a = stepped(v, ${RIM.ground.steps.toFixed(1)}) * ${RIM.ground.alpha.toFixed(2)} * mix(1.0, ${RIM.ground.light.toFixed(2)}, uFlip) * (1.0 + ${RIM.hot.groundBoost.toFixed(2)} * hot);
         if (a < 0.004) discard;
-        gl_FragColor = vec4(rimTint(side, ${RIM.ground.arc[0].toFixed(2)}, uFlip), a);
+        gl_FragColor = vec4(mix(rimTint(side, ${RIM.ground.arc[0].toFixed(2)}, uFlip), vec3(${RIM.hot.white.map((x) => x.toFixed(3)).join(", ")}), hot * ${RIM.hot.groundWhite.toFixed(2)}), min(a, 1.0));
       }
     `,
     side: FrontSide,

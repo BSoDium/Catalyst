@@ -72,6 +72,8 @@ export const MOON = {
 } as const;
 
 /**
+ * NOT the atmosphere: this is the sun itself and its halo. The planet's air (haze, silver lining, ground light, twilight) is `RIM`, below, drawn by engine/materials.ts. docs/web-architecture.md, "Sun and atmosphere".
+ *
  * The sun (engine/sun-layer.ts): a point of the sky, a direction at infinity in the same frame as the light (`sunDirection`), drawn as the stars are, at the skybox's own distance (the far plane),
  * so it is in the picture only where the camera looks towards it and turns with the sky when the globe is turned. `angularDeg` is its disc's angular radius (not the real half degree: a stylised
  * sun, a small one). A flat disc and a halo round it, `halo` radii out, a dither of a falloff in a few flat steps, with a ring of light on it, so that it looks as if it glows. Tones are shares from the page's colour to the ink: the dark page's sun is the ink's tone; the light page's is the glare that burns the colour away, so it
@@ -203,6 +205,16 @@ export const RIM = {
    * more air, so it is redder. A faint band on the ground just either side of the halfway edge: `band` is N . sun at which it comes in, is whole, starts to go and is gone. It only TINTS what is there (it multiplies the colours under it
    * by `rgb` taken `strength` of the way from white: black, the ocean, stays black), in `steps` dithered levels on the art's pixels, as the dark side is. The dark page only.
    */
+  /**
+   * The lining at the sunset's half-way (owner, 2026-10-28: the atmosphere next to the sun should light up as bright as the sun's centre, near white): while the sun's centre is within `reach` of its own radius of the limb on the picture (whole on it, gone by `reach`), the lining
+   * nearest the sun (the cosines of `near`, as `arc`) goes to `white` and its opacity `lift` of the way to whole. The rest of the arc keeps the gradient. The dark page only.
+   */
+  hot: { reach: 3, near: [0.9, 0.995] as const, white: [1, 0.99, 0.95] as const, lift: 0.6,
+    /** The ground's light rises with it (owner, 2026-10-28, for coherence): `groundNear` the cosines it comes in and is whole at (wider than the lining's, as the ground's arc is), `groundBoost` the extra share of its alpha at the peak, `groundWhite` how far its colour goes to `white`. */
+    groundNear: [0.5, 0.97] as const,
+    groundBoost: 1.2,
+    groundWhite: 0.7,
+  },
   twilight: { band: [-0.34, -0.16, -0.02, 0.12], strength: 0.4, steps: 3, rgb: [1, 0.6, 0.58] },
   cover: { dark: 0.9, light: 0.85 },
 } as const;
