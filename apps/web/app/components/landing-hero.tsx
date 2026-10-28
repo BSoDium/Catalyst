@@ -222,6 +222,26 @@ export function LandingHero({ machine, away, empty, orbit = null, onCover, hasCa
     return () => ro.disconnect();
   }, [state]);
 
+  // The collapsed name sits above the hint ("Drag to explore. Stop moving to reset the view."), which is gone when the view is zoomed in (`data-world="false"`: app.css takes it
+  // out of the layout): the name then goes down into the corner, and back up when the hint is back. The held transform is measured again (its ghost has moved) and the halves glide there.
+  const worldWas = useRef(snapshot.world);
+  useIsoLayoutEffect(() => {
+    const changed = worldWas.current !== snapshot.world;
+    worldWas.current = snapshot.world;
+    const root = rootRef.current;
+    if (!changed || !root || state !== "collapsed" || travel.current?.isRunning) return;
+    const halves = HALVES.map(([from]) => root.querySelector<HTMLElement>(from)).filter((el): el is HTMLElement => !!el);
+    const reduced = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    // (measured BEFORE any transition is declared: `finalTransforms` clears the transform to read the rest position, and a transition then would be read half way)
+    const finals = finalTransforms(root);
+    if (!reduced) for (const el of halves) el.style.transition = "transform 240ms cubic-bezier(0.2, 0, 0, 1)";
+    for (const { el, transform } of finals) el.style.transform = transform;
+    const done = window.setTimeout(() => {
+      for (const el of halves) el.style.removeProperty("transition");
+    }, 300);
+    return () => window.clearTimeout(done);
+  }, [snapshot.world, state]);
+
   // How much of the page's bottom the name covers: the globe lifts the planet clear of it (docs/landing.md). Layout offsets, so a transform
   // (the name's own travel) never changes it; read when the block is resized (fonts arriving, the window, the tiers of the CSS).
   useEffect(() => {

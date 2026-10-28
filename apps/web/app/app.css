@@ -3550,7 +3550,8 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   /* Phones: the name stacks, the family name fills the width; the credits are a full-width line (up to two rows) and the dev-only content badge sits raised above it at the left. */
   @media (max-width: 47.99rem) {
     .landing-hero {
-      --hero-clear: 3.5rem;
+      /* The credits' line is one row from 384 px (18 px and the 4 px under it), so the block clears it by that and a little air (owner, 2026-10-28: too much room above it on a phone): the globe takes the rest. */
+      --hero-clear: 2.25rem;
       /* The family name (the longer line, 4.57 em at 390 px, 4.7 on the smallest) fills the width between the gutters. */
       --hero-fit: 4.7;
       /* What the stacked block holds besides the name (intro, hint, search, rows, the gaps), at its tallest: the name takes the rest of
@@ -3565,6 +3566,13 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
           calc((100dvh - var(--hero-fixed) - var(--hero-extra, 0rem) - var(--hero-clear) - env(safe-area-inset-bottom, 0px) - 1rem) / 1.9)
         )
       );
+    }
+
+    /* Below 384 px the credits are two rows (46 px): the block clears both. */
+    @media (max-width: 23.99rem) {
+      .landing-hero {
+        --hero-clear: 3.5rem;
+      }
     }
 
     body:has([data-dev-content-badge]) .landing-hero {
@@ -4077,8 +4085,12 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     }
   }
 
-  /* The way back is only real at the world view: zoomed in, the hint would be a promise. */
+  /*
+   * The way back is only real at the world view: zoomed in, the hint would be a promise. It is then out of the layout (not only out of sight), so that the name above it sits in the
+   * corner and not a line too high (landing-hero.tsx holds the name at this line's place again when the world flag changes).
+   */
   .landing-hero[data-world="false"] .hero-mini-hint {
+    position: absolute;
     opacity: 0;
   }
 
