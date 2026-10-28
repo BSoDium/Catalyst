@@ -3381,7 +3381,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   }
 
   /*
-   * The way in: the same arrow as ever (a square with a diagonal and the two sides of a head, a station sign's), never stretched: square, an icon's size (16 px, owner, 2026-10-29: 28 was still too big, 38 before it; 4 px in from the card's top and right edges; the words are 46 px tall, the title and the second line, which wraps to two lines at the card's width), at the top right, level with the title, apart from the words. Drawn edge to edge in its box,
+   * The way in: the same arrow as ever (a square with a diagonal and the two sides of a head, a station sign's), never stretched: square, an icon's size (16 px, owner, 2026-10-29: 28 was still too big, 38 before it; 12 px in from the card's top and right edges, the same on both; the words are 46 px tall, the title and the second line, which wraps to two lines at the card's width), at the top right, level with the title, apart from the words. Drawn edge to edge in its box,
    * with a stroke of its own that does not scale (1.5 px: the weight of the title's letters), in the words' own colours, raised on hover and focus.
    */
   .globe-moon-card .globe-moon-arrow[data-size] {
@@ -3389,8 +3389,8 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     align-self: flex-start;
     width: 16px;
     height: 16px;
-    margin-top: 4px;
-    margin-inline-end: 4px; /* off the card's top and right edges: it does not hug them */
+    margin-top: 9px; /* + the card's 3px padding: 12px from the top edge... */
+    margin-inline-end: 6px; /* ...+ the card's 6px padding: 12px from the right edge, the same, so the arrow does not hug the corner */
     margin-inline-start: 14px;
     overflow: visible;
     stroke-width: 1.5px;
