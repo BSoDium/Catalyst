@@ -53,7 +53,9 @@ const FRAGMENT = /* glsl */ `
     float k = clamp(ink * ${f(SUN.gain)}, 0.0, 1.0);
     vec3 lightHalo = mix(vec3(${f(SUN.light.halo.grey)}), warm(ink) * ${f(SUN.light.ink)}, ${f(SUN.light.halo.warm)});
     vec3 col = uLight > 0.5 ? mix(uBg, lightHalo, k * ${f(SUN.light.halo.strength)}) : mix(uBg, warm(ink), k);
-    gl_FragColor = vec4(col, uAmt);
+    // (the fade is the dither's, not a blend: this layer is OPAQUE, so that it is drawn with the opaque things, in renderOrder, BEFORE the planet's lines and the routes, which are over it, not under)
+    if (uAmt < 0.999 && th >= uAmt) discard;
+    gl_FragColor = vec4(col, 1.0);
   }
 `;
 
@@ -73,7 +75,7 @@ const material = () =>
     },
     vertexShader: VERTEX,
     fragmentShader: FRAGMENT,
-    transparent: true,
+    transparent: false,
     blending: NormalBlending,
     depthTest: true,
     depthWrite: false,

@@ -18,11 +18,18 @@ import {
   BufferAttribute,
   BufferGeometry,
   CanvasTexture,
+  ClampToEdgeWrapping,
+  DataTexture,
+  Matrix3,
+  RedFormat,
+  RepeatWrapping,
+  UnsignedByteType,
   AddEquation,
   CustomBlending,
   DoubleSide,
   FrontSide,
   LinearFilter,
+  NearestFilter,
   LinearMipmapLinearFilter,
   Matrix4,
   MaxEquation,
@@ -38,6 +45,12 @@ import {
   WebGLRenderer,
 } from "three";
 import type { GlobeTheme } from "./colors";
+import { SUN } from "./moon";
+import { LIGHT_MIN_TIER, bakeBand, bakeStarHalo, bakeStarMap, type Mat3 } from "./sky";
+
+/** The star map's value (`bakeStarMap`: 0.5, 0.8, 1 by tier) from which a star is drawn on the light page: the tiers from `LIGHT_MIN_TIER` up. */
+const LIGHT_STAR_MIN = [0.4, 0.65, 0.9][LIGHT_MIN_TIER]!;
+import { WARM_GLSL, haloClear, sunRise } from "./sun-flare";
 import {
   CAPTION_FACE,
   CAPTION_FACES,
@@ -80,7 +93,7 @@ import { lonLatToVec3 } from "./geo";
 import { prepareSound, SOUND, startSound, type SoundHandle } from "./cinematic-sound";
 import { OCCLUDER_RADIUS } from "./materials";
 import { NIGHT, NIGHT_GLSL } from "./surface";
-import { CAPTION, ENERGY } from "./tuning";
+import { CAPTION, ENERGY, SKY } from "./tuning";
 
 const DEG_ = Math.PI / 180;
 
@@ -202,6 +215,32 @@ const EGG_VERT = /* glsl */ `
   }
 `;
 
+/** The environment of the metal (`EGG_FRAG` `galaxy`): how bright the Milky Way's band is in it (the band map is 0..1: brighter here than on the globe's sky, so that the metal shows it), the stars' (the globe's own star field, `bakeStarMap`; `starsLight` of that on the light page, 0: there a star is a white dot in a grey halo, as the sun is, not a dark point, `bakeStarHalo`) and the broad lift of the page's own sky; `edge`: what the bevel does to the reflection that a flat face does not (`contrast`: the bevel reflects the environment that much harder, as a polished curve does; `rim`: a fresnel sheen, the bevel brightens smoothly towards the grazing angle, across its width; `wall`: the share of both that the walls take). */
+const EGG_ENV = { band: 2.3, stars: 0.95, starsLight: 0, starHalo: 0.2, sky: 0.45, edge: { contrast: 0.9, rim: 0.7, wall: 0.5 } } as const;
+
+/**
+ * The sun as the metal reflects it (`EGG_FRAG`), as the globe's own sun looks, less its rays: a very bright, hot centre and a falloff round it, whose strength picks the colour from the
+ * warm ramp (`SUN.tint`), so that it steps outwards from white-gold through yellow and amber to red, as the sun's halo does. `unit`: the centre's angular size, radians; `reach`: where the
+ * falloff is gone, in units; `fall`: its power; `gain`: how bright the centre is (the ramp's strength is `gain` times the falloff, as the halo's is); `lightMix`: how much of the colour the light page's letters take.
+ */
+const SUN_GLINT = { unit: 0.075, reach: 7, fall: 1.5, gain: 2.4, hot: 1.6, core: [0.2, 1.7], light: { veil: 0.55, spot: 1, edge: [1.0, 2.3] } } as const;
+
+/**
+ * The light page's SPOTLIGHTS in the metal (`EGG_FRAG`): the studio's intro has lights round the word that reflect in it; on the dark page the stars do that, on the light one they are too visible and do not sell
+ * the effect alone, so a few small sources do too (and the stars are dimmer there, `EGG_ENV.starsLight`). Each is a direction in the camera's frame (x right, y up, z towards the viewer), a size (radians, the centre's) and a strength; they are soft (a veil
+ * and a spot, as the light page's sun, with a soft edge, not a mirror's hard one) and the same however the word is turned, as the sun is not.
+ */
+const SPOTS = [
+  { at: [-0.7, 0.5, 0.5], size: 0.07, i: 0.9 },
+  { at: [0.6, 0.65, 0.45], size: 0.05, i: 0.8 },
+  { at: [0.05, 0.9, 0.4], size: 0.04, i: 0.7 },
+  { at: [-0.9, -0.05, 0.4], size: 0.05, i: 0.7 },
+  { at: [0.9, 0.0, 0.4], size: 0.06, i: 0.8 },
+  { at: [0.45, -0.6, 0.65], size: 0.045, i: 0.6 },
+  { at: [-0.4, -0.55, 0.7], size: 0.04, i: 0.6 },
+  { at: [-0.2, 0.3, 0.95], size: 0.035, i: 0.5 },
+] as const;
+
 /**
  * Lit like polished metal: a key light and a weak fill fixed in the camera's frame (`CINEMATIC.light`), and a REFLECTION of a studio, a procedural
  * environment of the reflected direction in the camera's frame: a bright sky over a darker band just under the horizon and a dimmer floor, with two
@@ -223,35 +262,48 @@ const EGG_FRAG = /* glsl */ `
   uniform float uFinal;
   uniform vec3 uPlanet;
   uniform vec3 uHaze;
+  uniform vec3 uGlow;
+  uniform vec3 uSunDir;
+  uniform float uSunAmt;
+  uniform float uLight;
+  uniform sampler2D uBand;
+  uniform sampler2D uStars;
+  uniform sampler2D uStarHalo;
+  uniform mat3 uViewToGal;
+  ${WARM_GLSL}
   varying vec3 vNormal;
   varying vec3 vView;
   varying float vKind;
   varying float vCosPsi;
-  // (the thin strip lights, a few degrees wide, are what a face does not reflect, one direction, but the bevels do, one after another as the word turns)
-  // Metal in space: nothing is lit but by a few soft boxes and strips, so the surfaces are the page's own tone and show only the REFLECTION of them, which
-  // slides across the faces and runs along the bevels as the word turns. The result is how much of a box the reflected direction is in (0 outside them all).
-  // BANDS, not lobes: a round box reflects as a disc on a large flat face (two planets on the letters in the far view, with nothing there). A band is the set
-  // of directions near a great circle, so it crosses a face as a straight sweep and wraps a bevel as a line.
-  float band(vec3 r, vec3 axis, float centre, float w) { return 1.0 - smoothstep(w, w * 2.2, abs(dot(r, normalize(axis)) - centre)); }
-  float studio(vec3 r) {
-    float s = 0.55 * band(r, vec3(-0.4, 0.8, 0.45), 0.35, 0.1);
-    s += 1.0 * band(r, vec3(0.9, 0.25, 0.35), 0.15, 0.06);
-    s += 0.6 * band(r, vec3(-0.15, -0.9, 0.4), 0.3, 0.12);
-    // (the broad sky share lifts every face a little: on the dark page; on the light one it would grey them, and the form is in the bands alone)
-    s += 0.45 * uSky * smoothstep(0.1, 0.95, r.y);
-    return s;
+
+  // The warm ramp as a GRADIENT (\`warm\` steps from one colour to the next, as the sun's halo does in flat tones; a reflection of it is seen through the metal's curve and wants no steps): the stops of \`SUN.tint\`, mixed
+  vec3 warmSmooth(float t0) {
+    float t = t0 * (1.0 - ${SUN.setShare.toFixed(3)} * uSet);
+    ${(() => {
+      const st = [...SUN.tint].reverse();
+      let o = `vec3 c = vec3(${st[0]!.rgb.map((x) => x.toFixed(3)).join(", ")});`;
+      for (let i = 1; i < st.length; i++) o += `\n    c = mix(c, vec3(${st[i]!.rgb.map((x) => x.toFixed(3)).join(", ")}), clamp((t - ${st[i - 1]!.at.toFixed(3)}) / ${(st[i]!.at - st[i - 1]!.at).toFixed(3)}, 0.0, 1.0));`;
+      return o;
+    })()}
+    return c;
+  }
+  // The environment the metal reflects is the SKY the globe is in: the Milky Way's band (the same map the globe's sky is drawn from, \`uBand\`, in galactic coordinates; \`uViewToGal\` takes
+  // a direction of the camera's frame there) over the dark, with the broad lift of the page's own sky on the dark page (\`uSky\`); no lamps and no strips: in space nothing else is there.
+  float galaxy(vec3 r) {
+    vec3 g = uViewToGal * r;
+    vec2 uv = vec2(atan(g.y, g.x) / 6.283185307 + 0.5, asin(clamp(g.z, -1.0, 1.0)) / ${((SKY.map.bMaxDeg * Math.PI) / 180).toFixed(6)} * 0.5 + 0.5);
+    float band = texture2D(uBand, uv).r;
+    return ${EGG_ENV.band.toFixed(2)} * band + ${EGG_ENV.sky.toFixed(2)} * uSky * smoothstep(0.1, 0.95, r.y);
+  }
+  // The star field in the metal (the globe's own, one texel a star): on the light page starsLight of the dark page's strength.
+  float stars(vec3 r) {
+    vec3 g = uViewToGal * r;
+    float st = texture2D(uStars, vec2(atan(g.y, g.x) / 6.283185307 + 0.5, asin(clamp(g.z, -1.0, 1.0)) / 3.141592654 + 0.5)).r;
+    return ${EGG_ENV.stars.toFixed(2)} * st * mix(1.0, ${EGG_ENV.starsLight.toFixed(2)}, uLight);
   }
   // the lines' own ordered dither, on the art's pixels (this canvas is drawn at the art's resolution)
   float dither2(vec2 a) { return fract(a.x * 0.5 + a.y * a.y * 0.75); }
   float dither4(vec2 a) { return dither2(0.5 * a) * 0.25 + dither2(a); }
-  float strips(vec3 r) {
-    float s = 0.0;
-    s += 1.0 - smoothstep(0.004, 0.012, abs(dot(r, normalize(vec3(-0.35, 0.82, 0.45))) - 0.1));
-    s += 1.0 - smoothstep(0.004, 0.012, abs(dot(r, normalize(vec3(0.7, 0.2, 0.7))) - 0.4));
-    s += 1.0 - smoothstep(0.004, 0.012, abs(dot(r, normalize(vec3(-0.8, -0.1, 0.6))) + 0.2));
-    s += 1.0 - smoothstep(0.004, 0.012, abs(dot(r, normalize(vec3(0.2, -0.6, 0.78))) - 0.3));
-    return s;
-  }
   void main() {
     // Passing behind the planet: the letters are UNLOADED, a pixel at a time in the lines' own ordered dither, the first to pass (the farthest round) first. Only
     // on the way out (uDissolve), and all of it at the end (uFinal).
@@ -273,8 +325,56 @@ const EGG_FRAG = /* glsl */ `
     vec3 rv = reflect(normalize(vView), n);
     // how much each surface shines: the bevel the most (it turns the quickest), the walls, the faces, the backs (out of the light) hardly
     float gain = vKind < 0.5 ? ${CINEMATIC.light.faceShine.toFixed(3)} * uFaceGain : (vKind < 1.5 ? ${CINEMATIC.light.edgeShine.toFixed(3)} : (vKind < 3.5 ? ${CINEMATIC.light.wallShine.toFixed(3)} : 0.25));
-    vec3 col = lit * uExposure + vec3(uGlint * (studio(rv) * gain + strips(rv) * ${CINEMATIC.light.edgeShine.toFixed(3)} * (vKind > 3.5 ? 0.3 : 1.0)));
+    // The BEVEL is a polished curve: it turns the reflected direction across its width (so the sky is swept into a line along the edge), reflects it harder than a flat face does (contrast), and brightens
+    // smoothly towards the grazing angle (fresnel) from the face's side of it to the wall's: that gradient is what reads as a rounded chrome edge. The walls take a share of it, the faces and backs none.
+    float edgeK = vKind > 0.5 && vKind < 1.5 ? 1.0 : (vKind > 1.5 && vKind < 3.5 ? ${EGG_ENV.edge.wall.toFixed(2)} : 0.0);
+    float fres = pow(1.0 - clamp(dot(n, -normalize(vView)), 0.0, 1.0), 3.0);
+    float env = galaxy(rv) * (1.0 + edgeK * ${EGG_ENV.edge.contrast.toFixed(2)}) + edgeK * fres * ${EGG_ENV.edge.rim.toFixed(2)} * (0.35 + uSky);
+    // The stars take the face's own shine, not uFaceGain's (the light page damps a face's reflection to 0.3 so that the sky's band does not grey it; a star is a dark point on a white face, and at 0.3 of its
+    // strength it was under one level of the word's seven and was lost); the bevel's contrast is theirs too.
+    float starGain = vKind < 0.5 ? ${CINEMATIC.light.faceShine.toFixed(3)} : gain;
+    float starEnv = stars(rv) * (1.0 + edgeK * ${EGG_ENV.edge.contrast.toFixed(2)});
+    vec3 col = lit * uExposure + vec3(uGlint * (env * gain + starEnv * starGain) * (vKind > 3.5 ? 0.3 : 1.0));
     col += vec3(spec * uGlint * 0.5 * (vKind > 3.5 ? 0.3 : 1.0));
+    vec3 sunAdd = vec3(0.0);
+    float sunVeil = 0.0;
+    float sunSpot = 0.0;
+    // The SUN in the metal: the globe's sun (the skybox's, at infinity, in the camera's frame here) is in the chrome wherever the reflected direction meets it, in its own warm
+    // colours (the halo's ramp: gold at the core, reddening as the planet covers it) and only while the planet is not between the letter and the sun (a letter on the far side
+    // of the planet's shadow has no sun to show). A hard disc and a tight halo, as in a mirror; the backs hardly. On the light page
+    // the sun is burnt out and the reflections are darker than the paper, so it is a warm tint laid over the surface instead of a light added to it.
+    {
+      vec3 toPlanet = uPlanet - vView;
+      float along = dot(toPlanet, uSunDir);
+      float clear = along > 0.0 ? smoothstep(1.0, 1.06, length(toPlanet - along * uSunDir)) : 1.0;
+      float u = acos(clamp(dot(rv, uSunDir), -1.0, 1.0)) / ${SUN_GLINT.unit.toFixed(4)};
+      // the falloff from the hot centre: its strength is the tone the ramp is asked for (white-gold, yellow, amber, orange, red, in steps) and how much of it there is
+      float fall = pow(clamp(1.0 - u / ${SUN_GLINT.reach.toFixed(1)}, 0.0, 1.0), ${SUN_GLINT.fall.toFixed(2)});
+      float hot = 1.0 - smoothstep(${SUN_GLINT.core[0].toFixed(2)}, ${SUN_GLINT.core[1].toFixed(2)}, u);
+      vec3 sunCol = warmSmooth(clamp(fall + hot, 0.0, 1.0)) * (clamp(fall * ${SUN_GLINT.gain.toFixed(2)}, 0.0, 1.0) + hot * ${SUN_GLINT.hot.toFixed(2)});
+      float seen = clear * uSunAmt * (vKind > 3.5 ? 0.3 : 1.0);
+      sunCol *= seen;
+      sunAdd = sunCol;
+      // (the light page's sun: the falloff as a grey veil and the centre as a white spot, the same amount of it)
+      sunVeil = fall * seen;
+      sunSpot = (1.0 - smoothstep(${SUN_GLINT.light.edge[0].toFixed(2)}, ${SUN_GLINT.light.edge[1].toFixed(2)}, u)) * seen;
+      // the light page's spotlights (the studio's lights round the word): soft veils and spots, in the same grey and white
+      const vec4 SPOT[${SPOTS.length}] = vec4[${SPOTS.length}](${SPOTS.map((p) => `vec4(${p.at.map((x) => x.toFixed(3)).join(", ")}, ${p.size.toFixed(3)})`).join(", ")});
+      const float SPOT_I[${SPOTS.length}] = float[${SPOTS.length}](${SPOTS.map((p) => p.i.toFixed(2)).join(", ")});
+      float back = (vKind > 3.5 ? 0.3 : 1.0) * uLight;
+      // the light page's stars: a white dot (the star's texel) in a grey halo (the blurred map), as the sun is
+      vec3 gs = uViewToGal * rv;
+      vec2 suv = vec2(atan(gs.y, gs.x) / 6.283185307 + 0.5, asin(clamp(gs.z, -1.0, 1.0)) / 3.141592654 + 0.5);
+      float hv = texture2D(uStarHalo, suv).r;
+      sunVeil = max(sunVeil, pow(hv, 1.3) * ${EGG_ENV.starHalo.toFixed(2)} * back);
+      // (a star is drawn where its tier is shown and its own halo is there: the map of stars has them all, the halos only the ones the light page keeps)
+      sunSpot = max(sunSpot, step(${LIGHT_STAR_MIN.toFixed(2)}, texture2D(uStars, suv).r) * step(0.5, hv) * back);
+      for (int i = 0; i < ${SPOTS.length}; i++) {
+        float us = acos(clamp(dot(rv, normalize(SPOT[i].xyz)), -1.0, 1.0)) / SPOT[i].w;
+        sunVeil = max(sunVeil, pow(clamp(1.0 - us / ${SUN_GLINT.reach.toFixed(1)}, 0.0, 1.0), ${SUN_GLINT.fall.toFixed(2)}) * SPOT_I[i] * back);
+        sunSpot = max(sunSpot, (1.0 - smoothstep(0.3, 1.5, us)) * SPOT_I[i] * back);
+      }
+    }
     // the outline is the line: the ink, hardly lit
     if (vKind > 0.5 && vKind < 1.5) col = mix(col, uOutline, ${CINEMATIC.light.outlineMix.toFixed(2)});
     // Behind the planet's atmosphere: a letter whose sight line has passed close to the planet before reaching it is seen THROUGH the air at the limb, and dims into the HAZE's
@@ -286,13 +386,31 @@ const EGG_FRAG = /* glsl */ `
       if (tc > 0.0 && tc < len) {
         float b = length(uPlanet - tc * dir);
         float haze = ${CINEMATIC.atmosphere.dim.amount.toFixed(3)} * (1.0 - smoothstep(1.0, 1.0 + ${CINEMATIC.atmosphere.dim.reach.toFixed(3)}, b));
-        col = mix(col, uHaze, haze);
+        // a sight line inside the air itself (the glow's shell is in FRONT of the letter): the letter is covered by it, whole, and is the glow's own colour; beyond the shell it fades into the page's
+        float inAir = 1.0 - smoothstep(1.0 + ${CINEMATIC.atmosphere.dim.shell.toFixed(3)} * 0.5, 1.0 + ${CINEMATIC.atmosphere.dim.shell.toFixed(3)}, b);
+        haze = max(haze, inAir);
+        col = mix(col, mix(uHaze, uGlow, inAir), haze);
+        sunAdd *= 1.0 - haze;
+        sunVeil *= 1.0 - haze;
+        sunSpot *= 1.0 - haze;
       }
     }
     // a few levels, dithered on the art's pixels: the word is made of the globe's own pixels and tones
     float L = ${CINEMATIC.levels.toFixed(1)};
     col = clamp(col, 0.0, 1.0);
     col = floor(col * (L - 1.0) + dither4(floor(gl_FragCoord.xy))) / (L - 1.0);
+    // the sun's reflection goes over the levels, smooth (a few dozen steps, dithered: a gradient, not rings). On the light page the sun is burnt out, as the sky's is (a grey veil that fades the white,
+    // a pure white spot on it), and not coloured.
+    float sd = dither4(floor(gl_FragCoord.xy));
+    if (uLight > 0.5) {
+      float veilQ = floor(sunVeil * 31.0 + sd) / 31.0;
+      float spotQ = floor(sunSpot * 31.0 + sd) / 31.0;
+      col = mix(col, vec3(${SUN.light.veil.grey.toFixed(3)}), clamp(veilQ * ${SUN_GLINT.light.veil.toFixed(2)}, 0.0, 1.0));
+      col = mix(col, vec3(1.0), clamp(spotQ * ${SUN_GLINT.light.spot.toFixed(2)}, 0.0, 1.0));
+    } else {
+      sunAdd = floor(sunAdd * 31.0 + sd) / 31.0;
+      col = clamp(col + sunAdd, 0.0, 1.0);
+    }
     gl_FragColor = vec4(col, 1.0);
   }
 `;
@@ -692,6 +810,18 @@ export class CaptionLayer {
   /** The planet's centre in the camera's frame (set per frame in `renderCrisp`): the word's letters dim behind its atmosphere (`EGG_FRAG`). */
   private eggPlanet = { value: new Vector3() };
   private eggHaze = { value: [0, 0, 0] as number[] };
+  /** The colour of the atmosphere's glow as the page shows it over the page's own colour (its grey times its cover): what a letter seen through the air at the limb IS (`CINEMATIC.atmosphere.dim.shell`). */
+  private eggGlow = { value: [0, 0, 0] as number[] };
+  /** The sun in the camera's frame, how much of it there is (the planet's night: none without it) and how far the planet has covered it (the warm ramp's `uSet`): per frame in `renderCrisp`. */
+  private eggSunDir = { value: new Vector3(0, 0, 1) };
+  private eggSunAmt = { value: 0 };
+  /** 1 on the light page (the sun in the metal is the light page's, grey and white), else 0 (`setTheme`). */
+  private eggLight = { value: 0 };
+  private eggSet = { value: 0 };
+  /** The galaxy the chrome reflects: the sky's band map and the star map (this canvas is a context of its own: its own textures of the same baked bytes), made when the word's material is, not before (`eggSkyTextures`). */
+  private eggSkyTex: { band: DataTexture; stars: DataTexture; halo: DataTexture } | null = null;
+  /** The matrix that takes the camera's frame to the galactic one (`setSky`). */
+  private eggViewToGal = { value: new Matrix3() };
   private eggDissolve = { uDissolve: { value: 0 }, uFinal: { value: 0 }, uAxis: { value: [0, 0, 1] as number[] } };
   /** The far slices (layer below this) that carry the text colour in mode `edge` (0: none). */
   private edgeLayer = { value: 0 };
@@ -787,6 +917,21 @@ export class CaptionLayer {
     this.setTheme(opts.theme);
   }
 
+  private eggSkyTextures(): { band: DataTexture; stars: DataTexture; halo: DataTexture } {
+    if (this.eggSkyTex) return this.eggSkyTex;
+    const make = (data: Uint8Array, w: number, h: number, filter: typeof LinearFilter | typeof NearestFilter) => {
+      const t = new DataTexture(data, w, h, RedFormat, UnsignedByteType);
+      t.magFilter = t.minFilter = filter; // (a star is one hard texel: the metal shows pixels, not blurs; the band is smooth)
+      t.wrapS = RepeatWrapping;
+      t.wrapT = ClampToEdgeWrapping;
+      t.generateMipmaps = false;
+      t.unpackAlignment = 1;
+      t.needsUpdate = true;
+      return t;
+    };
+    return (this.eggSkyTex = { band: make(bakeBand(), SKY.map.cols, SKY.map.rows, LinearFilter), stars: make(bakeStarMap(), 4096, 2048, NearestFilter), halo: make(bakeStarHalo(), 2048, 1024, LinearFilter) });
+  }
+
   /**
    * The interlude's word: a lit, opaque, culled mesh (engine/cinematic-word.ts), no blending and no slices. It takes the same placement uniforms as a
    * row's strip (`place` writes them for every variant) and the colours of its own (`setTheme`).
@@ -809,6 +954,15 @@ export class CaptionLayer {
         uAxis: this.eggDissolve.uAxis,
         uPlanet: this.eggPlanet,
         uHaze: this.eggHaze,
+        uGlow: this.eggGlow,
+        uSunDir: this.eggSunDir,
+        uSunAmt: this.eggSunAmt,
+        uLight: this.eggLight,
+        uSet: this.eggSet,
+        uBand: { value: this.eggSkyTextures().band },
+        uStars: { value: this.eggSkyTextures().stars },
+        uStarHalo: { value: this.eggSkyTextures().halo },
+        uViewToGal: this.eggViewToGal,
         uBaseLat: { value: 0 },
         uBelow: { value: 0 },
         uAbove: { value: 0 },
@@ -935,6 +1089,11 @@ export class CaptionLayer {
     this.motion.reseed(seed);
   }
 
+  /** The sky's frame for the chrome: the matrix the globe's sky is drawn with (a direction of the camera's frame to the galactic one), per frame from the renderer. */
+  setSky(m: Mat3): void {
+    this.eggViewToGal.value.set(...m);
+  }
+
   /** The planet's night (the renderer's, per frame): how much of it there is (0 is all day) and the sun's direction in the earth's frame. */
   setNight(night: number, sun: readonly [number, number, number]): void {
     this.nightAmt.value = night;
@@ -965,8 +1124,12 @@ export class CaptionLayer {
     this.eggGlint.value = tone.glint;
     this.eggExposure.value = tone.exposure;
     this.eggSky.value = tone.sky;
+    this.eggLight.value = dark ? 0 : 1;
     this.eggFaceGain.value = tone.faceGain;
     this.eggHaze.value = dark ? [...theme.background] : toward(CINEMATIC.atmosphere.dim.lightTone);
+    // the glow's own colour at the limb: the grey the globe draws it in (a step from the page's colour towards its ink) at its cover (engine/scene.ts `applyTheme`)
+    const g = CINEMATIC.atmosphere.glow[dark ? "dark" : "light"];
+    this.eggGlow.value = [0, 1, 2].map((i) => theme.background[i]! + (theme.ink[i]! - theme.background[i]!) * g.tone * g.cover);
     this.dimAlpha = dark ? CAPTION.dim.alpha.dark : CAPTION.dim.alpha.light;
   }
 
@@ -1524,8 +1687,9 @@ export class CaptionLayer {
     let presence = 0;
     let eggTheta: number | null = null;
     if (b.egg) {
-      // (the word's start, east of the page's meridian: its leading end at `CINEMATIC.leadStartLon`, a span of the word beyond it)
-      b.egg.start = (((((CINEMATIC.leadStartLon + (b.egg.place.halfSpan * 180) / Math.PI - lon) % 360) + 360) % 360) * Math.PI) / 180;
+      // (the word's start, east of the page's meridian: its leading end at `CINEMATIC.leadStartLon` from it, a span of the word beyond it; the same whichever way the planet
+      // is turned, as the flight's camera is turned with it, engine/flight.ts)
+      b.egg.start = ((((CINEMATIC.leadStartLon + (b.egg.place.halfSpan * 180) / Math.PI) % 360) + 360) % 360) * Math.PI / 180;
       this.motion.setEggStart(b.egg.start);
       eggTheta = this.motion.eggTheta();
       // the letters dissolve as they pass behind the planet (the shader, from the page's view axis); how far through its exit the word is
@@ -1709,6 +1873,11 @@ export class CaptionLayer {
     // that it is made of the same pixels as the globe it lies over; the rows are crisp as ever.
     camera.updateMatrixWorld();
     this.eggPlanet.value.set(0, 0, 0).applyMatrix4(camera.matrixWorldInverse);
+    // (the globe's sun, `setNight`'s, as the camera sees it: the renderer's `syncSun` does the same for the sky)
+    const ns = this.nightSun.value;
+    const sun = this.eggSunDir.value.set(ns[0]!, ns[1]!, ns[2]!).transformDirection(camera.matrixWorldInverse);
+    this.eggSunAmt.value = Math.min(1, this.nightAmt.value);
+    this.eggSet.value = 1 - haloClear(sunRise(-sun.z, camera.position.length()) / ((SUN.angularDeg * Math.PI) / 180));
     const pixelated = this.interludePixels && artPx > 1;
     this.crisp.render(camera, rect, pixelated ? 1 / artPx : Math.min(dpr, ENERGY.captionDpr, this.dprCap), pixelated);
   }
@@ -1847,6 +2016,9 @@ export class CaptionLayer {
     (this.ellipse?.material as ShaderMaterial | undefined)?.dispose();
     this.ellipse = null;
     this.crisp.dispose();
+    this.eggSkyTex?.band.dispose();
+    this.eggSkyTex?.stars.dispose();
+    this.eggSkyTex?.halo.dispose();
     this.built = null;
   }
 

@@ -15,7 +15,7 @@
 import { BufferAttribute, BufferGeometry, ClampToEdgeWrapping, DataTexture, DoubleSide, LinearFilter, Matrix3, type Matrix4, Mesh, Points, RedFormat, RepeatWrapping, type Scene, ShaderMaterial, UnsignedByteType, Vector2, Vector3 } from "three";
 import type { GlobeTheme } from "./colors";
 import { FadeArray, clockStep } from "./fade";
-import { BAYER4, type Mat3, bakeBand, makeStars, skyGeometry, skyWanted, starTones } from "./sky";
+import { BAYER4, type Mat3, bakeBand, defaultStars, skyGeometry, skyWanted, starTones } from "./sky";
 import { SKY } from "./tuning";
 
 const f = (n: number) => n.toFixed(6);
@@ -145,7 +145,7 @@ export class SkyLayer {
     this.quad.renderOrder = 0.5; // after the disc (0), before every line
     this.quad.frustumCulled = false;
 
-    const s = makeStars();
+    const s = defaultStars();
     const g = new BufferGeometry();
     g.setAttribute("position", new BufferAttribute(s.position, 3));
     g.setAttribute("aTier", new BufferAttribute(s.tier, 1));

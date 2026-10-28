@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CAPTION_FACE, CaptionMotion, EGG_HITCH_STEP_MS, eggExitShare, DRIFT, cycleMs, eggMs, eggX, entranceMs, placeEgg, shellXY, type CinematicPlan } from "./caption";
+import { CAPTION_FACE, CaptionMotion, EGG_HITCH_STEP_MS, eggExitShare, eggWord, DRIFT, cycleMs, eggMs, eggX, entranceMs, placeEgg, shellXY, type CinematicPlan } from "./caption";
 import { CINEMATIC, onDemandPlan, planCinematic } from "./cinematic";
 import { SOUND } from "./cinematic-sound";
 import { markPlayed, visitState } from "./visit";
@@ -124,8 +124,13 @@ describe("the cinematic interlude: the big row's trajectory", () => {
     expect(s.enterMs).toBeGreaterThanOrEqual(4 * CAPTION.enter.ms);
     expect(s.ease).toBeLessThan(DRIFT.ease);
     expect(eggX(0, start, s)).toBe(start);
-    expect(eggX(s.enterMs, start, s)).toBeCloseTo((s.ampDeg * Math.PI) / 180, 12);
-    expect(eggX(s.enterMs + s.holdMs, start, s)).toBeCloseTo(-(s.ampDeg * Math.PI) / 180, 12);
+    // (the word lands `wordLateMs` after the camera, and rolls through the shorter hold that is left, as gently: it is still moving when the camera has arrived)
+    const w = eggWord(s);
+    expect(w.enterMs).toBe(s.enterMs + (s.wordLateMs ?? 0));
+    expect(w.enterMs + w.holdMs).toBe(s.enterMs + s.holdMs);
+    expect(eggX(s.enterMs, start, s)).toBeGreaterThan(w.amp);
+    expect(eggX(w.enterMs, start, s)).toBeCloseTo(w.amp, 12);
+    expect(eggX(w.enterMs + w.holdMs, start, s)).toBeCloseTo(-w.amp, 12);
     // (it ends DIRECTLY BEHIND the planet, half a turn from the view, wherever it came in from)
     expect(eggX(tIn, start, s)).toBeCloseTo(-Math.PI, 12);
     expect(eggX(tIn + 1000, start, s)).toBeCloseTo(-Math.PI, 12);
@@ -142,7 +147,8 @@ describe("the cinematic interlude: the big row's trajectory", () => {
     const rad = Math.PI / 180;
     for (const half of [40, 57, 70, 80]) {
       for (const lon of [-90, 0, 40, 120]) {
-        const startRad = ((((CINEMATIC.leadStartLon + half - lon) % 360) + 360) % 360) * rad;
+        // (the start is the same whatever the page's longitude: the flight is turned with the planet, engine/flight.ts)
+        const startRad = ((((CINEMATIC.leadStartLon + half) % 360) + 360) % 360) * rad;
         const endTheta = eggX(tIn + 1, startRad, s);
         expect(endTheta).toBeCloseTo(-Math.PI, 9);
         expect(eggExitShare(endTheta, s)).toBeCloseTo(1, 9);

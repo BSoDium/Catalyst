@@ -6,6 +6,7 @@ import {
   ClampToEdgeWrapping,
   DataTexture,
   LinearFilter,
+  NearestFilter,
   LineSegments,
   Mesh,
   NoColorSpace,
@@ -28,17 +29,18 @@ import type { ViewBasis } from "./geo";
 import { zoomToRadiusPx } from "./geo";
 import { landMask } from "./land";
 import { GRATICULE_STEP_DEG, graticuleSegments, polylinesToSegments } from "./geometry";
-import { OCCLUDER_RADIUS, atmosphereMaterial, rimMaterial, rimGroundMaterial, twilightMaterial, cityMaterial, surfaceMaterial, mistMaterial, lineMaterial, occluderMaterial, silhouetteMaterial } from "./materials";
+import { OCCLUDER_RADIUS, lightsMaterial, atmosphereMaterial, rimMaterial, rimGroundMaterial, twilightMaterial, cityMaterial, surfaceMaterial, mistMaterial, lineMaterial, occluderMaterial, silhouetteMaterial } from "./materials";
 import { RIM } from "./moon";
 import { MoonLayer } from "./moon-layer";
 import { SunLayer } from "./sun-layer";
 import { RouteLayer } from "./route-layer";
-import { SKY_STATE, viewToGalactic } from "./sky";
+import { SKY_STATE, type Mat3 } from "./sky";
 import { SkyLayer } from "./sky-layer";
 import { perfEnd, perfStart } from "./perf";
 import { routeLift } from "./view";
 import { TUNING } from "./tuning";
-import { surfaceTones } from "./surface";
+import { CINEMATIC } from "./cinematic";
+import { LIGHTS, surfaceTones } from "./surface";
 
 
 /** How much of the ink the filled land has (the rest is the page's colour): near the ink, as the letters' metal is. */
@@ -81,6 +83,12 @@ export class GlobeScene {
   private rimGround = rimGroundMaterial();
   private twilight = twilightMaterial();
   private mist = mistMaterial();
+  private lights = lightsMaterial();
+  private lightsMesh: Mesh | null = null;
+  private lightsReady = false;
+  private lightsLoading = false;
+  private lightsTex: Texture | null = null;
+  private nightNow = 0;
   private surface = surfaceMaterial();
   private surfaceMesh: Mesh | null = null;
   private surfaceReady = false;
@@ -119,7 +127,7 @@ export class GlobeScene {
     /** The page has a moon (`GlobeProps.moon`, and the flags allow it). */
     moon?: boolean;
   }) {
-    this.materials.push(this.occluder, this.city, this.atmosphere, this.rim, this.rimGround, this.twilight, this.mist, this.surface, this.graticule, this.borders, this.coast, this.silhouette);
+    this.materials.push(this.occluder, this.city, this.atmosphere, this.rim, this.rimGround, this.twilight, this.mist, this.lights, this.surface, this.graticule, this.borders, this.coast, this.silhouette);
     this.coastData = data.coastlines;
 
     const disc = new SphereGeometry(OCCLUDER_RADIUS, 96, 48);
@@ -160,13 +168,22 @@ export class GlobeScene {
     groundGlow.frustumCulled = false;
     this.add(groundGlow, 5.1);
     // and the land's own picture (satellite, flat patches in a few tones), over the sea and under the lines
-    const surfaceSkin = new SphereGeometry(1.002, 96, 48);
+    // (ON the surface, not a hair above it, like the coastlines and the borders it lies under: a layer above the lines is displaced from them by its height over the sine of the angle the camera looks along the ground
+    // at, which is nothing from the page's views and a great shift on the interlude's low shots, where the land's picture floated up off its outlines; the disc under it is at `OCCLUDER_RADIUS`, below, and the
+    // layer writes no depth, so there is nothing for it to fight with)
+    const surfaceSkin = new SphereGeometry(1, 96, 48);
     this.geometries.push(surfaceSkin);
     this.surfaceMesh = new Mesh(surfaceSkin, this.surface);
     this.surfaceMesh.visible = false;
     this.surfaceMesh.frustumCulled = false;
     // (under the lines, which are drawn over it: its colours are solid)
     this.add(this.surfaceMesh, 0.6);
+    // and the planet's lights on its dark side, over the ground and under the lines (solid colours, faint)
+    this.lightsMesh = new Mesh(new SphereGeometry(1, 96, 48), this.lights); // (on the surface too: see the land's picture)
+    this.geometries.push(this.lightsMesh.geometry);
+    this.lightsMesh.visible = false;
+    this.lightsMesh.frustumCulled = false;
+    this.add(this.lightsMesh, 0.62);
 
     this.add(new LineSegments(this.track(segmentGeometry(graticuleSegments(GRATICULE_STEP_DEG, 3))), this.graticule), 1);
     this.bordersLines = new LineSegments(this.track(segmentGeometry(polylinesToSegments(data.borders, 1))), this.borders);
@@ -233,15 +250,19 @@ export class GlobeScene {
     // veil on the ground is the page's own colour with a trace of ink, so it covers the lines without painting anything.
     const bg = t.background;
     const mixTo = (k: number) => [0, 1, 2].map((i) => bg[i]! + (t.ink[i]! - bg[i]!) * k) as [number, number, number];
-    this.atmosphere.uniforms.uColor!.value.setRGB(...mixTo(t.scheme === "dark" ? 0.5 : 0.3));
+    this.atmosphere.uniforms.uColor!.value.setRGB(...mixTo(CINEMATIC.atmosphere.glow[t.scheme].tone));
     this.mist.uniforms.uColor!.value.setRGB(...mixTo(t.scheme === "dark" ? 0.3 : 0.18));
     // the land's three tones: darker ground, middle, lighter, each a step from the page's colour towards its ink (the page's own two ends, no hue)
     const tones = surfaceTones(t.scheme);
     this.surface.uniforms.uBg!.value.setRGB(...bg);
+    // the lights: the sodium colour, faint, a step from the page's colour
+    this.lights.uniforms.uColor!.value.setRGB(...([0, 1, 2].map((i) => bg[i]! + (LIGHTS.color[i]! - bg[i]!) * LIGHTS.strength) as [number, number, number]));
+    this.lights.uniforms.uCover!.value = LIGHTS.cover;
+    this.lights.uniforms.uCore!.value.setRGB(...([0, 1, 2].map((i) => bg[i]! + (LIGHTS.core[i]! - bg[i]!) * LIGHTS.coreStrength) as [number, number, number]));
     this.surface.uniforms.uTone0!.value.setRGB(...mixTo(tones[0]!));
     this.surface.uniforms.uTone1!.value.setRGB(...mixTo(tones[1]!));
     this.surface.uniforms.uTone2!.value.setRGB(...mixTo(tones[2]!));
-    this.atmosphere.uniforms.uCover!.value = t.scheme === "dark" ? 0.4 : 0.26;
+    this.atmosphere.uniforms.uCover!.value = CINEMATIC.atmosphere.glow[t.scheme].cover;
     // the rim: a soft grey close to the page's colour (the haze and the lining's base)
     this.rim.uniforms.uColor!.value.setRGB(...mixTo(t.scheme === "dark" ? 0.45 : 0.3));
     this.rim.uniforms.uCover!.value = RIM.cover[t.scheme === "dark" ? "dark" : "light"];
@@ -260,7 +281,7 @@ export class GlobeScene {
     this.sun?.applyTheme(t);
     this.moon?.applyTheme(t);
     // the light page's night thickens (`uFlip`: the stipple, the tones, in the surface's shader) where the dark page's fades
-    for (const m of [this.occluder, this.surface, this.graticule, this.borders, this.coast, this.silhouette, this.atmosphere, this.rim, this.rimGround, this.twilight, this.mist]) m.uniforms.uFlip!.value = t.scheme === "dark" ? 0 : 1;
+    for (const m of [this.occluder, this.surface, this.graticule, this.borders, this.coast, this.silhouette, this.atmosphere, this.rim, this.rimGround, this.twilight, this.mist, this.lights]) m.uniforms.uFlip!.value = t.scheme === "dark" ? 0 : 1;
   }
 
   /**
@@ -305,10 +326,12 @@ export class GlobeScene {
    * frame. The land's ground thins in the dither and steps to its faintest tone, and the lines and the planet's own outline go towards the page's colour in grey steps, on the dark side.
    */
   setNight(night: number, x: number, y: number, z: number) {
-    for (const m of [this.occluder, this.surface, this.graticule, this.borders, this.coast, this.silhouette, this.atmosphere, this.rim, this.rimGround, this.twilight, this.mist]) {
+    for (const m of [this.occluder, this.surface, this.graticule, this.borders, this.coast, this.silhouette, this.atmosphere, this.rim, this.rimGround, this.twilight, this.mist, this.lights]) {
       m.uniforms.uNight!.value = night;
       m.uniforms.uSunN!.value = [x, y, z];
     }
+    this.nightNow = night;
+    if (this.lightsMesh) this.lightsMesh.visible = this.lightsReady && night > 0.01;
   }
 
   /** The sun's direction in the earth's frame (the planet's light; the letters have the same one in the camera's frame). */
@@ -324,6 +347,80 @@ export class GlobeScene {
   loadSurface(url: string, done: () => void) {
     if (this.surfaceReady || this.surfaceLoading || this.disposed) return;
     this.surfaceLoading = true;
+    this.fetchSurface(
+      url,
+      (tex) => {
+        this.surfaceTex = tex;
+        // (the finer picture, if it came first, stays: it is the one in the shader until the interlude gives it back)
+        this.surface.uniforms.uEarth!.value = this.surfaceHiTex ?? tex;
+        this.surfaceReady = true;
+        this.prepareLand(); // (the coastlines' fill, for the patches' edge)
+        this.setSurface(this.surfaceNow, this.surfaceStrength);
+        done();
+      },
+      () => {
+        this.surfaceLoading = false;
+      },
+    );
+  }
+
+  /**
+   * The finer picture of the land (`SURFACE.hiUrl`), in place of the first while it is there (the interlude's close shots); the first is kept, and stays if this one fails. It is big (8192 x 4096,
+   * about 134 MB of RGBA on the GPU), so it is held only for an interlude: `releaseSurfaceHi` gives it back. It may arrive before the first picture: that one then waits in `surfaceTex` (`loadSurface`).
+   */
+  loadSurfaceHi(url: string, done: () => void) {
+    if (this.surfaceHi || this.disposed) return;
+    this.surfaceHi = true;
+    this.fetchSurface(
+      url,
+      (tex) => {
+        if (!this.surfaceHi) {
+          tex.dispose(); // (released while it was on its way)
+          return;
+        }
+        this.surfaceHiTex = tex;
+        this.surface.uniforms.uEarth!.value = tex;
+        done();
+      },
+      () => {
+        this.surfaceHi = false;
+      },
+    );
+  }
+
+  /** The interlude is over: the finer picture goes (its GPU memory is freed) and the first is the ground again; the next interlude loads it anew. */
+  releaseSurfaceHi(): void {
+    this.surfaceHi = false;
+    if (!this.surfaceHiTex) return;
+    if (this.surfaceTex) this.surface.uniforms.uEarth!.value = this.surfaceTex;
+    this.surfaceHiTex.dispose();
+    this.surfaceHiTex = null;
+  }
+
+  private surfaceHiTex: Texture | null = null;
+  private surfaceHi = false;
+
+  /** The planet's lights (`LIGHTS`), once, after the first frame; `done` when they are in. A failure leaves none. */
+  loadLights(url: string, done: () => void) {
+    if (this.lightsReady || this.lightsLoading || this.disposed) return;
+    this.lightsLoading = true;
+    this.fetchSurface(
+      url,
+      (tex) => {
+        tex.magFilter = tex.minFilter = NearestFilter; // (a light is one hard texel: a point, not a blob)
+        this.lights.uniforms.uLights!.value = tex;
+        this.lightsTex = tex;
+        this.lightsReady = true;
+        if (this.lightsMesh) this.lightsMesh.visible = this.nightNow > 0.01;
+        done();
+      },
+      () => {
+        this.lightsLoading = false;
+      },
+    );
+  }
+
+  private fetchSurface(url: string, ok: (tex: Texture) => void, fail: () => void) {
     new TextureLoader().load(
       url,
       (tex) => {
@@ -337,17 +434,10 @@ export class GlobeScene {
         tex.wrapT = ClampToEdgeWrapping;
         tex.generateMipmaps = false;
         tex.colorSpace = NoColorSpace;
-        this.surface.uniforms.uEarth!.value = tex;
-        this.surfaceTex = tex;
-        this.surfaceReady = true;
-        this.prepareLand(); // (the coastlines' fill, for the patches' edge)
-        this.setSurface(this.surfaceNow, this.surfaceStrength);
-        done();
+        ok(tex);
       },
       undefined,
-      () => {
-        this.surfaceLoading = false;
-      },
+      fail,
     );
   }
 
@@ -417,18 +507,18 @@ export class GlobeScene {
   }
 
   /**
-   * Per-frame sky: the view-to-galactic matrix of this camera at the earth rotation angle `era`, and where the earth's silhouette is in
+   * Per-frame sky: the view-to-galactic matrix of this camera (`viewToGal`, `viewToGalactic`: computed once a frame by the renderer, the caption's chrome reads it too; `d` the camera's distance), and where the earth's silhouette is in
    * the buffer. `hold`: the sky stays on whatever the picture reaches (the cinematic interlude's close shots fill the picture with the planet, and the sky above the horizon is the point). Call after the camera's matrices are current. `bufW`, `bufH` and `shiftBuf` are the drawing buffer and the inset's shift (buffer px).
    */
-  syncSky(camera: PerspectiveCamera, basis: ViewBasis, era: number, buf: { w: number; h: number; shift: number; lift?: number }, now: number, instant: boolean, hold = false) {
-    this.sky?.sync({ viewToGal: viewToGalactic(basis, era), projInv: camera.projectionMatrixInverse, d: basis.d, bufW: buf.w, bufH: buf.h, shiftBuf: buf.shift, liftBuf: buf.lift ?? 0 }, now, instant, hold);
+  syncSky(camera: PerspectiveCamera, viewToGal: Mat3, d: number, buf: { w: number; h: number; shift: number; lift?: number }, now: number, instant: boolean, hold = false) {
+    this.sky?.sync({ viewToGal, projInv: camera.projectionMatrixInverse, d, bufW: buf.w, bufH: buf.h, shiftBuf: buf.shift, liftBuf: buf.lift ?? 0 }, now, instant, hold);
   }
 
   /** The keys of the legs that stay at this zoom (`RouteLayer.setThinning`), null: all. */
   kept: ReadonlySet<string> | null = null;
 
   /** Per-frame uniforms that depend on the camera. `now` is the clock (ms) the border fade runs on; `instant`: reduced motion. */
-  syncCamera(basis: ViewBasis, zoom: number, pixel: number, now: number, instant: boolean, lat = 0, view = 0, hold = false, lon?: number) {
+  syncCamera(basis: ViewBasis, zoom: number, pixel: number, now: number, instant: boolean, lat = 0, view = 0, lon?: number) {
     this.routes.setLift(routeLift(zoom));
     this.routes.setScale(pixel, zoomToRadiusPx(zoom));
     // the Web Mercator zoom with the scale the centre has on the globe (the unified zoom less log2 of the secant of the latitude)
@@ -438,9 +528,8 @@ export class GlobeScene {
     // Borders: on from the zoom `TUNING.borderZoom` (a hysteresis), off below. The fade is a timed TONE (a line is always solid): the faintest
     // grey level stepping up through the palette to the coast level (the coastline's, `borderLevel`) over `FADE_MS`, whatever the camera does, so the globe
     // at rest never shows a half-faded border. Never a dither: a low-coverage dither on 1px lines reads as noise instead of a fade.
-    // (`hold`: the cinematic interlude's camera flies in and out of the borders' zoom range, which is no reason for them to come and go)
-    // (and the interlude's planet has them: its continents are drawn in detail, the borders go over them in the page's colour (`setLand`), so they are on for as long as it is up, and go with the zoom again after)
-    this.bordersOn = hold ? true : bordersWanted(this.bordersOn, zoom, TUNING.borderZoom);
+    // (the cinematic interlude's camera is no exception: the borders come in as it gets close enough, as for a visitor's zoom, and go as it backs away)
+    this.bordersOn = bordersWanted(this.bordersOn, zoom, TUNING.borderZoom);
     if (!this.bordersSeen) {
       this.bordersSeen = true; // the first frame starts in its state
       this.borderFade.snap(0, this.bordersOn);
@@ -466,6 +555,8 @@ export class GlobeScene {
     this.disposed = true;
     this.landTex?.dispose();
     this.surfaceTex?.dispose();
+    this.surfaceHiTex?.dispose();
+    this.lightsTex?.dispose();
     this.routes.dispose();
     this.sky?.dispose();
     this.sun?.dispose();
