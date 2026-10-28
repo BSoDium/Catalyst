@@ -56,21 +56,19 @@ describe("the site's identity is one constant", () => {
     expect(`${SITE.givenName} ${SITE.familyName}`).toBe(SITE.name);
     expect(SITE.shortName).toBe("Elliot N.-J.");
     expect(SITE.shortName.length).toBeLessThanOrEqual(12);
-    expect(SITE_TAGLINE).toBe("Front-end and UX software engineer based in Warsaw. Data visualisation, geospatial and cartography interfaces, design systems, computer graphics.");
+    expect(SITE_TAGLINE).toBe("Design engineer based in Warsaw. Data visualisation, geospatial and cartography interfaces, design systems, computer graphics.");
     expect(SITE_NAME).toBe(SITE.name);
-    expect(SITE_TITLE).toBe("Elliot Négrel-Jerzy · Front-end and UX software engineer");
-    expect(SITE_DESCRIPTION).toBe("Front-end and UX software engineer in Warsaw. Data visualisation, geospatial and cartography interfaces, design systems, computer graphics.");
+    expect(SITE_TITLE).toBe("Elliot Négrel-Jerzy · Design engineer");
+    expect(SITE_DESCRIPTION).toBe("Design engineer in Warsaw. Data visualisation, geospatial and cartography interfaces, design systems, computer graphics.");
     expect(SITE_DESCRIPTION.length).toBeLessThanOrEqual(160);
     for (const value of [SITE, SITE_TAGLINE, SITE_DESCRIPTION, SITE_TITLE, DEFAULT_SHARE_IMAGE]) expect(has(value)).toBe(false);
   });
 });
 
 describe("the role inside a sentence", () => {
-  it("is the role in lower case where a clause starts with it, and keeps the acronym: the share image's alt says UX, not ux", () => {
-    expect(ROLE_IN_SENTENCE.toLowerCase()).toBe(SITE.role.toLowerCase());
-    expect(ROLE_IN_SENTENCE).toContain("UX");
-    expect(DEFAULT_SHARE_IMAGE.alt).toBe(`${SITE.name}, front-end and UX software engineer in Warsaw: a wireframe globe with two places joined by a route.`);
-    expect(DEFAULT_SHARE_IMAGE.alt).not.toMatch(/\bux\b/);
+  it("is the role in lower case where a clause starts with it: the share image's alt says it that way", () => {
+    expect(ROLE_IN_SENTENCE).toBe(SITE.role.toLowerCase());
+    expect(DEFAULT_SHARE_IMAGE.alt).toBe(`${SITE.name}, design engineer in Warsaw: a wireframe globe with two places joined by a route.`);
   });
 });
 

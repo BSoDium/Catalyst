@@ -158,4 +158,4 @@ Rules the private validator adds on top of the contract (errors for a published 
 
 **Order of deployment** (the contract must know the key before a projection carries it): see [api-contract.md](api-contract.md#the-career-document-career).
 
-**Conformance sample.** `packages/published/fixtures/demo.json` has a made-up `career` (made-up employers: "Example Studio", "Sample Works Ltd", example domains only) that uses every field, and an abstract `portrait` (`/media/demo/portrait-example.svg`), so the career page ([career-page.md](career-page.md)) can be developed on `pnpm dev:demo`.
+**Conformance sample.** `packages/published/fixtures/demo.json` has a made-up `career` (made-up employers: "Example Studio", "Sample Works Ltd", example domains only) that uses every field, and the blueprint `portrait` (`/media/demo/portrait-example.svg`), so the career page ([career-page.md](career-page.md)) can be developed on `pnpm dev:demo`.

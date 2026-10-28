@@ -10,14 +10,14 @@ describe("pageMeta", () => {
   const ORIGIN = "https://v2.bsodium.fr";
   it("uses the title template, and the home title when there is no page name", () => {
     expect(pageMeta({ title: "Demo" })[0]).toEqual({ title: "Demo · Elliot Négrel-Jerzy" });
-    expect(pageMeta()[0]).toEqual({ title: "Elliot Négrel-Jerzy · Front-end and UX software engineer" });
+    expect(pageMeta()[0]).toEqual({ title: "Elliot Négrel-Jerzy · Design engineer" });
     expect(find(pageMeta({ title: "Demo" }), "property", "og:title")?.content).toBe("Demo · Elliot Négrel-Jerzy");
     expect(find(pageMeta({ title: "Demo" }), "name", "twitter:title")?.content).toBe("Demo · Elliot Négrel-Jerzy");
   });
   it("has a description, with the site's as the default", () => {
     expect(find(pageMeta({ title: "Demo", description: "About it" }), "name", "description")?.content).toBe("About it");
-    expect(find(pageMeta(), "name", "description")?.content).toBe("Front-end and UX software engineer in Warsaw. Data visualisation, geospatial and cartography interfaces, design systems, computer graphics.");
-    expect(find(pageMeta(), "property", "og:description")?.content).toBe("Front-end and UX software engineer in Warsaw. Data visualisation, geospatial and cartography interfaces, design systems, computer graphics.");
+    expect(find(pageMeta(), "name", "description")?.content).toBe("Design engineer in Warsaw. Data visualisation, geospatial and cartography interfaces, design systems, computer graphics.");
+    expect(find(pageMeta(), "property", "og:description")?.content).toBe("Design engineer in Warsaw. Data visualisation, geospatial and cartography interfaces, design systems, computer graphics.");
   });
   it("makes the canonical URL and og:url from the origin and the path only (no query, no hash)", () => {
     const tags = pageMeta({ origin: ORIGIN, path: "/articles/a?view=full#x" });

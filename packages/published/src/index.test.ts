@@ -193,8 +193,8 @@ describe("career", () => {
     expect(roles.some((r) => r.place !== undefined) && roles.some((r) => r.place === undefined)).toBe(true);
     expect(roles.some((r) => r.highlights.length === 0)).toBe(true);
     expect(career.availability).toEqual({ text: "Open to example opportunities", asOf: "2026-09" });
-    // the portrait is an abstract drawing in the demo's media folder, with its real size
-    expect(career.portrait).toMatchObject({ src: "/media/demo/portrait-example.svg", width: 800, height: 1000 });
+    // the portrait is the blueprint drawing in the demo's media folder, with its real size
+    expect(career.portrait).toMatchObject({ src: "/media/demo/portrait-example.svg", width: 940, height: 640 });
     expect(career.education.length).toBeGreaterThanOrEqual(2);
     expect(career.education.some((e) => e.place !== undefined)).toBe(true);
     expect(career.languages.some((l) => l.label !== undefined) && career.languages.some((l) => l.label === undefined)).toBe(true);

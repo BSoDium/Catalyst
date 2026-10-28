@@ -110,6 +110,6 @@ describe("isCodeRepository", () => {
 
 describe("websiteJsonLd", () => {
   it("is a minimal WebSite", () => {
-    expect(websiteJsonLd(ORIGIN)).toEqual({ "@context": "https://schema.org", "@type": "WebSite", name: "Elliot Négrel-Jerzy", description: "Front-end and UX software engineer in Warsaw. Data visualisation, geospatial and cartography interfaces, design systems, computer graphics.", url: `${ORIGIN}/`, inLanguage: "en" });
+    expect(websiteJsonLd(ORIGIN)).toEqual({ "@context": "https://schema.org", "@type": "WebSite", name: "Elliot Négrel-Jerzy", description: "Design engineer in Warsaw. Data visualisation, geospatial and cartography interfaces, design systems, computer graphics.", url: `${ORIGIN}/`, inLanguage: "en" });
   });
 });

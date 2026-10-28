@@ -32,7 +32,7 @@ const MIN_TARGET = 44;
 const LIVE = 0.6;
 
 /**
- * The link's mark: the icon set's `arrow-up-right` (lucide's path, with the set's own square ends: `.ui-icon`, app.css) drawn thin and large, a station sign's arrow for a way out:
+ * The link's mark: the icon set's `arrow-up-right` (lucide's path, with the set's own square ends: `.ui-icon`, app.css) drawn thin, a station sign's arrow for a way out:
  * a stem and a right-angled head. Built here because the globe imports nothing from the app; it is decoration (`aria-hidden`: the link's name is the words).
  */
 function arrow(doc: Document): SVGElement {

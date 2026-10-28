@@ -14,7 +14,7 @@ import { SITE_NAME } from "~/lib/site";
  * languages (a recruiter's first filter); then the experience and the education as vertical hairline timelines (an ordered list,
  * newest first, each item with its `<time>` span), the skills as a compact definition list and a footer row of public profile links.
  *
- * Headings: h1 the name; h2 Languages (visually hidden: the line is its own region), Experience, Education, Skills, Elsewhere; h3 a
+ * Headings: h1 the name; h2 Languages (visually hidden: the line is its own region), Experience, Education, Skills, Socials; h3 a
  * role's organisation or a programme's institution. The portrait is optional: with none, the name block simply takes the room. There is
  * no contact channel anywhere (the contract has no field for one).
  */
@@ -131,7 +131,7 @@ export function CareerPage({ career, places = [] }: { career: PublishedCareer; p
       {links.length > 0 && (
         <footer data-slot="career-links" className="career-footer">
           <h2 id="links-h" className="career-block-title">
-            Elsewhere
+            Socials
           </h2>
           <ul aria-labelledby="links-h" className="career-links">
             {links.map((l) => (

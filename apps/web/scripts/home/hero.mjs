@@ -175,7 +175,7 @@ async function layoutChecks(page, label) {
   ok(/data-slot="landing-hero"[^>]*data-hero="rest"|data-hero="rest"[^>]*data-slot="landing-hero"/.test(html), "SSR: the hero is in the page at rest");
   ok(/<h1[^>]*class="hero-name[^"]*"[^>]*><span class="hero-given">Elliot<\/span> <span class="hero-family type-thin">/.test(html), "SSR: the name is the page's h1, Elliot (heavy) and Négrel-Jerzy (thin)");
   ok(
-    /Front-end and UX software engineer based in Warsaw\.<span class="hero-intro-more"> Data visualisation, geospatial and cartography interfaces, design systems, computer graphics\.<\/span><\/p>/.test(html),
+    /Design engineer based in Warsaw\.<span class="hero-intro-more"> Data visualisation, geospatial and cartography interfaces, design systems, computer graphics\.<\/span><\/p>/.test(html),
     "SSR: who the owner is is real text (the second sentence is its own span: a very short window drops it)",
   );
   ok(!/catalyst/i.test(html.replace(/CATALYST_[A-Z_]+/g, "")), "SSR: the code name is nowhere in the home page");
@@ -199,7 +199,7 @@ async function layoutChecks(page, label) {
   ok((await page.locator("h1").count()) === 1 && (await page.locator("h1").innerText()) === "Elliot Négrel-Jerzy", "desktop: one h1, the owner's name");
   ok(!/catalyst/i.test(await page.evaluate(() => document.title + " " + document.body.innerText)), "desktop: the code name is nowhere in the title or the text");
   const intro = await page.locator(".hero-intro").innerText();
-  ok(/^Front-end and UX software engineer based in Warsaw\. Data visualisation, geospatial and cartography interfaces, design systems, computer graphics\.$/.test(intro), `desktop: the intro says who the owner is (${intro})`);
+  ok(/^Design engineer based in Warsaw\. Data visualisation, geospatial and cartography interfaces, design systems, computer graphics\.$/.test(intro), `desktop: the intro says who the owner is (${intro})`);
   const hintText = await page.locator(".hero-hint").innerText();
   ok(/^(Drag the globe to explore and pick a place, or start from a list\.|No place is published yet: start from a list\.)$/.test(hintText), `desktop: then how to use the page (${hintText})`);
   // the name: one line, a share of the width (not the full width), the given name heavy and the family name thin
