@@ -346,14 +346,14 @@ A curriculum vitae as data, for the page recruiters read. It is **one optional t
 ```json
 {
   "title": "Career",
-  "summary": "Frontend engineer who builds interfaces for map-heavy and data-heavy products.",
+  "summary": "Design engineer who builds interfaces for map-heavy and data-heavy products.",
   "updated": "2026-09",
   "portrait": { "src": "/media/demo/portrait-example.svg", "alt": "A hand-penned blueprint portrait ...", "width": 940, "height": 640, "dark": { "src": "/media/demo/portrait-example-dark.svg", "width": 940, "height": 640 } },
   "availability": { "text": "Open to example opportunities", "asOf": "2026-09" },
   "roles": [
     {
       "id": "lead-frontend-example-studio",
-      "title": "Lead Frontend Engineer",
+      "title": "Lead Design Engineer",
       "org": "Example Studio",
       "orgUrl": "https://example.org/studio",
       "logo": { "src": "/media/demo/logo-example.svg", "width": 200, "height": 200 },

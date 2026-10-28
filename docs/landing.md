@@ -12,7 +12,7 @@ Code: `app/components/landing-hero.tsx` (the markup and the name's travel), `app
 <div data-slot="landing-hero" data-hero="rest | collapsed | away" data-world="true | false">
   h1.hero-name        "Elliot" (.hero-given, 800) + "Négrel-Jerzy" (.hero-family .type-thin, 200), Bricolage, .type-display-xl; the page's h1
   .hero-lead
-    p.hero-intro      who and what: "Front-end and UX software engineer based in Warsaw." + span.hero-intro-more " Data visualisation, geospatial and cartography interfaces, design systems, computer graphics." (the second sentence goes in a very short window)
+    p.hero-intro      who and what: "Design engineer based in Warsaw." + span.hero-intro-more " Data visualisation, geospatial and cartography interfaces, design systems, computer graphics." (the second sentence goes in a very short window)
     p.hero-hint       how: "Drag the globe to explore and pick a place, or start from a list." (muted, a step smaller; gone in a short window; without scripts: "Start from a list."). While the globe has the caption (`data-orbit` "pending" or "true") it is visually hidden and stays in the accessibility tree: the caption is the cue, this is the text.
     button.hero-search  [data-needs-script] the search icon (control size), "Search places and entries" (mono 13), the key hint (command icon + K, or Ctrl K); opens the existing palette
   nav.hero-list       aria-label "Primary" (the home page's navigation; the header has none here)

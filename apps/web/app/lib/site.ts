@@ -18,7 +18,7 @@ export const SITE = {
   /** For tight spots (the home-screen label under an icon, 12 characters or fewer). */
   shortName: "Elliot N.-J.",
   /** Who: what the owner does, and where. The hero says "<role> based in <location>." */
-  role: "Front-end and UX software engineer",
+  role: "Design engineer",
   location: "Warsaw",
   /** What: the fields, in the owner's order. A sentence of its own. */
   speciality: "Data visualisation, geospatial and cartography interfaces, design systems, computer graphics",
@@ -137,8 +137,8 @@ export const captionText = (c: SiteCaption): { sets: string[][]; fixed: string[]
   fixed: c.fixed.map((row) => row.map((s) => s.text).join("")),
 });
 
-/** The role inside a sentence, as the share image's alt text says it: lower-cased where it starts a clause, but "UX" stays "UX" (never `role.toLowerCase()`). */
-export const ROLE_IN_SENTENCE = "front-end and UX software engineer";
+/** The role inside a sentence, as the share image's alt text says it: lower-cased where it starts a clause (a literal, so a role with an acronym in it never goes through `role.toLowerCase()`). */
+export const ROLE_IN_SENTENCE = "design engineer";
 
 /** The share image of every page that has no entry cover of its own (`public/og-default.png`, drawn by `scripts/brand/build.mjs`). */
 export const DEFAULT_SHARE_IMAGE = {

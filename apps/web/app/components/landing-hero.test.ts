@@ -43,7 +43,7 @@ describe("LandingHero", () => {
     expect(html).toContain(`<p class="hero-intro">${SITE_IDENTITY}<span class="hero-intro-more"> ${SITE_FOCUS}</span></p>`);
     expect(`${SITE_IDENTITY} ${SITE_FOCUS}`).toBe(SITE_TAGLINE);
     expect(SITE_TAGLINE).toBe(
-      "Front-end and UX software engineer based in Warsaw. Data visualisation, geospatial and cartography interfaces, design systems, computer graphics.",
+      "Design engineer based in Warsaw. Data visualisation, geospatial and cartography interfaces, design systems, computer graphics.",
     );
     // the how-to line: the globe is a script, so the part about it is marked and a no-script variant stands beside it
     expect(html).toContain('<p class="hero-hint"><span data-needs-script="">Drag the globe to explore and pick a place, or start</span><noscript>Start</noscript> from a list.</p>');

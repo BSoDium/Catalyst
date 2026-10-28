@@ -206,7 +206,7 @@ try {
         labelsZ: labels ? getComputedStyle(labels).zIndex : null,
         ringZ: getComputedStyle(root).zIndex,
         text: root.textContent,
-        bodyHasRingWords: document.body.innerText.includes("FRONT-END ENGINEER"),
+        bodyHasRingWords: document.body.innerText.includes("DESIGN ENGINEER"),
       };
     });
     expect("aria-hidden", info.ariaHidden === "true", info);

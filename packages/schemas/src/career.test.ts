@@ -443,7 +443,7 @@ describe("career (an optional singleton document, additive in schema version 1)"
     });
     it("the real document's texts are not flagged (no false positive)", () => {
       const real = [
-        "Frontend engineer with an MSc in Computer Graphics & Vision and several years of production experience building React/TypeScript interfaces for geospatial and data-heavy platforms.",
+        "Design engineer with an MSc in Computer Graphics & Vision and several years of production experience building React/TypeScript interfaces for geospatial and data-heavy platforms.",
         "Built the frontend and design of Macrodata Labs' data observability platform, enabling AI teams to process, understand, and scale multimodal datasets",
         "De facto UI/UX lead: owned frontend architecture, design language, and product experience across the platform",
         "Engineered geospatial dashboards for carbon monitoring at scale; built a production LLM-powered chat interface with real-time streaming Markdown and full PWA support",

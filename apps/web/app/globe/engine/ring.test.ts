@@ -9,7 +9,7 @@ import { RING_LINE_BUDGET, ringPhrases } from "../ring-text";
 /** The identity the app hands in (the shape of `SITE` in lib/site.ts: this folder imports nothing from the app). */
 const IDENTITY = {
   name: "Elliot Négrel-Jerzy",
-  role: "Front-end and UX software engineer",
+  role: "Design engineer",
   location: "Paris",
   speciality: "Data visualisation, geospatial and cartography interfaces, design systems, computer graphics",
 };
@@ -35,7 +35,7 @@ describe("the ring's text", () => {
     // all of them when the budget allows
     expect(ringPhrases(IDENTITY, 1000)).toEqual([
       "Elliot Négrel-Jerzy",
-      "Front-end and UX software engineer",
+      "Design engineer",
       "Data visualisation",
       "geospatial and cartography interfaces",
       "design systems",
@@ -43,11 +43,11 @@ describe("the ring's text", () => {
       "Paris",
     ]);
     // by default the last specialities that would make the line longer than the ring closes well with are left off
-    expect(ringPhrases(IDENTITY)).toEqual(["Elliot Négrel-Jerzy", "Front-end and UX software engineer", "Data visualisation", "geospatial and cartography interfaces", "Paris"]);
-    expect(LINE).toBe("ELLIOT NÉGREL-JERZY · FRONT-END AND UX SOFTWARE ENGINEER · DATA VISUALISATION · GEOSPATIAL AND CARTOGRAPHY INTERFACES · PARIS · ");
+    expect(ringPhrases(IDENTITY)).toEqual(["Elliot Négrel-Jerzy", "Design engineer", "Data visualisation", "geospatial and cartography interfaces", "design systems", "Paris"]);
+    expect(LINE).toBe("ELLIOT NÉGREL-JERZY · DESIGN ENGINEER · DATA VISUALISATION · GEOSPATIAL AND CARTOGRAPHY INTERFACES · DESIGN SYSTEMS · PARIS · ");
     expect(LINE.length).toBeLessThanOrEqual(RING_LINE_BUDGET);
     // never the name, the role or the place
-    expect(ringPhrases(IDENTITY, 10)).toEqual(["Elliot Négrel-Jerzy", "Front-end and UX software engineer", "Paris"]);
+    expect(ringPhrases(IDENTITY, 10)).toEqual(["Elliot Négrel-Jerzy", "Design engineer", "Paris"]);
   });
 
   it("leaves out what is blank, and a lone speciality is one phrase", () => {
