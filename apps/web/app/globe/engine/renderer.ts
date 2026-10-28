@@ -74,7 +74,8 @@ import { CAP_HEIGHT_EM, ringAlpha, ringFloorZoom, ringRoomRadius, RING_STATE } f
 import { RingLayer } from "./ring-layer";
 import { GlobeScene } from "./scene";
 import { sunRise } from "./sun-flare";
-import { MOON, inclinationFor, litTurn, moonAmount, orbitAngle, rollFor, sunDirection, toEarthFrame, toRad, type Vec3 } from "./moon";
+import { FX, irisStep } from "./fx";
+import { MOON, SUN, inclinationFor, litTurn, moonAmount, orbitAngle, rollFor, sunDirection, toEarthFrame, toRad, type Vec3 } from "./moon";
 import type { MoonSample } from "./moon-layer";
 import { CAPTION, ENERGY, INSET_EASE, CAPTION_LOAD, RING, SKY, START_VIEW, TUNING } from "./tuning";
 import { QualityGovernor } from "./quality";
@@ -797,7 +798,7 @@ export class GlobeRenderer {
     this.caption?.setTheme(theme);
     // Tones of the semantic zoom: group squares in map levels per kind (below the ink), a place marker the ink.
     this.lod.setTones(theme.ramp.length);
-    this.gl.setClearColor(new Color(...theme.background), 1);
+    this.applyClear();
     this.globe.applyTheme(theme);
     this.requestRender();
   }
@@ -1156,7 +1157,7 @@ export class GlobeRenderer {
   private onContextRestored() {
     // Three re-initialises its GL state on restore and re-uploads geometry and programs lazily on the next render.
     // That reset also drops the clear colour, so it is set again.
-    this.gl.setClearColor(new Color(...this.theme.background), 1);
+    this.applyClear();
     this.lost = false;
     this.caption?.setPaused(this.hidden || this.suspended);
     this.noteActivity();
@@ -1334,7 +1335,37 @@ export class GlobeRenderer {
     return this.flying || (this.caption?.landShare() ?? 0) > 0;
   }
 
+  /** The eye's iris: how closed it is now (0..1), eased toward the sun's glare in the picture; dims the light page's backdrop (`SUN.light.iris`). */
+  private iris = 0;
+  private irisAt = 0;
+  private irisTarget = 0;
+
+  private applyClear() {
+    const [r, g, b] = this.theme.background;
+    const k = this.theme.scheme === "light" ? 1 - SUN.light.iris.dim * this.iris : 1;
+    this.gl.setClearColor(new Color(r * k, g * k, b * k), 1);
+  }
+
+  /** The iris is still moving toward where the sun's glare asks it to be: the loop keeps going. */
+  private get irisMoving(): boolean {
+    return !this.suspended && Math.abs(this.irisTarget - this.iris) > 0.002;
+  }
+
+  private stepIris(now: number) {
+    const dt = this.irisAt > 0 ? Math.min(100, Math.max(0, now - this.irisAt)) : 0;
+    this.irisAt = now;
+    const target = this.irisTarget;
+    const settled = irisStep(this.iris, target, dt, SUN.light.iris.closeMs, SUN.light.iris.openMs, this.reduced);
+    if (settled !== this.iris) {
+      this.iris = settled;
+      this.applyClear();
+    }
+  }
+
   private sunV = new Vector3();
+  /** The sun in the camera's frame and the night shown, as of the last frame: the ring of type is lit by them. */
+  private sunView: [number, number, number] = [0, 0, 1];
+  private nightShown = 0;
   private sunClip = new Vector4();
   private planetV = new Vector3();
 
@@ -1347,6 +1378,7 @@ export class GlobeRenderer {
     if (!sun) return;
     const v = this.sunV.set(sunEarth[0], sunEarth[1], sunEarth[2]).transformDirection(cam.matrixWorldInverse);
     const clip = this.sunClip.set(v.x, v.y, v.z, 0).applyMatrix4(cam.projectionMatrix);
+    this.sunView = [v.x, v.y, v.z];
     const ahead = clip.w > 1e-4;
     // (where the planet's centre is on the buffer: the crescent's centre of mass lies on the line from it through the sun)
     const pc = this.planetV.set(0, 0, 0).project(cam);
@@ -1603,7 +1635,7 @@ export class GlobeRenderer {
     // A timed transition of the boxes or of the borders (engine/fade.ts) that has not reached its end keeps the loop going, camera or not.
     // While the street map owns the view the globe draws nothing and its transitions are not advanced here (the street engine runs the
     // boxes' own), so they must not keep this loop spinning.
-    const more = moving || fading || this.moonWantsFrames || (!this.suspended && (this.lod.animating || this.globe.animating || !!this.opts.labelsAnimating?.()));
+    const more = moving || fading || this.moonWantsFrames || this.irisMoving || (!this.suspended && (this.lod.animating || this.globe.animating || !!this.opts.labelsAnimating?.()));
     if (more) this.keepGoing(moving);
     else if (this.spin.spinning) this.chainSpin();
     else this.armSpin();
@@ -1825,6 +1857,8 @@ export class GlobeRenderer {
       alpha,
       width: this.width,
       height: this.height,
+      sun: this.sunView,
+      night: this.nightShown,
     });
   }
 
@@ -2378,6 +2412,7 @@ export class GlobeRenderer {
     // (the light page shows the wash a little softer than the dark one: `NIGHT.lightGain`)
     const shown = this.nightNow * (this.theme.scheme === "dark" ? 1 : NIGHT.lightGain);
     this.globe.setNight(shown, ns[0], ns[1], ns[2]);
+    this.nightShown = shown;
     this.caption?.setNight(shown, ns);
     const now = performance.now();
     this.globe.syncCamera(b, zoom, this.pixel, now, this.reduced, lat, Math.max(this.width, this.height), lon);
@@ -2388,6 +2423,9 @@ export class GlobeRenderer {
     this.syncTagline();
     this.syncMoon(cam, d, zoom, now);
     this.syncSun(cam, ns, d);
+    this.irisTarget = FX.on.iris && (this.theme.scheme === "light" || this.globe.sky) ? (this.globe.sun?.glare ?? 0) : 0;
+    this.stepIris(now);
+    this.globe.sky?.setExposure(this.theme.scheme === "dark" ? this.iris : 0);
     // (the sky's frame, once: the globe's sky and the chrome of the interlude's letters both read it)
     const viewToGal = viewToGalactic(skyBasis, this.era);
     this.caption?.setSky(viewToGal);

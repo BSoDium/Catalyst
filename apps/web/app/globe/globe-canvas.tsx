@@ -17,6 +17,7 @@ import { stressRoutes } from "./paths/stress";
 import { applyDebugLevels } from "./engine/palette";
 import { applySpinFlags } from "./engine/idle-spin";
 import { applySkyFlags } from "./engine/sky";
+import { applyFxFlags } from "./engine/fx";
 import { INTERLUDE_WAIT_MS, PLAY_INTERLUDE_EVENT, RESTORE_HERO_EVENT, PREPARE_INTERLUDE_EVENT, type PlayInterludeRequest } from "./interlude";
 import { applyRingFlags, ringText } from "./engine/ring";
 import { applyMoonFlags } from "./engine/moon";
@@ -181,11 +182,22 @@ export default function GlobeCanvas({
       last = now;
       note();
     };
+    const noteGesture = () => {
+      const now = performance.now();
+      if (now - last < MOVE_NOTE_MS) return;
+      last = now;
+      note();
+    };
     const options = { passive: true, capture: true } as const;
     stage.addEventListener("pointerdown", note, options);
     stage.addEventListener("pointermove", noteMove, options);
     stage.addEventListener("wheel", note, options);
+    // Safari's trackpad pinch is `gesturestart` / `gesturechange`, not a wheel: without them a pinch was no gesture to the app, the hero's idle clock ran on while the visitor zoomed, and the name came back big under their fingers
+    stage.addEventListener("gesturestart", note, options);
+    stage.addEventListener("gesturechange", noteGesture, options);
     return () => {
+      stage.removeEventListener("gesturestart", note, options);
+      stage.removeEventListener("gesturechange", noteGesture, options);
       stage.removeEventListener("pointerdown", note, options);
       stage.removeEventListener("pointermove", noteMove, options);
       stage.removeEventListener("wheel", note, options);
@@ -259,6 +271,7 @@ export default function GlobeCanvas({
     let handle: HandoverHandle | null = null;
 
     applySpinFlags(); // `?no-rotate` works on any page, `?spin-idle=MS` in debug mode
+    applyFxFlags(); // `?fx=reduced`, `?no-fx=iris,flare`: effects off for a device that cannot afford them
     applySkyFlags(); // `?no-sky` works on any page, `?sky` turns it on in debug mode
     applyRingFlags(); // `?no-ring` works on any page, `?ring` turns it on in debug mode
     applyMoonFlags(); // `?no-moon` works on any page, `?moon` turns it on in debug mode

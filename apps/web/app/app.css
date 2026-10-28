@@ -4444,6 +4444,9 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
    */
   .landing-hero[data-world="false"] .hero-mini-hint {
     position: absolute;
+    /* (where it was: the line's bottom edge does not move, so it fades where it stands; with no offsets it jumped to the top of the line, over the name, as it left the layout) */
+    left: 0;
+    bottom: 0;
     opacity: 0;
   }
 

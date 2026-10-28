@@ -18,8 +18,9 @@
  * sized to the ring's bounding box (grown, rarely shrunk), not to the window.
  */
 import type { GlobeTheme } from "./colors";
-import { GlyphBuffer, placeGlyphs, ringLayout, ringPhase, ringTone, type RingLayout } from "./ring";
+import { GlyphBuffer, placeGlyphs, ringLayout, ringNightLevel, ringPhase, ringTone, type RingLayout } from "./ring";
 import { CAPTION, RING } from "./tuning";
+import { FX } from "./fx";
 
 export interface RingFrame {
   /** Centre of the planet on the container, CSS px. */
@@ -32,6 +33,9 @@ export interface RingFrame {
   /** The container's size, CSS px (the canvas never goes beyond it). */
   width: number;
   height: number;
+  /** The sun in the camera's frame (x right, y up, z towards the camera) and how much night there is (`setNight`'s, 0 is all day): the letters are lit as the limb they stand on is. Absent: no night. */
+  sun?: readonly [number, number, number];
+  night?: number;
 }
 
 export interface RingState {
@@ -421,24 +425,45 @@ export class RingLayer {
     // The atlas cell is drawn at `ATLAS_EM`; a letter is `g.em`. The cell's centre is the capital's centre: each letter turns about it to its
     // angle (clockwise from twelve o'clock), its top pointing away from the planet.
     const lv = Math.min(level, levels - 1);
-    const atlas = this.atlas(lv, dpr);
-    if (!atlas) return;
-    const hlAtlas = this.hlMode !== "none" && this.hlEnd > 0 ? this.atlas(lv, dpr, true) : null;
+    // the planet's night on the type: a letter at angle `a` stands over the limb's point (sin a, cos a, 0) in the camera's frame, lit as that point of the planet is (the same smoothstep, the same whole steps as the lines), and its tone goes `NIGHT.ringDim` of the way to the night's (the page's on the dark page, the ink on the light one)
+    const night = fr.sun ? (fr.night ?? 0) : 0;
+    const sun = fr.sun ?? [0, 0, 1];
+    const nightLevel = this.theme.scheme === "dark" ? 0 : levels - 1;
+    const atlasFor = (l: number, hl: boolean): Atlas | null => this.atlas(l, dpr, hl);
+    // (the atlases are empty after a theme or a highlight change: every level the night can reach is made now, together, not one by one in the frames that first need it)
+    if (this.atlases.size === 0 && night > 0.001) {
+      for (let l = Math.max(1, Math.min(lv, nightLevel)); l <= Math.max(lv, nightLevel); l++) for (const hl of [false, true]) if (hl ? this.hlMode !== "none" && this.hlEnd > 0 : true) atlasFor(l, hl);
+    }
     const m = (dpr * g.em) / ATLAS_EM;
     const ox = -left * dpr;
     const oy = -top * dpr;
     const cw = CELL_W * dpr;
     const ch = CELL_H * dpr;
+    const useHl = this.hlMode !== "none" && this.hlEnd > 0;
     for (let i = 0; i < g.count; i++) {
-      const hl = hlAtlas !== null && g.idx[i]! < this.hlEnd;
-      const at = hl ? hlAtlas! : atlas;
+      const a = g.angle[i]!;
+      // the letter's tone, between two of the palette's levels (a fraction): drawn as the lower one whole and the upper one over it by the fraction, so that the night comes over the type smoothly, not click by click
+      let lf = ringNightLevel(lv, nightLevel, night, a, sun);
+      if (!FX.on.ringBlend) lf = Math.round(lf);
+      const lo = Math.floor(lf + 1e-6);
+      const frac = lf - lo;
+      const hl = useHl && g.idx[i]! < this.hlEnd;
+      const at = atlasFor(lo, hl);
+      if (!at) continue;
       const col = at.col.get(g.code[i]!);
       if (col === undefined) continue;
-      const a = g.angle[i]!;
       const c = Math.cos(a) * m;
       const sn = Math.sin(a) * m;
       ctx.setTransform(c, sn, -sn, c, g.x[i]! * dpr + ox, g.y[i]! * dpr + oy);
       ctx.drawImage(at.canvas, col * cw, 0, cw, ch, -CELL_W / 2, -CELL_H / 2, CELL_W, CELL_H);
+      if (frac > 0.02) {
+        const up = atlasFor(Math.min(levels - 1, lo + 1), hl);
+        if (up) {
+          ctx.globalAlpha = frac;
+          ctx.drawImage(up.canvas, col * cw, 0, cw, ch, -CELL_W / 2, -CELL_H / 2, CELL_W, CELL_H);
+          ctx.globalAlpha = 1;
+        }
+      }
     }
   }
 }

@@ -124,3 +124,16 @@ describe("rayStart", () => {
     expect(last).toBe(1);
   });
 });
+
+describe("flarePlace, the light page's fade", () => {
+  it("keeps the flare to the sun's last pixels when rays follow it (rayDim), and dims them with it", () => {
+    const p = flarePlace(frame({ visible: 0.05, rayDim: 1 }))!;
+    expect(p).not.toBeNull();
+    expect(p.ray).toBeCloseTo(p.str, 9);
+    expect(flarePlace(frame({ visible: 0.0005, rayDim: 1 }))).toBeNull();
+  });
+  it("cuts the dark page's flare at 1% of the sun as before (its rays do not dim)", () => {
+    expect(flarePlace(frame({ visible: 0.005 }))).toBeNull();
+    expect(flarePlace(frame({ visible: 0.05 }))).not.toBeNull();
+  });
+});

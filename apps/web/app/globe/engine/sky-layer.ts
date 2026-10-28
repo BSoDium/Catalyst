@@ -17,6 +17,7 @@ import type { GlobeTheme } from "./colors";
 import { FadeArray, clockStep } from "./fade";
 import { BAYER4, type Mat3, bakeBand, defaultStars, skyGeometry, skyWanted, starTones } from "./sky";
 import { SKY } from "./tuning";
+import { SUN } from "./moon";
 
 const vec = (c: readonly number[]) => `vec3(${c.map((n) => n.toFixed(3)).join(", ")})`;
 
@@ -132,6 +133,8 @@ export class SkyLayer {
   private on = false;
   private seen = false;
   private lastClock = 0;
+  /** How closed the eye's iris is, 0..1 (`SUN.dark.iris`): the sun's glare dazzles the stars out. */
+  private exposure = 0;
   private rhoMax = 0;
   private geo = { cx: 0, cy: 0, radius: 1 };
 
@@ -220,9 +223,15 @@ export class SkyLayer {
     for (const u of [this.band.uniforms, this.stars.uniforms]) {
       (u.uCentre!.value as Vector2).set(geo.cx, geo.cy);
       u.uRadius!.value = geo.radius;
-      u.uFade!.value = v;
     }
+    this.stars.uniforms.uFade!.value = v * (1 - SUN.dark.iris.stars * this.exposure);
+    this.band.uniforms.uFade!.value = v * (1 - SUN.dark.iris.band * this.exposure);
     (this.stars.uniforms.uBuf!.value as Vector2).set(frame.bufW, frame.bufH);
+  }
+
+  /** The iris, 0 (open) to 1 (closed), read by the next `sync`. */
+  setExposure(x: number) {
+    this.exposure = x;
   }
 
   private show() {

@@ -48,11 +48,15 @@ function finalTransforms(root: HTMLElement): { el: HTMLElement; transform: strin
     const el = root.querySelector<HTMLElement>(from);
     const ghost = root.querySelector<HTMLElement>(to);
     if (!el || !ghost) continue;
-    const prev = el.style.transform;
-    el.style.transform = "none";
-    const a = textBox(el);
-    const o = el.getBoundingClientRect();
-    el.style.transform = prev;
+    // The half's REST boxes are worked out from where it is drawn now and the transform it has now (computed: a glide or a travel in progress included), without touching it:
+    // the version that set `transform: none` on the live element to read it started a transition from the BIG name whenever a glide was running (a quick zoom in and out
+    // within its 240 ms: the name swelled to its full size and shrank again).
+    const m = new DOMMatrix(getComputedStyle(el).transform);
+    const s0 = m.a > 1e-3 ? m.a : 1;
+    const oc = el.getBoundingClientRect();
+    const ac = textBox(el);
+    const o = { left: oc.left - m.e, top: oc.top - m.f };
+    const a = { left: o.left + (ac.left - oc.left) / s0, top: o.top + (ac.top - oc.top) / s0, width: ac.width / s0 };
     const b = textBox(ghost);
     if (!(a.width > 0) || !(b.width > 0)) continue;
     const s = b.width / a.width;
@@ -78,6 +82,7 @@ function holdName(root: HTMLElement, collapsed: boolean): void {
  */
 function halvesOf(root: HTMLElement): TravelHalf[] {
   return finalTransforms(root).map(({ el, transform }) => ({
+    id: el,
     final: transform,
     setInline: (value) => (value === null ? el.style.removeProperty("transform") : (el.style.transform = value)),
     computed: () => getComputedStyle(el).transform,
@@ -189,6 +194,9 @@ export function LandingHero({ machine, away, empty, orbit = null, onCover, hasCa
     const root = rootRef.current;
     rootForTravel.current = root;
     if (!root) return;
+    // (a glide of the held name, from the hint going or coming, is over: the travel and the held transform are the whole story now)
+    window.clearTimeout(glideTimer.current);
+    for (const [from] of HALVES) root.querySelector<HTMLElement>(from)?.style.removeProperty("transition");
     const toMini = was === "rest" && state === "collapsed";
     const back = was === "collapsed" && state === "rest";
     // (a turn-around, the state flipping again while the name is on its way, is a travel like any other: `NameTravel.go` starts from where it is)
@@ -225,21 +233,30 @@ export function LandingHero({ machine, away, empty, orbit = null, onCover, hasCa
   // The collapsed name sits above the hint ("Drag to explore. Stop moving to reset the view."), which is gone when the view is zoomed in (`data-world="false"`: app.css takes it
   // out of the layout): the name then goes down into the corner, and back up when the hint is back. The held transform is measured again (its ghost has moved) and the halves glide there.
   const worldWas = useRef(snapshot.world);
+  // (one timer for the glide's end, never cleared by a re-run of the effect: a hint that goes and comes again within the glide used to leave its `transition` on the halves for good)
+  const glideTimer = useRef(0);
+  useEffect(() => () => window.clearTimeout(glideTimer.current), []);
   useIsoLayoutEffect(() => {
     const changed = worldWas.current !== snapshot.world;
     worldWas.current = snapshot.world;
     const root = rootRef.current;
-    if (!changed || !root || state !== "collapsed" || travel.current?.isRunning) return;
+    if (!changed || !root || state !== "collapsed") return;
+    // The name is still on its way to the corner when the hint goes or comes (a fast zoom from the home screen: the gesture collapses the hero a moment before the view leaves the world): it
+    // goes on to the NEW place, from where it is, not to the old one with a jump to the new at the end of its travel.
+    if (travel.current?.isRunning) {
+      if (!(typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches)) travel.current.go(halvesOf(root), true);
+      return;
+    }
     const halves = HALVES.map(([from]) => root.querySelector<HTMLElement>(from)).filter((el): el is HTMLElement => !!el);
     const reduced = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
     // (measured BEFORE any transition is declared: `finalTransforms` clears the transform to read the rest position, and a transition then would be read half way)
     const finals = finalTransforms(root);
     if (!reduced) for (const el of halves) el.style.transition = "transform 240ms cubic-bezier(0.2, 0, 0, 1)";
     for (const { el, transform } of finals) el.style.transform = transform;
-    const done = window.setTimeout(() => {
+    window.clearTimeout(glideTimer.current);
+    glideTimer.current = window.setTimeout(() => {
       for (const el of halves) el.style.removeProperty("transition");
     }, 300);
-    return () => window.clearTimeout(done);
   }, [snapshot.world, state]);
 
   // How much of the page's bottom the name covers: the globe lifts the planet clear of it (docs/landing.md). Layout offsets, so a transform

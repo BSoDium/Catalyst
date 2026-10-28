@@ -78,6 +78,19 @@ describe("the name's travel: where each half is at every moment, and where it is
     expect(settled()).toEqual([true]);
   });
 
+  it("a travel asked for while one runs starts from where the half is, even when the caller builds new half objects for it (the hero measures them anew each time)", () => {
+    const { halves, travel, advance } = setup();
+    const ids = halves.map((_, i) => `half-${i}`);
+    // (the same elements, new objects each time: as `halvesOf` makes them)
+    const fresh = (): TravelHalf[] => halves.map((h, i) => ({ id: ids[i], final: h.final, setInline: (v) => h.setInline(v), computed: () => h.computed(), animate: (f, t) => h.animate(f, t) }));
+    travel.go(fresh(), true);
+    advance(160);
+    const here = halves[0]!.position();
+    travel.go(fresh(), true);
+    expect(halves[0]!.anim!.from).toBeCloseTo(here, 9);
+    expect(here).toBeGreaterThan(0);
+  });
+
   it("comes back: the inline transform is removed at the start, and the half ends in place", () => {
     const { halves, travel, advance } = setup();
     travel.go(halves, true);

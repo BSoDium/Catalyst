@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DEG, fitZoom, silhouetteRadiusPx, silhouetteZoom } from "./geo";
 import { activeLevels, roleLevel } from "./palette";
-import { CAP_HEIGHT_EM, GlyphBuffer, placeGlyphs, ringAlpha, ringFloorZoom, ringLayout, ringPhase, ringText, ringTargetEm, ringTone } from "./ring";
+import { CAP_HEIGHT_EM, GlyphBuffer, placeGlyphs, ringAlpha, ringFloorZoom, ringLayout, ringPhase, ringText, ringNightLevel, ringTargetEm, ringTone } from "./ring";
 import { SPIN } from "./idle-spin";
 import { RING } from "./tuning";
 import { RING_LINE_BUDGET, ringPhrases } from "../ring-text";
@@ -276,5 +276,27 @@ describe("the fade", () => {
     expect(tones[0]).toBe(0);
     expect(tones.at(-1)).toBe(roleLevel(RING.tone, levels));
     for (let i = 1; i < tones.length; i++) expect(tones[i]).toBeGreaterThanOrEqual(tones[i - 1]!);
+  });
+});
+
+describe("ringNightLevel", () => {
+  const sun = [0, 0, 1] as const;
+  it("changes nothing without night", () => {
+    expect(ringNightLevel(5, 0, 0, 1, sun)).toBe(5);
+  });
+  it("dims a letter over the dark limb smoothly (steps of 1/8, not whole levels) and never to the page's own level", () => {
+    // the sun is behind the camera: the whole limb is dark; with the sun at the top the top is lit
+    const dark = ringNightLevel(5, 0, 1, 1, sun);
+    expect(dark).toBeLessThan(5);
+    expect(dark).toBeGreaterThanOrEqual(1);
+    expect(dark * 8).toBeCloseTo(Math.round(dark * 8), 9);
+    expect(ringNightLevel(2, 0, 1, 1, sun)).toBeGreaterThanOrEqual(1);
+    const lit = ringNightLevel(5, 0, 1, 0, [0, 1, 0]);
+    expect(lit).toBe(5);
+    const mid = ringNightLevel(5, 0, 1, Math.PI / 2 + 0.3, [0, 1, 0]);
+    expect(mid).toBeLessThan(5);
+  });
+  it("goes up towards the ink on the light page", () => {
+    expect(ringNightLevel(3, 11, 1, 1, sun)).toBeGreaterThan(3);
   });
 });

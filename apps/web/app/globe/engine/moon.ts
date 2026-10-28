@@ -86,6 +86,8 @@ export const SUN = {
   halo: 14,
   haloFall: 2.6,
   haloSteps: 6,
+  /** How opaque the halo and the ring are over the planet, 0..1 (owner, 2026-10-28: translucent, unlike the sun's disc, which hides what is behind it). */
+  haloOpacity: 0.55,
   /** The ring of light on top of the halo, in disc radii from the sun's centre: sharp on its inside (`inner` wide, at full `tone`), then a smooth falloff over `outer`, in `steps` dithered steps. It is a lens's: it goes with the sun's visible share (`fade`: gone when the sun is hidden, whole from the second number of its area), and the soft halo stays. */
   ring: { at: 8.5, inner: 0.3, outer: 2.6, steps: 5, strength: 0.16, fade: [0, 0.25] as const },
   /** The halo's tone, where it starts, at the disc's edge (the disc itself is the blur: `core`): the warm ramp's tone, on either page. */
@@ -104,8 +106,12 @@ export const SUN = {
    * its white rays show against the paper. The `halo` is that grey too, `strength` of the way from the paper, with only `warm` of the warm ramp's colour (each colour times `ink`, a darker shade) in it. The ghosts are the ramp's
    * colours at `ghost` strength. The lining and the ground's light are `grey` with `warm` of the ramp in them, and the twilight is `twilight` of what it is on the dark page. The dark page has none of this.
    */
+  /** The eye's iris on the dark page (owner, 2026-10-28): with the sun in the picture the sky is dazzled out, as the light page's backdrop dims: the stars' share that stays is `1 - stars` (nearly none), the band's `1 - band`. Same timing as `light.iris`. */
+  dark: { iris: { stars: 0.95, band: 0.6 } },
   light: {
     ink: 0.82,
+    /** The eye's iris (owner, 2026-10-28): the light page's backdrop dims by `dim` (a share of its tone) while the sun is in the picture, easing in over `closeMs` as the sun comes in and out over `openMs` after it leaves, like a diaphragm adapting. */
+    iris: { dim: 0.05, closeMs: 700, openMs: 1800 },
     veil: { strength: 0.22, reach: 0.28, grey: 0.45, fall: 1.3 },
     halo: { strength: 0.3, grey: 0.5, warm: 0.2 },
     ghost: 0.25,
