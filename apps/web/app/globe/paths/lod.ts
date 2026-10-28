@@ -36,6 +36,18 @@ export function levelFor(mPerCell: number, current: number | null, tolerances: r
   return k;
 }
 
+/**
+ * The cell the dots of a dotted or dashed leg are counted in, in the globe's own units (radians along the leg per art pixel), snapped to a quarter of an
+ * octave of scale. The pattern is anchored at the start of the leg and runs along it in these cells; with the exact cell it changed at every frame of a zoom,
+ * and every dot of a leg slid along it, faster the farther it was from the start (a dot at 400 pixels from the start moved 400 times the zoom's change
+ * of scale: the whole line shimmered). Snapped, the dots stay where they are on the ground while the scale moves inside a step, and the pattern is laid
+ * out again, once, when it crosses to the next (the dots are then up to 9 % longer or shorter than the table's).
+ */
+export const DOT_STEPS_PER_OCTAVE = 4;
+export function dotCell(cell: number): number {
+  return cell > 0 ? 2 ** (Math.round(Math.log2(cell) * DOT_STEPS_PER_OCTAVE) / DOT_STEPS_PER_OCTAVE) : cell;
+}
+
 /** The palette level a leg of `lengthCells` art pixels is drawn at: 0 hidden, up to `finalLevel`. */
 export function fadeLevel(lengthCells: number, finalLevel: number): number {
   const t = (lengthCells - FADE_FROM_CELLS) / (FADE_FULL_CELLS - FADE_FROM_CELLS);

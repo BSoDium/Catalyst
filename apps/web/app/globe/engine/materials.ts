@@ -4,7 +4,7 @@
  * output never contains a blended pixel.
  */
 import { AddEquation, BackSide, Color, CustomBlending, DstColorFactor, FrontSide, NormalBlending, ShaderMaterial, ZeroFactor } from "three";
-import { LEG_MODES, MODE_STYLE } from "../paths/modes";
+import { CELL_PATTERN, LEG_MODES, MODE_STYLE } from "../paths/modes";
 import { STRAIGHT_FADE_MIX, STRAIGHT_FADE_STEPS } from "../paths/thin";
 import { SPARK, TRAIL_BANDS, TRAIL_ENTRIES, TRAIL_PER_PALETTE } from "../paths/trail";
 import { RIM, SUN } from "./moon";
@@ -461,6 +461,7 @@ export function pathMaterial(): ShaderMaterial {
       uFront: { value: 2 },
       uMarch: { value: 0 },
       uCell: { value: 0.01 },
+      uDot: { value: 0.01 },
       uPixel: { value: [0.01, 0.01] },
       uLift: { value: 1 },
       uState: { value: null },
@@ -505,7 +506,7 @@ export function pathMaterial(): ShaderMaterial {
         gl_Position = c;
       }`,
     fragmentShader: /* glsl */ `
-      uniform vec3 uTrail[${TRAIL_ENTRIES}]; uniform vec3 uPage; uniform float uFinal; uniform float uPresence; uniform float uFront; uniform float uMarch; uniform float uCell; uniform float uFar; uniform float uTickOn;
+      uniform vec3 uTrail[${TRAIL_ENTRIES}]; uniform vec3 uPage; uniform float uFinal; uniform float uPresence; uniform float uFront; uniform float uMarch; uniform float uCell; uniform float uDot; uniform float uFar; uniform float uTickOn;
       varying float vDist; varying float vLen; varying float vMode; varying float vState; varying float vCopy; varying float vFade; varying float vPal; varying float vQuiet;
       varying vec3 vPos;
       // True when the occluder sphere lies between the camera and p.
@@ -520,17 +521,23 @@ export function pathMaterial(): ShaderMaterial {
         return t > 0.0 && t < len;
       }
       void main() {
+        // How far the pattern runs along the line from one pixel to the next, in dots' cells: 1 for a line along an axis, 1.41 on a diagonal (a line is one
+        // pixel per step of its major axis). Taken first: derivatives are only defined while every fragment of the quad is still here.
+        vec2 gd = vec2(dFdx(vDist), dFdy(vDist)) / uDot;
+        float gm = max(abs(gd.x), abs(gd.y));
+        float step1 = gm > 1.0e-6 ? clamp(dot(gd, gd) / gm, 0.5, 4.0) : 1.0;
         bool lit = vState > 0.25;
         float t = vLen > 0.0 ? vDist / vLen : 0.0;
         float frac = t;                          // 0 at the origin, 1 at the destination: the trail's gradient runs this way
         if (vState > 0.75) t = 1.0 - t;         // a leg that ends at the place draws on from the place
         bool inked = lit && t <= uFront;
         if (!inked && vFade < 0.01) discard;
-        float cells = vDist / uCell - (lit ? uMarch : 0.0);
+        float cells = vDist / uDot - (lit ? uMarch : 0.0);
         // mode ids (paths/modes.ts): 0 road, 1 rail, 2 ferry, 3 flight, 4 walk, 5 unknown
         float m = floor(vMode + 0.5);
-        float period = ${modeChain((k) => MODE_STYLE[k].period)};
-        float on = ${modeChain((k) => MODE_STYLE[k].on)};
+        // the pattern of the street map's cells (a dot is one pixel): paths/modes.ts CELL_PATTERN, so the two renderers draw the same
+        float period = ${modeChain((k) => CELL_PATTERN[k]?.period ?? 0)};
+        float on = ${modeChain((k) => CELL_PATTERN[k]?.on ?? 0)};
         // the head's spark: cells back from the destination (paths/trail.ts SPARK); the draw-on has not reached a lit head yet when t < 1
         float h = (vLen - vDist) / uCell - (inked ? ${f(SPARK.lit.clear)} : ${f(SPARK.faint.clear)});   // 0 where the spark begins, outside the place's box
         float sparkLine = inked ? ${f(SPARK.lit.line)} : ${f(SPARK.faint.line)};
@@ -540,10 +547,19 @@ export function pathMaterial(): ShaderMaterial {
         if (false) sparkOn = vCopy < 0.5 ? (h >= 0.0 && h < sparkLine) : (h >= crossFrom && h < crossTo);
         bool tick = false;
         if (period > 0.5) {
-          float u = mod(cells, period);
-          // the rail's tick: one cell across the line at the middle of each dash
-          if (vCopy > 0.5) tick = uTickOn > 0.5 && abs(vMode - 1.0) < 0.5 && u >= on * 0.5 - 0.5 && u < on * 0.5 + 0.5;
-          else if (u >= on && !sparkOn) discard;
+          // Whole pixels: a dash is a whole number of pixels long (at least one) and sits where the middle of the dash is, and a pixel is inked by where its
+          // centre falls in the dash, so a dot is one pixel at every angle and offset and moves by whole pixels: at a fixed length it was one pixel or two, and
+          // none at some angles, and changed with every sub-pixel of a pan or a zoom.
+          float mid = on * 0.5;
+          if (vCopy > 0.5) {
+            // the rail's tick: the pixel in the middle of each dash
+            float u = mod(cells, period);
+            tick = uTickOn > 0.5 && abs(vMode - 1.0) < 0.5 && u >= mid - 0.5 * step1 && u < mid + 0.5 * step1;
+          } else {
+            float len = max(1.0, floor(on / step1 + 0.5)) * step1;
+            float u = mod(cells - (mid - 0.5 * len), period);
+            if (u >= len && !sparkOn) discard;
+          }
         }
         if (vCopy > 0.5 && !tick && !sparkOn) discard;
         if (behindGlobe(vPos)) discard;
