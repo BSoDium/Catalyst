@@ -16,9 +16,9 @@ import { clamp, easeInOutCubic, radiusPxToZoom } from "./geo";
 import { pathMaterial } from "./materials";
 import { coastLevel } from "./palette";
 import { TUNING } from "./tuning";
-import { FADE_FROM_CELLS, FADE_FULL_CELLS, farOf, TICK_FROM, levelFor, metresPerCell } from "../paths/lod";
+import { dotCell, FADE_FROM_CELLS, FADE_FULL_CELLS, farOf, TICK_FROM, levelFor, metresPerCell } from "../paths/lod";
 import { buildBuffers, buildNetwork, legsAt, type PathBuffers, type PathNetwork } from "../paths/network";
-import { fadeStraight, legKey, thinLegs, thinZoomOf, type ThinLeg } from "../paths/thin";
+import { fadeStraight, legKey, mercatorPx, thinLegs, thinZoomFor, windowFor, type ThinLeg, type WindowAnchor } from "../paths/thin";
 
 /** Marching speed of the dashes of a leg while it draws on, in px per second. */
 const MARCH_PX_PER_S = 30;
@@ -76,6 +76,9 @@ export class RouteLayer {
   private quietKeys: ReadonlyMap<string, number> | null = null;
   private thinList: ThinLeg[] | null = null;
   private thinSig = "";
+  /** The thinning zoom in force (`thinZoomFor` keeps it through a hysteresis) and the grid point of the window it was worked out for (`windowFor`). */
+  private thinZoom: number | null = null;
+  private thinAnchor: WindowAnchor | null = null;
   private litRoutes = new Set<string>();
   /** performance.now() at which the draw-on began, or null when the legs are complete. */
   private drawStart: number | null = null;
@@ -182,15 +185,24 @@ export class RouteLayer {
 
   /**
    * Thin the paths for the view (`paths/thin.ts`): `zoom` is the Web Mercator zoom that gives the centre's scale (the unified zoom less log2 of the
-   * latitude's secant) and `cssPerCell` the art pixel. Cheap when the zoom has not moved by a quarter step or the selection has not changed.
-   * Returns the keys of the legs that stay (null: all of them), for the pictures of the modes.
+   * latitude's secant) and `cssPerCell` the art pixel. Cheap when the zoom has not moved by a quarter step (with a hysteresis, so a zoom that rests at a
+   * boundary does not thin again and again), the view has not moved by half a screen, or the selection has not changed. `centre`: where the view is, for
+   * the window the thinning is worked out in (the cells of the legs are only counted where the screen can be: without it the cost doubled with every
+   * zoom level). Returns the keys of the legs that stay (null: all of them), for the pictures of the modes.
    */
-  setThinning(zoom: number, cssPerCell: number, view = 0): ReadonlySet<string> | null {
+  setThinning(zoom: number, cssPerCell: number, view = 0, centre?: { lon: number; lat: number }): ReadonlySet<string> | null {
     if (!this.state || this.network.legs.length === 0) return null;
-    const z = thinZoomOf(zoom);
-    const sig = `${z}|${cssPerCell}|${Math.round(view)}`;
+    const z = thinZoomFor(zoom, this.thinZoom);
+    let win: ReturnType<typeof windowFor> = null;
+    if (centre) {
+      const [cx, cy] = mercatorPx(centre.lon, centre.lat, z);
+      win = windowFor(cx, cy, view, z, this.thinZoom === z ? this.thinAnchor : null);
+    }
+    const sig = `${z}|${cssPerCell}|${Math.round(view)}|${win ? `${win.anchor.ix},${win.anchor.iy}` : "-"}`;
     if (sig === this.thinSig) return this.kept;
     this.thinSig = sig;
+    this.thinZoom = z;
+    this.thinAnchor = win?.anchor ?? null;
     if (!this.thinList) {
       this.thinList = this.network.legs.map((leg) => {
         // a coarse level is plenty to tell which legs share a corridor
@@ -201,7 +213,7 @@ export class RouteLayer {
       });
     }
     const list = this.thinList.map((l, i) => (this.lit.has(i) ? { ...l, lit: true } : l));
-    const kept = thinLegs(list, z, cssPerCell);
+    const kept = thinLegs(list, z, cssPerCell, win?.window ?? null);
     this.kept = kept;
     for (const leg of this.hidden) if (!this.lit.has(leg)) this.stateData[leg] = STATE_NONE;
     for (const leg of this.quiet.keys()) if (!this.lit.has(leg)) this.stateData[leg] = STATE_NONE;
@@ -302,6 +314,7 @@ export class RouteLayer {
     this.cssPerCell = cssPerCell;
     this.mPerCell = metresPerCell(radiusPx, cssPerCell);
     this.material.uniforms.uCell!.value = cssPerCell / radiusPx;
+    this.material.uniforms.uDot!.value = dotCell(cssPerCell / radiusPx);
     this.material.uniforms.uFar!.value = farOf(radiusPxToZoom(radiusPx));
     const ticks = radiusPxToZoom(radiusPx) >= TICK_FROM;
     this.material.uniforms.uTickOn!.value = ticks ? 1 : 0;

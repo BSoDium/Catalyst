@@ -12,6 +12,7 @@ import { isLegMode } from "./modes";
 import { legCells } from "./trail-dots";
 import { BADGE_PX, badgeElement, hasIcon } from "./mode-icons";
 import { ARC_LIFT_PER_RADIAN } from "./network";
+import { lonLatToVec3 } from "../engine/geo";
 import { STRAIGHT_FADE_MIX, STRAIGHT_FADE_STEPS } from "./thin";
 
 type LonLat = [number, number];
@@ -23,6 +24,66 @@ export interface DotLeg {
   head: LonLat;
   /** How high above the surface the middle of the leg is on the globe, in radii (0 for a leg that follows a path on the ground). */
   arcLift: number;
+  /** A cap on the unit sphere that holds every point of the leg: the unit vector of its middle and the angle (radians) to the farthest point. */
+  cap: LegCap;
+  /** Points in all its pieces. */
+  count: number;
+  /** The points as unit vectors, three numbers each in the order of the pieces: made the first time the layer needs them (`FastProjection`). */
+  unit?: Float64Array;
+}
+export interface LegCap {
+  u: [number, number, number];
+  rho: number;
+}
+
+/**
+ * What the layer that draws only the pictures (`lines: false`) is given besides `project`, to work faster (`TrailDotsLayer.draw`). `reach`: whether a leg's
+ * cap may touch the canvas, so that a leg that is off the screen or behind the planet is skipped without projecting a point of it (most of them, at a
+ * region's zoom). `at`: `project` for a point already on the unit sphere (the layer keeps the unit vectors of the legs it has needed), writing the
+ * container CSS px in `out` and telling whether the planet shows it: no trigonometry and no allocation per point.
+ */
+export interface FastProjection {
+  reach: (cap: LegCap) => boolean;
+  at: (x: number, y: number, z: number, lift: number, out: { x: number; y: number }) => boolean;
+}
+
+/** The points of a leg's pieces as unit vectors, flat. */
+function unitVectors(parts: ReadonlyArray<ReadonlyArray<LonLat>>): Float64Array {
+  const out = new Float64Array(parts.reduce((n, part) => n + part.length, 0) * 3);
+  let at = 0;
+  for (const part of parts) {
+    for (const p of part) {
+      const v = lonLatToVec3(p[0], p[1]);
+      out[at++] = v[0];
+      out[at++] = v[1];
+      out[at++] = v[2];
+    }
+  }
+  return out;
+}
+
+/** The cap of a leg: the mean direction of its points and the largest angle to it (π when the points surround the sphere: nothing is culled then). */
+function capOf(parts: ReadonlyArray<ReadonlyArray<LonLat>>): LegCap {
+  let x = 0;
+  let y = 0;
+  let z = 0;
+  const vs: Array<[number, number, number]> = [];
+  for (const part of parts) {
+    for (const p of part) {
+      const v = lonLatToVec3(p[0], p[1]);
+      vs.push(v);
+      x += v[0];
+      y += v[1];
+      z += v[2];
+    }
+  }
+  const n = Math.hypot(x, y, z);
+  if (!(n > 1e-6)) return { u: [1, 0, 0], rho: Math.PI };
+  const u: [number, number, number] = [x / n, y / n, z / n];
+  let least = 1;
+  for (const v of vs) least = Math.min(least, v[0] * u[0] + v[1] * u[1] + v[2] * u[2]);
+  // (a hair over: the float error of the sum must never put a point outside)
+  return { u, rho: Math.acos(Math.max(-1, Math.min(1, least))) + 1e-6 };
 }
 const modeOf = (m: unknown) => (isLegMode(m) ? m : "unknown");
 
@@ -36,6 +97,9 @@ export const ICON_MIN_SHARE_LIT = 0.18;
 export const ICON_GAP = 3;
 /** Map zoom from which a rail's cross-ticks are drawn (before it a rail is a dashed line, as on the globe: `paths/lod.ts` `TICK_FROM`). */
 export const TICK_FROM_STREET = 6.5;
+
+/** The layer that draws only the pictures samples an arc (a great circle, a point every 0.4 degrees) at every this many points. */
+const ARC_ICON_STRIDE = 4;
 
 /** The point `d` art pixels along the pieces of a leg, or null. */
 function pointAt(parts: ReadonlyArray<ReadonlyArray<readonly [number, number]>>, d: number): { x: number; y: number } | null {
@@ -63,7 +127,7 @@ export function dotLegs(fc: GeoJSON.FeatureCollection<GeoJSON.MultiLineString>):
     // an arc is lifted `ARC_LIFT_PER_RADIAN` of its angle above the surface at the middle (paths/network.ts)
     const rad = Math.PI / 180;
     const omega = Math.acos(Math.min(1, Math.max(-1, Math.sin(first[1] * rad) * Math.sin(head[1] * rad) + Math.cos(first[1] * rad) * Math.cos(head[1] * rad) * Math.cos((head[0] - first[0]) * rad))));
-    return { key: String(f.properties?.key), mode: modeOf(f.properties?.mode), parts, head, arcLift: f.properties?.arc ? ARC_LIFT_PER_RADIAN * omega : 0 };
+    return { key: String(f.properties?.key), mode: modeOf(f.properties?.mode), parts, head, arcLift: f.properties?.arc ? ARC_LIFT_PER_RADIAN * omega : 0, cap: capOf(parts), count: parts.reduce((n, part) => n + part.length, 0) };
   });
 }
 
@@ -73,6 +137,8 @@ export class TrailDotsLayer {
   readonly canvas = document.createElement("canvas");
   private ctx = this.canvas.getContext("2d");
   private legs: DotLeg[] = [];
+  /** The point `FastProjection.at` writes (reused). */
+  private probe = { x: 0, y: 0 };
   private focus = new Set<string>();
   private trail: readonly TrailRgb[] = [];
   private visible = true;
@@ -100,6 +166,11 @@ export class TrailDotsLayer {
   private top = 0;
   /** The badges (DOM, full resolution) over the canvas: `mode-icons.ts`. */
   private readonly badges = document.createElement("div");
+  /**
+   * The badges on the page, by leg: a badge that is still wanted at the next frame is kept (and moved only when its cell changes), not made again. A zoom
+   * redraws the layer at every frame, and a few dozen elements with an SVG each, made and thrown away 60 times a second, were most of what it cost on a phone.
+   */
+  private pool = new Map<string, { el: HTMLElement; mode: string; background: string; ink: string; x: number; y: number }>();
   /** Where the canvas sits in its container (CSS px), when it is not at the corner. */
   setOrigin(left: number, top: number) {
     if (left === this.left && top === this.top) return;
@@ -109,6 +180,12 @@ export class TrailDotsLayer {
     this.canvas.style.top = `${top}px`;
     this.badges.style.left = `${left}px`;
     this.badges.style.top = `${top}px`;
+  }
+
+  private clearBadges() {
+    if (this.pool.size === 0) return;
+    this.pool.clear();
+    this.badges.replaceChildren();
   }
 
   /** Take both elements out of the page. */
@@ -151,12 +228,15 @@ export class TrailDotsLayer {
     // hidden: nothing may stay on screen (the next `draw` only comes when the lines are back, so the pictures and the dots are cleared now)
     if (!on) {
       this.ctx?.clearRect(0, 0, this.canvas.width, this.canvas.height);
-      this.badges.replaceChildren();
+      this.clearBadges();
     }
   }
 
-  /** Draw for a camera: `project` gives container CSS px, `camera` is anything that changes when the view does (it keys the redraw). */
-  draw(project: (p: LonLat, lift: number) => { x: number; y: number } | null, w: number, h: number, cell: number, zoom: number, camera: string, liftScale = 0) {
+  /**
+   * Draw for a camera: `project` gives container CSS px, `camera` is anything that changes when the view does (it keys the redraw). `fast`: see `FastProjection`
+   * (used only when the layer draws just the pictures; it gives the same pictures as `project` alone).
+   */
+  draw(project: (p: LonLat, lift: number) => { x: number; y: number } | null, w: number, h: number, cell: number, zoom: number, camera: string, liftScale = 0, fast?: FastProjection) {
     const ctx = this.ctx;
     if (!ctx || this.trail.length === 0) return;
     const cols = Math.ceil(w / cell);
@@ -171,8 +251,11 @@ export class TrailDotsLayer {
     this.canvas.style.width = `${cols * cell}px`;
     this.canvas.style.height = `${rows * cell}px`;
     ctx.clearRect(0, 0, cols, rows);
-    this.badges.replaceChildren();
-    if (!this.visible || this.legs.length === 0) return;
+    // (the pictures only, and none to show yet: nothing to work out, for any of the legs, however the camera moves)
+    if (!this.visible || this.legs.length === 0 || (!this.opts.lines && zoom < this.opts.iconFromZoom)) {
+      this.clearBadges();
+      return;
+    }
     const color = (band: number | "lit" | "spark") => css(this.trail[trailIndex(0, band)]!);
     const ink = (col: number, row: number, fill: string) => {
       if (col < 0 || row < 0 || col >= cols || row >= rows) return;
@@ -189,17 +272,40 @@ export class TrailDotsLayer {
     for (const leg of this.legs) {
       if (this.kept && !this.kept.has(leg.key) && !this.focus.has(leg.key)) continue;
       const lit = this.focus.has(leg.key);
+      const quick = fast && !this.opts.lines ? fast : null;
+      // a leg that cannot be on the canvas has no picture (a spot is on it), and an arc, which rises off the ground, is always projected
+      if (quick && leg.arcLift === 0 && !quick.reach(leg.cap)) continue;
       // the leg's points on the canvas, split where the planet hides them; an arc is lifted by sin(pi t) of its apex
-      const total = leg.parts.reduce((n, part) => n + part.length, 0);
+      const total = leg.count;
+      const stride = quick && leg.arcLift > 0 ? ARC_ICON_STRIDE : 1;
+      const unit = quick ? (leg.unit ??= unitVectors(leg.parts)) : null;
       let seen = 0;
       const parts: Array<Array<readonly [number, number]>> = [];
       for (const part of leg.parts) {
         let cur: Array<readonly [number, number]> = [];
-        for (const p of part) {
+        for (let k = 0; k < part.length; k++) {
           const t = total > 1 ? seen / (total - 1) : 0;
+          // (an arc is sampled every 0.4 degrees and is smooth: for the pictures, every fourth point is plenty, and they are most of the points of a region)
+          if (stride > 1 && k % stride !== 0 && k !== part.length - 1) {
+            seen++;
+            continue;
+          }
+          const lift = leg.arcLift * liftScale * Math.sin(Math.PI * t);
+          let x: number;
+          let y: number;
+          let shown: boolean;
+          if (quick && unit) {
+            shown = quick.at(unit[seen * 3]!, unit[seen * 3 + 1]!, unit[seen * 3 + 2]!, lift, this.probe);
+            x = this.probe.x;
+            y = this.probe.y;
+          } else {
+            const s = project(part[k]!, lift);
+            shown = s !== null;
+            x = s?.x ?? 0;
+            y = s?.y ?? 0;
+          }
           seen++;
-          const s = project(p, leg.arcLift * liftScale * Math.sin(Math.PI * t));
-          if (s) cur.push([s.x / cell, s.y / cell]);
+          if (shown) cur.push([x / cell, y / cell]);
           else if (cur.length) {
             parts.push(cur);
             cur = [];
@@ -229,6 +335,7 @@ export class TrailDotsLayer {
       candidates.push({ leg, lit, length, parts });
     }
     if (zoom >= this.opts.iconFromZoom) this.drawIcons(candidates, cols, rows, cell, color);
+    else this.clearBadges();
   }
 
   /**
@@ -248,6 +355,7 @@ export class TrailDotsLayer {
     const placed: Array<{ x0: number; y0: number; x1: number; y1: number }> = [];
     const ink = css(this.page);
     const half = BADGE_PX / 2;
+    const used = new Set<string>();
     const frag = document.createDocumentFragment();
     for (const c of order) {
       if (!hasIcon(c.leg.mode) || c.length < (c.lit ? ICON_MIN_SHARE_LIT : ICON_MIN_SHARE) * Math.min(cols, rows) || this.quiet?.has(c.leg.key)) continue;
@@ -266,11 +374,28 @@ export class TrailDotsLayer {
       if (placed.some((q) => box.x0 < q.x1 && box.x1 > q.x0 && box.y0 < q.y1 && box.y1 > q.y0)) continue;
       placed.push(box);
       const band = Math.min(TRAIL_BANDS - 1, Math.floor(spot.f * TRAIL_BANDS));
-      const el = badgeElement(c.leg.mode, c.lit ? color("lit") : color(band), ink, ink);
-      if (!el) continue;
-      el.style.left = `${cx - half}px`;
-      el.style.top = `${cy - half}px`;
-      frag.append(el);
+      const background = c.lit ? color("lit") : color(band);
+      // the badge this leg had at the last frame stays if it looks the same (its colour is one of a few, its picture the mode's)
+      let entry = this.pool.get(c.leg.key);
+      if (entry && (entry.mode !== c.leg.mode || entry.background !== background || entry.ink !== ink)) {
+        entry.el.remove();
+        entry = undefined;
+      }
+      if (!entry) {
+        const el = badgeElement(c.leg.mode, background, ink, ink);
+        if (!el) continue;
+        entry = { el, mode: c.leg.mode, background, ink, x: NaN, y: NaN };
+        this.pool.set(c.leg.key, entry);
+        frag.append(el);
+      }
+      used.add(c.leg.key);
+      if (entry.x !== cx - half) entry.el.style.left = `${(entry.x = cx - half)}px`;
+      if (entry.y !== cy - half) entry.el.style.top = `${(entry.y = cy - half)}px`;
+    }
+    for (const [key, entry] of this.pool) {
+      if (used.has(key)) continue;
+      entry.el.remove();
+      this.pool.delete(key);
     }
     this.badges.append(frag);
   }

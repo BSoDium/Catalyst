@@ -282,3 +282,14 @@ describe("the demo fixture", () => {
     expect(coarse).toBeLessThan(fine / 4);
   });
 });
+
+import { dotCell } from "./lod";
+describe("dotCell: the dots' cell snaps to quarters of an octave", () => {
+  it("does not change inside a step, and changes by 2^(1/4) between steps", () => {
+    const c = 0.002;
+    expect(dotCell(c * 1.01)).toBe(dotCell(c));
+    const snapped = dotCell(c);
+    expect(dotCell(snapped * 2 ** 0.25)).toBeCloseTo(snapped * 2 ** 0.25, 12);
+    expect(Math.abs(Math.log2(dotCell(c) / c))).toBeLessThanOrEqual(1 / 8 + 1e-12);
+  });
+});

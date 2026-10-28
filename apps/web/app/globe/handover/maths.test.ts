@@ -107,10 +107,14 @@ describe("registration of the unified zoom", () => {
 });
 
 describe("route arcs", () => {
-  it("are lifted on the globe and flat before the dissolve starts", () => {
+  it("are lifted on the globe and flat when the street map takes over", () => {
     expect(routeLift(HANDOVER.routeFlat.start - 0.1)).toBe(1);
     expect(routeLift(HANDOVER.routeFlat.end)).toBe(0);
-    expect(HANDOVER.routeFlat.end).toBeLessThanOrEqual(HANDOVER.blendStart);
+    expect(HANDOVER.routeFlat.end).toBeLessThanOrEqual(HANDOVER.cutZoom);
+  });
+  it("keep most of their height through the regional zooms (they flattened from 2.5 to 3.3 before)", () => {
+    expect(routeLift(3.3)).toBeGreaterThan(0.55);
+    expect(routeLift(3.5)).toBeGreaterThan(0.15);
   });
 });
 
