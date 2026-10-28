@@ -239,7 +239,13 @@ export function LandingHero({ machine, away, empty, orbit = null, onCover, hasCa
     const changed = worldWas.current !== snapshot.world;
     worldWas.current = snapshot.world;
     const root = rootRef.current;
-    if (!changed || !root || state !== "collapsed" || travel.current?.isRunning) return;
+    if (!changed || !root || state !== "collapsed") return;
+    // The name is still on its way to the corner when the hint goes or comes (a fast zoom from the home screen: the gesture collapses the hero a moment before the view leaves the world): it
+    // goes on to the NEW place, from where it is, not to the old one with a jump to the new at the end of its travel.
+    if (travel.current?.isRunning) {
+      if (!(typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches)) travel.current.go(halvesOf(root), true);
+      return;
+    }
     const halves = HALVES.map(([from]) => root.querySelector<HTMLElement>(from)).filter((el): el is HTMLElement => !!el);
     const reduced = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
     // (measured BEFORE any transition is declared: `finalTransforms` clears the transform to read the rest position, and a transition then would be read half way)
