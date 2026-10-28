@@ -288,35 +288,41 @@ export function bakeStarMap(w = 4096, h = 2048): Uint8Array {
 let bakedHalo: Uint8Array | null = null;
 
 /**
- * The stars' HALOS as a 1024 x 512 map (the same frame as `bakeStarMap`): the star map brought to a quarter of its width (a texel is the brightest of its 4 by 4) and blurred by one box pass of radius 1, with gain, so that a star is
- * a soft glow of three texels (about a degree) round its place, and a tight cluster a brighter one. For the light page's chrome (engine/caption-layer.ts): a grey veil round a white dot, as the light page's sun is, read smoothly.
- * Baked once (a few ms: it is small on purpose).
+ * The stars' HALOS as a 2048 x 1024 map (the same frame as `bakeStarMap`): each star adds a round gaussian of its own (a `HALO_SIGMA` texels wide on the SPHERE: the longitude's texel is stretched by the latitude's cosine, so that
+ * it is round everywhere but the poles), as bright as its tier, summed and clipped, so that a star is a soft glow that fades smoothly away from it (a splat) and a tight cluster a brighter one. For the light page's chrome
+ * (engine/caption-layer.ts): a grey veil round a white dot, as the light page's sun is, read with a smooth filter. Baked once (a few ms).
  */
+export const HALO_SIGMA = 1.5;
 export function bakeStarHalo(): Uint8Array {
   if (bakedHalo) return bakedHalo;
-  const W = 4096;
-  const w = 1024;
-  const h = 512;
-  const src = bakeStarMap();
-  const a = new Float32Array(w * h);
-  for (let r = 0; r < h; r++) {
-    for (let c = 0; c < w; c++) {
-      let m = 0;
-      for (let dr = 0; dr < 4; dr++) for (let dc = 0; dc < 4; dc++) m = Math.max(m, src[(4 * r + dr) * W + 4 * c + dc]!);
-      a[r * w + c] = m / 255;
+  const w = 2048;
+  const h = 1024;
+  const acc = new Float32Array(w * h);
+  const st = defaultStars();
+  const weight = [0.5, 0.8, 1];
+  const R = Math.ceil(HALO_SIGMA * 3);
+  for (let i = 0; i < st.count; i++) {
+    const x = st.position[3 * i]!;
+    const y = st.position[3 * i + 1]!;
+    const z = st.position[3 * i + 2]!;
+    const fx = (Math.atan2(y, x) / (2 * Math.PI) + 0.5) * w - 0.5;
+    const fy = (Math.asin(Math.max(-1, Math.min(1, z))) / Math.PI + 0.5) * h - 0.5;
+    const cosLat = Math.max(0.05, Math.sqrt(Math.max(0, 1 - z * z)));
+    const rx = Math.min(40, Math.ceil(R / cosLat));
+    const wt = weight[Math.min(2, st.tier[i]!)]!;
+    for (let dy = -R; dy <= R; dy++) {
+      const r = Math.round(fy) + dy;
+      if (r < 0 || r >= h) continue;
+      for (let dx = -rx; dx <= rx; dx++) {
+        const c = (((Math.round(fx) + dx) % w) + w) % w;
+        const ex = (c - fx) * cosLat;
+        const ey = r - fy;
+        acc[r * w + c]! += wt * Math.exp(-(ex * ex + ey * ey) / (2 * HALO_SIGMA * HALO_SIGMA));
+      }
     }
   }
   const out = new Uint8Array(w * h);
-  for (let r = 0; r < h; r++) {
-    for (let c = 0; c < w; c++) {
-      let sum = 0;
-      for (let dr = -1; dr <= 1; dr++) {
-        const rr = Math.min(h - 1, Math.max(0, r + dr));
-        for (let dc = -1; dc <= 1; dc++) sum += a[rr * w + ((c + dc + w) % w)]!;
-      }
-      out[r * w + c] = Math.min(255, Math.round((sum / 9) * 255 * 9));
-    }
-  }
+  for (let i = 0; i < out.length; i++) out[i] = Math.min(255, Math.round(acc[i]! * 255));
   bakedHalo = out;
   return out;
 }

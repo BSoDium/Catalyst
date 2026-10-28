@@ -401,12 +401,14 @@ describe("the stars' halos (the light page's chrome)", () => {
   it("glow round a star and are dark far from every one", async () => {
     const { bakeStarHalo, makeStars } = await import("./sky");
     const halo = bakeStarHalo();
-    expect(halo.length).toBe(1024 * 512);
+    expect(halo.length).toBe(2048 * 1024);
     const st = makeStars();
     const x = st.position[0]!, y = st.position[1]!, z = st.position[2]!;
-    const c = Math.min(1023, Math.floor((Math.atan2(y, x) / (2 * Math.PI) + 0.5) * 1024));
-    const r = Math.min(511, Math.floor((Math.asin(z) / Math.PI + 0.5) * 512));
-    expect(halo[r * 1024 + c]).toBeGreaterThan(0);
+    const c = Math.min(2047, Math.floor((Math.atan2(y, x) / (2 * Math.PI) + 0.5) * 2048));
+    const r = Math.min(1023, Math.floor((Math.asin(z) / Math.PI + 0.5) * 1024));
+    expect(halo[r * 2048 + c]).toBeGreaterThan(0);
+    // (it fades smoothly away: the neighbour two texels off is dimmer than the star's own)
+    expect(halo[r * 2048 + Math.min(2047, c + 2)]!).toBeLessThan(halo[r * 2048 + c]!);
     // (more of the map is lit by a halo than by the stars' own texels, and not all of it)
     const lit = halo.reduce((n, v) => n + (v > 0 ? 1 : 0), 0);
     expect(lit).toBeGreaterThan(1000);

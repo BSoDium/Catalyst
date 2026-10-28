@@ -213,7 +213,7 @@ const EGG_VERT = /* glsl */ `
 `;
 
 /** The environment of the metal (`EGG_FRAG` `galaxy`): how bright the Milky Way's band is in it (the band map is 0..1: brighter here than on the globe's sky, so that the metal shows it), the stars' (the globe's own star field, `bakeStarMap`; `starsLight` of that on the light page, 0: there a star is a white dot in a grey halo, as the sun is, not a dark point, `bakeStarHalo`) and the broad lift of the page's own sky; `edge`: what the bevel does to the reflection that a flat face does not (`contrast`: the bevel reflects the environment that much harder, as a polished curve does; `rim`: a fresnel sheen, the bevel brightens smoothly towards the grazing angle, across its width; `wall`: the share of both that the walls take). */
-const EGG_ENV = { band: 2.3, stars: 0.95, starsLight: 0, starHalo: 1.4, sky: 0.45, edge: { contrast: 0.9, rim: 0.7, wall: 0.5 } } as const;
+const EGG_ENV = { band: 2.3, stars: 0.95, starsLight: 0, starHalo: 1.0, sky: 0.45, edge: { contrast: 0.9, rim: 0.7, wall: 0.5 } } as const;
 
 /**
  * The sun as the metal reflects it (`EGG_FRAG`), as the globe's own sun looks, less its rays: a very bright, hot centre and a falloff round it, whose strength picks the colour from the
@@ -362,7 +362,7 @@ const EGG_FRAG = /* glsl */ `
       // the light page's stars: a white dot (the star's texel) in a grey halo (the blurred map), as the sun is
       vec3 gs = uViewToGal * rv;
       vec2 suv = vec2(atan(gs.y, gs.x) / 6.283185307 + 0.5, asin(clamp(gs.z, -1.0, 1.0)) / 3.141592654 + 0.5);
-      sunVeil = max(sunVeil, texture2D(uStarHalo, suv).r * ${EGG_ENV.starHalo.toFixed(2)} * back);
+      sunVeil = max(sunVeil, pow(texture2D(uStarHalo, suv).r, 1.3) * ${EGG_ENV.starHalo.toFixed(2)} * back);
       sunSpot = max(sunSpot, texture2D(uStars, suv).r * back);
       for (int i = 0; i < ${SPOTS.length}; i++) {
         float us = acos(clamp(dot(rv, normalize(SPOT[i].xyz)), -1.0, 1.0)) / SPOT[i].w;
@@ -924,7 +924,7 @@ export class CaptionLayer {
       t.needsUpdate = true;
       return t;
     };
-    return (this.eggSkyTex = { band: make(bakeBand(), SKY.map.cols, SKY.map.rows, LinearFilter), stars: make(bakeStarMap(), 4096, 2048, NearestFilter), halo: make(bakeStarHalo(), 1024, 512, LinearFilter) });
+    return (this.eggSkyTex = { band: make(bakeBand(), SKY.map.cols, SKY.map.rows, LinearFilter), stars: make(bakeStarMap(), 4096, 2048, NearestFilter), halo: make(bakeStarHalo(), 2048, 1024, LinearFilter) });
   }
 
   /**
