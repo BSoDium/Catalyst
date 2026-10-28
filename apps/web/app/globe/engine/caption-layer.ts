@@ -213,7 +213,7 @@ const EGG_VERT = /* glsl */ `
 `;
 
 /** The environment of the metal (`EGG_FRAG` `galaxy`): how bright the Milky Way's band is in it (the band map is 0..1: brighter here than on the globe's sky, so that the metal shows it), the stars' (the globe's own star field, `bakeStarMap`; `starsLight` of that on the light page, 0: there a star is a white dot in a grey halo, as the sun is, not a dark point, `bakeStarHalo`) and the broad lift of the page's own sky; `edge`: what the bevel does to the reflection that a flat face does not (`contrast`: the bevel reflects the environment that much harder, as a polished curve does; `rim`: a fresnel sheen, the bevel brightens smoothly towards the grazing angle, across its width; `wall`: the share of both that the walls take). */
-const EGG_ENV = { band: 2.3, stars: 0.95, starsLight: 0, starHalo: 1.0, sky: 0.45, edge: { contrast: 0.9, rim: 0.7, wall: 0.5 } } as const;
+const EGG_ENV = { band: 2.3, stars: 0.95, starsLight: 0, starHalo: 0.3, sky: 0.45, edge: { contrast: 0.9, rim: 0.7, wall: 0.5 } } as const;
 
 /**
  * The sun as the metal reflects it (`EGG_FRAG`), as the globe's own sun looks, less its rays: a very bright, hot centre and a falloff round it, whose strength picks the colour from the
