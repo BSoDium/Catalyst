@@ -27,7 +27,7 @@ const f = (n: number) => n.toFixed(3);
 const vec = (c: readonly number[]) => `vec3(${c.map(f).join(", ")})`;
 
 const FRAGMENT = /* glsl */ `
-  uniform vec2 uCentre; uniform float uR; uniform vec3 uBg; uniform vec3 uInk; uniform float uAmt; uniform float uLight; uniform float uHalo; uniform float uRing;
+  uniform vec2 uCentre; uniform float uR; uniform vec3 uBg; uniform vec3 uInk; uniform float uAmt; uniform float uLight; uniform float uHalo; uniform float uRing; uniform float uSoft;
   ${WARM_GLSL}
   const float BAYER[16] = float[16](${BAYER4.map((n) => `${n}.0`).join(", ")});
   void main() {
@@ -42,7 +42,8 @@ const FRAGMENT = /* glsl */ `
     float t = t0 * mix(uHalo, 1.0, smoothstep(0.55, 1.0, t0));
     ivec2 c = ivec2(mod(floor(gl_FragCoord.xy), 4.0));
     float th = (BAYER[c.y * 4 + c.x] + 0.5) / 16.0;
-    ink = floor(t * ${f(SUN.haloSteps)} + th) / ${f(SUN.haloSteps)} * ${f(SUN.glow)};
+    // (uSoft: with the sun hidden the soft halo is far softer, the sun's coming and no more: SUN.cover.hidden of it is left; whole while the sun is in view)
+    ink = floor(t * ${f(SUN.haloSteps)} + th) / ${f(SUN.haloSteps)} * ${f(SUN.glow)} * uSoft;
     if (r >= 1.0) {
       // the ring of light on the halo (it goes as the planet covers the sun, as the halo does: uHalo): a sharp inside edge and a smooth outside, a little brighter than the halo under it
       float d = r - ${f(SUN.ring.at)};
@@ -76,6 +77,7 @@ const material = () =>
       uLight: { value: 0 },
       uHalo: { value: 1 },
       uRing: { value: 1 },
+      uSoft: { value: 1 },
       uSet: { value: 0 },
     },
     vertexShader: VERTEX,
@@ -262,7 +264,9 @@ export class SunLayer {
     // the lens's ring goes with the sun's visible share: whole above `SUN.ring.fade[1]` of it, gone when it is hidden
     const [r0, r1] = SUN.ring.fade;
     const rt = Math.min(1, Math.max(0, (cres.area - r0) / (r1 - r0)));
-    u.uRing!.value = rt * rt * (3 - 2 * rt);
+    const seen = rt * rt * (3 - 2 * rt);
+    u.uRing!.value = seen;
+    u.uSoft!.value = SUN.cover.hidden + (1 - SUN.cover.hidden) * seen;
     u.uSet!.value = (1 - halo) * SUN.cover.halo;
     return true;
   }
