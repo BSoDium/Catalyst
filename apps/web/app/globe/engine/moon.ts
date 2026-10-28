@@ -194,8 +194,8 @@ export const RIM = {
   /**
    * The SUNSET ON THE GROUND (`rimGroundMaterial`): the same light on the planet's own surface, as in the footage: the lit ground is brightest at the limb and dims inward (`alpha` at the limb, falling with the grazing angle
    * as `power`; `light` times that on the light page, where a grey over the planet's light ground needs the strength to show), over a wider arc of the limb than the lining's (`arc`, as the lining's: cosines of the angle to the sun's side), in the same colours, TEXTURED as the dark side of the planet is, in `steps` flat levels dithered into each
-   * other on the art's pixels (a pixel is one of the levels, never between). It is only there while the sun is ABOVE the horizon: it is whole `peak` of the alignment's width outside the limb, and zero by the time the sun's centre
-   * is on it, so a sun that has set lights only the atmosphere.
+   * other on the art's pixels (a pixel is one of the levels, never between). It is there for as long as any of the sun is in view: whole while the sun is above the horizon and while it sets, and gone only with the very last of it (the sun's disc is
+   * under 55 % of its radius from fully behind the limb), fading as the sun goes away from the limb past `peak` of the alignment's width, so a sun that has set lights only the atmosphere.
    */
   ground: { alpha: 0.26, light: 2, power: 2.6, arc: [0.15, 0.9], peak: 0.3, steps: 4 },
   /**
