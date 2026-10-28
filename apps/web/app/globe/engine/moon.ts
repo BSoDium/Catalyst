@@ -84,8 +84,8 @@ export const SUN = {
   halo: 14,
   haloFall: 2.6,
   haloSteps: 6,
-  /** The ring of light on top of the halo, in disc radii from the sun's centre: sharp on its inside (`inner` wide, at full `tone`), then a smooth falloff over `outer`, in `steps` dithered steps. */
-  ring: { at: 8.5, inner: 0.3, outer: 2.6, steps: 5, strength: 0.16 },
+  /** The ring of light on top of the halo, in disc radii from the sun's centre: sharp on its inside (`inner` wide, at full `tone`), then a smooth falloff over `outer`, in `steps` dithered steps. It is a lens's: it goes with the sun's visible share (`fade`: gone when the sun is hidden, whole from the second number of its area), and the soft halo stays. */
+  ring: { at: 8.5, inner: 0.3, outer: 2.6, steps: 5, strength: 0.16, fade: [0, 0.25] as const },
   /** The halo's tone, where it starts, at the disc's edge (the disc itself is the blur: `core`): the warm ramp's tone, on either page. */
   glow: 0.72,
   /**
@@ -131,6 +131,11 @@ export const SUN = {
     { at: 0, rgb: [0.3, 0.16, 0.46] },
   ],
   setShare: 0.5,
+  /**
+   * What the planet does to the SUN ITSELF (the disc of light and its rays) as it covers it (owner, 2026-10-29: "stop darkening the sun for now: 100 % of the light, only the size changes"): `dim` the share of its light it loses at most
+   * (the colour is dimmed, never the opacity), `redden` how much of the sunset's reddening (`setShare`) its colour takes, `halo` how much of the halo's fade and reddening with the cover (`fade`, below) it takes. `disc` the radius of the flat, opaque disc of light it is once the planet touches it (in the blob's units: 0.8 is where the light is at its full), `discColour` its colour (the core's, near white), `hidden` the share of the soft halo that is left when the sun is hidden (whole while it is in view: it is the sun's coming, and no more). The three above are 0 for now: the sun keeps its whole light and colour and only SHRINKS with the crescent until it is gone.
+   */
+  cover: { dim: 0, redden: 0, halo: 0, hidden: 0, disc: 0.8, discColour: [1, 0.985, 0.93] as const },
   gain: 1.6,
 } as const;
 
@@ -189,8 +194,8 @@ export const RIM = {
   /**
    * The SUNSET ON THE GROUND (`rimGroundMaterial`): the same light on the planet's own surface, as in the footage: the lit ground is brightest at the limb and dims inward (`alpha` at the limb, falling with the grazing angle
    * as `power`; `light` times that on the light page, where a grey over the planet's light ground needs the strength to show), over a wider arc of the limb than the lining's (`arc`, as the lining's: cosines of the angle to the sun's side), in the same colours, TEXTURED as the dark side of the planet is, in `steps` flat levels dithered into each
-   * other on the art's pixels (a pixel is one of the levels, never between). It is only there while the sun is ABOVE the horizon: it is whole `peak` of the alignment's width outside the limb, and zero by the time the sun's centre
-   * is on it, so a sun that has set lights only the atmosphere.
+   * other on the art's pixels (a pixel is one of the levels, never between). It is there for as long as any of the sun is in view: whole while the sun is above the horizon and while it sets, and gone only with the very last of it (the sun's disc is
+   * under 55 % of its radius from fully behind the limb), fading as the sun goes away from the limb past `peak` of the alignment's width, so a sun that has set lights only the atmosphere.
    */
   ground: { alpha: 0.26, light: 2, power: 2.6, arc: [0.15, 0.9], peak: 0.3, steps: 4 },
   /**

@@ -171,11 +171,14 @@ const RIM_SUN_GLSL = /* glsl */ `
   }
   float rimWidth() { return ${RIM.align.toFixed(2)} * asin(clamp(1.0 / length(cameraPosition), 0.0, 1.0)); }
   float rimAligned() { return 1.0 - smoothstep(0.0, rimWidth(), abs(rimAbove())); }
-  // the same, for the GROUND: only while the sun is above the horizon (outside the limb), whole a little way out and zero where its centre is on the limb, so a set sun lights none of the surface
+  // the same, for the GROUND: the surface is lit by the sunset for as long as ANY of the sun is in view (owner, 2026-10-29: it went as soon as the sun touched the limb, and before): whole while the sun is above the limb and while it sets,
+  // going only with the very last of it (whole until 55 % of its radius is behind the limb, a crescent of about a tenth of the disc left; gone when all of it is), and fading as the sun goes away from the limb, from RIM.ground.peak of the alignment's
+  // width to the whole of it. A sun that has set lights only the atmosphere.
   float rimLit() {
     float w = rimWidth();
     float above = rimAbove();
-    return smoothstep(0.0, ${RIM.ground.peak.toFixed(2)} * w, above) * (1.0 - smoothstep(${RIM.ground.peak.toFixed(2)} * w, w, above));
+    float r = ${((SUN.angularDeg * Math.PI) / 180).toFixed(5)};
+    return smoothstep(-r, -0.55 * r, above) * (1.0 - smoothstep(${RIM.ground.peak.toFixed(2)} * w, w, above));
   }
   float rimSide(vec3 n) {
     vec3 axis = normalize(-cameraPosition);

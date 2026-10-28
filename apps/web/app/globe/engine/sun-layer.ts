@@ -9,11 +9,11 @@
  * Two looks, as the whole globe has two (`washOf`, engine/surface.ts): on the dark page it is the brightest thing there is, the ink's own tone. On the light page it is so bright that it burns the
  * colour away: the disc and the halo are the page's colour, and it shows only a ghost of a rim and the halo's faint darkness.
  */
-import { AdditiveBlending, BufferAttribute, BufferGeometry, Color, Mesh, NormalBlending, type Scene, ShaderMaterial, Vector2 } from "three";
+import { AddEquation, BufferAttribute, BufferGeometry, Color, Mesh, NormalBlending, OneFactor, OneMinusSrcAlphaFactor, CustomBlending, type Scene, ShaderMaterial, Vector2 } from "three";
 import type { GlobeTheme } from "./colors";
 import { BAYER4 } from "./sky";
 import { SUN } from "./moon";
-import { FlareLayer, WARM_GLSL, haloClear, sunCrescent, type FlareFrame } from "./sun-flare";
+import { FlareLayer, WARM_GLSL, rayStart, haloClear, sunCrescent, type FlareFrame } from "./sun-flare";
 
 const VERTEX = /* glsl */ `
   uniform vec2 uCentre; uniform float uExt; uniform vec2 uBuf;
@@ -24,9 +24,10 @@ const VERTEX = /* glsl */ `
 `;
 
 const f = (n: number) => n.toFixed(3);
+const vec = (c: readonly number[]) => `vec3(${c.map(f).join(", ")})`;
 
 const FRAGMENT = /* glsl */ `
-  uniform vec2 uCentre; uniform float uR; uniform vec3 uBg; uniform vec3 uInk; uniform float uAmt; uniform float uLight; uniform float uHalo;
+  uniform vec2 uCentre; uniform float uR; uniform vec3 uBg; uniform vec3 uInk; uniform float uAmt; uniform float uLight; uniform float uHalo; uniform float uRing; uniform float uSoft; uniform float uK;
   ${WARM_GLSL}
   const float BAYER[16] = float[16](${BAYER4.map((n) => `${n}.0`).join(", ")});
   void main() {
@@ -36,17 +37,21 @@ const FRAGMENT = /* glsl */ `
     float ink = 0.0;
     // the halo: a falloff from the disc's edge in a few flat steps of tone, the steps ordered-dithered into each other (a pixel is one of the steps' tones, never between)
     // (it goes with the planet's cover, in the same dither: uHalo, 1 to 0, takes the steps out of the falloff one at a time, outermost first)
-    float t = pow(clamp(1.0 - (max(r, 1.0) - 1.0) / ${f(SUN.halo)}, 0.0, 1.0), ${f(SUN.haloFall)}) * uHalo;
+    float t0 = pow(clamp(1.0 - (max(r, 1.0) - 1.0) / (${f(SUN.halo)} * uK), 0.0, 1.0), ${f(SUN.haloFall)});
+    // (the planet's cover takes the OUTER steps out, the halo's size shrinking: the inner ones, round the sun's disc, stay: they were a duller ring round the sun's bright core, a dark halo, when all of them went down together)
+    float t = t0 * mix(uHalo, 1.0, smoothstep(0.55, 1.0, t0));
     ivec2 c = ivec2(mod(floor(gl_FragCoord.xy), 4.0));
     float th = (BAYER[c.y * 4 + c.x] + 0.5) / 16.0;
-    ink = floor(t * ${f(SUN.haloSteps)} + th) / ${f(SUN.haloSteps)} * ${f(SUN.glow)};
+    // (uSoft: with the sun hidden the soft halo is far softer, the sun's coming and no more: SUN.cover.hidden of it is left; whole while the sun is in view)
+    ink = floor(t * ${f(SUN.haloSteps)} + th) / ${f(SUN.haloSteps)} * ${f(SUN.glow)} * uSoft;
     if (r >= 1.0) {
       // the ring of light on the halo (it goes as the planet covers the sun, as the halo does: uHalo): a sharp inside edge and a smooth outside, a little brighter than the halo under it
-      float d = r - ${f(SUN.ring.at)};
+      float d = r - ${f(SUN.ring.at)} * uK;
       float rt = 0.0;
       if (d <= 0.0) { if (d > -${f(SUN.ring.inner)}) rt = 1.0; }
       else { float x = 1.0 - d / ${f(SUN.ring.outer)}; if (x > 0.0) rt = floor(x * x * ${f(SUN.ring.steps)} + th) / ${f(SUN.ring.steps)}; }
-      ink = max(ink, rt * uHalo * ${f(SUN.ring.strength)});
+      // (and with how much of the sun is in view, uRing: the ring is a lens's, light straight into the lens; with the sun hidden it means nothing, and only the soft halo is left, as the sun's coming)
+      ink = max(ink, rt * uHalo * uRing * ${f(SUN.ring.strength)});
     }
     if (ink <= 0.0) discard;
     // the warm ramp on the dark page; on the light page the halo is a faint grey (the sun is white, and the paper has no room for light) with only a little of the ramp's colour in it
@@ -71,6 +76,9 @@ const material = () =>
       uAmt: { value: 1 },
       uLight: { value: 0 },
       uHalo: { value: 1 },
+      uRing: { value: 1 },
+      uSoft: { value: 1 },
+      uK: { value: 1 },
       uSet: { value: 0 },
     },
     vertexShader: VERTEX,
@@ -103,8 +111,25 @@ const BLOB_FRAGMENT = /* glsl */ `
     ink = max(0.0, ink - ${f(Math.exp((-0.6931 * SUN.core.radius * SUN.core.radius) / (SUN.core.half * SUN.core.half)))}) / (1.0 - ${f(Math.exp((-0.6931 * SUN.core.radius * SUN.core.radius) / (SUN.core.half * SUN.core.half)))});
     if (ink <= 0.003) discard;
     float k = clamp(ink * ${f(SUN.gain)}, 0.0, 1.0) * uAmt;
-    // dark page: the light is ADDED (colour times alpha), as bright as the share of the sun in view. Light page: the sun is WHITE, laid over the paper and over the grey round it (the veil, the halo), and it does NOT dim as the planet covers it (owner: "only shrink it as the crescent shrinks, not opacity"): its size is the crescent's, its whiteness is whole
-    gl_FragColor = uLight > 0.5 ? vec4(1.0, 0.995, 0.975, k * 0.9) : vec4(warm(ink), k * uI);
+    // dark page: the light is ADDED (colour times alpha). Light page: the sun is WHITE, laid over the paper and over the grey round it (the veil, the halo), and it does NOT dim as the planet covers it (only its size follows the crescent)
+    // As the planet covers the sun it keeps its whole light for now (SUN.cover.dim, 0: the size is what changes, with the crescent, until it is gone; any dimming is in COLOUR, never opacity), and it is exactly as it was while it is clear (uI is 1).
+    float dim = 1.0 - ${f(SUN.cover.dim)} * (1.0 - uI);
+    // Once the planet touches the sun (uI under 1), what is dazzling of it is a DISC: a flat, OPAQUE disc of the sun's core colour (the planet does not show through it: nothing is behind it), with a hard edge on the art's pixels (this canvas
+    // is the art's own resolution), and its glow round it is in art pixels too (a few levels, dithered, as the halo is). The blend is premultiplied (the output is the light ADDED, alpha how much of what is behind is hidden): with no disc it
+    // is the additive blend of the dark page and the normal one of the light page, as before; and the sun clear is exactly as it was, smooth.
+    float touch = 1.0 - smoothstep(0.90, 0.97, uI);
+    float disc = step(rr, ${f(SUN.cover.disc)}) * touch * uAmt;
+    // (the lines' own ordered dither, on the art's pixels)
+    float ordered = fract(floor(gl_FragCoord.x) * 0.5 + floor(gl_FragCoord.y) * floor(gl_FragCoord.y) * 0.75);
+    float kq = floor(k * 6.0 + ordered) / 6.0;
+    k = mix(k, kq, touch);
+    if (uLight > 0.5) {
+      float a = max(k * 0.9, disc);
+      gl_FragColor = vec4(vec3(1.0, 0.995, 0.975) * a, a);
+    } else {
+      vec3 emit = warm(ink) * k * dim;
+      gl_FragColor = vec4(disc > 0.5 ? ${vec(SUN.cover.discColour)} : emit, disc);
+    }
   }
 `;
 
@@ -114,7 +139,10 @@ const blobMaterial = () =>
     vertexShader: BLOB_VERTEX,
     fragmentShader: BLOB_FRAGMENT,
     transparent: true,
-    blending: AdditiveBlending,
+    blending: CustomBlending,
+    blendEquation: AddEquation,
+    blendSrc: OneFactor,
+    blendDst: OneMinusSrcAlphaFactor,
     depthTest: false,
     depthWrite: false,
   });
@@ -182,11 +210,8 @@ export class SunLayer {
     u.uInk!.value.setRGB(...t.ink);
     u.uLight!.value = t.scheme === "dark" ? 0 : 1;
     this.dark = t.scheme === "dark";
-    // (the blur adds its light on the dark page and lays white over the paper on the light one)
-    const blob = this.blobMat;
-    blob.uniforms.uLight!.value = this.dark ? 0 : 1;
-    blob.blending = this.dark ? AdditiveBlending : NormalBlending;
-    blob.needsUpdate = true;
+    // (the blur adds its light on the dark page and lays white over the paper on the light one: its shader's output is premultiplied in both, one blend)
+    this.blobMat.uniforms.uLight!.value = this.dark ? 0 : 1;
     this.flare.applyTheme(t);
   }
 
@@ -224,10 +249,11 @@ export class SunLayer {
       b.uU!.value = unit;
       b.uI!.value = cres.area;
       b.uAmt!.value = f.amount;
-      b.uSet!.value = 1 - halo;
+      b.uSet!.value = (1 - halo) * SUN.cover.redden;
     }
     // the lens flare comes out of the same centre, as bright as the share of the sun that is left (on the light page whole, until the sun is gone: it does not dim, only the sun's size follows the crescent)
-    const flaring = this.flare.sync({ bufW: f.bufW, bufH: f.bufH, x: f.ahead ? bx : f.x, y: f.ahead ? by : f.y, ahead: f.ahead, amount: f.amount, visible: this.dark ? cres.area : cres.area > 0.01 ? 1 : 0, r: sr, set: 1 - halo } satisfies FlareFrame);
+    const rayStartPx = rayStart(sr, cres.area, cres.width, SUN.cover.disc);
+    const flaring = this.flare.sync({ bufW: f.bufW, bufH: f.bufH, x: f.ahead ? bx : f.x, y: f.ahead ? by : f.y, ahead: f.ahead, amount: f.amount, visible: this.dark ? cres.area : cres.area > 0.01 ? 1 : 0, r: rayStartPx, size: Math.sqrt(cres.area), set: (1 - halo) * SUN.cover.redden } satisfies FlareFrame);
     if (!p) return flaring || blob;
     const u = this.mat.uniforms;
     (u.uCentre!.value as Vector2).set(p.x, p.y);
@@ -235,8 +261,17 @@ export class SunLayer {
     u.uR!.value = p.r;
     u.uExt!.value = p.r * (1 + SUN.halo) + 1;
     u.uAmt!.value = f.amount;
-    u.uHalo!.value = halo;
-    u.uSet!.value = 1 - halo;
+    u.uHalo!.value = 1 - SUN.cover.halo * (1 - halo);
+    // the lens's ring goes with the sun's visible share: whole above `SUN.ring.fade[1]` of it, gone when it is hidden
+    const [r0, r1] = SUN.ring.fade;
+    const rt = Math.min(1, Math.max(0, (cres.area - r0) / (r1 - r0)));
+    const seen = rt * rt * (3 - 2 * rt);
+    u.uRing!.value = seen;
+    // the halo is in proportion to the sun that is left: its reach goes with the sun's visible radius (the root of its area), its light with the same share, so that it is gone when the sun is
+    const k = Math.sqrt(cres.area);
+    u.uK!.value = Math.max(k, 1e-3);
+    u.uSoft!.value = SUN.cover.hidden + (1 - SUN.cover.hidden) * k;
+    u.uSet!.value = (1 - halo) * SUN.cover.halo;
     return true;
   }
 
