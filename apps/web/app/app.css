@@ -3231,14 +3231,26 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     min-width: 0;
   }
 
-  /* The way in: a large, thin arrow at the right of the words, apart from them (a station sign's: a stem and a right-angled head); the words' own colours, raised on hover and focus. */
-  .globe-moon-arrow {
+  /*
+   * The way in: an arrow as tall as the words (both lines: the title and the second line), thin, at the right of them, apart from them: a station sign's, a stem and a right-angled head,
+   * drawn edge to edge in its box (28 px wide, the height of the card's words: the box is not square when the second line wraps, and the arrow follows it), with a stroke of its own that does not scale (1.5 px: the weight of the title's letters), in the words' own colours, raised on hover and focus.
+   */
+  .globe-moon-card .globe-moon-arrow[data-size] {
     flex: none;
+    align-self: stretch;
     width: 28px;
-    height: 28px;
+    height: auto;
     margin-inline-start: 14px;
-    stroke-width: 1.25;
+    overflow: visible;
+    stroke-width: 1.5px;
+    stroke-linecap: butt;
+    stroke-linejoin: miter;
+    vector-effect: non-scaling-stroke;
     color: var(--muted-foreground);
+  }
+
+  .globe-moon-card .globe-moon-arrow path {
+    vector-effect: non-scaling-stroke;
   }
 
   .globe-moon:hover .globe-moon-arrow,
