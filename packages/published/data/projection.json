@@ -8384,14 +8384,14 @@
     "summary": "Design engineer with an MSc in Computer Graphics & Vision and several years of production experience building React/TypeScript interfaces for geospatial and data-heavy platforms. Comfortable partnering closely with product, design, and engineering to ship technically complex, high-quality UI, from rendering-layer optimisation to end-to-end frontend architecture.",
     "updated": "2026-10",
     "portrait": {
-      "src": "/media/career/portrait.5333ec22.webp",
-      "alt": "Illustrated portrait of Elliot Négrel-Jerzy, a smiling man with dark hair in a blue jacket, drawn in flat blue tones",
-      "width": 1000,
-      "height": 1000,
+      "src": "/media/career/portrait.0b8d239c.webp",
+      "alt": "Illustrated portrait of Elliot Négrel-Jerzy, a smiling man with dark hair in a blue jacket, drawn as a hand-penned blueprint",
+      "width": 1880,
+      "height": 1280,
       "dark": {
-        "src": "/media/career/portrait-dark.381205c2.webp",
-        "width": 1000,
-        "height": 1000
+        "src": "/media/career/portrait-dark.0381328b.webp",
+        "width": 1880,
+        "height": 1280
       }
     },
     "availability": {
