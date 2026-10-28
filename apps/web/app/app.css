@@ -4270,8 +4270,9 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
      is the picture's own (square, no radius). */
   .career-portrait {
     /* The picture is the blueprint, whose frame is the square of this box and whose pen runs past it: the image is larger than the box
-       by the margin of docs/portrait/portrait.svg (150 of 500 units) on every side, so the frame keeps the box's size and place. */
-    --portrait-bleed: -30%;
+       by the margin of docs/portrait/portrait.svg (220 of 500 units at the sides, 70 above and below), so the frame keeps the box's size and place. */
+    --portrait-bleed-x: -44%;
+    --portrait-bleed-y: -14%;
     position: relative;
     margin: 3.25rem 0 0;
     width: 5.5rem;
@@ -4321,11 +4322,11 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   .career-portrait img {
     display: block;
     position: absolute;
-    top: var(--portrait-bleed);
-    left: var(--portrait-bleed);
-    width: 160%;
+    top: var(--portrait-bleed-y);
+    left: var(--portrait-bleed-x);
+    width: 188%;
     max-width: none; /* the page's own rule keeps images within their box; this one overflows it on purpose */
-    height: 160%;
+    height: 128%;
     z-index: -1; /* the pen's long overshoots pass under the text, never over it */
     pointer-events: none;
     box-sizing: border-box;

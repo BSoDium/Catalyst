@@ -51,11 +51,11 @@ async function open(contextOptions, colorScheme, path = "/career", base = BASE_U
   return { ctx, page, logs, response };
 }
 
-// The page's own content must not be wider than the screen. The faint bleeds behind the portrait and the logos are decoration that may spill
+// The page's own content must not be wider than the screen. The faint bleeds behind the portrait and the logos, and the portrait's own margin (the pen's overshoots), are decoration that may spill
 // past the screen's edge (the root clips it: `overflow-x: clip`, so nobody can scroll to it), so they are left out of the measure.
 const overflow = (page) =>
   page.evaluate(() => {
-    const bleeds = [...document.querySelectorAll(".career-glow, .career-portrait-glow")];
+    const bleeds = [...document.querySelectorAll(".career-glow, .career-portrait-glow, .career-portrait img")];
     const was = bleeds.map((b) => b.style.display);
     bleeds.forEach((b) => (b.style.display = "none"));
     const over = Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth;
@@ -123,10 +123,10 @@ const overflow = (page) =>
 
   const portrait = await page.evaluate(() => {
     const img = document.querySelector('[data-slot="career-portrait"] img:not([aria-hidden])');
-    const r = img?.getBoundingClientRect();
+    const r = img?.closest("figure").getBoundingClientRect(); // the frame (the box), not the larger image
     return img && { w: img.getAttribute("width"), h: img.getAttribute("height"), loading: img.getAttribute("loading"), priority: img.getAttribute("fetchpriority"), alt: img.getAttribute("alt"), box: [Math.round(r.width), Math.round(r.height)], cover: getComputedStyle(img).objectFit, pos: getComputedStyle(img).objectPosition };
   });
-  ok(portrait && portrait.w === "800" && portrait.h === "800" && portrait.loading === "eager" && portrait.priority === "high" && portrait.alt.length > 10, "the portrait has its size attributes, loads eagerly with high priority and has alt text");
+  ok(portrait && portrait.w === "940" && portrait.h === "640" && portrait.loading === "eager" && portrait.priority === "high" && portrait.alt.length > 10, "the portrait has its size attributes, loads eagerly with high priority and has alt text");
   ok(portrait && portrait.cover === "cover" && /^50% 30%/.test(portrait.pos) && Math.abs(portrait.box[1] / portrait.box[0] - 1) < 0.02, `the portrait is a square, object-fit cover, centred on the face (${portrait?.box.join("x")}, ${portrait?.pos})`);
   const cls = await page.evaluate(() => window.__cls);
   ok(cls < 0.01, `no layout shift (CLS ${cls.toFixed(4)})`);

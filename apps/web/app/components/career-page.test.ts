@@ -78,8 +78,8 @@ describe("CareerPage", () => {
 
   it("draws the portrait with its size, eager, high priority and its alt text", () => {
     expect(html).toMatch(/<img [^>]*src="\/media\/demo\/portrait-example\.svg"/);
-    expect(html).toContain('width="800"');
-    expect(html).toContain('height="800"');
+    expect(html).toContain('width="940"');
+    expect(html).toContain('height="640"');
     expect(html).toContain('loading="eager"');
     expect(html).toMatch(/fetchPriority="high"|fetchpriority="high"/);
     expect(html).toContain(`alt="${demo.portrait!.alt}"`);
