@@ -76,7 +76,7 @@ export const CINEMATIC = {
   maxHalfScreen: 0.47,
   /**
    * The timing (engine/caption.ts `EggShape`, ms), made to the sound's length (`SOUND` in cinematic-sound.ts: 24.1 s, a long crescendo and its final chord
-   * 20.25 s in, which is where the word lands: 0.5 + 0.4 + 19.35): the rows leave in `leaveMs`, the stage is empty for `gapMs`, the word comes in in `enterMs` (a very
+   * 20.25 s in, which is where the CAMERA lands and the picture is level: 0.5 + 0.4 + 19.35; the word lands `wordLateMs` after it and is still drifting into place as the chord sounds): the rows leave in `leaveMs`, the stage is empty for `gapMs`, the word comes in in `enterMs` (a very
    * long ease from `ease`: 1, against 2.2 for the regular rows, that lands at the roll's own speed), holds rolling through `ampDeg` for `holdMs` (long enough to read the studio's small line under the globe),
    * and leaves in `exitMs`. The globe pulls back by `zoomLevels` levels of zoom (0.7: to 62 % of its size, the word and the ring with it) and
    * LEANS over the first `zoomInMs`, stays so for as long as the word is on the stage, and comes back upright over the `zoomOutMs` AFTER it has

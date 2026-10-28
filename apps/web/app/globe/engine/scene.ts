@@ -34,10 +34,11 @@ import { RIM } from "./moon";
 import { MoonLayer } from "./moon-layer";
 import { SunLayer } from "./sun-layer";
 import { RouteLayer } from "./route-layer";
-import { SKY_STATE, viewToGalactic } from "./sky";
+import { SKY_STATE, type Mat3 } from "./sky";
 import { SkyLayer } from "./sky-layer";
 import { routeLift } from "./view";
 import { TUNING } from "./tuning";
+import { CINEMATIC } from "./cinematic";
 import { LIGHTS, surfaceTones } from "./surface";
 
 
@@ -245,7 +246,7 @@ export class GlobeScene {
     // veil on the ground is the page's own colour with a trace of ink, so it covers the lines without painting anything.
     const bg = t.background;
     const mixTo = (k: number) => [0, 1, 2].map((i) => bg[i]! + (t.ink[i]! - bg[i]!) * k) as [number, number, number];
-    this.atmosphere.uniforms.uColor!.value.setRGB(...mixTo(t.scheme === "dark" ? 0.5 : 0.3));
+    this.atmosphere.uniforms.uColor!.value.setRGB(...mixTo(CINEMATIC.atmosphere.glow[t.scheme].tone));
     this.mist.uniforms.uColor!.value.setRGB(...mixTo(t.scheme === "dark" ? 0.3 : 0.18));
     // the land's three tones: darker ground, middle, lighter, each a step from the page's colour towards its ink (the page's own two ends, no hue)
     const tones = surfaceTones(t.scheme);
@@ -257,7 +258,7 @@ export class GlobeScene {
     this.surface.uniforms.uTone0!.value.setRGB(...mixTo(tones[0]!));
     this.surface.uniforms.uTone1!.value.setRGB(...mixTo(tones[1]!));
     this.surface.uniforms.uTone2!.value.setRGB(...mixTo(tones[2]!));
-    this.atmosphere.uniforms.uCover!.value = t.scheme === "dark" ? 0.4 : 0.26;
+    this.atmosphere.uniforms.uCover!.value = CINEMATIC.atmosphere.glow[t.scheme].cover;
     // the rim: a soft grey close to the page's colour (the haze and the lining's base)
     this.rim.uniforms.uColor!.value.setRGB(...mixTo(t.scheme === "dark" ? 0.45 : 0.3));
     this.rim.uniforms.uCover!.value = RIM.cover[t.scheme === "dark" ? "dark" : "light"];
@@ -345,8 +346,9 @@ export class GlobeScene {
     this.fetchSurface(
       url,
       (tex) => {
-        this.surface.uniforms.uEarth!.value = tex;
         this.surfaceTex = tex;
+        // (the finer picture, if it came first, stays: it is the one in the shader until the interlude gives it back)
+        this.surface.uniforms.uEarth!.value = this.surfaceHiTex ?? tex;
         this.surfaceReady = true;
         this.prepareLand(); // (the coastlines' fill, for the patches' edge)
         this.setSurface(this.surfaceNow, this.surfaceStrength);
@@ -359,7 +361,8 @@ export class GlobeScene {
   }
 
   /**
-   * The finer picture of the land (`SURFACE.hiUrl`), once, in place of the first when it arrives (the interlude's close shots); the first stays until then, and stays if this one fails.
+   * The finer picture of the land (`SURFACE.hiUrl`), in place of the first while it is there (the interlude's close shots); the first is kept, and stays if this one fails. It is big (8192 x 4096,
+   * about 134 MB of RGBA on the GPU), so it is held only for an interlude: `releaseSurfaceHi` gives it back. It may arrive before the first picture: that one then waits in `surfaceTex` (`loadSurface`).
    */
   loadSurfaceHi(url: string, done: () => void) {
     if (this.surfaceHi || this.disposed) return;
@@ -367,10 +370,12 @@ export class GlobeScene {
     this.fetchSurface(
       url,
       (tex) => {
-        const old = this.surfaceTex;
+        if (!this.surfaceHi) {
+          tex.dispose(); // (released while it was on its way)
+          return;
+        }
+        this.surfaceHiTex = tex;
         this.surface.uniforms.uEarth!.value = tex;
-        this.surfaceTex = tex;
-        old?.dispose();
         done();
       },
       () => {
@@ -379,6 +384,16 @@ export class GlobeScene {
     );
   }
 
+  /** The interlude is over: the finer picture goes (its GPU memory is freed) and the first is the ground again; the next interlude loads it anew. */
+  releaseSurfaceHi(): void {
+    this.surfaceHi = false;
+    if (!this.surfaceHiTex) return;
+    if (this.surfaceTex) this.surface.uniforms.uEarth!.value = this.surfaceTex;
+    this.surfaceHiTex.dispose();
+    this.surfaceHiTex = null;
+  }
+
+  private surfaceHiTex: Texture | null = null;
   private surfaceHi = false;
 
   /** The planet's lights (`LIGHTS`), once, after the first frame; `done` when they are in. A failure leaves none. */
@@ -488,11 +503,11 @@ export class GlobeScene {
   }
 
   /**
-   * Per-frame sky: the view-to-galactic matrix of this camera at the earth rotation angle `era`, and where the earth's silhouette is in
+   * Per-frame sky: the view-to-galactic matrix of this camera (`viewToGal`, `viewToGalactic`: computed once a frame by the renderer, the caption's chrome reads it too; `d` the camera's distance), and where the earth's silhouette is in
    * the buffer. `hold`: the sky stays on whatever the picture reaches (the cinematic interlude's close shots fill the picture with the planet, and the sky above the horizon is the point). Call after the camera's matrices are current. `bufW`, `bufH` and `shiftBuf` are the drawing buffer and the inset's shift (buffer px).
    */
-  syncSky(camera: PerspectiveCamera, basis: ViewBasis, era: number, buf: { w: number; h: number; shift: number; lift?: number }, now: number, instant: boolean, hold = false) {
-    this.sky?.sync({ viewToGal: viewToGalactic(basis, era), projInv: camera.projectionMatrixInverse, d: basis.d, bufW: buf.w, bufH: buf.h, shiftBuf: buf.shift, liftBuf: buf.lift ?? 0 }, now, instant, hold);
+  syncSky(camera: PerspectiveCamera, viewToGal: Mat3, d: number, buf: { w: number; h: number; shift: number; lift?: number }, now: number, instant: boolean, hold = false) {
+    this.sky?.sync({ viewToGal, projInv: camera.projectionMatrixInverse, d, bufW: buf.w, bufH: buf.h, shiftBuf: buf.shift, liftBuf: buf.lift ?? 0 }, now, instant, hold);
   }
 
   /** The keys of the legs that stay at this zoom (`RouteLayer.setThinning`), null: all. */
@@ -534,6 +549,7 @@ export class GlobeScene {
     this.disposed = true;
     this.landTex?.dispose();
     this.surfaceTex?.dispose();
+    this.surfaceHiTex?.dispose();
     this.lightsTex?.dispose();
     this.routes.dispose();
     this.sky?.dispose();

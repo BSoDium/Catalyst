@@ -255,6 +255,13 @@ export function makeStars(map: Uint8Array = bakeBand(), cfg: { count: number; ba
   return { count: cfg.count, position, tier, keep };
 }
 
+let defaultStarField: Stars | null = null;
+
+/** The star field with the page's own settings, made once (the sky layer draws it as points, the chrome of the interlude's letters reflects it): same seed, same stars. */
+export function defaultStars(): Stars {
+  return (defaultStarField ??= makeStars());
+}
+
 let bakedStars: { w: number; h: number; map: Uint8Array } | null = null;
 
 /**
@@ -264,7 +271,7 @@ let bakedStars: { w: number; h: number; map: Uint8Array } | null = null;
 export function bakeStarMap(w = 4096, h = 2048): Uint8Array {
   if (bakedStars && bakedStars.w === w && bakedStars.h === h) return bakedStars.map;
   const map = new Uint8Array(w * h);
-  const st = makeStars();
+  const st = defaultStars();
   const level = [128, 205, 255];
   for (let i = 0; i < st.count; i++) {
     const x = st.position[3 * i]!, y = st.position[3 * i + 1]!, z = st.position[3 * i + 2]!;

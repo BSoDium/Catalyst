@@ -753,28 +753,9 @@ export class CaptionLayer {
   private eggSunDir = { value: new Vector3(0, 0, 1) };
   private eggSunAmt = { value: 0 };
   private eggSet = { value: 0 };
-  /** The galaxy the chrome reflects: the sky's band map (this canvas is a context of its own: its own texture of the same baked bytes) and the matrix that takes the camera's frame to the galactic one (`setSky`). */
-  private eggBand = (() => {
-    const { cols, rows } = SKY.map;
-    const t = new DataTexture(bakeBand(), cols, rows, RedFormat, UnsignedByteType);
-    t.magFilter = t.minFilter = LinearFilter;
-    t.wrapS = RepeatWrapping;
-    t.wrapT = ClampToEdgeWrapping;
-    t.generateMipmaps = false;
-    t.unpackAlignment = 1;
-    t.needsUpdate = true;
-    return t;
-  })();
-  private eggStars = (() => {
-    const t = new DataTexture(bakeStarMap(), 4096, 2048, RedFormat, UnsignedByteType);
-    t.magFilter = t.minFilter = NearestFilter; // (a star is one hard texel: the metal shows pixels, not blurs)
-    t.wrapS = RepeatWrapping;
-    t.wrapT = ClampToEdgeWrapping;
-    t.generateMipmaps = false;
-    t.unpackAlignment = 1;
-    t.needsUpdate = true;
-    return t;
-  })();
+  /** The galaxy the chrome reflects: the sky's band map and the star map (this canvas is a context of its own: its own textures of the same baked bytes), made when the word's material is, not before (`eggSkyTextures`). */
+  private eggSkyTex: { band: DataTexture; stars: DataTexture } | null = null;
+  /** The matrix that takes the camera's frame to the galactic one (`setSky`). */
   private eggViewToGal = { value: new Matrix3() };
   private eggDissolve = { uDissolve: { value: 0 }, uFinal: { value: 0 }, uAxis: { value: [0, 0, 1] as number[] } };
   /** The far slices (layer below this) that carry the text colour in mode `edge` (0: none). */
@@ -871,6 +852,21 @@ export class CaptionLayer {
     this.setTheme(opts.theme);
   }
 
+  private eggSkyTextures(): { band: DataTexture; stars: DataTexture } {
+    if (this.eggSkyTex) return this.eggSkyTex;
+    const make = (data: Uint8Array, w: number, h: number, filter: typeof LinearFilter | typeof NearestFilter) => {
+      const t = new DataTexture(data, w, h, RedFormat, UnsignedByteType);
+      t.magFilter = t.minFilter = filter; // (a star is one hard texel: the metal shows pixels, not blurs; the band is smooth)
+      t.wrapS = RepeatWrapping;
+      t.wrapT = ClampToEdgeWrapping;
+      t.generateMipmaps = false;
+      t.unpackAlignment = 1;
+      t.needsUpdate = true;
+      return t;
+    };
+    return (this.eggSkyTex = { band: make(bakeBand(), SKY.map.cols, SKY.map.rows, LinearFilter), stars: make(bakeStarMap(), 4096, 2048, NearestFilter) });
+  }
+
   /**
    * The interlude's word: a lit, opaque, culled mesh (engine/cinematic-word.ts), no blending and no slices. It takes the same placement uniforms as a
    * row's strip (`place` writes them for every variant) and the colours of its own (`setTheme`).
@@ -897,8 +893,8 @@ export class CaptionLayer {
         uSunDir: this.eggSunDir,
         uSunAmt: this.eggSunAmt,
         uSet: this.eggSet,
-        uBand: { value: this.eggBand },
-        uStars: { value: this.eggStars },
+        uBand: { value: this.eggSkyTextures().band },
+        uStars: { value: this.eggSkyTextures().stars },
         uViewToGal: this.eggViewToGal,
         uBaseLat: { value: 0 },
         uBelow: { value: 0 },
@@ -1026,12 +1022,12 @@ export class CaptionLayer {
     this.motion.reseed(seed);
   }
 
-  /** The planet's night (the renderer's, per frame): how much of it there is (0 is all day) and the sun's direction in the earth's frame. */
   /** The sky's frame for the chrome: the matrix the globe's sky is drawn with (a direction of the camera's frame to the galactic one), per frame from the renderer. */
   setSky(m: Mat3): void {
     this.eggViewToGal.value.set(...m);
   }
 
+  /** The planet's night (the renderer's, per frame): how much of it there is (0 is all day) and the sun's direction in the earth's frame. */
   setNight(night: number, sun: readonly [number, number, number]): void {
     this.nightAmt.value = night;
     this.nightSun.value = [...sun];
@@ -1952,8 +1948,8 @@ export class CaptionLayer {
     (this.ellipse?.material as ShaderMaterial | undefined)?.dispose();
     this.ellipse = null;
     this.crisp.dispose();
-    this.eggBand.dispose();
-    this.eggStars.dispose();
+    this.eggSkyTex?.band.dispose();
+    this.eggSkyTex?.stars.dispose();
     this.built = null;
   }
 

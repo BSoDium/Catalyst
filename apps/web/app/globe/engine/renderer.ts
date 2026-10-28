@@ -1892,6 +1892,9 @@ export class GlobeRenderer {
   /** The finer ground for the interlude's close shots (`SURFACE.hiUrl`): asked for once, when an interlude is planned or about to be asked for. */
   private loadHiSurface(): void {
     if (this.disposed || !this.caption) return;
+    // (134 MB on the GPU: not on a device that says it has little memory, where the ground stays the first picture)
+    const mem = (navigator as Navigator & { deviceMemory?: number }).deviceMemory;
+    if (mem !== undefined && mem < 4) return;
     this.globe.loadSurfaceHi(SURFACE.hiUrl, () => this.requestRender());
   }
 
@@ -2251,6 +2254,7 @@ export class GlobeRenderer {
     const next = interludeLook(this.interludeOn, land, this.interludeVar);
     if (next === this.interludeOn) return;
     this.interludeOn = next;
+    if (!next) this.globe.releaseSurfaceHi(); // (its GPU memory goes with the interlude)
     window.dispatchEvent(new CustomEvent<InterludeStateDetail>(INTERLUDE_STATE_EVENT, { detail: { active: next } }));
   }
 
@@ -2365,8 +2369,10 @@ export class GlobeRenderer {
     this.syncTagline();
     this.syncMoon(cam, d, zoom, now);
     this.syncSun(cam, ns, d);
-    this.caption?.setSky(viewToGalactic(skyBasis, this.era));
-    this.globe.syncSky(cam, skyBasis, this.era, { w: this.bufW, h: this.bufH, shift: this.camShift, lift: this.camLift }, now, this.reduced, this.flying || (this.caption?.landShare() ?? 0) > 0);
+    // (the sky's frame, once: the globe's sky and the chrome of the interlude's letters both read it)
+    const viewToGal = viewToGalactic(skyBasis, this.era);
+    this.caption?.setSky(viewToGal);
+    this.globe.syncSky(cam, viewToGal, skyBasis.d, { w: this.bufW, h: this.bufH, shift: this.camShift, lift: this.camLift }, now, this.reduced, this.flying || (this.caption?.landShare() ?? 0) > 0);
   }
 
   /* ------------------------------ diagnostics ------------------------------ */
