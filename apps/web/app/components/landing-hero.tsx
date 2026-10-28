@@ -48,11 +48,15 @@ function finalTransforms(root: HTMLElement): { el: HTMLElement; transform: strin
     const el = root.querySelector<HTMLElement>(from);
     const ghost = root.querySelector<HTMLElement>(to);
     if (!el || !ghost) continue;
+    // (no transition while it is read: a half that is gliding, from the hint going or coming, would be read part of the way, and "none" would set a transition off towards the big name that a quick turn-around then leaves half done)
+    const prevTransition = el.style.transition;
     const prev = el.style.transform;
+    el.style.transition = "none";
     el.style.transform = "none";
     const a = textBox(el);
     const o = el.getBoundingClientRect();
     el.style.transform = prev;
+    el.style.transition = prevTransition;
     const b = textBox(ghost);
     if (!(a.width > 0) || !(b.width > 0)) continue;
     const s = b.width / a.width;
@@ -189,6 +193,9 @@ export function LandingHero({ machine, away, empty, orbit = null, onCover, hasCa
     const root = rootRef.current;
     rootForTravel.current = root;
     if (!root) return;
+    // (a glide of the held name, from the hint going or coming, is over: the travel and the held transform are the whole story now)
+    window.clearTimeout(glideTimer.current);
+    for (const [from] of HALVES) root.querySelector<HTMLElement>(from)?.style.removeProperty("transition");
     const toMini = was === "rest" && state === "collapsed";
     const back = was === "collapsed" && state === "rest";
     // (a turn-around, the state flipping again while the name is on its way, is a travel like any other: `NameTravel.go` starts from where it is)
@@ -225,6 +232,9 @@ export function LandingHero({ machine, away, empty, orbit = null, onCover, hasCa
   // The collapsed name sits above the hint ("Drag to explore. Stop moving to reset the view."), which is gone when the view is zoomed in (`data-world="false"`: app.css takes it
   // out of the layout): the name then goes down into the corner, and back up when the hint is back. The held transform is measured again (its ghost has moved) and the halves glide there.
   const worldWas = useRef(snapshot.world);
+  // (one timer for the glide's end, never cleared by a re-run of the effect: a hint that goes and comes again within the glide used to leave its `transition` on the halves for good)
+  const glideTimer = useRef(0);
+  useEffect(() => () => window.clearTimeout(glideTimer.current), []);
   useIsoLayoutEffect(() => {
     const changed = worldWas.current !== snapshot.world;
     worldWas.current = snapshot.world;
@@ -236,10 +246,10 @@ export function LandingHero({ machine, away, empty, orbit = null, onCover, hasCa
     const finals = finalTransforms(root);
     if (!reduced) for (const el of halves) el.style.transition = "transform 240ms cubic-bezier(0.2, 0, 0, 1)";
     for (const { el, transform } of finals) el.style.transform = transform;
-    const done = window.setTimeout(() => {
+    window.clearTimeout(glideTimer.current);
+    glideTimer.current = window.setTimeout(() => {
       for (const el of halves) el.style.removeProperty("transition");
     }, 300);
-    return () => window.clearTimeout(done);
   }, [snapshot.world, state]);
 
   // How much of the page's bottom the name covers: the globe lifts the planet clear of it (docs/landing.md). Layout offsets, so a transform
