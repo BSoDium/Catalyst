@@ -396,6 +396,10 @@ export function surfaceMaterial(): ShaderMaterial {
     side: FrontSide,
     depthTest: true,
     depthWrite: false,
+    // a little toward the camera in DEPTH only (nothing moves on the screen), so that the planet's own disc, a hair under it, never wins it
+    polygonOffset: true,
+    polygonOffsetFactor: -1,
+    polygonOffsetUnits: -1,
   });
 }
 
@@ -431,6 +435,10 @@ export function lightsMaterial(): ShaderMaterial {
     side: FrontSide,
     depthTest: true,
     depthWrite: false,
+    // a little toward the camera in DEPTH only (nothing moves on the screen), so that the planet's own disc, a hair under it, never wins it
+    polygonOffset: true,
+    polygonOffsetFactor: -1,
+    polygonOffsetUnits: -1,
   });
 }
 

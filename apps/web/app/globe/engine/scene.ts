@@ -167,7 +167,10 @@ export class GlobeScene {
     groundGlow.frustumCulled = false;
     this.add(groundGlow, 5.1);
     // and the land's own picture (satellite, flat patches in a few tones), over the sea and under the lines
-    const surfaceSkin = new SphereGeometry(1.002, 96, 48);
+    // (ON the surface, not a hair above it, like the coastlines and the borders it lies under: a layer above the lines is displaced from them by its height over the sine of the angle the camera looks along the ground
+    // at, which is nothing from the page's views and a great shift on the interlude's low shots, where the land's picture floated up off its outlines; the disc under it is at `OCCLUDER_RADIUS`, below, and the
+    // layer writes no depth, so there is nothing for it to fight with)
+    const surfaceSkin = new SphereGeometry(1, 96, 48);
     this.geometries.push(surfaceSkin);
     this.surfaceMesh = new Mesh(surfaceSkin, this.surface);
     this.surfaceMesh.visible = false;
@@ -175,7 +178,7 @@ export class GlobeScene {
     // (under the lines, which are drawn over it: its colours are solid)
     this.add(this.surfaceMesh, 0.6);
     // and the planet's lights on its dark side, over the ground and under the lines (solid colours, faint)
-    this.lightsMesh = new Mesh(new SphereGeometry(1.003, 96, 48), this.lights);
+    this.lightsMesh = new Mesh(new SphereGeometry(1, 96, 48), this.lights); // (on the surface too: see the land's picture)
     this.geometries.push(this.lightsMesh.geometry);
     this.lightsMesh.visible = false;
     this.lightsMesh.frustumCulled = false;
