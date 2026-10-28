@@ -1,0 +1,203 @@
+import { readFileSync, writeFileSync } from "node:fs";
+const [, , src, out] = process.argv;
+const svg = readFileSync(src, "utf8");
+const get = (id) => svg.match(new RegExp(`id="${id}"\\s+d="([^"]+)"`))[1];
+
+// seeded pen: same drawing every run
+let s = 7;
+const rnd = () => ((s = (s + 0x6d2b79f5) | 0), (((t) => ((t ^ (t >>> 15)) * (1 | t)))(s) >>> 0) / 4294967296);
+const range = (a, b) => a + rnd() * (b - a);
+const f = (n) => +n.toFixed(1);
+// mostly a short flick, now and then a long one
+const flick = (cap) => Math.min(rnd() < 0.3 ? range(20, 44) : range(4, 16), cap);
+
+function parse(d) {
+  const tk = d.match(/[MLHVCZ]|-?\d*\.?\d+/g);
+  const segs = [];
+  let i = 0, cur = [0, 0], start = [0, 0];
+  const num = () => parseFloat(tk[i++]);
+  let cmd;
+  while (i < tk.length) {
+    if (/[A-Z]/.test(tk[i])) cmd = tk[i++];
+    if (cmd === "M") { cur = start = [num(), num()]; cmd = "L"; continue; }
+    if (cmd === "Z") { if (cur[0] !== start[0] || cur[1] !== start[1]) segs.push({ a: cur, b: start }); cur = start; continue; }
+    let n;
+    if (cmd === "L") n = [num(), num()];
+    else if (cmd === "H") n = [num(), cur[1]];
+    else if (cmd === "V") n = [cur[0], num()];
+    else if (cmd === "C") { const c1 = [num(), num()], c2 = [num(), num()]; n = [num(), num()]; segs.push({ a: cur, c1, c2, b: n }); cur = n; continue; }
+    segs.push({ a: cur, b: n }); cur = n;
+  }
+  if (cur[0] !== start[0] || cur[1] !== start[1]) segs.push({ a: cur, b: start });
+  return segs;
+}
+const unit = (v) => { const l = Math.hypot(...v) || 1; return [v[0] / l, v[1] / l]; };
+const sub = (a, b) => [a[0] - b[0], a[1] - b[1]];
+const tin = (g) => unit(sub(g.b, g.c2 && (g.c2[0] !== g.b[0] || g.c2[1] !== g.b[1]) ? g.c2 : g.c1 || g.a));
+const tout = (g) => unit(sub(g.c1 && (g.c1[0] !== g.a[0] || g.c1[1] !== g.a[1]) ? g.c1 : g.c2 || g.b, g.a));
+const len = (g) => Math.hypot(...sub(g.b, g.a));
+// a segment lying on the frame (the shirt's hem sits 0.5 unit above it) is not penned: it would double the frame's own line
+const onEdge = (g) => [0, 1].some((k) => [0, 500].some((e) => Math.abs(g.a[k] - e) <= 1 && Math.abs(g.b[k] - e) <= 1));
+
+// An overshoot is its own path with a gradient stroke: solid at the corner, fading to nothing at its tip, so it vanishes softly.
+const fades = [];
+const P = (q) => `${f(q[0])} ${f(q[1])}`;
+// the face's own marks: an overshoot stops short of them rather than cutting through (it would break the illusion)
+const KEEP_OUT = [[172, 116, 206, 164], [222, 116, 258, 164], [180, 142, 202, 194], [198, 196, 235, 216], [270, 170, 306, 198]];
+function tail(from, to, w, ink = "--line") {
+  const L = Math.hypot(to[0] - from[0], to[1] - from[1]);
+  for (let i = 1; i <= 60; i++) {
+    const x = from[0] + ((to[0] - from[0]) * i) / 60, y = from[1] + ((to[1] - from[1]) * i) / 60;
+    if (KEEP_OUT.some(([x0, y0, x1, y1]) => x > x0 && x < x1 && y > y0 && y < y1)) {
+      const keep = (L * i) / 60 - 6;
+      if (keep < 4) return "";
+      to = [from[0] + ((to[0] - from[0]) * keep) / L, from[1] + ((to[1] - from[1]) * keep) / L];
+      break;
+    }
+  }
+  const id = `fade-${fades.length}`;
+  fades.push(`<linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="${f(from[0])}" y1="${f(from[1])}" x2="${f(to[0])}" y2="${f(to[1])}"><stop offset="0" style="stop-color:var(${ink})" /><stop offset=".25" style="stop-color:var(${ink})" /><stop offset="1" style="stop-color:var(${ink});stop-opacity:0" /></linearGradient>`);
+  return `<path d="M${P(from)}L${P(to)}" style="stroke:url(#${id});stroke-width:${w}" />`;
+}
+
+// one hand-drawn run of segments, overshooting past both corners
+function pen(run, over) {
+  const first = run[0], last = run[run.length - 1];
+  const w = f(range(2.3, 3.1));
+  let d = `M${P(first.a)}`;
+  for (const g of run) {
+    if (g.c1) d += `C${P([g.c1[0] + range(-.9, .9), g.c1[1] + range(-.9, .9)])} ${P([g.c2[0] + range(-.9, .9), g.c2[1] + range(-.9, .9)])} ${P(g.b)}`;
+    else if (len(g) > 45) {
+      const m = [(g.a[0] + g.b[0]) / 2, (g.a[1] + g.b[1]) / 2], n = unit([-(g.b[1] - g.a[1]), g.b[0] - g.a[0]]), k = range(-1.6, 1.6);
+      d += `Q${P([m[0] + n[0] * k, m[1] + n[1] * k])} ${P(g.b)}`;
+    } else d += `L${P(g.b)}`;
+  }
+  let out = `<path d="${d}" style="stroke-width:${w}" />`;
+  if (over) {
+    const o1 = flick(len(first) * 0.9 + 2), t1 = tout(first), o2 = flick(len(last) * 0.9 + 2), t2 = tin(last);
+    out += tail(first.a, [first.a[0] - t1[0] * o1, first.a[1] - t1[1] * o1], w);
+    out += tail(last.b, [last.b[0] + t2[0] * o2, last.b[1] + t2[1] * o2], w);
+  }
+  return out;
+}
+
+function outline(d) {
+  const segs = parse(d), n = segs.length;
+  const cut = segs.map((g, i) => {
+    const prev = segs[(i + n - 1) % n];
+    if (onEdge(g) || onEdge(prev)) return true;
+    const a = tin(prev), b = tout(g);
+    return Math.acos(Math.max(-1, Math.min(1, a[0] * b[0] + a[1] * b[1]))) > 0.44;
+  });
+  const real = segs.map((g, i) => ({ g, i })).filter(({ g }) => !onEdge(g));
+  if (!cut.some(Boolean)) return pen(segs, false).replace("<path d=\"", "<path d=\"").replace(/" style/, 'Z" style');
+  let k = segs.findIndex((_, i) => cut[i]), out = [], run = [];
+  for (let c = 0; c < n; c++) {
+    const i = (k + c) % n;
+    if (cut[i] && run.length) { out.push(run); run = []; }
+    if (!onEdge(segs[i])) run.push(segs[i]);
+  }
+  if (run.length) out.push(run);
+  return out.map((r) => pen(r, true)).join("\n      ");
+}
+
+// a straight line drawn by hand: wobble, and a little past both ends
+const line = (x1, y1, x2, y2, o = [3, 19], cls = "") => {
+  const t = unit([x2 - x1, y2 - y1]), a = range(...o), b = range(...o), m = [(x1 + x2) / 2, (y1 + y2) / 2], nn = [-t[1], t[0]], w = range(-1.4, 1.4);
+  return `<path ${cls ? `class="${cls}" ` : ""}d="M${f(x1 - t[0] * a)} ${f(y1 - t[1] * a)}Q${f(m[0] + nn[0] * w)} ${f(m[1] + nn[1] * w)} ${f(x2 + t[0] * b)} ${f(y2 + t[1] * b)}" style="stroke-width:${f(range(2.3, 3))}" />`;
+};
+const guide = (x1, y1, x2, y2) => line(x1, y1, x2, y2, [0, 0]).replace(/ style="[^"]*"/, "");
+
+const F = 0; // the frame is the 500-unit square; the pen runs past it into a margin of M on every side
+const M = 150;
+const ids = ["jacket", "neck", "collar", "shirt", "head", "chin-shadow", "hair"];
+const D = Object.fromEntries(ids.map((i) => [i, get(i)]));
+const open = (id) => svg.match(new RegExp(`<path id="${id}"[^>]*?d="([^"]+)"`))[1];
+
+// construction lines through the key heights, like the paper study
+const guides = [
+  [0, 54, 500, 56], [0, 130, 500, 129], [0, 140, 500, 141], [0, 189, 500, 188], [0, 212, 500, 213], [0, 246, 500, 244], [0, 262, 500, 259],
+  [319, 0, 321, 500], [209, 0, 207, 500], [186, 0, 184, 500], [279, 0, 281, 500],
+];
+// tangents of the drawing, run right across the frame: the slanted edge of each shoulder, and the long straight side of the face
+const tangent = (a, b) => {
+  const u = unit([b[0] - a[0], b[1] - a[1]]);
+  return `<path d="M${P([a[0] - u[0] * 900, a[1] - u[1] * 900])}L${P([a[0] + u[0] * 900, a[1] + u[1] * 900])}" />`;
+};
+const G = [...guides.map((g) => guide(...g)), tangent([0, 373.5], [54.1249, 311.165]), tangent([500, 401.276], [406.747, 298.198]), tangent([187, 81.5], [156.5, 175])].join("\n      ");
+
+const FACE = `${D.head} ${D.neck}`;
+const r = (a) => a;
+// the frame is dead straight (never skewed) and its lines run well past the corners
+const side = (x1, y1, x2, y2) => {
+  const t = unit([x2 - x1, y2 - y1]), a = range(55, 135), b = range(55, 135), w = f(range(2.3, 3));
+  return `<path d="M${P([x1, y1])}L${P([x2, y2])}" style="stroke-width:${w}" />${tail([x1, y1], [x1 - t[0] * a, y1 - t[1] * a], w, "--frame")}${tail([x2, y2], [x2 + t[0] * b, y2 + t[1] * b], w, "--frame")}`;
+};
+const frame = [
+  side(F, F, 500 - F, F), side(500 - F, F, 500 - F, 500 - F), side(500 - F, 500 - F, F, 500 - F), side(F, 500 - F, F, F),
+].join("\n      ");
+
+const penOutlines = ["jacket", "neck", "collar", "shirt", "head", "chin-shadow", "hair"].map((i) => `<g id="pen-${i}">\n      ${outline(D[i])}\n      </g>`).join("\n      ");
+
+const result = `<svg width="${500 + 2 * M}" height="${500 + 2 * M}" viewBox="${-M} ${-M} ${500 + 2 * M} ${500 + 2 * M}" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Blueprint: the same figure and colours, redrawn as if penned by hand over a construction sketch. The picture has a frame of its own (no
+       border or background is added by the page) whose lines cross at the corners. Every outline is a run of
+       pen strokes that overshoots a little past each corner; the fills are the original shapes underneath. Generated by
+       docs/portrait/build-blueprint.mjs (a seeded pen: the same drawing every run). -->
+  <style>
+    /* Monochrome greys; the blues are the jacket and the faintly blue skin. The pen's blue-grey sits close to the ground, never black. */
+    :root { --bg: #eeeeee; --skin: #a4cfff; --jacket: #0076d4; --shirt: #4a4a4a; --collar: #ffffff; --ink: #0a0a0a;
+            --line: #5b6d85; --frame: #d8d8d8; --g-bg: #dcdcdc; --g-skin: #8dbdf2; --g-jacket: #1a89e4; --g-shirt: #5c5c5c; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #161616; --skin: #82a8d2; --jacket: #0c3f70; --shirt: #262626; --collar: #bdbdbd; --ink: #050505;
+            --line: #8398b3; --frame: #313131; --g-bg: #262626; --g-skin: #92b4da; --g-jacket: #124c82; --g-shirt: #333333; } }
+    .bg { fill: var(--bg) } .skin { fill: var(--skin) } .jacket { fill: var(--jacket) } .shirt { fill: var(--shirt) } .collar { fill: var(--collar) } .ink { fill: var(--ink) }
+    path[stroke] { stroke: var(--ink) }
+    .pen path { stroke: var(--line); stroke-linecap: round; stroke-linejoin: round; fill: none }
+    #pen-frame path { stroke: var(--frame) }
+    .guides { stroke-width: 1.3; stroke-linecap: round; fill: none }
+    .g-bg { stroke: var(--g-bg) } .g-skin { stroke: var(--g-skin) } .g-jacket { stroke: var(--g-jacket) } .g-shirt { stroke: var(--g-shirt) }
+  </style>
+  <defs>
+    ${fades.join("\n    ")}
+    <clipPath id="c-frame"><rect x="${F}" y="${F}" width="${500 - 2 * F}" height="${500 - 2 * F}" /></clipPath>
+    <clipPath id="c-face"><path d="${FACE}" /></clipPath>
+    <clipPath id="c-jacket"><path d="${D.jacket}" /></clipPath>
+    <clipPath id="c-shirt"><path d="${D.shirt}" /></clipPath>
+    <g id="guide-lines">
+      ${G}
+    </g>
+  </defs>
+  <g id="model">
+    <g id="picture" clip-path="url(#c-frame)">
+    <rect width="500" height="500" class="bg" />
+    <g class="guides g-bg"><use href="#guide-lines" /></g>
+    <path id="jacket" d="${D.jacket}" class="jacket" />
+    <g class="guides g-jacket" clip-path="url(#c-jacket)"><use href="#guide-lines" /></g>
+    <path id="neck" d="${D.neck}" class="skin" />
+    <path id="collar" d="${D.collar}" class="collar" />
+    <path id="shirt" d="${D.shirt}" class="shirt" />
+    <g class="guides g-shirt" clip-path="url(#c-shirt)"><use href="#guide-lines" /></g>
+    <path id="head" d="${D.head}" class="skin" />
+    <g class="guides g-skin" clip-path="url(#c-face)"><use href="#guide-lines" /></g>
+    <path id="chin-shadow" d="${D["chin-shadow"]}" class="ink" />
+    <g id="eyes">
+      <path id="eye-right" d="M234 140L233 159" stroke="currentColor" stroke-width="5" stroke-linecap="round" />
+      <path id="eye-left" d="M185 140L184 159" stroke="currentColor" stroke-width="5" stroke-linecap="round" />
+      <path id="eyebrow-left" d="M177.5 130.5C183.5 122.5 191.5 121.5 200.5 125" stroke="currentColor" stroke-width="5" stroke-linecap="round" />
+      <path id="eyebrow-right" d="M252 136C251 124 235.5 121.072 227 126.032" stroke="currentColor" stroke-width="5" stroke-linecap="round" />
+    </g>
+    <path id="nose" d="${open("nose")}" stroke="currentColor" stroke-width="5" stroke-linecap="round" />
+    <path id="mouth" d="${open("mouth")}" stroke="currentColor" stroke-width="5" stroke-linecap="round" />
+    <path id="hair" d="${D.hair}" class="ink" />
+    <path id="ear" d="${open("ear")}" stroke="currentColor" stroke-width="5" stroke-linecap="round" />
+    <g id="pen-outlines" class="pen">
+      ${penOutlines}
+    </g>
+    </g>
+    <g id="pen-frame" class="pen">
+      ${frame}
+    </g>
+  </g>
+</svg>
+`;
+writeFileSync(out, result);
