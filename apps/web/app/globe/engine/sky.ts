@@ -293,7 +293,9 @@ let bakedHalo: Uint8Array | null = null;
  * (engine/caption-layer.ts): a grey veil round a white dot, as the light page's sun is, read with a smooth filter. Baked once (a few ms).
  */
 export const HALO_SIGMA = 1.5;
-export function bakeStarHalo(): Uint8Array {
+/** The light page shows only the stars of this tier and brighter (`bakeStarHalo`, engine/caption-layer.ts): fewer of them, as the owner asked (2026-10-28). */
+export const LIGHT_MIN_TIER = 1;
+export function bakeStarHalo(minTier = 1): Uint8Array {
   if (bakedHalo) return bakedHalo;
   const w = 2048;
   const h = 1024;
@@ -302,6 +304,7 @@ export function bakeStarHalo(): Uint8Array {
   const weight = [0.5, 0.8, 1];
   const R = Math.ceil(HALO_SIGMA * 3);
   for (let i = 0; i < st.count; i++) {
+    if (st.tier[i]! < minTier) continue; // (the faintest stars have no halo: the light page shows fewer, `LIGHT_MIN_TIER`)
     const x = st.position[3 * i]!;
     const y = st.position[3 * i + 1]!;
     const z = st.position[3 * i + 2]!;

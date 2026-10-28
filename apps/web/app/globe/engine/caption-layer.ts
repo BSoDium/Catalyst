@@ -46,7 +46,10 @@ import {
 } from "three";
 import type { GlobeTheme } from "./colors";
 import { SUN } from "./moon";
-import { bakeBand, bakeStarHalo, bakeStarMap, type Mat3 } from "./sky";
+import { LIGHT_MIN_TIER, bakeBand, bakeStarHalo, bakeStarMap, type Mat3 } from "./sky";
+
+/** The star map's value (`bakeStarMap`: 0.5, 0.8, 1 by tier) from which a star is drawn on the light page: the tiers from `LIGHT_MIN_TIER` up. */
+const LIGHT_STAR_MIN = [0.4, 0.65, 0.9][LIGHT_MIN_TIER]!;
 import { WARM_GLSL, haloClear, sunRise } from "./sun-flare";
 import {
   CAPTION_FACE,
@@ -213,7 +216,7 @@ const EGG_VERT = /* glsl */ `
 `;
 
 /** The environment of the metal (`EGG_FRAG` `galaxy`): how bright the Milky Way's band is in it (the band map is 0..1: brighter here than on the globe's sky, so that the metal shows it), the stars' (the globe's own star field, `bakeStarMap`; `starsLight` of that on the light page, 0: there a star is a white dot in a grey halo, as the sun is, not a dark point, `bakeStarHalo`) and the broad lift of the page's own sky; `edge`: what the bevel does to the reflection that a flat face does not (`contrast`: the bevel reflects the environment that much harder, as a polished curve does; `rim`: a fresnel sheen, the bevel brightens smoothly towards the grazing angle, across its width; `wall`: the share of both that the walls take). */
-const EGG_ENV = { band: 2.3, stars: 0.95, starsLight: 0, starHalo: 0.3, sky: 0.45, edge: { contrast: 0.9, rim: 0.7, wall: 0.5 } } as const;
+const EGG_ENV = { band: 2.3, stars: 0.95, starsLight: 0, starHalo: 0.2, sky: 0.45, edge: { contrast: 0.9, rim: 0.7, wall: 0.5 } } as const;
 
 /**
  * The sun as the metal reflects it (`EGG_FRAG`), as the globe's own sun looks, less its rays: a very bright, hot centre and a falloff round it, whose strength picks the colour from the
@@ -363,7 +366,7 @@ const EGG_FRAG = /* glsl */ `
       vec3 gs = uViewToGal * rv;
       vec2 suv = vec2(atan(gs.y, gs.x) / 6.283185307 + 0.5, asin(clamp(gs.z, -1.0, 1.0)) / 3.141592654 + 0.5);
       sunVeil = max(sunVeil, pow(texture2D(uStarHalo, suv).r, 1.3) * ${EGG_ENV.starHalo.toFixed(2)} * back);
-      sunSpot = max(sunSpot, texture2D(uStars, suv).r * back);
+      sunSpot = max(sunSpot, step(${LIGHT_STAR_MIN.toFixed(2)}, texture2D(uStars, suv).r) * back);
       for (int i = 0; i < ${SPOTS.length}; i++) {
         float us = acos(clamp(dot(rv, normalize(SPOT[i].xyz)), -1.0, 1.0)) / SPOT[i].w;
         sunVeil = max(sunVeil, pow(clamp(1.0 - us / ${SUN_GLINT.reach.toFixed(1)}, 0.0, 1.0), ${SUN_GLINT.fall.toFixed(2)}) * SPOT_I[i] * back);
