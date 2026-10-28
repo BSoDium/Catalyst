@@ -131,6 +131,11 @@ export const SUN = {
     { at: 0, rgb: [0.3, 0.16, 0.46] },
   ],
   setShare: 0.5,
+  /**
+   * What the planet does to the SUN ITSELF (the disc of light and its rays) as it covers it (owner, 2026-10-29: "stop darkening the sun for now: 100 % of the light, only the size changes"): `dim` the share of its light it loses at most
+   * (the colour is dimmed, never the opacity), `redden` how much of the sunset's reddening (`setShare`) its colour takes, `halo` how much of the halo's fade and reddening with the cover (`fade`, below) it takes. `disc` the radius of the flat, opaque disc of light it is once the planet touches it (in the blob's units: 0.8 is where the light is at its full), `discColour` its colour (the core's, near white). The three above are 0 for now: the sun keeps its whole light and colour and only SHRINKS with the crescent until it is gone.
+   */
+  cover: { dim: 0, redden: 0, halo: 0, disc: 0.8, discColour: [1, 0.985, 0.93] as const },
   gain: 1.6,
 } as const;
 

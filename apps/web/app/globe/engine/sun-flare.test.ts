@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { SUN } from "./moon";
-import { flarePlace, haloClear, sunCrescent, sunRise, type FlareFrame } from "./sun-flare";
+import { flarePlace, haloClear, rayStart, sunCrescent, sunRise, type FlareFrame } from "./sun-flare";
 
 const frame = (over: Partial<FlareFrame> = {}): FlareFrame => ({ bufW: 400, bufH: 260, x: 300, y: 80, ahead: true, amount: 1, visible: 1, ...over });
 
@@ -103,5 +103,24 @@ describe("sunCrescent", () => {
       expect(c.shift).toBeGreaterThan(-r);
       expect(c.shift).toBeLessThanOrEqual(1);
     }
+  });
+});
+
+describe("rayStart", () => {
+  it("is the sun's own radius while it is clear, and follows what is left of it as the planet covers it, so that the rays always reach it", () => {
+    expect(rayStart(10, 1, 1, 0.8)).toBe(10);
+    // touched: the flat disc, `disc` of the crescent's width
+    expect(rayStart(10, 0.5, 1, 0.8)).toBeCloseTo(8, 9);
+    // shrinking with the crescent: never farther out than the disc, never under a pixel
+    let last = Infinity;
+    for (let rise = -1; rise <= 1; rise += 0.1) {
+      const c = sunCrescent(-rise);
+      const start = rayStart(10, c.area, c.width, 0.8);
+      expect(start).toBeLessThanOrEqual(10);
+      expect(start).toBeGreaterThanOrEqual(1);
+      expect(start).toBeLessThanOrEqual(Math.max(1, 10 * c.width) + 1e-9);
+      last = Math.min(last, start);
+    }
+    expect(last).toBe(1);
   });
 });

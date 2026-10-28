@@ -29,14 +29,15 @@ const N = FLARE.ghosts.length;
 export const WARM_GLSL = /* glsl */ `
   uniform float uSet;
   vec3 warm(float tone) {
-    float t = tone * (1.0 - ${f(SUN.setShare)} * uSet);
+    // (the sun's own core, the top tones, is reddened least: it is the outer light that goes red and dim as the planet covers it, not the light round the sun's disc)
+    float t = tone * (1.0 - ${f(SUN.setShare)} * uSet * (1.0 - 0.6 * tone));
     ${SUN.tint.map((s, i) => `${i === 0 ? "" : "else "}if (t >= ${f(s.at)}) return vec3(${list(s.rgb)});`).join("\n    ")}
     return vec3(${list(SUN.tint[SUN.tint.length - 1]!.rgb)});
   }
 `;
 
 const FRAGMENT = /* glsl */ `
-  uniform vec2 uSun; uniform vec2 uMid; uniform float uUnit; uniform float uStr; uniform vec3 uBg; uniform vec3 uInk; uniform float uLight; uniform float uBufW; uniform float uBufH; uniform float uSunR;
+  uniform vec2 uSun; uniform vec2 uMid; uniform float uUnit; uniform float uStr; uniform float uRay; uniform vec3 uBg; uniform vec3 uInk; uniform float uLight; uniform float uBufW; uniform float uBufH; uniform float uSunR;
   ${WARM_GLSL}
   const float BAYER[16] = float[16](${BAYER4.map((n) => `${n}.0`).join(", ")});
   const float AT[${N}] = float[${N}](${list(FLARE.ghosts.map((g) => g.at))});
@@ -78,18 +79,21 @@ const FRAGMENT = /* glsl */ `
     else if (a.x == a.y) { dist = a.x * 1.4142; len = ${f(FLARE.streakDiag)} * uBufW; }
     if (dist > uSunR) {
       float along = 1.0 - (dist - uSunR) / len;
-      if (along > 0.0 && pow(along, ${f(FLARE.streakFall)}) > bayer()) { ink = ${f(FLARE.streakTone)}; hue = mix(0.5, 0.95, along); ray = true; }
+      if (along > 0.0 && pow(along, ${f(FLARE.streakFall)}) > bayer()) { ink = ${f(FLARE.streakTone)}; hue = 0.95; ray = true; }
     }
     if (uLight > 0.5) {
       // the light page: the sun's rays are WHITE, and what shows them is a very soft, faint grey darkening round the sun (the veil); the ghosts are the ramp's colours, faintly
       float veil = pow(clamp(1.0 - length(p - uSun) / (${f(SUN.light.veil.reach)} * uBufW), 0.0, 1.0), ${f(SUN.light.veil.fall)}) * ${f(SUN.light.veil.strength)} * (1.0 - uSet);
       if (ink <= 0.0 && veil < 0.004) discard;
       if (ink <= 0.0) gl_FragColor = vec4(vec3(${f(SUN.light.veil.grey)}), veil * uStr);
-      else if (ray) gl_FragColor = vec4(1.0, 1.0, 1.0, uStr);
+      // (the rays are the sun's own white at all times: OPAQUE pixels, the strength taken out in the dither, not a see-through white)
+      else if (ray) { if (bayer() >= uRay) discard; gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0); }
       else gl_FragColor = vec4(mix(uBg, warm(hue) * ${f(SUN.light.ink)}, clamp(ink * ${f(SUN.gain)}, 0.0, 1.0) * ${f(SUN.light.ghost)}), uStr);
     } else {
       if (ink <= 0.0) discard;
-      gl_FragColor = vec4(mix(uBg, warm(hue), clamp(ink * ${f(SUN.gain)}, 0.0, 1.0)), uStr);
+      // the rays are the sun's own colour at all times (hue is the sun's core tone, reddened as the planet covers it, as the sun's own is) and hardly dimmer as less of the sun is in view (uRay), not see-through: opaque pixels
+      if (ray) gl_FragColor = vec4(mix(uBg, warm(hue), clamp(ink * ${f(SUN.gain)}, 0.0, 1.0) * uRay), 1.0);
+      else gl_FragColor = vec4(mix(uBg, warm(hue), clamp(ink * ${f(SUN.gain)}, 0.0, 1.0)), uStr);
     }
   }
 `;
@@ -147,17 +151,30 @@ export function sunRise(cosFromCentre: number, d: number): number {
   return Math.acos(Math.min(1, cosFromCentre)) - Math.asin(Math.min(1, 1 / Math.max(1.0001, d)));
 }
 
+/**
+ * Where the rays start, px from the sun's centre: at the edge of what is left of the sun, so that they always reach it (a fixed start left a gap between a shrinking sun and its rays). `r` is the sun's own radius, `area` and `width`
+ * the crescent's (`sunCrescent`): the disc is the width of the crescent, and once the planet touches it (the area under 0.97, fully from 0.9) the bright part is a flat disc of `disc` of that. Clear, it is `r`, as it always was. At least 1. Pure.
+ */
+export function rayStart(r: number, area: number, width: number, disc: number): number {
+  const t = Math.min(1, Math.max(0, (area - 0.9) / 0.07));
+  const clear = t * t * (3 - 2 * t);
+  return Math.max(1, r * width * (1 - (1 - disc) * (1 - clear)));
+}
+
 /** The flare for this frame: the sun's place (a whole pixel's centre), the middle of the picture, the unit its sizes are shares of, and its strength; or null when there is none. Pure. */
-export function flarePlace(fr: FlareFrame): { sx: number; sy: number; mx: number; my: number; unit: number; str: number; r: number } | null {
+export function flarePlace(fr: FlareFrame): { sx: number; sy: number; mx: number; my: number; unit: number; str: number; ray: number; r: number } | null {
   if (!fr.ahead || fr.amount <= 0.01 || fr.visible <= 0.01) return null;
   const mx = fr.bufW / 2;
   const my = fr.bufH / 2;
   const half = Math.hypot(mx, my);
   const out = Math.hypot(fr.x - mx, fr.y - my) / half;
   // fades as the sun leaves the picture, and as it comes to the middle
-  const str = fr.amount * fr.visible * (1 - smooth(FLARE.edgeFrom, FLARE.edgeTo, out)) * smooth(FLARE.midFrom, FLARE.midTo, out);
+  const fade = fr.amount * (1 - smooth(FLARE.edgeFrom, FLARE.edgeTo, out)) * smooth(FLARE.midFrom, FLARE.midTo, out);
+  const str = fade * fr.visible;
+  // the rays are the sun's own: as bright as ever as the planet covers it for now (SUN.cover.dim: 0; they go with the flare), and the same while it is clear
+  const ray = fade * (1 - SUN.cover.dim * (1 - fr.visible));
   if (str <= 0.01) return null;
-  return { sx: Math.floor(fr.x) + 0.5, sy: Math.floor(fr.y) + 0.5, mx, my, unit: Math.min(fr.bufW, fr.bufH), str, r: fr.r ?? 0 };
+  return { sx: Math.floor(fr.x) + 0.5, sy: Math.floor(fr.y) + 0.5, mx, my, unit: Math.min(fr.bufW, fr.bufH), str, ray, r: fr.r ?? 0 };
 }
 
 export class FlareLayer {
@@ -172,6 +189,7 @@ export class FlareLayer {
       uBufH: { value: 1 },
       uSunR: { value: 0 },
       uStr: { value: 1 },
+      uRay: { value: 1 },
       uBg: { value: new Color() },
       uInk: { value: new Color() },
       uLight: { value: 0 },
@@ -215,6 +233,7 @@ export class FlareLayer {
     u.uBufH!.value = fr.bufH;
     u.uSunR!.value = p.r;
     u.uStr!.value = p.str;
+    u.uRay!.value = p.ray;
     u.uSet!.value = fr.set ?? 0;
     return true;
   }
