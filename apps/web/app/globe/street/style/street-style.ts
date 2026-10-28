@@ -84,19 +84,29 @@ export const seaFrom = (handoff: number): number => handoff + 0.7;
  * lines follow the globe's) to OpenStreetMap (z5 and up) there, so drawing tile lines earlier would add a second, differently
  * registered Natural Earth line for no gain, and the one swap a viewer can see (the border moves by up to tens of km where a
  * frontier is disputed, `scripts/street/border-register.mjs`) happens once.
+ *
+ * It was 1 for a while, against this very comment, and that was the "borders that stop abruptly, only at some altitudes" report. The z0 to
+ * z4 tiles are Natural Earth's own classification, which flags as `disputed` (and the style drops every disputed line, see
+ * `COUNTRY_BORDER_OMT`) frontiers that OpenStreetMap draws as plain land borders and that the globe's data keeps on that evidence
+ * (`packages/geodata/scripts/osm-evidence.json`): Guyana / Venezuela, Guyana / Suriname, French Guiana, Malawi / Tanzania, Ethiopia / Kenya,
+ * Israel / Palestine / Lebanon, ... Measured against the dataset on the live OpenFreeMap tiles (`map.queryRenderedFeatures`, one sample
+ * every 0.1 degree along the dataset's lines): at map zoom 3.7 to 4.4 centred on Guyana 96 to 108 samples had no tile line (the whole
+ * Guyana / Venezuela frontier, about 800 km, and the Suriname ones), 0 of 940 at zoom 5.2 (the z5 tiles are OpenStreetMap's), and the
+ * Malawi / Tanzania frontier was missing at 3.8 to 4.0 and present at 4.3. So a border ran on, vanished for the zooms of the z3 and z4
+ * tiles, and came back at 5. Below 5 the bundled lines (the globe's own curated dataset) draw the country borders now.
  */
-export const BORDER_TILE_MINZOOM = 1;
+export const BORDER_TILE_MINZOOM = 5;
 export const borderHandoff = (handoff: number): number => Math.max(handoff, BORDER_TILE_MINZOOM);
 
 /**
- * The bundled world lines (110m coast, 50m borders: the globe's own data) as a PLACEHOLDER under the tile lines, for a source whose tiles
- * are global (the tile coast is drawn from the first zoom): below this MapLibre zoom they are drawn WHILE tiles are loading
- * (`placeholderLayers`, switched by the engine from `map.areTilesLoaded()`), so a slow network shows the globe's lines until the real ones
- * arrive and the temporal ease cross-fades one to the other, instead of an empty map. They are hidden once the tiles are in: never two
- * geometries of one coast at once. Above this zoom the parent tiles of MapLibre already stand in for the missing ones.
+ * The bundled world coastline (110m: the globe's own data) as a PLACEHOLDER under the tile coast, for a source whose tiles
+ * are global (the tile coast is drawn from the first zoom): below this MapLibre zoom it is drawn WHILE tiles are loading
+ * (`placeholderLayers`, switched by the engine from `map.areTilesLoaded()`), so a slow network shows the globe's line until the real one
+ * arrives and the temporal ease cross-fades one to the other, instead of an empty map. It is hidden once the tiles are in: never two
+ * geometries of one coast at once. (The 50m borders are not a placeholder: see `BORDER_TILE_MINZOOM`.) Above this zoom the parent tiles of MapLibre already stand in for the missing ones.
  */
 export const WORLD_PLACEHOLDER_BELOW = 5;
-export const PLACEHOLDER_LAYERS = ["world-coast", "world-borders"] as const;
+export const PLACEHOLDER_LAYERS = ["world-coast"] as const; // (the world borders are not one: they ARE the country borders below `BORDER_TILE_MINZOOM`)
 /** Whether a style with this hand-over zoom keeps the world lines as a (hidden until needed) placeholder. */
 export const hasPlaceholder = (handoff: number, hasTiles: boolean): boolean => hasTiles && handoff < WORLD_PLACEHOLDER_BELOW;
 
@@ -597,9 +607,9 @@ export function buildStreetStyle(o: StreetStyleOptions): StyleSpecification {
   } as LayerSpecification;
   // Country borders are the coast tone at street scale at every latitude (the globe eases them in below that, engine/scene.ts). Natural Earth
   // lines run up to the hand-over zoom (where the tile boundary takes over), exactly like the coastline: one line per frontier.
+  // (always drawn, never a placeholder: the tile boundary only starts at `BORDER_TILE_MINZOOM`, where OpenMapTiles' data stops being Natural Earth's)
   const bordersInk = (max: number): LayerSpecification => ({
     id: "world-borders", type: "line", source: "borders", maxzoom: max,
-    ...(placeholder ? { layout: { visibility: "none" } } : {}),
     paint: { "line-color": coastInk, "line-width": cell, "line-opacity": THIN_INK },
   }) as LayerSpecification;
   // Graticule: the faint level, on while the earth is visibly curved and off once the view is close to flat (layer-switch.ts, core/flatness.ts).
@@ -687,7 +697,7 @@ export function buildStreetStyle(o: StreetStyleOptions): StyleSpecification {
       ...seaFill,
       ...lines,
       worldCoastInk,
-      bordersInk(noTiles ? 24 : placeholder ? WORLD_PLACEHOLDER_BELOW : borderHandoff(handoff)),
+      bordersInk(noTiles ? 24 : borderHandoff(handoff)),
       // the paths are the top layers: they overwrite what they cross (opacity 1, see `routeColor`) so their level is read exactly
       ...routeLayers,
     ],

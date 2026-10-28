@@ -129,7 +129,10 @@ describe("the early cut (owner: the switch to the high-resolution coast and bord
     // the cut in MapLibre zoom: unified zoom + log2 cos(lat). At 70 degrees it is the lowest a place can be framed at
     const lowest = toMapZoom(HANDOVER.cutBackZoom, 70);
     expect(DEFAULT_HANDOFF.openmaptiles).toBeLessThanOrEqual(lowest);
-    expect(borderHandoff(DEFAULT_HANDOFF.openmaptiles)).toBeLessThanOrEqual(lowest);
+    // (the country borders are the exception, on purpose: the tile boundary only starts at map zoom 5, where OpenMapTiles' data is OpenStreetMap's and no
+    // longer Natural Earth's, which flags real frontiers as disputed and made them vanish from the cut to zoom 5: until then the bundled borders, the
+    // same curated dataset the globe draws, carry on across the cut with no change of source, `BORDER_TILE_MINZOOM`)
+    expect(borderHandoff(DEFAULT_HANDOFF.openmaptiles)).toBeGreaterThanOrEqual(lowest);
     expect(lowest).toBeGreaterThanOrEqual(STREET_TUNING.minZoom);
   });
   it("the map is created and follows before the cut, so its tiles are in when the camera gets there", () => {

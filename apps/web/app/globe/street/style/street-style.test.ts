@@ -310,14 +310,25 @@ describe("borders: one line per frontier (owner report: a wavy second line besid
       const world = st.find((l) => l.id === "world-borders")!;
       const tile = st.find((l) => l.id === "boundary-country")!;
       expect(tile.minzoom, schema).toBe(borderHandoff(DEFAULT_HANDOFF[schema]));
-      // a source with global tiles keeps the world borders only as a placeholder (hidden, switched on while tiles load: see WORLD_PLACEHOLDER_BELOW)
-      expect(world.maxzoom, schema).toBe(hasPlaceholder(DEFAULT_HANDOFF[schema], true) ? WORLD_PLACEHOLDER_BELOW : tile.minzoom);
+      // the world borders are drawn up to the tile boundary's first zoom, always (not a placeholder): the same line as the globe's, no gap, no overlap
+      expect(world.maxzoom, schema).toBe(tile.minzoom);
+      expect((world as { layout?: unknown }).layout, schema).toBeUndefined();
       expect(tile.maxzoom).toBeUndefined();
     }
-    for (const handoff of [3, 4.5, 5, 6, 8.5]) {
+    for (const handoff of [1, 3, 4.5, 5, 6, 8.5]) {
       const st = buildStreetStyle({ schema: "openmaptiles", tiles: TILES, coastlines: empty, borders: empty, graticule: empty, routes: empty, handoffZoom: handoff }).layers as unknown as { id: string; minzoom?: number; maxzoom?: number }[];
-      expect(st.find((l) => l.id === "world-borders")!.maxzoom, `handoff ${handoff}`).toBe(hasPlaceholder(handoff, true) ? WORLD_PLACEHOLDER_BELOW : st.find((l) => l.id === "boundary-country")!.minzoom);
+      expect(st.find((l) => l.id === "world-borders")!.maxzoom, `handoff ${handoff}`).toBe(st.find((l) => l.id === "boundary-country")!.minzoom);
       expect(st.find((l) => l.id === "boundary-country")!.minzoom).toBeGreaterThanOrEqual(BORDER_TILE_MINZOOM);
+    }
+  });
+  it("regression (borders that stop abruptly at some altitudes): no tile country line below the first OpenStreetMap tile zoom, whatever the hand-over", () => {
+    // The z0 to z4 tiles of OpenMapTiles carry Natural Earth's classification, which flags Guyana / Venezuela, Malawi / Tanzania, Israel / Palestine, ...
+    // as disputed: the filter drops them, and they came back at z5. Below 5 only the bundled (curated) borders may draw a country border.
+    expect(BORDER_TILE_MINZOOM).toBeGreaterThanOrEqual(5);
+    for (const handoff of [0, 1, 2, 3, 4, 4.9]) {
+      const st = buildStreetStyle({ schema: "openmaptiles", tiles: TILES, coastlines: empty, borders: empty, graticule: empty, routes: empty, handoffZoom: handoff }).layers as unknown as { id: string; minzoom?: number; maxzoom?: number }[];
+      expect(st.find((l) => l.id === "boundary-country")!.minzoom, `handoff ${handoff}`).toBe(5);
+      expect(st.find((l) => l.id === "world-borders")!.maxzoom, `handoff ${handoff}`).toBe(5);
     }
   });
   it("without a tile source the world borders run at every zoom (nothing to hand over to)", () => {
