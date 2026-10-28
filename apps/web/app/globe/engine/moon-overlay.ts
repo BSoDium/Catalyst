@@ -38,9 +38,8 @@ const LIVE = 0.6;
 function arrow(doc: Document): SVGElement {
   const NS = "http://www.w3.org/2000/svg";
   const svg = doc.createElementNS(NS, "svg");
-  // (the arrow fills its box, edge to edge, so that its height is the box's: the card stretches it to the height of the words, at a width of its own)
+  // (the arrow fills its box, edge to edge, so that its height is the box's: the card sizes it to the words' height, square: it keeps its shape)
   svg.setAttribute("viewBox", "0 0 10 10");
-  svg.setAttribute("preserveAspectRatio", "none");
   svg.setAttribute("fill", "none");
   svg.setAttribute("stroke", "currentColor");
   svg.setAttribute("aria-hidden", "true");

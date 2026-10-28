@@ -3192,7 +3192,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     flex-direction: row;
     align-items: center;
     width: max-content;
-    max-width: min(15rem, 62vw);
+    max-width: min(16rem, 70vw);
     box-sizing: border-box;
     padding: 3px 6px;
     background: var(--map-label-plate);
@@ -3232,20 +3232,20 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   }
 
   /*
-   * The way in: an arrow as tall as the words (both lines: the title and the second line), thin, at the right of them, apart from them: a station sign's, a stem and a right-angled head,
-   * drawn edge to edge in its box (28 px wide, the height of the card's words: the box is not square when the second line wraps, and the arrow follows it), with a stroke of its own that does not scale (1.5 px: the weight of the title's letters), in the words' own colours, raised on hover and focus.
+   * The way in: the same arrow as ever (a square with a diagonal and the two sides of a head, a station sign's), scaled up, never stretched: square, as tall as the words less a little (38 px:
+   * from the top of the title's x-height to the bottom of the second line's, which wraps to two lines at the card's width), centred on them, at the right, apart from them. Drawn edge to edge in its box,
+   * with a stroke of its own that does not scale (1.5 px: the weight of the title's letters), in the words' own colours, raised on hover and focus.
    */
   .globe-moon-card .globe-moon-arrow[data-size] {
     flex: none;
-    align-self: stretch;
-    width: 28px;
-    height: auto;
+    align-self: center;
+    width: 38px;
+    height: 38px;
     margin-inline-start: 14px;
     overflow: visible;
     stroke-width: 1.5px;
     stroke-linecap: butt;
     stroke-linejoin: miter;
-    vector-effect: non-scaling-stroke;
     color: var(--muted-foreground);
   }
 
