@@ -438,15 +438,17 @@ export class RingLayer {
     const useHl = this.hlMode !== "none" && this.hlEnd > 0;
     for (let i = 0; i < g.count; i++) {
       const a = g.angle[i]!;
-      let l = lv;
+      // the letter's tone, between two of the palette's levels (a fraction): drawn as the lower one whole and the upper one over it by the fraction, so that the night comes over the type smoothly, not click by click
+      let lf = lv;
       if (night > 0.001) {
         const dot = Math.sin(a) * sun[0] + Math.cos(a) * sun[1];
         const x = Math.min(1, Math.max(0, (dot - NIGHT.litFrom) / (NIGHT.litTo - NIGHT.litFrom)));
-        const dark = Math.round(night * (1 - x * x * (3 - 2 * x)) * NIGHT.lineSteps) / NIGHT.lineSteps;
-        l = Math.round(lv + (nightLevel - lv) * dark * NIGHT.ringDim);
+        lf = lv + (nightLevel - lv) * night * (1 - x * x * (3 - 2 * x)) * NIGHT.ringDim;
       }
+      const lo = Math.floor(lf + 1e-6);
+      const frac = lf - lo;
       const hl = useHl && g.idx[i]! < this.hlEnd;
-      const at = atlasFor(l, hl);
+      const at = atlasFor(lo, hl);
       if (!at) continue;
       const col = at.col.get(g.code[i]!);
       if (col === undefined) continue;
@@ -454,6 +456,14 @@ export class RingLayer {
       const sn = Math.sin(a) * m;
       ctx.setTransform(c, sn, -sn, c, g.x[i]! * dpr + ox, g.y[i]! * dpr + oy);
       ctx.drawImage(at.canvas, col * cw, 0, cw, ch, -CELL_W / 2, -CELL_H / 2, CELL_W, CELL_H);
+      if (frac > 0.02) {
+        const up = atlasFor(Math.min(levels - 1, lo + 1), hl);
+        if (up) {
+          ctx.globalAlpha = frac;
+          ctx.drawImage(up.canvas, col * cw, 0, cw, ch, -CELL_W / 2, -CELL_H / 2, CELL_W, CELL_H);
+          ctx.globalAlpha = 1;
+        }
+      }
     }
   }
 }
