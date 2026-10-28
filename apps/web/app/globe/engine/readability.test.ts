@@ -2,7 +2,6 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { MAP_CONTRAST, MAP_CONTRAST_DARK, PALETTE_LEVELS, buildRamp, roleLevel, type Rgb } from "./palette";
 import { AA_TEXT, LABEL_PLATE_ALPHA, LABEL_PLATE_FLOOR, LABEL_PLATE_MAX, composite, labelPlateAlpha, minPlateAlpha, roundPlateAlpha } from "./label-plate";
-import { LABEL_TYPE } from "./label-text";
 
 /**
  * What the HUD (labels, markers, nav) needs from the map behind it: the map recedes (its loudest level is well
@@ -63,7 +62,7 @@ for (const scheme of ["light", "dark"] as const) {
     it("a selected label (page colour on a solid ink plate) is opaque, so its ratio does not depend on the map", () => {
       expect(contrast(bg, fg)).toBeGreaterThanOrEqual(15);
     });
-    it("the translucent plate: --label-plate-alpha is a chosen value ABOVE the least alpha that keeps the name and the second line AA (4.5:1) over the worst tone behind them (the floor, rounded up to a percent), and still translucent", () => {
+    it("the credits line's translucent plate (map labels are opaque since 2026-10-28): --label-plate-alpha is a chosen value ABOVE the least alpha that keeps the name and the second line AA (4.5:1) over the worst tone behind them (the floor, rounded up to a percent), and still translucent", () => {
       const alpha = numberToken(scheme, "--label-plate-alpha");
       // pinned to the named constant (engine/label-plate.ts) and to the stylesheet's forced-scheme copies
       expect(alpha).toBe(LABEL_PLATE_ALPHA[scheme]);
@@ -83,20 +82,23 @@ for (const scheme of ["light", "dark"] as const) {
         expect(contrast(fg, composite(bg, alpha, ramp[k]!))).toBeGreaterThanOrEqual(AA_TEXT);
         expect(contrast(muted, composite(bg, alpha, ramp[k]!))).toBeGreaterThanOrEqual(AA_TEXT);
       }
-      // and it is the plate of the stylesheet's rules: the page colour at that alpha (token), the forced schemes carry the same value
-      expect(css).toMatch(/--map-label-plate: color-mix\(in srgb, var\(--background\) calc\(var\(--label-plate-alpha\) \* 100%\), transparent\)/);
+      // and it is the plate of the credits' rule: the page colour at that alpha (token)
+      expect(css).toMatch(/\.map-credits \{\s*--map-label-plate: color-mix\(in srgb, var\(--background\) calc\(var\(--label-plate-alpha\) \* 100%\), transparent\)/);
       expect(minPlateAlpha(fg, bg, peak)).toBeLessThan(alpha); // the name is never the binding line
       expect(alpha).toBeGreaterThan(0.5); // a plate that says what is behind it still hides most of it: a quarter of the map would not read as a ground
       expect(alpha).toBeLessThanOrEqual(LABEL_PLATE_MAX); // translucent: the map still shows through (a tenth of it or more)
     });
-    it("map labels (app.css `.map-label`): a translucent plate of the page colour in EVERY state, the name in the foreground, the second line in the muted foreground, AA on the plate; selected is inverted and opaque", () => {
+    it("map labels (app.css `.map-label`): an OPAQUE, sharp-edged plate of the page colour in EVERY state, the name in the foreground, the second line in the muted foreground, AA on the plate; selected is inverted and opaque", () => {
       const rules = [...css.replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/\.map-(?:label|halo)[^{]*\{[^}]*\}/g)].map((m) => m[0]);
       expect(rules.length).toBeGreaterThanOrEqual(5);
       const all = rules.join("\n");
-      // at rest: the foreground on the translucent page-colour plate (--map-label-plate), the second line muted
-      expect(all).toMatch(/\.map-label \{[^}]*--map-label-plate: color-mix\(in srgb, var\(--background\)[^}]*color: var\(--foreground\);[^}]*background: var\(--map-label-plate\)/);
-      // drawn over other labels (the last resort) the plate is opaque, or it would show the text under it
-      expect(all).toMatch(/\.map-label\[data-over\] \{[^}]*--map-label-plate: var\(--background\)/);
+      // at rest: the foreground on the opaque page-colour plate (--map-label-plate), the second line muted; no alpha, no shadow (a sharp edge)
+      expect(all).toMatch(/\.map-label \{[^}]*--map-label-plate: var\(--background\);[^}]*color: var\(--foreground\);[^}]*background: var\(--map-label-plate\)/);
+      expect(/\.map-label \{[^}]*\}/.exec(all)?.[0]).not.toMatch(/color-mix|box-shadow|gradient/);
+      // the moon's card (the Memory Lane satellite's label) is the same plate: opaque, no shadow
+      const card = /\.globe-moon-card \{([^}]*)\}/.exec(css.replace(/\/\*[\s\S]*?\*\//g, ""))?.[1] ?? "";
+      expect(card).toMatch(/--map-label-plate: var\(--background\)/);
+      expect(card).not.toMatch(/color-mix|box-shadow|gradient/);
       expect(all).toMatch(/\.map-label-sub \{[^}]*color: var\(--muted-foreground\)/);
       // hovered or focused: the text and the plate do not change (only the stacking order), never an underline
       const hover = /\.map-label\[data-mode="hover"\] \{([^}]*)\}/.exec(all)?.[1] ?? "";
@@ -106,16 +108,13 @@ for (const scheme of ["light", "dark"] as const) {
       // selected: inverted, the second line the page colour mixed 28 % toward the foreground
       expect(all).toMatch(/\[data-mode="selected"\] \{[^}]*background: var\(--foreground\);[^}]*color: var\(--background\)/);
       expect(all).toMatch(/\[data-mode="selected"\] \.map-label-sub \{[^}]*color-mix\(in srgb, var\(--background\) 72%, var\(--foreground\)\)/);
-      // the feather is the plate's own shadow (engine/label-dom.ts, none when selected or opaque); there is no separate element any more, and the text has no shadow of its own
+      // there is no separate element or shadow round the plate, and the text has no shadow of its own
       expect(all).not.toMatch(/map-halo/);
       expect(all).not.toMatch(/text-shadow/);
       expect(all).not.toMatch(/(?<!-)opacity/); // no dimming in any state (the plate's own alpha is a colour)
       expect(css).toMatch(/\.map-label \{[^}]*font-family: var\(--font-mono\)/);
-      // the feather is the plate's own colour, 1 to 2 px (engine/label-dom.ts, LABEL_TYPE.feather)
-      expect(readFileSync(new URL("./label-dom.ts", import.meta.url), "utf8")).toMatch(/var\(--map-label-plate\)/);
-      expect(LABEL_TYPE.feather.spread + LABEL_TYPE.feather.blur).toBeLessThanOrEqual(4);
-      // reduced transparency: an opaque plate
-      expect(css).toMatch(/prefers-reduced-transparency: reduce\) \{\s*\/\*[^*]*\*\/\s*\.map-label \{\s*--map-label-plate: var\(--background\)/);
+      // no feather in the layer's code either (engine/label-dom.ts)
+      expect(readFileSync(new URL("./label-dom.ts", import.meta.url), "utf8").replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, "")).not.toMatch(/boxShadow|featherShadow/);
       const invertedSub = over(bg, 0.72, fg);
       expect(contrast(fg, bg)).toBeGreaterThanOrEqual(15); // the name on the plate, at rest and hovered
       expect(contrast(bg, fg)).toBeGreaterThanOrEqual(15); // selected: page colour on the foreground plate

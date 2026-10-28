@@ -38,14 +38,15 @@ const LIVE = 0.6;
 function arrow(doc: Document): SVGElement {
   const NS = "http://www.w3.org/2000/svg";
   const svg = doc.createElementNS(NS, "svg");
-  svg.setAttribute("viewBox", "0 0 24 24");
+  // (the arrow fills its box, edge to edge, so that its height is the box's: the card sizes it to the words' height, square: it keeps its shape)
+  svg.setAttribute("viewBox", "0 0 10 10");
   svg.setAttribute("fill", "none");
   svg.setAttribute("stroke", "currentColor");
   svg.setAttribute("aria-hidden", "true");
   svg.setAttribute("focusable", "false");
   svg.setAttribute("class", "ui-icon globe-moon-arrow");
   svg.dataset.size = "inline";
-  for (const d of ["M7 7h10v10", "M7 17 17 7"]) {
+  for (const d of ["M0 0h10v10", "M0 10 10 0"]) {
     const path = doc.createElementNS(NS, "path");
     path.setAttribute("d", d);
     svg.append(path);

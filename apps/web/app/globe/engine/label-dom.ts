@@ -6,10 +6,8 @@
  * its box smoothly (`begin(settled)`). There is no CSS transition: the motion of a label (its eased glide to a new slot) is computed per
  * frame (engine/label-track.ts) and arrives here as a position:
  *  - `div.map-label`: the PLATE and its text, two lines (`span.map-label-name`, `span.map-label-sub`, sized by `LABEL_TYPE`, engine/label-text.ts).
- *    The plate is TRANSLUCENT, the page colour at `--label-plate-alpha` (app.css; the least that keeps the text AA over the loudest map tone,
- *    engine/label-plate.ts), with a feather of 1 to 2 px (`LABEL_TYPE.feather`, a `box-shadow` of the plate's own colour, `featherShadow`) so
- *    it is not a hard sticker and does not dim the map around the text. Selected (inverted, the foreground colour) and drawn over other
- *    labels (the last resort) it is opaque, with no feather.
+ *    The plate is OPAQUE, the page colour, with a SHARP edge (owner, 2026-10-28: no gradient round the background of a label): no alpha, no
+ *    feather, no `box-shadow`. Selected it is inverted (the foreground colour), as opaque as the others.
  * A write happens only when a value changed: an idle map, and a frame in which nothing moved, touch no element.
  *
  * Why DOM and not a canvas (measured, docs/web-architecture.md "Labels in device pixels"): the browser rasterises each label once and the
@@ -70,14 +68,6 @@ interface Slot {
 }
 
 const POOL_KEEP = 400;
-
-/**
- * The feather as a `box-shadow` in the plate's own translucent colour (`--map-label-plate`, app.css `.map-label`): it sits OUTSIDE the plate
- * only, `spread` px beyond it and fading out over `blur` px more, so the plate's edge goes from the plate's alpha to nothing in 2 to 3 px.
- */
-export function featherShadow(f: { blur: number; spread: number } = LABEL_TYPE.feather): string {
-  return `0 0 ${f.blur}px ${f.spread}px var(--map-label-plate)`;
-}
 
 export class LabelLayer {
   private live = new Map<number, Slot>();
@@ -140,8 +130,6 @@ export class LabelLayer {
         if (v.over) s.el.dataset.over = "";
         else delete s.el.dataset.over;
       }
-      // an opaque plate (selected: inverted; over other labels: the last resort) has no feather: a translucent shadow would show its own edge
-      s.el.style.boxShadow = v.mode === "selected" || v.over ? "none" : featherShadow();
       s.mode = v.mode;
       s.over = v.over;
       this.writes++;
@@ -239,10 +227,9 @@ export class LabelLayer {
         opacity: Number(s.el.style.opacity || 1),
         transform: s.el.style.transform,
         rect: { x0: r.left, y0: r.top, x1: r.right, y1: r.bottom },
-        /** The name's and the second line's boxes (the text starts `padX` inside the plate), and the feather (`box-shadow`) as written. */
+        /** The name's and the second line's boxes (the text starts `padX` inside the plate). */
         nameRect: { x0: nameR.left, y0: nameR.top, x1: nameR.right, y1: nameR.bottom },
         subRect: { x0: subR.left, y0: subR.top, x1: subR.right, y1: subR.bottom },
-        feather: s.el.style.boxShadow,
       };
     });
   }

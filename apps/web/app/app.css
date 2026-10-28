@@ -2808,21 +2808,19 @@ h1[tabindex="-1"]:focus-visible {
  * Map labels: the names of the detection boxes, HTML text in the app's monospace stack (`--font-mono`, the credits line's and the dev badge's) (engine/label-dom.ts creates and positions the
  * elements; sizes, weights and tracking come from LABEL_TYPE in engine/label-text.ts because the planner measures with the same numbers).
  * Two lines: the name (line 1, 14 px, weight 500) and a second line (11 px, regular: the country or number of places, and the linked entries by kind).
- * EVERY label sits on a TRANSLUCENT plate of the page colour, `--label-plate-alpha` of it (0.86 light, 0.8 dark: clearly above the 0.70 / 0.62 that
- * keep the 11 px second line AA, 4.5:1, over the loudest tone of the map, a box's outline at rest; the floor is computed from these tokens in
- * engine/label-plate.ts and pinned by readability.test.ts), so the map still shows through, dimmed, instead of being wiped out under the text. Its edge is a feather of 1 to
- * 2 px (engine/label-dom.ts `featherShadow`, LABEL_TYPE.feather, a shadow of the plate's own colour) so it is not a hard sticker and dims
+ * EVERY label sits on an OPAQUE plate of the page colour with a SHARP edge (owner, 2026-10-28: no gradient round the label's background, a sharp edge and a completely opaque
+ * ground): `--map-label-plate` is the page colour itself, no alpha and no feather (no `box-shadow`), so the plate is a crisp pixel-art rectangle that hides what is behind it
+ * (the globe's lines, the stars) and keeps the text at full contrast on any of it (names 19:1, the 11 px second line AA, readability.test.ts). It dims
  * nothing around the text. The text is the foreground (names, 19:1) and the muted foreground (second line, AA on the plate in both
  * schemes: tests in globe/engine/readability.test.ts); there is no underline and no text-shadow. Hovered or focused: the plate and text do not
  * change (the box's own colour logic does), only the stacking order so that the label is not covered by a neighbour. Selected: INVERTED, the
- * foreground as the plate and the page colour as the text, OPAQUE with no feather (high contrast already; the second line is the page colour mixed 28 %
- * toward the foreground, still AA on it). A label drawn over other labels (the last resort of the plan) is opaque too: a translucent plate would
- * show the text under it. A label moves by `transform` only, smoothly (to the sub-pixel while it moves, a whole device pixel at rest); its one CSS transition is the selected card's `translate` (a compositor transition, no layout), and the
+ * foreground as the plate and the page colour as the text, OPAQUE like every other plate (high contrast already; the second line is the page colour mixed 28 %
+ * toward the foreground, still AA on it). A label drawn over other labels (the last resort of the plan) only differs by its stacking order. A label moves by `transform` only, smoothly (to the sub-pixel while it moves, a whole device pixel at rest); its one CSS transition is the selected card's `translate` (a compositor transition, no layout), and the
  * motion (the eased glide to a new slot) is computed per frame in engine/label-track.ts, so a label is always on its way to its place and never snaps; reduced motion
- * (the host's own flag) makes it instant. Reduced transparency: the plate is opaque.
+ * (the host's own flag) makes it instant. Reduced transparency changes nothing here: the plate is always opaque.
  */
 .map-label {
-  --map-label-plate: color-mix(in srgb, var(--background) calc(var(--label-plate-alpha) * 100%), transparent);
+  --map-label-plate: var(--background);
   font-family: var(--font-mono);
   color: var(--foreground);
   background: var(--map-label-plate);
@@ -2854,15 +2852,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   }
 }
 
-/* A browser without `color-mix` gets the opaque plate (an invalid custom property would leave the text on the bare map). */
-@supports not (background: color-mix(in srgb, red 50%, transparent)) {
-  .map-label {
-    --map-label-plate: var(--background);
-  }
-}
-
 .map-label[data-over] {
-  --map-label-plate: var(--background);
   z-index: 1;
 }
 
@@ -2924,10 +2914,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
 }
 
 @media (prefers-reduced-transparency: reduce) {
-  /* A map label's plate is opaque. */
-  .map-label {
-    --map-label-plate: var(--background);
-  }
+  /* A map label's plate is always opaque; the credits' ground (translucent) becomes opaque. */
   .map-credits {
     --map-label-plate: var(--background);
   }
@@ -3193,11 +3180,11 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
 
   /*
    * The card: a map label's own look (`.map-label`, the bounding boxes' labels): no outline, the mono type, a name over a muted second line, on a plate in the page's colour with the
-   * label's feather round it (engine/label-dom.ts `featherShadow`), so that it hides what is behind it (the globe's lines, the stars) and reads on any of it. Out of sight and out of
+   * label's sharp, fully opaque edge (no feather), so that it hides what is behind it (the globe's lines, the stars) and reads on any of it. Out of sight and out of
    * the pointer's way until the moon is held.
    */
   .globe-moon-card {
-    --map-label-plate: color-mix(in srgb, var(--background) 82%, transparent);
+    --map-label-plate: var(--background);
     position: absolute;
     left: 0;
     top: 0;
@@ -3205,11 +3192,10 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     flex-direction: row;
     align-items: center;
     width: max-content;
-    max-width: min(15rem, 62vw);
+    max-width: min(16rem, 70vw);
     box-sizing: border-box;
     padding: 3px 6px;
     background: var(--map-label-plate);
-    box-shadow: 0 0 3px 2px var(--map-label-plate);
     font-family: var(--font-mono);
     color: var(--foreground);
     text-align: left;
@@ -3245,14 +3231,25 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     min-width: 0;
   }
 
-  /* The way in: a large, thin arrow at the right of the words, apart from them (a station sign's: a stem and a right-angled head); the words' own colours, raised on hover and focus. */
-  .globe-moon-arrow {
+  /*
+   * The way in: the same arrow as ever (a square with a diagonal and the two sides of a head, a station sign's), scaled up, never stretched: square, a little shorter than the words (28 px, owner, 2026-10-28: 38 was too big; the words are 46 px tall, the title and the second line, which wraps to two lines at the card's width), centred on them, at the right, apart from them. Drawn edge to edge in its box,
+   * with a stroke of its own that does not scale (1.5 px: the weight of the title's letters), in the words' own colours, raised on hover and focus.
+   */
+  .globe-moon-card .globe-moon-arrow[data-size] {
     flex: none;
+    align-self: center;
     width: 28px;
     height: 28px;
     margin-inline-start: 14px;
-    stroke-width: 1.25;
+    overflow: visible;
+    stroke-width: 1.5px;
+    stroke-linecap: butt;
+    stroke-linejoin: miter;
     color: var(--muted-foreground);
+  }
+
+  .globe-moon-card .globe-moon-arrow path {
+    vector-effect: non-scaling-stroke;
   }
 
   .globe-moon:hover .globe-moon-arrow,

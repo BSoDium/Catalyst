@@ -127,7 +127,7 @@ export const LOD = {
     /** Clear gap from every other drawn box and label (the larger of the gaps along x and y): a child is taken at `enter`, kept down to `leave`. */
     gapPx: { enter: 24, leave: 12 },
     /**
-     * The room a label's PLATE (both lines) keeps from every other box and plate is this fraction of `gapPx` (a plate is padded, its edge feathered:
+     * The room a label's PLATE (both lines) keeps from every other box and plate is this fraction of `gapPx` (a plate is padded:
      * 16 px of a box's 24). At the full 24 px the groups of the complaint opened 0.65 (Western Europe) and 1.15 (Central Europe, its second node)
      * of a level later than before in the browser, at 2/3 they are within 0.3.
      */
