@@ -13,6 +13,7 @@ import { AddEquation, BufferAttribute, BufferGeometry, Color, Mesh, OneFactor, O
 import type { GlobeTheme } from "./colors";
 import { BAYER4 } from "./sky";
 import { SUN } from "./moon";
+import { FX } from "./fx";
 import { FlareLayer, WARM_GLSL, rayStart, haloClear, sunCrescent, type FlareFrame } from "./sun-flare";
 
 const VERTEX = /* glsl */ `
@@ -225,7 +226,7 @@ export class SunLayer {
   /** Place the sun for this frame: true when it is in the picture (the frame loop has a sun to draw). */
   sync(f: SunFrame): boolean {
     const p = f.amount > 0.01 ? sunPlace(f) : null;
-    this.mesh.visible = p !== null;
+    this.mesh.visible = p !== null && FX.on.sunHalo;
     // how far the sun is outside the planet's limb, in disc radii (Infinity: nothing in the way): what is left of it (`sunCrescent`), and how much of the halo the planet leaves
     const sr = sunRadius(f);
     const rise = ((f.rise ?? Infinity) * f.focal) / sr;
@@ -261,7 +262,7 @@ export class SunLayer {
     }
     // the lens flare comes out of the same centre, as bright as the share of the sun that is left (on the light page whole, until the sun is gone: it does not dim, only the sun's size follows the crescent)
     const rayStartPx = rayStart(sr, cres.area, cres.width, SUN.cover.disc);
-    const flaring = this.flare.sync({ bufW: f.bufW, bufH: f.bufH, x: f.ahead ? bx : f.x, y: f.ahead ? by : f.y, ahead: f.ahead, amount: f.amount, visible: this.dark ? cres.area : Math.sqrt(cres.area), rayDim: this.dark ? undefined : 1, r: rayStartPx, size: Math.sqrt(cres.area), set: (1 - halo) * SUN.cover.redden } satisfies FlareFrame);
+    const flaring = FX.on.flare ? this.flare.sync({ bufW: f.bufW, bufH: f.bufH, x: f.ahead ? bx : f.x, y: f.ahead ? by : f.y, ahead: f.ahead, amount: f.amount, visible: this.dark ? cres.area : Math.sqrt(cres.area), rayDim: this.dark ? undefined : 1, r: rayStartPx, size: Math.sqrt(cres.area), set: (1 - halo) * SUN.cover.redden } satisfies FlareFrame) : (this.flare.sync({ bufW: f.bufW, bufH: f.bufH, x: 0, y: 0, ahead: false, amount: 0, visible: 0 }), false);
     if (!p) return flaring || blob;
     const u = this.mat.uniforms;
     // the halo and the ring are round what is left of the sun, not the whole one: centred where the visible part's centre of mass is, their inner edge the crescent's width (as the blur is)

@@ -349,3 +349,7 @@ The owner saw "a heavy frame-rate drop a few seconds in, especially when a new l
 | now, after the idle hold | 1.3 | 0 | 0 | 0 | 0 | 6 | 13 |
 
 Smoothness costs about 20 ms a second of main-thread time and 40 of GPU-helper CPU over the timer version while the caption moves, against about half of the round-8 cost; the idle hold, 30 s without an input, brings it to nothing. (The `ps` columns are coarse; GPU energy and battery are not measured.)
+
+## Visual effect tiers (`engine/fx.ts`, owner, 2026-10-28)
+
+The effects layered on the planet (the iris, the ring's smooth night, the lens flare, the sun's halo) have switches: `FX.on.<name>`, read per frame by the layers. `?fx=full|reduced|minimal` (or sessionStorage `fx`) picks a tier, else it follows the device (`deviceMemory` <= 4 or <= 4 cores: reduced; <= 2 or Save-Data: minimal); `?no-fx=iris,flare` drops single effects. Reduced has no iris and the ring's night in whole tones; minimal also no flare. Not yet switchable: the stars' count, the caption's lighting, the sky; add a name to `FxName` and an `OFF_AT` row when one needs it.

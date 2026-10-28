@@ -21,6 +21,7 @@ import type { GlobeTheme } from "./colors";
 import { GlyphBuffer, placeGlyphs, ringLayout, ringPhase, ringTone, type RingLayout } from "./ring";
 import { CAPTION, RING } from "./tuning";
 import { NIGHT } from "./surface";
+import { FX } from "./fx";
 
 export interface RingFrame {
   /** Centre of the planet on the container, CSS px. */
@@ -445,6 +446,7 @@ export class RingLayer {
         const x = Math.min(1, Math.max(0, (dot - NIGHT.litFrom) / (NIGHT.litTo - NIGHT.litFrom)));
         lf = lv + (nightLevel - lv) * night * (1 - x * x * (3 - 2 * x)) * NIGHT.ringDim;
       }
+      if (!FX.on.ringBlend) lf = Math.round(lf);
       const lo = Math.floor(lf + 1e-6);
       const frac = lf - lo;
       const hl = useHl && g.idx[i]! < this.hlEnd;
