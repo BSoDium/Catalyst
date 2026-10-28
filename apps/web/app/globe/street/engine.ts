@@ -593,7 +593,7 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
   };
   let lastMask: string | null = null;
 
-  /** The world lines stand in for tiles that are not there yet (and only then): the ease cross-fades them to the tile lines when those arrive. */
+  /** The world coastline stands in for tiles that are not there yet (and only then): the ease cross-fades it to the tile coast when they arrive. (The world borders are always on below the tile boundary's zoom.) */
   const updatePlaceholder = () => {
     if (!placeholderStyle) return;
     // (the street tiles' own source: the satellite ground's tiles come later and never mean the lines are late, or both would be drawn)
