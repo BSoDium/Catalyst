@@ -46,7 +46,7 @@ import {
 } from "three";
 import type { GlobeTheme } from "./colors";
 import { SUN } from "./moon";
-import { bakeBand, bakeStarMap, type Mat3 } from "./sky";
+import { bakeBand, bakeStarHalo, bakeStarMap, type Mat3 } from "./sky";
 import { WARM_GLSL, haloClear, sunRise } from "./sun-flare";
 import {
   CAPTION_FACE,
@@ -212,8 +212,8 @@ const EGG_VERT = /* glsl */ `
   }
 `;
 
-/** The environment of the metal (`EGG_FRAG` `galaxy`): how bright the Milky Way's band is in it (the band map is 0..1: brighter here than on the globe's sky, so that the metal shows it), the stars' (the globe's own star field, `bakeStarMap`; `starsLight` of that on the light page, where they are too visible at full strength and the spotlights carry the effect) and the broad lift of the page's own sky; `edge`: what the bevel does to the reflection that a flat face does not (`contrast`: the bevel reflects the environment that much harder, as a polished curve does; `rim`: a fresnel sheen, the bevel brightens smoothly towards the grazing angle, across its width; `wall`: the share of both that the walls take). */
-const EGG_ENV = { band: 2.3, stars: 0.95, starsLight: 0.5, sky: 0.45, edge: { contrast: 0.9, rim: 0.7, wall: 0.5 } } as const;
+/** The environment of the metal (`EGG_FRAG` `galaxy`): how bright the Milky Way's band is in it (the band map is 0..1: brighter here than on the globe's sky, so that the metal shows it), the stars' (the globe's own star field, `bakeStarMap`; `starsLight` of that on the light page, 0: there a star is a white dot in a grey halo, as the sun is, not a dark point, `bakeStarHalo`) and the broad lift of the page's own sky; `edge`: what the bevel does to the reflection that a flat face does not (`contrast`: the bevel reflects the environment that much harder, as a polished curve does; `rim`: a fresnel sheen, the bevel brightens smoothly towards the grazing angle, across its width; `wall`: the share of both that the walls take). */
+const EGG_ENV = { band: 2.3, stars: 0.95, starsLight: 0, starHalo: 1.4, sky: 0.45, edge: { contrast: 0.9, rim: 0.7, wall: 0.5 } } as const;
 
 /**
  * The sun as the metal reflects it (`EGG_FRAG`), as the globe's own sun looks, less its rays: a very bright, hot centre and a falloff round it, whose strength picks the colour from the
@@ -265,6 +265,7 @@ const EGG_FRAG = /* glsl */ `
   uniform float uLight;
   uniform sampler2D uBand;
   uniform sampler2D uStars;
+  uniform sampler2D uStarHalo;
   uniform mat3 uViewToGal;
   ${WARM_GLSL}
   varying vec3 vNormal;
@@ -358,6 +359,11 @@ const EGG_FRAG = /* glsl */ `
       const vec4 SPOT[${SPOTS.length}] = vec4[${SPOTS.length}](${SPOTS.map((p) => `vec4(${p.at.map((x) => x.toFixed(3)).join(", ")}, ${p.size.toFixed(3)})`).join(", ")});
       const float SPOT_I[${SPOTS.length}] = float[${SPOTS.length}](${SPOTS.map((p) => p.i.toFixed(2)).join(", ")});
       float back = (vKind > 3.5 ? 0.3 : 1.0) * uLight;
+      // the light page's stars: a white dot (the star's texel) in a grey halo (the blurred map), as the sun is
+      vec3 gs = uViewToGal * rv;
+      vec2 suv = vec2(atan(gs.y, gs.x) / 6.283185307 + 0.5, asin(clamp(gs.z, -1.0, 1.0)) / 3.141592654 + 0.5);
+      sunVeil = max(sunVeil, texture2D(uStarHalo, suv).r * ${EGG_ENV.starHalo.toFixed(2)} * back);
+      sunSpot = max(sunSpot, texture2D(uStars, suv).r * back);
       for (int i = 0; i < ${SPOTS.length}; i++) {
         float us = acos(clamp(dot(rv, normalize(SPOT[i].xyz)), -1.0, 1.0)) / SPOT[i].w;
         sunVeil = max(sunVeil, pow(clamp(1.0 - us / ${SUN_GLINT.reach.toFixed(1)}, 0.0, 1.0), ${SUN_GLINT.fall.toFixed(2)}) * SPOT_I[i] * back);
@@ -808,7 +814,7 @@ export class CaptionLayer {
   private eggLight = { value: 0 };
   private eggSet = { value: 0 };
   /** The galaxy the chrome reflects: the sky's band map and the star map (this canvas is a context of its own: its own textures of the same baked bytes), made when the word's material is, not before (`eggSkyTextures`). */
-  private eggSkyTex: { band: DataTexture; stars: DataTexture } | null = null;
+  private eggSkyTex: { band: DataTexture; stars: DataTexture; halo: DataTexture } | null = null;
   /** The matrix that takes the camera's frame to the galactic one (`setSky`). */
   private eggViewToGal = { value: new Matrix3() };
   private eggDissolve = { uDissolve: { value: 0 }, uFinal: { value: 0 }, uAxis: { value: [0, 0, 1] as number[] } };
@@ -906,7 +912,7 @@ export class CaptionLayer {
     this.setTheme(opts.theme);
   }
 
-  private eggSkyTextures(): { band: DataTexture; stars: DataTexture } {
+  private eggSkyTextures(): { band: DataTexture; stars: DataTexture; halo: DataTexture } {
     if (this.eggSkyTex) return this.eggSkyTex;
     const make = (data: Uint8Array, w: number, h: number, filter: typeof LinearFilter | typeof NearestFilter) => {
       const t = new DataTexture(data, w, h, RedFormat, UnsignedByteType);
@@ -918,7 +924,7 @@ export class CaptionLayer {
       t.needsUpdate = true;
       return t;
     };
-    return (this.eggSkyTex = { band: make(bakeBand(), SKY.map.cols, SKY.map.rows, LinearFilter), stars: make(bakeStarMap(), 4096, 2048, NearestFilter) });
+    return (this.eggSkyTex = { band: make(bakeBand(), SKY.map.cols, SKY.map.rows, LinearFilter), stars: make(bakeStarMap(), 4096, 2048, NearestFilter), halo: make(bakeStarHalo(), 1024, 512, LinearFilter) });
   }
 
   /**
@@ -950,6 +956,7 @@ export class CaptionLayer {
         uSet: this.eggSet,
         uBand: { value: this.eggSkyTextures().band },
         uStars: { value: this.eggSkyTextures().stars },
+        uStarHalo: { value: this.eggSkyTextures().halo },
         uViewToGal: this.eggViewToGal,
         uBaseLat: { value: 0 },
         uBelow: { value: 0 },
@@ -2006,6 +2013,7 @@ export class CaptionLayer {
     this.crisp.dispose();
     this.eggSkyTex?.band.dispose();
     this.eggSkyTex?.stars.dispose();
+    this.eggSkyTex?.halo.dispose();
     this.built = null;
   }
 

@@ -285,6 +285,42 @@ export function bakeStarMap(w = 4096, h = 2048): Uint8Array {
   return map;
 }
 
+let bakedHalo: Uint8Array | null = null;
+
+/**
+ * The stars' HALOS as a 1024 x 512 map (the same frame as `bakeStarMap`): the star map brought to a quarter of its width (a texel is the brightest of its 4 by 4) and blurred by one box pass of radius 1, with gain, so that a star is
+ * a soft glow of three texels (about a degree) round its place, and a tight cluster a brighter one. For the light page's chrome (engine/caption-layer.ts): a grey veil round a white dot, as the light page's sun is, read smoothly.
+ * Baked once (a few ms: it is small on purpose).
+ */
+export function bakeStarHalo(): Uint8Array {
+  if (bakedHalo) return bakedHalo;
+  const W = 4096;
+  const w = 1024;
+  const h = 512;
+  const src = bakeStarMap();
+  const a = new Float32Array(w * h);
+  for (let r = 0; r < h; r++) {
+    for (let c = 0; c < w; c++) {
+      let m = 0;
+      for (let dr = 0; dr < 4; dr++) for (let dc = 0; dc < 4; dc++) m = Math.max(m, src[(4 * r + dr) * W + 4 * c + dc]!);
+      a[r * w + c] = m / 255;
+    }
+  }
+  const out = new Uint8Array(w * h);
+  for (let r = 0; r < h; r++) {
+    for (let c = 0; c < w; c++) {
+      let sum = 0;
+      for (let dr = -1; dr <= 1; dr++) {
+        const rr = Math.min(h - 1, Math.max(0, r + dr));
+        for (let dc = -1; dc <= 1; dc++) sum += a[rr * w + ((c + dc + w) % w)]!;
+      }
+      out[r * w + c] = Math.min(255, Math.round((sum / 9) * 255 * 9));
+    }
+  }
+  bakedHalo = out;
+  return out;
+}
+
 /* ------------------------------------------------------------------ fade, tones, dither */
 
 /**
