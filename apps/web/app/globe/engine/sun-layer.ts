@@ -27,7 +27,7 @@ const f = (n: number) => n.toFixed(3);
 const vec = (c: readonly number[]) => `vec3(${c.map(f).join(", ")})`;
 
 const FRAGMENT = /* glsl */ `
-  uniform vec2 uCentre; uniform float uR; uniform vec3 uBg; uniform vec3 uInk; uniform float uAmt; uniform float uLight; uniform float uHalo; uniform float uRing; uniform float uSoft;
+  uniform vec2 uCentre; uniform float uR; uniform vec3 uBg; uniform vec3 uInk; uniform float uAmt; uniform float uLight; uniform float uHalo; uniform float uRing; uniform float uSoft; uniform float uK;
   ${WARM_GLSL}
   const float BAYER[16] = float[16](${BAYER4.map((n) => `${n}.0`).join(", ")});
   void main() {
@@ -37,7 +37,7 @@ const FRAGMENT = /* glsl */ `
     float ink = 0.0;
     // the halo: a falloff from the disc's edge in a few flat steps of tone, the steps ordered-dithered into each other (a pixel is one of the steps' tones, never between)
     // (it goes with the planet's cover, in the same dither: uHalo, 1 to 0, takes the steps out of the falloff one at a time, outermost first)
-    float t0 = pow(clamp(1.0 - (max(r, 1.0) - 1.0) / ${f(SUN.halo)}, 0.0, 1.0), ${f(SUN.haloFall)});
+    float t0 = pow(clamp(1.0 - (max(r, 1.0) - 1.0) / (${f(SUN.halo)} * uK), 0.0, 1.0), ${f(SUN.haloFall)});
     // (the planet's cover takes the OUTER steps out, the halo's size shrinking: the inner ones, round the sun's disc, stay: they were a duller ring round the sun's bright core, a dark halo, when all of them went down together)
     float t = t0 * mix(uHalo, 1.0, smoothstep(0.55, 1.0, t0));
     ivec2 c = ivec2(mod(floor(gl_FragCoord.xy), 4.0));
@@ -46,7 +46,7 @@ const FRAGMENT = /* glsl */ `
     ink = floor(t * ${f(SUN.haloSteps)} + th) / ${f(SUN.haloSteps)} * ${f(SUN.glow)} * uSoft;
     if (r >= 1.0) {
       // the ring of light on the halo (it goes as the planet covers the sun, as the halo does: uHalo): a sharp inside edge and a smooth outside, a little brighter than the halo under it
-      float d = r - ${f(SUN.ring.at)};
+      float d = r - ${f(SUN.ring.at)} * uK;
       float rt = 0.0;
       if (d <= 0.0) { if (d > -${f(SUN.ring.inner)}) rt = 1.0; }
       else { float x = 1.0 - d / ${f(SUN.ring.outer)}; if (x > 0.0) rt = floor(x * x * ${f(SUN.ring.steps)} + th) / ${f(SUN.ring.steps)}; }
@@ -78,6 +78,7 @@ const material = () =>
       uHalo: { value: 1 },
       uRing: { value: 1 },
       uSoft: { value: 1 },
+      uK: { value: 1 },
       uSet: { value: 0 },
     },
     vertexShader: VERTEX,
@@ -266,7 +267,10 @@ export class SunLayer {
     const rt = Math.min(1, Math.max(0, (cres.area - r0) / (r1 - r0)));
     const seen = rt * rt * (3 - 2 * rt);
     u.uRing!.value = seen;
-    u.uSoft!.value = SUN.cover.hidden + (1 - SUN.cover.hidden) * seen;
+    // the halo is in proportion to the sun that is left: its reach goes with the sun's visible radius (the root of its area), its light with the same share, so that it is gone when the sun is
+    const k = Math.sqrt(cres.area);
+    u.uK!.value = Math.max(k, 1e-3);
+    u.uSoft!.value = SUN.cover.hidden + (1 - SUN.cover.hidden) * k;
     u.uSet!.value = (1 - halo) * SUN.cover.halo;
     return true;
   }
