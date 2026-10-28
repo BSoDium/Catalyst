@@ -4080,8 +4080,12 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     }
   }
 
-  /* The way back is only real at the world view: zoomed in, the hint would be a promise. */
+  /*
+   * The way back is only real at the world view: zoomed in, the hint would be a promise. It is then out of the layout (not only out of sight), so that the name above it sits in the
+   * corner and not a line too high (landing-hero.tsx holds the name at this line's place again when the world flag changes).
+   */
   .landing-hero[data-world="false"] .hero-mini-hint {
+    position: absolute;
     opacity: 0;
   }
 
