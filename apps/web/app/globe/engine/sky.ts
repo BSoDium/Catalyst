@@ -270,16 +270,18 @@ export function makeStars(map: Uint8Array = bakeBand(), cfg: { count: number; ba
     const r = Math.sqrt(1 - z * z);
     const x = r * Math.cos(phi), y = r * Math.sin(phi);
     const { l, b } = galacticLonLat([x, y, z]);
-    // patchy: the band's share of the density, times a slow noise over the sky that leaves clumps and bare patches (`SKY.stars.patch`)
-    const clump = fbm([x, y, z], seed ^ 0x7a3c, SKY.stars.patch.octaves);
-    const patch = SKY.stars.patch.floor + (1 - SKY.stars.patch.floor) * smooth01((clump - SKY.stars.patch.from) / (SKY.stars.patch.to - SKY.stars.patch.from));
-    const density = (1 + (cfg.bandBoost - 1) * Math.min(1, sampleBand(map, l, b) / SKY.band.gain)) * patch;
+    const bandDensity = 1 + (cfg.bandBoost - 1) * Math.min(1, sampleBand(map, l, b) / SKY.band.gain);
     const gate = rand();
     const bright = rand();
     const rank = rand();
     const tint = rand();
     const g = rand();
-    if (gate * cfg.bandBoost > density) continue;
+    // (the patch is at most 1: what the band's density alone rejects needs no noise)
+    if (gate * cfg.bandBoost > bandDensity) continue;
+    // patchy: the band's share of the density times a slow noise over the sky that leaves clumps and bare patches (`SKY.stars.patch`)
+    const { octaves, from, to, floor } = SKY.stars.patch;
+    const patch = floor + (1 - floor) * smooth01((fbm([x, y, z], seed ^ 0x7a3c, octaves) - from) / (to - from));
+    if (gate * cfg.bandBoost > bandDensity * patch) continue;
     position.set([x, y, z], n * 3);
     tier[n] = starTier(bright, cfg.tierShares);
     keep[n] = rank;
