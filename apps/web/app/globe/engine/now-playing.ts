@@ -33,7 +33,9 @@ export const TRACKS = {
     title: "Cinematic piano",
     artist: "Nikita Kondrashev (leberch)",
     priority: 1,
-    // (no sleeve: the record's label, in the sun's own colours; the author's page is as the owner gave it, and there is no link for the piece yet: to be given)
+    // (the sleeve, 200 px, and the piece's page on Pixabay, as the owner gave them)
+    cover: "/media/now-playing/cinematic-piano.jpg",
+    titleHref: "https://pixabay.com/music/orchestral-cinematic-cinematic-music-583978/",
     artists: [{ name: "Nikita Kondrashev (leberch)", href: "https://taketones.com/author/nikita-kondrashev" }],
   },
   interlude: {
