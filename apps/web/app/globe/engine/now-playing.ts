@@ -32,8 +32,7 @@ export const TRACKS = {
     title: "Gabriel",
     artist: "Felsmann & Tiley",
     priority: 1,
-    // TODO(owner): the sleeve of "Protomensch" (drop it at public/media/now-playing/gabriel.jpg, square, 512 px or more), the song's own video and the duo's own page: the two links are stand-ins
-    // (a search for the song, and the album's page at their label) until the real ones are given
+    // (the sleeve of the single, 300 px: all that was given; the song's own video and the duo's own page are still to be given: the two links are stand-ins, a search for the song and the album's page at their label)
     cover: "/media/now-playing/gabriel.jpg",
     titleHref: "https://www.youtube.com/results?search_query=Felsmann+Tiley+Gabriel",
     artistHref: "https://store.mute.com/products/felsmann-tiley-protomensch",
@@ -44,6 +43,8 @@ export const TRACKS = {
     artist: "Jerry Goldsmith & Brian Tyler",
     note: "Composed by Jerry Goldsmith (1997); arranged by Brian Tyler (2012)",
     priority: 2,
+    // (the studio's centennial logo, cropped square on its globe)
+    cover: "/media/now-playing/universal-intro.jpg",
   },
 } as const satisfies Record<string, Track>;
 

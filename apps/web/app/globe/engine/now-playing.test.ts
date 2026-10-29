@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MUTE_KEY, NowPlaying, TRACKS, pillVisible, readMuted } from "./now-playing";
 
@@ -50,6 +51,7 @@ describe("what the page is playing", () => {
     expect(TRACKS.sun.titleHref).toMatch(/^https:\/\//);
     expect(TRACKS.sun.artistHref).toMatch(/^https:\/\//);
     expect(TRACKS.interlude).not.toHaveProperty("titleHref");
+    for (const t of [TRACKS.sun, TRACKS.interlude]) expect(existsSync(`public${t.cover}`), t.cover).toBe(true);
     expect(TRACKS.interlude.artist).toBe("Jerry Goldsmith & Brian Tyler");
     expect(TRACKS.interlude.note).toMatch(/Goldsmith.*1997.*Tyler.*2012/);
   });

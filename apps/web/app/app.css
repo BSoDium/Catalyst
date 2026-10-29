@@ -3102,15 +3102,15 @@ body:not(:has([data-slot="site-header"])) .np-root {
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  background: repeating-radial-gradient(circle at 50% 50%, transparent 0 1.5px, rgb(0 0 0 / 0.16) 1.5px 2.5px);
+  background: repeating-radial-gradient(circle at 50% 50%, transparent 0 2px, rgb(0 0 0 / 0.07) 2px 3px);
   mix-blend-mode: multiply;
 }
 .np-hole {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 15%;
-  height: 15%;
+  width: 12%;
+  height: 12%;
   transform: translate(-50%, -50%);
   border-radius: 50%;
   background: var(--background);
