@@ -15,6 +15,11 @@ export function cellCssFor(width: number, height: number, dpr: number): number {
   return STREET_TUNING.pixelSize(Math.min(width, height), dpr);
 }
 
+/** The art pixel now, CSS px: `cellCssFor` of this window (the globe's own grid, for anything on the page that wants to match it, as the player's outline does). Client only. */
+export function artPixelNow(): number {
+  return cellCssFor(window.innerWidth, window.innerHeight, window.devicePixelRatio || 1);
+}
+
 /** Focus mask coverage 0..1: 1 inside `radius`, smooth fall-off over `feather`, 0 beyond. */
 export function maskCoverage(dist: number, radius: number, feather: number): number {
   if (radius <= 0) return 0;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { REST, WAVES, WAVE_RADIUS, wavePath, waveRadius } from "./now-playing-wave";
+import { REST, WAVES, WAVE_RADIUS, outlinePoints, outlineRadius, waveRadius } from "./now-playing-wave";
 
 const TURN = 2 * Math.PI;
 
@@ -32,13 +32,17 @@ describe("the disc's wavy outline", () => {
     expect(swing(7)).toBeCloseTo(swing(1), 6);
   });
 
-  it("stays in its box with room to spare, and is a closed path of finite numbers", () => {
-    for (const ring of WAVES) {
-      expect(WAVE_RADIUS + 2 * ring.amp * 1.6).toBeLessThan(50);
-      const d = wavePath(ring, 1.234, 1);
-      expect(d.startsWith("M")).toBe(true);
-      expect(d.endsWith("Z")).toBe(true);
-      expect(d).not.toMatch(/NaN|Infinity/);
+  it("stays in its box with room to spare (the disc's own radius is about 34 of its 100 units), and is a closed polyline of finite numbers, scaled to the box it is asked for", () => {
+    const ampSum = WAVES.reduce((n, w) => n + w.amp * 1.6, 0);
+    expect(WAVE_RADIUS + ampSum).toBeLessThan(50);
+    expect(WAVE_RADIUS - ampSum).toBeGreaterThan(40);
+    for (let i = 0; i < 100; i++) expect(outlineRadius((i / 100) * TURN, i * 0.07, 1)).toBeLessThan(50);
+    const pts = outlinePoints(1.234, 1, 20);
+    expect(pts).toHaveLength(2 * 72);
+    for (const v of pts) {
+      expect(Number.isFinite(v)).toBe(true);
+      expect(v).toBeGreaterThan(0);
+      expect(v).toBeLessThan(20);
     }
   });
 });

@@ -3183,28 +3183,28 @@ body:not(:has([data-slot="site-header"])) .np-root {
   color: var(--foreground);
 }
 /*
- * The wavy outline (owner, 2026-10-29: it replaced the glow, the motes and a turning pair of rings; components/now-playing-player.tsx, `Waves`, lib/now-playing-wave.ts): two thin rings in the accent round the disc, with room
- * between, whose line shivers in place with the music (the paths are rewritten by a frame loop that runs only while the disc plays). They do not turn with the disc. At rest they fade away.
+ * The wavy outline (owner, 2026-10-29: a filled shape in a soft grey near the page's colour, with a lighter edge, as a raised surface has, pixelated to the globe's grid; the disc is not; components/now-playing-player.tsx, `Waves`,
+ * lib/now-playing-wave.ts): a canvas drawn at one pixel to a cell and scaled up without smoothing, centred on the disc, under it. `color` is its fill and `border-color` its edge (the script reads them, and the border is
+ * never drawn); its size is set by the script, to a whole number of cells. At rest it fades away.
  */
 .np-waves {
+  --np-wave-fill: color-mix(in srgb, var(--background) 90%, var(--foreground));
+  --np-wave-edge: color-mix(in srgb, var(--background) 72%, var(--foreground));
   position: absolute;
-  inset: calc(var(--np-size) * -0.2);
-  width: calc(var(--np-size) * 1.4);
-  height: calc(var(--np-size) * 1.4);
-  overflow: visible;
+  top: 50%;
+  left: 50%;
+  width: calc(var(--np-size) * 1.5);
+  height: calc(var(--np-size) * 1.5);
+  transform: translate(-50%, -50%);
+  image-rendering: pixelated;
   pointer-events: none;
+  color: var(--np-wave-fill);
+  border: 0 solid var(--np-wave-edge);
   opacity: 0;
   transition: opacity 400ms var(--ease-standard);
 }
 .np[data-spin="true"] .np-waves {
   opacity: 1;
-}
-.np-wave {
-  fill: none;
-  stroke: var(--signal);
-  stroke-width: 1.4;
-  stroke-linejoin: round;
-  vector-effect: non-scaling-stroke;
 }
 @keyframes np-spin {
   to {
