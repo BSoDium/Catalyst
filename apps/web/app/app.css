@@ -3037,9 +3037,16 @@ body:not(:has([data-slot="site-header"])) .np-root {
   content: "";
   position: absolute;
   z-index: -1;
-  inset: -1.1rem -1.6rem;
+  inset: -0.9rem -1.25rem;
   pointer-events: none;
-  background: radial-gradient(ellipse closest-side at 50% 50%, var(--np-plate) 0%, var(--np-plate) 45%, color-mix(in srgb, var(--np-plate) 45%, transparent) 75%, transparent 100%);
+  background: var(--np-plate);
+  /* a rectangle with soft edges all round (the two ramps cut against each other), as far out as the halo's reach: it covers the disc and the words, evenly, and goes in a few rem. */
+  --np-feather-x: 1.25rem;
+  --np-feather-y: 0.9rem;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--np-feather-x), #000 calc(100% - var(--np-feather-x)), transparent), linear-gradient(to bottom, transparent, #000 var(--np-feather-y), #000 calc(100% - var(--np-feather-y)), transparent);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(to right, transparent, #000 var(--np-feather-x), #000 calc(100% - var(--np-feather-x)), transparent), linear-gradient(to bottom, transparent, #000 var(--np-feather-y), #000 calc(100% - var(--np-feather-y)), transparent);
+  mask-composite: intersect;
 }
 .np-text {
   /* (both lines are ONE line each, whatever the credit: owner. Under 1280 px the header is a row of its own and the words have the width of the screen; from 1280 they have the room the header's links leave, which start at (width - 816) / 2: the disc and its inset are 5 rem, and a longer line is cut with an ellipsis, in full in the title) */
@@ -3054,9 +3061,6 @@ body:not(:has([data-slot="site-header"])) .np-root {
 @supports not (background: color-mix(in srgb, red 50%, transparent)) {
   .np {
     --np-plate: var(--background);
-  }
-  .np::before {
-    background: radial-gradient(ellipse closest-side, var(--background) 45%, transparent 100%);
   }
 }
 /* The now-playing player (components/now-playing-player.tsx): a record. The sleeve is the disc, which turns while the sound plays; a gloss that does not turn lies over it, so that it reads as a record under a light. */
