@@ -32,6 +32,7 @@ import {
   silhouetteRadiusPx,
   silhouetteZoom,
   normalizeLon,
+  shortestLonDelta,
   projectLonLat,
   projectUnit,
   viewBasis,
@@ -172,6 +173,14 @@ export interface FlyOptions {
 
 /** How long the camera takes to glide from where it was into the interlude's flight, when it is asked for away from the display mode, ms (`GlobeRenderer.playInterludeNow`). */
 const CAMERA_INTRO_MS = 2200;
+
+/**
+ * Where an interlude asked for away from the display mode is played, as how far EAST of the sub-solar point the camera is, degrees (owner, 2026-10-29: the sun must not come into the picture, and the night lights must still be seen). The
+ * flight looks EAST (bearing 85) over the Levant, Greece and Italy, `FLIGHT.keys`, 56 to 7 degrees east of the camera's own longitude, so a camera that far east of the sun has the sun behind it and below the western horizon, and the low
+ * pass is over the dusk and the night: 0 would be the sun straight behind the camera and the whole flight in daylight, with no lights at all (the first version, on the lit side, the lights were gone); 90, the whole low pass in the night
+ * and the planet half lit at the end. 80: the approach over the night, the low pass over the dusk, and the planet three quarters lit in the space view.
+ */
+export const INTERLUDE_DUSK_DEG = 80;
 
 /** A smootherstep: from rest to rest, with no jump at either end. */
 const smootherstep = (t: number) => t * t * t * (t * (t * 6 - 15) + 10);
@@ -2088,9 +2097,10 @@ export class GlobeRenderer {
     this.flight = null;
     this.velocity = STILL;
     this.latSnap = null;
-    // (on the planet's LIT side: the flight is turned about the axis with the page's longitude, and from a dark side it passed over the night with the sun behind the planet, in the picture; the camera glides there from
-    // where it was, `camIntro`. At rest the caption is only there where the planet is lit, `guardCaption`, so the interlude played from the display mode is already on it.)
-    this.view = this.clampView({ lon: this.view.lon + litTurn(this.view.lon, this.era), lat: 0, zoom: this.minZoom });
+    // (the flight is turned about the axis with the page's longitude: from wherever the visitor had turned the planet it passed over the night with the sun BEHIND the planet and in the picture. The camera goes to
+    // `INTERLUDE_DUSK_DEG` east of the sun instead, looking east away from it (the camera glides there from where it was, `camIntro`). Played from the display mode it is where the caption is (`guardCaption`), on the lit side.)
+    const sunLon = MOON.ref.lonDeg + MOON.sunAzimuthDeg; // (the sub-solar longitude in the inertial frame: the sun is `sunAzimuthDeg` to the right of the opening camera)
+    this.view = this.clampView({ lon: this.view.lon + shortestLonDelta(this.view.lon + this.era, sunLon + INTERLUDE_DUSK_DEG), lat: 0, zoom: this.minZoom });
     this.captionOn = true;
     this.showcaseOn = true;
     // (the explore view's boxes and labels are out in this frame, not fading: the page's camera is home already, and they would hang in the wrong places while they went)

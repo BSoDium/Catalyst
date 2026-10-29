@@ -66,10 +66,19 @@ describe("sunRise", () => {
 });
 
 describe("where the interlude is played from", () => {
-  it("the interlude asked for away from the display mode turns the planet to its lit side first (the sun is behind the camera there, and not in the picture); played from the display mode it is on it already (the caption only shows there)", () => {
+  it("away from the display mode it is played from the dusk side, a named number of degrees east of the sun (the flight looks east, away from it: the sun is not in the picture, and the night lights are); from the display mode it is where the caption is (lit)", () => {
     const src = readFileSync("app/globe/engine/renderer.ts", "utf8");
-    expect(src).toMatch(/this\.view = this\.clampView\(\{ lon: this\.view\.lon \+ litTurn\(this\.view\.lon, this\.era\), lat: 0, zoom: this\.minZoom \}\)/);
+    expect(src).toMatch(/export const INTERLUDE_DUSK_DEG = 80;/);
+    expect(src).toMatch(/shortestLonDelta\(this\.view\.lon \+ this\.era, sunLon \+ INTERLUDE_DUSK_DEG\)/);
+    expect(src).toMatch(/const sunLon = MOON\.ref\.lonDeg \+ MOON\.sunAzimuthDeg/);
     expect(src).toMatch(/if \(Math\.abs\(lat - this\.snapTarget\(lat\)\) < 0\.05 && turn === 0\) \{\s*this\.captionOn = true;/);
+  });
+  it("is far enough east of the sun that the flight's low pass is over the dusk, and not so far that the planet is mostly dark at the end", () => {
+    const low = 14; // (the low pass: the keys at 22 and 7 degrees east of the camera's own longitude)
+    const dusk = 80;
+    expect(dusk + low).toBeGreaterThan(90); // (past the terminator: the lights are drawn where the ground is dark, `NIGHT.litTo`)
+    expect(dusk).toBeLessThan(100); // (the camera over the terminator: half the planet lit at most, in the space view)
+    expect(dusk).toBeGreaterThan(60);
   });
 });
 

@@ -33,6 +33,17 @@ describe("the night lights, in the interlude's close shots", () => {
     expect(src).toMatch(/1\.0 - 0\.85 \* mag \+ 1\.70 \* mag \* gr/); // (the mean of the noise is a half: 1 - g + 2 g / 2 = 1)
   });
 
+  it("have every function they call defined in their own shader, before it is used (a shader that does not compile draws nothing: the lights were gone once, because the noise's functions had gone into another material)", () => {
+    const src = lightsMaterial().fragmentShader;
+    for (const fn of ["hash21", "vnoise", "dither4", "washOf"]) {
+      const def = src.search(new RegExp(`float ${fn}\\(`));
+      expect(def, `${fn} is defined`).toBeGreaterThan(-1);
+      expect(def, `${fn} is defined before main`).toBeLessThan(src.indexOf("void main()"));
+    }
+    // (and the other materials of the file do not carry the noise they do not use)
+    expect((readFileSync("app/globe/engine/materials.ts", "utf8").match(/float vnoise\(/g) ?? []).length).toBe(1);
+  });
+
   it("have the size of the map they are given (the scene sets it from the picture), 2048 x 1024 until then", () => {
     expect(lightsMaterial().uniforms.uSize!.value).toEqual([2048, 1024]);
     expect(readFileSync("app/globe/engine/scene.ts", "utf8")).toMatch(/uniforms\.uSize!\.value = \[img\.width, img\.height\]/);
