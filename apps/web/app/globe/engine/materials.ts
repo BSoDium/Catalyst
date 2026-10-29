@@ -423,13 +423,13 @@ export function surfaceMaterial(): ShaderMaterial {
  */
 export function lightsMaterial(): ShaderMaterial {
   return new ShaderMaterial({
-    uniforms: { uColor: { value: new Color() }, uCore: { value: new Color() }, uBg: { value: new Color() }, uLights: { value: null }, uSize: { value: [2048, 1024] }, uCover: { value: 1 }, uSunN: { value: [0, 0, 1] }, uNight: { value: 0 }, uFlip: { value: 0 } },
+    uniforms: { uColor: { value: new Color() }, uCore: { value: new Color() }, uBg: { value: new Color() }, uRamp0: { value: new Color() }, uRamp1: { value: new Color() }, uRamp2: { value: new Color() }, uLights: { value: null }, uSize: { value: [2048, 1024] }, uCover: { value: 1 }, uSunN: { value: [0, 0, 1] }, uNight: { value: 0 }, uFlip: { value: 0 } },
     vertexShader: /* glsl */ `
       varying vec3 vDir;
       void main() { vDir = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
     `,
     fragmentShader: /* glsl */ `
-      uniform vec3 uColor; uniform vec3 uCore; uniform vec3 uBg; uniform sampler2D uLights; uniform vec2 uSize; uniform float uCover;
+      uniform vec3 uColor; uniform vec3 uCore; uniform vec3 uBg; uniform vec3 uRamp0; uniform vec3 uRamp1; uniform vec3 uRamp2; uniform sampler2D uLights; uniform vec2 uSize; uniform float uCover;
       uniform vec3 uSunN; uniform float uNight; uniform float uFlip;
       varying vec3 vDir;
       ${DITHER_GLSL}
@@ -509,7 +509,10 @@ export function lightsMaterial(): ShaderMaterial {
         float own = hash21(floor(t * 64.0) + 57.0);
         float bright = mix(1.0 - ${LIGHTS.vary.toFixed(2)}, 1.0, own * own);
         float star = step(1.0 - ${LIGHTS.sparkle.toFixed(2)}, hash21(floor(t * 64.0) + 91.0));
-        vec3 light = mix(uColor, uCore, clamp(heat + mag * star, 0.0, 1.0));
+        // (its colour: along the ramp, from a deep orange-yellow to a warm white, by its own hash, a patchy noise round it, and how packed the place is; from afar, as it was)
+        float tone = clamp(${LIGHTS.own.toFixed(2)} * hash21(floor(t * 64.0) + 7.0) + ${LIGHTS.patch.toFixed(2)} * vnoise(t * ${LIGHTS.patchScale.toFixed(1)} + 5.0) + ${LIGHTS.heatShare.toFixed(2)} * heat - 0.1 + star, 0.0, 1.0);
+        vec3 near = tone < 0.5 ? mix(uRamp0, uRamp1, tone * 2.0) : mix(uRamp1, uRamp2, tone * 2.0 - 1.0);
+        vec3 light = mix(mix(uColor, uCore, heat), near, mag);
         gl_FragColor = vec4(mix(light, uBg, (1.0 - mix(1.0, bright, mag)) * (1.0 - mag * star)), 1.0);
       }
     `,

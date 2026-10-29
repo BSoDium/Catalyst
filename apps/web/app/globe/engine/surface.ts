@@ -111,6 +111,21 @@ export const LIGHTS = {
    */
   vary: 0.7,
   sparkle: 0.08,
+  /**
+   * THE COLOUR OF A DOT in close shots (owner: "inside the clusters there's no variation ... from the dark orange-yellow all the way to yellow-white"): a ramp of three stops, a deep orange-yellow, a yellow and a warm
+   * white, each its `color` mixed `strength` of the way from the page's (a faint light, as `color` and `core` are). A dot's place on the ramp is a hash of where it is on the planet (`own`), a patchy noise
+   * round it (`patch` of the way, the patches `patchScale` to a texel, so that neighbours are alike a little and a cluster is not salt and pepper), and how packed the place is (`heatShare`: the dense places run yellow
+   * and white, the thin ones orange); the sparkling dots are at the top. From afar the dots are as they were (`color`, `core`).
+   */
+  ramp: [
+    { color: [1, 0.5, 0.13], strength: 0.5 },
+    { color: [1, 0.78, 0.32], strength: 0.66 },
+    { color: [1, 0.95, 0.76], strength: 0.85 },
+  ] as const,
+  own: 0.55,
+  patch: 0.3,
+  patchScale: 6,
+  heatShare: 0.35,
   /** The finest a texel is cut into, per side. */
   maxSub: 64,
   /**

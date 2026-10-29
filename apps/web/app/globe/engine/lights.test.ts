@@ -57,6 +57,22 @@ describe("the night lights, in the interlude's close shots", () => {
     expect(readFileSync("app/globe/engine/scene.ts", "utf8")).toMatch(/lights\.uniforms\.uBg!\.value\.setRGB\(\.\.\.bg\)/);
   });
 
+  it("have each dot its own COLOUR in close shots, along a ramp from a deep orange-yellow to a warm white, whatever the place's density (the dense places lean to the top, the thin ones to the bottom, and none is one colour)", () => {
+    expect(LIGHTS.ramp).toHaveLength(3);
+    const lum = (c: readonly number[]) => 0.3 * c[0]! + 0.59 * c[1]! + 0.11 * c[2]!;
+    const tones = LIGHTS.ramp.map((s) => lum(s.color));
+    expect(tones[0]!).toBeLessThan(tones[1]!);
+    expect(tones[1]!).toBeLessThan(tones[2]!);
+    expect(LIGHTS.ramp[0].color[1]).toBeLessThan(0.65); // (orange at the bottom)
+    expect(LIGHTS.ramp[2].color[2]).toBeGreaterThan(0.7); // (nearly white at the top)
+    expect(LIGHTS.own + LIGHTS.patch).toBeGreaterThan(0.7); // (the dot's own luck and its patch span most of the ramp whatever the heat)
+    expect(LIGHTS.heatShare).toBeLessThan(LIGHTS.own); // (the density leans the colour, it does not set it)
+    const mat = lightsMaterial();
+    for (const u of ["uRamp0", "uRamp1", "uRamp2"]) expect(mat.uniforms[u]).toBeDefined();
+    expect(mat.fragmentShader).toMatch(/vec3 light = mix\(mix\(uColor, uCore, heat\), near, mag\)/);
+    expect(readFileSync("app/globe/engine/scene.ts", "utf8")).toMatch(/uRamp\$\{i\}/);
+  });
+
   it("have every function they call defined in their own shader, before it is used (a shader that does not compile draws nothing: the lights were gone once, because the noise's functions had gone into another material)", () => {
     const src = lightsMaterial().fragmentShader;
     for (const fn of ["hash21", "vnoise", "clumps", "dither4", "washOf"]) {
