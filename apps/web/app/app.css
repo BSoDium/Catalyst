@@ -3014,8 +3014,8 @@ h1[tabindex="-1"]:focus-visible {
 /* Where the now-playing player sits (components/now-playing-player.tsx): docked close to the corner (`--np-inset`), under the header on a narrow screen, which needs the corner there, and in the corner from 1280 px, where the header's links leave it room. The disc is as tall as the two lines of the text beside it (`--np-size`). */
 .np-root {
   --np-size: 2.35rem;
-  --np-inset: 0.75rem;
-  top: calc(var(--navbar-height) + 0.25rem);
+  --np-inset: 1.25rem;
+  top: calc(var(--navbar-height) + 0.75rem);
   left: var(--np-inset);
   max-width: calc(100% - 2 * var(--np-inset));
   transition: top 300ms var(--ease-standard);
@@ -3189,9 +3189,10 @@ body:not(:has([data-slot="site-header"])) .np-root {
  * music plays and goes back into it when it does not (`scale` 0.5 is under the disc: it is scaled to 1.8 discs across); the opacity switches only while it is hidden.
  */
 .np-halo {
-  --np-halo-blue: var(--signal);
-  --np-halo-purple: #7c3aed;
-  --np-halo-dark: #1a1040;
+  /* (almost all of it is the page's own grey, and the blue and the purple are touches in it: owner, "most of that gradient should basically be gray") */
+  --np-halo-gray: color-mix(in srgb, var(--foreground) 16%, transparent);
+  --np-halo-blue: color-mix(in srgb, var(--signal) 34%, transparent);
+  --np-halo-purple: color-mix(in srgb, #7c3aed 30%, transparent);
   position: absolute;
   top: 50%;
   left: 50%;
@@ -3203,9 +3204,6 @@ body:not(:has([data-slot="site-header"])) .np-root {
   transition:
     transform 450ms cubic-bezier(0.5, 0, 0.75, 0),
     opacity 0s 450ms;
-}
-:root[data-scheme="light"] .np-halo {
-  --np-halo-dark: #3b2a78;
 }
 .np[data-spin="true"] .np-halo {
   transform: translate(-50%, -50%) scale(1);
@@ -3224,13 +3222,13 @@ body:not(:has([data-slot="site-header"])) .np-root {
   animation-play-state: paused;
 }
 .np-halo-a {
-  background: conic-gradient(from 0deg, var(--np-halo-blue), var(--np-halo-purple) 120deg, var(--np-halo-dark) 210deg, var(--np-halo-blue) 360deg);
-  opacity: 0.7;
+  background: conic-gradient(from 0deg, var(--np-halo-gray) 0 70deg, var(--np-halo-blue) 115deg, var(--np-halo-gray) 160deg 240deg, var(--np-halo-purple) 285deg, var(--np-halo-gray) 330deg 360deg);
+  opacity: 0.9;
   animation: np-halo-a 16s linear infinite;
 }
 .np-halo-b {
-  background: conic-gradient(from 90deg, transparent, var(--np-halo-purple) 70deg, transparent 150deg, var(--np-halo-blue) 250deg, transparent 360deg);
-  opacity: 0.55;
+  background: conic-gradient(from 90deg, transparent, var(--np-halo-gray) 60deg, transparent 140deg, var(--np-halo-purple) 200deg, transparent 250deg, var(--np-halo-gray) 310deg, transparent 360deg);
+  opacity: 0.7;
   animation: np-halo-b 23s linear infinite;
 }
 .np[data-spin="true"] .np-halo-a,
