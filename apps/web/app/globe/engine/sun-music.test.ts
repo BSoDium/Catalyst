@@ -301,9 +301,9 @@ describe("the sun's music", () => {
     const { m, prefs } = await start();
     expect(prefs.getSnapshot().track).toBeNull();
     m.setGlare(0.5);
-    expect(prefs.getSnapshot()).toMatchObject({ track: { title: "Gabriel", artist: "Felsmann & Tiley" }, state: "playing" });
+    expect(prefs.getSnapshot()).toMatchObject({ track: { title: "Cinematic piano", artist: "Nikita Kondrashev (leberch)" }, state: "playing" });
     m.setGlare(0);
-    expect(prefs.getSnapshot()).toMatchObject({ track: { title: "Gabriel" }, state: "paused" });
+    expect(prefs.getSnapshot()).toMatchObject({ track: { title: "Cinematic piano" }, state: "paused" });
     m.setGlare(0.5);
     m.setMuted(true);
     expect(prefs.getSnapshot()).toMatchObject({ state: "paused", muted: true });
@@ -336,6 +336,6 @@ describe("the sound's source", () => {
   it("is at a normal level for music under a page: well under the file's own, well over a whisper", () => {
     expect(SUN_MUSIC.volume).toBeGreaterThan(0.3);
     expect(SUN_MUSIC.volume).toBeLessThanOrEqual(0.7);
-    expect(SUN_MUSIC.url).toBe("/audio/gabriel.mp3");
+    expect(SUN_MUSIC.url).toBe("/audio/cinematic-piano.mp3");
   });
 });

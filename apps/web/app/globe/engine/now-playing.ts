@@ -30,13 +30,11 @@ export interface Track {
 export const TRACKS = {
   sun: {
     id: "sun",
-    title: "Gabriel",
-    artist: "Felsmann & Tiley",
+    title: "Cinematic piano",
+    artist: "Nikita Kondrashev (leberch)",
     priority: 1,
-    // (the sleeve of the single, 300 px: all that was given; the song's video, and the duo's own page, as the owner gave them)
-    cover: "/media/now-playing/gabriel.jpg",
-    titleHref: "https://www.youtube.com/watch?v=mSvt09Bq0_Q",
-    artists: [{ name: "Felsmann & Tiley", href: "https://felsmanntiley.com/" }],
+    // (no sleeve: the record's label, in the sun's own colours; the author's page is as the owner gave it, and there is no link for the piece yet: to be given)
+    artists: [{ name: "Nikita Kondrashev (leberch)", href: "https://taketones.com/author/nikita-kondrashev" }],
   },
   interlude: {
     id: "interlude",

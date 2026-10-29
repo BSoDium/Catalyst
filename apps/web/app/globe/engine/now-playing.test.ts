@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { SUN_MUSIC } from "./sun-music";
 import { MUTE_KEY, NowPlaying, TRACKS, pillVisible, readMuted, sunAudible } from "./now-playing";
 
 describe("what the page is playing", () => {
@@ -45,16 +46,14 @@ describe("what the page is playing", () => {
     expect(np.getSnapshot()).toMatchObject({ track: TRACKS.sun, state: "playing" });
   });
 
-  it("credits the sun's music to its artists, with a sleeve and links that open somewhere real (https), and the interlude's sound is credited to its composer and its arranger, each with a page, and no video", () => {
-    expect(TRACKS.sun).toMatchObject({ title: "Gabriel", artist: "Felsmann & Tiley" });
-    expect(TRACKS.sun.cover).toMatch(/^\/media\//);
-    expect(TRACKS.sun.titleHref).toMatch(/^https:\/\//);
-    expect(TRACKS.sun.titleHref).toBe("https://www.youtube.com/watch?v=mSvt09Bq0_Q");
-    expect(TRACKS.sun.artists.map((a) => a.href)).toEqual(["https://felsmanntiley.com/"]);
+  it("credits the sun's music to its author, with a link to their page (https) and the file there, and the interlude's sound is credited to its composer and its arranger, each with a page, and no video", () => {
+    expect(TRACKS.sun).toMatchObject({ title: "Cinematic piano", artist: "Nikita Kondrashev (leberch)" });
+    expect(TRACKS.sun.artists.map((a) => a.href)).toEqual(["https://taketones.com/author/nikita-kondrashev"]);
+    expect(TRACKS.sun).not.toHaveProperty("cover"); // (a plain label, in the sun's colours)
+    expect(TRACKS.sun).not.toHaveProperty("titleHref"); // (no link for the piece yet)
     expect(TRACKS.interlude).not.toHaveProperty("titleHref");
-    // (the sun's sleeve and audio are the stacked PR's, until the artist answers: without them there is no sun music, and no player; a missing sleeve is a plain label)
-    expect(TRACKS.sun.cover).toMatch(/^\/media\/now-playing\/.+\.jpg$/);
     expect(existsSync(`public${TRACKS.interlude.cover}`), TRACKS.interlude.cover).toBe(true);
+    expect(existsSync(`public${SUN_MUSIC.url}`), SUN_MUSIC.url).toBe(true);
     expect(TRACKS.interlude.artist).toBe("Jerry Goldsmith & Brian Tyler");
     expect(TRACKS.interlude.artists.map((a) => a.name).join(" & ")).toBe(TRACKS.interlude.artist);
     expect(TRACKS.interlude.artists.map((a) => a.href)).toEqual(["https://en.wikipedia.org/wiki/Jerry_Goldsmith", "https://www.briantyler.com/"]);
