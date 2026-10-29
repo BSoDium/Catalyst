@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { DWELL_MS, MoonOverlay, READ_MS, type MoonFrame } from "./moon-overlay";
+import { DWELL_MS, MoonOverlay, READ_MS, TOUCH_HOLD_MS, type MoonFrame } from "./moon-overlay";
 
 /**
  * The overlay's clocks (the 1.5 s before the box, the reveal, the 5 s it stays read), against a hand-made DOM and fake timers: the suite runs in node, and what is tested is the
@@ -22,6 +22,9 @@ class El {
   append(..._: unknown[]) {}
   remove() {}
   matches() {
+    return false;
+  }
+  contains() {
     return false;
   }
   addEventListener(type: string, fn: (e: unknown) => void) {
@@ -145,5 +148,89 @@ describe("MoonOverlay clocks", () => {
     expect("seen" in link.dataset).toBe(false);
     expect(clear()).toBe(false);
     expect("read" in link.dataset).toBe(false);
+  });
+});
+
+describe("MoonOverlay on a touch screen", () => {
+  let link: El;
+  let words: { title: El; body: El };
+  let overlay: MoonOverlay;
+  let held: boolean[];
+  let doc: Map<string, (e: unknown) => void>;
+
+  const setup = (coarse: boolean) => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] });
+    vi.stubGlobal("window", globalThis);
+    vi.stubGlobal("matchMedia", (q: string) => ({ matches: coarse && q === "(hover: none)" }));
+    vi.stubGlobal("requestAnimationFrame", (cb: (t: number) => void) => setTimeout(() => cb(performance.now()), 16));
+    vi.stubGlobal("cancelAnimationFrame", (id: number) => clearTimeout(id));
+    held = [];
+    doc = new Map();
+    const made: El[] = [];
+    const root = new El();
+    root.ownerDocument = {
+      createElement: () => {
+        const e = new El();
+        made.push(e);
+        return e;
+      },
+      createElementNS: () => new El(),
+      addEventListener: (t: string, fn: (e: unknown) => void) => void doc.set(t, fn),
+      removeEventListener: (t: string) => void doc.delete(t),
+    } as unknown as El["ownerDocument"];
+    overlay = new MoonOverlay(root as unknown as HTMLElement, MOON, () => frame(), (on) => held.push(on));
+    link = made[0]!;
+    words = { title: made[3]!, body: made[4]! };
+  };
+
+  afterEach(() => {
+    overlay.dispose();
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  const tick = (ms: number) => vi.advanceTimersByTime(ms);
+  const clear = () => words.title.textContent === MOON.title && words.body.textContent === MOON.description;
+  const tap = () => {
+    link.listeners.get("pointerdown")!({ pointerType: "touch" });
+    link.listeners.get("click")!({ preventDefault() {} });
+  };
+
+  it("holds the moon still once its box is up, so that it can be tapped, and lets it go if it is not", () => {
+    setup(true);
+    overlay.update();
+    tick(DWELL_MS - 1);
+    expect(held).toEqual([]);
+    tick(1);
+    expect(held).toEqual([true]);
+    tick(TOUCH_HOLD_MS - 1);
+    expect(held).toEqual([true]);
+    tick(1);
+    expect(held).toEqual([true, false]);
+  });
+
+  it("the first tap reads the words and keeps the moon held past the wait; a press elsewhere puts the card away", () => {
+    setup(true);
+    overlay.update();
+    tick(DWELL_MS);
+    tap();
+    tick(700);
+    expect(link.dataset.open).toBeDefined();
+    expect(clear()).toBe(true);
+    tick(TOUCH_HOLD_MS * 2);
+    expect(held.at(-1)).toBe(true); // still held: the open card holds it
+    expect(doc.has("pointerdown")).toBe(true);
+    doc.get("pointerdown")!({ target: {} });
+    expect("open" in link.dataset).toBe(false);
+    expect(held.at(-1)).toBe(false);
+    expect(doc.has("pointerdown")).toBe(false);
+  });
+
+  it("does not hold the moon where there is a pointer to hover with", () => {
+    setup(false);
+    overlay.update();
+    tick(DWELL_MS + TOUCH_HOLD_MS);
+    expect(held).toEqual([]);
+    expect("seen" in link.dataset).toBe(true);
   });
 });

@@ -3460,6 +3460,34 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     vector-effect: non-scaling-stroke;
   }
 
+  /*
+   * A touch screen (no hover: the words come clear when the moon is tapped, not hovered; engine/moon-overlay.ts). At rest the card is a small pill, the name (scrambled) and the mark, not the
+   * two lines that ran across the whole screen: the description comes with the tap, in a card narrower than the window. The card's tap area is 44 px (a transparent margin, the look is the
+   * pill's), and the mark is centred on the one line it has.
+   */
+  @media (hover: none) {
+    .globe-moon-card {
+      max-width: min(16rem, calc(100vw - 48px));
+    }
+
+    .globe-moon-card::before {
+      content: "";
+      position: absolute;
+      inset: -9px -6px;
+    }
+
+    .globe-moon:not([data-open]) .globe-moon-body {
+      display: none;
+    }
+
+    .globe-moon:not([data-open]) .globe-moon-card .globe-moon-arrow[data-size] {
+      align-self: center;
+      margin-top: 0;
+      margin-inline-start: 10px;
+      margin-inline-end: 0;
+    }
+  }
+
   /* One mark, two glyphs: the arrow once the words are read, an unknown (a question mark) while they are scrambled (engine/moon-overlay.ts sets `data-glyph`). */
   .globe-moon-arrow[data-glyph="arrow"] .globe-moon-glyph-unknown,
   .globe-moon-arrow[data-glyph="unknown"] .globe-moon-glyph-arrow {

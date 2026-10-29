@@ -6,7 +6,9 @@
  *
  * The moon is picked out by a detection box, the look of the map's area boxes (a square round the disc, solid corner arms and dashes between them), drawn once the moon has stayed in the picture a while (`DWELL_MS`), in the map boxes' own tone, and in the ink on hover or focus, which shows the card
  * hung from its top-left corner like a place's label, with what it is, and holds the moon still (`setHeld`) so that it can be clicked. Where the planet hides most of the moon, or the zoom has taken it
- * away, the link is not a target and not a tab stop. Touch has no hover: the first tap shows the card, the card's own link is the second.
+ * away, the link is not a target and not a tab stop. Touch has no hover: the first tap shows the card, the card's own link is the second. And so that there is something to tap, on a touch screen the
+ * moon stands still (`setHeld`) for `TOUCH_HOLD_MS` once its box is up (it is only in the picture for a few seconds of a lap, and a target that keeps moving is not one), the card is a small
+ * pill until it is tapped (the name, scrambled, and the mark: app.css, `(hover: none)`), and a tap anywhere else puts it away.
  *
  * The look (class names `globe-moon`, `-card`, ...) is app.css's; this file sets only what changes per frame: the position, the size and which side the card is on.
  */
@@ -37,6 +39,8 @@ const REVEAL_MS = 520;
 const CHURN_MS = 45;
 /** Once read, the words stay clear this long (ms) after the moon is let go of, and then scramble again. */
 export const READ_MS = 5000;
+/** On a touch screen the moon stands still this long (ms) once its box is up, so that it can be tapped; if it is not, it goes on. */
+export const TOUCH_HOLD_MS = 8000;
 
 /**
  * `text` with its first `reveal` (0..1) share of letters as they are and the rest as random glyphs, spaces kept (so that the words wrap where the real ones do). Pure with `rand` given
@@ -178,6 +182,8 @@ export class MoonOverlay {
   private closeTimer = 0;
   private open = false;
   private touched = false;
+  private holdTimer = 0;
+  private holding = false;
   private shown = false;
   private disposed = false;
   private at: { x: number; y: number; r: number; angle: number; unhidden: number; drawn: number; box: { x: number; y: number; w: number; h: number } } | null = null;
@@ -301,6 +307,7 @@ export class MoonOverlay {
           this.revealed = this.open ? 1 : 0;
           this.paint();
           this.placeCard();
+          if (this.coarse() && !this.open) this.holdForTap();
         }, DWELL_MS);
       }
       return;
@@ -308,6 +315,7 @@ export class MoonOverlay {
     window.clearTimeout(this.seenTimer);
     this.seenTimer = 0;
     delete this.link.dataset.seen;
+    this.releaseHold();
     // the card goes with the box, and is unread the next time it comes up
     if (this.revealed > 0 || this.readTimer) {
       window.cancelAnimationFrame(this.revealRaf);
@@ -352,6 +360,13 @@ export class MoonOverlay {
   private setOpen(on: boolean) {
     if (on === this.open) return;
     this.open = on;
+    // (the hold for a tap is over: the card is up, and `setHeld(on)` below is what holds the moon now)
+    window.clearTimeout(this.holdTimer);
+    this.holdTimer = 0;
+    this.holding = false;
+    const doc = this.root.ownerDocument;
+    if (on && this.coarse()) doc.addEventListener?.("pointerdown", this.onOutside, true);
+    else doc.removeEventListener?.("pointerdown", this.onOutside, true);
     if (on) this.link.dataset.open = "";
     else {
       delete this.link.dataset.open;
@@ -369,6 +384,35 @@ export class MoonOverlay {
     }
     this.setHeld(on);
   }
+
+  /** A touch screen (no hover): there the card is a pill until it is tapped, and the moon is held for the tap. */
+  private coarse(): boolean {
+    return window.matchMedia?.("(hover: none)").matches === true;
+  }
+
+  /** The box is up on a touch screen: the moon stands still for `TOUCH_HOLD_MS`, so that it can be tapped. */
+  private holdForTap() {
+    window.clearTimeout(this.holdTimer);
+    this.holding = true;
+    this.setHeld(true);
+    this.holdTimer = window.setTimeout(() => this.releaseHold(), TOUCH_HOLD_MS);
+  }
+
+  /** The moon is let go of again (the time is up, or it is no longer a target), unless the card is up: that holds it. */
+  private releaseHold() {
+    window.clearTimeout(this.holdTimer);
+    this.holdTimer = 0;
+    if (!this.holding) return;
+    this.holding = false;
+    if (!this.open) this.setHeld(false);
+  }
+
+  /** A press anywhere but on the moon puts an open card away (touch has no pointer leaving it). */
+  private onOutside = (e: Event) => {
+    const t = e.target as Node | null;
+    if (t && this.link.contains(t)) return;
+    this.setOpen(false);
+  };
 
   /** Unread again: the words scramble (the card, if it is still up, shows gibberish once more). */
   private forget() {
@@ -460,6 +504,8 @@ export class MoonOverlay {
     window.clearTimeout(this.seenTimer);
     window.cancelAnimationFrame(this.revealRaf);
     window.clearTimeout(this.readTimer);
+    window.clearTimeout(this.holdTimer);
+    this.root.ownerDocument.removeEventListener?.("pointerdown", this.onOutside, true);
     this.observer?.disconnect();
     this.link.remove();
   }
