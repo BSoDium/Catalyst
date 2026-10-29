@@ -236,10 +236,11 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
                   to={backTo.href}
                   aria-label={`Back to ${backTo.name}`}
                   data-slot="entry-kind"
-                  className="-my-3 inline-flex items-center gap-1.5 py-3 text-muted-foreground no-underline hover:text-foreground hover:underline print:hidden"
+                  // (inline, so that its text sits on the running head's own baseline with the places and the date: a flex box took the baseline of its icon; the touch target is a pseudo-element, taller than the line)
+                  className="relative text-muted-foreground no-underline after:absolute after:-inset-x-1 after:-inset-y-3 after:content-[''] hover:text-foreground hover:underline print:hidden"
                 >
-                  <Icon name="arrow-left" size="inline" />
-                  <span>{KIND_LABELS[entry.kind]}</span>
+                  <Icon name="arrow-left" size="inline" className="mr-1.5 align-[-0.2em]" />
+                  {KIND_LABELS[entry.kind]}
                 </Link>
               ) : (
                 <span data-slot="entry-kind">{KIND_LABELS[entry.kind]}</span>
