@@ -5,6 +5,7 @@ export function markSvg(options?: { px?: number; fill?: string | null; rows?: st
 export const FACE_SIZE: number;
 export const FACE_TILE: string;
 export const FACE_INK: string;
+export const FACE_VIGNETTE: { centre: string; edge: string; radius: number };
 export function faceShapes(ink?: string): string;
 export function faceMarkup(options?: { rx?: number }): string;
 export function faceSvg(options?: { px?: number }): string;

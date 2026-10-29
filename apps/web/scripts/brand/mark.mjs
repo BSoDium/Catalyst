@@ -61,7 +61,7 @@ export function markSvg({ px = 32, fill = null, rows = MARK } = {}) {
 // round-capped arc opening to the right, the whole face centred on the tile with a wide margin (the maskable icon needs it, and so does elegance).
 // The mark above stays the site's logo (the header, `logo-mark.tsx`).
 export const FACE_SIZE = 32;
-/** The blue of the blue screen of death (Windows 10 and 11), the tile behind the face. */
+/** The blue of the blue screen of death (Windows 10 and 11), the tile behind the face: the middle of the vignette. */
 export const FACE_TILE = "#0078d7";
 export const FACE_INK = "#ffffff";
 
@@ -70,9 +70,13 @@ export function faceShapes(ink = FACE_INK) {
   return `<g fill="${ink}"><circle cx="11.8" cy="12.2" r="1.9"/><circle cx="11.8" cy="19.8" r="1.9"/></g><path d="M21.4 10.2C17 13.8 17 18.2 21.4 21.8" fill="none" stroke="${ink}" stroke-width="2.2" stroke-linecap="round"/>`;
 }
 
+/** The tile's blue with a vignette: a little lighter in the middle, a deeper blue towards the edges and corners (a radial gradient, `FACE_VIGNETTE`). */
+export const FACE_VIGNETTE = { centre: "#1a8ae6", edge: "#00528f", radius: 0.7 };
+
 /** The tile and the face as the inside of an SVG of the 32-unit box: corners rounded by `rx` units (0 for an icon the launcher or iOS rounds itself). */
 export function faceMarkup({ rx = 7.5 } = {}) {
-  return `<rect width="${FACE_SIZE}" height="${FACE_SIZE}" rx="${rx}" fill="${FACE_TILE}"/>${faceShapes()}`;
+  const v = FACE_VIGNETTE;
+  return `<defs><radialGradient id="tile" cx="0.5" cy="0.5" r="${v.radius}"><stop offset="0" stop-color="${v.centre}"/><stop offset="0.5" stop-color="${FACE_TILE}"/><stop offset="1" stop-color="${v.edge}"/></radialGradient></defs><rect width="${FACE_SIZE}" height="${FACE_SIZE}" rx="${rx}" fill="url(#tile)"/>${faceShapes()}`;
 }
 
 /** The favicon: the face on its blue tile, the same in both colour schemes (a blue square reads on a light tab and a dark one). */

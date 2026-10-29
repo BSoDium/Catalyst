@@ -42,12 +42,13 @@ describe("public/ brand assets", () => {
       expect(`${width}x${height}`).toBe(icon.sizes);
     }
   });
-  it("has a vector favicon, the blue-screen frown on its rounded blue tile, in a square 32-unit box", () => {
+  it("has a vector favicon, the blue-screen frown on its rounded blue tile, in a square 32-unit box, with a vignette", () => {
     const svg = readFileSync(pub("favicon.svg"), "utf8");
     expect(svg).toBe(faceSvg({ px: 32 }));
     expect(svg).toContain('viewBox="0 0 32 32"');
     expect(svg).toContain(FACE_TILE);
-    expect(svg).not.toMatch(/<script|onload|href=|<image|<linearGradient|<radialGradient|prefers-color-scheme/i);
+    expect(svg).toContain("<radialGradient");
+    expect(svg).not.toMatch(/<script|onload|href=|<image|<linearGradient|prefers-color-scheme/i);
   });
   it("has a favicon.ico holding the three PNG sizes, 16, 32 and 48 px, each the size it declares", () => {
     const ico = readFileSync(pub("favicon.ico"));
