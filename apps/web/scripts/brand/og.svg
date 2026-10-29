@@ -1,46 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
-  <!-- Default share image (1200x630). Hand-written; `node scripts/brand/build.mjs` renders it to public/og-default.png.
-       Language of docs/design-system.md: near-black page, 16 px grid, hairlines, big type at 200 against 800 (Bricolage Grotesque, embedded
-       by build.mjs), one blue accent (the signal's dark-scheme tone, #0a93ff). The words are the site's identity (app/lib/site.ts, SITE): lib/identity.test.ts keeps them equal. -->
+  <!-- Default share image (1200x630). Hand-written around a picture of the app's own globe; `node scripts/brand/build.mjs` renders it to public/og-default.png.
+       The picture (og-planet.png, made by scripts/brand/og-planet.mjs from the running app: the planet at night over Europe and Africa, the sun and its lens
+       flare behind the limb) is embedded by build.mjs where the href of the image below is the placeholder. The text keeps the language of docs/design-system.md: near-black page,
+       big type at 200 against 800 (Bricolage Grotesque, embedded by build.mjs). The words are the site's identity (app/lib/site.ts, SITE):
+       lib/identity.test.ts keeps them equal. -->
   <defs>
-    <pattern id="grid" width="16" height="16" patternUnits="userSpaceOnUse">
-      <path d="M16 0H0V16" fill="none" stroke="#ffffff" stroke-opacity="0.05" stroke-width="1"/>
-    </pattern>
-    <clipPath id="disc"><circle cx="880" cy="315" r="250"/></clipPath>
+    <linearGradient id="scrim" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0" stop-color="#0a0a0a" stop-opacity="0.9"/>
+      <stop offset="0.55" stop-color="#0a0a0a" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#0a0a0a" stop-opacity="0"/>
+    </linearGradient>
   </defs>
   <rect width="1200" height="630" fill="#0a0a0a"/>
-  <rect width="1200" height="630" fill="url(#grid)"/>
+  <image href="__OG_PLANET__" x="0" y="0" width="1200" height="630" image-rendering="pixelated"/>
+  <!-- A scrim under the words, so they read over the stars and the planet's dark limb. -->
+  <rect width="640" height="630" fill="url(#scrim)"/>
 
-  <!-- Globe: orthographic wireframe, meridians every 30 degrees, parallels at 30 and 60 degrees. -->
-  <g fill="none" stroke="#f5f5f5" stroke-opacity="0.34" stroke-width="1.25">
-    <g clip-path="url(#disc)">
-      <ellipse cx="880" cy="315" rx="125" ry="250"/>
-      <ellipse cx="880" cy="315" rx="216.5" ry="250"/>
-      <path d="M880 65V565"/>
-      <path d="M630 315H1130"/>
-      <path d="M663.5 190H1096.5M663.5 440H1096.5"/>
-      <path d="M755 98.5H1005M755 531.5H1005"/>
-    </g>
-    <circle cx="880" cy="315" r="250" stroke-opacity="0.8" stroke-width="1.5"/>
-    <circle cx="880" cy="315" r="266" stroke-opacity="0.18" stroke-dasharray="2 8"/>
-  </g>
-
-  <!-- A route between two places, and the places: square markers with a leader and a micro-label. -->
-  <path d="M812 400 Q 850 270 960 226" fill="none" stroke="#0a93ff" stroke-width="2.5" stroke-linecap="square"/>
-  <g fill="#f5f5f5">
-    <rect x="1038" y="352" width="8" height="8"/>
-    <rect x="707" y="262" width="8" height="8"/>
-    <rect x="930" y="500" width="8" height="8"/>
-    <rect x="760" y="150" width="8" height="8"/>
-  </g>
-  <g fill="#0a93ff">
-    <rect x="806" y="394" width="12" height="12"/>
-    <rect x="954" y="220" width="12" height="12"/>
-  </g>
-  <g fill="none" stroke="#0a93ff" stroke-width="1.25">
-    <path d="M800 388h8M800 388v8M824 388h-8M824 388v8M800 412h8M800 412v-8M824 412h-8M824 412v-8" transform="translate(0 0)"/>
-    <path d="M948 214h8M948 214v8M972 214h-8M972 214v8M948 238h8M948 238v-8M972 238h-8M972 238v-8"/>
-  </g>
   <!-- Text: the name, the given name at 800 over the family name at 200, then who. -->
   <g font-family="'Bricolage Grotesque', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif" fill="#f5f5f5" letter-spacing="-3">
     <text x="74" y="230" font-size="104" font-weight="800">Elliot</text>

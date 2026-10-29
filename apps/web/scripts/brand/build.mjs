@@ -1,25 +1,25 @@
 // Renders the brand files into public/ from hand-written data, with headless Chrome, so nothing is downloaded and no image library is
 // needed. Deterministic: same inputs, same bytes.
 //
-//   favicon.svg                          the mark (scripts/brand/mark.mjs), ink follows the colour scheme
-//   favicon.ico                          the mark on the dark tile, 16, 32 and 48 px (PNG entries)
-//   apple-touch-icon.png (180)           the mark on the dark tile (iOS fills the corners itself: no transparency)
+//   favicon.svg                          the blue-screen frown (`faceSvg` in scripts/brand/mark.mjs) on its rounded blue tile, the same in both schemes
+//   favicon.ico                          the same at 16, 32 and 48 px (PNG entries, transparent corners)
+//   apple-touch-icon.png (180)           the face on a full blue square (iOS rounds it itself: no transparency)
 //   icon-192.png, icon-512.png           the manifest's icons
-//   icon-maskable-512.png                the same with a safe zone: the mark stays inside the central circle a launcher may crop to
-//   og-default.png (1200x630)            the share image, from scripts/brand/og.svg (the owner's name and who they are, in the display face)
+//   icon-maskable-512.png                the same with a safe zone: the face stays inside the central circle a launcher may crop to
+//   og-default.png (1200x630)            the share image, from scripts/brand/og.svg (the owner's name and who they are, in the display face) over og-planet.png,
+//                                        a capture of the app's own globe (scripts/brand/og-planet.mjs; committed, so this build needs no running app)
 //
 //   CHROME_PATH=/path/to/chrome node scripts/brand/build.mjs            all of them
 //   CHROME_PATH=... node scripts/brand/build.mjs --only=icons|og         only the icons (and favicon files), or only the share image
 //
-// The mark is drawn on a 16 px grid and every size below uses a whole number of device pixels per cell, so it is crisp everywhere.
-// If `pngquant` is on the PATH the PNGs are palette-quantized afterwards (they are two colours: a few hundred bytes); without it they
-// are kept as Chrome wrote them.
+// The face is a vector in a 32-unit box, so every size is drawn, not scaled. If `pngquant` is on the PATH the PNGs are palette-quantized
+// afterwards (a few colours: under a kilobyte); without it they are kept as Chrome wrote them.
 import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync, unlinkSync, existsSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
 import { DEFAULT_CHROME } from "../perf/lib.mjs";
-import { GRID, markPath, markSvg } from "./mark.mjs";
+import { FACE_SIZE, faceMarkup, faceSvg } from "./mark.mjs";
 
 const here = (p) => fileURLToPath(new URL(p, import.meta.url));
 const publicPath = (name) => here(`../../public/${name}`);
@@ -27,32 +27,26 @@ const publicPath = (name) => here(`../../public/${name}`);
 const only = process.argv.find((a) => a.startsWith("--only="))?.slice("--only=".length);
 if (only && only !== "icons" && only !== "og") throw new Error("--only takes icons or og");
 
-const PAGE = "#0a0a0a"; // --background, dark: the tile of every PNG icon
-const INK = "#f5f5f5"; // --foreground, dark
+const PAGE = "#0a0a0a"; // --background, dark: behind the share image and the icons that have no transparency
 
-/** The icon: the mark in the dark page's ink on its background, `cell` device pixels per grid cell, centred on a `size` square. */
-const iconSvg = (size, cell) => {
-  const o = (size - GRID * cell) / 2;
-  if (!Number.isInteger(o) || o < 0) throw new Error(`${size} px does not hold a ${GRID}-cell mark at ${cell} px per cell`);
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" shape-rendering="crispEdges">
-  <rect width="${size}" height="${size}" fill="${PAGE}"/>
-  <g transform="translate(${o} ${o}) scale(${cell})"><path fill="${INK}" d="${markPath()}"/></g>
-</svg>`;
-};
+/** The icon: the face on its blue tile in a `size` square. `rx` rounds the tile's corners, in units of its 32-unit box (0 for iOS and launchers, which crop and round the icon themselves). */
+const iconSvg = (size, rx) => `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${FACE_SIZE} ${FACE_SIZE}">${faceMarkup({ rx })}</svg>`;
 
 const ICON_JOBS = [
-  // 180 and 192 px: 7 px per cell, 112 px of mark; 512 px: 20 px per cell, 320 px of mark (about 62 %).
-  { file: "apple-touch-icon.png", width: 180, height: 180, svg: iconSvg(180, 7) },
-  { file: "icon-192.png", width: 192, height: 192, svg: iconSvg(192, 7) },
-  { file: "icon-512.png", width: 512, height: 512, svg: iconSvg(512, 20) },
-  // Maskable: launchers crop to a circle of 80 % of the side (r = 205 px); the mark's corners are at 16 * 16 / 2 * sqrt(2) = 181 px.
-  { file: "icon-maskable-512.png", width: 512, height: 512, svg: iconSvg(512, 16) },
-  // The ICO's three entries (removed once wrapped). The tile is the icon: no margin, the square sits on its top-left corner and the disc reaches the bottom-right one.
-  { file: "favicon-16.png", width: 16, height: 16, svg: iconSvg(16, 1), temp: true },
-  { file: "favicon-32.png", width: 32, height: 32, svg: iconSvg(32, 2), temp: true },
-  { file: "favicon-48.png", width: 48, height: 48, svg: iconSvg(48, 3), temp: true },
+  // The iOS icon and the maskable one are full squares (the system rounds or crops them: no transparency, no corners of our own).
+  { file: "apple-touch-icon.png", width: 180, height: 180, svg: iconSvg(180, 0) },
+  // The manifest's "any" icons and the ICO's entries are the favicon itself: the rounded tile, transparent corners.
+  { file: "icon-192.png", width: 192, height: 192, svg: iconSvg(192, 7.5), transparent: true },
+  { file: "icon-512.png", width: 512, height: 512, svg: iconSvg(512, 7.5), transparent: true },
+  // Maskable: launchers crop to a circle of 80 % of the side (r = 205 px); the face reaches 9 units of 32 from the centre, 144 px of 512.
+  { file: "icon-maskable-512.png", width: 512, height: 512, svg: iconSvg(512, 0) },
+  // The ICO's three entries (removed once wrapped).
+  { file: "favicon-16.png", width: 16, height: 16, svg: iconSvg(16, 7.5), transparent: true, temp: true },
+  { file: "favicon-32.png", width: 32, height: 32, svg: iconSvg(32, 7.5), transparent: true, temp: true },
+  { file: "favicon-48.png", width: 48, height: 48, svg: iconSvg(48, 7.5), transparent: true, temp: true },
 ];
-const OG_JOB = { file: "og-default.png", width: 1200, height: 630, svg: readFileSync(here("./og.svg"), "utf8") };
+const OG_PLANET = readFileSync(here("./og-planet.png")).toString("base64");
+const OG_JOB = { file: "og-default.png", width: 1200, height: 630, svg: readFileSync(here("./og.svg"), "utf8").replace("__OG_PLANET__", `data:image/png;base64,${OG_PLANET}`) };
 // The share image is set in the site's display face. The page below has no network and no file access, so the font file travels inside
 // it as a data URI (the variable font: weights 200 to 800, the optical size by the browser's default).
 const DISPLAY_FONT = readFileSync(publicPath("fonts/bricolage-grotesque-5.3.0-latin-wght-opsz.woff2")).toString("base64");
@@ -65,9 +59,12 @@ if (!existsSync(executablePath)) throw new Error("Set CHROME_PATH to a Chrome/Ch
 const browser = await chromium.launch({ executablePath, headless: true });
 for (const job of jobs) {
   const page = await browser.newPage({ viewport: { width: job.width, height: job.height }, deviceScaleFactor: 1 });
-  await page.setContent(`<!doctype html><meta charset="utf-8"><style>${FONT_FACE}html,body{margin:0;background:${PAGE}}svg{display:block}</style>${job.svg}`);
+  await page.setContent(`<!doctype html><meta charset="utf-8"><style>${FONT_FACE}html,body{margin:0;background:${job.transparent ? "transparent" : PAGE}}svg{display:block}</style>${job.svg}`);
   await page.evaluate(() => document.fonts.load('800 104px "Bricolage Grotesque"').then(() => document.fonts.load('200 104px "Bricolage Grotesque"')).then(() => document.fonts.load('300 30px "Bricolage Grotesque"')));
-  await page.screenshot({ path: publicPath(job.file), type: "png", clip: { x: 0, y: 0, width: job.width, height: job.height } });
+  // (an embedded picture in the SVG: decoded before the shot, or the shot has the page without it)
+  await page.evaluate(() => Promise.all([...document.querySelectorAll("image")].map((el) => { const img = new Image(); img.src = el.getAttribute("href"); return img.decode(); })));
+  await page.waitForTimeout(100);
+  await page.screenshot({ path: publicPath(job.file), type: "png", clip: { x: 0, y: 0, width: job.width, height: job.height }, omitBackground: !!job.transparent });
   await page.close();
 }
 await browser.close();
@@ -90,7 +87,7 @@ for (const job of jobs) {
 
 if (only !== "og") {
   // favicon.svg: the same mark, ink follows the scheme.
-  writeFileSync(publicPath("favicon.svg"), markSvg({ px: 32 }));
+  writeFileSync(publicPath("favicon.svg"), faceSvg({ px: 32 }));
   console.log(`favicon.svg  ${(statSync(publicPath("favicon.svg")).size / 1024).toFixed(1)} kB`);
 
   // favicon.ico: ICONDIR + one ICONDIRENTRY per size + the PNGs. Browsers and crawlers ask for /favicon.ico by default.

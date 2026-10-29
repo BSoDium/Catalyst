@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { FACE_TILE, faceSvg } from "../../scripts/brand/mark.mjs";
 import { DEFAULT_SHARE_IMAGE, SITE, SITE_DESCRIPTION, THEME_COLORS } from "./site";
 
 const pub = (name: string) => new URL(`../../public/${name}`, import.meta.url);
@@ -41,15 +42,13 @@ describe("public/ brand assets", () => {
       expect(`${width}x${height}`).toBe(icon.sizes);
     }
   });
-  it("has a vector favicon drawn on the mark's 16 px grid that follows the colour scheme, with square pixels only", () => {
+  it("has a vector favicon, the blue-screen frown on its rounded blue tile, in a square 32-unit box, with a vignette", () => {
     const svg = readFileSync(pub("favicon.svg"), "utf8");
-    expect(svg).toContain('viewBox="0 0 16 16"');
-    expect(svg).toContain("prefers-color-scheme:dark");
-    expect(svg).toContain('shape-rendering="crispEdges"');
-    expect(svg).not.toMatch(/<script|onload|href=|<image|<linearGradient|<radialGradient/i);
-    // no curves: only moves, horizontal and vertical runs, whole numbers
-    const d = /<path d="([^"]+)"/.exec(svg)?.[1] ?? "";
-    expect(d).toMatch(/^[MhvzM0-9 -]+$/);
+    expect(svg).toBe(faceSvg({ px: 32 }));
+    expect(svg).toContain('viewBox="0 0 32 32"');
+    expect(svg).toContain(FACE_TILE);
+    expect(svg).toContain("<radialGradient");
+    expect(svg).not.toMatch(/<script|onload|href=|<image|<linearGradient|prefers-color-scheme/i);
   });
   it("has a favicon.ico holding the three PNG sizes, 16, 32 and 48 px, each the size it declares", () => {
     const ico = readFileSync(pub("favicon.ico"));
@@ -66,10 +65,10 @@ describe("public/ brand assets", () => {
       expect(offset + size).toBeLessThanOrEqual(ico.length);
     }
   });
-  it("draws every PNG icon from the mark: the maskable one keeps it inside the launcher's safe circle", () => {
+  it("draws every PNG icon from the face: the maskable one keeps it inside the launcher's safe circle", () => {
     expect(pngSize("icon-maskable-512.png")).toEqual({ width: 512, height: 512 });
-    // 16 cells at 16 px each: its corners are at 181 px from the centre, the safe circle's radius is 0.4 x 512 = 205 px.
-    expect((16 * 16 * Math.SQRT2) / 2).toBeLessThan(0.4 * 512);
+    // The face reaches 9 of the box's 32 units from the centre (the mouth's round cap included): 144 px of 512, the safe circle's radius is 0.4 x 512 = 205 px.
+    expect((9 / 32) * 512).toBeLessThan(0.4 * 512);
   });
   it("leaves robots.txt and sitemap.xml to their resource routes (a static file would shadow them)", () => {
     expect(existsSync(pub("robots.txt"))).toBe(false);

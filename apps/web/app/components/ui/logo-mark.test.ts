@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
@@ -33,11 +32,9 @@ describe("the mark", () => {
     }
   });
 
-  it("is the component's path and the favicon's, so the three never drift apart", () => {
+  it("is the component's path and the standalone mark's, so the two never drift apart", () => {
     expect(MARK_PATH).toBe(markPath());
-    const favicon = readFileSync(new URL("../../../public/favicon.svg", import.meta.url), "utf8");
-    expect(favicon).toBe(markSvg({ px: 32 }));
-    expect(favicon).toContain(`d="${MARK_PATH}"`);
+    expect(markSvg({ px: 32, fill: "#000" })).toContain(`d="${MARK_PATH}"`);
   });
 
   it("has integer coordinates only (square pixels, no curves)", () => {

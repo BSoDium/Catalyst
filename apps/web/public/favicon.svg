@@ -1,4 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="32" height="32" shape-rendering="crispEdges">
-  <style>path{fill:#0a0a0a}@media (prefers-color-scheme:dark){path{fill:#f5f5f5}}</style>
-  <path d="M0 0h10v1h-10zM0 1h10v1h-10zM0 2h10v1h-10zM0 3h10v1h-10zM0 4h8v1h-8zM10 4h2v1h-2zM0 5h6v1h-6zM10 5h4v1h-4zM0 6h5v1h-5zM10 6h5v1h-5zM0 7h5v1h-5zM10 7h5v1h-5zM0 8h4v1h-4zM10 8h6v1h-6zM0 9h4v1h-4zM10 9h6v1h-6zM4 10h12v1h-12zM4 11h12v1h-12zM5 12h10v1h-10zM5 13h10v1h-10zM6 14h8v1h-8zM8 15h4v1h-4z"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32"><defs><radialGradient id="tile" cx="0.5" cy="0.5" r="0.7"><stop offset="0" stop-color="#1a8ae6"/><stop offset="0.5" stop-color="#0078d7"/><stop offset="1" stop-color="#00528f"/></radialGradient></defs><rect width="32" height="32" rx="7.5" fill="url(#tile)"/><g fill="#ffffff"><circle cx="11.8" cy="12.2" r="1.9"/><circle cx="11.8" cy="19.8" r="1.9"/></g><path d="M21.4 10.2C17 13.8 17 18.2 21.4 21.8" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round"/></svg>
