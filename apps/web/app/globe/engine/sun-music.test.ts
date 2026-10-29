@@ -14,6 +14,7 @@ function fakes(opts: { state?: string; fail?: boolean } = {}) {
     state: opts.state ?? "running",
     currentTime: 0,
     destination: {},
+    outputLatency: 0 as number | undefined,
     onstatechange: null as (() => void) | null,
     resume: vi.fn(async () => {
       ctx.state = "running";
@@ -163,6 +164,41 @@ describe("the sun's music", () => {
     expect(curves.at(-1)!.to).toBeCloseTo(SUN_MUSIC.volume);
     expect(curves.at(-1)!.dur * 1000).toBeCloseTo(SUN_MUSIC.fadeInMs);
     expect(m.getSnapshot().sunSeen).toBe(true);
+  });
+
+  it("a mute is quick, not the slow fade of a setting sun, and it works on a fade that is already going", async () => {
+    const { m, ctx, curves } = await start();
+    m.setGlare(0.5);
+    ctx.currentTime = 30;
+    m.setMuted(true);
+    expect(curves.at(-1)!.to).toBe(0);
+    expect(curves.at(-1)!.dur * 1000).toBeLessThanOrEqual(SUN_MUSIC.muteFadeMs + 1);
+    // the sun setting (slow), then a mute: the quick one replaces it
+    store.clear();
+    const f = await start();
+    f.m.setGlare(0.5);
+    f.ctx.currentTime = 30;
+    f.m.setGlare(0);
+    expect(f.curves.at(-1)!.dur * 1000).toBeGreaterThan(1000);
+    f.ctx.currentTime = 30.1;
+    f.m.setMuted(true);
+    expect(f.curves.at(-1)!.dur * 1000).toBeLessThan(150);
+  });
+
+  it("tells the picture where the music is and how audible, only while it sounds", async () => {
+    const { m, ctx } = await start();
+    expect(m.pulse()).toBeNull();
+    m.setGlare(0.5);
+    ctx.currentTime = 10;
+    const p = m.pulse()!;
+    expect(p.amount).toBeCloseTo(1, 1);
+    expect(p.position).toBeCloseTo(10, 1);
+    ctx.outputLatency = 0.2;
+    expect(m.pulse()!.position).toBeCloseTo(9.8, 1);
+    m.setMuted(true);
+    ctx.currentTime = 11;
+    vi.advanceTimersByTime(500);
+    expect(m.pulse()).toBeNull();
   });
 
   it("lets go softly when the sun hides, and picks up where it left off when it comes back (never from the start)", async () => {

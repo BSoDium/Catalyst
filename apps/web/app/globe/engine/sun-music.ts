@@ -22,8 +22,20 @@ export const SUN_MUSIC = {
   url: "/audio/gabriel.mp3",
   /** The loudness, the gain of a file that is about -11 LUFS (loud) with a range of 18 LU: its loudest passages come out near -32 dBFS, as faint as the interlude's sound (cinematic-sound.ts), its quietest near -48. */
   volume: 0.18,
-  /** How much of the end is laid over the beginning to make the loop, seconds (the file's last six seconds are its fade-out: the overlap is the tail dying under the head rising). */
-  crossfadeSec: 10,
+  /**
+   * How much of the end is laid over the beginning to make the loop, seconds, at least (the file's last six seconds are its fade-out: the overlap is the tail dying under the head rising). The loop is a whole number of
+   * `cycleSec` long (`loopSamples`), so that the beat goes on across the seam: the overlap is the least that makes it so, from this much up to one cycle more.
+   */
+  crossfadeSec: 8,
+  /**
+   * The piece's pulse, measured on the file (onset autocorrelation, 2026-10-29: 109.97 BPM, a period of 0.5456 s, steady from end to end; no published tempo was found): `beatSec` is one beat, `cycleBeats` of them the
+   * cycle the sun's pulse goes round in (two: the "second" the owner hears), `beatOffsetSec` where the first beat falls in the decoded file.
+   */
+  beatSec: 0.5456,
+  cycleBeats: 2,
+  beatOffsetSec: 0.055,
+  /** How long a mute takes to go quiet (ms): not the fade-out of a sun that sets, but short enough not to click. */
+  muteFadeMs: 120,
   /** Coming in and going out, for the whole way from silence to `volume` (a part of the way takes a part of the time). */
   fadeInMs: 3200,
   fadeOutMs: 2600,
@@ -68,6 +80,15 @@ export function loopable(channels: readonly Float32Array[], fadeSamples: number)
   });
 }
 
+/**
+ * The length of the loop, in samples, for a piece of `n`: the longest whole number of cycles that leaves at least `crossfadeSec` to overlap, so that the beat on the loop's first sample is the beat that follows its last. Pure.
+ */
+export function loopSamples(n: number, sampleRate: number): number {
+  const cycle = SUN_MUSIC.beatSec * SUN_MUSIC.cycleBeats * sampleRate;
+  const k = Math.floor((n - SUN_MUSIC.crossfadeSec * sampleRate) / cycle);
+  return k >= 1 ? Math.round(k * cycle) : n;
+}
+
 /** Whether a glare means the sun is in view, given whether it was (the two thresholds: a sun on the edge does not flicker). Pure. */
 export function sunInView(glare: number, was: boolean): boolean {
   return glare >= SUN_MUSIC.glareOn || (was && glare > SUN_MUSIC.glareOff);
@@ -101,6 +122,8 @@ export interface MusicSource {
 export interface MusicContext {
   state: string;
   currentTime: number;
+  /** How long the sound takes from the audio clock to the speaker, seconds (not in every browser). */
+  outputLatency?: number;
   destination: unknown;
   onstatechange?: (() => void) | null;
   resume(): Promise<void>;
@@ -183,6 +206,19 @@ export class SunMusic {
   /** The piece's place in its loop now, seconds (a test reads it). */
   position(): number {
     return this.src && this.ctx ? loopPosition(this.pos, this.ctx.currentTime - this.srcAt, this.loopSec) : this.pos;
+  }
+
+  /**
+   * What the picture needs to follow the music (engine/sun-pulse.ts): how audible it is, 0 (silent, or not playing) to 1 (at `volume`), and where in the piece the SPEAKER is (the audio clock less the time the sound takes to get
+   * there: a pair of Bluetooth headphones is a fifth of a second behind). Null when nothing is sounding, so that nothing asks for frames.
+   */
+  pulse(): { amount: number; position: number } | null {
+    const c = this.ctx;
+    if (!c || !this.src) return null;
+    const amount = this.level(c.currentTime) / SUN_MUSIC.volume;
+    if (amount < 0.002) return null;
+    const lag = Math.min(0.5, c.outputLatency ?? 0);
+    return { amount: Math.min(1, amount), position: loopPosition(this.pos, c.currentTime - this.srcAt - lag, this.loopSec) };
   }
 
   /* ---------------------------------------- the page's ---------------------------------------- */
@@ -300,7 +336,7 @@ export class SunMusic {
       .fetchBytes(SUN_MUSIC.url)
       .then((bytes) => this.deps.decode(bytes))
       .then(({ channels, sampleRate }) => {
-        const loop = loopable(channels, Math.round(SUN_MUSIC.crossfadeSec * sampleRate));
+        const loop = loopable(channels, channels[0]!.length - loopSamples(channels[0]!.length, sampleRate));
         this.loopSec = loop[0]!.length / sampleRate;
         this.buffer = this.deps.makeBuffer(loop, sampleRate);
         this.set({ status: "ready" });
@@ -360,8 +396,12 @@ export class SunMusic {
   private fall() {
     const c = this.ctx;
     if (!c || !this.src) return;
-    if (this.stopTimer !== null) return; // (already going out)
-    const ms = this.fadeTo(0, SUN_MUSIC.fadeOutMs);
+    // a mute is quick (a click on a button is not the sun setting), also when the sun is already setting: the fade in progress is replaced by the quick one
+    const quick = this.snapshot.muted;
+    const going = this.stopTimer !== null;
+    if (going && !(quick && this.fade!.dur > SUN_MUSIC.muteFadeMs / 1000 + 0.05)) return; // (already going out)
+    if (going) clearTimeout(this.stopTimer!);
+    const ms = this.fadeTo(0, quick ? SUN_MUSIC.muteFadeMs : SUN_MUSIC.fadeOutMs, quick ? 30 : SUN_MUSIC.minFadeMs, going);
     // the place it is left at is where the sound reaches silence, whenever the timer gets to run
     const endAt = c.currentTime + ms / 1000;
     this.stopTimer = setTimeout(() => {
@@ -370,15 +410,18 @@ export class SunMusic {
     }, ms + 60);
   }
 
-  /** Fade the master gain to `to`; the time it takes is the share of the way left, in the full time. Returns it, ms. */
-  private fadeTo(to: number, fullMs: number): number {
+  /**
+   * Fade the master gain to `to`; the time it takes is the share of the way left, in the full time, and at least `minMs`. `again`: a fade to this gain that is on its way is replaced (a quicker one) and not left be.
+   * Returns the time it takes, ms.
+   */
+  private fadeTo(to: number, fullMs: number, minMs: number = SUN_MUSIC.minFadeMs, again = false): number {
     const c = this.ctx!;
     const g = this.master!.gain;
     const now = c.currentTime;
     // (already on its way there, or there: leave it be)
-    if (this.fade?.to === to) return Math.max(0, (this.fade.at + this.fade.dur - now) * 1000);
+    if (!again && this.fade?.to === to) return Math.max(0, (this.fade.at + this.fade.dur - now) * 1000);
     const from = this.level(now);
-    const ms = Math.max(SUN_MUSIC.minFadeMs, (fullMs * Math.abs(to - from)) / SUN_MUSIC.volume);
+    const ms = Math.max(minMs, (fullMs * Math.abs(to - from)) / SUN_MUSIC.volume);
     g.cancelScheduledValues(now);
     g.setValueAtTime(from, now);
     g.setValueCurveAtTime(fadeCurve(from, to), now, ms / 1000);

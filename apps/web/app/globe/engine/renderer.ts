@@ -88,6 +88,7 @@ import { fromViewState } from "./view";
 import { markerShown } from "./visibility";
 import { perfEnd, perfStart } from "./perf";
 import { sunMusic } from "./sun-music";
+import { sunPulse } from "./sun-pulse";
 
 // Our ShaderMaterials write raw sRGB values and there is no lighting, so skip Three's linear-sRGB conversion;
 // otherwise ink and background drift away from the CSS colours.
@@ -1361,9 +1362,14 @@ export class GlobeRenderer {
     return !!this.moonSample?.onScreen && this.moonRunning && !this.suspended;
   }
 
-  /** Something wants the display's own frames, not the idle rotation's ten a second: the caption moving, the moon in the picture. */
+  /** The sun's rays and halo are following the music's beat: a frame for each, while it sounds and the sun is in the picture. */
+  private get sunPulsing(): boolean {
+    return !this.reduced && !this.suspended && (this.globe.sun?.glare ?? 0) > 0 && sunMusic.pulse() !== null;
+  }
+
+  /** Something wants the display's own frames, not the idle rotation's ten a second: the caption moving, the moon in the picture, the sun's pulse. */
   private get wantsDisplayRate(): boolean {
-    return (this.caption?.animating ?? false) || this.moonWantsFrames;
+    return (this.caption?.animating ?? false) || this.moonWantsFrames || this.sunPulsing;
   }
 
   /** The orbit's angle for this frame, advancing its clock by the time since the last one while it may run. */
@@ -1438,7 +1444,10 @@ export class GlobeRenderer {
     const ahead = clip.w > 1e-4;
     // (where the planet's centre is on the buffer: the crescent's centre of mass lies on the line from it through the sun)
     const pc = this.planetV.set(0, 0, 0).project(cam);
+    // (the music's beat in the sun's rays and halo, while it sounds and the visitor has not asked for less motion)
+    const beat = this.reduced ? null : sunMusic.pulse();
     sun.sync({
+      pulse: beat ? sunPulse(beat.position, beat.amount) : undefined,
       bufW: this.bufW,
       bufH: this.bufH,
       x: ahead ? (clip.x / clip.w * 0.5 + 0.5) * this.bufW : 0,
@@ -1697,7 +1706,7 @@ export class GlobeRenderer {
     // A timed transition of the boxes or of the borders (engine/fade.ts) that has not reached its end keeps the loop going, camera or not.
     // While the street map owns the view the globe draws nothing and its transitions are not advanced here (the street engine runs the
     // boxes' own), so they must not keep this loop spinning.
-    const more = moving || fading || this.moonWantsFrames || this.irisMoving || (!this.suspended && (this.lod.animating || this.globe.animating || !!this.opts.labelsAnimating?.()));
+    const more = moving || fading || this.moonWantsFrames || this.sunPulsing || this.irisMoving || (!this.suspended && (this.lod.animating || this.globe.animating || !!this.opts.labelsAnimating?.()));
     if (more) this.keepGoing(moving);
     else if (this.spin.spinning) this.chainSpin();
     else this.armSpin();
@@ -1896,7 +1905,7 @@ export class GlobeRenderer {
     this.opts.onFrame();
     perfEnd("frame.callbacks", t1);
     // Whoever drew this frame (the tick, a resize, a check), the transitions run to their end, and the idle rotation's chain (cancelled above) goes on.
-    if (this.lod.animating || this.globe.animating || (this.caption?.animating ?? false) || this.moonWantsFrames || this.opts.labelsAnimating?.()) this.keepGoing(false);
+    if (this.lod.animating || this.globe.animating || (this.caption?.animating ?? false) || this.moonWantsFrames || this.sunPulsing || this.opts.labelsAnimating?.()) this.keepGoing(false);
     else if (this.spin.spinning) this.chainSpin();
     this.armCaption();
   }

@@ -12,6 +12,7 @@ import { BufferAttribute, BufferGeometry, Color, Mesh, NormalBlending, type Scen
 import type { GlobeTheme } from "./colors";
 import { FLARE, SUN } from "./moon";
 import { BAYER4 } from "./sky";
+import { PULSE } from "./sun-pulse";
 
 const f = (n: number) => n.toFixed(3);
 const list = (xs: readonly number[]) => xs.map(f).join(", ");
@@ -37,7 +38,7 @@ export const WARM_GLSL = /* glsl */ `
 `;
 
 const FRAGMENT = /* glsl */ `
-  uniform vec2 uSun; uniform vec2 uMid; uniform float uUnit; uniform float uStr; uniform float uRay; uniform vec3 uBg; uniform vec3 uInk; uniform float uLight; uniform float uBufW; uniform float uBufH; uniform float uSunR; uniform float uLen;
+  uniform vec2 uSun; uniform vec2 uMid; uniform float uUnit; uniform float uStr; uniform float uRay; uniform vec3 uBg; uniform vec3 uInk; uniform float uLight; uniform float uBufW; uniform float uBufH; uniform float uSunR; uniform float uLen; uniform vec2 uPulse;
   ${WARM_GLSL}
   const float BAYER[16] = float[16](${BAYER4.map((n) => `${n}.0`).join(", ")});
   const float AT[${N}] = float[${N}](${list(FLARE.ghosts.map((g) => g.at))});
@@ -74,9 +75,9 @@ const FRAGMENT = /* glsl */ `
     vec2 a = abs(o);
     float dist = -1.0;
     float len = 1.0;
-    if (o.y == 0.0) { dist = a.x; len = ${f(FLARE.streak)} * uLen * uBufW; }
-    else if (o.x == 0.0) { dist = a.y; len = ${f(FLARE.streakUp)} * uLen * uBufH; }
-    else if (a.x == a.y) { dist = a.x * 1.4142; len = ${f(FLARE.streakDiag)} * uLen * uBufW; }
+    if (o.y == 0.0) { dist = a.x; len = ${f(FLARE.streak)} * uLen * uBufW * uPulse.x; }
+    else if (o.x == 0.0) { dist = a.y; len = ${f(FLARE.streakUp)} * uLen * uBufH * uPulse.x; }
+    else if (a.x == a.y) { dist = a.x * 1.4142; len = ${f(FLARE.streakDiag)} * uLen * uBufW * uPulse.y; }
     if (dist > uSunR) {
       float along = 1.0 - (dist - uSunR) / len;
       if (along > 0.0 && pow(along, ${f(FLARE.streakFall)}) > bayer()) { ink = ${f(FLARE.streakTone)}; hue = 0.95; ray = true; }
@@ -116,6 +117,8 @@ export interface FlareFrame {
   set?: number;
   /** How long the rays are, as a share of their full length, 0..1: the sun's visible radius (the root of its area). Absent: whole. */
   size?: number;
+  /** The rays' reach on the music's beat (`sunPulse`, engine/sun-pulse.ts): how much longer the axes' and the diagonals' are, 0..1 of `PULSE.rays`. Absent: none. */
+  pulse?: { axis: number; diag: number };
 }
 
 const smooth = (a: number, b: number, x: number) => {
@@ -195,6 +198,7 @@ export class FlareLayer {
       uBufH: { value: 1 },
       uSunR: { value: 0 },
       uLen: { value: 1 },
+      uPulse: { value: new Vector2(1, 1) },
       uStr: { value: 1 },
       uRay: { value: 1 },
       uBg: { value: new Color() },
@@ -245,6 +249,7 @@ export class FlareLayer {
     u.uBufH!.value = fr.bufH;
     u.uSunR!.value = p.r;
     u.uLen!.value = p.len;
+    (u.uPulse!.value as Vector2).set(1 + PULSE.rays * (fr.pulse?.axis ?? 0), 1 + PULSE.rays * (fr.pulse?.diag ?? 0));
     u.uStr!.value = p.str;
     u.uRay!.value = p.ray;
     u.uSet!.value = fr.set ?? 0;
