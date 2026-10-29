@@ -24,3 +24,17 @@ const subscribe = (l: () => void) => {
 export function useHeroResting(): boolean {
   return useSyncExternalStore(subscribe, () => resting, () => true);
 }
+
+/**
+ * Whether the visitor has been on another page of the site in this session. The landing hero is born at rest (the full presentation, no header),
+ * which is right for a visit that begins on the home page and wrong for one that comes back to it from a list: someone who clicked "Globe" in the
+ * header expects the header to stay (owner, 2026-10-21), and the presentation to return by itself after the idle delay. The header reports the
+ * pages it is on; the hero reads this when it is created.
+ */
+let leftHome = false;
+export function markLeftHome(): void {
+  leftHome = true;
+}
+export function cameBackHome(): boolean {
+  return leftHome;
+}

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { INTERLUDE_STATE_EVENT, RESTORE_HERO_EVENT, type CoverBlock, type InterludeStateDetail, type GlobeShowcase, type GlobeSignal, type GlobeViewState } from "~/globe";
+import { cameBackHome } from "~/lib/hero-rest";
 import { createHeroMachine, HERO_IDLE_MS, isWorldView, showcaseOf, type HeroMachine } from "~/lib/hero-machine";
 
 /**
@@ -71,7 +72,7 @@ export interface LandingHero {
  * `open` is whether a place or an entry is open (the panel): the hero is not the page then, and the world view is not "the world view".
  */
 export function useLandingHero(open: boolean): LandingHero {
-  const machine = useMemo(() => createHeroMachine({ idleMs: idleMs() }), []);
+  const machine = useMemo(() => createHeroMachine({ idleMs: idleMs(), initial: cameBackHome() ? "collapsed" : "rest" }), []);
   const zoomAtWorld = useRef(true);
   const openRef = useRef(open);
 
