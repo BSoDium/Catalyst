@@ -93,7 +93,7 @@ function Player({ snap }: { snap: NowPlayingSnapshot }) {
           <Icon name={snap.muted ? "play" : "pause"} size="control" />
         </span>
       </button>
-      <div className="np-text min-w-0">
+      <div className="np-text min-w-0" title={track.note}>
         <p className="np-title">{track.titleHref ? <a href={track.titleHref} target="_blank" rel="noopener noreferrer">{track.title}</a> : track.title}</p>
         {track.artist && <p className="np-artist">{track.artistHref ? <a href={track.artistHref} target="_blank" rel="noopener noreferrer">{track.artist}</a> : track.artist}</p>}
       </div>

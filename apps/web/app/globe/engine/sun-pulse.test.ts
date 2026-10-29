@@ -43,8 +43,8 @@ describe("the sun's breathing", () => {
   it("goes with how audible the music is, and is nothing when it is not", () => {
     const full = sunPulse(at(0.3), 1, 0.8);
     const half = sunPulse(at(0.3), 0.5, 0.8);
-    for (const k of ["breath", "axis", "diag", "lens", "grow", "jitter"] as const) expect(half[k]).toBeCloseTo(full[k] / 2, 5);
-    expect(sunPulse(at(0.3), 0, 1)).toMatchObject({ breath: 0, axis: 0, diag: 0, lens: 0, grow: 0, jitter: 0 });
+    for (const k of ["amount", "breath", "axis", "diag", "lens", "grow", "jitter"] as const) expect(half[k]).toBeCloseTo(full[k] / 2, 5);
+    expect(sunPulse(at(0.3), 0, 1)).toMatchObject({ amount: 0, breath: 0, axis: 0, diag: 0, lens: 0, grow: 0, jitter: 0 });
   });
 
   it("is drawn again (a new seed) at every cycle, and is the same seed over the whole of one", () => {
@@ -58,11 +58,21 @@ describe("the sun's breathing", () => {
     expect(sunPulse(at(0.2), 1, 7).grow).toBe(1);
   });
 
+  it("takes the halo down and brings it back through the dither, never by a multiple of its tone: nothing at rest, nothing at the top of a breath", () => {
+    expect(sunPulse(at(0.3), 0).amount).toBe(0);
+    const top = sunPulse(at(0.5 + PULSE.haloLag), 1);
+    expect(top.amount - top.breath).toBeCloseTo(0, 5); // (the shader's dip is amount - breath)
+    const low = sunPulse(at(PULSE.haloLag), 1);
+    expect(low.amount - low.breath).toBeCloseTo(1, 5);
+    expect(PULSE.dip).toBeGreaterThan(0.5);
+    expect(PULSE.dip).toBeLessThanOrEqual(2);
+    expect(readFileSync("app/globe/engine/sun-layer.ts", "utf8")).not.toMatch(/PULSE\.glow/);
+  });
+
   it("is soft: the most it moves the rays, the halo, the light and the grain is a few per cent", () => {
     expect(PULSE.rays).toBeLessThanOrEqual(0.08);
     expect(PULSE.grow).toBeLessThanOrEqual(0.15);
     expect(PULSE.halo).toBeLessThanOrEqual(0.04);
-    expect(PULSE.glow).toBeLessThanOrEqual(0.08);
     expect(PULSE.flare).toBeLessThanOrEqual(0.3);
     expect(PULSE.jitter).toBeLessThanOrEqual(0.4);
   });

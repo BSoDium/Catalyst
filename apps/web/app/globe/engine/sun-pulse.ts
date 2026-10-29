@@ -2,7 +2,7 @@
  * The sun's breathing (docs/landing.md, "The sun's music"): while the music plays, the sun's rays, halo and lens flare breathe, very faintly, in time with it. Not a beat visualiser (owner: "softer, more like a breathing
  * motion"): one slow cycle of four beats (`SUN_MUSIC.cycleBeats`, 2.18 s at the piece's 110 BPM, measured on the file), every part of it a cosine, so that nothing in it has an edge. The cycle begins on the music's first beat:
  *  - the rays along the axes (up, down, left, right) breathe OUT over the first half of the cycle and in over the second, and the diagonal ones do the opposite, so the sun seems to turn its shape rather than to throb;
- *  - the halo and its ring swell and brighten a quarter of a cycle behind, so that the three never peak together;
+ *  - the halo and its ring swell and brighten (its tone dips and comes back through the dither, a pixel at a time) a quarter of a cycle behind, so that the three never peak together;
  *  - the lens flare's ghosts (their opacity) breathe in and out a little, `PULSE.flare` of it.
  *
  * The rays also GROW and SHIFT with the sound (owner: "their seed evolves with the sound"): they reach further as the piece gets louder (`grow`, from the music's own level: `SunMusic.pulse().energy`), and the grain of their
@@ -23,8 +23,11 @@ export const PULSE = {
   jitter: 0.3,
   /** How much the halo's (and its ring's) reach grows at the top of a breath. */
   halo: 0.03,
-  /** How much brighter the halo is at the top of a breath, as a share of its light. */
-  glow: 0.06,
+  /**
+   * How far the halo's tone is taken down at the bottom of a breath, in steps of its tone (the halo is cut into `SUN.haloSteps` and dithered): 1.5 steps takes the flat zone round the disc through a step and a half of the
+   * dither, a pixel at a time. (It was a multiple of the whole tone, which flipped that zone between two colours of the ramp all at once: "binary".)
+   */
+  dip: 1.5,
   /** How much the lens flare's ghosts dim at the bottom of a breath, as a share of their opacity. */
   flare: 0.22,
   /** How far behind the rays' breath the halo's is, in cycles. */
@@ -37,6 +40,8 @@ export function breath(phase: number): number {
 }
 
 export interface SunPulse {
+  /** How audible the music is, 0..1 (the others are this much of what they are). */
+  amount: number;
   /** The halo's swell, and the light's, 0..1. */
   breath: number;
   /** The rays along the axes, and the diagonal ones, 0..1: one goes out as the other comes in. */
@@ -51,7 +56,7 @@ export interface SunPulse {
   jitter: number;
 }
 
-export const NO_PULSE: SunPulse = { breath: 0, axis: 0, diag: 0, lens: 0, grow: 0, seed: 0, jitter: 0 };
+export const NO_PULSE: SunPulse = { amount: 0, breath: 0, axis: 0, diag: 0, lens: 0, grow: 0, seed: 0, jitter: 0 };
 
 /** The breathing at `position` seconds into the piece, as audible as `amount` (0..1), the piece as loud as `energy` (0..1). Pure. */
 export function sunPulse(position: number, amount: number, energy = 0): SunPulse {
@@ -60,6 +65,7 @@ export function sunPulse(position: number, amount: number, energy = 0): SunPulse
   const index = Math.floor(cycles);
   const phase = cycles - index;
   return {
+    amount: a,
     breath: breath(phase - PULSE.haloLag) * a,
     axis: breath(phase) * a,
     diag: breath(phase + 0.5) * a,

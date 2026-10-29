@@ -21,6 +21,8 @@ export interface Track {
   /** Where the title goes (the song's video), and where the artist does (their page). Absent: plain text. */
   titleHref?: string;
   artistHref?: string;
+  /** What the credit means, as the hover says it (the roles of those it names). */
+  note?: string;
 }
 
 /** The page's sounds: what each is called and who is credited, in one place. */
@@ -36,7 +38,13 @@ export const TRACKS = {
     titleHref: "https://www.youtube.com/results?search_query=Felsmann+Tiley+Gabriel",
     artistHref: "https://store.mute.com/products/felsmann-tiley-protomensch",
   },
-  interlude: { id: "interlude", title: "Universal intro", priority: 2 },
+  interlude: {
+    id: "interlude",
+    title: "Universal intro",
+    artist: "Jerry Goldsmith & Brian Tyler",
+    note: "Composed by Jerry Goldsmith (1997); arranged by Brian Tyler (2012)",
+    priority: 2,
+  },
 } as const satisfies Record<string, Track>;
 
 export type PlayState = "playing" | "paused";
