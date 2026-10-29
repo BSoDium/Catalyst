@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MOON, direction, inclinationFor, inertialPosition, moonAmount, orbitAngle, orbitBasis, litTurn, rollFor, sunDirection, toEarthFrame, toRad, unhidden, type Vec3 } from "./moon";
+import { MOON, direction, inclinationFor, inertialPosition, moonAmount, orbitAngle, orbitBasis, litTurn, rollFor, sunDirection, toEarthFrame, toRad, unhidden, visibleBounds, type Vec3 } from "./moon";
 import { viewBasis } from "./geo";
 
 const dot = (a: Vec3, b: Vec3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
@@ -173,5 +173,26 @@ describe("litTurn", () => {
   });
   it("does not depend on the idle turn (view down, era up by the same angle)", () => {
     expect(litTurn(-40, 110)).toBe(litTurn(0, 70));
+  });
+});
+
+describe("visibleBounds", () => {
+  const moon = { x: 100, y: 100, r: 10 };
+
+  it("is the whole disc where nothing is in front of it", () => {
+    expect(visibleBounds(moon, null)).toEqual({ x0: 90, y0: 90, x1: 110, y1: 110 });
+    expect(visibleBounds(moon, { x: 300, y: 100, r: 50 })).toEqual({ x0: 90, y0: 90, x1: 110, y1: 110 });
+  });
+
+  it("is what the planet leaves: a planet to the left of the moon takes its left part", () => {
+    const b = visibleBounds(moon, { x: 40, y: 100, r: 55 })!; // its limb is at x = 95
+    expect(b.x0).toBeGreaterThan(94);
+    expect(b.x1).toBeCloseTo(110, 5);
+    expect(b.y0).toBeGreaterThan(90 - 1e-9);
+    expect(b.y1).toBeLessThan(110 + 1e-9);
+  });
+
+  it("is null once the planet covers the whole moon", () => {
+    expect(visibleBounds(moon, { x: 100, y: 100, r: 80 })).toBeNull();
   });
 });

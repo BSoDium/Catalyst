@@ -75,8 +75,10 @@ import { RingLayer } from "./ring-layer";
 import { GlobeScene } from "./scene";
 import { sunRise } from "./sun-flare";
 import { FX, irisStep } from "./fx";
-import { MOON, SUN, inclinationFor, litTurn, moonAmount, orbitAngle, rollFor, sunDirection, toEarthFrame, toRad, type Vec3 } from "./moon";
+import { MOON, SUN, inclinationFor, litTurn, moonAmount, orbitAngle, rollFor, sunDirection, toEarthFrame, toRad, visibleBounds, type Vec3 } from "./moon";
+import { roleColor } from "./palette";
 import type { MoonSample } from "./moon-layer";
+import type { MoonFrame } from "./moon-overlay";
 import { CAPTION, ENERGY, INSET_EASE, CAPTION_LOAD, RING, SKY, START_VIEW, TUNING } from "./tuning";
 import { QualityGovernor } from "./quality";
 import { FpsOverlay } from "./fps-overlay";
@@ -1413,11 +1415,17 @@ export class GlobeRenderer {
    * What the link over the moon (engine/moon-overlay.ts) needs of it now, in the container's CSS px, or null while there is nothing to point at (no moon, not placed
    * yet, not in the picture, a place or the street map or the interlude has the view). `amount` is how much the zoom lets through, `unhidden` how much of the disc the planet leaves.
    */
-  moonFrame(): { x: number; y: number; r: number; amount: number; unhidden: number; angle: number } | null {
+  /** The colour of a box at rest (the palette's `peak` level, `labelTones`) as a CSS colour. */
+  private boxTone(): string {
+    const c = roleColor(this.theme.ramp, "peak");
+    return `rgb(${Math.round(c[0] * 255)} ${Math.round(c[1] * 255)} ${Math.round(c[2] * 255)})`;
+  }
+
+  moonFrame(): MoonFrame | null {
     const m = this.moonSample;
     if (!m || !m.onScreen || !this.sized || this.disposed || this.lost || this.suspended || this.inInterlude) return null;
     const P = this.pixel;
-    return { x: m.cx * P + this.canvasLeft, y: (this.bufH - m.cy) * P + this.canvasTop, r: m.r * P, amount: m.amount, unhidden: m.unhidden, angle: this.moonAngleNow() };
+    return { x: m.cx * P + this.canvasLeft, y: (this.bufH - m.cy) * P + this.canvasTop, r: m.r * P, amount: m.amount, unhidden: m.unhidden, angle: this.moonAngleNow(), grid: { col: m.cx, row: this.bufH - m.cy, rad: m.r, visible: visibleBounds({ x: m.cx, y: this.bufH - m.cy, r: m.r }, m.planet && { x: m.planet.x, y: this.bufH - m.planet.y, r: m.planet.r }), cell: P, left: this.canvasLeft, top: this.canvasTop }, tone: this.boxTone() };
   }
 
   /** The idle rotation is turning the globe now (a plain read: asked every camera frame, so it builds nothing, unlike `spinInfo`). */

@@ -32,6 +32,8 @@ export interface MoonSample {
   /** 0..1: how much of the disc the planet leaves visible (the link over it is not a target when this is low), and how much the zoom lets through. */
   unhidden: number;
   amount: number;
+  /** The planet's silhouette on the buffer where it can hide the moon (beyond the plane of its horizon), art pixels, y up; else null. */
+  planet: { x: number; y: number; r: number } | null;
 }
 
 export interface MoonFrame {
@@ -236,7 +238,7 @@ export class MoonLayer {
     const ahead = -(dx * ce[8]! + dy * ce[9]! + dz * ce[10]!);
     const onScreen = ahead > 0.5 && cx + r > 0 && cx - r < f.bufW && cy + r > 0 && cy - r < f.bufH;
     this.mesh.visible = onScreen;
-    const sample: MoonSample = { position: p, distance: D, cx, cy, r, onScreen, unhidden: unhidden(behind, Math.hypot(cx - px, cy - py), s, r), amount };
+    const sample: MoonSample = { position: p, distance: D, cx, cy, r, onScreen, unhidden: unhidden(behind, Math.hypot(cx - px, cy - py), s, r), amount, planet: behind ? { x: px, y: py, r: s } : null };
     const u = this.material.uniforms;
     (u.uAxis!.value as Vector3).set(dx / D, dy / D, dz / D);
     (u.uSun!.value as Vector3).set(f.sun[0], f.sun[1], f.sun[2]);
