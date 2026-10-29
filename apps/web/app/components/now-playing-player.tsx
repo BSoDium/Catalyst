@@ -2,7 +2,6 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { Icon } from "~/components/ui/icon";
 import { nowPlaying, pillVisible, type NowPlayingSnapshot } from "~/globe";
-import { cn } from "~/lib/utils";
 
 /**
  * Where the player sits (`.np-root`, app.css), in one place (owner: "we might iterate on where it shows and when it goes"): docked in the top left corner when there is room, and moved down under the header when the header
