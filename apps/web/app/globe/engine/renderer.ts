@@ -686,6 +686,11 @@ export class GlobeRenderer {
   }
 
   /** The lowest zoom the camera may go to (below `getFitZoom()` by the ring's room when the ring is on). */
+  /** Whether `zoom` is within the world view of a narrow screen, where the world view is closer than the whole-globe fit (false on a wide window: `GlobeViewState.zoom` says it there). */
+  atImmersiveWorld(zoom: number): boolean {
+    return this.world > this.fit + 1e-6 && zoom <= this.world + SPIN.unzoomedSlack && zoom <= TUNING.maxZoom;
+  }
+
   getMinZoom() {
     return this.minZoom;
   }
