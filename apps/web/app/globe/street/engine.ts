@@ -42,6 +42,7 @@ import { probeSource, type ProbeConfig, type ProbeOutcome } from "./net/probe";
 import { HudLayer } from "./overlay/hud-layer";
 import { LayerSwitch, switchRules, type SwitchView } from "./style/layer-switch";
 import { TrailDotsLayer, dotLegs } from "../paths/trail-dots-layer";
+import { capReach, viewCap } from "./core/view-cap";
 import { fadeStraight, thinLegs, thinZoomOf, type ThinLeg } from "../paths/thin";
 import { DEFAULT_HANDOFF, PLACEHOLDER_LAYERS, ROUTE_LAYER_IDS, WORLD_PLACEHOLDER_BELOW, applyCell, applyDashScale, applyKeptLegs, buildStreetStyle, dashStepOf, focusFilter, graticule, headFocusFilter, ROUTE_HEAD_FOCUS_ID, hasPlaceholder, routeLayerId, seaFrom, type StyleTiles } from "./style/street-style";
 import { STREET_TUNING } from "./tuning";
@@ -567,13 +568,24 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
     hud.update({ width: w, height: h, cellCss, cam: lodCam });
     // The camera's signature includes where the centre lands on screen: closing the panel changes the map's padding (the inset), which moves every
     // projected point without changing the centre's lon, lat or zoom.
+    const mapViewCap = (cw: number, ch: number) => {
+      // (the unproject of a corner of a globe at a low zoom may fall off the planet: not a number, and `viewCap` says no cap then)
+      const pts = [[0, 0], [cw / 2, 0], [cw, 0], [0, ch / 2], [cw, ch / 2], [0, ch], [cw / 2, ch], [cw, ch]].map(([x, y]) => {
+        const l = map.unproject([x!, y!]);
+        return [l.lng, l.lat] as const;
+      });
+      const c = map.getCenter();
+      return viewCap([c.lng, c.lat], pts);
+    };
     const at = map.project(map.getCenter());
     // (the transform is not in the map's public typings; its `Marker` reads it the same way)
     const camera = (map as unknown as { _camera?: { transform?: { isLocationOccluded?(l: LngLat): boolean } } })._camera?.transform;
     const occluded = (l: LngLat): boolean => camera?.isLocationOccluded?.(l) ?? false;
     // `project` answers for the far side of the planet too (a point behind it lands somewhere on the screen): a flight that wraps round the planet drew
     // through it. The map's own occlusion test (what its markers use) takes those points out, and the layer splits the line there.
-    trailDots.draw((p) => (occluded(new LngLat(p[0], p[1])) ? null : map.project(p)), w, h, cellCss, map.getZoom(), `${v.lon.toFixed(6)},${v.lat.toFixed(6)},${v.zoom.toFixed(5)},${at.x.toFixed(2)},${at.y.toFixed(2)}`);
+    // The legs that cannot be on the canvas are not projected, point by point (a Pixel 7: a third of the main thread over a flight through the levels): the view's cap from its corners and the middle of its sides.
+    const view = trailDots.wantsDraw(`${v.lon.toFixed(6)},${v.lat.toFixed(6)},${v.zoom.toFixed(5)},${at.x.toFixed(2)},${at.y.toFixed(2)}`, w, h, cellCss) ? mapViewCap(w, h) : null;
+    trailDots.draw((p) => (occluded(new LngLat(p[0], p[1])) ? null : map.project(p)), w, h, cellCss, map.getZoom(), `${v.lon.toFixed(6)},${v.lat.toFixed(6)},${v.zoom.toFixed(5)},${at.x.toFixed(2)},${at.y.toFixed(2)}`, 0, undefined, view ? (cap) => capReach(view, cap) : undefined);
     // The boxes fade by time, not by camera: the map keeps repainting (and so this runs again) until the last transition has ended. The labels'
     // glides are not in this: they are DOM transforms the labels' own frames run (hud.driveGlides), the map has nothing to redraw for them.
     if (hud.boxesAnimating) map.triggerRepaint();

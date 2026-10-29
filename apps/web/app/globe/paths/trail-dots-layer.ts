@@ -232,11 +232,16 @@ export class TrailDotsLayer {
     }
   }
 
+  /** Whether `draw` with this camera and size would redraw (the signature is not the last one's): so that the caller works out what it hands `draw` only then. */
+  wantsDraw(camera: string, w: number, h: number, cell: number): boolean {
+    return `${camera}|${Math.ceil(w / cell)}x${Math.ceil(h / cell)}@${cell}|${this.visible ? 1 : 0}` !== this.signature;
+  }
+
   /**
    * Draw for a camera: `project` gives container CSS px, `camera` is anything that changes when the view does (it keys the redraw). `fast`: see `FastProjection`
    * (used only when the layer draws just the pictures; it gives the same pictures as `project` alone).
    */
-  draw(project: (p: LonLat, lift: number) => { x: number; y: number } | null, w: number, h: number, cell: number, zoom: number, camera: string, liftScale = 0, fast?: FastProjection) {
+  draw(project: (p: LonLat, lift: number) => { x: number; y: number } | null, w: number, h: number, cell: number, zoom: number, camera: string, liftScale = 0, fast?: FastProjection, reach?: (cap: LegCap) => boolean) {
     const ctx = this.ctx;
     if (!ctx || this.trail.length === 0) return;
     const cols = Math.ceil(w / cell);
@@ -275,6 +280,8 @@ export class TrailDotsLayer {
       const quick = fast && !this.opts.lines ? fast : null;
       // a leg that cannot be on the canvas has no picture (a spot is on it), and an arc, which rises off the ground, is always projected
       if (quick && leg.arcLift === 0 && !quick.reach(leg.cap)) continue;
+      // (and the street map's, which draws every leg's lines, says it too: `reach` alone; with no lift an arc lies on the ground and is as culled as any leg)
+      if (!quick && reach && (leg.arcLift === 0 || liftScale === 0) && !reach(leg.cap)) continue;
       // the leg's points on the canvas, split where the planet hides them; an arc is lifted by sin(pi t) of its apex
       const total = leg.count;
       const stride = quick && leg.arcLift > 0 ? ARC_ICON_STRIDE : 1;

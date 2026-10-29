@@ -31,6 +31,7 @@ console.log(JSON.stringify(info));
 
 await page.evaluate(() => {
   window.__iv = [];
+  window.__zl = 0;
   window.__loaf = [];
   try {
     new PerformanceObserver((l) => {
@@ -39,7 +40,11 @@ await page.evaluate(() => {
   } catch {}
   let last = 0;
   const f = (t) => {
-    if (last) window.__iv.push([Math.round(t), +(t - last).toFixed(1), window.__handoverDebug?.zoom() ?? 0]);
+    const z = window.__handoverDebug?.zoom() ?? 0;
+    // (user timing marks in the trace: where the camera crosses the levels, to find the window in it)
+    for (const k of [3, 5, 6.5, 8, 9.5, 11, 13]) if (window.__zl < k && z >= k) performance.mark(`zoom-${k}`);
+    window.__zl = z;
+    if (last) window.__iv.push([Math.round(t), +(t - last).toFixed(1), z]);
     last = t;
     requestAnimationFrame(f);
   };
@@ -72,6 +77,8 @@ if (mode === "flight") {
 if (tracing) await browser.stopTracing();
 const iv = await page.evaluate(() => window.__iv);
 const loaf = await page.evaluate(() => window.__loaf);
+const extra = await page.evaluate(() => window.__T ?? null);
+if (extra) console.log("window.__T", JSON.stringify(extra));
 writeFileSync(join(out, "frames.json"), JSON.stringify({ info, marks, iv, loaf }));
 console.log(JSON.stringify({ out, frames: iv.length, over50: iv.filter((x) => x[1] > 50).length, max: Math.max(...iv.map((x) => x[1])), marks: marks.length }));
 await browser.close();
