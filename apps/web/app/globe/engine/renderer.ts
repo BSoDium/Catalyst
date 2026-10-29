@@ -171,6 +171,9 @@ export interface FlyOptions {
 /** How long the camera takes to glide from where it was into the interlude's flight, when it is asked for away from the display mode, ms (`GlobeRenderer.playInterludeNow`). */
 const CAMERA_INTRO_MS = 2200;
 
+/** A smootherstep: from rest to rest, with no jump at either end. */
+const smootherstep = (t: number) => t * t * t * (t * (t * 6 - 15) + 10);
+
 export class GlobeRenderer {
   readonly canvas: HTMLCanvasElement;
 
@@ -227,7 +230,8 @@ export class GlobeRenderer {
   /** True while `setCover` applies a new cover: the lift that follows is eased, not snapped. */
   private easeLift = false;
   private lift = 0;
-  private liftAnim: { from: number; to: number; start: number } | null = null;
+  /** The lift's ease: the inset's by default; while the planet comes closer (`zoomGlide`) it has the glide's own clock, length and curve, so the two are one movement. */
+  private liftAnim: { from: number; to: number; start: number; ms?: number; smooth?: boolean } | null = null;
   /** The lift in whole buffer pixels, like `shiftBuf`. */
   private liftBuf = 0;
   private liftKey = "";
@@ -566,7 +570,9 @@ export class GlobeRenderer {
     if (next === this.liftTarget) return;
     this.liftTarget = next;
     if (animate && this.sized && !this.reduced && Math.abs(next - this.lift) > 0.5) {
-      this.liftAnim = { from: this.lift, to: next, start: performance.now() };
+      // (the planet is coming closer: the lift is the same movement, on the glide's clock)
+      const g = this.zoomGlide;
+      this.liftAnim = g ? { from: this.lift, to: next, start: g.t0, ms: g.ms, smooth: true } : { from: this.lift, to: next, start: performance.now() };
     } else {
       this.liftAnim = null;
       this.lift = next;
@@ -1198,8 +1204,8 @@ export class GlobeRenderer {
     }
     if (this.liftAnim) {
       const a = this.liftAnim;
-      const t = clamp((now - a.start) / TUNING.insetMs, 0, 1);
-      this.lift = t >= 1 ? a.to : a.from + (a.to - a.from) * easeInset(t);
+      const t = clamp((now - a.start) / (a.ms ?? TUNING.insetMs), 0, 1);
+      this.lift = t >= 1 ? a.to : a.from + (a.to - a.from) * (a.smooth ? smootherstep(t) : easeInset(t));
       this.liftBuf = Math.round(this.lift / this.pixel);
       if (t >= 1) this.liftAnim = null;
       else more = true;
@@ -1241,8 +1247,7 @@ export class GlobeRenderer {
       const a = this.zoomGlide;
       const t = clamp((now - a.t0) / a.ms, 0, 1);
       // slow in, slow out: the planet comes closer from rest and settles
-      const e = t * t * t * (t * (t * 6 - 15) + 10);
-      this.view = this.clampView({ ...this.view, zoom: a.from + (a.to - a.from) * e });
+      this.view = this.clampView({ ...this.view, zoom: a.from + (a.to - a.from) * smootherstep(t) });
       if (t >= 1) this.zoomGlide = null;
       else more = true;
     }
@@ -2261,6 +2266,8 @@ export class GlobeRenderer {
       return;
     }
     this.zoomGlide = { from: this.view.zoom, to, t0: performance.now(), ms: IMMERSION.glideMs };
+    // (the planet's move to the middle, if it has begun, joins it: one movement)
+    if (this.liftAnim) this.liftAnim = { ...this.liftAnim, start: this.zoomGlide.t0, ms: this.zoomGlide.ms, smooth: true };
     this.requestRender();
   }
 
