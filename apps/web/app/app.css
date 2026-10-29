@@ -2905,8 +2905,10 @@
        the ring's own thickness 0.95 units: with a box of B em and a stroke of s units, (13.95 + s) B / 16 = 0.74 and (0.95 + s) B / 16 = 0.09, so B = 0.8 em and s = 0.85 units. */
     width: 0.8em;
     height: 0.8em;
-    /* (centred in its row it would sit 0.65 px under the word's digit height, measured; with the row's shift above it is back on it) */
-    translate: 0 -0.0305em;
+    /* Its CENTRE OF MASS is on the word's. Measured from the rendered ink: the word's is 0.316 em above its baseline (the lowercase letters carry most of the ink, so it is under the middle of a digit, 0.37 em), the
+       lens's is 0.57 units of 16 above its box's middle (the ring is up and left, the handle down and right), 0.0286 em. With the row's shift above, the box's middle is on the digit's middle, 0.37 em up, so the icon
+       goes down by 0.37 + 0.0286 - 0.316 = 0.082 em, less the 0.0305 em the row's centring puts it under the baseline, and a last 0.004 em from the browser: 0.048 em. (Its top and bottom are then not the digit's: it hangs 1.8 px under the baseline.) */
+    translate: 0 0.048em;
   }
 
   /* The stroke of the type beside it: the stems are 0.09 em (measured on the H at weight 400), the ring 0.95 units of 16, so a stroke of 0.85 units round it brings the ring to the stems' thickness. */
