@@ -82,8 +82,8 @@ export const TUNING = {
  */
 export const SKY = {
   /**
-   * The earth rotation angle at load (GMST, degrees): the right ascension of the Greenwich meridian. It is a fixed number so the sky is the
-   * same on every visit; it is the ONLY thing that places the sky relative to the earth. The idle rotation adds to it (renderer `era`), a
+   * The earth rotation angle at load (GMST, degrees): the right ascension of the Greenwich meridian. It is the value of a debug page and the tests (the sky is the same
+   * in every screenshot); the live page takes the real hour's (engine/daylight.ts). It is the ONLY thing that places the sky relative to the earth. The idle rotation adds to it (renderer `era`), a
    * camera orbit does not. Chosen so the opening view (lon 15, lat 28) has the band crossing the wings of the globe on a slant.
    */
   eraDeg: 70,
@@ -154,7 +154,7 @@ export const LIFT = { gapPx: 14, marginPx: 14 } as const;
  */
 export const LANDING = { desktop: 0.78, narrowPx: 640, widePx: 1100 } as const;
 
-/** Where the camera starts when the page gives no view: no tilt, centred on the point (lon 0, lat 0). Inside the caption's band by construction. */
+/** Where the camera starts when the page gives no view: no tilt, centred on lat 0. The longitude is the fixed one of a debug page: the live page opens over the one the real sun lights (engine/daylight.ts). Inside the caption's band by construction. */
 export const START_VIEW = { lon: 0, lat: 0 } as const;
 
 /** `cubic-bezier` control points of the app's standard easing (`--ease-standard`). */

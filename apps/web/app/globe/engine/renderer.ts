@@ -74,6 +74,7 @@ import { CAP_HEIGHT_EM, ringAlpha, ringFloorZoom, ringRoomRadius, RING_STATE } f
 import { RingLayer } from "./ring-layer";
 import { GlobeScene } from "./scene";
 import { sunRise } from "./sun-flare";
+import { liveSun, opening } from "./daylight";
 import { FX, irisStep } from "./fx";
 import { MOON, SUN, inclinationFor, litTurn, moonAmount, orbitAngle, rollFor, sunDirection, toEarthFrame, toRad, visibleBounds, type Vec3 } from "./moon";
 import { roleColor } from "./palette";
@@ -175,7 +176,9 @@ export class GlobeRenderer {
   private gl: WebGLRenderer;
   private globe: GlobeScene;
   private camera = new PerspectiveCamera(FOV_DEG, 1, 0.05, 20);
-  private view: ViewState = { lon: START_VIEW.lon, lat: START_VIEW.lat, zoom: 0 };
+  /** The real day and night at load (engine/daylight.ts): the camera starts over the longitude the sun lights from its right. */
+  private readonly open = opening(liveSun() ? Date.now() : null, SKY.eraDeg);
+  private view: ViewState = { lon: this.open.lon, lat: START_VIEW.lat, zoom: 0 };
   private width = 1;
   private height = 1;
   private bufW = 1;
@@ -276,7 +279,7 @@ export class GlobeRenderer {
    * The earth rotation angle (degrees, engine/sky.ts): where the sky is relative to the earth-fixed frame the view is expressed in. A camera orbit
    * leaves it alone (the stars turn with the view); the idle rotation adds to it what it takes off the view's longitude (the stars stay put on screen).
    */
-  private era: number = SKY.eraDeg;
+  private era: number = this.open.eraDeg;
 
   constructor(
     private opts: RendererOptions,
@@ -629,7 +632,7 @@ export class GlobeRenderer {
     // The home screen opens fully zoomed OUT (the lowest zoom: the fit when there is no ring): the ring and the caption are there from the first frame.
     // The world view is the whole-globe fit on a page without the showcase, as before it.
     // (a showcase at the start holds the latitude inside the caption's band: the caption is there from the first frame, nothing glides)
-    if (!s) return { lon: START_VIEW.lon, lat: START_VIEW.lat, zoom: this.showcaseActive ? this.minZoom : this.fit };
+    if (!s) return { lon: this.open.lon, lat: START_VIEW.lat, zoom: this.showcaseActive ? this.minZoom : this.fit };
     if (s.fitRadiusKm !== undefined) return { lon: s.lon, lat: s.lat, zoom: Math.max(this.fit, this.fitZoomFor(s.fitRadiusKm)) };
     if (s.zoom01 === null) return { lon: s.lon, lat: s.lat, zoom: TUNING.selectZoom };
     const v = fromViewState({ lon: s.lon, lat: s.lat, zoom: s.zoom01, street: s.street }, this.fit, TUNING.maxZoom);
@@ -1265,7 +1268,7 @@ export class GlobeRenderer {
   private moonAt = 0;
   private moonHeld = false;
   private moonPinned: number | null = null;
-  private moonSun: Vec3 = sunDirection();
+  private moonSun: Vec3 = sunDirection(this.open.sunElevationDeg);
   /** How much of the planet's night there is now (0..1; checks). */
   private nightNow = 0;
   /** The last frame's sample of the moon (null: not shown). */
