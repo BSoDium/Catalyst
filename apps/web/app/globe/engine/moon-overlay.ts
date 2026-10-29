@@ -7,8 +7,8 @@
  * The moon is picked out by a detection box, the look of the map's area boxes (a square round the disc, solid corner arms and dashes between them), drawn once the moon has stayed in the picture a while (`DWELL_MS`), in the map boxes' own tone, and in the ink on hover or focus, which shows the card
  * hung from its top-left corner like a place's label, with what it is, and holds the moon still (`setHeld`) so that it can be clicked. Where the planet hides most of the moon, or the zoom has taken it
  * away, the link is not a target and not a tab stop. Touch has no hover: the first tap shows the card, the card's own link is the second. And so that there is something to tap, on a touch screen the
- * moon stands still (`setHeld`) for `TOUCH_HOLD_MS` once its box is up (it is only in the picture for a few seconds of a lap, and a target that keeps moving is not one), the card is a small
- * pill until it is tapped (the name, scrambled, and the mark: app.css, `(hover: none)`), and a tap anywhere else puts it away.
+ * moon stands still (`setHeld`) for `TOUCH_HOLD_MS` once its box is up (it is only in the picture for a few seconds of a lap, and a target that keeps moving is not one), the card keeps its
+ * two lines but says the second in fewer words (`GlobeMoon.shortDescription`) so that it is not as wide as the window, and a tap anywhere else puts it away.
  *
  * The look (class names `globe-moon`, `-card`, ...) is app.css's; this file sets only what changes per frame: the position, the size and which side the card is on.
  */
@@ -215,9 +215,11 @@ export class MoonOverlay {
     title.textContent = moon.title;
     const body = doc.createElement("span");
     body.className = "globe-moon-body";
-    body.textContent = moon.description;
+    // (on a touch screen the card is narrow, and says it in fewer words: the link's name, `aria-label`, keeps the long ones)
+    const description = this.coarse() ? (moon.shortDescription ?? moon.description) : moon.description;
+    body.textContent = description;
     text.append(title, body);
-    this.words = { title, body, titleText: moon.title, bodyText: moon.description };
+    this.words = { title, body, titleText: moon.title, bodyText: description };
     this.mark = arrow(doc);
     this.paint();
     card.append(text, this.mark);

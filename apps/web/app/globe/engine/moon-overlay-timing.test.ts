@@ -226,6 +226,25 @@ describe("MoonOverlay on a touch screen", () => {
     expect(doc.has("pointerdown")).toBe(false);
   });
 
+  it("says the second line in fewer words on a touch screen when it has them, and in full otherwise", () => {
+    setup(true);
+    overlay.dispose();
+    const made: El[] = [];
+    const root = new El();
+    root.ownerDocument.createElement = () => {
+      const e = new El();
+      made.push(e);
+      return e;
+    };
+    const short = "The first version of this site.";
+    new MoonOverlay(root as unknown as HTMLElement, { ...MOON, shortDescription: short }, () => frame(), () => {});
+    expect(made[4]!.textContent).toHaveLength(short.length); // (the words start scrambled: the length is the sentence's)
+    vi.stubGlobal("matchMedia", () => ({ matches: false }));
+    made.length = 0;
+    new MoonOverlay(root as unknown as HTMLElement, { ...MOON, shortDescription: short }, () => frame(), () => {});
+    expect(made[4]!.textContent).toHaveLength(MOON.description.length);
+  });
+
   it("does not hold the moon where there is a pointer to hover with", () => {
     setup(false);
     overlay.update();

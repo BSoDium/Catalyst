@@ -169,6 +169,8 @@ export interface GlobeMoon {
   title: string;
   /** What is there: one sentence. */
   description: string;
+  /** The same in fewer words, for the card on a touch screen (`(hover: none)`), where it must not run across the window. Absent: `description`. */
+  shortDescription?: string;
   /** The card's last line: the call to action, with its arrow if it has one. */
   cta: string;
 }

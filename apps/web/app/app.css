@@ -3461,30 +3461,18 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   }
 
   /*
-   * A touch screen (no hover: the words come clear when the moon is tapped, not hovered; engine/moon-overlay.ts). At rest the card is a small pill, the name (scrambled) and the mark, not the
-   * two lines that ran across the whole screen: the description comes with the tap, in a card narrower than the window. The card's tap area is 44 px (a transparent margin, the look is the
-   * pill's), and the mark is centred on the one line it has.
+   * A touch screen (no hover: the words come clear when the moon is tapped, not hovered; engine/moon-overlay.ts). The card keeps its two lines, the name over the description, the arrow where it
+   * is on a desktop (12 px in from the top and right edges, 14 px from the words), but the description is the short one (`GlobeMoon.shortDescription`) and the card no wider than 17 rem, so that
+   * it does not run across the window: it is 52 px tall, a finger's target on its own.
    */
   @media (hover: none) {
     .globe-moon-card {
-      max-width: min(16rem, calc(100vw - 48px));
+      max-width: min(17rem, calc(100vw - 48px));
     }
 
-    .globe-moon-card::before {
-      content: "";
-      position: absolute;
-      inset: -9px -6px;
-    }
-
-    .globe-moon:not([data-open]) .globe-moon-body {
-      display: none;
-    }
-
-    .globe-moon:not([data-open]) .globe-moon-card .globe-moon-arrow[data-size] {
-      align-self: center;
-      margin-top: 0;
-      margin-inline-start: 10px;
-      margin-inline-end: 0;
+    /* One line: the short description is 31 characters, 211 px at 11 px mono with its tracking; the card's cap leaves it 224. */
+    .globe-moon-body {
+      white-space: nowrap;
     }
   }
 
