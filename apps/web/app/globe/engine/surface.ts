@@ -105,6 +105,12 @@ export const LIGHTS = {
   magFrom: 1.5,
   magTo: 4,
   boost: 1.6,
+  /**
+   * EACH DOT ITS OWN LIGHT (owner: "more randomness in the brightness of each individual dot: they all look the same colour, which still gives a clustering effect"): in close shots a dot is taken from its colour towards the
+   * page's by up to `vary` of the way, by a hash of the place it is at on the planet (a dot keeps its brightness as the camera moves), and `sparkle` of them go the other way, to the core's colour (a few bright ones).
+   */
+  vary: 0.7,
+  sparkle: 0.08,
   /** The finest a texel is cut into, per side. */
   maxSub: 64,
   /**

@@ -423,13 +423,13 @@ export function surfaceMaterial(): ShaderMaterial {
  */
 export function lightsMaterial(): ShaderMaterial {
   return new ShaderMaterial({
-    uniforms: { uColor: { value: new Color() }, uCore: { value: new Color() }, uLights: { value: null }, uSize: { value: [2048, 1024] }, uCover: { value: 1 }, uSunN: { value: [0, 0, 1] }, uNight: { value: 0 }, uFlip: { value: 0 } },
+    uniforms: { uColor: { value: new Color() }, uCore: { value: new Color() }, uBg: { value: new Color() }, uLights: { value: null }, uSize: { value: [2048, 1024] }, uCover: { value: 1 }, uSunN: { value: [0, 0, 1] }, uNight: { value: 0 }, uFlip: { value: 0 } },
     vertexShader: /* glsl */ `
       varying vec3 vDir;
       void main() { vDir = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
     `,
     fragmentShader: /* glsl */ `
-      uniform vec3 uColor; uniform vec3 uCore; uniform sampler2D uLights; uniform vec2 uSize; uniform float uCover;
+      uniform vec3 uColor; uniform vec3 uCore; uniform vec3 uBg; uniform sampler2D uLights; uniform vec2 uSize; uniform float uCover;
       uniform vec3 uSunN; uniform float uNight; uniform float uFlip;
       varying vec3 vDir;
       ${DITHER_GLSL}
@@ -505,7 +505,12 @@ export function lightsMaterial(): ShaderMaterial {
           cover *= (me == pick) ? 1.0 : 1.0 - mag;
         }
         if (cover < 0.02 || thr >= cover) discard;
-        gl_FragColor = vec4(mix(uColor, uCore, heat), 1.0);
+        // each dot its own light, in close shots: a hash of the place it is at (the dot keeps its brightness as the camera moves), towards the page's colour, and a few of them towards the core's
+        float own = hash21(floor(t * 64.0) + 57.0);
+        float bright = mix(1.0 - ${LIGHTS.vary.toFixed(2)}, 1.0, own * own);
+        float star = step(1.0 - ${LIGHTS.sparkle.toFixed(2)}, hash21(floor(t * 64.0) + 91.0));
+        vec3 light = mix(uColor, uCore, clamp(heat + mag * star, 0.0, 1.0));
+        gl_FragColor = vec4(mix(light, uBg, (1.0 - mix(1.0, bright, mag)) * (1.0 - mag * star)), 1.0);
       }
     `,
     side: FrontSide,

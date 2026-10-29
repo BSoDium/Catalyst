@@ -45,6 +45,18 @@ describe("the night lights, in the interlude's close shots", () => {
     expect(src.indexOf("cover *= (me == pick)")).toBeLessThan(src.lastIndexOf("discard"));
   });
 
+  it("have each dot its own brightness in close shots (a hash of the place, towards the page's colour by up to `vary`), a few of them going to the core's colour; and the page's colour is given to the shader", () => {
+    expect(LIGHTS.vary).toBeGreaterThan(0.3);
+    expect(LIGHTS.vary).toBeLessThan(1); // (a dot is never quite gone: it was picked to be a light)
+    expect(LIGHTS.sparkle).toBeGreaterThan(0);
+    expect(LIGHTS.sparkle).toBeLessThan(0.2);
+    const mat = lightsMaterial();
+    expect(mat.uniforms.uBg).toBeDefined();
+    expect(mat.fragmentShader).toMatch(/float bright = mix\(1\.0 - 0\.70, 1\.0, own \* own\)/);
+    expect(mat.fragmentShader).toMatch(/gl_FragColor = vec4\(mix\(light, uBg,/);
+    expect(readFileSync("app/globe/engine/scene.ts", "utf8")).toMatch(/lights\.uniforms\.uBg!\.value\.setRGB\(\.\.\.bg\)/);
+  });
+
   it("have every function they call defined in their own shader, before it is used (a shader that does not compile draws nothing: the lights were gone once, because the noise's functions had gone into another material)", () => {
     const src = lightsMaterial().fragmentShader;
     for (const fn of ["hash21", "vnoise", "clumps", "dither4", "washOf"]) {
