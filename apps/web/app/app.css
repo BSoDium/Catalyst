@@ -3037,15 +3037,18 @@ body:not(:has([data-slot="site-header"])) .np-root {
   content: "";
   position: absolute;
   z-index: -1;
-  inset: -0.9rem -1.25rem;
+  /* the plate reaches well past the disc and the words (owner, 2026-10-30: "bigger, more padding for the contents ... edges barely noticeable"): the whole of the margin is the feather, so the plate is full only under the contents */
+  --np-feather-x: 2.75rem;
+  --np-feather-y: 1.6rem;
+  inset: calc(-1 * var(--np-feather-y)) calc(-1 * var(--np-feather-x));
   pointer-events: none;
   background: var(--np-plate);
-  /* a rectangle with soft edges all round (the two ramps cut against each other), as far out as the halo's reach: it covers the disc and the words, evenly, and goes in a few rem. */
-  --np-feather-x: 1.25rem;
-  --np-feather-y: 0.9rem;
-  -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--np-feather-x), #000 calc(100% - var(--np-feather-x)), transparent), linear-gradient(to bottom, transparent, #000 var(--np-feather-y), #000 calc(100% - var(--np-feather-y)), transparent);
+  /* a rectangle with soft edges all round: two ramps cut against each other, each a smoothstep in six stops (a straight ramp has a visible start and end: the eye sees the corner of a linear fade) */
+  --np-ramp-x: linear-gradient(to right, rgb(0 0 0 / 0) 0, rgb(0 0 0 / 0.04) calc(var(--np-feather-x) * 0.2), rgb(0 0 0 / 0.16) calc(var(--np-feather-x) * 0.4), rgb(0 0 0 / 0.5) calc(var(--np-feather-x) * 0.6), rgb(0 0 0 / 0.84) calc(var(--np-feather-x) * 0.8), #000 var(--np-feather-x), #000 calc(100% - var(--np-feather-x)), rgb(0 0 0 / 0.84) calc(100% - var(--np-feather-x) * 0.8), rgb(0 0 0 / 0.5) calc(100% - var(--np-feather-x) * 0.6), rgb(0 0 0 / 0.16) calc(100% - var(--np-feather-x) * 0.4), rgb(0 0 0 / 0.04) calc(100% - var(--np-feather-x) * 0.2), rgb(0 0 0 / 0) 100%);
+  --np-ramp-y: linear-gradient(to bottom, rgb(0 0 0 / 0) 0, rgb(0 0 0 / 0.04) calc(var(--np-feather-y) * 0.2), rgb(0 0 0 / 0.16) calc(var(--np-feather-y) * 0.4), rgb(0 0 0 / 0.5) calc(var(--np-feather-y) * 0.6), rgb(0 0 0 / 0.84) calc(var(--np-feather-y) * 0.8), #000 var(--np-feather-y), #000 calc(100% - var(--np-feather-y)), rgb(0 0 0 / 0.84) calc(100% - var(--np-feather-y) * 0.8), rgb(0 0 0 / 0.5) calc(100% - var(--np-feather-y) * 0.6), rgb(0 0 0 / 0.16) calc(100% - var(--np-feather-y) * 0.4), rgb(0 0 0 / 0.04) calc(100% - var(--np-feather-y) * 0.2), rgb(0 0 0 / 0) 100%);
+  -webkit-mask-image: var(--np-ramp-x), var(--np-ramp-y);
   -webkit-mask-composite: source-in;
-  mask-image: linear-gradient(to right, transparent, #000 var(--np-feather-x), #000 calc(100% - var(--np-feather-x)), transparent), linear-gradient(to bottom, transparent, #000 var(--np-feather-y), #000 calc(100% - var(--np-feather-y)), transparent);
+  mask-image: var(--np-ramp-x), var(--np-ramp-y);
   mask-composite: intersect;
 }
 .np-text {
