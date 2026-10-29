@@ -213,7 +213,7 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
     >
       <div className="entry-grid">
         <header className={cn("entry-head flex min-w-0 flex-col", poem ? "gap-5" : "gap-0")}>
-          {backTo && (
+          {backTo && !backTo.list && (
             <Link
               to={backTo.href}
               className="type-meta -ml-1 mb-3 inline-flex min-h-11 w-fit items-center gap-2 px-1 text-muted-foreground no-underline hover:text-foreground hover:underline print:hidden"
@@ -230,7 +230,20 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
             className={cn("type-meta m-0 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 text-muted-foreground", !poem && "entry-running")}
           >
             <span className="min-w-0">
-              <span data-slot="entry-kind">{KIND_LABELS[entry.kind]}</span>
+              {backTo?.list ? (
+                // (opened from its list: the kind's name IS the way back, in the running head, so it has no row of its own: a back link with the same word over the kind was two lines for one thing)
+                <Link
+                  to={backTo.href}
+                  aria-label={`Back to ${backTo.name}`}
+                  data-slot="entry-kind"
+                  className="-my-3 inline-flex items-center gap-1.5 py-3 text-muted-foreground no-underline hover:text-foreground hover:underline print:hidden"
+                >
+                  <Icon name="arrow-left" size="inline" />
+                  <span>{KIND_LABELS[entry.kind]}</span>
+                </Link>
+              ) : (
+                <span data-slot="entry-kind">{KIND_LABELS[entry.kind]}</span>
+              )}
               {names && !poem && (
                 <>
                   <span aria-hidden="true"> &middot; </span>
