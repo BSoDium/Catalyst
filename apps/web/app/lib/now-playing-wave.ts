@@ -18,23 +18,35 @@ export interface WaveRing {
 }
 
 export const WAVES: readonly WaveRing[] = [
-  { lobes: 9, lobes2: 14, hz: 2.4, hz2: 3.7, amp: 1.5, phase: 0.6 },
-  { lobes: 13, lobes2: 19, hz: 3.1, hz2: 4.6, amp: 1.1, phase: 2.1 },
+  { lobes: 9, lobes2: 14, hz: 1.3, hz2: 2, amp: 2.2, phase: 0.6 },
+  { lobes: 13, lobes2: 19, hz: 1.7, hz2: 2.5, amp: 1.6, phase: 2.1 },
 ];
 
 /** The outline's mean radius, in the 100-unit box (the disc is about 67 of them across: the rest is the padding the wave swings in). */
-export const WAVE_RADIUS = 45;
+export const WAVE_RADIUS = 43.5;
 /** The share of its amplitude a ring swings with when the music is silent or its level is not known. */
 export const REST = 0.5;
 /** How many points the outline is drawn with: enough that it reads as a curve at the outline's size. */
 const POINTS = 72;
+
+/**
+ * How tall the waves stand at angle `a`, `t` seconds in, `ENV_MIN`..1 (owner: "more variation to the height ... slow it down ... more alive and less random"): a slow swell and fall of the height in place, region by region (two standing
+ * envelopes, 3 and 5 lobes round, a third and a fifth of a hertz), so that now one side of the outline stands tall and the other lies low, and then the other way, and nothing is the same height all round. Pure.
+ */
+export function envelope(a: number, t: number): number {
+  const e = 0.5 + 0.5 * (0.6 * Math.cos(3 * a) * Math.sin(2 * Math.PI * ENV_HZ[0] * t) + 0.4 * Math.cos(5 * a + 1) * Math.sin(2 * Math.PI * ENV_HZ[1] * t + 2));
+  return ENV_MIN + (1 - ENV_MIN) * e;
+}
+const ENV_HZ = [0.33, 0.2] as const;
+/** How low the waves lie where the envelope is at its lowest, as a share of how tall they stand where it is at its highest. */
+export const ENV_MIN = 0.2;
 
 /** The radius of `ring` at angle `a` (radians), `t` seconds in, at music level `level` (0..1). Pure. */
 export function waveRadius(ring: WaveRing, a: number, t: number, level: number): number {
   const k = REST + (1 - REST) * Math.min(1, Math.max(0, level));
   const w1 = Math.sin(ring.lobes * a) * Math.cos(2 * Math.PI * ring.hz * t);
   const w2 = 0.6 * Math.sin(ring.lobes2 * a + ring.phase) * Math.cos(2 * Math.PI * ring.hz2 * t + 1.3);
-  return WAVE_RADIUS + ring.amp * k * (w1 + w2);
+  return WAVE_RADIUS + ring.amp * k * envelope(a, t) * (w1 + w2);
 }
 
 /** The radius of the whole outline at angle `a`: the mean radius, swung by every ring's waves together. Pure. */
