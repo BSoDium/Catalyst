@@ -35,6 +35,8 @@ const GLYPHS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789#%
 /** How long the words take to come clear when the moon is held, ms; and how often the letters not yet clear change while they do. */
 const REVEAL_MS = 520;
 const CHURN_MS = 45;
+/** Once read, the words stay clear this long (ms) after the moon is let go of, and then scramble again. */
+export const READ_MS = 5000;
 
 /**
  * `text` with its first `reveal` (0..1) share of letters as they are and the rest as random glyphs, spaces kept (so that the words wrap where the real ones do). Pure with `rand` given
@@ -168,6 +170,7 @@ export class MoonOverlay {
   private words: { title: HTMLElement; body: HTMLElement; titleText: string; bodyText: string };
   private revealed = 0;
   private revealRaf = 0;
+  private readTimer = 0;
   private paintedAt = 0;
   private mark: SVGElement;
   private closeTimer = 0;
@@ -295,6 +298,15 @@ export class MoonOverlay {
     window.clearTimeout(this.seenTimer);
     this.seenTimer = 0;
     delete this.link.dataset.seen;
+    // the card goes with the box, and is unread the next time it comes up
+    if (this.revealed > 0 || this.readTimer) {
+      window.cancelAnimationFrame(this.revealRaf);
+      window.clearTimeout(this.readTimer);
+      this.readTimer = 0;
+      delete this.link.dataset.read;
+      this.revealed = 0;
+      this.paint();
+    }
   }
 
   private hide() {
@@ -325,8 +337,24 @@ export class MoonOverlay {
       this.touched = false;
     }
     if (on) this.placeCard();
-    this.reveal(on ? 1 : 0);
+    // read: clear while held and for `READ_MS` after it is let go of, then scrambled again
+    window.clearTimeout(this.readTimer);
+    this.readTimer = 0;
+    if (on) {
+      this.link.dataset.read = "";
+      this.reveal(1);
+    } else if (this.revealed > 0) {
+      this.readTimer = window.setTimeout(() => this.forget(), READ_MS);
+    }
     this.setHeld(on);
+  }
+
+  /** Unread again: the words scramble (the card, if it is still up, shows gibberish once more). */
+  private forget() {
+    window.clearTimeout(this.readTimer);
+    this.readTimer = 0;
+    delete this.link.dataset.read;
+    this.reveal(0);
   }
 
   /** The words as they are at `revealed`: the first part clear, the rest scrambled. */
@@ -410,6 +438,7 @@ export class MoonOverlay {
     window.clearTimeout(this.closeTimer);
     window.clearTimeout(this.seenTimer);
     window.cancelAnimationFrame(this.revealRaf);
+    window.clearTimeout(this.readTimer);
     this.link.remove();
   }
 }

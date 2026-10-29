@@ -3392,8 +3392,8 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     pointer-events: auto;
   }
 
-  /* Unread (the box is up, the moon is not held): the words are scrambled (engine/moon-overlay.ts `scramble`) and the name muted; held, they come clear in the label's own colours. */
-  .globe-moon:not([data-open]) .globe-moon-title {
+  /* Unread (the box is up, the moon not yet held): the words are scrambled (engine/moon-overlay.ts `scramble`) and the name muted; held, they come clear in the label's own colours, and stay clear for `READ_MS` after it is let go of. */
+  .globe-moon:not([data-read]) .globe-moon-title {
     color: var(--muted-foreground);
   }
 
