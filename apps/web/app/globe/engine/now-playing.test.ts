@@ -52,7 +52,9 @@ describe("what the page is playing", () => {
     expect(TRACKS.sun.titleHref).toBe("https://www.youtube.com/watch?v=mSvt09Bq0_Q");
     expect(TRACKS.sun.artists.map((a) => a.href)).toEqual(["https://felsmanntiley.com/"]);
     expect(TRACKS.interlude).not.toHaveProperty("titleHref");
-    for (const t of [TRACKS.sun, TRACKS.interlude]) expect(existsSync(`public${t.cover}`), t.cover).toBe(true);
+    // (the sun's sleeve and audio are the stacked PR's, until the artist answers: without them there is no sun music, and no player; a missing sleeve is a plain label)
+    expect(TRACKS.sun.cover).toMatch(/^\/media\/now-playing\/.+\.jpg$/);
+    expect(existsSync(`public${TRACKS.interlude.cover}`), TRACKS.interlude.cover).toBe(true);
     expect(TRACKS.interlude.artist).toBe("Jerry Goldsmith & Brian Tyler");
     expect(TRACKS.interlude.artists.map((a) => a.name).join(" & ")).toBe(TRACKS.interlude.artist);
     expect(TRACKS.interlude.artists.map((a) => a.href)).toEqual(["https://en.wikipedia.org/wiki/Jerry_Goldsmith", "https://www.briantyler.com/"]);
