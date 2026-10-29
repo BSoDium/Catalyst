@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { MUTE_KEY, NowPlaying } from "./now-playing";
 import { SUN_MUSIC, SunMusic, fadeCurve, loopPosition, loopable, sunInView, type MusicDeps } from "./sun-music";
 
 const SR = 1000;
@@ -147,11 +148,12 @@ describe("the sun's music", () => {
   });
 
   const start = async (f = fakes()) => {
-    const m = new SunMusic(f.deps);
+    const prefs = new NowPlaying();
+    const m = new SunMusic(f.deps, prefs);
     m.attach();
     m.unlock(); // (the visitor's first gesture)
     await settle();
-    return { m, ...f };
+    return { m, prefs, ...f };
   };
 
   it("plays nothing until the sun is in view, then fades in from the start of the piece, looping", async () => {
@@ -249,7 +251,7 @@ describe("the sun's music", () => {
     const { m, ctx, sources, curves } = await start();
     m.setGlare(0.5);
     m.setMuted(true);
-    expect(store.get(SUN_MUSIC.storageKey)).toBe("1");
+    expect(store.get(MUTE_KEY)).toBe("1");
     expect(curves.at(-1)!.to).toBe(0);
     ctx.currentTime = 10;
     vi.advanceTimersByTime(5000);
@@ -258,16 +260,16 @@ describe("the sun's music", () => {
     m.setGlare(0.5);
     expect(sources).toHaveLength(1); // (still off)
     m.setMuted(false);
-    expect(store.has(SUN_MUSIC.storageKey)).toBe(false);
+    expect(store.has(MUTE_KEY)).toBe(false);
     expect(sources).toHaveLength(2);
   });
 
   it("starts muted when the visitor chose so before (or with ?mute), and does not even fetch the file", async () => {
-    store.set(SUN_MUSIC.storageKey, "1");
+    store.set(MUTE_KEY, "1");
     const f = fakes();
     const fetch = vi.spyOn(f.deps, "fetchBytes");
-    const { m, sources } = await start(f);
-    expect(m.getSnapshot().muted).toBe(true);
+    const { m, prefs, sources } = await start(f);
+    expect(prefs.getSnapshot().muted).toBe(true);
     m.setGlare(0.5);
     expect(sources).toHaveLength(0);
     expect(fetch).not.toHaveBeenCalled();
@@ -293,16 +295,32 @@ describe("the sun's music", () => {
     expect(sources).toHaveLength(0);
   });
 
-  it("tells its subscribers when the choice or the state changes", async () => {
-    const { m } = await start();
-    const seen = vi.fn();
-    const off = m.subscribe(seen);
+  it("tells the page what it is playing: nothing before the sun, then playing while the sun is in view, waiting when it is not, and nothing if there is no file", async () => {
+    const { m, prefs } = await start();
+    expect(prefs.getSnapshot().track).toBeNull();
+    m.setGlare(0.5);
+    expect(prefs.getSnapshot()).toMatchObject({ track: { title: "Gabriel", artist: "Felsmann & Tiley" }, state: "playing" });
+    m.setGlare(0);
+    expect(prefs.getSnapshot()).toMatchObject({ track: { title: "Gabriel" }, state: "paused" });
+    m.setGlare(0.5);
     m.setMuted(true);
-    m.setMuted(true);
-    expect(seen).toHaveBeenCalledTimes(1);
-    off();
-    m.setMuted(false);
-    expect(seen).toHaveBeenCalledTimes(1);
+    expect(prefs.getSnapshot()).toMatchObject({ state: "paused", muted: true });
+    store.clear();
+    const f = await start(fakes({ fail: true }));
+    f.m.setGlare(0.5);
+    await settle();
+    expect(f.prefs.getSnapshot().track).toBeNull();
+  });
+
+  it("follows the page's choice when it is made elsewhere (the pill), live", async () => {
+    const { m, prefs, curves, sources } = await start();
+    m.setGlare(0.5);
+    prefs.setMuted(true);
+    expect(curves.at(-1)!.to).toBe(0);
+    prefs.setMuted(false);
+    await settle();
+    expect(sources.length).toBeGreaterThanOrEqual(1);
+    expect(curves.at(-1)!.to).toBeCloseTo(SUN_MUSIC.volume);
   });
 });
 

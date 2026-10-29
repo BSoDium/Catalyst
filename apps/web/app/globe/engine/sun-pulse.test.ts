@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { SUN_MUSIC, loopSamples } from "./sun-music";
 import { PULSE, beatEnvelope, sunPulse } from "./sun-pulse";
 
+/** `n` beats and a little into the music (a pulse is two beats). */
 const beat = (n: number, within = 0.1) => SUN_MUSIC.beatOffsetSec + (n + within) * SUN_MUSIC.beatSec;
 
 describe("the beat's shape", () => {
@@ -19,27 +20,42 @@ describe("the beat's shape", () => {
 });
 
 describe("the sun's pulse", () => {
-  it("is the axes' rays on the first beat of the cycle and the diagonals' on the second, the halo on both", () => {
-    const a = sunPulse(beat(0), 1);
-    const d = sunPulse(beat(1), 1);
+  it("pulses every two beats: the axes' rays on the first, the diagonals' on the next, the halo on both; nothing on the beats between", () => {
+    const a = sunPulse(beat(0, 0.2), 1);
+    const d = sunPulse(beat(2, 0.2), 1);
+    // (the beat in between is the tail of the last pulse, not a new one: it has fallen far)
+    expect(sunPulse(beat(1, 0.0), 1).breath).toBeGreaterThan(0.1);
+    expect(sunPulse(beat(1, 0.99), 1).breath).toBeLessThan(0.1);
     expect(a.axis).toBeGreaterThan(a.diag);
     expect(d.diag).toBeGreaterThan(d.axis);
     expect(a.diag / a.axis).toBeCloseTo(PULSE.other, 5);
     expect(a.breath).toBeGreaterThan(0.8);
     expect(d.breath).toBeGreaterThan(0.8);
     // and it comes round: the third beat is the first's again
-    expect(sunPulse(beat(2), 1).axis).toBeCloseTo(a.axis, 5);
+    expect(sunPulse(beat(4, 0.2), 1).axis).toBeCloseTo(a.axis, 5);
+    // each pulse is a new seed, and the same one over its whole length
+    expect(sunPulse(beat(2, 0.9), 1).seed).toBe(d.seed);
+    expect(sunPulse(beat(4, 0.2), 1).seed).not.toBe(d.seed);
   });
 
   it("goes with how audible the music is, and is nothing when it is not", () => {
-    const full = sunPulse(beat(0), 1);
-    const half = sunPulse(beat(0), 0.5);
+    const full = sunPulse(beat(0), 1, 0.8);
+    const half = sunPulse(beat(0), 0.5, 0.8);
     expect(half.breath).toBeCloseTo(full.breath / 2, 5);
-    expect(sunPulse(beat(0), 0)).toEqual({ breath: 0, axis: 0, diag: 0 });
+    expect(half.grow).toBeCloseTo(full.grow / 2, 5);
+    expect(half.jitter).toBeCloseTo(full.jitter / 2, 5);
+    expect(sunPulse(beat(0), 0, 1)).toMatchObject({ breath: 0, axis: 0, diag: 0, grow: 0, jitter: 0 });
+  });
+
+  it("the rays grow with how loud the piece is, and not without it", () => {
+    expect(sunPulse(beat(0), 1, 0).grow).toBe(0);
+    expect(sunPulse(beat(0), 1, 1).grow).toBe(1);
+    expect(sunPulse(beat(0), 1, 7).grow).toBe(1);
   });
 
   it("is faint: the largest it makes the rays, the halo and the light is a few per cent", () => {
     expect(PULSE.rays).toBeLessThanOrEqual(0.1);
+    expect(PULSE.grow).toBeLessThanOrEqual(0.15);
     expect(PULSE.halo).toBeLessThanOrEqual(0.05);
     expect(PULSE.glow).toBeLessThanOrEqual(0.1);
   });
@@ -51,7 +67,7 @@ describe("the sun's pulse", () => {
 });
 
 describe("the loop and the beat", () => {
-  it("is a whole number of cycles long, with at least the crossfade left to overlap and less than a cycle more", () => {
+  it("is a whole number of cycles long, with at least the crossfade left to overlap and less than a cycle more (a cycle is four beats)", () => {
     const sr = 44100;
     const n = Math.round(141.967 * sr); // (the file)
     const len = loopSamples(n, sr);

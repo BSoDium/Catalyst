@@ -38,7 +38,7 @@ export const WARM_GLSL = /* glsl */ `
 `;
 
 const FRAGMENT = /* glsl */ `
-  uniform vec2 uSun; uniform vec2 uMid; uniform float uUnit; uniform float uStr; uniform float uRay; uniform vec3 uBg; uniform vec3 uInk; uniform float uLight; uniform float uBufW; uniform float uBufH; uniform float uSunR; uniform float uLen; uniform vec2 uPulse;
+  uniform vec2 uSun; uniform vec2 uMid; uniform float uUnit; uniform float uStr; uniform float uRay; uniform vec3 uBg; uniform vec3 uInk; uniform float uLight; uniform float uBufW; uniform float uBufH; uniform float uSunR; uniform float uLen; uniform vec2 uPulse; uniform float uSeed; uniform float uJitter;
   ${WARM_GLSL}
   const float BAYER[16] = float[16](${BAYER4.map((n) => `${n}.0`).join(", ")});
   const float AT[${N}] = float[${N}](${list(FLARE.ghosts.map((g) => g.at))});
@@ -80,7 +80,9 @@ const FRAGMENT = /* glsl */ `
     else if (a.x == a.y) { dist = a.x * 1.4142; len = ${f(FLARE.streakDiag)} * uLen * uBufW * uPulse.y; }
     if (dist > uSunR) {
       float along = 1.0 - (dist - uSunR) / len;
-      if (along > 0.0 && pow(along, ${f(FLARE.streakFall)}) > bayer()) { ink = ${f(FLARE.streakTone)}; hue = 0.95; ray = true; }
+      // (the dither's threshold: the fixed pattern, and with the music a noise that is a new one at every pulse, uJitter of it: the grain of a ray is never the same twice)
+      float grain = fract(sin(dot(vec2(o) + vec2(uSeed * 7.31, uSeed * 3.17), vec2(12.9898, 78.233))) * 43758.5453);
+      if (along > 0.0 && pow(along, ${f(FLARE.streakFall)}) > mix(bayer(), grain, uJitter)) { ink = ${f(FLARE.streakTone)}; hue = 0.95; ray = true; }
     }
     if (uLight > 0.5) {
       // the light page: the sun's rays are WHITE, and what shows them is a very soft, faint grey darkening round the sun (the veil); the ghosts are the ramp's colours, faintly
@@ -118,7 +120,7 @@ export interface FlareFrame {
   /** How long the rays are, as a share of their full length, 0..1: the sun's visible radius (the root of its area). Absent: whole. */
   size?: number;
   /** The rays' reach on the music's beat (`sunPulse`, engine/sun-pulse.ts): how much longer the axes' and the diagonals' are, 0..1 of `PULSE.rays`. Absent: none. */
-  pulse?: { axis: number; diag: number };
+  pulse?: { axis: number; diag: number; grow: number; seed: number; jitter: number };
 }
 
 const smooth = (a: number, b: number, x: number) => {
@@ -199,6 +201,8 @@ export class FlareLayer {
       uSunR: { value: 0 },
       uLen: { value: 1 },
       uPulse: { value: new Vector2(1, 1) },
+      uSeed: { value: 0 },
+      uJitter: { value: 0 },
       uStr: { value: 1 },
       uRay: { value: 1 },
       uBg: { value: new Color() },
@@ -249,7 +253,10 @@ export class FlareLayer {
     u.uBufH!.value = fr.bufH;
     u.uSunR!.value = p.r;
     u.uLen!.value = p.len;
-    (u.uPulse!.value as Vector2).set(1 + PULSE.rays * (fr.pulse?.axis ?? 0), 1 + PULSE.rays * (fr.pulse?.diag ?? 0));
+    const grow = PULSE.grow * (fr.pulse?.grow ?? 0);
+    (u.uPulse!.value as Vector2).set(1 + grow + PULSE.rays * (fr.pulse?.axis ?? 0), 1 + grow + PULSE.rays * (fr.pulse?.diag ?? 0));
+    u.uSeed!.value = fr.pulse?.seed ?? 0;
+    u.uJitter!.value = fr.pulse?.jitter ?? 0;
     u.uStr!.value = p.str;
     u.uRay!.value = p.ray;
     u.uSet!.value = fr.set ?? 0;

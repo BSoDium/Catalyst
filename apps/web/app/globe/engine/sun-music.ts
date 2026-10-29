@@ -11,12 +11,13 @@
  * Now Playing widget and the headphones' button can pause it), and this is the page's atmosphere, not a track to be controlled from outside. A buffer source in an `AudioContext` is not registered anywhere
  * (a test holds that: no element and no media session in this file).
  *
- * The visitor can turn it off (`setMuted`, the button in `components/sun-sound-toggle.tsx`; kept in localStorage; `?mute` starts a visit muted without keeping it). It is on by default, but a browser lets
+ * The visitor can turn it off (`setMuted`: the page's one choice about sound, engine/now-playing.ts, which the pill in `components/now-playing-pill.tsx` sets; kept in localStorage; `?mute` starts a visit muted without keeping it). It tells the pill what it is, and whether it is playing (the sun is in view) or waiting. It is on by default, but a browser lets
  * sound start only after a gesture on the page, so until the first touch it is silent, and it starts when the sun is in view and the page has been touched.
  *
  * The signal is the sun's `glare` (engine/sun-layer.ts: how much of the sun's light is in the picture, 0..1, the zoom's share times the root of what the planet leaves of the disc), read through two
  * thresholds (`glareOn`, `glareOff`) so that a sun on the edge of the planet's limb does not make the music stutter; the fades do the rest.
  */
+import { TRACKS, nowPlaying, type NowPlaying } from "./now-playing";
 
 export const SUN_MUSIC = {
   url: "/audio/gabriel.mp3",
@@ -29,10 +30,10 @@ export const SUN_MUSIC = {
   crossfadeSec: 8,
   /**
    * The piece's pulse, measured on the file (onset autocorrelation, 2026-10-29: 109.97 BPM, a period of 0.5456 s, steady from end to end; no published tempo was found): `beatSec` is one beat, `cycleBeats` of them the
-   * cycle the sun's pulse goes round in (two: the "second" the owner hears), `beatOffsetSec` where the first beat falls in the decoded file.
+   * cycle the sun's pulse goes round in (four: the axes' rays pulse on the first beat and the diagonals' on the third, two beats, a second and a bit, apart), `beatOffsetSec` where the first beat falls in the decoded file.
    */
   beatSec: 0.5456,
-  cycleBeats: 2,
+  cycleBeats: 4,
   beatOffsetSec: 0.055,
   /** How long a mute takes to go quiet (ms): not the fade-out of a sun that sets, but short enough not to click. */
   muteFadeMs: 120,
@@ -44,7 +45,10 @@ export const SUN_MUSIC = {
   /** The sun is in view above `glareOn` and out of it under `glareOff` (between: as it was). */
   glareOn: 0.03,
   glareOff: 0.008,
-  storageKey: "sun-music-muted",
+  /** How loud the piece is for the picture (the energy that grows the rays): the level of the file in dBFS, from `energyLoDb` (0) to `energyHiDb` (1), smoothed over `energySmoothSec`. */
+  energyLoDb: -42,
+  energyHiDb: -16,
+  energySmoothSec: 0.5,
 } as const;
 
 /** How far a fade has got, 0..1 in, 0..1 out: a smoothstep, so that a fade starts and ends without a corner. */
@@ -119,6 +123,10 @@ export interface MusicSource {
   start(when?: number, offset?: number): void;
   stop(when?: number): void;
 }
+export interface MusicAnalyser {
+  fftSize: number;
+  getFloatTimeDomainData(a: Float32Array<ArrayBuffer>): void;
+}
 export interface MusicContext {
   state: string;
   currentTime: number;
@@ -129,6 +137,8 @@ export interface MusicContext {
   resume(): Promise<void>;
   createGain(): MusicGain;
   createBufferSource(): MusicSource;
+  /** Absent in a fake that cannot tell how loud it is: the rays then grow with nothing. */
+  createAnalyser?(): MusicAnalyser;
 }
 export interface MusicDeps {
   /** The audio context (opens the device). */
@@ -161,15 +171,14 @@ const browserDeps: MusicDeps = {
 
 export type MusicStatus = "idle" | "loading" | "ready" | "failed";
 
-/** What the interface reads: whether the visitor has turned the music off, whether the sun has been in view this visit (the button appears then), and whether there is a music to turn off. */
+/** What the interface reads: whether the sun has been in view this visit (the pill appears then), and whether there is a music at all (the file is there and can be played). The visitor's choice is the page's (`nowPlaying`). */
 export interface MusicSnapshot {
-  readonly muted: boolean;
   readonly sunSeen: boolean;
   readonly status: MusicStatus;
 }
 
 export class SunMusic {
-  private snapshot: MusicSnapshot = { muted: false, sunSeen: false, status: "idle" };
+  private snapshot: MusicSnapshot = { sunSeen: false, status: "idle" };
   private listeners = new Set<() => void>();
   private ctx: MusicContext | null = null;
   private master: MusicGain | null = null;
@@ -186,7 +195,20 @@ export class SunMusic {
   private attached = false;
   private off: (() => void)[] = [];
 
-  constructor(private deps: MusicDeps = browserDeps) {}
+  private analyser: MusicAnalyser | null = null;
+  private senseBuf: Float32Array<ArrayBuffer> | null = null;
+  private energy = 0;
+  private energyAt = 0;
+
+  constructor(
+    private deps: MusicDeps = browserDeps,
+    private prefs: NowPlaying = nowPlaying,
+  ) {}
+
+  /** The visitor has turned the page's sound off. */
+  private get muted(): boolean {
+    return this.prefs.getSnapshot().muted;
+  }
 
   /* ------------------------------- what the interface reads ------------------------------- */
 
@@ -198,7 +220,7 @@ export class SunMusic {
 
   private set(patch: Partial<MusicSnapshot>) {
     const next = { ...this.snapshot, ...patch };
-    if (next.muted === this.snapshot.muted && next.sunSeen === this.snapshot.sunSeen && next.status === this.snapshot.status) return;
+    if (next.sunSeen === this.snapshot.sunSeen && next.status === this.snapshot.status) return;
     this.snapshot = next;
     this.listeners.forEach((l) => l());
   }
@@ -209,16 +231,33 @@ export class SunMusic {
   }
 
   /**
-   * What the picture needs to follow the music (engine/sun-pulse.ts): how audible it is, 0 (silent, or not playing) to 1 (at `volume`), and where in the piece the SPEAKER is (the audio clock less the time the sound takes to get
-   * there: a pair of Bluetooth headphones is a fifth of a second behind). Null when nothing is sounding, so that nothing asks for frames.
+   * What the picture needs to follow the music (engine/sun-pulse.ts): how audible it is, 0 (silent, or not playing) to 1 (at `volume`), where in the piece the SPEAKER is (the audio clock less the time the sound takes to get
+   * there: a pair of Bluetooth headphones is a fifth of a second behind), and how loud the piece is just now, 0..1 (`energy`: it grows the rays). Null when nothing is sounding, so that nothing asks for frames.
    */
-  pulse(): { amount: number; position: number } | null {
+  pulse(): { amount: number; position: number; energy: number } | null {
     const c = this.ctx;
     if (!c || !this.src) return null;
     const amount = this.level(c.currentTime) / SUN_MUSIC.volume;
     if (amount < 0.002) return null;
     const lag = Math.min(0.5, c.outputLatency ?? 0);
-    return { amount: Math.min(1, amount), position: loopPosition(this.pos, c.currentTime - this.srcAt - lag, this.loopSec) };
+    return { amount: Math.min(1, amount), position: loopPosition(this.pos, c.currentTime - this.srcAt - lag, this.loopSec), energy: this.sense(c.currentTime) };
+  }
+
+  /** How loud the piece is now, 0..1: the RMS of the last few milliseconds in dB between `energyLoDb` and `energyHiDb`, eased (up as it comes, down over `energySmoothSec`). */
+  private sense(now: number): number {
+    const a = this.analyser;
+    if (!a) return 0;
+    const buf = (this.senseBuf ??= new Float32Array(a.fftSize));
+    a.getFloatTimeDomainData(buf);
+    let sum = 0;
+    for (let i = 0; i < buf.length; i++) sum += buf[i]! * buf[i]!;
+    const db = 20 * Math.log10(Math.sqrt(sum / buf.length) + 1e-6);
+    const target = Math.min(1, Math.max(0, (db - SUN_MUSIC.energyLoDb) / (SUN_MUSIC.energyHiDb - SUN_MUSIC.energyLoDb)));
+    const dt = this.energyAt > 0 ? Math.max(0, now - this.energyAt) : 1;
+    this.energyAt = now;
+    const k = 1 - Math.exp(-dt / SUN_MUSIC.energySmoothSec);
+    this.energy += (target - this.energy) * k;
+    return this.energy;
   }
 
   /* ---------------------------------------- the page's ---------------------------------------- */
@@ -230,14 +269,19 @@ export class SunMusic {
   attach(): void {
     if (this.attached || typeof window === "undefined") return;
     this.attached = true;
-    let muted = false;
-    try {
-      muted = localStorage.getItem(SUN_MUSIC.storageKey) === "1" || new URLSearchParams(location.search).has("mute");
-    } catch {
-      /* no storage: on */
-    }
+    this.prefs.load();
     this.hidden = document.hidden;
-    this.set({ muted });
+    let was = this.muted;
+    const offPrefs = this.prefs.subscribe(() => {
+      // the visitor's choice, from the pill or from another sound's: followed live (a sound that is asked for again is made ready by the gesture that asked)
+      const now = this.muted;
+      if (now !== was) {
+        was = now;
+        if (!now) this.unlock();
+      }
+      this.reconcile();
+    });
+    this.off.push(offPrefs);
     const onVisibility = () => {
       this.hidden = document.hidden;
       this.reconcile();
@@ -267,7 +311,7 @@ export class SunMusic {
     this.load();
     if (this.ctx) return this.run();
     const make = () => this.run();
-    if (this.inView && !this.snapshot.muted) make();
+    if (this.inView && !this.muted) make();
     else if (typeof requestIdleCallback === "function") requestIdleCallback(make, { timeout: 1500 });
     else setTimeout(make, 200);
   }
@@ -296,16 +340,10 @@ export class SunMusic {
 
   /* --------------------------------------- the choice --------------------------------------- */
 
+  /** The visitor's choice (the page's: see `NowPlaying.setMuted`); the music follows it. */
   setMuted(muted: boolean): void {
-    try {
-      if (muted) localStorage.setItem(SUN_MUSIC.storageKey, "1");
-      else localStorage.removeItem(SUN_MUSIC.storageKey);
-    } catch {
-      /* not kept */
-    }
-    this.set({ muted });
-    if (!muted) this.unlock();
-    this.reconcile();
+    this.prefs.setMuted(muted);
+    this.reconcile(); // (not attached: nobody is listening)
   }
 
   /** The sun's glare in the picture now, 0..1 (every frame the camera moves in; nothing is done unless it crosses a threshold). */
@@ -324,7 +362,7 @@ export class SunMusic {
 
   /** Fetch and decode the piece (once), and make its loop. Skipped for a visitor who has turned it off, and where the connection saves data. */
   private load() {
-    if (this.snapshot.status !== "idle" || this.snapshot.muted) return;
+    if (this.snapshot.status !== "idle" || this.muted) return;
     try {
       const conn = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
       if (conn?.saveData) return this.set({ status: "failed" });
@@ -351,7 +389,7 @@ export class SunMusic {
 
   /** Whether the music should be sounding now. */
   private get wanted(): boolean {
-    return this.inView && !this.snapshot.muted && !this.hidden && this.snapshot.status === "ready";
+    return this.inView && !this.muted && !this.hidden && this.snapshot.status === "ready";
   }
 
   /** The gain now, as the last fade has it (the audio param's own value is not readable while it moves, in every browser). */
@@ -365,6 +403,15 @@ export class SunMusic {
   private reconcile() {
     if (this.wanted) this.rise();
     else this.fall();
+    this.publish();
+  }
+
+  /** Tell the page's registry what this is doing: it is there once the sun has come into view (it would have played), playing while the sun is in view and the music is not off, waiting otherwise; and gone if there is no music. */
+  private publish() {
+    const s = this.snapshot;
+    if (s.status === "failed") return this.prefs.end(TRACKS.sun.id);
+    if (!s.sunSeen) return;
+    this.prefs.set(TRACKS.sun, this.wanted ? "playing" : "paused");
   }
 
   private rise() {
@@ -374,6 +421,9 @@ export class SunMusic {
       this.master = c.createGain();
       this.master.gain.setValueAtTime(0, c.currentTime);
       this.master.connect(c.destination);
+      // (how loud the piece is, for the picture: before the master, so that its fades do not show in it; an analyser is read without being connected to anything)
+      this.analyser = c.createAnalyser?.() ?? null;
+      if (this.analyser) this.analyser.fftSize = 512;
       c.onstatechange = () => this.reconcile();
     }
     if (this.stopTimer !== null) {
@@ -386,6 +436,7 @@ export class SunMusic {
       s.buffer = this.buffer;
       s.loop = true;
       s.connect(this.master);
+      if (this.analyser) s.connect(this.analyser);
       s.start(c.currentTime, this.pos);
       this.src = s;
       this.srcAt = c.currentTime;
@@ -397,7 +448,7 @@ export class SunMusic {
     const c = this.ctx;
     if (!c || !this.src) return;
     // a mute is quick (a click on a button is not the sun setting), also when the sun is already setting: the fade in progress is replaced by the quick one
-    const quick = this.snapshot.muted;
+    const quick = this.muted;
     const going = this.stopTimer !== null;
     if (going && !(quick && this.fade!.dur > SUN_MUSIC.muteFadeMs / 1000 + 0.05)) return; // (already going out)
     if (going) clearTimeout(this.stopTimer!);

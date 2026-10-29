@@ -1447,7 +1447,7 @@ export class GlobeRenderer {
     // (the music's beat in the sun's rays and halo, while it sounds and the visitor has not asked for less motion)
     const beat = this.reduced ? null : sunMusic.pulse();
     sun.sync({
-      pulse: beat ? sunPulse(beat.position, beat.amount) : undefined,
+      pulse: beat ? sunPulse(beat.position, beat.amount, beat.energy) : undefined,
       bufW: this.bufW,
       bufH: this.bufH,
       x: ahead ? (clip.x / clip.w * 0.5 + 0.5) * this.bufW : 0,

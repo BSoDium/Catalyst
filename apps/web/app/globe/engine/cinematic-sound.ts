@@ -15,6 +15,7 @@
  * asked for none (`?mute`, or sessionStorage "cinematic-mute" = "1"). It rises over `fadeInMs`, runs as long as the interlude, and lets go over
  * `fadeOutMs` at its end; cut short (a gesture, the globe going away) it fades at once (`SoundHandle.fade`); a tab put behind does not stop it.
  */
+import { TRACKS, nowPlaying, readMuted } from "./now-playing";
 
 export const SOUND = {
   url: "/audio/universal-intro.mp3",
@@ -46,7 +47,7 @@ export interface SoundHandle {
 export function soundAllowed(): boolean {
   try {
     if (typeof document !== "undefined" && document.hidden) return false;
-    if (new URLSearchParams(location.search).has("mute") || sessionStorage.getItem("cinematic-mute") === "1") return false;
+    if (readMuted() || new URLSearchParams(location.search).has("mute") || sessionStorage.getItem("cinematic-mute") === "1") return false;
     return true;
   } catch {
     return false;
@@ -137,7 +138,7 @@ function armContext(deps: SoundDeps): void {
 export function prepareSound(deps: SoundDeps = browserDeps): void {
   if (loading) return;
   try {
-    if (new URLSearchParams(location.search).has("mute") || sessionStorage.getItem("cinematic-mute") === "1") return;
+    if (readMuted() || new URLSearchParams(location.search).has("mute") || sessionStorage.getItem("cinematic-mute") === "1") return;
     const conn = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
     if (conn?.saveData) return;
   } catch {
@@ -187,9 +188,15 @@ export function startSound(durationMs: number, deps: SoundDeps = browserDeps, al
   let src: SourceLike | null = null;
   let c: ContextLike | null = null;
   let guard: ReturnType<typeof setTimeout> | null = null;
+  let mute: GainLike | null = null;
+  let offPrefs: (() => void) | null = null;
+  let listed = false;
   const stop = () => {
     if (done) return;
     done = true;
+    // (it is over: it is no longer what the page is playing)
+    offPrefs?.();
+    if (listed) nowPlaying.end(TRACKS.interlude.id);
     if (guard !== null) clearTimeout(guard);
     if (typeof document !== "undefined") document.removeEventListener("visibilitychange", keepRunning);
     if (c) c.onstatechange = null;
@@ -200,6 +207,7 @@ export function startSound(durationMs: number, deps: SoundDeps = browserDeps, al
         src.disconnect();
       }
       gain?.disconnect();
+      mute?.disconnect();
     } catch {
       /* already stopped */
     }
@@ -240,8 +248,20 @@ export function startSound(durationMs: number, deps: SoundDeps = browserDeps, al
       gain = c.createGain();
       src = c.createBufferSource();
       src.buffer = buffer;
+      // the visitor's mute is a node of its own in the chain (the fade's envelope is scheduled to the end): quick, and live
+      mute = c.createGain();
       src.connect(gain);
-      gain.connect(c.destination);
+      gain.connect(mute);
+      mute.connect(c.destination);
+      const m = mute;
+      const applyMute = () => {
+        const t = c!.currentTime;
+        const to = nowPlaying.getSnapshot().muted ? 0 : 1;
+        m.gain.cancelScheduledValues(t);
+        m.gain.setValueAtTime(m.gain.value, t);
+        m.gain.linearRampToValueAtTime(to, t + 0.12);
+      };
+      offPrefs = nowPlaying.subscribe(applyMute);
       const now = c.currentTime;
       const fin = SOUND.fadeInMs / 1000;
       const fout = SOUND.fadeOutMs / 1000;
@@ -252,6 +272,8 @@ export function startSound(durationMs: number, deps: SoundDeps = browserDeps, al
       src.onended = stop;
       c.onstatechange = keepRunning;
       src.start(now, SOUND.fromSec + lag);
+      nowPlaying.set(TRACKS.interlude, "playing");
+      listed = true;
       src.stop(now + remain + 0.05);
       guard = setTimeout(stop, remain * 1000 + 500);
     } catch {

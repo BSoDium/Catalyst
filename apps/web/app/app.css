@@ -3011,12 +3011,67 @@ h1[tabindex="-1"]:focus-visible {
   background: var(--map-label-plate);
   box-shadow: 0 0 4px 3px var(--map-label-plate);
 }
-/* The sound switch (components/sun-sound-toggle.tsx) comes in with the first sun, softly */
-@keyframes sun-sound-in {
-  from {
+/* The now-playing pill (components/now-playing-pill.tsx): a small mono line like the map credits', with four bars that move while it plays. It comes in and goes out with a fade. */
+.np {
+  --np-bar: 2px;
+  opacity: 1;
+  transition: opacity var(--np-fade, 400ms) var(--ease-standard);
+}
+.np[data-visible="false"] {
+  opacity: 0;
+  pointer-events: none;
+}
+@starting-style {
+  .np[data-visible="true"] {
     opacity: 0;
   }
 }
+.np-bars {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  width: calc(var(--np-bar) * 4 + 6px);
+  height: 0.8125rem;
+}
+.np-bars > i {
+  display: block;
+  width: var(--np-bar);
+  height: 100%;
+  background: currentColor;
+  transform-origin: bottom;
+  transform: scaleY(0.22);
+  transition: transform 300ms var(--ease-standard);
+}
+.np[data-state="playing"][data-muted="false"] .np-bars > i {
+  animation: np-bar var(--np-d, 900ms) ease-in-out var(--np-delay, 0ms) infinite alternate;
+}
+.np-bars > i:nth-child(1) { --np-d: 820ms; }
+.np-bars > i:nth-child(2) { --np-d: 1040ms; --np-delay: -300ms; }
+.np-bars > i:nth-child(3) { --np-d: 760ms; --np-delay: -120ms; }
+.np-bars > i:nth-child(4) { --np-d: 960ms; --np-delay: -520ms; }
+@keyframes np-bar {
+  from {
+    transform: scaleY(0.2);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+.np[data-muted="true"] .np-title,
+.np[data-muted="true"] .np-artist {
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .np-bars > i {
+    animation: none !important;
+    transform: scaleY(0.6);
+  }
+  .np {
+    transition: none;
+  }
+}
+
 body:has(.landing-hero[data-hero="rest"]) .map-credits {
   background: none;
   box-shadow: none;
