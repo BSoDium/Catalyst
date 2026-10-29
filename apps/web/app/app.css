@@ -3197,12 +3197,12 @@ body:not(:has([data-slot="site-header"])) .np-root {
  * music plays and goes back into it when it does not (`scale` 0.5 is under the disc: it is scaled to 1.8 discs across); the opacity switches only while it is hidden.
  */
 .np-halo {
-  /* (almost all of it is the page's own grey, and the blue and the purple are touches in it: owner, "most of that gradient should basically be gray") */
+  /* (almost all of it is the page's own grey, and the yellow and the red of the sun are touches in it: owner, "most of that gradient should basically be gray") */
   /* how much it swells on a beat (the player writes `--np-beat`, 1 on the beat and 0 half way to the next): the owner's "softly" */
   --np-beat-amount: 0.06;
   --np-halo-gray: color-mix(in srgb, var(--foreground) 9%, transparent);
-  --np-halo-blue: color-mix(in srgb, var(--signal) 34%, transparent);
-  --np-halo-purple: color-mix(in srgb, #7c3aed 30%, transparent);
+  --np-halo-yellow: color-mix(in srgb, #ffb938 34%, transparent);
+  --np-halo-red: color-mix(in srgb, #e8452c 30%, transparent);
   position: absolute;
   top: 50%;
   left: 50%;
@@ -3236,21 +3236,21 @@ body:not(:has([data-slot="site-header"])) .np-root {
 .np-halo-a {
   -webkit-mask-image: radial-gradient(ellipse 50% 40% at 50% 50%, #000 48%, transparent 100%);
   mask-image: radial-gradient(ellipse 50% 40% at 50% 50%, #000 48%, transparent 100%);
-  background: conic-gradient(from 0deg, var(--np-halo-gray) 0 70deg, var(--np-halo-blue) 115deg, var(--np-halo-gray) 160deg 240deg, var(--np-halo-purple) 285deg, var(--np-halo-gray) 330deg 360deg);
+  background: conic-gradient(from 0deg, var(--np-halo-gray) 0 70deg, var(--np-halo-yellow) 115deg, var(--np-halo-gray) 160deg 240deg, var(--np-halo-red) 285deg, var(--np-halo-gray) 330deg 360deg);
   opacity: 0.9;
   animation: np-halo-a 9s linear infinite;
 }
 .np-halo-b {
   -webkit-mask-image: radial-gradient(ellipse 38% 50% at 50% 50%, #000 48%, transparent 100%);
   mask-image: radial-gradient(ellipse 38% 50% at 50% 50%, #000 48%, transparent 100%);
-  background: conic-gradient(from 90deg, transparent, var(--np-halo-gray) 60deg, transparent 140deg, var(--np-halo-purple) 200deg, transparent 250deg, var(--np-halo-gray) 310deg, transparent 360deg);
+  background: conic-gradient(from 90deg, transparent, var(--np-halo-gray) 60deg, transparent 140deg, var(--np-halo-red) 200deg, transparent 250deg, var(--np-halo-gray) 310deg, transparent 360deg);
   opacity: 0.7;
   animation: np-halo-b 13s linear infinite;
 }
 .np-halo-c {
   -webkit-mask-image: radial-gradient(ellipse 46% 33% at 50% 50%, #000 40%, transparent 100%);
   mask-image: radial-gradient(ellipse 46% 33% at 50% 50%, #000 40%, transparent 100%);
-  background: conic-gradient(from 200deg, var(--np-halo-gray), transparent 100deg, var(--np-halo-blue) 190deg, transparent 260deg, var(--np-halo-gray) 360deg);
+  background: conic-gradient(from 200deg, var(--np-halo-gray), transparent 100deg, var(--np-halo-yellow) 190deg, transparent 260deg, var(--np-halo-gray) 360deg);
   opacity: 0.8;
   animation: np-halo-c 18s linear infinite;
 }
