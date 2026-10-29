@@ -1,8 +1,7 @@
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { outlinePoints } from "~/lib/now-playing-wave";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { Icon } from "~/components/ui/icon";
-import { TRACKS, artPixelNow, nowPlaying, pillVisible, sunMusic, type NowPlayingSnapshot, type Track } from "~/globe";
+import { nowPlaying, pillVisible, type NowPlayingSnapshot, type Track } from "~/globe";
 
 /**
  * Where the player sits (`.np-root`, app.css), in one place (owner: "we might iterate on where it shows and when it goes"): docked in the top left corner when there is room, and moved down under the header when the header
@@ -56,102 +55,6 @@ export function NowPlayingPlayer() {
   );
 }
 
-/**
- * The wavy outline round a playing disc (owner, 2026-10-29: it replaced the glow, the motes, a turning pair of rings, and a thin line): a SHAPE a little way off the disc, filled with a soft grey close to the page's colour
- * and edged with a lighter line, as a raised surface is, whose outline shivers in place with the music (lib/now-playing-wave.ts: standing waves, nothing turns). It is PIXELATED to the globe's own grid (`artPixelNow`: the
- * art pixel, 2.5 CSS px on a desktop, 2 on a phone): it is drawn at one canvas pixel to a cell, with no smoothing (the shape and its edge are cut at half a pixel, so that none is blended), and the canvas is scaled up with
- * `image-rendering: pixelated`. The disc is not: it is above it, as sharp as it was. It is the one thing here drawn by script: a frame loop that fills a canvas of a few hundred pixels, no layout, no React render, run only while
- * the disc plays and motion is wanted. The sun's music's level moves it (`SunMusic.pulse().energy`); the interlude's sound has none to read, and it shivers at rest. Colours are the canvas's own `color` (the fill) and
- * `border-color` (the edge), set in CSS (`.np-waves`), read again about twice a second (a change of theme).
- */
-const WAVES_BOX = 1.5; // (the canvas, in disc diameters)
-
-/** A CSS colour as bytes (the canvas resolves whatever the page's CSS computed to: `color-mix` included). */
-function rgbOf(probe: CanvasRenderingContext2D, color: string): [number, number, number] {
-  probe.clearRect(0, 0, 1, 1);
-  probe.fillStyle = "#000";
-  probe.fillStyle = color;
-  probe.fillRect(0, 0, 1, 1);
-  const d = probe.getImageData(0, 0, 1, 1).data;
-  return [d[0]!, d[1]!, d[2]!];
-}
-
-function Waves({ active, sun }: { active: boolean; sun: boolean }) {
-  const ref = useRef<HTMLCanvasElement>(null);
-  useEffect(() => {
-    const canvas = ref.current;
-    if (!active || !canvas) return;
-    const out = canvas.getContext("2d");
-    const mask = document.createElement("canvas");
-    const m = mask.getContext("2d", { willReadFrequently: true });
-    const probe = document.createElement("canvas").getContext("2d", { willReadFrequently: true });
-    if (!out || !m || !probe) return;
-    probe.canvas.width = probe.canvas.height = 1;
-    let n = 0;
-    let fill: [number, number, number] = [0, 0, 0];
-    let edge: [number, number, number] = [0, 0, 0];
-    let image: ImageData | null = null;
-    // (the size of the grid, and the colours: when they change, and now and then)
-    const measure = () => {
-      const cell = artPixelNow();
-      const disc = canvas.parentElement!.getBoundingClientRect().width || 40;
-      const size = Math.max(8, Math.round((disc * WAVES_BOX) / cell));
-      if (size !== n) {
-        n = size;
-        canvas.width = mask.width = n;
-        canvas.height = mask.height = n;
-        image = out.createImageData(n, n);
-      }
-      // (a whole number of cells, centred on the disc by CSS)
-      canvas.style.width = canvas.style.height = `${n * cell}px`;
-      const css = getComputedStyle(canvas);
-      fill = rgbOf(probe, css.color);
-      edge = rgbOf(probe, css.borderTopColor);
-    };
-    const path = (t: number, level: number) => {
-      const p = outlinePoints(t, level, n);
-      m.beginPath();
-      for (let i = 0; i < p.length; i += 2) (i === 0 ? m.moveTo : m.lineTo).call(m, p[i]!, p[i + 1]!);
-      m.closePath();
-    };
-    let raf = 0;
-    let frames = 0;
-    const t0 = performance.now();
-    const frame = (now: number) => {
-      if (frames++ % 30 === 0) measure();
-      const t = (now - t0) / 1000;
-      const level = sun ? (sunMusic.pulse()?.energy ?? 0) : 0;
-      const px = image!.data;
-      // (the shape: filled, then the edge: the same line stroked a cell wide, each cut at half coverage so that no pixel is blended)
-      m.clearRect(0, 0, n, n);
-      path(t, level);
-      m.fillStyle = "#000";
-      m.fill();
-      const shape = m.getImageData(0, 0, n, n).data;
-      m.clearRect(0, 0, n, n);
-      path(t, level);
-      m.lineWidth = 1;
-      m.strokeStyle = "#000";
-      m.stroke();
-      const line = m.getImageData(0, 0, n, n).data;
-      for (let i = 0; i < n * n; i++) {
-        const o = i * 4 + 3;
-        const c = line[o]! > 100 ? edge : shape[o]! > 127 ? fill : null;
-        px[o - 3] = c ? c[0] : 0;
-        px[o - 2] = c ? c[1] : 0;
-        px[o - 1] = c ? c[2] : 0;
-        px[o] = c ? 255 : 0;
-      }
-      out.putImageData(image!, 0, 0);
-      raf = requestAnimationFrame(frame);
-    };
-    measure();
-    raf = requestAnimationFrame(frame);
-    return () => cancelAnimationFrame(raf);
-  }, [active, sun]);
-  return <canvas ref={ref} className="np-waves" aria-hidden="true" />;
-}
-
 /** The credit: each artist is a link to their page where they have one, joined as they are named. */
 function Artists({ track }: { track: Track }) {
   const artists = track.artists;
@@ -170,7 +73,6 @@ function Artists({ track }: { track: Track }) {
 
 function Player({ snap }: { snap: NowPlayingSnapshot }) {
   const track = snap.track!;
-  const reduced = useReducedMotion();
   const [coverOk, setCoverOk] = useState(true);
   // a touch screen has no hover to show the icon with: it shows for a moment after a tap
   const [flash, setFlash] = useState(false);
@@ -202,7 +104,10 @@ function Player({ snap }: { snap: NowPlayingSnapshot }) {
           setFlash(true);
         }}
       >
-        <Waves active={playing && !reduced} sun={track.id === TRACKS.sun.id} />
+        <span className="np-halo" aria-hidden="true">
+          <span className="np-halo-a" />
+          <span className="np-halo-b" />
+        </span>
         <span className="np-disc" aria-hidden="true">
           {track.cover && coverOk ? <img src={track.cover} alt="" draggable={false} onError={() => setCoverOk(false)} /> : <span className="np-label" />}
           <span className="np-groove" />

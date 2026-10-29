@@ -3183,35 +3183,81 @@ body:not(:has([data-slot="site-header"])) .np-root {
   color: var(--foreground);
 }
 /*
- * The wavy outline (owner, 2026-10-29: a filled shape in a soft grey near the page's colour, with a lighter edge, as a raised surface has, pixelated to the globe's grid; the disc is not; components/now-playing-player.tsx, `Waves`,
- * lib/now-playing-wave.ts): a canvas drawn at one pixel to a cell and scaled up without smoothing, centred on the disc, under it. `color` is its fill and `border-color` its edge (the script reads them, and the border is
- * never drawn); its size is set by the script, to a whole number of cells. It comes out from behind the disc when the music plays and goes back into it (`scale`: 0.6 is the disc's own width in it) when it does not.
+ * The halo (owner, 2026-10-29: it replaced the glow, the motes, the rings and the pixelated outline: "a soft colourful radial gradient from BSoD blue to purple to dark, a bit like a CD, soft and subtle, rotating and
+ * changing behind the disc when playing"; components/now-playing-player.tsx): two conic gradients of the accent, a purple and a dark, one turning one way and one the other at different speeds and each breathing
+ * a little, so that the colours slide over one another; both are masked soft to nothing at the edge. Only transforms animate (compositor-only), and only while the disc plays. It comes out from behind the disc when the
+ * music plays and goes back into it when it does not (`scale` 0.5 is under the disc: it is scaled to 1.8 discs across); the opacity switches only while it is hidden.
  */
-.np-waves {
-  --np-wave-fill: color-mix(in srgb, var(--background) 90%, var(--foreground));
-  --np-wave-edge: color-mix(in srgb, var(--background) 72%, var(--foreground));
+.np-halo {
+  --np-halo-blue: var(--signal);
+  --np-halo-purple: #7c3aed;
+  --np-halo-dark: #1a1040;
   position: absolute;
   top: 50%;
   left: 50%;
-  width: calc(var(--np-size) * 1.5);
-  height: calc(var(--np-size) * 1.5);
-  /* (shrunk to nothing behind the disc: it comes out from there and goes back into it, and is not faded, except once it is hidden) */
-  transform: translate(-50%, -50%) scale(0.6);
-  image-rendering: pixelated;
+  width: calc(var(--np-size) * 1.8);
+  height: calc(var(--np-size) * 1.8);
+  transform: translate(-50%, -50%) scale(0.5);
   pointer-events: none;
-  color: var(--np-wave-fill);
-  border: 0 solid var(--np-wave-edge);
   opacity: 0;
   transition:
     transform 450ms cubic-bezier(0.5, 0, 0.75, 0),
     opacity 0s 450ms;
 }
-.np[data-spin="true"] .np-waves {
+:root[data-scheme="light"] .np-halo {
+  --np-halo-dark: #3b2a78;
+}
+.np[data-spin="true"] .np-halo {
   transform: translate(-50%, -50%) scale(1);
   opacity: 1;
   transition:
-    transform 650ms cubic-bezier(0.2, 0.9, 0.25, 1.15),
+    transform 650ms cubic-bezier(0.2, 0.9, 0.25, 1.1),
     opacity 0s;
+}
+.np-halo-a,
+.np-halo-b {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  -webkit-mask-image: radial-gradient(closest-side, #000 52%, transparent 100%);
+  mask-image: radial-gradient(closest-side, #000 52%, transparent 100%);
+  animation-play-state: paused;
+}
+.np-halo-a {
+  background: conic-gradient(from 0deg, var(--np-halo-blue), var(--np-halo-purple) 120deg, var(--np-halo-dark) 210deg, var(--np-halo-blue) 360deg);
+  opacity: 0.7;
+  animation: np-halo-a 16s linear infinite;
+}
+.np-halo-b {
+  background: conic-gradient(from 90deg, transparent, var(--np-halo-purple) 70deg, transparent 150deg, var(--np-halo-blue) 250deg, transparent 360deg);
+  opacity: 0.55;
+  animation: np-halo-b 23s linear infinite;
+}
+.np[data-spin="true"] .np-halo-a,
+.np[data-spin="true"] .np-halo-b {
+  animation-play-state: running;
+}
+@keyframes np-halo-a {
+  0% {
+    transform: rotate(0deg) scale(0.94);
+  }
+  50% {
+    transform: rotate(180deg) scale(1.04);
+  }
+  100% {
+    transform: rotate(360deg) scale(0.94);
+  }
+}
+@keyframes np-halo-b {
+  0% {
+    transform: rotate(360deg) scale(1.04);
+  }
+  50% {
+    transform: rotate(180deg) scale(0.92);
+  }
+  100% {
+    transform: rotate(0deg) scale(1.04);
+  }
 }
 @keyframes np-spin {
   to {
@@ -3222,8 +3268,9 @@ body:not(:has([data-slot="site-header"])) .np-root {
   .np-disc {
     animation: none;
   }
-  .np-waves {
-    display: none;
+  .np-halo-a,
+  .np-halo-b {
+    animation: none;
   }
 }
 
