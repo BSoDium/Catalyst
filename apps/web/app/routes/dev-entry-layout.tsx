@@ -245,9 +245,9 @@ function LayoutA({ wide, shot }: { wide: boolean; shot: boolean }) {
 
 function LayoutB({ wide, shot }: { wide: boolean; shot: boolean }) {
   const sheet = (
-    <aside aria-label="Project" className={cn("min-w-0 border border-border-strong p-5", wide && "sticky top-[calc(var(--navbar-height)+1rem)]")}>
+    <aside aria-label="Details" className={cn("min-w-0 border border-border-strong p-5", wide && "sticky top-[calc(var(--navbar-height)+1rem)]")}>
       <div className="flex items-baseline justify-between">
-        <h2 className="type-meta m-0 text-foreground">PROJECT</h2>
+        <h2 className="type-meta m-0 text-foreground">DETAILS</h2>
         <span className="type-meta uppercase text-foreground">
           <span aria-hidden="true" className="mr-2 inline-block size-2 bg-signal align-middle" />
           {E.status}
