@@ -1,6 +1,6 @@
 /**
  * The music of the sun (docs/landing.md, "The sun's music"): "Gabriel", a slow, eerie piece (2 min 22 s), plays FAINTLY while the sun is in the picture and lets go while it is not, as the planet covers it
- * or the camera turns away from it. A PROTOTYPE, waiting for the artist's answer: the file is `public/audio/gabriel.mp3`, in its own stacked PR (it must not reach main before the artist's answer); without it the
+ * or the camera turns away from it. A PROTOTYPE, waiting for the artist's answer: the file is `public/audio/gabriel.mp3`, on the stacked PR's branch only (it must not reach main before the artist's answer); without it the
  * music is simply not there (`status` "failed": no sound, and no button either).
  *
  * It is one piece the sun comes back to, not a sample started again: the visitor's place in it is kept while the sun is away (`position`), and the next time the sun comes round it takes up from there
