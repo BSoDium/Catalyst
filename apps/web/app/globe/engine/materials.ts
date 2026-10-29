@@ -442,13 +442,30 @@ export function lightsMaterial(): ShaderMaterial {
         f = f * f * (3.0 - 2.0 * f);
         return mix(mix(hash21(i), hash21(i + vec2(1.0, 0.0)), f.x), mix(hash21(i + vec2(0.0, 1.0)), hash21(i + vec2(1.0, 1.0)), f.x), f.y);
       }
+      // the clumps: noise of octaves that are there only while the camera is near enough to tell them apart (a wavelength of at least \`minPx\` art pixels, fading in over as much again), so that zooming in
+      // brings finer and finer groups of lights out of a place, and nothing is added or moves when it is not zoomed: the octaves are fixed in the texels' own space, not scaled with the zoom
+      float clumps(vec2 t, float widePx) {
+        float s = 0.0;
+        float w = 0.0;
+        float f = ${LIGHTS.clumpBase.toFixed(2)};
+        float amp = 1.0;
+        for (int i = 0; i < 7; i++) {
+          float a = smoothstep(${LIGHTS.minPx.toFixed(1)}, ${(2 * LIGHTS.minPx).toFixed(1)}, widePx / f) * amp;
+          s += a * vnoise(t * f + float(i) * 19.7);
+          w += a;
+          f *= 2.0;
+          amp *= ${LIGHTS.clumpDecay.toFixed(2)};
+        }
+        return w > 0.0 ? s / w : 0.5;
+      }
       void main() {
         vec3 n = normalize(vDir);
         vec2 uv = vec2(atan(n.x, n.z) * 0.15915494 + 0.5, asin(clamp(n.y, -1.0, 1.0)) * 0.31830989 + 0.5);
         float dark = floor(clamp(washOf(n, uSunN, uNight, uFlip), 0.0, 1.0) * ${NIGHT.lineSteps.toFixed(1)} + 0.5) / ${NIGHT.lineSteps.toFixed(1)};
         vec2 t = uv * uSize;
         // how wide a texel is on the screen, in art pixels (taken before anything is discarded: derivatives need the whole quad); not where the map's seam is (uv jumps)
-        float perPx = max(length(fwidth(t)), 1e-4);
+        // (along the AXIS THAT IS LEAST SQUEEZED: at a grazing angle, the interlude's low pass, the texel is hugely wide across the view and a sliver along it, and the longest rate said it was not magnified at all)
+        float perPx = max(min(length(dFdx(t)), length(dFdy(t))), 1e-4);
         float widePx = (fwidth(uv.x) > 0.5) ? 0.0 : 1.0 / perPx;
         float mag = smoothstep(${LIGHTS.magFrom.toFixed(2)}, ${LIGHTS.magTo.toFixed(2)}, widePx);
         vec4 m = texture2D(uLights, uv);
@@ -464,9 +481,9 @@ export function lightsMaterial(): ShaderMaterial {
           vec4 c = texture2D(uLights, vec2(fract((i.x + 0.5) / uSize.x), clamp((i.y + 1.5) / uSize.y, 0.0, 1.0)));
           vec4 d = texture2D(uLights, vec2(fract((i.x + 1.5) / uSize.x), clamp((i.y + 1.5) / uSize.y, 0.0, 1.0)));
           vec4 sm = mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
-          // ... and the density goes through a noise of two octaves (a place has clusters in it; its mean is 1)
-          float gr = 0.6 * vnoise(t * 1.7 + 11.0) + 0.4 * vnoise(t * 4.3 + 29.0);
-          float dens = min(1.0, sm.r * ${LIGHTS.boost.toFixed(2)} * (1.0 - ${LIGHTS.grain.toFixed(2)} * mag + ${(2 * LIGHTS.grain).toFixed(2)} * mag * gr));
+          // ... and the density goes through the clumps (groups of lights with bare ground between them, finer the nearer the camera is; its mean is 1)
+          float cf = 2.0 * smoothstep(0.5 - ${LIGHTS.spread.toFixed(2)}, 0.5 + ${LIGHTS.spread.toFixed(2)}, clumps(t, widePx));
+          float dens = min(1.0, sm.r * ${LIGHTS.boost.toFixed(2)} * (1.0 - ${LIGHTS.clump.toFixed(2)} * mag + ${LIGHTS.clump.toFixed(2)} * mag * cf));
           m = mix(m, vec4(dens, sm.g, sm.b, sm.a), mag);
           // the dither is a hash of the place on the planet, in cells a whole doubling of a texel's share, at most an art pixel across
           float sub = min(${LIGHTS.maxSub.toFixed(1)}, exp2(ceil(log2(max(widePx, 1.0)))));
@@ -478,7 +495,8 @@ export function lightsMaterial(): ShaderMaterial {
         float cover = m.r * dark * uCover * (1.0 + ${LIGHTS.dense.toFixed(2)} * heat);
         if (mag > 0.0) {
           // single dots: in each square of the screen, ONE pixel is the one that may be a light (picked by a hash of the square), and its chance is the density's
-          float blockPx = ${LIGHTS.block.toFixed(1)};
+          // (the square grows with the texel: a bigger place is not a denser carpet of dots but the same dots further apart, as the lights of a town are from higher up)
+          float blockPx = clamp(floor(sqrt(widePx * ${LIGHTS.blockGrow.toFixed(2)}) + 0.5), ${LIGHTS.block.toFixed(1)}, ${LIGHTS.blockMax.toFixed(1)});
           vec2 px = floor(gl_FragCoord.xy);
           vec2 blk = floor(px / blockPx);
           vec2 inb = px - blk * blockPx;

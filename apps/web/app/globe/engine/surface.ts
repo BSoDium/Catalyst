@@ -113,11 +113,23 @@ export const LIGHTS = {
    * brightness over a whole texel), and the hash's cells are at most an art pixel across (`maxSub` finer).
    */
   warp: 1.1,
-  grain: 0.85,
+  /**
+   * CLUMPS (owner: "they still look like massive clusters ... they should split into smaller dots"): the density goes through noise of octaves from `clumpBase` (a wavelength of about a texel and a half) up, each `clumpDecay` of the one before, only the
+   * ones whose wavelength is at least `minPx` art pixels (so finer and finer groups come out as the camera nears), cut by a smoothstep of half-width `spread` round the middle (a group is a group, with bare ground between), at
+   * `clump` strength (its mean is 1: a place is no brighter overall, only gathered).
+   */
+  clumpBase: 1.7,
+  clumpDecay: 0.7,
+  minPx: 3,
+  spread: 0.14,
+  clump: 1,
   /**
    * DOTS (owner, 2026-10-29: "when you zoom onto them they should not be blobs: they should split into thousands of dots"): as a texel grows past `magFrom` the lights stop being a coverage that rises to nearly all of the
    * pixels (a blob) and become single art pixels, one at most in each `block` x `block` square of the screen (a dot has a dark pixel all round it, and the place can never be more than 1 / `block` squared lit), at a place
    * in the square the hash picks, present with the chance the map's density gives it: a thin place is a few dots, a dense one a carpet of them, and zooming in only brings more of them into the picture.
    */
   block: 2,
+  /** The square the dots are picked in grows with how wide a texel is, `sqrt(widePx * blockGrow)` rounded, up to `blockMax`: the same dots further apart, not a denser carpet. */
+  blockGrow: 0.45,
+  blockMax: 5,
 } as const;
