@@ -75,7 +75,7 @@ import { RingLayer } from "./ring-layer";
 import { GlobeScene } from "./scene";
 import { sunRise } from "./sun-flare";
 import { liveSun, opening } from "./daylight";
-import { IMMERSION, immersiveZoom } from "./immersion";
+import { IMMERSION, immersiveZoom, openingZoom } from "./immersion";
 import { FX, irisStep } from "./fx";
 import { MOON, SUN, inclinationFor, litTurn, moonAmount, orbitAngle, rollFor, sunDirection, toEarthFrame, toRad, visibleBounds, type Vec3 } from "./moon";
 import { roleColor } from "./palette";
@@ -649,7 +649,7 @@ export class GlobeRenderer {
     // The world view is the whole-globe fit on a page without the showcase, as before it.
     // (a showcase at the start holds the latitude inside the caption's band: the caption is there from the first frame, nothing glides)
     // (the home screen NOT at rest at the start, the visitor having come back to it from another page: the planet opens at the world view, the closer zoom a phone's first gesture would bring it to)
-    if (!s) return { lon: this.open.lon, lat: START_VIEW.lat, zoom: this.showcaseActive ? (this.showcaseOn ? this.minZoom : this.world) : this.fit };
+    if (!s) return { lon: this.open.lon, lat: START_VIEW.lat, zoom: openingZoom({ showcaseActive: this.showcaseActive, showcaseOn: this.showcaseOn, minZoom: this.minZoom, world: this.world, fit: this.fit }) };
     if (s.fitRadiusKm !== undefined) return { lon: s.lon, lat: s.lat, zoom: Math.max(this.fit, this.fitZoomFor(s.fitRadiusKm)) };
     if (s.zoom01 === null) return { lon: s.lon, lat: s.lat, zoom: TUNING.selectZoom };
     const v = fromViewState({ lon: s.lon, lat: s.lat, zoom: s.zoom01, street: s.street }, this.fit, TUNING.maxZoom);
