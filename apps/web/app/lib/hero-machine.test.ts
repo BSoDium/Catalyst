@@ -226,6 +226,36 @@ describe("hero machine", () => {
     });
   });
 
+  describe("hold (the sun's music is audible)", () => {
+    it("keeps the hero away while it plays, and starts a whole idle period when it stops", () => {
+      machine.interact();
+      machine.hold(true, "music");
+      vi.advanceTimersByTime(10 * HERO_IDLE_MS);
+      expect(state()).toBe("collapsed");
+      machine.hold(false, "music");
+      vi.advanceTimersByTime(HERO_IDLE_MS - 1);
+      expect(state()).toBe("collapsed");
+      vi.advanceTimersByTime(1);
+      expect(state()).toBe("rest");
+    });
+
+    it("is kept apart from the focus's: releasing one leaves the other holding", () => {
+      machine.interact();
+      machine.hold(true, "music");
+      machine.hold(true);
+      machine.hold(false);
+      vi.advanceTimersByTime(10 * HERO_IDLE_MS);
+      expect(state()).toBe("collapsed");
+      machine.hold(true);
+      machine.hold(false, "music");
+      vi.advanceTimersByTime(10 * HERO_IDLE_MS);
+      expect(state()).toBe("collapsed");
+      machine.hold(false);
+      vi.advanceTimersByTime(HERO_IDLE_MS);
+      expect(state()).toBe("rest");
+    });
+  });
+
   it("honours another idle delay and injected timers", () => {
     const timers = { setTimeout: vi.fn(() => 7), clearTimeout: vi.fn() };
     const custom = createHeroMachine({ idleMs: 250, timers });

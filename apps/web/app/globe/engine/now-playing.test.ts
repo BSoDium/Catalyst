@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { MUTE_KEY, NowPlaying, TRACKS, pillVisible, readMuted } from "./now-playing";
+import { MUTE_KEY, NowPlaying, TRACKS, pillVisible, readMuted, sunAudible } from "./now-playing";
 
 describe("what the page is playing", () => {
   const store = new Map<string, string>();
@@ -57,6 +57,16 @@ describe("what the page is playing", () => {
     expect(TRACKS.interlude.artists.map((a) => a.name).join(" & ")).toBe(TRACKS.interlude.artist);
     expect(TRACKS.interlude.artists.map((a) => a.href)).toEqual(["https://en.wikipedia.org/wiki/Jerry_Goldsmith", "https://www.briantyler.com/"]);
     expect(TRACKS.interlude.note).toMatch(/Goldsmith.*1997.*Tyler.*2012/);
+  });
+
+  it("counts the sun's music as audible only while it plays and is not turned off (blocked, waiting, off, or the interlude's sound: no)", () => {
+    const s = (track: typeof TRACKS.sun | typeof TRACKS.interlude, state: "playing" | "paused" | "blocked", muted = false) => ({ track, state, muted });
+    expect(sunAudible(s(TRACKS.sun, "playing"))).toBe(true);
+    expect(sunAudible(s(TRACKS.sun, "blocked"))).toBe(false);
+    expect(sunAudible(s(TRACKS.sun, "paused"))).toBe(false);
+    expect(sunAudible(s(TRACKS.sun, "playing", true))).toBe(false);
+    expect(sunAudible(s(TRACKS.interlude, "playing"))).toBe(false);
+    expect(sunAudible({ track: null, state: "paused", muted: false })).toBe(false);
   });
 
   it("keeps the visitor's choice, reads it back, and reads the old key and ?mute", () => {

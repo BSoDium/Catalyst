@@ -3161,6 +3161,7 @@ body:not(:has([data-slot="site-header"])) .np-root {
 }
 /* (the browser has not let the page make sound yet: the credit line asks for a touch, in a warning shade, and gives way to the credit when it comes) */
 .np-warn {
+  white-space: nowrap;
   --np-warn: #b45309;
   color: var(--np-warn);
 }
@@ -3182,43 +3183,41 @@ body:not(:has([data-slot="site-header"])) .np-root {
   color: var(--foreground);
 }
 /*
- * The motes (owner, 2026-10-29: "a more obvious way to tell whether the music is playing"; they replace the glow round the disc): a few small specks that drift out of the disc's edge and fade as they go, only while it plays.
- * Each is one compositor-only animation (transform, opacity) of a fixed element: nothing is laid out or painted again, and with no sound they are not there (`data-spin`). Where each goes is set inline (`--ux`, `--uy`: its
- * direction; `--reach`: how far, in disc diameters; the size, the time and the delay).
+ * The wavy outline (owner, 2026-10-29: it replaced the glow and the motes; components/now-playing-player.tsx, `WAVES`): two thin rings round the disc, with room between, whose lobes turn against each other while the
+ * disc plays. A transform on a fixed element: nothing is laid out or painted again. At rest the rings fade away, and are still.
  */
-.np-motes {
+.np-waves {
   position: absolute;
-  inset: 0;
+  inset: calc(var(--np-size) * -0.2);
+  width: calc(var(--np-size) * 1.4);
+  height: calc(var(--np-size) * 1.4);
+  overflow: visible;
   pointer-events: none;
-}
-.np-mote {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: var(--mote-size);
-  height: var(--mote-size);
-  margin: calc(var(--mote-size) / -2) 0 0 calc(var(--mote-size) / -2);
-  border-radius: 50%;
-  background: var(--foreground);
   opacity: 0;
-  display: none;
-  will-change: transform, opacity;
+  transition: opacity 400ms var(--ease-standard);
 }
-.np[data-spin="true"] .np-mote {
-  display: block;
-  animation: np-mote var(--mote-ms) var(--mote-delay) cubic-bezier(0.2, 0.6, 0.4, 1) infinite backwards;
+.np[data-spin="true"] .np-waves {
+  opacity: 1;
 }
-@keyframes np-mote {
-  from {
-    opacity: 0;
-    transform: translate(calc(var(--np-size) * var(--ux) * 0.5), calc(var(--np-size) * var(--uy) * 0.5)) scale(1);
-  }
-  15% {
-    opacity: 0.9;
-  }
+.np-wave {
+  fill: none;
+  stroke: var(--foreground);
+  stroke-width: 1.4;
+  vector-effect: non-scaling-stroke;
+  transform-origin: 50px 50px;
+  animation: np-wave-turn 9s linear infinite;
+  animation-play-state: paused;
+}
+.np-wave + .np-wave {
+  animation-duration: 14s;
+  animation-direction: reverse;
+}
+.np[data-spin="true"] .np-wave {
+  animation-play-state: running;
+}
+@keyframes np-wave-turn {
   to {
-    opacity: 0;
-    transform: translate(calc(var(--np-size) * var(--ux) * (0.5 + var(--reach))), calc(var(--np-size) * var(--uy) * (0.5 + var(--reach)))) scale(0.3);
+    transform: rotate(1turn);
   }
 }
 @keyframes np-spin {
@@ -3230,8 +3229,8 @@ body:not(:has([data-slot="site-header"])) .np-root {
   .np-disc {
     animation: none;
   }
-  .np-mote {
-    display: none !important;
+  .np-wave {
+    animation: none;
   }
 }
 

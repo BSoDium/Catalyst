@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { INTERLUDE_STATE_EVENT, RESTORE_HERO_EVENT, type CoverBlock, type InterludeStateDetail, type GlobeShowcase, type GlobeSignal, type GlobeViewState } from "~/globe";
+import { INTERLUDE_STATE_EVENT, RESTORE_HERO_EVENT, type CoverBlock, type InterludeStateDetail, type GlobeShowcase, type GlobeSignal, type GlobeViewState, nowPlaying, sunAudible } from "~/globe";
 import { cameBackHome } from "~/lib/hero-rest";
 import { createHeroMachine, HERO_IDLE_MS, isWorldView, showcaseOf, type HeroMachine } from "~/lib/hero-machine";
 
@@ -160,6 +160,16 @@ export function useLandingHero(open: boolean): LandingHero {
     };
   }, [machine]);
   useEffect(() => watchFocusHold(machine), [machine]);
+  // (the sun's music is audible: the hero does not come back over the sun, whatever the idle time; the music's end, or its being turned off, starts a whole idle period)
+  useEffect(() => {
+    const sync = () => machine.hold(sunAudible(nowPlaying.getSnapshot()), "music");
+    sync();
+    const off = nowPlaying.subscribe(sync);
+    return () => {
+      off();
+      machine.hold(false, "music");
+    };
+  }, [machine]);
 
   return useMemo(() => ({ machine, onInteract, onView, showcase, setCover }), [machine, onInteract, onView, showcase, setCover]);
 }

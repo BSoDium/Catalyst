@@ -15,6 +15,9 @@
  * The clock is also held while the visitor is working in the header or in a dialog (`hold`, fed by the keyboard focus): the way back
  * takes the header away (the hero's rows are the sections then), so a hero that came back under a focused header link, or under the open
  * search palette, would leave the focus on nothing. Releasing the hold starts a whole idle period, like any other input.
+ *
+ * It is held too while the sun's music is audible (owner, 2026-10-29: "a true cinematic experience"): the visitor has the sun in view and is listening, and the full hero does not come back over it. The holds are
+ * kept apart by their reason (`HoldReason`), so that one's release does not undo the other's.
  */
 import type { GlobeViewState } from "~/globe";
 
@@ -36,6 +39,9 @@ export function isWorldView(view: Pick<GlobeViewState, "zoom" | "street" | "worl
 }
 
 export type HeroState = "rest" | "collapsed";
+
+/** Why the idle clock is held (see `HeroMachine.hold`). */
+export type HoldReason = "focus" | "music";
 
 /**
  * What the globe is told about the home screen (`GlobeProps.showcase`): the showcase (the caption in, the boxes and labels out, the planet
@@ -68,8 +74,11 @@ export interface HeroMachine {
   interact(): void;
   /** Whether the view is the world view with nothing open. Leaving it collapses the hero and stops the clock; coming back restarts it. */
   setWorld(world: boolean): void;
-  /** The visitor's focus is in the header or in a dialog: the hero stays as it is (no way back) until it is released, then the idle period starts anew. */
-  hold(held: boolean): void;
+  /**
+   * The hero stays as it is (no way back) while any reason holds it, and the idle period starts anew when the last is released: the visitor's focus is in the header or in a dialog (`focus`, the default), or the sun's
+   * music is playing (`music`).
+   */
+  hold(held: boolean, reason?: HoldReason): void;
   /**
    * The cinematic interlude begins or ends (the globe says so). Only the LOOK changes, not the state: the showcase stays on (the interlude plays on its caption)
    * and the idle clock is not touched; the hero shrinks to its small name while it plays and grows back after it, if it is still at rest.
@@ -91,7 +100,7 @@ const browserTimers: HeroTimers = {
 export function createHeroMachine({ idleMs = HERO_IDLE_MS, timers = browserTimers, initial = "rest" }: { idleMs?: number; timers?: HeroTimers; initial?: HeroState } = {}): HeroMachine {
   let snapshot: HeroSnapshot = { state: initial, world: true, interlude: false };
   let timer: unknown = null;
-  let held = false;
+  const held = new Set<HoldReason>();
   const listeners = new Set<() => void>();
 
   const set = (next: Partial<HeroSnapshot>) => {
@@ -107,7 +116,7 @@ export function createHeroMachine({ idleMs = HERO_IDLE_MS, timers = browserTimer
   /** (Re)start the idle clock; it only runs for a collapsed hero at the world view, and not while the focus is held in the header or a dialog. */
   const arm = () => {
     clear();
-    if (held || snapshot.state !== "collapsed" || !snapshot.world) return;
+    if (held.size > 0 || snapshot.state !== "collapsed" || !snapshot.world) return;
     timer = timers.setTimeout(() => {
       timer = null;
       if (snapshot.state === "collapsed" && snapshot.world) set({ state: "rest" });
@@ -136,9 +145,10 @@ export function createHeroMachine({ idleMs = HERO_IDLE_MS, timers = browserTimer
     setInterlude(active) {
       set({ interlude: active });
     },
-    hold(next) {
-      if (next === held) return;
-      held = next;
+    hold(next, reason = "focus") {
+      if (next === held.has(reason)) return;
+      if (next) held.add(reason);
+      else held.delete(reason);
       arm();
     },
     restore() {

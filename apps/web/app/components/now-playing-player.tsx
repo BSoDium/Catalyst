@@ -19,8 +19,8 @@ const TRANSITION = {
   ms: 0.55,
 } as const;
 
-/** What the credit line says while the browser will not let the page make sound until the visitor has touched it: it gives way to the credit, with a fade, when the first touch starts the music. */
-const WARNING = "Tap anywhere to start the music";
+/** What the credit line says (it is ONE line: the text beside the disc must not change height, so it is short and `.np-warn` does not wrap) while the browser will not let the page make sound until the visitor has touched it: it gives way to the credit, with a fade, when the first touch starts the music. */
+const WARNING = "Tap to start";
 
 const SERVER: NowPlayingSnapshot = { track: null, state: "paused", muted: false };
 
@@ -55,28 +55,31 @@ export function NowPlayingPlayer() {
   );
 }
 
-/** How many motes drift off a playing disc: few, each its own compositor-only animation (transform and opacity), so the cost is nothing while it plays and none while it rests. */
-const MOTES = 9;
-
-/** How big a mote is, in px: at least `min`, and up to `min + range` (owner iterates on how obvious they are). */
-const MOTE_PX = { min: 2.5, range: 2 } as const;
-
 /**
- * Where mote `i` goes: a unit vector out of the disc (the golden angle, so that they never bunch), how far it travels, how long it takes, and when it starts (staggered, so that there is always one in flight and
- * never a burst). A function of `i` alone: the same on the server and in the browser.
+ * The wavy outline round a playing disc (owner, 2026-10-29: "an animated wavy outline around the disc, with a bit of padding"; it replaced the glow, and then the motes): two thin rings whose radius swells and
+ * dips in lobes (`WAVES`), turning slowly against each other, so that the line seems to ripple. The paths are made once, here; the turning is CSS (`.np-wave`: a transform on a fixed element, nothing is drawn
+ * again), and it runs only while the disc plays.
  */
-function mote(i: number): React.CSSProperties {
-  const angle = i * 2.399963 + 0.6;
-  const unit = (n: number) => ((Math.sin(i * 12.9898 + n * 78.233) * 43758.5453) % 1 + 1) % 1;
-  return {
-    "--ux": Math.cos(angle).toFixed(3),
-    "--uy": Math.sin(angle).toFixed(3),
-    "--reach": (0.55 + unit(1) * 0.5).toFixed(2),
-    "--mote-size": `${(MOTE_PX.min + unit(2) * MOTE_PX.range).toFixed(1)}px`,
-    "--mote-ms": `${Math.round(2600 + unit(3) * 1600)}ms`,
-    "--mote-delay": `${Math.round((i / MOTES) * 3200)}ms`,
-  } as React.CSSProperties;
+const WAVES = [
+  { lobes: 5, amp: 1.7, opacity: 0.6 },
+  { lobes: 8, amp: 1.2, opacity: 0.32 },
+] as const;
+/** The rings' mean radius, in the outline's 100-unit box (the disc is about 77 of them across: the rest is the padding the wave swings in). */
+const WAVE_RADIUS = 46;
+
+/** A closed ring of radius `WAVE_RADIUS`, its radius swung `amp` either way `lobes` times round, as a smooth path (sampled finely enough that it reads as a curve). */
+function wavePath(lobes: number, amp: number): string {
+  const n = 96;
+  let d = "";
+  for (let i = 0; i <= n; i++) {
+    const a = (i / n) * 2 * Math.PI;
+    const r = WAVE_RADIUS + amp * Math.sin(lobes * a);
+    d += `${i === 0 ? "M" : "L"}${(50 + r * Math.cos(a)).toFixed(2)} ${(50 + r * Math.sin(a)).toFixed(2)}`;
+  }
+  return d + "Z";
 }
+
+const WAVE_PATHS = WAVES.map((w) => wavePath(w.lobes, w.amp));
 
 /** The credit: each artist is a link to their page where they have one, joined as they are named. */
 function Artists({ track }: { track: Track }) {
@@ -133,11 +136,11 @@ function Player({ snap }: { snap: NowPlayingSnapshot }) {
           <span className="np-hole" />
         </span>
         <span className="np-gloss" aria-hidden="true" />
-        <span className="np-motes" aria-hidden="true">
-          {Array.from({ length: MOTES }, (_, i) => (
-            <span key={i} className="np-mote" style={mote(i)} />
+        <svg className="np-waves" viewBox="0 0 100 100" aria-hidden="true">
+          {WAVES.map((w, i) => (
+            <path key={i} className="np-wave" d={WAVE_PATHS[i]} style={{ opacity: w.opacity }} />
           ))}
-        </span>
+        </svg>
         <span className="np-icon" aria-hidden="true">
           <Icon name={snap.muted ? "play" : "pause"} size="control" />
         </span>

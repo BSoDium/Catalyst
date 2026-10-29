@@ -65,6 +65,11 @@ export interface NowPlayingSnapshot {
   readonly muted: boolean;
 }
 
+/** Whether the sun's music is audible: playing (not waiting, not blocked by the browser) and not turned off. The home screen's hero does not come back while it is (components' `useLandingHero`). */
+export function sunAudible(s: NowPlayingSnapshot): boolean {
+  return s.track?.id === TRACKS.sun.id && s.state === "playing" && !s.muted;
+}
+
 /** Whether there is a pill to show for this: a sound that has played and is not done (it is playing or paused). */
 export function pillVisible(s: NowPlayingSnapshot): boolean {
   return s.track !== null;
