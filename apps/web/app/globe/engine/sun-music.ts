@@ -21,8 +21,8 @@ import { TRACKS, nowPlaying, type NowPlaying } from "./now-playing";
 
 export const SUN_MUSIC = {
   url: "/audio/gabriel.mp3",
-  /** The loudness, the gain of a file that is about -11 LUFS (loud) with a range of 18 LU: its loudest passages come out near -32 dBFS, as faint as the interlude's sound (cinematic-sound.ts), its quietest near -48. */
-  volume: 0.18,
+  /** The loudness: the gain of a file that is about -11 LUFS (loud), with a range of 18 LU. 0.55 puts it near -16 LUFS, a normal level for music under a page (it was 0.18, about -26 LUFS: too faint to hear on a phone's speaker; owner, 2026-10-29). */
+  volume: 0.55,
   /**
    * How much of the end is laid over the beginning to make the loop, seconds, at least (the file's last six seconds are its fade-out: the overlap is the tail dying under the head rising). The loop is a whole number of
    * `cycleSec` long (`loopSamples`), so that the beat goes on across the seam: the overlap is the least that makes it so, from this much up to one cycle more.

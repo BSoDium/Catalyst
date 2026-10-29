@@ -5,17 +5,12 @@ import { nowPlaying, pillVisible, type NowPlayingSnapshot } from "~/globe";
 import { cn } from "~/lib/utils";
 
 /**
- * Where the player sits, in one place (owner: "we might iterate on where it shows and when it goes"). A wide screen (from 1180 px) has room: top left, the disc big with the words under it, clear of the header (whose
- * links start at about 230 px at 1280). From 768 px to there it is a compact row (the small disc beside the words) top left under the header, which is a short one there; on a phone the same row is bottom left, under the hero's links (or its name, once the hero has collapsed) and above the map credits' line (`attribution-button.tsx`). When it shows is `pillVisible`
- * (engine/now-playing.ts: a sound that has played and is not done); how it comes, changes and goes is `TRANSITION` below.
+ * Where the player sits (`.np-root`, app.css), in one place (owner: "we might iterate on where it shows and when it goes"): docked in the top left corner when there is room, and moved down under the header when the header
+ * needs the corner. The header's links are centred and 816 px wide, so they start at about 230 px at 1280; the player, its longest line included, ends at about 215: from 1280 px it is in the corner, the disc 3rem. Narrower
+ * (a tablet, a phone, where the header is a short "01 Globe / Search" row) it is the same row, the disc 2.5rem, under the header: 0.5rem under it when the header is there, and at the top of the screen when it is not (the
+ * home screen at rest has none: `body:has([data-slot="site-header"])`). It is a row (the disc on the left, the title and the artist on its right) at every size, so it is never over the hero's text at the bottom.
  */
-// (the classes are written out whole: Tailwind finds them by reading the source, it cannot read a string that is put together)
-const PLACEMENT = cn(
-  "pointer-events-none absolute z-20",
-  "bottom-[calc(max(0.25rem,env(safe-area-inset-bottom))+1.75rem)] left-4 [--np-size:3.25rem]",
-  "md:top-[calc(var(--navbar-height)+0.75rem)] md:bottom-auto",
-  "min-[1180px]:top-6 min-[1180px]:bottom-auto min-[1180px]:left-6 min-[1180px]:[--np-size:6rem]",
-);
+const PLACEMENT = "np-root pointer-events-none absolute z-20";
 
 /** How a sound comes in, gives way to another, and goes: it fades and blurs (opacity and blur only under reduced motion: no travel). */
 const TRANSITION = {
@@ -77,7 +72,7 @@ function Player({ snap }: { snap: NowPlayingSnapshot }) {
       data-muted={snap.muted}
       data-spin={playing}
       data-flash={flash}
-      className="np flex items-center gap-3 min-[1180px]:flex-col min-[1180px]:items-start"
+      className="np flex items-center gap-2.5"
     >
       <button
         type="button"
