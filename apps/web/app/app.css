@@ -172,11 +172,11 @@
   /* Layout. */
   --navbar-height: 3.5rem;
   /* The narrow header (a phone, or the half beside the panel): the selector is the page's title in the bar, in the drawer rows' size; the search is
-     mono in sentence case, smaller than the index (`--nav-mono`), with an icon as tall as its capitals (below); the index is as tall as the title's capitals (`--nav-index`: Bricolage's capitals are
+     the index's twin: the same face, size, weight and features (`--nav-mono` is `--nav-index`), in sentence case, with an icon as tall as a digit of it (below); the index is as tall as the title's capitals (`--nav-index`: Bricolage's capitals are
      0.66 em and JetBrains Mono's digits 0.74 em, so 0.66 / 0.74 of the title's size, measured with canvas `actualBoundingBox`). */
   --nav-title: 1.5rem;
   --nav-index: calc(var(--nav-title) * 0.892);
-  --nav-mono: 1rem;
+  --nav-mono: var(--nav-index);
   --nav-mono-track: 0;
   --nav-icon: 1.25rem;
   /* The nav scrim fades content out under the floating nav (see `.nav-scrim`); the nav's own fade over the globe is a little taller (`.nav-fade`). */
@@ -2879,9 +2879,13 @@
     padding-inline: 0;
     font-size: var(--nav-mono);
     letter-spacing: var(--nav-mono-track);
-    /* Sentence case, a touch lighter than the row's 400 (the mono at this size read heavy beside the title). */
+    /* Sentence case; in every other respect the index's own type (the row's `.nav-link` has the weight at 400 and the ligatures off: the index has the ligatures at their default). */
     text-transform: none;
-    font-weight: 350;
+    font-weight: 400;
+    font-feature-settings: normal;
+    /* The index is on the BASELINE of the 24 px title, which puts it 0.7 px (0.033 em of this type) under where a centred word of its size would be: the search goes down by that, so the two are on one line
+       (measured in the browser; both sides scale with --nav-title). The icon takes it back below, to stay on the word's digit height. */
+    translate: 0 0.033em;
   }
 
   [data-slot="site-header"] [data-slot="search-trigger"] .ds-kbd {
@@ -2897,18 +2901,18 @@
 @container (min-width: 22rem) and (max-width: 55.99rem) {
   [data-slot="site-header"] [data-slot="search-trigger"] .ui-icon {
     display: inline-block;
-    /* The icon is as tall as the word's capitals, top of the S to its baseline: JetBrains Mono's capitals are 0.73 em, and the lens's glyph (circle and handle) spans 13.95 of its 16 units, 14.55 with the stroke
-       below, so the box is 0.73 em x 16 / 14.55 = 0.8 em. The row centres it on the word's line, which puts it within a third of a pixel of the capitals. */
+    /* The icon is as tall as one digit of the same type, JetBrains Mono's 0.74 em, top to baseline. The lens's glyph (circle and handle) spans 13.95 of its 16 units, and the stems of the type are 0.09 em with
+       the ring's own thickness 0.95 units: with a box of B em and a stroke of s units, (13.95 + s) B / 16 = 0.74 and (0.95 + s) B / 16 = 0.09, so B = 0.8 em and s = 0.85 units. */
     width: 0.8em;
     height: 0.8em;
-    /* (measured against the word in the browser: the centred glyph sits 0.35 px under the capitals' span at 16 px, so it goes up by that) */
-    translate: 0 -0.022em;
+    /* (centred in its row it would sit 0.65 px under the word's digit height, measured; with the row's shift above it is back on it) */
+    translate: 0 -0.0305em;
   }
 
-  /* The stroke of the type beside it: the word's stems are about 0.078 em, the glyph's ring is 0.95 units of 16, so a stroke of 0.6 units round it brings it to the stems' thickness at this size. */
+  /* The stroke of the type beside it: the stems are 0.09 em (measured on the H at weight 400), the ring 0.95 units of 16, so a stroke of 0.85 units round it brings the ring to the stems' thickness. */
   [data-slot="site-header"] [data-slot="search-trigger"] .ui-icon * {
     stroke: currentColor;
-    stroke-width: 0.6px;
+    stroke-width: 0.85px;
     stroke-linejoin: miter;
   }
 }
