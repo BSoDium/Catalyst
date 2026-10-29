@@ -172,12 +172,12 @@
   /* Layout. */
   --navbar-height: 3.5rem;
   /* The narrow header (a phone, or the half beside the panel): the selector is the page's title in the bar, in the drawer rows' size; the search is
-     proportionate to it, mono capitals with a 20 px icon; the index is as tall as the title's capitals (`--nav-index`: Bricolage's capitals are
+     the index's twin, mono capitals of the SAME size (so its caps are as tall as the title's) with a 20 px icon, whose glyph is that cap height; the index is as tall as the title's capitals (`--nav-index`: Bricolage's capitals are
      0.66 em and JetBrains Mono's digits 0.74 em, so 0.66 / 0.74 of the title's size, measured with canvas `actualBoundingBox`). */
   --nav-title: 1.5rem;
   --nav-index: calc(var(--nav-title) * 0.892);
-  --nav-mono: 0.875rem;
-  --nav-mono-track: 0.08em;
+  --nav-mono: var(--nav-index);
+  --nav-mono-track: 0.06em;
   --nav-icon: 1.25rem;
   /* The nav scrim fades content out under the floating nav (see `.nav-scrim`); the nav's own fade over the globe is a little taller (`.nav-fade`). */
   --scrim-height: calc(var(--navbar-height) + 2.5rem);
@@ -2894,8 +2894,16 @@
 @container (min-width: 22rem) and (max-width: 55.99rem) {
   [data-slot="site-header"] [data-slot="search-trigger"] .ui-icon {
     display: inline-block;
-    width: var(--nav-icon);
-    height: var(--nav-icon);
+    /* (a little over the chevron's box: the lens's glyph, circle and handle, is as tall as the capitals beside it, and a round shape reads smaller than a letter of the same height) */
+    width: calc(var(--nav-icon) * 1.15);
+    height: calc(var(--nav-icon) * 1.15);
+  }
+
+  /* A light stroke round the glyph, so the icon has the weight of the mono type beside it (the lens is a small ring: the chevron's 1.5 would fill it). */
+  [data-slot="site-header"] [data-slot="search-trigger"] .ui-icon * {
+    stroke: currentColor;
+    stroke-width: 0.5px;
+    stroke-linejoin: miter;
   }
 }
 
@@ -3704,6 +3712,13 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     height: var(--nav-icon);
     translate: 0 calc((var(--nav-icon) - var(--nav-title) * 0.522) / 2);
     transition: transform var(--nav-open) var(--ease-standard);
+  }
+
+  /* Carbon's chevron is a 2-unit stroke on a 32-unit grid, thin beside the title's semibold stems: a stroke of the same colour round its outline (mitred, so the ends stay square) thickens it. */
+  .nav-sections .nav-sections-chevron * {
+    stroke: currentColor;
+    stroke-width: 1.5px;
+    stroke-linejoin: miter;
   }
 
   .nav-sections[open]:not([data-closing]) .nav-sel-index {
