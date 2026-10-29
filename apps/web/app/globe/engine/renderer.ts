@@ -73,7 +73,7 @@ import { SHOWCASE_STATE, bandLat, inBand, shellWindowFactor, type CaptionContent
 import { CAP_HEIGHT_EM, ringAlpha, ringFloorZoom, ringRoomRadius, RING_STATE } from "./ring";
 import { RingLayer } from "./ring-layer";
 import { GlobeScene } from "./scene";
-import { sunRise } from "./sun-flare";
+import { pickOccluder, sunRise, type Occluder } from "./sun-flare";
 import { liveSun, opening } from "./daylight";
 import { IMMERSION, immersiveZoom, openingZoom } from "./immersion";
 import { FX, irisStep } from "./fx";
@@ -1444,6 +1444,16 @@ export class GlobeRenderer {
     const ahead = clip.w > 1e-4;
     // (where the planet's centre is on the buffer: the crescent's centre of mass lies on the line from it through the sun)
     const pc = this.planetV.set(0, 0, 0).project(cam);
+    // what stands in front of the sun: the planet, or the moon (the moon's limb is the same sphere's, in its own radii; it has no atmosphere); whichever covers more of it
+    const planet = { rise: sunRise(-v.z, d), x: (pc.x * 0.5 + 0.5) * this.bufW, y: (pc.y * 0.5 + 0.5) * this.bufH, atmosphere: true };
+    const m = this.moonSample;
+    let moon: Occluder | null = null;
+    if (m && m.onScreen && m.amount > 0.5) {
+      const cp = cam.position;
+      const dot = ((m.position[0] - cp.x) * sunEarth[0] + (m.position[1] - cp.y) * sunEarth[1] + (m.position[2] - cp.z) * sunEarth[2]) / (m.distance * Math.hypot(sunEarth[0], sunEarth[1], sunEarth[2]));
+      moon = { rise: sunRise(dot, m.distance / MOON.radius), x: m.cx, y: m.cy, atmosphere: false };
+    }
+    const cover = pickOccluder(planet, moon);
     // (the music's beat in the sun's rays and halo, while it sounds and the visitor has not asked for less motion)
     const beat = this.reduced ? null : sunMusic.pulse();
     sun.sync({
@@ -1455,9 +1465,10 @@ export class GlobeRenderer {
       ahead,
       focal: (cam.projectionMatrix.elements[5]! * this.bufH) / 2,
       amount: this.nightNow,
-      rise: sunRise(-v.z, d),
-      px: (pc.x * 0.5 + 0.5) * this.bufW,
-      py: (pc.y * 0.5 + 0.5) * this.bufH,
+      rise: cover.rise,
+      px: cover.x,
+      py: cover.y,
+      atmosphere: cover.atmosphere,
     });
   }
 

@@ -161,6 +161,23 @@ export function sunRise(cosFromCentre: number, d: number): number {
 }
 
 /**
+ * What stands in front of the sun (owner, 2026-10-29: "when the moon passes in front of the sun, the exact same thing that happens with the earth happens, but without the atmospheric effects"): the planet, or the moon.
+ * Each is a sphere seen from the camera, and `rise` is how far the sun's centre is outside its limb, radians (`sunRise`: the moon's is the same function, with its distance in its own radii); `x`, `y` where its
+ * centre is on the buffer (the crescent is on the line from it through the sun); `atmosphere` whether the light goes through an air (the sunset's reddening and the halo's fade are the planet's, `SUN.cover`): the moon has none.
+ */
+export interface Occluder {
+  rise: number;
+  x: number;
+  y: number;
+  atmosphere: boolean;
+}
+
+/** Of the two bodies that can cover the sun, the one that covers more of it (the smaller rise); the planet when they are the same. The moon is absent when it is not in the picture. Pure. */
+export function pickOccluder(planet: Occluder, moon: Occluder | null): Occluder {
+  return moon && moon.rise < planet.rise ? moon : planet;
+}
+
+/**
  * Where the rays start, px from the sun's centre: at the edge of what is left of the sun, so that they always reach it (a fixed start left a gap between a shrinking sun and its rays). `r` is the sun's own radius, `area` and `width`
  * the crescent's (`sunCrescent`): the disc is the width of the crescent, and once the planet touches it (the area under 0.97, fully from 0.9) the bright part is a flat disc of `disc` of that. Clear, it is `r`, as it always was. At least 1. Pure.
  */

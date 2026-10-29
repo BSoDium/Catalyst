@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { SUN } from "./moon";
-import { flarePlace, haloClear, rayStart, sunCrescent, sunRise, type FlareFrame } from "./sun-flare";
+import { readFileSync } from "node:fs";
+import { MOON, SUN } from "./moon";
+import { flarePlace, haloClear, pickOccluder, rayStart, sunCrescent, sunRise, type FlareFrame, type Occluder } from "./sun-flare";
 
 const frame = (over: Partial<FlareFrame> = {}): FlareFrame => ({ bufW: 400, bufH: 260, x: 300, y: 80, ahead: true, amount: 1, visible: 1, ...over });
 
@@ -61,6 +62,37 @@ describe("sunRise", () => {
     expect(sunRise(Math.cos(limb), 4)).toBeCloseTo(0, 6);
     expect(sunRise(Math.cos(limb + 0.1), 4)).toBeCloseTo(0.1, 6);
     expect(sunRise(Math.cos(limb - 0.1), 4)).toBeCloseTo(-0.1, 6);
+  });
+});
+
+describe("the moon in front of the sun", () => {
+  const planet = (rise: number): Occluder => ({ rise, x: 100, y: 100, atmosphere: true });
+  const moon = (rise: number): Occluder => ({ rise, x: 300, y: 200, atmosphere: false });
+
+  it("is a sphere seen from the camera like the planet is: its distance in its own radii, 0 at its limb, negative behind it", () => {
+    const dist = 12; // earth radii
+    const gamma = Math.asin(MOON.radius / dist);
+    expect(sunRise(Math.cos(gamma), dist / MOON.radius)).toBeCloseTo(0, 6);
+    expect(sunRise(Math.cos(gamma + 0.01), dist / MOON.radius)).toBeCloseTo(0.01, 6);
+    expect(sunRise(1, dist / MOON.radius)).toBeCloseTo(-gamma, 6); // (the sun straight behind its centre)
+    expect(sunRise(-0.3, dist / MOON.radius)).toBe(Infinity);
+  });
+
+  it("is the body that covers the sun more that counts, and the planet when it is the same or when there is no moon", () => {
+    expect(pickOccluder(planet(0.4), moon(0.1))).toMatchObject({ atmosphere: false, x: 300, y: 200 });
+    expect(pickOccluder(planet(-0.2), moon(0.1))).toMatchObject({ atmosphere: true, x: 100 });
+    expect(pickOccluder(planet(0.1), moon(0.1))).toMatchObject({ atmosphere: true });
+    expect(pickOccluder(planet(Infinity), null)).toMatchObject({ atmosphere: true });
+    expect(pickOccluder(planet(Infinity), moon(Infinity))).toMatchObject({ atmosphere: true });
+  });
+
+  it("has no atmosphere: the sunset's reddening is the planet's, and the renderer hands the covering body's to the sun", () => {
+    const layer = readFileSync("app/globe/engine/sun-layer.ts", "utf8");
+    expect(layer).toMatch(/const air = f\.atmosphere === false \? 0 : 1/);
+    expect(layer.match(/\* air\b/g)?.length).toBeGreaterThanOrEqual(3); // (the blur's, the flare's and the halo's)
+    const renderer = readFileSync("app/globe/engine/renderer.ts", "utf8");
+    expect(renderer).toMatch(/atmosphere: false/);
+    expect(renderer).toMatch(/atmosphere: cover\.atmosphere/);
   });
 });
 
