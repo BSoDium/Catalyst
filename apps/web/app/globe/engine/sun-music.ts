@@ -1,6 +1,6 @@
 /**
- * The music of the sun (docs/landing.md, "The sun's music"): "Cinematic piano" (Nikita Kondrashev, "leberch", 2 min 19 s), a slow piano piece, plays FAINTLY while the sun is in the picture and lets go while it is not, as the planet covers it
- * or the camera turns away from it. The file is `public/audio/cinematic-piano.mp3`; without it the
+ * The music of the sun (docs/landing.md, "The sun's music"): "Gabriel", a slow, eerie piece (2 min 22 s), plays FAINTLY while the sun is in the picture and lets go while it is not, as the planet covers it
+ * or the camera turns away from it. A PROTOTYPE, waiting for the artist's answer: the file is `public/audio/gabriel.mp3`, on this stacked PR's branch only, which switches the sun's music to it from the stand-in `cinematic-piano.mp3` (it must not reach main before the artist's answer); without it the
  * music is simply not there (`status` "failed": no sound, and no button either).
  *
  * It is one piece the sun comes back to, not a sample started again: the visitor's place in it is kept while the sun is away (`position`), and the next time the sun comes round it takes up from there
@@ -20,23 +20,21 @@
 import { TRACKS, nowPlaying, type NowPlaying } from "./now-playing";
 
 export const SUN_MUSIC = {
-  url: "/audio/cinematic-piano.mp3",
-  /** The loudness: the gain of a file that is about -13.4 LUFS, with a range of 6.6 LU. 0.7 puts it near -16.5 LUFS, a normal level for music under a page (the first piece was louder, -11.3 LUFS, at 0.55; 0.18 was too faint to hear on a phone's speaker; owner, 2026-10-29). */
-  volume: 0.7,
+  url: "/audio/gabriel.mp3",
+  /** The loudness: the gain of a file that is about -11 LUFS (loud), with a range of 18 LU. 0.55 puts it near -16 LUFS, a normal level for music under a page (it was 0.18, about -26 LUFS: too faint to hear on a phone's speaker; owner, 2026-10-29). */
+  volume: 0.55,
   /**
-   * How much of the end is laid over the beginning to make the loop, seconds, at least (the overlap is the tail dying under the head rising). The loop is a whole number of
+   * How much of the end is laid over the beginning to make the loop, seconds, at least (the file's last six seconds are its fade-out: the overlap is the tail dying under the head rising). The loop is a whole number of
    * `cycleSec` long (`loopSamples`), so that the beat goes on across the seam: the overlap is the least that makes it so, from this much up to one cycle more.
    */
   crossfadeSec: 8,
   /**
-   * The piece's pulse, measured on the file (onset autocorrelation on the notes' attacks, 2026-10-29: 72 BPM, a beat of 0.8335 s, and a peak at four of them, 3.33 s, the bar, in both halves of the piece: steady from end
-   * to end; the first sound is 0.34 s in): `beatSec` is one beat; `cycleBeats` of them the cycle the sun's pulse goes round in (eight, two bars, 6.7 s: owner, "even slower, but still on rhythm": the cycle was 4.4 s with
-   * the first piece, whose beat was a little slower; the axes' rays pulse on the first beat and the diagonals' on the fifth); `beatOffsetSec` where the first beat falls in the decoded file: 0.18 s, from the same measure
-   * (the best phase of a comb of beats over the onsets, about twice the median's strength, to within a few hundredths of a second: by ear it is better).
+   * The piece's pulse, measured on the file (onset autocorrelation, 2026-10-29: 109.97 BPM, a period of 0.5456 s, steady from end to end; no published tempo was found): `beatSec` is one beat (owner, 2026-10-29: the first measure, 0.5456 s, was a pulse of eighths, "twice as fast as the bass line": the beat is TWICE that, 55 BPM; the bass is too soft an onset to tell from the file which of the two pulses it falls on, so the PHASE, `beatOffsetSec`, is still the first pulse's: by ear, if it is half a beat off, add 0.5456 to it), `cycleBeats` of them the
+   * cycle the sun's pulse goes round in (four beats, 4.4 s: owner, "even slower, but still on rhythm"; the same time as the eight pulses it was before the beat was corrected: the axes' rays pulse on the first beat and the diagonals' on the third, two beats, two seconds and a bit, apart), `beatOffsetSec` where the first beat falls in the decoded file.
    */
-  beatSec: 0.8335,
-  cycleBeats: 8,
-  beatOffsetSec: 0.18,
+  beatSec: 1.0912,
+  cycleBeats: 4,
+  beatOffsetSec: 0.055,
   /** How long a mute takes to go quiet (ms): not the fade-out of a sun that sets, but short enough not to click. */
   muteFadeMs: 120,
   /** Coming in and going out, for the whole way from silence to `volume` (a part of the way takes a part of the time). */

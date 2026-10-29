@@ -19,9 +19,9 @@ describe("a breath", () => {
 });
 
 describe("the sun's breathing", () => {
-  it("is one slow cycle: two bars of the piece, a bit under seven seconds (owner: slower, but still on the rhythm: a whole number of beats)", () => {
-    expect(CYCLE).toBeGreaterThan(6);
-    expect(CYCLE).toBeLessThan(7.5);
+  it("is one slow cycle: four beats, a bit over four seconds (owner: slower, but still on the rhythm: a whole number of beats)", () => {
+    expect(CYCLE).toBeGreaterThan(4);
+    expect(CYCLE).toBeLessThan(5);
     expect(SUN_MUSIC.cycleBeats % 4).toBe(0);
   });
 
@@ -114,7 +114,7 @@ describe("the beat", () => {
 describe("the loop and the cycle", () => {
   it("is a whole number of cycles long, with at least the crossfade left to overlap and less than a cycle more", () => {
     const sr = 44100;
-    const n = Math.round(139.363 * sr); // (the file)
+    const n = Math.round(141.967 * sr); // (the file)
     const len = loopSamples(n, sr);
     expect(len / (CYCLE * sr)).toBeCloseTo(Math.round(len / (CYCLE * sr)), 3);
     const over = (n - len) / sr;

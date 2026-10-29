@@ -46,13 +46,14 @@ describe("what the page is playing", () => {
     expect(np.getSnapshot()).toMatchObject({ track: TRACKS.sun, state: "playing" });
   });
 
-  it("credits the sun's music to its author, with a link to their page (https) and the file there, and the interlude's sound is credited to its composer and its arranger, each with a page, and no video", () => {
-    expect(TRACKS.sun).toMatchObject({ title: "Cinematic piano", artist: "Nikita Kondrashev (leberch)" });
-    expect(TRACKS.sun.artists.map((a) => a.href)).toEqual(["https://taketones.com/author/nikita-kondrashev"]);
-    expect(TRACKS.sun.titleHref).toBe("https://pixabay.com/music/orchestral-cinematic-cinematic-music-583978/");
-    expect(existsSync(`public${TRACKS.sun.cover}`), TRACKS.sun.cover).toBe(true);
+  it("credits the sun's music to its artists, with a sleeve and links that open somewhere real (https), and the interlude's sound is credited to its composer and its arranger, each with a page, and no video", () => {
+    expect(TRACKS.sun).toMatchObject({ title: "Gabriel", artist: "Felsmann & Tiley" });
+    expect(TRACKS.sun.cover).toMatch(/^\/media\//);
+    expect(TRACKS.sun.titleHref).toMatch(/^https:\/\//);
+    expect(TRACKS.sun.titleHref).toBe("https://www.youtube.com/watch?v=mSvt09Bq0_Q");
+    expect(TRACKS.sun.artists.map((a) => a.href)).toEqual(["https://felsmanntiley.com/"]);
     expect(TRACKS.interlude).not.toHaveProperty("titleHref");
-    expect(existsSync(`public${TRACKS.interlude.cover}`), TRACKS.interlude.cover).toBe(true);
+    for (const t of [TRACKS.sun, TRACKS.interlude]) expect(existsSync(`public${t.cover}`), t.cover).toBe(true);
     expect(existsSync(`public${SUN_MUSIC.url}`), SUN_MUSIC.url).toBe(true);
     expect(TRACKS.interlude.artist).toBe("Jerry Goldsmith & Brian Tyler");
     expect(TRACKS.interlude.artists.map((a) => a.name).join(" & ")).toBe(TRACKS.interlude.artist);
