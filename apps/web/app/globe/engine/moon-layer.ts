@@ -13,7 +13,7 @@
  * The layer knows nothing of input or the DOM: it is placed from the camera each frame (`sync`) and says where it is on the screen and how much of it shows (`MoonSample`), which
  * is what the link over it (engine/moon-overlay.ts) needs.
  */
-import { ClampToEdgeWrapping, Color, FrontSide, LinearFilter, Mesh, NoColorSpace, NormalBlending, RepeatWrapping, type Scene, ShaderMaterial, SphereGeometry, type Texture, TextureLoader, Vector3, type PerspectiveCamera } from "three";
+import { AddEquation, ClampToEdgeWrapping, Color, CustomBlending, FrontSide, LinearFilter, Mesh, NoColorSpace, OneFactor, OneMinusSrcAlphaFactor, RepeatWrapping, type Scene, ShaderMaterial, SphereGeometry, SrcAlphaFactor, type Texture, TextureLoader, Vector3, type PerspectiveCamera } from "three";
 import type { GlobeTheme } from "./colors";
 import { MOON, inertialPosition, moonAmount, orbitBasis, toEarthFrame, unhidden, type OrbitBasis, type Vec3 } from "./moon";
 import { SURFACE, surfaceTones } from "./surface";
@@ -114,8 +114,15 @@ function moonMaterial(): ShaderMaterial {
     vertexShader: VERTEX,
     fragmentShader: FRAGMENT,
     side: FrontSide,
-    transparent: true,
-    blending: NormalBlending,
+    // Blended like a normal transparent material (the amount `uAmt` fades it), but NOT in three's transparent list: that is drawn after every opaque object whatever its `renderOrder`, and the route lines (4,
+    // depth test off, so opaque) were drawn BEFORE the moon, which then covered them (owner, 2026-10-29: "the moon occludes the plane paths, though it is behind them"). Custom blending needs no `transparent`.
+    transparent: false,
+    blending: CustomBlending,
+    blendEquation: AddEquation,
+    blendSrc: SrcAlphaFactor,
+    blendDst: OneMinusSrcAlphaFactor,
+    blendSrcAlpha: OneFactor,
+    blendDstAlpha: OneMinusSrcAlphaFactor,
     depthTest: true,
     depthWrite: true,
   });
