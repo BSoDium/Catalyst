@@ -1,7 +1,7 @@
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Icon } from "~/components/ui/icon";
-import { nowPlaying, pillVisible, type NowPlayingSnapshot, type Track } from "~/globe";
+import { TRACKS, nowPlaying, pillVisible, sunMusic, type NowPlayingSnapshot, type Track } from "~/globe";
 
 /**
  * Where the player sits (`.np-root`, app.css), in one place (owner: "we might iterate on where it shows and when it goes"): docked in the top left corner when there is room, and moved down under the header when the header
@@ -73,6 +73,29 @@ function Artists({ track }: { track: Track }) {
 
 function Player({ snap }: { snap: NowPlayingSnapshot }) {
   const track = snap.track!;
+  const reduced = useReducedMotion();
+  const halo = useRef<HTMLSpanElement>(null);
+  const credit = track.artist ? `${track.title} by ${track.artist}` : track.title;
+  const playing = snap.state === "playing" && !snap.muted;
+  const blocked = snap.state === "blocked" && !snap.muted;
+  // how far the halo reaches follows the sun's music's level (the interlude's sound has none to read: the halo's own, steady): one custom property, written when it moves, while the disc plays
+  const sun = track.id === TRACKS.sun.id;
+  useEffect(() => {
+    const el = halo.current;
+    if (!playing || !sun || reduced || !el) return;
+    let raf = 0;
+    let last = -1;
+    const frame = () => {
+      const level = sunMusic.pulse()?.energy ?? 0;
+      if (Math.abs(level - last) > 0.01) {
+        last = level;
+        el.style.setProperty("--np-level", level.toFixed(2));
+      }
+      raf = requestAnimationFrame(frame);
+    };
+    raf = requestAnimationFrame(frame);
+    return () => cancelAnimationFrame(raf);
+  }, [playing, sun, reduced]);
   const [coverOk, setCoverOk] = useState(true);
   // a touch screen has no hover to show the icon with: it shows for a moment after a tap
   const [flash, setFlash] = useState(false);
@@ -81,9 +104,6 @@ function Player({ snap }: { snap: NowPlayingSnapshot }) {
     const id = window.setTimeout(() => setFlash(false), 1100);
     return () => window.clearTimeout(id);
   }, [flash]);
-  const credit = track.artist ? `${track.title} by ${track.artist}` : track.title;
-  const playing = snap.state === "playing" && !snap.muted;
-  const blocked = snap.state === "blocked" && !snap.muted;
   return (
     <div
       data-now-playing
@@ -104,9 +124,10 @@ function Player({ snap }: { snap: NowPlayingSnapshot }) {
           setFlash(true);
         }}
       >
-        <span className="np-halo" aria-hidden="true">
+        <span ref={halo} className="np-halo" aria-hidden="true">
           <span className="np-halo-a" />
           <span className="np-halo-b" />
+          <span className="np-halo-c" />
         </span>
         <span className="np-disc" aria-hidden="true">
           {track.cover && coverOk ? <img src={track.cover} alt="" draggable={false} onError={() => setCoverOk(false)} /> : <span className="np-label" />}
