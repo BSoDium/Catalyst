@@ -171,6 +171,8 @@ export class MoonOverlay {
   private revealed = 0;
   private revealRaf = 0;
   private readTimer = 0;
+  private sizes = { w: 0, h: 0, rw: 0, rh: 0 };
+  private observer: ResizeObserver | null = null;
   private paintedAt = 0;
   private mark: SVGElement;
   private closeTimer = 0;
@@ -218,6 +220,14 @@ export class MoonOverlay {
     this.box = box(doc);
     link.append(this.box.svg, card);
     root.append(link);
+    if (typeof ResizeObserver !== "undefined") {
+      this.observer = new ResizeObserver(() => {
+        this.measure();
+        if (this.open || "seen" in link.dataset) this.placeCard();
+      });
+      this.observer.observe(card);
+      this.observer.observe(root);
+    }
 
     link.addEventListener("pointerenter", this.onEnter);
     link.addEventListener("pointerleave", this.onLeave);
@@ -317,12 +327,23 @@ export class MoonOverlay {
     this.setOpen(false);
   }
 
+  /** The card's and the window's sizes, read when one of them changes (a `ResizeObserver`), not every frame: a read after the frame's writes would force a layout each time. */
+  private measure() {
+    const s = this.sizes;
+    s.w = this.card.offsetWidth;
+    s.h = this.card.offsetHeight;
+    s.rw = this.root.clientWidth;
+    s.rh = this.root.clientHeight;
+    return s;
+  }
+
   /** Put the card by the box, as a map label sits by its box (`cardPlace`). The link is a little larger than the moon (a finger's width), so the card is placed from the moon's own edge, not the link's. */
   private placeCard() {
     const at = this.at;
     if (!at) return;
     const card = this.card;
-    const place = cardPlace(at.box, card.offsetWidth, card.offsetHeight, this.root.clientWidth, this.root.clientHeight);
+    const m = this.sizes.w > 0 ? this.sizes : this.measure();
+    const place = cardPlace(at.box, m.w, m.h, m.rw, m.rh);
     card.dataset.side = place.side;
     // measured from the link's top-left corner (the moon is at its middle, `at.r` is its half side)
     card.style.transform = `translate3d(${place.x - (at.x - at.r)}px, ${place.y - (at.y - at.r)}px, 0)`;
@@ -439,6 +460,7 @@ export class MoonOverlay {
     window.clearTimeout(this.seenTimer);
     window.cancelAnimationFrame(this.revealRaf);
     window.clearTimeout(this.readTimer);
+    this.observer?.disconnect();
     this.link.remove();
   }
 }

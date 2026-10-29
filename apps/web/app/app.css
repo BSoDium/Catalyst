@@ -3449,7 +3449,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   /* The unknown glitches now and then (a one-pixel jump, in steps), only while it is shown. */
   @media (prefers-reduced-motion: no-preference) {
     .globe-moon-arrow[data-glyph="unknown"] {
-      animation: globe-moon-glitch 3.2s steps(1) infinite;
+      animation: globe-moon-glitch 3.2s steps(1) 3; /* three times, then it is still: an idle page does nothing (it starts again when the words scramble again) */
     }
   }
 
