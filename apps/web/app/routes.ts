@@ -5,7 +5,7 @@ import { index, layout, route, type RouteConfig } from "@react-router/dev/routes
 // See docs/street-architecture.md and docs/design-system.md.
 const devRoutes =
   process.env.NODE_ENV !== "production" || process.env.CATALYST_DEV_ROUTES === "1"
-    ? [route("dev/street", "routes/dev-street.tsx"), route("dev/street-lines", "routes/dev-street-lines.tsx"), route("dev/design", "routes/dev-design.tsx")]
+    ? [route("dev/street", "routes/dev-street.tsx"), route("dev/street-lines", "routes/dev-street-lines.tsx"), route("dev/design", "routes/dev-design.tsx"), route("dev/entry-layout", "routes/dev-entry-layout.tsx")]
     : [];
 
 export default [
