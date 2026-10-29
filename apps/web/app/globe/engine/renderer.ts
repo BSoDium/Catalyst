@@ -200,8 +200,6 @@ export class GlobeRenderer {
   private world = 1;
   /** The planet coming closer when the visitor takes the globe: a pan does not end it, a zoom or a flight does. */
   private zoomGlide: { from: number; to: number; t0: number; ms: number } | null = null;
-  /** The visitor has had a first gesture on the globe on this page: only that one brings the planet closer when the home screen was not at rest (`comeCloser`). */
-  private taken = false;
   /** The ring of type, when there is one (engine/ring-layer.ts: a flat circle of text round the disc, unchanged by the showcase). */
   private ring: RingLayer | null = null;
   /** The pictures of the modes on the legs (street/overlay/trail-dots-layer.ts, lines off: the shader draws the lines): a canvas over the globe's, null without routes. */
@@ -1595,11 +1593,7 @@ export class GlobeRenderer {
     if ((e.type === "pointerdown" || e.type === "wheel") && this.showcaseOn && e.target instanceof Node && this.opts.container.contains(e.target)) {
       this.inertPress = e.type === "pointerdown";
       this.dropShowcase();
-    } else if ((e.type === "pointerdown" || e.type === "wheel") && !this.taken && e.target instanceof Node && this.opts.container.contains(e.target)) {
-      // (the home screen was never at rest on this page, the visitor having come back to it from another: the first gesture still brings the planet closer)
-      this.comeCloser();
     }
-    if ((e.type === "pointerdown" || e.type === "wheel") && e.target instanceof Node && this.opts.container.contains(e.target)) this.taken = true;
     if (e.type === "pointerup" || e.type === "pointercancel") {
       if (this.inertPress) window.setTimeout(() => (this.inertPress = false), 0);
     }
