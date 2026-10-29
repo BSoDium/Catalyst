@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { DWELL_MS, MoonOverlay, READ_MS, TOUCH_HOLD_MS, type MoonFrame } from "./moon-overlay";
+import { DWELL_MS, MoonOverlay, READ_MS, type MoonFrame } from "./moon-overlay";
 
 /**
  * The overlay's clocks (the 1.5 s before the box, the reveal, the 5 s it stays read), against a hand-made DOM and fake timers: the suite runs in node, and what is tested is the
@@ -196,20 +196,15 @@ describe("MoonOverlay on a touch screen", () => {
     link.listeners.get("click")!({ preventDefault() {} });
   };
 
-  it("holds the moon still once its box is up, so that it can be tapped, and lets it go if it is not", () => {
+  it("goes on moving once its box is up, until it is tapped", () => {
     setup(true);
     overlay.update();
-    tick(DWELL_MS - 1);
+    tick(DWELL_MS + 60000);
+    expect("seen" in link.dataset).toBe(true);
     expect(held).toEqual([]);
-    tick(1);
-    expect(held).toEqual([true]);
-    tick(TOUCH_HOLD_MS - 1);
-    expect(held).toEqual([true]);
-    tick(1);
-    expect(held).toEqual([true, false]);
   });
 
-  it("the first tap reads the words and keeps the moon held past the wait; a press elsewhere puts the card away", () => {
+  it("the first tap reads the words and holds the moon; a press elsewhere puts the card away", () => {
     setup(true);
     overlay.update();
     tick(DWELL_MS);
@@ -217,8 +212,7 @@ describe("MoonOverlay on a touch screen", () => {
     tick(700);
     expect(link.dataset.open).toBeDefined();
     expect(clear()).toBe(true);
-    tick(TOUCH_HOLD_MS * 2);
-    expect(held.at(-1)).toBe(true); // still held: the open card holds it
+    expect(held.at(-1)).toBe(true); // held: the open card holds it
     expect(doc.has("pointerdown")).toBe(true);
     doc.get("pointerdown")!({ target: {} });
     expect("open" in link.dataset).toBe(false);
@@ -248,7 +242,7 @@ describe("MoonOverlay on a touch screen", () => {
   it("does not hold the moon where there is a pointer to hover with", () => {
     setup(false);
     overlay.update();
-    tick(DWELL_MS + TOUCH_HOLD_MS);
+    tick(DWELL_MS + 60000);
     expect(held).toEqual([]);
     expect("seen" in link.dataset).toBe(true);
   });

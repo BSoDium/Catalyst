@@ -9,7 +9,7 @@
  * Two looks, as the whole globe has two (`washOf`, engine/surface.ts): on the dark page it is the brightest thing there is, the ink's own tone. On the light page it is so bright that it burns the
  * colour away: the disc and the halo are the page's colour, and it shows only a ghost of a rim and the halo's faint darkness.
  */
-import { AddEquation, BufferAttribute, BufferGeometry, Color, Mesh, OneFactor, OneMinusSrcAlphaFactor, CustomBlending, type Scene, ShaderMaterial, Vector2 } from "three";
+import { AddEquation, BufferAttribute, BufferGeometry, Color, DstColorFactor, Mesh, OneFactor, OneMinusSrcAlphaFactor, CustomBlending, type Scene, ShaderMaterial, Vector2 } from "three";
 import type { GlobeTheme } from "./colors";
 import { BAYER4 } from "./sky";
 import { SUN } from "./moon";
@@ -60,8 +60,8 @@ const FRAGMENT = /* glsl */ `
     vec3 lightHalo = mix(vec3(${f(SUN.light.halo.grey)}), warm(ink) * ${f(SUN.light.ink)}, ${f(SUN.light.halo.warm)});
     // (the fade is the dither's, not a blend: a pixel is on or off)
     if (uAmt < 0.999 && th >= uAmt) discard;
-    // the halo is a lens's, over the planet like the blob (premultiplied, as the blob's): dark page, its light is laid over it, translucent; light page, the grey is laid over it
-    // (translucent, unlike the sun's disc. Light page: the grey is laid over what is behind by its own strength, exactly the old mix over the sky, and already see-through over the planet. Dark page: the light is whole, so over the sky it is as bright as ever, but only SUN.haloOpacity of it hides what is behind)
+    // the halo is a lens's, over the planet like the blob (premultiplied, as the blob's): dark page, its light is laid over it, translucent; light page, it DARKENS what is behind it
+    // (translucent, unlike the sun's disc. Light page: what is behind is multiplied by the grey's own strength (\`applyTheme\` sets the blend: the source is multiplied by the destination), which over the paper is exactly the old mix over the sky, and over the planet darkens the land and the lines under it instead of laying a flat grey that is the same tone as they are. Dark page: the light is whole, so over the sky it is as bright as ever, but only SUN.haloOpacity of it hides what is behind)
     if (uLight > 0.5) { float a = k * ${f(SUN.light.halo.strength)}; gl_FragColor = vec4(lightHalo * a, a); }
     else gl_FragColor = vec4(warm(ink) * k, k * ${f(SUN.haloOpacity)});
   }
@@ -218,6 +218,8 @@ export class SunLayer {
     u.uInk!.value.setRGB(...t.ink);
     u.uLight!.value = t.scheme === "dark" ? 0 : 1;
     this.dark = t.scheme === "dark";
+    // the halo's blend: the light page multiplies what is behind (the halo darkens the planet under it, `FRAGMENT`), the dark page lays its light over it
+    this.mat.blendSrc = this.dark ? OneFactor : DstColorFactor;
     // (the blur adds its light on the dark page and lays white over the paper on the light one: its shader's output is premultiplied in both, one blend)
     this.blobMat.uniforms.uLight!.value = this.dark ? 0 : 1;
     this.flare.applyTheme(t);

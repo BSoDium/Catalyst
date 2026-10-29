@@ -4774,8 +4774,11 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   }
 
   /* The bleeds must never widen the page, and must not be cut by the content's own box (which is narrower than the screen on a wide
-     one): only the screen's edge cuts them, so the clip is the page's, not the career block's. */
-  html:has([data-slot="career"]) {
+     one): only the screen's edge cuts them, so the clip is the page's, not the career block's. The body is clipped too: on a phone the
+     clip on the root alone leaves the glow in the page's scrollable width, the browser widens the layout viewport to hold it (655 px on
+     a 375 px screen) and the fixed header, centred over that, puts its search button off the screen's right edge. */
+  html:has([data-slot="career"]),
+  body:has([data-slot="career"]) {
     overflow-x: clip;
   }
 
