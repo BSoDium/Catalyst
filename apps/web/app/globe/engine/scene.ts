@@ -409,6 +409,8 @@ export class GlobeScene {
       (tex) => {
         tex.magFilter = tex.minFilter = NearestFilter; // (a light is one hard texel: a point, not a blob)
         this.lights.uniforms.uLights!.value = tex;
+        const img = tex.image as { width?: number; height?: number } | undefined;
+        if (img?.width && img.height) this.lights.uniforms.uSize!.value = [img.width, img.height];
         this.lightsTex = tex;
         this.lightsReady = true;
         if (this.lightsMesh) this.lightsMesh.visible = this.nightNow > 0.01;

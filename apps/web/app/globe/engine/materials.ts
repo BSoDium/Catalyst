@@ -423,13 +423,13 @@ export function surfaceMaterial(): ShaderMaterial {
  */
 export function lightsMaterial(): ShaderMaterial {
   return new ShaderMaterial({
-    uniforms: { uColor: { value: new Color() }, uCore: { value: new Color() }, uLights: { value: null }, uCover: { value: 1 }, uSunN: { value: [0, 0, 1] }, uNight: { value: 0 }, uFlip: { value: 0 } },
+    uniforms: { uColor: { value: new Color() }, uCore: { value: new Color() }, uLights: { value: null }, uSize: { value: [2048, 1024] }, uCover: { value: 1 }, uSunN: { value: [0, 0, 1] }, uNight: { value: 0 }, uFlip: { value: 0 } },
     vertexShader: /* glsl */ `
       varying vec3 vDir;
       void main() { vDir = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
     `,
     fragmentShader: /* glsl */ `
-      uniform vec3 uColor; uniform vec3 uCore; uniform sampler2D uLights; uniform float uCover;
+      uniform vec3 uColor; uniform vec3 uCore; uniform sampler2D uLights; uniform vec2 uSize; uniform float uCover;
       uniform vec3 uSunN; uniform float uNight; uniform float uFlip;
       varying vec3 vDir;
       ${DITHER_GLSL}
@@ -438,11 +438,33 @@ export function lightsMaterial(): ShaderMaterial {
         vec3 n = normalize(vDir);
         vec2 uv = vec2(atan(n.x, n.z) * 0.15915494 + 0.5, asin(clamp(n.y, -1.0, 1.0)) * 0.31830989 + 0.5);
         float dark = floor(clamp(washOf(n, uSunN, uNight, uFlip), 0.0, 1.0) * ${NIGHT.lineSteps.toFixed(1)} + 0.5) / ${NIGHT.lineSteps.toFixed(1)};
+        vec2 t = uv * uSize;
+        // how wide a texel is on the screen, in art pixels (taken before anything is discarded: derivatives need the whole quad); not where the map's seam is (uv jumps)
+        float perPx = max(length(fwidth(t)), 1e-4);
+        float widePx = (fwidth(uv.x) > 0.5) ? 0.0 : 1.0 / perPx;
+        float mag = smoothstep(${LIGHTS.magFrom.toFixed(2)}, ${LIGHTS.magTo.toFixed(2)}, widePx);
         vec4 m = texture2D(uLights, uv);
+        float thr = dither4(floor(gl_FragCoord.xy));
+        if (mag > 0.0) {
+          // read between the texels (the map is not smoothed by the sampler: a light is one hard texel from afar): the four round the fragment, by hand, wrapping round in longitude
+          vec2 p = t - 0.5;
+          vec2 i = floor(p);
+          vec2 f = fract(p);
+          vec4 a = texture2D(uLights, vec2(fract((i.x + 0.5) / uSize.x), clamp((i.y + 0.5) / uSize.y, 0.0, 1.0)));
+          vec4 b = texture2D(uLights, vec2(fract((i.x + 1.5) / uSize.x), clamp((i.y + 0.5) / uSize.y, 0.0, 1.0)));
+          vec4 c = texture2D(uLights, vec2(fract((i.x + 0.5) / uSize.x), clamp((i.y + 1.5) / uSize.y, 0.0, 1.0)));
+          vec4 d = texture2D(uLights, vec2(fract((i.x + 1.5) / uSize.x), clamp((i.y + 1.5) / uSize.y, 0.0, 1.0)));
+          vec4 sm = mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+          m = mix(m, vec4(min(1.0, sm.r * ${LIGHTS.boost.toFixed(2)}), sm.g, sm.b, sm.a), mag);
+          // the dither is a hash of the place on the planet, in cells of a whole doubling of a texel's share, about an art pixel across
+          float sub = min(${LIGHTS.maxSub.toFixed(1)}, exp2(floor(log2(max(widePx, 1.0)))));
+          vec2 q = floor(t * sub);
+          thr = mix(thr, fract(sin(dot(q, vec2(12.9898, 78.233))) * 43758.5453), mag);
+        }
         // the heat: the more packed the lights are round this one (the map's green), the whiter and brighter it is, and the likelier it is to be drawn
         float heat = smoothstep(${LIGHTS.from.toFixed(2)}, ${LIGHTS.to.toFixed(2)}, m.g);
         float cover = m.r * dark * uCover * (1.0 + ${LIGHTS.dense.toFixed(2)} * heat);
-        if (cover < 0.02 || dither4(floor(gl_FragCoord.xy)) >= cover) discard;
+        if (cover < 0.02 || thr >= cover) discard;
         gl_FragColor = vec4(mix(uColor, uCore, heat), 1.0);
       }
     `,

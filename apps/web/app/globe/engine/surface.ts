@@ -94,4 +94,15 @@ export const LIGHTS = {
   from: 0.3,
   to: 0.85,
   dense: 0.6,
+  /**
+   * CLOSE SHOTS (owner, 2026-10-29: the interlude's camera comes near enough to the night side that a texel of the map is wider than an art pixel, and the lights were hard squares of one dither pattern). The map is
+   * read as it was while a texel is no wider than `magFrom` art pixels (a light is one hard texel); as it grows to `magTo` the lights are read BETWEEN the texels (the four round the fragment, a bilinear density,
+   * `boost` times, for the average of a point and its dark neighbours is dimmer than the point) and the ordered dither is replaced by a hash that sticks to the planet at the size of an art pixel (cells of a texel's
+   * 1 / 2 / 4 / 8 / 16th: whole doublings, so that a zoom re-draws them seldom), so that a place is a scatter of lights, thick at its core and thin at its edge, not a square.
+   */
+  magFrom: 1.5,
+  magTo: 4,
+  boost: 1.6,
+  /** The finest a texel is cut into, per side. */
+  maxSub: 16,
 } as const;
