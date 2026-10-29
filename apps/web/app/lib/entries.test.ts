@@ -20,7 +20,9 @@ import {
   RELATED_LIMIT,
   relatedScore,
   RELATED_WEIGHTS,
+  listBackState,
   resolveBackTarget,
+  resolveListBack,
   focusPlaceOf,
   splitMeta,
   viewSearch,
@@ -286,5 +288,22 @@ describe("focusPlaceOf: the place the globe is on while an entry is open", () =>
   it("is null for an entry with no place", () => {
     expect(focusPlaceOf(null, [], known)).toBeNull();
     expect(focusPlaceOf(null, null, known)).toBeNull();
+  });
+});
+
+describe("the list an entry was opened from", () => {
+  it("is kept with its tag filter, and read back as the section's name and the same path", () => {
+    expect(listBackState("project", "?tag=maps")).toEqual({ list: "/software?tag=maps" });
+    expect(resolveListBack(listBackState("project", "?tag=maps"))).toEqual({ name: "Software", href: "/software?tag=maps", list: true });
+    expect(resolveListBack(listBackState("article", ""))).toMatchObject({ name: "Articles", href: "/articles" });
+    expect(resolveListBack(listBackState("photograph", ""))).toMatchObject({ href: "/photography" });
+  });
+
+  it("takes nothing that is not one of the sections' lists (history state can be anything)", () => {
+    for (const list of ["/", "//evil.example/software", "https://evil.example/software", "/software/some-entry", "/software?tag=a#x", "/software?tag=a b", "/locations/lisbon", 3, null, undefined]) {
+      expect(resolveListBack({ list }), String(list)).toBeNull();
+    }
+    expect(resolveListBack(null)).toBeNull();
+    expect(resolveListBack("software")).toBeNull();
   });
 });

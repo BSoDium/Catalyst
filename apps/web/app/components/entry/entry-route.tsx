@@ -2,11 +2,11 @@ import { useRef } from "react";
 import { useLocation, useRouteLoaderData } from "react-router";
 import { EntryView } from "~/components/entry/entry-view";
 import { useLast } from "~/hooks/use-last";
-import { parsePanelPath, parseView, resolveBackTarget, type EntryView as EntryViewMode } from "~/lib/entries";
+import { parsePanelPath, parseView, resolveBackTarget, resolveListBack, type EntryView as EntryViewMode } from "~/lib/entries";
 import type { EntryLoaderData } from "~/lib/entries";
 import type { loader as shellLoader } from "~/routes/shell";
 
-type Frozen = { layout: EntryViewMode; backTo: ReturnType<typeof resolveBackTarget> };
+type Frozen = { layout: EntryViewMode; backTo: ReturnType<typeof resolveBackTarget> | ReturnType<typeof resolveListBack> };
 
 /**
  * The element of an entry route inside the shell's detail panel: the loaded entry, in the container the URL selects
@@ -21,7 +21,7 @@ export function EntryRoute({ data }: { data: EntryLoaderData | undefined }) {
   if (!shown) return null;
   const route = parsePanelPath(location.pathname);
   if (route?.type === "entry" && route.kind === shown.entry.kind && route.slug === shown.entry.slug) {
-    frozen.current = { layout: parseView(location.search), backTo: resolveBackTarget(location.state, shell?.places ?? []) };
+    frozen.current = { layout: parseView(location.search), backTo: resolveBackTarget(location.state, shell?.places ?? []) ?? resolveListBack(location.state) };
   }
   return <EntryView entry={shown.entry} layout={frozen.current.layout} backTo={frozen.current.backTo} />;
 }

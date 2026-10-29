@@ -7,7 +7,7 @@ import { getEntryDetail } from "~/lib/entries";
 import { coverFit, EntryView, repositoryHref } from "./entry-view";
 
 const demo = loadDemoProjection();
-const render = (kind: "article" | "poem" | "project" | "artwork", slug: string, layout: "panel" | "full", backTo?: { slug: string; name: string; href: string }) =>
+const render = (kind: "article" | "poem" | "project" | "artwork", slug: string, layout: "panel" | "full", backTo?: { slug?: string; name: string; href: string; list?: boolean }) =>
   renderToStaticMarkup(createElement(StaticRouter, { location: "/" }, createElement(EntryView, { entry: getEntryDetail(demo, kind, slug)!, layout, backTo })));
 
 describe("EntryView", () => {
@@ -88,6 +88,12 @@ describe("EntryView", () => {
     const html = render("article", "demo-article", "panel", { slug: "lisbon", name: "Lisbon", href: "/locations/lisbon" });
     expect(html).toContain("Back to");
     expect(html.indexOf("Back to")).toBeLessThan(html.indexOf("<h1"));
+  });
+  it("offers a way back to the list it was opened from, with the filter it had, and does not call a list a place", () => {
+    const html = render("project", "demo-project", "panel", { name: "Software", href: "/software?tag=maps", list: true });
+    expect(html).toContain('href="/software?tag=maps"');
+    expect(html).toMatch(/Back to[^<]*(<!-- -->)? ?Software/);
+    expect(html).not.toContain("Back to <span class=\"sr-only\">place");
   });
   it("links the neighbours of the kind: the first has a next one only, the last a previous one only, the middle both", () => {
     const first = render("poem", "demo-poem", "panel");
