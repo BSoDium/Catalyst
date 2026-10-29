@@ -3185,7 +3185,7 @@ body:not(:has([data-slot="site-header"])) .np-root {
 /*
  * The wavy outline (owner, 2026-10-29: a filled shape in a soft grey near the page's colour, with a lighter edge, as a raised surface has, pixelated to the globe's grid; the disc is not; components/now-playing-player.tsx, `Waves`,
  * lib/now-playing-wave.ts): a canvas drawn at one pixel to a cell and scaled up without smoothing, centred on the disc, under it. `color` is its fill and `border-color` its edge (the script reads them, and the border is
- * never drawn); its size is set by the script, to a whole number of cells. At rest it fades away.
+ * never drawn); its size is set by the script, to a whole number of cells. It comes out from behind the disc when the music plays and goes back into it (`scale`: 0.6 is the disc's own width in it) when it does not.
  */
 .np-waves {
   --np-wave-fill: color-mix(in srgb, var(--background) 90%, var(--foreground));
@@ -3195,16 +3195,23 @@ body:not(:has([data-slot="site-header"])) .np-root {
   left: 50%;
   width: calc(var(--np-size) * 1.5);
   height: calc(var(--np-size) * 1.5);
-  transform: translate(-50%, -50%);
+  /* (shrunk to nothing behind the disc: it comes out from there and goes back into it, and is not faded, except once it is hidden) */
+  transform: translate(-50%, -50%) scale(0.6);
   image-rendering: pixelated;
   pointer-events: none;
   color: var(--np-wave-fill);
   border: 0 solid var(--np-wave-edge);
   opacity: 0;
-  transition: opacity 400ms var(--ease-standard);
+  transition:
+    transform 450ms cubic-bezier(0.5, 0, 0.75, 0),
+    opacity 0s 450ms;
 }
 .np[data-spin="true"] .np-waves {
+  transform: translate(-50%, -50%) scale(1);
   opacity: 1;
+  transition:
+    transform 650ms cubic-bezier(0.2, 0.9, 0.25, 1.15),
+    opacity 0s;
 }
 @keyframes np-spin {
   to {

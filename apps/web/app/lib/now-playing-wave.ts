@@ -18,12 +18,23 @@ export interface WaveRing {
 }
 
 export const WAVES: readonly WaveRing[] = [
-  { lobes: 9, lobes2: 14, hz: 1.3, hz2: 2, amp: 2.2, phase: 0.6 },
-  { lobes: 13, lobes2: 19, hz: 1.7, hz2: 2.5, amp: 1.6, phase: 2.1 },
+  { lobes: 9, lobes2: 14, hz: 1.3, hz2: 2, amp: 3, phase: 0.6 },
+  { lobes: 13, lobes2: 19, hz: 1.7, hz2: 2.5, amp: 2.1, phase: 2.1 },
 ];
 
-/** The outline's mean radius, in the 100-unit box (the disc is about 67 of them across: the rest is the padding the wave swings in). */
-export const WAVE_RADIUS = 43.5;
+/** The radius the waves swing about, in the 100-unit box (the disc is about 67 of them across: the rest is the padding the wave swings in). */
+export const WAVE_RADIUS = 41;
+/**
+ * How far out the whole outline stands, `BASE_LOW`..`BASE_HIGH` (owner: "reach lower, nearly disappear behind the disc"): it swells out and falls back slowly (`BASE_HZ`), further out the louder the music is, and at the bottom of its
+ * fall its troughs go behind the disc (the disc's edge is `DISC_EDGE`); it never goes beyond `MAX_RADIUS` (the canvas's edge).
+ */
+export const BASE_LOW = 34;
+export const BASE_HIGH = 42;
+export const BASE_HZ = 0.14;
+export const DISC_EDGE = 33.3;
+export const MAX_RADIUS = 49.5;
+/** How much of the outline's reach is the music's level and how much the slow swell. */
+const LEVEL_SHARE = 0.4;
 /** The share of its amplitude a ring swings with when the music is silent or its level is not known. */
 export const REST = 0.5;
 /** How many points the outline is drawn with: enough that it reads as a curve at the outline's size. */
@@ -49,11 +60,18 @@ export function waveRadius(ring: WaveRing, a: number, t: number, level: number):
   return WAVE_RADIUS + ring.amp * k * envelope(a, t) * (w1 + w2);
 }
 
-/** The radius of the whole outline at angle `a`: the mean radius, swung by every ring's waves together. Pure. */
+/** How far out the outline stands as a whole, `BASE_LOW`..`BASE_HIGH`: a slow swell, and the music's level. Pure. */
+export function baseRadius(t: number, level: number): number {
+  const swell = 0.5 + 0.5 * Math.sin(2 * Math.PI * BASE_HZ * t);
+  const lv = Math.min(1, Math.max(0, level));
+  return BASE_LOW + (BASE_HIGH - BASE_LOW) * ((1 - LEVEL_SHARE) * swell + LEVEL_SHARE * lv);
+}
+
+/** The radius of the whole outline at angle `a`: how far out it stands, swung by every ring's waves together, and kept between behind the disc and the canvas's edge. Pure. */
 export function outlineRadius(a: number, t: number, level: number): number {
-  let r = WAVE_RADIUS;
+  let r = baseRadius(t, level);
   for (const ring of WAVES) r += waveRadius(ring, a, t, level) - WAVE_RADIUS;
-  return r;
+  return Math.min(MAX_RADIUS, Math.max(DISC_EDGE - 1, r));
 }
 
 /**

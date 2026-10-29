@@ -19,9 +19,10 @@ describe("a breath", () => {
 });
 
 describe("the sun's breathing", () => {
-  it("is one slow cycle: four beats, a bit over two seconds", () => {
-    expect(CYCLE).toBeGreaterThan(2);
-    expect(CYCLE).toBeLessThan(2.5);
+  it("is one slow cycle: eight beats, a bit over four seconds (owner: slower, but still on the rhythm: a whole number of beats)", () => {
+    expect(CYCLE).toBeGreaterThan(4);
+    expect(CYCLE).toBeLessThan(5);
+    expect(SUN_MUSIC.cycleBeats % 4).toBe(0);
   });
 
   it("has the axes' rays out as the diagonal ones are in, and the other way round half a cycle later", () => {
@@ -70,11 +71,11 @@ describe("the sun's breathing", () => {
   });
 
   it("is soft: the most it moves the rays, the halo, the light and the grain is a couple of per cent (owner: \"waaay more subtle\")", () => {
-    expect(PULSE.rays).toBeLessThanOrEqual(0.03);
-    expect(PULSE.grow).toBeLessThanOrEqual(0.05);
-    expect(PULSE.halo).toBeLessThanOrEqual(0.015);
-    expect(PULSE.flare).toBeLessThanOrEqual(0.1);
-    expect(PULSE.jitter).toBeLessThanOrEqual(0.2);
+    expect(PULSE.rays).toBeLessThanOrEqual(0.02);
+    expect(PULSE.grow).toBeLessThanOrEqual(0.03);
+    expect(PULSE.halo).toBeLessThanOrEqual(0.01);
+    expect(PULSE.flare).toBeLessThanOrEqual(0.06);
+    expect(PULSE.jitter).toBeLessThanOrEqual(0.12);
   });
 
   it("is not as strong at every cycle, within bounds, and never steps from one cycle to the next", () => {

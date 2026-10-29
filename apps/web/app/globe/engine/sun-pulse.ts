@@ -1,6 +1,6 @@
 /**
  * The sun's breathing (docs/landing.md, "The sun's music"): while the music plays, the sun's rays, halo and lens flare breathe, very faintly, in time with it. Not a beat visualiser (owner: "softer, more like a breathing
- * motion"): one slow cycle of four beats (`SUN_MUSIC.cycleBeats`, 2.18 s at the piece's 110 BPM, measured on the file), every part of it a cosine, so that nothing in it has an edge. The cycle begins on the music's first beat:
+ * motion"): one slow cycle of eight beats (`SUN_MUSIC.cycleBeats`, 4.36 s at the piece's 110 BPM, measured on the file), every part of it a cosine, so that nothing in it has an edge. The cycle begins on the music's first beat:
  *  - the rays along the axes (up, down, left, right) breathe OUT over the first half of the cycle and in over the second, and the diagonal ones do the opposite, so the sun seems to turn its shape rather than to throb;
  *  - the halo and its ring swell and brighten (its tone dips and comes back through the dither, a pixel at a time) a quarter of a cycle behind, so that the three never peak together;
  *  - the lens flare's ghosts (their opacity) breathe in and out a little, `PULSE.flare` of it.
@@ -18,20 +18,20 @@ import { SUN_MUSIC } from "./sun-music";
 
 export const PULSE = {
   /** How much longer the rays reach at the top of a breath, as a share of their length. */
-  rays: 0.02,
+  rays: 0.012,
   /** How much longer they reach when the piece is at its loudest, as a share of their length (they grow with the sound). */
-  grow: 0.04,
+  grow: 0.025,
   /** How much of the rays' dither is noise (a new one at every cycle) rather than the fixed pattern, at full music. */
-  jitter: 0.15,
+  jitter: 0.1,
   /** How much the halo's (and its ring's) reach grows at the top of a breath. */
-  halo: 0.01,
+  halo: 0.006,
   /**
    * How far the halo's tone is taken down at the bottom of a breath, in steps of its tone (the halo is cut into `SUN.haloSteps` and dithered): 1.5 steps takes the flat zone round the disc through a step and a half of the
    * dither, a pixel at a time. (It was a multiple of the whole tone, which flipped that zone between two colours of the ramp all at once: "binary".)
    */
-  dip: 0.5,
+  dip: 0.3,
   /** How much the lens flare's ghosts dim at the bottom of a breath, as a share of their opacity. */
-  flare: 0.07,
+  flare: 0.04,
   /** How far behind the rays' breath the halo's is, in cycles. */
   haloLag: 0.25,
   /**

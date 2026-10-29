@@ -30,10 +30,10 @@ export const SUN_MUSIC = {
   crossfadeSec: 8,
   /**
    * The piece's pulse, measured on the file (onset autocorrelation, 2026-10-29: 109.97 BPM, a period of 0.5456 s, steady from end to end; no published tempo was found): `beatSec` is one beat, `cycleBeats` of them the
-   * cycle the sun's pulse goes round in (four: the axes' rays pulse on the first beat and the diagonals' on the third, two beats, a second and a bit, apart), `beatOffsetSec` where the first beat falls in the decoded file.
+   * cycle the sun's pulse goes round in (eight, 4.4 s: owner, "even slower, but still on rhythm"; it was four: the axes' rays pulse on the first beat and the diagonals' on the fifth, four beats, two seconds and a bit, apart), `beatOffsetSec` where the first beat falls in the decoded file.
    */
   beatSec: 0.5456,
-  cycleBeats: 4,
+  cycleBeats: 8,
   beatOffsetSec: 0.055,
   /** How long a mute takes to go quiet (ms): not the fade-out of a sun that sets, but short enough not to click. */
   muteFadeMs: 120,

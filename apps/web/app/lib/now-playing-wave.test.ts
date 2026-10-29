@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ENV_MIN, REST, WAVES, WAVE_RADIUS, envelope, outlinePoints, outlineRadius, waveRadius } from "./now-playing-wave";
+import { BASE_HIGH, BASE_HZ, BASE_LOW, DISC_EDGE, ENV_MIN, MAX_RADIUS, REST, WAVES, WAVE_RADIUS, baseRadius, envelope, outlinePoints, outlineRadius, waveRadius } from "./now-playing-wave";
 
 const TURN = 2 * Math.PI;
 
@@ -54,11 +54,18 @@ describe("the disc's wavy outline", () => {
     expect(swing(7)).toBeCloseTo(swing(1), 6);
   });
 
-  it("stays in its box with room to spare (the disc's own radius is about 33 of its 100 units), and is a closed polyline of finite numbers, scaled to the box it is asked for", () => {
-    const ampSum = WAVES.reduce((n, w) => n + w.amp * 1.6, 0);
-    expect(WAVE_RADIUS + ampSum).toBeLessThan(50);
-    expect(WAVE_RADIUS - ampSum).toBeGreaterThan(34);
-    for (let i = 0; i < 100; i++) expect(outlineRadius((i / 100) * TURN, i * 0.07, 1)).toBeLessThan(50);
+  it("reaches in behind the disc and out to the edge of its box, and never beyond either; it is a closed polyline of finite numbers, scaled to the box it is asked for", () => {
+    let lo = 100;
+    let hi = 0;
+    for (let i = 0; i < 600; i++) for (let j = 0; j < 72; j++) {
+      const r = outlineRadius((j / 72) * TURN, i / 10, i % 7 === 0 ? 0 : 1);
+      lo = Math.min(lo, r);
+      hi = Math.max(hi, r);
+    }
+    expect(lo).toBeLessThan(DISC_EDGE + 1.5); // (its troughs are behind the disc)
+    expect(lo).toBeGreaterThanOrEqual(DISC_EDGE - 1);
+    expect(hi).toBeGreaterThan(MAX_RADIUS - 3);
+    expect(hi).toBeLessThanOrEqual(MAX_RADIUS);
     const pts = outlinePoints(1.234, 1, 20);
     expect(pts).toHaveLength(2 * 72);
     for (const v of pts) {
@@ -66,5 +73,13 @@ describe("the disc's wavy outline", () => {
       expect(v).toBeGreaterThan(0);
       expect(v).toBeLessThan(20);
     }
+  });
+
+  it("stands further out the louder the music, and swells and falls back slowly (a period of several seconds)", () => {
+    expect(baseRadius(0, 1)).toBeGreaterThan(baseRadius(0, 0));
+    expect(baseRadius(0, 0)).toBeGreaterThanOrEqual(BASE_LOW);
+    expect(baseRadius(0, 1)).toBeLessThanOrEqual(BASE_HIGH);
+    expect(1 / BASE_HZ).toBeGreaterThan(5);
+    expect(Math.abs(baseRadius(1 / BASE_HZ / 4, 0) - baseRadius(0, 0))).toBeGreaterThan(1);
   });
 });
