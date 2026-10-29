@@ -3328,6 +3328,37 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   }
 
   /*
+   * The box: the look of the map's area boxes (engine/pixel-labels.ts), drawn round the moon: a square on the art grid (whole cells, one cell thick, drawn by `boxPath` in the cells' own units),
+   * solid arms at the corners and dashes between them. It comes in only once the moon has been in the picture for a while (`data-seen`, set by engine/moon-overlay.ts after `DWELL_MS`: a moon
+   * that passes quickly is never boxed), in the colour of a box at rest on the map (`--moon-box`, written from the palette's `peak` level), and in the ink held (hover or focus), as a hovered box
+   * is. Hollow; the pointer goes to the link under it.
+   */
+  .globe-moon-box {
+    position: absolute;
+    left: 0;
+    top: 0;
+    overflow: visible;
+    shape-rendering: crispEdges;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  .globe-moon-box path {
+    fill: var(--moon-box, var(--foreground));
+  }
+
+  .globe-moon[data-seen] .globe-moon-box,
+  .globe-moon[data-open] .globe-moon-box {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .globe-moon[data-open] .globe-moon-box path {
+    fill: var(--foreground);
+  }
+
+  /*
    * The card: a map label's own look (`.map-label`, the bounding boxes' labels): no outline, the mono type, a name over a muted second line, on a plate in the page's colour with the
    * label's sharp, fully opaque edge (no feather), so that it hides what is behind it (the globe's lines, the stars) and reads on any of it. Out of sight and out of
    * the pointer's way until the moon is held.
@@ -3341,7 +3372,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     flex-direction: row;
     align-items: center;
     width: max-content;
-    max-width: min(16rem, 70vw);
+    max-width: min(26rem, calc(100vw - 16px)); /* the words on one line where the window allows it (the second line is about 22 rem), wrapped where it does not */
     box-sizing: border-box;
     padding: 3px 6px;
     background: var(--map-label-plate);
@@ -3354,10 +3385,16 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     pointer-events: none;
   }
 
+  .globe-moon[data-seen] .globe-moon-card,
   .globe-moon[data-open] .globe-moon-card {
     opacity: 1;
     visibility: visible;
     pointer-events: auto;
+  }
+
+  /* Unread (the box is up, the moon not yet held): the words are scrambled (engine/moon-overlay.ts `scramble`) and the name muted; held, they come clear in the label's own colours, and stay clear for `READ_MS` after it is let go of. */
+  .globe-moon:not([data-read]) .globe-moon-title {
+    color: var(--muted-foreground);
   }
 
   .globe-moon-title {
@@ -3403,18 +3440,56 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     vector-effect: non-scaling-stroke;
   }
 
+  /* One mark, two glyphs: the arrow once the words are read, an unknown (a question mark) while they are scrambled (engine/moon-overlay.ts sets `data-glyph`). */
+  .globe-moon-arrow[data-glyph="arrow"] .globe-moon-glyph-unknown,
+  .globe-moon-arrow[data-glyph="unknown"] .globe-moon-glyph-arrow {
+    display: none;
+  }
+
+  /* The unknown glitches now and then (a one-pixel jump, in steps), only while it is shown. */
+  @media (prefers-reduced-motion: no-preference) {
+    .globe-moon-arrow[data-glyph="unknown"] {
+      animation: globe-moon-glitch 3.2s steps(1) 3; /* three times, then it is still: an idle page does nothing (it starts again when the words scramble again) */
+    }
+  }
+
+  @keyframes globe-moon-glitch {
+    0%,
+    90%,
+    100% {
+      transform: none;
+    }
+    92% {
+      transform: translate(-1px, 0);
+    }
+    94% {
+      transform: translate(1px, 1px);
+    }
+    96% {
+      transform: translate(-1px, -1px);
+    }
+  }
+
   .globe-moon:hover .globe-moon-arrow,
   .globe-moon:focus-visible .globe-moon-arrow {
     color: var(--foreground);
   }
 
   @media (prefers-reduced-motion: no-preference) {
-    .globe-moon-card {
+    .globe-moon-card,
+    .globe-moon-box {
       transition: opacity var(--duration-fast) var(--ease-standard), visibility 0s linear var(--duration-fast);
     }
 
-    .globe-moon[data-open] .globe-moon-card {
+    .globe-moon[data-open] .globe-moon-card,
+    .globe-moon[data-seen] .globe-moon-card,
+    .globe-moon[data-seen] .globe-moon-box,
+    .globe-moon[data-open] .globe-moon-box {
       transition-delay: 0s;
+    }
+
+    .globe-moon-box path {
+      transition: fill var(--duration-fast) var(--ease-standard);
     }
   }
 
@@ -3428,6 +3503,10 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     .globe-moon-body,
     .globe-moon-arrow {
       color: CanvasText;
+    }
+
+    .globe-moon-box path {
+      fill: CanvasText;
     }
   }
 

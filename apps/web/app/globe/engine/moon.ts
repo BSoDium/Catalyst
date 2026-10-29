@@ -298,6 +298,46 @@ export function unhidden(behind: boolean, rho: number, s: number, r: number): nu
   return t * t * (3 - 2 * t);
 }
 
+/** A disc on the screen: its centre and radius, in one unit. */
+export interface Disc {
+  x: number;
+  y: number;
+  r: number;
+}
+
+/**
+ * The bounding box of what the planet leaves of the moon: the moon's disc without the planet's (`null` planet: nothing in front of it; `null` result: nothing is left). The region's outline
+ * is the moon's own edge where the planet is not, and the planet's edge where it is inside the moon, so the box of both is the box of the region; sampled every quarter turn of 1/`STEPS`
+ * (a multiple of 4, so the extremes of both circles are sampled exactly). Pure (`moon.test.ts`).
+ */
+export function visibleBounds(moon: Disc, planet: Disc | null): { x0: number; y0: number; x1: number; y1: number } | null {
+  const full = { x0: moon.x - moon.r, y0: moon.y - moon.r, x1: moon.x + moon.r, y1: moon.y + moon.r };
+  if (!planet) return full;
+  const between = Math.hypot(moon.x - planet.x, moon.y - planet.y);
+  if (between >= moon.r + planet.r) return full; // apart
+  let x0 = Infinity;
+  let y0 = Infinity;
+  let x1 = -Infinity;
+  let y1 = -Infinity;
+  const take = (x: number, y: number) => {
+    if (x < x0) x0 = x;
+    if (x > x1) x1 = x;
+    if (y < y0) y0 = y;
+    if (y > y1) y1 = y;
+  };
+  const STEPS = 128;
+  for (let i = 0; i < STEPS; i++) {
+    const a = (i / STEPS) * Math.PI * 2;
+    const mx = moon.x + Math.cos(a) * moon.r;
+    const my = moon.y + Math.sin(a) * moon.r;
+    if (Math.hypot(mx - planet.x, my - planet.y) >= planet.r) take(mx, my); // the moon's edge the planet does not cover
+    const px = planet.x + Math.cos(a) * planet.r;
+    const py = planet.y + Math.sin(a) * planet.r;
+    if (Math.hypot(px - moon.x, py - moon.y) <= moon.r) take(px, py); // the planet's edge inside the moon
+  }
+  return x0 <= x1 ? { x0, y0, x1, y1 } : null;
+}
+
 /* ------------------------------------------------------------------ light and the picture */
 
 const norm3 = (a: Vec3): Vec3 => {
