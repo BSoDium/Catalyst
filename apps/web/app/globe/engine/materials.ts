@@ -476,6 +476,16 @@ export function lightsMaterial(): ShaderMaterial {
         // the heat: the more packed the lights are round this one (the map's green), the whiter and brighter it is, and the likelier it is to be drawn
         float heat = smoothstep(${LIGHTS.from.toFixed(2)}, ${LIGHTS.to.toFixed(2)}, m.g);
         float cover = m.r * dark * uCover * (1.0 + ${LIGHTS.dense.toFixed(2)} * heat);
+        if (mag > 0.0) {
+          // single dots: in each square of the screen, ONE pixel is the one that may be a light (picked by a hash of the square), and its chance is the density's
+          float blockPx = ${LIGHTS.block.toFixed(1)};
+          vec2 px = floor(gl_FragCoord.xy);
+          vec2 blk = floor(px / blockPx);
+          vec2 inb = px - blk * blockPx;
+          float pick = floor(hash21(blk + 17.0) * blockPx * blockPx);
+          float me = inb.x + blockPx * inb.y;
+          cover *= (me == pick) ? 1.0 : 1.0 - mag;
+        }
         if (cover < 0.02 || thr >= cover) discard;
         gl_FragColor = vec4(mix(uColor, uCore, heat), 1.0);
       }

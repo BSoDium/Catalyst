@@ -114,4 +114,10 @@ export const LIGHTS = {
    */
   warp: 1.1,
   grain: 0.85,
+  /**
+   * DOTS (owner, 2026-10-29: "when you zoom onto them they should not be blobs: they should split into thousands of dots"): as a texel grows past `magFrom` the lights stop being a coverage that rises to nearly all of the
+   * pixels (a blob) and become single art pixels, one at most in each `block` x `block` square of the screen (a dot has a dark pixel all round it, and the place can never be more than 1 / `block` squared lit), at a place
+   * in the square the hash picks, present with the chance the map's density gives it: a thin place is a few dots, a dense one a carpet of them, and zooming in only brings more of them into the picture.
+   */
+  block: 2,
 } as const;

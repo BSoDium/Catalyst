@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { eggX } from "./caption";
 import { CINEMATIC } from "./cinematic";
-import { FLIGHT, blendPose, flightPose, type FlightEnd } from "./flight";
+import { FLIGHT, arcPos, blendPose, flightPose, type FlightEnd, type Vec3 } from "./flight";
 import { lonLatToVec3, viewBasis } from "./geo";
 
 const end: FlightEnd = { lon: 0, lat: 8, alt: 3.4, roll: (12 * Math.PI / 180) };
@@ -201,5 +201,45 @@ describe("the camera's flight", () => {
     expect(speed(k)).toBeGreaterThan(speed(k + 0.1) * 0.4);
     // the dive is long: 6 s of a 20 s flight at least
     expect(k).toBeGreaterThanOrEqual(0.3);
+  });
+});
+
+describe("arcPos: the camera's way from one position to another goes round the planet, not through it", () => {
+  const len = (v: Vec3) => Math.hypot(v[0], v[1], v[2]);
+  it("keeps its distance from the centre between the two ends', for any angle between them, the opposite side included (the straight line between those goes through the planet)", () => {
+    const cases: [Vec3, Vec3][] = [
+      [[0, 0, 1.4], [0, 0, -1.4]], // exactly opposite
+      [[1.3, 0, 0], [-1.29, 0.1, 0]], // nearly
+      [[0, 1.5, 0], [0, -1.5, 0]], // the poles
+      [[1.2, 0.3, 0.4], [-0.5, 0.2, -1.1]],
+    ];
+    for (const [a, b] of cases) {
+      const lo = Math.min(len(a), len(b)) - 1e-9;
+      const hi = Math.max(len(a), len(b)) + 1e-9;
+      for (let i = 0; i <= 20; i++) {
+        const r = len(arcPos(a, b, i / 20));
+        expect(r).toBeGreaterThanOrEqual(lo);
+        expect(r).toBeLessThanOrEqual(hi);
+      }
+      expect(arcPos(a, b, 0)).toEqual(expect.arrayContaining([expect.any(Number)]));
+      for (let c = 0; c < 3; c++) {
+        expect(arcPos(a, b, 0)[c]!).toBeCloseTo(a[c]!, 9);
+        expect(arcPos(a, b, 1)[c]!).toBeCloseTo(b[c]!, 6);
+      }
+    }
+  });
+  it("is a line on the sphere that moves steadily: no jump from one step to the next", () => {
+    const a: Vec3 = [0, 0, 1.4];
+    const b: Vec3 = [0, 0, -1.4];
+    let prev = arcPos(a, b, 0);
+    for (let i = 1; i <= 50; i++) {
+      const p = arcPos(a, b, i / 50);
+      expect(Math.hypot(p[0] - prev[0], p[1] - prev[1], p[2] - prev[2])).toBeLessThan(0.2);
+      prev = p;
+    }
+  });
+  it("is what the interlude's glide uses (`blendPose`), so that a camera sent to the other side of the planet goes round it", () => {
+    const pose = (pos: Vec3) => ({ pos, target: [0, 0, 0] as Vec3, up: [0, 1, 0] as Vec3, lon: 0, lat: 0 });
+    for (let i = 0; i <= 20; i++) expect(len(blendPose(pose([0, 0, 1.5]), pose([0, 0, -1.5]), i / 20).pos)).toBeGreaterThan(1.4);
   });
 });

@@ -33,6 +33,14 @@ describe("the night lights, in the interlude's close shots", () => {
     expect(src).toMatch(/1\.0 - 0\.85 \* mag \+ 1\.70 \* mag \* gr/); // (the mean of the noise is a half: 1 - g + 2 g / 2 = 1)
   });
 
+  it("split into single dots in close shots: one pixel at most in each square of the screen may be a light, so a place is never more than a quarter lit, however dense it is", () => {
+    expect(LIGHTS.block).toBeGreaterThanOrEqual(2); // (a dot has a dark pixel next to it)
+    const src = lightsMaterial().fragmentShader;
+    expect(src).toMatch(/float pick = floor\(hash21\(blk \+ 17\.0\) \* blockPx \* blockPx\)/);
+    expect(src).toMatch(/cover \*= \(me == pick\) \? 1\.0 : 1\.0 - mag/);
+    expect(src.indexOf("cover *= (me == pick)")).toBeLessThan(src.lastIndexOf("discard"));
+  });
+
   it("have every function they call defined in their own shader, before it is used (a shader that does not compile draws nothing: the lights were gone once, because the noise's functions had gone into another material)", () => {
     const src = lightsMaterial().fragmentShader;
     for (const fn of ["hash21", "vnoise", "dither4", "washOf"]) {
