@@ -204,10 +204,10 @@ export const CAPTION = {
    * The camera latitude the caption needs: it is shown only while |latitude| is inside `deg` of the equator. Before it comes back (the idle
    * delay, a return to rest) a camera outside the band glides its LATITUDE ONLY (never the longitude, the zoom is the page's) to the nearest
    * edge (and, when the planet is not lit there, its longitude back to the lit side) in `snapMs` or, for a long turn, `snapMsPerDeg` a degree up to `snapMaxMs`, slow in and slow out (no jump at the start), and only then does the entrance start; a camera that leaves the band under the caption (a flight) fades it,
-   * and the caption is back `hysteresisDeg` inside. `snapTo`: the nearest edge of the band (`edge`) or the equator (`equator`). The page opens
+   * and the caption is back `hysteresisDeg` inside. `snapTo`: the nearest edge of the band (`edge`) or the equator (`equator`, the home screen's: the caption is laid out for the equator, and any other latitude puts its rows lower on the screen, onto the name; owner, 2026-10-29, a Pixel 7: it came back at an angle and the words met the name, so the entrance waits for the camera to be ON the equator, not just inside the band). The page opens
    * at `START_VIEW` (no tilt, centred on lon 0, lat 0: the equator is a horizontal line through the disc's middle).
    */
-  band: { deg: 10, snapMs: 800, snapMsPerDeg: 10, snapMaxMs: 2600, hysteresisDeg: 1.5, snapTo: "edge" as "edge" | "equator" },
+  band: { deg: 10, snapMs: 800, snapMsPerDeg: 10, snapMaxMs: 2600, hysteresisDeg: 1.5, snapTo: "equator" as "edge" | "equator" },
   /**
    * The rows that take turns, and what a row does between entering and leaving (engine/caption.ts `rowX`): it enters (`enter`), then ROLLS through
    * the central meridian at a constant speed for `dwellMs`, from `drift.ampDeg` before it to as much after it (2 amp over the dwell: 2.9 degrees a

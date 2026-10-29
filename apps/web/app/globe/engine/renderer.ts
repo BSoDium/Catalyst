@@ -2246,7 +2246,10 @@ export class GlobeRenderer {
     if (want === this.showcaseOn) return;
     this.showcaseOn = want;
     this.applyShowcase();
-    if (want && this.view.zoom > this.minZoom + 0.02 && this.view.zoom <= this.world + SPIN.unzoomedSlack && this.flight === null) this.flyTo({ zoom: this.minZoom });
+    if (want && this.view.zoom > this.minZoom + 0.02 && this.view.zoom <= this.world + SPIN.unzoomedSlack && this.flight === null) {
+      // (one movement home: the planet's size, and the camera onto the equator and the lit side that the caption is laid out for, not the zoom first and the latitude after it: `guardCaption`)
+      this.flyTo({ zoom: this.minZoom, lat: this.textFits ? this.snapTarget(this.view.lat) : this.view.lat, lon: this.view.lon + (this.textFits ? litTurn(this.view.lon, this.era) : 0) });
+    }
   }
 
   /** The showcase ends on its own (a gesture on the globe): the same, without asking the app. */
@@ -2332,7 +2335,8 @@ export class GlobeRenderer {
     if (this.latSnap || this.flight !== null) return; // (the glide, or somebody else's flight, is under way: wait for it)
     if (this.eggAsk) return; // (an interlude was asked for: the caption does not come in to be sent away again, `wantInterlude`)
     const turn = litTurn(this.view.lon, this.era);
-    if (inBand(lat) && turn === 0) {
+    // (the entrance waits for the camera to be AT its snap target: with `snapTo` the equator, a camera that is only inside the band would show the caption at an angle, its rows lower than the page has room for)
+    if (Math.abs(lat - this.snapTarget(lat)) < 0.05 && turn === 0) {
       this.captionOn = true;
       caption.show(now);
       this.requestRender();
