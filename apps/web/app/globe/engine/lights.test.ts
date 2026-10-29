@@ -52,7 +52,7 @@ describe("the night lights, in the interlude's close shots", () => {
     expect(LIGHTS.sparkle).toBeLessThan(0.2);
     const mat = lightsMaterial();
     expect(mat.uniforms.uBg).toBeDefined();
-    expect(mat.fragmentShader).toMatch(/float bright = mix\(1\.0 - 0\.70, 1\.0, own \* own\)/);
+    expect(mat.fragmentShader).toMatch(/float bright = mix\(1\.0 - mix\(0\.45, 0\.70, mag\), 1\.0, own \* own\)/);
     expect(mat.fragmentShader).toMatch(/gl_FragColor = vec4\(mix\(light, uBg,/);
     expect(readFileSync("app/globe/engine/scene.ts", "utf8")).toMatch(/lights\.uniforms\.uBg!\.value\.setRGB\(\.\.\.bg\)/);
   });
@@ -69,7 +69,9 @@ describe("the night lights, in the interlude's close shots", () => {
     expect(LIGHTS.heatShare).toBeLessThan(LIGHTS.own); // (the density leans the colour, it does not set it)
     const mat = lightsMaterial();
     for (const u of ["uRamp0", "uRamp1", "uRamp2"]) expect(mat.uniforms[u]).toBeDefined();
-    expect(mat.fragmentShader).toMatch(/vec3 light = mix\(mix\(uColor, uCore, heat\), near, mag\)/);
+    expect(mat.fragmentShader).toMatch(/vec3 light = tone < 0\.5 \? mix\(uRamp0, uRamp1/); // (from afar too: one ramp at every distance)
+    expect(LIGHTS.varyFar).toBeGreaterThan(0.2);
+    expect(LIGHTS.varyFar).toBeLessThanOrEqual(LIGHTS.vary);
     expect(readFileSync("app/globe/engine/scene.ts", "utf8")).toMatch(/uRamp\$\{i\}/);
   });
 

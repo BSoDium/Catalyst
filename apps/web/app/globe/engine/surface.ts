@@ -110,6 +110,9 @@ export const LIGHTS = {
    * page's by up to `vary` of the way, by a hash of the place it is at on the planet (a dot keeps its brightness as the camera moves), and `sparkle` of them go the other way, to the core's colour (a few bright ones).
    */
   vary: 0.7,
+  /** The same, from afar (the whole of a cluster is one colour and one brightness otherwise: owner, "add variation from afar"): how far a light's brightness goes down, a hash of its texel, and how many texels wide the patches of a like colour are (1 / this). */
+  varyFar: 0.45,
+  patchFar: 0.2,
   sparkle: 0.08,
   /**
    * THE COLOUR OF A DOT in close shots (owner: "inside the clusters there's no variation ... from the dark orange-yellow all the way to yellow-white"): a ramp of three stops, a deep orange-yellow, a yellow and a warm

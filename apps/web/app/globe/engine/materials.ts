@@ -505,15 +505,16 @@ export function lightsMaterial(): ShaderMaterial {
           cover *= (me == pick) ? 1.0 : 1.0 - mag;
         }
         if (cover < 0.02 || thr >= cover) discard;
-        // each dot its own light, in close shots: a hash of the place it is at (the dot keeps its brightness as the camera moves), towards the page's colour, and a few of them towards the core's
-        float own = hash21(floor(t * 64.0) + 57.0);
-        float bright = mix(1.0 - ${LIGHTS.vary.toFixed(2)}, 1.0, own * own);
-        float star = step(1.0 - ${LIGHTS.sparkle.toFixed(2)}, hash21(floor(t * 64.0) + 91.0));
-        // (its colour: along the ramp, from a deep orange-yellow to a warm white, by its own hash, a patchy noise round it, and how packed the place is; from afar, as it was)
-        float tone = clamp(${LIGHTS.own.toFixed(2)} * hash21(floor(t * 64.0) + 7.0) + ${LIGHTS.patch.toFixed(2)} * vnoise(t * ${LIGHTS.patchScale.toFixed(1)} + 5.0) + ${LIGHTS.heatShare.toFixed(2)} * heat - 0.1 + star, 0.0, 1.0);
-        vec3 near = tone < 0.5 ? mix(uRamp0, uRamp1, tone * 2.0) : mix(uRamp1, uRamp2, tone * 2.0 - 1.0);
-        vec3 light = mix(mix(uColor, uCore, heat), near, mag);
-        gl_FragColor = vec4(mix(light, uBg, (1.0 - mix(1.0, bright, mag)) * (1.0 - mag * star)), 1.0);
+        // each light its own, from afar too (a hash of the place it is at: it keeps its brightness and colour as the planet turns; one texel's, from afar, and finer the nearer the camera is, at most 64 to a texel)
+        float k = mix(1.0, 64.0, step(0.001, mag));
+        vec2 cell = floor(t * k);
+        float own = hash21(cell + 57.0);
+        float bright = mix(1.0 - mix(${LIGHTS.varyFar.toFixed(2)}, ${LIGHTS.vary.toFixed(2)}, mag), 1.0, own * own);
+        float star = step(1.0 - ${LIGHTS.sparkle.toFixed(2)}, hash21(cell + 91.0));
+        // (its colour: along the ramp, from a deep orange-yellow to a warm white, by its own hash, a patchy noise round it (patches of a few texels from afar, of a few dots near), and how packed the place is)
+        float tone = clamp(${LIGHTS.own.toFixed(2)} * hash21(cell + 7.0) + ${LIGHTS.patch.toFixed(2)} * vnoise(t * mix(${LIGHTS.patchFar.toFixed(2)}, ${LIGHTS.patchScale.toFixed(1)}, mag) + 5.0) + ${LIGHTS.heatShare.toFixed(2)} * heat - 0.1 + star, 0.0, 1.0);
+        vec3 light = tone < 0.5 ? mix(uRamp0, uRamp1, tone * 2.0) : mix(uRamp1, uRamp2, tone * 2.0 - 1.0);
+        gl_FragColor = vec4(mix(light, uBg, (1.0 - bright) * (1.0 - star)), 1.0);
       }
     `,
     side: FrontSide,
