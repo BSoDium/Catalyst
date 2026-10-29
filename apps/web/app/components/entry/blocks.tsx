@@ -252,7 +252,7 @@ function VerseView({ stanzas }: { stanzas: readonly (readonly string[])[] }) {
 function CodeView({ block }: { block: Extract<Block, { type: "code" }> }) {
   return (
     <Frame role="figure" aria-label={block.language ? `Code, ${block.language}` : "Code"} padding="none" className="min-w-0">
-      <div className="flex min-h-9 items-center justify-between gap-3 border-b border-border pr-1 pl-3 md:min-h-10">
+      <div className="flex min-h-9 items-center justify-between gap-3 pr-1 pl-3 md:min-h-10">
         <span className="font-mono text-xs text-muted-foreground">{block.language ?? "code"}</span>
         <CopyButton text={block.code} label="Copy code" announcement="Code copied to the clipboard">
           Copy

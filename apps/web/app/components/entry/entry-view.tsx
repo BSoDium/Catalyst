@@ -154,7 +154,7 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
   const marginEl = (
         <div data-slot="entry-margin" className="entry-margin">
           {project && (
-            <h2 id="entry-glance" className="type-meta m-0 border-b border-border-strong pb-2 text-foreground">
+            <h2 id="entry-glance" className="type-meta m-0 text-foreground">
               At a glance
             </h2>
           )}
@@ -164,15 +164,15 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
             (entry.places.length > 0 || entry.country) && <PlacesSection entry={entry} />
           )}
           {(rows.length > 0 || (project && (entry.places.length > 0 || entry.country))) && (
-            <dl data-slot="entry-details" className={cn("m-0", poem && "mt-2", project && "divide-y divide-border")}>
+            <dl data-slot="entry-details" className={cn("m-0", poem && "mt-2", project && "mt-1")}>
               {rows.map((row) => (
-                <div key={row.key} data-slot="entry-fact" className={cn("min-w-0", project && !full && "grid grid-cols-[7.5rem_minmax(0,1fr)] items-baseline gap-x-4 py-2.5", project && full && "py-2.5")}>
+                <div key={row.key} data-slot="entry-fact" className={cn("min-w-0", project && !full && "grid grid-cols-[7.5rem_minmax(0,1fr)] items-baseline gap-x-4 py-1.5", project && full && "py-1.5")}>
                   <dt className="type-meta text-foreground">{row.label}</dt>
                   <dd className="m-0 [overflow-wrap:anywhere]">{row.value}</dd>
                 </div>
               ))}
               {project && (entry.places.length > 0 || entry.country) && (
-                <div data-slot="entry-fact" className={cn("min-w-0", !full ? "grid grid-cols-[7.5rem_minmax(0,1fr)] items-baseline gap-x-4 py-2.5" : "py-2.5")}>
+                <div data-slot="entry-fact" className={cn("min-w-0", !full ? "grid grid-cols-[7.5rem_minmax(0,1fr)] items-baseline gap-x-4 py-1.5" : "py-1.5")}>
                   <dt className="type-meta text-foreground">Made in</dt>
                   <dd className="m-0 [overflow-wrap:anywhere]">
                     <ProjectPlaces entry={entry} globeLink={globeTarget} />
@@ -308,7 +308,7 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
       </div>
 
       {project && (linked || skip) && (
-        <p data-slot="entry-linked" className="type-meta mt-12 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 border-t border-border-strong pt-4 text-muted-foreground print:hidden">
+        <p data-slot="entry-linked" className="type-meta mt-12 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 text-muted-foreground print:hidden">
           <span>{linked ? `Linked to ${linked}` : null}</span>
           {skip}
         </p>
@@ -485,7 +485,7 @@ function KeepReading({ entry, full }: { entry: EntryDetail; full: boolean }) {
   return (
     <div data-slot="entry-more" className="flex flex-col gap-12 @container">
       {related.length > 0 && (
-        <section aria-labelledby="entry-related" className="border-t border-foreground pt-3">
+        <section aria-labelledby="entry-related">
           <h2 id="entry-related" className="type-meta m-0 text-foreground">
             Related
           </h2>
@@ -499,7 +499,7 @@ function KeepReading({ entry, full }: { entry: EntryDetail; full: boolean }) {
         </section>
       )}
       {(entry.prev || entry.next) && (
-        <nav aria-label={`More ${KIND_PLURALS[entry.kind].toLowerCase()}`} data-slot="entry-neighbours" className="border-t border-foreground pt-4">
+        <nav aria-label={`More ${KIND_PLURALS[entry.kind].toLowerCase()}`} data-slot="entry-neighbours" className="pt-1">
           <ul className="m-0 grid list-none grid-cols-1 gap-6 p-0 @md:grid-cols-2">
             <li className="min-w-0">{entry.prev && <Neighbour direction="prev" entry={entry.prev} label={label} />}</li>
             <li className="min-w-0">{entry.next && <Neighbour direction="next" entry={entry.next} label={label} />}</li>
