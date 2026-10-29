@@ -338,8 +338,6 @@ export class GlobeRenderer {
     };
     if (typeof requestIdleCallback === "function") requestIdleCallback(loadSurface, { timeout: 3000 });
     else window.setTimeout(loadSurface, 800);
-    // (the planet's lights at night, 180 KB: in a later idle moment, only where there is a night to show them in)
-    if (opts.showcase) this.wantLights();
     // (the Moon's picture, 13 KB, in the same idle moment)
     const loadMoon = () => {
       if (!this.disposed) this.globe.moon?.load(MOON.mapUrl, () => this.requestRender());
@@ -372,6 +370,9 @@ export class GlobeRenderer {
         this.showcaseActive = false;
       }
     }
+    // (the planet's lights at night, 180 KB: in a later idle moment, wherever the page has a night to show them in: the night is the showcase's CAPABILITY (a ring, a caption), not the hero's state, so a globe made while the hero is collapsed
+    // (coming back from another page) has its night and needs its lights too; they were asked for only when the page started with the showcase on: owner, 2026-10-30)
+    if (this.showcaseActive) this.wantLights();
     // An interlude planned for this visit comes close to the ground: its finer picture of the land is fetched in an idle moment, after the first one.
     if (this.caption?.eggPlanned) {
       const hi = () => this.loadHiSurface();
