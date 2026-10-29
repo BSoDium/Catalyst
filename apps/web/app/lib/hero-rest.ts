@@ -26,6 +26,31 @@ export function useHeroResting(): boolean {
 }
 
 /**
+ * Whether the hero's small corner line, with the search button under it, is showing (the hero stepped back and is on screen: not at rest, not away behind
+ * a panel). From 48 rem the header leaves its own search trigger out then (owner, 2026-10-29: "no need to have it next to the nav items"): the
+ * corner has it. Published by the hero, read by the header.
+ */
+let corner = false;
+const cornerListeners = new Set<() => void>();
+
+export function setHeroCorner(value: boolean): void {
+  if (corner === value) return;
+  corner = value;
+  for (const l of cornerListeners) l();
+}
+
+export function useHeroCorner(): boolean {
+  return useSyncExternalStore(
+    (l) => {
+      cornerListeners.add(l);
+      return () => void cornerListeners.delete(l);
+    },
+    () => corner,
+    () => false,
+  );
+}
+
+/**
  * Whether the visitor has been on another page of the site in this session. The landing hero is born at rest (the full presentation, no header),
  * which is right for a visit that begins on the home page and wrong for one that comes back to it from a list: someone who clicked "Globe" in the
  * header expects the header to stay (owner, 2026-10-21), and the presentation to return by itself after the idle delay. The header reports the

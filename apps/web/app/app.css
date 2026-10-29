@@ -4840,6 +4840,50 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     letter-spacing: -0.02em;
   }
 
+  /* The search under the name and its line (owner, 2026-10-29), from 48 rem and in the collapsed look; the header's own is out of the row then (`[data-corner-search]`). One run of the header's type, as it was: [icon] Search [command K]. */
+  .hero-mini-search {
+    display: none;
+    pointer-events: auto;
+    align-items: center;
+    gap: 0.5em;
+    min-height: 2rem;
+    margin-top: 0.25rem;
+    padding: 0;
+    border: 0;
+    background: none;
+    font-family: var(--font-meta);
+    font-size: 0.75rem;
+    line-height: 1rem;
+    letter-spacing: 0.06em;
+    color: var(--muted-foreground);
+    cursor: pointer;
+    transition: color var(--duration-fast) var(--ease-standard);
+  }
+
+  .hero-mini-search:hover,
+  .hero-mini-search:focus-visible {
+    color: var(--signal-text);
+  }
+
+  .hero-mini-search .ds-kbd {
+    justify-content: flex-start;
+    min-width: 0;
+    font-size: inherit;
+    letter-spacing: inherit;
+    margin-inline-start: 0.5em;
+  }
+
+  @media (min-width: 48rem) {
+    .landing-hero[data-hero="collapsed"] .hero-mini-search {
+      display: inline-flex;
+    }
+
+    /* (`!important`: the trigger carries the `inline-flex` utility, which is in a later layer) */
+    [data-slot="site-header"][data-corner-search] [data-slot="search-trigger"] {
+      display: none !important;
+    }
+  }
+
   .hero-mini-hint {
     font-family: var(--font-meta);
     font-size: 0.75rem;
