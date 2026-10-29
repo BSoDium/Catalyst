@@ -5,7 +5,7 @@ import { Icon, KeyHint } from "~/components/ui";
 import { CAREER_LABEL, CAREER_PATH } from "~/lib/career";
 import { KIND_PATHS, KIND_PLURALS } from "~/lib/entries";
 import type { HeroMachine, HeroSnapshot } from "~/lib/hero-machine";
-import { setHeroCorner, setHeroResting } from "~/lib/hero-rest";
+import { setHeroResting } from "~/lib/hero-rest";
 import { NameTravel, type TravelHalf } from "~/lib/name-travel";
 import { SITE, SITE_FOCUS, SITE_IDENTITY } from "~/lib/site";
 import { useHasCareer } from "~/lib/use-has-career";
@@ -170,12 +170,6 @@ export function LandingHero({ machine, away, empty, orbit = null, onCover, hasCa
     setHeroResting(resting);
     return () => setHeroResting(true);
   }, [resting]);
-  // (the corner's search button shows in the collapsed look: the header's own is left out from 48 rem while it does)
-  const corner = state === "collapsed";
-  useEffect(() => {
-    setHeroCorner(corner);
-    return () => setHeroCorner(false);
-  }, [corner]);
   // Away, the panel's own title is the page's h1: the name stays as text, hidden, and is not a second heading.
   const Name = away ? "p" : "h1";
   const rootRef = useRef<HTMLDivElement>(null);
@@ -360,20 +354,14 @@ export function LandingHero({ machine, away, empty, orbit = null, onCover, hasCa
         </nav>
       </div>
       {/* What stays when the hero has stepped back: the name as one small line and, while the way back is real, the hint. Decoration (the h1 is above). */}
-      <p className="hero-mini">
-        <span aria-hidden="true" className="hero-mini-name">
+      <p aria-hidden="true" className="hero-mini">
+        <span className="hero-mini-name">
           <span className="hero-mini-given">{SITE.givenName}</span>{" "}
           <span className="hero-mini-family type-thin">
             <FamilyName />
           </span>
         </span>
-        <span aria-hidden="true" className="hero-mini-hint">Drag to explore. Stop moving to reset the view.</span>
-        {/* Under the name and its line, from 48 rem, in the collapsed look only: the search that the header leaves out there. */}
-        <button type="button" onClick={openSearch} aria-label="Search" aria-haspopup="dialog" aria-keyshortcuts="Control+K Meta+K" data-slot="corner-search" data-needs-script="" tabIndex={corner ? 0 : -1} className="hero-mini-search">
-          <Icon name="search" size="inline" />
-          <span>Search</span>
-          <KeyHint className="hero-kbd" />
-        </button>
+        <span className="hero-mini-hint">Drag to explore. Stop moving to reset the view.</span>
       </p>
     </div>
   );
