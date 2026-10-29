@@ -1,7 +1,7 @@
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Icon } from "~/components/ui/icon";
-import { TRACKS, nowPlaying, pillVisible, sunMusic, type NowPlayingSnapshot, type Track } from "~/globe";
+import { TRACKS, beatPulse, nowPlaying, pillVisible, sunMusic, type NowPlayingSnapshot, type Track } from "~/globe";
 
 /**
  * Where the player sits (`.np-root`, app.css), in one place (owner: "we might iterate on where it shows and when it goes"): docked in the top left corner when there is room, and moved down under the header when the header
@@ -78,7 +78,7 @@ function Player({ snap }: { snap: NowPlayingSnapshot }) {
   const credit = track.artist ? `${track.title} by ${track.artist}` : track.title;
   const playing = snap.state === "playing" && !snap.muted;
   const blocked = snap.state === "blocked" && !snap.muted;
-  // how far the halo reaches follows the sun's music's level (the interlude's sound has none to read: the halo's own, steady): one custom property, written when it moves, while the disc plays
+  // how far the halo reaches follows the sun's music's level (the interlude's sound has none to read: the halo's own, steady), and it pulses once to each beat, softly: two custom properties, written while the disc plays
   const sun = track.id === TRACKS.sun.id;
   useEffect(() => {
     const el = halo.current;
@@ -86,11 +86,14 @@ function Player({ snap }: { snap: NowPlayingSnapshot }) {
     let raf = 0;
     let last = -1;
     const frame = () => {
-      const level = sunMusic.pulse()?.energy ?? 0;
+      const p = sunMusic.pulse();
+      const level = p?.energy ?? 0;
       if (Math.abs(level - last) > 0.01) {
         last = level;
         el.style.setProperty("--np-level", level.toFixed(2));
       }
+      // (the beat is 1 on the beat and 0 half way to the next; as audible as the music is, so that it comes in and goes with the fades)
+      if (p) el.style.setProperty("--np-beat", (beatPulse(p.position) * p.amount).toFixed(3));
       raf = requestAnimationFrame(frame);
     };
     raf = requestAnimationFrame(frame);

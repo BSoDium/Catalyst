@@ -41,6 +41,14 @@ export const PULSE = {
   gainMin: 0.35,
 } as const;
 
+/**
+ * The beat (the player's halo pulses once to each: owner, 2026-10-29): 1 on a beat, 0 half way to the next, as a cosine (no edge), for the music at `position` seconds into the piece. Pure.
+ */
+export function beatPulse(position: number): number {
+  const beats = (position - SUN_MUSIC.beatOffsetSec) / SUN_MUSIC.beatSec;
+  return 0.5 + 0.5 * Math.cos(2 * Math.PI * (beats - Math.floor(beats)));
+}
+
 /** A breath: 0 at the start of the cycle, up to 1 half way, and back, as a cosine (`phase` in cycles). Pure. */
 export function breath(phase: number): number {
   return 0.5 - 0.5 * Math.cos(2 * Math.PI * phase);

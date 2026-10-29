@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { SUN_MUSIC, loopSamples } from "./sun-music";
-import { PULSE, breath, sunPulse } from "./sun-pulse";
+import { PULSE, beatPulse, breath, sunPulse } from "./sun-pulse";
 
 const CYCLE = SUN_MUSIC.beatSec * SUN_MUSIC.cycleBeats;
 /** `c` cycles into the music. */
@@ -92,6 +92,22 @@ describe("the sun's breathing", () => {
 
   it("is a valid phase for a position before the first beat", () => {
     for (const v of Object.values(sunPulse(0, 1))) expect(v).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe("the beat", () => {
+  it("is 1 on every beat and 0 half way between, smooth, and the same on every beat of the piece", () => {
+    for (const n of [0, 1, 7, 100]) {
+      expect(beatPulse(SUN_MUSIC.beatOffsetSec + n * SUN_MUSIC.beatSec)).toBeCloseTo(1, 6);
+      expect(beatPulse(SUN_MUSIC.beatOffsetSec + (n + 0.5) * SUN_MUSIC.beatSec)).toBeCloseTo(0, 6);
+    }
+    let max = 0;
+    for (let i = 1; i <= 1000; i++) max = Math.max(max, Math.abs(beatPulse((i / 1000) * 5) - beatPulse(((i - 1) / 1000) * 5)));
+    expect(max).toBeLessThan(0.05);
+  });
+
+  it("is a whole number of beats to the sun's cycle, so that the two stay in step", () => {
+    expect(Number.isInteger(SUN_MUSIC.cycleBeats)).toBe(true);
   });
 });
 
