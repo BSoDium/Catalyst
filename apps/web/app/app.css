@@ -3011,24 +3011,23 @@ h1[tabindex="-1"]:focus-visible {
   background: var(--map-label-plate);
   box-shadow: 0 0 4px 3px var(--map-label-plate);
 }
-/* Where the now-playing player sits (components/now-playing-player.tsx): under the header, which needs the corner on a narrow screen, and in the corner from 1280 px, where the header's links leave it room. */
+/* Where the now-playing player sits (components/now-playing-player.tsx): docked close to the corner (`--np-inset`), under the header on a narrow screen, which needs the corner there, and in the corner from 1280 px, where the header's links leave it room. The disc is as tall as the two lines of the text beside it (`--np-size`). */
 .np-root {
-  --np-size: 2.5rem;
-  top: calc(var(--navbar-height) + 0.5rem);
-  left: 1rem;
-  max-width: calc(100% - 2rem);
+  --np-size: 2.35rem;
+  --np-inset: 0.75rem;
+  top: calc(var(--navbar-height) + 0.25rem);
+  left: var(--np-inset);
+  max-width: calc(100% - 2 * var(--np-inset));
   transition: top 300ms var(--ease-standard);
 }
 /* (no header, as on the home screen at rest: the top of the screen) */
 body:not(:has([data-slot="site-header"])) .np-root {
-  top: 1rem;
+  top: var(--np-inset);
 }
 @media (min-width: 1280px) {
   .np-root,
   body:not(:has([data-slot="site-header"])) .np-root {
-    --np-size: 3rem;
-    top: 1.5rem;
-    left: 1.5rem;
+    top: var(--np-inset);
   }
 }
 /* The words lie on a soft plate of the page's colour, as the map's labels and credits do, so that they read over the globe's lines */
@@ -3071,9 +3070,7 @@ body:not(:has([data-slot="site-header"])) .np-root {
   overflow: hidden;
   border-radius: 50%;
   background: #0d0d10;
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--foreground) 24%, transparent),
-    0 8px 22px -8px color-mix(in srgb, var(--foreground) 55%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--foreground) 24%, transparent);
   animation: np-spin 7s linear infinite;
   animation-play-state: paused;
   transition: filter 400ms var(--ease-standard);
@@ -3162,6 +3159,14 @@ body:not(:has([data-slot="site-header"])) .np-root {
   line-height: 1rem;
   color: var(--subtle-foreground);
 }
+/* (the browser has not let the page make sound yet: the credit line asks for a touch, in a warning shade, and gives way to the credit when it comes) */
+.np-warn {
+  --np-warn: #b45309;
+  color: var(--np-warn);
+}
+:root[data-scheme="dark"] .np-warn {
+  --np-warn: #fbbf24;
+}
 .np-text a {
   color: inherit;
   text-decoration: none;
@@ -3176,6 +3181,46 @@ body:not(:has([data-slot="site-header"])) .np-root {
 .np-artist a:focus-visible {
   color: var(--foreground);
 }
+/*
+ * The motes (owner, 2026-10-29: "a more obvious way to tell whether the music is playing"; they replace the glow round the disc): a few small specks that drift out of the disc's edge and fade as they go, only while it plays.
+ * Each is one compositor-only animation (transform, opacity) of a fixed element: nothing is laid out or painted again, and with no sound they are not there (`data-spin`). Where each goes is set inline (`--ux`, `--uy`: its
+ * direction; `--reach`: how far, in disc diameters; the size, the time and the delay).
+ */
+.np-motes {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.np-mote {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--mote-size);
+  height: var(--mote-size);
+  margin: calc(var(--mote-size) / -2) 0 0 calc(var(--mote-size) / -2);
+  border-radius: 50%;
+  background: var(--foreground);
+  opacity: 0;
+  display: none;
+  will-change: transform, opacity;
+}
+.np[data-spin="true"] .np-mote {
+  display: block;
+  animation: np-mote var(--mote-ms) var(--mote-delay) cubic-bezier(0.2, 0.6, 0.4, 1) infinite backwards;
+}
+@keyframes np-mote {
+  from {
+    opacity: 0;
+    transform: translate(calc(var(--np-size) * var(--ux) * 0.5), calc(var(--np-size) * var(--uy) * 0.5)) scale(1);
+  }
+  15% {
+    opacity: 0.9;
+  }
+  to {
+    opacity: 0;
+    transform: translate(calc(var(--np-size) * var(--ux) * (0.5 + var(--reach))), calc(var(--np-size) * var(--uy) * (0.5 + var(--reach)))) scale(0.3);
+  }
+}
 @keyframes np-spin {
   to {
     transform: rotate(1turn);
@@ -3184,6 +3229,9 @@ body:not(:has([data-slot="site-header"])) .np-root {
 @media (prefers-reduced-motion: reduce) {
   .np-disc {
     animation: none;
+  }
+  .np-mote {
+    display: none !important;
   }
 }
 

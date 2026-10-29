@@ -406,12 +406,12 @@ export class SunMusic {
     this.publish();
   }
 
-  /** Tell the page's registry what this is doing: it is there once the sun has come into view (it would have played), playing while the sun is in view and the music is not off, waiting otherwise; and gone if there is no music. */
+  /** Tell the page's registry what this is doing: it is there once the sun has come into view (it would have played), playing while the sun is in view and the music is not off (blocked, if the browser has not let the page make sound yet: no gesture), waiting otherwise; and gone if there is no music. */
   private publish() {
     const s = this.snapshot;
     if (s.status === "failed") return this.prefs.end(TRACKS.sun.id);
     if (!s.sunSeen) return;
-    this.prefs.set(TRACKS.sun, this.wanted ? "playing" : "paused");
+    this.prefs.set(TRACKS.sun, !this.wanted ? "paused" : this.ctx?.state === "running" ? "playing" : "blocked");
   }
 
   private rise() {

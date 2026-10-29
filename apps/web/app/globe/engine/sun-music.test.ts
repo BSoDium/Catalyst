@@ -238,13 +238,15 @@ describe("the sun's music", () => {
   it("is silent while the browser has not let the context run (no gesture yet), and starts at the gesture", async () => {
     const f = fakes({ state: "suspended" });
     f.ctx.resume = vi.fn(async () => undefined); // (refused)
-    const { m, ctx, sources } = await start(f);
+    const { m, ctx, sources, prefs } = await start(f);
     m.setGlare(0.5);
     expect(sources).toHaveLength(0);
+    expect(prefs.getSnapshot().state).toBe("blocked"); // (the player says so rather than seem to play)
     ctx.state = "running";
     m.unlock();
     await settle();
     expect(sources).toHaveLength(1);
+    expect(prefs.getSnapshot().state).toBe("playing");
   });
 
   it("the visitor can turn it off, and on: kept, and silent while off", async () => {

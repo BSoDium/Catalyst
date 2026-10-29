@@ -18,9 +18,10 @@ export interface Track {
   priority: number;
   /** The sleeve, a square picture the disc wears (a path under `public/`). Absent, or not there: a plain label. */
   cover?: string;
-  /** Where the title goes (the song's video), and where the artist does (their page). Absent: plain text. */
+  /** Where the title goes (the song's video). Absent: plain text. */
   titleHref?: string;
-  artistHref?: string;
+  /** Where each of the artists goes (their page), in the order the credit names them. Absent, or an artist with no page: plain text. */
+  artists?: readonly { name: string; href?: string }[];
   /** What the credit means, as the hover says it (the roles of those it names). */
   note?: string;
 }
@@ -32,23 +33,29 @@ export const TRACKS = {
     title: "Gabriel",
     artist: "Felsmann & Tiley",
     priority: 1,
-    // (the sleeve of the single, 300 px: all that was given; the song's own video and the duo's own page are still to be given: the two links are stand-ins, a search for the song and the album's page at their label)
+    // (the sleeve of the single, 300 px: all that was given; the song's video, and the duo's own page, as the owner gave them)
     cover: "/media/now-playing/gabriel.jpg",
-    titleHref: "https://www.youtube.com/results?search_query=Felsmann+Tiley+Gabriel",
-    artistHref: "https://store.mute.com/products/felsmann-tiley-protomensch",
+    titleHref: "https://www.youtube.com/watch?v=mSvt09Bq0_Q",
+    artists: [{ name: "Felsmann & Tiley", href: "https://felsmanntiley.com/" }],
   },
   interlude: {
     id: "interlude",
     title: "Universal intro",
     artist: "Jerry Goldsmith & Brian Tyler",
     note: "Composed by Jerry Goldsmith (1997); arranged by Brian Tyler (2012)",
+    // (no video: it is not a song that can be streamed; each of its two artists has a page)
+    artists: [
+      { name: "Jerry Goldsmith", href: "https://en.wikipedia.org/wiki/Jerry_Goldsmith" },
+      { name: "Brian Tyler", href: "https://www.briantyler.com/" },
+    ],
     priority: 2,
     // (the studio's centennial logo, cropped square on its globe)
     cover: "/media/now-playing/universal-intro.jpg",
   },
 } as const satisfies Record<string, Track>;
 
-export type PlayState = "playing" | "paused";
+/** `blocked`: it is to be playing but cannot be heard, the browser has not let the page make sound yet (no gesture on it): the player says so rather than seem to play. */
+export type PlayState = "playing" | "paused" | "blocked";
 
 export interface NowPlayingSnapshot {
   /** The sound to show, or null when there is none. */
