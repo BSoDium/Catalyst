@@ -75,6 +75,7 @@ import { RingLayer } from "./ring-layer";
 import { GlobeScene } from "./scene";
 import { sunRise } from "./sun-flare";
 import { liveSun, opening } from "./daylight";
+import { IMMERSION, immersiveZoom } from "./immersion";
 import { FX, irisStep } from "./fx";
 import { MOON, SUN, inclinationFor, litTurn, moonAmount, orbitAngle, rollFor, sunDirection, toEarthFrame, toRad, visibleBounds, type Vec3 } from "./moon";
 import { roleColor } from "./palette";
@@ -189,6 +190,13 @@ export class GlobeRenderer {
   private minZoom = 1;
   /** The zoom at which the whole globe fits the free area (`TUNING.fitMargin`): the 0 of `GlobeViewState.zoom`, the world view of the idle rotation, the floor of programmatic framing. */
   private fit = 1;
+  /**
+   * The zoom of the WORLD view: the fit on a wide window, and on a narrow one the closer zoom the planet takes when the visitor takes the globe (engine/immersion.ts). What the fit is for the world view
+   * (the night, the sun and its flare, the moon, the idle rotation, the way back to the home screen) is measured from it, so they stay in as the planet comes closer.
+   */
+  private world = 1;
+  /** The planet coming closer when the visitor takes the globe: a pan does not end it, a zoom or a flight does. */
+  private zoomGlide: { from: number; to: number; t0: number; ms: number } | null = null;
   /** The ring of type, when there is one (engine/ring-layer.ts: a flat circle of text round the disc, unchanged by the showcase). */
   private ring: RingLayer | null = null;
   /** The pictures of the modes on the legs (street/overlay/trail-dots-layer.ts, lines off: the shader draws the lines): a canvas over the globe's, null without routes. */
@@ -483,6 +491,8 @@ export class GlobeRenderer {
     const inset = clampInset(this.inset, w);
     this.shiftBuf = insetShiftBuf(inset, P);
     this.fit = fitZoom(freeWidth(w, inset), h, TUNING.fitMargin);
+    // (a panel over the globe leaves no room for a closer planet: the world view is the fit)
+    this.world = inset > 0 ? this.fit : immersiveZoom(freeWidth(w, inset), h, this.fit);
     const lowest = this.lowestFor(inset);
     this.placement = lowest.placement;
     this.minZoom = lowest.zoom;
@@ -749,6 +759,8 @@ export class GlobeRenderer {
     this.noteActivity();
     this.flight = null;
     this.latSnap = null;
+    // (a pan leaves the planet coming closer; a zoom of the visitor's ends it)
+    if (v.zoom !== undefined) this.zoomGlide = null;
     this.velocity = STILL;
     this.view = this.clampView({ ...this.view, ...v });
     this.requestRender();
@@ -760,6 +772,7 @@ export class GlobeRenderer {
     const beyond = o?.beyondLimit === true;
     const to = this.clampView({ ...this.view, ...v }, beyond);
     this.latSnap = null;
+    this.zoomGlide = null;
     if (this.reduced) {
       this.flight = null;
       this.velocity = STILL;
@@ -1224,6 +1237,15 @@ export class GlobeRenderer {
       if (t >= 1) this.latSnap = null;
       else more = true;
     }
+    if (this.zoomGlide) {
+      const a = this.zoomGlide;
+      const t = clamp((now - a.t0) / a.ms, 0, 1);
+      // slow in, slow out: the planet comes closer from rest and settles
+      const e = t * t * t * (t * (t * 6 - 15) + 10);
+      this.view = this.clampView({ ...this.view, zoom: a.from + (a.to - a.from) * e });
+      if (t >= 1) this.zoomGlide = null;
+      else more = true;
+    }
     if (this.overlayHeld) {
       // (the globe is still on its way home from the interlude: the boxes begin to fade in when it has arrived, and not before)
       if (this.caption?.pulledBack) more = true;
@@ -1256,7 +1278,7 @@ export class GlobeRenderer {
     c.focused = this.focused !== null;
     c.inset = this.insetTarget;
     c.zoom = this.view.zoom;
-    c.minZoom = this.fit; // the world view is the whole-globe fit; the ring's regime below it is part of it
+    c.minZoom = this.world; // the world view is the whole-globe fit (a phone's, the closer zoom of the planet taken); the ring's regime below it is part of it
     c.busy = this.flight !== null || !isStill(this.velocity) || this.insetAnim !== null || this.liftAnim !== null || this.pressed.size > 0;
     return c;
   }
@@ -1411,7 +1433,7 @@ export class GlobeRenderer {
       return;
     }
     const aspect = this.width / Math.max(1, this.height);
-    this.moonSample = moon.sync({ camera: cam, bufW: this.bufW, bufH: this.bufH, eraDeg: this.era, angle: this.moonAngle(now), rollDeg: rollFor(aspect), inclinationDeg: inclinationFor(aspect), sun: toEarthFrame(this.moonSun, this.era), d, zoom: this.inInterlude ? this.fit : zoom, fit: this.fit });
+    this.moonSample = moon.sync({ camera: cam, bufW: this.bufW, bufH: this.bufH, eraDeg: this.era, angle: this.moonAngle(now), rollDeg: rollFor(aspect), inclinationDeg: inclinationFor(aspect), sun: toEarthFrame(this.moonSun, this.era), d, zoom: this.inInterlude ? this.world : zoom, fit: this.world });
   }
 
   /**
@@ -2214,7 +2236,7 @@ export class GlobeRenderer {
     if (want === this.showcaseOn) return;
     this.showcaseOn = want;
     this.applyShowcase();
-    if (want && this.view.zoom > this.minZoom + 0.02 && this.view.zoom <= this.fit + SPIN.unzoomedSlack && this.flight === null) this.flyTo({ zoom: this.minZoom });
+    if (want && this.view.zoom > this.minZoom + 0.02 && this.view.zoom <= this.world + SPIN.unzoomedSlack && this.flight === null) this.flyTo({ zoom: this.minZoom });
   }
 
   /** The showcase ends on its own (a gesture on the globe): the same, without asking the app. */
@@ -2223,6 +2245,23 @@ export class GlobeRenderer {
     if (!this.showcaseOn) return;
     this.showcaseOn = false;
     this.applyShowcase();
+    this.comeCloser();
+  }
+
+  /**
+   * The visitor has taken the globe from the home screen: on a narrow screen the planet it rested at is too far, and it comes closer to the world view (engine/immersion.ts), the sides cut off. Only from a
+   * planet that is smaller than that, and only when the camera is at rest in the world view (not a place's or a flight's); a jump under reduced motion.
+   */
+  private comeCloser() {
+    if (this.world <= this.fit + 1e-6 || this.flight !== null || this.view.zoom > this.world - 0.02 || this.view.zoom > this.fit + SPIN.unzoomedSlack) return;
+    const to = this.clampView({ ...this.view, zoom: this.world }).zoom;
+    if (this.reduced) {
+      this.view = { ...this.view, zoom: to };
+      this.requestRender();
+      return;
+    }
+    this.zoomGlide = { from: this.view.zoom, to, t0: performance.now(), ms: IMMERSION.glideMs };
+    this.requestRender();
   }
 
   /**
@@ -2362,7 +2401,7 @@ export class GlobeRenderer {
     // (the caption's shell is above the planet: its nearest point must be inside the near plane)
     const reach = this.caption ? this.caption.maxRadius + 0.05 : 1.05;
     // (the moon is on an orbit wider than the caption's shell: its whole orbit is between the near and far planes while it is shown)
-    const moonReach = this.globe.moon?.ready && moonAmount(this.inInterlude ? this.fit : zoom, this.fit) > 0.01 ? MOON.orbit + MOON.radius + 0.05 : 0;
+    const moonReach = this.globe.moon?.ready && moonAmount(this.inInterlude ? this.world : zoom, this.world) > 0.01 ? MOON.orbit + MOON.radius + 0.05 : 0;
     if (pose) {
       const [px, py, pz] = pose.pos;
       d = Math.hypot(px, py, pz);
@@ -2419,7 +2458,7 @@ export class GlobeRenderer {
     this.globe.setSun(sun.x, sun.y, sun.z);
     // the planet's night (home screen, world view): the moon's sun, fixed in the sky, so the earth turns under it; gone with the zoom as the moon is
     const ns = toEarthFrame(this.moonSun, this.era);
-    this.nightNow = this.showcaseActive ? (this.inInterlude ? 1 : moonAmount(zoom, this.fit)) : 0;
+    this.nightNow = this.showcaseActive ? (this.inInterlude ? 1 : moonAmount(zoom, this.world)) : 0;
     // (the light page shows the wash a little softer than the dark one: `NIGHT.lightGain`)
     const shown = this.nightNow * (this.theme.scheme === "dark" ? 1 : NIGHT.lightGain);
     this.globe.setNight(shown, ns[0], ns[1], ns[2]);
