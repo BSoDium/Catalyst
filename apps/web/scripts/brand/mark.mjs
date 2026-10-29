@@ -54,3 +54,38 @@ export function markSvg({ px = 32, fill = null, rows = MARK } = {}) {
 </svg>
 `;
 }
+
+// The favicon and the app icons are NOT the mark: they are the blue-screen frown ":(" turned on its side (the owner's handle, BSoDium), on the blue
+// screen's own blue, the same 16 x 16 pixel footing. Two eyes and a mouth that is an arc opening to the right; 10 x 10 cells, centred on the grid.
+// The mark above stays the site's logo (the header, `logo-mark.tsx`).
+export const FACE = [
+  "................",
+  "................",
+  "................",
+  "...........##...",
+  "...##.....##....",
+  "...##....##.....",
+  "........##......",
+  "........##......",
+  "........##......",
+  "........##......",
+  "...##....##.....",
+  "...##.....##....",
+  "...........##...",
+  "................",
+  "................",
+  "................",
+];
+
+/** The blue of the blue screen of death (Windows 10 and 11), the tile behind the face. */
+export const FACE_TILE = "#0078d7";
+export const FACE_INK = "#ffffff";
+
+/** The favicon: the face on its blue tile, the same in both colour schemes (a blue square reads on a light tab and a dark one). */
+export function faceSvg({ px = 32 } = {}) {
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${GRID} ${GRID}" width="${px}" height="${px}" shape-rendering="crispEdges">
+  <rect width="${GRID}" height="${GRID}" fill="${FACE_TILE}"/>
+  <path fill="${FACE_INK}" d="${markPath(FACE)}"/>
+</svg>
+`;
+}

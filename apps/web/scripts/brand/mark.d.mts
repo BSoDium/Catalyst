@@ -2,3 +2,7 @@ export const GRID: number;
 export const MARK: string[];
 export function markPath(rows?: string[]): string;
 export function markSvg(options?: { px?: number; fill?: string | null; rows?: string[] }): string;
+export const FACE: string[];
+export const FACE_TILE: string;
+export const FACE_INK: string;
+export function faceSvg(options?: { px?: number }): string;
