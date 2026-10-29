@@ -113,7 +113,7 @@ export const SUN = {
     /** The eye's iris (owner, 2026-10-28): the light page's backdrop dims by `dim` (a share of its tone) while the sun is in the picture, easing in over `closeMs` as the sun comes in and out over `openMs` after it leaves, like a diaphragm adapting. */
     iris: { dim: 0.05, closeMs: 700, openMs: 1800 },
     veil: { strength: 0.22, reach: 0.28, grey: 0.45, fall: 1.3 },
-    halo: { strength: 0.3, grey: 0.5, warm: 0.2 },
+    halo: { strength: 0.42, grey: 0.5, warm: 0.2 },
     ghost: 0.25,
     lining: { grey: 1, warm: 0.12 },
     twilight: 0.3,
