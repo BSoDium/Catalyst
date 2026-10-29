@@ -229,6 +229,7 @@ Not verified: how Vercel merges the `vercel.json` headers with the ones our serv
 - **What the row shows follows its own width** (the header is an `@container`; Tailwind `@md`, `@xl`, `@min-[...]`): below 28 rem
   "Globe" and the four sections only (about 305 px at 320, 325 px at 360 to 390: they fit, with 44 px targets, down to a 320 px phone,
   the padding between links going 4, 6, 8, 10 px per side at 0, 340, 400 px and 32 rem); the search trigger is always there as the word "Search" (with its
+  **The search docks at the right from 80 rem of header** (owner, 2026-10-29: "docked to the right, with an input look ... aligned with the nav items, in the top right corner"): an input-like field (an icon, "Search", the key hint, a hairline under it, 13 rem wide) out of the row's flow, so the links stay centred over the screen, on their line; its right edge is on the page's own margin (3.5 rem) where there is room for it between the links' end and the edge, and closer to the screen's edge (1.25 rem) at 1280 px (`--search-inset`, `app.css`). Under 80 rem, and while the panel sits beside the globe (the header is half as wide), it is the trigger in the row, as before.
   icon from 22 rem); from 36 rem its `Ctrl K` / command-K hint. So a phone has the word, a half-width map the icon and the word, a desktop the
   hint too (owner, 2026-10-13: text beside the icon and the shortcut, the two glyphs one size).
 - Readability: **lists, 404, error pages** (content scrolls under the row) have `NavScrim` (`.nav-scrim` in `app.css`, documented in
