@@ -29,6 +29,3 @@ apps/web/public/media/preview/
 
 # perf run output (traces are hundreds of MB): never committed
 apps/web/perf-out/
-
-# The sun's music (docs/landing.md, "The sun's music"): a prototype, kept out of the repository until the artist has answered. Without the file the page has no music and no sound switch.
-apps/web/public/audio/gabriel.mp3
