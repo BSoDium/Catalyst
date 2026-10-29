@@ -44,8 +44,13 @@ describe("what the page is playing", () => {
     expect(np.getSnapshot()).toMatchObject({ track: TRACKS.sun, state: "playing" });
   });
 
-  it("credits the sun's music to its artists", () => {
+  it("credits the sun's music to its artists, with a sleeve and links that open somewhere real (https), and the interlude's sound has none", () => {
     expect(TRACKS.sun).toMatchObject({ title: "Gabriel", artist: "Felsmann & Tiley" });
+    expect(TRACKS.sun.cover).toMatch(/^\/media\//);
+    expect(TRACKS.sun.titleHref).toMatch(/^https:\/\//);
+    expect(TRACKS.sun.artistHref).toMatch(/^https:\/\//);
+    expect(TRACKS.interlude).not.toHaveProperty("titleHref");
+    expect(TRACKS.interlude).not.toHaveProperty("artist");
   });
 
   it("keeps the visitor's choice, reads it back, and reads the old key and ?mute", () => {

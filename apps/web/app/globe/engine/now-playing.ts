@@ -1,9 +1,9 @@
 /**
- * What the page is playing (the "now playing" pill, components/now-playing-pill.tsx): a small registry the page's sounds tell about themselves, and the visitor's one choice about sound.
+ * What the page is playing (the "now playing" player, components/now-playing-player.tsx): a small registry the page's sounds tell about themselves, and the visitor's one choice about sound.
  *
  * A sound is in the registry from the moment it has played until it is done: `set` says it is playing (or waiting: paused) and `end` that it is over. The sun's music (engine/sun-music.ts) is
  * there from the first time the sun comes into view for as long as the page is, playing while the sun is in view and paused while it is not; the interlude's sound (engine/cinematic-sound.ts) is there from
- * its first note to its last, and then gone. What the pill shows is `current`: the sound with the highest `priority` (the interlude's is above the sun's: while it plays the sun's music is silent), the
+ * its first note to its last, and then gone. What the player shows is `current`: the sound with the highest `priority` (the interlude's is above the sun's: while it plays the sun's music is silent), the
  * latest of equals. Nothing is in it: no pill (`pillVisible`).
  *
  * The visitor's choice is ONE for all of the page's sound: on or off (`muted`, kept in localStorage; `?mute` starts a visit muted without keeping it). It is read by every sound, which follows it live.
@@ -16,11 +16,26 @@ export interface Track {
   artist?: string;
   /** Which of two sounds that are both in the registry is shown: the higher. */
   priority: number;
+  /** The sleeve, a square picture the disc wears (a path under `public/`). Absent, or not there: a plain label. */
+  cover?: string;
+  /** Where the title goes (the song's video), and where the artist does (their page). Absent: plain text. */
+  titleHref?: string;
+  artistHref?: string;
 }
 
 /** The page's sounds: what each is called and who is credited, in one place. */
 export const TRACKS = {
-  sun: { id: "sun", title: "Gabriel", artist: "Felsmann & Tiley", priority: 1 },
+  sun: {
+    id: "sun",
+    title: "Gabriel",
+    artist: "Felsmann & Tiley",
+    priority: 1,
+    // TODO(owner): the sleeve of "Protomensch" (drop it at public/media/now-playing/gabriel.jpg, square, 512 px or more), the song's own video and the duo's own page: the two links are stand-ins
+    // (a search for the song, and the album's page at their label) until the real ones are given
+    cover: "/media/now-playing/gabriel.jpg",
+    titleHref: "https://www.youtube.com/results?search_query=Felsmann+Tiley+Gabriel",
+    artistHref: "https://store.mute.com/products/felsmann-tiley-protomensch",
+  },
   interlude: { id: "interlude", title: "Universal intro", priority: 2 },
 } as const satisfies Record<string, Track>;
 

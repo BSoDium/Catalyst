@@ -3011,64 +3011,146 @@ h1[tabindex="-1"]:focus-visible {
   background: var(--map-label-plate);
   box-shadow: 0 0 4px 3px var(--map-label-plate);
 }
-/* The now-playing pill (components/now-playing-pill.tsx): a small mono line like the map credits', with four bars that move while it plays. It comes in and goes out with a fade. */
-.np {
-  --np-bar: 2px;
-  opacity: 1;
-  transition: opacity var(--np-fade, 400ms) var(--ease-standard);
-}
-.np[data-visible="false"] {
-  opacity: 0;
-  pointer-events: none;
-}
-@starting-style {
-  .np[data-visible="true"] {
-    opacity: 0;
-  }
-}
-.np-bars {
-  display: inline-flex;
-  align-items: flex-end;
-  gap: 2px;
-  width: calc(var(--np-bar) * 4 + 6px);
-  height: 0.8125rem;
-}
-.np-bars > i {
+/* The now-playing player (components/now-playing-player.tsx): a record. The sleeve is the disc, which turns while the sound plays; a gloss that does not turn lies over it, so that it reads as a record under a light. */
+.np-disc-btn {
+  position: relative;
   display: block;
-  width: var(--np-bar);
+  flex: none;
+  width: var(--np-size);
+  height: var(--np-size);
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.np-disc-btn::after {
+  /* a 44 px target whatever the disc's size */
+  content: "";
+  position: absolute;
+  inset: min(0px, calc((var(--np-size) - 2.75rem) / 2));
+}
+.np-disc {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 50%;
+  background: #0d0d10;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--foreground) 24%, transparent),
+    0 8px 22px -8px color-mix(in srgb, var(--foreground) 55%, transparent);
+  animation: np-spin 7s linear infinite;
+  animation-play-state: paused;
+  transition: filter 400ms var(--ease-standard);
+}
+.np[data-spin="true"] .np-disc {
+  animation-play-state: running;
+}
+.np[data-muted="true"] .np-disc {
+  filter: grayscale(0.75) brightness(0.8);
+}
+.np-disc img,
+.np-label {
+  position: absolute;
+  inset: 0;
+  width: 100%;
   height: 100%;
-  background: currentColor;
-  transform-origin: bottom;
-  transform: scaleY(0.22);
-  transition: transform 300ms var(--ease-standard);
+  object-fit: cover;
+  user-select: none;
 }
-.np[data-state="playing"][data-muted="false"] .np-bars > i {
-  animation: np-bar var(--np-d, 900ms) ease-in-out var(--np-delay, 0ms) infinite alternate;
+/* (no sleeve: the sun, on a record's label: the warm ramp of the sun's own light, to violet at the edge) */
+.np-label {
+  background:
+    radial-gradient(circle at 50% 50%, #fff4c8 0 7%, #ffb347 14%, #e8553a 32%, #7a2a6e 58%, #1c1230 82%);
 }
-.np-bars > i:nth-child(1) { --np-d: 820ms; }
-.np-bars > i:nth-child(2) { --np-d: 1040ms; --np-delay: -300ms; }
-.np-bars > i:nth-child(3) { --np-d: 760ms; --np-delay: -120ms; }
-.np-bars > i:nth-child(4) { --np-d: 960ms; --np-delay: -520ms; }
-@keyframes np-bar {
-  from {
-    transform: scaleY(0.2);
-  }
-  to {
-    transform: scaleY(1);
-  }
+.np-groove {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: repeating-radial-gradient(circle at 50% 50%, transparent 0 1.5px, rgb(0 0 0 / 0.16) 1.5px 2.5px);
+  mix-blend-mode: multiply;
 }
-.np[data-muted="true"] .np-title,
-.np[data-muted="true"] .np-artist {
-  text-decoration: line-through;
+.np-hole {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 15%;
+  height: 15%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: var(--background);
+  box-shadow:
+    inset 0 0 0 1px rgb(0 0 0 / 0.45),
+    0 0 0 3px rgb(0 0 0 / 0.35);
+}
+.np-gloss {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  background: conic-gradient(from 35deg, transparent 0 18%, rgb(255 255 255 / 0.34) 24%, transparent 31% 68%, rgb(255 255 255 / 0.2) 74%, transparent 80%);
+  mix-blend-mode: soft-light;
+}
+.np-icon {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgb(0 0 0 / 0.5);
+  color: #fff;
+  opacity: 0;
+  transition: opacity 200ms var(--ease-standard);
+}
+.np-disc-btn:hover .np-icon,
+.np-disc-btn:focus-visible .np-icon,
+.np[data-flash="true"] .np-icon {
+  opacity: 1;
+}
+.np-disc-btn:focus-visible {
+  outline: 2px solid var(--foreground);
+  outline-offset: 3px;
+}
+.np-text {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  letter-spacing: 0.02em;
+}
+.np-title {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.15rem;
+  color: var(--foreground);
+}
+.np-artist {
+  margin: 0;
+  font-size: 0.6875rem;
+  line-height: 1rem;
+  color: var(--subtle-foreground);
+}
+.np-text a {
+  color: inherit;
+  text-decoration: none;
+  text-underline-offset: 3px;
   text-decoration-thickness: 1px;
 }
-@media (prefers-reduced-motion: reduce) {
-  .np-bars > i {
-    animation: none !important;
-    transform: scaleY(0.6);
+.np-text a:hover,
+.np-text a:focus-visible {
+  text-decoration-line: underline;
+}
+.np-artist a:hover,
+.np-artist a:focus-visible {
+  color: var(--foreground);
+}
+@keyframes np-spin {
+  to {
+    transform: rotate(1turn);
   }
-  .np {
-    transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .np-disc {
+    animation: none;
   }
 }
 

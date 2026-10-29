@@ -312,7 +312,7 @@ describe("the sun's music", () => {
     expect(f.prefs.getSnapshot().track).toBeNull();
   });
 
-  it("follows the page's choice when it is made elsewhere (the pill), live", async () => {
+  it("follows the page's choice when it is made elsewhere (the player), live", async () => {
     const { m, prefs, curves, sources } = await start();
     m.setGlare(0.5);
     prefs.setMuted(true);

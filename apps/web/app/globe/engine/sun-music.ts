@@ -11,7 +11,7 @@
  * Now Playing widget and the headphones' button can pause it), and this is the page's atmosphere, not a track to be controlled from outside. A buffer source in an `AudioContext` is not registered anywhere
  * (a test holds that: no element and no media session in this file).
  *
- * The visitor can turn it off (`setMuted`: the page's one choice about sound, engine/now-playing.ts, which the pill in `components/now-playing-pill.tsx` sets; kept in localStorage; `?mute` starts a visit muted without keeping it). It tells the pill what it is, and whether it is playing (the sun is in view) or waiting. It is on by default, but a browser lets
+ * The visitor can turn it off (`setMuted`: the page's one choice about sound, engine/now-playing.ts, which the player in `components/now-playing-player.tsx` sets; kept in localStorage; `?mute` starts a visit muted without keeping it). It tells the pill what it is, and whether it is playing (the sun is in view) or waiting. It is on by default, but a browser lets
  * sound start only after a gesture on the page, so until the first touch it is silent, and it starts when the sun is in view and the page has been touched.
  *
  * The signal is the sun's `glare` (engine/sun-layer.ts: how much of the sun's light is in the picture, 0..1, the zoom's share times the root of what the planet leaves of the disc), read through two
@@ -171,7 +171,7 @@ const browserDeps: MusicDeps = {
 
 export type MusicStatus = "idle" | "loading" | "ready" | "failed";
 
-/** What the interface reads: whether the sun has been in view this visit (the pill appears then), and whether there is a music at all (the file is there and can be played). The visitor's choice is the page's (`nowPlaying`). */
+/** What the interface reads: whether the sun has been in view this visit (the player appears then), and whether there is a music at all (the file is there and can be played). The visitor's choice is the page's (`nowPlaying`). */
 export interface MusicSnapshot {
   readonly sunSeen: boolean;
   readonly status: MusicStatus;
@@ -273,7 +273,7 @@ export class SunMusic {
     this.hidden = document.hidden;
     let was = this.muted;
     const offPrefs = this.prefs.subscribe(() => {
-      // the visitor's choice, from the pill or from another sound's: followed live (a sound that is asked for again is made ready by the gesture that asked)
+      // the visitor's choice, from the player or from another sound's: followed live (a sound that is asked for again is made ready by the gesture that asked)
       const now = this.muted;
       if (now !== was) {
         was = now;
