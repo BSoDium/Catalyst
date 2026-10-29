@@ -73,7 +73,7 @@ import { SHOWCASE_STATE, bandLat, inBand, shellWindowFactor, type CaptionContent
 import { CAP_HEIGHT_EM, ringAlpha, ringFloorZoom, ringRoomRadius, RING_STATE } from "./ring";
 import { RingLayer } from "./ring-layer";
 import { GlobeScene } from "./scene";
-import { pickOccluder, sunRise, type Occluder } from "./sun-flare";
+import { pickOccluder, planetRise, sunRise, type Occluder } from "./sun-flare";
 import { liveSun, opening } from "./daylight";
 import { IMMERSION, immersiveZoom, openingZoom } from "./immersion";
 import { FX, irisStep } from "./fx";
@@ -1430,6 +1430,7 @@ export class GlobeRenderer {
   private nightShown = 0;
   private sunClip = new Vector4();
   private planetV = new Vector3();
+  private planetCam = new Vector3();
 
   /**
    * Place the sun for this frame: a direction at infinity (the light's, in the earth's frame), projected by the camera as the stars' are (w = the depth along the view, so a direction behind the camera is
@@ -1445,7 +1446,9 @@ export class GlobeRenderer {
     // (where the planet's centre is on the buffer: the crescent's centre of mass lies on the line from it through the sun)
     const pc = this.planetV.set(0, 0, 0).project(cam);
     // what stands in front of the sun: the planet, or the moon (the moon's limb is the same sphere's, in its own radii; it has no atmosphere); whichever covers more of it
-    const planet = { rise: sunRise(-v.z, d), x: (pc.x * 0.5 + 0.5) * this.bufW, y: (pc.y * 0.5 + 0.5) * this.bufH, atmosphere: true };
+    // (the planet's limb is measured from the line to its CENTRE, not from the view axis: the interlude's camera pans over the planet, and it is off the axis then)
+    const pcam = this.planetCam.set(0, 0, 0).applyMatrix4(cam.matrixWorldInverse);
+    const planet = { rise: planetRise([v.x, v.y, v.z], [pcam.x, pcam.y, pcam.z]), x: (pc.x * 0.5 + 0.5) * this.bufW, y: (pc.y * 0.5 + 0.5) * this.bufH, atmosphere: true };
     const m = this.moonSample;
     let moon: Occluder | null = null;
     if (m && m.onScreen && m.amount > 0.5) {

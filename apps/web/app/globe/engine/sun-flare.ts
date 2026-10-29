@@ -161,6 +161,17 @@ export function sunRise(cosFromCentre: number, d: number): number {
 }
 
 /**
+ * How far the sun's centre is outside the planet's limb (`sunRise`) from where the planet really is: `sun` is the sun's direction in the camera's frame (a unit vector) and `planet` the planet's centre in it (earth radii; the
+ * camera looks down -z). The angle is taken from the line to the planet's CENTRE, not from the view axis: the interlude's camera pans over the planet, which is off the axis then, and measuring from the axis put the
+ * limb in the wrong place (the sun was covered where nothing covered it, and clear behind the planet). The two are the same while the planet is on the axis. Pure.
+ */
+export function planetRise(sun: readonly [number, number, number], planet: readonly [number, number, number]): number {
+  const d = Math.hypot(planet[0], planet[1], planet[2]);
+  if (d < 1e-6) return Infinity;
+  return sunRise((sun[0] * planet[0] + sun[1] * planet[1] + sun[2] * planet[2]) / d, d);
+}
+
+/**
  * What stands in front of the sun (owner, 2026-10-29: "when the moon passes in front of the sun, the exact same thing that happens with the earth happens, but without the atmospheric effects"): the planet, or the moon.
  * Each is a sphere seen from the camera, and `rise` is how far the sun's centre is outside its limb, radians (`sunRise`: the moon's is the same function, with its distance in its own radii); `x`, `y` where its
  * centre is on the buffer (the crescent is on the line from it through the sun); `atmosphere` whether the light goes through an air (the sunset's reddening and the halo's fade are the planet's, `SUN.cover`): the moon has none.

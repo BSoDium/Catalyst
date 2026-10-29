@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { MOON, SUN } from "./moon";
-import { flarePlace, haloClear, pickOccluder, rayStart, sunCrescent, sunRise, type FlareFrame, type Occluder } from "./sun-flare";
+import { flarePlace, haloClear, pickOccluder, planetRise, rayStart, sunCrescent, sunRise, type FlareFrame, type Occluder } from "./sun-flare";
 
 const frame = (over: Partial<FlareFrame> = {}): FlareFrame => ({ bufW: 400, bufH: 260, x: 300, y: 80, ahead: true, amount: 1, visible: 1, ...over });
 
@@ -62,6 +62,32 @@ describe("sunRise", () => {
     expect(sunRise(Math.cos(limb), 4)).toBeCloseTo(0, 6);
     expect(sunRise(Math.cos(limb + 0.1), 4)).toBeCloseTo(0.1, 6);
     expect(sunRise(Math.cos(limb - 0.1), 4)).toBeCloseTo(-0.1, 6);
+  });
+});
+
+describe("planetRise", () => {
+  const unit = (x: number, y: number, z: number): [number, number, number] => {
+    const l = Math.hypot(x, y, z);
+    return [x / l, y / l, z / l];
+  };
+  it("is sunRise from the view axis while the planet is on it", () => {
+    const sun = unit(0.2, 0.1, -1);
+    expect(planetRise(sun, [0, 0, -4])).toBeCloseTo(sunRise(-sun[2], 4), 9);
+    expect(planetRise(unit(0, 0, 1), [0, 0, -4])).toBe(Infinity); // (the sun behind the camera)
+  });
+  it("is measured from the planet's centre when the camera has panned and the planet is off the axis: on the limb where the limb is, whatever is in the middle of the picture", () => {
+    const planet: [number, number, number] = [1.5, -0.6, -4]; // off the axis
+    const d = Math.hypot(...planet);
+    const toPlanet = unit(...planet);
+    // a sun exactly on the planet's limb (the planet's angular radius from its centre), turned away in a plane
+    const gamma = Math.asin(1 / d);
+    const side = unit(-toPlanet[1], toPlanet[0], 0); // a direction at right angles to the planet's
+    const onLimb: [number, number, number] = [toPlanet[0] * Math.cos(gamma) + side[0] * Math.sin(gamma), toPlanet[1] * Math.cos(gamma) + side[1] * Math.sin(gamma), toPlanet[2] * Math.cos(gamma)];
+    expect(planetRise(onLimb, planet)).toBeCloseTo(0, 6);
+    expect(planetRise(toPlanet, planet)).toBeCloseTo(-gamma, 6); // (straight behind its centre)
+    // ... and a sun on the VIEW AXIS is not behind it, though the old measure said it was
+    expect(planetRise(unit(0, 0, -1), planet)).toBeGreaterThan(0.1);
+    expect(sunRise(1, d)).toBeLessThan(0); // (that is, `sunRise(-v.z, d)` called it covered)
   });
 });
 
