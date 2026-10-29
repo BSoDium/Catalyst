@@ -339,13 +339,7 @@ export class GlobeRenderer {
     if (typeof requestIdleCallback === "function") requestIdleCallback(loadSurface, { timeout: 3000 });
     else window.setTimeout(loadSurface, 800);
     // (the planet's lights at night, 180 KB: in a later idle moment, only where there is a night to show them in)
-    const loadLights = () => {
-      if (!this.disposed) this.globe.loadLights(LIGHTS.url, () => this.requestRender());
-    };
-    if (opts.showcase) {
-      if (typeof requestIdleCallback === "function") requestIdleCallback(loadLights, { timeout: 6000 });
-      else window.setTimeout(loadLights, 2000);
-    }
+    if (opts.showcase) this.wantLights();
     // (the Moon's picture, 13 KB, in the same idle moment)
     const loadMoon = () => {
       if (!this.disposed) this.globe.moon?.load(MOON.mapUrl, () => this.requestRender());
@@ -2263,8 +2257,24 @@ export class GlobeRenderer {
    * when it is not at the lowest zoom (the home screen's own composition), comes back to it. Off: the other way round, quickly. On a page without
    * the showcase (`?no-ring`, a debug page) this does nothing: the boxes stay.
    */
+  /**
+   * Fetch the planet's lights (`LIGHTS.url`) in an idle moment, once. Asked at creation when the page starts with the showcase, and again when the showcase is turned on: coming back to the globe from another page of the
+   * site creates the globe BEFORE the hero says the showcase is on (it starts collapsed, or away), and the lights were only asked for at creation, so they were never there (owner, 2026-10-30).
+   */
+  private lightsAsked = false;
+  private wantLights() {
+    if (this.lightsAsked || this.disposed) return;
+    this.lightsAsked = true;
+    const load = () => {
+      if (!this.disposed) this.globe.loadLights(LIGHTS.url, () => this.requestRender());
+    };
+    if (typeof requestIdleCallback === "function") requestIdleCallback(load, { timeout: 6000 });
+    else window.setTimeout(load, 2000);
+  }
+
   setShowcase(on: boolean) {
     this.appShowcase = on;
+    if (on) this.wantLights();
     // (an interlude asked for away from the display mode holds the showcase until it is over: `wantInterlude`)
     if (!this.eggAsk) this.applyAppShowcase();
   }
