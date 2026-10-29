@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { fitZoom, silhouetteRadiusPx } from "./geo";
-import { IMMERSION, immersiveZoom, narrowness, openingZoom } from "./immersion";
+import { IMMERSION, immersiveZoom, interactiveZoom, narrowness, openingZoom } from "./immersion";
 import { moonAmount } from "./moon";
 import { LANDING, TUNING } from "./tuning";
 
@@ -72,7 +72,9 @@ describe("the zoom the home page opens at", () => {
     expect(openingZoom({ ...phone, showcaseActive: false, showcaseOn: false })).toBe(phone.fit);
   });
 
-  it("is the same on a wide window, where the world view is the fit", () => {
-    expect(openingZoom({ minZoom: 1.5, world: 2.18, fit: 2.18, showcaseActive: true, showcaseOn: false })).toBe(2.18);
+  it("is, on a wide window, the lowest zoom (where a gesture leaves the planet), not the whole-globe fit half a level closer", () => {
+    expect(openingZoom({ minZoom: 1.5, world: 2.18, fit: 2.18, showcaseActive: true, showcaseOn: false })).toBe(1.5);
+    expect(interactiveZoom({ minZoom: 1.5, world: 2.18, fit: 2.18 })).toBe(1.5);
+    expect(interactiveZoom({ ...phone })).toBe(phone.world);
   });
 });
