@@ -29,11 +29,11 @@ export const SUN_MUSIC = {
    */
   crossfadeSec: 8,
   /**
-   * The piece's pulse, measured on the file (onset autocorrelation, 2026-10-29: 109.97 BPM, a period of 0.5456 s, steady from end to end; no published tempo was found): `beatSec` is one beat, `cycleBeats` of them the
-   * cycle the sun's pulse goes round in (eight, 4.4 s: owner, "even slower, but still on rhythm"; it was four: the axes' rays pulse on the first beat and the diagonals' on the fifth, four beats, two seconds and a bit, apart), `beatOffsetSec` where the first beat falls in the decoded file.
+   * The piece's pulse, measured on the file (onset autocorrelation, 2026-10-29: 109.97 BPM, a period of 0.5456 s, steady from end to end; no published tempo was found): `beatSec` is one beat (owner, 2026-10-29: the first measure, 0.5456 s, was a pulse of eighths, "twice as fast as the bass line": the beat is TWICE that, 55 BPM; the bass is too soft an onset to tell from the file which of the two pulses it falls on, so the PHASE, `beatOffsetSec`, is still the first pulse's: by ear, if it is half a beat off, add 0.5456 to it), `cycleBeats` of them the
+   * cycle the sun's pulse goes round in (four beats, 4.4 s: owner, "even slower, but still on rhythm"; the same time as the eight pulses it was before the beat was corrected: the axes' rays pulse on the first beat and the diagonals' on the third, two beats, two seconds and a bit, apart), `beatOffsetSec` where the first beat falls in the decoded file.
    */
-  beatSec: 0.5456,
-  cycleBeats: 8,
+  beatSec: 1.0912,
+  cycleBeats: 4,
   beatOffsetSec: 0.055,
   /** How long a mute takes to go quiet (ms): not the fade-out of a sun that sets, but short enough not to click. */
   muteFadeMs: 120,

@@ -19,7 +19,7 @@ describe("a breath", () => {
 });
 
 describe("the sun's breathing", () => {
-  it("is one slow cycle: eight beats, a bit over four seconds (owner: slower, but still on the rhythm: a whole number of beats)", () => {
+  it("is one slow cycle: four beats, a bit over four seconds (owner: slower, but still on the rhythm: a whole number of beats)", () => {
     expect(CYCLE).toBeGreaterThan(4);
     expect(CYCLE).toBeLessThan(5);
     expect(SUN_MUSIC.cycleBeats % 4).toBe(0);

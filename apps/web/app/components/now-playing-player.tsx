@@ -142,7 +142,7 @@ function Player({ snap }: { snap: NowPlayingSnapshot }) {
           <Icon name={snap.muted ? "play" : "pause"} size="control" />
         </span>
       </button>
-      <div className="np-text min-w-0" title={track.note}>
+      <div className="np-text min-w-0" title={track.note ?? credit}>
         <p className="np-title">{track.titleHref ? <a href={track.titleHref} target="_blank" rel="noopener noreferrer">{track.title}</a> : track.title}</p>
         <AnimatePresence mode="wait" initial={false}>
           {blocked ? (

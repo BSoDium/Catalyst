@@ -1,6 +1,6 @@
 /**
  * The sun's breathing (docs/landing.md, "The sun's music"): while the music plays, the sun's rays, halo and lens flare breathe, very faintly, in time with it. Not a beat visualiser (owner: "softer, more like a breathing
- * motion"): one slow cycle of eight beats (`SUN_MUSIC.cycleBeats`, 4.36 s at the piece's 110 BPM, measured on the file), every part of it a cosine, so that nothing in it has an edge. The cycle begins on the music's first beat:
+ * motion"): one slow cycle of four beats (`SUN_MUSIC.cycleBeats`, 4.36 s at the piece's 55 BPM, measured on the file and corrected by the owner's ear), every part of it a cosine, so that nothing in it has an edge. The cycle begins on the music's first beat:
  *  - the rays along the axes (up, down, left, right) breathe OUT over the first half of the cycle and in over the second, and the diagonal ones do the opposite, so the sun seems to turn its shape rather than to throb;
  *  - the halo and its ring swell and brighten (its tone dips and comes back through the dither, a pixel at a time) a quarter of a cycle behind, so that the three never peak together;
  *  - the lens flare's ghosts (their opacity) breathe in and out a little, `PULSE.flare` of it.

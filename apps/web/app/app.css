@@ -3032,11 +3032,17 @@ body:not(:has([data-slot="site-header"])) .np-root {
 }
 /* The words lie on a soft plate of the page's colour, as the map's labels and credits do, so that they read over the globe's lines */
 .np-text {
-  max-width: 8.5rem; /* (the corner's room: the header's links start at 230 px at 1280; a long credit wraps to a second line) */
+  /* (both lines are ONE line each, whatever the credit: owner. Under 1280 px the header is a row of its own and the words have the width of the screen; from 1280 they have the room the header's links leave, which start at (width - 816) / 2: the disc and its inset are 5 rem, and a longer line is cut with an ellipsis, in full in the title) */
+  max-width: 100%;
   --np-plate: color-mix(in srgb, var(--background) 82%, transparent);
   padding: 0.125rem 0.375rem;
   background: var(--np-plate);
   box-shadow: 0 0 6px 4px var(--np-plate);
+}
+@media (min-width: 1280px) {
+  .np-text {
+    max-width: max(11rem, calc((100vw - 816px) / 2 - 5rem));
+  }
 }
 @supports not (background: color-mix(in srgb, red 50%, transparent)) {
   .np-text {
@@ -3147,6 +3153,12 @@ body:not(:has([data-slot="site-header"])) .np-root {
   font-family: var(--font-mono, ui-monospace, monospace);
   letter-spacing: 0.02em;
 }
+.np-title,
+.np-artist {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
 .np-title {
   margin: 0;
   font-size: 0.8125rem;
@@ -3163,10 +3175,6 @@ body:not(:has([data-slot="site-header"])) .np-root {
 .np-warn {
   white-space: nowrap;
   color: var(--signal-text);
-}
-/* (its one line is longer than the credit's column: the plate widens to it, never in height) */
-.np[data-blocked="true"] .np-text {
-  max-width: 11rem;
 }
 .np-text a {
   color: inherit;
