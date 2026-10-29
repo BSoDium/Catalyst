@@ -79,6 +79,8 @@ export interface HeroMachine {
   restore(): void;
   /** Cancel the timer (the host is going away). The machine stays usable. */
   stop(): void;
+  /** The host is (back) in place: restart the idle clock a `stop` cancelled, as an effect that is cleaned up and run again (React StrictMode) needs. */
+  start(): void;
 }
 
 const browserTimers: HeroTimers = {
@@ -145,5 +147,6 @@ export function createHeroMachine({ idleMs = HERO_IDLE_MS, timers = browserTimer
       set({ state: "rest" });
     },
     stop: clear,
+    start: arm,
   };
 }

@@ -135,7 +135,11 @@ export function useLandingHero(open: boolean): LandingHero {
     openRef.current = open;
     sync();
   }, [open, sync]);
-  useEffect(() => () => machine.stop(), [machine]);
+  // (`start` too: an effect cleaned up and run again, as StrictMode does, would otherwise leave a hero born collapsed with no idle clock, and it would never come back)
+  useEffect(() => {
+    machine.start();
+    return () => machine.stop();
+  }, [machine]);
   // (the search palette's interlude is asked for while a gesture had put the hero away: the caption it plays on comes back)
   useEffect(() => {
     const restore = () => {

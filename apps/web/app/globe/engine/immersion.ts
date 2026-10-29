@@ -35,3 +35,13 @@ export function immersiveZoom(width: number, height: number, fit: number): numbe
   const zoom = silhouetteZoom(radius, height);
   return fit + Math.max(0, zoom - fit) * k;
 }
+
+/**
+ * The zoom the home page's camera opens at, when the page gives no view. A showcase at the start (the hero at rest) opens at the lowest zoom, where the home screen rests;
+ * a page with a showcase that is NOT at rest at the start (the visitor came back from another page: the hero starts collapsed) opens at the world view, the closer zoom a
+ * phone's first gesture would have brought the planet to (the fit on a wide window); a page without a showcase at all opens at the fit.
+ */
+export function openingZoom(a: { showcaseActive: boolean; showcaseOn: boolean; minZoom: number; world: number; fit: number }): number {
+  if (!a.showcaseActive) return a.fit;
+  return a.showcaseOn ? a.minZoom : a.world;
+}

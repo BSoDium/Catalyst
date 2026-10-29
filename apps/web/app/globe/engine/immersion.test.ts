@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { fitZoom, silhouetteRadiusPx } from "./geo";
-import { IMMERSION, immersiveZoom, narrowness } from "./immersion";
+import { IMMERSION, immersiveZoom, narrowness, openingZoom } from "./immersion";
 import { moonAmount } from "./moon";
 import { LANDING, TUNING } from "./tuning";
 
@@ -54,5 +54,25 @@ describe("the effects measured from the world view", () => {
     const world = immersiveZoom(390, 844, fit);
     expect(moonAmount(world, world)).toBe(1);
     expect(moonAmount(world, fit)).toBeLessThan(1);
+  });
+});
+
+describe("the zoom the home page opens at", () => {
+  const phone = { minZoom: 1.06, world: 1.9, fit: 1.34 };
+
+  it("is the lowest zoom when the hero is at rest at the start", () => {
+    expect(openingZoom({ ...phone, showcaseActive: true, showcaseOn: true })).toBe(phone.minZoom);
+  });
+
+  it("is the world view, the closer zoom of a phone, when the visitor came back from another page and the hero starts collapsed", () => {
+    expect(openingZoom({ ...phone, showcaseActive: true, showcaseOn: false })).toBe(phone.world);
+  });
+
+  it("is the whole-globe fit on a page without a showcase", () => {
+    expect(openingZoom({ ...phone, showcaseActive: false, showcaseOn: false })).toBe(phone.fit);
+  });
+
+  it("is the same on a wide window, where the world view is the fit", () => {
+    expect(openingZoom({ minZoom: 1.5, world: 2.18, fit: 2.18, showcaseActive: true, showcaseOn: false })).toBe(2.18);
   });
 });
