@@ -3011,6 +3011,303 @@ h1[tabindex="-1"]:focus-visible {
   background: var(--map-label-plate);
   box-shadow: 0 0 4px 3px var(--map-label-plate);
 }
+/* Where the now-playing player sits (components/now-playing-player.tsx): docked close to the corner (`--np-inset`), under the header on a narrow screen, which needs the corner there, and in the corner from 1280 px, where the header's links leave it room. The disc is as tall as the two lines of the text beside it (`--np-size`). */
+.np-root {
+  --np-size: 2.35rem;
+  --np-inset: 1.25rem;
+  top: calc(var(--navbar-height) + 0.75rem);
+  left: var(--np-inset);
+  max-width: calc(100% - 2 * var(--np-inset));
+  transition: top 300ms var(--ease-standard);
+}
+/* (no header, as on the home screen at rest: the top of the screen) */
+body:not(:has([data-slot="site-header"])) .np-root {
+  top: var(--np-inset);
+}
+@media (min-width: 1280px) {
+  .np-root,
+  body:not(:has([data-slot="site-header"])) .np-root {
+    top: var(--np-inset);
+  }
+}
+/* The words lie on a soft plate of the page's colour, as the map's labels and credits do, so that they read over the globe's lines */
+.np-text {
+  /* (both lines are ONE line each, whatever the credit: owner. Under 1280 px the header is a row of its own and the words have the width of the screen; from 1280 they have the room the header's links leave, which start at (width - 816) / 2: the disc and its inset are 5 rem, and a longer line is cut with an ellipsis, in full in the title) */
+  max-width: 100%;
+  --np-plate: color-mix(in srgb, var(--background) 82%, transparent);
+  padding: 0.125rem 0.375rem;
+  background: var(--np-plate);
+  box-shadow: 0 0 6px 4px var(--np-plate);
+}
+@media (min-width: 1280px) {
+  .np-text {
+    max-width: max(11rem, calc((100vw - 816px) / 2 - 5rem));
+  }
+}
+@supports not (background: color-mix(in srgb, red 50%, transparent)) {
+  .np-text {
+    --np-plate: var(--background);
+  }
+}
+/* The now-playing player (components/now-playing-player.tsx): a record. The sleeve is the disc, which turns while the sound plays; a gloss that does not turn lies over it, so that it reads as a record under a light. */
+.np-disc-btn {
+  position: relative;
+  display: block;
+  flex: none;
+  width: var(--np-size);
+  height: var(--np-size);
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.np-disc-btn::after {
+  /* a 44 px target whatever the disc's size */
+  content: "";
+  position: absolute;
+  inset: min(0px, calc((var(--np-size) - 2.75rem) / 2));
+}
+.np-disc {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 50%;
+  background: #0d0d10;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--foreground) 24%, transparent);
+  animation: np-spin 7s linear infinite;
+  animation-play-state: paused;
+  transition: filter 400ms var(--ease-standard);
+}
+.np[data-spin="true"] .np-disc {
+  animation-play-state: running;
+}
+.np[data-muted="true"] .np-disc {
+  filter: grayscale(0.75) brightness(0.8);
+}
+.np-disc img,
+.np-label {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  user-select: none;
+}
+/* (no sleeve: the sun, on a record's label: the warm ramp of the sun's own light, to violet at the edge) */
+.np-label {
+  background:
+    radial-gradient(circle at 50% 50%, #fff4c8 0 7%, #ffb347 14%, #e8553a 32%, #7a2a6e 58%, #1c1230 82%);
+}
+.np-groove {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: repeating-radial-gradient(circle at 50% 50%, transparent 0 2px, rgb(0 0 0 / 0.07) 2px 3px);
+  mix-blend-mode: multiply;
+}
+.np-hole {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 12%;
+  height: 12%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: var(--background);
+  box-shadow:
+    inset 0 0 0 1px rgb(0 0 0 / 0.45),
+    0 0 0 3px rgb(0 0 0 / 0.35);
+}
+.np-gloss {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  background: conic-gradient(from 35deg, transparent 0 18%, rgb(255 255 255 / 0.34) 24%, transparent 31% 68%, rgb(255 255 255 / 0.2) 74%, transparent 80%);
+  mix-blend-mode: soft-light;
+}
+.np-icon {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgb(0 0 0 / 0.5);
+  color: #fff;
+  opacity: 0;
+  transition: opacity 200ms var(--ease-standard);
+}
+.np-disc-btn:hover .np-icon,
+.np-disc-btn:focus-visible .np-icon,
+.np[data-flash="true"] .np-icon {
+  opacity: 1;
+}
+.np-disc-btn:focus-visible {
+  outline: 2px solid var(--foreground);
+  outline-offset: 3px;
+}
+.np-text {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  letter-spacing: 0.02em;
+}
+.np-title,
+.np-artist {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.np-title {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.1rem;
+  color: var(--foreground);
+}
+.np-artist {
+  margin: 0;
+  font-size: 0.6875rem;
+  line-height: 1rem;
+  color: var(--subtle-foreground);
+}
+/* (the browser has not let the page make sound yet: the credit line asks for a touch, in the accent's blue, and gives way to the credit when it comes) */
+.np-warn {
+  white-space: nowrap;
+  color: var(--signal-text);
+}
+.np-text a {
+  color: inherit;
+  text-decoration: none;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+.np-text a:hover,
+.np-text a:focus-visible {
+  text-decoration-line: underline;
+}
+.np-artist a:hover,
+.np-artist a:focus-visible {
+  color: var(--foreground);
+}
+/*
+ * The halo (owner, 2026-10-29: it replaced the glow, the motes, the rings and the pixelated outline: "a soft colourful radial gradient ... a bit like a CD, soft and subtle, rotating and changing behind the disc when
+ * playing"; components/now-playing-player.tsx): three conic gradients, almost all the page's grey with touches of the sun's yellow and red, each masked to a soft ellipse and turning at its own period, so that the union of
+ * them is a wavy reach. The gradients animate by transform only (compositor-only), and only while the disc plays; the player's frame loop writes `--np-level` and `--np-beat` (the music's level, and its beat), which scale
+ * the whole. It comes out from behind the disc when the music plays and goes back into it when it does not (`scale` 0.55 is under the disc: it is 1.6 discs across); the opacity switches only while it is hidden.
+ */
+.np-halo {
+  /* (almost all of it is the page's own grey, and the yellow and the red of the sun are touches in it: owner, "most of that gradient should basically be gray") */
+  /* how much it swells on a beat (the player writes `--np-beat`, 1 on the beat and 0 half way to the next): the owner's "softly" */
+  --np-beat-amount: 0.06;
+  --np-halo-gray: color-mix(in srgb, var(--foreground) 9%, transparent);
+  --np-halo-yellow: color-mix(in srgb, #ffb938 34%, transparent);
+  --np-halo-red: color-mix(in srgb, #e8452c 30%, transparent);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: calc(var(--np-size) * 1.6);
+  height: calc(var(--np-size) * 1.6);
+  transform: translate(-50%, -50%) scale(0.55);
+  /* (how far out it reaches follows the sun's music's level, `--np-level` 0..1, written by the player's frame loop: the separate `scale` property, so that it does not meet the entrance's) */
+  scale: calc((0.9 + 0.24 * var(--np-level, 0.35)) * (1 + var(--np-beat-amount) * var(--np-beat, 0)));
+  pointer-events: none;
+  opacity: 0;
+  transition:
+    transform 450ms cubic-bezier(0.5, 0, 0.75, 0),
+    opacity 0s 450ms;
+}
+.np[data-spin="true"] .np-halo {
+  transform: translate(-50%, -50%) scale(1);
+  opacity: 1;
+  transition:
+    transform 650ms cubic-bezier(0.2, 0.9, 0.25, 1.1),
+    opacity 0s;
+}
+.np-halo-a,
+.np-halo-b,
+.np-halo-c {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  animation-play-state: paused;
+}
+/* (each layer is masked to an ELLIPSE, soft at its edge, and turns: the union of a few ellipses turning at periods that never meet is a wavy reach that is never twice the same) */
+.np-halo-a {
+  -webkit-mask-image: radial-gradient(ellipse 50% 40% at 50% 50%, #000 48%, transparent 100%);
+  mask-image: radial-gradient(ellipse 50% 40% at 50% 50%, #000 48%, transparent 100%);
+  background: conic-gradient(from 0deg, var(--np-halo-gray) 0 70deg, var(--np-halo-yellow) 115deg, var(--np-halo-gray) 160deg 240deg, var(--np-halo-red) 285deg, var(--np-halo-gray) 330deg 360deg);
+  opacity: 0.9;
+  animation: np-halo-a 9s linear infinite;
+}
+.np-halo-b {
+  -webkit-mask-image: radial-gradient(ellipse 38% 50% at 50% 50%, #000 48%, transparent 100%);
+  mask-image: radial-gradient(ellipse 38% 50% at 50% 50%, #000 48%, transparent 100%);
+  background: conic-gradient(from 90deg, transparent, var(--np-halo-gray) 60deg, transparent 140deg, var(--np-halo-red) 200deg, transparent 250deg, var(--np-halo-gray) 310deg, transparent 360deg);
+  opacity: 0.7;
+  animation: np-halo-b 13s linear infinite;
+}
+.np-halo-c {
+  -webkit-mask-image: radial-gradient(ellipse 46% 33% at 50% 50%, #000 40%, transparent 100%);
+  mask-image: radial-gradient(ellipse 46% 33% at 50% 50%, #000 40%, transparent 100%);
+  background: conic-gradient(from 200deg, var(--np-halo-gray), transparent 100deg, var(--np-halo-yellow) 190deg, transparent 260deg, var(--np-halo-gray) 360deg);
+  opacity: 0.8;
+  animation: np-halo-c 18s linear infinite;
+}
+.np[data-spin="true"] .np-halo-a,
+.np[data-spin="true"] .np-halo-b,
+.np[data-spin="true"] .np-halo-c {
+  animation-play-state: running;
+}
+@keyframes np-halo-a {
+  0% {
+    transform: rotate(0deg) scale(0.94);
+  }
+  50% {
+    transform: rotate(180deg) scale(1.04);
+  }
+  100% {
+    transform: rotate(360deg) scale(0.94);
+  }
+}
+@keyframes np-halo-c {
+  0% {
+    transform: rotate(120deg) scale(0.98);
+  }
+  50% {
+    transform: rotate(-60deg) scale(1.1);
+  }
+  100% {
+    transform: rotate(-240deg) scale(0.98);
+  }
+}
+@keyframes np-halo-b {
+  0% {
+    transform: rotate(360deg) scale(1.04);
+  }
+  50% {
+    transform: rotate(180deg) scale(0.92);
+  }
+  100% {
+    transform: rotate(0deg) scale(1.04);
+  }
+}
+@keyframes np-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .np-disc {
+    animation: none;
+  }
+  .np-halo-a,
+  .np-halo-b,
+  .np-halo-c {
+    animation: none;
+  }
+}
+
 body:has(.landing-hero[data-hero="rest"]) .map-credits {
   background: none;
   box-shadow: none;

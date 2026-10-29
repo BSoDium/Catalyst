@@ -37,6 +37,8 @@ import {
   type LucideIcon,
   type LucideProps,
   Moon,
+  Pause,
+  Play,
   Sparkles,
 } from "lucide-react";
 import type { ComponentType } from "react";
@@ -93,6 +95,8 @@ export const ICONS = {
   info: Info,
   sparkles: Sparkles,
   moon: Moon,
+  play: Play,
+  pause: Pause,
 } as const satisfies Record<string, LucideIcon | CarbonIconType>;
 
 export type IconName = keyof typeof ICONS;

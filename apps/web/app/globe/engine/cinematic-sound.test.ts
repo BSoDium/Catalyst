@@ -37,6 +37,7 @@ function fakeContext(state: "running" | "suspended" = "running", resume: "ok" | 
       log.push("stop");
     },
   };
+  let made = 0;
   const ctx: ContextLike & { time: number } = {
     state,
     time: 10,
@@ -49,7 +50,8 @@ function fakeContext(state: "running" | "suspended" = "running", resume: "ok" | 
       ctx.state = "running";
       return Promise.resolve();
     },
-    createGain: () => gainNode,
+    // (the first is the sound's envelope, the second the visitor's mute: a node of its own, whose ramps are not the envelope's)
+    createGain: () => (made++ === 0 ? gainNode : { gain: { value: 1, cancelScheduledValues: () => undefined, setValueAtTime: () => undefined, linearRampToValueAtTime: () => undefined }, connect: () => undefined, disconnect: () => undefined }),
     createBufferSource: () => source,
   };
   return { ctx, gainNode, source, log, ramps };

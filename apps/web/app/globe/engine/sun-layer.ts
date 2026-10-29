@@ -14,6 +14,7 @@ import type { GlobeTheme } from "./colors";
 import { BAYER4 } from "./sky";
 import { SUN } from "./moon";
 import { FX } from "./fx";
+import { PULSE, type SunPulse } from "./sun-pulse";
 import { FlareLayer, WARM_GLSL, rayStart, haloClear, sunCrescent, type FlareFrame } from "./sun-flare";
 
 const VERTEX = /* glsl */ `
@@ -28,7 +29,7 @@ const f = (n: number) => n.toFixed(3);
 const vec = (c: readonly number[]) => `vec3(${c.map(f).join(", ")})`;
 
 const FRAGMENT = /* glsl */ `
-  uniform vec2 uCentre; uniform float uR; uniform vec3 uBg; uniform vec3 uInk; uniform float uAmt; uniform float uLight; uniform float uHalo; uniform float uRing; uniform float uSoft; uniform float uK;
+  uniform vec2 uCentre; uniform float uR; uniform vec3 uBg; uniform vec3 uInk; uniform float uAmt; uniform float uLight; uniform float uHalo; uniform float uRing; uniform float uSoft; uniform float uK; uniform float uDip;
   ${WARM_GLSL}
   const float BAYER[16] = float[16](${BAYER4.map((n) => `${n}.0`).join(", ")});
   void main() {
@@ -44,6 +45,8 @@ const FRAGMENT = /* glsl */ `
     ivec2 c = ivec2(mod(floor(gl_FragCoord.xy), 4.0));
     float th = (BAYER[c.y * 4 + c.x] + 0.5) / 16.0;
     // (uSoft: with the sun hidden the soft halo is far softer, the sun's coming and no more: SUN.cover.hidden of it is left; whole while the sun is in view)
+    // (the music's breath: the halo's tone is taken DOWN by up to uDip before it is cut into steps, so that the pixels of the flat zone round the disc, which a change of the whole tone would send across a step of the ramp all at once, change one at a time through the dither, as the rest of the halo's do)
+    t = max(t - uDip, 0.0);
     ink = floor(t * ${f(SUN.haloSteps)} + th) / ${f(SUN.haloSteps)} * ${f(SUN.glow)} * uSoft;
     if (r >= 1.0) {
       // the ring of light on the halo (it goes as the planet covers the sun, as the halo does: uHalo): a sharp inside edge and a smooth outside, a little brighter than the halo under it
@@ -81,6 +84,7 @@ const material = () =>
       uHalo: { value: 1 },
       uRing: { value: 1 },
       uSoft: { value: 1 },
+      uDip: { value: 0 },
       uK: { value: 1 },
       uSet: { value: 0 },
     },
@@ -169,6 +173,8 @@ export interface SunFrame {
   py?: number;
   /** How far the sun's centre is outside the planet's limb, radians (`sunRise`, engine/sun-flare.ts): what is left of the sun and its halo are measured from it. Absent: nothing in the way. */
   rise?: number;
+  /** The music's beat in the halo and the rays (`sunPulse`, engine/sun-pulse.ts). Absent: none. */
+  pulse?: SunPulse;
 }
 
 /** The sun's disc radius on the buffer, px: a fixed angle at the camera's focal length, with a floor. */
@@ -265,7 +271,7 @@ export class SunLayer {
     // the lens flare comes out of the same centre, as bright as the share of the sun that is left (on the light page whole, until the sun is gone: it does not dim, only the sun's size follows the crescent)
     const rayStartPx = rayStart(sr, cres.area, cres.width, SUN.cover.disc);
     let flaring = false;
-    if (FX.on.flare) flaring = this.flare.sync({ bufW: f.bufW, bufH: f.bufH, x: f.ahead ? bx : f.x, y: f.ahead ? by : f.y, ahead: f.ahead, amount: f.amount, visible: this.dark ? cres.area : Math.sqrt(cres.area), rayDim: this.dark ? undefined : 1, r: rayStartPx, size: Math.sqrt(cres.area), set: (1 - halo) * SUN.cover.redden } satisfies FlareFrame);
+    if (FX.on.flare) flaring = this.flare.sync({ bufW: f.bufW, bufH: f.bufH, x: f.ahead ? bx : f.x, y: f.ahead ? by : f.y, ahead: f.ahead, amount: f.amount, visible: this.dark ? cres.area : Math.sqrt(cres.area), rayDim: this.dark ? undefined : 1, r: rayStartPx, size: Math.sqrt(cres.area), pulse: f.pulse, set: (1 - halo) * SUN.cover.redden } satisfies FlareFrame);
     else this.flare.hide();
     if (!p) return flaring || blob;
     const u = this.mat.uniforms;
@@ -273,7 +279,7 @@ export class SunLayer {
     (u.uCentre!.value as Vector2).set(bx, by);
     (u.uBuf!.value as Vector2).set(f.bufW, f.bufH);
     u.uR!.value = unit;
-    u.uExt!.value = p.r * (1 + SUN.halo) + 1;
+    u.uExt!.value = p.r * (1 + SUN.halo) * (1 + PULSE.halo) + 1;
     u.uAmt!.value = f.amount;
     u.uHalo!.value = 1 - SUN.cover.halo * (1 - halo);
     // the lens's ring goes with the sun's visible share: whole above `SUN.ring.fade[1]` of it, gone when it is hidden
@@ -284,8 +290,10 @@ export class SunLayer {
     // the halo is in proportion to the sun that is left: its reach goes with the sun's visible radius (the root of its area), its light with the same share, so that it is gone when the sun is
     const k = Math.sqrt(cres.area);
     // (in units of `unit`: the reach is still SUN.halo disc radii times k)
-    u.uK!.value = Math.max(k * (sr / unit), 1e-3);
+    u.uK!.value = Math.max(k * (sr / unit), 1e-3) * (1 + PULSE.halo * (f.pulse?.gain ?? 1) * (f.pulse?.breath ?? 0));
     u.uSoft!.value = SUN.cover.hidden + (1 - SUN.cover.hidden) * k;
+    // (as audible as the music is, less how far the breath has come up: it is 0 with no music, and a whole breath, up, is 0 too)
+    u.uDip!.value = (PULSE.dip / SUN.haloSteps) * (f.pulse?.gain ?? 1) * Math.max(0, (f.pulse?.amount ?? 0) - (f.pulse?.breath ?? 0));
     u.uSet!.value = (1 - halo) * SUN.cover.halo;
     return true;
   }

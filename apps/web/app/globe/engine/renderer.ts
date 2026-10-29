@@ -87,6 +87,8 @@ import { FpsOverlay } from "./fps-overlay";
 import { fromViewState } from "./view";
 import { markerShown } from "./visibility";
 import { perfEnd, perfStart } from "./perf";
+import { sunMusic } from "./sun-music";
+import { sunPulse } from "./sun-pulse";
 
 // Our ShaderMaterials write raw sRGB values and there is no lighting, so skip Three's linear-sRGB conversion;
 // otherwise ink and background drift away from the CSS colours.
@@ -405,6 +407,11 @@ export class GlobeRenderer {
     this.cleanups.push(() => ro.disconnect());
     this.cleanups.push(watchDevicePixelRatio(() => this.resize(true)));
     this.listen(document, "visibilitychange", () => this.setHidden(document.hidden));
+    // The sun's music (engine/sun-music.ts) follows the sun's glare; only a globe with a sun has one.
+    if (this.globe.sun) {
+      sunMusic.attach();
+      this.cleanups.push(() => sunMusic.detach());
+    }
     // Any input anywhere on the page restarts the idle clock and stops the idle rotation (passive: nothing here may delay a gesture).
     for (const type of ["pointerdown", "pointermove", "pointerup", "pointercancel", "wheel", "touchstart", "keydown"]) {
       window.addEventListener(type, this.onInput, { passive: true, capture: true });
@@ -737,6 +744,7 @@ export class GlobeRenderer {
   setSuspended(on: boolean) {
     if (on === this.suspended) return;
     this.suspended = on;
+    this.syncSunMusic();
     this.caption?.setPaused(this.hidden || this.lost || this.suspended);
     // Nothing of the caption may keep the frame loop alive while the street map owns the view: its timed things run to their end now.
     if (on) this.caption?.settle();
@@ -1156,6 +1164,7 @@ export class GlobeRenderer {
 
   private setHidden(hidden: boolean) {
     this.hidden = hidden;
+    this.syncSunMusic();
     this.governor.reset(performance.now());
     this.capLastRaf = 0;
     this.caption?.setPaused(this.hidden || this.lost || this.suspended);
@@ -1175,6 +1184,7 @@ export class GlobeRenderer {
 
   private onContextLost() {
     this.lost = true;
+    this.syncSunMusic();
     this.caption?.setPaused(true);
     // (the second canvas must not sit over the context-lost notice with its last frame)
     this.caption?.hideCrisp();
@@ -1352,9 +1362,14 @@ export class GlobeRenderer {
     return !!this.moonSample?.onScreen && this.moonRunning && !this.suspended;
   }
 
-  /** Something wants the display's own frames, not the idle rotation's ten a second: the caption moving, the moon in the picture. */
+  /** The sun's rays and halo are following the music's beat: a frame for each, while it sounds and the sun is in the picture. */
+  private get sunPulsing(): boolean {
+    return !this.reduced && !this.suspended && (this.globe.sun?.glare ?? 0) > 0 && sunMusic.pulse() !== null;
+  }
+
+  /** Something wants the display's own frames, not the idle rotation's ten a second: the caption moving, the moon in the picture, the sun's pulse. */
   private get wantsDisplayRate(): boolean {
-    return (this.caption?.animating ?? false) || this.moonWantsFrames;
+    return (this.caption?.animating ?? false) || this.moonWantsFrames || this.sunPulsing;
   }
 
   /** The orbit's angle for this frame, advancing its clock by the time since the last one while it may run. */
@@ -1400,6 +1415,15 @@ export class GlobeRenderer {
     }
   }
 
+  /**
+   * The sun\'s music is as loud as the sun is in the picture, and silent while the globe is not what the visitor is seeing (the street map owns the view, the tab is behind, the context is lost) or the interlude has
+   * its own sound (the sun is at rest in it, in the picture, and two pieces of music at once would be noise).
+   */
+  private syncSunMusic() {
+    const shown = !this.suspended && !this.hidden && !this.lost && !this.inInterlude && !this.interludeOn;
+    sunMusic.setGlare(shown ? (this.globe.sun?.glare ?? 0) : 0);
+  }
+
   private sunV = new Vector3();
   /** The sun in the camera's frame and the night shown, as of the last frame: the ring of type is lit by them. */
   private sunView: [number, number, number] = [0, 0, 1];
@@ -1420,7 +1444,10 @@ export class GlobeRenderer {
     const ahead = clip.w > 1e-4;
     // (where the planet's centre is on the buffer: the crescent's centre of mass lies on the line from it through the sun)
     const pc = this.planetV.set(0, 0, 0).project(cam);
+    // (the music's beat in the sun's rays and halo, while it sounds and the visitor has not asked for less motion)
+    const beat = this.reduced ? null : sunMusic.pulse();
     sun.sync({
+      pulse: beat ? sunPulse(beat.position, beat.amount, beat.energy) : undefined,
       bufW: this.bufW,
       bufH: this.bufH,
       x: ahead ? (clip.x / clip.w * 0.5 + 0.5) * this.bufW : 0,
@@ -1679,7 +1706,7 @@ export class GlobeRenderer {
     // A timed transition of the boxes or of the borders (engine/fade.ts) that has not reached its end keeps the loop going, camera or not.
     // While the street map owns the view the globe draws nothing and its transitions are not advanced here (the street engine runs the
     // boxes' own), so they must not keep this loop spinning.
-    const more = moving || fading || this.moonWantsFrames || this.irisMoving || (!this.suspended && (this.lod.animating || this.globe.animating || !!this.opts.labelsAnimating?.()));
+    const more = moving || fading || this.moonWantsFrames || this.sunPulsing || this.irisMoving || (!this.suspended && (this.lod.animating || this.globe.animating || !!this.opts.labelsAnimating?.()));
     if (more) this.keepGoing(moving);
     else if (this.spin.spinning) this.chainSpin();
     else this.armSpin();
@@ -1878,7 +1905,7 @@ export class GlobeRenderer {
     this.opts.onFrame();
     perfEnd("frame.callbacks", t1);
     // Whoever drew this frame (the tick, a resize, a check), the transitions run to their end, and the idle rotation's chain (cancelled above) goes on.
-    if (this.lod.animating || this.globe.animating || (this.caption?.animating ?? false) || this.moonWantsFrames || this.opts.labelsAnimating?.()) this.keepGoing(false);
+    if (this.lod.animating || this.globe.animating || (this.caption?.animating ?? false) || this.moonWantsFrames || this.sunPulsing || this.opts.labelsAnimating?.()) this.keepGoing(false);
     else if (this.spin.spinning) this.chainSpin();
     this.armCaption();
   }
@@ -2490,6 +2517,7 @@ export class GlobeRenderer {
     this.syncTagline();
     this.syncMoon(cam, d, zoom, now);
     this.syncSun(cam, ns, d);
+    this.syncSunMusic();
     this.irisTarget = FX.on.iris && (this.theme.scheme === "light" || this.globe.sky) ? (this.globe.sun?.glare ?? 0) : 0;
     this.stepIris(now);
     this.globe.sky?.setExposure(this.theme.scheme === "dark" ? this.iris : 0);
