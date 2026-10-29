@@ -6,6 +6,7 @@ import { AttributionSlot } from "~/components/attribution-slot";
 import { DetailPanel, type OpenIntent } from "~/components/detail-panel";
 import { LandingHero } from "~/components/landing-hero";
 import { PlacesNav } from "~/components/places-nav";
+import { SunSoundToggle } from "~/components/sun-sound-toggle";
 import { Globe, placeFraming, ringPhrases, type GlobeInitialView, type GlobeViewState } from "~/globe";
 import { useIsMobile } from "~/hooks/use-is-mobile";
 import { useLandingHero } from "~/hooks/use-landing-hero";
@@ -165,6 +166,8 @@ export default function Shell({ loaderData }: Route.ComponentProps) {
               onInteract={hero.onInteract}
             />
           )}
+          {/* The sun's music, and the switch that turns it off: there once the sun has been in the picture (components/sun-sound-toggle.tsx) */}
+          {globeActive && <SunSoundToggle insetRight={insetRight} />}
           {/* Only the globe needs JavaScript: the lists, the entries and the places are server-rendered pages that read and navigate without it. */}
           <noscript>
             <p className="absolute inset-y-0 left-0 m-0 flex w-full items-center justify-center px-6 text-center text-sm text-muted-foreground md:w-1/2 [&_a]:underline">

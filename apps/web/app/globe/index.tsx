@@ -5,6 +5,7 @@ export { DEFAULT_VIEW_RADIUS_KM, placeFraming } from "./engine/framing";
 export { noteVisit } from "./engine/visit";
 export { INTERLUDE_STATE_EVENT, prepareInterlude, requestInterlude, RESTORE_HERO_EVENT, type InterludeStateDetail } from "./interlude";
 export { unlockSound } from "./engine/cinematic-sound";
+export { sunMusic } from "./engine/sun-music";
 export { ringPhrases, type RingIdentity } from "./ring-text";
 export type {
   GlobeAttributionProps,

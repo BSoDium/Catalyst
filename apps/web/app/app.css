@@ -3011,6 +3011,12 @@ h1[tabindex="-1"]:focus-visible {
   background: var(--map-label-plate);
   box-shadow: 0 0 4px 3px var(--map-label-plate);
 }
+/* The sound switch (components/sun-sound-toggle.tsx) comes in with the first sun, softly */
+@keyframes sun-sound-in {
+  from {
+    opacity: 0;
+  }
+}
 body:has(.landing-hero[data-hero="rest"]) .map-credits {
   background: none;
   box-shadow: none;

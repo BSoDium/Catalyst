@@ -87,6 +87,7 @@ import { FpsOverlay } from "./fps-overlay";
 import { fromViewState } from "./view";
 import { markerShown } from "./visibility";
 import { perfEnd, perfStart } from "./perf";
+import { sunMusic } from "./sun-music";
 
 // Our ShaderMaterials write raw sRGB values and there is no lighting, so skip Three's linear-sRGB conversion;
 // otherwise ink and background drift away from the CSS colours.
@@ -405,6 +406,11 @@ export class GlobeRenderer {
     this.cleanups.push(() => ro.disconnect());
     this.cleanups.push(watchDevicePixelRatio(() => this.resize(true)));
     this.listen(document, "visibilitychange", () => this.setHidden(document.hidden));
+    // The sun's music (engine/sun-music.ts) follows the sun's glare; only a globe with a sun has one.
+    if (this.globe.sun) {
+      sunMusic.attach();
+      this.cleanups.push(() => sunMusic.detach());
+    }
     // Any input anywhere on the page restarts the idle clock and stops the idle rotation (passive: nothing here may delay a gesture).
     for (const type of ["pointerdown", "pointermove", "pointerup", "pointercancel", "wheel", "touchstart", "keydown"]) {
       window.addEventListener(type, this.onInput, { passive: true, capture: true });
@@ -737,6 +743,7 @@ export class GlobeRenderer {
   setSuspended(on: boolean) {
     if (on === this.suspended) return;
     this.suspended = on;
+    this.syncSunMusic();
     this.caption?.setPaused(this.hidden || this.lost || this.suspended);
     // Nothing of the caption may keep the frame loop alive while the street map owns the view: its timed things run to their end now.
     if (on) this.caption?.settle();
@@ -1156,6 +1163,7 @@ export class GlobeRenderer {
 
   private setHidden(hidden: boolean) {
     this.hidden = hidden;
+    this.syncSunMusic();
     this.governor.reset(performance.now());
     this.capLastRaf = 0;
     this.caption?.setPaused(this.hidden || this.lost || this.suspended);
@@ -1175,6 +1183,7 @@ export class GlobeRenderer {
 
   private onContextLost() {
     this.lost = true;
+    this.syncSunMusic();
     this.caption?.setPaused(true);
     // (the second canvas must not sit over the context-lost notice with its last frame)
     this.caption?.hideCrisp();
@@ -1398,6 +1407,15 @@ export class GlobeRenderer {
       this.iris = settled;
       this.applyClear();
     }
+  }
+
+  /**
+   * The sun\'s music is as loud as the sun is in the picture, and silent while the globe is not what the visitor is seeing (the street map owns the view, the tab is behind, the context is lost) or the interlude has
+   * its own sound (the sun is at rest in it, in the picture, and two pieces of music at once would be noise).
+   */
+  private syncSunMusic() {
+    const shown = !this.suspended && !this.hidden && !this.lost && !this.inInterlude && !this.interludeOn;
+    sunMusic.setGlare(shown ? (this.globe.sun?.glare ?? 0) : 0);
   }
 
   private sunV = new Vector3();
@@ -2490,6 +2508,7 @@ export class GlobeRenderer {
     this.syncTagline();
     this.syncMoon(cam, d, zoom, now);
     this.syncSun(cam, ns, d);
+    this.syncSunMusic();
     this.irisTarget = FX.on.iris && (this.theme.scheme === "light" || this.globe.sky) ? (this.globe.sun?.glare ?? 0) : 0;
     this.stepIris(now);
     this.globe.sky?.setExposure(this.theme.scheme === "dark" ? this.iris : 0);

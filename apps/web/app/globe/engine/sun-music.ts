@@ -1,0 +1,406 @@
+/**
+ * The music of the sun (docs/landing.md, "The sun's music"): "Gabriel", a slow, eerie piece (2 min 22 s), plays FAINTLY while the sun is in the picture and lets go while it is not, as the planet covers it
+ * or the camera turns away from it. A PROTOTYPE, waiting for the artist's answer: the file is `public/audio/gabriel.mp3` and is NOT in the repository (see `public/audio/README.md`); without it the
+ * music is simply not there (`status` "failed": no sound, and no button either).
+ *
+ * It is one piece the sun comes back to, not a sample started again: the visitor's place in it is kept while the sun is away (`position`), and the next time the sun comes round it takes up from there
+ * (the first time, from the start). Its end is joined to its beginning with a crossfade made once, when the file is decoded (`loopable`), so that the loop is a continuous sound, not a seam; a
+ * buffer source that loops is gapless.
+ *
+ * Like the interlude's sound (engine/cinematic-sound.ts) it is played through the WEB AUDIO API and not an `<audio>` element, on purpose: an element is a MEDIA the system knows about (the media keys, the
+ * Now Playing widget and the headphones' button can pause it), and this is the page's atmosphere, not a track to be controlled from outside. A buffer source in an `AudioContext` is not registered anywhere
+ * (a test holds that: no element and no media session in this file).
+ *
+ * The visitor can turn it off (`setMuted`, the button in `components/sun-sound-toggle.tsx`; kept in localStorage; `?mute` starts a visit muted without keeping it). It is on by default, but a browser lets
+ * sound start only after a gesture on the page, so until the first touch it is silent, and it starts when the sun is in view and the page has been touched.
+ *
+ * The signal is the sun's `glare` (engine/sun-layer.ts: how much of the sun's light is in the picture, 0..1, the zoom's share times the root of what the planet leaves of the disc), read through two
+ * thresholds (`glareOn`, `glareOff`) so that a sun on the edge of the planet's limb does not make the music stutter; the fades do the rest.
+ */
+
+export const SUN_MUSIC = {
+  url: "/audio/gabriel.mp3",
+  /** The loudness, the gain of a file that is about -11 LUFS (loud) with a range of 18 LU: its loudest passages come out near -32 dBFS, as faint as the interlude's sound (cinematic-sound.ts), its quietest near -48. */
+  volume: 0.18,
+  /** How much of the end is laid over the beginning to make the loop, seconds (the file's last six seconds are its fade-out: the overlap is the tail dying under the head rising). */
+  crossfadeSec: 10,
+  /** Coming in and going out, for the whole way from silence to `volume` (a part of the way takes a part of the time). */
+  fadeInMs: 3200,
+  fadeOutMs: 2600,
+  /** The shortest a fade takes, however little of the way is left (ms). */
+  minFadeMs: 400,
+  /** The sun is in view above `glareOn` and out of it under `glareOff` (between: as it was). */
+  glareOn: 0.03,
+  glareOff: 0.008,
+  storageKey: "sun-music-muted",
+} as const;
+
+/** How far a fade has got, 0..1 in, 0..1 out: a smoothstep, so that a fade starts and ends without a corner. */
+const ease = (t: number) => {
+  const x = Math.min(1, Math.max(0, t));
+  return x * x * (3 - 2 * x);
+};
+
+/** A fade from one gain to another as the array `setValueCurveAtTime` takes. Pure. */
+export function fadeCurve(from: number, to: number, points = 64): Float32Array {
+  const out = new Float32Array(points);
+  for (let i = 0; i < points; i++) out[i] = from + (to - from) * ease(i / (points - 1));
+  return out;
+}
+
+/**
+ * The channels of a piece made so that played in a loop it has no seam: the last `fadeSamples` are laid over the first, the tail going out as the head comes in (equal power, so the level holds),
+ * and the loop is that much shorter. The loop's end is the original, untouched, up to the sample before the tail begins, and its beginning is that tail, so that one follows the other as in the original.
+ * Pure.
+ */
+export function loopable(channels: readonly Float32Array[], fadeSamples: number): Float32Array[] {
+  const n = channels[0]?.length ?? 0;
+  const x = Math.max(0, Math.min(Math.floor(fadeSamples), Math.floor(n / 2)));
+  const len = n - x;
+  return channels.map((src) => {
+    const out = new Float32Array(len);
+    out.set(src.subarray(0, len));
+    for (let i = 0; i < x; i++) {
+      const a = ((i + 0.5) / x) * (Math.PI / 2);
+      out[i] = src[i]! * Math.sin(a) + src[len + i]! * Math.cos(a);
+    }
+    return out;
+  });
+}
+
+/** Whether a glare means the sun is in view, given whether it was (the two thresholds: a sun on the edge does not flicker). Pure. */
+export function sunInView(glare: number, was: boolean): boolean {
+  return glare >= SUN_MUSIC.glareOn || (was && glare > SUN_MUSIC.glareOff);
+}
+
+/** Where the piece is `elapsed` seconds after it was at `from`, in a loop `length` seconds long. Pure. */
+export function loopPosition(from: number, elapsed: number, length: number): number {
+  if (!(length > 0)) return 0;
+  return (((from + elapsed) % length) + length) % length;
+}
+
+/** The parts of the Web Audio API this needs (a test gives fakes). */
+export interface MusicParam {
+  cancelScheduledValues(t: number): void;
+  setValueAtTime(v: number, t: number): void;
+  setValueCurveAtTime(values: Float32Array, t: number, duration: number): void;
+}
+export interface MusicGain {
+  gain: MusicParam;
+  connect(node: unknown): void;
+  disconnect(): void;
+}
+export interface MusicSource {
+  buffer: unknown;
+  loop: boolean;
+  connect(node: unknown): void;
+  disconnect(): void;
+  start(when?: number, offset?: number): void;
+  stop(when?: number): void;
+}
+export interface MusicContext {
+  state: string;
+  currentTime: number;
+  destination: unknown;
+  onstatechange?: (() => void) | null;
+  resume(): Promise<void>;
+  createGain(): MusicGain;
+  createBufferSource(): MusicSource;
+}
+export interface MusicDeps {
+  /** The audio context (opens the device). */
+  context(): MusicContext;
+  /** The file's bytes. */
+  fetchBytes(url: string): Promise<ArrayBuffer>;
+  /** The bytes decoded to channels, without a device. */
+  decode(bytes: ArrayBuffer): Promise<{ channels: Float32Array[]; sampleRate: number }>;
+  /** Channels to a buffer the context plays. */
+  makeBuffer(channels: Float32Array[], sampleRate: number): unknown;
+}
+
+const browserDeps: MusicDeps = {
+  context: () => {
+    const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    return new Ctor({ latencyHint: "playback" }) as unknown as MusicContext;
+  },
+  fetchBytes: (url) => fetch(url).then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(`${r.status}`)))),
+  // (an offline context decodes without opening a device; the buffer it makes plays in any context)
+  decode: async (bytes) => {
+    const b = await new OfflineAudioContext(2, 44100, 44100).decodeAudioData(bytes);
+    return { channels: Array.from({ length: b.numberOfChannels }, (_, i) => b.getChannelData(i)), sampleRate: b.sampleRate };
+  },
+  makeBuffer: (channels, sampleRate) => {
+    const b = new OfflineAudioContext(1, 1, sampleRate).createBuffer(channels.length, channels[0]!.length, sampleRate);
+    channels.forEach((c, i) => b.copyToChannel(c as Float32Array<ArrayBuffer>, i));
+    return b;
+  },
+};
+
+export type MusicStatus = "idle" | "loading" | "ready" | "failed";
+
+/** What the interface reads: whether the visitor has turned the music off, whether the sun has been in view this visit (the button appears then), and whether there is a music to turn off. */
+export interface MusicSnapshot {
+  readonly muted: boolean;
+  readonly sunSeen: boolean;
+  readonly status: MusicStatus;
+}
+
+export class SunMusic {
+  private snapshot: MusicSnapshot = { muted: false, sunSeen: false, status: "idle" };
+  private listeners = new Set<() => void>();
+  private ctx: MusicContext | null = null;
+  private master: MusicGain | null = null;
+  private src: MusicSource | null = null;
+  private loopSec = 0;
+  private buffer: unknown = null;
+  /** Where the piece is, seconds into the loop, as of `srcAt` (the context's time) when the sound is running, or as it was left when it is not. */
+  private pos = 0;
+  private srcAt = 0;
+  private fade: { from: number; to: number; at: number; dur: number } | null = null;
+  private stopTimer: ReturnType<typeof setTimeout> | null = null;
+  private inView = false;
+  private hidden = false;
+  private attached = false;
+  private off: (() => void)[] = [];
+
+  constructor(private deps: MusicDeps = browserDeps) {}
+
+  /* ------------------------------- what the interface reads ------------------------------- */
+
+  subscribe = (fn: () => void): (() => void) => {
+    this.listeners.add(fn);
+    return () => void this.listeners.delete(fn);
+  };
+  getSnapshot = (): MusicSnapshot => this.snapshot;
+
+  private set(patch: Partial<MusicSnapshot>) {
+    const next = { ...this.snapshot, ...patch };
+    if (next.muted === this.snapshot.muted && next.sunSeen === this.snapshot.sunSeen && next.status === this.snapshot.status) return;
+    this.snapshot = next;
+    this.listeners.forEach((l) => l());
+  }
+
+  /** The piece's place in its loop now, seconds (a test reads it). */
+  position(): number {
+    return this.src && this.ctx ? loopPosition(this.pos, this.ctx.currentTime - this.srcAt, this.loopSec) : this.pos;
+  }
+
+  /* ---------------------------------------- the page's ---------------------------------------- */
+
+  /**
+   * Begin listening to the page: the visitor's choice (kept, or `?mute`), the tab going behind, and the first gesture (the context is made and run then, and run again at every one until it is running:
+   * a phone's browser lets a context start only inside a touch). Once; undone by `detach`.
+   */
+  attach(): void {
+    if (this.attached || typeof window === "undefined") return;
+    this.attached = true;
+    let muted = false;
+    try {
+      muted = localStorage.getItem(SUN_MUSIC.storageKey) === "1" || new URLSearchParams(location.search).has("mute");
+    } catch {
+      /* no storage: on */
+    }
+    this.hidden = document.hidden;
+    this.set({ muted });
+    const onVisibility = () => {
+      this.hidden = document.hidden;
+      this.reconcile();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    this.off.push(() => document.removeEventListener("visibilitychange", onVisibility));
+    const events = ["pointerdown", "touchend", "keydown", "click"] as const;
+    const onGesture = () => this.unlock();
+    events.forEach((e) => window.addEventListener(e, onGesture, { capture: true, passive: true }));
+    this.off.push(() => events.forEach((e) => window.removeEventListener(e, onGesture, { capture: true })));
+  }
+
+  /** Let go of the page and of the sound (the globe is gone). The visitor's place in the piece is kept. */
+  detach(): void {
+    this.setGlare(0);
+    if (!this.attached) return;
+    this.attached = false;
+    this.off.forEach((f) => f());
+    this.off = [];
+  }
+
+  /**
+   * Called inside a gesture of the visitor's: gets the context running (the one moment a phone's browser lets it) and, the first time, begins to fetch the piece, so that it is ready by the time the sun comes
+   * round. The context is made now only if the sun is in view (a device opened for nothing stalls the main thread for 150 ms or more); else in an idle moment.
+   */
+  unlock(): void {
+    this.load();
+    if (this.ctx) return this.run();
+    const make = () => this.run();
+    if (this.inView && !this.snapshot.muted) make();
+    else if (typeof requestIdleCallback === "function") requestIdleCallback(make, { timeout: 1500 });
+    else setTimeout(make, 200);
+  }
+
+  private context(): MusicContext | null {
+    if (!this.ctx) {
+      try {
+        this.ctx = this.deps.context();
+      } catch {
+        return null;
+      }
+    }
+    return this.ctx;
+  }
+
+  /** Ask the context to run (made if need be) and, when it does, see to the music. */
+  private run() {
+    const c = this.context();
+    if (!c) return;
+    if (c.state === "running") return this.reconcile();
+    void c
+      .resume()
+      .catch(() => undefined)
+      .then(() => this.reconcile());
+  }
+
+  /* --------------------------------------- the choice --------------------------------------- */
+
+  setMuted(muted: boolean): void {
+    try {
+      if (muted) localStorage.setItem(SUN_MUSIC.storageKey, "1");
+      else localStorage.removeItem(SUN_MUSIC.storageKey);
+    } catch {
+      /* not kept */
+    }
+    this.set({ muted });
+    if (!muted) this.unlock();
+    this.reconcile();
+  }
+
+  /** The sun's glare in the picture now, 0..1 (every frame the camera moves in; nothing is done unless it crosses a threshold). */
+  setGlare(glare: number): void {
+    const now = sunInView(glare, this.inView);
+    if (now === this.inView) return;
+    this.inView = now;
+    if (now) {
+      this.set({ sunSeen: true });
+      this.load();
+    }
+    this.reconcile();
+  }
+
+  /* --------------------------------------- the piece --------------------------------------- */
+
+  /** Fetch and decode the piece (once), and make its loop. Skipped for a visitor who has turned it off, and where the connection saves data. */
+  private load() {
+    if (this.snapshot.status !== "idle" || this.snapshot.muted) return;
+    try {
+      const conn = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
+      if (conn?.saveData) return this.set({ status: "failed" });
+    } catch {
+      /* no connection info */
+    }
+    this.set({ status: "loading" });
+    this.deps
+      .fetchBytes(SUN_MUSIC.url)
+      .then((bytes) => this.deps.decode(bytes))
+      .then(({ channels, sampleRate }) => {
+        const loop = loopable(channels, Math.round(SUN_MUSIC.crossfadeSec * sampleRate));
+        this.loopSec = loop[0]!.length / sampleRate;
+        this.buffer = this.deps.makeBuffer(loop, sampleRate);
+        this.set({ status: "ready" });
+        this.reconcile();
+      })
+      .catch(() => {
+        // (the file is not there, or cannot be decoded: no music, and nothing else)
+        this.buffer = null;
+        this.set({ status: "failed" });
+      });
+  }
+
+  /** Whether the music should be sounding now. */
+  private get wanted(): boolean {
+    return this.inView && !this.snapshot.muted && !this.hidden && this.snapshot.status === "ready";
+  }
+
+  /** The gain now, as the last fade has it (the audio param's own value is not readable while it moves, in every browser). */
+  private level(t: number): number {
+    const f = this.fade;
+    if (!f) return 0;
+    return f.from + (f.to - f.from) * ease((t - f.at) / f.dur);
+  }
+
+  /** Bring the sound to what is wanted: in if the sun is in view, out if it is not. */
+  private reconcile() {
+    if (this.wanted) this.rise();
+    else this.fall();
+  }
+
+  private rise() {
+    const c = this.ctx;
+    if (!c || c.state !== "running" || !this.buffer) return; // (the gesture that runs the context comes back here)
+    if (!this.master) {
+      this.master = c.createGain();
+      this.master.gain.setValueAtTime(0, c.currentTime);
+      this.master.connect(c.destination);
+      c.onstatechange = () => this.reconcile();
+    }
+    if (this.stopTimer !== null) {
+      clearTimeout(this.stopTimer);
+      this.stopTimer = null;
+    }
+    if (!this.src) {
+      // from where it was left: the piece goes on, it does not begin again
+      const s = c.createBufferSource();
+      s.buffer = this.buffer;
+      s.loop = true;
+      s.connect(this.master);
+      s.start(c.currentTime, this.pos);
+      this.src = s;
+      this.srcAt = c.currentTime;
+    }
+    this.fadeTo(SUN_MUSIC.volume, SUN_MUSIC.fadeInMs);
+  }
+
+  private fall() {
+    const c = this.ctx;
+    if (!c || !this.src) return;
+    if (this.stopTimer !== null) return; // (already going out)
+    const ms = this.fadeTo(0, SUN_MUSIC.fadeOutMs);
+    // the place it is left at is where the sound reaches silence, whenever the timer gets to run
+    const endAt = c.currentTime + ms / 1000;
+    this.stopTimer = setTimeout(() => {
+      this.stopTimer = null;
+      this.halt(endAt);
+    }, ms + 60);
+  }
+
+  /** Fade the master gain to `to`; the time it takes is the share of the way left, in the full time. Returns it, ms. */
+  private fadeTo(to: number, fullMs: number): number {
+    const c = this.ctx!;
+    const g = this.master!.gain;
+    const now = c.currentTime;
+    // (already on its way there, or there: leave it be)
+    if (this.fade?.to === to) return Math.max(0, (this.fade.at + this.fade.dur - now) * 1000);
+    const from = this.level(now);
+    const ms = Math.max(SUN_MUSIC.minFadeMs, (fullMs * Math.abs(to - from)) / SUN_MUSIC.volume);
+    g.cancelScheduledValues(now);
+    g.setValueAtTime(from, now);
+    g.setValueCurveAtTime(fadeCurve(from, to), now, ms / 1000);
+    this.fade = { from, to, at: now, dur: ms / 1000 };
+    return ms;
+  }
+
+  /** Stop the source, silent by now, keeping the place in the piece it was at when it went silent (`at`, in the context's time). */
+  private halt(at: number) {
+    const s = this.src;
+    if (!s) return;
+    this.pos = loopPosition(this.pos, at - this.srcAt, this.loopSec);
+    this.src = null;
+    this.fade = null;
+    try {
+      s.stop();
+      s.disconnect();
+    } catch {
+      /* already stopped */
+    }
+  }
+}
+
+/** The page's one music. */
+export const sunMusic = new SunMusic();
