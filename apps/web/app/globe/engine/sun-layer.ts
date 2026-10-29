@@ -15,7 +15,8 @@ import { BAYER4 } from "./sky";
 import { SUN } from "./moon";
 import { FX } from "./fx";
 import { PULSE, type SunPulse } from "./sun-pulse";
-import { FlareLayer, WARM_GLSL, rayStart, haloClear, sunCrescent, type FlareFrame } from "./sun-flare";
+import { smoothstep } from "./geo";
+import { FlareLayer, WARM_GLSL, easeTouch, rayStart, haloClear, sunCrescent, type FlareFrame } from "./sun-flare";
 
 const VERTEX = /* glsl */ `
   uniform vec2 uCentre; uniform float uExt; uniform vec2 uBuf;
@@ -112,7 +113,7 @@ const BLOB_VERTEX = /* glsl */ `
 `;
 
 const BLOB_FRAGMENT = /* glsl */ `
-  uniform vec2 uCentre; uniform float uU; uniform float uI; uniform float uAmt; uniform float uLight;
+  uniform vec2 uCentre; uniform float uU; uniform float uI; uniform float uAmt; uniform float uLight; uniform float uTouch;
   ${WARM_GLSL}
   void main() {
     float rr = length(gl_FragCoord.xy - uCentre) / uU;
@@ -127,7 +128,8 @@ const BLOB_FRAGMENT = /* glsl */ `
     // Once the planet touches the sun (uI under 1), what is dazzling of it is a DISC: a flat, OPAQUE disc of the sun's core colour (the planet does not show through it: nothing is behind it), with a hard edge on the art's pixels (this canvas
     // is the art's own resolution), and its glow round it is in art pixels too (a few levels, dithered, as the halo is). The blend is premultiplied (the output is the light ADDED, alpha how much of what is behind is hidden): with no disc it
     // is the additive blend of the dark page and the normal one of the light page, as before; and the sun clear is exactly as it was, smooth.
-    float touch = 1.0 - smoothstep(0.90, 0.97, uI);
+    // (uTouch: that, eased in time on the CPU)
+    float touch = uTouch;
     float disc = step(rr, ${f(SUN.cover.disc)}) * touch * uAmt;
     // (the lines' own ordered dither, on the art's pixels)
     float ordered = fract(floor(gl_FragCoord.x) * 0.5 + floor(gl_FragCoord.y) * floor(gl_FragCoord.y) * 0.75);
@@ -145,7 +147,7 @@ const BLOB_FRAGMENT = /* glsl */ `
 
 const blobMaterial = () =>
   new ShaderMaterial({
-    uniforms: { uCentre: { value: new Vector2() }, uBuf: { value: new Vector2(1, 1) }, uExt: { value: 1 }, uU: { value: 1 }, uI: { value: 1 }, uAmt: { value: 1 }, uSet: { value: 0 }, uLight: { value: 0 } },
+    uniforms: { uCentre: { value: new Vector2() }, uBuf: { value: new Vector2(1, 1) }, uExt: { value: 1 }, uU: { value: 1 }, uI: { value: 1 }, uTouch: { value: 0 }, uAmt: { value: 1 }, uSet: { value: 0 }, uLight: { value: 0 } },
     vertexShader: BLOB_VERTEX,
     fragmentShader: BLOB_FRAGMENT,
     transparent: true,
@@ -200,6 +202,9 @@ export class SunLayer {
   /** The blur: over the planet, not under it. */
   readonly blob: Mesh;
   private blobMat = blobMaterial();
+  /** The disc's eased state (`easeTouch`) and when it was last eased. */
+  private touch = 0;
+  private touchAt = 0;
 
   constructor(scene: Scene) {
     this.flare = new FlareLayer(scene);
@@ -240,6 +245,10 @@ export class SunLayer {
     const rise = ((f.rise ?? Infinity) * f.focal) / sr;
     const cres = sunCrescent(rise);
     const halo = haloClear(rise);
+    // the disc the planet makes of the sun once it touches it, eased in time (a fast zoom took the limb across in a few frames)
+    const nowMs = performance.now();
+    this.touch = easeTouch(this.touch, 1 - smoothstep(Math.min(1, Math.max(0, (cres.area - 0.9) / 0.07))), (nowMs - this.touchAt) / 1000);
+    this.touchAt = nowMs;
     this.glare = p !== null ? f.amount * Math.sqrt(cres.area) : 0;
     // the crescent's centre of mass: on the line from the planet's centre through the sun, `shift` disc radii from the sun's centre, away from the planet
     let dx = 0;
@@ -265,6 +274,7 @@ export class SunLayer {
       b.uExt!.value = ext;
       b.uU!.value = unit;
       b.uI!.value = cres.area;
+      b.uTouch!.value = this.touch;
       b.uAmt!.value = f.amount;
       b.uSet!.value = (1 - halo) * SUN.cover.redden;
     }
