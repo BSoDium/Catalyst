@@ -306,7 +306,8 @@ describe("the sun's music", () => {
     expect(prefs.getSnapshot()).toMatchObject({ track: { title: "Cinematic piano" }, state: "paused" });
     m.setGlare(0.5);
     m.setMuted(true);
-    expect(prefs.getSnapshot()).toMatchObject({ state: "paused", muted: true });
+    // (muted: the disc stays, with the sun in view, to turn it back on)
+    expect(prefs.getSnapshot()).toMatchObject({ state: "playing", muted: true });
     store.clear();
     const f = await start(fakes({ fail: true }));
     f.m.setGlare(0.5);

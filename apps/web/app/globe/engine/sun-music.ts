@@ -389,9 +389,14 @@ export class SunMusic {
       });
   }
 
+  /** Whether the sun is in view and the music could sound (the visitor's own choice aside: a muted visitor has the disc, to turn it back on, for as long as the sun is in view). */
+  private get present(): boolean {
+    return this.inView && !this.hidden && this.snapshot.status === "ready";
+  }
+
   /** Whether the music should be sounding now. */
   private get wanted(): boolean {
-    return this.inView && !this.muted && !this.hidden && this.snapshot.status === "ready";
+    return this.present && !this.muted;
   }
 
   /** The gain now, as the last fade has it (the audio param's own value is not readable while it moves, in every browser). */
@@ -413,7 +418,7 @@ export class SunMusic {
     const s = this.snapshot;
     if (s.status === "failed") return this.prefs.end(TRACKS.sun.id);
     if (!s.sunSeen) return;
-    this.prefs.set(TRACKS.sun, !this.wanted ? "paused" : this.ctx?.state === "running" ? "playing" : "blocked");
+    this.prefs.set(TRACKS.sun, !this.present ? "paused" : this.ctx?.state === "running" ? "playing" : "blocked");
   }
 
   private rise() {
