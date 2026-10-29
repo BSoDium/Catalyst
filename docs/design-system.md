@@ -351,8 +351,9 @@ accent stays for state. The look of the site is a studio's (heavy typographic wo
 accents, hairline grids, restraint) over the pixel-art globe: the mark is the one geometric shape of that language and it never
 carries texture. Where it is used: the styleguide, and `LogoMark` / `LogoWordmark` for the places that want them (neither is in the header). To change it,
 edit `MARK` in `mark.mjs`, run `pnpm --filter @catalyst/web brand`, paste the new path into `logo-mark.tsx`; the test says when they
-differ. The favicon and the app icons are NOT the mark (2026-10-29, owner): they are the blue-screen frown `:(` turned on its side (`FACE` in `mark.mjs`: the
-owner's handle is BSoDium), white on the blue screen's own blue `#0078d7`, on the same 16 x 16 grid, the same in both colour schemes. Alternatives that were drawn and set aside: a pixel sphere with a dithered shadow side inside a dashed bounding box (the first
+differ. The favicon and the app icons are NOT the mark (2026-10-29, owner): they are the blue-screen frown `:(` turned on its side (`faceSvg` in `mark.mjs`: the
+owner's handle is BSoDium), white on the blue screen's own blue `#0078d7`, on a rounded tile, the same in both colour schemes. Drawn as a smooth vector (two round
+eyes, a round-capped arc), not on the pixel grid: the first version was pixel blocks and read as crude at tab size. Alternatives that were drawn and set aside: a pixel sphere with a dithered shadow side inside a dashed bounding box (the first
 choice: it carried the globe's own look, but its texture is noise at 16 px and it does not sit beside a wordmark); a solid disc with
 a bounding box cut out of it (bold, but a round silhouette like any button); a C-shaped globe holding a place (a monogram that ties the
 mark to the project's first name); a disc with one squared corner (a leaf shape, generic).

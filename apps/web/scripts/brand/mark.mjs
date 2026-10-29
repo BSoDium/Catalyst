@@ -55,37 +55,27 @@ export function markSvg({ px = 32, fill = null, rows = MARK } = {}) {
 `;
 }
 
-// The favicon and the app icons are NOT the mark: they are the blue-screen frown ":(" turned on its side (the owner's handle, BSoDium), on the blue
-// screen's own blue, the same 16 x 16 pixel footing. Two eyes and a mouth that is an arc opening to the right; 10 x 10 cells, centred on the grid.
+// The favicon and the app icons are NOT the mark: they are the blue-screen frown ":(" turned on its side (the owner's handle, BSoDium), white on the
+// blue screen's own blue, on a rounded tile. Drawn smooth, in a 32-unit box, not on the pixel grid (the first version was: two blocks and a stair-stepped
+// mouth, which looked crude at tab size; a vector reads better at 16 px and is sharp at every other size). Two round eyes and a mouth that is a
+// round-capped arc opening to the right, the whole face centred on the tile with a wide margin (the maskable icon needs it, and so does elegance).
 // The mark above stays the site's logo (the header, `logo-mark.tsx`).
-export const FACE = [
-  "................",
-  "................",
-  "................",
-  "...........##...",
-  "...##.....##....",
-  "...##....##.....",
-  "........##......",
-  "........##......",
-  "........##......",
-  "........##......",
-  "...##....##.....",
-  "...##.....##....",
-  "...........##...",
-  "................",
-  "................",
-  "................",
-];
-
+export const FACE_SIZE = 32;
 /** The blue of the blue screen of death (Windows 10 and 11), the tile behind the face. */
 export const FACE_TILE = "#0078d7";
 export const FACE_INK = "#ffffff";
 
+/** The face (eyes and mouth) in the 32-unit box, drawn in `ink`. */
+export function faceShapes(ink = FACE_INK) {
+  return `<g fill="${ink}"><circle cx="11.8" cy="12.2" r="1.9"/><circle cx="11.8" cy="19.8" r="1.9"/></g><path d="M21.4 10.2C17 13.8 17 18.2 21.4 21.8" fill="none" stroke="${ink}" stroke-width="2.2" stroke-linecap="round"/>`;
+}
+
+/** The tile and the face as the inside of an SVG of the 32-unit box: corners rounded by `rx` units (0 for an icon the launcher or iOS rounds itself). */
+export function faceMarkup({ rx = 7.5 } = {}) {
+  return `<rect width="${FACE_SIZE}" height="${FACE_SIZE}" rx="${rx}" fill="${FACE_TILE}"/>${faceShapes()}`;
+}
+
 /** The favicon: the face on its blue tile, the same in both colour schemes (a blue square reads on a light tab and a dark one). */
 export function faceSvg({ px = 32 } = {}) {
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${GRID} ${GRID}" width="${px}" height="${px}" shape-rendering="crispEdges">
-  <rect width="${GRID}" height="${GRID}" fill="${FACE_TILE}"/>
-  <path fill="${FACE_INK}" d="${markPath(FACE)}"/>
-</svg>
-`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${FACE_SIZE} ${FACE_SIZE}" width="${px}" height="${px}">${faceMarkup()}</svg>\n`;
 }
