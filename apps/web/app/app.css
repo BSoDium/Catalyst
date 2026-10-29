@@ -3159,14 +3159,14 @@ body:not(:has([data-slot="site-header"])) .np-root {
   line-height: 1rem;
   color: var(--subtle-foreground);
 }
-/* (the browser has not let the page make sound yet: the credit line asks for a touch, in a warning shade, and gives way to the credit when it comes) */
+/* (the browser has not let the page make sound yet: the credit line asks for a touch, in the accent's blue, and gives way to the credit when it comes) */
 .np-warn {
   white-space: nowrap;
-  --np-warn: #b45309;
-  color: var(--np-warn);
+  color: var(--signal-text);
 }
-:root[data-scheme="dark"] .np-warn {
-  --np-warn: #fbbf24;
+/* (its one line is longer than the credit's column: the plate widens to it, never in height) */
+.np[data-blocked="true"] .np-text {
+  max-width: 11rem;
 }
 .np-text a {
   color: inherit;
@@ -3183,8 +3183,8 @@ body:not(:has([data-slot="site-header"])) .np-root {
   color: var(--foreground);
 }
 /*
- * The wavy outline (owner, 2026-10-29: it replaced the glow and the motes; components/now-playing-player.tsx, `WAVES`): two thin rings round the disc, with room between, whose lobes turn against each other while the
- * disc plays. A transform on a fixed element: nothing is laid out or painted again. At rest the rings fade away, and are still.
+ * The wavy outline (owner, 2026-10-29: it replaced the glow, the motes and a turning pair of rings; components/now-playing-player.tsx, `Waves`, lib/now-playing-wave.ts): two thin rings in the accent round the disc, with room
+ * between, whose line shivers in place with the music (the paths are rewritten by a frame loop that runs only while the disc plays). They do not turn with the disc. At rest they fade away.
  */
 .np-waves {
   position: absolute;
@@ -3201,24 +3201,10 @@ body:not(:has([data-slot="site-header"])) .np-root {
 }
 .np-wave {
   fill: none;
-  stroke: var(--foreground);
+  stroke: var(--signal);
   stroke-width: 1.4;
+  stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
-  transform-origin: 50px 50px;
-  animation: np-wave-turn 9s linear infinite;
-  animation-play-state: paused;
-}
-.np-wave + .np-wave {
-  animation-duration: 14s;
-  animation-direction: reverse;
-}
-.np[data-spin="true"] .np-wave {
-  animation-play-state: running;
-}
-@keyframes np-wave-turn {
-  to {
-    transform: rotate(1turn);
-  }
 }
 @keyframes np-spin {
   to {
@@ -3229,8 +3215,8 @@ body:not(:has([data-slot="site-header"])) .np-root {
   .np-disc {
     animation: none;
   }
-  .np-wave {
-    animation: none;
+  .np-waves {
+    display: none;
   }
 }
 

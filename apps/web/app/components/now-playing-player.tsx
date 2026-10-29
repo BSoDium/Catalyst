@@ -1,7 +1,8 @@
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { WAVES, wavePath } from "~/lib/now-playing-wave";
 import { Icon } from "~/components/ui/icon";
-import { nowPlaying, pillVisible, type NowPlayingSnapshot, type Track } from "~/globe";
+import { TRACKS, nowPlaying, pillVisible, sunMusic, type NowPlayingSnapshot, type Track } from "~/globe";
 
 /**
  * Where the player sits (`.np-root`, app.css), in one place (owner: "we might iterate on where it shows and when it goes"): docked in the top left corner when there is room, and moved down under the header when the header
@@ -20,7 +21,7 @@ const TRANSITION = {
 } as const;
 
 /** What the credit line says (it is ONE line: the text beside the disc must not change height, so it is short and `.np-warn` does not wrap) while the browser will not let the page make sound until the visitor has touched it: it gives way to the credit, with a fade, when the first touch starts the music. */
-const WARNING = "Tap to start";
+const WARNING = "Click anywhere to start";
 
 const SERVER: NowPlayingSnapshot = { track: null, state: "paused", muted: false };
 
@@ -56,30 +57,32 @@ export function NowPlayingPlayer() {
 }
 
 /**
- * The wavy outline round a playing disc (owner, 2026-10-29: "an animated wavy outline around the disc, with a bit of padding"; it replaced the glow, and then the motes): two thin rings whose radius swells and
- * dips in lobes (`WAVES`), turning slowly against each other, so that the line seems to ripple. The paths are made once, here; the turning is CSS (`.np-wave`: a transform on a fixed element, nothing is drawn
- * again), and it runs only while the disc plays.
+ * The wavy outline round a playing disc (owner, 2026-10-29: it replaced the glow, the motes, and a turning pair of rings): two thin rings a little way off whose line shivers in place with the music (lib/now-playing-wave.ts: standing
+ * waves, nothing turns). It is the one thing here that is drawn by script: a frame loop that rewrites two `d` attributes (a few dozen points each, no layout, no React render), and it runs only while the disc plays and motion is
+ * wanted. The sun's music's level moves it (`SunMusic.pulse().energy`); the interlude's sound has none to read, and it shivers at rest.
  */
-const WAVES = [
-  { lobes: 5, amp: 1.7, opacity: 0.6 },
-  { lobes: 8, amp: 1.2, opacity: 0.32 },
-] as const;
-/** The rings' mean radius, in the outline's 100-unit box (the disc is about 77 of them across: the rest is the padding the wave swings in). */
-const WAVE_RADIUS = 46;
-
-/** A closed ring of radius `WAVE_RADIUS`, its radius swung `amp` either way `lobes` times round, as a smooth path (sampled finely enough that it reads as a curve). */
-function wavePath(lobes: number, amp: number): string {
-  const n = 96;
-  let d = "";
-  for (let i = 0; i <= n; i++) {
-    const a = (i / n) * 2 * Math.PI;
-    const r = WAVE_RADIUS + amp * Math.sin(lobes * a);
-    d += `${i === 0 ? "M" : "L"}${(50 + r * Math.cos(a)).toFixed(2)} ${(50 + r * Math.sin(a)).toFixed(2)}`;
-  }
-  return d + "Z";
+function Waves({ active, sun }: { active: boolean; sun: boolean }) {
+  const refs = useRef<(SVGPathElement | null)[]>([]);
+  useEffect(() => {
+    if (!active) return;
+    let raf = 0;
+    const t0 = performance.now();
+    const frame = (now: number) => {
+      const level = sun ? (sunMusic.pulse()?.energy ?? 0) : 0;
+      WAVES.forEach((ring, i) => refs.current[i]?.setAttribute("d", wavePath(ring, (now - t0) / 1000, level)));
+      raf = requestAnimationFrame(frame);
+    };
+    raf = requestAnimationFrame(frame);
+    return () => cancelAnimationFrame(raf);
+  }, [active, sun]);
+  return (
+    <svg className="np-waves" viewBox="0 0 100 100" aria-hidden="true">
+      {WAVES.map((ring, i) => (
+        <path key={i} ref={(el) => void (refs.current[i] = el)} className="np-wave" d={wavePath(ring, 0, 0)} style={{ opacity: ring.opacity }} />
+      ))}
+    </svg>
+  );
 }
-
-const WAVE_PATHS = WAVES.map((w) => wavePath(w.lobes, w.amp));
 
 /** The credit: each artist is a link to their page where they have one, joined as they are named. */
 function Artists({ track }: { track: Track }) {
@@ -99,6 +102,7 @@ function Artists({ track }: { track: Track }) {
 
 function Player({ snap }: { snap: NowPlayingSnapshot }) {
   const track = snap.track!;
+  const reduced = useReducedMotion();
   const [coverOk, setCoverOk] = useState(true);
   // a touch screen has no hover to show the icon with: it shows for a moment after a tap
   const [flash, setFlash] = useState(false);
@@ -136,11 +140,7 @@ function Player({ snap }: { snap: NowPlayingSnapshot }) {
           <span className="np-hole" />
         </span>
         <span className="np-gloss" aria-hidden="true" />
-        <svg className="np-waves" viewBox="0 0 100 100" aria-hidden="true">
-          {WAVES.map((w, i) => (
-            <path key={i} className="np-wave" d={WAVE_PATHS[i]} style={{ opacity: w.opacity }} />
-          ))}
-        </svg>
+        <Waves active={playing && !reduced} sun={track.id === TRACKS.sun.id} />
         <span className="np-icon" aria-hidden="true">
           <Icon name={snap.muted ? "play" : "pause"} size="control" />
         </span>
