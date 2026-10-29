@@ -2920,41 +2920,19 @@
 }
 
 /*
- * The search is docked at the header's right edge, as an input (owner, 2026-10-29: "docked to the right, with an input look, a bit like the home screen's search line, aligned with the nav items, in the top right
- * corner"), where the header is wide enough that the centred links (816 px) leave it room: from 80 rem of header (the same 1280 px as the player at the left). Narrower, it is the trigger in the row, as before.
- * Out of the row's flow, so the links stay centred over the screen; its right edge is `--search-inset` from the header's (the nav is centred in the header: its edge is half the difference away), and it is
- * centred on the nav's height, so it is on the links' line. Unlayered, like the narrow form's: the trigger carries utilities.
+ * The search is docked at the header's right edge (owner, 2026-10-29, then 2026-10-30: "keep it docked to the right, but the simple design: a bit of caps text like the nav entries, a search icon next to it,
+ * and to the right the keyboard shortcut, and that's it, aligned with the other items"), where the header is wide enough that the centred links (816 px) leave it room: from 80 rem of header (the same
+ * 1280 px as the player at the left). It is the trigger of the row, as everywhere (the nav's own type, the icon, the key hint), taken out of the row's flow so that the links stay centred over the screen:
+ * its right edge is on the page's own right margin (3.5 rem; the nav is centred in the header, so its edge is half the difference away) and it is centred on the nav's height, on the links' line.
+ * Narrower, it is in the row, as before. Unlayered, like the narrow form's: the trigger carries utilities.
  */
 @container (min-width: 80rem) {
   [data-slot="site-header"] [data-slot="search-trigger"] {
-    /* on the page's own right margin (3.5 rem) where there is room for it between the links' end and the edge, closer to the edge where there is not (at 1280 px: 1.25 rem) */
-    --search-inset: max(1.25rem, min(3.5rem, calc((100cqw - 816px) / 2 - 13.75rem)));
     position: absolute;
     top: 50%;
-    right: calc((100% - 100cqw) / 2 + var(--search-inset));
+    right: calc((100% - 100cqw) / 2 + 3.5rem);
     translate: 0 -50%;
     z-index: 3;
-    width: 13rem;
-    min-height: 2.25rem;
-    justify-content: flex-start;
-    gap: 0.625rem;
-    padding: 0 0 0.125rem;
-    border-bottom: var(--hairline) solid var(--border-strong);
-    text-transform: none;
-    letter-spacing: 0.04em;
-    font-weight: 400;
-    font-feature-settings: normal;
-  }
-
-  [data-slot="site-header"] [data-slot="search-trigger"] .ds-kbd {
-    margin-inline-start: auto;
-    min-width: 0;
-  }
-
-  [data-slot="site-header"] [data-slot="search-trigger"]:hover,
-  [data-slot="site-header"] [data-slot="search-trigger"]:focus-visible {
-    color: var(--foreground);
-    border-bottom-color: var(--foreground);
   }
 }
 
