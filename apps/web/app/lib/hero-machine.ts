@@ -29,9 +29,10 @@ export const HERO_IDLE_MS = 8000;
 export const WORLD_ZOOM01 = 0.03;
 
 /** Whether a reported view is the world view: the whole globe (within the slack), never the street map. */
-export function isWorldView(view: Pick<GlobeViewState, "zoom" | "street"> | null | undefined): boolean {
+export function isWorldView(view: Pick<GlobeViewState, "zoom" | "street" | "world"> | null | undefined): boolean {
   if (!view) return true;
-  return view.zoom <= WORLD_ZOOM01 && (view.street ?? 0) === 0;
+  // (on a narrow screen the world view is the closer zoom the planet takes when it is taken: the renderer says so, `GlobeViewState.world`)
+  return (view.zoom <= WORLD_ZOOM01 || view.world === true) && (view.street ?? 0) === 0;
 }
 
 export type HeroState = "rest" | "collapsed";

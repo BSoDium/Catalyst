@@ -24,7 +24,7 @@ const NOSCRIPT_KINDS = ["project", "article", "artwork", "poem", "photograph"] a
 /** The words of the globe's ring of type: the site's identity (name, role, fields, place), the same constant the head tags and the hero read. */
 const RING_PHRASES = ringPhrases(SITE);
 /** The moon that circles the globe: a link to the first version of the site (`ARCHIVED_V1`). */
-const MOON_LINK = { href: ARCHIVED_V1.url, title: ARCHIVED_V1.title, description: ARCHIVED_V1.description, cta: ARCHIVED_V1.cta } as const;
+const MOON_LINK = { href: ARCHIVED_V1.url, title: ARCHIVED_V1.title, description: ARCHIVED_V1.description, shortDescription: ARCHIVED_V1.shortDescription, cta: ARCHIVED_V1.cta } as const;
 /** The caption that floats over the planet with it: what the site is and what to do (it replaces the hero's how-to line while the globe has the caption). */
 const NO_PHRASES = { sets: [], fixed: [] } as const;
 

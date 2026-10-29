@@ -49,6 +49,8 @@ export const ARCHIVED_V1 = {
   url: "https://v1.bsodium.fr",
   title: "Memory lane",
   description: "The first version of this site, kept just as it was.",
+  /** The card's second line on a touch screen, where the card is narrow (the same words, fewer): the link's name keeps the long one. */
+  shortDescription: "The first version of this site.",
   /** The card's last line (an arrow is drawn after it by the stylesheet) and the palette's. */
   cta: "Take a trip back",
   /** The palette's entry, found by these words (every typed word must begin one of them). */

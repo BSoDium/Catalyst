@@ -34,4 +34,4 @@ export function fromViewState(v: GlobeViewState, minZoom: number, maxZoom: numbe
 }
 
 export const sameView = (a: GlobeViewState | null, b: GlobeViewState) =>
-  a !== null && a.lon === b.lon && a.lat === b.lat && a.zoom === b.zoom && (a.street ?? 0) === (b.street ?? 0);
+  a !== null && a.lon === b.lon && a.lat === b.lat && a.zoom === b.zoom && (a.street ?? 0) === (b.street ?? 0) && (a.world ?? false) === (b.world ?? false);
