@@ -43,7 +43,7 @@ export const MOON = {
   /** Where the orbit starts (on the camera's side, behind the camera: not in the picture when the page opens), and where the moon stands when it does not move (reduced motion): beside the planet on the left, small. */
   startDeg: 100,
   restDeg: 254,
-  /** The opening camera, in the inertial frame: `START_VIEW` (lon 0, lat 0) plus the earth rotation angle `SKY.eraDeg` (70). The orbit is laid against it. */
+  /** The opening camera, in the inertial frame: `START_VIEW` (lon 0, lat 0) plus the earth rotation angle `SKY.eraDeg` (70) on a debug page; on the live page the opening longitude and the angle move with the hour (engine/daylight.ts) and their sum stays this. The orbit is laid against it. */
   ref: { lonDeg: 70, latDeg: 0 },
   /** How far the camera may be from the opening camera's longitude, in the inertial frame, before the home screen's return turns it back to the lit side (`litTurn`). */
   litToleranceDeg: 25,
@@ -345,11 +345,11 @@ const norm3 = (a: Vec3): Vec3 => {
   return [a[0] / l, a[1] / l, a[2] / l];
 };
 
-/** The sun's direction in the inertial frame (a unit vector): from the opening camera's direction, turned toward its right by the azimuth and up by the elevation. */
-export function sunDirection(): Vec3 {
+/** The sun's direction in the inertial frame (a unit vector): from the opening camera's direction, turned toward its right by the azimuth and up by the elevation (`MOON.sunElevationDeg`, or the real declination: engine/daylight.ts). */
+export function sunDirection(elevationDeg: number = MOON.sunElevationDeg): Vec3 {
   const b = viewBasis({ lon: MOON.ref.lonDeg, lat: MOON.ref.latDeg, zoom: 0 }, 1);
   const az = toRad(MOON.sunAzimuthDeg);
-  const el = toRad(MOON.sunElevationDeg);
+  const el = toRad(elevationDeg);
   return norm3([0, 1, 2].map((i) => b.c[i]! * Math.cos(az) * Math.cos(el) + b.east[i]! * Math.sin(az) * Math.cos(el) + b.north[i]! * Math.sin(el)) as Vec3);
 }
 

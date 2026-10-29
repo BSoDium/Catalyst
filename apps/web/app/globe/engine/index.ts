@@ -261,6 +261,7 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
       labels.update(renderer.nodeScreen, renderer.pixelGrid());
     }
     const next = toViewState(v, renderer.getFitZoom(), TUNING.maxZoom);
+    if (renderer.atImmersiveWorld(v.zoom)) next.world = true;
     if (!sameView(lastReported, next)) {
       lastReported = next;
       opts.onViewChange(next);

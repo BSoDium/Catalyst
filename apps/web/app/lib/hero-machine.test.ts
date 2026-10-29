@@ -53,6 +53,12 @@ describe("isWorldView", () => {
     expect(isWorldView({ zoom: 0, street: 2 })).toBe(false);
     expect(isWorldView({ zoom: 0, street: 0 })).toBe(true);
   });
+  it("is the renderer's word on a narrow screen, where the world view is closer than the whole globe", () => {
+    expect(isWorldView({ zoom: 0.2, world: true })).toBe(true);
+    expect(isWorldView({ zoom: 0.2 })).toBe(false);
+    expect(isWorldView({ zoom: 0.2, world: false })).toBe(false);
+    expect(isWorldView({ zoom: 0.2, world: true, street: 1 })).toBe(false);
+  });
   it("counts a view that has not been reported yet as the world view (the globe starts there)", () => {
     expect(isWorldView(null)).toBe(true);
     expect(isWorldView(undefined)).toBe(true);

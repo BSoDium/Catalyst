@@ -13,7 +13,7 @@
  *     moves in space, the stars behind the earth turn on the screen with the view, exactly as for a spacecraft going round the planet;
  *   - the earth's own rotation (the idle rotation) turns the earth under a camera that stays where it is: the renderer adds the same
  *     angle to ERA as it takes off the view's longitude, so the sky does not move on the screen at all (the stars are not dragged);
- *   - ERA starts at `SKY.eraDeg`, a constant: the sky is the same on every visit. The camera's orientation is the whole story.
+ *   - ERA starts at `SKY.eraDeg` on a debug page, and at the real hour's value (engine/daylight.ts) on the live one. The camera's orientation is the whole story.
  *
  * The band is a map in GALACTIC coordinates baked once (a few thousand noise evaluations, deterministic), the stars are a fixed list of
  * directions in the same frame; the shader turns each pixel's ray into galactic coordinates with the matrix `viewToGalactic`.

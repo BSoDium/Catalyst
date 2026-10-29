@@ -172,12 +172,12 @@
   /* Layout. */
   --navbar-height: 3.5rem;
   /* The narrow header (a phone, or the half beside the panel): the selector is the page's title in the bar, in the drawer rows' size; the search is
-     proportionate to it, mono capitals with a 20 px icon; the index is as tall as the title's capitals (`--nav-index`: Bricolage's capitals are
+     the index's twin: the same face, size, weight and features (`--nav-mono` is `--nav-index`), in sentence case, with an icon as tall as a digit of it (below); the index is as tall as the title's capitals (`--nav-index`: Bricolage's capitals are
      0.66 em and JetBrains Mono's digits 0.74 em, so 0.66 / 0.74 of the title's size, measured with canvas `actualBoundingBox`). */
   --nav-title: 1.5rem;
   --nav-index: calc(var(--nav-title) * 0.892);
-  --nav-mono: 0.875rem;
-  --nav-mono-track: 0.08em;
+  --nav-mono: var(--nav-index);
+  --nav-mono-track: 0;
   --nav-icon: 1.25rem;
   /* The nav scrim fades content out under the floating nav (see `.nav-scrim`); the nav's own fade over the globe is a little taller (`.nav-fade`). */
   --scrim-height: calc(var(--navbar-height) + 2.5rem);
@@ -2879,6 +2879,13 @@
     padding-inline: 0;
     font-size: var(--nav-mono);
     letter-spacing: var(--nav-mono-track);
+    /* Sentence case; in every other respect the index's own type (the row's `.nav-link` has the weight at 400 and the ligatures off: the index has the ligatures at their default). */
+    text-transform: none;
+    font-weight: 400;
+    font-feature-settings: normal;
+    /* The index is on the BASELINE of the 24 px title, which puts it 0.7 px (0.033 em of this type) under where a centred word of its size would be: the search goes down by that, so the two are on one line
+       (measured in the browser; both sides scale with --nav-title). The icon takes it back below, to stay on the word's digit height. */
+    translate: 0 0.033em;
   }
 
   [data-slot="site-header"] [data-slot="search-trigger"] .ds-kbd {
@@ -2894,8 +2901,21 @@
 @container (min-width: 22rem) and (max-width: 55.99rem) {
   [data-slot="site-header"] [data-slot="search-trigger"] .ui-icon {
     display: inline-block;
-    width: var(--nav-icon);
-    height: var(--nav-icon);
+    /* The icon is as tall as one digit of the same type, JetBrains Mono's 0.74 em, top to baseline. The lens's glyph (circle and handle) spans 13.95 of its 16 units, and the stems of the type are 0.09 em with
+       the ring's own thickness 0.95 units: with a box of B em and a stroke of s units, (13.95 + s) B / 16 = 0.74 and (0.95 + s) B / 16 = 0.09, so B = 0.8 em and s = 0.85 units. */
+    width: 0.8em;
+    height: 0.8em;
+    /* Its CENTRE OF MASS is on the word's. Measured from the rendered ink: the word's is 0.316 em above its baseline (the lowercase letters carry most of the ink, so it is under the middle of a digit, 0.37 em), the
+       lens's is 0.57 units of 16 above its box's middle (the ring is up and left, the handle down and right), 0.0286 em. With the row's shift above, the box's middle is on the digit's middle, 0.37 em up, so the icon
+       goes down by 0.37 + 0.0286 - 0.316 = 0.082 em, less the 0.0305 em the row's centring puts it under the baseline, and a last 0.004 em from the browser: 0.048 em. (Its top and bottom are then not the digit's: it hangs 1.8 px under the baseline.) */
+    translate: 0 0.048em;
+  }
+
+  /* The stroke of the type beside it: the stems are 0.09 em (measured on the H at weight 400), the ring 0.95 units of 16, so a stroke of 0.85 units round it brings the ring to the stems' thickness. */
+  [data-slot="site-header"] [data-slot="search-trigger"] .ui-icon * {
+    stroke: currentColor;
+    stroke-width: 0.85px;
+    stroke-linejoin: miter;
   }
 }
 
@@ -3440,6 +3460,22 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     vector-effect: non-scaling-stroke;
   }
 
+  /*
+   * A touch screen (no hover: the words come clear when the moon is tapped, not hovered; engine/moon-overlay.ts). The card keeps its two lines, the name over the description, the arrow where it
+   * is on a desktop (12 px in from the top and right edges, 14 px from the words), but the description is the short one (`GlobeMoon.shortDescription`) and the card no wider than 17 rem, so that
+   * it does not run across the window: it is 52 px tall, a finger's target on its own.
+   */
+  @media (hover: none) {
+    .globe-moon-card {
+      max-width: min(17rem, calc(100vw - 48px));
+    }
+
+    /* One line: the short description is 31 characters, 211 px at 11 px mono with its tracking; the card's cap leaves it 224. */
+    .globe-moon-body {
+      white-space: nowrap;
+    }
+  }
+
   /* One mark, two glyphs: the arrow once the words are read, an unknown (a question mark) while they are scrambled (engine/moon-overlay.ts sets `data-glyph`). */
   .globe-moon-arrow[data-glyph="arrow"] .globe-moon-glyph-unknown,
   .globe-moon-arrow[data-glyph="unknown"] .globe-moon-glyph-arrow {
@@ -3704,6 +3740,13 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     height: var(--nav-icon);
     translate: 0 calc((var(--nav-icon) - var(--nav-title) * 0.522) / 2);
     transition: transform var(--nav-open) var(--ease-standard);
+  }
+
+  /* Carbon's chevron is a 2-unit stroke on a 32-unit grid, thin beside the title's semibold stems: a stroke of the same colour round its outline (mitred, so the ends stay square) thickens it. */
+  .nav-sections .nav-sections-chevron * {
+    stroke: currentColor;
+    stroke-width: 1.5px;
+    stroke-linejoin: miter;
   }
 
   .nav-sections[open]:not([data-closing]) .nav-sel-index {

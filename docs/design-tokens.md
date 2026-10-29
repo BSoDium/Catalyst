@@ -72,7 +72,7 @@ The globe's skybox (`SKY` in `app/globe/engine/tuning.ts`; architecture in web-a
 | `band.bulge`, `band.rift` | 0.5 share, 7 deg; depth 0.8, 2.6 deg wide | nuclear bulge and the Great Rift dust lane |
 | `band.noise` | 3 octaves, floor 0.5, breaks below 0.34 | mottling and dust breaks |
 | `stars.count`, `bandBoost`, `tierShares` | 12000 (20000 until 2026-10-28), 1.8, [0.6, 0.28, 0.12] | about 260 to 310 in view at the whole-globe view on a desktop (about 46 lit pixels at the brightest tone); up to 1.8x denser along the band. Tones: level 1, level 2, level 3 (the graticule's: the cap). One cell each, no sparkles. Owner 2026-10-08: "not super bright, just a bit brighter", for noise over the band and the open sky |
-| `eraDeg` | 70 | the earth rotation angle at load (the sky's one placement against the earth) |
+| `eraDeg` | 70 | the earth rotation angle at load on a debug page (the live page takes the real hour's: `engine/daylight.ts`) |
 | `seed` | `0x5ca1ab1e` | every random choice (positions, tiers, keep ranks) |
 
 ### Ring of type
@@ -102,7 +102,7 @@ The rows that float over the planet on the home screen (`CAPTION` in `app/globe/
 | `upper`, `tracking` | true, serif 0.05 / mono 0.03 / script 0 | the words are drawn in capitals (the caption only; the script face is exempt: "Poetry" keeps its case) and tracked by this many ems on top of each face's own spacing |
 | `dim` | ellipse, alpha 0.55 / 0.55, reach 0.55, bandReach 1.9 | the faint page-colour shade behind the words (mode `ellipse`, `bands` or `none`); strength at the middle per scheme |
 | `rows.stepCaps` | 1.45 | the rows are on FIXED parallels centred on the equator, this many cap heights from baseline to baseline at the ends (the middle ones moved so the baselines are equally far apart on the screen at `band.loadLat`) |
-| `band` | 10 degrees, snap 800 ms, hysteresis 1.5, `snapTo` edge | the camera latitude the caption needs: outside it the latitude glides (only) to the nearest edge (or the equator) before the entrance; the page opens at `START_VIEW` (lon 0, lat 0) |
+| `band` | 10 degrees, snap 800 ms, hysteresis 1.5, `snapTo` equator | the camera latitude the caption needs: the entrance waits for the camera to be ON the equator (a camera that is only inside the band would show the rows lower than the page has room for, onto the name), so the latitude glides to it, and the way back from a zoomed globe flies there in one movement; `snapTo` `edge` is the nearest edge of the band; the page opens at `START_VIEW` (lon 0, lat 0) |
 | `maxHalfWidth`, `hardSpanDeg`, `visibleFraction`, `minScale` | 1.04, 160, 0.85, 0.2 | a row's half width over the silhouette's radius at most; the most a row spans round its parallel; how near the shell's horizon its ends may go; the least scale of the static fit |
 | `minCapPx` | 12 | the smallest letter, CSS px (a block may go to three quarters of it at an extreme tilt on a small planet) |
 | `outline`, `texCap` | 0.05, 96 | the outline in cap heights (outside the glyph, so the face keeps its area); texels in a cap height |

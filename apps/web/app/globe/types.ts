@@ -19,6 +19,11 @@ export interface GlobeViewState {
    * (`zoom`, `street`) is one continuous zoom scale: the renderer decides which engine draws it.
    */
   street?: number;
+  /**
+   * True when the camera is at the world view of a narrow screen, which is closer than the whole-globe fit (engine/immersion.ts: the planet comes closer when it is taken), so `zoom` alone
+   * does not say it. Present only then: on a wide window the world view is `zoom` 0 and the field is absent.
+   */
+  world?: boolean;
 }
 
 /**
@@ -164,6 +169,8 @@ export interface GlobeMoon {
   title: string;
   /** What is there: one sentence. */
   description: string;
+  /** The same in fewer words, for the card on a touch screen (`(hover: none)`), where it must not run across the window. Absent: `description`. */
+  shortDescription?: string;
   /** The card's last line: the call to action, with its arrow if it has one. */
   cta: string;
 }

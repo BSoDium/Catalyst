@@ -82,8 +82,8 @@ export const TUNING = {
  */
 export const SKY = {
   /**
-   * The earth rotation angle at load (GMST, degrees): the right ascension of the Greenwich meridian. It is a fixed number so the sky is the
-   * same on every visit; it is the ONLY thing that places the sky relative to the earth. The idle rotation adds to it (renderer `era`), a
+   * The earth rotation angle at load (GMST, degrees): the right ascension of the Greenwich meridian. It is the value of a debug page and the tests (the sky is the same
+   * in every screenshot); the live page takes the real hour's (engine/daylight.ts). It is the ONLY thing that places the sky relative to the earth. The idle rotation adds to it (renderer `era`), a
    * camera orbit does not. Chosen so the opening view (lon 15, lat 28) has the band crossing the wings of the globe on a slant.
    */
   eraDeg: 70,
@@ -154,7 +154,7 @@ export const LIFT = { gapPx: 14, marginPx: 14 } as const;
  */
 export const LANDING = { desktop: 0.78, narrowPx: 640, widePx: 1100 } as const;
 
-/** Where the camera starts when the page gives no view: no tilt, centred on the point (lon 0, lat 0). Inside the caption's band by construction. */
+/** Where the camera starts when the page gives no view: no tilt, centred on lat 0. The longitude is the fixed one of a debug page: the live page opens over the one the real sun lights (engine/daylight.ts). Inside the caption's band by construction. */
 export const START_VIEW = { lon: 0, lat: 0 } as const;
 
 /** `cubic-bezier` control points of the app's standard easing (`--ease-standard`). */
@@ -204,10 +204,10 @@ export const CAPTION = {
    * The camera latitude the caption needs: it is shown only while |latitude| is inside `deg` of the equator. Before it comes back (the idle
    * delay, a return to rest) a camera outside the band glides its LATITUDE ONLY (never the longitude, the zoom is the page's) to the nearest
    * edge (and, when the planet is not lit there, its longitude back to the lit side) in `snapMs` or, for a long turn, `snapMsPerDeg` a degree up to `snapMaxMs`, slow in and slow out (no jump at the start), and only then does the entrance start; a camera that leaves the band under the caption (a flight) fades it,
-   * and the caption is back `hysteresisDeg` inside. `snapTo`: the nearest edge of the band (`edge`) or the equator (`equator`). The page opens
+   * and the caption is back `hysteresisDeg` inside. `snapTo`: the nearest edge of the band (`edge`) or the equator (`equator`, the home screen's: the caption is laid out for the equator, and any other latitude puts its rows lower on the screen, onto the name; owner, 2026-10-29, a Pixel 7: it came back at an angle and the words met the name, so the entrance waits for the camera to be ON the equator, not just inside the band). The page opens
    * at `START_VIEW` (no tilt, centred on lon 0, lat 0: the equator is a horizontal line through the disc's middle).
    */
-  band: { deg: 10, snapMs: 800, snapMsPerDeg: 10, snapMaxMs: 2600, hysteresisDeg: 1.5, snapTo: "edge" as "edge" | "equator" },
+  band: { deg: 10, snapMs: 800, snapMsPerDeg: 10, snapMaxMs: 2600, hysteresisDeg: 1.5, snapTo: "equator" as "edge" | "equator" },
   /**
    * The rows that take turns, and what a row does between entering and leaving (engine/caption.ts `rowX`): it enters (`enter`), then ROLLS through
    * the central meridian at a constant speed for `dwellMs`, from `drift.ampDeg` before it to as much after it (2 amp over the dwell: 2.9 degrees a
