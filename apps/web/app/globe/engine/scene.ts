@@ -257,6 +257,8 @@ export class GlobeScene {
     this.surface.uniforms.uBg!.value.setRGB(...bg);
     // the lights: the sodium colour, faint, a step from the page's colour
     this.lights.uniforms.uColor!.value.setRGB(...([0, 1, 2].map((i) => bg[i]! + (LIGHTS.color[i]! - bg[i]!) * LIGHTS.strength) as [number, number, number]));
+    this.lights.uniforms.uBg!.value.setRGB(...bg);
+    LIGHTS.ramp.forEach((stop, i) => this.lights.uniforms[`uRamp${i}`]!.value.setRGB(...([0, 1, 2].map((c) => bg[c]! + (stop.color[c]! - bg[c]!) * stop.strength) as [number, number, number])));
     this.lights.uniforms.uCover!.value = LIGHTS.cover;
     this.lights.uniforms.uCore!.value.setRGB(...([0, 1, 2].map((i) => bg[i]! + (LIGHTS.core[i]! - bg[i]!) * LIGHTS.coreStrength) as [number, number, number]));
     this.surface.uniforms.uTone0!.value.setRGB(...mixTo(tones[0]!));
@@ -409,6 +411,8 @@ export class GlobeScene {
       (tex) => {
         tex.magFilter = tex.minFilter = NearestFilter; // (a light is one hard texel: a point, not a blob)
         this.lights.uniforms.uLights!.value = tex;
+        const img = tex.image as { width?: number; height?: number } | undefined;
+        if (img?.width && img.height) this.lights.uniforms.uSize!.value = [img.width, img.height];
         this.lightsTex = tex;
         this.lightsReady = true;
         if (this.lightsMesh) this.lightsMesh.visible = this.nightNow > 0.01;
