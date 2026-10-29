@@ -5,9 +5,10 @@ import { TRACKS, beatPulse, nowPlaying, pillVisible, sunMusic, type NowPlayingSn
 
 /**
  * Where the player sits (`.np-root`, app.css), in one place (owner: "we might iterate on where it shows and when it goes"): docked in the top left corner when there is room, and moved down under the header when the header
- * needs the corner. The header's links are centred and 816 px wide, so they start at about 230 px at 1280; the player, its longest line included, ends at about 215: from 1280 px it is in the corner, the disc 3rem. Narrower
- * (a tablet, a phone, where the header is a short "01 Globe / Search" row) it is the same row, the disc 2.5rem, under the header: 0.5rem under it when the header is there, and at the top of the screen when it is not (the
- * home screen at rest has none: `body:has([data-slot="site-header"])`). It is a row (the disc on the left, the title and the artist on its right) at every size, so it is never over the hero's text at the bottom.
+ * needs the corner. The header's links are centred and 816 px wide, so they start at (width - 816) / 2: from 1280 px the player is in the corner (`--np-inset`, 1.25rem: room for the halo to flow), its words taking the room
+ * the links leave and cut with an ellipsis past it. Narrower (a tablet, a phone, where the header is a short "01 Globe / Search" row) it is the same row under the header, 0.75rem under it when the header is there, and at the
+ * top of the screen when it is not (the home screen at rest has none: `body:has([data-slot="site-header"])`). The disc is 2.35rem at every size (as tall as the two lines beside it). It is a row (the disc on the left, the
+ * title and the artist on its right) at every size, so it is never over the hero's text at the bottom.
  */
 const PLACEMENT = "np-root pointer-events-none absolute z-20";
 
@@ -19,7 +20,7 @@ const TRANSITION = {
   ms: 0.55,
 } as const;
 
-/** What the credit line says (it is ONE line: the text beside the disc must not change height, so it is short and `.np-warn` does not wrap) while the browser will not let the page make sound until the visitor has touched it: it gives way to the credit, with a fade, when the first touch starts the music. */
+/** What the credit line says (it is ONE line, like the credit it replaces: the text beside the disc must not change height, and `.np-warn` does not wrap) while the browser will not let the page make sound until the visitor has touched it: it gives way to the credit, with a fade, when the first touch starts the music. */
 const WARNING = "Click anywhere to start";
 
 const SERVER: NowPlayingSnapshot = { track: null, state: "paused", muted: false };

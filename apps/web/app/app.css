@@ -3191,10 +3191,10 @@ body:not(:has([data-slot="site-header"])) .np-root {
   color: var(--foreground);
 }
 /*
- * The halo (owner, 2026-10-29: it replaced the glow, the motes, the rings and the pixelated outline: "a soft colourful radial gradient from BSoD blue to purple to dark, a bit like a CD, soft and subtle, rotating and
- * changing behind the disc when playing"; components/now-playing-player.tsx): two conic gradients of the accent, a purple and a dark, one turning one way and one the other at different speeds and each breathing
- * a little, so that the colours slide over one another; both are masked soft to nothing at the edge. Only transforms animate (compositor-only), and only while the disc plays. It comes out from behind the disc when the
- * music plays and goes back into it when it does not (`scale` 0.5 is under the disc: it is scaled to 1.8 discs across); the opacity switches only while it is hidden.
+ * The halo (owner, 2026-10-29: it replaced the glow, the motes, the rings and the pixelated outline: "a soft colourful radial gradient ... a bit like a CD, soft and subtle, rotating and changing behind the disc when
+ * playing"; components/now-playing-player.tsx): three conic gradients, almost all the page's grey with touches of the sun's yellow and red, each masked to a soft ellipse and turning at its own period, so that the union of
+ * them is a wavy reach. The gradients animate by transform only (compositor-only), and only while the disc plays; the player's frame loop writes `--np-level` and `--np-beat` (the music's level, and its beat), which scale
+ * the whole. It comes out from behind the disc when the music plays and goes back into it when it does not (`scale` 0.55 is under the disc: it is 1.6 discs across); the opacity switches only while it is hidden.
  */
 .np-halo {
   /* (almost all of it is the page's own grey, and the yellow and the red of the sun are touches in it: owner, "most of that gradient should basically be gray") */
