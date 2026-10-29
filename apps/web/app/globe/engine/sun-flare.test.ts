@@ -65,6 +65,14 @@ describe("sunRise", () => {
   });
 });
 
+describe("where the interlude is played from", () => {
+  it("the interlude asked for away from the display mode turns the planet to its lit side first (the sun is behind the camera there, and not in the picture); played from the display mode it is on it already (the caption only shows there)", () => {
+    const src = readFileSync("app/globe/engine/renderer.ts", "utf8");
+    expect(src).toMatch(/this\.view = this\.clampView\(\{ lon: this\.view\.lon \+ litTurn\(this\.view\.lon, this\.era\), lat: 0, zoom: this\.minZoom \}\)/);
+    expect(src).toMatch(/if \(Math\.abs\(lat - this\.snapTarget\(lat\)\) < 0\.05 && turn === 0\) \{\s*this\.captionOn = true;/);
+  });
+});
+
 describe("planetRise", () => {
   const unit = (x: number, y: number, z: number): [number, number, number] => {
     const l = Math.hypot(x, y, z);

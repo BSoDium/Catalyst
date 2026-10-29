@@ -2088,7 +2088,9 @@ export class GlobeRenderer {
     this.flight = null;
     this.velocity = STILL;
     this.latSnap = null;
-    this.view = this.clampView({ lon: this.view.lon, lat: 0, zoom: this.minZoom });
+    // (on the planet's LIT side: the flight is turned about the axis with the page's longitude, and from a dark side it passed over the night with the sun behind the planet, in the picture; the camera glides there from
+    // where it was, `camIntro`. At rest the caption is only there where the planet is lit, `guardCaption`, so the interlude played from the display mode is already on it.)
+    this.view = this.clampView({ lon: this.view.lon + litTurn(this.view.lon, this.era), lat: 0, zoom: this.minZoom });
     this.captionOn = true;
     this.showcaseOn = true;
     // (the explore view's boxes and labels are out in this frame, not fading: the page's camera is home already, and they would hang in the wrong places while they went)

@@ -104,5 +104,12 @@ export const LIGHTS = {
   magTo: 4,
   boost: 1.6,
   /** The finest a texel is cut into, per side. */
-  maxSub: 16,
+  maxSub: 64,
+  /**
+   * SCRAMBLED (owner, 2026-10-29: "I can still distinguish individual pixels when the camera passes over the city lights ... scramble the pixels even more at low altitude"): from `magFrom` the place the map is read at is MOVED by a
+   * noise, up to `warp` texels at `magTo` and over (so that the edge of a place is no longer on the texel grid), the density is taken through a two-octave noise of `grain` strength (clusters inside a place, never the same
+   * brightness over a whole texel), and the hash's cells are at most an art pixel across (`maxSub` finer).
+   */
+  warp: 1.1,
+  grain: 0.85,
 } as const;

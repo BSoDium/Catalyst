@@ -388,6 +388,14 @@ export function surfaceMaterial(): ShaderMaterial {
       varying vec3 vDir;
       ${DITHER_GLSL}
       ${NIGHT_GLSL}
+      float hash21(vec2 q) { return fract(sin(dot(q, vec2(12.9898, 78.233))) * 43758.5453); }
+      // value noise, smooth between whole cells: what moves the place the map is read at, and what makes clusters
+      float vnoise(vec2 p) {
+        vec2 i = floor(p);
+        vec2 f = fract(p);
+        f = f * f * (3.0 - 2.0 * f);
+        return mix(mix(hash21(i), hash21(i + vec2(1.0, 0.0)), f.x), mix(hash21(i + vec2(0.0, 1.0)), hash21(i + vec2(1.0, 1.0)), f.x), f.y);
+      }
       void main() {
         vec3 n = normalize(vDir);
         vec2 uv = vec2(atan(n.x, n.z) * 0.15915494 + 0.5, asin(clamp(n.y, -1.0, 1.0)) * 0.31830989 + 0.5);
@@ -447,7 +455,8 @@ export function lightsMaterial(): ShaderMaterial {
         float thr = dither4(floor(gl_FragCoord.xy));
         if (mag > 0.0) {
           // read between the texels (the map is not smoothed by the sampler: a light is one hard texel from afar): the four round the fragment, by hand, wrapping round in longitude
-          vec2 p = t - 0.5;
+          // the place read is moved by a noise (the texel grid is not where a place's edge is) ...
+          vec2 p = t - 0.5 + (vec2(vnoise(t * 0.9 + 3.1), vnoise(t * 0.9 + 7.7)) - 0.5) * 2.0 * ${LIGHTS.warp.toFixed(2)} * mag;
           vec2 i = floor(p);
           vec2 f = fract(p);
           vec4 a = texture2D(uLights, vec2(fract((i.x + 0.5) / uSize.x), clamp((i.y + 0.5) / uSize.y, 0.0, 1.0)));
@@ -455,11 +464,14 @@ export function lightsMaterial(): ShaderMaterial {
           vec4 c = texture2D(uLights, vec2(fract((i.x + 0.5) / uSize.x), clamp((i.y + 1.5) / uSize.y, 0.0, 1.0)));
           vec4 d = texture2D(uLights, vec2(fract((i.x + 1.5) / uSize.x), clamp((i.y + 1.5) / uSize.y, 0.0, 1.0)));
           vec4 sm = mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
-          m = mix(m, vec4(min(1.0, sm.r * ${LIGHTS.boost.toFixed(2)}), sm.g, sm.b, sm.a), mag);
-          // the dither is a hash of the place on the planet, in cells of a whole doubling of a texel's share, about an art pixel across
-          float sub = min(${LIGHTS.maxSub.toFixed(1)}, exp2(floor(log2(max(widePx, 1.0)))));
+          // ... and the density goes through a noise of two octaves (a place has clusters in it; its mean is 1)
+          float gr = 0.6 * vnoise(t * 1.7 + 11.0) + 0.4 * vnoise(t * 4.3 + 29.0);
+          float dens = min(1.0, sm.r * ${LIGHTS.boost.toFixed(2)} * (1.0 - ${LIGHTS.grain.toFixed(2)} * mag + ${(2 * LIGHTS.grain).toFixed(2)} * mag * gr));
+          m = mix(m, vec4(dens, sm.g, sm.b, sm.a), mag);
+          // the dither is a hash of the place on the planet, in cells a whole doubling of a texel's share, at most an art pixel across
+          float sub = min(${LIGHTS.maxSub.toFixed(1)}, exp2(ceil(log2(max(widePx, 1.0)))));
           vec2 q = floor(t * sub);
-          thr = mix(thr, fract(sin(dot(q, vec2(12.9898, 78.233))) * 43758.5453), mag);
+          thr = mix(thr, hash21(q), mag);
         }
         // the heat: the more packed the lights are round this one (the map's green), the whiter and brighter it is, and the likelier it is to be drawn
         float heat = smoothstep(${LIGHTS.from.toFixed(2)}, ${LIGHTS.to.toFixed(2)}, m.g);

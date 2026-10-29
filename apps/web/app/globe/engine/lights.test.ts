@@ -22,6 +22,17 @@ describe("the night lights, in the interlude's close shots", () => {
     expect(src).toMatch(/fract\(\(i\.x \+ 1\.5\) \/ uSize\.x\)/);
   });
 
+  it("are scrambled the closer the camera is: the place read is moved by a noise (up to `warp` texels), the density has clusters (a mean of 1: a noise of two octaves between 1 - grain and 1 + grain), and the hash's cells are at most an art pixel", () => {
+    expect(LIGHTS.warp).toBeGreaterThan(0.5);
+    expect(LIGHTS.warp).toBeLessThan(2);
+    expect(LIGHTS.grain).toBeGreaterThan(0);
+    expect(LIGHTS.grain).toBeLessThan(1); // (the density never goes to nothing or negative)
+    const src = lightsMaterial().fragmentShader;
+    expect(src).toMatch(/vnoise\(t \* 0\.9 \+ 3\.1\)/);
+    expect(src).toMatch(/exp2\(ceil\(log2\(max\(widePx, 1\.0\)\)\)\)/); // (a cell is never wider than a pixel)
+    expect(src).toMatch(/1\.0 - 0\.85 \* mag \+ 1\.70 \* mag \* gr/); // (the mean of the noise is a half: 1 - g + 2 g / 2 = 1)
+  });
+
   it("have the size of the map they are given (the scene sets it from the picture), 2048 x 1024 until then", () => {
     expect(lightsMaterial().uniforms.uSize!.value).toEqual([2048, 1024]);
     expect(readFileSync("app/globe/engine/scene.ts", "utf8")).toMatch(/uniforms\.uSize!\.value = \[img\.width, img\.height\]/);
