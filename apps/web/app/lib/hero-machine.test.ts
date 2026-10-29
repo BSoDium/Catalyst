@@ -29,6 +29,20 @@ describe("showcaseOf: when the home screen shows the caption and lifts the plane
 });
 
 describe("a hero born collapsed (the visitor came back to the home page from another)", () => {
+  it("still comes back when its host's effect is cleaned up and run again (StrictMode: stop, then start)", () => {
+    vi.useFakeTimers();
+    try {
+      const m = createHeroMachine({ initial: "collapsed" });
+      m.stop();
+      m.start();
+      vi.advanceTimersByTime(HERO_IDLE_MS);
+      expect(m.getSnapshot().state).toBe("rest");
+      m.stop();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("keeps the header, then brings the full hero back after the idle delay with no gesture", () => {
     vi.useFakeTimers();
     try {
