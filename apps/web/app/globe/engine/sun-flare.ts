@@ -120,7 +120,7 @@ export interface FlareFrame {
   /** How long the rays are, as a share of their full length, 0..1: the sun's visible radius (the root of its area). Absent: whole. */
   size?: number;
   /** The rays' reach on the music's beat (`sunPulse`, engine/sun-pulse.ts): how much longer the axes' and the diagonals' are, 0..1 of `PULSE.rays`. Absent: none. */
-  pulse?: { axis: number; diag: number; lens: number; grow: number; seed: number; jitter: number };
+  pulse?: { axis: number; diag: number; lens: number; grow: number; gain: number; seed: number; jitter: number };
 }
 
 const smooth = (a: number, b: number, x: number) => {
@@ -253,12 +253,13 @@ export class FlareLayer {
     u.uBufH!.value = fr.bufH;
     u.uSunR!.value = p.r;
     u.uLen!.value = p.len;
+    const gain = fr.pulse?.gain ?? 1;
     const grow = PULSE.grow * (fr.pulse?.grow ?? 0);
-    (u.uPulse!.value as Vector2).set(1 + grow + PULSE.rays * (fr.pulse?.axis ?? 0), 1 + grow + PULSE.rays * (fr.pulse?.diag ?? 0));
+    (u.uPulse!.value as Vector2).set(1 + grow + PULSE.rays * gain * (fr.pulse?.axis ?? 0), 1 + grow + PULSE.rays * gain * (fr.pulse?.diag ?? 0));
     u.uSeed!.value = fr.pulse?.seed ?? 0;
     u.uJitter!.value = fr.pulse?.jitter ?? 0;
     // (the ghosts breathe in opacity with the music: `PULSE.flare` of it at the bottom of a breath)
-    u.uStr!.value = p.str * (1 - PULSE.flare * (fr.pulse?.lens ?? 0));
+    u.uStr!.value = p.str * (1 - PULSE.flare * gain * (fr.pulse?.lens ?? 0));
     u.uRay!.value = p.ray;
     u.uSet!.value = fr.set ?? 0;
     return true;

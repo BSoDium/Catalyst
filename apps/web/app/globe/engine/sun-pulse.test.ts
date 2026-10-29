@@ -64,17 +64,29 @@ describe("the sun's breathing", () => {
     expect(top.amount - top.breath).toBeCloseTo(0, 5); // (the shader's dip is amount - breath)
     const low = sunPulse(at(PULSE.haloLag), 1);
     expect(low.amount - low.breath).toBeCloseTo(1, 5);
-    expect(PULSE.dip).toBeGreaterThan(0.5);
-    expect(PULSE.dip).toBeLessThanOrEqual(2);
+    expect(PULSE.dip).toBeGreaterThan(0);
+    expect(PULSE.dip).toBeLessThanOrEqual(1);
     expect(readFileSync("app/globe/engine/sun-layer.ts", "utf8")).not.toMatch(/PULSE\.glow/);
   });
 
-  it("is soft: the most it moves the rays, the halo, the light and the grain is a few per cent", () => {
-    expect(PULSE.rays).toBeLessThanOrEqual(0.08);
-    expect(PULSE.grow).toBeLessThanOrEqual(0.15);
-    expect(PULSE.halo).toBeLessThanOrEqual(0.04);
-    expect(PULSE.flare).toBeLessThanOrEqual(0.3);
-    expect(PULSE.jitter).toBeLessThanOrEqual(0.4);
+  it("is soft: the most it moves the rays, the halo, the light and the grain is a couple of per cent (owner: \"waaay more subtle\")", () => {
+    expect(PULSE.rays).toBeLessThanOrEqual(0.03);
+    expect(PULSE.grow).toBeLessThanOrEqual(0.05);
+    expect(PULSE.halo).toBeLessThanOrEqual(0.015);
+    expect(PULSE.flare).toBeLessThanOrEqual(0.1);
+    expect(PULSE.jitter).toBeLessThanOrEqual(0.2);
+  });
+
+  it("is not as strong at every cycle, within bounds, and never steps from one cycle to the next", () => {
+    const gains = new Set<number>();
+    for (let i = 0; i < 64; i++) {
+      const g = sunPulse(at(i + 0.4), 1).gain;
+      expect(g).toBeGreaterThanOrEqual(PULSE.gainMin - 1e-9);
+      expect(g).toBeLessThanOrEqual(1 + 1e-9);
+      gains.add(Math.round(g * 100));
+    }
+    expect(gains.size).toBeGreaterThan(10);
+    for (let i = 1; i < 64; i++) expect(Math.abs(sunPulse(at(i + 1e-4), 1).gain - sunPulse(at(i - 1e-4), 1).gain)).toBeLessThan(0.01);
   });
 
   it("is a valid phase for a position before the first beat", () => {

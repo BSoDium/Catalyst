@@ -290,10 +290,10 @@ export class SunLayer {
     // the halo is in proportion to the sun that is left: its reach goes with the sun's visible radius (the root of its area), its light with the same share, so that it is gone when the sun is
     const k = Math.sqrt(cres.area);
     // (in units of `unit`: the reach is still SUN.halo disc radii times k)
-    u.uK!.value = Math.max(k * (sr / unit), 1e-3) * (1 + PULSE.halo * (f.pulse?.breath ?? 0));
+    u.uK!.value = Math.max(k * (sr / unit), 1e-3) * (1 + PULSE.halo * (f.pulse?.gain ?? 1) * (f.pulse?.breath ?? 0));
     u.uSoft!.value = SUN.cover.hidden + (1 - SUN.cover.hidden) * k;
     // (as audible as the music is, less how far the breath has come up: it is 0 with no music, and a whole breath, up, is 0 too)
-    u.uDip!.value = (PULSE.dip / SUN.haloSteps) * Math.max(0, (f.pulse?.amount ?? 0) - (f.pulse?.breath ?? 0));
+    u.uDip!.value = (PULSE.dip / SUN.haloSteps) * (f.pulse?.gain ?? 1) * Math.max(0, (f.pulse?.amount ?? 0) - (f.pulse?.breath ?? 0));
     u.uSet!.value = (1 - halo) * SUN.cover.halo;
     return true;
   }
