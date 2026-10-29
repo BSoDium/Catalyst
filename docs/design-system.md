@@ -167,7 +167,7 @@ Same content, two layouts; `layout` only changes the grid (CSS), never the data,
 
 ```
 <article class="entry" data-surface="reading" aria-labelledby="panel-heading">   // a container: the type scales with its width (cqi)
-  [Back to <place>]                                                // only when opened from a place panel
+  [Back to <place> | <list>]                                       // only when opened from a place panel (to the place) or a list page ("Back to Software", with its tag filter; the close button goes there too)
   ARTICLE · Ljubljana, Zagreb +2                       6 min read   // running head (mono, uppercase): kind, places, status / reading time, over ONE hairline (--border-strong), as a list's
   h1#panel-heading                                                 // Newsreader 700; the clause after a comma / colon / dash at 300
   summary                                                          // standfirst: Newsreader italic 300

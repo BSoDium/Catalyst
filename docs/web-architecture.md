@@ -342,6 +342,7 @@ other way in. Without JavaScript the globe screen shows no list (the globe itsel
   (the globe's `main` gives up the id), so "Skip to content" lands on the full view and there is one `main`. One h1 per view: the
   entry's (or the place's) title while the panel is open; the landing hero's name (the owner's, `SITE.name`) on the globe page when it is closed. Body
   headings are h2/h3 (an h3 before any h2 is drawn as h2: the outline never skips a level); the sections after the body are h2.
+- **List -> entry -> list (owner, 2026-10-29: "the X leads to the map, which is unexpected").** The list pages' links carry `state={{ list: "/software?tag=maps" }}` (`listBackState`, with the tag filter the list had); the entry shows "Back to Software" (`resolveListBack`: only a section's own list path counts, history state can be anything), and its close button (and Escape) go to that list instead of the map (`shell.tsx` `close`). An entry opened from a place keeps "Back to <place>" and a close to the map; one opened any other way (search, a link) closes to the map.
 - **Place -> entry -> place.** The place panel's cards link with `state={{ from: "<place slug>" }}`; the entry shows "Back to
   <place>" (read and validated against the shell's places by `resolveBackTarget`) and the shell keeps that place selected on the globe
   so the camera does not move. History state survives a reload; without it the entry simply has no back link (its Places section

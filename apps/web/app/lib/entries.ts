@@ -377,3 +377,22 @@ export function resolveBackTarget(state: unknown, places: readonly { slug: strin
   const place = places.find((p) => p.slug === from);
   return place ? { slug: place.slug, name: place.name, href: placePath(place.slug) } : null;
 }
+
+/**
+ * The list an entry was opened from (owner, 2026-10-29: "the X leads to the map, which is unexpected to a visitor who expects to go back to the list of entries they just came from"):
+ * the list pages put `{ list: "/software?tag=x" }` in the router state of their links (`listBackState`), and the entry reads it back (`resolveListBack`) to offer a way back
+ * to it, and to send its close button there. State comes from history and can be anything: only a path that is one of the sections' own lists, with at most a query, counts.
+ */
+export function listBackState(kind: ContentKind, search: string): { list: string } {
+  return { list: `${KIND_PATHS[kind]}${search}` };
+}
+
+export function resolveListBack(state: unknown): { name: string; href: string; list: true } | null {
+  const list = typeof state === "object" && state !== null ? (state as { list?: unknown }).list : undefined;
+  if (typeof list !== "string") return null;
+  const [pathname = "", query] = list.split("?", 2);
+  const kind = (Object.keys(KIND_PATHS) as ContentKind[]).find((k) => KIND_PATHS[k] === pathname);
+  if (!kind) return null;
+  if (query !== undefined && /[#\s]/.test(query)) return null;
+  return { name: KIND_PLURALS[kind], href: list, list: true };
+}
