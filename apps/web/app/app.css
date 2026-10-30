@@ -1987,8 +1987,8 @@
   .entry {
     --cover-bleed: 1.5rem;
     --cover-min: 40rem;
-    --cover-reach: 30rem;
-    --cover-clear: 30rem;
+    --cover-reach: 26rem;
+    --cover-clear: 26rem;
   }
 
   .entry-hero {
@@ -2011,22 +2011,22 @@
     pointer-events: none;
     -webkit-backdrop-filter: blur(7px);
     backdrop-filter: blur(7px);
-    -webkit-mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0.000) 0.0%, rgb(0 0 0 / 0.035) 8.3%, rgb(0 0 0 / 0.125) 16.7%, rgb(0 0 0 / 0.249) 25.0%, rgb(0 0 0 / 0.390) 33.3%, rgb(0 0 0 / 0.533) 41.7%, rgb(0 0 0 / 0.668) 50.0%, rgb(0 0 0 / 0.783) 58.3%, rgb(0 0 0 / 0.875) 66.7%, rgb(0 0 0 / 0.941) 75.0%, rgb(0 0 0 / 0.980) 83.3%, rgb(0 0 0 / 0.997) 91.7%, rgb(0 0 0 / 1.000) 100.0%);
-    mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0.000) 0.0%, rgb(0 0 0 / 0.035) 8.3%, rgb(0 0 0 / 0.125) 16.7%, rgb(0 0 0 / 0.249) 25.0%, rgb(0 0 0 / 0.390) 33.3%, rgb(0 0 0 / 0.533) 41.7%, rgb(0 0 0 / 0.668) 50.0%, rgb(0 0 0 / 0.783) 58.3%, rgb(0 0 0 / 0.875) 66.7%, rgb(0 0 0 / 0.941) 75.0%, rgb(0 0 0 / 0.980) 83.3%, rgb(0 0 0 / 0.997) 91.7%, rgb(0 0 0 / 1.000) 100.0%);
+    -webkit-mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0.000) 0.0%, rgb(0 0 0 / 0.038) 8.3%, rgb(0 0 0 / 0.135) 16.7%, rgb(0 0 0 / 0.268) 25.0%, rgb(0 0 0 / 0.415) 33.3%, rgb(0 0 0 / 0.562) 41.7%, rgb(0 0 0 / 0.696) 50.0%, rgb(0 0 0 / 0.808) 58.3%, rgb(0 0 0 / 0.894) 66.7%, rgb(0 0 0 / 0.952) 75.0%, rgb(0 0 0 / 0.985) 83.3%, rgb(0 0 0 / 0.998) 91.7%, rgb(0 0 0 / 1.000) 100.0%);
+    mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0.000) 0.0%, rgb(0 0 0 / 0.038) 8.3%, rgb(0 0 0 / 0.135) 16.7%, rgb(0 0 0 / 0.268) 25.0%, rgb(0 0 0 / 0.415) 33.3%, rgb(0 0 0 / 0.562) 41.7%, rgb(0 0 0 / 0.696) 50.0%, rgb(0 0 0 / 0.808) 58.3%, rgb(0 0 0 / 0.894) 66.7%, rgb(0 0 0 / 0.952) 75.0%, rgb(0 0 0 / 0.985) 83.3%, rgb(0 0 0 / 0.998) 91.7%, rgb(0 0 0 / 1.000) 100.0%);
     background: linear-gradient(
       to bottom,
       color-mix(in srgb, var(--background) 0.0%, transparent) 0.0%,
-      color-mix(in srgb, var(--background) 3.5%, transparent) 8.3%,
-      color-mix(in srgb, var(--background) 12.5%, transparent) 16.7%,
-      color-mix(in srgb, var(--background) 24.9%, transparent) 25.0%,
-      color-mix(in srgb, var(--background) 39.0%, transparent) 33.3%,
-      color-mix(in srgb, var(--background) 53.3%, transparent) 41.7%,
-      color-mix(in srgb, var(--background) 66.8%, transparent) 50.0%,
-      color-mix(in srgb, var(--background) 78.3%, transparent) 58.3%,
-      color-mix(in srgb, var(--background) 87.5%, transparent) 66.7%,
-      color-mix(in srgb, var(--background) 94.1%, transparent) 75.0%,
-      color-mix(in srgb, var(--background) 98.0%, transparent) 83.3%,
-      color-mix(in srgb, var(--background) 99.7%, transparent) 91.7%,
+      color-mix(in srgb, var(--background) 3.8%, transparent) 8.3%,
+      color-mix(in srgb, var(--background) 13.5%, transparent) 16.7%,
+      color-mix(in srgb, var(--background) 26.8%, transparent) 25.0%,
+      color-mix(in srgb, var(--background) 41.5%, transparent) 33.3%,
+      color-mix(in srgb, var(--background) 56.2%, transparent) 41.7%,
+      color-mix(in srgb, var(--background) 69.6%, transparent) 50.0%,
+      color-mix(in srgb, var(--background) 80.8%, transparent) 58.3%,
+      color-mix(in srgb, var(--background) 89.4%, transparent) 66.7%,
+      color-mix(in srgb, var(--background) 95.2%, transparent) 75.0%,
+      color-mix(in srgb, var(--background) 98.5%, transparent) 83.3%,
+      color-mix(in srgb, var(--background) 99.8%, transparent) 91.7%,
       color-mix(in srgb, var(--background) 100.0%, transparent) 100.0%
     );
   }
@@ -2040,8 +2040,8 @@
 
   .entry[data-layout="full"] {
     --cover-bleed: 1rem;
-    --cover-reach: 37rem;
-    --cover-clear: 37rem;
+    --cover-reach: 32rem;
+    --cover-clear: 32rem;
   }
 
   .entry[data-layout="full"] .entry-hero[data-tone="dim"] {
