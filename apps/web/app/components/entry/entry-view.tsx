@@ -159,7 +159,7 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
   const marginEl = (
         <div data-slot="entry-margin" className="entry-margin">
           {project && (
-            <h2 id="entry-glance" className="type-meta m-0 text-foreground">
+            <h2 id="entry-glance" className="m-0 mb-1 font-[family-name:var(--font-display)] text-[1.375rem] leading-tight font-bold tracking-tight text-foreground">
               At a glance
             </h2>
           )}
@@ -187,11 +187,15 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
             </dl>
           )}
           {entry.tags.length > 0 && (
-            <TagList
-              label="Tags"
-              className="font-meta text-xs"
-              tags={entry.tags.map((label) => ({ label, href: `${KIND_PATHS[entry.kind]}${tagSearch("", label)}` }))}
-            />
+            <div data-slot="entry-tags" className={cn(project && "mt-3 flex flex-col gap-1")}>
+              {/* (a label of their own, apart from the table: under it they read as one more row) */}
+              {project && <span className="type-meta text-foreground">Tags</span>}
+              <TagList
+                label="Tags"
+                className="font-meta text-xs"
+                tags={entry.tags.map((label) => ({ label, href: `${KIND_PATHS[entry.kind]}${tagSearch("", label)}` }))}
+              />
+            </div>
           )}
           {external && !project && (
             <Button asChild variant="primary" className="w-full">
@@ -232,7 +236,12 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
           )}
           <p
             data-slot="entry-meta"
-            className={cn("type-meta m-0 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 text-muted-foreground", !poem && "entry-running")}
+            className={cn(
+              "type-meta m-0 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 text-muted-foreground",
+              !poem && "entry-running",
+              // (over a cover its rule runs the panel's whole width, and the picture starts at it: the text keeps the page's gutter)
+              heroSrc && (full ? "-mx-4 px-4 md:-mx-14 md:px-14" : "-mx-6 px-6"),
+            )}
           >
             <span className="min-w-0">
               {backTo?.list ? (
@@ -273,7 +282,7 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
             )}
           </p>
           {/* (a software entry's cover is the backdrop of what comes under the running head, not of the running head itself: its small type was unreadable on a picture) */}
-          <div data-hero={heroSrc ? "" : undefined} className={heroSrc ? cn("entry-hero relative isolate mt-3 flex min-w-0 flex-col pb-7", full ? "-mx-4 px-4 md:-mx-14 md:px-14" : "-mx-6 px-6") : "contents"}>
+          <div data-hero={heroSrc ? "" : undefined} className={heroSrc ? cn("entry-hero relative isolate flex min-w-0 flex-col pb-7", full ? "-mx-4 px-4 md:-mx-14 md:px-14" : "-mx-6 px-6") : "contents"}>
           <h1
             id={headingId}
             tabIndex={-1}
