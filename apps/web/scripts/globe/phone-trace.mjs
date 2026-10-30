@@ -23,7 +23,6 @@ const browser = await chromium.connectOverCDP("http://localhost:9222");
 const ctx = browser.contexts()[0];
 const page = ctx.pages().find((p) => p.url().startsWith(url.slice(0, 20))) ?? ctx.pages()[0];
 await page.addInitScript(() => sessionStorage.setItem("globe-debug", "1"));
-await page.evaluate(() => sessionStorage.setItem("globe-debug", "1"));
 await page.goto(url, { waitUntil: "load" });
 await page.waitForFunction(() => window.__handoverDebug && document.querySelector('[data-globe="three"][data-state="ready"]'), null, { timeout: 60000 });
 await page.waitForTimeout(3000);
