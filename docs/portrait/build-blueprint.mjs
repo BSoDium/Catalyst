@@ -164,9 +164,7 @@ const frame = [
 
 const pens = {};
 for (const i of ids) pens[i] = `<g id="pen-${i}" class="pen">\n      ${outline(D[i])}\n      </g>`;
-// the shirt's hem sits on the frame: it is penned apart, above the frame, in the figure's own line colour
-const hem = parse(D.shirt).find(onEdge);
-const penHem = hem ? pen([hem], true) : "";
+// (the shirt's hem sits on the frame and is not penned at all: a dark line along the frame's own was in the way, owner, 2026-10-30)
 
 // Hatching: plain slanted lines at equal intervals, as the paper study has them.
 const clips = [];
@@ -258,9 +256,6 @@ const result = `<svg width="${500 + 2 * MX}" height="${500 + 2 * MY}" viewBox="$
     </g>
     <g id="pen-frame" class="pen">
       ${frame}
-    </g>
-    <g id="pen-hem" class="pen" clip-path="url(#c-frame)">
-      ${penHem}
     </g>
     <g id="guide-tails" class="guides">
       ${guideTails}

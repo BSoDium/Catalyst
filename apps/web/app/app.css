@@ -5822,7 +5822,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     margin-bottom: 0.5rem;
   }
 
-  /* The head's button to the contact form: a solid button under the availability line. */
+  /* The head's button to the contact form: a quiet outlined button under the availability line. */
   .career-reach {
     margin: 1.5rem 0 0;
   }
