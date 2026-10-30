@@ -187,7 +187,7 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
             </dl>
           )}
           {entry.tags.length > 0 && (
-            <div data-slot="entry-tags" className={cn(project && "mt-3 flex flex-col gap-1")}>
+            <div data-slot="entry-tags" className={cn(project && "mt-6 flex flex-col gap-1.5")}>
               {/* (a label of their own, apart from the table: under it they read as one more row) */}
               {project && <span className="type-meta text-foreground">Tags</span>}
               <TagList
