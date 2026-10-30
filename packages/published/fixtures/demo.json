@@ -365,7 +365,7 @@
       "title": "Signal Study No. 3",
       "summary": "A two-colour risograph print of two overlapping halftone discs, one black and one cyan, studying what happens where two signals cross.",
       "date": "2026-01-17",
-      "cover": { "src": "/media/demo/cover-signal-study.svg", "alt": "Two overlapping halftone discs, one black and one cyan, with registration marks and a crop frame like a printed proof", "width": 1200, "height": 630 },
+      "cover": { "src": "/media/demo/stock-art-yellow-red-blue.jpg", "alt": "A painting of floating coloured shapes on a pale ground: a yellow block and a red wedge at left, a violet patch of overlapping transparent planes at right, a black wavy line and a thin grid of straight lines drawn across them", "width": 1245, "height": 801 },
       "tags": ["risograph", "print", "halftone", "edition", "signal"],
       "meta": [
         { "label": "Medium", "value": "Two-colour risograph, black and cyan, on 100 g paper" },
@@ -410,7 +410,7 @@
       "title": "Monsoon Index",
       "summary": "A diptych of rooftops in the rain, drawn pixel by pixel in two moods, one dark and one pale, with the same street under both.",
       "date": "2024-08",
-      "cover": { "src": "/media/demo/cover-monsoon-index.svg", "alt": "Rooftops under a dithered storm sky, thin diagonal rain streaks and ripples on a wet street", "width": 1200, "height": 630 },
+      "cover": { "src": "/media/demo/stock-art-great-wave.jpg", "alt": "A woodblock print of a huge wave in deep blue and white, its crest breaking into claw-like foam above two long boats, on a cream sky", "width": 960, "height": 1067 },
       "tags": ["pixel-art", "rain", "diptych", "vietnam"],
       "meta": [
         { "label": "Medium", "value": "Pixel drawing, archival pigment print" },
@@ -432,7 +432,7 @@
       "title": "Altiplano Sediment",
       "summary": "Twelve pen-plotter drawings of stacked contour lines made from notes taken on the Andean plateau: each plate hides the line behind it, like layers of sediment.",
       "date": "2022",
-      "cover": { "src": "/media/demo/cover-sediment.svg", "alt": "Stacked wavy contour lines, each hiding the one behind, with a single cyan line in the lower half", "width": 1200, "height": 630 },
+      "cover": { "src": "/media/demo/stock-art-falls.jpg", "alt": "A woodblock print of a tall waterfall pouring down a dark gorge between mossy yellow-green cliffs, three travellers resting on a ledge at left, a swirl of blue water at the top", "width": 800, "height": 1128 },
       "tags": ["plotter", "series", "landscape", "ink", "andes"],
       "meta": [
         { "label": "Medium", "value": "Black ink on cotton paper, pen plotter" },
@@ -557,8 +557,8 @@
       "summary": "A long-lens view of the last ridges of the day, the sun a small bright disc above the haze.",
       "date": "2026-03-14",
       "cover": {
-        "src": "/media/demo/photo-last-light.svg",
-        "alt": "Seven layers of stair-stepped ridges fading into dithered haze under a small cyan sun, a stand-in for a landscape photograph",
+        "src": "/media/demo/stock-photo-ridges.jpg",
+        "alt": "Layered forested ridges in silhouette, each paler than the one in front, under an orange evening sky",
         "width": 1200,
         "height": 800
       },
@@ -593,10 +593,10 @@
       "summary": "A portrait-format frame of rooftops under a storm sky, rain drawn out into thin diagonal lines.",
       "date": "2026-02-02",
       "cover": {
-        "src": "/media/demo/photo-rain-gate.svg",
-        "alt": "Rooftops under a dithered storm sky with thin diagonal rain streaks, a stand-in for a portrait-format photograph",
-        "width": 960,
-        "height": 1200
+        "src": "/media/demo/stock-photo-archway-rain.jpg",
+        "alt": "Looking through a dark stone archway at a rain puddle on gravel and a wooden walkway beyond, under a grey sky",
+        "width": 800,
+        "height": 1000
       },
       "tags": [
         "rain",
@@ -629,8 +629,8 @@
       "summary": "The coast road on its cliff, a line of dashes above the swell.",
       "date": "2025-11",
       "cover": {
-        "src": "/media/demo/photo-sea-wall.svg",
-        "alt": "A dashed road on a cliff above the sea on pale paper, a stand-in for a landscape photograph",
+        "src": "/media/demo/stock-photo-breakwater.jpg",
+        "alt": "Waves breaking along a breakwater of concrete blocks and a stone quay, a hazy mountain on the horizon under a pale blue sky",
         "width": 1200,
         "height": 800
       },
@@ -662,10 +662,10 @@
       "summary": "An empty platform at night, one lamp in a different colour from the rest.",
       "date": "2025-09-21",
       "cover": {
-        "src": "/media/demo/photo-platform-square.svg",
-        "alt": "An empty platform in perspective with a pair of lamp posts per bay and one cyan lamp, a stand-in for a square photograph",
-        "width": 1200,
-        "height": 1200
+        "src": "/media/demo/stock-photo-platform-sign.jpg",
+        "alt": "Looking up along a station platform: the underside of its roof, overhead wires and a green diamond sign with a white number, a street of low buildings beyond the tracks",
+        "width": 800,
+        "height": 800
       },
       "tags": [
         "night",

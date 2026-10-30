@@ -89,7 +89,7 @@ const noCover = (value) => !MEDIA.some((src) => String(value).includes(src.split
   ok(!/image:|<image|\/media\//.test(sitemap), "sitemap.xml: no image tag and no media path");
   // an ordinary entry is untouched
   const plain = await fetch(`${BASE_URL}/artworks/demo-artwork`).then((r) => r.text());
-  ok(!/data-slot="sensitive-media" data-state="hidden" data-interactive/.test(plain) && /og:image" content="[^"]*cover-signal-study|og:image" content="[^"]*og-default/.test(plain), "an ordinary artwork has no entry frame");
+  ok(!/data-slot="sensitive-media" data-state="hidden" data-interactive/.test(plain) && /og:image" content="[^"]*stock-art-yellow-red-blue|og:image" content="[^"]*og-default/.test(plain), "an ordinary artwork has no entry frame");
   ok(!/noimageindex/.test(plain), "an ordinary artwork has no noimageindex");
 }
 

@@ -2245,8 +2245,8 @@
     height: calc(100% + 6rem);
     max-width: none;
     object-fit: cover;
-    filter: blur(32px) saturate(1.15);
-    opacity: 0.6;
+    filter: blur(36px) saturate(0.9);
+    opacity: 0.22;
     z-index: -1;
     pointer-events: none;
   }

@@ -139,7 +139,7 @@ describe("published package", () => {
       const file = join(MEDIA_DIR, photo.file);
       expect(existsSync(file), photo.file).toBe(true);
       expect(statSync(file).size, photo.file).toBeLessThan(250 * 1024);
-      expect(photo.source, photo.name).toMatch(/^https:\/\/www\.pexels\.com\/photo\//);
+      expect(photo.source, photo.name).toMatch(/^https:\/\/(www\.pexels\.com\/photo|commons\.wikimedia\.org\/wiki\/File:)/);
       expect(notice, photo.name).toContain(photo.file);
       expect(notice, photo.name).toContain(photo.source);
       expect(MEDIA.some((m) => m.name === photo.name)).toBe(false);
