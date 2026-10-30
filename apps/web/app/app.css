@@ -3076,7 +3076,7 @@
     font-weight: 400;
     font-feature-settings: normal;
     /* The index is on the BASELINE of the 24 px title, which puts it 0.7 px (0.033 em of this type) under where a centred word of its size would be: the search goes down by that, so the two are on one line
-       (measured in the browser; both sides scale with --nav-title). The icon takes it back below, to stay on the word's digit height. */
+       (measured in the browser; both sides scale with --nav-title). The icon is centred in the row. */
     translate: 0 0.033em;
   }
 
@@ -3097,10 +3097,7 @@
        the ring's own thickness 0.95 units: with a box of B em and a stroke of s units, (13.95 + s) B / 16 = 0.74 and (0.95 + s) B / 16 = 0.09, so B = 0.8 em and s = 0.85 units. */
     width: 0.8em;
     height: 0.8em;
-    /* Its CENTRE OF MASS is on the word's. Measured from the rendered ink: the word's is 0.316 em above its baseline (the lowercase letters carry most of the ink, so it is under the middle of a digit, 0.37 em), the
-       lens's is 0.57 units of 16 above its box's middle (the ring is up and left, the handle down and right), 0.0286 em. With the row's shift above, the box's middle is on the digit's middle, 0.37 em up, so the icon
-       goes down by 0.37 + 0.0286 - 0.316 = 0.082 em, less the 0.0305 em the row's centring puts it under the baseline, and a last 0.004 em from the browser: 0.048 em. (Its top and bottom are then not the digit's: it hangs 1.8 px under the baseline.) */
-    translate: 0 0.048em;
+    /* Centred on the row's middle by the flex row, and no more (owner, 2026-10-29: the lens looked odd; the nudge that put its centre of mass on the word's is gone) */
   }
 
   /* The stroke of the type beside it: the stems are 0.09 em (measured on the H at weight 400), the ring 0.95 units of 16, so a stroke of 0.85 units round it brings the ring to the stems' thickness. */
@@ -3108,6 +3105,23 @@
     stroke: currentColor;
     stroke-width: 0.85px;
     stroke-linejoin: miter;
+  }
+}
+
+/*
+ * The search is docked at the header's right edge (owner, 2026-10-29, then 2026-10-30: "keep it docked to the right, but the simple design: a bit of caps text like the nav entries, a search icon next to it,
+ * and to the right the keyboard shortcut, and that's it, aligned with the other items"), where the header is wide enough that the centred links (816 px) leave it room: from 80 rem of header (the same
+ * 1280 px as the player at the left). It is the trigger of the row, as everywhere (the nav's own type, the icon, the key hint), taken out of the row's flow so that the links stay centred over the screen:
+ * its right edge is on the page's own right margin (3.5 rem; the nav is centred in the header, so its edge is half the difference away) and it is centred on the nav's height, on the links' line.
+ * Narrower, it is in the row, as before. Unlayered, like the narrow form's: the trigger carries utilities.
+ */
+@container (min-width: 80rem) {
+  [data-slot="site-header"] [data-slot="search-trigger"] {
+    position: absolute;
+    top: 50%;
+    right: calc((100% - 100cqw) / 2 + 3.5rem);
+    translate: 0 -50%;
+    z-index: 3;
   }
 }
 
@@ -3222,14 +3236,34 @@ body:not(:has([data-slot="site-header"])) .np-root {
     top: var(--np-inset);
   }
 }
-/* The words lie on a soft plate of the page's colour, as the map's labels and credits do, so that they read over the globe's lines */
+/* One soft plate behind the disc AND the words (owner, 2026-10-29: a bigger, softer one than a blurred rectangle round the text): a radial gradient of the page's colour, opaque over the middle and gone at its edge, so there is no box and no blur to pay for; the words still read over the globe's lines */
+.np {
+  position: relative;
+  isolation: isolate;
+  --np-plate: color-mix(in srgb, var(--background) 82%, transparent);
+}
+.np::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  /* the plate reaches well past the disc and the words (owner, 2026-10-30: "bigger, more padding for the contents ... edges barely noticeable"): the whole of the margin is the feather, so the plate is full only under the contents */
+  --np-feather-x: 2.75rem;
+  --np-feather-y: 1.6rem;
+  inset: calc(-1 * var(--np-feather-y)) calc(-1 * var(--np-feather-x));
+  pointer-events: none;
+  background: var(--np-plate);
+  /* a rectangle with soft edges all round: two ramps cut against each other, each a smoothstep in six stops (a straight ramp has a visible start and end: the eye sees the corner of a linear fade) */
+  --np-ramp-x: linear-gradient(to right, rgb(0 0 0 / 0) 0, rgb(0 0 0 / 0.04) calc(var(--np-feather-x) * 0.2), rgb(0 0 0 / 0.16) calc(var(--np-feather-x) * 0.4), rgb(0 0 0 / 0.5) calc(var(--np-feather-x) * 0.6), rgb(0 0 0 / 0.84) calc(var(--np-feather-x) * 0.8), #000 var(--np-feather-x), #000 calc(100% - var(--np-feather-x)), rgb(0 0 0 / 0.84) calc(100% - var(--np-feather-x) * 0.8), rgb(0 0 0 / 0.5) calc(100% - var(--np-feather-x) * 0.6), rgb(0 0 0 / 0.16) calc(100% - var(--np-feather-x) * 0.4), rgb(0 0 0 / 0.04) calc(100% - var(--np-feather-x) * 0.2), rgb(0 0 0 / 0) 100%);
+  --np-ramp-y: linear-gradient(to bottom, rgb(0 0 0 / 0) 0, rgb(0 0 0 / 0.04) calc(var(--np-feather-y) * 0.2), rgb(0 0 0 / 0.16) calc(var(--np-feather-y) * 0.4), rgb(0 0 0 / 0.5) calc(var(--np-feather-y) * 0.6), rgb(0 0 0 / 0.84) calc(var(--np-feather-y) * 0.8), #000 var(--np-feather-y), #000 calc(100% - var(--np-feather-y)), rgb(0 0 0 / 0.84) calc(100% - var(--np-feather-y) * 0.8), rgb(0 0 0 / 0.5) calc(100% - var(--np-feather-y) * 0.6), rgb(0 0 0 / 0.16) calc(100% - var(--np-feather-y) * 0.4), rgb(0 0 0 / 0.04) calc(100% - var(--np-feather-y) * 0.2), rgb(0 0 0 / 0) 100%);
+  -webkit-mask-image: var(--np-ramp-x), var(--np-ramp-y);
+  -webkit-mask-composite: source-in;
+  mask-image: var(--np-ramp-x), var(--np-ramp-y);
+  mask-composite: intersect;
+}
 .np-text {
   /* (both lines are ONE line each, whatever the credit: owner. Under 1280 px the header is a row of its own and the words have the width of the screen; from 1280 they have the room the header's links leave, which start at (width - 816) / 2: the disc and its inset are 5 rem, and a longer line is cut with an ellipsis, in full in the title) */
   max-width: 100%;
-  --np-plate: color-mix(in srgb, var(--background) 82%, transparent);
   padding: 0.125rem 0.375rem;
-  background: var(--np-plate);
-  box-shadow: 0 0 6px 4px var(--np-plate);
 }
 @media (min-width: 1280px) {
   .np-text {
@@ -3237,7 +3271,7 @@ body:not(:has([data-slot="site-header"])) .np-root {
   }
 }
 @supports not (background: color-mix(in srgb, red 50%, transparent)) {
-  .np-text {
+  .np {
     --np-plate: var(--background);
   }
 }

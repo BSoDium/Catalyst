@@ -30,6 +30,8 @@ export const HANDOVER = {
   /** ... and released below this, after `unmountDelayMs` (hysteresis: the chunk and tiles stay warm while the user hovers). */
   unmountZoom: 1.9,
   unmountDelayMs: 2500,
+  /** Create the street map in an idle moment after the globe is up, hidden, instead of when the visitor first zooms past `mountZoom` (a Pixel 7: 276 to 373 ms in one frame, mid-gesture). Not on small-memory devices or data-saver connections. */
+  premount: true as boolean,
   /** From here the street map follows the camera while still invisible, so its tiles are loaded when the dissolve starts. */
   followZoom: 3.0,
   /** Trailing debounce of the invisible follow (ms): tiles for where the camera rests, not for every frame of a drag. */
