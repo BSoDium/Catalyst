@@ -51,6 +51,8 @@ export const SUN_MUSIC = {
   energyLoDb: -42,
   energyHiDb: -16,
   energySmoothSec: 0.5,
+  /** How the picture lets go of the music when it is silenced (a pause is a 120 ms fade of the SOUND, and the rays, halo and flare followed it: they jumped back to their rest in that time; owner, 2026-10-29): the breathing's amount eases down with this time constant, s (about three times that to be gone). It comes up as fast as the sound does. */
+  pulseReleaseSec: 0.8,
 } as const;
 
 /** How far a fade has got, 0..1 in, 0..1 out: a smoothstep, so that a fade starts and ends without a corner. */
@@ -201,6 +203,10 @@ export class SunMusic {
   private senseBuf: Float32Array<ArrayBuffer> | null = null;
   private energy = 0;
   private energyAt = 0;
+  /** The breathing's amount as the picture has it: `pulse()`'s audibility, eased down (`pulseReleaseSec`). */
+  private haltedAt = 0;
+  private shown = 0;
+  private shownAt = 0;
 
   constructor(
     private deps: MusicDeps = browserDeps,
@@ -238,11 +244,22 @@ export class SunMusic {
    */
   pulse(): { amount: number; position: number; energy: number } | null {
     const c = this.ctx;
-    if (!c || !this.src) return null;
-    const amount = this.level(c.currentTime) / SUN_MUSIC.volume;
-    if (amount < 0.002) return null;
+    // (a halted source still breathes while the picture eases out, as if the piece went on from where the sound stopped)
+    if (!c || (!this.src && this.shown < 0.002)) return null;
+    const heard = this.src ? Math.min(1, this.level(c.currentTime) / SUN_MUSIC.volume) : 0;
+    const dt = this.shownAt > 0 ? Math.max(0, c.currentTime - this.shownAt) : 0;
+    this.shownAt = c.currentTime;
+    // (up with the sound, down on its own slower time: a mute is quick for the ear, not for the picture)
+    this.shown = heard >= this.shown ? heard : this.shown + (heard - this.shown) * (1 - Math.exp(-dt / SUN_MUSIC.pulseReleaseSec));
+    const amount = this.shown;
+    if (amount < 0.002) {
+      this.shown = 0;
+      this.shownAt = 0;
+      return null;
+    }
     const lag = Math.min(0.5, c.outputLatency ?? 0);
-    return { amount: Math.min(1, amount), position: loopPosition(this.pos, c.currentTime - this.srcAt - lag, this.loopSec), energy: this.sense(c.currentTime) };
+    const from = this.src ? this.srcAt : this.haltedAt;
+    return { amount, position: loopPosition(this.pos, c.currentTime - from - lag, this.loopSec), energy: this.src ? this.sense(c.currentTime) : this.energy };
   }
 
   /** How loud the piece is now, 0..1: the RMS of the last few milliseconds in dB between `energyLoDb` and `energyHiDb`, eased (up as it comes, down over `energySmoothSec`). */
@@ -487,6 +504,7 @@ export class SunMusic {
     const s = this.src;
     if (!s) return;
     this.pos = loopPosition(this.pos, at - this.srcAt, this.loopSec);
+    this.haltedAt = at;
     this.src = null;
     this.fade = null;
     try {
