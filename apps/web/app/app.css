@@ -2011,21 +2011,21 @@
     pointer-events: none;
     -webkit-backdrop-filter: blur(7px);
     backdrop-filter: blur(7px);
-    -webkit-mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0.000) 0.0%, rgb(0 0 0 / 0.038) 8.3%, rgb(0 0 0 / 0.135) 16.7%, rgb(0 0 0 / 0.268) 25.0%, rgb(0 0 0 / 0.415) 33.3%, rgb(0 0 0 / 0.562) 41.7%, rgb(0 0 0 / 0.696) 50.0%, rgb(0 0 0 / 0.808) 58.3%, rgb(0 0 0 / 0.894) 66.7%, rgb(0 0 0 / 0.952) 75.0%, rgb(0 0 0 / 0.985) 83.3%, rgb(0 0 0 / 0.998) 91.7%, rgb(0 0 0 / 1.000) 100.0%);
-    mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0.000) 0.0%, rgb(0 0 0 / 0.038) 8.3%, rgb(0 0 0 / 0.135) 16.7%, rgb(0 0 0 / 0.268) 25.0%, rgb(0 0 0 / 0.415) 33.3%, rgb(0 0 0 / 0.562) 41.7%, rgb(0 0 0 / 0.696) 50.0%, rgb(0 0 0 / 0.808) 58.3%, rgb(0 0 0 / 0.894) 66.7%, rgb(0 0 0 / 0.952) 75.0%, rgb(0 0 0 / 0.985) 83.3%, rgb(0 0 0 / 0.998) 91.7%, rgb(0 0 0 / 1.000) 100.0%);
+    -webkit-mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0.000) 0.0%, rgb(0 0 0 / 0.044) 8.3%, rgb(0 0 0 / 0.151) 16.7%, rgb(0 0 0 / 0.293) 25.0%, rgb(0 0 0 / 0.445) 33.3%, rgb(0 0 0 / 0.593) 41.7%, rgb(0 0 0 / 0.723) 50.0%, rgb(0 0 0 / 0.829) 58.3%, rgb(0 0 0 / 0.907) 66.7%, rgb(0 0 0 / 0.959) 75.0%, rgb(0 0 0 / 0.987) 83.3%, rgb(0 0 0 / 0.998) 91.7%, rgb(0 0 0 / 1.000) 100.0%);
+    mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0.000) 0.0%, rgb(0 0 0 / 0.044) 8.3%, rgb(0 0 0 / 0.151) 16.7%, rgb(0 0 0 / 0.293) 25.0%, rgb(0 0 0 / 0.445) 33.3%, rgb(0 0 0 / 0.593) 41.7%, rgb(0 0 0 / 0.723) 50.0%, rgb(0 0 0 / 0.829) 58.3%, rgb(0 0 0 / 0.907) 66.7%, rgb(0 0 0 / 0.959) 75.0%, rgb(0 0 0 / 0.987) 83.3%, rgb(0 0 0 / 0.998) 91.7%, rgb(0 0 0 / 1.000) 100.0%);
     background: linear-gradient(
       to bottom,
       color-mix(in srgb, var(--background) 0.0%, transparent) 0.0%,
-      color-mix(in srgb, var(--background) 3.8%, transparent) 8.3%,
-      color-mix(in srgb, var(--background) 13.5%, transparent) 16.7%,
-      color-mix(in srgb, var(--background) 26.8%, transparent) 25.0%,
-      color-mix(in srgb, var(--background) 41.5%, transparent) 33.3%,
-      color-mix(in srgb, var(--background) 56.2%, transparent) 41.7%,
-      color-mix(in srgb, var(--background) 69.6%, transparent) 50.0%,
-      color-mix(in srgb, var(--background) 80.8%, transparent) 58.3%,
-      color-mix(in srgb, var(--background) 89.4%, transparent) 66.7%,
-      color-mix(in srgb, var(--background) 95.2%, transparent) 75.0%,
-      color-mix(in srgb, var(--background) 98.5%, transparent) 83.3%,
+      color-mix(in srgb, var(--background) 4.4%, transparent) 8.3%,
+      color-mix(in srgb, var(--background) 15.1%, transparent) 16.7%,
+      color-mix(in srgb, var(--background) 29.3%, transparent) 25.0%,
+      color-mix(in srgb, var(--background) 44.5%, transparent) 33.3%,
+      color-mix(in srgb, var(--background) 59.3%, transparent) 41.7%,
+      color-mix(in srgb, var(--background) 72.3%, transparent) 50.0%,
+      color-mix(in srgb, var(--background) 82.9%, transparent) 58.3%,
+      color-mix(in srgb, var(--background) 90.7%, transparent) 66.7%,
+      color-mix(in srgb, var(--background) 95.9%, transparent) 75.0%,
+      color-mix(in srgb, var(--background) 98.7%, transparent) 83.3%,
       color-mix(in srgb, var(--background) 99.8%, transparent) 91.7%,
       color-mix(in srgb, var(--background) 100.0%, transparent) 100.0%
     );
