@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { MOON, SUN } from "./moon";
-import { flarePlace, haloClear, pickOccluder, planetRise, rayStart, sunCrescent, sunRise, type FlareFrame, type Occluder } from "./sun-flare";
+import { easeTouch, flarePlace, haloClear, pickOccluder, planetRise, rayStart, sunCrescent, sunRise, type FlareFrame, type Occluder } from "./sun-flare";
 
 const frame = (over: Partial<FlareFrame> = {}): FlareFrame => ({ bufW: 400, bufH: 260, x: 300, y: 80, ahead: true, amount: 1, visible: 1, ...over });
 
@@ -210,5 +210,29 @@ describe("flarePlace, the light page's fade", () => {
   it("cuts the dark page's flare at 1% of the sun as before (its rays do not dim)", () => {
     expect(flarePlace(frame({ visible: 0.005 }))).toBeNull();
     expect(flarePlace(frame({ visible: 0.05 }))).not.toBeNull();
+  });
+});
+
+describe("the disc the planet makes of the sun, eased in time", () => {
+  it("comes in and goes with the clock, not with the frame: a limb that crosses the sun in two frames leaves it nearly clear", () => {
+    // two 16 ms frames of the planet touching it, then clear again
+    let t = 0;
+    t = easeTouch(t, 1, 0.016);
+    t = easeTouch(t, 1, 0.016);
+    expect(t).toBeLessThan(0.3);
+    t = easeTouch(t, 0, 0.016);
+    expect(t).toBeLessThan(0.3);
+    // held for half a second it is whole, and it goes in about as long
+    let held = 0;
+    for (let i = 0; i < 30; i++) held = easeTouch(held, 1, 0.016);
+    expect(held).toBeGreaterThan(0.95);
+    let gone = held;
+    for (let i = 0; i < 60; i++) gone = easeTouch(gone, 0, 0.016);
+    expect(gone).toBeLessThan(0.05);
+  });
+  it("does not move without time, and is where it was asked to be after a long one", () => {
+    expect(easeTouch(0.4, 1, 0)).toBe(0.4);
+    expect(easeTouch(0, 1, 10)).toBeCloseTo(1, 5);
+    expect(easeTouch(1, 0, 10)).toBeCloseTo(0, 5);
   });
 });
