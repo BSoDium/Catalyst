@@ -73,6 +73,8 @@ export function EntryView(props: EntryViewProps) {
 function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: EntryViewProps) {
   const full = layout === "full";
   const poem = entry.kind === "poem";
+  // Software has its own order (owner, 2026-10-30, "actions first"): what you can DO right under the summary, then ONE block of what it is, the picture, the text, and what it is linked to at the foot.
+  const project = entry.kind === "project";
   // A photograph is the page: its picture comes straight after the title, before the dateline and the marginalia.
   const photo = entry.kind === "photograph";
   const { status, facts } = splitMeta(entry.meta);
@@ -97,10 +99,15 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
   const written = authored.has("written") ? null : formatMonthYear(entry.date);
   // Related entries are capped (RELATED_LIMIT): a full list is not a count of what is linked, so the number is only said when it is complete.
   const linked = linkedLine({ places: entry.places.length, entries: entry.related.length < RELATED_LIMIT ? entry.related.length : null });
+  // A software entry's repository is a button when it is an address (the fact says it as a host and a path: `github.com/x/y`); the same address as the entry's own link is not offered twice.
+  const repoFact = project ? facts.find((f) => f.label.trim().toLowerCase() === "repository") : undefined;
+  const repoHref = repoFact ? repositoryHref(repoFact.value) : null;
+  const repoButton = repoHref && repoHref !== external ? repoHref : null;
   const rows: { key: string; label: string; value: string }[] = [
-    ...(!poem && written ? [{ key: "written", label: "Written", value: written }] : []),
-    ...(!poem && linked ? [{ key: "linked", label: "Linked", value: linked }] : []),
-    ...facts.map((f) => ({ key: `fact-${f.label}`, label: f.label, value: f.value })),
+    // (software: the date is in the running head and the links are at the foot of the page, so neither is a row)
+    ...(!poem && !project && written ? [{ key: "written", label: "Written", value: written }] : []),
+    ...(!poem && !project && linked ? [{ key: "linked", label: "Linked", value: linked }] : []),
+    ...facts.filter((f) => !(repoHref && f === repoFact)).map((f) => ({ key: `fact-${f.label}`, label: f.label, value: f.value })),
   ];
 
   const copy = (
@@ -120,21 +127,58 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
     </Link>
   );
 
+  const actions = project && (external || repoButton) && (
+    <div data-slot="entry-actions" className="mt-7 flex flex-wrap items-center gap-3 print:hidden">
+      {external && (
+        <Button asChild variant="primary">
+          <a href={external} target="_blank" rel="noopener noreferrer">
+            <span className="truncate">Open {displayHost(external)}</span>
+            <Icon name="arrow-up-right" size="inline" />
+            <span className="sr-only"> (opens in a new tab)</span>
+          </a>
+        </Button>
+      )}
+      {repoButton && (
+        <Button asChild variant={external ? "secondary" : "primary"}>
+          <a href={repoButton} target="_blank" rel="noopener noreferrer">
+            <span>Repository</span>
+            <Icon name="arrow-up-right" size="inline" />
+            <span className="sr-only"> (opens in a new tab)</span>
+          </a>
+        </Button>
+      )}
+      {copy}
+    </div>
+  );
+
   const marginEl = (
         <div data-slot="entry-margin" className="entry-margin">
+          {project && (
+            <h2 id="entry-glance" className="type-meta m-0 border-b border-border-strong pb-2 text-foreground">
+              At a glance
+            </h2>
+          )}
           {poem ? (
             <PoemMargin entry={entry} date={date} globeLink={globeLink} skip={skip} copy={copy} />
-          ) : (
+          ) : project ? null : (
             (entry.places.length > 0 || entry.country) && <PlacesSection entry={entry} />
           )}
-          {rows.length > 0 && (
-            <dl data-slot="entry-details" className={cn("m-0", poem && "mt-2")}>
+          {(rows.length > 0 || (project && (entry.places.length > 0 || entry.country))) && (
+            <dl data-slot="entry-details" className={cn("m-0", poem && "mt-2", project && "divide-y divide-border")}>
               {rows.map((row) => (
-                <div key={row.key} data-slot="entry-fact" className="min-w-0">
+                <div key={row.key} data-slot="entry-fact" className={cn("min-w-0", project && !full && "grid grid-cols-[7.5rem_minmax(0,1fr)] items-baseline gap-x-4 py-2.5", project && full && "py-2.5")}>
                   <dt className="type-meta text-foreground">{row.label}</dt>
                   <dd className="m-0 [overflow-wrap:anywhere]">{row.value}</dd>
                 </div>
               ))}
+              {project && (entry.places.length > 0 || entry.country) && (
+                <div data-slot="entry-fact" className={cn("min-w-0", !full ? "grid grid-cols-[7.5rem_minmax(0,1fr)] items-baseline gap-x-4 py-2.5" : "py-2.5")}>
+                  <dt className="type-meta text-foreground">Made in</dt>
+                  <dd className="m-0 [overflow-wrap:anywhere]">
+                    <ProjectPlaces entry={entry} globeLink={globeTarget} />
+                  </dd>
+                </div>
+              )}
             </dl>
           )}
           {entry.tags.length > 0 && (
@@ -144,7 +188,7 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
               tags={entry.tags.map((label) => ({ label, href: `${KIND_PATHS[entry.kind]}${tagSearch("", label)}` }))}
             />
           )}
-          {external && (
+          {external && !project && (
             <Button asChild variant="primary" className="w-full">
               <a href={external} target="_blank" rel="noopener noreferrer">
                 <span className="truncate">Open {displayHost(external)}</span>
@@ -169,7 +213,7 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
     >
       <div className="entry-grid">
         <header className={cn("entry-head flex min-w-0 flex-col", poem ? "gap-5" : "gap-0")}>
-          {backTo && (
+          {backTo && !backTo.list && (
             <Link
               to={backTo.href}
               className="type-meta -ml-1 mb-3 inline-flex min-h-11 w-fit items-center gap-2 px-1 text-muted-foreground no-underline hover:text-foreground hover:underline print:hidden"
@@ -186,11 +230,33 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
             className={cn("type-meta m-0 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 text-muted-foreground", !poem && "entry-running")}
           >
             <span className="min-w-0">
-              <span data-slot="entry-kind">{KIND_LABELS[entry.kind]}</span>
+              {backTo?.list ? (
+                // (opened from its list: the kind's name IS the way back, in the running head, so it has no row of its own: a back link with the same word over the kind was two lines for one thing)
+                <Link
+                  to={backTo.href}
+                  aria-label={`Back to ${backTo.name}`}
+                  data-slot="entry-kind"
+                  // (inline, so that its text sits on the running head's own baseline with the places and the date: a flex box took the baseline of its icon; the touch target is a pseudo-element, taller than the line)
+                  className="relative text-muted-foreground no-underline after:absolute after:-inset-x-1 after:-inset-y-3 after:content-[''] hover:text-foreground hover:underline print:hidden"
+                >
+                  <Icon name="arrow-left" size="inline" className="mr-1.5 align-[-0.2em]" />
+                  {KIND_LABELS[entry.kind]}
+                </Link>
+              ) : (
+                <span data-slot="entry-kind">{KIND_LABELS[entry.kind]}</span>
+              )}
               {names && !poem && (
                 <>
                   <span aria-hidden="true"> &middot; </span>
                   <span data-slot="entry-place">{names}</span>
+                </>
+              )}
+              {project && date && (
+                <>
+                  <span aria-hidden="true"> &middot; </span>
+                  <time dateTime={date.dateTime} data-slot="entry-date">
+                    {date.text}
+                  </time>
                 </>
               )}
             </span>
@@ -211,11 +277,12 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
             {tail ? <span className="entry-title-tail">{tail}</span> : null}
           </h1>
           {entry.summary && !poem && <p className="type-standfirst mt-[1.375rem] max-w-[25.4em] md:mt-[2.125rem]">{entry.summary}</p>}
+          {actions}
         </header>
 
         {photo && <Cover entry={entry} />}
 
-        {!poem && (
+        {!poem && !project && (
           <div data-slot="entry-dateline" className="entry-dateline flex flex-wrap items-center gap-x-6 gap-y-1 md:gap-x-12">
             {date && (
               <time dateTime={date.dateTime} data-slot="entry-date">
@@ -239,6 +306,13 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
         {poem && marginEl}
         {poem && <Cover entry={entry} />}
       </div>
+
+      {project && (linked || skip) && (
+        <p data-slot="entry-linked" className="type-meta mt-12 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 border-t border-border-strong pt-4 text-muted-foreground print:hidden">
+          <span>{linked ? `Linked to ${linked}` : null}</span>
+          {skip}
+        </p>
+      )}
 
       {notice && (
         <p data-slot="entry-copyright" lang={notice.language === "fr" ? "fr" : undefined} className="entry-copyright">
@@ -369,6 +443,38 @@ function PlacesSection({ entry }: { entry: EntryDetail }) {
         )}
       </ul>
     </section>
+  );
+}
+
+/**
+ * The address a software entry's `Repository` fact names, when it names one: a host and a path (`github.com/x/y`), with or without `https://`. Anything else (a sentence, "private") is not a link and stays a row.
+ * Only https, through the same check as every outbound link (`safeExternalUrl`).
+ */
+export function repositoryHref(value: string): string | null {
+  const v = value.trim();
+  if (!/^(https:\/\/)?[a-z0-9-]+(\.[a-z0-9-]+)+(\/\S*)?$/i.test(v)) return null;
+  return safeExternalUrl(/^https:\/\//i.test(v) ? v : `https://${v}`);
+}
+
+/** A software entry's places in its "Made in" row: the names as links, and the way to the globe. */
+function ProjectPlaces({ entry, globeLink }: { entry: EntryDetail; globeLink: { href: string; name: string } | null }) {
+  return (
+    <>
+      {entry.places.map((place, i) => (
+        <span key={place.slug}>
+          {i > 0 && ", "}
+          <Link to={place.href} className="entry-link inline-block">
+            {place.name}
+          </Link>
+        </span>
+      ))}
+      {entry.places.length === 0 && entry.country && (entry.country.href ? <Link to={entry.country.href} className="entry-link inline-block">{entry.country.name}</Link> : entry.country.name)}
+      {globeLink && (
+        <Link to={globeLink.href} className="type-meta ml-3 whitespace-nowrap text-muted-foreground no-underline hover:text-foreground">
+          on the globe <Icon name="arrow-up-right" size="inline" />
+        </Link>
+      )}
+    </>
   );
 }
 

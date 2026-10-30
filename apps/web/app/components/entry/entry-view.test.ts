@@ -4,7 +4,7 @@ import { StaticRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 import { loadDemoProjection } from "@catalyst/published";
 import { getEntryDetail } from "~/lib/entries";
-import { coverFit, EntryView } from "./entry-view";
+import { coverFit, EntryView, repositoryHref } from "./entry-view";
 
 const demo = loadDemoProjection();
 const render = (kind: "article" | "poem" | "project" | "artwork", slug: string, layout: "panel" | "full", backTo?: { slug?: string; name: string; href: string; list?: boolean }) =>
@@ -329,5 +329,39 @@ describe("EntryView of a sensitive entry (mature content)", () => {
     expect(text).toContain("Figure Study in Charcoal");
     expect(text).toContain("Made in a single three-hour session");
     expect((text.match(/Image hidden/g) ?? []).length).toBe(2);
+  });
+});
+
+describe("a software entry's layout (actions first)", () => {
+  const html = render("project", "label-collision-engine", "panel");
+  it("has its actions right under the summary, before the facts and the text", () => {
+    expect(html).toContain('data-slot="entry-actions"');
+    expect(html.indexOf("entry-actions")).toBeGreaterThan(html.indexOf("type-standfirst"));
+    expect(html.indexOf("entry-actions")).toBeLessThan(html.indexOf("entry-margin"));
+    expect(html).toMatch(/Open example\.org/);
+  });
+  it("has ONE block of facts, 'At a glance', with where it was made, and no dateline or 'Written' / 'Linked' rows", () => {
+    expect(html).toContain("At a glance");
+    expect(html).toContain("Made in");
+    expect(html).not.toContain('data-slot="entry-dateline"');
+    expect(html).not.toMatch(/>Written<|>Linked<|>Where</);
+  });
+  it("puts the date in the running head and the links at the foot, and keeps the repository out of the rows when it is the entry's own address", () => {
+    expect(html.indexOf('data-slot="entry-date"')).toBeLessThan(html.indexOf("<h1"));
+    expect(html).toContain('data-slot="entry-linked"');
+    expect(html).not.toMatch(/>Repository<\/dt>/);
+  });
+  it("leaves the other kinds as they were (a dateline, 'Where', 'Written')", () => {
+    const article = render("article", "demo-article", "panel");
+    expect(article).toContain('data-slot="entry-dateline"');
+    expect(article).not.toContain("entry-actions");
+  });
+  it("takes a repository as a link only when it names a host and a path, over https", () => {
+    expect(repositoryHref("github.com/owner/repo")).toBe("https://github.com/owner/repo");
+    expect(repositoryHref("https://example.org/a-b")).toBe("https://example.org/a-b");
+    expect(repositoryHref("private, on my disk")).toBeNull();
+    expect(repositoryHref("http://example.org/x")).toBeNull();
+    expect(repositoryHref("javascript:alert(1)")).toBeNull();
+    expect(repositoryHref("")).toBeNull();
   });
 });
