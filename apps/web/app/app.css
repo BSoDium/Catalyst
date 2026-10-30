@@ -1987,8 +1987,8 @@
   .entry {
     --cover-bleed: 1.5rem;
     --cover-min: 40rem;
-    --cover-reach: 26rem;
-    --cover-clear: 26rem;
+    --cover-reach: 30rem;
+    --cover-clear: 30rem;
   }
 
   .entry-hero {
@@ -2040,8 +2040,8 @@
 
   .entry[data-layout="full"] {
     --cover-bleed: 1rem;
-    --cover-reach: 32rem;
-    --cover-clear: 32rem;
+    --cover-reach: 37rem;
+    --cover-clear: 37rem;
   }
 
   .entry[data-layout="full"] .entry-hero[data-tone="dim"] {
