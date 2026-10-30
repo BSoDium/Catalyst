@@ -1985,42 +1985,53 @@
    * The image is last in the DOM, after the head's text, and lies behind it (`isolate`).
    */
   .entry {
-    --hero-min: 40rem;
-    --hero-reach: 7rem;
+    --cover-bleed: 1.5rem;
+    --cover-min: 40rem;
+    --cover-reach: 7rem;
+    --cover-clear: 8rem;
   }
 
   .entry-hero {
-    min-height: var(--hero-min);
+    min-height: var(--cover-min);
     justify-content: flex-end;
+    /* (a clear zone of the picture at the top whatever the size of the type below it: a full screen's headline is a hundred px or more, and the text's layer would otherwise cover the whole of the picture) */
+    padding-top: var(--cover-clear);
     padding-bottom: 1.75rem;
   }
 
   .entry-hero-text {
-    padding-top: var(--hero-reach);
+    padding-top: var(--cover-reach);
   }
 
   .entry-hero-text::before {
     content: "";
     position: absolute;
     z-index: -1;
-    inset: 0 calc(-1 * var(--hero-bleed, 1.5rem)) -1.75rem;
+    inset: 0 calc(-1 * var(--cover-bleed)) -3rem;
     pointer-events: none;
     -webkit-backdrop-filter: blur(7px);
     backdrop-filter: blur(7px);
-    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 var(--hero-reach));
-    mask-image: linear-gradient(to bottom, transparent 0, #000 var(--hero-reach));
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 var(--cover-reach));
+    mask-image: linear-gradient(to bottom, transparent 0, #000 var(--cover-reach));
     background: linear-gradient(
       to bottom,
       transparent 0,
-      color-mix(in srgb, var(--background) 40%, transparent) calc(var(--hero-reach) * 0.45),
-      color-mix(in srgb, var(--background) 88%, transparent) var(--hero-reach),
+      color-mix(in srgb, var(--background) 40%, transparent) calc(var(--cover-reach) * 0.45),
+      color-mix(in srgb, var(--background) 88%, transparent) var(--cover-reach),
       color-mix(in srgb, var(--background) 92%, transparent) calc(100% - 3rem),
       var(--background) 100%
     );
   }
 
   .entry[data-layout="full"] {
-    --hero-bleed: 1rem;
+    --cover-bleed: 1rem;
+    --cover-clear: 14rem;
+  }
+
+  @media (min-width: 768px) {
+    .entry[data-layout="full"] {
+      --cover-bleed: 3.5rem;
+    }
   }
 
   .entry-hero-img {
@@ -5894,4 +5905,5 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     content: none;
   }
 }
+
 
