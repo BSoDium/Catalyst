@@ -90,11 +90,14 @@ export function EntryRow({
   headingLevel = 2,
   priority,
   className,
+  linkState,
 }: {
   entry: EntrySummary;
   headingLevel?: 2 | 3 | 4;
   priority?: boolean;
   className?: string;
+  /** The router state of the row's link: where the entry was opened from (`listBackState`). */
+  linkState?: unknown;
 }) {
   const Heading = `h${headingLevel}` as "h2" | "h3" | "h4";
   const date = formatEntryDate(entry.date);
@@ -103,7 +106,7 @@ export function EntryRow({
   const cover = entry.cover && safeMediaSrc(entry.cover.src) ? { src: entry.cover.src, alt: entry.cover.alt } : null;
   const showCover = !!cover || entry.kind === "artwork";
   const tags = entry.tags.slice(0, 4);
-  if (entry.kind === "poem") return <PoemRow entry={entry} Heading={Heading} date={date} place={place} status={status} tags={tags} className={className} />;
+  if (entry.kind === "poem") return <PoemRow entry={entry} Heading={Heading} date={date} place={place} status={status} tags={tags} className={className} linkState={linkState} />;
   return (
     <article
       id={entry.slug}
@@ -136,7 +139,7 @@ export function EntryRow({
       </dl>
       <div className={cn("flex min-w-0 flex-col gap-3", showCover ? "md:col-span-7" : "md:col-span-9")}>
         <Heading data-slot="entry-card-title" className="type-display-md m-0 font-extrabold">
-          <Link to={entry.href} className="after:absolute after:inset-0 after:content-[''] focus-visible:outline-none">
+          <Link to={entry.href} state={linkState} className="after:absolute after:inset-0 after:content-[''] focus-visible:outline-none">
             {entry.title}
           </Link>
         </Heading>
@@ -175,6 +178,7 @@ function PoemRow({
   status,
   tags,
   className,
+  linkState,
 }: {
   entry: EntrySummary;
   Heading: "h2" | "h3" | "h4";
@@ -183,6 +187,7 @@ function PoemRow({
   status: string | undefined;
   tags: string[];
   className?: string | undefined;
+  linkState?: unknown;
 }) {
   return (
     <article id={entry.slug} data-slot="entry-card" data-kind="poem" className={cn("ds-card entry-row poem-row min-w-0 border-t border-border", className)}>
@@ -210,7 +215,7 @@ function PoemRow({
         )}
       </dl>
       <Heading data-slot="entry-card-title" className="poem-row-title type-display-md m-0 font-extrabold">
-        <Link to={entry.href} className="after:absolute after:inset-0 after:content-[''] focus-visible:outline-none">
+        <Link to={entry.href} state={linkState} className="after:absolute after:inset-0 after:content-[''] focus-visible:outline-none">
           {entry.title}
         </Link>
       </Heading>
