@@ -82,16 +82,78 @@ export const NIGHT_GLSL = /* glsl */ `
  */
 export const LIGHTS = {
   url: "/media/earth-lights.png",
-  color: [1, 0.82, 0.45] as const,
+  // (a reddish yellow, an amber: owner, 2026-10-29, "the clusters should be bright in the centre, but mainly reddish yellow"; it was a plain warm yellow, 1, 0.82, 0.45)
+  color: [1, 0.68, 0.3] as const,
   strength: 0.5,
   cover: 0.9,
   /**
-   * The HEAT of a cluster: the map's green channel is how packed the lights are round a texel (0..1). From `from` to `to` of it (a smoothstep) a light goes from `color` to `core`, a near white, at `coreStrength`
+   * The HEAT of a cluster: the map's green channel is how packed the lights are round a texel (0..1). From `from` to `to` of it (a smoothstep) a light goes from `color` to `core`, a pale yellow, at `coreStrength`
    * (brighter than `strength`: the core of a big cluster is the brightest thing of the night side), and the pixels of a packed place are kept more (`dense`: up to that much more coverage).
    */
-  core: [1, 0.97, 0.88] as const,
-  coreStrength: 0.9,
-  from: 0.3,
-  to: 0.85,
-  dense: 0.6,
+  // (the core is a pale yellow now, not a near white (it was 1, 0.97, 0.88 at 0.9), and the heat that takes a light there starts later (it was 0.3 to 0.85) and is kept for the middle of the biggest clusters: owner, "the super dense areas are too bright")
+  core: [1, 0.9, 0.62] as const,
+  coreStrength: 0.8,
+  from: 0.55,
+  to: 1,
+  dense: 0.3,
+  /**
+   * CLOSE SHOTS (owner, 2026-10-29: the interlude's camera comes near enough to the night side that a texel of the map is wider than an art pixel, and the lights were hard squares of one dither pattern). The map is
+   * read as it was while a texel is no wider than `magFrom` art pixels (a light is one hard texel); as it grows to `magTo` the lights are read BETWEEN the texels (the four round the fragment, a bilinear density,
+   * `boost` times, for the average of a point and its dark neighbours is dimmer than the point) and the ordered dither is replaced by a hash that sticks to the planet at the size of an art pixel (cells of a texel's
+   * 1 / 2 / 4 / 8 / 16th: whole doublings, so that a zoom re-draws them seldom), so that a place is a scatter of lights, thick at its core and thin at its edge, not a square.
+   */
+  magFrom: 1.5,
+  magTo: 4,
+  boost: 1.6,
+  /**
+   * EACH DOT ITS OWN LIGHT (owner: "more randomness in the brightness of each individual dot: they all look the same colour, which still gives a clustering effect"): in close shots a dot is taken from its colour towards the
+   * page's by up to `vary` of the way, by a hash of the place it is at on the planet (a dot keeps its brightness as the camera moves), and `sparkle` of them go the other way, to the core's colour (a few bright ones).
+   */
+  vary: 0.7,
+  /** The same, from afar (the whole of a cluster is one colour and one brightness otherwise: owner, "add variation from afar"): how far a light's brightness goes down, a hash of its texel, and how many texels wide the patches of a like colour are (1 / this). */
+  varyFar: 0.45,
+  patchFar: 0.2,
+  sparkle: 0.08,
+  /**
+   * THE COLOUR OF A DOT in close shots (owner: "inside the clusters there's no variation ... from the dark orange-yellow all the way to yellow-white"): a ramp of three stops, a deep orange-yellow, a yellow and a warm
+   * white, each its `color` mixed `strength` of the way from the page's (a faint light, as `color` and `core` are). A dot's place on the ramp is a hash of where it is on the planet (`own`), a patchy noise
+   * round it (`patch` of the way, the patches `patchScale` to a texel, so that neighbours are alike a little and a cluster is not salt and pepper), and how packed the place is (`heatShare`: the dense places run yellow
+   * and white, the thin ones orange); the sparkling dots are at the top. From afar the dots are as they were (`color`, `core`).
+   */
+  ramp: [
+    { color: [1, 0.5, 0.13], strength: 0.5 },
+    { color: [1, 0.78, 0.32], strength: 0.66 },
+    { color: [1, 0.95, 0.76], strength: 0.85 },
+  ] as const,
+  own: 0.55,
+  patch: 0.3,
+  patchScale: 6,
+  heatShare: 0.35,
+  /** The finest a texel is cut into, per side. */
+  maxSub: 64,
+  /**
+   * SCRAMBLED (owner, 2026-10-29: "I can still distinguish individual pixels when the camera passes over the city lights ... scramble the pixels even more at low altitude"): from `magFrom` the place the map is read at is MOVED by a
+   * noise, up to `warp` texels at `magTo` and over (so that the edge of a place is no longer on the texel grid), the density is taken through a two-octave noise of `grain` strength (clusters inside a place, never the same
+   * brightness over a whole texel), and the hash's cells are at most an art pixel across (`maxSub` finer).
+   */
+  warp: 1.1,
+  /**
+   * CLUMPS (owner: "they still look like massive clusters ... they should split into smaller dots"): the density goes through noise of octaves from `clumpBase` (a wavelength of about a texel and a half) up, each `clumpDecay` of the one before, only the
+   * ones whose wavelength is at least `minPx` art pixels (so finer and finer groups come out as the camera nears), cut by a smoothstep of half-width `spread` round the middle (a group is a group, with bare ground between), at
+   * `clump` strength (its mean is 1: a place is no brighter overall, only gathered).
+   */
+  clumpBase: 1.7,
+  clumpDecay: 0.7,
+  minPx: 3,
+  spread: 0.14,
+  clump: 1,
+  /**
+   * DOTS (owner, 2026-10-29: "when you zoom onto them they should not be blobs: they should split into thousands of dots"): as a texel grows past `magFrom` the lights stop being a coverage that rises to nearly all of the
+   * pixels (a blob) and become single art pixels, one at most in each `block` x `block` square of the screen (a dot has a dark pixel all round it, and the place can never be more than 1 / `block` squared lit), at a place
+   * in the square the hash picks, present with the chance the map's density gives it: a thin place is a few dots, a dense one a carpet of them, and zooming in only brings more of them into the picture.
+   */
+  block: 2,
+  /** The square the dots are picked in grows with how wide a texel is, `sqrt(widePx * blockGrow)` rounded, up to `blockMax`: the same dots further apart, not a denser carpet. */
+  blockGrow: 0.45,
+  blockMax: 5,
 } as const;

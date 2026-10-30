@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { SUN } from "./moon";
-import { flarePlace, haloClear, rayStart, sunCrescent, sunRise, type FlareFrame } from "./sun-flare";
+import { readFileSync } from "node:fs";
+import { MOON, SUN } from "./moon";
+import { flarePlace, haloClear, pickOccluder, planetRise, rayStart, sunCrescent, sunRise, type FlareFrame, type Occluder } from "./sun-flare";
 
 const frame = (over: Partial<FlareFrame> = {}): FlareFrame => ({ bufW: 400, bufH: 260, x: 300, y: 80, ahead: true, amount: 1, visible: 1, ...over });
 
@@ -61,6 +62,80 @@ describe("sunRise", () => {
     expect(sunRise(Math.cos(limb), 4)).toBeCloseTo(0, 6);
     expect(sunRise(Math.cos(limb + 0.1), 4)).toBeCloseTo(0.1, 6);
     expect(sunRise(Math.cos(limb - 0.1), 4)).toBeCloseTo(-0.1, 6);
+  });
+});
+
+describe("where the interlude is played from", () => {
+  it("away from the display mode it is played from the dusk side, a named number of degrees east of the sun (the flight looks east, away from it: the sun is not in the picture, and the night lights are); from the display mode it is where the caption is (lit)", () => {
+    const src = readFileSync("app/globe/engine/renderer.ts", "utf8");
+    expect(src).toMatch(/export const INTERLUDE_DUSK_DEG = 80;/);
+    expect(src).toMatch(/shortestLonDelta\(this\.view\.lon \+ this\.era, sunLon \+ INTERLUDE_DUSK_DEG\)/);
+    expect(src).toMatch(/const sunLon = MOON\.ref\.lonDeg \+ MOON\.sunAzimuthDeg/);
+    expect(src).toMatch(/if \(Math\.abs\(lat - this\.snapTarget\(lat\)\) < 0\.05 && turn === 0\) \{\s*this\.captionOn = true;/);
+  });
+  it("is far enough east of the sun that the flight's low pass is over the dusk, and not so far that the planet is mostly dark at the end", () => {
+    const low = 14; // (the low pass: the keys at 22 and 7 degrees east of the camera's own longitude)
+    const dusk = 80;
+    expect(dusk + low).toBeGreaterThan(90); // (past the terminator: the lights are drawn where the ground is dark, `NIGHT.litTo`)
+    expect(dusk).toBeLessThan(100); // (the camera over the terminator: half the planet lit at most, in the space view)
+    expect(dusk).toBeGreaterThan(60);
+  });
+});
+
+describe("planetRise", () => {
+  const unit = (x: number, y: number, z: number): [number, number, number] => {
+    const l = Math.hypot(x, y, z);
+    return [x / l, y / l, z / l];
+  };
+  it("is sunRise from the view axis while the planet is on it", () => {
+    const sun = unit(0.2, 0.1, -1);
+    expect(planetRise(sun, [0, 0, -4])).toBeCloseTo(sunRise(-sun[2], 4), 9);
+    expect(planetRise(unit(0, 0, 1), [0, 0, -4])).toBe(Infinity); // (the sun behind the camera)
+  });
+  it("is measured from the planet's centre when the camera has panned and the planet is off the axis: on the limb where the limb is, whatever is in the middle of the picture", () => {
+    const planet: [number, number, number] = [1.5, -0.6, -4]; // off the axis
+    const d = Math.hypot(...planet);
+    const toPlanet = unit(...planet);
+    // a sun exactly on the planet's limb (the planet's angular radius from its centre), turned away in a plane
+    const gamma = Math.asin(1 / d);
+    const side = unit(-toPlanet[1], toPlanet[0], 0); // a direction at right angles to the planet's
+    const onLimb: [number, number, number] = [toPlanet[0] * Math.cos(gamma) + side[0] * Math.sin(gamma), toPlanet[1] * Math.cos(gamma) + side[1] * Math.sin(gamma), toPlanet[2] * Math.cos(gamma)];
+    expect(planetRise(onLimb, planet)).toBeCloseTo(0, 6);
+    expect(planetRise(toPlanet, planet)).toBeCloseTo(-gamma, 6); // (straight behind its centre)
+    // ... and a sun on the VIEW AXIS is not behind it, though the old measure said it was
+    expect(planetRise(unit(0, 0, -1), planet)).toBeGreaterThan(0.1);
+    expect(sunRise(1, d)).toBeLessThan(0); // (that is, `sunRise(-v.z, d)` called it covered)
+  });
+});
+
+describe("the moon in front of the sun", () => {
+  const planet = (rise: number): Occluder => ({ rise, x: 100, y: 100, atmosphere: true });
+  const moon = (rise: number): Occluder => ({ rise, x: 300, y: 200, atmosphere: false });
+
+  it("is a sphere seen from the camera like the planet is: its distance in its own radii, 0 at its limb, negative behind it", () => {
+    const dist = 12; // earth radii
+    const gamma = Math.asin(MOON.radius / dist);
+    expect(sunRise(Math.cos(gamma), dist / MOON.radius)).toBeCloseTo(0, 6);
+    expect(sunRise(Math.cos(gamma + 0.01), dist / MOON.radius)).toBeCloseTo(0.01, 6);
+    expect(sunRise(1, dist / MOON.radius)).toBeCloseTo(-gamma, 6); // (the sun straight behind its centre)
+    expect(sunRise(-0.3, dist / MOON.radius)).toBe(Infinity);
+  });
+
+  it("is the body that covers the sun more that counts, and the planet when it is the same or when there is no moon", () => {
+    expect(pickOccluder(planet(0.4), moon(0.1))).toMatchObject({ atmosphere: false, x: 300, y: 200 });
+    expect(pickOccluder(planet(-0.2), moon(0.1))).toMatchObject({ atmosphere: true, x: 100 });
+    expect(pickOccluder(planet(0.1), moon(0.1))).toMatchObject({ atmosphere: true });
+    expect(pickOccluder(planet(Infinity), null)).toMatchObject({ atmosphere: true });
+    expect(pickOccluder(planet(Infinity), moon(Infinity))).toMatchObject({ atmosphere: true });
+  });
+
+  it("has no atmosphere: the sunset's reddening is the planet's, and the renderer hands the covering body's to the sun", () => {
+    const layer = readFileSync("app/globe/engine/sun-layer.ts", "utf8");
+    expect(layer).toMatch(/const air = f\.atmosphere === false \? 0 : 1/);
+    expect(layer.match(/\* air\b/g)?.length).toBeGreaterThanOrEqual(3); // (the blur's, the flare's and the halo's)
+    const renderer = readFileSync("app/globe/engine/renderer.ts", "utf8");
+    expect(renderer).toMatch(/atmosphere: false/);
+    expect(renderer).toMatch(/atmosphere: cover\.atmosphere/);
   });
 });
 
