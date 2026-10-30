@@ -3,6 +3,11 @@
   "version": 1,
   "files": [
     {
+      "path": "article/rendering-techniques-applied-to-caustics/cover.69095ece.webp",
+      "sha256": "69095ece7d6feb7acea66d0fd064f335ad9cd2e8282fa3aa230989876e9f5a32",
+      "bytes": 34268
+    },
+    {
       "path": "article/rendering-techniques-applied-to-caustics/g2-3d-modeling-grid-2016.b3398412.webp",
       "sha256": "b339841299dff811d31dc9fcf5d315c4f00d92078348ac11ed54c2f8ba8aeea9",
       "bytes": 52984
@@ -26,6 +31,11 @@
       "path": "article/rendering-techniques-applied-to-caustics/virtual-camera-frustum.d9aa6c6f.webp",
       "sha256": "d9aa6c6f8b9102595c981950926d1b7329d126d9602496ff3a077dc9296d38dc",
       "bytes": 6174
+    },
+    {
+      "path": "article/virtual-reality-technologies/cover.6d92f413.webp",
+      "sha256": "6d92f413a04018a47da3418def00dbcd2987cd697a9eaeb4f112802d57f9289f",
+      "bytes": 136410
     },
     {
       "path": "article/virtual-reality-technologies/lcd-schematic.8db01734.webp",
@@ -271,6 +281,126 @@
       "path": "photograph/watermelons-on-deck/photo.b971cae7.webp",
       "sha256": "b971cae7af77cc7c538f21fab24af8c36d888f97b6ccce8a0db86e84474f4e30",
       "bytes": 418958
+    },
+    {
+      "path": "project/amaze-me/cover.1b57f338.webp",
+      "sha256": "1b57f3382f26140227243f438034bbf3d0de332949c8c9591c82e10ee9185b5e",
+      "bytes": 320242
+    },
+    {
+      "path": "project/avatar/cover.d714690b.webp",
+      "sha256": "d714690bf83977ab51cfb4a7dd7d56702fa18305e0771877aaea74183c379139",
+      "bytes": 30492
+    },
+    {
+      "path": "project/carbon-atlas/cover.78a12aa3.webp",
+      "sha256": "78a12aa36e10e2237e5134ecfec6a95cefe52a1d7542340198bc731d1cd515a6",
+      "bytes": 122730
+    },
+    {
+      "path": "project/clifford/cover.c2b7bd96.webp",
+      "sha256": "c2b7bd9627bd375c6cbdb47b04e7acaf6132f1f6590f07215c0829688eb9cd9e",
+      "bytes": 54316
+    },
+    {
+      "path": "project/cron/cover.a5cbd872.webp",
+      "sha256": "a5cbd8728d716c3103362a54aa8b3117adfa3fb98d516b264172da508948c5c0",
+      "bytes": 158748
+    },
+    {
+      "path": "project/epidemic-spreading-sim/cover.7ca6188e.webp",
+      "sha256": "7ca6188ef000f9402fae12860113fbc84903e9fa43107af7266084825d7f36ba",
+      "bytes": 449640
+    },
+    {
+      "path": "project/isf-design-system/cover.93455186.webp",
+      "sha256": "93455186dbc92463216892c57c34c07f6090c518e945d4471e85ffd3f226e6c8",
+      "bytes": 101096
+    },
+    {
+      "path": "project/lidar/cover.d860fe77.webp",
+      "sha256": "d860fe77bc9c9b941d20dee75fc314b69634129dac1e1bd4b9605fad391cdcb9",
+      "bytes": 190644
+    },
+    {
+      "path": "project/light-engine/cover.b00cd4c3.webp",
+      "sha256": "b00cd4c3cc8e0e54a89a076daf8e567915294567c50bf7186f8236b6db380259",
+      "bytes": 213530
+    },
+    {
+      "path": "project/material-sticky-header/cover.7e7f76bc.webp",
+      "sha256": "7e7f76bcaa285913e79116de090fe472790943ff0624a66d76c66153b1cebf39",
+      "bytes": 81700
+    },
+    {
+      "path": "project/mui-joy-palette-generator/cover.9b6eebd5.webp",
+      "sha256": "9b6eebd5cc0d442ae6d1bb25905a27b26b9a92ae25069637cf9d6bb0c12dd84e",
+      "bytes": 107926
+    },
+    {
+      "path": "project/pconsole/cover.e108dc29.webp",
+      "sha256": "e108dc29b3a069f1b562dc0bc50beb14246293b028fdebc1f6f5c76d1581c1aa",
+      "bytes": 102350
+    },
+    {
+      "path": "project/portfolio-website/cover.4593cafb.webp",
+      "sha256": "4593cafb91cc86f0ddf3f60962258702f7cc7d1af62f29274084f594375a1ab3",
+      "bytes": 183204
+    },
+    {
+      "path": "project/pyos/cover.fcb77826.webp",
+      "sha256": "fcb7782690db993ad5c28ab9e6a7ff93842168d768beba9846a68a4aaa470ff5",
+      "bytes": 57134
+    },
+    {
+      "path": "project/randomite/cover.411753a6.webp",
+      "sha256": "411753a6c2a16a72a92ce7795ef6704bbd531b7aa663b4169a9c36bf320dd26a",
+      "bytes": 141960
+    },
+    {
+      "path": "project/slashboard/cover.5223fa1b.webp",
+      "sha256": "5223fa1b99553cac612ad811c0c2fc79f41c96d21b3a55f416212211605cd87a",
+      "bytes": 56076
+    },
+    {
+      "path": "project/spectrum-visualizer/cover.f0f2e14a.webp",
+      "sha256": "f0f2e14aeea30769cd02762f13bb830ff048dcfedde2bd8bbc774ec7aa317dfa",
+      "bytes": 14146
+    },
+    {
+      "path": "project/spinel/cover.4f920ebd.webp",
+      "sha256": "4f920ebd3cb4e58c8a44e2e57ff17102cc4c235c34bde10db81f8d3c8526ed65",
+      "bytes": 29886
+    },
+    {
+      "path": "project/svg-gradients/cover.220ec5f6.webp",
+      "sha256": "220ec5f65405fc08425148b5b41a6ff58ffde86238a4a8be6e28653a835538dd",
+      "bytes": 203334
+    },
+    {
+      "path": "project/terrain-interpolation/cover.7929f37e.webp",
+      "sha256": "7929f37e92b3ecaea1e33dfb668db07fa310c3b450a20e1a181885b487354a0c",
+      "bytes": 498110
+    },
+    {
+      "path": "project/voxelife/cover.96f3f63f.webp",
+      "sha256": "96f3f63fdbca2e8b92a175e3dd29199d8fef77c3bc9081011c62d892470b1f6e",
+      "bytes": 17838
+    },
+    {
+      "path": "project/wave-engine/cover.d3b6aa01.webp",
+      "sha256": "d3b6aa0170a9e6b6243d213830a33a480f4c7275e4e4e5eee18d226a4c5fc8e5",
+      "bytes": 28826
+    },
+    {
+      "path": "project/wco-demo/cover.dc30b6c3.webp",
+      "sha256": "dc30b6c3ec48d10d198a48228385d8c4296e4fdf62b11ab6236c4b31bdfd1b11",
+      "bytes": 59828
+    },
+    {
+      "path": "project/whatsapp-content-moderation/cover.81520168.webp",
+      "sha256": "8152016888fd72b328a9d39945c9e14aa4c225d778bd51f05982127566e87365",
+      "bytes": 168650
     }
   ]
 }
