@@ -286,7 +286,7 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
                 </>
               )}
             </span>
-            {poem && <span className="print:hidden">{copy}</span>}
+            {poem && <span className="-my-2.5 self-center print:hidden">{copy}</span>}
             {(status || reading) && (
               <span className="flex items-baseline gap-4">
                 {status && <StatusTag status={status} className="text-[length:inherit] leading-[inherit] [font:inherit] tracking-[inherit] uppercase" />}
@@ -351,7 +351,8 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
 function PoemMargin({ entry, globeLink }: { entry: EntryDetail; globeLink: React.ReactNode }) {
   return (
     <>
-      {entry.summary && <p className="m-0">{entry.summary}</p>}
+      {/* (the note in the reading face, in italic: set in the facts' mono it was one more line of small print; against the mono labels below it, it is what is said about the poem) */}
+      {entry.summary && <p className="m-0 font-[family-name:var(--font-reading)] text-[1rem] leading-snug text-foreground italic">{entry.summary}</p>}
       {globeLink}
     </>
   );
