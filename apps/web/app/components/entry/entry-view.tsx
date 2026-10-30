@@ -32,7 +32,8 @@ export interface EntryViewProps {
   /** `panel`: one column in the side panel. `full`: the same content on the 12-column grid: marginalia, then the text with its figures. */
   layout: EntryViewMode;
   /** Where the visitor came from inside the panel (a place); adds a way back. */
-  backTo?: { slug: string; name: string; href: string } | null;
+  /** The way back: the place the entry was opened from (`slug`), or the list (`list`: "Software", with the tag filter it had). */
+  backTo?: { slug?: string; name: string; href: string; list?: boolean } | null;
   headingId?: string;
 }
 
@@ -175,7 +176,7 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
             >
               <Icon name="arrow-left" size="inline" />
               <span>
-                Back to <span className="sr-only">place </span>
+                Back to {!backTo.list && <span className="sr-only">place </span>}
                 {backTo.name}
               </span>
             </Link>

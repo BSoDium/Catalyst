@@ -235,10 +235,34 @@ export function flightOffsetShare(u: number): number {
 export function blendPose(a: FlightPose, b: FlightPose, k: number): FlightPose {
   const mix = (x: Vec3, y: Vec3): Vec3 => [x[0] + (y[0] - x[0]) * k, x[1] + (y[1] - x[1]) * k, x[2] + (y[2] - x[2]) * k];
   return {
-    pos: mix(a.pos, b.pos),
+    pos: arcPos(a.pos, b.pos, k),
     target: mix(a.target, b.target),
     up: unit(mix(a.up, b.up)),
     lon: a.lon + (b.lon - a.lon) * k,
     lat: a.lat + (b.lat - a.lat) * k,
   };
+}
+
+/**
+ * The camera's position `k` of the way from `a` to `b` ALONG THE SPHERE: the direction turns by the great circle between them and the distance from the centre goes from one to the other. (The straight line between two
+ * positions on opposite sides of the planet goes through it: the interlude's camera, asked for from the planet's far side, flew through the earth to take its place.) Pure.
+ */
+export function arcPos(a: Vec3, b: Vec3, k: number): Vec3 {
+  const ra = len(a);
+  const rb = len(b);
+  const ua = unit(a);
+  const ub = unit(b);
+  const r = ra + (rb - ra) * k;
+  const cos = Math.max(-1, Math.min(1, dot(ua, ub)));
+  const theta = Math.acos(cos);
+  if (theta < 1e-6) return scale(ua, r);
+  if (Math.PI - theta < 1e-6) {
+    // exactly opposite: any great circle will do, a half turn of `ua` through a direction square to it
+    const side = Math.abs(ua[1]) < 0.99 ? unit(cross(ua, [0, 1, 0])) : unit(cross(ua, [1, 0, 0]));
+    const ang = Math.PI * k;
+    return scale([ua[0] * Math.cos(ang) + side[0] * Math.sin(ang), ua[1] * Math.cos(ang) + side[1] * Math.sin(ang), ua[2] * Math.cos(ang) + side[2] * Math.sin(ang)], r);
+  }
+  const w0 = Math.sin((1 - k) * theta) / Math.sin(theta);
+  const w1 = Math.sin(k * theta) / Math.sin(theta);
+  return scale(unit([ua[0] * w0 + ub[0] * w1, ua[1] * w0 + ub[1] * w1, ua[2] * w0 + ub[2] * w1]), r);
 }

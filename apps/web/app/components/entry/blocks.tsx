@@ -237,7 +237,7 @@ function VerseView({ stanzas }: { stanzas: readonly (readonly string[])[] }) {
             {stanza.map((line, li) => {
               const { indent, text } = leadingIndent(line);
               return (
-                <span key={keys[li]} className="block" style={{ paddingLeft: `${verseIndent(indent) + 2}ch`, textIndent: "-2ch" }}>
+                <span key={keys[li]} className="block text-pretty" style={{ paddingLeft: `${verseIndent(indent) + 2}ch`, textIndent: "-2ch" }}>
                   {text}
                 </span>
               );

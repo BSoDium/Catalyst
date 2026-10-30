@@ -173,6 +173,8 @@ export interface SunFrame {
   py?: number;
   /** How far the sun's centre is outside the planet's limb, radians (`sunRise`, engine/sun-flare.ts): what is left of the sun and its halo are measured from it. Absent: nothing in the way. */
   rise?: number;
+  /** Whether what covers the sun has an atmosphere, as the planet has: the sunset's reddening is its, and the moon (which has none) leaves the sun's colour as it is. Absent: it has (the planet). */
+  atmosphere?: boolean;
   /** The music's beat in the halo and the rays (`sunPulse`, engine/sun-pulse.ts). Absent: none. */
   pulse?: SunPulse;
 }
@@ -240,6 +242,8 @@ export class SunLayer {
     const rise = ((f.rise ?? Infinity) * f.focal) / sr;
     const cres = sunCrescent(rise);
     const halo = haloClear(rise);
+    // (the reddening is the atmosphere's: what has none, the moon, leaves the colour as it is)
+    const air = f.atmosphere === false ? 0 : 1;
     this.glare = p !== null ? f.amount * Math.sqrt(cres.area) : 0;
     // the crescent's centre of mass: on the line from the planet's centre through the sun, `shift` disc radii from the sun's centre, away from the planet
     let dx = 0;
@@ -266,12 +270,12 @@ export class SunLayer {
       b.uU!.value = unit;
       b.uI!.value = cres.area;
       b.uAmt!.value = f.amount;
-      b.uSet!.value = (1 - halo) * SUN.cover.redden;
+      b.uSet!.value = (1 - halo) * SUN.cover.redden * air;
     }
     // the lens flare comes out of the same centre, as bright as the share of the sun that is left (on the light page whole, until the sun is gone: it does not dim, only the sun's size follows the crescent)
     const rayStartPx = rayStart(sr, cres.area, cres.width, SUN.cover.disc);
     let flaring = false;
-    if (FX.on.flare) flaring = this.flare.sync({ bufW: f.bufW, bufH: f.bufH, x: f.ahead ? bx : f.x, y: f.ahead ? by : f.y, ahead: f.ahead, amount: f.amount, visible: this.dark ? cres.area : Math.sqrt(cres.area), rayDim: this.dark ? undefined : 1, r: rayStartPx, size: Math.sqrt(cres.area), pulse: f.pulse, set: (1 - halo) * SUN.cover.redden } satisfies FlareFrame);
+    if (FX.on.flare) flaring = this.flare.sync({ bufW: f.bufW, bufH: f.bufH, x: f.ahead ? bx : f.x, y: f.ahead ? by : f.y, ahead: f.ahead, amount: f.amount, visible: this.dark ? cres.area : Math.sqrt(cres.area), rayDim: this.dark ? undefined : 1, r: rayStartPx, size: Math.sqrt(cres.area), pulse: f.pulse, set: (1 - halo) * SUN.cover.redden * air } satisfies FlareFrame);
     else this.flare.hide();
     if (!p) return flaring || blob;
     const u = this.mat.uniforms;
@@ -294,7 +298,7 @@ export class SunLayer {
     u.uSoft!.value = SUN.cover.hidden + (1 - SUN.cover.hidden) * k;
     // (as audible as the music is, less how far the breath has come up: it is 0 with no music, and a whole breath, up, is 0 too)
     u.uDip!.value = (PULSE.dip / SUN.haloSteps) * (f.pulse?.gain ?? 1) * Math.max(0, (f.pulse?.amount ?? 0) - (f.pulse?.breath ?? 0));
-    u.uSet!.value = (1 - halo) * SUN.cover.halo;
+    u.uSet!.value = (1 - halo) * SUN.cover.halo * air;
     return true;
   }
 

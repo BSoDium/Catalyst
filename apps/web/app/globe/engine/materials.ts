@@ -423,27 +423,98 @@ export function surfaceMaterial(): ShaderMaterial {
  */
 export function lightsMaterial(): ShaderMaterial {
   return new ShaderMaterial({
-    uniforms: { uColor: { value: new Color() }, uCore: { value: new Color() }, uLights: { value: null }, uCover: { value: 1 }, uSunN: { value: [0, 0, 1] }, uNight: { value: 0 }, uFlip: { value: 0 } },
+    uniforms: { uColor: { value: new Color() }, uCore: { value: new Color() }, uBg: { value: new Color() }, uRamp0: { value: new Color() }, uRamp1: { value: new Color() }, uRamp2: { value: new Color() }, uLights: { value: null }, uSize: { value: [2048, 1024] }, uCover: { value: 1 }, uSunN: { value: [0, 0, 1] }, uNight: { value: 0 }, uFlip: { value: 0 } },
     vertexShader: /* glsl */ `
       varying vec3 vDir;
       void main() { vDir = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
     `,
     fragmentShader: /* glsl */ `
-      uniform vec3 uColor; uniform vec3 uCore; uniform sampler2D uLights; uniform float uCover;
+      uniform vec3 uColor; uniform vec3 uCore; uniform vec3 uBg; uniform vec3 uRamp0; uniform vec3 uRamp1; uniform vec3 uRamp2; uniform sampler2D uLights; uniform vec2 uSize; uniform float uCover;
       uniform vec3 uSunN; uniform float uNight; uniform float uFlip;
       varying vec3 vDir;
       ${DITHER_GLSL}
       ${NIGHT_GLSL}
+      float hash21(vec2 q) { return fract(sin(dot(q, vec2(12.9898, 78.233))) * 43758.5453); }
+      // value noise, smooth between whole cells: what moves the place the map is read at, and what makes clusters
+      float vnoise(vec2 p) {
+        vec2 i = floor(p);
+        vec2 f = fract(p);
+        f = f * f * (3.0 - 2.0 * f);
+        return mix(mix(hash21(i), hash21(i + vec2(1.0, 0.0)), f.x), mix(hash21(i + vec2(0.0, 1.0)), hash21(i + vec2(1.0, 1.0)), f.x), f.y);
+      }
+      // the clumps: noise of octaves that are there only while the camera is near enough to tell them apart (a wavelength of at least \`minPx\` art pixels, fading in over as much again), so that zooming in
+      // brings finer and finer groups of lights out of a place, and nothing is added or moves when it is not zoomed: the octaves are fixed in the texels' own space, not scaled with the zoom
+      float clumps(vec2 t, float widePx) {
+        float s = 0.0;
+        float w = 0.0;
+        float f = ${LIGHTS.clumpBase.toFixed(2)};
+        float amp = 1.0;
+        for (int i = 0; i < 7; i++) {
+          float a = smoothstep(${LIGHTS.minPx.toFixed(1)}, ${(2 * LIGHTS.minPx).toFixed(1)}, widePx / f) * amp;
+          s += a * vnoise(t * f + float(i) * 19.7);
+          w += a;
+          f *= 2.0;
+          amp *= ${LIGHTS.clumpDecay.toFixed(2)};
+        }
+        return w > 0.0 ? s / w : 0.5;
+      }
       void main() {
         vec3 n = normalize(vDir);
         vec2 uv = vec2(atan(n.x, n.z) * 0.15915494 + 0.5, asin(clamp(n.y, -1.0, 1.0)) * 0.31830989 + 0.5);
         float dark = floor(clamp(washOf(n, uSunN, uNight, uFlip), 0.0, 1.0) * ${NIGHT.lineSteps.toFixed(1)} + 0.5) / ${NIGHT.lineSteps.toFixed(1)};
+        vec2 t = uv * uSize;
+        // how wide a texel is on the screen, in art pixels (taken before anything is discarded: derivatives need the whole quad); not where the map's seam is (uv jumps)
+        // (along the AXIS THAT IS LEAST SQUEEZED: at a grazing angle, the interlude's low pass, the texel is hugely wide across the view and a sliver along it, and the longest rate said it was not magnified at all)
+        float perPx = max(min(length(dFdx(t)), length(dFdy(t))), 1e-4);
+        float widePx = (fwidth(uv.x) > 0.5) ? 0.0 : 1.0 / perPx;
+        float mag = smoothstep(${LIGHTS.magFrom.toFixed(2)}, ${LIGHTS.magTo.toFixed(2)}, widePx);
         vec4 m = texture2D(uLights, uv);
+        float thr = dither4(floor(gl_FragCoord.xy));
+        if (mag > 0.0) {
+          // read between the texels (the map is not smoothed by the sampler: a light is one hard texel from afar): the four round the fragment, by hand, wrapping round in longitude
+          // the place read is moved by a noise (the texel grid is not where a place's edge is) ...
+          vec2 p = t - 0.5 + (vec2(vnoise(t * 0.9 + 3.1), vnoise(t * 0.9 + 7.7)) - 0.5) * 2.0 * ${LIGHTS.warp.toFixed(2)} * mag;
+          vec2 i = floor(p);
+          vec2 f = fract(p);
+          vec4 a = texture2D(uLights, vec2(fract((i.x + 0.5) / uSize.x), clamp((i.y + 0.5) / uSize.y, 0.0, 1.0)));
+          vec4 b = texture2D(uLights, vec2(fract((i.x + 1.5) / uSize.x), clamp((i.y + 0.5) / uSize.y, 0.0, 1.0)));
+          vec4 c = texture2D(uLights, vec2(fract((i.x + 0.5) / uSize.x), clamp((i.y + 1.5) / uSize.y, 0.0, 1.0)));
+          vec4 d = texture2D(uLights, vec2(fract((i.x + 1.5) / uSize.x), clamp((i.y + 1.5) / uSize.y, 0.0, 1.0)));
+          vec4 sm = mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+          // ... and the density goes through the clumps (groups of lights with bare ground between them, finer the nearer the camera is; its mean is 1)
+          float cf = 2.0 * smoothstep(0.5 - ${LIGHTS.spread.toFixed(2)}, 0.5 + ${LIGHTS.spread.toFixed(2)}, clumps(t, widePx));
+          float dens = min(1.0, sm.r * ${LIGHTS.boost.toFixed(2)} * (1.0 - ${LIGHTS.clump.toFixed(2)} * mag + ${LIGHTS.clump.toFixed(2)} * mag * cf));
+          m = mix(m, vec4(dens, sm.g, sm.b, sm.a), mag);
+          // the dither is a hash of the place on the planet, in cells a whole doubling of a texel's share, at most an art pixel across
+          float sub = min(${LIGHTS.maxSub.toFixed(1)}, exp2(ceil(log2(max(widePx, 1.0)))));
+          vec2 q = floor(t * sub);
+          thr = mix(thr, hash21(q), mag);
+        }
         // the heat: the more packed the lights are round this one (the map's green), the whiter and brighter it is, and the likelier it is to be drawn
         float heat = smoothstep(${LIGHTS.from.toFixed(2)}, ${LIGHTS.to.toFixed(2)}, m.g);
         float cover = m.r * dark * uCover * (1.0 + ${LIGHTS.dense.toFixed(2)} * heat);
-        if (cover < 0.02 || dither4(floor(gl_FragCoord.xy)) >= cover) discard;
-        gl_FragColor = vec4(mix(uColor, uCore, heat), 1.0);
+        if (mag > 0.0) {
+          // single dots: in each square of the screen, ONE pixel is the one that may be a light (picked by a hash of the square), and its chance is the density's
+          // (the square grows with the texel: a bigger place is not a denser carpet of dots but the same dots further apart, as the lights of a town are from higher up)
+          float blockPx = clamp(floor(sqrt(widePx * ${LIGHTS.blockGrow.toFixed(2)}) + 0.5), ${LIGHTS.block.toFixed(1)}, ${LIGHTS.blockMax.toFixed(1)});
+          vec2 px = floor(gl_FragCoord.xy);
+          vec2 blk = floor(px / blockPx);
+          vec2 inb = px - blk * blockPx;
+          float pick = floor(hash21(blk + 17.0) * blockPx * blockPx);
+          float me = inb.x + blockPx * inb.y;
+          cover *= (me == pick) ? 1.0 : 1.0 - mag;
+        }
+        if (cover < 0.02 || thr >= cover) discard;
+        // each light its own, from afar too (a hash of the place it is at: it keeps its brightness and colour as the planet turns; one texel's, from afar, and finer the nearer the camera is, at most 64 to a texel)
+        float k = mix(1.0, 64.0, step(0.001, mag));
+        vec2 cell = floor(t * k);
+        float own = hash21(cell + 57.0);
+        float bright = mix(1.0 - mix(${LIGHTS.varyFar.toFixed(2)}, ${LIGHTS.vary.toFixed(2)}, mag), 1.0, own * own);
+        float star = step(1.0 - ${LIGHTS.sparkle.toFixed(2)}, hash21(cell + 91.0));
+        // (its colour: along the ramp, from a deep orange-yellow to a warm white, by its own hash, a patchy noise round it (patches of a few texels from afar, of a few dots near), and how packed the place is)
+        float tone = clamp(${LIGHTS.own.toFixed(2)} * hash21(cell + 7.0) + ${LIGHTS.patch.toFixed(2)} * vnoise(t * mix(${LIGHTS.patchFar.toFixed(2)}, ${LIGHTS.patchScale.toFixed(1)}, mag) + 5.0) + ${LIGHTS.heatShare.toFixed(2)} * heat - 0.1 + star, 0.0, 1.0);
+        vec3 light = tone < 0.5 ? mix(uRamp0, uRamp1, tone * 2.0) : mix(uRamp1, uRamp2, tone * 2.0 - 1.0);
+        gl_FragColor = vec4(mix(light, uBg, (1.0 - bright) * (1.0 - star)), 1.0);
       }
     `,
     side: FrontSide,
