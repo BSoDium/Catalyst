@@ -4,7 +4,7 @@ import type { ContentKind } from "@catalyst/schemas";
 import { ArtworkWall } from "~/components/entry/artwork-wall";
 import { EntryRow } from "~/components/entry/entry-list-card";
 import { Button, ScrollRow, StatePanel } from "~/components/ui";
-import { KIND_PLURALS, kindCount, type EntrySummary } from "~/lib/entries";
+import { KIND_PLURALS, kindCount, listBackState, type EntrySummary } from "~/lib/entries";
 import { collectTags, filterByTag, groupByYear, parseTagFilter, shouldGroupByYear, tagSearch, type TagCount } from "~/lib/entry-list";
 import { SITE_NAME } from "~/lib/site";
 
@@ -69,7 +69,7 @@ export function EntryListPage({ kind, items }: { kind: ContentKind; items: Entry
           <StatePanel state="empty" headingLevel={2} title="Nothing here yet." />
         ) : wall ? (
           // One wall for every year, newest first: the year is in each caption, and a heading would cut the bricks.
-          <ArtworkWall items={groups.flatMap((g) => g.items)} headingLevel={2} label={KIND_PLURALS[kind]} kind={kind} />
+          <ArtworkWall items={groups.flatMap((g) => g.items)} headingLevel={2} label={KIND_PLURALS[kind]} kind={kind} linkState={listBackState(kind, search)} />
         ) : (
           groups.map((group) => {
             const id = `year-${group.key}`;
@@ -86,7 +86,7 @@ export function EntryListPage({ kind, items }: { kind: ContentKind; items: Entry
                     const priority = seen++ < 3;
                     return (
                       <div key={entry.slug} role="listitem" className="min-w-0">
-                        <EntryRow entry={entry} headingLevel={cardLevel} priority={priority} className="scroll-mt-24" />
+                        <EntryRow entry={entry} headingLevel={cardLevel} priority={priority} className="scroll-mt-24" linkState={listBackState(kind, search)} />
                       </div>
                     );
                   })}

@@ -229,6 +229,7 @@ Not verified: how Vercel merges the `vercel.json` headers with the ones our serv
 - **What the row shows follows its own width** (the header is an `@container`; Tailwind `@md`, `@xl`, `@min-[...]`): below 28 rem
   "Globe" and the four sections only (about 305 px at 320, 325 px at 360 to 390: they fit, with 44 px targets, down to a 320 px phone,
   the padding between links going 4, 6, 8, 10 px per side at 0, 340, 400 px and 32 rem); the search trigger is always there as the word "Search" (with its
+  **The search docks at the right from 80 rem of header** (owner, 2026-10-29, then 2026-10-30: "keep it docked to the right, but the simple design: caps text like the nav entries, a search icon next to it, the keyboard shortcut on the right, aligned with the other items"): the same trigger as in the row (the nav's own type, the icon, the key hint), out of the row's flow so that the links stay centred over the screen, its right edge on the page's own right margin (3.5 rem) and centred on the nav's height (`app.css`, "The search is docked"). Under 80 rem, and while the panel sits beside the globe (the header is half as wide), it is in the row, as before. (A first version was an input with a hairline under it: not kept.)
   icon from 22 rem); from 36 rem its `Ctrl K` / command-K hint. So a phone has the word, a half-width map the icon and the word, a desktop the
   hint too (owner, 2026-10-13: text beside the icon and the shortcut, the two glyphs one size).
 - Readability: **lists, 404, error pages** (content scrolls under the row) have `NavScrim` (`.nav-scrim` in `app.css`, documented in
@@ -342,6 +343,7 @@ other way in. Without JavaScript the globe screen shows no list (the globe itsel
   (the globe's `main` gives up the id), so "Skip to content" lands on the full view and there is one `main`. One h1 per view: the
   entry's (or the place's) title while the panel is open; the landing hero's name (the owner's, `SITE.name`) on the globe page when it is closed. Body
   headings are h2/h3 (an h3 before any h2 is drawn as h2: the outline never skips a level); the sections after the body are h2.
+- **List -> entry -> list (owner, 2026-10-29: "the X leads to the map, which is unexpected").** The list pages' links carry `state={{ list: "/software?tag=maps" }}` (`listBackState`, with the tag filter the list had); the entry shows "Back to Software" (`resolveListBack`: only a section's own list path counts, history state can be anything), and its close button (and Escape) go to that list instead of the map (`shell.tsx` `close`). An entry opened from a place keeps "Back to <place>" and a close to the map; one opened any other way (search, a link) closes to the map.
 - **Place -> entry -> place.** The place panel's cards link with `state={{ from: "<place slug>" }}`; the entry shows "Back to
   <place>" (read and validated against the shell's places by `resolveBackTarget`) and the shell keeps that place selected on the globe
   so the camera does not move. History state survives a reload; without it the entry simply has no back link (its Places section

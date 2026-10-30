@@ -38,10 +38,19 @@ export function immersiveZoom(width: number, height: number, fit: number): numbe
 
 /**
  * The zoom the home page's camera opens at, when the page gives no view. A showcase at the start (the hero at rest) opens at the lowest zoom, where the home screen rests;
- * a page with a showcase that is NOT at rest at the start (the visitor came back from another page: the hero starts collapsed) opens at the world view, the closer zoom a
- * phone's first gesture would have brought the planet to (the fit on a wide window); a page without a showcase at all opens at the fit.
+ * a page with a showcase that is NOT at rest at the start (the visitor came back from another page: the hero starts collapsed) opens where a gesture would have left the planet (`interactiveZoom`: the world view, the closer zoom of a
+ * phone, or on a wide window the lowest zoom); a page without a showcase at all opens at the fit.
  */
 export function openingZoom(a: { showcaseActive: boolean; showcaseOn: boolean; minZoom: number; world: number; fit: number }): number {
   if (!a.showcaseActive) return a.fit;
-  return a.showcaseOn ? a.minZoom : a.world;
+  return a.showcaseOn ? a.minZoom : interactiveZoom(a);
+}
+
+/**
+ * Where the globe rests once the visitor has it (owner, 2026-10-30: "the default interactive zoom should be the same whether the visitor takes the globe from the home screen or arrives from another page"): the world view
+ * on a narrow screen, where the planet comes closer from the home screen's rest (`comeCloser`), and on a wide window the lowest zoom as it is with the hero out of the way (the home screen's cover gone: the planet stays at the size it
+ * had, with the ring's room below the fit, as it does when a gesture takes it). It was the whole-globe fit on a wide window for the page one comes back to: half a zoom level closer than the one a gesture leaves.
+ */
+export function interactiveZoom(a: { minZoom: number; world: number; fit: number }): number {
+  return a.world > a.fit + 1e-6 ? a.world : a.minZoom;
 }
