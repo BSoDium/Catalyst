@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { MUTE_KEY, NowPlaying } from "./now-playing";
+import { MUTE_KEY, NowPlaying, pillVisible } from "./now-playing";
 import { SUN_MUSIC, SunMusic, fadeCurve, loopPosition, loopable, sunInView, type MusicDeps } from "./sun-music";
 
 const SR = 1000;
@@ -280,6 +280,12 @@ describe("the sun's music", () => {
     m.setGlare(0.5);
     expect(sources).toHaveLength(0);
     expect(fetch).not.toHaveBeenCalled();
+    // (and the disc is there, with the sun in view, muted: the way to turn it back on after a reload: owner, 2026-10-29, "no way for the user to undo their pausing")
+    expect(prefs.getSnapshot()).toMatchObject({ track: { title: "Cinematic piano" }, state: "playing", muted: true });
+    expect(pillVisible(prefs.getSnapshot())).toBe(true);
+    m.setGlare(0);
+    expect(pillVisible(prefs.getSnapshot())).toBe(false);
+    m.setGlare(0.5);
     m.setMuted(false);
     await settle();
     expect(fetch).toHaveBeenCalledTimes(1);
@@ -311,7 +317,8 @@ describe("the sun's music", () => {
     expect(prefs.getSnapshot()).toMatchObject({ track: { title: "Cinematic piano" }, state: "paused" });
     m.setGlare(0.5);
     m.setMuted(true);
-    expect(prefs.getSnapshot()).toMatchObject({ state: "paused", muted: true });
+    // (muted: the disc stays, with the sun in view, to turn it back on)
+    expect(prefs.getSnapshot()).toMatchObject({ state: "playing", muted: true });
     store.clear();
     const f = await start(fakes({ fail: true }));
     f.m.setGlare(0.5);
