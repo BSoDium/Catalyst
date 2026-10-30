@@ -1972,6 +1972,10 @@
    * light at the top, where the running head's small mono type is, heavier where the title and the summary are, and whole at the bottom, so the picture dissolves into the page and the text keeps its contrast in both schemes.
    * The image comes last in the DOM (it is read after the head's text) and lies behind it (`isolate`).
    */
+  .entry-hero {
+    min-height: 22rem;
+  }
+
   .entry-hero-img {
     position: absolute;
     inset: 0;
@@ -1985,12 +1989,27 @@
     position: absolute;
     inset: 0;
     z-index: -1;
+    /* the picture is blurred behind the title and the summary (a progressive blur, none at the top and strongest at the foot, as the nav's scrim is) and the page's colour lies over it, so the busy part of a screenshot
+       is not under the type */
+    -webkit-backdrop-filter: blur(7px);
+    backdrop-filter: blur(7px);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, transparent 14%, #000 50%);
+    mask-image: linear-gradient(to bottom, transparent 0%, transparent 14%, #000 50%);
+  }
+
+  .entry-hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
     background: linear-gradient(
       to bottom,
-      color-mix(in srgb, var(--background) 55%, transparent) 0%,
-      color-mix(in srgb, var(--background) 68%, transparent) 30%,
-      color-mix(in srgb, var(--background) 82%, transparent) 60%,
-      color-mix(in srgb, var(--background) 94%, transparent) 85%,
+      color-mix(in srgb, var(--background) 8%, transparent) 0%,
+      color-mix(in srgb, var(--background) 26%, transparent) 30%,
+      color-mix(in srgb, var(--background) 74%, transparent) 46%,
+      color-mix(in srgb, var(--background) 88%, transparent) 72%,
+      color-mix(in srgb, var(--background) 97%, transparent) 90%,
       var(--background) 100%
     );
   }

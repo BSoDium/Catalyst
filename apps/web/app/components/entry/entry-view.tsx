@@ -277,7 +277,7 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
             tabIndex={-1}
             data-poem={poem ? "" : undefined}
             style={poem ? undefined : ({ "--title-scale": headlineScale(entry.title) } as CSSProperties)}
-            className={cn("entry-title outline-offset-4", poem ? "mt-4" : "mt-8 md:mt-10")}>
+            className={cn("entry-title outline-offset-4", poem ? "mt-4" : heroSrc ? "mt-auto pt-28" : "mt-8 md:mt-10")}>
             {lead}
             {tail ? <span className="entry-title-tail">{tail}</span> : null}
           </h1>
