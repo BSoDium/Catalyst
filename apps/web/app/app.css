@@ -1972,6 +1972,11 @@
    * light at the top, where the running head's small mono type is, heavier where the title and the summary are, and whole at the bottom, so the picture dissolves into the page and the text keeps its contrast in both schemes.
    * The image comes last in the DOM (it is read after the head's text) and lies behind it (`isolate`).
    */
+  /* The one rule of an entry, under the running head, is the faint hairline (owner, 2026-10-30: "make the divider fainter"), not the strong one a list's head has. */
+  .entry .entry-running {
+    border-bottom-color: var(--border);
+  }
+
   .entry-hero {
     min-height: 34rem;
   }
