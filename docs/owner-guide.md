@@ -37,7 +37,7 @@ you ──edit──▶ private: editorial/ (+ config/)       hand-written, stat
 
 Rules to remember:
 
-- **The only publication act is merging the publication PR in the public repo.** Setting `status: "published"` and pushing to the private `main` only makes a PR appear. CI never pushes to the public default branch.
+- **The only publication act is merging the publication PR in the public repo.** Setting `status: "published"` and merging the change into the private `main` only makes a PR appear. CI never pushes to the public default branch. **Nobody pushes to the private `main`: a change goes through a branch and a pull request** (see "How a change reaches the private `main`" below), and it is the merge of that pull request that refreshes the publication PR.
 - Sync never touches `editorial/`. Polarsteps text and photos never reach the site; only coordinates, names and which steps belong to a place are used as a starting point. Prose, dates and images are yours.
 - Everything is a draft until you set `status: "published"`. Today: 146 places, all drafts, 0 published, so the public site is an empty globe (state at handoff).
 - Groups (Balkans, countries, continents) are derived, never authored.
@@ -90,10 +90,10 @@ pnpm new-entry --kind artwork --slug night-platform --title "Night platform"   #
 # write the header and the body, add the images next to index.md
 pnpm vault check                              # header, Markdown profile, images, references
 pnpm export:preview --out ../catalyst         # then look at it locally (section 3)
-# when it is right: set status: published in the header, commit, push
+# when it is right: set status: published in the header, commit on a branch, open a PR
 ```
 
-Pushing opens or refreshes the publication PR; **merging it is the publication** (section 5). For mature content (a figure or anatomy study) set `sensitive: true` in the header: the site draws that entry's pictures blurred until the visitor asks to see them, and never uses the cover as a share image. It is a hint for people looking over a shoulder, not access control: the image files stay public at their `/media/` addresses. An entry with `sensitive: true` and no image gets a warning. Not verified from this repo: the exact flags of `new-entry` and `vault` (read them from the private repo's `docs/writing-entries.md` and `pnpm new-entry --help` if they differ).
+Merging your pull request into the private `main` opens or refreshes the publication PR; **merging that one is the publication** (section 5). For mature content (a figure or anatomy study) set `sensitive: true` in the header: the site draws that entry's pictures blurred until the visitor asks to see them, and never uses the cover as a share image. It is a hint for people looking over a shoulder, not access control: the image files stay public at their `/media/` addresses. An entry with `sensitive: true` and no image gets a warning. Not verified from this repo: the exact flags of `new-entry` and `vault` (read them from the private repo's `docs/writing-entries.md` and `pnpm new-entry --help` if they differ).
 
 ### Edit the career document
 
@@ -105,7 +105,7 @@ pnpm new-career                               # only if the file does not exist 
 # edit content/career/index.md: add a role at the TOP, bump updated: YYYY-MM
 pnpm vault check                              # dates, order, links, places, markup
 pnpm export:preview --out ../catalyst         # the preview includes the document whatever its status
-# when it is right: status: published, commit, push, review and merge the publication PR
+# when it is right: status: published, commit on a branch, open a PR, merge it, then review and merge the publication PR
 ```
 
 The first publication of the career needs the public repo to know the key already (the change that added `career` to the contract must be merged and deployed): [api-contract.md](api-contract.md#the-career-document-career) lists the order. Take it down with `status: unpublished` and the next publication PR.
@@ -131,10 +131,17 @@ Edit the JSON, then:
 ```bash
 pnpm validate
 pnpm export:preview --out ../catalyst        # then reload the dev page (section 3)
-git add -A && git commit -m "content: ..." && git push     # on main: publish.yml refreshes the rolling PR if the paths below changed
+git switch -c content/<what>                  # never commit on main
+git add <your files> && git commit -m "content: ..." && git push -u origin content/<what>
+gh pr create --draft                          # CI (migration-parity, GitGuardian) runs on the PR
+# merging it (a merge commit, as the history shows) is what makes publish.yml refresh the rolling PR if the paths below changed
 ```
 
-`publish.yml` runs on pushes to `main` that touch `editorial/**`, `config/regions.json`, `config/bboxes.json` or `config/publish.json`. Renaming a slug: rename the file too; it is the public URL identity and the key of the box cache (`config/bboxes.json`), so refresh its box afterwards.
+### How a change reaches the private `main` (as practised, 2026-10-30)
+
+A branch, a pull request, its checks (`migration-parity`, GitGuardian), then a merge commit ("Merge pull request #N from ..." is what the history shows); never a direct push to `main`. An earlier version of this guide said to push to `main`: that is not how the repository is used. Keep unfinished edits out of the commit (stage the files, or the hunks, you mean to publish): the publication PR is built from what is merged, so what stays uncommitted is never published.
+
+`publish.yml` runs when `main` receives a merge that touches `editorial/**`, `config/regions.json`, `config/bboxes.json` or `config/publish.json`. Renaming a slug: rename the file too; it is the public URL identity and the key of the box cache (`config/bboxes.json`), so refresh its box afterwards.
 
 ### Exclude or hide a place
 
@@ -223,7 +230,7 @@ Risk to keep in mind: this is an unofficial endpoint with your session cookie. I
 
 ## 5. Publish
 
-**What triggers it.** A push to the private `main` touching `editorial/**`, `content/**`, `config/regions.json`, `config/bboxes.json`, `config/population.json` or `config/publish.json`, or a manual run: Actions, `publish`, Run workflow (or `gh workflow run publish.yml -R BSoDium/Catalyst-content`).
+**What triggers it.** A merge into the private `main` (which GitHub counts as a push to it) touching `editorial/**`, `content/**`, `config/regions.json`, `config/bboxes.json`, `config/population.json` or `config/publish.json`, or a manual run: Actions, `publish`, Run workflow (or `gh workflow run publish.yml -R BSoDium/Catalyst-content`).
 
 **What the workflow does** (`publish.yml`): mints a short-lived token from the GitHub App, checks out the public repo, refreshes `contract/published.schema.json` from it, runs `pnpm validate`, `pnpm export --out public` and `pnpm export --out public --check`, builds the PR body (counts and slugs only), then opens or updates **one rolling PR** from branch `content/publish`, titled "content: publish editorial update", assigned to `PR_ASSIGNEE` (default `BSoDium`). The PR may only contain `packages/published/data/projection.json` and `apps/web/public/media`. Nothing to change means no PR. If validation fails, nothing is opened: read the failed run.
 
@@ -333,7 +340,7 @@ Two NEW projects from this repo (team `photonsquid`), created when the rebuild w
 | Workflow: "No Polarsteps credential" | Neither secret is set | Set one (section 6) |
 | Publish: "No credential for the public repo" | `APP_CLIENT_ID` or `APP_PRIVATE_KEY` missing (and no PAT) | Set them (section 6) |
 | Publish: 404 when checking out the public repo | `PUBLIC_REPO` wrong, or the App or PAT has no access to it | Check the variable and the App's installation |
-| Pushed, but no publication PR | The push touched none of the watched paths (for example only `source/`), or nothing changed in the output | Run `publish` manually; check the Actions run summary |
+| Merged, but no publication PR | The merge touched none of the watched paths (for example only `source/`), or nothing changed in the output | Run `publish` manually; check the Actions run summary |
 | Publish: `refusing to overwrite ... not created by this export` or `manifest is invalid` | A foreign file sits in `apps/web/public/media`, or `.catalyst-manifest.json` was edited | Move the file, or restore the manifest from Git in the public repo |
 | Shared link has no preview, or points to the wrong domain | `CATALYST_SITE_URL` unset after a domain move, or the cover is an SVG (scrapers do not render SVG: the default image is used) | Set `CATALYST_SITE_URL` in the web project and redeploy; use a PNG, JPG or WebP cover |
 | Street map stays on the globe floor, console says `Refused to connect` | The tile host is not in the Content-Security-Policy (a TileJSON that points at another host) | Add its origin to `CATALYST_CSP_CONNECT_EXTRA` ([web-architecture.md](web-architecture.md#security-headers)) |
