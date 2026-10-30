@@ -111,7 +111,7 @@ function checkCsp(res, html, label) {
   ok(csp["worker-src"]?.includes("blob:") && csp["worker-src"].includes("'self'"), `${label}: worker-src self blob:`);
   ok(csp["img-src"]?.includes("data:") && csp["img-src"].includes("blob:"), `${label}: img-src self data: blob:`);
   ok(csp["connect-src"]?.includes("'self'") && csp["connect-src"].some((t) => t.startsWith("http")), `${label}: connect-src self + tile hosts (${csp["connect-src"]?.slice(1).join(" ")})`);
-  ok(csp["object-src"]?.join() === "'none'" && csp["base-uri"]?.join() === "'self'" && csp["form-action"]?.join() === "'self'" && csp["frame-ancestors"]?.join() === "'none'", `${label}: object-src none, base-uri/form-action self, frame-ancestors none`);
+  ok(csp["object-src"]?.join() === "'none'" && csp["base-uri"]?.join() === "'self'" && csp["form-action"]?.join() === "'self' https://api.web3forms.com" && csp["frame-ancestors"]?.join() === "'none'", `${label}: object-src none, base-uri self, form-action self and the contact relay, frame-ancestors none`);
   if (nonce && html) {
     const scripts = [...html.matchAll(/<script\b([^>]*)>/g)].map((m) => m[1]).filter((a) => !/application\/ld\+json/.test(a));
     ok(scripts.length > 0 && scripts.every((a) => a.includes(`nonce="${nonce}"`)), `${label}: all ${scripts.length} executable <script> tags carry the response's nonce`);

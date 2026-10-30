@@ -21,7 +21,8 @@ describe("CareerPage", () => {
   it("is one main landmark with the owner's name as the only h1", () => {
     expect(html.match(/<main /g)).toHaveLength(1);
     expect(html.match(/<h1[ >]/g)).toHaveLength(1);
-    expect(html).toMatch(/<h1[^>]*>Elliot Négrel-Jerzy<\/h1>/);
+    expect(html.match(/<h1[^>]*>(.*?)<\/h1>/)![1]!.replace(/<[^>]+>/g, "")).toBe("Elliot Négrel-Jerzy");
+    expect(html).toMatch(/<span class="career-name-family">Négrel-Jerzy<\/span>/);
   });
 
   it("orders the blocks: head, languages, experience, education, skills, links", () => {
@@ -132,7 +133,22 @@ describe("CareerPage", () => {
     expect(h).toContain(x(180));
   });
 
-  it("has no contact channel: no mailto, tel, address or e-mail text", () => {
+  it("offers the contact form: a head button that links to it, the form before the socials", () => {
+    expect(html).toMatch(/<a [^>]*href="#contact"[^>]*>\s*Get in touch/);
+    const form = html.indexOf('id="contact"');
+    expect(form).toBeGreaterThan(html.indexOf('data-slot="career-skills"'));
+    expect(form).toBeLessThan(html.indexOf('data-slot="career-links"'));
+    for (const label of ["Name", "Email", "Message"]) expect(html).toMatch(new RegExp(`<label[^>]*>${label}</label>`));
+    expect(html).toContain('name="botcheck"');
+    // Without the script it is a plain HTML post to the relay: the key and the subject travel as hidden fields, the browser validates.
+    expect(html).toMatch(/<form [^>]*action="https:\/\/api\.web3forms\.com\/submit" method="post"/);
+    expect(html).toMatch(/<input type="hidden" name="access_key" value="[0-9a-f-]{36}"/);
+    expect(html).not.toMatch(/<form[^>]* novalidate/i);
+    expect(html).toMatch(/<button[^>]*>Send message/);
+    expect(html).not.toMatch(/<button[^>]*disabled[^>]*>Send message/);
+  });
+
+  it("has no address to write to: no mailto, tel, address or e-mail text (the form is the way)", () => {
     expect(html).not.toMatch(/mailto:|tel:|sms:/i);
     expect(html.replace(/<[^>]+>/g, " ")).not.toMatch(/@/);
   });

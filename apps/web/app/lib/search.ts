@@ -71,7 +71,7 @@ export function buildSearchIndex(projection: PublishedProjection): SearchItem[] 
           title: career.title,
           href: CAREER_PATH,
           keywords: [
-            "career about cv resume curriculum vitae experience education languages skills",
+            "career about cv resume curriculum vitae experience education languages skills contact email hire message",
             ...career.roles.map((r) => `${r.org} ${r.title}`),
             ...career.education.map((e) => e.institution),
             ...career.skills.flatMap((g) => g.items),

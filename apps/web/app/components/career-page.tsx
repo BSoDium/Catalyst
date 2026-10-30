@@ -1,11 +1,13 @@
 import { Link } from "react-router";
 import type { PublishedCareer, PublishedCareerEducation, PublishedCareerRole } from "@catalyst/schemas";
-import { Icon } from "~/components/ui";
+import { ContactForm } from "~/components/contact-form";
+import { Button, Icon } from "~/components/ui";
 import type { IconName } from "~/components/ui/icon";
 import { asOfText, careerDuration, careerIcon, careerLogoSrc, careerPeriod, formatCareerMonth, isCurrent, languageDetail, safeLinks, safePortrait } from "~/lib/career";
+import { CONTACT_ID } from "~/lib/contact";
 import { safeExternalUrl } from "~/lib/entry-blocks";
 import { placePath } from "~/lib/entries";
-import { SITE_NAME } from "~/lib/site";
+import { SITE } from "~/lib/site";
 
 /**
  * `/career`: the curriculum vitae as a page (docs/career-page.md), set as the other pages of the site: a running head over ONE
@@ -15,8 +17,9 @@ import { SITE_NAME } from "~/lib/site";
  * newest first, each item with its `<time>` span), the skills as a compact definition list and a footer row of public profile links.
  *
  * Headings: h1 the name; h2 Languages (visually hidden: the line is its own region), Experience, Education, Skills, Socials; h3 a
- * role's organisation or a programme's institution. The portrait is optional: with none, the name block simply takes the room. There is
- * no contact channel anywhere (the contract has no field for one).
+ * role's organisation or a programme's institution. The portrait is optional: with none, the name block simply takes the room. The
+ * one way to reach the owner is the contact form (`ContactForm`, docs/career-page.md, "Contact") before the socials: a "Get in touch"
+ * button in the head scrolls to it. There is no address, phone number or mailto link anywhere (the contract has no field for one).
  */
 export function CareerPage({ career, places = [] }: { career: PublishedCareer; places?: readonly string[] }) {
   const portrait = safePortrait(career);
@@ -46,7 +49,7 @@ export function CareerPage({ career, places = [] }: { career: PublishedCareer; p
         <div className="career-id" data-portrait={portrait ? "true" : "false"}>
           <div className="career-id-text">
             <h1 id="career-name" className="list-title career-name">
-              {SITE_NAME}
+              {SITE.givenName} <span className="career-name-family">{SITE.familyName}</span>
             </h1>
             <p className="career-summary">{career.summary}</p>
             {available && (
@@ -60,6 +63,14 @@ export function CareerPage({ career, places = [] }: { career: PublishedCareer; p
                 </span>
               </p>
             )}
+            <p className="career-reach print:hidden">
+              <Button asChild variant="primary">
+                <a href={`#${CONTACT_ID}`} data-slot="career-contact-link">
+                  Get in touch
+                  <Icon name="arrow-down" size="inline" aria-hidden="true" />
+                </a>
+              </Button>
+            </p>
             {updated && (
               <p data-slot="career-updated" className="career-updated type-meta">
                 Updated <time dateTime={career.updated}>{updated}</time>
@@ -133,8 +144,11 @@ export function CareerPage({ career, places = [] }: { career: PublishedCareer; p
         )}
       </div>
 
+      <div className="career-pair">
+      <ContactForm />
+
       {links.length > 0 && (
-        <footer data-slot="career-links" className="career-footer">
+        <footer data-slot="career-links" className="career-block career-footer">
           <h2 id="links-h" className="career-block-title">
             Socials
           </h2>
@@ -150,6 +164,7 @@ export function CareerPage({ career, places = [] }: { career: PublishedCareer; p
           </ul>
         </footer>
       )}
+      </div>
     </main>
   );
 }

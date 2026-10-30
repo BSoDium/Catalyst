@@ -39,13 +39,13 @@ describe("buildCsp", () => {
   it("locks down plugins, base URI, forms and framing", () => {
     expect(csp["object-src"]).toEqual(["'none'"]);
     expect(csp["base-uri"]).toEqual(["'self'"]);
-    expect(csp["form-action"]).toEqual(["'self'"]);
+    expect(csp["form-action"]).toEqual(["'self'", "https://api.web3forms.com"]); // the contact form posts there without the script
     expect(csp["frame-ancestors"]).toEqual(["'none'"]);
   });
-  it("lets the page connect to itself and to the tile hosts, once each", () => {
-    expect(csp["connect-src"]).toEqual(["'self'", "https://tiles.openfreemap.org"]);
+  it("lets the page connect to itself, the tile hosts and the contact relay, once each", () => {
+    expect(csp["connect-src"]).toEqual(["'self'", "https://tiles.openfreemap.org", "https://api.web3forms.com"]);
     const two = directives(buildCsp({ ...input, connectOrigins: ["https://a.test", "https://a.test", "https://b.test:8443"] }));
-    expect(two["connect-src"]).toEqual(["'self'", "https://a.test", "https://b.test:8443"]);
+    expect(two["connect-src"]).toEqual(["'self'", "https://a.test", "https://b.test:8443", "https://api.web3forms.com"]);
   });
   it("upgrades insecure requests only when asked (the page itself came over https)", () => {
     expect(buildCsp(input)).toContain("upgrade-insecure-requests");

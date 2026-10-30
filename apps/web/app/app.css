@@ -5822,6 +5822,218 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     margin-bottom: 0.5rem;
   }
 
+  /* The head's button to the contact form: a solid button under the availability line. */
+  .career-reach {
+    margin: 1.5rem 0 0;
+  }
+
+  /*
+   * The contact form at the foot of the page (docs/career-page.md, "Contact"): the block's hairline and title, then a form as wide as
+   * the text blocks' body. Fields are underlined by a 1 px box in the page's strong line, no fill, the reading face for what is typed;
+   * labels are the mono meta type. An error is a line of text under its field in a red that is AA on both schemes, never colour alone
+   * (the field's box takes the same red and the text says what to do). The honeypot is off-screen, not `display: none` (some bots skip those).
+   */
+  .career-contact {
+    --contact-error: #b3261e;
+    scroll-margin-top: calc(var(--navbar-height) + 1rem);
+    outline: none;
+  }
+
+  /* Contact and socials close the page as a pair (as education and skills): the same top, the same title, the socials in a column. */
+  .career-pair > .career-footer {
+    margin-top: 3.5rem;
+    padding-top: 1.25rem;
+  }
+
+  .career-pair > .career-footer .career-block-title {
+    margin-bottom: 2rem;
+  }
+
+  /* From 80 rem the pair is two columns: the contact form on the right (owner, 2026-10-30), the socials at the left; the markup keeps the form first (a phone stacks it above the socials). */
+  @media (min-width: 80rem) {
+    .career-pair > .career-contact {
+      order: 2;
+    }
+  }
+
+  .career-pair > .career-footer .career-links {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  /* The family name a step lighter and dimmer than the given one (a solid mix of the ink and the page: no opacity). */
+  .career-name-family {
+    font-weight: var(--weight-light);
+    color: color-mix(in srgb, var(--foreground) 66%, var(--background));
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .career-contact {
+      --contact-error: #ff9d94;
+    }
+  }
+
+  .contact-form,
+  .contact-thanks {
+    max-width: 40rem;
+  }
+
+  .contact-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .contact-lead,
+  .contact-thanks {
+    margin: 0;
+    font-family: var(--font-reading);
+    font-size: 1.125rem;
+    line-height: 1.5;
+    color: var(--muted-foreground);
+  }
+
+  /* The thanks is laid over the form in the same grid cell: the form fades out (and is inert), the cell keeps its height, nothing moves;
+     the component then sets the stage's height to the thanks' and it eases down to it. */
+  .contact-stage {
+    display: grid;
+    transition: height 0.6s var(--ease-standard);
+  }
+
+  /* Clipped only once sent (the form is covered and the height eases down): at rest the focus ring of a field reaches past the stage's edge. */
+  .contact-stage[data-sent] {
+    overflow: hidden;
+  }
+
+  .contact-stage > * {
+    grid-area: 1 / 1;
+  }
+
+  .contact-stage-form {
+    transition: opacity 0.4s var(--ease-standard);
+  }
+
+  .contact-stage[data-sent] .contact-stage-form {
+    opacity: 0;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  .contact-thanks {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    align-self: start;
+    z-index: 1;
+    color: var(--foreground);
+    outline: none;
+    animation: contact-thanks-in 0.5s var(--ease-standard) both;
+  }
+
+  .contact-thanks .ui-icon {
+    flex: none;
+    margin-top: 0.125rem;
+    color: var(--signal-text);
+  }
+
+  @keyframes contact-thanks-in {
+    from {
+      opacity: 0;
+      transform: translateY(0.5rem);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .contact-stage,
+    .contact-stage-form {
+      transition: none;
+    }
+
+    .contact-thanks {
+      animation: none;
+    }
+  }
+
+  /* Sending: the button keeps its colours (no grey), the pointer says wait. */
+  .contact-actions .ds-button[data-busy] {
+    cursor: progress;
+  }
+
+  .contact-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+  }
+
+  .contact-label {
+    color: var(--muted-foreground);
+  }
+
+  .contact-input {
+    width: 100%;
+    min-height: var(--control-h);
+    padding: 0.5rem 0.75rem;
+    border: var(--hairline) solid var(--border);
+    border-radius: 0;
+    background: transparent;
+    color: var(--foreground);
+    font-family: var(--font-reading);
+    font-size: 1.125rem;
+    line-height: 1.4;
+  }
+
+  .contact-textarea {
+    min-height: 9rem;
+    resize: vertical;
+  }
+
+  /* Quiet outlines (owner, 2026-10-30): the page's hairline at rest, a step deeper under the pointer, the ring on focus. */
+  .contact-input:hover {
+    border-color: var(--border-strong);
+  }
+
+  .contact-input:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  .contact-field[data-invalid="true"] .contact-input {
+    border-color: var(--contact-error);
+  }
+
+  .contact-error,
+  .contact-failure {
+    margin: 0;
+    font-size: var(--text-sm);
+    line-height: 1.4;
+    color: var(--contact-error);
+  }
+
+  /* The button at the right, its key hint (Ctrl or Command and Enter, drawn only where there is a keyboard) before it, a failure's words at the left. */
+  .contact-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem 1rem;
+  }
+
+  .contact-actions .contact-failure {
+    margin-right: auto;
+  }
+
+  .contact-actions .contact-failure:empty {
+    display: none;
+  }
+
+  .contact-trap {
+    position: absolute;
+    left: -10000px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+
   .career-org-link,
   .career-place,
   .career-link {

@@ -200,7 +200,9 @@ describe("coming back from away (a panel closed): nothing of the hero fades out 
 
 describe("the hero's CSS (app.css, 'Landing hero')", () => {
   const css = readFileSync(new URL("../app.css", import.meta.url), "utf8");
-  const block = css.slice(css.indexOf("Landing hero and the header's type"));
+  // (the hero's block: up to the career page's, which follows it in the file and has transitions and animations of its own)
+  const heroStart = css.indexOf("Landing hero and the header's type");
+  const block = css.slice(heroStart, css.indexOf("The career page (`/career`", heroStart));
   const rule = (selector: string) => {
     const from = block.indexOf(`${selector} {`);
     return from < 0 ? "" : block.slice(from, block.indexOf("\n  }", from));
