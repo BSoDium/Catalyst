@@ -2000,7 +2000,7 @@
   }
 
   /*
-   * The layer behind the text starts `--cover-reach` ABOVE the text's box and rises along an eased (smoothstep) curve: it is at 90 % of the page's colour where the first line begins, so the text is always over the part of
+   * The layer behind the text starts `--cover-reach` ABOVE the text's box and rises along an eased (smoothstep) curve: it is at 70 % of the page's colour where the first line begins, so the text is always over the part of
    * the ramp that masks the picture enough (owner, 2026-10-30: "far softer, not binary"), and it ends at 100 % at the head's own bottom edge, over its last 8 rem, so that the picture leaves no edge.
    */
   .entry-hero-text::before {
@@ -2016,25 +2016,25 @@
     background: linear-gradient(
       to bottom,
       color-mix(in srgb, var(--background) 0.0%, transparent) calc(var(--cover-reach) * 0.0),
-      color-mix(in srgb, var(--background) 2.5%, transparent) calc(var(--cover-reach) * 0.1),
-      color-mix(in srgb, var(--background) 9.4%, transparent) calc(var(--cover-reach) * 0.2),
-      color-mix(in srgb, var(--background) 19.4%, transparent) calc(var(--cover-reach) * 0.3),
-      color-mix(in srgb, var(--background) 31.7%, transparent) calc(var(--cover-reach) * 0.4),
-      color-mix(in srgb, var(--background) 45.0%, transparent) calc(var(--cover-reach) * 0.5),
-      color-mix(in srgb, var(--background) 58.3%, transparent) calc(var(--cover-reach) * 0.6),
-      color-mix(in srgb, var(--background) 70.6%, transparent) calc(var(--cover-reach) * 0.7),
-      color-mix(in srgb, var(--background) 80.6%, transparent) calc(var(--cover-reach) * 0.8),
-      color-mix(in srgb, var(--background) 87.5%, transparent) calc(var(--cover-reach) * 0.9),
-      color-mix(in srgb, var(--background) 90.0%, transparent) calc(var(--cover-reach) * 1.0),
-      color-mix(in srgb, var(--background) 90.3%, transparent) calc(100% - 7.2rem),
-      color-mix(in srgb, var(--background) 91.0%, transparent) calc(100% - 6.4rem),
-      color-mix(in srgb, var(--background) 92.2%, transparent) calc(100% - 5.6rem),
-      color-mix(in srgb, var(--background) 93.5%, transparent) calc(100% - 4.8rem),
-      color-mix(in srgb, var(--background) 95.0%, transparent) calc(100% - 4.0rem),
-      color-mix(in srgb, var(--background) 96.5%, transparent) calc(100% - 3.2rem),
-      color-mix(in srgb, var(--background) 97.8%, transparent) calc(100% - 2.4rem),
-      color-mix(in srgb, var(--background) 99.0%, transparent) calc(100% - 1.6rem),
-      color-mix(in srgb, var(--background) 99.7%, transparent) calc(100% - 0.8rem),
+      color-mix(in srgb, var(--background) 2.0%, transparent) calc(var(--cover-reach) * 0.1),
+      color-mix(in srgb, var(--background) 7.3%, transparent) calc(var(--cover-reach) * 0.2),
+      color-mix(in srgb, var(--background) 15.1%, transparent) calc(var(--cover-reach) * 0.3),
+      color-mix(in srgb, var(--background) 24.6%, transparent) calc(var(--cover-reach) * 0.4),
+      color-mix(in srgb, var(--background) 35.0%, transparent) calc(var(--cover-reach) * 0.5),
+      color-mix(in srgb, var(--background) 45.4%, transparent) calc(var(--cover-reach) * 0.6),
+      color-mix(in srgb, var(--background) 54.9%, transparent) calc(var(--cover-reach) * 0.7),
+      color-mix(in srgb, var(--background) 62.7%, transparent) calc(var(--cover-reach) * 0.8),
+      color-mix(in srgb, var(--background) 68.0%, transparent) calc(var(--cover-reach) * 0.9),
+      color-mix(in srgb, var(--background) 70.0%, transparent) calc(var(--cover-reach) * 1.0),
+      color-mix(in srgb, var(--background) 70.8%, transparent) calc(100% - 7.2rem),
+      color-mix(in srgb, var(--background) 73.1%, transparent) calc(100% - 6.4rem),
+      color-mix(in srgb, var(--background) 76.5%, transparent) calc(100% - 5.6rem),
+      color-mix(in srgb, var(--background) 80.6%, transparent) calc(100% - 4.8rem),
+      color-mix(in srgb, var(--background) 85.0%, transparent) calc(100% - 4.0rem),
+      color-mix(in srgb, var(--background) 89.4%, transparent) calc(100% - 3.2rem),
+      color-mix(in srgb, var(--background) 93.5%, transparent) calc(100% - 2.4rem),
+      color-mix(in srgb, var(--background) 96.9%, transparent) calc(100% - 1.6rem),
+      color-mix(in srgb, var(--background) 99.2%, transparent) calc(100% - 0.8rem),
       color-mix(in srgb, var(--background) 100.0%, transparent) calc(100% - 0.0rem),
       var(--background) 100%
     );
