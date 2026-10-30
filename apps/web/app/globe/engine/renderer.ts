@@ -32,6 +32,7 @@ import {
   silhouetteRadiusPx,
   silhouetteZoom,
   normalizeLon,
+  shortestLonDelta,
   projectLonLat,
   projectUnit,
   viewBasis,
@@ -73,7 +74,7 @@ import { SHOWCASE_STATE, bandLat, inBand, shellWindowFactor, type CaptionContent
 import { CAP_HEIGHT_EM, ringAlpha, ringFloorZoom, ringRoomRadius, RING_STATE } from "./ring";
 import { RingLayer } from "./ring-layer";
 import { GlobeScene } from "./scene";
-import { sunRise } from "./sun-flare";
+import { pickOccluder, planetRise, sunRise, type Occluder } from "./sun-flare";
 import { liveSun, opening } from "./daylight";
 import { IMMERSION, immersiveZoom, openingZoom } from "./immersion";
 import { FX, irisStep } from "./fx";
@@ -88,6 +89,7 @@ import { fromViewState } from "./view";
 import { markerShown } from "./visibility";
 import { perfEnd, perfStart } from "./perf";
 import { sunMusic } from "./sun-music";
+import { nowPlaying, sunAudible } from "./now-playing";
 import { sunPulse } from "./sun-pulse";
 
 // Our ShaderMaterials write raw sRGB values and there is no lighting, so skip Three's linear-sRGB conversion;
@@ -172,6 +174,14 @@ export interface FlyOptions {
 
 /** How long the camera takes to glide from where it was into the interlude's flight, when it is asked for away from the display mode, ms (`GlobeRenderer.playInterludeNow`). */
 const CAMERA_INTRO_MS = 2200;
+
+/**
+ * Where an interlude asked for away from the display mode is played, as how far EAST of the sub-solar point the camera is, degrees (owner, 2026-10-29: the sun must not come into the picture, and the night lights must still be seen). The
+ * flight looks EAST (bearing 85) over the Levant, Greece and Italy, `FLIGHT.keys`, 56 to 7 degrees east of the camera's own longitude, so a camera that far east of the sun has the sun behind it and below the western horizon, and the low
+ * pass is over the dusk and the night: 0 would be the sun straight behind the camera and the whole flight in daylight, with no lights at all (the first version, on the lit side, the lights were gone); 90, the whole low pass in the night
+ * and the planet half lit at the end. 80: the approach over the night, the low pass over the dusk, and the planet three quarters lit in the space view.
+ */
+export const INTERLUDE_DUSK_DEG = 80;
 
 /** A smootherstep: from rest to rest, with no jump at either end. */
 const smootherstep = (t: number) => t * t * t * (t * (t * 6 - 15) + 10);
@@ -338,14 +348,6 @@ export class GlobeRenderer {
     };
     if (typeof requestIdleCallback === "function") requestIdleCallback(loadSurface, { timeout: 3000 });
     else window.setTimeout(loadSurface, 800);
-    // (the planet's lights at night, 180 KB: in a later idle moment, only where there is a night to show them in)
-    const loadLights = () => {
-      if (!this.disposed) this.globe.loadLights(LIGHTS.url, () => this.requestRender());
-    };
-    if (opts.showcase) {
-      if (typeof requestIdleCallback === "function") requestIdleCallback(loadLights, { timeout: 6000 });
-      else window.setTimeout(loadLights, 2000);
-    }
     // (the Moon's picture, 13 KB, in the same idle moment)
     const loadMoon = () => {
       if (!this.disposed) this.globe.moon?.load(MOON.mapUrl, () => this.requestRender());
@@ -378,6 +380,9 @@ export class GlobeRenderer {
         this.showcaseActive = false;
       }
     }
+    // (the planet's lights at night, 180 KB: in a later idle moment, wherever the page has a night to show them in: the night is the showcase's CAPABILITY (a ring, a caption), not the hero's state, so a globe made while the hero is collapsed
+    // (coming back from another page) has its night and needs its lights too; they were asked for only when the page started with the showcase on: owner, 2026-10-30)
+    if (this.showcaseActive) this.wantLights();
     // An interlude planned for this visit comes close to the ground: its finer picture of the land is fetched in an idle moment, after the first one.
     if (this.caption?.eggPlanned) {
       const hi = () => this.loadHiSurface();
@@ -1430,6 +1435,7 @@ export class GlobeRenderer {
   private nightShown = 0;
   private sunClip = new Vector4();
   private planetV = new Vector3();
+  private planetCam = new Vector3();
 
   /**
    * Place the sun for this frame: a direction at infinity (the light's, in the earth's frame), projected by the camera as the stars' are (w = the depth along the view, so a direction behind the camera is
@@ -1444,6 +1450,18 @@ export class GlobeRenderer {
     const ahead = clip.w > 1e-4;
     // (where the planet's centre is on the buffer: the crescent's centre of mass lies on the line from it through the sun)
     const pc = this.planetV.set(0, 0, 0).project(cam);
+    // what stands in front of the sun: the planet, or the moon (the moon's limb is the same sphere's, in its own radii; it has no atmosphere); whichever covers more of it
+    // (the planet's limb is measured from the line to its CENTRE, not from the view axis: the interlude's camera pans over the planet, and it is off the axis then)
+    const pcam = this.planetCam.set(0, 0, 0).applyMatrix4(cam.matrixWorldInverse);
+    const planet = { rise: planetRise([v.x, v.y, v.z], [pcam.x, pcam.y, pcam.z]), x: (pc.x * 0.5 + 0.5) * this.bufW, y: (pc.y * 0.5 + 0.5) * this.bufH, atmosphere: true };
+    const m = this.moonSample;
+    let moon: Occluder | null = null;
+    if (m && m.onScreen && m.amount > 0.5) {
+      const cp = cam.position;
+      const dot = ((m.position[0] - cp.x) * sunEarth[0] + (m.position[1] - cp.y) * sunEarth[1] + (m.position[2] - cp.z) * sunEarth[2]) / (m.distance * Math.hypot(sunEarth[0], sunEarth[1], sunEarth[2]));
+      moon = { rise: sunRise(dot, m.distance / MOON.radius), x: m.cx, y: m.cy, atmosphere: false };
+    }
+    const cover = pickOccluder(planet, moon);
     // (the music's beat in the sun's rays and halo, while it sounds and the visitor has not asked for less motion)
     const beat = this.reduced ? null : sunMusic.pulse();
     sun.sync({
@@ -1455,9 +1473,10 @@ export class GlobeRenderer {
       ahead,
       focal: (cam.projectionMatrix.elements[5]! * this.bufH) / 2,
       amount: this.nightNow,
-      rise: sunRise(-v.z, d),
-      px: (pc.x * 0.5 + 0.5) * this.bufW,
-      py: (pc.y * 0.5 + 0.5) * this.bufH,
+      rise: cover.rise,
+      px: cover.x,
+      py: cover.y,
+      atmosphere: cover.atmosphere,
     });
   }
 
@@ -1546,7 +1565,8 @@ export class GlobeRenderer {
   /** The idle period has run out: hold, unless the cinematic interlude is under way (it is 21 s long and may begin late: it is not idle, the hold waits for its end). */
   private freezeWhenIdle = () => {
     this.freezeTimer = 0;
-    if (this.caption?.interluding) {
+    // (or the sun's music is playing: the visitor is in the cinematic experience, the view does not go to sleep under it; owner, 2026-10-29)
+    if (this.caption?.interluding || sunAudible(nowPlaying.getSnapshot())) {
       this.freezeTimer = window.setTimeout(this.freezeWhenIdle, 1000);
       return;
     }
@@ -2074,7 +2094,10 @@ export class GlobeRenderer {
     this.flight = null;
     this.velocity = STILL;
     this.latSnap = null;
-    this.view = this.clampView({ lon: this.view.lon, lat: 0, zoom: this.minZoom });
+    // (the flight is turned about the axis with the page's longitude: from wherever the visitor had turned the planet it passed over the night with the sun BEHIND the planet and in the picture. The camera goes to
+    // `INTERLUDE_DUSK_DEG` east of the sun instead, looking east away from it (the camera glides there from where it was, `camIntro`). Played from the display mode it is where the caption is (`guardCaption`), on the lit side.)
+    const sunLon = MOON.ref.lonDeg + MOON.sunAzimuthDeg; // (the sub-solar longitude in the inertial frame: the sun is `sunAzimuthDeg` to the right of the opening camera)
+    this.view = this.clampView({ lon: this.view.lon + shortestLonDelta(this.view.lon + this.era, sunLon + INTERLUDE_DUSK_DEG), lat: 0, zoom: this.minZoom });
     this.captionOn = true;
     this.showcaseOn = true;
     // (the explore view's boxes and labels are out in this frame, not fading: the page's camera is home already, and they would hang in the wrong places while they went)
@@ -2263,8 +2286,24 @@ export class GlobeRenderer {
    * when it is not at the lowest zoom (the home screen's own composition), comes back to it. Off: the other way round, quickly. On a page without
    * the showcase (`?no-ring`, a debug page) this does nothing: the boxes stay.
    */
+  /**
+   * Fetch the planet's lights (`LIGHTS.url`) in an idle moment, once. Asked at creation when the page starts with the showcase, and again when the showcase is turned on: coming back to the globe from another page of the
+   * site creates the globe BEFORE the hero says the showcase is on (it starts collapsed, or away), and the lights were only asked for at creation, so they were never there (owner, 2026-10-30).
+   */
+  private lightsAsked = false;
+  private wantLights() {
+    if (this.lightsAsked || this.disposed) return;
+    this.lightsAsked = true;
+    const load = () => {
+      if (!this.disposed) this.globe.loadLights(LIGHTS.url, () => this.requestRender());
+    };
+    if (typeof requestIdleCallback === "function") requestIdleCallback(load, { timeout: 6000 });
+    else window.setTimeout(load, 2000);
+  }
+
   setShowcase(on: boolean) {
     this.appShowcase = on;
+    if (on) this.wantLights();
     // (an interlude asked for away from the display mode holds the showcase until it is over: `wantInterlude`)
     if (!this.eggAsk) this.applyAppShowcase();
   }

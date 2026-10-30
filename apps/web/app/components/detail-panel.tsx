@@ -70,6 +70,9 @@ interface DetailPanelProps {
   children: ReactNode;
 }
 
+/** How far the panel's content has scrolled, px, when the scrim under the nav is whole (it is nothing at the top). */
+const SCRIM_RAMP_PX = 56;
+
 /**
  * Desktop: a labelled, non-modal complementary region over the right half of the viewport (full height, below the floating nav
  * links, which stay usable above it); the globe stays interactive on the left half. With `layout="full"` the same element
@@ -94,6 +97,18 @@ export function DetailPanel({ open, isMobile, reducedMotion, routeKey, returnSlu
   const full = shownLayout.current === "full" && !isMobile;
 
   useModalBehavior(open && isMobile, panelRef);
+
+  // The scrim under the nav dims what scrolls beneath it; at the top of the panel nothing has, and its band lay over the first line of the content (the running head, at about 70 px: owner, 2026-10-30,
+  // "partly occluded by the gradient"). It comes in with the scroll: nothing at the top, the whole of it after `SCRIM_RAMP_PX`. Written as a custom property of the panel (no render, no state).
+  useEffect(() => {
+    const el = scrollRef.current;
+    const panel = panelRef.current;
+    if (!open || !el || !panel) return;
+    const on = () => panel.style.setProperty("--scrim-on", Math.min(1, el.scrollTop / SCRIM_RAMP_PX).toFixed(3));
+    on();
+    el.addEventListener("scroll", on, { passive: true });
+    return () => el.removeEventListener("scroll", on);
+  }, [open, routeKey]);
 
   // A link or button inside the panel (an entry card, a place) navigates with PUSH; back/forward and a direct load are POP. The ref
   // keeps the effect below keyed on what the panel shows (`routeKey`), so toggling the layout (a query change) never moves focus.
@@ -178,7 +193,7 @@ export function DetailPanel({ open, isMobile, reducedMotion, routeKey, returnSlu
           )}
         >
           {/* Desktop: fades the content that scrolls under the nav links (hidden on mobile, where the header is static). */}
-          <NavScrim className="absolute z-10 hidden md:block print:hidden" />
+          <NavScrim className="absolute z-10 hidden opacity-(--scrim-on,1) md:block print:hidden" />
           {/* The controls sit at the panel's left edge (the page's left edge in full screen); the navigation is centred (over the map, beside
               the panel: navbar.tsx), clear of them at every desktop width. */}
           <div className="relative z-20 flex min-h-12 shrink-0 items-center justify-end gap-2 px-3 print:hidden md:absolute md:inset-x-0 md:top-0 md:z-20 md:h-(--navbar-height) md:min-h-0 md:justify-start md:px-6">

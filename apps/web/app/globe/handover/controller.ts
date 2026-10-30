@@ -211,6 +211,9 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
   let restoreCheck = restoring;
   let restoreTimer = 0;
   let warmTimer = 0;
+  /** The street map was created in an idle moment, before anybody zoomed (`HANDOVER.premount`), and is kept for as long as the page is (it is the creation that costs, not holding it). */
+  let keepWarm = false;
+  const streetKept = () => wantStreet || restoring || keepWarm;
   // First reveal (opts.onReveal): see tryReveal.
   const needsStreet = restoring;
   const createdAt = performance.now();
@@ -486,11 +489,11 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
   /** Release the street map a while after the camera left its range and the dissolve is back at 0 (hysteresis). */
   function scheduleUnmount() {
     if (!tiles || streetState !== "ready") return;
-    const wants = mountWanted(true, view().zoom, wantStreet || restoring);
+    const wants = mountWanted(true, view().zoom, streetKept());
     if (!wants && shown <= 0 && !unmountTimer) {
       unmountTimer = window.setTimeout(() => {
         unmountTimer = 0;
-        if (!mountWanted(true, view().zoom, wantStreet || restoring) && shown <= 0 && !crossfading()) unmountStreet();
+        if (!mountWanted(true, view().zoom, streetKept()) && shown <= 0 && !crossfading()) unmountStreet();
       }, HANDOVER.unmountDelayMs);
     }
     if (wants && unmountTimer) {
@@ -634,7 +637,7 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
     // Mount / unmount the street map.
     if (tiles && streetState !== "failed") {
       const mounted = streetState !== "none";
-      const wants = mountWanted(mounted, v.zoom, wantStreet || restoring);
+      const wants = mountWanted(mounted, v.zoom, streetKept());
       if (wants && streetState === "none" && !streetDead()) void mountStreet();
     }
 
@@ -732,7 +735,19 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
     const conn = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
     if (!conn?.saveData && !/(^|-)2g$/.test(conn?.effectiveType ?? "")) {
       const warm = () => {
-        if (!disposed) void import("../street/engine").catch(() => {});
+        if (disposed) return;
+        void import("../street/engine")
+          .then(() => {
+            // Creating the map is the long task (a Pixel 7 measured 276 to 373 ms in ONE frame: the MapLibre map, the compositor and the shader links), and it came when the
+            // visitor first zoomed past `mountZoom`, in the middle of the gesture. Made here, at rest and hidden, it costs the same and nobody feels it. Where memory is tight
+            // (under 4 GB, `deviceMemory`) it stays lazy.
+            const memory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 4;
+            if (HANDOVER.premount && !disposed && memory >= 4 && streetState === "none" && !streetDead()) {
+              keepWarm = true;
+              void mountStreet();
+            }
+          })
+          .catch(() => {});
       };
       const ric = (window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }).requestIdleCallback;
       warmTimer = window.setTimeout(() => (ric ? ric.call(window, warm, { timeout: 4000 }) : warm()), 2500);
