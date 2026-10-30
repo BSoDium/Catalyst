@@ -22,6 +22,9 @@ const TRANSITION = {
 
 /** What the credit line says (it is ONE line, like the credit it replaces: the text beside the disc must not change height, and `.np-warn` does not wrap) while the browser will not let the page make sound until the visitor has touched it: it gives way to the credit, with a fade, when the first touch starts the music. */
 const WARNING = "Click anywhere to start";
+/** The same on a touch screen (owner: "Touch anywhere" for mobile): the primary pointer is a finger. */
+const WARNING_TOUCH = "Touch anywhere to start";
+const touchPrimary = () => typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
 
 const SERVER: NowPlayingSnapshot = { track: null, state: "paused", muted: false };
 
@@ -148,7 +151,7 @@ function Player({ snap }: { snap: NowPlayingSnapshot }) {
         <AnimatePresence mode="wait" initial={false}>
           {blocked ? (
             <motion.p key="blocked" role="status" className="np-artist np-warn" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
-              {WARNING}
+              {touchPrimary() ? WARNING_TOUCH : WARNING}
             </motion.p>
           ) : (
             track.artist && (
