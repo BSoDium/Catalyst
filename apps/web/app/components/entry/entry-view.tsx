@@ -75,6 +75,8 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
   const poem = entry.kind === "poem";
   // Software has its own order (owner, 2026-10-30, "actions first"): what you can DO right under the summary, then ONE block of what it is, the picture, the text, and what it is linked to at the foot.
   const project = entry.kind === "project";
+  // A software entry's cover is the BACKDROP of its head (owner, 2026-10-30): behind the running head, the title and the summary, under a gradient of the page's colour that keeps them readable. A mature one stays a figure, with its control.
+  const heroSrc = project && entry.cover && !isSensitive(entry) ? safeMediaSrc(entry.cover.src) : null;
   // A photograph is the page: its picture comes straight after the title, before the dateline and the marginalia.
   const photo = entry.kind === "photograph";
   const { status, facts } = splitMeta(entry.meta);
@@ -215,7 +217,7 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
       className={cn("entry mx-auto w-full min-w-0", full ? "max-w-[90rem] px-4 pt-3 pb-20 md:px-14" : "px-6 pt-2 pb-10")}
     >
       <div className="entry-grid">
-        <header className={cn("entry-head flex min-w-0 flex-col", poem ? "gap-5" : "gap-0")}>
+        <header data-hero={heroSrc ? "" : undefined} className={cn("entry-head flex min-w-0 flex-col", poem ? "gap-5" : "gap-0", heroSrc && cn("entry-hero relative isolate pb-7", full ? "-mt-3 -mx-4 px-4 pt-3 md:-mx-14 md:px-14" : "-mx-6 -mt-2 px-6 pt-2"))}>
           {backTo && !backTo.list && (
             <Link
               to={backTo.href}
@@ -281,6 +283,12 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
           </h1>
           {entry.summary && !poem && <p className="type-standfirst mt-[1.375rem] max-w-[25.4em] md:mt-[2.125rem]">{entry.summary}</p>}
           {actions}
+          {heroSrc && entry.cover && (
+            <>
+              <span aria-hidden="true" className="entry-hero-scrim" />
+              <img src={heroSrc} alt={entry.cover.alt} width={entry.cover.width} height={entry.cover.height} decoding="async" className="entry-hero-img" />
+            </>
+          )}
         </header>
 
         {photo && <Cover entry={entry} />}
@@ -301,7 +309,7 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
         )}
 
         {!poem && marginEl}
-        {!poem && !photo && <Cover entry={entry} />}
+        {!poem && !photo && !heroSrc && <Cover entry={entry} />}
 
         <div className="entry-text min-w-0">
           <BlockRenderer blocks={entry.body} lang={language} dropCap={editorial} figures={editorial} className="gap-[1.1em]" />
