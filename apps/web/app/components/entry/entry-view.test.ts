@@ -306,6 +306,8 @@ describe("EntryView of a sensitive entry (mature content)", () => {
       for (const img of body.matchAll(/<img\b[^>]*>/g)) {
         // (the picture behind the title is blurred by CSS (40 px, dimmed: `data-mature`), an empty-alt backdrop)
         if (img[0].includes("entry-hero-img")) continue;
+        // (the stage's backdrop is inside the same frame, after the picture, and is blurred and veiled with it)
+        if (img[0].includes("entry-stage-backdrop")) continue;
         const at = img.index!;
         expect(body.slice(Math.max(0, at - 40), at), `${layout}: ${img[0]}`).toContain('class="sensitive-media-content">');
       }
