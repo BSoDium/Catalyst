@@ -70,9 +70,9 @@ export function sunAudible(s: NowPlayingSnapshot): boolean {
   return s.track?.id === TRACKS.sun.id && s.state === "playing" && !s.muted;
 }
 
-/** Whether there is a pill to show for this: a sound that has played and is not done (it is playing or paused). */
+/** Whether there is a pill to show for this: a sound that is on now (playing, or blocked until a gesture), including one the visitor has turned off, which the disc turns back on. A sound that waits (the sun is out of the picture) has none (owner, 2026-10-29). */
 export function pillVisible(s: NowPlayingSnapshot): boolean {
-  return s.track !== null;
+  return s.track !== null && s.state !== "paused";
 }
 
 export const MUTE_KEY = "sound-muted";
