@@ -2,7 +2,6 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import { SENSITIVE_COPY } from "~/lib/sensitive";
 import { cn } from "~/lib/utils";
 import { Icon } from "./icon";
-import { Toggle } from "./toggle";
 
 interface SensitiveMediaProps {
   /** The image (an `<img>`, or anything that shows a picture). It is drawn blurred while the frame is hidden. */
@@ -21,9 +20,10 @@ interface SensitiveMediaProps {
 /**
  * An image of mature content (docs/design-system.md, "Sensitive media"). The picture sits in `overflow: hidden` and is blurred and
  * enlarged by CSS (`.sensitive-media`, app.css) from the first byte of HTML: the state is an attribute (`data-state="hidden"`), so the
- * server render, a browser without scripts and print all show it blurred. A plate over it says "Mature content". With
- * `onRevealedChange` the plate also holds a real button, "Show image" (`aria-pressed`: its name never changes), drawn only once
- * hydrated: without scripts there is nothing to press, and the plate says the image is hidden.
+ * server render, a browser without scripts and print all show it blurred. The words "Mature content" lie straight on the blurred picture
+ * (dimmed on the dark page and lightened on the light one, by the page's own colour laid over it): no plate, no box. With `onRevealedChange` the
+ * whole picture is the control, once hydrated (a button named "View mature content": pressing anywhere on it shows the image); a small icon
+ * button in its corner hides it again. Without scripts there is nothing to press, and the words say the image is hidden.
  *
  * The state is the caller's and is never stored (no storage, no URL): a reload hides the image again.
  */
@@ -33,38 +33,34 @@ export function SensitiveMedia({ children, revealed = false, onRevealedChange, c
   // The polite announcement starts empty: a status that is filled when it mounts would be read for nothing.
   const [changed, setChanged] = useState(false);
   useEffect(() => setReady(true), []);
+  const change = (next: boolean) => {
+    setChanged(true);
+    onRevealedChange?.(next);
+  };
   return (
     <div data-slot="sensitive-media" data-state={revealed ? "revealed" : "hidden"} data-interactive={interactive ? "" : undefined} className={cn("sensitive-media", className)}>
       <div className="sensitive-media-content">{children}</div>
-      <div className="sensitive-media-veil">
-        <div data-slot="sensitive-media-plate" className="sensitive-media-plate">
-          <p data-slot="sensitive-media-label" className="sensitive-media-label type-meta m-0">
-            <Icon name="eye-off" size="inline" />
-            <span>{SENSITIVE_COPY.label}</span>
-          </p>
-          {interactive && !ready && (
-            <p data-slot="sensitive-media-note" className="sensitive-media-note type-meta m-0">
-              {SENSITIVE_COPY.hidden}
+      {!revealed &&
+        (interactive && ready ? (
+          <button type="button" data-slot="sensitive-media-toggle" onClick={() => change(true)} className="sensitive-media-veil print:pointer-events-none">
+            <span data-slot="sensitive-media-label" className="sensitive-media-label type-meta">
+              <Icon name="eye-off" size="inline" />
+              <span>{SENSITIVE_COPY.view}</span>
+            </span>
+          </button>
+        ) : (
+          <div className="sensitive-media-veil">
+            <p data-slot="sensitive-media-label" className="sensitive-media-label type-meta m-0">
+              <Icon name="eye-off" size="inline" />
+              <span>{interactive ? SENSITIVE_COPY.hidden : SENSITIVE_COPY.label}</span>
             </p>
-          )}
-          {interactive && ready && (
-            <Toggle
-              size="sm"
-              pressed={revealed}
-              onPressedChange={(next) => {
-                setChanged(true);
-                onRevealedChange(next);
-              }}
-              data-slot="sensitive-media-toggle"
-              className="sensitive-media-toggle print:hidden"
-            >
-              {/* the icon is the action the press will take, as on the full-screen toggle */}
-              <Icon name={revealed ? "eye-off" : "eye"} size="inline" />
-              {SENSITIVE_COPY.show}
-            </Toggle>
-          )}
-        </div>
-      </div>
+          </div>
+        ))}
+      {revealed && interactive && ready && (
+        <button type="button" data-slot="sensitive-media-toggle" aria-label={SENSITIVE_COPY.hide} onClick={() => change(false)} className="sensitive-media-hide print:hidden">
+          <Icon name="eye-off" size="inline" />
+        </button>
+      )}
       {interactive && ready && (
         <span role="status" className="sr-only">
           {changed ? (revealed ? SENSITIVE_COPY.announceShown : SENSITIVE_COPY.announceHidden) : ""}

@@ -170,7 +170,7 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
             </h2>
           )}
           {poem ? (
-            <PoemMargin entry={entry} date={date} globeLink={globeLink} skip={skip} copy={copy} />
+            <PoemMargin entry={entry} globeLink={globeLink} />
           ) : structured ? null : (
             (entry.places.length > 0 || entry.country) && <PlacesSection entry={entry} />
           )}
@@ -217,7 +217,7 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
               </a>
             </Button>
           )}
-          {toc.length > 0 && <TableOfContents items={toc} className="md:sticky md:top-[calc(var(--navbar-height)+1rem)]" />}
+          {toc.length > 0 && <TableOfContents items={toc} className="mt-5 md:sticky md:top-[calc(var(--navbar-height)+1rem)]" />}
         </div>
   );
 
@@ -250,9 +250,9 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
             data-slot="entry-meta"
             className={cn(
               "type-meta m-0 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 text-muted-foreground",
-              !poem && "entry-running",
+              "entry-running",
               // (its rule runs the panel's whole width, and a cover's picture starts at it: the text keeps the page's gutter)
-              !poem && (full ? "-mx-4 px-4 md:-mx-14 md:px-14" : "-mx-6 px-6"),
+              full ? "-mx-4 px-4 md:-mx-14 md:px-14" : "-mx-6 px-6",
             )}
           >
             <span className="min-w-0">
@@ -271,13 +271,13 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
               ) : (
                 <span data-slot="entry-kind">{KIND_LABELS[entry.kind]}</span>
               )}
-              {names && !poem && (
+              {names && (
                 <>
                   <span aria-hidden="true"> &middot; </span>
                   <span data-slot="entry-place">{names}</span>
                 </>
               )}
-              {structured && date && (
+              {date && (
                 <>
                   <span aria-hidden="true"> &middot; </span>
                   <time dateTime={date.dateTime} data-slot="entry-date">
@@ -286,6 +286,7 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
                 </>
               )}
             </span>
+            {poem && <span className="print:hidden">{copy}</span>}
             {(status || reading) && (
               <span className="flex items-baseline gap-4">
                 {status && <StatusTag status={status} className="text-[length:inherit] leading-[inherit] [font:inherit] tracking-[inherit] uppercase" />}
@@ -313,21 +314,6 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
         </header>
 
         {photo && <Cover entry={entry} />}
-
-        {!structured && (
-          <div data-slot="entry-dateline" className="entry-dateline flex flex-wrap items-center gap-x-6 gap-y-1 md:gap-x-12">
-            {date && (
-              <time dateTime={date.dateTime} data-slot="entry-date">
-                {date.text}
-              </time>
-            )}
-            {globeLink}
-            <span className="ml-auto flex items-center gap-1 print:hidden">
-              {skip}
-              {copy}
-            </span>
-          </div>
-        )}
 
         {!poem && marginEl}
         {!poem && !photo && (!heroSrc || heroDim) && <Cover entry={entry} />}
@@ -362,51 +348,11 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
 }
 
 /** A poem's marginalia (the night board): the place, the date and the way to the globe in plain mono, then the note about the poem. */
-function PoemMargin({
-  entry,
-  date,
-  globeLink,
-  skip,
-  copy,
-}: {
-  entry: EntryDetail;
-  date: ReturnType<typeof formatEntryDate>;
-  globeLink: React.ReactNode;
-  skip: React.ReactNode;
-  copy: React.ReactNode;
-}) {
+function PoemMargin({ entry, globeLink }: { entry: EntryDetail; globeLink: React.ReactNode }) {
   return (
     <>
-      <div className="flex flex-col">
-        {entry.places.length > 0 && (
-          <section aria-labelledby="entry-places" data-slot="entry-places">
-            <h2 id="entry-places" className="sr-only">
-              Places
-            </h2>
-            <ul className="m-0 list-none p-0">
-              {entry.places.map((place) => (
-                <li key={place.slug}>
-                  <Link to={place.href} className="entry-link inline-block">
-                    {place.name}
-                  </Link>
-                  {place.region && <span>, {place.region}</span>}
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
-        {date && (
-          <time dateTime={date.dateTime} data-slot="entry-date">
-            {date.text}
-          </time>
-        )}
-        {globeLink && <div className="mt-[1.125rem]">{globeLink}</div>}
-      </div>
       {entry.summary && <p className="m-0">{entry.summary}</p>}
-      <div className="flex items-center gap-1 print:hidden">
-        {skip}
-        {copy}
-      </div>
+      {globeLink}
     </>
   );
 }

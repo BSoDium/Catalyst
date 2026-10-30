@@ -16,6 +16,10 @@ export const SENSITIVE_COPY = {
   label: "Mature content",
   /** The accessible name of the control that reveals the entry's images (constant: `aria-pressed` carries the state). */
   show: "Show image",
+  /** The name of the control that IS the blurred picture (the words on it): pressing it shows the image. */
+  view: "View mature content",
+  /** The name of the small control that hides a shown image again. */
+  hide: "Hide image",
   /** Said where there is no control yet (before hydration, without scripts). */
   hidden: "Image hidden",
   /** Said politely when the control changes the state. */

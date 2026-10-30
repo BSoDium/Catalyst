@@ -51,18 +51,20 @@ export function TableOfContents({ items, className }: { items: readonly OutlineI
 
   if (items.length === 0) return null;
   return (
-    <nav aria-labelledby="entry-toc" data-slot="entry-toc" className={cn("hidden md:block print:hidden", className)}>
-      <h2 id="entry-toc" className="type-meta m-0 text-foreground">
+    <nav aria-labelledby="entry-toc" data-slot="entry-toc" className={cn("hidden md:flex md:flex-col md:gap-3 print:hidden", className)}>
+      {/* (a block title like the others of the margin, "At a glance" and "Tags": the display face, one gap under it) */}
+      <h2 id="entry-toc" className="m-0 font-[family-name:var(--font-display)] text-[1.375rem] leading-tight font-bold tracking-tight text-foreground">
         Contents
       </h2>
-      <ol className="m-0 mt-1 list-none p-0">
+      {/* (the rows are laid as the facts' are: their padding is the link's, so the hover's tile, the marker at its left edge and the text are one box) */}
+      <ol className="m-0 -mx-3 list-none p-0">
         {items.map((item) => (
           <li key={item.id}>
             <a
               href={`#${item.id}`}
               aria-current={item.id === active ? "location" : undefined}
               data-level={item.level}
-              className={cn("ds-toc-link flex min-h-9 items-baseline py-1 no-underline", item.level === 3 && "pl-4")}
+              className={cn("ds-toc-link flex min-h-9 items-center px-3 py-1.5 leading-snug no-underline", item.level === 3 && "pl-7")}
             >
               <span className={cn("min-w-0", item.level === 3 && "text-muted-foreground")}>{item.text}</span>
             </a>
