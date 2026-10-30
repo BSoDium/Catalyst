@@ -230,7 +230,7 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
       data-kind={entry.kind}
       data-structured={structured ? "" : undefined}
       data-sensitive={isSensitive(entry) ? "" : undefined}
-      className={cn("entry mx-auto w-full min-w-0", full ? "max-w-[90rem] px-4 pt-3 pb-20 md:px-14" : "px-6 pt-2 pb-10")}
+      className={cn("entry mx-auto w-full min-w-0", full ? "max-w-[100rem] px-4 pt-3 pb-20 md:px-8" : "px-6 pt-2 pb-10")}
     >
       <div className="entry-grid">
         <header className={cn("entry-head flex min-w-0 flex-col", poem ? "gap-5" : "gap-0")}>
@@ -252,7 +252,7 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
               "type-meta m-0 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 text-muted-foreground",
               "entry-running",
               // (its rule runs the panel's whole width, and a cover's picture starts at it: the text keeps the page's gutter)
-              full ? "-mx-4 px-4 md:-mx-14 md:px-14" : "-mx-6 px-6",
+              full ? "-mx-4 px-4 md:-mx-8 md:px-8" : "-mx-6 px-6",
             )}
           >
             <span className="min-w-0">
@@ -295,7 +295,7 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
             )}
           </p>
           {/* (the cover is the backdrop of what comes under the running head, not of the running head itself: its small type was unreadable on a picture) */}
-          <div data-hero={heroSrc ? "" : undefined} data-tone={heroDim ? "dim" : undefined} data-mature={heroDim && isSensitive(entry) ? "" : undefined} className={heroSrc ? cn("entry-hero relative isolate flex min-w-0 flex-col", full ? "-mx-4 px-4 md:-mx-14 md:px-14" : "-mx-6 px-6") : "contents"}>
+          <div data-hero={heroSrc ? "" : undefined} data-tone={heroDim ? "dim" : undefined} data-mature={heroDim && isSensitive(entry) ? "" : undefined} className={heroSrc ? cn("entry-hero relative isolate flex min-w-0 flex-col", full ? "-mx-4 px-4 md:-mx-8 md:px-8" : "-mx-6 px-6") : "contents"}>
             <div className={heroSrc ? "entry-hero-text relative flex min-w-0 flex-col" : "contents"}>
               <h1
                 id={headingId}

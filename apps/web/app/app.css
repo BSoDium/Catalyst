@@ -2051,7 +2051,7 @@
 
   @media (min-width: 768px) {
     .entry[data-layout="full"] {
-      --cover-bleed: 3.5rem;
+      --cover-bleed: 2rem;
     }
   }
 

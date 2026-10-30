@@ -83,8 +83,8 @@ describe("EntryView", () => {
     expect(panel).toContain('data-layout="panel"');
     expect(full).toContain('data-layout="full"');
     // the grid is CSS (`.entry[data-layout="full"] .entry-grid`): the markup is the same, only the attribute differs
-    expect(full).toContain("max-w-[90rem]");
-    expect(panel).not.toContain("max-w-[90rem]");
+    expect(full).toContain("max-w-[100rem]");
+    expect(panel).not.toContain("max-w-[100rem]");
     // same text, same order
     const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
     expect(text(full)).toBe(text(panel));
