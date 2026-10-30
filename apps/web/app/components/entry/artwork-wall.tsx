@@ -37,7 +37,10 @@ export function ArtworkWall({
   headingLevel = 2,
   label,
   kind = "artwork",
+  linkState,
 }: {
+  /** The router state of the links: where the entry is opened from (`listBackState`). */
+  linkState?: unknown;
   items: readonly EntrySummary[];
   headingLevel?: 2 | 3 | 4;
   label: string;
@@ -77,7 +80,7 @@ export function ArtworkWall({
                 </div>
                 <div className="wall-caption">
                   <Heading data-slot="entry-card-title" className="wall-title">
-                    <Link to={entry.href} className="after:absolute after:inset-0 after:content-[''] focus-visible:outline-none">
+                    <Link to={entry.href} state={linkState} className="after:absolute after:inset-0 after:content-[''] focus-visible:outline-none">
                       {entry.title}
                     </Link>
                   </Heading>
