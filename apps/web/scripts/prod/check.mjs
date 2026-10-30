@@ -111,7 +111,7 @@ function checkCsp(res, html, label) {
   ok(csp["worker-src"]?.includes("blob:") && csp["worker-src"].includes("'self'"), `${label}: worker-src self blob:`);
   ok(csp["img-src"]?.includes("data:") && csp["img-src"].includes("blob:"), `${label}: img-src self data: blob:`);
   ok(csp["connect-src"]?.includes("'self'") && csp["connect-src"].some((t) => t.startsWith("http")), `${label}: connect-src self + tile hosts (${csp["connect-src"]?.slice(1).join(" ")})`);
-  ok(csp["object-src"]?.join() === "'none'" && csp["base-uri"]?.join() === "'self'" && csp["form-action"]?.join() === "'self' https://api.web3forms.com" && csp["frame-ancestors"]?.join() === "'none'", `${label}: object-src none, base-uri self, form-action self and the contact relay, frame-ancestors none`);
+  ok(csp["object-src"]?.join() === "'none'" && csp["base-uri"]?.join() === "'self'" && csp["form-action"]?.join(" ") === "'self' https://api.web3forms.com" && csp["frame-ancestors"]?.join() === "'none'", `${label}: object-src none, base-uri self, form-action self and the contact relay, frame-ancestors none`);
   if (nonce && html) {
     const scripts = [...html.matchAll(/<script\b([^>]*)>/g)].map((m) => m[1]).filter((a) => !/application\/ld\+json/.test(a));
     ok(scripts.length > 0 && scripts.every((a) => a.includes(`nonce="${nonce}"`)), `${label}: all ${scripts.length} executable <script> tags carry the response's nonce`);
@@ -295,7 +295,7 @@ if (hasCareer) {
   section("career page (the projection has a career document)");
   const c = await document("/career", "/career", { ld: "ProfilePage" });
   ok(title(c.body) === `Career · ${NAME}`, `/career: the title is "Career · name" (${title(c.body)})`);
-  ok((c.body.match(/<h1[ >]/g) ?? []).length === 1 && new RegExp(`<h1[^>]*>${NAME}</h1>`).test(c.body), "/career: one h1, the owner's name");
+  ok((c.body.match(/<h1[ >]/g) ?? []).length === 1 && (c.body.match(/<h1[^>]*>(.*?)<\/h1>/s)?.[1] ?? "").replace(/<[^>]+>/g, "") === NAME, "/career: one h1, the owner's name (its family name is a span)");
   const visible = c.body.replace(/<script[\s\S]*?<\/script>/g, "").replace(/<[^>]+>/g, " ");
   ok(!/mailto:|tel:|sms:/i.test(c.body) && !/@[A-Za-z0-9-]+\.[a-z]{2,}/.test(visible), "/career: no contact channel (no mailto, tel, e-mail address)");
   ok(/og:image" content="[^"]*og-default\.png"/.test(c.body), "/career: the share image is the site's default (never the portrait)");
@@ -606,7 +606,8 @@ if (!flag("no-browser")) {
     ok(Boolean(state.h1) && state.panelVisible, `no JS: the entry renders its title ("${state.h1}") in a visible panel`);
     ok(state.total > 0 && state.shown / state.total > 0.9, `no JS: the entry's text is readable (${state.shown} of ${state.total} characters visible)`);
     ok(state.noscript, "no JS: the noscript note is in the page");
-    await t.pg.getByRole("link", { name: "Articles", exact: true }).first().click();
+    // (the header of an entry in the panel is the sections menu, closed: the navigation without the script is the note's links)
+    await t.pg.getByRole("link", { name: "articles", exact: true }).first().click();
     await t.pg.waitForURL("**/articles");
     ok((await t.pg.locator("h1").first().innerText()) === "Articles", "no JS: the navigation links work (Articles list loads)");
     const list = await t.pg.locator("main a[href^='/articles/']").first().getAttribute("href");
