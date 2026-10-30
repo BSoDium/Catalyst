@@ -167,15 +167,15 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
             (entry.places.length > 0 || entry.country) && <PlacesSection entry={entry} />
           )}
           {(rows.length > 0 || (project && (entry.places.length > 0 || entry.country))) && (
-            <dl data-slot="entry-details" className={cn("m-0", poem && "mt-2", project && "mt-1")}>
+            <dl data-slot="entry-details" className={cn("m-0", poem && "mt-2", project && "mt-2")}>
               {rows.map((row) => (
-                <div key={row.key} data-slot="entry-fact" className={cn("min-w-0", project && !full && "grid grid-cols-[7.5rem_minmax(0,1fr)] items-baseline gap-x-4 py-1.5", project && full && "py-1.5")}>
+                <div key={row.key} data-slot="entry-fact" className={cn("min-w-0", project && "-mx-3 px-3 py-2 odd:bg-foreground/5", project && !full && "grid grid-cols-[7.5rem_minmax(0,1fr)] items-baseline gap-x-4")}>
                   <dt className="type-meta text-foreground">{row.label}</dt>
                   <dd className="m-0 [overflow-wrap:anywhere]">{row.value}</dd>
                 </div>
               ))}
               {project && (entry.places.length > 0 || entry.country) && (
-                <div data-slot="entry-fact" className={cn("min-w-0", !full ? "grid grid-cols-[7.5rem_minmax(0,1fr)] items-baseline gap-x-4 py-1.5" : "py-1.5")}>
+                <div data-slot="entry-fact" className={cn("-mx-3 min-w-0 px-3 py-2 odd:bg-foreground/5", !full && "grid grid-cols-[7.5rem_minmax(0,1fr)] items-baseline gap-x-4")}>
                   <dt className="type-meta text-foreground">Made in</dt>
                   <dd className="m-0 [overflow-wrap:anywhere]">
                     <ProjectPlaces entry={entry} globeLink={globeTarget} />
