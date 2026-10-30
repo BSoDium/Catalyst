@@ -7,7 +7,7 @@ import { asOfText, careerDuration, careerIcon, careerLogoSrc, careerPeriod, form
 import { CONTACT_ID } from "~/lib/contact";
 import { safeExternalUrl } from "~/lib/entry-blocks";
 import { placePath } from "~/lib/entries";
-import { SITE_NAME } from "~/lib/site";
+import { SITE } from "~/lib/site";
 
 /**
  * `/career`: the curriculum vitae as a page (docs/career-page.md), set as the other pages of the site: a running head over ONE
@@ -49,7 +49,7 @@ export function CareerPage({ career, places = [] }: { career: PublishedCareer; p
         <div className="career-id" data-portrait={portrait ? "true" : "false"}>
           <div className="career-id-text">
             <h1 id="career-name" className="list-title career-name">
-              {SITE_NAME}
+              {SITE.givenName} <span className="career-name-family">{SITE.familyName}</span>
             </h1>
             <p className="career-summary">{career.summary}</p>
             {available && (
@@ -144,10 +144,11 @@ export function CareerPage({ career, places = [] }: { career: PublishedCareer; p
         )}
       </div>
 
+      <div className="career-pair">
       <ContactForm />
 
       {links.length > 0 && (
-        <footer data-slot="career-links" className="career-footer">
+        <footer data-slot="career-links" className="career-block career-footer">
           <h2 id="links-h" className="career-block-title">
             Socials
           </h2>
@@ -163,6 +164,7 @@ export function CareerPage({ career, places = [] }: { career: PublishedCareer; p
           </ul>
         </footer>
       )}
+      </div>
     </main>
   );
 }

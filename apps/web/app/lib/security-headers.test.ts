@@ -39,7 +39,7 @@ describe("buildCsp", () => {
   it("locks down plugins, base URI, forms and framing", () => {
     expect(csp["object-src"]).toEqual(["'none'"]);
     expect(csp["base-uri"]).toEqual(["'self'"]);
-    expect(csp["form-action"]).toEqual(["'self'"]);
+    expect(csp["form-action"]).toEqual(["'self'", "https://api.web3forms.com"]); // the contact form posts there without the script
     expect(csp["frame-ancestors"]).toEqual(["'none'"]);
   });
   it("lets the page connect to itself, the tile hosts and the contact relay, once each", () => {

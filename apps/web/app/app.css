@@ -5808,11 +5808,29 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
    */
   .career-contact {
     --contact-error: #b3261e;
-    margin-top: 3.5rem;
-    padding-top: 1.25rem;
-    border-top: var(--hairline) solid var(--border);
     scroll-margin-top: calc(var(--navbar-height) + 1rem);
     outline: none;
+  }
+
+  /* Contact and socials close the page as a pair (as education and skills): the same top, the same title, the socials in a column. */
+  .career-pair > .career-footer {
+    margin-top: 3.5rem;
+    padding-top: 1.25rem;
+  }
+
+  .career-pair > .career-footer .career-block-title {
+    margin-bottom: 2rem;
+  }
+
+  .career-pair > .career-footer .career-links {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  /* The family name a step lighter and dimmer than the given one (a solid mix of the ink and the page: no opacity). */
+  .career-name-family {
+    font-weight: var(--weight-light);
+    color: color-mix(in srgb, var(--foreground) 66%, var(--background));
   }
 
   @media (prefers-color-scheme: dark) {
@@ -5856,17 +5874,25 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     color: var(--muted-foreground);
   }
 
+  /* Soft fields (owner, 2026-10-30: "too brutalist"): a faint fill, a hairline that deepens on hover, rounded corners, a ring on focus. */
   .contact-input {
     width: 100%;
     min-height: var(--control-h);
-    padding: 0.5rem 0.75rem;
-    border: var(--hairline) solid var(--border-strong);
-    border-radius: 0;
-    background: transparent;
+    padding: 0.625rem 0.875rem;
+    border: var(--hairline) solid var(--border);
+    border-radius: 0.625rem;
+    background: color-mix(in srgb, var(--accent) 40%, var(--background));
     color: var(--foreground);
     font-family: var(--font-reading);
     font-size: 1.125rem;
     line-height: 1.4;
+    transition:
+      border-color var(--duration-fast) var(--ease-standard),
+      box-shadow var(--duration-fast) var(--ease-standard);
+  }
+
+  .contact-input:hover {
+    border-color: var(--border-strong);
   }
 
   .contact-textarea {
@@ -5875,8 +5901,9 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   }
 
   .contact-input:focus-visible {
-    outline: 2px solid var(--ring);
-    outline-offset: 2px;
+    border-color: var(--ring);
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 28%, transparent);
   }
 
   .contact-field[data-invalid="true"] .contact-input {
@@ -5889,6 +5916,10 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     font-size: var(--text-sm);
     line-height: 1.4;
     color: var(--contact-error);
+  }
+
+  .contact-actions .ds-button {
+    border-radius: 0.625rem;
   }
 
   .contact-actions {

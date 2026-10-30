@@ -64,6 +64,7 @@ export const CONTACT_ORIGIN = "https://api.web3forms.com";
  *    on elements (positions, sizes, CSS variables), which cannot be hashed; no inline `<style>` element is allowed.
  *  - worker-src: MapLibre's tile worker is a file of ours, and `blob:` is its documented fallback.
  *  - connect-src: this origin (route data), the tile hosts and the contact form's relay (`CONTACT_ORIGIN`), nothing else.
+ *  - form-action: this origin and the contact form's relay: the form posts there as plain HTML when the script has not run.
  *  - img-src: ours, `data:` and `blob:` (canvas and map rasters). font-src: ours (the self-hosted files of `public/fonts/`: the three families of the page, display, reading
  *    and metadata type, and the two faces the globe's caption can be set in, which it loads itself; every other glyph is the system stack's, so no
  *    font host is ever needed).
@@ -84,7 +85,7 @@ export function buildCsp({ nonce, connectOrigins, upgradeInsecure }: CspInput): 
     "manifest-src 'self'",
     "object-src 'none'",
     "base-uri 'self'",
-    "form-action 'self'",
+    `form-action 'self' ${CONTACT_ORIGIN}`,
     "frame-ancestors 'none'",
     ...(upgradeInsecure ? ["upgrade-insecure-requests"] : []),
   ];

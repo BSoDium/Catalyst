@@ -12,6 +12,19 @@ export const CONTACT_ACCESS_KEY = "7f05b5ae-7a5d-47fe-ba9b-47f283b06a00";
 /** Anchor of the form on the career page: the header's button links to it. */
 export const CONTACT_ID = "contact";
 
+/** The subject of the mail of a message sent without the script (with it, the subject names the sender). */
+export const CONTACT_SUBJECT = "A message through the site";
+
+/** Where Web3Forms sends the visitor back after a plain HTML post: the career page, with `sent` (the form then says thanks). Free plans: the key's own domain only. */
+export function contactRedirect(siteUrl: string | undefined): string | undefined {
+  if (!siteUrl) return undefined;
+  try {
+    return new URL(`/career?sent=1#${CONTACT_ID}`, siteUrl).href;
+  } catch {
+    return undefined;
+  }
+}
+
 export const CONTACT_LIMITS = { name: 100, email: 254, message: 4000, minMessage: 10 } as const;
 
 export interface ContactValues {
