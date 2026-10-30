@@ -5874,25 +5874,17 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     color: var(--muted-foreground);
   }
 
-  /* Soft fields (owner, 2026-10-30: "too brutalist"): a faint fill, a hairline that deepens on hover, rounded corners, a ring on focus. */
   .contact-input {
     width: 100%;
     min-height: var(--control-h);
-    padding: 0.625rem 0.875rem;
-    border: var(--hairline) solid var(--border);
-    border-radius: 0.625rem;
-    background: color-mix(in srgb, var(--accent) 40%, var(--background));
+    padding: 0.5rem 0.75rem;
+    border: var(--hairline) solid var(--border-strong);
+    border-radius: 0;
+    background: transparent;
     color: var(--foreground);
     font-family: var(--font-reading);
     font-size: 1.125rem;
     line-height: 1.4;
-    transition:
-      border-color var(--duration-fast) var(--ease-standard),
-      box-shadow var(--duration-fast) var(--ease-standard);
-  }
-
-  .contact-input:hover {
-    border-color: var(--border-strong);
   }
 
   .contact-textarea {
@@ -5901,9 +5893,8 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   }
 
   .contact-input:focus-visible {
-    border-color: var(--ring);
-    outline: none;
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 28%, transparent);
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
   }
 
   .contact-field[data-invalid="true"] .contact-input {
@@ -5916,10 +5907,6 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     font-size: var(--text-sm);
     line-height: 1.4;
     color: var(--contact-error);
-  }
-
-  .contact-actions .ds-button {
-    border-radius: 0.625rem;
   }
 
   .contact-actions {
