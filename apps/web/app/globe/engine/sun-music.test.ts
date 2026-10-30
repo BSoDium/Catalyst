@@ -200,6 +200,11 @@ describe("the sun's music", () => {
     m.setMuted(true);
     ctx.currentTime = 11;
     vi.advanceTimersByTime(500);
+    // (the sound is gone in 120 ms, the picture's breathing is not: it eases out over `pulseReleaseSec`, and is gone only after a few of them)
+    const eased = m.pulse()!;
+    expect(eased.amount).toBeLessThan(1);
+    expect(eased.amount).toBeGreaterThan(0.2);
+    ctx.currentTime = 11 + 6 * SUN_MUSIC.pulseReleaseSec;
     expect(m.pulse()).toBeNull();
   });
 
