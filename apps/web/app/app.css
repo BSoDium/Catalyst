@@ -2251,12 +2251,6 @@
     pointer-events: none;
   }
 
-  @media print {
-    .entry-stage-backdrop {
-      display: none;
-    }
-  }
-
   /* The cover, and the images of an artwork or a poem: the image and a mono caption (no rule over it: owner, 2026-10-30, "too many dividers and lines": the running head's is the one). */
   .entry-figure {
     padding-top: 0.25rem;
@@ -3821,6 +3815,11 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   h2,
   h3 {
     break-after: avoid;
+  }
+
+  /* The stage's blurred backdrop is not printed. */
+  .entry-stage-backdrop {
+    display: none;
   }
 
   /* Mature content stays blurred on paper, revealed or not, and says so: the control is not printed. */
