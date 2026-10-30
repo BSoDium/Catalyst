@@ -2239,7 +2239,7 @@
    * Figures in the flow of an article or a project (docs/design-system.md, "Figures"): the image stays where the author put it, between
    * two blocks, under a hairline of the ink. Its box is the "wide" measure: the text's measure and a quarter (`--fig-box`), never more
    * than the column; the picture is drawn at most at its own width (`--fig-natural`, the published `width` in CSS pixels, set inline),
-   * so a small diagram is not blown up, and is centred in the wide measure. The figure is as wide as its picture: the rule and the
+   * so a small diagram is not blown up, and is centred on the text's measure (a picture wider than the text grows to the right, or on both sides where there is a gutter to take it). The figure is as wide as its picture: the rule and the
    * caption follow it. On a narrow container (a phone, the half panel on a small window) the box is the column plus both page gutters:
    * a picture as wide as that goes edge to edge, a small one keeps the gutter (the caption keeps it either way). Lengths only (no
    * percentages in `--fig-col`: it is the container's width, which is the column's there), so the margins and the caption's inset
@@ -2258,8 +2258,9 @@
     --fig-bleed: 0px;
     --fig-box: min(calc(var(--measure-reading) * 1.25), var(--fig-col));
     --fig-w: min(var(--fig-natural, 100%), var(--fig-box));
+    --fig-text: min(var(--measure-reading), var(--fig-col));
     width: var(--fig-w);
-    margin: 0.9em 0 0.9em calc((var(--fig-box) - var(--fig-w)) / 2 - var(--fig-bleed));
+    margin: 0.9em 0 0.9em max(calc(-1 * var(--fig-bleed)), calc((var(--fig-text) - var(--fig-w)) / 2));
     padding-top: 0.25rem;
     scroll-margin-top: calc(var(--navbar-height) + 1rem);
     break-inside: avoid;
