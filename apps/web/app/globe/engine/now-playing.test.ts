@@ -28,11 +28,16 @@ describe("what the page is playing", () => {
     expect(pillVisible(np.getSnapshot())).toBe(false);
   });
 
-  it("a sound that waits (paused) is still shown, and says so", () => {
+  it("a sound that waits (paused: the sun is out of the picture) is not shown, and a muted one that is on is", () => {
     const np = new NowPlaying();
     np.set(TRACKS.sun, "playing");
+    expect(pillVisible(np.getSnapshot())).toBe(true);
     np.set(TRACKS.sun, "paused");
     expect(np.getSnapshot()).toMatchObject({ track: TRACKS.sun, state: "paused" });
+    expect(pillVisible(np.getSnapshot())).toBe(false);
+    np.set(TRACKS.sun, "playing");
+    np.setMuted(true);
+    expect(pillVisible(np.getSnapshot())).toBe(true);
   });
 
   it("the interlude's sound is shown over the sun's while both are there, and the sun's comes back when it is done", () => {

@@ -2931,6 +2931,23 @@
   }
 }
 
+/*
+ * The search is docked at the header's right edge (owner, 2026-10-29, then 2026-10-30: "keep it docked to the right, but the simple design: a bit of caps text like the nav entries, a search icon next to it,
+ * and to the right the keyboard shortcut, and that's it, aligned with the other items"), where the header is wide enough that the centred links (816 px) leave it room: from 80 rem of header (the same
+ * 1280 px as the player at the left). It is the trigger of the row, as everywhere (the nav's own type, the icon, the key hint), taken out of the row's flow so that the links stay centred over the screen:
+ * its right edge is on the page's own right margin (3.5 rem; the nav is centred in the header, so its edge is half the difference away) and it is centred on the nav's height, on the links' line.
+ * Narrower, it is in the row, as before. Unlayered, like the narrow form's: the trigger carries utilities.
+ */
+@container (min-width: 80rem) {
+  [data-slot="site-header"] [data-slot="search-trigger"] {
+    position: absolute;
+    top: 50%;
+    right: calc((100% - 100cqw) / 2 + 3.5rem);
+    translate: 0 -50%;
+    z-index: 3;
+  }
+}
+
 /* The drawer is open: the page behind it does not scroll (the veil catches the touches). */
 html[data-nav-open] {
   overflow: hidden;
