@@ -730,8 +730,6 @@ export const MEDIA = [
   { name: "cover-night-trains", size: COVER, motif: "rails", plate: "dark", opts: {}, alt: "Two railway tracks running to a single lamp on a hazy horizon, drawn in pixels and dithered grey on black, with one cyan signal light" },
   { name: "cover-morocco-coast", size: COVER, motif: "coast", plate: "light", opts: { dir: 1 }, alt: "A dashed road on a cliff above the sea, wave lines receding to a dithered sky, a small cyan bus on the road" },
   { name: "cover-altiplano", size: COVER, motif: "contours", plate: "dark", opts: {}, alt: "Six layers of stair-stepped mountain ridges fading into dithered haze under a small cyan sun" },
-  { name: "cover-pixel-globe", size: COVER, motif: "globe", plate: "dark", opts: { rad: 25, yaw: 0.9, tilt: 0.45 }, alt: "A pixel-art globe lit from the upper left, dithered continents, a faint orbit ring and one cyan location marker" },
-  { name: "cover-collide", size: COVER, motif: "labels", plate: "light", opts: { count: 24 }, alt: "Rectangular map labels with leader lines to anchor points, a few overlapping pairs outlined in cyan" },
   { name: "cover-signal-study", size: COVER, motif: "riso", plate: "light", opts: { rotate: 14 }, alt: "Two overlapping halftone discs, one black and one cyan, with registration marks and a crop frame like a printed proof" },
   { name: "cover-sediment", size: COVER, motif: "strata", plate: "dark", opts: { lines: 26, signalLine: 17 }, alt: "Stacked wavy contour lines, each hiding the one behind, with a single cyan line in the lower half" },
   { name: "cover-monsoon-index", size: COVER, motif: "monsoon", plate: "dark", opts: { drops: 120 }, alt: "Rooftops under a dithered storm sky, thin diagonal rain streaks and ripples on a wet street" },
@@ -767,6 +765,38 @@ export const MEDIA = [
   { name: "fig-monsoon-1", size: FIGURE, motif: "monsoon", plate: "dark", opts: { drops: 90 }, alt: "Study 1: rooftops and rain under a dithered sky" },
   { name: "fig-monsoon-2", size: FIGURE, motif: "monsoon", plate: "light", opts: { drops: 110 }, alt: "Study 2: dark rooftops and rain on pale paper" },
   { name: "fig-figure-study-detail", size: FIGURE, motif: "contours", plate: "light", opts: { layers: 4, sun: false }, alt: "Four dithered ridge lines on pale paper, a loose study of a single curve" },
+];
+
+/**
+ * The demo's few STOCK photographs (owner, 2026-10-30: "copyright-free images from Pexels ... instead of the generated ones", for the software covers): royalty-free images under the Pexels licence (free for
+ * personal and commercial use, no attribution required; credited here and in `apps/web/public/media/demo-stock.NOTICE.txt` all the same), cropped to a 1200 x 630 cover, resized and re-encoded as JPEG without
+ * metadata. They are NOT generated: the generator neither writes nor checks them, and a test holds that each one is on disk, is credited and is used.
+ */
+export const STOCK = [
+  {
+    name: "stock-earth",
+    file: "stock-earth.jpg",
+    size: COVER,
+    alt: "The Earth seen from space, North America in daylight under swirls of cloud, the night side lit by a few city lights at the edge of the dark",
+    credit: "Pixabay, on Pexels",
+    source: "https://www.pexels.com/photo/earth-illustration-355935/",
+  },
+  {
+    name: "stock-laptop-code",
+    file: "stock-laptop-code.jpg",
+    size: COVER,
+    alt: "A laptop in a dark room with blue lights, its screen showing a code editor with a Python script and an empty terminal pane",
+    credit: "Nemuel Sereti, on Pexels",
+    source: "https://www.pexels.com/photo/programming-code-on-laptop-screen-6424590/",
+  },
+  {
+    name: "stock-phone-map",
+    file: "stock-phone-map.jpg",
+    size: COVER,
+    alt: "A hand holding a phone that shows a map app: a route in orange across the waterways of a city, with a blurred underground station behind it",
+    credit: "Yash Bhavsar, on Pexels",
+    source: "https://www.pexels.com/photo/person-holding-a-phone-with-map-on-the-screen-14629408/",
+  },
 ];
 
 export function renderImage(image) {
