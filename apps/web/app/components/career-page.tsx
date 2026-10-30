@@ -1,8 +1,10 @@
 import { Link } from "react-router";
 import type { PublishedCareer, PublishedCareerEducation, PublishedCareerRole } from "@catalyst/schemas";
-import { Icon } from "~/components/ui";
+import { ContactForm } from "~/components/contact-form";
+import { Button, Icon } from "~/components/ui";
 import type { IconName } from "~/components/ui/icon";
 import { asOfText, careerDuration, careerIcon, careerLogoSrc, careerPeriod, formatCareerMonth, isCurrent, languageDetail, safeLinks, safePortrait } from "~/lib/career";
+import { CONTACT_ID } from "~/lib/contact";
 import { safeExternalUrl } from "~/lib/entry-blocks";
 import { placePath } from "~/lib/entries";
 import { SITE_NAME } from "~/lib/site";
@@ -15,8 +17,9 @@ import { SITE_NAME } from "~/lib/site";
  * newest first, each item with its `<time>` span), the skills as a compact definition list and a footer row of public profile links.
  *
  * Headings: h1 the name; h2 Languages (visually hidden: the line is its own region), Experience, Education, Skills, Socials; h3 a
- * role's organisation or a programme's institution. The portrait is optional: with none, the name block simply takes the room. There is
- * no contact channel anywhere (the contract has no field for one).
+ * role's organisation or a programme's institution. The portrait is optional: with none, the name block simply takes the room. The
+ * one way to reach the owner is the contact form (`ContactForm`, docs/career-page.md, "Contact") before the socials: a "Get in touch"
+ * button in the head scrolls to it. There is no address, phone number or mailto link anywhere (the contract has no field for one).
  */
 export function CareerPage({ career, places = [] }: { career: PublishedCareer; places?: readonly string[] }) {
   const portrait = safePortrait(career);
@@ -60,6 +63,14 @@ export function CareerPage({ career, places = [] }: { career: PublishedCareer; p
                 </span>
               </p>
             )}
+            <p className="career-reach print:hidden">
+              <Button asChild variant="secondary">
+                <a href={`#${CONTACT_ID}`} data-slot="career-contact-link">
+                  Get in touch
+                  <Icon name="arrow-down" size="inline" aria-hidden="true" />
+                </a>
+              </Button>
+            </p>
             {updated && (
               <p data-slot="career-updated" className="career-updated type-meta">
                 Updated <time dateTime={career.updated}>{updated}</time>
@@ -132,6 +143,8 @@ export function CareerPage({ career, places = [] }: { career: PublishedCareer; p
           </Block>
         )}
       </div>
+
+      <ContactForm />
 
       {links.length > 0 && (
         <footer data-slot="career-links" className="career-footer">

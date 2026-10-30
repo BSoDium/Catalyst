@@ -5795,6 +5795,121 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     margin-bottom: 0.5rem;
   }
 
+  /* The head's button to the contact form: a quiet secondary button under the availability line. */
+  .career-reach {
+    margin: 1.5rem 0 0;
+  }
+
+  /*
+   * The contact form at the foot of the page (docs/career-page.md, "Contact"): the block's hairline and title, then a form as wide as
+   * the text blocks' body. Fields are underlined by a 1 px box in the page's strong line, no fill, the reading face for what is typed;
+   * labels are the mono meta type. An error is a line of text under its field in a red that is AA on both schemes, never colour alone
+   * (the field's box takes the same red and the text says what to do). The honeypot is off-screen, not `display: none` (some bots skip those).
+   */
+  .career-contact {
+    --contact-error: #b3261e;
+    margin-top: 3.5rem;
+    padding-top: 1.25rem;
+    border-top: var(--hairline) solid var(--border);
+    scroll-margin-top: calc(var(--navbar-height) + 1rem);
+    outline: none;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .career-contact {
+      --contact-error: #ff9d94;
+    }
+  }
+
+  .contact-form,
+  .contact-thanks {
+    max-width: 40rem;
+  }
+
+  .contact-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .contact-lead,
+  .contact-thanks {
+    margin: 0;
+    font-family: var(--font-reading);
+    font-size: 1.125rem;
+    line-height: 1.5;
+    color: var(--muted-foreground);
+  }
+
+  .contact-thanks {
+    color: var(--foreground);
+    outline: none;
+  }
+
+  .contact-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+  }
+
+  .contact-label {
+    color: var(--muted-foreground);
+  }
+
+  .contact-input {
+    width: 100%;
+    min-height: var(--control-h);
+    padding: 0.5rem 0.75rem;
+    border: var(--hairline) solid var(--border-strong);
+    border-radius: 0;
+    background: transparent;
+    color: var(--foreground);
+    font-family: var(--font-reading);
+    font-size: 1.125rem;
+    line-height: 1.4;
+  }
+
+  .contact-textarea {
+    min-height: 9rem;
+    resize: vertical;
+  }
+
+  .contact-input:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  .contact-field[data-invalid="true"] .contact-input {
+    border-color: var(--contact-error);
+  }
+
+  .contact-error,
+  .contact-failure {
+    margin: 0;
+    font-size: var(--text-sm);
+    line-height: 1.4;
+    color: var(--contact-error);
+  }
+
+  .contact-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1.25rem;
+  }
+
+  .contact-actions .contact-failure:empty {
+    display: none;
+  }
+
+  .contact-trap {
+    position: absolute;
+    left: -10000px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+
   .career-org-link,
   .career-place,
   .career-link {

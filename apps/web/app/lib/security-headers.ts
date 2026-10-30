@@ -52,6 +52,9 @@ export interface CspInput {
   upgradeInsecure: boolean;
 }
 
+/** Where the contact form sends a message (`lib/contact.ts`): the one origin besides the tile hosts a page may fetch. */
+export const CONTACT_ORIGIN = "https://api.web3forms.com";
+
 /**
  * The Content-Security-Policy of an HTML document. Nothing is allowed by default (`default-src 'none'`); each directive lists what the
  * app really loads:
@@ -60,14 +63,14 @@ export interface CspInput {
  *  - style-src: our stylesheet only. `style-src-attr 'unsafe-inline'` is separate on purpose: React and the label overlay put `style=""`
  *    on elements (positions, sizes, CSS variables), which cannot be hashed; no inline `<style>` element is allowed.
  *  - worker-src: MapLibre's tile worker is a file of ours, and `blob:` is its documented fallback.
- *  - connect-src: this origin (route data) and the tile hosts, nothing else.
+ *  - connect-src: this origin (route data), the tile hosts and the contact form's relay (`CONTACT_ORIGIN`), nothing else.
  *  - img-src: ours, `data:` and `blob:` (canvas and map rasters). font-src: ours (the self-hosted files of `public/fonts/`: the three families of the page, display, reading
  *    and metadata type, and the two faces the globe's caption can be set in, which it loads itself; every other glyph is the system stack's, so no
  *    font host is ever needed).
  *  - media-src: ours (the faint sound of the home screen's easter egg, `public/audio/`).
  */
 export function buildCsp({ nonce, connectOrigins, upgradeInsecure }: CspInput): string {
-  const connect = ["'self'", ...new Set(connectOrigins)];
+  const connect = ["'self'", ...new Set([...connectOrigins, CONTACT_ORIGIN])];
   const directives = [
     "default-src 'none'",
     `script-src 'self' 'nonce-${nonce}'`,

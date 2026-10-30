@@ -132,7 +132,17 @@ describe("CareerPage", () => {
     expect(h).toContain(x(180));
   });
 
-  it("has no contact channel: no mailto, tel, address or e-mail text", () => {
+  it("offers the contact form: a head button that links to it, the form before the socials", () => {
+    expect(html).toMatch(/<a [^>]*href="#contact"[^>]*>\s*Get in touch/);
+    const form = html.indexOf('id="contact"');
+    expect(form).toBeGreaterThan(html.indexOf('data-slot="career-skills"'));
+    expect(form).toBeLessThan(html.indexOf('data-slot="career-links"'));
+    for (const label of ["Name", "Email", "Message"]) expect(html).toMatch(new RegExp(`<label[^>]*>${label}</label>`));
+    expect(html).toContain('name="botcheck"');
+    expect(html).toMatch(/<button[^>]*disabled[^>]*>Send message/); // until the page is hydrated
+  });
+
+  it("has no address to write to: no mailto, tel, address or e-mail text (the form is the way)", () => {
     expect(html).not.toMatch(/mailto:|tel:|sms:/i);
     expect(html.replace(/<[^>]+>/g, " ")).not.toMatch(/@/);
   });
