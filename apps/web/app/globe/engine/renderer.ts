@@ -88,6 +88,7 @@ import { fromViewState } from "./view";
 import { markerShown } from "./visibility";
 import { perfEnd, perfStart } from "./perf";
 import { sunMusic } from "./sun-music";
+import { nowPlaying, sunAudible } from "./now-playing";
 import { sunPulse } from "./sun-pulse";
 
 // Our ShaderMaterials write raw sRGB values and there is no lighting, so skip Three's linear-sRGB conversion;
@@ -1541,7 +1542,8 @@ export class GlobeRenderer {
   /** The idle period has run out: hold, unless the cinematic interlude is under way (it is 21 s long and may begin late: it is not idle, the hold waits for its end). */
   private freezeWhenIdle = () => {
     this.freezeTimer = 0;
-    if (this.caption?.interluding) {
+    // (or the sun's music is playing: the visitor is in the cinematic experience, the view does not go to sleep under it; owner, 2026-10-29)
+    if (this.caption?.interluding || sunAudible(nowPlaying.getSnapshot())) {
       this.freezeTimer = window.setTimeout(this.freezeWhenIdle, 1000);
       return;
     }
