@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
-import { Button } from "~/components/ui";
+import { Button, Icon } from "~/components/ui";
 import { CONTACT_ACCESS_KEY, CONTACT_ENDPOINT, CONTACT_ID, CONTACT_LIMITS, CONTACT_SUBJECT, sendContact, validateContact, type ContactErrors, type ContactField, type ContactValues } from "~/lib/contact";
 import { useContactContext } from "~/lib/use-contact-context";
 
@@ -13,6 +13,8 @@ type Status = "idle" | "sending" | "sent" | "error";
  * tab order. Works without the script too: the form is plain HTML that posts to Web3Forms (`action`, the hidden access key, subject and
  * return address; the CSP's `form-action` names the relay), the browser's own validation checks the fields, and Web3Forms sends the visitor
  * back to `/career?sent=1` (the form then says thanks). Once hydrated, the script takes over (`noValidate`, a post that stays on the page).
+ * A sent form does not leave the page: the thanks is laid over the form in the same cell (the form fades out and goes inert, the height
+ * is kept, so nothing moves), and after a moment the whole block eases down to the height of the thanks (no motion under reduced motion).
  * Not part of print.
  */
 export function ContactForm() {
@@ -23,7 +25,16 @@ export function ContactForm() {
   const [errors, setErrors] = useState<ContactErrors>({});
   const [failure, setFailure] = useState("");
   const thanksRef = useRef<HTMLParagraphElement>(null);
+  const formRef = useRef<HTMLDivElement>(null);
+  const [stage, setStage] = useState<number | undefined>(undefined);
+  // A message sent here lays its thanks over the form (`covered`); one back from the plain post (`?sent=1`) has no form to cover.
+  const [covered, setCovered] = useState(false);
   useEffect(() => setReady(true), []);
+  useEffect(() => {
+    if (!covered) return;
+    const timer = window.setTimeout(() => setStage(thanksRef.current?.offsetHeight), 2600);
+    return () => window.clearTimeout(timer);
+  }, [covered]);
   useEffect(() => {
     // Focus the thanks of a message just sent here; after a return from the plain post the browser has taken the visitor to the section.
     if (status === "sent" && ready) thanksRef.current?.focus();
@@ -46,6 +57,8 @@ export function ContactForm() {
     setStatus("sending");
     const result = await sendContact(values);
     if (result.ok) {
+      setStage(formRef.current?.offsetHeight); // the height to keep while the form is covered
+      setCovered(true);
       setStatus("sent");
     } else {
       setStatus("error");
@@ -59,11 +72,15 @@ export function ContactForm() {
         Get in touch
       </h2>
       <div className="career-block-body">
-      {status === "sent" ? (
+      <div className="contact-stage" data-sent={status === "sent" ? "" : undefined} style={stage === undefined ? undefined : { height: stage }}>
+      {status === "sent" && (
         <p ref={thanksRef} tabIndex={-1} role="status" className="contact-thanks">
-          Thank you: your message is on its way. I read everything and answer as soon as I can.
+          <Icon name="check" size="large" aria-hidden="true" />
+          <span>Thank you: your message is on its way. I read everything and answer as soon as I can.</span>
         </p>
-      ) : (
+      )}
+      {(status !== "sent" || covered) && (
+        <div ref={formRef} className="contact-stage-form" inert={status === "sent"}>
         <form action={CONTACT_ENDPOINT} method="post" noValidate={ready} onSubmit={onSubmit} className="contact-form" aria-describedby={`${uid}-lead`}>
           <input type="hidden" name="access_key" value={CONTACT_ACCESS_KEY} />
           <input type="hidden" name="subject" value={CONTACT_SUBJECT} />
@@ -88,7 +105,8 @@ export function ContactForm() {
             </label>
           </div>
           <div className="contact-actions">
-            <Button type="submit" disabled={status === "sending"}>
+            {/* Busy, not disabled: a disabled button is drawn grey, and the one the visitor has just pressed must stay as legible as it was. */}
+            <Button type="submit" aria-busy={status === "sending" ? true : undefined} data-busy={status === "sending" ? "" : undefined}>
               {status === "sending" ? "Sending…" : "Send message"}
             </Button>
             <p role="status" className="contact-failure">
@@ -96,7 +114,9 @@ export function ContactForm() {
             </p>
           </div>
         </form>
+        </div>
       )}
+      </div>
       </div>
     </section>
   );

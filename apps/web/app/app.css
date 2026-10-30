@@ -5822,6 +5822,13 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     margin-bottom: 2rem;
   }
 
+  /* From 80 rem the pair is two columns: the contact form on the right (owner, 2026-10-30), the socials at the left; the markup keeps the form first (a phone stacks it above the socials). */
+  @media (min-width: 80rem) {
+    .career-pair > .career-contact {
+      order: 2;
+    }
+  }
+
   .career-pair > .career-footer .career-links {
     flex-direction: column;
     gap: 0;
@@ -5859,9 +5866,66 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     color: var(--muted-foreground);
   }
 
+  /* The thanks is laid over the form in the same grid cell: the form fades out (and is inert), the cell keeps its height, nothing moves;
+     the component then sets the stage's height to the thanks' and it eases down to it. */
+  .contact-stage {
+    display: grid;
+    overflow: hidden;
+    transition: height 0.6s var(--ease-standard);
+  }
+
+  .contact-stage > * {
+    grid-area: 1 / 1;
+  }
+
+  .contact-stage-form {
+    transition: opacity 0.4s var(--ease-standard);
+  }
+
+  .contact-stage[data-sent] .contact-stage-form {
+    opacity: 0;
+    pointer-events: none;
+    user-select: none;
+  }
+
   .contact-thanks {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    align-self: start;
+    z-index: 1;
     color: var(--foreground);
     outline: none;
+    animation: contact-thanks-in 0.5s var(--ease-standard) both;
+  }
+
+  .contact-thanks .ui-icon {
+    flex: none;
+    margin-top: 0.125rem;
+    color: var(--signal-text);
+  }
+
+  @keyframes contact-thanks-in {
+    from {
+      opacity: 0;
+      transform: translateY(0.5rem);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .contact-stage,
+    .contact-stage-form {
+      transition: none;
+    }
+
+    .contact-thanks {
+      animation: none;
+    }
+  }
+
+  /* Sending: the button keeps its colours (no grey), the pointer says wait. */
+  .contact-actions .ds-button[data-busy] {
+    cursor: progress;
   }
 
   .contact-field {
@@ -5878,7 +5942,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     width: 100%;
     min-height: var(--control-h);
     padding: 0.5rem 0.75rem;
-    border: var(--hairline) solid var(--border-strong);
+    border: var(--hairline) solid var(--border);
     border-radius: 0;
     background: transparent;
     color: var(--foreground);
@@ -5890,6 +5954,11 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   .contact-textarea {
     min-height: 9rem;
     resize: vertical;
+  }
+
+  /* Quiet outlines (owner, 2026-10-30): the page's hairline at rest, a step deeper under the pointer, the ring on focus. */
+  .contact-input:hover {
+    border-color: var(--border-strong);
   }
 
   .contact-input:focus-visible {
