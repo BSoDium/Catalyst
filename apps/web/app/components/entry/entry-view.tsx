@@ -78,7 +78,9 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
   // Every kind but the poem (its own board) has the same order (owner, 2026-10-30, "the redesign with all the other entry types"): the running head with the date, the headline and the summary, the actions, ONE block of facts, the tags as chips, the text, the links at the foot.
   const structured = !poem;
   // A software entry's cover is the BACKDROP of its head (owner, 2026-10-30): behind the running head, the title and the summary, under a gradient of the page's colour that keeps them readable. A mature one stays a figure, with its control.
-  const heroSrc = (project || entry.kind === "article") && entry.cover && !isSensitive(entry) ? safeMediaSrc(entry.cover.src) : null;
+  const heroSrc = entry.cover ? safeMediaSrc(entry.cover.src) : null;
+  // (every kind with a cover has the same head: the picture behind the title. An artwork's and a photograph's, which are the page, and any mature entry's are blurred and dimmed behind it, so that the focus stays on the work below)
+  const heroDim = !!heroSrc && (entry.kind === "artwork" || entry.kind === "photograph" || isSensitive(entry));
   // A photograph is the page: its picture comes straight after the title, before the dateline and the marginalia.
   const photo = entry.kind === "photograph";
   const { status, facts } = splitMeta(entry.meta);
@@ -249,8 +251,8 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
             className={cn(
               "type-meta m-0 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 text-muted-foreground",
               !poem && "entry-running",
-              // (over a cover its rule runs the panel's whole width, and the picture starts at it: the text keeps the page's gutter)
-              heroSrc && (full ? "-mx-4 px-4 md:-mx-14 md:px-14" : "-mx-6 px-6"),
+              // (its rule runs the panel's whole width, and a cover's picture starts at it: the text keeps the page's gutter)
+              !poem && (full ? "-mx-4 px-4 md:-mx-14 md:px-14" : "-mx-6 px-6"),
             )}
           >
             <span className="min-w-0">
@@ -291,25 +293,22 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
               </span>
             )}
           </p>
-          {/* (a software entry's cover is the backdrop of what comes under the running head, not of the running head itself: its small type was unreadable on a picture) */}
-          <div data-hero={heroSrc ? "" : undefined} className={heroSrc ? cn("entry-hero relative isolate flex min-w-0 flex-col pb-7", full ? "-mx-4 px-4 md:-mx-14 md:px-14" : "-mx-6 px-6") : "contents"}>
-          <h1
-            id={headingId}
-            tabIndex={-1}
-            data-poem={poem ? "" : undefined}
-            style={poem ? undefined : ({ "--title-scale": headlineScale(entry.title) } as CSSProperties)}
-            className={cn("entry-title outline-offset-4", poem ? "mt-4" : heroSrc ? "mt-auto pt-10" : "mt-8 md:mt-10")}>
-            {lead}
-            {tail ? <span className="entry-title-tail">{tail}</span> : null}
-          </h1>
-          {entry.summary && !poem && <p className="type-standfirst mt-[1.375rem] max-w-[25.4em] md:mt-[2.125rem]">{entry.summary}</p>}
-          {actions}
-          {heroSrc && entry.cover && (
-            <>
-              <span aria-hidden="true" className="entry-hero-scrim" />
-              <img src={heroSrc} alt={entry.cover.alt} width={entry.cover.width} height={entry.cover.height} decoding="async" className="entry-hero-img" />
-            </>
-          )}
+          {/* (the cover is the backdrop of what comes under the running head, not of the running head itself: its small type was unreadable on a picture) */}
+          <div data-hero={heroSrc ? "" : undefined} data-tone={heroDim ? "dim" : undefined} data-mature={heroDim && isSensitive(entry) ? "" : undefined} className={heroSrc ? cn("entry-hero relative isolate flex min-w-0 flex-col", full ? "-mx-4 px-4 md:-mx-14 md:px-14" : "-mx-6 px-6") : "contents"}>
+            <div className={heroSrc ? "entry-hero-text relative flex min-w-0 flex-col" : "contents"}>
+              <h1
+                id={headingId}
+                tabIndex={-1}
+                data-poem={poem ? "" : undefined}
+                style={poem ? undefined : ({ "--title-scale": headlineScale(entry.title) } as CSSProperties)}
+                className={cn("entry-title outline-offset-4", poem ? "mt-4" : heroSrc ? "mt-0" : "mt-8 md:mt-10")}>
+                {lead}
+                {tail ? <span className="entry-title-tail">{tail}</span> : null}
+              </h1>
+              {entry.summary && !poem && <p className="type-standfirst mt-[1.375rem] max-w-[25.4em] md:mt-[2.125rem]">{entry.summary}</p>}
+              {actions}
+            </div>
+            {heroSrc && entry.cover && <img src={heroSrc} alt={heroDim ? "" : entry.cover.alt} width={entry.cover.width} height={entry.cover.height} decoding="async" className="entry-hero-img" />}
           </div>
         </header>
 
@@ -331,13 +330,13 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
         )}
 
         {!poem && marginEl}
-        {!poem && !photo && !heroSrc && <Cover entry={entry} />}
+        {!poem && !photo && (!heroSrc || heroDim) && <Cover entry={entry} />}
 
         <div className="entry-text min-w-0">
           <BlockRenderer blocks={entry.body} lang={language} dropCap={editorial} figures={editorial} className="gap-[1.1em]" />
         </div>
         {poem && marginEl}
-        {poem && <Cover entry={entry} />}
+        {poem && !heroSrc && <Cover entry={entry} />}
       </div>
 
       {structured && (linked || skip) && (

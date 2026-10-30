@@ -1968,10 +1968,78 @@
    * text and the figures and precedes "keep reading". Printed, in ink.
    */
   /*
-   * A software entry's cover is the backdrop of its head (components/entry/entry-view.tsx, owner, 2026-10-30): the picture fills the head's box, bled to the panel's edges, and a gradient of the page's colour lies over it,
-   * light at the top, where the running head's small mono type is, heavier where the title and the summary are, and whole at the bottom, so the picture dissolves into the page and the text keeps its contrast in both schemes.
-   * The image comes last in the DOM (it is read after the head's text) and lies behind it (`isolate`).
+   * The head of every entry with a cover (components/entry/entry-view.tsx; owner, 2026-10-30, "the same head for all": a software entry's, an article's, an artwork's, a photograph's, a poem's): the picture is the backdrop of
+   * the title, the summary and the actions, bled to the panel's edges; the running head, with its rule, is above it, on the page. ONE height for all (`--hero-min`) and the text at its foot.
+   * What keeps the text readable is bound to the TEXT, not to the picture's box: the text's own box (`.entry-hero-text`) has a layer behind it that reaches `--hero-reach` ABOVE the first line, a progressive blur and the page's
+   * colour rising to 88 % there and staying over it, whatever the length of the title: the picture is clear above that and dissolves into the page below. An artwork's and a photograph's picture (the page itself, shown whole
+   * below) and a mature entry's are BLURRED and DIMMED behind the title (`data-tone="dim"`: on the dark page by the picture's own opacity over it, on the light page by the same, which lightens it), so that the focus stays on the work.
+   * The image is last in the DOM, after the head's text, and lies behind it (`isolate`).
    */
+  .entry {
+    --hero-min: 40rem;
+    --hero-reach: 7rem;
+  }
+
+  .entry-hero {
+    min-height: var(--hero-min);
+    justify-content: flex-end;
+    padding-bottom: 1.75rem;
+  }
+
+  .entry-hero-text {
+    padding-top: var(--hero-reach);
+  }
+
+  .entry-hero-text::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset: 0 calc(-1 * var(--hero-bleed, 1.5rem)) -1.75rem;
+    pointer-events: none;
+    -webkit-backdrop-filter: blur(7px);
+    backdrop-filter: blur(7px);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 var(--hero-reach));
+    mask-image: linear-gradient(to bottom, transparent 0, #000 var(--hero-reach));
+    background: linear-gradient(
+      to bottom,
+      transparent 0,
+      color-mix(in srgb, var(--background) 40%, transparent) calc(var(--hero-reach) * 0.45),
+      color-mix(in srgb, var(--background) 88%, transparent) var(--hero-reach),
+      color-mix(in srgb, var(--background) 92%, transparent) calc(100% - 3rem),
+      var(--background) 100%
+    );
+  }
+
+  .entry[data-layout="full"] {
+    --hero-bleed: 1rem;
+  }
+
+  .entry-hero-img {
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .entry-hero[data-tone="dim"] .entry-hero-img {
+    inset: -2rem;
+    width: calc(100% + 4rem);
+    height: calc(100% + 4rem);
+    filter: blur(16px) saturate(0.8);
+    opacity: 0.4;
+  }
+
+  .entry-hero[data-mature] .entry-hero-img {
+    filter: blur(40px) saturate(0.7);
+    opacity: 0.3;
+  }
+
+  .entry-hero {
+    overflow: clip;
+  }
+
   /* The one rule of an entry, under the running head, is the faint hairline (owner, 2026-10-30: "make the divider fainter"), not the strong one a list's head has. */
   .entry .entry-running {
     border-bottom-color: var(--border);
@@ -2001,52 +2069,16 @@
     text-decoration: none;
   }
 
+  /* The tile that reacts keeps the ink for its words (the link's own hover colour, the accent blue, is under 3:1 on it: owner, 2026-10-30) and lifts a fifth of the way to it. */
   .entry [data-slot="entry-tags"] .ds-tags > li:hover,
   .entry [data-slot="entry-tags"] .ds-tags > li:focus-within {
-    background: color-mix(in srgb, var(--accent) 70%, var(--foreground) 30%);
+    background: color-mix(in srgb, var(--accent) 78%, var(--foreground) 22%);
     color: var(--foreground);
   }
 
-  .entry-hero {
-    min-height: 34rem;
-  }
-
-  .entry-hero-img {
-    position: absolute;
-    inset: 0;
-    z-index: -2;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-  .entry-hero-scrim {
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    /* the picture is blurred behind the title and the summary (a progressive blur, none at the top and strongest at the foot, as the nav's scrim is) and the page's colour lies over it, so the busy part of a screenshot
-       is not under the type */
-    -webkit-backdrop-filter: blur(7px);
-    backdrop-filter: blur(7px);
-    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, transparent 30%, #000 62%);
-    mask-image: linear-gradient(to bottom, transparent 0%, transparent 14%, #000 50%);
-  }
-
-  .entry-hero::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    pointer-events: none;
-    background: linear-gradient(
-      to bottom,
-      transparent 0%,
-      color-mix(in srgb, var(--background) 6%, transparent) 30%,
-      color-mix(in srgb, var(--background) 66%, transparent) 56%,
-      color-mix(in srgb, var(--background) 88%, transparent) 76%,
-      color-mix(in srgb, var(--background) 97%, transparent) 91%,
-      var(--background) 100%
-    );
+  .entry [data-slot="entry-tags"] .ds-tags a:hover,
+  .entry [data-slot="entry-tags"] .ds-tags a:focus-visible {
+    color: var(--foreground);
   }
 
   .entry-copyright {
@@ -2367,6 +2399,12 @@
       grid-column: 4 / -1;
       border-top: 1px solid var(--foreground);
       padding-top: 0.75rem;
+    }
+
+    /* (no rule over the text of an article or a software entry's full screen: owner, 2026-10-30, "the white line above the content") */
+    .entry[data-structured][data-layout="full"] .entry-grid > .entry-text {
+      border-top: 0;
+      padding-top: 0;
     }
 
     /* An artwork: the image is the page, wide; the text keeps its measure on the left of the 9 columns. */
@@ -5842,3 +5880,4 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     content: none;
   }
 }
+
