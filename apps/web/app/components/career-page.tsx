@@ -64,7 +64,7 @@ export function CareerPage({ career, places = [] }: { career: PublishedCareer; p
               </p>
             )}
             <p className="career-reach print:hidden">
-              <Button asChild variant="secondary">
+              <Button asChild variant="primary">
                 <a href={`#${CONTACT_ID}`} data-slot="career-contact-link">
                   Get in touch
                   <Icon name="arrow-down" size="inline" aria-hidden="true" />

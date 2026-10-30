@@ -5795,7 +5795,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     margin-bottom: 0.5rem;
   }
 
-  /* The head's button to the contact form: a quiet secondary button under the availability line. */
+  /* The head's button to the contact form: a solid button under the availability line. */
   .career-reach {
     margin: 1.5rem 0 0;
   }
@@ -5870,8 +5870,12 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
      the component then sets the stage's height to the thanks' and it eases down to it. */
   .contact-stage {
     display: grid;
-    overflow: hidden;
     transition: height 0.6s var(--ease-standard);
+  }
+
+  /* Clipped only once sent (the form is covered and the height eases down): at rest the focus ring of a field reaches past the stage's edge. */
+  .contact-stage[data-sent] {
+    overflow: hidden;
   }
 
   .contact-stage > * {
