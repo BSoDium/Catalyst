@@ -1,5 +1,5 @@
-import { useEffect, useId, useRef, useState, type FormEvent } from "react";
-import { Button, Icon } from "~/components/ui";
+import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { Button, Icon, KeyHint } from "~/components/ui";
 import { CONTACT_ACCESS_KEY, CONTACT_ENDPOINT, CONTACT_ID, CONTACT_LIMITS, CONTACT_SUBJECT, sendContact, validateContact, type ContactErrors, type ContactField, type ContactValues } from "~/lib/contact";
 import { useContactContext } from "~/lib/use-contact-context";
 
@@ -39,6 +39,14 @@ export function ContactForm() {
     // Focus the thanks of a message just sent here; after a return from the plain post the browser has taken the visitor to the section.
     if (status === "sent" && ready) thanksRef.current?.focus();
   }, [status, ready]);
+
+  /** Ctrl or Command + Enter in the message sends it, as the key hint beside the button says (a plain Enter stays a new line). */
+  function sendWithKeyboard(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key === "Enter" && (event.ctrlKey || event.metaKey) && !event.nativeEvent.isComposing) {
+      event.preventDefault();
+      event.currentTarget.form?.requestSubmit();
+    }
+  }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -95,7 +103,7 @@ export function ContactForm() {
             <input id={`${uid}-email`} name="email" type="email" inputMode="email" autoComplete="email" required maxLength={CONTACT_LIMITS.email} aria-invalid={errors.email ? true : undefined} aria-describedby={errors.email ? `${uid}-email-e` : undefined} className="contact-input" />
           </Field>
           <Field uid={uid} name="message" label="Message" error={errors.message}>
-            <textarea id={`${uid}-message`} name="message" rows={6} required minLength={CONTACT_LIMITS.minMessage} maxLength={CONTACT_LIMITS.message} aria-invalid={errors.message ? true : undefined} aria-describedby={errors.message ? `${uid}-message-e` : undefined} className="contact-input contact-textarea" />
+            <textarea id={`${uid}-message`} name="message" rows={6} required minLength={CONTACT_LIMITS.minMessage} maxLength={CONTACT_LIMITS.message} aria-invalid={errors.message ? true : undefined} aria-describedby={errors.message ? `${uid}-message-e` : undefined} className="contact-input contact-textarea" aria-keyshortcuts="Control+Enter Meta+Enter" onKeyDown={sendWithKeyboard} />
           </Field>
           {/* The honeypot: a person never sees it nor reaches it with the keyboard; a script that fills every field does. */}
           <div aria-hidden="true" className="contact-trap">
@@ -105,13 +113,14 @@ export function ContactForm() {
             </label>
           </div>
           <div className="contact-actions">
+            <p role="status" className="contact-failure">
+              {failure}
+            </p>
+            <KeyHint keyName="Enter" className="contact-keyhint" />
             {/* Busy, not disabled: a disabled button is drawn grey, and the one the visitor has just pressed must stay as legible as it was. */}
             <Button type="submit" aria-busy={status === "sending" ? true : undefined} data-busy={status === "sending" ? "" : undefined}>
               {status === "sending" ? "Sending…" : "Send message"}
             </Button>
-            <p role="status" className="contact-failure">
-              {failure}
-            </p>
           </div>
         </form>
         </div>

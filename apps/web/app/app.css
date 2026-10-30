@@ -5978,11 +5978,17 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     color: var(--contact-error);
   }
 
+  /* The button at the right, its key hint (Ctrl or Command and Enter, drawn only where there is a keyboard) before it, a failure's words at the left. */
   .contact-actions {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 0.75rem 1.25rem;
+    justify-content: flex-end;
+    gap: 0.75rem 1rem;
+  }
+
+  .contact-actions .contact-failure {
+    margin-right: auto;
   }
 
   .contact-actions .contact-failure:empty {
