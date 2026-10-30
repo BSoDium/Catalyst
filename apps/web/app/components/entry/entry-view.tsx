@@ -75,6 +75,8 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
   const poem = entry.kind === "poem";
   // Software has its own order (owner, 2026-10-30, "actions first"): what you can DO right under the summary, then ONE block of what it is, the picture, the text, and what it is linked to at the foot.
   const project = entry.kind === "project";
+  // A software entry's cover is the BACKDROP of its head (owner, 2026-10-30): behind the running head, the title and the summary, under a gradient of the page's colour that keeps them readable. A mature one stays a figure, with its control.
+  const heroSrc = project && entry.cover && !isSensitive(entry) ? safeMediaSrc(entry.cover.src) : null;
   // A photograph is the page: its picture comes straight after the title, before the dateline and the marginalia.
   const photo = entry.kind === "photograph";
   const { status, facts } = splitMeta(entry.meta);
@@ -156,8 +158,10 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
 
   const marginEl = (
         <div data-slot="entry-margin" className="entry-margin">
+          {/* (a block title and what it heads are one gap apart, 0.75 rem, in "At a glance" and in "Tags" alike) */}
+          <div className={project ? "flex flex-col gap-3" : "contents"}>
           {project && (
-            <h2 id="entry-glance" className="type-meta m-0 text-foreground">
+            <h2 id="entry-glance" className="m-0 font-[family-name:var(--font-display)] text-[1.375rem] leading-tight font-bold tracking-tight text-foreground">
               At a glance
             </h2>
           )}
@@ -167,7 +171,7 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
             (entry.places.length > 0 || entry.country) && <PlacesSection entry={entry} />
           )}
           {(rows.length > 0 || (project && (entry.places.length > 0 || entry.country))) && (
-            <dl data-slot="entry-details" className={cn("m-0", poem && "mt-2", project && "mt-2")}>
+            <dl data-slot="entry-details" className={cn("m-0", poem && "mt-2", project && "mt-0")}>
               {rows.map((row) => (
                 <div key={row.key} data-slot="entry-fact" className={cn("min-w-0", project && "-mx-3 px-3 py-2 odd:bg-foreground/5", project && !full && "grid grid-cols-[7.5rem_minmax(0,1fr)] items-baseline gap-x-4")}>
                   <dt className="type-meta text-foreground">{row.label}</dt>
@@ -184,12 +188,21 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
               )}
             </dl>
           )}
+          </div>
           {entry.tags.length > 0 && (
-            <TagList
-              label="Tags"
-              className="font-meta text-xs"
-              tags={entry.tags.map((label) => ({ label, href: `${KIND_PATHS[entry.kind]}${tagSearch("", label)}` }))}
-            />
+            <div data-slot="entry-tags" className={cn(project && "mt-5 flex flex-col gap-3")}>
+              {/* (a label of their own, apart from the table: under it they read as one more row) */}
+              {project && (
+                <h2 id="entry-tags" className="m-0 font-[family-name:var(--font-display)] text-[1.375rem] leading-tight font-bold tracking-tight text-foreground">
+                  Tags
+                </h2>
+              )}
+              <TagList
+                label="Tags"
+                className="font-meta text-xs"
+                tags={entry.tags.map((label) => ({ label, href: `${KIND_PATHS[entry.kind]}${tagSearch("", label)}` }))}
+              />
+            </div>
           )}
           {external && !project && (
             <Button asChild variant="primary" className="w-full">
@@ -230,7 +243,12 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
           )}
           <p
             data-slot="entry-meta"
-            className={cn("type-meta m-0 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 text-muted-foreground", !poem && "entry-running")}
+            className={cn(
+              "type-meta m-0 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 text-muted-foreground",
+              !poem && "entry-running",
+              // (over a cover its rule runs the panel's whole width, and the picture starts at it: the text keeps the page's gutter)
+              heroSrc && (full ? "-mx-4 px-4 md:-mx-14 md:px-14" : "-mx-6 px-6"),
+            )}
           >
             <span className="min-w-0">
               {backTo?.list ? (
@@ -270,17 +288,26 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
               </span>
             )}
           </p>
+          {/* (a software entry's cover is the backdrop of what comes under the running head, not of the running head itself: its small type was unreadable on a picture) */}
+          <div data-hero={heroSrc ? "" : undefined} className={heroSrc ? cn("entry-hero relative isolate flex min-w-0 flex-col pb-7", full ? "-mx-4 px-4 md:-mx-14 md:px-14" : "-mx-6 px-6") : "contents"}>
           <h1
             id={headingId}
             tabIndex={-1}
             data-poem={poem ? "" : undefined}
             style={poem ? undefined : ({ "--title-scale": headlineScale(entry.title) } as CSSProperties)}
-            className={cn("entry-title outline-offset-4", poem ? "mt-4" : "mt-8 md:mt-10")}>
+            className={cn("entry-title outline-offset-4", poem ? "mt-4" : heroSrc ? "mt-auto pt-10" : "mt-8 md:mt-10")}>
             {lead}
             {tail ? <span className="entry-title-tail">{tail}</span> : null}
           </h1>
           {entry.summary && !poem && <p className="type-standfirst mt-[1.375rem] max-w-[25.4em] md:mt-[2.125rem]">{entry.summary}</p>}
           {actions}
+          {heroSrc && entry.cover && (
+            <>
+              <span aria-hidden="true" className="entry-hero-scrim" />
+              <img src={heroSrc} alt={entry.cover.alt} width={entry.cover.width} height={entry.cover.height} decoding="async" className="entry-hero-img" />
+            </>
+          )}
+          </div>
         </header>
 
         {photo && <Cover entry={entry} />}
@@ -301,7 +328,7 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
         )}
 
         {!poem && marginEl}
-        {!poem && !photo && <Cover entry={entry} />}
+        {!poem && !photo && !heroSrc && <Cover entry={entry} />}
 
         <div className="entry-text min-w-0">
           <BlockRenderer blocks={entry.body} lang={language} dropCap={editorial} figures={editorial} className="gap-[1.1em]" />

@@ -1967,6 +1967,88 @@
    * tone (a solid colour, 4.5:1 on the page in both schemes: the contrast audit pins it), a sentence so not in capitals. It follows the
    * text and the figures and precedes "keep reading". Printed, in ink.
    */
+  /*
+   * A software entry's cover is the backdrop of its head (components/entry/entry-view.tsx, owner, 2026-10-30): the picture fills the head's box, bled to the panel's edges, and a gradient of the page's colour lies over it,
+   * light at the top, where the running head's small mono type is, heavier where the title and the summary are, and whole at the bottom, so the picture dissolves into the page and the text keeps its contrast in both schemes.
+   * The image comes last in the DOM (it is read after the head's text) and lies behind it (`isolate`).
+   */
+  /* The one rule of an entry, under the running head, is the faint hairline (owner, 2026-10-30: "make the divider fainter"), not the strong one a list's head has. */
+  .entry .entry-running {
+    border-bottom-color: var(--border);
+  }
+
+  /* A software entry's tags are chips, as the career page's (`.career-chips`): a faint tile each (owner, 2026-10-30: "make it obvious they are tags by adding a background"), no dots between them, no underline (the tile
+     that reacts to the pointer says it is a link). The whole tile is the link: the padding is the link's. */
+  .entry[data-kind="project"] [data-slot="entry-tags"] .ds-tags {
+    gap: 0.375rem;
+  }
+
+  .entry[data-kind="project"] [data-slot="entry-tags"] .ds-tags > li {
+    background: var(--accent);
+    line-height: 1.6;
+    transition:
+      background-color var(--duration-fast) var(--ease-standard),
+      color var(--duration-fast) var(--ease-standard);
+  }
+
+  .entry[data-kind="project"] [data-slot="entry-tags"] .ds-tags > li:not(:last-child)::after {
+    content: none;
+  }
+
+  .entry[data-kind="project"] [data-slot="entry-tags"] .ds-tags a {
+    display: inline-block;
+    padding: 0.125rem 0.5rem;
+    text-decoration: none;
+  }
+
+  .entry[data-kind="project"] [data-slot="entry-tags"] .ds-tags > li:hover,
+  .entry[data-kind="project"] [data-slot="entry-tags"] .ds-tags > li:focus-within {
+    background: color-mix(in srgb, var(--accent) 70%, var(--foreground) 30%);
+    color: var(--foreground);
+  }
+
+  .entry-hero {
+    min-height: 34rem;
+  }
+
+  .entry-hero-img {
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .entry-hero-scrim {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    /* the picture is blurred behind the title and the summary (a progressive blur, none at the top and strongest at the foot, as the nav's scrim is) and the page's colour lies over it, so the busy part of a screenshot
+       is not under the type */
+    -webkit-backdrop-filter: blur(7px);
+    backdrop-filter: blur(7px);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, transparent 30%, #000 62%);
+    mask-image: linear-gradient(to bottom, transparent 0%, transparent 14%, #000 50%);
+  }
+
+  .entry-hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: linear-gradient(
+      to bottom,
+      transparent 0%,
+      color-mix(in srgb, var(--background) 6%, transparent) 30%,
+      color-mix(in srgb, var(--background) 66%, transparent) 56%,
+      color-mix(in srgb, var(--background) 88%, transparent) 76%,
+      color-mix(in srgb, var(--background) 97%, transparent) 91%,
+      var(--background) 100%
+    );
+  }
+
   .entry-copyright {
     margin: 3rem 0 0;
     max-width: 44rem;
