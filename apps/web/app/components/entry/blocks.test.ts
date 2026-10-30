@@ -138,7 +138,7 @@ describe("BlockRenderer typography", () => {
   it("keeps one block per verse line and the stanza gap in em (a poem's lines are the page's type)", () => {
     const html = render([{ type: "verse", stanzas: [["a", "b"], ["c"]] }]);
     expect(html).toContain("gap-[1.4em]");
-    expect((html.match(/<span class="block"/g) ?? []).length).toBe(3);
+    expect((html.match(/<span class="block text-pretty"/g) ?? []).length).toBe(3);
   });
 });
 

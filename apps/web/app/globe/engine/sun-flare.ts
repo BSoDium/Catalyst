@@ -137,6 +137,15 @@ export function haloClear(riseDisc: number): number {
 }
 
 /**
+ * The disc's state, eased in time (`SUN.cover.touchOnMs`, `touchOffMs`): `target` is 1 once the planet touches the sun (`1 - smoothstep(0.9, 0.97, area)`), 0 while it is clear; `dt` the seconds since the last frame. A frame is not a unit
+ * of time: a fast zoom takes the limb across the sun in two or three of them, and the flat white disc was on for those and off again, a flash between two warm suns. Pure.
+ */
+export function easeTouch(prev: number, target: number, dt: number): number {
+  const tau = (target > prev ? SUN.cover.touchOnMs : SUN.cover.touchOffMs) / 1000;
+  return prev + (target - prev) * (1 - Math.exp(-Math.max(0, dt) / tau));
+}
+
+/**
  * What is left of the sun's disc as the planet covers it, with the limb taken as a straight line across the disc (it is a hair of curve over a disc this small). `riseDisc` is the sun's centre's distance outside the limb, in disc
  * radii (negative once it is behind it; Infinity when nothing is in the way). `area` is the share of the disc's surface still in view, 0..1; `shift` the distance of the visible part's centre of mass from the disc's centre,
  * in disc radii, along the normal away from the planet; `width` the widest the visible part is, across that normal, in disc radii: the disc's own (1) until the limb has reached the centre, then the crescent's, down to 0. It is
@@ -158,6 +167,34 @@ export function sunCrescent(riseDisc: number): { area: number; shift: number; wi
 export function sunRise(cosFromCentre: number, d: number): number {
   if (cosFromCentre <= 0) return Infinity;
   return Math.acos(Math.min(1, cosFromCentre)) - Math.asin(Math.min(1, 1 / Math.max(1.0001, d)));
+}
+
+/**
+ * How far the sun's centre is outside the planet's limb (`sunRise`) from where the planet really is: `sun` is the sun's direction in the camera's frame (a unit vector) and `planet` the planet's centre in it (earth radii; the
+ * camera looks down -z). The angle is taken from the line to the planet's CENTRE, not from the view axis: the interlude's camera pans over the planet, which is off the axis then, and measuring from the axis put the
+ * limb in the wrong place (the sun was covered where nothing covered it, and clear behind the planet). The two are the same while the planet is on the axis. Pure.
+ */
+export function planetRise(sun: readonly [number, number, number], planet: readonly [number, number, number]): number {
+  const d = Math.hypot(planet[0], planet[1], planet[2]);
+  if (d < 1e-6) return Infinity;
+  return sunRise((sun[0] * planet[0] + sun[1] * planet[1] + sun[2] * planet[2]) / d, d);
+}
+
+/**
+ * What stands in front of the sun (owner, 2026-10-29: "when the moon passes in front of the sun, the exact same thing that happens with the earth happens, but without the atmospheric effects"): the planet, or the moon.
+ * Each is a sphere seen from the camera, and `rise` is how far the sun's centre is outside its limb, radians (`sunRise`: the moon's is the same function, with its distance in its own radii); `x`, `y` where its
+ * centre is on the buffer (the crescent is on the line from it through the sun); `atmosphere` whether the light goes through an air (the sunset's reddening and the halo's fade are the planet's, `SUN.cover`): the moon has none.
+ */
+export interface Occluder {
+  rise: number;
+  x: number;
+  y: number;
+  atmosphere: boolean;
+}
+
+/** Of the two bodies that can cover the sun, the one that covers more of it (the smaller rise); the planet when they are the same. The moon is absent when it is not in the picture. Pure. */
+export function pickOccluder(planet: Occluder, moon: Occluder | null): Occluder {
+  return moon && moon.rise < planet.rise ? moon : planet;
 }
 
 /**

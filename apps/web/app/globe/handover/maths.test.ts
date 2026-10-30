@@ -195,3 +195,15 @@ describe("the cut never waits behind a globe that cannot draw the camera", () =>
     expect(cutWanted(false, HANDOVER.cutZoom + 0.1, false)).toBe(false);
   });
 });
+
+describe("the street map is made at rest, not mid-gesture", () => {
+  it("is created in an idle moment after the globe is up (a Pixel 7 measured 276 to 373 ms in one frame when it was made as the visitor first zoomed past `mountZoom`), kept, and left lazy on small-memory devices", async () => {
+    const { readFileSync } = await import("node:fs");
+    expect(HANDOVER.premount).toBe(true);
+    const src = readFileSync("app/globe/handover/controller.ts", "utf8");
+    expect(src).toMatch(/HANDOVER\.premount && !disposed && memory >= 4/);
+    expect(src).toMatch(/const streetKept = \(\) => wantStreet \|\| restoring \|\| keepWarm;/);
+    // (the three places that ask whether the map is wanted ask the same question, so a kept map is not unmounted below `unmountZoom`)
+    expect((src.match(/, streetKept\(\)\)/g) ?? []).length).toBe(3);
+  });
+});
