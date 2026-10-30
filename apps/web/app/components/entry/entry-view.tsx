@@ -158,8 +158,10 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
 
   const marginEl = (
         <div data-slot="entry-margin" className="entry-margin">
+          {/* (a block title and what it heads are one gap apart, 0.75 rem, in "At a glance" and in "Tags" alike) */}
+          <div className={project ? "flex flex-col gap-3" : "contents"}>
           {project && (
-            <h2 id="entry-glance" className="m-0 mb-1 font-[family-name:var(--font-display)] text-[1.375rem] leading-tight font-bold tracking-tight text-foreground">
+            <h2 id="entry-glance" className="m-0 font-[family-name:var(--font-display)] text-[1.375rem] leading-tight font-bold tracking-tight text-foreground">
               At a glance
             </h2>
           )}
@@ -169,7 +171,7 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
             (entry.places.length > 0 || entry.country) && <PlacesSection entry={entry} />
           )}
           {(rows.length > 0 || (project && (entry.places.length > 0 || entry.country))) && (
-            <dl data-slot="entry-details" className={cn("m-0", poem && "mt-2", project && "mt-2")}>
+            <dl data-slot="entry-details" className={cn("m-0", poem && "mt-2", project && "mt-0")}>
               {rows.map((row) => (
                 <div key={row.key} data-slot="entry-fact" className={cn("min-w-0", project && "-mx-3 px-3 py-2 odd:bg-foreground/5", project && !full && "grid grid-cols-[7.5rem_minmax(0,1fr)] items-baseline gap-x-4")}>
                   <dt className="type-meta text-foreground">{row.label}</dt>
@@ -186,11 +188,12 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
               )}
             </dl>
           )}
+          </div>
           {entry.tags.length > 0 && (
-            <div data-slot="entry-tags" className={cn(project && "mt-8 flex flex-col gap-1.5")}>
+            <div data-slot="entry-tags" className={cn(project && "mt-8 flex flex-col gap-3")}>
               {/* (a label of their own, apart from the table: under it they read as one more row) */}
               {project && (
-                <h2 id="entry-tags" className="m-0 mb-1 font-[family-name:var(--font-display)] text-[1.375rem] leading-tight font-bold tracking-tight text-foreground">
+                <h2 id="entry-tags" className="m-0 font-[family-name:var(--font-display)] text-[1.375rem] leading-tight font-bold tracking-tight text-foreground">
                   Tags
                 </h2>
               )}
