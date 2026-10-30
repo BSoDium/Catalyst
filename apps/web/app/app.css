@@ -1998,9 +1998,12 @@
     gap: 0;
   }
 
-  .entry[data-kind="project"]:not([data-layout="full"]) .entry-margin {
+  .entry[data-kind="project"] .entry-margin {
     border-top: 0;
     padding-top: 0;
+  }
+
+  .entry[data-kind="project"]:not([data-layout="full"]) .entry-margin {
     gap: 0.75rem;
   }
 
@@ -2060,10 +2063,9 @@
     line-height: 1.08;
   }
 
-  /* The cover, and the images of an artwork or a poem: a rule of the ink, the image, a mono caption. */
+  /* The cover, and the images of an artwork or a poem: the image and a mono caption (no rule over it: owner, 2026-10-30, "too many dividers and lines": the running head's is the one). */
   .entry-figure {
-    border-top: 1px solid var(--foreground);
-    padding-top: 0.75rem;
+    padding-top: 0.25rem;
   }
 
   /*
@@ -2091,8 +2093,7 @@
     --fig-w: min(var(--fig-natural, 100%), var(--fig-box));
     width: var(--fig-w);
     margin: 0.9em 0 0.9em calc((var(--fig-box) - var(--fig-w)) / 2 - var(--fig-bleed));
-    border-top: 1px solid var(--foreground);
-    padding-top: 0.75rem;
+    padding-top: 0.25rem;
     scroll-margin-top: calc(var(--navbar-height) + 1rem);
     break-inside: avoid;
   }
