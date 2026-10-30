@@ -155,7 +155,7 @@ describe("published package", () => {
       expect(svg).toContain(`viewBox="0 0 ${image.size[0]} ${image.size[1]}"`);
     }
     // the fixture declares the generator's alt text and size for each image it uses
-    const byName = new Map([...MEDIA.map((m) => [mediaSrc(m.name), m] as const), ...STOCK.map((m) => [`/media/demo/${m.file}`, m] as const)]);
+    const byName = new Map<string, { size: readonly [number, number]; alt: string }>([...MEDIA.map((m) => [mediaSrc(m.name), m] as const), ...STOCK.map((m) => [`/media/demo/${m.file}`, m] as const)]);
     for (const e of [...demo.projects, ...demo.articles, ...demo.artworks, ...demo.poems, ...demo.photographs]) {
       const used = [...(e.cover ? [e.cover] : []), ...(e.body ?? []).flatMap((b) => (b.type === "image" ? [b] : []))];
       for (const u of used) {
