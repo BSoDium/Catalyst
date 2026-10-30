@@ -5444,6 +5444,12 @@
       "summary": "A two-dimensional maze generator and three-dimensional visualiser for the web.",
       "date": "2023-01",
       "url": "https://amaze.me.bsodium.fr/",
+      "cover": {
+        "src": "/media/project/amaze-me/cover.1b57f338.webp",
+        "alt": "A pink three-dimensional maze seen at an angle over a dark grid, with a small panel at the top left to set the maze size, toggle the wireframe and generate a new maze.",
+        "width": 1824,
+        "height": 1323
+      },
       "tags": [
         "three-js",
         "typescript"
@@ -5462,6 +5468,19 @@
         {
           "type": "paragraph",
           "text": "A web app that generates random mazes and visualises them in 3D, written in TypeScript with Three.js for rendering and Joy UI for its interface."
+        },
+        {
+          "type": "heading",
+          "level": 2,
+          "text": "Using it"
+        },
+        {
+          "type": "paragraph",
+          "text": "A small panel sets the size of the maze, from 5 to 55 cells a side, switches a wireframe view on or off and generates a new maze. The result is drawn as walls rising from a grid."
+        },
+        {
+          "type": "paragraph",
+          "text": "The app is hosted online, and the source can also be run locally."
         },
         {
           "type": "link",
@@ -5503,6 +5522,10 @@
           "text": "Assignments for the audio-visual data processing course at ENSEEIHT. The compiled reports are published online."
         },
         {
+          "type": "paragraph",
+          "text": "They gather, practical session by practical session, the signal processing exercises of the course, written up with their results and figures."
+        },
+        {
           "type": "link",
           "title": "Source",
           "url": "https://github.com/BSoDium/AV-data-processing"
@@ -5518,6 +5541,12 @@
       "summary": "A web-based SVG avatar generator that recolours a profile picture from a chosen palette.",
       "date": "2024-06",
       "url": "https://avatar.bsodium.fr",
+      "cover": {
+        "src": "/media/project/avatar/cover.d714690b.webp",
+        "alt": "A web page showing a flat illustration of a person with glasses in a rounded square, with controls to pick the shape, three palette colours, show or hide the glasses, then share or download.",
+        "width": 1824,
+        "height": 1323
+      },
       "tags": [
         "svg",
         "typescript"
@@ -5535,7 +5564,23 @@
       "body": [
         {
           "type": "paragraph",
-          "text": "A web tool for creating variations of one specific profile picture by changing its colour palette. It does not alter the avatar's design or structure."
+          "text": "A web tool for creating variations of one specific profile picture by changing its colour palette. It does not alter the avatar's design or structure: the drawing stays the same and only its colours move."
+        },
+        {
+          "type": "heading",
+          "level": 2,
+          "text": "Features"
+        },
+        {
+          "type": "list",
+          "ordered": false,
+          "items": [
+            "Palette customisation: three colours (primary, secondary and tonal) that can be edited, locked or randomised.",
+            "Export as an SVG file, or rasterised as a PNG.",
+            "A contrast checker that warns when the palette fails accessibility standards, for instance when a colour does not stand out enough from the background.",
+            "A preview of the avatar in three shapes: circle, rounded square and square.",
+            "A light and a dark theme."
+          ]
         },
         {
           "type": "link",
@@ -5553,6 +5598,12 @@
       "summary": "An interactive dashboard that visualises carbon projects on a world map, with filterable project cards, animated links between markers and cards, a command palette and a KPI overview.",
       "date": "2026-03",
       "url": "https://carbon-atlas.bsodium.fr",
+      "cover": {
+        "src": "/media/project/carbon-atlas/cover.78a12aa3.webp",
+        "alt": "A map of the Amazon around Manaus with a dashed project boundary, a side panel of eligibility bars and carbon projection charts, and a search box listing suggested projects.",
+        "width": 1824,
+        "height": 1323
+      },
       "tags": [
         "dataviz",
         "maps"
@@ -5587,6 +5638,12 @@
       "title": "CLIfford",
       "summary": "A simple and highly customisable command line interface for C++ applications.",
       "date": "2022-11",
+      "cover": {
+        "src": "/media/project/clifford/cover.c2b7bd96.webp",
+        "alt": "A terminal showing the CLIfford prompt: a list of available commands, a greeting, and the program's name drawn as a large pixel-art splash screen in light blue on a dark background.",
+        "width": 1200,
+        "height": 700
+      },
       "tags": [
         "cpp",
         "tooling"
@@ -5608,7 +5665,44 @@
       "body": [
         {
           "type": "paragraph",
-          "text": "A generic command line interface for C++ applications, with custom commands, arguments and options, an integrated help system and splash screen, and colour support."
+          "text": "A generic command line interface library for C++ applications: you inherit from a base class, register your commands, and get a prompt with a history, a help system and a splash screen."
+        },
+        {
+          "type": "paragraph",
+          "text": "It is an archived project, originally built during engineering school at ENSEEIHT. No further development is planned, and it stays available for reference."
+        },
+        {
+          "type": "heading",
+          "level": 2,
+          "text": "Features"
+        },
+        {
+          "type": "list",
+          "ordered": false,
+          "items": [
+            "Custom commands, arguments and options.",
+            "An integrated help system and splash screen.",
+            "Colour support, with ready-made helpers such as RED, GREEN and CYAN.",
+            "A command history."
+          ]
+        },
+        {
+          "type": "heading",
+          "level": 2,
+          "text": "Using it"
+        },
+        {
+          "type": "paragraph",
+          "text": "A command line is a class that inherits from the library's CLI class and adds commands in its constructor, each with a name, a description and a function that receives its arguments:"
+        },
+        {
+          "type": "code",
+          "language": "cpp",
+          "code": "class MyCLI : public core::CLI {\npublic:\n    MyCLI() {\n        _addCommand(\"greet\", \"Greets a user by name\",\n            [](core::CLI* cli, std::vector<std::string> args) {\n                if (!args.empty()) {\n                    std::cout << GREEN(\"Hello, \" << args[0] << \"!\\n\");\n                } else {\n                    std::cout << YELLOW(\"Hello, stranger!\\n\");\n                }\n            });\n    }\n};"
+        },
+        {
+          "type": "paragraph",
+          "text": "It is built with CMake and needs a C++20 compiler. A demo program is included, and the library can be pulled into another CMake project with FetchContent."
         },
         {
           "type": "link",
@@ -5625,6 +5719,12 @@
       "title": "Cron",
       "summary": "An Android alarm app that picks your wake time from your calendar, location, travel time and sleep signals.",
       "date": "2026-02",
+      "cover": {
+        "src": "/media/project/cron/cover.a5cbd872.webp",
+        "alt": "Four phone screens of the Cron alarm app side by side: the home screen with tomorrow's 09:30 wake-up and a timeline, the planner's reasoning over the calendar, the memory notes, and the settings list.",
+        "width": 2744,
+        "height": 1412
+      },
       "tags": [
         "android",
         "kotlin"
@@ -5645,6 +5745,56 @@
           "text": "An Android smart alarm that decides each evening when to wake you, from your calendar, your location, the travel time to your first commitment and overnight sleep signals. A second, fixed alarm is armed as a safety floor. The evening plan is computed with Anthropic's Claude."
         },
         {
+          "type": "heading",
+          "level": 2,
+          "text": "How a night goes"
+        },
+        {
+          "type": "paragraph",
+          "text": "Every evening, a daily trigger starts a session. Claude is given the wake window you allow, your travel and preparation buffers, your location and time zone, then works through a routine with tools: it reads the next 24 to 30 hours of the calendar, finds the first event that needs you somewhere, looks up its address, estimates the commute and sets the alarm for the arrival time minus the commute minus the preparation time."
+        },
+        {
+          "type": "paragraph",
+          "text": "The filtering matters. All-day events are ignored because they are markers, not appointments. Purely virtual events are skipped unless they are all there is. Back-to-back events are collapsed to the one that decides when you actually have to leave home. On a free day, the alarm goes to the latest time of a wake window you set."
+        },
+        {
+          "type": "paragraph",
+          "text": "Overnight, a foreground service listens to the phone and, when available, to sleep stages from Health Connect. A lighter model, Claude Haiku, is asked to re-plan when something changes:"
+        },
+        {
+          "type": "list",
+          "ordered": false,
+          "items": [
+            "If you fall asleep again after waking, the alarm is set again.",
+            "A short bout of activity in mid-sleep, under three minutes, is treated as a bathroom trip and ignored.",
+            "Ten minutes out of bed brings a morning briefing notification.",
+            "When the sensors show light sleep close to the alarm, it can ring a minute or two early to wake you gently.",
+            "After three snoozes, the app stops asking the model and simply rings again five minutes later."
+          ]
+        },
+        {
+          "type": "heading",
+          "level": 2,
+          "text": "Two alarms"
+        },
+        {
+          "type": "paragraph",
+          "text": "The AI alarm is the one that moves. The hard-latest alarm is armed once, when the session starts, and never moves: if the model fails, the network is down or the API key is wrong, you still wake up by that time. The model can never set an alarm later than it, and the limit is enforced by the tool itself, not left to the prompt."
+        },
+        {
+          "type": "heading",
+          "level": 2,
+          "text": "Under the hood"
+        },
+        {
+          "type": "paragraph",
+          "text": "Written in Kotlin with Jetpack Compose. Each night is a session driven by a small state machine (planning, monitoring, awake, monitoring again, complete), stored in a Room database. Work is queued with WorkManager, commute times and addresses come from the Google Routes API, and the Anthropic key is entered in the app and kept in encrypted storage. Without a Routes key, the app falls back on a flat thirty minutes of commute."
+        },
+        {
+          "type": "paragraph",
+          "text": "The app also remembers things about you, such as how much sleep you need or how early you want to be at an airport, in a memory screen that lists what it has learned."
+        },
+        {
           "type": "link",
           "title": "Source",
           "url": "https://github.com/BSoDium/Cron"
@@ -5659,6 +5809,12 @@
       "title": "Epidemic spreading",
       "summary": "A graph theory study of the propagation of an epidemic, written as a Julia notebook.",
       "date": "2021-12",
+      "cover": {
+        "src": "/media/project/epidemic-spreading-sim/cover.7ca6188e.webp",
+        "alt": "A graph of about a thousand teal and orange dots joined by thin white lines on a black background, clustered around hubs: a network graph from the study.",
+        "width": 2400,
+        "height": 2400
+      },
       "tags": [
         "graphs",
         "julia"
@@ -5681,6 +5837,10 @@
         {
           "type": "paragraph",
           "text": "A graph theory study about the propagation of an epidemic, in a notebook meant to be run with the Julia Jupyter kernel."
+        },
+        {
+          "type": "paragraph",
+          "text": "The notebook studies how an infection spreads over graphs, with models of the SIR family. It is run cell by cell, after adding Julia to Jupyter with the IJulia package. The cover is one of its outputs."
         },
         {
           "type": "link",
@@ -5715,6 +5875,52 @@
         {
           "type": "paragraph",
           "text": "An MQTT-enabled controller for string lights with multiple effects and a physical button, designed for the ESP32, compatible with Home Assistant, and keeping its state across power cycles."
+        },
+        {
+          "type": "heading",
+          "level": 2,
+          "text": "What it does"
+        },
+        {
+          "type": "paragraph",
+          "text": "The lights are plugged into a relay, and the original controller of the string stays in the loop through a transistor, which lets the ESP32 trigger its effects. The board can be driven in two ways:"
+        },
+        {
+          "type": "list",
+          "ordered": false,
+          "items": [
+            "From the network: one MQTT topic switches the lights on and off, another selects the effect.",
+            "From the wall: a push button cycles through the effects, and the lights blink a pattern to say which one is now active."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "The available effects are in waves, sequential, slow glow, chasing, fade, twinkle, static and a combination of them."
+        },
+        {
+          "type": "heading",
+          "level": 2,
+          "text": "Hardware"
+        },
+        {
+          "type": "list",
+          "ordered": false,
+          "items": [
+            "An ESP32 development board.",
+            "A relay module that switches the mains supply of the lights.",
+            "A push button.",
+            "A transistor that stands in for the original controller's effect button.",
+            "A small mains adapter that powers the board."
+          ]
+        },
+        {
+          "type": "heading",
+          "level": 2,
+          "text": "Software"
+        },
+        {
+          "type": "paragraph",
+          "text": "Built with PlatformIO. On start-up the board connects to Wi-Fi, then to the MQTT broker, subscribes to its two topics and keeps the connection alive, trying ten times to reconnect before giving up. Wi-Fi and broker settings live in a configuration file that is kept out of the repository."
         },
         {
           "type": "link",
@@ -5756,7 +5962,21 @@
         },
         {
           "type": "paragraph",
-          "text": "It was meant to be completed by June 2020 as part of the French TIPE oral exams; the exams were cancelled because of the COVID crisis."
+          "text": "It was meant to be completed by June 2020 as part of the French TIPE oral exams, a project defended for the entrance competition to the Grandes Écoles. The exams were cancelled because of the COVID crisis, so there was no point carrying on, and the work stayed unfinished."
+        },
+        {
+          "type": "heading",
+          "level": 2,
+          "text": "Controls"
+        },
+        {
+          "type": "list",
+          "ordered": false,
+          "items": [
+            "Middle mouse button: rotate the view.",
+            "Right click and drag: zoom in and out.",
+            "F1: toggle the console."
+          ]
         },
         {
           "type": "link",
@@ -5795,6 +6015,10 @@
         {
           "type": "paragraph",
           "text": "A proof of concept for a 4D rendering engine, built with OpenGL, GLFW and GLM. A separate repository is a template for applications built on it."
+        },
+        {
+          "type": "paragraph",
+          "text": "It is written in C++ and built with CMake. Usage is still to be documented."
         },
         {
           "type": "link",
@@ -5840,6 +6064,23 @@
           "text": "A chat client-server infrastructure written in C++, split into a client and a server, both configured with CMake and built for Linux."
         },
         {
+          "type": "heading",
+          "level": 2,
+          "text": "Client and server"
+        },
+        {
+          "type": "paragraph",
+          "text": "The client opens a command prompt. Its commands let you test the connection to a server, connect and disconnect, log in with a user name and join a channel. The server is started with an address and a port, and prints where it is listening once it is up. For now it does not create channels or users on the fly, which the current architecture would make easy to add."
+        },
+        {
+          "type": "paragraph",
+          "text": "A session looks like this:"
+        },
+        {
+          "type": "code",
+          "code": "ClientConsole> connect 127.0.0.1 8080\nConnection successful\n127.0.0.1:8080> login J0hn\nLogged in as J0hn\nJ0hn@127.0.0.1:8080> join general\nJ0hn: Hey\nResponse: success OK"
+        },
+        {
           "type": "link",
           "title": "Source",
           "url": "https://github.com/BSoDium/IPvChat"
@@ -5855,6 +6096,12 @@
       "summary": "A first draft of the design system of Ingénieurs sans frontières (ISF).",
       "date": "2026-05",
       "url": "https://design-system.isf.bsodium.fr",
+      "cover": {
+        "src": "/media/project/isf-design-system/cover.93455186.webp",
+        "alt": "A Storybook page of a design system's colour palette: nine named colours, each shown as a row of ten swatches from light to dark, beside a navigation tree of components.",
+        "width": 1897,
+        "height": 1323
+      },
       "tags": [
         "design-system",
         "typescript"
@@ -5872,7 +6119,15 @@
       "body": [
         {
           "type": "paragraph",
-          "text": "A first draft of the design system of Ingénieurs sans frontières (ISF), built with Next.js."
+          "text": "A first draft of the design system of Ingénieurs sans frontières (ISF), built with Next.js and documented in Storybook."
+        },
+        {
+          "type": "paragraph",
+          "text": "The palette is rooted in nature: ocean teals, sandy ivories and warm coppers, which echo the organisation's commitment to sustainable engineering in varied environments. Each of its eight colours (Deep Ocean, Forest, Ivory Sand, Golden Dune, Copper, Midnight, Sky Mist and Stone) comes as a range of ten shades, so that components, backgrounds and text all find a value in it."
+        },
+        {
+          "type": "paragraph",
+          "text": "The foundations also cover the logo and identity, radius, shadows, spacing and typography, followed by a library of components such as accordions, alerts, buttons, cards, modals, tabs and inputs, each with its variants and states."
         },
         {
           "type": "link",
@@ -5890,6 +6145,12 @@
       "summary": "A virtual reality game about escaping a maze you cannot see, using a lidar to scan your surroundings.",
       "date": "2023-01",
       "url": "https://lidar.bsodium.fr",
+      "cover": {
+        "src": "/media/project/lidar/cover.d860fe77.webp",
+        "alt": "A dark landing page titled Lidar, a game where light is your weapon, over a perspective grid floor and grey hills, with a notice that a VR headset is needed to play.",
+        "width": 1858,
+        "height": 1323
+      },
       "tags": [
         "vr",
         "game"
@@ -5914,6 +6175,37 @@
           "text": "It is inspired by the Garry's Mod addon LIDAR by datæ, and is still in early development: playable, with many features missing."
         },
         {
+          "type": "heading",
+          "level": 2,
+          "text": "The idea"
+        },
+        {
+          "type": "paragraph",
+          "text": "In the addon, nothing that moves can be seen until the player has scanned it, which makes for a powerful horror mechanic, especially in VR where the scale of the space is so obvious. Lidar is also a real technology, used in autonomous vehicles, robotics and medicine: a pulsed laser and a sensor that measures the time the reflected light takes to come back, usually on a rotating platform to cover 360 degrees."
+        },
+        {
+          "type": "paragraph",
+          "text": "In the game, the module sits on the player's controller. An array of lasers is fired from it, and each pulse produces a low-resolution depth map. Combined with where the controller points, these build a point cloud of the maze, denser where you scanned close and sparser further away."
+        },
+        {
+          "type": "heading",
+          "level": 2,
+          "text": "Playing"
+        },
+        {
+          "type": "paragraph",
+          "text": "Point the right controller at a surface and squeeze the trigger to scan, release to stop. The maze is about 40 by 40 metres, and movement is not implemented yet, so you can only scan the part within reach."
+        },
+        {
+          "type": "heading",
+          "level": 2,
+          "text": "Under the hood"
+        },
+        {
+          "type": "paragraph",
+          "text": "It runs in the browser, written in TypeScript with React, Joy UI and Three.js for WebGL and WebXR. Points are kept in a fixed-length vertex buffer of 100,000 points, drawn as a point cloud. The ray casting that finds where each laser lands is accelerated with three-mesh-bvh, which keeps it fast on intricate meshes."
+        },
+        {
           "type": "link",
           "title": "Source",
           "url": "https://github.com/BSoDium/Lidar"
@@ -5928,6 +6220,12 @@
       "title": "Light engine",
       "summary": "An inverse rasterizer engine demo in Java and Swing, extended with camera movement and a better interface.",
       "date": "2022-04",
+      "cover": {
+        "src": "/media/project/light-engine/cover.b00cd4c3.webp",
+        "alt": "A wireframe of a monkey's head drawn as a mesh of coloured points and lines, from green at the ear to purple at the neck, on a dark background.",
+        "width": 1139,
+        "height": 879
+      },
       "tags": [
         "graphics",
         "java"
@@ -5953,7 +6251,36 @@
         },
         {
           "type": "paragraph",
-          "text": "It is a heavily modified version of a rasterizer by C. Dehais, S. Mondet and G. Morin, with camera movement, further optimisation and a better interface."
+          "text": "It is a heavily modified version of a rasterizer by C. Dehais, S. Mondet and G. Morin, with camera movement, further optimisation and a better interface. It was carried out as part of the computer rendering course at ENSEEIHT, and the code is not entirely the author's own, so care is advised before reusing it."
+        },
+        {
+          "type": "heading",
+          "level": 2,
+          "text": "Using it"
+        },
+        {
+          "type": "paragraph",
+          "text": "At start-up the program asks for a scene file; a few samples are provided, including the Blender monkey Suzanne and an A380. Once loaded, the scene is drawn as a wireframe, and the keys do the rest:"
+        },
+        {
+          "type": "list",
+          "ordered": false,
+          "items": [
+            "Arrow keys: move the camera around.",
+            "L: toggle the lighting.",
+            "Return: loop through the available shaders.",
+            "F1 and F2: wireframe and solid rendering.",
+            "F3 and F4: the same, multithreaded. These modes are experimental and turned out slower than the single-threaded ones."
+          ]
+        },
+        {
+          "type": "heading",
+          "level": 2,
+          "text": "Your own models"
+        },
+        {
+          "type": "paragraph",
+          "text": "The scenes use a modified version of the OFF file format. A Python script converts a standard OFF file to it. Syntax errors in a scene file can crash the program, since very few robustness checks were made."
         },
         {
           "type": "link",
@@ -5994,6 +6321,23 @@
           "text": "A remotely accessible Tuple database, implemented in Java using RMI remote objects. Mostly a proof of concept."
         },
         {
+          "type": "paragraph",
+          "text": "It was written as a team project, and tested on Java 17. There is no main class: the examples to run are in three packages, a prime numbers example, and a basic and an improved text search."
+        },
+        {
+          "type": "heading",
+          "level": 2,
+          "text": "Known issues"
+        },
+        {
+          "type": "list",
+          "ordered": false,
+          "items": [
+            "The improved text search cannot use several searchers at once: doing so ends in a deadlock, which was traced to the centralised implementation but never fixed.",
+            "Stopping the server calls System.exit, which shuts down the whole process instead of only the server-side threads. Disabling the server timeout avoids it."
+          ]
+        },
+        {
           "type": "link",
           "title": "Source",
           "url": "https://github.com/BSoDium/Linda"
@@ -6009,6 +6353,12 @@
       "summary": "A proof of concept of Android's scroll-snap settings header behaviour in React and TypeScript.",
       "date": "2025-06",
       "url": "https://material-sticky-header.vercel.app",
+      "cover": {
+        "src": "/media/project/material-sticky-header/cover.7e7f76bc.webp",
+        "alt": "A Storybook story of a mobile settings screen titled Internet, with a list of Wi-Fi networks and lock icons under a header that stays on top, beside an accessibility test panel.",
+        "width": 1858,
+        "height": 1323
+      },
       "tags": [
         "react",
         "ui"
@@ -6027,6 +6377,29 @@
         {
           "type": "paragraph",
           "text": "A proof of concept implementation of Android's scroll-snap settings header: a sticky header that transitions between states with the scroll position, mimicking the native Android settings screen."
+        },
+        {
+          "type": "heading",
+          "level": 2,
+          "text": "How it works"
+        },
+        {
+          "type": "paragraph",
+          "text": "The large title of the screen collapses into a compact header as you scroll, then expands again, and snaps to one state or the other when you let go. It is built in React and TypeScript with:"
+        },
+        {
+          "type": "list",
+          "ordered": false,
+          "items": [
+            "scroll listeners that read the position,",
+            "transforms animated with Motion for the transitions,",
+            "a custom hook that observes the height of elements, so dynamic content does not break the layout,",
+            "state management for the header's visibility transitions."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "The component is documented and tested in Storybook, with the settings screen of a phone as its demo story."
         },
         {
           "type": "link",
@@ -6068,6 +6441,14 @@
           "text": "A lightweight web application built on the Wakatime API. It shows your coding activity in a simple way and calculates earnings from your hourly rate. It needs a Wakatime API key."
         },
         {
+          "type": "paragraph",
+          "text": "The data comes from the Wakatime plugins installed in your editors, so the app is only as good as that tracking. At the time it needed a browser request interceptor to authenticate, which is a drawback."
+        },
+        {
+          "type": "paragraph",
+          "text": "It is no longer maintained, and the hosted version only partly works."
+        },
+        {
           "type": "link",
           "title": "Source",
           "url": "https://github.com/BSoDium/Moneytor"
@@ -6083,6 +6464,12 @@
       "summary": "A procedural, accessible palette generator for the MUI Joy library, working in the OKLCH colour space.",
       "date": "2025-12",
       "url": "https://mui-joy.bsodium.fr",
+      "cover": {
+        "src": "/media/project/mui-joy-palette-generator/cover.9b6eebd5.webp",
+        "alt": "A palette generator showing a blue seed colour, seven preset seed colours, and five rows of ten swatches (primary, neutral, danger, success, warning) with their hex and RGB values.",
+        "width": 1897,
+        "height": 1588
+      },
       "tags": [
         "colour",
         "accessibility"
@@ -6103,6 +6490,42 @@
           "text": "Generates accessible colour palettes for Joy UI in OKLCH, with gamut mapping to sRGB, WCAG 2.1 and APCA contrast validation, all five semantic palettes, and exports to TypeScript, CSS variables, JSON and Tailwind."
         },
         {
+          "type": "heading",
+          "level": 2,
+          "text": "What it produces"
+        },
+        {
+          "type": "paragraph",
+          "text": "From one seed colour, it generates the five palettes Joy UI expects (primary, neutral, danger, success and warning), each with ten steps from 50 to 900. The neutral palette is tinted toward the primary hue, and the semantic ones sit at fixed hues: red for danger, green for success and amber for warning."
+        },
+        {
+          "type": "heading",
+          "level": 2,
+          "text": "How it works"
+        },
+        {
+          "type": "paragraph",
+          "text": "It works in OKLCH, because equal steps in lightness look equal, saturation behaves the same across hues and modern browsers understand it natively. Each step has a lightness anchor, from 0.97 at the lightest to 0.16 at the darkest, and a chroma curve that peaks at the 500 step, which is the colour of buttons. Colours that fall outside sRGB are brought back by reducing their chroma while keeping hue and lightness."
+        },
+        {
+          "type": "heading",
+          "level": 2,
+          "text": "Accessibility"
+        },
+        {
+          "type": "paragraph",
+          "text": "The result is checked against the way Joy UI uses it: white text on the 500 step for solid buttons, the 700 step on the 100 step for soft ones, the 500 step on the page for outlined ones, and borders at 3:1. Contrast is shown both as WCAG 2.1 ratios and as APCA values."
+        },
+        {
+          "type": "heading",
+          "level": 2,
+          "text": "Using it"
+        },
+        {
+          "type": "paragraph",
+          "text": "The app previews the palettes with a button preview, shows the contrast results, then exports the theme as Joy UI code, CSS custom properties, JSON for design tools or Tailwind. The generation code is a small library that can be used on its own."
+        },
+        {
           "type": "link",
           "title": "Source",
           "url": "https://github.com/BSoDium/MUI-Joy-palette-generator"
@@ -6117,6 +6540,12 @@
       "title": "Pconsole",
       "summary": "A tiny, easy-to-use runtime console for Panda3D-powered applications, published on PyPI.",
       "date": "2020-04",
+      "cover": {
+        "src": "/media/project/pconsole/cover.e108dc29.webp",
+        "alt": "A Panda3D window with a Python console printing Pconsole's help, a command's usage and a task manager table, drawn over a television test card of colour bars and a grid.",
+        "width": 1598,
+        "height": 861
+      },
       "tags": [
         "python",
         "tooling"
@@ -6141,6 +6570,34 @@
           "text": "A tiny runtime console for Panda3D applications. You give it a dictionary of command names and functions, a key to toggle it, and a command line is available in your running app. It is installable with pip install pconsole."
         },
         {
+          "type": "heading",
+          "level": 2,
+          "text": "Setting it up"
+        },
+        {
+          "type": "code",
+          "language": "python",
+          "code": "import pconsole\n\ncommands = {\"func1_string\": func1,  # \"associated string\": function\n            \"func2_string\": func2}\nconsole = pconsole.Console()\nconsole.create(commands, event=\"t\")  # t toggles the console; f1 by default"
+        },
+        {
+          "type": "paragraph",
+          "text": "Two commands exist out of the box: help lists the available commands, and usage gives details about one of them."
+        },
+        {
+          "type": "heading",
+          "level": 2,
+          "text": "Reaching your app"
+        },
+        {
+          "type": "paragraph",
+          "text": "Passing the application object when creating the console lets the Python interpreter built into it read and change the attributes and variables of your main class, which it knows as main:"
+        },
+        {
+          "type": "code",
+          "language": "python",
+          "code": "console.create(commands, event=\"t\", app=self)"
+        },
+        {
           "type": "link",
           "title": "Source",
           "url": "https://github.com/BSoDium/Pconsole"
@@ -6155,6 +6612,12 @@
       "title": "Catalyst",
       "summary": "Catalyst is the code name of this website: a personal archive organised around places, with an interactive pixel-art globe that hands over to a street map.",
       "date": "2022-09",
+      "cover": {
+        "src": "/media/project/portfolio-website/cover.4593cafb.webp",
+        "alt": "A view of this site on a dark page: the globe drawn as a field of dots, with the sun flaring at its edge and hexagonal lens reflections, the navigation along the top with the music player at the left and the search at the right, and the owner's name in large type at the bottom left.",
+        "width": 1841,
+        "height": 1323
+      },
       "tags": [
         "maps",
         "typescript",
@@ -6199,6 +6662,12 @@
       "title": "PyOS",
       "summary": "An orbital mechanics simulator written entirely in Python on the Panda3D engine. PyOS stands for Python orbit simulator.",
       "date": "2019-03",
+      "cover": {
+        "src": "/media/project/pyos/cover.fcb77826.webp",
+        "alt": "A close view of a huge bright yellow sun with a dark planet and a tiny moon in front of it, in a hazy nebula full of stars.",
+        "width": 1599,
+        "height": 899
+      },
       "tags": [
         "simulation",
         "python"
@@ -6227,6 +6696,28 @@
           "text": "It was created for a computer science class at PCSI Déodat de Séverac in Toulouse, and was heavily inspired by Universe Sandbox, a game by Giant Army. It was meant to become a sandbox space game and is now archived."
         },
         {
+          "type": "heading",
+          "level": 2,
+          "text": "Where it got to"
+        },
+        {
+          "type": "paragraph",
+          "text": "The last version, 0.10 alpha, has a new menu with 3D animations. The next goal was realistic impact particles, using the Panda3D particle generator, which would have paved the way for a proper heads-up display. 3D models can be imported and used in simulations, but there is no syntax guide, so it is hard to master. The project also reports its state through Discord rich presence."
+        },
+        {
+          "type": "heading",
+          "level": 2,
+          "text": "Running it"
+        },
+        {
+          "type": "paragraph",
+          "text": "Releases come as an archive with an executable that needs nothing else installed. To run the code itself, you need Python with Panda3D and pypresence."
+        },
+        {
+          "type": "paragraph",
+          "text": "The authors call the project officially dead and buried, and thank everyone whose feedback helped during development."
+        },
+        {
           "type": "link",
           "title": "Source",
           "url": "https://github.com/BSoDium/The-PyOS-Project"
@@ -6242,6 +6733,12 @@
       "summary": "A pseudo-random number generator and visualiser for the web, with a gaussian generator and charts.",
       "date": "2022-12",
       "url": "https://randomite.bsodium.fr/",
+      "cover": {
+        "src": "/media/project/randomite/cover.411753a6.webp",
+        "alt": "A page of random-number tools: a distribution picker, its formula and code, an AI-written description, and two charts of one thousand points, a two-dimensional scatter plot and a three-dimensional surface.",
+        "width": 1897,
+        "height": 1323
+      },
       "tags": [
         "dataviz",
         "typescript"
@@ -6264,6 +6761,10 @@
         {
           "type": "paragraph",
           "text": "A web app that generates pseudo-random numbers and visualises them in several ways, with the ECharts library and Joy UI."
+        },
+        {
+          "type": "paragraph",
+          "text": "You pick a distribution, such as the Gaussian, and a number of points, from 250 to 2000, and shuffle to draw again. The page shows the generating function as code and its formula, then a plain-language description of the distribution written by a language model, and finally the points on charts: a two-dimensional scatter plot, and a three-dimensional surface plot, each with a short explanation of what you are looking at."
         },
         {
           "type": "link",
@@ -6300,6 +6801,36 @@
           "text": "A Raycast extension with two commands: select any region of your screen and it becomes a Google Task (with an inferred title, note and due date) or a macOS Calendar event. The screenshot is interpreted with Claude Vision."
         },
         {
+          "type": "heading",
+          "level": 2,
+          "text": "Commands"
+        },
+        {
+          "type": "list",
+          "ordered": false,
+          "items": [
+            "Capture to Task: draw a rectangle, and Claude reads it and creates a Google Task with a title, a note on the context and, if one is mentioned, a due date. It needs a Google OAuth client.",
+            "Capture to Calendar: the same capture creates an event in the Calendar app, with any calendar synced to it (iCloud, Google, Exchange), so no extra sign-in is needed. A default calendar is set in the preferences and can be overridden when the command is run."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Both need an Anthropic API key, entered in the extension's preferences."
+        },
+        {
+          "type": "heading",
+          "level": 2,
+          "text": "Privacy and safety"
+        },
+        {
+          "type": "paragraph",
+          "text": "Screenshots are sent to the Anthropic API and deleted from disk right after. Nothing else is stored beyond what Raycast keeps locally for its preferences and sign-in."
+        },
+        {
+          "type": "paragraph",
+          "text": "A screenshot is untrusted content, and a vision model can be fooled by text hidden in an image. The extension asks Claude to treat everything it sees as content to summarise and never as instructions, limits the length of what it extracts and removes control characters. Event data is handed to AppleScript as arguments, never pasted into the script. Above all, nothing is created without your confirmation, so the dialog is the place to check what was extracted."
+        },
+        {
           "type": "link",
           "title": "Source",
           "url": "https://github.com/BSoDium/Raycast-capture-and-create"
@@ -6314,6 +6845,12 @@
       "title": "Slashboard",
       "summary": "A dashboard to monitor the activity and performance of your home servers: an Electron and React desktop client, and a lightweight Node.js agent (Pulsar) on each server.",
       "date": "2021-08",
+      "cover": {
+        "src": "/media/project/slashboard/cover.5223fa1b.webp",
+        "alt": "A dark dashboard for a home server showing its processor with core count, frequency and load, the operating system and uptime, a list of network interfaces, and the mounted disks with their usage.",
+        "width": 1919,
+        "height": 894
+      },
       "tags": [
         "dashboard",
         "electron"
@@ -6332,6 +6869,24 @@
         {
           "type": "paragraph",
           "text": "A simple and convenient way to monitor the activity and performance of your servers: a desktop client built with Electron and React, which talks to Slashboard Pulsar, a lightweight Node.js app installed on each server."
+        },
+        {
+          "type": "heading",
+          "level": 2,
+          "text": "What you see"
+        },
+        {
+          "type": "paragraph",
+          "text": "The client keeps a list of your servers, each with an icon. Opening one shows its dashboard: the processor with its core count, frequency and load average, the operating system and how long it has been up, the network interfaces with their addresses, and the mounted disks with their size and how full they are. A switch hides volatile file systems such as temporary ones."
+        },
+        {
+          "type": "heading",
+          "level": 2,
+          "text": "Setting it up"
+        },
+        {
+          "type": "paragraph",
+          "text": "Install Pulsar on the server, make it reachable (usually with a forwarded port), then add the server in the client with its address, port and key. Hovering a server shows buttons to refresh, edit or delete it."
         },
         {
           "type": "link",
@@ -6354,6 +6909,12 @@
       "summary": "A demo of a custom spectrum visualisation component for microphone recording interfaces.",
       "date": "2024-10",
       "url": "https://spectrum-visualizer.bsodium.fr/",
+      "cover": {
+        "src": "/media/project/spectrum-visualizer/cover.f0f2e14a.webp",
+        "alt": "A row of thin vertical bars in soft blues, tall at the left and fading to dots, drawing an audio spectrum, above a small panel to choose the variant, the colour and two options.",
+        "width": 1897,
+        "height": 1323
+      },
       "tags": [
         "dataviz",
         "audio"
@@ -6374,6 +6935,14 @@
           "text": "A demo application of a custom spectrum visualisation component: real-time audio visualisation from the microphone, with customisable colour schemes and a responsive layout."
         },
         {
+          "type": "paragraph",
+          "text": "The component draws the spectrum as a row of bars, one per frequency band. The demo has a light and a dark theme and lets you try its variants and colours, with options to interpolate the colours along the bars and to draw a faint ghost layer behind them."
+        },
+        {
+          "type": "paragraph",
+          "text": "The code is small on purpose. The component that processes the audio is one file, the amplitude indicators another, and the layout a third. It is released under the MIT licence, with a request to credit the work when it is republished without significant changes."
+        },
+        {
           "type": "link",
           "title": "Source",
           "url": "https://github.com/BSoDium/Spectrum-visualizer-demo"
@@ -6388,6 +6957,12 @@
       "title": "Spinel",
       "summary": "An OpenGL-based 3D rendering engine written in Java, created as part of the 7map project.",
       "date": "2021-06",
+      "cover": {
+        "src": "/media/project/spinel/cover.4f920ebd.webp",
+        "alt": "A red three-dimensional landscape of low hills rendered with simple lighting on a dark grey background.",
+        "width": 1213,
+        "height": 869
+      },
       "tags": [
         "graphics",
         "java"
@@ -6427,6 +7002,12 @@
       "summary": "A collection of experiments with grainy, noisy SVG gradients built on turbulence filters.",
       "date": "2024-06",
       "url": "https://svg-gradients.vercel.app/",
+      "cover": {
+        "src": "/media/project/svg-gradients/cover.220ec5f6.webp",
+        "alt": "A grid of tiles on a dark page with grainy gradients: a pink to blue rectangle, magenta panels with start and end handles, a four-pointed star, a red flower shape and a grey tile with a speckled ring.",
+        "width": 1649,
+        "height": 2000
+      },
       "tags": [
         "svg",
         "typescript"
@@ -6447,6 +7028,31 @@
           "text": "Experiments with SVG turbulence-based gradients. A LinearGradient component is a drop-in replacement for the standard SVG linearGradient element, documented in the source with examples."
         },
         {
+          "type": "paragraph",
+          "text": "A radial version works the same way. They give the grainy, noisy gradients that SVG's own cannot, by running a turbulence filter along the gradient, and the grain can be tuned and layered."
+        },
+        {
+          "type": "heading",
+          "level": 2,
+          "text": "Examples"
+        },
+        {
+          "type": "paragraph",
+          "text": "The demo shows what it can do:"
+        },
+        {
+          "type": "list",
+          "ordered": false,
+          "items": [
+            "a banner with a gradient background,",
+            "debug animations that show the turbulence field and its boundaries, for linear and radial gradients,",
+            "shapes such as a flower, a four-pointed sparkle and a torus built from several layered gradients,",
+            "text with a gradient fill,",
+            "compositions with several layers of different turbulence and colour,",
+            "an arch and an abstract piece that combine masks, gradients and shapes."
+          ]
+        },
+        {
           "type": "link",
           "title": "Source",
           "url": "https://github.com/BSoDium/SVG-gradients"
@@ -6461,6 +7067,12 @@
       "title": "Terrain interpolation",
       "summary": "An OpenGL proof of concept of a procedural terrain interpolation algorithm, documented in French.",
       "date": "2022-05",
+      "cover": {
+        "src": "/media/project/terrain-interpolation/cover.7929f37e.webp",
+        "alt": "A white wireframe terrain with hundreds of red normal vectors standing off its surface, in a window titled Terrain interpolation demo.",
+        "width": 1920,
+        "height": 1080
+      },
       "tags": [
         "graphics",
         "cpp"
@@ -6485,6 +7097,32 @@
           "text": "A proof of concept for terrain interpolation, built with OpenGL, GLFW and GLM. The documentation is in French and most comments are in English."
         },
         {
+          "type": "heading",
+          "level": 2,
+          "text": "The idea"
+        },
+        {
+          "type": "paragraph",
+          "text": "The goal is to generate a terrain procedurally from a mesh of points of very low resolution, using surface subdivision. The plan was to implement Loop subdivision; for lack of time, a simplified version stands in for it: each triangle gets three new vertices, and a blurring pass then averages the vertex attributes to smooth the result."
+        },
+        {
+          "type": "paragraph",
+          "text": "Three stages show the difference: without any algorithm, the terrain is very angular and of low resolution; with naive subdivision it is just as angular but finer; with subdivision and blurring it comes out smooth. A high-frequency noise can then be added to imitate the irregularities of the ground."
+        },
+        {
+          "type": "heading",
+          "level": 2,
+          "text": "Using it"
+        },
+        {
+          "type": "paragraph",
+          "text": "The program shows a random terrain of ten by ten points, with its normals drawn in red. The arrow keys rotate the camera, Z and S zoom, and plus and minus raise or lower the level of detail, which is the number of subdivision passes. Faces can be coloured by normal and height, and lit with a day and night cycle."
+        },
+        {
+          "type": "paragraph",
+          "text": "The author notes that improvements are conceivable, such as simulating erosion or generating more precise textures and normals."
+        },
+        {
           "type": "link",
           "title": "Source",
           "url": "https://github.com/BSoDium/Terrain-interpolation"
@@ -6499,6 +7137,12 @@
       "title": "Voxelife",
       "summary": "A three-dimensional Conway's Game of Life in C++ and OpenGL.",
       "date": "2022-10",
+      "cover": {
+        "src": "/media/project/voxelife/cover.96f3f63f.webp",
+        "alt": "Two clusters of grey cubes floating in three dimensions on a dark grey background, with a small colour axis between them.",
+        "width": 943,
+        "height": 841
+      },
       "tags": [
         "simulation",
         "cpp"
@@ -6521,6 +7165,29 @@
         {
           "type": "paragraph",
           "text": "A proof of concept of a three-dimensional game of life simulation, written in C++ with OpenGL for rendering."
+        },
+        {
+          "type": "paragraph",
+          "text": "Conway's rules are applied to a cube of cells instead of a flat grid, and each live cell is drawn as a voxel."
+        },
+        {
+          "type": "heading",
+          "level": 2,
+          "text": "Controls"
+        },
+        {
+          "type": "list",
+          "ordered": false,
+          "items": [
+            "Arrow keys: rotate the camera around the origin.",
+            "W and S: move the camera closer to or further from the origin.",
+            "Space: play or pause the simulation.",
+            "R: reset and randomise the cells."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Dependencies are handled with vcpkg and the project is built with CMake, with a workspace for Visual Studio Code."
         },
         {
           "type": "link",
@@ -6561,6 +7228,10 @@
           "text": "A basic shell in C with job control (fg, bg, stop, jobs, exit), pipes and background jobs."
         },
         {
+          "type": "paragraph",
+          "text": "It also handles input and output redirection with the less-than and greater-than operators, and the Ctrl-C and Ctrl-Z signals. It is a proof of concept, and not everything has been meticulously tested. It builds with make, or with any standard C compiler."
+        },
+        {
           "type": "link",
           "title": "Source",
           "url": "https://github.com/BSoDium/Vshell"
@@ -6575,6 +7246,12 @@
       "title": "Wave engine",
       "summary": "A wave-motion particle simulator in Python, powered by Panda3D.",
       "date": "2019-06",
+      "cover": {
+        "src": "/media/project/wave-engine/cover.d3b6aa01.webp",
+        "alt": "A square grid of small cubes seen at a low angle, with a ripple of bright red cubes rising at the centre, and a slider with rewind, play and fast-forward controls below.",
+        "width": 1920,
+        "height": 1080
+      },
       "tags": [
         "simulation",
         "python"
@@ -6599,6 +7276,28 @@
           "text": "A wave-motion particle simulator written in Python and rendered with Panda3D. The physical constants (rigidity, time scale, friction) are variables at the top of the code."
         },
         {
+          "type": "heading",
+          "level": 2,
+          "text": "How it works"
+        },
+        {
+          "type": "paragraph",
+          "text": "A grid of blocks pulls on its neighbours, with a rigidity and a friction, so that a disturbance propagates through it like a wave. Besides the three constants above, you can change the mass, the spacing between blocks and the global scale, and choose whether a stable frame holds the moving surface, which is worth switching off to see what happens."
+        },
+        {
+          "type": "paragraph",
+          "text": "The simulation can be computed ahead of time: a number of frames is precomputed, then replayed in 3D with a slider and play, rewind and fast-forward controls, which is how the user interface works from version 0.4. Live display is off by default, so that the calculation is not drawn while it runs."
+        },
+        {
+          "type": "heading",
+          "level": 2,
+          "text": "Version 0.4"
+        },
+        {
+          "type": "paragraph",
+          "text": "Added a dark mode, an improved interface, fixes for some rendering bugs and, most importantly, the precomputing, with a two-window interface. It is considered stable."
+        },
+        {
           "type": "link",
           "title": "Source",
           "url": "https://github.com/BSoDium/Wave-engine"
@@ -6614,6 +7313,12 @@
       "summary": "A demo of the Window Controls Overlay API in an installable web app, for collapsing navigation bars into the title bar.",
       "date": "2025-11",
       "url": "https://wco-demo.bsodium.fr",
+      "cover": {
+        "src": "/media/project/wco-demo/cover.dc30b6c3.webp",
+        "alt": "An installed web app whose title bar holds its own navigation tabs, showing a large headline about the web of tomorrow, a note that the browser supports the API, and an install button.",
+        "width": 1074,
+        "height": 821
+      },
       "tags": [
         "pwa",
         "ui"
@@ -6634,6 +7339,37 @@
           "text": "An experiment with the Window Controls Overlay API in a progressive web app, which lets a desktop PWA use the title bar area for its own navigation."
         },
         {
+          "type": "paragraph",
+          "text": "Installed PWAs normally keep a standard title bar. With the API, the content can cover the whole window, title bar included, as editors and music apps do. There are few open-source demos of it in React, and this project is meant as a reference implementation of a polished title bar."
+        },
+        {
+          "type": "heading",
+          "level": 2,
+          "text": "Inspiration"
+        },
+        {
+          "type": "paragraph",
+          "text": "The behaviour is modelled on the Vercel dashboard toolbar: a navigation bar that collapses and expands with the scroll direction, and does not snap at the first pixel of movement. A threshold, a kind of hysteresis, waits for a deliberate scroll before it reacts."
+        },
+        {
+          "type": "heading",
+          "level": 2,
+          "text": "Techniques"
+        },
+        {
+          "type": "list",
+          "ordered": false,
+          "items": [
+            "The web app manifest asks for the window-controls-overlay display mode, and a hook listens to the geometry change event, so the interface always knows where the native window buttons are and stays clear of them, even when the window is resized or the text scaled.",
+            "Scroll-linked animation with Motion, driven by motion values that run outside the React render cycle.",
+            "A navigation bar that adapts to where it runs: a plain header in a browser tab, a themed title bar in an installed app, and a bar that extends into the title bar when the overlay is on."
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "It is built with React, Vite, the Vite PWA plugin, Joy UI and Motion."
+        },
+        {
           "type": "link",
           "title": "Source",
           "url": "https://github.com/BSoDium/WCO-demo"
@@ -6649,6 +7385,12 @@
       "summary": "A background-hosted \"digital curtain\" for a personal WhatsApp account: it links as a companion device, runs messages from chosen contacts through a local LLM classifier, deletes flagged ones locally and warns or temporarily blocks after repeated strikes.",
       "date": "2026-09",
       "url": "https://whatsapp-moderation-demo.vercel.app",
+      "cover": {
+        "src": "/media/project/whatsapp-content-moderation/cover.81520168.webp",
+        "alt": "A control page listing moderated contacts with counters for monitored, blocked, deleted and errors, next to a detail panel with strike counters, block settings and a moderation context field.",
+        "width": 1858,
+        "height": 1323
+      },
       "tags": [
         "typescript",
         "llm"
@@ -6673,6 +7415,50 @@
           "text": "A web control app shows the moderated contacts, an activity log, the settings and the policy. It is pre-release: it ships with a shadow mode that only logs, and a live demo with invented data."
         },
         {
+          "type": "heading",
+          "level": 2,
+          "text": "The classifier"
+        },
+        {
+          "type": "paragraph",
+          "text": "Messages are judged by a local model run with Ollama, so there is no per-message cost and nothing leaves the machine. Each verdict is structured JSON: who the message targets, whether it is mutual banter and whether it is flagged. Banter, where the user teased first and the contact answered in kind, is let through, except for real threats, sexually explicit messages and pressure after a refusal. The last few messages are sent as context."
+        },
+        {
+          "type": "paragraph",
+          "text": "The classifier fails open: any error, timeout or malformed answer leaves the message alone rather than guessing. The rules are written in plain language by the operator, and small models follow concrete criteria much better than abstract ones, so naming the topics and the words to look for works, and describing a feeling does not."
+        },
+        {
+          "type": "heading",
+          "level": 2,
+          "text": "Strikes and blocks"
+        },
+        {
+          "type": "paragraph",
+          "text": "A flagged message is deleted, answered with a warning and recorded as a strike, once per incident. Reaching the threshold blocks the contact for a set time, plus or minus some random jitter so there is no detectable rhythm, then unblocks them automatically. Strikes decay with time, not with good behaviour. Each contact can be paused, unblocked early or given a stricter threshold, from the web app rather than through chat commands."
+        },
+        {
+          "type": "paragraph",
+          "text": "Repeated unanswered calls are tracked separately: past a threshold, the call is rejected with a warning, and a call strike counts toward a block of its own."
+        },
+        {
+          "type": "heading",
+          "level": 2,
+          "text": "Warnings"
+        },
+        {
+          "type": "paragraph",
+          "text": "The warning says plainly that the message was removed, that an automated system and not the account owner is watching the chat, and how many repeats remain before a block. It is sent from hand-written templates in English, French, Spanish and Polish, and an experimental option has a second model write it in the contact's own language."
+        },
+        {
+          "type": "heading",
+          "level": 2,
+          "text": "Running it"
+        },
+        {
+          "type": "paragraph",
+          "text": "It is meant to live on a small always-on machine, with Docker Compose, a two-core CPU-only box being the reference target. State is kept in SQLite, with a full audit log of messages and verdicts, which is the only record once a message is deleted. The control app is a React frontend served by the app, with live updates, and access can be restricted to one identity with Tailscale."
+        },
+        {
           "type": "link",
           "title": "Source",
           "url": "https://github.com/BSoDium/WhatsApp-content-moderation"
@@ -6690,6 +7476,12 @@
       "summary": "A review of the techniques used to render caustics: texture projections, ray tracing, volumetric lighting, and real-time simulation as opposed to precomputed rendering.",
       "date": "2022-05",
       "url": "https://www.researchgate.net/publication/360604514_Rendering_techniques_applied_to_caustics",
+      "cover": {
+        "src": "/media/article/rendering-techniques-applied-to-caustics/cover.69095ece.webp",
+        "alt": "A glass of water on a wooden table in black and white, casting a bright cone of light, a caustic, across its shadow.",
+        "width": 573,
+        "height": 430
+      },
       "tags": [
         "rendering",
         "research"
@@ -6860,6 +7652,12 @@
       "summary": "A comparison of the hardware, tracking systems and software behind virtual reality headsets, summarising the available literature.",
       "date": "2022-10",
       "url": "https://www.researchgate.net/publication/364840600_Virtual_reality_technologies",
+      "cover": {
+        "src": "/media/article/virtual-reality-technologies/cover.6d92f413.webp",
+        "alt": "An exploded diagram of an Oculus Rift headset labelling its cover, circuit board, display, lenses and foam padding, with the view each eye receives.",
+        "width": 745,
+        "height": 885
+      },
       "tags": [
         "vr",
         "research"
