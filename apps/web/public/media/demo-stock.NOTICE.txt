@@ -1,4 +1,4 @@
-The photographs of the demo content (`media/demo/stock-*.jpg`, used as the covers of three made-up software entries in
+The photographs of the demo content (`media/demo/stock-*.jpg`, used as the covers of made-up software entries and articles in
 packages/published/fixtures/demo.json) are royalty-free stock images from Pexels (https://www.pexels.com), used under the
 Pexels licence (https://www.pexels.com/license/: free for personal and commercial use, no attribution required; credited here
 anyway). Each was cropped to 1200 x 630, resized and re-encoded as JPEG without metadata. They are demo content only: the real
@@ -10,3 +10,9 @@ stock-laptop-code.jpg  "Programming Code on Laptop Screen", Nemuel Sereti, on Pe
                        https://www.pexels.com/photo/programming-code-on-laptop-screen-6424590/
 stock-phone-map.jpg    "Person Holding a Phone With Map on the Screen", Yash Bhavsar, on Pexels
                        https://www.pexels.com/photo/person-holding-a-phone-with-map-on-the-screen-14629408/
+stock-night-platform.jpg      "Railway Station at Night", afdhika ingga, on Pexels
+                              https://www.pexels.com/photo/railway-station-at-night-17959149/
+stock-cliff-bus.jpg           "Bus Driving on a Narrow Cliff Road", Ira, on Pexels
+                              https://www.pexels.com/photo/sea-road-landscape-beach-10456256/
+stock-altiplano-lake.jpg      "Scenic View of Uyuni Salt Flats with Snow-capped Mountains", Willian Justen de Vasconcellos, on Pexels
+                              https://www.pexels.com/photo/scenic-view-of-uyuni-salt-flats-with-snow-capped-mountains-30929523/

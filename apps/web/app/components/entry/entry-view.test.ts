@@ -29,7 +29,7 @@ describe("EntryView", () => {
   });
   it("uses the authored cover when there is one", () => {
     const html = render("article", "demo-article", "panel");
-    expect(html).toContain('src="/media/demo/cover-night-trains.svg"');
+    expect(html).toContain('src="/media/demo/stock-night-platform.jpg"');
     expect(html).toContain('width="1200"');
   });
   it("crops a banner cover to 1.91:1, and keeps an artwork's picture whole: its own proportions, never taller than 80 % of the window", () => {

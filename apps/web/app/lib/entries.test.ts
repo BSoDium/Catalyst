@@ -65,7 +65,7 @@ describe("listEntries", () => {
       title: "Night trains through the Balkans",
       date: "2026-03-14",
       tags: ["night-trains", "balkans", "rail", "slow-travel", "field-notes"],
-      cover: { src: "/media/demo/cover-night-trains.svg", width: 1200, height: 630 },
+      cover: { src: "/media/demo/stock-night-platform.jpg", width: 1200, height: 630 },
       meta: [
         { label: "Publication", value: "Marginalia, issue 12" },
         { label: "Reading time", value: "6 min" },

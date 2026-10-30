@@ -727,9 +727,6 @@ const SMALL = [480, 300];
  */
 export const MEDIA = [
   // covers
-  { name: "cover-night-trains", size: COVER, motif: "rails", plate: "dark", opts: {}, alt: "Two railway tracks running to a single lamp on a hazy horizon, drawn in pixels and dithered grey on black, with one cyan signal light" },
-  { name: "cover-morocco-coast", size: COVER, motif: "coast", plate: "light", opts: { dir: 1 }, alt: "A dashed road on a cliff above the sea, wave lines receding to a dithered sky, a small cyan bus on the road" },
-  { name: "cover-altiplano", size: COVER, motif: "contours", plate: "dark", opts: {}, alt: "Six layers of stair-stepped mountain ridges fading into dithered haze under a small cyan sun" },
   { name: "cover-signal-study", size: COVER, motif: "riso", plate: "light", opts: { rotate: 14 }, alt: "Two overlapping halftone discs, one black and one cyan, with registration marks and a crop frame like a printed proof" },
   { name: "cover-sediment", size: COVER, motif: "strata", plate: "dark", opts: { lines: 26, signalLine: 17 }, alt: "Stacked wavy contour lines, each hiding the one behind, with a single cyan line in the lower half" },
   { name: "cover-monsoon-index", size: COVER, motif: "monsoon", plate: "dark", opts: { drops: 120 }, alt: "Rooftops under a dithered storm sky, thin diagonal rain streaks and ripples on a wet street" },
@@ -796,6 +793,30 @@ export const STOCK = [
     alt: "A hand holding a phone that shows a map app: a route in orange across the waterways of a city, with a blurred underground station behind it",
     credit: "Yash Bhavsar, on Pexels",
     source: "https://www.pexels.com/photo/person-holding-a-phone-with-map-on-the-screen-14629408/",
+  },
+  {
+    name: "stock-night-platform",
+    file: "stock-night-platform.jpg",
+    size: COVER,
+    alt: "A railway platform at night under a steel roof, lit by rows of lamps, the tracks running away into the dark and a crowd waiting on the far platform",
+    credit: "afdhika ingga, on Pexels",
+    source: "https://www.pexels.com/photo/railway-station-at-night-17959149/",
+  },
+  {
+    name: "stock-cliff-bus",
+    file: "stock-cliff-bus.jpg",
+    size: COVER,
+    alt: "A yellow and red bus at a bend of a narrow road cut into a rocky mountainside above the sea, under a sky of white clouds",
+    credit: "Ira, on Pexels",
+    source: "https://www.pexels.com/photo/sea-road-landscape-beach-10456256/",
+  },
+  {
+    name: "stock-altiplano-lake",
+    file: "stock-altiplano-lake.jpg",
+    size: COVER,
+    alt: "Three four-wheel-drive cars parked on a pale salt shore of a high lake that mirrors snow-capped mountains and white clouds under a deep blue sky",
+    credit: "Willian Justen de Vasconcellos, on Pexels",
+    source: "https://www.pexels.com/photo/scenic-view-of-uyuni-salt-flats-with-snow-capped-mountains-30929523/",
   },
 ];
 
