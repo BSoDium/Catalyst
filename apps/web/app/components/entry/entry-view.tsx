@@ -378,12 +378,16 @@ export function coverFit(kind: EntryDetail["kind"]): string {
 function Cover({ entry }: { entry: EntryDetail }) {
   const src = entry.cover ? safeMediaSrc(entry.cover.src) : null;
   if (!(entry.cover && src) && entry.kind !== "artwork") return null;
+  // The work itself (an artwork, a photograph) is the stage: the panel's full width, and, where it would be taller than the window allows, a blurred, enlarged copy of it fills the sides.
+  const stage = !!(entry.cover && src) && (entry.kind === "artwork" || entry.kind === "photograph");
   return (
-    <figure data-slot="entry-cover" className="entry-cover entry-figure m-0 min-w-0">
-      <div className="overflow-hidden">
+    <figure data-slot="entry-cover" className={cn("entry-cover entry-figure min-w-0", stage ? "entry-stage" : "m-0")}>
+      <div className="relative isolate overflow-hidden">
         {entry.cover && src ? (
-          <SensitiveImage>
+          <SensitiveImage className="relative">
             <img src={src} alt={entry.cover.alt} width={entry.cover.width} height={entry.cover.height} decoding="async" className={cn("mx-auto block w-full", coverFit(entry.kind))} />
+            {/* (inside the sensitive frame, after the picture: it is blurred and veiled with it) */}
+            {stage && <img src={src} alt="" aria-hidden="true" decoding="async" className="entry-stage-backdrop" />}
           </SensitiveImage>
         ) : (
           <CoverArt seed={entry.slug} kind={entry.kind} cols={96} rows={50} />

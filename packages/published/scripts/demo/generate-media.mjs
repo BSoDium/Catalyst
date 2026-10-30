@@ -715,9 +715,6 @@ const MOTIFS = { rails, contours, coast, labels, globe, strata, riso, platform, 
 const COVER = [1200, 630];
 const FIGURE = [960, 600];
 /** Demo photographs: a 3:2 landscape, a 4:5 portrait and a square (the shapes a photo list has to lay out). */
-const PHOTO_LANDSCAPE = [1200, 800];
-const PHOTO_PORTRAIT = [960, 1200];
-const PHOTO_SQUARE = [1200, 1200];
 /** A small diagram: narrower than any reading column, so the figures' layout is seen not stretching a picture past its own width. */
 const SMALL = [480, 300];
 
@@ -727,17 +724,10 @@ const SMALL = [480, 300];
  */
 export const MEDIA = [
   // covers
-  { name: "cover-signal-study", size: COVER, motif: "riso", plate: "light", opts: { rotate: 14 }, alt: "Two overlapping halftone discs, one black and one cyan, with registration marks and a crop frame like a printed proof" },
-  { name: "cover-sediment", size: COVER, motif: "strata", plate: "dark", opts: { lines: 26, signalLine: 17 }, alt: "Stacked wavy contour lines, each hiding the one behind, with a single cyan line in the lower half" },
-  { name: "cover-monsoon-index", size: COVER, motif: "monsoon", plate: "dark", opts: { drops: 120 }, alt: "Rooftops under a dithered storm sky, thin diagonal rain streaks and ripples on a wet street" },
   { name: "cover-layover", size: COVER, motif: "verse", plate: "dark", opts: { stanzas: 5, drift: 0.04 }, alt: "Short white lines grouped in stanzas, one of them cyan, beside a dithered shadow at the right edge" },
   { name: "cover-voie-b", size: COVER, motif: "verse", plate: "light", opts: { stanzas: 4, drift: 0.1 }, alt: "Short black lines grouped in four stanzas on pale paper, one line in cyan" },
   { name: "cover-figure-study", size: COVER, motif: "nested", plate: "dark", opts: { rects: 18 }, alt: "Rectangles nested one inside the next, each shifted a little from the last, in dithered grey on black with one cyan frame" },
   // photographs (stand-ins: the real ones are photos, never SVG)
-  { name: "photo-last-light", size: PHOTO_LANDSCAPE, motif: "contours", plate: "dark", opts: { layers: 7 }, alt: "Seven layers of stair-stepped ridges fading into dithered haze under a small cyan sun, a stand-in for a landscape photograph" },
-  { name: "photo-rain-gate", size: PHOTO_PORTRAIT, motif: "monsoon", plate: "dark", opts: { drops: 140 }, alt: "Rooftops under a dithered storm sky with thin diagonal rain streaks, a stand-in for a portrait-format photograph" },
-  { name: "photo-sea-wall", size: PHOTO_LANDSCAPE, motif: "coast", plate: "light", opts: { dir: -1 }, alt: "A dashed road on a cliff above the sea on pale paper, a stand-in for a landscape photograph" },
-  { name: "photo-platform-square", size: PHOTO_SQUARE, motif: "platform", plate: "light", opts: { lamps: 9 }, alt: "An empty platform in perspective with a pair of lamp posts per bay and one cyan lamp, a stand-in for a square photograph" },
   // figures
   { name: "fig-night-trains-board", size: FIGURE, motif: "timetable", plate: "light", opts: { rowsN: 13 }, alt: "A departures board reduced to bars and cells, several rows outlined in cyan where a time changed" },
   { name: "fig-night-trains-ticket", size: SMALL, motif: "timetable", plate: "light", opts: { rowsN: 7 }, alt: "A small timetable reduced to bars and cells, a few rows outlined in cyan" },
@@ -817,6 +807,62 @@ export const STOCK = [
     alt: "Three four-wheel-drive cars parked on a pale salt shore of a high lake that mirrors snow-capped mountains and white clouds under a deep blue sky",
     credit: "Willian Justen de Vasconcellos, on Pexels",
     source: "https://www.pexels.com/photo/scenic-view-of-uyuni-salt-flats-with-snow-capped-mountains-30929523/",
+  },
+  {
+    name: "stock-art-yellow-red-blue",
+    file: "stock-art-yellow-red-blue.jpg",
+    size: [1245, 801],
+    alt: "A painting of floating coloured shapes on a pale ground: a yellow block and a red wedge at left, a violet patch of overlapping transparent planes at right, a black wavy line and a thin grid of straight lines drawn across them",
+    credit: "Wassily Kandinsky, \"Yellow-Red-Blue\" (1925), public domain, via Wikimedia Commons",
+    source: "https://commons.wikimedia.org/wiki/File:Kandinsky_-_Jaune_Rouge_Bleu.jpg",
+  },
+  {
+    name: "stock-art-great-wave",
+    file: "stock-art-great-wave.jpg",
+    size: [960, 1067],
+    alt: "A woodblock print of a huge wave in deep blue and white, its crest breaking into claw-like foam above two long boats, on a cream sky",
+    credit: "Katsushika Hokusai, \"The Great Wave off Kanagawa\" (c. 1831), public domain, via Wikimedia Commons (British Museum scan)",
+    source: "https://commons.wikimedia.org/wiki/File:Great_Wave_Hokusai_BM_1906.1220.0.533_n02.jpg",
+  },
+  {
+    name: "stock-art-falls",
+    file: "stock-art-falls.jpg",
+    size: [800, 1128],
+    alt: "A woodblock print of a tall waterfall pouring down a dark gorge between mossy yellow-green cliffs, three travellers resting on a ledge at left, a swirl of blue water at the top",
+    credit: "Katsushika Hokusai, \"The Amida Falls\" (c. 1833), public domain, via Wikimedia Commons (LACMA scan)",
+    source: "https://commons.wikimedia.org/wiki/File:Amida_Falls_on_the_Kiso_Highway_LACMA_M.2011.135.6.jpg",
+  },
+  {
+    name: "stock-photo-ridges",
+    file: "stock-photo-ridges.jpg",
+    size: [1200, 800],
+    alt: "Layered forested ridges in silhouette, each paler than the one in front, under an orange evening sky",
+    credit: "Brady Knoll, on Pexels",
+    source: "https://www.pexels.com/photo/mountain-range-during-golden-hour-2812185/",
+  },
+  {
+    name: "stock-photo-archway-rain",
+    file: "stock-photo-archway-rain.jpg",
+    size: [800, 1000],
+    alt: "Looking through a dark stone archway at a rain puddle on gravel and a wooden walkway beyond, under a grey sky",
+    credit: "Ahmet Kayra, on Pexels",
+    source: "https://www.pexels.com/photo/stone-archway-with-rain-puddle-outdoors-29651841/",
+  },
+  {
+    name: "stock-photo-breakwater",
+    file: "stock-photo-breakwater.jpg",
+    size: [1200, 800],
+    alt: "Waves breaking along a breakwater of concrete blocks and a stone quay, a hazy mountain on the horizon under a pale blue sky",
+    credit: "lange x, on Pexels",
+    source: "https://www.pexels.com/photo/coastal-breakwater-and-waves-with-mountain-view-32471563/",
+  },
+  {
+    name: "stock-photo-platform-sign",
+    file: "stock-photo-platform-sign.jpg",
+    size: [800, 800],
+    alt: "Looking up along a station platform: the underside of its roof, overhead wires and a green diamond sign with a white number, a street of low buildings beyond the tracks",
+    credit: "Zonghao Feng, on Pexels",
+    source: "https://www.pexels.com/photo/empty-urban-train-station-platform-in-daylight-28751680/",
   },
 ];
 

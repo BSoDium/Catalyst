@@ -1,4 +1,4 @@
-The photographs of the demo content (`media/demo/stock-*.jpg`, used as the covers of made-up software entries and articles in
+The photographs of the demo content (`media/demo/stock-*.jpg`, used as the covers of made-up software entries, articles, artworks and photographs in
 packages/published/fixtures/demo.json) are royalty-free stock images from Pexels (https://www.pexels.com), used under the
 Pexels licence (https://www.pexels.com/license/: free for personal and commercial use, no attribution required; credited here
 anyway). Each was cropped to 1200 x 630, resized and re-encoded as JPEG without metadata. They are demo content only: the real
@@ -16,3 +16,20 @@ stock-cliff-bus.jpg           "Bus Driving on a Narrow Cliff Road", Ira, on Pexe
                               https://www.pexels.com/photo/sea-road-landscape-beach-10456256/
 stock-altiplano-lake.jpg      "Scenic View of Uyuni Salt Flats with Snow-capped Mountains", Willian Justen de Vasconcellos, on Pexels
                               https://www.pexels.com/photo/scenic-view-of-uyuni-salt-flats-with-snow-capped-mountains-30929523/
+
+Artworks (public-domain paintings and prints, from Wikimedia Commons; the author died more than 70 years ago):
+stock-art-yellow-red-blue.jpg   Wassily Kandinsky, "Yellow-Red-Blue" (1925)
+                                https://commons.wikimedia.org/wiki/File:Kandinsky_-_Jaune_Rouge_Bleu.jpg
+stock-art-great-wave.jpg        Katsushika Hokusai, "The Great Wave off Kanagawa" (c. 1831), British Museum scan
+                                https://commons.wikimedia.org/wiki/File:Great_Wave_Hokusai_BM_1906.1220.0.533_n02.jpg
+stock-art-falls.jpg             Katsushika Hokusai, "The Amida Falls" (c. 1833), LACMA scan, cropped to the print
+                                https://commons.wikimedia.org/wiki/File:Amida_Falls_on_the_Kiso_Highway_LACMA_M.2011.135.6.jpg
+Photographs (Pexels):
+stock-photo-ridges.jpg          "Mountain Range during Golden Hour", Brady Knoll, on Pexels
+                                https://www.pexels.com/photo/mountain-range-during-golden-hour-2812185/
+stock-photo-archway-rain.jpg    "Stone Archway with Rain Puddle Outdoors", Ahmet Kayra, on Pexels
+                                https://www.pexels.com/photo/stone-archway-with-rain-puddle-outdoors-29651841/
+stock-photo-breakwater.jpg      "Coastal Breakwater and Waves with Mountain View", lange x, on Pexels
+                                https://www.pexels.com/photo/coastal-breakwater-and-waves-with-mountain-view-32471563/
+stock-photo-platform-sign.jpg   "Empty Urban Train Station Platform in Daylight", Zonghao Feng, on Pexels
+                                https://www.pexels.com/photo/empty-urban-train-station-platform-in-daylight-28751680/

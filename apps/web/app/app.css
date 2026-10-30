@@ -2230,6 +2230,27 @@
     line-height: 1.08;
   }
 
+  /*
+   * The stage of an artwork's or a photograph's picture (owner, 2026-10-30; an experiment): the work is as wide as the panel (it bleeds past the entry's gutters in the panel) and, where its own proportions would make it
+   * taller than 80 % of the window, the picture is shown whole and a blurred, enlarged copy of it (`entry-stage-backdrop`, decorative: no alt) fills the sides, so the frame is the panel's width whatever the work.
+   */
+  .entry:not([data-layout="full"]) .entry-stage {
+    margin-inline: calc(-1 * var(--entry-gutter, 1.5rem));
+  }
+
+  .entry-stage-backdrop {
+    position: absolute;
+    inset: -3rem;
+    width: calc(100% + 6rem);
+    height: calc(100% + 6rem);
+    max-width: none;
+    object-fit: cover;
+    filter: blur(36px) saturate(0.9);
+    opacity: 0.22;
+    z-index: -1;
+    pointer-events: none;
+  }
+
   /* The cover, and the images of an artwork or a poem: the image and a mono caption (no rule over it: owner, 2026-10-30, "too many dividers and lines": the running head's is the one). */
   .entry-figure {
     padding-top: 0.25rem;
@@ -3795,6 +3816,11 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   h2,
   h3 {
     break-after: avoid;
+  }
+
+  /* The stage's blurred backdrop is not printed. */
+  .entry-stage-backdrop {
+    display: none;
   }
 
   /* Mature content stays blurred on paper, revealed or not, and says so: the control is not printed. */
