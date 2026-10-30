@@ -4,7 +4,7 @@ What may be published under `/media/` and how a photograph gets there. The contr
 
 ## Demo media
 
-The demo fixture's pictures are generated SVGs (`packages/published/scripts/demo/generate-media.mjs`, committed under `apps/web/public/media/demo/`, at most 12 KiB each). The demo photographs (`photo-*.svg`) are stand-ins with the proportions a photo list has to lay out: 3:2, 4:5 and 1:1. **Real content never uses SVG**, and no real photograph is ever committed to this repo as a demo.
+The demo fixture's pictures are generated SVGs (`packages/published/scripts/demo/generate-media.mjs`, committed under `apps/web/public/media/demo/`, at most 12 KiB each). The demo photographs (`photo-*.svg`) are stand-ins with the proportions a photo list has to lay out: 3:2, 4:5 and 1:1. **Real content never uses SVG**, and no photograph of the owner's is ever committed to this repo as a demo. The one exception is a few royalty-free STOCK images (owner, 2026-10-30: "copyright-free images from Pexels"), the covers of three made-up software entries (`stock-*.jpg`): Pexels licence, credited in `apps/web/public/media/demo-stock.NOTICE.txt` and in the generator's `STOCK`, cropped to 1200 x 630 and stripped of metadata; the generator neither writes nor checks them, a test holds that they are on disk, credited and small.
 
 ## Photographs
 

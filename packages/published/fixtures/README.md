@@ -35,7 +35,7 @@ content with real entries is all it takes to go from demo to real.
 
 ## Media
 
-Covers (1200x630) and figures (960x600) are abstract pixel and dither SVGs under `apps/web/public/media/demo/`, written by
+Three software covers (1200x630) are royalty-free stock photographs from Pexels (`stock-*.jpg`, credited in `apps/web/public/media/demo-stock.NOTICE.txt`). The other covers (1200x630) and the figures (960x600) are abstract pixel and dither SVGs under `apps/web/public/media/demo/`, written by
 [`scripts/demo/generate-media.mjs`](../scripts/demo/generate-media.mjs) (pure node, seeded, deterministic, each file under 12 KB; the
 alt text and sizes the fixture uses live in its `MEDIA` table). Real content never uses SVG.
 

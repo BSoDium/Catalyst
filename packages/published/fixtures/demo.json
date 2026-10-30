@@ -118,7 +118,7 @@
       "summary": "A tiny globe renderer that draws the Earth as dithered pixels: one fragment shader, no textures, and an API small enough to read in an afternoon.",
       "date": "2026-04",
       "url": "https://example.org/pixel-globe",
-      "cover": { "src": "/media/demo/cover-pixel-globe.svg", "alt": "A pixel-art globe lit from the upper left, dithered continents, a faint orbit ring and one cyan location marker", "width": 1200, "height": 630 },
+      "cover": { "src": "/media/demo/stock-earth.jpg", "alt": "The Earth seen from space, North America in daylight under swirls of cloud, the night side lit by a few city lights at the edge of the dark", "width": 1200, "height": 630 },
       "tags": ["webgl", "pixel-art", "globe", "typescript", "glsl", "open-source"],
       "meta": [
         { "label": "Stack", "value": "TypeScript, WebGL 2, GLSL" },
@@ -151,6 +151,7 @@
       "summary": "A command-line tool that compares two public transit feeds and says, in plain language, which trains were added, retimed or quietly removed.",
       "date": "2025-11",
       "url": "https://example.org/timetable-diff",
+      "cover": { "src": "/media/demo/stock-laptop-code.jpg", "alt": "A laptop in a dark room with blue lights, its screen showing a code editor with a Python script and an empty terminal pane", "width": 1200, "height": 630 },
       "tags": ["typescript", "cli", "gtfs", "rail", "tooling"],
       "meta": [
         { "label": "Stack", "value": "TypeScript, Node.js" },
@@ -180,7 +181,7 @@
       "summary": "A small engine, written in Rust and compiled to WebAssembly, that places thousands of map labels without overlaps and without making the map flicker.",
       "date": "2023-02",
       "url": "https://example.org/collide",
-      "cover": { "src": "/media/demo/cover-collide.svg", "alt": "Rectangular map labels with leader lines to anchor points, a few overlapping pairs outlined in cyan", "width": 1200, "height": 630 },
+      "cover": { "src": "/media/demo/stock-phone-map.jpg", "alt": "A hand holding a phone that shows a map app: a route in orange across the waterways of a city, with a blurred underground station behind it", "width": 1200, "height": 630 },
       "tags": ["cartography", "rust", "webassembly", "labels", "algorithms"],
       "meta": [
         { "label": "Stack", "value": "Rust, WebAssembly, TypeScript" },
