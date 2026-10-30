@@ -1996,7 +1996,7 @@
     justify-content: flex-end;
     /* (a clear zone of the picture at the top whatever the size of the type below it: a full screen's headline is a hundred px or more, and the text's layer would otherwise cover the whole of the picture) */
     padding-top: var(--cover-clear);
-    padding-bottom: 1.75rem;
+    padding-bottom: var(--cover-foot, 1.75rem);
   }
 
   /*
@@ -2007,7 +2007,7 @@
     content: "";
     position: absolute;
     z-index: -1;
-    inset: calc(-1 * var(--cover-reach)) calc(-1 * var(--cover-bleed)) -1.75rem;
+    inset: calc(-1 * var(--cover-reach)) calc(-1 * var(--cover-bleed)) calc(-1 * var(--cover-foot, 1.75rem));
     pointer-events: none;
     -webkit-backdrop-filter: blur(7px);
     backdrop-filter: blur(7px);
@@ -2040,8 +2040,8 @@
 
   .entry[data-layout="full"] {
     --cover-bleed: 1rem;
-    --cover-reach: 32rem;
-    --cover-clear: 32rem;
+    --cover-reach: clamp(10rem, 26vh, 22rem);
+    --cover-clear: clamp(10rem, 26vh, 22rem);
   }
 
   .entry[data-layout="full"] .entry-hero[data-tone="dim"] {
@@ -2083,6 +2083,8 @@
 
   /* A poem's picture reaches under the first lines of the poem (owner, 2026-10-30): the head's box ends 7 rem into the text, which lies over the foot of the picture, where the page's colour is 92 % or more. */
   .entry[data-kind="poem"] .entry-hero {
+    /* (the title stays above the poem: the head's foot is the 7 rem the poem lies over, plus the usual space) */
+    --cover-foot: 8.75rem;
     margin-bottom: -7rem;
   }
 
@@ -5926,5 +5928,3 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     content: none;
   }
 }
-
-
