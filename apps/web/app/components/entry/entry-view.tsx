@@ -75,8 +75,10 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
   const poem = entry.kind === "poem";
   // Software has its own order (owner, 2026-10-30, "actions first"): what you can DO right under the summary, then ONE block of what it is, the picture, the text, and what it is linked to at the foot.
   const project = entry.kind === "project";
+  // Every kind but the poem (its own board) has the same order (owner, 2026-10-30, "the redesign with all the other entry types"): the running head with the date, the headline and the summary, the actions, ONE block of facts, the tags as chips, the text, the links at the foot.
+  const structured = !poem;
   // A software entry's cover is the BACKDROP of its head (owner, 2026-10-30): behind the running head, the title and the summary, under a gradient of the page's colour that keeps them readable. A mature one stays a figure, with its control.
-  const heroSrc = project && entry.cover && !isSensitive(entry) ? safeMediaSrc(entry.cover.src) : null;
+  const heroSrc = (project || entry.kind === "article") && entry.cover && !isSensitive(entry) ? safeMediaSrc(entry.cover.src) : null;
   // A photograph is the page: its picture comes straight after the title, before the dateline and the marginalia.
   const photo = entry.kind === "photograph";
   const { status, facts } = splitMeta(entry.meta);
@@ -107,8 +109,8 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
   const repoButton = repoHref && repoHref !== external ? repoHref : null;
   const rows: { key: string; label: string; value: string }[] = [
     // (software: the date is in the running head and the links are at the foot of the page, so neither is a row)
-    ...(!poem && !project && written ? [{ key: "written", label: "Written", value: written }] : []),
-    ...(!poem && !project && linked ? [{ key: "linked", label: "Linked", value: linked }] : []),
+    ...(!poem && !structured && written ? [{ key: "written", label: "Written", value: written }] : []),
+    ...(!poem && !structured && linked ? [{ key: "linked", label: "Linked", value: linked }] : []),
     ...facts.filter((f) => !(repoHref && f === repoFact)).map((f) => ({ key: `fact-${f.label}`, label: f.label, value: f.value })),
   ];
 
@@ -129,7 +131,7 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
     </Link>
   );
 
-  const actions = project && (external || repoButton) && (
+  const actions = structured && (external || repoButton) && (
     <div data-slot="entry-actions" className="mt-7 flex flex-wrap items-center gap-3 print:hidden">
       {external && (
         <Button asChild variant="primary">
@@ -159,28 +161,28 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
   const marginEl = (
         <div data-slot="entry-margin" className="entry-margin">
           {/* (a block title and what it heads are one gap apart, 0.75 rem, in "At a glance" and in "Tags" alike) */}
-          <div className={project ? "flex flex-col gap-3" : "contents"}>
-          {project && (
+          <div className={structured ? "flex flex-col gap-3" : "contents"}>
+          {structured && (
             <h2 id="entry-glance" className="m-0 font-[family-name:var(--font-display)] text-[1.375rem] leading-tight font-bold tracking-tight text-foreground">
               At a glance
             </h2>
           )}
           {poem ? (
             <PoemMargin entry={entry} date={date} globeLink={globeLink} skip={skip} copy={copy} />
-          ) : project ? null : (
+          ) : structured ? null : (
             (entry.places.length > 0 || entry.country) && <PlacesSection entry={entry} />
           )}
-          {(rows.length > 0 || (project && (entry.places.length > 0 || entry.country))) && (
-            <dl data-slot="entry-details" className={cn("m-0", poem && "mt-2", project && "mt-0")}>
+          {(rows.length > 0 || (structured && (entry.places.length > 0 || entry.country))) && (
+            <dl data-slot="entry-details" className={cn("m-0", poem && "mt-2", structured && "mt-0")}>
               {rows.map((row) => (
-                <div key={row.key} data-slot="entry-fact" className={cn("min-w-0", project && "-mx-3 px-3 py-2 odd:bg-foreground/5", project && !full && "grid grid-cols-[7.5rem_minmax(0,1fr)] items-baseline gap-x-4")}>
+                <div key={row.key} data-slot="entry-fact" className={cn("min-w-0", structured && "-mx-3 px-3 py-2 odd:bg-foreground/5", structured && !full && "grid grid-cols-[7.5rem_minmax(0,1fr)] items-baseline gap-x-4")}>
                   <dt className="type-meta text-foreground">{row.label}</dt>
                   <dd className="m-0 [overflow-wrap:anywhere]">{row.value}</dd>
                 </div>
               ))}
-              {project && (entry.places.length > 0 || entry.country) && (
+              {structured && (entry.places.length > 0 || entry.country) && (
                 <div data-slot="entry-fact" className={cn("-mx-3 min-w-0 px-3 py-2 odd:bg-foreground/5", !full && "grid grid-cols-[7.5rem_minmax(0,1fr)] items-baseline gap-x-4")}>
-                  <dt className="type-meta text-foreground">Made in</dt>
+                  <dt className="type-meta text-foreground">{PLACES_LABEL[entry.kind]}</dt>
                   <dd className="m-0 [overflow-wrap:anywhere]">
                     <ProjectPlaces entry={entry} globeLink={globeTarget} />
                   </dd>
@@ -190,9 +192,9 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
           )}
           </div>
           {entry.tags.length > 0 && (
-            <div data-slot="entry-tags" className={cn(project && "mt-5 flex flex-col gap-3")}>
+            <div data-slot="entry-tags" className={cn(structured && "mt-5 flex flex-col gap-3")}>
               {/* (a label of their own, apart from the table: under it they read as one more row) */}
-              {project && (
+              {structured && (
                 <h2 id="entry-tags" className="m-0 font-[family-name:var(--font-display)] text-[1.375rem] leading-tight font-bold tracking-tight text-foreground">
                   Tags
                 </h2>
@@ -204,7 +206,7 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
               />
             </div>
           )}
-          {external && !project && (
+          {external && !structured && (
             <Button asChild variant="primary" className="w-full">
               <a href={external} target="_blank" rel="noopener noreferrer">
                 <span className="truncate">Open {displayHost(external)}</span>
@@ -224,6 +226,7 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
       data-surface="reading"
       data-layout={layout}
       data-kind={entry.kind}
+      data-structured={structured ? "" : undefined}
       data-sensitive={isSensitive(entry) ? "" : undefined}
       className={cn("entry mx-auto w-full min-w-0", full ? "max-w-[90rem] px-4 pt-3 pb-20 md:px-14" : "px-6 pt-2 pb-10")}
     >
@@ -272,7 +275,7 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
                   <span data-slot="entry-place">{names}</span>
                 </>
               )}
-              {project && date && (
+              {structured && date && (
                 <>
                   <span aria-hidden="true"> &middot; </span>
                   <time dateTime={date.dateTime} data-slot="entry-date">
@@ -312,7 +315,7 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
 
         {photo && <Cover entry={entry} />}
 
-        {!poem && !project && (
+        {!structured && (
           <div data-slot="entry-dateline" className="entry-dateline flex flex-wrap items-center gap-x-6 gap-y-1 md:gap-x-12">
             {date && (
               <time dateTime={date.dateTime} data-slot="entry-date">
@@ -337,7 +340,7 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
         {poem && <Cover entry={entry} />}
       </div>
 
-      {project && (linked || skip) && (
+      {structured && (linked || skip) && (
         <p data-slot="entry-linked" className="type-meta mt-12 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 text-muted-foreground print:hidden">
           <span>{linked ? `Linked to ${linked}` : null}</span>
           {skip}
@@ -487,6 +490,9 @@ export function repositoryHref(value: string): string | null {
 }
 
 /** A software entry's places in its "Made in" row: the names as links, and the way to the globe. */
+/** What the places row of the facts block is called, by kind. */
+const PLACES_LABEL: Record<EntryDetail["kind"], string> = { project: "Made in", article: "Places", artwork: "Made in", photograph: "Taken in", poem: "Where" };
+
 function ProjectPlaces({ entry, globeLink }: { entry: EntryDetail; globeLink: { href: string; name: string } | null }) {
   return (
     <>

@@ -1979,11 +1979,11 @@
 
   /* A software entry's tags are chips, as the career page's (`.career-chips`): a faint tile each (owner, 2026-10-30: "make it obvious they are tags by adding a background"), no dots between them, no underline (the tile
      that reacts to the pointer says it is a link). The whole tile is the link: the padding is the link's. */
-  .entry[data-kind="project"] [data-slot="entry-tags"] .ds-tags {
+  .entry [data-slot="entry-tags"] .ds-tags {
     gap: 0.375rem;
   }
 
-  .entry[data-kind="project"] [data-slot="entry-tags"] .ds-tags > li {
+  .entry [data-slot="entry-tags"] .ds-tags > li {
     background: var(--accent);
     line-height: 1.6;
     transition:
@@ -1991,18 +1991,18 @@
       color var(--duration-fast) var(--ease-standard);
   }
 
-  .entry[data-kind="project"] [data-slot="entry-tags"] .ds-tags > li:not(:last-child)::after {
+  .entry [data-slot="entry-tags"] .ds-tags > li:not(:last-child)::after {
     content: none;
   }
 
-  .entry[data-kind="project"] [data-slot="entry-tags"] .ds-tags a {
+  .entry [data-slot="entry-tags"] .ds-tags a {
     display: inline-block;
     padding: 0.125rem 0.5rem;
     text-decoration: none;
   }
 
-  .entry[data-kind="project"] [data-slot="entry-tags"] .ds-tags > li:hover,
-  .entry[data-kind="project"] [data-slot="entry-tags"] .ds-tags > li:focus-within {
+  .entry [data-slot="entry-tags"] .ds-tags > li:hover,
+  .entry [data-slot="entry-tags"] .ds-tags > li:focus-within {
     background: color-mix(in srgb, var(--accent) 70%, var(--foreground) 30%);
     color: var(--foreground);
   }
@@ -2075,17 +2075,17 @@
   }
 
   /* A software entry's "at a glance" (owner, 2026-10-30): rows between hairlines, label then value (components/entry/entry-view.tsx); in the panel the label is beside its value, in the margin of a full screen over it. The label's own rule is the block's top. */
-  .entry[data-kind="project"] .entry-margin dl {
+  .entry[data-structured] .entry-margin dl {
     display: block;
     gap: 0;
   }
 
-  .entry[data-kind="project"] .entry-margin {
+  .entry[data-structured] .entry-margin {
     border-top: 0;
     padding-top: 0;
   }
 
-  .entry[data-kind="project"]:not([data-layout="full"]) .entry-margin {
+  .entry[data-structured]:not([data-layout="full"]) .entry-margin {
     gap: 0.75rem;
   }
 

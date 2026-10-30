@@ -7,7 +7,7 @@ import { getEntryDetail } from "~/lib/entries";
 import { coverFit, EntryView, repositoryHref } from "./entry-view";
 
 const demo = loadDemoProjection();
-const render = (kind: "article" | "poem" | "project" | "artwork", slug: string, layout: "panel" | "full", backTo?: { slug?: string; name: string; href: string; list?: boolean }) =>
+const render = (kind: "article" | "poem" | "project" | "artwork" | "photograph", slug: string, layout: "panel" | "full", backTo?: { slug?: string; name: string; href: string; list?: boolean }) =>
   renderToStaticMarkup(createElement(StaticRouter, { location: "/" }, createElement(EntryView, { entry: getEntryDetail(demo, kind, slug)!, layout, backTo })));
 
 describe("EntryView", () => {
@@ -33,8 +33,8 @@ describe("EntryView", () => {
     expect(html).toContain('width="1200"');
   });
   it("crops a banner cover to 1.91:1, and keeps an artwork's picture whole: its own proportions, never taller than 80 % of the window", () => {
-    const banner = render("article", "demo-article", "panel");
-    const bannerCover = banner.slice(banner.indexOf('data-slot="entry-cover"'), banner.indexOf('data-slot="entry-body"'));
+    const banner = render("poem", "demo-poem", "panel");
+    const bannerCover = banner.slice(banner.indexOf('data-slot="entry-cover"')); // (a poem's cover comes after its text)
     expect(bannerCover).toContain("aspect-[1.91/1]");
     expect(bannerCover).toContain("object-cover");
     const portrait = { ...getEntryDetail(demo, "artwork", "demo-artwork")!, cover: { src: "/media/demo/portrait.svg", alt: "A tall work", width: 800, height: 1200 } };
@@ -107,7 +107,7 @@ describe("EntryView", () => {
     const middle = render("poem", "citadel-rain", "panel");
     expect(middle).toContain('rel="prev"');
     expect(middle).toContain('rel="next"');
-    expect(render("article", "demo-article", "panel")).toContain('id="entry-places"');
+    expect(render("article", "demo-article", "panel")).toContain(">Places<");
   });
   it("ends a poem, an article and an artwork with the copyright notice (after the body, before keep reading), and software with none", () => {
     const text = (html: string) => (/data-slot="entry-copyright"[^>]*>([^<]*)</.exec(html)?.[1] ?? "").replace(/&#x27;/g, "'");
@@ -193,7 +193,7 @@ describe("EntryView", () => {
     });
     it("starts an article with the running head (the kicker: kind, places, reading time, over one hairline), the headline in the entry-title role and a standfirst", () => {
       const html = render("article", "demo-article", "full");
-      const order = ['data-slot="entry-meta"', "<h1", 'class="type-standfirst', 'data-slot="entry-dateline"', 'data-slot="entry-margin"', 'data-slot="entry-body"'].map((s) => html.indexOf(s));
+      const order = ['data-slot="entry-meta"', "<h1", 'class="type-standfirst', 'data-slot="entry-margin"', 'data-slot="entry-body"'].map((s) => html.indexOf(s));
       expect(order.every((n) => n >= 0)).toBe(true);
       expect([...order].sort((a, b) => a - b)).toEqual(order);
       expect(html).toMatch(/<h1[^>]*class="entry-title/);
@@ -211,19 +211,20 @@ describe("EntryView", () => {
       expect(html).toContain('>Collide<span class="entry-title-tail">, a label collision engine for maps</span></h1>');
       expect(render("article", "demo-article", "panel")).not.toContain("entry-title-tail");
     });
-    it("fills the marginalia from the data only: where, written (month and year), linked (counts), then the authored facts", () => {
+    it("fills the facts block from the data only: the places, the authored facts; the date is in the running head and the links at the foot", () => {
       const html = render("article", "demo-article", "full");
       const margin = html.slice(html.indexOf('data-slot="entry-margin"'), html.indexOf('data-slot="entry-body"'));
-      expect(margin).toContain(">Where<");
-      expect(margin).toContain(">Linked<");
-      expect(margin).toMatch(/4 places, \d+ entries/);
+      expect(margin).toContain(">At a glance<");
+      expect(margin).toContain(">Places<");
       expect(margin).toContain(">Publication<");
-      // the demo article authors a `Written` fact: the computed month and year yields to it
+      expect(margin).not.toContain(">Linked<");
+      // the authored `Written` fact stays a row of its own (its words are the author's)
       expect(margin.match(/>Written</g)?.length).toBe(1);
       expect(margin).toContain("On board, March 2026");
-      const noFact = { ...getEntryDetail(demo, "article", "demo-article")!, meta: [] };
-      const computed = renderToStaticMarkup(createElement(StaticRouter, { location: "/" }, createElement(EntryView, { entry: noFact, layout: "full" })));
-      expect(computed).toContain("March 2026");
+      // the links, counted, are at the foot (4 places, as many entries as there are)
+      expect(html).toMatch(/data-slot="entry-linked"[^>]*>(?:<!-- -->)?<span>Linked to (?:<!-- -->)?4 places, \d+ entries/);
+      // and the date is in the running head
+      expect(html.indexOf('data-slot="entry-date"')).toBeLessThan(html.indexOf("<h1"));
     });
     it("says a number of related entries only when the list is not capped", () => {
       const entry = getEntryDetail(demo, "article", "demo-article")!;
@@ -351,10 +352,20 @@ describe("a software entry's layout (actions first)", () => {
     expect(html).toContain('data-slot="entry-linked"');
     expect(html).not.toMatch(/>Repository<\/dt>/);
   });
-  it("leaves the other kinds as they were (a dateline, 'Where', 'Written')", () => {
+  it("gives every kind but the poem the same order (an article, an artwork, a photograph), and leaves the poem its own board", () => {
+    for (const [kind, slug] of [["article", "demo-article"], ["artwork", "demo-artwork"], ["photograph", "demo-photograph"]] as const) {
+      const html = render(kind, slug, "panel");
+      expect(html, kind).toContain(">At a glance<");
+      expect(html, kind).not.toContain('data-slot="entry-dateline"');
+    }
+    const poem = render("poem", "demo-poem", "panel");
+    expect(poem).not.toContain(">At a glance<");
+  });
+  it("sets an article's cover behind its head, like software's, and an artwork's picture whole", () => {
     const article = render("article", "demo-article", "panel");
-    expect(article).toContain('data-slot="entry-dateline"');
-    expect(article).not.toContain("entry-actions");
+    expect(article).toContain("entry-hero-img");
+    expect(article).not.toContain('data-slot="entry-cover"');
+    expect(render("artwork", "demo-artwork", "panel")).toContain('data-slot="entry-cover"');
   });
   it("takes a repository as a link only when it names a host and a path, over https", () => {
     expect(repositoryHref("github.com/owner/repo")).toBe("https://github.com/owner/repo");
