@@ -1973,7 +1973,7 @@
    * The image comes last in the DOM (it is read after the head's text) and lies behind it (`isolate`).
    */
   .entry-hero {
-    min-height: 22rem;
+    min-height: 29rem;
   }
 
   .entry-hero-img {
@@ -1993,7 +1993,7 @@
        is not under the type */
     -webkit-backdrop-filter: blur(7px);
     backdrop-filter: blur(7px);
-    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, transparent 14%, #000 50%);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, transparent 30%, #000 62%);
     mask-image: linear-gradient(to bottom, transparent 0%, transparent 14%, #000 50%);
   }
 
@@ -2005,11 +2005,11 @@
     pointer-events: none;
     background: linear-gradient(
       to bottom,
-      color-mix(in srgb, var(--background) 8%, transparent) 0%,
-      color-mix(in srgb, var(--background) 26%, transparent) 30%,
-      color-mix(in srgb, var(--background) 74%, transparent) 46%,
-      color-mix(in srgb, var(--background) 88%, transparent) 72%,
-      color-mix(in srgb, var(--background) 97%, transparent) 90%,
+      transparent 0%,
+      color-mix(in srgb, var(--background) 6%, transparent) 30%,
+      color-mix(in srgb, var(--background) 66%, transparent) 56%,
+      color-mix(in srgb, var(--background) 88%, transparent) 76%,
+      color-mix(in srgb, var(--background) 97%, transparent) 91%,
       var(--background) 100%
     );
   }
