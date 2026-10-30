@@ -8,7 +8,8 @@
 //
 // Style, after docs/design-system.md: a flat plate (near-black or near-white), marks drawn on a pixel grid (cells of 10 px, stair-
 // stepped lines, 4x4 Bayer-dithered fields), ink in three tones (faint, mid, full) and the one cyan signal used for a mark or two.
-// Demo only: the real content never uses SVG, and the images carry no text.
+// Demo only: the real content never uses SVG, and the images carry no text. The software covers (`shot-*`, motif `screen`) are the exception to the style: made-up app windows in colour,
+// as a real screenshot would be (owner, 2026-10-30), so the entry pages are judged on a cover that looks like one.
 import { existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -708,7 +709,148 @@ function nested(c, r, { rects = 16 } = {}) {
   c.hud(r, { label: false });
 }
 
-const MOTIFS = { rails, contours, coast, labels, globe, strata, riso, platform, monsoon, timetable, verse, frameui, nested };
+// --- Screenshots (owner, 2026-10-30: "a more colourful and realistic software screenshot, even for demo data") --------------------------------------
+// The software covers are made-up app windows, in colour, as a real screenshot would be: a gradient desktop, a window with its three buttons and a soft shadow, and an interface
+// drawn with bars where the text would be (the demo images carry no text). Still deterministic and small; the pixel plates above stay the demo's other covers, figures and photographs.
+
+const f1 = (n) => Math.round(n * 10) / 10;
+const rrect = (x, y, w, h, rx, fill, extra = "") => `<rect x="${f1(x)}" y="${f1(y)}" width="${f1(w)}" height="${f1(h)}" rx="${rx}" fill="${fill}"${extra}/>`;
+/** A line of "text": rounded bars of seeded widths separated by word gaps, `h` tall, from `x` to at most `x + max`. */
+function words(r, x, y, max, h, fill, opacity = 1) {
+  const out = [];
+  let at = 0;
+  while (at < max - 40) {
+    const w = Math.min(max - at, 24 + Math.floor(r() * 90));
+    out.push(rrect(x + at, y, w, h, h / 2, fill, opacity < 1 ? ` opacity="${opacity}"` : ""));
+    at += w + 10;
+  }
+  return out.join("");
+}
+/** The desktop and the window: a gradient, a shadowed window of `fill`, its title bar and three buttons. Returns the SVG's head and the content box. */
+function windowFrame(w, h, { from, to, fill, bar, edge }) {
+  const win = { x: 90, y: 56, w: w - 180, h: h - 100 };
+  const head =
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" role="img">` +
+    `<defs><linearGradient id="d" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${from}"/><stop offset="1" stop-color="${to}"/></linearGradient>` +
+    `<filter id="s" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#000" flood-opacity="0.45"/></filter></defs>` +
+    `<rect width="${w}" height="${h}" fill="url(#d)"/>` +
+    `<g filter="url(#s)">${rrect(win.x, win.y, win.w, win.h, 14, fill)}</g>` +
+    `<path d="M${win.x} ${win.y + 44}V${win.y + 14}a14 14 0 0 1 14 -14H${win.x + win.w - 14}a14 14 0 0 1 14 14V${win.y + 44}z" fill="${bar}"/>` +
+    `<rect x="${win.x}" y="${win.y + 44}" width="${win.w}" height="1" fill="${edge}"/>` +
+    ["#ff5f57", "#febc2e", "#28c840"].map((c, i) => `<circle cx="${win.x + 26 + i * 22}" cy="${win.y + 22}" r="6.5" fill="${c}"/>`).join("");
+  return { head, win, top: win.y + 45 };
+}
+
+function terminalShot(r, w, h) {
+  const { head, win, top } = windowFrame(w, h, { from: "#5b3df5", to: "#e0489a", fill: "#12141c", bar: "#1c1f2b", edge: "#2a2e3d" });
+  const g = [];
+  let y = top + 26;
+  const prompt = (cmdWidth) => {
+    g.push(`<path d="M${win.x + 28} ${y}l8 7l-8 7" fill="none" stroke="#35d07f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`);
+    g.push(rrect(win.x + 52, y + 2, 130, 12, 6, "#e8ebf4"), rrect(win.x + 194, y + 2, cmdWidth, 12, 6, "#7f8aa6"));
+    y += 38;
+  };
+  prompt(300);
+  const row = (color, tint, widths) => {
+    g.push(rrect(win.x + 20, y - 5, win.w - 40, 26, 6, tint));
+    g.push(rrect(win.x + 32, y + 2, 12, 12, 3, color));
+    let x = win.x + 60;
+    for (const ww of widths) {
+      g.push(rrect(x, y + 2, ww, 12, 6, color, ' opacity="0.9"'));
+      x += ww + 12;
+    }
+    y += 34;
+  };
+  const retimed = [[90, 60, 70], [90, 66, 70], [80, 60, 50]];
+  for (const wd of retimed) row("#ffb454", "#2a2214", [wd[0], wd[1], wd[2], 140 + Math.floor(r() * 60)]);
+  y += 8;
+  for (const wd of [[110, 90, 70, 120], [100, 80, 60, 150]]) row("#ff6b6b", "#2b1519", wd);
+  y += 8;
+  for (const wd of [[110, 90, 70, 110], [100, 100, 60, 90], [120, 70, 70, 130]]) row("#35d07f", "#0f2519", wd);
+  y += 12;
+  g.push(rrect(win.x + 32, y, 220, 12, 6, "#7f8aa6", ' opacity="0.7"'));
+  g.push(`<path d="M${win.x + 28} ${y}l8 7l-8 7" fill="none" stroke="#35d07f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`, rrect(win.x + 52, y, 11, 16, 2, "#e8ebf4", ' opacity="0.9"'));
+  return head + g.join("") + "</svg>";
+}
+
+function globeShot(r, w, h) {
+  const { head, win, top } = windowFrame(w, h, { from: "#0f3d91", to: "#12c2c9", fill: "#0b1020", bar: "#141a30", edge: "#222a48" });
+  const g = [];
+  const side = 250;
+  const cx = win.x + (win.w - side) / 2;
+  const cy = top + (win.h - 45) / 2;
+  g.push(`<defs><radialGradient id="o" cx="35%" cy="30%" r="80%"><stop offset="0" stop-color="#5ec8ff"/><stop offset="0.55" stop-color="#1e6fe0"/><stop offset="1" stop-color="#0a1f66"/></radialGradient><clipPath id="c"><circle cx="${f1(cx)}" cy="${f1(cy)}" r="190"/></clipPath></defs>`);
+  g.push(`<circle cx="${f1(cx)}" cy="${f1(cy)}" r="190" fill="url(#o)"/>`);
+  g.push(`<g clip-path="url(#c)">`);
+  for (let i = 0; i < 9; i++) {
+    const x = cx - 190 + r() * 380;
+    const y = cy - 170 + r() * 340;
+    const rx = 30 + r() * 70;
+    const ry = 16 + r() * 40;
+    g.push(`<ellipse cx="${f1(x)}" cy="${f1(y)}" rx="${f1(rx)}" ry="${f1(ry)}" fill="${i % 3 ? "#3fbf7a" : "#8bd35a"}" transform="rotate(${Math.floor(r() * 60 - 30)} ${f1(x)} ${f1(y)})" opacity="0.92"/>`);
+  }
+  g.push(`<circle cx="${f1(cx - 60)}" cy="${f1(cy - 70)}" r="190" fill="none"/>`);
+  g.push(`<rect x="${f1(cx + 40)}" y="${f1(cy - 200)}" width="200" height="400" fill="#000" opacity="0.28"/>`);
+  g.push(`</g>`);
+  g.push(`<ellipse cx="${f1(cx)}" cy="${f1(cy)}" rx="250" ry="62" fill="none" stroke="#7fe3ff" stroke-width="2" opacity="0.55" transform="rotate(-18 ${f1(cx)} ${f1(cy)})"/>`);
+  g.push(`<circle cx="${f1(cx - 66)}" cy="${f1(cy - 38)}" r="9" fill="#ff5d73"/><circle cx="${f1(cx - 66)}" cy="${f1(cy - 38)}" r="18" fill="none" stroke="#ff5d73" stroke-width="2" opacity="0.6"/>`);
+  // the controls: toggles, sliders and a legend
+  const sx = win.x + win.w - side - 8;
+  g.push(rrect(sx, top + 18, side - 18, win.h - 45 - 36, 12, "#121935"));
+  const colors = ["#12c2c9", "#7c5cff", "#ffb454", "#ff5d73"];
+  for (let i = 0; i < 4; i++) {
+    const y = top + 48 + i * 62;
+    g.push(rrect(sx + 20, y, 90, 10, 5, "#8a96c4", ' opacity="0.8"'));
+    g.push(rrect(sx + 20, y + 26, side - 58, 8, 4, "#232c52"));
+    const fill = 40 + Math.floor(r() * (side - 120));
+    g.push(rrect(sx + 20, y + 26, fill, 8, 4, colors[i]), `<circle cx="${sx + 20 + fill}" cy="${y + 30}" r="9" fill="#fff"/>`);
+  }
+  // the toolbar: pills
+  for (let i = 0; i < 4; i++) g.push(rrect(win.x + 24 + i * 96, top + 14, 84, 22, 11, i === 1 ? "#12c2c9" : "#1b2342"));
+  return head + g.join("") + "</svg>";
+}
+
+function mapShot(r, w, h) {
+  const { head, win, top } = windowFrame(w, h, { from: "#ff9a56", to: "#ff4f81", fill: "#e8f1fb", bar: "#f7f9fc", edge: "#d5dfec" });
+  const g = [];
+  const mx = win.x;
+  const my = top;
+  const mw = win.w;
+  const mh = win.h - 45;
+  g.push(`<defs><clipPath id="m"><rect x="${mx}" y="${my}" width="${mw}" height="${mh}" rx="0"/></clipPath></defs><g clip-path="url(#m)">`);
+  g.push(`<rect x="${mx}" y="${my}" width="${mw}" height="${mh}" fill="#bcd9f2"/>`);
+  for (let i = 0; i < 7; i++) {
+    const x = mx + r() * mw;
+    const y = my + r() * mh;
+    g.push(`<ellipse cx="${f1(x)}" cy="${f1(y)}" rx="${f1(90 + r() * 170)}" ry="${f1(50 + r() * 90)}" fill="${i % 2 ? "#eadfc8" : "#dfe9c9"}" transform="rotate(${Math.floor(r() * 90)} ${f1(x)} ${f1(y)})"/>`);
+  }
+  for (let i = 0; i < 6; i++) g.push(`<path d="M${f1(mx + r() * mw)} ${my}C${f1(mx + r() * mw)} ${f1(my + mh / 3)} ${f1(mx + r() * mw)} ${f1(my + (2 * mh) / 3)} ${f1(mx + r() * mw)} ${my + mh}" fill="none" stroke="#ffffff" stroke-width="${i % 3 === 0 ? 5 : 3}" opacity="0.9"/>`);
+  g.push(`</g>`);
+  // labels: a chip, a leader and an anchor each; two pairs overlap and are outlined
+  for (let i = 0; i < 12; i++) {
+    const ax = mx + 60 + r() * (mw - 260);
+    const ay = my + 40 + r() * (mh - 100);
+    const lw = 90 + Math.floor(r() * 80);
+    const dx = (r() < 0.5 ? -1 : 1) * (24 + r() * 40);
+    const lx = ax + dx - (dx < 0 ? lw : 0);
+    const ly = ay - 12 - r() * 26;
+    const hit = i % 5 === 1;
+    g.push(`<line x1="${f1(ax)}" y1="${f1(ay)}" x2="${f1(lx + (dx < 0 ? lw : 0))}" y2="${f1(ly + 12)}" stroke="#4a5a78" stroke-width="1.5"/>`);
+    g.push(`<circle cx="${f1(ax)}" cy="${f1(ay)}" r="5.5" fill="#ff4f81" stroke="#fff" stroke-width="2"/>`);
+    g.push(rrect(lx, ly, lw, 24, 6, "#ffffff", ' stroke="' + (hit ? "#2f6bff" : "#cfd8e6") + '" stroke-width="' + (hit ? 2.5 : 1) + '"'));
+    g.push(rrect(lx + 9, ly + 6, lw - 18 - Math.floor(r() * 24), 11, 5.5, hit ? "#2f6bff" : "#42506c"));
+  }
+  g.push(rrect(win.x + win.w - 64, top + 20, 38, 76, 10, "#ffffff", ' stroke="#cfd8e6"'), `<rect x="${win.x + win.w - 52}" y="${top + 36}" width="14" height="3" rx="1.5" fill="#42506c"/><rect x="${win.x + win.w - 52}" y="${top + 56}" width="14" height="3" rx="1.5" fill="#42506c"/><rect x="${win.x + win.w - 46.5}" y="${top + 30.5}" width="3" height="14" rx="1.5" fill="#42506c"/>`);
+  return head + g.join("") + "</svg>";
+}
+
+const SCREENS = { terminal: terminalShot, globe: globeShot, map: mapShot };
+/** A made-up app window in colour (a whole SVG, not a plate): `app` is one of `SCREENS`. */
+function screen(c, r, { app }) {
+  return SCREENS[app](r, c.W, c.H);
+}
+
+const MOTIFS = { screen, rails, contours, coast, labels, globe, strata, riso, platform, monsoon, timetable, verse, frameui, nested };
 
 // --- The images of the demo fixture ----------------------------------------------------------------------------------------------
 
@@ -730,8 +872,10 @@ export const MEDIA = [
   { name: "cover-night-trains", size: COVER, motif: "rails", plate: "dark", opts: {}, alt: "Two railway tracks running to a single lamp on a hazy horizon, drawn in pixels and dithered grey on black, with one cyan signal light" },
   { name: "cover-morocco-coast", size: COVER, motif: "coast", plate: "light", opts: { dir: 1 }, alt: "A dashed road on a cliff above the sea, wave lines receding to a dithered sky, a small cyan bus on the road" },
   { name: "cover-altiplano", size: COVER, motif: "contours", plate: "dark", opts: {}, alt: "Six layers of stair-stepped mountain ridges fading into dithered haze under a small cyan sun" },
-  { name: "cover-pixel-globe", size: COVER, motif: "globe", plate: "dark", opts: { rad: 25, yaw: 0.9, tilt: 0.45 }, alt: "A pixel-art globe lit from the upper left, dithered continents, a faint orbit ring and one cyan location marker" },
-  { name: "cover-collide", size: COVER, motif: "labels", plate: "light", opts: { count: 24 }, alt: "Rectangular map labels with leader lines to anchor points, a few overlapping pairs outlined in cyan" },
+  // software: made-up app windows in colour
+  { name: "shot-pixel-globe", size: COVER, motif: "screen", plate: "dark", opts: { app: "globe" }, alt: "A desktop app window on a blue and teal gradient: a blue globe with green continents and a red location marker inside an orbit ring, with sliders and toggles in a panel at the right" },
+  { name: "shot-timetable-diff", size: COVER, motif: "screen", plate: "dark", opts: { app: "terminal" }, alt: "A terminal window on a violet and pink gradient: a command, then rows of changes highlighted amber for retimed, red for removed and green for added trains" },
+  { name: "shot-collide", size: COVER, motif: "screen", plate: "light", opts: { app: "map" }, alt: "A map app window on an orange and pink gradient: a pale blue and beige map with roads, white label chips with leader lines to pink anchor points, two of them outlined in blue" },
   { name: "cover-signal-study", size: COVER, motif: "riso", plate: "light", opts: { rotate: 14 }, alt: "Two overlapping halftone discs, one black and one cyan, with registration marks and a crop frame like a printed proof" },
   { name: "cover-sediment", size: COVER, motif: "strata", plate: "dark", opts: { lines: 26, signalLine: 17 }, alt: "Stacked wavy contour lines, each hiding the one behind, with a single cyan line in the lower half" },
   { name: "cover-monsoon-index", size: COVER, motif: "monsoon", plate: "dark", opts: { drops: 120 }, alt: "Rooftops under a dithered storm sky, thin diagonal rain streaks and ripples on a wet street" },
@@ -772,8 +916,9 @@ export const MEDIA = [
 export function renderImage(image) {
   const [w, h] = image.size;
   const c = new Canvas(w, h, image.plate);
-  MOTIFS[image.motif](c, mulberry(fnv(`catalyst-demo/${image.name}`)), image.opts);
-  return c.svg();
+  const made = MOTIFS[image.motif](c, mulberry(fnv(`catalyst-demo/${image.name}`)), image.opts);
+  // (a screenshot is a whole SVG of its own, in colour; the plates draw on the canvas)
+  return typeof made === "string" ? made : c.svg();
 }
 
 /** Path of the published URL (`/media/demo/<name>.svg`) of an image. */
