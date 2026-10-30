@@ -1895,10 +1895,12 @@
     --entry-body: clamp(1.125rem, 1rem + 0.6cqi, 1.25rem);
     --poem-title: clamp(2.5rem, 9cqi, 5rem);
     --poem-size: clamp(1.375rem, 0.9rem + 2.2cqi, 1.875rem);
-    --measure-reading: 31em;
+    /* The text's measure in the panel: 35 em of the reading size, about 700 px (75 characters a line) at the widest, so that the text fills most of a wide panel (owner, 2026-10-30: "doesn't occupy the full panel size"; it was 31 em). The full screen keeps 31 em: its column is part of a grid. */
+    --measure-reading: 35em;
   }
 
   .entry[data-layout="full"] {
+    --measure-reading: 31em;
     --entry-title: clamp(2.375rem, 9.9cqi, 8.25rem);
     --entry-body: clamp(1.125rem, 0.78rem + 0.9cqi, 1.3125rem);
     --poem-title: clamp(2.75rem, 9.64cqi, 8rem);
