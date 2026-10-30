@@ -1987,8 +1987,8 @@
   .entry {
     --cover-bleed: 1.5rem;
     --cover-min: 40rem;
-    --cover-reach: 10rem;
-    --cover-clear: 12rem;
+    --cover-reach: 26rem;
+    --cover-clear: 26rem;
   }
 
   .entry-hero {
@@ -2000,8 +2000,8 @@
   }
 
   /*
-   * The layer behind the text starts `--cover-reach` ABOVE the text's box and rises along an eased (smoothstep) curve: it is at 70 % of the page's colour where the first line begins, so the text is always over the part of
-   * the ramp that masks the picture enough (owner, 2026-10-30: "far softer, not binary"), and it ends at 100 % at the head's own bottom edge, over its last 8 rem, so that the picture leaves no edge.
+   * The layer behind the text is ONE eased ramp (owner, 2026-10-30: no flat plateau, "just place the text high enough on the gradient that it is readable"): from nothing at the head's top, `--cover-reach` above the text's
+   * box, to the page's colour at the head's bottom edge, with no step. The text lies on its lower half, where it is already 55 % or more, and the blur follows the same curve.
    */
   .entry-hero-text::before {
     content: "";
@@ -2011,46 +2011,37 @@
     pointer-events: none;
     -webkit-backdrop-filter: blur(7px);
     backdrop-filter: blur(7px);
-    -webkit-mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0.000) calc(var(--cover-reach) * 0.0), rgb(0 0 0 / 0.028) calc(var(--cover-reach) * 0.1), rgb(0 0 0 / 0.104) calc(var(--cover-reach) * 0.2), rgb(0 0 0 / 0.216) calc(var(--cover-reach) * 0.3), rgb(0 0 0 / 0.352) calc(var(--cover-reach) * 0.4), rgb(0 0 0 / 0.500) calc(var(--cover-reach) * 0.5), rgb(0 0 0 / 0.648) calc(var(--cover-reach) * 0.6), rgb(0 0 0 / 0.784) calc(var(--cover-reach) * 0.7), rgb(0 0 0 / 0.896) calc(var(--cover-reach) * 0.8), rgb(0 0 0 / 0.972) calc(var(--cover-reach) * 0.9), rgb(0 0 0 / 1.000) calc(var(--cover-reach) * 1.0), #000 calc(var(--cover-reach) * 1.01));
-    mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0.000) calc(var(--cover-reach) * 0.0), rgb(0 0 0 / 0.028) calc(var(--cover-reach) * 0.1), rgb(0 0 0 / 0.104) calc(var(--cover-reach) * 0.2), rgb(0 0 0 / 0.216) calc(var(--cover-reach) * 0.3), rgb(0 0 0 / 0.352) calc(var(--cover-reach) * 0.4), rgb(0 0 0 / 0.500) calc(var(--cover-reach) * 0.5), rgb(0 0 0 / 0.648) calc(var(--cover-reach) * 0.6), rgb(0 0 0 / 0.784) calc(var(--cover-reach) * 0.7), rgb(0 0 0 / 0.896) calc(var(--cover-reach) * 0.8), rgb(0 0 0 / 0.972) calc(var(--cover-reach) * 0.9), rgb(0 0 0 / 1.000) calc(var(--cover-reach) * 1.0), #000 calc(var(--cover-reach) * 1.01));
+    -webkit-mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0.000) 0.0%, rgb(0 0 0 / 0.035) 8.3%, rgb(0 0 0 / 0.125) 16.7%, rgb(0 0 0 / 0.249) 25.0%, rgb(0 0 0 / 0.390) 33.3%, rgb(0 0 0 / 0.533) 41.7%, rgb(0 0 0 / 0.668) 50.0%, rgb(0 0 0 / 0.783) 58.3%, rgb(0 0 0 / 0.875) 66.7%, rgb(0 0 0 / 0.941) 75.0%, rgb(0 0 0 / 0.980) 83.3%, rgb(0 0 0 / 0.997) 91.7%, rgb(0 0 0 / 1.000) 100.0%);
+    mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0.000) 0.0%, rgb(0 0 0 / 0.035) 8.3%, rgb(0 0 0 / 0.125) 16.7%, rgb(0 0 0 / 0.249) 25.0%, rgb(0 0 0 / 0.390) 33.3%, rgb(0 0 0 / 0.533) 41.7%, rgb(0 0 0 / 0.668) 50.0%, rgb(0 0 0 / 0.783) 58.3%, rgb(0 0 0 / 0.875) 66.7%, rgb(0 0 0 / 0.941) 75.0%, rgb(0 0 0 / 0.980) 83.3%, rgb(0 0 0 / 0.997) 91.7%, rgb(0 0 0 / 1.000) 100.0%);
     background: linear-gradient(
       to bottom,
-      color-mix(in srgb, var(--background) 0.0%, transparent) calc(var(--cover-reach) * 0.0),
-      color-mix(in srgb, var(--background) 2.0%, transparent) calc(var(--cover-reach) * 0.1),
-      color-mix(in srgb, var(--background) 7.3%, transparent) calc(var(--cover-reach) * 0.2),
-      color-mix(in srgb, var(--background) 15.1%, transparent) calc(var(--cover-reach) * 0.3),
-      color-mix(in srgb, var(--background) 24.6%, transparent) calc(var(--cover-reach) * 0.4),
-      color-mix(in srgb, var(--background) 35.0%, transparent) calc(var(--cover-reach) * 0.5),
-      color-mix(in srgb, var(--background) 45.4%, transparent) calc(var(--cover-reach) * 0.6),
-      color-mix(in srgb, var(--background) 54.9%, transparent) calc(var(--cover-reach) * 0.7),
-      color-mix(in srgb, var(--background) 62.7%, transparent) calc(var(--cover-reach) * 0.8),
-      color-mix(in srgb, var(--background) 68.0%, transparent) calc(var(--cover-reach) * 0.9),
-      color-mix(in srgb, var(--background) 70.0%, transparent) calc(var(--cover-reach) * 1.0),
-      color-mix(in srgb, var(--background) 70.8%, transparent) calc(100% - 7.2rem),
-      color-mix(in srgb, var(--background) 73.1%, transparent) calc(100% - 6.4rem),
-      color-mix(in srgb, var(--background) 76.5%, transparent) calc(100% - 5.6rem),
-      color-mix(in srgb, var(--background) 80.6%, transparent) calc(100% - 4.8rem),
-      color-mix(in srgb, var(--background) 85.0%, transparent) calc(100% - 4.0rem),
-      color-mix(in srgb, var(--background) 89.4%, transparent) calc(100% - 3.2rem),
-      color-mix(in srgb, var(--background) 93.5%, transparent) calc(100% - 2.4rem),
-      color-mix(in srgb, var(--background) 96.9%, transparent) calc(100% - 1.6rem),
-      color-mix(in srgb, var(--background) 99.2%, transparent) calc(100% - 0.8rem),
-      color-mix(in srgb, var(--background) 100.0%, transparent) calc(100% - 0.0rem),
-      var(--background) 100%
+      color-mix(in srgb, var(--background) 0.0%, transparent) 0.0%,
+      color-mix(in srgb, var(--background) 3.5%, transparent) 8.3%,
+      color-mix(in srgb, var(--background) 12.5%, transparent) 16.7%,
+      color-mix(in srgb, var(--background) 24.9%, transparent) 25.0%,
+      color-mix(in srgb, var(--background) 39.0%, transparent) 33.3%,
+      color-mix(in srgb, var(--background) 53.3%, transparent) 41.7%,
+      color-mix(in srgb, var(--background) 66.8%, transparent) 50.0%,
+      color-mix(in srgb, var(--background) 78.3%, transparent) 58.3%,
+      color-mix(in srgb, var(--background) 87.5%, transparent) 66.7%,
+      color-mix(in srgb, var(--background) 94.1%, transparent) 75.0%,
+      color-mix(in srgb, var(--background) 98.0%, transparent) 83.3%,
+      color-mix(in srgb, var(--background) 99.7%, transparent) 91.7%,
+      color-mix(in srgb, var(--background) 100.0%, transparent) 100.0%
     );
   }
 
   /* An artwork's, a photograph's and a mature entry's picture is only a coloured backdrop (the work itself is shown whole below): the title and the text are high on it, with no tall clear zone. */
   .entry-hero[data-tone="dim"] {
     --cover-min: 0px;
-    --cover-clear: 5rem;
-    --cover-reach: 5rem;
+    --cover-clear: 7rem;
+    --cover-reach: 7rem;
   }
 
   .entry[data-layout="full"] {
     --cover-bleed: 1rem;
-    --cover-reach: 14rem;
-    --cover-clear: 18rem;
+    --cover-reach: 32rem;
+    --cover-clear: 32rem;
   }
 
   .entry[data-layout="full"] .entry-hero[data-tone="dim"] {
