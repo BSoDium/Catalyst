@@ -261,7 +261,7 @@ describe("endpoints (demo content)", () => {
     }
     // Most entries have an authored cover; the others rely on the generated art (both paths are in the demo).
     const covers = LISTS.flatMap((key) => demo[key]).filter((e) => e.cover).length;
-    expect(covers).toBe(15);
+    expect(covers).toBe(16);
     // `sensitive` (mature content) reaches the list and the detail as `true`, and only for the entry that has it.
     const flagged = (await json<{ slug: string; sensitive?: boolean }[]>(await app.request("/v1/artworks"))).filter((e) => "sensitive" in e);
     expect(flagged.map((e) => [e.slug, e.sensitive])).toEqual([["figure-study-two", true]]);

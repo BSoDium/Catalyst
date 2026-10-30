@@ -9,6 +9,15 @@ export interface DemoImage {
   alt: string;
 }
 export const MEDIA: readonly DemoImage[];
+export interface StockImage {
+  name: string;
+  file: string;
+  size: readonly [number, number];
+  alt: string;
+  credit: string;
+  source: string;
+}
+export const STOCK: readonly StockImage[];
 export function renderImage(image: DemoImage): string;
 export function mediaSrc(name: string): string;
 export function mediaByName(name: string): DemoImage;

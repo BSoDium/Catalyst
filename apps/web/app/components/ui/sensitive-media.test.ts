@@ -17,13 +17,15 @@ describe("SensitiveMedia", () => {
     expect(out).toContain('data-slot="sensitive-media"');
     expect(out).toContain('data-state="hidden"');
     expect(out).toContain('class="sensitive-media-content"><img');
-    expect(out).toContain("Mature content");
+    // (the words lie straight on the picture: no plate; where there is no control yet they say it is hidden)
+    expect(out).toContain('data-slot="sensitive-media-label"');
+    expect(out).toContain("Image hidden");
+    expect(out).not.toContain("sensitive-media-plate");
     // the alt text stays as authored
     expect(out).toContain('alt="An authored alt text"');
   });
   it("says the image is hidden where there is nothing to press yet (server render, no scripts) and draws no button then", () => {
     const out = html(media({ onRevealedChange: () => {} }));
-    expect(out).toContain('data-slot="sensitive-media-note"');
     expect(out).toContain("Image hidden");
     expect(out).not.toContain("<button");
     expect(out).not.toContain("Show image");
@@ -41,7 +43,10 @@ describe("SensitiveMedia", () => {
   it("shows the same markup, revealed, only by the attribute (the picture is never swapped)", () => {
     const hidden = html(media({ revealed: false, onRevealedChange: () => {} }));
     const shown = html(media({ revealed: true, onRevealedChange: () => {} }));
-    expect(shown.replace('data-state="revealed"', 'data-state="hidden"')).toBe(hidden);
+    // (revealed, the veil is gone: the picture's own markup is the same, and nothing swapped it)
+    const content = (out: string) => out.slice(out.indexOf('<div class="sensitive-media-content">'), out.indexOf("</div>", out.indexOf('<div class="sensitive-media-content">')));
+    expect(content(shown)).toBe(content(hidden));
+    expect(shown).not.toContain("sensitive-media-veil");
   });
 });
 

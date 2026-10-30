@@ -29,14 +29,19 @@ describe("EntryView", () => {
   });
   it("uses the authored cover when there is one", () => {
     const html = render("article", "demo-article", "panel");
-    expect(html).toContain('src="/media/demo/cover-night-trains.svg"');
+    expect(html).toContain('src="/media/demo/stock-night-platform.jpg"');
     expect(html).toContain('width="1200"');
   });
-  it("crops a banner cover to 1.91:1, and keeps an artwork's picture whole: its own proportions, never taller than 80 % of the window", () => {
-    const banner = render("poem", "demo-poem", "panel");
-    const bannerCover = banner.slice(banner.indexOf('data-slot="entry-cover"')); // (a poem's cover comes after its text)
-    expect(bannerCover).toContain("aspect-[1.91/1]");
-    expect(bannerCover).toContain("object-cover");
+  it("sets a cover behind the head, in every kind that has one but an artwork's and a photograph's picture, which stay whole as figures: its own proportions, never taller than 80 % of the window", () => {
+    for (const [kind, slug] of [["poem", "demo-poem"], ["article", "demo-article"], ["project", "demo-project"]] as const) {
+      const html = render(kind, slug, "panel");
+      expect(html, kind).toContain('class="entry-hero-img"');
+      expect(html, kind).not.toContain('data-slot="entry-cover"');
+    }
+    // (an artwork's and a photograph's, dimmed and blurred behind the title, with their picture below)
+    const art = render("artwork", "demo-artwork", "panel");
+    expect(art).toContain('data-tone="dim"');
+    expect(art).toContain('data-slot="entry-cover"');
     const portrait = { ...getEntryDetail(demo, "artwork", "demo-artwork")!, cover: { src: "/media/demo/portrait.svg", alt: "A tall work", width: 800, height: 1200 } };
     const html = renderToStaticMarkup(createElement(StaticRouter, { location: "/" }, createElement(EntryView, { entry: portrait, layout: "panel" })));
     const cover = html.slice(html.indexOf('data-slot="entry-cover"'), html.indexOf('data-slot="entry-body"'));
@@ -78,8 +83,8 @@ describe("EntryView", () => {
     expect(panel).toContain('data-layout="panel"');
     expect(full).toContain('data-layout="full"');
     // the grid is CSS (`.entry[data-layout="full"] .entry-grid`): the markup is the same, only the attribute differs
-    expect(full).toContain("max-w-[90rem]");
-    expect(panel).not.toContain("max-w-[90rem]");
+    expect(full).toContain("max-w-[100rem]");
+    expect(panel).not.toContain("max-w-[100rem]");
     // same text, same order
     const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
     expect(text(full)).toBe(text(panel));
@@ -267,7 +272,9 @@ describe("EntryView", () => {
       const html = render("poem", "demo-poem", "full");
       expect(html).toMatch(/<h1[^>]*data-poem/);
       expect(html).not.toContain("entry-rule");
-      expect(html).not.toContain("entry-running");
+      // (the running head, with the date and the places, and the copy link, are above the title, as in every kind)
+      expect(html.indexOf("entry-running")).toBeLessThan(html.indexOf("<h1"));
+      expect(html.slice(0, html.indexOf("<h1"))).toMatch(/data-slot="entry-place"[^>]*>[^<]*<\/span>[\s\S]*data-slot="entry-date"/);
       const order = ["<h1", 'data-slot="entry-body"', 'data-slot="entry-margin"'].map((s) => html.indexOf(s));
       expect([...order].sort((a, b) => a - b)).toEqual(order);
       expect(html).toContain("open on the globe");
@@ -293,10 +300,12 @@ describe("EntryView of a sensitive entry (mature content)", () => {
       expect((html.match(/data-slot="sensitive-media"/g) ?? []).length, layout).toBe(2); // the cover and the one image block
       expect((html.match(/data-slot="sensitive-media"[^>]*data-state="hidden"/g) ?? []).length, layout).toBe(2);
       expect(html.match(/data-state="revealed"/g) ?? [], layout).toEqual([]);
-      expect((html.match(/Mature content/g) ?? []).length, layout).toBeGreaterThanOrEqual(2);
+      expect((html.match(/sensitive-media-label/g) ?? []).length, layout).toBeGreaterThanOrEqual(2);
       // the sharp picture is only ever inside a frame: no <img> of this entry is outside one
       const body = html.slice(0, html.indexOf('data-slot="entry-more"') === -1 ? undefined : html.indexOf('data-slot="entry-more"'));
       for (const img of body.matchAll(/<img\b[^>]*>/g)) {
+        // (the picture behind the title is blurred by CSS (40 px, dimmed: `data-mature`), an empty-alt backdrop)
+        if (img[0].includes("entry-hero-img")) continue;
         const at = img.index!;
         expect(body.slice(Math.max(0, at - 40), at), `${layout}: ${img[0]}`).toContain('class="sensitive-media-content">');
       }
@@ -314,6 +323,7 @@ describe("EntryView of a sensitive entry (mature content)", () => {
     const ordinary = render("artwork", "altiplano-sediment", "panel");
     expect(ordinary).not.toContain("sensitive-media");
     expect(ordinary).not.toContain("Mature content");
+    expect(ordinary).not.toContain("data-mature");
     expect(ordinary).not.toContain("data-sensitive");
   });
   it("blurs the card of a sensitive entry among the related ones of another, with no control", () => {

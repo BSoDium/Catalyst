@@ -1,10 +1,10 @@
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { getCareer, loadDemoProjection, loadPreviewProjection, loadProjection, loadPublishedProjection, previewCandidates } from "./index";
 import { parsePublishedProjection } from "@catalyst/schemas";
-import { MAX_SVG_BYTES, MEDIA, MEDIA_DIR, mediaSrc, renderImage } from "../scripts/demo/generate-media.mjs";
+import { MAX_SVG_BYTES, MEDIA, MEDIA_DIR, mediaSrc, renderImage, STOCK } from "../scripts/demo/generate-media.mjs";
 
 describe("published package", () => {
   it("loads and validates the committed projection", () => {
@@ -133,6 +133,18 @@ describe("published package", () => {
     const shipped = readdirSync(MEDIA_DIR).map((f) => `/media/demo/${f}`);
     expect(shipped.filter((f) => !srcs.has(f))).toEqual([]);
   });
+  it("the demo's stock photographs are on disk, credited (here and in the notice file), small, and not generated", () => {
+    const notice = readFileSync(new URL("../../../apps/web/public/media/demo-stock.NOTICE.txt", import.meta.url), "utf8");
+    for (const photo of STOCK) {
+      const file = join(MEDIA_DIR, photo.file);
+      expect(existsSync(file), photo.file).toBe(true);
+      expect(statSync(file).size, photo.file).toBeLessThan(250 * 1024);
+      expect(photo.source, photo.name).toMatch(/^https:\/\/www\.pexels\.com\/photo\//);
+      expect(notice, photo.name).toContain(photo.file);
+      expect(notice, photo.name).toContain(photo.source);
+      expect(MEDIA.some((m) => m.name === photo.name)).toBe(false);
+    }
+  });
   it("the demo images are the ones the generator writes (deterministic, each under 12 KB), sized as the fixture says", () => {
     const demo = loadDemoProjection();
     for (const image of MEDIA) {
@@ -143,7 +155,7 @@ describe("published package", () => {
       expect(svg).toContain(`viewBox="0 0 ${image.size[0]} ${image.size[1]}"`);
     }
     // the fixture declares the generator's alt text and size for each image it uses
-    const byName = new Map(MEDIA.map((m) => [mediaSrc(m.name), m]));
+    const byName = new Map<string, { size: readonly [number, number]; alt: string }>([...MEDIA.map((m) => [mediaSrc(m.name), m] as const), ...STOCK.map((m) => [`/media/demo/${m.file}`, m] as const)]);
     for (const e of [...demo.projects, ...demo.articles, ...demo.artworks, ...demo.poems, ...demo.photographs]) {
       const used = [...(e.cover ? [e.cover] : []), ...(e.body ?? []).flatMap((b) => (b.type === "image" ? [b] : []))];
       for (const u of used) {

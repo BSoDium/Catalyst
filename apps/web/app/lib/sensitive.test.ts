@@ -163,6 +163,6 @@ describe("the stylesheet keeps the rule (read from app.css, as the design-system
     const content = rule(".sensitive-media[data-state] .sensitive-media-content", css.indexOf("@media print {"));
     expect(content).toMatch(/filter:\s*blur\(var\(--sensitive-blur\)\)\s*!important/);
     expect(content).toMatch(/transform:\s*scale\(1\.\d+\)\s*!important/);
-    expect(print).toMatch(/\.sensitive-media-toggle,[\s\S]*display:\s*none\s*!important/);
+    expect(print).toMatch(/\.sensitive-media-hide\s*\{[^}]*display:\s*none\s*!important/);
   });
 });

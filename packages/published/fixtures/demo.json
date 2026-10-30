@@ -118,7 +118,7 @@
       "summary": "A tiny globe renderer that draws the Earth as dithered pixels: one fragment shader, no textures, and an API small enough to read in an afternoon.",
       "date": "2026-04",
       "url": "https://example.org/pixel-globe",
-      "cover": { "src": "/media/demo/cover-pixel-globe.svg", "alt": "A pixel-art globe lit from the upper left, dithered continents, a faint orbit ring and one cyan location marker", "width": 1200, "height": 630 },
+      "cover": { "src": "/media/demo/stock-earth.jpg", "alt": "The Earth seen from space, North America in daylight under swirls of cloud, the night side lit by a few city lights at the edge of the dark", "width": 1200, "height": 630 },
       "tags": ["webgl", "pixel-art", "globe", "typescript", "glsl", "open-source"],
       "meta": [
         { "label": "Stack", "value": "TypeScript, WebGL 2, GLSL" },
@@ -151,6 +151,7 @@
       "summary": "A command-line tool that compares two public transit feeds and says, in plain language, which trains were added, retimed or quietly removed.",
       "date": "2025-11",
       "url": "https://example.org/timetable-diff",
+      "cover": { "src": "/media/demo/stock-laptop-code.jpg", "alt": "A laptop in a dark room with blue lights, its screen showing a code editor with a Python script and an empty terminal pane", "width": 1200, "height": 630 },
       "tags": ["typescript", "cli", "gtfs", "rail", "tooling"],
       "meta": [
         { "label": "Stack", "value": "TypeScript, Node.js" },
@@ -180,7 +181,7 @@
       "summary": "A small engine, written in Rust and compiled to WebAssembly, that places thousands of map labels without overlaps and without making the map flicker.",
       "date": "2023-02",
       "url": "https://example.org/collide",
-      "cover": { "src": "/media/demo/cover-collide.svg", "alt": "Rectangular map labels with leader lines to anchor points, a few overlapping pairs outlined in cyan", "width": 1200, "height": 630 },
+      "cover": { "src": "/media/demo/stock-phone-map.jpg", "alt": "A hand holding a phone that shows a map app: a route in orange across the waterways of a city, with a blurred underground station behind it", "width": 1200, "height": 630 },
       "tags": ["cartography", "rust", "webassembly", "labels", "algorithms"],
       "meta": [
         { "label": "Stack", "value": "Rust, WebAssembly, TypeScript" },
@@ -235,7 +236,7 @@
       "title": "Night trains through the Balkans",
       "summary": "Four nights between Ljubljana, Zagreb, Split and Belgrade by sleeper, and what the timetable never says about couchettes, border stamps and the hour before dawn.",
       "date": "2026-03-14",
-      "cover": { "src": "/media/demo/cover-night-trains.svg", "alt": "Two railway tracks running to a single lamp on a hazy horizon, drawn in pixels and dithered grey on black, with one cyan signal light", "width": 1200, "height": 630 },
+      "cover": { "src": "/media/demo/stock-night-platform.jpg", "alt": "A railway platform at night under a steel roof, lit by rows of lamps, the tracks running away into the dark and a crowd waiting on the far platform", "width": 1200, "height": 630 },
       "tags": ["night-trains", "balkans", "rail", "slow-travel", "field-notes"],
       "meta": [
         { "label": "Publication", "value": "Marginalia, issue 12" },
@@ -282,7 +283,7 @@
       "title": "Eleven hours of Atlantic coast, by bus",
       "summary": "A slow bus south along the Atlantic coast of Morocco: grilled fish at a roadside stop, a driver who knew every dog by name, and a view that refused to repeat itself.",
       "date": "2023-10",
-      "cover": { "src": "/media/demo/cover-morocco-coast.svg", "alt": "A dashed road on a cliff above the sea, wave lines receding to a dithered sky, a small cyan bus on the road", "width": 1200, "height": 630 },
+      "cover": { "src": "/media/demo/stock-cliff-bus.jpg", "alt": "A yellow and red bus at a bend of a narrow road cut into a rocky mountainside above the sea, under a sky of white clouds", "width": 1200, "height": 630 },
       "tags": ["morocco", "bus", "atlantic-coast", "travel-notes"],
       "meta": [
         { "label": "Publication", "value": "Marginalia, issue 9" },
@@ -309,7 +310,7 @@
       "title": "Crossing the altiplano at four thousand metres",
       "summary": "A bus, a thin coat and a headache: crossing the Andean altiplano in one long day, and what four thousand metres does to appetite, humour and the sense of scale.",
       "date": "2022",
-      "cover": { "src": "/media/demo/cover-altiplano.svg", "alt": "Six layers of stair-stepped mountain ridges fading into dithered haze under a small cyan sun", "width": 1200, "height": 630 },
+      "cover": { "src": "/media/demo/stock-altiplano-lake.jpg", "alt": "Three four-wheel-drive cars parked on a pale salt shore of a high lake that mirrors snow-capped mountains and white clouds under a deep blue sky", "width": 1200, "height": 630 },
       "tags": ["peru", "altiplano", "high-altitude", "bus", "travel-notes"],
       "meta": [
         { "label": "Publication", "value": "Marginalia, issue 4" },
