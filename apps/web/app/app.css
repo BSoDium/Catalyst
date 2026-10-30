@@ -1973,7 +1973,7 @@
    * The image comes last in the DOM (it is read after the head's text) and lies behind it (`isolate`).
    */
   .entry-hero {
-    min-height: 29rem;
+    min-height: 34rem;
   }
 
   .entry-hero-img {
