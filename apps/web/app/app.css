@@ -1977,6 +1977,26 @@
     border-bottom-color: var(--border);
   }
 
+  /* A software entry's tags are chips, as the career page's (`.career-chips`): a faint tile each (owner, 2026-10-30: "make it obvious they are tags by adding a background"), no dots between them. */
+  .entry[data-kind="project"] [data-slot="entry-tags"] .ds-tags {
+    gap: 0.375rem;
+  }
+
+  .entry[data-kind="project"] [data-slot="entry-tags"] .ds-tags > li {
+    padding: 0.125rem 0.5rem;
+    background: var(--accent);
+    line-height: 1.6;
+    transition: color var(--duration-fast) var(--ease-standard);
+  }
+
+  .entry[data-kind="project"] [data-slot="entry-tags"] .ds-tags > li:not(:last-child)::after {
+    content: none;
+  }
+
+  .entry[data-kind="project"] [data-slot="entry-tags"] .ds-tags > li:hover {
+    color: var(--foreground);
+  }
+
   .entry-hero {
     min-height: 34rem;
   }
