@@ -179,6 +179,8 @@ Same content, two layouts; `layout` only changes the grid (CSS), never the data,
   Related (three EntryCards)    Previous / Next of the kind
 ```
 
+**The scrim under the nav comes in with the scroll** (owner, 2026-10-30: it "partly occluded" the running head at the top of an entry): the panel's `NavScrim` (the page colour fading, with a progressive blur) is nothing at the top of the content and whole after 56 px of scroll (`SCRIM_RAMP_PX`, `components/detail-panel.tsx`: `--scrim-on`, written on scroll with no render), because at the top nothing has scrolled beneath it.
+
 Both layouts are one column on a phone and in the half panel (header, dateline, marginalia in a compact grid, text with its figures). A full screen from 1024 px is a 12-column grid with 28 px gutters: marginalia in columns 1 to 3 (sticky contents), text in 4 to 9, figures in the flow of the text (an article or a project: the text and its figures in 4 to 12; an artwork: image and text in 4 to 12; a poem: title and lines in 4 to 10, marginalia beside the title). The header row of the container
 (Close, `ExpandToggle`, both ghost: no box until pointed at) is the panel's, not the view's: it must stay clear of the navbar's row (centred over the map while the panel is open, over the viewport in full screen: it is
 clear of both, see "Brand and header"). On a phone the panel is a dialog with a compact header (the close button alone; the content's heading names the
