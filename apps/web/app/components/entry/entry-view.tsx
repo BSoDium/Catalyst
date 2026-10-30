@@ -147,7 +147,10 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
           </a>
         </Button>
       )}
-      {copy}
+      {/* (the same size as the buttons beside it: the shared `copy` is the small one of the dateline) */}
+      <CopyButton text={() => shareUrl(window.location.origin, entry.href)} label={`Copy link to ${entry.title}`} announcement="Link copied to the clipboard" icon="link" size="default">
+        Copy link
+      </CopyButton>
     </div>
   );
 
