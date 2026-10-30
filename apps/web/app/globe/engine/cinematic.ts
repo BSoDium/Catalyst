@@ -1,5 +1,5 @@
 import { seededUnit, type CinematicPlan } from "./caption";
-import { markPlayed, sessionStores, visitState } from "./visit";
+import { EGG_REST_DAYS, markPlayed, sessionSeed, sessionStores, visitState } from "./visit";
 
 /**
  * The caption's rare cinematic interlude (an easter egg, issue #293), after the studio logo's opening: once in a long while every line leaves
@@ -12,12 +12,13 @@ import { markPlayed, sessionStores, visitState } from "./visit";
  * frozen like the roll by the energy pass's hold.
  *
  * When it may play (all of them): the visitor has been here before (a first visit would only be puzzled by it), motion is not reduced, it has not
- * played in this browser session, the page is not a debug one, and the session's seeded draw says so (`chance`). And the visitor can ask for it, always
+ * played in this browser session, nor on this device for `EGG_REST_DAYS` (30), the page is not a debug one nor the development server's, and the
+ * session's seeded draw says so (`chance`: ONE draw per session, kept in `sessionStorage`, so a reload does not roll again). And the visitor can ask for it, always
  * (the search palette's "I like surprises", `onDemandPlan`), not under reduced motion.
  */
 export const CINEMATIC = {
-  /** The share of eligible sessions it plays in. */
-  chance: 0.12,
+  /** The share of eligible sessions it plays in (owner, 2026-10-30: "it should be really something very rare": it was 12 % of page loads). */
+  chance: 0.02,
   /**
    * The word, in the heavy serif and the caption's own colours, on a shell of its own: `radius` (the rows' is 1.25), a higher orbit, so that it
    * floats clear of the surface and curves round the limb like the studio's wordmark. Its cap height is as large as its chord allows
@@ -126,11 +127,11 @@ export const CINEMATIC = {
 /**
  * The interlude's plan, or null: a pure function of the session's seed and what is known about the visit.
  */
-export function planCinematic(input: { seed: number; returning: boolean; played: boolean; reduced: boolean }): CinematicPlan | null {
-  const { seed, returning, played, reduced } = input;
+export function planCinematic(input: { seed: number; returning: boolean; played: boolean; reduced: boolean; rested?: boolean }): CinematicPlan | null {
+  const { seed, returning, played, reduced, rested = true } = input;
   if (reduced) return null;
   const shape = { ...CINEMATIC.shape };
-  if (!returning || played) return null;
+  if (!returning || played || !rested) return null;
   const next = seededUnit((seed ^ 0x43494e45) | 0);
   next(); // (the first draw of a small seed is poorly mixed)
   if (next() >= CINEMATIC.chance) return null;
@@ -152,14 +153,19 @@ function onDebugPage(): boolean {
   }
 }
 
-/** The plan for this page load: what the layer is given. */
+/** The plan for this page load: what the layer is given. The draw is the SESSION's (its kept seed, not the page load's `seed`), and the development server never draws. */
 export function planForPage(seed: number, reduced: boolean): CinematicPlan | null {
   const { local, session } = sessionStores();
-  if (onDebugPage()) return null;
-  return planCinematic({ seed, reduced, ...visitState(local, session) });
+  if (onDebugPage() || import.meta.env.DEV) return null;
+  const kept = sessionSeed(session, () => seed);
+  if (kept === null) return null;
+  return planCinematic({ seed: kept, reduced, ...visitState(local, session) });
 }
 
-/** The egg has begun: it will not play again in this browser session. */
+/** The egg has begun: it will not play again in this browser session, and rests on this device for `EGG_REST_DAYS`. */
 export function notePlayed(): void {
-  markPlayed(sessionStores().session);
+  const { local, session } = sessionStores();
+  markPlayed(session, local);
 }
+
+export { EGG_REST_DAYS };

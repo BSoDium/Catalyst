@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { CAPTION_FACE, CaptionMotion, EGG_HITCH_STEP_MS, eggExitShare, eggWord, DRIFT, cycleMs, eggMs, eggX, entranceMs, placeEgg, shellXY, type CinematicPlan } from "./caption";
 import { CINEMATIC, onDemandPlan, planCinematic } from "./cinematic";
 import { SOUND } from "./cinematic-sound";
-import { markPlayed, visitState } from "./visit";
+import { EGG_REST_DAYS, markPlayed, sessionSeed, visitState } from "./visit";
 import { CAPTION } from "./tuning";
 
 const store = (init: Record<string, string> = {}) => {
@@ -19,10 +19,15 @@ describe("the cinematic interlude: when it may play", () => {
       expect(planCinematic({ ...base, seed, reduced: true })).toBeNull();
     }
   });
-  it("is rare, and decided by the seed alone", () => {
-    const plays = Array.from({ length: 4000 }, (_, i) => planCinematic({ ...base, seed: i * 7919 + 3 })).filter(Boolean);
-    expect(plays.length / 4000).toBeGreaterThan(CINEMATIC.chance * 0.7);
-    expect(plays.length / 4000).toBeLessThan(CINEMATIC.chance * 1.3);
+  it("never while it rests on the device after having played", () => {
+    for (let seed = 1; seed < 400; seed++) expect(planCinematic({ ...base, seed, rested: false })).toBeNull();
+  });
+  it("is very rare (one session in fifty), and decided by the seed alone", () => {
+    expect(CINEMATIC.chance).toBeLessThanOrEqual(0.02);
+    const n = 40000;
+    const plays = Array.from({ length: n }, (_, i) => planCinematic({ ...base, seed: i * 7919 + 3 })).filter(Boolean);
+    expect(plays.length / n).toBeGreaterThan(CINEMATIC.chance * 0.7);
+    expect(plays.length / n).toBeLessThan(CINEMATIC.chance * 1.3);
     expect(planCinematic({ ...base, seed: 12345 })).toEqual(planCinematic({ ...base, seed: 12345 }));
   });
   it("begins at the second or the third time the first row would leave, early enough to be over before the idle hold", () => {
@@ -90,19 +95,39 @@ describe("the cinematic interlude: knowing a return", () => {
   it("a first visit is new for its whole session (a reload is not a return), the next session is a return", () => {
     const local = store();
     const s1 = store();
-    expect(visitState(local, s1)).toEqual({ returning: false, played: false });
+    expect(visitState(local, s1)).toEqual({ returning: false, played: false, rested: true });
     expect(visitState(local, s1).returning).toBe(false); // (a reload in the same session)
     expect(visitState(local, store()).returning).toBe(true); // (another session)
   });
   it("remembers that it played, for the session", () => {
     const local = store({ "site-seen": "1" });
     const s = store();
-    expect(visitState(local, s)).toEqual({ returning: true, played: false });
+    expect(visitState(local, s)).toEqual({ returning: true, played: false, rested: true });
     markPlayed(s);
-    expect(visitState(local, s)).toEqual({ returning: true, played: true });
+    expect(visitState(local, s)).toEqual({ returning: true, played: true, rested: true });
+  });
+  it("rests on the device for 30 days after it played, then not", () => {
+    const day = 24 * 60 * 60 * 1000;
+    const t0 = 1_800_000_000_000;
+    const local = store({ "site-seen": "1" });
+    markPlayed(store(), local, t0);
+    expect(EGG_REST_DAYS).toBe(30);
+    expect(visitState(local, store(), t0 + 29 * day).rested).toBe(false);
+    expect(visitState(local, store(), t0 + 31 * day).rested).toBe(true);
+    // a damaged note (the future, or not a time) never locks the egg for good
+    expect(visitState(store({ "site-seen": "1", "site-egg-last": String(t0 + 90 * day) }), store(), t0).rested).toBe(true);
+    expect(visitState(store({ "site-seen": "1", "site-egg-last": "soon" }), store(), t0).rested).toBe(true);
+  });
+  it("makes the session's seed once and keeps it, so a reload does not roll the dice again", () => {
+    const s = store();
+    expect(sessionSeed(s, () => 111)).toBe(111);
+    expect(sessionSeed(s, () => 222)).toBe(111);
+    expect(sessionSeed(store(), () => 333)).toBe(333);
+    expect(sessionSeed(null)).toBeNull();
   });
   it("no storage, or storage that throws: not a return", () => {
     expect(visitState(null, null).returning).toBe(false);
+    expect(visitState(null, null).rested).toBe(false);
     const bad = {
       getItem: () => {
         throw new Error("denied");
@@ -112,7 +137,8 @@ describe("the cinematic interlude: knowing a return", () => {
       },
     };
     expect(visitState(bad, bad).returning).toBe(false);
-    expect(() => markPlayed(bad)).not.toThrow();
+    expect(() => markPlayed(bad, bad)).not.toThrow();
+    expect(sessionSeed(bad)).toBeNull();
   });
 });
 
