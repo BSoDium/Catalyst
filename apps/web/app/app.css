@@ -3144,6 +3144,25 @@
     right: calc((100% - 100cqw) / 2 + 3.5rem);
     translate: 0 -50%;
     z-index: 3;
+    isolation: isolate;
+  }
+
+  /* Docked outside the row, the search is past the row's own fade (`.nav-fade`): over the globe it had no ground (owner, 2026-10-30). A soft plate of its own, the page's colour at the middle and gone at the edge (a radial ramp in eased stops: no box, no blur to pay for), like the player's at the other corner. */
+  [data-slot="site-header"] [data-slot="search-trigger"]::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset: -1.5rem -3rem;
+    pointer-events: none;
+    background: radial-gradient(
+      closest-side,
+      color-mix(in srgb, var(--background) 85%, transparent) 0%,
+      color-mix(in srgb, var(--background) 82%, transparent) 40%,
+      color-mix(in srgb, var(--background) 62%, transparent) 60%,
+      color-mix(in srgb, var(--background) 28%, transparent) 78%,
+      color-mix(in srgb, var(--background) 7%, transparent) 91%,
+      transparent 100%
+    );
   }
 }
 
@@ -3268,9 +3287,9 @@ body:not(:has([data-slot="site-header"])) .np-root {
   content: "";
   position: absolute;
   z-index: -1;
-  /* the plate reaches well past the disc and the words (owner, 2026-10-30: "bigger, more padding for the contents ... edges barely noticeable"): the whole of the margin is the feather, so the plate is full only under the contents */
-  --np-feather-x: 2.75rem;
-  --np-feather-y: 1.6rem;
+  /* the plate reaches well past the disc and the words (owner, 2026-10-30: "bigger, more padding for the contents ... edges barely noticeable", then "even more blurred, nearly invisible that it is a rectangle": the feather went from 2.75 by 1.6 rem to 4.75 by 2.75): the whole of the margin is the feather, so the plate is full only under the contents */
+  --np-feather-x: 4.75rem;
+  --np-feather-y: 2.75rem;
   inset: calc(-1 * var(--np-feather-y)) calc(-1 * var(--np-feather-x));
   pointer-events: none;
   background: var(--np-plate);
