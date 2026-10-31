@@ -1261,10 +1261,6 @@
         },
         {
           "kind": "project",
-          "slug": "hypergon"
-        },
-        {
-          "kind": "project",
           "slug": "portfolio-website"
         }
       ]
@@ -3247,10 +3243,6 @@
         },
         {
           "kind": "project",
-          "slug": "av-data-processing"
-        },
-        {
-          "kind": "project",
           "slug": "epidemic-spreading-sim"
         },
         {
@@ -3267,15 +3259,7 @@
         },
         {
           "kind": "project",
-          "slug": "vshell"
-        },
-        {
-          "kind": "project",
           "slug": "pconsole"
-        },
-        {
-          "kind": "project",
-          "slug": "hull-breach-tracking"
         },
         {
           "kind": "project",
@@ -5498,49 +5482,6 @@
       ]
     },
     {
-      "slug": "av-data-processing",
-      "title": "Audio-visual data processing",
-      "summary": "A collection of assignments for the audio-visual data processing course at ENSEEIHT, with compiled reports.",
-      "date": "2022-02",
-      "url": "https://bsodium.github.io/AV-data-processing/",
-      "tags": [
-        "signal-processing",
-        "matlab"
-      ],
-      "meta": [
-        {
-          "label": "Stack",
-          "value": "MATLAB"
-        },
-        {
-          "label": "Status",
-          "value": "Archived"
-        },
-        {
-          "label": "Repository",
-          "value": "github.com/BSoDium/AV-data-processing"
-        }
-      ],
-      "body": [
-        {
-          "type": "paragraph",
-          "text": "Assignments for the audio-visual data processing course at ENSEEIHT. The compiled reports are published online."
-        },
-        {
-          "type": "paragraph",
-          "text": "They gather, practical session by practical session, the signal processing exercises of the course, written up with their results and figures."
-        },
-        {
-          "type": "link",
-          "title": "Source",
-          "url": "https://github.com/BSoDium/AV-data-processing"
-        }
-      ],
-      "placeSlugs": [
-        "toulouse"
-      ]
-    },
-    {
       "slug": "avatar",
       "title": "Avatar",
       "summary": "A web-based SVG avatar generator that recolours a profile picture from a chosen palette.",
@@ -5963,109 +5904,6 @@
       ]
     },
     {
-      "slug": "hull-breach-tracking",
-      "title": "Hull breach tracking",
-      "summary": "A physics engine that simulates breaches in a ship's hull and detects their location through mechanical wave analysis.",
-      "date": "2019-10",
-      "tags": [
-        "simulation",
-        "python"
-      ],
-      "meta": [
-        {
-          "label": "Stack",
-          "value": "Python, Panda3D"
-        },
-        {
-          "label": "Status",
-          "value": "Archived"
-        },
-        {
-          "label": "Repository",
-          "value": "github.com/BSoDium/Hull-breach-tracking"
-        }
-      ],
-      "body": [
-        {
-          "type": "paragraph",
-          "text": "A dynamic physics engine which simulates breaches in a ship's hull, and the many ways of detecting them and finding their location through mechanical wave analysis."
-        },
-        {
-          "type": "paragraph",
-          "text": "It was meant to be completed by June 2020 as part of the French TIPE oral exams, a project defended for the entrance competition to the Grandes Écoles. The exams were cancelled because of the COVID crisis, so there was no point carrying on, and the work stayed unfinished."
-        },
-        {
-          "type": "heading",
-          "level": 2,
-          "text": "Controls"
-        },
-        {
-          "type": "list",
-          "ordered": false,
-          "items": [
-            "Middle mouse button: rotate the view.",
-            "Right click and drag: zoom in and out.",
-            "F1: toggle the console."
-          ]
-        },
-        {
-          "type": "link",
-          "title": "Source",
-          "url": "https://github.com/BSoDium/Hull-breach-tracking"
-        }
-      ],
-      "placeSlugs": [
-        "toulouse"
-      ]
-    },
-    {
-      "slug": "hypergon",
-      "title": "Hypergon",
-      "summary": "A proof of concept for a 4D rendering engine in C++.",
-      "date": "2022-09",
-      "tags": [
-        "graphics",
-        "cpp"
-      ],
-      "meta": [
-        {
-          "label": "Stack",
-          "value": "C++, OpenGL, CMake"
-        },
-        {
-          "label": "Status",
-          "value": "Archived"
-        },
-        {
-          "label": "Repository",
-          "value": "github.com/BSoDium/Hypergon"
-        }
-      ],
-      "body": [
-        {
-          "type": "paragraph",
-          "text": "A proof of concept for a 4D rendering engine, built with OpenGL, GLFW and GLM. A separate repository is a template for applications built on it."
-        },
-        {
-          "type": "paragraph",
-          "text": "It is written in C++ and built with CMake. Usage is still to be documented."
-        },
-        {
-          "type": "link",
-          "title": "Source",
-          "url": "https://github.com/BSoDium/Hypergon"
-        },
-        {
-          "type": "link",
-          "title": "Application template",
-          "url": "https://github.com/BSoDium/Hypergon-boilerplate"
-        }
-      ],
-      "placeSlugs": [
-        "klagenfurt"
-      ]
-    },
-    {
       "slug": "ipvchat",
       "title": "IPvChat",
       "summary": "A C++ chat client and server infrastructure for Linux, configured with CMake.",
@@ -6464,9 +6302,8 @@
     {
       "slug": "moneytor",
       "title": "Moneytor",
-      "summary": "A lightweight web app that visualises your coding activity from the Wakatime API and calculates your earnings from your hourly rate.",
+      "summary": "A web app that charted your coding activity from the Wakatime API and worked out your earnings from an hourly rate. Retired when Wakatime restricted API keys to its plugins.",
       "date": "2022-11",
-      "url": "https://moneytor.bsodium.fr/",
       "tags": [
         "dataviz",
         "typescript"
@@ -6478,7 +6315,7 @@
         },
         {
           "label": "Status",
-          "value": "Archived"
+          "value": "Retired"
         },
         {
           "label": "Repository",
@@ -6488,15 +6325,11 @@
       "body": [
         {
           "type": "paragraph",
-          "text": "A lightweight web application built on the Wakatime API. It shows your coding activity in a simple way and calculates earnings from your hourly rate. It needs a Wakatime API key."
+          "text": "A lightweight web application built on the Wakatime API. It showed your coding activity in a simple way and calculated your earnings from your hourly rate, from the data the Wakatime plugins in your editors send. It needed a Wakatime API key, and at the time a browser request interceptor to authenticate, which was a drawback."
         },
         {
           "type": "paragraph",
-          "text": "The data comes from the Wakatime plugins installed in your editors, so the app is only as good as that tracking. At the time it needed a browser request interceptor to authenticate, which is a drawback."
-        },
-        {
-          "type": "paragraph",
-          "text": "It is no longer maintained, and the hosted version only partly works."
+          "text": "Wakatime has since changed how its API keys may be used. Its documentation now reserves them for those plugins (they are write-only), asks every other app to use OAuth 2.0 access tokens, and forbids a secret key in a public website's JavaScript. Moneytor ran entirely in the browser with the visitor's own key, so it cannot work under these rules; bringing it back would take a server and a registered OAuth app. It is no longer maintained."
         },
         {
           "type": "link",
@@ -7302,48 +7135,6 @@
       ],
       "placeSlugs": [
         "klagenfurt"
-      ]
-    },
-    {
-      "slug": "vshell",
-      "title": "Vshell",
-      "summary": "A very basic Unix shell written in C as a proof of concept.",
-      "date": "2021-05",
-      "tags": [
-        "c",
-        "systems"
-      ],
-      "meta": [
-        {
-          "label": "Stack",
-          "value": "C"
-        },
-        {
-          "label": "Status",
-          "value": "Archived"
-        },
-        {
-          "label": "Repository",
-          "value": "github.com/BSoDium/Vshell"
-        }
-      ],
-      "body": [
-        {
-          "type": "paragraph",
-          "text": "A basic shell in C with job control (fg, bg, stop, jobs, exit), pipes and background jobs."
-        },
-        {
-          "type": "paragraph",
-          "text": "It also handles input and output redirection with the less-than and greater-than operators, and the Ctrl-C and Ctrl-Z signals. It is a proof of concept, and not everything has been meticulously tested. It builds with make, or with any standard C compiler."
-        },
-        {
-          "type": "link",
-          "title": "Source",
-          "url": "https://github.com/BSoDium/Vshell"
-        }
-      ],
-      "placeSlugs": [
-        "toulouse"
       ]
     },
     {
