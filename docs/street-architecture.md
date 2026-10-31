@@ -228,7 +228,7 @@ Main roads are 1 art px up to z14.6 and hollow only once the casing holds two ou
 `/dev/street` (and `/dev/street-lines`) exist only in development or a build made with `CATALYST_DEV_ROUTES=1`; otherwise they are not in `routes.ts` (a production build contains none of their code) and their loaders answer 404. Query: `source=primary|fallback`, `chaos=block-primary|slow-primary|block-all` (+ `chaos-after`, `chaos-heal`, `chaos-slow`), `view`, `select`, `inset`, `rm=1`, `theme`, `reveal=1`, `sharp`, `blend`, `fallbackUrl`, `primaryUrl`, `timings=`, `thresholds=`.
 
 ```
-node apps/web/scripts/street/serve-tiles.mjs prototypes/street-zoom/public/hcmc.pmtiles 5240   # local Range server
+node apps/web/scripts/street/serve-tiles.mjs apps/web/scripts/street/data/hcmc.pmtiles 5240   # local Range server
 CATALYST_TILES_FALLBACK_URL=http://127.0.0.1:5240/places.pmtiles pnpm --filter @catalyst/web dev   # then BASE_URL=...
 pnpm --filter @catalyst/web test:street-lines     # the line regression gate (needs the dev server on BASE_URL, Chrome)
 node apps/web/scripts/street/lod-check.mjs      # binary layers at rest: zoom sweep in and out and wheel bursts, presented == classified, sea texture XOR graticule (SOURCE=primary for OpenFreeMap; the default local archive looks at the city centre, the coast point of the primary check is open sea outside it)

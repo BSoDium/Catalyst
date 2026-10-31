@@ -2,6 +2,8 @@
 
 Status: spike result, 2026-10-05. Prototype: `prototypes/street-zoom` (`@catalyst/prototype-street-zoom`, not deployed, dev port 5190). Builds on `docs/renderer-decision.md` (Three.js globe, tuned constants) and `docs/design-tokens.md`.
 
+> **The prototype code was removed on 2026-10-31** (issue #237): it is kept at the git tag `prototypes-final` (`git show prototypes-final:prototypes/<name>/<file>`, or `git worktree add ../prototypes prototypes-final` to run it). The paths and commands below name the prototype as it was at that tag; the production port is in `apps/web/app/globe`.
+
 ## Recommendation
 
 1. **Keep the pixel pass idea: it works.** Render the map in four plain channels into a texture and run our own final pass (grid snap, max-pool, hard ink threshold, Bayer dither, palette from the CSS tokens, focus mask, dither dissolve). Zoomed to Ho Chi Minh City at z14.5 it gives the same 3 px, 1-bit, token-coloured look as the globe, at 60 fps and about 1.3 ms of GPU time for the pass (Apple M4, headless Chrome). Idle is zero frames.

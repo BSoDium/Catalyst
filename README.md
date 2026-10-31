@@ -14,9 +14,6 @@ packages/
   schemas/        The published content contract (zod) + generated JSON Schema
   published/      The published projection (data/projection.json) + loader, local preview loader, placeholder test fixture
   geodata/        Coastline/border datasets for the globe + the generator script
-prototypes/
-  globe/          Renderer comparison (Three.js vs MapLibre). Not deployed; kept as evidence.
-  street-zoom/    Spike of the street map pass (not deployed; source of the line rules and of docs/street-zoom-spike.md)
 docs/             Architecture, contracts, decisions (see below)
 ```
 

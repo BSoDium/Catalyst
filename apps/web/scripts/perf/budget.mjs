@@ -5,7 +5,7 @@
 //
 // Without --base it serves the production build itself (`pnpm --filter @catalyst/web build` first): NODE_ENV=development
 // at RUN time (a production runtime refuses the local http PMTiles fallback) with the local fallback archive on :5240
-// (prototypes/street-zoom/public/hcmc.pmtiles; TILES_FILE / TILES_PORT override). Needs Chrome for Testing (CHROME_PATH).
+// (apps/web/scripts/street/data/hcmc.pmtiles; TILES_FILE / TILES_PORT override). Needs Chrome for Testing (CHROME_PATH).
 // Headless = a 60 Hz compositor; --headed uses the real display (120 Hz on a MacBook Pro) and is the number to trust for
 // "does it feel fluid". --quick: one repeat of s1, s4 and idle.
 import { spawn } from "node:child_process";

@@ -5,7 +5,7 @@
 //        [--street-opts '{"highResolution":true}'] [--throttle 4] [--quiet]
 //
 // Tiles: a server started with NODE_ENV=development and CATALYST_TILES_FALLBACK_URL=http://127.0.0.1:5240/places.pmtiles
-// (node apps/web/scripts/street/serve-tiles.mjs prototypes/street-zoom/public/hcmc.pmtiles 5240) lets scenarios pin
+// (node apps/web/scripts/street/serve-tiles.mjs apps/web/scripts/street/data/hcmc.pmtiles 5240) lets scenarios pin
 // the local archive (deterministic, no network). `s2-lisbon` uses the real OpenFreeMap primary.
 import { runScenarios } from "./runner.mjs";
 
