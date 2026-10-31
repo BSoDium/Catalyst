@@ -4947,22 +4947,22 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     text-wrap: pretty;
   }
 
-  /* The search line: a button that looks like the board's input (the search icon, placeholder text, key hint, one hairline under). */
+  /* The search line: a button that looks like the board's input (the search icon, placeholder text, key hint), on a plate of its own (the page's colour over the globe, a hairline round it) so it reads as the field to use, not as a rule under the text (#433). */
   .hero-search {
     pointer-events: auto;
     display: flex;
     align-items: center;
     gap: 0.875rem;
     width: 100%;
-    min-height: 2.75rem;
+    min-height: 3rem;
     margin: 0;
-    padding: 0.75rem 0;
-    border: 0;
-    border-bottom: var(--hairline) solid var(--border-strong);
-    background: transparent;
-    color: var(--muted-foreground);
+    padding: 0.75rem 1rem;
+    border: var(--hairline) solid var(--border-strong);
+    border-radius: 0.5rem;
+    background: color-mix(in srgb, var(--background) 78%, transparent);
+    color: var(--foreground);
     font-family: var(--font-meta);
-    font-size: 0.8125rem;
+    font-size: 0.875rem;
     line-height: 1.25;
     text-align: left;
     cursor: pointer;
@@ -4971,10 +4971,11 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
 
   .hero-search:hover,
   .hero-search:focus-visible {
-    color: var(--foreground);
+    border-color: var(--signal-text);
   }
 
   .hero-search-label {
+    color: var(--muted-foreground);
     flex: 1;
     min-width: 0;
     overflow: hidden;
