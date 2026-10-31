@@ -3548,6 +3548,13 @@ body:not(:has([data-slot="site-header"])) .np-root {
   flex: none;
   margin-inline-start: 0.5rem;
 }
+/* The glyph is as light as the words beside it: 16 px at a 1.5 stroke is a 1 px line (the mono type's), and 2 px lower, where the eye puts the middle of a title over a smaller line. */
+.np-toggle .ui-icon {
+  width: 1rem;
+  height: 1rem;
+  stroke-width: 1.5;
+  translate: 0 0.125rem;
+}
 .np-text {
   font-family: var(--font-mono, ui-monospace, monospace);
   letter-spacing: 0.02em;
