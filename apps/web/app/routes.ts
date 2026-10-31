@@ -40,4 +40,6 @@ export default [
   // The quick search's index (titles and tags of the places and entries), fetched when the palette first opens.
   route("search-index.json", "routes/search-index.ts"),
   ...devRoutes,
+  // Last: any other address is a 404 drawn by the root boundary (with the root loader's data, so the header has its career link).
+  route("*", "routes/not-found.tsx"),
 ] satisfies RouteConfig;
