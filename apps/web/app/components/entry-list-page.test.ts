@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { StaticRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 import { listEntries, type EntrySummary } from "~/lib/entries";
-import { loadDemoProjection } from "@catalyst/published";
+import { loadDemoProjection } from "@catalyst/published/dev";
 import { EntryListPage } from "./entry-list-page";
 
 const demo = loadDemoProjection();

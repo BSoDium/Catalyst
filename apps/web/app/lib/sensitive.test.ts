@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { loadDemoProjection } from "@catalyst/published";
+import { loadDemoProjection } from "@catalyst/published/dev";
 import { COLLECTIONS, CONTENT_KINDS, entriesOfPlace, getEntryDetail, listEntries, type EntryDetail } from "./entries";
 import { entryMeta } from "./entry-meta";
 import { entryJsonLd } from "./json-ld";

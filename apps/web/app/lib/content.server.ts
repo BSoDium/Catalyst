@@ -1,5 +1,5 @@
 import { EMPTY_PROJECTION, parsePublishedProjection, type PublishedProjection } from "@catalyst/schemas";
-import { loadProjection, type ContentMode } from "@catalyst/published";
+import { loadProjection, type ContentMode } from "@catalyst/published/dev";
 
 /**
  * Server-side content layer. Loaders call `getProjection()` and nothing else.

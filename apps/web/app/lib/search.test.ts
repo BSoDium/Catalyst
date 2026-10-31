@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { loadDemoProjection } from "@catalyst/published";
+import { loadDemoProjection } from "@catalyst/published/dev";
 import { EMPTY_PROJECTION } from "@catalyst/schemas";
 import { buildSearchIndex, foldText, groupResults, rankItems, resultsStatus, searchItems, SEARCH_LABELS, SEARCH_SINGULAR, SEARCH_TYPES, type SearchItem } from "./search";
 

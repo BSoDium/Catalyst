@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { loadDemoProjection } from "@catalyst/published";
+import { loadDemoProjection } from "@catalyst/published/dev";
 import { copyrightNotice, yearOf } from "./copyright";
 import { CONTENT_KINDS, getEntryDetail } from "./entries";
 import { SITE } from "./site";

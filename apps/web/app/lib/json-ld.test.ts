@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { loadDemoProjection } from "@catalyst/published";
+import { loadDemoProjection } from "@catalyst/published/dev";
 import { getEntryDetail, type EntryDetail } from "./entries";
 import { entryJsonLd, isCodeRepository, websiteJsonLd } from "./json-ld";
 

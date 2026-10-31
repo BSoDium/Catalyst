@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { loadDemoProjection } from "@catalyst/published";
+import { loadDemoProjection } from "@catalyst/published/dev";
 import { EMPTY_PROJECTION, type PublishedProjection } from "@catalyst/schemas";
 import { robotsTxt, sitemapUrls, sitemapXml } from "./sitemap";
 

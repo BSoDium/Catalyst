@@ -67,7 +67,7 @@ All non-2xx JSON responses share one envelope:
 
 ## Endpoints
 
-The examples below are real responses with `CATALYST_CONTENT=demo` (placeholder fixture, `packages/published/fixtures/demo.json`).
+The examples below are real responses of the demo content (placeholder fixture, `packages/published/fixtures/demo.json`; the tests serve it through `@catalyst/published/dev`: a deployed API serves the published snapshot only and refuses `CATALYST_CONTENT=demo`).
 
 ### `GET /health`
 

@@ -2,7 +2,8 @@ import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, w
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { getCareer, loadDemoProjection, loadPreviewProjection, loadProjection, loadPublishedProjection, previewCandidates } from "./index";
+import { loadPublishedProjection } from "./index";
+import { getCareer, loadDemoProjection, loadPreviewProjection, loadProjection, previewCandidates } from "./dev";
 import { parsePublishedProjection } from "@catalyst/schemas";
 import { MAX_SVG_BYTES, MEDIA, MEDIA_DIR, mediaSrc, renderImage, STOCK } from "../scripts/demo/generate-media.mjs";
 

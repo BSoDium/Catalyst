@@ -1,8 +1,17 @@
-import { loadProjection, type ContentMode } from "@catalyst/published";
+import { loadPublishedProjection } from "@catalyst/published";
 import type { PublishedProjection } from "@catalyst/schemas";
 
-/** The API serves bundled content only: `published` or `demo`. It never serves the local `preview` file. */
-export type ApiMode = Exclude<ContentMode, "preview">;
+/**
+ * The content modes the API knows: `published` is the only one a deployment can serve. `demo` is accepted as a name so a mistaken
+ * `CATALYST_CONTENT=demo` is refused with a clear message; the fixture itself is not in the API bundle (`@catalyst/published/dev`,
+ * which tests inject through `loadContent`'s second argument). The local `preview` file is never served.
+ */
+export type ApiMode = "published" | "demo";
+
+function loadServed(mode: ApiMode) {
+  if (mode !== "published") throw new Error(`CATALYST_CONTENT "${mode}" is not available in the API build: it serves the published snapshot only`);
+  return loadPublishedProjection();
+}
 
 export type ContentState =
   | { status: "ready"; mode: ApiMode; projection: PublishedProjection }
@@ -27,7 +36,7 @@ export function resolveMode(raw: string | undefined): ApiMode {
  */
 export function loadContent(
   env: ContentEnv,
-  load: (mode: ApiMode) => PublishedProjection = loadProjection,
+  load: (mode: ApiMode) => PublishedProjection = loadServed,
 ): ContentState {
   try {
     const mode = resolveMode(env.CATALYST_CONTENT);

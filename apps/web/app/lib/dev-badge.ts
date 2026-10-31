@@ -1,4 +1,4 @@
-import type { ContentMode } from "@catalyst/published";
+import type { ContentMode } from "@catalyst/published/dev";
 
 /** Text of the dev-only content badge, or null when no badge applies (published content, or not a dev build). */
 export function devBadgeLabel(mode: ContentMode | null | undefined, isDev: boolean): string | null {
