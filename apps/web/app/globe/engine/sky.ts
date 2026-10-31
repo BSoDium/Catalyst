@@ -21,6 +21,7 @@
 import { DEG, clamp, focalPx, smoothstep, type Vec3, type ViewBasis } from "./geo";
 import { hysteresis } from "./fade";
 import { roleLevel } from "./palette";
+import { SUN } from "./moon";
 import { SKY } from "./tuning";
 
 /** A 3x3 matrix, row-major. */
@@ -466,4 +467,14 @@ export function applySkyFlags(): void {
   } catch {
     // no storage: keep the default
   }
+}
+
+/**
+ * The eye's iris on the sky (issue #424): how much of the stars and of the Milky Way band stays `visible` (the layer's own fade, 0..1)
+ * while the iris is `exposure` closed (0 open, 1 closed, the sun's glare in the picture). The same on the light page as on the dark one:
+ * with the sun in the picture no star dot is left.
+ */
+export function irisFades(visible: number, exposure: number): { stars: number; band: number } {
+  const e = clamp(exposure, 0, 1);
+  return { stars: visible * (1 - SUN.sky.iris.stars * e), band: visible * (1 - SUN.sky.iris.band * e) };
 }

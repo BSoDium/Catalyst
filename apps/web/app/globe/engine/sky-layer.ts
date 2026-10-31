@@ -15,9 +15,8 @@
 import { BufferAttribute, BufferGeometry, ClampToEdgeWrapping, DataTexture, DoubleSide, LinearFilter, Matrix3, type Matrix4, Mesh, Points, RedFormat, RepeatWrapping, type Scene, ShaderMaterial, UnsignedByteType, Vector2, Vector3 } from "three";
 import type { GlobeTheme } from "./colors";
 import { FadeArray, clockStep } from "./fade";
-import { BAYER4, type Mat3, bakeBand, defaultStars, skyGeometry, skyWanted, starTones } from "./sky";
+import { BAYER4, type Mat3, bakeBand, defaultStars, irisFades, skyGeometry, skyWanted, starTones } from "./sky";
 import { SKY } from "./tuning";
-import { SUN } from "./moon";
 
 const vec = (c: readonly number[]) => `vec3(${c.map((n) => n.toFixed(3)).join(", ")})`;
 
@@ -133,7 +132,7 @@ export class SkyLayer {
   private on = false;
   private seen = false;
   private lastClock = 0;
-  /** How closed the eye's iris is, 0..1 (`SUN.dark.iris`): the sun's glare dazzles the stars out. */
+  /** How closed the eye's iris is, 0..1 (`SUN.sky.iris`): the sun's glare dazzles the stars out, on the light page as on the dark one. */
   private exposure = 0;
   private rhoMax = 0;
   private geo = { cx: 0, cy: 0, radius: 1 };
@@ -224,8 +223,9 @@ export class SkyLayer {
       (u.uCentre!.value as Vector2).set(geo.cx, geo.cy);
       u.uRadius!.value = geo.radius;
     }
-    this.stars.uniforms.uFade!.value = v * (1 - SUN.dark.iris.stars * this.exposure);
-    this.band.uniforms.uFade!.value = v * (1 - SUN.dark.iris.band * this.exposure);
+    const fades = irisFades(v, this.exposure);
+    this.stars.uniforms.uFade!.value = fades.stars;
+    this.band.uniforms.uFade!.value = fades.band;
     (this.stars.uniforms.uBuf!.value as Vector2).set(frame.bufW, frame.bufH);
   }
 

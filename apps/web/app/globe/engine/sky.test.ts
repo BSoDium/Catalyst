@@ -22,6 +22,7 @@ import {
   skyGeometry,
   skyTones,
   skyTop,
+  irisFades,
   skyWanted,
   starTier,
   starTones,
@@ -415,5 +416,28 @@ describe("the stars' halos (the light page's chrome)", () => {
     const lit = halo.reduce((n, v) => n + (v > 0 ? 1 : 0), 0);
     expect(lit).toBeGreaterThan(1000);
     expect(lit).toBeLessThan(halo.length);
+  });
+});
+
+describe("irisFades (the eye's iris on the sky, both pages: issue #424)", () => {
+  it("leaves the sky alone with the iris open", () => {
+    expect(irisFades(1, 0)).toEqual({ stars: 1, band: 1 });
+    expect(irisFades(0.4, 0)).toEqual({ stars: 0.4, band: 0.4 });
+  });
+  it("dazzles the stars out with the iris closed, the band a little less", () => {
+    const closed = irisFades(1, 1);
+    expect(closed.stars).toBeLessThan(0.06);
+    expect(closed.band).toBeGreaterThan(closed.stars);
+    expect(closed.band).toBeLessThan(0.5);
+  });
+  it("follows the iris smoothly and never leaves 0..visible", () => {
+    let last = 1;
+    for (let e = 0; e <= 1.0001; e += 0.1) {
+      const { stars, band } = irisFades(1, e);
+      expect(stars).toBeLessThanOrEqual(last + 1e-12);
+      last = stars;
+      expect(band).toBeGreaterThanOrEqual(0);
+    }
+    expect(irisFades(1, 7).stars).toBe(irisFades(1, 1).stars);
   });
 });
