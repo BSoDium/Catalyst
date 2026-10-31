@@ -52,6 +52,7 @@ export function CareerPage({ career, places = [] }: { career: PublishedCareer; p
               {SITE.givenName} <span className="career-name-family">{SITE.familyName}</span>
             </h1>
             <p className="career-summary">{career.summary}</p>
+            <div className="career-cta">
             {available && (
               <p data-slot="career-availability" className="career-availability type-meta">
                 <span>
@@ -71,6 +72,7 @@ export function CareerPage({ career, places = [] }: { career: PublishedCareer; p
                 </a>
               </Button>
             </p>
+            </div>
             {updated && (
               <p data-slot="career-updated" className="career-updated type-meta">
                 Updated <time dateTime={career.updated}>{updated}</time>

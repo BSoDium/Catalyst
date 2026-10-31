@@ -5487,7 +5487,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   /*
    * The head on a phone (owner, 2026-10-31, issue #428). The name is bigger and breaks in two, the family name under the given one, so it leads
    * the statement under it (a single line at 2.25 rem weighed no more than the paragraph). The availability is two lines, what and since when, with a
-   * small dot of the page's signal colour (no longer a mono line that broke anywhere). "Updated" is the page's date, not an offer: it leaves
+   * second line, beside the "Get in touch" button when they fit and under it when they do not (no longer a mono line that broke anywhere). "Updated" is the page's date, not an offer: it leaves
    * the button, set apart with air, in the reading face, italic and muted, so it does not repeat the availability's type.
    */
   @media screen and (max-width: 55.99rem) {
@@ -5500,25 +5500,28 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
       display: block;
     }
 
+    /* The button and the availability share a row when they fit (the button first, the availability at its right), and the availability goes under the button when they do not. */
+    .career-cta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 1rem 1.5rem;
+      margin-top: 1.5rem;
+    }
+
+    .career-cta .career-reach {
+      order: 1;
+      margin: 0;
+    }
+
     [data-slot="career-head"] .career-availability {
       display: block;
+      order: 2;
+      margin: 0;
     }
 
     [data-slot="career-head"] .career-availability > span {
       display: block;
-    }
-
-    .career-availability > span::before {
-      content: "";
-      display: inline-block;
-      width: 0.5rem;
-      height: 0.5rem;
-      margin-right: 0.625rem;
-      background: var(--signal);
-      vertical-align: 0.05em;
-    }
-
-    .career-availability > span {
       color: var(--foreground);
     }
 
@@ -5529,8 +5532,12 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     .career-asof {
       display: block;
       margin-top: 0.25rem;
-      padding-left: 1.125rem;
       color: var(--muted-foreground);
+    }
+
+    /* The strip under the head sits closer to "Updated": about the air it has between its two hairlines. */
+    .career-languages[data-slot="career-languages"] {
+      margin-top: 1.25rem;
     }
 
     [data-slot="career-head"] .career-updated {
