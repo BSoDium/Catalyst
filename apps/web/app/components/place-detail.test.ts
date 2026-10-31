@@ -92,6 +92,19 @@ describe("PlaceDetail", () => {
     expect(story).toContain('href="/photography/sea-wall"');
     expect(story).toContain("Sea Wall");
   });
+  it("draws a picture on a stage (issue #448): never wider than its own pixels, never taller than 80 % of the window, a blurred copy for the sides", () => {
+    const html = render("lisbon");
+    const stages = html.match(/<div data-slot="place-stage"[\s\S]*?<\/div>/g) ?? [];
+    expect(stages.length).toBeGreaterThan(0);
+    for (const stage of stages) {
+      const width = /<img[^>]*\swidth="(\d+)"/.exec(stage)?.[1];
+      expect(stage, "the picture is capped at its own width").toContain(`max-width:${width}px`);
+      expect(stage).toContain("max-h-[80dvh]");
+      expect(stage).toContain("object-contain");
+      // the backdrop is decorative: no name, hidden from assistive technology, never a second picture to a reader
+      expect(stage).toMatch(/<img[^>]*alt=""[^>]*aria-hidden="true"[^>]*class="entry-stage-backdrop"/);
+    }
+  });
   it("keeps a step with many pictures to a page: four shown, the rest behind a disclosure", () => {
     const images = Array.from({ length: 9 }, (_, i) => ({ src: `/media/demo/fig-coast-road.svg?${i}`.replace("?", "-"), alt: `Picture ${i}`, width: 960, height: 600 }));
     const html = route("b", { images });
