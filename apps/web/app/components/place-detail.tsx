@@ -22,8 +22,14 @@ function Figure({ item, from }: { item: PhotoItem; from: string }) {
   const src = safeMediaSrc(item.src);
   if (!src) return null;
   const size = imageSize(item);
+  // A picture is the work: never drawn wider than its own pixels (a 720 px photograph is not blown up to the panel's width), never taller than
+  // 80 % of the window (shown whole, `object-contain`), and where it does not fill its frame a blurred, enlarged copy of it fills the sides, as on
+  // a photograph's own page (`.entry-stage-backdrop`, decorative: no alt). Issue #448.
   const img = size ? (
-    <img src={src} alt={item.alt} width={size.width} height={size.height} loading="lazy" decoding="async" className="block h-auto w-full" />
+    <div data-slot="place-stage" className="relative isolate overflow-hidden">
+      <img src={src} alt={item.alt} width={size.width} height={size.height} loading="lazy" decoding="async" style={{ maxWidth: size.width }} className="relative mx-auto block h-auto max-h-[80dvh] w-full object-contain" />
+      <img src={src} alt="" aria-hidden="true" loading="lazy" decoding="async" className="entry-stage-backdrop" />
+    </div>
   ) : (
     // Dimensions were not authored: reserve a neutral box so nothing shifts.
     <div className="aspect-[4/3] w-full overflow-hidden bg-accent">
