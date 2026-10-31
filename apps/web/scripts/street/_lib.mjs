@@ -1,7 +1,7 @@
 // Shared helpers for the street browser checks. Needs a Chrome binary: CHROME_PATH (default: Playwright's "Chrome for
 // Testing" in the local cache). The dev route is served by `react-router dev` (or a production build made with
 // CATALYST_DEV_ROUTES=1): BASE_URL, default http://localhost:5231. The local fallback archive is served by
-// serve-tiles.mjs (TILES_FILE, TILES_PORT; default prototypes/street-zoom/public/hcmc.pmtiles on 5240).
+// serve-tiles.mjs (TILES_FILE, TILES_PORT; default apps/web/scripts/street/data/hcmc.pmtiles on 5240).
 import { chromium } from "playwright-core";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -10,7 +10,7 @@ import { serveTiles } from "./serve-tiles.mjs";
 export const BASE_URL = process.env.BASE_URL ?? "http://localhost:5231";
 export const OUT_DIR = process.env.OUT_DIR ?? ".";
 export const TILES_PORT = Number(process.env.TILES_PORT ?? 5240);
-export const TILES_FILE = process.env.TILES_FILE ?? fileURLToPath(new URL("../../../../prototypes/street-zoom/public/hcmc.pmtiles", import.meta.url));
+export const TILES_FILE = process.env.TILES_FILE ?? fileURLToPath(new URL("data/hcmc.pmtiles", import.meta.url));
 export const FALLBACK_URL = `http://127.0.0.1:${TILES_PORT}/places.pmtiles`;
 
 const DEFAULT_CHROME = `${process.env.HOME}/Library/Caches/ms-playwright/chromium-1243/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing`;

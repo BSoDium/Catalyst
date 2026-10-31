@@ -37,8 +37,6 @@ COPY apps/api/package.json apps/api/
 COPY packages/geodata/package.json packages/geodata/
 COPY packages/published/package.json packages/published/
 COPY packages/schemas/package.json packages/schemas/
-COPY prototypes/globe/package.json prototypes/globe/
-COPY prototypes/street-zoom/package.json prototypes/street-zoom/
 
 # ---------------------------------------------------------------- build
 FROM manifests AS build

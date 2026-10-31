@@ -1,4 +1,4 @@
-// Line regression gate for the production street module (port of prototypes/street-zoom/scripts/line-regression.mjs;
+// Line regression gate for the production street module (port of the street-zoom spike's line-regression.mjs, at the git tag prototypes-final;
 // spec: docs/pixel-line-rules.md section 6). Exit code 1 on any violation.
 //
 //   pnpm --filter @catalyst/web test:street-lines [-- --quick] [--json=out.json]

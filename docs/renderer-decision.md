@@ -2,6 +2,8 @@
 
 Status: recommendation, 2026-10-03. Prototype: `prototypes/globe` (`@catalyst/prototype-globe`, not deployed). Data: `packages/geodata` (`@catalyst/geodata`).
 
+> **The prototype code was removed on 2026-10-31** (issue #237): it is kept at the git tag `prototypes-final` (`git show prototypes-final:prototypes/<name>/<file>`, or `git worktree add ../prototypes prototypes-final` to run it). The paths and commands below name the prototype as it was at that tag; the production port is in `apps/web/app/globe`.
+
 ## Recommendation
 
 **Standalone Three.js (no MapLibre, no Mapbox).** One small imperative module, no React inside, drawn into a reduced-resolution canvas.

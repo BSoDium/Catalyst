@@ -2,6 +2,8 @@
 
 Status: spike result, 2026-10-05. Code: `prototypes/street-zoom` (`src/core/artLine.ts`, `src/gl/pixelPass.ts`, `src/style/monoStyle.ts`). Builds on `docs/street-zoom-spike.md` (the pixel pass) and `docs/design-tokens.md` (colours). This is the spec a production port must follow; section 6 lists what to test.
 
+> **The prototype code was removed on 2026-10-31** (issue #237): it is kept at the git tag `prototypes-final` (`git show prototypes-final:prototypes/<name>/<file>`, or `git worktree add ../prototypes prototypes-final` to run it). The paths and commands below name the prototype as it was at that tag; the production port is in `apps/web/app/globe`.
+
 ## 1. Problem and measured root cause
 
 Owner's report: certain lines disappear in certain places, and lines look like a high-resolution image that was downscaled, not like pixels on a coarse grid.
