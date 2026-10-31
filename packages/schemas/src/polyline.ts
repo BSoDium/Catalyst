@@ -72,11 +72,18 @@ export function encodePolyline5(points: readonly LatLon[]): string {
   return out;
 }
 
+/**
+ * The earth's mean radius in kilometres (IUGG): the ONE value of the repository's spherical maths (this file's distance, the web app's
+ * framing and lines, `lib/projection.ts`' view radii). This module has no dependency, so the browser bundle may import it
+ * (`@catalyst/schemas/polyline`) without the schema library.
+ */
+export const EARTH_RADIUS_KM = 6371.0088;
+
 /** Great-circle distance between two points in kilometres (spherical earth, mean radius). */
 export function haversineKm(a: LatLon, b: LatLon): number {
   const rad = Math.PI / 180;
   const dLat = (b[0] - a[0]) * rad;
   const dLon = (b[1] - a[1]) * rad;
   const h = Math.sin(dLat / 2) ** 2 + Math.cos(a[0] * rad) * Math.cos(b[0] * rad) * Math.sin(dLon / 2) ** 2;
-  return 2 * 6371.0088 * Math.asin(Math.min(1, Math.sqrt(h)));
+  return 2 * EARTH_RADIUS_KM * Math.asin(Math.min(1, Math.sqrt(h)));
 }

@@ -4,7 +4,9 @@
  * simplified line from sinking into the planet's disc (the same reason the arcs are sampled, engine/geometry.ts).
  */
 
-export const EARTH_RADIUS_M = 6_371_008.8;
+import { EARTH_RADIUS_KM } from "@catalyst/schemas/polyline";
+
+export const EARTH_RADIUS_M = EARTH_RADIUS_KM * 1000;
 
 /** Distance in metres from point p to the segment a-b; all `[x, y, z]` in metres, read from `xyz` at vertex indices. */
 function distToSegment(xyz: ArrayLike<number>, p: number, a: number, b: number): number {

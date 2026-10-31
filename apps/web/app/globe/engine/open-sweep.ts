@@ -8,7 +8,7 @@
  * Labels are placed by the real planner (`planLabels`, a full plan) for the overlap count and the free room.
  */
 import { stripCountry } from "./country-names";
-import { bboxExtentsKm, bboxFitRadiusKm, type Bbox } from "./framing";
+import { bboxExtentsKm, bboxFitRadiusKm, EARTH_RADIUS_KM, type Bbox } from "./framing";
 import type { LabelSub } from "./label-sub";
 import { LABEL_TYPE, labelVariants } from "./label-text";
 import { SPOT } from "./pixel-labels";
@@ -261,7 +261,7 @@ export function flickerAt(tree: LodTree, screen: Screen, lon: number, lat: numbe
   let last = new Set<string>();
   let first = true;
   const pxPerKm = placePxPerKm(zoom, screen.height, 1);
-  const kmPerDeg = (Math.PI / 180) * 6371;
+  const kmPerDeg = (Math.PI / 180) * EARTH_RADIUS_KM;
   for (const [dx, dy, dz] of [[0, 0, 0], ...JITTER] as const) {
     const cam = cameraOn(screen, lon + dx / pxPerKm / kmPerDeg / Math.max(0.2, Math.cos((lat * Math.PI) / 180)), lat + dy / pxPerKm / kmPerDeg, zoom + dz);
     const drawn = drawnAt(tree, cam);

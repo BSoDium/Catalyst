@@ -12,10 +12,11 @@
  * `freeWidth` is the box width minus the right inset (the detail panel), so the circle is centred in, and fits,
  * the visible area, in any aspect ratio.
  */
+import { EARTH_RADIUS_KM } from "@catalyst/schemas/polyline";
 import { clampInset, freeWidth } from "./inset";
 import { radiusPxToZoom } from "./geo";
 
-export const EARTH_RADIUS_KM = 6371.0088;
+export { EARTH_RADIUS_KM };
 /** View radius used when a place has none (km): a typical city-wide framing (centre to edge of a mid-size city). */
 export const DEFAULT_VIEW_RADIUS_KM = 12;
 /** Empty room around the circle, as a fraction of its radius: the circle takes 1 / (1 + margin) = 80% of the smaller free side. */
