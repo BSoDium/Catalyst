@@ -4958,7 +4958,6 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     margin: 0;
     padding: 0.75rem 1rem;
     border: var(--hairline) solid var(--border-strong);
-    border-radius: 0.5rem;
     background: color-mix(in srgb, var(--background) 78%, transparent);
     color: var(--foreground);
     font-family: var(--font-meta);
