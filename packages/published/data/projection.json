@@ -5448,7 +5448,12 @@
         "src": "/media/project/amaze-me/cover.1b57f338.webp",
         "alt": "A pink three-dimensional maze seen at an angle over a dark grid, with a small panel at the top left to set the maze size, toggle the wireframe and generate a new maze.",
         "width": 1824,
-        "height": 1323
+        "height": 1323,
+        "small": {
+          "src": "/media/project/amaze-me/cover-800w.640a2e7d.webp",
+          "width": 800,
+          "height": 580
+        }
       },
       "tags": [
         "three-js",
@@ -5545,7 +5550,12 @@
         "src": "/media/project/avatar/cover.d714690b.webp",
         "alt": "A web page showing a flat illustration of a person with glasses in a rounded square, with controls to pick the shape, three palette colours, show or hide the glasses, then share or download.",
         "width": 1824,
-        "height": 1323
+        "height": 1323,
+        "small": {
+          "src": "/media/project/avatar/cover-800w.0dc1c78b.webp",
+          "width": 800,
+          "height": 580
+        }
       },
       "tags": [
         "svg",
@@ -5602,7 +5612,12 @@
         "src": "/media/project/carbon-atlas/cover.78a12aa3.webp",
         "alt": "A map of the Amazon around Manaus with a dashed project boundary, a side panel of eligibility bars and carbon projection charts, and a search box listing suggested projects.",
         "width": 1824,
-        "height": 1323
+        "height": 1323,
+        "small": {
+          "src": "/media/project/carbon-atlas/cover-800w.0196ee1c.webp",
+          "width": 800,
+          "height": 580
+        }
       },
       "tags": [
         "dataviz",
@@ -5642,7 +5657,12 @@
         "src": "/media/project/clifford/cover.c2b7bd96.webp",
         "alt": "A terminal showing the CLIfford prompt: a list of available commands, a greeting, and the program's name drawn as a large pixel-art splash screen in light blue on a dark background.",
         "width": 1200,
-        "height": 700
+        "height": 700,
+        "small": {
+          "src": "/media/project/clifford/cover-800w.0d26b7de.webp",
+          "width": 800,
+          "height": 467
+        }
       },
       "tags": [
         "cpp",
@@ -5723,7 +5743,12 @@
         "src": "/media/project/cron/cover.a5cbd872.webp",
         "alt": "Four phone screens of the Cron alarm app side by side: the home screen with tomorrow's 09:30 wake-up and a timeline, the planner's reasoning over the calendar, the memory notes, and the settings list.",
         "width": 2744,
-        "height": 1412
+        "height": 1412,
+        "small": {
+          "src": "/media/project/cron/cover-800w.2804e098.webp",
+          "width": 800,
+          "height": 412
+        }
       },
       "tags": [
         "android",
@@ -5813,7 +5838,12 @@
         "src": "/media/project/epidemic-spreading-sim/cover.7ca6188e.webp",
         "alt": "A graph of about a thousand teal and orange dots joined by thin white lines on a black background, clustered around hubs: a network graph from the study.",
         "width": 2400,
-        "height": 2400
+        "height": 2400,
+        "small": {
+          "src": "/media/project/epidemic-spreading-sim/cover-800w.a39cd0e5.webp",
+          "width": 800,
+          "height": 800
+        }
       },
       "tags": [
         "graphs",
@@ -6100,7 +6130,12 @@
         "src": "/media/project/isf-design-system/cover.93455186.webp",
         "alt": "A Storybook page of a design system's colour palette: nine named colours, each shown as a row of ten swatches from light to dark, beside a navigation tree of components.",
         "width": 1897,
-        "height": 1323
+        "height": 1323,
+        "small": {
+          "src": "/media/project/isf-design-system/cover-800w.d6aad33c.webp",
+          "width": 800,
+          "height": 558
+        }
       },
       "tags": [
         "design-system",
@@ -6149,7 +6184,12 @@
         "src": "/media/project/lidar/cover.d860fe77.webp",
         "alt": "A dark landing page titled Lidar, a game where light is your weapon, over a perspective grid floor and grey hills, with a notice that a VR headset is needed to play.",
         "width": 1858,
-        "height": 1323
+        "height": 1323,
+        "small": {
+          "src": "/media/project/lidar/cover-800w.2de99680.webp",
+          "width": 800,
+          "height": 570
+        }
       },
       "tags": [
         "vr",
@@ -6224,7 +6264,12 @@
         "src": "/media/project/light-engine/cover.b00cd4c3.webp",
         "alt": "A wireframe of a monkey's head drawn as a mesh of coloured points and lines, from green at the ear to purple at the neck, on a dark background.",
         "width": 1139,
-        "height": 879
+        "height": 879,
+        "small": {
+          "src": "/media/project/light-engine/cover-800w.dd14092d.webp",
+          "width": 800,
+          "height": 617
+        }
       },
       "tags": [
         "graphics",
@@ -6357,7 +6402,12 @@
         "src": "/media/project/material-sticky-header/cover.7e7f76bc.webp",
         "alt": "A Storybook story of a mobile settings screen titled Internet, with a list of Wi-Fi networks and lock icons under a header that stays on top, beside an accessibility test panel.",
         "width": 1858,
-        "height": 1323
+        "height": 1323,
+        "small": {
+          "src": "/media/project/material-sticky-header/cover-800w.00a644fc.webp",
+          "width": 800,
+          "height": 570
+        }
       },
       "tags": [
         "react",
@@ -6468,7 +6518,12 @@
         "src": "/media/project/mui-joy-palette-generator/cover.9b6eebd5.webp",
         "alt": "A palette generator showing a blue seed colour, seven preset seed colours, and five rows of ten swatches (primary, neutral, danger, success, warning) with their hex and RGB values.",
         "width": 1897,
-        "height": 1588
+        "height": 1588,
+        "small": {
+          "src": "/media/project/mui-joy-palette-generator/cover-800w.63ca49db.webp",
+          "width": 800,
+          "height": 670
+        }
       },
       "tags": [
         "colour",
@@ -6544,7 +6599,12 @@
         "src": "/media/project/pconsole/cover.e108dc29.webp",
         "alt": "A Panda3D window with a Python console printing Pconsole's help, a command's usage and a task manager table, drawn over a television test card of colour bars and a grid.",
         "width": 1598,
-        "height": 861
+        "height": 861,
+        "small": {
+          "src": "/media/project/pconsole/cover-800w.e41fc359.webp",
+          "width": 800,
+          "height": 431
+        }
       },
       "tags": [
         "python",
@@ -6616,7 +6676,12 @@
         "src": "/media/project/portfolio-website/cover.4593cafb.webp",
         "alt": "A view of this site on a dark page: the globe drawn as a field of dots, with the sun flaring at its edge and hexagonal lens reflections, the navigation along the top with the music player at the left and the search at the right, and the owner's name in large type at the bottom left.",
         "width": 1841,
-        "height": 1323
+        "height": 1323,
+        "small": {
+          "src": "/media/project/portfolio-website/cover-800w.51773856.webp",
+          "width": 800,
+          "height": 575
+        }
       },
       "tags": [
         "maps",
@@ -6666,7 +6731,12 @@
         "src": "/media/project/pyos/cover.fcb77826.webp",
         "alt": "A close view of a huge bright yellow sun with a dark planet and a tiny moon in front of it, in a hazy nebula full of stars.",
         "width": 1599,
-        "height": 899
+        "height": 899,
+        "small": {
+          "src": "/media/project/pyos/cover-800w.85c03192.webp",
+          "width": 800,
+          "height": 450
+        }
       },
       "tags": [
         "simulation",
@@ -6737,7 +6807,12 @@
         "src": "/media/project/randomite/cover.411753a6.webp",
         "alt": "A page of random-number tools: a distribution picker, its formula and code, an AI-written description, and two charts of one thousand points, a two-dimensional scatter plot and a three-dimensional surface.",
         "width": 1897,
-        "height": 1323
+        "height": 1323,
+        "small": {
+          "src": "/media/project/randomite/cover-800w.e7f41e56.webp",
+          "width": 800,
+          "height": 558
+        }
       },
       "tags": [
         "dataviz",
@@ -6849,7 +6924,12 @@
         "src": "/media/project/slashboard/cover.5223fa1b.webp",
         "alt": "A dark dashboard for a home server showing its processor with core count, frequency and load, the operating system and uptime, a list of network interfaces, and the mounted disks with their usage.",
         "width": 1919,
-        "height": 894
+        "height": 894,
+        "small": {
+          "src": "/media/project/slashboard/cover-800w.01d7bc95.webp",
+          "width": 800,
+          "height": 373
+        }
       },
       "tags": [
         "dashboard",
@@ -6913,7 +6993,12 @@
         "src": "/media/project/spectrum-visualizer/cover.f0f2e14a.webp",
         "alt": "A row of thin vertical bars in soft blues, tall at the left and fading to dots, drawing an audio spectrum, above a small panel to choose the variant, the colour and two options.",
         "width": 1897,
-        "height": 1323
+        "height": 1323,
+        "small": {
+          "src": "/media/project/spectrum-visualizer/cover-800w.9a02bc02.webp",
+          "width": 800,
+          "height": 558
+        }
       },
       "tags": [
         "dataviz",
@@ -6961,7 +7046,12 @@
         "src": "/media/project/spinel/cover.4f920ebd.webp",
         "alt": "A red three-dimensional landscape of low hills rendered with simple lighting on a dark grey background.",
         "width": 1213,
-        "height": 869
+        "height": 869,
+        "small": {
+          "src": "/media/project/spinel/cover-800w.e6872ae8.webp",
+          "width": 800,
+          "height": 573
+        }
       },
       "tags": [
         "graphics",
@@ -7006,7 +7096,12 @@
         "src": "/media/project/svg-gradients/cover.220ec5f6.webp",
         "alt": "A grid of tiles on a dark page with grainy gradients: a pink to blue rectangle, magenta panels with start and end handles, a four-pointed star, a red flower shape and a grey tile with a speckled ring.",
         "width": 1649,
-        "height": 2000
+        "height": 2000,
+        "small": {
+          "src": "/media/project/svg-gradients/cover-800w.6c818ffb.webp",
+          "width": 800,
+          "height": 970
+        }
       },
       "tags": [
         "svg",
@@ -7071,7 +7166,12 @@
         "src": "/media/project/terrain-interpolation/cover.7929f37e.webp",
         "alt": "A white wireframe terrain with hundreds of red normal vectors standing off its surface, in a window titled Terrain interpolation demo.",
         "width": 1920,
-        "height": 1080
+        "height": 1080,
+        "small": {
+          "src": "/media/project/terrain-interpolation/cover-800w.f53af6d1.webp",
+          "width": 800,
+          "height": 450
+        }
       },
       "tags": [
         "graphics",
@@ -7141,7 +7241,12 @@
         "src": "/media/project/voxelife/cover.96f3f63f.webp",
         "alt": "Two clusters of grey cubes floating in three dimensions on a dark grey background, with a small colour axis between them.",
         "width": 943,
-        "height": 841
+        "height": 841,
+        "small": {
+          "src": "/media/project/voxelife/cover-800w.91c2e62b.webp",
+          "width": 800,
+          "height": 713
+        }
       },
       "tags": [
         "simulation",
@@ -7250,7 +7355,12 @@
         "src": "/media/project/wave-engine/cover.d3b6aa01.webp",
         "alt": "A square grid of small cubes seen at a low angle, with a ripple of bright red cubes rising at the centre, and a slider with rewind, play and fast-forward controls below.",
         "width": 1920,
-        "height": 1080
+        "height": 1080,
+        "small": {
+          "src": "/media/project/wave-engine/cover-800w.0afe2eb9.webp",
+          "width": 800,
+          "height": 450
+        }
       },
       "tags": [
         "simulation",
@@ -7317,7 +7427,12 @@
         "src": "/media/project/wco-demo/cover.dc30b6c3.webp",
         "alt": "An installed web app whose title bar holds its own navigation tabs, showing a large headline about the web of tomorrow, a note that the browser supports the API, and an install button.",
         "width": 1074,
-        "height": 821
+        "height": 821,
+        "small": {
+          "src": "/media/project/wco-demo/cover-800w.98bb9dd1.webp",
+          "width": 800,
+          "height": 612
+        }
       },
       "tags": [
         "pwa",
@@ -7389,7 +7504,12 @@
         "src": "/media/project/whatsapp-content-moderation/cover.81520168.webp",
         "alt": "A control page listing moderated contacts with counters for monitored, blocked, deleted and errors, next to a detail panel with strike counters, block settings and a moderation context field.",
         "width": 1858,
-        "height": 1323
+        "height": 1323,
+        "small": {
+          "src": "/media/project/whatsapp-content-moderation/cover-800w.d8e7825d.webp",
+          "width": 800,
+          "height": 570
+        }
       },
       "tags": [
         "typescript",
@@ -7826,7 +7946,12 @@
         "src": "/media/artwork/anatomy-study/cover.ed3d1edb.jpg",
         "alt": "Charcoal figure drawing of a seated nude figure seen from behind, sitting on a block.",
         "width": 1920,
-        "height": 2560
+        "height": 2560,
+        "small": {
+          "src": "/media/artwork/anatomy-study/cover-800w.8aebfa23.webp",
+          "width": 800,
+          "height": 1067
+        }
       },
       "sensitive": true,
       "tags": [
@@ -7870,7 +7995,12 @@
         "src": "/media/artwork/baroque-with-a-twist-musee-d-orsay/cover.7d1b1bb6.jpg",
         "alt": "Pencil study of a sculpture group: a standing figure with one arm raised above a seated figure stretching an arm out.",
         "width": 1848,
-        "height": 2960
+        "height": 2960,
+        "small": {
+          "src": "/media/artwork/baroque-with-a-twist-musee-d-orsay/cover-800w.25372ac3.webp",
+          "width": 800,
+          "height": 1281
+        }
       },
       "tags": [
         "digital-art"
@@ -7909,7 +8039,12 @@
         "src": "/media/artwork/bridgetop-encounter/cover.ab15d13e.jpg",
         "alt": "Painting of a steel arch bridge under a dark blue sky, with fire and black smoke rising from its deck.",
         "width": 1200,
-        "height": 2000
+        "height": 2000,
+        "small": {
+          "src": "/media/artwork/bridgetop-encounter/cover-800w.46a3f210.webp",
+          "width": 800,
+          "height": 1333
+        }
       },
       "tags": [
         "digital-art"
@@ -7948,7 +8083,12 @@
         "src": "/media/artwork/cloth-lighting-study/cover.596dc343.jpg",
         "alt": "Charcoal study of a cloth draped over an object, its corners fanning out on the floor.",
         "width": 1848,
-        "height": 2930
+        "height": 2930,
+        "small": {
+          "src": "/media/artwork/cloth-lighting-study/cover-800w.9dcf8555.webp",
+          "width": 800,
+          "height": 1268
+        }
       },
       "tags": [
         "digital-art"
@@ -7987,7 +8127,12 @@
         "src": "/media/artwork/frederiks-church-copenhagen/cover.c42880dd.jpg",
         "alt": "Ink and colour drawing of a domed church with a green copper dome, a columned portico and statues along the roofline.",
         "width": 1920,
-        "height": 2560
+        "height": 2560,
+        "small": {
+          "src": "/media/artwork/frederiks-church-copenhagen/cover-800w.459d059c.webp",
+          "width": 800,
+          "height": 1067
+        }
       },
       "tags": [
         "digital-art"
@@ -8026,7 +8171,12 @@
         "src": "/media/artwork/giants-of-steel/cover.a40f451a.jpg",
         "alt": "Painting of warships on a stormy sea: a battleship in the foreground heading toward the viewer, a destroyer on the right and another ship under lightning on the left.",
         "width": 1920,
-        "height": 1035
+        "height": 1035,
+        "small": {
+          "src": "/media/artwork/giants-of-steel/cover-800w.e6e5b30d.webp",
+          "width": 800,
+          "height": 431
+        }
       },
       "tags": [
         "digital-art"
@@ -8069,7 +8219,12 @@
         "src": "/media/artwork/hand-drawn-vector-self-portrait/cover.27a8f878.jpg",
         "alt": "A web interface showing a flat-style avatar of a smiling man with black hair and a blue jacket, with controls for shape, three colours and glasses.",
         "width": 1618,
-        "height": 1747
+        "height": 1747,
+        "small": {
+          "src": "/media/artwork/hand-drawn-vector-self-portrait/cover-800w.d514a1c9.webp",
+          "width": 800,
+          "height": 864
+        }
       },
       "tags": [
         "digital-art"
@@ -8128,7 +8283,12 @@
         "src": "/media/artwork/la-vierge-au-lys-musee-d-orsay/cover.eb0cfe41.jpg",
         "alt": "Pencil study of a standing statue of a veiled woman holding a lily, on a low plinth.",
         "width": 1848,
-        "height": 2960
+        "height": 2960,
+        "small": {
+          "src": "/media/artwork/la-vierge-au-lys-musee-d-orsay/cover-800w.714b4e97.webp",
+          "width": 800,
+          "height": 1281
+        }
       },
       "tags": [
         "digital-art"
@@ -8171,7 +8331,12 @@
         "src": "/media/artwork/portrait-study/cover.7f0e509c.jpg",
         "alt": "Grey digital drawing of a bearded man in sunglasses looking up, with loose construction lines behind him.",
         "width": 900,
-        "height": 1400
+        "height": 1400,
+        "small": {
+          "src": "/media/artwork/portrait-study/cover-800w.30ccd89d.webp",
+          "width": 800,
+          "height": 1244
+        }
       },
       "tags": [
         "digital-art"
@@ -8210,7 +8375,12 @@
         "src": "/media/artwork/resilience/cover.640be4dc.jpg",
         "alt": "Charcoal portrait of an elderly man with curly hair, a beard and deep-set eyes, wrapped in a dark cloak.",
         "width": 1920,
-        "height": 2560
+        "height": 2560,
+        "small": {
+          "src": "/media/artwork/resilience/cover-800w.a19426c5.webp",
+          "width": 800,
+          "height": 1067
+        }
       },
       "tags": [
         "digital-art"
@@ -8249,7 +8419,12 @@
         "src": "/media/artwork/suborbital-launch/cover.1ccd20a7.jpg",
         "alt": "A rocket climbing out of a layer of red and orange clouds, trailing smoke.",
         "width": 1920,
-        "height": 1152
+        "height": 1152,
+        "small": {
+          "src": "/media/artwork/suborbital-launch/cover-800w.0d969467.webp",
+          "width": 800,
+          "height": 480
+        }
       },
       "tags": [
         "digital-art"
@@ -8292,7 +8467,12 @@
         "src": "/media/artwork/subsurface-scattering-study/cover.df0760dd.jpg",
         "alt": "Colour sketch of a figure with the head bowed and a hand held to the forehead, the skin tinted purple and red where light passes through.",
         "width": 1848,
-        "height": 1848
+        "height": 1848,
+        "small": {
+          "src": "/media/artwork/subsurface-scattering-study/cover-800w.e49b8e37.webp",
+          "width": 800,
+          "height": 800
+        }
       },
       "tags": [
         "digital-art"
@@ -8331,7 +8511,12 @@
         "src": "/media/artwork/the-anomaly/cover.42f5ce46.jpg",
         "alt": "Digital painting of a lone traveller on a dirt track beside a wooden fence, under a stormy sky where tree-like shapes float and a glowing disc hovers.",
         "width": 1920,
-        "height": 1179
+        "height": 1179,
+        "small": {
+          "src": "/media/artwork/the-anomaly/cover-800w.db33cb6b.webp",
+          "width": 800,
+          "height": 491
+        }
       },
       "tags": [
         "digital-art"
@@ -8370,7 +8555,12 @@
         "src": "/media/artwork/the-lighthouse-monochrome-gouache-study/cover.4e84c7ab.jpg",
         "alt": "Monochrome teal painting of a lit lighthouse on a rocky islet in a rough sea at night, with three small figures beside it and moonlight on the water.",
         "width": 1920,
-        "height": 1152
+        "height": 1152,
+        "small": {
+          "src": "/media/artwork/the-lighthouse-monochrome-gouache-study/cover-800w.6a47ab59.webp",
+          "width": 800,
+          "height": 480
+        }
       },
       "tags": [
         "digital-art"
@@ -8409,7 +8599,12 @@
         "src": "/media/artwork/where-the-sun-never-sets/cover.2a3247ee.jpg",
         "alt": "Digital painting of a space probe in front of a purple nebula, near a bright star circled by thin rings.",
         "width": 1920,
-        "height": 1080
+        "height": 1080,
+        "small": {
+          "src": "/media/artwork/where-the-sun-never-sets/cover-800w.db328076.webp",
+          "width": 800,
+          "height": 450
+        }
       },
       "tags": [
         "digital-art"
@@ -8452,7 +8647,12 @@
         "src": "/media/artwork/yamato-class-battleship-firing-test-study/cover.4ec1f84b.jpg",
         "alt": "Black ink sketch of a battleship under way at sea, smoke rising from its funnel and a gun firing.",
         "width": 1920,
-        "height": 980
+        "height": 980,
+        "small": {
+          "src": "/media/artwork/yamato-class-battleship-firing-test-study/cover-800w.27f8e162.webp",
+          "width": 800,
+          "height": 408
+        }
       },
       "tags": [
         "digital-art"
@@ -8850,10 +9050,15 @@
       "summary": "Close view of a building facade made of pale blue vertical panels and rows of narrow windows.",
       "date": "2025-09-15",
       "cover": {
-        "src": "/media/photograph/blue-facade/photo.491ce587.webp",
+        "src": "/media/photograph/blue-facade/photo.5b5cb246.webp",
         "alt": "Close view of a building facade made of pale blue vertical panels and rows of narrow windows",
-        "width": 1916,
-        "height": 2400
+        "width": 1022,
+        "height": 1280,
+        "small": {
+          "src": "/media/photograph/blue-facade/photo-800w.4cc300ab.webp",
+          "width": 800,
+          "height": 1002
+        }
       },
       "tags": [
         "travel"
@@ -8868,10 +9073,15 @@
       "summary": "The bow of a cargo boat loaded with sacks, a small flag on its mast, somewhere on the Amazon in Brazil.",
       "date": "2025-08-20",
       "cover": {
-        "src": "/media/photograph/bow-of-a-boat/photo.e2b95d30.webp",
+        "src": "/media/photograph/bow-of-a-boat/photo.4e8a3272.webp",
         "alt": "The bow of a boat loaded with sacks, a small red-and-white flag on a mast, crossing a wide river under a blue sky and clouds",
-        "width": 1807,
-        "height": 2400
+        "width": 964,
+        "height": 1280,
+        "small": {
+          "src": "/media/photograph/bow-of-a-boat/photo-800w.4fbd3488.webp",
+          "width": 800,
+          "height": 1063
+        }
       },
       "tags": [
         "travel",
@@ -8888,10 +9098,15 @@
       "summary": "Men in white shirts and black ties carry a heavy gilded float of candles and flowers during a procession.",
       "date": "2025-09-13",
       "cover": {
-        "src": "/media/photograph/carrying-the-float/photo.cd9bb1d9.webp",
+        "src": "/media/photograph/carrying-the-float/photo.0d912656.webp",
         "alt": "Men in white shirts and black ties carry a heavy gilded float of candles and flowers during a procession",
-        "width": 1586,
-        "height": 2400
+        "width": 846,
+        "height": 1280,
+        "small": {
+          "src": "/media/photograph/carrying-the-float/photo-800w.e5870cd0.webp",
+          "width": 800,
+          "height": 1211
+        }
       },
       "tags": [
         "travel"
@@ -8906,10 +9121,15 @@
       "summary": "Aerial view of a dense city of low buildings stretching to the mountains, a cluster of towers in the foreground under a cloudy sky.",
       "date": "2025-09-17",
       "cover": {
-        "src": "/media/photograph/city-from-above/photo.b03ef3a6.webp",
+        "src": "/media/photograph/city-from-above/photo.949dc19c.webp",
         "alt": "Aerial view of a dense city of low buildings stretching to the mountains, a cluster of towers in the foreground under a cloudy sky",
-        "width": 1807,
-        "height": 2400
+        "width": 964,
+        "height": 1280,
+        "small": {
+          "src": "/media/photograph/city-from-above/photo-800w.8bcc2c8d.webp",
+          "width": 800,
+          "height": 1063
+        }
       },
       "tags": [
         "travel"
@@ -8924,10 +9144,15 @@
       "summary": "A brutalist concrete building seen from below, its stepped terraces and deep square openings repeating up the frame.",
       "date": "2025-09-15",
       "cover": {
-        "src": "/media/photograph/concrete-terraces/photo.07ad9530.webp",
+        "src": "/media/photograph/concrete-terraces/photo.58bf68fc.webp",
         "alt": "A brutalist concrete building seen from below, its stepped terraces and deep square openings repeating up the frame",
-        "width": 1934,
-        "height": 2400
+        "width": 1031,
+        "height": 1280,
+        "small": {
+          "src": "/media/photograph/concrete-terraces/photo-800w.8e69e75e.webp",
+          "width": 800,
+          "height": 993
+        }
       },
       "tags": [
         "travel"
@@ -8942,10 +9167,15 @@
       "summary": "A tall blue-grey facade of repeating square windows set in a regular grid, seen at an angle against the sky.",
       "date": "2025-09-15",
       "cover": {
-        "src": "/media/photograph/facade-grid/photo.85382370.webp",
+        "src": "/media/photograph/facade-grid/photo.c72d040b.webp",
         "alt": "A tall blue-grey facade of repeating square windows set in a regular grid, seen at an angle against the sky",
-        "width": 1787,
-        "height": 2400
+        "width": 953,
+        "height": 1280,
+        "small": {
+          "src": "/media/photograph/facade-grid/photo-800w.149c234b.webp",
+          "width": 800,
+          "height": 1074
+        }
       },
       "tags": [
         "travel"
@@ -8960,10 +9190,15 @@
       "summary": "A busy street after rain: a horse-drawn cart loaded with goods, a bus, a taxi and a man in a striped robe standing in the water.",
       "date": "2025-08-08",
       "cover": {
-        "src": "/media/photograph/flooded-street/photo.06725ae1.webp",
+        "src": "/media/photograph/flooded-street/photo.ff185bdd.webp",
         "alt": "A busy street after rain: a horse-drawn cart loaded with goods, a bus, a taxi and a man in a striped robe standing in the water",
-        "width": 1807,
-        "height": 2400
+        "width": 964,
+        "height": 1280,
+        "small": {
+          "src": "/media/photograph/flooded-street/photo-800w.b1633307.webp",
+          "width": 800,
+          "height": 1063
+        }
       },
       "tags": [
         "travel"
@@ -8978,10 +9213,15 @@
       "summary": "Young women in embroidered red and blue dresses carry arrangements of flowers through a street at night.",
       "date": "2025-09-13",
       "cover": {
-        "src": "/media/photograph/flower-bearers/photo.853a20e3.webp",
+        "src": "/media/photograph/flower-bearers/photo.ddbd983c.webp",
         "alt": "Young women in embroidered red and blue dresses carry arrangements of flowers through a street at night",
-        "width": 1848,
-        "height": 2400
+        "width": 986,
+        "height": 1280,
+        "small": {
+          "src": "/media/photograph/flower-bearers/photo-800w.12b0587f.webp",
+          "width": 800,
+          "height": 1039
+        }
       },
       "tags": [
         "travel"
@@ -8996,10 +9236,15 @@
       "summary": "Low sun through the window of an ONCF carriage on the line to Safi, numbered seats in the foreground.",
       "date": "2025-07-17",
       "cover": {
-        "src": "/media/photograph/golden-hour-on-the-train/photo.22c2e6a1.webp",
+        "src": "/media/photograph/golden-hour-on-the-train/photo.6768f98e.webp",
         "alt": "Low sun glows through the window of a train carriage, with numbered seats in the foreground",
-        "width": 2400,
-        "height": 1807
+        "width": 1280,
+        "height": 964,
+        "small": {
+          "src": "/media/photograph/golden-hour-on-the-train/photo-800w.2180b14e.webp",
+          "width": 800,
+          "height": 602
+        }
       },
       "tags": [
         "travel"
@@ -9014,10 +9259,15 @@
       "summary": "A tall brick minaret and a small green-domed mosque among flat rooftops and trees, under a pale sky.",
       "date": "2025-08-08",
       "cover": {
-        "src": "/media/photograph/minaret-and-rooftops/photo.1fa0ddd4.webp",
+        "src": "/media/photograph/minaret-and-rooftops/photo.02045418.webp",
         "alt": "A tall brick minaret and a small green-domed mosque among flat rooftops and trees, under a pale sky",
-        "width": 2106,
-        "height": 2400
+        "width": 1123,
+        "height": 1280,
+        "small": {
+          "src": "/media/photograph/minaret-and-rooftops/photo-800w.c93aa31b.webp",
+          "width": 800,
+          "height": 912
+        }
       },
       "tags": [
         "travel"
@@ -9032,10 +9282,15 @@
       "summary": "The side of a cream and orange train under overhead wires, a half-built concrete building behind it against a blue sky.",
       "date": "2025-07-17",
       "cover": {
-        "src": "/media/photograph/orange-train/photo.d07a4eb8.webp",
+        "src": "/media/photograph/orange-train/photo.a7408ca6.webp",
         "alt": "The side of a cream and orange train under overhead wires, a half-built concrete building behind it against a blue sky",
-        "width": 1756,
-        "height": 2400
+        "width": 937,
+        "height": 1280,
+        "small": {
+          "src": "/media/photograph/orange-train/photo-800w.7c34f1e8.webp",
+          "width": 800,
+          "height": 1093
+        }
       },
       "tags": [
         "travel"
@@ -9050,10 +9305,15 @@
       "summary": "The raised prows of brightly painted wooden boats on a beach, covered in colourful patterns and Arabic script.",
       "date": "2025-08-08",
       "cover": {
-        "src": "/media/photograph/painted-boats/photo.f8f7db58.webp",
+        "src": "/media/photograph/painted-boats/photo.972ece3b.webp",
         "alt": "The raised prows of brightly painted wooden boats on a beach, covered in colourful patterns and Arabic script",
-        "width": 2398,
-        "height": 2400
+        "width": 1279,
+        "height": 1280,
+        "small": {
+          "src": "/media/photograph/painted-boats/photo-800w.8de24aef.webp",
+          "width": 800,
+          "height": 801
+        }
       },
       "tags": [
         "travel"
@@ -9068,10 +9328,10 @@
       "summary": "On the hills above Sinaia, at about 2,000 m: a person in a hood stands in tall grass and points across the slopes.",
       "date": "2026-09-02",
       "cover": {
-        "src": "/media/photograph/pointing-at-the-hills/photo.3abe4ba8.webp",
+        "src": "/media/photograph/pointing-at-the-hills/photo.7e4ce076.webp",
         "alt": "A person in a hood and light trousers stands in tall grass pointing across the hills, a pale arch of light behind them",
-        "width": 1350,
-        "height": 2400
+        "width": 720,
+        "height": 1280
       },
       "tags": [
         "travel"
@@ -9086,10 +9346,15 @@
       "summary": "Inside the fast boat up the Napo, between the Amazon and the border with Ecuador.",
       "date": "2025-09-03",
       "cover": {
-        "src": "/media/photograph/speedboat-on-the-napo/photo.0d128d32.webp",
+        "src": "/media/photograph/speedboat-on-the-napo/photo.e9ea0302.webp",
         "alt": "Inside a speedboat with an orange cabin, a passenger in a grey T-shirt stepping down toward the open door at the bow",
-        "width": 1794,
-        "height": 2400
+        "width": 957,
+        "height": 1280,
+        "small": {
+          "src": "/media/photograph/speedboat-on-the-napo/photo-800w.a76de00d.webp",
+          "width": 800,
+          "height": 1070
+        }
       },
       "tags": [
         "travel",
@@ -9105,10 +9370,15 @@
       "summary": "Seen from the boat, people unload crates and bundles onto a muddy bank of the Amazon at Puerto España, a cow in the corner.",
       "date": "2025-08-29",
       "cover": {
-        "src": "/media/photograph/unloading-at-the-bank/photo.541adc87.webp",
+        "src": "/media/photograph/unloading-at-the-bank/photo.0dcaccfe.webp",
         "alt": "Seen from above, people unload crates and bundles from boats onto a muddy river bank, a cow in the corner",
-        "width": 1725,
-        "height": 2400
+        "width": 920,
+        "height": 1280,
+        "small": {
+          "src": "/media/photograph/unloading-at-the-bank/photo-800w.fb6f836d.webp",
+          "width": 800,
+          "height": 1113
+        }
       },
       "tags": [
         "travel",
@@ -9126,10 +9396,15 @@
       "summary": "Three passengers lean on the rail of a ferry and watch the white wake behind it on a dark blue sea.",
       "date": "2025-07-13",
       "cover": {
-        "src": "/media/photograph/wake/photo.81a40531.webp",
+        "src": "/media/photograph/wake/photo.0fa0d9dc.webp",
         "alt": "Three passengers lean on the rail of a ferry and watch the white wake behind it on a dark blue sea",
-        "width": 2023,
-        "height": 2400
+        "width": 1079,
+        "height": 1280,
+        "small": {
+          "src": "/media/photograph/wake/photo-800w.be7c698c.webp",
+          "width": 800,
+          "height": 949
+        }
       },
       "tags": [
         "travel"
@@ -9144,10 +9419,15 @@
       "summary": "A person walks along a wet riverside walkway beside a metal railing as the sun breaks through grey clouds.",
       "date": "2025-08-08",
       "cover": {
-        "src": "/media/photograph/walkway-at-dusk/photo.66cec07d.webp",
+        "src": "/media/photograph/walkway-at-dusk/photo.f576c0bb.webp",
         "alt": "A person walks along a wet riverside walkway beside a metal railing as the sun breaks through grey clouds",
-        "width": 1807,
-        "height": 2400
+        "width": 964,
+        "height": 1280,
+        "small": {
+          "src": "/media/photograph/walkway-at-dusk/photo-800w.e0a3ca83.webp",
+          "width": 800,
+          "height": 1063
+        }
       },
       "tags": [
         "travel"
@@ -9162,10 +9442,15 @@
       "summary": "A narrow passage between stacks of watermelons on the deck of a river boat on the Amazon in Brazil, bags of onions hanging overhead.",
       "date": "2025-08-22",
       "cover": {
-        "src": "/media/photograph/watermelons-on-deck/photo.b971cae7.webp",
+        "src": "/media/photograph/watermelons-on-deck/photo.9ef0ee98.webp",
         "alt": "A narrow passage between stacks of watermelons on a boat deck, bags of onions hanging overhead",
-        "width": 2398,
-        "height": 2400
+        "width": 1279,
+        "height": 1280,
+        "small": {
+          "src": "/media/photograph/watermelons-on-deck/photo-800w.636f8321.webp",
+          "width": 800,
+          "height": 801
+        }
       },
       "tags": [
         "travel",
