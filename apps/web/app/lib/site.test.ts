@@ -28,8 +28,8 @@ describe("siteCaption: four rows in view, never five", () => {
 });
 
 describe("resolveSiteUrl", () => {
-  it("defaults to the temporary main domain", () => {
-    expect(DEFAULT_SITE_URL).toBe("https://v2.bsodium.fr");
+  it("defaults to the main domain", () => {
+    expect(DEFAULT_SITE_URL).toBe("https://bsodium.fr");
     expect(resolveSiteUrl(undefined)).toBe(DEFAULT_SITE_URL);
     expect(resolveSiteUrl("")).toBe(DEFAULT_SITE_URL);
     expect(resolveSiteUrl("   ")).toBe(DEFAULT_SITE_URL);

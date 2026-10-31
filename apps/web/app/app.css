@@ -661,6 +661,12 @@
     box-shadow: 0 0 0 5px var(--background);
   }
 
+  /* A heading that takes the focus for the screen reader (the panel's title, `tabindex="-1"`) is not a control and draws no ring; without
+     its ring, its moat would be a plain page-coloured box over the cover (on a phone, where it takes the focus on every direct load). */
+  h1[tabindex="-1"]:focus-visible {
+    box-shadow: none;
+  }
+
   :target {
     scroll-margin-top: calc(var(--navbar-height) + 1.5rem);
   }
