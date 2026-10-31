@@ -67,6 +67,25 @@
       "related": []
     },
     {
+      "slug": "alhama-de-granada",
+      "name": "Alhama de Granada",
+      "coordinates": {
+        "lat": 37,
+        "lon": -3.99
+      },
+      "labelPriority": 42,
+      "group": "alhama-de-granada-area",
+      "countryCode": "ES",
+      "body": [],
+      "images": [],
+      "related": [
+        {
+          "kind": "project",
+          "slug": "wave-engine"
+        }
+      ]
+    },
+    {
       "slug": "atar",
       "name": "Atar",
       "coordinates": {
@@ -115,7 +134,7 @@
         "lat": 41.39,
         "lon": 2.18
       },
-      "labelPriority": 43,
+      "labelPriority": 65,
       "bbox": [
         2.0524977,
         41.3170354,
@@ -130,7 +149,28 @@
         "Setting up the hammocks was surprisingly not as long as I'd have expected!"
       ],
       "images": [],
-      "related": []
+      "related": [
+        {
+          "kind": "project",
+          "slug": "esp-string-lights"
+        },
+        {
+          "kind": "artwork",
+          "slug": "anatomy-study"
+        },
+        {
+          "kind": "artwork",
+          "slug": "resilience"
+        },
+        {
+          "kind": "project",
+          "slug": "spectrum-visualizer"
+        },
+        {
+          "kind": "artwork",
+          "slug": "subsurface-scattering-study"
+        }
+      ]
     },
     {
       "slug": "belem",
@@ -1237,12 +1277,12 @@
       "images": [],
       "related": [
         {
-          "kind": "project",
-          "slug": "amaze-me"
+          "kind": "artwork",
+          "slug": "hand-drawn-vector-self-portrait"
         },
         {
           "kind": "project",
-          "slug": "ipvchat"
+          "slug": "amaze-me"
         },
         {
           "kind": "project",
@@ -1254,10 +1294,6 @@
         },
         {
           "kind": "project",
-          "slug": "clifford"
-        },
-        {
-          "kind": "project",
           "slug": "moneytor"
         },
         {
@@ -1265,8 +1301,8 @@
           "slug": "voxelife"
         },
         {
-          "kind": "project",
-          "slug": "portfolio-website"
+          "kind": "poem",
+          "slug": "the-traveler"
         }
       ]
     },
@@ -1525,7 +1561,7 @@
         36.8940412
       ],
       "viewRadiusKm": 20.5,
-      "group": "seville-area",
+      "group": "alhama-de-granada-area",
       "countryCode": "ES",
       "body": [
         "I arrived barely rested in the morning, after a 10 hour long not-so-sleeper bus, and managed to gather enough effort to do a morning walking tour (coffee helped), but hey I made friends!",
@@ -2026,10 +2062,6 @@
       "related": [
         {
           "kind": "project",
-          "slug": "whatsapp-content-moderation"
-        },
-        {
-          "kind": "project",
           "slug": "isf-design-system"
         },
         {
@@ -2054,30 +2086,6 @@
         },
         {
           "kind": "project",
-          "slug": "material-sticky-header"
-        },
-        {
-          "kind": "project",
-          "slug": "esp-string-lights"
-        },
-        {
-          "kind": "artwork",
-          "slug": "anatomy-study"
-        },
-        {
-          "kind": "artwork",
-          "slug": "hand-drawn-vector-self-portrait"
-        },
-        {
-          "kind": "artwork",
-          "slug": "resilience"
-        },
-        {
-          "kind": "project",
-          "slug": "spectrum-visualizer"
-        },
-        {
-          "kind": "project",
           "slug": "avatar"
         },
         {
@@ -2089,48 +2097,12 @@
           "slug": "la-vierge-au-lys-musee-d-orsay"
         },
         {
-          "kind": "artwork",
-          "slug": "subsurface-scattering-study"
-        },
-        {
-          "kind": "artwork",
-          "slug": "the-anomaly"
-        },
-        {
-          "kind": "artwork",
-          "slug": "bridgetop-encounter"
-        },
-        {
-          "kind": "artwork",
-          "slug": "cloth-lighting-study"
-        },
-        {
-          "kind": "artwork",
-          "slug": "the-lighthouse-monochrome-gouache-study"
-        },
-        {
-          "kind": "artwork",
-          "slug": "where-the-sun-never-sets"
+          "kind": "project",
+          "slug": "portfolio-website"
         },
         {
           "kind": "artwork",
           "slug": "baroque-with-a-twist-musee-d-orsay"
-        },
-        {
-          "kind": "artwork",
-          "slug": "giants-of-steel"
-        },
-        {
-          "kind": "artwork",
-          "slug": "suborbital-launch"
-        },
-        {
-          "kind": "artwork",
-          "slug": "yamato-class-battleship-firing-test-study"
-        },
-        {
-          "kind": "artwork",
-          "slug": "portrait-study"
         },
         {
           "kind": "poem",
@@ -2139,6 +2111,10 @@
         {
           "kind": "poem",
           "slug": "les-pelerins-du-rail"
+        },
+        {
+          "kind": "poem",
+          "slug": "penombre-d-ete"
         }
       ]
     },
@@ -3125,7 +3101,7 @@
         36.2649851
       ],
       "viewRadiusKm": 21.5,
-      "group": "seville-area",
+      "group": "alhama-de-granada-region",
       "countryCode": "ES",
       "body": [
         "Sadly, the previous driver wasn't headed to Tarifa but to Algeciras, so here I am trying to find a new one, in a gas station near the city.",
@@ -3251,6 +3227,26 @@
       "images": [],
       "related": [
         {
+          "kind": "project",
+          "slug": "whatsapp-content-moderation"
+        },
+        {
+          "kind": "project",
+          "slug": "material-sticky-header"
+        },
+        {
+          "kind": "project",
+          "slug": "ipvchat"
+        },
+        {
+          "kind": "artwork",
+          "slug": "the-anomaly"
+        },
+        {
+          "kind": "project",
+          "slug": "clifford"
+        },
+        {
           "kind": "article",
           "slug": "virtual-reality-technologies"
         },
@@ -3265,6 +3261,14 @@
         {
           "kind": "project",
           "slug": "light-engine"
+        },
+        {
+          "kind": "artwork",
+          "slug": "bridgetop-encounter"
+        },
+        {
+          "kind": "artwork",
+          "slug": "cloth-lighting-study"
         },
         {
           "kind": "project",
@@ -3283,16 +3287,32 @@
           "slug": "spinel"
         },
         {
+          "kind": "artwork",
+          "slug": "where-the-sun-never-sets"
+        },
+        {
           "kind": "project",
           "slug": "pconsole"
         },
         {
-          "kind": "project",
-          "slug": "wave-engine"
+          "kind": "artwork",
+          "slug": "giants-of-steel"
+        },
+        {
+          "kind": "artwork",
+          "slug": "suborbital-launch"
+        },
+        {
+          "kind": "artwork",
+          "slug": "yamato-class-battleship-firing-test-study"
         },
         {
           "kind": "project",
           "slug": "pyos"
+        },
+        {
+          "kind": "artwork",
+          "slug": "portrait-study"
         },
         {
           "kind": "poem",
@@ -3304,15 +3324,7 @@
         },
         {
           "kind": "poem",
-          "slug": "penombre-d-ete"
-        },
-        {
-          "kind": "poem",
           "slug": "the-enslaved-acrobat"
-        },
-        {
-          "kind": "poem",
-          "slug": "the-traveler"
         }
       ]
     },
@@ -3436,7 +3448,7 @@
         "lat": 48.2,
         "lon": 16.36
       },
-      "labelPriority": 41,
+      "labelPriority": 50,
       "bbox": [
         16.181831,
         48.1179069,
@@ -3448,7 +3460,12 @@
       "countryCode": "AT",
       "body": [],
       "images": [],
-      "related": []
+      "related": [
+        {
+          "kind": "artwork",
+          "slug": "the-lighthouse-monochrome-gouache-study"
+        }
+      ]
     },
     {
       "slug": "wanchaq",
@@ -3588,6 +3605,30 @@
       },
       "viewRadiusKm": 166,
       "labelPriority": 70
+    },
+    {
+      "slug": "alhama-de-granada-area",
+      "name": "Alhama de Granada area",
+      "kind": "area",
+      "parent": "alhama-de-granada-region",
+      "coordinates": {
+        "lat": 36.861,
+        "lon": -4.247
+      },
+      "viewRadiusKm": 43.5,
+      "labelPriority": 55
+    },
+    {
+      "slug": "alhama-de-granada-region",
+      "name": "Alhama de Granada region",
+      "kind": "area",
+      "parent": "spain",
+      "coordinates": {
+        "lat": 36.546,
+        "lon": -4.878
+      },
+      "viewRadiusKm": 116.5,
+      "labelPriority": 57
     },
     {
       "slug": "americas",
@@ -3869,10 +3910,10 @@
       "name": "Europe",
       "kind": "continent",
       "coordinates": {
-        "lat": 48.671,
-        "lon": 10.819
+        "lat": 48.681,
+        "lon": 10.827
       },
-      "viewRadiusKm": 2205.8,
+      "viewRadiusKm": 2205.2,
       "labelPriority": 90
     },
     {
@@ -3905,10 +3946,10 @@
       "kind": "region",
       "parent": "europe",
       "coordinates": {
-        "lat": 40.339,
-        "lon": -3.595
+        "lat": 40.337,
+        "lon": -3.6
       },
-      "viewRadiusKm": 590.2,
+      "viewRadiusKm": 590.3,
       "labelPriority": 80
     },
     {
@@ -4313,10 +4354,10 @@
       "kind": "area",
       "parent": "spain",
       "coordinates": {
-        "lat": 37,
-        "lon": -5.627
+        "lat": 37.308,
+        "lon": -6.424
       },
-      "viewRadiusKm": 143.7,
+      "viewRadiusKm": 63.1,
       "labelPriority": 55
     },
     {
@@ -4361,10 +4402,10 @@
       "kind": "country",
       "parent": "iberia",
       "coordinates": {
-        "lat": 39.278,
-        "lon": -2.071
+        "lat": 39.279,
+        "lon": -2.069
       },
-      "viewRadiusKm": 543.1,
+      "viewRadiusKm": 542.9,
       "labelPriority": 70
     },
     {
@@ -5701,7 +5742,7 @@
         }
       ],
       "placeSlugs": [
-        "klagenfurt"
+        "toulouse"
       ]
     },
     {
@@ -5929,7 +5970,7 @@
         }
       ],
       "placeSlugs": [
-        "paris"
+        "barcelona"
       ]
     },
     {
@@ -5984,7 +6025,7 @@
         }
       ],
       "placeSlugs": [
-        "klagenfurt"
+        "toulouse"
       ]
     },
     {
@@ -6325,7 +6366,7 @@
         }
       ],
       "placeSlugs": [
-        "paris"
+        "toulouse"
       ]
     },
     {
@@ -6581,7 +6622,7 @@
         }
       ],
       "placeSlugs": [
-        "klagenfurt"
+        "paris"
       ]
     },
     {
@@ -6896,7 +6937,7 @@
         }
       ],
       "placeSlugs": [
-        "paris"
+        "barcelona"
       ]
     },
     {
@@ -7234,7 +7275,7 @@
         }
       ],
       "placeSlugs": [
-        "toulouse"
+        "alhama-de-granada"
       ]
     },
     {
@@ -7405,7 +7446,7 @@
         }
       ],
       "placeSlugs": [
-        "paris"
+        "toulouse"
       ]
     }
   ],
@@ -7803,7 +7844,7 @@
         }
       ],
       "placeSlugs": [
-        "paris"
+        "barcelona"
       ]
     },
     {
@@ -7891,7 +7932,7 @@
         }
       ],
       "placeSlugs": [
-        "paris"
+        "toulouse"
       ]
     },
     {
@@ -7935,7 +7976,7 @@
         }
       ],
       "placeSlugs": [
-        "paris"
+        "toulouse"
       ]
     },
     {
@@ -8027,7 +8068,7 @@
         }
       ],
       "placeSlugs": [
-        "paris"
+        "toulouse"
       ]
     },
     {
@@ -8091,7 +8132,7 @@
         }
       ],
       "placeSlugs": [
-        "paris"
+        "klagenfurt"
       ]
     },
     {
@@ -8183,7 +8224,7 @@
         }
       ],
       "placeSlugs": [
-        "paris"
+        "toulouse"
       ]
     },
     {
@@ -8227,7 +8268,7 @@
         }
       ],
       "placeSlugs": [
-        "paris"
+        "barcelona"
       ]
     },
     {
@@ -8275,7 +8316,7 @@
         }
       ],
       "placeSlugs": [
-        "paris"
+        "toulouse"
       ]
     },
     {
@@ -8319,7 +8360,7 @@
         }
       ],
       "placeSlugs": [
-        "paris"
+        "barcelona"
       ]
     },
     {
@@ -8363,7 +8404,7 @@
         }
       ],
       "placeSlugs": [
-        "paris"
+        "toulouse"
       ]
     },
     {
@@ -8407,7 +8448,7 @@
         }
       ],
       "placeSlugs": [
-        "paris"
+        "vienna"
       ]
     },
     {
@@ -8455,7 +8496,7 @@
         }
       ],
       "placeSlugs": [
-        "paris"
+        "toulouse"
       ]
     },
     {
@@ -8499,7 +8540,7 @@
         }
       ],
       "placeSlugs": [
-        "paris"
+        "toulouse"
       ]
     }
   ],
@@ -8507,7 +8548,7 @@
     {
       "slug": "crepuscule-grec",
       "title": "Crépuscule grec",
-      "summary": "Un poème sur un village et ses collines, à midi, vu depuis un banc.",
+      "summary": "Sur un banc, face aux rochers qui coiffent le village, la lumière de midi change un visage aimé en statue.",
       "meta": [
         {
           "label": "Language",
@@ -8553,7 +8594,7 @@
     {
       "slug": "foret-dansante",
       "title": "Forêt dansante",
-      "summary": "Un quatrain sur un acrobate sous les chênes.",
+      "summary": "Sous les chênes d'argent, un acrobate danse sur sa corde et seul le ciel l'applaudit.",
       "meta": [
         {
           "label": "Language",
@@ -8580,7 +8621,7 @@
     {
       "slug": "l-exil",
       "title": "L'exil",
-      "summary": "Un poème sur une ville endeuillée et le départ qui approche.",
+      "summary": "Une dernière nuit dans un Paris endeuillé, avant que l'aube n'emporte la ville et les rêves d'enfant.",
       "meta": [
         {
           "label": "Language",
@@ -8628,7 +8669,7 @@
     {
       "slug": "le-comedien",
       "title": "Le comédien",
-      "summary": "Un poème sur un comédien d'improvisation qui affronte un cavalier surgi de la brume.",
+      "summary": "Un comédien d'improvisation voit surgir de la brume un cavalier d'ombre, et lui répond par la foudre.",
       "meta": [
         {
           "label": "Language",
@@ -8673,7 +8714,7 @@
     {
       "slug": "les-pelerins-du-rail",
       "title": "Les pèlerins du rail",
-      "summary": "Un poème sur un trajet en train à Paris, du soir à la nuit.",
+      "summary": "Un train glisse sur Paris, du couchant de rubis à la torpeur de la nuit, et berce ses pèlerins endormis.",
       "meta": [
         {
           "label": "Language",
@@ -8715,7 +8756,7 @@
     {
       "slug": "ode-au-desert",
       "title": "Ode au désert",
-      "summary": "Une ode à un chemin de terre et au désert, au crépuscule.",
+      "summary": "Une piste de terre ensablée, et des phares qui peinent à percer un crépuscule pourpre.",
       "meta": [
         {
           "label": "Language",
@@ -8754,7 +8795,7 @@
     {
       "slug": "penombre-d-ete",
       "title": "Pénombre d'été",
-      "summary": "Un poème sur une chambre en pénombre, en été.",
+      "summary": "Un soleil hésitant strie la chambre : un dormeur sourit à son reflet, tandis qu'elle rit, debout comme une idole.",
       "meta": [
         {
           "label": "Language",
@@ -8787,13 +8828,13 @@
         }
       ],
       "placeSlugs": [
-        "toulouse"
+        "paris"
       ]
     },
     {
       "slug": "the-enslaved-acrobat",
       "title": "The enslaved acrobat",
-      "summary": "A poem in four quatrains about a prisoner acrobat on a battlefield at night.",
+      "summary": "A prisoner rushes into battle and hovers like a ghost over the fallen, until the night claims him too.",
       "meta": [
         {
           "label": "Language",
@@ -8838,7 +8879,7 @@
     {
       "slug": "the-traveler",
       "title": "The traveler",
-      "summary": "A four-line poem about being lost in a foreign town at night.",
+      "summary": "A stranger in a lakeside town at night, deciphering an unknown tongue and looking for the place where heaven never ends.",
       "meta": [
         {
           "label": "Language",
@@ -8859,7 +8900,7 @@
         }
       ],
       "placeSlugs": [
-        "toulouse"
+        "klagenfurt"
       ]
     }
   ],
