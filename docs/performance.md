@@ -365,3 +365,8 @@ Smoothness costs about 20 ms a second of main-thread time and 40 of GPU-helper C
 ## Visual effect tiers (`engine/fx.ts`, owner, 2026-10-28)
 
 The effects layered on the planet (the iris, the ring's smooth night, the lens flare, the sun's halo) have switches: `FX.on.<name>`, read per frame by the layers. `?fx=full|reduced|minimal` (or sessionStorage `fx`) picks a tier, else it follows the device (`deviceMemory` <= 4 or <= 4 cores: reduced; <= 2 or Save-Data: minimal); `?no-fx=iris,flare` drops single effects. Reduced has no iris and the ring's night in whole tones; minimal also no flare. Not yet switchable: the stars' count, the caption's lighting, the sky; add a name to `FxName` and an `OFF_AT` row when one needs it.
+
+
+## Known: `/photography` on a throttled phone (2026-10-31)
+
+After the small cover copies (issue #336, `cover.small`) the bytes of `/artworks` and `/photography` fell by 75 % and 55 % and the largest contentful paint with DevTools throttling from 12.0 s to 2.7 s and 4.9 s to 2.6 s. With Lighthouse's default SIMULATED throttling the LCP does not move (about 5 s before and after): there it is dominated by the page's own load and render delay (FCP 3.8 s), not by image bytes. Not yet investigated (the owner chose to leave it); the first suspects are the client JavaScript the list pages preload and the main-thread work of the hydration, not the pictures.

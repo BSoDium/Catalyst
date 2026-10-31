@@ -74,3 +74,18 @@ describe("custom properties", () => {
     expect(masonryListVars(layoutAllTiers([]))["--h3"]).toBe("0px");
   });
 });
+
+describe("layoutAllTiers with extra tiles", () => {
+  it("adds the extra tiles to a tier only where it asks for them", () => {
+    const layouts = layoutAllTiers([1, 1], (columns) => (columns >= 2 ? [0.75, 0.75] : []));
+    expect(layouts[0]!.slots).toHaveLength(2);
+    expect(layouts[1]!.slots).toHaveLength(4);
+    expect(layouts[3]!.slots).toHaveLength(4);
+  });
+  it("leaves out the variables of a tile a tier does not carry", () => {
+    const layouts = layoutAllTiers([1], (columns) => (columns >= 2 ? [0.75] : []));
+    const vars = masonryItemVars(0.75, layouts, 1);
+    expect(vars["--c1"]).toBeUndefined();
+    expect(vars["--c2"]).toBeDefined();
+  });
+});
