@@ -58,9 +58,19 @@
       "bytes": 200300
     },
     {
+      "path": "artwork/anatomy-study/cover-800w.8aebfa23.webp",
+      "sha256": "8aebfa23e148348aa24f77a1027ce3d2a3af3eac12352988a142d73b99d30f45",
+      "bytes": 66930
+    },
+    {
       "path": "artwork/anatomy-study/cover.ed3d1edb.jpg",
       "sha256": "ed3d1edbb4e2486dde3bfa404266e7d39579fde73662ec654ea14e01ba85a73d",
       "bytes": 595673
+    },
+    {
+      "path": "artwork/baroque-with-a-twist-musee-d-orsay/cover-800w.25372ac3.webp",
+      "sha256": "25372ac328a2415f3d1d655c871bdf085fc8040efd14df5556825e2461c270e8",
+      "bytes": 69166
     },
     {
       "path": "artwork/baroque-with-a-twist-musee-d-orsay/cover.7d1b1bb6.jpg",
@@ -68,9 +78,19 @@
       "bytes": 652345
     },
     {
+      "path": "artwork/bridgetop-encounter/cover-800w.46a3f210.webp",
+      "sha256": "46a3f2107d8361320da644aa8932e5ded428a9a624e32d82755859cbe564b2ad",
+      "bytes": 71792
+    },
+    {
       "path": "artwork/bridgetop-encounter/cover.ab15d13e.jpg",
       "sha256": "ab15d13e56c36d165915f5920595aafcd67b27a77020b411594f9e67d3fe6076",
       "bytes": 375716
+    },
+    {
+      "path": "artwork/cloth-lighting-study/cover-800w.9dcf8555.webp",
+      "sha256": "9dcf85553420b1c2101d19d46cf666fe49bdb4e0dfd2a6def40730f71fd7d607",
+      "bytes": 60414
     },
     {
       "path": "artwork/cloth-lighting-study/cover.596dc343.jpg",
@@ -78,14 +98,29 @@
       "bytes": 657997
     },
     {
+      "path": "artwork/frederiks-church-copenhagen/cover-800w.459d059c.webp",
+      "sha256": "459d059c603eee1687a968e2fd13eac6a69158b0ed130454e854c8ac6641f178",
+      "bytes": 93022
+    },
+    {
       "path": "artwork/frederiks-church-copenhagen/cover.c42880dd.jpg",
       "sha256": "c42880dd8a253598c311b307b2ebc70193874dd3c67096e4524976f9b4a98c88",
       "bytes": 660463
     },
     {
+      "path": "artwork/giants-of-steel/cover-800w.e6e5b30d.webp",
+      "sha256": "e6e5b30d390cd015c1c29d622db16bf58dce87d099f6029d4c391678bb65a6ad",
+      "bytes": 63980
+    },
+    {
       "path": "artwork/giants-of-steel/cover.a40f451a.jpg",
       "sha256": "a40f451a5825b709d634929fd72397c73f0ab10e3abe5df6d65b498e60c0bbe7",
       "bytes": 415099
+    },
+    {
+      "path": "artwork/hand-drawn-vector-self-portrait/cover-800w.d514a1c9.webp",
+      "sha256": "d514a1c9942c1d90e6c9015e5f0dfe0030f45e36a7793cb058fbe03c5b5ae94d",
+      "bytes": 16128
     },
     {
       "path": "artwork/hand-drawn-vector-self-portrait/cover.27a8f878.jpg",
@@ -103,9 +138,19 @@
       "bytes": 92594
     },
     {
+      "path": "artwork/la-vierge-au-lys-musee-d-orsay/cover-800w.714b4e97.webp",
+      "sha256": "714b4e97eb31c46144a9eb99da01d7ef8961c065aadc7a932ba323d813fbddfb",
+      "bytes": 64112
+    },
+    {
       "path": "artwork/la-vierge-au-lys-musee-d-orsay/cover.eb0cfe41.jpg",
       "sha256": "eb0cfe411c90bc997aec420b9cfd7d22f9a378a6bdd0e501452298cab4be9246",
       "bytes": 623695
+    },
+    {
+      "path": "artwork/portrait-study/cover-800w.30ccd89d.webp",
+      "sha256": "30ccd89d06cde7a7a4d3c157675122c6e9456e0b0f5ee60b554dbc469b60ca26",
+      "bytes": 31512
     },
     {
       "path": "artwork/portrait-study/cover.7f0e509c.jpg",
@@ -113,9 +158,19 @@
       "bytes": 93637
     },
     {
+      "path": "artwork/resilience/cover-800w.a19426c5.webp",
+      "sha256": "a19426c526da1819cfecf976e735a5ab4ec34b85cc0f452742e9f5459eee8b6d",
+      "bytes": 115882
+    },
+    {
       "path": "artwork/resilience/cover.640be4dc.jpg",
       "sha256": "640be4dcc1605d35d3da3229b56129d9627d67df10e2eb73c03a7f4fd2570713",
       "bytes": 1093379
+    },
+    {
+      "path": "artwork/suborbital-launch/cover-800w.0d969467.webp",
+      "sha256": "0d969467112e0283560d1da600e45082eb32b0f42983a402c154471535955366",
+      "bytes": 9962
     },
     {
       "path": "artwork/suborbital-launch/cover.1ccd20a7.jpg",
@@ -123,9 +178,19 @@
       "bytes": 146786
     },
     {
+      "path": "artwork/subsurface-scattering-study/cover-800w.e49b8e37.webp",
+      "sha256": "e49b8e37e817dba12db81a04abb188cffa64d479dba1396981ed8a92d6427651",
+      "bytes": 16060
+    },
+    {
       "path": "artwork/subsurface-scattering-study/cover.df0760dd.jpg",
       "sha256": "df0760dd9898415075a8456f6c7276f2021b3638e353da5cedd8db17a571d9da",
       "bytes": 144455
+    },
+    {
+      "path": "artwork/the-anomaly/cover-800w.db33cb6b.webp",
+      "sha256": "db33cb6bcc8c1582afdd2b2b7215eb563ce28e7e2d706735c787b655153c2ab9",
+      "bytes": 35736
     },
     {
       "path": "artwork/the-anomaly/cover.42f5ce46.jpg",
@@ -133,14 +198,29 @@
       "bytes": 389698
     },
     {
+      "path": "artwork/the-lighthouse-monochrome-gouache-study/cover-800w.6a47ab59.webp",
+      "sha256": "6a47ab59bceed51a041c6d8558a603ddc72c6a131ca06f4967d0b6c75ee84428",
+      "bytes": 8306
+    },
+    {
       "path": "artwork/the-lighthouse-monochrome-gouache-study/cover.4e84c7ab.jpg",
       "sha256": "4e84c7ab34247379895fb0673aa58c4700975d46b7d039c707d9af0054bcbc3f",
       "bytes": 105804
     },
     {
+      "path": "artwork/where-the-sun-never-sets/cover-800w.db328076.webp",
+      "sha256": "db3280764609b83b6d193fed5d26637cabc43db01ee8d944ffa572e8d006f47c",
+      "bytes": 13536
+    },
+    {
       "path": "artwork/where-the-sun-never-sets/cover.2a3247ee.jpg",
       "sha256": "2a3247ee30e03ea93d90d91ee43527469a7f8e0b04e1db5739572d6a34cc10a5",
       "bytes": 168566
+    },
+    {
+      "path": "artwork/yamato-class-battleship-firing-test-study/cover-800w.27f8e162.webp",
+      "sha256": "27f8e162ec622f2634bd5c3d30fa3364d2d308ffb4c105bd2b3230411dc7490a",
+      "bytes": 28226
     },
     {
       "path": "artwork/yamato-class-battleship-firing-test-study/cover.4ec1f84b.jpg",
@@ -193,94 +273,184 @@
       "bytes": 65550
     },
     {
-      "path": "photograph/blue-facade/photo.491ce587.webp",
-      "sha256": "491ce587255e5a6ae37747a4c4d7ce2334fd613c4aae4fb58ecd714290cbab40",
-      "bytes": 251966
+      "path": "photograph/blue-facade/photo-800w.4cc300ab.webp",
+      "sha256": "4cc300ab485a126828e8f6d22e89ee95bb01410d9a44bac90f5c01a90bbab47d",
+      "bytes": 81966
     },
     {
-      "path": "photograph/bow-of-a-boat/photo.e2b95d30.webp",
-      "sha256": "e2b95d3003afa2197af2a076a0b1361eaeed26a05356c4d6c432b88c31fb3e40",
-      "bytes": 359300
+      "path": "photograph/blue-facade/photo.5b5cb246.webp",
+      "sha256": "5b5cb2467e837708410e56ca624939b746913c6db808a3c125306a28f9c697e1",
+      "bytes": 113926
     },
     {
-      "path": "photograph/carrying-the-float/photo.cd9bb1d9.webp",
-      "sha256": "cd9bb1d9a31f72dd065e33e05b023fe38c26936963f8fc29acc439bc17d5b227",
-      "bytes": 255194
+      "path": "photograph/bow-of-a-boat/photo-800w.4fbd3488.webp",
+      "sha256": "4fbd348894a08396e32c1d114a6796cb44b081f22089135f943e7e29048c512e",
+      "bytes": 82268
     },
     {
-      "path": "photograph/city-from-above/photo.b03ef3a6.webp",
-      "sha256": "b03ef3a69fc362ab7c5e9e5fc984c8ed4c796667db42401c45a15a69dbd13d37",
-      "bytes": 858538
+      "path": "photograph/bow-of-a-boat/photo.4e8a3272.webp",
+      "sha256": "4e8a32725c5af74970cb7889264c7b761513132610fadb5847da057a9e9b40b8",
+      "bytes": 112980
     },
     {
-      "path": "photograph/concrete-terraces/photo.07ad9530.webp",
-      "sha256": "07ad9530aba9816e7bdc185c21d35abdb7bca54a9c0c0756e55be586b8d60dfe",
-      "bytes": 222646
+      "path": "photograph/carrying-the-float/photo-800w.e5870cd0.webp",
+      "sha256": "e5870cd0a49070b654861ebd228286a033f322a03114d3d9dac20abb219ca5b0",
+      "bytes": 102288
     },
     {
-      "path": "photograph/facade-grid/photo.85382370.webp",
-      "sha256": "8538237094d7ce025f22adbbf3c0174be8135503e96af9500af5fa69e101eb1a",
-      "bytes": 337314
+      "path": "photograph/carrying-the-float/photo.0d912656.webp",
+      "sha256": "0d9126569ebc58172e2936f4c14e6c3c0bfaf82558d474b0225385247af4bd52",
+      "bytes": 107796
     },
     {
-      "path": "photograph/flooded-street/photo.06725ae1.webp",
-      "sha256": "06725ae1055f98889e0792002a495f01bfd96a6ea73920ac491ec2c635fcacd0",
-      "bytes": 377946
+      "path": "photograph/city-from-above/photo-800w.8bcc2c8d.webp",
+      "sha256": "8bcc2c8d5b2e2a370d65cdc1bac5a36f9a1f69cf556af1e6136f329b23c069cd",
+      "bytes": 262500
     },
     {
-      "path": "photograph/flower-bearers/photo.853a20e3.webp",
-      "sha256": "853a20e3baffa926f377969757c143636b19c5f80f4c108a3c00b7c8294dd0df",
-      "bytes": 265004
+      "path": "photograph/city-from-above/photo.949dc19c.webp",
+      "sha256": "949dc19caa401f7b15cf23fb3e6d9d14185690afb360202ed4c877ecbdc8fd50",
+      "bytes": 345810
     },
     {
-      "path": "photograph/golden-hour-on-the-train/photo.22c2e6a1.webp",
-      "sha256": "22c2e6a1c7ef8b5e6de625b520d7a5324efff11654cf6ec8315ec0eeb02921d3",
-      "bytes": 135664
+      "path": "photograph/concrete-terraces/photo-800w.8e69e75e.webp",
+      "sha256": "8e69e75ef2766eae299d72b115dba9563d827bc22e84edf772559af254ddf0bb",
+      "bytes": 74122
     },
     {
-      "path": "photograph/minaret-and-rooftops/photo.1fa0ddd4.webp",
-      "sha256": "1fa0ddd450e4d96e74212d6d3f6ba12f089caab7f2da70d84b5d6b6354170c52",
-      "bytes": 287084
+      "path": "photograph/concrete-terraces/photo.58bf68fc.webp",
+      "sha256": "58bf68fc6f6e4dc17e587d68eb2c17b6f61fb878273ca776fbc64ade59400cb6",
+      "bytes": 97338
     },
     {
-      "path": "photograph/orange-train/photo.d07a4eb8.webp",
-      "sha256": "d07a4eb8e33b33886e3cf16992cc0a21bf5b175f50a7feb6c98f9670e68cad1d",
-      "bytes": 116202
+      "path": "photograph/facade-grid/photo-800w.149c234b.webp",
+      "sha256": "149c234b493ae09f1d4ef0fb454a73105a3e33ce2d673c983d395c56976906ed",
+      "bytes": 122734
     },
     {
-      "path": "photograph/painted-boats/photo.f8f7db58.webp",
-      "sha256": "f8f7db586a405b831f8f65d674f1ca3b43deff83d7212ab71b79065c5820c946",
-      "bytes": 563796
+      "path": "photograph/facade-grid/photo.c72d040b.webp",
+      "sha256": "c72d040b2a9b73e7be2e410f1a194fd6bb79c2331ddccfe005739b522527ea10",
+      "bytes": 149534
     },
     {
-      "path": "photograph/pointing-at-the-hills/photo.3abe4ba8.webp",
-      "sha256": "3abe4ba81db856f498bfa00ed5725d4c6295bfa95ac29b4ac9fe338158e1691f",
-      "bytes": 248652
+      "path": "photograph/flooded-street/photo-800w.b1633307.webp",
+      "sha256": "b1633307aec2df16e4ea6797c82bdd218999284bb9c389b017784ac81da32eba",
+      "bytes": 130180
     },
     {
-      "path": "photograph/speedboat-on-the-napo/photo.0d128d32.webp",
-      "sha256": "0d128d328a578924d7d23bf86ba8faca4faac01f9226c6cfeb9a8de642455e30",
-      "bytes": 169878
+      "path": "photograph/flooded-street/photo.ff185bdd.webp",
+      "sha256": "ff185bdd28e9d18ff8e7e50dd2d19eb3a7da8dbbeeb198c42d55c8729f1dcd00",
+      "bytes": 163074
     },
     {
-      "path": "photograph/unloading-at-the-bank/photo.541adc87.webp",
-      "sha256": "541adc87fe08a6a82b3a7f9faf22cbe12f5edc059f341a3f4bb5a38c92a8b3b6",
-      "bytes": 834638
+      "path": "photograph/flower-bearers/photo-800w.12b0587f.webp",
+      "sha256": "12b0587f9cbaf0c65fb12e12d49b23acec69253abaad89ba7abca4ab8a051973",
+      "bytes": 94742
     },
     {
-      "path": "photograph/wake/photo.81a40531.webp",
-      "sha256": "81a4053183725c436ccdf55f6771de65fa09f754a0a525cfcd75a418118f4a3b",
-      "bytes": 227052
+      "path": "photograph/flower-bearers/photo.ddbd983c.webp",
+      "sha256": "ddbd983ca14ffe2242b13f72c6d33497b00fc30703006ca4e33063fb8895c58e",
+      "bytes": 120314
     },
     {
-      "path": "photograph/walkway-at-dusk/photo.66cec07d.webp",
-      "sha256": "66cec07db6a9ae008a1e9c751bef573d79d5d67b7af36779c109fa67c6f8f399",
-      "bytes": 249416
+      "path": "photograph/golden-hour-on-the-train/photo-800w.2180b14e.webp",
+      "sha256": "2180b14e1b46d5399eb821188171fea33a5f99e4ea8a9baf7b07af80d0464ab7",
+      "bytes": 31518
     },
     {
-      "path": "photograph/watermelons-on-deck/photo.b971cae7.webp",
-      "sha256": "b971cae7af77cc7c538f21fab24af8c36d888f97b6ccce8a0db86e84474f4e30",
-      "bytes": 418958
+      "path": "photograph/golden-hour-on-the-train/photo.6768f98e.webp",
+      "sha256": "6768f98e02459031a52f70b9e207a021943aaeb5c5105e8ef7158cd34dded81b",
+      "bytes": 57912
+    },
+    {
+      "path": "photograph/minaret-and-rooftops/photo-800w.c93aa31b.webp",
+      "sha256": "c93aa31b57990934ef285509e091c771ba187b2f546b1a210a5af3bc531eb5ba",
+      "bytes": 77542
+    },
+    {
+      "path": "photograph/minaret-and-rooftops/photo.02045418.webp",
+      "sha256": "02045418e279af8905dc3a13cc1d7c4511a11e2f2674d36b8e09fbbf302521e7",
+      "bytes": 122172
+    },
+    {
+      "path": "photograph/orange-train/photo-800w.7c34f1e8.webp",
+      "sha256": "7c34f1e872128a2a6f1b1f7f6a7fe273dcd22ef468b231f9b61f506312c043b8",
+      "bytes": 39736
+    },
+    {
+      "path": "photograph/orange-train/photo.a7408ca6.webp",
+      "sha256": "a7408ca662eefaff5ae79fdba4facf5919f797142b9e981a5b16a943c64accf1",
+      "bytes": 49964
+    },
+    {
+      "path": "photograph/painted-boats/photo-800w.8de24aef.webp",
+      "sha256": "8de24aef57ea70e12add4d2de7a08e7a8d0ced928bae5f3ee2b18d2efa4e3a11",
+      "bytes": 117182
+    },
+    {
+      "path": "photograph/painted-boats/photo.972ece3b.webp",
+      "sha256": "972ece3b2c0e29f85a177b501b8b11c0ec5a2a4bce01c1e56f335df6a4e2d9fa",
+      "bytes": 232102
+    },
+    {
+      "path": "photograph/pointing-at-the-hills/photo.7e4ce076.webp",
+      "sha256": "7e4ce076e4570a53a8736ca6958db763969e87f5877ffa5eb35588e9049fb206",
+      "bytes": 95648
+    },
+    {
+      "path": "photograph/speedboat-on-the-napo/photo-800w.a76de00d.webp",
+      "sha256": "a76de00d04618aaa4df43b55b68c4e424bd5815f9f0449efb855b53220f90e5f",
+      "bytes": 59746
+    },
+    {
+      "path": "photograph/speedboat-on-the-napo/photo.e9ea0302.webp",
+      "sha256": "e9ea0302f0538d0091fd8b14605d3722b50580ed3aac787249cead5b5ff61e6d",
+      "bytes": 74502
+    },
+    {
+      "path": "photograph/unloading-at-the-bank/photo-800w.fb6f836d.webp",
+      "sha256": "fb6f836d83ef0064a5daf8e3a9d4a73ebdf9f8951dc0dafd6fa813a57b061e65",
+      "bytes": 269366
+    },
+    {
+      "path": "photograph/unloading-at-the-bank/photo.0dcaccfe.webp",
+      "sha256": "0dcaccfe7b8e1c0f08cf816ba5258618029b42f297482e7cfbe74cd7c118fa7d",
+      "bytes": 330994
+    },
+    {
+      "path": "photograph/wake/photo-800w.be7c698c.webp",
+      "sha256": "be7c698c307bd1a5ece69d7c9025566f5356d04cfef83ecd970b80c152569e69",
+      "bytes": 66724
+    },
+    {
+      "path": "photograph/wake/photo.0fa0d9dc.webp",
+      "sha256": "0fa0d9dc312c6bfbca9c38c01903dc8d5d62c527fd7070c0a2fca14081c0127a",
+      "bytes": 99098
+    },
+    {
+      "path": "photograph/walkway-at-dusk/photo-800w.e0a3ca83.webp",
+      "sha256": "e0a3ca83db2a2f3b4c14540ce71252685de732cc17dd4daf015c45615fff209c",
+      "bytes": 83278
+    },
+    {
+      "path": "photograph/walkway-at-dusk/photo.f576c0bb.webp",
+      "sha256": "f576c0bb63d628f38582af14166ad984bf282bb094193fd2c017815b62f82f7e",
+      "bytes": 105054
+    },
+    {
+      "path": "photograph/watermelons-on-deck/photo-800w.636f8321.webp",
+      "sha256": "636f83212f55110e5cf8ab910ef6a8835476fdd27e74454426977374bc064c0c",
+      "bytes": 95322
+    },
+    {
+      "path": "photograph/watermelons-on-deck/photo.9ef0ee98.webp",
+      "sha256": "9ef0ee98f8766ef580f9d6e52c7e5eddbe192e27591c4c4285c74735d04609c0",
+      "bytes": 178888
+    },
+    {
+      "path": "project/amaze-me/cover-800w.640a2e7d.webp",
+      "sha256": "640a2e7d0b0716c68f28d84c3a50df1646033e0d209cd102227d37ad285fbf60",
+      "bytes": 75172
     },
     {
       "path": "project/amaze-me/cover.1b57f338.webp",
@@ -288,9 +458,19 @@
       "bytes": 320242
     },
     {
+      "path": "project/avatar/cover-800w.0dc1c78b.webp",
+      "sha256": "0dc1c78bb935df958fbbed9c6e5b9cb546155a9bd0ae1e6830b21370524bdee4",
+      "bytes": 8628
+    },
+    {
       "path": "project/avatar/cover.d714690b.webp",
       "sha256": "d714690bf83977ab51cfb4a7dd7d56702fa18305e0771877aaea74183c379139",
       "bytes": 30492
+    },
+    {
+      "path": "project/carbon-atlas/cover-800w.0196ee1c.webp",
+      "sha256": "0196ee1c90e711a914fcb8d82a0507ccea0b31512b82440b93ac213a9230034a",
+      "bytes": 24098
     },
     {
       "path": "project/carbon-atlas/cover.78a12aa3.webp",
@@ -298,9 +478,19 @@
       "bytes": 122730
     },
     {
+      "path": "project/clifford/cover-800w.0d26b7de.webp",
+      "sha256": "0d26b7de99470a52aa68ef7d4b839f8780293d05581d2c2d26c1bc2445ac64c9",
+      "bytes": 27732
+    },
+    {
       "path": "project/clifford/cover.c2b7bd96.webp",
       "sha256": "c2b7bd9627bd375c6cbdb47b04e7acaf6132f1f6590f07215c0829688eb9cd9e",
       "bytes": 54316
+    },
+    {
+      "path": "project/cron/cover-800w.2804e098.webp",
+      "sha256": "2804e098d542c15662238414daaa031a15ff91d8dcc5784092c172887fdb4ce6",
+      "bytes": 23996
     },
     {
       "path": "project/cron/cover.a5cbd872.webp",
@@ -308,9 +498,19 @@
       "bytes": 158748
     },
     {
+      "path": "project/epidemic-spreading-sim/cover-800w.a39cd0e5.webp",
+      "sha256": "a39cd0e535116ee175b2ebfa1ba5abde6367de0454f7e0859237a7c4d07eece2",
+      "bytes": 101144
+    },
+    {
       "path": "project/epidemic-spreading-sim/cover.7ca6188e.webp",
       "sha256": "7ca6188ef000f9402fae12860113fbc84903e9fa43107af7266084825d7f36ba",
       "bytes": 449640
+    },
+    {
+      "path": "project/isf-design-system/cover-800w.d6aad33c.webp",
+      "sha256": "d6aad33c510e5f854114860e7088b94e8c093cbc4f558a74c8473782e1936927",
+      "bytes": 22766
     },
     {
       "path": "project/isf-design-system/cover.93455186.webp",
@@ -318,9 +518,19 @@
       "bytes": 101096
     },
     {
+      "path": "project/lidar/cover-800w.2de99680.webp",
+      "sha256": "2de99680ec9c513d2e0a51d03d22d1557c0304f0624ff5dac62a3e8876c7cd20",
+      "bytes": 42268
+    },
+    {
       "path": "project/lidar/cover.d860fe77.webp",
       "sha256": "d860fe77bc9c9b941d20dee75fc314b69634129dac1e1bd4b9605fad391cdcb9",
       "bytes": 190644
+    },
+    {
+      "path": "project/light-engine/cover-800w.dd14092d.webp",
+      "sha256": "dd14092d4f882f1eea603ecf07090fef1a0b5b3385769ed2b572ee078f73fdc5",
+      "bytes": 75980
     },
     {
       "path": "project/light-engine/cover.b00cd4c3.webp",
@@ -328,9 +538,19 @@
       "bytes": 213530
     },
     {
+      "path": "project/material-sticky-header/cover-800w.00a644fc.webp",
+      "sha256": "00a644fc8c462ed3ceae2b418af5ffc3a42bd2b331331b916517076c33f886d8",
+      "bytes": 19672
+    },
+    {
       "path": "project/material-sticky-header/cover.7e7f76bc.webp",
       "sha256": "7e7f76bcaa285913e79116de090fe472790943ff0624a66d76c66153b1cebf39",
       "bytes": 81700
+    },
+    {
+      "path": "project/mui-joy-palette-generator/cover-800w.63ca49db.webp",
+      "sha256": "63ca49dbe4dffeec110d64ad73a84ce9ea3478de2a57997512b4c04cfb54ae3b",
+      "bytes": 26716
     },
     {
       "path": "project/mui-joy-palette-generator/cover.9b6eebd5.webp",
@@ -338,9 +558,19 @@
       "bytes": 107926
     },
     {
+      "path": "project/pconsole/cover-800w.e41fc359.webp",
+      "sha256": "e41fc3597e649322164e9a5fb60274c1d011cffbba12d8a4d6ceec049a37b603",
+      "bytes": 35554
+    },
+    {
       "path": "project/pconsole/cover.e108dc29.webp",
       "sha256": "e108dc29b3a069f1b562dc0bc50beb14246293b028fdebc1f6f5c76d1581c1aa",
       "bytes": 102350
+    },
+    {
+      "path": "project/portfolio-website/cover-800w.51773856.webp",
+      "sha256": "5177385611bed70711d657eb54b00a3fb159d76b1be290db3a991d70da7c6486",
+      "bytes": 15040
     },
     {
       "path": "project/portfolio-website/cover.4593cafb.webp",
@@ -348,9 +578,19 @@
       "bytes": 183204
     },
     {
+      "path": "project/pyos/cover-800w.85c03192.webp",
+      "sha256": "85c03192508aad1bb4a9d3d5f8e0732785ca520209a7b7960d4eac4fa6c8841e",
+      "bytes": 14164
+    },
+    {
       "path": "project/pyos/cover.fcb77826.webp",
       "sha256": "fcb7782690db993ad5c28ab9e6a7ff93842168d768beba9846a68a4aaa470ff5",
       "bytes": 57134
+    },
+    {
+      "path": "project/randomite/cover-800w.e7f41e56.webp",
+      "sha256": "e7f41e56763e1e655db25f7a16fcf3fbe9e8ea62ca5e0963212d9a87b704603e",
+      "bytes": 31410
     },
     {
       "path": "project/randomite/cover.411753a6.webp",
@@ -358,9 +598,19 @@
       "bytes": 141960
     },
     {
+      "path": "project/slashboard/cover-800w.01d7bc95.webp",
+      "sha256": "01d7bc95dca8779e9fba9e0bce4772ffb59a48698ab301a034ca5b403242a674",
+      "bytes": 13468
+    },
+    {
       "path": "project/slashboard/cover.5223fa1b.webp",
       "sha256": "5223fa1b99553cac612ad811c0c2fc79f41c96d21b3a55f416212211605cd87a",
       "bytes": 56076
+    },
+    {
+      "path": "project/spectrum-visualizer/cover-800w.9a02bc02.webp",
+      "sha256": "9a02bc02d5983222178348f5a4202a0a9949bc9ea5bdb72621cbb1d0abec70b2",
+      "bytes": 3328
     },
     {
       "path": "project/spectrum-visualizer/cover.f0f2e14a.webp",
@@ -368,9 +618,19 @@
       "bytes": 14146
     },
     {
+      "path": "project/spinel/cover-800w.e6872ae8.webp",
+      "sha256": "e6872ae8d9ed17285a4799718a130e460cac6df9e975dfb91858735032b90342",
+      "bytes": 13446
+    },
+    {
       "path": "project/spinel/cover.4f920ebd.webp",
       "sha256": "4f920ebd3cb4e58c8a44e2e57ff17102cc4c235c34bde10db81f8d3c8526ed65",
       "bytes": 29886
+    },
+    {
+      "path": "project/svg-gradients/cover-800w.6c818ffb.webp",
+      "sha256": "6c818ffb57e6233c4b3765e0ab4bde7fc525b2239f2e10ae36f459cdca03b2cc",
+      "bytes": 37126
     },
     {
       "path": "project/svg-gradients/cover.220ec5f6.webp",
@@ -378,9 +638,19 @@
       "bytes": 203334
     },
     {
+      "path": "project/terrain-interpolation/cover-800w.f53af6d1.webp",
+      "sha256": "f53af6d1122d12b2d06f1a3b872e5b7de00e188cd3cb6ee95cd697242d7faad2",
+      "bytes": 64204
+    },
+    {
       "path": "project/terrain-interpolation/cover.7929f37e.webp",
       "sha256": "7929f37e92b3ecaea1e33dfb668db07fa310c3b450a20e1a181885b487354a0c",
       "bytes": 498110
+    },
+    {
+      "path": "project/voxelife/cover-800w.91c2e62b.webp",
+      "sha256": "91c2e62b1475e283f4d560a823f1fce35b8d28999dbe5170fbf846dd172ebb26",
+      "bytes": 8824
     },
     {
       "path": "project/voxelife/cover.96f3f63f.webp",
@@ -388,14 +658,29 @@
       "bytes": 17838
     },
     {
+      "path": "project/wave-engine/cover-800w.0afe2eb9.webp",
+      "sha256": "0afe2eb91aa1c68f0e278ffe5fc60a5a8369de7c97ed71a64576838948dfc4ed",
+      "bytes": 7024
+    },
+    {
       "path": "project/wave-engine/cover.d3b6aa01.webp",
       "sha256": "d3b6aa0170a9e6b6243d213830a33a480f4c7275e4e4e5eee18d226a4c5fc8e5",
       "bytes": 28826
     },
     {
+      "path": "project/wco-demo/cover-800w.98bb9dd1.webp",
+      "sha256": "98bb9dd123fa4dfd0e00dd6c342c0adafd09678a08dc916db7cac64e66c935df",
+      "bytes": 31546
+    },
+    {
       "path": "project/wco-demo/cover.dc30b6c3.webp",
       "sha256": "dc30b6c3ec48d10d198a48228385d8c4296e4fdf62b11ab6236c4b31bdfd1b11",
       "bytes": 59828
+    },
+    {
+      "path": "project/whatsapp-content-moderation/cover-800w.d8e7825d.webp",
+      "sha256": "d8e7825d0333b7ca3d5a66420550bcd9a2d3b36dda72db2708b6d65c21bead91",
+      "bytes": 39000
     },
     {
       "path": "project/whatsapp-content-moderation/cover.81520168.webp",
