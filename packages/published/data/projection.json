@@ -58,7 +58,7 @@
         28.105
       ],
       "viewRadiusKm": 1.9,
-      "group": "laayoune-area",
+      "group": "oued-el-ouaar-area",
       "countryCode": "MA",
       "body": [
         "Quick pitstop in a roadside trading city, where a lot of merchants and passenger buses were stopping for a coffee ☕"
@@ -1113,7 +1113,7 @@
         39.688489
       ],
       "viewRadiusKm": 3.6,
-      "group": "ioannina-area",
+      "group": "kalambaka-area",
       "countryCode": "GR",
       "body": [
         "A memorable lakeside city with very few tourists and a wide variety of cheeses, local dishes, and jewellery to choose from. In my opinion, this is one of the calmest and perhaps the best city on this journey.",
@@ -1199,8 +1199,8 @@
         "lat": 39.7,
         "lon": 21.63
       },
-      "labelPriority": 34,
-      "group": "ioannina-area",
+      "labelPriority": 42,
+      "group": "kalambaka-area",
       "countryCode": "GR",
       "body": [
         "Giant rocky monoliths loom menacingly above a colourful Mediterranean town. Six monasteries float high overhead, as if suspended from the skies.",
@@ -1209,7 +1209,12 @@
         "I am glad I chose to take this detour on my way to Thessaloniki."
       ],
       "images": [],
-      "related": []
+      "related": [
+        {
+          "kind": "poem",
+          "slug": "crepuscule-grec"
+        }
+      ]
     },
     {
       "slug": "klagenfurt",
@@ -1360,7 +1365,7 @@
         27.1851764
       ],
       "viewRadiusKm": 8.2,
-      "group": "laayoune-area",
+      "group": "oued-el-ouaar-region",
       "countryCode": "MA",
       "body": [
         "Surprisingly, a rather modern and well maintained city in the middle of nowhere, with a very strong military presence.",
@@ -1978,6 +1983,26 @@
       "related": []
     },
     {
+      "slug": "oued-el-ouaar",
+      "name": "Oued El-Ouaar",
+      "coordinates": {
+        "lat": 28.17,
+        "lon": -11.87
+      },
+      "labelPriority": 40,
+      "viewRadiusKm": 5,
+      "group": "oued-el-ouaar-area",
+      "countryCode": "MA",
+      "body": [],
+      "images": [],
+      "related": [
+        {
+          "kind": "poem",
+          "slug": "ode-au-desert"
+        }
+      ]
+    },
+    {
       "slug": "paris",
       "name": "Paris",
       "coordinates": {
@@ -2174,7 +2199,7 @@
         "lon": 22.24
       },
       "labelPriority": 34,
-      "group": "ioannina-region",
+      "group": "kalambaka-region",
       "countryCode": "GR",
       "body": [
         "“On 5 September 2023, Storm Daniel triggered large-scale flooding in Thessaly. […] The line from Palaiofarsalos to Kalambaka was damaged, with extensive work required to repair the track and resume services. As a result, services between Palaiofarsalos and Kalambaka remain suspended across Thessaly’s coast until repairs are complete, with a rail-replacement bus currently in operation.”",
@@ -3027,7 +3052,7 @@
         28.4601504
       ],
       "viewRadiusKm": 4.1,
-      "group": "laayoune-area",
+      "group": "oued-el-ouaar-region",
       "countryCode": "MA",
       "body": [
         "Arrived safe and sound around 11pm, to a very windy and sandy city, and a magnificent hotel. I was starving and was able to grab a late night pizza in the city center 🍕",
@@ -3076,7 +3101,7 @@
         27.9552925
       ],
       "viewRadiusKm": 7.4,
-      "group": "laayoune-area",
+      "group": "oued-el-ouaar-region",
       "countryCode": "MA",
       "body": [
         "I stayed in the family house of a friend I made in Agadir, who invited me to spend the night there! Great city with some beautiful fishing boats and an overall calm seaside town ambience, was still feeling a bit weak from some low level sickness, so my energy levels weren't really optimal, sadly.",
@@ -3271,19 +3296,11 @@
         },
         {
           "kind": "poem",
-          "slug": "crepuscule-grec"
-        },
-        {
-          "kind": "poem",
           "slug": "foret-dansante"
         },
         {
           "kind": "poem",
           "slug": "le-comedien"
-        },
-        {
-          "kind": "poem",
-          "slug": "ode-au-desert"
         },
         {
           "kind": "poem",
@@ -3895,30 +3912,6 @@
       "labelPriority": 80
     },
     {
-      "slug": "ioannina-area",
-      "name": "Ioannina area",
-      "kind": "area",
-      "parent": "ioannina-region",
-      "coordinates": {
-        "lat": 39.685,
-        "lon": 21.288
-      },
-      "viewRadiusKm": 45.4,
-      "labelPriority": 55
-    },
-    {
-      "slug": "ioannina-region",
-      "name": "Ioannina region",
-      "kind": "area",
-      "parent": "greece",
-      "coordinates": {
-        "lat": 39.477,
-        "lon": 21.592
-      },
-      "viewRadiusKm": 77.8,
-      "labelPriority": 57
-    },
-    {
       "slug": "italy",
       "name": "Italy",
       "kind": "country",
@@ -3943,6 +3936,30 @@
       "labelPriority": 55
     },
     {
+      "slug": "kalambaka-area",
+      "name": "Kalambaka area",
+      "kind": "area",
+      "parent": "kalambaka-region",
+      "coordinates": {
+        "lat": 39.685,
+        "lon": 21.288
+      },
+      "viewRadiusKm": 45.4,
+      "labelPriority": 55
+    },
+    {
+      "slug": "kalambaka-region",
+      "name": "Kalambaka region",
+      "kind": "area",
+      "parent": "greece",
+      "coordinates": {
+        "lat": 39.477,
+        "lon": 21.592
+      },
+      "viewRadiusKm": 77.8,
+      "labelPriority": 57
+    },
+    {
       "slug": "klagenfurt-area",
       "name": "Klagenfurt area",
       "kind": "area",
@@ -3964,18 +3981,6 @@
         "lon": -68.318
       },
       "viewRadiusKm": 106.5,
-      "labelPriority": 55
-    },
-    {
-      "slug": "laayoune-area",
-      "name": "Laayoune area",
-      "kind": "area",
-      "parent": "morocco",
-      "coordinates": {
-        "lat": 27.782,
-        "lon": -12.163
-      },
-      "viewRadiusKm": 144.4,
       "labelPriority": 55
     },
     {
@@ -4133,6 +4138,30 @@
       },
       "viewRadiusKm": 93.6,
       "labelPriority": 55
+    },
+    {
+      "slug": "oued-el-ouaar-area",
+      "name": "Oued El-Ouaar area",
+      "kind": "area",
+      "parent": "oued-el-ouaar-region",
+      "coordinates": {
+        "lat": 28.138,
+        "lon": -11.947
+      },
+      "viewRadiusKm": 14.7,
+      "labelPriority": 55
+    },
+    {
+      "slug": "oued-el-ouaar-region",
+      "name": "Oued El-Ouaar region",
+      "kind": "area",
+      "parent": "morocco",
+      "coordinates": {
+        "lat": 27.782,
+        "lon": -12.163
+      },
+      "viewRadiusKm": 144.4,
+      "labelPriority": 57
     },
     {
       "slug": "peru",
@@ -8007,14 +8036,14 @@
       "summary": "A dynamically coloured avatar, drawn by hand and vectorised in Figma. Figma (vectorised), 2025.",
       "date": "2025",
       "cover": {
-        "src": "/media/artwork/hand-drawn-vector-self-portrait/cover.27a8f878.jpg",
-        "alt": "A web interface showing a flat-style avatar of a smiling man with black hair and a blue jacket, with controls for shape, three colours and glasses.",
-        "width": 1618,
-        "height": 1747,
+        "src": "/media/artwork/hand-drawn-vector-self-portrait/cover.626fb733.jpg",
+        "alt": "Pencil drawing of the avatar on paper: a smiling head with a swept fringe on a long neck, over construction lines, measurement arrows and a little shading.",
+        "width": 1920,
+        "height": 1875,
         "small": {
-          "src": "/media/artwork/hand-drawn-vector-self-portrait/cover-800w.d514a1c9.webp",
+          "src": "/media/artwork/hand-drawn-vector-self-portrait/cover-800w.82358568.webp",
           "width": 800,
-          "height": 864
+          "height": 781
         }
       },
       "tags": [
@@ -8041,11 +8070,11 @@
         },
         {
           "type": "image",
-          "src": "/media/artwork/hand-drawn-vector-self-portrait/gallery-1.626fb733.jpg",
-          "alt": "Pencil sketch of the avatar on paper, with construction lines and measurements, before it was vectorised.",
-          "width": 1920,
-          "height": 1875,
-          "caption": "Pencil sketch of the vector image"
+          "src": "/media/artwork/hand-drawn-vector-self-portrait/web.27a8f878.jpg",
+          "alt": "A web interface showing the finished flat-style avatar of a smiling man with black hair and a blue jacket, with controls for shape, three colours and glasses.",
+          "width": 1618,
+          "height": 1747,
+          "caption": "The vectorised avatar in its web generator"
         },
         {
           "type": "image",
@@ -8518,7 +8547,7 @@
         }
       ],
       "placeSlugs": [
-        "toulouse"
+        "kalambaka"
       ]
     },
     {
@@ -8719,7 +8748,7 @@
         }
       ],
       "placeSlugs": [
-        "toulouse"
+        "oued-el-ouaar"
       ]
     },
     {
@@ -9116,11 +9145,11 @@
     {
       "slug": "pointing-at-the-hills",
       "title": "Pointing at the hills",
-      "summary": "On the hills above Sinaia, at about 2,000 m: a person in a hood stands in tall grass and points across the slopes.",
+      "summary": "On the hills above Sinaia, at about 2,000 m: a person in a bright blue Saharawi turban stands in tall grass and points across the slopes.",
       "date": "2026-09-02",
       "cover": {
         "src": "/media/photograph/pointing-at-the-hills/photo.7e4ce076.webp",
-        "alt": "A person in a hood and light trousers stands in tall grass pointing across the hills, a pale arch of light behind them",
+        "alt": "A person in a bright blue Saharawi turban, a beige jacket and white trousers stands in tall grass pointing across the hills, a pale arch of light behind them",
         "width": 720,
         "height": 1280
       },

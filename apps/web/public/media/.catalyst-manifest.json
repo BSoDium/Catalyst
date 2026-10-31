@@ -118,17 +118,12 @@
       "bytes": 415099
     },
     {
-      "path": "artwork/hand-drawn-vector-self-portrait/cover-800w.d514a1c9.webp",
-      "sha256": "d514a1c9942c1d90e6c9015e5f0dfe0030f45e36a7793cb058fbe03c5b5ae94d",
-      "bytes": 16128
+      "path": "artwork/hand-drawn-vector-self-portrait/cover-800w.82358568.webp",
+      "sha256": "82358568dc331e8e63c771dec1a3d5ebf236b4ba09e7f5c62b9f0c1031b052d2",
+      "bytes": 20216
     },
     {
-      "path": "artwork/hand-drawn-vector-self-portrait/cover.27a8f878.jpg",
-      "sha256": "27a8f8787b7582cffacb9792c271119c5d55cdff88e269a63ad466150ff32684",
-      "bytes": 114442
-    },
-    {
-      "path": "artwork/hand-drawn-vector-self-portrait/gallery-1.626fb733.jpg",
+      "path": "artwork/hand-drawn-vector-self-portrait/cover.626fb733.jpg",
       "sha256": "626fb73385cdde6e9e97f662de550e88569ade8c1a8cf4a7543e49e989fd55fc",
       "bytes": 279531
     },
@@ -136,6 +131,11 @@
       "path": "artwork/hand-drawn-vector-self-portrait/gallery-2.3b589900.jpg",
       "sha256": "3b5899002a24f0b5fcbb4c620150eb4ffc8df02e22db6b57c273e040ad3b7dac",
       "bytes": 92594
+    },
+    {
+      "path": "artwork/hand-drawn-vector-self-portrait/web.27a8f878.jpg",
+      "sha256": "27a8f8787b7582cffacb9792c271119c5d55cdff88e269a63ad466150ff32684",
+      "bytes": 114442
     },
     {
       "path": "artwork/la-vierge-au-lys-musee-d-orsay/cover-800w.714b4e97.webp",
