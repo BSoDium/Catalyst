@@ -2869,7 +2869,8 @@
   .wall-filler {
     pointer-events: none;
     user-select: none;
-    filter: saturate(0.8);
+    /* Scenery, not the owner's work: drawn in grey, so it reads as not clickable and not theirs. */
+    filter: grayscale(1);
   }
 
   /* A tile shows in the tiers named in `data-tiers` (a wider wall carries more of them); the wall ends flush at its shortest column, the rest is cut. */
@@ -2935,25 +2936,20 @@
     pointer-events: none;
   }
 
-  /* The banner is set on the wall's own edges: the words at the left, the way on at the right (below the words on a narrow wall). */
+  /*
+   * The banner is set on the wall's own edges: the words at the left, the way on at the right. On a wide wall it is a grid whose copy is
+   * dissolved into it (`display: contents`), so the link sits in the row of the big title and is centred on it, not on the whole block;
+   * on a narrow wall everything stacks, left aligned, the link last.
+   */
   .gallery-end {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: 1.5rem;
+    gap: 0.75rem;
     width: 100%;
     padding: 0 0 2.5rem;
     text-align: left;
     pointer-events: auto;
-  }
-
-  @container wall (min-width: 34rem) {
-    .gallery-end {
-      flex-direction: row;
-      align-items: flex-end;
-      justify-content: space-between;
-      gap: 3rem;
-    }
   }
 
   .gallery-end-copy {
@@ -2961,6 +2957,63 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 0.75rem;
+  }
+
+  .gallery-end-link {
+    margin-top: 0.75rem;
+  }
+
+  /* Solid, in the page's ink: white with black text on the dark page (black with white text on the light one), one step dimmer on hover. */
+  .ds-button.gallery-end-link[data-variant] {
+    --ds-button-bg: var(--foreground);
+    --ds-button-fg: var(--background);
+    --ds-button-line: var(--foreground);
+  }
+
+  .ds-button.gallery-end-link[data-variant]:hover {
+    --ds-button-bg: color-mix(in oklab, var(--foreground) 86%, var(--background));
+    --ds-button-line: color-mix(in oklab, var(--foreground) 86%, var(--background));
+  }
+
+  .ds-button.gallery-end-link[data-variant]:active {
+    --ds-button-bg: color-mix(in oklab, var(--foreground) 74%, var(--background));
+    --ds-button-line: color-mix(in oklab, var(--foreground) 74%, var(--background));
+  }
+
+  @container wall (min-width: 34rem) {
+    .gallery-end {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      column-gap: 3rem;
+      row-gap: 0.75rem;
+      align-items: start;
+    }
+
+    .gallery-end-copy {
+      display: contents;
+    }
+
+    .gallery-end-eyebrow {
+      grid-column: 1;
+      grid-row: 1;
+    }
+
+    .gallery-end-title {
+      grid-column: 1;
+      grid-row: 2;
+    }
+
+    .gallery-end-text {
+      grid-column: 1;
+      grid-row: 3;
+    }
+
+    .gallery-end-link {
+      grid-column: 2;
+      grid-row: 2;
+      align-self: center;
+      margin-top: 0;
+    }
   }
 
   .gallery-end-eyebrow {

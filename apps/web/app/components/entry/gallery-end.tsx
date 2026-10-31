@@ -26,7 +26,7 @@ export function GalleryEnd({ className }: { className?: string }) {
         <p className="gallery-end-title">{GALLERY_END_TITLE}</p>
         <p className="gallery-end-text">{GALLERY_END_LINES[0]}</p>
       </div>
-      <Button asChild variant="secondary">
+      <Button asChild variant="secondary" className="gallery-end-link">
         <a href={PEXELS_URL} target="_blank" rel="noopener noreferrer">
           More photographs on Pexels
           <Icon name="arrow-up-right" size="inline" aria-hidden="true" />
