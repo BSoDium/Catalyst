@@ -18,7 +18,7 @@ interface EntryCardProps {
   /** Where the card goes. The title is the one link; the whole card is its hit area. */
   href?: string;
   /** An authored image; without one the cover is generated from `seed` (default: the title). */
-  image?: { src: string; alt: string };
+  image?: { src: string; alt: string; srcSet?: string; sizes?: string };
   /** Mature content: the image is blurred for good and the card says why (no control: the visitor opens the entry to reveal). */
   sensitive?: boolean;
   seed?: string;
@@ -74,11 +74,13 @@ export function EntryCard({ kind, showKind, title, summary, href, image, sensiti
         {image && sensitive ? (
           // The frame is its own size container, so the `@md` of the place panel's card is applied to the frame, outside it.
           <SensitiveMedia className={horizontal ? "@md:h-full" : undefined}>
-            <img src={image.src} alt={image.alt} loading={priority ? "eager" : "lazy"} decoding="async" className="aspect-video size-full object-cover" />
+            <img src={image.src} srcSet={image.srcSet} sizes={image.sizes} alt={image.alt} loading={priority ? "eager" : "lazy"} decoding="async" className="aspect-video size-full object-cover" />
           </SensitiveMedia>
         ) : image ? (
           <img
             src={image.src}
+            srcSet={image.srcSet}
+            sizes={image.sizes}
             alt={image.alt}
             loading={priority ? "eager" : "lazy"}
             decoding="async"

@@ -4,6 +4,7 @@ import { cn } from "~/lib/utils";
 import { formatEntryDate } from "~/lib/dates";
 import { splitMeta, type EntryRef, type EntrySummary } from "~/lib/entries";
 import { safeMediaSrc } from "~/lib/entry-blocks";
+import { CARD_COVER_SIZES, coverImageProps, ROW_COVER_SIZES } from "~/lib/cover-image";
 
 /** `Lisbon`, `Lisbon, Paris`, `Lisbon, Paris +2`: the places of a card, short. */
 function placeLine(places: EntrySummary["places"]): string | undefined {
@@ -35,7 +36,7 @@ export function EntryListCard({
   const date = formatEntryDate(entry.date);
   const place = placeLine(entry.places) ?? entry.country?.name;
   const { status } = splitMeta(entry.meta);
-  const cover = entry.cover && safeMediaSrc(entry.cover.src) ? { src: entry.cover.src, alt: entry.cover.alt } : undefined;
+  const cover = entry.cover && safeMediaSrc(entry.cover.src) ? { ...coverImageProps(entry.cover, CARD_COVER_SIZES), alt: entry.cover.alt } : undefined;
   return (
     <EntryCard
       id={entry.slug}
@@ -61,7 +62,7 @@ export function EntryListCard({
 /** A compact card of a pointer to another entry (related entries, which are of mixed kinds, so it says the kind): cover, kind, title, date. No tags: a ref carries none. */
 export function EntryRefCard({ entry, linkState, headingLevel = 3 }: { entry: EntryRef; linkState?: unknown; headingLevel?: 2 | 3 | 4 }) {
   const date = formatEntryDate(entry.date);
-  const cover = entry.cover && safeMediaSrc(entry.cover.src) ? { src: entry.cover.src, alt: entry.cover.alt } : undefined;
+  const cover = entry.cover && safeMediaSrc(entry.cover.src) ? { ...coverImageProps(entry.cover, CARD_COVER_SIZES), alt: entry.cover.alt } : undefined;
   return (
     <EntryCard
       kind={entry.kind}
@@ -103,7 +104,7 @@ export function EntryRow({
   const date = formatEntryDate(entry.date);
   const place = placeLine(entry.places);
   const { status } = splitMeta(entry.meta);
-  const cover = entry.cover && safeMediaSrc(entry.cover.src) ? { src: entry.cover.src, alt: entry.cover.alt } : null;
+  const cover = entry.cover && safeMediaSrc(entry.cover.src) ? { ...coverImageProps(entry.cover, ROW_COVER_SIZES), alt: entry.cover.alt } : null;
   const showCover = !!cover || entry.kind === "artwork";
   const tags = entry.tags.slice(0, 4);
   if (entry.kind === "poem") return <PoemRow entry={entry} Heading={Heading} date={date} place={place} status={status} tags={tags} className={className} linkState={linkState} />;
@@ -151,10 +152,10 @@ export function EntryRow({
           <div className="overflow-hidden">
             {cover && entry.sensitive === true ? (
               <SensitiveMedia>
-                <img src={cover.src} alt={cover.alt} loading={priority ? "eager" : "lazy"} decoding="async" className="aspect-video w-full object-cover" />
+                <img src={cover.src} srcSet={cover.srcSet} sizes={cover.sizes} alt={cover.alt} loading={priority ? "eager" : "lazy"} decoding="async" className="aspect-video w-full object-cover" />
               </SensitiveMedia>
             ) : cover ? (
-              <img src={cover.src} alt={cover.alt} loading={priority ? "eager" : "lazy"} decoding="async" className="aspect-video w-full object-cover" />
+              <img src={cover.src} srcSet={cover.srcSet} sizes={cover.sizes} alt={cover.alt} loading={priority ? "eager" : "lazy"} decoding="async" className="aspect-video w-full object-cover" />
             ) : (
               <CoverArt seed={entry.slug} kind={entry.kind} cols={48} rows={27} />
             )}

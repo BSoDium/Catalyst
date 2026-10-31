@@ -4,6 +4,7 @@ import { CoverArt, SensitiveMedia } from "~/components/ui";
 import { coverRatio, layoutAllTiers, masonryItemVars, masonryListVars, RATIO_FALLBACK } from "~/lib/masonry";
 import { yearOf } from "~/lib/entry-list";
 import { safeMediaSrc } from "~/lib/entry-blocks";
+import { coverImageProps, WALL_COVER_SIZES } from "~/lib/cover-image";
 import type { EntrySummary } from "~/lib/entries";
 
 /** The first pictures of a wall load at once (the first screen at four columns); the rest are lazy. */
@@ -60,7 +61,7 @@ export function ArtworkWall({
           const eager = i < EAGER;
           const image = cover ? (
             <img
-              src={cover.src}
+              {...coverImageProps(cover, WALL_COVER_SIZES)}
               alt={cover.alt}
               {...(cover.width && cover.height ? { width: cover.width, height: cover.height } : {})}
               loading={eager ? "eager" : "lazy"}

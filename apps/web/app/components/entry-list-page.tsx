@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useLocation } from "react-router";
 import type { ContentKind } from "@catalyst/schemas";
 import { ArtworkWall } from "~/components/entry/artwork-wall";
+import { GalleryEnd } from "~/components/entry/gallery-end";
 import { EntryRow } from "~/components/entry/entry-list-card";
 import { Button, ScrollRow, StatePanel } from "~/components/ui";
 import { KIND_PLURALS, kindCount, listBackState, type EntrySummary } from "~/lib/entries";
@@ -69,7 +70,10 @@ export function EntryListPage({ kind, items }: { kind: ContentKind; items: Entry
           <StatePanel state="empty" headingLevel={2} title="Nothing here yet." />
         ) : wall ? (
           // One wall for every year, newest first: the year is in each caption, and a heading would cut the bricks.
-          <ArtworkWall items={groups.flatMap((g) => g.items)} headingLevel={2} label={KIND_PLURALS[kind]} kind={kind} linkState={listBackState(kind, search)} />
+          <>
+            <ArtworkWall items={groups.flatMap((g) => g.items)} headingLevel={2} label={KIND_PLURALS[kind]} kind={kind} linkState={listBackState(kind, search)} />
+            {kind === "photograph" && <GalleryEnd />}
+          </>
         ) : (
           groups.map((group) => {
             const id = `year-${group.key}`;
