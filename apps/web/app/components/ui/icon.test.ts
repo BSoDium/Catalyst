@@ -25,10 +25,10 @@ const code = (source: string) => source.replace(/\/\*[\s\S]*?\*\//g, "").replace
  * The files allowed to hold an inline <svg>: the brand mark (a fixed 16 x 16 grid, `scripts/brand/mark.mjs` is its source) and the
  * generated cover art (a dithered grid, not an icon) a trip's small map (a data drawing: coast and legs, not an icon). Everything else that draws an icon goes through `Icon`.
  */
-const SVG_ALLOWED = new Set(["components/ui/logo-mark.tsx", "components/ui/cover-art.tsx", "components/trip-map.tsx", "components/entry/gallery-end.tsx"]);
+const SVG_ALLOWED = new Set(["components/ui/logo-mark.tsx", "components/ui/cover-art.tsx", "components/trip-map.tsx"]);
 
 describe("icons: one library, one wrapper", () => {
-  it("has no bespoke inline <svg> outside the brand mark, the generated covers and the gallery's pixel-art illustration", () => {
+  it("has no bespoke inline <svg> outside the brand mark and the generated covers", () => {
     const offenders = sources()
       .filter((f) => f.endsWith(".tsx") && !SVG_ALLOWED.has(f))
       .filter((f) => /<svg[\s>]|createElementNS\([^)]*svg/i.test(code(read(f))));

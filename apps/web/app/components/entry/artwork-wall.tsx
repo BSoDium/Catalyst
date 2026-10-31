@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { Link } from "react-router";
 import { CoverArt, SensitiveMedia } from "~/components/ui";
 import { coverRatio, layoutAllTiers, masonryItemVars, masonryListVars, RATIO_FALLBACK } from "~/lib/masonry";
@@ -6,6 +6,7 @@ import { yearOf } from "~/lib/entry-list";
 import { safeMediaSrc } from "~/lib/entry-blocks";
 import { coverImageProps, WALL_COVER_SIZES } from "~/lib/cover-image";
 import type { EntrySummary } from "~/lib/entries";
+import { planFiller, type FillerPhoto } from "~/lib/gallery-filler";
 
 /** The first pictures of a wall load at once (the first screen at four columns); the rest are lazy. */
 const EAGER = 4;
@@ -39,7 +40,12 @@ export function ArtworkWall({
   label,
   kind = "artwork",
   linkState,
+  filler = [],
+  end,
 }: {
+  /** Scenery that continues the wall after the last picture (decorative, no link, no name), and the banner laid over its foot (`end`). Both or neither. */
+  filler?: readonly FillerPhoto[];
+  end?: ReactNode;
   /** The router state of the links: where the entry is opened from (`listBackState`). */
   linkState?: unknown;
   items: readonly EntrySummary[];
@@ -50,10 +56,12 @@ export function ArtworkWall({
   const Heading = `h${headingLevel}` as "h2" | "h3" | "h4";
   const covers = items.map((entry) => (entry.cover && safeMediaSrc(entry.cover.src) ? entry.cover : null));
   const ratios = covers.map((cover) => (cover ? coverRatio(cover) : RATIO_FALLBACK));
-  const layouts = layoutAllTiers(ratios);
+  const plan = filler.length > 0 ? planFiller(ratios, filler) : null;
+  const tileRatios = plan ? plan.tiles.map((f) => coverRatio(f)) : [];
+  const layouts = layoutAllTiers(ratios, (columns) => tileRatios.slice(0, plan?.count(columns) ?? 0));
   return (
-    <div data-slot="artwork-wall" data-kind={kind} className="wall">
-      <ul role="list" aria-label={label} className="wall-list" style={masonryListVars(layouts) as CSSProperties}>
+    <div data-slot="artwork-wall" data-kind={kind} data-filler={plan ? "" : undefined} className="wall">
+      <ul role="list" aria-label={label} className="wall-list" style={masonryListVars(layouts, { flush: plan !== null }) as CSSProperties}>
         {items.map((entry, i) => {
           const cover = covers[i];
           const { medium: artMedium, year } = artworkCaption(entry);
@@ -97,7 +105,15 @@ export function ArtworkWall({
             </li>
           );
         })}
+        {plan?.tiles.map((photo, j) => (
+          <li key={j} aria-hidden="true" data-slot="wall-filler" data-tiers={plan.tiers[j]!.join(" ")} className="wall-item wall-filler" style={masonryItemVars(tileRatios[j]!, layouts, items.length + j) as CSSProperties}>
+            <div className="wall-media">
+              <img src={photo.src} alt="" width={photo.width} height={photo.height} loading="lazy" decoding="async" draggable={false} className="wall-img" />
+            </div>
+          </li>
+        ))}
       </ul>
+      {end && <div className="wall-end">{end}</div>}
     </div>
   );
 }

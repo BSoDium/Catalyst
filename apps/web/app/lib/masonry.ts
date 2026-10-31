@@ -16,7 +16,7 @@ export const RATIO_MAX = 2;
 export const RATIO_FALLBACK = 0.75;
 
 /** What a caption and a gap add to a picture, in column widths, when the column is chosen (about 0.3 of a 20 rem column). Only picks the shortest column. */
-const SLOT = 0.3;
+export const SLOT = 0.3;
 
 /** The ratio (height / width) a picture is drawn at: the contract's cover size, clamped; 3:4 when the size is unknown. */
 export function coverRatio(size: { width?: number | undefined; height?: number | undefined } | undefined): number {
@@ -75,7 +75,9 @@ const n4 = (n: number) => Math.round(n * 10000) / 10000;
 export function masonryItemVars(ratio: number, layouts: readonly MasonryLayout[], index: number): Record<string, string | number> {
   const vars: Record<string, string | number> = { "--ratio": n4(ratio), "--aspect": n4(1 / ratio) };
   for (const layout of layouts) {
-    const slot = layout.slots[index]!;
+    const slot = layout.slots[index];
+    // A tile that a tier does not carry (the filler of a wider wall) has no place there: the stylesheet hides it.
+    if (!slot) continue;
     vars[`--c${layout.columns}`] = slot.column;
     vars[`--n${layout.columns}`] = slot.above;
     vars[`--r${layout.columns}`] = n4(slot.ratioAbove);
@@ -87,16 +89,20 @@ export function masonryItemVars(ratio: number, layouts: readonly MasonryLayout[]
  * The custom properties of the wall: for each tier its height, the tallest column (a `max()` of one `calc()` per column) less the last
  * gap. `--colw` and `--slot` (a caption and a gap) come from the stylesheet and are those of the tier in force.
  */
-export function masonryListVars(layouts: readonly MasonryLayout[]): Record<string, string> {
+export function masonryListVars(layouts: readonly MasonryLayout[], options: { flush?: boolean } = {}): Record<string, string> {
   const vars: Record<string, string> = {};
   for (const layout of layouts) {
     const terms = layout.totals.filter((t) => t.count > 0).map((t) => `calc(${n4(t.ratio)} * var(--colw) + ${t.count} * var(--slot))`);
-    vars[`--h${layout.columns}`] = terms.length === 0 ? "0px" : `calc(max(${terms.join(", ")}) - var(--gap))`;
+    // `flush`: the wall ends where its SHORTEST column ends (the longer ones are cut there), so the foot of a wall that ends in filler is level.
+    vars[`--h${layout.columns}`] = terms.length === 0 ? "0px" : `calc(${options.flush ? "min" : "max"}(${terms.join(", ")}) - var(--gap))`;
   }
   return vars;
 }
 
-/** Every tier's layout for these ratios. */
-export function layoutAllTiers(ratios: readonly number[]): MasonryLayout[] {
-  return MASONRY_TIERS.map((n) => layoutMasonry(ratios, n));
+/**
+ * Every tier's layout for these ratios. `extra` gives, for a tier of `n` columns, the ratios of the tiles that follow the pictures in
+ * that tier only (the wall's filler: more rows where the wall is wider), so each tier ends with the same number of rows.
+ */
+export function layoutAllTiers(ratios: readonly number[], extra?: (columns: number) => readonly number[]): MasonryLayout[] {
+  return MASONRY_TIERS.map((n) => layoutMasonry(extra ? [...ratios, ...extra(n)] : ratios, n));
 }

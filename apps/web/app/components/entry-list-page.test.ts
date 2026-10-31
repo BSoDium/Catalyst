@@ -158,11 +158,13 @@ describe("EntryListPage with a sensitive entry", () => {
     // a photograph without an image is the caption alone, not a procedural miniature
     const bare = [{ ...photos[0]!, cover: undefined }];
     const none = renderToStaticMarkup(createElement(StaticRouter, { location: "/photography" }, createElement(EntryListPage, { kind: "photograph", items: bare })));
-    expect(none).not.toContain("<img");
     expect(none).not.toContain("<canvas");
     expect(none).not.toContain("cover-art");
-    // the one svg is the end-of-gallery illustration
-    expect(none.match(/<svg/g)).toHaveLength(1);
+    // the only images are the wall's filler (scenery: no name, no link) under the end banner
+    const imgs = none.match(/<img[^>]*>/g) ?? [];
+    expect(imgs.length).toBeGreaterThanOrEqual(8);
+    for (const img of imgs) expect(img).toContain('alt=""');
+    expect(none.match(/data-slot="wall-filler"/g)).toHaveLength(imgs.length);
     expect(none).toContain('data-slot="gallery-end"');
   });
   it("sets the poems in a grid of cells with the summary in the reading face", () => {

@@ -2790,6 +2790,7 @@
    * height under every picture (`--cap`), so the rhythm of the bricks holds.
    */
   .wall {
+    position: relative;
     --gap: 0.625rem;
     --cap: 4.5rem;
     --slot: calc(var(--cap) + var(--gap));
@@ -2859,6 +2860,133 @@
       --n: var(--n4);
       --r: var(--r4);
     }
+  }
+
+  /*
+   * The end of the photography wall (issue #336, lib/gallery-filler.ts): generic photographs continue the wall    * (a tile shows in the tiers named in `data-tiers`), a gradient into the page colour fades them out, and the banner sits in the opaque foot.
+   * The tiles are scenery: no pointer, no selection, a little muted.
+   */
+  .wall-filler {
+    pointer-events: none;
+    user-select: none;
+    filter: saturate(0.8);
+  }
+
+  /* A tile shows in the tiers named in `data-tiers` (a wider wall carries more of them); the wall ends flush at its shortest column, the rest is cut. */
+  .wall-filler {
+    display: none;
+  }
+
+  .wall-filler[data-tiers~="1"] {
+    display: list-item;
+  }
+
+  .wall[data-filler] .wall-list {
+    overflow: clip;
+    overflow-clip-margin: 6px;
+    /* No frame: its foot would show through the fade. */
+    outline: none;
+  }
+
+  @container wall (min-width: 34rem) {
+    .wall-filler[data-tiers] {
+      display: none;
+    }
+
+    .wall-filler[data-tiers~="2"] {
+      display: list-item;
+    }
+  }
+
+  @container wall (min-width: 62rem) {
+    .wall-filler[data-tiers] {
+      display: none;
+    }
+
+    .wall-filler[data-tiers~="3"] {
+      display: list-item;
+    }
+  }
+
+  @container wall (min-width: 88rem) {
+    .wall-filler[data-tiers] {
+      display: none;
+    }
+
+    .wall-filler[data-tiers~="4"] {
+      display: list-item;
+    }
+  }
+
+  .wall-end {
+    position: absolute;
+    inset: auto 0 -6px;
+    height: min(100%, 34rem);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    background: linear-gradient(
+      to bottom,
+      transparent,
+      color-mix(in oklab, var(--background) 55%, transparent) 30%,
+      color-mix(in oklab, var(--background) 92%, transparent) 58%,
+      var(--background) 74%
+    );
+    pointer-events: none;
+  }
+
+  /* The banner is set on the wall's own edges: the words at the left, the way on at the right (below the words on a narrow wall). */
+  .gallery-end {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1.5rem;
+    width: 100%;
+    padding: 0 0 2.5rem;
+    text-align: left;
+    pointer-events: auto;
+  }
+
+  @container wall (min-width: 34rem) {
+    .gallery-end {
+      flex-direction: row;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 3rem;
+    }
+  }
+
+  .gallery-end-copy {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .gallery-end-eyebrow {
+    margin: 0;
+    color: var(--muted-foreground);
+  }
+
+  .gallery-end-title {
+    margin: 0;
+    font-family: var(--font-reading);
+    font-optical-sizing: auto;
+    font-size: clamp(1.75rem, 1.2rem + 2.2cqi, 3rem);
+    font-weight: var(--weight-medium);
+    line-height: 1.05;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+
+  .gallery-end-text {
+    margin: 0;
+    max-width: 32em;
+    font-family: var(--font-reading);
+    font-size: 1.0625rem;
+    line-height: 1.5;
+    color: var(--muted-foreground);
+    text-wrap: pretty;
   }
 
   .wall-card {
