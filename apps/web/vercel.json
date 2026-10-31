@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "react-router",
-  "ignoreCommand": "[ -n \"$VERCEL_GIT_PREVIOUS_SHA\" ] && git diff --quiet \"$VERCEL_GIT_PREVIOUS_SHA\" HEAD -- . ../../packages ../../pnpm-lock.yaml ../../pnpm-workspace.yaml ../../package.json ../../tsconfig.base.json ../../.nvmrc",
+  "ignoreCommand": "[ -n \"$VERCEL_GIT_PREVIOUS_SHA\" ] && git diff --quiet \"$VERCEL_GIT_PREVIOUS_SHA\" HEAD -- . ../../packages ../../pnpm-lock.yaml ../../pnpm-workspace.yaml ../../package.json ../../tsconfig.base.json ../../.nvmrc 2>/dev/null && exit 0; exit 1",
   "headers": [
     {
       "source": "/(.*)",
