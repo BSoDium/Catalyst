@@ -67,8 +67,11 @@ export function yearOf(date: string | undefined): number | null {
   return match ? Number(match[1]) : null;
 }
 
-/** Groups entries by year, newest year first; inside a year the newest first (by the date string, which sorts as written), authored order breaking ties; undated entries last. */
-export function groupByYear<T extends Pick<EntrySummary, "date">>(items: readonly T[]): YearGroup<T>[] {
+/**
+ * Groups entries by year, newest year first; inside a year the newest first (by the date string, which sorts as written); of two entries with the
+ * same date, a sensitive one comes after the others (a mature work does not lead a page on a tie: issue #432), then the authored order; undated entries last.
+ */
+export function groupByYear<T extends Pick<EntrySummary, "date" | "sensitive">>(items: readonly T[]): YearGroup<T>[] {
   const byYear = new Map<number | null, { item: T; order: number }[]>();
   items.forEach((item, order) => {
     const year = yearOf(item.date);
@@ -82,7 +85,12 @@ export function groupByYear<T extends Pick<EntrySummary, "date">>(items: readonl
     year,
     items: byYear
       .get(year)!
-      .sort((a, b) => (yearOf(b.item.date) === null ? "" : b.item.date!).localeCompare(yearOf(a.item.date) === null ? "" : a.item.date!) || a.order - b.order)
+      .sort(
+        (a, b) =>
+          (yearOf(b.item.date) === null ? "" : b.item.date!).localeCompare(yearOf(a.item.date) === null ? "" : a.item.date!) ||
+          Number(a.item.sensitive === true) - Number(b.item.sensitive === true) ||
+          a.order - b.order,
+      )
       .map((e) => e.item),
   }));
 }
