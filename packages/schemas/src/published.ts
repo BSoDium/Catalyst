@@ -313,7 +313,7 @@ const bothOrNeither = (o: { width?: number | undefined; height?: number | undefi
 const BOTH_OR_NEITHER = "width and height go together: give both or neither";
 
 /**
- * A smaller copy of a cover (the export writes a 640 px WebP): lists pick it through `srcset` instead of the full file. Same picture,
+ * A smaller copy of a cover (the export writes a WebP 800 px wide): lists pick it through `srcset` instead of the full file. Same picture,
  * same proportions; its own size is required so the browser knows what it is choosing between.
  */
 export const publishedCoverSmallSchema = z
