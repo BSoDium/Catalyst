@@ -7816,7 +7816,9 @@
       },
       "sensitive": true,
       "tags": [
-        "digital-art"
+        "digital-art",
+        "figure",
+        "study"
       ],
       "meta": [
         {
@@ -7864,7 +7866,9 @@
         }
       },
       "tags": [
-        "digital-art"
+        "digital-art",
+        "sculpture",
+        "study"
       ],
       "meta": [
         {
@@ -7908,7 +7912,9 @@
         }
       },
       "tags": [
-        "digital-art"
+        "digital-art",
+        "concept-art",
+        "landscape"
       ],
       "meta": [
         {
@@ -7952,7 +7958,9 @@
         }
       },
       "tags": [
-        "digital-art"
+        "digital-art",
+        "study",
+        "light"
       ],
       "meta": [
         {
@@ -7996,7 +8004,8 @@
         }
       },
       "tags": [
-        "digital-art"
+        "digital-art",
+        "architecture"
       ],
       "meta": [
         {
@@ -8040,7 +8049,9 @@
         }
       },
       "tags": [
-        "digital-art"
+        "digital-art",
+        "concept-art",
+        "naval"
       ],
       "meta": [
         {
@@ -8088,7 +8099,9 @@
         }
       },
       "tags": [
-        "digital-art"
+        "digital-art",
+        "portrait",
+        "vector"
       ],
       "meta": [
         {
@@ -8152,7 +8165,9 @@
         }
       },
       "tags": [
-        "digital-art"
+        "digital-art",
+        "sculpture",
+        "study"
       ],
       "meta": [
         {
@@ -8200,7 +8215,9 @@
         }
       },
       "tags": [
-        "digital-art"
+        "digital-art",
+        "portrait",
+        "study"
       ],
       "meta": [
         {
@@ -8244,7 +8261,9 @@
         }
       },
       "tags": [
-        "digital-art"
+        "digital-art",
+        "portrait",
+        "charcoal"
       ],
       "meta": [
         {
@@ -8288,7 +8307,9 @@
         }
       },
       "tags": [
-        "digital-art"
+        "digital-art",
+        "sci-fi",
+        "concept-art"
       ],
       "meta": [
         {
@@ -8336,7 +8357,10 @@
         }
       },
       "tags": [
-        "digital-art"
+        "digital-art",
+        "study",
+        "light",
+        "figure"
       ],
       "meta": [
         {
@@ -8380,7 +8404,10 @@
         }
       },
       "tags": [
-        "digital-art"
+        "digital-art",
+        "sci-fi",
+        "concept-art",
+        "landscape"
       ],
       "meta": [
         {
@@ -8424,7 +8451,10 @@
         }
       },
       "tags": [
-        "digital-art"
+        "digital-art",
+        "study",
+        "seascape",
+        "gouache"
       ],
       "meta": [
         {
@@ -8468,7 +8498,10 @@
         }
       },
       "tags": [
-        "digital-art"
+        "digital-art",
+        "sci-fi",
+        "space",
+        "concept-art"
       ],
       "meta": [
         {
@@ -8516,7 +8549,9 @@
         }
       },
       "tags": [
-        "digital-art"
+        "digital-art",
+        "study",
+        "naval"
       ],
       "meta": [
         {
