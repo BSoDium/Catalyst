@@ -344,6 +344,20 @@ for (const [oldBase, base, kind] of [["/poems", "/poetry", "poetry"], ["/project
   await deep.arrayBuffer();
   ok(deep.status === 404, `${oldBase}/a/b: 404 (${deep.status})`);
 }
+{
+  // The first version's CV address (issue #423): /resume is the career page.
+  section("redirects from /resume");
+  for (const [from, to] of [["/resume", "/career"], ["/resume/", "/career"], ["/resume?x=1", "/career?x=1"]]) {
+    const r = await get(from);
+    await r.arrayBuffer();
+    ok(r.status === 301 || r.status === 308, `${from}: permanent redirect (${r.status})`);
+    const location = r.headers.get("location") ?? "";
+    ok(location === to || location === SITE + to || location === BASE + to, `${from}: Location ${location} is ${to}`);
+    const followed = await get("/career");
+    await followed.arrayBuffer();
+    ok(followed.status === 200, `/career: the target answers 200 (${followed.status})`);
+  }
+}
 
 // ---- 3. errors -------------------------------------------------------------------------------------------------------------------
 section("errors");

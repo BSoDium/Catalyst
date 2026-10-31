@@ -46,6 +46,19 @@ export function legacySectionTarget(kind: ContentKind, pathname: string, search:
   return `/${section.slug}${rest}${search}`;
 }
 
+/**
+ * The first version's own addresses (issue #423): it had `/`, `/resume` and `/projects` and nothing else. `/projects` is the section above;
+ * `/resume` is now the career page. Only the page itself (a trailing slash is the same address): the query string is kept, anything deeper
+ * was a 404 and stays one.
+ */
+export const LEGACY_RESUME_TARGET = "/career";
+
+export function legacyResumeTarget(pathname: string, search: string): string | null {
+  ({ pathname, search } = withoutDataRequest(pathname, search));
+  const parts = pathname.split("/").filter(Boolean);
+  return parts.length === 1 && parts[0] === "resume" ? `${LEGACY_RESUME_TARGET}${search}` : null;
+}
+
 /** `/poems` and `/poems/:slug` -> `/poetry...` */
 export const legacyPoemsTarget = (pathname: string, search: string) => legacySectionTarget("poem", pathname, search);
 

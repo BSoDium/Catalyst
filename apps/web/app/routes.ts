@@ -34,6 +34,8 @@ export default [
   route("poems/:slug", "routes/legacy-poems.ts", { id: "legacy-poem" }),
   route("projects", "routes/legacy-projects.ts", { id: "legacy-projects" }),
   route("projects/:slug", "routes/legacy-projects.ts", { id: "legacy-project" }),
+  // The first version's `/resume` is the career page.
+  route("resume", "routes/legacy-resume.ts", { id: "legacy-resume" }),
   // Resource routes (no UI): the crawlers' files. `manifest.webmanifest`, the favicons and the share image are static files in public/.
   route("sitemap.xml", "routes/sitemap.ts"),
   route("robots.txt", "routes/robots.ts"),
