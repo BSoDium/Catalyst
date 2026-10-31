@@ -45,7 +45,7 @@ Many steps have a one-line or empty description. Three honest levels, none inven
 
 ## Scale
 
-The pictures are the risk, not the text. Measured on today's data and policy (`docs/media-policy.md`: long side at most 2400 px, WebP, usually under 900 KB):
+The pictures are the risk, not the text. Measured on today's data and policy (before issue #336; `docs/media-policy.md` now says: photographs at 1280 px, WebP, about 100 to 150 KB, at most 40 in the section):
 
 - the 18 published photographs are 5.9 MB, about 330 KB each; `projection.json` is 334 KB with them;
 - a 70-step trip at 6 pictures a step is 420 pictures: about 140 MB of media in the repository and the deployment, and roughly 300 bytes of projection per picture (an estimate: about 130 KB more JSON, parsed by the web server on each cold start, since the loaders read the whole projection; the browser gets the place index and the one place's detail, not the projection);
@@ -54,7 +54,8 @@ The pictures are the risk, not the text. Measured on today's data and policy (`d
 What keeps it healthy, in order:
 
 1. **Lazy, sized, and bounded on the page** (done): `loading="lazy"`, width and height always given (no layout shift), four pictures open and the rest behind a disclosure, so a step never renders 40 images at once.
-2. **Responsive sizes**: the export writes two or three widths (about 640, 1280, 2400) and the page uses `srcset`/`sizes`; a phone fetches about 60 KB instead of 330 KB. This is the largest saving and needs the private export to produce the sizes and the contract an additive `srcset` description (or a naming rule, `photo.<hash>-640.webp`).
+2. **Responsive sizes** (done for covers, issue #336): the export writes the picture at 1280 px and a copy 800 px wide, given as the optional `cover.small`; lists use `srcset`/`sizes` (`lib/cover-image.ts`). A step's own images (`place.images`, body images) do not have a small copy yet.
+2b. **Curation** (done): the photography section holds at most 40 photographs (the export refuses more), so 40 photographs weigh about 4 to 6 MB, and `/photography` ends with a card that sends the rest to Pexels.
 3. **Move media off the repository** once it passes a budget (suggested: 100 MB): Vercel Blob (or any object store) with the same content-hashed names behind `/media/`. The repository then holds the projection only. The Vercel plan's limits on deployment size and file count should be checked before the first large trip is imported (UNVERIFIED here).
 4. **Projection size**: today `place.images` rides in `projection.json`, which the web loaders and the API read whole. For thousands of pictures the step's images would be better kept in a file per place (loaded for that place only) with the projection carrying the first image; the API's `/v1/places/:slug` already serves one place, the web loaders do not use it. Not needed below a few hundred pictures.
 5. **The photography list** needs pagination (or a virtualised wall) past about 200 photographs; the current brick wall renders all of them.
