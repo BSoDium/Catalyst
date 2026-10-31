@@ -5484,6 +5484,65 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     --list-title: clamp(2.25rem, 6cqi, 5rem);
   }
 
+  /*
+   * The head on a phone (owner, 2026-10-31, issue #428). The name is bigger and breaks in two, the family name under the given one, so it leads
+   * the statement under it (a single line at 2.25 rem weighed no more than the paragraph). The availability is two lines, what and since when, with a
+   * small dot of the page's signal colour (no longer a mono line that broke anywhere). "Updated" is the page's date, not an offer: it leaves
+   * the button, set apart with air, in the reading face, italic and muted, so it does not repeat the availability's type.
+   */
+  @media screen and (max-width: 55.99rem) {
+    .career-name {
+      --list-title: clamp(2.75rem, 15cqi, 4.5rem);
+      line-height: 0.98;
+    }
+
+    .career-name-family {
+      display: block;
+    }
+
+    [data-slot="career-head"] .career-availability {
+      display: block;
+    }
+
+    [data-slot="career-head"] .career-availability > span {
+      display: block;
+    }
+
+    .career-availability > span::before {
+      content: "";
+      display: inline-block;
+      width: 0.5rem;
+      height: 0.5rem;
+      margin-right: 0.625rem;
+      background: var(--signal);
+      vertical-align: 0.05em;
+    }
+
+    .career-availability > span {
+      color: var(--foreground);
+    }
+
+    .career-sep {
+      display: none;
+    }
+
+    .career-asof {
+      display: block;
+      margin-top: 0.25rem;
+      padding-left: 1.125rem;
+      color: var(--muted-foreground);
+    }
+
+    [data-slot="career-head"] .career-updated {
+      margin: 1.75rem 0 0;
+      font-family: var(--font-reading);
+      font-size: 0.9375rem;
+      font-style: italic;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+  }
+
   .career-id-text {
     min-width: 0;
   }
@@ -6058,12 +6117,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     margin-bottom: 2rem;
   }
 
-  /* From 80 rem the pair is two columns: the contact form on the right (owner, 2026-10-30), the socials at the left; the markup keeps the form first (a phone stacks it above the socials). */
-  @media (min-width: 80rem) {
-    .career-pair > .career-contact {
-      order: 2;
-    }
-  }
+  /* The pair is the socials, then the form, in the markup: one column on a phone with the socials first (owner, 2026-10-31, issue #429), and from 80 rem two columns, the socials at the left and the contact form on the right (owner, 2026-10-30). */
 
   .career-pair > .career-footer .career-links {
     flex-direction: column;

@@ -133,11 +133,11 @@ describe("CareerPage", () => {
     expect(h).toContain(x(180));
   });
 
-  it("offers the contact form: a head button that links to it, the form before the socials", () => {
+  it("offers the contact form: a head button that links to it, the form after the socials (so wrapped, the socials come first)", () => {
     expect(html).toMatch(/<a [^>]*href="#contact"[^>]*>\s*Get in touch/);
     const form = html.indexOf('id="contact"');
     expect(form).toBeGreaterThan(html.indexOf('data-slot="career-skills"'));
-    expect(form).toBeLessThan(html.indexOf('data-slot="career-links"'));
+    expect(form).toBeGreaterThan(html.indexOf('data-slot="career-links"'));
     for (const label of ["Name", "Email", "Message"]) expect(html).toMatch(new RegExp(`<label[^>]*>${label}</label>`));
     expect(html).toContain('name="botcheck"');
     // Without the script it is a plain HTML post to the relay: the key and the subject travel as hidden fields, the browser validates.
