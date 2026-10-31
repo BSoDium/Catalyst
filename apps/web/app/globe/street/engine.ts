@@ -679,6 +679,8 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
     if (!err || err.name === "AbortError") return;
     // Tile failures are scored by the request layer; here only what the layer cannot see matters.
     if (e.tile !== undefined) return;
+    // A style swap removes the tile source while a request for it is in flight: MapLibre then reports a missing manager, which is not a fault.
+    if (/no tile manager with id/i.test(err.message)) return;
     if (e.sourceId === "tiles" && manager.status.source) {
       manager.reportStyleError(manager.status.source, err.message);
       return;
