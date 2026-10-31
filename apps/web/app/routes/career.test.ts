@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { loadDemoProjection } from "@catalyst/published";
+import { loadDemoProjection } from "@catalyst/published/dev";
 import { EMPTY_PROJECTION, type PublishedProjection } from "@catalyst/schemas";
 
 let projection: PublishedProjection = EMPTY_PROJECTION;

@@ -15,7 +15,8 @@ import {
   EMPTY_PROJECTION,
   type PublishedProjection,
 } from "@catalyst/schemas";
-import { loadDemoProjection, loadPublishedProjection } from "@catalyst/published";
+import { loadPublishedProjection } from "@catalyst/published";
+import { loadDemoProjection, loadProjection } from "@catalyst/published/dev";
 import { CACHE_CONTROL, createApp } from "../src/app";
 import { buildSnapshot } from "../src/snapshot";
 import { loadContent } from "../src/content";
@@ -32,7 +33,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-const demoApp = () => createApp(loadContent({ CATALYST_CONTENT: "demo" }));
+const demoApp = () => createApp(loadContent({ CATALYST_CONTENT: "demo" }, loadProjection));
 const emptyApp = () => createApp(loadContent({}));
 
 const STATIC = ["/v1/projection", "/v1/places", "/v1/groups", "/v1/routes", "/v1/projects", "/v1/articles", "/v1/artworks", "/v1/poems", "/v1/photographs"];
@@ -543,6 +544,12 @@ describe("startup failure", () => {
     if (state.status === "invalid") expect(state.reason).toContain("CATALYST_CONTENT");
   });
 
+  it("refuses CATALYST_CONTENT=demo in the API build: the fixture is not bundled, only tests inject it", () => {
+    const state = loadContent({ CATALYST_CONTENT: "demo" });
+    expect(state.status).toBe("invalid");
+    if (state.status === "invalid") expect(state.reason).toContain("published snapshot only");
+  });
+
   it("does not support the web app's local preview mode: published or demo only", () => {
     const state = loadContent({ CATALYST_CONTENT: "preview" });
     expect(state.status).toBe("invalid");
@@ -590,12 +597,12 @@ describe("startup failure", () => {
 });
 
 describe("deploy entry", () => {
-  it("src/index.ts honours CATALYST_CONTENT=demo", async () => {
+  it("src/index.ts refuses CATALYST_CONTENT=demo: a 503, never the placeholder content (the fixture is not in the bundle)", async () => {
     vi.resetModules();
+    vi.spyOn(console, "error").mockImplementation(() => {});
     vi.stubEnv("CATALYST_CONTENT", "demo");
     const mod = await import("../src/index");
-    const health = await json<HealthResponse>(await mod.default.request("/health"));
-    expect(health.content).toBe("demo");
+    expect((await mod.default.request("/health")).status).toBe(503);
   });
 
   it("converts unexpected errors to a generic JSON 500 with the common headers", async () => {

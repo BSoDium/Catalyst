@@ -13,6 +13,7 @@ test("samples at most max places, evenly and deterministically", () => {
   assert.ok(s[11].slug !== "place-0");
   assert.deepEqual(samplePreviewPlaces({ places: [{ slug: "x", name: "A" }] }), [], "too-short names are not probes");
   assert.deepEqual(samplePreviewPlaces({}), []);
+  assert.deepEqual(samplePreviewPlaces({ places: [{ slug: "a", name: "Alpha" }, { slug: "b", name: "Beta" }] }, 12, new Set(["a"])).map((p) => p.slug), ["b"], "a published place is not a probe");
 });
 
 test("detects an inlined record in the shapes bundlers produce, not a bare name", () => {

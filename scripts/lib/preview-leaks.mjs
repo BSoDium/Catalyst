@@ -4,9 +4,12 @@
 
 export const PREVIEW_FILE = "packages/published/data/preview.projection.json";
 
-/** Up to `max` places spread evenly over the file (deterministic), skipping names too short to be a meaningful probe. */
-export function samplePreviewPlaces(projection, max = 12) {
-  const places = (projection?.places ?? []).filter((p) => typeof p?.slug === "string" && typeof p?.name === "string" && p.name.length >= 3);
+/**
+ * Up to `max` places spread evenly over the file (deterministic), skipping names too short to be a meaningful probe and the slugs in
+ * `published` (a place the site already publishes is meant to be in the bundles: only the drafts can leak).
+ */
+export function samplePreviewPlaces(projection, max = 12, published = new Set()) {
+  const places = (projection?.places ?? []).filter((p) => typeof p?.slug === "string" && typeof p?.name === "string" && p.name.length >= 3 && !published.has(p.slug));
   if (places.length <= max) return places;
   const out = [];
   for (let i = 0; i < max; i++) out.push(places[Math.floor((i * places.length) / max)]);
@@ -32,10 +35,12 @@ export function previewFilesInRepoListing(listing) {
 /**
  * @param {{ file: string, text: string }[]} files bundle files (relative path + text)
  * @param {object} projection the parsed preview file
+ * @param {number} max how many places to probe
+ * @param {Set<string>} published slugs of the places the site publishes (never probed)
  * @returns {string[]} failure messages that never print a place name
  */
-export function findPreviewLeaks(files, projection, max = 12) {
-  const sample = samplePreviewPlaces(projection, max);
+export function findPreviewLeaks(files, projection, max = 12, published = new Set()) {
+  const sample = samplePreviewPlaces(projection, max, published);
   const sigs = sample.map(placeSignature);
   const failures = [];
   for (const { file, text } of files) {

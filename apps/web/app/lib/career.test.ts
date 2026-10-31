@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { loadDemoProjection } from "@catalyst/published";
+import { loadDemoProjection } from "@catalyst/published/dev";
 import type { PublishedCareer } from "@catalyst/schemas";
 import { asOfText, careerDuration, careerIcon, careerLogo, careerLogoSrc, careerJsonLd, careerPeriod, formatCareerMonth, isCurrent, languageDetail, safeLinks, safePortrait } from "./career";
 import { SITE } from "./site";

@@ -1,4 +1,4 @@
-import { loadDemoProjection } from "@catalyst/published";
+import { loadDemoProjection } from "@catalyst/published/dev";
 import { toPlaceSummary, type PlaceSummary, type PublishedRoute } from "@catalyst/schemas";
 import { loadBorders, loadCoastlines } from "@catalyst/geodata";
 

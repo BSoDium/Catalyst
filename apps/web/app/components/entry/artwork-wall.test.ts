@@ -2,7 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { StaticRouter } from "react-router";
 import { describe, expect, it } from "vitest";
-import { loadDemoProjection } from "@catalyst/published";
+import { loadDemoProjection } from "@catalyst/published/dev";
 import { listEntries, type EntrySummary } from "~/lib/entries";
 import { ArtworkWall, artworkCaption } from "./artwork-wall";
 

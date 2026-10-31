@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { loadDemoProjection } from "@catalyst/published";
+import { loadDemoProjection } from "@catalyst/published/dev";
 import { careerMeta, describe as describeSummary } from "./career-meta";
 
 const demo = loadDemoProjection().career!;

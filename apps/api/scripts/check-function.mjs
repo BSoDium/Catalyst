@@ -42,21 +42,12 @@ try {
   const probe = `
     const { default: app } = await import("./index.mjs");
     if (typeof app?.fetch !== "function") throw new Error("the default export is not a fetch handler");
-    const demo = process.env.CATALYST_CONTENT === "demo";
-    const expectations = [["GET", "/health", 200], ["GET", "/v1/projection", 200], ["GET", "/v1/places", 200], ["GET", "/v1/poems", 200], ["GET", "/v1/photographs", 200], ["GET", "/nope", 404], ["GET", "/v1/poems/nope", 404], ["GET", "/v1/projects/nope", 404], ["POST", "/v1/places", 405]];
-    // The demo content is inlined in the bundle too: the entry detail endpoints must answer from it.
-    if (demo) expectations.push(["GET", "/v1/poems/demo-poem", 200], ["GET", "/v1/projects/demo-project", 200], ["GET", "/v1/articles/demo-article", 200], ["GET", "/v1/artworks/demo-artwork", 200], ["GET", "/v1/articles/morocco-coast-bus", 200], ["GET", "/v1/poems/quai-de-nuit", 200], ["GET", "/v1/places/lisbon", 200]);
+    const refused = process.env.CATALYST_CONTENT === "demo";
+    // The demo fixture is not in the bundle (issue #238): asking for it is a refusal, a 503 on /health, never placeholder content.
+    const expectations = refused ? [["GET", "/health", 503]] : [["GET", "/health", 200], ["GET", "/v1/projection", 200], ["GET", "/v1/places", 200], ["GET", "/v1/poems", 200], ["GET", "/v1/photographs", 200], ["GET", "/nope", 404], ["GET", "/v1/poems/nope", 404], ["GET", "/v1/projects/nope", 404], ["POST", "/v1/places", 405]];
     for (const [method, path, status] of expectations) {
       const res = await app.fetch(new Request("http://localhost" + path, { method }));
       if (res.status !== status) throw new Error(method + " " + path + " answered " + res.status + ", expected " + status);
-    }
-    if (demo) {
-      const poem = await (await app.fetch(new Request("http://localhost/v1/poems/demo-poem"))).json();
-      if (poem.kind !== "poem" || !Array.isArray(poem.body) || !poem.body.some((b) => b.type === "verse")) throw new Error("the demo poem detail has no verse block");
-      const list = await (await app.fetch(new Request("http://localhost/v1/poems"))).json();
-      if (!Array.isArray(list) || list.length !== 4 || "body" in list[0]) throw new Error("/v1/poems must list the four demo poems as summaries without a body");
-      const articles = await (await app.fetch(new Request("http://localhost/v1/articles"))).json();
-      if (!Array.isArray(articles) || articles.length !== 5) throw new Error("/v1/articles must list the five demo articles");
     }
   `;
   for (const content of [undefined, "demo"]) {
@@ -66,7 +57,7 @@ try {
     const run = spawnSync(process.execPath, ["--input-type=module", "-e", probe], { cwd: dir, env, encoding: "utf8", timeout: 30_000 });
     if (run.status !== 0) fail(`the bundled function does not run on its own (content: ${content ?? "published"}):\n${run.stderr || run.stdout}`);
   }
-  console.log("check-function: index.mjs + dist/index.mjs run standalone (/health, /v1/projection, /v1/places, /v1/poems, 404, 405; entry details with demo content).");
+  console.log("check-function: index.mjs + dist/index.mjs run standalone (/health, /v1/projection, /v1/places, /v1/poems, 404, 405), and refuse CATALYST_CONTENT=demo.");
 } finally {
   rmSync(dir, { recursive: true, force: true });
 }

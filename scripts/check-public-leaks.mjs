@@ -38,6 +38,9 @@ function* walk(dir) {
   }
 }
 
+/** Strings that only the demo fixture and the preview loader contain: the first is the fixture's own slug, the second the preview loader's error. */
+const API_BUNDLE_FORBIDDEN = ["demo-poem", "preview projection not found"];
+
 const targets = [
   ["browser bundle", "apps/web/build/client"],
   ["web server bundle", "apps/web/build/server"],
@@ -66,6 +69,10 @@ for (const [label, rel] of targets) {
     for (const word of FORBIDDEN) {
       if (text.includes(word)) failures.push(`${label}: "${word}" found in ${relative(root, file)}`);
     }
+    // Dev-only code (the demo fixture, the local preview loader) lives in `@catalyst/published/dev` and must not reach the deployed API (issue #238).
+    if (label === "api bundle") {
+      for (const word of API_BUNDLE_FORBIDDEN) if (text.includes(word)) failures.push(`${label}: dev-only "${word}" found in ${relative(root, file)}`);
+    }
   }
 }
 
@@ -83,7 +90,8 @@ for (const f of previewFilesInRepoListing(tracked)) failures.push(`preview file 
 const previewPath = join(root, PREVIEW_FILE);
 if (existsSync(previewPath)) {
   try {
-    failures.push(...findPreviewLeaks(bundleFiles, JSON.parse(readFileSync(previewPath, "utf8"))));
+    const publishedSlugs = new Set((JSON.parse(readFileSync(join(root, "packages/published/data/projection.json"), "utf8")).places ?? []).map((pl) => pl.slug));
+    failures.push(...findPreviewLeaks(bundleFiles, JSON.parse(readFileSync(previewPath, "utf8")), 12, publishedSlugs));
   } catch (e) {
     failures.push(`preview file is unreadable (${e.message.split("\n")[0]}); delete it or re-run \`pnpm export:preview\``);
   }

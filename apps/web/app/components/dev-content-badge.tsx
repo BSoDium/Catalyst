@@ -1,4 +1,4 @@
-import type { ContentMode } from "@catalyst/published";
+import type { ContentMode } from "@catalyst/published/dev";
 import { devBadgeLabel } from "~/lib/dev-badge";
 import { MAP_CARD } from "~/lib/map-card";
 import { cn } from "~/lib/utils";

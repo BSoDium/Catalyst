@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { loadDemoProjection, loadPublishedProjection } from "@catalyst/published";
+import { loadPublishedProjection } from "@catalyst/published";
+import { loadDemoProjection } from "@catalyst/published/dev";
 import { contentModeFromEnv, createContentSource } from "./content.server";
 
 const demo = loadDemoProjection();

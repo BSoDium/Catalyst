@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { loadDemoProjection } from "@catalyst/published";
+import { loadDemoProjection } from "@catalyst/published/dev";
 import { EMPTY_PROJECTION, toPlaceSummary as schemaToPlaceSummary, type PublishedProjection } from "@catalyst/schemas";
 import { bboxFitRadiusKm } from "~/globe/engine/framing";
 import { buildPlaceIndex, getPlaceDetail, imageSize, placeEntries, resolveRoutes, toPlaceSummary } from "./projection";
