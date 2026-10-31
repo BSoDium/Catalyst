@@ -392,3 +392,16 @@ pnpm tiles:plan                              # optional: fallback tile server pl
 ```
 
 Where to read more: [architecture.md](architecture.md), [api-contract.md](api-contract.md), [performance.md](performance.md), [handoff.md](handoff.md); private repo `docs/` (`editorial-workflow.md`, `publication-export.md`, `grouping.md`, `sync-invariants.md`, `import-contract.md`, `privacy-model.md`, `media-policy.md`).
+
+## Deployment storage on Vercel Hobby (2026-10-31)
+
+**What was seen.** The Usage page ("Deployment Storage") showed `catalyst-v2` at 7.53 GB of what a secondary source (The New Stack, 2026-09-19, quoting Vercel's retention policy; not checked against Vercel's own documentation) gives as a 10 GB Hobby cap. At that cap, older deployments that are not protected are deleted and deploying may be blocked until space is freed: the live site keeps serving, but rollback history goes.
+
+**Why it grew.** Every deployment is stored in full: the build of `apps/web` is about 35 MB, of which the media under `apps/web/public/media/` are about 20 to 25 MB (the git-ignored local `media/preview/` is not deployed). `catalyst-v2` had 508 deployments on 2026-10-31 (389 previews, 101 production, 18 canceled), 64 of them on 2026-10-26 alone: about 15 MB each on average, which is what the 7.5 GB is. The curve steepens from 2026-10-19 because the media grew while the deployments multiplied.
+
+**What was tried.** On 2026-10-31 324 preview deployments older than 3 days were removed with `vercel remove <url> --yes` (production deployments and the 75 recent previews kept): 508 became 184. The Usage graph did NOT move afterwards (it may lag, or count something other than the deployments' sizes: not established). Do not count on deletion alone.
+
+**What to do, in order.**
+1. Project Settings, deployment retention: a short period for previews (owner's setting).
+2. An ignored build step for pull requests that cannot change the site (documentation-only, or content-only before the publication): fewer previews, less storage and fewer of the 100 deployments a day.
+3. Move the media out of the deployments: Cloudflare R2 (free tier per Cloudflare's pricing page: 10 GB-months of Standard storage, 1 million Class A and 10 million Class B operations a month, egress free; beyond it $0.015 per GB-month). It takes a public bucket on its own domain (for example `media.bsodium.fr`), the contract's `/media/` paths becoming that origin (`mediaSrcSchema`, the CSP `img-src`, `safeMediaSrc`), the private export uploading the hash-named files instead of committing them, and the repo's media directory shrinking to what the build needs. A project of its own: not started.
