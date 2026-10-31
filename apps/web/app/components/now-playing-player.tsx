@@ -29,7 +29,7 @@ const touchPrimary = () => typeof matchMedia === "function" && matchMedia("(poin
 const SERVER: NowPlayingSnapshot = { track: null, state: "paused", muted: false };
 
 /**
- * What the page is playing, as a record: the sleeve in a disc that turns while the sound plays and rests while it waits (the sun is out of the picture) or is paused, the title under it (a link to the song)
+ * What the page is playing, as a record: the sleeve, a square with the system's hairline (#434), the title beside it with its state (bars that move while the sound plays, the play glyph while it waits or is paused) (a link to the song)
  * and who made it under that (a link to their page). Clicking the disc plays or pauses the page's sound (`NowPlaying.setMuted`: ONE choice for all of it; a sound that is the picture's, the interlude's, takes it from
  * where it is: it cannot be paused, only silenced), and hovering it shows which. A touch screen has no hover: the icon is shown for a moment after a tap. It is there only while a sound has played and is not done;
  * one sound gives way to the next, and no sound to a sound, with a fade and a blur.
@@ -138,16 +138,26 @@ function Player({ snap }: { snap: NowPlayingSnapshot }) {
         </span>
         <span className="np-disc" aria-hidden="true">
           {track.cover && coverOk ? <img src={track.cover} alt="" draggable={false} onError={() => setCoverOk(false)} /> : <span className="np-label" />}
-          <span className="np-groove" />
-          <span className="np-hole" />
         </span>
-        <span className="np-gloss" aria-hidden="true" />
         <span className="np-icon" aria-hidden="true">
           <Icon name={snap.muted ? "play" : "pause"} size="control" />
         </span>
       </button>
       <div className="np-text min-w-0" title={track.note ?? credit}>
-        <p className="np-title">{track.titleHref ? <a href={track.titleHref} target="_blank" rel="noopener noreferrer">{track.title}</a> : track.title}</p>
+        <div className="np-head">
+          <p className="np-title">{track.titleHref ? <a href={track.titleHref} target="_blank" rel="noopener noreferrer">{track.title}</a> : track.title}</p>
+          {playing ? (
+            <span className="np-state" aria-hidden="true">
+              <i />
+              <i />
+              <i />
+            </span>
+          ) : (
+            <span className="np-state np-state-play" aria-hidden="true">
+              <Icon name="play" size="inline" />
+            </span>
+          )}
+        </div>
         <AnimatePresence mode="wait" initial={false}>
           {blocked ? (
             <motion.p key="blocked" role="status" className="np-artist np-warn" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>

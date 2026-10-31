@@ -3477,19 +3477,27 @@ body:not(:has([data-slot="site-header"])) .np-root {
   content: "";
   position: absolute;
   z-index: -1;
-  /* the plate reaches well past the disc and the words (owner, 2026-10-30: "bigger, more padding for the contents ... edges barely noticeable", then "even more blurred, nearly invisible that it is a rectangle": the feather went from 2.75 by 1.6 rem to 4.75 by 2.75): the whole of the margin is the feather, so the plate is full only under the contents */
-  --np-feather-x: 4.75rem;
-  --np-feather-y: 2.75rem;
+  /* the plate is ONE ellipse, the page's colour over the middle and eased to nothing at its edge (owner, #435: "so soft that it is impossible to tell whether it is a rectangle or an ellipse", the model being the nav's search plate): a radial gradient of thirteen stops on a smoothstep, no mask, no box and no blur. It reaches well past the words (the corners of the box are in its opaque third). */
+  --np-feather-x: 8rem;
+  --np-feather-y: 4.25rem;
   inset: calc(-1 * var(--np-feather-y)) calc(-1 * var(--np-feather-x));
   pointer-events: none;
-  background: var(--np-plate);
-  /* a rectangle with soft edges all round: two ramps cut against each other, each a smoothstep in six stops (a straight ramp has a visible start and end: the eye sees the corner of a linear fade) */
-  --np-ramp-x: linear-gradient(to right, rgb(0 0 0 / 0) 0, rgb(0 0 0 / 0.04) calc(var(--np-feather-x) * 0.2), rgb(0 0 0 / 0.16) calc(var(--np-feather-x) * 0.4), rgb(0 0 0 / 0.5) calc(var(--np-feather-x) * 0.6), rgb(0 0 0 / 0.84) calc(var(--np-feather-x) * 0.8), #000 var(--np-feather-x), #000 calc(100% - var(--np-feather-x)), rgb(0 0 0 / 0.84) calc(100% - var(--np-feather-x) * 0.8), rgb(0 0 0 / 0.5) calc(100% - var(--np-feather-x) * 0.6), rgb(0 0 0 / 0.16) calc(100% - var(--np-feather-x) * 0.4), rgb(0 0 0 / 0.04) calc(100% - var(--np-feather-x) * 0.2), rgb(0 0 0 / 0) 100%);
-  --np-ramp-y: linear-gradient(to bottom, rgb(0 0 0 / 0) 0, rgb(0 0 0 / 0.04) calc(var(--np-feather-y) * 0.2), rgb(0 0 0 / 0.16) calc(var(--np-feather-y) * 0.4), rgb(0 0 0 / 0.5) calc(var(--np-feather-y) * 0.6), rgb(0 0 0 / 0.84) calc(var(--np-feather-y) * 0.8), #000 var(--np-feather-y), #000 calc(100% - var(--np-feather-y)), rgb(0 0 0 / 0.84) calc(100% - var(--np-feather-y) * 0.8), rgb(0 0 0 / 0.5) calc(100% - var(--np-feather-y) * 0.6), rgb(0 0 0 / 0.16) calc(100% - var(--np-feather-y) * 0.4), rgb(0 0 0 / 0.04) calc(100% - var(--np-feather-y) * 0.2), rgb(0 0 0 / 0) 100%);
-  -webkit-mask-image: var(--np-ramp-x), var(--np-ramp-y);
-  -webkit-mask-composite: source-in;
-  mask-image: var(--np-ramp-x), var(--np-ramp-y);
-  mask-composite: intersect;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--np-plate) 100%, transparent) 35%,
+    color-mix(in srgb, var(--np-plate) 98%, transparent) 40%,
+    color-mix(in srgb, var(--np-plate) 93%, transparent) 46%,
+    color-mix(in srgb, var(--np-plate) 84%, transparent) 51%,
+    color-mix(in srgb, var(--np-plate) 74%, transparent) 57%,
+    color-mix(in srgb, var(--np-plate) 62%, transparent) 62%,
+    color-mix(in srgb, var(--np-plate) 50%, transparent) 68%,
+    color-mix(in srgb, var(--np-plate) 38%, transparent) 73%,
+    color-mix(in srgb, var(--np-plate) 26%, transparent) 78%,
+    color-mix(in srgb, var(--np-plate) 16%, transparent) 84%,
+    color-mix(in srgb, var(--np-plate) 7%, transparent) 89%,
+    color-mix(in srgb, var(--np-plate) 2%, transparent) 95%,
+    transparent 100%
+  );
 }
 .np-text {
   /* (both lines are ONE line each, whatever the credit: owner. Under 1280 px the header is a row of its own and the words have the width of the screen; from 1280 they have the room the header's links leave, which start at (width - 816) / 2: the disc and its inset are 5 rem, and a longer line is cut with an ellipsis, in full in the title) */
@@ -3515,7 +3523,6 @@ body:not(:has([data-slot="site-header"])) .np-root {
   height: var(--np-size);
   padding: 0;
   border: 0;
-  border-radius: 50%;
   background: none;
   cursor: pointer;
   touch-action: manipulation;
@@ -3531,15 +3538,9 @@ body:not(:has([data-slot="site-header"])) .np-root {
   position: absolute;
   inset: 0;
   overflow: hidden;
-  border-radius: 50%;
   background: #0d0d10;
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--foreground) 24%, transparent);
-  animation: np-spin 7s linear infinite;
-  animation-play-state: paused;
+  box-shadow: 0 0 0 var(--hairline) color-mix(in srgb, var(--foreground) 24%, transparent);
   transition: filter 400ms var(--ease-standard);
-}
-.np[data-spin="true"] .np-disc {
-  animation-play-state: running;
 }
 .np[data-muted="true"] .np-disc {
   filter: grayscale(0.75) brightness(0.8);
@@ -3558,40 +3559,68 @@ body:not(:has([data-slot="site-header"])) .np-root {
   background:
     radial-gradient(circle at 50% 50%, #fff4c8 0 7%, #ffb347 14%, #e8553a 32%, #7a2a6e 58%, #1c1230 82%);
 }
-.np-groove {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: repeating-radial-gradient(circle at 50% 50%, transparent 0 2px, rgb(0 0 0 / 0.07) 2px 3px);
-  mix-blend-mode: multiply;
+/* The state, in the title's line: three bars that move while the sound plays (still, at three heights, under reduced motion) and the play glyph while it waits or is paused: two shapes, readable without colour. */
+.np-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
 }
-.np-hole {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 12%;
-  height: 12%;
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-  background: var(--background);
-  box-shadow:
-    inset 0 0 0 1px rgb(0 0 0 / 0.45),
-    0 0 0 3px rgb(0 0 0 / 0.35);
+.np-state {
+  flex: none;
+  display: inline-flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 2px;
+  width: 0.875rem;
+  height: 0.75rem;
+  color: var(--foreground);
 }
-.np-gloss {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  pointer-events: none;
-  background: conic-gradient(from 35deg, transparent 0 18%, rgb(255 255 255 / 0.34) 24%, transparent 31% 68%, rgb(255 255 255 / 0.2) 74%, transparent 80%);
-  mix-blend-mode: soft-light;
+.np-state i {
+  display: block;
+  width: 2px;
+  height: 100%;
+  background: currentColor;
+  transform-origin: bottom;
+}
+.np-state i:nth-child(1) {
+  transform: scaleY(0.55);
+}
+.np-state i:nth-child(2) {
+  transform: scaleY(1);
+}
+.np-state i:nth-child(3) {
+  transform: scaleY(0.7);
+}
+.np-state-play {
+  color: var(--subtle-foreground);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .np-state i {
+    animation: np-bar 900ms ease-in-out infinite alternate;
+  }
+  .np-state i:nth-child(2) {
+    animation-duration: 700ms;
+    animation-delay: -300ms;
+  }
+  .np-state i:nth-child(3) {
+    animation-duration: 1100ms;
+    animation-delay: -600ms;
+  }
+}
+@keyframes np-bar {
+  from {
+    transform: scaleY(0.25);
+  }
+  to {
+    transform: scaleY(1);
+  }
 }
 .np-icon {
   position: absolute;
   inset: 0;
   display: grid;
   place-items: center;
-  border-radius: 50%;
   background: rgb(0 0 0 / 0.5);
   color: #fff;
   opacity: 0;
@@ -3749,15 +3778,7 @@ body:not(:has([data-slot="site-header"])) .np-root {
     transform: rotate(0deg) scale(1.04);
   }
 }
-@keyframes np-spin {
-  to {
-    transform: rotate(1turn);
-  }
-}
 @media (prefers-reduced-motion: reduce) {
-  .np-disc {
-    animation: none;
-  }
   .np-halo-a,
   .np-halo-b,
   .np-halo-c {
