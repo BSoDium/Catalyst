@@ -28,7 +28,7 @@ Run from the repo root with `pnpm --filter @catalyst/web <script>` or inside `ap
 | --- | --- |
 | `CATALYST_CONTENT` | `published` (default), `preview` (the git-ignored local file of the owner's real places incl. drafts; dev only; ignores `CATALYST_API_URL`; re-read on every request) or `demo` (placeholder fixture). See the content modes table in `architecture.md` |
 | `CATALYST_ALLOW_PREVIEW` | `1` lets a production-mode process read the preview file, for local `react-router-serve` testing only; without it `preview` is refused when `NODE_ENV=production` (the server logs why and serves the empty state) |
-| `CATALYST_SITE_URL` | optional, default `https://v2.bsodium.fr`. The site's public origin: canonical and Open Graph URLs, the sitemap and robots.txt are built on it. Only `https://` (or `http://localhost`) is accepted; a path or query is dropped; a bad value warns once and the default is used |
+| `CATALYST_SITE_URL` | optional, default `https://bsodium.fr`. The site's public origin: canonical and Open Graph URLs, the sitemap and robots.txt are built on it. Only `https://` (or `http://localhost`) is accepted; a path or query is dropped; a bad value warns once and the default is used |
 | `CATALYST_CSP_CONNECT_EXTRA` | optional. Extra origins (space or comma separated) added to the CSP `connect-src`: a tile host the primary TileJSON points at that is not its own, or, one day, the API origin when the browser calls it. Invalid entries are dropped. See "Production readiness" |
 | `CATALYST_API_URL` | optional. If set, `${url}/v1/projection` is fetched (2s timeout, validated with `parsePublishedProjection`); any failure logs one warning and serves the bundled snapshot |
 

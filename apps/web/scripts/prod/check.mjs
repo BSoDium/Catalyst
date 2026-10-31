@@ -10,7 +10,7 @@
 // It uses the DEMO content (made-up placeholders, CATALYST_CONTENT=demo: an explicit opt-in) so entries and places exist whatever the
 // real projection holds; nothing in it is specific to the demo's slugs. It needs network access for the OpenFreeMap tiles.
 //
-//   node scripts/prod/check.mjs [--base URL --site https://v2.bsodium.fr] [--no-browser] [--no-fallback]
+//   node scripts/prod/check.mjs [--base URL --site https://bsodium.fr] [--no-browser] [--no-fallback]
 //
 // With --base it checks a running server (a preview deployment, say) instead of spawning one: the checks that need two servers
 // (robots.txt on the site's own host, the local tile fallback) are skipped. Exit code 1 on any failed assertion.
@@ -27,7 +27,7 @@ const args = process.argv.slice(2);
 const flag = (name) => args.includes(`--${name}`);
 const opt = (name) => (args.includes(`--${name}`) ? args[args.indexOf(`--${name}`) + 1] : undefined);
 const webDir = fileURLToPath(new URL("../../", import.meta.url));
-const DEFAULT_SITE = "https://v2.bsodium.fr";
+const DEFAULT_SITE = "https://bsodium.fr";
 /** Against a real deployment (`--base`): Vercel's CDN consumes `s-maxage` and shows clients `public, max-age=0, must-revalidate`, and the content is whatever is published (possibly nothing). */
 const deployed = Boolean(opt("base"));
 const cdnCache = (value, pattern) => (deployed ? /public, max-age=0/.test(value ?? "") || pattern.test(value ?? "") : pattern.test(value ?? ""));

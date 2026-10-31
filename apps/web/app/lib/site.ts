@@ -37,8 +37,8 @@ export const SITE_DESCRIPTION = `${SITE.role} in ${SITE.location}. ${SITE.specia
 export const archiveLine = (what: string) => `${what} from the archive of ${SITE.name}.`;
 /** The home page's title: the template (`<Page> · <name>`) has no page to put first, so it says who the site belongs to and what they do. */
 export const SITE_TITLE = `${SITE_NAME} · ${SITE.role}`;
-/** The temporary main domain of the new site; `CATALYST_SITE_URL` overrides it (the owner's move to the final domain is that one variable). */
-export const DEFAULT_SITE_URL = "https://v2.bsodium.fr";
+/** The main domain of the site (it was `v2.bsodium.fr` until the move of 2026-10-31); `CATALYST_SITE_URL` overrides it (a preview or a copy on another domain). */
+export const DEFAULT_SITE_URL = "https://bsodium.fr";
 
 /**
  * The first version of the site, kept as it was (#312): the ONE place its address and its words are written. The moon that circles the globe

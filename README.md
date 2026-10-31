@@ -1,6 +1,6 @@
 # Catalyst
 
-A personal archive organized around places. An interactive globe is the main way to discover curated places and the stories, software, articles and artworks attached to them. The new site runs at https://v2.bsodium.fr (`bsodium.fr` itself is repointed to it by the owner when the new site replaces the old one).
+A personal archive organized around places. An interactive globe is the main way to discover curated places and the stories, software, articles and artworks attached to them. The site runs at https://bsodium.fr (the first version, kept as it was, stays at https://v1.bsodium.fr).
 
 This repository is the **public** half of the system: the web app, the public API, and the sanitized, published content projection. Raw travel data and editorial drafts live in a separate **private** content repository and reach this repo only as a reviewed pull request.
 

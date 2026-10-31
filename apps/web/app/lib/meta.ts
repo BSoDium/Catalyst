@@ -8,7 +8,7 @@ export interface PageMeta {
   type?: "website" | "article";
   /** An entry's authored cover (a `/media/` path). Used as the share image when scrapers can read its format, else the site's default image. */
   image?: { src: string; alt?: string; width?: number; height?: number };
-  /** The site's origin (`https://v2.bsodium.fr`): every URL in the tags is made absolute with it. Without it the paths stay as they are. */
+  /** The site's origin (`https://bsodium.fr`): every URL in the tags is made absolute with it. Without it the paths stay as they are. */
   origin?: string;
   /** The page's path (`/articles/x`, no query): the canonical URL and `og:url`. Absent = no canonical tag. */
   path?: string;
