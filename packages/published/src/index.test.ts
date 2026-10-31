@@ -2,6 +2,7 @@ import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, w
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { haversineKm } from "@catalyst/schemas";
 import { loadPublishedProjection } from "./index";
 import { getCareer, loadDemoProjection, loadPreviewProjection, loadProjection, previewCandidates } from "./dev";
 import { parsePublishedProjection } from "@catalyst/schemas";
@@ -307,5 +308,24 @@ describe("loadPreviewProjection", () => {
       const text = readFileSync(new URL(f, dir), "utf8");
       expect(text, f).not.toMatch(/(import|from)\s+[^;\n]*preview\.projection/);
     }
+  });
+});
+
+describe("the bbox / viewRadiusKm contract (docs/api-contract.md, issue #236)", () => {
+  /** The documented rule, written from the contract and not from the content repo's code: half the box's diagonal (the centre to the farthest corner), rounded UP to 0.1 km, clamped to 0.5 to 500. */
+  function derivedRadiusKm([w, s, e, n]: readonly number[]): number {
+    const c: [number, number] = [(s! + n!) / 2, (w! + e!) / 2];
+    const far = Math.max(...([[s!, w!], [s!, e!], [n!, w!], [n!, e!]] as [number, number][]).map((p) => haversineKm(c, p)));
+    return Math.min(500, Math.max(0.5, Math.ceil(far * 10 - 1e-9) / 10));
+  }
+
+  it("derives the exported viewRadiusKm of every boxed place from its box, as the contract says", () => {
+    const boxed = loadPublishedProjection().places.filter((p) => p.bbox);
+    expect(boxed.length).toBeGreaterThan(0);
+    for (const place of boxed) expect(place.viewRadiusKm, place.slug).toBe(derivedRadiusKm(place.bbox!));
+  });
+
+  it("holds for the demo content too", () => {
+    for (const place of loadDemoProjection().places.filter((p) => p.bbox && p.viewRadiusKm !== undefined)) expect(place.viewRadiusKm, place.slug).toBe(derivedRadiusKm(place.bbox!));
   });
 });
