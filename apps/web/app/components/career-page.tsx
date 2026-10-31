@@ -18,7 +18,7 @@ import { SITE } from "~/lib/site";
  *
  * Headings: h1 the name; h2 Languages (visually hidden: the line is its own region), Experience, Education, Skills, Socials; h3 a
  * role's organisation or a programme's institution. The portrait is optional: with none, the name block simply takes the room. The
- * one way to reach the owner is the contact form (`ContactForm`, docs/career-page.md, "Contact") before the socials: a "Get in touch"
+ * one way to reach the owner is the contact form (`ContactForm`, docs/career-page.md, "Contact") after the socials: a "Get in touch"
  * button in the head scrolls to it. There is no address, phone number or mailto link anywhere (the contract has no field for one).
  */
 export function CareerPage({ career, places = [] }: { career: PublishedCareer; places?: readonly string[] }) {
@@ -52,13 +52,14 @@ export function CareerPage({ career, places = [] }: { career: PublishedCareer; p
               {SITE.givenName} <span className="career-name-family">{SITE.familyName}</span>
             </h1>
             <p className="career-summary">{career.summary}</p>
+            <div className="career-cta">
             {available && (
               <p data-slot="career-availability" className="career-availability type-meta">
                 <span>
                   {available.text}
                   <span className="career-asof">
-                    {" "}
-                    · <time dateTime={available.asOf}>{asOfText(available.asOf)}</time>
+                    <span className="career-sep"> · </span>
+                    <time dateTime={available.asOf}>{asOfText(available.asOf)}</time>
                   </span>
                 </span>
               </p>
@@ -71,6 +72,7 @@ export function CareerPage({ career, places = [] }: { career: PublishedCareer; p
                 </a>
               </Button>
             </p>
+            </div>
             {updated && (
               <p data-slot="career-updated" className="career-updated type-meta">
                 Updated <time dateTime={career.updated}>{updated}</time>
@@ -145,8 +147,6 @@ export function CareerPage({ career, places = [] }: { career: PublishedCareer; p
       </div>
 
       <div className="career-pair">
-      <ContactForm />
-
       {links.length > 0 && (
         <footer data-slot="career-links" className="career-block career-footer">
           <h2 id="links-h" className="career-block-title">
@@ -164,6 +164,8 @@ export function CareerPage({ career, places = [] }: { career: PublishedCareer; p
           </ul>
         </footer>
       )}
+      {/* After the socials in the document, so that wrapped to one column the socials come first and the tab order is the order seen; from 80 rem the pair is two columns, the socials at the left and the form at the right. */}
+      <ContactForm />
       </div>
     </main>
   );
