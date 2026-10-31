@@ -1,7 +1,7 @@
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { Icon } from "~/components/ui/icon";
-import { TRACKS, beatPulse, nowPlaying, pillVisible, sunMusic, type NowPlayingSnapshot, type Track } from "~/globe";
+import { useState, useSyncExternalStore } from "react";
+import { IconButton } from "~/components/ui/icon-button";
+import { nowPlaying, pillVisible, type NowPlayingSnapshot, type Track } from "~/globe";
 
 /**
  * Where the player sits (`.np-root`, app.css), in one place (owner: "we might iterate on where it shows and when it goes"): docked in the top left corner when there is room, and moved down under the header when the header
@@ -77,87 +77,16 @@ function Artists({ track }: { track: Track }) {
 
 function Player({ snap }: { snap: NowPlayingSnapshot }) {
   const track = snap.track!;
-  const reduced = useReducedMotion();
-  const halo = useRef<HTMLSpanElement>(null);
   const credit = track.artist ? `${track.title} by ${track.artist}` : track.title;
-  const playing = snap.state === "playing" && !snap.muted;
   const blocked = snap.state === "blocked" && !snap.muted;
-  // how far the halo reaches follows the sun's music's level (the interlude's sound has none to read: the halo's own, steady), and it pulses once to each beat, softly: two custom properties, written while the disc plays
-  const sun = track.id === TRACKS.sun.id;
-  useEffect(() => {
-    const el = halo.current;
-    if (!playing || !sun || reduced || !el) return;
-    let raf = 0;
-    let last = -1;
-    const frame = () => {
-      const p = sunMusic.pulse();
-      const level = p?.energy ?? 0;
-      if (Math.abs(level - last) > 0.01) {
-        last = level;
-        el.style.setProperty("--np-level", level.toFixed(2));
-      }
-      // (the beat is 1 on the beat and 0 half way to the next; as audible as the music is, so that it comes in and goes with the fades)
-      if (p) el.style.setProperty("--np-beat", (beatPulse(p.position) * p.amount).toFixed(3));
-      raf = requestAnimationFrame(frame);
-    };
-    raf = requestAnimationFrame(frame);
-    return () => cancelAnimationFrame(raf);
-  }, [playing, sun, reduced]);
   const [coverOk, setCoverOk] = useState(true);
-  // a touch screen has no hover to show the icon with: it shows for a moment after a tap
-  const [flash, setFlash] = useState(false);
-  useEffect(() => {
-    if (!flash) return;
-    const id = window.setTimeout(() => setFlash(false), 1100);
-    return () => window.clearTimeout(id);
-  }, [flash]);
   return (
-    <div
-      data-now-playing
-      data-state={snap.state}
-      data-muted={snap.muted}
-      data-spin={playing}
-      data-blocked={blocked}
-      data-flash={flash}
-      className="np flex items-center gap-2.5"
-    >
-      <button
-        type="button"
-        aria-pressed={!snap.muted}
-        aria-label={`Play ${credit}`}
-        className="np-disc-btn"
-        onClick={() => {
-          nowPlaying.setMuted(!snap.muted);
-          setFlash(true);
-        }}
-      >
-        <span ref={halo} className="np-halo" aria-hidden="true">
-          <span className="np-halo-a" />
-          <span className="np-halo-b" />
-          <span className="np-halo-c" />
-        </span>
-        <span className="np-disc" aria-hidden="true">
-          {track.cover && coverOk ? <img src={track.cover} alt="" draggable={false} onError={() => setCoverOk(false)} /> : <span className="np-label" />}
-        </span>
-        <span className="np-icon" aria-hidden="true">
-          <Icon name={snap.muted ? "play" : "pause"} size="control" />
-        </span>
-      </button>
+    <div data-now-playing data-state={snap.state} data-muted={snap.muted} data-blocked={blocked} className="np flex items-center gap-2.5">
+      <span className="np-disc" aria-hidden="true">
+        {track.cover && coverOk ? <img src={track.cover} alt="" draggable={false} onError={() => setCoverOk(false)} /> : <span className="np-label" />}
+      </span>
       <div className="np-text min-w-0" title={track.note ?? credit}>
-        <div className="np-head">
-          <p className="np-title">{track.titleHref ? <a href={track.titleHref} target="_blank" rel="noopener noreferrer">{track.title}</a> : track.title}</p>
-          {playing ? (
-            <span className="np-state" aria-hidden="true">
-              <i />
-              <i />
-              <i />
-            </span>
-          ) : (
-            <span className="np-state np-state-play" aria-hidden="true">
-              <Icon name="play" size="inline" />
-            </span>
-          )}
-        </div>
+        <p className="np-title">{track.titleHref ? <a href={track.titleHref} target="_blank" rel="noopener noreferrer">{track.title}</a> : track.title}</p>
         <AnimatePresence mode="wait" initial={false}>
           {blocked ? (
             <motion.p key="blocked" role="status" className="np-artist np-warn" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
@@ -172,6 +101,13 @@ function Player({ snap }: { snap: NowPlayingSnapshot }) {
           )}
         </AnimatePresence>
       </div>
+      <IconButton
+        variant="ghost"
+        className="np-toggle"
+        icon={snap.muted ? "play" : "pause"}
+        label={snap.muted ? `Play ${credit}` : `Pause ${credit}`}
+        onClick={() => nowPlaying.setMuted(!snap.muted)}
+      />
     </div>
   );
 }
