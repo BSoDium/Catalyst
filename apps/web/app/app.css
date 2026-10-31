@@ -5104,7 +5104,12 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
    */
   @media (max-width: 47.99rem) and (min-height: 36.01rem) {
     .landing-hero {
-      --hero-fixed: 22rem;
+      --hero-fixed: 22.875rem;
+    }
+
+    /* Air between the search line and the rows (owner, #433): the rows ran on from the rule; the block's budget above carries the 0.875 rem. */
+    .hero-list {
+      margin-block-start: 0.875rem;
     }
 
     .hero-list ul {
