@@ -97,3 +97,19 @@ describe("shouldGroupByYear", () => {
     expect(shouldGroupByYear([group(2, 2026), group(1, 2024), group(1, 2021)])).toBe(false);
   });
 });
+
+describe("groupByYear, sensitive entries on a tie (issue #432)", () => {
+  const mk = (slug: string, date: string, sensitive?: boolean) => ({ ...e(slug, [], date), ...(sensitive ? { sensitive: true as const } : {}) });
+  it("puts a sensitive entry after the others of the same date, whatever the authored order", () => {
+    const items = [mk("anatomy", "2025", true), mk("church", "2025"), mk("portrait", "2025"), mk("resilience", "2025")];
+    expect(groupByYear(items)[0]!.items.map((i) => i.slug)).toEqual(["church", "portrait", "resilience", "anatomy"]);
+  });
+  it("keeps the authored order among the sensitive ones and among the others", () => {
+    const items = [mk("s1", "2024", true), mk("a", "2024"), mk("s2", "2024", true), mk("b", "2024")];
+    expect(groupByYear(items)[0]!.items.map((i) => i.slug)).toEqual(["a", "b", "s1", "s2"]);
+  });
+  it("never overrules the date: a newer sensitive entry still comes before an older plain one", () => {
+    const items = [mk("old", "2024-01"), mk("new", "2024-09", true)];
+    expect(groupByYear(items)[0]!.items.map((i) => i.slug)).toEqual(["new", "old"]);
+  });
+});
