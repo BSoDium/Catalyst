@@ -160,7 +160,10 @@ describe("EntryListPage with a sensitive entry", () => {
     const none = renderToStaticMarkup(createElement(StaticRouter, { location: "/photography" }, createElement(EntryListPage, { kind: "photograph", items: bare })));
     expect(none).not.toContain("<img");
     expect(none).not.toContain("<canvas");
-    expect(none).not.toContain("<svg");
+    expect(none).not.toContain("cover-art");
+    // the one svg is the end-of-gallery illustration
+    expect(none.match(/<svg/g)).toHaveLength(1);
+    expect(none).toContain('data-slot="gallery-end"');
   });
   it("sets the poems in a grid of cells with the summary in the reading face", () => {
     const poems = listEntries(demo, "poem");

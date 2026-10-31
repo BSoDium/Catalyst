@@ -312,15 +312,30 @@ const dimensions = {
 const bothOrNeither = (o: { width?: number | undefined; height?: number | undefined }) => (o.width === undefined) === (o.height === undefined);
 const BOTH_OR_NEITHER = "width and height go together: give both or neither";
 
+/**
+ * A smaller copy of a cover (the export writes a WebP 800 px wide): lists pick it through `srcset` instead of the full file. Same picture,
+ * same proportions; its own size is required so the browser knows what it is choosing between.
+ */
+export const publishedCoverSmallSchema = z
+  .object({
+    src: mediaSrcSchema,
+    width: z.number().int().positive().max(20000),
+    height: z.number().int().positive().max(20000),
+  })
+  .strict();
+
 /** Cover image of an entry: shown in lists and on top of the entry. */
 export const publishedCoverSchema = z
   .object({
     src: mediaSrcSchema,
     alt: imageAltSchema,
     ...dimensions,
+    /** Optional, additive in schema version 1. A smaller copy for lists; needs the cover's own `width` and `height`. */
+    small: publishedCoverSmallSchema.optional(),
   })
   .strict()
-  .refine(bothOrNeither, BOTH_OR_NEITHER);
+  .refine(bothOrNeither, BOTH_OR_NEITHER)
+  .refine((c) => c.small === undefined || c.width !== undefined, "small needs the cover's own width and height");
 
 /** Short, plain-kebab tag (`open-source`). Lowercase so the same tag is never spelled two ways. */
 export const tagSchema = z
@@ -998,6 +1013,7 @@ export type PublishedLeg = z.infer<typeof publishedLegSchema>;
 export type LegMode = z.infer<typeof legModeSchema>;
 export type PublishedContentItem = z.infer<typeof publishedContentItemSchema>;
 export type PublishedCover = z.infer<typeof publishedCoverSchema>;
+export type PublishedCoverSmall = z.infer<typeof publishedCoverSmallSchema>;
 export type PublishedMetaEntry = z.infer<typeof publishedMetaEntrySchema>;
 export type PublishedBodyBlock = z.infer<typeof bodyBlockSchema>;
 export type PublishedBodyBlockType = PublishedBodyBlock["type"];
