@@ -3506,7 +3506,7 @@ body:not(:has([data-slot="site-header"])) .np-root {
 }
 @media (min-width: 1280px) {
   .np-text {
-    max-width: max(11rem, calc((100vw - 816px) / 2 - 8.5rem));
+    max-width: max(11rem, calc((100vw - 816px) / 2 - 5rem));
   }
 }
 @supports not (background: color-mix(in srgb, red 50%, transparent)) {
@@ -3543,17 +3543,76 @@ body:not(:has([data-slot="site-header"])) .np-root {
   background:
     radial-gradient(circle at 50% 50%, #fff4c8 0 7%, #ffb347 14%, #e8553a 32%, #7a2a6e 58%, #1c1230 82%);
 }
-/* The play / pause control (owner, #434: the cover is not a button; a ghost icon button stands to the right of the words with a gap of its own): the icon says what a click does, play while the sound is off, pause while it plays. 44 px target. */
-.np-toggle {
+/* The one control: the cover is the mute button (owner, #434: no play and pause, only sound on or off). Its icon is there while the pointer is over it, the keyboard is on it and for a moment after a tap, and says what the sound is now; the tooltip says it in words, below the cover. */
+.np-disc-btn {
+  position: relative;
+  display: block;
   flex: none;
-  margin-inline-start: 0.5rem;
+  width: var(--np-size);
+  height: var(--np-size);
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
-/* The glyph is as light as the words beside it: 16 px at a 1.5 stroke is a 1 px line (the mono type's), and 2 px lower, where the eye puts the middle of a title over a smaller line. */
-.np-toggle .ui-icon {
+.np-disc-btn::after {
+  /* a 44 px target whatever the cover's size */
+  content: "";
+  position: absolute;
+  inset: min(0px, calc((var(--np-size) - 2.75rem) / 2));
+}
+.np-icon {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgb(0 0 0 / 0.55);
+  color: #fff;
+  opacity: 0;
+  transition: opacity 200ms var(--ease-standard);
+}
+.np-icon .ui-icon {
   width: 1rem;
   height: 1rem;
   stroke-width: 1.5;
-  translate: 0 0.125rem;
+}
+.np-disc-btn:hover .np-icon,
+.np-disc-btn:focus-visible .np-icon,
+.np[data-flash="true"] .np-icon {
+  opacity: 1;
+}
+.np-disc-btn:focus-visible {
+  outline: 2px solid var(--foreground);
+  outline-offset: 3px;
+}
+.np-tip {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  z-index: 2;
+  padding: 0.25rem 0.5rem;
+  background: var(--foreground);
+  color: var(--background);
+  font-family: var(--font-meta);
+  font-size: 0.6875rem;
+  line-height: 1rem;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 150ms var(--ease-standard);
+}
+.np-disc-btn:hover .np-tip,
+.np-disc-btn:focus-visible .np-tip {
+  opacity: 1;
+  transition-delay: 400ms;
+}
+@media (hover: none) {
+  .np-tip {
+    display: none;
+  }
 }
 .np-text {
   font-family: var(--font-mono, ui-monospace, monospace);

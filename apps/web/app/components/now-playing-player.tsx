@@ -1,6 +1,6 @@
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { useState, useSyncExternalStore } from "react";
-import { IconButton } from "~/components/ui/icon-button";
+import { useEffect, useId, useState, useSyncExternalStore } from "react";
+import { Icon } from "~/components/ui/icon";
 import { nowPlaying, pillVisible, type NowPlayingSnapshot, type Track } from "~/globe";
 
 /**
@@ -80,11 +80,37 @@ function Player({ snap }: { snap: NowPlayingSnapshot }) {
   const credit = track.artist ? `${track.title} by ${track.artist}` : track.title;
   const blocked = snap.state === "blocked" && !snap.muted;
   const [coverOk, setCoverOk] = useState(true);
+  const tipId = useId();
+  const muteLabel = snap.muted ? `Turn sound on: ${credit}` : `Mute sound: ${credit}`;
+  // a touch screen has no hover to show the icon with: it shows for a moment after a tap
+  const [flash, setFlash] = useState(false);
+  useEffect(() => {
+    if (!flash) return;
+    const id = window.setTimeout(() => setFlash(false), 1100);
+    return () => window.clearTimeout(id);
+  }, [flash]);
   return (
-    <div data-now-playing data-state={snap.state} data-muted={snap.muted} data-blocked={blocked} className="np flex items-center gap-2.5">
-      <span className="np-disc" aria-hidden="true">
-        {track.cover && coverOk ? <img src={track.cover} alt="" draggable={false} onError={() => setCoverOk(false)} /> : <span className="np-label" />}
-      </span>
+    <div data-now-playing data-state={snap.state} data-muted={snap.muted} data-blocked={blocked} data-flash={flash} className="np flex items-center gap-2.5">
+      <button
+        type="button"
+        className="np-disc-btn"
+        aria-label={muteLabel}
+        aria-describedby={tipId}
+        onClick={() => {
+          nowPlaying.setMuted(!snap.muted);
+          setFlash(true);
+        }}
+      >
+        <span className="np-disc" aria-hidden="true">
+          {track.cover && coverOk ? <img src={track.cover} alt="" draggable={false} onError={() => setCoverOk(false)} /> : <span className="np-label" />}
+        </span>
+        <span className="np-icon" aria-hidden="true">
+          <Icon name={snap.muted ? "volume-off" : "volume"} size="control" />
+        </span>
+        <span id={tipId} role="tooltip" className="np-tip">
+          {snap.muted ? "Turn sound on" : "Mute sound"}
+        </span>
+      </button>
       <div className="np-text min-w-0" title={track.note ?? credit}>
         <p className="np-title">{track.titleHref ? <a href={track.titleHref} target="_blank" rel="noopener noreferrer">{track.title}</a> : track.title}</p>
         <AnimatePresence mode="wait" initial={false}>
@@ -101,13 +127,6 @@ function Player({ snap }: { snap: NowPlayingSnapshot }) {
           )}
         </AnimatePresence>
       </div>
-      <IconButton
-        variant="ghost"
-        className="np-toggle"
-        icon={snap.muted ? "play" : "pause"}
-        label={snap.muted ? `Play ${credit}` : `Pause ${credit}`}
-        onClick={() => nowPlaying.setMuted(!snap.muted)}
-      />
     </div>
   );
 }
