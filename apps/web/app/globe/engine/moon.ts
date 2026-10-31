@@ -106,8 +106,8 @@ export const SUN = {
    * its white rays show against the paper. The `halo` is that grey too, `strength` of the way from the paper, with only `warm` of the warm ramp's colour (each colour times `ink`, a darker shade) in it. The ghosts are the ramp's
    * colours at `ghost` strength. The lining and the ground's light are `grey` with `warm` of the ramp in them, and the twilight is `twilight` of what it is on the dark page. The dark page has none of this.
    */
-  /** The eye's iris on the dark page (owner, 2026-10-28): with the sun in the picture the sky is dazzled out, as the light page's backdrop dims: the stars' share that stays is `1 - stars` (nearly none), the band's `1 - band`. Same timing as `light.iris`. */
-  dark: { iris: { stars: 0.95, band: 0.6 } },
+  /** The eye's iris on the sky, on BOTH pages (owner, 2026-10-28; the light page too since issue #424, where the backdrop dims as well): with the sun in the picture the sky is dazzled out: the stars' share that stays is `1 - stars` (nearly none), the band's `1 - band`. Same timing as `light.iris`. */
+  sky: { iris: { stars: 0.95, band: 0.6 } },
   light: {
     ink: 0.82,
     /** The eye's iris (owner, 2026-10-28): the light page's backdrop dims by `dim` (a share of its tone) while the sun is in the picture, easing in over `closeMs` as the sun comes in and out over `openMs` after it leaves, like a diaphragm adapting. */

@@ -2559,7 +2559,8 @@ export class GlobeRenderer {
     this.syncSunMusic();
     this.irisTarget = FX.on.iris && (this.theme.scheme === "light" || this.globe.sky) ? (this.globe.sun?.glare ?? 0) : 0;
     this.stepIris(now);
-    this.globe.sky?.setExposure(this.theme.scheme === "dark" ? this.iris : 0);
+    // (the sky is dazzled out on both pages: on the light one the backdrop also dims, `stepIris`; issue #424)
+    this.globe.sky?.setExposure(this.iris);
     // (the sky's frame, once: the globe's sky and the chrome of the interlude's letters both read it)
     const viewToGal = viewToGalactic(skyBasis, this.era);
     this.caption?.setSky(viewToGal);

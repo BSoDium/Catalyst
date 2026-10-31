@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { loader } from "~/routes/legacy-poems";
 import { loader as projectsLoader } from "~/routes/legacy-projects";
 import { KIND_PATHS } from "./entries";
-import { LEGACY_REDIRECT_STATUS, legacyPoemsTarget, legacyProjectsTarget, withoutDataRequest } from "./legacy-paths";
+import { loader as resumeLoader } from "~/routes/legacy-resume";
+import { LEGACY_REDIRECT_STATUS, legacyPoemsTarget, legacyProjectsTarget, legacyResumeTarget, withoutDataRequest } from "./legacy-paths";
 
 const answer = async (path: string, method = "GET") => {
   try {
@@ -125,5 +126,33 @@ describe("a client-side navigation to a legacy address (its data request, React 
   });
   it("leaves a document request's query string as it came", () => {
     expect(withoutDataRequest("/projects/x", "?tag=rail&view=full")).toEqual({ pathname: "/projects/x", search: "?tag=rail&view=full" });
+  });
+});
+
+describe("legacyResumeTarget (the first version's CV)", () => {
+  it("moves /resume to the career page, the query string kept", () => {
+    expect(legacyResumeTarget("/resume", "")).toBe("/career");
+    expect(legacyResumeTarget("/resume/", "")).toBe("/career");
+    expect(legacyResumeTarget("/resume", "?x=1")).toBe("/career?x=1");
+  });
+  it("is null for anything else: deeper paths, other pages, other cases", () => {
+    for (const path of ["/resume/a", "/resumes", "/career", "/", "/Resume", "/projects"]) expect(legacyResumeTarget(path, ""), path).toBeNull();
+  });
+  it("follows a client-side navigation's data request", () => {
+    expect(legacyResumeTarget("/resume.data", "?_routes=routes%2Flegacy-resume")).toBe("/career");
+  });
+  it("is answered by the route with a permanent redirect, the security headers and a cache policy, and a 404 for any other shape", async () => {
+    const res = (await resumeLoader({ request: new Request("https://bsodium.fr/resume?x=1") })) as Response;
+    expect(res.status).toBe(LEGACY_REDIRECT_STATUS);
+    expect(res.headers.get("Location")).toBe("/career?x=1");
+    expect(res.headers.get("X-Frame-Options")).toBe("DENY");
+    expect(res.headers.get("Cache-Control")).toMatch(/s-maxage=\d+/);
+    let thrown: unknown;
+    try {
+      await resumeLoader({ request: new Request("https://bsodium.fr/resume/a/b") });
+    } catch (e) {
+      thrown = e;
+    }
+    expect((thrown as Response).status).toBe(404);
   });
 });
