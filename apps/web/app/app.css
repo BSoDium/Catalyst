@@ -2869,8 +2869,9 @@
   .wall-filler {
     pointer-events: none;
     user-select: none;
-    /* Scenery, not the owner's work: drawn in grey, so it reads as not clickable and not theirs. */
+    /* Scenery, not the owner's work: grey AND dim (the owner posts black and white photographs too, so grey alone could pass for one of them). Opacity, so it recedes into the page in both colour schemes. */
     filter: grayscale(1);
+    opacity: 0.42;
   }
 
   /* A tile shows in the tiers named in `data-tiers` (a wider wall carries more of them); the wall ends flush at its shortest column, the rest is cut. */
