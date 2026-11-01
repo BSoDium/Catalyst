@@ -102,7 +102,7 @@ const FRAGMENT = /* glsl */ `
       glow = max(glow, glowOf(a.y, a.x, gh));
       glow = max(glow, glowOf(a.x, a.y, gv));
       glow = max(glow, glowOf(abs(a.x - a.y) * 0.7071, (a.x + a.y) * 0.7071, gdg));
-      if (glow > bayer()) { ink = ${f(FLARE.glow.tone)} * mix(1.0, ${f(FLARE.glow.light)}, uLight); hue = 0.9; halo = true; }
+      if (glow > bayer()) { ink = ${f(FLARE.glow.tone)}; hue = 0.9; halo = true; }
     }
     if (uLight > 0.5) {
       // the light page: the sun's rays are WHITE, and what shows them is a very soft, faint grey darkening round the sun (the veil); the ghosts are the ramp's colours, faintly
@@ -111,7 +111,8 @@ const FRAGMENT = /* glsl */ `
       if (ink <= 0.0) gl_FragColor = vec4(vec3(${f(SUN.light.veil.grey)}), veil);
       // (the rays are the sun's own white at all times: OPAQUE pixels, the strength taken out in the dither, not a see-through white)
       else if (ray) { if (bayer() >= uRay) discard; gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0); }
-      else gl_FragColor = vec4(mix(uBg, warm(hue) * ${f(SUN.light.ink)}, clamp(ink * ${f(SUN.gain)}, 0.0, 1.0) * ${f(SUN.light.ghost)}), uStr * (halo ? ${f(FLARE.glow.lightAlpha)} : 1.0));
+      else if (halo) gl_FragColor = vec4(vec3(${f(SUN.light.veil.grey)}), uStr * ${f(FLARE.glow.lightAlpha)});
+      else gl_FragColor = vec4(mix(uBg, warm(hue) * ${f(SUN.light.ink)}, clamp(ink * ${f(SUN.gain)}, 0.0, 1.0) * ${f(SUN.light.ghost)}), uStr);
     } else {
       if (ink <= 0.0) discard;
       // the rays are the sun's own colour at all times (hue is the sun's core tone, reddened as the planet covers it, as the sun's own is) and hardly dimmer as less of the sun is in view (uRay), not see-through: opaque pixels
