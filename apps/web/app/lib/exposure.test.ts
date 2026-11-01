@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { splitExposure } from "./exposure";
+import { splitExposure, splitFigure } from "./exposure";
 
 const m = (label: string, value: string) => ({ label, value });
 
@@ -26,5 +26,15 @@ describe("splitExposure", () => {
 
   it("matches the labels without regard to case", () => {
     expect(splitExposure([m("camera", "Fujifilm X100V"), m("iso", "400")]).exposure).toEqual({ gear: ["Fujifilm X100V"], settings: ["ISO 400"] });
+  });
+});
+
+describe("splitFigure", () => {
+  it("separates the figure of a setting from its prefix and its unit", () => {
+    expect(splitFigure("6.81 mm")).toEqual({ before: "", figure: "6.81", after: " mm" });
+    expect(splitFigure("f/1.85")).toEqual({ before: "f/", figure: "1.85", after: "" });
+    expect(splitFigure("1/120 s")).toEqual({ before: "", figure: "1/120", after: " s" });
+    expect(splitFigure("ISO 667")).toEqual({ before: "ISO ", figure: "667", after: "" });
+    expect(splitFigure("unknown")).toEqual({ before: "", figure: "unknown", after: "" });
   });
 });

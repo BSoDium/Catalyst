@@ -23,6 +23,7 @@ import {
 import { displayHost, safeExternalUrl, safeMediaSrc } from "~/lib/entry-blocks";
 import { tagSearch } from "~/lib/entry-list";
 import { splitExposure } from "~/lib/exposure";
+import { ExposureBlock } from "./exposure-block";
 import { isSensitive } from "~/lib/sensitive";
 import { formatMonthYear, headlineScale, linkedLine, splitHeadline } from "~/lib/entry-typography";
 import { formatReadingTime, readingMinutes, tocItems } from "~/lib/reading";
@@ -310,12 +311,7 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
                 {tail ? <span className="entry-title-tail">{tail}</span> : null}
               </h1>
               {entry.summary && !poem && <p className="type-standfirst mt-[1.375rem] max-w-[25.4em] md:mt-[2.125rem]">{entry.summary}</p>}
-              {exposure && (
-                <p data-slot="entry-exposure" className="entry-exposure type-meta m-0 mt-5 flex flex-col gap-1 text-muted-foreground">
-                  {exposure.gear.length > 0 && <span data-slot="entry-gear">{exposure.gear.join(" · ")}</span>}
-                  {exposure.settings.length > 0 && <span data-slot="entry-settings">{exposure.settings.join(" · ")}</span>}
-                </p>
-              )}
+              {exposure && <ExposureBlock exposure={exposure} />}
               {actions}
             </div>
             {heroSrc && entry.cover && <img src={heroSrc} alt={heroDim ? "" : entry.cover.alt} width={entry.cover.width} height={entry.cover.height} decoding="async" className="entry-hero-img" />}

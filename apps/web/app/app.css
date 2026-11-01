@@ -1975,6 +1975,46 @@
   }
 
   /* The headline: the reading face at 700, balanced, tight (the board: 132 px, 0.92, -0.03em, optical size 72 by `auto`). */
+  /* How a photograph was taken (#385): the mark is as tall as the text, from the top of the camera's capitals to the baseline of the settings (two lines: a capital, then a line and the gap).
+     The text block is trimmed to that where the browser can (`text-box`), else the mark is centred on it. Hairline: a 1 px stroke at any size. */
+  .entry-exposure {
+    --exposure-gap: 0.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 1.25rem 0 0;
+    color: var(--muted-foreground);
+  }
+  .entry-exposure .entry-exposure-mark {
+    /* the icon's ring spans 20 of its 24 units: the box is 1.2 times the text's height, and the extra 0.1 on each side is taken back, so the RING is as tall as the text
+       (less the hairline: its stroke is centred on the ring, so half of it lies outside on each side) */
+    --exposure-text: calc(1cap + var(--text-meta--line-height) + var(--exposure-gap));
+    height: calc((var(--exposure-text) - 1px) * 1.2);
+    width: auto;
+    aspect-ratio: 1;
+    margin-block: calc((var(--exposure-text) - 1px) * -0.1);
+    stroke-width: 1px;
+    stroke-linecap: butt;
+    stroke-linejoin: round;
+    color: var(--muted-foreground);
+  }
+  .entry-exposure .entry-exposure-mark * {
+    vector-effect: non-scaling-stroke;
+  }
+  .entry-exposure-text {
+    min-width: 0;
+    text-box: trim-both cap alphabetic;
+  }
+  .entry-exposure-line {
+    display: block;
+  }
+  .entry-exposure-line + .entry-exposure-line {
+    margin-top: var(--exposure-gap);
+  }
+  .entry-exposure-gear,
+  .entry-exposure-figure {
+    color: var(--foreground);
+  }
   .entry-title {
     /* The measure follows the role's size (`--entry-title`), not the title's own: a long title is set smaller by `--title-scale`, and
        8.95 of its own em would squeeze it into a narrower column the smaller it gets. */
