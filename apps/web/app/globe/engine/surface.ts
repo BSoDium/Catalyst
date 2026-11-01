@@ -57,8 +57,8 @@ export const NIGHT = {
   lightGain: 0.75,
   /** The shadow of the night on the LIGHT page: the dark side, sea and ground alike, is darkened by this share at the darkest, in `lineSteps` flat steps, the step between two taken by the art's ordered dither (a stipple across the terminator, as the land has: no gradient). */
   shadow: 0.2,
-  /** The share of the land's pixels at the darkest of the night on the LIGHT page, times the day's (a stipple that thickens, where the dark page's thins to `landMin`; 1.3 since #436: it was 1.8, which made the night side's continents far too contrasted under the boxes and paths). */
-  landMax: 1.3,
+  /** The share of the land's pixels at the darkest of the night on the LIGHT page, times the day's (a stipple that thickens, where the dark page's thins to `landMin`; 1.0 since #436: it was 1.8, which made the night side's continents far too contrasted under the boxes and paths). */
+  landMax: 1.0,
   /** The interlude's atmosphere (the glow over the limb and the veil on the ground): how much of it goes where the planet is washed (the dark side on the dark page, the sun's side on the light one): it is lit exactly as the ground is (the same terminator, in the same whole steps), and gone where the ground is dark. */
   atmosphereDim: 1,
   /** The power the interlude's atmosphere's light (1 lit, 0 dark, in whole steps) is taken to: above 1 it falls away faster towards the dark, so that on the night side, and in the half-lit fringe of the terminator, it is hardly there, as the planet's own rim is not (the day side, lit 1, is as it was). */
