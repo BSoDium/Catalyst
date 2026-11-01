@@ -14,7 +14,7 @@
  * clock (`SunMusic.pulse`: the speaker's place in the piece), so it cannot drift from the sound, and the loop is made a whole number of cycles long so that it does not skip at the seam. The sun is otherwise static and
  * asks for no frames of its own: the breathing asks for them, but only while it is there (`GlobeRenderer.sunPulsing`).
  */
-import { SUN_MUSIC } from "./sun-music";
+import { activeSunTrack } from "./sun-music";
 
 export const PULSE = {
   /** How much longer the rays reach at the top of a breath, as a share of their length. */
@@ -45,7 +45,8 @@ export const PULSE = {
  * The beat (the player's halo pulses once to each: owner, 2026-10-29): 1 on a beat, 0 half way to the next, as a cosine (no edge), for the music at `position` seconds into the piece. Pure.
  */
 export function beatPulse(position: number): number {
-  const beats = (position - SUN_MUSIC.beatOffsetSec) / SUN_MUSIC.beatSec;
+  const t = activeSunTrack();
+  const beats = (position - t.beatOffsetSec) / t.beatSec;
   return 0.5 + 0.5 * Math.cos(2 * Math.PI * (beats - Math.floor(beats)));
 }
 
@@ -91,7 +92,8 @@ export function strength(index: number, phase: number): number {
 /** The breathing at `position` seconds into the piece, as audible as `amount` (0..1), the piece as loud as `energy` (0..1). Pure. */
 export function sunPulse(position: number, amount: number, energy = 0): SunPulse {
   const a = Math.min(1, Math.max(0, amount));
-  const cycles = (position - SUN_MUSIC.beatOffsetSec) / (SUN_MUSIC.beatSec * SUN_MUSIC.cycleBeats);
+  const t = activeSunTrack();
+  const cycles = (position - t.beatOffsetSec) / (t.beatSec * t.cycleBeats);
   const index = Math.floor(cycles);
   const phase = cycles - index;
   return {
