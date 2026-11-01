@@ -1,4 +1,4 @@
-import { ArrowLeft as CarbonArrowLeft, ChevronDown as CarbonChevronDown, Search as CarbonSearch, type CarbonIconType } from "@carbon/icons-react";
+import { ArrowLeft as CarbonArrowLeft, ChevronDown as CarbonChevronDown, Search as CarbonSearch, ZoomReset as CarbonZoomReset, type CarbonIconType } from "@carbon/icons-react";
 import {
   ArrowDown,
   ArrowRight,
@@ -48,7 +48,7 @@ import { cn } from "~/lib/utils";
 
 /**
  * The icon set of the UI system: lucide-react, each icon under the name the interface uses for it, with the header's three (the way back's
- * arrow, the selector's chevron, the search) from IBM's Carbon (`@carbon/icons-react`, Apache-2.0): square-ended, drawn on a pixel grid, they sit
+ * arrow, the selector's chevron, the search) from IBM's Carbon (`@carbon/icons-react`, Apache-2.0; the zoom reset of the floating "Reset view" button is the fourth): square-ended, drawn on a pixel grid, they sit
  * beside the header's mono type as lucide's rounder shapes did not (2026-10-28, owner). Carbon's are filled shapes, so the stroke tokens do not apply.
  * This is the only file that imports either library.
  * Nothing is drawn by hand: a test (`icon.test.ts`) fails on an inline `<svg>` anywhere in the components outside the brand mark and
@@ -100,6 +100,7 @@ export const ICONS = {
   play: Play,
   pause: Pause,
   volume: Volume2,
+  "reset-view": CarbonZoomReset,
   "volume-off": VolumeX,
 } as const satisfies Record<string, LucideIcon | CarbonIconType>;
 

@@ -22,8 +22,8 @@ export function WorldViewButton({ show }: { show: boolean }) {
             transition={{ duration: 0.25, ease: [0.2, 0, 0, 1] }}
           >
             <Button variant="secondary" data-slot="world-view-button" onClick={requestWorldView}>
-              <Icon name="collapse" size="inline" />
-              Back to the globe
+              <Icon name="reset-view" size="inline" />
+              Reset view
             </Button>
           </motion.div>
         )}

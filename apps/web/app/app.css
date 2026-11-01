@@ -3503,6 +3503,21 @@ body:not(:has([data-slot="site-header"])) .np-root {
 .world-view-root {
   bottom: max(1.25rem, env(safe-area-inset-bottom, 0px));
 }
+/* Over the globe's linework the button must read: the page's colour at 72 % over a blur of what is behind it. */
+.world-view-root [data-slot="world-view-button"] {
+  --ds-button-bg: color-mix(in srgb, var(--background) 72%, transparent);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  /* the outline is the soft one, not the strong hairline; the content is centred */
+  --ds-button-line: var(--border);
+  /* wide by default (1.5 rem each side), the button's own 1 rem only where the width is short */
+  padding-inline: 1.5rem;
+}
+@media (max-width: 47.99rem) {
+  .world-view-root [data-slot="world-view-button"] {
+    padding-inline: 1rem;
+  }
+}
 
 .np-text {
   /* (both lines are ONE line each, whatever the credit: owner. Under 1280 px the header is a row of its own and the words have the width of the screen; from 1280 they have the room the header's links leave, which start at (width - 816) / 2: the disc and its inset are 5 rem, and a longer line is cut with an ellipsis, in full in the title) */
