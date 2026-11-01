@@ -2226,6 +2226,59 @@
     }
   }
 
+  /*
+   * A list row with a picture of its own (components/entry/entry-list-card.tsx `EntryRow`; owner, 2026-11-01, #388): the text sits on the page's own colour; to the right, up to the hairlines (no page colour between
+   * them and the picture), the row's cover blurred and dimmed (`.entry-row-back`: 30 px of blur, 24 % over the page, darker on the dark page and paler on the light one), dissolving on its left edge into the page
+   * (a mask on an eased ramp); and on it, as before, the miniature of the picture, sharp and as it is. Square edges, no shadow; a mature picture has no backdrop.
+   */
+  .entry-row[data-pic] {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+  }
+
+  .entry-row-back {
+    position: absolute;
+    inset: 0 0 0 auto;
+    z-index: -1;
+    width: 62%;
+    overflow: hidden;
+    pointer-events: none;
+    --row-ramp: linear-gradient(to right, transparent 0%, rgb(0 0 0 / 0.04) 10%, rgb(0 0 0 / 0.14) 20%, rgb(0 0 0 / 0.32) 32%, rgb(0 0 0 / 0.56) 46%, rgb(0 0 0 / 0.8) 62%, rgb(0 0 0 / 0.95) 80%, #000 100%);
+    -webkit-mask-image: var(--row-ramp);
+    mask-image: var(--row-ramp);
+  }
+
+  .entry-row-back img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: blur(30px) saturate(0.85);
+    transform: scale(1.25);
+    opacity: 0.32;
+    transition: opacity var(--duration-base) var(--ease-standard);
+  }
+
+  .entry-row[data-pic]:hover .entry-row-back img {
+    opacity: 0.46;
+  }
+
+  @media (max-width: 47.99rem) {
+    /* on a phone the row is stacked: the backdrop is the whole row, dissolving at its top, where the text is */
+    .entry-row-back {
+      inset: 0;
+      width: auto;
+      --row-ramp: linear-gradient(to bottom, transparent 0%, rgb(0 0 0 / 0.1) 20%, rgb(0 0 0 / 0.4) 45%, rgb(0 0 0 / 0.8) 70%, #000 100%);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .entry-row-back img {
+      transition: none;
+    }
+  }
+
   /* The body: the board's 21 px / 1.55 at full width, the reading role's size in the half panel and on a phone. */
   .entry-text .ds-prose {
     font-size: var(--entry-body);
