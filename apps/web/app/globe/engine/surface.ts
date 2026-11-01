@@ -129,6 +129,13 @@ export const LIGHTS = {
     { color: [1, 0.78, 0.32], strength: 0.66 },
     { color: [1, 0.95, 0.76], strength: 0.85 },
   ] as const,
+  /**
+   * THE DIM ONES (owner, 2026-10-31, #442: "the palette of the dimmer variants looks like gold dust (pretty, but not the design direction)"): a light that is dimmer than the rest goes towards a sodium lamp's red-orange, `sodiumShare` of the way at
+   * `sodiumFull` of dimming (its share of the way to the page's colour: 0 is as bright as it gets) and over; the brightest keep their ramp.
+   */
+  sodium: [1, 0.36, 0.1] as const,
+  sodiumShare: 0.85,
+  sodiumFull: 0.5,
   own: 0.55,
   patch: 0.3,
   patchScale: 6,
