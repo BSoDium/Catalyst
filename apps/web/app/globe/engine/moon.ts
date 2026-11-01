@@ -66,6 +66,8 @@ export const MOON = {
   sunElevationDeg: 14,
   /** On the light page the lit side is overexposed: its ground goes this share of the way to the page's colour (not all of it: the details stay). The dark side has the ground's full tones. */
   burn: 0.55,
+  /** On the light page the whole moon, lit and dark sides, is lightened: its ground goes this share of the way to the page's colour before the burn (owner, 2026-10-31, #436: "lighter, both the lit and the dark sides"). */
+  lightWash: 0.3,
   /** The light's edge: `N . sun` from where a pixel is dark (the page's colour: it blends into the sky) to where it is lit, a smoothstep over this range (no dither: the moon is drawn with coverage). */
   litFrom: -0.08,
   litTo: 0.32,
@@ -173,6 +175,12 @@ export const FLARE = {
   streakUp: 0.14,
   streakDiag: 0.09,
   streakFall: 2.2,
+  /**
+   * The GLOW of the rays (owner, 2026-10-31, #441): a soft light along each ray, strongest by the sun and fading until nothing is left at the tips. In art pixels (the flare's own buffer): `width` the half width of the glow across a ray,
+   * `strength` its density at the sun (the dither of it: a pixel is lit when the density beats the pattern), `fall` the exponent of its fade along the ray (the same measure as the ray's own, 1 at the sun and 0 at the tip: so it
+   * goes with the music's pulse, which lengthens the rays, and with the rays' reach), `tone` how bright a glow pixel is, on the ramp's gold, `lightColor` and `lightAlpha` its colour and opacity on the light page: a warm light laid over the veil's grey, so that it reads as light (a grey one read as a shadow, a white one hid the white rays). The flare as a whole is gone with the sun (`uStr`), so there is no glow where there is no sun.
+   */
+  glow: { width: 3.5, strength: 0.75, fall: 3.2, tone: 0.32, lightColor: [1, 1, 1] as const, lightAlpha: 0.4 },
   streakTone: 1,
   /** The strength goes to 0 as the sun's distance from the middle (a share of the half diagonal) goes from `edgeFrom` to `edgeTo`, and from `midTo` down to `midFrom`. */
   edgeFrom: 0.8,

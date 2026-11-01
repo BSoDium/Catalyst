@@ -13,7 +13,7 @@ import type {
 } from "@catalyst/schemas";
 import { countryName, stripCountry } from "~/globe/engine/country-names";
 import { tripsOf, type Trip } from "~/lib/journeys";
-import { bboxExtentsKm, bboxFitRadiusKm } from "~/globe/engine/framing";
+import { bboxExtentsKm, bboxFitRadiusKm, contextScales } from "~/globe/engine/framing";
 import type { GlobeEntryRef, GlobeGroup, GlobePlace, GlobeRoute } from "~/globe/types";
 import { paletteOf } from "~/globe/paths/trail";
 import { formatDates, type FormattedDates } from "./dates";
@@ -45,7 +45,7 @@ export interface PlaceIndex {
  * `bbox` is the contract's optional extent of the area the place names (`[west, south, east, north]`, WGS84 degrees). It is
  * passed on when it is a plain box and becomes the place's rectangle on the map; otherwise it is dropped and the radius applies.
  */
-function toGlobePlace(place: PlaceSummary, entries?: readonly GlobeEntryRef[]): GlobePlace {
+function toGlobePlace(place: PlaceSummary, entries?: readonly GlobeEntryRef[], framingScale = 1): GlobePlace {
   const bbox = bboxExtentsKm(place.bbox) ? place.bbox : undefined;
   // With a box, the view radius is the one that frames the whole box around its centre, where the camera flies to
   // (`placeFraming`); the recorded point stays the anchor of the marker and the label (`lat`, `lon`).
@@ -60,6 +60,7 @@ function toGlobePlace(place: PlaceSummary, entries?: readonly GlobeEntryRef[]): 
     labelPriority: place.labelPriority,
     ...(viewRadiusKm !== undefined ? { viewRadiusKm } : {}),
     ...(bbox ? { bbox } : {}),
+    ...(framingScale > 1 ? { framingScale } : {}),
     ...(place.group !== undefined ? { groupSlug: place.group } : {}),
     ...(place.countryCode !== undefined ? { countryCode: place.countryCode } : {}),
     ...(entries && entries.length ? { entries } : {}),
@@ -157,7 +158,11 @@ export function resolveRoutes(projection: PublishedProjection): GlobeRoute[] {
 export function buildPlaceIndex(projection: PublishedProjection): PlaceIndex {
   const places = projection.places.map(toPlaceSummary);
   const entries = placeEntries(projection);
-  return { places, globePlaces: places.map((p) => toGlobePlace(p, entries.get(p.slug))), groups: projection.groups, routes: resolveRoutes(projection) };
+  const scales = contextScales(
+    places.map((p) => ({ slug: p.slug, lat: p.coordinates.lat, lon: p.coordinates.lon })),
+    projection.routes.map((r) => r.stops),
+  );
+  return { places, globePlaces: places.map((p) => toGlobePlace(p, entries.get(p.slug), scales.get(p.slug))), groups: projection.groups, routes: resolveRoutes(projection) };
 }
 
 export interface PlaceDetailData {

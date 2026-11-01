@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { loadDemoProjection } from "@catalyst/published/dev";
 import { EMPTY_PROJECTION, toPlaceSummary as schemaToPlaceSummary, type PublishedProjection } from "@catalyst/schemas";
-import { bboxFitRadiusKm } from "~/globe/engine/framing";
+import { CONTEXT_FRAMING, bboxFitRadiusKm } from "~/globe/engine/framing";
 import { buildPlaceIndex, getPlaceDetail, imageSize, placeEntries, resolveRoutes, toPlaceSummary } from "./projection";
 
 const demo = loadDemoProjection();
@@ -25,7 +25,11 @@ describe("buildPlaceIndex", () => {
       entries: [{ kind: "project", slug: "label-collision-engine" }, { kind: "article", slug: "morocco-coast-bus" }, { kind: "photograph", slug: "sea-wall" }],
       // the demo's Lisbon has a published box: it is passed on, and the view radius frames it
       bbox: lisbon.bbox,
+      // the demo's Lisbon is a stop of a route: framed wider, so the paths to it are in the picture (#457)
+      framingScale: CONTEXT_FRAMING.scale,
     });
+    // A place with nothing near it and on no route keeps its own framing: no scale.
+    expect(index.globePlaces.some((p) => p.framingScale === undefined)).toBe(true);
     // Without a published radius or box the globe gets neither (Kyoto has none): its default radius applies.
     expect(index.globePlaces.find((p) => p.slug === "kyoto")).not.toHaveProperty("viewRadiusKm");
     expect(index.globePlaces.find((p) => p.slug === "kyoto")).not.toHaveProperty("bbox");

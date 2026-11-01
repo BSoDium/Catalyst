@@ -18,7 +18,7 @@ import { applyDebugLevels } from "./engine/palette";
 import { applySpinFlags } from "./engine/idle-spin";
 import { applySkyFlags } from "./engine/sky";
 import { applyFxFlags } from "./engine/fx";
-import { INTERLUDE_WAIT_MS, PLAY_INTERLUDE_EVENT, RESTORE_HERO_EVENT, PREPARE_INTERLUDE_EVENT, type PlayInterludeRequest } from "./interlude";
+import { INTERLUDE_WAIT_MS, GO_WORLD_EVENT, PLAY_INTERLUDE_EVENT, RESTORE_HERO_EVENT, PREPARE_INTERLUDE_EVENT, type PlayInterludeRequest } from "./interlude";
 import { applyRingFlags, ringText } from "./engine/ring";
 import { applyMoonFlags } from "./engine/moon";
 import { applyShowcaseFlags } from "./engine/caption";
@@ -250,12 +250,15 @@ export default function GlobeCanvas({
     const onPrepare = () => {
       if (latest.current.showcase) handleRef.current?.prepareInterlude();
     };
+    const onWorld = () => handleRef.current?.goWorld();
+    window.addEventListener(GO_WORLD_EVENT, onWorld);
     window.addEventListener(PLAY_INTERLUDE_EVENT, onPlay);
     window.addEventListener(PREPARE_INTERLUDE_EVENT, onPrepare);
     window.addEventListener("pointerdown", clear, { passive: true, capture: true });
     return () => {
       clear();
       window.removeEventListener("pointerdown", clear, { capture: true });
+      window.removeEventListener(GO_WORLD_EVENT, onWorld);
       window.removeEventListener(PLAY_INTERLUDE_EVENT, onPlay);
       window.removeEventListener(PREPARE_INTERLUDE_EVENT, onPrepare);
     };

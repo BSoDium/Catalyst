@@ -2070,6 +2070,14 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
+    /* The cover sits at a comfortable level on the page (#437): a fifth of the page's colour over it in both schemes (a dark cover is not a heavy band on the light page, a bright one is not at full strength on the dark one), and on the dark page a little under full brightness so that a bright cover does not glare. The dim variants below set their own. */
+    opacity: 0.82;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .entry-hero-img {
+      filter: brightness(0.85);
+    }
   }
 
   .entry-hero[data-tone="dim"] .entry-hero-img {
@@ -3499,6 +3507,26 @@ body:not(:has([data-slot="site-header"])) .np-root {
     transparent 100%
   );
 }
+/* The floating way back to the world view (components/world-view-button.tsx): bottom centre, over the credits' line's height, clear of the safe area of a phone. */
+.world-view-root {
+  bottom: max(1.25rem, env(safe-area-inset-bottom, 0px));
+}
+/* Over the globe's linework the button must read: the page's colour at 72 % over a blur of what is behind it. */
+.world-view-root [data-slot="world-view-button"] {
+  --ds-button-bg: color-mix(in srgb, var(--background) 72%, transparent);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  /* the outline is the soft one, not the strong hairline; the content is centred */
+  --ds-button-line: var(--border);
+  /* wide by default (1.5 rem each side), the button's own 1 rem only where the width is short */
+  padding-inline: 1.5rem;
+}
+@media (max-width: 47.99rem) {
+  .world-view-root [data-slot="world-view-button"] {
+    padding-inline: 1rem;
+  }
+}
+
 .np-text {
   /* (both lines are ONE line each, whatever the credit: owner. Under 1280 px the header is a row of its own and the words have the width of the screen; from 1280 they have the room the header's links leave, which start at (width - 816) / 2: the disc and its inset are 5 rem, and a longer line is cut with an ellipsis, in full in the title) */
   max-width: 100%;
