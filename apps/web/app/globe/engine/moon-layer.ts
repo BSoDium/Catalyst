@@ -81,6 +81,8 @@ const FRAGMENT = /* glsl */ `
     vec2 uv = vec2(atan(n.x, n.z) * 0.15915494 + 0.5, asin(clamp(n.y, -1.0, 1.0)) * 0.31830989 + 0.5);
     float v = texture2D(uMap, uv).r;
     vec3 ground = mix(mix(uTone0, uTone1, step(${SURFACE.cuts[0].toFixed(3)}, v)), uTone2, step(${SURFACE.cuts[1].toFixed(3)}, v));
+    // (the light page's moon is lighter on both sides: MOON.lightWash)
+    ground = mix(ground, uBg, uFlip * ${MOON.lightWash.toFixed(2)});
     // the dark side is the page's colour: the body is solid, so it hides what is behind it. On the light page it is the other way (uFlip): the lit side is overexposed, burnt towards
     // the page's colour (not all the way: MOON.burn, so that its details are still there), and the dark side has the ground's full tones
     vec3 col = mix(uBg, ground, lit);
