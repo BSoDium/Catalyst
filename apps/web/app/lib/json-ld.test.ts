@@ -67,6 +67,18 @@ describe("entryJsonLd", () => {
     expect(entryJsonLd(e, ORIGIN).contentLocation).toEqual([{ "@type": "Country", name: "Brazil" }]);
   });
 
+  it("gives a photograph's exposure facts as exifData, in order, and nothing for a photograph with none", () => {
+    const meta = [{ label: "Licence", value: "All rights reserved" }, { label: "ISO", value: "200" }, { label: "Camera", value: "Sony A7 IV" }, { label: "Aperture", value: "f/2.8" }];
+    const ld = entryJsonLd(entry({ kind: "photograph", href: "/photography/a", meta }), ORIGIN) as { exifData?: { "@type": string; name: string; value: string }[] };
+    expect(ld.exifData).toEqual([
+      { "@type": "PropertyValue", name: "Camera", value: "Sony A7 IV" },
+      { "@type": "PropertyValue", name: "Aperture", value: "f/2.8" },
+      { "@type": "PropertyValue", name: "ISO", value: "200" },
+    ]);
+    expect(entryJsonLd(entry({ kind: "photograph", href: "/photography/a", meta: [{ label: "Licence", value: "x" }] }), ORIGIN)).not.toHaveProperty("exifData");
+    expect(entryJsonLd(entry({ kind: "artwork", href: "/artworks/a", meta }), ORIGIN)).not.toHaveProperty("exifData");
+  });
+
   it("types a photograph as a schema.org Photograph, with the owner's notice", () => {
     expect(entryJsonLd(entry({ kind: "photograph", href: "/photography/a", date: "2026-03" }), ORIGIN)).toMatchObject({ "@type": "Photograph", copyrightYear: 2026 });
   });

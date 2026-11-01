@@ -10,6 +10,25 @@ const demo = loadDemoProjection();
 const render = (kind: "article" | "poem" | "project" | "artwork" | "photograph", slug: string, layout: "panel" | "full", backTo?: { slug?: string; name: string; href: string; list?: boolean }) =>
   renderToStaticMarkup(createElement(StaticRouter, { location: "/" }, createElement(EntryView, { entry: getEntryDetail(demo, kind, slug)!, layout, backTo })));
 
+describe("EntryView, how a photograph was taken (#385)", () => {
+  it("says the camera and the lens, then the settings, under the title, and does not repeat them in the facts", () => {
+    const html = render("photograph", "demo-photograph", "panel");
+    expect(html).toContain('data-slot="entry-exposure"');
+    expect(html).toMatch(/data-slot="entry-gear"[^>]*>Sony A7 IV · FE 35 mm F1\.8</);
+    expect(html).toMatch(/data-slot="entry-settings"[^>]*>35 mm · f\/2\.8 · 1\/250 s · ISO 200</);
+    // (in the head, before the picture; the facts block keeps its own rows)
+    expect(html.indexOf('data-slot="entry-exposure"')).toBeLessThan(html.indexOf("Layered forested ridges"));
+    expect(html).toContain("3:2 landscape");
+    expect(html).not.toMatch(/Focal length|>Aperture<|>Shutter</);
+  });
+  it("skips what is missing: a camera alone is one line, and an entry with none shows nothing", () => {
+    const one = render("photograph", "platform-nine", "panel");
+    expect(one).toMatch(/data-slot="entry-gear"[^>]*>Pixel 7</);
+    expect(one).not.toContain('data-slot="entry-settings"');
+    expect(render("artwork", "night-platform-split", "panel")).not.toContain('data-slot="entry-exposure"');
+  });
+});
+
 describe("EntryView", () => {
   it("has one h1 (the title, the focus target), the kind and the date as one plain line, and the metadata", () => {
     const html = render("article", "demo-article", "panel");

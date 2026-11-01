@@ -575,6 +575,30 @@
         {
           "label": "Licence",
           "value": "Demo image, free to reuse"
+        },
+        {
+          "label": "Camera",
+          "value": "Sony A7 IV"
+        },
+        {
+          "label": "Lens",
+          "value": "FE 35 mm F1.8"
+        },
+        {
+          "label": "Focal length",
+          "value": "35 mm"
+        },
+        {
+          "label": "Aperture",
+          "value": "f/2.8"
+        },
+        {
+          "label": "Shutter",
+          "value": "1/250 s"
+        },
+        {
+          "label": "ISO",
+          "value": "200"
         }
       ],
       "body": [
@@ -611,6 +635,26 @@
         {
           "label": "Licence",
           "value": "Demo image, free to reuse"
+        },
+        {
+          "label": "Camera",
+          "value": "Fujifilm X100V"
+        },
+        {
+          "label": "Focal length",
+          "value": "23 mm"
+        },
+        {
+          "label": "Aperture",
+          "value": "f/2"
+        },
+        {
+          "label": "Shutter",
+          "value": "1/60 s"
+        },
+        {
+          "label": "ISO",
+          "value": "1600"
         }
       ],
       "body": [
@@ -647,6 +691,30 @@
         {
           "label": "Licence",
           "value": "Demo image, free to reuse"
+        },
+        {
+          "label": "Camera",
+          "value": "Sony A7 IV"
+        },
+        {
+          "label": "Lens",
+          "value": "FE 24-70 mm F2.8 GM"
+        },
+        {
+          "label": "Focal length",
+          "value": "50 mm"
+        },
+        {
+          "label": "Aperture",
+          "value": "f/8"
+        },
+        {
+          "label": "Shutter",
+          "value": "1/500 s"
+        },
+        {
+          "label": "ISO",
+          "value": "100"
         }
       ],
       "body": [
@@ -680,6 +748,10 @@
         {
           "label": "Licence",
           "value": "Demo image, free to reuse"
+        },
+        {
+          "label": "Camera",
+          "value": "Pixel 7"
         }
       ],
       "body": [
