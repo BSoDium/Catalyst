@@ -4,6 +4,7 @@
  */
 import { copyrightNotice } from "./copyright";
 import type { EntryDetail } from "./entries";
+import { splitExposure, EXPOSURE_LABELS } from "./exposure";
 import { isScrapableImage, absoluteUrl } from "./meta";
 import { shareableCover } from "./sensitive";
 import { SITE_DESCRIPTION, SITE_NAME } from "./site";
@@ -20,6 +21,14 @@ export function isCodeRepository(url: string | undefined): boolean {
   } catch {
     return false;
   }
+}
+
+/** A photograph's exposure facts as `exifData` (`PropertyValue`s, in the labels' order), or nothing when it has none. */
+function exifData(entry: EntryDetail): Json {
+  const found = entry.meta.filter((m) => (EXPOSURE_LABELS as readonly string[]).some((l) => l.toLowerCase() === m.label.trim().toLowerCase()) && m.value.trim());
+  if (!splitExposure(entry.meta).exposure || !found.length) return {};
+  const order = (label: string) => EXPOSURE_LABELS.findIndex((l) => l.toLowerCase() === label.trim().toLowerCase());
+  return { exifData: [...found].sort((a, b) => order(a.label) - order(b.label)).map((m) => ({ "@type": "PropertyValue", name: m.label, value: m.value.trim() })) };
 }
 
 /** The home page: the site as a `WebSite`. */
@@ -55,6 +64,8 @@ export function entryJsonLd(entry: EntryDetail, origin: string): Json {
     ...(cover ? { image: cover } : {}),
     ...(entry.tags.length ? { keywords: entry.tags.join(", ") } : {}),
     ...(entry.kind === "poem" ? { genre: "Poem" } : {}),
+    // how a photograph was taken, as schema.org's `exifData` (a list of name and value pairs): only the six facts of `exposure.ts`, as the page says them
+    ...(entry.kind === "photograph" ? exifData(entry) : {}),
     ...(type === "SoftwareSourceCode" && entry.url ? { codeRepository: entry.url } : {}),
     ...(entry.places.length
       ? { contentLocation: entry.places.map((p) => ({ "@type": "Place", name: p.name, url: absoluteUrl(p.href, origin) })) }

@@ -22,6 +22,7 @@ import {
 } from "~/lib/entries";
 import { displayHost, safeExternalUrl, safeMediaSrc } from "~/lib/entry-blocks";
 import { tagSearch } from "~/lib/entry-list";
+import { splitExposure } from "~/lib/exposure";
 import { isSensitive } from "~/lib/sensitive";
 import { formatMonthYear, headlineScale, linkedLine, splitHeadline } from "~/lib/entry-typography";
 import { formatReadingTime, readingMinutes, tocItems } from "~/lib/reading";
@@ -83,7 +84,9 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
   const heroDim = !!heroSrc && (entry.kind === "artwork" || entry.kind === "photograph" || isSensitive(entry));
   // A photograph is the page: its picture comes straight after the title, before the dateline and the marginalia.
   const photo = entry.kind === "photograph";
-  const { status, facts } = splitMeta(entry.meta);
+  // (how a photograph was taken is its own line under the title, not a row of the facts)
+  const { exposure, rest: metaRest } = photo ? splitExposure(entry.meta) : { exposure: null, rest: entry.meta };
+  const { status, facts } = splitMeta(metaRest);
   const date = formatEntryDate(entry.date);
   const language = entryLanguage(entry.meta);
   const external = entry.url ? safeExternalUrl(entry.url) : null;
@@ -307,6 +310,12 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
                 {tail ? <span className="entry-title-tail">{tail}</span> : null}
               </h1>
               {entry.summary && !poem && <p className="type-standfirst mt-[1.375rem] max-w-[25.4em] md:mt-[2.125rem]">{entry.summary}</p>}
+              {exposure && (
+                <p data-slot="entry-exposure" className="entry-exposure type-meta m-0 mt-5 flex flex-col gap-1 text-muted-foreground">
+                  {exposure.gear.length > 0 && <span data-slot="entry-gear">{exposure.gear.join(" · ")}</span>}
+                  {exposure.settings.length > 0 && <span data-slot="entry-settings">{exposure.settings.join(" · ")}</span>}
+                </p>
+              )}
               {actions}
             </div>
             {heroSrc && entry.cover && <img src={heroSrc} alt={heroDim ? "" : entry.cover.alt} width={entry.cover.width} height={entry.cover.height} decoding="async" className="entry-hero-img" />}
