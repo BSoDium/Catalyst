@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_VIEW_RADIUS_KM, EARTH_RADIUS_KM, FRAMING_MARGIN, bboxExtentsKm, bboxFitRadiusKm, effectiveRadiusKm, placeFraming, radiusFitZoom } from "./framing";
+import { CONTEXT_FRAMING, DEFAULT_VIEW_RADIUS_KM, EARTH_RADIUS_KM, FRAMING_MARGIN, VIEW_RADIUS_RANGE_KM, bboxExtentsKm, bboxFitRadiusKm, contextScales, effectiveRadiusKm, placeFraming, radiusFitZoom } from "./framing";
 import { zoomToRadiusPx } from "./geo";
 
 /** Circle radius in px that a zoom gives to `km`. */
@@ -100,5 +100,25 @@ describe("placeFraming and bounding boxes", () => {
     expect(bboxExtentsKm(undefined)).toBeNull();
     expect(bboxExtentsKm([1, 2, 3])).toBeNull();
     expect(bboxExtentsKm([0, 0, 0, 1])).toBeNull();
+  });
+});
+
+describe("framing by context (#457)", () => {
+  const toulouse = { slug: "toulouse", lat: 43.6, lon: 1.44 };
+  const albi = { slug: "albi", lat: 43.93, lon: 2.15 };
+  const desert = { slug: "oued-el-ouaar", lat: 28.17, lon: -11.87 };
+  it("an isolated place keeps its own framing; a place with a neighbour or a route is framed wider", () => {
+    const s = contextScales([toulouse, albi, desert], []);
+    expect(s.get("toulouse")).toBe(CONTEXT_FRAMING.scale);
+    expect(s.get("albi")).toBe(CONTEXT_FRAMING.scale);
+    expect(s.get("oued-el-ouaar")).toBe(1);
+    const r = contextScales([desert], [["oued-el-ouaar", "elsewhere"]]);
+    expect(r.get("oued-el-ouaar")).toBe(CONTEXT_FRAMING.scale);
+  });
+  it("placeFraming applies the scale to the box's radius and ignores a scale under 1", () => {
+    const place = { lat: 43.6, lon: 1.44, bbox: [1.35, 43.55, 1.53, 43.65] as const };
+    const base = placeFraming(place).radiusKm;
+    expect(placeFraming({ ...place, framingScale: 6 }).radiusKm).toBeCloseTo(Math.min(VIEW_RADIUS_RANGE_KM.max, base * 6), 5);
+    expect(placeFraming({ ...place, framingScale: 0.2 }).radiusKm).toBe(base);
   });
 });

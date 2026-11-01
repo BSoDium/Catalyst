@@ -70,6 +70,11 @@ export interface GlobePlace {
    */
   bbox?: readonly [number, number, number, number];
   /**
+   * How much wider than its own box the place is framed when selected (`CONTEXT_FRAMING`, engine/framing.ts): above 1 for a place with routes to it or other places near it, so the paths and the
+   * neighbours are in the picture; absent for an isolated place, framed on itself.
+   */
+  framingScale?: number;
+  /**
    * Slug of the innermost automatic group that contains the place (published `group`), or absent when the place is in no
    * group (or the group is not in `GlobeProps.groups`). The place is a child of that group in the semantic zoom: its marker
    * appears when the group's square has grown enough to hand over to its contents. A place with no group is a root: always

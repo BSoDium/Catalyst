@@ -79,10 +79,39 @@ export function bboxFitRadiusKm(bbox: Bbox | readonly number[] | undefined | nul
  * label stay on the recorded point (`lat`, `lon`). Boxes crossing the antimeridian are not supported (west < east is required,
  * so the centre is the plain mean of the longitudes; an invalid box falls back to the point).
  */
-export function placeFraming(place: { lat: number; lon: number; viewRadiusKm?: number | undefined; bbox?: Bbox | readonly number[] | undefined }): { lon: number; lat: number; radiusKm: number } {
+export function placeFraming(place: { lat: number; lon: number; viewRadiusKm?: number | undefined; bbox?: Bbox | readonly number[] | undefined; framingScale?: number | undefined }): { lon: number; lat: number; radiusKm: number } {
+  const scale = typeof place.framingScale === "number" && place.framingScale >= 1 && Number.isFinite(place.framingScale) ? place.framingScale : 1;
   const ext = bboxExtentsKm(place.bbox);
-  if (ext) return { lon: ext.lon, lat: ext.lat, radiusKm: effectiveRadiusKm(Math.max(ext.halfXKm, ext.halfYKm)) };
-  return { lon: place.lon, lat: place.lat, radiusKm: effectiveRadiusKm(place.viewRadiusKm) };
+  if (ext) return { lon: ext.lon, lat: ext.lat, radiusKm: effectiveRadiusKm(Math.max(ext.halfXKm, ext.halfYKm) * scale) };
+  return { lon: place.lon, lat: place.lat, radiusKm: effectiveRadiusKm(effectiveRadiusKm(place.viewRadiusKm) * scale) };
+}
+
+/**
+ * How a place is framed by what is around it (owner, 2026-11-01, #457): a place with nothing near it (no route stops there, no other place within `neighbourKm`) is framed on itself, so its streets
+ * show; one with routes arriving at it, or other places around, is framed `scale` times wider than its own box (its box takes about a tenth of the view's side), so that the paths leading to it and
+ * what is near are in the picture. The scale is carried by the place (`GlobePlace.framingScale`) and applied by `placeFraming`, so every camera move to a place agrees.
+ */
+export const CONTEXT_FRAMING = { scale: 6, neighbourKm: 150 } as const;
+
+/** Great-circle distance in km (haversine). */
+export function distanceKm(a: { lat: number; lon: number }, b: { lat: number; lon: number }): number {
+  const r = Math.PI / 180;
+  const dLat = (b.lat - a.lat) * r;
+  const dLon = (b.lon - a.lon) * r;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLon / 2) ** 2;
+  return 2 * EARTH_RADIUS_KM * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+/** The framing scale of every place given the places and the stops of the routes (slugs): `CONTEXT_FRAMING.scale` for a connected place, 1 for an isolated one. Pure. */
+export function contextScales(places: readonly { slug: string; lat: number; lon: number }[], routeStops: readonly (readonly string[])[]): Map<string, number> {
+  const onRoute = new Set<string>();
+  for (const stops of routeStops) if (stops.length >= 2) for (const s of stops) onRoute.add(s);
+  const out = new Map<string, number>();
+  for (const p of places) {
+    const near = places.some((q) => q.slug !== p.slug && distanceKm(p, q) <= CONTEXT_FRAMING.neighbourKm);
+    out.set(p.slug, onRoute.has(p.slug) || near ? CONTEXT_FRAMING.scale : 1);
+  }
+  return out;
 }
 
 /** The radius to use for a place: its own, clamped to the contract's range, else the default. */
