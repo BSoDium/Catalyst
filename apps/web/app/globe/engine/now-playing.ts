@@ -38,7 +38,7 @@ export const TRACKS = {
     titleHref: "https://pixabay.com/music/orchestral-cinematic-cinematic-music-583978/",
     artists: [{ name: "Nikita Kondrashev (leberch)", href: "https://taketones.com/author/nikita-kondrashev" }],
   },
-  // (the pieces the sun's music draws on, #389: Pixabay, the owner checked each licence; the sleeve of the second is the artist's, 200 px)
+  // (the pieces the sun's music draws on, #389: Pixabay, the owner checked each licence; the sleeves are the owner's, 200 px)
   space: {
     id: "space",
     title: "Space",
@@ -53,7 +53,7 @@ export const TRACKS = {
     title: "Silent Universe",
     artist: "Universfield",
     priority: 1,
-    // (no sleeve yet: the plain label, the sun's warm ramp)
+    cover: "/media/now-playing/silent-universe.jpg",
     titleHref: "https://pixabay.com/music/meditationspiritual-silent-universe-351473/",
     artists: [{ name: "Universfield", href: "https://unil.ink/universfield" }],
   },
