@@ -296,6 +296,8 @@ export class FlareLayer {
     u.uBg!.value.setRGB(...t.background);
     u.uInk!.value.setRGB(...t.ink);
     u.uLight!.value = t.scheme === "dark" ? 0 : 1;
+    // On the light page the sun's halo MULTIPLIES what is behind it (sun-layer.ts), so a flare drawn before it had its white rays darkened to grey where the halo is (owner, 2026-11-01); drawn after the halo and the blob it keeps them white. The dark page's halo is additive: the order stays.
+    this.mesh.renderOrder = t.scheme === "dark" ? 0.9 : 5.3;
   }
 
   /** True when the flare is in the picture now. */
