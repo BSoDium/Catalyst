@@ -87,8 +87,9 @@ const FRAGMENT = /* glsl */ `
     if (o.y == 0.0) { dist = a.x; len = ${f(FLARE.streak)} * uLen * uBufW * uPulse.x; }
     else if (o.x == 0.0) { dist = a.y; len = ${f(FLARE.streakUp)} * uLen * uBufH * uPulse.x; }
     else if (a.x == a.y) { dist = a.x * 1.4142; len = ${f(FLARE.streakDiag)} * uLen * uBufW * uPulse.y; }
-    if (dist > uSunR) {
-      float along = 1.0 - (dist - uSunR) / len;
+    // (the rays start INSIDE the disc's edge, at half its radius: they are drawn over the sun, where it is white or glowing, so they join it, and the gap between the disc's soft edge and where a ray began, which left some rays detached, cannot show)
+    if (dist > uSunR * 0.5) {
+      float along = min(1.0, 1.0 - (dist - uSunR) / len);
       // (the dither's threshold: the fixed pattern, and with the music a noise that is a new one at every pulse, uJitter of it: the grain of a ray is never the same twice)
       float grain = fract(sin(dot(vec2(o) + vec2(uSeed * 7.31, uSeed * 3.17), vec2(12.9898, 78.233))) * 43758.5453);
       if (along > 0.0 && pow(along, ${f(FLARE.streakFall)}) > mix(bayer(), grain, uJitter)) { ink = ${f(FLARE.streakTone)}; hue = 0.95; ray = true; }
