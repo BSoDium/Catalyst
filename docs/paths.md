@@ -109,7 +109,7 @@ Safari; any phone GPU; the pixel pass on the street map beyond screenshots of th
 ## Patterned legs on the street map, cell by cell; far away; sparks
 
 - **Cell by cell** (`street/overlay/trail-dots.ts`, `trail-dots-layer.ts`; owner feedback 2026-10-20: dotted legs flickered and read as artefacts). MapLibre drew dashes at device resolution and the pass thresholded them onto the art grid, so a dash 1.5 cells long was one cell or two or none depending on the angle and the offset. Every mode but road is now projected to cell space and walked in whole cells (`CELL_PATTERN` in `paths/modes.ts`: flight 1 on / 4 off, ferry 1 / 3, walk 1 / 2, rail 4 / 2 with a 3-cell tick, unknown 4 / 3), anchored to the leg's own length, on a canvas of the art cells under the boxes. A dot is exactly one art pixel at every angle and zoom. Roads keep the MapLibre gradient line.
-- **Far away.** The paths are quieter from space: a solid mix toward the page by `farOf(zoom)` (0.55 at the whole globe, none from internal zoom 2.6; sixths), the selected place's legs excepted. The globe's arcs keep their look.
+- **Far away.** The paths are quieter from space: a solid mix toward the page by `farOf(zoom)` (`FAR_TONE` 0.6 from the home view and further out, none from internal zoom 4.2; sixths), the selected place's legs excepted. The globe's arcs keep their look.
 - **Sparks.** None from space (the globe draws none). On the street map a cell at each head (a plus when lit) from map zoom 6.5 (`SPARK_FROM_ZOOM`), inside the place's box.
 - **Dash length by zoom.** The one remaining MapLibre dashed layers (graticule, dashed road classes) get their arrays scaled by 2^-(zoom fraction) because MapLibre sizes dashes at `floor(zoom)` (`applyDashScale`).
 

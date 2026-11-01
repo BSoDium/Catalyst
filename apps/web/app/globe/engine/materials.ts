@@ -5,7 +5,7 @@
  */
 import { AddEquation, BackSide, Color, CustomBlending, DstColorFactor, FrontSide, NormalBlending, ShaderMaterial, ZeroFactor } from "three";
 import { CELL_PATTERN, LEG_MODES, MODE_STYLE } from "../paths/modes";
-import { CROWD_TONE, SOLID_TONE } from "../paths/lod";
+import { CROWD_TONE, FAR_TONE, SOLID_TONE } from "../paths/lod";
 import { STRAIGHT_FADE_MIX, STRAIGHT_FADE_STEPS } from "../paths/thin";
 import { SPARK, TRAIL_BANDS, TRAIL_ENTRIES, TRAIL_PER_PALETTE } from "../paths/trail";
 import { RIM, SUN } from "./moon";
@@ -713,7 +713,7 @@ export function pathMaterial(): ShaderMaterial {
         // (a crowd's tone by its step, and the solid world view's: paths/lod.ts CROWD_TONE, SOLID_TONE)
         float toned = crowd > 2.5 ? ${f(CROWD_TONE[3]!)} : crowd > 1.5 ? ${f(CROWD_TONE[2]!)} : crowd > 0.5 ? ${f(CROWD_TONE[1]!)} : 0.0;
         if (solid && uSolid > 0.5) toned = max(toned, ${f(SOLID_TONE)});
-        col = mix(uPage, col, (inked ? 1.0 : (1.0 - 0.55 * uFar) * (1.0 - toned)) * pk);
+        col = mix(uPage, col, (inked ? 1.0 : (1.0 - ${FAR_TONE.toFixed(2)} * uFar) * (1.0 - toned)) * pk);
         // a straight line up close: a solid mix toward the page by its step
         col = mix(col, uPage, ${f(STRAIGHT_FADE_MIX)} * vQuiet / ${f(STRAIGHT_FADE_STEPS)});
         gl_FragColor = vec4(col, 1.0);
