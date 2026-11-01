@@ -2109,6 +2109,12 @@ export class GlobeRenderer {
   }
 
   /** An interlude asked for away from the display mode is held or under way (`eggAsk`): the handover cuts the street map away at once, with no cross-fade that would follow the page's camera under the glide. */
+  /** Keep the sun out of the picture while the street map's tone cross-fade runs over the globe, and let it back in after it (#469). */
+  holdSun(on: boolean): void {
+    this.globe.sun?.hold(on);
+    this.requestRender();
+  }
+
   interludeAway(): boolean {
     return this.eggAsk !== null;
   }

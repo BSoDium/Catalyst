@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { MOON, SUN } from "./moon";
-import { easeTouch, flarePlace, haloClear, pickOccluder, planetRise, rayStart, sunCrescent, sunRise, type FlareFrame, type Occluder } from "./sun-flare";
+import { easeTouch, gateStep, touchTarget, flarePlace, haloClear, pickOccluder, planetRise, rayStart, sunCrescent, sunRise, type FlareFrame, type Occluder } from "./sun-flare";
 
 const frame = (over: Partial<FlareFrame> = {}): FlareFrame => ({ bufW: 400, bufH: 260, x: 300, y: 80, ahead: true, amount: 1, visible: 1, ...over });
 
@@ -213,26 +213,56 @@ describe("flarePlace, the light page's fade", () => {
   });
 });
 
-describe("the disc the planet makes of the sun, eased in time", () => {
-  it("comes in and goes with the clock, not with the frame: a limb that crosses the sun in two frames leaves it nearly clear", () => {
+describe("the disc the planet makes of the sun, eased in, gone with the cover", () => {
+  it("comes in with the clock, not with the frame: a limb that crosses the sun in two frames leaves it nearly clear", () => {
     // two 16 ms frames of the planet touching it, then clear again
     let t = 0;
     t = easeTouch(t, 1, 0.016);
     t = easeTouch(t, 1, 0.016);
     expect(t).toBeLessThan(0.3);
     t = easeTouch(t, 0, 0.016);
-    expect(t).toBeLessThan(0.3);
-    // held for half a second it is whole, and it goes in about as long
+    expect(t).toBe(0);
+    // held for half a second it is whole
     let held = 0;
     for (let i = 0; i < 30; i++) held = easeTouch(held, 1, 0.016);
     expect(held).toBeGreaterThan(0.95);
-    let gone = held;
-    for (let i = 0; i < 60; i++) gone = easeTouch(gone, 0, 0.016);
-    expect(gone).toBeLessThan(0.05);
   });
-  it("does not move without time, and is where it was asked to be after a long one", () => {
+  it("is gone the frame the sun is clear, however long it was whole (a sun out from behind the planet is not a flat disc, #469), and follows the target down", () => {
+    expect(easeTouch(1, 0, 0.016)).toBe(0);
+    expect(easeTouch(1, 0.6, 0.016)).toBe(0.6);
+    expect(easeTouch(0.3, 0.3, 0.016)).toBe(0.3);
+  });
+  it("is asked for only while the planet touches a sun that is in view: not clear, not wholly hidden (#469)", () => {
+    expect(touchTarget(1)).toBe(0);
+    expect(touchTarget(0.97)).toBe(0);
+    expect(touchTarget(0.5)).toBe(1);
+    expect(touchTarget(0.05)).toBe(1);
+    expect(touchTarget(0)).toBe(0);
+    expect(touchTarget(0.003)).toBe(0);
+    // a smooth way down through the last few percent of the sun
+    expect(touchTarget(0.935)).toBeGreaterThan(0.3);
+    expect(touchTarget(0.935)).toBeLessThan(0.7);
+  });
+  it("does not move up without time, and is where it was asked to be after a long one", () => {
     expect(easeTouch(0.4, 1, 0)).toBe(0.4);
     expect(easeTouch(0, 1, 10)).toBeCloseTo(1, 5);
     expect(easeTouch(1, 0, 10)).toBeCloseTo(0, 5);
+  });
+});
+
+describe("the sun's gate over the street map's tone cross-fade (#469)", () => {
+  it("is shut at once while the fade is on, and opens over a quarter of a second after it", () => {
+    expect(gateStep(1, true, 0.016)).toBe(0);
+    let g = 0;
+    g = gateStep(g, false, 0.1);
+    expect(g).toBeGreaterThan(0.3);
+    expect(g).toBeLessThan(0.5);
+    g = gateStep(g, false, 0.1);
+    g = gateStep(g, false, 0.1);
+    expect(g).toBe(1);
+  });
+  it("does not open without time, and never past whole", () => {
+    expect(gateStep(0, false, 0)).toBe(0);
+    expect(gateStep(0.9, false, 10)).toBe(1);
   });
 });
