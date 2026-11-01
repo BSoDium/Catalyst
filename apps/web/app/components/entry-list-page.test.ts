@@ -99,7 +99,7 @@ describe("EntryListPage", () => {
     expect(html).not.toContain("list-standfirst");
     expect(html).not.toContain("entry-rule");
     expect((html.match(/<h1/g) ?? []).length).toBe(1);
-    expect((html.match(/entry-row/g) ?? []).length).toBe(articles.length);
+    expect((html.match(/entry-row(?![-\w])/g) ?? []).length).toBe(articles.length);
     expect(html).toMatch(/<h2[^>]*class="type-display-md[^"]*"/);
     expect(html).toContain("type-meta");
     expect(html).not.toMatch(/ds-grid|ds-col|border-border-strong|rounded/);
@@ -107,6 +107,18 @@ describe("EntryListPage", () => {
     const withoutImage = articles.map((a) => ({ ...a, cover: undefined }));
     expect(render(withoutImage)).not.toContain('data-slot="cover-art"');
     expect(html).toContain("<img");
+  });
+  it("marks a covered row for the phone layout (the picture first, the meta and the title on its foot) and leaves a row without a cover alone", () => {
+    const covered = render(articles);
+    expect((covered.match(/<article[^>]*data-covered=""/g) ?? []).length).toBe(articles.filter((a) => a.cover).length);
+    expect(articles.some((a) => a.cover)).toBe(true);
+    // two lines of title at most on a phone, a 4:3 picture there and the wide one from md
+    expect(covered).toContain("max-md:line-clamp-2");
+    expect(covered).toContain("aspect-4/3");
+    expect(covered).toContain("md:aspect-video");
+    const bare = render(articles.map((a) => ({ ...a, cover: undefined })));
+    expect(bare).not.toContain("data-covered");
+    expect(bare).not.toContain("max-md:line-clamp-2");
   });
   it("gives an artwork without an image its generated cover (the image is the artwork)", () => {
     const artworks = listEntries(demo, "artwork").map((a) => ({ ...a, cover: undefined }));

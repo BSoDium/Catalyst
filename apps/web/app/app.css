@@ -1014,6 +1014,55 @@
     outline-offset: 6px;
   }
 
+  /*
+   * A covered row on a phone (2026-11-02, owner: the stacked cover below the text lost the elegance of the prototype): the picture first,
+   * and the mono line and the title resting on its foot, where the picture dissolves into the page (a mask on an eased ramp, not a dark
+   * veil: the title is the ink on the page, with no edge left at the picture's foot or sides on either theme). The three sit in one grid cell stack: the cover
+   * spans the first three rows, the meta and the title take the last two, so the text hugs the bottom edge and the picture keeps its
+   * 4:3 height whatever the title (two lines at most; the cover never grows from the text). The summary and the tags follow on the page.
+   * From `md` the row is the 12-column row it was; a row without a cover is unchanged on both.
+   */
+  @media (max-width: 47.99rem) {
+    .entry-row[data-covered] {
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: minmax(0, 1fr) auto auto auto auto;
+    }
+
+    .entry-row[data-covered] .entry-row-cover {
+      position: relative;
+      grid-row: 1 / 4;
+      grid-column: 1;
+      -webkit-mask-image: linear-gradient(to top, transparent 0%, rgb(0 0 0 / 0.08) 14%, rgb(0 0 0 / 0.26) 30%, rgb(0 0 0 / 0.54) 46%, rgb(0 0 0 / 0.8) 62%, rgb(0 0 0 / 0.94) 78%, #000 100%);
+      mask-image: linear-gradient(to top, transparent 0%, rgb(0 0 0 / 0.08) 14%, rgb(0 0 0 / 0.26) 30%, rgb(0 0 0 / 0.54) 46%, rgb(0 0 0 / 0.8) 62%, rgb(0 0 0 / 0.94) 78%, #000 100%);
+    }
+
+    .entry-row[data-covered] .entry-row-meta {
+      z-index: 1;
+      grid-row: 2;
+      grid-column: 1;
+      align-self: end;
+    }
+
+    .entry-row[data-covered] [data-slot="entry-card-title"] {
+      z-index: 1;
+      grid-row: 3;
+      grid-column: 1;
+      padding: 0.25rem 0 0.875rem;
+    }
+
+    .entry-row[data-covered] .entry-row-summary {
+      grid-row: 4;
+      grid-column: 1;
+      padding-top: 0.25rem;
+    }
+
+    .entry-row[data-covered] .entry-row-tags {
+      grid-row: 5;
+      grid-column: 1;
+      padding-top: 0.75rem;
+    }
+  }
+
   /* Divider: a hairline, optionally hung with a tick scale (minor every 8 px, major every 40 px). */
   .ds-divider {
     height: 0;
