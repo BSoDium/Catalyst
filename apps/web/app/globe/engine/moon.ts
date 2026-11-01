@@ -66,6 +66,8 @@ export const MOON = {
   sunElevationDeg: 14,
   /** On the light page the lit side is overexposed: its ground goes this share of the way to the page's colour (not all of it: the details stay). The dark side has the ground's full tones. */
   burn: 0.55,
+  /** On the light page the whole moon, lit and dark sides, is lightened: its ground goes this share of the way to the page's colour before the burn (owner, 2026-10-31, #436: "lighter, both the lit and the dark sides"). */
+  lightWash: 0.3,
   /** The light's edge: `N . sun` from where a pixel is dark (the page's colour: it blends into the sky) to where it is lit, a smoothstep over this range (no dither: the moon is drawn with coverage). */
   litFrom: -0.08,
   litTo: 0.32,

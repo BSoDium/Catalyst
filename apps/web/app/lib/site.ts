@@ -104,21 +104,20 @@ export function siteCaption(counts?: KindCounts | null): SiteCaption {
   const sets: CaptionRow[][] = [
     [
       [{ text: "A " }, { text: "personal archive", style: "heavy", accent: "blue" }, { text: "," }],
-      [{ text: "organised around " }, { text: "places", style: "heavy", accent: "blue" }, { text: "." }],
+      [{ text: "mapped " }, { text: "step by step", style: "heavy", accent: "blue" }, { text: "." }],
     ],
     // (five sections in two rows no wider than the counts' row of the four-section caption (24 letters); the handwriting, bigger than the serif, ends the TOP row: it has
     // nothing above it there, so it can rise without touching a row, and it has no comma after it (its comma is ugly): the comma before it is the serif's)
     [
-      [word("project", "software"), { text: ", " }, word("artwork", "art"), { text: ", " }, word("poem", "Poems")],
+      [word("poem", "Poems"), { text: ", " }, word("project", "software"), { text: ", " }, word("artwork", "art"), { text: "," }],
       [word("article", "articles"), { text: " & " }, word("photograph", "photography"), { text: "." }],
     ],
   ];
   const total = counts ? KINDS.reduce((n, k) => n + counts[k], 0) : 0;
   if (counts && KINDS.every((k) => Number.isFinite(counts[k]) && counts[k] >= 0) && total > 0) {
-    const kinds = KINDS.filter((k) => counts[k] > 0).length;
     sets.push([
       [{ text: String(total), style: "heavy", accent: "blue" }, { text: total === 1 ? " entry" : " entries" }, { text: "," }],
-      [{ text: `in ${kinds} ` }, { text: kinds === 1 ? "section" : "sections", style: "heavy" }, { text: "." }],
+      [{ text: "each one on the " }, { text: "map", style: "heavy" }, { text: "." }],
     ]);
   }
   return {
