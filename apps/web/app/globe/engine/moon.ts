@@ -176,9 +176,9 @@ export const FLARE = {
   /**
    * The GLOW of the rays (owner, 2026-10-31, #441): a soft light along each ray, strongest by the sun and fading until nothing is left at the tips. In art pixels (the flare's own buffer): `width` the half width of the glow across a ray,
    * `strength` its density at the sun (the dither of it: a pixel is lit when the density beats the pattern), `fall` the exponent of its fade along the ray (the same measure as the ray's own, 1 at the sun and 0 at the tip: so it
-   * goes with the music's pulse, which lengthens the rays, and with the rays' reach), `tone` how bright a glow pixel is, on the ramp's gold, `light` the share of it on the light page (where the ghosts' own faint ink would otherwise show the glow more than the white rays). The flare as a whole is gone with the sun (`uStr`), so there is no glow where there is no sun.
+   * goes with the music's pulse, which lengthens the rays, and with the rays' reach), `tone` how bright a glow pixel is, on the ramp's gold, `light` the share of it on the light page, `lightAlpha` its opacity there (where the ghosts' own faint ink would otherwise show the glow more than the white rays). The flare as a whole is gone with the sun (`uStr`), so there is no glow where there is no sun.
    */
-  glow: { width: 3.5, strength: 0.75, fall: 3.2, tone: 0.32, light: 0.35 },
+  glow: { width: 3.5, strength: 0.75, fall: 3.2, tone: 0.32, light: 0.15, lightAlpha: 0.5 },
   streakTone: 1,
   /** The strength goes to 0 as the sun's distance from the middle (a share of the half diagonal) goes from `edgeFrom` to `edgeTo`, and from `midTo` down to `midFrom`. */
   edgeFrom: 0.8,
