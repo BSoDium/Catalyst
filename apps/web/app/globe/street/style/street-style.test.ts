@@ -369,11 +369,11 @@ describe("dash length follows the zoom", () => {
 });
 
 describe("the world-coast placeholder (#468)", () => {
-  it("stands in only for a coast that is not on screen: not over a tile coast, not once the tiles are in, not from zoom 5", async () => {
-    const { placeholderWanted, WORLD_PLACEHOLDER_BELOW } = await import("./street-style");
-    expect(placeholderWanted(3, false, false)).toBe(true); // a first load, a slow network
-    expect(placeholderWanted(3, false, true)).toBe(false); // a fast zoom out: the tile coast is there
-    expect(placeholderWanted(3, true, false)).toBe(false);
-    expect(placeholderWanted(WORLD_PLACEHOLDER_BELOW, false, false)).toBe(false);
+  it("takes the place of the tile coast while the tiles lag the zoom, under zoom 5 only", async () => {
+    const { placeholderWanted, PLACEHOLDER_REPLACES, WORLD_PLACEHOLDER_BELOW } = await import("./street-style");
+    expect(placeholderWanted(3, false)).toBe(true); // a fast zoom out, a first load, a slow network
+    expect(placeholderWanted(3, true)).toBe(false); // the tiles are in: the tile coast
+    expect(placeholderWanted(WORLD_PLACEHOLDER_BELOW, false)).toBe(false);
+    expect(PLACEHOLDER_REPLACES).toEqual(["water-edge"]); // the one tile coast: never both geometries
   });
 });

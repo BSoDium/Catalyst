@@ -107,13 +107,17 @@ export const borderHandoff = (handoff: number): number => Math.max(handoff, BORD
  */
 export const WORLD_PLACEHOLDER_BELOW = 5;
 /**
- * Whether the world-coast placeholder is wanted now (#468): the zoom is under `WORLD_PLACEHOLDER_BELOW`, the street tiles are not all in, AND no tile coast is on screen. A fast zoom out never has all of its
- * tiles in time (each coarser level is still on its way) while MapLibre goes on drawing the ones it has, and the placeholder then lay over the tile coast for as long as the zoom lasted: two geometries of one
- * coast. It stands in only for a coast that is not there at all (a first load, a slow network). Pure.
+ * Whether the world coast is drawn INSTEAD of the tile coast now (#468): the zoom is under `WORLD_PLACEHOLDER_BELOW` and the street tiles are not all in. A fast zoom out never has all of its tiles in
+ * time (each coarser level is still on its way) and MapLibre goes on drawing the finer ones it kept, minified: a thick, patchy coast that then eases to the globe's thin one at the cut. The 110m world coast
+ * is the globe's own line: it takes the place of the tile coast for as long as the tiles lag (`PLACEHOLDER_REPLACES`), one geometry at a time, and the tile coast comes back when they are in. Pure.
  */
-export function placeholderWanted(zoom: number, sourceLoaded: boolean, tileCoastShown: boolean): boolean {
-  return zoom < WORLD_PLACEHOLDER_BELOW && !sourceLoaded && !tileCoastShown;
+export function placeholderWanted(zoom: number, sourceLoaded: boolean): boolean {
+  return zoom < WORLD_PLACEHOLDER_BELOW && !sourceLoaded;
 }
+/** The tile layers the placeholder stands in for: hidden while it is drawn (never two geometries of one coast). */
+export const PLACEHOLDER_REPLACES = ["water-edge"] as const;
+/** How long a swap holds before the next one (a layer switch reloads the source's tiles: it reads "not loaded" for a few frames). */
+export const PLACEHOLDER_SETTLE_MS = 400;
 export const PLACEHOLDER_LAYERS = ["world-coast"] as const; // (the world borders are not one: they ARE the country borders below `BORDER_TILE_MINZOOM`)
 /** Whether a style with this hand-over zoom keeps the world lines as a (hidden until needed) placeholder. */
 export const hasPlaceholder = (handoff: number, hasTiles: boolean): boolean => hasTiles && handoff < WORLD_PLACEHOLDER_BELOW;

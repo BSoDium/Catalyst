@@ -44,7 +44,7 @@ import { LayerSwitch, switchRules, type SwitchView } from "./style/layer-switch"
 import { TrailDotsLayer, dotLegs } from "../paths/trail-dots-layer";
 import { capReach, viewCap } from "./core/view-cap";
 import { fadeStraight, thinLegs, thinZoomOf, type ThinLeg } from "../paths/thin";
-import { DEFAULT_HANDOFF, PLACEHOLDER_LAYERS, ROUTE_LAYER_IDS, WORLD_PLACEHOLDER_BELOW, applyCell, applyDashScale, applyKeptLegs, buildStreetStyle, placeholderWanted, dashStepOf, focusFilter, graticule, headFocusFilter, ROUTE_HEAD_FOCUS_ID, hasPlaceholder, routeLayerId, seaFrom, type StyleTiles } from "./style/street-style";
+import { DEFAULT_HANDOFF, PLACEHOLDER_LAYERS, PLACEHOLDER_REPLACES, PLACEHOLDER_SETTLE_MS, ROUTE_LAYER_IDS, applyCell, applyDashScale, applyKeptLegs, buildStreetStyle, placeholderWanted, dashStepOf, focusFilter, graticule, headFocusFilter, ROUTE_HEAD_FOCUS_ID, hasPlaceholder, routeLayerId, seaFrom, type StyleTiles } from "./style/street-style";
 import { STREET_TUNING } from "./tuning";
 import type { AnimateOptions, FlyOptions, RevealOptions, StreetDebug, StreetMap, StreetMapOptions, StreetView } from "./types";
 
@@ -261,6 +261,8 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
   /** The active style keeps the world lines as a hidden placeholder (street/style/street-style.ts WORLD_PLACEHOLDER_BELOW). */
   let placeholderStyle = false;
   let placeholderOn = false;
+  let placeholderSwappedAt = -Infinity;
+  let placeholderRetry: number | undefined;
   // The binary switches of the style (style/layer-switch.ts): road classes, fills, the graticule and the sea texture are on or off, decided
   // from the camera with a hysteresis; the compositor's temporal ease does the fading, by time.
   let layerSwitch = new LayerSwitch([]);
@@ -605,25 +607,26 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
   };
   let lastMask: string | null = null;
 
-  /** The world coastline stands in for tiles that are not there yet (and only then): the ease cross-fades it to the tile coast when they arrive. (The world borders are always on below the tile boundary's zoom.) */
-  let tileCoastShown = false;
-  let tileCoastProbedAt = 0;
+  /**
+   * The world coastline stands in for the tile coast while the tiles lag the zoom (`placeholderWanted`): the ease cross-fades one to the other as they arrive. (The world borders are always on below the tile boundary's zoom.)
+   * Switching a tile layer makes MapLibre reload the source's tiles, and the source reads "not loaded" until they are back: the swap must not take that as the tiles lagging (it would switch itself back and forth, a few times a
+   * second, for as long as the map is open), so a swap is held for `PLACEHOLDER_SETTLE_MS` before the next one.
+   */
   const updatePlaceholder = () => {
     if (!placeholderStyle) return;
     // (the street tiles' own source: the satellite ground's tiles come later and never mean the lines are late, or both would be drawn)
-    const missing = map.getZoom() < WORLD_PLACEHOLDER_BELOW && !map.isSourceLoaded("tiles");
-    if (missing) {
-      // is a tile coast on screen already? (a query is not free: only while tiles are missing, at most every 100 ms)
-      const now = performance.now();
-      if (now - tileCoastProbedAt > 100) {
-        tileCoastProbedAt = now;
-        tileCoastShown = map.getLayer("water-edge") ? map.queryRenderedFeatures({ layers: ["water-edge"] }).length > 0 : false;
-      }
-    } else tileCoastShown = false;
-    const want = placeholderWanted(map.getZoom(), !missing, tileCoastShown);
+    const want = placeholderWanted(map.getZoom(), map.isSourceLoaded("tiles"));
     if (want === placeholderOn) return;
+    const wait = placeholderSwappedAt + PLACEHOLDER_SETTLE_MS - performance.now();
+    if (wait > 0) {
+      // (a still map renders nothing more: ask for the frame that decides)
+      if (!placeholderRetry) placeholderRetry = window.setTimeout(() => { placeholderRetry = undefined; if (!disposed) map.triggerRepaint(); }, wait);
+      return;
+    }
     placeholderOn = want;
+    placeholderSwappedAt = performance.now();
     for (const id of PLACEHOLDER_LAYERS) if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", want ? "visible" : "none");
+    for (const id of PLACEHOLDER_REPLACES) if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", want ? "none" : "visible");
   };
   /** Apply the layers the camera switched on or off (a few `visibility` changes at a threshold, nothing otherwise). */
   const updateLayers = () => {
@@ -936,6 +939,7 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
       disposed = true;
       cancelAnimationFrame(raf);
       window.clearTimeout(holdTimer);
+      window.clearTimeout(placeholderRetry);
       for (const w of waiters.splice(0)) w.resolve();
       manager.dispose();
       ro.disconnect();
