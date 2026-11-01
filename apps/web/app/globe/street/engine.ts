@@ -44,7 +44,7 @@ import { LayerSwitch, switchRules, type SwitchView } from "./style/layer-switch"
 import { TrailDotsLayer, dotLegs } from "../paths/trail-dots-layer";
 import { capReach, viewCap } from "./core/view-cap";
 import { fadeStraight, thinLegs, thinZoomOf, type ThinLeg } from "../paths/thin";
-import { DEFAULT_HANDOFF, PLACEHOLDER_LAYERS, PLACEHOLDER_REPLACES, PLACEHOLDER_SETTLE_MS, ROUTE_LAYER_IDS, applyCell, applyDashScale, applyKeptLegs, buildStreetStyle, placeholderWanted, dashStepOf, focusFilter, graticule, headFocusFilter, ROUTE_HEAD_FOCUS_ID, hasPlaceholder, routeLayerId, seaFrom, type StyleTiles } from "./style/street-style";
+import { DEFAULT_HANDOFF, PLACEHOLDER_LAYERS, PLACEHOLDER_REPLACES, PLACEHOLDER_OVERLAP_MS, PLACEHOLDER_SETTLE_MS, ROUTE_LAYER_IDS, applyCell, applyDashScale, applyKeptLegs, buildStreetStyle, placeholderWanted, dashStepOf, focusFilter, graticule, headFocusFilter, ROUTE_HEAD_FOCUS_ID, hasPlaceholder, routeLayerId, seaFrom, type StyleTiles } from "./style/street-style";
 import { STREET_TUNING } from "./tuning";
 import type { AnimateOptions, FlyOptions, RevealOptions, StreetDebug, StreetMap, StreetMapOptions, StreetView } from "./types";
 
@@ -263,6 +263,7 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
   let placeholderOn = false;
   let placeholderSwappedAt = -Infinity;
   let placeholderRetry: number | undefined;
+  let placeholderHide: number | undefined;
   // The binary switches of the style (style/layer-switch.ts): road classes, fills, the graticule and the sea texture are on or off, decided
   // from the camera with a hysteresis; the compositor's temporal ease does the fading, by time.
   let layerSwitch = new LayerSwitch([]);
@@ -625,8 +626,13 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
     }
     placeholderOn = want;
     placeholderSwappedAt = performance.now();
-    for (const id of PLACEHOLDER_LAYERS) if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", want ? "visible" : "none");
-    for (const id of PLACEHOLDER_REPLACES) if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", want ? "none" : "visible");
+    // the line that comes is drawn at once, the one that goes a moment later: the ease fades the new one in over a few frames, and the old one gone first would leave the map without a coast for as long
+    const [comes, goes] = want ? [PLACEHOLDER_LAYERS, PLACEHOLDER_REPLACES] : [PLACEHOLDER_REPLACES, PLACEHOLDER_LAYERS];
+    for (const id of comes) if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", "visible");
+    window.clearTimeout(placeholderHide);
+    placeholderHide = window.setTimeout(() => {
+      if (!disposed) for (const id of goes) if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", "none");
+    }, PLACEHOLDER_OVERLAP_MS);
   };
   /** Apply the layers the camera switched on or off (a few `visibility` changes at a threshold, nothing otherwise). */
   const updateLayers = () => {
@@ -940,6 +946,7 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
       cancelAnimationFrame(raf);
       window.clearTimeout(holdTimer);
       window.clearTimeout(placeholderRetry);
+      window.clearTimeout(placeholderHide);
       for (const w of waiters.splice(0)) w.resolve();
       manager.dispose();
       ro.disconnect();

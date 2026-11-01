@@ -118,6 +118,8 @@ export function placeholderWanted(zoom: number, sourceLoaded: boolean): boolean 
 export const PLACEHOLDER_REPLACES = ["water-edge"] as const;
 /** How long a swap holds before the next one (a layer switch reloads the source's tiles: it reads "not loaded" for a few frames). */
 export const PLACEHOLDER_SETTLE_MS = 400;
+/** How long the line that goes stays after the one that comes is switched on: the ease fades the new one in over a few frames, and without the overlap the map had no coast for that long. */
+export const PLACEHOLDER_OVERLAP_MS = 70;
 export const PLACEHOLDER_LAYERS = ["world-coast"] as const; // (the world borders are not one: they ARE the country borders below `BORDER_TILE_MINZOOM`)
 /** Whether a style with this hand-over zoom keeps the world lines as a (hidden until needed) placeholder. */
 export const hasPlaceholder = (handoff: number, hasTiles: boolean): boolean => hasTiles && handoff < WORLD_PLACEHOLDER_BELOW;
