@@ -193,36 +193,6 @@ export function sunPlace(f: SunFrame): { x: number; y: number; r: number } | nul
   return { x: Math.floor(f.x) + 0.5, y: Math.floor(f.y) + 0.5, r };
 }
 
-/**
- * The sun's frame recorder (#469): with `?sun-log` in the address, every frame the sun is placed records what decides its look (the night's amount, the planet's cover, the eased disc, the camera's focal length) in
- * `window.__sunLog` (the last 1200 frames that differ from the one before: a screen at rest records nothing), to be read from the console after a fast zoom out: `copy(JSON.stringify(window.__sunLog))`. Off otherwise: nothing is recorded or kept.
- */
-const SUN_LOG = typeof location !== "undefined" && new URLSearchParams(location.search).has("sun-log");
-interface SunRecord {
-  t: number;
-  amount: number;
-  rise: number;
-  area: number;
-  halo: number;
-  touch: number;
-  visible: boolean;
-  ahead: boolean;
-  focal: number;
-  /** Where the sun is in the picture, 0..1 from the left and from the bottom of the buffer (null while it is behind the camera). */
-  x: number | null;
-  y: number | null;
-}
-function recordSun(r: SunRecord): void {
-  const w = window as unknown as { __sunLog?: SunRecord[] };
-  const log = (w.__sunLog ??= []);
-  const rec = { ...r, amount: +r.amount.toFixed(3), rise: Number.isFinite(r.rise) ? +r.rise.toFixed(2) : Infinity, area: +r.area.toFixed(3), halo: +r.halo.toFixed(3), touch: +r.touch.toFixed(3) };
-  // a frame is kept only if something changed since the last one kept: a screen at rest (120 frames a second) would otherwise push the fast zoom out out of the window in ten seconds
-  const last = log[log.length - 1];
-  if (last && last.amount === rec.amount && last.rise === rec.rise && last.area === rec.area && last.halo === rec.halo && last.touch === rec.touch && last.visible === rec.visible && last.ahead === rec.ahead && last.focal === rec.focal && last.x === rec.x && last.y === rec.y) return;
-  log.push(rec);
-  if (log.length > 1200) log.splice(0, log.length - 1200);
-}
-
 export class SunLayer {
   readonly mesh: Mesh;
   private mat = material();
@@ -294,7 +264,6 @@ export class SunLayer {
     const nowMs = performance.now();
     this.touch = easeTouch(this.touch, touchTarget(cres.area), (nowMs - this.touchAt) / 1000);
     this.touchAt = nowMs;
-    if (SUN_LOG) recordSun({ t: Math.round(nowMs), amount: f.amount, rise, area: cres.area, halo, touch: this.touch, visible: this.mesh.visible, ahead: f.ahead, focal: f.focal, x: f.ahead ? +(f.x / f.bufW).toFixed(3) : null, y: f.ahead ? +(f.y / f.bufH).toFixed(3) : null });
     // (the reddening is the atmosphere's: what has none, the moon, leaves the colour as it is)
     const air = f.atmosphere === false ? 0 : 1;
     this.glare = p !== null ? f.amount * Math.sqrt(cres.area) : 0;
