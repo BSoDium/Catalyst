@@ -15,7 +15,7 @@ import { BAYER4 } from "./sky";
 import { SUN } from "./moon";
 import { FX } from "./fx";
 import { PULSE, type SunPulse } from "./sun-pulse";
-import { FlareLayer, WARM_GLSL, easeTouch, touchTarget, rayStart, haloClear, sunCrescent, type FlareFrame } from "./sun-flare";
+import { FlareLayer, WARM_GLSL, easeTouch, gateStep, touchTarget, rayStart, haloClear, sunCrescent, type FlareFrame } from "./sun-flare";
 
 const VERTEX = /* glsl */ `
   uniform vec2 uCentre; uniform float uExt; uniform vec2 uBuf;
@@ -208,6 +208,9 @@ interface SunRecord {
   visible: boolean;
   ahead: boolean;
   focal: number;
+  /** Where the sun is in the picture, 0..1 from the left and from the bottom of the buffer (null while it is behind the camera). */
+  x: number | null;
+  y: number | null;
 }
 function recordSun(r: SunRecord): void {
   const w = window as unknown as { __sunLog?: SunRecord[] };
@@ -215,7 +218,7 @@ function recordSun(r: SunRecord): void {
   const rec = { ...r, amount: +r.amount.toFixed(3), rise: Number.isFinite(r.rise) ? +r.rise.toFixed(2) : Infinity, area: +r.area.toFixed(3), halo: +r.halo.toFixed(3), touch: +r.touch.toFixed(3) };
   // a frame is kept only if something changed since the last one kept: a screen at rest (120 frames a second) would otherwise push the fast zoom out out of the window in ten seconds
   const last = log[log.length - 1];
-  if (last && last.amount === rec.amount && last.rise === rec.rise && last.area === rec.area && last.halo === rec.halo && last.touch === rec.touch && last.visible === rec.visible && last.ahead === rec.ahead && last.focal === rec.focal) return;
+  if (last && last.amount === rec.amount && last.rise === rec.rise && last.area === rec.area && last.halo === rec.halo && last.touch === rec.touch && last.visible === rec.visible && last.ahead === rec.ahead && last.focal === rec.focal && last.x === rec.x && last.y === rec.y) return;
   log.push(rec);
   if (log.length > 1200) log.splice(0, log.length - 1200);
 }
@@ -234,6 +237,10 @@ export class SunLayer {
   /** The disc's eased state (`easeTouch`) and when it was last eased. */
   private touch = 0;
   private touchAt = 0;
+  /** How much of the sun is let in (`gateStep`): 0 while the street map's tone cross-fade is over the globe, eased back in after it. */
+  private gate = 1;
+  private gateAt = 0;
+  private held = false;
 
   constructor(scene: Scene) {
     this.flare = new FlareLayer(scene);
@@ -252,6 +259,11 @@ export class SunLayer {
     scene.add(this.blob);
   }
 
+  /** Keep the sun out of the picture (or let it back in, eased) while the street map's tone cross-fade runs over the globe (#469). */
+  hold(on: boolean): void {
+    this.held = on;
+  }
+
   applyTheme(t: GlobeTheme): void {
     const u = this.mat.uniforms;
     u.uBg!.value.setRGB(...t.background);
@@ -267,6 +279,10 @@ export class SunLayer {
 
   /** Place the sun for this frame: true when it is in the picture (the frame loop has a sun to draw). */
   sync(f: SunFrame): boolean {
+    const gateNow = performance.now();
+    this.gate = gateStep(this.gate, this.held, (gateNow - this.gateAt) / 1000);
+    this.gateAt = gateNow;
+    if (this.gate < 1) f = { ...f, amount: f.amount * this.gate };
     const p = f.amount > 0.01 ? sunPlace(f) : null;
     this.mesh.visible = p !== null && FX.on.sunHalo;
     // how far the sun is outside the planet's limb, in disc radii (Infinity: nothing in the way): what is left of it (`sunCrescent`), and how much of the halo the planet leaves
@@ -278,7 +294,7 @@ export class SunLayer {
     const nowMs = performance.now();
     this.touch = easeTouch(this.touch, touchTarget(cres.area), (nowMs - this.touchAt) / 1000);
     this.touchAt = nowMs;
-    if (SUN_LOG) recordSun({ t: Math.round(nowMs), amount: f.amount, rise, area: cres.area, halo, touch: this.touch, visible: this.mesh.visible, ahead: f.ahead, focal: f.focal });
+    if (SUN_LOG) recordSun({ t: Math.round(nowMs), amount: f.amount, rise, area: cres.area, halo, touch: this.touch, visible: this.mesh.visible, ahead: f.ahead, focal: f.focal, x: f.ahead ? +(f.x / f.bufW).toFixed(3) : null, y: f.ahead ? +(f.y / f.bufH).toFixed(3) : null });
     // (the reddening is the atmosphere's: what has none, the moon, leaves the colour as it is)
     const air = f.atmosphere === false ? 0 : 1;
     this.glare = p !== null ? f.amount * Math.sqrt(cres.area) : 0;

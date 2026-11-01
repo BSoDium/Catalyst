@@ -161,6 +161,17 @@ export function haloClear(riseDisc: number): number {
 }
 
 /**
+ * How much of the sun is let into the picture (0..1) while the street map's tone cross-fade runs over the globe (#469): that picture is the globe's frames sorted into the palette's grey tones, so a warm sun under it was a
+ * grey one for the quarter of a second the fade lasts, and warm again the frame it ended (`?sun-log` could not see it: nothing of the sun's own was grey; the owner's gesture, reset view from a close zoom with the sun in a
+ * corner, in the automated browser did). `held`: the fade is on, the sun is kept out; once it is over the sun comes in eased over `SUN_GATE_MS`, in its own colours. Pure.
+ */
+export const SUN_GATE_MS = 250;
+export function gateStep(gate: number, held: boolean, dt: number): number {
+  if (held) return 0;
+  return Math.min(1, gate + Math.max(0, dt) / (SUN_GATE_MS / 1000));
+}
+
+/**
  * What the disc is asked to be for a crescent of this `area` (0..1): 1 once the planet touches the sun (`1 - smoothstep(0.9, 0.97, area)`), 0 while it is clear AND while it is wholly hidden (#469): a sun behind the
  * planet has nothing to show, and the disc used to be asked for in full all that time, so that a sun coming out after a fast zoom out was a flat disc from its first visible frame (`?sun-log`: touch 1, area 0.81, the next frame
  * clear). Hidden, the disc is 0 and comes in again, eased in time, only if the planet stays on the sun. Pure.

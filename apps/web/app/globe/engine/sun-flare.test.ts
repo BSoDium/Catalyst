@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { MOON, SUN } from "./moon";
-import { easeTouch, touchTarget, flarePlace, haloClear, pickOccluder, planetRise, rayStart, sunCrescent, sunRise, type FlareFrame, type Occluder } from "./sun-flare";
+import { easeTouch, gateStep, touchTarget, flarePlace, haloClear, pickOccluder, planetRise, rayStart, sunCrescent, sunRise, type FlareFrame, type Occluder } from "./sun-flare";
 
 const frame = (over: Partial<FlareFrame> = {}): FlareFrame => ({ bufW: 400, bufH: 260, x: 300, y: 80, ahead: true, amount: 1, visible: 1, ...over });
 
@@ -247,5 +247,22 @@ describe("the disc the planet makes of the sun, eased in, gone with the cover", 
     expect(easeTouch(0.4, 1, 0)).toBe(0.4);
     expect(easeTouch(0, 1, 10)).toBeCloseTo(1, 5);
     expect(easeTouch(1, 0, 10)).toBeCloseTo(0, 5);
+  });
+});
+
+describe("the sun's gate over the street map's tone cross-fade (#469)", () => {
+  it("is shut at once while the fade is on, and opens over a quarter of a second after it", () => {
+    expect(gateStep(1, true, 0.016)).toBe(0);
+    let g = 0;
+    g = gateStep(g, false, 0.1);
+    expect(g).toBeGreaterThan(0.3);
+    expect(g).toBeLessThan(0.5);
+    g = gateStep(g, false, 0.1);
+    g = gateStep(g, false, 0.1);
+    expect(g).toBe(1);
+  });
+  it("does not open without time, and never past whole", () => {
+    expect(gateStep(0, false, 0)).toBe(0);
+    expect(gateStep(0.9, false, 10)).toBe(1);
   });
 });

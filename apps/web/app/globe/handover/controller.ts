@@ -576,6 +576,7 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
     if (!fadeOutUntil) return;
     fadeOutUntil = 0;
     street?.crossfadeTo(null);
+    renderer.holdSun(false);
   }
   /** One frame of the street-to-globe cross-fade: the globe has just drawn (this task), the street map follows its camera and eases towards it. */
   function crossfadeFrame(now: number) {
@@ -670,6 +671,7 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
       // The street map stays on screen a quarter of a second and steps its tones towards the globe's frames (a cross-fade, not a click), except under an interlude asked for from it: that begins from the globe's camera and is cut at once.
       if (!reduced && HANDOVER.crossfadeMs > 0 && !renderer.interludeAway() && streetOk() && !streetLost) {
         fadeOutUntil = performance.now() + HANDOVER.crossfadeMs;
+        renderer.holdSun(true); // (the fade shows the globe's frames in grey tones: a warm sun under it was a grey one)
         crossfadeFrame(now);
       }
     }
