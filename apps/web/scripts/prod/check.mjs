@@ -261,7 +261,7 @@ if (placePath) await document(placePath, placePath, {});
 section("copyright notice (poem, article, artwork: yes; software and lists: no)");
 {
   // app/lib/copyright.ts: the visible line, <meta name="copyright"> and the JSON-LD say the same words. Guarded by what is published.
-  const NOTICE = /^© (?:\d{4} )?Elliot Négrel-Jerzy\. (?:All rights reserved\. Please do not reproduce this (?:poem|article|artwork) without permission; short quotations with attribution are welcome\.|Tous droits réservés\. Merci de ne pas reproduire (?:ce poème|ce texte|cette œuvre) sans autorisation ; de courtes citations avec mention de l'auteur sont bienvenues\.)$/;
+  const NOTICE = /^© (?:\d{4} )?Elliot Négrel-Jerzy\. (?:All rights reserved\. Please do not reproduce this (?:poem|article|artwork|photograph) without permission; (?:short quotations with attribution|a link or a small preview with credit) (?:are|is) welcome\.|Tous droits réservés\. Merci de ne pas reproduire (?:ce poème|ce texte|cette œuvre|cette photographie) sans autorisation ; (?:de courtes citations avec mention de l'auteur sont bienvenues|un lien ou un aperçu réduit avec mention de l'auteur est bienvenu)\.)$/;
   for (const k of ["poetry", "articles", "artworks"]) {
     const p = entryPaths.find((x) => kindOf(x) === k);
     if (!p) {
