@@ -49,6 +49,14 @@ const FRAGMENT = /* glsl */ `
     ivec2 c = ivec2(mod(floor(gl_FragCoord.xy), 4.0));
     return (BAYER[c.y * 4 + c.x] + 0.5) / 16.0;
   }
+  // The glow's density at a pixel that is \`perp\` from a ray's line and \`gd\` along it (from the sun's centre), the ray being \`glen\` long: a gaussian across, a power of the way along, none inside the sun's disc.
+  float glowOf(float perp, float gd, float glen) {
+    if (gd <= uSunR || glen <= 0.0) return 0.0;
+    float along = 1.0 - (gd - uSunR) / glen;
+    if (along <= 0.0) return 0.0;
+    float w = ${f(FLARE.glow.width)} * (0.4 + 0.6 * along);
+    return ${f(FLARE.glow.strength)} * pow(along, ${f(FLARE.glow.fall)}) * exp(-(perp * perp) / (w * w));
+  }
   void main() {
     vec2 p = gl_FragCoord.xy;
     float ink = 0.0;
@@ -83,6 +91,17 @@ const FRAGMENT = /* glsl */ `
       // (the dither's threshold: the fixed pattern, and with the music a noise that is a new one at every pulse, uJitter of it: the grain of a ray is never the same twice)
       float grain = fract(sin(dot(vec2(o) + vec2(uSeed * 7.31, uSeed * 3.17), vec2(12.9898, 78.233))) * 43758.5453);
       if (along > 0.0 && pow(along, ${f(FLARE.streakFall)}) > mix(bayer(), grain, uJitter)) { ink = ${f(FLARE.streakTone)}; hue = 0.95; ray = true; }
+    }
+    // the glow along the rays (FLARE.glow): where no ghost or ray is, a dithered, faint warm light that fades with the ray (1 at the sun, 0 at its tip) and across it (a gaussian), so it has no end that can be seen
+    if (ink <= 0.0) {
+      float glow = 0.0;
+      float gh = ${f(FLARE.streak)} * uLen * uBufW * uPulse.x;
+      float gv = ${f(FLARE.streakUp)} * uLen * uBufH * uPulse.x;
+      float gdg = ${f(FLARE.streakDiag)} * uLen * uBufW * uPulse.y;
+      glow = max(glow, glowOf(a.y, a.x, gh));
+      glow = max(glow, glowOf(a.x, a.y, gv));
+      glow = max(glow, glowOf(abs(a.x - a.y) * 0.7071, (a.x + a.y) * 0.7071, gdg));
+      if (glow > bayer()) { ink = ${f(FLARE.glow.tone)}; hue = 0.9; }
     }
     if (uLight > 0.5) {
       // the light page: the sun's rays are WHITE, and what shows them is a very soft, faint grey darkening round the sun (the veil); the ghosts are the ramp's colours, faintly
