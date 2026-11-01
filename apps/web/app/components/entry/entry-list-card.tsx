@@ -105,6 +105,8 @@ export function EntryRow({
   const place = placeLine(entry.places);
   const { status } = splitMeta(entry.meta);
   const cover = entry.cover && safeMediaSrc(entry.cover.src) ? { ...coverImageProps(entry.cover, ROW_COVER_SIZES), alt: entry.cover.alt } : null;
+  // A picture of its own (not a generated stand-in, never a mature one: a blur would still carry its colours) is also the row's backdrop: blurred and dimmed on the right, dissolving into the page, under the miniature (docs/design-system.md, "List rows with a picture")
+  const backdrop = cover && entry.sensitive !== true ? coverImageProps(entry.cover!, ROW_COVER_SIZES) : null;
   const showCover = !!cover || entry.kind === "artwork";
   const tags = entry.tags.slice(0, 4);
   if (entry.kind === "poem") return <PoemRow entry={entry} Heading={Heading} date={date} place={place} status={status} tags={tags} className={className} linkState={linkState} />;
@@ -113,9 +115,15 @@ export function EntryRow({
       id={entry.slug}
       data-slot="entry-card"
       data-kind={entry.kind}
+      data-pic={backdrop ? "" : undefined}
       className={cn("ds-card entry-row grid min-w-0 gap-x-7 gap-y-4 border-t border-border py-7 md:grid-cols-12", className)}
     >
-      <dl className="type-meta m-0 flex min-w-0 flex-col gap-1 text-muted-foreground md:col-span-2">
+      {backdrop && (
+        <div aria-hidden="true" className="entry-row-back">
+          <img src={backdrop.src} srcSet={backdrop.srcSet} sizes={backdrop.sizes} alt="" loading={priority ? "eager" : "lazy"} decoding="async" />
+        </div>
+      )}
+      <dl className="type-meta relative z-[1] m-0 flex min-w-0 flex-col gap-1 text-muted-foreground md:col-span-2">
         {date && (
           <div>
             <dt className="sr-only">Date</dt>
@@ -138,7 +146,7 @@ export function EntryRow({
           </div>
         )}
       </dl>
-      <div className={cn("flex min-w-0 flex-col gap-3", showCover ? "md:col-span-7" : "md:col-span-9")}>
+      <div className={cn("relative z-[1] flex min-w-0 flex-col gap-3", showCover ? "md:col-span-7" : "md:col-span-9")}>
         <Heading data-slot="entry-card-title" className="type-display-md m-0 font-extrabold">
           <Link to={entry.href} state={linkState} className="after:absolute after:inset-0 after:content-[''] focus-visible:outline-none">
             {entry.title}
@@ -148,7 +156,7 @@ export function EntryRow({
         {tags.length > 0 && <TagList label="Tags" tags={tags.map((label) => ({ label }))} className="font-meta text-xs" />}
       </div>
       {showCover && (
-        <div className="min-w-0 md:col-span-3">
+        <div className="relative z-[1] min-w-0 md:col-span-3">
           <div className="overflow-hidden">
             {cover && entry.sensitive === true ? (
               <SensitiveMedia>

@@ -2226,6 +2226,72 @@
     }
   }
 
+  /*
+   * A list row with a picture of its own (components/entry/entry-list-card.tsx `EntryRow`; owner, 2026-11-01, #388): the text sits on the page's own colour; to the right, up to the hairlines (no page colour between
+   * them and the picture), the row's cover blurred and dimmed (`.entry-row-back`: 30 px of blur, 24 % over the page, darker on the dark page and paler on the light one), dissolving on its left edge into the page
+   * (a mask on an eased ramp); and on it, as before, the miniature of the picture, sharp and as it is. Square edges, no shadow; a mature picture has no backdrop.
+   */
+  .entry-row[data-pic] {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    /* room on the right, so that the miniature sits nested in the backdrop and not against the page's edge (the backdrop itself is absolute: it still reaches it) */
+    padding-right: 1.5rem;
+  }
+
+  .entry-row-back {
+    position: absolute;
+    inset: 0 0 0 auto;
+    z-index: -1;
+    /* it starts where the miniature's column does, a little before: the text column (to three quarters of the row) overlaps only its faint first part, whatever the width */
+    width: min(44%, 36rem);
+    overflow: hidden;
+    pointer-events: none;
+    --row-ramp: linear-gradient(to right, transparent 0%, rgb(0 0 0 / 0.04) 10%, rgb(0 0 0 / 0.14) 20%, rgb(0 0 0 / 0.32) 32%, rgb(0 0 0 / 0.56) 40%, rgb(0 0 0 / 0.8) 54%, rgb(0 0 0 / 0.95) 66%, #000 76%, rgb(0 0 0 / 0.8) 88%, rgb(0 0 0 / 0.4) 95%, transparent 100%);
+    /* and at the top and bottom, on the same kind of ramp, so that it has no hard edge against the hairlines: two masks, intersected */
+    --row-v: linear-gradient(to bottom, rgb(0 0 0 / 0.08) 0%, rgb(0 0 0 / 0.3) 6%, rgb(0 0 0 / 0.62) 13%, rgb(0 0 0 / 0.88) 21%, #000 30%, #000 70%, rgb(0 0 0 / 0.88) 79%, rgb(0 0 0 / 0.62) 87%, rgb(0 0 0 / 0.3) 94%, rgb(0 0 0 / 0.08) 100%);
+    -webkit-mask-image: var(--row-ramp), var(--row-v);
+    -webkit-mask-composite: source-in;
+    mask-image: var(--row-ramp), var(--row-v);
+    mask-composite: intersect;
+  }
+
+  .entry-row-back img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: blur(30px) saturate(0.85);
+    transform: scale(1.25);
+    opacity: 0.32;
+    transition: opacity var(--duration-base) var(--ease-standard);
+  }
+
+  .entry-row[data-pic]:hover .entry-row-back img {
+    opacity: 0.46;
+  }
+
+  @media (max-width: 47.99rem) {
+    /* on a phone the row is stacked: the backdrop is the whole row, dissolving at its top, where the text is */
+    .entry-row-back {
+      inset: 0;
+      width: auto;
+      --row-ramp: linear-gradient(to bottom, transparent 0%, rgb(0 0 0 / 0.03) 25%, rgb(0 0 0 / 0.14) 42%, rgb(0 0 0 / 0.45) 60%, rgb(0 0 0 / 0.85) 78%, rgb(0 0 0 / 0.5) 92%, transparent 100%);
+      --row-v: linear-gradient(#000, #000);
+    }
+
+    /* (and the miniature, full width here, keeps the row's own margins) */
+    .entry-row[data-pic] {
+      padding-right: 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .entry-row-back img {
+      transition: none;
+    }
+  }
+
   /* The body: the board's 21 px / 1.55 at full width, the reading role's size in the half panel and on a phone. */
   .entry-text .ds-prose {
     font-size: var(--entry-body);

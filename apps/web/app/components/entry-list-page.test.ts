@@ -99,7 +99,7 @@ describe("EntryListPage", () => {
     expect(html).not.toContain("list-standfirst");
     expect(html).not.toContain("entry-rule");
     expect((html.match(/<h1/g) ?? []).length).toBe(1);
-    expect((html.match(/entry-row/g) ?? []).length).toBe(articles.length);
+    expect((html.match(/data-slot="entry-card"/g) ?? []).length).toBe(articles.length);
     expect(html).toMatch(/<h2[^>]*class="type-display-md[^"]*"/);
     expect(html).toContain("type-meta");
     expect(html).not.toMatch(/ds-grid|ds-col|border-border-strong|rounded/);
@@ -107,6 +107,19 @@ describe("EntryListPage", () => {
     const withoutImage = articles.map((a) => ({ ...a, cover: undefined }));
     expect(render(withoutImage)).not.toContain('data-slot="cover-art"');
     expect(html).toContain("<img");
+  });
+  it("gives a row with a picture of its own a blurred backdrop behind its miniature, and a mature one none", () => {
+    const withCover = articles.filter((a) => a.cover);
+    expect(withCover.length).toBeGreaterThan(0);
+    const html = render(withCover);
+    expect((html.match(/class="entry-row-back"/g) ?? []).length).toBe(withCover.length);
+    expect((html.match(/class="entry-row-art"/g) ?? []).length).toBe(0);
+    expect(html).toContain("data-pic");
+    // (decoration: out of the accessibility tree, empty alt; the title stays the one link)
+    expect(html).toMatch(/class="entry-row-back"[^>]*>|aria-hidden="true" class="entry-row-back"/);
+    const mature = render(withCover.map((a) => ({ ...a, sensitive: true as const })));
+    expect(mature).not.toContain("entry-row-back");
+    expect(render(withCover.map((a) => ({ ...a, cover: undefined })))).not.toContain("entry-row-back");
   });
   it("gives an artwork without an image its generated cover (the image is the artwork)", () => {
     const artworks = listEntries(demo, "artwork").map((a) => ({ ...a, cover: undefined }));
