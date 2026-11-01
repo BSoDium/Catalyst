@@ -161,11 +161,14 @@ export function haloClear(riseDisc: number): number {
 }
 
 /**
- * The disc's state, eased in time (`SUN.cover.touchOnMs`, `touchOffMs`): `target` is 1 once the planet touches the sun (`1 - smoothstep(0.9, 0.97, area)`), 0 while it is clear; `dt` the seconds since the last frame. A frame is not a unit
- * of time: a fast zoom takes the limb across the sun in two or three of them, and the flat white disc was on for those and off again, a flash between two warm suns. Pure.
+ * The disc's state (`SUN.cover.touchOnMs`): `target` is 1 once the planet touches the sun (`1 - smoothstep(0.9, 0.97, area)`), 0 while it is clear; `dt` the seconds since the last frame. A frame is not a unit
+ * of time: a fast zoom takes the limb across the sun in two or three of them, and the flat white disc was on for those and off again, a flash between two warm suns, so it comes IN eased in time. It goes WITH the
+ * target, at once (#469): it used to go eased too, and a sun that came out from behind the planet after a fast zoom out, the disc already whole from the time it was hidden, stayed a flat monochrome disc for a second
+ * after it was clear (`?sun-log`: touch 1 at the first clear frame, 0.02 a second later). Pure.
  */
 export function easeTouch(prev: number, target: number, dt: number): number {
-  const tau = (target > prev ? SUN.cover.touchOnMs : SUN.cover.touchOffMs) / 1000;
+  if (target <= prev) return target;
+  const tau = SUN.cover.touchOnMs / 1000;
   return prev + (target - prev) * (1 - Math.exp(-Math.max(0, dt) / tau));
 }
 

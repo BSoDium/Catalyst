@@ -213,24 +213,26 @@ describe("flarePlace, the light page's fade", () => {
   });
 });
 
-describe("the disc the planet makes of the sun, eased in time", () => {
-  it("comes in and goes with the clock, not with the frame: a limb that crosses the sun in two frames leaves it nearly clear", () => {
+describe("the disc the planet makes of the sun, eased in, gone with the cover", () => {
+  it("comes in with the clock, not with the frame: a limb that crosses the sun in two frames leaves it nearly clear", () => {
     // two 16 ms frames of the planet touching it, then clear again
     let t = 0;
     t = easeTouch(t, 1, 0.016);
     t = easeTouch(t, 1, 0.016);
     expect(t).toBeLessThan(0.3);
     t = easeTouch(t, 0, 0.016);
-    expect(t).toBeLessThan(0.3);
-    // held for half a second it is whole, and it goes in about as long
+    expect(t).toBe(0);
+    // held for half a second it is whole
     let held = 0;
     for (let i = 0; i < 30; i++) held = easeTouch(held, 1, 0.016);
     expect(held).toBeGreaterThan(0.95);
-    let gone = held;
-    for (let i = 0; i < 60; i++) gone = easeTouch(gone, 0, 0.016);
-    expect(gone).toBeLessThan(0.05);
   });
-  it("does not move without time, and is where it was asked to be after a long one", () => {
+  it("is gone the frame the sun is clear, however long it was whole (a sun out from behind the planet is not a flat disc, #469), and follows the target down", () => {
+    expect(easeTouch(1, 0, 0.016)).toBe(0);
+    expect(easeTouch(1, 0.6, 0.016)).toBe(0.6);
+    expect(easeTouch(0.3, 0.3, 0.016)).toBe(0.3);
+  });
+  it("does not move up without time, and is where it was asked to be after a long one", () => {
     expect(easeTouch(0.4, 1, 0)).toBe(0.4);
     expect(easeTouch(0, 1, 10)).toBeCloseTo(1, 5);
     expect(easeTouch(1, 0, 10)).toBeCloseTo(0, 5);
