@@ -2243,7 +2243,8 @@
     position: absolute;
     inset: 0 0 0 auto;
     z-index: -1;
-    width: 62%;
+    /* it starts where the miniature's column does, a little before: the text column (to three quarters of the row) overlaps only its faint first part, whatever the width */
+    width: min(44%, 36rem);
     overflow: hidden;
     pointer-events: none;
     --row-ramp: linear-gradient(to right, transparent 0%, rgb(0 0 0 / 0.04) 10%, rgb(0 0 0 / 0.14) 20%, rgb(0 0 0 / 0.32) 32%, rgb(0 0 0 / 0.56) 40%, rgb(0 0 0 / 0.8) 54%, rgb(0 0 0 / 0.95) 66%, #000 76%, rgb(0 0 0 / 0.8) 88%, rgb(0 0 0 / 0.4) 95%, transparent 100%);
@@ -2275,8 +2276,13 @@
     .entry-row-back {
       inset: 0;
       width: auto;
-      --row-ramp: linear-gradient(to bottom, transparent 0%, rgb(0 0 0 / 0.1) 20%, rgb(0 0 0 / 0.4) 45%, rgb(0 0 0 / 0.8) 70%, rgb(0 0 0 / 0.4) 90%, transparent 100%);
+      --row-ramp: linear-gradient(to bottom, transparent 0%, rgb(0 0 0 / 0.03) 25%, rgb(0 0 0 / 0.14) 42%, rgb(0 0 0 / 0.45) 60%, rgb(0 0 0 / 0.85) 78%, rgb(0 0 0 / 0.5) 92%, transparent 100%);
       --row-v: linear-gradient(#000, #000);
+    }
+
+    /* (and the miniature, full width here, keeps the row's own margins) */
+    .entry-row[data-pic] {
+      padding-right: 0;
     }
   }
 
