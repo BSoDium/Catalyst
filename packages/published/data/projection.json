@@ -5898,6 +5898,17 @@
       "title": "ESP string lights",
       "summary": "An MQTT-enabled controller for string lights with several effects, designed for the ESP32.",
       "date": "2025-02",
+      "cover": {
+        "src": "/media/project/esp-string-lights/cover.c161ab9f.webp",
+        "alt": "A breadboard with an ESP32 development board, a small radio module with a coiled gold antenna and a blue temperature and humidity sensor, joined by coloured jumper wires.",
+        "width": 2000,
+        "height": 1126,
+        "small": {
+          "src": "/media/project/esp-string-lights/cover-800w.5181c497.webp",
+          "width": 800,
+          "height": 450
+        }
+      },
       "tags": [
         "iot",
         "esp32"
@@ -6035,14 +6046,14 @@
       "date": "2026-05",
       "url": "https://design-system.isf.bsodium.fr",
       "cover": {
-        "src": "/media/project/isf-design-system/cover.93455186.webp",
-        "alt": "A Storybook page of a design system's colour palette: nine named colours, each shown as a row of ten swatches from light to dark, beside a navigation tree of components.",
-        "width": 1897,
-        "height": 1323,
+        "src": "/media/project/isf-design-system/cover.eaacf831.webp",
+        "alt": "An article page built with the design system: a copper category tag and a large white serif title over a dark teal sky, a short standfirst, then body text on white with a teal drop cap.",
+        "width": 2000,
+        "height": 1337,
         "small": {
-          "src": "/media/project/isf-design-system/cover-800w.d6aad33c.webp",
+          "src": "/media/project/isf-design-system/cover-800w.2d5d775e.webp",
           "width": 800,
-          "height": 558
+          "height": 535
         }
       },
       "tags": [
@@ -7371,7 +7382,7 @@
       "title": "WhatsApp content moderation",
       "summary": "A background-hosted \"digital curtain\" for a personal WhatsApp account: it links as a companion device, runs messages from chosen contacts through a local LLM classifier, deletes flagged ones locally and warns or temporarily blocks after repeated strikes.",
       "date": "2026-09",
-      "url": "https://whatsapp-moderation-demo.vercel.app",
+      "url": "https://whatsapp-moderation-demo.bsodium.fr",
       "cover": {
         "src": "/media/project/whatsapp-content-moderation/cover.81520168.webp",
         "alt": "A control page listing moderated contacts with counters for monitored, blocked, deleted and errors, next to a detail panel with strike counters, block settings and a moderation context field.",
