@@ -196,7 +196,7 @@ export function sunPlace(f: SunFrame): { x: number; y: number; r: number } | nul
 
 /**
  * The sun's frame recorder (#469): with `?sun-log` in the address, every frame the sun is placed records what decides its look (the night's amount, the planet's cover, the eased disc, the camera's focal length) in
- * `window.__sunLog` (the last 1200 frames), to be read from the console after a fast zoom out: `copy(JSON.stringify(window.__sunLog))`. Off otherwise: nothing is recorded or kept.
+ * `window.__sunLog` (the last 1200 frames that differ from the one before: a screen at rest records nothing), to be read from the console after a fast zoom out: `copy(JSON.stringify(window.__sunLog))`. Off otherwise: nothing is recorded or kept.
  */
 const SUN_LOG = typeof location !== "undefined" && new URLSearchParams(location.search).has("sun-log");
 interface SunRecord {
@@ -213,7 +213,11 @@ interface SunRecord {
 function recordSun(r: SunRecord): void {
   const w = window as unknown as { __sunLog?: SunRecord[] };
   const log = (w.__sunLog ??= []);
-  log.push({ ...r, amount: +r.amount.toFixed(3), rise: Number.isFinite(r.rise) ? +r.rise.toFixed(2) : Infinity, area: +r.area.toFixed(3), halo: +r.halo.toFixed(3), touch: +r.touch.toFixed(3) });
+  const rec = { ...r, amount: +r.amount.toFixed(3), rise: Number.isFinite(r.rise) ? +r.rise.toFixed(2) : Infinity, area: +r.area.toFixed(3), halo: +r.halo.toFixed(3), touch: +r.touch.toFixed(3) };
+  // a frame is kept only if something changed since the last one kept: a screen at rest (120 frames a second) would otherwise push the fast zoom out out of the window in ten seconds
+  const last = log[log.length - 1];
+  if (last && last.amount === rec.amount && last.rise === rec.rise && last.area === rec.area && last.halo === rec.halo && last.touch === rec.touch && last.visible === rec.visible && last.ahead === rec.ahead && last.focal === rec.focal) return;
+  log.push(rec);
   if (log.length > 1200) log.splice(0, log.length - 1200);
 }
 
