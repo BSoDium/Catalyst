@@ -1035,6 +1035,8 @@
       grid-row: 1 / 4;
       grid-column: 1;
       margin-inline: calc(-1 * var(--entry-gutter));
+      /* the row's divider, drawn on the picture's top edge so it runs the screen's width and hugs the picture (a row without a cover keeps its own, at the page's width) */
+      border-top: var(--hairline) solid var(--border);
       -webkit-mask-image: linear-gradient(to top, transparent 0%, rgb(0 0 0 / 0.08) 14%, rgb(0 0 0 / 0.26) 30%, rgb(0 0 0 / 0.54) 46%, rgb(0 0 0 / 0.8) 62%, rgb(0 0 0 / 0.94) 78%, #000 100%);
       mask-image: linear-gradient(to top, transparent 0%, rgb(0 0 0 / 0.08) 14%, rgb(0 0 0 / 0.26) 30%, rgb(0 0 0 / 0.54) 46%, rgb(0 0 0 / 0.8) 62%, rgb(0 0 0 / 0.94) 78%, #000 100%);
     }

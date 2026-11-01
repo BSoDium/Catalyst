@@ -114,7 +114,7 @@ export function EntryRow({
       data-slot="entry-card"
       data-kind={entry.kind}
       data-covered={showCover ? "" : undefined}
-      className={cn("ds-card entry-row grid min-w-0 gap-x-7 gap-y-4 border-t border-border py-7 md:grid-cols-12", showCover && "max-md:gap-y-0", className)}
+      className={cn("ds-card entry-row grid min-w-0 gap-x-7 gap-y-4 border-t border-border py-7 md:grid-cols-12", showCover && "max-md:gap-y-0 max-md:border-t-0 max-md:pt-0", className)}
     >
       <dl className={cn("entry-row-meta type-meta m-0 flex min-w-0 flex-col gap-1 text-muted-foreground md:col-span-2", showCover && "max-md:flex-row max-md:flex-wrap max-md:gap-x-3")}>
         {date && (
