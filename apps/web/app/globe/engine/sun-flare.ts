@@ -111,7 +111,7 @@ const FRAGMENT = /* glsl */ `
       if (ink <= 0.0) gl_FragColor = vec4(vec3(${f(SUN.light.veil.grey)}), veil);
       // (the rays are the sun's own white at all times: OPAQUE pixels, the strength taken out in the dither, not a see-through white)
       else if (ray) { if (bayer() >= uRay) discard; gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0); }
-      else if (halo) gl_FragColor = vec4(vec3(${f(SUN.light.veil.grey)}), uStr * ${f(FLARE.glow.lightAlpha)});
+      else if (halo) gl_FragColor = vec4(vec3(${FLARE.glow.lightColor.map(f).join(", ")}), uStr * ${f(FLARE.glow.lightAlpha)});
       else gl_FragColor = vec4(mix(uBg, warm(hue) * ${f(SUN.light.ink)}, clamp(ink * ${f(SUN.gain)}, 0.0, 1.0) * ${f(SUN.light.ghost)}), uStr);
     } else {
       if (ink <= 0.0) discard;
