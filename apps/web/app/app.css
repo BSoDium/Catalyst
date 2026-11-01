@@ -2248,7 +2248,7 @@
     pointer-events: none;
     --row-ramp: linear-gradient(to right, transparent 0%, rgb(0 0 0 / 0.04) 10%, rgb(0 0 0 / 0.14) 20%, rgb(0 0 0 / 0.32) 32%, rgb(0 0 0 / 0.56) 46%, rgb(0 0 0 / 0.8) 62%, rgb(0 0 0 / 0.95) 80%, #000 100%);
     /* and at the top and bottom, on the same kind of ramp, so that it has no hard edge against the hairlines: two masks, intersected */
-    --row-v: linear-gradient(to bottom, transparent 0%, rgb(0 0 0 / 0.1) 10%, rgb(0 0 0 / 0.4) 22%, rgb(0 0 0 / 0.8) 36%, #000 50%, rgb(0 0 0 / 0.8) 64%, rgb(0 0 0 / 0.4) 78%, rgb(0 0 0 / 0.1) 90%, transparent 100%);
+    --row-v: linear-gradient(to bottom, rgb(0 0 0 / 0.08) 0%, rgb(0 0 0 / 0.3) 6%, rgb(0 0 0 / 0.62) 13%, rgb(0 0 0 / 0.88) 21%, #000 30%, #000 70%, rgb(0 0 0 / 0.88) 79%, rgb(0 0 0 / 0.62) 87%, rgb(0 0 0 / 0.3) 94%, rgb(0 0 0 / 0.08) 100%);
     -webkit-mask-image: var(--row-ramp), var(--row-v);
     -webkit-mask-composite: source-in;
     mask-image: var(--row-ramp), var(--row-v);
