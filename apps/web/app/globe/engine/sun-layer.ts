@@ -136,8 +136,9 @@ const BLOB_FRAGMENT = /* glsl */ `
     float kq = floor(k * 6.0 + ordered) / 6.0;
     k = mix(k, kq, touch);
     if (uLight > 0.5) {
-      float a = max(k * 0.9, disc);
-      gl_FragColor = vec4(vec3(1.0, 0.995, 0.975) * a, a);
+      // (the core is the paper's white through and through, as the rays are: the 0.9 and the warm tint it had let a tenth of the grey round it show in the middle of the sun, which read darker than the rays, 2026-11-01)
+      float a = max(k, disc);
+      gl_FragColor = vec4(vec3(1.0) * a, a);
     } else {
       vec3 emit = warm(ink) * k * dim;
       gl_FragColor = vec4(disc > 0.5 ? ${vec(SUN.cover.discColour)} : emit, disc);
