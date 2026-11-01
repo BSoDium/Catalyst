@@ -16,10 +16,12 @@ import { clamp, easeInOutCubic, radiusPxToZoom } from "./geo";
 import { pathMaterial } from "./materials";
 import { coastLevel } from "./palette";
 import { TUNING } from "./tuning";
-import { dotCell, FADE_FROM_CELLS, FADE_FULL_CELLS, farOf, TICK_FROM, levelFor, metresPerCell } from "../paths/lod";
+import { dotCell, farOf, SOLID_UNTIL, TICK_FROM, levelFor, metresPerCell } from "../paths/lod";
 import { buildBuffers, buildNetwork, legsAt, type PathBuffers, type PathNetwork } from "../paths/network";
-import { fadeStraight, legKey, mercatorPx, thinLegs, thinZoomFor, windowFor, type ThinLeg, type WindowAnchor } from "../paths/thin";
+import { crowdLegs, fadeStraight, legKey, mercatorPx, thinLegs, thinZoomFor, windowFor, type ThinLeg, type WindowAnchor } from "../paths/thin";
 
+/** `?paths=solid` (#459, option c): from space the legs are solid quiet lines, the patterns come back from `SOLID_UNTIL`. For comparing the two looks; not the default. */
+const SOLID_WORLD = typeof location !== "undefined" && new URLSearchParams(location.search).get("paths") === "solid";
 /** Marching speed of the dashes of a leg while it draws on, in px per second. */
 const MARCH_PX_PER_S = 30;
 /** Texels per row of the per-leg state texture. */
@@ -28,10 +30,13 @@ const STATE_ROW = 1024;
 const STATE_NONE = 0;
 const STATE_FWD = 128;
 const STATE_REV = 255;
-/** A leg thinned away at this zoom (`paths/thin.ts`): the vertex shader clips it (a value between `none` and the lit states). */
-const STATE_HIDDEN = 26;
-/** A straight leg quietened by its step 1..3 (`paths/thin.ts` `fadeStraight`): 52 + 4 per step, between hidden and lit (the vertex shader reads it). */
-const STATE_QUIET = 52;
+/**
+ * The state of a leg that is not selected is a small number of bits, all below the lit states (the vertex shader reads them): `quiet` (0..3, a straight line
+ * quietened up close, `paths/thin.ts` `fadeStraight`) + 4 x `crowd` (0..3, how crowded its place is: drawn as a quiet solid line, `crowdLegs`). A leg is never
+ * clipped by its state: the globe does not thin legs away (the first versions did, by length and by shared corridor, and legs came and went as the zoom
+ * stepped: #459). `thinLegs` still says which legs stay for the pictures of the modes, and the street map thins with it.
+ */
+const STATE_CROWD = 4;
 
 export interface PathStats {
   legs: number;
@@ -68,11 +73,12 @@ export class RouteLayer {
   private stateData = new Uint8Array(0);
   private level: number | null = null;
   private lit = new Set<number>();
-  /** Legs thinned away at this zoom, the keys that stay (null: all) and what they were worked out for. */
-  private hidden = new Set<number>();
+  /** The keys of the legs that stay at this zoom (null: all), for the pictures of the modes. */
   private kept: ReadonlySet<string> | null = null;
   /** Straight legs quietened at this view: leg index -> step, and by key (for the pictures of the modes). */
   private quiet = new Map<number, number>();
+  /** Legs in a crowd at this view: leg index -> step (1..3). */
+  private crowd = new Map<number, number>();
   private quietKeys: ReadonlyMap<string, number> | null = null;
   private thinList: ThinLeg[] | null = null;
   private thinSig = "";
@@ -123,8 +129,6 @@ export class RouteLayer {
     const material = pathMaterial();
     material.uniforms.uState!.value = tex;
     material.uniforms.uTexSize!.value = [width, rows];
-    material.uniforms.uFadeFrom!.value = FADE_FROM_CELLS;
-    material.uniforms.uFadeFull!.value = FADE_FULL_CELLS;
     this.material = material;
 
     const line = new LineSegments(g, material);
@@ -168,7 +172,7 @@ export class RouteLayer {
         this.litRoutes.add(this.network.legs[leg]!.routeId);
       }
     }
-    this.applyHidden();
+    this.applyTones();
     this.thinSig = ""; // the selected place's legs are never thinned: the next frame works it out again
     this.state.needsUpdate = true;
     const animating = animate && this.lit.size > 0;
@@ -177,10 +181,12 @@ export class RouteLayer {
     this.updateVisible();
   }
 
-  /** The legs thinned away, as the state of their texel (the lit ones are never hidden). */
-  private applyHidden() {
-    for (const [leg, step] of this.quiet) if (!this.lit.has(leg)) this.stateData[leg] = STATE_QUIET + 4 * (step - 1);
-    for (const leg of this.hidden) if (!this.lit.has(leg)) this.stateData[leg] = STATE_HIDDEN;
+  /** The quietened and crowded legs, as the state of their texel (the lit ones keep theirs). */
+  private applyTones() {
+    const bits = new Map<number, number>();
+    for (const [leg, step] of this.quiet) bits.set(leg, step);
+    for (const [leg, step] of this.crowd) bits.set(leg, (bits.get(leg) ?? 0) + STATE_CROWD * step);
+    for (const [leg, v] of bits) if (!this.lit.has(leg)) this.stateData[leg] = v;
   }
 
   /**
@@ -209,20 +215,21 @@ export class RouteLayer {
         const lvl = leg.levels[Math.min(2, leg.levels.length - 1)] ?? leg.levels[0]!;
         const pts: Array<readonly [number, number]> = [];
         for (const i of lvl) pts.push([leg.lonlat[i * 2]!, leg.lonlat[i * 2 + 1]!]);
-        return { key: legKey(leg.routeId, leg.legIndex), parts: [pts], straight: leg.arc || leg.mode === "flight" };
+        return { key: legKey(leg.routeId, leg.legIndex), parts: [pts], ends: [leg.fromKey, leg.toKey] as const, straight: leg.arc || leg.mode === "flight" };
       });
     }
     const list = this.thinList.map((l, i) => (this.lit.has(i) ? { ...l, lit: true } : l));
     const kept = thinLegs(list, z, cssPerCell, win?.window ?? null);
     this.kept = kept;
-    for (const leg of this.hidden) if (!this.lit.has(leg)) this.stateData[leg] = STATE_NONE;
     for (const leg of this.quiet.keys()) if (!this.lit.has(leg)) this.stateData[leg] = STATE_NONE;
-    this.hidden.clear();
+    for (const leg of this.crowd.keys()) if (!this.lit.has(leg)) this.stateData[leg] = STATE_NONE;
     this.quiet.clear();
+    this.crowd.clear();
     this.quietKeys = fadeStraight(list, z, view);
     if (this.quietKeys) this.thinList.forEach((l, i) => { const step = this.quietKeys!.get(l.key); if (step) this.quiet.set(i, step); });
-    if (kept) this.thinList.forEach((l, i) => { if (!kept.has(l.key) && !this.lit.has(i)) this.hidden.add(i); });
-    this.applyHidden();
+    const crowded = crowdLegs(list, z, cssPerCell, win?.window ?? null);
+    if (crowded) this.thinList.forEach((l, i) => { const step = crowded.get(l.key); if (step) this.crowd.set(i, step); });
+    this.applyTones();
     this.state.needsUpdate = true;
     return kept;
   }
@@ -316,6 +323,7 @@ export class RouteLayer {
     this.material.uniforms.uCell!.value = cssPerCell / radiusPx;
     this.material.uniforms.uDot!.value = dotCell(cssPerCell / radiusPx);
     this.material.uniforms.uFar!.value = farOf(radiusPxToZoom(radiusPx));
+    this.material.uniforms.uSolid!.value = SOLID_WORLD && radiusPxToZoom(radiusPx) < SOLID_UNTIL ? 1 : 0;
     const ticks = radiusPxToZoom(radiusPx) >= TICK_FROM;
     this.material.uniforms.uTickOn!.value = ticks ? 1 : 0;
     // copies 1 and 2 (the rail's cross-ticks) are discarded by the fragment shader until the ticks are on: do not send them through the vertex stage
@@ -353,6 +361,22 @@ export class RouteLayer {
   /** The grey tone the old faint legs had and the ink (kept for the checks that compare with the map's own tones). */
   tones() {
     return this.ramp ? { faint: this.ramp[this.finalLevel]!, ink: this.ramp[this.ramp.length - 1]! } : null;
+  }
+
+  /** Per leg, how it is drawn at this view (diagnosis): its length in art pixels, whether `thinLegs` would merge it into a longer leg's corridor (the street map does; the globe draws it), its crowd step and its quiet step. */
+  legReport() {
+    return this.network.legs.map((leg) => {
+      const cells = this.mPerCell > 0 ? leg.lengthM / this.mPerCell : 0;
+      return {
+        key: legKey(leg.routeId, leg.legIndex),
+        mode: leg.mode,
+        cells,
+        merged: this.kept ? !this.kept.has(legKey(leg.routeId, leg.legIndex)) : false,
+        crowd: this.crowd.get(leg.index) ?? 0,
+        quiet: this.quiet.get(leg.index) ?? 0,
+        lit: this.lit.has(leg.index),
+      };
+    });
   }
 
   stats(): PathStats {

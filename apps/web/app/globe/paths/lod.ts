@@ -5,18 +5,21 @@
  * switch has a hysteresis (`LEVEL_HYSTERESIS`): the scale has to move 25 % past a boundary to change level, so a zoom that
  * hovers at one never flickers between two.
  *
- * Fade: a leg is hidden while it is shorter than `FADE_FROM_CELLS` art pixels, and its tone steps up through the palette
- * (`rampLevel`, the same staircase the borders use: solid tones, never an alpha) to the path tone at `FADE_FULL_CELLS`.
- * "Short legs are hidden at the world view" is this rule: a 300 km leg is 0.6 of a cell there.
+ * Tone: a leg is never faded out by its length (it used to be: hidden under 2 art pixels, stepping up to full at 14, so the chain of a trip lost its
+ * short legs from space, #459). A path that is farther away only loses RESOLUTION (the simplification level above, a coarser dot pitch); where many legs
+ * are in one place (`paths/thin.ts` `crowdLegs`) they are one quiet solid tone, `CROWD_TONE` by the crowd's step.
  */
 import { EARTH_RADIUS_M } from "./simplify";
 import { LOD_TOLERANCES_M } from "./network";
-import { rampLevel } from "../engine/palette";
 
 export const LEVEL_ERROR_CELLS = 0.5;
 export const LEVEL_HYSTERESIS = 1.25;
-export const FADE_FROM_CELLS = 2;
-export const FADE_FULL_CELLS = 14;
+
+/** How far toward the page colour (0..1, solid) a leg of a crowd of step 1..3 is drawn: index 0 is "not crowded". Its mode is carried by the pattern, so a crowd, which has none, is the quiet one. */
+export const CROWD_TONE = [0, 0.3, 0.45, 0.55] as const;
+/** The same for every leg of the world view with `?paths=solid` (#459, option c: solid quiet lines from space, the patterns back from `SOLID_UNTIL`). */
+export const SOLID_TONE = 0.35;
+export const SOLID_UNTIL = 3.2;
 
 /** Metres on the ground per art pixel at the centre of the globe: `radiusPx` is `zoomToRadiusPx(zoom)` and `cssPerCell` the art pixel in CSS px. */
 export const metresPerCell = (radiusPx: number, cssPerCell: number): number => (EARTH_RADIUS_M * cssPerCell) / radiusPx;
@@ -46,12 +49,6 @@ export function levelFor(mPerCell: number, current: number | null, tolerances: r
 export const DOT_STEPS_PER_OCTAVE = 4;
 export function dotCell(cell: number): number {
   return cell > 0 ? 2 ** (Math.round(Math.log2(cell) * DOT_STEPS_PER_OCTAVE) / DOT_STEPS_PER_OCTAVE) : cell;
-}
-
-/** The palette level a leg of `lengthCells` art pixels is drawn at: 0 hidden, up to `finalLevel`. */
-export function fadeLevel(lengthCells: number, finalLevel: number): number {
-  const t = (lengthCells - FADE_FROM_CELLS) / (FADE_FULL_CELLS - FADE_FROM_CELLS);
-  return rampLevel(Math.min(1, t), finalLevel);
 }
 
 /**

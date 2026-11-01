@@ -1038,6 +1038,11 @@ export class GlobeRenderer {
     return this.globe.routes.stats();
   }
 
+  /** Per leg, how it is drawn at this view (diagnosis). */
+  pathLegReport() {
+    return this.globe.routes.legReport();
+  }
+
   /** The globe layers' timed state (checks): the borders' fade value now and whether it is going to / at the on state. */
   layerState() {
     return { borders: this.globe.borderState(), animating: this.globe.animating };
