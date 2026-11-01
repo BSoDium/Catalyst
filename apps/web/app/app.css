@@ -1982,7 +1982,7 @@
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    margin: 1.25rem 0 0;
+    margin: 2rem 0 0;
     color: var(--muted-foreground);
   }
   .entry-exposure .entry-exposure-mark {
@@ -2000,6 +2000,12 @@
   }
   .entry-exposure .entry-exposure-mark * {
     vector-effect: non-scaling-stroke;
+  }
+  /* The block belongs to the picture it describes, so it sits nearer to the picture (1.5 rem, the stage's own 0.25 rem included) than to the standfirst above it (2 rem): the head's usual 1.75 rem of foot and the grid's
+     2 rem of gap would put 4 rem between the block and its picture (owner, 2026-11-02: "the current gap breaks the hierarchy"). */
+  .entry:has(.entry-exposure) .entry-hero {
+    --cover-foot: 0rem;
+    margin-bottom: -0.75rem;
   }
   .entry-exposure-text {
     min-width: 0;
