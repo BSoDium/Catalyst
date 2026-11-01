@@ -19,6 +19,13 @@ export interface PlayInterludeRequest {
   handled: boolean;
 }
 
+/** The page asks the globe to fly back to the world view (the floating "Reset view" control, #458): a window event, like the interlude's, since the control is outside the globe's island. */
+export const GO_WORLD_EVENT = "site:go-world";
+export function requestWorldView(): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(GO_WORLD_EVENT));
+}
+
 /** Ask the home globe to play the interlude now. True when a globe took the request (it may still be a moment before it can start). */
 export function requestInterlude(): boolean {
   if (typeof window === "undefined") return false;
