@@ -106,6 +106,14 @@ export const borderHandoff = (handoff: number): number => Math.max(handoff, BORD
  * geometries of one coast at once. (The 50m borders are not a placeholder: see `BORDER_TILE_MINZOOM`.) Above this zoom the parent tiles of MapLibre already stand in for the missing ones.
  */
 export const WORLD_PLACEHOLDER_BELOW = 5;
+/**
+ * Whether the world-coast placeholder is wanted now (#468): the zoom is under `WORLD_PLACEHOLDER_BELOW`, the street tiles are not all in, AND no tile coast is on screen. A fast zoom out never has all of its
+ * tiles in time (each coarser level is still on its way) while MapLibre goes on drawing the ones it has, and the placeholder then lay over the tile coast for as long as the zoom lasted: two geometries of one
+ * coast. It stands in only for a coast that is not there at all (a first load, a slow network). Pure.
+ */
+export function placeholderWanted(zoom: number, sourceLoaded: boolean, tileCoastShown: boolean): boolean {
+  return zoom < WORLD_PLACEHOLDER_BELOW && !sourceLoaded && !tileCoastShown;
+}
 export const PLACEHOLDER_LAYERS = ["world-coast"] as const; // (the world borders are not one: they ARE the country borders below `BORDER_TILE_MINZOOM`)
 /** Whether a style with this hand-over zoom keeps the world lines as a (hidden until needed) placeholder. */
 export const hasPlaceholder = (handoff: number, hasTiles: boolean): boolean => hasTiles && handoff < WORLD_PLACEHOLDER_BELOW;

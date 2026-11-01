@@ -367,3 +367,13 @@ describe("dash length follows the zoom", () => {
     expect(set["routes-faint-road"]).toBeUndefined();
   });
 });
+
+describe("the world-coast placeholder (#468)", () => {
+  it("stands in only for a coast that is not on screen: not over a tile coast, not once the tiles are in, not from zoom 5", async () => {
+    const { placeholderWanted, WORLD_PLACEHOLDER_BELOW } = await import("./street-style");
+    expect(placeholderWanted(3, false, false)).toBe(true); // a first load, a slow network
+    expect(placeholderWanted(3, false, true)).toBe(false); // a fast zoom out: the tile coast is there
+    expect(placeholderWanted(3, true, false)).toBe(false);
+    expect(placeholderWanted(WORLD_PLACEHOLDER_BELOW, false, false)).toBe(false);
+  });
+});

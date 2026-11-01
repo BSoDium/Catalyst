@@ -44,7 +44,7 @@ import { LayerSwitch, switchRules, type SwitchView } from "./style/layer-switch"
 import { TrailDotsLayer, dotLegs } from "../paths/trail-dots-layer";
 import { capReach, viewCap } from "./core/view-cap";
 import { fadeStraight, thinLegs, thinZoomOf, type ThinLeg } from "../paths/thin";
-import { DEFAULT_HANDOFF, PLACEHOLDER_LAYERS, ROUTE_LAYER_IDS, WORLD_PLACEHOLDER_BELOW, applyCell, applyDashScale, applyKeptLegs, buildStreetStyle, dashStepOf, focusFilter, graticule, headFocusFilter, ROUTE_HEAD_FOCUS_ID, hasPlaceholder, routeLayerId, seaFrom, type StyleTiles } from "./style/street-style";
+import { DEFAULT_HANDOFF, PLACEHOLDER_LAYERS, ROUTE_LAYER_IDS, WORLD_PLACEHOLDER_BELOW, applyCell, applyDashScale, applyKeptLegs, buildStreetStyle, placeholderWanted, dashStepOf, focusFilter, graticule, headFocusFilter, ROUTE_HEAD_FOCUS_ID, hasPlaceholder, routeLayerId, seaFrom, type StyleTiles } from "./style/street-style";
 import { STREET_TUNING } from "./tuning";
 import type { AnimateOptions, FlyOptions, RevealOptions, StreetDebug, StreetMap, StreetMapOptions, StreetView } from "./types";
 
@@ -606,10 +606,21 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
   let lastMask: string | null = null;
 
   /** The world coastline stands in for tiles that are not there yet (and only then): the ease cross-fades it to the tile coast when they arrive. (The world borders are always on below the tile boundary's zoom.) */
+  let tileCoastShown = false;
+  let tileCoastProbedAt = 0;
   const updatePlaceholder = () => {
     if (!placeholderStyle) return;
     // (the street tiles' own source: the satellite ground's tiles come later and never mean the lines are late, or both would be drawn)
-    const want = map.getZoom() < WORLD_PLACEHOLDER_BELOW && !map.isSourceLoaded("tiles");
+    const missing = map.getZoom() < WORLD_PLACEHOLDER_BELOW && !map.isSourceLoaded("tiles");
+    if (missing) {
+      // is a tile coast on screen already? (a query is not free: only while tiles are missing, at most every 100 ms)
+      const now = performance.now();
+      if (now - tileCoastProbedAt > 100) {
+        tileCoastProbedAt = now;
+        tileCoastShown = map.getLayer("water-edge") ? map.queryRenderedFeatures({ layers: ["water-edge"] }).length > 0 : false;
+      }
+    } else tileCoastShown = false;
+    const want = placeholderWanted(map.getZoom(), !missing, tileCoastShown);
     if (want === placeholderOn) return;
     placeholderOn = want;
     for (const id of PLACEHOLDER_LAYERS) if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", want ? "visible" : "none");
