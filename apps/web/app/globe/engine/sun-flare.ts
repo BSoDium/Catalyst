@@ -101,7 +101,7 @@ const FRAGMENT = /* glsl */ `
       glow = max(glow, glowOf(a.y, a.x, gh));
       glow = max(glow, glowOf(a.x, a.y, gv));
       glow = max(glow, glowOf(abs(a.x - a.y) * 0.7071, (a.x + a.y) * 0.7071, gdg));
-      if (glow > bayer()) { ink = ${f(FLARE.glow.tone)}; hue = 0.9; }
+      if (glow > bayer()) { ink = ${f(FLARE.glow.tone)} * mix(1.0, ${f(FLARE.glow.light)}, uLight); hue = 0.9; }
     }
     if (uLight > 0.5) {
       // the light page: the sun's rays are WHITE, and what shows them is a very soft, faint grey darkening round the sun (the veil); the ghosts are the ramp's colours, faintly
