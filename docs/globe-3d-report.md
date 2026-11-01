@@ -12,7 +12,7 @@ There are **two WebGL canvases and a few 2D layers** stacked in the globe's box,
 | **Ring of type** | The small mono text that circles the planet | **No**: a flat 2D canvas | `engine/ring-layer.ts` |
 | **Box and label overlay** | Place markers, group squares, their labels | **No**: a pixel canvas plus DOM labels, placed from the camera | `engine/box-scene.ts`, `label-dom.ts` |
 | **Street map** (past zoom 3.7) | Roads, buildings: a different renderer | 2D (Web Mercator), registered to the globe's camera | `street/`, `handover/` |
-| **Caption canvas** | "A personal archive, organised around places", the section names, and the UNIVERSAL word | **Yes**: a second Three.js renderer, same camera | `engine/caption-layer.ts` |
+| **Caption canvas** | "A personal archive, mapped place by place", the section names, and the UNIVERSAL word | **Yes**: a second Three.js renderer, same camera | `engine/caption-layer.ts` |
 | (in the globe canvas) **the moon** | A small lit sphere on a far orbit | **Yes**: a mesh in the scene, drawn with coverage so it glides | `engine/moon.ts`, `moon-layer.ts` |
 | **The moon's link** | Invisible `<a>` over the moon, and its label card | DOM, placed from the moon's projection | `engine/moon-overlay.ts` |
 | **Hero** (name, rows) | Page text | DOM | `components/landing-hero.tsx` |
