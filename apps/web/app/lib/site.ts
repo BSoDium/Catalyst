@@ -104,7 +104,7 @@ export function siteCaption(counts?: KindCounts | null): SiteCaption {
   const sets: CaptionRow[][] = [
     [
       [{ text: "A " }, { text: "personal archive", style: "heavy", accent: "blue" }, { text: "," }],
-      [{ text: "mapped " }, { text: "place by place", style: "heavy", accent: "blue" }, { text: "." }],
+      [{ text: "mapped " }, { text: "step by step", style: "heavy", accent: "blue" }, { text: "." }],
     ],
     // (five sections in two rows no wider than the counts' row of the four-section caption (24 letters); the handwriting, bigger than the serif, ends the TOP row: it has
     // nothing above it there, so it can rise without touching a row, and it has no comma after it (its comma is ugly): the comma before it is the serif's)
