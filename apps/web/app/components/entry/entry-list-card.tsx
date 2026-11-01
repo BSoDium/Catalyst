@@ -139,7 +139,7 @@ export function EntryRow({
           </div>
         )}
       </dl>
-      <div className={cn("entry-row-text flex min-w-0 flex-col gap-3", showCover ? "max-md:contents md:col-span-7" : "md:col-span-9")}>
+      <div className={cn("entry-row-text flex min-w-0 flex-col gap-3", showCover ? "max-md:contents md:col-span-6 lg:col-span-7" : "md:col-span-9")}>
         <Heading data-slot="entry-card-title" className={cn("type-display-md m-0 font-extrabold", showCover && "max-md:line-clamp-2")}>
           <Link to={entry.href} state={linkState} className="after:absolute after:inset-0 after:content-[''] focus-visible:outline-none">
             {entry.title}
@@ -149,14 +149,14 @@ export function EntryRow({
         {tags.length > 0 && <TagList label="Tags" tags={tags.map((label) => ({ label }))} className="entry-row-tags font-meta text-xs" />}
       </div>
       {showCover && (
-        <div className="entry-row-cover min-w-0 md:col-span-3">
+        <div className="entry-row-cover min-w-0 md:col-span-4 lg:col-span-3">
           <div className="overflow-hidden">
             {cover && entry.sensitive === true ? (
               <SensitiveMedia>
-                <img src={cover.src} srcSet={cover.srcSet} sizes={cover.sizes} alt={cover.alt} loading={priority ? "eager" : "lazy"} decoding="async" className="aspect-4/3 w-full object-cover md:aspect-video" />
+                <img src={cover.src} srcSet={cover.srcSet} sizes={cover.sizes} alt={cover.alt} loading={priority ? "eager" : "lazy"} decoding="async" className="aspect-4/3 w-full object-cover xl:aspect-video" />
               </SensitiveMedia>
             ) : cover ? (
-              <img src={cover.src} srcSet={cover.srcSet} sizes={cover.sizes} alt={cover.alt} loading={priority ? "eager" : "lazy"} decoding="async" className="aspect-4/3 w-full object-cover md:aspect-video" />
+              <img src={cover.src} srcSet={cover.srcSet} sizes={cover.sizes} alt={cover.alt} loading={priority ? "eager" : "lazy"} decoding="async" className="aspect-4/3 w-full object-cover xl:aspect-video" />
             ) : (
               <CoverArt seed={entry.slug} kind={entry.kind} cols={48} rows={27} />
             )}

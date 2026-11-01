@@ -112,10 +112,10 @@ describe("EntryListPage", () => {
     const covered = render(articles);
     expect((covered.match(/<article[^>]*data-covered=""/g) ?? []).length).toBe(articles.filter((a) => a.cover).length);
     expect(articles.some((a) => a.cover)).toBe(true);
-    // two lines of title at most on a phone, a 4:3 picture there and the wide one from md
+    // two lines of title at most on a phone, a 4:3 picture there and through the tablet widths (a wider column from md), the wide one from xl
     expect(covered).toContain("max-md:line-clamp-2");
     expect(covered).toContain("aspect-4/3");
-    expect(covered).toContain("md:aspect-video");
+    expect(covered).toContain("xl:aspect-video");
     const bare = render(articles.map((a) => ({ ...a, cover: undefined })));
     expect(bare).not.toContain("data-covered");
     expect(bare).not.toContain("max-md:line-clamp-2");
