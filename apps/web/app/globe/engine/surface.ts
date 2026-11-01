@@ -46,7 +46,7 @@ export const NIGHT = {
   /** The planet's own outline (the horizon ring): the same steps, a little less dim, so that the dark side's edge is still there. */
   limbDim: 0.8,
   /** The same two on the LIGHT page: the lines now go towards the page there too (2026-11-01, #436: towards the ink they were far too contrasted on the dark side), `lineDimLight` of the way; the planet's outline still goes towards the ink, less (`limbDimLight`). */
-  lineDimLight: 0.25,
+  lineDimLight: 0.3,
   limbDimLight: 0.35,
   lineSteps: 3,
   /** The orbiting type over the dark side: its colour goes this share of the way to the page's at the darkest (a dimming, not a night: the words must stay readable). */
