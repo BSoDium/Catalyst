@@ -148,6 +148,8 @@ export interface HandoverHandle {
   /** The visitor asks for the cinematic interlude (engine/cinematic.ts); false when it cannot be played now. */
   playInterlude(): boolean;
   /** The visitor asked for the interlude and the caption is away: it begins now from wherever the camera is; false while it is not ready. */
+  /** Fly the camera back to the world view (the whole globe, no street map), over the longitude and the latitude it is at (#458). */
+  goWorld(): void;
   playInterludeNow(): boolean;
   /** The finer coastline (`@catalyst/geodata` `loadDetailedCoastlines`) has been loaded: the globe draws it, and fills the continents from it. */
   upgradeCoast(p: Polylines): void;
@@ -842,6 +844,11 @@ export function createHandover(opts: HandoverOptions): HandoverHandle {
     },
     hasOrbit: () => renderer.hasCaption(),
     playInterlude: () => renderer.playInterlude(),
+    goWorld() {
+      wantStreet = false;
+      retreating = false;
+      renderer.flyTo({ zoom: renderer.getMinZoom() });
+    },
     playInterludeNow: () => renderer.playInterludeNow(),
     upgradeCoast: (p) => renderer.upgradeCoast(p),
     wantInterlude: () => renderer.wantInterlude(),
