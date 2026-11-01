@@ -514,7 +514,10 @@ export function lightsMaterial(): ShaderMaterial {
         // (its colour: along the ramp, from a deep orange-yellow to a warm white, by its own hash, a patchy noise round it (patches of a few texels from afar, of a few dots near), and how packed the place is)
         float tone = clamp(${LIGHTS.own.toFixed(2)} * hash21(cell + 7.0) + ${LIGHTS.patch.toFixed(2)} * vnoise(t * mix(${LIGHTS.patchFar.toFixed(2)}, ${LIGHTS.patchScale.toFixed(1)}, mag) + 5.0) + ${LIGHTS.heatShare.toFixed(2)} * heat - 0.1 + star, 0.0, 1.0);
         vec3 light = tone < 0.5 ? mix(uRamp0, uRamp1, tone * 2.0) : mix(uRamp1, uRamp2, tone * 2.0 - 1.0);
-        gl_FragColor = vec4(mix(light, uBg, (1.0 - bright) * (1.0 - star)), 1.0);
+        // (the dimmer a light is, the nearer the sodium lamp's red-orange: the dim ones read as street lighting, not gold dust; the brightest keep their ramp)
+        float dim = (1.0 - bright) * (1.0 - star);
+        light = mix(light, vec3(${LIGHTS.sodium.map((c) => c.toFixed(2)).join(", ")}), clamp(dim / ${LIGHTS.sodiumFull.toFixed(2)}, 0.0, 1.0) * ${LIGHTS.sodiumShare.toFixed(2)});
+        gl_FragColor = vec4(mix(light, uBg, dim), 1.0);
       }
     `,
     side: FrontSide,
