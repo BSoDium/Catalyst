@@ -448,6 +448,56 @@
       "bytes": 178888
     },
     {
+      "path": "poem/crepuscule-grec/cover-800w.37b36722.webp",
+      "sha256": "37b367221e61433988395af47b78822805b604769116f1526ce8430b122e0c36",
+      "bytes": 109138
+    },
+    {
+      "path": "poem/crepuscule-grec/cover.fddc8eb1.webp",
+      "sha256": "fddc8eb150220ad56ebbc62bbe0b2fcdcfd89f9187e03bdfaeff295bd98ac375",
+      "bytes": 287252
+    },
+    {
+      "path": "poem/l-exil/cover-800w.193f3d2d.webp",
+      "sha256": "193f3d2d75d95d372ca32f3faf247888c50590d4b1ca7c6d9db93e10064476f8",
+      "bytes": 62084
+    },
+    {
+      "path": "poem/l-exil/cover.b0a76df9.jpg",
+      "sha256": "b0a76df945581344160758e793a2fc496e252aa0480005702f0e2383fcc05943",
+      "bytes": 296781
+    },
+    {
+      "path": "poem/les-pelerins-du-rail/cover-800w.a77b428f.webp",
+      "sha256": "a77b428facb8f94d65c9cbbc92019d3aff19a8b469888800bc20d39cb2344e42",
+      "bytes": 73556
+    },
+    {
+      "path": "poem/les-pelerins-du-rail/cover.89d44045.jpg",
+      "sha256": "89d44045c7812fd919fbd2d19a9759720f1b21e2b3325d7a32523d66c6ea70b1",
+      "bytes": 383739
+    },
+    {
+      "path": "poem/ode-au-desert/cover-800w.c054f02f.webp",
+      "sha256": "c054f02f01d51e93c3db9553cec8731dccc36d4ada5223e91f83f4c8040669c3",
+      "bytes": 86956
+    },
+    {
+      "path": "poem/ode-au-desert/cover.348af546.jpg",
+      "sha256": "348af54614d3897b0b402f8bcd0ebf1867ebe64fc676b0645e6bd2b65b8a30b7",
+      "bytes": 471270
+    },
+    {
+      "path": "poem/the-traveler/cover-800w.73ca8076.webp",
+      "sha256": "73ca807684dfa78dcf82cc19c0d8a7c36645b48091e893ad3e2afff6b0ed4f4d",
+      "bytes": 69682
+    },
+    {
+      "path": "poem/the-traveler/cover.01101d9e.jpg",
+      "sha256": "01101d9eb53924dbe599b9e1d37aeb8981136c958ef51ed236975e4f6359bcdb",
+      "bytes": 406559
+    },
+    {
       "path": "project/amaze-me/cover-800w.640a2e7d.webp",
       "sha256": "640a2e7d0b0716c68f28d84c3a50df1646033e0d209cd102227d37ad285fbf60",
       "bytes": 75172
@@ -596,6 +646,16 @@
       "path": "project/randomite/cover.411753a6.webp",
       "sha256": "411753a6c2a16a72a92ce7795ef6704bbd531b7aa663b4169a9c36bf320dd26a",
       "bytes": 141960
+    },
+    {
+      "path": "project/raycast-capture-and-create/cover-800w.781d3cfc.webp",
+      "sha256": "781d3cfc7602acb98428b51d2ed91c9bffeff5b82954762c86ad7ee59fa7f3f3",
+      "bytes": 21962
+    },
+    {
+      "path": "project/raycast-capture-and-create/cover.10ce1cd2.webp",
+      "sha256": "10ce1cd2dd2ee06d528c03037d30d2b38fd58c6c1a157cf8ddac95d571359582",
+      "bytes": 97190
     },
     {
       "path": "project/slashboard/cover-800w.01d7bc95.webp",
