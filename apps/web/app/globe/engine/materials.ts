@@ -42,7 +42,10 @@ export function lineMaterial(coverage: number, stipple = 0): ShaderMaterial {
         // the night: the colour goes towards the page's in whole steps (a flat grey per step)
         float dark = floor(washOf(normalize(vDir), uSunN, uNight, uFlip) * ${NIGHT.lineSteps.toFixed(1)} + 0.5) / ${NIGHT.lineSteps.toFixed(1)};
         if (uStipple > 0.0 && mod(floor(gl_FragCoord.x) + floor(gl_FragCoord.y), uStipple) > 0.5) discard;
-        gl_FragColor = vec4(mix(mix(uColor, uAlt, uAltAmt), uNightTo, dark * mix(${NIGHT.lineDim.toFixed(2)}, ${NIGHT.lineDimLight.toFixed(2)}, uFlip)), 1.0);
+        vec3 line = mix(mix(uColor, uAlt, uAltAmt), uNightTo, dark * mix(${NIGHT.lineDim.toFixed(2)}, ${NIGHT.lineDimLight.toFixed(2)}, uFlip));
+        // the light page's shadow is on the lines too, as it is on the ground and the sea (the graticule, a pale grey, stayed as light on the dark face as on the lit one and read lighter than the ground under it)
+        line *= 1.0 - ${NIGHT.shadow.toFixed(2)} * uFlip * dark;
+        gl_FragColor = vec4(line, 1.0);
       }
     `,
   });
