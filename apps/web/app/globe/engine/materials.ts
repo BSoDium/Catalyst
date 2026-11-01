@@ -398,7 +398,7 @@ export function surfaceMaterial(): ShaderMaterial {
         float w = washOf(n, uSunN, uNight, uFlip);
         // (dark page: the stipple thins and the ground steps to its lightest tone; light page, uFlip: it thickens and steps to its darkest)
         ditherDiscard(uAmt * mix(1.0, mix(${NIGHT.landMin.toFixed(2)}, ${NIGHT.landMax.toFixed(2)}, uFlip), w));
-        v += w * ${NIGHT.shift.toFixed(2)} * (1.0 - 2.0 * uFlip);
+        v += w * mix(${NIGHT.shift.toFixed(2)}, ${NIGHT.shiftLight.toFixed(2)}, uFlip) * (1.0 - 2.0 * uFlip);
         // the land is dark, middle or light ground (thresholds on the picture's brightness, which the picture lifts to 0.2 and over)
         vec3 tone = v < ${SURFACE.cuts[0].toFixed(2)} ? uTone0 : (v < ${SURFACE.cuts[1].toFixed(2)} ? uTone1 : uTone2);
         // the light page's shadow: the ground on the night side is darkened with the sea, in the same flat steps and the same dither between them

@@ -240,9 +240,9 @@ export class GlobeScene {
     this.landFill = [0, 1, 2].map((i) => t.background[i]! + (t.ink[i]! - t.background[i]!) * LAND_SHARE) as unknown as Rgb;
     this.occluder.uniforms.uFill!.value.setRGB(...this.landFill);
     this.borders.uniforms.uAlt!.value.setRGB(...t.background);
-    // (what the night does to the lines goes the page's way: towards the page on the dark one, towards the ink on the light one)
+    // (what the night does to the lines goes towards the page on both: on the light page they went towards the ink and were far too contrasted on the dark side, #436; the planet's own outline still goes the page's way)
     const nightTo = t.scheme === "dark" ? t.background : t.ink;
-    for (const m of [this.graticule, this.borders, this.coast]) m.uniforms.uNightTo!.value.setRGB(...nightTo);
+    for (const m of [this.graticule, this.borders, this.coast]) m.uniforms.uNightTo!.value.setRGB(...t.background);
     // the accent, as the page has it in this scheme (app.css `--palette-blue`; the lighter step on the dark page)
     if (t.scheme === "dark") this.city.uniforms.uColor!.value.setRGB(0.29, 0.64, 0.96);
     else this.city.uniforms.uColor!.value.setRGB(0, 0.47, 0.84);

@@ -37,14 +37,16 @@ export const NIGHT = {
   litFrom: -0.32,
   litTo: 0.16,
   shift: 0.45,
+  /** The same on the LIGHT page, where the ground steps to its darkest tone: far less, so that the three tones of the earth's picture are still told apart on the dark side (owner, 2026-11-01, #436: the texture was invisible there). */
+  shiftLight: 0.12,
   // The darkest a land cell goes on the night side, so the continents stay readable there.
   landMin: 0.45,
   /** The lines on the dark side: their colour goes this share of the way to the page's, in `lineSteps` steps (a staircase of greys, the palette's way; not a thinning: a one-pixel line in a dither flickers as the planet turns). */
   lineDim: 0.88,
   /** The planet's own outline (the horizon ring): the same steps, a little less dim, so that the dark side's edge is still there. */
   limbDim: 0.8,
-  /** The same two on the LIGHT page, where they go towards the ink: the share is less, a grey line on the white goes to black much faster than a light one on the dark page fades. */
-  lineDimLight: 0.4,
+  /** The same two on the LIGHT page: the lines now go towards the page there too (2026-11-01, #436: towards the ink they were far too contrasted on the dark side), `lineDimLight` of the way; the planet's outline still goes towards the ink, less (`limbDimLight`). */
+  lineDimLight: 0.35,
   limbDimLight: 0.35,
   lineSteps: 3,
   /** The orbiting type over the dark side: its colour goes this share of the way to the page's at the darkest (a dimming, not a night: the words must stay readable). */
@@ -56,7 +58,7 @@ export const NIGHT = {
   /** How much of the wash the light page shows (the scale of `uNight`): a little under the dark page's, so the night half is never solid ink. */
   lightGain: 0.75,
   /** The shadow of the night on the LIGHT page: the dark side, sea and ground alike, is darkened by this share at the darkest, in `lineSteps` flat steps, the step between two taken by the art's ordered dither (a stipple across the terminator, as the land has: no gradient). */
-  shadow: 0.2,
+  shadow: 0.3,
   /** The share of the land's pixels at the darkest of the night on the LIGHT page, times the day's (a stipple that thickens, where the dark page's thins to `landMin`; 1.0 since #436: it was 1.8, which made the night side's continents far too contrasted under the boxes and paths). */
   landMax: 1.0,
   /** The interlude's atmosphere (the glow over the limb and the veil on the ground): how much of it goes where the planet is washed (the dark side on the dark page, the sun's side on the light one): it is lit exactly as the ground is (the same terminator, in the same whole steps), and gone where the ground is dark. */
