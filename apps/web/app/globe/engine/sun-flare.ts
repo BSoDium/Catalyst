@@ -161,6 +161,17 @@ export function haloClear(riseDisc: number): number {
 }
 
 /**
+ * What the disc is asked to be for a crescent of this `area` (0..1): 1 once the planet touches the sun (`1 - smoothstep(0.9, 0.97, area)`), 0 while it is clear AND while it is wholly hidden (#469): a sun behind the
+ * planet has nothing to show, and the disc used to be asked for in full all that time, so that a sun coming out after a fast zoom out was a flat disc from its first visible frame (`?sun-log`: touch 1, area 0.81, the next frame
+ * clear). Hidden, the disc is 0 and comes in again, eased in time, only if the planet stays on the sun. Pure.
+ */
+export function touchTarget(area: number): number {
+  if (area <= 0.003) return 0;
+  const x = Math.min(1, Math.max(0, (area - 0.9) / 0.07));
+  return 1 - x * x * (3 - 2 * x);
+}
+
+/**
  * The disc's state (`SUN.cover.touchOnMs`): `target` is 1 once the planet touches the sun (`1 - smoothstep(0.9, 0.97, area)`), 0 while it is clear; `dt` the seconds since the last frame. A frame is not a unit
  * of time: a fast zoom takes the limb across the sun in two or three of them, and the flat white disc was on for those and off again, a flash between two warm suns, so it comes IN eased in time. It goes WITH the
  * target, at once (#469): it used to go eased too, and a sun that came out from behind the planet after a fast zoom out, the disc already whole from the time it was hidden, stayed a flat monochrome disc for a second

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { MOON, SUN } from "./moon";
-import { easeTouch, flarePlace, haloClear, pickOccluder, planetRise, rayStart, sunCrescent, sunRise, type FlareFrame, type Occluder } from "./sun-flare";
+import { easeTouch, touchTarget, flarePlace, haloClear, pickOccluder, planetRise, rayStart, sunCrescent, sunRise, type FlareFrame, type Occluder } from "./sun-flare";
 
 const frame = (over: Partial<FlareFrame> = {}): FlareFrame => ({ bufW: 400, bufH: 260, x: 300, y: 80, ahead: true, amount: 1, visible: 1, ...over });
 
@@ -231,6 +231,17 @@ describe("the disc the planet makes of the sun, eased in, gone with the cover", 
     expect(easeTouch(1, 0, 0.016)).toBe(0);
     expect(easeTouch(1, 0.6, 0.016)).toBe(0.6);
     expect(easeTouch(0.3, 0.3, 0.016)).toBe(0.3);
+  });
+  it("is asked for only while the planet touches a sun that is in view: not clear, not wholly hidden (#469)", () => {
+    expect(touchTarget(1)).toBe(0);
+    expect(touchTarget(0.97)).toBe(0);
+    expect(touchTarget(0.5)).toBe(1);
+    expect(touchTarget(0.05)).toBe(1);
+    expect(touchTarget(0)).toBe(0);
+    expect(touchTarget(0.003)).toBe(0);
+    // a smooth way down through the last few percent of the sun
+    expect(touchTarget(0.935)).toBeGreaterThan(0.3);
+    expect(touchTarget(0.935)).toBeLessThan(0.7);
   });
   it("does not move up without time, and is where it was asked to be after a long one", () => {
     expect(easeTouch(0.4, 1, 0)).toBe(0.4);

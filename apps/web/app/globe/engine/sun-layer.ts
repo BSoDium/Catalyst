@@ -15,8 +15,7 @@ import { BAYER4 } from "./sky";
 import { SUN } from "./moon";
 import { FX } from "./fx";
 import { PULSE, type SunPulse } from "./sun-pulse";
-import { smoothstep } from "./geo";
-import { FlareLayer, WARM_GLSL, easeTouch, rayStart, haloClear, sunCrescent, type FlareFrame } from "./sun-flare";
+import { FlareLayer, WARM_GLSL, easeTouch, touchTarget, rayStart, haloClear, sunCrescent, type FlareFrame } from "./sun-flare";
 
 const VERTEX = /* glsl */ `
   uniform vec2 uCentre; uniform float uExt; uniform vec2 uBuf;
@@ -277,7 +276,7 @@ export class SunLayer {
     const halo = haloClear(rise);
     // the disc the planet makes of the sun once it touches it, eased in time (a fast zoom took the limb across in a few frames)
     const nowMs = performance.now();
-    this.touch = easeTouch(this.touch, 1 - smoothstep(Math.min(1, Math.max(0, (cres.area - 0.9) / 0.07))), (nowMs - this.touchAt) / 1000);
+    this.touch = easeTouch(this.touch, touchTarget(cres.area), (nowMs - this.touchAt) / 1000);
     this.touchAt = nowMs;
     if (SUN_LOG) recordSun({ t: Math.round(nowMs), amount: f.amount, rise, area: cres.area, halo, touch: this.touch, visible: this.mesh.visible, ahead: f.ahead, focal: f.focal });
     // (the reddening is the atmosphere's: what has none, the moon, leaves the colour as it is)
