@@ -2,11 +2,14 @@ import {
   BufferAttribute,
   DataTexture,
   InstancedBufferAttribute,
+  DynamicDrawUsage,
   InstancedBufferGeometry,
   LineSegments,
+  Matrix4,
   NearestFilter,
   RedFormat,
   UnsignedByteType,
+  type Camera,
   type Scene,
   type ShaderMaterial,
 } from "three";
@@ -84,6 +87,11 @@ export class RouteLayer {
   private thinZoom: number | null = null;
   private thinAnchor: WindowAnchor | null = null;
   private litRoutes = new Set<string>();
+  /** The flights' vertex runs (first vertex, count) and the screen length along them (`syncScreen`): the dots of an arc are laid out on the screen, not on the ground (#483). */
+  private flightRuns: { from: number; count: number }[] = [];
+  private screenLen: BufferAttribute | null = null;
+  private screenMat = new Matrix4();
+  private screenKey = new Float64Array(19);
   /** performance.now() at which the draw-on began, or null when the legs are complete. */
   private drawStart: number | null = null;
   private enabled = true;
@@ -108,6 +116,14 @@ export class RouteLayer {
     g.setAttribute("aDist", new BufferAttribute(b.dist, 1));
     g.setAttribute("aInfo", new BufferAttribute(b.info, 4));
     g.setAttribute("aTan", new BufferAttribute(b.tangent, 3));
+    let first = 0;
+    for (const leg of this.network.legs) {
+      const n = leg.lonlat.length / 2;
+      if (leg.mode === "flight") this.flightRuns.push({ from: first, count: n });
+      first += n;
+    }
+    this.screenLen = new BufferAttribute(new Float32Array(b.vertexCount), 1).setUsage(DynamicDrawUsage);
+    g.setAttribute("aScr", this.screenLen);
     // copies 1 and 2 are the rail's cross-ticks and the cross of every head's spark: always three
     g.setAttribute("aCopy", new InstancedBufferAttribute(Float32Array.from([0, 1, 2]), 1));
     g.instanceCount = 3;
@@ -328,6 +344,52 @@ export class RouteLayer {
     if (this.geometry) this.geometry.instanceCount = ticks ? 3 : 1;
     const level = levelFor(this.mPerCell, this.level);
     if (level !== this.level) this.applyLevel(level);
+  }
+
+  /**
+   * The length along each flight's arc ON THE SCREEN, in buffer pixels from its start, at the vertex (the shader lays the dots out by it). Called with the camera's
+   * matrices current; does nothing until the camera, the lift or the buffer has moved (a still globe costs nothing). Only the flights' vertices are projected here.
+   */
+  syncScreen(camera: Camera, bufW: number, bufH: number) {
+    const attr = this.screenLen;
+    if (!attr || !this.line || !this.material || this.flightRuns.length === 0) return;
+    this.line.updateWorldMatrix(true, false);
+    const m = this.screenMat.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse).multiply(this.line.matrixWorld);
+    const lift = this.material.uniforms.uLift!.value as number;
+    const key = this.screenKey;
+    let same = key[16] === lift && key[17] === bufW && key[18] === bufH;
+    for (let i = 0; same && i < 16; i++) if (key[i] !== m.elements[i]) same = false;
+    if (same) return;
+    for (let i = 0; i < 16; i++) key[i] = m.elements[i]!;
+    key[16] = lift;
+    key[17] = bufW;
+    key[18] = bufH;
+    const e = m.elements;
+    const pos = this.buffers!.position;
+    const out = attr.array as Float32Array;
+    const hx = bufW / 2, hy = bufH / 2;
+    for (const { from, count } of this.flightRuns) {
+      let acc = 0;
+      let px = 0, py = 0, have = false;
+      for (let k = 0; k < count; k++) {
+        const o = (from + k) * 3;
+        const x = pos[o]!, y = pos[o + 1]!, z = pos[o + 2]!;
+        const len = Math.hypot(x, y, z) || 1;
+        const s = (1 + (len - 1) * lift) / len;
+        const X = x * s, Y = y * s, Z = z * s;
+        const w = e[3]! * X + e[7]! * Y + e[11]! * Z + e[15]!;
+        if (w > 1e-6) {
+          const sx = ((e[0]! * X + e[4]! * Y + e[8]! * Z + e[12]!) / w) * hx;
+          const sy = ((e[1]! * X + e[5]! * Y + e[9]! * Z + e[13]!) / w) * hy;
+          if (have) acc += Math.hypot(sx - px, sy - py);
+          px = sx;
+          py = sy;
+          have = true;
+        }
+        out[from + k] = acc;
+      }
+    }
+    attr.needsUpdate = true;
   }
 
   /** 1 = lifted arcs, 0 = flat on the ground (handover: they flatten before the street map takes over). */

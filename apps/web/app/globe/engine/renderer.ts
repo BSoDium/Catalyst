@@ -2549,6 +2549,7 @@ export class GlobeRenderer {
     this.caption?.setNight(shown, ns);
     const now = performance.now();
     this.globe.syncCamera(b, zoom, this.pixel, now, this.reduced, lat, Math.max(this.width, this.height), lon);
+    this.globe.syncRoutesScreen(cam, this.bufW, this.bufH);
     // (the caption's lines stay on the page's meridian and latitude; only what is hidden is the flying camera's)
     const over = pose ? { lon, lat } : undefined;
     this.lastBasis = { d, lon: v.lon, lat: v.lat, cam: over };

@@ -607,9 +607,9 @@ export function pathMaterial(): ShaderMaterial {
     depthTest: false,
     depthWrite: false,
     vertexShader: /* glsl */ `
-      attribute float aDist; attribute vec4 aInfo; attribute vec3 aTan; attribute float aCopy;
+      attribute float aDist; attribute vec4 aInfo; attribute vec3 aTan; attribute float aCopy; attribute float aScr;
       uniform vec2 uPixel; uniform float uLift; uniform float uCell; uniform sampler2D uState; uniform vec2 uTexSize;
-      varying float vDist; varying float vLen; varying float vMode; varying float vState; varying float vCopy; varying float vPal; varying float vQuiet; varying float vCrowd;
+      varying float vDist; varying float vLen; varying float vMode; varying float vState; varying float vCopy; varying float vPal; varying float vQuiet; varying float vCrowd; varying float vScr;
       varying vec3 vPos;
       void main() {
         float leg = aInfo.x;
@@ -620,7 +620,7 @@ export function pathMaterial(): ShaderMaterial {
         float n = st < 0.25 ? floor(st * 255.0 + 0.5) : 0.0;
         vQuiet = mod(n, 4.0);
         vCrowd = mod(floor(n / 4.0), 4.0);
-        vDist = aDist; vLen = aInfo.z; vMode = aInfo.y; vPal = aInfo.w; vState = st; vCopy = aCopy;
+        vDist = aDist; vScr = aScr; vLen = aInfo.z; vMode = aInfo.y; vPal = aInfo.w; vState = st; vCopy = aCopy;
         // uLift scales the height above the surface: 1 = lifted arc, 0 = on the ground (street scale).
         vec3 p = normalize(position) * (1.0 + (length(position) - 1.0) * uLift);
         vPos = p;
@@ -636,7 +636,7 @@ export function pathMaterial(): ShaderMaterial {
       }`,
     fragmentShader: /* glsl */ `
       uniform vec3 uTrail[${TRAIL_ENTRIES}]; uniform vec3 uPage; uniform float uFinal; uniform float uPresence; uniform float uFront; uniform float uMarch; uniform float uCell; uniform float uDot; uniform float uFar; uniform float uTickOn;
-      varying float vDist; varying float vLen; varying float vMode; varying float vState; varying float vCopy; varying float vPal; varying float vQuiet; varying float vCrowd;
+      varying float vDist; varying float vLen; varying float vMode; varying float vState; varying float vCopy; varying float vPal; varying float vQuiet; varying float vCrowd; varying float vScr;
       varying vec3 vPos;
       // True when the occluder sphere lies between the camera and p.
       bool behindGlobe(vec3 p) {
@@ -652,13 +652,18 @@ export function pathMaterial(): ShaderMaterial {
       void main() {
         // How far the pattern runs along the line from one pixel to the next, in dots' cells: 1 for a line along an axis, 1.41 on a diagonal (a line is one
         // pixel per step of its major axis). Taken first: derivatives are only defined while every fragment of the quad is still here.
-        vec2 gd = vec2(dFdx(vDist), dFdy(vDist)) / uDot;
+        // A flight's arc (mode 3) is laid out by its length ON THE SCREEN (aScr, worked out per view by route-layer.ts syncScreen): the fold of an arc seen along its
+        // own plane has no ground length to correct by, and the half-octave steps below opened a gap at each step (#483). Every other mode is laid out on the ground.
+        bool flight = abs(vMode - 3.0) < 0.5;
+        vec2 gdGround = vec2(dFdx(vDist), dFdy(vDist)) / uDot;
+        vec2 gdScreen = vec2(dFdx(vScr), dFdy(vScr));
+        vec2 gd = flight ? gdScreen : gdGround;
         float gm = max(abs(gd.x), abs(gd.y));
         float step1 = gm > 1.0e-6 ? clamp(dot(gd, gd) / gm, 0.5, 4.0) : 1.0;
         // The pattern's pitch on the SCREEN (#459): a line tilted toward the limb is foreshortened, length(gd) cells of pattern go by per pixel instead of one, and
         // its dots bunched into dust. The pattern is laid out in cells fore times longer where the line is fore times foreshortened (a half-octave step, so each
         // run of a leg keeps one phase along the ground: the dots do not crawl when the planet turns), which keeps the pitch within a fifth of the table's.
-        float fore = exp2(floor(log2(clamp(length(gd), 1.0, 8.0)) * 2.0 + 0.5) * 0.5);
+        float fore = flight ? 1.0 : exp2(floor(log2(clamp(length(gd), 1.0, 8.0)) * 2.0 + 0.5) * 0.5);
         step1 = max(0.5, step1 / fore);
         bool lit = vState > 0.25;
         float t = vLen > 0.0 ? vDist / vLen : 0.0;
@@ -668,7 +673,7 @@ export function pathMaterial(): ShaderMaterial {
         // a crowd's legs (paths/thin.ts crowdLegs) are one quiet solid tone: no pattern to make dust of
         float crowd = lit ? 0.0 : vCrowd;
         bool solid = !lit && crowd > 0.5;
-        float cells = (vDist / uDot - (lit ? uMarch : 0.0)) / fore;
+        float cells = ((flight ? vScr : vDist / uDot) - (lit ? uMarch : 0.0)) / fore;
         // mode ids (paths/modes.ts): 0 road, 1 rail, 2 ferry, 3 flight, 4 walk, 5 unknown
         float m = floor(vMode + 0.5);
         // the pattern of the street map's cells (a dot is one pixel): paths/modes.ts CELL_PATTERN, so the two renderers draw the same
