@@ -193,6 +193,29 @@ export function sunPlace(f: SunFrame): { x: number; y: number; r: number } | nul
   return { x: Math.floor(f.x) + 0.5, y: Math.floor(f.y) + 0.5, r };
 }
 
+/**
+ * The sun's frame recorder (#469): with `?sun-log` in the address, every frame the sun is placed records what decides its look (the night's amount, the planet's cover, the eased disc, the camera's focal length) in
+ * `window.__sunLog` (the last 1200 frames), to be read from the console after a fast zoom out: `copy(JSON.stringify(window.__sunLog))`. Off otherwise: nothing is recorded or kept.
+ */
+const SUN_LOG = typeof location !== "undefined" && new URLSearchParams(location.search).has("sun-log");
+interface SunRecord {
+  t: number;
+  amount: number;
+  rise: number;
+  area: number;
+  halo: number;
+  touch: number;
+  visible: boolean;
+  ahead: boolean;
+  focal: number;
+}
+function recordSun(r: SunRecord): void {
+  const w = window as unknown as { __sunLog?: SunRecord[] };
+  const log = (w.__sunLog ??= []);
+  log.push({ ...r, amount: +r.amount.toFixed(3), rise: Number.isFinite(r.rise) ? +r.rise.toFixed(2) : Infinity, area: +r.area.toFixed(3), halo: +r.halo.toFixed(3), touch: +r.touch.toFixed(3) });
+  if (log.length > 1200) log.splice(0, log.length - 1200);
+}
+
 export class SunLayer {
   readonly mesh: Mesh;
   private mat = material();
@@ -251,6 +274,7 @@ export class SunLayer {
     const nowMs = performance.now();
     this.touch = easeTouch(this.touch, 1 - smoothstep(Math.min(1, Math.max(0, (cres.area - 0.9) / 0.07))), (nowMs - this.touchAt) / 1000);
     this.touchAt = nowMs;
+    if (SUN_LOG) recordSun({ t: Math.round(nowMs), amount: f.amount, rise, area: cres.area, halo, touch: this.touch, visible: this.mesh.visible, ahead: f.ahead, focal: f.focal });
     // (the reddening is the atmosphere's: what has none, the moon, leaves the colour as it is)
     const air = f.atmosphere === false ? 0 : 1;
     this.glare = p !== null ? f.amount * Math.sqrt(cres.area) : 0;
