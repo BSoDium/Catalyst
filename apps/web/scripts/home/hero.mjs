@@ -740,7 +740,7 @@ for (const [label, options, scheme] of SHAPES) {
   ok(c.built && c.showcase && c.overlayHidden && c.lines.length >= 3 && c.lines.every((l) => l.visible && Math.abs(l.theta) <= AMP + 0.003), `${label}: the caption is built and rolling within +-8 degrees of the centre (crisp, ${c.lines.map((l) => l.text).join(" / ")})`);
   {
     const said = c.lines.map((l) => l.text).join(" ").replace(/\s+/g, " ");
-    ok(c.lines.length === 4 && /A personal archive, organised around places\./i.test(said) && /Drag to explore\. Pick a place\./i.test(said) && said === said.toUpperCase(), `${label}: four rows: the first phrase set (what the site is) over the call to action (${said}: in capitals)`);
+    ok(c.lines.length === 4 && /A personal archive, mapped step by step\./i.test(said) && /Drag to explore\. Pick a place\./i.test(said) && said === said.toUpperCase(), `${label}: four rows: the first phrase set (what the site is) over the call to action (${said}: in capitals)`);
     ok(c.cycle.sets >= 2 && c.cycle.current === 0, `${label}: the phrase sets take turns (${c.cycle.sets} sets, the first shown)`);
     // the lines lie on real parallels, top to bottom, every row at one cap height
     const lats = c.lines.map((l) => l.baseLat);
