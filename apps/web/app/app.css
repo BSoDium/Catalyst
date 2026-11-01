@@ -1024,6 +1024,8 @@
    */
   @media (max-width: 47.99rem) {
     .entry-row[data-covered] {
+      /* the list page's side padding (`px-4` of the `.entry` main): the picture runs out to the screen's edges over it, the text stays inside it */
+      --entry-gutter: 1rem;
       grid-template-columns: minmax(0, 1fr);
       grid-template-rows: minmax(0, 1fr) auto auto auto auto;
     }
@@ -1032,6 +1034,7 @@
       position: relative;
       grid-row: 1 / 4;
       grid-column: 1;
+      margin-inline: calc(-1 * var(--entry-gutter));
       -webkit-mask-image: linear-gradient(to top, transparent 0%, rgb(0 0 0 / 0.08) 14%, rgb(0 0 0 / 0.26) 30%, rgb(0 0 0 / 0.54) 46%, rgb(0 0 0 / 0.8) 62%, rgb(0 0 0 / 0.94) 78%, #000 100%);
       mask-image: linear-gradient(to top, transparent 0%, rgb(0 0 0 / 0.08) 14%, rgb(0 0 0 / 0.26) 30%, rgb(0 0 0 / 0.54) 46%, rgb(0 0 0 / 0.8) 62%, rgb(0 0 0 / 0.94) 78%, #000 100%);
     }
