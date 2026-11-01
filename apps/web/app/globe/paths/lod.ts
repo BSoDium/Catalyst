@@ -17,9 +17,6 @@ export const LEVEL_HYSTERESIS = 1.25;
 
 /** How far toward the page colour (0..1, solid) a leg of a crowd of step 1..3 is drawn: index 0 is "not crowded". Its mode is carried by the pattern, so a crowd, which has none, is the quiet one. */
 export const CROWD_TONE = [0, 0.3, 0.45, 0.55] as const;
-/** The same for every leg of the world view with `?paths=solid` (#459, option c: solid quiet lines from space, the patterns back from `SOLID_UNTIL`). */
-export const SOLID_TONE = 0.35;
-export const SOLID_UNTIL = 3.2;
 
 /** Metres on the ground per art pixel at the centre of the globe: `radiusPx` is `zoomToRadiusPx(zoom)` and `cssPerCell` the art pixel in CSS px. */
 export const metresPerCell = (radiusPx: number, cssPerCell: number): number => (EARTH_RADIUS_M * cssPerCell) / radiusPx;

@@ -4,7 +4,7 @@ import { decodePolyline5 as schemaDecode, encodePolyline5 as schemaEncode } from
 import { parsePublishedProjection } from "@catalyst/schemas";
 import type { GlobeRoute } from "../types";
 import { lonLatToVec3 } from "../engine/geo";
-import { CROWD_TONE, LEVEL_HYSTERESIS, SOLID_TONE, levelFor, metresPerCell } from "./lod";
+import { CROWD_TONE, LEVEL_HYSTERESIS, levelFor, metresPerCell } from "./lod";
 import { LEG_MODES, MODE_STYLE, RAIL_TICK_DASH, dashArray } from "./modes";
 import { ARC_STEP_DEG, LOD_TOLERANCES_M, arcPoints, buildBuffers, buildNetwork, legsAt, pathLengthM, placeKey } from "./network";
 import { decodePolyline5, encodePolyline5 } from "./polyline";
@@ -235,7 +235,6 @@ describe("level of detail and fade", () => {
       expect(CROWD_TONE[k]).toBeGreaterThan(CROWD_TONE[k - 1]!);
       expect(CROWD_TONE[k]).toBeLessThan(0.8); // a crowd is quiet, not gone
     }
-    expect(SOLID_TONE).toBeLessThan(0.8);
   });
 });
 

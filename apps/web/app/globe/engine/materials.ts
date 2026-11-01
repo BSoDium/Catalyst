@@ -5,7 +5,7 @@
  */
 import { AddEquation, BackSide, Color, CustomBlending, DstColorFactor, FrontSide, NormalBlending, ShaderMaterial, ZeroFactor } from "three";
 import { CELL_PATTERN, LEG_MODES, MODE_STYLE } from "../paths/modes";
-import { CROWD_TONE, FAR_TONE, SOLID_TONE } from "../paths/lod";
+import { CROWD_TONE, FAR_TONE } from "../paths/lod";
 import { STRAIGHT_FADE_MIX, STRAIGHT_FADE_STEPS } from "../paths/thin";
 import { SPARK, TRAIL_BANDS, TRAIL_ENTRIES, TRAIL_PER_PALETTE } from "../paths/trail";
 import { RIM, SUN } from "./moon";
@@ -603,7 +603,6 @@ export function pathMaterial(): ShaderMaterial {
       uTexSize: { value: [1, 1] },
       uFar: { value: 0 },
       uTickOn: { value: 1 },
-      uSolid: { value: 0 },
     },
     depthTest: false,
     depthWrite: false,
@@ -636,7 +635,7 @@ export function pathMaterial(): ShaderMaterial {
         gl_Position = c;
       }`,
     fragmentShader: /* glsl */ `
-      uniform vec3 uTrail[${TRAIL_ENTRIES}]; uniform vec3 uPage; uniform float uFinal; uniform float uPresence; uniform float uFront; uniform float uMarch; uniform float uCell; uniform float uDot; uniform float uFar; uniform float uTickOn; uniform float uSolid;
+      uniform vec3 uTrail[${TRAIL_ENTRIES}]; uniform vec3 uPage; uniform float uFinal; uniform float uPresence; uniform float uFront; uniform float uMarch; uniform float uCell; uniform float uDot; uniform float uFar; uniform float uTickOn;
       varying float vDist; varying float vLen; varying float vMode; varying float vState; varying float vCopy; varying float vPal; varying float vQuiet; varying float vCrowd;
       varying vec3 vPos;
       // True when the occluder sphere lies between the camera and p.
@@ -666,9 +665,9 @@ export function pathMaterial(): ShaderMaterial {
         float frac = t;                          // 0 at the origin, 1 at the destination: the trail's gradient runs this way
         if (vState > 0.75) t = 1.0 - t;         // a leg that ends at the place draws on from the place
         bool inked = lit && t <= uFront;
-        // a crowd's legs (paths/thin.ts crowdLegs) and, with ?paths=solid, every leg from space are one quiet solid tone: no pattern to make dust of
+        // a crowd's legs (paths/thin.ts crowdLegs) are one quiet solid tone: no pattern to make dust of
         float crowd = lit ? 0.0 : vCrowd;
-        bool solid = !lit && (crowd > 0.5 || uSolid > 0.5);
+        bool solid = !lit && crowd > 0.5;
         float cells = (vDist / uDot - (lit ? uMarch : 0.0)) / fore;
         // mode ids (paths/modes.ts): 0 road, 1 rail, 2 ferry, 3 flight, 4 walk, 5 unknown
         float m = floor(vMode + 0.5);
@@ -710,9 +709,8 @@ export function pathMaterial(): ShaderMaterial {
         float pk = ceil(uPresence * uFinal - 1.0e-4) / uFinal;
         if (pk < 0.01) discard;
         // from far away the ground paths are quieter (a solid mix toward the page, not an opacity); the flights' arcs and the selected place's legs keep their strength
-        // (a crowd's tone by its step, and the solid world view's: paths/lod.ts CROWD_TONE, SOLID_TONE)
+        // (a crowd's tone by its step: paths/lod.ts CROWD_TONE; the far fade FAR_TONE)
         float toned = crowd > 2.5 ? ${f(CROWD_TONE[3]!)} : crowd > 1.5 ? ${f(CROWD_TONE[2]!)} : crowd > 0.5 ? ${f(CROWD_TONE[1]!)} : 0.0;
-        if (solid && uSolid > 0.5) toned = max(toned, ${f(SOLID_TONE)});
         col = mix(uPage, col, (inked ? 1.0 : (1.0 - ${FAR_TONE.toFixed(2)} * (m == 3.0 ? 0.0 : uFar)) * (1.0 - toned)) * pk);
         // a straight line up close: a solid mix toward the page by its step
         col = mix(col, uPage, ${f(STRAIGHT_FADE_MIX)} * vQuiet / ${f(STRAIGHT_FADE_STEPS)});

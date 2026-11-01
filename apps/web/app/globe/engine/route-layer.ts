@@ -16,12 +16,10 @@ import { clamp, easeInOutCubic, radiusPxToZoom } from "./geo";
 import { pathMaterial } from "./materials";
 import { coastLevel } from "./palette";
 import { TUNING } from "./tuning";
-import { dotCell, farOf, SOLID_UNTIL, TICK_FROM, levelFor, metresPerCell } from "../paths/lod";
+import { dotCell, farOf, TICK_FROM, levelFor, metresPerCell } from "../paths/lod";
 import { buildBuffers, buildNetwork, legsAt, type PathBuffers, type PathNetwork } from "../paths/network";
 import { crowdLegs, fadeStraight, legKey, mercatorPx, thinLegs, thinZoomFor, windowFor, type ThinLeg, type WindowAnchor } from "../paths/thin";
 
-/** `?paths=solid` (#459, option c): from space the legs are solid quiet lines, the patterns come back from `SOLID_UNTIL`. For comparing the two looks; not the default. */
-const SOLID_WORLD = typeof location !== "undefined" && new URLSearchParams(location.search).get("paths") === "solid";
 /** Marching speed of the dashes of a leg while it draws on, in px per second. */
 const MARCH_PX_PER_S = 30;
 /** Texels per row of the per-leg state texture. */
@@ -323,7 +321,6 @@ export class RouteLayer {
     this.material.uniforms.uCell!.value = cssPerCell / radiusPx;
     this.material.uniforms.uDot!.value = dotCell(cssPerCell / radiusPx);
     this.material.uniforms.uFar!.value = farOf(radiusPxToZoom(radiusPx));
-    this.material.uniforms.uSolid!.value = SOLID_WORLD && radiusPxToZoom(radiusPx) < SOLID_UNTIL ? 1 : 0;
     const ticks = radiusPxToZoom(radiusPx) >= TICK_FROM;
     this.material.uniforms.uTickOn!.value = ticks ? 1 : 0;
     // copies 1 and 2 (the rail's cross-ticks) are discarded by the fragment shader until the ticks are on: do not send them through the vertex stage
@@ -361,22 +358,6 @@ export class RouteLayer {
   /** The grey tone the old faint legs had and the ink (kept for the checks that compare with the map's own tones). */
   tones() {
     return this.ramp ? { faint: this.ramp[this.finalLevel]!, ink: this.ramp[this.ramp.length - 1]! } : null;
-  }
-
-  /** Per leg, how it is drawn at this view (diagnosis): its length in art pixels, whether `thinLegs` would merge it into a longer leg's corridor (the street map does; the globe draws it), its crowd step and its quiet step. */
-  legReport() {
-    return this.network.legs.map((leg) => {
-      const cells = this.mPerCell > 0 ? leg.lengthM / this.mPerCell : 0;
-      return {
-        key: legKey(leg.routeId, leg.legIndex),
-        mode: leg.mode,
-        cells,
-        merged: this.kept ? !this.kept.has(legKey(leg.routeId, leg.legIndex)) : false,
-        crowd: this.crowd.get(leg.index) ?? 0,
-        quiet: this.quiet.get(leg.index) ?? 0,
-        lit: this.lit.has(leg.index),
-      };
-    });
   }
 
   stats(): PathStats {
