@@ -7,6 +7,8 @@ import { getEntryDetail } from "~/lib/entries";
 import { coverFit, EntryView, repositoryHref } from "./entry-view";
 
 const demo = loadDemoProjection();
+/** The text of an exposure line (the last in its block): from its marker to the end of the block, without the tags. */
+const textOf = (html: string, slot: string) => html.slice(html.indexOf(`data-slot="${slot}"`)).split("</div>")[0]!.replace(/^[^>]*>/, "").replace(/<[^>]+>/g, "");
 const render = (kind: "article" | "poem" | "project" | "artwork" | "photograph", slug: string, layout: "panel" | "full", backTo?: { slug?: string; name: string; href: string; list?: boolean }) =>
   renderToStaticMarkup(createElement(StaticRouter, { location: "/" }, createElement(EntryView, { entry: getEntryDetail(demo, kind, slug)!, layout, backTo })));
 
@@ -15,7 +17,7 @@ describe("EntryView, how a photograph was taken (#385)", () => {
     const html = render("photograph", "demo-photograph", "panel");
     expect(html).toContain('data-slot="entry-exposure"');
     expect(html).toMatch(/data-slot="entry-gear"[^>]*>Sony A7 IV · FE 35 mm F1\.8</);
-    expect(html).toMatch(/data-slot="entry-settings"[^>]*>35 mm · f\/2\.8 · 1\/250 s · ISO 200</);
+    expect(textOf(html, "entry-settings")).toBe("35 mm · f/2.8 · 1/250 s · ISO 200");
     // (in the head, before the picture; the facts block keeps its own rows)
     expect(html.indexOf('data-slot="entry-exposure"')).toBeLessThan(html.indexOf("Layered forested ridges"));
     expect(html).toContain("3:2 landscape");
