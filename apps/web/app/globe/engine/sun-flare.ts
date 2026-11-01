@@ -49,12 +49,21 @@ const FRAGMENT = /* glsl */ `
     ivec2 c = ivec2(mod(floor(gl_FragCoord.xy), 4.0));
     return (BAYER[c.y * 4 + c.x] + 0.5) / 16.0;
   }
+  // The glow's density at a pixel that is \`perp\` from a ray's line and \`gd\` along it (from the sun's centre), the ray being \`glen\` long: a gaussian across, a power of the way along, none inside the sun's disc.
+  float glowOf(float perp, float gd, float glen) {
+    if (gd <= uSunR || glen <= 0.0) return 0.0;
+    float along = 1.0 - (gd - uSunR) / glen;
+    if (along <= 0.0) return 0.0;
+    float w = ${f(FLARE.glow.width)} * (0.2 + 0.8 * along * along);
+    return ${f(FLARE.glow.strength)} * pow(along, ${f(FLARE.glow.fall)}) * exp(-(perp * perp) / (w * w));
+  }
   void main() {
     vec2 p = gl_FragCoord.xy;
     float ink = 0.0;
     // the tone the strongest element asks the warm ramp for (the ghosts go from the sun's gold to violet across the picture, the rays from white-gold to orange)
     float hue = 0.0;
     bool ray = false;
+    bool halo = false;
     for (int i = 0; i < ${N}; i++) {
       // the ghost's centre on a whole pixel's centre, so that its edge falls on the grid
       vec2 g = floor(uSun + (uMid - uSun) * AT[i]) + 0.5;
@@ -78,19 +87,34 @@ const FRAGMENT = /* glsl */ `
     if (o.y == 0.0) { dist = a.x; len = ${f(FLARE.streak)} * uLen * uBufW * uPulse.x; }
     else if (o.x == 0.0) { dist = a.y; len = ${f(FLARE.streakUp)} * uLen * uBufH * uPulse.x; }
     else if (a.x == a.y) { dist = a.x * 1.4142; len = ${f(FLARE.streakDiag)} * uLen * uBufW * uPulse.y; }
-    if (dist > uSunR) {
-      float along = 1.0 - (dist - uSunR) / len;
+    // (the rays start INSIDE the disc's edge, at half its radius: they are drawn over the sun, where it is white or glowing, so they join it, and the gap between the disc's soft edge and where a ray began, which left some rays detached, cannot show)
+    if (dist > uSunR * 0.5) {
+      float along = min(1.0, 1.0 - (dist - uSunR) / len);
       // (the dither's threshold: the fixed pattern, and with the music a noise that is a new one at every pulse, uJitter of it: the grain of a ray is never the same twice)
       float grain = fract(sin(dot(vec2(o) + vec2(uSeed * 7.31, uSeed * 3.17), vec2(12.9898, 78.233))) * 43758.5453);
       if (along > 0.0 && pow(along, ${f(FLARE.streakFall)}) > mix(bayer(), grain, uJitter)) { ink = ${f(FLARE.streakTone)}; hue = 0.95; ray = true; }
     }
+    // the glow along the rays (FLARE.glow): where no ghost or ray is, a dithered, faint warm light that fades with the ray (1 at the sun, 0 at its tip) and across it (a gaussian), so it has no end that can be seen
+    if (ink <= 0.0) {
+      float glow = 0.0;
+      float gh = ${f(FLARE.streak)} * uLen * uBufW * uPulse.x;
+      float gv = ${f(FLARE.streakUp)} * uLen * uBufH * uPulse.x;
+      float gdg = ${f(FLARE.streakDiag)} * uLen * uBufW * uPulse.y;
+      glow = max(glow, glowOf(a.y, a.x, gh));
+      glow = max(glow, glowOf(a.x, a.y, gv));
+      glow = max(glow, glowOf(abs(a.x - a.y) * 0.7071, (a.x + a.y) * 0.7071, gdg));
+      if (glow > bayer()) { ink = ${f(FLARE.glow.tone)}; hue = 0.9; halo = true; }
+    }
     if (uLight > 0.5) {
       // the light page: the sun's rays are WHITE, and what shows them is a very soft, faint grey darkening round the sun (the veil); the ghosts are the ramp's colours, faintly
       float veil = pow(clamp(1.0 - length(p - uSun) / (${f(SUN.light.veil.reach)} * uBufW), 0.0, 1.0), ${f(SUN.light.veil.fall)}) * ${f(SUN.light.veil.strength)} * (1.0 - uSet) * uStr;
+      // (the flare is drawn after the sun's blob on this page, so its veil, a grey darkening, must leave the sun's own white where the blob is: it came in over the disc and made it grey)
+      veil *= smoothstep(${f(SUN.core.radius * 0.5)} * uSunR, ${f(SUN.core.radius * 1.3)} * uSunR, length(p - uSun));
       if (ink <= 0.0 && veil < 0.004) discard;
       if (ink <= 0.0) gl_FragColor = vec4(vec3(${f(SUN.light.veil.grey)}), veil);
       // (the rays are the sun's own white at all times: OPAQUE pixels, the strength taken out in the dither, not a see-through white)
       else if (ray) { if (bayer() >= uRay) discard; gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0); }
+      else if (halo) gl_FragColor = vec4(vec3(${FLARE.glow.lightColor.map(f).join(", ")}), uStr * ${f(FLARE.glow.lightAlpha)});
       else gl_FragColor = vec4(mix(uBg, warm(hue) * ${f(SUN.light.ink)}, clamp(ink * ${f(SUN.gain)}, 0.0, 1.0) * ${f(SUN.light.ghost)}), uStr);
     } else {
       if (ink <= 0.0) discard;
@@ -275,6 +299,8 @@ export class FlareLayer {
     u.uBg!.value.setRGB(...t.background);
     u.uInk!.value.setRGB(...t.ink);
     u.uLight!.value = t.scheme === "dark" ? 0 : 1;
+    // On the light page the sun's halo MULTIPLIES what is behind it (sun-layer.ts), so a flare drawn before it had its white rays darkened to grey where the halo is (owner, 2026-11-01); drawn after the halo and the blob it keeps them white. The dark page's halo is additive: the order stays.
+    this.mesh.renderOrder = t.scheme === "dark" ? 0.9 : 5.3;
   }
 
   /** True when the flare is in the picture now. */

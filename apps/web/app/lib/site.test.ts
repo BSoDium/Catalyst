@@ -6,17 +6,17 @@ describe("siteCaption: four rows in view, never five", () => {
   const counts = { project: 33, article: 2, artwork: 16, poem: 9, photograph: 4 };
   it("names the five sections in two rows, the widest as wide as the counts' row of the four-section caption was (24 letters)", () => {
     const text = captionText(siteCaption());
-    expect(text.sets[1]).toEqual(["software, art, Poems", "articles & photography."]);
+    expect(text.sets[1]).toEqual(["Poems, software, art,", "articles & photography."]);
     expect(Math.max(...text.sets[1]!.map((r) => r.length))).toBeLessThanOrEqual(24);
-    // the handwriting ends the top row, spelled with its capital, with nothing after it (no comma in that face), and the serif's comma before it
+    // the handwriting opens the top row, spelled with its capital as a sentence begins, with the serif's comma after it (a comma in the script's own face is ugly)
     const top = siteCaption().sets[1]![0]!;
-    expect(top[top.length - 1]).toMatchObject({ text: "Poems", style: "script" });
-    expect(top[top.length - 2]).toEqual({ text: ", " });
+    expect(top[0]).toMatchObject({ text: "Poems", style: "script" });
+    expect(top[1]).toEqual({ text: ", " });
     expect(siteCaption().sets[1]![1]!.some((s) => s.style === "script")).toBe(false);
   });
-  it("counts them in two rows too: the total and how many sections hold something", () => {
-    expect(captionText(siteCaption(counts)).sets[2]).toEqual(["64 entries,", "in 5 sections."]);
-    expect(captionText(siteCaption({ ...counts, article: 0, artwork: 0, poem: 0, photograph: 0, project: 1 })).sets[2]).toEqual(["1 entry,", "in 1 section."]);
+  it("counts them in two rows too: the total, and that each is on the map", () => {
+    expect(captionText(siteCaption(counts)).sets[2]).toEqual(["64 entries,", "each one on the map."]);
+    expect(captionText(siteCaption({ ...counts, article: 0, artwork: 0, poem: 0, photograph: 0, project: 1 })).sets[2]).toEqual(["1 entry,", "each one on the map."]);
   });
   it("leaves the counts out when there is nothing yet, and every set is two rows", () => {
     expect(captionText(siteCaption({ project: 0, article: 0, artwork: 0, poem: 0, photograph: 0 })).sets).toHaveLength(2);

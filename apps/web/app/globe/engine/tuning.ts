@@ -263,10 +263,10 @@ export const CAPTION = {
    * (the thickness as in `mix` with a thin text-coloured line on the far `edgeSlices` slices).
    */
   colors: {
-    text: { light: "#595959", dark: "#a3a3a3" },
-    accent: { light: "#246192", dark: "#84adda" },
+    text: { light: "#646464", dark: "#a3a3a3" },
+    accent: { light: "#286696", dark: "#84adda" },
     sideMode: "mix" as "page" | "mix" | "edge",
-    outlineMix: { light: 0.42, dark: 0.37 },
+    outlineMix: { light: 0.44, dark: 0.37 },
     sideMix: { light: 0.11, dark: 0.1 },
     edgeSlices: 2,
   },

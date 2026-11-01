@@ -7,9 +7,11 @@ import { DetailPanel, type OpenIntent } from "~/components/detail-panel";
 import { LandingHero } from "~/components/landing-hero";
 import { PlacesNav } from "~/components/places-nav";
 import { NowPlayingPlayer } from "~/components/now-playing-player";
+import { WorldViewButton } from "~/components/world-view-button";
 import { Globe, placeFraming, ringPhrases, type GlobeInitialView, type GlobeViewState } from "~/globe";
 import { useIsMobile } from "~/hooks/use-is-mobile";
 import { useLandingHero } from "~/hooks/use-landing-hero";
+import { isWorldView } from "~/lib/hero-machine";
 import { useViewportWidth } from "~/hooks/use-viewport-width";
 import { getProjection } from "~/lib/content.server";
 import { getTilesConfig } from "~/lib/tiles-config.server";
@@ -126,10 +128,13 @@ export default function Shell({ loaderData }: Route.ComponentProps) {
   const [orbit, setOrbit] = useState<boolean | null>(null);
   const empty = places.length === 0;
   const heroOnView = hero.onView;
+  // Whether the camera is away from the world view (the floating way back, #458): a state that changes only when the answer does, not on every view report.
+  const [zoomedIn, setZoomedIn] = useState(false);
   const saveView = useCallback(
     (view: GlobeViewState) => {
       viewRef.current = view;
       heroOnView(view);
+      setZoomedIn(!isWorldView(view));
     },
     [heroOnView],
   );
@@ -171,6 +176,7 @@ export default function Shell({ loaderData }: Route.ComponentProps) {
           )}
           {/* What the page is playing, and the switch that turns its sound off (components/now-playing-player.tsx) */}
           {globeActive && <NowPlayingPlayer />}
+          {globeActive && <WorldViewButton show={zoomedIn && !isOpen} />}
           {/* Only the globe needs JavaScript: the lists, the entries and the places are server-rendered pages that read and navigate without it. */}
           <noscript>
             <p className="absolute inset-y-0 left-0 m-0 flex w-full items-center justify-center px-6 text-center text-sm text-muted-foreground md:w-1/2 [&_a]:underline">
