@@ -558,14 +558,24 @@
       "bytes": 449640
     },
     {
-      "path": "project/isf-design-system/cover-800w.d6aad33c.webp",
-      "sha256": "d6aad33c510e5f854114860e7088b94e8c093cbc4f558a74c8473782e1936927",
-      "bytes": 22766
+      "path": "project/esp-string-lights/cover-800w.5181c497.webp",
+      "sha256": "5181c4979bd0a7fe87868ba2032d778f683240fbba938304c2c124a313276e94",
+      "bytes": 48854
     },
     {
-      "path": "project/isf-design-system/cover.93455186.webp",
-      "sha256": "93455186dbc92463216892c57c34c07f6090c518e945d4471e85ffd3f226e6c8",
-      "bytes": 101096
+      "path": "project/esp-string-lights/cover.c161ab9f.webp",
+      "sha256": "c161ab9f207860a2e023bc8b5301975fba25880df92f0cf1cd332381611859d0",
+      "bytes": 227754
+    },
+    {
+      "path": "project/isf-design-system/cover-800w.2d5d775e.webp",
+      "sha256": "2d5d775e02c05aa72621596ca06dc91a8049adb534bd960704b78c1816f79fda",
+      "bytes": 29030
+    },
+    {
+      "path": "project/isf-design-system/cover.eaacf831.webp",
+      "sha256": "eaacf831e8efdba9485e995913843fd774547dd58a81e9ae6ad63fb4722d8c02",
+      "bytes": 149886
     },
     {
       "path": "project/lidar/cover-800w.2de99680.webp",
