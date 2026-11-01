@@ -2235,6 +2235,8 @@
     position: relative;
     isolation: isolate;
     overflow: hidden;
+    /* room on the right, so that the miniature sits nested in the backdrop and not against the page's edge (the backdrop itself is absolute: it still reaches it) */
+    padding-right: 1.5rem;
   }
 
   .entry-row-back {
