@@ -3514,7 +3514,7 @@ body:not(:has([data-slot="site-header"])) .np-root {
     --np-plate: var(--background);
   }
 }
-/* The now-playing player (components/now-playing-player.tsx): the sleeve, a square with the system's hairline, the words, and a ghost button that plays or pauses the page's sound. */
+/* The now-playing player (components/now-playing-player.tsx): the sleeve, a square with the system's hairline, the words, which is also the button that mutes the page's sound. */
 .np-disc {
   position: relative;
   display: block;

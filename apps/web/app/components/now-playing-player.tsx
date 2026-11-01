@@ -29,9 +29,9 @@ const touchPrimary = () => typeof matchMedia === "function" && matchMedia("(poin
 const SERVER: NowPlayingSnapshot = { track: null, state: "paused", muted: false };
 
 /**
- * What the page is playing, as a record: the sleeve, a square with the system's hairline (#434), the title beside it with its state (bars that move while the sound plays, the play glyph while it waits or is paused) (a link to the song)
- * and who made it under that (a link to their page). Clicking the disc plays or pauses the page's sound (`NowPlaying.setMuted`: ONE choice for all of it; a sound that is the picture's, the interlude's, takes it from
- * where it is: it cannot be paused, only silenced), and hovering it shows which. A touch screen has no hover: the icon is shown for a moment after a tap. It is there only while a sound has played and is not done;
+ * What the page is playing: the sleeve, a square with the system's hairline (#434), the title beside it (a link to the song) and who made it under that (a link to their page). The sleeve is the one control: it mutes
+ * and unmutes the page's sound (`NowPlaying.setMuted`: ONE choice for all of it, on or off: there is no pause), and a speaker icon over it, with a tooltip, shows the state while the pointer or the keyboard is on it. A touch
+ * screen has no hover: the icon is shown for a moment after a tap. It is there only while a sound has played and is not done;
  * one sound gives way to the next, and no sound to a sound, with a fade and a blur.
  */
 export function NowPlayingPlayer() {
