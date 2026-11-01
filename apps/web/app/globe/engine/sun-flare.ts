@@ -57,11 +57,6 @@ const FRAGMENT = /* glsl */ `
     float w = ${f(FLARE.glow.width)} * (0.2 + 0.8 * along * along);
     return ${f(FLARE.glow.strength)} * pow(along, ${f(FLARE.glow.fall)}) * exp(-(perp * perp) / (w * w));
   }
-  // How much of a fringe a pixel is: one pixel off a ray's line (\`perp\` 1) and past the sun's disc, fading to nothing along the ray's length \`glen\`.
-  float edgeOf(float perp, float want, float gd, float glen) {
-    if (abs(perp - want) > 0.01 || gd <= uSunR || glen <= 0.0) return 0.0;
-    return clamp(1.0 - (gd - uSunR) / glen, 0.0, 1.0);
-  }
   void main() {
     vec2 p = gl_FragCoord.xy;
     float ink = 0.0;
@@ -69,7 +64,6 @@ const FRAGMENT = /* glsl */ `
     float hue = 0.0;
     bool ray = false;
     bool halo = false;
-    float edge = 0.0;
     for (int i = 0; i < ${N}; i++) {
       // the ghost's centre on a whole pixel's centre, so that its edge falls on the grid
       vec2 g = floor(uSun + (uMid - uSun) * AT[i]) + 0.5;
@@ -108,13 +102,6 @@ const FRAGMENT = /* glsl */ `
       glow = max(glow, glowOf(a.y, a.x, gh));
       glow = max(glow, glowOf(a.x, a.y, gv));
       glow = max(glow, glowOf(abs(a.x - a.y) * 0.7071, (a.x + a.y) * 0.7071, gdg));
-      // (the light page: a thin grey fringe hugs each white ray, one pixel off its line and fading with it, so that the white shows against the veil)
-      if (uLight > 0.5) {
-        edge = max(edge, edgeOf(a.y, 1.0, a.x, gh));
-        edge = max(edge, edgeOf(a.x, 1.0, a.y, gv));
-        edge = max(edge, edgeOf(abs(a.x - a.y) * 0.7071, 0.7071, (a.x + a.y) * 0.7071, gdg));
-      }
-      if (edge > 0.0 && ink <= 0.0) ink = 0.001;
       if (glow > bayer()) { ink = ${f(FLARE.glow.tone)}; hue = 0.9; halo = true; }
     }
     if (uLight > 0.5) {
@@ -124,7 +111,6 @@ const FRAGMENT = /* glsl */ `
       if (ink <= 0.0) gl_FragColor = vec4(vec3(${f(SUN.light.veil.grey)}), veil);
       // (the rays are the sun's own white at all times: OPAQUE pixels, the strength taken out in the dither, not a see-through white)
       else if (ray) { if (bayer() >= uRay) discard; gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0); }
-      else if (edge > 0.0 && !halo) gl_FragColor = vec4(vec3(${f(SUN.light.veil.grey)}), uStr * ${f(FLARE.glow.edge)} * edge);
       else if (halo) gl_FragColor = vec4(vec3(${FLARE.glow.lightColor.map(f).join(", ")}), uStr * ${f(FLARE.glow.lightAlpha)});
       else gl_FragColor = vec4(mix(uBg, warm(hue) * ${f(SUN.light.ink)}, clamp(ink * ${f(SUN.gain)}, 0.0, 1.0) * ${f(SUN.light.ghost)}), uStr);
     } else {
