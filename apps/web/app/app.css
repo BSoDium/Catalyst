@@ -2070,6 +2070,14 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
+    /* The cover sits at a comfortable level on the page (#437): a fifth of the page's colour over it in both schemes (a dark cover is not a heavy band on the light page, a bright one is not at full strength on the dark one), and on the dark page a little under full brightness so that a bright cover does not glare. The dim variants below set their own. */
+    opacity: 0.82;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .entry-hero-img {
+      filter: brightness(0.85);
+    }
   }
 
   .entry-hero[data-tone="dim"] .entry-hero-img {
