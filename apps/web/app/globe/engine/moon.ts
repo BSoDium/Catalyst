@@ -178,7 +178,7 @@ export const FLARE = {
    * `strength` its density at the sun (the dither of it: a pixel is lit when the density beats the pattern), `fall` the exponent of its fade along the ray (the same measure as the ray's own, 1 at the sun and 0 at the tip: so it
    * goes with the music's pulse, which lengthens the rays, and with the rays' reach), `tone` how bright a glow pixel is, on the ramp's gold. The flare as a whole is gone with the sun (`uStr`), so there is no glow where there is no sun.
    */
-  glow: { width: 5, strength: 0.7, fall: 1.4, tone: 0.32 },
+  glow: { width: 3.5, strength: 0.75, fall: 3.2, tone: 0.32 },
   streakTone: 1,
   /** The strength goes to 0 as the sun's distance from the middle (a share of the half diagonal) goes from `edgeFrom` to `edgeTo`, and from `midTo` down to `midFrom`. */
   edgeFrom: 0.8,

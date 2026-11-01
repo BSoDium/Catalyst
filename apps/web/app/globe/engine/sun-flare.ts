@@ -54,7 +54,7 @@ const FRAGMENT = /* glsl */ `
     if (gd <= uSunR || glen <= 0.0) return 0.0;
     float along = 1.0 - (gd - uSunR) / glen;
     if (along <= 0.0) return 0.0;
-    float w = ${f(FLARE.glow.width)} * (0.4 + 0.6 * along);
+    float w = ${f(FLARE.glow.width)} * (0.2 + 0.8 * along * along);
     return ${f(FLARE.glow.strength)} * pow(along, ${f(FLARE.glow.fall)}) * exp(-(perp * perp) / (w * w));
   }
   void main() {
