@@ -709,11 +709,11 @@ export function pathMaterial(): ShaderMaterial {
         // the overlay's presence (boxes and labels share it): a solid mix toward the page in the fade's own levels; nothing at 0
         float pk = ceil(uPresence * uFinal - 1.0e-4) / uFinal;
         if (pk < 0.01) discard;
-        // from far away the paths are quieter (a solid mix toward the page, not an opacity); the selected place's legs keep their strength
+        // from far away the ground paths are quieter (a solid mix toward the page, not an opacity); the flights' arcs and the selected place's legs keep their strength
         // (a crowd's tone by its step, and the solid world view's: paths/lod.ts CROWD_TONE, SOLID_TONE)
         float toned = crowd > 2.5 ? ${f(CROWD_TONE[3]!)} : crowd > 1.5 ? ${f(CROWD_TONE[2]!)} : crowd > 0.5 ? ${f(CROWD_TONE[1]!)} : 0.0;
         if (solid && uSolid > 0.5) toned = max(toned, ${f(SOLID_TONE)});
-        col = mix(uPage, col, (inked ? 1.0 : (1.0 - ${FAR_TONE.toFixed(2)} * uFar) * (1.0 - toned)) * pk);
+        col = mix(uPage, col, (inked ? 1.0 : (1.0 - ${FAR_TONE.toFixed(2)} * (m == 3.0 ? 0.0 : uFar)) * (1.0 - toned)) * pk);
         // a straight line up close: a solid mix toward the page by its step
         col = mix(col, uPage, ${f(STRAIGHT_FADE_MIX)} * vQuiet / ${f(STRAIGHT_FADE_STEPS)});
         gl_FragColor = vec4(col, 1.0);
