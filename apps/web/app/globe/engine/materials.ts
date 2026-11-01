@@ -516,7 +516,7 @@ export function lightsMaterial(): ShaderMaterial {
         vec3 light = tone < 0.5 ? mix(uRamp0, uRamp1, tone * 2.0) : mix(uRamp1, uRamp2, tone * 2.0 - 1.0);
         // (the dimmer a light is, the nearer the sodium lamp's red-orange: the dim ones read as street lighting, not gold dust; the brightest keep their ramp)
         float dim = (1.0 - bright) * (1.0 - star);
-        light = mix(light, vec3(${LIGHTS.sodium.map((c) => c.toFixed(2)).join(", ")}), clamp(dim / ${LIGHTS.sodiumFull.toFixed(2)}, 0.0, 1.0) * ${LIGHTS.sodiumShare.toFixed(2)});
+        light = mix(light, vec3(${LIGHTS.sodium.map((c) => c.toFixed(2)).join(", ")}), pow(clamp(dim / ${LIGHTS.sodiumFull.toFixed(2)}, 0.0, 1.0), 2.0) * ${LIGHTS.sodiumShare.toFixed(2)});
         gl_FragColor = vec4(mix(light, uBg, dim), 1.0);
       }
     `,

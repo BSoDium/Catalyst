@@ -131,7 +131,7 @@ export const LIGHTS = {
    */
   sodium: [1, 0.36, 0.1] as const,
   sodiumShare: 0.85,
-  sodiumFull: 0.35,
+  sodiumFull: 0.5,
   own: 0.55,
   patch: 0.3,
   patchScale: 6,
