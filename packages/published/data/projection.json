@@ -6759,6 +6759,17 @@
       "title": "Raycast capture and create",
       "summary": "A Raycast extension that turns a selected region of your screen into a Google Task or a macOS Calendar event.",
       "date": "2026-05",
+      "cover": {
+        "src": "/media/project/raycast-capture-and-create/cover.10ce1cd2.webp",
+        "alt": "Raycast's search bar with the words capture to typed, listing the Capture to Calendar and Capture to Task commands over a pixel-pattern desktop background.",
+        "width": 1652,
+        "height": 1041,
+        "small": {
+          "src": "/media/project/raycast-capture-and-create/cover-800w.781d3cfc.webp",
+          "width": 800,
+          "height": 504
+        }
+      },
       "tags": [
         "raycast",
         "productivity"
@@ -8584,6 +8595,17 @@
       "slug": "crepuscule-grec",
       "title": "Crépuscule grec",
       "summary": "Sur un banc, face aux rochers qui coiffent le village, la lumière de midi change un visage aimé en statue.",
+      "cover": {
+        "src": "/media/poem/crepuscule-grec/cover.fddc8eb1.webp",
+        "alt": "Terracotta-roofed houses and a white church below the vertical rock towers of Meteora, in late sunlight.",
+        "width": 1500,
+        "height": 909,
+        "small": {
+          "src": "/media/poem/crepuscule-grec/cover-800w.37b36722.webp",
+          "width": 800,
+          "height": 485
+        }
+      },
       "meta": [
         {
           "label": "Language",
@@ -8657,6 +8679,17 @@
       "slug": "l-exil",
       "title": "L'exil",
       "summary": "Une dernière nuit dans un Paris endeuillé, avant que l'aube n'emporte la ville et les rêves d'enfant.",
+      "cover": {
+        "src": "/media/poem/l-exil/cover.b0a76df9.jpg",
+        "alt": "The Panthéon at the end of a rainy Paris street at dusk, with lamp posts and cars in front and people walking on the wet pavement.",
+        "width": 1773,
+        "height": 1320,
+        "small": {
+          "src": "/media/poem/l-exil/cover-800w.193f3d2d.webp",
+          "width": 800,
+          "height": 596
+        }
+      },
       "meta": [
         {
           "label": "Language",
@@ -8750,6 +8783,17 @@
       "slug": "les-pelerins-du-rail",
       "title": "Les pèlerins du rail",
       "summary": "Un train glisse sur Paris, du couchant de rubis à la torpeur de la nuit, et berce ses pèlerins endormis.",
+      "cover": {
+        "src": "/media/poem/les-pelerins-du-rail/cover.89d44045.jpg",
+        "alt": "The domes of the Sacré-Cœur above the rooftops of Montmartre, against an orange-red sunset sky.",
+        "width": 2000,
+        "height": 1333,
+        "small": {
+          "src": "/media/poem/les-pelerins-du-rail/cover-800w.a77b428f.webp",
+          "width": 800,
+          "height": 533
+        }
+      },
       "meta": [
         {
           "label": "Language",
@@ -8792,6 +8836,17 @@
       "slug": "ode-au-desert",
       "title": "Ode au désert",
       "summary": "Une piste de terre ensablée, et des phares qui peinent à percer un crépuscule pourpre.",
+      "cover": {
+        "src": "/media/poem/ode-au-desert/cover.348af546.jpg",
+        "alt": "A long concrete bridge over a tidal river mouth on the Atlantic coast, between ochre cliffs and wet sand, under a pale, hazy sky.",
+        "width": 1993,
+        "height": 2000,
+        "small": {
+          "src": "/media/poem/ode-au-desert/cover-800w.c054f02f.webp",
+          "width": 800,
+          "height": 803
+        }
+      },
       "meta": [
         {
           "label": "Language",
@@ -8915,6 +8970,17 @@
       "slug": "the-traveler",
       "title": "The traveler",
       "summary": "A stranger in a lakeside town at night, deciphering an unknown tongue and looking for the place where heaven never ends.",
+      "cover": {
+        "src": "/media/poem/the-traveler/cover.01101d9e.jpg",
+        "alt": "A white and teal wooden ferry pier with porthole windows and a palm in a terracotta pot, on a mountain lake under cumulus clouds.",
+        "width": 2000,
+        "height": 1333,
+        "small": {
+          "src": "/media/poem/the-traveler/cover-800w.73ca8076.webp",
+          "width": 800,
+          "height": 533
+        }
+      },
       "meta": [
         {
           "label": "Language",
