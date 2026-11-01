@@ -17,7 +17,7 @@
  * The signal is the sun's `glare` (engine/sun-layer.ts: how much of the sun's light is in the picture, 0..1, the zoom's share times the root of what the planet leaves of the disc), read through two
  * thresholds (`glareOn`, `glareOff`) so that a sun on the edge of the planet's limb does not make the music stutter; the fades do the rest.
  */
-import { TRACKS, nowPlaying, type NowPlaying } from "./now-playing";
+import { TRACKS, nowPlaying, type NowPlaying, type Track } from "./now-playing";
 
 export const SUN_MUSIC = {
   url: "/audio/cinematic-piano.mp3",
@@ -55,6 +55,52 @@ export const SUN_MUSIC = {
   pulseReleaseSec: 0.8,
 } as const;
 
+/**
+ * One piece the sun can come back to (#389): what is per piece, `track` the credit (`now-playing.ts`), `url` the file, `volume` the gain that brings it to about -16.5 LUFS, `crossfadeSec` its loop's overlap,
+ * `beatSec`, `cycleBeats` and `beatOffsetSec` the pulse the sun breathes in (see `SUN_MUSIC`), and `synced` whether those were measured on the piece (the first) or are only a slow breath of the same length,
+ * not tied to the notes (the ambient pieces have no steady beat: the picture still follows their loudness, `energy`).
+ */
+export interface SunTrack {
+  track: Track;
+  url: string;
+  volume: number;
+  crossfadeSec: number;
+  beatSec: number;
+  cycleBeats: number;
+  beatOffsetSec: number;
+  synced: boolean;
+}
+
+/** The pieces, in the order they are listed (the visit draws its own order from them: `shuffled`). */
+export const SUN_TRACKS: readonly SunTrack[] = [
+  { track: TRACKS.sun, url: SUN_MUSIC.url, volume: SUN_MUSIC.volume, crossfadeSec: SUN_MUSIC.crossfadeSec, beatSec: SUN_MUSIC.beatSec, cycleBeats: SUN_MUSIC.cycleBeats, beatOffsetSec: SUN_MUSIC.beatOffsetSec, synced: true },
+  // (-14.4 LUFS as served, 160 kbps: 0.79 puts it at -16.5; no steady beat: the first piece's breath, free-running)
+  { track: TRACKS.space, url: "/audio/space.mp3", volume: 0.79, crossfadeSec: 8, beatSec: SUN_MUSIC.beatSec, cycleBeats: SUN_MUSIC.cycleBeats, beatOffsetSec: 0, synced: false },
+  // (-18.5 LUFS as served, peak -3.7 dB: 1.25 brings it to -16.6 with room to spare; no steady beat)
+  { track: TRACKS.silent, url: "/audio/silent-universe.mp3", volume: 1.25, crossfadeSec: 8, beatSec: SUN_MUSIC.beatSec, cycleBeats: SUN_MUSIC.cycleBeats, beatOffsetSec: 0, synced: false },
+];
+
+/** How long a piece must have been heard (seconds, over the sun's returns) before the next return gives another piece: a visitor who stays hears the pieces in turn, one who passes by hears one. */
+export const ROTATE_AFTER_SEC = 90;
+
+/** The order the pieces are played in this visit: a shuffle (Fisher-Yates) of their indices. Pure given `random`. */
+export function shuffled(count: number, random: () => number): number[] {
+  const order = Array.from({ length: count }, (_, i) => i);
+  for (let i = count - 1; i > 0; i--) {
+    const j = Math.min(i, Math.floor(random() * (i + 1)));
+    [order[i], order[j]] = [order[j]!, order[i]!];
+  }
+  return order;
+}
+
+let activeTrack: SunTrack = SUN_TRACKS[0]!;
+/** The piece that is loaded now (the sun's pulse reads its beat and the player its credit). */
+export const activeSunTrack = (): SunTrack => activeTrack;
+/** Make `t` the piece that is loaded (`SunMusic` does it as it chooses one; a test of the pulse does it to fix the piece the visit would draw at random). */
+export function setActiveSunTrack(t: SunTrack): void {
+  activeTrack = t;
+}
+
 /** How far a fade has got, 0..1 in, 0..1 out: a smoothstep, so that a fade starts and ends without a corner. */
 const ease = (t: number) => {
   const x = Math.min(1, Math.max(0, t));
@@ -91,9 +137,9 @@ export function loopable(channels: readonly Float32Array[], fadeSamples: number)
 /**
  * The length of the loop, in samples, for a piece of `n`: the longest whole number of cycles that leaves at least `crossfadeSec` to overlap, so that the beat on the loop's first sample is the beat that follows its last. Pure.
  */
-export function loopSamples(n: number, sampleRate: number): number {
-  const cycle = SUN_MUSIC.beatSec * SUN_MUSIC.cycleBeats * sampleRate;
-  const k = Math.floor((n - SUN_MUSIC.crossfadeSec * sampleRate) / cycle);
+export function loopSamples(n: number, sampleRate: number, track: SunTrack = SUN_TRACKS[0]!): number {
+  const cycle = track.beatSec * track.cycleBeats * sampleRate;
+  const k = Math.floor((n - track.crossfadeSec * sampleRate) / cycle);
   return k >= 1 ? Math.round(k * cycle) : n;
 }
 
@@ -153,6 +199,8 @@ export interface MusicDeps {
   decode(bytes: ArrayBuffer): Promise<{ channels: Float32Array[]; sampleRate: number }>;
   /** Channels to a buffer the context plays. */
   makeBuffer(channels: Float32Array[], sampleRate: number): unknown;
+  /** A number in [0, 1) for the visit's order of pieces (absent in a test's fake: the pieces then keep their listed order). */
+  random?(): number;
 }
 
 const browserDeps: MusicDeps = {
@@ -171,6 +219,7 @@ const browserDeps: MusicDeps = {
     channels.forEach((c, i) => b.copyToChannel(c as Float32Array<ArrayBuffer>, i));
     return b;
   },
+  random: () => Math.random(),
 };
 
 export type MusicStatus = "idle" | "loading" | "ready" | "failed";
@@ -198,6 +247,11 @@ export class SunMusic {
   private hidden = false;
   private attached = false;
   private off: (() => void)[] = [];
+  /** The visit's order of pieces and the place in it; the piece that is loaded (or is to be); how long it has been heard, seconds. */
+  private order: number[] = [];
+  private at = 0;
+  private cur: SunTrack = SUN_TRACKS[0]!;
+  private played = 0;
 
   private analyser: MusicAnalyser | null = null;
   private senseBuf: Float32Array<ArrayBuffer> | null = null;
@@ -211,7 +265,18 @@ export class SunMusic {
   constructor(
     private deps: MusicDeps = browserDeps,
     private prefs: NowPlaying = nowPlaying,
-  ) {}
+  ) {
+    // (the visit's order: a shuffle when the deps can draw one; else the listed order)
+    this.order = deps.random ? shuffled(SUN_TRACKS.length, deps.random) : SUN_TRACKS.map((_, i) => i);
+    this.choose(0);
+  }
+
+  /** Make the piece at `at` of the visit's order the current one (the pulse and the player follow it). */
+  private choose(at: number) {
+    this.at = at % this.order.length;
+    this.cur = SUN_TRACKS[this.order[this.at]!]!;
+    setActiveSunTrack(this.cur);
+  }
 
   /** The visitor has turned the page's sound off. */
   private get muted(): boolean {
@@ -246,7 +311,7 @@ export class SunMusic {
     const c = this.ctx;
     // (a halted source still breathes while the picture eases out, as if the piece went on from where the sound stopped)
     if (!c || (!this.src && this.shown < 0.002)) return null;
-    const heard = this.src ? Math.min(1, this.level(c.currentTime) / SUN_MUSIC.volume) : 0;
+    const heard = this.src ? Math.min(1, this.level(c.currentTime) / this.cur.volume) : 0;
     const dt = this.shownAt > 0 ? Math.max(0, c.currentTime - this.shownAt) : 0;
     this.shownAt = c.currentTime;
     // (up with the sound, down on its own slower time: a mute is quick for the ear, not for the picture)
@@ -389,17 +454,21 @@ export class SunMusic {
       /* no connection info */
     }
     this.set({ status: "loading" });
+    const piece = this.cur;
     this.deps
-      .fetchBytes(SUN_MUSIC.url)
-      .then((bytes) => this.deps.decode(bytes))
+      .fetchBytes(piece.url)
+      .then((bytes) => (piece === this.cur ? this.deps.decode(bytes) : Promise.reject(new Error("another piece"))))
       .then(({ channels, sampleRate }) => {
-        const loop = loopable(channels, channels[0]!.length - loopSamples(channels[0]!.length, sampleRate));
+        if (piece !== this.cur) return;
+        const loop = loopable(channels, channels[0]!.length - loopSamples(channels[0]!.length, sampleRate, piece));
         this.loopSec = loop[0]!.length / sampleRate;
         this.buffer = this.deps.makeBuffer(loop, sampleRate);
         this.set({ status: "ready" });
         this.reconcile();
       })
       .catch(() => {
+        // (the piece was changed while it loaded: the new one has its own load)
+        if (piece !== this.cur) return;
         // (the file is not there, or cannot be decoded: no music, and nothing else)
         this.buffer = null;
         this.set({ status: "failed" });
@@ -435,9 +504,9 @@ export class SunMusic {
   /** Tell the page's registry what this is doing: it is there once the sun has come into view (it would have played), playing while the sun is in view and the music is not off (blocked, if the browser has not let the page make sound yet: no gesture), waiting otherwise; and gone if there is no music. */
   private publish() {
     const s = this.snapshot;
-    if (s.status === "failed") return this.prefs.end(TRACKS.sun.id);
+    if (s.status === "failed") return this.prefs.end(this.cur.track.id);
     if (!s.sunSeen) return;
-    this.prefs.set(TRACKS.sun, !this.present ? "paused" : this.ctx?.state === "running" ? "playing" : "blocked");
+    this.prefs.set(this.cur.track, !this.present ? "paused" : this.ctx?.state === "running" ? "playing" : "blocked");
   }
 
   private rise() {
@@ -467,7 +536,7 @@ export class SunMusic {
       this.src = s;
       this.srcAt = c.currentTime;
     }
-    this.fadeTo(SUN_MUSIC.volume, SUN_MUSIC.fadeInMs);
+    this.fadeTo(this.cur.volume, SUN_MUSIC.fadeInMs);
   }
 
   private fall() {
@@ -498,7 +567,7 @@ export class SunMusic {
     // (already on its way there, or there: leave it be)
     if (!again && this.fade?.to === to) return Math.max(0, (this.fade.at + this.fade.dur - now) * 1000);
     const from = this.level(now);
-    const ms = Math.max(minMs, (fullMs * Math.abs(to - from)) / SUN_MUSIC.volume);
+    const ms = Math.max(minMs, (fullMs * Math.abs(to - from)) / this.cur.volume);
     g.cancelScheduledValues(now);
     g.setValueAtTime(from, now);
     g.setValueCurveAtTime(fadeCurve(from, to), now, ms / 1000);
@@ -511,6 +580,7 @@ export class SunMusic {
     const s = this.src;
     if (!s) return;
     this.pos = loopPosition(this.pos, at - this.srcAt, this.loopSec);
+    this.played += Math.max(0, at - this.srcAt);
     this.haltedAt = at;
     this.src = null;
     this.fade = null;
@@ -520,6 +590,23 @@ export class SunMusic {
     } catch {
       /* already stopped */
     }
+    // the sun has gone out of view, and the piece has been heard long enough: the next return brings the next piece
+    if (!this.inView && !this.muted && SUN_TRACKS.length > 1 && this.played >= ROTATE_AFTER_SEC) this.rotate();
+  }
+
+  /**
+   * Give way to the next piece of the visit's order (#389): the one that is loaded is let go of (a decoded piece is tens of megabytes), the next is fetched and decoded now, while the sun is away, and is there
+   * for its return (a return that comes first waits for it, as the first load does). The place in the piece is the new one's own, its start.
+   */
+  private rotate() {
+    if (this.snapshot.status === "loading") return;
+    this.prefs.end(this.cur.track.id);
+    this.buffer = null;
+    this.pos = 0;
+    this.played = 0;
+    this.choose(this.at + 1);
+    this.snapshot = { ...this.snapshot, status: "idle" };
+    this.load();
   }
 }
 

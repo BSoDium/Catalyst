@@ -1,7 +1,7 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MUTE_KEY, NowPlaying, pillVisible } from "./now-playing";
-import { SUN_MUSIC, SunMusic, fadeCurve, loopPosition, loopable, sunInView, type MusicDeps } from "./sun-music";
+import { ROTATE_AFTER_SEC, SUN_MUSIC, SUN_TRACKS, SunMusic, fadeCurve, loopPosition, loopable, shuffled, sunInView, type MusicDeps } from "./sun-music";
 
 const SR = 1000;
 const LOOP = 100; // seconds, after the crossfade
@@ -349,5 +349,112 @@ describe("the sound's source", () => {
     expect(SUN_MUSIC.volume).toBeGreaterThan(0.3);
     expect(SUN_MUSIC.volume).toBeLessThanOrEqual(0.7);
     expect(SUN_MUSIC.url).toBe("/audio/cinematic-piano.mp3");
+  });
+});
+
+describe("several pieces (#389)", () => {
+  const store = new Map<string, string>();
+  beforeEach(() => {
+    vi.useFakeTimers();
+    store.clear();
+    vi.stubGlobal("localStorage", { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v), removeItem: (k: string) => void store.delete(k) });
+    vi.stubGlobal("document", { hidden: false, addEventListener: () => undefined, removeEventListener: () => undefined });
+    vi.stubGlobal("window", { addEventListener: () => undefined, removeEventListener: () => undefined });
+    vi.stubGlobal("location", { search: "" });
+    vi.stubGlobal("navigator", {});
+    vi.stubGlobal("requestIdleCallback", (f: () => void) => f());
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  it("lists the pieces with their file, their credit and a level that brings each to about -16.5 LUFS", () => {
+    expect(SUN_TRACKS.length).toBeGreaterThanOrEqual(3);
+    expect(new Set(SUN_TRACKS.map((t) => t.track.id)).size).toBe(SUN_TRACKS.length);
+    for (const t of SUN_TRACKS) {
+      expect(existsSync(`public${t.url}`), t.url).toBe(true);
+      expect(t.volume).toBeGreaterThan(0.3);
+      expect(t.volume).toBeLessThanOrEqual(1.3);
+      expect(t.track.artists?.length, t.track.id).toBeGreaterThan(0);
+      expect(t.track.titleHref, t.track.id).toMatch(/^https:\/\//);
+      if (t.track.cover) expect(existsSync(`public${t.track.cover}`), t.track.cover).toBe(true);
+      expect(t.beatSec * t.cycleBeats).toBeGreaterThan(0);
+    }
+  });
+
+  it("draws an order of every piece once, deterministically from the random it is given", () => {
+    const seq = [0.9, 0.1, 0.5];
+    let i = 0;
+    const order = shuffled(4, () => seq[i++ % seq.length]!);
+    expect([...order].sort()).toEqual([0, 1, 2, 3]);
+    i = 0;
+    expect(shuffled(4, () => seq[i++ % seq.length]!)).toEqual(order);
+    expect(shuffled(1, () => 0.5)).toEqual([0]);
+  });
+
+  const play = async (random?: () => number) => {
+    const f = fakes();
+    const urls: string[] = [];
+    const deps: MusicDeps = { ...f.deps, fetchBytes: async (u) => (urls.push(u), new ArrayBuffer(8)), ...(random ? { random } : {}) };
+    const prefs = new NowPlaying();
+    const m = new SunMusic(deps, prefs);
+    m.attach();
+    m.unlock();
+    await settle();
+    return { m, prefs, urls, ...f };
+  };
+
+  it("begins with the first of the visit's order, and the registry says which piece it is", async () => {
+    // a random of 0 puts the last piece first (Fisher-Yates from the end)
+    const { m, prefs, urls, ctx } = await play(() => 0);
+    const first = urls[0]!;
+    expect(SUN_TRACKS.map((t) => t.url)).toContain(first);
+    m.setGlare(0.5);
+    ctx.currentTime = 1;
+    expect(prefs.getSnapshot().track?.id).toBe(SUN_TRACKS.find((t) => t.url === first)!.track.id);
+  });
+
+  it("keeps the piece when the sun returns before it has been heard for a while", async () => {
+    const { m, ctx, urls } = await play();
+    m.setGlare(0.5);
+    ctx.currentTime = 20;
+    m.setGlare(0);
+    ctx.currentTime = 20 + SUN_MUSIC.fadeOutMs / 1000;
+    vi.advanceTimersByTime(SUN_MUSIC.fadeOutMs + 100);
+    await settle();
+    m.setGlare(0.5);
+    await settle();
+    expect(urls).toHaveLength(1);
+  });
+
+  it("brings the next piece, and lets the last go, when the sun has gone after the piece was heard long enough", async () => {
+    const { m, ctx, urls, prefs } = await play();
+    const firstId = prefs.getSnapshot().track?.id;
+    m.setGlare(0.5);
+    ctx.currentTime = ROTATE_AFTER_SEC + 10;
+    m.setGlare(0);
+    ctx.currentTime += SUN_MUSIC.fadeOutMs / 1000;
+    vi.advanceTimersByTime(SUN_MUSIC.fadeOutMs + 100);
+    await settle();
+    expect(urls).toHaveLength(2);
+    expect(urls[1]).not.toBe(urls[0]);
+    expect(m.getSnapshot().status).toBe("ready");
+    // the next return plays it from its start, and says its name
+    m.setGlare(0.5);
+    await settle();
+    const id = prefs.getSnapshot().track?.id;
+    expect(id).not.toBe(firstId);
+    expect(m.position()).toBeLessThan(1);
+  });
+
+  it("does not rotate for a visitor who muted it, or with the sun still in view", async () => {
+    const { m, ctx, urls, prefs } = await play();
+    m.setGlare(0.5);
+    ctx.currentTime = ROTATE_AFTER_SEC + 10;
+    prefs.setMuted(true); // (a quick fade, a halt with the sun in view)
+    vi.advanceTimersByTime(500);
+    await settle();
+    expect(urls).toHaveLength(1);
   });
 });

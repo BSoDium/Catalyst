@@ -1,7 +1,10 @@
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
-import { SUN_MUSIC, loopSamples } from "./sun-music";
+import { beforeEach, describe, expect, it } from "vitest";
+import { SUN_MUSIC, SUN_TRACKS, loopSamples, setActiveSunTrack } from "./sun-music";
 import { PULSE, beatPulse, breath, sunPulse } from "./sun-pulse";
+
+// (the page's singleton draws its piece at random: these are the first piece's numbers)
+beforeEach(() => setActiveSunTrack(SUN_TRACKS[0]!));
 
 const CYCLE = SUN_MUSIC.beatSec * SUN_MUSIC.cycleBeats;
 /** `c` cycles into the music. */

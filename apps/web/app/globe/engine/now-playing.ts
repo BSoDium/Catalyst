@@ -38,6 +38,25 @@ export const TRACKS = {
     titleHref: "https://pixabay.com/music/orchestral-cinematic-cinematic-music-583978/",
     artists: [{ name: "Nikita Kondrashev (leberch)", href: "https://taketones.com/author/nikita-kondrashev" }],
   },
+  // (the pieces the sun's music draws on, #389: Pixabay, the owner checked each licence; the sleeve of the second is the artist's, 200 px)
+  space: {
+    id: "space",
+    title: "Space",
+    artist: "Nikita Kondrashev (leberch)",
+    priority: 1,
+    cover: "/media/now-playing/space.jpg",
+    titleHref: "https://pixabay.com/music/ambient-space-440026/",
+    artists: [{ name: "Nikita Kondrashev (leberch)", href: "https://taketones.com/author/nikita-kondrashev" }],
+  },
+  silent: {
+    id: "silent",
+    title: "Silent Universe",
+    artist: "Universfield",
+    priority: 1,
+    // (no sleeve yet: the plain label, the sun's warm ramp)
+    titleHref: "https://pixabay.com/music/meditationspiritual-silent-universe-351473/",
+    artists: [{ name: "Universfield", href: "https://unil.ink/universfield" }],
+  },
   interlude: {
     id: "interlude",
     title: "Universal intro",
@@ -67,7 +86,7 @@ export interface NowPlayingSnapshot {
 
 /** Whether the sun's music is audible: playing (not waiting, not blocked by the browser) and not turned off. The home screen's hero does not come back while it is (components' `useLandingHero`). */
 export function sunAudible(s: NowPlayingSnapshot): boolean {
-  return s.track?.id === TRACKS.sun.id && s.state === "playing" && !s.muted;
+  return (s.track?.id === TRACKS.sun.id || s.track?.id === TRACKS.space.id || s.track?.id === TRACKS.silent.id) && s.state === "playing" && !s.muted;
 }
 
 /** Whether there is a pill to show for this: a sound that is on now (playing, or blocked until a gesture), including one the visitor has turned off, which the disc turns back on. A sound that waits (the sun is out of the picture) has none (owner, 2026-10-29). */
