@@ -19,6 +19,12 @@ const NOUNS: Partial<Record<ContentKind, Record<NoticeLanguage, string>>> = {
   artwork: { en: "artwork", fr: "cette œuvre" },
 };
 
+/** What is welcome of a work, said by what it is: a text can be quoted; a picture cannot (a short quotation of a photograph means nothing), it can be linked or shown small with a credit. */
+const WELCOME: Partial<Record<ContentKind, Record<NoticeLanguage, string>>> = {
+  photograph: { en: "a link or a small preview with credit is welcome", fr: "un lien ou un aperçu réduit avec mention de l'auteur est bienvenu" },
+  artwork: { en: "a link or a small preview with credit is welcome", fr: "un lien ou un aperçu réduit avec mention de l'auteur est bienvenu" },
+};
+
 export interface CopyrightNotice {
   /** The whole line: `© 2026 Elliot Négrel-Jerzy. All rights reserved. Please do not ...` */
   text: string;
@@ -54,8 +60,8 @@ export function copyrightNotice({ kind, date, updated, meta = [] }: CopyrightInp
   const head = `© ${year !== undefined ? `${year} ` : ""}${SITE.name}.`;
   const rest =
     language === "fr"
-      ? `Tous droits réservés. Merci de ne pas reproduire ${nouns.fr} sans autorisation ; de courtes citations avec mention de l'auteur sont bienvenues.`
-      : `All rights reserved. Please do not reproduce this ${nouns.en} without permission; short quotations with attribution are welcome.`;
+      ? `Tous droits réservés. Merci de ne pas reproduire ${nouns.fr} sans autorisation ; ${WELCOME[kind]?.fr ?? "de courtes citations avec mention de l'auteur sont bienvenues"}.`
+      : `All rights reserved. Please do not reproduce this ${nouns.en} without permission; ${WELCOME[kind]?.en ?? "short quotations with attribution are welcome"}.`;
   // Without a year the line is only the holder: "© Elliot Négrel-Jerzy." then the terms, as the owner asked.
   return { text: `${head} ${rest}`, ...(year !== undefined ? { year } : {}), holder: SITE.name, language };
 }
