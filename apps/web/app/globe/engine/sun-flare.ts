@@ -107,6 +107,8 @@ const FRAGMENT = /* glsl */ `
     if (uLight > 0.5) {
       // the light page: the sun's rays are WHITE, and what shows them is a very soft, faint grey darkening round the sun (the veil); the ghosts are the ramp's colours, faintly
       float veil = pow(clamp(1.0 - length(p - uSun) / (${f(SUN.light.veil.reach)} * uBufW), 0.0, 1.0), ${f(SUN.light.veil.fall)}) * ${f(SUN.light.veil.strength)} * (1.0 - uSet) * uStr;
+      // (the flare is drawn after the sun's blob on this page, so its veil, a grey darkening, must leave the sun's own white where the blob is: it came in over the disc and made it grey)
+      veil *= smoothstep(${f(SUN.core.radius * 0.5)} * uSunR, ${f(SUN.core.radius * 1.3)} * uSunR, length(p - uSun));
       if (ink <= 0.0 && veil < 0.004) discard;
       if (ink <= 0.0) gl_FragColor = vec4(vec3(${f(SUN.light.veil.grey)}), veil);
       // (the rays are the sun's own white at all times: OPAQUE pixels, the strength taken out in the dither, not a see-through white)
