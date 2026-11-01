@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fadeStraight, mercatorPx, OFF_ZOOM, STRAIGHT_FADE_STEPS, straightFadeLevel, thinLegs, thinZoomFor, thinZoomOf, windowFor, type ThinLeg } from "./thin";
+import { chained, CROWD_FROM, CROWD_STEPS, crowdLegs, crowdStep, fadeStraight, mercatorPx, OFF_ZOOM, STRAIGHT_FADE_STEPS, straightFadeLevel, thinLegs, thinZoomFor, thinZoomOf, windowFor, type ThinLeg } from "./thin";
 
 const leg = (key: string, a: [number, number], b: [number, number], lit = false): ThinLeg => ({ key, parts: [[a, b]], lit });
 
@@ -13,10 +13,19 @@ describe("thinLegs", () => {
     expect(kept.has("same")).toBe(false);
     expect(kept.has("away")).toBe(true);
   });
-  it("drops a leg too short to read at this zoom, and brings it back when zoomed in", () => {
+  it("keeps a short leg at any zoom: it is a short line, not nothing (#459), unless it is under one art pixel", () => {
     const short = leg("short", [10, 45], [10.2, 45.05]);
-    expect(thinLegs([short], 5, 2.5)!.has("short")).toBe(false);
+    expect(thinLegs([short], 5, 2.5)!.has("short")).toBe(true);
     expect(thinLegs([short], 9, 2.5)!.has("short")).toBe(true);
+    expect(thinLegs([leg("tiny", [10, 45], [10.0001, 45])], 3, 2.5)!.has("tiny")).toBe(false);
+  });
+  it("does not take a leg's own trip for a corridor shared twice: the next leg of a chain is kept", () => {
+    const a = leg("trip:0", [10, 45], [10.4, 45.1]);
+    const b = leg("trip:1", [10.4, 45.1], [10.8, 45.2]);
+    const other = leg("other:0", [10.01, 45.002], [10.39, 45.098]); // the same corridor as the first, another trip
+    const kept = thinLegs([a, b, other], 4, 2.5)!;
+    expect(kept.has("trip:1")).toBe(true);
+    expect(kept.has("other:0")).toBe(false);
   });
   it("never drops a lit leg, and keeps it first so it is the one a duplicate loses to", () => {
     const long = leg("long", [10, 45], [16, 48]);
@@ -94,5 +103,36 @@ describe("the window the thinning works in", () => {
     expect(kept.has("copy")).toBe(false);
     expect(kept.has("out")).toBe(true);
     expect(kept.has("outCopy")).toBe(true);
+  });
+});
+
+describe("crowds: many legs in one place are one quiet tone, not removed", () => {
+  const fan = (n: number, keyOf: (i: number) => string, ends?: (i: number) => [string, string]): ThinLeg[] =>
+    Array.from({ length: n }, (_, i) => ({ key: keyOf(i), parts: [[[10 + i * 0.01, 45], [12 + i * 0.01, 46]]], ends: ends?.(i) }));
+  it("steps with the number of other legs in the cells: none below the threshold, up to the last step", () => {
+    expect(crowdStep(0)).toBe(0);
+    expect(crowdStep(CROWD_FROM - 0.1)).toBe(0);
+    expect(crowdStep(CROWD_FROM)).toBe(1);
+    expect(crowdStep(1000)).toBe(CROWD_STEPS);
+  });
+  it("marks legs that run through the same cells, and nothing for legs that run apart", () => {
+    const crowd = crowdLegs(fan(8, (i) => `r${i}:0`), 3, 2.5)!;
+    expect(crowd).not.toBeNull();
+    expect([...crowd.keys()].sort()).toEqual(Array.from({ length: 8 }, (_, i) => `r${i}:0`).sort());
+    const apart: ThinLeg[] = Array.from({ length: 8 }, (_, i) => ({ key: `r${i}:0`, parts: [[[10, 10 + i * 8], [12, 10 + i * 8]]] }));
+    expect(crowdLegs(apart, 3, 2.5)).toBeNull();
+  });
+  it("does not count the legs that meet at a place (a hub's fan, a trip's chain) as a crowd", () => {
+    const hub = fan(8, (i) => `r${i}:0`, (i) => ["hub", `end${i}`]);
+    expect(crowdLegs(hub, 3, 2.5)).toBeNull();
+    const chain: ThinLeg[] = [0, 1, 2].map((i) => ({ key: `t:${i}`, parts: [[[10 + i, 45], [11 + i, 45]]] }));
+    expect(crowdLegs(chain, 3, 2.5)).toBeNull();
+    expect(chained("t:1", "t:2")).toBe(true);
+    expect(chained("t:1", "t:3")).toBe(false);
+    expect(chained("a:1", "b:2")).toBe(false);
+  });
+  it("never crowds the selected place's legs", () => {
+    const legs = fan(8, (i) => `r${i}:0`).map((l, i) => (i === 0 ? { ...l, lit: true } : l));
+    expect(crowdLegs(legs, 3, 2.5)!.has("r0:0")).toBe(false);
   });
 });

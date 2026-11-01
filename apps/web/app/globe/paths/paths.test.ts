@@ -4,7 +4,7 @@ import { decodePolyline5 as schemaDecode, encodePolyline5 as schemaEncode } from
 import { parsePublishedProjection } from "@catalyst/schemas";
 import type { GlobeRoute } from "../types";
 import { lonLatToVec3 } from "../engine/geo";
-import { FADE_FROM_CELLS, FADE_FULL_CELLS, LEVEL_HYSTERESIS, fadeLevel, levelFor, metresPerCell } from "./lod";
+import { CROWD_TONE, LEVEL_HYSTERESIS, levelFor, metresPerCell } from "./lod";
 import { LEG_MODES, MODE_STYLE, RAIL_TICK_DASH, dashArray } from "./modes";
 import { ARC_STEP_DEG, LOD_TOLERANCES_M, arcPoints, buildBuffers, buildNetwork, legsAt, pathLengthM, placeKey } from "./network";
 import { decodePolyline5, encodePolyline5 } from "./polyline";
@@ -226,24 +226,15 @@ describe("level of detail and fade", () => {
     expect(levelFor(boundary * LEVEL_HYSTERESIS * 12, 2)).toBeGreaterThan(2);
     expect(levelFor(boundary / (LEVEL_HYSTERESIS * 3), 2)).toBeLessThan(2);
   });
-  it("hides short legs and steps the rest in through the palette levels", () => {
-    expect(fadeLevel(0.5, 9)).toBe(0);
-    expect(fadeLevel(FADE_FROM_CELLS, 9)).toBe(0);
-    expect(fadeLevel(FADE_FROM_CELLS + 0.01, 9)).toBe(1);
-    expect(fadeLevel(FADE_FULL_CELLS, 9)).toBe(9);
-    expect(fadeLevel(500, 9)).toBe(9);
-    let last = 0;
-    for (let c = 0; c < 30; c += 0.1) {
-      const l = fadeLevel(c, 9);
-      expect(l).toBeGreaterThanOrEqual(last);
-      last = l;
-    }
-  });
-  it("a 300 km leg is hidden on the world view and full on a regional one", () => {
+  it("never fades a leg out by its length: a 300 km leg is a few cells at the world view, not nothing (#459)", () => {
     const world = metresPerCell(512 / (2 * Math.PI), 2.5); // zoom 0
-    expect(300_000 / world).toBeLessThan(FADE_FROM_CELLS);
-    const regional = metresPerCell((512 * 2 ** 4) / (2 * Math.PI), 2.5); // zoom 4
-    expect(300_000 / regional).toBeGreaterThan(FADE_FULL_CELLS);
+    expect(300_000 / world).toBeGreaterThan(0.5); // under one art pixel only far past the world view
+    // the crowd's tones are solid steps toward the page, quieter the more crowded, and the first step is not "nothing" either
+    expect(CROWD_TONE[0]).toBe(0);
+    for (let k = 1; k < CROWD_TONE.length; k++) {
+      expect(CROWD_TONE[k]).toBeGreaterThan(CROWD_TONE[k - 1]!);
+      expect(CROWD_TONE[k]).toBeLessThan(0.8); // a crowd is quiet, not gone
+    }
   });
 });
 

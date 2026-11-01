@@ -6,8 +6,8 @@
 // legs of every mode. Pages run in debug mode (`?globe-debug`), where `window.__globeDebug` is the introspection (pathStats,
 // routesShown, setView, renderNow, info, ramp). `perf` also loads `?paths-stress=N` (synthetic legs, paths/stress.ts).
 //
-// shots     world, continent and city zoom, light and dark: the faint tone is on the screen, the page colour is not touched, short legs
-//           are hidden at the world view and shown at city zoom; screenshots in OUT_DIR
+// shots     world, continent and city zoom, light and dark: the faint tone is on the screen, the page colour is not touched, no leg is
+//           faded out by its length (the world view draws paths as the city view does, #459); screenshots in OUT_DIR
 // select    selecting a place lights its adjacent legs (ink) with a draw-on that runs from the place, others stay faint; no geometry
 //           change (buffers, vertex count unchanged); the draw-on ends and the globe goes idle
 // reduced   prefers-reduced-motion: the selected legs are complete at once, nothing animates
@@ -132,7 +132,7 @@ try {
         const s = await stats(page);
         note(`${scheme} ${name}: faint ${seen[name].faint} px, level ${s.level}, ${s.drawnSegments} segments drawn`);
       }
-      expect(`${scheme}: short legs are hidden at the world view, drawn at city zoom`, seen.city.faint > seen.world.faint * 3, seen);
+      expect(`${scheme}: the paths are on the screen at the world view too (no leg is faded out by its length)`, seen.world.faint > 50, seen);
       expect(`${scheme}: paths are visible at the continent view`, seen.continent.faint > 100, seen);
       expect(`${scheme}: no ink while nothing is selected`, seen.city.ink === 0 && seen.world.ink === 0 && seen.continent.ink === 0, seen);
       expect(`${scheme}: no console errors`, logs.filter((l) => l.startsWith("error") || l.startsWith("pageerror")).length === 0, logs);

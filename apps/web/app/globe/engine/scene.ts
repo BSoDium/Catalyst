@@ -518,6 +518,11 @@ export class GlobeScene {
     this.sky?.sync({ viewToGal, projInv: camera.projectionMatrixInverse, d, bufW: buf.w, bufH: buf.h, shiftBuf: buf.shift, liftBuf: buf.lift ?? 0 }, now, instant, hold);
   }
 
+  /** The flights' length on the screen (`RouteLayer.syncScreen`): call once the camera's matrices are current. */
+  syncRoutesScreen(camera: PerspectiveCamera, bufW: number, bufH: number) {
+    this.routes.syncScreen(camera, bufW, bufH);
+  }
+
   /** The keys of the legs that stay at this zoom (`RouteLayer.setThinning`), null: all. */
   kept: ReadonlySet<string> | null = null;
 

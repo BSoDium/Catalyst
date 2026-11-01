@@ -5,18 +5,18 @@
  * switch has a hysteresis (`LEVEL_HYSTERESIS`): the scale has to move 25 % past a boundary to change level, so a zoom that
  * hovers at one never flickers between two.
  *
- * Fade: a leg is hidden while it is shorter than `FADE_FROM_CELLS` art pixels, and its tone steps up through the palette
- * (`rampLevel`, the same staircase the borders use: solid tones, never an alpha) to the path tone at `FADE_FULL_CELLS`.
- * "Short legs are hidden at the world view" is this rule: a 300 km leg is 0.6 of a cell there.
+ * Tone: a leg is never faded out by its length (it used to be: hidden under 2 art pixels, stepping up to full at 14, so the chain of a trip lost its
+ * short legs from space, #459). A path that is farther away only loses RESOLUTION (the simplification level above, a coarser dot pitch); where many legs
+ * are in one place (`paths/thin.ts` `crowdLegs`) they are one quiet solid tone, `CROWD_TONE` by the crowd's step.
  */
 import { EARTH_RADIUS_M } from "./simplify";
 import { LOD_TOLERANCES_M } from "./network";
-import { rampLevel } from "../engine/palette";
 
 export const LEVEL_ERROR_CELLS = 0.5;
 export const LEVEL_HYSTERESIS = 1.25;
-export const FADE_FROM_CELLS = 2;
-export const FADE_FULL_CELLS = 14;
+
+/** How far toward the page colour (0..1, solid) a leg of a crowd of step 1..3 is drawn: index 0 is "not crowded". Its mode is carried by the pattern, so a crowd, which has none, is the quiet one. */
+export const CROWD_TONE = [0, 0.3, 0.45, 0.55] as const;
 
 /** Metres on the ground per art pixel at the centre of the globe: `radiusPx` is `zoomToRadiusPx(zoom)` and `cssPerCell` the art pixel in CSS px. */
 export const metresPerCell = (radiusPx: number, cssPerCell: number): number => (EARTH_RADIUS_M * cssPerCell) / radiusPx;
@@ -48,12 +48,6 @@ export function dotCell(cell: number): number {
   return cell > 0 ? 2 ** (Math.round(Math.log2(cell) * DOT_STEPS_PER_OCTAVE) / DOT_STEPS_PER_OCTAVE) : cell;
 }
 
-/** The palette level a leg of `lengthCells` art pixels is drawn at: 0 hidden, up to `finalLevel`. */
-export function fadeLevel(lengthCells: number, finalLevel: number): number {
-  const t = (lengthCells - FADE_FROM_CELLS) / (FADE_FULL_CELLS - FADE_FROM_CELLS);
-  return rampLevel(Math.min(1, t), finalLevel);
-}
-
 /**
  * How far away the view is, 0..1, for the paths' own tone: 1 on the whole globe, 0 from `FAR_TO` (internal zoom) on, in sixths (a timed value would
  * be a fade; a step of the tone is what the art does). Far away every path is quieter, so the set of them does not read as a tangle; the legs of the
@@ -64,8 +58,10 @@ export function fadeLevel(lengthCells: number, finalLevel: number): number {
  * (the tick at overview doubled the weight of every rail and made a region of many trips a mesh of crosses).
  */
 export const TICK_FROM = 5.5;
-export const FAR_FROM = 1.2;
-export const FAR_TO = 2.6;
+/** How far toward the page colour (0..1, solid) the paths that are not selected go on the whole globe (`farOf` 1): from space they are a faint trace, not a line (#459: one pixel is a lot on a planet this small). */
+export const FAR_TONE = 0.6;
+export const FAR_FROM = 2.6;
+export const FAR_TO = 4.2;
 export function farOf(zoom: number): number {
   const t = Math.min(1, Math.max(0, (zoom - FAR_FROM) / (FAR_TO - FAR_FROM)));
   return Math.round((1 - t * t * (3 - 2 * t)) * 6) / 6;

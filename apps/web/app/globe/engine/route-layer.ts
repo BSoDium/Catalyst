@@ -2,11 +2,14 @@ import {
   BufferAttribute,
   DataTexture,
   InstancedBufferAttribute,
+  DynamicDrawUsage,
   InstancedBufferGeometry,
   LineSegments,
+  Matrix4,
   NearestFilter,
   RedFormat,
   UnsignedByteType,
+  type Camera,
   type Scene,
   type ShaderMaterial,
 } from "three";
@@ -16,9 +19,9 @@ import { clamp, easeInOutCubic, radiusPxToZoom } from "./geo";
 import { pathMaterial } from "./materials";
 import { coastLevel } from "./palette";
 import { TUNING } from "./tuning";
-import { dotCell, FADE_FROM_CELLS, FADE_FULL_CELLS, farOf, TICK_FROM, levelFor, metresPerCell } from "../paths/lod";
+import { dotCell, farOf, TICK_FROM, levelFor, metresPerCell } from "../paths/lod";
 import { buildBuffers, buildNetwork, legsAt, type PathBuffers, type PathNetwork } from "../paths/network";
-import { fadeStraight, legKey, mercatorPx, thinLegs, thinZoomFor, windowFor, type ThinLeg, type WindowAnchor } from "../paths/thin";
+import { crowdLegs, fadeStraight, legKey, mercatorPx, thinLegs, thinZoomFor, windowFor, type ThinLeg, type WindowAnchor } from "../paths/thin";
 
 /** Marching speed of the dashes of a leg while it draws on, in px per second. */
 const MARCH_PX_PER_S = 30;
@@ -28,10 +31,13 @@ const STATE_ROW = 1024;
 const STATE_NONE = 0;
 const STATE_FWD = 128;
 const STATE_REV = 255;
-/** A leg thinned away at this zoom (`paths/thin.ts`): the vertex shader clips it (a value between `none` and the lit states). */
-const STATE_HIDDEN = 26;
-/** A straight leg quietened by its step 1..3 (`paths/thin.ts` `fadeStraight`): 52 + 4 per step, between hidden and lit (the vertex shader reads it). */
-const STATE_QUIET = 52;
+/**
+ * The state of a leg that is not selected is a small number of bits, all below the lit states (the vertex shader reads them): `quiet` (0..3, a straight line
+ * quietened up close, `paths/thin.ts` `fadeStraight`) + 4 x `crowd` (0..3, how crowded its place is: drawn as a quiet solid line, `crowdLegs`). A leg is never
+ * clipped by its state: the globe does not thin legs away (the first versions did, by length and by shared corridor, and legs came and went as the zoom
+ * stepped: #459). `thinLegs` still says which legs stay for the pictures of the modes, and the street map thins with it.
+ */
+const STATE_CROWD = 4;
 
 export interface PathStats {
   legs: number;
@@ -68,11 +74,12 @@ export class RouteLayer {
   private stateData = new Uint8Array(0);
   private level: number | null = null;
   private lit = new Set<number>();
-  /** Legs thinned away at this zoom, the keys that stay (null: all) and what they were worked out for. */
-  private hidden = new Set<number>();
+  /** The keys of the legs that stay at this zoom (null: all), for the pictures of the modes. */
   private kept: ReadonlySet<string> | null = null;
   /** Straight legs quietened at this view: leg index -> step, and by key (for the pictures of the modes). */
   private quiet = new Map<number, number>();
+  /** Legs in a crowd at this view: leg index -> step (1..3). */
+  private crowd = new Map<number, number>();
   private quietKeys: ReadonlyMap<string, number> | null = null;
   private thinList: ThinLeg[] | null = null;
   private thinSig = "";
@@ -80,6 +87,11 @@ export class RouteLayer {
   private thinZoom: number | null = null;
   private thinAnchor: WindowAnchor | null = null;
   private litRoutes = new Set<string>();
+  /** The flights' vertex runs (first vertex, count) and the screen length along them (`syncScreen`): the dots of an arc are laid out on the screen, not on the ground (#483). */
+  private flightRuns: { from: number; count: number }[] = [];
+  private screenLen: BufferAttribute | null = null;
+  private screenMat = new Matrix4();
+  private screenKey = new Float64Array(19);
   /** performance.now() at which the draw-on began, or null when the legs are complete. */
   private drawStart: number | null = null;
   private enabled = true;
@@ -104,6 +116,14 @@ export class RouteLayer {
     g.setAttribute("aDist", new BufferAttribute(b.dist, 1));
     g.setAttribute("aInfo", new BufferAttribute(b.info, 4));
     g.setAttribute("aTan", new BufferAttribute(b.tangent, 3));
+    let first = 0;
+    for (const leg of this.network.legs) {
+      const n = leg.lonlat.length / 2;
+      if (leg.mode === "flight") this.flightRuns.push({ from: first, count: n });
+      first += n;
+    }
+    this.screenLen = new BufferAttribute(new Float32Array(b.vertexCount), 1).setUsage(DynamicDrawUsage);
+    g.setAttribute("aScr", this.screenLen);
     // copies 1 and 2 are the rail's cross-ticks and the cross of every head's spark: always three
     g.setAttribute("aCopy", new InstancedBufferAttribute(Float32Array.from([0, 1, 2]), 1));
     g.instanceCount = 3;
@@ -123,8 +143,6 @@ export class RouteLayer {
     const material = pathMaterial();
     material.uniforms.uState!.value = tex;
     material.uniforms.uTexSize!.value = [width, rows];
-    material.uniforms.uFadeFrom!.value = FADE_FROM_CELLS;
-    material.uniforms.uFadeFull!.value = FADE_FULL_CELLS;
     this.material = material;
 
     const line = new LineSegments(g, material);
@@ -168,7 +186,7 @@ export class RouteLayer {
         this.litRoutes.add(this.network.legs[leg]!.routeId);
       }
     }
-    this.applyHidden();
+    this.applyTones();
     this.thinSig = ""; // the selected place's legs are never thinned: the next frame works it out again
     this.state.needsUpdate = true;
     const animating = animate && this.lit.size > 0;
@@ -177,10 +195,12 @@ export class RouteLayer {
     this.updateVisible();
   }
 
-  /** The legs thinned away, as the state of their texel (the lit ones are never hidden). */
-  private applyHidden() {
-    for (const [leg, step] of this.quiet) if (!this.lit.has(leg)) this.stateData[leg] = STATE_QUIET + 4 * (step - 1);
-    for (const leg of this.hidden) if (!this.lit.has(leg)) this.stateData[leg] = STATE_HIDDEN;
+  /** The quietened and crowded legs, as the state of their texel (the lit ones keep theirs). */
+  private applyTones() {
+    const bits = new Map<number, number>();
+    for (const [leg, step] of this.quiet) bits.set(leg, step);
+    for (const [leg, step] of this.crowd) bits.set(leg, (bits.get(leg) ?? 0) + STATE_CROWD * step);
+    for (const [leg, v] of bits) if (!this.lit.has(leg)) this.stateData[leg] = v;
   }
 
   /**
@@ -209,20 +229,21 @@ export class RouteLayer {
         const lvl = leg.levels[Math.min(2, leg.levels.length - 1)] ?? leg.levels[0]!;
         const pts: Array<readonly [number, number]> = [];
         for (const i of lvl) pts.push([leg.lonlat[i * 2]!, leg.lonlat[i * 2 + 1]!]);
-        return { key: legKey(leg.routeId, leg.legIndex), parts: [pts], straight: leg.arc || leg.mode === "flight" };
+        return { key: legKey(leg.routeId, leg.legIndex), parts: [pts], ends: [leg.fromKey, leg.toKey] as const, straight: leg.arc || leg.mode === "flight" };
       });
     }
     const list = this.thinList.map((l, i) => (this.lit.has(i) ? { ...l, lit: true } : l));
     const kept = thinLegs(list, z, cssPerCell, win?.window ?? null);
     this.kept = kept;
-    for (const leg of this.hidden) if (!this.lit.has(leg)) this.stateData[leg] = STATE_NONE;
     for (const leg of this.quiet.keys()) if (!this.lit.has(leg)) this.stateData[leg] = STATE_NONE;
-    this.hidden.clear();
+    for (const leg of this.crowd.keys()) if (!this.lit.has(leg)) this.stateData[leg] = STATE_NONE;
     this.quiet.clear();
+    this.crowd.clear();
     this.quietKeys = fadeStraight(list, z, view);
     if (this.quietKeys) this.thinList.forEach((l, i) => { const step = this.quietKeys!.get(l.key); if (step) this.quiet.set(i, step); });
-    if (kept) this.thinList.forEach((l, i) => { if (!kept.has(l.key) && !this.lit.has(i)) this.hidden.add(i); });
-    this.applyHidden();
+    const crowded = crowdLegs(list, z, cssPerCell, win?.window ?? null);
+    if (crowded) this.thinList.forEach((l, i) => { const step = crowded.get(l.key); if (step) this.crowd.set(i, step); });
+    this.applyTones();
     this.state.needsUpdate = true;
     return kept;
   }
@@ -323,6 +344,52 @@ export class RouteLayer {
     if (this.geometry) this.geometry.instanceCount = ticks ? 3 : 1;
     const level = levelFor(this.mPerCell, this.level);
     if (level !== this.level) this.applyLevel(level);
+  }
+
+  /**
+   * The length along each flight's arc ON THE SCREEN, in buffer pixels from its start, at the vertex (the shader lays the dots out by it). Called with the camera's
+   * matrices current; does nothing until the camera, the lift or the buffer has moved (a still globe costs nothing). Only the flights' vertices are projected here.
+   */
+  syncScreen(camera: Camera, bufW: number, bufH: number) {
+    const attr = this.screenLen;
+    if (!attr || !this.line || !this.material || this.flightRuns.length === 0) return;
+    this.line.updateWorldMatrix(true, false);
+    const m = this.screenMat.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse).multiply(this.line.matrixWorld);
+    const lift = this.material.uniforms.uLift!.value as number;
+    const key = this.screenKey;
+    let same = key[16] === lift && key[17] === bufW && key[18] === bufH;
+    for (let i = 0; same && i < 16; i++) if (key[i] !== m.elements[i]) same = false;
+    if (same) return;
+    for (let i = 0; i < 16; i++) key[i] = m.elements[i]!;
+    key[16] = lift;
+    key[17] = bufW;
+    key[18] = bufH;
+    const e = m.elements;
+    const pos = this.buffers!.position;
+    const out = attr.array as Float32Array;
+    const hx = bufW / 2, hy = bufH / 2;
+    for (const { from, count } of this.flightRuns) {
+      let acc = 0;
+      let px = 0, py = 0, have = false;
+      for (let k = 0; k < count; k++) {
+        const o = (from + k) * 3;
+        const x = pos[o]!, y = pos[o + 1]!, z = pos[o + 2]!;
+        const len = Math.hypot(x, y, z) || 1;
+        const s = (1 + (len - 1) * lift) / len;
+        const X = x * s, Y = y * s, Z = z * s;
+        const w = e[3]! * X + e[7]! * Y + e[11]! * Z + e[15]!;
+        if (w > 1e-6) {
+          const sx = ((e[0]! * X + e[4]! * Y + e[8]! * Z + e[12]!) / w) * hx;
+          const sy = ((e[1]! * X + e[5]! * Y + e[9]! * Z + e[13]!) / w) * hy;
+          if (have) acc += Math.hypot(sx - px, sy - py);
+          px = sx;
+          py = sy;
+          have = true;
+        }
+        out[from + k] = acc;
+      }
+    }
+    attr.needsUpdate = true;
   }
 
   /** 1 = lifted arcs, 0 = flat on the ground (handover: they flatten before the street map takes over). */

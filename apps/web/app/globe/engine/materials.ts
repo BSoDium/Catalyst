@@ -5,6 +5,7 @@
  */
 import { AddEquation, BackSide, Color, CustomBlending, DstColorFactor, FrontSide, NormalBlending, ShaderMaterial, ZeroFactor } from "three";
 import { CELL_PATTERN, LEG_MODES, MODE_STYLE } from "../paths/modes";
+import { CROWD_TONE, FAR_TONE } from "../paths/lod";
 import { STRAIGHT_FADE_MIX, STRAIGHT_FADE_STEPS } from "../paths/thin";
 import { SPARK, TRAIL_BANDS, TRAIL_ENTRIES, TRAIL_PER_PALETTE } from "../paths/trail";
 import { RIM, SUN } from "./moon";
@@ -602,30 +603,24 @@ export function pathMaterial(): ShaderMaterial {
       uTexSize: { value: [1, 1] },
       uFar: { value: 0 },
       uTickOn: { value: 1 },
-      uFadeFrom: { value: 2 },
-      uFadeFull: { value: 14 },
     },
     depthTest: false,
     depthWrite: false,
     vertexShader: /* glsl */ `
-      attribute float aDist; attribute vec4 aInfo; attribute vec3 aTan; attribute float aCopy;
+      attribute float aDist; attribute vec4 aInfo; attribute vec3 aTan; attribute float aCopy; attribute float aScr;
       uniform vec2 uPixel; uniform float uLift; uniform float uCell; uniform sampler2D uState; uniform vec2 uTexSize;
-      uniform float uFinal; uniform float uFadeFrom; uniform float uFadeFull;
-      varying float vDist; varying float vLen; varying float vMode; varying float vState; varying float vCopy; varying float vFade; varying float vPal; varying float vQuiet;
+      varying float vDist; varying float vLen; varying float vMode; varying float vState; varying float vCopy; varying float vPal; varying float vQuiet; varying float vCrowd; varying float vScr;
       varying vec3 vPos;
       void main() {
         float leg = aInfo.x;
         vec2 uv = vec2((mod(leg, uTexSize.x) + 0.5) / uTexSize.x, (floor(leg / uTexSize.x) + 0.5) / uTexSize.y);
         float st = texture2D(uState, uv).r;     // 0 none, ~0.5 starts at the selected place, 1 ends there
-        // fade-in: a level that steps up with the leg's length in cells (0 = hidden); the colour mixes toward the page by level / final
-        float fd = clamp((aInfo.z / uCell - uFadeFrom) / (uFadeFull - uFadeFrom), 0.0, 1.0);
-        float level = fd <= 0.0 ? 0.0 : clamp(ceil(fd * uFinal), 1.0, uFinal);
-        vFade = level / uFinal;
-        // a straight line quietened up close (paths/thin.ts fadeStraight): the state between hidden and lit, 52 + 4 per step (1..3)
-        vQuiet = (st > 0.2 && st < 0.25) ? floor((st * 255.0 - 48.0) / 4.0 + 0.5) : 0.0;
-        vDist = aDist; vLen = aInfo.z; vMode = aInfo.y; vPal = aInfo.w; vState = st; vCopy = aCopy;
-        // a leg nothing shows is clipped away, and so is one thinned away at this zoom (paths/thin.ts: the state between none and lit)
-        if ((level < 0.5 && st < 0.25) || (st > 0.05 && st < 0.2)) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return; }
+        // The state of a leg that is not selected (route-layer.ts): quiet step + 4 x crowd step.
+        // A leg is never faded out by its LENGTH: a short leg is a short line (a dot or two), not nothing (#459: the chain of a trip lost its short legs from space).
+        float n = st < 0.25 ? floor(st * 255.0 + 0.5) : 0.0;
+        vQuiet = mod(n, 4.0);
+        vCrowd = mod(floor(n / 4.0), 4.0);
+        vDist = aDist; vScr = aScr; vLen = aInfo.z; vMode = aInfo.y; vPal = aInfo.w; vState = st; vCopy = aCopy;
         // uLift scales the height above the surface: 1 = lifted arc, 0 = on the ground (street scale).
         vec3 p = normalize(position) * (1.0 + (length(position) - 1.0) * uLift);
         vPos = p;
@@ -641,7 +636,7 @@ export function pathMaterial(): ShaderMaterial {
       }`,
     fragmentShader: /* glsl */ `
       uniform vec3 uTrail[${TRAIL_ENTRIES}]; uniform vec3 uPage; uniform float uFinal; uniform float uPresence; uniform float uFront; uniform float uMarch; uniform float uCell; uniform float uDot; uniform float uFar; uniform float uTickOn;
-      varying float vDist; varying float vLen; varying float vMode; varying float vState; varying float vCopy; varying float vFade; varying float vPal; varying float vQuiet;
+      varying float vDist; varying float vLen; varying float vMode; varying float vState; varying float vCopy; varying float vPal; varying float vQuiet; varying float vCrowd; varying float vScr;
       varying vec3 vPos;
       // True when the occluder sphere lies between the camera and p.
       bool behindGlobe(vec3 p) {
@@ -657,21 +652,34 @@ export function pathMaterial(): ShaderMaterial {
       void main() {
         // How far the pattern runs along the line from one pixel to the next, in dots' cells: 1 for a line along an axis, 1.41 on a diagonal (a line is one
         // pixel per step of its major axis). Taken first: derivatives are only defined while every fragment of the quad is still here.
-        vec2 gd = vec2(dFdx(vDist), dFdy(vDist)) / uDot;
+        // A flight's arc (mode 3) is laid out by its length ON THE SCREEN (aScr, worked out per view by route-layer.ts syncScreen): the fold of an arc seen along its
+        // own plane has no ground length to correct by, and the half-octave steps below opened a gap at each step (#483). Every other mode is laid out on the ground.
+        bool flight = abs(vMode - 3.0) < 0.5;
+        vec2 gdGround = vec2(dFdx(vDist), dFdy(vDist)) / uDot;
+        vec2 gdScreen = vec2(dFdx(vScr), dFdy(vScr));
+        vec2 gd = flight ? gdScreen : gdGround;
         float gm = max(abs(gd.x), abs(gd.y));
         float step1 = gm > 1.0e-6 ? clamp(dot(gd, gd) / gm, 0.5, 4.0) : 1.0;
+        // The pattern's pitch on the SCREEN (#459): a line tilted toward the limb is foreshortened, length(gd) cells of pattern go by per pixel instead of one, and
+        // its dots bunched into dust. The pattern is laid out in cells fore times longer where the line is fore times foreshortened (a half-octave step, so each
+        // run of a leg keeps one phase along the ground: the dots do not crawl when the planet turns), which keeps the pitch within a fifth of the table's.
+        float fore = flight ? 1.0 : exp2(floor(log2(clamp(length(gd), 1.0, 8.0)) * 2.0 + 0.5) * 0.5);
+        step1 = max(0.5, step1 / fore);
         bool lit = vState > 0.25;
         float t = vLen > 0.0 ? vDist / vLen : 0.0;
         float frac = t;                          // 0 at the origin, 1 at the destination: the trail's gradient runs this way
         if (vState > 0.75) t = 1.0 - t;         // a leg that ends at the place draws on from the place
         bool inked = lit && t <= uFront;
-        if (!inked && vFade < 0.01) discard;
-        float cells = vDist / uDot - (lit ? uMarch : 0.0);
+        // a crowd's legs (paths/thin.ts crowdLegs) are one quiet solid tone: no pattern to make dust of
+        float crowd = lit ? 0.0 : vCrowd;
+        bool solid = !lit && crowd > 0.5;
+        float cells = ((flight ? vScr : vDist / uDot) - (lit ? uMarch : 0.0)) / fore;
         // mode ids (paths/modes.ts): 0 road, 1 rail, 2 ferry, 3 flight, 4 walk, 5 unknown
         float m = floor(vMode + 0.5);
         // the pattern of the street map's cells (a dot is one pixel): paths/modes.ts CELL_PATTERN, so the two renderers draw the same
         float period = ${modeChain((k) => CELL_PATTERN[k]?.period ?? 0)};
         float on = ${modeChain((k) => CELL_PATTERN[k]?.on ?? 0)};
+        if (solid) period = 0.0;
         // the head's spark: cells back from the destination (paths/trail.ts SPARK); the draw-on has not reached a lit head yet when t < 1
         float h = (vLen - vDist) / uCell - (inked ? ${f(SPARK.lit.clear)} : ${f(SPARK.faint.clear)});   // 0 where the spark begins, outside the place's box
         float sparkLine = inked ? ${f(SPARK.lit.line)} : ${f(SPARK.faint.line)};
@@ -705,8 +713,10 @@ export function pathMaterial(): ShaderMaterial {
         // the overlay's presence (boxes and labels share it): a solid mix toward the page in the fade's own levels; nothing at 0
         float pk = ceil(uPresence * uFinal - 1.0e-4) / uFinal;
         if (pk < 0.01) discard;
-        // from far away the paths are quieter (a solid mix toward the page, not an opacity); the selected place's legs keep their strength
-        col = mix(uPage, col, (inked ? 1.0 : vFade * (1.0 - 0.55 * uFar)) * pk);
+        // from far away the ground paths are quieter (a solid mix toward the page, not an opacity); the flights' arcs and the selected place's legs keep their strength
+        // (a crowd's tone by its step: paths/lod.ts CROWD_TONE; the far fade FAR_TONE)
+        float toned = crowd > 2.5 ? ${f(CROWD_TONE[3]!)} : crowd > 1.5 ? ${f(CROWD_TONE[2]!)} : crowd > 0.5 ? ${f(CROWD_TONE[1]!)} : 0.0;
+        col = mix(uPage, col, (inked ? 1.0 : (1.0 - ${FAR_TONE.toFixed(2)} * (m == 3.0 ? 0.0 : uFar)) * (1.0 - toned)) * pk);
         // a straight line up close: a solid mix toward the page by its step
         col = mix(col, uPage, ${f(STRAIGHT_FADE_MIX)} * vQuiet / ${f(STRAIGHT_FADE_STEPS)});
         gl_FragColor = vec4(col, 1.0);
