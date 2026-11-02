@@ -4,7 +4,7 @@ import { StaticRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 import { loadDemoProjection } from "@catalyst/published/dev";
 import { listEntries, type EntrySummary } from "~/lib/entries";
-import { ArtworkWall, artworkCaption } from "./artwork-wall";
+import { ArtworkWall, artworkCaption, wallKpi } from "./artwork-wall";
 
 const demo = listEntries(loadDemoProjection(), "artwork");
 const render = (items: EntrySummary[]) => renderToStaticMarkup(createElement(StaticRouter, { location: "/artworks" }, createElement(ArtworkWall, { items, label: "Artworks" })));
@@ -67,5 +67,29 @@ describe("artworkCaption", () => {
     expect(artworkCaption({ meta: [{ label: "medium", value: " Ink " }, { label: "Year", value: "2020" }], date: "2024" })).toEqual({ medium: "Ink", year: "2020" });
     expect(artworkCaption({ meta: [], date: "2024-05" })).toEqual({ year: "2024" });
     expect(artworkCaption({ meta: [] })).toEqual({});
+  });
+});
+
+describe("wallKpi", () => {
+  it("is a photograph's focal length, rounded, with its unit", () => {
+    expect(wallKpi({ kind: "photograph", index: 3, meta: [{ label: "Focal length", value: "6.81 mm" }] })).toEqual({ value: "6.8", unit: "mm" });
+    expect(wallKpi({ kind: "photograph", index: 3, meta: [{ label: "focal length", value: "35 mm" }] })).toEqual({ value: "35", unit: "mm" });
+    expect(wallKpi({ kind: "photograph", index: 3, meta: [{ label: "Focal length", value: "105.4mm" }] })).toEqual({ value: "105", unit: "mm" });
+  });
+
+  it("is none for a photograph without a readable focal length", () => {
+    expect(wallKpi({ kind: "photograph", index: 3, meta: [] })).toBeUndefined();
+    expect(wallKpi({ kind: "photograph", index: 3, meta: [{ label: "Focal length", value: "wide" }] })).toBeUndefined();
+  });
+
+  it("is an artwork's number in the collection, two digits at least", () => {
+    expect(wallKpi({ kind: "artwork", index: 7, meta: [] })).toEqual({ value: "07", unit: "No." });
+    expect(wallKpi({ kind: "artwork", index: 14, meta: [] })).toEqual({ value: "14", unit: "No." });
+  });
+
+  it("is drawn in the caption of a card that has one", () => {
+    const html = render([make("a", { width: 900, height: 900 }, { index: 7 })]);
+    expect(html).toContain('class="wall-kpi"');
+    expect(html).toContain(">07<");
   });
 });
