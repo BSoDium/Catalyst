@@ -374,6 +374,9 @@ describe("the world-coast placeholder (#468)", () => {
     expect(placeholderWanted(3, false)).toBe(true); // a fast zoom out, a first load, a slow network
     expect(placeholderWanted(3, true)).toBe(false); // the tiles are in: the tile coast
     expect(placeholderWanted(WORLD_PLACEHOLDER_BELOW, false)).toBe(false);
+    // a pan at a steady zoom (the tiles lag no zoom): the tile coast stays, its resolution does not drop while the edge tiles come (#503)
+    expect(placeholderWanted(3, false, false)).toBe(false);
+    expect(placeholderWanted(3, false, true)).toBe(true);
     expect(PLACEHOLDER_REPLACES).toEqual(["water-edge"]); // the one tile coast: never both geometries
   });
 });

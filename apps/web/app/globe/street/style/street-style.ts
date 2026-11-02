@@ -109,10 +109,11 @@ export const WORLD_PLACEHOLDER_BELOW = 5;
 /**
  * Whether the world coast is drawn INSTEAD of the tile coast now (#468): the zoom is under `WORLD_PLACEHOLDER_BELOW` and the street tiles are not all in. A fast zoom out never has all of its tiles in
  * time (each coarser level is still on its way) and MapLibre goes on drawing the finer ones it kept, minified: a thick, patchy coast that then eases to the globe's thin one at the cut. The 110m world coast
- * is the globe's own line: it takes the place of the tile coast for as long as the tiles lag (`PLACEHOLDER_REPLACES`), one geometry at a time, and the tile coast comes back when they are in. Pure.
+ * is the globe's own line: it takes the place of the tile coast for as long as the tiles lag (`PLACEHOLDER_REPLACES`), one geometry at a time, and the tile coast comes back when they are in. `zoomLag`: the tiles lag the ZOOM (the tile level changed since
+ * they were last all in): a map that only pans, even drifting a little in zoom with the latitude, has most of its tiles and the new ones at its edge on their way, and swapping its whole coast for the coarser world line while they came dropped its resolution until it stopped (#503). Pure.
  */
-export function placeholderWanted(zoom: number, sourceLoaded: boolean): boolean {
-  return zoom < WORLD_PLACEHOLDER_BELOW && !sourceLoaded;
+export function placeholderWanted(zoom: number, sourceLoaded: boolean, zoomLag = true): boolean {
+  return zoom < WORLD_PLACEHOLDER_BELOW && !sourceLoaded && zoomLag;
 }
 /** The tile layers the placeholder stands in for: hidden while it is drawn (never two geometries of one coast). */
 export const PLACEHOLDER_REPLACES = ["water-edge"] as const;
