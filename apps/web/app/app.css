@@ -6179,6 +6179,23 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     margin: 1.5rem 0 0;
   }
 
+  /* The button is solid in the ink with the page's colour on it (white with black on it in the dark scheme, black with white on it in the light one: owner, 2026-11-02, #505): the call to action of the page, quieter than the accent's blue. Hovered and pressed a step toward the page. */
+  .career-reach .ds-button[data-variant] {
+    --ds-button-bg: var(--foreground);
+    --ds-button-fg: var(--background);
+    --ds-button-line: var(--foreground);
+  }
+
+  .career-reach .ds-button[data-variant]:hover {
+    --ds-button-bg: color-mix(in srgb, var(--foreground) 82%, var(--background));
+    --ds-button-line: color-mix(in srgb, var(--foreground) 82%, var(--background));
+  }
+
+  .career-reach .ds-button[data-variant]:active {
+    --ds-button-bg: color-mix(in srgb, var(--foreground) 68%, var(--background));
+    --ds-button-line: color-mix(in srgb, var(--foreground) 68%, var(--background));
+  }
+
   /*
    * The contact form at the foot of the page (docs/career-page.md, "Contact"): the block's hairline and title, then a form as wide as
    * the text blocks' body. Fields are underlined by a 1 px box in the page's strong line, no fill, the reading face for what is typed;
