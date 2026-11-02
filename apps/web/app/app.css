@@ -2953,7 +2953,9 @@
     container: wall / inline-size;
   }
 
-  @media (hover: hover) and (pointer: fine) {
+  /* The overlay layout (the caption on the picture's foot, nothing reserved under it): for a pointer that hovers, and, always shown, for a touch screen from 40 rem (a tablet: the caption under the picture without the ramp
+     looked unfinished on an iPad, owner, 2026-11-02, #526); a phone keeps the caption under the picture. */
+  @media ((hover: hover) and (pointer: fine)) or (((hover: none) or (pointer: coarse)) and (min-width: 40rem)) {
     .wall {
       --cap: 0px;
     }
@@ -3266,7 +3268,7 @@
     text-overflow: ellipsis;
   }
 
-  @media (hover: hover) and (pointer: fine) {
+  @media ((hover: hover) and (pointer: fine)) or (((hover: none) or (pointer: coarse)) and (min-width: 40rem)) {
     /* The caption shares the picture's grid cell and sits at its foot: nothing is positioned, so the title's stretched link still covers the whole card. */
     .wall-card {
       display: grid;
@@ -3296,6 +3298,16 @@
         color-mix(in srgb, var(--background) 38%, transparent) 66%,
         transparent 100%
       );
+    }
+
+    .wall-title {
+      font-size: 1.125rem;
+    }
+  }
+
+  /* ... and for a pointer that hovers it shows on the hover or the focus (a touch screen has no hover: it is always there) */
+  @media (hover: hover) and (pointer: fine) {
+    .wall-caption {
       opacity: 0;
       transition: opacity var(--duration-fast) var(--ease-standard);
     }
@@ -3303,10 +3315,6 @@
     .wall-card:hover .wall-caption,
     .wall-card:has(:focus-visible) .wall-caption {
       opacity: 1;
-    }
-
-    .wall-title {
-      font-size: 1.125rem;
     }
   }
 
