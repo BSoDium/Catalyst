@@ -7,6 +7,24 @@
       "type": "number",
       "const": 1
     },
+    "dataVersion": {
+      "type": "object",
+      "properties": {
+        "commit": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{7,40}$"
+        },
+        "date": {
+          "type": "string",
+          "pattern": "^\\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\\d|3[01])$"
+        }
+      },
+      "required": [
+        "commit",
+        "date"
+      ],
+      "additionalProperties": false
+    },
     "places": {
       "type": "array",
       "items": {

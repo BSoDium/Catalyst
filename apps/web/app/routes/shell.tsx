@@ -8,7 +8,7 @@ import { LandingHero } from "~/components/landing-hero";
 import { PlacesNav } from "~/components/places-nav";
 import { NowPlayingPlayer } from "~/components/now-playing-player";
 import { WorldViewButton } from "~/components/world-view-button";
-import { Globe, placeFraming, ringPhrases, type GlobeInitialView, type GlobeViewState } from "~/globe";
+import { Globe, placeFraming, ringPhrases, type GlobeAttributionProps, type GlobeInitialView, type GlobeViewState } from "~/globe";
 import { useIsMobile } from "~/hooks/use-is-mobile";
 import { useLandingHero } from "~/hooks/use-landing-hero";
 import { isWorldView } from "~/lib/hero-machine";
@@ -37,7 +37,8 @@ export async function loader() {
   const projection = await getProjection();
   // How much of each kind there is (the caption's third phrase set): the projection's own collections.
   const counts: KindCounts = { project: projection.projects.length, article: projection.articles.length, artwork: projection.artworks.length, poem: projection.poems.length, photograph: projection.photographs.length };
-  return { ...buildPlaceIndex(projection), tiles: getTilesConfig(), counts };
+  // `dataVersion`: which content this is (the credits show it: #504); null where the projection does not say (a local or demo one).
+  return { ...buildPlaceIndex(projection), tiles: getTilesConfig(), counts, dataVersion: projection.dataVersion ?? null };
 }
 
 /** The place index never changes between navigations inside the shell. */
@@ -52,7 +53,9 @@ export function shouldRevalidate() {
  * in the full-screen container: the panel widens over the SAME globe, which stays mounted and keeps its view.
  */
 export default function Shell({ loaderData }: Route.ComponentProps) {
-  const { places, globePlaces, groups, routes, tiles, counts } = loaderData;
+  const { places, globePlaces, groups, routes, tiles, counts, dataVersion } = loaderData;
+  // The credits slot with the content's version (the slot is a component type: made once per version, not per render, or the button would remount).
+  const attribution = useMemo(() => (props: GlobeAttributionProps) => <AttributionSlot {...props} dataVersion={dataVersion} />, [dataVersion]);
   // The caption's rows (built once: the globe reads them once, when it is created).
   const captionPhrases = useMemo(() => siteCaption(counts), [counts]);
   const globeGroups = useMemo(() => toGlobeGroups(groups), [groups]);
@@ -163,7 +166,7 @@ export default function Shell({ loaderData }: Route.ComponentProps) {
               reducedMotion={reducedMotion}
               insetRight={insetRight}
               tiles={tiles}
-              attribution={AttributionSlot}
+              attribution={attribution}
               ringPhrases={RING_PHRASES}
               moon={MOON_LINK}
               captionPhrases={empty ? NO_PHRASES : captionPhrases}
