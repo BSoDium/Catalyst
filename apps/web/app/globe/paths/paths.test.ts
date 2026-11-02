@@ -284,3 +284,11 @@ describe("dotCell: the dots' cell snaps to quarters of an octave", () => {
     expect(Math.abs(Math.log2(dotCell(c) / c))).toBeLessThanOrEqual(1 / 8 + 1e-12);
   });
 });
+
+import { ARC_PALE, PATH_LIGHT_FAR, PATH_LIGHT_INK, PATH_NIGHT_DIM, PATH_NIGHT_INK } from "./lod";
+describe("the light page's path tones (#459)", () => {
+  it("are shares in 0..1, and the night side is inked darker than the day side", () => {
+    for (const v of [ARC_PALE, PATH_LIGHT_FAR, PATH_LIGHT_INK, PATH_NIGHT_DIM, PATH_NIGHT_INK]) expect(v).toBeGreaterThan(0), expect(v).toBeLessThan(1);
+    expect(PATH_NIGHT_INK).toBeLessThan(PATH_LIGHT_INK);
+  });
+});

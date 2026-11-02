@@ -693,7 +693,7 @@ export function pathMaterial(): ShaderMaterial {
         bool sparkOn = false; // the sparks are not drawn from space: the street map has them, up close
         if (false) sparkOn = vCopy < 0.5 ? (h >= 0.0 && h < sparkLine) : (h >= crossFrom && h < crossTo);
         bool tick = false;
-        bool whiteDot = false;
+        bool paleDot = false;
         if (period > 0.5) {
           // Whole pixels: a dash is a whole number of pixels long (at least one) and sits where the middle of the dash is, and a pixel is inked by where its
           // centre falls in the dash, so a dot is one pixel at every angle and offset and moves by whole pixels: at a fixed length it was one pixel or two, and
@@ -706,9 +706,9 @@ export function pathMaterial(): ShaderMaterial {
           } else {
             float len = max(1.0, floor(on / step1 + 0.5)) * step1;
             float u = mod(cells - (mid - 0.5 * len), period);
-            // On the light page a flight's arc alternates its dark dots with white ones half a period on: wherever the ground is, one of the two reads (owner, 2026-11-02)
-            if (flight && uFlip > 0.5 && u >= len) whiteDot = mod(u + period * 0.5, period) < len;
-            if (u >= len && !sparkOn && !whiteDot) discard;
+            // On the light page a flight's arc alternates its dark dots with pale ones (the trail's colour, lifted toward white) half a period on: wherever the ground is, one of the two reads (owner, 2026-11-02)
+            if (flight && uFlip > 0.5 && u >= len) paleDot = mod(u + period * 0.5, period) < len;
+            if (u >= len && !sparkOn && !paleDot) discard;
           }
         }
         if (vCopy > 0.5 && !tick && !sparkOn) discard;
@@ -732,12 +732,12 @@ export function pathMaterial(): ShaderMaterial {
         // darkened where the ground is, by the light page's night shadow (NIGHT.shadow, in the same flat steps the ground's own are). The dark page's ground is the page's colour by day and by night: unchanged.
         vec3 ground = uPage * (1.0 - ${NIGHT.shadow.toFixed(2)} * uFlip * wq);
         bool tinted = !inked && m != 3.0;
-        // the path takes the planet's light too: darker on the night side of the light page as the ground is (the same share), a little dimmer towards the page on the dark page's; selected paths and the flights' arcs keep their colour
+        // on the dark page a path takes the planet's light too: a little dimmer towards the page over the night side; selected paths and the flights' arcs keep their colour
         if (tinted && uFlip < 0.5) col = mix(col, uPage, ${PATH_NIGHT_DIM.toFixed(2)} * wq);
-        // on the light page the ground paths are inked darker and fade less from space: a pale line on a pale or grey ground has no contrast
+        // on the light page the paths (the arcs too) are inked darker, darker still over the night side, and fade less from space: a pale line on a white or grey ground has no contrast
         if (!inked && uFlip > 0.5) col *= onNight ? ${PATH_NIGHT_INK.toFixed(2)} : ${PATH_LIGHT_INK.toFixed(2)};
         col = mix(ground, col, inked ? 1.0 : (1.0 - ${FAR_TONE.toFixed(2)} * (1.0 - ${PATH_LIGHT_FAR.toFixed(2)} * uFlip) * (m == 3.0 ? 0.0 : uFar)) * (1.0 - toned));
-        if (whiteDot) col = mix(uTrail[pick] / max(max(uTrail[pick].r, uTrail[pick].g), uTrail[pick].b), vec3(1.0), ${ARC_PALE.toFixed(2)});
+        if (paleDot) col = mix(uTrail[pick] / max(max(uTrail[pick].r, uTrail[pick].g), uTrail[pick].b), vec3(1.0), ${ARC_PALE.toFixed(2)});
         col = mix(uPage, col, pk);
         // a straight line up close: a solid mix toward the page by its step
         col = mix(col, uPage, ${f(STRAIGHT_FADE_MIX)} * vQuiet / ${f(STRAIGHT_FADE_STEPS)});
