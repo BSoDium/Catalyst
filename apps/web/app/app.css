@@ -2186,10 +2186,15 @@
     opacity: 0.82;
   }
 
+  /* the dark rules of a component follow the scheme in force: the system's (a media query, unless the light one is forced) or the forced dark one (#507); `:where` keeps the specificity they had */
   @media (prefers-color-scheme: dark) {
-    .entry-hero-img {
+    :where(:root:not([data-scheme="light"])) .entry-hero-img {
       filter: brightness(0.85);
     }
+  }
+
+  :where(:root[data-scheme="dark"]) .entry-hero-img {
+    filter: brightness(0.85);
   }
 
   .entry-hero[data-tone="dim"] .entry-hero-img {
@@ -5658,10 +5663,15 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   }
 
   @media (prefers-color-scheme: dark) {
-    [data-slot="career"] {
+    :where(:root:not([data-scheme="light"])) [data-slot="career"] {
       --career-halo-portrait: 0.1;
       --career-halo-logo: 0.09;
     }
+  }
+
+  :where(:root[data-scheme="dark"]) [data-slot="career"] {
+    --career-halo-portrait: 0.1;
+    --career-halo-logo: 0.09;
   }
 
   /* The bleeds must never widen the page, and must not be cut by the content's own box (which is narrower than the screen on a wide
@@ -6243,9 +6253,13 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   }
 
   @media (prefers-color-scheme: dark) {
-    .career-contact {
+    :where(:root:not([data-scheme="light"])) .career-contact {
       --contact-error: #ff9d94;
     }
+  }
+
+  :where(:root[data-scheme="dark"]) .career-contact {
+    --contact-error: #ff9d94;
   }
 
   .contact-form,

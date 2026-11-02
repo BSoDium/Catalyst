@@ -27,7 +27,7 @@ export const links: Route.LinksFunction = () => [
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -35,6 +35,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
         {/* The browser's own UI (address bar, status bar) takes the page colour of the visitor's scheme. */}
         <meta name="theme-color" content={THEME_COLORS.light} media="(prefers-color-scheme: light)" />
         <meta name="theme-color" content={THEME_COLORS.dark} media="(prefers-color-scheme: dark)" />
+        {/* The visitor's chosen scheme (#507), on the root before the first paint: a file of ours (the page's CSP allows no inline script without the nonce). It blocks the parse for a few lines. */}
+        <script src="/theme-boot.js" />
         <Meta />
         <Links />
       </head>

@@ -5,9 +5,10 @@ export { DEFAULT_VIEW_RADIUS_KM, placeFraming } from "./engine/framing";
 export { noteVisit } from "./engine/visit";
 export { INTERLUDE_STATE_EVENT, prepareInterlude, requestInterlude, requestWorldView, RESTORE_HERO_EVENT, type InterludeStateDetail } from "./interlude";
 export { unlockSound } from "./engine/cinematic-sound";
+export { SCHEME_EVENT, currentScheme, onSchemeChange } from "./engine/scheme";
 export { sunMusic } from "./engine/sun-music";
 export { beatPulse } from "./engine/sun-pulse";
-export { TRACKS, nowPlaying, pillVisible, sunAudible, type NowPlayingSnapshot, type Track } from "./engine/now-playing";
+export { TRACKS, nowPlaying, pillVisible, readMuted, sunAudible, type NowPlayingSnapshot, type Track } from "./engine/now-playing";
 export { ringPhrases, type RingIdentity } from "./ring-text";
 export type {
   GlobeAttributionProps,
