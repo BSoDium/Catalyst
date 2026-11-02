@@ -3383,6 +3383,37 @@
     }
   }
 
+  /* ONE column (a phone, a narrow window; owner, 2026-11-02: full-bleed pictures with a gap of the page between them "look as if there should be text in it"): the caption is a line under the picture again, always shown,
+     in the room the masonry reserves for it (`--cap`), as the wall was on a touch screen before #526 and as a software row on a phone has its text on the page; the third design of the three, and the only one that is not
+     an overlay. From 34 rem (two columns) the overlay above is the look. */
+  @media (max-width: 33.99rem) {
+    .wall {
+      --cap: 4.5rem;
+    }
+
+    .wall-media,
+    .wall-caption {
+      grid-area: auto;
+    }
+
+    .wall-caption {
+      z-index: auto;
+      height: var(--cap);
+      padding: 0.5rem var(--wall-gutter) 0;
+      overflow: hidden;
+      background: none;
+      opacity: 1;
+    }
+
+    .wall-title {
+      font-size: 1rem;
+    }
+
+    .wall-meta {
+      color: var(--muted-foreground);
+    }
+  }
+
   /*
    * The poems' list (components/entry/entry-list-card.tsx `PoemRow`, docs/design-system.md "Poetry list"): the page is wider (100 rem) and
    * its rows are cells of a grid, 1 column, 2 from 44 rem of the page's width (the page stops at 100 rem, so never 3: three columns of 480 px would cut the summaries to 35 characters). The summary is the reading face at 20 to 26 px
