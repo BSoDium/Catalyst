@@ -66,12 +66,16 @@ describe("the choice of the scheme", () => {
 });
 
 describe("the click", () => {
-  it("is a little higher on the light page and lower on the dark one, and always soft", () => {
-    expect(voice("light").tockHz).toBeGreaterThan(voice("dark").tockHz);
-    for (const s of ["light", "dark"] as const) {
-      const v = voice(s);
-      expect(v.tickGain + v.tockGain).toBeLessThan(0.1);
-      expect(v.tockSec).toBeLessThan(0.1);
+  it("is a little higher on the light page and lower on the dark one, and always soft and short", () => {
+    const light = voice("light");
+    const dark = voice("dark");
+    expect(light.thunk.hz).toBeGreaterThan(dark.thunk.hz);
+    expect(light.modes[1]!.hz).toBeGreaterThan(dark.modes[1]!.hz);
+    for (const v of [light, dark]) {
+      // (all the parts at once, plus the release, stay well under full scale: peaks add at most)
+      const loud = v.transient.gain + v.modes.reduce((n, m) => n + m.gain, 0) + v.thunk.gain;
+      expect(loud * (1 + v.release.scale)).toBeLessThan(0.45);
+      expect(Math.max(...v.modes.map((m) => m.sec), v.thunk.sec) + v.release.delay).toBeLessThan(0.15);
     }
   });
 });
