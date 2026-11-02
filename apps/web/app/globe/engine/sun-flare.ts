@@ -171,6 +171,19 @@ export function gateStep(gate: number, held: boolean, dt: number): number {
 }
 
 /**
+ * How much of the halo's light and reach a crescent of this `area` keeps, 0..1 (#487): the halo goes with the sun that is left, but not with its area's root all the way down: that took it under the dither's first step while a
+ * dazzling pinpoint of the sun was still there (the owner: "a blinding light and no halo whatsoever"). It keeps `HALO_FLOOR` of itself for as long as any of the sun is drawn, and goes only in the last stretch, together with the
+ * sun's own last light (`HALO_LAST`, the area where the sun stops being drawn, to `HALO_LAST + HALO_OUT`). Whole sun: 1, as it always was. Pure.
+ */
+export const HALO_FLOOR = 0.35;
+export const HALO_LAST = 0.003;
+export const HALO_OUT = 0.005;
+export function haloShare(area: number): number {
+  const out = smooth(HALO_LAST, HALO_LAST + HALO_OUT, area);
+  return out * (HALO_FLOOR + (1 - HALO_FLOOR) * Math.sqrt(Math.min(1, Math.max(0, area))));
+}
+
+/**
  * What the disc is asked to be for a crescent of this `area` (0..1): 1 once the planet touches the sun (`1 - smoothstep(0.9, 0.97, area)`), 0 while it is clear AND while it is wholly hidden (#469): a sun behind the
  * planet has nothing to show, and the disc used to be asked for in full all that time, so that a sun coming out after a fast zoom out was a flat disc from its first visible frame (a per-frame log: touch 1, area 0.81, the next frame
  * clear). Hidden, the disc is 0 and comes in again, eased in time, only if the planet stays on the sun. Pure.
@@ -257,8 +270,8 @@ export function rayStart(r: number, area: number, width: number, disc: number): 
 
 /** The flare for this frame: the sun's place (a whole pixel's centre), the middle of the picture, the unit its sizes are shares of, and its strength; or null when there is none. Pure. */
 export function flarePlace(fr: FlareFrame): { sx: number; sy: number; mx: number; my: number; unit: number; str: number; ray: number; r: number; len: number } | null {
-  // (the light page's flare fades with the sun down to its last pixel, `rayDim` set: its cut-off is fine; the dark page's rays do not dim, so it keeps the old one)
-  const cut = fr.rayDim === undefined ? 0.01 : 0.001;
+  // (the light page's flare fades with the sun down to its last pixel, `rayDim` set; the dark page's rays do not dim, and go when the sun's last light does, `HALO_LAST`, not before: #487)
+  const cut = fr.rayDim === undefined ? HALO_LAST : 0.001;
   if (!fr.ahead || fr.amount <= 0.01 || fr.visible <= cut) return null;
   const mx = fr.bufW / 2;
   const my = fr.bufH / 2;

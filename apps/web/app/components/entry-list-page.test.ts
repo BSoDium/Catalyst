@@ -123,7 +123,15 @@ describe("EntryListPage", () => {
   it("gives an artwork without an image its generated cover (the image is the artwork)", () => {
     const artworks = listEntries(demo, "artwork").map((a) => ({ ...a, cover: undefined }));
     const html = renderToStaticMarkup(createElement(StaticRouter, { location: "/artworks" }, createElement(EntryListPage, { kind: "artwork", items: artworks })));
-    expect((html.match(/data-slot="cover-art"/g) ?? []).length).toBe(artworks.length);
+    // (the generated tiles that continue the wall under its banner are scenery, after the last card: they are not counted)
+    const cards = html.split('data-slot="wall-filler"')[0]!;
+    expect((cards.match(/data-slot="cover-art"/g) ?? []).length).toBe(artworks.length);
+  });
+  it("continues the artworks wall with generated scenery under the end banner, as the photography wall does with photographs", () => {
+    const html = renderToStaticMarkup(createElement(StaticRouter, { location: "/artworks" }, createElement(EntryListPage, { kind: "artwork", items: listEntries(demo, "artwork") })));
+    expect((html.match(/data-slot="wall-filler"/g) ?? []).length).toBeGreaterThanOrEqual(8);
+    expect(html).toContain('data-slot="gallery-end"');
+    expect(html).toContain("https://www.artstation.com/bsodium");
   });
   it("says the year as a thin display numeral when years group entries", () => {
     const items = [make("a", "2022-01", ["x"]), make("b", "2024-05", ["x"]), make("c", "2024-02", ["y"]), make("d", "2022-09", ["y"])];
