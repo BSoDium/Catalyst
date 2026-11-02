@@ -5561,6 +5561,41 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     --list-title: clamp(2.25rem, 6cqi, 5rem);
   }
 
+  /* The button and the availability share a row when they fit (the button first, the availability at its right: at every width, owner 2026-11-02, #505), and the availability goes under the button when they do not. */
+  .career-cta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem 1.5rem;
+    margin-top: 1.5rem;
+  }
+
+  .career-cta .career-reach {
+    order: 1;
+    margin: 0;
+  }
+
+  [data-slot="career-head"] .career-availability {
+    display: block;
+    order: 2;
+    margin: 0;
+  }
+
+  [data-slot="career-head"] .career-availability > span {
+    display: block;
+    color: var(--foreground);
+  }
+
+  .career-sep {
+    display: none;
+  }
+
+  .career-asof {
+    display: block;
+    margin-top: 0.25rem;
+    color: var(--muted-foreground);
+  }
+
   /*
    * The head on a phone (owner, 2026-10-31, issue #428). The name is bigger and breaks in two, the family name under the given one, so it leads
    * the statement under it (a single line at 2.25 rem weighed no more than the paragraph). The availability is two lines, what and since when, with a
@@ -5575,41 +5610,6 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
 
     .career-name-family {
       display: block;
-    }
-
-    /* The button and the availability share a row when they fit (the button first, the availability at its right), and the availability goes under the button when they do not. */
-    .career-cta {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 1rem 1.5rem;
-      margin-top: 1.5rem;
-    }
-
-    .career-cta .career-reach {
-      order: 1;
-      margin: 0;
-    }
-
-    [data-slot="career-head"] .career-availability {
-      display: block;
-      order: 2;
-      margin: 0;
-    }
-
-    [data-slot="career-head"] .career-availability > span {
-      display: block;
-      color: var(--foreground);
-    }
-
-    .career-sep {
-      display: none;
-    }
-
-    .career-asof {
-      display: block;
-      margin-top: 0.25rem;
-      color: var(--muted-foreground);
     }
 
     /* The strip under the head sits closer to "Updated": about the air it has between its two hairlines. */
