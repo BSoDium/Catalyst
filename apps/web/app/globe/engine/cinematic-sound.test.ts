@@ -38,6 +38,7 @@ function fakeContext(state: "running" | "suspended" = "running", resume: "ok" | 
     },
   };
   let made = 0;
+  let muteNode: { gain: { value: number; cancelScheduledValues(): void; setValueAtTime(): void; linearRampToValueAtTime(): void }; connect(): void; disconnect(): void } | null = null;
   const ctx: ContextLike & { time: number } = {
     state,
     time: 10,
@@ -51,10 +52,10 @@ function fakeContext(state: "running" | "suspended" = "running", resume: "ok" | 
       return Promise.resolve();
     },
     // (the first is the sound's envelope, the second the visitor's mute: a node of its own, whose ramps are not the envelope's)
-    createGain: () => (made++ === 0 ? gainNode : { gain: { value: 1, cancelScheduledValues: () => undefined, setValueAtTime: () => undefined, linearRampToValueAtTime: () => undefined }, connect: () => undefined, disconnect: () => undefined }),
+    createGain: () => (made++ === 0 ? gainNode : (muteNode = { gain: { value: 1, cancelScheduledValues: () => undefined, setValueAtTime: () => undefined, linearRampToValueAtTime: () => undefined }, connect: () => undefined, disconnect: () => undefined })),
     createBufferSource: () => source,
   };
-  return { ctx, gainNode, source, log, ramps };
+  return { ctx, gainNode, source, log, ramps, mute: () => muteNode };
 }
 
 function fakeDeps(c: ContextLike = fakeContext().ctx): SoundDeps & { made: number; decoded: number; fetched: string[] } {
@@ -151,15 +152,33 @@ describe("the interlude's sound", () => {
     expect(f.source.started.length).toBe(0);
   });
 
-  it("prepares nothing when the visitor asked for none, or the connection saves data", () => {
+  it("prepares nothing when the interlude's own switch is off, or the connection saves data", () => {
     const deps = fakeDeps();
-    vi.stubGlobal("location", { search: "?mute" });
+    vi.stubGlobal("sessionStorage", { getItem: (k: string) => (k === "cinematic-mute" ? "1" : null) });
     prepareSound(deps);
     expect(deps.fetched.length).toBe(0);
+    vi.stubGlobal("sessionStorage", { getItem: () => null });
     vi.stubGlobal("location", { search: "" });
     vi.stubGlobal("navigator", { connection: { saveData: true } });
     prepareSound(deps);
     expect(deps.fetched.length).toBe(0);
+  });
+
+  it("a visitor who has the page's sound off still gets it, muted: it is fetched, it starts with its mute node at 0, and the player lists it, so that the sound can be turned on in the interlude (#525)", async () => {
+    const { nowPlaying, pillVisible, TRACKS } = await import("./now-playing");
+    vi.stubGlobal("localStorage", { getItem: (k: string) => (k === "sound-muted" ? "1" : null), setItem: () => undefined, removeItem: () => undefined });
+    nowPlaying.load();
+    const f = fakeContext();
+    const deps = fakeDeps(f.ctx);
+    prepareSound(deps);
+    expect(deps.fetched.length).toBe(1);
+    startSound(8000, deps);
+    await vi.advanceTimersByTimeAsync(10);
+    expect(f.source.started.length).toBe(1);
+    expect(f.mute()!.gain.value).toBe(0);
+    expect(nowPlaying.getSnapshot()).toMatchObject({ track: { id: TRACKS.interlude.id }, state: "playing", muted: true });
+    expect(pillVisible(nowPlaying.getSnapshot())).toBe(true);
+    nowPlaying.end(TRACKS.interlude.id);
   });
 
   it("asks a suspended context to run, and starts when it does", async () => {
