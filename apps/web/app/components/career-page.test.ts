@@ -148,6 +148,15 @@ describe("CareerPage", () => {
     expect(html).not.toMatch(/<button[^>]*disabled[^>]*>Send message/);
   });
 
+  it("sets each field as a search line: the input first (a placeholder of one space), then its label, which moves up in CSS", () => {
+    for (const [name, label] of [["name", "Name"], ["email", "Email"], ["message", "Message"]] as const) {
+      const input = html.search(new RegExp(`<(input|textarea)[^>]*name="${name}"`));
+      const tag = html.slice(input, html.indexOf(">", input));
+      expect(tag).toContain('placeholder=" "');
+      expect(html.indexOf(`>${label}</label>`)).toBeGreaterThan(input);
+    }
+  });
+
   it("has no address to write to: no mailto, tel, address or e-mail text (the form is the way)", () => {
     expect(html).not.toMatch(/mailto:|tel:|sms:/i);
     expect(html.replace(/<[^>]+>/g, " ")).not.toMatch(/@/);

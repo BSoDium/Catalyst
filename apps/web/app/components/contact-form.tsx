@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
-import { Button, Icon, KeyHint } from "~/components/ui";
+import { Button, Icon, KeyHint, type IconName } from "~/components/ui";
 import { CONTACT_ACCESS_KEY, CONTACT_ENDPOINT, CONTACT_ID, CONTACT_LIMITS, CONTACT_SUBJECT, sendContact, validateContact, type ContactErrors, type ContactField, type ContactValues } from "~/lib/contact";
 import { useContactContext } from "~/lib/use-contact-context";
 
@@ -96,14 +96,14 @@ export function ContactForm() {
           <p id={`${uid}-lead`} className="contact-lead">
             A project, a question, an opportunity, or just a word about something here. Your message reaches me by email, and your address is used only to answer.
           </p>
-          <Field uid={uid} name="name" label="Name" error={errors.name}>
-            <input id={`${uid}-name`} name="name" type="text" autoComplete="name" required maxLength={CONTACT_LIMITS.name} aria-invalid={errors.name ? true : undefined} aria-describedby={errors.name ? `${uid}-name-e` : undefined} className="contact-input" />
+          <Field uid={uid} name="name" label="Name" icon="user" error={errors.name}>
+            <input id={`${uid}-name`} name="name" type="text" autoComplete="name" required maxLength={CONTACT_LIMITS.name} aria-invalid={errors.name ? true : undefined} aria-describedby={errors.name ? `${uid}-name-e` : undefined} placeholder=" " className="contact-input" />
           </Field>
-          <Field uid={uid} name="email" label="Email" error={errors.email}>
-            <input id={`${uid}-email`} name="email" type="email" inputMode="email" autoComplete="email" required maxLength={CONTACT_LIMITS.email} aria-invalid={errors.email ? true : undefined} aria-describedby={errors.email ? `${uid}-email-e` : undefined} className="contact-input" />
+          <Field uid={uid} name="email" label="Email" icon="mail" error={errors.email}>
+            <input id={`${uid}-email`} name="email" type="email" inputMode="email" autoComplete="email" required maxLength={CONTACT_LIMITS.email} aria-invalid={errors.email ? true : undefined} aria-describedby={errors.email ? `${uid}-email-e` : undefined} placeholder=" " className="contact-input" />
           </Field>
-          <Field uid={uid} name="message" label="Message" error={errors.message}>
-            <textarea id={`${uid}-message`} name="message" rows={6} required minLength={CONTACT_LIMITS.minMessage} maxLength={CONTACT_LIMITS.message} aria-invalid={errors.message ? true : undefined} aria-describedby={errors.message ? `${uid}-message-e` : undefined} className="contact-input contact-textarea" aria-keyshortcuts="Control+Enter Meta+Enter" onKeyDown={sendWithKeyboard} />
+          <Field uid={uid} name="message" label="Message" icon="message" error={errors.message}>
+            <textarea id={`${uid}-message`} name="message" rows={6} required minLength={CONTACT_LIMITS.minMessage} maxLength={CONTACT_LIMITS.message} aria-invalid={errors.message ? true : undefined} aria-describedby={errors.message ? `${uid}-message-e` : undefined} placeholder=" " className="contact-input contact-textarea" aria-keyshortcuts="Control+Enter Meta+Enter" onKeyDown={sendWithKeyboard} />
           </Field>
           {/* The honeypot: a person never sees it nor reaches it with the keyboard; a script that fills every field does. */}
           <div aria-hidden="true" className="contact-trap">
@@ -131,13 +131,21 @@ export function ContactForm() {
   );
 }
 
-function Field({ uid, name, label, error, children }: { uid: string; name: ContactField; label: string; error: string | undefined; children: React.ReactNode }) {
+/**
+ * One field, in the style of the home page's search line (owner, 2026-11-02, #536): an icon, a hairline under, no box; the label is the placeholder
+ * and moves up, small, when the field is focused or has something in it (CSS only: `:placeholder-shown` on the input, whose placeholder is a space, so it works without the script and the label stays a real
+ * `<label>` for assistive technology). The input comes first in the markup so that its state reaches the label that follows it.
+ */
+function Field({ uid, name, label, icon, error, children }: { uid: string; name: ContactField; label: string; icon: IconName; error: string | undefined; children: React.ReactNode }) {
   return (
     <div className="contact-field" data-invalid={error ? "true" : undefined}>
-      <label htmlFor={`${uid}-${name}`} className="contact-label type-meta">
-        {label}
-      </label>
-      {children}
+      <div className="contact-control" data-field={name}>
+        <Icon name={icon} size="control" aria-hidden="true" className="contact-icon" />
+        {children}
+        <label htmlFor={`${uid}-${name}`} className="contact-label">
+          {label}
+        </label>
+      </div>
       {error && (
         <p id={`${uid}-${name}-e`} className="contact-error">
           {error}
