@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "dataVersion": {
-    "commit": "0a6495db16378473c350d170216c9256e4c80b22",
+    "commit": "9f4a4c496bffc15ac274ebeb81363e594a1b4207",
     "date": "2026-11-02"
   },
   "places": [
@@ -12,7 +12,7 @@
         "lat": 30.42,
         "lon": -9.57
       },
-      "labelPriority": 39,
+      "labelPriority": 41,
       "bbox": [
         -9.6765894,
         30.3507233,
@@ -40,7 +40,7 @@
         "lat": 31.05,
         "lon": -7.13
       },
-      "labelPriority": 34,
+      "labelPriority": 35,
       "group": "ait-benhaddou-area",
       "countryCode": "MA",
       "body": [],
@@ -54,7 +54,7 @@
         "lat": 28.1,
         "lon": -12.05
       },
-      "labelPriority": 30,
+      "labelPriority": 31,
       "bbox": [
         -12.067,
         28.084,
@@ -96,7 +96,7 @@
         "lat": 20.51,
         "lon": -12.95
       },
-      "labelPriority": 34,
+      "labelPriority": 36,
       "group": "atar-area",
       "countryCode": "MR",
       "body": [
@@ -114,7 +114,7 @@
         "lat": 41.84,
         "lon": 23.48
       },
-      "labelPriority": 34,
+      "labelPriority": 35,
       "bbox": [
         23.3777074,
         41.6990596,
@@ -138,7 +138,7 @@
         "lat": 41.39,
         "lon": 2.18
       },
-      "labelPriority": 65,
+      "labelPriority": 68,
       "bbox": [
         2.0524977,
         41.3170354,
@@ -183,7 +183,7 @@
         "lat": -1.39,
         "lon": -48.48
       },
-      "labelPriority": 41,
+      "labelPriority": 42,
       "bbox": [
         -48.6244082,
         -1.494542,
@@ -207,7 +207,7 @@
         "lat": 32.25,
         "lon": -7.96
       },
-      "labelPriority": 31,
+      "labelPriority": 32,
       "bbox": [
         -7.971871,
         32.2005936,
@@ -231,7 +231,7 @@
         "lat": 38.55,
         "lon": -0.12
       },
-      "labelPriority": 34,
+      "labelPriority": 35,
       "bbox": [
         -0.1869109,
         38.5011769,
@@ -254,7 +254,7 @@
         "lat": -4.38,
         "lon": -69.76
       },
-      "labelPriority": 34,
+      "labelPriority": 35,
       "group": "brazil",
       "countryCode": "BR",
       "body": [
@@ -274,7 +274,7 @@
         "lat": 4.64,
         "lon": -74.09
       },
-      "labelPriority": 52,
+      "labelPriority": 54,
       "bbox": [
         -74.2235137,
         4.505873,
@@ -309,7 +309,7 @@
         "lat": 45.64,
         "lon": 25.59
       },
-      "labelPriority": 38,
+      "labelPriority": 39,
       "bbox": [
         25.5035642,
         45.538488,
@@ -334,7 +334,7 @@
         "lat": 48.17,
         "lon": 17.13
       },
-      "labelPriority": 38,
+      "labelPriority": 39,
       "bbox": [
         16.946044,
         48.0066643,
@@ -355,7 +355,7 @@
         "lat": 50.85,
         "lon": 4.35
       },
-      "labelPriority": 41,
+      "labelPriority": 42,
       "bbox": [
         4.3137681,
         50.802586,
@@ -376,7 +376,7 @@
         "lat": 44.43,
         "lon": 26.1
       },
-      "labelPriority": 41,
+      "labelPriority": 43,
       "bbox": [
         25.9666745,
         44.3342466,
@@ -384,7 +384,7 @@
         44.5413964
       ],
       "viewRadiusKm": 15.5,
-      "group": "sinaia-region",
+      "group": "bucharest-region",
       "countryCode": "RO",
       "body": [
         "Drenched in sweat, dust, and a touch of blood (mostly for dramatic effect, after scraping my arms while foolishly reaching—several times, mind you—for some plums from a train window), I finally arrived in Bucharest and reunited with a friend. I could not help but feel a bit frustrated at having lost an entire day that could have been devoted to exploring the city and relaxing, but I decided to cut my losses and embrace the situation.",
@@ -405,7 +405,7 @@
         "lat": 47.49,
         "lon": 19.08
       },
-      "labelPriority": 41,
+      "labelPriority": 42,
       "bbox": [
         18.9251057,
         47.3496899,
@@ -426,7 +426,7 @@
         "lat": -34.61,
         "lon": -58.44
       },
-      "labelPriority": 44,
+      "labelPriority": 45,
       "bbox": [
         -58.5314535,
         -34.7058155,
@@ -447,7 +447,7 @@
         "lat": -0.97,
         "lon": -75.17
       },
-      "labelPriority": 34,
+      "labelPriority": 35,
       "group": "peru",
       "countryCode": "PE",
       "body": [
@@ -467,7 +467,7 @@
         "lat": 31.45,
         "lon": -5.97
       },
-      "labelPriority": 34,
+      "labelPriority": 35,
       "group": "boumalne-dades-area",
       "countryCode": "MA",
       "body": [],
@@ -481,7 +481,7 @@
         "lat": 21.36,
         "lon": -16.96
       },
-      "labelPriority": 34,
+      "labelPriority": 35,
       "group": "morocco",
       "countryCode": "MA",
       "body": [
@@ -499,7 +499,7 @@
         "lat": 31.54,
         "lon": -4.86
       },
-      "labelPriority": 30,
+      "labelPriority": 31,
       "bbox": [
         -4.894,
         31.531,
@@ -520,7 +520,7 @@
         "lat": 33.59,
         "lon": -7.59
       },
-      "labelPriority": 51,
+      "labelPriority": 52,
       "bbox": [
         -7.723871,
         33.493342,
@@ -552,7 +552,7 @@
         "lat": 41,
         "lon": 22.88
       },
-      "labelPriority": 34,
+      "labelPriority": 35,
       "group": "thessaloniki-area",
       "countryCode": "GR",
       "body": [
@@ -570,7 +570,7 @@
         "lat": 20.47,
         "lon": -12.36
       },
-      "labelPriority": 34,
+      "labelPriority": 35,
       "group": "atar-area",
       "countryCode": "MR",
       "body": [
@@ -590,7 +590,7 @@
         "lat": 47.03,
         "lon": 28.84
       },
-      "labelPriority": 39,
+      "labelPriority": 40,
       "bbox": [
         28.7451209,
         46.9203488,
@@ -615,7 +615,7 @@
         "lat": 21.3,
         "lon": -13.07
       },
-      "labelPriority": 34,
+      "labelPriority": 35,
       "group": "atar-region",
       "countryCode": "MR",
       "body": [
@@ -632,7 +632,7 @@
         "lat": 46.77,
         "lon": 23.59
       },
-      "labelPriority": 38,
+      "labelPriority": 39,
       "bbox": [
         23.499243,
         46.6899711,
@@ -656,7 +656,7 @@
         "lat": -17.39,
         "lon": -66.16
       },
-      "labelPriority": 40,
+      "labelPriority": 41,
       "group": "bolivia",
       "countryCode": "BO",
       "body": [],
@@ -670,7 +670,7 @@
         "lat": 38.78,
         "lon": -9.5
       },
-      "labelPriority": 33,
+      "labelPriority": 34,
       "bbox": [
         -9.5005266,
         38.762634,
@@ -691,7 +691,7 @@
         "lat": 16.21,
         "lon": -16.42
       },
-      "labelPriority": 30,
+      "labelPriority": 31,
       "bbox": [
         -16.439,
         16.188,
@@ -715,7 +715,7 @@
         "lat": 14.67,
         "lon": -17.07
       },
-      "labelPriority": 34,
+      "labelPriority": 35,
       "bbox": [
         -17.1451837,
         14.5274395,
@@ -739,7 +739,7 @@
         "lat": 14.06,
         "lon": -16.7
       },
-      "labelPriority": 34,
+      "labelPriority": 35,
       "bbox": [
         -16.785921,
         13.9819452,
@@ -771,7 +771,7 @@
         "lat": -16.12,
         "lon": -69.11
       },
-      "labelPriority": 34,
+      "labelPriority": 35,
       "group": "la-paz-area",
       "countryCode": "BO",
       "body": [],
@@ -804,7 +804,7 @@
         "lat": -31.42,
         "lon": -64.18
       },
-      "labelPriority": 40,
+      "labelPriority": 41,
       "bbox": [
         -64.3100957,
         -31.5251273,
@@ -825,7 +825,7 @@
         "lat": 23.69,
         "lon": -15.95
       },
-      "labelPriority": 35,
+      "labelPriority": 37,
       "bbox": [
         -16.00709,
         23.64705,
@@ -854,7 +854,7 @@
         "lat": 21.31,
         "lon": -16.93
       },
-      "labelPriority": 34,
+      "labelPriority": 35,
       "group": "nouadhibou-area",
       "countryCode": "MR",
       "body": [
@@ -875,7 +875,7 @@
         "lat": 42.64,
         "lon": 18.11
       },
-      "labelPriority": 34,
+      "labelPriority": 35,
       "bbox": [
         17.81538,
         42.6208867,
@@ -902,7 +902,7 @@
         "lat": 37.02,
         "lon": -7.94
       },
-      "labelPriority": 34,
+      "labelPriority": 35,
       "bbox": [
         -8.0064895,
         36.9599679,
@@ -923,7 +923,7 @@
         "lat": 46.2,
         "lon": 6.15
       },
-      "labelPriority": 40,
+      "labelPriority": 41,
       "bbox": [
         6.1102325,
         46.1777742,
@@ -944,7 +944,7 @@
         "lat": 41.15,
         "lon": 22.5
       },
-      "labelPriority": 30,
+      "labelPriority": 31,
       "bbox": [
         22.473285,
         41.1197059,
@@ -969,7 +969,7 @@
         "lat": 43.14,
         "lon": 25.68
       },
-      "labelPriority": 30,
+      "labelPriority": 31,
       "bbox": [
         25.660617,
         43.106932,
@@ -994,7 +994,7 @@
         "lat": 47.07,
         "lon": 15.42
       },
-      "labelPriority": 37,
+      "labelPriority": 39,
       "bbox": [
         15.349714,
         47.0118871,
@@ -1015,7 +1015,7 @@
         "lat": 45.19,
         "lon": 5.74
       },
-      "labelPriority": 38,
+      "labelPriority": 40,
       "bbox": [
         5.6776059,
         45.1541442,
@@ -1036,7 +1036,7 @@
         "lat": 5.2,
         "lon": -74.74
       },
-      "labelPriority": 34,
+      "labelPriority": 35,
       "bbox": [
         -74.8864386,
         5.063999,
@@ -1060,7 +1060,7 @@
         "lat": 29.99,
         "lon": -95.33
       },
-      "labelPriority": 34,
+      "labelPriority": 35,
       "bbox": [
         -95.906935,
         29.5370705,
@@ -1085,7 +1085,7 @@
         "lat": 37.26,
         "lon": -6.95
       },
-      "labelPriority": 36,
+      "labelPriority": 37,
       "bbox": [
         -7.0055804,
         37.144364,
@@ -1106,7 +1106,7 @@
         "lat": 4.43,
         "lon": -75.19
       },
-      "labelPriority": 38,
+      "labelPriority": 39,
       "bbox": [
         -75.5246959,
         4.2578563,
@@ -1131,7 +1131,7 @@
         "lat": 21.29,
         "lon": -14.99
       },
-      "labelPriority": 34,
+      "labelPriority": 35,
       "group": "mauritania",
       "countryCode": "MR",
       "body": [
@@ -1149,7 +1149,7 @@
         "lat": 39.67,
         "lon": 20.86
       },
-      "labelPriority": 35,
+      "labelPriority": 36,
       "bbox": [
         20.8222214,
         39.638697,
@@ -1174,7 +1174,7 @@
         "lat": 0.82,
         "lon": -77.64
       },
-      "labelPriority": 36,
+      "labelPriority": 37,
       "bbox": [
         -77.6978979,
         0.3609371,
@@ -1199,7 +1199,7 @@
         "lat": -3.75,
         "lon": -73.25
       },
-      "labelPriority": 38,
+      "labelPriority": 39,
       "bbox": [
         -73.5909642,
         -3.8864536,
@@ -1224,7 +1224,7 @@
         "lat": -2.74,
         "lon": -66.77
       },
-      "labelPriority": 34,
+      "labelPriority": 35,
       "group": "jutai-area",
       "countryCode": "BR",
       "body": [
@@ -1243,7 +1243,7 @@
         "lat": 39.7,
         "lon": 21.63
       },
-      "labelPriority": 42,
+      "labelPriority": 43,
       "group": "kalambaka-area",
       "countryCode": "GR",
       "body": [
@@ -1267,7 +1267,7 @@
         "lat": 46.6,
         "lon": 14.31
       },
-      "labelPriority": 61,
+      "labelPriority": 65,
       "bbox": [
         14.2102806,
         46.5743838,
@@ -1317,7 +1317,7 @@
         "lat": 43.66,
         "lon": 17.96
       },
-      "labelPriority": 34,
+      "labelPriority": 35,
       "group": "bosnia-and-herzegovina",
       "countryCode": "BA",
       "body": [
@@ -1334,7 +1334,7 @@
         "lat": -16.5,
         "lon": -68.13
       },
-      "labelPriority": 41,
+      "labelPriority": 42,
       "bbox": [
         -68.2458469,
         -16.578797,
@@ -1355,7 +1355,7 @@
         "lat": -22.1,
         "lon": -65.6
       },
-      "labelPriority": 34,
+      "labelPriority": 35,
       "bbox": [
         -65.754472,
         -22.2195092,
@@ -1376,7 +1376,7 @@
         "lat": 14.45,
         "lon": -17.02
       },
-      "labelPriority": 34,
+      "labelPriority": 35,
       "group": "communaute-rurale-de-diass-area",
       "countryCode": "SN",
       "body": [
@@ -1397,7 +1397,7 @@
         "lat": 27.16,
         "lon": -13.2
       },
-      "labelPriority": 37,
+      "labelPriority": 38,
       "bbox": [
         -13.247127,
         27.0982188,
@@ -1423,7 +1423,7 @@
         "lat": 42.46,
         "lon": 1.9
       },
-      "labelPriority": 30,
+      "labelPriority": 31,
       "bbox": [
         1.8437183,
         42.4475891,
@@ -1446,7 +1446,7 @@
         "lat": -4.21,
         "lon": -69.94
       },
-      "labelPriority": 35,
+      "labelPriority": 36,
       "group": "colombia",
       "countryCode": "CO",
       "body": [
@@ -1464,7 +1464,7 @@
         "lat": -12.06,
         "lon": -77.04
       },
-      "labelPriority": 44,
+      "labelPriority": 45,
       "bbox": [
         -77.079026,
         -12.0797663,
@@ -1487,7 +1487,7 @@
         "lat": 38.73,
         "lon": -9.13
       },
-      "labelPriority": 42,
+      "labelPriority": 44,
       "bbox": [
         -9.2298356,
         38.6913994,
@@ -1512,7 +1512,7 @@
         "lat": 46.05,
         "lon": 14.51
       },
-      "labelPriority": 38,
+      "labelPriority": 39,
       "bbox": [
         14.414726,
         45.9740637,
@@ -1533,7 +1533,7 @@
         "lat": 51.51,
         "lon": -0.13
       },
-      "labelPriority": 44,
+      "labelPriority": 45,
       "bbox": [
         -0.5103751,
         51.2867601,
@@ -1557,7 +1557,7 @@
         "lat": 36.66,
         "lon": -4.48
       },
-      "labelPriority": 39,
+      "labelPriority": 40,
       "bbox": [
         -4.5878887,
         36.6356619,
@@ -1583,7 +1583,7 @@
         "lat": -3.08,
         "lon": -60.04
       },
-      "labelPriority": 41,
+      "labelPriority": 42,
       "group": "brazil",
       "countryCode": "BR",
       "body": [
@@ -1601,7 +1601,7 @@
         "lat": 49.49,
         "lon": 8.47
       },
-      "labelPriority": 41,
+      "labelPriority": 42,
       "bbox": [
         8.4141602,
         49.423343,
@@ -1622,7 +1622,7 @@
         "lat": 31.6,
         "lon": -8.03
       },
-      "labelPriority": 40,
+      "labelPriority": 42,
       "bbox": [
         -8.0893315,
         31.5441986,
@@ -1651,7 +1651,7 @@
         "lat": 6.21,
         "lon": -75.57
       },
-      "labelPriority": 42,
+      "labelPriority": 43,
       "bbox": [
         -75.7194283,
         6.1633051,
@@ -1677,7 +1677,7 @@
         "lat": 16.79,
         "lon": -16.1
       },
-      "labelPriority": 34,
+      "labelPriority": 35,
       "group": "nouakchott-area",
       "countryCode": "MR",
       "body": [
@@ -1695,7 +1695,7 @@
         "lat": 45.46,
         "lon": 9.19
       },
-      "labelPriority": 42,
+      "labelPriority": 43,
       "bbox": [
         9.0408867,
         45.3867381,
@@ -1716,7 +1716,7 @@
         "lat": 53.9,
         "lon": 27.56
       },
-      "labelPriority": 41,
+      "labelPriority": 43,
       "bbox": [
         27.52321,
         53.793847,
@@ -1737,7 +1737,7 @@
         "lat": 55.75,
         "lon": 37.62
       },
-      "labelPriority": 44,
+      "labelPriority": 45,
       "bbox": [
         37.290502,
         55.516684,
@@ -1758,7 +1758,7 @@
         "lat": 43.34,
         "lon": 17.81
       },
-      "labelPriority": 36,
+      "labelPriority": 37,
       "bbox": [
         17.7789661,
         43.3111155,
@@ -1784,7 +1784,7 @@
         "lat": -20.24,
         "lon": -67.63
       },
-      "labelPriority": 34,
+      "labelPriority": 35,
       "group": "municipio-colcha-k-area",
       "countryCode": "BO",
       "body": [],
@@ -1798,7 +1798,7 @@
         "lat": -21.26,
         "lon": -67.22
       },
-      "labelPriority": 34,
+      "labelPriority": 35,
       "group": "municipio-colcha-k-region",
       "countryCode": "BO",
       "body": [],
@@ -1812,7 +1812,7 @@
         "lat": -18.18,
         "lon": -63.88
       },
-      "labelPriority": 30,
+      "labelPriority": 31,
       "bbox": [
         -63.905,
         -18.219,
@@ -1833,7 +1833,7 @@
         "lat": -19.05,
         "lon": -65.26
       },
-      "labelPriority": 37,
+      "labelPriority": 38,
       "bbox": [
         -65.5806536,
         -19.1727137,
@@ -1854,7 +1854,7 @@
         "lat": 0,
         "lon": -78.46
       },
-      "labelPriority": 34,
+      "labelPriority": 35,
       "group": "quito-area",
       "countryCode": "EC",
       "body": [
@@ -1872,7 +1872,7 @@
         "lat": -2.49,
         "lon": -73.68
       },
-      "labelPriority": 42,
+      "labelPriority": 43,
       "group": "santa-clotilde-area",
       "countryCode": "PE",
       "body": [
@@ -1895,7 +1895,7 @@
         "lat": 40.75,
         "lon": -73.98
       },
-      "labelPriority": 44,
+      "labelPriority": 45,
       "bbox": [
         -74.258843,
         40.476578,
@@ -1920,7 +1920,7 @@
         "lat": 42.77,
         "lon": 18.95
       },
-      "labelPriority": 34,
+      "labelPriority": 35,
       "bbox": [
         18.8923637,
         42.7282677,
@@ -1945,7 +1945,7 @@
         "lat": 43.32,
         "lon": 21.9
       },
-      "labelPriority": 37,
+      "labelPriority": 38,
       "bbox": [
         21.8263408,
         43.2833971,
@@ -1970,7 +1970,7 @@
         "lat": -20.62,
         "lon": -67.59
       },
-      "labelPriority": 34,
+      "labelPriority": 35,
       "group": "municipio-colcha-k-area",
       "countryCode": "BO",
       "body": [],
@@ -1984,7 +1984,7 @@
         "lat": 20.98,
         "lon": -17.04
       },
-      "labelPriority": 35,
+      "labelPriority": 37,
       "bbox": [
         -17.0593356,
         20.927233,
@@ -2012,7 +2012,7 @@
         "lat": 18.1,
         "lon": -15.99
       },
-      "labelPriority": 39,
+      "labelPriority": 40,
       "group": "nouakchott-area",
       "countryCode": "MR",
       "body": [
@@ -2129,7 +2129,7 @@
         "lat": -0.46,
         "lon": -77.89
       },
-      "labelPriority": 34,
+      "labelPriority": 35,
       "bbox": [
         -78.028701,
         -0.5391996,
@@ -2155,7 +2155,7 @@
         "lat": 14.71,
         "lon": -17.42
       },
-      "labelPriority": 34,
+      "labelPriority": 35,
       "group": "communaute-rurale-de-diass-area",
       "countryCode": "SN",
       "body": [
@@ -2178,7 +2178,7 @@
         "lat": 39.31,
         "lon": 22.24
       },
-      "labelPriority": 34,
+      "labelPriority": 35,
       "group": "kalambaka-region",
       "countryCode": "GR",
       "body": [
@@ -2197,7 +2197,7 @@
         "lat": 42.15,
         "lon": 24.75
       },
-      "labelPriority": 38,
+      "labelPriority": 39,
       "bbox": [
         24.65772,
         42.090009,
@@ -2222,7 +2222,7 @@
         "lat": 42.44,
         "lon": 19.26
       },
-      "labelPriority": 36,
+      "labelPriority": 37,
       "bbox": [
         19.1817483,
         42.3771251,
@@ -2246,7 +2246,7 @@
         "lat": 2.44,
         "lon": -76.6
       },
-      "labelPriority": 51,
+      "labelPriority": 52,
       "bbox": [
         -76.6485077,
         2.4192676,
@@ -2280,7 +2280,7 @@
         "lat": 42.66,
         "lon": 21.17
       },
-      "labelPriority": 38,
+      "labelPriority": 39,
       "bbox": [
         21.1066198,
         42.6088014,
@@ -2304,7 +2304,7 @@
         "lat": 6.49,
         "lon": -74.4
       },
-      "labelPriority": 34,
+      "labelPriority": 35,
       "bbox": [
         -74.424,
         6.459,
@@ -2348,7 +2348,7 @@
         "lat": -0.46,
         "lon": -76.99
       },
-      "labelPriority": 34,
+      "labelPriority": 35,
       "group": "quito-region",
       "countryCode": "EC",
       "body": [
@@ -2368,7 +2368,7 @@
         "lat": -15.84,
         "lon": -70.03
       },
-      "labelPriority": 36,
+      "labelPriority": 37,
       "bbox": [
         -70.1844156,
         -16.0240984,
@@ -2389,7 +2389,7 @@
         "lat": -0.22,
         "lon": -78.51
       },
-      "labelPriority": 41,
+      "labelPriority": 42,
       "group": "quito-area",
       "countryCode": "EC",
       "body": [
@@ -2408,7 +2408,7 @@
         "lat": 34.02,
         "lon": -6.84
       },
-      "labelPriority": 41,
+      "labelPriority": 42,
       "bbox": [
         -6.9305776,
         33.8964011,
@@ -2432,7 +2432,7 @@
         "lat": -3.69,
         "lon": -71.75
       },
-      "labelPriority": 34,
+      "labelPriority": 35,
       "group": "puerto-espana-area",
       "countryCode": "PE",
       "body": [
@@ -2451,7 +2451,7 @@
         "lat": 42.2,
         "lon": 2.2
       },
-      "labelPriority": 34,
+      "labelPriority": 35,
       "bbox": [
         2.1372592,
         42.1377897,
@@ -2476,7 +2476,7 @@
         "lat": 31.2,
         "lon": -3.99
       },
-      "labelPriority": 30,
+      "labelPriority": 32,
       "bbox": [
         -4.037,
         31.187,
@@ -2497,7 +2497,7 @@
         "lat": -32.96,
         "lon": -60.66
       },
-      "labelPriority": 40,
+      "labelPriority": 41,
       "bbox": [
         -60.7832623,
         -33.0348662,
@@ -2518,7 +2518,7 @@
         "lat": 32.29,
         "lon": -9.24
       },
-      "labelPriority": 47,
+      "labelPriority": 48,
       "bbox": [
         -9.274596,
         32.215421,
@@ -2548,7 +2548,7 @@
         "lat": 16.03,
         "lon": -16.49
       },
-      "labelPriority": 54,
+      "labelPriority": 55,
       "bbox": [
         -16.5159978,
         15.9577436,
@@ -2590,7 +2590,7 @@
         "lat": -24.79,
         "lon": -65.41
       },
-      "labelPriority": 39,
+      "labelPriority": 40,
       "bbox": [
         -65.4823584,
         -24.8770672,
@@ -2611,7 +2611,7 @@
         "lat": -22.88,
         "lon": -67.8
       },
-      "labelPriority": 34,
+      "labelPriority": 35,
       "group": "andes",
       "countryCode": "CL",
       "body": [],
@@ -2625,7 +2625,7 @@
         "lat": -17.78,
         "lon": -63.18
       },
-      "labelPriority": 41,
+      "labelPriority": 42,
       "bbox": [
         -63.2840834,
         -18.0179123,
@@ -2646,7 +2646,7 @@
         "lat": 3.44,
         "lon": -76.54
       },
-      "labelPriority": 59,
+      "labelPriority": 60,
       "bbox": [
         -76.5928361,
         3.3322025,
@@ -2683,7 +2683,7 @@
         "lat": -3.31,
         "lon": -67.93
       },
-      "labelPriority": 34,
+      "labelPriority": 35,
       "group": "jutai-area",
       "countryCode": "BR",
       "body": [
@@ -2702,7 +2702,7 @@
         "lat": 43.86,
         "lon": 18.4
       },
-      "labelPriority": 39,
+      "labelPriority": 40,
       "bbox": [
         18.290009,
         43.8209096,
@@ -2727,7 +2727,7 @@
         "lat": 39.87,
         "lon": 20
       },
-      "labelPriority": 32,
+      "labelPriority": 33,
       "bbox": [
         19.9737175,
         39.798291,
@@ -2753,7 +2753,7 @@
         "lat": 42.2,
         "lon": 24.13
       },
-      "labelPriority": 34,
+      "labelPriority": 35,
       "bbox": [
         23.940889,
         42.102364,
@@ -2777,7 +2777,7 @@
         "lat": 37.39,
         "lon": -6
       },
-      "labelPriority": 40,
+      "labelPriority": 41,
       "bbox": [
         -6.0329183,
         37.3002036,
@@ -2798,7 +2798,7 @@
         "lat": 42.39,
         "lon": 19.86
       },
-      "labelPriority": 34,
+      "labelPriority": 36,
       "group": "shkoder-area",
       "countryCode": "AL",
       "body": [
@@ -2827,7 +2827,7 @@
         "lat": 42.07,
         "lon": 19.51
       },
-      "labelPriority": 36,
+      "labelPriority": 38,
       "bbox": [
         19.4023,
         42.0333498,
@@ -2854,7 +2854,7 @@
         "lat": 34.23,
         "lon": -5.72
       },
-      "labelPriority": 31,
+      "labelPriority": 32,
       "bbox": [
         -5.7441968,
         34.1909548,
@@ -2878,7 +2878,7 @@
         "lat": 46.22,
         "lon": 24.79
       },
-      "labelPriority": 34,
+      "labelPriority": 35,
       "bbox": [
         24.7129556,
         46.166732,
@@ -2886,7 +2886,7 @@
         46.288403
       ],
       "viewRadiusKm": 8.5,
-      "group": "sinaia-region",
+      "group": "bucharest-region",
       "countryCode": "RO",
       "body": [
         "I was told that Sighişoara was worth spending a night in, and it truly is. This enchanting town is one of the best-preserved medieval gems in Europe, rightfully listed as a UNESCO World Heritage Site.",
@@ -2902,7 +2902,7 @@
         "lat": 45.36,
         "lon": 25.54
       },
-      "labelPriority": 42,
+      "labelPriority": 43,
       "bbox": [
         25.467696,
         45.2963966,
@@ -2933,7 +2933,7 @@
         "lat": 41.99,
         "lon": 21.45
       },
-      "labelPriority": 38,
+      "labelPriority": 40,
       "bbox": [
         21.3154077,
         41.9347363,
@@ -2957,7 +2957,7 @@
         "lat": 42.69,
         "lon": 23.31
       },
-      "labelPriority": 40,
+      "labelPriority": 41,
       "bbox": [
         23.167997,
         42.5579851,
@@ -2983,7 +2983,7 @@
         "lat": 42.42,
         "lon": 25.63
       },
-      "labelPriority": 36,
+      "labelPriority": 37,
       "group": "bulgaria",
       "countryCode": "BG",
       "body": [
@@ -3003,7 +3003,7 @@
         "lat": 35.91,
         "lon": -5.76
       },
-      "labelPriority": 42,
+      "labelPriority": 43,
       "group": "strait-of-gibraltar-area",
       "countryCode": "MA",
       "body": [
@@ -3024,7 +3024,7 @@
         "lat": 28.44,
         "lon": -11.11
       },
-      "labelPriority": 35,
+      "labelPriority": 36,
       "bbox": [
         -11.1289782,
         28.4089927,
@@ -3049,7 +3049,7 @@
         "lat": 35.78,
         "lon": -5.79
       },
-      "labelPriority": 39,
+      "labelPriority": 41,
       "bbox": [
         -5.936151,
         35.6995621,
@@ -3073,7 +3073,7 @@
         "lat": 27.94,
         "lon": -12.92
       },
-      "labelPriority": 34,
+      "labelPriority": 35,
       "bbox": [
         -12.9885837,
         27.8706905,
@@ -3097,7 +3097,7 @@
         "lat": 36.09,
         "lon": -5.52
       },
-      "labelPriority": 34,
+      "labelPriority": 35,
       "bbox": [
         -5.8421193,
         36.0000236,
@@ -3127,7 +3127,7 @@
         "lat": 20.25,
         "lon": -13.05
       },
-      "labelPriority": 34,
+      "labelPriority": 35,
       "group": "atar-area",
       "countryCode": "MR",
       "body": [
@@ -3147,7 +3147,7 @@
         "lat": 40.64,
         "lon": 22.94
       },
-      "labelPriority": 39,
+      "labelPriority": 40,
       "bbox": [
         22.8994639,
         40.5856783,
@@ -3172,7 +3172,7 @@
         "lat": 31.57,
         "lon": -5.59
       },
-      "labelPriority": 34,
+      "labelPriority": 35,
       "bbox": [
         -5.600746,
         31.4725946,
@@ -3193,7 +3193,7 @@
         "lat": 46.84,
         "lon": 29.61
       },
-      "labelPriority": 36,
+      "labelPriority": 37,
       "bbox": [
         29.551354,
         46.8217687,
@@ -3217,7 +3217,7 @@
         "lat": 43.61,
         "lon": 1.44
       },
-      "labelPriority": 65,
+      "labelPriority": 69,
       "bbox": [
         1.25,
         43.469,
@@ -3339,7 +3339,7 @@
         "lat": -21.44,
         "lon": -65.72
       },
-      "labelPriority": 33,
+      "labelPriority": 34,
       "group": "bolivia",
       "countryCode": "BO",
       "body": [],
@@ -3353,7 +3353,7 @@
         "lat": 46.06,
         "lon": 13.24
       },
-      "labelPriority": 36,
+      "labelPriority": 37,
       "bbox": [
         13.1844828,
         46.007885,
@@ -3374,7 +3374,7 @@
         "lat": -20.41,
         "lon": -66.86
       },
-      "labelPriority": 32,
+      "labelPriority": 34,
       "group": "municipio-colcha-k-region",
       "countryCode": "BO",
       "body": [],
@@ -3388,7 +3388,7 @@
         "lat": 39.48,
         "lon": -0.39
       },
-      "labelPriority": 39,
+      "labelPriority": 41,
       "bbox": [
         -0.4325512,
         39.339086,
@@ -3414,7 +3414,7 @@
         "lat": 42.11,
         "lon": 19.83
       },
-      "labelPriority": 34,
+      "labelPriority": 35,
       "group": "shkoder-area",
       "countryCode": "AL",
       "body": [
@@ -3431,7 +3431,7 @@
         "lat": 45.44,
         "lon": 12.33
       },
-      "labelPriority": 37,
+      "labelPriority": 38,
       "bbox": [
         12.1668349,
         45.2312466,
@@ -3452,7 +3452,7 @@
         "lat": 48.2,
         "lon": 16.36
       },
-      "labelPriority": 50,
+      "labelPriority": 52,
       "bbox": [
         16.181831,
         48.1179069,
@@ -3478,7 +3478,7 @@
         "lat": -13.52,
         "lon": -71.98
       },
-      "labelPriority": 30,
+      "labelPriority": 31,
       "bbox": [
         -71.970566,
         -13.5405852,
@@ -3499,7 +3499,7 @@
         "lat": 52.23,
         "lon": 21.01
       },
-      "labelPriority": 41,
+      "labelPriority": 42,
       "bbox": [
         20.79,
         52.09,
@@ -3520,7 +3520,7 @@
         "lat": -0.92,
         "lon": -75.4
       },
-      "labelPriority": 34,
+      "labelPriority": 35,
       "group": "ecuador",
       "countryCode": "EC",
       "body": [
@@ -3538,7 +3538,7 @@
         "lat": 45.82,
         "lon": 15.98
       },
-      "labelPriority": 39,
+      "labelPriority": 40,
       "bbox": [
         15.7732052,
         45.6139895,
@@ -3559,7 +3559,7 @@
         "lat": 31.32,
         "lon": -7.38
       },
-      "labelPriority": 34,
+      "labelPriority": 35,
       "bbox": [
         -7.4925655,
         31.2863112,
@@ -3800,6 +3800,18 @@
       },
       "viewRadiusKm": 1338.7,
       "labelPriority": 70
+    },
+    {
+      "slug": "bucharest-region",
+      "name": "Bucharest region",
+      "kind": "area",
+      "parent": "romania",
+      "coordinates": {
+        "lat": 45.306,
+        "lon": 25.469
+      },
+      "viewRadiusKm": 136.5,
+      "labelPriority": 57
     },
     {
       "slug": "bulgaria",
@@ -4380,25 +4392,13 @@
       "slug": "sinaia-area",
       "name": "Sinaia area",
       "kind": "area",
-      "parent": "sinaia-region",
+      "parent": "bucharest-region",
       "coordinates": {
         "lat": 45.502,
         "lon": 25.575
       },
       "viewRadiusKm": 28.6,
       "labelPriority": 55
-    },
-    {
-      "slug": "sinaia-region",
-      "name": "Sinaia region",
-      "kind": "area",
-      "parent": "romania",
-      "coordinates": {
-        "lat": 45.306,
-        "lon": 25.469
-      },
-      "viewRadiusKm": 136.5,
-      "labelPriority": 57
     },
     {
       "slug": "spain",
