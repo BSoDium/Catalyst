@@ -6560,7 +6560,9 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
    * words under it.
    */
   .contact-control {
-    --contact-line: color-mix(in srgb, var(--foreground) 50%, transparent);
+    /* SOLID tones (a mix with the page's colour, never a translucent one: where two strokes meet, at a corner of the message's box, they must not add up to a darker patch) */
+    --contact-line: color-mix(in srgb, var(--foreground) 50%, var(--background));
+    --art-px: 2.5px;
     position: relative;
     display: flex;
     border-bottom: var(--hairline) solid var(--contact-line);
@@ -6616,9 +6618,17 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     --contact-line: var(--foreground);
   }
 
+  /* (the focus line is a second pixel BELOW the hairline, a shadow and not a thicker border: nothing moves) */
   .contact-control:focus-within {
     --contact-line: var(--signal-text);
-    border-bottom-width: 2px;
+    box-shadow: 0 1px 0 0 var(--contact-line);
+  }
+
+  /* One art pixel of the globe, in CSS px (the engine's `ART_PIXEL`: 2.5 on a desktop, 2 under 520 px of width or on a 1x screen), the thickness of the message box's dashes and corners */
+  @media (max-width: 519.98px), (max-resolution: 1dppx) {
+    .contact-control {
+      --art-px: 2px;
+    }
   }
 
   .contact-control:focus-within .contact-input:focus ~ .contact-label {
@@ -6626,32 +6636,30 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   }
 
   /*
-   * The message is a BOX of the map's look (the bounding boxes of the globe: owner, 2026-11-02, #536): a dashed edge and solid corner arms, hollow, in the line's colour (`--contact-line`: the half ink at rest, the full ink
-   * under the pointer, the signal colour on focus, the error red when invalid). Drawn with gradients (no border: the dashes are anchored to the box's edges, as the map's are), the corners 2 px thick and 14 px long, the
-   * edges 1 px dashes of 6 and a gap of 5. The label starts inside it.
+   * The message is a BOX of the map's look (the bounding boxes of the globe: owner, 2026-11-02, #536): a dashed edge and solid corner arms, hollow, in the line's SOLID colour (`--contact-line`: the half ink at rest, the full ink
+   * under the pointer, the signal colour on focus, the error red when invalid). Drawn with gradients (no border: the dashes are anchored to the box's edges, as the map's are), ALL of one thickness, one art pixel of the
+   * globe (`--art-px`), the corners 6 pixels long, the dashes 3 pixels with a gap of 2. The label starts inside it.
    */
   .contact-control[data-field="message"] {
-    --arm: 14px;
-    --dash: 6px;
-    --gap: 5px;
+    --t: var(--art-px);
+    --arm: calc(var(--t) * 6);
+    --dash: calc(var(--t) * 3);
+    --gap: calc(var(--t) * 2);
     border-bottom: 0;
+    box-shadow: none;
     background:
-      linear-gradient(var(--contact-line), var(--contact-line)) top left / var(--arm) 2px no-repeat,
-      linear-gradient(var(--contact-line), var(--contact-line)) top left / 2px var(--arm) no-repeat,
-      linear-gradient(var(--contact-line), var(--contact-line)) top right / var(--arm) 2px no-repeat,
-      linear-gradient(var(--contact-line), var(--contact-line)) top right / 2px var(--arm) no-repeat,
-      linear-gradient(var(--contact-line), var(--contact-line)) bottom left / var(--arm) 2px no-repeat,
-      linear-gradient(var(--contact-line), var(--contact-line)) bottom left / 2px var(--arm) no-repeat,
-      linear-gradient(var(--contact-line), var(--contact-line)) bottom right / var(--arm) 2px no-repeat,
-      linear-gradient(var(--contact-line), var(--contact-line)) bottom right / 2px var(--arm) no-repeat,
-      repeating-linear-gradient(to right, var(--contact-line) 0 var(--dash), transparent var(--dash) calc(var(--dash) + var(--gap))) top left / 100% 1px no-repeat,
-      repeating-linear-gradient(to right, var(--contact-line) 0 var(--dash), transparent var(--dash) calc(var(--dash) + var(--gap))) bottom left / 100% 1px no-repeat,
-      repeating-linear-gradient(to bottom, var(--contact-line) 0 var(--dash), transparent var(--dash) calc(var(--dash) + var(--gap))) top left / 1px 100% no-repeat,
-      repeating-linear-gradient(to bottom, var(--contact-line) 0 var(--dash), transparent var(--dash) calc(var(--dash) + var(--gap))) top right / 1px 100% no-repeat;
-  }
-
-  .contact-control[data-field="message"]:focus-within {
-    border-bottom-width: 0;
+      linear-gradient(var(--contact-line), var(--contact-line)) top left / var(--arm) var(--t) no-repeat,
+      linear-gradient(var(--contact-line), var(--contact-line)) top left / var(--t) var(--arm) no-repeat,
+      linear-gradient(var(--contact-line), var(--contact-line)) top right / var(--arm) var(--t) no-repeat,
+      linear-gradient(var(--contact-line), var(--contact-line)) top right / var(--t) var(--arm) no-repeat,
+      linear-gradient(var(--contact-line), var(--contact-line)) bottom left / var(--arm) var(--t) no-repeat,
+      linear-gradient(var(--contact-line), var(--contact-line)) bottom left / var(--t) var(--arm) no-repeat,
+      linear-gradient(var(--contact-line), var(--contact-line)) bottom right / var(--arm) var(--t) no-repeat,
+      linear-gradient(var(--contact-line), var(--contact-line)) bottom right / var(--t) var(--arm) no-repeat,
+      repeating-linear-gradient(to right, var(--contact-line) 0 var(--dash), transparent var(--dash) calc(var(--dash) + var(--gap))) top left / 100% var(--t) no-repeat,
+      repeating-linear-gradient(to right, var(--contact-line) 0 var(--dash), transparent var(--dash) calc(var(--dash) + var(--gap))) bottom left / 100% var(--t) no-repeat,
+      repeating-linear-gradient(to bottom, var(--contact-line) 0 var(--dash), transparent var(--dash) calc(var(--dash) + var(--gap))) top left / var(--t) 100% no-repeat,
+      repeating-linear-gradient(to bottom, var(--contact-line) 0 var(--dash), transparent var(--dash) calc(var(--dash) + var(--gap))) top right / var(--t) 100% no-repeat;
   }
 
   .contact-control[data-field="message"] .contact-textarea {
