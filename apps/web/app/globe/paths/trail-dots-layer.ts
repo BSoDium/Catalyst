@@ -127,7 +127,7 @@ export function dotLegs(fc: GeoJSON.FeatureCollection<GeoJSON.MultiLineString>):
     // an arc is lifted `ARC_LIFT_PER_RADIAN` of its angle above the surface at the middle (paths/network.ts)
     const rad = Math.PI / 180;
     const omega = Math.acos(Math.min(1, Math.max(-1, Math.sin(first[1] * rad) * Math.sin(head[1] * rad) + Math.cos(first[1] * rad) * Math.cos(head[1] * rad) * Math.cos((head[0] - first[0]) * rad))));
-    return { key: String(f.properties?.key), mode: modeOf(f.properties?.mode), parts, head, arcLift: f.properties?.arc ? ARC_LIFT_PER_RADIAN * omega : 0, cap: capOf(parts), count: parts.reduce((n, part) => n + part.length, 0) };
+    return { key: String(f.properties?.key), mode: modeOf(f.properties?.mode), parts, head, arcLift: f.properties?.arc && f.properties?.mode === "flight" ? ARC_LIFT_PER_RADIAN * omega : 0, cap: capOf(parts), count: parts.reduce((n, part) => n + part.length, 0) };
   });
 }
 

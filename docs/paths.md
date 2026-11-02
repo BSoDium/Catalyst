@@ -4,7 +4,7 @@ Every leg of every route is drawn on both maps as a PLANE TRAIL (below, "Trails"
 
 ## Data path
 
-`resolveRoutes` (lib/projection.ts) turns `routes[]` into `GlobeRoute { points, legs? }`. `buildNetwork` (paths/network.ts) runs once per route set: decodes each polyline (paths/polyline.ts), builds the geodesic arc (0.4 degree steps, lifted 0.12 per radian, the curated routes' look) for legs without one, and derives 5 simplification levels by Douglas-Peucker on the sphere in metres (20, 80, 320, 1,280, 5,120 m; each level a subset of the one before, ends always kept; the 3D distance makes a chord's sag under the surface count, so no level can sink into the planet's disc). `buildBuffers` makes one shared vertex set and one index range per level.
+`resolveRoutes` (lib/projection.ts) turns `routes[]` into `GlobeRoute { points, legs? }`. `buildNetwork` (paths/network.ts) runs once per route set: decodes each polyline (paths/polyline.ts), builds the geodesic (0.4 degree steps) for legs without one: lifted 0.12 per radian, the curated routes' look, for a flight ONLY (owner, 2026-11-02: "the only plane legs should be arcs"); a road, rail, ferry or walk leg without a path of its own lies flat along the ground, and derives 5 simplification levels by Douglas-Peucker on the sphere in metres (20, 80, 320, 1,280, 5,120 m; each level a subset of the one before, ends always kept; the 3D distance makes a chord's sag under the surface count, so no level can sink into the planet's disc). `buildBuffers` makes one shared vertex set and one index range per level.
 
 ## Globe
 
