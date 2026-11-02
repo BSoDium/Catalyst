@@ -2959,6 +2959,15 @@
     --cap: 0px;
   }
 
+  /* On a phone (one column: the wall is under 34 rem, which the bleed itself keeps: it is as wide as the screen) the pictures run out to the screen's edges over the list page's side padding (`px-4`), as a
+     covered software row's does (owner, 2026-11-02: "shouldn't we?"; `--entry-gutter`, "A covered row on a phone"): the outline is then drawn on the picture's top and foot only, a side hairline on the screen's edge would be a seam. */
+  @media (max-width: 33.99rem) {
+    .wall {
+      --wall-gutter: 1rem;
+      margin-inline: calc(-1 * var(--wall-gutter));
+    }
+  }
+
   .wall-list {
     --cols: 1;
     --colw: calc((100cqi - (var(--cols) - 1) * var(--gap)) / var(--cols));
@@ -3227,6 +3236,14 @@
     z-index: 2;
     box-shadow: inset 0 0 0 var(--hairline) var(--border);
     pointer-events: none;
+  }
+
+  @media (max-width: 33.99rem) {
+    .wall-media::after {
+      box-shadow:
+        inset 0 var(--hairline) 0 var(--border),
+        inset 0 calc(-1 * var(--hairline)) 0 var(--border);
+    }
   }
 
   .wall-img {
