@@ -284,6 +284,21 @@ function Where({ text, place, known }: { text: string; place: string | undefined
   );
 }
 
+/**
+ * An organisation's or a school's name, a link to its site when it has one (owner, 2026-11-02, #527): in a NEW tab (`target="_blank"`, `noopener noreferrer`), and a small up-right square arrow at the right of the name, shown on
+ * hover and keyboard focus to say so (`.career-org-link`, app.css). The arrow is decoration; the link says it opens in a new tab for assistive technology.
+ */
+function OrgName({ name, url }: { name: string; url: string | null }) {
+  if (!url) return <>{name}</>;
+  return (
+    <a href={url} target="_blank" rel="noopener noreferrer" className="career-org-link">
+      {name}
+      <Icon name="arrow-up-right" size="inline" aria-hidden="true" className="career-org-arrow print:hidden" />
+      <span className="sr-only"> (opens in a new tab)</span>
+    </a>
+  );
+}
+
 function RoleItem({ role, placeKnown, asOf }: { role: PublishedCareerRole; placeKnown: boolean; asOf: string }) {
   const orgUrl = role.orgUrl ? safeExternalUrl(role.orgUrl) : null;
   return (
@@ -292,13 +307,7 @@ function RoleItem({ role, placeKnown, asOf }: { role: PublishedCareerRole; place
       <div className="career-head">
         <div className="career-top">
           <h3 className="career-org">
-            {orgUrl ? (
-              <a href={orgUrl} rel="noopener noreferrer" className="career-org-link">
-                {role.org}
-              </a>
-            ) : (
-              role.org
-            )}
+            <OrgName name={role.org} url={orgUrl} />
           </h3>
         </div>
         <p className="career-role" title={role.title}>
@@ -342,13 +351,7 @@ function EducationItem({ item, placeKnown, asOf }: { item: PublishedCareerEducat
       <div className="career-head">
         <div className="career-top">
           <h3 className="career-org">
-            {institutionUrl ? (
-              <a href={institutionUrl} rel="noopener noreferrer" className="career-org-link">
-                {item.institution}
-              </a>
-            ) : (
-              item.institution
-            )}
+            <OrgName name={item.institution} url={institutionUrl} />
           </h3>
         </div>
         <p className="career-role" title={item.level ? `${item.programme} · ${item.level}` : item.programme}>

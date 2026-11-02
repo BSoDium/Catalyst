@@ -151,7 +151,8 @@ describe("CareerPage", () => {
   it("makes the institution of an education item a link when it has a site, a plain name when it has none", () => {
     const edu = { ...demo.education[0]!, institution: "Example University", institutionUrl: "https://example.org/uni" };
     const h = render({ ...demo, education: [edu, { ...edu, id: "other", institution: "Plain School", institutionUrl: undefined }] });
-    expect(h).toMatch(/<a [^>]*href="https:\/\/example\.org\/uni"[^>]*class="career-org-link"[^>]*>Example University<\/a>/);
+    expect(h).toMatch(/<a [^>]*href="https:\/\/example\.org\/uni"[^>]*target="_blank"[^>]*rel="noopener noreferrer"[^>]*class="career-org-link"[^>]*>Example University</);
+    expect(h).toContain("(opens in a new tab)");
     expect(h).toMatch(/<h3 class="career-org">Plain School<\/h3>/);
   });
 

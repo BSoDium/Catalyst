@@ -6642,6 +6642,29 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     text-decoration-color: currentColor;
   }
 
+  /* The arrow that says "a new tab" (owner, 2026-11-02, #527): at the right of the name, only on hover and keyboard focus, as part of the link's colour (it takes the signal colour with it). */
+  .career-org-arrow {
+    margin-left: 0.25em;
+    vertical-align: -0.1em;
+    opacity: 0;
+    transform: translate(-2px, 2px);
+    transition:
+      opacity var(--duration-fast) var(--ease-standard),
+      transform var(--duration-fast) var(--ease-standard);
+  }
+
+  .career-org-link:hover .career-org-arrow,
+  .career-org-link:focus-visible .career-org-arrow {
+    opacity: 1;
+    transform: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .career-org-arrow {
+      transform: none;
+    }
+  }
+
   .career-role {
     margin: 0.25rem 0 0;
     font-family: var(--font-reading);
