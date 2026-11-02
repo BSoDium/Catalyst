@@ -5,7 +5,7 @@
  */
 import { AddEquation, BackSide, Color, CustomBlending, DstColorFactor, FrontSide, NormalBlending, ShaderMaterial, ZeroFactor } from "three";
 import { CELL_PATTERN, LEG_MODES, MODE_STYLE } from "../paths/modes";
-import { CROWD_TONE, FAR_TONE, PATH_NIGHT_DIM } from "../paths/lod";
+import { CROWD_TONE, FAR_TONE, PATH_LIGHT_FAR, PATH_LIGHT_INK, PATH_NIGHT_DIM, PATH_NIGHT_INK, ARC_PALE } from "../paths/lod";
 import { STRAIGHT_FADE_MIX, STRAIGHT_FADE_STEPS } from "../paths/thin";
 import { SPARK, TRAIL_BANDS, TRAIL_ENTRIES, TRAIL_PER_PALETTE } from "../paths/trail";
 import { RIM, SUN } from "./moon";
@@ -675,7 +675,8 @@ export function pathMaterial(): ShaderMaterial {
         if (vState > 0.75) t = 1.0 - t;         // a leg that ends at the place draws on from the place
         bool inked = lit && t <= uFront;
         // a crowd's legs (paths/thin.ts crowdLegs) are one quiet solid tone: no pattern to make dust of
-        float crowd = lit ? 0.0 : vCrowd;
+        // (a flight's arc is not part of the bundle on the ground: it keeps its dots and its own colour, #459)
+        float crowd = lit || flight ? 0.0 : vCrowd;
         bool solid = !lit && crowd > 0.5;
         float cells = ((flight ? vScr : vDist / uDot) - (lit ? uMarch : 0.0)) / fore;
         // mode ids (paths/modes.ts): 0 road, 1 rail, 2 ferry, 3 flight, 4 walk, 5 unknown
@@ -692,6 +693,7 @@ export function pathMaterial(): ShaderMaterial {
         bool sparkOn = false; // the sparks are not drawn from space: the street map has them, up close
         if (false) sparkOn = vCopy < 0.5 ? (h >= 0.0 && h < sparkLine) : (h >= crossFrom && h < crossTo);
         bool tick = false;
+        bool whiteDot = false;
         if (period > 0.5) {
           // Whole pixels: a dash is a whole number of pixels long (at least one) and sits where the middle of the dash is, and a pixel is inked by where its
           // centre falls in the dash, so a dot is one pixel at every angle and offset and moves by whole pixels: at a fixed length it was one pixel or two, and
@@ -704,16 +706,22 @@ export function pathMaterial(): ShaderMaterial {
           } else {
             float len = max(1.0, floor(on / step1 + 0.5)) * step1;
             float u = mod(cells - (mid - 0.5 * len), period);
-            if (u >= len && !sparkOn) discard;
+            // On the light page a flight's arc alternates its dark dots with white ones half a period on: wherever the ground is, one of the two reads (owner, 2026-11-02)
+            if (flight && uFlip > 0.5 && u >= len) whiteDot = mod(u + period * 0.5, period) < len;
+            if (u >= len && !sparkOn && !whiteDot) discard;
           }
         }
         if (vCopy > 0.5 && !tick && !sparkOn) discard;
         if (behindGlobe(vPos)) discard;
         int base = int(vPal + 0.5) * ${TRAIL_PER_PALETTE};
-        vec3 col;
-        if (sparkOn) col = uTrail[base + ${TRAIL_BANDS + 1}];
-        else if (inked) col = uTrail[base + ${TRAIL_BANDS}];
-        else col = uTrail[base + int(clamp(floor(frac * ${f(TRAIL_BANDS)}), 0.0, ${f(TRAIL_BANDS - 1)}))];
+        // how much of the planet's night the path lies on, in the ground's own flat steps (see below)
+        float wq = floor(clamp(washOf(normalize(vPos), uSunN, uNight, uFlip), 0.0, 1.0) * ${NIGHT.lineSteps.toFixed(1)} + 0.5) / ${NIGHT.lineSteps.toFixed(1)};
+        bool onNight = uFlip > 0.5 && wq > 0.5;
+        int pick;
+        if (sparkOn) pick = base + ${TRAIL_BANDS + 1};
+        else if (inked) pick = base + ${TRAIL_BANDS};
+        else pick = base + int(clamp(floor(frac * ${f(TRAIL_BANDS)}), 0.0, ${f(TRAIL_BANDS - 1)}));
+        vec3 col = uTrail[pick];
         // the overlay's presence (boxes and labels share it): a solid mix toward the page in the fade's own levels; nothing at 0
         float pk = ceil(uPresence * uFinal - 1.0e-4) / uFinal;
         if (pk < 0.01) discard;
@@ -722,12 +730,14 @@ export function pathMaterial(): ShaderMaterial {
         float toned = crowd > 2.5 ? ${f(CROWD_TONE[3]!)} : crowd > 1.5 ? ${f(CROWD_TONE[2]!)} : crowd > 0.5 ? ${f(CROWD_TONE[1]!)} : 0.0;
         // the ground the path lies on (owner, 2026-11-02: on the light page the night side is DARK, and a path faded toward the page's white got lighter than its ground, more visible, not less): the page's colour,
         // darkened where the ground is, by the light page's night shadow (NIGHT.shadow, in the same flat steps the ground's own are). The dark page's ground is the page's colour by day and by night: unchanged.
-        float wq = floor(clamp(washOf(normalize(vPos), uSunN, uNight, uFlip), 0.0, 1.0) * ${NIGHT.lineSteps.toFixed(1)} + 0.5) / ${NIGHT.lineSteps.toFixed(1)};
         vec3 ground = uPage * (1.0 - ${NIGHT.shadow.toFixed(2)} * uFlip * wq);
         bool tinted = !inked && m != 3.0;
         // the path takes the planet's light too: darker on the night side of the light page as the ground is (the same share), a little dimmer towards the page on the dark page's; selected paths and the flights' arcs keep their colour
-        if (tinted) col = uFlip > 0.5 ? col * (1.0 - ${NIGHT.shadow.toFixed(2)} * wq) : mix(col, uPage, ${PATH_NIGHT_DIM.toFixed(2)} * wq);
-        col = mix(ground, col, inked ? 1.0 : (1.0 - ${FAR_TONE.toFixed(2)} * (m == 3.0 ? 0.0 : uFar)) * (1.0 - toned));
+        if (tinted && uFlip < 0.5) col = mix(col, uPage, ${PATH_NIGHT_DIM.toFixed(2)} * wq);
+        // on the light page the ground paths are inked darker and fade less from space: a pale line on a pale or grey ground has no contrast
+        if (!inked && uFlip > 0.5) col *= onNight ? ${PATH_NIGHT_INK.toFixed(2)} : ${PATH_LIGHT_INK.toFixed(2)};
+        col = mix(ground, col, inked ? 1.0 : (1.0 - ${FAR_TONE.toFixed(2)} * (1.0 - ${PATH_LIGHT_FAR.toFixed(2)} * uFlip) * (m == 3.0 ? 0.0 : uFar)) * (1.0 - toned));
+        if (whiteDot) col = mix(uTrail[pick] / max(max(uTrail[pick].r, uTrail[pick].g), uTrail[pick].b), vec3(1.0), ${ARC_PALE.toFixed(2)});
         col = mix(uPage, col, pk);
         // a straight line up close: a solid mix toward the page by its step
         col = mix(col, uPage, ${f(STRAIGHT_FADE_MIX)} * vQuiet / ${f(STRAIGHT_FADE_STEPS)});

@@ -62,6 +62,13 @@ export const TICK_FROM = 5.5;
 export const FAR_TONE = 0.6;
 /** How far toward the page a path that is not selected goes on the DARK page's night side (the light page's goes darker, as the ground does, `NIGHT.shadow`): a path takes the planet's light (owner, 2026-11-02). */
 export const PATH_NIGHT_DIM = 0.35;
+/** On the light page the ground paths are inked darker (a multiplier of their colour) and fade by this much less from space. */
+/** Over the light page's night side (mid-grey ground) the ground paths are inked darker still. */
+/** The light page's arcs' pale dots are the trail's own colour at full brightness (its brightest channel at 1), then lifted toward white by this much (1 is white). */
+export const ARC_PALE = 0.6;
+export const PATH_NIGHT_INK = 0.4;
+export const PATH_LIGHT_INK = 0.6;
+export const PATH_LIGHT_FAR = 0.5;
 export const FAR_FROM = 2.6;
 export const FAR_TO = 4.2;
 export function farOf(zoom: number): number {
