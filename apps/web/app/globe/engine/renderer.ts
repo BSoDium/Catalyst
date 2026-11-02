@@ -1426,7 +1426,7 @@ export class GlobeRenderer {
    */
   private syncSunMusic() {
     const shown = !this.suspended && !this.hidden && !this.lost && !this.inInterlude && !this.interludeOn;
-    sunMusic.setGlare(shown ? (this.globe.sun?.glare ?? 0) : 0);
+    sunMusic.setGlare(shown ? (this.globe.sun?.glare ?? 0) : 0, !shown); // (not shown: the globe is left, the music goes quickly: #488)
   }
 
   private sunV = new Vector3();

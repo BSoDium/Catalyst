@@ -188,6 +188,28 @@ describe("the sun's music", () => {
     expect(f.curves.at(-1)!.dur * 1000).toBeLessThan(150);
   });
 
+  it("leaving the globe is quick (a few hundred ms), also over the slow fade of a sun that is already setting, while the sun hiding in the picture stays slow (#488)", async () => {
+    const { m, ctx, curves } = await start();
+    m.setGlare(0.5);
+    ctx.currentTime = 30;
+    m.setGlare(0, true);
+    expect(curves.at(-1)!.to).toBe(0);
+    expect(curves.at(-1)!.dur * 1000).toBeLessThanOrEqual(SUN_MUSIC.leaveFadeMs + 1);
+    // the sun setting (slow), then the page is left: the quick one replaces it
+    store.clear();
+    const f = await start();
+    f.m.setGlare(0.5);
+    f.ctx.currentTime = 30;
+    f.m.setGlare(0);
+    expect(f.curves.at(-1)!.dur * 1000).toBeGreaterThan(1000);
+    f.ctx.currentTime = 30.1;
+    f.m.setGlare(0, true);
+    expect(f.curves.at(-1)!.dur * 1000).toBeLessThanOrEqual(SUN_MUSIC.leaveFadeMs + 1);
+    // and a visitor who comes back finds it as before
+    f.m.setGlare(0.5);
+    expect(f.curves.at(-1)!.to).toBeGreaterThan(0);
+  });
+
   it("tells the picture where the music is and how audible, only while it sounds", async () => {
     const { m, ctx } = await start();
     expect(m.pulse()).toBeNull();

@@ -39,6 +39,8 @@ export const SUN_MUSIC = {
   beatOffsetSec: 0.18,
   /** How long a mute takes to go quiet (ms): not the fade-out of a sun that sets, but short enough not to click. */
   muteFadeMs: 120,
+  /** How long the music takes to go when the globe is left (another page, the street map, the tab behind: #488): not the slow fade of a sun that sets, a few hundred ms. */
+  leaveFadeMs: 250,
   /** Coming in and going out, for the whole way from silence to `volume` (a part of the way takes a part of the time). */
   fadeInMs: 3200,
   fadeOutMs: 2600,
@@ -263,6 +265,8 @@ export class SunMusic {
   private fade: { from: number; to: number; at: number; dur: number } | null = null;
   private stopTimer: ReturnType<typeof setTimeout> | null = null;
   private inView = false;
+  /** The globe is not what the visitor sees (the page was left, the street map has the view, the context is lost): the sun's music goes quickly. */
+  private away = false;
   private hidden = false;
   private attached = false;
   private off: (() => void)[] = [];
@@ -404,7 +408,7 @@ export class SunMusic {
 
   /** Let go of the page and of the sound (the globe is gone). The visitor's place in the piece is kept. */
   detach(): void {
-    this.setGlare(0);
+    this.setGlare(0, true);
     if (!this.attached) return;
     this.attached = false;
     this.off.forEach((f) => f());
@@ -455,9 +459,15 @@ export class SunMusic {
   }
 
   /** The sun's glare in the picture now, 0..1 (every frame the camera moves in; nothing is done unless it crosses a threshold). */
-  setGlare(glare: number): void {
+  setGlare(glare: number, away = false): void {
+    const wasAway = this.away;
+    this.away = away;
     const now = sunInView(glare, this.inView);
-    if (now === this.inView) return;
+    if (now === this.inView) {
+      // (a sun that was already setting, slowly, while the page is left: the quick fade replaces it)
+      if (away !== wasAway) this.reconcile();
+      return;
+    }
     this.inView = now;
     if (now) {
       this.set({ sunSeen: true });
@@ -569,12 +579,12 @@ export class SunMusic {
   private fall() {
     const c = this.ctx;
     if (!c || !this.src) return;
-    // a mute is quick (a click on a button is not the sun setting), also when the sun is already setting: the fade in progress is replaced by the quick one
-    const quick = this.muted;
+    // a mute is quick (a click on a button is not the sun setting), and so is leaving the globe (#488), also when the sun is already setting: the fade in progress is replaced by the quick one
+    const quickMs = this.muted ? SUN_MUSIC.muteFadeMs : this.away || this.hidden ? SUN_MUSIC.leaveFadeMs : 0;
     const going = this.stopTimer !== null;
-    if (going && !(quick && this.fade!.dur > SUN_MUSIC.muteFadeMs / 1000 + 0.05)) return; // (already going out)
+    if (going && !(quickMs && this.fade!.dur > quickMs / 1000 + 0.05)) return; // (already going out)
     if (going) clearTimeout(this.stopTimer!);
-    const ms = this.fadeTo(0, quick ? SUN_MUSIC.muteFadeMs : SUN_MUSIC.fadeOutMs, quick ? 30 : SUN_MUSIC.minFadeMs, going);
+    const ms = this.fadeTo(0, quickMs || SUN_MUSIC.fadeOutMs, quickMs ? 30 : SUN_MUSIC.minFadeMs, going);
     // the place it is left at is where the sound reaches silence, whenever the timer gets to run
     const endAt = c.currentTime + ms / 1000;
     this.stopTimer = setTimeout(() => {
