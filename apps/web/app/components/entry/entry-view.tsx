@@ -124,13 +124,8 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
   // "At a glance" is a table: when its only row would be the place, it is a heading over one line, which says nothing the running head and the tags do not (owner, 2026-11-02). Then it is dropped, and the place moves to the tags as their first chips; any authored fact keeps the table.
   const showGlance = structured && rows.length > 0;
   const foldPlace = structured && !showGlance && hasPlace;
-  const placeTags = foldPlace
-    ? entry.places.length > 0
-      ? entry.places.map((p) => ({ label: p.name, href: p.href }))
-      : entry.country
-        ? [{ label: entry.country.name, ...(entry.country.href ? { href: entry.country.href } : {}) }]
-        : []
-    : [];
+  const countryTag = entry.country ? [{ label: entry.country.name, ...(entry.country.href ? { href: entry.country.href } : {}) }] : [];
+  const placeTags = !foldPlace ? [] : entry.places.length > 0 ? entry.places.map((p) => ({ label: p.name, href: p.href })) : countryTag;
   const tagsTitle = foldPlace ? (entry.tags.length > 0 ? "Place and tags" : "Place") : "Tags";
   // "Linked to 1 place" restates the one place the page already names; the line stays when it counts more (places, entries).
   const linkedFoot = linked && linked !== "1 place" ? linked : null;
