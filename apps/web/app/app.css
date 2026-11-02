@@ -3286,6 +3286,11 @@
     white-space: pre;
   }
 
+  /* The big figure is for a phone's single column only (below); everywhere else the caption is the title and the line under it. */
+  .wall-kpi {
+    display: none;
+  }
+
   .wall-medium {
     min-width: 0;
     overflow: hidden;
@@ -3401,7 +3406,7 @@
      an overlay. From 34 rem (two columns) the overlay above is the look. */
   @media (max-width: 33.99rem) {
     .wall {
-      --cap: 4.5rem;
+      --cap: 5.5rem;
     }
 
     .wall-media,
@@ -3412,7 +3417,7 @@
     .wall-caption {
       z-index: auto;
       height: var(--cap);
-      padding: 0.5rem var(--wall-gutter) 0;
+      padding: var(--wall-gutter) var(--wall-gutter) 0;
       overflow: hidden;
       background: none;
       opacity: 1;
@@ -3426,9 +3431,42 @@
       color: var(--muted-foreground);
     }
 
+    /* The big figure (owner, 2026-11-02: "a value, KPI style, a big number the size of the whole text block, with a little text for the unit"): at the right of the title and the medium line, as tall as both (the
+       figure's line is the block's height, 2.5 rem), the unit small beside it on the baseline. */
+    .wall-caption {
+      grid-template-columns: minmax(0, 1fr) auto;
+      justify-content: stretch;
+      align-content: start;
+    }
+
+    .wall-kpi {
+      display: flex;
+      grid-area: 1 / 2 / 3 / 3;
+      align-items: baseline;
+      gap: 0.3125rem;
+      align-self: start;
+      margin: 0;
+      padding-left: 1rem;
+      line-height: 1;
+    }
+
+    .wall-kpi-value {
+      font-family: var(--font-display);
+      font-size: 2.5rem;
+      font-weight: var(--weight-light);
+      letter-spacing: -0.03em;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .wall-kpi-unit {
+      color: var(--muted-foreground);
+      font-family: var(--font-meta);
+      font-size: 0.75rem;
+    }
+
     /* (the backdrop of the overlay is not drawn: the caption is on the page) */
     .wall-caption {
-      display: block;
+      display: grid;
     }
 
     .wall-caption::before {
