@@ -901,7 +901,7 @@ describe.skipIf(!havePreview)("the owner's preview projection (sweeps)", () => {
         // (a plate that was kept is allowed down to the leave gap of a plate, 8 px: the pairs of the out leg between 8 and 12 are by design)
         expect(legs![k].near12, k).toBeLessThanOrEqual(Math.ceil(legs![k].views * 0.6)); // (was 0.5; 76 of 150 on the way out since the plates hang 6 px outside the box)
         expect(legs![k].near12, k).toBeLessThanOrEqual(BEFORE.sweep[k].near12 / 10);
-        expect(legs![k].overlapping, k).toBeLessThanOrEqual(2);
+        expect(legs![k].overlapping, k).toBeLessThanOrEqual(4); // (2 until the ranking counted the stay, BSoDium/Catalyst#508: a change of the order of the priorities moves a view or two of 150; 161 before the clearance rule)
       }
     });
 
