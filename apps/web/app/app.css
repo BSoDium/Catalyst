@@ -6642,27 +6642,23 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     text-decoration-color: currentColor;
   }
 
-  /* The arrow that says "a new tab" (owner, 2026-11-02, #527): at the right of the name, only on hover and keyboard focus, as part of the link's colour (it takes the signal colour with it). */
-  .career-org-arrow {
-    margin-left: 0.25em;
-    vertical-align: -0.1em;
-    opacity: 0;
-    transform: translate(-2px, 2px);
-    transition:
-      opacity var(--duration-fast) var(--ease-standard),
-      transform var(--duration-fast) var(--ease-standard);
+  /* The arrow that says "a new tab" (owner, 2026-11-02, #527): at the right of the name, always there, as tall as the capitals beside it (it sits on the baseline, so it never lengthens the line and the text is not pushed down
+     against the logo), in a dim tone at rest and the link's bright one while the name is hovered or focused: no movement, no fade in or out. The name has no underline. */
+  .career-org-link {
+    text-decoration: none;
   }
 
-  .career-org-link:hover .career-org-arrow,
-  .career-org-link:focus-visible .career-org-arrow {
-    opacity: 1;
-    transform: none;
+  .career-org-link .career-org-arrow[data-size] {
+    width: 0.75em;
+    height: 0.75em;
+    margin-left: 0.3em;
+    vertical-align: baseline;
+    color: var(--muted-foreground);
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .career-org-arrow {
-      transform: none;
-    }
+  .career-org-link:hover .career-org-arrow[data-size],
+  .career-org-link:focus-visible .career-org-arrow[data-size] {
+    color: currentColor;
   }
 
   .career-role {

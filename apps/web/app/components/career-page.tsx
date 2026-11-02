@@ -285,8 +285,8 @@ function Where({ text, place, known }: { text: string; place: string | undefined
 }
 
 /**
- * An organisation's or a school's name, a link to its site when it has one (owner, 2026-11-02, #527): in a NEW tab (`target="_blank"`, `noopener noreferrer`), and a small up-right square arrow at the right of the name, shown on
- * hover and keyboard focus to say so (`.career-org-link`, app.css). The arrow is decoration; the link says it opens in a new tab for assistive technology.
+ * An organisation's or a school's name, a link to its site when it has one (owner, 2026-11-02, #527): in a NEW tab (`target="_blank"`, `noopener noreferrer`), and a small up-right square arrow at the right of the name to say so, always there (dim at rest, bright while the
+ * name is hovered or focused; no underline, no movement: `.career-org-link`, app.css). The arrow is decoration; the link says it opens in a new tab for assistive technology.
  */
 function OrgName({ name, url }: { name: string; url: string | null }) {
   if (!url) return <>{name}</>;
