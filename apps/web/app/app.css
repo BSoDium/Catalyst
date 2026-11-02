@@ -6591,13 +6591,16 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   .contact-label {
     position: absolute;
     left: 6px; /* the message's label plate has 6 px of padding: the texts of the three fields share one left edge (owner, 2026-11-02) */
-    top: 1.46rem;
+    top: 1.62rem;
     max-width: calc(100% - 6px);
     overflow: hidden;
     color: var(--foreground);
-    font-family: var(--font-meta);
-    font-size: 0.9375rem;
-    line-height: 1.5;
+    /* the type of the message label's name (a map label's: mono, 14 px, 500), so the three labels are one size */
+    font-family: var(--font-mono);
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    line-height: 18px;
     text-overflow: ellipsis;
     white-space: nowrap;
     transform-origin: left top;
@@ -6611,7 +6614,8 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   .contact-input:not(:placeholder-shown) ~ .contact-label,
   .contact-input:-webkit-autofill ~ .contact-label {
     color: var(--muted-foreground);
-    transform: translateY(-0.8125rem) scale(0.78);
+    /* raised well clear of what is typed (its foot about 8 px above the capitals of the text), at the size of a map label's second line: 11 px */
+    transform: translateY(-1.1rem) scale(0.7857);
   }
 
   .contact-control:hover {
@@ -6688,6 +6692,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
 
   .contact-control[data-field="message"] .contact-textarea {
     min-height: 10rem;
+    resize: none;
     padding: 0.875rem 1rem;
     /* a whole number of px per line, so the box is a whole number of px tall and its bottom edge falls on a device pixel */
     line-height: 26px;
