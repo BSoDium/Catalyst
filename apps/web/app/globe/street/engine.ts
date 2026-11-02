@@ -261,6 +261,9 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
   /** The active style keeps the world lines as a hidden placeholder (street/style/street-style.ts WORLD_PLACEHOLDER_BELOW). */
   let placeholderStyle = false;
   let placeholderOn = false;
+  /** The tile level the placeholder last looked at, and whether the tiles lag a CHANGE of it (not a pan at the same level: #503). */
+  let placeholderLevel = Number.NaN;
+  let placeholderZoomLag = false;
   let placeholderSwappedAt = -Infinity;
   let placeholderRetry: number | undefined;
   let placeholderHide: number | undefined;
@@ -273,6 +276,7 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
     const schema = d?.schema ?? "openmaptiles";
     placeholderStyle = hasPlaceholder(DEFAULT_HANDOFF[schema], d !== undefined);
     placeholderOn = false;
+    placeholderLevel = Number.NaN;
     const at = mapRef ? mapRef.getCenter() : { lat: opts.view.lat };
     layerSwitch = new LayerSwitch(switchRules(seaFrom(DEFAULT_HANDOFF[schema])));
     layerSwitch.update(switchView(mapRef ? mapRef.getZoom() : opts.view.zoom, at.lat));
@@ -616,7 +620,17 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
   const updatePlaceholder = () => {
     if (!placeholderStyle) return;
     // (the street tiles' own source: the satellite ground's tiles come later and never mean the lines are late, or both would be drawn)
-    const want = placeholderWanted(map.getZoom(), map.isSourceLoaded("tiles"));
+    const zoom = map.getZoom();
+    const loaded = map.isSourceLoaded("tiles");
+    // The tiles lag the ZOOM from the moment the tile level changes (a whole level of tiles is to load) until they are all in. A pan at the same level is not that: its edge tiles are on their way and the rest
+    // are drawn; and panning north or south moves MapLibre's zoom a little (the latitude's correction, engine/geo `zoomCorrection`) without changing the level: the whole coast must not swap for the coarser world line then (#503).
+    const level = Math.floor(zoom);
+    if (level !== placeholderLevel) {
+      placeholderLevel = level;
+      placeholderZoomLag = true;
+    }
+    if (loaded) placeholderZoomLag = false;
+    const want = placeholderWanted(zoom, loaded, placeholderZoomLag);
     if (want === placeholderOn) return;
     const wait = placeholderSwappedAt + PLACEHOLDER_SETTLE_MS - performance.now();
     if (wait > 0) {
