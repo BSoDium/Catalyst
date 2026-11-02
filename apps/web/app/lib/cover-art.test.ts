@@ -70,11 +70,13 @@ describe("coverArt", () => {
       expect(art.marks.length).toBeGreaterThanOrEqual(1);
       expect(art.marks.length).toBeLessThanOrEqual(2);
       for (const m of art.marks) {
-        expect(Number.isInteger(m.x) && Number.isInteger(m.y)).toBe(true);
+        expect([m.x, m.y, m.w, m.h].every(Number.isInteger)).toBe(true);
         expect(m.x).toBeGreaterThanOrEqual(0);
-        expect(m.x).toBeLessThan(24);
         expect(m.y).toBeGreaterThanOrEqual(0);
-        expect(m.y).toBeLessThan(14);
+        expect(m.w).toBeGreaterThanOrEqual(1);
+        expect(m.h).toBeGreaterThanOrEqual(1);
+        expect(m.x + m.w).toBeLessThanOrEqual(24);
+        expect(m.y + m.h).toBeLessThanOrEqual(14);
       }
     }
   });
@@ -126,7 +128,70 @@ describe("coverPaths", () => {
         }
       }
       expect(area).toBe(art.levels.filter((l) => l > 0).length);
-      expect(marks.match(/M/g)?.length).toBe(art.marks.length);
+      // (a hollow square is two rectangles in one path, three bars are three)
+      expect(marks.match(/M/g)?.length).toBe(art.marks.reduce((n, m) => n + (m.shape === "ring" && m.w > 2 && m.h > 2 ? 2 : m.shape === "bars" ? Math.min(3, Math.ceil(m.h / 2)) : 1), 0));
+    }
+  });
+});
+
+describe("the patterns", () => {
+  it("are twenty-one, the checker board and the circuit traces not among them (owner, 2026-11-02: too plain)", () => {
+    expect(COVER_PATTERNS).toHaveLength(21);
+    expect(COVER_PATTERNS).not.toContain("checker");
+    expect(COVER_PATTERNS).not.toContain("circuit");
+  });
+
+  it("survive the smallest and the largest grid", () => {
+    for (const pattern of COVER_PATTERNS) {
+      for (const [cols, rows] of [[4, 4], [96, 96], [4, 96], [96, 4]] as const) {
+        const art = coverArt("tiny-or-huge", { pattern, cols, rows });
+        expect(art.levels).toHaveLength(cols * rows);
+        for (const level of art.levels) expect(level).toBeLessThan(COVER_LEVELS);
+        for (const m of art.marks) {
+          expect(m.x + m.w).toBeLessThanOrEqual(cols);
+          expect(m.y + m.h).toBeLessThanOrEqual(rows);
+        }
+      }
+    }
+  });
+
+  it("a forced pattern does not change the look (palettes, tones, wash, marks)", () => {
+    for (const seed of SEEDS.slice(0, 30)) {
+      const base = coverArt(seed);
+      const forced = coverArt(seed, { pattern: base.pattern === "field" ? "rings" : "field" });
+      expect(forced.palette).toBe(base.palette);
+      expect(forced.second).toBe(base.second);
+      expect(forced.tones).toEqual(base.tones);
+      expect(forced.wash).toBe(base.wash);
+      expect(forced.marks).toEqual(base.marks);
+    }
+  });
+});
+
+describe("the colour of the tones", () => {
+  it("has a second palette that is never the first, a tone for every level, and every scheme and wash occurs", () => {
+    const tones = new Set<string>();
+    const washes = new Set<number>();
+    for (const seed of SEEDS) {
+      const a = coverArt(seed);
+      expect(a.second).not.toBe(a.palette);
+      expect(COVER_PALETTES).toContain(a.second);
+      expect(a.tones).toHaveLength(COVER_LEVELS);
+      expect(a.markPalette === a.palette || a.markPalette === a.second).toBe(true);
+      tones.add(a.tones.join());
+      washes.add(a.wash);
+    }
+    expect(tones.size).toBe(4);
+    expect(washes).toEqual(new Set([0, 1, 2]));
+  });
+
+  it("is a function of the seed and the forced palette only", () => {
+    for (const seed of SEEDS.slice(0, 20)) {
+      for (const palette of COVER_PALETTES) {
+        const a = coverArt(seed, { palette });
+        expect(coverArt(seed, { palette, pattern: "bars" }).second).toBe(a.second);
+        expect(a.second).not.toBe(palette);
+      }
     }
   });
 });

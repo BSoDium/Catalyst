@@ -1436,24 +1436,36 @@
   }
 
   .ds-cover [data-l="m"] {
-    fill: var(--signal);
+    fill: var(--cover-m, var(--signal));
   }
 
-  /* The marks take the palette the seed chose (blue is the accent's own fill); a solid colour, 3:1 or more on the cover's ground. */
-  .ds-cover[data-palette="blue"] [data-l="m"] {
-    fill: var(--palette-blue);
+  /* A tone that takes a hue (`data-h`: `a` the seed's palette, `b` its second) is that palette's fill over the ground; a wash is the first palette, faint, under all of it. The marks are a palette's solid fill (blue is the accent's own); 3:1 or more on the cover's ground. */
+  .ds-cover [data-h] {
+    --cover-hue: var(--cover-a);
   }
 
-  .ds-cover[data-palette="green"] [data-l="m"] {
-    fill: var(--palette-green);
+  .ds-cover [data-h="b"] {
+    --cover-hue: var(--cover-b);
   }
 
-  .ds-cover[data-palette="ocre"] [data-l="m"] {
-    fill: var(--palette-ocre);
+  .ds-cover [data-l="1"][data-h] {
+    fill: color-mix(in srgb, var(--cover-hue) 36%, transparent);
   }
 
-  .ds-cover[data-palette="violet"] [data-l="m"] {
-    fill: var(--palette-violet);
+  .ds-cover [data-l="2"][data-h] {
+    fill: color-mix(in srgb, var(--cover-hue) 40%, transparent);
+  }
+
+  .ds-cover [data-l="3"][data-h] {
+    fill: color-mix(in srgb, var(--cover-hue) 66%, transparent);
+  }
+
+  .ds-cover [data-wash] {
+    fill: color-mix(in srgb, var(--cover-a) 8%, transparent);
+  }
+
+  .ds-cover [data-wash="2"] {
+    fill: color-mix(in srgb, var(--cover-a) 14%, transparent);
   }
 
   /*
