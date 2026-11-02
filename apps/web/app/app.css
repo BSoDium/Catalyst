@@ -6689,6 +6689,8 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   .contact-control[data-field="message"] .contact-textarea {
     min-height: 10rem;
     padding: 0.875rem 1rem;
+    /* a whole number of px per line, so the box is a whole number of px tall and its bottom edge falls on a device pixel */
+    line-height: 26px;
   }
 
   /*
