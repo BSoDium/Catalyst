@@ -6027,6 +6027,17 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
       column-gap: 4rem;
     }
 
+    /* The contact form at the left and the socials at the right (owner, 2026-11-02, #506); the markup keeps the socials first, which is the order of the one column. */
+    .career-pair > .career-contact {
+      grid-column: 1;
+      grid-row: 1;
+    }
+
+    .career-pair > .career-footer {
+      grid-column: 2;
+      grid-row: 1;
+    }
+
     .career-pair .career-block-body {
       max-width: none;
     }
@@ -6218,7 +6229,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     margin-bottom: 2rem;
   }
 
-  /* The pair is the socials, then the form, in the markup: one column on a phone with the socials first (owner, 2026-10-31, issue #429), and from 80 rem two columns, the socials at the left and the contact form on the right (owner, 2026-10-30). */
+  /* The pair is the socials, then the form, in the markup: one column on a phone with the socials first (owner, 2026-10-31, issue #429), and from 80 rem two columns, the contact form at the left and the socials on the right (owner, 2026-10-30; swapped 2026-11-02, #506). */
 
   .career-pair > .career-footer .career-links {
     flex-direction: column;
