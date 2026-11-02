@@ -3208,6 +3208,20 @@
     text-wrap: pretty;
   }
 
+  /* ONE column (a phone; the wall is full-bleed there, so the banner's text is at the screen's edge unless it is inset: the padding was "messy", owner, 2026-11-02, #539): the words and the link are inset by the page's side
+     padding (`--wall-gutter`) and the same under the link, and the banner is no taller than its one filler picture (a portrait of 1.25 times the screen's width, under 26 rem on a phone) so that it lies on that picture
+     and not on the last real one. */
+  @container wall (max-width: 33.99rem) {
+    .wall-end {
+      height: min(100%, 26rem);
+    }
+
+    /* (`--wall-gutter` is only set where the wall bleeds, under 34 rem of the screen; between the wall's 34 rem and the screen's, 1 rem of padding more, the wall is one column still but inset: 0 there) */
+    .gallery-end {
+      padding: 0 var(--wall-gutter, 0px) var(--wall-gutter, 1rem);
+    }
+  }
+
   .wall-card {
     position: relative;
     display: flex;

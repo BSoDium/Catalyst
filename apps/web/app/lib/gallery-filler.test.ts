@@ -5,9 +5,10 @@ import { GALLERY_FILLER, planFiller } from "./gallery-filler";
 const height = (t: { count: number; ratio: number }) => t.ratio + t.count * SLOT;
 
 describe("the gallery filler", () => {
-  it("gives every wall at least two rows", () => {
+  it("gives every wall of two columns or more at least two rows, and a single column ONE tile", () => {
     const plan = planFiller([0.67, 1.25, 0.67]);
-    for (const columns of [1, 2, 3, 4]) expect(plan.count(columns)).toBeGreaterThanOrEqual(2 * columns);
+    for (const columns of [2, 3, 4]) expect(plan.count(columns)).toBeGreaterThanOrEqual(2 * columns);
+    expect(plan.count(1)).toBe(1);
   });
   it("ends every wall in filler, below the last picture, so a flush cut never touches one", () => {
     for (const real of [[], [0.67], [0.67, 1.25, 0.67, 0.8, 1.5, 0.67, 1, 0.75, 1.3], Array(18).fill(0.75)]) {
