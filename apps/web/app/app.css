@@ -6649,9 +6649,12 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   }
 
   .career-org-link .career-org-arrow[data-size] {
-    width: 0.75em;
-    height: 0.75em;
-    margin-left: 0.3em;
+    /* The ARROW itself (the path of the icon, stroke included: 24 / 11.75 of it is the 24-unit box) is as tall as the x-height of the name (owner, 2026-11-02): 1ex, `--icon-stroke` 1.75. The arrow's foot is on the baseline (the box hangs 0.255 of itself below it, 0.745 above) and the margins are those same
+       two shares, negative: the margin box is a line of no height at the baseline, so it neither lengthens the title nor pushes it. */
+    --arrow-box: calc(1ex * 24 / 11.75);
+    width: var(--arrow-box);
+    height: var(--arrow-box);
+    margin: calc(var(--arrow-box) * -0.745) 0 calc(var(--arrow-box) * -0.255) 0.3em;
     vertical-align: baseline;
     color: var(--muted-foreground);
   }
