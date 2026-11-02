@@ -6,7 +6,7 @@ import { yearOf } from "~/lib/entry-list";
 import { safeMediaSrc } from "~/lib/entry-blocks";
 import { coverImageProps, WALL_COVER_SIZES } from "~/lib/cover-image";
 import type { EntrySummary } from "~/lib/entries";
-import { planFiller, type FillerPhoto } from "~/lib/gallery-filler";
+import { planFiller, type FillerTile } from "~/lib/gallery-filler";
 
 /** The first pictures of a wall load at once (the first screen at four columns); the rest are lazy. */
 const EAGER = 4;
@@ -27,8 +27,8 @@ export function artworkCaption(entry: Pick<EntrySummary, "meta" | "date">): { me
  * The artworks as a brick wall (docs/design-system.md, "Artwork wall"): pictures at their own proportions (the contract's cover size, so
  * the space is reserved before the image arrives), nested in 1 to 4 columns by the wall's width, 10 px apart. The DOM is ONE list in reading
  * order; the placement is computed on the server (`lib/masonry.ts`) and drawn with `calc()` (`.wall` in app.css), so there is no script, no
- * measuring and no shift, and the tab order is the reading order. The title, medium and year are a plate over the picture's foot on a
- * pointer that hovers (shown on hover and on focus) and a line under the picture on touch (always visible). One link per picture
+ * measuring and no shift, and the tab order is the reading order. The title, medium and year are laid low on the picture's foot over a soft
+ * ramp into the page's colour on a pointer that hovers (shown on hover and on focus) and a line under the picture on touch (always visible). One link per picture
  * (the title), stretched over it. An artwork without a cover is a generated one at 4:3. A sensitive artwork stays blurred.
  *
  * `/photography` is the same wall (`kind="photograph"`): the photograph IS the page, so there is no generated cover (a photograph without
@@ -44,7 +44,7 @@ export function ArtworkWall({
   end,
 }: {
   /** Scenery that continues the wall after the last picture (decorative, no link, no name), and the banner laid over its foot (`end`). Both or neither. */
-  filler?: readonly FillerPhoto[];
+  filler?: readonly FillerTile[];
   end?: ReactNode;
   /** The router state of the links: where the entry is opened from (`listBackState`). */
   linkState?: unknown;
@@ -108,7 +108,11 @@ export function ArtworkWall({
         {plan?.tiles.map((photo, j) => (
           <li key={j} aria-hidden="true" data-slot="wall-filler" data-tiers={plan.tiers[j]!.join(" ")} className="wall-item wall-filler" style={masonryItemVars(tileRatios[j]!, layouts, items.length + j) as CSSProperties}>
             <div className="wall-media">
-              <img src={photo.src} alt="" width={photo.width} height={photo.height} loading="lazy" decoding="async" draggable={false} className="wall-img" />
+              {"seed" in photo ? (
+                <CoverArt seed={photo.seed} kind="artwork" cols={48} rows={Math.round((48 * photo.height) / photo.width)} className="h-full" />
+              ) : (
+                <img src={photo.src} alt="" width={photo.width} height={photo.height} loading="lazy" decoding="async" draggable={false} className="wall-img" />
+              )}
             </div>
           </li>
         ))}

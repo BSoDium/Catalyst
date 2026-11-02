@@ -3,7 +3,7 @@ import { Link, useLocation } from "react-router";
 import type { ContentKind } from "@catalyst/schemas";
 import { ArtworkWall } from "~/components/entry/artwork-wall";
 import { GalleryEnd } from "~/components/entry/gallery-end";
-import { GALLERY_FILLER } from "~/lib/gallery-filler";
+import { ARTWORK_FILLER, GALLERY_FILLER } from "~/lib/gallery-filler";
 import { EntryRow } from "~/components/entry/entry-list-card";
 import { Button, ScrollRow, StatePanel } from "~/components/ui";
 import { KIND_PLURALS, kindCount, listBackState, type EntrySummary } from "~/lib/entries";
@@ -78,7 +78,7 @@ export function EntryListPage({ kind, items }: { kind: ContentKind; items: Entry
               label={KIND_PLURALS[kind]}
               kind={kind}
               linkState={listBackState(kind, search)}
-              {...(kind === "photograph" ? { filler: GALLERY_FILLER, end: <GalleryEnd /> } : {})}
+              {...(kind === "photograph" ? { filler: GALLERY_FILLER, end: <GalleryEnd /> } : kind === "artwork" ? { filler: ARTWORK_FILLER, end: <GalleryEnd kind="artwork" /> } : {})}
             />
           </>
         ) : (
