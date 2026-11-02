@@ -3318,26 +3318,26 @@
     .wall-caption {
       padding: 5.75rem 0.875rem 0.7rem;
       /* centred on the text, which is left-aligned, not on the picture (at 38 % of the width), and so wide (170 %) that its edge is a long shallow curve, not an oval: the plateau holds the whole row of text, a long
-         title included, and the fall is a smootherstep (no slope and no curvature at either end: no edge to be seen) over a long way (5.75 rem of room above the text), lighter than before (peak about 72 %) */
+         title included, and the fall is a smootherstep (no slope and no curvature at either end: no edge to be seen) over a long way (5.75 rem of room above the text), lighter than before (peak about 60 %: the owner asked for it less opaque; the medium line is in the ink to hold the contrast) */
       background: radial-gradient(
         ellipse 170% 100% at 38% 100%,
-        color-mix(in srgb, var(--background) 72.0%, transparent) 0%,
-        color-mix(in srgb, var(--background) 72.0%, transparent) 6%,
-        color-mix(in srgb, var(--background) 72.0%, transparent) 11%,
-        color-mix(in srgb, var(--background) 72.0%, transparent) 17%,
-        color-mix(in srgb, var(--background) 72.0%, transparent) 22%,
-        color-mix(in srgb, var(--background) 72.0%, transparent) 28%,
-        color-mix(in srgb, var(--background) 71.9%, transparent) 33%,
-        color-mix(in srgb, var(--background) 70.8%, transparent) 39%,
-        color-mix(in srgb, var(--background) 67.5%, transparent) 44%,
-        color-mix(in srgb, var(--background) 61.6%, transparent) 50%,
-        color-mix(in srgb, var(--background) 53.3%, transparent) 56%,
-        color-mix(in srgb, var(--background) 43.4%, transparent) 61%,
-        color-mix(in srgb, var(--background) 32.8%, transparent) 67%,
-        color-mix(in srgb, var(--background) 22.5%, transparent) 72%,
-        color-mix(in srgb, var(--background) 13.5%, transparent) 78%,
-        color-mix(in srgb, var(--background) 6.6%, transparent) 83%,
-        color-mix(in srgb, var(--background) 2.2%, transparent) 89%,
+        color-mix(in srgb, var(--background) 60.0%, transparent) 0%,
+        color-mix(in srgb, var(--background) 60.0%, transparent) 6%,
+        color-mix(in srgb, var(--background) 60.0%, transparent) 11%,
+        color-mix(in srgb, var(--background) 60.0%, transparent) 17%,
+        color-mix(in srgb, var(--background) 60.0%, transparent) 22%,
+        color-mix(in srgb, var(--background) 60.0%, transparent) 28%,
+        color-mix(in srgb, var(--background) 59.9%, transparent) 33%,
+        color-mix(in srgb, var(--background) 59.0%, transparent) 39%,
+        color-mix(in srgb, var(--background) 56.2%, transparent) 44%,
+        color-mix(in srgb, var(--background) 51.3%, transparent) 50%,
+        color-mix(in srgb, var(--background) 44.5%, transparent) 56%,
+        color-mix(in srgb, var(--background) 36.2%, transparent) 61%,
+        color-mix(in srgb, var(--background) 27.3%, transparent) 67%,
+        color-mix(in srgb, var(--background) 18.7%, transparent) 72%,
+        color-mix(in srgb, var(--background) 11.2%, transparent) 78%,
+        color-mix(in srgb, var(--background) 5.5%, transparent) 83%,
+        color-mix(in srgb, var(--background) 1.9%, transparent) 89%,
         color-mix(in srgb, var(--background) 0.3%, transparent) 94%,
         color-mix(in srgb, var(--background) 0.0%, transparent) 100%
       );
@@ -3345,6 +3345,11 @@
 
     .wall-title {
       font-size: 1rem;
+    }
+
+    /* the medium and the year are in the ink, not the muted grey: over a lighter backdrop (a white picture on the dark page, a dark one on the light page) the grey fell to under 2:1 */
+    .wall-meta {
+      color: color-mix(in srgb, var(--foreground) 88%, var(--background));
     }
   }
 
