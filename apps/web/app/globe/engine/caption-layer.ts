@@ -376,8 +376,23 @@ const EGG_FRAG = /* glsl */ `
         sunSpot = max(sunSpot, (1.0 - smoothstep(0.3, 1.5, us)) * SPOT_I[i] * back);
       }
     }
+    // the default lighting is lower than the studio's (light.gain: what is left goes to the haze's colour, the page's own on the dark page), whatever the letter's side
+    col = mix(uHaze, col, ${CINEMATIC.light.gain.toFixed(3)});
+    sunAdd *= ${CINEMATIC.light.gain.toFixed(3)};
+    sunVeil *= ${CINEMATIC.light.gain.toFixed(3)};
+    sunSpot *= ${CINEMATIC.light.gain.toFixed(3)};
     // the outline is the line: the ink, hardly lit
     if (vKind > 0.5 && vKind < 1.5) col = mix(col, uOutline, ${CINEMATIC.light.outlineMix.toFixed(2)});
+    // A letter on the FAR side of the planet (its angle from the page's view axis past the limb: seen beside the disc, curling back) is out of every light that reaches the front: it keeps only behind.keep of what it
+    // has, the outline and the sun's glint too, so it goes dim into the haze's colour before it goes behind the planet.
+    {
+      float psiB = acos(clamp(vCosPsi, -1.0, 1.0));
+      float keepB = mix(1.0, ${CINEMATIC.light.behind.keep.toFixed(3)}, smoothstep(${((CINEMATIC.light.behind.from * Math.PI) / 180).toFixed(4)}, ${((CINEMATIC.light.behind.to * Math.PI) / 180).toFixed(4)}, psiB));
+      col = mix(uHaze, col, keepB);
+      sunAdd *= keepB;
+      sunVeil *= keepB;
+      sunSpot *= keepB;
+    }
     // Behind the planet's atmosphere: a letter whose sight line has passed close to the planet before reaching it is seen THROUGH the air at the limb, and dims into the HAZE's
     // colour (the page's own on the dark page; on the light page a grey step towards the ink: the page's white would LIGHTEN the letters) the nearer that line grazed the planet (b, in planet radii: 1 is the limb itself, where the letters are about to go behind it)
     {

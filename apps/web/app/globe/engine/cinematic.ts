@@ -61,8 +61,9 @@ export const CINEMATIC = {
    * of a procedural studio (engine/caption-layer.ts `studio`) that makes the surfaces read as polished metal: `metal` is its share of the surface (`faceMetal` on the faces, which stay the lighter) (the rest is
    * `albedo * (ambient + diffuse * key + filler * fill)`), `reflect` its brightness. `inside`: how much of the light the backs of the letters (towards the planet, not in the sun) keep. `edgeShine` and
    * `faceShine`: how bright the thin strip lights of the studio are in the bevel's reflection and in a face's (the glints that run along the edges).
+   * `gain` (owner, 2026-11-02, #529: "lower the default lighting of the letters"): the share of the lit look the letters keep (the rest goes to the haze's colour: the page's on the dark page, a grey step to the ink on the light one); `behind`: and the letters on the FAR side of the planet (their angle from the page's view axis, from `from` to `to` degrees) keep only `keep` of what is left of it, the reflections, the sun's glint and the outline included ("when they are behind the planet it makes no sense for them to be so lit up").
    */
-  light: { key: [-0.5, 0.45, 0.74] as const, fill: [0.6, -0.3, 0.4] as const, ambient: 0.5, diffuse: 0.5, filler: 0.14, specular: 0.22, shininess: 90, faceShine: 0.8, wallShine: 1.1, edgeShine: 1.5, outlineMix: 0.6 },
+  light: { key: [-0.5, 0.45, 0.74] as const, fill: [0.6, -0.3, 0.4] as const, ambient: 0.5, diffuse: 0.5, filler: 0.14, specular: 0.22, shininess: 90, faceShine: 0.8, wallShine: 1.1, edgeShine: 1.5, outlineMix: 0.6, gain: 0.8, behind: { from: 70, to: 110, keep: 0.3 } },
   radius: 2,
   /**
    * On its way out the letters DISSOLVE in the art's ordered dither, one by one, as they pass behind the planet (no shrinking, no clipping line): a fragment is
@@ -73,7 +74,7 @@ export const CINEMATIC = {
   dissolve: { from: 96, to: 124, final: 0.9 },
   capScale: 2,
   maxCapScale: 6,
-  fill: 2.05,
+  fill: 2.3,
   maxHalfScreen: 0.47,
   /**
    * The timing (engine/caption.ts `EggShape`, ms), made to the sound's length (`SOUND` in cinematic-sound.ts: 24.1 s, a long crescendo and its final chord
@@ -83,7 +84,7 @@ export const CINEMATIC = {
    * LEANS over the first `zoomInMs`, stays so for as long as the word is on the stage, and comes back upright over the `zoomOutMs` AFTER it has
    * gone (the whole is `eggMs`: about 24 s, begun at 13 s in; the idle hold at 30 s waits for it, `Renderer.freezeWhenIdle`).
    */
-  shape: { leaveMs: 500, gapMs: 400, enterMs: 19350, ease: 1, holdMs: 3400, exitMs: 1450, ampDeg: 2.5, zoomLevels: 1, zoomInMs: 6000, zoomOutMs: 1400, zoomCutMs: 1000, levelMs: 5500, wordLateMs: 2400 },
+  shape: { leaveMs: 500, gapMs: 400, enterMs: 19350, ease: 1, holdMs: 3400, exitMs: 1450, ampDeg: 2.5, zoomLevels: 0.05, zoomInMs: 6000, zoomOutMs: 1400, zoomCutMs: 1000, levelMs: 5500, wordLateMs: 2400 },
   /**
    * Where the word starts: the longitude its LEADING end (the west one) begins at, degrees east, in the earth's own frame, not the page's. The flight's
    * first camera is over Greece (22 E) at 0.15 earth radii, from where the equatorial shell is seen only up to about 111 E: the word starts BEYOND that
