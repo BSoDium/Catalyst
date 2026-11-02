@@ -71,15 +71,17 @@ describe("artworkCaption", () => {
 });
 
 describe("wallKpi", () => {
-  it("is a photograph's focal length, rounded, with its unit", () => {
-    expect(wallKpi({ kind: "photograph", index: 3, meta: [{ label: "Focal length", value: "6.81 mm" }] })).toEqual({ value: "6.8", unit: "mm" });
-    expect(wallKpi({ kind: "photograph", index: 3, meta: [{ label: "focal length", value: "35 mm" }] })).toEqual({ value: "35", unit: "mm" });
-    expect(wallKpi({ kind: "photograph", index: 3, meta: [{ label: "Focal length", value: "105.4mm" }] })).toEqual({ value: "105", unit: "mm" });
+  it("is a photograph's shutter speed with its unit", () => {
+    expect(wallKpi({ kind: "photograph", index: 3, meta: [{ label: "Shutter", value: "1/1767 s" }] })).toEqual({ value: "1/1767", unit: "s" });
+    expect(wallKpi({ kind: "photograph", index: 3, meta: [{ label: "shutter", value: "1/78 s" }] })).toEqual({ value: "1/78", unit: "s" });
+    expect(wallKpi({ kind: "photograph", index: 3, meta: [{ label: "Shutter", value: "2 s" }] })).toEqual({ value: "2", unit: "s" });
+    expect(wallKpi({ kind: "photograph", index: 3, meta: [{ label: "Shutter", value: "0.5s" }] })).toEqual({ value: "0.5", unit: "s" });
   });
 
-  it("is none for a photograph without a readable focal length", () => {
+  it("is none for a photograph without a readable shutter speed", () => {
     expect(wallKpi({ kind: "photograph", index: 3, meta: [] })).toBeUndefined();
-    expect(wallKpi({ kind: "photograph", index: 3, meta: [{ label: "Focal length", value: "wide" }] })).toBeUndefined();
+    expect(wallKpi({ kind: "photograph", index: 3, meta: [{ label: "Shutter", value: "fast" }] })).toBeUndefined();
+    expect(wallKpi({ kind: "photograph", index: 3, meta: [{ label: "Focal length", value: "6.81 mm" }] })).toBeUndefined();
   });
 
   it("is an artwork's number in the collection, two digits at least, with no unit", () => {
