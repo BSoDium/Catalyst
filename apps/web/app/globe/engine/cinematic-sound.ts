@@ -11,8 +11,10 @@
  * `AudioContext` (opening a device is a stall of 150 ms or more, on the main thread) is made in an idle moment after the visitor's first gesture, which
  * is also what lets the browser start it. Starting is then a source and a gain on a context that is already running.
  *
- * It plays when the browser lets it (a page nobody has touched is refused, and then it is silent), when the tab is in front AT ITS START, and unless the visitor
- * asked for none (`?mute`, or sessionStorage "cinematic-mute" = "1"). It rises over `fadeInMs`, runs as long as the interlude, and lets go over
+ * It plays when the browser lets it (a page nobody has touched is refused, and then it is silent), when the tab is in front AT ITS START, and unless sessionStorage
+ * "cinematic-mute" = "1". A visitor who has turned the page's sound off (`muted`: kept, or `?mute`) gets it all the same, MUTED (its mute node at 0): the player is then there
+ * during the interlude, as the sun's is, with the way to turn the sound back on, which is heard at once (#525: with no sound made, the player had nothing to show and the visitor
+ * no way to turn it on until the interlude was over). It rises over `fadeInMs`, runs as long as the interlude, and lets go over
  * `fadeOutMs` at its end; cut short (a gesture, the globe going away) it fades at once (`SoundHandle.fade`); a tab put behind does not stop it.
  */
 import { TRACKS, nowPlaying, readMuted } from "./now-playing";
@@ -43,11 +45,11 @@ export interface SoundHandle {
   fade(ms?: number): void;
 }
 
-/** Whether a sound may be started now: asked for none, or the tab behind, are a no (no gesture yet is the browser's: it is asked all the same). */
+/** Whether a sound may be started now: asked for none (the interlude's own switch), or the tab behind, are a no (no gesture yet is the browser's: it is asked all the same). The page's mute is NOT: it plays muted. */
 export function soundAllowed(): boolean {
   try {
     if (typeof document !== "undefined" && document.hidden) return false;
-    if (readMuted() || new URLSearchParams(location.search).has("mute") || sessionStorage.getItem("cinematic-mute") === "1") return false;
+    if (sessionStorage.getItem("cinematic-mute") === "1") return false;
     return true;
   } catch {
     return false;
@@ -138,7 +140,7 @@ function armContext(deps: SoundDeps): void {
 export function prepareSound(deps: SoundDeps = browserDeps): void {
   if (loading) return;
   try {
-    if (readMuted() || new URLSearchParams(location.search).has("mute") || sessionStorage.getItem("cinematic-mute") === "1") return;
+    if (sessionStorage.getItem("cinematic-mute") === "1") return;
     const conn = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
     if (conn?.saveData) return;
   } catch {
@@ -254,6 +256,8 @@ export function startSound(durationMs: number, deps: SoundDeps = browserDeps, al
       gain.connect(mute);
       mute.connect(c.destination);
       const m = mute;
+      // (muted from the first sample for a visitor who has the page's sound off: the player shows the sound, and turning it on is heard at once)
+      m.gain.value = readMuted() ? 0 : 1;
       const applyMute = () => {
         const t = c!.currentTime;
         const to = nowPlaying.getSnapshot().muted ? 0 : 1;
