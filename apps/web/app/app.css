@@ -2163,6 +2163,11 @@
     z-index: 1;
   }
 
+  /* The marginalia's rule, under the poem in the panel: room above it (owner, 2026-11-02: "the divider under the poem is too elevated"), so that the last verse and the rule are not a line apart. */
+  .entry[data-kind="poem"]:not([data-layout="full"]) .entry-margin {
+    margin-top: 1.5rem;
+  }
+
   /* The one rule of an entry, under the running head, is the faint hairline (owner, 2026-10-30: "make the divider fainter"), not the strong one a list's head has. */
   .entry .entry-running {
     border-bottom-color: var(--border);
@@ -2595,11 +2600,21 @@
       max-width: 58%;
     }
 
+    /* (34 px under the running head's rule, which is 1.8125 rem tall: the column starts at the grid's top, level with the running head) */
     .entry[data-kind="poem"][data-layout="full"] .entry-grid > .entry-margin {
       grid-column: 1 / span 3;
       grid-row: 1 / span 2;
       border-top: 0;
-      padding-top: 2.125rem;
+      padding-top: calc(1.8125rem + 2.125rem);
+    }
+
+    /* A poem with a cover: the picture fills the head's whole width from the rule down, so the column beside the title would lie under it (owner, 2026-11-02: "the text underneath jumps under the cover image"). It sits beside the lines instead,
+       in the text's row, over the foot of the picture where the page's colour is 92 % or more, like the lines. */
+    .entry[data-kind="poem"][data-layout="full"]:has(.entry-hero[data-hero]) .entry-grid > .entry-margin {
+      grid-row: 2;
+      padding-top: 0.375rem;
+      position: relative;
+      z-index: 1;
     }
 
     .entry[data-kind="poem"][data-layout="full"] .entry-grid > .entry-text {
