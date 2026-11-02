@@ -149,7 +149,7 @@ describe("CareerPage", () => {
   });
 
   it("sets each field as a search line: the input first (a placeholder of one space), then its label, which moves up in CSS", () => {
-    for (const [name, label] of [["name", "Name"], ["email", "Email"], ["message", "Message"]] as const) {
+    for (const [name, label] of [["name", "What should I call you?"], ["email", "Your email address, to answer you"], ["message", "What would you like to talk about?"]] as const) {
       const input = html.search(new RegExp(`<(input|textarea)[^>]*name="${name}"`));
       const tag = html.slice(input, html.indexOf(">", input));
       expect(tag).toContain('placeholder=" "');
