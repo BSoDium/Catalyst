@@ -185,6 +185,27 @@ const hHair = hatch("hair", D.hair, { gap: 5.5, w: 1.7 });
 const hShade = hatch("shade", D["chin-shadow"], { gap: 4, w: 1.4 });
 const hShirt = hatch("shirt", D.shirt, { gap: 7, w: 1.6 });
 
+// ---- The night (dark scheme only; the light drawing is untouched): a picture taken at night with the light from the upper left, like a flash: the lit side brighter, a hard-edged shadow on
+// the other, the neck and the jacket's far side in the dark, a rim of light along the near edges, the ground lit in a pool round the face. Same hatching as the rest (the generator's plain slanted
+// lines, no random numbers drawn: the drawing above is the same every run).
+const NIGHT = {
+  faceShadow: "M246 70L241 128L247 176L238 214L248 262L340 262L340 70Z",
+  faceLit: "M150 70L238 70L226 172L210 246L150 246Z",
+  neckShadow: "M214 233L280 233L280 340L222 340L228 268Z",
+  jacketShadow: "M296 250L500 380V500H312Z",
+  shirtShadow: "M222 330L280 330V500H206Z",
+};
+const nHatch = (id, d, o) => hatch(id, d, o);
+const nFaceHatch = nHatch("nface", NIGHT.faceShadow, { gap: 4.2, w: 1.3, angle: -62 });
+const nNeckHatch = nHatch("nneck", NIGHT.neckShadow, { gap: 4, w: 1.3, angle: -62 });
+const nJacketHatch = nHatch("njacket", NIGHT.jacketShadow, { gap: 5.5, w: 1.5, angle: -62 });
+const nShirtHatch = nHatch("nshirt", NIGHT.shirtShadow, { gap: 5, w: 1.4, angle: -62 });
+const nightBg = `<g class="night"><rect width="500" height="500" fill="url(#night-vignette)" /></g>`;
+const nightNeck = `<g class="night" clip-path="url(#c-neck)"><path d="${NIGHT.neckShadow}" class="n-dark" opacity=".78" />${nNeckHatch}</g>`;
+const nightJacket = `<g class="night" clip-path="url(#c-jacket)"><path d="${NIGHT.jacketShadow}" class="n-deep" opacity=".72" />${nJacketHatch}<path d="M58 318C82 293 110 282 142 276" class="n-rim" style="stroke-width:2.6" /><path d="M66 328C88 304 114 293 142 287" class="n-rim" style="stroke-width:1.6;opacity:.6" /></g>`;
+const nightShirt = `<g class="night" clip-path="url(#c-shirt)"><path d="M171 330H280V500H171Z" class="n-deep" opacity=".42" /><path d="${NIGHT.shirtShadow}" class="n-deep" opacity=".6" />${nShirtHatch}</g>`;
+const nightFace = `<g class="night" clip-path="url(#c-head)"><path d="${NIGHT.faceLit}" class="n-lit" opacity=".5" /><path d="${NIGHT.faceShadow}" class="n-dark" opacity=".74" />${nFaceHatch}</g><path d="M189 84L159 176C153 199 154 243 196 249" class="n-rim night" style="stroke-width:2.6" />`;
+
 const result = `<svg width="${500 + 2 * MX}" height="${500 + 2 * MY}" viewBox="${-MX} ${-MY} ${500 + 2 * MX} ${500 + 2 * MY}" fill="none" xmlns="http://www.w3.org/2000/svg">
   <!-- Blueprint: the same figure, redrawn as if penned by hand over a construction sketch. The picture has a frame of its own (no
        border or background is added by the page) whose lines cross at the corners. Every outline is a run of pen strokes that
@@ -207,6 +228,13 @@ const result = `<svg width="${500 + 2 * MX}" height="${500 + 2 * MY}" viewBox="$
     .hatch { stroke-linecap: round; fill: none }
     .hatch-hair { stroke: var(--hatch-hair) } .hatch-shade { stroke: var(--hatch-shade) } .hatch-shirt { stroke: var(--hatch-shirt) }
     .guides { stroke-width: 1.5; stroke-linecap: round; fill: none }
+    /* the night (dark scheme only): a flash from the upper left */
+    .night { display: none }
+    .n-rim { fill: none; stroke-linecap: round; stroke: var(--n-rim) }
+    .n-dark { fill: var(--n-dark) } .n-deep { fill: var(--n-deep) } .n-lit { fill: var(--n-lit) }
+    .hatch-nface, .hatch-nneck { stroke: var(--n-hatch) } .hatch-njacket { stroke: var(--n-hatch-jacket) } .hatch-nshirt { stroke: var(--n-hatch-shirt) }
+    @media (prefers-color-scheme: dark) { .night { display: inline }
+            :root { --n-rim: #cfe3fb; --n-dark: #1d3452; --n-deep: #050b14; --n-lit: #c4defa; --n-hatch: #0a1626; --n-hatch-jacket: #020509; --n-hatch-shirt: #000000; } }
     .g-bg { stroke: var(--g-bg) } .g-skin { stroke: var(--g-skin) } .g-jacket { stroke: var(--g-jacket) } .g-shirt { stroke: var(--g-shirt) }
   </style>
   <defs>
@@ -214,6 +242,9 @@ const result = `<svg width="${500 + 2 * MX}" height="${500 + 2 * MY}" viewBox="$
     ${clips.join("\n    ")}
     <clipPath id="c-frame"><rect x="${F}" y="${F}" width="${500 - 2 * F}" height="${500 - 2 * F}" /></clipPath>
     <clipPath id="c-face"><path d="${FACE}" /></clipPath>
+    <clipPath id="c-head"><path d="${D.head}" /></clipPath>
+    <clipPath id="c-neck"><path d="${D.neck}" /></clipPath>
+    <radialGradient id="night-vignette" gradientUnits="userSpaceOnUse" cx="200" cy="170" r="330"><stop offset="0" stop-color="#4a5566" stop-opacity="0.5" /><stop offset="0.5" stop-color="#4a5566" stop-opacity="0.16" /><stop offset="1" stop-color="#4a5566" stop-opacity="0" /></radialGradient>
     <clipPath id="c-jacket"><path d="${D.jacket}" /></clipPath>
     <clipPath id="c-shirt"><path d="${D.shirt}" /></clipPath>
     <g id="guide-lines">
@@ -223,21 +254,26 @@ const result = `<svg width="${500 + 2 * MX}" height="${500 + 2 * MY}" viewBox="$
   <g id="model">
     <g id="picture" clip-path="url(#c-frame)">
     <rect width="500" height="500" class="bg" />
+    ${nightBg}
     <g class="guides g-bg"><use href="#guide-lines" /></g>
     <path id="jacket" d="${D.jacket}" class="jacket" />
     <g class="guides g-jacket" clip-path="url(#c-jacket)"><use href="#guide-lines" /></g>
     ${pens.jacket}
+    ${nightJacket}
     <path id="neck" d="${D.neck}" class="skin" />
     ${pens.neck}
+    ${nightNeck}
     <path id="collar" d="${D.collar}" class="collar" />
     ${pens.collar}
     <path id="shirt" d="${D.shirt}" class="shirt" />
     ${hShirt}
+    ${nightShirt}
     <g class="guides g-shirt" clip-path="url(#c-shirt)"><use href="#guide-lines" /></g>
     ${pens.shirt}
     <path id="head" d="${D.head}" class="skin" />
     <g class="guides g-skin" clip-path="url(#c-face)"><use href="#guide-lines" /></g>
     ${pens.head}
+    ${nightFace}
     <path id="chin-shadow" d="${D["chin-shadow"]}" class="shade" />
     ${hShade}
     ${pens["chin-shadow"]}

@@ -20,6 +20,13 @@
     .hatch { stroke-linecap: round; fill: none }
     .hatch-hair { stroke: var(--hatch-hair) } .hatch-shade { stroke: var(--hatch-shade) } .hatch-shirt { stroke: var(--hatch-shirt) }
     .guides { stroke-width: 1.5; stroke-linecap: round; fill: none }
+    /* the night (dark scheme only): a flash from the upper left */
+    .night { display: none }
+    .n-rim { fill: none; stroke-linecap: round; stroke: var(--n-rim) }
+    .n-dark { fill: var(--n-dark) } .n-deep { fill: var(--n-deep) } .n-lit { fill: var(--n-lit) }
+    .hatch-nface, .hatch-nneck { stroke: var(--n-hatch) } .hatch-njacket { stroke: var(--n-hatch-jacket) } .hatch-nshirt { stroke: var(--n-hatch-shirt) }
+    @media (prefers-color-scheme: dark) { .night { display: inline }
+            :root { --n-rim: #cfe3fb; --n-dark: #1d3452; --n-deep: #050b14; --n-lit: #c4defa; --n-hatch: #0a1626; --n-hatch-jacket: #020509; --n-hatch-shirt: #000000; } }
     .g-bg { stroke: var(--g-bg) } .g-skin { stroke: var(--g-skin) } .g-jacket { stroke: var(--g-jacket) } .g-shirt { stroke: var(--g-shirt) }
   </style>
   <defs>
@@ -103,8 +110,15 @@
     <clipPath id="h-hair"><path d="M188 81.5L166 145C147.456 144.892 145 143 139.5 138C134 133 131.813 123.783 134 118C136.187 112.217 159.5 61.5 159.5 61.5C161.943 56.6031 166 54.5 170 54.5C174 54.5 177.673 55.8539 181.5 60.5L276 56.5C285.889 57.2831 291.5 58.5 298.5 64C305.5 69.5 310.488 76.2643 313.5 84.5L329.5 126C337.194 127.365 340 129.5 342.5 136C345 142.5 342.874 148.713 339.5 155L319.025 201.697C313.873 213.447 304.402 222.767 292.57 227.729L280 233L280.5 214C289.203 219.699 297.954 217.5 305.5 214.5C313.046 211.5 319.047 197.179 316 180C312.953 162.821 291.669 160.172 285.5 163C268.5 171.5 249.5 172.5 249.5 143.5V106C249.5 87 238.5 80 223 80.5C207.5 81 188 81.5 188 81.5Z" /></clipPath>
     <clipPath id="h-shade"><path d="M193.9 262.7L195.5 246C221.762 242.7 236.276 239.428 262 232.5C236.231 250.617 221.388 258.141 193.9 262.7Z" /></clipPath>
     <clipPath id="h-shirt"><path d="M171.5 499.5L186.5 343.5L233 340.75C251.5 339.656 263 337 270 333C277 329 278 325.5 279.5 319V338V499.5H171.5Z" /></clipPath>
+    <clipPath id="h-nface"><path d="M246 70L241 128L247 176L238 214L248 262L340 262L340 70Z" /></clipPath>
+    <clipPath id="h-nneck"><path d="M214 233L280 233L280 340L222 340L228 268Z" /></clipPath>
+    <clipPath id="h-njacket"><path d="M296 250L500 380V500H312Z" /></clipPath>
+    <clipPath id="h-nshirt"><path d="M222 330L280 330V500H206Z" /></clipPath>
     <clipPath id="c-frame"><rect x="0" y="0" width="500" height="500" /></clipPath>
     <clipPath id="c-face"><path d="M187 81.5L156.5 175C150 198.5 151.1 246 195.5 246L280 233C280 233 285.423 229.5 299.712 221.5C314 213.5 321 203 318.5 185.5C317.049 175.341 312.227 139.736 308.437 111.653C305.644 90.9565 287.409 75.8978 266.557 77.0612L187 81.5Z M279.5 338L186.5 343.5L195.5 246L280 233L279.5 338Z" /></clipPath>
+    <clipPath id="c-head"><path d="M187 81.5L156.5 175C150 198.5 151.1 246 195.5 246L280 233C280 233 285.423 229.5 299.712 221.5C314 213.5 321 203 318.5 185.5C317.049 175.341 312.227 139.736 308.437 111.653C305.644 90.9565 287.409 75.8978 266.557 77.0612L187 81.5Z" /></clipPath>
+    <clipPath id="c-neck"><path d="M279.5 338L186.5 343.5L195.5 246L280 233L279.5 338Z" /></clipPath>
+    <radialGradient id="night-vignette" gradientUnits="userSpaceOnUse" cx="200" cy="170" r="330"><stop offset="0" stop-color="#4a5566" stop-opacity="0.5" /><stop offset="0.5" stop-color="#4a5566" stop-opacity="0.16" /><stop offset="1" stop-color="#4a5566" stop-opacity="0" /></radialGradient>
     <clipPath id="c-jacket"><path d="M54.1249 311.165L0 373.5V500H500V401.276L406.747 298.198C385.751 274.989 356.519 260.902 325.284 258.939L278.5 256L142.027 266.803C108.043 269.493 76.4756 285.424 54.1249 311.165Z" /></clipPath>
     <clipPath id="c-shirt"><path d="M171.5 499.5L186.5 343.5L233 340.75C251.5 339.656 263 337 270 333C277 329 278 325.5 279.5 319V338V499.5H171.5Z" /></clipPath>
     <g id="guide-lines">
@@ -126,12 +140,76 @@
   <g id="model">
     <g id="picture" clip-path="url(#c-frame)">
     <rect width="500" height="500" class="bg" />
+    <g class="night"><rect width="500" height="500" fill="url(#night-vignette)" /></g>
     <g class="guides g-bg"><use href="#guide-lines" /></g>
     <path id="jacket" d="M54.1249 311.165L0 373.5V500H500V401.276L406.747 298.198C385.751 274.989 356.519 260.902 325.284 258.939L278.5 256L142.027 266.803C108.043 269.493 76.4756 285.424 54.1249 311.165Z" class="jacket" />
     <g class="guides g-jacket" clip-path="url(#c-jacket)"><use href="#guide-lines" /></g>
     <g id="pen-jacket" class="pen">
       <path d="M500 401.3Q454.2 349 406.7 298.2C386.5 275.3 356.9 260.4 325.3 258.9Q301.9 257 278.5 256Q210.3 262.4 142 266.8C108.2 268.7 77 284.6 54.1 311.2Q26.2 341.5 0 373.5" style="stroke-width:2.5" /><path d="M500 401.3L507.5 409.6" style="stroke:url(#fade-34);stroke-width:2.5" /><path d="M0 373.5L-22.6 399.5" style="stroke:url(#fade-35);stroke-width:2.5" />
       </g>
+    <g class="night" clip-path="url(#c-jacket)"><path d="M296 250L500 380V500H312Z" class="n-deep" opacity=".72" /><g class="hatch hatch-njacket" style="stroke-width:1.5" clip-path="url(#h-njacket)">
+      <path d="M174.4 443.4L329.6 151.4" />
+      <path d="M179.3 445.9L334.5 154" />
+      <path d="M184.1 448.5L339.4 156.6" />
+      <path d="M189 451.1L344.2 159.1" />
+      <path d="M193.8 453.7L349.1 161.7" />
+      <path d="M198.7 456.3L353.9 164.3" />
+      <path d="M203.5 458.9L358.8 166.9" />
+      <path d="M208.4 461.4L363.6 169.5" />
+      <path d="M213.2 464L368.5 172.1" />
+      <path d="M218.1 466.6L373.3 174.6" />
+      <path d="M223 469.2L378.2 177.2" />
+      <path d="M227.8 471.8L383.1 179.8" />
+      <path d="M232.7 474.3L387.9 182.4" />
+      <path d="M237.5 476.9L392.8 185" />
+      <path d="M242.4 479.5L397.6 187.5" />
+      <path d="M247.2 482.1L402.5 190.1" />
+      <path d="M252.1 484.7L407.3 192.7" />
+      <path d="M257 487.3L412.2 195.3" />
+      <path d="M261.8 489.8L417 197.9" />
+      <path d="M266.7 492.4L421.9 200.5" />
+      <path d="M271.5 495L426.8 203" />
+      <path d="M276.4 497.6L431.6 205.6" />
+      <path d="M281.2 500.2L436.5 208.2" />
+      <path d="M286.1 502.8L441.3 210.8" />
+      <path d="M290.9 505.3L446.2 213.4" />
+      <path d="M295.8 507.9L451 216" />
+      <path d="M300.7 510.5L455.9 218.5" />
+      <path d="M305.5 513.1L460.8 221.1" />
+      <path d="M310.4 515.7L465.6 223.7" />
+      <path d="M315.2 518.2L470.5 226.3" />
+      <path d="M320.1 520.8L475.3 228.9" />
+      <path d="M324.9 523.4L480.2 231.4" />
+      <path d="M329.8 526L485 234" />
+      <path d="M334.7 528.6L489.9 236.6" />
+      <path d="M339.5 531.2L494.7 239.2" />
+      <path d="M344.4 533.7L499.6 241.8" />
+      <path d="M349.2 536.3L504.5 244.4" />
+      <path d="M354.1 538.9L509.3 246.9" />
+      <path d="M358.9 541.5L514.2 249.5" />
+      <path d="M363.8 544.1L519 252.1" />
+      <path d="M368.6 546.6L523.9 254.7" />
+      <path d="M373.5 549.2L528.7 257.3" />
+      <path d="M378.4 551.8L533.6 259.8" />
+      <path d="M383.2 554.4L538.5 262.4" />
+      <path d="M388.1 557L543.3 265" />
+      <path d="M392.9 559.6L548.2 267.6" />
+      <path d="M397.8 562.1L553 270.2" />
+      <path d="M402.6 564.7L557.9 272.8" />
+      <path d="M407.5 567.3L562.7 275.3" />
+      <path d="M412.4 569.9L567.6 277.9" />
+      <path d="M417.2 572.5L572.4 280.5" />
+      <path d="M422.1 575L577.3 283.1" />
+      <path d="M426.9 577.6L582.2 285.7" />
+      <path d="M431.8 580.2L587 288.2" />
+      <path d="M436.6 582.8L591.9 290.8" />
+      <path d="M441.5 585.4L596.7 293.4" />
+      <path d="M446.3 588L601.6 296" />
+      <path d="M451.2 590.5L606.4 298.6" />
+      <path d="M456.1 593.1L611.3 301.2" />
+      <path d="M460.9 595.7L616.2 303.7" />
+      <path d="M465.8 598.3L621 306.3" />
+    </g><path d="M58 318C82 293 110 282 142 276" class="n-rim" style="stroke-width:2.6" /><path d="M66 328C88 304 114 293 142 287" class="n-rim" style="stroke-width:1.6;opacity:.6" /></g>
     <path id="neck" d="M279.5 338L186.5 343.5L195.5 246L280 233L279.5 338Z" class="skin" />
     <g id="pen-neck" class="pen">
       <path d="M279.5 338Q233 340.5 186.5 343.5" style="stroke-width:2.6" /><path d="M279.5 338L284.1 337.7" style="stroke:url(#fade-36);stroke-width:2.6" /><path d="M186.5 343.5L172.3 344.3" style="stroke:url(#fade-37);stroke-width:2.6" />
@@ -139,6 +217,42 @@
       <path d="M195.5 246Q237.5 238.1 280 233" style="stroke-width:2.8" /><path d="M195.5 246L167.4 250.3" style="stroke:url(#fade-40);stroke-width:2.8" /><path d="M280 233L312 228.1" style="stroke:url(#fade-41);stroke-width:2.8" />
       <path d="M280 233Q280.5 285.5 279.5 338" style="stroke-width:2.4" /><path d="M280 233L280 227.9" style="stroke:url(#fade-42);stroke-width:2.4" /><path d="M279.5 338L279.5 345" style="stroke:url(#fade-43);stroke-width:2.4" />
       </g>
+    <g class="night" clip-path="url(#c-neck)"><path d="M214 233L280 233L280 340L222 340L228 268Z" class="n-dark" opacity=".78" /><g class="hatch hatch-nneck" style="stroke-width:1.3" clip-path="url(#h-nneck)">
+      <path d="M156.6 314.1L219.4 196.1" />
+      <path d="M160.1 316L222.9 198" />
+      <path d="M163.6 317.9L226.4 199.8" />
+      <path d="M167.2 319.8L230 201.7" />
+      <path d="M170.7 321.7L233.5 203.6" />
+      <path d="M174.2 323.5L237 205.5" />
+      <path d="M177.8 325.4L240.5 207.3" />
+      <path d="M181.3 327.3L244.1 209.2" />
+      <path d="M184.8 329.2L247.6 211.1" />
+      <path d="M188.4 331L251.1 213" />
+      <path d="M191.9 332.9L254.7 214.9" />
+      <path d="M195.4 334.8L258.2 216.7" />
+      <path d="M199 336.7L261.7 218.6" />
+      <path d="M202.5 338.6L265.3 220.5" />
+      <path d="M206 340.4L268.8 222.4" />
+      <path d="M209.6 342.3L272.3 224.2" />
+      <path d="M213.1 344.2L275.9 226.1" />
+      <path d="M216.6 346.1L279.4 228" />
+      <path d="M220.2 347.9L282.9 229.9" />
+      <path d="M223.7 349.8L286.5 231.8" />
+      <path d="M227.2 351.7L290 233.6" />
+      <path d="M230.7 353.6L293.5 235.5" />
+      <path d="M234.3 355.5L297.1 237.4" />
+      <path d="M237.8 357.3L300.6 239.3" />
+      <path d="M241.3 359.2L304.1 241.1" />
+      <path d="M244.9 361.1L307.7 243" />
+      <path d="M248.4 363L311.2 244.9" />
+      <path d="M251.9 364.8L314.7 246.8" />
+      <path d="M255.5 366.7L318.2 248.7" />
+      <path d="M259 368.6L321.8 250.5" />
+      <path d="M262.5 370.5L325.3 252.4" />
+      <path d="M266.1 372.4L328.8 254.3" />
+      <path d="M269.6 374.2L332.4 256.2" />
+      <path d="M273.1 376.1L335.9 258" />
+    </g></g>
     <path id="collar" d="M186.5 343.5L188.5 321L234 318.25C252.5 317.132 262.813 314.235 269.5 310C276.435 305.027 278.44 301.441 279.5 294.5V315.5V338L186.5 343.5Z" class="collar" />
     <g id="pen-collar" class="pen">
       <path d="M186.5 343.5L188.5 321" style="stroke-width:3" /><path d="M186.5 343.5L185.4 355.7" style="stroke:url(#fade-44);stroke-width:3" /><path d="M188.5 321L189.2 313.4" style="stroke:url(#fade-45);stroke-width:3" />
@@ -181,6 +295,47 @@
       <path d="M263.3 553L365.8 360.2" />
       <path d="M269.5 556.3L372 363.5" />
     </g>
+    <g class="night" clip-path="url(#c-shirt)"><path d="M171 330H280V500H171Z" class="n-deep" opacity=".42" /><path d="M222 330L280 330V500H206Z" class="n-deep" opacity=".6" /><g class="hatch hatch-nshirt" style="stroke-width:1.4" clip-path="url(#h-nshirt)">
+      <path d="M112.2 455L203 284.2" />
+      <path d="M116.6 457.3L207.4 286.6" />
+      <path d="M121 459.7L211.8 288.9" />
+      <path d="M125.5 462L216.3 291.3" />
+      <path d="M129.9 464.4L220.7 293.6" />
+      <path d="M134.3 466.7L225.1 296" />
+      <path d="M138.7 469.1L229.5 298.3" />
+      <path d="M143.1 471.4L233.9 300.6" />
+      <path d="M147.5 473.8L238.3 303" />
+      <path d="M151.9 476.1L242.7 305.3" />
+      <path d="M156.4 478.5L247.2 307.7" />
+      <path d="M160.8 480.8L251.6 310" />
+      <path d="M165.2 483.2L256 312.4" />
+      <path d="M169.6 485.5L260.4 314.7" />
+      <path d="M174 487.8L264.8 317.1" />
+      <path d="M178.4 490.2L269.2 319.4" />
+      <path d="M182.9 492.5L273.7 321.8" />
+      <path d="M187.3 494.9L278.1 324.1" />
+      <path d="M191.7 497.2L282.5 326.5" />
+      <path d="M196.1 499.6L286.9 328.8" />
+      <path d="M200.5 501.9L291.3 331.2" />
+      <path d="M204.9 504.3L295.7 333.5" />
+      <path d="M209.3 506.6L300.1 335.9" />
+      <path d="M213.8 509L304.6 338.2" />
+      <path d="M218.2 511.3L309 340.6" />
+      <path d="M222.6 513.7L313.4 342.9" />
+      <path d="M227 516L317.8 345.2" />
+      <path d="M231.4 518.4L322.2 347.6" />
+      <path d="M235.8 520.7L326.6 349.9" />
+      <path d="M240.2 523.1L331 352.3" />
+      <path d="M244.7 525.4L335.5 354.6" />
+      <path d="M249.1 527.8L339.9 357" />
+      <path d="M253.5 530.1L344.3 359.3" />
+      <path d="M257.9 532.4L348.7 361.7" />
+      <path d="M262.3 534.8L353.1 364" />
+      <path d="M266.7 537.1L357.5 366.4" />
+      <path d="M271.1 539.5L361.9 368.7" />
+      <path d="M275.6 541.8L366.4 371.1" />
+      <path d="M280 544.2L370.8 373.4" />
+    </g></g>
     <g class="guides g-shirt" clip-path="url(#c-shirt)"><use href="#guide-lines" /></g>
     <g id="pen-shirt" class="pen">
       <path d="M171.5 499.5Q177.7 421.4 186.5 343.5" style="stroke-width:2.6" /><path d="M171.5 499.5L170 514.9" style="stroke:url(#fade-52);stroke-width:2.6" /><path d="M186.5 343.5L187.2 336.7" style="stroke:url(#fade-53);stroke-width:2.6" />
@@ -192,6 +347,62 @@
     <g id="pen-head" class="pen">
       <path d="M187 81.5Q172.7 128.6 156.5 175C150.2 198.6 151.2 246.8 195.5 246Q237.9 240.5 280 233C280.3 232.9 285.8 230.1 299.7 221.5C314 214 321.5 202.4 318.5 185.5C317.4 174.6 311.4 139 308.4 111.7C305.8 91.8 287.3 75.2 266.6 77.1Q226.7 78.3 187 81.5" style="stroke-width:2.6" /><path d="M187 81.5L190.4 71.2" style="stroke:url(#fade-58);stroke-width:2.6" /><path d="M187 81.5L178.1 82" style="stroke:url(#fade-59);stroke-width:2.6" />
       </g>
+    <g class="night" clip-path="url(#c-head)"><path d="M150 70L238 70L226 172L210 246L150 246Z" class="n-lit" opacity=".5" /><path d="M246 70L241 128L247 176L238 214L248 262L340 262L340 70Z" class="n-dark" opacity=".74" /><g class="hatch hatch-nface" style="stroke-width:1.3" clip-path="url(#h-nface)">
+      <path d="M136.6 212.6L242.4 13.6" />
+      <path d="M140.3 214.6L246.1 15.5" />
+      <path d="M144 216.5L249.8 17.5" />
+      <path d="M147.7 218.5L253.5 19.5" />
+      <path d="M151.4 220.5L257.2 21.5" />
+      <path d="M155.1 222.5L260.9 23.4" />
+      <path d="M158.8 224.4L264.6 25.4" />
+      <path d="M162.5 226.4L268.4 27.4" />
+      <path d="M166.2 228.4L272.1 29.3" />
+      <path d="M169.9 230.3L275.8 31.3" />
+      <path d="M173.7 232.3L279.5 33.3" />
+      <path d="M177.4 234.3L283.2 35.3" />
+      <path d="M181.1 236.3L286.9 37.2" />
+      <path d="M184.8 238.2L290.6 39.2" />
+      <path d="M188.5 240.2L294.3 41.2" />
+      <path d="M192.2 242.2L298 43.2" />
+      <path d="M195.9 244.1L301.7 45.1" />
+      <path d="M199.6 246.1L305.4 47.1" />
+      <path d="M203.3 248.1L309.1 49.1" />
+      <path d="M207 250.1L312.9 51" />
+      <path d="M210.7 252L316.6 53" />
+      <path d="M214.5 254L320.3 55" />
+      <path d="M218.2 256L324 57" />
+      <path d="M221.9 258L327.7 58.9" />
+      <path d="M225.6 259.9L331.4 60.9" />
+      <path d="M229.3 261.9L335.1 62.9" />
+      <path d="M233 263.9L338.8 64.8" />
+      <path d="M236.7 265.8L342.5 66.8" />
+      <path d="M240.4 267.8L346.2 68.8" />
+      <path d="M244.1 269.8L349.9 70.8" />
+      <path d="M247.8 271.8L353.7 72.7" />
+      <path d="M251.5 273.7L357.4 74.7" />
+      <path d="M255.2 275.7L361.1 76.7" />
+      <path d="M259 277.7L364.8 78.6" />
+      <path d="M262.7 279.6L368.5 80.6" />
+      <path d="M266.4 281.6L372.2 82.6" />
+      <path d="M270.1 283.6L375.9 84.6" />
+      <path d="M273.8 285.6L379.6 86.5" />
+      <path d="M277.5 287.5L383.3 88.5" />
+      <path d="M281.2 289.5L387 90.5" />
+      <path d="M284.9 291.5L390.7 92.4" />
+      <path d="M288.6 293.4L394.4 94.4" />
+      <path d="M292.3 295.4L398.2 96.4" />
+      <path d="M296 297.4L401.9 98.4" />
+      <path d="M299.7 299.4L405.6 100.3" />
+      <path d="M303.5 301.3L409.3 102.3" />
+      <path d="M307.2 303.3L413 104.3" />
+      <path d="M310.9 305.3L416.7 106.2" />
+      <path d="M314.6 307.2L420.4 108.2" />
+      <path d="M318.3 309.2L424.1 110.2" />
+      <path d="M322 311.2L427.8 112.2" />
+      <path d="M325.7 313.2L431.5 114.1" />
+      <path d="M329.4 315.1L435.2 116.1" />
+      <path d="M333.1 317.1L438.9 118.1" />
+    </g></g><path d="M189 84L159 176C153 199 154 243 196 249" class="n-rim night" style="stroke-width:2.6" />
     <path id="chin-shadow" d="M193.9 262.7L195.5 246C221.762 242.7 236.276 239.428 262 232.5C236.231 250.617 221.388 258.141 193.9 262.7Z" class="shade" />
     <g class="hatch hatch-shade" style="stroke-width:1.4" clip-path="url(#h-shade)">
       <path d="M172.2 264.7L210.9 191.8" />
