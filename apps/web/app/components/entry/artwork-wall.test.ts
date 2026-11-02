@@ -82,9 +82,9 @@ describe("wallKpi", () => {
     expect(wallKpi({ kind: "photograph", index: 3, meta: [{ label: "Focal length", value: "wide" }] })).toBeUndefined();
   });
 
-  it("is an artwork's number in the collection, two digits at least", () => {
-    expect(wallKpi({ kind: "artwork", index: 7, meta: [] })).toEqual({ value: "07", unit: "No." });
-    expect(wallKpi({ kind: "artwork", index: 14, meta: [] })).toEqual({ value: "14", unit: "No." });
+  it("is an artwork's number in the collection, two digits at least, with no unit", () => {
+    expect(wallKpi({ kind: "artwork", index: 7, meta: [] })).toEqual({ value: "07" });
+    expect(wallKpi({ kind: "artwork", index: 14, meta: [] })).toEqual({ value: "14" });
   });
 
   it("is drawn in the caption of a card that has one", () => {

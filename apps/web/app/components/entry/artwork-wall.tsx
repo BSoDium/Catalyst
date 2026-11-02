@@ -14,8 +14,8 @@ const EAGER = 4;
 /** `Lisbon`, `Lisbon, Paris`, or only `Brazil` (the country, when that is all that is known): where a photograph is, as its caption's second line. */
 const placeNames = (entry: EntrySummary) => entry.places.slice(0, 2).map((p) => p.name).join(", ") || entry.country?.name || undefined;
 
-/** The caption's big figure on a phone (one column: the right of the text block, as tall as it, with a small unit; owner, 2026-11-02): a photograph's focal length (`6.81 mm` is `6.8` and `mm`), an artwork's number in the collection (`04`, `No.`). None when there is nothing to show. */
-export function wallKpi(entry: Pick<EntrySummary, "kind" | "index" | "meta">): { value: string; unit: string } | undefined {
+/** The caption's big figure on a phone (one column: the right of the text block, as tall as it, with a small unit; owner, 2026-11-02): a photograph's focal length (`6.81 mm` is `6.8` and `mm`), an artwork's number in the collection (`04`, with no unit: the number says what it is; owner, "I don't know if it's 100 % useful"). None when there is nothing to show. */
+export function wallKpi(entry: Pick<EntrySummary, "kind" | "index" | "meta">): { value: string; unit?: string } | undefined {
   if (entry.kind === "photograph") {
     const focal = entry.meta.find((m) => m.label.trim().toLowerCase() === "focal length")?.value.trim();
     const match = focal?.match(/^(\d+(?:[.,]\d+)?)\s*(\S.*)$/);
@@ -23,7 +23,7 @@ export function wallKpi(entry: Pick<EntrySummary, "kind" | "index" | "meta">): {
     const n = Number(match[1]!.replace(",", "."));
     return { value: n >= 10 ? String(Math.round(n)) : String(Math.round(n * 10) / 10), unit: match[2]! };
   }
-  if (entry.kind === "artwork" && entry.index > 0) return { value: String(entry.index).padStart(2, "0"), unit: "No." };
+  if (entry.kind === "artwork" && entry.index > 0) return { value: String(entry.index).padStart(2, "0") };
   return undefined;
 }
 
@@ -117,7 +117,7 @@ export function ArtworkWall({
                   {kpi && (
                     <p className="wall-kpi">
                       <span className="wall-kpi-value">{kpi.value}</span>
-                      <span className="wall-kpi-unit">{kpi.unit}</span>
+                      {kpi.unit && <span className="wall-kpi-unit">{kpi.unit}</span>}
                     </p>
                   )}
                 </div>
