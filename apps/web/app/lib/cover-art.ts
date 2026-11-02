@@ -1,12 +1,15 @@
+import { EXTRA_PATTERNS, extraLevels, type ExtraPattern } from "./cover-patterns";
+
 /**
  * Generative cover art for entries without an image (docs/design-system.md, "Generative cover art"). A pure function of a
  * seed string: the same seed always gives the same grid, on the server and in the browser, so there is no hydration
  * mismatch and no stored asset. The result is a small grid of cells with four tonal levels (0 = empty .. 3 = ink) produced by
- * an ordered (Bayer) dither of a field, plus one or two accent marks. `coverPaths` turns it into SVG path data with
+ * one of twenty-one patterns (an ordered (Bayer) dither of a field, or drawn cells), the tones' hues (the ink's, or the seed's
+ * palettes'), a faint wash, and one or two accent marks. `coverPaths` turns it into SVG path data with
  * horizontal runs merged, which keeps the markup tiny. No randomness other than the seeded generator, no Date, no DOM.
  */
 
-export const COVER_PATTERNS = ["field", "bars", "rings", "stream", "lattice"] as const;
+export const COVER_PATTERNS = ["field", "bars", "rings", "stream", "lattice", ...EXTRA_PATTERNS] as const;
 export type CoverPattern = (typeof COVER_PATTERNS)[number];
 
 /** The palettes a cover's marks can be drawn in (`--palette-<name>`, the 600 step; docs/design-tokens.md, "Palettes"). */
@@ -25,11 +28,39 @@ export interface CoverArt {
   rows: number;
   /** Row-major, `rows * cols` entries, each in `0 .. COVER_LEVELS - 1`. */
   levels: Uint8Array;
-  /** One or two accent cells, inside the grid. */
-  marks: readonly { x: number; y: number }[];
-  /** The palette the marks are drawn in: chosen by the seed (drawn after everything else, so the grid is the same as before palettes existed) unless forced. */
+  /** One or two accent motifs, inside the grid. */
+  marks: readonly CoverMark[];
+  /** The palette the seed chose, for the tones that take a hue (and the marks, unless the scheme gives them the second); forced by the option. Chosen apart from the grid, so forcing it changes nothing else. */
   palette: CoverPalette;
+  /** The second palette (never the first), for the tones and marks of a two-hue scheme. */
+  second: CoverPalette;
+  /** The hue of each tone (index 1 .. COVER_LEVELS - 1; 0 is empty): the ink's own, the first palette (`a`) or the second (`b`). */
+  tones: readonly CoverTone[];
+  /** The palette of the marks. */
+  markPalette: CoverPalette;
+  /** A faint wash of the first palette over the whole cover: 0 none, 1 faint, 2 a little stronger. */
+  wash: 0 | 1 | 2;
 }
+
+export type CoverTone = "ink" | "a" | "b";
+export type CoverMarkShape = "square" | "bar" | "ring" | "bars";
+/** An accent motif: a cell, a bar, a hollow square or three bars, `w` by `h` cells from (`x`, `y`). */
+export interface CoverMark {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  shape: CoverMarkShape;
+}
+
+/** How the tones take their hues, and whether the cover has a wash and the marks the second hue (`tones` are for levels 1, 2 and 3). */
+const SCHEMES: readonly { tones: readonly [CoverTone, CoverTone, CoverTone]; wash: 0 | 2 | "maybe"; markSecond: boolean }[] = [
+  { tones: ["a", "ink", "a"], wash: "maybe", markSecond: false },
+  { tones: ["a", "b", "a"], wash: "maybe", markSecond: true },
+  { tones: ["ink", "ink", "a"], wash: "maybe", markSecond: false },
+  { tones: ["b", "a", "b"], wash: 2, markSecond: true },
+  { tones: ["a", "ink", "a"], wash: 2, markSecond: false },
+];
 
 export interface CoverArtOptions {
   cols?: number;
@@ -177,6 +208,27 @@ function latticeLevels(cols: number, rows: number, rng: Rng, out: Uint8Array): v
   }
 }
 
+/** Level cells of a pattern drawn by this file (the first five). */
+function baseLevels(pattern: CoverPattern, cols: number, rows: number, rng: Rng, levels: Uint8Array): void {
+  if (pattern === "stream") streamLevels(cols, rows, rng, levels);
+  else if (pattern === "lattice") latticeLevels(cols, rows, rng, levels);
+  else {
+    const field = pattern === "field" ? fieldPattern(cols, rows, rng) : pattern === "bars" ? barsPattern(cols, rows, rng) : ringsPattern(cols, rows, rng);
+    for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) levels[y * cols + x] = ditherLevel(field(x, y), x, y);
+  }
+}
+
+/** The accent motifs: a cell, a bar, a hollow square or three bars, kept inside the grid. */
+function drawMarks(rng: Rng, cols: number, rows: number): CoverMark[] {
+  const shapes: readonly CoverMarkShape[] = ["square", "bar", "ring", "bars"];
+  return Array.from({ length: 1 + Math.floor(rng() * 2) }, () => {
+    const shape = shapes[Math.floor(rng() * shapes.length)]!;
+    const w = Math.min(cols, shape === "bar" ? 6 + Math.floor(rng() * 8) : shape === "bars" ? 7 : 3 + Math.floor(rng() * 5));
+    const h = Math.min(rows, shape === "bar" ? 1 + Math.floor(rng() * 2) : shape === "bars" ? 5 : w);
+    return { x: Math.floor(rng() * (cols - w + 1)), y: Math.floor(rng() * (rows - h + 1)), w, h, shape };
+  });
+}
+
 export function coverArt(seed: string, options: CoverArtOptions = {}): CoverArt {
   const cols = clampCells(options.cols, COVER_LIMITS.defaultCols);
   const rows = clampCells(options.rows, COVER_LIMITS.defaultRows);
@@ -186,19 +238,42 @@ export function coverArt(seed: string, options: CoverArtOptions = {}): CoverArt 
   const pattern = options.pattern ?? COVER_PATTERNS[Math.floor(roll * COVER_PATTERNS.length)]!;
   const levels = new Uint8Array(cols * rows);
 
-  if (pattern === "stream") streamLevels(cols, rows, rng, levels);
-  else if (pattern === "lattice") latticeLevels(cols, rows, rng, levels);
-  else {
-    const field = pattern === "field" ? fieldPattern(cols, rows, rng) : pattern === "bars" ? barsPattern(cols, rows, rng) : ringsPattern(cols, rows, rng);
-    for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) levels[y * cols + x] = ditherLevel(field(x, y), x, y);
+  if ((EXTRA_PATTERNS as readonly string[]).includes(pattern)) {
+    const dither = (field: (x: number, y: number) => number) => {
+      for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) levels[y * cols + x] = ditherLevel(field(x, y), x, y);
+    };
+    extraLevels(pattern as ExtraPattern, { cols, rows, rng, levels, dither });
+  } else baseLevels(pattern, cols, rows, rng, levels);
+
+  // The form and the look come from generators of their own: a forced pattern or palette changes nothing else.
+  const form = seededRandom(hashSeed(`${seed}|form`));
+  // (one in five is turned up a tone, the empty ground the lightest and the ink the empty: a permutation, so a cover is never made flat by it)
+  if (form() < 0.22) for (let i = 0; i < levels.length; i++) levels[i] = (levels[i]! + 1) % COVER_LEVELS;
+  // (one in five is mirrored left to right, when its left half is not one flat tone: that would make the whole of it flat)
+  if (form() < 0.2) {
+    const half = Math.floor(cols / 2);
+    const left = new Set<number>();
+    for (let y = 0; y < rows; y++) for (let x = 0; x < half; x++) left.add(levels[y * cols + x]!);
+    if (left.size > 1) for (let y = 0; y < rows; y++) for (let x = 0; x < half; x++) levels[y * cols + (cols - 1 - x)] = levels[y * cols + x]!;
   }
 
-  const markCount = 1 + Math.floor(rng() * 2);
-  const marks = Array.from({ length: markCount }, () => ({ x: Math.floor(rng() * cols), y: Math.floor(rng() * rows) }));
-  // Drawn last and always consumed: the grid and the marks above are exactly what they were before the palettes (and a forced palette changes nothing else).
-  const paletteRoll = rng();
+  const look = seededRandom(hashSeed(`${seed}|look`));
+  const paletteRoll = look();
   const palette = options.palette ?? COVER_PALETTES[Math.floor(paletteRoll * COVER_PALETTES.length)]!;
-  return { seed, pattern, cols, rows, levels, marks, palette };
+  const secondRoll = look();
+  const second = COVER_PALETTES[(COVER_PALETTES.indexOf(palette) + 1 + Math.floor(secondRoll * (COVER_PALETTES.length - 1))) % COVER_PALETTES.length]!;
+  const scheme = SCHEMES[Math.floor(look() * SCHEMES.length)]!;
+  const washRoll = look();
+  const wash = scheme.wash === "maybe" ? (washRoll < 0.3 ? 1 : 0) : scheme.wash;
+  const marks = drawMarks(look, cols, rows);
+  return { seed, pattern, cols, rows, levels, marks, palette, second, tones: ["ink", ...scheme.tones], markPalette: scheme.markSecond ? second : palette, wash };
+}
+
+/** A motif's path: a rectangle, a hollow one (an outer rectangle and an inner one the other way round), or three bars two cells apart. */
+function markPath({ x, y, w, h, shape }: CoverMark): string {
+  if (shape === "ring" && w > 2 && h > 2) return `M${x} ${y}h${w}v${h}h-${w}zM${x + 1} ${y + 1}v${h - 2}h${w - 2}v${2 - h}z`;
+  if (shape === "bars") return [0, 2, 4].map((i) => (y + i < y + h ? `M${x} ${y + i}h${w}v1h-${w}z` : "")).join("");
+  return `M${x} ${y}h${w}v${h}h-${w}z`;
 }
 
 /**
@@ -217,6 +292,6 @@ export function coverPaths(art: CoverArt): { levels: string[]; marks: string } {
       x = end;
     }
   }
-  const marks = art.marks.map((m) => `M${m.x} ${m.y}h1v1h-1z`).join("");
+  const marks = art.marks.map(markPath).join("");
   return { levels, marks };
 }
