@@ -155,6 +155,7 @@ export function Navbar({ heroResting: forced, hasCareer: forcedCareer }: NavbarP
           data-slot="site-header"
           data-career={withCareer ? "" : undefined}
           data-globe={onGlobe ? "" : undefined}
+          data-beside={beside ? "" : undefined}
           className={cn(
             "@container pointer-events-none fixed top-0 right-0 left-0 z-40",
             "md:transition-[right] md:duration-(--duration-slow) md:ease-(--ease-standard)",

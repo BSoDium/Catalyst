@@ -3607,6 +3607,10 @@ body:not(:has([data-slot="site-header"])) .np-root {
   body:not(:has([data-slot="site-header"])) .np-root {
     top: var(--np-inset);
   }
+  /* A panel beside the globe (#489) narrows the header to the left half, where it is the selector at the left edge (or links centred in the half): the corner is the header's again, so the player takes the narrow place, under it */
+  body:has([data-slot="site-header"][data-beside]) .np-root {
+    top: calc(var(--navbar-height) + 0.75rem);
+  }
 }
 /* One soft plate behind the disc AND the words (owner, 2026-10-29: a bigger, softer one than a blurred rectangle round the text): a radial gradient of the page's colour, opaque over the middle and gone at its edge, so there is no box and no blur to pay for; the words still read over the globe's lines */
 .np {
@@ -3668,6 +3672,10 @@ body:not(:has([data-slot="site-header"])) .np-root {
 @media (min-width: 1280px) {
   .np-text {
     max-width: max(11rem, calc((100vw - 816px) / 2 - 5rem));
+  }
+  /* (under the header the words have the width of the screen, as on a narrow one) */
+  body:has([data-slot="site-header"][data-beside]) .np-text {
+    max-width: 100%;
   }
 }
 @supports not (background: color-mix(in srgb, red 50%, transparent)) {
