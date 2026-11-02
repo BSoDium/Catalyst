@@ -3340,10 +3340,10 @@
     }
 
     .wall {
-      --veil-pad-x: 8rem;
-      --veil-pad-top: 5rem;
-      --veil-pad-bottom: 9rem;
-      --veil-blur: 24px;
+      --veil-pad-x: 9rem;
+      --veil-pad-top: 6rem;
+      --veil-pad-bottom: 11rem;
+      --veil-blur: 40px;
     }
 
     .wall-caption {
