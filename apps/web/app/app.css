@@ -6663,7 +6663,17 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   }
 
   .contact-control[data-field="message"] {
-    margin-top: 1.875rem;
+    /* room for the label above the box (its two lines, the plate's padding and the gap of the globe's labels) and then some air after the email field (owner, 2026-11-02) */
+    margin-top: 3.5rem;
+  }
+
+  /* the rhythm of the form: close under the lead and between the name and the email (their floating labels already hold the room above), more before the message */
+  .contact-lead + .contact-field {
+    margin-top: -0.625rem;
+  }
+
+  .contact-field:has([data-field="email"]) {
+    margin-top: -0.625rem;
   }
 
   .contact-control[data-field="message"] .contact-textarea {
@@ -6678,9 +6688,10 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
    */
   .contact-control[data-field="message"] .contact-tag {
     position: absolute;
-    bottom: 100%;
+    /* the globe's label: a plate of 6 x 3 px with a clear gap to the box's outline (LABEL_TYPE.boxGap and the outline's own thickness, more here for the bigger type) */
+    bottom: calc(100% + 6px);
     left: 0;
-    padding: 3px 6px 7px;
+    padding: 3px 6px;
     background: var(--background);
     color: var(--foreground);
     font-family: var(--font-mono);
