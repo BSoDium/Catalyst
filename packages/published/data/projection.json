@@ -1,5 +1,9 @@
 {
   "schemaVersion": 1,
+  "dataVersion": {
+    "commit": "0a6495db16378473c350d170216c9256e4c80b22",
+    "date": "2026-11-02"
+  },
   "places": [
     {
       "slug": "agadir",
@@ -10123,6 +10127,14 @@
       {
         "label": "ArtStation",
         "url": "https://artstation.com/bsodium"
+      },
+      {
+        "label": "GitLab",
+        "url": "https://gitlab.com/BSoDium"
+      },
+      {
+        "label": "ResearchGate",
+        "url": "https://www.researchgate.net/profile/Elliot-Negrel-Jerzy"
       }
     ]
   }
