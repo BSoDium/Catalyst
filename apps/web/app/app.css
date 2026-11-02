@@ -6216,6 +6216,23 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     --ds-button-line: color-mix(in srgb, var(--foreground) 82%, var(--background));
   }
 
+  /* The arrow points right at rest and turns down, a quarter turn, while the button is hovered, focused by the keyboard or pressed (#528) */
+  .career-reach .ds-button .ui-icon {
+    transition: transform 280ms var(--ease-standard);
+  }
+
+  .career-reach .ds-button:hover .ui-icon,
+  .career-reach .ds-button:focus-visible .ui-icon,
+  .career-reach .ds-button:active .ui-icon {
+    transform: rotate(90deg);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .career-reach .ds-button .ui-icon {
+      transition: none;
+    }
+  }
+
   .career-reach .ds-button[data-variant]:active {
     --ds-button-bg: color-mix(in srgb, var(--foreground) 68%, var(--background));
     --ds-button-line: color-mix(in srgb, var(--foreground) 68%, var(--background));
