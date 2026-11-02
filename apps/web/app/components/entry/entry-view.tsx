@@ -252,7 +252,7 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
       className={cn("entry mx-auto w-full min-w-0", full ? "max-w-[100rem] px-4 pt-3 pb-20 md:px-8" : "px-6 pt-2 pb-10")}
     >
       <div className="entry-grid">
-        <header className={cn("entry-head flex min-w-0 flex-col", poem ? "gap-5" : "gap-0")}>
+        <header className={cn("entry-head flex min-w-0 flex-col", poem && !heroSrc ? "gap-5" : "gap-0")}>
           {backTo && !backTo.list && (
             <Link
               to={backTo.href}
