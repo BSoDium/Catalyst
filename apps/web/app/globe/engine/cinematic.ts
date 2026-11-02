@@ -111,9 +111,9 @@ export const CINEMATIC = {
   /**
    * The studio's small line under the globe, a parody of its own ("A COMCAST COMPANY"), set in the page's light sans in wide-spaced capitals: it comes in over `inMs` once the
    * word has landed and goes with its exit over `outMs`. `gap`: how far under the planet's centre its middle is, in planet radii (the studio's is 1.24); `size`: its height, planet
-   * radii, at least `minPx`; `tracking`: its letter spacing, em.
+   * radii, at least `minPx` and at most `maxPx` (owner, 2026-11-02: "smaller, or reach a max size": the final shot is closer now, and the line grew with the planet); `tracking`: its letter spacing, em.
    */
-  tagline: { text: "This is a parody, please don't sue me", inMs: 700, outMs: 700, gap: 1.24, size: 0.062, minPx: 9, tracking: 0.28 },
+  tagline: { text: "This is a parody, please don't sue me", inMs: 700, outMs: 700, gap: 1.24, size: 0.045, minPx: 8, maxPx: 10, tracking: 0.28 },
   /** The places' lights come up through the dither when the word lands (the chord), over `inMs`, and go over `outMs`. */
   city: { inMs: 240, outMs: 500 },
   /** The side the word comes in from: EAST (1), as the studio's does. */
