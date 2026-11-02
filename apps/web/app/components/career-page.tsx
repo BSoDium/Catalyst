@@ -67,9 +67,9 @@ export function CareerPage({ career, places = [] }: { career: PublishedCareer; p
             )}
             <p className="career-reach print:hidden">
               <Button asChild variant="secondary">
-                <a href={`#${CONTACT_ID}`} data-slot="career-contact-link">
+                <a href={`#${CONTACT_ID}`} data-slot="career-contact-link" onClick={scrollToContact}>
                   Get in touch
-                  <Icon name="arrow-down" size="inline" aria-hidden="true" />
+                  <Icon name="arrow-right" size="inline" aria-hidden="true" />
                 </a>
               </Button>
             </p>
@@ -170,6 +170,21 @@ export function CareerPage({ career, places = [] }: { career: PublishedCareer; p
       </div>
     </main>
   );
+}
+
+/**
+ * The head's button to the form (#528): a plain click scrolls there smoothly (instantly under reduced motion), moves the focus to the section (without a second jump) and puts the
+ * address in the bar; any other click (a modifier, a middle button) and a page without the form are the link's own. The arrow at its end is turned down by the stylesheet while the button is hovered or pressed.
+ */
+function scrollToContact(e: React.MouseEvent<HTMLAnchorElement>) {
+  if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  const target = document.getElementById(CONTACT_ID);
+  if (!target) return;
+  e.preventDefault();
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  target.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
+  history.replaceState(null, "", `#${CONTACT_ID}`);
+  target.focus({ preventScroll: true });
 }
 
 /**
