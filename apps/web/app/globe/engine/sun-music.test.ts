@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MUTE_KEY, NowPlaying, pillVisible } from "./now-playing";
-import { ROTATE_AFTER_SEC, SUN_MUSIC, SUN_TRACKS, SunMusic, fadeCurve, loopPosition, loopable, shuffled, sunInView, type MusicDeps } from "./sun-music";
+import { ROTATE_AFTER_SEC, SUN_MUSIC, activeSunTrack, SUN_TRACKS, SunMusic, fadeCurve, loopPosition, loopable, shuffled, sunInView, type MusicDeps } from "./sun-music";
 
 const SR = 1000;
 const LOOP = 100; // seconds, after the crossfade
@@ -141,6 +141,7 @@ describe("the sun's music", () => {
     vi.stubGlobal("location", { search: "" });
     vi.stubGlobal("navigator", {});
     vi.stubGlobal("requestIdleCallback", (f: () => void) => f());
+    vi.stubGlobal("sessionStorage", { getItem: () => null, setItem: () => undefined }); // (the piece a tab keeps is not shared by the tests)
   });
   afterEach(() => {
     vi.useRealTimers();
@@ -292,6 +293,27 @@ describe("the sun's music", () => {
     expect(sources).toHaveLength(1);
   });
 
+  it("keeps the player on screen, on the same piece, while the file of a visitor who unmutes after a reload downloads (#502)", async () => {
+    store.set(MUTE_KEY, "1");
+    const f = fakes();
+    let release = () => {};
+    f.deps.fetchBytes = () => new Promise<ArrayBuffer>((r) => (release = () => r(new ArrayBuffer(8))));
+    const { m, prefs, sources } = await start(f);
+    m.setGlare(0.5);
+    const before = prefs.getSnapshot().track?.id;
+    m.setMuted(false);
+    await settle();
+    // (the file is on its way: the player does not go, and come back when it is there)
+    expect(m.getSnapshot().status).toBe("loading");
+    expect(pillVisible(prefs.getSnapshot())).toBe(true);
+    expect(prefs.getSnapshot().track?.id).toBe(before);
+    release();
+    await settle();
+    expect(sources).toHaveLength(1);
+    expect(prefs.getSnapshot()).toMatchObject({ state: "playing", muted: false });
+    expect(prefs.getSnapshot().track?.id).toBe(before);
+  });
+
   it("a sun on the edge of the planet's limb does not make it stutter", async () => {
     const { m, sources, curves } = await start();
     m.setGlare(0.5);
@@ -363,6 +385,7 @@ describe("several pieces (#389)", () => {
     vi.stubGlobal("location", { search: "" });
     vi.stubGlobal("navigator", {});
     vi.stubGlobal("requestIdleCallback", (f: () => void) => f());
+    vi.stubGlobal("sessionStorage", { getItem: () => null, setItem: () => undefined }); // (the piece a tab keeps is not shared by the tests)
   });
   afterEach(() => {
     vi.useRealTimers();
@@ -413,6 +436,20 @@ describe("several pieces (#389)", () => {
     m.setGlare(0.5);
     ctx.currentTime = 1;
     expect(prefs.getSnapshot().track?.id).toBe(SUN_TRACKS.find((t) => t.url === first)!.track.id);
+  });
+
+  it("a reload goes on with the piece the tab had, not a new draw (#502); a new tab draws its own", () => {
+    const kept = new Map<string, string>();
+    vi.stubGlobal("sessionStorage", { getItem: (k: string) => kept.get(k) ?? null, setItem: (k: string, v: string) => void kept.set(k, v) });
+    const f = fakes();
+    void new SunMusic({ ...f.deps, random: () => 0 }, new NowPlaying());
+    const id = activeSunTrack().track.id;
+    // (a reload: the other draw would have put another piece first)
+    void new SunMusic({ ...f.deps, random: () => 0.99 }, new NowPlaying());
+    expect(activeSunTrack().track.id).toBe(id);
+    kept.clear();
+    void new SunMusic({ ...f.deps, random: () => 0.99 }, new NowPlaying());
+    expect(activeSunTrack().track.id).not.toBe(id);
   });
 
   it("keeps the piece when the sun returns before it has been heard for a while", async () => {
