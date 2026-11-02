@@ -164,7 +164,7 @@ export function CareerPage({ career, places = [] }: { career: PublishedCareer; p
           </ul>
         </footer>
       )}
-      {/* After the socials in the document, so that wrapped to one column the socials come first and the tab order is the order seen; from 80 rem the pair is two columns, the socials at the left and the form at the right. */}
+      {/* After the socials in the document, so that wrapped to one column the socials come first and the tab order is the order seen; from 80 rem the pair is two columns, the form at the left and the socials at the right (the grid places them: #506). */}
       <ContactForm />
       </div>
     </main>
