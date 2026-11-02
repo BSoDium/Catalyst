@@ -402,10 +402,18 @@ export class RouteLayer {
     if (this.material) this.material.uniforms.uPixel!.value = [2 / bufW, -2 / bufH];
   }
 
+  /** The planet's night (`GlobeScene.setNight`): the paths take its light, and the ground they fade toward is its ground. */
+  setNight(night: number, x: number, y: number, z: number) {
+    if (!this.material) return;
+    this.material.uniforms.uNight!.value = night;
+    this.material.uniforms.uSunN!.value = [x, y, z];
+  }
+
   applyTheme(t: GlobeTheme) {
     this.ramp = t.ramp;
     if (!this.material) return;
     this.material.uniforms.uPage!.value.setRGB(...t.background);
+    this.material.uniforms.uFlip!.value = t.scheme === "dark" ? 0 : 1;
     // The paths' colours for this scheme (paths/trail.ts): a theme change is these uniforms only, the geometry is untouched.
     const trail = this.material.uniforms.uTrail!.value as { setRGB(r: number, g: number, b: number): void }[];
     for (let k = 0; k < trail.length; k++) {

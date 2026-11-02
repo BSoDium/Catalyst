@@ -60,6 +60,16 @@ export function dotCell(cell: number): number {
 export const TICK_FROM = 5.5;
 /** How far toward the page colour (0..1, solid) the paths that are not selected go on the whole globe (`farOf` 1): from space they are a faint trace, not a line (#459: one pixel is a lot on a planet this small). */
 export const FAR_TONE = 0.6;
+/** How far toward the page a path that is not selected goes on the DARK page's night side (the light page's goes darker, as the ground does, `NIGHT.shadow`): a path takes the planet's light (owner, 2026-11-02). */
+export const PATH_NIGHT_DIM = 0.35;
+/** On the light page the ground paths are inked darker: a multiplier of their colour (the trail's blue and violet, kept). */
+export const PATH_LIGHT_INK = 0.6;
+/** Over the light page's night side (a mid-grey, dithered ground a mid-tone line sinks into) the ground paths are inked darker still. */
+export const PATH_NIGHT_INK = 0.4;
+/** On the light page the far fade (`FAR_TONE`) is this much less strong: a path that fades toward a white page has no contrast. */
+export const PATH_LIGHT_FAR = 0.5;
+/** The light page's arcs alternate their dark dots with pale ones: the trail's own colour at full brightness (its brightest channel at 1), lifted toward white by this much (1 is white). */
+export const ARC_PALE = 0.6;
 export const FAR_FROM = 2.6;
 export const FAR_TO = 4.2;
 export function farOf(zoom: number): number {
