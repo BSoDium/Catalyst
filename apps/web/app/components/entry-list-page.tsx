@@ -13,6 +13,13 @@ import { SITE_NAME } from "~/lib/site";
 /** Tags shown before "more": the rest sit one press away (the selected tag is always shown). */
 const TAGS_SHOWN = 10;
 
+/** What continues a wall under its banner: the photographs' and the artworks' have one, the other lists none. */
+function wallEnd(kind: ContentKind) {
+  if (kind === "photograph") return { filler: GALLERY_FILLER, end: <GalleryEnd /> };
+  if (kind === "artwork") return { filler: ARTWORK_FILLER, end: <GalleryEnd kind="artwork" /> };
+  return {};
+}
+
 /**
  * `/software`, `/articles`, `/artworks`, `/poetry`, `/photography`: the section's front page, set as the contents page of a journal (docs/design-system.md,
  * "Entry pages", "Lists"): a running head (the journal's name, the owner's, at the left; the folio, the plain count, at the right) over ONE
@@ -78,7 +85,7 @@ export function EntryListPage({ kind, items }: { kind: ContentKind; items: Entry
               label={KIND_PLURALS[kind]}
               kind={kind}
               linkState={listBackState(kind, search)}
-              {...(kind === "photograph" ? { filler: GALLERY_FILLER, end: <GalleryEnd /> } : kind === "artwork" ? { filler: ARTWORK_FILLER, end: <GalleryEnd kind="artwork" /> } : {})}
+              {...wallEnd(kind)}
             />
           </>
         ) : (

@@ -25,23 +25,29 @@ export const ARTWORK_END_LINES = [
   "A wall only holds so much. The studies, the sketches and the unfinished ones are on ArtStation.",
 ] as const;
 
+/** What each wall says at its foot: its title, the line shown, where the rest is and what the link says. */
+const ENDS = {
+  photograph: { title: GALLERY_END_TITLE, text: GALLERY_END_LINES[0], href: PEXELS_URL, link: "More photographs on Pexels" },
+  artwork: { title: ARTWORK_END_TITLE, text: ARTWORK_END_LINES[0], href: ARTSTATION_URL, link: "More artworks on ArtStation" },
+} as const;
+
 /**
  * The foot of the photography wall (issue #336): a banner laid over the last rows of the wall, which are generic photographs faded into the
  * page (`.wall-end` and `.gallery-end` in app.css; the wall draws the filler, see `lib/gallery-filler.ts`). A few words and a link to the rest
  * of the owner's photographs. Temporary: it goes when the gallery's storage moves to the owner's own bucket.
  */
 export function GalleryEnd({ className, kind = "photograph" }: { className?: string; kind?: "photograph" | "artwork" }) {
-  const art = kind === "artwork";
+  const end = ENDS[kind];
   return (
     <aside data-slot="gallery-end" aria-label="End of the gallery" className={cn("gallery-end", className)}>
       <div className="gallery-end-copy">
         <p className="gallery-end-eyebrow type-meta">End of the gallery</p>
-        <p className="gallery-end-title">{art ? ARTWORK_END_TITLE : GALLERY_END_TITLE}</p>
-        <p className="gallery-end-text">{art ? ARTWORK_END_LINES[0] : GALLERY_END_LINES[0]}</p>
+        <p className="gallery-end-title">{end.title}</p>
+        <p className="gallery-end-text">{end.text}</p>
       </div>
       <Button asChild variant="secondary" className="gallery-end-link">
-        <a href={art ? ARTSTATION_URL : PEXELS_URL} target="_blank" rel="noopener noreferrer">
-          {art ? "More artworks on ArtStation" : "More photographs on Pexels"}
+        <a href={end.href} target="_blank" rel="noopener noreferrer">
+          {end.link}
           <Icon name="arrow-up-right" size="inline" aria-hidden="true" />
           <span className="sr-only"> (opens in a new tab)</span>
         </a>

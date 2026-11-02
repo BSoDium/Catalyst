@@ -20,10 +20,8 @@ const NOUNS: Partial<Record<ContentKind, Record<NoticeLanguage, string>>> = {
 };
 
 /** What is welcome of a work, said by what it is: a text can be quoted; a picture cannot (a short quotation of a photograph means nothing), it can be linked or shown small with a credit. */
-const WELCOME: Partial<Record<ContentKind, Record<NoticeLanguage, string>>> = {
-  photograph: { en: "a link or a small preview with credit is welcome", fr: "un lien ou un aperçu réduit avec mention de l'auteur est bienvenu" },
-  artwork: { en: "a link or a small preview with credit is welcome", fr: "un lien ou un aperçu réduit avec mention de l'auteur est bienvenu" },
-};
+const PICTURE_WELCOME: Record<NoticeLanguage, string> = { en: "a link or a small preview with credit is welcome", fr: "un lien ou un aperçu réduit avec mention de l'auteur est bienvenu" };
+const WELCOME: Partial<Record<ContentKind, Record<NoticeLanguage, string>>> = { photograph: PICTURE_WELCOME, artwork: PICTURE_WELCOME };
 
 export interface CopyrightNotice {
   /** The whole line: `© 2026 Elliot Négrel-Jerzy. All rights reserved. Please do not ...` */
