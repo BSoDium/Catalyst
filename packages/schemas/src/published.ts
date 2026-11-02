@@ -717,6 +717,8 @@ export const careerEducationSchema = z
   .object({
     id: careerId,
     institution: careerText(CAREER_TEXT.institution),
+    /** Optional: the institution's own site (https, as a role's `orgUrl`): the page makes the name a link to it. */
+    institutionUrl: careerUrl.optional(),
     /** Optional: the school's logo, as a role's. */
     logo: careerImageSchema.optional(),
     programme: careerText(CAREER_TEXT.programme),

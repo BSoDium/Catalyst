@@ -335,12 +335,21 @@ function RoleItem({ role, placeKnown, asOf }: { role: PublishedCareerRole; place
 }
 
 function EducationItem({ item, placeKnown, asOf }: { item: PublishedCareerEducation; placeKnown: boolean; asOf: string }) {
+  const institutionUrl = item.institutionUrl ? safeExternalUrl(item.institutionUrl) : null;
   return (
     <li id={item.id} data-slot="career-education-item" className="career-item">
       <Marker item={item} name={item.institution} icon={careerIcon(item.programme, "education")} />
       <div className="career-head">
         <div className="career-top">
-          <h3 className="career-org">{item.institution}</h3>
+          <h3 className="career-org">
+            {institutionUrl ? (
+              <a href={institutionUrl} rel="noopener noreferrer" className="career-org-link">
+                {item.institution}
+              </a>
+            ) : (
+              item.institution
+            )}
+          </h3>
         </div>
         <p className="career-role" title={item.level ? `${item.programme} · ${item.level}` : item.programme}>
           {item.programme}

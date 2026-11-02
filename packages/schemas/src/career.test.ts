@@ -256,7 +256,9 @@ describe("career (an optional singleton document, additive in schema version 1)"
       for (const url of ["http://example.org", "mailto:a@example.org", "javascript:alert(1)", "https://user:pw@example.org", "https://exa mple.org", "/relative", "tel:+33123456789"]) {
         bad(career({ links: [{ label: "L", url }] }));
         bad(career({ roles: [role({ orgUrl: url })] }));
+        bad(career({ education: [{ id: "e", institution: "I", programme: "P", start: "2020", end: "2021", institutionUrl: url }] }));
       }
+      ok(career({ education: [{ id: "e", institution: "I", programme: "P", start: "2020", end: "2021", institutionUrl: "https://example.org" }] }));
     });
     it("has no HTML interpretation: markup is data, displayed as written", () => {
       expect(parse(career({ summary: "Uses <b>bold</b> text." })).career!.summary).toBe("Uses <b>bold</b> text.");
@@ -324,6 +326,7 @@ describe("career (an optional singleton document, additive in schema version 1)"
         education: n(CAREER_LIMITS.education).map((i) => ({
           id: `${"e".repeat(CAREER_TEXT.id - 2)}${String(i).padStart(2, "0")}`,
           institution: f(CAREER_TEXT.institution),
+          institutionUrl: url(`i${i}`),
           programme: f(CAREER_TEXT.programme),
           level: f(CAREER_TEXT.level),
           start: "2000-01",
@@ -362,7 +365,7 @@ describe("career (an optional singleton document, additive in schema version 1)"
       // every optional key of every object is there
       const shape = (o: object) => Object.keys(o).sort();
       expect(shape(max.roles[0]!)).toEqual(["end", "employment", "highlights", "id", "location", "org", "orgUrl", "place", "skills", "start", "title"].sort());
-      expect(shape(max.education[0]!)).toEqual(["end", "id", "institution", "level", "location", "note", "place", "programme", "start"].sort());
+      expect(shape(max.education[0]!)).toEqual(["end", "id", "institution", "institutionUrl", "level", "location", "note", "place", "programme", "start"].sort());
       expect(shape(max)).toEqual(["availability", "education", "languages", "links", "portrait", "roles", "skills", "summary", "title", "updated"]);
     });
   });
