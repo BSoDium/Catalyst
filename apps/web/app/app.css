@@ -6662,23 +6662,64 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
       repeating-linear-gradient(to bottom, var(--contact-line) 0 var(--dash), transparent var(--dash) calc(var(--dash) + var(--gap))) top right / var(--t) 100% no-repeat;
   }
 
-  .contact-control[data-field="message"] .contact-textarea {
-    min-height: 11rem;
-    padding: 1.75rem 1rem 0.75rem;
+  .contact-control[data-field="message"] {
+    margin-top: 1.875rem;
   }
 
+  .contact-control[data-field="message"] .contact-textarea {
+    min-height: 10rem;
+    padding: 0.875rem 1rem;
+  }
+
+  /*
+   * The message's label is a MAP LABEL's (the bounding boxes' names, `.map-label`, LABEL_TYPE: the mono type at 14 px, weight 500, a plate with 6 px by 3 px of padding): anchored to the box's top left, ON TOP of it, the text
+   * left aligned and FLUSH with the box's edge (the plate's padding hangs outside it), on an opaque plate of the page's colour; when the field is selected the label is INVERTED, the ink as the plate and the page's colour
+   * as the text, and the plate is flush with the box (it moves in by its padding, as the selected map label's does). It does not float or scale like the other fields' placeholders (owner, 2026-11-02).
+   */
   .contact-control[data-field="message"] .contact-label {
-    left: 1rem;
-    top: 1rem;
-    max-width: calc(100% - 2rem);
+    bottom: 100%;
+    top: auto;
+    left: calc(-1 * 6px);
+    max-width: none;
+    padding: 3px 6px;
+    overflow: visible;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    line-height: 18px;
+    transform: none;
+  }
+
+  .contact-field .contact-control[data-field="message"]:focus-within .contact-input:focus ~ .contact-label,
+  .contact-field .contact-control[data-field="message"]:focus-within .contact-label {
+    left: 0;
+    background: var(--foreground);
+    color: var(--background);
+  }
+
+  .contact-control[data-field="message"] .contact-textarea:focus ~ .contact-label,
+  .contact-control[data-field="message"] .contact-textarea:not(:placeholder-shown) ~ .contact-label {
+    transform: none;
+  }
+
+  .contact-field[data-invalid="true"] .contact-control[data-field="message"] .contact-label {
+    color: var(--contact-error);
+  }
+
+  .contact-field[data-invalid="true"] .contact-control[data-field="message"]:focus-within .contact-input:focus ~ .contact-label,
+  .contact-field[data-invalid="true"] .contact-control[data-field="message"]:focus-within .contact-label {
+    color: var(--background);
   }
 
   .contact-field[data-invalid="true"] .contact-control {
     --contact-line: var(--contact-error);
   }
 
-  .contact-field[data-invalid="true"] .contact-input ~ .contact-label,
-  .contact-field[data-invalid="true"] .contact-control:focus-within .contact-input:focus ~ .contact-label {
+  .contact-field[data-invalid="true"] .contact-control:not([data-field="message"]) .contact-input ~ .contact-label,
+  .contact-field[data-invalid="true"] .contact-control:not([data-field="message"]):focus-within .contact-input:focus ~ .contact-label {
     color: var(--contact-error);
   }
 
