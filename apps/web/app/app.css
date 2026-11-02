@@ -3282,6 +3282,8 @@
     z-index: 1;
     align-self: end;
     height: auto;
+    /* inside the picture's outline (its hairline is drawn on the inside of its edge): the ramp dims the picture and never the outline (owner, 2026-11-02) */
+    margin: var(--hairline);
     /* The overlay is the foot of the picture under a soft ramp into the page's colour (as a covered row's on a phone, "Covered rows on a phone" in docs/design-system.md): the title and the meta low on it, the picture
        whole behind and no plate cutting it (owner, 2026-11-02: "instead of cropping and revealing the text under"). The room above the text is the ramp's own; the title is two lines at most, so its height is capped. */
     padding: 4.5rem 0.875rem 0.75rem;
