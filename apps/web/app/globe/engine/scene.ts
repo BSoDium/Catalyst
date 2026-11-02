@@ -332,6 +332,7 @@ export class GlobeScene {
       m.uniforms.uNight!.value = night;
       m.uniforms.uSunN!.value = [x, y, z];
     }
+    this.routes.setNight(night, x, y, z);
     this.nightNow = night;
     if (this.lightsMesh) this.lightsMesh.visible = this.lightsReady && night > 0.01;
   }

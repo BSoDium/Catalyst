@@ -60,6 +60,8 @@ export function dotCell(cell: number): number {
 export const TICK_FROM = 5.5;
 /** How far toward the page colour (0..1, solid) the paths that are not selected go on the whole globe (`farOf` 1): from space they are a faint trace, not a line (#459: one pixel is a lot on a planet this small). */
 export const FAR_TONE = 0.6;
+/** How far toward the page a path that is not selected goes on the DARK page's night side (the light page's goes darker, as the ground does, `NIGHT.shadow`): a path takes the planet's light (owner, 2026-11-02). */
+export const PATH_NIGHT_DIM = 0.35;
 export const FAR_FROM = 2.6;
 export const FAR_TO = 4.2;
 export function farOf(zoom: number): number {

@@ -5,7 +5,7 @@
  */
 import { AddEquation, BackSide, Color, CustomBlending, DstColorFactor, FrontSide, NormalBlending, ShaderMaterial, ZeroFactor } from "three";
 import { CELL_PATTERN, LEG_MODES, MODE_STYLE } from "../paths/modes";
-import { CROWD_TONE, FAR_TONE } from "../paths/lod";
+import { CROWD_TONE, FAR_TONE, PATH_NIGHT_DIM } from "../paths/lod";
 import { STRAIGHT_FADE_MIX, STRAIGHT_FADE_STEPS } from "../paths/thin";
 import { SPARK, TRAIL_BANDS, TRAIL_ENTRIES, TRAIL_PER_PALETTE } from "../paths/trail";
 import { RIM, SUN } from "./moon";
@@ -603,6 +603,9 @@ export function pathMaterial(): ShaderMaterial {
       uTexSize: { value: [1, 1] },
       uFar: { value: 0 },
       uTickOn: { value: 1 },
+      uNight: { value: 0 },
+      uSunN: { value: [0, 0, 1] },
+      uFlip: { value: 0 },
     },
     depthTest: false,
     depthWrite: false,
@@ -635,7 +638,8 @@ export function pathMaterial(): ShaderMaterial {
         gl_Position = c;
       }`,
     fragmentShader: /* glsl */ `
-      uniform vec3 uTrail[${TRAIL_ENTRIES}]; uniform vec3 uPage; uniform float uFinal; uniform float uPresence; uniform float uFront; uniform float uMarch; uniform float uCell; uniform float uDot; uniform float uFar; uniform float uTickOn;
+      uniform vec3 uTrail[${TRAIL_ENTRIES}]; uniform vec3 uPage; uniform float uFinal; uniform float uPresence; uniform float uFront; uniform float uMarch; uniform float uCell; uniform float uDot; uniform float uFar; uniform float uTickOn; uniform float uNight; uniform vec3 uSunN; uniform float uFlip;
+      ${NIGHT_GLSL}
       varying float vDist; varying float vLen; varying float vMode; varying float vState; varying float vCopy; varying float vPal; varying float vQuiet; varying float vCrowd; varying float vScr;
       varying vec3 vPos;
       // True when the occluder sphere lies between the camera and p.
@@ -716,7 +720,15 @@ export function pathMaterial(): ShaderMaterial {
         // from far away the ground paths are quieter (a solid mix toward the page, not an opacity); the flights' arcs and the selected place's legs keep their strength
         // (a crowd's tone by its step: paths/lod.ts CROWD_TONE; the far fade FAR_TONE)
         float toned = crowd > 2.5 ? ${f(CROWD_TONE[3]!)} : crowd > 1.5 ? ${f(CROWD_TONE[2]!)} : crowd > 0.5 ? ${f(CROWD_TONE[1]!)} : 0.0;
-        col = mix(uPage, col, (inked ? 1.0 : (1.0 - ${FAR_TONE.toFixed(2)} * (m == 3.0 ? 0.0 : uFar)) * (1.0 - toned)) * pk);
+        // the ground the path lies on (owner, 2026-11-02: on the light page the night side is DARK, and a path faded toward the page's white got lighter than its ground, more visible, not less): the page's colour,
+        // darkened where the ground is, by the light page's night shadow (NIGHT.shadow, in the same flat steps the ground's own are). The dark page's ground is the page's colour by day and by night: unchanged.
+        float wq = floor(clamp(washOf(normalize(vPos), uSunN, uNight, uFlip), 0.0, 1.0) * ${NIGHT.lineSteps.toFixed(1)} + 0.5) / ${NIGHT.lineSteps.toFixed(1)};
+        vec3 ground = uPage * (1.0 - ${NIGHT.shadow.toFixed(2)} * uFlip * wq);
+        bool tinted = !inked && m != 3.0;
+        // the path takes the planet's light too: darker on the night side of the light page as the ground is (the same share), a little dimmer towards the page on the dark page's; selected paths and the flights' arcs keep their colour
+        if (tinted) col = uFlip > 0.5 ? col * (1.0 - ${NIGHT.shadow.toFixed(2)} * wq) : mix(col, uPage, ${PATH_NIGHT_DIM.toFixed(2)} * wq);
+        col = mix(ground, col, inked ? 1.0 : (1.0 - ${FAR_TONE.toFixed(2)} * (m == 3.0 ? 0.0 : uFar)) * (1.0 - toned));
+        col = mix(uPage, col, pk);
         // a straight line up close: a solid mix toward the page by its step
         col = mix(col, uPage, ${f(STRAIGHT_FADE_MIX)} * vQuiet / ${f(STRAIGHT_FADE_STEPS)});
         gl_FragColor = vec4(col, 1.0);
