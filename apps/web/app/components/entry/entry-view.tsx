@@ -113,12 +113,27 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
   const repoFact = project ? facts.find((f) => f.label.trim().toLowerCase() === "repository") : undefined;
   const repoHref = repoFact ? repositoryHref(repoFact.value) : null;
   const repoButton = repoHref && repoHref !== external ? repoHref : null;
+  const hasPlace = entry.places.length > 0 || !!entry.country;
   const rows: { key: string; label: string; value: string }[] = [
     // (software: the date is in the running head and the links are at the foot of the page, so neither is a row)
     ...(!poem && !structured && written ? [{ key: "written", label: "Written", value: written }] : []),
     ...(!poem && !structured && linked ? [{ key: "linked", label: "Linked", value: linked }] : []),
     ...facts.filter((f) => !(repoHref && f === repoFact)).map((f) => ({ key: `fact-${f.label}`, label: f.label, value: f.value })),
   ];
+
+  // "At a glance" is a table: when its only row would be the place, it is a heading over one line, which says nothing the running head and the tags do not (owner, 2026-11-02). Then it is dropped, and the place moves to the tags as their first chips; any authored fact keeps the table.
+  const showGlance = structured && rows.length > 0;
+  const foldPlace = structured && !showGlance && hasPlace;
+  const placeTags = foldPlace
+    ? entry.places.length > 0
+      ? entry.places.map((p) => ({ label: p.name, href: p.href }))
+      : entry.country
+        ? [{ label: entry.country.name, ...(entry.country.href ? { href: entry.country.href } : {}) }]
+        : []
+    : [];
+  const tagsTitle = foldPlace ? (entry.tags.length > 0 ? "Place and tags" : "Place") : "Tags";
+  // "Linked to 1 place" restates the one place the page already names; the line stays when it counts more (places, entries).
+  const linkedFoot = linked && linked !== "1 place" ? linked : null;
 
   const copy = (
     <CopyButton text={() => shareUrl(window.location.origin, entry.href)} label={`Copy link to ${entry.title}`} announcement="Link copied to the clipboard" icon="link">
@@ -167,9 +182,9 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
   const marginEl = (
         <div data-slot="entry-margin" className="entry-margin">
           {/* (a block title and what it heads are one gap apart, 0.75 rem, in "At a glance" and in "Tags" alike) */}
-          <div className={structured ? "flex flex-col gap-3" : "contents"}>
-          {structured && (
-            <h2 id="entry-glance" className="m-0 font-[family-name:var(--font-display)] text-[1.375rem] leading-tight font-bold tracking-tight text-foreground">
+          <div className={showGlance ? "flex flex-col gap-3" : "contents"}>
+          {showGlance && (
+            <h2 id="entry-glance" className="entry-block-title">
               At a glance
             </h2>
           )}
@@ -178,7 +193,7 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
           ) : structured ? null : (
             (entry.places.length > 0 || entry.country) && <PlacesSection entry={entry} />
           )}
-          {(rows.length > 0 || (structured && (entry.places.length > 0 || entry.country))) && (
+          {(showGlance || (!structured && rows.length > 0)) && (
             <dl data-slot="entry-details" className={cn("m-0", poem && "mt-2", structured && "mt-0")}>
               {rows.map((row) => (
                 <div key={row.key} data-slot="entry-fact" className={cn("min-w-0", structured && "-mx-3 px-3 py-2 odd:bg-foreground/5", structured && !full && "grid grid-cols-[7.5rem_minmax(0,1fr)] items-baseline gap-x-4")}>
@@ -197,18 +212,18 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
             </dl>
           )}
           </div>
-          {entry.tags.length > 0 && (
-            <div data-slot="entry-tags" className={cn(structured && "mt-5 flex flex-col gap-3")}>
+          {(entry.tags.length > 0 || placeTags.length > 0) && (
+            <div data-slot="entry-tags" className={cn(structured && (showGlance ? "mt-5" : "mt-0"), structured && "flex flex-col gap-3")}>
               {/* (a label of their own, apart from the table: under it they read as one more row) */}
               {structured && (
-                <h2 id="entry-tags" className="m-0 font-[family-name:var(--font-display)] text-[1.375rem] leading-tight font-bold tracking-tight text-foreground">
-                  Tags
+                <h2 id="entry-tags" className="entry-block-title">
+                  {tagsTitle}
                 </h2>
               )}
               <TagList
                 label="Tags"
                 className="font-meta text-xs"
-                tags={entry.tags.map((label) => ({ label, href: `${KIND_PATHS[entry.kind]}${tagSearch("", label)}` }))}
+                tags={[...placeTags, ...entry.tags.map((label) => ({ label, href: `${KIND_PATHS[entry.kind]}${tagSearch("", label)}` }))]}
               />
             </div>
           )}
@@ -330,9 +345,9 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
         {poem && !heroSrc && <Cover entry={entry} />}
       </div>
 
-      {structured && (linked || skip) && (
+      {structured && (linkedFoot || skip) && (
         <p data-slot="entry-linked" className="type-meta mt-12 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 text-muted-foreground print:hidden">
-          <span>{linked ? `Linked to ${linked}` : null}</span>
+          <span>{linkedFoot ? `Linked to ${linkedFoot}` : null}</span>
           {skip}
         </p>
       )}
@@ -477,7 +492,7 @@ function KeepReading({ entry, full }: { entry: EntryDetail; full: boolean }) {
     <div data-slot="entry-more" className="flex flex-col gap-12 @container">
       {related.length > 0 && (
         <section aria-labelledby="entry-related">
-          <h2 id="entry-related" className="type-meta m-0 text-foreground">
+          <h2 id="entry-related" className="entry-block-title">
             Related
           </h2>
           <ul className={cn("m-0 mt-6 grid list-none grid-cols-1 gap-8 p-0", full ? "md:grid-cols-3" : "@lg:grid-cols-2")}>

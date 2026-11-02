@@ -23,6 +23,12 @@ describe("copyrightNotice", () => {
     expect(copyrightNotice({ kind: "article", date: "2023" })?.text).toContain("reproduce this article without");
     expect(copyrightNotice({ kind: "artwork", date: "2022-01" })?.text).toContain("reproduce this artwork without");
   });
+  it("welcomes a link or a small preview of a picture, not a quotation of it (a photograph, an artwork)", () => {
+    expect(copyrightNotice({ kind: "photograph", date: "2025-09-13" })?.text).toBe(
+      `© 2025 ${SITE.name}. All rights reserved. Please do not reproduce this photograph without permission; a link or a small preview with credit is welcome.`,
+    );
+    expect(copyrightNotice({ kind: "artwork", date: "2022-01", meta: [{ label: "Language", value: "French" }] })?.text).toContain("; un lien ou un aperçu réduit avec mention de l'auteur est bienvenu.");
+  });
   it("says it in French for an entry whose language is French (ce poème, ce texte, cette œuvre)", () => {
     const meta = [{ label: "Language", value: "French" }];
     expect(copyrightNotice({ kind: "poem", date: "2021-03", meta })?.text).toBe(

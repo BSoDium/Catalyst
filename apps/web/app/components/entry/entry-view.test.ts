@@ -137,10 +137,12 @@ describe("EntryView", () => {
   });
   it("ends a poem, an article and an artwork with the copyright notice (after the body, before keep reading), and software with none", () => {
     const text = (html: string) => (/data-slot="entry-copyright"[^>]*>([^<]*)</.exec(html)?.[1] ?? "").replace(/&#x27;/g, "'");
-    for (const [kind, slug, noun] of [["poem", "demo-poem", "poem"], ["article", "demo-article", "article"], ["artwork", "demo-artwork", "artwork"]] as const) {
+    // (a picture cannot be quoted: an artwork's and a photograph's notice welcomes a link or a small preview with credit instead)
+    const welcome = (kind: string) => (kind === "artwork" || kind === "photograph" ? "a link or a small preview with credit is welcome" : "short quotations with attribution are welcome");
+    for (const [kind, slug, noun] of [["poem", "demo-poem", "poem"], ["article", "demo-article", "article"], ["artwork", "demo-artwork", "artwork"], ["photograph", "demo-photograph", "photograph"]] as const) {
       for (const layout of ["panel", "full"] as const) {
         const html = render(kind, slug, layout);
-        expect(text(html), `${kind} ${layout}`).toMatch(new RegExp(`^© \\d{4} Elliot Négrel-Jerzy\\. All rights reserved\\. Please do not reproduce this ${noun} without permission; short quotations with attribution are welcome\\.$`));
+        expect(text(html), `${kind} ${layout}`).toMatch(new RegExp(`^© \\d{4} Elliot Négrel-Jerzy\\. All rights reserved\\. Please do not reproduce this ${noun} without permission; ${welcome(kind)}\\.$`));
         expect((html.match(/data-slot="entry-copyright"/g) ?? []).length).toBe(1);
         expect(html.indexOf('data-slot="entry-copyright"')).toBeGreaterThan(html.lastIndexOf('class="entry-text'));
         if (html.includes('data-slot="entry-more"')) expect(html.indexOf('data-slot="entry-copyright"')).toBeLessThan(html.indexOf('data-slot="entry-more"'));
