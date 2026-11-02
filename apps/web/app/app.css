@@ -2953,12 +2953,10 @@
     container: wall / inline-size;
   }
 
-  /* The overlay layout (the caption on the picture's foot, nothing reserved under it): for a pointer that hovers, and, always shown, for a touch screen from 40 rem (a tablet: the caption under the picture without the ramp
-     looked unfinished on an iPad, owner, 2026-11-02, #526); a phone keeps the caption under the picture. */
-  @media ((hover: hover) and (pointer: fine)) or (((hover: none) or (pointer: coarse)) and (min-width: 40rem)) {
-    .wall {
-      --cap: 0px;
-    }
+  /* The overlay layout (the caption on the picture's foot, nothing reserved under it) is the wall's look on every device (owner, 2026-11-02, #526: the caption under the picture without the ramp looked unfinished on an iPad,
+     and the phone is to be the same): shown on the hover or the focus for a pointer that hovers, always for a touch screen. */
+  .wall {
+    --cap: 0px;
   }
 
   .wall-list {
@@ -3229,7 +3227,7 @@
     object-fit: cover;
   }
 
-  /* Touch (and any pointer that cannot hover): the caption is under the picture, always shown, two lines of title and one of the medium. */
+  /* The caption's own box: two lines of title and one of the medium (the overlay below puts it on the picture's foot, on every device). */
   .wall-caption {
     height: var(--cap);
     padding-top: 0.5rem;
@@ -3268,41 +3266,39 @@
     text-overflow: ellipsis;
   }
 
-  @media ((hover: hover) and (pointer: fine)) or (((hover: none) or (pointer: coarse)) and (min-width: 40rem)) {
-    /* The caption shares the picture's grid cell and sits at its foot: nothing is positioned, so the title's stretched link still covers the whole card. */
-    .wall-card {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr);
-    }
+  /* The caption shares the picture's grid cell and sits at its foot: nothing is positioned, so the title's stretched link still covers the whole card. */
+  .wall-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
 
-    .wall-media,
-    .wall-caption {
-      grid-area: 1 / 1;
-    }
+  .wall-media,
+  .wall-caption {
+    grid-area: 1 / 1;
+  }
 
-    /* z-index (a grid item takes it without being positioned): the picture's box is positioned and would paint over a static plate, and a positioned plate would shrink the title link's stretched hit area to itself. */
-    .wall-caption {
-      z-index: 1;
-      align-self: end;
-      height: auto;
-      /* The overlay is the foot of the picture under a soft ramp into the page's colour (as a covered row's on a phone, "Covered rows on a phone" in docs/design-system.md): the title and the meta low on it, the picture
-         whole behind and no plate cutting it (owner, 2026-11-02: "instead of cropping and revealing the text under"). The room above the text is the ramp's own; the title is two lines at most, so its height is capped. */
-      padding: 4.5rem 0.875rem 0.75rem;
-      overflow: visible;
-      color: var(--foreground);
-      background: linear-gradient(
-        to top,
-        var(--background) 0%,
-        var(--background) 10%,
-        color-mix(in srgb, var(--background) 78%, transparent) 36%,
-        color-mix(in srgb, var(--background) 38%, transparent) 66%,
-        transparent 100%
-      );
-    }
+  /* z-index (a grid item takes it without being positioned): the picture's box is positioned and would paint over a static plate, and a positioned plate would shrink the title link's stretched hit area to itself. */
+  .wall-caption {
+    z-index: 1;
+    align-self: end;
+    height: auto;
+    /* The overlay is the foot of the picture under a soft ramp into the page's colour (as a covered row's on a phone, "Covered rows on a phone" in docs/design-system.md): the title and the meta low on it, the picture
+       whole behind and no plate cutting it (owner, 2026-11-02: "instead of cropping and revealing the text under"). The room above the text is the ramp's own; the title is two lines at most, so its height is capped. */
+    padding: 4.5rem 0.875rem 0.75rem;
+    overflow: visible;
+    color: var(--foreground);
+    background: linear-gradient(
+      to top,
+      var(--background) 0%,
+      var(--background) 10%,
+      color-mix(in srgb, var(--background) 78%, transparent) 36%,
+      color-mix(in srgb, var(--background) 38%, transparent) 66%,
+      transparent 100%
+    );
+  }
 
-    .wall-title {
-      font-size: 1.125rem;
-    }
+  .wall-title {
+    font-size: 1.125rem;
   }
 
   /* On a touch screen EVERY picture has the overlay, always: the ramp is no more than the text needs (a short one, about 85 % of the page's colour under the text, none a little above it), so the pictures
