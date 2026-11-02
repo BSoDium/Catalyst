@@ -1,5 +1,6 @@
 import { ArrowLeft as CarbonArrowLeft, ChevronDown as CarbonChevronDown, Search as CarbonSearch, ZoomReset as CarbonZoomReset, type CarbonIconType } from "@carbon/icons-react";
 import {
+  Aperture,
   ArrowDown,
   ArrowRight,
   ArrowUp,
@@ -63,6 +64,7 @@ export const ICONS = {
   artwork: ImageIcon,
   poem: Feather,
   photograph: Camera,
+  aperture: Aperture,
   place: MapPin,
   career: Briefcase,
   code: Code,

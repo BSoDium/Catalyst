@@ -68,3 +68,9 @@ export function splitExposure(meta: readonly PublishedMetaEntry[]): { exposure: 
   const settings = [f && focal(f), a && aperture(a), s && shutter(s), i && iso(i)].filter((v): v is string => !!v);
   return { exposure: gear.length || settings.length ? { gear, settings } : null, rest };
 }
+
+/** A setting as it is said (`6.81 mm`, `f/1.85`, `1/120 s`, `ISO 667`) in three parts: what comes before the figure, the figure, what comes after (the page draws the figure in the ink and the rest quiet). No figure: all of it is the figure. */
+export function splitFigure(setting: string): { before: string; figure: string; after: string } {
+  const m = /^(\D*?)(\d[\d./]*)(.*)$/.exec(setting);
+  return m ? { before: m[1]!, figure: m[2]!, after: m[3]! } : { before: "", figure: setting, after: "" };
+}
