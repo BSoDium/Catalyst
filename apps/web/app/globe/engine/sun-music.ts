@@ -252,6 +252,8 @@ export class SunMusic {
   private at = 0;
   private cur: SunTrack = SUN_TRACKS[0]!;
   private played = 0;
+  /** The disc is on screen for a visitor who has the music off (kept until the file it needs is there). */
+  private discShown = false;
 
   private analyser: MusicAnalyser | null = null;
   private senseBuf: Float32Array<ArrayBuffer> | null = null;
@@ -478,7 +480,8 @@ export class SunMusic {
   /** Whether the sun is in view and the music could sound (the visitor's own choice aside: a muted visitor has the disc, to turn it back on, for as long as the sun is in view). */
   private get present(): boolean {
     // (a muted visitor never downloads the file, so its status stays "idle": the disc must still be there to turn it back on, or a visitor who paused the music and reloaded would never see it again)
-    const here = this.snapshot.status === "ready" || (this.muted && this.snapshot.status !== "failed");
+    // (and the disc, once shown, stays while the file of a visitor who turned the music back on downloads: it would go, and come back with the sound, #502)
+    const here = this.snapshot.status === "ready" || ((this.muted || this.discShown) && this.snapshot.status !== "failed");
     return this.inView && !this.hidden && here;
   }
 
@@ -506,6 +509,8 @@ export class SunMusic {
     const s = this.snapshot;
     if (s.status === "failed") return this.prefs.end(this.cur.track.id);
     if (!s.sunSeen) return;
+    if (this.muted && this.present) this.discShown = true;
+    else if (!this.inView || s.status !== "loading") this.discShown = false;
     this.prefs.set(this.cur.track, !this.present ? "paused" : this.ctx?.state === "running" ? "playing" : "blocked");
   }
 

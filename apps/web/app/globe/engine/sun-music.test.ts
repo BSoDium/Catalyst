@@ -292,6 +292,27 @@ describe("the sun's music", () => {
     expect(sources).toHaveLength(1);
   });
 
+  it("keeps the player on screen, on the same piece, while the file of a visitor who unmutes after a reload downloads (#502)", async () => {
+    store.set(MUTE_KEY, "1");
+    const f = fakes();
+    let release = () => {};
+    f.deps.fetchBytes = () => new Promise<ArrayBuffer>((r) => (release = () => r(new ArrayBuffer(8))));
+    const { m, prefs, sources } = await start(f);
+    m.setGlare(0.5);
+    const before = prefs.getSnapshot().track?.id;
+    m.setMuted(false);
+    await settle();
+    // (the file is on its way: the player does not go, and come back when it is there)
+    expect(m.getSnapshot().status).toBe("loading");
+    expect(pillVisible(prefs.getSnapshot())).toBe(true);
+    expect(prefs.getSnapshot().track?.id).toBe(before);
+    release();
+    await settle();
+    expect(sources).toHaveLength(1);
+    expect(prefs.getSnapshot()).toMatchObject({ state: "playing", muted: false });
+    expect(prefs.getSnapshot().track?.id).toBe(before);
+  });
+
   it("a sun on the edge of the planet's limb does not make it stutter", async () => {
     const { m, sources, curves } = await start();
     m.setGlare(0.5);
