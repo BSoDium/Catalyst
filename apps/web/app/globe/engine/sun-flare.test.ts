@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { MOON, SUN } from "./moon";
-import { easeTouch, gateStep, touchTarget, flarePlace, haloClear, pickOccluder, planetRise, rayStart, sunCrescent, sunRise, type FlareFrame, type Occluder } from "./sun-flare";
+import { easeTouch, gateStep, touchTarget, flarePlace, haloClear, haloShare, HALO_FLOOR, HALO_LAST, HALO_OUT, pickOccluder, planetRise, rayStart, sunCrescent, sunRise, type FlareFrame, type Occluder } from "./sun-flare";
 
 const frame = (over: Partial<FlareFrame> = {}): FlareFrame => ({ bufW: 400, bufH: 260, x: 300, y: 80, ahead: true, amount: 1, visible: 1, ...over });
 
@@ -207,8 +207,9 @@ describe("flarePlace, the light page's fade", () => {
     expect(p.ray).toBeCloseTo(p.str, 9);
     expect(flarePlace(frame({ visible: 0.0005, rayDim: 1 }))).toBeNull();
   });
-  it("cuts the dark page's flare at 1% of the sun as before (its rays do not dim)", () => {
-    expect(flarePlace(frame({ visible: 0.005 }))).toBeNull();
+  it("cuts the dark page's flare with the sun's last light (its rays do not dim), no longer at 1% of it (#487)", () => {
+    expect(flarePlace(frame({ visible: 0.002 }))).toBeNull();
+    expect(flarePlace(frame({ visible: 0.005 }))).not.toBeNull();
     expect(flarePlace(frame({ visible: 0.05 }))).not.toBeNull();
   });
 });
@@ -264,5 +265,26 @@ describe("the sun's gate over the street map's tone cross-fade (#469)", () => {
   it("does not open without time, and never past whole", () => {
     expect(gateStep(0, false, 0)).toBe(0);
     expect(gateStep(0.9, false, 10)).toBe(1);
+  });
+});
+
+describe("haloShare (#487)", () => {
+  it("is whole for a whole sun, as it always was", () => {
+    expect(haloShare(1)).toBeCloseTo(1, 10);
+  });
+  it("keeps a floor of the halo for as long as any of the sun is drawn, and goes with the sun's last light", () => {
+    // (the dither's first step was gone at about a fifth of the halo, with a pinpoint of the sun still bright: "a blinding light and no halo")
+    for (const area of [0.02, 0.012, 0.01]) expect(haloShare(area)).toBeGreaterThanOrEqual(HALO_FLOOR);
+    expect(haloShare(HALO_LAST + HALO_OUT)).toBeGreaterThanOrEqual(HALO_FLOOR);
+    expect(haloShare(HALO_LAST)).toBe(0);
+    expect(haloShare(0)).toBe(0);
+  });
+  it("only ever falls as the sun is covered", () => {
+    let prev = Infinity;
+    for (let a = 1; a >= 0; a -= 0.005) {
+      const h = haloShare(a);
+      expect(h).toBeLessThanOrEqual(prev + 1e-12);
+      prev = h;
+    }
   });
 });

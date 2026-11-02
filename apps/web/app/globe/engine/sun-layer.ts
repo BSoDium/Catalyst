@@ -15,7 +15,7 @@ import { BAYER4 } from "./sky";
 import { SUN } from "./moon";
 import { FX } from "./fx";
 import { PULSE, type SunPulse } from "./sun-pulse";
-import { FlareLayer, WARM_GLSL, easeTouch, gateStep, touchTarget, rayStart, haloClear, sunCrescent, type FlareFrame } from "./sun-flare";
+import { FlareLayer, WARM_GLSL, easeTouch, gateStep, touchTarget, rayStart, haloClear, haloShare, sunCrescent, type FlareFrame } from "./sun-flare";
 
 const VERTEX = /* glsl */ `
   uniform vec2 uCentre; uniform float uExt; uniform vec2 uBuf;
@@ -314,8 +314,8 @@ export class SunLayer {
     const rt = Math.min(1, Math.max(0, (cres.area - r0) / (r1 - r0)));
     const seen = rt * rt * (3 - 2 * rt);
     u.uRing!.value = seen;
-    // the halo is in proportion to the sun that is left: its reach goes with the sun's visible radius (the root of its area), its light with the same share, so that it is gone when the sun is
-    const k = Math.sqrt(cres.area);
+    // the halo is in proportion to the sun that is left: its reach goes with the sun's visible radius, its light with the same share, but it keeps a floor while any of the sun is drawn and goes with the sun's last light (`haloShare`, #487)
+    const k = haloShare(cres.area);
     // (in units of `unit`: the reach is still SUN.halo disc radii times k)
     u.uK!.value = Math.max(k * (sr / unit), 1e-3) * (1 + PULSE.halo * (f.pulse?.gain ?? 1) * (f.pulse?.breath ?? 0));
     u.uSoft!.value = SUN.cover.hidden + (1 - SUN.cover.hidden) * k;
