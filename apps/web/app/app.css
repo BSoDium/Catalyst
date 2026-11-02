@@ -2999,6 +2999,15 @@
     pointer-events: none;
   }
 
+  /* The artworks' foot has no scenery to fade over: the same banner, in the flow under the wall. */
+  .wall-end[data-flow] {
+    position: static;
+    inset: auto;
+    height: auto;
+    margin-top: 3.5rem;
+    background: none;
+  }
+
   /*
    * The banner is set on the wall's own edges: the words at the left, the way on at the right. On a wide wall it is a grid whose copy is
    * dissolved into it (`display: contents`), so the link sits in the row of the big title and is centred on it, not on the whole block;
@@ -3214,13 +3223,6 @@
     .wall-title {
       font-size: 1.125rem;
     }
-  }
-
-  .wall-card:hover .wall-title a {
-    text-decoration: underline;
-    text-decoration-color: var(--signal);
-    text-decoration-thickness: 2px;
-    text-underline-offset: 0.2em;
   }
 
   /*

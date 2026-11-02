@@ -113,7 +113,11 @@ export function ArtworkWall({
           </li>
         ))}
       </ul>
-      {end && <div className="wall-end">{end}</div>}
+      {end && (
+        <div className="wall-end" data-flow={plan ? undefined : ""}>
+          {end}
+        </div>
+      )}
     </div>
   );
 }

@@ -78,7 +78,7 @@ export function EntryListPage({ kind, items }: { kind: ContentKind; items: Entry
               label={KIND_PLURALS[kind]}
               kind={kind}
               linkState={listBackState(kind, search)}
-              {...(kind === "photograph" ? { filler: GALLERY_FILLER, end: <GalleryEnd /> } : {})}
+              {...(kind === "photograph" ? { filler: GALLERY_FILLER, end: <GalleryEnd /> } : kind === "artwork" ? { end: <GalleryEnd kind="artwork" /> } : {})}
             />
           </>
         ) : (
