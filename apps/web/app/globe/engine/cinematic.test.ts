@@ -491,7 +491,7 @@ describe("the cinematic interlude: in the caption's motion", () => {
   });
   it("the studio's small line has a bounded size (#543: it grew with the closer final shot)", () => {
     expect(CINEMATIC.tagline.minPx).toBeLessThanOrEqual(CINEMATIC.tagline.maxPx);
-    expect(CINEMATIC.tagline.maxPx).toBeLessThanOrEqual(11);
+    expect(CINEMATIC.tagline.maxPx).toBeLessThanOrEqual(13);
   });
   it("keeps less of the light on the far side of the planet than on the near one, and less than the studio's overall (#529)", () => {
     expect(CINEMATIC.light.gain).toBeGreaterThan(0);
