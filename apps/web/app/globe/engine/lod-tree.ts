@@ -92,9 +92,9 @@ export const LOD = {
    */
   floorCells: 5,
   /**
-   * The smallest a ghost box is drawn as an OUTLINE, in art cells along each side (#509): the true box of a place that is in view but not drawn (its label has no room, it is
-   * inside a group), in the box colour so that the path that enters it does not stop short of nothing. Smaller than this on a side it is a solid dot of 1 or 2 cells (its real size,
-   * rounded: the owner, 2026-11-02, "a dot or rectangle 1 or 2 px wide depending on the actual size").
+   * The smallest a ghost box is drawn, in art cells along each side (#509): the true box of a place that is in view but not drawn (its label has no room, it is
+   * inside a group), in the box colour so that the path that enters it does not stop short of nothing. Smaller than this it is not drawn at all (the owner, 2026-11-02:
+   * dots of 1 or 2 cells were tried and taken back).
    */
   ghostMinCells: 3,
   /** The mask of a box at the minimum size: its TRUE side as a multiple of the minimum goes from `fillFadeFrom` (masked) to `fillFadeTo` (hollow); the switch has the hysteresis `fillHyst`. */
@@ -833,7 +833,7 @@ export class LodTree {
    * The places that are in view but not drawn, as the true rectangle of their box (container CSS px of the camera, NO minimum size: a city is as big on
    * the map as it is) and how much of the way they are from drawn (1 = not at all, down to 0 as the node fades in: the real box takes over, so the two never add up).
    * Paths are clipped at the box of a place: where its box is not drawn they would stop at nothing (#509). 
-   * of any size (how it is drawn, an outline or a dot, is the box scene's: `LOD.ghostMinCells`); pure given the last `update` / `advance`.
+   * of any size (the box scene's `ghostCells` keeps those of at least `LOD.ghostMinCells`); pure given the last `update` / `advance`.
    */
   ghosts(into: Ghost[] = []): Ghost[] {
     into.length = 0;
