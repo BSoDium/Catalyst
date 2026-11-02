@@ -6,7 +6,7 @@ import { yearOf } from "~/lib/entry-list";
 import { safeMediaSrc } from "~/lib/entry-blocks";
 import { coverImageProps, WALL_COVER_SIZES } from "~/lib/cover-image";
 import type { EntrySummary } from "~/lib/entries";
-import { planFiller, type FillerPhoto } from "~/lib/gallery-filler";
+import { planFiller, type FillerTile } from "~/lib/gallery-filler";
 
 /** The first pictures of a wall load at once (the first screen at four columns); the rest are lazy. */
 const EAGER = 4;
@@ -44,7 +44,7 @@ export function ArtworkWall({
   end,
 }: {
   /** Scenery that continues the wall after the last picture (decorative, no link, no name), and the banner laid over its foot (`end`). Both or neither. */
-  filler?: readonly FillerPhoto[];
+  filler?: readonly FillerTile[];
   end?: ReactNode;
   /** The router state of the links: where the entry is opened from (`listBackState`). */
   linkState?: unknown;
@@ -108,16 +108,16 @@ export function ArtworkWall({
         {plan?.tiles.map((photo, j) => (
           <li key={j} aria-hidden="true" data-slot="wall-filler" data-tiers={plan.tiers[j]!.join(" ")} className="wall-item wall-filler" style={masonryItemVars(tileRatios[j]!, layouts, items.length + j) as CSSProperties}>
             <div className="wall-media">
-              <img src={photo.src} alt="" width={photo.width} height={photo.height} loading="lazy" decoding="async" draggable={false} className="wall-img" />
+              {"seed" in photo ? (
+                <CoverArt seed={photo.seed} kind="artwork" cols={48} rows={Math.round((48 * photo.height) / photo.width)} className="h-full" />
+              ) : (
+                <img src={photo.src} alt="" width={photo.width} height={photo.height} loading="lazy" decoding="async" draggable={false} className="wall-img" />
+              )}
             </div>
           </li>
         ))}
       </ul>
-      {end && (
-        <div className="wall-end" data-flow={plan ? undefined : ""}>
-          {end}
-        </div>
-      )}
+      {end && <div className="wall-end">{end}</div>}
     </div>
   );
 }
