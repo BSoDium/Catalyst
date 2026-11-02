@@ -83,6 +83,25 @@ export const SUN_TRACKS: readonly SunTrack[] = [
 /** How long a piece must have been heard (seconds, over the sun's returns) before the next return gives another piece: a visitor who stays hears the pieces in turn, one who passes by hears one. */
 export const ROTATE_AFTER_SEC = 90;
 
+const PIECE_KEY = "sun-music-piece";
+
+/** The piece this tab was playing (kept for the tab's session, so that a reload goes on with it); null where there is no storage. */
+function readPiece(): string | null {
+  try {
+    return sessionStorage.getItem(PIECE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function writePiece(id: string): void {
+  try {
+    sessionStorage.setItem(PIECE_KEY, id);
+  } catch {
+    /* not kept */
+  }
+}
+
 /** The order the pieces are played in this visit: a shuffle (Fisher-Yates) of their indices. Pure given `random`. */
 export function shuffled(count: number, random: () => number): number[] {
   const order = Array.from({ length: count }, (_, i) => i);
@@ -270,7 +289,9 @@ export class SunMusic {
   ) {
     // (the visit's order: a shuffle when the deps can draw one; else the listed order)
     this.order = deps.random ? shuffled(SUN_TRACKS.length, deps.random) : SUN_TRACKS.map((_, i) => i);
-    this.choose(0);
+    // (a reload keeps the piece the tab had: a visitor who muted a piece and reloaded found another, #502; a new visit draws its own)
+    const kept = SUN_TRACKS.findIndex((t) => t.track.id === readPiece());
+    this.choose(kept < 0 ? 0 : Math.max(0, this.order.indexOf(kept)));
   }
 
   /** Make the piece at `at` of the visit's order the current one (the pulse and the player follow it). */
@@ -278,6 +299,7 @@ export class SunMusic {
     this.at = at % this.order.length;
     this.cur = SUN_TRACKS[this.order[this.at]!]!;
     setActiveSunTrack(this.cur);
+    writePiece(this.cur.track.id);
   }
 
   /** The visitor has turned the page's sound off. */
