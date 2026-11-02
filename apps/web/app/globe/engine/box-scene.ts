@@ -46,7 +46,8 @@ import { PX_UNITS, boxesToAvoid, smoothUnits } from "./label-plan";
 import { LabelTracker, SlotMemory, motionLimitPx, type Placed, type TrackItem } from "./label-track";
 import { subText } from "./label-sub";
 import { LABEL_TYPE, labelVariants, type LabelText } from "./label-text";
-import { LOD, type LodTree } from "./lod-tree";
+import { ghostCells } from "./ghost-box";
+import { LOD, type Ghost, type LodTree } from "./lod-tree";
 import type { NodeScreen } from "./node-screen";
 import { textFloorLevel } from "./palette";
 import { ALPHA_STEPS, HASH_SEED, PixelOverlay, SPOT, boxOpenness, dashingFor, drawBox, hashStep, labelTones, quantAlpha, selectedShiftAt, type CellRect, type LabelTones } from "./pixel-labels";
@@ -573,10 +574,15 @@ export class BoxScene {
       targets.push({ id: t.i, box: minTargetBox(box), plate, alpha: pickAlpha(lod.alpha[t.i]!, t.wanted, LOD.pickFadingMin), priority: lod.priority[t.i]!, big: isBigBox(box, mapMinSide), slug: lod.slug[t.i]! });
     }
     this.layer.end();
+    // The boxes of the places that are in view and not drawn, at their true size, under everything else (#509): a path is clipped at the box of its place and would stop short of nothing
+    const ghosts = ghostCells(lod.ghosts(this.ghostList), grid.cell, grid.cols, grid.rows);
+    for (const g of ghosts) h = hashStep(hashStep(hashStep(hashStep(h, g.rect.c0 * 4096 + g.rect.r0), g.rect.c1 * 4096 + g.rect.r1), Math.round(g.alpha * ALPHA_STEPS)), 7);
     h = hashStep(hashStep(h, items.length), grid.cols * 4096 + grid.rows);
     // Painter's order: lower score first, forced last, so a strong node is composited over a weak one.
     const paint = [...items].sort((a, b) => Number(this.modeOf(a.i, a.wanted) !== "rest") - Number(this.modeOf(b.i, b.wanted) !== "rest") || a.score - b.score);
     this.overlay.frame(h, (buf) => {
+      // an outline with its inside in the page colour, like a box that the minimum size has made bigger than the place
+      for (const g of ghosts) drawBox(buf, g.rect, this.tones, { alpha: quantAlpha(g.alpha), fillAlpha: quantAlpha(g.alpha), active: false });
       for (const t of paint) {
         const mode = this.modeOf(t.i, t.wanted);
         drawBox(buf, t.rect, this.tones, { alpha: this.alphaOf(t, mode), fillAlpha: this.fillAlphaOf(t, mode), active: mode !== "rest", solid: mode === "selected", open: this.openNessOf(t) });
@@ -584,6 +590,8 @@ export class BoxScene {
     });
     this.targets = targets;
   }
+
+  private ghostList: Ghost[] = [];
 
   /**
    * Ask for the resting picture (labels rounded to whole device pixels) once nothing has moved for `SETTLE_MS`. Called in every frame that moved
