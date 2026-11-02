@@ -6591,7 +6591,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   .contact-label {
     position: absolute;
     left: 0;
-    top: 1.0625rem;
+    top: 1.46rem;
     max-width: 100%;
     overflow: hidden;
     color: var(--foreground);
