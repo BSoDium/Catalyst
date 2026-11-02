@@ -118,6 +118,25 @@ describe("arcs", () => {
   });
 });
 
+describe("which legs are lifted (owner, 2026-11-02: only the flights are arcs)", () => {
+  const route: GlobeRoute = {
+    id: "lift",
+    title: "L",
+    points: [A, B, C, A],
+    legs: [{ mode: "flight" }, { mode: "road" }, { mode: "rail" }],
+  };
+  const net = buildNetwork([route]);
+
+  it("a flight arches over the ground; a ground leg with no path of its own is the geodesic along it", () => {
+    const [flight, road, rail] = net.legs;
+    expect(Math.max(...flight!.lift)).toBeGreaterThan(0);
+    for (const leg of [road!, rail!]) {
+      expect(leg.arc).toBe(true);
+      expect(Math.max(...leg.lift)).toBe(0);
+    }
+  });
+});
+
 describe("network and buffers", () => {
   const poly = encodePolyline5(wiggle(A, B, 300));
   const route: GlobeRoute = {

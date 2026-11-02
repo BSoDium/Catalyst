@@ -29,7 +29,7 @@ export interface PathLeg {
   /** Position in the route: the leg between stop `legIndex` and `legIndex + 1`. */
   legIndex: number;
   mode: LegMode;
-  /** No polyline: the geodesic arc between the two stops, lifted above the surface on the globe. */
+  /** No polyline: the geodesic between the two stops; lifted above the surface on the globe when the leg is a flight, flat on the ground otherwise. */
   arc: boolean;
   fromKey: string;
   toKey: string;
@@ -190,9 +190,10 @@ function buildNetworkUncached(routes: readonly GlobeRoute[]): PathNetwork {
       if (lonlat) {
         lift = new Float32Array(lonlat.length / 2);
       } else {
+        // (only a flight is an arch: a ground leg with no path of its own is the geodesic along the ground, owner, 2026-11-02: "the only plane legs should be arcs")
         const a2 = arcPoints(a, b);
         lonlat = a2.lonlat;
-        lift = a2.lift;
+        lift = mode === "flight" ? a2.lift : new Float32Array(lonlat.length / 2);
       }
       // every mode ends where it meets the boxes of its stops (paths/crop.ts); a lifted arc keeps its arch, set down on the ground at the cut
       const cropped = cropToBoxes(lonlat, lift, route.boxes?.[i], route.boxes?.[i + 1]);
