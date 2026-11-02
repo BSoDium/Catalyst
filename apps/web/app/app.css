@@ -2953,9 +2953,18 @@
     container: wall / inline-size;
   }
 
-  @media (hover: hover) and (pointer: fine) {
+  /* The overlay layout (the caption on the picture's foot, nothing reserved under it) is the wall's look on every device (owner, 2026-11-02, #526: the caption under the picture without the ramp looked unfinished on an iPad,
+     and the phone is to be the same): shown on the hover or the focus for a pointer that hovers, always for a touch screen. */
+  .wall {
+    --cap: 0px;
+  }
+
+  /* On a phone (one column: the wall is under 34 rem, which the bleed itself keeps: it is as wide as the screen) the pictures run out to the screen's edges over the list page's side padding (`px-4`), as a
+     covered software row's does (owner, 2026-11-02: "shouldn't we?"; `--entry-gutter`, "A covered row on a phone"): the outline is then drawn on the picture's top and foot only, a side hairline on the screen's edge would be a seam. */
+  @media (max-width: 33.99rem) {
     .wall {
-      --cap: 0px;
+      --wall-gutter: 1rem;
+      margin-inline: calc(-1 * var(--wall-gutter));
     }
   }
 
@@ -3216,8 +3225,25 @@
     aspect-ratio: var(--aspect);
     overflow: hidden;
     background: var(--surface);
-    outline: var(--hairline) solid var(--border);
-    outline-offset: -1px;
+  }
+
+  /* The picture's outline, drawn ABOVE the caption's ramp (z-index over the caption's 1): the ramp dims the whole picture to its very edge and never the outline (owner, 2026-11-02; an outline drawn
+     under it was dimmed, and one left outside it showed a thin undimmed line of the picture's edge through its translucent colour). */
+  .wall-media::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    box-shadow: inset 0 0 0 var(--hairline) var(--border);
+    pointer-events: none;
+  }
+
+  @media (max-width: 33.99rem) {
+    .wall-media::after {
+      box-shadow:
+        inset 0 var(--hairline) 0 var(--border),
+        inset 0 calc(-1 * var(--hairline)) 0 var(--border);
+    }
   }
 
   .wall-img {
@@ -3227,7 +3253,7 @@
     object-fit: cover;
   }
 
-  /* Touch (and any pointer that cannot hover): the caption is under the picture, always shown, two lines of title and one of the medium. */
+  /* The caption's own box: two lines of title and one of the medium (the overlay below puts it on the picture's foot, on every device). */
   .wall-caption {
     height: var(--cap);
     padding-top: 0.5rem;
@@ -3266,36 +3292,100 @@
     text-overflow: ellipsis;
   }
 
-  @media (hover: hover) and (pointer: fine) {
-    /* The caption shares the picture's grid cell and sits at its foot: nothing is positioned, so the title's stretched link still covers the whole card. */
+  /* The caption shares the picture's grid cell and sits at its foot: nothing is positioned, so the title's stretched link still covers the whole card. */
+  .wall-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .wall-media,
+  .wall-caption {
+    grid-area: 1 / 1;
+  }
+
+  /* z-index (a grid item takes it without being positioned): the picture's box is positioned and would paint over a static plate, and a positioned plate would shrink the title link's stretched hit area to itself. */
+  .wall-caption {
+    z-index: 1;
+    align-self: end;
+    height: auto;
+
+    /* The overlay is the foot of the picture under a soft ramp into the page's colour (as a covered row's on a phone, "Covered rows on a phone" in docs/design-system.md): the title and the meta low on it, the picture
+       whole behind and no plate cutting it (owner, 2026-11-02: "instead of cropping and revealing the text under"). The room above the text is the ramp's own; the title is two lines at most, so its height is capped. */
+    padding: 4.5rem 0.875rem 0.75rem;
+    overflow: visible;
+    color: var(--foreground);
+    background: linear-gradient(
+      to top,
+      var(--background) 0%,
+      var(--background) 10%,
+      color-mix(in srgb, var(--background) 78%, transparent) 36%,
+      color-mix(in srgb, var(--background) 38%, transparent) 66%,
+      transparent 100%
+    );
+  }
+
+  .wall-title {
+    font-size: 1.125rem;
+  }
+
+  /* On a touch screen EVERY picture has the overlay, always, so its backdrop must not be seen as a band (owner, 2026-11-02: a short linear ramp was sharp and fast, and on a white picture a visible shelf). It is ONE
+     soft dome, as the nav's search plate and the player's: a radial gradient from the middle of the foot, as wide as the picture and as tall as the caption's box, the page's colour held under the text and
+     eased on a smoothstep (twelve stops) to nothing at the top and at the sides' far reach: no straight edge anywhere, and no more than the text needs (peak about 80 %). */
+  @media not ((hover: hover) and (pointer: fine)) {
+    /* The backdrop is the TEXT BLOCK's own, a soft oval centred on the words and not on the picture or its foot (owner, 2026-11-02: "really centre it on the text block", "it can be much wider", "taller, it must not fade at
+       the bottom"): the caption's grid is one column as wide as the words (`fit-content`, left-aligned: the longest line of the title or the medium), and the ::before is that block grown by `--veil-pad-x` to each side, `--veil-pad-top` above and `--veil-pad-bottom` (more: the oval is LOWERED, owner: "we can see it wrapping around at the bottom", the round of its ends is below the card's foot) below (negative margins: the caption stays unpositioned, so the title's stretched link keeps covering the card), a pill (`border-radius`) in the page's colour at 40 %, blurred (`--veil-blur`, a Gaussian: no
+       edge, no oval to be seen). It is wider than tall, and so tall that its foot is past the card's (which clips it): the backdrop is whole to the picture's foot and falls away at the top and the sides. */
     .wall-card {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr);
+      overflow: clip;
     }
 
-    .wall-media,
+    .wall {
+      --veil-pad-x: 9rem;
+      --veil-pad-top: 6rem;
+      --veil-pad-bottom: 11rem;
+      --veil-blur: 40px;
+    }
+
     .wall-caption {
+      display: grid;
+      grid-template-columns: fit-content(100%);
+      grid-template-rows: auto auto;
+      justify-content: start;
+      padding: 0.5rem 0.875rem 0.7rem;
+      background: none;
+    }
+
+    .wall-title {
       grid-area: 1 / 1;
     }
 
-    /* z-index (a grid item takes it without being positioned): the picture's box is positioned and would paint over a static plate, and a positioned plate would shrink the title link's stretched hit area to itself. */
+    .wall-meta {
+      grid-area: 2 / 1;
+    }
+
+    .wall-caption::before {
+      content: "";
+      grid-area: 1 / 1 / 3 / 2;
+      z-index: -1;
+      margin: calc(-1 * var(--veil-pad-top)) calc(-1 * var(--veil-pad-x)) calc(-1 * var(--veil-pad-bottom));
+      background: color-mix(in srgb, var(--background) 40%, transparent);
+      border-radius: 9999px;
+      filter: blur(var(--veil-blur));
+    }
+
+    .wall-title {
+      font-size: 1rem;
+    }
+
+    /* the medium and the year are in the ink, not the muted grey: over a lighter backdrop (a white picture on the dark page, a dark one on the light page) the grey fell to under 2:1 */
+    .wall-meta {
+      color: color-mix(in srgb, var(--foreground) 88%, var(--background));
+    }
+  }
+
+  /* ... and for a pointer that hovers it shows on the hover or the focus (a touch screen has no hover: it is always there) */
+  @media (hover: hover) and (pointer: fine) {
     .wall-caption {
-      z-index: 1;
-      align-self: end;
-      height: auto;
-      /* The overlay is the foot of the picture under a soft ramp into the page's colour (as a covered row's on a phone, "Covered rows on a phone" in docs/design-system.md): the title and the meta low on it, the picture
-         whole behind and no plate cutting it (owner, 2026-11-02: "instead of cropping and revealing the text under"). The room above the text is the ramp's own; the title is two lines at most, so its height is capped. */
-      padding: 4.5rem 0.875rem 0.75rem;
-      overflow: visible;
-      color: var(--foreground);
-      background: linear-gradient(
-        to top,
-        var(--background) 0%,
-        var(--background) 10%,
-        color-mix(in srgb, var(--background) 78%, transparent) 36%,
-        color-mix(in srgb, var(--background) 38%, transparent) 66%,
-        transparent 100%
-      );
       opacity: 0;
       transition: opacity var(--duration-fast) var(--ease-standard);
     }
@@ -3304,9 +3394,45 @@
     .wall-card:has(:focus-visible) .wall-caption {
       opacity: 1;
     }
+  }
+
+  /* ONE column (a phone, a narrow window; owner, 2026-11-02: full-bleed pictures with a gap of the page between them "look as if there should be text in it"): the caption is a line under the picture again, always shown,
+     in the room the masonry reserves for it (`--cap`), as the wall was on a touch screen before #526 and as a software row on a phone has its text on the page; the third design of the three, and the only one that is not
+     an overlay. From 34 rem (two columns) the overlay above is the look. */
+  @media (max-width: 33.99rem) {
+    .wall {
+      --cap: 4.5rem;
+    }
+
+    .wall-media,
+    .wall-caption {
+      grid-area: auto;
+    }
+
+    .wall-caption {
+      z-index: auto;
+      height: var(--cap);
+      padding: 0.5rem var(--wall-gutter) 0;
+      overflow: hidden;
+      background: none;
+      opacity: 1;
+    }
 
     .wall-title {
-      font-size: 1.125rem;
+      font-size: 1rem;
+    }
+
+    .wall-meta {
+      color: var(--muted-foreground);
+    }
+
+    /* (the backdrop of the overlay is not drawn: the caption is on the page) */
+    .wall-caption {
+      display: block;
+    }
+
+    .wall-caption::before {
+      display: none;
     }
   }
 
