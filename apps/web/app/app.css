@@ -3333,8 +3333,7 @@
      eased on a smoothstep (twelve stops) to nothing at the top and at the sides' far reach: no straight edge anywhere, and no more than the text needs (peak about 80 %). */
   @media not ((hover: hover) and (pointer: fine)) {
     /* The backdrop is the TEXT BLOCK's own, a soft oval centred on the words and not on the picture or its foot (owner, 2026-11-02: "really centre it on the text block", "it can be much wider", "taller, it must not fade at
-       the bottom"): the caption's grid is one column as wide as the words (`fit-content`, left-aligned: the longest line of the title or the medium), and the ::before is that block grown by `--veil-pad-x` and
-       `--veil-pad-y` on every side (negative margins: the caption stays unpositioned, so the title's stretched link keeps covering the card), a pill (`border-radius`) in the page's colour at 40 %, blurred (`--veil-blur`, a Gaussian: no
+       the bottom"): the caption's grid is one column as wide as the words (`fit-content`, left-aligned: the longest line of the title or the medium), and the ::before is that block grown by `--veil-pad-x` to each side, `--veil-pad-top` above and `--veil-pad-bottom` (more: the oval is LOWERED, owner: "we can see it wrapping around at the bottom", the round of its ends is below the card's foot) below (negative margins: the caption stays unpositioned, so the title's stretched link keeps covering the card), a pill (`border-radius`) in the page's colour at 40 %, blurred (`--veil-blur`, a Gaussian: no
        edge, no oval to be seen). It is wider than tall, and so tall that its foot is past the card's (which clips it): the backdrop is whole to the picture's foot and falls away at the top and the sides. */
     .wall-card {
       overflow: clip;
@@ -3342,7 +3341,8 @@
 
     .wall {
       --veil-pad-x: 8rem;
-      --veil-pad-y: 5rem;
+      --veil-pad-top: 5rem;
+      --veil-pad-bottom: 9rem;
       --veil-blur: 24px;
     }
 
@@ -3367,7 +3367,7 @@
       content: "";
       grid-area: 1 / 1 / 3 / 2;
       z-index: -1;
-      margin: calc(-1 * var(--veil-pad-y)) calc(-1 * var(--veil-pad-x));
+      margin: calc(-1 * var(--veil-pad-top)) calc(-1 * var(--veil-pad-x)) calc(-1 * var(--veil-pad-bottom));
       background: color-mix(in srgb, var(--background) 40%, transparent);
       border-radius: 9999px;
       filter: blur(var(--veil-blur));
