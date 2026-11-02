@@ -2163,9 +2163,9 @@
     z-index: 1;
   }
 
-  /* The marginalia's rule, under the poem in the panel: room above it (owner, 2026-11-02: "the divider under the poem is too elevated"), so that the last verse and the rule are not a line apart. */
+  /* The marginalia's rule, under the poem in the panel: room above it (owner, 2026-11-02: "the divider under the poem is too elevated", and again at 1.5 rem: "still too elevated"): 3.5 rem plus the grid's 2 rem, so that the last verse and the rule are a stanza apart. */
   .entry[data-kind="poem"]:not([data-layout="full"]) .entry-margin {
-    margin-top: 1.5rem;
+    margin-top: 3.5rem;
   }
 
   /* The one rule of an entry, under the running head, is the faint hairline (owner, 2026-10-30: "make the divider fainter"), not the strong one a list's head has. */
