@@ -3316,27 +3316,29 @@
      eased on a smoothstep (twelve stops) to nothing at the top and at the sides' far reach: no straight edge anywhere, and no more than the text needs (peak about 80 %). */
   @media not ((hover: hover) and (pointer: fine)) {
     .wall-caption {
-      padding: 3.4rem 0.875rem 0.7rem;
+      padding: 5.75rem 0.875rem 0.7rem;
       /* centred on the text, which is left-aligned, not on the picture (at 38 % of the width), and so wide (170 %) that its edge is a long shallow curve, not an oval: the plateau holds the whole row of text, a long
-         title included, and the fall is a smootherstep (no slope and no curvature at either end: no edge to be seen), lighter than before (peak about 72 %) */
+         title included, and the fall is a smootherstep (no slope and no curvature at either end: no edge to be seen) over a long way (5.75 rem of room above the text), lighter than before (peak about 72 %) */
       background: radial-gradient(
         ellipse 170% 100% at 38% 100%,
         color-mix(in srgb, var(--background) 72.0%, transparent) 0%,
         color-mix(in srgb, var(--background) 72.0%, transparent) 6%,
-        color-mix(in srgb, var(--background) 72.0%, transparent) 12%,
-        color-mix(in srgb, var(--background) 72.0%, transparent) 19%,
-        color-mix(in srgb, var(--background) 72.0%, transparent) 25%,
-        color-mix(in srgb, var(--background) 72.0%, transparent) 31%,
-        color-mix(in srgb, var(--background) 72.0%, transparent) 38%,
-        color-mix(in srgb, var(--background) 72.0%, transparent) 44%,
-        color-mix(in srgb, var(--background) 71.5%, transparent) 50%,
-        color-mix(in srgb, var(--background) 67.6%, transparent) 56%,
-        color-mix(in srgb, var(--background) 58.5%, transparent) 62%,
-        color-mix(in srgb, var(--background) 45.1%, transparent) 69%,
-        color-mix(in srgb, var(--background) 29.9%, transparent) 75%,
-        color-mix(in srgb, var(--background) 15.9%, transparent) 81%,
-        color-mix(in srgb, var(--background) 5.8%, transparent) 88%,
-        color-mix(in srgb, var(--background) 0.9%, transparent) 94%,
+        color-mix(in srgb, var(--background) 72.0%, transparent) 11%,
+        color-mix(in srgb, var(--background) 72.0%, transparent) 17%,
+        color-mix(in srgb, var(--background) 72.0%, transparent) 22%,
+        color-mix(in srgb, var(--background) 72.0%, transparent) 28%,
+        color-mix(in srgb, var(--background) 71.9%, transparent) 33%,
+        color-mix(in srgb, var(--background) 70.8%, transparent) 39%,
+        color-mix(in srgb, var(--background) 67.5%, transparent) 44%,
+        color-mix(in srgb, var(--background) 61.6%, transparent) 50%,
+        color-mix(in srgb, var(--background) 53.3%, transparent) 56%,
+        color-mix(in srgb, var(--background) 43.4%, transparent) 61%,
+        color-mix(in srgb, var(--background) 32.8%, transparent) 67%,
+        color-mix(in srgb, var(--background) 22.5%, transparent) 72%,
+        color-mix(in srgb, var(--background) 13.5%, transparent) 78%,
+        color-mix(in srgb, var(--background) 6.6%, transparent) 83%,
+        color-mix(in srgb, var(--background) 2.2%, transparent) 89%,
+        color-mix(in srgb, var(--background) 0.3%, transparent) 94%,
         color-mix(in srgb, var(--background) 0.0%, transparent) 100%
       );
     }
