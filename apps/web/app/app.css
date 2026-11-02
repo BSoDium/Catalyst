@@ -3332,32 +3332,45 @@
      soft dome, as the nav's search plate and the player's: a radial gradient from the middle of the foot, as wide as the picture and as tall as the caption's box, the page's colour held under the text and
      eased on a smoothstep (twelve stops) to nothing at the top and at the sides' far reach: no straight edge anywhere, and no more than the text needs (peak about 80 %). */
   @media not ((hover: hover) and (pointer: fine)) {
+    /* The backdrop is the TEXT BLOCK's own, a soft oval centred on the words and not on the picture or its foot (owner, 2026-11-02: "really centre it on the text block", "it can be much wider", "taller, it must not fade at
+       the bottom"): the caption's grid is one column as wide as the words (`fit-content`, left-aligned: the longest line of the title or the medium), and the ::before is that block grown by `--veil-pad-x` and
+       `--veil-pad-y` on every side (negative margins: the caption stays unpositioned, so the title's stretched link keeps covering the card), a pill (`border-radius`) in the page's colour at 40 %, blurred (`--veil-blur`, a Gaussian: no
+       edge, no oval to be seen). It is wider than tall, and so tall that its foot is past the card's (which clips it): the backdrop is whole to the picture's foot and falls away at the top and the sides. */
+    .wall-card {
+      overflow: clip;
+    }
+
+    .wall {
+      --veil-pad-x: 8rem;
+      --veil-pad-y: 5rem;
+      --veil-blur: 24px;
+    }
+
     .wall-caption {
-      padding: 5.75rem 0.875rem 0.7rem;
-      /* centred on the text, which is left-aligned, not on the picture (at 38 % of the width), and so wide (170 %) that its edge is a long shallow curve, not an oval: the plateau holds the whole row of text, a long
-         title included, and the fall is a smootherstep (no slope and no curvature at either end: no edge to be seen) over a long way (5.75 rem of room above the text), lighter than before (peak about 60 %: the owner asked for it less opaque; the medium line is in the ink to hold the contrast) */
-      background: radial-gradient(
-        ellipse 170% 100% at 38% 100%,
-        color-mix(in srgb, var(--background) 60.0%, transparent) 0%,
-        color-mix(in srgb, var(--background) 60.0%, transparent) 6%,
-        color-mix(in srgb, var(--background) 60.0%, transparent) 11%,
-        color-mix(in srgb, var(--background) 60.0%, transparent) 17%,
-        color-mix(in srgb, var(--background) 60.0%, transparent) 22%,
-        color-mix(in srgb, var(--background) 60.0%, transparent) 28%,
-        color-mix(in srgb, var(--background) 59.9%, transparent) 33%,
-        color-mix(in srgb, var(--background) 59.0%, transparent) 39%,
-        color-mix(in srgb, var(--background) 56.2%, transparent) 44%,
-        color-mix(in srgb, var(--background) 51.3%, transparent) 50%,
-        color-mix(in srgb, var(--background) 44.5%, transparent) 56%,
-        color-mix(in srgb, var(--background) 36.2%, transparent) 61%,
-        color-mix(in srgb, var(--background) 27.3%, transparent) 67%,
-        color-mix(in srgb, var(--background) 18.7%, transparent) 72%,
-        color-mix(in srgb, var(--background) 11.2%, transparent) 78%,
-        color-mix(in srgb, var(--background) 5.5%, transparent) 83%,
-        color-mix(in srgb, var(--background) 1.9%, transparent) 89%,
-        color-mix(in srgb, var(--background) 0.3%, transparent) 94%,
-        color-mix(in srgb, var(--background) 0.0%, transparent) 100%
-      );
+      display: grid;
+      grid-template-columns: fit-content(100%);
+      grid-template-rows: auto auto;
+      justify-content: start;
+      padding: 0.5rem 0.875rem 0.7rem;
+      background: none;
+    }
+
+    .wall-title {
+      grid-area: 1 / 1;
+    }
+
+    .wall-meta {
+      grid-area: 2 / 1;
+    }
+
+    .wall-caption::before {
+      content: "";
+      grid-area: 1 / 1 / 3 / 2;
+      z-index: -1;
+      margin: calc(-1 * var(--veil-pad-y)) calc(-1 * var(--veil-pad-x));
+      background: color-mix(in srgb, var(--background) 40%, transparent);
+      border-radius: 9999px;
+      filter: blur(var(--veil-blur));
     }
 
     .wall-title {
@@ -3411,6 +3424,15 @@
 
     .wall-meta {
       color: var(--muted-foreground);
+    }
+
+    /* (the backdrop of the overlay is not drawn: the caption is on the page) */
+    .wall-caption {
+      display: block;
+    }
+
+    .wall-caption::before {
+      display: none;
     }
   }
 
