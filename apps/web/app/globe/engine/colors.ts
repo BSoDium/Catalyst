@@ -2,6 +2,7 @@
  * Theme colours are read from the app's CSS variables (docs/design-tokens.md), so light and dark follow
  * `prefers-color-scheme` and any future token change reaches the globe without touching this code.
  */
+import { currentScheme } from "./scheme";
 import { activeLevels, buildRamp, roleColor, roleLevel } from "./palette";
 import { schemeOf, trailColors, type TrailRgb, type TrailScheme } from "../paths/trail";
 
@@ -96,7 +97,7 @@ function readToken(host: HTMLElement, name: string): Rgba | null {
  * of the grey ramp derived from them (engine/palette.ts), so the globe and the street map share one palette.
  */
 export function readTheme(host: HTMLElement): GlobeTheme {
-  const dark = matchMedia("(prefers-color-scheme: dark)").matches;
+  const dark = currentScheme() === "dark";
   const fb = dark ? FALLBACK.dark : FALLBACK.light;
   const opaque = (name: string, fallback: Rgb): Rgb => readToken(host, name)?.rgb ?? fallback;
   return themeFromTokens(opaque("--background", fb.background), opaque("--foreground", fb.ink));

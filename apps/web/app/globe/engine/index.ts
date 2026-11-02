@@ -13,6 +13,7 @@ import { MoonOverlay } from "./moon-overlay";
 import { GlobeRenderer, type RendererOptions, type StartView } from "./renderer";
 import { SPIN } from "./idle-spin";
 import { TUNING } from "./tuning";
+import { onSchemeChange } from "./scheme";
 import { sameView, toViewState } from "./view";
 import { isWebGLAvailable } from "./webgl";
 
@@ -324,14 +325,13 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
   labels.setSelected(opts.selectedSlug);
   labels.setWake(() => renderer.requestRender()); // a plan run by the labels' timer on a map at rest started a glide
 
-  // Colours come from CSS variables that switch with the OS colour scheme.
-  const scheme = matchMedia("(prefers-color-scheme: dark)");
+  // Colours come from CSS variables that switch with the colour scheme: the OS's, or the one the visitor chose (lib/theme.ts).
   const onScheme = () => {
     const t = readTheme(opts.stage);
     labels.setTheme(t);
     renderer.setTheme(t);
   };
-  scheme.addEventListener("change", onScheme);
+  const offScheme = onSchemeChange(onScheme);
   let disposed = false;
 
   return {
@@ -495,7 +495,7 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
     dispose() {
       if (disposed) return;
       disposed = true;
-      scheme.removeEventListener("change", onScheme);
+      offScheme();
       moonOverlay?.dispose();
       renderer.dispose();
       labels.dispose();

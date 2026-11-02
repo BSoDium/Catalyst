@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { Frame, Icon, KeyHint, KindTag } from "~/components/ui";
-import { prepareInterlude, requestInterlude, unlockSound } from "~/globe";
+import { prepareInterlude, readMuted, requestInterlude, unlockSound } from "~/globe";
 import { matchesSurprise, SURPRISE } from "~/lib/interlude";
 import { matchesArchive } from "~/lib/archive";
 import { ARCHIVED_V1 } from "~/lib/site";
+import { playThemeClick } from "~/lib/theme-click";
+import { THEME_LABELS, matchesTheme, rankThemes, readThemeChoice, setThemeChoice, currentScheme, type ThemeChoice } from "~/lib/theme";
 import { groupResults, rankItems, resultsStatus, SEARCH_LABELS, type SearchItem } from "~/lib/search";
 import { cn } from "~/lib/utils";
 
@@ -15,7 +17,12 @@ const MAX_RESULTS = 24;
 const SURPRISE_ROW = { surprise: true as const };
 /** The archived first version (#312): one row, found by its own words, that leaves the site (a new tab). */
 const ARCHIVE_ROW = { archive: true as const };
-type Row = SearchItem | typeof SURPRISE_ROW | typeof ARCHIVE_ROW;
+/** The theme (#507): three rows, light, dark and system; listed while nothing is typed and for the words that ask for it (`matchesTheme`). */
+type ThemeRow = { theme: ThemeChoice };
+const THEME_ROW: Record<ThemeChoice, ThemeRow> = { light: { theme: "light" }, dark: { theme: "dark" }, system: { theme: "system" } };
+const THEME_ICON = { light: "sun", dark: "moon", system: "monitor" } as const;
+type Row = SearchItem | typeof SURPRISE_ROW | typeof ARCHIVE_ROW | ThemeRow;
+const isTheme = (row: Row | undefined): row is ThemeRow => row !== undefined && "theme" in row;
 const isSurprise = (row: Row | undefined): row is typeof SURPRISE_ROW => row !== undefined && "surprise" in row;
 const isArchive = (row: Row | undefined): row is typeof ARCHIVE_ROW => row !== undefined && "archive" in row;
 
@@ -140,7 +147,13 @@ export function SearchPalette() {
     if (surprise) prepareInterlude();
   }, [surprise]);
   const archive = useMemo(() => matchesArchive(query), [query]);
-  const flat = useMemo<Row[]>(() => [...found, ...(archive ? [ARCHIVE_ROW] : []), ...(surprise ? [SURPRISE_ROW] : [])], [found, archive, surprise]);
+  const themeOn = useMemo(() => query.trim() === "" || matchesTheme(query), [query]);
+  const themeRows = useMemo(() => rankThemes(query).map((t) => THEME_ROW[t]), [query]);
+  const [choice, setChoice] = useState<ThemeChoice>("system");
+  useEffect(() => {
+    if (open) setChoice(readThemeChoice());
+  }, [open]);
+  const flat = useMemo<Row[]>(() => [...(themeOn ? themeRows : []), ...found, ...(archive ? [ARCHIVE_ROW] : []), ...(surprise ? [SURPRISE_ROW] : [])], [found, themeOn, themeRows, archive, surprise]);
   const current = flat[Math.min(active, flat.length - 1)];
 
   useEffect(() => setActive(0), [query]);
@@ -149,6 +162,13 @@ export function SearchPalette() {
   }, [active, flat]);
 
   const go = (item: Row) => {
+    if (isTheme(item)) {
+      // inside the gesture (the click, the Enter) so that the browser lets the sound start; the palette stays open, to see the page change behind it and to try another
+      const changed = setThemeChoice(item.theme);
+      setChoice(item.theme);
+      if (changed) playThemeClick(currentScheme(), readMuted());
+      return;
+    }
     hide();
     if (isSurprise(item)) return summon();
     if (isArchive(item)) {
@@ -191,7 +211,7 @@ export function SearchPalette() {
     }
   };
 
-  const extra = (surprise ? 1 : 0) + (archive ? 1 : 0);
+  const extra = (surprise ? 1 : 0) + (archive ? 1 : 0) + (themeOn && query.trim() !== "" ? themeRows.length : 0);
   const total = load.state === "ready" ? load.items.length : 0;
   const hasQuery = query.trim() !== "";
   const status =
@@ -254,6 +274,43 @@ export function SearchPalette() {
             </div>
             <div className="max-h-[min(24rem,60dvh)] overflow-y-auto overscroll-contain">
               <ul ref={listRef} id={listId} role="listbox" aria-label="Results" className="m-0 list-none p-0">
+                {themeOn && (
+                  <li role="presentation">
+                    <ul role="group" aria-label="Theme" className="m-0 list-none p-0">
+                      <li role="presentation" className="type-meta px-4 pt-4 pb-1 text-muted-foreground" aria-hidden="true">
+                        Theme
+                      </li>
+                      {themeRows.map((row) => {
+                        const i = flat.indexOf(row);
+                        const selected = row === current;
+                        const label = THEME_LABELS[row.theme];
+                        return (
+                          <li
+                            key={row.theme}
+                            id={`${id}-opt-${i}`}
+                            role="option"
+                            aria-selected={selected}
+                            onMouseMove={() => setActive(i)}
+                            onClick={() => go(row)}
+                            className={cn("flex min-h-12 cursor-pointer items-center gap-3 px-4 py-2", selected && "bg-accent shadow-[inset_2px_0_0_var(--signal)]")}
+                          >
+                            <Icon name={THEME_ICON[row.theme]} size="control" className="shrink-0 text-muted-foreground" />
+                            <span className="flex min-w-0 flex-1 flex-col">
+                              <span className="truncate font-display text-base font-bold tracking-[-0.01em]">{label.title}</span>
+                              <span className="ds-meta truncate">{label.sub}</span>
+                            </span>
+                            {choice === row.theme && (
+                              <>
+                                <Icon name="check" size="control" className="shrink-0" />
+                                <span className="sr-only">Current</span>
+                              </>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </li>
+                )}
                 {groups.map((group) => (
                   <li key={group.type} role="presentation">
                     <ul role="group" aria-label={group.label} className="m-0 list-none p-0">
@@ -337,7 +394,7 @@ export function SearchPalette() {
               {!hasQuery && load.state === "ready" && (
                 <p className="m-0 px-4 py-6 text-sm text-muted-foreground">Type a name, a place, a tag. {total} places and entries are indexed.</p>
               )}
-              {hasQuery && load.state === "ready" && results.length === 0 && !surprise && !archive && <p className="m-0 px-4 py-6 text-sm text-muted-foreground">Nothing matches &ldquo;{query.trim()}&rdquo;.</p>}
+              {hasQuery && load.state === "ready" && results.length === 0 && !surprise && !archive && !themeOn && <p className="m-0 px-4 py-6 text-sm text-muted-foreground">Nothing matches &ldquo;{query.trim()}&rdquo;.</p>}
               {load.state === "loading" && <p className="m-0 px-4 py-6 text-sm text-muted-foreground">Loading&hellip;</p>}
               {load.state === "error" && <p className="m-0 px-4 py-6 text-sm text-muted-foreground">The search could not be loaded. Close it and try again.</p>}
             </div>

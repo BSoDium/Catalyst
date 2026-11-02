@@ -8,6 +8,7 @@ import { CONTACT_ID } from "~/lib/contact";
 import { safeExternalUrl } from "~/lib/entry-blocks";
 import { placePath } from "~/lib/entries";
 import { SITE } from "~/lib/site";
+import { useForcedScheme } from "~/lib/theme";
 
 /**
  * `/career`: the curriculum vitae as a page (docs/career-page.md), set as the other pages of the site: a running head over ONE
@@ -176,13 +177,16 @@ export function CareerPage({ career, places = [] }: { career: PublishedCareer; p
  * scheme toggle, so `prefers-color-scheme` is the whole story). Drawn twice: once as the picture, once as its faint bleed.
  */
 function PortraitPicture({ portrait, alt, decorative, eager, className }: { portrait: NonNullable<ReturnType<typeof safePortrait>>; alt: string; decorative?: boolean; eager?: boolean; className?: string }) {
+  // a scheme the visitor forced (lib/theme.ts) is not the media query's: the picture is chosen here
+  const forced = useForcedScheme();
+  const pick = portrait.dark && forced === "dark" ? portrait.dark : portrait;
   const img = (
     <img
-      src={portrait.src}
+      src={pick.src}
       alt={alt}
       aria-hidden={decorative ? "true" : undefined}
-      width={portrait.width}
-      height={portrait.height}
+      width={pick.width}
+      height={pick.height}
       loading={eager ? "eager" : undefined}
       decoding="async"
       fetchPriority={eager ? "high" : undefined}
@@ -190,7 +194,7 @@ function PortraitPicture({ portrait, alt, decorative, eager, className }: { port
       style={eager ? { aspectRatio: "1 / 1" } : undefined}
     />
   );
-  return portrait.dark ? (
+  return portrait.dark && forced === "system" ? (
     <picture>
       <source media="(prefers-color-scheme: dark)" srcSet={portrait.dark.src} width={portrait.dark.width} height={portrait.dark.height} />
       {img}

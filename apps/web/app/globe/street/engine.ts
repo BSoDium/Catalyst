@@ -45,6 +45,7 @@ import { TrailDotsLayer, dotLegs } from "../paths/trail-dots-layer";
 import { capReach, viewCap } from "./core/view-cap";
 import { fadeStraight, thinLegs, thinZoomOf, type ThinLeg } from "../paths/thin";
 import { DEFAULT_HANDOFF, PLACEHOLDER_LAYERS, PLACEHOLDER_REPLACES, PLACEHOLDER_OVERLAP_MS, PLACEHOLDER_SETTLE_MS, ROUTE_LAYER_IDS, applyCell, applyDashScale, applyKeptLegs, buildStreetStyle, placeholderWanted, dashStepOf, focusFilter, graticule, headFocusFilter, ROUTE_HEAD_FOCUS_ID, hasPlaceholder, routeLayerId, seaFrom, type StyleTiles } from "./style/street-style";
+import { onSchemeChange } from "../engine/scheme";
 import { STREET_TUNING } from "./tuning";
 import type { AnimateOptions, FlyOptions, RevealOptions, StreetDebug, StreetMap, StreetMapOptions, StreetView } from "./types";
 
@@ -760,7 +761,6 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
 
   const stopDpr = watchDevicePixelRatio(refreshGrid);
 
-  const scheme = matchMedia("(prefers-color-scheme: dark)");
   const onScheme = () => {
     theme = readTheme(root);
     applyTones(theme);
@@ -769,7 +769,7 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
     trailDots.setPage(theme.background);
     if (!compositor.repool()) map.triggerRepaint();
   };
-  scheme.addEventListener("change", onScheme);
+  const offScheme = onSchemeChange(onScheme);
 
   let hiddenAt = 0;
   const onVisibility = () => {
@@ -965,7 +965,7 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
       manager.dispose();
       ro.disconnect();
       stopDpr();
-      scheme.removeEventListener("change", onScheme);
+      offScheme();
       document.removeEventListener("visibilitychange", onVisibility);
       for (const [type, fn] of mapListeners) map.off(type as never, fn as never);
       detachWheel?.();
