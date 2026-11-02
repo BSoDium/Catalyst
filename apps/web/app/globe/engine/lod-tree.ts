@@ -92,8 +92,9 @@ export const LOD = {
    */
   floorCells: 5,
   /**
-   * The smallest a ghost box is drawn, in art cells along each side (#509): the true box of a place that is in view but not drawn (its label has no room, it is
-   * inside a group), one outline in the box colour so that the path that enters it does not stop short of nothing. Smaller than this it would be a dot.
+   * The smallest a ghost box is drawn as an OUTLINE, in art cells along each side (#509): the true box of a place that is in view but not drawn (its label has no room, it is
+   * inside a group), in the box colour so that the path that enters it does not stop short of nothing. Smaller than this on a side it is a solid dot of 1 or 2 cells (its real size,
+   * rounded: the owner, 2026-11-02, "a dot or rectangle 1 or 2 px wide depending on the actual size").
    */
   ghostMinCells: 3,
   /** The mask of a box at the minimum size: its TRUE side as a multiple of the minimum goes from `fillFadeFrom` (masked) to `fillFadeTo` (hollow); the switch has the hysteresis `fillHyst`. */
@@ -831,17 +832,13 @@ export class LodTree {
   /**
    * The places that are in view but not drawn, as the true rectangle of their box (container CSS px of the camera, NO minimum size: a city is as big on
    * the map as it is) and how much of the way they are from drawn (1 = not at all, down to 0 as the node fades in: the real box takes over, so the two never add up).
-   * Paths are clipped at the box of a place: where its box is not drawn they would stop at nothing (#509). Only a box of at least `LOD.ghostMinCells` cells a side;
-   * pure given the last `update` / `advance`.
+   * Paths are clipped at the box of a place: where its box is not drawn they would stop at nothing (#509). 
+   * of any size (how it is drawn, an outline or a dot, is the box scene's: `LOD.ghostMinCells`); pure given the last `update` / `advance`.
    */
-  ghosts(cell: number, into: Ghost[] = []): Ghost[] {
+  ghosts(into: Ghost[] = []): Ghost[] {
     into.length = 0;
-    const min = LOD.ghostMinCells * cell;
     for (const p of this.places) {
       if (!this.shown[p]) continue;
-      const w = this.trueX1[p]! - this.trueX0[p]!;
-      const h = this.trueY1[p]! - this.trueY0[p]!;
-      if (w < min || h < min) continue;
       const drawn = this.life.p[p]! > 0 ? easeFade(this.life.p[p]!) : 0;
       if (drawn >= 1 - LOD.alphaMin) continue;
       into.push({ i: p, x0: this.trueX0[p]!, y0: this.trueY0[p]!, x1: this.trueX1[p]!, y1: this.trueY1[p]!, alpha: 1 - drawn });

@@ -1067,15 +1067,14 @@ describe("ghost boxes: the true box of a place in view that is not drawn (#509)"
     // zoomed out over a crowded country: the cut is a group, its places are not drawn, and the boxes of 12 km are a few px
     const far = camAt(9.5, 50.5, 5.2);
     const drawn = evaluate(tree, far);
-    for (const gh of tree.ghosts(CELL)) {
+    for (const gh of tree.ghosts()) {
       expect(drawn.has(tree.slug[gh.i]!)).toBe(false);
       expect(gh.alpha).toBe(1);
-      expect(gh.x1 - gh.x0).toBeGreaterThanOrEqual(LOD.ghostMinCells * CELL);
     }
     // zoomed in so far that places are drawn: they are ghosts no more
     const near = camAt(9.0, 50.0, 8.5);
     const shownNear = evaluate(tree, near);
-    const placed = tree.ghosts(CELL);
+    const placed = tree.ghosts();
     for (const gh of placed) expect(shownNear.has(tree.slug[gh.i]!) && (shownNear.get(tree.slug[gh.i]!) ?? 0) > 0.99).toBe(false);
   });
 
@@ -1084,7 +1083,7 @@ describe("ghost boxes: the true box of a place in view that is not drawn (#509)"
     // two places a few km apart collapse into their country at this zoom
     const cam = camAt(9, 50, 6.5);
     evaluate(tree, cam);
-    const gh = tree.ghosts(CELL);
+    const gh = tree.ghosts();
     expect(gh.length).toBeGreaterThan(0);
     for (const x of gh) {
       const half = placeHalfPx(40, cam.zoom, cam.height, 1);

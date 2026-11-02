@@ -46,6 +46,7 @@ import { PX_UNITS, boxesToAvoid, smoothUnits } from "./label-plan";
 import { LabelTracker, SlotMemory, motionLimitPx, type Placed, type TrackItem } from "./label-track";
 import { subText } from "./label-sub";
 import { LABEL_TYPE, labelVariants, type LabelText } from "./label-text";
+import { ghostCells } from "./ghost-box";
 import { LOD, type Ghost, type LodTree } from "./lod-tree";
 import type { NodeScreen } from "./node-screen";
 import { textFloorLevel } from "./palette";
@@ -574,13 +575,18 @@ export class BoxScene {
     }
     this.layer.end();
     // The boxes of the places that are in view and not drawn, at their true size, under everything else (#509): a path is clipped at the box of its place and would stop short of nothing
-    const ghosts = this.ghostCells(lod.ghosts(cell, this.ghostList), grid);
-    for (const g of ghosts) h = hashStep(hashStep(hashStep(hashStep(h, g.rect.c0 * 4096 + g.rect.r0), g.rect.c1 * 4096 + g.rect.r1), Math.round(g.alpha * ALPHA_STEPS)), 7);
+    const ghosts = ghostCells(lod.ghosts(this.ghostList), grid.cell, grid.cols, grid.rows);
+    for (const g of ghosts) h = hashStep(hashStep(hashStep(hashStep(h, g.rect.c0 * 4096 + g.rect.r0), g.rect.c1 * 4096 + g.rect.r1), Math.round(g.alpha * ALPHA_STEPS)), g.dot ? 8 : 7);
     h = hashStep(hashStep(h, items.length), grid.cols * 4096 + grid.rows);
     // Painter's order: lower score first, forced last, so a strong node is composited over a weak one.
     const paint = [...items].sort((a, b) => Number(this.modeOf(a.i, a.wanted) !== "rest") - Number(this.modeOf(b.i, b.wanted) !== "rest") || a.score - b.score);
     this.overlay.frame(h, (buf) => {
-      for (const g of ghosts) drawBox(buf, g.rect, this.tones, { alpha: quantAlpha(g.alpha), fillAlpha: 0, active: false });
+      for (const g of ghosts) {
+        const alpha = quantAlpha(g.alpha);
+        // a box of a few cells is a solid dot of its own size; a bigger one an outline, its inside in the page colour like a box that the minimum size has made bigger than the place
+        if (g.dot) buf.fillRect(g.rect.c0, g.rect.r0, g.rect.c1 - g.rect.c0, g.rect.r1 - g.rect.r0, this.tones.rest.box, alpha);
+        else drawBox(buf, g.rect, this.tones, { alpha, fillAlpha: alpha, active: false });
+      }
       for (const t of paint) {
         const mode = this.modeOf(t.i, t.wanted);
         drawBox(buf, t.rect, this.tones, { alpha: this.alphaOf(t, mode), fillAlpha: this.fillAlphaOf(t, mode), active: mode !== "rest", solid: mode === "selected", open: this.openNessOf(t) });
@@ -590,18 +596,6 @@ export class BoxScene {
   }
 
   private ghostList: Ghost[] = [];
-
-  /** The ghosts as whole cells of the grid (the true box rounded outwards), those that touch it; a box as big as the screen is not a gap to fill. */
-  private ghostCells(list: Ghost[], grid: PixelGrid): { rect: CellRect; alpha: number }[] {
-    const out: { rect: CellRect; alpha: number }[] = [];
-    for (const g of list) {
-      const rect: CellRect = { c0: Math.floor(g.x0 / grid.cell), r0: Math.floor(g.y0 / grid.cell), c1: Math.ceil(g.x1 / grid.cell), r1: Math.ceil(g.y1 / grid.cell) };
-      if (rect.c1 <= 0 || rect.r1 <= 0 || rect.c0 >= grid.cols || rect.r0 >= grid.rows) continue;
-      if (rect.c1 - rect.c0 > grid.cols || rect.r1 - rect.r0 > grid.rows) continue;
-      out.push({ rect, alpha: g.alpha });
-    }
-    return out;
-  }
 
   /**
    * Ask for the resting picture (labels rounded to whole device pixels) once nothing has moved for `SETTLE_MS`. Called in every frame that moved
