@@ -6676,40 +6676,63 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
    * left aligned and FLUSH with the box's edge (the plate's padding hangs outside it), on an opaque plate of the page's colour; when the field is selected the label is INVERTED, the ink as the plate and the page's colour
    * as the text, and the plate is flush with the box (it moves in by its padding, as the selected map label's does). It does not float or scale like the other fields' placeholders (owner, 2026-11-02).
    */
-  .contact-control[data-field="message"] .contact-label {
+  .contact-control[data-field="message"] .contact-tag {
+    position: absolute;
     bottom: 100%;
-    top: auto;
-    left: calc(-1 * 6px);
-    max-width: none;
-    padding: 3px 6px;
-    overflow: visible;
+    left: 0;
+    padding: 3px 6px 7px;
     background: var(--background);
     color: var(--foreground);
     font-family: var(--font-mono);
+    pointer-events: none;
+  }
+
+  .contact-control[data-field="message"] .contact-label {
+    position: static;
+    display: block;
+    max-width: none;
+    overflow: visible;
+    color: inherit;
     font-size: 14px;
     font-weight: 500;
     letter-spacing: 0.01em;
     line-height: 18px;
     transform: none;
+    white-space: nowrap;
   }
 
-  .contact-field .contact-control[data-field="message"]:focus-within .contact-input:focus ~ .contact-label,
-  .contact-field .contact-control[data-field="message"]:focus-within .contact-label {
-    left: 0;
+  /* the second line, as a box's label has its country: 11 px, regular, the muted tone */
+  .contact-count {
+    display: block;
+    color: var(--muted-foreground);
+    font-size: 11px;
+    letter-spacing: 0.02em;
+    line-height: 14px;
+    white-space: nowrap;
+  }
+
+  /* selected: inverted, the ink as the plate; the second line is the page's colour mixed 28 % toward the ink (the map's selected card). The box itself stays in the ink: no blue here */
+  .contact-field .contact-control[data-field="message"]:focus-within {
+    --contact-line: var(--foreground);
+  }
+
+  .contact-field .contact-control[data-field="message"]:focus-within .contact-tag {
     background: var(--foreground);
     color: var(--background);
   }
 
-  .contact-control[data-field="message"] .contact-textarea:focus ~ .contact-label,
-  .contact-control[data-field="message"] .contact-textarea:not(:placeholder-shown) ~ .contact-label {
-    transform: none;
+  .contact-field .contact-control[data-field="message"]:focus-within .contact-count {
+    color: color-mix(in srgb, var(--background) 72%, var(--foreground));
   }
 
   .contact-field[data-invalid="true"] .contact-control[data-field="message"] .contact-label {
     color: var(--contact-error);
   }
 
-  .contact-field[data-invalid="true"] .contact-control[data-field="message"]:focus-within .contact-input:focus ~ .contact-label,
+  .contact-field[data-invalid="true"] .contact-control[data-field="message"]:focus-within {
+    --contact-line: var(--contact-error);
+  }
+
   .contact-field[data-invalid="true"] .contact-control[data-field="message"]:focus-within .contact-label {
     color: var(--background);
   }

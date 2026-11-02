@@ -23,6 +23,7 @@ export function ContactForm() {
   const [ready, setReady] = useState(false);
   const [status, setStatus] = useState<Status>(back.sent ? "sent" : "idle");
   const [errors, setErrors] = useState<ContactErrors>({});
+  const [typed, setTyped] = useState(0);
   const [failure, setFailure] = useState("");
   const thanksRef = useRef<HTMLParagraphElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
@@ -102,8 +103,8 @@ export function ContactForm() {
           <Field uid={uid} name="email" label="Your email address, to answer you" error={errors.email}>
             <input id={`${uid}-email`} name="email" type="email" inputMode="email" autoComplete="email" required maxLength={CONTACT_LIMITS.email} aria-invalid={errors.email ? true : undefined} aria-describedby={errors.email ? `${uid}-email-e` : undefined} placeholder=" " className="contact-input" />
           </Field>
-          <Field uid={uid} name="message" label="What would you like to talk about?" error={errors.message}>
-            <textarea id={`${uid}-message`} name="message" rows={6} required minLength={CONTACT_LIMITS.minMessage} maxLength={CONTACT_LIMITS.message} aria-invalid={errors.message ? true : undefined} aria-describedby={errors.message ? `${uid}-message-e` : undefined} placeholder=" " className="contact-input contact-textarea" aria-keyshortcuts="Control+Enter Meta+Enter" onKeyDown={sendWithKeyboard} />
+          <Field uid={uid} name="message" label="What would you like to talk about?" error={errors.message} count={CONTACT_LIMITS.message - typed}>
+            <textarea id={`${uid}-message`} name="message" rows={6} required minLength={CONTACT_LIMITS.minMessage} maxLength={CONTACT_LIMITS.message} aria-invalid={errors.message ? true : undefined} aria-describedby={errors.message ? `${uid}-message-e ${uid}-message-n` : `${uid}-message-n`} placeholder=" " className="contact-input contact-textarea" aria-keyshortcuts="Control+Enter Meta+Enter" onKeyDown={sendWithKeyboard} onInput={(e) => setTyped(e.currentTarget.value.length)} />
           </Field>
           {/* The honeypot: a person never sees it nor reaches it with the keyboard; a script that fills every field does. */}
           <div aria-hidden="true" className="contact-trap">
@@ -136,14 +137,27 @@ export function ContactForm() {
  * and moves up, small, when the field is focused or has something in it (CSS only: `:placeholder-shown` on the input, whose placeholder is a space, so it works without the script and the label stays a real
  * `<label>` for assistive technology). The input comes first in the markup so that its state reaches the label that follows it.
  */
-function Field({ uid, name, label, error, children }: { uid: string; name: ContactField; label: string; error: string | undefined; children: React.ReactNode }) {
+function Field({ uid, name, label, error, count, children }: { uid: string; name: ContactField; label: string; error: string | undefined; count?: number; children: React.ReactNode }) {
+  const labelEl = (
+    <label htmlFor={`${uid}-${name}`} className="contact-label">
+      {label}
+    </label>
+  );
   return (
     <div className="contact-field" data-invalid={error ? "true" : undefined}>
       <div className="contact-control" data-field={name}>
         {children}
-        <label htmlFor={`${uid}-${name}`} className="contact-label">
-          {label}
-        </label>
+        {count === undefined ? (
+          labelEl
+        ) : (
+          // The message's label is a map label's: the name, and under it the characters left (a second line in the muted tone, as a box's label has its country); one plate for both.
+          <div className="contact-tag">
+            {labelEl}
+            <span id={`${uid}-${name}-n`} className="contact-count">
+              {count === 1 ? "1 character left" : `${count} characters left`}
+            </span>
+          </div>
+        )}
       </div>
       {error && (
         <p id={`${uid}-${name}-e`} className="contact-error">
