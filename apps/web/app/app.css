@@ -6577,8 +6577,9 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     border-radius: 0;
     background: transparent;
     color: var(--foreground);
-    font-family: var(--font-reading);
-    font-size: 1.125rem;
+    /* the app's sans, as the command palette's input (owner, 2026-11-02), 16 px */
+    font-family: var(--font-sans);
+    font-size: 1rem;
     line-height: 1.4;
     outline: none;
   }
