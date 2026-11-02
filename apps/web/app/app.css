@@ -6572,7 +6572,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   .contact-input {
     width: 100%;
     min-height: 3.5rem;
-    padding: 1.5rem 0 0.5rem;
+    padding: 1.5rem 0 0.5rem 6px;
     border: 0;
     border-radius: 0;
     background: transparent;
@@ -6590,9 +6590,9 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
 
   .contact-label {
     position: absolute;
-    left: 0;
+    left: 6px; /* the message's label plate has 6 px of padding: the texts of the three fields share one left edge (owner, 2026-11-02) */
     top: 1.46rem;
-    max-width: 100%;
+    max-width: calc(100% - 6px);
     overflow: hidden;
     color: var(--foreground);
     font-family: var(--font-meta);
@@ -6641,10 +6641,16 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
    * globe (`--art-px`), the corners 6 pixels long, the dashes 3 pixels with a gap of 2. The label starts inside it.
    */
   .contact-control[data-field="message"] {
-    --t: var(--art-px);
-    --arm: calc(var(--t) * 6);
-    --dash: calc(var(--t) * 3);
-    --gap: calc(var(--t) * 2);
+    /* every stroke is the thickness of the underlines of the fields above (the hairline; the same two hairlines on focus, as theirs) and every length is a whole number of CSS px, so whole device pixels at 1x, 2x and 3x:
+       nothing is anti-aliased. The arms are 12 px, a dash 6 and a gap 4. The dashes of an edge are laid between the two arms, a gap first and a gap last, a WHOLE number of periods (`round(down)`) centred to the pixel
+       (the remainder is split over the two ends), so both ends of every edge are the same. */
+    --t: var(--hairline);
+    --arm: 12px;
+    --dash: 6px;
+    --gap: 4px;
+    --period: calc(var(--dash) + var(--gap));
+    --run-x: calc(round(down, 100% - 2 * var(--arm) - var(--gap), var(--period)) + var(--gap));
+    --run-y: var(--run-x);
     border-bottom: 0;
     box-shadow: none;
     background:
@@ -6656,10 +6662,14 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
       linear-gradient(var(--contact-line), var(--contact-line)) bottom left / var(--t) var(--arm) no-repeat,
       linear-gradient(var(--contact-line), var(--contact-line)) bottom right / var(--arm) var(--t) no-repeat,
       linear-gradient(var(--contact-line), var(--contact-line)) bottom right / var(--t) var(--arm) no-repeat,
-      repeating-linear-gradient(to right, var(--contact-line) 0 var(--dash), transparent var(--dash) calc(var(--dash) + var(--gap))) top left / 100% var(--t) no-repeat,
-      repeating-linear-gradient(to right, var(--contact-line) 0 var(--dash), transparent var(--dash) calc(var(--dash) + var(--gap))) bottom left / 100% var(--t) no-repeat,
-      repeating-linear-gradient(to bottom, var(--contact-line) 0 var(--dash), transparent var(--dash) calc(var(--dash) + var(--gap))) top left / var(--t) 100% no-repeat,
-      repeating-linear-gradient(to bottom, var(--contact-line) 0 var(--dash), transparent var(--dash) calc(var(--dash) + var(--gap))) top right / var(--t) 100% no-repeat;
+      repeating-linear-gradient(to right, transparent 0 var(--gap), var(--contact-line) var(--gap) var(--period)) round(down, 50%, 1px) top / var(--run-x) var(--t) no-repeat,
+      repeating-linear-gradient(to right, transparent 0 var(--gap), var(--contact-line) var(--gap) var(--period)) round(down, 50%, 1px) bottom / var(--run-x) var(--t) no-repeat,
+      repeating-linear-gradient(to bottom, transparent 0 var(--gap), var(--contact-line) var(--gap) var(--period)) left round(down, 50%, 1px) / var(--t) var(--run-y) no-repeat,
+      repeating-linear-gradient(to bottom, transparent 0 var(--gap), var(--contact-line) var(--gap) var(--period)) right round(down, 50%, 1px) / var(--t) var(--run-y) no-repeat;
+  }
+
+  .contact-control[data-field="message"]:focus-within {
+    --t: calc(var(--hairline) * 2);
   }
 
   .contact-control[data-field="message"] {
