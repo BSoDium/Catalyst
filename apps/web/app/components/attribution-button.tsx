@@ -1,3 +1,4 @@
+import type { PublishedDataVersion } from "@catalyst/schemas";
 import { useMemo, useRef, useState, type CSSProperties } from "react";
 import { CreditsDialog } from "~/components/credits-dialog";
 import { Icon } from "~/components/ui/icon";
@@ -10,6 +11,8 @@ interface AttributionButtonProps {
   /** CSS px of the right edge covered by the detail panel: the card stays left of it. */
   insetRight: number;
   reducedMotion: boolean;
+  /** Which version of the content the page was built on (the credits dialog says it: #504). */
+  dataVersion?: PublishedDataVersion | null;
 }
 
 /**
@@ -28,7 +31,7 @@ interface AttributionButtonProps {
  *    target on a phone (an invisible `::after`).
  * Place it in a positioned container that fills the map.
  */
-export function AttributionButton({ tiles, insetRight, reducedMotion }: AttributionButtonProps) {
+export function AttributionButton({ tiles, insetRight, reducedMotion, dataVersion }: AttributionButtonProps) {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
   const tilesKey = tiles ? `${tiles.primaryUrl}|${tiles.fallbackPmtilesUrl ?? ""}` : "";
@@ -76,7 +79,7 @@ export function AttributionButton({ tiles, insetRight, reducedMotion }: Attribut
           <Icon name="arrow-up-right" size="inline" className="ml-0.5 align-middle" />
         </button>
       </div>
-      <CreditsDialog open={open} credits={credits} reducedMotion={reducedMotion} onClose={() => setOpen(false)} onClosed={() => buttonRef.current?.focus()} />
+      <CreditsDialog open={open} credits={credits} dataVersion={dataVersion} reducedMotion={reducedMotion} onClose={() => setOpen(false)} onClosed={() => buttonRef.current?.focus()} />
     </>
   );
 }

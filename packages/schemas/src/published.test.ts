@@ -18,6 +18,15 @@ describe("published projection", () => {
     expect(parsePublishedProjection(EMPTY_PROJECTION)).toEqual(EMPTY_PROJECTION);
   });
 
+  it("takes the version of the data (the commit and its date) and nothing else of the kind (#504)", () => {
+    const v = { commit: "7a9eaf0e", date: "2026-11-02" };
+    expect(parsePublishedProjection({ ...EMPTY_PROJECTION, dataVersion: v }).dataVersion).toEqual(v);
+    expect(parsePublishedProjection(EMPTY_PROJECTION).dataVersion).toBeUndefined();
+    expect(() => parsePublishedProjection({ ...EMPTY_PROJECTION, dataVersion: { ...v, commit: "main" } })).toThrow();
+    expect(() => parsePublishedProjection({ ...EMPTY_PROJECTION, dataVersion: { ...v, date: "2026-11" } })).toThrow();
+    expect(() => parsePublishedProjection({ ...EMPTY_PROJECTION, dataVersion: { ...v, extra: 1 } })).toThrow();
+  });
+
   it("rejects unknown fields so private data cannot leak through", () => {
     const bad = { ...EMPTY_PROJECTION, places: [{ ...place, sourceStepId: 123 }] };
     expect(() => parsePublishedProjection(bad)).toThrow(/sourceStepId|Unrecognized/);

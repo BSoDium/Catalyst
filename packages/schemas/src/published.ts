@@ -826,9 +826,22 @@ export const publishedCareerSchema = z
     if (!uniqueBy(c.links, (l) => l.url)) issue(["links"], "link addresses must be unique");
   });
 
+/**
+ * Which version of the content a projection is (#504): the commit of the private content repo it was exported from (short or full hash) and that commit's
+ * date, shown in the credits so that the owner can tell whether the site he is looking at is up to date. Written by the publication export only.
+ */
+export const publishedDataVersionSchema = z
+  .object({
+    commit: z.string().regex(/^[0-9a-f]{7,40}$/, "a git commit hash"),
+    date: z.string().regex(/^\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])$/, "YYYY-MM-DD"),
+  })
+  .strict();
+
 const projectionShape = z
   .object({
     schemaVersion: z.literal(SCHEMA_VERSION),
+    /** Additive in schema version 1: absent means the version is not known (a local or demo projection). */
+    dataVersion: publishedDataVersionSchema.optional(),
     places: z.array(publishedPlaceSchema),
     /** Additive in schema version 1: absent means no groups. */
     groups: z.array(publishedGroupSchema).default([]),
@@ -1018,6 +1031,7 @@ export type PublishedMetaEntry = z.infer<typeof publishedMetaEntrySchema>;
 export type PublishedBodyBlock = z.infer<typeof bodyBlockSchema>;
 export type PublishedBodyBlockType = PublishedBodyBlock["type"];
 export type PublishedCareer = z.infer<typeof publishedCareerSchema>;
+export type PublishedDataVersion = z.infer<typeof publishedDataVersionSchema>;
 export type PublishedCareerRole = z.infer<typeof careerRoleSchema>;
 export type PublishedCareerEducation = z.infer<typeof careerEducationSchema>;
 export type PublishedCareerLanguage = z.infer<typeof careerLanguageSchema>;
