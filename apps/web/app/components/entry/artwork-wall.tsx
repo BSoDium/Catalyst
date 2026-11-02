@@ -27,8 +27,8 @@ export function artworkCaption(entry: Pick<EntrySummary, "meta" | "date">): { me
  * The artworks as a brick wall (docs/design-system.md, "Artwork wall"): pictures at their own proportions (the contract's cover size, so
  * the space is reserved before the image arrives), nested in 1 to 4 columns by the wall's width, 10 px apart. The DOM is ONE list in reading
  * order; the placement is computed on the server (`lib/masonry.ts`) and drawn with `calc()` (`.wall` in app.css), so there is no script, no
- * measuring and no shift, and the tab order is the reading order. The title, medium and year are a plate over the picture's foot on a
- * pointer that hovers (shown on hover and on focus) and a line under the picture on touch (always visible). One link per picture
+ * measuring and no shift, and the tab order is the reading order. The title, medium and year are laid low on the picture's foot over a soft
+ * ramp into the page's colour on a pointer that hovers (shown on hover and on focus) and a line under the picture on touch (always visible). One link per picture
  * (the title), stretched over it. An artwork without a cover is a generated one at 4:3. A sensitive artwork stays blurred.
  *
  * `/photography` is the same wall (`kind="photograph"`): the photograph IS the page, so there is no generated cover (a photograph without
