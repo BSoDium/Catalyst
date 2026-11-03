@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "dataVersion": {
-    "commit": "9f4a4c496bffc15ac274ebeb81363e594a1b4207",
-    "date": "2026-11-02"
+    "commit": "60f2aa75717325a78524c6cc4535c2838016cdff",
+    "date": "2026-11-03"
   },
   "places": [
     {
@@ -9846,6 +9846,7 @@
         "id": "macrodata-labs-founding-engineer",
         "title": "Founding Engineer, Frontend & UX",
         "org": "Macrodata Labs",
+        "orgUrl": "https://macrodata.co",
         "logo": {
           "src": "/media/career/logo.831ad92e.webp",
           "width": 200,
@@ -9868,6 +9869,7 @@
         "id": "kanop-frontend-engineer",
         "title": "Frontend Engineer",
         "org": "Kanop",
+        "orgUrl": "https://www.kanop.io",
         "logo": {
           "src": "/media/career/logo.f38d6996.webp",
           "width": 200,
@@ -9898,6 +9900,7 @@
         "id": "tauniqo-full-stack-engineer",
         "title": "Full-Stack Engineer",
         "org": "Tauniqo.ai",
+        "orgUrl": "https://www.tauniqo.ai",
         "logo": {
           "src": "/media/career/logo.240218e8.webp",
           "width": 200,
@@ -9926,6 +9929,7 @@
         "id": "escape-technologies-full-stack-engineer",
         "title": "Full-Stack Engineer",
         "org": "Escape Technologies",
+        "orgUrl": "https://escape.tech",
         "logo": {
           "src": "/media/career/logo.fa8fe680.webp",
           "width": 200,
@@ -9953,6 +9957,7 @@
         "id": "kanop-frontend-engineer-2022",
         "title": "Frontend Engineer (Freelance & Internship)",
         "org": "Kanop",
+        "orgUrl": "https://www.kanop.io",
         "logo": {
           "src": "/media/career/logo.f38d6996.webp",
           "width": 200,
@@ -9980,6 +9985,7 @@
       {
         "id": "enseeiht-inp-toulouse",
         "institution": "ENSEEIHT, INP Toulouse",
+        "institutionUrl": "https://www.enseeiht.fr",
         "logo": {
           "src": "/media/career/logo.c23c658f.webp",
           "width": 200,
@@ -9995,6 +10001,7 @@
       {
         "id": "aau-klagenfurt",
         "institution": "Alpen-Adria-Universität Klagenfurt",
+        "institutionUrl": "https://www.aau.at",
         "logo": {
           "src": "/media/career/logo.2705add5.webp",
           "width": 200,

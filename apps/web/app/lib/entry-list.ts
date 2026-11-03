@@ -100,3 +100,29 @@ export function shouldGroupByYear(groups: readonly YearGroup<unknown>[]): boolea
   const total = groups.reduce((n, g) => n + g.items.length, 0);
   return groups.length >= 2 && total >= groups.length * 2;
 }
+
+export interface ListStat {
+  /** The figure, big and light. */
+  value: string;
+  /** What it counts, small, in the mono type. */
+  label: string;
+}
+
+/**
+ * The figures at the top of a list (owner, 2026-11-02, #548: "the top of each entry list is pretty boring"): how many entries (of how many when a tag filters), since which year (the first year of the list's dates: "2019", labelled "since"; "year" when all are of one: owner, 2026-11-03, a span "2025\u20132026" was too long for a figure) and how many places they are about (the places the list's entries name). Only what is known: no span without a date, no places count without a place. Pure; tested.
+ */
+export function listStats(
+  items: readonly Pick<EntrySummary, "date" | "places">[],
+  count: { shown: number; total: number; noun: string },
+): ListStat[] {
+  const stats: ListStat[] = [{ value: String(count.shown), label: count.shown === count.total ? count.noun : `of ${count.total} ${count.noun}` }];
+  const years = items.map((i) => yearOf(i.date)).filter((y): y is number => y !== null);
+  if (years.length > 0) {
+    const from = Math.min(...years);
+    const to = Math.max(...years);
+    stats.push({ value: String(from), label: from === to ? "year" : "since" });
+  }
+  const places = new Set(items.flatMap((i) => i.places.map((p) => p.slug)));
+  if (places.size > 0) stats.push({ value: String(places.size), label: places.size === 1 ? "place" : "places" });
+  return stats;
+}

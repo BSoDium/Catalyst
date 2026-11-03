@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { collectTags, filterByTag, groupByYear, shouldGroupByYear, parseTagFilter, tagSearch, yearOf } from "./entry-list";
+import { collectTags, filterByTag, groupByYear, listStats, shouldGroupByYear, parseTagFilter, tagSearch, yearOf } from "./entry-list";
 
 const e = (slug: string, tags: string[], date?: string) => ({ slug, tags, ...(date ? { date } : {}) });
 
@@ -111,5 +111,22 @@ describe("groupByYear, sensitive entries on a tie (issue #432)", () => {
   it("never overrules the date: a newer sensitive entry still comes before an older plain one", () => {
     const items = [mk("old", "2024-01"), mk("new", "2024-09", true)];
     expect(groupByYear(items)[0]!.items.map((i) => i.slug)).toEqual(["new", "old"]);
+  });
+});
+
+describe("listStats (#548)", () => {
+  const item = (date: string | undefined, places: string[] = []) => ({ date, places: places.map((slug) => ({ slug, name: slug })) }) as never;
+  it("counts the entries, gives the first year and counts the distinct places", () => {
+    expect(listStats([item("2019-03", ["paris"]), item("2026-09-02", ["paris", "toulouse"]), item("2022")], { shown: 3, total: 3, noun: "software" })).toEqual([
+      { value: "3", label: "software" },
+      { value: "2019", label: "since" },
+      { value: "2", label: "places" },
+    ]);
+  });
+  it("says one year as one, and a filtered count as 'of N'", () => {
+    expect(listStats([item("2022")], { shown: 1, total: 4, noun: "article" })).toEqual([{ value: "1", label: "of 4 article" }, { value: "2022", label: "year" }]);
+  });
+  it("leaves out what is not known: no dates, no places", () => {
+    expect(listStats([item(undefined)], { shown: 1, total: 1, noun: "poem" })).toEqual([{ value: "1", label: "poem" }]);
   });
 });
