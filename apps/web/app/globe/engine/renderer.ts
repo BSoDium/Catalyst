@@ -2748,6 +2748,7 @@ export class GlobeRenderer {
     this.disposed = true;
     this.cancelFrame();
     clearTimeout(this.shadowPoll);
+    SHADE_UNIFORMS.uShade.value.w = 0;
     for (const c of this.cleanups) c();
     this.cleanups = [];
     // (the hero must not stay a ghost if the globe goes away mid-interlude)
