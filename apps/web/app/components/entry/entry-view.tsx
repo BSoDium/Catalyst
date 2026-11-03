@@ -265,8 +265,8 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
             className={cn(
               "type-meta m-0 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 text-muted-foreground",
               "entry-running",
-              // On a phone the panel's close button floats at the right of this very row (it has no row of its own: `[data-slot="panel-bar"]`, app.css): the row is a band as tall as the button, centred, with room for it
-              "max-md:-mt-2 max-md:min-h-14 max-md:items-center max-md:pr-11",
+              // On a phone the panel's close button floats at the right of this very row (it has no row of its own: `[data-slot="panel-bar"]`, app.css): the row is a band with the page's gutter (24 px) all round, the text centred, with room for it
+              "max-md:-mt-2 max-md:items-center",
               // (its rule runs the panel's whole width, and a cover's picture starts at it: the text keeps the page's gutter)
               full ? "-mx-4 px-4 md:-mx-8 md:px-8" : "-mx-6 px-6",
             )}

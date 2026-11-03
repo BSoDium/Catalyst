@@ -3752,15 +3752,24 @@ h1[tabindex="-1"]:focus-visible {
 }
 
 /*
- * The entry panel's head on a phone (owner, 2026-11-02, #546: a row with only the close button over a second row with the back link, the kind, the place and the date "wastes vertical space"): the close button has no row of
- * its own, it floats at the top right on a plate of the page's colour (a circle, blurred) and the running head (`.entry-running`, entry-view.tsx) is the band beside it (3.5 rem with its hairline: the text centred on the button), with room kept for it at the right
- * (`pr-11`); the place is cut with an ellipsis when the line is too short. Only where the panel holds an entry (the other panels keep their bar as it was).
+ * The entry panel's head on a phone (owner, 2026-11-02, #546: a row with only the close button over a second row with the back link, the kind, the place and the date "wastes vertical space"; 2026-11-03: "the text should be
+ * centred and properly nested ... the padding at the left and the right equal to the one at the top and the bottom, and the bar a little smaller"): the close button has no row of its own, it floats at the top right on a plate of
+ * the page's colour (a circle, blurred) and the running head (`.entry-running`, entry-view.tsx) is the band beside it with ONE padding all round, the page's gutter (1.5 rem: the text's left edge is the title's), one line of
+ * text (line height 1) centred between the top of the panel and the hairline, and the close button's glyph as far from the right edge as the text is from the left; the place is cut with an ellipsis when the line is too short.
+ * Only where the panel holds an entry (the other panels keep their bar as it was).
  */
 @media (max-width: 47.99rem) {
+  [data-panel="dialog"]:has([data-slot="entry-view"]) .entry-running {
+    min-height: 0;
+    padding-block: 1.5rem;
+    padding-right: 3.75rem;
+    line-height: 1;
+  }
+
   [data-panel="dialog"]:has([data-slot="entry-view"]) [data-slot="panel-bar"] {
     position: absolute;
-    top: 0;
-    right: 0.5rem;
+    top: 0.5rem;
+    right: 0.75rem;
     z-index: 30;
     min-height: 0;
     padding: 0;
