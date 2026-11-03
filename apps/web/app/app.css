@@ -3752,6 +3752,110 @@ h1[tabindex="-1"]:focus-visible {
 }
 
 /*
+ * The world view's loader (components: globe/globe-loader.tsx; #545): a 3 x 3 ring of square pixels (4 px cells, 2 px apart) with one lit cell and a trail of three behind it going round, stepped (no turning, no
+ * anti-aliasing: whole device pixels), and "Loading world view" under it in the labels' mono, small, wide-spaced capitals in the muted tone. Over the globe's area (`right` is the panel's share), under
+ * the page's own controls (z 5: the hero is 10), out of the pointer's way. It fades in and out; reduced motion: the ring is lit whole and still.
+ */
+.globe-loader {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  pointer-events: none;
+  isolation: isolate;
+  /* hidden until it has been waited for (`LOADER.delayMs`, 450 ms): the delay runs from the first paint, so it is there while the script is still on its way and a quick load never shows it */
+  opacity: 0;
+  animation: globe-loader-in 280ms var(--ease-standard) 450ms both;
+}
+
+/* The soft backdrop (owner, 2026-11-03: "if it overlaps the globe for a while it should have a soft backdrop, a bit like the navbar"): a plate of the page's colour, blurred behind it and feathered to nothing at its edge by a radial
+   mask (no box, no edge: the desktop bar's scrim), so the ring and the words read over a half-drawn globe */
+.globe-loader::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: color-mix(in srgb, var(--background) 78%, transparent);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  -webkit-mask-image: radial-gradient(ellipse 46% 34% at 50% 50%, #000 0%, rgb(0 0 0 / 0.85) 38%, rgb(0 0 0 / 0.4) 68%, transparent 100%);
+  mask-image: radial-gradient(ellipse 46% 34% at 50% 50%, #000 0%, rgb(0 0 0 / 0.85) 38%, rgb(0 0 0 / 0.4) 68%, transparent 100%);
+}
+
+.globe-loader-ring {
+  position: relative;
+  width: 16px;
+  height: 16px;
+}
+
+.globe-loader-ring i {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: var(--foreground);
+  opacity: 0.15;
+  animation: globe-loader-tick 960ms step-end infinite;
+  animation-delay: calc(var(--i) * -120ms);
+}
+
+/* clockwise from the top left corner */
+.globe-loader-ring i:nth-child(1) { left: 0; top: 0; }
+.globe-loader-ring i:nth-child(2) { left: 6px; top: 0; }
+.globe-loader-ring i:nth-child(3) { left: 12px; top: 0; }
+.globe-loader-ring i:nth-child(4) { left: 12px; top: 6px; }
+.globe-loader-ring i:nth-child(5) { left: 12px; top: 12px; }
+.globe-loader-ring i:nth-child(6) { left: 6px; top: 12px; }
+.globe-loader-ring i:nth-child(7) { left: 0; top: 12px; }
+.globe-loader-ring i:nth-child(8) { left: 0; top: 6px; }
+
+.globe-loader-text {
+  color: var(--muted-foreground);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  line-height: 14px;
+  text-transform: uppercase;
+}
+
+/* On a phone the planet is in the upper part of the screen (the hero's text is under it): the loader is centred there, not over the words */
+@media (max-width: 47.99rem) {
+  .globe-loader {
+    bottom: 50%;
+  }
+}
+
+@keyframes globe-loader-tick {
+  0% { opacity: 1; }
+  12.5% { opacity: 0.6; }
+  25% { opacity: 0.35; }
+  37.5%, 100% { opacity: 0.15; }
+}
+
+@keyframes globe-loader-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* (still waited for: it appears after the delay, at once, with no fade) */
+  .globe-loader {
+    animation-duration: 1ms;
+    transition: none;
+  }
+
+  .globe-loader-ring i {
+    animation: none;
+    opacity: 0.6;
+  }
+}
+
+/*
  * Map labels: the names of the detection boxes, HTML text in the app's monospace stack (`--font-mono`, the credits line's and the dev badge's) (engine/label-dom.ts creates and positions the
  * elements; sizes, weights and tracking come from LABEL_TYPE in engine/label-text.ts because the planner measures with the same numbers).
  * Two lines: the name (line 1, 14 px, weight 500) and a second line (11 px, regular: the country or number of places, and the linked entries by kind).
