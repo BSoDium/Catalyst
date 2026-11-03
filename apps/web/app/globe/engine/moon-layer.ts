@@ -13,9 +13,9 @@
  * The layer knows nothing of input or the DOM: it is placed from the camera each frame (`sync`) and says where it is on the screen and how much of it shows (`MoonSample`), which
  * is what the link over it (engine/moon-overlay.ts) needs.
  */
-import { AddEquation, ClampToEdgeWrapping, Color, CustomBlending, FrontSide, LinearFilter, Mesh, NoColorSpace, OneFactor, OneMinusSrcAlphaFactor, RepeatWrapping, type Scene, ShaderMaterial, SphereGeometry, SrcAlphaFactor, type Texture, TextureLoader, Vector3, type PerspectiveCamera } from "three";
+import { AddEquation, ClampToEdgeWrapping, Color, CustomBlending, FrontSide, LinearFilter, Mesh, NoColorSpace, OneFactor, OneMinusSrcAlphaFactor, RepeatWrapping, type Scene, ShaderMaterial, SphereGeometry, SrcAlphaFactor, type Texture, TextureLoader, Vector2, Vector3, type PerspectiveCamera } from "three";
 import type { GlobeTheme } from "./colors";
-import { MOON, inertialPosition, moonAmount, orbitBasis, toEarthFrame, unhidden, type OrbitBasis, type Vec3 } from "./moon";
+import { MOON, eclipseOf, inertialPosition, moonAmount, orbitBasis, toEarthFrame, unhidden, type OrbitBasis, type Vec3 } from "./moon";
 import { SURFACE, surfaceTones } from "./surface";
 
 /** What a frame says of the moon. Buffer pixels (the art grid, y up, as `gl_FragCoord` has them) and earth radii. */
@@ -66,7 +66,7 @@ const VERTEX = /* glsl */ `
 
 const FRAGMENT = /* glsl */ `
   uniform vec3 uBg; uniform vec3 uTone0; uniform vec3 uTone1; uniform vec3 uTone2; uniform vec3 uOutline; uniform vec3 uGhost;
-  uniform vec3 uSun; uniform vec3 uAxis; uniform float uGamma0; uniform float uEdgeAng; uniform float uAmt; uniform float uFlip;
+  uniform vec3 uSun; uniform vec2 uEclipse; uniform vec3 uRed; uniform vec3 uAxis; uniform float uGamma0; uniform float uEdgeAng; uniform float uAmt; uniform float uFlip;
   uniform sampler2D uMap;
   varying vec3 vDir; varying vec3 vWorld; varying vec3 vNormal;
   void main() {
@@ -76,6 +76,8 @@ const FRAGMENT = /* glsl */ `
     if (gamma > uGamma0) discard;
     // the light, in flat steps of the same grey ramp (no blended pixel)
     float lit = floor(smoothstep(${MOON.litFrom.toFixed(3)}, ${MOON.litTo.toFixed(3)}, dot(normalize(vNormal), uSun)) * 3.0 + 0.5) / 3.0;
+    // the earth's shadow (#443): the light is taken away softly over the penumbra (re-cut in the same three flat steps), and the dark moon keeps a dim red glow, the light the air bends round the earth
+    lit = floor(lit * (1.0 - uEclipse.x) * 3.0 + 0.5) / 3.0;
     // the ground: the picture read by direction, three tones by brightness with the Earth's cuts, hard
     vec3 n = normalize(vDir);
     vec2 uv = vec2(atan(n.x, n.z) * 0.15915494 + 0.5, asin(clamp(n.y, -1.0, 1.0)) * 0.31830989 + 0.5);
@@ -91,6 +93,7 @@ const FRAGMENT = /* glsl */ `
     // the rim: a band a pixel and a bit wide inside the silhouette, bright where lit and a ghost of a ring where not
     float rim = step(0.5, clamp((gamma - (uGamma0 - uEdgeAng * ${MOON.edgePx.toFixed(3)})) / uEdgeAng, 0.0, 1.0));
     vec3 rimCol = mix(mix(uGhost, uOutline, lit), mix(uOutline, mix(uOutline, uBg, ${MOON.burn.toFixed(2)}), lit), uFlip);
+    col = mix(col, mix(uBg, uRed, 0.7 * (1.0 - uFlip) + 0.55 * uFlip), uEclipse.y * (1.0 - lit));
     col = mix(col, rimCol, rim);
     gl_FragColor = vec4(col, uAmt);
   }
@@ -106,6 +109,8 @@ function moonMaterial(): ShaderMaterial {
       uOutline: { value: new Color() },
       uGhost: { value: new Color() },
       uSun: { value: new Vector3(0, 0, 1) },
+      uEclipse: { value: new Vector2(0, 0) },
+      uRed: { value: new Color(0.62, 0.2, 0.12) },
       uAxis: { value: new Vector3(0, 0, 1) },
       uGamma0: { value: 0.1 },
       uEdgeAng: { value: 0.002 },
@@ -251,6 +256,8 @@ export class MoonLayer {
     const u = this.material.uniforms;
     (u.uAxis!.value as Vector3).set(dx / D, dy / D, dz / D);
     (u.uSun!.value as Vector3).set(f.sun[0], f.sun[1], f.sun[2]);
+    const ecl = eclipseOf(p, f.sun);
+    (u.uEclipse!.value as Vector2).set(ecl.dark, ecl.red);
     u.uGamma0!.value = Math.asin(Math.min(1, MOON.radius / D));
     u.uEdgeAng!.value = 1 / focal; // one buffer pixel
     u.uAmt!.value = amount;

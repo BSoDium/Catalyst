@@ -272,6 +272,52 @@ export function orbitBasis(rollDeg: number, inclinationDeg: number = MOON.inclin
   return { e1: b.east, e2: [b.north[0] * s + b.c[0] * c, b.north[1] * s + b.c[1] * c, b.north[2] * s + b.c[2] * c] };
 }
 
+/**
+ * The moon in the earth's shadow (owner, 2026-11-02, #443: "eclipsed by the earth now and then", with a penumbra, "the moon must not go instantly and completely dark"). The shadow is a cylinder of the earth's radius behind it, away from the
+ * sun, with a wide soft edge: `umbra` is the radius (earth radii) inside which the moon is in the deepest shadow, `penumbra` the one where the shadow ends, `shadowDark` how much of its light the moon loses at the deepest (it keeps a
+ * little: the red light of the earth's air), `chance` the share of sessions whose orbit lines up with the sun (the draw is the session's seed: most orbits never meet the shadow), `jitterDeg` how far off the exact line such an orbit is
+ * (so the moon crosses the shadow's edge or its middle), `scanDeg` the range the alignment is searched in.
+ */
+export const ECLIPSE = { umbra: 1, penumbra: 2.7, shadowDark: 0.93, chance: 0.25, jitterDeg: 6, scanDeg: 70 } as const;
+
+const smooth01 = (a: number, b: number, x: number): number => {
+  const t = clamp((x - a) / (b - a), 0, 1);
+  return t * t * (3 - 2 * t);
+};
+
+/**
+ * How much the earth's shadow takes from the moon at `p` (the moon's centre, earth radii) with the sun in direction `sun` (unit, the same frame): `dark` 0..1 the share of its light lost (soft: the penumbra is a long fall, not an edge) and
+ * `red` 0..1 the reddish light the air bends round the earth, strongest deep in the shadow. 0 and 0 on the sun's side of the earth, and anywhere out of the shadow.
+ */
+export function eclipseOf(p: Vec3, sun: Vec3): { dark: number; red: number } {
+  const behind = -(p[0] * sun[0] + p[1] * sun[1] + p[2] * sun[2]);
+  if (behind <= 0) return { dark: 0, red: 0 };
+  const qx = p[0] + behind * sun[0];
+  const qy = p[1] + behind * sun[1];
+  const qz = p[2] + behind * sun[2];
+  const depth = 1 - smooth01(ECLIPSE.umbra - MOON.radius, ECLIPSE.penumbra, Math.hypot(qx, qy, qz));
+  return { dark: depth * ECLIPSE.shadowDark, red: depth * depth };
+}
+
+/**
+ * The inclination (degrees) of the orbit for a session whose orbit lines up with the sun: the plane (`orbitBasis` at `rollDeg`) is turned about its horizontal axis from `baseDeg` to where it holds the sun's direction (`sun`,
+ * in the inertial frame), plus `offsetDeg` off the exact line. The moon then crosses the earth's shadow once a lap.
+ */
+export function eclipseInclination(rollDeg: number, baseDeg: number, sun: Vec3, offsetDeg: number): number {
+  let best = baseDeg;
+  let least = Infinity;
+  for (let d = -ECLIPSE.scanDeg; d <= ECLIPSE.scanDeg; d += 0.25) {
+    const { e1, e2 } = orbitBasis(rollDeg, baseDeg + d);
+    const n: Vec3 = [e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]];
+    const off = Math.abs(n[0] * sun[0] + n[1] * sun[1] + n[2] * sun[2]);
+    if (off < least) {
+      least = off;
+      best = baseDeg + d;
+    }
+  }
+  return best + offsetDeg;
+}
+
 /** The orbit's angle for `activeMs` of running, radians. */
 export function orbitAngle(activeMs: number): number {
   return toRad(MOON.startDeg) + (2 * Math.PI * activeMs) / MOON.periodMs;

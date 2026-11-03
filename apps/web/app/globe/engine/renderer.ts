@@ -70,7 +70,8 @@ import { routeLift } from "./view";
 import { newLodCamera, setLodCamera, type LodTree } from "./lod-tree";
 import { NodeScreen } from "./node-screen";
 import { CaptionLayer } from "./caption-layer";
-import { SHOWCASE_STATE, bandLat, inBand, shellWindowFactor, type CaptionContent } from "./caption";
+import { SHOWCASE_STATE, bandLat, inBand, seededUnit, shellWindowFactor, type CaptionContent } from "./caption";
+import { sessionSeed } from "./visit";
 import { CAP_HEIGHT_EM, ringAlpha, ringFloorZoom, ringRoomRadius, RING_STATE } from "./ring";
 import { RingLayer } from "./ring-layer";
 import { GlobeScene } from "./scene";
@@ -78,7 +79,7 @@ import { pickOccluder, planetRise, sunRise, type Occluder } from "./sun-flare";
 import { liveSun, opening } from "./daylight";
 import { IMMERSION, immersiveZoom, openingZoom } from "./immersion";
 import { FX, irisStep } from "./fx";
-import { MOON, SUN, inclinationFor, litTurn, moonAmount, orbitAngle, rollFor, sunDirection, toEarthFrame, toRad, visibleBounds, type Vec3 } from "./moon";
+import { ECLIPSE, MOON, SUN, eclipseInclination, inclinationFor, litTurn, moonAmount, orbitAngle, rollFor, sunDirection, toEarthFrame, toRad, visibleBounds, type Vec3 } from "./moon";
 import { roleColor } from "./palette";
 import type { MoonSample } from "./moon-layer";
 import type { MoonFrame } from "./moon-overlay";
@@ -1317,6 +1318,30 @@ export class GlobeRenderer {
   private moonHeld = false;
   private moonPinned: number | null = null;
   private moonSun: Vec3 = sunDirection(this.open.sunElevationDeg);
+  /**
+   * The session's orbit (owner, 2026-11-02, #443): in one session in `ECLIPSE.chance` the orbit's plane is turned to line up with the sun (`eclipseInclination`, a little off the exact line, by the session's seed), so
+   * that the moon crosses the earth's shadow once a lap; in the others it never does. `null` is the usual orbit. A debug page can force it (`?eclipse`).
+   */
+  private eclipseOffset: number | null | undefined;
+  private eclipseTilts = new Map<number, number>();
+  private orbitInclination(aspect: number): number {
+    const base = inclinationFor(aspect);
+    if (this.eclipseOffset === undefined) {
+      const debug = typeof location !== "undefined" && new URLSearchParams(location.search).has("eclipse");
+      const seed = sessionSeed(typeof sessionStorage !== "undefined" ? sessionStorage : null);
+      const draw = seededUnit(((seed ?? 0) ^ 0x3c1a55) | 0);
+      const lined = draw() < ECLIPSE.chance && seed !== null;
+      const off = (draw() * 2 - 1) * ECLIPSE.jitterDeg;
+      this.eclipseOffset = debug ? 0 : lined ? off : null;
+    }
+    if (this.eclipseOffset === null) return base;
+    let tilt = this.eclipseTilts.get(aspect);
+    if (tilt === undefined) {
+      tilt = eclipseInclination(rollFor(aspect), base, this.moonSun, this.eclipseOffset);
+      this.eclipseTilts.set(aspect, tilt);
+    }
+    return tilt;
+  }
   /** How much of the planet's night there is now (0..1; checks). */
   private nightNow = 0;
   /** The last frame's sample of the moon (null: not shown). */
@@ -1490,7 +1515,7 @@ export class GlobeRenderer {
       return;
     }
     const aspect = this.width / Math.max(1, this.height);
-    this.moonSample = moon.sync({ camera: cam, bufW: this.bufW, bufH: this.bufH, eraDeg: this.era, angle: this.moonAngle(now), rollDeg: rollFor(aspect), inclinationDeg: inclinationFor(aspect), sun: toEarthFrame(this.moonSun, this.era), d, zoom: this.inInterlude ? this.world : zoom, fit: this.world });
+    this.moonSample = moon.sync({ camera: cam, bufW: this.bufW, bufH: this.bufH, eraDeg: this.era, angle: this.moonAngle(now), rollDeg: rollFor(aspect), inclinationDeg: this.orbitInclination(aspect), sun: toEarthFrame(this.moonSun, this.era), d, zoom: this.inInterlude ? this.world : zoom, fit: this.world });
   }
 
   /**
