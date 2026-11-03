@@ -2979,6 +2979,16 @@
     [data-slot="list-head"] .list-running {
       display: none;
     }
+
+    /* on a phone the strip stays ONE line: the figures a little smaller, the gaps shorter (a long label like "photographs" and a span of years must fit 358 px) */
+    .list-stats {
+      flex-wrap: nowrap;
+      gap: 0.75rem;
+    }
+
+    .list-stat-value {
+      font-size: 1.75rem;
+    }
   }
 
   @media screen and (min-width: 56rem) {
