@@ -386,7 +386,7 @@ function RoleItem({ role, placeKnown, projectKnown, asOf }: { role: PublishedCar
       {projects.length > 0 && (
         <div data-slot="career-projects" className="career-projects">
           <h4 className="career-projects-title">Selected work</h4>
-          <ul>
+          <ul role="list">
             {projects.map((p, i) => (
               <ProjectItem key={`${i}-${p.title}`} project={p} href={p.entry && projectKnown(p.entry) ? entryPath("project", p.entry) : null} />
             ))}
