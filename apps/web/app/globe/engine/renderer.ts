@@ -2659,7 +2659,7 @@ export class GlobeRenderer {
     const R = this.silhouetteFromCamera();
     const cx = (this.bufW * P) / 2 - this.camShift * P + this.canvasLeft;
     const cy = (this.bufH * P) / 2 - this.camLift * P + this.canvasTop;
-    const size = Math.max(spec.minPx, spec.size * R);
+    const size = Math.min(spec.maxPx, Math.max(spec.minPx, spec.size * R));
     const el = this.tagline;
     el.style.fontSize = `${size.toFixed(1)}px`;
     // (the line's letter spacing trails its last letter: half of it is taken back so that the middle of the visible letters is the planet's)

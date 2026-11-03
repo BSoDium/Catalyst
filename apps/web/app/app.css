@@ -790,7 +790,8 @@
    *   cap height of the body (wght 400, opsz 18 to 21): 0.672 em;
    *   cap height of the letter (wght 700, opsz 72, pinned below so that it does not drift with the size): 0.715 em.
    * The letter is `--dc-k` body ems: (N - 1) line pitches plus the body's cap height, over the letter's cap height. Its box is a float
-   * exactly N lines tall (`line-height`), the glyph put on the right baseline by the padding above it; nothing sits below. The
+   * exactly N lines tall (its line box is the glyph's own content area, `line-height: 1`, the glyph put on the right baseline by the padding above it, and the margin below it taking the rest of the N lines: no
+   * negative half-leading, which Firefox does not apply to a `::first-letter`, #537); nothing sits below. The
    * paragraph contains the float (`flow-root`): a short paragraph never lets the letter run into the next block.
    *
    * `::first-letter` takes a mark that touches the letter ("L'" would be a wedge as tall as the cap). `dropCapKind`
@@ -810,6 +811,10 @@
     --dc-k: calc(((var(--dc-n) - 1) * var(--dc-lh) + var(--dc-body-cap)) / var(--dc-cap));
     /* The air above the glyph's line box, in ems of the letter: the baseline of line N minus what a box N lines tall gives it. */
     --dc-pad: calc(((var(--dc-n) - 1) * var(--dc-lh) + 2 * (var(--dc-ascent) - 0.5) * (1 - var(--dc-k))) / var(--dc-k));
+    /* The same baseline, with the letter's line box exactly its content area (`line-height: 1`, no leading above or below the glyph): the air above the glyph's line box in ems of the letter. A float
+       whose line-height is SHORTER than its glyphs' content area (the first form, a negative half-leading) was put on the baseline of Chrome and Safari and 15 px too low in Firefox, which does not apply a
+       negative half-leading to a `::first-letter` (#537): with none, the engines agree. */
+    --dc-p2: calc(var(--dc-pad) / 2 + var(--dc-n) * var(--dc-lh) / (2 * var(--dc-k)) - 0.5);
     display: flow-root;
     line-height: var(--dc-lh);
   }
@@ -818,12 +823,12 @@
     float: left;
     /* The right gap: a tenth of the letter's em beyond its advance. The 1 px under it keeps line N + 1 out of the float whatever the
        rounding of a fractional line height (a float a hair taller than N lines pushes that line right). */
-    margin: 0 0.1em -1px 0;
-    padding: calc(var(--dc-pad) * 1em) 0 0;
+    margin: 0 0.1em calc((var(--dc-n) * var(--dc-lh) / var(--dc-k) - var(--dc-p2) - 1) * 1em - 1px) 0;
+    padding: calc(var(--dc-p2) * 1em) 0 0;
     font-family: var(--font-reading);
     font-weight: 700;
     font-size: calc(var(--dc-k) * 1em);
-    line-height: calc(var(--dc-n) * var(--dc-lh) / var(--dc-k) - var(--dc-pad));
+    line-height: 1;
     font-variation-settings: "opsz" 72;
     font-synthesis: none;
     letter-spacing: 0;
@@ -6553,21 +6558,34 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     gap: 0.375rem;
   }
 
-  .contact-label {
-    color: var(--muted-foreground);
+  /*
+   * A field is the home page's search line (`.hero-search`, owner, 2026-11-02, #536): an icon at the left, the hairline under it in half the ink, no box, the reading face for what is typed. The label is the
+   * placeholder: it lies on the input at rest and goes up, small and muted, when the field is focused or has something in it (`:placeholder-shown` on an input whose placeholder is a space: no script, and the label is
+   * a real <label> still). The focus is the line under it in the signal colour and 2 px, with the icon and the label (the home page's hover and focus); an invalid field has the error red in the same places and its
+   * words under it.
+   */
+  .contact-control {
+    /* SOLID tones (a mix with the page's colour, never a translucent one: where two strokes meet, at a corner of the message's box, they must not add up to a darker patch) */
+    --contact-line: color-mix(in srgb, var(--foreground) 50%, var(--background));
+    position: relative;
+    display: flex;
+    border-bottom: var(--hairline) solid var(--contact-line);
+    transition: border-color var(--duration-fast) var(--ease-standard);
   }
 
   .contact-input {
     width: 100%;
-    min-height: var(--control-h);
-    padding: 0.5rem 0.75rem;
-    border: var(--hairline) solid var(--border);
+    min-height: 3.5rem;
+    padding: 1.5rem 0 0.5rem 6px;
+    border: 0;
     border-radius: 0;
     background: transparent;
     color: var(--foreground);
-    font-family: var(--font-reading);
-    font-size: 1.125rem;
+    /* the app's sans, as the command palette's input (owner, 2026-11-02), 16 px */
+    font-family: var(--font-sans);
+    font-size: 1rem;
     line-height: 1.4;
+    outline: none;
   }
 
   .contact-textarea {
@@ -6575,18 +6593,203 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     resize: vertical;
   }
 
-  /* Quiet outlines (owner, 2026-10-30): the page's hairline at rest, a step deeper under the pointer, the ring on focus. */
-  .contact-input:hover {
-    border-color: var(--border-strong);
+  .contact-label {
+    position: absolute;
+    left: 6px; /* the message's label plate has 6 px of padding: the texts of the three fields share one left edge (owner, 2026-11-02) */
+    top: 1.725rem;
+    max-width: calc(100% - 6px);
+    overflow: hidden;
+    color: var(--foreground);
+    /* the type of the message label's name (a map label's: mono, 14 px, 500), so the three labels are one size */
+    font-family: var(--font-mono);
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    line-height: 18px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transform-origin: left top;
+    pointer-events: none;
+    transition:
+      transform var(--duration-fast) var(--ease-standard),
+      color var(--duration-fast) var(--ease-standard);
   }
 
-  .contact-input:focus-visible {
-    outline: 2px solid var(--ring);
-    outline-offset: 2px;
+  .contact-input:focus ~ .contact-label,
+  .contact-input:not(:placeholder-shown) ~ .contact-label,
+  .contact-input:-webkit-autofill ~ .contact-label {
+    color: var(--muted-foreground);
+    /* raised well clear of what is typed (its foot about 8 px above the capitals of the text), at the size of a map label's second line: 11 px */
+    transform: translateY(-1.1rem) scale(0.7857);
   }
 
-  .contact-field[data-invalid="true"] .contact-input {
-    border-color: var(--contact-error);
+  .contact-control:hover {
+    --contact-line: var(--foreground);
+  }
+
+  /* (the focus line is a second pixel BELOW the hairline, a shadow and not a thicker border: nothing moves) */
+  .contact-control:focus-within {
+    --contact-line: var(--signal-text);
+    box-shadow: 0 1px 0 0 var(--contact-line);
+  }
+
+  .contact-control:focus-within .contact-input:focus ~ .contact-label {
+    color: var(--signal-text);
+  }
+
+  /*
+   * The message is a BOX of the map's look (the bounding boxes of the globe: owner, 2026-11-02, #536): a dashed edge and solid corner arms, hollow, in the line's SOLID colour (`--contact-line`: the half ink at rest, the full ink
+   * under the pointer and on focus, the error red when invalid). Drawn with gradients (no border), all of one thickness, in whole CSS pixels (below). Its label is a map label's, above it.
+   */
+  .contact-control[data-field="message"] {
+    /* every stroke is the thickness of the underlines of the fields above (the hairline; the same two hairlines on focus, as theirs) and every length is a whole number of CSS px, so whole device pixels at 1x, 2x and 3x:
+       nothing is anti-aliased. The arms are 12 px, a dash 6 and a gap 4. The dashes of an edge are laid between the two arms, a gap first and a gap last, a WHOLE number of periods (`round(down)`) centred to the pixel
+       (the remainder is split over the two ends), so both ends of every edge are the same. */
+    --t: var(--hairline);
+    /* the BOTTOM RIGHT corner is drawn in the full ink at rest (the rest of the box in half of it): the sign that the box can be pulled down from there (owner, 2026-11-02: the grip is hidden, the resizing stays) */
+    --contact-corner: var(--foreground);
+    --arm: 12px;
+    --dash: 6px;
+    --gap: 4px;
+    --period: calc(var(--dash) + var(--gap));
+    --run-x: calc(round(down, 100% - 2 * var(--arm) - var(--gap), var(--period)) + var(--gap));
+    --run-y: var(--run-x);
+    border-bottom: 0;
+    box-shadow: none;
+    background:
+      linear-gradient(var(--contact-line), var(--contact-line)) top left / var(--arm) var(--t) no-repeat,
+      linear-gradient(var(--contact-line), var(--contact-line)) top left / var(--t) var(--arm) no-repeat,
+      linear-gradient(var(--contact-line), var(--contact-line)) top right / var(--arm) var(--t) no-repeat,
+      linear-gradient(var(--contact-line), var(--contact-line)) top right / var(--t) var(--arm) no-repeat,
+      linear-gradient(var(--contact-line), var(--contact-line)) bottom left / var(--arm) var(--t) no-repeat,
+      linear-gradient(var(--contact-line), var(--contact-line)) bottom left / var(--t) var(--arm) no-repeat,
+      linear-gradient(var(--contact-corner), var(--contact-corner)) bottom right / var(--arm) var(--t) no-repeat,
+      linear-gradient(var(--contact-corner), var(--contact-corner)) bottom right / var(--t) var(--arm) no-repeat,
+      repeating-linear-gradient(to right, transparent 0 var(--gap), var(--contact-line) var(--gap) var(--period)) round(down, 50%, 1px) top / var(--run-x) var(--t) no-repeat,
+      repeating-linear-gradient(to right, transparent 0 var(--gap), var(--contact-line) var(--gap) var(--period)) round(down, 50%, 1px) bottom / var(--run-x) var(--t) no-repeat,
+      repeating-linear-gradient(to bottom, transparent 0 var(--gap), var(--contact-line) var(--gap) var(--period)) left round(down, 50%, 1px) / var(--t) var(--run-y) no-repeat,
+      repeating-linear-gradient(to bottom, transparent 0 var(--gap), var(--contact-line) var(--gap) var(--period)) right round(down, 50%, 1px) / var(--t) var(--run-y) no-repeat;
+  }
+
+  .contact-control[data-field="message"]:focus-within {
+    --t: calc(var(--hairline) * 2);
+  }
+
+  .contact-control[data-field="message"] {
+    /* room for the label above the box (its two lines, the plate's padding and the gap of the globe's labels) and then some air after the email field (owner, 2026-11-02) */
+    margin-top: 3.5rem;
+  }
+
+  /* the rhythm of the form: close under the lead and between the name and the email (their floating labels already hold the room above), more before the message */
+  .contact-lead + .contact-field {
+    margin-top: -0.625rem;
+  }
+
+  .contact-field:has([data-field="email"]) {
+    margin-top: -0.625rem;
+  }
+
+  .contact-control[data-field="message"] .contact-textarea {
+    min-height: 10rem;
+    resize: vertical;
+    padding: 0.875rem 1rem;
+    /* a whole number of px per line, so the box is a whole number of px tall and its bottom edge falls on a device pixel */
+    line-height: 26px;
+  }
+
+  /*
+   * The message's label is a MAP LABEL's (the bounding boxes' names, `.map-label`, LABEL_TYPE: the mono type at 14 px, weight 500, a plate with 6 px by 3 px of padding): anchored to the box's top left, ON TOP of it, the text
+   * left aligned and FLUSH with the box's edge (the plate's padding hangs outside it), on an opaque plate of the page's colour; when the field is selected the label is INVERTED, the ink as the plate and the page's colour
+   * as the text, and the plate is flush with the box (it moves in by its padding, as the selected map label's does). It does not float or scale like the other fields' placeholders (owner, 2026-11-02).
+   */
+  .contact-control[data-field="message"] .contact-tag {
+    position: absolute;
+    /* the globe's label: a plate of 6 x 3 px with a clear gap to the box's outline (LABEL_TYPE.boxGap and the outline's own thickness, more here for the bigger type) */
+    bottom: calc(100% + 6px);
+    left: 0;
+    padding: 3px 6px;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-mono);
+    pointer-events: none;
+  }
+
+  .contact-control[data-field="message"] .contact-label {
+    position: static;
+    display: block;
+    max-width: none;
+    overflow: visible;
+    color: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    line-height: 18px;
+    transform: none;
+    white-space: nowrap;
+  }
+
+  /* the second line, as a box's label has its country: 11 px, regular, the muted tone */
+  .contact-count {
+    display: block;
+    color: var(--muted-foreground);
+    font-size: 11px;
+    letter-spacing: 0.02em;
+    line-height: 14px;
+    white-space: nowrap;
+  }
+
+  /* selected: inverted, the ink as the plate; the second line is the page's colour mixed 28 % toward the ink (the map's selected card). The box itself stays in the ink: no blue here */
+  .contact-field .contact-control[data-field="message"]:focus-within {
+    --contact-line: var(--foreground);
+  }
+
+  .contact-field .contact-control[data-field="message"]:focus-within .contact-tag {
+    background: var(--foreground);
+    color: var(--background);
+  }
+
+  .contact-field .contact-control[data-field="message"]:focus-within .contact-count {
+    color: color-mix(in srgb, var(--background) 72%, var(--foreground));
+  }
+
+  .contact-field[data-invalid="true"] .contact-control[data-field="message"] .contact-label {
+    color: var(--contact-error);
+  }
+
+  .contact-field[data-invalid="true"] .contact-control[data-field="message"] {
+    --contact-corner: var(--contact-error);
+  }
+
+  .contact-field[data-invalid="true"] .contact-control[data-field="message"]:focus-within {
+    --contact-line: var(--contact-error);
+  }
+
+  /* the browser's own grip is not drawn (Chrome, Safari, Edge); the corner still resizes. Firefox has no way to hide it. */
+  .contact-textarea::-webkit-resizer {
+    display: none;
+  }
+
+  .contact-field[data-invalid="true"] .contact-control[data-field="message"]:focus-within .contact-label {
+    color: var(--background);
+  }
+
+  .contact-field[data-invalid="true"] .contact-control {
+    --contact-line: var(--contact-error);
+  }
+
+  .contact-field[data-invalid="true"] .contact-control:not([data-field="message"]) .contact-input ~ .contact-label,
+  .contact-field[data-invalid="true"] .contact-control:not([data-field="message"]):focus-within .contact-input:focus ~ .contact-label {
+    color: var(--contact-error);
+  }
+
+  .contact-field[data-invalid="true"] .contact-control:focus-within {
+    --contact-line: var(--contact-error);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .contact-label {
+      transition: color var(--duration-fast) var(--ease-standard);
+    }
   }
 
   .contact-error,

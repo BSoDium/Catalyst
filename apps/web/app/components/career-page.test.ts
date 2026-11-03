@@ -138,7 +138,7 @@ describe("CareerPage", () => {
     const form = html.indexOf('id="contact"');
     expect(form).toBeGreaterThan(html.indexOf('data-slot="career-skills"'));
     expect(form).toBeGreaterThan(html.indexOf('data-slot="career-links"'));
-    for (const label of ["Name", "Email", "Message"]) expect(html).toMatch(new RegExp(`<label[^>]*>${label}</label>`));
+    for (const label of ["What should I call you?", "Your email address, to answer you", "What would you like to talk about?"]) expect(html).toContain(`>${label}</label>`);
     expect(html).toContain('name="botcheck"');
     // Without the script it is a plain HTML post to the relay: the key and the subject travel as hidden fields, the browser validates.
     expect(html).toMatch(/<form [^>]*action="https:\/\/api\.web3forms\.com\/submit" method="post"/);
@@ -154,6 +154,15 @@ describe("CareerPage", () => {
     expect(h).toMatch(/<a [^>]*href="https:\/\/example\.org\/uni"[^>]*target="_blank"[^>]*rel="noopener noreferrer"[^>]*class="career-org-link"[^>]*>Example University</);
     expect(h).toContain("(opens in a new tab)");
     expect(h).toMatch(/<h3 class="career-org">Plain School<\/h3>/);
+  });
+
+  it("sets each field as a search line: the input first (a placeholder of one space), then its label, which moves up in CSS", () => {
+    for (const [name, label] of [["name", "What should I call you?"], ["email", "Your email address, to answer you"], ["message", "What would you like to talk about?"]] as const) {
+      const input = html.search(new RegExp(`<(input|textarea)[^>]*name="${name}"`));
+      const tag = html.slice(input, html.indexOf(">", input));
+      expect(tag).toContain('placeholder=" "');
+      expect(html.indexOf(`>${label}</label>`)).toBeGreaterThan(input);
+    }
   });
 
   it("has no address to write to: no mailto, tel, address or e-mail text (the form is the way)", () => {
