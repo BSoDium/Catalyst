@@ -162,3 +162,7 @@ On top of this the pattern was laid out on the 3D path, so a leg tilted toward t
 - **Far fade.** From the home view outward the ground paths are mixed `FAR_TONE` (0.6) toward the page, easing off by zoom 4.2; the flights' arcs keep their look (the owner's call, 2026-11-01: from space a 1-pixel line is a lot on a planet this small, and a sub-pixel line would break the pixel art). A solid quiet line for the whole world view (`?paths=solid`) was tried and dropped: faded dots read better.
 
 Not done: the street map still merges legs on a shared corridor (map zoom up to 9.5), so a duplicate can disappear at the hand-over; the street map has no crowd tone (its legs are 1-cell lines drawn cell by cell, far from space).
+
+## Airports (owner, 2026-11-03)
+
+A flight may name the airport of each stop (`routes[].legs[].fromAirport` / `toAirport`, [api-contract.md](api-contract.md#route-legs-routeslegs-optional-additive-in-schema-version-1)). Its arc then runs from airport to airport (`paths/airports.ts` `legEnds`, shared by the globe's network, the street map's features and the journeys' lengths), and an end with an airport is not cropped at the stop's box: the airport is where the flight ends, in the city's box or just outside it. Each airport is marked once with a small dot: 2 x 2 art pixels in the spark's ink on a one-cell halo in the page colour (`TrailDotsLayer.drawAirports`, both maps, from map zoom 6.5; from space they would be noise). It is a location in the city, not a place: no box, label or page.

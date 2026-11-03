@@ -4,7 +4,8 @@
  * (Douglas-Peucker at growing tolerances, each a subset of the one before) so the globe can pick the coarsest level whose error
  * is under half an art pixel (`lod.ts`) without touching the geometry. Pure functions: no WebGL, no DOM.
  */
-import type { GlobeRoute } from "../types";
+import type { GlobeLeg, GlobeRoute } from "../types";
+import { legEnds } from "./airports";
 import { lonLatToVec3 } from "../engine/geo";
 import { MODE_STYLE, isLegMode, type LegMode } from "./modes";
 import { cropToBoxes } from "./crop";
@@ -111,9 +112,10 @@ export function pathLengthM(lonlat: ArrayLike<number>): number {
  * Length in metres of a leg as the globe and the street map draw it: along its polyline when it has a valid one (and is not a
  * flight), else along the geodesic arc between its stops. The one rule the journeys text shares with the drawing.
  */
-export function legLengthM(a: { lat: number; lon: number }, b: { lat: number; lon: number }, leg?: { mode: string; polyline?: string }): number {
+export function legLengthM(a: { lat: number; lon: number }, b: { lat: number; lon: number }, leg?: GlobeLeg): number {
   const decoded = leg?.polyline && leg.mode !== "flight" ? decodePolyline5(leg.polyline) : null;
-  return pathLengthM(decoded ?? arcPoints(a, b).lonlat);
+  const ends = legEnds(a, b, leg);
+  return pathLengthM(decoded ?? arcPoints(ends.from, ends.to).lonlat);
 }
 
 /**
@@ -149,6 +151,13 @@ function routesKey(routes: readonly GlobeRoute[]): string {
     for (const l of legs) {
       str(l?.mode ?? "");
       str(l?.polyline ?? "");
+      for (const ap of [l?.fromAirport, l?.toAirport]) {
+        mix(ap ? 1 : 0);
+        if (ap) {
+          mix(Math.round(ap.lat * 1e6));
+          mix(Math.round(ap.lon * 1e6));
+        }
+      }
     }
   }
   return `${routes.length}:${(h >>> 0).toString(16)}`;
@@ -180,6 +189,7 @@ function buildNetworkUncached(routes: readonly GlobeRoute[]): PathNetwork {
       if (a.lat === b.lat && a.lon === b.lon) continue; // the same place twice in a row: nothing to draw
       const spec = route.legs?.[i];
       const mode: LegMode = spec && isLegMode(spec.mode) ? spec.mode : "unknown";
+      const ends = legEnds(a, b, spec);
       let lonlat: Float64Array | null = null;
       let arc = true;
       if (spec?.polyline && mode !== "flight") {
@@ -191,12 +201,12 @@ function buildNetworkUncached(routes: readonly GlobeRoute[]): PathNetwork {
         lift = new Float32Array(lonlat.length / 2);
       } else {
         // (only a flight is an arch: a ground leg with no path of its own is the geodesic along the ground, owner, 2026-11-02: "the only plane legs should be arcs")
-        const a2 = arcPoints(a, b);
+        const a2 = arcPoints(ends.from, ends.to);
         lonlat = a2.lonlat;
         lift = mode === "flight" ? a2.lift : new Float32Array(lonlat.length / 2);
       }
       // every mode ends where it meets the boxes of its stops (paths/crop.ts); a lifted arc keeps its arch, set down on the ground at the cut
-      const cropped = cropToBoxes(lonlat, lift, route.boxes?.[i], route.boxes?.[i + 1]);
+      const cropped = cropToBoxes(lonlat, lift, ends.cropFrom ? route.boxes?.[i] : undefined, ends.cropTo ? route.boxes?.[i + 1] : undefined);
       if (!cropped) continue;
       lonlat = cropped.lonlat;
       lift = cropped.lift;
