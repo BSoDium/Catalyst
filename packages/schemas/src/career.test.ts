@@ -339,7 +339,7 @@ describe("career (an optional singleton document, additive in schema version 1)"
     });
 
     // The TRUE maximum: every list at its limit, every optional field present, every text at its limit and made of a 3-byte
-    // character (the worst UTF-8 width the schema accepts), every URL at its limit. It must stay under about 110 KB (60 KB, one entry's
+    // character (the worst UTF-8 width the schema accepts), every URL at its limit. It must stay under about 120 KB (60 KB, one entry's
     // body cap, until the projects of a position, #531; the real document is about 5 KB, so the projection budget ("Payload size and cost") has room).
     const WIDE = "\u20ac";
     const fill = (n: number, tag = "") => `${tag}${WIDE.repeat(Math.max(0, n - tag.length))}`;
@@ -392,14 +392,14 @@ describe("career (an optional singleton document, additive in schema version 1)"
         links: n(CAREER_LIMITS.links).map((i) => ({ label: f(CAREER_TEXT.linkLabel), url: url(`k${i}`) })),
       };
     };
-    it("the true maximum validates and stays under 110 KB of UTF-8, 3-byte characters everywhere", () => {
+    it("the true maximum validates and stays under 120 KB of UTF-8, 3-byte characters everywhere", () => {
       const max = trueMaximum();
       const parsed = publishedCareerSchema.safeParse(max);
       if (!parsed.success) throw new Error(JSON.stringify(parsed.error.issues.slice(0, 3)));
       const bytes = Buffer.byteLength(JSON.stringify(max));
-      expect(bytes).toBeLessThan(110_000);
+      expect(bytes).toBeLessThan(120_000);
       // and in plain ASCII it is a third of that
-      expect(Buffer.byteLength(JSON.stringify(trueMaximum(false)))).toBeLessThan(50_000);
+      expect(Buffer.byteLength(JSON.stringify(trueMaximum(false)))).toBeLessThan(55_000);
     });
     it("covers every limit: no list or text of the schema is missing from the maximum", () => {
       const max = trueMaximum();

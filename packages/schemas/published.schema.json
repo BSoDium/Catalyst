@@ -681,7 +681,7 @@
                     "summary": {
                       "type": "string",
                       "minLength": 1,
-                      "maxLength": 200,
+                      "maxLength": 300,
                       "pattern": "^[^\\u0000-\\u001F\\u007F\\u202A-\\u202E\\u2066-\\u2069]*$"
                     },
                     "image": {

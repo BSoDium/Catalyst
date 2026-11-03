@@ -546,7 +546,7 @@ export const publishedContentItemSchema = z
 
 /**
  * Sizes. Every list and every text of the career document has a limit, chosen so that the TRUE maximum (every list full, every
- * text at its limit, each character counted at its worst UTF-8 width) stays under about 110 KB (60 KB, the size of one entry's body cap, before the projects of a position, #531: a document the size of two entries is
+ * text at its limit, each character counted at its worst UTF-8 width) stays under about 120 KB (60 KB, the size of one entry's body cap, before the projects of a position, #531: a document the size of two entries is
  * still nothing on the wire, and the real one is about 5 KB).
  * A test builds that maximum from these numbers. The owner's real document is about 5 KB.
  */
@@ -575,7 +575,7 @@ export const CAREER_TEXT = {
   employment: 30,
   highlight: 180,
   projectTitle: 70,
-  projectSummary: 200,
+  projectSummary: 300,
   roleSkill: 30,
   institution: 60,
   programme: 60,
