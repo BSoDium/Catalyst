@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import type { PublishedCareer, PublishedCareerEducation, PublishedCareerProject, PublishedCareerRole } from "@catalyst/schemas";
 import { ContactForm } from "~/components/contact-form";
@@ -403,6 +403,27 @@ function RoleItem({ role, placeKnown, projectKnown, asOf }: { role: PublishedCar
  * an entry the site has, it is only the card.
  */
 function ProjectItem({ project, href }: { project: PublishedCareerProject; href: string | null }) {
+  // The line takes the room the title leaves in the block (a title of one line leaves three lines, one of two leaves two), and is cut with an ellipsis only where it would
+  // overflow that: the number of lines is measured here (the stylesheet cuts at two before the script, which never overflows), again when the block's width changes.
+  const item = useRef<HTMLLIElement>(null);
+  useEffect(() => {
+    const li = item.current;
+    const text = li?.querySelector<HTMLElement>(".career-project-text");
+    const name = text?.querySelector<HTMLElement>(".career-project-name");
+    const line = text?.querySelector<HTMLElement>(".career-project-line");
+    if (!li || !text || !name || !line) return;
+    const fit = () => {
+      const style = getComputedStyle(line);
+      const lineHeight = parseFloat(style.lineHeight);
+      if (!lineHeight) return;
+      const free = text.clientHeight - name.offsetHeight - (parseFloat(style.marginTop) || 0);
+      line.style.setProperty("-webkit-line-clamp", String(Math.max(1, Math.floor((free + 1) / lineHeight))));
+    };
+    fit();
+    const observer = new ResizeObserver(fit);
+    observer.observe(li);
+    return () => observer.disconnect();
+  }, [project.title, project.summary]);
   const body = (
     <>
       {project.image && <img src={project.image.src} alt="" width={project.image.width} height={project.image.height} loading="lazy" decoding="async" className="career-project-picture" />}
@@ -413,7 +434,7 @@ function ProjectItem({ project, href }: { project: PublishedCareerProject; href:
     </>
   );
   return (
-    <li className="career-project" data-picture={project.image ? "true" : "false"}>
+    <li ref={item} className="career-project" data-picture={project.image ? "true" : "false"}>
       {href ? (
         <Link to={href} className="career-project-head" data-link="true">
           {body}

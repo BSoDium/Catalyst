@@ -7235,12 +7235,18 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     list-style: none;
   }
 
-  /* A project: its picture and its text side by side, the two of the same height (the picture follows the text block, never less than 5.6 rem: a 16:9 picture on a desktop), the title cut to two lines and the line to two
-     with an ellipsis (owner, 2026-11-03: "a bit like LinkedIn does"). A click opens it (a native details): the whole text, and the link to the entry when there is one. */
+  /* A project: its picture and its text side by side, the two of the same fixed height (`--project-h`), the title cut to two lines and the line to what the title leaves (measured by the page, `ProjectItem`:
+     three lines under a title of one, two under a title of two) with an ellipsis only where it would overflow (owner, 2026-11-03: "a bit like LinkedIn does"; then "some descriptions are ellipsed
+     even though they could have enough space"). The project is a link to its entry when there is one. */
+  .career-projects {
+    --project-h: 5.75rem;
+  }
+
   .career-project-head {
     display: grid;
     gap: 1rem;
     align-items: stretch;
+    height: var(--project-h);
     text-align: left;
   }
 
@@ -7252,7 +7258,6 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     display: block;
     width: 10rem;
     height: 100%;
-    min-height: 5.625rem;
     object-fit: cover;
     object-position: 0 0;
     border: var(--hairline) solid var(--border);
@@ -7261,11 +7266,8 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   .career-project-text {
     display: block;
     min-width: 0;
-    min-height: 5.625rem;
-  }
-
-  .career-project[data-picture="false"] .career-project-text {
-    min-height: 0;
+    height: 100%;
+    overflow: hidden;
   }
 
   .career-project-name,
@@ -7309,6 +7311,10 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   }
 
   @media (max-width: 39.99rem) {
+    .career-projects {
+      --project-h: 4.75rem;
+    }
+
     .career-project[data-picture="true"] .career-project-head {
       grid-template-columns: 8rem minmax(0, 1fr);
       gap: 0.75rem;
@@ -7316,20 +7322,23 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
 
     .career-project-picture {
       width: 8rem;
-      min-height: 4.5rem;
     }
-
-    .career-project-text {
-      min-height: 4.5rem;
-    }
-
   }
 
   @media print {
+    .career-project-head {
+      height: auto;
+    }
+
+    .career-project-text {
+      height: auto;
+      overflow: visible;
+    }
+
     .career-project-name,
     .career-project-line {
       display: block;
-      -webkit-line-clamp: unset;
+      -webkit-line-clamp: unset !important;
     }
   }
 
