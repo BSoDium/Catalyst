@@ -493,6 +493,58 @@
                 "height"
               ],
               "additionalProperties": false
+            },
+            "egg": {
+              "type": "object",
+              "properties": {
+                "src": {
+                  "type": "string",
+                  "maxLength": 300,
+                  "pattern": "^\\/media\\/(?:[A-Za-z0-9_-][A-Za-z0-9._-]*\\/)*[A-Za-z0-9_-][A-Za-z0-9._-]*$"
+                },
+                "width": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "height": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "dark": {
+                  "type": "object",
+                  "properties": {
+                    "src": {
+                      "type": "string",
+                      "maxLength": 300,
+                      "pattern": "^\\/media\\/(?:[A-Za-z0-9_-][A-Za-z0-9._-]*\\/)*[A-Za-z0-9_-][A-Za-z0-9._-]*$"
+                    },
+                    "width": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "height": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "src",
+                    "width",
+                    "height"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "src",
+                "width",
+                "height"
+              ],
+              "additionalProperties": false
             }
           },
           "required": [

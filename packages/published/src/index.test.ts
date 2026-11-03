@@ -125,6 +125,7 @@ describe("published package", () => {
     // the career's portrait is a demo file too (a hand-drawn SVG kept by the generator, not one of its images)
     if (demo.career?.portrait) srcs.add(demo.career.portrait.src);
     if (demo.career?.portrait?.dark) srcs.add(demo.career.portrait.dark.src);
+    if (demo.career?.portrait?.egg) srcs.add(demo.career.portrait.egg.src);
     for (const item of [...(demo.career?.roles ?? []), ...(demo.career?.education ?? [])]) if (item.logo) srcs.add(item.logo.src);
     expect(srcs.size).toBeGreaterThanOrEqual(30);
     for (const src of srcs) {

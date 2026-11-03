@@ -6179,6 +6179,23 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     /* No box of its own: the picture draws its own frame (the blueprint's hand-penned square, whose lines cross at the corners). */
   }
 
+  /* The Easter egg (lib/portrait-egg.ts): the portrait crashes into its blue-screen twin, a few flickers of the display (whole steps, as the site's art
+     is), then holds. Not under reduced motion: it simply is the other picture. */
+  @media (prefers-reduced-motion: no-preference) {
+    .career-portrait img[data-egg]:not(.career-portrait-glow) {
+      animation: portrait-crash 0.55s steps(1, end) both;
+    }
+  }
+
+  @keyframes portrait-crash {
+    0% { opacity: 0; }
+    12% { opacity: 1; }
+    24% { opacity: 0.15; }
+    36% { opacity: 1; }
+    48% { opacity: 0.4; }
+    60%, 100% { opacity: 1; }
+  }
+
   /* Stacked (under 40 rem): the portrait is the BACKDROP of the head. It spans the head's width as a square (the picture's own frame), under the
      running head's rule, and the name and the statement are drawn over its lower part, from about two thirds down (36 % of the width of overlap):
      a gradient from the page colour, solid behind the statement and soft behind the name, keeps the type readable (the same eased fall as the

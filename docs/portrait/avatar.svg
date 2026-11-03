@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="100%" height="100%" viewBox="0 0 500 500" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:affinity="https://www.affinity.studio/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linecap:round;">
+    <g id="model">
+        <rect id="background" x="0" y="0" width="500" height="500" style="fill:rgb(65,40,33);"/>
+        <path id="jacket" d="M54.125,311.165L0,373.5L0,500L500,500L500,401.276L406.747,298.198C385.751,274.989 356.519,260.902 325.284,258.939L278.5,256L142.027,266.803C108.043,269.493 76.476,285.424 54.125,311.165Z" style="fill:rgb(111,42,38);fill-rule:nonzero;"/>
+        <path id="exposed-skin" affinity:id="exposed skin" d="M280,233L280,500L170.5,500L195.5,246C151.1,246 150,198.5 156.5,175L170.894,130.874L188,81.5C188,81.5 207.5,81 223,80.5C238.5,80 249.5,87 249.5,106L249.5,143.5C249.5,172.5 268.5,171.5 285.5,163C296.85,157.325 312.953,162.821 316,180C319.047,197.179 313.046,211.5 305.5,214.5C297.954,217.5 289.203,219.699 280.5,214L280,233Z" style="fill:rgb(233,170,148);"/>
+        <path id="exposed-shirt-collar" affinity:id="exposed shirt collar" d="M280,293.5L280,338L185.906,343.476L188.122,320.963L234,318.25C252.5,317.132 262.813,314.235 269.5,310C276.435,305.027 278.94,300.441 280,293.5Z" style="fill:white;"/>
+        <path id="exposed-shirt" affinity:id="exposed shirt" d="M280,319L280,500L170.5,500L185.906,343.477L233,340.75C251.5,339.656 263,337 270,333C277,329 278.5,325.5 280,319Z" style="fill:rgb(202,120,91);"/>
+        <path id="chin-shadow" affinity:id="chin shadow" d="M193.9,262.7L195.5,246C221.762,242.7 236.276,239.428 262,232.5C236.231,250.617 221.388,258.141 193.9,262.7Z" style="fill-rule:nonzero;"/>
+        <g id="outlines">
+            <g id="eyes">
+                <path id="eye-right" d="M234,140L233,159" style="fill:none;fill-rule:nonzero;stroke:black;stroke-width:5px;"/>
+                <path id="eye-left" d="M185,140L184,159" style="fill:none;fill-rule:nonzero;stroke:black;stroke-width:5px;"/>
+                <path id="eyebrow-left" d="M177.5,130.5C183.5,122.5 191.5,121.5 200.5,125" style="fill:none;fill-rule:nonzero;stroke:black;stroke-width:5px;"/>
+                <path id="eyebrow-right" d="M252,136C251,124 235.5,121.072 227,126.032" style="fill:none;fill-rule:nonzero;stroke:black;stroke-width:5px;"/>
+            </g>
+            <path id="nose" d="M194.709,146C194.709,146 188.709,175 187.209,181.5C185.709,188 192.58,188.913 198.209,189.5" style="fill:none;fill-rule:nonzero;stroke:black;stroke-width:5px;"/>
+            <path id="mouth" d="M203.5,212.5C216.5,212 224,208.5 230,200.5" style="fill:none;fill-rule:nonzero;stroke:black;stroke-width:5px;"/>
+            <path id="ear" d="M276,190.5L284.5,184.5M297.5,175.5L284.5,184.5M284.5,184.5L302,192" style="fill:none;fill-rule:nonzero;stroke:black;stroke-width:5px;"/>
+        </g>
+        <path id="hair" d="M188,81.5L166,145C147.456,144.892 145,143 139.5,138C134,133 131.813,123.783 134,118C136.187,112.217 159.5,61.5 159.5,61.5C161.943,56.603 166,54.5 170,54.5C174,54.5 177.673,55.854 181.5,60.5L276,56.5C285.889,57.283 291.5,58.5 298.5,64C305.5,69.5 310.488,76.264 313.5,84.5L329.5,126C337.194,127.365 340,129.5 342.5,136C345,142.5 342.874,148.713 339.5,155L319.025,201.697C313.873,213.447 304.402,222.767 292.57,227.729L280,233L280.5,214C289.203,219.699 297.954,217.5 305.5,214.5C313.046,211.5 319.047,197.179 316,180C312.953,162.821 296.85,157.325 285.5,163C268.5,171.5 249.5,172.5 249.5,143.5L249.5,106C249.5,87 238.5,80 223,80.5C207.5,81 188,81.5 188,81.5Z" style="fill-rule:nonzero;"/>
+        <g id="glasses">
+            <path id="rim-left" affinity:id="rim left" d="M170,122C183.798,122 195,133.202 195,147C195,160.798 183.798,172 170,172C156.202,172 145,160.798 145,147C145,133.202 156.202,122 170,122ZM170,127C158.962,127 150,135.962 150,147C150,158.038 158.962,167 170,167C181.038,167 190,158.038 190,147C190,135.962 181.038,127 170,127Z" style="fill:white;"/>
+            <path id="rim-right" affinity:id="rim right" d="M229,122C242.798,122 254,133.202 254,147C254,160.798 242.798,172 229,172C215.202,172 204,160.798 204,147C204,133.202 215.202,122 229,122ZM229,127C217.962,127 209,135.962 209,147C209,158.038 217.962,167 229,167C240.038,167 249,158.038 249,147C249,135.962 240.038,127 229,127Z" style="fill:white;"/>
+            <path id="ridge" d="M211,144.5C212.38,144.5 213.5,145.62 213.5,147C213.5,148.38 212.38,149.5 211,149.5L192.5,149.5C191.12,149.5 190,148.38 190,147C190,145.62 191.12,144.5 192.5,144.5L211,144.5Z" style="fill:white;"/>
+            <path id="temple-masked" affinity:id="temple masked" d="M249.593,146.885C250.06,146.333 250.761,145.988 251.54,146C279.833,146.451 289.698,150.205 300.264,160.729C300.565,161.028 300.774,161.386 300.89,161.766C298.339,160.986 295.67,160.704 293.048,160.913C284.358,153.783 274.402,151.365 251.46,151C250.877,150.99 250.343,150.781 249.922,150.439C249.774,149.317 249.663,148.133 249.593,146.885Z" style="fill:white;"/>
+        </g>
+    </g>
+</svg>

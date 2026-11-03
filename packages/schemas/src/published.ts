@@ -783,6 +783,11 @@ export const careerPortraitSchema = z
     height: z.number().int().positive(),
     /** Optional: the same picture drawn for the dark colour scheme (the page offers it to `prefers-color-scheme: dark`). */
     dark: careerImageSchema.optional(),
+    /**
+     * Optional: an Easter egg. The same portrait with a joke on it (the face is a Windows blue screen of death): the page shows it now and then, by chance, a moment after the career page has loaded. It has its own dark variant, as
+     * the portrait does (the frame's ground is part of the picture). The page writes its alt text (a fixed line), as it is not the owner's description of the picture. Additive in schema version 1.
+     */
+    egg: careerImageSchema.extend({ dark: careerImageSchema.optional() }).optional(),
   })
   .strict();
 
