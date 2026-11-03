@@ -1324,6 +1324,10 @@ export class GlobeRenderer {
    */
   private eclipseOffset: number | null | undefined;
   private eclipseTilts = new Map<number, number>();
+  /** The debug sweep through the shadow (`?eclipse`), and when it began. */
+  private eclipseSweep = false;
+  private sweepFrom = -1;
+  private sweepAngle = 0;
   private orbitInclination(aspect: number): number {
     const base = inclinationFor(aspect);
     if (this.eclipseOffset === undefined) {
@@ -1333,13 +1337,13 @@ export class GlobeRenderer {
       const lined = draw() < ECLIPSE.chance && seed !== null;
       const off = (draw() * 2 - 1) * ECLIPSE.jitterDeg;
       this.eclipseOffset = debug ? 0 : lined ? off : null;
-      // `?eclipse` is also a way to SEE one (owner, 2026-11-03: "how do I reproduce an eclipse?"): the orbit is the aligned one and the moon is HELD in the earth's shadow where it is in the picture (236 degrees of its lap:
-      // dim, a little red, the penumbra), still; `?eclipse=<deg>` holds it elsewhere (the middle of the shadow is at about 216, off the picture's left edge; it is lit again from 250), and `__globeDebug.pinMoon(deg)` moves
-      // it, `pinMoon(null)` lets it run. A held moon does not wait on the frames (the idle globe draws few).
+      // `?eclipse` is also a way to SEE one (owner, 2026-11-03: "how do I reproduce an eclipse?", then "the actual progression"): the orbit is the aligned one and the moon SWEEPS through the earth's shadow on a loop, from 224 to 262
+      // degrees of its lap and back in 16 s (it is off the picture's left edge to 231, deep in the shadow and red as it comes in, lit again by about 250); `?eclipse=<deg>` holds it at a degree instead, `__globeDebug.pinMoon(deg)`
+      // moves it and `pinMoon(null)` goes back to the sweep. (The hero's name and search line are over that part of the picture on a desktop: a debug attribute lets the CSS hide them, `html[data-eclipse]`.)
       if (debug) {
         const at = Number(new URLSearchParams(location.search).get("eclipse"));
-        this.moonPinned = toRad(at > 0 ? at : 236);
-        // (the hero's name and search line are over that part of the picture on a desktop: a debug attribute on the page lets the CSS hide them, `html[data-eclipse]`)
+        if (at > 0) this.moonPinned = toRad(at);
+        else this.eclipseSweep = true;
         document.documentElement.dataset.eclipse = "";
       }
     }
@@ -1372,7 +1376,7 @@ export class GlobeRenderer {
 
   /** The orbit's angle now, radians (checks): pinned, or where the clock has it. */
   moonAngleNow(): number {
-    return this.moonPinned ?? orbitAngle(this.moonMs);
+    return this.moonPinned ?? (this.eclipseSweep ? this.sweepAngle : orbitAngle(this.moonMs));
   }
 
   /** Put the moon's clock at `deg` of its orbit and let it run from there (checks). */
@@ -1415,6 +1419,12 @@ export class GlobeRenderer {
   private moonAngle(now: number): number {
     if (this.moonPinned !== null) return this.moonPinned;
     if (this.reduced) return toRad(MOON.restDeg);
+    if (this.eclipseSweep) {
+      if (this.sweepFrom < 0) this.sweepFrom = now;
+      const t = (((now - this.sweepFrom) / 16000) % 1) * 2;
+      this.sweepAngle = toRad(224 + 38 * (t < 1 ? t : 2 - t));
+      return this.sweepAngle;
+    }
     if (this.moonRunning) {
       if (this.moonAt > 0) this.moonMs += Math.min(250, Math.max(0, now - this.moonAt));
       this.moonAt = now;

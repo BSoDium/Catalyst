@@ -93,7 +93,9 @@ const FRAGMENT = /* glsl */ `
     // the rim: a band a pixel and a bit wide inside the silhouette, bright where lit and a ghost of a ring where not
     float rim = step(0.5, clamp((gamma - (uGamma0 - uEdgeAng * ${MOON.edgePx.toFixed(3)})) / uEdgeAng, 0.0, 1.0));
     vec3 rimCol = mix(mix(uGhost, uOutline, lit), mix(uOutline, mix(uOutline, uBg, ${MOON.burn.toFixed(2)}), lit), uFlip);
-    col = mix(col, mix(uBg, uRed, 0.7 * (1.0 - uFlip) + 0.55 * uFlip), uEclipse.y * (1.0 - lit));
+    // the red of the air's light: the moon's own tones (the maria and the ground) kept, in red (not a flat patch of it), more of it the deeper the shadow, whatever the light left of the surface
+    float lum = clamp(dot(col, vec3(0.299, 0.587, 0.114)) * 3.0, 0.0, 1.0);
+    col = mix(col, uRed * (0.32 + 0.9 * lum), uEclipse.y * 0.92);
     col = mix(col, rimCol, rim);
     gl_FragColor = vec4(col, uAmt);
   }
@@ -110,7 +112,7 @@ function moonMaterial(): ShaderMaterial {
       uGhost: { value: new Color() },
       uSun: { value: new Vector3(0, 0, 1) },
       uEclipse: { value: new Vector2(0, 0) },
-      uRed: { value: new Color(0.62, 0.2, 0.12) },
+      uRed: { value: new Color(0.78, 0.2, 0.09) },
       uAxis: { value: new Vector3(0, 0, 1) },
       uGamma0: { value: 0.1 },
       uEdgeAng: { value: 0.002 },
