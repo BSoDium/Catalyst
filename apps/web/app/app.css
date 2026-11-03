@@ -2936,6 +2936,81 @@
     overflow-wrap: break-word;
   }
 
+  /*
+   * The figures of a list (owner, 2026-11-02, #548: "the top of each entry list is pretty boring"): the count, the years it spans and the places it is about, each a big light figure over a small mono label (the KPI look of the wall's
+   * captions). On a phone (where the header is the bar's selector and the title is not drawn) they are the head: a strip under the bar between two hairlines, the figures spread over the width. From 56 rem they are at the right of the
+   * title, on its baseline, so the title keeps its size and the right of the head is not empty.
+   */
+  .list-stats {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem 2rem;
+    margin: 0;
+    padding: 1.25rem 0;
+    border-block: var(--hairline) solid var(--border);
+  }
+
+  .list-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    min-width: 0;
+  }
+
+  .list-stat-value {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 9cqi, 2.75rem);
+    font-weight: var(--weight-light);
+    line-height: 1;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .list-stat-label {
+    margin: 0;
+    color: var(--muted-foreground);
+    text-transform: uppercase;
+  }
+
+  @media screen and (max-width: 55.99rem) {
+    [data-slot="list-head"] .list-running {
+      display: none;
+    }
+  }
+
+  @media screen and (min-width: 56rem) {
+    .list-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: end;
+      column-gap: 3rem;
+    }
+
+    .list-head > .list-running {
+      grid-column: 1 / -1;
+    }
+
+    .list-head > .list-title {
+      grid-column: 1;
+    }
+
+    .list-stats {
+      grid-column: 2;
+      grid-row: 2;
+      justify-content: flex-end;
+      gap: 2.5rem;
+      padding: 0 0 0.375rem;
+      border-block: 0;
+    }
+
+    .list-stat-value {
+      font-size: clamp(2rem, 3.4cqi, 3rem);
+    }
+  }
+
   /* The tag filter: plain space under the title, a little more than the title's descender (the rows' own hairline closes the head below). */
   .list-filter {
     margin-top: 2rem;

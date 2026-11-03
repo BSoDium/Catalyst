@@ -6,8 +6,8 @@ import { GalleryEnd } from "~/components/entry/gallery-end";
 import { ARTWORK_FILLER, GALLERY_FILLER } from "~/lib/gallery-filler";
 import { EntryRow } from "~/components/entry/entry-list-card";
 import { Button, ScrollRow, StatePanel } from "~/components/ui";
-import { KIND_PLURALS, kindCount, listBackState, type EntrySummary } from "~/lib/entries";
-import { collectTags, filterByTag, groupByYear, parseTagFilter, shouldGroupByYear, tagSearch, type TagCount } from "~/lib/entry-list";
+import { KIND_NOUNS, KIND_PLURALS, kindCount, listBackState, type EntrySummary } from "~/lib/entries";
+import { collectTags, filterByTag, groupByYear, listStats, parseTagFilter, shouldGroupByYear, tagSearch, type TagCount } from "~/lib/entry-list";
 import { SITE_NAME } from "~/lib/site";
 
 /** Tags shown before "more": the rest sit one press away (the selected tag is always shown). */
@@ -66,6 +66,15 @@ export function EntryListPage({ kind, items }: { kind: ContentKind; items: Entry
           </span>
         </p>
         <h1 className="list-title">{KIND_PLURALS[kind]}</h1>
+        {/* The figures of the list: the count, the years it spans, the places it is about (the count of the running head says it again for the wide form; on a phone it is the folio) */}
+        <dl data-slot="list-stats" className="list-stats">
+          {listStats(items, { shown: shown.length, total: items.length, noun: shown.length === 1 ? KIND_NOUNS[kind].one : KIND_NOUNS[kind].many }).map((stat) => (
+            <div key={stat.label} className="list-stat">
+              <dd className="list-stat-value">{stat.value}</dd>
+              <dt className="list-stat-label type-meta">{stat.label}</dt>
+            </div>
+          ))}
+        </dl>
       </header>
 
       {tags.length > 0 && items.length > 1 && <TagFilter tags={tags} selected={tag} search={search} label={`Filter ${section} by tag`} />}
