@@ -2948,8 +2948,7 @@
     justify-content: space-between;
     gap: 1rem 2rem;
     margin: 0;
-    padding: 0.5rem 0 1.25rem;
-    border-bottom: var(--hairline) solid var(--border);
+    padding: 0.25rem 0 0;
   }
 
   .list-stat {
@@ -2963,7 +2962,7 @@
     margin: 0;
     font-family: var(--font-display);
     font-size: clamp(2rem, 9cqi, 2.75rem);
-    font-weight: var(--weight-light);
+    font-weight: var(--weight-medium);
     line-height: 1;
     letter-spacing: -0.03em;
     font-variant-numeric: tabular-nums;
@@ -3013,7 +3012,6 @@
       justify-content: flex-end;
       gap: 2.5rem;
       padding: 0 0 0.375rem;
-      border-bottom: 0;
     }
 
     .list-stat-value {
@@ -3023,7 +3021,14 @@
 
   /* The tag filter: plain space under the title, a little more than the title's descender (the rows' own hairline closes the head below). */
   .list-filter {
-    margin-top: 2rem;
+    margin-top: 1.5rem;
+  }
+
+  /* on a phone the filter sits close under the figures (owner, 2026-11-03: "remove some of the space") */
+  @media screen and (max-width: 55.99rem) {
+    [data-slot="list-head"] + .list-filter {
+      margin-top: 1rem;
+    }
   }
 
   /*

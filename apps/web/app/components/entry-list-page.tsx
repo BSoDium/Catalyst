@@ -82,7 +82,7 @@ export function EntryListPage({ kind, items }: { kind: ContentKind; items: Entry
         {tag ? `Showing ${shown.length} of ${total} tagged ${tag}` : ""}
       </p>
 
-      <div className="mt-8 flex flex-col gap-14">
+      <div className="mt-8 flex flex-col gap-14 max-md:mt-4">
         {items.length === 0 ? (
           <StatePanel state="empty" headingLevel={2} title="Nothing here yet." />
         ) : wall ? (
