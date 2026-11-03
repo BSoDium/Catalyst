@@ -131,8 +131,8 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
   const linkedFoot = linked && linked !== "1 place" ? linked : null;
 
   const copy = (
-    <CopyButton text={() => shareUrl(window.location.origin, entry.href)} label={`Copy link to ${entry.title}`} announcement="Link copied to the clipboard" icon="link">
-      <span className="max-md:sr-only">Copy link</span>
+    <CopyButton text={() => shareUrl(window.location.origin, entry.href)} label={`Copy link to ${entry.title}`} announcement="Link copied to the clipboard" icon="link" compact>
+      Copy link
     </CopyButton>
   );
   const skip = toc.length > 0 && (
