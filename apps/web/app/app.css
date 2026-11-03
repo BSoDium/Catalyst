@@ -6650,6 +6650,8 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
        nothing is anti-aliased. The arms are 12 px, a dash 6 and a gap 4. The dashes of an edge are laid between the two arms, a gap first and a gap last, a WHOLE number of periods (`round(down)`) centred to the pixel
        (the remainder is split over the two ends), so both ends of every edge are the same. */
     --t: var(--hairline);
+    /* the two BOTTOM corners are drawn in the full ink at rest (the rest of the box in half of it): the sign that the box can be pulled down (owner, 2026-11-02: the grip is hidden, the resizing stays) */
+    --contact-corner: var(--foreground);
     --arm: 12px;
     --dash: 6px;
     --gap: 4px;
@@ -6663,10 +6665,10 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
       linear-gradient(var(--contact-line), var(--contact-line)) top left / var(--t) var(--arm) no-repeat,
       linear-gradient(var(--contact-line), var(--contact-line)) top right / var(--arm) var(--t) no-repeat,
       linear-gradient(var(--contact-line), var(--contact-line)) top right / var(--t) var(--arm) no-repeat,
-      linear-gradient(var(--contact-line), var(--contact-line)) bottom left / var(--arm) var(--t) no-repeat,
-      linear-gradient(var(--contact-line), var(--contact-line)) bottom left / var(--t) var(--arm) no-repeat,
-      linear-gradient(var(--contact-line), var(--contact-line)) bottom right / var(--arm) var(--t) no-repeat,
-      linear-gradient(var(--contact-line), var(--contact-line)) bottom right / var(--t) var(--arm) no-repeat,
+      linear-gradient(var(--contact-corner), var(--contact-corner)) bottom left / var(--arm) var(--t) no-repeat,
+      linear-gradient(var(--contact-corner), var(--contact-corner)) bottom left / var(--t) var(--arm) no-repeat,
+      linear-gradient(var(--contact-corner), var(--contact-corner)) bottom right / var(--arm) var(--t) no-repeat,
+      linear-gradient(var(--contact-corner), var(--contact-corner)) bottom right / var(--t) var(--arm) no-repeat,
       repeating-linear-gradient(to right, transparent 0 var(--gap), var(--contact-line) var(--gap) var(--period)) round(down, 50%, 1px) top / var(--run-x) var(--t) no-repeat,
       repeating-linear-gradient(to right, transparent 0 var(--gap), var(--contact-line) var(--gap) var(--period)) round(down, 50%, 1px) bottom / var(--run-x) var(--t) no-repeat,
       repeating-linear-gradient(to bottom, transparent 0 var(--gap), var(--contact-line) var(--gap) var(--period)) left round(down, 50%, 1px) / var(--t) var(--run-y) no-repeat,
@@ -6693,7 +6695,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
 
   .contact-control[data-field="message"] .contact-textarea {
     min-height: 10rem;
-    resize: none;
+    resize: vertical;
     padding: 0.875rem 1rem;
     /* a whole number of px per line, so the box is a whole number of px tall and its bottom edge falls on a device pixel */
     line-height: 26px;
@@ -6758,8 +6760,17 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     color: var(--contact-error);
   }
 
+  .contact-field[data-invalid="true"] .contact-control[data-field="message"] {
+    --contact-corner: var(--contact-error);
+  }
+
   .contact-field[data-invalid="true"] .contact-control[data-field="message"]:focus-within {
     --contact-line: var(--contact-error);
+  }
+
+  /* the browser's own grip is not drawn (Chrome, Safari, Edge); the corner still resizes. Firefox has no way to hide it. */
+  .contact-textarea::-webkit-resizer {
+    display: none;
   }
 
   .contact-field[data-invalid="true"] .contact-control[data-field="message"]:focus-within .contact-label {
