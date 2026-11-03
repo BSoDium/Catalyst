@@ -666,6 +666,63 @@
                   "pattern": "^[^\\u0000-\\u001F\\u007F\\u202A-\\u202E\\u2066-\\u2069]*$"
                 }
               },
+              "projects": {
+                "maxItems": 4,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "title": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 70,
+                      "pattern": "^[^\\u0000-\\u001F\\u007F\\u202A-\\u202E\\u2066-\\u2069]*$"
+                    },
+                    "summary": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 300,
+                      "pattern": "^[^\\u0000-\\u001F\\u007F\\u202A-\\u202E\\u2066-\\u2069]*$"
+                    },
+                    "image": {
+                      "type": "object",
+                      "properties": {
+                        "src": {
+                          "type": "string",
+                          "maxLength": 300,
+                          "pattern": "^\\/media\\/(?:[A-Za-z0-9_-][A-Za-z0-9._-]*\\/)*[A-Za-z0-9_-][A-Za-z0-9._-]*$"
+                        },
+                        "width": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "height": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "src",
+                        "width",
+                        "height"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "entry": {
+                      "type": "string",
+                      "maxLength": 80,
+                      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "summary"
+                  ],
+                  "additionalProperties": false
+                }
+              },
               "skills": {
                 "maxItems": 8,
                 "type": "array",

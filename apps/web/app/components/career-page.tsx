@@ -1,13 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
-import type { PublishedCareer, PublishedCareerEducation, PublishedCareerRole } from "@catalyst/schemas";
+import type { PublishedCareer, PublishedCareerEducation, PublishedCareerProject, PublishedCareerRole } from "@catalyst/schemas";
 import { ContactForm } from "~/components/contact-form";
 import { Button, Icon } from "~/components/ui";
 import type { IconName } from "~/components/ui/icon";
-import { asOfText, careerDuration, careerIcon, careerLogoSrc, careerPeriod, formatCareerMonth, isCurrent, languageDetail, safeLinks, safePortrait } from "~/lib/career";
+import { asOfText, careerDuration, careerIcon, careerLogoSrc, careerPeriod, formatCareerMonth, isCurrent, languageDetail, safeLinks, safePortrait, safeProjects } from "~/lib/career";
 import { CONTACT_ID } from "~/lib/contact";
 import { safeExternalUrl } from "~/lib/entry-blocks";
-import { placePath } from "~/lib/entries";
+import { entryPath, placePath } from "~/lib/entries";
 import { PORTRAIT_EGG, portraitEggDrawn } from "~/lib/portrait-egg";
 import { SITE } from "~/lib/site";
 import { useForcedScheme } from "~/lib/theme";
@@ -24,13 +24,14 @@ import { useForcedScheme } from "~/lib/theme";
  * one way to reach the owner is the contact form (`ContactForm`, docs/career-page.md, "Contact") after the socials: a "Get in touch"
  * button in the head scrolls to it. There is no address, phone number or mailto link anywhere (the contract has no field for one).
  */
-export function CareerPage({ career, places = [] }: { career: PublishedCareer; places?: readonly string[] }) {
+export function CareerPage({ career, places = [], projects = [] }: { career: PublishedCareer; places?: readonly string[]; projects?: readonly string[] }) {
   const portrait = safePortrait(career);
   const crashed = usePortraitEgg(portrait?.egg);
   const links = safeLinks(career);
   const updated = formatCareerMonth(career.updated);
   const available = career.availability;
   const known = new Set(places);
+  const haveProject = new Set(projects);
   return (
     <main
       id="main"
@@ -116,7 +117,7 @@ export function CareerPage({ career, places = [] }: { career: PublishedCareer; p
       <Block id="experience" title="Experience" count={career.roles.length}>
         <ol className="career-timeline" aria-labelledby="experience-h">
           {career.roles.map((role) => (
-            <RoleItem key={role.id} role={role} placeKnown={role.place !== undefined && known.has(role.place)} asOf={career.updated} />
+            <RoleItem key={role.id} role={role} placeKnown={role.place !== undefined && known.has(role.place)} projectKnown={(slug) => haveProject.has(slug)} asOf={career.updated} />
           ))}
         </ol>
       </Block>
@@ -341,8 +342,9 @@ function OrgName({ name, url }: { name: string; url: string | null }) {
   );
 }
 
-function RoleItem({ role, placeKnown, asOf }: { role: PublishedCareerRole; placeKnown: boolean; asOf: string }) {
+function RoleItem({ role, placeKnown, projectKnown, asOf }: { role: PublishedCareerRole; placeKnown: boolean; projectKnown: (slug: string) => boolean; asOf: string }) {
   const orgUrl = role.orgUrl ? safeExternalUrl(role.orgUrl) : null;
+  const projects = safeProjects(role);
   return (
     <li id={role.id} data-slot="career-role" data-current={isCurrent(role) ? "true" : undefined} className="career-item">
       <Marker item={role} name={role.org} icon={careerIcon(role.title, "role")} />
@@ -380,6 +382,65 @@ function RoleItem({ role, placeKnown, asOf }: { role: PublishedCareerRole; place
             </ul>
           )}
         </div>
+      )}
+      {projects.length > 0 && (
+        <div data-slot="career-projects" className="career-projects">
+          <h4 className="career-projects-title">Selected work</h4>
+          <ul role="list">
+            {projects.map((p, i) => (
+              <ProjectItem key={`${i}-${p.title}`} project={p} href={p.entry && projectKnown(p.entry) ? entryPath("project", p.entry) : null} />
+            ))}
+          </ul>
+        </div>
+      )}
+    </li>
+  );
+}
+
+/**
+ * A project of a position: its picture, its title and its line side by side, the two blocks of the same height, the line cut with an ellipsis where it would overflow (owner, 2026-11-03, "a bit like LinkedIn does").
+ * The project is a LINK to the site's own entry for it (`entry`: the full text is there; the contract work that has no repository of its own gets an entry like the rest), the whole of it clickable; without
+ * an entry the site has, it is only the card.
+ */
+function ProjectItem({ project, href }: { project: PublishedCareerProject; href: string | null }) {
+  // The line takes the room the title leaves in the block (a title of one line leaves three lines, one of two leaves two), and is cut with an ellipsis only where it would
+  // overflow that: the number of lines is measured here (the stylesheet cuts at two before the script, which never overflows), again when the block's width changes.
+  const item = useRef<HTMLLIElement>(null);
+  useEffect(() => {
+    const li = item.current;
+    const text = li?.querySelector<HTMLElement>(".career-project-text");
+    const name = text?.querySelector<HTMLElement>(".career-project-name");
+    const line = text?.querySelector<HTMLElement>(".career-project-line");
+    if (!li || !text || !name || !line) return;
+    const fit = () => {
+      const style = getComputedStyle(line);
+      const lineHeight = parseFloat(style.lineHeight);
+      if (!lineHeight) return;
+      const free = text.clientHeight - name.offsetHeight - (parseFloat(style.marginTop) || 0);
+      line.style.setProperty("-webkit-line-clamp", String(Math.max(1, Math.floor((free + 1) / lineHeight))));
+    };
+    fit();
+    const observer = new ResizeObserver(fit);
+    observer.observe(li);
+    return () => observer.disconnect();
+  }, [project.title, project.summary]);
+  const body = (
+    <>
+      {project.image && <img src={project.image.src} alt="" width={project.image.width} height={project.image.height} loading="lazy" decoding="async" className="career-project-picture" />}
+      <span className="career-project-text">
+        <span className="career-project-name">{project.title}</span>
+        <span className="career-project-line">{project.summary}</span>
+      </span>
+    </>
+  );
+  return (
+    <li ref={item} className="career-project" data-picture={project.image ? "true" : "false"}>
+      {href ? (
+        <Link to={href} className="career-project-head" data-link="true">
+          {body}
+        </Link>
+      ) : (
+        <div className="career-project-head">{body}</div>
       )}
     </li>
   );

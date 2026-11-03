@@ -7210,6 +7210,219 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   }
 
 
+  /* The projects of a position (#531): a row of their own under the head and the detail, across the whole width of the item (owner, 2026-11-03: not a column on the left, which
+     made the left side tall and the right one short), in two columns from 64 rem. No rules between them (owner: not too many dividers): the space does it. A project is a title
+     and a line, with its picture at the left when it has one. */
+
+
+  .career-projects-title {
+    margin: 0 0 0.875rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 400;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+  }
+
+  .career-projects ul {
+    display: grid;
+    gap: 1.25rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* A project: its picture and its text side by side, the two of the same fixed height (`--project-h`), the title cut to two lines and the line to what the title leaves (measured by the page, `ProjectItem`:
+     three lines under a title of one, two under a title of two) with an ellipsis only where it would overflow (owner, 2026-11-03: "a bit like LinkedIn does"; then "some descriptions are ellipsed
+     even though they could have enough space"). The project is a link to its entry when there is one. */
+  .career-projects {
+    --project-h: 5.75rem;
+    margin-top: 1.75rem;
+  }
+
+  /* (more room after a position that has projects than between two others: its projects must not read as the next position's) */
+  .career-item:has(> .career-projects):not(:last-child) {
+    padding-bottom: 4.75rem;
+  }
+
+  .career-project-head {
+    display: grid;
+    gap: 1rem;
+    align-items: stretch;
+    grid-template-rows: minmax(0, 1fr);
+    height: var(--project-h);
+    text-align: left;
+  }
+
+  .career-project[data-picture="true"] .career-project-head {
+    grid-template-columns: 10rem minmax(0, 1fr);
+  }
+
+  .career-project-picture {
+    display: block;
+    width: 10rem;
+    height: var(--project-h);
+    aspect-ratio: auto;
+    object-fit: cover;
+    object-position: 0 0;
+    border: var(--hairline) solid var(--border);
+  }
+
+  .career-project-text {
+    display: block;
+    min-width: 0;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .career-project-name,
+  .career-project-line {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-wrap: pretty;
+  }
+
+  .career-project-name {
+    -webkit-line-clamp: 2;
+    font-weight: 500;
+    line-height: 1.3;
+  }
+
+  .career-project-line {
+    -webkit-line-clamp: 2;
+    margin-top: 0.25rem;
+    font-family: var(--font-reading);
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    color: var(--muted-foreground);
+  }
+
+  /* (a project with an entry is a link, the whole of it) */
+  .career-project-head[data-link] {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .career-project-head[data-link]:hover .career-project-name {
+    text-decoration: underline;
+    text-decoration-thickness: var(--hairline);
+    text-underline-offset: 0.2em;
+  }
+
+  .career-project-head[data-link]:focus-visible {
+    outline: 2px solid var(--ring, currentColor);
+    outline-offset: 4px;
+  }
+
+  @media (max-width: 39.99rem) {
+    .career-projects {
+      --project-h: 4.75rem;
+    }
+
+    .career-project[data-picture="true"] .career-project-head {
+      grid-template-columns: 8rem minmax(0, 1fr);
+      gap: 0.75rem;
+    }
+
+    .career-project-picture {
+      width: 8rem;
+    }
+  }
+
+  @media print {
+    .career-project-head {
+      height: auto;
+    }
+
+    .career-project-text {
+      height: auto;
+      overflow: visible;
+    }
+
+    .career-project-name,
+    .career-project-line {
+      display: block;
+      -webkit-line-clamp: unset !important;
+    }
+  }
+
+  /* From 64 rem the projects make an L in the item's own two columns (owner, 2026-11-03: "fit the projects into an L shape in that space in the left column"): the first one goes in the room under
+     the head, at the left, beside the highlights (which span down to it, and to the room that is left under them); the others go in a row of their own under both, at the left and then at the right,
+     where the highlights start. `.career-projects` and its list are `display: contents`: the label and the projects are cells of the item's grid. */
+  @media (min-width: 64rem) {
+    .career-item:has(> .career-projects) {
+      grid-template-rows: auto auto minmax(0, 1fr);
+    }
+
+    .career-item:has(> .career-projects) > .career-detail {
+      grid-column: 2;
+      grid-row: 1 / span 3;
+    }
+
+    .career-item > .career-projects,
+    .career-item > .career-projects ul {
+      display: contents;
+    }
+
+    .career-item > .career-projects .career-projects-title {
+      grid-column: 1;
+      grid-row: 2;
+      margin: 1.25rem 0 0.875rem;
+    }
+
+    .career-item > .career-projects .career-project {
+      grid-column: 1;
+      align-self: start;
+    }
+
+    .career-item > .career-projects .career-project:nth-child(1) {
+      grid-row: 3;
+    }
+
+    .career-item > .career-projects .career-project:nth-child(n + 2) {
+      margin-top: 1.5rem;
+    }
+
+    .career-item > .career-projects .career-project:nth-child(2) {
+      grid-row: 4;
+    }
+
+    .career-item > .career-projects .career-project:nth-child(3) {
+      grid-row: 4;
+      grid-column: 2;
+    }
+
+    .career-item > .career-projects .career-project:nth-child(4) {
+      grid-row: 5;
+    }
+
+    /* Two projects are a plain row under the head and the highlights (an L of two would leave the right side short): the label across, then one at the left and one at the right. */
+    .career-item:has(> .career-projects .career-project:nth-child(2):last-child) {
+      grid-template-rows: auto auto auto;
+    }
+
+    .career-item:has(> .career-projects .career-project:nth-child(2):last-child) > .career-detail {
+      grid-row: 1;
+    }
+
+    .career-item > .career-projects:has(.career-project:nth-child(2):last-child) .career-projects-title {
+      grid-column: 1 / -1;
+      margin: 0.5rem 0 0.875rem;
+    }
+
+    .career-item > .career-projects:has(.career-project:nth-child(2):last-child) .career-project:nth-child(2) {
+      grid-row: 3;
+      grid-column: 2;
+      margin-top: 0;
+    }
+
+    .career-item:has(> .career-projects):not(:last-child) {
+      padding-bottom: 5.5rem;
+    }
+  }
+
   .career-links {
     display: flex;
     flex-wrap: wrap;

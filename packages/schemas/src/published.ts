@@ -546,12 +546,14 @@ export const publishedContentItemSchema = z
 
 /**
  * Sizes. Every list and every text of the career document has a limit, chosen so that the TRUE maximum (every list full, every
- * text at its limit, each character counted at its worst UTF-8 width) stays under about 60 KB: the size of one entry's body cap.
+ * text at its limit, each character counted at its worst UTF-8 width) stays under about 120 KB (60 KB, the size of one entry's body cap, before the projects of a position, #531: a document the size of two entries is
+ * still nothing on the wire, and the real one is about 5 KB).
  * A test builds that maximum from these numbers. The owner's real document is about 5 KB.
  */
 export const CAREER_LIMITS = {
   roles: 8,
   highlights: 5,
+  projects: 4,
   roleSkills: 8,
   education: 4,
   languages: 6,
@@ -572,6 +574,8 @@ export const CAREER_TEXT = {
   location: 40,
   employment: 30,
   highlight: 180,
+  projectTitle: 70,
+  projectSummary: 300,
   roleSkill: 30,
   institution: 60,
   programme: 60,
@@ -686,6 +690,21 @@ export const careerImageSchema = z
   })
   .strict();
 
+/**
+ * A project worked on during a position (owner, 2026-11-03, #531, "like on LinkedIn"): a title and one or two sentences, an optional picture and an optional reference to a project entry of the site. For the work done
+ * under a contract, which has no repository to link to; when the site has an entry of its own for it (an open-source component, a design system), `entry` is that entry's slug and the title links to it. Additive in schema version 1.
+ */
+export const careerProjectSchema = z
+  .object({
+    title: careerText(CAREER_TEXT.projectTitle),
+    summary: careerText(CAREER_TEXT.projectSummary),
+    /** Optional: a picture of it (a screenshot; a `/media/` file, with its real size; decorative: the title is next to it). */
+    image: careerImageSchema.optional(),
+    /** Optional: the slug of a published software entry of this projection (validated to resolve). */
+    entry: slugSchema.optional(),
+  })
+  .strict();
+
 export const careerRoleSchema = z
   .object({
     /** Unique within the career; kebab-case, so the page can use it as an anchor. */
@@ -705,6 +724,8 @@ export const careerRoleSchema = z
     /** Absent = the document says nothing about the end; `present` = ongoing. */
     end: careerEndSchema.optional(),
     highlights: z.array(careerText(CAREER_TEXT.highlight)).max(CAREER_LIMITS.highlights),
+    /** Optional: the projects worked on in this position, shown with it. */
+    projects: z.array(careerProjectSchema).max(CAREER_LIMITS.projects).optional(),
     skills: z
       .array(careerText(CAREER_TEXT.roleSkill))
       .max(CAREER_LIMITS.roleSkills)
@@ -959,6 +980,13 @@ export const publishedProjectionSchema = projectionShape.superRefine((p, ctx) =>
       ctx.addIssue({ code: "custom", path: ["career", "roles", i, "place"], message: `unknown place "${role.place}"` });
     }
   });
+  p.career?.roles.forEach((role, i) =>
+    role.projects?.forEach((project, j) => {
+      if (project.entry !== undefined && !byKind.project.has(project.entry)) {
+        ctx.addIssue({ code: "custom", path: ["career", "roles", i, "projects", j, "entry"], message: `unknown project "${project.entry}"` });
+      }
+    }),
+  );
   p.career?.education.forEach((item, i) => {
     if (item.place !== undefined && !placeSlugs.has(item.place)) {
       ctx.addIssue({ code: "custom", path: ["career", "education", i, "place"], message: `unknown place "${item.place}"` });
@@ -1040,6 +1068,7 @@ export type PublishedBodyBlockType = PublishedBodyBlock["type"];
 export type PublishedCareer = z.infer<typeof publishedCareerSchema>;
 export type PublishedDataVersion = z.infer<typeof publishedDataVersionSchema>;
 export type PublishedCareerRole = z.infer<typeof careerRoleSchema>;
+export type PublishedCareerProject = z.infer<typeof careerProjectSchema>;
 export type PublishedCareerEducation = z.infer<typeof careerEducationSchema>;
 export type PublishedCareerLanguage = z.infer<typeof careerLanguageSchema>;
 export type PublishedCareerSkillGroup = z.infer<typeof careerSkillGroupSchema>;

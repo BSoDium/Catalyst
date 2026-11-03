@@ -785,7 +785,7 @@
           "Led a team of four on a rebuild of the studio's flagship mapping product, from the rendering layer to the design language.",
           "Cut the time to first interactive view from eight seconds to under two by moving the heavy work off the main thread."
         ],
-        "skills": ["React", "TypeScript", "WebGL", "Design systems"]
+        "projects": [ { "title": "Example Atlas", "summary": "An example project of the position: a map with its own data layers and a timeline, one of the things this document is shown with.", "image": { "src": "/media/demo/project-example-a.svg", "width": 400, "height": 300 }, "entry": "label-collision-engine" }, { "title": "Placeholder Console", "summary": "A second example, without a picture and without an entry of its own: a plain line of text." } ], "skills": ["React", "TypeScript", "WebGL", "Design systems"]
       },
       {
         "id": "frontend-engineer-sample-works",
@@ -799,7 +799,7 @@
           "Built a charting library on top of D3 that three product teams adopted in place of their own.",
           "Introduced visual regression tests, which caught a class of layout bugs before release."
         ],
-        "skills": ["React", "D3.js", "Storybook", "Playwright"]
+        "projects": [ { "title": "Sample Dashboard", "summary": "An example with a picture only, in the dark: no link, a title and a line.", "image": { "src": "/media/demo/project-example-b.svg", "width": 400, "height": 300 } } ], "skills": ["React", "D3.js", "Storybook", "Playwright"]
       },
       {
         "id": "interface-designer-placeholder-co",

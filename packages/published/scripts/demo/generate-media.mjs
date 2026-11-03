@@ -885,7 +885,7 @@ export const mediaByName = (name) => {
 
 /** Files that belong in the media folder besides the generated ones (referenced by the fixture's places). */
 /** (`portrait-example.svg` is the career portrait of the demo: the blueprint of docs/portrait/portrait.svg, copied: one file for both schemes, 940 x 640; `portrait-example-bsod.svg` is the Easter egg's twin, docs/portrait/portrait-bsod.svg.) */
-const KEEP = new Set(["field-notes.svg", "portrait-example.svg", "portrait-example-dark.svg", "portrait-example-bsod.svg", "logo-example.svg"]);
+const KEEP = new Set(["field-notes.svg", "portrait-example.svg", "portrait-example-dark.svg", "portrait-example-bsod.svg", "project-example-a.svg", "project-example-b.svg", "logo-example.svg"]);
 
 function main(check) {
   mkdirSync(MEDIA_DIR, { recursive: true });
