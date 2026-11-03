@@ -7238,7 +7238,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
      even though they could have enough space"). The project is a link to its entry when there is one. */
   .career-projects {
     --project-h: 5.75rem;
-    margin-top: 1.25rem;
+    margin-top: 1.75rem;
   }
 
   /* (more room after a position that has projects than between two others: its projects must not read as the next position's) */
@@ -7347,9 +7347,10 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   }
 
   @media (min-width: 64rem) {
+    /* (the head is at the left, so the room under it is already there: little above, from the detail at the right) */
     .career-item > .career-projects {
       grid-column: 1 / -1;
-      margin-top: 1.5rem;
+      margin-top: 0.5rem;
     }
 
     .career-item:has(> .career-projects):not(:last-child) {
