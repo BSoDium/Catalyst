@@ -7228,14 +7228,16 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
      and a line, with its picture at the left when it has one. */
 
 
+  /* The label of the projects reads as a heading of their own (owner, 2026-11-03: too close to the text above, and not a title): room above it (no divider: the page has enough of them), and the ink of a
+     title, not of a caption. */
   .career-projects-title {
-    margin: 0 0 0.875rem;
+    margin: 0 0 1rem;
     font-family: var(--font-mono);
-    font-size: 0.75rem;
-    font-weight: 400;
+    font-size: 0.8125rem;
+    font-weight: 500;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: var(--muted-foreground);
+    color: var(--foreground);
   }
 
   .career-projects ul {
@@ -7251,7 +7253,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
      even though they could have enough space"). The project is a link to its entry when there is one. */
   .career-projects {
     --project-h: 5.75rem;
-    margin-top: 1.75rem;
+    margin-top: 2.5rem;
   }
 
   /* (more room after a position that has projects than between two others: its projects must not read as the next position's) */
@@ -7382,7 +7384,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     .career-item > .career-projects .career-projects-title {
       grid-column: 1;
       grid-row: 2;
-      margin: 1.25rem 0 0.875rem;
+      margin: 2.5rem 0 1rem;
     }
 
     .career-item > .career-projects .career-project {
@@ -7422,7 +7424,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
 
     .career-item > .career-projects:has(.career-project:nth-child(2):last-child) .career-projects-title {
       grid-column: 1 / -1;
-      margin: 0.5rem 0 0.875rem;
+      margin: 2rem 0 1rem;
     }
 
     .career-item > .career-projects:has(.career-project:nth-child(2):last-child) .career-project:nth-child(2) {
