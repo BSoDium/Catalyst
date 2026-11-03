@@ -3779,6 +3779,11 @@ h1[tabindex="-1"]:focus-visible {
   color: var(--muted-foreground);
 }
 
+/* the numbers of the second line (the counts of entries and of places) in the full ink, the words staying muted (owner, 2026-11-02, #547) */
+.map-label-num {
+  color: var(--foreground);
+}
+
 /*
  * The map's credits (components/attribution-button.tsx): a map label's own ground, no outline (owner, 2026-10-26): the same translucent plate of the page colour
  * (`--label-plate-alpha`) with a soft feather round it, so it is not a sticker. On the home screen's display mode (the hero at rest) there is no ground at all: the
@@ -4066,6 +4071,10 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   color: color-mix(in srgb, var(--background) 72%, var(--foreground));
 }
 
+.map-label[data-mode="selected"] .map-label-num {
+  color: var(--background);
+}
+
 @media (forced-colors: active) {
   .map-label {
     color: CanvasText;
@@ -4076,12 +4085,20 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     color: CanvasText;
   }
 
+  .map-label-num {
+    color: CanvasText;
+  }
+
   .map-label[data-mode="selected"] {
     background: CanvasText;
     color: Canvas;
   }
 
   .map-label[data-mode="selected"] .map-label-sub {
+    color: Canvas;
+  }
+
+  .map-label[data-mode="selected"] .map-label-num {
     color: Canvas;
   }
 }

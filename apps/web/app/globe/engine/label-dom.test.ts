@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { LabelLayer, type LabelView } from "./label-dom";
+import { LabelLayer, splitNumbers, type LabelView } from "./label-dom";
 import { LABEL_TYPE } from "./label-text";
 
 /** The smallest DOM the layer needs: elements with a style, a dataset, children and remove(). */
@@ -180,5 +180,22 @@ describe("dispose", () => {
     frame(() => layer.put(2, "b", view()));
     layer.dispose();
     expect(root.children.length).toBe(0);
+  });
+});
+
+describe("the numbers of a second line (#547)", () => {
+  it("are cut out of the words, keeping every character", () => {
+    expect(splitNumbers("France · 2 articles · 8 artworks · 15 software")).toEqual([
+      { text: "France · ", num: false },
+      { text: "2", num: true },
+      { text: " articles · ", num: false },
+      { text: "8", num: true },
+      { text: " artworks · ", num: false },
+      { text: "15", num: true },
+      { text: " software", num: false },
+    ]);
+    expect(splitNumbers("France").map((p) => p.text).join("")).toBe("France");
+    expect(splitNumbers("")).toEqual([]);
+    expect(splitNumbers("12 places").map((p) => p.text).join("")).toBe("12 places");
   });
 });
