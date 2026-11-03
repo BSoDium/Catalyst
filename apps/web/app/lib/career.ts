@@ -109,12 +109,9 @@ export function languageDetail(l: PublishedCareerLanguage): string {
 export function safePortrait(career: PublishedCareer): NonNullable<PublishedCareer["portrait"]> | null {
   const p = career.portrait;
   if (!p || !safeMediaSrc(p.src)) return null;
-  // a dark variant with a bad path is dropped, not the portrait
-  if (p.dark && !safeMediaSrc(p.dark.src)) {
-    const { dark: _dark, ...rest } = p;
-    return rest;
-  }
-  return p;
+  // a variant with a bad path is dropped, not the portrait
+  const { dark, egg, ...rest } = p;
+  return { ...rest, ...(dark && safeMediaSrc(dark.src) ? { dark } : {}), ...(egg && safeMediaSrc(egg.src) ? { egg: egg.dark && !safeMediaSrc(egg.dark.src) ? { src: egg.src, width: egg.width, height: egg.height } : egg } : {}) };
 }
 
 /**

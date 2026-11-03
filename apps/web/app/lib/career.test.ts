@@ -129,6 +129,11 @@ describe("safePortrait, safeLinks", () => {
     expect(safePortrait(demo)).toMatchObject({ src: "/media/demo/portrait-example.svg" });
     const { portrait: _p, ...none } = demo;
     expect(safePortrait(none as PublishedCareer)).toBeNull();
+    // a variant with a bad path is dropped, not the portrait
+    const p = demo.portrait!;
+    expect(safePortrait({ ...demo, portrait: { ...p, egg: { src: "https://evil.example/e.svg", width: 1, height: 1 } } })).not.toHaveProperty("egg");
+    expect(safePortrait({ ...demo, portrait: { ...p, egg: { src: "https://evil.example/e.svg", width: 1, height: 1 } } })).toHaveProperty("dark");
+    expect(safePortrait(demo)).toHaveProperty("egg");
     expect(safePortrait({ ...demo, portrait: { src: "https://evil.example/x.png", alt: "x", width: 1, height: 1 } })).toBeNull();
     expect(safePortrait({ ...demo, portrait: { src: "/media/../x.png", alt: "x", width: 1, height: 1 } })).toBeNull();
     // a bad dark variant is dropped, the portrait stays

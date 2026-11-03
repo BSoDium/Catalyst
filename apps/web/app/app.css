@@ -6179,6 +6179,28 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     /* No box of its own: the picture draws its own frame (the blueprint's hand-penned square, whose lines cross at the corners). */
   }
 
+  /* The Easter egg (lib/portrait-egg.ts): the blue-screen twin is laid over the plain portrait, which it matches everywhere but on the face (the screen
+     for the skin, no marks, no glasses), and flickers in: a quick run of whole steps (the display's, as the site's art is), then holds. The bleed behind
+     is swapped at once. Not under reduced motion: it simply is the other picture. */
+  @media (prefers-reduced-motion: no-preference) {
+    .career-portrait img[data-egg]:not(.career-portrait-glow) {
+      animation: portrait-crash 0.3s steps(1, end) both;
+    }
+  }
+
+  @keyframes portrait-crash {
+    0% { opacity: 0; }
+    8% { opacity: 1; }
+    17% { opacity: 0.1; }
+    26% { opacity: 1; }
+    36% { opacity: 0; }
+    46% { opacity: 1; }
+    57% { opacity: 0.25; }
+    68% { opacity: 1; }
+    79% { opacity: 0.5; }
+    90%, 100% { opacity: 1; }
+  }
+
   /* Stacked (under 40 rem): the portrait is the BACKDROP of the head. It spans the head's width as a square (the picture's own frame), under the
      running head's rule, and the name and the statement are drawn over its lower part, from about two thirds down (36 % of the width of overlap):
      a gradient from the page colour, solid behind the statement and soft behind the name, keeps the type readable (the same eased fall as the

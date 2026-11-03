@@ -1,7 +1,10 @@
 import { readFileSync, writeFileSync } from "node:fs";
-const [, , src, out] = process.argv;
+const [, , src, out, ...flags] = process.argv;
+// `--bsod`: the Easter egg's twin (a blue screen of death where the face is), see docs/career-page.md
+const BSOD = flags.includes("--bsod");
 const svg = readFileSync(src, "utf8");
-const get = (id) => svg.match(new RegExp(`id="${id}"\\s+d="([^"]+)"`))[1];
+// (the owner's drawing, `avatar.svg`: its paths carry an `affinity:id` between the id and the path data)
+const get = (id) => svg.match(new RegExp(`<path id="${id}"[^>]*?\\sd="([^"]+)"`))[1];
 
 // seeded pen: same drawing every run
 let s = 7;
@@ -43,7 +46,7 @@ const onEdge = (g) => [0, 1].some((k) => [0, 500].some((e) => Math.abs(g.a[k] - 
 const fades = [];
 const P = (q) => `${f(q[0])} ${f(q[1])}`;
 // the face's own marks: an overshoot stops short of them rather than cutting through (it would break the illusion)
-const KEEP_OUT = [[172, 116, 206, 164], [222, 116, 258, 164], [180, 142, 202, 194], [198, 196, 235, 216], [270, 170, 306, 198]];
+const KEEP_OUT = [[142, 118, 302, 176], [180, 142, 202, 194], [198, 196, 235, 216], [270, 170, 306, 198]];
 function tail(from, to, w, ink = "--line") {
   const L = Math.hypot(to[0] - from[0], to[1] - from[1]);
   for (let i = 1; i <= 60; i++) {
@@ -103,8 +106,11 @@ function outline(d) {
 
 const F = 0; // the frame is the 500-unit square; the pen runs past it into the margin (MX at the sides, MY above and below)
 const MX = 220, MY = 70; // the margin the pen may run into: wide at the sides, short above and below
-const ids = ["jacket", "neck", "collar", "shirt", "head", "chin-shadow", "hair"];
-const D = Object.fromEntries(ids.map((i) => [i, get(i)]));
+// (the new drawing has ONE shape for the face and the neck: `exposed-skin`; the collar and the shirt are drawn over its lower part)
+const ids = { jacket: "jacket", skin: "exposed-skin", collar: "exposed-shirt-collar", shirt: "exposed-shirt", "chin-shadow": "chin-shadow", hair: "hair" };
+const D = Object.fromEntries(Object.entries(ids).map(([k, id]) => [k, get(id)]));
+// (the bridge and the temple first, the rims after: the rims hide the caps of the other two, which end under them)
+const GLASSES = ["ridge", "temple-masked", "rim-left", "rim-right"].map(get);
 const open = (id) => svg.match(new RegExp(`<path id="${id}"[^>]*?d="([^"]+)"`))[1];
 
 // Construction lines: each one is the prolongation of a straight edge of the drawing (the slanted edge of a shoulder, the long side of the face,
@@ -151,7 +157,7 @@ for (const [a, b] of EDGES) {
 const G = inner.join("\n      ");
 const guideTails = outer.join("\n      ");
 
-const FACE = `${D.head} ${D.neck}`;
+const FACE = D.skin;
 const r = (a) => a;
 // the frame is dead straight (never skewed) and its lines run well past the corners
 const side = (x1, y1, x2, y2) => {
@@ -163,7 +169,7 @@ const frame = [
 ].join("\n      ");
 
 const pens = {};
-for (const i of ids) pens[i] = `<g id="pen-${i}" class="pen">\n      ${outline(D[i])}\n      </g>`;
+for (const i of Object.keys(ids)) pens[i] = `<g id="pen-${i}" class="pen">\n      ${outline(D[i])}\n      </g>`;
 // (the shirt's hem sits on the frame and is not penned at all: a dark line along the frame's own was in the way, owner, 2026-10-30)
 
 // Hatching: plain slanted lines at equal intervals, as the paper study has them.
@@ -185,6 +191,19 @@ const hHair = hatch("hair", D.hair, { gap: 5.5, w: 1.7 });
 const hShade = hatch("shade", D["chin-shadow"], { gap: 4, w: 1.4 });
 const hShirt = hatch("shirt", D.shirt, { gap: 7, w: 1.6 });
 
+const FACE_MARKS = `<g id="eyes">
+      <path id="eye-right" d="M234 140L233 159" stroke="currentColor" stroke-width="5" stroke-linecap="round" />
+      <path id="eye-left" d="M185 140L184 159" stroke="currentColor" stroke-width="5" stroke-linecap="round" />
+      <path id="eyebrow-left" d="M177.5 130.5C183.5 122.5 191.5 121.5 200.5 125" stroke="currentColor" stroke-width="5" stroke-linecap="round" />
+      <path id="eyebrow-right" d="M252 136C251 124 235.5 121.072 227 126.032" stroke="currentColor" stroke-width="5" stroke-linecap="round" />
+    </g>
+    <path id="nose" d="${open("nose")}" stroke="currentColor" stroke-width="5" stroke-linecap="round" />
+    <path id="mouth" d="${open("mouth")}" stroke="currentColor" stroke-width="5" stroke-linecap="round" />`;
+
+// The blue screen of death (the Easter egg's twin) is the owner's own picture (bsod-screen.part.svg, copied from his drawing: a screenshot placed over the
+// face and masked to its shape), over the skin and under everything else; the face's clip keeps its edge as crisp as the skin's.
+const SCREEN = BSOD ? `<g id="screen" clip-path="url(#c-face)">\n${readFileSync(new URL("./bsod-screen.part.svg", import.meta.url), "utf8").replace(/<!--[\s\S]*?-->\n?/, "")}</g>` : "";
+
 const result = `<svg width="${500 + 2 * MX}" height="${500 + 2 * MY}" viewBox="${-MX} ${-MY} ${500 + 2 * MX} ${500 + 2 * MY}" fill="none" xmlns="http://www.w3.org/2000/svg">
   <!-- Blueprint: the same figure, redrawn as if penned by hand over a construction sketch. The picture has a frame of its own (no
        border or background is added by the page) whose lines cross at the corners. Every outline is a run of pen strokes that
@@ -195,12 +214,14 @@ const result = `<svg width="${500 + 2 * MX}" height="${500 + 2 * MY}" viewBox="$
     /* Monochrome greys; the blues are the jacket and the faintly blue skin. The pen's blue-grey sits close to the ground, never black. */
     :root { --bg: #eeeeee; --skin: #a4cfff; --jacket: #2f9aee; --shirt: #4a4a4a; --collar: #ffffff; --ink: #0a0a0a; --mark: #0a0a0a;
             --hair: #3a4a60; --hatch-hair: #0a0a0a; --shade: #78a2d6; --hatch-shade: #4a74a8; --hatch-shirt: #2e2e2e;
-            --line: #5b6d85; --frame: #d8d8d8; --g-bg: #cdcdcd; --g-skin: #7bb0ee; --g-jacket: #5cb2f2; --g-shirt: #6a6a6a; }
+            --glasses: #ffffff; --line: #5b6d85; --frame: #d8d8d8; --g-bg: #cdcdcd; --g-skin: #7bb0ee; --g-jacket: #5cb2f2; --g-shirt: #6a6a6a; }
     @media (prefers-color-scheme: dark) { :root { --bg: #161616; --skin: #82a8d2; --jacket: #1a63a3; --shirt: #262626; --collar: #bdbdbd; --ink: #050505; --mark: #050505;
             --hair: #26364a; --hatch-hair: #0a1018; --shade: #5f86b2; --hatch-shade: #3f628a; --hatch-shirt: #3a3a3a;
-            --line: #8398b3; --frame: #313131; --g-bg: #333333; --g-skin: #9dbde0; --g-jacket: #3484c8; --g-shirt: #3f3f3f; } }
+            --glasses: #d8d8d8; --line: #8398b3; --frame: #313131; --g-bg: #333333; --g-skin: #9dbde0; --g-jacket: #3484c8; --g-shirt: #3f3f3f; } }
     .bg { fill: var(--bg) } .skin { fill: var(--skin) } .jacket { fill: var(--jacket) } .shirt { fill: var(--shirt) } .collar { fill: var(--collar) }
     .hair { fill: var(--hair) } .shade { fill: var(--shade) }
+    #screen { filter: brightness(1.22) saturate(1.06) }
+    .glasses path { fill: var(--glasses); fill-rule: evenodd; stroke: var(--line); stroke-width: 1.2; stroke-linejoin: round }
     path[stroke] { stroke: var(--mark) }
     .pen path { stroke: var(--line); stroke-linecap: round; stroke-linejoin: round; fill: none }
     #pen-frame path { stroke: var(--frame) }
@@ -208,6 +229,7 @@ const result = `<svg width="${500 + 2 * MX}" height="${500 + 2 * MY}" viewBox="$
     .hatch-hair { stroke: var(--hatch-hair) } .hatch-shade { stroke: var(--hatch-shade) } .hatch-shirt { stroke: var(--hatch-shirt) }
     .guides { stroke-width: 1.5; stroke-linecap: round; fill: none }
     .g-bg { stroke: var(--g-bg) } .g-skin { stroke: var(--g-skin) } .g-jacket { stroke: var(--g-jacket) } .g-shirt { stroke: var(--g-shirt) }
+    @media (prefers-color-scheme: dark) { #screen { filter: none } }
   </style>
   <defs>
     ${fades.join("\n    ")}
@@ -227,32 +249,25 @@ const result = `<svg width="${500 + 2 * MX}" height="${500 + 2 * MY}" viewBox="$
     <path id="jacket" d="${D.jacket}" class="jacket" />
     <g class="guides g-jacket" clip-path="url(#c-jacket)"><use href="#guide-lines" /></g>
     ${pens.jacket}
-    <path id="neck" d="${D.neck}" class="skin" />
-    ${pens.neck}
+    <path id="skin" d="${D.skin}" class="skin" />
+    <g class="guides g-skin" clip-path="url(#c-face)"><use href="#guide-lines" /></g>
+    ${BSOD ? SCREEN : ""}
     <path id="collar" d="${D.collar}" class="collar" />
     ${pens.collar}
     <path id="shirt" d="${D.shirt}" class="shirt" />
     ${hShirt}
     <g class="guides g-shirt" clip-path="url(#c-shirt)"><use href="#guide-lines" /></g>
     ${pens.shirt}
-    <path id="head" d="${D.head}" class="skin" />
-    <g class="guides g-skin" clip-path="url(#c-face)"><use href="#guide-lines" /></g>
-    ${pens.head}
+    ${pens.skin}
     <path id="chin-shadow" d="${D["chin-shadow"]}" class="shade" />
     ${hShade}
     ${pens["chin-shadow"]}
-    <g id="eyes">
-      <path id="eye-right" d="M234 140L233 159" stroke="currentColor" stroke-width="5" stroke-linecap="round" />
-      <path id="eye-left" d="M185 140L184 159" stroke="currentColor" stroke-width="5" stroke-linecap="round" />
-      <path id="eyebrow-left" d="M177.5 130.5C183.5 122.5 191.5 121.5 200.5 125" stroke="currentColor" stroke-width="5" stroke-linecap="round" />
-      <path id="eyebrow-right" d="M252 136C251 124 235.5 121.072 227 126.032" stroke="currentColor" stroke-width="5" stroke-linecap="round" />
-    </g>
-    <path id="nose" d="${open("nose")}" stroke="currentColor" stroke-width="5" stroke-linecap="round" />
-    <path id="mouth" d="${open("mouth")}" stroke="currentColor" stroke-width="5" stroke-linecap="round" />
+    ${BSOD ? "" : FACE_MARKS}
     <path id="hair" d="${D.hair}" class="hair" />
     ${hHair}
     ${pens.hair}
     <path id="ear" d="${open("ear")}" stroke="currentColor" stroke-width="5" stroke-linecap="round" />
+    ${BSOD ? "" : `<g id="glasses" class="glasses">${GLASSES.map((d) => `<path d="${d}" />`).join("")}</g>`}
     </g>
     <g id="pen-frame" class="pen">
       ${frame}

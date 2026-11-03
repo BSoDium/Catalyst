@@ -143,6 +143,16 @@ describe("career (an optional singleton document, additive in schema version 1)"
       bad(career({ portrait: portrait({ dark: image({ src: "https://example.org/d.webp" }) }) }));
       bad(career({ portrait: portrait({ dark: { src: "/media/career/d.webp" } }) }));
     });
+
+    it("the portrait may carry an Easter egg picture, with the same rules", () => {
+      const egg = image({ src: "/media/career/portrait-bsod.55443322.webp", width: 800, height: 800 });
+      expect(parse(career({ portrait: portrait({ egg }) })).career!.portrait!.egg).toEqual(egg);
+      const withDark = { ...egg, dark: image({ src: "/media/career/portrait-bsod-dark.55443322.webp", width: 800, height: 800 }) };
+      expect(parse(career({ portrait: portrait({ egg: withDark }) })).career!.portrait!.egg).toEqual(withDark);
+      bad(career({ portrait: portrait({ egg: { ...egg, dark: { src: "/media/career/d.webp" } } }) }));
+      bad(career({ portrait: portrait({ egg: image({ src: "https://example.org/e.webp" }) }) }));
+      bad(career({ portrait: portrait({ egg: { src: "/media/career/e.webp" } }) }));
+    });
   });
 
   describe("portrait (an optional picture, additive in schema version 1)", () => {
@@ -171,9 +181,9 @@ describe("career (an optional singleton document, additive in schema version 1)"
       bad(career({ portrait: portrait({ alt: "Write to me at someone@example.org" }) }), /e-mail/);
       bad(career({ portrait: "/media/career/portrait.webp" }));
     });
-    it("is described by the generated JSON Schema as an optional strict object with these properties (alt, height, src, width, and an optional dark variant)", () => {
+    it("is described by the generated JSON Schema as an optional strict object with these properties (alt, height, src, width, and optional dark and egg variants)", () => {
       const p = JSON.parse(buildJsonSchema()).properties.career.properties.portrait;
-      expect(Object.keys(p.properties).sort()).toEqual(["alt", "dark", "height", "src", "width"]);
+      expect(Object.keys(p.properties).sort()).toEqual(["alt", "dark", "egg", "height", "src", "width"]);
       expect(p.required.sort()).toEqual(["alt", "height", "src", "width"]);
       expect(p.additionalProperties).toBe(false);
       expect(JSON.parse(buildJsonSchema()).properties.career.required).not.toContain("portrait");

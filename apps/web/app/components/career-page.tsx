@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import type { PublishedCareer, PublishedCareerEducation, PublishedCareerRole } from "@catalyst/schemas";
 import { ContactForm } from "~/components/contact-form";
@@ -7,6 +8,7 @@ import { asOfText, careerDuration, careerIcon, careerLogoSrc, careerPeriod, form
 import { CONTACT_ID } from "~/lib/contact";
 import { safeExternalUrl } from "~/lib/entry-blocks";
 import { placePath } from "~/lib/entries";
+import { PORTRAIT_EGG, portraitEggDrawn } from "~/lib/portrait-egg";
 import { SITE } from "~/lib/site";
 import { useForcedScheme } from "~/lib/theme";
 
@@ -24,6 +26,7 @@ import { useForcedScheme } from "~/lib/theme";
  */
 export function CareerPage({ career, places = [] }: { career: PublishedCareer; places?: readonly string[] }) {
   const portrait = safePortrait(career);
+  const crashed = usePortraitEgg(portrait?.egg);
   const links = safeLinks(career);
   const updated = formatCareerMonth(career.updated);
   const available = career.availability;
@@ -82,8 +85,10 @@ export function CareerPage({ career, places = [] }: { career: PublishedCareer; p
           </div>
           {portrait && (
             <figure data-slot="career-portrait" className="career-portrait">
-              <PortraitPicture portrait={portrait} alt="" decorative className="career-portrait-glow" />
-              <PortraitPicture portrait={portrait} alt={portrait.alt} eager />
+              <PortraitPicture portrait={portrait} alt="" decorative crashed={crashed} className="career-portrait-glow" />
+              <PortraitPicture portrait={portrait} alt={crashed && portrait.egg ? PORTRAIT_EGG.alt : portrait.alt} eager />
+              {/* the egg is laid OVER the plain portrait, which is drawn the same everywhere but on the face: its flicker is the face's alone */}
+              {crashed && portrait.egg && <PortraitPicture portrait={portrait} alt="" decorative crashed eager />}
             </figure>
           )}
         </div>
@@ -188,18 +193,55 @@ function scrollToContact(e: React.MouseEvent<HTMLAnchorElement>) {
 }
 
 /**
+ * Whether the portrait has crashed: the Easter egg's draw is made once the page is in the browser (`portraitEggDrawn`), the egg's picture is loaded first (so that it appears whole), and it is shown `PORTRAIT_EGG.delayMs`
+ * after the page, when both are done. The page the server sends is always the plain portrait.
+ */
+function usePortraitEgg(egg: { src: string; dark?: { src: string } } | undefined): boolean {
+  const [crashed, setCrashed] = useState(false);
+  const src = egg?.src;
+  const darkSrc = egg?.dark?.src;
+  useEffect(() => {
+    if (!src || !portraitEggDrawn(window.location.search)) return;
+    let timer = 0;
+    let loaded = false;
+    let due = false;
+    const show = () => loaded && due && setCrashed(true);
+    // (the file of the visitor's scheme: the page picks between the two as the portrait does)
+    const img = new Image();
+    img.onload = () => {
+      loaded = true;
+      show();
+    };
+    img.src = darkSrc && window.matchMedia("(prefers-color-scheme: dark)").matches ? darkSrc : src;
+    timer = window.setTimeout(() => {
+      due = true;
+      show();
+    }, PORTRAIT_EGG.delayMs);
+    return () => {
+      window.clearTimeout(timer);
+      img.onload = null;
+    };
+  }, [src, darkSrc]);
+  return crashed;
+}
+
+/**
  * The portrait as a `<picture>`: with a dark variant in the document, the dark colour scheme is offered that file (the site has no
  * scheme toggle, so `prefers-color-scheme` is the whole story). Drawn twice: once as the picture, once as its faint bleed.
  */
-function PortraitPicture({ portrait, alt, decorative, eager, className }: { portrait: NonNullable<ReturnType<typeof safePortrait>>; alt: string; decorative?: boolean; eager?: boolean; className?: string }) {
+function PortraitPicture({ portrait, alt, decorative, eager, crashed, className }: { portrait: NonNullable<ReturnType<typeof safePortrait>>; alt: string; decorative?: boolean; eager?: boolean; crashed?: boolean; className?: string }) {
   // a scheme the visitor forced (lib/theme.ts) is not the media query's: the picture is chosen here
   const forced = useForcedScheme();
-  const pick = portrait.dark && forced === "dark" ? portrait.dark : portrait;
+  // the Easter egg (lib/portrait-egg.ts): the same portrait with a blue screen for a face, in the place of the picture (its own dark variant, as the portrait's)
+  const egg = crashed && portrait.egg ? portrait.egg : null;
+  const base = egg ?? portrait;
+  const pick = base.dark && forced === "dark" ? base.dark : base;
   const img = (
     <img
       src={pick.src}
-      alt={alt}
+      alt={egg && !decorative ? PORTRAIT_EGG.alt : alt}
       aria-hidden={decorative ? "true" : undefined}
+      data-egg={egg ? "true" : undefined}
       width={pick.width}
       height={pick.height}
       loading={eager ? "eager" : undefined}
@@ -209,9 +251,9 @@ function PortraitPicture({ portrait, alt, decorative, eager, className }: { port
       style={eager ? { aspectRatio: "1 / 1" } : undefined}
     />
   );
-  return portrait.dark && forced === "system" ? (
+  return base.dark && forced === "system" ? (
     <picture>
-      <source media="(prefers-color-scheme: dark)" srcSet={portrait.dark.src} width={portrait.dark.width} height={portrait.dark.height} />
+      <source media="(prefers-color-scheme: dark)" srcSet={base.dark.src} width={base.dark.width} height={base.dark.height} />
       {img}
     </picture>
   ) : (

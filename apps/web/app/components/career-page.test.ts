@@ -105,6 +105,12 @@ describe("CareerPage", () => {
     expect(h).toMatch(/class="career-icon" data-logo="true" aria-hidden="true"><img [^>]*alt=""/);
   });
 
+  it("sends the plain portrait: the Easter egg's picture is never in the server's page (it is drawn in the browser, by chance)", () => {
+    expect(demo.portrait!.egg).toBeDefined();
+    expect(html).not.toContain(demo.portrait!.egg!.src);
+    expect(html).not.toContain("data-egg");
+  });
+
   it("without a portrait draws no frame and no image, the name block alone", () => {
     const h = render(without(demo, "portrait"));
     expect(h).not.toContain("<figure");
