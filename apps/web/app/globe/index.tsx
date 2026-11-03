@@ -1,4 +1,5 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
+import { GlobeLoader } from "./globe-loader";
 import type { GlobeProps } from "./types";
 
 export { DEFAULT_VIEW_RADIUS_KM, placeFraming } from "./engine/framing";
@@ -38,11 +39,22 @@ const GlobeImpl = lazy(() => import("./globe-canvas"));
  */
 export function Globe(props: GlobeProps) {
   const [mounted, setMounted] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const { onLoaded } = props;
+  const settled = useCallback(() => {
+    setLoaded(true);
+    onLoaded?.();
+  }, [onLoaded]);
   useEffect(() => setMounted(true), []);
-  if (!mounted) return null;
+  // (the loader is in the server's HTML, hidden: CSS shows it after a moment, while the script is still coming; the globe itself is client only)
+  if (!mounted) return <GlobeLoader done={false} insetRight={props.insetRight} />;
   return (
-    <Suspense fallback={null}>
-      <GlobeImpl {...props} />
-    </Suspense>
+    <>
+      <Suspense fallback={null}>
+        <GlobeImpl {...props} onLoaded={settled} />
+      </Suspense>
+      {/* While the renderer's code loads and the first frame is drawn (and only if that takes a moment): a loader, so a slow device shows neither nothing nor a half-built scene (#545). */}
+      <GlobeLoader done={loaded} insetRight={props.insetRight} />
+    </>
   );
 }
