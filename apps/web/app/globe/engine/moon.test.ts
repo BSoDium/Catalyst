@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ECLIPSE, MOON, direction, eclipseInclination, eclipseOf, inclinationFor, inertialPosition, moonAmount, orbitAngle, orbitBasis, litTurn, rollFor, sunDirection, toEarthFrame, toRad, unhidden, visibleBounds, type Vec3 } from "./moon";
+import { ECLIPSE, MOON, direction, eclipseInclination, eclipseOf, inclinationFor, inertialPosition, moonAmount, MOON_SHADOW, moonShadowOn, orbitAngle, orbitBasis, litTurn, rollFor, sunDirection, toEarthFrame, toRad, unhidden, visibleBounds, type Vec3 } from "./moon";
 import { viewBasis } from "./geo";
 
 const dot = (a: Vec3, b: Vec3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
@@ -237,5 +237,26 @@ describe("the earth's shadow on the moon (#443)", () => {
     expect(ECLIPSE.chance).toBeLessThanOrEqual(0.25);
     const roll = rollFor(1);
     for (const off of [-ECLIPSE.jitterDeg, ECLIPSE.jitterDeg]) expect(maxDark(roll, eclipseInclination(roll, inclinationFor(1), sun, off))).toBeGreaterThan(0.2);
+  });
+});
+
+describe("the moon's shadow on the earth (#443)", () => {
+  const s: Vec3 = [0, 0, 1];
+  it("is a soft cylinder along the sun line through the moon: its axis is the moon's offset across the rays, as wide as the moon", () => {
+    const sh = moonShadowOn([0, 0, 9], s)!;
+    expect(len(sh.axis)).toBeCloseTo(0);
+    expect(sh.strength).toBeCloseTo(MOON_SHADOW.strength);
+    expect(sh.reach).toBeCloseTo(MOON_SHADOW.reach * MOON.radius);
+    expect(sh.fall).toBeGreaterThan(sh.reach);
+    const off = moonShadowOn([0.8, 0.3, 9], s)!;
+    expect(off.axis).toEqual([0.8, 0.3, 0]);
+    // the same size wherever it falls: it stretches on the ground by the shading's geometry, it does not grow
+    expect(off.reach).toBe(sh.reach);
+  });
+
+  it("has none when the moon is behind the earth, and none when the line misses the ground by more than the soft edge", () => {
+    expect(moonShadowOn([0, 0, -9], s)).toBeNull();
+    expect(moonShadowOn([3, 0, 9], s)).toBeNull();
+    expect(moonShadowOn([1 + MOON.radius * MOON_SHADOW.fall - 0.01, 0, 9], s)).not.toBeNull();
   });
 });

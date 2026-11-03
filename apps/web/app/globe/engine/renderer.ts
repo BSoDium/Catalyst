@@ -64,7 +64,7 @@ import { CINEMATIC } from "./cinematic";
 import { viewToGalactic } from "./sky";
 import { INTERLUDE_STATE_EVENT, INTERLUDE_WAIT_MS, interludeLook, type InterludeStateDetail } from "../interlude";
 import { blendPose, flightOffsetShare, flightPose, type FlightPose } from "./flight";
-import { LIGHTS, NIGHT, SURFACE, surfaceCoverage } from "./surface";
+import { LIGHTS, NIGHT, SHADE_UNIFORMS, SURFACE, surfaceCoverage } from "./surface";
 import { landingScale, liftFor, placeAbove, type Placement } from "./lift";
 import { routeLift } from "./view";
 import { newLodCamera, setLodCamera, type LodTree } from "./lod-tree";
@@ -79,7 +79,7 @@ import { pickOccluder, planetRise, sunRise, type Occluder } from "./sun-flare";
 import { liveSun, opening } from "./daylight";
 import { IMMERSION, immersiveZoom, openingZoom } from "./immersion";
 import { FX, irisStep } from "./fx";
-import { ECLIPSE, MOON, SUN, eclipseInclination, inclinationFor, litTurn, moonAmount, orbitAngle, rollFor, sunDirection, toEarthFrame, toRad, visibleBounds, type Vec3 } from "./moon";
+import { ECLIPSE, MOON, SUN, eclipseInclination, inclinationFor, litTurn, moonAmount, moonShadowOn, orbitAngle, rollFor, sunDirection, toEarthFrame, toRad, visibleBounds, type Vec3 } from "./moon";
 import { roleColor } from "./palette";
 import type { MoonSample } from "./moon-layer";
 import type { MoonFrame } from "./moon-overlay";
@@ -1328,6 +1328,8 @@ export class GlobeRenderer {
   private eclipseSweep = false;
   private sweepFrom = -1;
   private sweepAngle = 0;
+  /** The sweep's range, degrees of the lap: the earth's shadow on the moon (224, 38), or `?eclipse=solar`, the moon's on the earth (#443: it crosses the sun line at about 44). */
+  private sweepRange: [number, number] = [224, 38];
   private orbitInclination(aspect: number): number {
     const base = inclinationFor(aspect);
     if (this.eclipseOffset === undefined) {
@@ -1339,9 +1341,11 @@ export class GlobeRenderer {
       this.eclipseOffset = debug ? 0 : lined ? off : null;
       // `?eclipse` is also a way to SEE one (owner, 2026-11-03: "how do I reproduce an eclipse?", then "the actual progression"): the orbit is the aligned one and the moon SWEEPS through the earth's shadow on a loop, from 224 to 262
       // degrees of its lap and back in 16 s (it is off the picture's left edge to 231, deep in the shadow and red as it comes in, lit again by about 250); `?eclipse=<deg>` holds it at a degree instead, `__globeDebug.pinMoon(deg)`
-      // moves it and `pinMoon(null)` goes back to the sweep. (The hero's name and search line are over that part of the picture on a desktop: a debug attribute lets the CSS hide them, `html[data-eclipse]`.)
+      // moves it and `pinMoon(null)` goes back to the sweep; `?eclipse=solar` sweeps the other way round, the moon across the sun line, 30 to 58 degrees, so that its shadow crosses the lit face (#443). (The hero's name and search line are over that part of the picture on a desktop: a debug attribute lets the CSS hide them, `html[data-eclipse]`.)
       if (debug) {
-        const at = Number(new URLSearchParams(location.search).get("eclipse"));
+        const arg = new URLSearchParams(location.search).get("eclipse");
+        const at = Number(arg);
+        if (arg === "solar") this.sweepRange = [30, 28];
         if (at > 0) this.moonPinned = toRad(at);
         else this.eclipseSweep = true;
         document.documentElement.dataset.eclipse = "";
@@ -1389,7 +1393,7 @@ export class GlobeRenderer {
 
   /** What the moon's last frame made of the globe (checks): the sample and the state that may keep it away. */
   moonDebug() {
-    return { night: this.nightNow, sample: this.moonSample, displayRate: this.wantsDisplayRate, ready: this.globe.moon?.ready ?? false, sized: this.sized, suspended: this.suspended, flying: this.flying, selected: this.selected, inset: this.insetTarget, zoom: this.drawView().zoom, fit: this.fit };
+    return { night: this.nightNow, sample: this.moonSample, shade: [...SHADE_UNIFORMS.uShade.value.toArray(), ...SHADE_UNIFORMS.uShadeR.value.toArray()], displayRate: this.wantsDisplayRate, ready: this.globe.moon?.ready ?? false, sized: this.sized, suspended: this.suspended, flying: this.flying, selected: this.selected, inset: this.insetTarget, zoom: this.drawView().zoom, fit: this.fit };
   }
 
   /** Whether the moon may move now: not under reduced motion, not in a hold of the energy pass, not while the link's card holds it, not in a hidden tab. */
@@ -1398,11 +1402,11 @@ export class GlobeRenderer {
   }
 
   /**
-   * The moon is in the picture and moving: it wants the display's own frames (not the idle rotation's ten a second), so that a body that crosses a few pixels a second glides over them
+   * The moon is in the picture and moving, or its shadow is on the earth (the moon itself may be out of the picture, on the sun's side: #443, the shadow stood still until the camera moved): it wants the display's own frames (not the idle rotation's ten a second), so that a body that crosses a few pixels a second glides over them
    * (its edge is drawn with coverage: a fraction of a pixel of movement is a fraction of a pixel's tone, but only if there is a frame for it). A few seconds of each lap.
    */
   private get moonWantsFrames(): boolean {
-    return !!this.moonSample?.onScreen && this.moonRunning && !this.suspended;
+    return (!!this.moonSample?.onScreen || SHADE_UNIFORMS.uShade.value.w > 0) && this.moonRunning && !this.suspended;
   }
 
   /** The sun's rays and halo are following the music's beat: a frame for each, while it sounds and the sun is in the picture. */
@@ -1422,7 +1426,7 @@ export class GlobeRenderer {
     if (this.eclipseSweep) {
       if (this.sweepFrom < 0) this.sweepFrom = now;
       const t = (((now - this.sweepFrom) / 16000) % 1) * 2;
-      this.sweepAngle = toRad(224 + 38 * (t < 1 ? t : 2 - t));
+      this.sweepAngle = toRad(this.sweepRange[0] + this.sweepRange[1] * (t < 1 ? t : 2 - t));
       return this.sweepAngle;
     }
     if (this.moonRunning) {
@@ -1531,10 +1535,18 @@ export class GlobeRenderer {
     const wanted = this.sized && !this.lost && !this.suspended && this.selected === null && this.insetTarget === 0;
     if (!wanted) {
       this.moonSample = moon.sync({ camera: cam, bufW: this.bufW, bufH: this.bufH, eraDeg: this.era, angle: 0, rollDeg: 0, inclinationDeg: 0, sun: this.moonSun, d, zoom, fit: Infinity }); // (a zoom far past the fit: nothing is drawn)
+      SHADE_UNIFORMS.uShade.value.w = 0;
       return;
     }
     const aspect = this.width / Math.max(1, this.height);
     this.moonSample = moon.sync({ camera: cam, bufW: this.bufW, bufH: this.bufH, eraDeg: this.era, angle: this.moonAngle(now), rollDeg: rollFor(aspect), inclinationDeg: this.orbitInclination(aspect), sun: toEarthFrame(this.moonSun, this.era), d, zoom: this.inInterlude ? this.world : zoom, fit: this.world });
+    // its shadow on the earth, where it is between the sun and the planet (the shared shade of the night's materials; the night's own amount takes it away with the zoom, as it takes the moon)
+    const sample = this.moonSample;
+    const shade = sample && sample.amount > 0 ? moonShadowOn(sample.position, toEarthFrame(this.moonSun, this.era)) : null;
+    if (shade) {
+      SHADE_UNIFORMS.uShade.value.set(shade.axis[0], shade.axis[1], shade.axis[2], shade.strength);
+      SHADE_UNIFORMS.uShadeR.value.set(shade.reach, shade.fall);
+    } else SHADE_UNIFORMS.uShade.value.w = 0;
   }
 
   /**
@@ -1971,7 +1983,21 @@ export class GlobeRenderer {
     // Whoever drew this frame (the tick, a resize, a check), the transitions run to their end, and the idle rotation's chain (cancelled above) goes on.
     if (this.lod.animating || this.globe.animating || (this.caption?.animating ?? false) || this.moonWantsFrames || this.sunPulsing || this.opts.labelsAnimating?.()) this.keepGoing(false);
     else if (this.spin.spinning) this.chainSpin();
+    this.pollMoonShadow();
     this.armCaption();
+  }
+
+  /**
+   * In an aligned-orbit session (#443) the moon's shadow can come onto the earth while the moon is out of the picture and nothing else is animating (no frames are asked for): a look a quarter of a second, in the world view,
+   * asks for one when the shadow is there. (Once it is, `moonWantsFrames` has the display's own frames, and the poll has nothing left to do.)
+   */
+  private shadowPoll: ReturnType<typeof setTimeout> | 0 = 0;
+  private pollMoonShadow() {
+    if (typeof this.eclipseOffset !== "number" || this.shadowPoll || this.nightNow <= 0 || !this.moonRunning || this.suspended || this.disposed) return;
+    this.shadowPoll = setTimeout(() => {
+      this.shadowPoll = 0;
+      this.requestRender();
+    }, 250);
   }
 
   /**
@@ -2721,6 +2747,8 @@ export class GlobeRenderer {
     if (this.disposed) return;
     this.disposed = true;
     this.cancelFrame();
+    clearTimeout(this.shadowPoll);
+    SHADE_UNIFORMS.uShade.value.w = 0;
     for (const c of this.cleanups) c();
     this.cleanups = [];
     // (the hero must not stay a ghost if the globe goes away mid-interlude)

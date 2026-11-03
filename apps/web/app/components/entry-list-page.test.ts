@@ -13,13 +13,17 @@ const render = (items: EntrySummary[], search = "", kind: "article" | "poem" = "
 
 const make = (slug: string, date: string | undefined, tags: string[]): EntrySummary => ({ ...articles[0]!, slug, href: `/articles/${slug}`, title: `T ${slug}`, date, tags });
 
+
+/** The first figure of the list's head (#548): `5` over `articles`, `2` over `of 3 articles`. */
+const figure = (html: string, value: string | number, label: string) => expect(html).toMatch(new RegExp(`<dd class="list-stat-value">${value}</dd><dt class="list-stat-label[^"]*">${label}</dt>`));
+
 describe("EntryListPage", () => {
   it("lists every entry flat when each year holds one (no timeline of single cards)", () => {
     const html = render(articles);
     expect((html.match(/<article/g) ?? []).length).toBe(articles.length);
     expect(html).not.toContain("data-year=\"2026\"");
     expect(html).toContain('aria-label="Filter articles by tag"');
-    expect(html).toContain(">5 articles<");
+    figure(html, 5, "articles");
     expect(html).not.toMatch(/Article \/ Index|005|№/i);
   });
   it("carries no copyright notice (it belongs to an entry's page)", () => {
@@ -40,7 +44,7 @@ describe("EntryListPage", () => {
     const items = [make("a", "2022", ["rail"]), make("b", "2023", ["bus"]), make("c", "2024", ["Rail", "bus"])];
     const html = render(items, "?tag=rail");
     expect((html.match(/<article/g) ?? []).length).toBe(2);
-    expect(html).toContain(">2 of 3 articles<");
+    figure(html, 2, "of 3 articles");
     // case variants are one tag (the first spelling is kept), and exactly one chip is current
     expect(html).toMatch(/aria-current="true"[^>]*data-filter="rail"/);
     expect((html.match(/aria-current="true"/g) ?? []).length).toBe(1);
@@ -52,12 +56,12 @@ describe("EntryListPage", () => {
       renderToStaticMarkup(createElement(StaticRouter, { location: `/poetry${search}` }, createElement(EntryListPage, { kind: "poem", items })));
     const html = at(poems);
     expect(html).toMatch(/<h1[^>]*>Poetry<\/h1>/);
-    expect(html).toContain(`>${poems.length} poems<`);
+    figure(html, poems.length, "poems");
     expect(html).toContain('aria-label="Filter poetry by tag"');
     expect(html).toContain('role="list" aria-label="Poetry"');
     expect(html).not.toMatch(/<h1[^>]*>Poems<\/h1>/);
     // one poem is "1 poem", never "1 poetry"
-    expect(at(poems.slice(0, 1))).toContain(">1 poem<");
+    figure(at(poems.slice(0, 1)), 1, "poem");
     expect(at(poems.slice(0, 1))).not.toMatch(/\bPoems\b|1 poetry/);
     // the filter says how many of how many, in poems
     const tag = poems.find((p) => p.tags.length > 0)?.tags[0];
@@ -72,11 +76,11 @@ describe("EntryListPage", () => {
       renderToStaticMarkup(createElement(StaticRouter, { location: `/software${search}` }, createElement(EntryListPage, { kind: "project", items })));
     const html = at(software);
     expect(html).toMatch(/<h1[^>]*>Software<\/h1>/);
-    expect(html).toContain(`>${software.length} software<`);
+    figure(html, software.length, "software");
     expect(html).toContain('aria-label="Filter software by tag"');
     expect(html).toContain('role="list" aria-label="Software"');
     expect(html).not.toMatch(/Projects?\b|projects\b|softwares/);
-    expect(at(software.slice(0, 1))).toContain(">1 software<");
+    figure(at(software.slice(0, 1)), 1, "software");
     const tag = software.find((p) => p.tags.length > 0)?.tags[0];
     expect(tag).toBeTruthy();
     expect(at(software, `?tag=${encodeURIComponent(tag!)}`)).toMatch(new RegExp(`Showing \\d+ of ${software.length} software tagged`));
@@ -87,15 +91,16 @@ describe("EntryListPage", () => {
   it("shows the empty state and no filter for no entries", () => {
     const html = render([]);
     expect(html).toContain("Nothing here yet");
-    expect(html).toContain(">0 articles<");
+    figure(html, 0, "articles");
     expect(html).not.toContain('data-slot="tag-filter"');
   });
   it("sets the entries as hairline rows of type: a mono dateline, the title in the display role, no card, box or generated cover for an article", () => {
     const html = render(articles);
     expect(html).toContain('data-surface="reading"');
-    // the head is a journal's: a running head over one hairline, then the title; no masthead double rule, no standfirst
+    // the head is the title and the figures of the list (#548): no running head with the owner's name and the count any more (they were said again), no masthead double rule, no standfirst
     expect(html).toMatch(/<h1[^>]*class="list-title"/);
-    expect(html).toMatch(/<p class="list-running[^"]*">.*?Elliot N\u00E9grel-Jerzy.*?data-slot="list-count"/s);
+    expect(html).not.toContain("list-running");
+    expect(html).toMatch(/data-slot="list-stats"/);
     expect(html).not.toContain("list-standfirst");
     expect(html).not.toContain("entry-rule");
     expect((html.match(/<h1/g) ?? []).length).toBe(1);
@@ -163,7 +168,7 @@ describe("EntryListPage with a sensitive entry", () => {
     expect(html).toContain('data-slot="artwork-wall"');
     expect(html).not.toContain("data-year=");
     for (const a of artworks) expect(html).toContain(`id="${a.slug}"`);
-    expect(html).toContain(`>${artworks.length} artworks<`);
+    figure(html, artworks.length, "artworks");
   });
   it("sets the photographs as one wall of pictures, captioned with the place and the year, and never draws generated art for one", () => {
     const photos = listEntries(demo, "photograph");
@@ -171,7 +176,7 @@ describe("EntryListPage with a sensitive entry", () => {
     expect(html).toContain('data-slot="artwork-wall" data-kind="photograph"');
     expect(html).not.toContain("data-year=");
     for (const p of photos) expect(html).toContain(`id="${p.slug}"`);
-    expect(html).toContain(`>${photos.length} photographs<`);
+    figure(html, photos.length, "photographs");
     expect(html).toContain('href="/photography/demo-photograph"');
     expect(html).toContain("Cusco");
     expect(html).not.toContain("cover-art");

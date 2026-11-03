@@ -39,7 +39,8 @@ export const MOON = {
   narrowAspect: 0.75,
   wideAspect: 1.15,
   /** One lap, ms. It is in the picture for a few seconds of each lap, at the planet's sides: a thing to catch, not to wait for. */
-  periodMs: 240_000,
+  // (360 s, it was 240: owner, 2026-11-03, "it goes by so fast")
+  periodMs: 360_000,
   /** Where the orbit starts (on the camera's side, behind the camera: not in the picture when the page opens), and where the moon stands when it does not move (reduced motion): beside the planet on the left, small. */
   startDeg: 100,
   restDeg: 254,
@@ -298,6 +299,27 @@ export function eclipseOf(p: Vec3, sun: Vec3): { dark: number; red: number } {
   const depth = 1 - smooth01(ECLIPSE.umbra - MOON.radius, ECLIPSE.penumbra, Math.hypot(qx, qy, qz));
   // the darkening comes first, over the whole penumbra; the red only in the deep of it (the moon behind a blurred disc whose shadow is a little red: owner, 2026-11-03)
   return { dark: depth * ECLIPSE.shadowDark, red: smooth01(0.45, 1, depth) };
+}
+
+/**
+ * The moon's shadow on the earth (owner, 2026-11-03, #443: "cast the moon's blurred shadow onto the earth when it occludes the sun"; then "it becomes insanely large instead of just stretching", at the edges). The shadow is a
+ * cylinder of light's absence along the sun line through the moon, with a soft edge: `reach` is the radius (earth radii, across the sun's rays) inside which it is at full strength, `fall` the one where it has faded out, `strength`
+ * the share of the lit ground's light it takes at the deepest. The ground is shaded by its distance from the cylinder's axis, so that where the sun is low it STRETCHES along the ground, as a real shadow does, with no limit but the limb.
+ */
+export const MOON_SHADOW = { reach: 0.9, fall: 2.4, strength: 0.85 } as const;
+
+/**
+ * The moon's shadow on the earth, for the moon at `p` (earth-fixed frame, earth radii) and the sun in direction `sun` (unit, the same frame): `axis` is where the line from the sun through the moon crosses the plane through the earth's centre
+ * across the sun's rays (a vector in that plane: a ground point `n` is in the shadow by how near `n - (n . sun) sun` is to it, `reach` and `fall` the radii of the soft disc in that plane, earth radii), `strength` 0..1. Null when the moon
+ * is on the far side of the earth from the sun, or the line misses the ground by more than the shadow's soft edge.
+ */
+export function moonShadowOn(p: Vec3, sun: Vec3): { axis: Vec3; reach: number; fall: number; strength: number } | null {
+  const along = p[0] * sun[0] + p[1] * sun[1] + p[2] * sun[2];
+  if (along <= 0) return null;
+  const axis: Vec3 = [p[0] - along * sun[0], p[1] - along * sun[1], p[2] - along * sun[2]];
+  const fall = MOON.radius * MOON_SHADOW.fall;
+  if (Math.hypot(...axis) >= 1 + fall) return null;
+  return { axis, reach: MOON.radius * MOON_SHADOW.reach, fall, strength: MOON_SHADOW.strength };
 }
 
 /**

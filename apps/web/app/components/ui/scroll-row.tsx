@@ -40,9 +40,18 @@ export function ScrollRow({ children, noun = "tags", className }: { children: Re
     const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
     observer?.observe(el);
     for (const child of Array.from(el.children)) observer?.observe(child);
+    // The row's content can change under it (the tag filter's "+28 more" adds chips to the list: the list's own box does not change, only what overflows it, so no resize says so): a change of the content measures again, after the layout (owner, 2026-11-03: the arrow did not come back).
+    let frame = 0;
+    const changed = typeof MutationObserver === "undefined" ? null : new MutationObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(measure);
+    });
+    changed?.observe(el, { childList: true, subtree: true, characterData: true });
     return () => {
+      cancelAnimationFrame(frame);
       el.removeEventListener("scroll", measure);
       observer?.disconnect();
+      changed?.disconnect();
     };
   }, [measure]);
 

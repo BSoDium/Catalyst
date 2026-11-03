@@ -316,4 +316,9 @@ export interface GlobeProps {
    * steps back on it (`lib/hero-machine.ts`).
    */
   onInteract?(): void;
+  /**
+   * The globe has settled: its first frame is on the screen (it has faded in from the page's colour), or it will never come (WebGL is unavailable, the context was lost). Fired once.
+   * The app's loader for the world view goes on it (`globe-loader.tsx`; #545).
+   */
+  onLoaded?(): void;
 }
