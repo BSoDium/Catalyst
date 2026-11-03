@@ -7250,6 +7250,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     display: grid;
     gap: 1rem;
     align-items: stretch;
+    grid-template-rows: minmax(0, 1fr);
     height: var(--project-h);
     text-align: left;
   }
@@ -7261,7 +7262,8 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   .career-project-picture {
     display: block;
     width: 10rem;
-    height: 100%;
+    height: var(--project-h);
+    aspect-ratio: auto;
     object-fit: cover;
     object-position: 0 0;
     border: var(--hairline) solid var(--border);
