@@ -6,6 +6,7 @@ import { GalleryEnd } from "~/components/entry/gallery-end";
 import { ARTWORK_FILLER, GALLERY_FILLER } from "~/lib/gallery-filler";
 import { EntryRow } from "~/components/entry/entry-list-card";
 import { Button, ScrollRow, StatePanel } from "~/components/ui";
+import { cn } from "~/lib/utils";
 import { KIND_NOUNS, KIND_PLURALS, kindCount, listBackState, type EntrySummary } from "~/lib/entries";
 import { collectTags, filterByTag, groupByYear, listStats, parseTagFilter, shouldGroupByYear, tagSearch, type TagCount } from "~/lib/entry-list";
 import { SITE_NAME } from "~/lib/site";
@@ -82,7 +83,8 @@ export function EntryListPage({ kind, items }: { kind: ContentKind; items: Entry
         {tag ? `Showing ${shown.length} of ${total} tagged ${tag}` : ""}
       </p>
 
-      <div className="mt-8 flex flex-col gap-14 max-md:mt-4">
+      {/* Close under the filter (owner, 2026-11-03): the filter sits in the angle between the first entry's top and the left edge; a list with YEAR headings keeps a little more room (a big year numeral follows the filter) */}
+      <div className={cn("flex flex-col gap-14", grouped ? "mt-8 max-md:mt-4" : "mt-6 max-md:mt-1.5")}>
         {items.length === 0 ? (
           <StatePanel state="empty" headingLevel={2} title="Nothing here yet." />
         ) : wall ? (
