@@ -10,6 +10,7 @@ import { paletteOf } from "./trail";
 import { cropToBoxes } from "./crop";
 import { decodePolyline5 } from "./polyline";
 import { legKey } from "./thin";
+import { legEnds } from "./airports";
 
 type LonLat = [number, number];
 
@@ -106,6 +107,7 @@ export function legFeatures(routes: readonly GlobeRoute[], stepDeg = 0.5): GeoJS
       if (a.lat === b.lat && a.lon === b.lon) continue;
       const spec = route.legs?.[i];
       const mode = spec && isLegMode(spec.mode) ? spec.mode : "unknown";
+      const ends = legEnds(a, b, spec, { from: route.boxes?.[i], to: route.boxes?.[i + 1] });
       let pts: LonLat[] | null = null;
       let usedPolyline = false;
       if (spec?.polyline && mode !== "flight") {
@@ -115,11 +117,11 @@ export function legFeatures(routes: readonly GlobeRoute[], stepDeg = 0.5): GeoJS
           usedPolyline = true;
         }
       }
-      pts ??= greatCircle([a.lon, a.lat], [b.lon, b.lat], stepDeg);
+      pts ??= greatCircle([ends.from.lon, ends.from.lat], [ends.to.lon, ends.to.lat], stepDeg);
       // every mode ends where it meets the boxes of its stops, as on the globe (paths/crop.ts)
       const flat = new Float64Array(pts.length * 2);
       pts.forEach((p, k) => flat.set(p, k * 2));
-      const cropped = cropToBoxes(flat, null, route.boxes?.[i], route.boxes?.[i + 1]);
+      const cropped = cropToBoxes(flat, null, ends.cropFrom ? route.boxes?.[i] : undefined, ends.cropTo ? route.boxes?.[i + 1] : undefined);
       if (!cropped) continue;
       pts = Array.from({ length: cropped.lonlat.length / 2 }, (_, k) => [cropped.lonlat[k * 2]!, cropped.lonlat[k * 2 + 1]!] as LonLat);
       features.push({
@@ -141,7 +143,8 @@ export function legHeads(routes: readonly GlobeRoute[]): GeoJSON.FeatureCollecti
       const a = route.points[i]!;
       const b = route.points[i + 1]!;
       if (a.lat === b.lat && a.lon === b.lon) continue;
-      features.push({ type: "Feature", properties: { key: legKey(route.id, i), pal }, geometry: { type: "Point", coordinates: [b.lon, b.lat] } });
+      const head = legEnds(a, b, route.legs?.[i], { from: route.boxes?.[i], to: route.boxes?.[i + 1] }).to;
+      features.push({ type: "Feature", properties: { key: legKey(route.id, i), pal }, geometry: { type: "Point", coordinates: [head.lon, head.lat] } });
     }
   });
   return { type: "FeatureCollection", features };
