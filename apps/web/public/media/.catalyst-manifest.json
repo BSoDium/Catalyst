@@ -283,6 +283,41 @@
       "bytes": 63944
     },
     {
+      "path": "career/project.21fdfbad.webp",
+      "sha256": "21fdfbad388de5c3a8932f007101db687d257998e930534d24145da14ffed869",
+      "bytes": 422010
+    },
+    {
+      "path": "career/project.25a9bf7e.webp",
+      "sha256": "25a9bf7e309697d65f3f999c656861a97ab028db9c58ca946b5d6ca76c2ffb40",
+      "bytes": 111442
+    },
+    {
+      "path": "career/project.2a04f3cb.webp",
+      "sha256": "2a04f3cbd210d76e2f71c007127716267ebe8038e02db47bd90685c07ccb41f6",
+      "bytes": 102012
+    },
+    {
+      "path": "career/project.62a1ce68.webp",
+      "sha256": "62a1ce682ceea00ac38814c82b5792f44e33cb204bb07f8b577bcb916d7c60b9",
+      "bytes": 141448
+    },
+    {
+      "path": "career/project.b10b086b.webp",
+      "sha256": "b10b086b6059b820aac717a68e8a566a0f1a77894bfae20fce10677c8445e4fd",
+      "bytes": 218526
+    },
+    {
+      "path": "career/project.daaa6384.webp",
+      "sha256": "daaa6384c7d521f09d71476d9d8e958d135bdee911026bf2153e862e76fab5e4",
+      "bytes": 19208
+    },
+    {
+      "path": "career/project.e4f162a0.webp",
+      "sha256": "e4f162a039b960041dab625c16ec04eb53103573d0db78ee66a72a8356d8f88c",
+      "bytes": 102948
+    },
+    {
       "path": "photograph/blue-facade/photo-800w.4cc300ab.webp",
       "sha256": "4cc300ab485a126828e8f6d22e89ee95bb01410d9a44bac90f5c01a90bbab47d",
       "bytes": 81966
@@ -568,6 +603,16 @@
       "bytes": 449640
     },
     {
+      "path": "project/escape-ui/cover-800w.9bc9dae2.webp",
+      "sha256": "9bc9dae2f94aa0edd41f8607b55f7644b110039eba7073b8e3f4b1fd405a26f8",
+      "bytes": 28904
+    },
+    {
+      "path": "project/escape-ui/cover.2a04f3cb.webp",
+      "sha256": "2a04f3cbd210d76e2f71c007127716267ebe8038e02db47bd90685c07ccb41f6",
+      "bytes": 102012
+    },
+    {
       "path": "project/esp-string-lights/cover-800w.5181c497.webp",
       "sha256": "5181c4979bd0a7fe87868ba2032d778f683240fbba938304c2c124a313276e94",
       "bytes": 48854
@@ -586,6 +631,36 @@
       "path": "project/isf-design-system/cover.eaacf831.webp",
       "sha256": "eaacf831e8efdba9485e995913843fd774547dd58a81e9ae6ad63fb4722d8c02",
       "bytes": 149886
+    },
+    {
+      "path": "project/kanop-auth/cover-800w.09d5f240.webp",
+      "sha256": "09d5f240828ef83095a3cd1dd490577051f59805ba635a0e3364909d6bc6d5b2",
+      "bytes": 32302
+    },
+    {
+      "path": "project/kanop-auth/cover.b10b086b.webp",
+      "sha256": "b10b086b6059b820aac717a68e8a566a0f1a77894bfae20fce10677c8445e4fd",
+      "bytes": 218526
+    },
+    {
+      "path": "project/kanop-chat/cover-800w.3384f21c.webp",
+      "sha256": "3384f21cf0a4ef0565a4e3b163d6c32716e2164396ed7c8b25694d5bb86214d9",
+      "bytes": 27556
+    },
+    {
+      "path": "project/kanop-chat/cover.62a1ce68.webp",
+      "sha256": "62a1ce682ceea00ac38814c82b5792f44e33cb204bb07f8b577bcb916d7c60b9",
+      "bytes": 141448
+    },
+    {
+      "path": "project/kanop-platform/cover-800w.f4a3f23b.webp",
+      "sha256": "f4a3f23bb7ba08ef49e7921ea863f7b8b9451c06d5096863b63e1c777111d5f5",
+      "bytes": 102056
+    },
+    {
+      "path": "project/kanop-platform/cover.21fdfbad.webp",
+      "sha256": "21fdfbad388de5c3a8932f007101db687d257998e930534d24145da14ffed869",
+      "bytes": 422010
     },
     {
       "path": "project/lidar/cover-800w.2de99680.webp",
@@ -688,14 +763,14 @@
       "bytes": 56076
     },
     {
-      "path": "project/spectrum-visualizer/cover-800w.9a02bc02.webp",
-      "sha256": "9a02bc02d5983222178348f5a4202a0a9949bc9ea5bdb72621cbb1d0abec70b2",
-      "bytes": 3328
+      "path": "project/spectrum-visualizer/cover-800w.cb42f492.webp",
+      "sha256": "cb42f4928c86523f6d71c8a541db382ed82fc04d857b5f9d6b606a09b733d964",
+      "bytes": 5176
     },
     {
-      "path": "project/spectrum-visualizer/cover.f0f2e14a.webp",
-      "sha256": "f0f2e14aeea30769cd02762f13bb830ff048dcfedde2bd8bbc774ec7aa317dfa",
-      "bytes": 14146
+      "path": "project/spectrum-visualizer/cover.daaa6384.webp",
+      "sha256": "daaa6384c7d521f09d71476d9d8e958d135bdee911026bf2153e862e76fab5e4",
+      "bytes": 19208
     },
     {
       "path": "project/spinel/cover-800w.e6872ae8.webp",
@@ -716,6 +791,16 @@
       "path": "project/svg-gradients/cover.220ec5f6.webp",
       "sha256": "220ec5f65405fc08425148b5b41a6ff58ffde86238a4a8be6e28653a835538dd",
       "bytes": 203334
+    },
+    {
+      "path": "project/tauniqo-slide-editor/cover-800w.4a3c3b60.webp",
+      "sha256": "4a3c3b60dc7a556c4fc132122b133de1b1b84a4648ef9fe52014bb667d966777",
+      "bytes": 22122
+    },
+    {
+      "path": "project/tauniqo-slide-editor/cover.e4f162a0.webp",
+      "sha256": "e4f162a039b960041dab625c16ec04eb53103573d0db78ee66a72a8356d8f88c",
+      "bytes": 102948
     },
     {
       "path": "project/terrain-interpolation/cover-800w.f53af6d1.webp",

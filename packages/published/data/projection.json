@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "dataVersion": {
-    "commit": "b8980dd65f5f5ff22b5a9015e92ed4ce2c5bcbad",
+    "commit": "72710749b3133821a4c141b47497894faa43767d",
     "date": "2026-11-03"
   },
   "places": [
@@ -138,7 +138,7 @@
         "lat": 41.39,
         "lon": 2.18
       },
-      "labelPriority": 68,
+      "labelPriority": 70,
       "bbox": [
         2.0524977,
         41.3170354,
@@ -157,6 +157,10 @@
         {
           "kind": "project",
           "slug": "esp-string-lights"
+        },
+        {
+          "kind": "project",
+          "slug": "tauniqo-slide-editor"
         },
         {
           "kind": "artwork",
@@ -2078,6 +2082,14 @@
         },
         {
           "kind": "project",
+          "slug": "kanop-auth"
+        },
+        {
+          "kind": "project",
+          "slug": "kanop-chat"
+        },
+        {
+          "kind": "project",
           "slug": "cron"
         },
         {
@@ -2095,6 +2107,14 @@
         {
           "kind": "project",
           "slug": "svg-gradients"
+        },
+        {
+          "kind": "project",
+          "slug": "escape-ui"
+        },
+        {
+          "kind": "project",
+          "slug": "kanop-platform"
         },
         {
           "kind": "artwork",
@@ -5660,7 +5680,7 @@
         },
         {
           "type": "paragraph",
-          "text": "It is a fork of Kanop's 2026 user interface capabilities demo, published here with the explicit authorisation of the company."
+          "text": "It is a fork of Kanop's 2026 user interface capabilities demo, published here with the explicit authorisation of the company. It is the same project as the Carbon Atlas listed under the owner's Kanop position in the career, anonymised."
         },
         {
           "type": "link",
@@ -5907,6 +5927,51 @@
       ]
     },
     {
+      "slug": "escape-ui",
+      "title": "Escape UI - Procedural Design System & Color Library",
+      "summary": "A custom Svelte UI library built around a fully procedural color system, where palettes are generated from a single seed color with WCAG accessibility baked in.",
+      "date": "2024-05",
+      "cover": {
+        "src": "/media/project/escape-ui/cover.2a04f3cb.webp",
+        "alt": "The Concepts page of the library's documentation, then called Prism UI: a row of 22 red shades numbered 0 to 21 with a tooltip on shade 14, a seed colour picker, and three charts of contrast ratio and luminance against tonal position.",
+        "width": 1920,
+        "height": 1773,
+        "small": {
+          "src": "/media/project/escape-ui/cover-800w.9bc9dae2.webp",
+          "width": 800,
+          "height": 739
+        }
+      },
+      "tags": [
+        "design-system",
+        "colour",
+        "accessibility"
+      ],
+      "meta": [
+        {
+          "label": "Stack",
+          "value": "Svelte"
+        },
+        {
+          "label": "Period",
+          "value": "Nov 2023 – May 2024, at Escape Technologies"
+        },
+        {
+          "label": "Status",
+          "value": "Closed source"
+        }
+      ],
+      "body": [
+        {
+          "type": "paragraph",
+          "text": "A custom Svelte UI library built around a fully procedural color system, where palettes are generated from a single seed color with WCAG accessibility baked in."
+        }
+      ],
+      "placeSlugs": [
+        "paris"
+      ]
+    },
+    {
       "slug": "esp-string-lights",
       "title": "ESP string lights",
       "summary": "An MQTT-enabled controller for string lights with several effects, designed for the ESP32.",
@@ -6100,6 +6165,146 @@
           "type": "link",
           "title": "Source",
           "url": "https://github.com/BSoDium/ISF-design-system"
+        }
+      ],
+      "placeSlugs": [
+        "paris"
+      ]
+    },
+    {
+      "slug": "kanop-auth",
+      "title": "Kanop Auth",
+      "summary": "A unified authentication platform serving all apps across the Kanop ecosystem, built on secure HttpOnly cookie-based sessions with seamless cross-subdomain federation.",
+      "date": "2026-03",
+      "cover": {
+        "src": "/media/project/kanop-auth/cover.b10b086b.webp",
+        "alt": "The Kanop Auth sign-in page in a dark theme: a welcome form with email and password fields and a green button to continue to Kanop Chat, next to a panel with an aerial photograph of a forest and the caption Project Design.",
+        "width": 1920,
+        "height": 1112,
+        "small": {
+          "src": "/media/project/kanop-auth/cover-800w.09d5f240.webp",
+          "width": 800,
+          "height": 463
+        }
+      },
+      "tags": [
+        "ui"
+      ],
+      "meta": [
+        {
+          "label": "Period",
+          "value": "Feb 2025 – Mar 2026, as a contractor at Kanop"
+        },
+        {
+          "label": "Status",
+          "value": "Closed source"
+        }
+      ],
+      "body": [
+        {
+          "type": "paragraph",
+          "text": "A unified authentication platform serving all apps across the Kanop ecosystem, built on secure HttpOnly cookie-based sessions with seamless cross-subdomain federation."
+        },
+        {
+          "type": "paragraph",
+          "text": "Redesigned and unified the authentication frontend across all Kanop applications into a centralized SSO system, enabling seamless single sign-on across subdomains with a standardized, modern user experience."
+        }
+      ],
+      "placeSlugs": [
+        "paris"
+      ]
+    },
+    {
+      "slug": "kanop-chat",
+      "title": "Kanop Chat",
+      "summary": "An LLM-powered chat interface for carbon portfolio management, built as a fully-featured Progressive Web App with offline support and a native app experience.",
+      "date": "2026-03",
+      "cover": {
+        "src": "/media/project/kanop-chat/cover.62a1ce68.webp",
+        "alt": "Kanop Chat in a dark desktop window: a list of threads at the left, and a conversation about a land cover study, ending with a map of the result coloured by land cover class, with its legend, above a follow-up input.",
+        "width": 1920,
+        "height": 1335,
+        "small": {
+          "src": "/media/project/kanop-chat/cover-800w.3384f21c.webp",
+          "width": 800,
+          "height": 556
+        }
+      },
+      "tags": [
+        "llm",
+        "pwa",
+        "maps"
+      ],
+      "meta": [
+        {
+          "label": "Stack",
+          "value": "marked.js, service workers, Window Controls Overlay"
+        },
+        {
+          "label": "Period",
+          "value": "Feb 2025 – Mar 2026, as a contractor at Kanop"
+        },
+        {
+          "label": "Status",
+          "value": "Closed source"
+        }
+      ],
+      "body": [
+        {
+          "type": "paragraph",
+          "text": "An LLM-powered chat interface for carbon portfolio management, built as a fully-featured Progressive Web App with offline support and a native app experience."
+        },
+        {
+          "type": "paragraph",
+          "text": "Built and shipped a production LLM-powered in-chat interface for interactive data exploration, featuring real-time streaming Markdown rendering; built a custom marked.js wrapper to stabilize AST-level token output and ensure coherent, flicker-free display, with interactive maps and rich media embedded directly in the chat flow. Shipped with full PWA support including service workers, offline support, and Window Controls Overlay."
+        }
+      ],
+      "placeSlugs": [
+        "paris"
+      ]
+    },
+    {
+      "slug": "kanop-platform",
+      "title": "Kanop Nature-Based Investment Platform",
+      "summary": "The core Kanop platform: a web application for monitoring and analyzing nature-based carbon and biodiversity projects using satellite data and AI.",
+      "date": "2023-09",
+      "cover": {
+        "src": "/media/project/kanop-platform/cover.21fdfbad.webp",
+        "alt": "A satellite map of a wooded area west of Paris with three polygons coloured by living aboveground biomass from blue to red, a tooltip reading 206.6 t/ha, layer toggles at the top left, a colour scale at the top right and a timeline from 2017 to 2025 at the bottom.",
+        "width": 1920,
+        "height": 1058,
+        "small": {
+          "src": "/media/project/kanop-platform/cover-800w.f4a3f23b.webp",
+          "width": 800,
+          "height": 441
+        }
+      },
+      "tags": [
+        "dataviz",
+        "maps"
+      ],
+      "meta": [
+        {
+          "label": "Stack",
+          "value": "React, TypeScript, D3.js, Mapbox GL"
+        },
+        {
+          "label": "Period",
+          "value": "Jun 2022 – Sep 2023, freelance at Kanop"
+        },
+        {
+          "label": "Status",
+          "value": "Closed source"
+        }
+      ],
+      "body": [
+        {
+          "type": "paragraph",
+          "text": "The core Kanop platform: a web application for monitoring and analyzing nature-based carbon and biodiversity projects using satellite data and AI."
+        },
+        {
+          "type": "paragraph",
+          "text": "Pioneered the design and deployment of SaaS web applications using React, TypeScript, D3.js, and Mapbox GL for advanced geospatial and data visualizations."
         }
       ],
       "placeSlugs": [
@@ -6928,14 +7133,14 @@
       "date": "2024-10",
       "url": "https://spectrum-visualizer.bsodium.fr/",
       "cover": {
-        "src": "/media/project/spectrum-visualizer/cover.f0f2e14a.webp",
-        "alt": "A row of thin vertical bars in soft blues, tall at the left and fading to dots, drawing an audio spectrum, above a small panel to choose the variant, the colour and two options.",
-        "width": 1897,
-        "height": 1323,
+        "src": "/media/project/spectrum-visualizer/cover.daaa6384.webp",
+        "alt": "On a black ground, a row of thin rounded vertical bars drawing an audio spectrum: each bar has a faint blue outline and a lighter blue fill that rises inside it, tall and bright at the left and fading to dim dots towards the right.",
+        "width": 2000,
+        "height": 1346,
         "small": {
-          "src": "/media/project/spectrum-visualizer/cover-800w.9a02bc02.webp",
+          "src": "/media/project/spectrum-visualizer/cover-800w.cb42f492.webp",
           "width": 800,
-          "height": 558
+          "height": 538
         }
       },
       "tags": [
@@ -6945,7 +7150,7 @@
       "meta": [
         {
           "label": "Stack",
-          "value": "TypeScript, React, Web Audio"
+          "value": "TypeScript, React, Web Audio, Framer Motion, Joy UI"
         },
         {
           "label": "Repository",
@@ -7093,6 +7298,50 @@
       ],
       "placeSlugs": [
         "paris"
+      ]
+    },
+    {
+      "slug": "tauniqo-slide-editor",
+      "title": "AI-Powered Slide Editor - Tauniqo.ai",
+      "summary": "A Google Slides-style presentation editor built from scratch in React, featuring drag-and-drop elements with resize handles, a slide filmstrip, and an AI-generated slide script panel.",
+      "date": "2025-02",
+      "cover": {
+        "src": "/media/project/tauniqo-slide-editor/cover.e4f162a0.webp",
+        "alt": "A slide editor in a dark theme: a slide titled Typography Matters with a photograph of handwriting selected with resize handles, a colour picker open at the left, a slide script panel at the right and a filmstrip of four slides below.",
+        "width": 1920,
+        "height": 1112,
+        "small": {
+          "src": "/media/project/tauniqo-slide-editor/cover-800w.4a3c3b60.webp",
+          "width": 800,
+          "height": 463
+        }
+      },
+      "tags": [
+        "react",
+        "ui"
+      ],
+      "meta": [
+        {
+          "label": "Stack",
+          "value": "React"
+        },
+        {
+          "label": "Period",
+          "value": "Jul 2024 – Feb 2025, at Tauniqo.ai"
+        },
+        {
+          "label": "Status",
+          "value": "Closed source"
+        }
+      ],
+      "body": [
+        {
+          "type": "paragraph",
+          "text": "A Google Slides-style presentation editor built from scratch in React, featuring drag-and-drop elements with resize handles, a slide filmstrip, and an AI-generated slide script panel."
+        }
+      ],
+      "placeSlugs": [
+        "barcelona"
       ]
     },
     {
@@ -9895,6 +10144,38 @@
           "Engineered geospatial dashboards for carbon monitoring at scale; built a production LLM-powered chat interface with real-time streaming Markdown and full PWA support",
           "Unified authentication across all Kanop apps into a centralised SSO system"
         ],
+        "projects": [
+          {
+            "title": "Kanop Auth",
+            "summary": "A unified authentication platform serving all apps across the Kanop ecosystem, built on secure HttpOnly cookie-based sessions with seamless cross-subdomain federation.",
+            "image": {
+              "src": "/media/career/project.b10b086b.webp",
+              "width": 1920,
+              "height": 1112
+            },
+            "entry": "kanop-auth"
+          },
+          {
+            "title": "Kanop Chat",
+            "summary": "An LLM-powered chat interface for carbon portfolio management, built as a fully-featured Progressive Web App with offline support and a native app experience.",
+            "image": {
+              "src": "/media/career/project.62a1ce68.webp",
+              "width": 1920,
+              "height": 1335
+            },
+            "entry": "kanop-chat"
+          },
+          {
+            "title": "Carbon Atlas",
+            "summary": "A map-centric platform for analyzing nature-based carbon projects, combining satellite-derived land eligibility assessments with forward-looking financial projections, with filterable project cards, a command palette and a KPI overview. The linked entry is its anonymised version.",
+            "image": {
+              "src": "/media/career/project.25a9bf7e.webp",
+              "width": 1920,
+              "height": 1112
+            },
+            "entry": "carbon-atlas"
+          }
+        ],
         "skills": [
           "React",
           "TypeScript",
@@ -9926,6 +10207,28 @@
           "Built a Google Slides-style presentation editor from scratch, with complex state management and deep rendering optimisations",
           "Containerised backend services using Docker, reducing developer onboarding time by 70%"
         ],
+        "projects": [
+          {
+            "title": "AI-Powered Slide Editor - Tauniqo.ai",
+            "summary": "A Google Slides-style presentation editor built from scratch in React, featuring drag-and-drop elements with resize handles, a slide filmstrip, and an AI-generated slide script panel.",
+            "image": {
+              "src": "/media/career/project.e4f162a0.webp",
+              "width": 1920,
+              "height": 1112
+            },
+            "entry": "tauniqo-slide-editor"
+          },
+          {
+            "title": "Spectrum Visualizer - Real-time Audio Visualization Component",
+            "summary": "An open-source React component for real-time audio visualization from microphone input, built with TypeScript, Framer Motion, and Joy UI.",
+            "image": {
+              "src": "/media/career/project.daaa6384.webp",
+              "width": 2000,
+              "height": 1346
+            },
+            "entry": "spectrum-visualizer"
+          }
+        ],
         "skills": [
           "React",
           "Redux",
@@ -9955,6 +10258,18 @@
           "Researched and implemented a contrast-aware palette generation algorithm using oklab/oklch colourspaces, significantly improving aesthetics and WCAG compliance",
           "Redesigned the company website, driving a 30% increase in traffic and 20% increase in conversion"
         ],
+        "projects": [
+          {
+            "title": "Escape UI - Procedural Design System & Color Library",
+            "summary": "A custom Svelte UI library built around a fully procedural color system, where palettes are generated from a single seed color with WCAG accessibility baked in.",
+            "image": {
+              "src": "/media/career/project.2a04f3cb.webp",
+              "width": 1920,
+              "height": 1773
+            },
+            "entry": "escape-ui"
+          }
+        ],
         "skills": [
           "Svelte",
           "GraphQL",
@@ -9980,6 +10295,18 @@
         "highlights": [
           "Pioneered SaaS web applications using React, TypeScript, D3.js, and Mapbox GL for advanced geospatial data visualisations",
           "Automated frontend/backend type synchronisation via RTK Query codegen; led major website overhauls improving navigation and SEO"
+        ],
+        "projects": [
+          {
+            "title": "Kanop Nature-Based Investment Platform",
+            "summary": "The core Kanop platform: a web application for monitoring and analyzing nature-based carbon and biodiversity projects using satellite data and AI.",
+            "image": {
+              "src": "/media/career/project.21fdfbad.webp",
+              "width": 1920,
+              "height": 1058
+            },
+            "entry": "kanop-platform"
+          }
         ],
         "skills": [
           "React",
