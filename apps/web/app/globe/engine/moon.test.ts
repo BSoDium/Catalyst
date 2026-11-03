@@ -242,30 +242,21 @@ describe("the earth's shadow on the moon (#443)", () => {
 
 describe("the moon's shadow on the earth (#443)", () => {
   const s: Vec3 = [0, 0, 1];
-  it("falls on the ground under the moon on the sun line, as wide as the moon, a little more where the sun is low", () => {
+  it("is a soft cylinder along the sun line through the moon: its axis is the moon's offset across the rays, as wide as the moon", () => {
     const sh = moonShadowOn([0, 0, 9], s)!;
-    expect(sh.dir[2]).toBeCloseTo(1);
-    expect(sh.strength).toBeCloseTo(0.85);
+    expect(len(sh.axis)).toBeCloseTo(0);
+    expect(sh.strength).toBeCloseTo(MOON_SHADOW.strength);
     expect(sh.reach).toBeCloseTo(MOON_SHADOW.reach * MOON.radius);
-    const off = moonShadowOn([0.8, 0, 9], s)!;
-    expect(off.dir[0]).toBeCloseTo(0.8);
-    expect(off.reach).toBeGreaterThan(sh.reach);
-    expect(len(off.dir)).toBeCloseTo(1);
+    expect(sh.fall).toBeGreaterThan(sh.reach);
+    const off = moonShadowOn([0.8, 0.3, 9], s)!;
+    expect(off.axis).toEqual([0.8, 0.3, 0]);
+    // the same size wherever it falls: it stretches on the ground by the shading's geometry, it does not grow
+    expect(off.reach).toBe(sh.reach);
   });
 
-  it("has none when the moon is behind the earth, and none far off the sun line", () => {
+  it("has none when the moon is behind the earth, and none when the line misses the ground by more than the soft edge", () => {
     expect(moonShadowOn([0, 0, -9], s)).toBeNull();
     expect(moonShadowOn([3, 0, 9], s)).toBeNull();
-  });
-
-  it("fades out as the moon leaves the line, down to the limb, with no jump", () => {
-    let last = 1;
-    for (let x = 0; x < 1.9; x += 0.05) {
-      const sh = moonShadowOn([x, 0, 9], s);
-      const v = sh?.strength ?? 0;
-      expect(v).toBeLessThanOrEqual(last + 1e-9);
-      last = v;
-    }
-    expect(last).toBeLessThan(0.05);
+    expect(moonShadowOn([1 + MOON.radius * MOON_SHADOW.fall - 0.01, 0, 9], s)).not.toBeNull();
   });
 });

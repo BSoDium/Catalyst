@@ -301,43 +301,24 @@ export function eclipseOf(p: Vec3, sun: Vec3): { dark: number; red: number } {
 }
 
 /**
- * The moon's shadow on the earth (owner, 2026-11-03, #443: "cast the moon's blurred shadow onto the earth when it occludes the sun"). `reach` is the angle (radians, at the ground) inside which the shadow is at full strength, `fall`
- * the angle where it has faded out (a long blurred fall: the sun is not a point), both before widening by the slant where the sun is low, `strength` the share of the lit ground's light it takes at the deepest.
+ * The moon's shadow on the earth (owner, 2026-11-03, #443: "cast the moon's blurred shadow onto the earth when it occludes the sun"; then "it becomes insanely large instead of just stretching", at the edges). The shadow is a
+ * cylinder of light's absence along the sun line through the moon, with a soft edge: `reach` is the radius (earth radii, across the sun's rays) inside which it is at full strength, `fall` the one where it has faded out, `strength`
+ * the share of the lit ground's light it takes at the deepest. The ground is shaded by its distance from the cylinder's axis, so that where the sun is low it STRETCHES along the ground, as a real shadow does, with no limit but the limb.
  */
-export const MOON_SHADOW = { reach: 0.9, fall: 2.4, strength: 0.85, slant: 0.35 } as const;
+export const MOON_SHADOW = { reach: 0.9, fall: 2.4, strength: 0.85 } as const;
 
 /**
- * Where the moon at `p` (earth-fixed frame, earth radii) puts its shadow on the earth, with the sun in direction `sun` (unit, the same frame): `dir` the unit direction of the shadow's centre on the ground, `reach` and `fall` the
- * angles of its soft disc (radians), `strength` 0..1. Null when the moon is on the far side of the earth from the sun (no shadow of it falls on the planet) or the line from the sun through the moon misses the planet by more than the shadow's reach.
+ * The moon's shadow on the earth, for the moon at `p` (earth-fixed frame, earth radii) and the sun in direction `sun` (unit, the same frame): `axis` is where the line from the sun through the moon crosses the plane through the earth's centre
+ * across the sun's rays (a vector in that plane: a ground point `n` is in the shadow by how near `n - (n . sun) sun` is to it, `reach` and `fall` the radii of the soft disc in that plane, earth radii), `strength` 0..1. Null when the moon
+ * is on the far side of the earth from the sun, or the line misses the ground by more than the shadow's soft edge.
  */
-export function moonShadowOn(p: Vec3, sun: Vec3): { dir: Vec3; reach: number; fall: number; strength: number } | null {
+export function moonShadowOn(p: Vec3, sun: Vec3): { axis: Vec3; reach: number; fall: number; strength: number } | null {
   const along = p[0] * sun[0] + p[1] * sun[1] + p[2] * sun[2];
   if (along <= 0) return null;
-  const px = p[0] - along * sun[0];
-  const py = p[1] - along * sun[1];
-  const pz = p[2] - along * sun[2];
-  const miss = Math.hypot(px, py, pz);
-  const edge = 1 + MOON.radius * MOON_SHADOW.fall * 2;
-  if (miss >= edge) return null;
-  // the ray from the moon along -sun meets the ground at t = along - sqrt(1 - miss^2); past the limb (miss >= 1) the centre is the limb's point
-  const cos = miss < 1 ? Math.sqrt(1 - miss * miss) : 0;
-  let hit: Vec3;
-  if (miss < 1) {
-    const t = along - cos;
-    hit = [p[0] - t * sun[0], p[1] - t * sun[1], p[2] - t * sun[2]];
-  } else {
-    hit = [px / miss, py / miss, pz / miss];
-  }
-  const len = Math.hypot(hit[0], hit[1], hit[2]) || 1;
-  // (the shadow of a ball of radius r on a ground tilted `cos` to the light is wider by 1 / cos; the slant caps it so the shadow does not stretch to a band at the limb)
-  const widen = 1 / Math.max(cos, MOON_SHADOW.slant);
-  const scale = MOON.radius * widen;
-  return {
-    dir: [hit[0] / len, hit[1] / len, hit[2] / len],
-    reach: MOON_SHADOW.reach * scale,
-    fall: MOON_SHADOW.fall * scale,
-    strength: MOON_SHADOW.strength * (1 - smooth01(0.85, edge, miss)),
-  };
+  const axis: Vec3 = [p[0] - along * sun[0], p[1] - along * sun[1], p[2] - along * sun[2]];
+  const fall = MOON.radius * MOON_SHADOW.fall;
+  if (Math.hypot(...axis) >= 1 + fall) return null;
+  return { axis, reach: MOON.radius * MOON_SHADOW.reach, fall, strength: MOON_SHADOW.strength };
 }
 
 /**

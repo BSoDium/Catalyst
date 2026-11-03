@@ -1544,7 +1544,7 @@ export class GlobeRenderer {
     const sample = this.moonSample;
     const shade = sample && sample.amount > 0 ? moonShadowOn(sample.position, toEarthFrame(this.moonSun, this.era)) : null;
     if (shade) {
-      SHADE_UNIFORMS.uShade.value.set(shade.dir[0], shade.dir[1], shade.dir[2], shade.strength);
+      SHADE_UNIFORMS.uShade.value.set(shade.axis[0], shade.axis[1], shade.axis[2], shade.strength);
       SHADE_UNIFORMS.uShadeR.value.set(shade.reach, shade.fall);
     } else SHADE_UNIFORMS.uShade.value.w = 0;
   }

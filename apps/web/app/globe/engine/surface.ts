@@ -69,7 +69,7 @@ export const NIGHT = {
   atmosphereFall: 2.5,
 } as const;
 
-/** The moon's shadow, shared by every material that has the night (they all point at these two uniforms): `uShade` the unit direction of its centre on the ground and its depth (w, 0 is none), `uShadeR` the angles (radians) where it is full and where it has faded out. */
+/** The moon's shadow, shared by every material that has the night (they all point at these two uniforms): `uShade` the axis of its cylinder across the sun's rays (xyz, `moonShadowOn`) and its depth (w, 0 is none), `uShadeR` the radii (earth radii) of that cylinder where it is full and where it has faded out. */
 export const SHADE_UNIFORMS = { uShade: { value: new Vector4(0, 0, 1, 0) }, uShadeR: { value: new Vector2(0.1, 0.3) } };
 
 /** GLSL for the light on a ground point `n` (a unit vector in the earth's frame) from the sun `uSunN`, scaled by how much night there is (`uNight`: 0 is all day): 1 lit, 0 dark. */
@@ -83,8 +83,8 @@ export const NIGHT_GLSL = /* glsl */ `
   /** How much the night is on a ground point, 0..1: the DARK side, on either page (the day keeps its tones). What the night does to the ground goes the page's way: on the dark page it fades towards the page, on the light page (\`flip\` 1, in the materials) it thickens towards the ink. (\`flip\` is kept for the callers: it no longer moves the wash to the sun's side.) */
   float washOf(vec3 n, vec3 sun, float night, float flip) {
     float k = smoothstep(${NIGHT.litFrom.toFixed(2)}, ${NIGHT.litTo.toFixed(2)}, dot(n, sun));
-    // the moon's shadow on the lit ground (engine/moon.ts moonShadowOn): a soft disc round the direction uShade.xyz, uShade.w deep, as the night is: the same whole steps and dither take it
-    float shade = uShade.w * (1.0 - smoothstep(uShadeR.x, uShadeR.y, acos(clamp(dot(n, uShade.xyz), -1.0, 1.0)))) * k;
+    // the moon's shadow on the lit ground (engine/moon.ts moonShadowOn): the ground's distance from the cylinder of the moon's shadow along the sun's rays, so that it stretches where the sun is low; uShade.w deep, as the night is: the same whole steps and dither take it
+    float shade = uShade.w * (1.0 - smoothstep(uShadeR.x, uShadeR.y, length(n - dot(n, sun) * sun - uShade.xyz))) * k;
     return night * min(1.0, 1.0 - k + shade);
   }
 `;
