@@ -86,7 +86,9 @@ export function CareerPage({ career, places = [] }: { career: PublishedCareer; p
           {portrait && (
             <figure data-slot="career-portrait" className="career-portrait">
               <PortraitPicture portrait={portrait} alt="" decorative crashed={crashed} className="career-portrait-glow" />
-              <PortraitPicture portrait={portrait} alt={portrait.alt} crashed={crashed} eager />
+              <PortraitPicture portrait={portrait} alt={crashed && portrait.egg ? PORTRAIT_EGG.alt : portrait.alt} eager />
+              {/* the egg is laid OVER the plain portrait, which is drawn the same everywhere but on the face: its flicker is the face's alone */}
+              {crashed && portrait.egg && <PortraitPicture portrait={portrait} alt="" decorative crashed eager />}
             </figure>
           )}
         </div>
