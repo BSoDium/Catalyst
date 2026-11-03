@@ -790,7 +790,8 @@
    *   cap height of the body (wght 400, opsz 18 to 21): 0.672 em;
    *   cap height of the letter (wght 700, opsz 72, pinned below so that it does not drift with the size): 0.715 em.
    * The letter is `--dc-k` body ems: (N - 1) line pitches plus the body's cap height, over the letter's cap height. Its box is a float
-   * exactly N lines tall (`line-height`), the glyph put on the right baseline by the padding above it; nothing sits below. The
+   * exactly N lines tall (its line box is the glyph's own content area, `line-height: 1`, the glyph put on the right baseline by the padding above it, and the margin below it taking the rest of the N lines: no
+   * negative half-leading, which Firefox does not apply to a `::first-letter`, #537); nothing sits below. The
    * paragraph contains the float (`flow-root`): a short paragraph never lets the letter run into the next block.
    *
    * `::first-letter` takes a mark that touches the letter ("L'" would be a wedge as tall as the cap). `dropCapKind`
@@ -810,6 +811,10 @@
     --dc-k: calc(((var(--dc-n) - 1) * var(--dc-lh) + var(--dc-body-cap)) / var(--dc-cap));
     /* The air above the glyph's line box, in ems of the letter: the baseline of line N minus what a box N lines tall gives it. */
     --dc-pad: calc(((var(--dc-n) - 1) * var(--dc-lh) + 2 * (var(--dc-ascent) - 0.5) * (1 - var(--dc-k))) / var(--dc-k));
+    /* The same baseline, with the letter's line box exactly its content area (`line-height: 1`, no leading above or below the glyph): the air above the glyph's line box in ems of the letter. A float
+       whose line-height is SHORTER than its glyphs' content area (the first form, a negative half-leading) was put on the baseline of Chrome and Safari and 15 px too low in Firefox, which does not apply a
+       negative half-leading to a `::first-letter` (#537): with none, the engines agree. */
+    --dc-p2: calc(var(--dc-pad) / 2 + var(--dc-n) * var(--dc-lh) / (2 * var(--dc-k)) - 0.5);
     display: flow-root;
     line-height: var(--dc-lh);
   }
@@ -818,12 +823,12 @@
     float: left;
     /* The right gap: a tenth of the letter's em beyond its advance. The 1 px under it keeps line N + 1 out of the float whatever the
        rounding of a fractional line height (a float a hair taller than N lines pushes that line right). */
-    margin: 0 0.1em -1px 0;
-    padding: calc(var(--dc-pad) * 1em) 0 0;
+    margin: 0 0.1em calc((var(--dc-n) * var(--dc-lh) / var(--dc-k) - var(--dc-p2) - 1) * 1em - 1px) 0;
+    padding: calc(var(--dc-p2) * 1em) 0 0;
     font-family: var(--font-reading);
     font-weight: 700;
     font-size: calc(var(--dc-k) * 1em);
-    line-height: calc(var(--dc-n) * var(--dc-lh) / var(--dc-k) - var(--dc-pad));
+    line-height: 1;
     font-variation-settings: "opsz" 72;
     font-synthesis: none;
     letter-spacing: 0;
