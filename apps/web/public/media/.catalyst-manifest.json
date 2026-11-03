@@ -263,14 +263,24 @@
       "bytes": 2188
     },
     {
-      "path": "career/portrait-dark.5e2716e8.webp",
-      "sha256": "5e2716e8568123eec6f9f155c8753a3af9f62d04b3f7cd3347314e2cc34c3efc",
-      "bytes": 58310
+      "path": "career/portrait-dark.8b8b9a8d.webp",
+      "sha256": "8b8b9a8d879be23190b0677c726d627d06cad6900a147b529a43e0b9959e5a51",
+      "bytes": 53184
     },
     {
-      "path": "career/portrait.68e0bb39.webp",
-      "sha256": "68e0bb39f145b6d419ba3580db728b81e70ae3e6c0ceb940a8bbaf37a64e9673",
-      "bytes": 65550
+      "path": "career/portrait-egg-dark.7b0b57af.webp",
+      "sha256": "7b0b57af971ef801324e0d56141abe000820c2847ee9968da12b3bf4bb547387",
+      "bytes": 60216
+    },
+    {
+      "path": "career/portrait-egg.bb82bdd1.webp",
+      "sha256": "bb82bdd1124afd40e9e42b63dacb234927da4958818be82e4ac3e20490bbeb28",
+      "bytes": 67078
+    },
+    {
+      "path": "career/portrait.4c9d2eb0.webp",
+      "sha256": "4c9d2eb027fbef0ee0d46d203f1d84352cca395fd1c6485945549753e4f76960",
+      "bytes": 63944
     },
     {
       "path": "photograph/blue-facade/photo-800w.4cc300ab.webp",
