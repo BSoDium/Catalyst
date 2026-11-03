@@ -7,7 +7,7 @@ import { AddEquation, BackSide, Color, CustomBlending, DstColorFactor, FrontSide
 import { CELL_PATTERN, LEG_MODES, MODE_STYLE } from "../paths/modes";
 import { CROWD_TONE, FAR_TONE, PATH_LIGHT_FAR, PATH_LIGHT_INK, PATH_NIGHT_DIM, PATH_NIGHT_INK, ARC_PALE } from "../paths/lod";
 import { STRAIGHT_FADE_MIX, STRAIGHT_FADE_STEPS } from "../paths/thin";
-import { SPARK, TRAIL_BANDS, TRAIL_ENTRIES, TRAIL_PER_PALETTE } from "../paths/trail";
+import { TRAIL_BANDS, TRAIL_ENTRIES, TRAIL_PER_PALETTE } from "../paths/trail";
 import { RIM, SUN } from "./moon";
 import { WARM_GLSL } from "./sun-flare";
 import { LIGHTS, NIGHT, NIGHT_GLSL, SHADE_UNIFORMS, SURFACE } from "./surface";
@@ -563,8 +563,7 @@ export function cityMaterial(): ShaderMaterial {
 }
 
 /**
- * Paths: every leg of every route, in one draw call (instanced: three copies of each segment, the second and third for rail's
- * cross-ticks and for the spark at a leg's head). PLANE TRAILS (paths/trail.ts): each leg is coloured by its route's palette, from a
+ * Paths: every leg of every route, in one draw call. PLANE TRAILS (paths/trail.ts): each leg is coloured by its route's palette, from a
  * pale tail at the origin to a saturated head at the destination in `TRAIL_BANDS` solid bands, the legs of the selected place are
  * the lit head colour along their whole length up to the draw-on front, and every head carries a bright spark. All colours are SOLID
  * entries of one list (`uTrail`, per theme: no alpha, no blend); the only mix is toward the page colour while a short leg fades in
@@ -602,7 +601,6 @@ export function pathMaterial(): ShaderMaterial {
       uState: { value: null },
       uTexSize: { value: [1, 1] },
       uFar: { value: 0 },
-      uTickOn: { value: 1 },
       uNight: { value: 0 },
       uSunN: { value: [0, 0, 1] }, ...SHADE_UNIFORMS,
       uFlip: { value: 0 },
@@ -610,9 +608,9 @@ export function pathMaterial(): ShaderMaterial {
     depthTest: false,
     depthWrite: false,
     vertexShader: /* glsl */ `
-      attribute float aDist; attribute vec4 aInfo; attribute vec3 aTan; attribute float aCopy; attribute float aScr;
+      attribute float aDist; attribute vec4 aInfo; attribute float aScr;
       uniform vec2 uPixel; uniform float uLift; uniform float uCell; uniform sampler2D uState; uniform vec2 uTexSize;
-      varying float vDist; varying float vLen; varying float vMode; varying float vState; varying float vCopy; varying float vPal; varying float vQuiet; varying float vCrowd; varying float vScr;
+      varying float vDist; varying float vLen; varying float vMode; varying float vState; varying float vPal; varying float vQuiet; varying float vCrowd; varying float vScr;
       varying vec3 vPos;
       void main() {
         float leg = aInfo.x;
@@ -623,24 +621,16 @@ export function pathMaterial(): ShaderMaterial {
         float n = st < 0.25 ? floor(st * 255.0 + 0.5) : 0.0;
         vQuiet = mod(n, 4.0);
         vCrowd = mod(floor(n / 4.0), 4.0);
-        vDist = aDist; vScr = aScr; vLen = aInfo.z; vMode = aInfo.y; vPal = aInfo.w; vState = st; vCopy = aCopy;
+        vDist = aDist; vScr = aScr; vLen = aInfo.z; vMode = aInfo.y; vPal = aInfo.w; vState = st;
         // uLift scales the height above the surface: 1 = lifted arc, 0 = on the ground (street scale).
         vec3 p = normalize(position) * (1.0 + (length(position) - 1.0) * uLift);
         vPos = p;
-        vec4 c = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
-        if (aCopy > 0.5) {
-          // across the line by one buffer pixel: along the axis the path is more perpendicular to on screen
-          vec4 c1 = projectionMatrix * modelViewMatrix * vec4(p + aTan * 0.0005, 1.0);
-          vec2 d = (c1.xy / c1.w - c.xy / c.w) / abs(uPixel);
-          vec2 off = abs(d.x) > abs(d.y) ? vec2(0.0, 1.0) : vec2(1.0, 0.0);
-          c.xy += (aCopy < 1.5 ? 1.0 : -1.0) * off * uPixel * c.w;
-        }
-        gl_Position = c;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
       }`,
     fragmentShader: /* glsl */ `
-      uniform vec3 uTrail[${TRAIL_ENTRIES}]; uniform vec3 uPage; uniform float uFinal; uniform float uPresence; uniform float uFront; uniform float uMarch; uniform float uCell; uniform float uDot; uniform float uFar; uniform float uTickOn; uniform float uNight; uniform vec3 uSunN; uniform float uFlip;
+      uniform vec3 uTrail[${TRAIL_ENTRIES}]; uniform vec3 uPage; uniform float uFinal; uniform float uPresence; uniform float uFront; uniform float uMarch; uniform float uCell; uniform float uDot; uniform float uFar; uniform float uNight; uniform vec3 uSunN; uniform float uFlip;
       ${NIGHT_GLSL}
-      varying float vDist; varying float vLen; varying float vMode; varying float vState; varying float vCopy; varying float vPal; varying float vQuiet; varying float vCrowd; varying float vScr;
+      varying float vDist; varying float vLen; varying float vMode; varying float vState; varying float vPal; varying float vQuiet; varying float vCrowd; varying float vScr;
       varying vec3 vPos;
       // True when the occluder sphere lies between the camera and p.
       bool behindGlobe(vec3 p) {
@@ -685,41 +675,25 @@ export function pathMaterial(): ShaderMaterial {
         float period = ${modeChain((k) => CELL_PATTERN[k]?.period ?? 0)};
         float on = ${modeChain((k) => CELL_PATTERN[k]?.on ?? 0)};
         if (solid) period = 0.0;
-        // the head's spark: cells back from the destination (paths/trail.ts SPARK); the draw-on has not reached a lit head yet when t < 1
-        float h = (vLen - vDist) / uCell - (inked ? ${f(SPARK.lit.clear)} : ${f(SPARK.faint.clear)});   // 0 where the spark begins, outside the place's box
-        float sparkLine = inked ? ${f(SPARK.lit.line)} : ${f(SPARK.faint.line)};
-        float crossFrom = inked ? ${f(SPARK.lit.crossFrom)} : ${f(SPARK.faint.crossFrom)};
-        float crossTo = inked ? ${f(SPARK.lit.crossTo)} : ${f(SPARK.faint.crossTo)};
-        bool sparkOn = false; // the sparks are not drawn from space: the street map has them, up close
-        if (false) sparkOn = vCopy < 0.5 ? (h >= 0.0 && h < sparkLine) : (h >= crossFrom && h < crossTo);
-        bool tick = false;
         bool paleDot = false;
         if (period > 0.5) {
           // Whole pixels: a dash is a whole number of pixels long (at least one) and sits where the middle of the dash is, and a pixel is inked by where its
           // centre falls in the dash, so a dot is one pixel at every angle and offset and moves by whole pixels: at a fixed length it was one pixel or two, and
           // none at some angles, and changed with every sub-pixel of a pan or a zoom.
           float mid = on * 0.5;
-          if (vCopy > 0.5) {
-            // the rail's tick: the pixel in the middle of each dash
-            float u = mod(cells, period);
-            tick = uTickOn > 0.5 && abs(vMode - 1.0) < 0.5 && u >= mid - 0.5 * step1 && u < mid + 0.5 * step1;
-          } else {
-            float len = max(1.0, floor(on / step1 + 0.5)) * step1;
-            float u = mod(cells - (mid - 0.5 * len), period);
-            // On the light page a flight's arc alternates its dark dots with pale ones (the trail's colour, lifted toward white) half a period on: wherever the ground is, one of the two reads (owner, 2026-11-02)
-            if (flight && uFlip > 0.5 && u >= len) paleDot = mod(u + period * 0.5, period) < len;
-            if (u >= len && !sparkOn && !paleDot) discard;
-          }
+          float len = max(1.0, floor(on / step1 + 0.5)) * step1;
+          float u = mod(cells - (mid - 0.5 * len), period);
+          // On the light page a flight's arc alternates its dark dots with pale ones (the trail's colour, lifted toward white) half a period on: wherever the ground is, one of the two reads (owner, 2026-11-02)
+          if (flight && uFlip > 0.5 && u >= len) paleDot = mod(u + period * 0.5, period) < len;
+          if (u >= len && !paleDot) discard;
         }
-        if (vCopy > 0.5 && !tick && !sparkOn) discard;
         if (behindGlobe(vPos)) discard;
         int base = int(vPal + 0.5) * ${TRAIL_PER_PALETTE};
         // how much of the planet's night the path lies on, in the ground's own flat steps (see below)
         float wq = floor(clamp(washOf(normalize(vPos), uSunN, uNight, uFlip), 0.0, 1.0) * ${NIGHT.lineSteps.toFixed(1)} + 0.5) / ${NIGHT.lineSteps.toFixed(1)};
         bool onNight = uFlip > 0.5 && wq > 0.5;
         int pick;
-        if (sparkOn) pick = base + ${TRAIL_BANDS + 1};
-        else if (inked) pick = base + ${TRAIL_BANDS};
+        if (inked) pick = base + ${TRAIL_BANDS};
         else pick = base + int(clamp(floor(frac * ${f(TRAIL_BANDS)}), 0.0, ${f(TRAIL_BANDS - 1)}));
         vec3 col = uTrail[pick];
         // the overlay's presence (boxes and labels share it): a solid mix toward the page in the fade's own levels; nothing at 0

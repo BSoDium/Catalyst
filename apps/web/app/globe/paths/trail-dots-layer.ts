@@ -95,8 +95,6 @@ export const ICON_FROM_ZOOM = 5.5;
 export const ICON_MIN_SHARE = 0.3;
 export const ICON_MIN_SHARE_LIT = 0.18;
 export const ICON_GAP = 3;
-/** Map zoom from which a rail's cross-ticks are drawn (before it a rail is a dashed line, as on the globe: `paths/lod.ts` `TICK_FROM`). */
-export const TICK_FROM_STREET = 6.5;
 
 /** The layer that draws only the pictures samples an arc (a great circle, a point every 0.4 degrees) at every this many points. */
 const ARC_ICON_STRIDE = 4;
@@ -327,7 +325,7 @@ export class TrailDotsLayer {
         // the leg's tones, worked out once (a cell is one `fillRect`: no string or array made per cell)
         const tones = lit ? null : Array.from({ length: TRAIL_BANDS }, (_, band) => (step ? quieter(band) : color(band)));
         const litTone = lit ? color("lit") : "";
-        for (const c of legCells(parts, leg.mode, { cols, rows }, 3, zoom >= TICK_FROM_STREET)) ink(c.col, c.row, tones ? tones[Math.min(TRAIL_BANDS - 1, c.band)]! : litTone);
+        for (const c of legCells(parts, leg.mode, { cols, rows }, 3)) ink(c.col, c.row, tones ? tones[Math.min(TRAIL_BANDS - 1, c.band)]! : litTone);
       }
       const head = this.opts.lines && zoom >= SPARK_FROM_ZOOM ? project(leg.head, 0) : null;
       if (head) {

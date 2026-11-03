@@ -53,11 +53,6 @@ export function dotCell(cell: number): number {
  * be a fade; a step of the tone is what the art does). Far away every path is quieter, so the set of them does not read as a tangle; the legs of the
  * selected place are not affected.
  */
-/**
- * The rail's cross-ticks (a 3-cell bar across the line in the middle of every dash) are drawn from this zoom on: from far away a rail is a dashed line
- * (the tick at overview doubled the weight of every rail and made a region of many trips a mesh of crosses).
- */
-export const TICK_FROM = 5.5;
 /** How far toward the page colour (0..1, solid) the paths that are not selected go on the whole globe (`farOf` 1): from space they are a faint trace, not a line (#459: one pixel is a lot on a planet this small). */
 export const FAR_TONE = 0.6;
 /** How far toward the page a path that is not selected goes on the DARK page's night side (the light page's goes darker, as the ground does, `NIGHT.shadow`): a path takes the planet's light (owner, 2026-11-02). */

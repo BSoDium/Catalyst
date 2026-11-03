@@ -43,10 +43,9 @@ function clipRange(ax: number, ay: number, bx: number, by: number, x0: number, y
 /**
  * The cells of one leg. `parts`: the leg's polyline pieces in cell coordinates (a leg is split where it crosses the antimeridian; the
  * pieces are walked in order as one length). `view`: the cells that are on screen (a margin of a few); everything else is skipped but still
- * counted, so the pattern does not depend on what is visible. Cells come out in path order, one per cell of pattern ink (a rail's tick adds
- * the two cells across the dash).
+ * counted, so the pattern does not depend on what is visible. Cells come out in path order, one per cell of pattern ink.
  */
-export function legCells(parts: ReadonlyArray<ReadonlyArray<readonly [number, number]>>, mode: LegMode, view: { cols: number; rows: number }, margin = 3, ticks = true): Cell[] {
+export function legCells(parts: ReadonlyArray<ReadonlyArray<readonly [number, number]>>, mode: LegMode, view: { cols: number; rows: number }, margin = 3): Cell[] {
   const pattern = CELL_PATTERN[mode];
   if (!pattern) return [];
   let total = 0;
@@ -54,7 +53,6 @@ export function legCells(parts: ReadonlyArray<ReadonlyArray<readonly [number, nu
   if (!(total > 0)) return [];
   const out: Cell[] = [];
   const { period, on } = pattern;
-  const tick = pattern.tick && ticks;
   let base = 0; // the path length before the piece
   const emit = (u: number, x: number, y: number) => {
     const band = Math.min(TRAIL_BANDS - 1, Math.floor((u / total) * TRAIL_BANDS));
@@ -71,8 +69,6 @@ export function legCells(parts: ReadonlyArray<ReadonlyArray<readonly [number, nu
         // whole cells along the path from the origin: u = 0, 1, 2, ...; the piece covers (base, base + len]
         const uFrom = Math.max(Math.ceil(base + range[0] * len), 0);
         const uTo = Math.floor(base + range[1] * len);
-        const nx = -(by - ay) / len;
-        const ny = (bx - ax) / len;
         for (let u = uFrom; u <= uTo; u++) {
           const m = u % period;
           if (m >= on) continue;
@@ -80,10 +76,6 @@ export function legCells(parts: ReadonlyArray<ReadonlyArray<readonly [number, nu
           const x = ax + (bx - ax) * t;
           const y = ay + (by - ay) * t;
           emit(u, x, y);
-          if (tick && m === Math.floor((on - 1) / 2)) {
-            emit(u, x + nx, y + ny);
-            emit(u, x - nx, y - ny);
-          }
         }
       }
       base += len;

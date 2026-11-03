@@ -193,7 +193,7 @@ Each route may also carry `summary` (a line or two about the trip, 1 to 400 char
 
 | Field | Meaning |
 | --- | --- |
-| `mode` | `road`, `rail`, `ferry`, `flight`, `walk` or `unknown`. Picks the line style on the map (solid, dashed with ticks, dotted, lifted dotted arc, fine dots, dashed arc) and the noun of the place panel's "Journeys" list. |
+| `mode` | `road`, `rail`, `ferry`, `flight`, `walk` or `unknown`. Picks the line style on the map (solid for a road and a rail, dotted, lifted dotted arc, fine dots, dashed arc) and the noun of the place panel's "Journeys" list. |
 | `polyline` | Optional. Encoded polyline, precision 5 (the "Google polyline" algorithm: `[lat, lon]` pairs, deltas in 1e-5 degrees, characters `?` to `~`). Absent: the leg is drawn as the geodesic arc between its stops. Never on a `flight` (an arc costs nothing). |
 
 Checks (schema, `parsePublishedProjection`; the private export must enforce the same numbers, they are exported as `ROUTE_LEG_LIMITS`):

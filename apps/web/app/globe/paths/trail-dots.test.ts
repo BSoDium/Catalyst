@@ -16,12 +16,8 @@ describe("legCells: the patterns written cell by cell", () => {
     expect(cells.map((c) => c.col)).toEqual(Array.from({ length: 21 }, (_, i) => 10 + i * 5).filter((c) => c <= 110));
     expect(new Set(cells.map((c) => c.row))).toEqual(new Set([10]));
   });
-  it("a rail is dashes of 4 on 2 off with a 3-cell cross-tick in the middle of each, until the ticks are asked off", () => {
-    const withTicks = legCells(line(60), "rail", view);
-    const without = legCells(line(60), "rail", view, 3, false);
-    expect(without.every((c) => c.row === 10)).toBe(true);
-    expect(withTicks.length).toBeGreaterThan(without.length);
-    expect(withTicks.some((c) => c.row === 9) && withTicks.some((c) => c.row === 11)).toBe(true);
+  it("a rail is solid, like a road: the line is the map's, no cells", () => {
+    expect(legCells(line(60), "rail", view)).toEqual([]);
   });
   it("gives the band of the position along the leg: the tail is band 0, the head the last", () => {
     const cells = legCells(line(100), "flight", view);

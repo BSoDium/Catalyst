@@ -1,7 +1,6 @@
 import {
   BufferAttribute,
   DataTexture,
-  InstancedBufferAttribute,
   DynamicDrawUsage,
   InstancedBufferGeometry,
   LineSegments,
@@ -19,7 +18,7 @@ import { clamp, easeInOutCubic, radiusPxToZoom } from "./geo";
 import { pathMaterial } from "./materials";
 import { coastLevel } from "./palette";
 import { TUNING } from "./tuning";
-import { dotCell, farOf, TICK_FROM, levelFor, metresPerCell } from "../paths/lod";
+import { dotCell, farOf, levelFor, metresPerCell } from "../paths/lod";
 import { buildBuffers, buildNetwork, legsAt, type PathBuffers, type PathNetwork } from "../paths/network";
 import { crowdLegs, fadeStraight, legKey, mercatorPx, thinLegs, thinZoomFor, windowFor, type ThinLeg, type WindowAnchor } from "../paths/thin";
 
@@ -115,7 +114,6 @@ export class RouteLayer {
     g.setAttribute("position", new BufferAttribute(b.position, 3));
     g.setAttribute("aDist", new BufferAttribute(b.dist, 1));
     g.setAttribute("aInfo", new BufferAttribute(b.info, 4));
-    g.setAttribute("aTan", new BufferAttribute(b.tangent, 3));
     let first = 0;
     for (const leg of this.network.legs) {
       const n = leg.lonlat.length / 2;
@@ -124,9 +122,7 @@ export class RouteLayer {
     }
     this.screenLen = new BufferAttribute(new Float32Array(b.vertexCount), 1).setUsage(DynamicDrawUsage);
     g.setAttribute("aScr", this.screenLen);
-    // copies 1 and 2 are the rail's cross-ticks and the cross of every head's spark: always three
-    g.setAttribute("aCopy", new InstancedBufferAttribute(Float32Array.from([0, 1, 2]), 1));
-    g.instanceCount = 3;
+    g.instanceCount = 1;
     g.setIndex(new BufferAttribute(b.index, 1));
     this.geometry = g;
 
@@ -337,11 +333,6 @@ export class RouteLayer {
     this.material.uniforms.uCell!.value = cssPerCell / radiusPx;
     this.material.uniforms.uDot!.value = dotCell(cssPerCell / radiusPx);
     this.material.uniforms.uFar!.value = farOf(radiusPxToZoom(radiusPx));
-    const ticks = radiusPxToZoom(radiusPx) >= TICK_FROM;
-    this.material.uniforms.uTickOn!.value = ticks ? 1 : 0;
-    // copies 1 and 2 (the rail's cross-ticks) are discarded by the fragment shader until the ticks are on: do not send them through the vertex stage
-    // and the rasteriser (a third of the work, at every view from the world to the continent, where the paths are drawn most)
-    if (this.geometry) this.geometry.instanceCount = ticks ? 3 : 1;
     const level = levelFor(this.mPerCell, this.level);
     if (level !== this.level) this.applyLevel(level);
   }
@@ -438,7 +429,7 @@ export class RouteLayer {
       legs: b.legCount,
       vertices: b.vertexCount,
       levelSegments: b.levels.map((l) => l.count / 2),
-      bytes: b.position.byteLength + b.dist.byteLength + b.info.byteLength + b.tangent.byteLength + b.index.byteLength + this.stateData.byteLength,
+      bytes: b.position.byteLength + b.dist.byteLength + b.info.byteLength + b.index.byteLength + this.stateData.byteLength,
       level,
       drawnSegments: b.levels[level]!.count / 2,
       drawCalls: this.enabled && this.presence > 0 ? 1 : 0,
