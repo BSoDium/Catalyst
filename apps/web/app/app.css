@@ -3751,6 +3751,11 @@ h1[tabindex="-1"]:focus-visible {
   outline: none;
 }
 
+/* the eclipse's debug page (`?eclipse`, engine/renderer.ts): the hero is hidden, the held moon is behind its name (#443) */
+html[data-eclipse] .landing-hero {
+  visibility: hidden;
+}
+
 /*
  * Map labels: the names of the detection boxes, HTML text in the app's monospace stack (`--font-mono`, the credits line's and the dev badge's) (engine/label-dom.ts creates and positions the
  * elements; sizes, weights and tracking come from LABEL_TYPE in engine/label-text.ts because the planner measures with the same numbers).

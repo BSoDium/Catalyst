@@ -1339,6 +1339,8 @@ export class GlobeRenderer {
       if (debug) {
         const at = Number(new URLSearchParams(location.search).get("eclipse"));
         this.moonPinned = toRad(at > 0 ? at : 236);
+        // (the hero's name and search line are over that part of the picture on a desktop: a debug attribute on the page lets the CSS hide them, `html[data-eclipse]`)
+        document.documentElement.dataset.eclipse = "";
       }
     }
     if (this.eclipseOffset === null) return base;
