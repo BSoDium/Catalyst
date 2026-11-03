@@ -364,10 +364,10 @@ void main() {
   if (uBlend < 1.0 && !(uBlend > th)) { o = vec4(0.0); return; }   // premultiplied transparent: the layer below shows
   vec4 artCell = texelFetch(uArt, cell, 0);
   int level = int(artCell.r * 255.0 + 0.5);
-  if (level > 0 && level < GREYS && (uSpot.x > 0.0 || uSpot.y > 0.0)) {
+  // Only LINES (G > 0: streets, rails, outlines) are spotlit; a fill (water, green, the satellite's stipple) is the background and keeps its tone in and out
+  if (level > 0 && level < GREYS && artCell.g > 0.0 && (uSpot.x > 0.0 || uSpot.y > 0.0)) {
     bool inside = cell.x >= uSpotRect.x && cell.y >= uSpotRect.y && cell.x < uSpotRect.z && cell.y < uSpotRect.w;
-    // a line (G > 0) is lifted in full, a fill (water, green, the satellite's stipple) by a third of it: the streets are what is to stand out
-    if (inside) level = level + int(floor(float(GREYS - 1 - level) * uSpot.x * (artCell.g > 0.0 ? 1.0 : 0.3) + 0.5));
+    if (inside) level = level + int(floor(float(GREYS - 1 - level) * uSpot.x + 0.5));
     else level = max(1, int(floor(float(level) * (1.0 - uSpot.y) + 0.5)));
   }
   vec3 col = uPal[clamp(level, 0, ${MAX_LEVELS - 1})];
@@ -415,8 +415,8 @@ export interface PassParams {
   /** dither phase, whole art cells */
   anchor: [number, number];
   /**
-   * The spotlight on the selected node's rectangle (art cells, c1 / r1 exclusive): the map's greys inside it are lifted by `lift` of the way
-   * to the ink (streets read stronger), those outside lose `dim` of their tone. Paths and trails are never touched. Absent or 0 / 0: off.
+   * The spotlight on the selected node's rectangle (art cells, c1 / r1 exclusive): the map's LINES inside it are lifted by `lift` of the way
+   * to the ink (streets read stronger), those outside lose `dim` of their tone. Fills (the background), paths and trails are never touched. Absent or 0 / 0: off.
    */
   spot?: { c0: number; r0: number; c1: number; r1: number; lift: number; dim: number };
 }
