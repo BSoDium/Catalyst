@@ -489,9 +489,21 @@ describe("the cinematic interlude: in the caption's motion", () => {
     expect(m.eggZoom()).toBeLessThan(0.9);
     expect(wordGone + s.zoomOutMs).toBe(eggMs(s));
   });
-  it("a modest pull-back: the word stays the size it was relative to the planet", () => {
-    expect(CINEMATIC.shape.zoomLevels).toBeGreaterThan(0.3);
-    expect(CINEMATIC.shape.zoomLevels).toBeLessThan(1.2);
+  it("the studio's small line has a bounded size (#543: it grew with the closer final shot)", () => {
+    expect(CINEMATIC.tagline.minPx).toBeLessThanOrEqual(CINEMATIC.tagline.maxPx);
+    expect(CINEMATIC.tagline.maxPx).toBeLessThanOrEqual(13);
+  });
+  it("keeps less of the light on the far side of the planet than on the near one, and less than the studio's overall (#529)", () => {
+    expect(CINEMATIC.light.gain).toBeGreaterThan(0);
+    expect(CINEMATIC.light.gain).toBeLessThan(1);
+    expect(CINEMATIC.light.behind.keep).toBeGreaterThan(0);
+    expect(CINEMATIC.light.behind.keep).toBeLessThan(1);
+    expect(CINEMATIC.light.behind.from).toBeLessThan(CINEMATIC.light.behind.to);
+    expect(CINEMATIC.light.behind.to).toBeLessThanOrEqual(CINEMATIC.dissolve.to);
+  });
+  it("a slight pull-back: the final framing uses the viewport (the word about 70 % of its width, #530), the planet in the same proportion", () => {
+    expect(CINEMATIC.shape.zoomLevels).toBeGreaterThan(0);
+    expect(CINEMATIC.shape.zoomLevels).toBeLessThan(0.3);
     expect(CINEMATIC.shape.zoomInMs + CINEMATIC.shape.zoomOutMs).toBeLessThan(eggMs(CINEMATIC.shape));
   });
   it("stands still with the energy pass's hold: it does not begin frozen, and it holds where it is", () => {
