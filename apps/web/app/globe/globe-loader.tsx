@@ -29,16 +29,15 @@ export function GlobeLoader({ done, insetRight = 0 }: { done: boolean; insetRigh
     const reduced = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
     node.style.animation = "none";
     node.style.opacity = String(reached);
-    setPhase("leaving");
     if (reduced) {
       setPhase("gone");
       return;
     }
-    const raf = requestAnimationFrame(() => {
-      node.style.transition = `opacity ${LOADER.leaveMs}ms var(--ease-standard, ease)`;
-      node.style.opacity = "0";
-    });
-    return () => cancelAnimationFrame(raf);
+    // (the style is flushed with the pinned opacity BEFORE the transition is set: with no flush the browser saw one change, from the animation's value to 0, and the loader popped out; owner, 2026-11-03)
+    void node.offsetWidth;
+    node.style.transition = `opacity ${LOADER.leaveMs}ms var(--ease-standard, cubic-bezier(0.2, 0, 0, 1))`;
+    node.style.opacity = "0";
+    setPhase("leaving");
   }, [done, phase]);
 
   useEffect(() => {
