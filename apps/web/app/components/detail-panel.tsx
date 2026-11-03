@@ -196,7 +196,7 @@ export function DetailPanel({ open, isMobile, reducedMotion, routeKey, returnSlu
           <NavScrim className="absolute z-10 hidden opacity-(--scrim-on,1) md:block print:hidden" />
           {/* The controls sit at the panel's left edge (the page's left edge in full screen); the navigation is centred (over the map, beside
               the panel: navbar.tsx), clear of them at every desktop width. */}
-          <div className="relative z-20 flex min-h-12 shrink-0 items-center justify-end gap-2 px-3 print:hidden md:absolute md:inset-x-0 md:top-0 md:z-20 md:h-(--navbar-height) md:min-h-0 md:justify-start md:px-6">
+          <div data-slot="panel-bar" className="relative z-20 flex min-h-12 shrink-0 items-center justify-end gap-2 px-3 print:hidden md:absolute md:inset-x-0 md:top-0 md:z-20 md:h-(--navbar-height) md:min-h-0 md:justify-start md:px-6">
             {/* No title here: the content's own heading names the dialog. The controls have no box until they are pointed at. */}
             <IconButton icon="close" label="Close" size="sm" variant="ghost" onClick={onClose} className="md:-ml-2" />
             {onLayoutChange && !isMobile && (
