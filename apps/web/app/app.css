@@ -2791,7 +2791,7 @@
   /*
    * Scroll row (components/ui/scroll-row.tsx): a row that scrolls sideways with NO native scrollbar and two arrow buttons that exist only
    * while there is more on that side. The arrow is a 44 px plate of the page's own colour (solid, never a fade) at the edge, with a
-   * hairline on its inner side; the row stays the scroller (touch, keyboard focus, wheel).
+   * fade of the page's colour on its inner side; the row stays the scroller (touch, keyboard focus, wheel).
    */
   .scroll-row {
     position: relative;
@@ -2830,14 +2830,33 @@
     transition: color var(--duration-fast) var(--ease-standard);
   }
 
+  /* The edge of the scrollable area (owner, 2026-11-03: a vertical hairline "does not look elegant enough"): a FADE of the page's colour on the inner side of the plate, from the plate's solid colour to nothing over 1.75 rem, so the chips
+     dissolve into the arrow instead of being cut by a line. It is the plate's own pseudo-element, so it exists only while the arrow does, that is only while there is more to scroll to on that side. */
+  .scroll-row-arrow::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 1.75rem;
+    pointer-events: none;
+  }
+
   .scroll-row-arrow[data-side="start"] {
     left: 0;
-    border-right: var(--hairline) solid var(--border);
+  }
+
+  .scroll-row-arrow[data-side="start"]::before {
+    left: 100%;
+    background: linear-gradient(to right, var(--background), transparent);
   }
 
   .scroll-row-arrow[data-side="end"] {
     right: 0;
-    border-left: var(--hairline) solid var(--border);
+  }
+
+  .scroll-row-arrow[data-side="end"]::before {
+    right: 100%;
+    background: linear-gradient(to left, var(--background), transparent);
   }
 
   .scroll-row-arrow:hover {
