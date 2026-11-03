@@ -2182,10 +2182,16 @@
 
   .entry-hero-img {
     position: absolute;
-    inset: 0;
+    inset: 0 0 auto;
     z-index: -2;
     width: 100%;
-    height: 100%;
+    /* The picture fills the part of the head that is SEEN, the clear zone and a little of the ramp (owner, 2026-11-03: "the covers are nearly always aligned to the top, could we center them vertically
+       instead?"): it used to fill the whole box, whose middle is behind the text's layer, so that the picture's own middle was hidden and what showed was its upper half. It ends in a fade of its own
+       (the layer behind the text takes over under it). A dimmed backdrop (`data-tone`, `data-mature`) keeps the whole box. */
+    height: calc(var(--cover-clear) + var(--cover-seen, 6rem));
+    max-height: 100%;
+    -webkit-mask-image: linear-gradient(to bottom, #000 72%, transparent);
+    mask-image: linear-gradient(to bottom, #000 72%, transparent);
     object-fit: cover;
     /* The cover sits at a comfortable level on the page (#437): a fifth of the page's colour over it in both schemes (a dark cover is not a heavy band on the light page, a bright one is not at full strength on the dark one), and on the dark page a little under full brightness so that a bright cover does not glare. The dim variants below set their own. */
     opacity: 0.82;
@@ -2206,11 +2212,18 @@
     inset: -2rem;
     width: calc(100% + 4rem);
     height: calc(100% + 4rem);
+    max-height: none;
+    -webkit-mask-image: none;
+    mask-image: none;
     filter: blur(16px) saturate(0.8);
     opacity: 0.4;
   }
 
   .entry-hero[data-mature] .entry-hero-img {
+    inset: 0;
+    height: 100%;
+    -webkit-mask-image: none;
+    mask-image: none;
     filter: blur(40px) saturate(0.7);
     opacity: 0.3;
   }
