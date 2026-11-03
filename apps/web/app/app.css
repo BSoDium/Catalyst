@@ -3006,12 +3006,21 @@
       grid-column: 1;
     }
 
+    /* a list's head has no running head above the title (#548): the title starts the head */
+    .list-head > .list-title:first-child {
+      margin-top: 0;
+    }
+
     .list-stats {
       grid-column: 2;
-      grid-row: 2;
+      grid-row: auto;
       justify-content: flex-end;
       gap: 2.5rem;
       padding: 0 0 0.375rem;
+    }
+
+    .list-stat {
+      align-items: flex-end;
     }
 
     .list-stat-value {

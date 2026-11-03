@@ -9,7 +9,6 @@ import { Button, ScrollRow, StatePanel } from "~/components/ui";
 import { cn } from "~/lib/utils";
 import { KIND_NOUNS, KIND_PLURALS, kindCount, listBackState, type EntrySummary } from "~/lib/entries";
 import { collectTags, filterByTag, groupByYear, listStats, parseTagFilter, shouldGroupByYear, tagSearch, type TagCount } from "~/lib/entry-list";
-import { SITE_NAME } from "~/lib/site";
 
 /** Tags shown before "more": the rest sit one press away (the selected tag is always shown). */
 const TAGS_SHOWN = 10;
@@ -60,14 +59,8 @@ export function EntryListPage({ kind, items }: { kind: ContentKind; items: Entry
       className="entry mx-auto max-w-[100rem] px-4 pt-[calc(var(--navbar-height)+1.5rem)] min-[56rem]:pt-[calc(var(--navbar-height)+3rem)] pb-24 outline-none md:px-14"
     >
       <header data-slot="list-head" className="list-head">
-        <p className="list-running type-meta">
-          <span>{SITE_NAME}</span>
-          <span data-slot="list-count">
-            {tag ? `${shown.length} of ${total}` : total}
-          </span>
-        </p>
         <h1 className="list-title">{KIND_PLURALS[kind]}</h1>
-        {/* The figures of the list: the count, the years it spans, the places it is about (the count of the running head says it again for the wide form; on a phone it is the folio) */}
+        {/* The figures of the list: how many (of how many when a tag filters), since when, how many places. There is no running head above the title any more (the owner's name and the count were said again by the figures: owner, 2026-11-03) */}
         <dl data-slot="list-stats" className="list-stats">
           {listStats(items, { shown: shown.length, total: items.length, noun: shown.length === 1 ? KIND_NOUNS[kind].one : KIND_NOUNS[kind].many }).map((stat) => (
             <div key={stat.label} className="list-stat">
