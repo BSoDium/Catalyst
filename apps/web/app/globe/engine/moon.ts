@@ -39,7 +39,8 @@ export const MOON = {
   narrowAspect: 0.75,
   wideAspect: 1.15,
   /** One lap, ms. It is in the picture for a few seconds of each lap, at the planet's sides: a thing to catch, not to wait for. */
-  periodMs: 240_000,
+  // (360 s, it was 240: owner, 2026-11-03, "it goes by so fast")
+  periodMs: 360_000,
   /** Where the orbit starts (on the camera's side, behind the camera: not in the picture when the page opens), and where the moon stands when it does not move (reduced motion): beside the planet on the left, small. */
   startDeg: 100,
   restDeg: 254,
