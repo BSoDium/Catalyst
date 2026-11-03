@@ -363,6 +363,9 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
   const revealV = new EasedValue(STREET_TUNING.revealMs, reduced);
   const sharpV = new EasedValue(STREET_TUNING.dissolveMs, reduced, opts.initialSharp ?? 0);
   const blendV = new EasedValue(STREET_TUNING.dissolveMs, reduced, opts.initialBlend ?? 1);
+  // The spotlight: the selected node's rectangle in art cells (null when it is not drawn), faded in by `spotV`.
+  const spotV = new EasedValue(STREET_TUNING.spot.ms, reduced);
+  let spotRect: { c0: number; r0: number; c1: number; r1: number } | null = null;
   let revealCenter: "selected" | { lon: number; lat: number } = "selected";
   let reportedLost = false;
   const waiters: { value: EasedValue; resolve(): void }[] = [];
@@ -415,6 +418,7 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
           focus,
           blend: blendV.eased,
           anchor: [0, 0],
+          spot: spotRect && spotV.eased > 0 ? { ...spotRect, ...spotTune(spotV.eased) } : undefined,
         };
       },
       onContextChange: () => reportContext(),
@@ -462,7 +466,7 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
   // ---- animation loop for the capabilities (the only rAF this module owns) ---------------------------------------
   let raf = 0;
   let lastTs = 0;
-  const animating = () => revealV.animating || sharpV.animating || blendV.animating;
+  const animating = () => revealV.animating || sharpV.animating || blendV.animating || spotV.animating;
   const settle = () => {
     for (let i = waiters.length - 1; i >= 0; i--) {
       if (!waiters[i]!.value.animating) {
@@ -479,6 +483,7 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
     revealV.step(dt);
     sharpV.step(dt);
     blendV.step(dt);
+    spotV.step(dt);
     if (!compositor.redraw()) map.triggerRepaint();
     settle();
     if (animating() && !document.hidden) raf = requestAnimationFrame(tick);
@@ -565,6 +570,27 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
     syncOverlayInner();
     perfEnd("street.overlay", t0);
   };
+  // The spotlight follows the selected node's drawn rectangle (whole art cells, as the box is drawn); it fades out when nothing is selected or the node is not drawn.
+  const spotTune = (k: number) => {
+    const o = (globalThis as { __spot?: { lift?: number; dim?: number } }).__spot;   // experiment: tune from the console
+    return { lift: (o?.lift ?? STREET_TUNING.spot.lift) * k, dim: (o?.dim ?? STREET_TUNING.spot.dim) * k };
+  };
+  const syncSpot = () => {
+    const i = selected ? lod.indexOf(selected) : -1;
+    const sc = hud.screen;
+    if (i >= 0 && sc.shown[i]) {
+      const next = { c0: Math.round(sc.bx0[i]! / cellCss), r0: Math.round(sc.by0[i]! / cellCss), c1: Math.round(sc.bx1[i]! / cellCss), r1: Math.round(sc.by1[i]! / cellCss) };
+      const moved = !spotRect || next.c0 !== spotRect.c0 || next.r0 !== spotRect.r0 || next.c1 !== spotRect.c1 || next.r1 !== spotRect.r1;
+      spotRect = next;
+      if (spotV.target !== 1) {
+        spotV.set(1);
+        kick();
+      } else if (moved) compositor.redraw();
+    } else if (spotV.target !== 0) {
+      spotV.set(0);
+      kick();
+    } else if (!spotV.animating) spotRect = null;
+  };
   const syncOverlayInner = () => {
     const w = root.clientWidth;
     const h = root.clientHeight;
@@ -574,6 +600,7 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
     // container's own space with the projection centre the map uses; the free area is the box minus the inset the host passed.
     setLodCamera(lodCam, registerMapToGlobe(v), { width: w, height: h, centreX: (w - pad()) / 2 }, w - clampInset(inset, w), cellCss);
     hud.update({ width: w, height: h, cellCss, cam: lodCam });
+    syncSpot();
     // The camera's signature includes where the centre lands on screen: closing the panel changes the map's padding (the inset), which moves every
     // projected point without changing the centre's lon, lat or zoom.
     const mapViewCap = (cw: number, ch: number) => {
