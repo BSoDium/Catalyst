@@ -190,6 +190,39 @@ describe("career (an optional singleton document, additive in schema version 1)"
     });
   });
 
+  describe("the projects of a position (#531, additive in schema version 1)", () => {
+    const many = <T,>(n: number, make: (i: number) => T): T[] => Array.from({ length: n }, (_, i) => make(i));
+    const project = (extra: object = {}) => ({ title: "Example Atlas", summary: "A map with its own data layers.", ...extra });
+    const projectEntry = { slug: "atlas", title: "Atlas", placeSlugs: [], body: [] };
+    const withEntry = (c: unknown) => parsePublishedProjection({ ...EMPTY_PROJECTION, places: [place], projects: [projectEntry], career: c });
+
+    it("are optional: a position without them is still valid, and one may carry up to the limit", () => {
+      expect(parse(career()).career!.roles[0]).not.toHaveProperty("projects");
+      expect(parse(career({ roles: [role({ projects: [project()] })] })).career!.roles[0]!.projects).toEqual([project()]);
+      ok(career({ roles: [role({ projects: many(CAREER_LIMITS.projects, (i) => project({ title: `P${i}` })) })] }));
+      bad(career({ roles: [role({ projects: many(CAREER_LIMITS.projects + 1, (i) => project({ title: `P${i}` })) })] }));
+    });
+
+    it("need a title and a summary, bounded and without a contact detail, and no other key", () => {
+      bad(career({ roles: [role({ projects: [{ title: "T" }] })] }));
+      bad(career({ roles: [role({ projects: [{ summary: "S" }] })] }));
+      bad(career({ roles: [role({ projects: [project({ title: "x".repeat(CAREER_TEXT.projectTitle + 1) })] })] }));
+      bad(career({ roles: [role({ projects: [project({ summary: "x".repeat(CAREER_TEXT.projectSummary + 1) })] })] }));
+      ok(career({ roles: [role({ projects: [project({ title: "x".repeat(CAREER_TEXT.projectTitle), summary: "x".repeat(CAREER_TEXT.projectSummary) })] })] }));
+      bad(career({ roles: [role({ projects: [project({ summary: "Write to me at someone@example.org" })] })] }));
+      bad(career({ roles: [role({ projects: [project({ url: "https://example.org" })] })] }));
+    });
+
+    it("may carry a picture (a /media/ file with its real size) and the slug of a published project entry, which must exist", () => {
+      const image = { src: "/media/career/project.1a2b3c4d.webp", width: 400, height: 300 };
+      ok(career({ roles: [role({ projects: [project({ image })] })] }));
+      bad(career({ roles: [role({ projects: [project({ image: { ...image, src: "https://example.org/p.webp" } })] })] }));
+      bad(career({ roles: [role({ projects: [project({ image: { src: image.src } })] })] }));
+      expect(withEntry(career({ roles: [role({ projects: [project({ entry: "atlas" })] })] })).career!.roles[0]!.projects![0]!.entry).toBe("atlas");
+      expect(() => withEntry(career({ roles: [role({ projects: [project({ entry: "missing" })] })] }))).toThrow(/unknown project "missing"/);
+    });
+  });
+
   describe("dates", () => {
     it("accept YYYY and YYYY-MM for a start, and `present` or nothing for an end", () => {
       for (const start of ["2026", "2025-02", "1999-12"]) ok(career({ roles: [role({ start })] }));
@@ -306,8 +339,8 @@ describe("career (an optional singleton document, additive in schema version 1)"
     });
 
     // The TRUE maximum: every list at its limit, every optional field present, every text at its limit and made of a 3-byte
-    // character (the worst UTF-8 width the schema accepts), every URL at its limit. It must stay under about 60 KB: the size of
-    // one entry's body cap, which is what the projection budget ("Payload size and cost") assumes.
+    // character (the worst UTF-8 width the schema accepts), every URL at its limit. It must stay under about 110 KB (60 KB, one entry's
+    // body cap, until the projects of a position, #531; the real document is about 5 KB, so the projection budget ("Payload size and cost") has room).
     const WIDE = "\u20ac";
     const fill = (n: number, tag = "") => `${tag}${WIDE.repeat(Math.max(0, n - tag.length))}`;
     const trueMaximum = (wide = true): PublishedCareer => {
@@ -331,6 +364,12 @@ describe("career (an optional singleton document, additive in schema version 1)"
           start: "2000-01",
           end: "2001-12",
           highlights: n(CAREER_LIMITS.highlights).map((j) => f(CAREER_TEXT.highlight, `h${j}`)),
+          projects: n(CAREER_LIMITS.projects).map((j) => ({
+            title: f(CAREER_TEXT.projectTitle, `t${j}`),
+            summary: f(CAREER_TEXT.projectSummary),
+            image: { src: `/media/career/${"j".repeat(260)}.1a2b3c4d.webp`, width: 4000, height: 3000 },
+            entry: "p".repeat(80),
+          })),
           skills: n(CAREER_LIMITS.roleSkills).map((j) => f(CAREER_TEXT.roleSkill, `s${j}`)),
         })),
         education: n(CAREER_LIMITS.education).map((i) => ({
@@ -353,19 +392,20 @@ describe("career (an optional singleton document, additive in schema version 1)"
         links: n(CAREER_LIMITS.links).map((i) => ({ label: f(CAREER_TEXT.linkLabel), url: url(`k${i}`) })),
       };
     };
-    it("the true maximum validates and stays under 60 KB of UTF-8, 3-byte characters everywhere", () => {
+    it("the true maximum validates and stays under 110 KB of UTF-8, 3-byte characters everywhere", () => {
       const max = trueMaximum();
       const parsed = publishedCareerSchema.safeParse(max);
       if (!parsed.success) throw new Error(JSON.stringify(parsed.error.issues.slice(0, 3)));
       const bytes = Buffer.byteLength(JSON.stringify(max));
-      expect(bytes).toBeLessThan(60_000);
+      expect(bytes).toBeLessThan(110_000);
       // and in plain ASCII it is a third of that
-      expect(Buffer.byteLength(JSON.stringify(trueMaximum(false)))).toBeLessThan(25_000);
+      expect(Buffer.byteLength(JSON.stringify(trueMaximum(false)))).toBeLessThan(50_000);
     });
     it("covers every limit: no list or text of the schema is missing from the maximum", () => {
       const max = trueMaximum();
       expect(max.roles).toHaveLength(CAREER_LIMITS.roles);
       expect(max.roles[0]!.highlights).toHaveLength(CAREER_LIMITS.highlights);
+      expect(max.roles[0]!.projects).toHaveLength(CAREER_LIMITS.projects);
       expect(max.roles[0]!.skills).toHaveLength(CAREER_LIMITS.roleSkills);
       expect(max.education).toHaveLength(CAREER_LIMITS.education);
       expect(max.languages).toHaveLength(CAREER_LIMITS.languages);
@@ -374,7 +414,7 @@ describe("career (an optional singleton document, additive in schema version 1)"
       expect(max.links).toHaveLength(CAREER_LIMITS.links);
       // every optional key of every object is there
       const shape = (o: object) => Object.keys(o).sort();
-      expect(shape(max.roles[0]!)).toEqual(["end", "employment", "highlights", "id", "location", "org", "orgUrl", "place", "skills", "start", "title"].sort());
+      expect(shape(max.roles[0]!)).toEqual(["end", "employment", "highlights", "id", "location", "org", "orgUrl", "place", "projects", "skills", "start", "title"].sort());
       expect(shape(max.education[0]!)).toEqual(["end", "id", "institution", "institutionUrl", "level", "location", "note", "place", "programme", "start"].sort());
       expect(shape(max)).toEqual(["availability", "education", "languages", "links", "portrait", "roles", "skills", "summary", "title", "updated"]);
     });

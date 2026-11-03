@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { loadDemoProjection } from "@catalyst/published/dev";
 import type { PublishedCareer } from "@catalyst/schemas";
-import { asOfText, careerDuration, careerIcon, careerLogo, careerLogoSrc, careerJsonLd, careerPeriod, formatCareerMonth, isCurrent, languageDetail, safeLinks, safePortrait } from "./career";
+import { asOfText, careerDuration, careerIcon, careerLogo, careerLogoSrc, careerJsonLd, careerPeriod, formatCareerMonth, isCurrent, languageDetail, safeLinks, safePortrait, safeProjects } from "./career";
 import { SITE } from "./site";
 
 const demo = loadDemoProjection().career!;
@@ -121,6 +121,15 @@ describe("isCurrent, languageDetail", () => {
     expect(languageDetail({ name: "English", level: "C2", label: "Native" })).toBe("Native, C2");
     expect(languageDetail({ name: "Portuguese", level: "A2" })).toBe("A2");
     expect(languageDetail({ name: "French", level: "Native", label: "native" })).toBe("native");
+  });
+});
+
+describe("safeProjects", () => {
+  it("keeps the projects of a position, and drops a picture with a bad path, not the project", () => {
+    const image = { src: "/media/career/p.1a2b3c4d.webp", width: 400, height: 300 };
+    expect(safeProjects({ projects: [{ title: "T", summary: "S", image }] })).toEqual([{ title: "T", summary: "S", image }]);
+    expect(safeProjects({ projects: [{ title: "T", summary: "S", image: { ...image, src: "https://evil.example/p.png" } }] })).toEqual([{ title: "T", summary: "S" }]);
+    expect(safeProjects({})).toEqual([]);
   });
 });
 

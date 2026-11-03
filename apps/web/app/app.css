@@ -7210,6 +7210,83 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   }
 
 
+  /* The projects of a position (#531): a row of their own under the head and the detail, across the whole width of the item (owner, 2026-11-03: not a column on the left, which
+     made the left side tall and the right one short), in two columns from 64 rem. No rules between them (owner: not too many dividers): the space does it. A project is a title
+     and a line, with its picture at the left when it has one. */
+  .career-projects {
+    margin: 1.75rem 0 0;
+  }
+
+  .career-projects-title {
+    margin: 0 0 0.875rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 400;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+  }
+
+  .career-projects ul {
+    display: grid;
+    gap: 1.25rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .career-project[data-picture="true"] {
+    display: grid;
+    grid-template-columns: 5.5rem minmax(0, 1fr);
+    gap: 1rem;
+    align-items: start;
+  }
+
+  .career-project-picture {
+    display: block;
+    width: 5.5rem;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    object-position: 0 0;
+    border: var(--hairline) solid var(--border);
+  }
+
+  .career-project-text > p {
+    margin: 0;
+  }
+
+  .career-project-name {
+    font-weight: 500;
+  }
+
+  .career-project-name a {
+    text-decoration: underline;
+    text-decoration-thickness: var(--hairline);
+    text-underline-offset: 0.2em;
+  }
+
+  .career-project-text > .career-project-line {
+    margin-top: 0.125rem;
+    font-family: var(--font-reading);
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    color: var(--muted-foreground);
+    text-wrap: pretty;
+  }
+
+  @media (min-width: 64rem) {
+    .career-item > .career-projects {
+      grid-column: 1 / -1;
+      margin-top: 2.25rem;
+    }
+
+    /* (the two columns are the item's own: a project at the right starts where the highlights do) */
+    .career-projects ul {
+      grid-template-columns: 26rem minmax(0, 1fr);
+      gap: 1.5rem 3rem;
+    }
+  }
+
   .career-links {
     display: flex;
     flex-wrap: wrap;

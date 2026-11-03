@@ -4,7 +4,7 @@
  * shows authored months only ("as of September 2026"), never "x years ago", so server and client agree and nothing goes stale in a
  * cached page.
  */
-import type { PublishedCareer, PublishedCareerLanguage, PublishedCareerRole } from "@catalyst/schemas";
+import type { PublishedCareer, PublishedCareerLanguage, PublishedCareerProject, PublishedCareerRole } from "@catalyst/schemas";
 import type { IconName } from "~/components/ui/icon";
 import { safeExternalUrl, safeMediaSrc } from "./entry-blocks";
 import { absoluteUrl } from "./meta";
@@ -103,6 +103,11 @@ export const isCurrent = (r: Pick<PublishedCareerRole, "end">): boolean => r.end
 export function languageDetail(l: PublishedCareerLanguage): string {
   const parts = [l.label, l.level].filter((p): p is string => !!p);
   return parts.filter((p, i) => parts.findIndex((q) => q.toLowerCase() === p.toLowerCase()) === i).join(", ");
+}
+
+/** The projects of a position the page may draw: a picture whose path does not pass the check is dropped, not the project (defence in depth, as the portrait's variants). */
+export function safeProjects(role: Pick<PublishedCareerRole, "projects">): PublishedCareerProject[] {
+  return (role.projects ?? []).map(({ image, ...rest }) => (image && safeMediaSrc(image.src) ? { ...rest, image } : rest));
 }
 
 /** The portrait the page may draw: its `src` is checked again on the way out (defence in depth, as an entry's images are). */

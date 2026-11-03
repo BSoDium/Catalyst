@@ -4,10 +4,10 @@ import type { PublishedCareer, PublishedCareerEducation, PublishedCareerRole } f
 import { ContactForm } from "~/components/contact-form";
 import { Button, Icon } from "~/components/ui";
 import type { IconName } from "~/components/ui/icon";
-import { asOfText, careerDuration, careerIcon, careerLogoSrc, careerPeriod, formatCareerMonth, isCurrent, languageDetail, safeLinks, safePortrait } from "~/lib/career";
+import { asOfText, careerDuration, careerIcon, careerLogoSrc, careerPeriod, formatCareerMonth, isCurrent, languageDetail, safeLinks, safePortrait, safeProjects } from "~/lib/career";
 import { CONTACT_ID } from "~/lib/contact";
 import { safeExternalUrl } from "~/lib/entry-blocks";
-import { placePath } from "~/lib/entries";
+import { entryPath, placePath } from "~/lib/entries";
 import { PORTRAIT_EGG, portraitEggDrawn } from "~/lib/portrait-egg";
 import { SITE } from "~/lib/site";
 import { useForcedScheme } from "~/lib/theme";
@@ -24,13 +24,14 @@ import { useForcedScheme } from "~/lib/theme";
  * one way to reach the owner is the contact form (`ContactForm`, docs/career-page.md, "Contact") after the socials: a "Get in touch"
  * button in the head scrolls to it. There is no address, phone number or mailto link anywhere (the contract has no field for one).
  */
-export function CareerPage({ career, places = [] }: { career: PublishedCareer; places?: readonly string[] }) {
+export function CareerPage({ career, places = [], projects = [] }: { career: PublishedCareer; places?: readonly string[]; projects?: readonly string[] }) {
   const portrait = safePortrait(career);
   const crashed = usePortraitEgg(portrait?.egg);
   const links = safeLinks(career);
   const updated = formatCareerMonth(career.updated);
   const available = career.availability;
   const known = new Set(places);
+  const haveProject = new Set(projects);
   return (
     <main
       id="main"
@@ -116,7 +117,7 @@ export function CareerPage({ career, places = [] }: { career: PublishedCareer; p
       <Block id="experience" title="Experience" count={career.roles.length}>
         <ol className="career-timeline" aria-labelledby="experience-h">
           {career.roles.map((role) => (
-            <RoleItem key={role.id} role={role} placeKnown={role.place !== undefined && known.has(role.place)} asOf={career.updated} />
+            <RoleItem key={role.id} role={role} placeKnown={role.place !== undefined && known.has(role.place)} projectKnown={(slug) => haveProject.has(slug)} asOf={career.updated} />
           ))}
         </ol>
       </Block>
@@ -341,8 +342,9 @@ function OrgName({ name, url }: { name: string; url: string | null }) {
   );
 }
 
-function RoleItem({ role, placeKnown, asOf }: { role: PublishedCareerRole; placeKnown: boolean; asOf: string }) {
+function RoleItem({ role, placeKnown, projectKnown, asOf }: { role: PublishedCareerRole; placeKnown: boolean; projectKnown: (slug: string) => boolean; asOf: string }) {
   const orgUrl = role.orgUrl ? safeExternalUrl(role.orgUrl) : null;
+  const projects = safeProjects(role);
   return (
     <li id={role.id} data-slot="career-role" data-current={isCurrent(role) ? "true" : undefined} className="career-item">
       <Marker item={role} name={role.org} icon={careerIcon(role.title, "role")} />
@@ -379,6 +381,22 @@ function RoleItem({ role, placeKnown, asOf }: { role: PublishedCareerRole; place
               ))}
             </ul>
           )}
+        </div>
+      )}
+      {projects.length > 0 && (
+        <div data-slot="career-projects" className="career-projects">
+          <h4 className="career-projects-title">Selected work</h4>
+          <ul>
+            {projects.map((p) => (
+              <li key={p.title} className="career-project" data-picture={p.image ? "true" : "false"}>
+                {p.image && <img src={p.image.src} alt="" width={p.image.width} height={p.image.height} loading="lazy" decoding="async" className="career-project-picture" />}
+                <div className="career-project-text">
+                  <p className="career-project-name">{p.entry && projectKnown(p.entry) ? <Link to={entryPath("project", p.entry)}>{p.title}</Link> : p.title}</p>
+                  <p className="career-project-line">{p.summary}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
     </li>

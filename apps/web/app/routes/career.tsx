@@ -17,7 +17,10 @@ export async function loader() {
   // The places the document names that the site has: a location links to its page on the globe only when that page exists.
   const have = new Set(projection.places.map((p) => p.slug));
   const named = [...career.roles, ...career.education].flatMap((x) => (x.place && have.has(x.place) ? [x.place] : []));
-  return { career, places: [...new Set(named)] };
+  // The project entries a position's project names that the site has: its title links to the entry's page only when that page exists.
+  const haveProject = new Set(projection.projects.map((p) => p.slug));
+  const projects = [...new Set(career.roles.flatMap((r) => (r.projects ?? []).flatMap((p) => (p.entry && haveProject.has(p.entry) ? [p.entry] : []))))];
+  return { career, places: [...new Set(named)], projects };
 }
 
 export function meta(args: Route.MetaArgs) {
@@ -25,5 +28,5 @@ export function meta(args: Route.MetaArgs) {
 }
 
 export default function CareerRoute({ loaderData }: Route.ComponentProps) {
-  return <CareerPage career={loaderData.career} places={loaderData.places} />;
+  return <CareerPage career={loaderData.career} places={loaderData.places} projects={loaderData.projects} />;
 }

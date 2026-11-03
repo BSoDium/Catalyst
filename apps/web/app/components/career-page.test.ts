@@ -7,8 +7,8 @@ import type { PublishedCareer } from "@catalyst/schemas";
 import { CareerPage } from "./career-page";
 
 const demo = loadDemoProjection().career!;
-const render = (career: PublishedCareer, places: string[] = ["paris"]) =>
-  renderToStaticMarkup(createElement(StaticRouter, { location: "/career" }, createElement(CareerPage, { career, places })));
+const render = (career: PublishedCareer, places: string[] = ["paris"], projects: string[] = []) =>
+  renderToStaticMarkup(createElement(StaticRouter, { location: "/career" }, createElement(CareerPage, { career, places, projects })));
 const without = <K extends keyof PublishedCareer>(c: PublishedCareer, ...keys: K[]): PublishedCareer => {
   const copy = { ...c };
   for (const k of keys) delete copy[k];
@@ -109,6 +109,26 @@ describe("CareerPage", () => {
     expect(demo.portrait!.egg).toBeDefined();
     expect(html).not.toContain(demo.portrait!.egg!.src);
     expect(html).not.toContain("data-egg");
+  });
+
+  it("draws the projects of a position under its head, a title and a line each, its picture decorative; a title links to its entry only when the site has it", () => {
+    const withProjects = render(demo, ["paris"], ["label-collision-engine"]);
+    const role = withProjects.slice(withProjects.indexOf('id="lead-frontend-example-studio"'), withProjects.indexOf('id="frontend-engineer-sample-works"'));
+    expect(role).toContain('data-slot="career-projects"');
+    expect(role).toContain(">Selected work</h4>");
+    expect(role).toMatch(/<p class="career-project-name"><a [^>]*href="\/software\/label-collision-engine"[^>]*>Example Atlas<\/a><\/p>/);
+    expect(role).toMatch(/<img src="\/media\/demo\/project-example-a\.svg" alt="" width="400" height="300"/);
+    // a project without a picture or an entry is two lines of text
+    expect(role).toMatch(/<p class="career-project-name">Placeholder Console<\/p>/);
+    // the entry the site does not have: the title is plain text
+    expect(render(demo, ["paris"], [])).toMatch(/<p class="career-project-name">Example Atlas<\/p>/);
+    // the head is before the projects, which come after the detail in the document (the stylesheet puts them under the head)
+    expect(role.indexOf('class="career-head"')).toBeLessThan(role.indexOf('data-slot="career-projects"'));
+  });
+
+  it("draws no projects block for a position without projects", () => {
+    const h = render({ ...demo, roles: demo.roles.map((r) => ({ ...r, projects: undefined })) });
+    expect(h).not.toContain("career-projects");
   });
 
   it("without a portrait draws no frame and no image, the name block alone", () => {
