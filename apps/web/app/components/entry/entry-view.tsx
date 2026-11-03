@@ -131,7 +131,7 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
   const linkedFoot = linked && linked !== "1 place" ? linked : null;
 
   const copy = (
-    <CopyButton text={() => shareUrl(window.location.origin, entry.href)} label={`Copy link to ${entry.title}`} announcement="Link copied to the clipboard" icon="link">
+    <CopyButton text={() => shareUrl(window.location.origin, entry.href)} label={`Copy link to ${entry.title}`} announcement="Link copied to the clipboard" icon="link" compact>
       Copy link
     </CopyButton>
   );
@@ -263,13 +263,15 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
           <p
             data-slot="entry-meta"
             className={cn(
-              "type-meta m-0 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 text-muted-foreground",
+              "type-meta m-0 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 text-muted-foreground max-md:flex-nowrap",
               "entry-running",
+              // On a phone the panel's close button floats at the right of this very row (it has no row of its own: `[data-slot="panel-bar"]`, app.css): the row is a band with the page's gutter (24 px) all round, the text centred, with room for it
+              "max-md:-mt-2 max-md:items-center",
               // (its rule runs the panel's whole width, and a cover's picture starts at it: the text keeps the page's gutter)
               full ? "-mx-4 px-4 md:-mx-8 md:px-8" : "-mx-6 px-6",
             )}
           >
-            <span className="min-w-0">
+            <span className="min-w-0 max-md:flex-1 max-md:truncate max-md:whitespace-nowrap">
               {backTo?.list ? (
                 // (opened from its list: the kind's name IS the way back, in the running head, so it has no row of its own: a back link with the same word over the kind was two lines for one thing)
                 <Link
@@ -285,11 +287,21 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
               ) : (
                 <span data-slot="entry-kind">{KIND_LABELS[entry.kind]}</span>
               )}
+              {/* On a phone the head is ONE line (owner, 2026-11-03: "keep a single-line layout everywhere"), and what it says is in this order of priority: the kind, the status and the reading time, then the date, and the place only when there
+                  is no status or reading time to say (the place and the date are in "At a glance" too). What does not fit is cut at the end with an ellipsis. */}
+              {(status || reading) && (
+                <span data-slot="entry-compact" className="hidden max-md:inline">
+                  <span aria-hidden="true"> &middot; </span>
+                  {status && <StatusTag status={status} className="inline text-[length:inherit] leading-[inherit] [font:inherit] tracking-[inherit] uppercase" />}
+                  {status && reading && <span aria-hidden="true"> &middot; </span>}
+                  {reading && <span>{reading}</span>}
+                </span>
+              )}
               {names && (
-                <>
+                <span className={cn((status || reading) && "max-md:hidden")}>
                   <span aria-hidden="true"> &middot; </span>
                   <span data-slot="entry-place">{names}</span>
-                </>
+                </span>
               )}
               {date && (
                 <>
@@ -300,9 +312,9 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
                 </>
               )}
             </span>
-            {poem && <span className="-my-2.5 self-center print:hidden">{copy}</span>}
+            {poem && <span className="-my-2.5 self-center print:hidden max-md:-my-4">{copy}</span>}
             {(status || reading) && (
-              <span className="flex items-baseline gap-4">
+              <span className="flex items-baseline gap-4 max-md:hidden">
                 {status && <StatusTag status={status} className="text-[length:inherit] leading-[inherit] [font:inherit] tracking-[inherit] uppercase" />}
                 {reading && <span data-slot="entry-reading">{reading}</span>}
               </span>

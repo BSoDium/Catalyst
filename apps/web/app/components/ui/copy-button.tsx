@@ -14,6 +14,8 @@ interface CopyButtonProps extends Pick<ButtonProps, "variant" | "size" | "classN
   announcement?: string;
   /** The icon before the word (it turns to a check once copied). */
   icon?: IconName;
+  /** On a phone the word is not drawn, the icon is the button (the name stays for assistive technology): where the room is one line. */
+  compact?: boolean;
 }
 
 /**
@@ -21,7 +23,7 @@ interface CopyButtonProps extends Pick<ButtonProps, "variant" | "size" | "classN
  * for two seconds and a polite live region says it too. Drawn only after hydration: without scripts there is nothing to press.
  * The clipboard API is used where it exists, else the old `execCommand` fallback (`lib/clipboard.ts`).
  */
-export function CopyButton({ text, children, label, announcement = "Copied to the clipboard", icon, variant = "ghost", size = "sm", className }: CopyButtonProps) {
+export function CopyButton({ text, children, label, announcement = "Copied to the clipboard", icon, compact, variant = "ghost", size = "sm", className }: CopyButtonProps) {
   const [ready, setReady] = useState(false);
   const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -47,7 +49,7 @@ export function CopyButton({ text, children, label, announcement = "Copied to th
         }}
       >
         {icon && <Icon name={state === "copied" ? "check" : icon} size="inline" />}
-        {word}
+        {compact ? <span className="max-md:sr-only">{word}</span> : word}
       </Button>
       <span role="status" className="sr-only">
         {state === "copied" ? announcement : state === "failed" ? "Could not copy" : ""}
