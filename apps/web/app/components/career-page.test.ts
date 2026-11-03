@@ -111,20 +111,19 @@ describe("CareerPage", () => {
     expect(html).not.toContain("data-egg");
   });
 
-  it("draws the projects of a position in a row of their own: a picture (decorative), a title and a line; a click opens one, and the entry's link is only in it", () => {
+  it("draws the projects of a position in a row of their own: a picture (decorative), a title and a line; a project with an entry the site has is a link to it, the whole of it", () => {
     const withProjects = render(demo, ["paris"], ["label-collision-engine"]);
     const role = withProjects.slice(withProjects.indexOf('id="lead-frontend-example-studio"'), withProjects.indexOf('id="frontend-engineer-sample-works"'));
     expect(role).toContain('data-slot="career-projects"');
     expect(role).toContain(">Selected work</h4>");
     expect(role).toMatch(/<img src="\/media\/demo\/project-example-a\.svg" alt="" width="400" height="300"/);
-    // a project with an entry the site has is a native details (no script needed), and the link to the entry is in it
-    const first = role.slice(role.indexOf("<details>"), role.indexOf("</details>"));
-    expect(first).toContain('<span class="career-project-name">Example Atlas</span>');
-    expect(first).toMatch(/<a [^>]*href="\/software\/label-collision-engine"[^>]*>Open its page/);
-    // a short line with no entry is not a toggle: no details, no link
-    const plain = role.slice(role.indexOf("Placeholder Console") - 120);
-    expect(plain.slice(0, plain.indexOf("</li>"))).not.toContain("<details");
-    // the entry the site does not have: no link (a long line is still a toggle, for its whole text)
+    const link = role.match(/<a [^>]*class="career-project-head"[^>]*>[\s\S]*?<\/a>/)![0];
+    expect(link).toMatch(/href="\/software\/label-collision-engine"/);
+    expect(link).toContain('<span class="career-project-name">Example Atlas</span>');
+    expect(link).toContain("project-example-a.svg");
+    // a project without an entry is the card alone: no link
+    expect(role).toMatch(/<div class="career-project-head"><span class="career-project-text"><span class="career-project-name">Placeholder Console/);
+    // the entry the site does not have: no link either
     expect(render(demo, ["paris"], [])).not.toContain("/software/label-collision-engine");
     // the head is before the projects, which come after the detail in the document (the stylesheet puts them under both)
     expect(role.indexOf('class="career-head"')).toBeLessThan(role.indexOf('data-slot="career-projects"'));

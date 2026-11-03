@@ -7235,7 +7235,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     list-style: none;
   }
 
-  /* A project: its picture and its text side by side, the two of the same height (the picture follows the text block, never less than 7 rem), the title cut to two lines and the line to three
+  /* A project: its picture and its text side by side, the two of the same height (the picture follows the text block, never less than 5.6 rem: a 16:9 picture on a desktop), the title cut to two lines and the line to two
      with an ellipsis (owner, 2026-11-03: "a bit like LinkedIn does"). A click opens it (a native details): the whole text, and the link to the entry when there is one. */
   .career-project-head {
     display: grid;
@@ -7245,14 +7245,14 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   }
 
   .career-project[data-picture="true"] .career-project-head {
-    grid-template-columns: 9rem minmax(0, 1fr);
+    grid-template-columns: 10rem minmax(0, 1fr);
   }
 
   .career-project-picture {
     display: block;
-    width: 9rem;
+    width: 10rem;
     height: 100%;
-    min-height: 7rem;
+    min-height: 5.625rem;
     object-fit: cover;
     object-position: 0 0;
     border: var(--hairline) solid var(--border);
@@ -7261,7 +7261,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   .career-project-text {
     display: block;
     min-width: 0;
-    min-height: 7rem;
+    min-height: 5.625rem;
   }
 
   .career-project[data-picture="false"] .career-project-text {
@@ -7283,7 +7283,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   }
 
   .career-project-line {
-    -webkit-line-clamp: 3;
+    -webkit-line-clamp: 2;
     margin-top: 0.25rem;
     font-family: var(--font-reading);
     font-size: 0.9375rem;
@@ -7291,72 +7291,38 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     color: var(--muted-foreground);
   }
 
-  .career-project summary {
-    list-style: none;
-    cursor: pointer;
+  /* (a project with an entry is a link, the whole of it) */
+  .career-project-head[data-link] {
+    color: inherit;
+    text-decoration: none;
   }
 
-  .career-project summary::-webkit-details-marker {
-    display: none;
-  }
-
-  .career-project summary:hover .career-project-name {
+  .career-project-head[data-link]:hover .career-project-name {
     text-decoration: underline;
     text-decoration-thickness: var(--hairline);
     text-underline-offset: 0.2em;
   }
 
-  .career-project details[open] .career-project-name,
-  .career-project details[open] .career-project-line {
-    display: block;
-    -webkit-line-clamp: unset;
-  }
-
-  .career-project details[open] .career-project-picture {
-    height: 7rem;
-    align-self: start;
-  }
-
-  .career-project-more {
-    margin: 0.625rem 0 0;
-    font-size: 0.875rem;
-  }
-
-  .career-project[data-picture="true"] .career-project-more {
-    padding-left: 10rem;
-  }
-
-  .career-project-more a {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    text-decoration: underline;
-    text-decoration-thickness: var(--hairline);
-    text-underline-offset: 0.2em;
+  .career-project-head[data-link]:focus-visible {
+    outline: 2px solid var(--ring, currentColor);
+    outline-offset: 4px;
   }
 
   @media (max-width: 39.99rem) {
     .career-project[data-picture="true"] .career-project-head {
-      grid-template-columns: 6rem minmax(0, 1fr);
+      grid-template-columns: 8rem minmax(0, 1fr);
       gap: 0.75rem;
     }
 
     .career-project-picture {
-      width: 6rem;
-      min-height: 5rem;
+      width: 8rem;
+      min-height: 4.5rem;
     }
 
     .career-project-text {
-      min-height: 5rem;
+      min-height: 4.5rem;
     }
 
-    .career-project details[open] .career-project-picture {
-      height: 5rem;
-    }
-
-    .career-project[data-picture="true"] .career-project-more {
-      padding-left: 6.75rem;
-    }
   }
 
   @media print {

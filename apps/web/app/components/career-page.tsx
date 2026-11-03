@@ -399,10 +399,9 @@ function RoleItem({ role, placeKnown, projectKnown, asOf }: { role: PublishedCar
 
 /**
  * A project of a position: its picture, its title and its line side by side, the two blocks of the same height, the line cut with an ellipsis where it would overflow (owner, 2026-11-03, "a bit like LinkedIn does").
- * A click on the project (a native `<details>`: it works without the script, with the keyboard, and is announced) opens it: the whole line, and the link to the site's own entry for it when there is one. A line short
- * enough to be seen whole, with no entry, is not a toggle.
+ * The project is a LINK to the site's own entry for it (`entry`: the full text is there; the contract work that has no repository of its own gets an entry like the rest), the whole of it clickable; without
+ * an entry the site has, it is only the card.
  */
-const PROJECT_LINE_SHORT = 100;
 function ProjectItem({ project, href }: { project: PublishedCareerProject; href: string | null }) {
   const body = (
     <>
@@ -413,27 +412,15 @@ function ProjectItem({ project, href }: { project: PublishedCareerProject; href:
       </span>
     </>
   );
-  const open = href !== null || project.summary.length > PROJECT_LINE_SHORT;
-  if (!open) {
-    return (
-      <li className="career-project" data-picture={project.image ? "true" : "false"}>
-        <div className="career-project-head">{body}</div>
-      </li>
-    );
-  }
   return (
     <li className="career-project" data-picture={project.image ? "true" : "false"}>
-      <details>
-        <summary className="career-project-head">{body}</summary>
-        {href && (
-          <p className="career-project-more">
-            <Link to={href}>
-              Open its page
-              <Icon name="arrow-up-right" size="inline" aria-hidden="true" />
-            </Link>
-          </p>
-        )}
-      </details>
+      {href ? (
+        <Link to={href} className="career-project-head" data-link="true">
+          {body}
+        </Link>
+      ) : (
+        <div className="career-project-head">{body}</div>
+      )}
     </li>
   );
 }
