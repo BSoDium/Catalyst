@@ -5,7 +5,7 @@
  * is under half an art pixel (`lod.ts`) without touching the geometry. Pure functions: no WebGL, no DOM.
  */
 import type { GlobeLeg, GlobeRoute } from "../types";
-import { legEnds } from "./airports";
+import { legEnds, type LegBoxes } from "./airports";
 import { lonLatToVec3 } from "../engine/geo";
 import { MODE_STYLE, isLegMode, type LegMode } from "./modes";
 import { cropToBoxes } from "./crop";
@@ -112,9 +112,9 @@ export function pathLengthM(lonlat: ArrayLike<number>): number {
  * Length in metres of a leg as the globe and the street map draw it: along its polyline when it has a valid one (and is not a
  * flight), else along the geodesic arc between its stops. The one rule the journeys text shares with the drawing.
  */
-export function legLengthM(a: { lat: number; lon: number }, b: { lat: number; lon: number }, leg?: GlobeLeg): number {
+export function legLengthM(a: { lat: number; lon: number }, b: { lat: number; lon: number }, leg?: GlobeLeg, boxes?: LegBoxes): number {
   const decoded = leg?.polyline && leg.mode !== "flight" ? decodePolyline5(leg.polyline) : null;
-  const ends = legEnds(a, b, leg);
+  const ends = legEnds(a, b, leg, boxes);
   return pathLengthM(decoded ?? arcPoints(ends.from, ends.to).lonlat);
 }
 
@@ -189,7 +189,7 @@ function buildNetworkUncached(routes: readonly GlobeRoute[]): PathNetwork {
       if (a.lat === b.lat && a.lon === b.lon) continue; // the same place twice in a row: nothing to draw
       const spec = route.legs?.[i];
       const mode: LegMode = spec && isLegMode(spec.mode) ? spec.mode : "unknown";
-      const ends = legEnds(a, b, spec);
+      const ends = legEnds(a, b, spec, { from: route.boxes?.[i], to: route.boxes?.[i + 1] });
       let lonlat: Float64Array | null = null;
       let arc = true;
       if (spec?.polyline && mode !== "flight") {

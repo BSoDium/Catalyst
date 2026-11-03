@@ -107,7 +107,7 @@ export function legFeatures(routes: readonly GlobeRoute[], stepDeg = 0.5): GeoJS
       if (a.lat === b.lat && a.lon === b.lon) continue;
       const spec = route.legs?.[i];
       const mode = spec && isLegMode(spec.mode) ? spec.mode : "unknown";
-      const ends = legEnds(a, b, spec);
+      const ends = legEnds(a, b, spec, { from: route.boxes?.[i], to: route.boxes?.[i + 1] });
       let pts: LonLat[] | null = null;
       let usedPolyline = false;
       if (spec?.polyline && mode !== "flight") {
@@ -143,7 +143,7 @@ export function legHeads(routes: readonly GlobeRoute[]): GeoJSON.FeatureCollecti
       const a = route.points[i]!;
       const b = route.points[i + 1]!;
       if (a.lat === b.lat && a.lon === b.lon) continue;
-      const head = legEnds(a, b, route.legs?.[i]).to;
+      const head = legEnds(a, b, route.legs?.[i], { from: route.boxes?.[i], to: route.boxes?.[i + 1] }).to;
       features.push({ type: "Feature", properties: { key: legKey(route.id, i), pal }, geometry: { type: "Point", coordinates: [head.lon, head.lat] } });
     }
   });
