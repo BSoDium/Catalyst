@@ -265,11 +265,13 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
             className={cn(
               "type-meta m-0 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 text-muted-foreground",
               "entry-running",
+              // On a phone the panel's close button floats at the right of this very row (it has no row of its own: `[data-slot="panel-bar"]`, app.css): the row is a band as tall as the button, centred, with room for it
+              "max-md:-mt-2 max-md:min-h-14 max-md:items-center max-md:pr-11",
               // (its rule runs the panel's whole width, and a cover's picture starts at it: the text keeps the page's gutter)
               full ? "-mx-4 px-4 md:-mx-8 md:px-8" : "-mx-6 px-6",
             )}
           >
-            <span className="min-w-0">
+            <span className="min-w-0 max-md:flex max-md:max-w-full max-md:items-baseline max-md:gap-x-[1ch] max-md:whitespace-nowrap [&>*]:max-md:shrink-0 [&>[data-slot=entry-place]]:max-md:shrink">
               {backTo?.list ? (
                 // (opened from its list: the kind's name IS the way back, in the running head, so it has no row of its own: a back link with the same word over the kind was two lines for one thing)
                 <Link
@@ -288,7 +290,9 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
               {names && (
                 <>
                   <span aria-hidden="true"> &middot; </span>
-                  <span data-slot="entry-place">{names}</span>
+                  <span data-slot="entry-place" className="max-md:min-w-0 max-md:truncate">
+                    {names}
+                  </span>
                 </>
               )}
               {date && (
