@@ -7357,6 +7357,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     }
 
     .career-item:has(> .career-projects) > .career-detail {
+      grid-column: 2;
       grid-row: 1 / span 3;
     }
 
@@ -7403,7 +7404,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     }
 
     .career-item:has(> .career-projects .career-project:nth-child(2):last-child) > .career-detail {
-      grid-row: 1 / span 2;
+      grid-row: 1;
     }
 
     .career-item > .career-projects:has(.career-project:nth-child(2):last-child) .career-projects-title {
