@@ -1402,11 +1402,11 @@ export class GlobeRenderer {
   }
 
   /**
-   * The moon is in the picture and moving: it wants the display's own frames (not the idle rotation's ten a second), so that a body that crosses a few pixels a second glides over them
+   * The moon is in the picture and moving, or its shadow is on the earth (the moon itself may be out of the picture, on the sun's side: #443, the shadow stood still until the camera moved): it wants the display's own frames (not the idle rotation's ten a second), so that a body that crosses a few pixels a second glides over them
    * (its edge is drawn with coverage: a fraction of a pixel of movement is a fraction of a pixel's tone, but only if there is a frame for it). A few seconds of each lap.
    */
   private get moonWantsFrames(): boolean {
-    return !!this.moonSample?.onScreen && this.moonRunning && !this.suspended;
+    return (!!this.moonSample?.onScreen || SHADE_UNIFORMS.uShade.value.w > 0) && this.moonRunning && !this.suspended;
   }
 
   /** The sun's rays and halo are following the music's beat: a frame for each, while it sounds and the sun is in the picture. */
@@ -1983,7 +1983,21 @@ export class GlobeRenderer {
     // Whoever drew this frame (the tick, a resize, a check), the transitions run to their end, and the idle rotation's chain (cancelled above) goes on.
     if (this.lod.animating || this.globe.animating || (this.caption?.animating ?? false) || this.moonWantsFrames || this.sunPulsing || this.opts.labelsAnimating?.()) this.keepGoing(false);
     else if (this.spin.spinning) this.chainSpin();
+    this.pollMoonShadow();
     this.armCaption();
+  }
+
+  /**
+   * In an aligned-orbit session (#443) the moon's shadow can come onto the earth while the moon is out of the picture and nothing else is animating (no frames are asked for): a look a quarter of a second, in the world view,
+   * asks for one when the shadow is there. (Once it is, `moonWantsFrames` has the display's own frames, and the poll has nothing left to do.)
+   */
+  private shadowPoll: ReturnType<typeof setTimeout> | 0 = 0;
+  private pollMoonShadow() {
+    if (typeof this.eclipseOffset !== "number" || this.shadowPoll || this.nightNow <= 0 || !this.moonRunning || this.suspended || this.disposed) return;
+    this.shadowPoll = setTimeout(() => {
+      this.shadowPoll = 0;
+      this.requestRender();
+    }, 250);
   }
 
   /**
@@ -2733,6 +2747,7 @@ export class GlobeRenderer {
     if (this.disposed) return;
     this.disposed = true;
     this.cancelFrame();
+    clearTimeout(this.shadowPoll);
     for (const c of this.cleanups) c();
     this.cleanups = [];
     // (the hero must not stay a ghost if the globe goes away mid-interlude)
