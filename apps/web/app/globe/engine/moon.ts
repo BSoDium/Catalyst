@@ -287,7 +287,7 @@ const smooth01 = (a: number, b: number, x: number): number => {
 
 /**
  * How much the earth's shadow takes from the moon at `p` (the moon's centre, earth radii) with the sun in direction `sun` (unit, the same frame): `dark` 0..1 the share of its light lost (soft: the penumbra is a long fall, not an edge) and
- * `red` 0..1 the reddish light the air bends round the earth, strongest deep in the shadow and already there well into the penumbra. 0 and 0 on the sun's side of the earth, and anywhere out of the shadow.
+ * `red` 0..1 the reddish light the air bends round the earth: it comes AFTER the darkening, only in the deep of the shadow. 0 and 0 on the sun's side of the earth, and anywhere out of the shadow.
  */
 export function eclipseOf(p: Vec3, sun: Vec3): { dark: number; red: number } {
   const behind = -(p[0] * sun[0] + p[1] * sun[1] + p[2] * sun[2]);
@@ -296,7 +296,8 @@ export function eclipseOf(p: Vec3, sun: Vec3): { dark: number; red: number } {
   const qy = p[1] + behind * sun[1];
   const qz = p[2] + behind * sun[2];
   const depth = 1 - smooth01(ECLIPSE.umbra - MOON.radius, ECLIPSE.penumbra, Math.hypot(qx, qy, qz));
-  return { dark: depth * ECLIPSE.shadowDark, red: Math.pow(depth, 0.6) };
+  // the darkening comes first, over the whole penumbra; the red only in the deep of it (the moon behind a blurred disc whose shadow is a little red: owner, 2026-11-03)
+  return { dark: depth * ECLIPSE.shadowDark, red: smooth01(0.45, 1, depth) };
 }
 
 /**
