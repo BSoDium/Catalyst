@@ -2791,7 +2791,7 @@
   /*
    * Scroll row (components/ui/scroll-row.tsx): a row that scrolls sideways with NO native scrollbar and two arrow buttons that exist only
    * while there is more on that side. The arrow is a 44 px plate of the page's own colour (solid, never a fade) at the edge, with a
-   * hairline on its inner side; the row stays the scroller (touch, keyboard focus, wheel).
+   * short hairline (the height of the labels) on its inner side; the row stays the scroller (touch, keyboard focus, wheel).
    */
   .scroll-row {
     position: relative;
@@ -2830,14 +2830,31 @@
     transition: color var(--duration-fast) var(--ease-standard);
   }
 
+  /* The hairline on the inner side is as tall as the labels it divides from (owner, 2026-11-03: it was as tall as the plate, a lot more than the words), centred on the plate */
+  .scroll-row-arrow::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    width: var(--hairline);
+    height: 1.25rem;
+    background: var(--border);
+    transform: translateY(-50%);
+  }
+
   .scroll-row-arrow[data-side="start"] {
     left: 0;
-    border-right: var(--hairline) solid var(--border);
+  }
+
+  .scroll-row-arrow[data-side="start"]::before {
+    right: 0;
   }
 
   .scroll-row-arrow[data-side="end"] {
     right: 0;
-    border-left: var(--hairline) solid var(--border);
+  }
+
+  .scroll-row-arrow[data-side="end"]::before {
+    left: 0;
   }
 
   .scroll-row-arrow:hover {
