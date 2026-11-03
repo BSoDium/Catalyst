@@ -109,7 +109,8 @@ const MX = 220, MY = 70; // the margin the pen may run into: wide at the sides, 
 // (the new drawing has ONE shape for the face and the neck: `exposed-skin`; the collar and the shirt are drawn over its lower part)
 const ids = { jacket: "jacket", skin: "exposed-skin", collar: "exposed-shirt-collar", shirt: "exposed-shirt", "chin-shadow": "chin-shadow", hair: "hair" };
 const D = Object.fromEntries(Object.entries(ids).map(([k, id]) => [k, get(id)]));
-const GLASSES = ["rim-left", "rim-right", "ridge", "temple-masked"].map(get);
+// (the bridge and the temple first, the rims after: the rims hide the caps of the other two, which end under them)
+const GLASSES = ["ridge", "temple-masked", "rim-left", "rim-right"].map(get);
 const open = (id) => svg.match(new RegExp(`<path id="${id}"[^>]*?d="([^"]+)"`))[1];
 
 // Construction lines: each one is the prolongation of a straight edge of the drawing (the slanted edge of a shoulder, the long side of the face,
@@ -219,6 +220,7 @@ const result = `<svg width="${500 + 2 * MX}" height="${500 + 2 * MY}" viewBox="$
             --glasses: #d8d8d8; --line: #8398b3; --frame: #313131; --g-bg: #333333; --g-skin: #9dbde0; --g-jacket: #3484c8; --g-shirt: #3f3f3f; } }
     .bg { fill: var(--bg) } .skin { fill: var(--skin) } .jacket { fill: var(--jacket) } .shirt { fill: var(--shirt) } .collar { fill: var(--collar) }
     .hair { fill: var(--hair) } .shade { fill: var(--shade) }
+    #screen { filter: brightness(1.22) saturate(1.06) }
     .glasses path { fill: var(--glasses); fill-rule: evenodd; stroke: var(--line); stroke-width: 1.2; stroke-linejoin: round }
     path[stroke] { stroke: var(--mark) }
     .pen path { stroke: var(--line); stroke-linecap: round; stroke-linejoin: round; fill: none }
@@ -227,6 +229,7 @@ const result = `<svg width="${500 + 2 * MX}" height="${500 + 2 * MY}" viewBox="$
     .hatch-hair { stroke: var(--hatch-hair) } .hatch-shade { stroke: var(--hatch-shade) } .hatch-shirt { stroke: var(--hatch-shirt) }
     .guides { stroke-width: 1.5; stroke-linecap: round; fill: none }
     .g-bg { stroke: var(--g-bg) } .g-skin { stroke: var(--g-skin) } .g-jacket { stroke: var(--g-jacket) } .g-shirt { stroke: var(--g-shirt) }
+    @media (prefers-color-scheme: dark) { #screen { filter: none } }
   </style>
   <defs>
     ${fades.join("\n    ")}

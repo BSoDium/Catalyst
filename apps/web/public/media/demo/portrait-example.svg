@@ -8,14 +8,14 @@
     /* Monochrome greys; the blues are the jacket and the faintly blue skin. The pen's blue-grey sits close to the ground, never black. */
     :root { --bg: #eeeeee; --skin: #a4cfff; --jacket: #2f9aee; --shirt: #4a4a4a; --collar: #ffffff; --ink: #0a0a0a; --mark: #0a0a0a;
             --hair: #3a4a60; --hatch-hair: #0a0a0a; --shade: #78a2d6; --hatch-shade: #4a74a8; --hatch-shirt: #2e2e2e;
-            --glasses: #ffffff; --screen: #0078d4; --screen-ink: #ffffff; --line: #5b6d85; --frame: #d8d8d8; --g-bg: #cdcdcd; --g-skin: #7bb0ee; --g-jacket: #5cb2f2; --g-shirt: #6a6a6a; }
+            --glasses: #ffffff; --line: #5b6d85; --frame: #d8d8d8; --g-bg: #cdcdcd; --g-skin: #7bb0ee; --g-jacket: #5cb2f2; --g-shirt: #6a6a6a; }
     @media (prefers-color-scheme: dark) { :root { --bg: #161616; --skin: #82a8d2; --jacket: #1a63a3; --shirt: #262626; --collar: #bdbdbd; --ink: #050505; --mark: #050505;
             --hair: #26364a; --hatch-hair: #0a1018; --shade: #5f86b2; --hatch-shade: #3f628a; --hatch-shirt: #3a3a3a;
-            --glasses: #d8d8d8; --screen: #0a5fae; --screen-ink: #e6e6e6; --line: #8398b3; --frame: #313131; --g-bg: #333333; --g-skin: #9dbde0; --g-jacket: #3484c8; --g-shirt: #3f3f3f; } }
+            --glasses: #d8d8d8; --line: #8398b3; --frame: #313131; --g-bg: #333333; --g-skin: #9dbde0; --g-jacket: #3484c8; --g-shirt: #3f3f3f; } }
     .bg { fill: var(--bg) } .skin { fill: var(--skin) } .jacket { fill: var(--jacket) } .shirt { fill: var(--shirt) } .collar { fill: var(--collar) }
     .hair { fill: var(--hair) } .shade { fill: var(--shade) }
+    #screen { filter: brightness(1.22) saturate(1.06) }
     .glasses path { fill: var(--glasses); fill-rule: evenodd; stroke: var(--line); stroke-width: 1.2; stroke-linejoin: round }
-    .screen { fill: var(--screen) } .screen-ink rect, .screen-ink circle { fill: var(--screen-ink) } .screen-pen { stroke: var(--screen-ink) }
     path[stroke] { stroke: var(--mark) }
     .pen path { stroke: var(--line); stroke-linecap: round; stroke-linejoin: round; fill: none }
     #pen-frame path { stroke: var(--frame) }
@@ -23,6 +23,7 @@
     .hatch-hair { stroke: var(--hatch-hair) } .hatch-shade { stroke: var(--hatch-shade) } .hatch-shirt { stroke: var(--hatch-shirt) }
     .guides { stroke-width: 1.5; stroke-linecap: round; fill: none }
     .g-bg { stroke: var(--g-bg) } .g-skin { stroke: var(--g-skin) } .g-jacket { stroke: var(--g-jacket) } .g-shirt { stroke: var(--g-shirt) }
+    @media (prefers-color-scheme: dark) { #screen { filter: none } }
   </style>
   <defs>
     <linearGradient id="fade-0" gradientUnits="userSpaceOnUse" x1="0" y1="373.5" x2="-46.1" y2="426.6"><stop offset="0" style="stop-color:var(--frame)" /><stop offset=".25" style="stop-color:var(--frame)" /><stop offset="1" style="stop-color:var(--frame);stop-opacity:0" /></linearGradient>
@@ -290,7 +291,7 @@
       <path d="M280.5 214C289.8 219.4 298 216.9 305.5 214.5C313.8 211.6 318.7 197.3 316 180C312.1 163.2 296.6 156.7 285.5 163C268.6 170.6 250.4 172.3 249.5 143.5L249.5 106C249.7 87.6 239 79.3 223 80.5C208 81.5 188.4 82.4 188 81.5" style="stroke-width:2.4" /><path d="M280.5 214L275.6 210.8" style="stroke:url(#fade-72);stroke-width:2.4" /><path d="M188 81.5L183.7 81.6" style="stroke:url(#fade-73);stroke-width:2.4" />
       </g>
     <path id="ear" d="M276,190.5L284.5,184.5M297.5,175.5L284.5,184.5M284.5,184.5L302,192" stroke="currentColor" stroke-width="5" stroke-linecap="round" />
-    <g id="glasses" class="glasses"><path d="M170,122C183.798,122 195,133.202 195,147C195,160.798 183.798,172 170,172C156.202,172 145,160.798 145,147C145,133.202 156.202,122 170,122ZM170,127C158.962,127 150,135.962 150,147C150,158.038 158.962,167 170,167C181.038,167 190,158.038 190,147C190,135.962 181.038,127 170,127Z" /><path d="M229,122C242.798,122 254,133.202 254,147C254,160.798 242.798,172 229,172C215.202,172 204,160.798 204,147C204,133.202 215.202,122 229,122ZM229,127C217.962,127 209,135.962 209,147C209,158.038 217.962,167 229,167C240.038,167 249,158.038 249,147C249,135.962 240.038,127 229,127Z" /><path d="M211,144.5C212.38,144.5 213.5,145.62 213.5,147C213.5,148.38 212.38,149.5 211,149.5L192.5,149.5C191.12,149.5 190,148.38 190,147C190,145.62 191.12,144.5 192.5,144.5L211,144.5Z" /><path d="M249.593,146.885C250.06,146.333 250.761,145.988 251.54,146C279.833,146.451 289.698,150.205 300.264,160.729C300.565,161.028 300.774,161.386 300.89,161.766C298.339,160.986 295.67,160.704 293.048,160.913C284.358,153.783 274.402,151.365 251.46,151C250.877,150.99 250.343,150.781 249.922,150.439C249.774,149.317 249.663,148.133 249.593,146.885Z" /></g>
+    <g id="glasses" class="glasses"><path d="M211,144.5C212.38,144.5 213.5,145.62 213.5,147C213.5,148.38 212.38,149.5 211,149.5L192.5,149.5C191.12,149.5 190,148.38 190,147C190,145.62 191.12,144.5 192.5,144.5L211,144.5Z" /><path d="M249.593,146.885C250.06,146.333 250.761,145.988 251.54,146C279.833,146.451 289.698,150.205 300.264,160.729C300.565,161.028 300.774,161.386 300.89,161.766C298.339,160.986 295.67,160.704 293.048,160.913C284.358,153.783 274.402,151.365 251.46,151C250.877,150.99 250.343,150.781 249.922,150.439C249.774,149.317 249.663,148.133 249.593,146.885Z" /><path d="M170,122C183.798,122 195,133.202 195,147C195,160.798 183.798,172 170,172C156.202,172 145,160.798 145,147C145,133.202 156.202,122 170,122ZM170,127C158.962,127 150,135.962 150,147C150,158.038 158.962,167 170,167C181.038,167 190,158.038 190,147C190,135.962 181.038,127 170,127Z" /><path d="M229,122C242.798,122 254,133.202 254,147C254,160.798 242.798,172 229,172C215.202,172 204,160.798 204,147C204,133.202 215.202,122 229,122ZM229,127C217.962,127 209,135.962 209,147C209,158.038 217.962,167 229,167C240.038,167 249,158.038 249,147C249,135.962 240.038,127 229,127Z" /></g>
     </g>
     <g id="pen-frame" class="pen">
       <path d="M0 0L500 0" style="stroke-width:2.7" /><path d="M0 0L-161.4 0" style="stroke:url(#fade-26);stroke-width:2.7" /><path d="M500 0L596.3 0" style="stroke:url(#fade-27);stroke-width:2.7" />
