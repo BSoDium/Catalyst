@@ -31,7 +31,7 @@ export const STREET_TUNING = {
    * The spotlight on the selected node's rectangle (the map's lines inside lifted by `lift` of the way to the ink, those outside losing
    * `dim` of their tone; the fills (the background) inside lifted by the smaller `fill`, those outside untouched; `ms` to fade in and out). Experiment, issue 569.
    */
-  spot: { lift: 0.8, dim: 0.45, fill: 0.12, ms: 450 },
+  spot: { lift: 0.95, dim: 0.45, fill: 0.12, ms: 450 },
   /**
    * Native art-resolution render: map pixels per art cell along each axis. 3 is the smallest that keeps the line rules of
    * docs/pixel-line-rules.md (the line gate, `pnpm test:street-lines`): the classify sample is then exactly one texel, a

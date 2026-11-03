@@ -347,7 +347,7 @@ uniform float uLevelScale;
 uniform vec3 uPal[${MAX_LEVELS}];      // the palette (engine/palette.ts): one colour per level
 uniform ivec2 uAnchor;
 uniform ivec4 uSpotRect;      // the spotlit rectangle in art cells: c0, r0, c1, r1 (c1 / r1 exclusive)
-uniform vec3 uSpot;           // x: share of the way to the ink that the LINES inside the rectangle are lifted, y: share of its tone that the lines outside lose, z: the same lift for the fills inside (the background)
+uniform vec3 uSpot;           // x: share of the way to the peak (one under the ink) that the LINES inside the rectangle are lifted, y: share of its tone that the lines outside lose, z: the same lift for the fills inside (the background)
 out vec4 o;
 const int GREYS = ${TRAIL_LEVEL_BASE};   // the levels below are the map's greys, from here the path trails' colours (never touched)
 ${BAYER}
@@ -369,7 +369,7 @@ void main() {
   if (level > 0 && level < GREYS && (uSpot.x > 0.0 || uSpot.y > 0.0 || uSpot.z > 0.0)) {
     bool inside = cell.x >= uSpotRect.x && cell.y >= uSpotRect.y && cell.x < uSpotRect.z && cell.y < uSpotRect.w;
     bool isLine = artCell.g > 0.0;
-    if (inside) level = level + int(floor(float(GREYS - 1 - level) * (isLine ? uSpot.x : uSpot.z) + 0.5));
+    if (inside) level = level + int(floor(float(GREYS - 2 - level) * (isLine ? uSpot.x : uSpot.z) + 0.5));   // up to the peak (the box at rest), never the ink: the top step of the ramp is the biggest and the ink is the selection's
     else if (isLine) level = max(1, int(floor(float(level) * (1.0 - uSpot.y) + 0.5)));
   }
   vec3 col = uPal[clamp(level, 0, ${MAX_LEVELS - 1})];
