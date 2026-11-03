@@ -42,6 +42,8 @@ import { probeSource, type ProbeConfig, type ProbeOutcome } from "./net/probe";
 import { HudLayer } from "./overlay/hud-layer";
 import { LayerSwitch, switchRules, type SwitchView } from "./style/layer-switch";
 import { TrailDotsLayer, dotLegs } from "../paths/trail-dots-layer";
+import { PALETTE_HEX } from "../paths/trail";
+import type { Rgb } from "./core/pixel-types";
 import { capReach, viewCap } from "./core/view-cap";
 import { fadeStraight, thinLegs, thinZoomOf, type ThinLeg } from "../paths/thin";
 import { DEFAULT_HANDOFF, PLACEHOLDER_LAYERS, PLACEHOLDER_REPLACES, PLACEHOLDER_OVERLAP_MS, PLACEHOLDER_SETTLE_MS, ROUTE_LAYER_IDS, applyCell, applyDashScale, applyKeptLegs, buildStreetStyle, placeholderWanted, dashStepOf, focusFilter, graticule, headFocusFilter, ROUTE_HEAD_FOCUS_ID, hasPlaceholder, routeLayerId, seaFrom, type StyleTiles } from "./style/street-style";
@@ -572,8 +574,10 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
   };
   // The spotlight follows the selected node's drawn rectangle (whole art cells, as the box is drawn); it fades out when nothing is selected or the node is not drawn.
   const spotTune = (k: number) => {
-    const o = (globalThis as { __spot?: { lift?: number; dim?: number } }).__spot;   // experiment: tune from the console
-    return { lift: (o?.lift ?? STREET_TUNING.spot.lift) * k, dim: (o?.dim ?? STREET_TUNING.spot.dim) * k };
+    const o = (globalThis as { __spot?: { lift?: number; dim?: number; tint?: number } }).__spot;   // experiment: tune from the console
+    const blue = PALETTE_HEX.blue[theme.scheme === "dark" ? 400 : 600]!;   // the paths' own blue ladder, a step the page can carry
+    const tint: Rgb = [1, 3, 5].map((i) => parseInt(blue.slice(i, i + 2), 16) / 255) as unknown as Rgb;
+    return { lift: (o?.lift ?? STREET_TUNING.spot.lift) * k, dim: (o?.dim ?? STREET_TUNING.spot.dim) * k, tint, tintMix: (o?.tint ?? STREET_TUNING.spot.tint) * k };
   };
   const syncSpot = () => {
     const i = selected ? lod.indexOf(selected) : -1;

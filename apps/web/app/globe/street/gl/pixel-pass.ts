@@ -347,6 +347,8 @@ uniform float uLevelScale;
 uniform vec3 uPal[${MAX_LEVELS}];      // the palette (engine/palette.ts): one colour per level
 uniform ivec2 uAnchor;
 uniform ivec4 uSpotRect;      // the spotlit rectangle in art cells: c0, r0, c1, r1 (c1 / r1 exclusive)
+uniform vec3 uSpotTint;       // the colour the lifted lines lean towards
+uniform float uSpotMix;       // how far (0..1, scaled by the line's own level so the faint lines stay faint)
 uniform vec2 uSpot;           // x: share of the way to the ink that the map cells inside the rectangle are lifted, y: share of its tone that the cells outside lose
 out vec4 o;
 const int GREYS = ${TRAIL_LEVEL_BASE};   // the levels below are the map's greys, from here the path trails' colours (never touched)
@@ -365,12 +367,14 @@ void main() {
   vec4 artCell = texelFetch(uArt, cell, 0);
   int level = int(artCell.r * 255.0 + 0.5);
   // Only LINES (G > 0: streets, rails, outlines) are spotlit; a fill (water, green, the satellite's stipple) is the background and keeps its tone in and out
+  bool lit = false;
   if (level > 0 && level < GREYS && artCell.g > 0.0 && (uSpot.x > 0.0 || uSpot.y > 0.0)) {
     bool inside = cell.x >= uSpotRect.x && cell.y >= uSpotRect.y && cell.x < uSpotRect.z && cell.y < uSpotRect.w;
-    if (inside) level = level + int(floor(float(GREYS - 1 - level) * uSpot.x + 0.5));
+    if (inside) { level = level + int(floor(float(GREYS - 1 - level) * uSpot.x + 0.5)); lit = true; }
     else level = max(1, int(floor(float(level) * (1.0 - uSpot.y) + 0.5)));
   }
   vec3 col = uPal[clamp(level, 0, ${MAX_LEVELS - 1})];
+  if (lit) col = mix(col, uSpotTint, uSpotMix * float(level) / float(GREYS - 1));
   float m = max(uSharp, coverage(vec2(p) + 0.5));
   if (m > 0.0 && m > th) {
     // the sharp device-resolution render (reveal / sharp dissolve only): the same encoding, blended by coverage
@@ -416,9 +420,9 @@ export interface PassParams {
   anchor: [number, number];
   /**
    * The spotlight on the selected node's rectangle (art cells, c1 / r1 exclusive): the map's LINES inside it are lifted by `lift` of the way
-   * to the ink (streets read stronger), those outside lose `dim` of their tone. Fills (the background), paths and trails are never touched. Absent or 0 / 0: off.
+   * to the ink (streets read stronger), those outside lose `dim` of their tone. The lifted lines also lean towards `tint` by `tintMix`, more the stronger the line. Fills (the background), paths and trails are never touched. Absent or 0 / 0: off.
    */
-  spot?: { c0: number; r0: number; c1: number; r1: number; lift: number; dim: number };
+  spot?: { c0: number; r0: number; c1: number; r1: number; lift: number; dim: number; tint: Rgb; tintMix: number };
 }
 
 type Uniforms = Record<string, WebGLUniformLocation | null>;
@@ -791,6 +795,8 @@ export class PixelPass {
     const sp = p.spot;
     gl.uniform4i(u.uSpotRect!, sp?.c0 ?? 0, sp?.r0 ?? 0, sp?.c1 ?? 0, sp?.r1 ?? 0);
     gl.uniform2f(u.uSpot!, sp?.lift ?? 0, sp?.dim ?? 0);
+    gl.uniform3f(u.uSpotTint!, ...(sp?.tint ?? ([0, 0, 0] as Rgb)));
+    gl.uniform1f(u.uSpotMix!, sp?.tintMix ?? 0);
     const pal = new Float32Array(MAX_LEVELS * 3);
     p.levels.forEach((c, i) => pal.set(c, i * 3));
     gl.uniform3fv(u["uPal[0]"]!, pal);
