@@ -7235,43 +7235,136 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     list-style: none;
   }
 
-  .career-project[data-picture="true"] {
+  /* A project: its picture and its text side by side, the two of the same height (the picture follows the text block, never less than 7 rem), the title cut to two lines and the line to three
+     with an ellipsis (owner, 2026-11-03: "a bit like LinkedIn does"). A click opens it (a native details): the whole text, and the link to the entry when there is one. */
+  .career-project-head {
     display: grid;
-    grid-template-columns: 5.5rem minmax(0, 1fr);
     gap: 1rem;
-    align-items: start;
+    align-items: stretch;
+    text-align: left;
+  }
+
+  .career-project[data-picture="true"] .career-project-head {
+    grid-template-columns: 9rem minmax(0, 1fr);
   }
 
   .career-project-picture {
     display: block;
-    width: 5.5rem;
-    aspect-ratio: 4 / 3;
+    width: 9rem;
+    height: 100%;
+    min-height: 7rem;
     object-fit: cover;
     object-position: 0 0;
     border: var(--hairline) solid var(--border);
   }
 
-  .career-project-text > p {
-    margin: 0;
+  .career-project-text {
+    display: block;
+    min-width: 0;
+    min-height: 7rem;
+  }
+
+  .career-project[data-picture="false"] .career-project-text {
+    min-height: 0;
+  }
+
+  .career-project-name,
+  .career-project-line {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-wrap: pretty;
   }
 
   .career-project-name {
+    -webkit-line-clamp: 2;
     font-weight: 500;
+    line-height: 1.3;
   }
 
-  .career-project-name a {
+  .career-project-line {
+    -webkit-line-clamp: 3;
+    margin-top: 0.25rem;
+    font-family: var(--font-reading);
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    color: var(--muted-foreground);
+  }
+
+  .career-project summary {
+    list-style: none;
+    cursor: pointer;
+  }
+
+  .career-project summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .career-project summary:hover .career-project-name {
     text-decoration: underline;
     text-decoration-thickness: var(--hairline);
     text-underline-offset: 0.2em;
   }
 
-  .career-project-text > .career-project-line {
-    margin-top: 0.125rem;
-    font-family: var(--font-reading);
-    font-size: 0.9375rem;
-    line-height: 1.5;
-    color: var(--muted-foreground);
-    text-wrap: pretty;
+  .career-project details[open] .career-project-name,
+  .career-project details[open] .career-project-line {
+    display: block;
+    -webkit-line-clamp: unset;
+  }
+
+  .career-project details[open] .career-project-picture {
+    height: 7rem;
+    align-self: start;
+  }
+
+  .career-project-more {
+    margin: 0.625rem 0 0;
+    font-size: 0.875rem;
+  }
+
+  .career-project[data-picture="true"] .career-project-more {
+    padding-left: 10rem;
+  }
+
+  .career-project-more a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    text-decoration: underline;
+    text-decoration-thickness: var(--hairline);
+    text-underline-offset: 0.2em;
+  }
+
+  @media (max-width: 39.99rem) {
+    .career-project[data-picture="true"] .career-project-head {
+      grid-template-columns: 6rem minmax(0, 1fr);
+      gap: 0.75rem;
+    }
+
+    .career-project-picture {
+      width: 6rem;
+      min-height: 5rem;
+    }
+
+    .career-project-text {
+      min-height: 5rem;
+    }
+
+    .career-project details[open] .career-project-picture {
+      height: 5rem;
+    }
+
+    .career-project[data-picture="true"] .career-project-more {
+      padding-left: 6.75rem;
+    }
+  }
+
+  @media print {
+    .career-project-name,
+    .career-project-line {
+      display: block;
+      -webkit-line-clamp: unset;
+    }
   }
 
   @media (min-width: 64rem) {

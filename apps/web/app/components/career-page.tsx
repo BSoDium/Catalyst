@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
-import type { PublishedCareer, PublishedCareerEducation, PublishedCareerRole } from "@catalyst/schemas";
+import type { PublishedCareer, PublishedCareerEducation, PublishedCareerProject, PublishedCareerRole } from "@catalyst/schemas";
 import { ContactForm } from "~/components/contact-form";
 import { Button, Icon } from "~/components/ui";
 import type { IconName } from "~/components/ui/icon";
@@ -388,17 +388,52 @@ function RoleItem({ role, placeKnown, projectKnown, asOf }: { role: PublishedCar
           <h4 className="career-projects-title">Selected work</h4>
           <ul>
             {projects.map((p) => (
-              <li key={p.title} className="career-project" data-picture={p.image ? "true" : "false"}>
-                {p.image && <img src={p.image.src} alt="" width={p.image.width} height={p.image.height} loading="lazy" decoding="async" className="career-project-picture" />}
-                <div className="career-project-text">
-                  <p className="career-project-name">{p.entry && projectKnown(p.entry) ? <Link to={entryPath("project", p.entry)}>{p.title}</Link> : p.title}</p>
-                  <p className="career-project-line">{p.summary}</p>
-                </div>
-              </li>
+              <ProjectItem key={p.title} project={p} href={p.entry && projectKnown(p.entry) ? entryPath("project", p.entry) : null} />
             ))}
           </ul>
         </div>
       )}
+    </li>
+  );
+}
+
+/**
+ * A project of a position: its picture, its title and its line side by side, the two blocks of the same height, the line cut with an ellipsis where it would overflow (owner, 2026-11-03, "a bit like LinkedIn does").
+ * A click on the project (a native `<details>`: it works without the script, with the keyboard, and is announced) opens it: the whole line, and the link to the site's own entry for it when there is one. A line short
+ * enough to be seen whole, with no entry, is not a toggle.
+ */
+const PROJECT_LINE_SHORT = 100;
+function ProjectItem({ project, href }: { project: PublishedCareerProject; href: string | null }) {
+  const body = (
+    <>
+      {project.image && <img src={project.image.src} alt="" width={project.image.width} height={project.image.height} loading="lazy" decoding="async" className="career-project-picture" />}
+      <span className="career-project-text">
+        <span className="career-project-name">{project.title}</span>
+        <span className="career-project-line">{project.summary}</span>
+      </span>
+    </>
+  );
+  const open = href !== null || project.summary.length > PROJECT_LINE_SHORT;
+  if (!open) {
+    return (
+      <li className="career-project" data-picture={project.image ? "true" : "false"}>
+        <div className="career-project-head">{body}</div>
+      </li>
+    );
+  }
+  return (
+    <li className="career-project" data-picture={project.image ? "true" : "false"}>
+      <details>
+        <summary className="career-project-head">{body}</summary>
+        {href && (
+          <p className="career-project-more">
+            <Link to={href}>
+              Open its page
+              <Icon name="arrow-up-right" size="inline" aria-hidden="true" />
+            </Link>
+          </p>
+        )}
+      </details>
     </li>
   );
 }
