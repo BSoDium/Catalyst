@@ -1333,6 +1333,13 @@ export class GlobeRenderer {
       const lined = draw() < ECLIPSE.chance && seed !== null;
       const off = (draw() * 2 - 1) * ECLIPSE.jitterDeg;
       this.eclipseOffset = debug ? 0 : lined ? off : null;
+      // `?eclipse` is also a way to SEE one (owner, 2026-11-03: "how do I reproduce an eclipse?"): the orbit is the aligned one and the moon is HELD in the earth's shadow where it is in the picture (236 degrees of its lap:
+      // dim, a little red, the penumbra), still; `?eclipse=<deg>` holds it elsewhere (the middle of the shadow is at about 216, off the picture's left edge; it is lit again from 250), and `__globeDebug.pinMoon(deg)` moves
+      // it, `pinMoon(null)` lets it run. A held moon does not wait on the frames (the idle globe draws few).
+      if (debug) {
+        const at = Number(new URLSearchParams(location.search).get("eclipse"));
+        this.moonPinned = toRad(at > 0 ? at : 236);
+      }
     }
     if (this.eclipseOffset === null) return base;
     let tilt = this.eclipseTilts.get(aspect);
