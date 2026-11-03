@@ -109,8 +109,7 @@ export interface ListStat {
 }
 
 /**
- * The figures at the top of a list (owner, 2026-11-02, #548: "the top of each entry list is pretty boring"): how many entries (of how many when a tag filters), over how many years they span ("2019 to 2026", one year
- * when it is one) and how many places they are about (the places the list's entries name). Only what is known: no span without a date, no places count without a place. Pure; tested.
+ * The figures at the top of a list (owner, 2026-11-02, #548: "the top of each entry list is pretty boring"): how many entries (of how many when a tag filters), since which year (the first year of the list's dates: "2019", labelled "since"; "year" when all are of one: owner, 2026-11-03, a span "2025\u20132026" was too long for a figure) and how many places they are about (the places the list's entries name). Only what is known: no span without a date, no places count without a place. Pure; tested.
  */
 export function listStats(
   items: readonly Pick<EntrySummary, "date" | "places">[],
@@ -121,7 +120,7 @@ export function listStats(
   if (years.length > 0) {
     const from = Math.min(...years);
     const to = Math.max(...years);
-    stats.push({ value: from === to ? String(from) : `${from}\u2013${to}`, label: from === to ? "year" : "years" });
+    stats.push({ value: String(from), label: from === to ? "year" : "since" });
   }
   const places = new Set(items.flatMap((i) => i.places.map((p) => p.slug)));
   if (places.size > 0) stats.push({ value: String(places.size), label: places.size === 1 ? "place" : "places" });

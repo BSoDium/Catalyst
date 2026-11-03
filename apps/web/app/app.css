@@ -2938,7 +2938,7 @@
 
   /*
    * The figures of a list (owner, 2026-11-02, #548: "the top of each entry list is pretty boring"): the count, the years it spans and the places it is about, each a big light figure over a small mono label (the KPI look of the wall's
-   * captions). On a phone (where the header is the bar's selector and the title is not drawn) they are the head: a strip under the bar between two hairlines, the figures spread over the width. From 56 rem they are at the right of the
+   * captions). On a phone (where the header is the bar's selector and the title is not drawn) they are the head: a strip under the bar over one hairline, the figures spread over the width. From 56 rem they are at the right of the
    * title, on its baseline, so the title keeps its size and the right of the head is not empty.
    */
   .list-stats {
@@ -2948,8 +2948,8 @@
     justify-content: space-between;
     gap: 1rem 2rem;
     margin: 0;
-    padding: 1.25rem 0;
-    border-block: var(--hairline) solid var(--border);
+    padding: 0.5rem 0 1.25rem;
+    border-bottom: var(--hairline) solid var(--border);
   }
 
   .list-stat {
@@ -2980,7 +2980,7 @@
       display: none;
     }
 
-    /* on a phone the strip stays ONE line: the figures a little smaller, the gaps shorter (a long label like "photographs" and a span of years must fit 358 px) */
+    /* on a phone the strip stays ONE line: the figures a little smaller, the gaps shorter (a long label like "photographs" must fit 358 px) */
     .list-stats {
       flex-wrap: nowrap;
       gap: 0.75rem;
@@ -3013,7 +3013,7 @@
       justify-content: flex-end;
       gap: 2.5rem;
       padding: 0 0 0.375rem;
-      border-block: 0;
+      border-bottom: 0;
     }
 
     .list-stat-value {
