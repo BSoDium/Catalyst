@@ -301,6 +301,46 @@ export function eclipseOf(p: Vec3, sun: Vec3): { dark: number; red: number } {
 }
 
 /**
+ * The moon's shadow on the earth (owner, 2026-11-03, #443: "cast the moon's blurred shadow onto the earth when it occludes the sun"). `reach` is the angle (radians, at the ground) inside which the shadow is at full strength, `fall`
+ * the angle where it has faded out (a long blurred fall: the sun is not a point), both before widening by the slant where the sun is low, `strength` the share of the lit ground's light it takes at the deepest.
+ */
+export const MOON_SHADOW = { reach: 0.9, fall: 2.4, strength: 0.85, slant: 0.35 } as const;
+
+/**
+ * Where the moon at `p` (earth-fixed frame, earth radii) puts its shadow on the earth, with the sun in direction `sun` (unit, the same frame): `dir` the unit direction of the shadow's centre on the ground, `reach` and `fall` the
+ * angles of its soft disc (radians), `strength` 0..1. Null when the moon is on the far side of the earth from the sun (no shadow of it falls on the planet) or the line from the sun through the moon misses the planet by more than the shadow's reach.
+ */
+export function moonShadowOn(p: Vec3, sun: Vec3): { dir: Vec3; reach: number; fall: number; strength: number } | null {
+  const along = p[0] * sun[0] + p[1] * sun[1] + p[2] * sun[2];
+  if (along <= 0) return null;
+  const px = p[0] - along * sun[0];
+  const py = p[1] - along * sun[1];
+  const pz = p[2] - along * sun[2];
+  const miss = Math.hypot(px, py, pz);
+  const edge = 1 + MOON.radius * MOON_SHADOW.fall * 2;
+  if (miss >= edge) return null;
+  // the ray from the moon along -sun meets the ground at t = along - sqrt(1 - miss^2); past the limb (miss >= 1) the centre is the limb's point
+  const cos = miss < 1 ? Math.sqrt(1 - miss * miss) : 0;
+  let hit: Vec3;
+  if (miss < 1) {
+    const t = along - cos;
+    hit = [p[0] - t * sun[0], p[1] - t * sun[1], p[2] - t * sun[2]];
+  } else {
+    hit = [px / miss, py / miss, pz / miss];
+  }
+  const len = Math.hypot(hit[0], hit[1], hit[2]) || 1;
+  // (the shadow of a ball of radius r on a ground tilted `cos` to the light is wider by 1 / cos; the slant caps it so the shadow does not stretch to a band at the limb)
+  const widen = 1 / Math.max(cos, MOON_SHADOW.slant);
+  const scale = MOON.radius * widen;
+  return {
+    dir: [hit[0] / len, hit[1] / len, hit[2] / len],
+    reach: MOON_SHADOW.reach * scale,
+    fall: MOON_SHADOW.fall * scale,
+    strength: MOON_SHADOW.strength * (1 - smooth01(0.85, edge, miss)),
+  };
+}
+
+/**
  * The inclination (degrees) of the orbit for a session whose orbit lines up with the sun: the plane (`orbitBasis` at `rollDeg`) is turned about its horizontal axis from `baseDeg` to where it holds the sun's direction (`sun`,
  * in the inertial frame), plus `offsetDeg` off the exact line. The moon then crosses the earth's shadow once a lap.
  */

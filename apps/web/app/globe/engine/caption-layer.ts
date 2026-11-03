@@ -92,7 +92,7 @@ import { buildWordGeometry } from "./cinematic-word";
 import { lonLatToVec3 } from "./geo";
 import { prepareSound, SOUND, startSound, type SoundHandle } from "./cinematic-sound";
 import { OCCLUDER_RADIUS } from "./materials";
-import { NIGHT, NIGHT_GLSL } from "./surface";
+import { NIGHT, NIGHT_GLSL, SHADE_UNIFORMS } from "./surface";
 import { CAPTION, ENERGY, SKY } from "./tuning";
 
 const DEG_ = Math.PI / 180;
@@ -1033,6 +1033,7 @@ export class CaptionLayer {
         uAccentSide: this.accentSide,
         uEdgeLayer: this.edgeLayer,
         uSunN: this.nightSun,
+        ...SHADE_UNIFORMS,
         uNight: this.nightAmt,
         uFlip: this.nightFlip,
         uNightTo: this.nightTo,

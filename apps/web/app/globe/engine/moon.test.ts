@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ECLIPSE, MOON, direction, eclipseInclination, eclipseOf, inclinationFor, inertialPosition, moonAmount, orbitAngle, orbitBasis, litTurn, rollFor, sunDirection, toEarthFrame, toRad, unhidden, visibleBounds, type Vec3 } from "./moon";
+import { ECLIPSE, MOON, direction, eclipseInclination, eclipseOf, inclinationFor, inertialPosition, moonAmount, MOON_SHADOW, moonShadowOn, orbitAngle, orbitBasis, litTurn, rollFor, sunDirection, toEarthFrame, toRad, unhidden, visibleBounds, type Vec3 } from "./moon";
 import { viewBasis } from "./geo";
 
 const dot = (a: Vec3, b: Vec3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
@@ -237,5 +237,35 @@ describe("the earth's shadow on the moon (#443)", () => {
     expect(ECLIPSE.chance).toBeLessThanOrEqual(0.25);
     const roll = rollFor(1);
     for (const off of [-ECLIPSE.jitterDeg, ECLIPSE.jitterDeg]) expect(maxDark(roll, eclipseInclination(roll, inclinationFor(1), sun, off))).toBeGreaterThan(0.2);
+  });
+});
+
+describe("the moon's shadow on the earth (#443)", () => {
+  const s: Vec3 = [0, 0, 1];
+  it("falls on the ground under the moon on the sun line, as wide as the moon, a little more where the sun is low", () => {
+    const sh = moonShadowOn([0, 0, 9], s)!;
+    expect(sh.dir[2]).toBeCloseTo(1);
+    expect(sh.strength).toBeCloseTo(0.85);
+    expect(sh.reach).toBeCloseTo(MOON_SHADOW.reach * MOON.radius);
+    const off = moonShadowOn([0.8, 0, 9], s)!;
+    expect(off.dir[0]).toBeCloseTo(0.8);
+    expect(off.reach).toBeGreaterThan(sh.reach);
+    expect(len(off.dir)).toBeCloseTo(1);
+  });
+
+  it("has none when the moon is behind the earth, and none far off the sun line", () => {
+    expect(moonShadowOn([0, 0, -9], s)).toBeNull();
+    expect(moonShadowOn([3, 0, 9], s)).toBeNull();
+  });
+
+  it("fades out as the moon leaves the line, down to the limb, with no jump", () => {
+    let last = 1;
+    for (let x = 0; x < 1.9; x += 0.05) {
+      const sh = moonShadowOn([x, 0, 9], s);
+      const v = sh?.strength ?? 0;
+      expect(v).toBeLessThanOrEqual(last + 1e-9);
+      last = v;
+    }
+    expect(last).toBeLessThan(0.05);
   });
 });
