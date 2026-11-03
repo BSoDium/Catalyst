@@ -77,7 +77,7 @@ const FRAGMENT = /* glsl */ `
     // the light, in flat steps of the same grey ramp (no blended pixel)
     float lit = floor(smoothstep(${MOON.litFrom.toFixed(3)}, ${MOON.litTo.toFixed(3)}, dot(normalize(vNormal), uSun)) * 3.0 + 0.5) / 3.0;
     // the earth's shadow (#443): the light is taken away softly over the penumbra (re-cut in the same three flat steps), and the dark moon keeps a dim red glow, the light the air bends round the earth
-    lit *= 1.0 - uEclipse.x; // (smooth: the shadow's fall is not cut into the three steps of the light; owner, 2026-11-03: it went "through steps")
+    lit *= 1.0 - uEclipse.x * (1.0 - 0.5 * uFlip); // (half as much on the light page, where the moon is already near the page's own colour: owner, 2026-11-03) // (smooth: the shadow's fall is not cut into the three steps of the light; owner, 2026-11-03: it went "through steps")
     // the ground: the picture read by direction, three tones by brightness with the Earth's cuts, hard
     vec3 n = normalize(vDir);
     vec2 uv = vec2(atan(n.x, n.z) * 0.15915494 + 0.5, asin(clamp(n.y, -1.0, 1.0)) * 0.31830989 + 0.5);
@@ -95,7 +95,7 @@ const FRAGMENT = /* glsl */ `
     vec3 rimCol = mix(mix(uGhost, uOutline, lit), mix(uOutline, mix(uOutline, uBg, ${MOON.burn.toFixed(2)}), lit), uFlip);
     // the red of the air's light, after the darkening and only deep in the shadow: the moon's own tones (the maria and the ground) kept, in a subtle red (not a flat patch of it)
     float lum = clamp(dot(col, vec3(0.299, 0.587, 0.114)) * 3.0, 0.0, 1.0);
-    col = mix(col, uRed * (0.3 + 0.9 * lum), uEclipse.y * 0.55);
+    col = mix(col, uRed * (0.3 + 0.9 * lum), uEclipse.y * (0.55 - 0.3 * uFlip));
     col = mix(col, rimCol, rim);
     gl_FragColor = vec4(col, uAmt);
   }
