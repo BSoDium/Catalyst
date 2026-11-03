@@ -136,6 +136,7 @@ export default function GlobeCanvas({
   onSelect,
   onViewChange,
   onInteract,
+  onLoaded,
 }: GlobeProps) {
   const stageRef = useRef<HTMLDivElement>(null);
   const streetRef = useRef<HTMLDivElement>(null);
@@ -416,6 +417,16 @@ export default function GlobeCanvas({
   useEffect(() => {
     handleRef.current?.setReducedMotion(reducedMotion);
   }, [reducedMotion]);
+
+  // The globe is settled once its first frame is on the screen, or when it is known it will not come (no WebGL, a lost context): the app's loader goes then (`onLoaded`, once).
+  const loadedSent = useRef(false);
+  useEffect(() => {
+    if (loadedSent.current) return;
+    if ((revealed && status === "ready") || status === "unavailable" || status === "lost") {
+      loadedSent.current = true;
+      onLoaded?.();
+    }
+  }, [revealed, status, onLoaded]);
 
   // Fade in from the page colour (the stage itself is transparent over it): opacity only, no layout. Instant when reduced.
   const fade = revealed ? (reducedMotion ? undefined : { transition: `opacity ${HANDOVER.fadeInMs}ms var(--ease-standard, cubic-bezier(0.2, 0, 0, 1))` }) : { opacity: 0 };

@@ -19,6 +19,42 @@
  */
 import { LABEL_TYPE } from "./label-text";
 
+/** A second line cut into its numbers and the words between them (pure, tested): `["2 articles"]` is `[{ text: "2", num: true }, { text: " articles", num: false }]`. */
+export function splitNumbers(text: string): Array<{ text: string; num: boolean }> {
+  const out: Array<{ text: string; num: boolean }> = [];
+  let last = 0;
+  for (const m of text.matchAll(/\d+/g)) {
+    if (m.index! > last) out.push({ text: text.slice(last, m.index), num: false });
+    out.push({ text: m[0], num: true });
+    last = m.index! + m[0].length;
+  }
+  if (last < text.length) out.push({ text: text.slice(last), num: false });
+  return out;
+}
+
+/**
+ * The second line's text with its NUMBERS in a span of their own (`map-label-num`, app.css: the full ink where the words are the muted tone; owner, 2026-11-02, #547): the same characters in the same font, so the width the planner
+ * measured is unchanged. The text content of the line is still the whole string.
+ */
+export function writeSub(el: HTMLElement, text: string): void {
+  const doc = el.ownerDocument as Document | undefined;
+  if (!doc?.createElement || !/\d/.test(text)) {
+    el.textContent = text;
+    return;
+  }
+  el.textContent = "";
+  for (const part of splitNumbers(text)) {
+    if (!part.num) {
+      el.append(doc.createTextNode(part.text));
+      continue;
+    }
+    const num = doc.createElement("span");
+    num.className = "map-label-num";
+    num.textContent = part.text;
+    el.append(num);
+  }
+}
+
 /** How a label is drawn: at rest, hovered or focused (the box colour logic's own state: the text and the plate do not change), or selected (inverted plate). */
 export type LabelMode = "rest" | "hover" | "selected";
 
@@ -119,7 +155,7 @@ export class LabelLayer {
       this.writes++;
     }
     if (v.sub !== s.sub) {
-      s.subEl.textContent = v.sub ?? "";
+      writeSub(s.subEl, v.sub ?? "");
       s.subEl.style.display = v.sub ? "block" : "none"; // a block line of its own height (an inline span would take the parent's line box)
       s.sub = v.sub;
       this.writes++;

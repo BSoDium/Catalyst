@@ -1,4 +1,5 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
+import { GlobeLoader } from "./globe-loader";
 import type { GlobeProps } from "./types";
 
 export { DEFAULT_VIEW_RADIUS_KM, placeFraming } from "./engine/framing";
@@ -38,11 +39,23 @@ const GlobeImpl = lazy(() => import("./globe-canvas"));
  */
 export function Globe(props: GlobeProps) {
   const [mounted, setMounted] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const { onLoaded } = props;
+  const settled = useCallback(() => {
+    setLoaded(true);
+    onLoaded?.();
+  }, [onLoaded]);
   useEffect(() => setMounted(true), []);
-  if (!mounted) return null;
+  // The loader is the FIRST child of one fragment, always: it is in the server's HTML (hidden, CSS shows it after a moment, while the script is still coming) and the same element goes on after hydration. Put anywhere else it was
+  // a new element, and its CSS delay began again from the hydration: it showed up just as the globe was ready (found by the owner, 2026-11-03).
   return (
-    <Suspense fallback={null}>
-      <GlobeImpl {...props} />
-    </Suspense>
+    <>
+      <GlobeLoader done={loaded} insetRight={props.insetRight} />
+      {mounted && (
+        <Suspense fallback={null}>
+          <GlobeImpl {...props} onLoaded={settled} />
+        </Suspense>
+      )}
+    </>
   );
 }
