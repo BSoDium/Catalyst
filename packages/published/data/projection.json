@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "dataVersion": {
-    "commit": "72710749b3133821a4c141b47497894faa43767d",
+    "commit": "c40169e23c60eb25cb5d1e1a24fa09683a34586e",
     "date": "2026-11-03"
   },
   "places": [
@@ -6176,6 +6176,7 @@
       "title": "Kanop Auth",
       "summary": "A unified authentication platform serving all apps across the Kanop ecosystem, built on secure HttpOnly cookie-based sessions with seamless cross-subdomain federation.",
       "date": "2026-03",
+      "url": "https://auth.kanop.io",
       "cover": {
         "src": "/media/project/kanop-auth/cover.b10b086b.webp",
         "alt": "The Kanop Auth sign-in page in a dark theme: a welcome form with email and password fields and a green button to continue to Kanop Chat, next to a panel with an aerial photograph of a forest and the caption Project Design.",
@@ -6208,6 +6209,11 @@
         {
           "type": "paragraph",
           "text": "Redesigned and unified the authentication frontend across all Kanop applications into a centralized SSO system, enabling seamless single sign-on across subdomains with a standardized, modern user experience."
+        },
+        {
+          "type": "link",
+          "title": "Live product",
+          "url": "https://auth.kanop.io"
         }
       ],
       "placeSlugs": [
@@ -6219,6 +6225,7 @@
       "title": "Kanop Chat",
       "summary": "An LLM-powered chat interface for carbon portfolio management, built as a fully-featured Progressive Web App with offline support and a native app experience.",
       "date": "2026-03",
+      "url": "https://chat.kanop.io",
       "cover": {
         "src": "/media/project/kanop-chat/cover.62a1ce68.webp",
         "alt": "Kanop Chat in a dark desktop window: a list of threads at the left, and a conversation about a land cover study, ending with a map of the result coloured by land cover class, with its legend, above a follow-up input.",
@@ -6257,6 +6264,11 @@
         {
           "type": "paragraph",
           "text": "Built and shipped a production LLM-powered in-chat interface for interactive data exploration, featuring real-time streaming Markdown rendering; built a custom marked.js wrapper to stabilize AST-level token output and ensure coherent, flicker-free display, with interactive maps and rich media embedded directly in the chat flow. Shipped with full PWA support including service workers, offline support, and Window Controls Overlay."
+        },
+        {
+          "type": "link",
+          "title": "Live product",
+          "url": "https://chat.kanop.io"
         }
       ],
       "placeSlugs": [
@@ -6268,6 +6280,7 @@
       "title": "Kanop Nature-Based Investment Platform",
       "summary": "The core Kanop platform: a web application for monitoring and analyzing nature-based carbon and biodiversity projects using satellite data and AI.",
       "date": "2023-09",
+      "url": "https://app.kanop.io",
       "cover": {
         "src": "/media/project/kanop-platform/cover.21fdfbad.webp",
         "alt": "A satellite map of a wooded area west of Paris with three polygons coloured by living aboveground biomass from blue to red, a tooltip reading 206.6 t/ha, layer toggles at the top left, a colour scale at the top right and a timeline from 2017 to 2025 at the bottom.",
@@ -6305,6 +6318,11 @@
         {
           "type": "paragraph",
           "text": "Pioneered the design and deployment of SaaS web applications using React, TypeScript, D3.js, and Mapbox GL for advanced geospatial and data visualizations."
+        },
+        {
+          "type": "link",
+          "title": "Live product",
+          "url": "https://app.kanop.io"
         }
       ],
       "placeSlugs": [
@@ -10107,7 +10125,7 @@
         "org": "Macrodata Labs",
         "orgUrl": "https://macrodata.co",
         "logo": {
-          "src": "/media/career/logo.831ad92e.webp",
+          "src": "/media/career/logo.de394a96.webp",
           "width": 200,
           "height": 200
         },
