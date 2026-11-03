@@ -3768,15 +3768,24 @@ h1[tabindex="-1"]:focus-visible {
   justify-content: center;
   gap: 1rem;
   pointer-events: none;
+  isolation: isolate;
   /* hidden until it has been waited for (`LOADER.delayMs`, 450 ms): the delay runs from the first paint, so it is there while the script is still on its way and a quick load never shows it */
   opacity: 0;
   animation: globe-loader-in 280ms var(--ease-standard) 450ms both;
 }
 
-.globe-loader[data-phase="leaving"] {
-  opacity: 0;
-  transition: opacity 320ms var(--ease-standard);
-  animation: none;
+/* The soft backdrop (owner, 2026-11-03: "if it overlaps the globe for a while it should have a soft backdrop, a bit like the navbar"): a plate of the page's colour, blurred behind it and feathered to nothing at its edge by a radial
+   mask (no box, no edge: the desktop bar's scrim), so the ring and the words read over a half-drawn globe */
+.globe-loader::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: color-mix(in srgb, var(--background) 78%, transparent);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  -webkit-mask-image: radial-gradient(ellipse 46% 34% at 50% 50%, #000 0%, rgb(0 0 0 / 0.85) 38%, rgb(0 0 0 / 0.4) 68%, transparent 100%);
+  mask-image: radial-gradient(ellipse 46% 34% at 50% 50%, #000 0%, rgb(0 0 0 / 0.85) 38%, rgb(0 0 0 / 0.4) 68%, transparent 100%);
 }
 
 .globe-loader-ring {
@@ -3838,10 +3847,6 @@ h1[tabindex="-1"]:focus-visible {
   .globe-loader {
     animation-duration: 1ms;
     transition: none;
-  }
-
-  .globe-loader[data-phase="leaving"] {
-    opacity: 0;
   }
 
   .globe-loader-ring i {

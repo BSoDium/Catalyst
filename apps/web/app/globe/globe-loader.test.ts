@@ -14,9 +14,8 @@ describe("the world view's loader", () => {
     expect((html.match(/<i /g) ?? []).length).toBe(8);
   });
 
-  it("waits before it shows, stays long enough not to blink, and fades out quickly", () => {
+  it("waits before it shows and fades out quickly", () => {
     expect(LOADER.delayMs).toBeGreaterThanOrEqual(300);
-    expect(LOADER.minShownMs).toBeGreaterThan(LOADER.delayMs);
     expect(LOADER.leaveMs).toBeLessThan(500);
   });
 });

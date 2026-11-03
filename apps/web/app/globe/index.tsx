@@ -46,15 +46,16 @@ export function Globe(props: GlobeProps) {
     onLoaded?.();
   }, [onLoaded]);
   useEffect(() => setMounted(true), []);
-  // (the loader is in the server's HTML, hidden: CSS shows it after a moment, while the script is still coming; the globe itself is client only)
-  if (!mounted) return <GlobeLoader done={false} insetRight={props.insetRight} />;
+  // The loader is the FIRST child of one fragment, always: it is in the server's HTML (hidden, CSS shows it after a moment, while the script is still coming) and the same element goes on after hydration. Put anywhere else it was
+  // a new element, and its CSS delay began again from the hydration: it showed up just as the globe was ready (found by the owner, 2026-11-03).
   return (
     <>
-      <Suspense fallback={null}>
-        <GlobeImpl {...props} onLoaded={settled} />
-      </Suspense>
-      {/* While the renderer's code loads and the first frame is drawn (and only if that takes a moment): a loader, so a slow device shows neither nothing nor a half-built scene (#545). */}
       <GlobeLoader done={loaded} insetRight={props.insetRight} />
+      {mounted && (
+        <Suspense fallback={null}>
+          <GlobeImpl {...props} onLoaded={settled} />
+        </Suspense>
+      )}
     </>
   );
 }
