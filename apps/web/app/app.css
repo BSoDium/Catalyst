@@ -7213,9 +7213,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   /* The projects of a position (#531): a row of their own under the head and the detail, across the whole width of the item (owner, 2026-11-03: not a column on the left, which
      made the left side tall and the right one short), in two columns from 64 rem. No rules between them (owner: not too many dividers): the space does it. A project is a title
      and a line, with its picture at the left when it has one. */
-  .career-projects {
-    margin: 1.75rem 0 0;
-  }
+
 
   .career-projects-title {
     margin: 0 0 0.875rem;
@@ -7240,6 +7238,12 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
      even though they could have enough space"). The project is a link to its entry when there is one. */
   .career-projects {
     --project-h: 5.75rem;
+    margin-top: 1.25rem;
+  }
+
+  /* (more room after a position that has projects than between two others: its projects must not read as the next position's) */
+  .career-item:has(> .career-projects):not(:last-child) {
+    padding-bottom: 4.75rem;
   }
 
   .career-project-head {
@@ -7345,7 +7349,11 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   @media (min-width: 64rem) {
     .career-item > .career-projects {
       grid-column: 1 / -1;
-      margin-top: 2.25rem;
+      margin-top: 1.5rem;
+    }
+
+    .career-item:has(> .career-projects):not(:last-child) {
+      padding-bottom: 5.5rem;
     }
 
     /* (the two columns are the item's own: a project at the right starts where the highlights do) */
