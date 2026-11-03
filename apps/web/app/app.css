@@ -6562,7 +6562,6 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   .contact-control {
     /* SOLID tones (a mix with the page's colour, never a translucent one: where two strokes meet, at a corner of the message's box, they must not add up to a darker patch) */
     --contact-line: color-mix(in srgb, var(--foreground) 50%, var(--background));
-    --art-px: 2.5px;
     position: relative;
     display: flex;
     border-bottom: var(--hairline) solid var(--contact-line);
@@ -6629,21 +6628,13 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     box-shadow: 0 1px 0 0 var(--contact-line);
   }
 
-  /* One art pixel of the globe, in CSS px (the engine's `ART_PIXEL`: 2.5 on a desktop, 2 under 520 px of width or on a 1x screen), the thickness of the message box's dashes and corners */
-  @media (max-width: 519.98px), (max-resolution: 1dppx) {
-    .contact-control {
-      --art-px: 2px;
-    }
-  }
-
   .contact-control:focus-within .contact-input:focus ~ .contact-label {
     color: var(--signal-text);
   }
 
   /*
    * The message is a BOX of the map's look (the bounding boxes of the globe: owner, 2026-11-02, #536): a dashed edge and solid corner arms, hollow, in the line's SOLID colour (`--contact-line`: the half ink at rest, the full ink
-   * under the pointer, the signal colour on focus, the error red when invalid). Drawn with gradients (no border: the dashes are anchored to the box's edges, as the map's are), ALL of one thickness, one art pixel of the
-   * globe (`--art-px`), the corners 6 pixels long, the dashes 3 pixels with a gap of 2. The label starts inside it.
+   * under the pointer and on focus, the error red when invalid). Drawn with gradients (no border), all of one thickness, in whole CSS pixels (below). Its label is a map label's, above it.
    */
   .contact-control[data-field="message"] {
     /* every stroke is the thickness of the underlines of the fields above (the hairline; the same two hairlines on focus, as theirs) and every length is a whole number of CSS px, so whole device pixels at 1x, 2x and 3x:
