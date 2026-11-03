@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MOON, direction, inclinationFor, inertialPosition, moonAmount, orbitAngle, orbitBasis, litTurn, rollFor, sunDirection, toEarthFrame, toRad, unhidden, visibleBounds, type Vec3 } from "./moon";
+import { ECLIPSE, MOON, direction, eclipseInclination, eclipseOf, inclinationFor, inertialPosition, moonAmount, MOON_SHADOW, moonShadowOn, orbitAngle, orbitBasis, litTurn, rollFor, sunDirection, toEarthFrame, toRad, unhidden, visibleBounds, type Vec3 } from "./moon";
 import { viewBasis } from "./geo";
 
 const dot = (a: Vec3, b: Vec3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
@@ -194,5 +194,69 @@ describe("visibleBounds", () => {
 
   it("is null once the planet covers the whole moon", () => {
     expect(visibleBounds(moon, { x: 100, y: 100, r: 80 })).toBeNull();
+  });
+});
+
+describe("the earth's shadow on the moon (#443)", () => {
+  const sun = sunDirection();
+  const maxDark = (roll: number, incl: number) => {
+    const basis = orbitBasis(roll, incl);
+    let best = 0;
+    for (let a = 0; a < 360; a += 0.5) best = Math.max(best, eclipseOf(inertialPosition((a * Math.PI) / 180, basis), sun).dark);
+    return best;
+  };
+
+  it("never darkens the moon on its usual orbit, at any window", () => {
+    for (const aspect of [0.5, 1, 1.6]) expect(maxDark(rollFor(aspect), inclinationFor(aspect))).toBe(0);
+  });
+
+  it("darkens it, but not to nothing, on an orbit lined up with the sun, and softly: a penumbra, not an edge", () => {
+    for (const aspect of [0.5, 1, 1.6]) {
+      const roll = rollFor(aspect);
+      const incl = eclipseInclination(roll, inclinationFor(aspect), sun, 0);
+      const best = maxDark(roll, incl);
+      expect(best).toBeGreaterThan(0.85);
+      expect(best).toBeLessThan(1);
+    }
+    // along a line out of the shadow's axis the fall is smooth and monotonic
+    let last = 2;
+    for (let d = 0; d <= 3; d += 0.1) {
+      const p: [number, number, number] = [-sun[0] * 9 + d * 0, -sun[1] * 9 + d, -sun[2] * 9];
+      const { dark } = eclipseOf([p[0], p[1], p[2]], sun);
+      expect(dark).toBeLessThanOrEqual(last + 1e-9);
+      last = dark;
+    }
+    expect(eclipseOf([-sun[0] * 9, -sun[1] * 9, -sun[2] * 9], sun).dark).toBeGreaterThan(0.85);
+  });
+
+  it("does nothing on the sun's side of the earth", () => {
+    expect(eclipseOf([sun[0] * 9, sun[1] * 9, sun[2] * 9], sun)).toEqual({ dark: 0, red: 0 });
+  });
+
+  it("is rare: a quarter of the sessions at most, and the offset keeps the moon in or at the edge of the shadow", () => {
+    expect(ECLIPSE.chance).toBeLessThanOrEqual(0.25);
+    const roll = rollFor(1);
+    for (const off of [-ECLIPSE.jitterDeg, ECLIPSE.jitterDeg]) expect(maxDark(roll, eclipseInclination(roll, inclinationFor(1), sun, off))).toBeGreaterThan(0.2);
+  });
+});
+
+describe("the moon's shadow on the earth (#443)", () => {
+  const s: Vec3 = [0, 0, 1];
+  it("is a soft cylinder along the sun line through the moon: its axis is the moon's offset across the rays, as wide as the moon", () => {
+    const sh = moonShadowOn([0, 0, 9], s)!;
+    expect(len(sh.axis)).toBeCloseTo(0);
+    expect(sh.strength).toBeCloseTo(MOON_SHADOW.strength);
+    expect(sh.reach).toBeCloseTo(MOON_SHADOW.reach * MOON.radius);
+    expect(sh.fall).toBeGreaterThan(sh.reach);
+    const off = moonShadowOn([0.8, 0.3, 9], s)!;
+    expect(off.axis).toEqual([0.8, 0.3, 0]);
+    // the same size wherever it falls: it stretches on the ground by the shading's geometry, it does not grow
+    expect(off.reach).toBe(sh.reach);
+  });
+
+  it("has none when the moon is behind the earth, and none when the line misses the ground by more than the soft edge", () => {
+    expect(moonShadowOn([0, 0, -9], s)).toBeNull();
+    expect(moonShadowOn([3, 0, 9], s)).toBeNull();
+    expect(moonShadowOn([1 + MOON.radius * MOON_SHADOW.fall - 0.01, 0, 9], s)).not.toBeNull();
   });
 });

@@ -3870,6 +3870,11 @@ h1[tabindex="-1"]:focus-visible {
   outline: none;
 }
 
+/* the eclipse's debug page (`?eclipse`, engine/renderer.ts): the hero is hidden, the held moon is behind its name (#443) */
+html[data-eclipse] .landing-hero {
+  visibility: hidden;
+}
+
 /*
  * The world view's loader (components: globe/globe-loader.tsx; #545): a 3 x 3 ring of square pixels (4 px cells, 2 px apart) with one lit cell and a trail of three behind it going round, stepped (no turning, no
  * anti-aliasing: whole device pixels), and "Loading world view" under it in the labels' mono, small, wide-spaced capitals in the muted tone. Over the globe's area (`right` is the panel's share), under

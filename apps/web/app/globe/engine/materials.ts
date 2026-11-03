@@ -10,7 +10,7 @@ import { STRAIGHT_FADE_MIX, STRAIGHT_FADE_STEPS } from "../paths/thin";
 import { SPARK, TRAIL_BANDS, TRAIL_ENTRIES, TRAIL_PER_PALETTE } from "../paths/trail";
 import { RIM, SUN } from "./moon";
 import { WARM_GLSL } from "./sun-flare";
-import { LIGHTS, NIGHT, NIGHT_GLSL, SURFACE } from "./surface";
+import { LIGHTS, NIGHT, NIGHT_GLSL, SHADE_UNIFORMS, SURFACE } from "./surface";
 
 /** The lines' vertex shader: the ground point (the scene is in the earth's frame, a line's vertices are on the unit sphere) goes to the fragment. */
 const LIT_VERTEX = /* glsl */ `
@@ -31,7 +31,7 @@ export const DITHER_GLSL = /* glsl */ `
 export function lineMaterial(coverage: number, stipple = 0): ShaderMaterial {
   return new ShaderMaterial({
     // `uAlt` / `uAltAmt`: the colour the line is taken towards (the borders, over the land the interlude fills, are the page's colour: the fill is the ink's)
-    uniforms: { uColor: { value: new Color() }, uCoverage: { value: coverage }, uStipple: { value: stipple }, uAlt: { value: new Color() }, uAltAmt: { value: 0 }, uSunN: { value: [0, 0, 1] }, uNight: { value: 0 }, uFlip: { value: 0 }, uNightTo: { value: new Color() } },
+    uniforms: { uColor: { value: new Color() }, uCoverage: { value: coverage }, uStipple: { value: stipple }, uAlt: { value: new Color() }, uAltAmt: { value: 0 }, uSunN: { value: [0, 0, 1] }, ...SHADE_UNIFORMS, uNight: { value: 0 }, uFlip: { value: 0 }, uNightTo: { value: new Color() } },
     vertexShader: LIT_VERTEX,
     fragmentShader: /* glsl */ `
       uniform vec3 uColor; uniform float uCoverage; uniform float uStipple; uniform vec3 uAlt; uniform float uAltAmt; uniform vec3 uSunN; uniform float uNight; uniform float uFlip; uniform vec3 uNightTo;
@@ -63,7 +63,7 @@ export function occluderMaterial(): ShaderMaterial {
     //  - the SEA near the limb on the lit side has a thin dithered glow (the atmosphere), in the same ink, thinning to nothing.
     // The dither is the one the lines use (`dither4` on the buffer's own pixels, which are the art's). `uLand` is how much of all this is there (0: none, the
     // globe as it always was).
-    uniforms: { uColor: { value: new Color() }, uFill: { value: new Color() }, uLand: { value: 0 }, uLandMap: { value: null }, uSun: { value: [0, 0, 1] }, uNight: { value: 0 }, uSunN: { value: [0, 0, 1] }, uFlip: { value: 0 } },
+    uniforms: { uColor: { value: new Color() }, uFill: { value: new Color() }, uLand: { value: 0 }, uLandMap: { value: null }, uSun: { value: [0, 0, 1] }, uNight: { value: 0 }, uSunN: { value: [0, 0, 1] }, ...SHADE_UNIFORMS, uFlip: { value: 0 } },
     vertexShader: /* glsl */ `
       varying vec3 vDir;
       void main() { vDir = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
@@ -128,7 +128,7 @@ const MIST_GLSL = /* glsl */ `
 
 export function atmosphereMaterial(): ShaderMaterial {
   return new ShaderMaterial({
-    uniforms: { uColor: { value: new Color() }, uAmt: { value: 0 }, uSun: { value: [0, 0, 1] }, uShell: { value: 1.03 }, uPower: { value: 1.6 }, uCover: { value: 0.5 }, uNight: { value: 0 }, uSunN: { value: [0, 0, 1] }, uFlip: { value: 0 } },
+    uniforms: { uColor: { value: new Color() }, uAmt: { value: 0 }, uSun: { value: [0, 0, 1] }, uShell: { value: 1.03 }, uPower: { value: 1.6 }, uCover: { value: 0.5 }, uNight: { value: 0 }, uSunN: { value: [0, 0, 1] }, ...SHADE_UNIFORMS, uFlip: { value: 0 } },
     vertexShader: /* glsl */ `
       varying vec3 vPos;
       void main() { vPos = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
@@ -209,7 +209,7 @@ const RIM_SUN_GLSL = /* glsl */ `
  */
 export function rimMaterial(): ShaderMaterial {
   return new ShaderMaterial({
-    uniforms: { uColor: { value: new Color() }, uSet: { value: 0 }, uAmt: { value: 1 }, uShell: { value: 1 + RIM.shell }, uCover: { value: RIM.cover.dark }, uNight: { value: 0 }, uSunN: { value: [0, 0, 1] }, uFlip: { value: 0 } },
+    uniforms: { uColor: { value: new Color() }, uSet: { value: 0 }, uAmt: { value: 1 }, uShell: { value: 1 + RIM.shell }, uCover: { value: RIM.cover.dark }, uNight: { value: 0 }, uSunN: { value: [0, 0, 1] }, ...SHADE_UNIFORMS, uFlip: { value: 0 } },
     vertexShader: /* glsl */ `
       varying vec3 vPos;
       void main() { vPos = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
@@ -256,7 +256,7 @@ export function rimMaterial(): ShaderMaterial {
  */
 export function rimGroundMaterial(): ShaderMaterial {
   return new ShaderMaterial({
-    uniforms: { uColor: { value: new Color() }, uSet: { value: 0 }, uAmt: { value: 1 }, uNight: { value: 0 }, uSunN: { value: [0, 0, 1] }, uFlip: { value: 0 } },
+    uniforms: { uColor: { value: new Color() }, uSet: { value: 0 }, uAmt: { value: 1 }, uNight: { value: 0 }, uSunN: { value: [0, 0, 1] }, ...SHADE_UNIFORMS, uFlip: { value: 0 } },
     vertexShader: /* glsl */ `
       varying vec3 vPos;
       void main() { vPos = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
@@ -296,7 +296,7 @@ export function rimGroundMaterial(): ShaderMaterial {
  */
 export function twilightMaterial(): ShaderMaterial {
   return new ShaderMaterial({
-    uniforms: { uAmt: { value: 1 }, uNight: { value: 0 }, uSunN: { value: [0, 0, 1] }, uFlip: { value: 0 } },
+    uniforms: { uAmt: { value: 1 }, uNight: { value: 0 }, uSunN: { value: [0, 0, 1] }, ...SHADE_UNIFORMS, uFlip: { value: 0 } },
     vertexShader: /* glsl */ `
       varying vec3 vPos;
       void main() { vPos = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
@@ -327,7 +327,7 @@ export function twilightMaterial(): ShaderMaterial {
 
 export function mistMaterial(): ShaderMaterial {
   return new ShaderMaterial({
-    uniforms: { uColor: { value: new Color() }, uAmt: { value: 0 }, uCover: { value: 0.85 }, uNight: { value: 0 }, uSunN: { value: [0, 0, 1] }, uFlip: { value: 0 } },
+    uniforms: { uColor: { value: new Color() }, uAmt: { value: 0 }, uCover: { value: 0.85 }, uNight: { value: 0 }, uSunN: { value: [0, 0, 1] }, ...SHADE_UNIFORMS, uFlip: { value: 0 } },
     vertexShader: /* glsl */ `
       varying vec3 vPos;
       void main() { vPos = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
@@ -378,7 +378,7 @@ export function surfaceMaterial(): ShaderMaterial {
       uAmt: { value: 0 },
       uEarth: { value: null },
       uLandMap: { value: null },
-      uSunN: { value: [0, 0, 1] },
+      uSunN: { value: [0, 0, 1] }, ...SHADE_UNIFORMS,
       uNight: { value: 0 },
       uFlip: { value: 0 },
     },
@@ -427,7 +427,7 @@ export function surfaceMaterial(): ShaderMaterial {
  */
 export function lightsMaterial(): ShaderMaterial {
   return new ShaderMaterial({
-    uniforms: { uColor: { value: new Color() }, uCore: { value: new Color() }, uBg: { value: new Color() }, uRamp0: { value: new Color() }, uRamp1: { value: new Color() }, uRamp2: { value: new Color() }, uLights: { value: null }, uSize: { value: [2048, 1024] }, uCover: { value: 1 }, uSunN: { value: [0, 0, 1] }, uNight: { value: 0 }, uFlip: { value: 0 } },
+    uniforms: { uColor: { value: new Color() }, uCore: { value: new Color() }, uBg: { value: new Color() }, uRamp0: { value: new Color() }, uRamp1: { value: new Color() }, uRamp2: { value: new Color() }, uLights: { value: null }, uSize: { value: [2048, 1024] }, uCover: { value: 1 }, uSunN: { value: [0, 0, 1] }, ...SHADE_UNIFORMS, uNight: { value: 0 }, uFlip: { value: 0 } },
     vertexShader: /* glsl */ `
       varying vec3 vDir;
       void main() { vDir = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
@@ -604,7 +604,7 @@ export function pathMaterial(): ShaderMaterial {
       uFar: { value: 0 },
       uTickOn: { value: 1 },
       uNight: { value: 0 },
-      uSunN: { value: [0, 0, 1] },
+      uSunN: { value: [0, 0, 1] }, ...SHADE_UNIFORMS,
       uFlip: { value: 0 },
     },
     depthTest: false,
@@ -755,7 +755,7 @@ export function silhouetteMaterial(): ShaderMaterial {
       uE: { value: [1, 0, 0] },
       uN: { value: [0, 1, 0] },
       uInvD: { value: 0.2 },
-      uSunN: { value: [0, 0, 1] },
+      uSunN: { value: [0, 0, 1] }, ...SHADE_UNIFORMS,
       uNight: { value: 0 },
       uFlip: { value: 0 },
       uNightTo: { value: new Color() },

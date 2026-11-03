@@ -39,7 +39,8 @@ export const MOON = {
   narrowAspect: 0.75,
   wideAspect: 1.15,
   /** One lap, ms. It is in the picture for a few seconds of each lap, at the planet's sides: a thing to catch, not to wait for. */
-  periodMs: 240_000,
+  // (360 s, it was 240: owner, 2026-11-03, "it goes by so fast")
+  periodMs: 360_000,
   /** Where the orbit starts (on the camera's side, behind the camera: not in the picture when the page opens), and where the moon stands when it does not move (reduced motion): beside the planet on the left, small. */
   startDeg: 100,
   restDeg: 254,
@@ -270,6 +271,74 @@ export function orbitBasis(rollDeg: number, inclinationDeg: number = MOON.inclin
   const s = Math.sin(toRad(inclinationDeg));
   const c = Math.cos(toRad(inclinationDeg));
   return { e1: b.east, e2: [b.north[0] * s + b.c[0] * c, b.north[1] * s + b.c[1] * c, b.north[2] * s + b.c[2] * c] };
+}
+
+/**
+ * The moon in the earth's shadow (owner, 2026-11-02, #443: "eclipsed by the earth now and then", with a penumbra, "the moon must not go instantly and completely dark"). The shadow is a cylinder of the earth's radius behind it, away from the
+ * sun, with a wide soft edge: `umbra` is the radius (earth radii) inside which the moon is in the deepest shadow, `penumbra` the one where the shadow ends, `shadowDark` how much of its light the moon loses at the deepest (it keeps a
+ * little: the red light of the earth's air), `chance` the share of sessions whose orbit lines up with the sun (the draw is the session's seed: most orbits never meet the shadow), `jitterDeg` how far off the exact line such an orbit is
+ * (so the moon crosses the shadow's edge or its middle), `scanDeg` the range the alignment is searched in.
+ */
+export const ECLIPSE = { umbra: 1, penumbra: 2.7, shadowDark: 0.93, chance: 0.25, jitterDeg: 6, scanDeg: 70 } as const;
+
+const smooth01 = (a: number, b: number, x: number): number => {
+  const t = clamp((x - a) / (b - a), 0, 1);
+  return t * t * (3 - 2 * t);
+};
+
+/**
+ * How much the earth's shadow takes from the moon at `p` (the moon's centre, earth radii) with the sun in direction `sun` (unit, the same frame): `dark` 0..1 the share of its light lost (soft: the penumbra is a long fall, not an edge) and
+ * `red` 0..1 the reddish light the air bends round the earth: it comes AFTER the darkening, only in the deep of the shadow. 0 and 0 on the sun's side of the earth, and anywhere out of the shadow.
+ */
+export function eclipseOf(p: Vec3, sun: Vec3): { dark: number; red: number } {
+  const behind = -(p[0] * sun[0] + p[1] * sun[1] + p[2] * sun[2]);
+  if (behind <= 0) return { dark: 0, red: 0 };
+  const qx = p[0] + behind * sun[0];
+  const qy = p[1] + behind * sun[1];
+  const qz = p[2] + behind * sun[2];
+  const depth = 1 - smooth01(ECLIPSE.umbra - MOON.radius, ECLIPSE.penumbra, Math.hypot(qx, qy, qz));
+  // the darkening comes first, over the whole penumbra; the red only in the deep of it (the moon behind a blurred disc whose shadow is a little red: owner, 2026-11-03)
+  return { dark: depth * ECLIPSE.shadowDark, red: smooth01(0.45, 1, depth) };
+}
+
+/**
+ * The moon's shadow on the earth (owner, 2026-11-03, #443: "cast the moon's blurred shadow onto the earth when it occludes the sun"; then "it becomes insanely large instead of just stretching", at the edges). The shadow is a
+ * cylinder of light's absence along the sun line through the moon, with a soft edge: `reach` is the radius (earth radii, across the sun's rays) inside which it is at full strength, `fall` the one where it has faded out, `strength`
+ * the share of the lit ground's light it takes at the deepest. The ground is shaded by its distance from the cylinder's axis, so that where the sun is low it STRETCHES along the ground, as a real shadow does, with no limit but the limb.
+ */
+export const MOON_SHADOW = { reach: 0.9, fall: 2.4, strength: 0.85 } as const;
+
+/**
+ * The moon's shadow on the earth, for the moon at `p` (earth-fixed frame, earth radii) and the sun in direction `sun` (unit, the same frame): `axis` is where the line from the sun through the moon crosses the plane through the earth's centre
+ * across the sun's rays (a vector in that plane: a ground point `n` is in the shadow by how near `n - (n . sun) sun` is to it, `reach` and `fall` the radii of the soft disc in that plane, earth radii), `strength` 0..1. Null when the moon
+ * is on the far side of the earth from the sun, or the line misses the ground by more than the shadow's soft edge.
+ */
+export function moonShadowOn(p: Vec3, sun: Vec3): { axis: Vec3; reach: number; fall: number; strength: number } | null {
+  const along = p[0] * sun[0] + p[1] * sun[1] + p[2] * sun[2];
+  if (along <= 0) return null;
+  const axis: Vec3 = [p[0] - along * sun[0], p[1] - along * sun[1], p[2] - along * sun[2]];
+  const fall = MOON.radius * MOON_SHADOW.fall;
+  if (Math.hypot(...axis) >= 1 + fall) return null;
+  return { axis, reach: MOON.radius * MOON_SHADOW.reach, fall, strength: MOON_SHADOW.strength };
+}
+
+/**
+ * The inclination (degrees) of the orbit for a session whose orbit lines up with the sun: the plane (`orbitBasis` at `rollDeg`) is turned about its horizontal axis from `baseDeg` to where it holds the sun's direction (`sun`,
+ * in the inertial frame), plus `offsetDeg` off the exact line. The moon then crosses the earth's shadow once a lap.
+ */
+export function eclipseInclination(rollDeg: number, baseDeg: number, sun: Vec3, offsetDeg: number): number {
+  let best = baseDeg;
+  let least = Infinity;
+  for (let d = -ECLIPSE.scanDeg; d <= ECLIPSE.scanDeg; d += 0.25) {
+    const { e1, e2 } = orbitBasis(rollDeg, baseDeg + d);
+    const n: Vec3 = [e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]];
+    const off = Math.abs(n[0] * sun[0] + n[1] * sun[1] + n[2] * sun[2]);
+    if (off < least) {
+      least = off;
+      best = baseDeg + d;
+    }
+  }
+  return best + offsetDeg;
 }
 
 /** The orbit's angle for `activeMs` of running, radians. */
