@@ -30,7 +30,7 @@ import { cellCssFor, cellDevicePx, EasedValue, revealRadiusDevice } from "./core
 import { isPmtilesUrl, type SourceDescriptor } from "./core/source-descriptor";
 import { TileSourceManager, type SourceId, type TileStatus } from "./core/tile-source-manager";
 import { legFeatures, legHeads, legKeysAt } from "./core/routes";
-import { LEG_MODES, MODE_STYLE } from "../paths/modes";
+import { LEG_MODES } from "../paths/modes";
 import { Compositor, type OutputSize } from "./gl/compositor";
 import type { WarpCamera } from "./core/warp";
 import { buildPalette } from "./core/palette";
@@ -195,7 +195,7 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
   let pathsOn = opts.paths !== false;
   const applyFocus = () => {
     for (const mode of LEG_MODES) {
-      for (const id of [routeLayerId("routes-focus", mode), ...(MODE_STYLE[mode].tick ? [routeLayerId("routes-focus", mode, true)] : [])]) {
+      for (const id of [routeLayerId("routes-focus", mode)]) {
         if (map.getLayer(id)) map.setFilter(id, focusFilter(mode, focusKeys));
       }
     }

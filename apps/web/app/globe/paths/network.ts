@@ -251,8 +251,6 @@ export interface PathBuffers {
   dist: Float32Array;
   /** Per vertex: leg id, mode id, the leg's length in radians, the route's palette index. The position along the leg (0 origin, 1 destination) is `dist / length`: the same number as a stored fraction, one attribute less. */
   info: Float32Array;
-  /** Unit tangent of the path at the vertex (the direction a rail tick is drawn across). */
-  tangent: Float32Array;
   /** Line segments, vertex pairs, grouped by level. */
   index: Uint32Array;
   /** Where each level's segments are in `index` (counts are in indices, 2 per segment). */
@@ -277,7 +275,6 @@ function buildBuffersUncached(net: PathNetwork): PathBuffers {
   const position = new Float32Array(vertexCount * 3);
   const dist = new Float32Array(vertexCount);
   const info = new Float32Array(vertexCount * 4);
-  const tangent = new Float32Array(vertexCount * 3);
   const base: number[] = [];
   let v = 0;
   for (const leg of net.legs) {
@@ -301,13 +298,6 @@ function buildBuffersUncached(net: PathNetwork): PathBuffers {
       info[q4 + 1] = MODE_STYLE[leg.mode].id;
       info[q4 + 2] = lenRad;
       info[q4 + 3] = leg.palette;
-      const p = lonLatToVec3(leg.lonlat[Math.max(0, k - 1) * 2]!, leg.lonlat[Math.max(0, k - 1) * 2 + 1]!);
-      const q = lonLatToVec3(leg.lonlat[Math.min(n - 1, k + 1) * 2]!, leg.lonlat[Math.min(n - 1, k + 1) * 2 + 1]!);
-      const tx = q[0] - p[0], ty = q[1] - p[1], tz = q[2] - p[2];
-      const tl = Math.hypot(tx, ty, tz) || 1;
-      tangent[o] = tx / tl;
-      tangent[o + 1] = ty / tl;
-      tangent[o + 2] = tz / tl;
     }
     v += n;
   }
@@ -328,5 +318,5 @@ function buildBuffersUncached(net: PathNetwork): PathBuffers {
     levels.push({ start: at, count: lists[L]!.length, tolM: LOD_TOLERANCES_M[L]! });
     at += lists[L]!.length;
   }
-  return { position, dist, info, tangent, index, levels, vertexCount, legCount: net.legs.length };
+  return { position, dist, info, index, levels, vertexCount, legCount: net.legs.length };
 }

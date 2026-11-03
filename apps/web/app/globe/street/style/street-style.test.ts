@@ -101,11 +101,10 @@ describe("buildStreetStyle", () => {
             expect(l.paint["circle-opacity"], id).toBe(1);
             continue;
           }
-          const tick = id.endsWith("-tick");
-          expect(l.paint["line-width"], id).toBe((tick ? 3 : 1) * cell);
+          expect(l.paint["line-width"], id).toBe(cell);
           expect(l.paint["line-opacity"], id).toBe(1); // opaque: a path overwrites what it crosses; thin ones are marked by B instead of by R = 0.75
           const dash = l.paint["line-dasharray"] as number[] | undefined;
-          if (dash && !tick) expect(dash[0], id).toBeGreaterThanOrEqual(1.42);
+          if (dash) expect(dash[0], id).toBeGreaterThanOrEqual(1.42);
         }
       });
       it("colours the faint roads by one gradient layer per palette (tail to head, solid bands) and every other mode by its palette's head band", () => {
@@ -120,8 +119,12 @@ describe("buildStreetStyle", () => {
           expect(stops[2]).toBe(routeColor(trailLevel(p, 0)));
           expect(stops[stops.length - 1]).toBe(routeColor(trailLevel(p, TRAIL_BANDS - 1)));
         }
-        const rail = JSON.stringify(paint("routes-faint-rail")["line-color"]);
-        for (let p = 0; p < PALETTE_COUNT; p++) expect(rail).toContain(routeColor(trailLevel(p, TRAIL_BANDS - 1)));
+        // a rail is a solid line like a road: it takes the gradient too (no layer of its own when faint)
+        const gradientFilter = (s.layers.find((x) => x.id === routeGradientId(0)) as unknown as { filter: unknown }).filter;
+        expect(JSON.stringify(gradientFilter)).toContain('"rail"');
+        expect(s.layers.some((x) => x.id === "routes-faint-rail")).toBe(false);
+        const ferry = JSON.stringify(paint("routes-faint-ferry")["line-color"]);
+        for (let p = 0; p < PALETTE_COUNT; p++) expect(ferry).toContain(routeColor(trailLevel(p, TRAIL_BANDS - 1)));
         expect(JSON.stringify(paint("routes-focus")["line-color"])).toContain(routeColor(trailLevel(2, "lit")));
         expect(JSON.stringify(paint(ROUTE_HEAD_ID)["circle-color"])).toContain(lineColor(trailLevel(3, "spark")));
         // every dashed mode has no gradient
@@ -132,21 +135,18 @@ describe("buildStreetStyle", () => {
       it("pins the pattern of each mode to the table the globe's shader reads", () => {
         const dash = (id: string) => (s.layers.find((x) => x.id === id) as { paint: Record<string, unknown> }).paint["line-dasharray"];
         expect(dash("routes-focus")).toBeUndefined();
-        expect(dash("routes-faint-rail")).toEqual([4, 2]);
+        expect(dash("routes-focus-rail")).toBeUndefined(); // (a rail is solid: no texture of its own)
         expect(dash("routes-faint-ferry")).toEqual([1.5, 2.5]);
         expect(dash("routes-faint-flight")).toEqual([1.5, 3.5]);
         expect(dash("routes-faint-walk")).toEqual([1.5, 1.5]);
         expect(dash("routes-faint-unknown")).toEqual([4, 3]);
-        // the tick: 1 cell of a 3-cell wide line, every 6 cells
-        const t = dash("routes-faint-rail-tick") as number[];
-        expect(t.reduce((a, b) => a + b, 0) * 3).toBeCloseTo(6);
       });
       it("selects by filter: a focus layer keeps the keys given, a faint layer only its mode", () => {
         const sel = buildStreetStyle({ schema, tiles: TILES, coastlines: empty, borders: empty, graticule: empty, routes: empty, focusKeys: ["r:0", "r:3"] });
         const f = (id: string) => (sel.layers.find((x) => x.id === id) as { filter: unknown }).filter;
         expect(JSON.stringify(f("routes-focus-rail"))).toContain('"r:0","r:3"');
         expect(f("routes-focus")).toEqual(focusFilter("road", ["r:0", "r:3"]));
-        expect(JSON.stringify(f("routes-faint-rail"))).not.toContain("key");
+        expect(JSON.stringify(f("routes-faint-ferry"))).not.toContain("key");
       });
       it("starts every path hidden when the switch is off", () => {
         const off = buildStreetStyle({ schema, tiles: TILES, coastlines: empty, borders: empty, graticule: empty, routes: empty, pathsVisible: false });
@@ -358,12 +358,12 @@ describe("dash length follows the zoom", () => {
   });
   it("re-sets the dash of every dashed layer, the graticule and the paths included, and leaves solid ones alone", () => {
     const set: Record<string, number[]> = {};
-    const have = new Set([...SPECS.filter((s) => s.type === "line" && s.dash).map((s) => s.id), "graticule", "routes-faint-flight", "routes-focus-rail", "routes-faint-rail-tick", "routes-faint-road"]);
+    const have = new Set([...SPECS.filter((s) => s.type === "line" && s.dash).map((s) => s.id), "graticule", "routes-faint-flight", "routes-faint-ferry", "routes-faint-road"]);
     const map = { getLayer: (id: string) => (have.has(id) ? {} : undefined), setPaintProperty: (id: string, prop: string, v: number[]) => { expect(prop).toBe("line-dasharray"); set[id] = v; } };
     applyDashScale(map as never, DASH_STEPS);
     expect(set["graticule"]).toEqual([0.75, 1.25]);
     expect(set["routes-faint-flight"]![0]).toBeCloseTo(0.75, 10);
-    expect(Object.keys(set)).toContain("routes-faint-rail-tick");
+    expect(Object.keys(set)).toContain("routes-faint-ferry");
     expect(set["routes-faint-road"]).toBeUndefined();
   });
 });
