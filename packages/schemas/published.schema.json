@@ -654,6 +654,12 @@
                 "maxLength": 60,
                 "pattern": "^[^\\u0000-\\u001F\\u007F\\u202A-\\u202E\\u2066-\\u2069]*$"
               },
+              "institutionUrl": {
+                "type": "string",
+                "maxLength": 100,
+                "format": "uri",
+                "pattern": "^https:\\/\\/[^\\s\\u0000-\\u001F\\u007F\\u202A-\\u202E\\u2066-\\u2069]+$"
+              },
               "logo": {
                 "type": "object",
                 "properties": {
