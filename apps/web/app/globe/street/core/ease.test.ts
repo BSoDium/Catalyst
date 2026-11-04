@@ -186,6 +186,20 @@ describe("fill patterns are anchored to the screen", () => {
     const out = easeImage(frame({ target, prevTarget, prev, mesh, radius: matchRadius(mesh), step: 1 }));
     expect(Array.from(out.lvl)).toEqual(Array.from(target.lvl));
   });
+  it("a region that slides by more than the lattice radius in a frame (a fast pan) is the same content: no fade-in, no trail", () => {
+    const cam0: WarpCamera = { lon: 0, lat: 0, zoom: 14, cx: W, cy: H, cell: 2 };
+    const cam1: WarpCamera = { ...cam0, lon: (12 * 2 / (512 * 2 ** 14)) * 360 }; // twelve cells east: the content moves twelve cells west
+    const mesh = buildWarpMesh(cam0, cam1, W, H);
+    // a stippled region (the satellite ground's chessboard, anchored to the screen) that was at x 14..19 and is now at x 2..7
+    const checker = (i: LevelImage, x0: number, x1: number) => { for (let y = 2; y < 10; y++) for (let x = x0; x <= x1; x++) if ((x + y) % 2 === 0) put(i, x, y, 4, 0); };
+    const prevTarget = img();
+    checker(prevTarget, 14, 19);
+    const prev = clone(prevTarget); // at rest: fully presented
+    const target = img();
+    checker(target, 2, 7);
+    const out = easeImage(frame({ target, prevTarget, prev, mesh, radius: matchRadius(mesh), step: 1 }));
+    expect(Array.from(out.lvl)).toEqual(Array.from(target.lvl));
+  });
   it("a region that arrives (no fill within the lattice radius a frame ago) fades in; one that leaves fades out", () => {
     const target = img();
     put(target, 10, 4, 4, 0);
