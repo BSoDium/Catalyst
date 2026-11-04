@@ -21,7 +21,8 @@ describe("CareerPage", () => {
   it("is one main landmark with the owner's name as the only h1", () => {
     expect(html.match(/<main /g)).toHaveLength(1);
     expect(html.match(/<h1[ >]/g)).toHaveLength(1);
-    expect(html.match(/<h1[^>]*>(.*?)<\/h1>/)![1]!.replace(/<[^>]+>/g, "")).toBe("Elliot Négrel-Jerzy");
+    // (the handle over the name is decoration, `aria-hidden`: the heading's name is the aria-label's and the text without it)
+    expect(html.match(/<h1[^>]*>(.*?)<\/h1>/)![1]!.replace(/<span aria-hidden="true".*?<\/span><\/span>/, "").replace(/<[^>]+>/g, "")).toBe("Elliot Négrel-Jerzy");
     expect(html).toMatch(/<span class="career-name-family">Négrel-Jerzy<\/span>/);
   });
 
