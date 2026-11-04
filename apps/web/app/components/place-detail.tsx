@@ -143,31 +143,37 @@ function Coordinate({ label, part }: { label: string; part: CoordinatePart }) {
 function PlaceFacts({ place }: { place: PlaceDetailData }) {
   const coordinates = placeCoordinateParts(place.coordinates.lat, place.coordinates.lon);
   return (
-    <dl data-slot="place-facts" className="m-0 flex flex-wrap gap-x-7 gap-y-3">
-      {coordinates ? (
-        <>
-          <Coordinate label="Lat" part={coordinates[0]} />
-          <Coordinate label="Lon" part={coordinates[1]} />
-        </>
-      ) : (
-        <Fact label="Coordinates">
-          <span className="ds-meta">{formatPlaceCoordinates(place.coordinates.lat, place.coordinates.lon)}</span>
-        </Fact>
+    <div data-slot="place-facts" className="flex flex-wrap items-start gap-x-7 gap-y-3">
+      <dl className="m-0 flex flex-wrap gap-x-7 gap-y-3">
+        {coordinates ? (
+          <>
+            <Coordinate label="Lat" part={coordinates[0]} />
+            <Coordinate label="Lon" part={coordinates[1]} />
+          </>
+        ) : (
+          <Fact label="Coordinates">
+            <span className="ds-meta">{formatPlaceCoordinates(place.coordinates.lat, place.coordinates.lon)}</span>
+          </Fact>
+        )}
+        {place.dates && (
+          <Fact label="When">
+            <time dateTime={place.dates.dateTime} className="place-figure-text">
+              {place.dates.text}
+            </time>
+          </Fact>
+        )}
+      </dl>
+      {/* the counts of entries are one block at the right end of the row, their figures against the right edge; when it does not fit beside the coordinates it goes to the next row whole, and only then wraps within itself */}
+      {place.entries.length > 0 && (
+        <dl className="m-0 ml-auto flex flex-wrap justify-end gap-x-7 gap-y-3">
+          {place.entries.map((g) => (
+            <Fact key={g.kind} label={g.label} end>
+              <span className="place-figure place-figure-count">{g.entries.length}</span>
+            </Fact>
+          ))}
+        </dl>
       )}
-      {place.dates && (
-        <Fact label="When">
-          <time dateTime={place.dates.dateTime} className="place-figure-text">
-            {place.dates.text}
-          </time>
-        </Fact>
-      )}
-      {/* the counts of entries are at the right end of the row, their figures against the right edge (the first one pushes them all) */}
-      {place.entries.map((g, i) => (
-        <Fact key={g.kind} label={g.label} end className={i === 0 ? "ml-auto" : undefined}>
-          <span className="place-figure place-figure-count">{g.entries.length}</span>
-        </Fact>
-      ))}
-    </dl>
+    </div>
   );
 }
 
