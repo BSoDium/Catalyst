@@ -1,14 +1,17 @@
+import { DEFAULT_VIEW_RADIUS_KM } from "../../engine/framing";
 /**
  * The spotlight on the selected node's rectangle (#569): the CPU twin of the rule in the present pass (gl/pixel-pass.ts, FRAG_PRESENT) and of the
  * rectangle the engine hands it. A pure function of the cell, so the tests pin the rule the shader implements.
  *
- * Inside the rectangle the map's LINES are lifted by `lift` of the way to the peak (the box at rest, one level under the ink: the ink is the selection's
+ * Inside the rectangle the map's LINES are lifted by `liftLow` (the faintest) to `lift` (the strongest) of the way to the peak (the box at rest, one level under the ink: the ink is the selection's
  * colour and the top step of the ramp is the biggest, so a line that was near the top must not land on it), the fills (the background: water, green,
  * the satellite's stipple) by the smaller `fill`. Outside, the lines lose `dim` of their tone (never below the faintest level) and the fills are left alone.
  * Levels of the path trails (from `greys`) and the page colour (0) are never touched, nor is a line already at the ink or the peak (never lowered).
  */
 export interface SpotTune {
+  /** Share of the way to the peak that the strongest lines are lifted; the faintest are lifted by `liftLow`, in between by level (the hierarchy of the roads stays). */
   lift: number;
+  liftLow: number;
   dim: number;
   fill: number;
 }
@@ -21,14 +24,37 @@ export interface CellRect {
   r1: number;
 }
 
+/**
+ * How the lift grows with a line's level: a smoothstep of the level's place on the ramp (0 the faintest .. 1 the peak) between these two edges, so the small streets
+ * (under the first) are barely lifted, the main roads (over the second) reach the peak, and the tiers between climb apart (the dark ramp is washed out: the road
+ * tiers are 51 to 91 of 255 as drawn, 54 / 68 / 106 / 144 once lifted). Twin: the shader.
+ */
+export const SPOT_EDGE0 = 0.1;
+export const SPOT_EDGE1 = 0.8;
+const smooth = (t: number): number => {
+  const x = Math.min(1, Math.max(0, (t - SPOT_EDGE0) / (SPOT_EDGE1 - SPOT_EDGE0)));
+  return x * x * (3 - 2 * x);
+};
+
 /** The palette level a cell is presented at under the spotlight (`greys` = the number of grey levels: the ink is `greys - 1`). */
 export function spotLevel(level: number, isLine: boolean, inside: boolean, tune: SpotTune, greys: number): number {
-  if (level <= 0 || level >= greys || (tune.lift <= 0 && tune.dim <= 0 && tune.fill <= 0)) return level;
+  if (level <= 0 || level >= greys || (tune.lift <= 0 && tune.liftLow <= 0 && tune.dim <= 0 && tune.fill <= 0)) return level;
   if (inside) {
     const peak = greys - 2;
-    return level >= peak ? level : level + Math.floor((peak - level) * (isLine ? tune.lift : tune.fill) + 0.5);
+    if (level >= peak) return level;
+    const t = smooth(peak > 1 ? (level - 1) / (peak - 1) : 1);
+    return level + Math.floor((peak - level) * (isLine ? tune.liftLow + (tune.lift - tune.liftLow) * t : tune.fill) + 0.5);
   }
   return isLine ? Math.max(1, Math.floor(level * (1 - tune.dim) + 0.5)) : level;
+}
+
+/** The rectangle `[west, south, east, north]` (degrees) of a place's box: its `bbox`, else `radiusKm` around its point (as the lod tree draws it). */
+export function placeRect(p: { lat: number; lon: number; bbox?: readonly [number, number, number, number] | undefined; viewRadiusKm?: number | undefined }): [number, number, number, number] {
+  if (p.bbox && p.bbox[0] < p.bbox[2] && p.bbox[1] < p.bbox[3]) return [p.bbox[0], p.bbox[1], p.bbox[2], p.bbox[3]];
+  const r = p.viewRadiusKm && p.viewRadiusKm > 0 ? p.viewRadiusKm : DEFAULT_VIEW_RADIUS_KM;
+  const dLat = r / 111.32;
+  const dLon = r / (111.32 * Math.max(0.05, Math.cos((p.lat * Math.PI) / 180)));
+  return [p.lon - dLon, p.lat - dLat, p.lon + dLon, p.lat + dLat];
 }
 
 /** The rectangle of a node's drawn box (CSS px, whole cells of `cell` px) in art cells. */
@@ -46,4 +72,42 @@ export const sameRect = (a: CellRect | null, b: CellRect): boolean => !!a && a.c
 export function spotFollow(now: CellRect | null, prev: CellRect | null, lit: boolean): { box: CellRect | null; target: 0 | 1 } {
   if (now) return { box: now, target: 1 };
   return { box: lit ? prev : null, target: 0 };
+}
+
+/** The parts of a polyline (`[lon, lat]` points) that lie inside the rectangle `[west, south, east, north]`: each segment is clipped (Liang-Barsky), the runs that stay connected are kept as one part. */
+export function clipLine(line: readonly (readonly number[])[], rect: readonly [number, number, number, number]): number[][][] {
+  const [w, s, e, n] = rect;
+  const parts: number[][][] = [];
+  let cur: number[][] | null = null;
+  for (let i = 1; i < line.length; i++) {
+    const [x0, y0] = line[i - 1]!;
+    const [x1, y1] = line[i]!;
+    const dx = x1! - x0!;
+    const dy = y1! - y0!;
+    let t0 = 0;
+    let t1 = 1;
+    let inside = true;
+    for (const [p, q] of [[-dx, x0! - w], [dx, e - x0!], [-dy, y0! - s], [dy, n - y0!]] as const) {
+      if (p === 0) {
+        if (q < 0) inside = false;
+      } else {
+        const r = q / p;
+        if (p < 0) t0 = Math.max(t0, r);
+        else t1 = Math.min(t1, r);
+      }
+    }
+    if (!inside || t0 > t1) {
+      cur = null;
+      continue;
+    }
+    const a = [x0! + t0 * dx, y0! + t0 * dy];
+    const b = [x0! + t1 * dx, y0! + t1 * dy];
+    if (cur && t0 === 0) cur.push(b);
+    else {
+      cur = [a, b];
+      parts.push(cur);
+    }
+    if (t1 < 1) cur = null;
+  }
+  return parts;
 }

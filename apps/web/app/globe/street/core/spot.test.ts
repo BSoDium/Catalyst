@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { sameRect, spotFollow, spotLevel, spotRect } from "./spot";
+import { clipLine, placeRect, sameRect, spotFollow, spotLevel, spotRect } from "./spot";
 
 const GREYS = 12;
-const tune = { lift: 0.95, dim: 0.45, fill: 0.12 };
+const tune = { lift: 1, liftLow: 0.05, dim: 0.45, fill: 0.12 };
 
 describe("spotLevel", () => {
   it("lifts the lines inside, never past the peak, and keeps their order", () => {
@@ -11,13 +11,20 @@ describe("spotLevel", () => {
     expect([...lifted].sort((a, b) => a - b)).toEqual(lifted);
     expect(spotLevel(9, true, true, tune, GREYS)).toBe(10);
   });
+  it("lifts the main roads much more than the small streets, so the hierarchy stays readable", () => {
+    const small = spotLevel(2, true, true, tune, GREYS);
+    const main = spotLevel(8, true, true, tune, GREYS);
+    expect(main - small).toBeGreaterThanOrEqual(4);
+    expect(main).toBeGreaterThanOrEqual(GREYS - 3);
+    expect(small).toBeLessThan(GREYS - 5);
+  });
   it("never lowers a line that is already at the peak or the ink", () => {
     expect(spotLevel(10, true, true, tune, GREYS)).toBe(10);
     expect(spotLevel(11, true, true, tune, GREYS)).toBe(11);
   });
   it("lifts a fill inside by much less than a line", () => {
-    const line = spotLevel(4, true, true, tune, GREYS) - 4;
-    const fill = spotLevel(4, false, true, tune, GREYS) - 4;
+    const line = spotLevel(7, true, true, tune, GREYS) - 7;
+    const fill = spotLevel(7, false, true, tune, GREYS) - 7;
     expect(fill).toBeGreaterThanOrEqual(0);
     expect(fill).toBeLessThan(line);
   });
@@ -30,12 +37,17 @@ describe("spotLevel", () => {
     expect(spotLevel(0, true, true, tune, GREYS)).toBe(0);
     expect(spotLevel(GREYS + 3, true, true, tune, GREYS)).toBe(GREYS + 3);
     expect(spotLevel(GREYS + 3, true, false, tune, GREYS)).toBe(GREYS + 3);
-    expect(spotLevel(6, true, true, { lift: 0, dim: 0, fill: 0 }, GREYS)).toBe(6);
+    expect(spotLevel(6, true, true, { lift: 0, liftLow: 0, dim: 0, fill: 0 }, GREYS)).toBe(6);
   });
-  it("scales with the fade: half the strength gives a level between", () => {
-    const half = spotLevel(4, true, true, { lift: tune.lift / 2, dim: 0, fill: 0 }, GREYS);
-    expect(half).toBeGreaterThan(4);
-    expect(half).toBeLessThan(spotLevel(4, true, true, tune, GREYS));
+  it("scales with the fade: half the strength lifts no more, and less somewhere", () => {
+    const halfTune = { lift: tune.lift / 2, liftLow: tune.liftLow / 2, dim: 0, fill: 0 };
+    const levels = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+    for (const l of levels) {
+      const half = spotLevel(l, true, true, halfTune, GREYS);
+      expect(half).toBeGreaterThanOrEqual(l);
+      expect(half).toBeLessThanOrEqual(spotLevel(l, true, true, tune, GREYS));
+    }
+    expect(levels.some((l) => spotLevel(l, true, true, halfTune, GREYS) < spotLevel(l, true, true, tune, GREYS))).toBe(true);
   });
 });
 
@@ -64,5 +76,32 @@ describe("spotFollow", () => {
   it("has no light with nothing to follow, or once it has faded out", () => {
     expect(spotFollow(null, null, true)).toEqual({ box: null, target: 0 });
     expect(spotFollow(null, b, false)).toEqual({ box: null, target: 0 });
+  });
+});
+
+describe("placeRect", () => {
+  it("is the bbox when it is valid", () => {
+    expect(placeRect({ lat: 48, lon: 2, bbox: [2.2, 48.8, 2.5, 48.9] })).toEqual([2.2, 48.8, 2.5, 48.9]);
+  });
+  it("is a square of the view radius around the point otherwise", () => {
+    const [w, s, e, n] = placeRect({ lat: 48, lon: 2, viewRadiusKm: 10 });
+    expect((n - s) * 111.32).toBeCloseTo(20, 1);
+    expect(w).toBeLessThan(2);
+    expect(e).toBeGreaterThan(2);
+    expect(placeRect({ lat: 0, lon: 0, bbox: [1, 1, 1, 2] })[2]).toBeGreaterThan(0);
+  });
+});
+
+describe("clipLine", () => {
+  const rect = [0, 0, 10, 10] as const;
+  it("keeps a line that is inside, whole", () => {
+    expect(clipLine([[1, 1], [5, 2], [9, 9]], rect)).toEqual([[[1, 1], [5, 2], [9, 9]]]);
+  });
+  it("cuts a line at the edges", () => {
+    expect(clipLine([[-5, 5], [15, 5]], rect)).toEqual([[[0, 5], [10, 5]]]);
+  });
+  it("splits a line that leaves and comes back, and drops one that is outside", () => {
+    expect(clipLine([[2, 2], [12, 2], [12, 8], [2, 8]], rect)).toEqual([[[2, 2], [10, 2]], [[10, 8], [2, 8]]]);
+    expect(clipLine([[20, 20], [30, 25]], rect)).toEqual([]);
   });
 });

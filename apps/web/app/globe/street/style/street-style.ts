@@ -131,6 +131,33 @@ export const DEFAULT_HANDOFF: Record<Schema, number> = { protomaps: 8.5, openmap
 const zoomInterp = (stops: Stops, base = 1.5): ExpressionSpecification =>
   ["interpolate", ["exponential", base], ["zoom"], ...stops.flatMap(([z, v]) => [z, v])] as ExpressionSpecification;
 
+/**
+ * The road classes that are also drawn INSIDE the spotlit box before the zoom of their own (#569): the highlighted area is the one place where the
+ * roads are expected to tell their tiers apart, and at the zoom a city box is seen the map only has the major network (one tier). The tiles' roads of
+ * these classes are clipped to the selected place's rectangle in JS (`core/spot.ts clipLine`; the tiles merge roads into long lines, a filter cannot
+ * cut them) and drawn from the `SPOT_SOURCE` source, from `lead` zoom levels before the class's own switch up to it, with the class's own tone, width and dash.
+ */
+export const SPOT_ROADS = [
+  { lod: "secondary", lead: 2.5 },
+  { lod: "medium", lead: 2.5 },
+  { lod: "minor", lead: 2.5 },
+] as const satisfies readonly { lod: LodKey; lead: number }[];
+export const SPOT_SUFFIX = "-spot";
+export const SPOT_SOURCE = "spot-roads";
+const spotRoadOf = (spec: Spec) => (spec.lod ? SPOT_ROADS.find((r) => r.lod === spec.lod) : undefined);
+/** Zoom range of a spotlight class (`maxzoom` exclusive). */
+export const spotZoomRange = (road: (typeof SPOT_ROADS)[number]): { from: number; to: number } => ({ from: Math.max(0, LOD[road.lod].on - road.lead), to: LOD[road.lod].on + 0.1 });
+/** What to ask the tiles for, per class: the source layer and the filter of the class's own layer, for a schema. */
+export function spotQueries(schema: Schema): { lod: LodKey; layer: string; filter: unknown[] | undefined; from: number; to: number }[] {
+  const out: { lod: LodKey; layer: string; filter: unknown[] | undefined; from: number; to: number }[] = [];
+  for (const spec of SPECS) {
+    const road = spec.type === "line" ? spotRoadOf(spec) : undefined;
+    const src = schema === "protomaps" ? spec.pm : spec.omt;
+    if (road && src && !out.some((q) => q.lod === road.lod)) out.push({ lod: road.lod, layer: src.layer, filter: src.filter, ...spotZoomRange(road) });
+  }
+  return out;
+}
+
 export interface Spec {
   id: string;
   type: "fill" | "line";
@@ -474,7 +501,11 @@ export const dashScaleOf = (step: number): number => 2 ** (-step / DASH_STEPS);
 /** Every dashed line layer with its array as designed (before the zoom's scale). */
 function dashedLayers(): Array<[string, readonly number[]]> {
   const out: Array<[string, readonly number[]]> = [["graticule", GRATICULE_DASH]];
-  for (const spec of SPECS) if (spec.type === "line" && spec.dash) out.push([spec.id, spec.dash]);
+  for (const spec of SPECS) {
+    if (spec.type !== "line" || !spec.dash) continue;
+    out.push([spec.id, spec.dash]);
+    if (spotRoadOf(spec)) out.push([spec.id + SPOT_SUFFIX, spec.dash]);
+  }
   for (const prefix of ROUTE_LAYER_PREFIXES) {
     for (const mode of LEG_MODES) {
       const dash = dashArray(mode);
@@ -612,7 +643,18 @@ export function buildStreetStyle(o: StreetStyleOptions): StyleSpecification {
   const seaEdge = tileLayers.filter((l) => l.id === "water-edge");
   const seaMask: LayerSpecification[] = noTiles ? [] : [seaMaskLayer(o.schema)];
   const fills = tones.filter((l) => l.id !== "water-fill");
-  const lines = tileLayers.filter((l) => lineIds.has(l.id) && l.id !== "water-edge");
+  const spotCopies = new Map<string, LayerSpecification>();
+  if (!noTiles) {
+    for (const spec of SPECS) {
+      const road = spec.type === "line" ? spotRoadOf(spec) : undefined;
+      const layer = road ? build(spec, o.schema, handoff, cell, undefined) : null;
+      if (!road || !layer) continue;
+      const { from, to } = spotZoomRange(road);
+      const { filter: _own, "source-layer": _layer, ...rest } = layer as unknown as Record<string, unknown>;
+      spotCopies.set(spec.id, { ...rest, id: spec.id + SPOT_SUFFIX, source: SPOT_SOURCE, minzoom: from, maxzoom: to, filter: ["==", ["get", "cls"], road.lod] } as unknown as LayerSpecification);
+    }
+  }
+  const lines = tileLayers.filter((l) => lineIds.has(l.id) && l.id !== "water-edge").flatMap((l) => (spotCopies.has(l.id) ? [spotCopies.get(l.id)!, l] : [l]));
   // The map's own loudest tone (coastlines, borders) stays below the box at rest (`peak`) and the ink, which is kept for markers and labels (the routes have their own colours).
   const coastInk = lineColor(roleLevel("coast"));
   // World-scale coastline (110m) up to the hand-over zoom, then the tile geometry: one solid coast-tone line on both sides. (A
@@ -676,6 +718,7 @@ export function buildStreetStyle(o: StreetStyleOptions): StyleSpecification {
     routes: { type: "geojson", data: o.routes as never, lineMetrics: true },
     heads: { type: "geojson", data: (o.heads ?? { type: "FeatureCollection", features: [] }) as never },
   };
+  if (!noTiles) sources[SPOT_SOURCE] = { type: "geojson", data: { type: "FeatureCollection", features: [] } as never };
   if (o.satellite) {
     sources.satellite = { type: "raster", tiles: o.satellite, tileSize: SATELLITE_TILE_SIZE, maxzoom: SATELLITE_MAXZOOM } as never;
   }
