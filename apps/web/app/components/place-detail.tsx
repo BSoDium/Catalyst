@@ -100,7 +100,7 @@ function StepStory({ place, photos }: { place: PlaceDetailData; photos: PhotoIte
         </Stack>
       )}
       {photos.length > 0 && <Photos images={photos} from={place.slug} />}
-      {place.trips.length > 0 && <TripCards trips={place.trips} here={place.slug} />}
+      {place.trips.length > 0 && <TripCards trips={place.trips} here={place.slug} lived={place.lived === true} />}
     </Stack>
   );
 }

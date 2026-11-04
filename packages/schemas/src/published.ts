@@ -148,6 +148,11 @@ export const publishedPlaceSchema = z
       .string()
       .regex(/^[A-Z]{2}$/, "ISO 3166-1 alpha-2, uppercase")
       .optional(),
+    /**
+     * Optional. `true` for a place the owner has lived in (a home, not a destination): the panel then does not count its visits ("Visited 3 times"
+     * makes no sense for a hometown). Authored in the private repository; absent or `false` = an ordinary place. Additive: schema version 1 is unchanged.
+     */
+    lived: z.boolean().optional(),
     summary: z.string().trim().min(1).max(400).optional(),
     dates: publishedDatesSchema.optional(),
     /** Plain-text paragraphs. No HTML or markdown is interpreted. */

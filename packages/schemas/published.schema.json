@@ -112,6 +112,9 @@
             "type": "string",
             "pattern": "^[A-Z]{2}$"
           },
+          "lived": {
+            "type": "boolean"
+          },
           "summary": {
             "type": "string",
             "minLength": 1,

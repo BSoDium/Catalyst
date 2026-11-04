@@ -171,6 +171,8 @@ export interface PlaceDetailData {
   region?: string;
   /** The country's English name, derived from the place's country code when it has one. */
   country?: string;
+  /** A place the owner has lived in: its trips do not count visits (#584). */
+  lived?: true;
   coordinates: Coordinates;
   summary?: string;
   dates: FormattedDates | null;
@@ -192,6 +194,7 @@ export function getPlaceDetail(projection: PublishedProjection, slug: string): P
     name: stripCountry(place.name, place.countryCode),
     ...(place.region !== undefined ? { region: place.region } : {}),
     ...(countryName(place.countryCode) ? { country: countryName(place.countryCode)! } : {}),
+    ...(place.lived === true ? { lived: true } : {}),
     coordinates: place.coordinates,
     ...(place.summary !== undefined ? { summary: place.summary } : {}),
     dates: formatDates(place.dates),
