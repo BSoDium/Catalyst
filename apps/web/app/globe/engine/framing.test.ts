@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CONTEXT_FRAMING, DEFAULT_VIEW_RADIUS_KM, EARTH_RADIUS_KM, FRAMING_MARGIN, VIEW_RADIUS_RANGE_KM, bboxExtentsKm, bboxFitRadiusKm, contextScales, effectiveRadiusKm, placeFraming, radiusFitZoom } from "./framing";
+import { CONTEXT_FRAMING, DEFAULT_VIEW_RADIUS_KM, EARTH_RADIUS_KM, FRAMING_MARGIN, FRAMING_MIN_RADIUS_KM, VIEW_RADIUS_RANGE_KM, bboxExtentsKm, bboxFitRadiusKm, contextScales, effectiveRadiusKm, placeFraming, radiusFitZoom } from "./framing";
 import { zoomToRadiusPx } from "./geo";
 
 /** Circle radius in px that a zoom gives to `km`. */
@@ -100,6 +100,25 @@ describe("placeFraming and bounding boxes", () => {
     expect(bboxExtentsKm(undefined)).toBeNull();
     expect(bboxExtentsKm([1, 2, 3])).toBeNull();
     expect(bboxExtentsKm([0, 0, 0, 1])).toBeNull();
+  });
+});
+
+describe("a small box is framed on itself (#622)", () => {
+  // Frederik's Church: 88 x 75 m
+  const church = { lat: 55.685, lon: 12.59, viewRadiusKm: 0.5, bbox: [12.58887, 55.68464, 12.59028, 55.68531] as const };
+  it("a box under the minimum view is framed to its own size, from FRAMING_MIN_RADIUS_KM, not to the 0.5 km of a view radius", () => {
+    const r = placeFraming(church).radiusKm;
+    expect(r).toBe(FRAMING_MIN_RADIUS_KM);
+    expect(FRAMING_MIN_RADIUS_KM).toBeLessThan(VIEW_RADIUS_RANGE_KM.min);
+    expect(radiusFitZoom(r, 400, 600, 0)).toBeGreaterThan(radiusFitZoom(VIEW_RADIUS_RANGE_KM.min, 400, 600, 0) + 2); // more than two levels closer: the buildings are in
+  });
+  it("a radius that is not a number frames the default view, as before", () => {
+    expect(radiusFitZoom(Number.NaN, 400, 600, 0)).toBe(radiusFitZoom(DEFAULT_VIEW_RADIUS_KM, 400, 600, 0));
+  });
+  it("a box of 300 m is framed to its half extent, a place with no box keeps the 0.5 km minimum", () => {
+    expect(placeFraming({ lat: 10, lon: 10, bbox: [9.9986, 9.9986, 10.0014, 10.0014] }).radiusKm).toBeCloseTo(0.155, 2);
+    expect(placeFraming({ lat: 10, lon: 10, viewRadiusKm: 0.5 }).radiusKm).toBe(0.5);
+    expect(placeFraming({ lat: 10, lon: 10 }).radiusKm).toBe(DEFAULT_VIEW_RADIUS_KM);
   });
 });
 
