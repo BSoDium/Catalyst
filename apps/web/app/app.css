@@ -2120,13 +2120,13 @@
     /* a soft oval of the page colour centred on the panel's top corner (the close button's), far wider than the button so no edge of it is seen, eased to nothing (the model: the nav's search plate over the globe) */
     --plate-x: 0%;
     background: radial-gradient(
-      ellipse 18rem 7.5rem at var(--plate-x) 0,
-      color-mix(in srgb, var(--background) 55%, transparent) 0%,
-      color-mix(in srgb, var(--background) 48%, transparent) 25%,
-      color-mix(in srgb, var(--background) 34%, transparent) 45%,
-      color-mix(in srgb, var(--background) 20%, transparent) 62%,
-      color-mix(in srgb, var(--background) 9%, transparent) 78%,
-      color-mix(in srgb, var(--background) 3%, transparent) 90%,
+      ellipse 26rem 8rem at var(--plate-x) 0,
+      color-mix(in srgb, var(--background) 72%, transparent) 0%,
+      color-mix(in srgb, var(--background) 68%, transparent) 25%,
+      color-mix(in srgb, var(--background) 52%, transparent) 42%,
+      color-mix(in srgb, var(--background) 32%, transparent) 58%,
+      color-mix(in srgb, var(--background) 15%, transparent) 74%,
+      color-mix(in srgb, var(--background) 5%, transparent) 88%,
       transparent 100%
     );
   }
