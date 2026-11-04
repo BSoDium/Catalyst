@@ -248,18 +248,6 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
     >
       <div className="entry-grid">
         <header className={cn("entry-head flex min-w-0 flex-col", poem && !heroSrc ? "gap-5" : "gap-0")}>
-          {backTo && !backTo.list && (
-            <Link
-              to={backTo.href}
-              className="type-meta -ml-1 mb-3 inline-flex min-h-11 w-fit items-center gap-2 px-1 text-muted-foreground no-underline hover:text-foreground hover:underline print:hidden"
-            >
-              <Icon name="arrow-left" size="inline" />
-              <span>
-                Back to {!backTo.list && <span className="sr-only">place </span>}
-                {backTo.name}
-              </span>
-            </Link>
-          )}
           <p
             data-slot="entry-meta"
             className={cn(
@@ -271,7 +259,22 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
               full ? "-mx-4 px-4 md:-mx-8 md:px-8" : "-mx-6 px-6",
             )}
           >
-            <span className="min-w-0 max-md:flex-1 max-md:truncate max-md:whitespace-nowrap">
+            <span className={cn("min-w-0 max-md:flex-1 max-md:truncate max-md:whitespace-nowrap", backTo && !backTo.list && "flex-1 truncate whitespace-nowrap")}>
+              {backTo && !backTo.list && (
+                <>
+                  {/* (opened from a place: the way back is the first word of the running head, as the kind's name is when opened from its list: a row of its own over the head was two lines for one thing; the head is ONE line, cut at the end when it does not fit) */}
+                  <Link
+                    to={backTo.href}
+                    aria-label={`Back to place ${backTo.name}`}
+                    data-slot="entry-back"
+                    className="relative text-muted-foreground no-underline after:absolute after:-inset-x-1 after:-inset-y-3 after:content-[''] hover:text-foreground hover:underline print:hidden"
+                  >
+                    <Icon name="arrow-left" size="inline" className="mr-1.5 align-[-0.2em]" />
+                    {backTo.name}
+                  </Link>
+                  <span aria-hidden="true" className="print:hidden"> &middot; </span>
+                </>
+              )}
               {backTo?.list ? (
                 // (opened from its list: the kind's name IS the way back, in the running head, so it has no row of its own: a back link with the same word over the kind was two lines for one thing)
                 <Link

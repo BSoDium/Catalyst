@@ -112,8 +112,23 @@ describe("EntryView", () => {
   });
   it("offers a way back to the place the visitor came from", () => {
     const html = render("article", "demo-article", "panel", { slug: "lisbon", name: "Lisbon", href: "/locations/lisbon" });
-    expect(html).toContain("Back to");
+    expect(html).toContain("Back to place Lisbon");
     expect(html.indexOf("Back to")).toBeLessThan(html.indexOf("<h1"));
+    // one line with the metadata: the link is the first thing IN the running head, not a row over it
+    const head = html.slice(html.indexOf('data-slot="entry-meta"'), html.indexOf("<h1"));
+    expect(head).toContain('data-slot="entry-back"');
+    expect(head.indexOf('data-slot="entry-back"')).toBeLessThan(head.indexOf('data-slot="entry-kind"'));
+  });
+  it("has the way back in the running head for every kind, from a place and from a list, never as a row of its own", () => {
+    const kinds = [["article", "demo-article"], ["project", "demo-project"], ["artwork", "demo-artwork"], ["poem", "demo-poem"], ["photograph", "demo-photograph"]] as const;
+    for (const [kind, slug] of kinds) {
+      for (const backTo of [{ slug: "lisbon", name: "Lisbon", href: "/locations/lisbon" }, { name: "List", href: "/x", list: true }]) {
+        const html = render(kind, slug, "panel", backTo);
+        const before = html.slice(0, html.indexOf('data-slot="entry-meta"'));
+        expect(before, `${kind} ${backTo.name}`).not.toContain("Back to");
+        expect(html.slice(html.indexOf('data-slot="entry-meta"'), html.indexOf("<h1")), `${kind} ${backTo.name}`).toContain("Back to");
+      }
+    }
   });
   it("offers a way back to the list it was opened from, with the filter it had, and does not call a list a place", () => {
     const html = render("project", "demo-project", "panel", { name: "Software", href: "/software?tag=maps", list: true });
