@@ -39,6 +39,8 @@ export const SUN_MUSIC = {
   beatOffsetSec: 0.18,
   /** How long a mute takes to go quiet (ms): not the fade-out of a sun that sets, but short enough not to click. */
   muteFadeMs: 120,
+  /** How long the music takes to come back after the visitor turns the sound on (ms): as quick as a mute (#587), not the slow rise of a sun that comes up. */
+  unmuteFadeMs: 150,
   /** How long the music takes to go when the globe is left (another page, the street map, the tab behind: #488): not the slow fade of a sun that sets, a few hundred ms. */
   leaveFadeMs: 250,
   /** Coming in and going out, for the whole way from silence to `volume` (a part of the way takes a part of the time). */
@@ -267,6 +269,8 @@ export class SunMusic {
   private inView = false;
   /** The globe is not what the visitor sees (the page was left, the street map has the view, the context is lost): the sun's music goes quickly. */
   private away = false;
+  /** The visitor has just turned the sound on: the next rise is quick (`SUN_MUSIC.unmuteFadeMs`). */
+  private quickRise = false;
   private hidden = false;
   private attached = false;
   private off: (() => void)[] = [];
@@ -389,7 +393,10 @@ export class SunMusic {
       const now = this.muted;
       if (now !== was) {
         was = now;
-        if (!now) this.unlock();
+        if (!now) {
+          this.quickRise = true;
+          this.unlock();
+        }
       }
       this.reconcile();
     });
@@ -573,7 +580,9 @@ export class SunMusic {
       this.src = s;
       this.srcAt = c.currentTime;
     }
-    this.fadeTo(this.cur.volume, SUN_MUSIC.fadeInMs);
+    const quick = this.quickRise;
+    this.quickRise = false;
+    this.fadeTo(this.cur.volume, quick ? SUN_MUSIC.unmuteFadeMs : SUN_MUSIC.fadeInMs, quick ? 30 : SUN_MUSIC.minFadeMs);
   }
 
   private fall() {
