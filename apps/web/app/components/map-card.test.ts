@@ -2,21 +2,13 @@ import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { MAP_CARD } from "~/lib/map-card";
 import { AttributionButton } from "./attribution-button";
-import { DevContentBadge } from "./dev-content-badge";
 
 const OFM = { primaryUrl: "https://tiles.openfreemap.org/planet", fallbackPmtilesUrl: null };
 const credits = (props: Partial<Parameters<typeof AttributionButton>[0]> = {}) =>
   renderToStaticMarkup(createElement(AttributionButton, { tiles: OFM, insetRight: 0, reducedMotion: false, ...props }));
 
 describe("map card and credits", () => {
-  it("the dev badge carries every class of the shared card (border, plate, padding, radius, mono type)", () => {
-    const badge = renderToStaticMarkup(createElement(DevContentBadge, { mode: "preview" }));
-    for (const cls of MAP_CARD.split(" ")) expect(badge, cls).toContain(cls);
-    expect(MAP_CARD).toMatch(/font-mono/);
-    expect(MAP_CARD).toMatch(/border-border(?!-)/);
-  });
   it("the credits are not a card: the mono type of one, on a map label's own ground (`.map-credits`), with no border and no blur of its own", () => {
     const card = /<div[^>]*data-attribution="card"[^>]*>/.exec(credits())![0];
     for (const cls of ["map-credits", "font-mono", "text-[10px]", "leading-4", "tracking-wide", "rounded-sm", "px-1.5", "py-px"]) expect(card, cls).toContain(cls);

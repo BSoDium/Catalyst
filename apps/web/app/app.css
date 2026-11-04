@@ -4758,7 +4758,6 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   .nav-scrim,
   #app > header,
   main:has([data-globe]),
-  [data-dev-content-badge],
   [data-slot="skip-links"] {
     display: none !important;
   }
@@ -5592,10 +5591,6 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
       }
     }
 
-    body:has([data-dev-content-badge]) .landing-hero {
-      --hero-clear: 5.75rem;
-    }
-
     /* A fifth row (the career page: `data-rows="5"`) is one more 44 px target, its hairline and the row's padding (measured 50 px at 375 x 667, with the gap: 56), which the name gives up. The stacked
        tiers below hold the row in two columns too: five rows are three lines there, which is also one more line. */
     .landing-hero[data-rows="5"] {
@@ -6053,17 +6048,6 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     .hero-mini {
       --hero-mini-left: var(--hero-gutter);
       --hero-mini-bottom: 3.25rem;
-    }
-
-    body:has([data-dev-content-badge]) .hero-mini {
-      --hero-mini-bottom: 5.75rem;
-    }
-  }
-
-  /* Development only: the content badge sits bottom left (8 to 34 px). */
-  @media (min-width: 48rem) {
-    body:has([data-dev-content-badge]) .hero-mini {
-      --hero-mini-bottom: 2.75rem;
     }
   }
 

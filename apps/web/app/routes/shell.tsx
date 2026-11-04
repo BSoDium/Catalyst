@@ -13,7 +13,8 @@ import { useIsMobile } from "~/hooks/use-is-mobile";
 import { useLandingHero } from "~/hooks/use-landing-hero";
 import { isWorldView } from "~/lib/hero-machine";
 import { useViewportWidth } from "~/hooks/use-viewport-width";
-import { getProjection } from "~/lib/content.server";
+import { getContentMode, getProjection } from "~/lib/content.server";
+import { devBadgeLabel } from "~/lib/dev-badge";
 import { getTilesConfig } from "~/lib/tiles-config.server";
 import { focusPlaceOf, KIND_PATHS, KIND_PLURALS, parsePanelPath, parseView, resolveBackTarget, viewSearch, type EntryView } from "~/lib/entries";
 import { panelInset } from "~/lib/layout";
@@ -38,7 +39,8 @@ export async function loader() {
   // How much of each kind there is (the caption's third phrase set): the projection's own collections.
   const counts: KindCounts = { project: projection.projects.length, article: projection.articles.length, artwork: projection.artworks.length, poem: projection.poems.length, photograph: projection.photographs.length };
   // `dataVersion`: which content this is (the credits show it: #504); null where the projection does not say (a local or demo one).
-  return { ...buildPlaceIndex(projection), tiles: getTilesConfig(), counts, dataVersion: projection.dataVersion ?? null };
+  // `devNote`: in development, which data this is (preview or demo; the credits show it beside the version); null in production, where the branch is dead code.
+  return { ...buildPlaceIndex(projection), tiles: getTilesConfig(), counts, dataVersion: projection.dataVersion ?? null, devNote: devBadgeLabel(import.meta.env.DEV ? getContentMode() : null, import.meta.env.DEV) };
 }
 
 /** The place index never changes between navigations inside the shell. */
@@ -53,9 +55,9 @@ export function shouldRevalidate() {
  * in the full-screen container: the panel widens over the SAME globe, which stays mounted and keeps its view.
  */
 export default function Shell({ loaderData }: Route.ComponentProps) {
-  const { places, globePlaces, groups, routes, tiles, counts, dataVersion } = loaderData;
+  const { places, globePlaces, groups, routes, tiles, counts, dataVersion, devNote } = loaderData;
   // The credits slot with the content's version (the slot is a component type: made once per version, not per render, or the button would remount).
-  const attribution = useMemo(() => (props: GlobeAttributionProps) => <AttributionSlot {...props} dataVersion={dataVersion} />, [dataVersion]);
+  const attribution = useMemo(() => (props: GlobeAttributionProps) => <AttributionSlot {...props} dataVersion={dataVersion} devNote={devNote} />, [dataVersion, devNote]);
   // The caption's rows (built once: the globe reads them once, when it is created).
   const captionPhrases = useMemo(() => siteCaption(counts), [counts]);
   const globeGroups = useMemo(() => toGlobeGroups(groups), [groups]);
