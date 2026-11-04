@@ -343,7 +343,7 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
                   {exposure && <ExposureBlock exposure={exposure} />}
                   {entry.kind === "photograph" && globeTarget && (
                     <Link to={globeTarget.href} data-slot="entry-place-link" className="entry-place-link type-meta print:hidden">
-                      <Icon name="pin" size="large" className="entry-place-link-pin" />
+                      <Icon name="globe" size="large" className="entry-place-link-pin" />
                       <span className="entry-place-link-text">
                         <span className="entry-place-link-name">{globeTarget.name}</span>
                         <span className="entry-place-link-cta">Open on the map</span>
