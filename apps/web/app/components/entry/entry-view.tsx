@@ -339,12 +339,11 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
                   {exposure && <ExposureBlock exposure={exposure} />}
                   {!poem && entry.kind !== "project" && globeTarget && (
                     <Link to={globeTarget.href} data-slot="entry-place-link" className="entry-place-link print:hidden">
-                      <Icon name="place" size="control" className="entry-place-link-pin" />
                       <span className="entry-place-link-text">
                         <span className="entry-place-link-name">{globeTarget.name}</span>
                         <span className="entry-place-link-cta">Open on the map</span>
                       </span>
-                      <Icon name="arrow-up-right" size="inline" className="entry-place-link-arrow" />
+                      <Icon name="arrow-up-right" size="large" className="entry-place-link-arrow" />
                     </Link>
                   )}
                 </div>

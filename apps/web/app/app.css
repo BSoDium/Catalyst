@@ -2012,23 +2012,20 @@
     gap: 1rem 2rem;
     margin: 2rem 0 0;
   }
+  /* The link to the place (#581): two lines of text and an arrow in a box with ONE space all round: the text's left, the arrow's right, and the top and bottom of both are `--place-pad` from the edge (the arrow is the box's height less twice it). */
   .entry-place-link {
+    --place-pad: 0.5rem;
     display: inline-flex;
     align-items: center;
-    gap: 0.625rem;
+    gap: 1rem;
     margin-left: auto;
-    min-height: 2.75rem;
-    padding: 0 0.75rem;
+    box-sizing: border-box;
+    height: 2.75rem;
+    padding: 0 var(--place-pad);
     border: var(--hairline) solid var(--border-strong);
     color: var(--foreground);
     text-decoration: none;
     transition: background-color var(--duration-fast) var(--ease-standard);
-  }
-  @media (min-width: 48rem) {
-    .entry-place-link {
-      min-height: 0;
-      height: calc((var(--exposure-text) - 1px) * 1.2);
-    }
   }
   .entry-place-link:hover,
   .entry-place-link:focus-visible {
@@ -2040,23 +2037,24 @@
     gap: 0.125rem;
     min-width: 0;
     font-family: var(--font-mono);
-    line-height: 1.1;
   }
+  /* (the line boxes are as tall as the type needs, descenders included: no overflow clip on them, a "g" in "Bogotá" keeps its tail) */
   .entry-place-link-name {
     font-size: 0.8125rem;
+    line-height: 1.25;
     letter-spacing: 0.02em;
-    overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
   }
   .entry-place-link-cta {
     font-size: 0.6875rem;
+    line-height: 1.2;
     letter-spacing: 0.04em;
     color: var(--muted-foreground);
   }
-  .entry-place-link-pin,
-  .entry-place-link-arrow {
+  .entry-place-link svg.entry-place-link-arrow {
     flex: none;
+    width: calc(2.75rem - 2 * var(--place-pad) - 2 * var(--hairline));
+    height: calc(2.75rem - 2 * var(--place-pad) - 2 * var(--hairline));
     color: var(--muted-foreground);
   }
   .entry-exposure .entry-exposure-mark {
