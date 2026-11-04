@@ -1,4 +1,4 @@
-import { ArrowLeft as CarbonArrowLeft, MapIdentify as CarbonMapIdentify, ChevronDown as CarbonChevronDown, Search as CarbonSearch, ZoomReset as CarbonZoomReset, type CarbonIconType } from "@carbon/icons-react";
+import { ArrowLeft as CarbonArrowLeft, ChevronDown as CarbonChevronDown, Search as CarbonSearch, ZoomReset as CarbonZoomReset, type CarbonIconType } from "@carbon/icons-react";
 import {
   Aperture,
   ArrowDown,
@@ -27,6 +27,7 @@ import {
   EyeOff,
   Feather,
   FileText,
+  Focus,
   Hash,
   Camera,
   Image as ImageIcon,
@@ -85,7 +86,7 @@ export const ICONS = {
   "arrow-up": ArrowUp,
   "arrow-down": ArrowDown,
   "arrow-up-right": ArrowUpRight,
-  "map-identify": CarbonMapIdentify,
+  focus: Focus,
   "arrow-up-left": ArrowUpLeft,
   enter: CornerDownLeft,
   command: Command,
