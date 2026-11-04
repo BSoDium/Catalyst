@@ -1364,6 +1364,14 @@ export class GlobeRenderer {
   /** The last frame's sample of the moon (null: not shown). */
   private moonSample: MoonSample | null = null;
 
+  /** The card's orbit display is up (#586): the moon's frame carries the orbit, the phase and the shadow while it is. */
+  private moonHud = false;
+  setMoonHud(on: boolean) {
+    if (on === this.moonHud) return;
+    this.moonHud = on;
+    this.requestRender(); // (a moon at rest draws no frame of its own: the display needs one to appear in)
+  }
+
   /** The moon holds still (the link's card is out under the pointer or the focus, so that it can be clicked). */
   setMoonHeld(on: boolean) {
     if (on === this.moonHeld) return;
@@ -1563,7 +1571,31 @@ export class GlobeRenderer {
     const m = this.moonSample;
     if (!m || !m.onScreen || !this.sized || this.disposed || this.lost || this.suspended || this.inInterlude) return null;
     const P = this.pixel;
-    return { x: m.cx * P + this.canvasLeft, y: (this.bufH - m.cy) * P + this.canvasTop, r: m.r * P, amount: m.amount, unhidden: m.unhidden, angle: this.moonAngleNow(), grid: { col: m.cx, row: this.bufH - m.cy, rad: m.r, visible: visibleBounds({ x: m.cx, y: this.bufH - m.cy, r: m.r }, m.planet && { x: m.planet.x, y: this.bufH - m.planet.y, r: m.planet.r }), cell: P, left: this.canvasLeft, top: this.canvasTop }, tone: this.boxTone() };
+    return { x: m.cx * P + this.canvasLeft, y: (this.bufH - m.cy) * P + this.canvasTop, r: m.r * P, amount: m.amount, unhidden: m.unhidden, angle: this.moonAngleNow(), grid: { col: m.cx, row: this.bufH - m.cy, rad: m.r, visible: visibleBounds({ x: m.cx, y: this.bufH - m.cy, r: m.r }, m.planet && { x: m.planet.x, y: this.bufH - m.planet.y, r: m.planet.r }), cell: P, left: this.canvasLeft, top: this.canvasTop }, tone: this.boxTone(), ...(this.moonHud ? { hud: this.moonHudFrame() } : {}) };
+  }
+
+  /** The orbit display's data in the container's CSS px (the frame's own coordinates), from the layer's trace. */
+  private moonHudFrame(): MoonFrame["hud"] {
+    const t = this.globe.moon?.trace();
+    if (!t) return undefined;
+    const P = this.pixel;
+    // (a point of the orbit far outside the picture, where it swings past the camera, is not drawn: a line that long is a streak across the screen, not an orbit)
+    const w = this.bufW * P;
+    const h = this.bufH * P;
+    const px = (b: [number, number] | null): [number, number] | null => {
+      if (!b) return null;
+      const x = b[0] * P + this.canvasLeft;
+      const y = (this.bufH - b[1]) * P + this.canvasTop;
+      return x < this.canvasLeft - w * 0.25 || x > this.canvasLeft + w * 1.25 || y < this.canvasTop - h * 0.25 || y > this.canvasTop + h * 1.25 ? null : [x, y];
+    };
+    return {
+      orbit: t.orbit.map(px),
+      ticks: t.ticks.map((k) => ({ deg: k.deg, at: px(k.at) })),
+      lit: t.lit,
+      waxing: t.waxing,
+      angleDeg: t.angleDeg,
+      eclipse: { now: t.eclipse.now, fromAngle: t.eclipse.fromAngle, peakAngle: t.eclipse.peakAngle, at: px(t.eclipse.at), peakAt: px(t.eclipse.peakAt) },
+    };
   }
 
   /** The idle rotation is turning the globe now (a plain read: asked every camera frame, so it builds nothing, unlike `spinInfo`). */

@@ -4684,6 +4684,83 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
    * label's sharp, fully opaque edge (no feather), so that it hides what is behind it (the globe's lines, the stars) and reads on any of it. Out of sight and out of
    * the pointer's way until the moon is held.
    */
+  /* The orbit display (#586, engine/moon-overlay.ts `OrbitHud`): drawn while the card is held. A faint line where the moon goes, a mark and a number every 30 degrees, a bracket where the earth's shadow begins and a readout, in the map's mono type. */
+  .globe-moon-hud {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    pointer-events: none;
+    font-family: var(--font-mono);
+    color: var(--foreground);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.4s var(--ease-standard), visibility 0s linear 0.4s;
+  }
+
+  .globe-moon-hud[data-on] {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.4s var(--ease-standard);
+  }
+
+  .globe-moon-hud-ring,
+  .globe-moon-hud-tick,
+  .globe-moon-hud-flag {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .globe-moon-hud-ring {
+    stroke-opacity: 0.32;
+    stroke-dasharray: 2 5;
+  }
+
+  .globe-moon-hud-tick {
+    stroke-opacity: 0.55;
+  }
+
+  .globe-moon-hud-number,
+  .globe-moon-hud-readout {
+    fill: currentColor;
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    paint-order: stroke;
+    stroke: var(--background);
+    stroke-width: 3px;
+    stroke-linejoin: round;
+  }
+
+  .globe-moon-hud-number {
+    fill-opacity: 0.6;
+  }
+
+  .globe-moon-hud-readout {
+    font-size: 10px;
+    fill-opacity: 0.85;
+  }
+
+  .globe-moon-hud-flag,
+  .globe-moon-hud-eclipse {
+    stroke: var(--signal-text, currentColor);
+    fill: none;
+  }
+
+  .globe-moon-hud-eclipse {
+    fill: var(--signal-text, currentColor);
+    stroke: var(--background);
+    fill-opacity: 1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .globe-moon-hud {
+      transition: none;
+    }
+  }
+
   .globe-moon-card {
     --map-label-plate: var(--background);
     position: absolute;

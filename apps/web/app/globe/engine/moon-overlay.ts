@@ -12,6 +12,8 @@
  * The look (class names `globe-moon`, `-card`, ...) is app.css's; this file sets only what changes per frame: the position, the size and which side the card is on.
  */
 import type { GlobeMoon } from "../types";
+import { clock, phaseName } from "./moon-hud";
+import { MOON } from "./moon";
 import { dashingFor, edgeLit } from "./pixel-labels";
 
 /** What the globe tells the overlay each time it is asked (the renderer's `moonFrame`), in the container's CSS px. */
@@ -26,6 +28,15 @@ export interface MoonFrame {
   grid: { col: number; row: number; rad: number; visible: { x0: number; y0: number; x1: number; y1: number } | null; cell: number; left: number; top: number };
   /** The colour of a box at rest on the map (the palette's `peak` level), as a CSS colour: the moon's box is drawn in it. */
   tone: string;
+  /** The orbit display's data (#586), only while it is asked for (`setHud`): the orbit as points in these same px (null where it is behind the camera), its marks, the phase, the earth's shadow ahead. */
+  hud?: {
+    orbit: Array<[number, number] | null>;
+    ticks: { deg: number; at: [number, number] | null }[];
+    lit: number;
+    waxing: boolean;
+    angleDeg: number;
+    eclipse: { now: boolean; fromAngle: number | null; peakAngle: number | null; at: [number, number] | null; peakAt: [number, number] | null };
+  } | undefined;
 }
 
 /** The moon is boxed once it has been a target this long (ms): a moon that passes quickly is never boxed. */
@@ -161,6 +172,128 @@ export function cardPlace(box: { x: number; y: number; w: number; h: number }, w
   return { side: "above", x, y: Math.max(EDGE, above) }; // no room anywhere: inside the window, over the box if it must
 }
 
+/** The orbit as SVG path data: runs of consecutive points, a run broken where the orbit is behind the camera. */
+export function orbitPath(points: ReadonlyArray<[number, number] | null>): string {
+  let d = "";
+  let pen = false;
+  for (const p of points) {
+    if (!p) {
+      pen = false;
+      continue;
+    }
+    d += `${pen ? "L" : "M"}${p[0].toFixed(1)} ${p[1].toFixed(1)}`;
+    pen = true;
+  }
+  return d;
+}
+
+/** The readout's lines (the orbit display's text): the phase, the place on the orbit, the shadow. */
+export function hudLines(h: NonNullable<MoonFrame["hud"]>): string[] {
+  const shadow = h.eclipse.now ? "ECLIPSE UNDER WAY" : h.eclipse.fromAngle === null ? "NO ECLIPSE ON THIS ORBIT" : `ECLIPSE IN ${clock((h.eclipse.fromAngle / (2 * Math.PI)) * MOON.periodMs)}`;
+  return [`PHASE ${String(Math.round(h.lit * 100)).padStart(3, "0")}% ${phaseName(h.lit, h.waxing).toUpperCase()}`, `ORBIT ${String(Math.round(h.angleDeg) % 360).padStart(3, "0")}\u00b0`, shadow];
+}
+
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+/**
+ * The orbit display (#586): a faint line round the planet where the moon goes, a mark every 30 degrees with its number, a bracket where the earth's shadow begins and a readout of
+ * the phase, the place on the orbit and the time to the eclipse, like a spaceship's screen. It is drawn while the card is held (the words clear), in the container's px (the frame's), and
+ * is decoration: the link's own name carries the words. Its look is app.css's (`.globe-moon-hud`).
+ */
+class OrbitHud {
+  readonly svg: SVGSVGElement;
+  private ring: SVGPathElement;
+  private shade: SVGPathElement;
+  private marks: SVGGElement;
+  private readout: SVGTextElement;
+
+  constructor(doc: Document) {
+    const svg = (this.svg = doc.createElementNS(SVG_NS, "svg") as SVGSVGElement);
+    svg.setAttribute("class", "globe-moon-hud");
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("focusable", "false");
+    this.ring = doc.createElementNS(SVG_NS, "path") as SVGPathElement;
+    this.ring.setAttribute("class", "globe-moon-hud-ring");
+    this.shade = doc.createElementNS(SVG_NS, "path") as SVGPathElement;
+    this.shade.setAttribute("class", "globe-moon-hud-shade");
+    this.marks = doc.createElementNS(SVG_NS, "g") as SVGGElement;
+    this.readout = doc.createElementNS(SVG_NS, "text") as SVGTextElement;
+    this.readout.setAttribute("class", "globe-moon-hud-readout");
+    svg.append(this.shade, this.ring, this.marks, this.readout);
+  }
+
+  /** Draw `h` (the frame's orbit data); the readout hangs from `box` on the side `card` is not (`side` is the card's). */
+  draw(h: NonNullable<MoonFrame["hud"]>, box: { x: number; y: number; w: number; h: number }, side: "above" | "below"): void {
+    const doc = this.svg.ownerDocument;
+    this.ring.setAttribute("d", orbitPath(h.orbit));
+    // the marks: a dot on the orbit and the number to the side of it, perpendicular to the line there (up, as far as the line allows)
+    const marks = this.marks;
+    marks.replaceChildren();
+    const orbit = h.orbit.filter((p): p is [number, number] => p !== null);
+    for (const k of h.ticks) {
+      if (!k.at) continue;
+      const [x, y] = k.at;
+      let nearest = 0;
+      let best = Infinity;
+      orbit.forEach((p, i) => {
+        const d = Math.hypot(p[0] - x, p[1] - y);
+        if (d < best) {
+          best = d;
+          nearest = i;
+        }
+      });
+      const a = orbit[Math.max(0, nearest - 1)]!;
+      const b = orbit[Math.min(orbit.length - 1, nearest + 1)]!;
+      let nx = -(b[1] - a[1]);
+      let ny = b[0] - a[0];
+      const len = Math.hypot(nx, ny) || 1;
+      nx /= len;
+      ny /= len;
+      if (ny > 0) {
+        nx = -nx;
+        ny = -ny;
+      }
+      const tick = doc.createElementNS(SVG_NS, "path");
+      tick.setAttribute("class", "globe-moon-hud-tick");
+      tick.setAttribute("d", `M${(x - nx * 3).toFixed(1)} ${(y - ny * 3).toFixed(1)}L${(x + nx * 3).toFixed(1)} ${(y + ny * 3).toFixed(1)}`);
+      const label = doc.createElementNS(SVG_NS, "text");
+      label.setAttribute("class", "globe-moon-hud-number");
+      label.setAttribute("x", (x + nx * 11).toFixed(1));
+      label.setAttribute("y", (y + ny * 11 + 3).toFixed(1));
+      label.setAttribute("text-anchor", "middle");
+      label.textContent = String(k.deg).padStart(3, "0");
+      marks.append(tick, label);
+    }
+    // the shadow: a bracket where it begins and the stretch of the orbit from there to the middle of it
+    this.shade.setAttribute("d", "");
+    const e = h.eclipse;
+    if (e.at) {
+      const [x, y] = e.at;
+      const flag = doc.createElementNS(SVG_NS, "path");
+      flag.setAttribute("class", "globe-moon-hud-flag");
+      flag.setAttribute("d", `M${(x - 5).toFixed(1)} ${(y - 5).toFixed(1)}h5v10h-5M${(x + 5).toFixed(1)} ${(y - 5).toFixed(1)}h-5`);
+      const name = doc.createElementNS(SVG_NS, "text");
+      name.setAttribute("class", "globe-moon-hud-number globe-moon-hud-eclipse");
+      name.setAttribute("x", (x + 9).toFixed(1));
+      name.setAttribute("y", (y + 3).toFixed(1));
+      name.textContent = "ECL";
+      marks.append(flag, name);
+    }
+    // the readout, one line under the other, on the side of the box that the card is not on
+    const lines = hudLines(h);
+    this.readout.replaceChildren();
+    const x0 = box.x;
+    const y0 = side === "above" ? box.y + box.h + 14 : box.y - 8 - (lines.length - 1) * 13;
+    lines.forEach((line, i) => {
+      const t = doc.createElementNS(SVG_NS, "tspan");
+      t.setAttribute("x", x0.toFixed(1));
+      t.setAttribute("y", (y0 + i * 13).toFixed(1));
+      t.textContent = line;
+      this.readout.append(t);
+    });
+  }
+}
+
 export class MoonOverlay {
   private link: HTMLAnchorElement;
   private card: HTMLElement;
@@ -181,6 +314,7 @@ export class MoonOverlay {
   private touched = false;
   private shown = false;
   private disposed = false;
+  private hud: OrbitHud;
   private at: { x: number; y: number; r: number; angle: number; unhidden: number; drawn: number; box: { x: number; y: number; w: number; h: number } } | null = null;
 
   constructor(
@@ -188,6 +322,7 @@ export class MoonOverlay {
     moon: GlobeMoon,
     private frame: () => MoonFrame | null,
     private setHeld: (on: boolean) => void,
+    private setHud: (on: boolean) => void = () => {},
   ) {
     const doc = root.ownerDocument;
     const link = (this.link = doc.createElement("a"));
@@ -223,6 +358,8 @@ export class MoonOverlay {
     this.box = box(doc);
     link.append(this.box.svg, card);
     root.append(link);
+    this.hud = new OrbitHud(doc);
+    root.append(this.hud.svg);
     if (typeof ResizeObserver !== "undefined") {
       this.observer = new ResizeObserver(() => {
         this.measure();
@@ -291,6 +428,11 @@ export class MoonOverlay {
     if (!live) this.setOpen(false);
     this.at = { x: f.x, y: f.y, r: size / 2, angle: f.angle, unhidden: f.unhidden, drawn: f.r, box: { x: boxX, y: boxY, w: cols * g.cell, h: rows * g.cell } };
     if (this.open || "seen" in link.dataset) this.placeCard();
+    // the orbit display: only while the card is held, and when the frame brought its data
+    if (this.open && f.hud) {
+      this.hud.draw(f.hud, this.at.box, this.card.dataset.side === "below" ? "below" : "above");
+      this.hud.svg.dataset.on = "";
+    } else delete this.hud.svg.dataset.on;
   }
 
   /** The moon has been a target for `DWELL_MS` without a break: the box comes in (`data-seen`). It goes as soon as the moon stops being a target. */
@@ -358,6 +500,8 @@ export class MoonOverlay {
     const doc = this.root.ownerDocument;
     if (on && this.coarse()) doc.addEventListener?.("pointerdown", this.onOutside, true);
     else doc.removeEventListener?.("pointerdown", this.onOutside, true);
+    this.setHud(on);
+    if (!on) delete this.hud.svg.dataset.on;
     if (on) this.link.dataset.open = "";
     else {
       delete this.link.dataset.open;
@@ -481,5 +625,6 @@ export class MoonOverlay {
     this.root.ownerDocument.removeEventListener?.("pointerdown", this.onOutside, true);
     this.observer?.disconnect();
     this.link.remove();
+    this.hud.svg.remove();
   }
 }
