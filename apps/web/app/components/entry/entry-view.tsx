@@ -312,7 +312,8 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
                 </>
               )}
             </span>
-            {poem && <span className="-my-2.5 self-center print:hidden max-md:-my-4">{copy}</span>}
+            {/* (in full screen the button's box ends on the cover's right edge, which is the running head's own: the running head's gutter is given back on that side) */}
+            {poem && <span className={cn("-my-2.5 self-center print:hidden max-md:-my-4", full && "md:-mr-8")}>{copy}</span>}
             {(status || reading) && (
               <span className="flex items-baseline gap-4 max-md:hidden">
                 {status && <StatusTag status={status} className="text-[length:inherit] leading-[inherit] [font:inherit] tracking-[inherit] uppercase" />}
