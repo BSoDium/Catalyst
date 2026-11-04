@@ -6,6 +6,7 @@ import { PANEL_HEADING_ID } from "~/components/detail-panel";
 import { EntryListCard } from "~/components/entry/entry-list-card";
 import { TripCards } from "~/components/trip-card";
 import { Button, Icon, SectionHeader, Stack, StatePanel } from "~/components/ui";
+import { coverImageProps } from "~/lib/cover-image";
 import { safeMediaSrc } from "~/lib/entry-blocks";
 import { placeCover, type PlaceCover } from "~/lib/place-cover";
 import { formatPlaceCoordinates, placeCoordinateParts, type CoordinatePart } from "~/lib/labelling";
@@ -109,13 +110,12 @@ function StepStory({ place, photos }: { place: PlaceDetailData; photos: PhotoIte
 }
 
 /** One figure of the facts strip: a micro-label over its value. */
-function Fact({ label, children, sub, end, className }: { label: string; children: ReactNode; sub?: string; end?: boolean; className?: string }) {
+function Fact({ label, children, end, className }: { label: string; children: ReactNode; end?: boolean; className?: string }) {
   return (
     <div className={cn("flex min-w-0 flex-col gap-0.5", end && "items-end text-right", className)}>
       <dt className="ds-micro">{label}</dt>
       <dd className={cn("m-0 flex flex-col", end && "items-end")}>
         {children}
-        {sub && <span className="ds-meta">{sub}</span>}
       </dd>
     </div>
   );
@@ -151,12 +151,12 @@ function PlaceFacts({ place }: { place: PlaceDetailData }) {
   const [measured, setMeasured] = useState(false);
   useLayoutEffect(() => {
     const el = row.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
     const measure = () => {
-      if (start.current && counts.current) setBelow(counts.current.getBoundingClientRect().top > start.current.getBoundingClientRect().top + 1);
+      setBelow(!!start.current && !!counts.current && counts.current.getBoundingClientRect().top > start.current.getBoundingClientRect().top + 1);
       setMeasured(true);
     };
     measure();
+    if (!el || typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(measure);
     observer.observe(el);
     return () => observer.disconnect();
@@ -216,10 +216,10 @@ function PlaceHeader({ place, cover }: { place: PlaceDetailData; cover: PlaceCov
   const where = placeWhere(place);
   const body = (
     <>
-      {(where || place.lived) && (
+      {(where || place.lived || place.living) && (
         <p className="ds-micro m-0 flex flex-wrap gap-x-2">
           {where && <span>{where}</span>}
-          {place.lived === true && <span className="ds-micro" data-tone="signal">{where ? "· " : ""}{place.living ? "Lives here" : "Lived here"}</span>}
+          {(place.lived === true || place.living === true) && <span className="ds-micro" data-tone="signal">{where ? "· " : ""}{place.living ? "Lives here" : "Lived here"}</span>}
         </p>
       )}
       <h1 id={PANEL_HEADING_ID} tabIndex={-1} className="place-name m-0 outline-offset-4">
@@ -232,7 +232,7 @@ function PlaceHeader({ place, cover }: { place: PlaceDetailData; cover: PlaceCov
   return (
     <header data-slot="place-cover" className="place-cover relative isolate -mx-6 -mt-2 flex flex-col justify-end gap-3 overflow-hidden px-6 pb-5 md:-mt-[calc(var(--navbar-height)+1.5rem)]">
       <div aria-hidden="true" className="place-cover-art absolute inset-0 -z-10">
-        <img src={src} alt="" decoding="async" className="place-cover-img" />
+        <img {...coverImageProps({ src, width: cover.width, small: cover.small }, "(min-width: 48rem) 50vw, 100vw")} alt="" decoding="async" className="place-cover-img" />
         <div className="absolute inset-0 bg-linear-to-t from-background/60 via-background/20 via-60% to-transparent" />
       </div>
       {body}

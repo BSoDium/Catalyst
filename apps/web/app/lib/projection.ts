@@ -198,7 +198,8 @@ export function getPlaceDetail(projection: PublishedProjection, slug: string): P
     name: stripCountry(place.name, place.countryCode),
     ...(place.region !== undefined ? { region: place.region } : {}),
     ...(countryName(place.countryCode) ? { country: countryName(place.countryCode)! } : {}),
-    ...(place.lived === true ? { lived: true } : {}),
+    // (a current home is a home, whatever the producer wrote)
+    ...(place.lived === true || place.living === true ? { lived: true } : {}),
     ...(place.living === true ? { living: true } : {}),
     coordinates: place.coordinates,
     ...(place.summary !== undefined ? { summary: place.summary } : {}),

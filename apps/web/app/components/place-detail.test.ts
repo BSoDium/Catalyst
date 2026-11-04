@@ -28,6 +28,17 @@ describe("PlaceDetail", () => {
     expect(html({ lived: true, living: true })).toContain("Lives here");
     expect(html({ lived: true, living: true })).not.toContain("Lived here");
   });
+  it("counts the entries by kind at the right end of the facts strip, hidden until the browser has measured whether they fit beside the coordinates", () => {
+    const html = render("lisbon");
+    expect(html).toMatch(/<dl[^>]*data-measuring[^>]*class="[^"]*invisible/);
+    expect(html).toMatch(/<dt[^>]*>Articles<\/dt>/);
+    expect(html).toMatch(/<dt[^>]*>Software<\/dt>/);
+    expect(html).toContain("<noscript>");
+  });
+  it("a place with only `living` is a home too: tagged and its trips do not count visits", () => {
+    const place = { ...getPlaceDetail(demo, "lisbon")!, living: true as const };
+    expect(renderToStaticMarkup(createElement(StaticRouter, { location: "/" }, createElement(PlaceDetail, { place })))).toContain("Lives here");
+  });
   it("groups the entries under the kinds' own headings, without numbering or brackets", () => {
     const html = render("lisbon");
     expect(html).toMatch(/<h2[^>]*>Articles<\/h2>/);

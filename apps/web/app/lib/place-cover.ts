@@ -7,6 +7,8 @@ export interface PlaceCover {
   alt: string;
   width?: number;
   height?: number;
+  /** The entry cover's smaller copy, when it has one: a blurred decoration does not need the original. */
+  small?: { src: string; width: number; height: number };
   own: boolean;
 }
 
@@ -27,7 +29,7 @@ export function placeCover(place: Pick<PlaceDetailData, "images" | "entries">): 
     const group = place.entries.find((g) => g.kind === kind);
     for (const entry of group?.entries ?? []) {
       if (entry.sensitive || !entry.cover || !safeMediaSrc(entry.cover.src)) continue;
-      return { src: entry.cover.src, alt: entry.cover.alt, ...size(entry.cover), own: false };
+      return { src: entry.cover.src, alt: entry.cover.alt, ...size(entry.cover), ...(entry.cover.small ? { small: entry.cover.small } : {}), own: false };
     }
   }
   return null;
