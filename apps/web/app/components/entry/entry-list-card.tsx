@@ -92,6 +92,7 @@ export function EntryRow({
   priority,
   className,
   linkState,
+  compact,
 }: {
   entry: EntrySummary;
   headingLevel?: 2 | 3 | 4;
@@ -99,14 +100,67 @@ export function EntryRow({
   className?: string;
   /** The router state of the row's link: where the entry was opened from (`listBackState`). */
   linkState?: unknown;
+  /** The row of a narrow column (the place panel): the same type as the list page's, in one column, with the place left out (the panel is that place). */
+  compact?: boolean;
 }) {
   const Heading = `h${headingLevel}` as "h2" | "h3" | "h4";
   const date = formatEntryDate(entry.date);
   const place = placeLine(entry.places);
   const { status } = splitMeta(entry.meta);
   const cover = entry.cover && safeMediaSrc(entry.cover.src) ? { ...coverImageProps(entry.cover, ROW_COVER_SIZES), alt: entry.cover.alt } : null;
-  const showCover = !!cover || entry.kind === "artwork";
+  // (an artwork's picture IS its page; in the place panel every row has its picture, its own or a generated one)
+  const showCover = !!cover || entry.kind === "artwork" || compact === true;
   const tags = entry.tags.slice(0, 4);
+  if (compact) {
+    return (
+      <article
+        id={entry.slug}
+        data-slot="entry-card"
+        data-kind={entry.kind}
+        data-compact=""
+        data-covered={showCover ? "" : undefined}
+        className={cn("ds-card entry-row grid min-w-0 grid-cols-1 gap-x-5 gap-y-3 py-5", showCover && "@md:grid-cols-[11rem_minmax(0,1fr)]", className)}
+      >
+        {showCover && (
+          // (in a wide panel the picture is as tall as the text beside it and fills its cell; stacked above the text it keeps its proportions)
+          <div className="relative min-w-0 aspect-[16/10] overflow-hidden @md:aspect-auto @md:min-h-32">
+            {cover && entry.sensitive === true ? (
+              <SensitiveMedia className="absolute inset-0 [&_.sensitive-media-content]:size-full">
+                <img src={cover.src} srcSet={cover.srcSet} sizes={cover.sizes} alt={cover.alt} loading="lazy" decoding="async" className="size-full object-cover" />
+              </SensitiveMedia>
+            ) : cover ? (
+              <img src={cover.src} srcSet={cover.srcSet} sizes={cover.sizes} alt={cover.alt} loading="lazy" decoding="async" className="absolute inset-0 size-full object-cover" />
+            ) : (
+              <div className="absolute inset-0 [&>*]:size-full">
+                <CoverArt seed={entry.slug} kind={entry.kind} cols={48} rows={27} />
+              </div>
+            )}
+          </div>
+        )}
+        <div className="flex min-w-0 flex-col gap-2.5">
+          {(date || status) && (
+            <p className="type-meta m-0 flex flex-wrap items-baseline gap-x-3 text-muted-foreground">
+              {date && <time dateTime={date.dateTime}>{date.text}</time>}
+              {status && <StatusTag status={status} className="text-[length:inherit] leading-[inherit] [font:inherit] tracking-[inherit] uppercase" />}
+            </p>
+          )}
+          <Heading data-slot="entry-card-title" className="m-0 font-display text-[1.625rem] leading-[1.06] font-extrabold tracking-[-0.025em] text-balance">
+            <Link to={entry.href} state={linkState} className="after:absolute after:inset-0 after:content-[''] focus-visible:outline-none">
+              {entry.title}
+            </Link>
+          </Heading>
+          {entry.summary &&
+            (entry.kind === "poem" ? (
+              // (a poem's summary is what the row has to read: the ink and a larger size, as in the poems' list)
+              <p className="m-0 line-clamp-4 font-reading text-[1.1875rem] leading-[1.4] text-pretty text-foreground">{entry.summary}</p>
+            ) : (
+              <p className="m-0 line-clamp-3 font-reading text-[1.0625rem] leading-[1.4] font-light text-pretty text-muted-foreground">{entry.summary}</p>
+            ))}
+          {tags.length > 0 && <TagList label="Tags" tags={tags.map((label) => ({ label }))} className="font-meta text-xs" />}
+        </div>
+      </article>
+    );
+  }
   if (entry.kind === "poem") return <PoemRow entry={entry} Heading={Heading} date={date} place={place} status={status} tags={tags} className={className} linkState={linkState} />;
   return (
     <article

@@ -10,14 +10,62 @@ const demo = loadDemoProjection();
 const render = (slug: string) => renderToStaticMarkup(createElement(StaticRouter, { location: "/" }, createElement(PlaceDetail, { place: getPlaceDetail(demo, slug)! })));
 
 describe("PlaceDetail", () => {
-  it("says the name, the country once and the coordinates at the stored precision on one quiet line, with no 'Place' label", () => {
+  it("says the name, the country once and the coordinates at the stored precision in the facts strip, with no 'Place' label", () => {
     const html = render("lisbon");
     expect(html).toContain("<h1");
-    expect(html).toContain("38.72° N, 9.14° W");
+    expect(html).toContain('data-slot="place-facts"');
+    expect(html).toContain("38.72° N");
+    expect(html).toContain("9.14° W");
     expect(html).not.toContain("38.7200");
     expect(html.match(/Portugal/g)?.length).toBe(1); // region and country are the same word: said once
     expect(html).not.toMatch(/PLACE|Place\s*<\/(span|p)>/);
     expect(html).not.toMatch(/Entries \/ 000|№/);
+  });
+  it("tells a home from the present one: 'Lived here' for a place lived in, 'Lives here' where the owner lives now", () => {
+    const html = (extra: object) => renderToStaticMarkup(createElement(StaticRouter, { location: "/" }, createElement(PlaceDetail, { place: { ...getPlaceDetail(demo, "lisbon")!, ...extra } })));
+    expect(html({})).not.toMatch(/Lived here|Lives here/);
+    expect(html({ lived: true })).toContain("Lived here");
+    expect(html({ lived: true, living: true })).toContain("Lives here");
+    expect(html({ lived: true, living: true })).not.toContain("Lived here");
+  });
+  it("counts the entries by kind at the right end of the facts strip, hidden until the browser has measured whether they fit beside the coordinates", () => {
+    const html = render("lisbon");
+    expect(html).toMatch(/<dl[^>]*data-measuring[^>]*class="[^"]*invisible/);
+    expect(html).toMatch(/<dt[^>]*>Articles<\/dt>/);
+    expect(html).toMatch(/<dt[^>]*>Software<\/dt>/);
+    expect(html).toContain("<noscript>");
+  });
+  it("inks each count of entries by how many there are: the secondary grey for one, the full ink for the most", () => {
+    const base = getPlaceDetail(demo, "lisbon")!;
+    const entry = base.entries[0]!.entries[0]!;
+    const place = { ...base, entries: [{ kind: "article" as const, label: "Articles", entries: [entry] }, { kind: "project" as const, label: "Software", entries: [{ ...entry, slug: "a" }, { ...entry, slug: "b" }, { ...entry, slug: "c" }] }] };
+    const html = renderToStaticMarkup(createElement(StaticRouter, { location: "/" }, createElement(PlaceDetail, { place })));
+    expect(html).toContain("var(--foreground) 0%");
+    expect(html).toContain("var(--foreground) 100%");
+  });
+  it("gives every row of the panel its picture: an entry with no cover has a generated one", () => {
+    const base = getPlaceDetail(demo, "lisbon")!;
+    const bare = base.entries.filter((g) => g.kind !== "photograph" && g.kind !== "artwork").map((g) => ({ ...g, entries: g.entries.map((e) => ({ ...e, cover: undefined })) }));
+    const html = renderToStaticMarkup(createElement(StaticRouter, { location: "/" }, createElement(PlaceDetail, { place: { ...base, entries: bare } })));
+    const rows = html.split('data-compact=""').slice(1);
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) expect(row.slice(0, row.indexOf("</article>"))).toContain('data-slot="cover-art"');
+  });
+  it("lays the poems out in two columns where the group is wide, and the other kinds in one", () => {
+    const html = render("lisbon");
+    const grids = [...html.matchAll(/<ul class="([^"]*)"[^>]*>\s*<li/g)].map((m) => m[1]!);
+    expect(grids.filter((c) => c.includes("@xl:grid-cols-2"))).toHaveLength(html.includes('data-kind="poem"') ? 1 : 0);
+  });
+  it("opens on a gallery: the photographs', else the artworks' when there are no photographs to show", () => {
+    const base = getPlaceDetail(demo, "kyoto")!;
+    const kinds = (place: typeof base) => [...renderToStaticMarkup(createElement(StaticRouter, { location: "/" }, createElement(PlaceDetail, { place }))).matchAll(/data-kind="(\w+)" class="@container flex flex-col gap-4"/g)].map((m) => m[1]);
+    expect(kinds(base)[0]).toBe("artwork"); // (kyoto has artworks and no photographs)
+    const withPhoto = { ...base, entries: [{ kind: "photograph" as const, label: "Photography", entries: [{ ...base.entries[0]!.entries[0]!, kind: "photograph" as const, slug: "p" }] }, ...base.entries] };
+    expect(kinds(withPhoto)[0]).toBe("photograph");
+  });
+  it("a place with only `living` is a home too: tagged and its trips do not count visits", () => {
+    const place = { ...getPlaceDetail(demo, "lisbon")!, living: true as const };
+    expect(renderToStaticMarkup(createElement(StaticRouter, { location: "/" }, createElement(PlaceDetail, { place })))).toContain("Lives here");
   });
   it("groups the entries under the kinds' own headings, without numbering or brackets", () => {
     const html = render("lisbon");
@@ -33,16 +81,16 @@ describe("PlaceDetail", () => {
     expect(html).not.toMatch(/Nothing is linked|Entries/);
     expect(html).not.toContain("ds-frame");
   });
-  it("blurs the card of a sensitive entry in the place's list, with no control, and not its neighbour", () => {
+  it("blurs the picture of a sensitive entry in the place's gallery, with no control, and not its neighbour", () => {
     const html = render("kyoto");
     expect((html.match(/data-slot="sensitive-media"/g) ?? []).length).toBe(1);
     expect(html).toContain("Mature content");
     expect(html).not.toContain("<button");
-    const sensitive = html.slice(html.indexOf('id="figure-study-two"'));
-    expect(sensitive.slice(0, sensitive.indexOf("</article>"))).toContain('data-state="hidden"');
-    // the other card of the same place is an ordinary one
-    const ordinary = html.slice(html.indexOf('id="demo-artwork"'));
-    expect(ordinary.slice(0, ordinary.indexOf("</article>"))).not.toContain("sensitive-media");
+    // it is in the gallery with the others, not a card apart from it
+    const items = html.split("<a ").filter((chunk) => chunk.includes("place-gallery-item"));
+    const blurred = items.filter((chunk) => chunk.slice(0, chunk.indexOf("</a>")).includes('data-state="hidden"'));
+    expect(items.length).toBeGreaterThan(1);
+    expect(blurred).toHaveLength(1);
     expect(render("lisbon")).not.toContain("sensitive-media");
   });
   const route = (slug: string, extra: Record<string, unknown> = {}) => {
@@ -70,7 +118,8 @@ describe("PlaceDetail", () => {
     expect(html).not.toContain('data-slot="place-story"');
     expect(html).toContain("We arrived at five in the morning");
     expect(html).toContain('data-slot="place-photos"');
-    expect(html.match(/<figure/g)?.length).toBe(3);
+    expect(html.match(/<figure/g)?.length).toBe(2); // (its first picture heads the panel)
+    expect(html).toContain('data-slot="place-cover"');
     expect(html).toContain('data-slot="trip-card"');
     expect(html.indexOf("We arrived")).toBeLessThan(html.indexOf('data-slot="trip-card"'));
   });
@@ -84,16 +133,16 @@ describe("PlaceDetail", () => {
     expect(html.slice(story)).toContain("Lisbon is the city I keep returning to");
     expect(html.slice(story)).toContain('data-slot="trip-card"');
   });
-  it("counts a photograph taken at the step as one of its pictures, not as an entry that puts the story second", () => {
+  it("leads with the photographs taken at the step as a gallery under one 'Photography' title, not as cards that put the story second", () => {
     const html = render("lisbon");
-    expect(html).not.toMatch(/<h2[^>]*>Photography<\/h2>/);
-    const story = html.slice(html.indexOf('data-slot="place-story"'));
-    expect(story).toContain('data-slot="place-photos"');
-    expect(story).toContain('href="/photography/sea-wall"');
-    expect(story).toContain("Sea Wall");
+    expect(html).toMatch(/<h2[^>]*>Photography<\/h2>/);
+    const gallery = html.slice(html.indexOf('data-slot="place-gallery"'), html.indexOf('data-slot="place-story"'));
+    expect(gallery).toContain('href="/photography/sea-wall"');
+    expect(gallery).toContain("Sea Wall");
+    expect(html.indexOf('data-slot="place-gallery"')).toBeLessThan(html.indexOf('<h2 class="m-0 font-display text-[2rem] leading-none font-extrabold tracking-[-0.03em]">Articles'));
   });
   it("draws a picture on a stage (issue #448): never wider than its own pixels, never taller than 80 % of the window, a blurred copy for the sides", () => {
-    const html = render("lisbon");
+    const html = render("bangkok");
     const stages = html.match(/<div data-slot="place-stage"[\s\S]*?<\/div>/g) ?? [];
     expect(stages.length).toBeGreaterThan(0);
     for (const stage of stages) {
@@ -110,6 +159,6 @@ describe("PlaceDetail", () => {
     const html = route("b", { images });
     const open = html.slice(0, html.indexOf("<details"));
     expect(open.match(/<figure/g)?.length).toBe(4);
-    expect(html).toContain("Show 5 more pictures");
+    expect(html).toContain("Show 4 more pictures"); // (the first of the nine heads the panel)
   });
 });

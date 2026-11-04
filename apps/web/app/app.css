@@ -2035,6 +2035,185 @@
       gap: 1rem 2rem;
     }
   }
+  /* The head of a place's panel (#611). The name is the site's display face, large; its figures (the coordinates, the counts) are set in the same face in three voices: whole numbers in the foreground, the decimals dimmer, the hemisphere a small tracked mono letter. */
+  .place-name {
+    font-family: var(--font-display);
+    font-optical-sizing: auto;
+    font-synthesis: none;
+    font-weight: 800;
+    font-size: clamp(2.75rem, 1.8rem + 3.2vw, 4.5rem);
+    line-height: 0.95;
+    letter-spacing: -0.04em;
+    text-wrap: balance;
+    overflow-wrap: break-word;
+  }
+  .place-figure {
+    font-family: var(--font-display);
+    font-optical-sizing: auto;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+  }
+  .place-figure-whole {
+    font-size: 1.75rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    color: var(--foreground);
+  }
+  /* the counts of entries: lighter than the coordinates' whole degrees; their ink is set by how many there are (`countInk`) */
+  .place-figure-count {
+    font-size: 1.75rem;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    color: var(--muted-foreground);
+  }
+  /* the dates: as large as the figures beside them, in the secondary grey (nothing in it is more important than the rest) */
+  .place-figure-when {
+    font-size: 1.75rem;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    color: var(--muted-foreground);
+    text-wrap: balance;
+  }
+  .place-when-strong {
+    color: var(--foreground);
+  }
+  /* the count beside a group's title: its digits as tall as the x-height of the title (2 rem Bricolage, x-height about 0.52 em; the digits of the mono face are about 0.73 em), the colour kept */
+  .place-group-count {
+    font-family: var(--font-mono);
+    font-size: calc(2rem * 0.52 / 0.73);
+    line-height: 1;
+    font-variant-numeric: tabular-nums slashed-zero;
+    color: var(--muted-foreground);
+  }
+  .place-figure-fraction {
+    font-size: 1.75rem;
+    font-weight: 300;
+    letter-spacing: -0.02em;
+    color: var(--muted-foreground);
+  }
+  .place-figure-deg {
+    margin-left: 0.05em;
+    font-size: 1.125rem;
+    font-weight: 300;
+    color: var(--muted-foreground);
+  }
+  .place-figure-hemisphere {
+    margin-left: 0.4em;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    color: var(--signal-text, var(--foreground));
+  }
+  /* The photographs of a place (components/place-detail.tsx, `PhotoGallery`): the label is on the picture, over a soft dome of the page colour from its bottom left corner, so it reads on any photograph in both schemes; the arrows are plates over the picture's edge, in the middle, not the chips' top-aligned ones. */
+  .place-gallery-label {
+    position: absolute;
+    inset: auto 0 0 0;
+    isolation: isolate;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 5rem 1.25rem 1rem;
+  }
+  .place-gallery-label::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    /* the whole width of the label (the date is at its left, the position at its right), the page colour held firmly under the text and eased to nothing above it */
+    background: linear-gradient(
+      to top,
+      color-mix(in srgb, var(--background) 78%, transparent) 0%,
+      color-mix(in srgb, var(--background) 66%, transparent) 40%,
+      color-mix(in srgb, var(--background) 48%, transparent) 62%,
+      color-mix(in srgb, var(--background) 24%, transparent) 80%,
+      color-mix(in srgb, var(--background) 7%, transparent) 93%,
+      transparent 100%
+    );
+  }
+  /* The carousel of the photographs (components/place-gallery.tsx, lib/photo-carousel.ts): the row is a native scroller, with no scrollbar, whose pictures are placed from its scroll position, so they change in WIDTH only (the height is the row's). `--g`, 0 to 1, is how much of
+     its full width a picture has; the title in it follows it: its size stays, the variable face (Bricolage) goes from its thinnest weight (200) to its heaviest (800) and from a faint ink to the full one. A picture with no `--g` (one alone, the row before the script) is at full size. */
+  .place-gallery-scroller {
+    height: min(26rem, 70dvh);
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .place-gallery-scroller::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+  .place-gallery-title {
+    font-size: 1.375rem;
+    font-weight: calc(200 + 600 * var(--g, 1));
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    opacity: calc(0.3 + 0.7 * var(--g, 1));
+    text-shadow: 0 0 0.5rem var(--background);
+  }
+  /* the date and the position are small mono type over a photograph: the ink, not the muted grey, with a halo of the page colour */
+  .place-gallery-meta {
+    color: var(--foreground);
+    opacity: clamp(0, calc((var(--g, 1) - 0.1) * 1.4), 1);
+    text-shadow: 0 0 0.375rem var(--background), 0 0 0.125rem var(--background);
+  }
+  .place-gallery [data-slot="scroll-row-arrow"] {
+    top: 50%;
+    translate: 0 -50%;
+    background: color-mix(in srgb, var(--background) 72%, transparent);
+    backdrop-filter: blur(4px);
+  }
+  .place-gallery [data-slot="scroll-row-arrow"]::before {
+    display: none;
+  }
+  /* With a cover the head is tall enough to show the picture above the type, and the panel's bar (the close button) lies over its top edge, where it has no ground of its own: the buttons get a faint plate. */
+  .place-cover {
+    min-height: 26rem;
+  }
+  /* The picture fades out into whatever is behind the panel (it is translucent over the map: a gradient to the page colour would show its edge). */
+  .place-cover-img {
+    position: absolute;
+    inset: -1rem;
+    width: calc(100% + 2rem);
+    height: calc(100% + 2rem);
+    max-width: none;
+    object-fit: cover;
+    filter: blur(6px) saturate(0.85);
+    opacity: 0.42;
+  }
+  .place-cover-art {
+    mask-image: linear-gradient(to bottom, #000 38%, transparent 96%);
+  }
+  [data-panel]:has([data-slot="place-cover"]) [data-slot="panel-bar"]::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset: 0 0 -9rem 0;
+    pointer-events: none;
+    /* a soft, round-ish oval of the page colour centred on the panel's top corner (the close button's), far bigger than the button so no edge of it is seen, eased to nothing (the model: the nav's search plate over the globe); the box runs below the bar so that the oval's bottom is not cut */
+    --plate-x: 0%;
+    background: radial-gradient(
+      ellipse 19rem 12rem at var(--plate-x) 0,
+      color-mix(in srgb, var(--background) 52%, transparent) 0%,
+      color-mix(in srgb, var(--background) 50%, transparent) 20%,
+      color-mix(in srgb, var(--background) 34%, transparent) 38%,
+      color-mix(in srgb, var(--background) 16%, transparent) 55%,
+      color-mix(in srgb, var(--background) 5%, transparent) 72%,
+      color-mix(in srgb, var(--background) 1%, transparent) 88%,
+      transparent 100%
+    );
+  }
+  @media (max-width: 47.99rem) {
+    /* on a phone the bar is a row above the content: with a cover it floats over the picture instead */
+    [data-panel]:has([data-slot="place-cover"]) [data-slot="panel-bar"] {
+      /* (!important: the bar's own utilities, `relative`, are in a later layer) */
+      position: absolute !important;
+      inset: 0 0 auto 0;
+    }
+    [data-panel]:has([data-slot="place-cover"]) [data-slot="panel-bar"]::before {
+      --plate-x: 100%;
+    }
+  }
   /* The link to the place (#581): the globe (the aperture's twin), two lines of text and, in the top right corner, the arrow, with no outline, the glyphs at one distance from the box's edge at the top, the bottom and their own side: each box's padding is that distance less the glyph's own inset (the globe's runs from 2 to 22 of 24 across, the arrow's from 7 to 17). */
   .entry-place-link {
     --place-h: 2.75rem;
@@ -6546,7 +6725,8 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   .career-name-handle {
     position: absolute;
     left: 0;
-    top: 0;
+    /* on the LAST line of the name (the family name's, when the name breaks in two on a phone), not the first: it comes down from above by the same distance and lands there */
+    bottom: 0;
     white-space: nowrap;
     opacity: 0;
     pointer-events: none;

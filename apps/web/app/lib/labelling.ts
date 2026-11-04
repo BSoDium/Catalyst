@@ -28,9 +28,27 @@ export function decimalsOf(value: number): number {
  * of precision it does not have). Out-of-range or non-finite input gives the placeholder.
  */
 export function formatPlaceCoordinates(lat: number, lon: number): string {
-  if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return EMPTY_COORD;
-  const part = (v: number, pos: string, neg: string) => `${Math.abs(v).toFixed(decimalsOf(v))}° ${v < 0 ? neg : pos}`;
-  return `${part(lat, "N", "S")}, ${part(lon, "E", "W")}`;
+  const parts = placeCoordinateParts(lat, lon);
+  return parts ? `${parts[0].text}, ${parts[1].text}` : EMPTY_COORD;
+}
+
+/** One coordinate cut for typesetting: `52.23° N` is `{ whole: "52", fraction: ".23", hemisphere: "N" }`, `text` the same written out. */
+export interface CoordinatePart {
+  whole: string;
+  fraction: string;
+  hemisphere: string;
+  text: string;
+}
+
+/** The two coordinates of a place as `formatPlaceCoordinates` writes them (the same decimals), in parts the panel can set in different weights; null when out of range or not finite. */
+export function placeCoordinateParts(lat: number, lon: number): [CoordinatePart, CoordinatePart] | null {
+  if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
+  const part = (v: number, pos: string, neg: string): CoordinatePart => {
+    const [whole = "0", fraction = ""] = Math.abs(v).toFixed(decimalsOf(v)).split(".");
+    const hemisphere = v < 0 ? neg : pos;
+    return { whole, fraction: fraction ? `.${fraction}` : "", hemisphere, text: `${whole}${fraction ? `.${fraction}` : ""}° ${hemisphere}` };
+  };
+  return [part(lat, "N", "S"), part(lon, "E", "W")];
 }
 
 /** An ISO date or `Date` -> `2026.10.08` (UTC, so the server and the browser agree). Invalid input gives `----.--.--`. */
