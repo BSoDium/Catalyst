@@ -1211,6 +1211,16 @@
     stroke-linejoin: miter;
   }
 
+  /* The arrows are the one-stroke kind: a shaft and a head that close a square. With the system's square ends the shaft's end pokes past the head's diagonals; butt ends stop it at the corner, where the miter joins the head's two legs (#581). */
+  .ui-icon.lucide-arrow-right,
+  .ui-icon.lucide-arrow-up-right,
+  .ui-icon.lucide-arrow-up-left,
+  .ui-icon.lucide-arrow-up,
+  .ui-icon.lucide-arrow-down {
+    stroke-linecap: butt;
+    stroke-linejoin: miter;
+  }
+
   .ui-icon[data-size="inline"] {
     width: var(--icon-inline);
     height: var(--icon-inline);
@@ -2012,26 +2022,26 @@
     gap: 1rem 2rem;
     margin: 2rem 0 0;
   }
-  /* The link to the place (#581): the map icon at the left, two lines of text, the arrow at the right, in a box where the glyphs are the SAME distance `--place-d` from the border's outer edge at the top, the bottom, and the left (the map) or the right (the arrow). The glyphs
-     are `--place-g` tall, and Carbon's drawings do not fill their 32-unit boxes (the map icon runs from 2 to 30: 87.5 %; the arrow from 6 to 26: 62.5 %), so each box is the glyph's size over that share and the padding on its side is `--place-d` less the border and the box's own inset. */
+  /* The link to the place (#581): the map icon, two lines of text and the arrow, with no outline, the glyphs at one distance from the box's edge at the top, the bottom and their own side. The icons are drawn at the weight of the text: the map icon (Carbon,
+     a 2-unit stroke on 32) at 21 px is 1.3 px, the arrow (lucide, on 24) at 1.25 units of 24 px; so each box's size is its glyph's and the padding on its side is the distance less the box's own inset (the map's runs from 2 to 30 of 32, the arrow's from 7 to 17 of 24). */
   .entry-place-link {
-    --place-h: 2.75rem;
-    --place-d: 0.625rem;
-    --place-g: calc(var(--place-h) - 2 * var(--place-d));
-    --place-map: calc(var(--place-g) / 0.875);
-    --place-arrow: calc(var(--place-g) / 0.625);
+    --place-h: 2.5rem;
+    --place-map: 1.3125rem;
+    --place-arrow: 1.5rem;
     display: inline-flex;
     align-items: center;
     gap: 0.75rem;
-    margin-left: auto;
     box-sizing: border-box;
     height: var(--place-h);
-    padding-left: calc(var(--place-d) - var(--hairline) - var(--place-map) * 0.0625);
-    padding-right: calc(var(--place-d) - var(--hairline) - var(--place-arrow) * 0.1875);
-    border: var(--hairline) solid var(--border-strong);
+    padding-left: calc((var(--place-h) - var(--place-map) * 0.875) / 2 - var(--place-map) * 0.0625);
+    padding-right: calc((var(--place-h) - var(--place-arrow) * 10 / 24) / 2 - var(--place-arrow) * 7 / 24);
     color: var(--foreground);
     text-decoration: none;
     transition: background-color var(--duration-fast) var(--ease-standard);
+  }
+  /* (at the right end of the camera's row; with no camera it is the only thing on the row and stays at the left) */
+  .entry-exposure ~ .entry-place-link {
+    margin-left: auto;
   }
   .entry-place-link:hover,
   .entry-place-link:focus-visible {
@@ -2067,7 +2077,7 @@
     flex: none;
     width: var(--place-arrow);
     height: var(--place-arrow);
-    margin-left: -0.5rem;
+    stroke-width: 1.25;
     color: var(--muted-foreground);
   }
   .entry-exposure .entry-exposure-mark {
