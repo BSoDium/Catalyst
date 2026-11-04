@@ -13,6 +13,8 @@ interface AttributionButtonProps {
   reducedMotion: boolean;
   /** Which version of the content the page was built on (the credits dialog says it: #504). */
   dataVersion?: PublishedDataVersion | null;
+  /** Development only: which data the page shows (preview or demo); the dialog says it beside the version. */
+  devNote?: string | null;
 }
 
 /**
@@ -31,7 +33,7 @@ interface AttributionButtonProps {
  *    target on a phone (an invisible `::after`).
  * Place it in a positioned container that fills the map.
  */
-export function AttributionButton({ tiles, insetRight, reducedMotion, dataVersion }: AttributionButtonProps) {
+export function AttributionButton({ tiles, insetRight, reducedMotion, dataVersion, devNote }: AttributionButtonProps) {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
   const tilesKey = tiles ? `${tiles.primaryUrl}|${tiles.fallbackPmtilesUrl ?? ""}` : "";
@@ -79,7 +81,7 @@ export function AttributionButton({ tiles, insetRight, reducedMotion, dataVersio
           <Icon name="arrow-up-right" size="inline" className="ml-0.5 align-middle" />
         </button>
       </div>
-      <CreditsDialog open={open} credits={credits} dataVersion={dataVersion} reducedMotion={reducedMotion} onClose={() => setOpen(false)} onClosed={() => buttonRef.current?.focus()} />
+      <CreditsDialog open={open} credits={credits} dataVersion={dataVersion} devNote={devNote} reducedMotion={reducedMotion} onClose={() => setOpen(false)} onClosed={() => buttonRef.current?.focus()} />
     </>
   );
 }

@@ -36,7 +36,7 @@ Run from the repo root with `pnpm --filter @catalyst/web <script>` or inside `ap
 
 ```
 app/
-  root.tsx            html shell (`lang`, theme-color per scheme, icons, manifest), SkipLinks, page nav scrim (lists), Navbar, NavProgress, MotionConfig, root ErrorBoundary (404 page, error page); loader returns `siteUrl`; dev-only content badge (the mode only when import.meta.env.DEV)
+  root.tsx            html shell (`lang`, theme-color per scheme, icons, manifest), SkipLinks, page nav scrim (lists), Navbar, NavProgress, MotionConfig, root ErrorBoundary (404 page, error page); loader returns `siteUrl`
   entry.server.tsx    per-response CSP nonce, security headers, cache policy, X-Robots-Tag off the production host (lib/security-headers.ts); `handleDataRequest`, `handleError`
   entry.client.tsx    the stock hydration entry
   routes.ts           pathless layout (shell) wrapping `/`, `/locations/:slug` and the entries `/{software,articles,artworks,poetry,photography}/:slug`;

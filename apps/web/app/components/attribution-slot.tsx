@@ -7,7 +7,7 @@ import type { GlobeAttributionProps } from "~/globe";
 const AttributionButton = lazy(() => import("./attribution-button").then((m) => ({ default: m.AttributionButton })));
 
 /** `GlobeProps.attribution` / `StreetMapCanvasProps.attribution` for this app: the pixel-art credits button. */
-export function AttributionSlot(props: GlobeAttributionProps & { dataVersion?: PublishedDataVersion | null }) {
+export function AttributionSlot(props: GlobeAttributionProps & { dataVersion?: PublishedDataVersion | null; devNote?: string | null }) {
   // Its own boundary: the globe's Suspense must not hide the globe while this small chunk loads.
   return (
     <Suspense fallback={null}>
