@@ -6636,7 +6636,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     flex-wrap: wrap;
     align-items: baseline;
     gap: 0.5rem 2rem;
-    margin-top: 2.5rem;
+    margin-top: 1.25rem;
     padding-block: 0.875rem;
     border-block: var(--hairline) solid var(--border);
   }
