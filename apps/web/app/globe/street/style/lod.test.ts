@@ -112,7 +112,7 @@ describe("style wiring of the LOD", () => {
     expect(vis("road-highway-case")).toBe(true);
     expect(vis("road-medium-case")).toBe(true);
     expect(vis("road-minor-dotted")).toBe(false); // 13.9
-    expect(vis("building-fill")).toBe(false); // 16.3
+    expect(vis("building-fill")).toBe(false); // 15.5
     expect(vis("water-fill")).toBe(true); // flat at 13
     expect(vis("graticule")).toBe(false); // so the graticule is gone
     // and without a switch state everything is on (tests, tools)

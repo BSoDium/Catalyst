@@ -112,7 +112,7 @@ export const LOD: Record<LodKey, LodEntry> = {
   lake: { on: 6.25, role: "strong" }, // 5.5 .. 8
   waterDetail: { on: 11.8, role: "mid" }, // 11.2 .. 13.2
   regionBorder: { on: 4.2, role: "mid", dash: [4, 1.5] }, // 3.8 .. 5.2
-  buildingOutline: { on: 16.85, role: "mid" }, // 16.6 .. 17.4
+  buildingOutline: { on: 16, role: "mid" }, // 15.75 .. 16.5; was 16.85 (#622: a small place's box showed no building)
 };
 
 /**
@@ -125,7 +125,7 @@ export const FILL_LOD = {
   water: { on: 0, role: "soft", pattern: "water" }, // the sea texture: switched by the flatness of the view
   park: { on: 7.1, role: "soft", pattern: "green" }, // 6.4 .. 8.8
   green: { on: 10.1, role: "soft", pattern: "green" }, // 9.6 .. 11.2
-  building: { on: 16.3, role: "wash", pattern: "flat" }, // 15.8 .. 17.5
+  building: { on: 15.5, role: "wash", pattern: "flat" }, // 15 .. 16.7; was 16.3 (#622)
 } as const satisfies Record<string, { on: number; role: Role; pattern: Pattern }>;
 
 /** Whether a class is drawn at this zoom, without hysteresis (the settled answer: tests, the synthetic gate, a style built for a fixed zoom). */
