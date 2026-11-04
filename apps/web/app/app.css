@@ -2115,17 +2115,18 @@
     content: "";
     position: absolute;
     z-index: -1;
-    inset: -1.25rem 0 -1.25rem 0;
+    inset: 0 0 -3rem 0;
     pointer-events: none;
-    /* a soft oval of the page colour behind the buttons, eased to nothing at its edge (the model: the nav's search plate over the globe) */
-    --plate-x: 2.25rem;
+    /* a soft oval of the page colour centred on the panel's top corner (the close button's), far wider than the button so no edge of it is seen, eased to nothing (the model: the nav's search plate over the globe) */
+    --plate-x: 0%;
     background: radial-gradient(
-      ellipse 6.5rem 3rem at var(--plate-x) 50%,
-      color-mix(in srgb, var(--background) 85%, transparent) 30%,
-      color-mix(in srgb, var(--background) 70%, transparent) 45%,
-      color-mix(in srgb, var(--background) 48%, transparent) 60%,
-      color-mix(in srgb, var(--background) 24%, transparent) 75%,
-      color-mix(in srgb, var(--background) 8%, transparent) 88%,
+      ellipse 13rem 7.5rem at var(--plate-x) 0,
+      color-mix(in srgb, var(--background) 55%, transparent) 0%,
+      color-mix(in srgb, var(--background) 48%, transparent) 25%,
+      color-mix(in srgb, var(--background) 34%, transparent) 45%,
+      color-mix(in srgb, var(--background) 20%, transparent) 62%,
+      color-mix(in srgb, var(--background) 9%, transparent) 78%,
+      color-mix(in srgb, var(--background) 3%, transparent) 90%,
       transparent 100%
     );
   }
@@ -2137,7 +2138,7 @@
       inset: 0 0 auto 0;
     }
     [data-panel]:has([data-slot="place-cover"]) [data-slot="panel-bar"]::before {
-      --plate-x: calc(100% - 2.25rem);
+      --plate-x: 100%;
     }
   }
   /* The link to the place (#581): the pin (the aperture's twin), two lines of text and, in the top right corner, the arrow, with no outline, the glyphs at one distance from the box's edge at the top, the bottom and their own side: each box's padding is that distance less the glyph's own inset (the pin's runs from 5 to 19 of 24 across, the arrow's from 7 to 17). */
