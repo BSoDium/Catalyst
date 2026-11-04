@@ -87,11 +87,12 @@ export function placeFraming(place: { lat: number; lon: number; viewRadiusKm?: n
 }
 
 /**
- * How a place is framed by what is around it (owner, 2026-11-01, #457): a place with nothing near it (no route stops there, no other place within `neighbourKm`) is framed on itself, so its streets
- * show; one with routes arriving at it, or other places around, is framed `scale` times wider than its own box (its box takes about a tenth of the view's side), so that the paths leading to it and
- * what is near are in the picture. The scale is carried by the place (`GlobePlace.framingScale`) and applied by `placeFraming`, so every camera move to a place agrees.
+ * How a place is framed by what is around it (owner, 2026-11-01, #457; 2026-11-04, #572): a place with nothing near it (no route stops there, no other place within `neighbourKm`) is framed on itself, so its
+ * streets show. A place that is a stop of a route is framed `routeScale` times wider than its own box, room for the paths that arrive. Every other place within `neighbourKm` widens it further, up to
+ * `scale` times once `fullNeighbours` places are around (its box then takes about a tenth of the view's side), so that what is near is in the picture: a city with only connections stays closer, its streets
+ * still show; a city among many towns opens wide. The scale is carried by the place (`GlobePlace.framingScale`) and applied by `placeFraming`, so every camera move to a place agrees.
  */
-export const CONTEXT_FRAMING = { scale: 6, neighbourKm: 150 } as const;
+export const CONTEXT_FRAMING = { scale: 6, routeScale: 3, neighbourKm: 150, fullNeighbours: 3 } as const;
 
 /** Great-circle distance in km (haversine). */
 export function distanceKm(a: { lat: number; lon: number }, b: { lat: number; lon: number }): number {
@@ -102,14 +103,18 @@ export function distanceKm(a: { lat: number; lon: number }, b: { lat: number; lo
   return 2 * EARTH_RADIUS_KM * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 
-/** The framing scale of every place given the places and the stops of the routes (slugs): `CONTEXT_FRAMING.scale` for a connected place, 1 for an isolated one. Pure. */
+/**
+ * The framing scale of every place given the places and the stops of the routes (slugs): 1 for an isolated one, `routeScale` for one on a route, growing linearly with the number of other places within
+ * `neighbourKm` up to `scale` at `fullNeighbours` of them (a place off every route with one neighbour is framed between). Pure.
+ */
 export function contextScales(places: readonly { slug: string; lat: number; lon: number }[], routeStops: readonly (readonly string[])[]): Map<string, number> {
   const onRoute = new Set<string>();
   for (const stops of routeStops) if (stops.length >= 2) for (const s of stops) onRoute.add(s);
   const out = new Map<string, number>();
   for (const p of places) {
-    const near = places.some((q) => q.slug !== p.slug && distanceKm(p, q) <= CONTEXT_FRAMING.neighbourKm);
-    out.set(p.slug, onRoute.has(p.slug) || near ? CONTEXT_FRAMING.scale : 1);
+    const near = places.reduce((n, q) => (q.slug !== p.slug && distanceKm(p, q) <= CONTEXT_FRAMING.neighbourKm ? n + 1 : n), 0);
+    const base = onRoute.has(p.slug) ? CONTEXT_FRAMING.routeScale : 1;
+    out.set(p.slug, base + (CONTEXT_FRAMING.scale - base) * Math.min(1, near / CONTEXT_FRAMING.fullNeighbours));
   }
   return out;
 }

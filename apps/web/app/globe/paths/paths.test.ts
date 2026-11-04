@@ -5,7 +5,7 @@ import { parsePublishedProjection } from "@catalyst/schemas";
 import type { GlobeRoute } from "../types";
 import { lonLatToVec3 } from "../engine/geo";
 import { CROWD_TONE, LEVEL_HYSTERESIS, levelFor, metresPerCell } from "./lod";
-import { LEG_MODES, MODE_STYLE, RAIL_TICK_DASH, dashArray } from "./modes";
+import { LEG_MODES, MODE_STYLE, dashArray } from "./modes";
 import { ARC_STEP_DEG, LOD_TOLERANCES_M, arcPoints, buildBuffers, buildNetwork, legsAt, pathLengthM, placeKey } from "./network";
 import { decodePolyline5, encodePolyline5 } from "./polyline";
 import { EARTH_RADIUS_M, simplify } from "./simplify";
@@ -261,12 +261,10 @@ describe("mode styles", () => {
   it("has one entry per mode with distinct ids, in the order of the buffer ids", () => {
     expect(LEG_MODES.map((m) => MODE_STYLE[m].id)).toEqual([0, 1, 2, 3, 4, 5]);
   });
-  it("road is solid, rail is 4 on 2 off with a tick every 6, the dotted ones are at least 1.42 cells", () => {
+  it("road and rail are solid, the dotted ones are at least 1.42 cells", () => {
     expect(dashArray("road")).toBeUndefined();
-    expect(dashArray("rail")).toEqual([4, 2]);
-    expect(MODE_STYLE.rail.tick).toBe(true);
+    expect(dashArray("rail")).toBeUndefined();
     for (const m of ["ferry", "flight", "walk"] as const) expect(MODE_STYLE[m].on).toBeGreaterThanOrEqual(1.42);
-    expect(RAIL_TICK_DASH.reduce((a, b) => a + b, 0) * 3).toBeCloseTo(MODE_STYLE.rail.period);
   });
 });
 

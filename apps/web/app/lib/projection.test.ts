@@ -25,9 +25,11 @@ describe("buildPlaceIndex", () => {
       entries: [{ kind: "project", slug: "label-collision-engine" }, { kind: "article", slug: "morocco-coast-bus" }, { kind: "photograph", slug: "sea-wall" }],
       // the demo's Lisbon has a published box: it is passed on, and the view radius frames it
       bbox: lisbon.bbox,
-      // the demo's Lisbon is a stop of a route: framed wider, so the paths to it are in the picture (#457)
-      framingScale: CONTEXT_FRAMING.scale,
+      // the demo's Lisbon is a stop of a route: framed wider, so the paths to it are in the picture (#457), more with places around (#572)
+      framingScale: expect.any(Number),
     });
+    expect(globeLisbon?.framingScale).toBeGreaterThanOrEqual(CONTEXT_FRAMING.routeScale);
+    expect(globeLisbon?.framingScale).toBeLessThanOrEqual(CONTEXT_FRAMING.scale);
     // A place with nothing near it and on no route keeps its own framing: no scale.
     expect(index.globePlaces.some((p) => p.framingScale === undefined)).toBe(true);
     // Without a published radius or box the globe gets neither (Kyoto has none): its default radius applies.

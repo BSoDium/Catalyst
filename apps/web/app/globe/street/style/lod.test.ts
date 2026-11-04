@@ -227,7 +227,7 @@ describe("regression: the coast is never dashed (owner report: coasts dotted aro
   it("the only dashed world layer is the graticule", () => {
     const st = make("openmaptiles").layers as unknown as L[];
     const dashed = st.filter((l) => /^(world-|graticule|routes-)/.test(l.id) && l.paint["line-dasharray"]).map((l) => l.id);
-    expect(dashed.sort()).toEqual(["graticule", ...ROUTE_LAYER_IDS.filter((id) => !/^routes-(faint-p\d|focus|head.*)$/.test(id)).sort()]);
+    expect(dashed.sort()).toEqual(["graticule", ...ROUTE_LAYER_IDS.filter((id) => !/^routes-(faint-p\d|focus|focus-rail|head.*)$/.test(id)).sort()]);
   });
 });
 

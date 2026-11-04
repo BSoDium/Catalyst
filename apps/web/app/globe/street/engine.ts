@@ -30,7 +30,7 @@ import { cellCssFor, cellDevicePx, EasedValue, revealRadiusDevice } from "./core
 import { isPmtilesUrl, type SourceDescriptor } from "./core/source-descriptor";
 import { TileSourceManager, type SourceId, type TileStatus } from "./core/tile-source-manager";
 import { legFeatures, legHeads, legKeysAt } from "./core/routes";
-import { LEG_MODES, MODE_STYLE } from "../paths/modes";
+import { LEG_MODES } from "../paths/modes";
 import { Compositor, type OutputSize } from "./gl/compositor";
 import type { WarpCamera } from "./core/warp";
 import { buildPalette } from "./core/palette";
@@ -42,6 +42,7 @@ import { probeSource, type ProbeConfig, type ProbeOutcome } from "./net/probe";
 import { HudLayer } from "./overlay/hud-layer";
 import { LayerSwitch, switchRules, type SwitchView } from "./style/layer-switch";
 import { TrailDotsLayer, dotLegs } from "../paths/trail-dots-layer";
+import { airportsOf } from "../paths/airports";
 import { capReach, viewCap } from "./core/view-cap";
 import { fadeStraight, thinLegs, thinZoomOf, type ThinLeg } from "../paths/thin";
 import { DEFAULT_HANDOFF, PLACEHOLDER_LAYERS, PLACEHOLDER_REPLACES, PLACEHOLDER_OVERLAP_MS, PLACEHOLDER_SETTLE_MS, ROUTE_LAYER_IDS, applyCell, applyDashScale, applyKeptLegs, buildStreetStyle, placeholderWanted, dashStepOf, focusFilter, graticule, headFocusFilter, ROUTE_HEAD_FOCUS_ID, hasPlaceholder, routeLayerId, seaFrom, type StyleTiles } from "./style/street-style";
@@ -196,7 +197,7 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
   let pathsOn = opts.paths !== false;
   const applyFocus = () => {
     for (const mode of LEG_MODES) {
-      for (const id of [routeLayerId("routes-focus", mode), ...(MODE_STYLE[mode].tick ? [routeLayerId("routes-focus", mode, true)] : [])]) {
+      for (const id of [routeLayerId("routes-focus", mode)]) {
         if (map.getLayer(id)) map.setFilter(id, focusFilter(mode, focusKeys));
       }
     }
@@ -445,6 +446,7 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
   const trailDots = new TrailDotsLayer(hudRoot);
   trailDotsRef = trailDots;
   trailDots.setLegs(dotLegs(legs));
+  trailDots.setAirports(airportsOf(opts.routes));
   trailDots.setTrail(theme.trail);
   trailDots.setPage(theme.background);
   trailDots.setFocus(focusKeys);

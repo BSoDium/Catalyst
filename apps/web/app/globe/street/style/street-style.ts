@@ -19,7 +19,7 @@
  * at paint time (`applyCell` re-applies them when the cell changes).
  */
 import type { ExpressionSpecification, LayerSpecification, Map as MLMap, StyleSpecification } from "maplibre-gl";
-import { LEG_MODES, MODE_STYLE, RAIL_TICK_DASH, RAIL_TICK_WIDTH, dashArray, type LegMode } from "../../paths/modes";
+import { LEG_MODES, dashArray, type LegMode } from "../../paths/modes";
 import { DESIGN_CELL_CSS, THIN_INK, artStops, cssStops, hollowFillStops, inkOpacityFor, inkOpacityStops, type Stops } from "../core/art-line";
 import type { Schema } from "../core/source-descriptor";
 import { SATELLITE_MAXZOOM, SATELLITE_TILE_SIZE } from "../core/satellite";
@@ -393,7 +393,7 @@ const CELL_LAYERS = ["world-coast", "world-borders", "graticule"] as const;
  * the pass's staircase removal makes a diagonal exactly one cell per step, patterned by mode with `paths/modes.ts`. Colours are the trail
  * levels of the pass's palette (core/palette.ts `trailLevel`), so the pass presents the same solid colours the globe draws.
  *
- *   faint roads   `routes-faint-p0..p3`: a MapLibre `line-gradient`, one layer per palette (line-gradient takes no per-feature colour and
+ *   faint roads and rails   `routes-faint-p0..p3`: a MapLibre `line-gradient`, one layer per palette (line-gradient takes no per-feature colour and
  *                 needs `lineMetrics` on the source). Its colour is a `step` over `line-progress` through the palette's bands, tail to head
  *                 (the leg's coordinates run origin to destination), so a hard-banded pixel-art gradient.
  *   other modes   dashed layers cannot carry a gradient (MapLibre forbids `line-gradient` with `line-dasharray`): the head band's colour,
@@ -401,13 +401,16 @@ const CELL_LAYERS = ["world-coast", "world-borders", "graticule"] as const;
  *   focus         `routes-focus[-mode]`: the legs next to the selected place in the lit colour, whole length (filtered by `setFilter`).
  *   heads         `routes-head` (every leg) and `routes-head-focus` (the lit legs): the spark, a circle at the destination in the spark colour.
  *
- * The rail's ticks are a 3-cell wide layer of 1-cell dashes (a wide class is never thinned). No halo: a 1-cell line with an erasing 3-cell
+ * No halo: a 1-cell line with an erasing 3-cell
  * halo would cut every road it crosses.
  */
 export const ROUTE_LAYER_PREFIXES = ["routes-faint", "routes-focus"] as const;
+/** The modes drawn as a solid line (the faint ones take the palette's gradient): a road and a rail. */
+const isSolid = (m: LegMode) => m === "road" || m === "rail";
+const SOLID_MODES = ["road", "rail"];
 const modeSuffix = (m: LegMode) => (m === "road" ? "" : `-${m}`);
-/** Layer id of a path layer: `routes-focus` for lit roads, `routes-faint-rail`, ... for the other modes, `-tick` for rail ticks. The faint roads are `routeGradientId(palette)`. */
-export const routeLayerId = (prefix: (typeof ROUTE_LAYER_PREFIXES)[number], mode: LegMode, tick = false): string => `${prefix}${modeSuffix(mode)}${tick ? "-tick" : ""}`;
+/** Layer id of a path layer: `routes-focus` for lit roads, `routes-faint-rail`, ... for the other modes. The faint roads are `routeGradientId(palette)`. */
+export const routeLayerId = (prefix: (typeof ROUTE_LAYER_PREFIXES)[number], mode: LegMode): string => `${prefix}${modeSuffix(mode)}`;
 /** Layer id of the faint roads of a palette (the gradient layers). */
 export const routeGradientId = (palette: number): string => `routes-faint-p${palette}`;
 export const ROUTE_HEAD_ID = "routes-head";
@@ -415,7 +418,7 @@ export const ROUTE_HEAD_FOCUS_ID = "routes-head-focus";
 /** All path layer ids, bottom first. */
 export const ROUTE_LAYER_IDS: string[] = [
   ...Array.from({ length: PALETTE_COUNT }, (_, p) => routeGradientId(p)),
-  ...ROUTE_LAYER_PREFIXES.flatMap((prefix) => LEG_MODES.flatMap((m) => (prefix === "routes-faint" && m === "road" ? [] : m === "rail" ? [routeLayerId(prefix, m), routeLayerId(prefix, m, true)] : [routeLayerId(prefix, m)]))),
+  ...ROUTE_LAYER_PREFIXES.flatMap((prefix) => LEG_MODES.flatMap((m) => (prefix === "routes-faint" && isSolid(m) ? [] : [routeLayerId(prefix, m)]))),
   ROUTE_HEAD_ID,
   ROUTE_HEAD_FOCUS_ID,
 ];
@@ -452,7 +455,7 @@ export function applyCell(map: MLMap, cellCss: number): void {
   for (const id of ROUTE_LAYER_IDS) {
     if (!map.getLayer(id)) continue;
     if (id === ROUTE_HEAD_ID || id === ROUTE_HEAD_FOCUS_ID) map.setPaintProperty(id, "circle-radius", (id === ROUTE_HEAD_ID ? SPARK_RADIUS.faint : SPARK_RADIUS.lit) * cellCss);
-    else map.setPaintProperty(id, "line-width", (id.endsWith("-tick") ? RAIL_TICK_WIDTH : 1) * cellCss);
+    else map.setPaintProperty(id, "line-width", cellCss);
   }
 }
 
@@ -476,7 +479,6 @@ function dashedLayers(): Array<[string, readonly number[]]> {
     for (const mode of LEG_MODES) {
       const dash = dashArray(mode);
       if (dash) out.push([routeLayerId(prefix, mode), dash]);
-      if (MODE_STYLE[mode].tick) out.push([routeLayerId(prefix, mode, true), RAIL_TICK_DASH]);
     }
   }
   return out;
@@ -496,7 +498,7 @@ export function applyKeptLegs(map: MLMap, keys: ReadonlySet<string> | null): voi
   for (let p = 0; p < PALETTE_COUNT; p++) {
     const id = routeGradientId(p);
     if (!map.getLayer(id)) continue;
-    const base: unknown[] = ["all", ["==", ["get", "mode"], "road"], ["==", ["get", "pal"], p]];
+    const base: unknown[] = ["all", ["in", ["get", "mode"], ["literal", SOLID_MODES]], ["==", ["get", "pal"], p]];
     if (keys) base.push(["in", ["get", "key"], ["literal", [...keys]]]);
     map.setFilter(id, base as never);
   }
@@ -640,31 +642,23 @@ export function buildStreetStyle(o: StreetStyleOptions): StyleSpecification {
   const headLevel = (p: number) => trailLevel(p, TRAIL_BANDS - 1);
   for (let p = 0; p < PALETTE_COUNT; p++) {
     routeLayers.push({
-      id: routeGradientId(p), type: "line", source: "routes", filter: ["all", ["==", ["get", "mode"], "road"], ["==", ["get", "pal"], p]] as never,
+      id: routeGradientId(p), type: "line", source: "routes", filter: ["all", ["in", ["get", "mode"], ["literal", SOLID_MODES]], ["==", ["get", "pal"], p]] as never,
       layout: pathLayout,
       paint: { "line-gradient": gradientOf(p), "line-opacity": 1, "line-width": cell },
     } as LayerSpecification);
   }
   for (const prefix of ROUTE_LAYER_PREFIXES) {
     for (const mode of LEG_MODES) {
-      if (prefix === "routes-faint" && mode === "road") continue;
-      if (o.overlayDots && mode !== "road") continue;
+      if (prefix === "routes-faint" && isSolid(mode)) continue;
+      if (o.overlayDots && !isSolid(mode)) continue;
       const base = prefix === "routes-faint" ? ["==", ["get", "mode"], mode] : focusFilter(mode, focusKeys);
       const color = prefix === "routes-faint" ? byPalette(headLevel) : byPalette((p) => trailLevel(p, "lit"));
-      const tickColor = prefix === "routes-faint" ? byPalette(headLevel, lineColor) : byPalette((p) => trailLevel(p, "lit"), lineColor);
       const dash = dashArray(mode);
       routeLayers.push({
         id: routeLayerId(prefix, mode), type: "line", source: "routes", filter: base as never,
         layout: pathLayout,
         paint: { "line-color": color, "line-opacity": 1, "line-width": cell, ...(dash ? { "line-dasharray": dash } : {}) },
       } as LayerSpecification);
-      if (MODE_STYLE[mode].tick) {
-        routeLayers.push({
-          id: routeLayerId(prefix, mode, true), type: "line", source: "routes", filter: base as never,
-          layout: pathLayout,
-          paint: { "line-color": tickColor, "line-opacity": 1, "line-width": RAIL_TICK_WIDTH * cell, "line-dasharray": RAIL_TICK_DASH },
-        } as LayerSpecification);
-      }
     }
   }
   const sparkColor = byPalette((p) => trailLevel(p, "spark"), lineColor);

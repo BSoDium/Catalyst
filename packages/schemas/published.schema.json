@@ -376,6 +376,68 @@
                   "minLength": 1,
                   "maxLength": 16000,
                   "pattern": "^[?-~]+$"
+                },
+                "fromAirport": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 60,
+                      "pattern": "^[^\\u0000-\\u001F\\u007F\\u202A-\\u202E\\u2066-\\u2069]*$"
+                    },
+                    "code": {
+                      "type": "string",
+                      "pattern": "^[A-Z]{3}$"
+                    },
+                    "lat": {
+                      "type": "number",
+                      "minimum": -90,
+                      "maximum": 90
+                    },
+                    "lon": {
+                      "type": "number",
+                      "minimum": -180,
+                      "maximum": 180
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "lat",
+                    "lon"
+                  ],
+                  "additionalProperties": false
+                },
+                "toAirport": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 60,
+                      "pattern": "^[^\\u0000-\\u001F\\u007F\\u202A-\\u202E\\u2066-\\u2069]*$"
+                    },
+                    "code": {
+                      "type": "string",
+                      "pattern": "^[A-Z]{3}$"
+                    },
+                    "lat": {
+                      "type": "number",
+                      "minimum": -90,
+                      "maximum": 90
+                    },
+                    "lon": {
+                      "type": "number",
+                      "minimum": -180,
+                      "maximum": 180
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "lat",
+                    "lon"
+                  ],
+                  "additionalProperties": false
                 }
               },
               "required": [

@@ -107,13 +107,28 @@ describe("framing by context (#457)", () => {
   const toulouse = { slug: "toulouse", lat: 43.6, lon: 1.44 };
   const albi = { slug: "albi", lat: 43.93, lon: 2.15 };
   const desert = { slug: "oued-el-ouaar", lat: 28.17, lon: -11.87 };
-  it("an isolated place keeps its own framing; a place with a neighbour or a route is framed wider", () => {
-    const s = contextScales([toulouse, albi, desert], []);
-    expect(s.get("toulouse")).toBe(CONTEXT_FRAMING.scale);
-    expect(s.get("albi")).toBe(CONTEXT_FRAMING.scale);
+  const nearby = (n: number) => Array.from({ length: n }, (_, i) => ({ slug: `n${i}`, lat: 43.6 + i * 0.1, lon: 1.44 }));
+  it("an isolated place keeps its own framing; a place on a route only is framed routeScale wider", () => {
+    const s = contextScales([desert], []);
     expect(s.get("oued-el-ouaar")).toBe(1);
     const r = contextScales([desert], [["oued-el-ouaar", "elsewhere"]]);
-    expect(r.get("oued-el-ouaar")).toBe(CONTEXT_FRAMING.scale);
+    expect(r.get("oued-el-ouaar")).toBe(CONTEXT_FRAMING.routeScale);
+  });
+  it("the scale grows with the places around, up to the full scale", () => {
+    const first = (n: number, stops: string[][] = []) => contextScales([{ slug: "c", lat: 43.6, lon: 1.44 }, ...nearby(n)], stops).get("c")!;
+    expect(first(1)).toBeGreaterThan(1);
+    expect(first(1)).toBeLessThan(first(2));
+    expect(first(CONTEXT_FRAMING.fullNeighbours)).toBe(CONTEXT_FRAMING.scale);
+    expect(first(CONTEXT_FRAMING.fullNeighbours + 5)).toBe(CONTEXT_FRAMING.scale);
+    // on a route, the first neighbour starts from routeScale
+    expect(first(1, [["c", "n0"]])).toBeGreaterThan(CONTEXT_FRAMING.routeScale);
+    expect(first(0, [["c", "far"]])).toBe(CONTEXT_FRAMING.routeScale);
+  });
+  it("Toulouse and Albi, 70 km apart, frame each other wider than the desert", () => {
+    const s = contextScales([toulouse, albi, desert], []);
+    expect(s.get("toulouse")).toBeGreaterThan(1);
+    expect(s.get("albi")).toBe(s.get("toulouse"));
+    expect(s.get("oued-el-ouaar")).toBe(1);
   });
   it("placeFraming applies the scale to the box's radius and ignores a scale under 1", () => {
     const place = { lat: 43.6, lon: 1.44, bbox: [1.35, 43.55, 1.53, 43.65] as const };

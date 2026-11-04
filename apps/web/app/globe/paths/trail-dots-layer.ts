@@ -95,8 +95,6 @@ export const ICON_FROM_ZOOM = 5.5;
 export const ICON_MIN_SHARE = 0.3;
 export const ICON_MIN_SHARE_LIT = 0.18;
 export const ICON_GAP = 3;
-/** Map zoom from which a rail's cross-ticks are drawn (before it a rail is a dashed line, as on the globe: `paths/lod.ts` `TICK_FROM`). */
-export const TICK_FROM_STREET = 6.5;
 
 /** The layer that draws only the pictures samples an arc (a great circle, a point every 0.4 degrees) at every this many points. */
 const ARC_ICON_STRIDE = 4;
@@ -131,6 +129,9 @@ export function dotLegs(fc: GeoJSON.FeatureCollection<GeoJSON.MultiLineString>):
   });
 }
 
+/** Map zoom from which an airport's dot is drawn (a region's scale, as the sparks: from space they are noise). */
+export const AIRPORT_FROM_ZOOM = 6.5;
+
 const css = (c: TrailRgb) => `rgb(${Math.round(c[0] * 255)}, ${Math.round(c[1] * 255)}, ${Math.round(c[2] * 255)})`;
 
 export class TrailDotsLayer {
@@ -148,6 +149,8 @@ export class TrailDotsLayer {
   private page: TrailRgb = [1, 1, 1];
   /** The straight legs quietened at this view (`paths/thin.ts` `fadeStraight`), by key with their step; null: none. */
   private quiet: ReadonlyMap<string, number> | null = null;
+  /** The airports to mark with a dot (`airportsOf`). */
+  private airports: ReadonlyArray<{ lat: number; lon: number }> = [];
 
   /** `lines: false`: the legs' lines are drawn by someone else (the globe's shader); only the pictures of the modes are drawn here. `iconFromZoom`: the zoom (the caller's own) from which they show. */
   constructor(root: HTMLElement, private readonly opts: { lines: boolean; iconFromZoom: number; onTop?: boolean } = { lines: true, iconFromZoom: ICON_FROM_ZOOM }) {
@@ -196,6 +199,10 @@ export class TrailDotsLayer {
 
   setLegs(legs: DotLeg[]) {
     this.legs = legs; // roads too (their line is MapLibre's; their head's spark and their picture are drawn here): their line is MapLibre's, but their head's spark is drawn here (legCells gives a road no cells)
+    this.signature = "";
+  }
+  setAirports(list: ReadonlyArray<{ lat: number; lon: number }>) {
+    this.airports = list;
     this.signature = "";
   }
   setFocus(keys: readonly string[]) {
@@ -327,7 +334,7 @@ export class TrailDotsLayer {
         // the leg's tones, worked out once (a cell is one `fillRect`: no string or array made per cell)
         const tones = lit ? null : Array.from({ length: TRAIL_BANDS }, (_, band) => (step ? quieter(band) : color(band)));
         const litTone = lit ? color("lit") : "";
-        for (const c of legCells(parts, leg.mode, { cols, rows }, 3, zoom >= TICK_FROM_STREET)) ink(c.col, c.row, tones ? tones[Math.min(TRAIL_BANDS - 1, c.band)]! : litTone);
+        for (const c of legCells(parts, leg.mode, { cols, rows }, 3)) ink(c.col, c.row, tones ? tones[Math.min(TRAIL_BANDS - 1, c.band)]! : litTone);
       }
       const head = this.opts.lines && zoom >= SPARK_FROM_ZOOM ? project(leg.head, 0) : null;
       if (head) {
@@ -341,6 +348,7 @@ export class TrailDotsLayer {
       for (const part of parts) for (let i = 1; i < part.length; i++) length += Math.hypot(part[i]![0] - part[i - 1]![0], part[i]![1] - part[i - 1]![1]);
       candidates.push({ leg, lit, length, parts });
     }
+    this.drawAirports(project, zoom, cell, cols, rows, ink, color);
     if (zoom >= this.opts.iconFromZoom) this.drawIcons(candidates, cols, rows, cell, color);
     else this.clearBadges();
   }
@@ -351,6 +359,22 @@ export class TrailDotsLayer {
    * selected place's legs in the lit colour) with the icon in the page colour, at full resolution; and only where it does not touch another badge
    * (so a crowd of legs shows a badge each where there is room and none where there is not).
    */
+  /** An airport: a 2 x 2 dot in the spark's ink on a one cell halo in the page's colour (so it reads over a road), drawn from `AIRPORT_FROM_ZOOM`. It is a location in the city, not a place. */
+  private drawAirports(project: (p: LonLat, lift: number) => { x: number; y: number } | null, zoom: number, cell: number, cols: number, rows: number, ink: (col: number, row: number, fill: string) => void, color: (band: number | "lit" | "spark") => string) {
+    if (zoom < AIRPORT_FROM_ZOOM || this.airports.length === 0) return;
+    const halo = css(this.page);
+    const dot = color("spark");
+    for (const ap of this.airports) {
+      const at = project([ap.lon, ap.lat], 0);
+      if (!at) continue;
+      const col = Math.floor(at.x / cell);
+      const row = Math.floor(at.y / cell);
+      if (col < -3 || row < -3 || col > cols + 3 || row > rows + 3) continue;
+      for (let r = -1; r <= 2; r++) for (let c = -1; c <= 2; c++) ink(col + c, row + r, halo);
+      for (let r = 0; r <= 1; r++) for (let c = 0; c <= 1; c++) ink(col + c, row + r, dot);
+    }
+  }
+
   private drawIcons(
     candidates: ReadonlyArray<{ leg: DotLeg; lit: boolean; length: number; parts: ReadonlyArray<ReadonlyArray<readonly [number, number]>> }>,
     cols: number,
