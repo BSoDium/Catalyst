@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { cn } from "~/lib/utils";
 import { Link } from "react-router";
 import type { PlaceSummary } from "@catalyst/schemas";
@@ -142,9 +142,26 @@ function Coordinate({ label, part }: { label: string; part: CoordinatePart }) {
  */
 function PlaceFacts({ place }: { place: PlaceDetailData }) {
   const coordinates = placeCoordinateParts(place.coordinates.lat, place.coordinates.lon);
+  // Where the block of counts does not fit beside the coordinates it goes to the next row (CSS), and there everything in it is left-aligned, the figures too: the row's right edge is
+  // only for a block that shares the row. CSS cannot say that it wrapped, so the two blocks' tops are compared whenever the row is resized (false until measured: the server's markup).
+  const row = useRef<HTMLDivElement>(null);
+  const start = useRef<HTMLDListElement>(null);
+  const counts = useRef<HTMLDListElement>(null);
+  const [below, setBelow] = useState(false);
+  useLayoutEffect(() => {
+    const el = row.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const measure = () => {
+      if (start.current && counts.current) setBelow(counts.current.getBoundingClientRect().top > start.current.getBoundingClientRect().top + 1);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [place.slug]);
   return (
-    <div data-slot="place-facts" className="flex flex-wrap items-start gap-x-7 gap-y-3">
-      <dl className="m-0 flex flex-wrap gap-x-7 gap-y-3">
+    <div ref={row} data-slot="place-facts" className="flex flex-wrap items-start gap-x-7 gap-y-3">
+      <dl ref={start} className="m-0 flex flex-wrap gap-x-7 gap-y-3">
         {coordinates ? (
           <>
             <Coordinate label="Lat" part={coordinates[0]} />
@@ -165,9 +182,9 @@ function PlaceFacts({ place }: { place: PlaceDetailData }) {
       </dl>
       {/* the counts of entries are one block at the right end of the row, their figures against the right edge; when it does not fit beside the coordinates it goes to the next row whole, and only then wraps within itself */}
       {place.entries.length > 0 && (
-        <dl className="m-0 ml-auto flex flex-wrap justify-end gap-x-7 gap-y-3">
+        <dl ref={counts} data-below={below ? "" : undefined} className={cn("m-0 flex flex-wrap gap-x-7 gap-y-3", !below && "ml-auto justify-end")}>
           {place.entries.map((g) => (
-            <Fact key={g.kind} label={g.label} end>
+            <Fact key={g.kind} label={g.label} end={!below}>
               <span className="place-figure place-figure-count">{g.entries.length}</span>
             </Fact>
           ))}
