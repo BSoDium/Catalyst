@@ -1,13 +1,14 @@
+import type { ReactNode } from "react";
 import { Link } from "react-router";
 import type { PlaceSummary } from "@catalyst/schemas";
 import { PANEL_HEADING_ID } from "~/components/detail-panel";
 import { EntryListCard } from "~/components/entry/entry-list-card";
 import { TripCards } from "~/components/trip-card";
 import { Button, Icon, SectionHeader, Stack, StatePanel } from "~/components/ui";
+import { kindCount } from "~/lib/entries";
 import { safeMediaSrc } from "~/lib/entry-blocks";
 import { placeCover, type PlaceCover } from "~/lib/place-cover";
-import { formatPlaceCoordinates } from "~/lib/labelling";
-import { cn } from "~/lib/utils";
+import { formatPlaceCoordinates, placeCoordinateParts, type CoordinatePart } from "~/lib/labelling";
 import { imageSize, placePath, type PlaceDetailData } from "~/lib/projection";
 
 /** A picture of the step: one of the place's own images, or the cover of a photograph linked to it (then `href` opens the photograph, and the panel's way back leads here). */
@@ -107,52 +108,110 @@ function StepStory({ place, photos }: { place: PlaceDetailData; photos: PhotoIte
   );
 }
 
-/** The one quiet line under a place's name: where it is (region and country, when known), its coordinates at the precision they are stored with, its dates. */
-function PlaceLine({ place }: { place: PlaceDetailData }) {
-  const where = [place.region, place.country].filter((part, i, all): part is string => !!part && all.indexOf(part) === i).join(", ");
+/** One figure of the facts strip: a micro-label over its value. */
+function Fact({ label, children, sub }: { label: string; children: ReactNode; sub?: string }) {
   return (
-    <p data-slot="place-line" className="m-0 flex flex-wrap items-baseline gap-x-2 text-sm text-muted-foreground">
-      {where && <span>{where}</span>}
-      {where && <span aria-hidden="true">&middot;</span>}
-      <span className="ds-meta">{formatPlaceCoordinates(place.coordinates.lat, place.coordinates.lon)}</span>
-      {place.dates && (
-        <>
-          <span aria-hidden="true">&middot;</span>
-          <time dateTime={place.dates.dateTime} className="ds-meta">
-            {place.dates.text}
-          </time>
-        </>
-      )}
-    </p>
+    <div className="flex min-w-0 flex-col gap-0.5">
+      <dt className="ds-micro">{label}</dt>
+      <dd className="m-0 flex flex-col">
+        {children}
+        {sub && <span className="ds-meta">{sub}</span>}
+      </dd>
+    </div>
+  );
+}
+
+/** A coordinate set in three voices: the whole degrees in the display face and the foreground, the decimals dimmer, the hemisphere a small tracked mono letter. Read out as the plain `52.23° N`. */
+function Coordinate({ label, part }: { label: string; part: CoordinatePart }) {
+  return (
+    <Fact label={label}>
+      <span className="sr-only">{part.text}</span>
+      <span aria-hidden="true" className="place-figure flex items-baseline">
+        <span className="place-figure-whole">{part.whole}</span>
+        <span className="place-figure-fraction">{part.fraction}</span>
+        <span className="place-figure-deg">°</span>
+        <span className="place-figure-hemisphere">{part.hemisphere}</span>
+      </span>
+    </Fact>
   );
 }
 
 /**
- * The head of the panel: the name as the view's h1 with the one quiet line under it. With a cover (`lib/place-cover.ts`) it is full-bleed, the picture
- * behind the type, a gradient into the panel's ground under it so the name and the line read on any picture; the picture is decoration (`alt=""`), the
- * credit of an entry's cover is a small link on it. Without one it is type alone, as before.
+ * What the page knows about the place, as a strip of figures under its name: the two coordinates (at the precision they are stored with), what is on the site about it
+ * (what is on the site about it) and when. A figure the data does not have is not drawn.
+ */
+function PlaceFacts({ place }: { place: PlaceDetailData }) {
+  const coordinates = placeCoordinateParts(place.coordinates.lat, place.coordinates.lon);
+  const entries = place.entries.reduce((n, g) => n + g.entries.length, 0);
+  return (
+    <dl data-slot="place-facts" className="m-0 flex flex-wrap gap-x-7 gap-y-3">
+      {coordinates ? (
+        <>
+          <Coordinate label="Lat" part={coordinates[0]} />
+          <Coordinate label="Lon" part={coordinates[1]} />
+        </>
+      ) : (
+        <Fact label="Coordinates">
+          <span className="ds-meta">{formatPlaceCoordinates(place.coordinates.lat, place.coordinates.lon)}</span>
+        </Fact>
+      )}
+      {entries > 0 && (
+        <Fact label="On this site" sub={place.entries.map((g) => kindCount(g.kind, g.entries.length)).join(" · ")}>
+          <span className="place-figure place-figure-whole">{entries}</span>
+        </Fact>
+      )}
+      {place.dates && (
+        <Fact label="When">
+          <time dateTime={place.dates.dateTime} className="place-figure-text">
+            {place.dates.text}
+          </time>
+        </Fact>
+      )}
+    </dl>
+  );
+}
+
+/** Where the place is, for the line over its name: its region and country (once when they are the same word). */
+function placeWhere(place: PlaceDetailData): string {
+  return [place.region, place.country].filter((part, i, all): part is string => !!part && all.indexOf(part) === i).join(" · ");
+}
+
+/**
+ * The head of the panel: the region and country as a small tracked line, the name in the display face (large), then the facts strip (`PlaceFacts`). With a cover
+ * (`lib/place-cover.ts`) the picture is full-bleed behind it and runs up under the panel's bar (the close button sits on it), a gradient into the panel's ground under it so
+ * the type reads on any picture; the picture is decoration (`alt=""`), the credit of an entry's cover a faint link in its corner. Without one it is the type alone.
  */
 function PlaceHeader({ place, cover }: { place: PlaceDetailData; cover: PlaceCover | null }) {
   const src = cover ? safeMediaSrc(cover.src) : null;
-  const title = (
+  const where = placeWhere(place);
+  const body = (
     <>
-      <h1 id={PANEL_HEADING_ID} tabIndex={-1} className={cn("m-0 font-semibold tracking-tight break-words outline-offset-4", src ? "text-4xl" : "text-3xl")}>
+      {(where || place.lived) && (
+        <p className="ds-micro m-0 flex flex-wrap gap-x-2">
+          {where && <span>{where}</span>}
+          {place.lived === true && <span className="ds-micro" data-tone="signal">{where ? "· " : ""}Lived here</span>}
+        </p>
+      )}
+      <h1 id={PANEL_HEADING_ID} tabIndex={-1} className="place-name m-0 outline-offset-4">
         {place.name}
       </h1>
-      <PlaceLine place={place} />
+      <PlaceFacts place={place} />
     </>
   );
-  if (!cover || !src) return <header className="flex flex-col gap-2">{title}</header>;
+  if (!cover || !src) return <header className="flex flex-col gap-3">{body}</header>;
   return (
-    <header data-slot="place-cover" className="relative isolate -mx-6 flex min-h-72 flex-col justify-end gap-2 overflow-hidden px-6 pt-24 pb-5">
-      <img src={src} alt="" aria-hidden="true" decoding="async" className="absolute inset-0 -z-20 size-full object-cover" />
-      <div aria-hidden="true" className="absolute inset-0 -z-10 bg-linear-to-t from-background from-10% via-background/45 via-45% to-transparent" />
+    <header data-slot="place-cover" className="place-cover relative isolate -mx-6 -mt-2 flex flex-col justify-end gap-3 overflow-hidden px-6 pb-5 md:-mt-[calc(var(--navbar-height)+1.5rem)]">
+      <div aria-hidden="true" className="place-cover-art absolute inset-0 -z-10">
+        <img src={src} alt="" decoding="async" className="size-full object-cover object-center" />
+        <div className="absolute inset-0 bg-linear-to-t from-background/70 via-background/25 via-60% to-transparent" />
+      </div>
       {cover.credit && (
-        <Link to={cover.credit.href} state={{ from: place.slug }} className="ds-meta absolute top-3 right-4 max-w-[70%] truncate rounded-sm bg-background/70 px-2 py-1 text-foreground no-underline backdrop-blur-sm hover:bg-background/90">
-          {cover.credit.title}
+        <Link to={cover.credit.href} state={{ from: place.slug }} className="place-cover-credit">
+          <span className="truncate">{cover.credit.title}</span>
+          <Icon name="arrow-up-right" size="inline" className="shrink-0" />
         </Link>
       )}
-      {title}
+      {body}
     </header>
   );
 }

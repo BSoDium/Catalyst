@@ -2035,6 +2035,110 @@
       gap: 1rem 2rem;
     }
   }
+  /* The head of a place's panel (#611). The name is the site's display face, large; its figures (the coordinates, the counts) are set in the same face in three voices: whole numbers in the foreground, the decimals dimmer, the hemisphere a small tracked mono letter. */
+  .place-name {
+    font-family: var(--font-display);
+    font-optical-sizing: auto;
+    font-synthesis: none;
+    font-weight: 800;
+    font-size: clamp(2.75rem, 1.8rem + 3.2vw, 4.5rem);
+    line-height: 0.95;
+    letter-spacing: -0.04em;
+    text-wrap: balance;
+    overflow-wrap: break-word;
+  }
+  .place-figure {
+    font-family: var(--font-display);
+    font-optical-sizing: auto;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+  }
+  .place-figure-whole {
+    font-size: 1.75rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    color: var(--foreground);
+  }
+  .place-figure-fraction {
+    font-size: 1.75rem;
+    font-weight: 300;
+    letter-spacing: -0.02em;
+    color: var(--muted-foreground);
+  }
+  .place-figure-deg {
+    margin-left: 0.05em;
+    font-size: 1.125rem;
+    font-weight: 300;
+    color: var(--muted-foreground);
+  }
+  .place-figure-hemisphere {
+    margin-left: 0.4em;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    color: var(--signal-text, var(--foreground));
+  }
+  .place-figure-text {
+    font-family: var(--font-display);
+    font-size: 1.125rem;
+    font-weight: 600;
+    line-height: 1.7rem;
+    letter-spacing: -0.01em;
+  }
+  /* With a cover the head is tall enough to show the picture above the type, and the panel's bar (the close button) lies over its top edge, where it has no ground of its own: the buttons get a faint plate. */
+  .place-cover {
+    min-height: 26rem;
+  }
+  /* The picture fades out into whatever is behind the panel (it is translucent over the map: a gradient to the page colour would show its edge). */
+  .place-cover-art {
+    mask-image: linear-gradient(to bottom, #000 38%, transparent 96%);
+  }
+  [data-panel]:has([data-slot="place-cover"]) [data-slot="panel-bar"] button {
+    background: color-mix(in oklab, var(--background) 55%, transparent);
+    backdrop-filter: blur(6px);
+  }
+  @media (max-width: 47.99rem) {
+    /* on a phone the bar is a row above the content: with a cover it floats over the picture instead */
+    [data-panel]:has([data-slot="place-cover"]) [data-slot="panel-bar"] {
+      /* (!important: the bar's own utilities, `relative`, are in a later layer) */
+      position: absolute !important;
+      inset: 0 0 auto 0;
+    }
+  }
+  /* The credit of an entry's cover: faint, in the corner, with the arrow of a link that leaves the page (the credits' "See more"). */
+  .place-cover-credit {
+    position: absolute;
+    top: 0.75rem;
+    right: 1.5rem;
+    z-index: 1;
+    display: inline-flex;
+    max-width: 60%;
+    align-items: center;
+    gap: 0.125rem;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    line-height: 1rem;
+    letter-spacing: 0.02em;
+    padding: 0.125rem 0.375rem;
+    border-radius: 2px;
+    color: var(--muted-foreground);
+    text-decoration: none;
+    background: color-mix(in oklab, var(--background) 50%, transparent);
+    backdrop-filter: blur(4px);
+    transition: color var(--duration-fast) var(--ease-standard);
+  }
+  @media (max-width: 47.99rem) {
+    /* (the close button is at the right of the floating bar on a phone: the credit sits below it) */
+    .place-cover-credit {
+      top: 3.5rem;
+    }
+  }
+  .place-cover-credit:hover,
+  .place-cover-credit:focus-visible {
+    color: var(--foreground);
+  }
+
   /* The link to the place (#581): the pin (the aperture's twin), two lines of text and, in the top right corner, the arrow, with no outline, the glyphs at one distance from the box's edge at the top, the bottom and their own side: each box's padding is that distance less the glyph's own inset (the pin's runs from 5 to 19 of 24 across, the arrow's from 7 to 17). */
   .entry-place-link {
     --place-h: 2.75rem;

@@ -10,10 +10,12 @@ const demo = loadDemoProjection();
 const render = (slug: string) => renderToStaticMarkup(createElement(StaticRouter, { location: "/" }, createElement(PlaceDetail, { place: getPlaceDetail(demo, slug)! })));
 
 describe("PlaceDetail", () => {
-  it("says the name, the country once and the coordinates at the stored precision on one quiet line, with no 'Place' label", () => {
+  it("says the name, the country once and the coordinates at the stored precision in the facts strip, with no 'Place' label", () => {
     const html = render("lisbon");
     expect(html).toContain("<h1");
-    expect(html).toContain("38.72° N, 9.14° W");
+    expect(html).toContain('data-slot="place-facts"');
+    expect(html).toContain("38.72° N");
+    expect(html).toContain("9.14° W");
     expect(html).not.toContain("38.7200");
     expect(html.match(/Portugal/g)?.length).toBe(1); // region and country are the same word: said once
     expect(html).not.toMatch(/PLACE|Place\s*<\/(span|p)>/);
