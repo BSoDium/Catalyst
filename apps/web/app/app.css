@@ -2115,17 +2115,17 @@
     content: "";
     position: absolute;
     z-index: -1;
-    inset: 0 0 -6rem 0;
+    inset: 0 0 -9rem 0;
     pointer-events: none;
     /* a soft, round-ish oval of the page colour centred on the panel's top corner (the close button's), far bigger than the button so no edge of it is seen, eased to nothing (the model: the nav's search plate over the globe); the box runs below the bar so that the oval's bottom is not cut */
     --plate-x: 0%;
     background: radial-gradient(
-      ellipse 16rem 10rem at var(--plate-x) 0,
-      color-mix(in srgb, var(--background) 72%, transparent) 0%,
-      color-mix(in srgb, var(--background) 70%, transparent) 20%,
-      color-mix(in srgb, var(--background) 46%, transparent) 38%,
-      color-mix(in srgb, var(--background) 20%, transparent) 55%,
-      color-mix(in srgb, var(--background) 6%, transparent) 72%,
+      ellipse 19rem 12rem at var(--plate-x) 0,
+      color-mix(in srgb, var(--background) 52%, transparent) 0%,
+      color-mix(in srgb, var(--background) 50%, transparent) 20%,
+      color-mix(in srgb, var(--background) 34%, transparent) 38%,
+      color-mix(in srgb, var(--background) 16%, transparent) 55%,
+      color-mix(in srgb, var(--background) 5%, transparent) 72%,
       color-mix(in srgb, var(--background) 1%, transparent) 88%,
       transparent 100%
     );
