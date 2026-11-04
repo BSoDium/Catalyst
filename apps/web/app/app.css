@@ -6552,8 +6552,10 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     pointer-events: none;
   }
 
+  /* "BSoD" of the handle is the accent, BSoD blue (#612); large display text, which `--signal` is for */
   .career-name-handle-heavy {
     font-weight: 800;
+    color: var(--signal);
   }
 
   .career-name-handle-thin {
