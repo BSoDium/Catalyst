@@ -11,8 +11,8 @@
  *   2        small         2..3    small to nothing (not there yet)
  *
  * At the start the sizes fill the row exactly, from the page's gutter at the left to the right edge, where the small one is cut off by it; moving on adds a small picture at
- * the left, so the row is always full. It stops where the last two pictures are the expanded ones (`lastPosition`), and gets there sliding left by the gutter, so that the last one
- * ends a gutter from the right edge.
+ * the left, so the row is always full; the gutter at the left goes as the first picture shrinks, so the pictures use the whole width from the first move. It stops where the last
+ * two pictures are the expanded ones (`lastPosition`), the last ending a gutter from the right edge.
  */
 export interface Keylines {
   /** The width of the row. */
@@ -70,10 +70,9 @@ export function carouselLayout(t: number, count: number, k: Keylines): CarouselI
     return count === 1 ? [{ x: k.gutter, w: first }] : [{ x: k.gutter, w: first }, { x: k.gutter + first + k.gap, w: room - first }];
   }
   const at = Math.min(Math.max(t, 0), lastPosition(count));
-  // The row stops where the last two pictures are the expanded ones; getting there it slides left by the gutter, so that the last one ends a gutter from the right edge
-  // (the small one before them then has none at the left).
-  const arriving = Math.min(1, Math.max(0, 2 - (count - 1 - at)));
-  let x = k.gutter * (1 - arriving);
+  // The gutter at the left is given up as the row starts to move (by the time the first picture has gone from large to small it has none): what is at the left edge uses it, and
+  // the row stops where the last two pictures are the expanded ones, which then end a gutter from the right edge.
+  let x = k.gutter * (1 - Math.min(1, at));
   return Array.from({ length: count }, (_, i) => {
     const w = widthAt(i - at, k);
     const item = { x, w };

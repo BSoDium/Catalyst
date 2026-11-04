@@ -26,14 +26,18 @@ describe("photo carousel geometry", () => {
       const items = carouselLayout(t, 8, k).filter((i) => i.w > 0);
       const last = items[items.length - 1]!;
       expect(last.x + last.w, `t=${t}`).toBeGreaterThanOrEqual(600 - 24 - 0.5);
+      expect(carouselLayout(t, 8, k).find((i) => i.w > 0)!.x, `t=${t}`).toBeLessThanOrEqual(24);
     }
   });
-  it("shrinks the leftmost and grows the rightmost as the row moves, the gutter staying at the left", () => {
+  it("shrinks the leftmost and grows the rightmost as the row moves, the gutter at the left going", () => {
     const from = carouselLayout(0, 6, k);
     const to = carouselLayout(0.5, 6, k);
     expect(to[0]!.w).toBeLessThan(from[0]!.w);
     expect(to[3]!.w).toBeGreaterThan(from[3]!.w);
-    expect(to[0]!.x).toBe(24);
+    // the gutter at the left goes as the row moves: by the first picture's being small it is at the edge
+    expect(to[0]!.x).toBe(12);
+    expect(carouselLayout(1, 6, k)[0]!.x).toBe(0);
+    expect(carouselLayout(2.5, 6, k)[0]!.x).toBe(0);
   });
   it("stops where the last two pictures are the expanded ones, the last a gutter from the right edge, and goes no further", () => {
     expect(lastPosition(6)).toBe(4);
