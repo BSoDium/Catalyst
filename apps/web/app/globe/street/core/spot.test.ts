@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { sameRect, spotLevel, spotRect } from "./spot";
+import { sameRect, spotFollow, spotLevel, spotRect } from "./spot";
 
 const GREYS = 12;
 const tune = { lift: 0.95, dim: 0.45, fill: 0.12 };
@@ -48,5 +48,21 @@ describe("spotRect", () => {
     expect(sameRect(r, { ...r })).toBe(true);
     expect(sameRect(r, { ...r, r1: 5 })).toBe(false);
     expect(sameRect(null, r)).toBe(false);
+  });
+});
+
+describe("spotFollow", () => {
+  const a = { c0: 10, r0: 10, c1: 20, r1: 20 };
+  const b = { c0: 50, r0: 60, c1: 70, r1: 80 };
+  it("is on the selected rectangle when it is drawn", () => {
+    expect(spotFollow(a, b, true)).toEqual({ box: a, target: 1 });
+    expect(spotFollow(a, null, false)).toEqual({ box: a, target: 1 });
+  });
+  it("stays on the previous node, as the camera has it now, while it fades out", () => {
+    expect(spotFollow(null, b, true)).toEqual({ box: b, target: 0 });
+  });
+  it("has no light with nothing to follow, or once it has faded out", () => {
+    expect(spotFollow(null, null, true)).toEqual({ box: null, target: 0 });
+    expect(spotFollow(null, b, false)).toEqual({ box: null, target: 0 });
   });
 });

@@ -37,3 +37,13 @@ export function spotRect(box: { x0: number; y0: number; x1: number; y1: number }
 }
 
 export const sameRect = (a: CellRect | null, b: CellRect): boolean => !!a && a.c0 === b.c0 && a.r0 === b.r0 && a.c1 === b.c1 && a.r1 === b.r1;
+
+/**
+ * Where the light is this frame: on the selected node's rectangle (`now`) when it is drawn; otherwise it stays on the node it was on (`prev`, its rectangle
+ * for the camera as it is) while it fades out, so it follows that node instead of staying where the camera left it; with nothing to follow (or once it has
+ * faded out, `lit` false) there is no light.
+ */
+export function spotFollow(now: CellRect | null, prev: CellRect | null, lit: boolean): { box: CellRect | null; target: 0 | 1 } {
+  if (now) return { box: now, target: 1 };
+  return { box: lit ? prev : null, target: 0 };
+}
