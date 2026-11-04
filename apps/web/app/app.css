@@ -7541,3 +7541,67 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     content: none;
   }
 }
+
+/*
+ * Window Controls Overlay (#580). Installed as an app on a desktop browser that supports it (Chromium: the manifest's `display_override`), the page takes the whole window and the
+ * window's own buttons float over its top corner: the title bar's area is the header's. `env(titlebar-area-*)` says where the buttons are NOT (the area the page may use); what is
+ * left of it, at the left (macOS' traffic lights) or at the right (Windows and Linux: minimise, maximise, close), is kept clear by `--wco-left` and `--wco-right`, which are 0 everywhere else.
+ * Only where the browser reports the mode (`display-mode: window-controls-overlay`): in a tab or a standalone window nothing here applies.
+ *  - the controls at the panel's left edge (close, full screen) and the docked search keep clear of the buttons;
+ *  - the title bar is a handle to move the window (`app-region: drag`), and every control over it is not (`no-drag`);
+ *  - a soft plate of the page's colour behind the buttons (a gradient fading towards the page, no edge), so that the button's sharp square corners do not sit on the map's lines.
+ * Written without a window to try it in: the values follow the specification (env() fall back to the viewport's own edges where a browser gives none).
+ */
+@media (display-mode: window-controls-overlay) {
+  :root {
+    --wco-left: env(titlebar-area-x, 0px);
+    --wco-right: max(0px, calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw)));
+    --wco-height: env(titlebar-area-height, 0px);
+  }
+
+  /* (a margin, not padding: the bar's own padding is the content's gutter, 1.5 or 2 rem) */
+  [data-slot="panel-bar"] {
+    margin-left: var(--wco-left);
+  }
+
+  [data-slot="site-header"] [data-slot="search-trigger"] {
+    margin-right: var(--wco-right);
+  }
+
+  body::before,
+  body::after {
+    content: "";
+    position: fixed;
+    top: 0;
+    z-index: 60;
+    height: calc(var(--wco-height) + 1rem);
+    pointer-events: none;
+  }
+
+  /* the plate behind the buttons at the right (and the left, where the traffic lights are): solid under them, eased away from them over 3 rem */
+  body::after {
+    right: 0;
+    width: calc(var(--wco-right) + 3rem);
+    background: linear-gradient(to left, var(--background) calc(100% - 3rem), transparent);
+    mask-image: linear-gradient(to bottom, #000 calc(100% - 1rem), transparent);
+  }
+
+  body::before {
+    left: 0;
+    width: calc(var(--wco-left) + 3rem);
+    background: linear-gradient(to right, var(--background) calc(100% - 3rem), transparent);
+    mask-image: linear-gradient(to bottom, #000 calc(100% - 1rem), transparent);
+  }
+
+  [data-slot="site-header"] {
+    app-region: drag;
+  }
+
+  [data-slot="site-header"] a,
+  [data-slot="site-header"] button,
+  [data-slot="panel-bar"] a,
+  [data-slot="panel-bar"] button,
+  [data-slot="search-trigger"] {
+    app-region: no-drag;
+  }
+}
