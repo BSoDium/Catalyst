@@ -2035,7 +2035,7 @@
       gap: 1rem 2rem;
     }
   }
-  /* The link to the place (#581): the pin (the aperture's twin), two lines of text and, in the top right corner, the arrow, with no outline, the glyphs at one distance from the box's edge at the top, the bottom and their own side: each box's padding is that distance less the glyph's own inset (the pin's runs from 4 to 20 of 24 across, the arrow's from 7 to 17). */
+  /* The link to the place (#581): the pin (the aperture's twin), two lines of text and, in the top right corner, the arrow, with no outline, the glyphs at one distance from the box's edge at the top, the bottom and their own side: each box's padding is that distance less the glyph's own inset (the pin's runs from 5 to 19 of 24 across, the arrow's from 7 to 17). */
   .entry-place-link {
     --place-h: 2.75rem;
     --place-name: 0.8125rem;
@@ -2057,7 +2057,7 @@
     gap: 0.75rem;
     box-sizing: border-box;
     height: var(--place-h);
-    padding-left: calc(var(--place-pad) - var(--place-pin) / 6 + var(--place-stroke) / 2);
+    padding-left: calc(var(--place-pad) - var(--place-pin) * 5 / 24 + var(--place-stroke) / 2);
     /* the arrow is nested in the top right corner (below): its ink is 11.25 of the 24 units of its box (the path from 7 to 17, the 1.25 stroke on top), and the text keeps a gap from it */
     padding-right: calc(var(--place-pad) + var(--place-arrow) * 11.25 / 24 + 0.75rem);
     color: var(--foreground);
@@ -2087,7 +2087,7 @@
       display: grid;
       grid-template-columns: var(--facts-icon-col) auto;
       column-gap: 0.75rem;
-      margin-left: calc(-1 * var(--place-pad) + var(--place-pin) / 6 - var(--place-stroke) / 2);
+      margin-left: calc(-1 * var(--place-pad) + var(--place-pin) * 5 / 24 - var(--place-stroke) / 2);
     }
     .entry-place-link svg.entry-place-link-pin {
       justify-self: center;
