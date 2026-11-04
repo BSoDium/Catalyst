@@ -47,7 +47,7 @@ import { fadeStraight, thinLegs, thinZoomOf, type ThinLeg } from "../paths/thin"
 import { DEFAULT_HANDOFF, PLACEHOLDER_LAYERS, PLACEHOLDER_REPLACES, PLACEHOLDER_OVERLAP_MS, PLACEHOLDER_SETTLE_MS, ROUTE_LAYER_IDS, applyCell, applyDashScale, applyKeptLegs, buildStreetStyle, placeholderWanted, dashStepOf, focusFilter, graticule, headFocusFilter, ROUTE_HEAD_FOCUS_ID, hasPlaceholder, routeLayerId, seaFrom, type StyleTiles } from "./style/street-style";
 import { onSchemeChange } from "../engine/scheme";
 import { STREET_TUNING } from "./tuning";
-import { sameRect, spotRect, type CellRect } from "./core/spot";
+import { sameRect, spotFollow, spotRect, type CellRect } from "./core/spot";
 import type { AnimateOptions, FlyOptions, RevealOptions, StreetDebug, StreetMap, StreetMapOptions, StreetView } from "./types";
 
 export class StreetUnavailableError extends Error {
@@ -571,22 +571,34 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
     syncOverlayInner();
     perfEnd("street.overlay", t0);
   };
-  // The spotlight follows the selected node's drawn rectangle (whole art cells, as the box is drawn); it fades out when nothing is selected or the node is not drawn.
+  // The spotlight follows the selected node's drawn rectangle (whole art cells, as the box is drawn). When the selection is not drawn (the camera is flying to
+  // it, or it was deselected) the light stays on the node it was on, following it while it fades out: a rectangle left where it was would ghost over the
+  // map as the camera moves. A node that is not drawn either has nothing to follow: the light is gone at once.
+  let spotSlug: string | null = null;
   const syncSpot = () => {
-    const i = selected ? lod.indexOf(selected) : -1;
     const sc = hud.screen;
-    if (i >= 0 && sc.shown[i]) {
-      const next = spotRect({ x0: sc.bx0[i]!, y0: sc.by0[i]!, x1: sc.bx1[i]!, y1: sc.by1[i]! }, mapCell());
-      const moved = !sameRect(spotBox, next);
-      spotBox = next;
-      if (spotV.target !== 1) {
-        spotV.set(1);
-        kick();
-      } else if (moved) compositor.redraw();
-    } else if (spotV.target !== 0) {
+    const boxOf = (slug: string | null): CellRect | null => {
+      const i = slug ? lod.indexOf(slug) : -1;
+      return i >= 0 && sc.shown[i] ? spotRect({ x0: sc.bx0[i]!, y0: sc.by0[i]!, x1: sc.bx1[i]!, y1: sc.by1[i]! }, mapCell()) : null;
+    };
+    const now = boxOf(selected);
+    if (now) spotSlug = selected;
+    const { box, target } = spotFollow(now, boxOf(spotSlug), spotV.value > 0);
+    if (!box) {
+      spotSlug = null;
+      const lit = spotV.value > 0;
+      spotV.value = 0;
       spotV.set(0);
+      spotBox = null;
+      if (lit) compositor.redraw();
+      return;
+    }
+    const moved = !sameRect(spotBox, box);
+    spotBox = box;
+    if (spotV.target !== target) {
+      spotV.set(target);
       kick();
-    } else if (!spotV.animating) spotBox = null;
+    } else if (moved) compositor.redraw();
   };
   const syncOverlayInner = () => {
     const w = root.clientWidth;
