@@ -114,6 +114,8 @@ const FRAGMENT = /* glsl */ `
     // the red of the air's light, after the darkening and only deep in the shadow: the moon's own tones (the maria and the ground) kept, in a subtle red (not a flat patch of it)
     float lum = clamp(dot(col, vec3(0.299, 0.587, 0.114)) * 3.0, 0.0, 1.0);
     col = mix(col, uRed * (0.3 + 0.9 * lum), uEclipse.y * (0.55 - 0.3 * uFlip));
+    // the outline takes the eclipse's red too (a grey ring round a dark red moon looked odd): by the red of the air, and a little by the darkening alone, in the lit tone's brightness
+    rimCol = mix(rimCol, uRed * (0.55 + 0.7 * lum), clamp(uEclipse.y * 0.85 + uEclipse.x * 0.25, 0.0, 1.0));
     col = mix(col, rimCol, rim);
     gl_FragColor = vec4(col, uAmt);
   }

@@ -426,23 +426,23 @@ class OrbitHud {
     return ny > 0 ? [-nx, -ny] : [nx, ny];
   }
 
-  /** Whether the orbit's point `i` of `n` lies in the stretch from where the shadow begins to where the moon is deepest in it. */
+  /** Whether the orbit's point `i` of `n` lies in the shadow: from where it begins to where it ends, as far past the middle as before it. */
   private inShadow(h: Hud, i: number, n: number): boolean {
     const e = h.eclipse;
     if (e.now || e.fromAngle === null || e.peakAngle === null) return false;
     const ahead = (2 * Math.PI * i) / n;
-    return ahead >= e.fromAngle && ahead <= e.peakAngle;
+    return ahead >= e.fromAngle && ahead <= 2 * e.peakAngle - e.fromAngle;
   }
 
-  private accent = { tone: "", value: "" };
+  private colours = { tone: "", tint: "", umbra: "" };
 
-  /** The accent colour as a canvas can paint it (the page's `--signal`), cached for the `tone` it was read under (the tone changes with the theme); the box's own tone where there is none. */
-  private accentFor(tone: string): string {
-    if (this.accent.tone !== tone) {
-      const v = typeof getComputedStyle === "function" ? getComputedStyle(this.svg).getPropertyValue("--signal").trim() : "";
-      this.accent = { tone, value: v || tone };
+  /** The display's two colours as a canvas can paint them (`--hud-tint`, an accent toned down towards the ink, and `--hud-umbra`, the shadow's purple: app.css), cached for the `tone` they were read under (it changes with the theme); the box's own tone where there is none. */
+  private coloursFor(tone: string): { tint: string; umbra: string } {
+    if (this.colours.tone !== tone) {
+      const cs = typeof getComputedStyle === "function" ? getComputedStyle(this.svg) : null;
+      this.colours = { tone, tint: cs?.getPropertyValue("--hud-tint").trim() || tone, umbra: cs?.getPropertyValue("--hud-umbra").trim() || tone };
     }
-    return this.accent.value;
+    return this.colours;
   }
 
   /** The lines, in cells: a dashed low-contrast orbit, a stroke at each mark and a bracket at the shadow. */
@@ -462,8 +462,8 @@ class OrbitHud {
     c.style.height = `${rows * g.cell}px`;
     ctx.clearRect(0, 0, cols, rows);
     // tinted with the accent (`--signal`), and fading along the orbit: strongest at the moon, faint on the far side (the gradient is the angle from the moon)
-    const accent = this.accentFor(tone);
-    ctx.fillStyle = accent;
+    const { tint, umbra } = this.coloursFor(tone);
+    ctx.fillStyle = tint;
     const cell = (p: [number, number]): [number, number] => [Math.floor((p[0] - g.left) / g.cell), Math.floor((p[1] - g.top) / g.cell)];
     const dot = (x: number, y: number) => {
       if (x >= 0 && y >= 0 && x < cols && y < rows) ctx.fillRect(x, y, 1, 1);
@@ -507,6 +507,7 @@ class OrbitHud {
         // the tint is strongest at each graduation and fades towards the next; inside the earth's shadow the line is solid and strong
         const deg = h.angleDeg + (360 * i) / n;
         const shaded = this.inShadow(h, i, n);
+        ctx.fillStyle = shaded ? umbra : tint;
         ctx.globalAlpha = shaded ? 0.9 : orbitAlpha(tickGlow(deg));
         line(prev, q, shaded ? () => true : (k) => (from + k) % 5 < 2);
         step += Math.max(Math.abs(q[0] - prev[0]), Math.abs(q[1] - prev[1]));
@@ -526,6 +527,7 @@ class OrbitHud {
       const dy = Math.round(ny * (major ? 3 : 1.5));
       line([m[0] - dx, m[1] - dy], [m[0] + dx, m[1] + dy], () => true);
     }
+    ctx.fillStyle = tint;
     // where the earth's shadow begins and where the moon is deepest in it: squares in the plane of the orbit (their sides along the line and across it), a big one at the start and a small one at the middle
     ctx.globalAlpha = 1;
     const e = h.eclipse;
@@ -538,6 +540,7 @@ class OrbitHud {
       const c = [corner(-1, -1), corner(1, -1), corner(1, 1), corner(-1, 1)];
       for (let k = 0; k < 4; k++) line(c[k]!, c[(k + 1) % 4]!, () => true);
     };
+    ctx.fillStyle = umbra;
     if (e.at && orbit.length > 1) square(e.at, 4);
     if (e.peakAt && orbit.length > 1) square(e.peakAt, 2);
     ctx.globalAlpha = 1;

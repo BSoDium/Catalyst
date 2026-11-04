@@ -4698,6 +4698,9 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   }
 
   .globe-moon-hud {
+    /* the display's colours: the accent toned down towards the ink (it reads as a grey with a hint of blue) and, for the earth's shadow, a saturated purple */
+    --hud-tint: color-mix(in srgb, var(--signal-text, currentColor) 38%, var(--foreground));
+    --hud-umbra: oklch(0.66 0.21 305);
     position: absolute;
     inset: 0;
     width: 100%;
@@ -4730,7 +4733,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   }
 
   .globe-moon-hud-number {
-    fill: var(--signal-text, currentColor);
+    fill: var(--hud-tint);
     fill-opacity: 0.55;
   }
 
@@ -4738,7 +4741,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   .globe-moon-hud-along {
     font-size: 8px;
     letter-spacing: 0.16em;
-    fill: var(--signal-text, currentColor);
+    fill: var(--hud-tint);
     fill-opacity: 0.6;
   }
 
@@ -4748,12 +4751,12 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
 
   .globe-moon-hud-readout {
     font-size: 10px;
-    fill: var(--signal-text, currentColor);
+    fill: var(--hud-tint);
     fill-opacity: 0.6;
   }
 
   .globe-moon-hud-eclipse {
-    fill: var(--signal-text, currentColor);
+    fill: var(--hud-umbra);
     fill-opacity: 1;
   }
 
