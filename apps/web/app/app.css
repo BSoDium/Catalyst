@@ -4730,7 +4730,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   }
 
   .globe-moon-hud-number {
-    fill-opacity: 0.6;
+    fill-opacity: 0.42;
   }
 
   .globe-moon-hud-along {
@@ -4745,7 +4745,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
 
   .globe-moon-hud-readout {
     font-size: 10px;
-    fill-opacity: 0.85;
+    fill-opacity: 0.5;
   }
 
   .globe-moon-hud-eclipse {

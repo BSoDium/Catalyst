@@ -234,7 +234,7 @@ export function pathItems(h: Hud): { above: string[]; below: string[] } {
 
 /** The width of a character of the path text, px (8 px mono at 0.16 em of tracking: `.globe-moon-hud-along`), and the blank between two items, in characters. */
 const ALONG_CHAR = 6.1;
-const ALONG_GAP = 9;
+const ALONG_GAP = 22;
 
 /** `items` set one after the other with a blank between, round and round until they fill `px` of path; `from` is the item it begins at (so that two runs do not begin alike). */
 export function alongText(items: readonly string[], px: number, from = 0): string {
@@ -350,7 +350,7 @@ class OrbitHud {
     marks.replaceChildren();
     const orbit = h.orbit.filter((p): p is [number, number] => p !== null);
     for (const k of h.ticks) {
-      if (!k.at || orbit.length < 2) continue;
+      if (!k.at || orbit.length < 2 || k.deg % 30 !== 0) continue;
       const [x, y] = k.at;
       const [nx, ny] = this.normal(orbit, x, y);
       const label = doc.createElementNS(SVG_NS, "text");
@@ -374,7 +374,8 @@ class OrbitHud {
     // the readout, one line under the other, on the side of the box that the card is not on
     const lines = hudLines(h);
     this.readout.replaceChildren();
-    const y0 = side === "above" ? box.y + box.h + 14 : box.y - 8 - (lines.length - 1) * 13;
+    // (as far from the box as the card above it is: its 3 px of gap and 3 px of padding, and the line box's own air)
+    const y0 = side === "above" ? box.y + box.h + 16 : box.y - 10 - (lines.length - 1) * 13;
     lines.forEach((line, i) => {
       const t = doc.createElementNS(SVG_NS, "tspan");
       t.setAttribute("x", box.x.toFixed(1));
@@ -466,15 +467,17 @@ class OrbitHud {
       }
       prev = q;
     }
-    // a stroke across the orbit at each mark (five cells), a little stronger than the line
-    ctx.globalAlpha = 0.75;
+    // a stroke across the orbit at each mark: every 10 degrees, faint and short, and a little longer at the multiples of 30
+
     const orbit = h.orbit.filter((p): p is [number, number] => p !== null);
     for (const k of h.ticks) {
       if (!k.at || orbit.length < 2) continue;
       const [nx, ny] = this.normal(orbit, k.at[0], k.at[1]);
       const m = cell(k.at);
-      const dx = Math.round(nx * 3);
-      const dy = Math.round(ny * 3);
+      const major = k.deg % 30 === 0;
+      ctx.globalAlpha = major ? 0.5 : 0.28;
+      const dx = Math.round(nx * (major ? 3 : 1.5));
+      const dy = Math.round(ny * (major ? 3 : 1.5));
       line([m[0] - dx, m[1] - dy], [m[0] + dx, m[1] + dy], () => true);
     }
     // the shadow's bracket: a square, five cells, round where it begins

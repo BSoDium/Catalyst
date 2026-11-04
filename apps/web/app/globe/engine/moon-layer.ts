@@ -40,7 +40,7 @@ export interface MoonSample {
 /** The orbit as the camera sees it, for the card's orbit display (#586): points on the drawing buffer (art pixels, y up), null where the orbit is behind the camera. */
 export interface MoonTrace {
   orbit: Array<[number, number] | null>;
-  /** A mark every 30 degrees of the orbit's own angle (fixed on the orbit: they go by as the moon does). */
+  /** A mark every 10 degrees of the orbit's own angle (the numbered ones are the multiples of 30) (fixed on the orbit: they go by as the moon does). */
   ticks: { deg: number; at: [number, number] | null }[];
   /** The share of the disc that is lit, whether it is growing, and where the moon is on the orbit (degrees). */
   lit: number;
@@ -321,7 +321,7 @@ export class MoonLayer {
     const orbit: MoonTrace["orbit"] = [];
     for (let i = 0; i <= N; i++) orbit.push(this.onBuffer(at((2 * Math.PI * i) / N)));
     const ticks: MoonTrace["ticks"] = [];
-    for (let deg = 0; deg < 360; deg += 30) ticks.push({ deg, at: this.onBuffer(at((deg * Math.PI) / 180 - f.angle)) });
+    for (let deg = 0; deg < 360; deg += 10) ticks.push({ deg, at: this.onBuffer(at((deg * Math.PI) / 180 - f.angle)) });
     const lit = litShare(at(0), f.sun);
     const waxing = litShare(at(0.02), f.sun) > lit;
     const ahead = eclipseAhead(at, f.sun);
