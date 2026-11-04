@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GLYPHS, scrambleText } from "~/lib/scramble";
+import { GLYPHS, scrambleFrame, scrambleText } from "~/lib/scramble";
 
 describe("scrambleText", () => {
   const rand = () => 0.5;
@@ -15,5 +15,17 @@ describe("scrambleText", () => {
   });
   it("keeps the hyphens and spaces of the text it goes to", () => {
     expect(scrambleText("BSoD", "Négrel-Jerzy", 0.9, rand)[6]).toBe("-");
+  });
+});
+
+describe("scrambleFrame", () => {
+  const rand = () => 0.5;
+  it("keeps the old letters of the first positions for a moment, then ghosts, then settles", () => {
+    const early = scrambleFrame("Elliot", "BSoD", 0.02, rand);
+    expect(early[0]).toEqual({ ch: "E", lit: true });
+    const mid = scrambleFrame("Elliot Negrel", "BSoDium", 0.5, rand);
+    expect(mid.slice(0, 3).every((c) => c.lit)).toBe(true);
+    expect(mid.slice(5).every((c) => !c.lit)).toBe(true);
+    expect(scrambleFrame("a", "bc", 1, rand)).toEqual([{ ch: "b", lit: true }, { ch: "c", lit: true }]);
   });
 });

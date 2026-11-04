@@ -7,23 +7,35 @@
 /** What an unsettled character is drawn as (mono-like widths are not needed: the line is set in the page's own face). */
 export const GLYPHS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789#%&*+=?/<>";
 
+/** One character of a frame, and whether it is settled (lit) or still noise or an old letter on its way out (a ghost). */
+export interface ScrambleChar {
+  ch: string;
+  lit: boolean;
+}
+
 /**
- * The text at `progress` (0..1) on its way from `from` to `to`: its length goes from the one to the other, and the characters settle into `to` from the left, the rest random glyphs (spaces and
- * hyphens stay where `to` has them). 0 is `from` and 1 is `to`, exactly.
+ * The frame at `progress` (0..1) of `from` on its way to `to`: the length goes from the one to the other; each position keeps its old letter for a little (the earlier ones sooner), then is a random glyph,
+ * a ghost, and then settles into `to` from the left (`lit`). Hyphens and spaces stay where `to` has them. 0 is `from` and 1 is `to`, exactly.
  */
-export function scrambleText(from: string, to: string, progress: number, rand: () => number = Math.random): string {
-  if (progress <= 0) return from;
-  if (progress >= 1) return to;
+export function scrambleFrame(from: string, to: string, progress: number, rand: () => number = Math.random): ScrambleChar[] {
+  if (progress <= 0) return [...from].map((ch) => ({ ch, lit: true }));
+  if (progress >= 1) return [...to].map((ch) => ({ ch, lit: true }));
   const n = Math.max(1, Math.round(from.length + (to.length - from.length) * progress));
-  let out = "";
+  const out: ScrambleChar[] = [];
   for (let i = 0; i < n; i++) {
+    const at = i / n;
     const want = to[Math.min(i, to.length - 1)] ?? "";
-    const settled = progress >= 0.2 + 0.8 * (i / n);
-    if (settled && i < to.length) out += want;
-    else if (want === " " || want === "-") out += want;
-    else out += GLYPHS[Math.min(GLYPHS.length - 1, Math.floor(rand() * GLYPHS.length))];
+    if (progress < 0.12 * at && i < from.length) out.push({ ch: from[i]!, lit: true });
+    else if (progress >= 0.2 + 0.8 * at && i < to.length) out.push({ ch: want, lit: true });
+    else if (want === " " || want === "-") out.push({ ch: want, lit: true });
+    else out.push({ ch: GLYPHS[Math.min(GLYPHS.length - 1, Math.floor(rand() * GLYPHS.length))]!, lit: false });
   }
   return out;
+}
+
+/** The frame as text. */
+export function scrambleText(from: string, to: string, progress: number, rand: () => number = Math.random): string {
+  return scrambleFrame(from, to, progress, rand).map((c) => c.ch).join("");
 }
 
 export interface ScrambleSlot {
@@ -38,6 +50,8 @@ export interface ScrambleOptions {
   waitMs?: [number, number];
   /** How long a change takes, ms. */
   durationMs?: number;
+  /** How long a letter takes to fade in or out (`.scramble-ch`, app.css), ms: the change is not over until the last of them has. */
+  ghostMs?: number;
   /** The least time between two frames, ms. */
   frameMs?: number;
   rand?: () => number;
@@ -59,6 +73,7 @@ export class NameScrambler {
   private readonly wait: [number, number];
   private readonly duration: number;
   private readonly frameMs: number;
+  private readonly ghostMs: number;
   private readonly rand: () => number;
 
   constructor(
@@ -72,6 +87,7 @@ export class NameScrambler {
     this.wait = opts.waitMs ?? [10_000, 15_000];
     this.duration = opts.durationMs ?? 900;
     this.frameMs = opts.frameMs ?? 45;
+    this.ghostMs = opts.ghostMs ?? 450;
     this.rand = opts.rand ?? Math.random;
   }
 
@@ -89,7 +105,10 @@ export class NameScrambler {
     window.cancelAnimationFrame(this.raf);
     this.timer = 0;
     this.raf = 0;
-    this.slots.forEach((s, i) => (s.el.innerHTML = this.originals[i]!));
+    this.slots.forEach((s, i) => {
+      delete s.el.dataset.scrambling;
+      s.el.innerHTML = this.originals[i]!;
+    });
     if (this.gap) this.gap.data = this.gapData;
     this.showing = "name";
   }
@@ -128,15 +147,43 @@ export class NameScrambler {
     const t0 = performance.now();
     let last = 0;
     const step = (now: number) => {
-      const p = Math.min(1, (now - t0) / this.duration);
-      if (p >= 1) return this.finish();
+      const elapsed = now - t0;
+      // (after the last frame the letters that were set last are still fading in: the plain text only replaces them when they are all the way there)
+      if (elapsed >= this.duration + this.ghostMs) return this.finish();
       if (now - last >= this.frameMs) {
         last = now;
-        this.slots.forEach((s, i) => (s.el.textContent = scrambleText(texts[i]!.a, texts[i]!.b, p, this.rand)));
+        const p = Math.min(1, elapsed / this.duration);
+        this.slots.forEach((s, i) => this.draw(s.el, scrambleFrame(texts[i]!.a, texts[i]!.b, p, this.rand)));
       }
       this.raf = window.requestAnimationFrame(step);
     };
     this.raf = window.requestAnimationFrame(step);
+  }
+
+  /** The frame in `el`, a span for each character: the lit ones are fully there, the others are ghosts (`data-ghost`: dim, and the opacity eases, so a letter takes its time to go and to come). */
+  private draw(el: HTMLElement, frame: ScrambleChar[]): void {
+    const doc = el.ownerDocument;
+    if (el.dataset.scrambling !== "") {
+      el.textContent = "";
+      el.dataset.scrambling = "";
+    }
+    while (el.childElementCount < frame.length) {
+      const span = doc.createElement("span");
+      span.className = "scramble-ch";
+      el.append(span);
+    }
+    for (let i = 0; i < el.childElementCount; i++) {
+      const span = el.children[i] as HTMLElement;
+      const c = frame[i];
+      if (!c) {
+        // a character the text no longer has: it fades out where it is
+        if (span.dataset.ghost !== "") span.dataset.ghost = "";
+        continue;
+      }
+      if (span.textContent !== c.ch) span.textContent = c.ch;
+      if (c.lit) delete span.dataset.ghost;
+      else span.dataset.ghost = "";
+    }
   }
 
   /** The change under way is over: the other text is shown. */
@@ -152,6 +199,7 @@ export class NameScrambler {
   private settle(): void {
     if (this.gap) this.gap.data = this.showing === "handle" ? "" : this.gapData;
     this.slots.forEach((s, i) => {
+      delete s.el.dataset.scrambling;
       if (this.showing === "name") s.el.innerHTML = this.originals[i]!;
       else s.el.textContent = s.handle;
     });

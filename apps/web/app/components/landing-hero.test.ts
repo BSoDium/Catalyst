@@ -30,7 +30,7 @@ describe("LandingHero", () => {
     const html = await render();
     expect(html.match(/<h1[ >]/g)).toHaveLength(1);
     expect(html).toMatch(
-      /<h1 class="hero-name type-display-xl" aria-label="Elliot Négrel-Jerzy"><span class="hero-given">Elliot<\/span> <span class="hero-family type-thin"><span>Négrel<\/span><span><span class="hero-hyphen">-<\/span>Jerzy<\/span><\/span><\/h1>/,
+      /<h1 class="hero-name type-display-xl"><span class="hero-given">Elliot<\/span> <span class="hero-family type-thin"><span>Négrel<\/span><span><span class="hero-hyphen">-<\/span>Jerzy<\/span><\/span><\/h1>/,
     );
     const heading = /<h1[^>]*>(.*?)<\/h1>/.exec(html)?.[1]?.replace(/<[^>]+>/g, "");
     expect(heading).toBe(SITE_NAME);

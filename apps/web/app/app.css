@@ -6299,6 +6299,15 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     }
   }
 
+  /* The name that scrambles into the handle (lib/scramble.ts): each character is a span; the ones not settled are ghosts, dim, and the opacity eases, so the letters take their time to go and to come (#588). */
+  .scramble-ch {
+    transition: opacity 450ms var(--ease-standard);
+  }
+
+  .scramble-ch[data-ghost] {
+    opacity: 0.18;
+  }
+
   /* The headline statement: the reading face, one paragraph, a comfortable measure. */
   .career-summary {
     margin: 1.5rem 0 0;
