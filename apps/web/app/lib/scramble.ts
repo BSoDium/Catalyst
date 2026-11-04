@@ -52,6 +52,9 @@ export class NameScrambler {
   private raf = 0;
   private showing: "name" | "handle" = "name";
   private originals: string[];
+  /** The space between the first two elements (the name's two words): the handle is one word, so it is gone while the handle is shown. */
+  private gap: Text | null;
+  private gapData = " ";
   private running = false;
   private readonly wait: [number, number];
   private readonly duration: number;
@@ -63,6 +66,9 @@ export class NameScrambler {
     opts: ScrambleOptions = {},
   ) {
     this.originals = slots.map((s) => s.el.innerHTML);
+    const between = slots[0]?.el.nextSibling ?? null;
+    this.gap = between && between.nodeType === 3 && slots[1]?.el.previousSibling === between ? (between as Text) : null;
+    this.gapData = this.gap?.data ?? " ";
     this.wait = opts.waitMs ?? [10_000, 15_000];
     this.duration = opts.durationMs ?? 900;
     this.frameMs = opts.frameMs ?? 45;
@@ -84,6 +90,7 @@ export class NameScrambler {
     this.timer = 0;
     this.raf = 0;
     this.slots.forEach((s, i) => (s.el.innerHTML = this.originals[i]!));
+    if (this.gap) this.gap.data = this.gapData;
     this.showing = "name";
   }
 
@@ -143,6 +150,7 @@ export class NameScrambler {
 
   /** The settled text: the name with its own markup, the handle as plain text. */
   private settle(): void {
+    if (this.gap) this.gap.data = this.showing === "handle" ? "" : this.gapData;
     this.slots.forEach((s, i) => {
       if (this.showing === "name") s.el.innerHTML = this.originals[i]!;
       else s.el.textContent = s.handle;
