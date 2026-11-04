@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import { Icon, ScrollRow } from "~/components/ui";
 import { coverImageProps } from "~/lib/cover-image";
 import { formatEntryDate } from "~/lib/dates";
-import { carouselLayout, growth, keylines, widest, type Keylines } from "~/lib/photo-carousel";
+import { carouselLayout, growth, keylines, lastPosition, widest, type Keylines } from "~/lib/photo-carousel";
 import { cn } from "~/lib/utils";
 
 /** A photograph of the place in its gallery: the cover of a linked photograph entry, with what the label says. */
@@ -112,7 +112,7 @@ function Carousel({ items, from }: { items: GalleryItem[]; from: string }) {
     const el = scroller.current;
     if (!el || !geo) return;
     const reduced = typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    el.scrollTo({ left: Math.min(Math.max(index, 0), items.length - 1) * geo.step, behavior: reduced ? "auto" : "smooth" });
+    el.scrollTo({ left: Math.min(Math.max(index, 0), lastPosition(items.length)) * geo.step, behavior: reduced ? "auto" : "smooth" });
   };
   const current = () => (geo && scroller.current ? Math.round(scroller.current.scrollLeft / geo.step) : 0);
 
@@ -120,8 +120,8 @@ function Carousel({ items, from }: { items: GalleryItem[]; from: string }) {
     <div className="relative">
       <div ref={scroller} data-slot="place-gallery-scroller" className="place-gallery-scroller overflow-x-auto overscroll-x-contain snap-x snap-mandatory">
         {geo && (
-          <div className="relative h-full" style={{ width: (items.length - 1) * geo.step + geo.k.width }}>
-            {items.map((item, i) => (
+          <div className="relative h-full" style={{ width: lastPosition(items.length) * geo.step + geo.k.width }}>
+            {items.slice(0, lastPosition(items.length) + 1).map((item, i) => (
               <span key={item.src} aria-hidden="true" className="absolute top-0 size-px snap-start" style={{ left: i * geo.step }} />
             ))}
             <div className="sticky left-0 top-0 h-full overflow-hidden" style={{ width: geo.k.width }}>

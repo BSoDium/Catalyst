@@ -11,7 +11,8 @@
  *   2        small         2..3    small to nothing (not there yet)
  *
  * At the start the sizes fill the row exactly, from the page's gutter at the left to the right edge, where the small one is cut off by it; moving on adds a small picture at
- * the left, so the row is always full. At the end the last picture is brought to the page's gutter at the right, and the one before it takes up what is left.
+ * the left, so the row is always full. It stops where the last two pictures are the expanded ones (`lastPosition`), and gets there sliding left by the gutter, so that the last one
+ * ends a gutter from the right edge.
  */
 export interface Keylines {
   /** The width of the row. */
@@ -56,21 +57,25 @@ export interface CarouselItem {
   w: number;
 }
 
-/** Where each of `count` pictures is, left to right from the gutter, for a row at position `t` (clamped to the first and the last). */
+/** The last position of a row of `count` pictures: the one where the last two are the ones expanded (a row of one or two does not move). */
+export const lastPosition = (count: number) => Math.max(0, count - 2);
+
+/** Where each of `count` pictures is, left to right, for a row at position `t` (clamped to the first and the last position). */
 export function carouselLayout(t: number, count: number, k: Keylines): CarouselItem[] {
   if (count === 0) return [];
-  const at = Math.min(Math.max(t, 0), count - 1);
-  const widths = Array.from({ length: count }, (_, i) => widthAt(i - at, k));
-  // Towards the end the row is brought back to the right: the last picture arrives at the gutter, and the one before it is what gives or takes (so the row stays full).
-  const lastU = count - 1 - at;
-  if (count > 1 && lastU <= 1) {
-    const right = k.width - k.gutter * Math.min(1, Math.max(0, 1 - lastU));
-    const used = widths.reduce((sum, w) => sum + w, 0) + k.gap * widths.filter((w) => w > 0).length - k.gap;
-    const before = count - 2;
-    widths[before] = Math.max(0, widths[before]! + (right - k.gutter - used));
+  if (count <= 2) {
+    // (nothing to scroll: the pictures share the row between the gutters, the larger first)
+    const room = k.width - 2 * k.gutter - (count - 1) * k.gap;
+    const first = count === 1 ? room : Math.round(room * 0.52);
+    return count === 1 ? [{ x: k.gutter, w: first }] : [{ x: k.gutter, w: first }, { x: k.gutter + first + k.gap, w: room - first }];
   }
-  let x = k.gutter;
-  return widths.map((w) => {
+  const at = Math.min(Math.max(t, 0), lastPosition(count));
+  // The row stops where the last two pictures are the expanded ones; getting there it slides left by the gutter, so that the last one ends a gutter from the right edge
+  // (the small one before them then has none at the left).
+  const arriving = Math.min(1, Math.max(0, 2 - (count - 1 - at)));
+  let x = k.gutter * (1 - arriving);
+  return Array.from({ length: count }, (_, i) => {
+    const w = widthAt(i - at, k);
     const item = { x, w };
     // (the gap grows with the picture, so that one coming in or going out does not leave a hole)
     x += w + k.gap * Math.min(1, w / k.small);
