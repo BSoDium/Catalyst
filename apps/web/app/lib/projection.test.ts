@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { loadDemoProjection } from "@catalyst/published/dev";
 import { EMPTY_PROJECTION, toPlaceSummary as schemaToPlaceSummary, type PublishedProjection } from "@catalyst/schemas";
 import { CONTEXT_FRAMING, bboxFitRadiusKm } from "~/globe/engine/framing";
+import { entriesOfPlace, nestedPlaces } from "./entries";
 import { buildPlaceIndex, getPlaceDetail, imageSize, placeEntries, resolveRoutes, toPlaceSummary } from "./projection";
 
 const demo = loadDemoProjection();
@@ -103,6 +104,25 @@ describe("placeEntries: the entries linked to each place, for the second line of
       artworks: [item("w1", [])],
     });
     expect(p.get(place.slug)).toEqual([{ kind: "article", slug: "a1" }, { kind: "artwork", slug: "w1" }]);
+  });
+  describe("nesting: a place with a bbox carries the entries of the places inside it", () => {
+    const city = { ...place, related: [], coordinates: { lat: 10, lon: 10 }, bbox: [9, 9, 11, 11] as [number, number, number, number] };
+    const site = { ...other, related: [], coordinates: { lat: 10.1, lon: 10.1 }, bbox: undefined };
+    const nested = { ...base, places: [city, site], photographs: [item("ph1", [site.slug])], articles: [item("a1", [city.slug])] };
+    it("the city lists the site's entries, the site does not list the city's", () => {
+      const p = placeEntries(nested);
+      expect(p.get(city.slug)).toEqual([{ kind: "article", slug: "a1" }, { kind: "photograph", slug: "ph1" }]);
+      expect(p.get(site.slug)).toEqual([{ kind: "photograph", slug: "ph1" }]);
+    });
+    it("the panel agrees with the label, each entry once even when it names both places", () => {
+      const both = { ...nested, photographs: [item("ph1", [site.slug, city.slug])] };
+      expect(entriesOfPlace(both, city.slug).flatMap((g) => g.entries).map((e) => e.slug).sort()).toEqual(["a1", "ph1"]);
+      expect(entriesOfPlace(both, site.slug).flatMap((g) => g.entries).map((e) => e.slug)).toEqual(["ph1"]);
+    });
+    it("places with the same box, or a point outside the box, do not nest", () => {
+      expect(nestedPlaces([city, { ...site, bbox: city.bbox, slug: "twin" }]).size).toBe(0);
+      expect(nestedPlaces([city, { ...site, coordinates: { lat: 20, lon: 20 } }]).size).toBe(0);
+    });
   });
   it("a reference to an entry that does not exist is dropped", () => {
     const p = placeEntries({ ...base, places: [{ ...place, related: [{ kind: "article", slug: "ghost" }] }, { ...other, related: [] }] });
