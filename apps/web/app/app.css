@@ -6299,6 +6299,12 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     }
   }
 
+  /* The handle the owner goes by online, under the name (#588): why the domain reads "bsodium". */
+  .career-handle {
+    margin: 0.5rem 0 0;
+    color: var(--muted-foreground);
+  }
+
   /* The headline statement: the reading face, one paragraph, a comfortable measure. */
   .career-summary {
     margin: 1.5rem 0 0;

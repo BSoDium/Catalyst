@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { createStaticHandler, createStaticRouter, StaticRouterProvider, type StaticHandlerContext } from "react-router";
 import { describe, expect, it } from "vitest";
 import { createHeroMachine } from "~/lib/hero-machine";
-import { SITE_FOCUS, SITE_IDENTITY, SITE_NAME, SITE_TAGLINE } from "~/lib/site";
+import { SITE_FOCUS, SITE_HANDLE_LINE, SITE_IDENTITY, SITE_NAME, SITE_TAGLINE } from "~/lib/site";
 import { LandingHero, NAME_TRAVEL_EASE, NAME_TRAVEL_MS } from "./landing-hero";
 
 async function render(props: { away?: boolean; empty?: boolean; orbit?: boolean | null; hasCareer?: boolean } = {}, machine = createHeroMachine()): Promise<string> {
@@ -40,7 +40,7 @@ describe("LandingHero", () => {
   it("says who the owner is from the published facts only, then how to use the page; with no place a line that does not point at an empty globe", async () => {
     const html = await render();
     // who the owner is, then what they work on: the second sentence is its own span, the first all that stays of the line in a very short window
-    expect(html).toContain(`<p class="hero-intro">${SITE_IDENTITY}<span class="hero-intro-more"> ${SITE_FOCUS}</span></p>`);
+    expect(html).toContain(`<p class="hero-intro">${SITE_IDENTITY}<span class="hero-intro-more"> ${SITE_FOCUS} ${SITE_HANDLE_LINE}</span></p>`);
     expect(`${SITE_IDENTITY} ${SITE_FOCUS}`).toBe(SITE_TAGLINE);
     expect(SITE_TAGLINE).toBe(
       "Design engineer based in Warsaw. Data visualisation, geospatial and cartography interfaces, design systems, computer graphics.",

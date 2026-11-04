@@ -9,7 +9,7 @@ import { CONTACT_ID } from "~/lib/contact";
 import { safeExternalUrl } from "~/lib/entry-blocks";
 import { entryPath, placePath } from "~/lib/entries";
 import { PORTRAIT_EGG, portraitEggDrawn } from "~/lib/portrait-egg";
-import { SITE } from "~/lib/site";
+import { SITE, SITE_HANDLE_LINE } from "~/lib/site";
 import { useForcedScheme } from "~/lib/theme";
 
 /**
@@ -56,6 +56,9 @@ export function CareerPage({ career, places = [], projects = [] }: { career: Pub
             <h1 id="career-name" className="list-title career-name">
               {SITE.givenName} <span className="career-name-family">{SITE.familyName}</span>
             </h1>
+            <p data-slot="career-handle" className="career-handle type-meta">
+              {SITE_HANDLE_LINE}
+            </p>
             <p className="career-summary">{career.summary}</p>
             <div className="career-cta">
             {available && (
