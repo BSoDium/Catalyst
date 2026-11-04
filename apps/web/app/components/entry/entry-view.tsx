@@ -334,6 +334,19 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
               </h1>
               {entry.summary && !poem && <p className="type-standfirst mt-[1.375rem] max-w-[25.4em] md:mt-[2.125rem]">{entry.summary}</p>}
               {exposure && <ExposureBlock exposure={exposure} />}
+              {/* The way to the place a photograph, an artwork or an article is about, up where it is read and not only in a tag or on the map (#581). */}
+              {!poem && entry.kind !== "project" && globeTarget && (
+                <div data-slot="entry-place-link" className="mt-6 print:hidden">
+                  <Button asChild variant="secondary" size="sm">
+                    <Link to={globeTarget.href}>
+                      <Icon name="place" size="inline" />
+                      <span>{globeTarget.name}</span>
+                      <span className="text-muted-foreground">Open on the map</span>
+                      <Icon name="arrow-up-right" size="inline" />
+                    </Link>
+                  </Button>
+                </div>
+              )}
               {actions}
             </div>
             {heroSrc && entry.cover && <img src={heroSrc} alt={heroDim ? "" : entry.cover.alt} width={entry.cover.width} height={entry.cover.height} decoding="async" className="entry-hero-img" />}
