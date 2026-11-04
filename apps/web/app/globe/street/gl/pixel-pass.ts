@@ -366,10 +366,12 @@ void main() {
   int level = int(artCell.r * 255.0 + 0.5);
   // Lines (G > 0: streets, rails, outlines) are lifted inside the rectangle and dimmed outside; fills (water, green, the satellite's stipple) are the
   // background: lifted inside by the (smaller) uSpot.z and left alone outside, so the box does not seem to sit on a lighter ground
+  // (the CPU twin is spotLevel in core/spot.ts)
   if (level > 0 && level < GREYS && (uSpot.x > 0.0 || uSpot.y > 0.0 || uSpot.z > 0.0)) {
     bool inside = cell.x >= uSpotRect.x && cell.y >= uSpotRect.y && cell.x < uSpotRect.z && cell.y < uSpotRect.w;
     bool isLine = artCell.g > 0.0;
-    if (inside) level = level + int(floor(float(GREYS - 2 - level) * (isLine ? uSpot.x : uSpot.z) + 0.5));   // up to the peak (the box at rest), never the ink: the top step of the ramp is the biggest and the ink is the selection's
+    // up to the peak (the box at rest), never the ink (the top step of the ramp is the biggest, and it is the selection's colour); a line already there stays
+    if (inside) level = level >= GREYS - 2 ? level : level + int(floor(float(GREYS - 2 - level) * (isLine ? uSpot.x : uSpot.z) + 0.5));
     else if (isLine) level = max(1, int(floor(float(level) * (1.0 - uSpot.y) + 0.5)));
   }
   vec3 col = uPal[clamp(level, 0, ${MAX_LEVELS - 1})];
@@ -418,7 +420,7 @@ export interface PassParams {
   anchor: [number, number];
   /**
    * The spotlight on the selected node's rectangle (art cells, c1 / r1 exclusive): the map's LINES inside it are lifted by `lift` of the way
-   * to the ink (streets read stronger), those outside lose `dim` of their tone; the fills (the background) inside are lifted by the smaller `fill`
+   * to the peak, the box at rest (streets read stronger), those outside lose `dim` of their tone; the fills (the background) inside are lifted by the smaller `fill`
    * and those outside are left alone. Paths and trails are never touched. Absent or 0 / 0: off.
    */
   spot?: { c0: number; r0: number; c1: number; r1: number; lift: number; dim: number; fill: number };

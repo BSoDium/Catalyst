@@ -28,8 +28,8 @@ export const STREET_TUNING = {
   revealMs: 700,
   dissolveMs: 900,
   /**
-   * The spotlight on the selected node's rectangle (the map's lines inside lifted by `lift` of the way to the ink, those outside losing
-   * `dim` of their tone; the fills (the background) inside lifted by the smaller `fill`, those outside untouched; `ms` to fade in and out). Experiment, issue 569.
+   * The spotlight on the selected node's rectangle (core/spot.ts: the map's lines inside lifted by `lift` of the way to the peak, those outside losing
+   * `dim` of their tone; the fills (the background) inside lifted by the smaller `fill`, those outside untouched; `ms` to fade in and out). #569.
    */
   spot: { lift: 0.95, dim: 0.45, fill: 0.12, ms: 450 },
   /**

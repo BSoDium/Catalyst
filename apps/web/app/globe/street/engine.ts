@@ -47,6 +47,7 @@ import { fadeStraight, thinLegs, thinZoomOf, type ThinLeg } from "../paths/thin"
 import { DEFAULT_HANDOFF, PLACEHOLDER_LAYERS, PLACEHOLDER_REPLACES, PLACEHOLDER_OVERLAP_MS, PLACEHOLDER_SETTLE_MS, ROUTE_LAYER_IDS, applyCell, applyDashScale, applyKeptLegs, buildStreetStyle, placeholderWanted, dashStepOf, focusFilter, graticule, headFocusFilter, ROUTE_HEAD_FOCUS_ID, hasPlaceholder, routeLayerId, seaFrom, type StyleTiles } from "./style/street-style";
 import { onSchemeChange } from "../engine/scheme";
 import { STREET_TUNING } from "./tuning";
+import { sameRect, spotRect, type CellRect } from "./core/spot";
 import type { AnimateOptions, FlyOptions, RevealOptions, StreetDebug, StreetMap, StreetMapOptions, StreetView } from "./types";
 
 export class StreetUnavailableError extends Error {
@@ -365,7 +366,7 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
   const blendV = new EasedValue(STREET_TUNING.dissolveMs, reduced, opts.initialBlend ?? 1);
   // The spotlight: the selected node's rectangle in art cells (null when it is not drawn), faded in by `spotV`.
   const spotV = new EasedValue(STREET_TUNING.spot.ms, reduced);
-  let spotRect: { c0: number; r0: number; c1: number; r1: number } | null = null;
+  let spotBox: CellRect | null = null;
   let revealCenter: "selected" | { lon: number; lat: number } = "selected";
   let reportedLost = false;
   const waiters: { value: EasedValue; resolve(): void }[] = [];
@@ -418,7 +419,7 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
           focus,
           blend: blendV.eased,
           anchor: [0, 0],
-          spot: spotRect && spotV.eased > 0 ? { ...spotRect, ...spotTune(spotV.eased) } : undefined,
+          spot: spotBox && spotV.eased > 0 ? { ...spotBox, lift: STREET_TUNING.spot.lift * spotV.eased, dim: STREET_TUNING.spot.dim * spotV.eased, fill: STREET_TUNING.spot.fill * spotV.eased } : undefined,
         };
       },
       onContextChange: () => reportContext(),
@@ -571,18 +572,13 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
     perfEnd("street.overlay", t0);
   };
   // The spotlight follows the selected node's drawn rectangle (whole art cells, as the box is drawn); it fades out when nothing is selected or the node is not drawn.
-  const spotTune = (k: number) => {
-    const o = (globalThis as { __spot?: { lift?: number; dim?: number; fill?: number } }).__spot;   // experiment: tune from the console
-    const t = STREET_TUNING.spot;
-    return { lift: (o?.lift ?? t.lift) * k, dim: (o?.dim ?? t.dim) * k, fill: (o?.fill ?? t.fill) * k };
-  };
   const syncSpot = () => {
     const i = selected ? lod.indexOf(selected) : -1;
     const sc = hud.screen;
     if (i >= 0 && sc.shown[i]) {
-      const next = { c0: Math.round(sc.bx0[i]! / cellCss), r0: Math.round(sc.by0[i]! / cellCss), c1: Math.round(sc.bx1[i]! / cellCss), r1: Math.round(sc.by1[i]! / cellCss) };
-      const moved = !spotRect || next.c0 !== spotRect.c0 || next.r0 !== spotRect.r0 || next.c1 !== spotRect.c1 || next.r1 !== spotRect.r1;
-      spotRect = next;
+      const next = spotRect({ x0: sc.bx0[i]!, y0: sc.by0[i]!, x1: sc.bx1[i]!, y1: sc.by1[i]! }, mapCell());
+      const moved = !sameRect(spotBox, next);
+      spotBox = next;
       if (spotV.target !== 1) {
         spotV.set(1);
         kick();
@@ -590,7 +586,7 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
     } else if (spotV.target !== 0) {
       spotV.set(0);
       kick();
-    } else if (!spotV.animating) spotRect = null;
+    } else if (!spotV.animating) spotBox = null;
   };
   const syncOverlayInner = () => {
     const w = root.clientWidth;
