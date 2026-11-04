@@ -173,6 +173,8 @@ export class HudLayer {
     const cols = Math.ceil(frame.width / cell);
     const rows = Math.ceil(frame.height / cell);
     const screen = this.screen;
+    // (only the visible nodes are filled below: a node that left the list, its box hidden for being bigger than the screen, must not stay drawn at its last rectangle)
+    screen.shown.fill(0);
     for (let k = 0; k < lod.count; k++) {
       const i = lod.visible[k]!;
       const r = snapBox(lod.drawX0[i]!, lod.drawY0[i]!, lod.drawX1[i]!, lod.drawY1[i]!, cell);

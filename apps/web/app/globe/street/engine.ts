@@ -671,7 +671,11 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
     const sc = hud.screen;
     const boxOf = (slug: string | null): CellRect | null => {
       const i = slug ? lod.indexOf(slug) : -1;
-      return i >= 0 && sc.shown[i] ? spotRect({ x0: sc.bx0[i]!, y0: sc.by0[i]!, x1: sc.bx1[i]!, y1: sc.by1[i]! }, mapCell()) : null;
+      if (i < 0) return null;
+      if (sc.shown[i]) return spotRect({ x0: sc.bx0[i]!, y0: sc.by0[i]!, x1: sc.bx1[i]!, y1: sc.by1[i]! }, mapCell());
+      // the box is gone for being bigger than the screen (you are inside it, #622): the light keeps to the place's real rectangle, which moves with the map, and is not left where the outline was last drawn
+      const big = lod.bigRect(i);
+      return big ? spotRect(big, mapCell()) : null;
     };
     const now = boxOf(selected);
     if (now) spotSlug = selected;
