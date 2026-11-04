@@ -108,7 +108,8 @@ export function EntryRow({
   const place = placeLine(entry.places);
   const { status } = splitMeta(entry.meta);
   const cover = entry.cover && safeMediaSrc(entry.cover.src) ? { ...coverImageProps(entry.cover, ROW_COVER_SIZES), alt: entry.cover.alt } : null;
-  const showCover = !!cover || entry.kind === "artwork";
+  // (an artwork's picture IS its page; in the place panel a poem has one too, its own or a generated one, so that every row of the panel has its picture)
+  const showCover = !!cover || entry.kind === "artwork" || (compact === true && entry.kind === "poem");
   const tags = entry.tags.slice(0, 4);
   if (compact) {
     return (
