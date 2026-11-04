@@ -30,7 +30,7 @@ describe("LandingHero", () => {
     const html = await render();
     expect(html.match(/<h1[ >]/g)).toHaveLength(1);
     expect(html).toMatch(
-      /<h1 class="hero-name type-display-xl"><span class="hero-given">Elliot<\/span> <span class="hero-family type-thin"><span>Négrel<\/span><span><span class="hero-hyphen">-<\/span>Jerzy<\/span><\/span><\/h1>/,
+      /<h1 class="hero-name type-display-xl" aria-label="Elliot Négrel-Jerzy"><span class="hero-given">Elliot<\/span> <span class="hero-family type-thin"><span>Négrel<\/span><span><span class="hero-hyphen">-<\/span>Jerzy<\/span><\/span><\/h1>/,
     );
     const heading = /<h1[^>]*>(.*?)<\/h1>/.exec(html)?.[1]?.replace(/<[^>]+>/g, "");
     expect(heading).toBe(SITE_NAME);
@@ -40,7 +40,7 @@ describe("LandingHero", () => {
   it("says who the owner is from the published facts only, then how to use the page; with no place a line that does not point at an empty globe", async () => {
     const html = await render();
     // who the owner is, then what they work on: the second sentence is its own span, the first all that stays of the line in a very short window
-    expect(html).toContain(`<p class="hero-intro">${SITE_IDENTITY}<span class="hero-intro-more"> ${SITE_FOCUS}<span class="hero-intro-handle"> ${SITE_HANDLE_LINE}</span></span></p>`);
+    expect(html).toContain(`<p class="hero-intro">${SITE_IDENTITY}<span class="hero-intro-more"> ${SITE_FOCUS}</span><span class="sr-only"> ${SITE_HANDLE_LINE}</span></p>`);
     expect(`${SITE_IDENTITY} ${SITE_FOCUS}`).toBe(SITE_TAGLINE);
     expect(SITE_TAGLINE).toBe(
       "Design engineer based in Warsaw. Data visualisation, geospatial and cartography interfaces, design systems, computer graphics.",

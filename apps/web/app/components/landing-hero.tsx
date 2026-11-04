@@ -6,6 +6,7 @@ import { CAREER_LABEL, CAREER_PATH } from "~/lib/career";
 import { KIND_PATHS, KIND_PLURALS } from "~/lib/entries";
 import type { HeroMachine, HeroSnapshot } from "~/lib/hero-machine";
 import { setHeroResting } from "~/lib/hero-rest";
+import { NameScrambler } from "~/lib/scramble";
 import { NameTravel, type TravelHalf } from "~/lib/name-travel";
 import { SITE, SITE_FOCUS, SITE_HANDLE_LINE, SITE_IDENTITY } from "~/lib/site";
 import { useHasCareer } from "~/lib/use-has-career";
@@ -217,6 +218,22 @@ export function LandingHero({ machine, away, empty, orbit = null, onCover, hasCa
     travel.current!.go(halvesOf(root), state === "collapsed");
   }, [state]);
   useEffect(() => () => travel.current?.cancel(), []);
+  // Every 10 to 15 s the name scrambles into the handle and back (#588): only while the hero is at rest and in view (a collapsed or away hero has the name travelling or held by measurement), and
+  // the real name is put back, markup and all, the moment it stops.
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root || state !== "rest" || away) return;
+    const given = root.querySelector<HTMLElement>(".hero-given");
+    const family = root.querySelector<HTMLElement>(".hero-family");
+    if (!given || !family) return;
+    const handle = SITE.handle;
+    const scrambler = new NameScrambler([
+      { el: given, name: SITE.givenName, handle: handle.slice(0, 4) },
+      { el: family, name: SITE.familyName, handle: handle.slice(4) },
+    ]);
+    scrambler.start();
+    return () => scrambler.stop();
+  }, [state, away]);
   useEffect(() => {
     const root = rootRef.current;
     if (!root || state !== "collapsed" || typeof ResizeObserver === "undefined") return;
@@ -302,17 +319,16 @@ export function LandingHero({ machine, away, empty, orbit = null, onCover, hasCa
       className="landing-hero print:hidden"
     >
       <div className="hero-block">
-        <Name className="hero-name type-display-xl">
+        <Name className="hero-name type-display-xl" aria-label={away ? undefined : SITE.name}>
           <span className="hero-given">{SITE.givenName}</span> <span className="hero-family type-thin">
             <FamilyName />
           </span>
         </Name>
-        {/* The handle, set big in the empty middle of the row on a wide window (`.hero-handle`, app.css); on a narrower one it is the intro's last sentence. */}
-        <HeroHandle />
         <div className="hero-lead">
           <p className="hero-intro">
             {SITE_IDENTITY}
-            <span className="hero-intro-more">{` ${SITE_FOCUS}`}<span className="hero-intro-handle">{` ${SITE_HANDLE_LINE}`}</span></span>
+            <span className="hero-intro-more">{` ${SITE_FOCUS}`}</span>
+            <span className="sr-only">{` ${SITE_HANDLE_LINE}`}</span>
           </p>
           {/* How to use the page. While the globe says it itself (the caption, `data-orbit`), this line is for assistive technology only. */}
           <p className="hero-hint">
@@ -366,21 +382,5 @@ export function LandingHero({ machine, away, empty, orbit = null, onCover, hasCa
         <span className="hero-mini-hint">Drag to explore. Stop moving to reset the view.</span>
       </p>
     </div>
-  );
-}
-
-/** "also known as BSoDium", in the name's own two weights: the heavy half and the thin one (#588). Decoration at a wide size: the intro's sentence says it to assistive technology. */
-function HeroHandle() {
-  const handle = SITE.handle;
-  const heavy = handle.slice(0, 4);
-  const thin = handle.slice(4);
-  return (
-    <p aria-hidden="true" data-slot="hero-handle" className="hero-handle">
-      <span className="hero-handle-aka">Also known as</span>
-      <span className="hero-handle-name">
-        <span className="hero-handle-heavy">{heavy}</span>
-        <span className="hero-handle-thin">{thin}</span>
-      </span>
-    </p>
   );
 }
