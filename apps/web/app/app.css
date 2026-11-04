@@ -6552,10 +6552,8 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     pointer-events: none;
   }
 
-  /* "BSoD" of the handle is BSoD blue (#612), paler than the accent fill (owner, 2026-11-04: the fill was poorly legible over the dimmed name): the accent's text tone with over half of the page's own ink (a third was still too blue: owner, 2026-11-04), so it is lighter on the dark page and deeper on the light one */
   .career-name-handle-heavy {
     font-weight: 800;
-    color: color-mix(in oklab, var(--signal-text) 45%, var(--foreground));
   }
 
   .career-name-handle-thin {
