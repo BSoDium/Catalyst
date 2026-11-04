@@ -259,6 +259,19 @@ describe("only members that pass the visibility rule count", () => {
 });
 
 describe("size rules", () => {
+  it("bigRect: the rectangle of a place whose box is hidden for being bigger than the screen, null while it is drawn and for what is not a place", () => {
+    const t = new LodTree([g("c", "country", undefined, 10, 10, 400, 70), p("city", "c", 10, 10, 12)]);
+    const i = t.indexOf("city");
+    evaluate(t, camAt(10, 10, 9));
+    expect(t.bigRect(i)).toBeNull(); // drawn, small
+    evaluate(t, camAt(10, 10, 14));
+    const r = t.bigRect(i);
+    expect(r).not.toBeNull();
+    expect(Math.max(r!.x1 - r!.x0, r!.y1 - r!.y0)).toBeGreaterThan(H); // it covers the screen
+    expect(t.bigRect(t.indexOf("c"))).toBeNull(); // a group has none
+    expect(t.bigRect(-1)).toBeNull();
+  });
+
   it("a place's own rectangle is hidden once it is much bigger than the screen (you are inside it), shown again a bit below, with nothing in between", () => {
     const t = new LodTree([p("city", undefined, 10, 10, 12)]);
     const probe = (z: number) => {

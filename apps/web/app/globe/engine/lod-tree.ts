@@ -1109,6 +1109,20 @@ export class LodTree {
     }
   }
 
+  /**
+   * The rectangle of a PLACE whose box is not drawn for being bigger than the screen (`bigHidden`: you are inside it, it is just an outline), as the camera puts it now, or null.
+   * The geometry is worked out for every place on every update, so what follows the rectangle (the street map's spotlight) can keep to it when the outline is gone, instead of to
+   * the last frame it was drawn in. Pure given the last `update`.
+   */
+  bigRect(i: number): { x0: number; y0: number; x1: number; y1: number } | null {
+    if (i < 0 || i >= this.size || this.isGroup[i] || !this.shown[i]) return null;
+    const x0 = this.drawX0[i]!;
+    const y0 = this.drawY0[i]!;
+    const x1 = this.drawX1[i]!;
+    const y1 = this.drawY1[i]!;
+    return Math.max(x1 - x0, y1 - y0) / this.cam.refPx >= LOD.sizeFadeFrom ? { x0, y0, x1, y1 } : null;
+  }
+
   /** Node `i` as a box with the label it would carry: its rectangle and its plate at the first position are obstacles, and it counts for the budget (a root, or a child that has to be drawn). */
   private lay(i: number) {
     const x0 = this.boxX0[i]!;
