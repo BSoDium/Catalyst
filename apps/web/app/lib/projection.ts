@@ -150,7 +150,7 @@ export function resolveRoutes(projection: PublishedProjection): GlobeRoute[] {
     const boxes = resolved.map((place) => (bboxExtentsKm(place.bbox) ? place.bbox : undefined));
     const withBoxes = boxes.some((b) => b) ? { boxes } : {};
     // Legs are positional: they only mean something when every stop resolved (the contract guarantees it; a stale one is dropped).
-    const legs = route.legs && points.length === route.stops.length ? { legs: route.legs.map((l) => ({ mode: l.mode, ...(l.polyline ? { polyline: l.polyline } : {}), ...(l.fromAirport ? { fromAirport: l.fromAirport } : {}), ...(l.toAirport ? { toAirport: l.toAirport } : {}) })) } : {};
+    const legs = route.legs && points.length === route.stops.length ? { legs: route.legs.map((l) => ({ mode: l.mode, ...(l.polyline ? { polyline: l.polyline } : {}) })) } : {};
     return [{ id: route.id, title: route.title, points, palette: paletteOf(order), ...withBoxes, ...legs }];
   });
 }

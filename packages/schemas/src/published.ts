@@ -196,6 +196,17 @@ const polylineCharsSchema = z
   .max(ROUTE_LEG_LIMITS.charsPerLeg)
   .regex(/^[?-~]+$/, "an encoded polyline (precision 5): characters from ? to ~ only");
 
+/** One leg between two consecutive stops. Without a polyline the leg is drawn as the geodesic arc between its stops. */
+export const publishedLegSchema = z
+  .object({
+    mode: legModeSchema,
+    /**
+     * Encoded polyline, precision 5, `[lat, lon]` deltas (docs/api-contract.md, "Route legs"). Never on a `flight`
+     * (an arc costs nothing). The first and last point are within `ROUTE_LEG_LIMITS.endpointToleranceKm` of the stops, or on the edge of a stop's `bbox`.
+     */
+    polyline: polylineCharsSchema.optional(),
+  })
+  .strict();
 
 
 // --- Entries (projects, articles, artworks, poems, photographs) ------------------------------------------------------------------------
@@ -237,43 +248,6 @@ export const httpsUrlSchema = z
   }, "https only, without credentials");
 
 /**
- * An airport a flight leaves from or lands at, as a point in a city. Additive in schema version 1. It is a location, not a place: no page, no box,
- * no entry; the map draws a small dot there and the flight's arc joins it.
- */
-export const publishedAirportSchema = z
-  .object({
-    /** Its name as people say it ("Lisbon Humberto Delgado"), plain text. */
-    name: line(60),
-    /** The IATA code, three capital letters, when it has one. */
-    code: z.string().regex(/^[A-Z]{3}$/, "an IATA code: three capital letters").optional(),
-    lat: z.number().min(-90).max(90),
-    lon: z.number().min(-180).max(180),
-  })
-  .strict();
-
-/** How far an airport may lie from the stop of the leg it belongs to (km): it is that city's airport. */
-export const AIRPORT_MAX_KM = 80;
-
-/**
- * One leg between two consecutive stops. Without a polyline the leg is drawn as the geodesic arc between its stops; a flight may name the
- * airports it leaves from and lands at, and its arc then runs between them.
- */
-export const publishedLegSchema = z
-  .object({
-    mode: legModeSchema,
-    /**
-     * Encoded polyline, precision 5, `[lat, lon]` deltas (docs/api-contract.md, "Route legs"). Never on a `flight`
-     * (an arc costs nothing). The first and last point are within `ROUTE_LEG_LIMITS.endpointToleranceKm` of the stops, or on the edge of a stop's `bbox`.
-     */
-    polyline: polylineCharsSchema.optional(),
-    /** Additive in schema version 1. Flights only: the airport of the first stop. */
-    fromAirport: publishedAirportSchema.optional(),
-    /** Additive in schema version 1. Flights only: the airport of the second stop. */
-    toAirport: publishedAirportSchema.optional(),
-  })
-  .strict();
-
-/**
  * An explicitly curated route: an ordered list of published places. Routes are
  * never inferred; if it is not here, no line is drawn.
  */
@@ -305,9 +279,6 @@ export const publishedRouteSchema = z
     }
     let total = 0;
     route.legs.forEach((leg, i) => {
-      if ((leg.fromAirport || leg.toAirport) && leg.mode !== "flight") {
-        ctx.addIssue({ code: "custom", path: ["legs", i], message: "only a flight names airports" });
-      }
       if (leg.polyline === undefined) return;
       if (leg.mode === "flight") {
         ctx.addIssue({ code: "custom", path: ["legs", i, "polyline"], message: "a flight is drawn as an arc and carries no polyline" });
@@ -1038,12 +1009,6 @@ export const publishedProjectionSchema = projectionShape.superRefine((p, ctx) =>
     });
     // Leg geometry: its ends sit at the stops (the legs themselves were checked with the route).
     route.legs?.forEach((leg, j) => {
-      for (const [airport, slug, key] of [[leg.fromAirport, route.stops[j], "fromAirport"], [leg.toAirport, route.stops[j + 1], "toAirport"]] as const) {
-        const at = coordsBySlug.get(slug ?? "");
-        if (airport && at && haversineKm([airport.lat, airport.lon], at) > AIRPORT_MAX_KM) {
-          ctx.addIssue({ code: "custom", path: ["routes", i, "legs", j, key], message: `lies more than ${AIRPORT_MAX_KM} km from "${slug}"` });
-        }
-      }
       if (leg.polyline === undefined || leg.mode === "flight") return;
       const pts = decodePolyline5(leg.polyline);
       if (!pts) return;
@@ -1093,7 +1058,6 @@ export type PublishedGroup = z.infer<typeof publishedGroupSchema>;
 export type PublishedPlace = z.infer<typeof publishedPlaceSchema>;
 export type PublishedRoute = z.infer<typeof publishedRouteSchema>;
 export type PublishedLeg = z.infer<typeof publishedLegSchema>;
-export type PublishedAirport = z.infer<typeof publishedAirportSchema>;
 export type LegMode = z.infer<typeof legModeSchema>;
 export type PublishedContentItem = z.infer<typeof publishedContentItemSchema>;
 export type PublishedCover = z.infer<typeof publishedCoverSchema>;

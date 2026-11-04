@@ -115,34 +115,41 @@ export function easeCell(f: EaseFrame, x: number, y: number): CellOut {
   const step = f.step;
   const slew = (base: number) => base + Math.max(-step, Math.min(step, t - base));
 
-  // ---- fill part: screen anchored, identity lookups
-  let fill = 0;
+  // ---- fill part: the lattice is anchored to the screen, the REGION is not: it is looked up where the camera had it (the warped cell), with the lattice-sized radius
+  const here = oldCell(f, x, y);
   const pHere = lv(P, cols, rows, x, y);
   const pFill = pHere > 0 && ln(P, cols, rows, x, y) === 0;
-  if (t > 0 && !tLine) {
-    let base = pFill ? pHere : 0;
-    let best = Infinity;
-    for (let dy = -FILL_RADIUS; dy <= FILL_RADIUS; dy++) for (let dx = -FILL_RADIUS; dx <= FILL_RADIUS; dx++) {
-      if (lv(Tp, cols, rows, x + dx, y + dy) !== t || ln(Tp, cols, rows, x + dx, y + dy) !== 0) continue;
-      const d2 = dx * dx + dy * dy;
-      if (d2 < best && ln(P, cols, rows, x + dx, y + dy) === 0) {
-        best = d2;
-        base = lv(P, cols, rows, x + dx, y + dy);
+  let fill = 0;
+  if (!here) {
+    fill = t > 0 && !tLine ? t : 0; // nothing before: the target at once
+  } else {
+    const [hx, hy] = here;
+    const fHere = lv(P, cols, rows, hx, hy);
+    const fFill = fHere > 0 && ln(P, cols, rows, hx, hy) === 0;
+    if (t > 0 && !tLine) {
+      let base = fFill ? fHere : 0;
+      let best = Infinity;
+      for (let dy = -FILL_RADIUS; dy <= FILL_RADIUS; dy++) for (let dx = -FILL_RADIUS; dx <= FILL_RADIUS; dx++) {
+        if (lv(Tp, cols, rows, hx + dx, hy + dy) !== t || ln(Tp, cols, rows, hx + dx, hy + dy) !== 0) continue;
+        const d2 = dx * dx + dy * dy;
+        if (d2 < best && ln(P, cols, rows, hx + dx, hy + dy) === 0) {
+          best = d2;
+          base = lv(P, cols, rows, hx + dx, hy + dy);
+        }
       }
+      fill = slew(base);
+    } else if (t === 0 && fFill) {
+      let moved = false;
+      for (let dy = -FILL_RADIUS; dy <= FILL_RADIUS && !moved; dy++) for (let dx = -FILL_RADIUS; dx <= FILL_RADIUS; dx++) {
+        const l = lv(T, cols, rows, x + dx, y + dy);
+        if (l > 0 && ln(T, cols, rows, x + dx, y + dy) === 0 && l + 1 >= fHere) { moved = true; break; }
+      }
+      fill = moved ? 0 : fHere - Math.min(fHere, step);
     }
-    fill = slew(base);
-  } else if (t === 0 && pFill) {
-    let moved = false;
-    for (let dy = -FILL_RADIUS; dy <= FILL_RADIUS && !moved; dy++) for (let dx = -FILL_RADIUS; dx <= FILL_RADIUS; dx++) {
-      const l = lv(T, cols, rows, x + dx, y + dy);
-      if (l > 0 && ln(T, cols, rows, x + dx, y + dy) === 0 && l + 1 >= pHere) { moved = true; break; }
-    }
-    fill = moved ? 0 : pHere - Math.min(pHere, step);
   }
 
   // ---- line part: warped lookups
   let line = 0;
-  const here = oldCell(f, x, y);
   if (!here) {
     line = t > 0 && tLine ? t : 0; // nothing before: the target at once
   } else {

@@ -42,7 +42,6 @@ import { probeSource, type ProbeConfig, type ProbeOutcome } from "./net/probe";
 import { HudLayer } from "./overlay/hud-layer";
 import { LayerSwitch, switchRules, type SwitchView } from "./style/layer-switch";
 import { TrailDotsLayer, dotLegs } from "../paths/trail-dots-layer";
-import { airportsOf } from "../paths/airports";
 import { capReach, viewCap } from "./core/view-cap";
 import { fadeStraight, thinLegs, thinZoomOf, type ThinLeg } from "../paths/thin";
 import { DEFAULT_HANDOFF, PLACEHOLDER_LAYERS, PLACEHOLDER_REPLACES, PLACEHOLDER_OVERLAP_MS, PLACEHOLDER_SETTLE_MS, ROUTE_LAYER_IDS, applyCell, applyDashScale, applyKeptLegs, buildStreetStyle, placeholderWanted, dashStepOf, focusFilter, graticule, headFocusFilter, ROUTE_HEAD_FOCUS_ID, hasPlaceholder, routeLayerId, seaFrom, type StyleTiles } from "./style/street-style";
@@ -446,7 +445,6 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
   const trailDots = new TrailDotsLayer(hudRoot);
   trailDotsRef = trailDots;
   trailDots.setLegs(dotLegs(legs));
-  trailDots.setAirports(airportsOf(opts.routes));
   trailDots.setTrail(theme.trail);
   trailDots.setPage(theme.background);
   trailDots.setFocus(focusKeys);

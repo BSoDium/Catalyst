@@ -195,7 +195,6 @@ Each route may also carry `summary` (a line or two about the trip, 1 to 400 char
 | --- | --- |
 | `mode` | `road`, `rail`, `ferry`, `flight`, `walk` or `unknown`. Picks the line style on the map (solid for a road and a rail, dotted, lifted dotted arc, fine dots, dashed arc) and the noun of the place panel's "Journeys" list. |
 | `polyline` | Optional. Encoded polyline, precision 5 (the "Google polyline" algorithm: `[lat, lon]` pairs, deltas in 1e-5 degrees, characters `?` to `~`). Absent: the leg is drawn as the geodesic arc between its stops. Never on a `flight` (an arc costs nothing). |
-| `fromAirport`, `toAirport` | Optional, additive, **flights only**: the airport of the first and of the second stop, `{ name, code?, lat, lon }` (`code`: three capital letters, the IATA code). A location in the city, not a place: no page, no box, no entry. The flight's arc runs between the airports (not the places' points) and is not cut at the stop's box at an end that has one; the map marks each airport with a small dot. The airport lies within `AIRPORT_MAX_KM` (80 km) of its stop. They are the airport's own public coordinates, never a recorded position. Absent: the arc joins the places as before. |
 
 Checks (schema, `parsePublishedProjection`; the private export must enforce the same numbers, they are exported as `ROUTE_LEG_LIMITS`):
 

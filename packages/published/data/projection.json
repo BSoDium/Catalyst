@@ -4534,64 +4534,16 @@
       ],
       "legs": [
         {
-          "mode": "flight",
-          "fromAirport": {
-            "name": "Toulouse-Blagnac",
-            "code": "TLS",
-            "lat": 43.6293,
-            "lon": 1.3638
-          },
-          "toAirport": {
-            "name": "Minsk National",
-            "code": "MSQ",
-            "lat": 53.8825,
-            "lon": 28.0307
-          }
+          "mode": "flight"
         },
         {
-          "mode": "flight",
-          "fromAirport": {
-            "name": "Minsk National",
-            "code": "MSQ",
-            "lat": 53.8825,
-            "lon": 28.0307
-          },
-          "toAirport": {
-            "name": "Moscow Sheremetyevo",
-            "code": "SVO",
-            "lat": 55.9726,
-            "lon": 37.4146
-          }
+          "mode": "flight"
         },
         {
-          "mode": "flight",
-          "fromAirport": {
-            "name": "Moscow Sheremetyevo",
-            "code": "SVO",
-            "lat": 55.9726,
-            "lon": 37.4146
-          },
-          "toAirport": {
-            "name": "Minsk National",
-            "code": "MSQ",
-            "lat": 53.8825,
-            "lon": 28.0307
-          }
+          "mode": "flight"
         },
         {
-          "mode": "flight",
-          "fromAirport": {
-            "name": "Minsk National",
-            "code": "MSQ",
-            "lat": 53.8825,
-            "lon": 28.0307
-          },
-          "toAirport": {
-            "name": "Toulouse-Blagnac",
-            "code": "TLS",
-            "lat": 43.6293,
-            "lon": 1.3638
-          }
+          "mode": "flight"
         }
       ]
     },
@@ -4658,19 +4610,7 @@
       ],
       "legs": [
         {
-          "mode": "flight",
-          "fromAirport": {
-            "name": "Toulouse-Blagnac",
-            "code": "TLS",
-            "lat": 43.6293,
-            "lon": 1.3638
-          },
-          "toAirport": {
-            "name": "Paris Charles de Gaulle",
-            "code": "CDG",
-            "lat": 49.0097,
-            "lon": 2.5479
-          }
+          "mode": "flight"
         },
         {
           "mode": "rail",
@@ -4772,34 +4712,10 @@
       ],
       "legs": [
         {
-          "mode": "flight",
-          "fromAirport": {
-            "name": "Toulouse-Blagnac",
-            "code": "TLS",
-            "lat": 43.6293,
-            "lon": 1.3638
-          },
-          "toAirport": {
-            "name": "Paris Charles de Gaulle",
-            "code": "CDG",
-            "lat": 49.0097,
-            "lon": 2.5479
-          }
+          "mode": "flight"
         },
         {
-          "mode": "flight",
-          "fromAirport": {
-            "name": "Paris Charles de Gaulle",
-            "code": "CDG",
-            "lat": 49.0097,
-            "lon": 2.5479
-          },
-          "toAirport": {
-            "name": "Lima Jorge Chávez",
-            "code": "LIM",
-            "lat": -12.0219,
-            "lon": -77.1143
-          }
+          "mode": "flight"
         },
         {
           "mode": "road",
@@ -4882,34 +4798,10 @@
           "polyline": "|bshE~igqJpv@{An\\mKxdEovCpbRe`VbhEuoEncDmnFfoImbMp~Au`FjiBqmCbuBi~DvoFi_I~xEa|HxUcQviAe_@lsBgwArgHemAfUgHdSqNnpE}sFluEweGjvJglLluHgzKvNcY~}@alD|o@kiDdPsfBb\\kzBj_F_bIvs@qbC~~ByeO|DoqBjD}_@pIiVbiCyfDldBajDtrF}~HthFk~J|xBovD`kAulCj~Bs|C~dEgwCxyC{aCzxB}kAtdEooElNgVfGaVhzAyfLvwHu~ZtgDqtKx_Am}ApuB}vFzGwo@fVuq@|Bep@jGcTbJiKrnI_qFzScGps@_DfxEecB~bEinCjQoZr`AspDrh@wyAhR_^zn@wm@bkAwuAhz@evBrQieAlYa{@`~HqxFng@uN~e@sh@lxDkmCph@ypCfg@moDfY}xDpJ}fDjJso@vWe_A`V{b@tgAcxCbQm[rt@{y@b^cV"
         },
         {
-          "mode": "flight",
-          "fromAirport": {
-            "name": "Buenos Aires Ezeiza",
-            "code": "EZE",
-            "lat": -34.8222,
-            "lon": -58.5358
-          },
-          "toAirport": {
-            "name": "Paris Charles de Gaulle",
-            "code": "CDG",
-            "lat": 49.0097,
-            "lon": 2.5479
-          }
+          "mode": "flight"
         },
         {
-          "mode": "flight",
-          "fromAirport": {
-            "name": "Paris Charles de Gaulle",
-            "code": "CDG",
-            "lat": 49.0097,
-            "lon": 2.5479
-          },
-          "toAirport": {
-            "name": "Toulouse-Blagnac",
-            "code": "TLS",
-            "lat": 43.6293,
-            "lon": 1.3638
-          }
+          "mode": "flight"
         }
       ]
     },
@@ -4933,19 +4825,7 @@
       ],
       "legs": [
         {
-          "mode": "flight",
-          "fromAirport": {
-            "name": "Barcelona El Prat",
-            "code": "BCN",
-            "lat": 41.2974,
-            "lon": 2.0833
-          },
-          "toAirport": {
-            "name": "Seville San Pablo",
-            "code": "SVQ",
-            "lat": 37.418,
-            "lon": -5.8931
-          }
+          "mode": "flight"
         },
         {
           "mode": "rail",
@@ -4968,19 +4848,7 @@
           "polyline": "myqkFzpxx@XY~FaMi@_LjNqBjIeU{GuJrR{GnCcG|MjClAkJwEiMrDyGgCuRtcAlRvt@e[vIkKvy@oSfGpBqCZma@m`CJoNhIma@gGkx@nJm\\|b@{a@xFuNpCw_@}FaiCfHqZnYe_@l[gu@lBicDoDoa@sTsm@eHkg@Lo~@{OctBnNyv@Awg@cGwPm[}YuG}WhAgX`Vww@p@{L"
         },
         {
-          "mode": "flight",
-          "fromAirport": {
-            "name": "Lisbon Humberto Delgado",
-            "code": "LIS",
-            "lat": 38.7742,
-            "lon": -9.1342
-          },
-          "toAirport": {
-            "name": "Barcelona El Prat",
-            "code": "BCN",
-            "lat": 41.2974,
-            "lon": 2.0833
-          }
+          "mode": "flight"
         }
       ]
     },
@@ -5006,19 +4874,7 @@
       ],
       "legs": [
         {
-          "mode": "flight",
-          "fromAirport": {
-            "name": "Barcelona El Prat",
-            "code": "BCN",
-            "lat": 41.2974,
-            "lon": 2.0833
-          },
-          "toAirport": {
-            "name": "Marrakesh Menara",
-            "code": "RAK",
-            "lat": 31.6069,
-            "lon": -8.0363
-          }
+          "mode": "flight"
         },
         {
           "mode": "road",
@@ -5049,19 +4905,7 @@
           "polyline": "ies}Dd_sWw`AzYgOz@oZcEsM`IeMzY_PxKuKlU{q@j{@ycAn`Buj@~kAaGl]_GzHmb@vSw^sf@{KyEic@rD_VbK{_@tiAug@nj@iFxRuQtVypBpeBqaAvCyrAz}A}KvtAuDzJcl@vk@iXbCcg@|v@stDhzCq_Ax`A}Ktg@oYfs@|a@rQrI~~Ar_Af`D`Drg@gXfo@}_BhpBwQrf@ik@jdCq}DfdI{QzTw@dPkVfU}`@zDaR~LoEv[mIlEmIlQ}@nQgHzOq_@be@ms@nuAsy@|aAcS|yAcLzV{RreAtF~r@}Gtt@hElkBhsAx}IjJzkEubAvqCmVdqA{a@zg@wx@|xBgu@lmGq\\vPyLpNa[rA{WxqA{zBbsEuKhhAbyDlgJv_@psAnc@xv@nR~HvCfF|D`e@qLr\\^vq@{]bsDeN`WcIfl@xtC|sHp}ApcCp]pa@xXvpAoChTox@lu@bf@l|Ati@lzCvQfr@f@fd@zHdy@Pds@jc@ddBvBzf@fPbn@nk@vqDnqBfgEdPbqCMtlBpo@dqC|@tkAnPdw@nBzkB|UbcC|HpwCsLvqAuc@n}@gTj|BemBr_G__AbpBkaAteCaUhmBqbAzzCykAnnB}y@jv@}Izk@jErYpD`@rEmFxUrGzMqD~PhYvh@fb@hX}A|^tFbgAtm@fgC|eDvh@phAxLbk@lt@~aB`_@jfAhy@naCjAjx@|\\|a@z`@~sAz~@~rB|h@~tBbp@pmAzI`l@l^dl@dLxf@`a@j`@tJhs@r_@tjA~cAfzApJzv@aLfj@_DlEaf@~NsSpR{BfLnf@nfAnMlrApNjc@lV`jBmn@jeEvbAlqCnCxPcVrbMvbAsE~\\nUnzCv_AgKlQ~JdM~FcAfBbI}HpFmCtV_JnRpq@x^r^`]dhAdiAzOd\\pe@n^pZrd@d_Azz@|bAfh@|k@hj@hVaCzk@hcAfCpR~UnT~E~OzBdMaB~y@rp@twCn\\zz@`VrFxQjYlq@|^vb@hK`]|@tYb]hb@n[jHbX\\pR|H~ToF|QkN`S`Zvh@pBlWiWxs@k@hOtIte@h_@hmArG`n@nJdQfi@~zB~pBhoExWla@dKr\\bbAjnBrk@tr@~m@dsBiCni@iOhe@bA|Lxo@xp@`hA`wAje@jUtFfIx@~ScWty@`Dbu@mFzJiHto@jBzf@h\\zLdGf\\z@rl@pUlSbD|XfbAveD~PtU~KrYdeBplHbApx@d[|rBj|@rcBrz@reAf^vMh_@f[`bAfFzjAxfBuOxdAnMpRzZvQfGtJQt}@|u@vwCxz@`~DtMngAnlAbiE{NzeHsIb`@hMx}@qRv_@qAfN`|@b{Fl[p^rQb^h\\xlAve@jiAxaBhlBlv@zAhKpFzHl_@vOdKNbP`HX`BnDkAt`@{Gp\\dAxm@mlAzyEu`@px@oQbzC{KjMcFpmAsN`n@{I|tC{HvQuZ~]yQjKwUdE_}@xlAuAtNa^vXPvEb^be@uAvJdP|EpDzTs@df@eNdj@gZrHcC`ElGrvAoAlMgyA~cDmfAzbBo_BpTqZxb@uUn{@fIbY}LdYsRzx@_T~Nca@`JyQ|b@iI`b@mL~PuH|a@{@xa@mQrbA_aAlrBeYx^}]bNes@ne@aTr\\}FnT~Ent@i]thAa~@paAeQjHyIA_TiIie@pScKxMcP`z@oJfHcSWaK~Foc@fi@p@hPiOjx@KjVfGnS@|V~GjJlBhNoTvkA{XjU}CfKlBbOqDhJ`CnW_FbIcBhSu^b^QpKqGhQfAdNaQr{@aIvQp@bi@mFrZnH~]eL`VmMhM|DdR_BjY_MrXZv[kKpWmDng@q^hg@mTbIuPaKo]jMiOJwc@ga@a_@mMwPr@ok@gU_NsRx@qT_Lg[}O_SgRkKmWRaIwM}OaF_IaNo^gLgb@md@}ZzFhBuHuFsFa@_G~EaCsGiEoLoX}GaEkj@eB}KqJyYuIcd@{EybAnQ_k@P~AeHjXaO|Ok`@tFAxNgO~D{OsHwLiK{AxCwKcBeJjFmRcIs[yMyBqOnBc@mMiDmFgPj@m_@g^kRvOcI|@cJvXkTwIzCvQiP}KcI`CoTo^oPsMgGuQqHiEiN_Asa@zNcPcCqMkPiGvLGlHwKlGvBzI_HbLmSaBjGw@oF_E`DsIcM~KkLwC`NoDqRF~@rHxL|Ge@|Fce@`G}IcCwKzPfFiT|LVxJuGqM{Cb@qHeFjBw@jGaQdAoEnNkH`@}IxNkChLdDtGqEdIq\\~ViEKqOkOwm@hH{JaEmQt@qLkHcJjJ_ZrBkCqBuAsQkHsCuFlUnG|JeJhKxDtKcG|FwEzTvHxMU~SyGbK{@nJsHfBwRkU{JaDgWfI_YcDoHfCwMeXqHaFNeO_P{J}CkHuKuAuNoOuL~DoG{CkKpDe@qNeEeGs]aHsShExM`[yGt[iPjO_BvLwP~@qCxGiUtH_BlJsG}AsG}JqWhNyHmOsKqCyAgLyKbDe@uEwF_CqYid@{^{[cLnC}AhM_Ov@qCvWyJxEgChUkLWoFrFaz@av@mFxUmAxh@{Q`dA{@bs@xIrU[jHyD|CkSk@cGnDcUkRaRt@}Vjf@hHbT~@pS`LhXpIrFB~Es`@i@sVjIqK~QyG`h@mZrKaRoA_JjI_UjGiHjIkI|@eAfEpIfEi@dFcRlDcJeCwk@~Eu]lk@oDjQqIbNcQzIUzXeHfHkHjYfC`OaCrLdCnMc@p]wK~RwN`h@mIhw@_K~kDqStn@xK|TXn\\eX`c@cOz|@dHtj@`KnLSv~@rBbUdMtl@xKbJxDfK_Dp_@`CfNuFfIwD`U{T|WbJjq@jX`L^jUcG~R_]z]yQt[wQ`sBk_@rx@uoApbMs_@lrCwVbe@`AdJvQvZRba@bM|q@oFlg@pAndApLbrAwLzl@_F|eAu[v_AkGjh@kHdX"
         },
         {
-          "mode": "flight",
-          "fromAirport": {
-            "name": "Marrakesh Menara",
-            "code": "RAK",
-            "lat": 31.6069,
-            "lon": -8.0363
-          },
-          "toAirport": {
-            "name": "Barcelona El Prat",
-            "code": "BCN",
-            "lat": 41.2974,
-            "lon": 2.0833
-          }
+          "mode": "flight"
         }
       ]
     },
@@ -5306,49 +5150,13 @@
           "polyline": "o`xxA~iiiBpn@zo@fNoKnIQx@rdBwlFiMeTiGiMwNkOg}@aHsz@Dqg@xQkl@p@}RkUez@cS{gAi`@ukAa]mrBmA}gAr[alBlQmuB`j@obBnNuz@h\\ocApn@g{DXcl@aNgrBkLkl@uYex@kA{_@jYkt@|@kbAdCkQdJsQhY}YdMa[`Ys_DxQuj@"
         },
         {
-          "mode": "flight",
-          "fromAirport": {
-            "name": "Dakar Blaise Diagne",
-            "code": "DSS",
-            "lat": 14.67,
-            "lon": -17.0733
-          },
-          "toAirport": {
-            "name": "Lisbon Humberto Delgado",
-            "code": "LIS",
-            "lat": 38.7742,
-            "lon": -9.1342
-          }
+          "mode": "flight"
         },
         {
-          "mode": "flight",
-          "fromAirport": {
-            "name": "Lisbon Humberto Delgado",
-            "code": "LIS",
-            "lat": 38.7742,
-            "lon": -9.1342
-          },
-          "toAirport": {
-            "name": "Belém Val-de-Cans",
-            "code": "BEL",
-            "lat": -1.3792,
-            "lon": -48.4763
-          }
+          "mode": "flight"
         },
         {
-          "mode": "flight",
-          "fromAirport": {
-            "name": "Belém Val-de-Cans",
-            "code": "BEL",
-            "lat": -1.3792,
-            "lon": -48.4763
-          },
-          "toAirport": {
-            "name": "Manaus Eduardo Gomes",
-            "code": "MAO",
-            "lat": -3.0386,
-            "lon": -60.0497
-          }
+          "mode": "flight"
         },
         {
           "mode": "ferry"
@@ -5432,64 +5240,16 @@
           "polyline": "}ut^`t_gMtHsKxAaRyO}G}ByE~HsRoHaz@fPsEtFwQjnAgVjp@dA~\\yH~r@|C`d@vq@px@l_@nQ~YtVdOb[SxZnFtd@iInj@pU|fAaF|n@k`@t\\sc@r_@qGxm@Mtv@~h@f_@ng@zTlCrPnHn^ZhRjKh_@rBj{@je@ft@{IzZe@zh@wJxOuIvYy^v`@i@lNoGtEyFrCcP~EcE~cAE~t@bEd^bZrFrU~TpMfKzMrHA~s@wRfHfAl_@`v@`AhPbJnO`YPrSyFz|@eGl[~FpMrL~D~TnVhJlHoAlYiYjKmAsKqlAzDiNwGsZ|JuQ`BcL~Js@iCtHbE|Ic@vJdEdCdU_MjMt@wB~GnBdRlDnJ~DDvJ{NjRmB`Rg\\nHdJtKUnIi[lNgEIcEvX{AVyRgJeF_@cQfDuA}JqM~BoCyGwF}KbAmBcFdB}VvIiMu@eKmLqCqLjNoLeA_BoC~A_MwCBuCyG_F`@yE{K}TnWgKeHob@hAv@kK~DuDtNMrHoIcIuGtBcXuBaL{MeAwHwJfJdHvLm@zJdTfBuAcA_MwEeDzAsAhNdC|TjO}f@md@pZwOhBcS}DgP}HgEt@kJfKfCzAwD_B_HxL{D`CaHlFtAcEmN`Aie@rPqNnIv@jUkRlBoO|MiIe@kLbGcHtGaClVdFvb@{GxPbLtLv@jG~J`Q_BkLyCr@oKoNcH_AgDbDkLcUuFyMtDyFoBkJaLrAqGyNmFrAeFwJWeDtFkE?{J}C`@_FwEeHqK^WaIuZ}HmMlE{IqF~L{LcJQcNkGrKiE[iDcIy@|CkGzI{BlCwInNsDzI{HqDeJpLaOfRgIjUw@tJoLdRjJ_FmXbK_IrAmPcEmB~FoHuBcH{JeDfAmO_NTGeNaEcCw@kMoF_E{@aIjC}KaE{WiSsC}A}Lcb@qNPwOlCgDkF{CdAgJgFcTnNz@`H{SrTgI~X_@bEjBhVmBmDsCi@mHmG_DqWjB{KsEjLyQjXaKA}_@tFyEiBsAiGtBy\\oa@sJzAoFoEgXgErLgSbAqKiDm`@iLaXLgFiUkUmDo_@wPgTr@kDpFAr@yB}NuOrL}EzPnApC`FlIjArKc@rLaHv@mDmC_FuXsPhLyDpEmJvLsDnQScAaO`C}OlKsEh@uIcYie@qRrF}Z_QkRjAo\\uJuUrEcQtMa_@FzRu^n[}NtA_GzIkBpCmHcBoBsRxFgSwWlMxAaD_H~CqEcBaIlSlJrFwFrJb@tXuItBsFzJ_DjTsTjFlBjG_CTmGuGk@SaCjSz@dQoMzKl@nI_I|N@fR_GxDc[rFcElQ`GrDzQdM`HZhGvBDfBaU}ICHoJfO{G_CeIzIeGxFEdL{TcSH`HuVk@kMiL\\}BlJwBI`@mKsGiH|FiLqBkGrAoDrP_RnQuB|u@gp@t`AkfAlUa]nE{Udd@_e@tDgSvMoR`g@oc@jy@idAeCkb@`Zah@bLyCbd@Hti@{SzNsb@p]ol@bb@qJbLcO~mAm|@v~@cjBln@uaAaTm|AfF{\\lBcr@dDkJvwAuk@vUaAdZcHpg@J`h@}KdKmIvHo}@nCwF"
         },
         {
-          "mode": "flight",
-          "fromAirport": {
-            "name": "Bogotá El Dorado",
-            "code": "BOG",
-            "lat": 4.7016,
-            "lon": -74.1469
-          },
-          "toAirport": {
-            "name": "Houston George Bush",
-            "code": "IAH",
-            "lat": 29.9844,
-            "lon": -95.3414
-          }
+          "mode": "flight"
         },
         {
-          "mode": "flight",
-          "fromAirport": {
-            "name": "Houston George Bush",
-            "code": "IAH",
-            "lat": 29.9844,
-            "lon": -95.3414
-          },
-          "toAirport": {
-            "name": "LaGuardia Airport",
-            "code": "LGA",
-            "lat": 40.7772,
-            "lon": -73.8726
-          }
+          "mode": "flight"
         },
         {
-          "mode": "flight",
-          "fromAirport": {
-            "name": "New York John F. Kennedy",
-            "code": "JFK",
-            "lat": 40.6413,
-            "lon": -73.7781
-          },
-          "toAirport": {
-            "name": "London Gatwick Airport",
-            "code": "LGW",
-            "lat": 51.1487,
-            "lon": -0.1857
-          }
+          "mode": "flight"
         },
         {
-          "mode": "flight",
-          "fromAirport": {
-            "name": "London Stansted Airport",
-            "code": "STN",
-            "lat": 51.885,
-            "lon": 0.235
-          },
-          "toAirport": {
-            "name": "Toulouse-Blagnac",
-            "code": "TLS",
-            "lat": 43.6293,
-            "lon": 1.3638
-          }
+          "mode": "flight"
         }
       ]
     },
@@ -5557,19 +5317,7 @@
           "polyline": "uop{Gst~vAyEy~C|B_p@ve@gjF~LemG_D_p@iJwm@c{@moCiKisAfAon@zM_mByPsoDlDgoApJej@tPyf@fhAa{Ad[uw@rMew@~a@umEgDyvAgm@ewDeRgu@c[cm@_\\w\\ojAqx@uq@_~@ka@k[{oBgr@qf@wBq_A`Eer@gNue@{\\qt@{cAga@ia@enCakA}RRwc@fSkcCnyAwhApDym@qZw_FsAkW}LwN_Ao_A|g@cEh[uHdFeaBu\\kl@kp@mZqdAkPw]{Ssy@o_@qEkQfGuKxRu\\lMcMbO_ZwAoRaUoQ\\u\\b~@y@zr@nIha@sKdSwQxEaT}BoRcKeOxAwLfL}ToFaMlQwDdUqXxVeVlKiHzSuf@fo@}^xZoWvGoI`JmJ`O_w@xzBsQvRok@MqXnUuMxTuq@~Ja]|Xy_@`y@mf@bTyT|QySVq[hm@yj@vo@yVx|@mH^{PkI_EhG@~SsE~Ics@h@qc@bU}IdIsR|u@yTvAwrA|vAq_AjIwSlHimAbbAcGe@o\\o]cr@_uAqp@y[eOcQaXesAuP{`@Sq\\mFeQoZoA{S}SiqCdo@k~CvGgZ{J{Zcp@{LahAsGmoAok@{oCeLkiDi]ws@gb@kd@mv@ccBuKyF_a@t@aScKouBimDkI{f@|EagCqGma@wLcOw`@uRm~A}\\{LcReSc|@ke@we@uMkB}y@nHsQmFayAgmAyn@giBkLiFeW^sKqHuM{e@cKgaAqQi[sJog@zAkcArKo_AkCq[_hCklDgaB{wDiLmJ{Vy@{\\iTqGoLwB_YbL}a@zIgz@gBsgBqe@_zBil@_uDcJciAuI{UcYy_@mHc`@tBme@dp@ohC`Do^sBc]_c@swBmBgqByPeSmPvBmOdMa\\gHob@`HyTxXcO|AyMyJ{L_`@sOaTgd@iYwg@{nBeAo~@eFs_@itCcbJ_L_xAqF}WitAeyCo`@khCmlAw{AuG}j@sPi_@gSs@kZ~_@aJkAyGcKwPwkCqj@o~AiQipAcp@yjA}FaSE_`@hR__Ai@kYg{AgoD{Em[kD_mAoDmVwYke@ueA}gDsp@aqAc]c^sW_k@{`Ao\\eOiV_BuObAemB~P{uAmAy_AtQur@`@qMmm@aoA{SsPsXkr@q@kQdGcm@gAkt@yVoaAiKchBcb@meCeaAepAwt@}GuRpe@pCt`@fSxPyAtc@iJtEcR}TmQ[{EnJLtb@yHpDeG}GgBgcAoQkd@`BuJhRqX`@gi@_EsJqN@_GoFs@iJ~Fg[gPi`@lHk[_Iyh@tK}QxBkOiT_^pIwc@Myt@`EmaAgBqUzAwYyI}a@yWuUwOtFcHj`@`Kj^iK`VnBry@eGnZg]~VeGna@sUjBm[~\\mUbwAqLxDmMmMbAotAp_@kiA|KyP~XiaBxI}pAuCyg@xDoIrSsLtFyRk@yuDoEgi@maCe_H{~CqwFgTm}@wLk|BmS_eAcqIyeTamAmrCm`@ei@ce@oMs`LauAcd@}As}@hIqpIvwBcsDv[md@uDyq@y`@}nKigMqd@yYs]oCsYbFq~BjwAod@rNo~B`Q"
         },
         {
-          "mode": "flight",
-          "fromAirport": {
-            "name": "Vienna",
-            "code": "VIE",
-            "lat": 48.1103,
-            "lon": 16.5697
-          },
-          "toAirport": {
-            "name": "Brussels",
-            "code": "BRU",
-            "lat": 50.901,
-            "lon": 4.4844
-          }
+          "mode": "flight"
         },
         {
           "mode": "road",

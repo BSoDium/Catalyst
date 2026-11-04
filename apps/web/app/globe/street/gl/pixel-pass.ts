@@ -224,41 +224,48 @@ void main() {
   int fillOut = 0;
   int lineOut = 0;
 
-  // ---- fill part: anchored to the screen, identity lookups, the lattice-sized radius
+  // ---- fill part: the lattice is anchored to the screen, the REGION is not: looked up where the camera had it (the warped cell), the lattice-sized radius
+  ivec2 oc;
+  bool hasOld = oldCellOf(vec2(c) + 0.5, oc);
   ivec2 ph = cellAt(uPrev, c);
   bool pFill = ph.x > 0 && ph.y == 0;
-  if (t > 0 && !tLine) {
-    int base = pFill ? ph.x : 0;
-    int best = 1000;
-    // the same fill right here (the common case: nothing moved) is the nearest match: no search
-    ivec2 tp0 = cellAt(uPrevTarget, c);
-    bool here = tp0.x == t && tp0.y == 0 && pFill;
-    if (here) { base = ph.x; best = 0; }
-    for (int dy = -FILL_R; dy <= FILL_R; dy++) for (int dx = -FILL_R; dx <= FILL_R; dx++) {
-      if (here) break;
-      ivec2 q = c + ivec2(dx, dy);
-      ivec2 tp = cellAt(uPrevTarget, q);
-      if (tp.x != t || tp.y != 0) continue;
-      int d2 = dx * dx + dy * dy;
-      ivec2 pp = cellAt(uPrev, q);
-      if (d2 < best && pp.y == 0) { best = d2; base = pp.x; }
-    }
-    fillOut = base + clamp(t - base, -uStep, uStep);
-  } else if (t == 0 && pFill) {
-    bool moved = false;
-    for (int dy = -FILL_R; dy <= FILL_R; dy++) {
-      for (int dx = -FILL_R; dx <= FILL_R; dx++) {
-        ivec2 tt = cellAt(uTarget, c + ivec2(dx, dy));
-        if (tt.x > 0 && tt.y == 0 && tt.x + 1 >= ph.x) { moved = true; break; }
+  if (!hasOld) {
+    fillOut = (t > 0 && !tLine) ? t : 0;     // nothing before: the target at once
+  } else {
+    ivec2 fh = cellAt(uPrev, oc);
+    bool fFill = fh.x > 0 && fh.y == 0;
+    if (t > 0 && !tLine) {
+      int base = fFill ? fh.x : 0;
+      int best = 1000;
+      // the same fill right here (the common case: nothing moved) is the nearest match: no search
+      ivec2 tp0 = cellAt(uPrevTarget, oc);
+      bool here = tp0.x == t && tp0.y == 0 && fFill;
+      if (here) { base = fh.x; best = 0; }
+      for (int dy = -FILL_R; dy <= FILL_R; dy++) for (int dx = -FILL_R; dx <= FILL_R; dx++) {
+        if (here) break;
+        ivec2 q = oc + ivec2(dx, dy);
+        ivec2 tp = cellAt(uPrevTarget, q);
+        if (tp.x != t || tp.y != 0) continue;
+        int d2 = dx * dx + dy * dy;
+        ivec2 pp = cellAt(uPrev, q);
+        if (d2 < best && pp.y == 0) { best = d2; base = pp.x; }
       }
-      if (moved) break;
+      fillOut = base + clamp(t - base, -uStep, uStep);
+    } else if (t == 0 && fFill) {
+      bool moved = false;
+      for (int dy = -FILL_R; dy <= FILL_R; dy++) {
+        for (int dx = -FILL_R; dx <= FILL_R; dx++) {
+          ivec2 tt = cellAt(uTarget, c + ivec2(dx, dy));
+          if (tt.x > 0 && tt.y == 0 && tt.x + 1 >= fh.x) { moved = true; break; }
+        }
+        if (moved) break;
+      }
+      fillOut = moved ? 0 : fh.x - min(fh.x, uStep);
     }
-    fillOut = moved ? 0 : ph.x - min(ph.x, uStep);
   }
 
   // ---- line part: warped lookups
-  ivec2 oc;
-  if (!oldCellOf(vec2(c) + 0.5, oc)) {
+  if (!hasOld) {
     lineOut = (t > 0 && tLine) ? t : 0;      // nothing before: the target at once
   } else {
     ivec2 pe = cellAt(uPrev, oc);
