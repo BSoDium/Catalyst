@@ -115,6 +115,9 @@
           "lived": {
             "type": "boolean"
           },
+          "living": {
+            "type": "boolean"
+          },
           "summary": {
             "type": "string",
             "minLength": 1,

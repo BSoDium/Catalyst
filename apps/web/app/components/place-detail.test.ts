@@ -21,6 +21,13 @@ describe("PlaceDetail", () => {
     expect(html).not.toMatch(/PLACE|Place\s*<\/(span|p)>/);
     expect(html).not.toMatch(/Entries \/ 000|№/);
   });
+  it("tells a home from the present one: 'Lived here' for a place lived in, 'Lives here' where the owner lives now", () => {
+    const html = (extra: object) => renderToStaticMarkup(createElement(StaticRouter, { location: "/" }, createElement(PlaceDetail, { place: { ...getPlaceDetail(demo, "lisbon")!, ...extra } })));
+    expect(html({})).not.toMatch(/Lived here|Lives here/);
+    expect(html({ lived: true })).toContain("Lived here");
+    expect(html({ lived: true, living: true })).toContain("Lives here");
+    expect(html({ lived: true, living: true })).not.toContain("Lived here");
+  });
   it("groups the entries under the kinds' own headings, without numbering or brackets", () => {
     const html = render("lisbon");
     expect(html).toMatch(/<h2[^>]*>Articles<\/h2>/);

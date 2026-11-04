@@ -175,6 +175,8 @@ export interface PlaceDetailData {
   country?: string;
   /** A place the owner has lived in: its trips do not count visits (#584). */
   lived?: true;
+  /** The place the owner lives in now (it is also `lived`): the panel says "Lives here". */
+  living?: true;
   coordinates: Coordinates;
   summary?: string;
   dates: FormattedDates | null;
@@ -197,6 +199,7 @@ export function getPlaceDetail(projection: PublishedProjection, slug: string): P
     ...(place.region !== undefined ? { region: place.region } : {}),
     ...(countryName(place.countryCode) ? { country: countryName(place.countryCode)! } : {}),
     ...(place.lived === true ? { lived: true } : {}),
+    ...(place.living === true ? { living: true } : {}),
     coordinates: place.coordinates,
     ...(place.summary !== undefined ? { summary: place.summary } : {}),
     dates: formatDates(place.dates),

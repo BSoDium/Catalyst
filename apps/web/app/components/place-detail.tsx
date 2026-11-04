@@ -189,7 +189,7 @@ function PlaceHeader({ place, cover }: { place: PlaceDetailData; cover: PlaceCov
       {(where || place.lived) && (
         <p className="ds-micro m-0 flex flex-wrap gap-x-2">
           {where && <span>{where}</span>}
-          {place.lived === true && <span className="ds-micro" data-tone="signal">{where ? "· " : ""}Lived here</span>}
+          {place.lived === true && <span className="ds-micro" data-tone="signal">{where ? "· " : ""}{place.living ? "Lives here" : "Lived here"}</span>}
         </p>
       )}
       <h1 id={PANEL_HEADING_ID} tabIndex={-1} className="place-name m-0 outline-offset-4">
