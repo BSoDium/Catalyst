@@ -351,6 +351,7 @@ uniform int uCellOut;
 uniform float uSharp;         // global dissolve of pixel art into the sharp render, 0..1
 uniform float uBlend;         // share of cells that show the street map at all (1 = all, 0 = none: transparent)
 uniform vec4 uFocus;          // x, y (output px, top-origin), radius, feather
+uniform float uWaveT;         // the wave's progress, 0..1 (1 = done): the dissolve's blend or the load's, whichever is behind
 uniform vec4 uWave;           // the tiled wave of the dissolve (#589): x, y centre (output px, top-origin), z tile side (output px; 0 = no wave: the plain dither), w the rings the wave has to cross
 uniform float uLevelScale;
 uniform vec3 uPal[${MAX_LEVELS}];      // the palette (engine/palette.ts): one colour per level
@@ -371,13 +372,14 @@ void main() {
   ivec2 cell = p / uCellOut;
   float th = thr(cell + uAnchor);
   float shimmer = 0.0;
-  if (uBlend < 1.0) {
-    float vis = uBlend;
+  float prog = min(uBlend, uWaveT);
+  if (prog < 1.0) {
+    float vis = prog;
     if (uWave.z > 0.0) {
-      // tiles ("chunks") come in from the centre ring by ring: a tile is there as the dissolve passes its ring, and dithers in; the front of the wave shimmers
+      // tiles ("chunks") come in from the centre ring by ring: a tile is there as the wave passes its ring (over three rings), and dithers in; the front of the wave shimmers
       vec2 tile = floor(vec2(p) / uWave.z) - floor(uWave.xy / uWave.z);
       float ring = max(abs(tile.x), abs(tile.y));
-      vis = clamp(uBlend * (uWave.w + 1.0) - ring, 0.0, 1.0);
+      vis = clamp((prog * (uWave.w + 3.0) - ring) / 3.0, 0.0, 1.0);
       shimmer = vis < 1.0 ? 1.0 - vis : 0.0;
     }
     if (!(vis > th)) { o = vec4(0.0); return; }   // premultiplied transparent: the layer below shows
@@ -441,7 +443,7 @@ export interface PassParams {
   /** share of cells that show the street map; the rest are transparent (dissolve into the layer below) */
   blend: number;
   /** The dissolve (`blend` under 1) comes in as tiles from `x`, `y` (output px, top-left origin) outward, `tile` output px a side, `rings` of them to the farthest corner (#589). Absent: the plain dither. */
-  wave?: { x: number; y: number; tile: number; rings: number };
+  wave?: { x: number; y: number; tile: number; rings: number; t: number };
   /** dither phase, whole art cells */
   anchor: [number, number];
   /**
@@ -815,6 +817,7 @@ export class PixelPass {
     gl.uniform2i(u.uOutSize!, outW, outH);
     gl.uniform1f(u.uSharp!, p.sharp);
     gl.uniform1f(u.uBlend!, p.blend);
+    gl.uniform1f(u.uWaveT!, p.wave?.t ?? 1);
     gl.uniform4f(u.uWave!, p.wave?.x ?? 0, p.wave?.y ?? 0, p.wave?.tile ?? 0, p.wave?.rings ?? 0);
     gl.uniform4f(u.uFocus!, p.focus.x, p.focus.y, p.focus.radius, p.focus.feather);
     gl.uniform1f(u.uLevelScale!, LEVEL_SCALE);

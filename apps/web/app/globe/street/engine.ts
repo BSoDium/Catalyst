@@ -366,6 +366,8 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
   const blendV = new EasedValue(STREET_TUNING.dissolveMs, reduced, opts.initialBlend ?? 1);
   // The dissolve of the street map into view (and out of it) is a wave of tiles from the middle of the screen (#589): off under reduced motion, where it is a cut anyway.
   const waveOn = !reduced;
+  // ...and so is the map's first appearance (#589): once its first tiles are in (`idle`), the tiles come in from the middle over `STREET_TUNING.wave.loadMs`, also when the map opens straight (a reload with a place selected).
+  const loadV = new EasedValue(STREET_TUNING.wave.loadMs, reduced, reduced ? 1 : 0);
   const waveFor = (outW: number, outH: number, cell: number) => {
     const tile = Math.max(1, Math.round(cell * STREET_TUNING.wave.tileCells));
     const x = outW / 2;
@@ -427,7 +429,7 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
           sharp: native ? 0 : sharpV.eased,
           focus,
           blend: blendV.eased,
-          ...(waveOn && !native && blendV.eased < 1 ? { wave: waveFor(outW, outH, cellDevicePx(cellCss, dpr)) } : {}),
+          ...(waveOn && !native && Math.min(blendV.eased, loadV.eased) < 1 ? { wave: { ...waveFor(outW, outH, cellDevicePx(cellCss, dpr)), t: Math.min(blendV.eased, loadV.eased) } } : {}),
           anchor: [0, 0],
           spot: spotBox && spotV.eased > 0 ? { ...spotBox, lift: STREET_TUNING.spot.lift * spotV.eased, liftLow: STREET_TUNING.spot.liftLow * spotV.eased, dim: STREET_TUNING.spot.dim * spotV.eased, fill: STREET_TUNING.spot.fill * spotV.eased } : undefined,
         };
@@ -477,7 +479,7 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
   // ---- animation loop for the capabilities (the only rAF this module owns) ---------------------------------------
   let raf = 0;
   let lastTs = 0;
-  const animating = () => revealV.animating || sharpV.animating || blendV.animating || spotV.animating;
+  const animating = () => revealV.animating || sharpV.animating || blendV.animating || spotV.animating || loadV.animating;
   const settle = () => {
     for (let i = waiters.length - 1; i >= 0; i--) {
       if (!waiters[i]!.value.animating) {
@@ -495,6 +497,7 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
     sharpV.step(dt);
     blendV.step(dt);
     spotV.step(dt);
+    loadV.step(dt);
     if (!compositor.redraw()) map.triggerRepaint();
     settle();
     if (animating() && !document.hidden) raf = requestAnimationFrame(tick);
@@ -528,6 +531,19 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
     map.once("idle", release);
     holdTimer = window.setTimeout(release, 2500);
   };
+
+  // the first appearance: when the first tiles are in, or after a few seconds whatever the network does
+  if (!reduced) {
+    const startLoad = () => {
+      window.clearTimeout(loadTimer);
+      map.off("idle", startLoad);
+      if (disposed || loadV.target === 1) return;
+      loadV.set(1);
+      kick();
+    };
+    const loadTimer = window.setTimeout(startLoad, 3500);
+    map.once("idle", startLoad);
+  }
 
   let capTimer: (() => void) | null = null;
   const applyZoomCap = (max: number) => {
