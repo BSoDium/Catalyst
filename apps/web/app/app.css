@@ -6355,12 +6355,12 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     }
   }
 
-  /* the handle comes down from above, fading in, and leaves upwards: it pushes the name down into its shadow and lets it up again */
+  /* the handle comes down from above by as much as the name steps down (0.09 em, and a little more), fading in, and leaves upwards: it pushes the name down into its shadow and lets it up again */
   @keyframes career-name-handle {
     0%,
     58% {
       opacity: 0;
-      transform: translateY(-0.3em);
+      transform: translateY(-0.12em);
     }
     64%,
     90% {
@@ -6370,7 +6370,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     97%,
     100% {
       opacity: 0;
-      transform: translateY(-0.3em);
+      transform: translateY(-0.12em);
     }
   }
 
