@@ -143,16 +143,18 @@ function Coordinate({ label, part }: { label: string; part: CoordinatePart }) {
 function PlaceFacts({ place }: { place: PlaceDetailData }) {
   const coordinates = placeCoordinateParts(place.coordinates.lat, place.coordinates.lon);
   // Where the block of counts does not fit beside the coordinates it goes to the next row (CSS), and there everything in it is left-aligned, the figures too: the row's right edge is
-  // only for a block that shares the row. CSS cannot say that it wrapped, so the two blocks' tops are compared whenever the row is resized (false until measured: the server's markup).
+  // only for a block that shares the row. CSS cannot say that it wrapped, so the two blocks' tops are compared whenever the row is resized (until measured, which is the server's markup and the first client render, the block is invisible but takes its room, so that it never shows in the wrong alignment; a page without scripts shows it as it is).
   const row = useRef<HTMLDivElement>(null);
   const start = useRef<HTMLDListElement>(null);
   const counts = useRef<HTMLDListElement>(null);
   const [below, setBelow] = useState(false);
+  const [measured, setMeasured] = useState(false);
   useLayoutEffect(() => {
     const el = row.current;
     if (!el || typeof ResizeObserver === "undefined") return;
     const measure = () => {
       if (start.current && counts.current) setBelow(counts.current.getBoundingClientRect().top > start.current.getBoundingClientRect().top + 1);
+      setMeasured(true);
     };
     measure();
     const observer = new ResizeObserver(measure);
@@ -160,7 +162,7 @@ function PlaceFacts({ place }: { place: PlaceDetailData }) {
     return () => observer.disconnect();
   }, [place.slug]);
   return (
-    <div ref={row} data-slot="place-facts" className="flex flex-wrap items-start gap-x-7 gap-y-3">
+    <div ref={row} data-slot="place-facts" className="flex flex-wrap items-start gap-x-7 gap-y-6">
       <dl ref={start} className="m-0 flex flex-wrap gap-x-7 gap-y-3">
         {coordinates ? (
           <>
@@ -181,8 +183,13 @@ function PlaceFacts({ place }: { place: PlaceDetailData }) {
         )}
       </dl>
       {/* the counts of entries are one block at the right end of the row, their figures against the right edge; when it does not fit beside the coordinates it goes to the next row whole, and only then wraps within itself */}
+      {place.entries.length > 0 && !measured && (
+        <noscript>
+          <style>{"[data-slot=place-facts] [data-measuring]{visibility:visible}"}</style>
+        </noscript>
+      )}
       {place.entries.length > 0 && (
-        <dl ref={counts} data-below={below ? "" : undefined} className={cn("m-0 flex flex-wrap gap-x-7 gap-y-3", !below && "ml-auto justify-end")}>
+        <dl ref={counts} data-below={below ? "" : undefined} data-measuring={measured ? undefined : ""} className={cn("m-0 flex flex-wrap gap-x-7 gap-y-3", !below && "ml-auto justify-end", !measured && "invisible")}>
           {place.entries.map((g) => (
             <Fact key={g.kind} label={g.label} end={!below}>
               <span className="place-figure place-figure-count">{g.entries.length}</span>
