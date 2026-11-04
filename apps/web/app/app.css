@@ -6843,7 +6843,12 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     height: 3.5rem;
     margin-bottom: 0.5rem;
     stroke-width: 1;
-    color: var(--signal-text);
+    color: var(--foreground);
+  }
+
+  /* the sentence under the title is the quieter of the two */
+  .contact-thanks-sub {
+    color: var(--muted-foreground);
   }
 
   .contact-thanks-title {

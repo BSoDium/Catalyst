@@ -89,7 +89,7 @@ export function ContactForm() {
         <p ref={thanksRef} tabIndex={-1} role="status" className="contact-thanks">
           <Icon name="mail-check" size="large" aria-hidden="true" className="contact-thanks-icon" />
           <span className="contact-thanks-title">{sender ? `Thank you, ${sender}.` : "Thank you."}</span>
-          <span>Your message is on its way. I read everything and answer as soon as I can.</span>
+          <span className="contact-thanks-sub">Your message is on its way. I read everything and answer as soon as I can.</span>
         </p>
       )}
       {(status !== "sent" || covered) && (
