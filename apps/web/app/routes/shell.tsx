@@ -15,7 +15,7 @@ import { isWorldView } from "~/lib/hero-machine";
 import { useViewportWidth } from "~/hooks/use-viewport-width";
 import { getProjection } from "~/lib/content.server";
 import { getTilesConfig } from "~/lib/tiles-config.server";
-import { focusPlaceOf, KIND_PATHS, KIND_PLURALS, parsePanelPath, parseView, resolveBackTarget, resolveListBack, viewSearch, type EntryView } from "~/lib/entries";
+import { focusPlaceOf, KIND_PATHS, KIND_PLURALS, parsePanelPath, parseView, resolveBackTarget, viewSearch, type EntryView } from "~/lib/entries";
 import { panelInset } from "~/lib/layout";
 import { buildPlaceIndex, placePath, toGlobeGroups } from "~/lib/projection";
 import { countryGroupOf, parseCountryParam } from "~/lib/country";
@@ -102,12 +102,10 @@ export default function Shell({ loaderData }: Route.ComponentProps) {
     return g ? { lon: g.coordinates.lon, lat: g.coordinates.lat, fitRadiusKm: g.viewRadiusKm } : null;
   }, [globePlaces, selectedSlug, framedGroup, groups]);
 
-  // An entry opened from a list closes to that list, not to the map (owner, 2026-10-29); anything else closes to the map.
-  const listBack = panelRoute?.type === "entry" ? resolveListBack(location.state) : null;
-  const closeTo = listBack?.href ?? "/";
+  // The panel's X (and Escape) closes to the map, whatever opened it (owner, 2026-11-04: it replaces the 2026-10-29 rule that an entry opened from a list closed to that list: the way back to the list is the kind's own link in the entry's running head).
   const close = useCallback(() => {
-    void navigate(closeTo, { preventScrollReset: true });
-  }, [navigate, closeTo]);
+    void navigate("/", { preventScrollReset: true });
+  }, [navigate]);
   // The container is part of the URL (`?view=full`): a history entry, so Back collapses; the router state (where the visitor came from) is kept.
   const setView = useCallback(
     (next: EntryView) => {
