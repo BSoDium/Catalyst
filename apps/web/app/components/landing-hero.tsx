@@ -307,10 +307,12 @@ export function LandingHero({ machine, away, empty, orbit = null, onCover, hasCa
             <FamilyName />
           </span>
         </Name>
+        {/* The handle, set big in the empty middle of the row on a wide window (`.hero-handle`, app.css); on a narrower one it is the intro's last sentence. */}
+        <HeroHandle />
         <div className="hero-lead">
           <p className="hero-intro">
             {SITE_IDENTITY}
-            <span className="hero-intro-more">{` ${SITE_FOCUS} ${SITE_HANDLE_LINE}`}</span>
+            <span className="hero-intro-more">{` ${SITE_FOCUS}`}<span className="hero-intro-handle">{` ${SITE_HANDLE_LINE}`}</span></span>
           </p>
           {/* How to use the page. While the globe says it itself (the caption, `data-orbit`), this line is for assistive technology only. */}
           <p className="hero-hint">
@@ -364,5 +366,21 @@ export function LandingHero({ machine, away, empty, orbit = null, onCover, hasCa
         <span className="hero-mini-hint">Drag to explore. Stop moving to reset the view.</span>
       </p>
     </div>
+  );
+}
+
+/** "also known as BSoDium", in the name's own two weights: the heavy half and the thin one (#588). Decoration at a wide size: the intro's sentence says it to assistive technology. */
+function HeroHandle() {
+  const handle = SITE.handle;
+  const heavy = handle.slice(0, 4);
+  const thin = handle.slice(4);
+  return (
+    <p aria-hidden="true" data-slot="hero-handle" className="hero-handle">
+      <span className="hero-handle-aka">Also known as</span>
+      <span className="hero-handle-name">
+        <span className="hero-handle-heavy">{heavy}</span>
+        <span className="hero-handle-thin">{thin}</span>
+      </span>
+    </p>
   );
 }

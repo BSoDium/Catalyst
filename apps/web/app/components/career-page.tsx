@@ -56,8 +56,13 @@ export function CareerPage({ career, places = [], projects = [] }: { career: Pub
             <h1 id="career-name" className="list-title career-name">
               {SITE.givenName} <span className="career-name-family">{SITE.familyName}</span>
             </h1>
-            <p data-slot="career-handle" className="career-handle type-meta">
-              {SITE_HANDLE_LINE}
+            <p data-slot="career-handle" className="career-handle">
+              <span className="career-handle-aka">Also known as</span>
+              <span className="career-handle-name" aria-label={SITE.handle}>
+                <span aria-hidden="true" className="career-handle-heavy">{SITE.handle.slice(0, 4)}</span>
+                <span aria-hidden="true" className="career-handle-thin">{SITE.handle.slice(4)}</span>
+              </span>
+              <span className="sr-only">{SITE_HANDLE_LINE}</span>
             </p>
             <p className="career-summary">{career.summary}</p>
             <div className="career-cta">

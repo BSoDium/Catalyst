@@ -5477,6 +5477,74 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     gap: 1.125rem;
   }
 
+  /* The handle, big, in the empty middle of the row (#588): only where the row has the room (a window wider than 78 rem), standing on the lead's baseline; the rest of the time it is the intro's last sentence. */
+  .hero-handle {
+    display: none;
+  }
+
+  .hero-intro-handle {
+    display: inline;
+  }
+
+  @media (min-width: 78rem) and (min-height: 40rem) {
+    .hero-block {
+      position: relative;
+    }
+
+    .hero-intro-handle {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+
+    .hero-handle {
+      position: absolute;
+      left: 50%;
+      bottom: calc(var(--hero-size) * 0.78 + 2.125rem);
+      translate: -50% 0;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.5rem;
+      margin: 0;
+      transition-property: opacity, transform, visibility;
+      transition-duration: var(--duration-base), var(--duration-base), 0s;
+      transition-timing-function: var(--ease-standard), var(--ease-standard), linear;
+    }
+
+    .hero-handle-aka {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted-foreground);
+    }
+
+    .hero-handle-name {
+      font-family: var(--font-display);
+      font-size: clamp(3rem, 5.2vw, 5.5rem);
+      line-height: 0.85;
+      letter-spacing: -0.05em;
+      white-space: nowrap;
+    }
+
+    .hero-handle-heavy {
+      font-weight: 800;
+    }
+
+    .hero-handle-thin {
+      font-weight: 200;
+    }
+
+    .landing-hero:is([data-hero="collapsed"], [data-hero="away"]) .hero-handle {
+      opacity: 0;
+      transform: translateY(0.5rem);
+    }
+  }
+
   .hero-intro {
     margin: 0;
     font-family: var(--font-reading);
@@ -6299,10 +6367,36 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     }
   }
 
-  /* The handle the owner goes by online, under the name (#588): why the domain reads "bsodium". */
+  /* The handle the owner goes by online, under the name (#588): why the domain reads "bsodium". Set like the name, the heavy half and the thin one. */
   .career-handle {
-    margin: 0.5rem 0 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 1rem;
+    margin: 0.75rem 0 0;
+  }
+
+  .career-handle-aka {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
     color: var(--muted-foreground);
+  }
+
+  .career-handle-name {
+    font-family: var(--font-display);
+    font-size: clamp(1.75rem, 5cqi, 3rem);
+    line-height: 1;
+    letter-spacing: -0.04em;
+  }
+
+  .career-handle-heavy {
+    font-weight: 800;
+  }
+
+  .career-handle-thin {
+    font-weight: 200;
   }
 
   /* The headline statement: the reading face, one paragraph, a comfortable measure. */
