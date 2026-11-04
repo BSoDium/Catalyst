@@ -7,7 +7,7 @@ import { KIND_PATHS, KIND_PLURALS } from "~/lib/entries";
 import type { HeroMachine, HeroSnapshot } from "~/lib/hero-machine";
 import { setHeroResting } from "~/lib/hero-rest";
 import { NameTravel, type TravelHalf } from "~/lib/name-travel";
-import { SITE, SITE_FOCUS, SITE_IDENTITY } from "~/lib/site";
+import { SITE, SITE_FOCUS, SITE_HANDLE_LINE, SITE_IDENTITY } from "~/lib/site";
 import { useHasCareer } from "~/lib/use-has-career";
 
 /** The sections' shortcuts, in the header's order. Paths and words come from the one table the lists and the navigation use. */
@@ -311,6 +311,7 @@ export function LandingHero({ machine, away, empty, orbit = null, onCover, hasCa
           <p className="hero-intro">
             {SITE_IDENTITY}
             <span className="hero-intro-more">{` ${SITE_FOCUS}`}</span>
+            <span className="sr-only">{` ${SITE_HANDLE_LINE}`}</span>
           </p>
           {/* How to use the page. While the globe says it itself (the caption, `data-orbit`), this line is for assistive technology only. */}
           <p className="hero-hint">

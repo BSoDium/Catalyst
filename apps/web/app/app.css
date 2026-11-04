@@ -6299,6 +6299,81 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     }
   }
 
+  /* The handle over the name (#588): every 10 s "BSoDium" comes in over the name, set like it (the heavy half and the thin one), and the name steps back under it, a little smaller and dimmed, as if it were the handle's shadow;
+     then the other way round. CSS only (the compositor's opacity and transform), nothing runs under reduced motion. */
+  .career-name {
+    position: relative;
+  }
+
+  .career-name-text {
+    display: inline-block;
+    transform-origin: 0 100%;
+  }
+
+  .career-name-handle {
+    position: absolute;
+    left: 0;
+    top: 0;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .career-name-handle-heavy {
+    font-weight: 800;
+  }
+
+  .career-name-handle-thin {
+    font-weight: 200;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .career-name-text {
+      animation: career-name-shadow 10s var(--ease-standard) infinite;
+    }
+
+    .career-name-handle {
+      animation: career-name-handle 10s var(--ease-standard) infinite;
+    }
+  }
+
+  @keyframes career-name-shadow {
+    0%,
+    58% {
+      transform: none;
+      opacity: 1;
+    }
+    64%,
+    90% {
+      transform: translateY(0.09em) scale(0.93);
+      opacity: 0.28;
+    }
+    97%,
+    100% {
+      transform: none;
+      opacity: 1;
+    }
+  }
+
+  /* the handle comes down from above by as much as the name steps down (0.09 em, and a little more), fading in, and leaves upwards: it pushes the name down into its shadow and lets it up again */
+  @keyframes career-name-handle {
+    0%,
+    58% {
+      opacity: 0;
+      transform: translateY(-0.12em);
+    }
+    64%,
+    90% {
+      opacity: 1;
+      transform: none;
+    }
+    97%,
+    100% {
+      opacity: 0;
+      transform: translateY(-0.12em);
+    }
+  }
+
   /* The headline statement: the reading face, one paragraph, a comfortable measure. */
   .career-summary {
     margin: 1.5rem 0 0;

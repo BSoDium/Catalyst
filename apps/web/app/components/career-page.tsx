@@ -9,7 +9,7 @@ import { CONTACT_ID } from "~/lib/contact";
 import { safeExternalUrl } from "~/lib/entry-blocks";
 import { entryPath, placePath } from "~/lib/entries";
 import { PORTRAIT_EGG, portraitEggDrawn } from "~/lib/portrait-egg";
-import { SITE } from "~/lib/site";
+import { SITE, SITE_HANDLE_LINE } from "~/lib/site";
 import { useForcedScheme } from "~/lib/theme";
 
 /**
@@ -53,9 +53,17 @@ export function CareerPage({ career, places = [], projects = [] }: { career: Pub
         </p>
         <div className="career-id" data-portrait={portrait ? "true" : "false"}>
           <div className="career-id-text">
-            <h1 id="career-name" className="list-title career-name">
-              {SITE.givenName} <span className="career-name-family">{SITE.familyName}</span>
+            {/* Every 10 s the handle comes in over the name, and the name steps back under it, smaller and dimmed, like its shadow (#588): CSS only, `.career-name-handle` and `.career-name-text`. */}
+            <h1 id="career-name" className="list-title career-name" aria-label={SITE.name}>
+              <span className="career-name-text">
+                <span className="career-name-given">{SITE.givenName}</span> <span className="career-name-family">{SITE.familyName}</span>
+              </span>
+              <span aria-hidden="true" className="career-name-handle">
+                <span className="career-name-handle-heavy">{SITE.handle.slice(0, 4)}</span>
+                <span className="career-name-handle-thin">{SITE.handle.slice(4)}</span>
+              </span>
             </h1>
+            <span className="sr-only">{SITE_HANDLE_LINE}</span>
             <p className="career-summary">{career.summary}</p>
             <div className="career-cta">
             {available && (
