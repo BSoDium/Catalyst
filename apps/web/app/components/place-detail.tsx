@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { cn } from "~/lib/utils";
 import { Link } from "react-router";
 import type { PlaceSummary } from "@catalyst/schemas";
 import { PANEL_HEADING_ID } from "~/components/detail-panel";
@@ -108,11 +109,11 @@ function StepStory({ place, photos }: { place: PlaceDetailData; photos: PhotoIte
 }
 
 /** One figure of the facts strip: a micro-label over its value. */
-function Fact({ label, children, sub }: { label: string; children: ReactNode; sub?: string }) {
+function Fact({ label, children, sub, end, className }: { label: string; children: ReactNode; sub?: string; end?: boolean; className?: string }) {
   return (
-    <div className="flex min-w-0 flex-col gap-0.5">
+    <div className={cn("flex min-w-0 flex-col gap-0.5", end && "items-end text-right", className)}>
       <dt className="ds-micro">{label}</dt>
-      <dd className="m-0 flex flex-col">
+      <dd className={cn("m-0 flex flex-col", end && "items-end")}>
         {children}
         {sub && <span className="ds-meta">{sub}</span>}
       </dd>
@@ -153,11 +154,6 @@ function PlaceFacts({ place }: { place: PlaceDetailData }) {
           <span className="ds-meta">{formatPlaceCoordinates(place.coordinates.lat, place.coordinates.lon)}</span>
         </Fact>
       )}
-      {place.entries.map((g) => (
-        <Fact key={g.kind} label={g.label}>
-          <span className="place-figure place-figure-count">{g.entries.length}</span>
-        </Fact>
-      ))}
       {place.dates && (
         <Fact label="When">
           <time dateTime={place.dates.dateTime} className="place-figure-text">
@@ -165,6 +161,12 @@ function PlaceFacts({ place }: { place: PlaceDetailData }) {
           </time>
         </Fact>
       )}
+      {/* the counts of entries are at the right end of the row, their figures against the right edge (the first one pushes them all) */}
+      {place.entries.map((g, i) => (
+        <Fact key={g.kind} label={g.label} end className={i === 0 ? "ml-auto" : undefined}>
+          <span className="place-figure place-figure-count">{g.entries.length}</span>
+        </Fact>
+      ))}
     </dl>
   );
 }
