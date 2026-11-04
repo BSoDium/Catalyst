@@ -48,6 +48,10 @@ export interface MoonTrace {
   angleDeg: number;
   /** The earth's shadow along the orbit (`eclipseAhead`) and the point where it begins. */
   eclipse: EclipseAhead & { at: [number, number] | null; peakAt: [number, number] | null };
+  /** Readout numbers: the camera's range to the moon (earth radii), the orbit's inclination (degrees) and the sun-moon-earth angle (degrees). */
+  range: number;
+  inclinationDeg: number;
+  phaseDeg: number;
 }
 
 export interface MoonFrame {
@@ -291,6 +295,18 @@ export class MoonLayer {
     const ce = cam.matrixWorld.elements;
     const ahead = -((p[0] - cam.position.x) * ce[8]! + (p[1] - cam.position.y) * ce[9]! + (p[2] - cam.position.z) * ce[10]!);
     if (ahead <= 0.5) return null;
+    // behind the planet: the ray from the camera to the point meets the unit sphere before it gets there
+    const dx = p[0] - cam.position.x;
+    const dy = p[1] - cam.position.y;
+    const dz = p[2] - cam.position.z;
+    const len = Math.hypot(dx, dy, dz);
+    const b = (cam.position.x * dx + cam.position.y * dy + cam.position.z * dz) / len;
+    const c = cam.position.x ** 2 + cam.position.y ** 2 + cam.position.z ** 2 - 1;
+    const disc = b * b - c;
+    if (disc > 0) {
+      const t = -b - Math.sqrt(disc);
+      if (t > 0 && t < len) return null;
+    }
     const ndc = this.v.set(p[0], p[1], p[2]).project(cam);
     return [(ndc.x * 0.5 + 0.5) * f.bufW, (ndc.y * 0.5 + 0.5) * f.bufH];
   }
@@ -316,6 +332,9 @@ export class MoonLayer {
       lit,
       waxing,
       angleDeg: (turn * 180) / Math.PI,
+      range: this.sample.distance,
+      inclinationDeg: f.inclinationDeg,
+      phaseDeg: (Math.acos(Math.min(1, Math.max(-1, -(at(0)[0] * f.sun[0] + at(0)[1] * f.sun[1] + at(0)[2] * f.sun[2]) / Math.hypot(...at(0))))) * 180) / Math.PI,
       eclipse: { ...ahead, at: ahead.fromAngle === null ? null : this.onBuffer(at(ahead.fromAngle)), peakAt: ahead.peakAngle === null ? null : this.onBuffer(at(ahead.peakAngle)) },
     };
   }

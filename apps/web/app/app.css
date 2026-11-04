@@ -4684,7 +4684,19 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
    * label's sharp, fully opaque edge (no feather), so that it hides what is behind it (the globe's lines, the stars) and reads on any of it. Out of sight and out of
    * the pointer's way until the moon is held.
    */
-  /* The orbit display (#586, engine/moon-overlay.ts `OrbitHud`): drawn while the card is held. A faint line where the moon goes, a mark and a number every 30 degrees, a bracket where the earth's shadow begins and a readout, in the map's mono type. */
+  /* The orbit display (#586, engine/moon-overlay.ts `OrbitHud`): drawn while the card is held and for the fade after it. The lines are pixel art on their own canvas of the map's cells; the words are SVG text at the screen's resolution, in the map's mono type. */
+  .globe-moon-hud-pixels {
+    position: absolute;
+    image-rendering: pixelated;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.4s var(--ease-standard);
+  }
+
+  .globe-moon-hud-pixels[data-on] {
+    opacity: 1;
+  }
+
   .globe-moon-hud {
     position: absolute;
     inset: 0;
@@ -4705,29 +4717,12 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     transition: opacity 0.4s var(--ease-standard);
   }
 
-  .globe-moon-hud-ring,
-  .globe-moon-hud-tick,
-  .globe-moon-hud-flag {
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 1;
-    vector-effect: non-scaling-stroke;
-  }
-
-  .globe-moon-hud-ring {
-    stroke-opacity: 0.32;
-    stroke-dasharray: 2 5;
-  }
-
-  .globe-moon-hud-tick {
-    stroke-opacity: 0.55;
-  }
-
   .globe-moon-hud-number,
-  .globe-moon-hud-readout {
+  .globe-moon-hud-readout,
+  .globe-moon-hud-along {
     fill: currentColor;
     font-size: 9px;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.1em;
     paint-order: stroke;
     stroke: var(--background);
     stroke-width: 3px;
@@ -4738,25 +4733,29 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     fill-opacity: 0.6;
   }
 
+  .globe-moon-hud-along {
+    font-size: 8px;
+    letter-spacing: 0.16em;
+    fill-opacity: 0.5;
+  }
+
+  .globe-moon-hud-along-below {
+    fill-opacity: 0.38;
+  }
+
   .globe-moon-hud-readout {
     font-size: 10px;
     fill-opacity: 0.85;
   }
 
-  .globe-moon-hud-flag,
-  .globe-moon-hud-eclipse {
-    stroke: var(--signal-text, currentColor);
-    fill: none;
-  }
-
   .globe-moon-hud-eclipse {
     fill: var(--signal-text, currentColor);
-    stroke: var(--background);
     fill-opacity: 1;
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .globe-moon-hud {
+    .globe-moon-hud,
+    .globe-moon-hud-pixels {
       transition: none;
     }
   }

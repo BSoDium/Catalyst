@@ -1582,8 +1582,11 @@ export class GlobeRenderer {
     // (a point of the orbit far outside the picture, where it swings past the camera, is not drawn: a line that long is a streak across the screen, not an orbit)
     const w = this.bufW * P;
     const h = this.bufH * P;
+    const m = this.moonSample;
     const px = (b: [number, number] | null): [number, number] | null => {
       if (!b) return null;
+      // the orbit does not run over the moon itself
+      if (m && Math.hypot(b[0] - m.cx, b[1] - m.cy) < m.r * 1.25 + 2) return null;
       const x = b[0] * P + this.canvasLeft;
       const y = (this.bufH - b[1]) * P + this.canvasTop;
       return x < this.canvasLeft - w * 0.25 || x > this.canvasLeft + w * 1.25 || y < this.canvasTop - h * 0.25 || y > this.canvasTop + h * 1.25 ? null : [x, y];
@@ -1594,6 +1597,7 @@ export class GlobeRenderer {
       lit: t.lit,
       waxing: t.waxing,
       angleDeg: t.angleDeg,
+      info: { range: t.range, inclDeg: t.inclinationDeg, phaseDeg: t.phaseDeg },
       eclipse: { now: t.eclipse.now, fromAngle: t.eclipse.fromAngle, peakAngle: t.eclipse.peakAngle, at: px(t.eclipse.at), peakAt: px(t.eclipse.peakAt) },
     };
   }
