@@ -51,6 +51,18 @@ describe("PlaceDetail", () => {
     expect(rows.length).toBeGreaterThan(0);
     for (const row of rows) expect(row.slice(0, row.indexOf("</article>"))).toContain('data-slot="cover-art"');
   });
+  it("lays the poems out in two columns where the group is wide, and the other kinds in one", () => {
+    const html = render("lisbon");
+    const grids = [...html.matchAll(/<ul class="([^"]*)"[^>]*>\s*<li/g)].map((m) => m[1]!);
+    expect(grids.filter((c) => c.includes("@xl:grid-cols-2"))).toHaveLength(html.includes('data-kind="poem"') ? 1 : 0);
+  });
+  it("opens on a gallery: the photographs', else the artworks' when there are no photographs to show", () => {
+    const base = getPlaceDetail(demo, "kyoto")!;
+    const kinds = (place: typeof base) => [...renderToStaticMarkup(createElement(StaticRouter, { location: "/" }, createElement(PlaceDetail, { place }))).matchAll(/data-kind="(\w+)" class="@container flex flex-col gap-4"/g)].map((m) => m[1]);
+    expect(kinds(base)[0]).toBe("artwork"); // (kyoto has artworks and no photographs)
+    const withPhoto = { ...base, entries: [{ kind: "photograph" as const, label: "Photography", entries: [{ ...base.entries[0]!.entries[0]!, kind: "photograph" as const, slug: "p" }] }, ...base.entries] };
+    expect(kinds(withPhoto)[0]).toBe("photograph");
+  });
   it("a place with only `living` is a home too: tagged and its trips do not count visits", () => {
     const place = { ...getPlaceDetail(demo, "lisbon")!, living: true as const };
     expect(renderToStaticMarkup(createElement(StaticRouter, { location: "/" }, createElement(PlaceDetail, { place })))).toContain("Lives here");

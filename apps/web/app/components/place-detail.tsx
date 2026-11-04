@@ -326,8 +326,10 @@ export function PlaceDetail({ place }: { place: PlaceDetailData }) {
   const { photos: all, galleries, groups: allGroups } = stepContent(place);
   // (a place's own picture that heads the panel is not shown a second time in the strip below; an entry's cover is, as the link to the entry)
   const photos = cover?.own ? all.filter((p) => p.src !== cover.src) : all;
-  // Photography leads the entries, then the groups in their order; a group with a gallery has it first, then its cards (the sensitive ones) under the same title
-  const groups = [...allGroups.filter((g) => g.kind === "photograph"), ...allGroups.filter((g) => g.kind !== "photograph")];
+  // A gallery leads the entries (the first thing the visitor lands on): the photographs', or, when there are none to show, the artworks'; then the groups in their order. A group with a
+  // gallery has it first, then its cards (the ones with no picture) under the same title
+  const leading = allGroups.find((g) => g.kind === "photograph" && galleries.has(g.kind)) ?? allGroups.find((g) => g.kind === "artwork" && galleries.has(g.kind));
+  const groups = leading ? [leading, ...allGroups.filter((g) => g !== leading)] : allGroups;
   const count = allGroups.reduce((n, g) => n + g.entries.length, 0);
   const story = !!place.summary || place.body.length > 0 || photos.length > 0 || place.trips.length > 0;
   return (
@@ -345,9 +347,11 @@ export function PlaceDetail({ place }: { place: PlaceDetailData }) {
                     {gallery && <PhotoGallery items={gallery} from={place.slug} />}
                     {group.entries.length > 0 && (
                       // (the first row starts at the title's own distance from it, as a gallery does: the rows' padding is between them)
-                      <ul className="m-0 grid list-none grid-cols-1 gap-0 p-0 [&>li:first-child>article]:pt-0">
+                      // (poems are short: in a wide panel they are two columns, each a row of its own width, and a narrow one is a list again)
+                      <ul className={cn("m-0 grid list-none grid-cols-1 gap-0 p-0 [&>li:first-child>article]:pt-0", group.kind === "poem" && "@xl:grid-cols-2 @xl:gap-x-8 @xl:[&>li:nth-child(2)>article]:pt-0")}>
                         {newestFirst(group.entries).map((entry) => (
-                          <li key={entry.slug} className="min-w-0">
+                          // (the row's own width is what its layout follows: side by side from 28 rem, stacked below)
+                          <li key={entry.slug} className="@container min-w-0">
                             <EntryRow entry={entry} linkState={{ from: place.slug }} headingLevel={3} compact />
                           </li>
                         ))}

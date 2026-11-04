@@ -119,11 +119,11 @@ export function EntryRow({
         data-kind={entry.kind}
         data-compact=""
         data-covered={showCover ? "" : undefined}
-        className={cn("ds-card entry-row @container grid min-w-0 grid-cols-1 gap-x-5 gap-y-3 py-5", showCover && "@md:grid-cols-[11rem_minmax(0,1fr)]", className)}
+        className={cn("ds-card entry-row grid min-w-0 grid-cols-1 gap-x-5 gap-y-3 py-5", showCover && "@md:grid-cols-[11rem_minmax(0,1fr)]", className)}
       >
         {showCover && (
           // (in a wide panel the picture is as tall as the text beside it and fills its cell; stacked above the text it keeps its proportions)
-          <div className="relative min-w-0 aspect-4/3 overflow-hidden @md:aspect-auto @md:min-h-32">
+          <div className="relative min-w-0 aspect-[16/10] overflow-hidden @md:aspect-auto @md:min-h-32">
             {cover && entry.sensitive === true ? (
               <SensitiveMedia className="absolute inset-0 [&_.sensitive-media-content]:size-full">
                 <img src={cover.src} srcSet={cover.srcSet} sizes={cover.sizes} alt={cover.alt} loading="lazy" decoding="async" className="size-full object-cover" />
