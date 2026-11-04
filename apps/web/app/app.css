@@ -2100,12 +2100,12 @@
   /* The picture fades out into whatever is behind the panel (it is translucent over the map: a gradient to the page colour would show its edge). */
   .place-cover-img {
     position: absolute;
-    inset: -1.5rem;
-    width: calc(100% + 3rem);
-    height: calc(100% + 3rem);
+    inset: -1rem;
+    width: calc(100% + 2rem);
+    height: calc(100% + 2rem);
     max-width: none;
     object-fit: cover;
-    filter: blur(10px) saturate(0.85);
+    filter: blur(6px) saturate(0.85);
     opacity: 0.42;
   }
   .place-cover-art {
