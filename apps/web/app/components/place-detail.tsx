@@ -1,11 +1,15 @@
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { cn } from "~/lib/utils";
 import { Link } from "react-router";
 import type { PlaceSummary } from "@catalyst/schemas";
 import { PANEL_HEADING_ID } from "~/components/detail-panel";
 import { EntryListCard } from "~/components/entry/entry-list-card";
 import { TripCards } from "~/components/trip-card";
 import { Button, Icon, SectionHeader, Stack, StatePanel } from "~/components/ui";
+import { coverImageProps } from "~/lib/cover-image";
 import { safeMediaSrc } from "~/lib/entry-blocks";
-import { formatPlaceCoordinates } from "~/lib/labelling";
+import { placeCover, type PlaceCover } from "~/lib/place-cover";
+import { formatPlaceCoordinates, placeCoordinateParts, type CoordinatePart } from "~/lib/labelling";
 import { imageSize, placePath, type PlaceDetailData } from "~/lib/projection";
 
 /** A picture of the step: one of the place's own images, or the cover of a photograph linked to it (then `href` opens the photograph, and the panel's way back leads here). */
@@ -105,23 +109,134 @@ function StepStory({ place, photos }: { place: PlaceDetailData; photos: PhotoIte
   );
 }
 
-/** The one quiet line under a place's name: where it is (region and country, when known), its coordinates at the precision they are stored with, its dates. */
-function PlaceLine({ place }: { place: PlaceDetailData }) {
-  const where = [place.region, place.country].filter((part, i, all): part is string => !!part && all.indexOf(part) === i).join(", ");
+/** One figure of the facts strip: a micro-label over its value. */
+function Fact({ label, children, end, className }: { label: string; children: ReactNode; end?: boolean; className?: string }) {
   return (
-    <p data-slot="place-line" className="m-0 flex flex-wrap items-baseline gap-x-2 text-sm text-muted-foreground">
-      {where && <span>{where}</span>}
-      {where && <span aria-hidden="true">&middot;</span>}
-      <span className="ds-meta">{formatPlaceCoordinates(place.coordinates.lat, place.coordinates.lon)}</span>
-      {place.dates && (
-        <>
-          <span aria-hidden="true">&middot;</span>
-          <time dateTime={place.dates.dateTime} className="ds-meta">
-            {place.dates.text}
-          </time>
-        </>
+    <div className={cn("flex min-w-0 flex-col gap-0.5", end && "items-end text-right", className)}>
+      <dt className="ds-micro">{label}</dt>
+      <dd className={cn("m-0 flex flex-col", end && "items-end")}>
+        {children}
+      </dd>
+    </div>
+  );
+}
+
+/** A coordinate set in three voices: the whole degrees in the display face and the foreground, the decimals dimmer, the hemisphere a small tracked mono letter. Read out as the plain `52.23° N`. */
+function Coordinate({ label, part }: { label: string; part: CoordinatePart }) {
+  return (
+    <Fact label={label}>
+      <span className="sr-only">{part.text}</span>
+      <span aria-hidden="true" className="place-figure flex items-baseline">
+        <span className="place-figure-whole">{part.whole}</span>
+        <span className="place-figure-fraction">{part.fraction}</span>
+        <span className="place-figure-deg">°</span>
+        <span className="place-figure-hemisphere">{part.hemisphere}</span>
+      </span>
+    </Fact>
+  );
+}
+
+/**
+ * What the page knows about the place, as a strip of figures under its name: the two coordinates (at the precision they are stored with), what is on the site about it
+ * (one count per kind of entry about it, dimmer) and when. A figure the data does not have is not drawn.
+ */
+function PlaceFacts({ place }: { place: PlaceDetailData }) {
+  const coordinates = placeCoordinateParts(place.coordinates.lat, place.coordinates.lon);
+  // Where the block of counts does not fit beside the coordinates it goes to the next row (CSS), and there everything in it is left-aligned, the figures too: the row's right edge is
+  // only for a block that shares the row. CSS cannot say that it wrapped, so the two blocks' tops are compared whenever the row is resized (until measured, which is the server's markup and the first client render, the block is invisible but takes its room, so that it never shows in the wrong alignment; a page without scripts shows it as it is).
+  const row = useRef<HTMLDivElement>(null);
+  const start = useRef<HTMLDListElement>(null);
+  const counts = useRef<HTMLDListElement>(null);
+  const [below, setBelow] = useState(false);
+  const [measured, setMeasured] = useState(false);
+  useLayoutEffect(() => {
+    const el = row.current;
+    const measure = () => {
+      setBelow(!!start.current && !!counts.current && counts.current.getBoundingClientRect().top > start.current.getBoundingClientRect().top + 1);
+      setMeasured(true);
+    };
+    measure();
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [place.slug]);
+  return (
+    <div ref={row} data-slot="place-facts" className="flex flex-wrap items-start gap-x-7 gap-y-6">
+      <dl ref={start} className="m-0 flex flex-wrap gap-x-7 gap-y-3">
+        {coordinates ? (
+          <>
+            <Coordinate label="Lat" part={coordinates[0]} />
+            <Coordinate label="Lon" part={coordinates[1]} />
+          </>
+        ) : (
+          <Fact label="Coordinates">
+            <span className="ds-meta">{formatPlaceCoordinates(place.coordinates.lat, place.coordinates.lon)}</span>
+          </Fact>
+        )}
+        {place.dates && (
+          <Fact label="When">
+            <time dateTime={place.dates.dateTime} className="place-figure-text">
+              {place.dates.text}
+            </time>
+          </Fact>
+        )}
+      </dl>
+      {/* the counts of entries are one block at the right end of the row, their figures against the right edge; when it does not fit beside the coordinates it goes to the next row whole, and only then wraps within itself */}
+      {place.entries.length > 0 && !measured && (
+        <noscript>
+          <style>{"[data-slot=place-facts] [data-measuring]{visibility:visible}"}</style>
+        </noscript>
       )}
-    </p>
+      {place.entries.length > 0 && (
+        <dl ref={counts} data-below={below ? "" : undefined} data-measuring={measured ? undefined : ""} className={cn("m-0 flex flex-wrap gap-x-7 gap-y-3", !below && "ml-auto justify-end", !measured && "invisible")}>
+          {place.entries.map((g) => (
+            <Fact key={g.kind} label={g.label} end={!below}>
+              <span className="place-figure place-figure-count">{g.entries.length}</span>
+            </Fact>
+          ))}
+        </dl>
+      )}
+    </div>
+  );
+}
+
+/** Where the place is, for the line over its name: its region and country (once when they are the same word). */
+function placeWhere(place: PlaceDetailData): string {
+  return [place.region, place.country].filter((part, i, all): part is string => !!part && all.indexOf(part) === i).join(" · ");
+}
+
+/**
+ * The head of the panel: the region and country as a small tracked line, the name in the display face (large), then the facts strip (`PlaceFacts`). With a cover
+ * (`lib/place-cover.ts`) the picture is full-bleed behind it and runs up under the panel's bar (the close button sits on it), a gradient into the panel's ground under it so
+ * the type reads on any picture; the picture is decoration (`alt=""`): blurred and dimmed toward the panel's ground, so a white or a black one never fights the type. Without one it is the type alone.
+ */
+function PlaceHeader({ place, cover }: { place: PlaceDetailData; cover: PlaceCover | null }) {
+  const src = cover ? safeMediaSrc(cover.src) : null;
+  const where = placeWhere(place);
+  const body = (
+    <>
+      {(where || place.lived || place.living) && (
+        <p className="ds-micro m-0 flex flex-wrap gap-x-2">
+          {where && <span>{where}</span>}
+          {(place.lived === true || place.living === true) && <span className="ds-micro" data-tone="signal">{where ? "· " : ""}{place.living ? "Lives here" : "Lived here"}</span>}
+        </p>
+      )}
+      <h1 id={PANEL_HEADING_ID} tabIndex={-1} className="place-name m-0 outline-offset-4">
+        {place.name}
+      </h1>
+      <PlaceFacts place={place} />
+    </>
+  );
+  if (!cover || !src) return <header className="flex flex-col gap-3">{body}</header>;
+  return (
+    <header data-slot="place-cover" className="place-cover relative isolate -mx-6 -mt-2 flex flex-col justify-end gap-3 overflow-hidden px-6 pb-5 md:-mt-[calc(var(--navbar-height)+1.5rem)]">
+      <div aria-hidden="true" className="place-cover-art absolute inset-0 -z-10">
+        <img {...coverImageProps({ src, width: cover.width, small: cover.small }, "(min-width: 48rem) 50vw, 100vw")} alt="" decoding="async" className="place-cover-img" />
+        <div className="absolute inset-0 bg-linear-to-t from-background/60 via-background/20 via-60% to-transparent" />
+      </div>
+      {body}
+    </header>
   );
 }
 
@@ -161,18 +276,16 @@ function storyMeta(place: PlaceDetailData, pictures: number): string {
  * `{ from: <place> }` in the router state, which gives the entry a way back. Optional parts are omitted when empty.
  */
 export function PlaceDetail({ place }: { place: PlaceDetailData }) {
-  const { photos, groups } = stepContent(place);
+  const cover = placeCover(place);
+  const { photos: all, groups } = stepContent(place);
+  // (a place's own picture that heads the panel is not shown a second time in the strip below; an entry's cover is, as the link to the entry)
+  const photos = cover?.own ? all.filter((p) => p.src !== cover.src) : all;
   const count = groups.reduce((n, g) => n + g.entries.length, 0);
   const story = !!place.summary || place.body.length > 0 || photos.length > 0 || place.trips.length > 0;
   return (
     <article aria-labelledby={PANEL_HEADING_ID} data-slot="place-view" data-kind="place" className="px-6 pt-2 pb-10">
       <Stack gap={8}>
-        <header className="flex flex-col gap-2">
-          <h1 id={PANEL_HEADING_ID} tabIndex={-1} className="m-0 text-3xl font-semibold tracking-tight break-words outline-offset-4">
-            {place.name}
-          </h1>
-          <PlaceLine place={place} />
-        </header>
+        <PlaceHeader place={place} cover={cover} />
         {story && !count && <StepStory place={place} photos={photos} />}
         {count > 0 && (
           <section aria-label="Entries" data-slot="place-entries">

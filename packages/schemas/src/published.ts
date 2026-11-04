@@ -153,6 +153,11 @@ export const publishedPlaceSchema = z
      * makes no sense for a hometown). Authored in the private repository; absent or `false` = an ordinary place. Additive: schema version 1 is unchanged.
      */
     lived: z.boolean().optional(),
+    /**
+     * Optional. `true` for the place where the owner lives now (the panel says "Lives here" instead of "Lived here"). Exported together with `lived: true`, so a reader that
+     * knows only `lived` still treats it as a home. Absent or `false` = not the current home. Additive: schema version 1 is unchanged.
+     */
+    living: z.boolean().optional(),
     summary: z.string().trim().min(1).max(400).optional(),
     dates: publishedDatesSchema.optional(),
     /** Plain-text paragraphs. No HTML or markdown is interpreted. */

@@ -10,14 +10,34 @@ const demo = loadDemoProjection();
 const render = (slug: string) => renderToStaticMarkup(createElement(StaticRouter, { location: "/" }, createElement(PlaceDetail, { place: getPlaceDetail(demo, slug)! })));
 
 describe("PlaceDetail", () => {
-  it("says the name, the country once and the coordinates at the stored precision on one quiet line, with no 'Place' label", () => {
+  it("says the name, the country once and the coordinates at the stored precision in the facts strip, with no 'Place' label", () => {
     const html = render("lisbon");
     expect(html).toContain("<h1");
-    expect(html).toContain("38.72° N, 9.14° W");
+    expect(html).toContain('data-slot="place-facts"');
+    expect(html).toContain("38.72° N");
+    expect(html).toContain("9.14° W");
     expect(html).not.toContain("38.7200");
     expect(html.match(/Portugal/g)?.length).toBe(1); // region and country are the same word: said once
     expect(html).not.toMatch(/PLACE|Place\s*<\/(span|p)>/);
     expect(html).not.toMatch(/Entries \/ 000|№/);
+  });
+  it("tells a home from the present one: 'Lived here' for a place lived in, 'Lives here' where the owner lives now", () => {
+    const html = (extra: object) => renderToStaticMarkup(createElement(StaticRouter, { location: "/" }, createElement(PlaceDetail, { place: { ...getPlaceDetail(demo, "lisbon")!, ...extra } })));
+    expect(html({})).not.toMatch(/Lived here|Lives here/);
+    expect(html({ lived: true })).toContain("Lived here");
+    expect(html({ lived: true, living: true })).toContain("Lives here");
+    expect(html({ lived: true, living: true })).not.toContain("Lived here");
+  });
+  it("counts the entries by kind at the right end of the facts strip, hidden until the browser has measured whether they fit beside the coordinates", () => {
+    const html = render("lisbon");
+    expect(html).toMatch(/<dl[^>]*data-measuring[^>]*class="[^"]*invisible/);
+    expect(html).toMatch(/<dt[^>]*>Articles<\/dt>/);
+    expect(html).toMatch(/<dt[^>]*>Software<\/dt>/);
+    expect(html).toContain("<noscript>");
+  });
+  it("a place with only `living` is a home too: tagged and its trips do not count visits", () => {
+    const place = { ...getPlaceDetail(demo, "lisbon")!, living: true as const };
+    expect(renderToStaticMarkup(createElement(StaticRouter, { location: "/" }, createElement(PlaceDetail, { place })))).toContain("Lives here");
   });
   it("groups the entries under the kinds' own headings, without numbering or brackets", () => {
     const html = render("lisbon");
@@ -70,7 +90,8 @@ describe("PlaceDetail", () => {
     expect(html).not.toContain('data-slot="place-story"');
     expect(html).toContain("We arrived at five in the morning");
     expect(html).toContain('data-slot="place-photos"');
-    expect(html.match(/<figure/g)?.length).toBe(3);
+    expect(html.match(/<figure/g)?.length).toBe(2); // (its first picture heads the panel)
+    expect(html).toContain('data-slot="place-cover"');
     expect(html).toContain('data-slot="trip-card"');
     expect(html.indexOf("We arrived")).toBeLessThan(html.indexOf('data-slot="trip-card"'));
   });
@@ -110,6 +131,6 @@ describe("PlaceDetail", () => {
     const html = route("b", { images });
     const open = html.slice(0, html.indexOf("<details"));
     expect(open.match(/<figure/g)?.length).toBe(4);
-    expect(html).toContain("Show 5 more pictures");
+    expect(html).toContain("Show 4 more pictures"); // (the first of the nine heads the panel)
   });
 });
