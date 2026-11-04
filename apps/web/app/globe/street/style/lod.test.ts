@@ -8,7 +8,7 @@ import { zoomCorrection } from "../core/registration";
 import { FILL_LOD, LOD, levelAt, toneLevel, visibleAt, type LodKey } from "./lod";
 import { LayerSwitch, ZOOM_BAND, switchRules } from "./layer-switch";
 import { decodePattern, levelOfPaint } from "./probe";
-import { DEFAULT_HANDOFF, MAJOR_WIDE_FROM, ROUTE_LAYER_IDS, SPECS, WORLD_PLACEHOLDER_BELOW, hasPlaceholder, artWidthStopsOf, buildStreetStyle, linePaint, seaFrom, type Schema } from "./street-style";
+import { DEFAULT_HANDOFF, MAJOR_WIDE_FROM, ROUTE_LAYER_IDS, SPECS, SPOT_ROADS, SPOT_SOURCE, SPOT_SUFFIX, WORLD_PLACEHOLDER_BELOW, hasPlaceholder, artWidthStopsOf, buildStreetStyle, linePaint, seaFrom, spotQueries, spotZoomRange, type Schema } from "./street-style";
 
 const KEYS = Object.keys(LOD) as LodKey[];
 const LEVEL_COUNTS = [3, 4, 6, 8, 10, 12];
@@ -117,7 +117,7 @@ describe("style wiring of the LOD", () => {
     expect(vis("graticule")).toBe(false); // so the graticule is gone
     // and without a switch state everything is on (tests, tools)
     const all = make("openmaptiles").layers as unknown as L[];
-    expect(all.filter((l) => !/^world-/.test(l.id)).every((l) => l.layout?.visibility !== "none")).toBe(true); // (the world lines are placeholders, hidden until tiles are loading)
+    expect(all.filter((l) => !/^world-/.test(l.id) && !l.id.endsWith(SPOT_SUFFIX)).every((l) => l.layout?.visibility !== "none")).toBe(true); // (the world lines are placeholders, hidden until tiles are loading)
   });
   it("regression (owner: from space everything but the graticule vanished, then came back layer by layer): with NOTHING switched on, only the switched layers are hidden; the coast, the country borders and every other always-on layer stay visible", () => {
     for (const schema of ["protomaps", "openmaptiles"] as const) {
@@ -127,6 +127,25 @@ describe("style wiring of the LOD", () => {
       for (const id of hidden) expect(switchedIds.has(id) || /^world-/.test(id), `${schema} ${id} must not be hidden by the switch`).toBe(true);
       for (const id of ["water-edge", "boundary-country", "road-major-fill", "road-medium-fill", "routes-faint-p0", "routes-focus", "routes-faint-rail", "background"]) expect(hidden.includes(id), `${schema} ${id}`).toBe(false);
       for (const id of switchedIds) expect(hidden.includes(id), `${schema} ${id}`).toBe(true);
+    }
+  });
+  it("the spotlight copies of the road classes sit under their layer, from the spotlight source, for the zooms before their class switches on", () => {
+    for (const schema of ["protomaps", "openmaptiles"] as const) {
+      const st = buildStreetStyle({ schema, tiles: TILES, coastlines: empty, borders: empty, graticule: empty, routes: empty }) as unknown as { sources: Record<string, unknown>; layers: (L & { source?: string; minzoom?: number; maxzoom?: number; filter?: unknown })[] };
+      expect(st.sources[SPOT_SOURCE]).toBeDefined();
+      expect(st.layers.filter((l) => l.id.endsWith(SPOT_SUFFIX))).toHaveLength(SPOT_ROADS.length);
+      for (const road of SPOT_ROADS) {
+        const spec = SPECS.find((x) => x.lod === road.lod && x.type === "line")!;
+        const i = st.layers.findIndex((l) => l.id === spec.id + SPOT_SUFFIX);
+        expect(st.layers[i + 1]!.id, `${schema} ${spec.id}`).toBe(spec.id);
+        const copy = st.layers[i]!;
+        expect(copy.source).toBe(SPOT_SOURCE);
+        expect(copy.minzoom).toBe(spotZoomRange(road).from);
+        expect(copy.maxzoom).toBe(spotZoomRange(road).to);
+        expect(copy.minzoom!).toBeLessThan(LOD[road.lod].on);
+        expect(copy.paint["line-color"]).toEqual(st.layers[i + 1]!.paint["line-color"]);
+      }
+      expect(spotQueries(schema).map((q) => q.lod).sort()).toEqual(SPOT_ROADS.map((r) => r.lod).sort());
     }
   });
   it("regression (owner: street-scale London, no road hierarchy, every road the same band): built for a street zoom the style has every road class on with its own tone and a width ordered down the hierarchy, and the erasing interiors that make big roads hollow are on", () => {

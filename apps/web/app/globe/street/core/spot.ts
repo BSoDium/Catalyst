@@ -1,3 +1,4 @@
+import { DEFAULT_VIEW_RADIUS_KM } from "../../engine/framing";
 /**
  * The spotlight on the selected node's rectangle (#569): the CPU twin of the rule in the present pass (gl/pixel-pass.ts, FRAG_PRESENT) and of the
  * rectangle the engine hands it. A pure function of the cell, so the tests pin the rule the shader implements.
@@ -38,6 +39,15 @@ export function spotLevel(level: number, isLine: boolean, inside: boolean, tune:
   return isLine ? Math.max(1, Math.floor(level * (1 - tune.dim) + 0.5)) : level;
 }
 
+/** The rectangle `[west, south, east, north]` (degrees) of a place's box: its `bbox`, else `radiusKm` around its point (as the lod tree draws it). */
+export function placeRect(p: { lat: number; lon: number; bbox?: readonly [number, number, number, number] | undefined; viewRadiusKm?: number | undefined }): [number, number, number, number] {
+  if (p.bbox && p.bbox[0] < p.bbox[2] && p.bbox[1] < p.bbox[3]) return [p.bbox[0], p.bbox[1], p.bbox[2], p.bbox[3]];
+  const r = p.viewRadiusKm && p.viewRadiusKm > 0 ? p.viewRadiusKm : DEFAULT_VIEW_RADIUS_KM;
+  const dLat = r / 111.32;
+  const dLon = r / (111.32 * Math.max(0.05, Math.cos((p.lat * Math.PI) / 180)));
+  return [p.lon - dLon, p.lat - dLat, p.lon + dLon, p.lat + dLat];
+}
+
 /** The rectangle of a node's drawn box (CSS px, whole cells of `cell` px) in art cells. */
 export function spotRect(box: { x0: number; y0: number; x1: number; y1: number }, cell: number): CellRect {
   return { c0: Math.round(box.x0 / cell), r0: Math.round(box.y0 / cell), c1: Math.round(box.x1 / cell), r1: Math.round(box.y1 / cell) };
@@ -53,4 +63,42 @@ export const sameRect = (a: CellRect | null, b: CellRect): boolean => !!a && a.c
 export function spotFollow(now: CellRect | null, prev: CellRect | null, lit: boolean): { box: CellRect | null; target: 0 | 1 } {
   if (now) return { box: now, target: 1 };
   return { box: lit ? prev : null, target: 0 };
+}
+
+/** The parts of a polyline (`[lon, lat]` points) that lie inside the rectangle `[west, south, east, north]`: each segment is clipped (Liang-Barsky), the runs that stay connected are kept as one part. */
+export function clipLine(line: readonly (readonly number[])[], rect: readonly [number, number, number, number]): number[][][] {
+  const [w, s, e, n] = rect;
+  const parts: number[][][] = [];
+  let cur: number[][] | null = null;
+  for (let i = 1; i < line.length; i++) {
+    const [x0, y0] = line[i - 1]!;
+    const [x1, y1] = line[i]!;
+    const dx = x1! - x0!;
+    const dy = y1! - y0!;
+    let t0 = 0;
+    let t1 = 1;
+    let inside = true;
+    for (const [p, q] of [[-dx, x0! - w], [dx, e - x0!], [-dy, y0! - s], [dy, n - y0!]] as const) {
+      if (p === 0) {
+        if (q < 0) inside = false;
+      } else {
+        const r = q / p;
+        if (p < 0) t0 = Math.max(t0, r);
+        else t1 = Math.min(t1, r);
+      }
+    }
+    if (!inside || t0 > t1) {
+      cur = null;
+      continue;
+    }
+    const a = [x0! + t0 * dx, y0! + t0 * dy];
+    const b = [x0! + t1 * dx, y0! + t1 * dy];
+    if (cur && t0 === 0) cur.push(b);
+    else {
+      cur = [a, b];
+      parts.push(cur);
+    }
+    if (t1 < 1) cur = null;
+  }
+  return parts;
 }

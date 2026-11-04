@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { sameRect, spotFollow, spotLevel, spotRect } from "./spot";
+import { clipLine, placeRect, sameRect, spotFollow, spotLevel, spotRect } from "./spot";
 
 const GREYS = 12;
 const tune = { lift: 1, liftLow: 0.05, dim: 0.45, fill: 0.12 };
@@ -76,5 +76,32 @@ describe("spotFollow", () => {
   it("has no light with nothing to follow, or once it has faded out", () => {
     expect(spotFollow(null, null, true)).toEqual({ box: null, target: 0 });
     expect(spotFollow(null, b, false)).toEqual({ box: null, target: 0 });
+  });
+});
+
+describe("placeRect", () => {
+  it("is the bbox when it is valid", () => {
+    expect(placeRect({ lat: 48, lon: 2, bbox: [2.2, 48.8, 2.5, 48.9] })).toEqual([2.2, 48.8, 2.5, 48.9]);
+  });
+  it("is a square of the view radius around the point otherwise", () => {
+    const [w, s, e, n] = placeRect({ lat: 48, lon: 2, viewRadiusKm: 10 });
+    expect((n - s) * 111.32).toBeCloseTo(20, 1);
+    expect(w).toBeLessThan(2);
+    expect(e).toBeGreaterThan(2);
+    expect(placeRect({ lat: 0, lon: 0, bbox: [1, 1, 1, 2] })[2]).toBeGreaterThan(0);
+  });
+});
+
+describe("clipLine", () => {
+  const rect = [0, 0, 10, 10] as const;
+  it("keeps a line that is inside, whole", () => {
+    expect(clipLine([[1, 1], [5, 2], [9, 9]], rect)).toEqual([[[1, 1], [5, 2], [9, 9]]]);
+  });
+  it("cuts a line at the edges", () => {
+    expect(clipLine([[-5, 5], [15, 5]], rect)).toEqual([[[0, 5], [10, 5]]]);
+  });
+  it("splits a line that leaves and comes back, and drops one that is outside", () => {
+    expect(clipLine([[2, 2], [12, 2], [12, 8], [2, 8]], rect)).toEqual([[[2, 2], [10, 2]], [[10, 8], [2, 8]]]);
+    expect(clipLine([[20, 20], [30, 25]], rect)).toEqual([]);
   });
 });

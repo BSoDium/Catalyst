@@ -44,10 +44,10 @@ import { LayerSwitch, switchRules, type SwitchView } from "./style/layer-switch"
 import { TrailDotsLayer, dotLegs } from "../paths/trail-dots-layer";
 import { capReach, viewCap } from "./core/view-cap";
 import { fadeStraight, thinLegs, thinZoomOf, type ThinLeg } from "../paths/thin";
-import { DEFAULT_HANDOFF, PLACEHOLDER_LAYERS, PLACEHOLDER_REPLACES, PLACEHOLDER_OVERLAP_MS, PLACEHOLDER_SETTLE_MS, ROUTE_LAYER_IDS, applyCell, applyDashScale, applyKeptLegs, buildStreetStyle, placeholderWanted, dashStepOf, focusFilter, graticule, headFocusFilter, ROUTE_HEAD_FOCUS_ID, hasPlaceholder, routeLayerId, seaFrom, type StyleTiles } from "./style/street-style";
+import { DEFAULT_HANDOFF, PLACEHOLDER_LAYERS, PLACEHOLDER_REPLACES, PLACEHOLDER_OVERLAP_MS, PLACEHOLDER_SETTLE_MS, ROUTE_LAYER_IDS, applyCell, applyDashScale, applyKeptLegs, buildStreetStyle, placeholderWanted, dashStepOf, focusFilter, graticule, headFocusFilter, ROUTE_HEAD_FOCUS_ID, hasPlaceholder, routeLayerId, seaFrom, SPOT_SOURCE, spotQueries, type StyleTiles } from "./style/street-style";
 import { onSchemeChange } from "../engine/scheme";
 import { STREET_TUNING } from "./tuning";
-import { sameRect, spotFollow, spotRect, type CellRect } from "./core/spot";
+import { clipLine, placeRect, sameRect, spotFollow, spotRect, type CellRect } from "./core/spot";
 import type { AnimateOptions, FlyOptions, RevealOptions, StreetDebug, StreetMap, StreetMapOptions, StreetView } from "./types";
 
 export class StreetUnavailableError extends Error {
@@ -574,6 +574,41 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
   // The spotlight follows the selected node's drawn rectangle (whole art cells, as the box is drawn). When the selection is not drawn (the camera is flying to
   // it, or it was deselected) the light stays on the node it was on, following it while it fades out: a rectangle left where it was would ghost over the
   // map as the camera moves. A node that is not drawn either has nothing to follow: the light is gone at once.
+  // The road classes that are drawn inside the selected place's box before their own zoom (street-style.ts `SPOT_ROADS`): the roads the tiles hold for these
+  // classes, clipped to the box (the place's rectangle on the map, not on the screen), drawn from the `SPOT_SOURCE` source. Refreshed when the selection
+  // changes and when the map has settled or loaded tiles, nothing is drawn while no place is selected or the zoom is out of every class's range.
+  let spotRoadsSig = "";
+  let spotRoadsTimer = 0;
+  const refreshSpotRoads = () => {
+    const src = map.getSource(SPOT_SOURCE) as { setData?(d: unknown): void } | undefined;
+    if (!src?.setData) return;
+    const place = placeBySlug(selected ?? null);
+    const rect = place ? placeRect(place) : null;
+    const z = map.getZoom();
+    const features: unknown[] = [];
+    if (rect) {
+      const schema = (manager.status.source ? descriptors[manager.status.source]?.schema : undefined) ?? "openmaptiles";
+      for (const q of spotQueries(schema)) {
+        if (z < q.from || z >= q.to) continue;
+        const found = map.querySourceFeatures("tiles", { sourceLayer: q.layer, ...(q.filter ? { filter: q.filter as never } : {}) });
+        for (const f of found) {
+          const g = f.geometry;
+          const lines = g.type === "LineString" ? [g.coordinates] : g.type === "MultiLineString" ? g.coordinates : [];
+          for (const line of lines) for (const part of clipLine(line, rect)) features.push({ type: "Feature", properties: { cls: q.lod }, geometry: { type: "LineString", coordinates: part } });
+        }
+      }
+    }
+    const sig = `${selected ?? ""}|${features.length}|${features.reduce<number>((n, f) => n + (f as { geometry: { coordinates: unknown[] } }).geometry.coordinates.length, 0)}`;
+    if (sig === spotRoadsSig) return;
+    spotRoadsSig = sig;
+    src.setData({ type: "FeatureCollection", features });
+  };
+  const syncSpotRoads = () => {
+    window.clearTimeout(spotRoadsTimer);
+    spotRoadsTimer = window.setTimeout(() => {
+      if (!disposed) refreshSpotRoads();
+    }, 120);
+  };
   let spotSlug: string | null = null;
   const syncSpot = () => {
     const sc = hud.screen;
@@ -719,7 +754,13 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
     trailDots.setQuiet(fadeStraight(list, z, view));
   };
   onMap("style.load", () => {
+    spotRoadsSig = "";
+    syncSpotRoads();
     thinSig = "";
+  });
+  onMap("idle", syncSpotRoads);
+  onMap("sourcedata", (e: { sourceId?: string; isSourceLoaded?: boolean }) => {
+    if (e.sourceId === "tiles" && e.isSourceLoaded) syncSpotRoads();
   });
   onMap("render", () => {
     renders++;
@@ -925,6 +966,7 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
     },
     setSelected(slug, o) {
       selected = slug;
+      syncSpotRoads();
       hud.setSelected(slug);
       focusKeys = legKeysAt(opts.routes, placeBySlug(slug));
       syncRouteStops(slug);
