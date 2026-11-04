@@ -179,7 +179,7 @@ export function CareerPage({ career, places = [], projects = [] }: { career: Pub
 }
 
 /**
- * The head's button to the form (#528): a plain click scrolls there smoothly (instantly under reduced motion), moves the focus to the section (without a second jump) and puts the
+ * The head's button to the form (#528): a plain click scrolls there smoothly (instantly under reduced motion), moves the focus to the first field of the form (without a second jump) and puts the
  * address in the bar; any other click (a modifier, a middle button) and a page without the form are the link's own. The arrow at its end is turned down by the stylesheet while the button is hovered or pressed.
  */
 function scrollToContact(e: React.MouseEvent<HTMLAnchorElement>) {
@@ -190,7 +190,8 @@ function scrollToContact(e: React.MouseEvent<HTMLAnchorElement>) {
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   target.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
   history.replaceState(null, "", `#${CONTACT_ID}`);
-  target.focus({ preventScroll: true });
+  // the first field, so the visitor can start typing; the section itself when the form is not drawn (it is replaced by the thank-you note once sent)
+  (target.querySelector<HTMLElement>('input[name="name"]') ?? target).focus({ preventScroll: true });
 }
 
 /**
