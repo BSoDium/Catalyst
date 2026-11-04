@@ -43,6 +43,14 @@ describe("PlaceDetail", () => {
     expect(html).toContain("var(--foreground) 0%");
     expect(html).toContain("var(--foreground) 100%");
   });
+  it("gives every row of the panel its picture: an entry with no cover has a generated one", () => {
+    const base = getPlaceDetail(demo, "lisbon")!;
+    const bare = base.entries.filter((g) => g.kind !== "photograph" && g.kind !== "artwork").map((g) => ({ ...g, entries: g.entries.map((e) => ({ ...e, cover: undefined })) }));
+    const html = renderToStaticMarkup(createElement(StaticRouter, { location: "/" }, createElement(PlaceDetail, { place: { ...base, entries: bare } })));
+    const rows = html.split('data-compact=""').slice(1);
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) expect(row.slice(0, row.indexOf("</article>"))).toContain('data-slot="cover-art"');
+  });
   it("a place with only `living` is a home too: tagged and its trips do not count visits", () => {
     const place = { ...getPlaceDetail(demo, "lisbon")!, living: true as const };
     expect(renderToStaticMarkup(createElement(StaticRouter, { location: "/" }, createElement(PlaceDetail, { place })))).toContain("Lives here");
