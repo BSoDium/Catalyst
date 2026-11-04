@@ -2059,12 +2059,20 @@
     letter-spacing: -0.03em;
     color: var(--foreground);
   }
-  /* the counts of entries: lighter than the coordinates' whole degrees, as bright */
+  /* the counts of entries: lighter than the coordinates' whole degrees; their ink is set by how many there are (`countInk`) */
   .place-figure-count {
     font-size: 1.75rem;
     font-weight: 400;
     letter-spacing: -0.02em;
-    color: var(--foreground);
+    color: var(--muted-foreground);
+  }
+  /* the dates: as large as the figures beside them, in the secondary grey (nothing in it is more important than the rest) */
+  .place-figure-when {
+    font-size: 1.75rem;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    color: var(--muted-foreground);
+    text-wrap: balance;
   }
   .place-figure-fraction {
     font-size: 1.75rem;
@@ -2086,13 +2094,6 @@
     letter-spacing: 0.12em;
     color: var(--signal-text, var(--foreground));
   }
-  .place-figure-text {
-    font-family: var(--font-display);
-    font-size: 1.125rem;
-    font-weight: 600;
-    line-height: 1.7rem;
-    letter-spacing: -0.01em;
-  }
   /* The photographs of a place (components/place-detail.tsx, `PhotoGallery`): the label is on the picture, over a soft dome of the page colour from its bottom left corner, so it reads on any photograph in both schemes; the arrows are plates over the picture's edge, in the middle, not the chips' top-aligned ones. */
   .place-gallery-label {
     position: absolute;
@@ -2111,11 +2112,11 @@
     /* the whole width of the label (the date is at its left, the position at its right), the page colour held firmly under the text and eased to nothing above it */
     background: linear-gradient(
       to top,
-      color-mix(in srgb, var(--background) 96%, transparent) 0%,
-      color-mix(in srgb, var(--background) 92%, transparent) 40%,
-      color-mix(in srgb, var(--background) 82%, transparent) 62%,
-      color-mix(in srgb, var(--background) 52%, transparent) 80%,
-      color-mix(in srgb, var(--background) 16%, transparent) 93%,
+      color-mix(in srgb, var(--background) 78%, transparent) 0%,
+      color-mix(in srgb, var(--background) 66%, transparent) 40%,
+      color-mix(in srgb, var(--background) 48%, transparent) 62%,
+      color-mix(in srgb, var(--background) 24%, transparent) 80%,
+      color-mix(in srgb, var(--background) 7%, transparent) 93%,
       transparent 100%
     );
   }

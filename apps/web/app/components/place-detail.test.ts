@@ -35,6 +35,14 @@ describe("PlaceDetail", () => {
     expect(html).toMatch(/<dt[^>]*>Software<\/dt>/);
     expect(html).toContain("<noscript>");
   });
+  it("inks each count of entries by how many there are: the secondary grey for one, the full ink for the most", () => {
+    const base = getPlaceDetail(demo, "lisbon")!;
+    const entry = base.entries[0]!.entries[0]!;
+    const place = { ...base, entries: [{ kind: "article" as const, label: "Articles", entries: [entry] }, { kind: "project" as const, label: "Software", entries: [{ ...entry, slug: "a" }, { ...entry, slug: "b" }, { ...entry, slug: "c" }] }] };
+    const html = renderToStaticMarkup(createElement(StaticRouter, { location: "/" }, createElement(PlaceDetail, { place })));
+    expect(html).toContain("var(--foreground) 0%");
+    expect(html).toContain("var(--foreground) 100%");
+  });
   it("a place with only `living` is a home too: tagged and its trips do not count visits", () => {
     const place = { ...getPlaceDetail(demo, "lisbon")!, living: true as const };
     expect(renderToStaticMarkup(createElement(StaticRouter, { location: "/" }, createElement(PlaceDetail, { place })))).toContain("Lives here");

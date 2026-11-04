@@ -111,6 +111,12 @@ function StepStory({ place, photos }: { place: PlaceDetailData; photos: PhotoIte
   );
 }
 
+/** The ink of a count of entries: the secondary grey for one (or none), the full ink for the most there are in the place, and in between in proportion; so the eye goes to what the place has the most of. */
+function countInk(count: number, most: number): string {
+  const share = most > 1 ? Math.min(1, Math.max(0, (count - 1) / (most - 1))) : 0;
+  return `color-mix(in oklab, var(--foreground) ${Math.round(share * 100)}%, var(--muted-foreground))`;
+}
+
 /** One figure of the facts strip: a micro-label over its value. */
 function Fact({ label, children, end, className }: { label: string; children: ReactNode; end?: boolean; className?: string }) {
   return (
@@ -144,6 +150,7 @@ function Coordinate({ label, part }: { label: string; part: CoordinatePart }) {
  */
 function PlaceFacts({ place }: { place: PlaceDetailData }) {
   const coordinates = placeCoordinateParts(place.coordinates.lat, place.coordinates.lon);
+  const mostEntries = Math.max(0, ...place.entries.map((g) => g.entries.length));
   // Where the block of counts does not fit beside the coordinates it goes to the next row (CSS), and there everything in it is left-aligned, the figures too: the row's right edge is
   // only for a block that shares the row. CSS cannot say that it wrapped, so the two blocks' tops are compared whenever the row is resized (until measured, which is the server's markup and the first client render, the block is invisible but takes its room, so that it never shows in the wrong alignment; a page without scripts shows it as it is).
   const row = useRef<HTMLDivElement>(null);
@@ -178,7 +185,7 @@ function PlaceFacts({ place }: { place: PlaceDetailData }) {
         )}
         {place.dates && (
           <Fact label="When">
-            <time dateTime={place.dates.dateTime} className="place-figure-text">
+            <time dateTime={place.dates.dateTime} className="place-figure place-figure-when">
               {place.dates.text}
             </time>
           </Fact>
@@ -194,7 +201,9 @@ function PlaceFacts({ place }: { place: PlaceDetailData }) {
         <dl ref={counts} data-below={below ? "" : undefined} data-measuring={measured ? undefined : ""} className={cn("m-0 flex flex-wrap gap-x-7 gap-y-3", !below && "ml-auto justify-end", !measured && "invisible")}>
           {place.entries.map((g) => (
             <Fact key={g.kind} label={g.label} end={!below}>
-              <span className="place-figure place-figure-count">{g.entries.length}</span>
+              <span className="place-figure place-figure-count" style={{ color: countInk(g.entries.length, mostEntries) }}>
+                {g.entries.length}
+              </span>
             </Fact>
           ))}
         </dl>
