@@ -1,11 +1,9 @@
-import { ArrowLeft as CarbonArrowLeft, ChevronDown as CarbonChevronDown, Search as CarbonSearch, ZoomReset as CarbonZoomReset, type CarbonIconType } from "@carbon/icons-react";
+import { ArrowLeft as CarbonArrowLeft, ArrowRight as CarbonArrowRight, ArrowUpRight as CarbonArrowUpRight, MapIdentify as CarbonMapIdentify, ChevronDown as CarbonChevronDown, Search as CarbonSearch, ZoomReset as CarbonZoomReset, type CarbonIconType } from "@carbon/icons-react";
 import {
   Aperture,
   ArrowDown,
-  ArrowRight,
   ArrowUp,
   ArrowUpLeft,
-  ArrowUpRight,
   Briefcase,
   Code,
   Cuboid,
@@ -80,11 +78,12 @@ export const ICONS = {
   close: X,
   expand: Maximize2,
   collapse: Minimize2,
-  "arrow-right": ArrowRight,
+  "arrow-right": CarbonArrowRight,
   "arrow-left": CarbonArrowLeft,
   "arrow-up": ArrowUp,
   "arrow-down": ArrowDown,
-  "arrow-up-right": ArrowUpRight,
+  "arrow-up-right": CarbonArrowUpRight,
+  "map-identify": CarbonMapIdentify,
   "arrow-up-left": ArrowUpLeft,
   enter: CornerDownLeft,
   command: Command,

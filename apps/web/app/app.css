@@ -2012,16 +2012,22 @@
     gap: 1rem 2rem;
     margin: 2rem 0 0;
   }
-  /* The link to the place (#581): two lines of text and an arrow in a box with ONE space all round: the text's left, the arrow's right, and the top and bottom of both are `--place-pad` from the edge (the arrow is the box's height less twice it). */
+  /* The link to the place (#581): the map icon at the left, two lines of text, the arrow at the right, in a box where the glyphs are the SAME distance `--place-d` from the border's outer edge at the top, the bottom, and the left (the map) or the right (the arrow). The glyphs
+     are `--place-g` tall, and Carbon's drawings do not fill their 32-unit boxes (the map icon runs from 2 to 30: 87.5 %; the arrow from 6 to 26: 62.5 %), so each box is the glyph's size over that share and the padding on its side is `--place-d` less the border and the box's own inset. */
   .entry-place-link {
-    --place-pad: 0.5rem;
+    --place-h: 2.75rem;
+    --place-d: 0.625rem;
+    --place-g: calc(var(--place-h) - 2 * var(--place-d));
+    --place-map: calc(var(--place-g) / 0.875);
+    --place-arrow: calc(var(--place-g) / 0.625);
     display: inline-flex;
     align-items: center;
-    gap: 1rem;
+    gap: 0.75rem;
     margin-left: auto;
     box-sizing: border-box;
-    height: 2.75rem;
-    padding: 0 var(--place-pad);
+    height: var(--place-h);
+    padding-left: calc(var(--place-d) - var(--hairline) - var(--place-map) * 0.0625);
+    padding-right: calc(var(--place-d) - var(--hairline) - var(--place-arrow) * 0.1875);
     border: var(--hairline) solid var(--border-strong);
     color: var(--foreground);
     text-decoration: none;
@@ -2051,10 +2057,17 @@
     letter-spacing: 0.04em;
     color: var(--muted-foreground);
   }
+  .entry-place-link svg.entry-place-link-pin {
+    flex: none;
+    width: var(--place-map);
+    height: var(--place-map);
+    color: var(--muted-foreground);
+  }
   .entry-place-link svg.entry-place-link-arrow {
     flex: none;
-    width: calc(2.75rem - 2 * var(--place-pad) - 2 * var(--hairline));
-    height: calc(2.75rem - 2 * var(--place-pad) - 2 * var(--hairline));
+    width: var(--place-arrow);
+    height: var(--place-arrow);
+    margin-left: -0.5rem;
     color: var(--muted-foreground);
   }
   .entry-exposure .entry-exposure-mark {

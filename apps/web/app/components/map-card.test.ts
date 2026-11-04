@@ -59,7 +59,7 @@ describe("credits line", () => {
     expect(button).toContain('aria-label="See more credits"');
     expect(button).toContain('aria-haspopup="dialog"');
     expect(button).toContain("See more");
-    expect(button).toContain("lucide-arrow-up-right");
+    expect(button).toContain("M10 6 10 8 22.59 8");
     expect(button).toContain('aria-hidden="true"');
   });
   it("is drawn on a phone too, the full width, left-aligned and still ONE line: clipped, never wrapped", () => {
