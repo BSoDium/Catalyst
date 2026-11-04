@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import { Icon, ScrollRow } from "~/components/ui";
 import { coverImageProps } from "~/lib/cover-image";
 import { formatEntryDate } from "~/lib/dates";
-import { carouselGeometry, carouselLayout, fullWidths, growth, peekWidths, type CarouselGeometry } from "~/lib/photo-carousel";
+import { carouselLayout, growth, keylines, widest, type Keylines } from "~/lib/photo-carousel";
 import { cn } from "~/lib/utils";
 
 /** A photograph of the place in its gallery: the cover of a linked photograph entry, with what the label says. */
@@ -53,45 +53,43 @@ function Picture({ item, i, count, from, style, onFocus, fullWidth }: { item: Ga
 function Carousel({ items, from }: { items: GalleryItem[]; from: string }) {
   const scroller = useRef<HTMLDivElement>(null);
   const layer = useRef<HTMLUListElement>(null);
-  const [geo, setGeo] = useState<{ g: CarouselGeometry; fulls: number[]; peeks: number[]; step: number } | null>(null);
+  const [geo, setGeo] = useState<{ k: Keylines; step: number } | null>(null);
   const [edges, setEdges] = useState({ start: false, end: true });
   const frame = useRef(0);
 
-  // Measure: the row's width and the pictures' height (CSS: `.place-gallery-scroller`)
+  // Measure the row's width (its height is CSS: `.place-gallery-scroller`)
   useLayoutEffect(() => {
     const el = scroller.current;
     if (!el) return;
     const measure = () => {
-      const g = carouselGeometry(el.clientWidth);
-      const step = Math.round(g.width * 0.55);
-      const fulls = fullWidths(items.map(ratioOf), el.clientHeight, g);
-      setGeo({ g, fulls, peeks: peekWidths(fulls, g), step });
+      const k = keylines(el.clientWidth);
+      setGeo({ k, step: Math.round(k.large * 0.8) });
     };
     measure();
     if (typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(measure);
     observer.observe(el);
     return () => observer.disconnect();
-  }, [items]);
+  }, [items.length]);
 
   const place = useCallback(() => {
     const el = scroller.current;
     const ul = layer.current;
     if (!el || !ul || !geo) return;
     const t = geo.step > 0 ? el.scrollLeft / geo.step : 0;
-    const boxes = carouselLayout(t, geo.fulls, geo.g);
+    const boxes = carouselLayout(t, items.length, geo.k);
     boxes.forEach((box, i) => {
       const li = ul.children[i] as HTMLElement | undefined;
       if (!li) return;
       li.style.width = `${box.w}px`;
       li.style.transform = `translate3d(${box.x}px,0,0)`;
       li.style.visibility = box.w < 1 ? "hidden" : "visible";
-      li.style.setProperty("--g", growth(box.w, geo.fulls[i]!, geo.peeks[i]!).toFixed(3));
+      li.style.setProperty("--g", growth(box.w, geo.k).toFixed(3));
     });
     const max = el.scrollWidth - el.clientWidth;
     const next = { start: el.scrollLeft > 2, end: el.scrollLeft < max - 2 };
     setEdges((prev) => (prev.start === next.start && prev.end === next.end ? prev : next));
-  }, [geo]);
+  }, [geo, items.length]);
 
   useLayoutEffect(() => {
     place();
@@ -122,15 +120,15 @@ function Carousel({ items, from }: { items: GalleryItem[]; from: string }) {
     <div className="relative">
       <div ref={scroller} data-slot="place-gallery-scroller" className="place-gallery-scroller overflow-x-auto overscroll-x-contain snap-x snap-mandatory">
         {geo && (
-          <div className="relative h-full" style={{ width: (items.length - 1) * geo.step + geo.g.width }}>
+          <div className="relative h-full" style={{ width: (items.length - 1) * geo.step + geo.k.width }}>
             {items.map((item, i) => (
               <span key={item.src} aria-hidden="true" className="absolute top-0 size-px snap-start" style={{ left: i * geo.step }} />
             ))}
-            <div className="sticky left-0 top-0 h-full overflow-hidden" style={{ width: geo.g.width }}>
+            <div className="sticky left-0 top-0 h-full overflow-hidden" style={{ width: geo.k.width }}>
               <ul ref={layer} className="relative m-0 h-full list-none p-0">
                 {items.map((item, i) => (
                   <li key={item.src} className="absolute top-0 left-0 h-full overflow-hidden" style={{ width: 0, visibility: "hidden" }}>
-                    <Picture item={item} i={i} count={items.length} from={from} fullWidth={geo.fulls[i]!} onFocus={() => goTo(i)} style={{ height: "100%" }} />
+                    <Picture item={item} i={i} count={items.length} from={from} fullWidth={widest(geo.k)} onFocus={() => goTo(i)} style={{ height: "100%" }} />
                   </li>
                 ))}
               </ul>

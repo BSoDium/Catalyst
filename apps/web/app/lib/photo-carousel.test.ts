@@ -1,54 +1,55 @@
 import { describe, expect, it } from "vitest";
-import { carouselGeometry, carouselLayout, fullWidths, growth, peekWidths, widthAt } from "./photo-carousel";
+import { carouselLayout, growth, keylines, widest, widthAt } from "./photo-carousel";
 
-const geo = carouselGeometry(600);
+const k = keylines(600);
+const sum = (items: { x: number; w: number }[]) => items.reduce((n, i) => n + i.w, 0);
 
 describe("photo carousel geometry", () => {
-  it("has a peek of a sixth of the row, between 56 and 120 px", () => {
-    expect(carouselGeometry(600).peek).toBe(100);
-    expect(carouselGeometry(200).peek).toBe(56);
-    expect(carouselGeometry(1200).peek).toBe(120);
+  it("has a small, a large and a medium picture that fill the row from the gutter, the large one a little wider than the medium", () => {
+    expect(k.small + k.large + k.medium + 2 * k.gap + k.gutter).toBe(600);
+    expect(k.large).toBeGreaterThan(k.medium);
+    expect(k.medium).toBeGreaterThan(k.small * 2);
+    expect(keylines(100).small).toBe(48);
   });
-  it("grows a picture from nothing to a peek to its full width, and shrinks it away at the left", () => {
-    expect([2, 1.5, 1, 0.5, 0, -0.5, -1].map((d) => widthAt(d, 400, 100))).toEqual([0, 50, 100, 250, 400, 200, 0]);
+  it("goes from nothing to small, large, medium, small and nothing along the row", () => {
+    expect([-2, -1, 0, 1, 2, 3].map((u) => widthAt(u, k))).toEqual([0, k.small, k.large, k.medium, k.small, 0]);
+    expect(widthAt(-0.5, k)).toBeCloseTo((k.small + k.large) / 2);
+    expect(widthAt(0.5, k)).toBeCloseTo((k.large + k.medium) / 2);
   });
-  it("makes the first picture as wide as the row allows less the gutter, the gap and the peek, and the last one less two gutters", () => {
-    const [first, last] = [fullWidths([3, 3], 400, geo)[0]!, fullWidths([3, 3], 400, geo)[1]!];
-    expect(first).toBe(600 - 24 - 6 - 100);
-    expect(last).toBe(600 - 24 - 24);
-    expect(fullWidths([0.5, 0.5], 400, geo)).toEqual([200, 200]);
+  it("fills the row to its right edge at the start, with the gutter at the left, and the small picture cut off by the edge", () => {
+    const items = carouselLayout(0, 6, k);
+    expect(items[0]).toEqual({ x: 24, w: k.large });
+    expect(items[2]!.x + items[2]!.w).toBe(600);
   });
-  it("keeps the gutter at the left, the peek of the next picture at the right edge, and the width in focus whole", () => {
-    const fulls = fullWidths([1.5, 1.5, 1.5], 400, geo);
-    const [a, b] = carouselLayout(0, fulls, geo);
-    expect(a).toEqual({ x: 24, w: fulls[0] });
-    expect(b!.x + b!.w).toBe(600);
+  it("never leaves a hole at the right while the row moves (the row is at least as wide as the row)", () => {
+    for (let t = 0; t <= 3; t += 0.25) {
+      const items = carouselLayout(t, 8, k).filter((i) => i.w > 0);
+      const last = items[items.length - 1]!;
+      expect(last.x + last.w, `t=${t}`).toBeGreaterThanOrEqual(600 - 0.5);
+    }
   });
-  it("shrinks the leftmost and grows the rightmost as the row moves, with no height in it", () => {
-    const fulls = fullWidths([1.5, 1.5, 1.5, 1.5], 400, geo);
-    const from = carouselLayout(0, fulls, geo);
-    const to = carouselLayout(0.5, fulls, geo);
+  it("shrinks the leftmost and grows the rightmost as the row moves, the gutter staying at the left", () => {
+    const from = carouselLayout(0, 6, k);
+    const to = carouselLayout(0.5, 6, k);
     expect(to[0]!.w).toBeLessThan(from[0]!.w);
-    expect(to[1]!.w).toBeGreaterThan(from[1]!.w);
-    expect(to[2]!.w).toBeGreaterThan(from[2]!.w);
+    expect(to[3]!.w).toBeGreaterThan(from[3]!.w);
     expect(to[0]!.x).toBe(24);
   });
-  it("clamps the position to the first and the last picture", () => {
-    const fulls = fullWidths([1.5, 1.5], 400, geo);
-    expect(carouselLayout(-3, fulls, geo)).toEqual(carouselLayout(0, fulls, geo));
-    expect(carouselLayout(9, fulls, geo)).toEqual(carouselLayout(1, fulls, geo));
-    expect(carouselLayout(1, fulls, geo)[1]).toEqual({ x: 24, w: fulls[1] });
+  it("brings the last picture to the gutter at the right at the end", () => {
+    const items = carouselLayout(5, 6, k);
+    const last = items[5]!;
+    expect(last.x + last.w).toBeCloseTo(600 - 24, 0);
+    expect(items[4]!.x).toBe(24);
+    expect(carouselLayout(9, 6, k)).toEqual(items);
   });
-  it("counts a peek as no growth and a full width as all of it", () => {
-    expect(growth(100, 400, 100)).toBe(0);
-    expect(growth(400, 400, 100)).toBe(1);
-    expect(growth(250, 400, 100)).toBeCloseTo(0.5, 1);
+  it("clamps the position, and fills a row of two pictures", () => {
+    expect(carouselLayout(-3, 6, k)).toEqual(carouselLayout(0, 6, k));
+    const two = carouselLayout(0, 2, k);
+    expect(two[1]!.x + two[1]!.w).toBeCloseTo(600, 0);
+    expect(sum(carouselLayout(0, 1, k))).toBeGreaterThan(0);
   });
-  it("lets the next picture fill what the one in focus leaves of the row, so it always bleeds off the right edge", () => {
-    const fulls = fullWidths([0.8, 1.5, 1.5], 400, geo); // a narrow first picture (320 px) leaves 230 px of the 600
-    expect(peekWidths(fulls, geo)[1]).toBe(600 - 24 - 6 - 320);
-    const [a, b] = carouselLayout(0, fulls, geo);
-    expect(b!.x + b!.w).toBe(600);
-    expect(a!.w).toBe(320);
+  it("counts a small picture as no growth and the widest as all of it", () => {
+    expect(growth(k.small, k)).toBe(0);
+    expect(growth(widest(k), k)).toBe(1);
   });
 });
