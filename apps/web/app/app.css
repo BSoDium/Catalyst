@@ -2033,7 +2033,7 @@
     /* the block of text: the name's line box, the gap and the second line's (as set below) */
     --place-text-h: calc(var(--place-name) * 1.25 + 0.125rem + var(--place-cta) * 1.2);
     /* the strokes of the icons are the title text's own: a stem of the mono type is 0.09 em */
-    --place-stroke: calc(var(--place-name) * 0.09);
+    --place-stroke: calc(var(--place-name) * 0.11);
     /* the viewfinder is as tall as the INK of the two lines, from the top of the name's tallest letters to the bottom of the second line's descenders (measured: 89 % of the block, 2.7 px down from its top, which puts its middle
        a pixel above the block's), not as the block's line boxes; its drawing runs from 3 to 21 of 24 units (75 %), the stroke is on top of that */
     --place-ink: calc(var(--place-text-h) * 0.89 - 1px);
