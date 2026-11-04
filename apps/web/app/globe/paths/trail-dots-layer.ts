@@ -353,12 +353,6 @@ export class TrailDotsLayer {
     else this.clearBadges();
   }
 
-  /**
-   * One badge with the picture of the mode on each long enough leg, the selected place's first and then the longest: at the middle of the leg (or the
-   * nearest place along it that is on screen), on the cell grid so it moves in the same steps as the line, in the colour of the path there (the
-   * selected place's legs in the lit colour) with the icon in the page colour, at full resolution; and only where it does not touch another badge
-   * (so a crowd of legs shows a badge each where there is room and none where there is not).
-   */
   /** An airport: a 2 x 2 dot in the spark's ink on a one cell halo in the page's colour (so it reads over a road), drawn from `AIRPORT_FROM_ZOOM`. It is a location in the city, not a place. */
   private drawAirports(project: (p: LonLat, lift: number) => { x: number; y: number } | null, zoom: number, cell: number, cols: number, rows: number, ink: (col: number, row: number, fill: string) => void, color: (band: number | "lit" | "spark") => string) {
     if (zoom < AIRPORT_FROM_ZOOM || this.airports.length === 0) return;
@@ -375,6 +369,12 @@ export class TrailDotsLayer {
     }
   }
 
+  /**
+   * One badge with the picture of the mode on each long enough leg, the selected place's first and then the longest: at the middle of the leg (or the
+   * nearest place along it that is on screen), on the cell grid so it moves in the same steps as the line, in the colour of the path there (the
+   * selected place's legs in the lit colour) with the icon in the page colour, at full resolution; and only where it does not touch another badge
+   * (so a crowd of legs shows a badge each where there is room and none where there is not).
+   */
   private drawIcons(
     candidates: ReadonlyArray<{ leg: DotLeg; lit: boolean; length: number; parts: ReadonlyArray<ReadonlyArray<readonly [number, number]>> }>,
     cols: number,
