@@ -105,16 +105,16 @@ describe("PlaceDetail", () => {
     expect(html.slice(story)).toContain("Lisbon is the city I keep returning to");
     expect(html.slice(story)).toContain('data-slot="trip-card"');
   });
-  it("counts a photograph taken at the step as one of its pictures, not as an entry that puts the story second", () => {
+  it("leads with the photographs taken at the step as a gallery under one 'Photography' title, not as cards that put the story second", () => {
     const html = render("lisbon");
-    expect(html).not.toMatch(/<h2[^>]*>Photography<\/h2>/);
-    const story = html.slice(html.indexOf('data-slot="place-story"'));
-    expect(story).toContain('data-slot="place-photos"');
-    expect(story).toContain('href="/photography/sea-wall"');
-    expect(story).toContain("Sea Wall");
+    expect(html).toMatch(/<h2[^>]*>Photography<\/h2>/);
+    const gallery = html.slice(html.indexOf('data-slot="place-gallery"'), html.indexOf('data-slot="place-story"'));
+    expect(gallery).toContain('href="/photography/sea-wall"');
+    expect(gallery).toContain("Sea Wall");
+    expect(html.indexOf('data-slot="place-gallery"')).toBeLessThan(html.indexOf('<h2 class="m-0 font-display text-[2rem] leading-none font-extrabold tracking-[-0.03em]">Articles'));
   });
   it("draws a picture on a stage (issue #448): never wider than its own pixels, never taller than 80 % of the window, a blurred copy for the sides", () => {
-    const html = render("lisbon");
+    const html = render("bangkok");
     const stages = html.match(/<div data-slot="place-stage"[\s\S]*?<\/div>/g) ?? [];
     expect(stages.length).toBeGreaterThan(0);
     for (const stage of stages) {

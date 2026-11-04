@@ -5,7 +5,9 @@ import type { PlaceSummary } from "@catalyst/schemas";
 import { PANEL_HEADING_ID } from "~/components/detail-panel";
 import { EntryRow } from "~/components/entry/entry-list-card";
 import { TripCards } from "~/components/trip-card";
-import { Button, Icon, SectionHeader, Stack, StatePanel } from "~/components/ui";
+import { Button, Icon, ScrollRow, Stack, StatePanel } from "~/components/ui";
+import { formatEntryDate } from "~/lib/dates";
+import { KIND_PLURALS } from "~/lib/entries";
 import { coverImageProps } from "~/lib/cover-image";
 import { safeMediaSrc } from "~/lib/entry-blocks";
 import { placeCover, type PlaceCover } from "~/lib/place-cover";
@@ -240,26 +242,98 @@ function PlaceHeader({ place, cover }: { place: PlaceDetailData; cover: PlaceCov
   );
 }
 
+/** A photograph of the place in its gallery: the cover of a linked photograph entry, with what the label says. */
+interface GalleryItem {
+  src: string;
+  alt: string;
+  width?: number;
+  height?: number;
+  small?: { src: string; width: number; height: number };
+  title: string;
+  href: string;
+  date?: string;
+}
+
 /**
- * The step's own pictures and the entries that lead the page. The pictures are the place's images and the photographs linked to it (a photograph of
- * the step IS a picture of the step: it shows in its strip and is not an "entry" that would put the story second); a sensitive photograph stays an entry,
- * where its card blurs it.
+ * The step's own pictures, the photographs linked to it (a photograph of the place IS a picture of it: they lead the page as its gallery, and are not
+ * "entries" that would put the story second) and the entries. A sensitive photograph stays an entry, where its card blurs it.
  */
-function stepContent(place: PlaceDetailData): { photos: PhotoItem[]; groups: PlaceDetailData["entries"] } {
-  const own: PhotoItem[] = place.images.map((i) => ({ src: i.src, alt: i.alt, ...(i.width && i.height ? { width: i.width, height: i.height } : {}), ...(i.caption ? { caption: i.caption } : {}) }));
-  const linked: PhotoItem[] = [];
+function stepContent(place: PlaceDetailData): { photos: PhotoItem[]; gallery: GalleryItem[]; groups: PlaceDetailData["entries"] } {
+  const photos: PhotoItem[] = place.images.map((i) => ({ src: i.src, alt: i.alt, ...(i.width && i.height ? { width: i.width, height: i.height } : {}), ...(i.caption ? { caption: i.caption } : {}) }));
+  const gallery: GalleryItem[] = [];
   const groups = place.entries
     .map((group) => {
       if (group.kind !== "photograph") return group;
       const keep = group.entries.filter((e) => {
-        if (e.sensitive || !e.cover) return true;
-        linked.push({ src: e.cover.src, alt: e.cover.alt, ...(e.cover.width && e.cover.height ? { width: e.cover.width, height: e.cover.height } : {}), caption: e.title, href: e.href });
+        if (e.sensitive || !e.cover || !safeMediaSrc(e.cover.src)) return true;
+        gallery.push({ src: e.cover.src, alt: e.cover.alt, ...(e.cover.width && e.cover.height ? { width: e.cover.width, height: e.cover.height } : {}), title: e.title, href: e.href, ...(e.cover.small ? { small: e.cover.small } : {}), ...(e.date ? { date: e.date } : {}) });
         return false;
       });
       return { ...group, entries: keep };
     })
     .filter((g) => g.entries.length > 0);
-  return { photos: [...own, ...linked], groups };
+  gallery.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
+  return { photos, gallery, groups };
+}
+
+/** The title of a group of entries: the display face, large, with the count in mono beside it. */
+function GroupHeader({ title, count }: { title: string; count: number }) {
+  return (
+    <header data-slot="group-header" className="flex items-baseline gap-3 pt-2">
+      <h2 className="m-0 font-display text-[2rem] leading-none font-extrabold tracking-[-0.03em]">{title}</h2>
+      <span className="ds-meta">{count}</span>
+    </header>
+  );
+}
+
+/**
+ * The photographs of the place, full panel width with no frame: a row that scrolls sideways and snaps, every picture the same height and as wide as its own
+ * proportions make it, so the next one peeks in at the edge (the multi-browse carousel of Material 3 Expressive, with this site's square corners). Each has its label on it, over a soft
+ * dome of the page colour: the date in mono, the title in the display face, and where it is in the row. One photograph is a single full-width picture, with no row.
+ */
+function PhotoGallery({ items, from }: { items: GalleryItem[]; from: string }) {
+  const one = items.length === 1;
+  const picture = (item: GalleryItem, i: number) => {
+    const date = formatEntryDate(item.date);
+    const ratio = item.width && item.height ? item.width / item.height : 4 / 3;
+    return (
+      <Link
+        to={item.href}
+        state={{ from }}
+        aria-label={item.title}
+        style={{ aspectRatio: ratio }}
+        className={cn("place-gallery-item group relative block overflow-hidden bg-accent no-underline", one ? "w-full max-h-[80dvh]" : "h-[min(26rem,70dvh)] max-w-[88cqw] shrink-0 snap-start")}
+      >
+        <img {...coverImageProps({ src: item.src, width: item.width ?? 0, small: item.small }, "(min-width: 48rem) 50vw, 100vw")} alt={item.alt} loading={i === 0 ? "eager" : "lazy"} decoding="async" className="place-gallery-img size-full object-cover" />
+        <span className="place-gallery-label">
+          <span className="place-gallery-meta ds-micro flex items-baseline justify-between gap-3">
+            <span>{date ? date.text : ""}</span>
+            {!one && (
+              <span aria-hidden="true">
+                {String(i + 1).padStart(2, "0")} / {String(items.length).padStart(2, "0")}
+              </span>
+            )}
+          </span>
+          <span className="place-gallery-title line-clamp-2 font-display text-[1.375rem] leading-[1.1] font-extrabold tracking-[-0.02em] text-foreground">{item.title}</span>
+        </span>
+      </Link>
+    );
+  };
+  return (
+    <div data-slot="place-gallery" data-many={one ? undefined : ""} className="place-gallery @container -mx-6">
+      {one ? (
+        picture(items[0]!, 0)
+      ) : (
+        <ScrollRow noun="photographs" className="flex snap-x snap-mandatory gap-1.5">
+          {items.map((item, i) => (
+            <div key={item.src} className="contents">
+              {picture(item, i)}
+            </div>
+          ))}
+        </ScrollRow>
+      )}
+    </div>
+  );
 }
 
 /** The entries of a group newest first, as a list page has them (an undated one last, the authored order kept among equals). */
@@ -282,22 +356,40 @@ function storyMeta(place: PlaceDetailData, pictures: number): string {
  */
 export function PlaceDetail({ place }: { place: PlaceDetailData }) {
   const cover = placeCover(place);
-  const { photos: all, groups } = stepContent(place);
+  const { photos: all, gallery, groups: allGroups } = stepContent(place);
   // (a place's own picture that heads the panel is not shown a second time in the strip below; an entry's cover is, as the link to the entry)
   const photos = cover?.own ? all.filter((p) => p.src !== cover.src) : all;
-  const count = groups.reduce((n, g) => n + g.entries.length, 0);
+  // Photography leads the entries: the gallery, then the sensitive photographs that stay cards (under the same title)
+  const photoGroup = allGroups.find((g) => g.kind === "photograph");
+  const groups = allGroups.filter((g) => g.kind !== "photograph");
+  const photographs = gallery.length + (photoGroup?.entries.length ?? 0);
+  const count = groups.reduce((n, g) => n + g.entries.length, 0) + (photoGroup?.entries.length ?? 0);
   const story = !!place.summary || place.body.length > 0 || photos.length > 0 || place.trips.length > 0;
   return (
     <article aria-labelledby={PANEL_HEADING_ID} data-slot="place-view" data-kind="place" className="px-6 pt-2 pb-10">
       <Stack gap={8}>
         <PlaceHeader place={place} cover={cover} />
-        {story && !count && <StepStory place={place} photos={photos} />}
-        {count > 0 && (
+        {(count > 0 || gallery.length > 0) && (
           <section aria-label="Entries" data-slot="place-entries">
-            <Stack gap={8}>
+            <Stack gap={10}>
+              {photographs > 0 && (
+                <div data-kind="photograph" className="@container flex flex-col gap-4">
+                  <GroupHeader title={KIND_PLURALS.photograph} count={photographs} />
+                  {gallery.length > 0 && <PhotoGallery items={gallery} from={place.slug} />}
+                  {photoGroup && (
+                    <ul className="m-0 grid list-none grid-cols-1 gap-0 p-0">
+                      {newestFirst(photoGroup.entries).map((entry) => (
+                        <li key={entry.slug} className="min-w-0">
+                          <EntryRow entry={entry} linkState={{ from: place.slug }} headingLevel={3} compact />
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
               {groups.map((group) => (
                 <div key={group.kind} data-kind={group.kind} className="@container flex flex-col gap-4">
-                  <SectionHeader as="h2" title={group.label} meta={group.entries.length} />
+                  <GroupHeader title={group.label} count={group.entries.length} />
                   <ul className="m-0 grid list-none grid-cols-1 gap-0 p-0">
                     {newestFirst(group.entries).map((entry) => (
                       <li key={entry.slug} className="min-w-0">
@@ -310,6 +402,8 @@ export function PlaceDetail({ place }: { place: PlaceDetailData }) {
             </Stack>
           </section>
         )}
+        {/* (a step with no entries is its story, open, under its photographs) */}
+        {story && !count && <StepStory place={place} photos={photos} />}
         {story && count > 0 && (
           // The entries are what the visitor came for: the step's own story and the trip are the context, one line closed.
           <details data-slot="place-story" className="group border-t border-border pt-2">

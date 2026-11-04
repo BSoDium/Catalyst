@@ -2093,6 +2093,103 @@
     line-height: 1.7rem;
     letter-spacing: -0.01em;
   }
+  /* The photographs of a place (components/place-detail.tsx, `PhotoGallery`): the label is on the picture, over a soft dome of the page colour from its bottom left corner, so it reads on any photograph in both schemes; the arrows are plates over the picture's edge, in the middle, not the chips' top-aligned ones. */
+  .place-gallery-label {
+    position: absolute;
+    inset: auto 0 0 0;
+    isolation: isolate;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 3.5rem 1.25rem 1rem;
+  }
+  .place-gallery-label::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    background: radial-gradient(
+      ellipse 130% 100% at 0% 100%,
+      color-mix(in srgb, var(--background) 90%, transparent) 0%,
+      color-mix(in srgb, var(--background) 74%, transparent) 30%,
+      color-mix(in srgb, var(--background) 42%, transparent) 55%,
+      color-mix(in srgb, var(--background) 14%, transparent) 78%,
+      transparent 100%
+    );
+  }
+  /* The row's pictures GROW as they come into view (scroll-driven, no script: a view timeline on each picture along the row's axis, its progress from "its edge reaches the row's edge" to "it is all in"): the picture from 0.8 to its size, the photograph inside it settling from a closer crop, the title from a thin, small setting of the variable face to its heavy, large one (Bricolage: weight 200 to 800, the optical size follows the size). The first picture is already all in, so it is at full size; the next one peeks in small and grows as it is brought in. Where the browser has no view timelines, or the visitor asks for less motion, every picture is at full size. */
+  @media (prefers-reduced-motion: no-preference) {
+    @supports (animation-timeline: view()) {
+      .place-gallery[data-many] .place-gallery-item {
+        view-timeline: --place-photo inline;
+        transform-origin: 0% 100%;
+        animation: place-photo-grow linear both;
+        animation-timeline: view(inline);
+        animation-range: entry 0% entry 100%;
+      }
+      .place-gallery[data-many] .place-gallery-img {
+        animation: place-photo-settle linear both;
+        animation-timeline: --place-photo;
+        animation-range: entry 0% entry 100%;
+      }
+      .place-gallery[data-many] .place-gallery-title {
+        transform-origin: 0% 100%;
+        animation: place-photo-title linear both;
+        animation-timeline: --place-photo;
+        animation-range: entry 0% entry 100%;
+      }
+      .place-gallery[data-many] .place-gallery-meta {
+        animation: place-photo-meta linear both;
+        animation-timeline: --place-photo;
+        animation-range: entry 30% entry 100%;
+      }
+    }
+  }
+  @keyframes place-photo-grow {
+    from {
+      scale: 0.8;
+    }
+    to {
+      scale: 1;
+    }
+  }
+  @keyframes place-photo-settle {
+    from {
+      scale: 1.22;
+    }
+    to {
+      scale: 1;
+    }
+  }
+  @keyframes place-photo-title {
+    from {
+      font-size: 0.9rem;
+      font-weight: 200;
+      letter-spacing: 0.01em;
+    }
+    to {
+      font-size: 1.375rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+  }
+  @keyframes place-photo-meta {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  .place-gallery [data-slot="scroll-row-arrow"] {
+    top: 50%;
+    translate: 0 -50%;
+    background: color-mix(in srgb, var(--background) 72%, transparent);
+    backdrop-filter: blur(4px);
+  }
+  .place-gallery [data-slot="scroll-row-arrow"]::before {
+    display: none;
+  }
   /* With a cover the head is tall enough to show the picture above the type, and the panel's bar (the close button) lies over its top edge, where it has no ground of its own: the buttons get a faint plate. */
   .place-cover {
     min-height: 26rem;
