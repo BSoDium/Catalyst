@@ -54,7 +54,7 @@ export function journeysOf(projection: PublishedProjection, slug: string, nameOf
         const a = bySlug.get(route.stops[legIndex]!);
         const b = bySlug.get(route.stops[legIndex + 1]!);
         if (!other || !a || !b || otherSlug === slug) return;
-        const metres = legLengthM({ lat: a.coordinates.lat, lon: a.coordinates.lon }, { lat: b.coordinates.lat, lon: b.coordinates.lon }, leg, { from: a.bbox, to: b.bbox });
+        const metres = legLengthM({ lat: a.coordinates.lat, lon: a.coordinates.lon }, { lat: b.coordinates.lat, lon: b.coordinates.lon }, leg);
         const mode: LegMode = leg?.mode ?? "unknown";
         const km = roundKm(metres);
         const name = nameOf(other);
@@ -141,7 +141,7 @@ export function tripsOf(projection: PublishedProjection, slug: string, nameOf: (
       const b = places[legIndex + 1]!;
       const leg = route.legs?.[legIndex];
       const mode: LegMode = leg?.mode ?? "unknown";
-      const km = roundKm(legLengthM({ lat: a.coordinates.lat, lon: a.coordinates.lon }, { lat: b.coordinates.lat, lon: b.coordinates.lon }, leg, { from: a.bbox, to: b.bbox }));
+      const km = roundKm(legLengthM({ lat: a.coordinates.lat, lon: a.coordinates.lon }, { lat: b.coordinates.lat, lon: b.coordinates.lon }, leg));
       const name = nameOf(places[other]!);
       return { slug: places[other]!.slug, name, mode, km, text: journeyText(direction, name, mode, km) };
     };
@@ -160,7 +160,7 @@ export function tripsOf(projection: PublishedProjection, slug: string, nameOf: (
     for (let i = 0; i + 1 < places.length; i++) {
       const a = places[i]!.coordinates;
       const b = places[i + 1]!.coordinates;
-      total += legLengthM({ lat: a.lat, lon: a.lon }, { lat: b.lat, lon: b.lon }, route.legs?.[i], { from: places[i]!.bbox, to: places[i + 1]!.bbox });
+      total += legLengthM({ lat: a.lat, lon: a.lon }, { lat: b.lat, lon: b.lon }, route.legs?.[i]);
     }
     const budget = Math.max(2, Math.floor(MAP_POINTS / Math.max(1, places.length - 1)));
     const legPaths: Trip["legPaths"] = [];

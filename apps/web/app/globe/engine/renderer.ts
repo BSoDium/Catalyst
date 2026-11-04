@@ -16,7 +16,6 @@ import type { Polylines } from "@catalyst/geodata";
 import type { CoverBlock, GlobePlace, GlobeRoute } from "../types";
 import { TrailDotsLayer, dotLegs } from "../paths/trail-dots-layer";
 import { legFeatures } from "../paths/leg-features";
-import { airportsOf } from "../paths/airports";
 import type { GlobeTheme } from "./colors";
 import { anchorZoom, unprojectOffset } from "./anchor";
 import { attachControls, type ControlsHost, type PointerKind } from "./controls";
@@ -360,7 +359,6 @@ export class GlobeRenderer {
     if (opts.routes.length > 0) {
       this.legIcons = new TrailDotsLayer(opts.container, { lines: false, iconFromZoom: LEG_ICON_FROM_ZOOM, onTop: true });
       this.legIcons.setLegs(dotLegs(legFeatures(opts.routes)));
-      this.legIcons.setAirports(airportsOf(opts.routes));
       this.legIcons.setTrail(opts.theme.trail);
       this.legIcons.setPage(opts.theme.background);
     }

@@ -177,21 +177,3 @@ describe("route url (the trip's own public page)", () => {
     expect(route.url).toMatchObject({ type: "string", maxLength: 2000 });
   });
 });
-
-describe("routes[].legs airports", () => {
-  const airport = (lat: number, lon: number) => ({ name: "Test airport", code: "TST", lat, lon });
-  it("a flight may name the airport of each stop, within reach of the stop", () => {
-    const p = parse({ id: "r", title: "R", stops: ["a", "b"], legs: [{ mode: "flight", fromAirport: airport(48.02, 2.03), toAirport: airport(48.52, 2.08) }] });
-    expect(p.routes[0]!.legs![0]).toMatchObject({ fromAirport: { code: "TST" }, toAirport: { name: "Test airport" } });
-  });
-  it("only a flight names airports", () => {
-    expect(() => parse({ id: "r", title: "R", stops: ["a", "b"], legs: [{ mode: "road", fromAirport: airport(48.02, 2.03) }] })).toThrow(/only a flight names airports/);
-  });
-  it("an airport lies near its stop, not in another country", () => {
-    expect(() => parse({ id: "r", title: "R", stops: ["a", "b"], legs: [{ mode: "flight", toAirport: airport(10, 10) }] })).toThrow(/km from "b"/);
-  });
-  it("is plain text with a three-letter code", () => {
-    expect(() => parse({ id: "r", title: "R", stops: ["a", "b"], legs: [{ mode: "flight", fromAirport: { ...airport(48.02, 2.03), code: "tst" } }] })).toThrow();
-    expect(() => parse({ id: "r", title: "R", stops: ["a", "b"], legs: [{ mode: "flight", fromAirport: { ...airport(48.02, 2.03), extra: 1 } }] })).toThrow();
-  });
-});

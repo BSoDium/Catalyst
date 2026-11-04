@@ -144,20 +144,10 @@ export interface GlobeRoute {
   palette?: number;
 }
 
-/** An airport a flight leaves from or lands at: a location in a city, marked on the map with a small dot (not a place). */
-export interface GlobeAirport {
-  name: string;
-  code?: string;
-  lat: number;
-  lon: number;
-}
-
-/** A leg of a route: the mode picks the line style, the polyline (when there is one) is the path it follows; a flight may name its airports, and its arc runs between them. */
+/** A leg of a route: the mode picks the line style, the polyline (when there is one) is the path it follows. */
 export interface GlobeLeg {
   mode: "road" | "rail" | "ferry" | "flight" | "walk" | "unknown";
   polyline?: string;
-  fromAirport?: GlobeAirport;
-  toAirport?: GlobeAirport;
 }
 
 /**
