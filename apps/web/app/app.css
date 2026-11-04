@@ -3810,6 +3810,11 @@
     isolation: isolate;
   }
 
+  /* In the full-screen entry view the page's margin is 2 rem (the content's gutter, and the copy-link button's right edge), not 3.5: the search's box ends where they do (#582). */
+  [data-slot="site-header"][data-full] [data-slot="search-trigger"] {
+    right: calc((100% - 100cqw) / 2 + 2rem);
+  }
+
   /* Docked outside the row, the search is past the row's own fade (`.nav-fade`): over the globe it had no ground (owner, 2026-10-30). A soft plate of its own, the page's colour at the middle and gone at the edge (a radial ramp in eased stops: no box, no blur to pay for), like the player's at the other corner. */
   [data-slot="site-header"] [data-slot="search-trigger"]::before {
     content: "";
