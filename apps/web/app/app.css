@@ -2019,8 +2019,6 @@
   .entry-facts-row {
     --exposure-text: calc(1cap + var(--text-meta--line-height) + 0.25rem);
     --facts-icon-col: 2.25rem;
-    /* the aperture's stroke (0.105 of the camera's 0.75 rem text): the globe is drawn at the size at which its 2-unit lines of 32 come out as thick */
-    --facts-stroke: calc(0.75rem * 0.105);
     container-type: inline-size;
     display: flex;
     flex-direction: column;
@@ -2037,7 +2035,7 @@
       gap: 1rem 2rem;
     }
   }
-  /* The link to the place (#581): the globe, two lines of text and, in the top right corner, the arrow, with no outline, the glyphs at one distance from the box's edge at the top, the bottom and their own side. The icons are drawn at the weight of the text: the globe (Carbon, a filled glyph of 2-unit lines on 32, drawn from 4 to 28 across and 2 to 30 down) is drawn with the aperture's line weight, which makes it smaller than the two lines, the arrow (lucide, on 24) at 1.25 units of 24 px; so each box's size is its glyph's and the padding on its side is the distance less the box's own inset (the globe's runs from 4 to 28 of 32, the arrow's from 7 to 17 of 24). */
+  /* The link to the place (#581): the pin (the aperture's twin), two lines of text and, in the top right corner, the arrow, with no outline, the glyphs at one distance from the box's edge at the top, the bottom and their own side: each box's padding is that distance less the glyph's own inset (the pin's runs from 4 to 20 of 24 across, the arrow's from 7 to 17). */
   .entry-place-link {
     --place-h: 2.75rem;
     --place-name: 0.8125rem;
@@ -2047,8 +2045,9 @@
     /* the viewfinder is as tall as the INK of the two lines, from the top of the name's tallest letters to the bottom of the second line's descenders (measured: 89 % of the block, 2.7 px down from its top, which puts its middle
        a pixel above the block's), not as the block's line boxes; its drawing runs from 3 to 21 of 24 units (75 %), the stroke is on top of that */
     --place-ink: calc(var(--place-text-h) * 0.89 - 1px);
-    --place-map: calc(var(--facts-stroke) * 16);
-    --place-inset: 0.128;
+    /* the pin is the aperture's twin: the same stroke (0.105 em of the camera's 12 px type; the link is set in that type too, its own lines have sizes of their own), the same size (its box is 1.2 times the camera's text less the stroke) and colour */
+    --place-stroke: calc(1em * 0.105);
+    --place-pin: calc((1cap + var(--text-meta--line-height) + 0.25rem - var(--place-stroke)) * 1.2);
     --place-arrow: 1.5rem;
     /* the distance of the ink from the box's edge: at the top, the bottom and the sides */
     --place-pad: calc((var(--place-h) - var(--place-ink)) / 2);
@@ -2058,7 +2057,7 @@
     gap: 0.75rem;
     box-sizing: border-box;
     height: var(--place-h);
-    padding-left: calc(var(--place-pad) - var(--place-map) * var(--place-inset));
+    padding-left: calc(var(--place-pad) - var(--place-pin) / 6 + var(--place-stroke) / 2);
     /* the arrow is nested in the top right corner (below): its ink is 11.25 of the 24 units of its box (the path from 7 to 17, the 1.25 stroke on top), and the text keeps a gap from it */
     padding-right: calc(var(--place-pad) + var(--place-arrow) * 11.25 / 24 + 0.75rem);
     color: var(--foreground);
@@ -2088,7 +2087,7 @@
       display: grid;
       grid-template-columns: var(--facts-icon-col) auto;
       column-gap: 0.75rem;
-      margin-left: calc(-1 * var(--place-pad) + var(--place-map) * var(--place-inset));
+      margin-left: calc(-1 * var(--place-pad) + var(--place-pin) / 6 - var(--place-stroke) / 2);
     }
     .entry-place-link svg.entry-place-link-pin {
       justify-self: center;
@@ -2099,6 +2098,8 @@
     background: var(--accent);
   }
   .entry-place-link-text {
+    text-transform: none;
+    font-weight: 400;
     display: flex;
     flex-direction: column;
     gap: 0.125rem;
@@ -2120,10 +2121,15 @@
   }
   .entry-place-link svg.entry-place-link-pin {
     flex: none;
-    width: var(--place-map);
-    height: var(--place-map);
-    transform: translateY(calc(var(--place-text-h) * 0.032));
+    width: var(--place-pin);
+    height: var(--place-pin);
+    stroke-width: var(--place-stroke);
+    stroke-linecap: butt;
+    stroke-linejoin: round;
     color: var(--muted-foreground);
+  }
+  .entry-place-link svg.entry-place-link-pin * {
+    vector-effect: non-scaling-stroke;
   }
   .entry-place-link svg.entry-place-link-arrow {
     position: absolute;

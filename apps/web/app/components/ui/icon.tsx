@@ -1,4 +1,4 @@
-import { ArrowLeft as CarbonArrowLeft, ChevronDown as CarbonChevronDown, Globe as CarbonGlobe, Search as CarbonSearch, ZoomReset as CarbonZoomReset, type CarbonIconType } from "@carbon/icons-react";
+import { ArrowLeft as CarbonArrowLeft, ChevronDown as CarbonChevronDown, Search as CarbonSearch, ZoomReset as CarbonZoomReset, type CarbonIconType } from "@carbon/icons-react";
 import {
   Aperture,
   ArrowDown,
@@ -85,7 +85,6 @@ export const ICONS = {
   "arrow-up": ArrowUp,
   "arrow-down": ArrowDown,
   "arrow-up-right": ArrowUpRight,
-  globe: CarbonGlobe,
   "arrow-up-left": ArrowUpLeft,
   enter: CornerDownLeft,
   command: Command,
