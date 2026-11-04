@@ -117,7 +117,8 @@ function Carousel({ items, from }: { items: GalleryItem[]; from: string }) {
     const reduced = typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     el.scrollTo({ left: Math.min(Math.max(index, 0), lastPosition(items.length)) * geo.step, behavior: reduced ? "auto" : "smooth" });
   };
-  const current = () => (geo && scroller.current ? Math.round(scroller.current.scrollLeft / geo.step) : 0);
+  const position = () => (geo && scroller.current ? scroller.current.scrollLeft / geo.step : 0);
+  const current = () => Math.round(position());
 
   return (
     <div className="relative">
@@ -131,7 +132,7 @@ function Carousel({ items, from }: { items: GalleryItem[]; from: string }) {
               <ul ref={layer} className="relative m-0 h-full list-none p-0">
                 {items.map((item, i) => (
                   <li key={item.src} className="absolute top-0 left-0 h-full overflow-hidden" style={{ width: 0, visibility: "hidden" }}>
-                    <Picture item={item} i={i} count={items.length} from={from} fullWidth={widest(geo.k)} onFocus={() => goTo(i)} style={{ height: "100%" }} />
+                    <Picture item={item} i={i} count={items.length} from={from} fullWidth={widest(geo.k)} onFocus={() => Math.abs(i - position()) > 1 && goTo(i)} style={{ height: "100%" }} />
                   </li>
                 ))}
               </ul>

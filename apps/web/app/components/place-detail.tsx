@@ -285,8 +285,7 @@ function stepContent(place: PlaceDetailData): { photos: PhotoItem[]; galleries: 
         items.push({ src: e.cover.src, alt: e.cover.alt, ...(e.cover.width && e.cover.height ? { width: e.cover.width, height: e.cover.height } : {}), title: e.title, href: e.href, ...(e.cover.small ? { small: e.cover.small } : {}), ...(e.date ? { date: e.date } : {}), ...(e.sensitive ? { sensitive: true as const } : {}) });
         return false;
       });
-      items.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
-      if (items.length > 0) galleries.set(group.kind, items);
+      if (items.length > 0) galleries.set(group.kind, newestFirst(items));
       return { ...group, entries: keep };
     })
     .filter((g) => g.entries.length > 0 || galleries.has(g.kind));
@@ -344,7 +343,7 @@ export function PlaceDetail({ place }: { place: PlaceDetailData }) {
                 return (
                   <div key={group.kind} data-kind={group.kind} className="@container flex flex-col gap-4">
                     <GroupHeader title={group.label} count={(gallery?.length ?? 0) + group.entries.length} />
-                    {gallery && <PhotoGallery items={gallery} from={place.slug} />}
+                    {gallery && <PhotoGallery key={`${place.slug}:${group.kind}`} items={gallery} from={place.slug} />}
                     {group.entries.length > 0 && (
                       // (the first row starts at the title's own distance from it, as a gallery does: the rows' padding is between them)
                       // (poems are short: in a wide panel they are two columns, each a row of its own width, and a narrow one is a list again)
