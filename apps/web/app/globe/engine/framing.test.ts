@@ -112,6 +112,9 @@ describe("a small box is framed on itself (#622)", () => {
     expect(FRAMING_MIN_RADIUS_KM).toBeLessThan(VIEW_RADIUS_RANGE_KM.min);
     expect(radiusFitZoom(r, 400, 600, 0)).toBeGreaterThan(radiusFitZoom(VIEW_RADIUS_RANGE_KM.min, 400, 600, 0) + 2); // more than two levels closer: the buildings are in
   });
+  it("a radius that is not a number frames the default view, as before", () => {
+    expect(radiusFitZoom(Number.NaN, 400, 600, 0)).toBe(radiusFitZoom(DEFAULT_VIEW_RADIUS_KM, 400, 600, 0));
+  });
   it("a box of 300 m is framed to its half extent, a place with no box keeps the 0.5 km minimum", () => {
     expect(placeFraming({ lat: 10, lon: 10, bbox: [9.9986, 9.9986, 10.0014, 10.0014] }).radiusKm).toBeCloseTo(0.155, 2);
     expect(placeFraming({ lat: 10, lon: 10, viewRadiusKm: 0.5 }).radiusKm).toBe(0.5);

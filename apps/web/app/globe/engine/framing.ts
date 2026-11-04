@@ -134,6 +134,7 @@ export function effectiveRadiusKm(radiusKm: number | undefined | null): number {
 
 /** The radius that frames a box: its own longer half extent, from `FRAMING_MIN_RADIUS_KM` (a view radius goes no lower than the contract's 0.5 km: `effectiveRadiusKm`). */
 function boxRadiusKm(radiusKm: number): number {
+  if (!Number.isFinite(radiusKm)) return DEFAULT_VIEW_RADIUS_KM;
   return Math.min(VIEW_RADIUS_RANGE_KM.max, Math.max(FRAMING_MIN_RADIUS_KM, radiusKm));
 }
 
