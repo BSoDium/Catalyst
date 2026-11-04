@@ -92,6 +92,7 @@ export function EntryRow({
   priority,
   className,
   linkState,
+  compact,
 }: {
   entry: EntrySummary;
   headingLevel?: 2 | 3 | 4;
@@ -99,6 +100,8 @@ export function EntryRow({
   className?: string;
   /** The router state of the row's link: where the entry was opened from (`listBackState`). */
   linkState?: unknown;
+  /** The row of a narrow column (the place panel): the same type as the list page's, in one column, with the place left out (the panel is that place). */
+  compact?: boolean;
 }) {
   const Heading = `h${headingLevel}` as "h2" | "h3" | "h4";
   const date = formatEntryDate(entry.date);
@@ -107,6 +110,49 @@ export function EntryRow({
   const cover = entry.cover && safeMediaSrc(entry.cover.src) ? { ...coverImageProps(entry.cover, ROW_COVER_SIZES), alt: entry.cover.alt } : null;
   const showCover = !!cover || entry.kind === "artwork";
   const tags = entry.tags.slice(0, 4);
+  if (compact && entry.kind !== "poem") {
+    return (
+      <article
+        id={entry.slug}
+        data-slot="entry-card"
+        data-kind={entry.kind}
+        data-compact=""
+        data-covered={showCover ? "" : undefined}
+        className={cn("ds-card entry-row @container grid min-w-0 grid-cols-1 gap-x-5 gap-y-3 border-t border-border py-6 @md:grid-cols-[minmax(0,1fr)_9rem]", className)}
+      >
+        <div className="flex min-w-0 flex-col gap-2.5">
+          {(date || status) && (
+            <p className="type-meta m-0 flex flex-wrap items-baseline gap-x-3 text-muted-foreground">
+              {date && <time dateTime={date.dateTime}>{date.text}</time>}
+              {status && <StatusTag status={status} className="text-[length:inherit] leading-[inherit] [font:inherit] tracking-[inherit] uppercase" />}
+            </p>
+          )}
+          <Heading data-slot="entry-card-title" className="m-0 font-display text-[1.625rem] leading-[1.06] font-extrabold tracking-[-0.025em] text-balance">
+            <Link to={entry.href} state={linkState} className="after:absolute after:inset-0 after:content-[''] focus-visible:outline-none">
+              {entry.title}
+            </Link>
+          </Heading>
+          {entry.summary && <p className="m-0 line-clamp-3 font-reading text-[1.0625rem] leading-[1.4] font-light text-pretty text-muted-foreground">{entry.summary}</p>}
+          {tags.length > 0 && <TagList label="Tags" tags={tags.map((label) => ({ label }))} className="font-meta text-xs" />}
+        </div>
+        {showCover && (
+          <div className="min-w-0 @max-md:order-first">
+            <div className="overflow-hidden">
+              {cover && entry.sensitive === true ? (
+                <SensitiveMedia>
+                  <img src={cover.src} srcSet={cover.srcSet} sizes={cover.sizes} alt={cover.alt} loading="lazy" decoding="async" className="aspect-4/3 w-full object-cover" />
+                </SensitiveMedia>
+              ) : cover ? (
+                <img src={cover.src} srcSet={cover.srcSet} sizes={cover.sizes} alt={cover.alt} loading="lazy" decoding="async" className="aspect-4/3 w-full object-cover" />
+              ) : (
+                <CoverArt seed={entry.slug} kind={entry.kind} cols={48} rows={27} />
+              )}
+            </div>
+          </div>
+        )}
+      </article>
+    );
+  }
   if (entry.kind === "poem") return <PoemRow entry={entry} Heading={Heading} date={date} place={place} status={status} tags={tags} className={className} linkState={linkState} />;
   return (
     <article

@@ -3,7 +3,7 @@ import { cn } from "~/lib/utils";
 import { Link } from "react-router";
 import type { PlaceSummary } from "@catalyst/schemas";
 import { PANEL_HEADING_ID } from "~/components/detail-panel";
-import { EntryListCard } from "~/components/entry/entry-list-card";
+import { EntryRow } from "~/components/entry/entry-list-card";
 import { TripCards } from "~/components/trip-card";
 import { Button, Icon, SectionHeader, Stack, StatePanel } from "~/components/ui";
 import { coverImageProps } from "~/lib/cover-image";
@@ -262,6 +262,11 @@ function stepContent(place: PlaceDetailData): { photos: PhotoItem[]; groups: Pla
   return { photos: [...own, ...linked], groups };
 }
 
+/** The entries of a group newest first, as a list page has them (an undated one last, the authored order kept among equals). */
+function newestFirst<T extends { date?: string | undefined }>(entries: T[]): T[] {
+  return [...entries].sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
+}
+
 /** What is behind the closed "On the road here": the pictures and the trip, counted. */
 function storyMeta(place: PlaceDetailData, pictures: number): string {
   const parts = [pictures > 0 ? `${pictures} ${pictures === 1 ? "picture" : "pictures"}` : "", place.body.length > 0 || place.summary ? "the story" : "", place.trips.length > 0 ? (place.trips.length === 1 ? place.trips[0]!.title : `${place.trips.length} trips`) : ""];
@@ -293,10 +298,10 @@ export function PlaceDetail({ place }: { place: PlaceDetailData }) {
               {groups.map((group) => (
                 <div key={group.kind} data-kind={group.kind} className="@container flex flex-col gap-4">
                   <SectionHeader as="h2" title={group.label} meta={group.entries.length} />
-                  <ul className="m-0 grid list-none grid-cols-1 gap-8 p-0">
-                    {group.entries.map((entry) => (
+                  <ul className="m-0 grid list-none grid-cols-1 gap-0 p-0">
+                    {newestFirst(group.entries).map((entry) => (
                       <li key={entry.slug} className="min-w-0">
-                        <EntryListCard entry={entry} linkState={{ from: place.slug }} headingLevel={3} orientation="horizontal" />
+                        <EntryRow entry={entry} linkState={{ from: place.slug }} headingLevel={3} compact />
                       </li>
                     ))}
                   </ul>
