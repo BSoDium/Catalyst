@@ -1039,6 +1039,7 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
       window.clearTimeout(holdTimer);
       window.clearTimeout(placeholderRetry);
       window.clearTimeout(placeholderHide);
+      window.clearTimeout(spotRoadsTimer);
       for (const w of waiters.splice(0)) w.resolve();
       manager.dispose();
       ro.disconnect();
