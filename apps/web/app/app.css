@@ -2683,7 +2683,8 @@
 
     /* A poem: the title and the lines in 4-10, the marginalia beside the title, 34 px down (the board). */
     .entry[data-kind="poem"][data-layout="full"] .entry-grid {
-      padding-top: 5.5rem;
+      /* (none: the running head and the cover start right under the header, as every other kind's do; there was 5.5 rem here, which left the cover far below the navbar, #582) */
+      padding-top: 0;
     }
 
     /* (the head runs the whole width, as every kind's does: the running head's rule and the cover's picture bleed; the title keeps its columns, 4 to 10) */
