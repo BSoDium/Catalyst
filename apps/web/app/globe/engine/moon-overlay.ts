@@ -42,7 +42,9 @@ export interface MoonFrame {
   /** The orbit display's data (#586), only while it is asked for (`setHud`): the orbit as points in these same px (null where it is behind the camera), its marks, the phase, the earth's shadow ahead. */
   hud?: {
     orbit: Array<[number, number] | null>;
-    ticks: { deg: number; at: [number, number] | null }[];
+    ticks: { deg: number; at: [number, number] | null; hide?: boolean }[];
+    /** Where the orbit is hidden (by the planet, or by the moon's own disc): not drawn, but its place is known and counted along. */
+    hide?: boolean[];
     lit: number;
     waxing: boolean;
     angleDeg: number;
@@ -226,26 +228,6 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 
 type Hud = NonNullable<MoonFrame["hud"]>;
 
-/** Every run of the orbit that is in view, as points, left to right (the text runs along it and reads the right way up). */
-export function runs(points: ReadonlyArray<[number, number] | null>): [number, number][][] {
-  const out: [number, number][][] = [];
-  let run: [number, number][] = [];
-  const close = () => {
-    if (run.length > 1) out.push(run[0]![0] > run[run.length - 1]![0] ? [...run].reverse() : run);
-    run = [];
-  };
-  for (const p of points) (p ? run.push(p) : close());
-  close();
-  return out;
-}
-
-/** The length of a polyline, px. */
-export function runLength(run: ReadonlyArray<[number, number]>): number {
-  let n = 0;
-  for (let i = 1; i < run.length; i++) n += Math.hypot(run[i]![0] - run[i - 1]![0], run[i]![1] - run[i - 1]![1]);
-  return n;
-}
-
 /** The items of data that run along the orbit, above it and below it. Real numbers: the orbit's own, the moon's now, the shadow's. Spaced out along the path by `spread`, no separators. */
 export function pathItems(h: Hud): { above: string[]; below: string[] } {
   const degAt = (ahead: number | null) => (ahead === null ? "---" : String(Math.round(((h.angleDeg + (ahead * 180) / Math.PI) % 360 + 360) % 360)).padStart(3, "0"));
@@ -259,17 +241,30 @@ export function pathItems(h: Hud): { above: string[]; below: string[] } {
   };
 }
 
-/** The width of a character of the path text, px (8 px mono at 0.16 em of tracking: `.globe-moon-hud-along`), and the blank between two items, in characters. */
+/** The width of a character of the data text, px (8 px mono at 0.16 em of tracking: `.globe-moon-hud-along`), and the room kept between two items. */
 const ALONG_CHAR = 6.1;
-const ALONG_GAP = 22;
+const ALONG_ROOM = 24;
 
-/** `items` set one after the other with a blank between, round and round until they fill `px` of path; `from` is the item it begins at (so that two runs do not begin alike). */
-export function alongText(items: readonly string[], px: number, from = 0): string {
-  const blank = "\u00a0".repeat(ALONG_GAP);
-  const want = Math.ceil(px / ALONG_CHAR);
-  let out = "";
-  for (let i = 0; out.length < want && i < 200; i++) out += items[(from + i) % items.length]! + blank;
-  return out;
+/** The room an item of text takes along the orbit, px. */
+export function itemWidth(text: string): number {
+  return text.length * ALONG_CHAR + ALONG_ROOM;
+}
+
+/**
+ * The orientation of an item at the tick `t` of `ticks` (every 10 degrees of the orbit, round): the screen angle of the orbit there, from its two neighbours, turned so that the text reads left to right; null where
+ * the neighbours are not on the picture. Anchored to the orbit's own angles, so that an item stays at its place in space whatever the camera sees of the orbit.
+ */
+export function itemAngle(ticks: ReadonlyArray<{ at: [number, number] | null }>, t: number): number | null {
+  const n = ticks.length;
+  const here = ticks[t]?.at;
+  if (!here) return null;
+  const a = ticks[(t + n - 1) % n]?.at ?? here;
+  const b = ticks[(t + 1) % n]?.at ?? here;
+  if (a === b) return null;
+  let deg = (Math.atan2(b[1] - a[1], b[0] - a[0]) * 180) / Math.PI;
+  if (deg > 90) deg -= 180;
+  else if (deg < -90) deg += 180;
+  return deg;
 }
 
 /**
@@ -282,17 +277,13 @@ class OrbitHud {
   readonly svg: SVGSVGElement;
   readonly canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D | null;
-  private defs: SVGDefsElement;
-  /** One route and its two lines of text per run of the orbit in view, made when first needed. */
-  private routes: { path: SVGPathElement; text: [SVGTextElement, SVGTextElement]; along: [SVGTextPathElement, SVGTextPathElement]; key: string }[] = [];
+  /** One item of data per tick (every 10 degrees of the orbit), alternately above the line and below it, made when first needed. */
+  private items: SVGTextElement[] = [];
   private lines: SVGGElement;
   private marks: SVGGElement;
   private readout: SVGTextElement;
 
-  constructor(
-    doc: Document,
-    private uid: string,
-  ) {
+  constructor(doc: Document) {
     const canvas = (this.canvas = doc.createElement("canvas"));
     canvas.className = "globe-moon-hud-pixels";
     canvas.setAttribute("aria-hidden", "true");
@@ -301,36 +292,23 @@ class OrbitHud {
     svg.setAttribute("class", "globe-moon-hud");
     svg.setAttribute("aria-hidden", "true");
     svg.setAttribute("focusable", "false");
-    this.defs = doc.createElementNS(SVG_NS, "defs") as SVGDefsElement;
     this.lines = doc.createElementNS(SVG_NS, "g") as SVGGElement;
     this.marks = doc.createElementNS(SVG_NS, "g") as SVGGElement;
     this.readout = doc.createElementNS(SVG_NS, "text") as SVGTextElement;
     this.readout.setAttribute("class", "globe-moon-hud-readout");
-    svg.append(this.defs, this.lines, this.marks, this.readout);
+    svg.append(this.lines, this.marks, this.readout);
   }
 
-  private route(i: number) {
-    let r = this.routes[i];
-    if (r) return r;
-    const doc = this.svg.ownerDocument;
-    const path = doc.createElementNS(SVG_NS, "path") as SVGPathElement;
-    path.setAttribute("id", `${this.uid}-route-${i}`);
-    this.defs.append(path);
-    const make = (cls: string, dy: string) => {
-      const t = doc.createElementNS(SVG_NS, "text") as SVGTextElement;
-      t.setAttribute("class", cls);
-      t.setAttribute("dy", dy);
-      const tp = doc.createElementNS(SVG_NS, "textPath") as SVGTextPathElement;
-      tp.setAttribute("href", `#${this.uid}-route-${i}`);
-      t.append(tp);
-      this.lines.append(t);
-      return { t, tp };
-    };
-    const above = make("globe-moon-hud-along", "-7");
-    const below = make("globe-moon-hud-along globe-moon-hud-along-below", "15");
-    r = { path, text: [above.t, below.t], along: [above.tp, below.tp], key: "" };
-    this.routes[i] = r;
-    return r;
+  private item(t: number): SVGTextElement {
+    let el = this.items[t];
+    if (el) return el;
+    el = this.svg.ownerDocument.createElementNS(SVG_NS, "text") as SVGTextElement;
+    el.setAttribute("class", t % 2 === 0 ? "globe-moon-hud-along" : "globe-moon-hud-along globe-moon-hud-along-below");
+    el.setAttribute("text-anchor", "middle");
+    el.setAttribute("dy", t % 2 === 0 ? "-7" : "15");
+    this.lines.append(el);
+    this.items[t] = el;
+    return el;
   }
 
   /** Visible or not (the fade is CSS). */
@@ -349,27 +327,28 @@ class OrbitHud {
     const doc = this.svg.ownerDocument;
     this.pixels(h, g, size, tone);
 
-    // the words along the orbit: every run of it in view, left to right, the data set out along it above and below
-    const items = pathItems(h);
-    const all = runs(h.orbit).map((run) => ({ run, px: runLength(run) })).filter((r) => r.px >= 90);
-    all.forEach(({ run, px }, i) => {
-      const r = this.route(i);
-      const sparse = run.filter((_, k) => k % 3 === 0 || k === run.length - 1); // (every half degree is for the lines; the text needs a third of the points)
-      const d = orbitPath(sparse);
-      if (d !== r.key) {
-        r.key = d;
-        r.path.setAttribute("d", d);
+    // the data along the orbit: each item at an angle of the orbit of its own (every 20 degrees, above the line; between them, every 20 degrees, below it), so that it stays where it is in space as the
+    // camera moves; one is left out where it would run into the one before it on the screen
+    const data = pathItems(h);
+    const ticks = h.ticks;
+    const lastDrawn: ({ x: number; y: number } | null)[] = [null, null];
+    for (let t = 0; t < ticks.length; t++) {
+      const el = this.item(t);
+      const k = ticks[t]!;
+      const side = t % 2;
+      const list = side === 0 ? data.above : data.below;
+      const text = list[Math.floor(t / 2) % list.length]!;
+      const angle = itemAngle(ticks, t);
+      const prev = lastDrawn[side];
+      const off = !k.at || k.hide || angle === null || k.at[0] < -60 || k.at[1] < -60 || k.at[0] > size.w + 60 || k.at[1] > size.h + 60;
+      if (off || (prev && Math.hypot(k.at![0] - prev.x, k.at![1] - prev.y) < itemWidth(text))) {
+        el.setAttribute("display", "none");
+        continue;
       }
-      const a = alongText(items.above, px, i);
-      const b = alongText(items.below, px, i + 2);
-      if (r.along[0].textContent !== a) r.along[0].textContent = a;
-      if (r.along[1].textContent !== b) r.along[1].textContent = b;
-      r.text[0].removeAttribute("display");
-      r.text[1].removeAttribute("display");
-    });
-    for (let i = all.length; i < this.routes.length; i++) {
-      this.routes[i]!.text[0].setAttribute("display", "none");
-      this.routes[i]!.text[1].setAttribute("display", "none");
+      lastDrawn[side] = { x: k.at![0], y: k.at![1] };
+      if (el.textContent !== text) el.textContent = text;
+      el.setAttribute("transform", `translate(${k.at![0].toFixed(1)} ${k.at![1].toFixed(1)}) rotate(${angle!.toFixed(1)})`);
+      el.removeAttribute("display");
     }
 
     // the numbers at the marks, on the side of the line that is up
@@ -377,7 +356,7 @@ class OrbitHud {
     marks.replaceChildren();
     const orbit = h.orbit.filter((p): p is [number, number] => p !== null);
     for (const k of h.ticks) {
-      if (!k.at || orbit.length < 2 || k.deg % 30 !== 0) continue;
+      if (!k.at || k.hide || orbit.length < 2 || k.deg % 30 !== 0) continue;
       const [x, y] = k.at;
       const [nx, ny] = this.normal(orbit, x, y);
       const label = doc.createElementNS(SVG_NS, "text");
@@ -444,11 +423,12 @@ class OrbitHud {
     return ny > 0 ? [-nx, -ny] : [nx, ny];
   }
 
-  /** Whether the orbit's point `i` of `n` lies in `span`: from where it begins to where it ends (as far past the middle as before it, where the end is not known). */
+  /** Whether the orbit's point `i` of `n` lies in `span`: from where it begins (before the moon, if it is in it) to where it ends. */
   private inSpan(span: HudSpan | undefined, i: number, n: number): boolean {
-    if (!span || span.now || span.fromAngle === null || span.peakAngle === null) return false;
+    if (!span || span.fromAngle === null || span.endAngle == null) return false;
     const ahead = (2 * Math.PI * i) / n;
-    return ahead >= span.fromAngle && ahead <= (span.endAngle ?? 2 * span.peakAngle - span.fromAngle);
+    // (the point is `ahead` of the moon, or a lap less, which is behind it)
+    return (ahead >= span.fromAngle && ahead <= span.endAngle) || (ahead - 2 * Math.PI >= span.fromAngle && ahead - 2 * Math.PI <= span.endAngle);
   }
 
   private colours = { tone: "", tint: "", umbra: "", solar: "" };
@@ -508,36 +488,42 @@ class OrbitHud {
         }
       }
     };
-    // the orbit: two cells lit, three dark, the count running on from one segment to the next
-    let step = 0;
-    let prev: [number, number] | null = null;
+    // the orbit: two cells lit, three dark. The count of cells is taken from the MOON along the orbit, each way, whatever part of it is on the picture and wherever the line is cut (by the planet, by the
+    // moon's disc, by the edge of the picture): so the dashes are where they are on the orbit, and slide with it as the camera moves, and do not shift as more or less of it comes into view
     const n = h.orbit.length - 1;
-    for (let i = 0; i <= n; i++) {
-      const p = h.orbit[i]!;
-      if (!p) {
-        prev = null;
-        continue;
+    const hide = h.hide ?? [];
+    const cells = h.orbit.map((p) => (p ? cell(p) : null));
+    const GAP = 24; // (a stretch where the line is not on the picture at all: counted as this many cells)
+    const run = (a: [number, number] | null, b: [number, number] | null) => (a && b ? Math.max(Math.abs(a[0] - b[0]), Math.abs(a[1] - b[1])) : GAP);
+    const dist = new Float64Array(n + 1);
+    for (let i = 1; i <= n / 2; i++) dist[i] = dist[i - 1]! + run(cells[i - 1]!, cells[i]!);
+    for (let i = n - 1; i > n / 2; i--) dist[i] = dist[i + 1]! + run(cells[i + 1]!, cells[i]!);
+    const lit = (cellsFromMoon: number) => (((Math.floor(cellsFromMoon) % 5) + 5) % 5) < 2;
+    for (let i = 1; i <= n; i++) {
+      const a = cells[i - 1];
+      const b = cells[i];
+      if (!a || !b || hide[i] || hide[i - 1]) continue;
+      // the tint is strongest at each graduation and fades towards the next; inside a shadow the line is solid and strong
+      const deg = h.angleDeg + (360 * i) / n;
+      const dark = this.inSpan(h.eclipse, i, n);
+      const sunny = !dark && this.inSpan(h.solar, i, n);
+      const shaded = dark || sunny;
+      ctx.fillStyle = dark ? umbra : sunny ? solar : tint;
+      ctx.globalAlpha = shaded ? 0.9 : orbitAlpha(tickGlow(deg));
+      if (shaded) line(a, b, () => true);
+      else if (i <= n / 2) {
+        const from = dist[i - 1]!;
+        line(a, b, (k) => lit(from + k));
+      } else {
+        const from = dist[i - 1]!; // (going towards the moon from the far side: the distance grows the other way)
+        line(a, b, (k) => lit(from - k));
       }
-      const q = cell(p);
-      if (prev) {
-        const from = step;
-        // the tint is strongest at each graduation and fades towards the next; inside the earth's shadow the line is solid and strong
-        const deg = h.angleDeg + (360 * i) / n;
-        const dark = this.inSpan(h.eclipse, i, n);
-        const sunny = !dark && this.inSpan(h.solar, i, n);
-        const shaded = dark || sunny;
-        ctx.fillStyle = dark ? umbra : sunny ? solar : tint;
-        ctx.globalAlpha = shaded ? 0.9 : orbitAlpha(tickGlow(deg));
-        line(prev, q, shaded ? () => true : (k) => (from + k) % 5 < 2);
-        step += Math.max(Math.abs(q[0] - prev[0]), Math.abs(q[1] - prev[1]));
-      }
-      prev = q;
     }
     // a stroke across the orbit at each mark: every 10 degrees, faint and short, and a little longer at the multiples of 30
 
     const orbit = h.orbit.filter((p): p is [number, number] => p !== null);
     for (const k of h.ticks) {
-      if (!k.at || orbit.length < 2) continue;
+      if (!k.at || k.hide || orbit.length < 2) continue;
       const [nx, ny] = this.normal(orbit, k.at[0], k.at[1]);
       const m = cell(k.at);
       const major = k.deg % 30 === 0;
@@ -636,7 +622,7 @@ export class MoonOverlay {
     // the box is drawn under the card, over the (invisible) link; it has no pointer of its own
     this.box = box(doc);
     link.append(this.box.svg, card);
-    this.hud = new OrbitHud(doc, `moon-hud-${Math.random().toString(36).slice(2, 8)}`);
+    this.hud = new OrbitHud(doc);
     // the display is UNDER the link: the card's plate hides the orbit and its words where they meet
     root.append(this.hud.canvas, this.hud.svg, link);
     if (typeof ResizeObserver !== "undefined") {

@@ -40,7 +40,8 @@ describe("eclipseAhead", () => {
   it("says so while the moon is in it", () => {
     const r = eclipseAhead(inPlane(Math.PI), sun);
     expect(r.now).toBe(true);
-    expect(r.fromAngle).toBe(0);
+    expect(r.fromAngle!).toBeLessThan(0);
+    expect(r.endAngle!).toBeGreaterThan(0);
   });
   it("finds none on an orbit that misses the shadow", () => {
     const tilted = (a: number): Vec3 => [R * Math.cos(a) * 0.1, R * Math.sin(a), R * Math.cos(a)];
@@ -65,6 +66,25 @@ describe("the end of a shadow and the moon's own", () => {
     expect(r.fromAngle).not.toBeNull();
     expect(r.peakAngle!).toBeCloseTo(Math.PI, 0);
     expect(r.endAngle!).toBeGreaterThan(r.peakAngle!);
+  });
+});
+
+describe("a shadow's edges move smoothly with the moon", () => {
+  const sun: Vec3 = [1, 0, 0];
+  const R = MOON.orbit;
+  const inPlane = (start: number) => (a: number): Vec3 => [R * Math.cos(start + a), R * Math.sin(start + a), 0];
+  it("moves by about as much as the moon does, not by a step of the scan", () => {
+    const a = eclipseAhead(inPlane(1.9), sun);
+    const b = eclipseAhead(inPlane(1.9 + 0.0007), sun); // (0.04 degrees further)
+    expect(Math.abs(a.fromAngle! - b.fromAngle! - 0.0007)).toBeLessThan(0.0002);
+    expect(Math.abs(a.endAngle! - b.endAngle! - 0.0007)).toBeLessThan(0.0002);
+  });
+  it("is still there while the moon is in it and goes when it has left it", () => {
+    const inside = eclipseAhead(inPlane(Math.PI - 0.1), sun);
+    expect(inside.now).toBe(true);
+    expect(inside.fromAngle!).toBeLessThan(0);
+    const after = eclipseAhead(inPlane(Math.PI + 1.0), sun);
+    expect(after.endAngle! > 0 || after.fromAngle === null).toBe(true);
   });
 });
 

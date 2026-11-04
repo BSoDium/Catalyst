@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { orbitAlpha, tickGlow, alongText, hudLines, orbitPath, pathItems, runLength, runs } from "./moon-overlay";
+import { hudLines, itemAngle, itemWidth, orbitAlpha, orbitPath, pathItems, tickGlow } from "./moon-overlay";
 
 describe("orbitPath", () => {
   it("draws runs of points and lifts the pen where the orbit is behind the camera", () => {
@@ -22,17 +22,22 @@ describe("hudLines", () => {
   });
 });
 
-describe("runs", () => {
-  it("is every stretch of the orbit in view, each put left to right", () => {
-    expect(runs([[0, 0], [1, 0], null, [9, 0], [8, 0], [7, 0]])).toEqual([[[0, 0], [1, 0]], [[7, 0], [8, 0], [9, 0]]]);
-    expect(runs([null, [1, 1], null])).toEqual([]);
+describe("itemWidth and itemAngle", () => {
+  it("takes room by the characters of the text", () => {
+    expect(itemWidth("ABCD")).toBeGreaterThan(itemWidth("AB"));
   });
-  it("measures a run", () => {
-    expect(runLength([[0, 0], [3, 4], [3, 10]])).toBe(11);
+  it("turns an item along the orbit at its tick, reading left to right", () => {
+    const ticks = [{ at: [0, 0] as [number, number] }, { at: [10, 0] as [number, number] }, { at: [20, 10] as [number, number] }];
+    expect(itemAngle(ticks, 1)).toBeCloseTo(Math.atan2(10, 20) * (180 / Math.PI), 5);
+    // going right to left is turned over, not upside down
+    const back = [{ at: [20, 0] as [number, number] }, { at: [10, 0] as [number, number] }, { at: [0, 0] as [number, number] }];
+    expect(itemAngle(back, 1)).toBeCloseTo(0, 5);
+    expect(itemAngle([{ at: null }, { at: [1, 1] as [number, number] }, { at: null }], 1)).toBeNull();
+    expect(itemAngle([{ at: null }, { at: null }, { at: null }], 1)).toBeNull();
   });
 });
 
-describe("pathItems and alongText", () => {
+describe("pathItems", () => {
   const h = { orbit: [], ticks: [], lit: 0.5, waxing: true, angleDeg: 90, info: { range: 8.25, inclDeg: -12, phaseDeg: 90 } };
   it("has the orbit's own numbers above and the moon's and the shadow's below", () => {
     const { above, below } = pathItems({ ...h, eclipse: { now: false, fromAngle: Math.PI / 2, peakAngle: Math.PI, at: null, peakAt: null } });
@@ -47,13 +52,6 @@ describe("pathItems and alongText", () => {
     const { below } = pathItems({ ...h, eclipse: { now: false, fromAngle: null, peakAngle: null, at: null, peakAt: null } });
     expect(below).toContain("SHADOW NOT ON PATH");
     expect(below).toContain("NO ECLIPSE");
-  });
-  it("sets the items one after another with blanks, and no separator, until the path is full", () => {
-    const text = alongText(["A", "B"], 200);
-    expect(text).not.toMatch(/[/|]/);
-    expect(text.startsWith("A\u00a0")).toBe(true);
-    expect(text.length).toBeGreaterThanOrEqual(Math.ceil(200 / 6.1));
-    expect(alongText(["A", "B"], 5, 1).startsWith("B")).toBe(true);
   });
 });
 

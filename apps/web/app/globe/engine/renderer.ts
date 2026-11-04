@@ -1569,9 +1569,10 @@ export class GlobeRenderer {
 
   moonFrame(): MoonFrame | null {
     const m = this.moonSample;
-    if (!m || !m.onScreen || !this.sized || this.disposed || this.lost || this.suspended || this.inInterlude) return null;
+    // (out of the picture it is still a frame while the orbit display is up, which goes on following the camera; the moon is then no target)
+    if (!m || (!m.onScreen && !this.moonHud) || !this.sized || this.disposed || this.lost || this.suspended || this.inInterlude) return null;
     const P = this.pixel;
-    return { x: m.cx * P + this.canvasLeft, y: (this.bufH - m.cy) * P + this.canvasTop, r: m.r * P, amount: m.amount, unhidden: m.unhidden, angle: this.moonAngleNow(), grid: { col: m.cx, row: this.bufH - m.cy, rad: m.r, visible: visibleBounds({ x: m.cx, y: this.bufH - m.cy, r: m.r }, m.planet && { x: m.planet.x, y: this.bufH - m.planet.y, r: m.planet.r }), cell: P, left: this.canvasLeft, top: this.canvasTop }, tone: this.boxTone(), ...(this.moonHud ? { hud: this.moonHudFrame() } : {}) };
+    return { x: m.cx * P + this.canvasLeft, y: (this.bufH - m.cy) * P + this.canvasTop, r: m.r * P, amount: m.amount, unhidden: m.onScreen ? m.unhidden : 0, angle: this.moonAngleNow(), grid: { col: m.cx, row: this.bufH - m.cy, rad: m.r, visible: visibleBounds({ x: m.cx, y: this.bufH - m.cy, r: m.r }, m.planet && { x: m.planet.x, y: this.bufH - m.planet.y, r: m.planet.r }), cell: P, left: this.canvasLeft, top: this.canvasTop }, tone: this.boxTone(), ...(this.moonHud ? { hud: this.moonHudFrame() } : {}) };
   }
 
   /** The orbit display's data in the container's CSS px (the frame's own coordinates), from the layer's trace. */
@@ -1579,27 +1580,29 @@ export class GlobeRenderer {
     const t = this.globe.moon?.trace();
     if (!t) return undefined;
     const P = this.pixel;
+    const m = this.moonSample;
     // (a point of the orbit far outside the picture, where it swings past the camera, is not drawn: a line that long is a streak across the screen, not an orbit)
     const w = this.bufW * P;
     const h = this.bufH * P;
-    const m = this.moonSample;
     const px = (b: [number, number] | null): [number, number] | null => {
       if (!b) return null;
-      // the orbit does not run over the moon itself
-      if (m && Math.hypot(b[0] - m.cx, b[1] - m.cy) < m.r + 4) return null;
       const x = b[0] * P + this.canvasLeft;
       const y = (this.bufH - b[1]) * P + this.canvasTop;
       return x < this.canvasLeft - w * 0.25 || x > this.canvasLeft + w * 1.25 || y < this.canvasTop - h * 0.25 || y > this.canvasTop + h * 1.25 ? null : [x, y];
     };
+    // the orbit does not run over the moon itself: its points there are hidden, and counted along
+    const inMoon = (b: [number, number] | null) => !!(b && m && Math.hypot(b[0] - m.cx, b[1] - m.cy) < m.r + 4);
+    const span = (s: typeof t.eclipse) => ({ now: s.now, fromAngle: s.fromAngle, peakAngle: s.peakAngle, endAngle: s.endAngle, at: px(s.at), peakAt: px(s.peakAt), endAt: px(s.endAt) });
     return {
       orbit: t.orbit.map(px),
-      ticks: t.ticks.map((k) => ({ deg: k.deg, at: px(k.at) })),
+      hide: t.hide.map((hid, i) => hid || inMoon(t.orbit[i]!)),
+      ticks: t.ticks.map((k) => ({ deg: k.deg, at: px(k.at), hide: k.hide || inMoon(k.at) })),
       lit: t.lit,
       waxing: t.waxing,
       angleDeg: t.angleDeg,
       info: { range: t.range, inclDeg: t.inclinationDeg, phaseDeg: t.phaseDeg },
-      eclipse: { now: t.eclipse.now, fromAngle: t.eclipse.fromAngle, peakAngle: t.eclipse.peakAngle, endAngle: t.eclipse.endAngle, at: px(t.eclipse.at), peakAt: px(t.eclipse.peakAt), endAt: px(t.eclipse.endAt) },
-      solar: { now: t.solar.now, fromAngle: t.solar.fromAngle, peakAngle: t.solar.peakAngle, endAngle: t.solar.endAngle, at: px(t.solar.at), peakAt: px(t.solar.peakAt), endAt: px(t.solar.endAt) },
+      eclipse: span(t.eclipse),
+      solar: span(t.solar),
     };
   }
 

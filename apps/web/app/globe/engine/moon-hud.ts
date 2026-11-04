@@ -27,43 +27,52 @@ export const ECLIPSE_FROM = 0.08;
 export interface EclipseAhead {
   /** The moon is in the shadow now. */
   now: boolean;
-  /** The angle (radians, ahead of the moon on its orbit) where the next shadow begins; null when the orbit never meets it. 0 while `now`. */
+  /** The angle (radians, ahead of the moon on its orbit) where the shadow in question begins: negative while the moon is already in it; null when the orbit has none. */
   fromAngle: number | null;
-  /** The angle ahead where the moon is deepest in the shadow; null as above. */
+  /** The angle ahead where it is deepest: the middle of the shadow. */
   peakAngle: number | null;
-  /** The angle ahead where it leaves the shadow again; null as above, and when it does not within a lap. */
+  /** The angle ahead where the moon leaves the shadow. */
   endAngle: number | null;
 }
 
+/** The part of a lap, ahead of the moon, that is looked at: a quarter lap behind it (a shadow it is in, or has just left) and the rest of the lap in front. */
+const BEHIND = Math.PI / 2;
+
 /**
- * Where, along the orbit, a thing of `strength(a)` (0 is none, over `threshold` is in it) next begins, peaks and ends, `a` radians ahead of the moon. Scans one lap in `steps`. The peak is the middle of
- * the stretch where it is at its strongest (a shadow's full strength is a plateau, not a point).
+ * The shadow (a thing of `strength(a)`, `a` radians ahead of the moon, over `threshold` is in it) the moon is in or comes to next: where it begins (negative if it is in it), its middle and where it ends.
+ * It is a fixed stretch of the orbit and the moon moves along it, so the ends are found at a fine step and refined by halving (the edges move smoothly with the moon and the earth's turn, not by a step at
+ * a time). A shadow the moon has completely left is not looked at (it is over: the next is a lap away); null when the orbit has none.
  */
 export function spanAhead(strength: (ahead: number) => number, threshold: number, steps = 360): EclipseAhead {
-  const now = strength(0) > threshold;
-  let from: number | null = now ? 0 : null;
-  let end: number | null = null;
-  const inside: { a: number; s: number }[] = [];
-  for (let i = 0; i <= steps; i++) {
-    const a = (2 * Math.PI * i) / steps;
-    const s = strength(a);
-    if (from === null) {
-      if (s > threshold) {
-        from = a;
-        inside.push({ a, s });
-      }
-      continue;
+  const lo0 = -BEHIND;
+  const hi0 = 2 * Math.PI - BEHIND;
+  const inside = (a: number) => strength(a) > threshold;
+  // the edge between `out` (not in) and `inn` (in), to a thousandth of a degree
+  const edge = (out: number, inn: number): number => {
+    for (let k = 0; k < 14; k++) {
+      const mid = (out + inn) / 2;
+      if (inside(mid)) inn = mid;
+      else out = mid;
     }
-    if (s <= threshold) {
-      end = a;
-      break;
+    return (out + inn) / 2;
+  };
+  let prev = lo0;
+  let was = inside(prev);
+  let from: number | null = was ? lo0 : null;
+  for (let i = 1; i <= steps; i++) {
+    const a = lo0 + ((hi0 - lo0) * i) / steps;
+    const is = inside(a);
+    if (is && !was) from = edge(prev, a);
+    if (!is && was && from !== null) {
+      const end = edge(a, prev);
+      if (end > 0) return { now: from <= 0, fromAngle: from, peakAngle: (from + end) / 2, endAngle: end };
+      from = null; // over: the moon has left it
     }
-    inside.push({ a, s });
+    prev = a;
+    was = is;
   }
-  if (from === null) return { now, fromAngle: null, peakAngle: null, endAngle: null };
-  const top = Math.max(...inside.map((p) => p.s));
-  const level = inside.filter((p) => p.s >= top - 0.01 * Math.abs(top));
-  return { now, fromAngle: from, peakAngle: (level[0]!.a + level[level.length - 1]!.a) / 2, endAngle: end };
+  if (from !== null) return { now: from <= 0, fromAngle: from, peakAngle: null, endAngle: null };
+  return { now: false, fromAngle: null, peakAngle: null, endAngle: null };
 }
 
 /**

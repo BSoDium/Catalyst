@@ -40,8 +40,10 @@ export interface MoonSample {
 /** The orbit as the camera sees it, for the card's orbit display (#586): points on the drawing buffer (art pixels, y up), null where the orbit is behind the camera. */
 export interface MoonTrace {
   orbit: Array<[number, number] | null>;
+  /** Where the planet is in front of the orbit's point: its position is still known (the line is not drawn there, but it is counted along). */
+  hide: boolean[];
   /** A mark every 10 degrees of the orbit's own angle (the numbered ones are the multiples of 30) (fixed on the orbit: they go by as the moon does). */
-  ticks: { deg: number; at: [number, number] | null }[];
+  ticks: { deg: number; at: [number, number] | null; hide: boolean }[];
   /** The share of the disc that is lit, whether it is growing, and where the moon is on the orbit (degrees). */
   lit: number;
   waxing: boolean;
@@ -301,12 +303,23 @@ export class MoonLayer {
 
   /** A point of the scene on the drawing buffer (art pixels, y up), or null where it is behind the camera. */
   private onBuffer(p: Vec3): [number, number] | null {
+    return this.project(p) && !this.occluded(p) ? this.project(p) : null;
+  }
+
+  /** A point of the scene on the drawing buffer (art pixels, y up), or null where it is behind the camera. Where the planet is in front of it is `occluded`. */
+  private project(p: Vec3): [number, number] | null {
     const f = this.last!;
     const cam = f.camera;
     const ce = cam.matrixWorld.elements;
     const ahead = -((p[0] - cam.position.x) * ce[8]! + (p[1] - cam.position.y) * ce[9]! + (p[2] - cam.position.z) * ce[10]!);
     if (ahead <= 0.5) return null;
-    // behind the planet: the ray from the camera to the point meets the unit sphere before it gets there
+    const ndc = this.v.set(p[0], p[1], p[2]).project(cam);
+    return [(ndc.x * 0.5 + 0.5) * f.bufW, (ndc.y * 0.5 + 0.5) * f.bufH];
+  }
+
+  /** Whether the planet is between the camera and the point: the ray from the camera to it meets the unit sphere before it gets there. */
+  private occluded(p: Vec3): boolean {
+    const cam = this.last!.camera;
     const dx = p[0] - cam.position.x;
     const dy = p[1] - cam.position.y;
     const dz = p[2] - cam.position.z;
@@ -314,25 +327,31 @@ export class MoonLayer {
     const b = (cam.position.x * dx + cam.position.y * dy + cam.position.z * dz) / len;
     const c = cam.position.x ** 2 + cam.position.y ** 2 + cam.position.z ** 2 - 1;
     const disc = b * b - c;
-    if (disc > 0) {
-      const t = -b - Math.sqrt(disc);
-      if (t > 0 && t < len) return null;
-    }
-    const ndc = this.v.set(p[0], p[1], p[2]).project(cam);
-    return [(ndc.x * 0.5 + 0.5) * f.bufW, (ndc.y * 0.5 + 0.5) * f.bufH];
+    if (disc <= 0) return false;
+    const t = -b - Math.sqrt(disc);
+    return t > 0 && t < len;
   }
 
   /** The orbit, its marks, the phase and the shadow for the card's display, from the last frame. Null while the moon is not drawn. Built on ask (a few hundred points): only while the card shows it. */
   trace(): MoonTrace | null {
     const f = this.last;
-    if (!f || !this.basis || !this.sample?.onScreen) return null;
+    // (also while the moon is out of the picture: the orbit goes on, in the picture or not, and follows the camera)
+    if (!f || !this.basis || !this.sample) return null;
     const basis = this.basis;
     const at = (a: number): Vec3 => toEarthFrame(inertialPosition(f.angle + a, basis), f.eraDeg);
     const N = 720; // (every half degree: the orbit is long on the screen near the camera, and the line is cut round the moon and where the planet hides it, so it must be fine there)
     const orbit: MoonTrace["orbit"] = [];
-    for (let i = 0; i <= N; i++) orbit.push(this.onBuffer(at((2 * Math.PI * i) / N)));
+    const hide: boolean[] = [];
+    for (let i = 0; i <= N; i++) {
+      const p = at((2 * Math.PI * i) / N);
+      orbit.push(this.project(p));
+      hide.push(this.occluded(p));
+    }
     const ticks: MoonTrace["ticks"] = [];
-    for (let deg = 0; deg < 360; deg += 10) ticks.push({ deg, at: this.onBuffer(at((deg * Math.PI) / 180 - f.angle)) });
+    for (let deg = 0; deg < 360; deg += 10) {
+      const p = at((deg * Math.PI) / 180 - f.angle);
+      ticks.push({ deg, at: this.project(p), hide: this.occluded(p) });
+    }
     const lit = litShare(at(0), f.sun);
     const waxing = litShare(at(0.02), f.sun) > lit;
     const ahead = eclipseAhead(at, f.sun);
@@ -345,6 +364,7 @@ export class MoonLayer {
     const turn = (f.angle % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
     return {
       orbit,
+      hide,
       ticks,
       lit,
       waxing,
