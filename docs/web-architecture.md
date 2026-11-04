@@ -107,8 +107,7 @@ app/
 - **The empty home.** With no published place the shell still draws the globe (sky, rotation) and the landing hero (`docs/landing.md`) is the
   empty home: its how-to line says "No place is published yet: start from a list." and its four rows open the lists. (The earlier `ArchiveEmpty`
   plate was removed: nothing rendered it.)
-- **The place panel.** The name (h1) and one quiet line: region and country (the country's English name derived from `countryCode`, each word
-  once), the coordinates at the precision they are stored with (`48.85° N, 2.35° E`, never padded: `formatPlaceCoordinates`) and the dates. The
+- **The place panel.** A cover header with the name in the display face and a facts strip (coordinates, dates, counts of entries per kind): see docs/design-system.md, "The place panel". The
   entries follow grouped by kind under their own headings (h2 "Articles" with a count, the cards h3, no kind on a card); a place without entries
   shows no entries section at all, not an empty box. On a phone the panel is a full-height dialog with a compact header (the close button alone,
   no box, no repeated "Place": the heading names the dialog); the globe is not mounted behind it, so there is no map to peek at.

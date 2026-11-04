@@ -10,8 +10,8 @@ A place that is a **step** of a bigger trip no longer opens on the trip's big ma
 
 | Step has | Page |
 | --- | --- |
-| no entries | name and quiet line, then the story open: summary, body, the pictures (grid, four shown, the rest behind a disclosure), and the trip card |
-| entries | name and quiet line, then the entries by kind (unchanged), then **one closed line**, "On the road here" with what is inside ("2 pictures · the story · Demo route"), that opens the same story |
+| no entries | the header (cover, name, facts strip), then the story open: summary, body, the pictures (grid, four shown, the rest behind a disclosure), and the trip card |
+| entries | the header (cover, name, facts strip), then the entries by kind (unchanged), then **one closed line**, "On the road here" with what is inside ("2 pictures · the story · Demo route"), that opens the same story |
 
 - **Trip card** (`TripCard`): the trip's map across the top (this step ringed), then in descending weight the trip's own name, one mono line of facts ("2025-07–2025-10 · 70 stops · about 32,700 km"), where the step falls ("Stop 50 of 70") with the stop before and after as two quiet rows (an arrow, the place as a link, "by ferry · about 170 km"), and last, when the trip has a public page, one full-width row "See the whole trip on <host> ↗" (neutral on purpose: it reads right for a trip that is over). A place a trip passes several times says "Visited 3 times" and lists no hop (each visit has its own). Two cards open, the others behind a disclosure. The map is the card's full width, never a small box in a tall one. The big map card and the rail timeline (`trip-itinerary.tsx`) are gone.
 - **Photographs are pictures of the step.** A photograph (kind `photograph`) linked to the place shows in the step's picture strip, its cover linking to the photograph, and is **not** counted as an entry: a step whose only entries are its own photos is still a story page, not a page whose story is secondary. A `sensitive` photograph stays an entry (its card blurs it).

@@ -273,9 +273,11 @@ accident. Code: `components/ui/sensitive-media.tsx`, `.sensitive-media*` in `app
 
 ### The place panel
 
-The name (h1), then one quiet line: region and country (each word once; the country derived from the place's country code), the
-coordinates at the precision they are stored with (`48.85° N, 2.35° E`: a value written with two decimals is not padded to four, that would be
-false precision) and the dates. Then the summary, the text, the images and the entries grouped by kind under their own headings ("Articles 2",
+The head of the panel is the place's cover when it has one, else type alone (`PlaceHeader`, `components/place-detail.tsx`). In order: a small tracked line with the region and country (each word once; the country derived from the place's country code) and, when it applies, "Lived here" (`lived`) or "Lives here" (`living`, the current home) in the signal blue; the name (h1) in the display face (Bricolage 800, `.place-name`, up to 4.5 rem); then the facts strip (`PlaceFacts`). At the left of the strip the two coordinates, each as one figure in three voices (`placeCoordinateParts` in `lib/labelling.ts`: whole degrees bold and bright, the decimals light and dim at the precision they are stored with, never padded, the hemisphere a tiny tracked mono letter; read out as `48.85° N`) and the dates when there are any; at the right end one count per kind of entry about the place (nested places' entries included), their labels and figures right-aligned. The counts are one block: when it does not fit beside the coordinates it goes whole to the next row and only then wraps inside itself. A figure the data does not have is not drawn.
+
+The cover (`lib/place-cover.ts`) is the place's own first image, else the cover of one of its entries, tried photograph, poem, article, artwork, project (a software cover is a screenshot: the last resort); a sensitive entry is never used. It is decoration (`alt=""`), blurred and dimmed toward the panel's ground (`.place-cover-img`, the artwork stage's backdrop treatment) and faded out at the bottom with a mask, not a gradient to the page colour (the panel is translucent over the map and a gradient would show its edge). It is never credited or linked, and runs up under the panel's bar: the close button sits on a soft oval of the page colour centred on the panel's top corner (`.place-cover` rules in `app.css`; on a phone the bar floats over the picture, the oval on the right corner). A place's own image that heads the panel is not shown again in the strip below; an entry's cover is (the strip is the link to a photograph).
+
+Then the summary, the text, the images and the entries grouped by kind under their own headings ("Articles 2",
 the cards h3). A place without entries shows nothing for them (no section, no empty box). The kind is not said on the cards (the heading says it).
 
 ### Artwork wall (`/artworks`, 2026-10-19, owner: the image-beside-text rows felt flat)
