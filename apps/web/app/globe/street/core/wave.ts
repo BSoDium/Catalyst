@@ -17,7 +17,7 @@ export const WAVE = {
 /** The tile's side in output px and the rings the wave has to cross to reach the farthest corner from the middle of an `outW` x `outH` screen, `cell` output px to an art cell. */
 export function waveGeometry(outW: number, outH: number, cell: number): { tile: number; rings: number } {
   const reach = Math.max(outW, outH) / 2;
-  const tile = Math.max(1, Math.round(Math.max(cell * WAVE.tileCells, reach / WAVE.maxRings)));
+  const tile = Math.max(1, Math.ceil(Math.max(cell * WAVE.tileCells, reach / WAVE.maxRings)));
   return { tile, rings: Math.ceil(reach / tile) };
 }
 
