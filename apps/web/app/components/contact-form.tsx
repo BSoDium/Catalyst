@@ -25,6 +25,8 @@ export function ContactForm() {
   const [errors, setErrors] = useState<ContactErrors>({});
   const [typed, setTyped] = useState(0);
   const [failure, setFailure] = useState("");
+  // The name the visitor gave, to thank them by (none after a return from the plain post: the page was reloaded).
+  const [sender, setSender] = useState("");
   const thanksRef = useRef<HTMLParagraphElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
   const [stage, setStage] = useState<number | undefined>(undefined);
@@ -67,6 +69,7 @@ export function ContactForm() {
     const result = await sendContact(values);
     if (result.ok) {
       setStage(formRef.current?.offsetHeight); // the height to keep while the form is covered
+      setSender(values.name.trim());
       setCovered(true);
       setStatus("sent");
     } else {
@@ -84,8 +87,9 @@ export function ContactForm() {
       <div className="contact-stage" data-sent={status === "sent" ? "" : undefined} style={stage === undefined ? undefined : { height: stage }}>
       {status === "sent" && (
         <p ref={thanksRef} tabIndex={-1} role="status" className="contact-thanks">
-          <Icon name="check" size="large" aria-hidden="true" />
-          <span>Thank you: your message is on its way. I read everything and answer as soon as I can.</span>
+          <Icon name="mail-check" size="large" aria-hidden="true" className="contact-thanks-icon" />
+          <span className="contact-thanks-title">{sender ? `Thank you, ${sender}.` : "Thank you."}</span>
+          <span className="contact-thanks-sub">Your message is on its way. I read everything and answer as soon as I can.</span>
         </p>
       )}
       {(status !== "sent" || covered) && (
