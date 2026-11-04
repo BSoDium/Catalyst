@@ -8,8 +8,8 @@ describe("the tiled wave", () => {
     const big = waveGeometry(6000, 4000, 3);
     expect(big.rings).toBeLessThanOrEqual(WAVE.maxRings);
   });
-  it("takes a ring's stagger per ring and the fade of the last", () => {
-    expect(waveTotalMs(10)).toBe(10 * WAVE.staggerMs + WAVE.fadeMs);
+  it("takes a stagger per ring, the longest delay at random and the fade of the last", () => {
+    expect(waveTotalMs(10)).toBe(10 * WAVE.staggerMs + WAVE.jitterMs + WAVE.fadeMs);
     expect(waveTotalMs(WAVE.maxRings)).toBeLessThan(3000);
   });
 });

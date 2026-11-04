@@ -375,11 +375,12 @@ void main() {
   float shimmer = 0.0;
   float flash = 0.0;
   if (uWave.z > 0.0) {
-    // tiles ("chunks") come in one after the other from the centre: ring r (the square ring of tiles r away from the middle one) begins r x stagger ms after the first, and takes fade ms to come
+    // tiles ("chunks") come in one after the other from the centre: a tile r tiles away from the middle one begins r x stagger ms after it, plus a delay of its own at random, and takes fade ms to come
     // in (dithered); at its start a tile flashes in the ink, then glows in the peak tone, and settles
     vec2 tile = floor(vec2(p) / uWave.z) - floor(uWave.xy / uWave.z);
-    float ring = max(abs(tile.x), abs(tile.y));
-    float local = clamp((uWaveMs - ring * ${WAVE.staggerMs.toFixed(1)}) / ${WAVE.fadeMs.toFixed(1)}, 0.0, 1.0);
+    float ring = length(tile);   // (the straight distance in tiles: a round wave)
+    float tileRand = fract(sin(dot(tile, vec2(12.9898, 78.233))) * 43758.5453);   // (each tile's own delay: the rate they load at is random)
+    float local = clamp((uWaveMs - ring * ${WAVE.staggerMs.toFixed(1)} - tileRand * ${WAVE.jitterMs.toFixed(1)}) / ${WAVE.fadeMs.toFixed(1)}, 0.0, 1.0);
     if (!(local > th)) { o = vec4(0.0); return; }
     shimmer = local < 1.0 ? 1.0 - local : 0.0;
     flash = local < ${WAVE.flash.toFixed(2)} ? 1.0 - local / ${WAVE.flash.toFixed(2)} : 0.0;
