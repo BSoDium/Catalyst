@@ -2083,7 +2083,7 @@
     stroke-width: var(--place-stroke);
     stroke-linecap: butt;
     stroke-linejoin: miter;
-    transform: translateY(calc(var(--place-text-h) * -0.032));
+    transform: translateY(calc(var(--place-text-h) * 0.032));
     color: var(--muted-foreground);
   }
   .entry-place-link svg.entry-place-link-pin * {
