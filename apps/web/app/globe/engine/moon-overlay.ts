@@ -197,10 +197,16 @@ export function hudLines(h: NonNullable<MoonFrame["hud"]>): string[] {
 /** The orbit display's fade (app.css `.globe-moon-hud`), ms: the globe goes on feeding it frames this long after the card is put away. */
 const HUD_FADE_MS = 400;
 
-/** How strong the orbit is at `near` (1 at the moon, 0 opposite it): a gradient from a clear line at the moon to a faint one on the far side. */
-export function orbitAlpha(near: number): number {
-  const t = Math.min(1, Math.max(0, near));
-  return 0.16 + 0.54 * t * t;
+/** How strongly the orbit is tinted at the orbit angle `deg`: most at each graduation (every 10 degrees), and less and less tinted towards the middle between two of them. 1 at a mark, 0 half way. */
+export function tickGlow(deg: number): number {
+  const m = ((deg % 10) + 10) % 10;
+  const t = Math.min(m, 10 - m) / 5;
+  return (1 - t) * (1 - t);
+}
+
+/** The strength of the orbit's line where its glow is `glow`: a faint line between the marks, a clear one at them. */
+export function orbitAlpha(glow: number): number {
+  return 0.14 + 0.66 * Math.min(1, Math.max(0, glow));
 }
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -376,6 +382,14 @@ class OrbitHud {
       name.textContent = "UMBRA";
       marks.append(name);
     }
+    if (e.peakAt) {
+      const peak = doc.createElementNS(SVG_NS, "text");
+      peak.setAttribute("class", "globe-moon-hud-number globe-moon-hud-eclipse");
+      peak.setAttribute("x", (e.peakAt[0] + 8).toFixed(1));
+      peak.setAttribute("y", (e.peakAt[1] + 3).toFixed(1));
+      peak.textContent = "PEAK";
+      marks.append(peak);
+    }
 
     // the readout, one line under the other, on the side of the box that the card is not on
     const lines = hudLines(h);
@@ -410,6 +424,14 @@ class OrbitHud {
     nx /= len;
     ny /= len;
     return ny > 0 ? [-nx, -ny] : [nx, ny];
+  }
+
+  /** Whether the orbit's point `i` of `n` lies in the stretch from where the shadow begins to where the moon is deepest in it. */
+  private inShadow(h: Hud, i: number, n: number): boolean {
+    const e = h.eclipse;
+    if (e.now || e.fromAngle === null || e.peakAngle === null) return false;
+    const ahead = (2 * Math.PI * i) / n;
+    return ahead >= e.fromAngle && ahead <= e.peakAngle;
   }
 
   private accent = { tone: "", value: "" };
@@ -482,8 +504,11 @@ class OrbitHud {
       const q = cell(p);
       if (prev) {
         const from = step;
-        ctx.globalAlpha = orbitAlpha(1 - Math.min(i, n - i) / (n / 2));
-        line(prev, q, (k) => (from + k) % 5 < 2);
+        // the tint is strongest at each graduation and fades towards the next; inside the earth's shadow the line is solid and strong
+        const deg = h.angleDeg + (360 * i) / n;
+        const shaded = this.inShadow(h, i, n);
+        ctx.globalAlpha = shaded ? 0.9 : orbitAlpha(tickGlow(deg));
+        line(prev, q, shaded ? () => true : (k) => (from + k) % 5 < 2);
         step += Math.max(Math.abs(q[0] - prev[0]), Math.abs(q[1] - prev[1]));
       }
       prev = q;
@@ -496,25 +521,25 @@ class OrbitHud {
       const [nx, ny] = this.normal(orbit, k.at[0], k.at[1]);
       const m = cell(k.at);
       const major = k.deg % 30 === 0;
-      // (the mark's own angle from the moon, 0 at the moon to 1 opposite it)
-      const away = Math.abs(((k.deg - h.angleDeg + 540) % 360) - 180) / 180;
-      ctx.globalAlpha = (major ? 0.9 : 0.5) * orbitAlpha(1 - away);
+      ctx.globalAlpha = major ? 0.95 : 0.7;
       const dx = Math.round(nx * (major ? 3 : 1.5));
       const dy = Math.round(ny * (major ? 3 : 1.5));
       line([m[0] - dx, m[1] - dy], [m[0] + dx, m[1] + dy], () => true);
     }
-    // the shadow's bracket: a square, five cells, round where it begins
+    // where the earth's shadow begins and where the moon is deepest in it: squares in the plane of the orbit (their sides along the line and across it), a big one at the start and a small one at the middle
+    ctx.globalAlpha = 1;
     const e = h.eclipse;
-    if (e.at) {
-      ctx.globalAlpha = 1;
-      const [mx, my] = cell(e.at);
-      for (let i = -3; i <= 3; i++) {
-        dot(mx + i, my - 3);
-        dot(mx + i, my + 3);
-        dot(mx - 3, my + i);
-        dot(mx + 3, my + i);
-      }
-    }
+    const square = (at: [number, number], half: number) => {
+      const [mx, my] = cell(at);
+      const [nx, ny] = this.normal(orbit, at[0], at[1]);
+      const tx = ny;
+      const ty = -nx;
+      const corner = (a: number, b: number): [number, number] => [Math.round(mx + tx * a * half + nx * b * half), Math.round(my + ty * a * half + ny * b * half)];
+      const c = [corner(-1, -1), corner(1, -1), corner(1, 1), corner(-1, 1)];
+      for (let k = 0; k < 4; k++) line(c[k]!, c[(k + 1) % 4]!, () => true);
+    };
+    if (e.at && orbit.length > 1) square(e.at, 4);
+    if (e.peakAt && orbit.length > 1) square(e.peakAt, 2);
     ctx.globalAlpha = 1;
   }
 }

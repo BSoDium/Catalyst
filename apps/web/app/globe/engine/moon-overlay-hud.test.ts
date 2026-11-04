@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { orbitAlpha, alongText, hudLines, orbitPath, pathItems, runLength, runs } from "./moon-overlay";
+import { orbitAlpha, tickGlow, alongText, hudLines, orbitPath, pathItems, runLength, runs } from "./moon-overlay";
 
 describe("orbitPath", () => {
   it("draws runs of points and lifts the pen where the orbit is behind the camera", () => {
@@ -57,10 +57,16 @@ describe("pathItems and alongText", () => {
   });
 });
 
-describe("orbitAlpha", () => {
-  it("is strongest at the moon and faint opposite it, and always between", () => {
+describe("tickGlow and orbitAlpha", () => {
+  it("tints most at a graduation and least half way between two", () => {
+    expect(tickGlow(30)).toBe(1);
+    expect(tickGlow(40.0)).toBe(1);
+    expect(tickGlow(35)).toBe(0);
+    expect(tickGlow(32)).toBeGreaterThan(tickGlow(34));
+    expect(tickGlow(-10)).toBe(1);
+  });
+  it("maps the glow to a line that is faint but never gone", () => {
     expect(orbitAlpha(1)).toBeGreaterThan(orbitAlpha(0.5));
-    expect(orbitAlpha(0.5)).toBeGreaterThan(orbitAlpha(0));
     expect(orbitAlpha(0)).toBeGreaterThan(0);
     expect(orbitAlpha(2)).toBe(orbitAlpha(1));
   });
