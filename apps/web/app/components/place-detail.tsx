@@ -344,7 +344,8 @@ export function PlaceDetail({ place }: { place: PlaceDetailData }) {
                     <GroupHeader title={group.label} count={(gallery?.length ?? 0) + group.entries.length} />
                     {gallery && <PhotoGallery items={gallery} from={place.slug} />}
                     {group.entries.length > 0 && (
-                      <ul className="m-0 grid list-none grid-cols-1 gap-0 p-0">
+                      // (the first row starts at the title's own distance from it, as a gallery does: the rows' padding is between them)
+                      <ul className="m-0 grid list-none grid-cols-1 gap-0 p-0 [&>li:first-child>article]:pt-0">
                         {newestFirst(group.entries).map((entry) => (
                           <li key={entry.slug} className="min-w-0">
                             <EntryRow entry={entry} linkState={{ from: place.slug }} headingLevel={3} compact />

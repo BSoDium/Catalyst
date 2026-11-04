@@ -110,7 +110,7 @@ export function EntryRow({
   const cover = entry.cover && safeMediaSrc(entry.cover.src) ? { ...coverImageProps(entry.cover, ROW_COVER_SIZES), alt: entry.cover.alt } : null;
   const showCover = !!cover || entry.kind === "artwork";
   const tags = entry.tags.slice(0, 4);
-  if (compact && entry.kind !== "poem") {
+  if (compact) {
     return (
       <article
         id={entry.slug}
@@ -148,7 +148,13 @@ export function EntryRow({
               {entry.title}
             </Link>
           </Heading>
-          {entry.summary && <p className="m-0 line-clamp-3 font-reading text-[1.0625rem] leading-[1.4] font-light text-pretty text-muted-foreground">{entry.summary}</p>}
+          {entry.summary &&
+            (entry.kind === "poem" ? (
+              // (a poem's summary is what the row has to read: the ink and a larger size, as in the poems' list)
+              <p className="m-0 line-clamp-4 font-reading text-[1.1875rem] leading-[1.4] text-pretty text-foreground">{entry.summary}</p>
+            ) : (
+              <p className="m-0 line-clamp-3 font-reading text-[1.0625rem] leading-[1.4] font-light text-pretty text-muted-foreground">{entry.summary}</p>
+            ))}
           {tags.length > 0 && <TagList label="Tags" tags={tags.map((label) => ({ label }))} className="font-meta text-xs" />}
         </div>
       </article>
