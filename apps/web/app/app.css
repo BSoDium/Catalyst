@@ -2014,15 +2014,26 @@
     margin: 0;
     color: var(--muted-foreground);
   }
-  /* The camera's block and, at its right end where the room allows, the link to the place (#581): one row, the link as tall as the camera's mark. */
+  /* The camera's block and the link to the place (#581). Where the row is wide enough for both (a full screen's column, a wide panel) the link sits at the right end of the camera's row, as tall as its mark; where it is not (a tablet's side panel) they
+     are stacked at the left, and both are drawn on the same two columns (the icon, centred in a column of one width; then the text) so the icons are on one vertical and the text starts at one distance from it. */
   .entry-facts-row {
     --exposure-text: calc(1cap + var(--text-meta--line-height) + 0.25rem);
+    --facts-icon-col: 2.25rem;
+    container-type: inline-size;
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem 2rem;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
     margin: 2rem 0 0;
+  }
+  @container (min-width: 46rem) {
+    .entry-facts-row {
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem 2rem;
+    }
   }
   /* The link to the place (#581): the map icon, two lines of text and the arrow, with no outline, the glyphs at one distance from the box's edge at the top, the bottom and their own side. The icons are drawn at the weight of the text: the map icon (Carbon,
      a 2-unit stroke on 32) at 21 px is 1.3 px, the arrow (lucide, on 24) at 1.25 units of 24 px; so each box's size is its glyph's and the padding on its side is the distance less the box's own inset (the map's runs from 2 to 30 of 32, the arrow's from 7 to 17 of 24). */
@@ -2050,9 +2061,31 @@
     text-decoration: none;
     transition: background-color var(--duration-fast) var(--ease-standard);
   }
-  /* (at the right end of the camera's row; with no camera it is the only thing on the row and stays at the left) */
-  .entry-exposure ~ .entry-place-link {
-    margin-left: auto;
+  /* (at the right end of the camera's row when both fit; with no camera it is the only thing on the row and stays at the left) */
+  @container (min-width: 46rem) {
+    .entry-exposure ~ .entry-place-link {
+      margin-left: auto;
+    }
+  }
+  /* Stacked: the camera's block and the link share the icon column (their text starts at one distance), and the link's hover plate reaches out to the left by its padding so its icon is the camera's. */
+  @container (max-width: 45.999rem) {
+    .entry-exposure {
+      display: grid;
+      grid-template-columns: var(--facts-icon-col) auto;
+      column-gap: 0.75rem;
+    }
+    .entry-exposure .entry-exposure-mark {
+      justify-self: center;
+    }
+    .entry-place-link {
+      display: grid;
+      grid-template-columns: var(--facts-icon-col) auto auto;
+      column-gap: 0.75rem;
+      margin-left: calc(-1 * (var(--place-h) - var(--place-ink)) / 2 + (var(--place-map) * 0.125 - var(--place-stroke) / 2));
+    }
+    .entry-place-link svg.entry-place-link-pin {
+      justify-self: center;
+    }
   }
   .entry-place-link:hover,
   .entry-place-link:focus-visible {
