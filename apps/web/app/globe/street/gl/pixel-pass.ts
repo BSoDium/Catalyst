@@ -414,9 +414,9 @@ void main() {
     }
     col = c;
   }
-  // (subtle: the first moments of a tile lift a share of its cells to the peak tone, and the rest of its coming in a few to a mid grey; no ink)
-  if (flash > 0.0 && th < flash * 0.4) col = uPal[GREYS - 2];
-  else if (shimmer > 0.0 && th < shimmer * 0.22) col = uPal[GREYS - 5];
+  // (very subtle: dim greys, not the peak: the first moments of a tile lift a few of its cells to a mid-light grey, the rest of its coming in a few to a dark one)
+  if (flash > 0.0 && th < flash * 0.3) col = uPal[GREYS - 6];
+  else if (shimmer > 0.0 && th < shimmer * 0.15) col = uPal[GREYS - 8];
   o = vec4(col, 1.0);
 }`;
 
