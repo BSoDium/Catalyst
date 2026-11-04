@@ -11,10 +11,11 @@ describe("placeCover", () => {
     expect(c).toMatchObject({ src: "/media/own.jpg", width: 800, height: 600 });
     expect(c?.own).toBe(true);
   });
-  it("else a photograph's cover, then a project's, credited to the entry", () => {
-    const entries = [group("project", entry("project", "proj")), group("photograph", entry("photograph", "photo"))];
+  it("else a photograph's cover, then a poem's, an article's, an artwork's and last a project's", () => {
+    const entries = [group("project", entry("project", "proj")), group("artwork", entry("artwork", "art")), group("photograph", entry("photograph", "photo"))];
     expect(placeCover({ images: [], entries })).toMatchObject({ src: "/media/photo.jpg", own: false });
-    expect(placeCover({ images: [], entries: [entries[0]!] })).toMatchObject({ src: "/media/proj.jpg" });
+    expect(placeCover({ images: [], entries: entries.slice(0, 2) })).toMatchObject({ src: "/media/art.jpg" });
+    expect(placeCover({ images: [], entries: entries.slice(0, 1) })).toMatchObject({ src: "/media/proj.jpg" });
   });
   it("skips a sensitive entry and an entry with no cover, and is null when nothing is left", () => {
     const entries = [group("photograph", entry("photograph", "s", { sensitive: true }), entry("photograph", "none", { cover: undefined }))];

@@ -10,13 +10,13 @@ export interface PlaceCover {
   own: boolean;
 }
 
-/** Kinds in the order they are tried: a photograph is a picture of the place; the others' covers are what they are. */
-const COVER_KINDS = ["photograph", "project", "artwork", "article", "poem"] as const;
+/** Kinds in the order they are tried (owner, 2026-11-04): a photograph is a picture of the place; a software cover is a screenshot, the last resort. */
+const COVER_KINDS = ["photograph", "poem", "article", "artwork", "project"] as const;
 
 const size = (i: { width?: number | undefined; height?: number | undefined }) => (i.width && i.height ? { width: i.width, height: i.height } : {});
 
 /**
- * The cover of a place: its own first image, else the cover of one of its entries, a photograph first, then a project, an artwork, an article, a poem.
+ * The cover of a place: its own first image, else the cover of one of its entries, a photograph first, then a poem, an article, an artwork, a project.
  * A sensitive entry is never the cover (its pictures are blurred on its card, not here); a place with nothing to show has none.
  */
 export function placeCover(place: Pick<PlaceDetailData, "images" | "entries">): PlaceCover | null {
