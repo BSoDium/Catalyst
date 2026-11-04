@@ -8,15 +8,16 @@ export const WAVE = {
   tileCells: 12,
   maxRings: 22,
   /** The time between one ring beginning and the next, and the time a tile takes to come in, ms. */
-  staggerMs: 85,
-  fadeMs: 520,
+  staggerMs: 60,
+  fadeMs: 400,
   /** The share of a tile's coming in that is the flash. */
   flash: 0.3,
 } as const;
 
 /** The tile's side in output px and the rings the wave has to cross to reach the farthest corner from the middle of an `outW` x `outH` screen, `cell` output px to an art cell. */
-export function waveGeometry(outW: number, outH: number, cell: number): { tile: number; rings: number } {
-  const reach = Math.max(outW, outH) / 2;
+export function waveGeometry(outW: number, outH: number, cell: number, cx = outW / 2, cy = outH / 2): { tile: number; rings: number } {
+  // (from the wave's own middle, `cx`, `cy`: the farthest corner)
+  const reach = Math.max(cx, outW - cx, cy, outH - cy);
   const tile = Math.max(1, Math.ceil(Math.max(cell * WAVE.tileCells, reach / WAVE.maxRings)));
   return { tile, rings: Math.ceil(reach / tile) };
 }

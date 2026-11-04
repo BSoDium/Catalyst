@@ -370,6 +370,7 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
   const waveOn = !reduced;
   let loadState: "pending" | "running" | "done" = reduced ? "done" : "pending";
   let loadStart = 0;
+  let lastWaveTotal = 0;
   // (development only: `__streetWaveMs = 700` freezes the wave at 700 ms to look at one frame of it, `__streetWaveReplay()` runs the first appearance again)
   const debugMs = (): number | null => (import.meta.env?.DEV ? ((globalThis as { __streetWaveMs?: number }).__streetWaveMs ?? null) : null);
   if (import.meta.env?.DEV && typeof window !== "undefined") {
@@ -381,11 +382,22 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
   }
   const loadMsNow = (total: number): number => debugMs() ?? (loadState === "pending" ? 0 : loadState === "done" ? total : Math.min(total, performance.now() - loadStart));
   const waveParams = (outW: number, outH: number, cell: number) => {
-    const { tile, rings } = waveGeometry(outW, outH, cell);
+    // the wave starts from where the visitor is looking: the selected place when there is one (a reload with a city selected), else the middle of the part of the canvas the panel beside the map leaves free
+    const place = selected ? places.get(selected) : undefined;
+    const box = map.getContainer();
+    const pad = map.getPadding();
+    const c = place
+      ? map.project([place.lon, place.lat])
+      : { x: (pad.left ?? 0) + (box.clientWidth - (pad.left ?? 0) - (pad.right ?? 0)) / 2, y: (pad.top ?? 0) + (box.clientHeight - (pad.top ?? 0) - (pad.bottom ?? 0)) / 2 };
+    const k = native ? 1 / cellCss : dprNow();
+    const cx = Math.min(outW, Math.max(0, c.x * k));
+    const cy = Math.min(outH, Math.max(0, c.y * k));
+    const { tile, rings } = waveGeometry(outW, outH, cell, cx, cy);
     const total = waveTotalMs(rings);
+    lastWaveTotal = total;
     // the dissolve at `blend` is the wave at that share of its length; the first appearance is on its own clock; the later of the two holds the map back
     const ms = Math.min(blendV.eased * total, loadMsNow(total));
-    return ms >= total ? undefined : { x: outW / 2, y: outH / 2, tile, rings, ms };
+    return ms >= total ? undefined : { x: cx, y: cy, tile, rings, ms };
   };
   // The spotlight: the selected node's rectangle in art cells (null when it is not drawn), faded in by `spotV`.
   const spotV = new EasedValue(STREET_TUNING.spot.ms, reduced);
@@ -562,10 +574,7 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
     map.once("idle", startLoad);
   }
   /** Whether the first wave is still under way (it is over once its clock passes the wave's length for the screen). */
-  const loadActive = (): boolean => {
-    const { rings } = waveGeometry(root.clientWidth * dprNow(), root.clientHeight * dprNow(), cellDevicePx(cellCss, dprNow()));
-    return performance.now() - loadStart < waveTotalMs(rings);
-  };
+  const loadActive = (): boolean => performance.now() - loadStart < (lastWaveTotal || 4000);
 
   let capTimer: (() => void) | null = null;
   const applyZoomCap = (max: number) => {
