@@ -3816,7 +3816,7 @@
     position: absolute;
     z-index: -1;
     /* the same ellipse as the player's (`.np::before`: thirteen eased stops, the page's colour flat over the middle third, and well past the words), so that it is impossible to tell it from a rectangle or an ellipse (#590) */
-    inset: -2.5rem -5rem;
+    inset: -7.5rem -7rem -4rem;
     pointer-events: none;
     --np-plate: color-mix(in srgb, var(--background) 82%, transparent);
     background: radial-gradient(
