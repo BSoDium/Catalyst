@@ -49,8 +49,9 @@ describe("LOD table", () => {
     expect(LOD.path.on).toBeGreaterThanOrEqual(14);
     // the full network is there from z14: everything down to the residential streets (dotted) is on by then, service roads and paths are the decor of the street scale
     for (const k of ["highway", "major", "secondary", "medium", "link", "rail", "minor"] as const) expect(LOD[k].on, k).toBeLessThanOrEqual(14 - ZOOM_BAND);
-    expect(LOD.buildingOutline.on).toBeGreaterThanOrEqual(16);
-    expect(FILL_LOD.building.on).toBeGreaterThanOrEqual(15.5);
+    // buildings: the tiles hold them from z13; the wash is partly in at the minimum framing of a place (a view radius of 0.5 km, zoom 14.6: #622), the outlines a level after
+    expect(LOD.buildingOutline.on).toBeGreaterThanOrEqual(15);
+    expect(FILL_LOD.building.on).toBeGreaterThanOrEqual(14);
   });
   it("tone follows the hierarchy: major roads at least as strong as minor roads, rail and paths softer, borders stronger than washes", () => {
     for (const n of LEVEL_COUNTS) {
@@ -112,7 +113,7 @@ describe("style wiring of the LOD", () => {
     expect(vis("road-highway-case")).toBe(true);
     expect(vis("road-medium-case")).toBe(true);
     expect(vis("road-minor-dotted")).toBe(false); // 13.9
-    expect(vis("building-fill")).toBe(false); // 15.5
+    expect(vis("building-fill")).toBe(false); // 14.4
     expect(vis("water-fill")).toBe(true); // flat at 13
     expect(vis("graticule")).toBe(false); // so the graticule is gone
     // and without a switch state everything is on (tests, tools)
