@@ -25,7 +25,7 @@ export function scrambleFrame(from: string, to: string, progress: number, rand: 
   for (let i = 0; i < n; i++) {
     const at = i / n;
     const want = to[Math.min(i, to.length - 1)] ?? "";
-    if (progress < 0.12 * at && i < from.length) out.push({ ch: from[i]!, lit: true });
+    if (progress < 0.04 + 0.12 * at && i < from.length) out.push({ ch: from[i]!, lit: true });
     else if (progress >= 0.2 + 0.8 * at && i < to.length) out.push({ ch: want, lit: true });
     else if (want === " " || want === "-") out.push({ ch: want, lit: true });
     else out.push({ ch: GLYPHS[Math.min(GLYPHS.length - 1, Math.floor(rand() * GLYPHS.length))]!, lit: false });
