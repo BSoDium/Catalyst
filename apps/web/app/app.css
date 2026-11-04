@@ -6725,7 +6725,8 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   .career-name-handle {
     position: absolute;
     left: 0;
-    top: 0;
+    /* on the LAST line of the name (the family name's, when the name breaks in two on a phone), not the first: it comes down from above by the same distance and lands there */
+    bottom: 0;
     white-space: nowrap;
     opacity: 0;
     pointer-events: none;
