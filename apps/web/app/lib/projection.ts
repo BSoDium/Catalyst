@@ -180,6 +180,8 @@ export interface PlaceDetailData {
   coordinates: Coordinates;
   summary?: string;
   dates: FormattedDates | null;
+  /** The two ends of the dates when they are authored as a range with no label: what the panel marks the changed part of. */
+  datesRange?: { start: string; end: string };
   body: string[];
   images: PublishedImage[];
   /** The entries linked to the place (its `related` and the entries' `placeSlugs`, each once), grouped by kind. Summaries: no body. */
@@ -204,6 +206,7 @@ export function getPlaceDetail(projection: PublishedProjection, slug: string): P
     coordinates: place.coordinates,
     ...(place.summary !== undefined ? { summary: place.summary } : {}),
     dates: formatDates(place.dates),
+    ...(place.dates && !place.dates.label && place.dates.start && place.dates.end ? { datesRange: { start: place.dates.start, end: place.dates.end } } : {}),
     body: place.body,
     images: place.images,
     entries: entriesOfPlace(projection, place.slug),

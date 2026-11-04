@@ -32,3 +32,25 @@ export function formatEntryDate(date: string | undefined): FormattedDates | null
   if (!date || !/^\d{4}(?:-\d{2}(?:-\d{2})?)?$/.test(date)) return null;
   return { text: date.replaceAll("-", "."), dateTime: date };
 }
+
+/** A run of a date's text, `strong` for the part that is the point of it. */
+export interface DatePart {
+  text: string;
+  strong: boolean;
+}
+
+/**
+ * The two ends of a range of partial ISO dates (`2024-09`, `2025-06`) cut so that what CHANGED between them is marked: the years when the years differ, else the months, else the days
+ * (the first component that differs, in both ends); the rest is quiet. Null when an end is not a partial ISO date or the ends are the same.
+ */
+export function changedParts(start: string, end: string): { from: DatePart[]; to: DatePart[] } | null {
+  const iso = /^\d{4}(?:-\d{2}(?:-\d{2})?)?$/;
+  if (!iso.test(start) || !iso.test(end) || start === end) return null;
+  const a = start.split("-");
+  const b = end.split("-");
+  let first = 0;
+  while (first < a.length && first < b.length && a[first] === b[first]) first++;
+  const cut = (parts: string[]): DatePart[] =>
+    parts.flatMap((text, i) => [...(i > 0 ? [{ text: "-", strong: false }] : []), { text, strong: i === first }]);
+  return { from: cut(a), to: cut(b) };
+}

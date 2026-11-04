@@ -2074,6 +2074,17 @@
     color: var(--muted-foreground);
     text-wrap: balance;
   }
+  .place-when-strong {
+    color: var(--foreground);
+  }
+  /* the count beside a group's title: its digits as tall as the x-height of the title (2 rem Bricolage, x-height about 0.52 em; the digits of the mono face are about 0.73 em), the colour kept */
+  .place-group-count {
+    font-family: var(--font-mono);
+    font-size: calc(2rem * 0.52 / 0.73);
+    line-height: 1;
+    font-variant-numeric: tabular-nums slashed-zero;
+    color: var(--muted-foreground);
+  }
   .place-figure-fraction {
     font-size: 1.75rem;
     font-weight: 300;

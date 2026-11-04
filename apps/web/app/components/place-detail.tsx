@@ -7,8 +7,8 @@ import { EntryRow } from "~/components/entry/entry-list-card";
 import { TripCards } from "~/components/trip-card";
 import { PhotoGallery, type GalleryItem } from "~/components/place-gallery";
 import { Button, Icon, Stack, StatePanel } from "~/components/ui";
-import { KIND_PLURALS } from "~/lib/entries";
 import { coverImageProps } from "~/lib/cover-image";
+import { changedParts, type DatePart } from "~/lib/dates";
 import { safeMediaSrc } from "~/lib/entry-blocks";
 import { placeCover, type PlaceCover } from "~/lib/place-cover";
 import { formatPlaceCoordinates, placeCoordinateParts, type CoordinatePart } from "~/lib/labelling";
@@ -117,6 +117,21 @@ function countInk(count: number, most: number): string {
   return `color-mix(in oklab, var(--foreground) ${Math.round(share * 100)}%, var(--muted-foreground))`;
 }
 
+/** The dates of the place, with the part that changed between the two ends in the ink and the rest quiet (the years when they differ, else the months, else the days); as authored when there is no range to compare. */
+function WhenText({ place }: { place: PlaceDetailData }) {
+  const range = place.datesRange ? changedParts(place.datesRange.start, place.datesRange.end) : null;
+  if (!range || !place.dates) return <>{place.dates?.text}</>;
+  const run = (parts: DatePart[]) => parts.map((part, i) => (part.strong ? <span key={i} className="place-when-strong">{part.text}</span> : <span key={i}>{part.text}</span>));
+  return (
+    <>
+      {run(range.from)}
+      <span aria-hidden="true">{" – "}</span>
+      <span className="sr-only"> to </span>
+      {run(range.to)}
+    </>
+  );
+}
+
 /** One figure of the facts strip: a micro-label over its value. */
 function Fact({ label, children, end, className }: { label: string; children: ReactNode; end?: boolean; className?: string }) {
   return (
@@ -186,7 +201,7 @@ function PlaceFacts({ place }: { place: PlaceDetailData }) {
         {place.dates && (
           <Fact label="When">
             <time dateTime={place.dates.dateTime} className="place-figure place-figure-when">
-              {place.dates.text}
+              <WhenText place={place} />
             </time>
           </Fact>
         )}
@@ -251,26 +266,31 @@ function PlaceHeader({ place, cover }: { place: PlaceDetailData; cover: PlaceCov
   );
 }
 
+/** The kinds whose entries are pictures first: the ones with a cover are a gallery (`PhotoGallery`) at the head of their group, not rows. */
+const GALLERY_KINDS = ["photograph", "artwork"] as const;
+
 /**
- * The step's own pictures, the photographs linked to it (a photograph of the place IS a picture of it: they lead the page as its gallery, and are not
- * "entries" that would put the story second) and the entries. A sensitive photograph stays an entry, where its card blurs it.
+ * The step's own pictures, the galleries (the photographs linked to the place and its artworks, with a cover: a photograph of the place IS a picture of it, and an artwork is its
+ * picture: they are not "entries" that would put the story second) and the entries that are left in their groups. A sensitive one stays an entry, where its card blurs it.
  */
-function stepContent(place: PlaceDetailData): { photos: PhotoItem[]; gallery: GalleryItem[]; groups: PlaceDetailData["entries"] } {
+function stepContent(place: PlaceDetailData): { photos: PhotoItem[]; galleries: Map<string, GalleryItem[]>; groups: PlaceDetailData["entries"] } {
   const photos: PhotoItem[] = place.images.map((i) => ({ src: i.src, alt: i.alt, ...(i.width && i.height ? { width: i.width, height: i.height } : {}), ...(i.caption ? { caption: i.caption } : {}) }));
-  const gallery: GalleryItem[] = [];
+  const galleries = new Map<string, GalleryItem[]>();
   const groups = place.entries
     .map((group) => {
-      if (group.kind !== "photograph") return group;
+      if (!(GALLERY_KINDS as readonly string[]).includes(group.kind)) return group;
+      const items: GalleryItem[] = [];
       const keep = group.entries.filter((e) => {
         if (e.sensitive || !e.cover || !safeMediaSrc(e.cover.src)) return true;
-        gallery.push({ src: e.cover.src, alt: e.cover.alt, ...(e.cover.width && e.cover.height ? { width: e.cover.width, height: e.cover.height } : {}), title: e.title, href: e.href, ...(e.cover.small ? { small: e.cover.small } : {}), ...(e.date ? { date: e.date } : {}) });
+        items.push({ src: e.cover.src, alt: e.cover.alt, ...(e.cover.width && e.cover.height ? { width: e.cover.width, height: e.cover.height } : {}), title: e.title, href: e.href, ...(e.cover.small ? { small: e.cover.small } : {}), ...(e.date ? { date: e.date } : {}) });
         return false;
       });
+      items.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
+      if (items.length > 0) galleries.set(group.kind, items);
       return { ...group, entries: keep };
     })
-    .filter((g) => g.entries.length > 0);
-  gallery.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
-  return { photos, gallery, groups };
+    .filter((g) => g.entries.length > 0 || galleries.has(g.kind));
+  return { photos, galleries, groups };
 }
 
 /** The title of a group of entries: the display face, large, with the count in mono beside it. */
@@ -278,7 +298,7 @@ function GroupHeader({ title, count }: { title: string; count: number }) {
   return (
     <header data-slot="group-header" className="flex items-baseline gap-3 pt-2">
       <h2 className="m-0 font-display text-[2rem] leading-none font-extrabold tracking-[-0.03em]">{title}</h2>
-      <span className="ds-meta">{count}</span>
+      <span className="place-group-count">{count}</span>
     </header>
   );
 }
@@ -303,49 +323,38 @@ function storyMeta(place: PlaceDetailData, pictures: number): string {
  */
 export function PlaceDetail({ place }: { place: PlaceDetailData }) {
   const cover = placeCover(place);
-  const { photos: all, gallery, groups: allGroups } = stepContent(place);
+  const { photos: all, galleries, groups: allGroups } = stepContent(place);
   // (a place's own picture that heads the panel is not shown a second time in the strip below; an entry's cover is, as the link to the entry)
   const photos = cover?.own ? all.filter((p) => p.src !== cover.src) : all;
-  // Photography leads the entries: the gallery, then the sensitive photographs that stay cards (under the same title)
-  const photoGroup = allGroups.find((g) => g.kind === "photograph");
-  const groups = allGroups.filter((g) => g.kind !== "photograph");
-  const photographs = gallery.length + (photoGroup?.entries.length ?? 0);
-  const count = groups.reduce((n, g) => n + g.entries.length, 0) + (photoGroup?.entries.length ?? 0);
+  // Photography leads the entries, then the groups in their order; a group with a gallery has it first, then its cards (the sensitive ones) under the same title
+  const groups = [...allGroups.filter((g) => g.kind === "photograph"), ...allGroups.filter((g) => g.kind !== "photograph")];
+  const count = allGroups.reduce((n, g) => n + g.entries.length, 0);
   const story = !!place.summary || place.body.length > 0 || photos.length > 0 || place.trips.length > 0;
   return (
     <article aria-labelledby={PANEL_HEADING_ID} data-slot="place-view" data-kind="place" className="px-6 pt-2 pb-10">
       <Stack gap={8}>
         <PlaceHeader place={place} cover={cover} />
-        {(count > 0 || gallery.length > 0) && (
+        {groups.length > 0 && (
           <section aria-label="Entries" data-slot="place-entries">
             <Stack gap={10}>
-              {photographs > 0 && (
-                <div data-kind="photograph" className="@container flex flex-col gap-4">
-                  <GroupHeader title={KIND_PLURALS.photograph} count={photographs} />
-                  {gallery.length > 0 && <PhotoGallery items={gallery} from={place.slug} />}
-                  {photoGroup && (
-                    <ul className="m-0 grid list-none grid-cols-1 gap-0 p-0">
-                      {newestFirst(photoGroup.entries).map((entry) => (
-                        <li key={entry.slug} className="min-w-0">
-                          <EntryRow entry={entry} linkState={{ from: place.slug }} headingLevel={3} compact />
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              )}
-              {groups.map((group) => (
-                <div key={group.kind} data-kind={group.kind} className="@container flex flex-col gap-4">
-                  <GroupHeader title={group.label} count={group.entries.length} />
-                  <ul className="m-0 grid list-none grid-cols-1 gap-0 p-0">
-                    {newestFirst(group.entries).map((entry) => (
-                      <li key={entry.slug} className="min-w-0">
-                        <EntryRow entry={entry} linkState={{ from: place.slug }} headingLevel={3} compact />
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
+              {groups.map((group) => {
+                const gallery = galleries.get(group.kind);
+                return (
+                  <div key={group.kind} data-kind={group.kind} className="@container flex flex-col gap-4">
+                    <GroupHeader title={group.label} count={(gallery?.length ?? 0) + group.entries.length} />
+                    {gallery && <PhotoGallery items={gallery} from={place.slug} />}
+                    {group.entries.length > 0 && (
+                      <ul className="m-0 grid list-none grid-cols-1 gap-0 p-0">
+                        {newestFirst(group.entries).map((entry) => (
+                          <li key={entry.slug} className="min-w-0">
+                            <EntryRow entry={entry} linkState={{ from: place.slug }} headingLevel={3} compact />
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                );
+              })}
             </Stack>
           </section>
         )}

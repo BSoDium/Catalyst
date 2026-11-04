@@ -118,8 +118,23 @@ export function EntryRow({
         data-kind={entry.kind}
         data-compact=""
         data-covered={showCover ? "" : undefined}
-        className={cn("ds-card entry-row @container grid min-w-0 grid-cols-1 gap-x-5 gap-y-3 border-t border-border py-6 @md:grid-cols-[minmax(0,1fr)_9rem]", className)}
+        className={cn("ds-card entry-row @container grid min-w-0 grid-cols-1 gap-x-5 gap-y-3 py-5", showCover && "@md:grid-cols-[9rem_minmax(0,1fr)]", className)}
       >
+        {showCover && (
+          <div className="min-w-0">
+            <div className="overflow-hidden">
+              {cover && entry.sensitive === true ? (
+                <SensitiveMedia>
+                  <img src={cover.src} srcSet={cover.srcSet} sizes={cover.sizes} alt={cover.alt} loading="lazy" decoding="async" className="aspect-4/3 w-full object-cover" />
+                </SensitiveMedia>
+              ) : cover ? (
+                <img src={cover.src} srcSet={cover.srcSet} sizes={cover.sizes} alt={cover.alt} loading="lazy" decoding="async" className="aspect-4/3 w-full object-cover" />
+              ) : (
+                <CoverArt seed={entry.slug} kind={entry.kind} cols={48} rows={27} />
+              )}
+            </div>
+          </div>
+        )}
         <div className="flex min-w-0 flex-col gap-2.5">
           {(date || status) && (
             <p className="type-meta m-0 flex flex-wrap items-baseline gap-x-3 text-muted-foreground">
@@ -135,21 +150,6 @@ export function EntryRow({
           {entry.summary && <p className="m-0 line-clamp-3 font-reading text-[1.0625rem] leading-[1.4] font-light text-pretty text-muted-foreground">{entry.summary}</p>}
           {tags.length > 0 && <TagList label="Tags" tags={tags.map((label) => ({ label }))} className="font-meta text-xs" />}
         </div>
-        {showCover && (
-          <div className="min-w-0 @max-md:order-first">
-            <div className="overflow-hidden">
-              {cover && entry.sensitive === true ? (
-                <SensitiveMedia>
-                  <img src={cover.src} srcSet={cover.srcSet} sizes={cover.sizes} alt={cover.alt} loading="lazy" decoding="async" className="aspect-4/3 w-full object-cover" />
-                </SensitiveMedia>
-              ) : cover ? (
-                <img src={cover.src} srcSet={cover.srcSet} sizes={cover.sizes} alt={cover.alt} loading="lazy" decoding="async" className="aspect-4/3 w-full object-cover" />
-              ) : (
-                <CoverArt seed={entry.slug} kind={entry.kind} cols={48} rows={27} />
-              )}
-            </div>
-          </div>
-        )}
       </article>
     );
   }
