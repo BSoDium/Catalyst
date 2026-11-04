@@ -2918,8 +2918,16 @@
      the site's name, the rule and the big title are not drawn (the title stays in the page for assistive technology, search and the document
      outline, clipped; print keeps all of it), and the folio, "4 poems", is one small mono line above the filter. The career page's running head
      ("Career", "Updated ...") goes the same way: its "Updated" moves under the availability line (`.career-updated`). */
+  /* The career page has no running head: "Updated Month YYYY" is set under the "Get in touch" button, at every width, in the reading face, italic and muted (owner, 2026-11-04). */
   .career-updated {
-    display: none;
+    display: block;
+    margin: 1.25rem 0 0;
+    color: var(--muted-foreground);
+    font-family: var(--font-reading);
+    font-size: 0.9375rem;
+    font-style: italic;
+    letter-spacing: 0;
+    text-transform: none;
   }
 
   @media screen and (max-width: 55.99rem) {
@@ -2943,15 +2951,6 @@
       white-space: nowrap;
     }
 
-    [data-slot="career-head"] .list-running {
-      display: none;
-    }
-
-    .career-updated {
-      display: block;
-      margin: 0.5rem 0 0;
-      color: var(--muted-foreground);
-    }
   }
 
   .list-title {
@@ -6099,14 +6098,6 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
       margin-top: 1.25rem;
     }
 
-    [data-slot="career-head"] .career-updated {
-      margin: 1.75rem 0 0;
-      font-family: var(--font-reading);
-      font-size: 0.9375rem;
-      font-style: italic;
-      letter-spacing: 0;
-      text-transform: none;
-    }
   }
 
   .career-id-text {
