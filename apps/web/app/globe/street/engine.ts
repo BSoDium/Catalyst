@@ -46,6 +46,7 @@ import { capReach, viewCap } from "./core/view-cap";
 import { fadeStraight, thinLegs, thinZoomOf, type ThinLeg } from "../paths/thin";
 import { DEFAULT_HANDOFF, PLACEHOLDER_LAYERS, PLACEHOLDER_REPLACES, PLACEHOLDER_OVERLAP_MS, PLACEHOLDER_SETTLE_MS, ROUTE_LAYER_IDS, applyCell, applyDashScale, applyKeptLegs, buildStreetStyle, placeholderWanted, dashStepOf, focusFilter, graticule, headFocusFilter, ROUTE_HEAD_FOCUS_ID, hasPlaceholder, routeLayerId, seaFrom, SPOT_SOURCE, spotQueries, type StyleTiles } from "./style/street-style";
 import { onSchemeChange } from "../engine/scheme";
+import { waveGeometry, waveTotalMs } from "./core/wave";
 import { STREET_TUNING } from "./tuning";
 import { clipLine, placeRect, sameRect, spotFollow, spotRect, type CellRect } from "./core/spot";
 import type { AnimateOptions, FlyOptions, RevealOptions, StreetDebug, StreetMap, StreetMapOptions, StreetView } from "./types";
@@ -364,6 +365,40 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
   const revealV = new EasedValue(STREET_TUNING.revealMs, reduced);
   const sharpV = new EasedValue(STREET_TUNING.dissolveMs, reduced, opts.initialSharp ?? 0);
   const blendV = new EasedValue(STREET_TUNING.dissolveMs, reduced, opts.initialBlend ?? 1);
+  // The street map comes in (and goes out) as a wave of tiles from the middle of the screen (#589, core/wave.ts): off under reduced motion, where it is a cut anyway. Two clocks: the dissolve's own
+  // (`blendV`, driven by the zoom or a time) and the map's FIRST appearance: hidden until its first tiles are in (`idle`), then a wave on a clock of its own, also when the map opens straight (a reload with a place selected).
+  const waveOn = !reduced;
+  let loadState: "pending" | "running" | "done" = reduced ? "done" : "pending";
+  let loadStart = 0;
+  let lastWaveTotal = 0;
+  // (development only: `__streetWaveMs = 700` freezes the wave at 700 ms to look at one frame of it, `__streetWaveReplay()` runs the first appearance again)
+  const debugMs = (): number | null => (import.meta.env?.DEV ? ((globalThis as { __streetWaveMs?: number }).__streetWaveMs ?? null) : null);
+  if (import.meta.env?.DEV && typeof window !== "undefined") {
+    (window as unknown as { __streetWaveReplay?: () => void }).__streetWaveReplay = () => {
+      loadState = "running";
+      loadStart = performance.now();
+      kick();
+    };
+  }
+  const loadMsNow = (total: number): number => debugMs() ?? (loadState === "pending" ? 0 : loadState === "done" ? total : Math.min(total, performance.now() - loadStart));
+  const waveParams = (outW: number, outH: number, cell: number) => {
+    // the wave starts from where the visitor is looking: the selected place when there is one (a reload with a city selected), else the middle of the part of the canvas the panel beside the map leaves free
+    const place = selected ? places.get(selected) : undefined;
+    const box = map.getContainer();
+    const pad = map.getPadding();
+    const c = place
+      ? map.project([place.lon, place.lat])
+      : { x: (pad.left ?? 0) + (box.clientWidth - (pad.left ?? 0) - (pad.right ?? 0)) / 2, y: (pad.top ?? 0) + (box.clientHeight - (pad.top ?? 0) - (pad.bottom ?? 0)) / 2 };
+    const k = native ? 1 / cellCss : dprNow();
+    const cx = Math.min(outW, Math.max(0, c.x * k));
+    const cy = Math.min(outH, Math.max(0, c.y * k));
+    const { tile, rings } = waveGeometry(outW, outH, cell, cx, cy);
+    const total = waveTotalMs(rings);
+    lastWaveTotal = total;
+    // the dissolve at `blend` is the wave at that share of its length; the first appearance is on its own clock; the later of the two holds the map back
+    const ms = Math.min(blendV.eased * total, loadMsNow(total));
+    return ms >= total ? undefined : { x: cx, y: cy, tile, rings, ms };
+  };
   // The spotlight: the selected node's rectangle in art cells (null when it is not drawn), faded in by `spotV`.
   const spotV = new EasedValue(STREET_TUNING.spot.ms, reduced);
   let spotBox: CellRect | null = null;
@@ -418,6 +453,11 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
           sharp: native ? 0 : sharpV.eased,
           focus,
           blend: blendV.eased,
+          ...((): { wave?: NonNullable<PassParams["wave"]> } => {
+            // (in the native render the output IS the art grid: a cell is one output px)
+            const wave = waveOn ? waveParams(outW, outH, native ? 1 : cellDevicePx(cellCss, dpr)) : undefined;
+            return wave ? { wave } : {};
+          })(),
           anchor: [0, 0],
           spot: spotBox && spotV.eased > 0 ? { ...spotBox, lift: STREET_TUNING.spot.lift * spotV.eased, liftLow: STREET_TUNING.spot.liftLow * spotV.eased, dim: STREET_TUNING.spot.dim * spotV.eased, fill: STREET_TUNING.spot.fill * spotV.eased } : undefined,
         };
@@ -467,7 +507,7 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
   // ---- animation loop for the capabilities (the only rAF this module owns) ---------------------------------------
   let raf = 0;
   let lastTs = 0;
-  const animating = () => revealV.animating || sharpV.animating || blendV.animating || spotV.animating;
+  const animating = () => revealV.animating || sharpV.animating || blendV.animating || spotV.animating || loadState === "running";
   const settle = () => {
     for (let i = waiters.length - 1; i >= 0; i--) {
       if (!waiters[i]!.value.animating) {
@@ -485,6 +525,7 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
     sharpV.step(dt);
     blendV.step(dt);
     spotV.step(dt);
+    if (loadState === "running" && !loadActive()) loadState = "done";
     if (!compositor.redraw()) map.triggerRepaint();
     settle();
     if (animating() && !document.hidden) raf = requestAnimationFrame(tick);
@@ -518,6 +559,22 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
     map.once("idle", release);
     holdTimer = window.setTimeout(release, 2500);
   };
+
+  // the first appearance: when the first tiles are in, or after a few seconds whatever the network does
+  if (!reduced) {
+    const startLoad = () => {
+      window.clearTimeout(loadTimer);
+      map.off("idle", startLoad);
+      if (disposed || loadState !== "pending") return;
+      loadState = "running";
+      loadStart = performance.now();
+      kick();
+    };
+    const loadTimer = window.setTimeout(startLoad, 3500);
+    map.once("idle", startLoad);
+  }
+  /** Whether the first wave is still under way (it is over once its clock passes the wave's length for the screen). */
+  const loadActive = (): boolean => performance.now() - loadStart < (lastWaveTotal || 4000);
 
   let capTimer: (() => void) | null = null;
   const applyZoomCap = (max: number) => {
