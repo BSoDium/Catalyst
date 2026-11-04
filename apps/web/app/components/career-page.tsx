@@ -9,7 +9,6 @@ import { CONTACT_ID } from "~/lib/contact";
 import { safeExternalUrl } from "~/lib/entry-blocks";
 import { entryPath, placePath } from "~/lib/entries";
 import { PORTRAIT_EGG, portraitEggDrawn } from "~/lib/portrait-egg";
-import { NameScrambler } from "~/lib/scramble";
 import { SITE, SITE_HANDLE_LINE } from "~/lib/site";
 import { useForcedScheme } from "~/lib/theme";
 
@@ -33,20 +32,6 @@ export function CareerPage({ career, places = [], projects = [] }: { career: Pub
   const available = career.availability;
   const known = new Set(places);
   const haveProject = new Set(projects);
-  // Every 10 to 15 s the name scrambles into the handle and back (#588), as on the home page.
-  const nameRef = useRef<HTMLHeadingElement>(null);
-  useEffect(() => {
-    const h1 = nameRef.current;
-    const given = h1?.querySelector<HTMLElement>(".career-name-given");
-    const family = h1?.querySelector<HTMLElement>(".career-name-family");
-    if (!given || !family) return;
-    const scrambler = new NameScrambler([
-      { el: given, name: SITE.givenName, handle: SITE.handle.slice(0, 4) },
-      { el: family, name: SITE.familyName, handle: SITE.handle.slice(4) },
-    ]);
-    scrambler.start();
-    return () => scrambler.stop();
-  }, []);
   return (
     <main
       id="main"
@@ -68,8 +53,15 @@ export function CareerPage({ career, places = [], projects = [] }: { career: Pub
         </p>
         <div className="career-id" data-portrait={portrait ? "true" : "false"}>
           <div className="career-id-text">
-            <h1 id="career-name" ref={nameRef} className="list-title career-name" aria-label={SITE.name}>
-              <span className="career-name-given">{SITE.givenName}</span> <span className="career-name-family">{SITE.familyName}</span>
+            {/* Every 10 s the handle comes in over the name, and the name steps back under it, smaller and dimmed, like its shadow (#588): CSS only, `.career-name-handle` and `.career-name-text`. */}
+            <h1 id="career-name" className="list-title career-name" aria-label={SITE.name}>
+              <span className="career-name-text">
+                <span className="career-name-given">{SITE.givenName}</span> <span className="career-name-family">{SITE.familyName}</span>
+              </span>
+              <span aria-hidden="true" className="career-name-handle">
+                <span className="career-name-handle-heavy">{SITE.handle.slice(0, 4)}</span>
+                <span className="career-name-handle-thin">{SITE.handle.slice(4)}</span>
+              </span>
             </h1>
             <span className="sr-only">{SITE_HANDLE_LINE}</span>
             <p className="career-summary">{career.summary}</p>
