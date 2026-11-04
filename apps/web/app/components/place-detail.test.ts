@@ -70,7 +70,8 @@ describe("PlaceDetail", () => {
     expect(html).not.toContain('data-slot="place-story"');
     expect(html).toContain("We arrived at five in the morning");
     expect(html).toContain('data-slot="place-photos"');
-    expect(html.match(/<figure/g)?.length).toBe(3);
+    expect(html.match(/<figure/g)?.length).toBe(2); // (its first picture heads the panel)
+    expect(html).toContain('data-slot="place-cover"');
     expect(html).toContain('data-slot="trip-card"');
     expect(html.indexOf("We arrived")).toBeLessThan(html.indexOf('data-slot="trip-card"'));
   });
@@ -110,6 +111,6 @@ describe("PlaceDetail", () => {
     const html = route("b", { images });
     const open = html.slice(0, html.indexOf("<details"));
     expect(open.match(/<figure/g)?.length).toBe(4);
-    expect(html).toContain("Show 5 more pictures");
+    expect(html).toContain("Show 4 more pictures"); // (the first of the nine heads the panel)
   });
 });

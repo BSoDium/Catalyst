@@ -5,7 +5,9 @@ import { EntryListCard } from "~/components/entry/entry-list-card";
 import { TripCards } from "~/components/trip-card";
 import { Button, Icon, SectionHeader, Stack, StatePanel } from "~/components/ui";
 import { safeMediaSrc } from "~/lib/entry-blocks";
+import { placeCover, type PlaceCover } from "~/lib/place-cover";
 import { formatPlaceCoordinates } from "~/lib/labelling";
+import { cn } from "~/lib/utils";
 import { imageSize, placePath, type PlaceDetailData } from "~/lib/projection";
 
 /** A picture of the step: one of the place's own images, or the cover of a photograph linked to it (then `href` opens the photograph, and the panel's way back leads here). */
@@ -126,6 +128,36 @@ function PlaceLine({ place }: { place: PlaceDetailData }) {
 }
 
 /**
+ * The head of the panel: the name as the view's h1 with the one quiet line under it. With a cover (`lib/place-cover.ts`) it is full-bleed, the picture
+ * behind the type, a gradient into the panel's ground under it so the name and the line read on any picture; the picture is decoration (`alt=""`), the
+ * credit of an entry's cover is a small link on it. Without one it is type alone, as before.
+ */
+function PlaceHeader({ place, cover }: { place: PlaceDetailData; cover: PlaceCover | null }) {
+  const src = cover ? safeMediaSrc(cover.src) : null;
+  const title = (
+    <>
+      <h1 id={PANEL_HEADING_ID} tabIndex={-1} className={cn("m-0 font-semibold tracking-tight break-words outline-offset-4", src ? "text-4xl" : "text-3xl")}>
+        {place.name}
+      </h1>
+      <PlaceLine place={place} />
+    </>
+  );
+  if (!cover || !src) return <header className="flex flex-col gap-2">{title}</header>;
+  return (
+    <header data-slot="place-cover" className="relative isolate -mx-6 flex min-h-72 flex-col justify-end gap-2 overflow-hidden px-6 pt-24 pb-5">
+      <img src={src} alt="" aria-hidden="true" decoding="async" className="absolute inset-0 -z-20 size-full object-cover" />
+      <div aria-hidden="true" className="absolute inset-0 -z-10 bg-linear-to-t from-background from-10% via-background/45 via-45% to-transparent" />
+      {cover.credit && (
+        <Link to={cover.credit.href} state={{ from: place.slug }} className="ds-meta absolute top-3 right-4 max-w-[70%] truncate rounded-sm bg-background/70 px-2 py-1 text-foreground no-underline backdrop-blur-sm hover:bg-background/90">
+          {cover.credit.title}
+        </Link>
+      )}
+      {title}
+    </header>
+  );
+}
+
+/**
  * The step's own pictures and the entries that lead the page. The pictures are the place's images and the photographs linked to it (a photograph of
  * the step IS a picture of the step: it shows in its strip and is not an "entry" that would put the story second); a sensitive photograph stays an entry,
  * where its card blurs it.
@@ -161,18 +193,16 @@ function storyMeta(place: PlaceDetailData, pictures: number): string {
  * `{ from: <place> }` in the router state, which gives the entry a way back. Optional parts are omitted when empty.
  */
 export function PlaceDetail({ place }: { place: PlaceDetailData }) {
-  const { photos, groups } = stepContent(place);
+  const cover = placeCover(place);
+  const { photos: all, groups } = stepContent(place);
+  // (a picture that heads the panel is not shown a second time in the strip below)
+  const photos = cover ? all.filter((p) => p.src !== cover.src) : all;
   const count = groups.reduce((n, g) => n + g.entries.length, 0);
   const story = !!place.summary || place.body.length > 0 || photos.length > 0 || place.trips.length > 0;
   return (
     <article aria-labelledby={PANEL_HEADING_ID} data-slot="place-view" data-kind="place" className="px-6 pt-2 pb-10">
       <Stack gap={8}>
-        <header className="flex flex-col gap-2">
-          <h1 id={PANEL_HEADING_ID} tabIndex={-1} className="m-0 text-3xl font-semibold tracking-tight break-words outline-offset-4">
-            {place.name}
-          </h1>
-          <PlaceLine place={place} />
-        </header>
+        <PlaceHeader place={place} cover={cover} />
         {story && !count && <StepStory place={place} photos={photos} />}
         {count > 0 && (
           <section aria-label="Entries" data-slot="place-entries">
