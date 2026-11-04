@@ -419,7 +419,7 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
           focus,
           blend: blendV.eased,
           anchor: [0, 0],
-          spot: spotBox && spotV.eased > 0 ? { ...spotBox, lift: STREET_TUNING.spot.lift * spotV.eased, dim: STREET_TUNING.spot.dim * spotV.eased, fill: STREET_TUNING.spot.fill * spotV.eased } : undefined,
+          spot: spotBox && spotV.eased > 0 ? { ...spotBox, lift: STREET_TUNING.spot.lift * spotV.eased, liftLow: STREET_TUNING.spot.liftLow * spotV.eased, dim: STREET_TUNING.spot.dim * spotV.eased, fill: STREET_TUNING.spot.fill * spotV.eased } : undefined,
         };
       },
       onContextChange: () => reportContext(),

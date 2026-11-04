@@ -354,7 +354,7 @@ uniform float uLevelScale;
 uniform vec3 uPal[${MAX_LEVELS}];      // the palette (engine/palette.ts): one colour per level
 uniform ivec2 uAnchor;
 uniform ivec4 uSpotRect;      // the spotlit rectangle in art cells: c0, r0, c1, r1 (c1 / r1 exclusive)
-uniform vec3 uSpot;           // x: share of the way to the peak (one under the ink) that the LINES inside the rectangle are lifted, y: share of its tone that the lines outside lose, z: the same lift for the fills inside (the background)
+uniform vec4 uSpot;           // x: share of the way to the peak (one under the ink) that the strongest LINES inside the rectangle are lifted, w: the same for the faintest (in between by level), y: share of its tone that the lines outside lose, z: the same lift for the fills inside (the background)
 out vec4 o;
 const int GREYS = ${TRAIL_LEVEL_BASE};   // the levels below are the map's greys, from here the path trails' colours (never touched)
 ${BAYER}
@@ -374,11 +374,14 @@ void main() {
   // Lines (G > 0: streets, rails, outlines) are lifted inside the rectangle and dimmed outside; fills (water, green, the satellite's stipple) are the
   // background: lifted inside by the (smaller) uSpot.z and left alone outside, so the box does not seem to sit on a lighter ground
   // (the CPU twin is spotLevel in core/spot.ts)
-  if (level > 0 && level < GREYS && (uSpot.x > 0.0 || uSpot.y > 0.0 || uSpot.z > 0.0)) {
+  if (level > 0 && level < GREYS && (uSpot.x > 0.0 || uSpot.w > 0.0 || uSpot.y > 0.0 || uSpot.z > 0.0)) {
     bool inside = cell.x >= uSpotRect.x && cell.y >= uSpotRect.y && cell.x < uSpotRect.z && cell.y < uSpotRect.w;
     bool isLine = artCell.g > 0.0;
     // up to the peak (the box at rest), never the ink (the top step of the ramp is the biggest, and it is the selection's colour); a line already there stays
-    if (inside) level = level >= GREYS - 2 ? level : level + int(floor(float(GREYS - 2 - level) * (isLine ? uSpot.x : uSpot.z) + 0.5));
+    if (inside) {
+      float t = clamp(float(level - 1) / float(GREYS - 3), 0.0, 1.0);
+      level = level >= GREYS - 2 ? level : level + int(floor(float(GREYS - 2 - level) * (isLine ? mix(uSpot.w, uSpot.x, t) : uSpot.z) + 0.5));
+    }
     else if (isLine) level = max(1, int(floor(float(level) * (1.0 - uSpot.y) + 0.5)));
   }
   vec3 col = uPal[clamp(level, 0, ${MAX_LEVELS - 1})];
@@ -426,11 +429,11 @@ export interface PassParams {
   /** dither phase, whole art cells */
   anchor: [number, number];
   /**
-   * The spotlight on the selected node's rectangle (art cells, c1 / r1 exclusive): the map's LINES inside it are lifted by `lift` of the way
+   * The spotlight on the selected node's rectangle (art cells, c1 / r1 exclusive): the map's LINES inside it are lifted by `liftLow` (the faintest) to `lift` (the strongest) of the way
    * to the peak, the box at rest (streets read stronger), those outside lose `dim` of their tone; the fills (the background) inside are lifted by the smaller `fill`
    * and those outside are left alone. Paths and trails are never touched. Absent or 0 / 0: off.
    */
-  spot?: { c0: number; r0: number; c1: number; r1: number; lift: number; dim: number; fill: number };
+  spot?: { c0: number; r0: number; c1: number; r1: number; lift: number; liftLow: number; dim: number; fill: number };
 }
 
 type Uniforms = Record<string, WebGLUniformLocation | null>;
@@ -802,7 +805,7 @@ export class PixelPass {
     gl.uniform1i(u.uCellOut!, p.cellOut);
     const sp = p.spot;
     gl.uniform4i(u.uSpotRect!, sp?.c0 ?? 0, sp?.r0 ?? 0, sp?.c1 ?? 0, sp?.r1 ?? 0);
-    gl.uniform3f(u.uSpot!, sp?.lift ?? 0, sp?.dim ?? 0, sp?.fill ?? 0);
+    gl.uniform4f(u.uSpot!, sp?.lift ?? 0, sp?.dim ?? 0, sp?.fill ?? 0, sp?.liftLow ?? 0);
     const pal = new Float32Array(MAX_LEVELS * 3);
     p.levels.forEach((c, i) => pal.set(c, i * 3));
     gl.uniform3fv(u["uPal[0]"]!, pal);

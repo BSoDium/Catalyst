@@ -2,13 +2,15 @@
  * The spotlight on the selected node's rectangle (#569): the CPU twin of the rule in the present pass (gl/pixel-pass.ts, FRAG_PRESENT) and of the
  * rectangle the engine hands it. A pure function of the cell, so the tests pin the rule the shader implements.
  *
- * Inside the rectangle the map's LINES are lifted by `lift` of the way to the peak (the box at rest, one level under the ink: the ink is the selection's
+ * Inside the rectangle the map's LINES are lifted by `liftLow` (the faintest) to `lift` (the strongest) of the way to the peak (the box at rest, one level under the ink: the ink is the selection's
  * colour and the top step of the ramp is the biggest, so a line that was near the top must not land on it), the fills (the background: water, green,
  * the satellite's stipple) by the smaller `fill`. Outside, the lines lose `dim` of their tone (never below the faintest level) and the fills are left alone.
  * Levels of the path trails (from `greys`) and the page colour (0) are never touched, nor is a line already at the ink or the peak (never lowered).
  */
 export interface SpotTune {
+  /** Share of the way to the peak that the strongest lines are lifted; the faintest are lifted by `liftLow`, in between by level (the hierarchy of the roads stays). */
   lift: number;
+  liftLow: number;
   dim: number;
   fill: number;
 }
@@ -23,10 +25,12 @@ export interface CellRect {
 
 /** The palette level a cell is presented at under the spotlight (`greys` = the number of grey levels: the ink is `greys - 1`). */
 export function spotLevel(level: number, isLine: boolean, inside: boolean, tune: SpotTune, greys: number): number {
-  if (level <= 0 || level >= greys || (tune.lift <= 0 && tune.dim <= 0 && tune.fill <= 0)) return level;
+  if (level <= 0 || level >= greys || (tune.lift <= 0 && tune.liftLow <= 0 && tune.dim <= 0 && tune.fill <= 0)) return level;
   if (inside) {
     const peak = greys - 2;
-    return level >= peak ? level : level + Math.floor((peak - level) * (isLine ? tune.lift : tune.fill) + 0.5);
+    if (level >= peak) return level;
+    const t = peak > 1 ? Math.min(1, Math.max(0, (level - 1) / (peak - 1))) : 1;
+    return level + Math.floor((peak - level) * (isLine ? tune.liftLow + (tune.lift - tune.liftLow) * t : tune.fill) + 0.5);
   }
   return isLine ? Math.max(1, Math.floor(level * (1 - tune.dim) + 0.5)) : level;
 }

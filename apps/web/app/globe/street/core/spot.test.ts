@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { sameRect, spotFollow, spotLevel, spotRect } from "./spot";
 
 const GREYS = 12;
-const tune = { lift: 0.95, dim: 0.45, fill: 0.12 };
+const tune = { lift: 0.95, liftLow: 0.15, dim: 0.45, fill: 0.12 };
 
 describe("spotLevel", () => {
   it("lifts the lines inside, never past the peak, and keeps their order", () => {
@@ -10,6 +10,13 @@ describe("spotLevel", () => {
     for (const v of lifted) expect(v).toBeLessThanOrEqual(GREYS - 2);
     expect([...lifted].sort((a, b) => a - b)).toEqual(lifted);
     expect(spotLevel(9, true, true, tune, GREYS)).toBe(10);
+  });
+  it("lifts the main roads much more than the small streets, so the hierarchy stays readable", () => {
+    const small = spotLevel(2, true, true, tune, GREYS);
+    const main = spotLevel(8, true, true, tune, GREYS);
+    expect(main - small).toBeGreaterThanOrEqual(4);
+    expect(main).toBeGreaterThanOrEqual(GREYS - 3);
+    expect(small).toBeLessThan(GREYS - 5);
   });
   it("never lowers a line that is already at the peak or the ink", () => {
     expect(spotLevel(10, true, true, tune, GREYS)).toBe(10);
@@ -30,10 +37,10 @@ describe("spotLevel", () => {
     expect(spotLevel(0, true, true, tune, GREYS)).toBe(0);
     expect(spotLevel(GREYS + 3, true, true, tune, GREYS)).toBe(GREYS + 3);
     expect(spotLevel(GREYS + 3, true, false, tune, GREYS)).toBe(GREYS + 3);
-    expect(spotLevel(6, true, true, { lift: 0, dim: 0, fill: 0 }, GREYS)).toBe(6);
+    expect(spotLevel(6, true, true, { lift: 0, liftLow: 0, dim: 0, fill: 0 }, GREYS)).toBe(6);
   });
   it("scales with the fade: half the strength gives a level between", () => {
-    const half = spotLevel(4, true, true, { lift: tune.lift / 2, dim: 0, fill: 0 }, GREYS);
+    const half = spotLevel(4, true, true, { lift: tune.lift / 2, liftLow: tune.liftLow / 2, dim: 0, fill: 0 }, GREYS);
     expect(half).toBeGreaterThan(4);
     expect(half).toBeLessThan(spotLevel(4, true, true, tune, GREYS));
   });
