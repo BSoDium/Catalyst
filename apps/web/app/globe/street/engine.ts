@@ -370,7 +370,16 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
   const waveOn = !reduced;
   let loadState: "pending" | "running" | "done" = reduced ? "done" : "pending";
   let loadStart = 0;
-  const loadMsNow = (total: number): number => (loadState === "pending" ? 0 : loadState === "done" ? total : Math.min(total, performance.now() - loadStart));
+  // (development only: `__streetWaveMs = 700` freezes the wave at 700 ms to look at one frame of it, `__streetWaveReplay()` runs the first appearance again)
+  const debugMs = (): number | null => (import.meta.env?.DEV ? ((globalThis as { __streetWaveMs?: number }).__streetWaveMs ?? null) : null);
+  if (import.meta.env?.DEV && typeof window !== "undefined") {
+    (window as unknown as { __streetWaveReplay?: () => void }).__streetWaveReplay = () => {
+      loadState = "running";
+      loadStart = performance.now();
+      kick();
+    };
+  }
+  const loadMsNow = (total: number): number => debugMs() ?? (loadState === "pending" ? 0 : loadState === "done" ? total : Math.min(total, performance.now() - loadStart));
   const waveParams = (outW: number, outH: number, cell: number) => {
     const { tile, rings } = waveGeometry(outW, outH, cell);
     const total = waveTotalMs(rings);
@@ -433,7 +442,8 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
           focus,
           blend: blendV.eased,
           ...((): { wave?: NonNullable<PassParams["wave"]> } => {
-            const wave = waveOn && !native ? waveParams(outW, outH, cellDevicePx(cellCss, dpr)) : undefined;
+            // (in the native render the output IS the art grid: a cell is one output px)
+            const wave = waveOn ? waveParams(outW, outH, native ? 1 : cellDevicePx(cellCss, dpr)) : undefined;
             return wave ? { wave } : {};
           })(),
           anchor: [0, 0],
