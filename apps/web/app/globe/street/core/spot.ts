@@ -24,8 +24,17 @@ export interface CellRect {
   r1: number;
 }
 
-/** How the lift grows with a line's level: t (0 the faintest .. 1 the peak) to the power of this, so the small streets are barely lifted and the lift is spent on the main roads. Twin: the shader. */
-export const SPOT_CURVE = 2;
+/**
+ * How the lift grows with a line's level: a smoothstep of the level's place on the ramp (0 the faintest .. 1 the peak) between these two edges, so the small streets
+ * (under the first) are barely lifted, the main roads (over the second) reach the peak, and the tiers between climb apart (the dark ramp is washed out: the road
+ * tiers are 51 to 91 of 255 as drawn, 54 / 68 / 106 / 144 once lifted). Twin: the shader.
+ */
+export const SPOT_EDGE0 = 0.1;
+export const SPOT_EDGE1 = 0.8;
+const smooth = (t: number): number => {
+  const x = Math.min(1, Math.max(0, (t - SPOT_EDGE0) / (SPOT_EDGE1 - SPOT_EDGE0)));
+  return x * x * (3 - 2 * x);
+};
 
 /** The palette level a cell is presented at under the spotlight (`greys` = the number of grey levels: the ink is `greys - 1`). */
 export function spotLevel(level: number, isLine: boolean, inside: boolean, tune: SpotTune, greys: number): number {
@@ -33,7 +42,7 @@ export function spotLevel(level: number, isLine: boolean, inside: boolean, tune:
   if (inside) {
     const peak = greys - 2;
     if (level >= peak) return level;
-    const t = (peak > 1 ? Math.min(1, Math.max(0, (level - 1) / (peak - 1))) : 1) ** SPOT_CURVE;
+    const t = smooth(peak > 1 ? (level - 1) / (peak - 1) : 1);
     return level + Math.floor((peak - level) * (isLine ? tune.liftLow + (tune.lift - tune.liftLow) * t : tune.fill) + 0.5);
   }
   return isLine ? Math.max(1, Math.floor(level * (1 - tune.dim) + 0.5)) : level;
