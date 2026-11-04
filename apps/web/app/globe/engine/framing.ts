@@ -22,6 +22,13 @@ export const DEFAULT_VIEW_RADIUS_KM = 12;
 /** Empty room around the circle, as a fraction of its radius: the circle takes 1 / (1 + margin) = 80% of the smaller free side. */
 export const FRAMING_MARGIN = 0.25;
 export const VIEW_RADIUS_RANGE_KM = { min: 0.5, max: 500 } as const;
+
+/**
+ * The tightest the camera frames: a place that has a bounding box smaller than the minimum view (a building, a church: 88 m) is framed on its own box, to this radius, not to the 0.5 km a
+ * view radius cannot go under. A view radius is a guess of how far to look (the contract's minimum is the least a point can be trusted to); a box is a measured extent, so it is
+ * honoured down to here. Without it the zoom of a small site depended on the screen: the minimum view lands before the buildings come in on a small one (#622).
+ */
+export const FRAMING_MIN_RADIUS_KM = 0.1;
 /**
  * Empty room around a GROUP's circle when the camera flies to it (fraction of its radius): the circle takes 1 / (1 + margin)
  * = 92 % of the smaller free side, a little more than a place's 80 %, so that its square is past `LOD.expandOut` (85 %) and
@@ -82,7 +89,7 @@ export function bboxFitRadiusKm(bbox: Bbox | readonly number[] | undefined | nul
 export function placeFraming(place: { lat: number; lon: number; viewRadiusKm?: number | undefined; bbox?: Bbox | readonly number[] | undefined; framingScale?: number | undefined }): { lon: number; lat: number; radiusKm: number } {
   const scale = typeof place.framingScale === "number" && place.framingScale >= 1 && Number.isFinite(place.framingScale) ? place.framingScale : 1;
   const ext = bboxExtentsKm(place.bbox);
-  if (ext) return { lon: ext.lon, lat: ext.lat, radiusKm: effectiveRadiusKm(Math.max(ext.halfXKm, ext.halfYKm) * scale) };
+  if (ext) return { lon: ext.lon, lat: ext.lat, radiusKm: boxRadiusKm(Math.max(ext.halfXKm, ext.halfYKm) * scale) };
   return { lon: place.lon, lat: place.lat, radiusKm: effectiveRadiusKm(effectiveRadiusKm(place.viewRadiusKm) * scale) };
 }
 
@@ -125,11 +132,17 @@ export function effectiveRadiusKm(radiusKm: number | undefined | null): number {
   return Math.min(VIEW_RADIUS_RANGE_KM.max, Math.max(VIEW_RADIUS_RANGE_KM.min, radiusKm));
 }
 
+/** The radius that frames a box: its own longer half extent, from `FRAMING_MIN_RADIUS_KM` (a view radius goes no lower than the contract's 0.5 km: `effectiveRadiusKm`). */
+function boxRadiusKm(radiusKm: number): number {
+  return Math.min(VIEW_RADIUS_RANGE_KM.max, Math.max(FRAMING_MIN_RADIUS_KM, radiusKm));
+}
+
 /** Unified zoom (unclamped) at which the circle fits a `width` x `height` box whose right `insetRight` px are covered, with `margin` empty room (fraction of the radius). */
 export function radiusFitZoom(radiusKm: number, width: number, height: number, insetRight: number, margin: number = FRAMING_MARGIN): number {
   const free = freeWidth(width, clampInset(insetRight, width));
   const circlePx = Math.max(1, Math.min(free, height)) / 2 / (1 + margin);
-  return radiusPxToZoom((circlePx * EARTH_RADIUS_KM) / effectiveRadiusKm(radiusKm));
+  // (a place's own radius is clamped by `placeFraming` before it gets here; a box's, down to `FRAMING_MIN_RADIUS_KM`)
+  return radiusPxToZoom((circlePx * EARTH_RADIUS_KM) / boxRadiusKm(radiusKm));
 }
 
 /**
