@@ -23,13 +23,16 @@ export interface CellRect {
   r1: number;
 }
 
+/** How the lift grows with a line's level: t (0 the faintest .. 1 the peak) to the power of this, so the small streets are barely lifted and the lift is spent on the main roads. Twin: the shader. */
+export const SPOT_CURVE = 2;
+
 /** The palette level a cell is presented at under the spotlight (`greys` = the number of grey levels: the ink is `greys - 1`). */
 export function spotLevel(level: number, isLine: boolean, inside: boolean, tune: SpotTune, greys: number): number {
   if (level <= 0 || level >= greys || (tune.lift <= 0 && tune.liftLow <= 0 && tune.dim <= 0 && tune.fill <= 0)) return level;
   if (inside) {
     const peak = greys - 2;
     if (level >= peak) return level;
-    const t = peak > 1 ? Math.min(1, Math.max(0, (level - 1) / (peak - 1))) : 1;
+    const t = (peak > 1 ? Math.min(1, Math.max(0, (level - 1) / (peak - 1))) : 1) ** SPOT_CURVE;
     return level + Math.floor((peak - level) * (isLine ? tune.liftLow + (tune.lift - tune.liftLow) * t : tune.fill) + 0.5);
   }
   return isLine ? Math.max(1, Math.floor(level * (1 - tune.dim) + 0.5)) : level;

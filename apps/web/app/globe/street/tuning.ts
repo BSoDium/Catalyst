@@ -32,7 +32,7 @@ export const STREET_TUNING = {
    * hierarchy stays readable; those outside losing
    * `dim` of their tone; the fills (the background) inside lifted by the smaller `fill`, those outside untouched; `ms` to fade in and out). #569.
    */
-  spot: { lift: 0.95, liftLow: 0.15, dim: 0.45, fill: 0.12, ms: 450 },
+  spot: { lift: 1, liftLow: 0.05, dim: 0.45, fill: 0.12, ms: 450 },
   /**
    * Native art-resolution render: map pixels per art cell along each axis. 3 is the smallest that keeps the line rules of
    * docs/pixel-line-rules.md (the line gate, `pnpm test:street-lines`): the classify sample is then exactly one texel, a

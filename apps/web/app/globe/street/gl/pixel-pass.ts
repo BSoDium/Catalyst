@@ -25,6 +25,7 @@
  * Source orientation: row 0 is the top (an uploaded canvas). The art texture always has row 0 at the top.
  */
 import type { Rgb } from "../core/pixel-types";
+import { SPOT_CURVE } from "../core/spot";
 import { LEVEL_SCALE, PALETTE_CAPACITY as MAX_LEVELS, ROUTE_THIN, TRAIL_LEVEL_BASE, codeOf } from "../core/palette";
 import { MESH_STEP, type WarpMesh } from "../core/warp";
 
@@ -379,7 +380,7 @@ void main() {
     bool isLine = artCell.g > 0.0;
     // up to the peak (the box at rest), never the ink (the top step of the ramp is the biggest, and it is the selection's colour); a line already there stays
     if (inside) {
-      float t = clamp(float(level - 1) / float(GREYS - 3), 0.0, 1.0);
+      float t = pow(clamp(float(level - 1) / float(GREYS - 3), 0.0, 1.0), ${SPOT_CURVE.toFixed(1)});
       level = level >= GREYS - 2 ? level : level + int(floor(float(GREYS - 2 - level) * (isLine ? mix(uSpot.w, uSpot.x, t) : uSpot.z) + 0.5));
     }
     else if (isLine) level = max(1, int(floor(float(level) * (1.0 - uSpot.y) + 0.5)));

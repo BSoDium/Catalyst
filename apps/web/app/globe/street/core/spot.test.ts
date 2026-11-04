@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { sameRect, spotFollow, spotLevel, spotRect } from "./spot";
 
 const GREYS = 12;
-const tune = { lift: 0.95, liftLow: 0.15, dim: 0.45, fill: 0.12 };
+const tune = { lift: 1, liftLow: 0.05, dim: 0.45, fill: 0.12 };
 
 describe("spotLevel", () => {
   it("lifts the lines inside, never past the peak, and keeps their order", () => {
@@ -23,8 +23,8 @@ describe("spotLevel", () => {
     expect(spotLevel(11, true, true, tune, GREYS)).toBe(11);
   });
   it("lifts a fill inside by much less than a line", () => {
-    const line = spotLevel(4, true, true, tune, GREYS) - 4;
-    const fill = spotLevel(4, false, true, tune, GREYS) - 4;
+    const line = spotLevel(7, true, true, tune, GREYS) - 7;
+    const fill = spotLevel(7, false, true, tune, GREYS) - 7;
     expect(fill).toBeGreaterThanOrEqual(0);
     expect(fill).toBeLessThan(line);
   });
@@ -39,10 +39,15 @@ describe("spotLevel", () => {
     expect(spotLevel(GREYS + 3, true, false, tune, GREYS)).toBe(GREYS + 3);
     expect(spotLevel(6, true, true, { lift: 0, liftLow: 0, dim: 0, fill: 0 }, GREYS)).toBe(6);
   });
-  it("scales with the fade: half the strength gives a level between", () => {
-    const half = spotLevel(4, true, true, { lift: tune.lift / 2, liftLow: tune.liftLow / 2, dim: 0, fill: 0 }, GREYS);
-    expect(half).toBeGreaterThan(4);
-    expect(half).toBeLessThan(spotLevel(4, true, true, tune, GREYS));
+  it("scales with the fade: half the strength lifts no more, and less somewhere", () => {
+    const halfTune = { lift: tune.lift / 2, liftLow: tune.liftLow / 2, dim: 0, fill: 0 };
+    const levels = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+    for (const l of levels) {
+      const half = spotLevel(l, true, true, halfTune, GREYS);
+      expect(half).toBeGreaterThanOrEqual(l);
+      expect(half).toBeLessThanOrEqual(spotLevel(l, true, true, tune, GREYS));
+    }
+    expect(levels.some((l) => spotLevel(l, true, true, halfTune, GREYS) < spotLevel(l, true, true, tune, GREYS))).toBe(true);
   });
 });
 
