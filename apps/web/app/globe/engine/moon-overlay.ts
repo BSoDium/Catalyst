@@ -197,6 +197,12 @@ export function hudLines(h: NonNullable<MoonFrame["hud"]>): string[] {
 /** The orbit display's fade (app.css `.globe-moon-hud`), ms: the globe goes on feeding it frames this long after the card is put away. */
 const HUD_FADE_MS = 400;
 
+/** How strong the orbit is at `near` (1 at the moon, 0 opposite it): a gradient from a clear line at the moon to a faint one on the far side. */
+export function orbitAlpha(near: number): number {
+  const t = Math.min(1, Math.max(0, near));
+  return 0.16 + 0.54 * t * t;
+}
+
 const SVG_NS = "http://www.w3.org/2000/svg";
 
 type Hud = NonNullable<MoonFrame["hud"]>;
@@ -406,6 +412,17 @@ class OrbitHud {
     return ny > 0 ? [-nx, -ny] : [nx, ny];
   }
 
+  private accent = { tone: "", value: "" };
+
+  /** The accent colour as a canvas can paint it (the page's `--signal`), cached for the `tone` it was read under (the tone changes with the theme); the box's own tone where there is none. */
+  private accentFor(tone: string): string {
+    if (this.accent.tone !== tone) {
+      const v = typeof getComputedStyle === "function" ? getComputedStyle(this.svg).getPropertyValue("--signal").trim() : "";
+      this.accent = { tone, value: v || tone };
+    }
+    return this.accent.value;
+  }
+
   /** The lines, in cells: a dashed low-contrast orbit, a stroke at each mark and a bracket at the shadow. */
   private pixels(h: Hud, g: MoonFrame["grid"], size: { w: number; h: number }, tone: string): void {
     const ctx = this.ctx;
@@ -422,7 +439,9 @@ class OrbitHud {
     c.style.width = `${cols * g.cell}px`;
     c.style.height = `${rows * g.cell}px`;
     ctx.clearRect(0, 0, cols, rows);
-    ctx.fillStyle = tone;
+    // tinted with the accent (`--signal`), and fading along the orbit: strongest at the moon, faint on the far side (the gradient is the angle from the moon)
+    const accent = this.accentFor(tone);
+    ctx.fillStyle = accent;
     const cell = (p: [number, number]): [number, number] => [Math.floor((p[0] - g.left) / g.cell), Math.floor((p[1] - g.top) / g.cell)];
     const dot = (x: number, y: number) => {
       if (x >= 0 && y >= 0 && x < cols && y < rows) ctx.fillRect(x, y, 1, 1);
@@ -451,10 +470,11 @@ class OrbitHud {
       }
     };
     // the orbit: two cells lit, three dark, the count running on from one segment to the next
-    ctx.globalAlpha = 0.42;
     let step = 0;
     let prev: [number, number] | null = null;
-    for (const p of h.orbit) {
+    const n = h.orbit.length - 1;
+    for (let i = 0; i <= n; i++) {
+      const p = h.orbit[i]!;
       if (!p) {
         prev = null;
         continue;
@@ -462,6 +482,7 @@ class OrbitHud {
       const q = cell(p);
       if (prev) {
         const from = step;
+        ctx.globalAlpha = orbitAlpha(1 - Math.min(i, n - i) / (n / 2));
         line(prev, q, (k) => (from + k) % 5 < 2);
         step += Math.max(Math.abs(q[0] - prev[0]), Math.abs(q[1] - prev[1]));
       }
@@ -475,7 +496,9 @@ class OrbitHud {
       const [nx, ny] = this.normal(orbit, k.at[0], k.at[1]);
       const m = cell(k.at);
       const major = k.deg % 30 === 0;
-      ctx.globalAlpha = major ? 0.5 : 0.28;
+      // (the mark's own angle from the moon, 0 at the moon to 1 opposite it)
+      const away = Math.abs(((k.deg - h.angleDeg + 540) % 360) - 180) / 180;
+      ctx.globalAlpha = (major ? 0.9 : 0.5) * orbitAlpha(1 - away);
       const dx = Math.round(nx * (major ? 3 : 1.5));
       const dy = Math.round(ny * (major ? 3 : 1.5));
       line([m[0] - dx, m[1] - dy], [m[0] + dx, m[1] + dy], () => true);

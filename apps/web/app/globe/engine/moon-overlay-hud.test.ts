@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { alongText, hudLines, orbitPath, pathItems, runLength, runs } from "./moon-overlay";
+import { orbitAlpha, alongText, hudLines, orbitPath, pathItems, runLength, runs } from "./moon-overlay";
 
 describe("orbitPath", () => {
   it("draws runs of points and lifts the pen where the orbit is behind the camera", () => {
@@ -54,5 +54,14 @@ describe("pathItems and alongText", () => {
     expect(text.startsWith("A\u00a0")).toBe(true);
     expect(text.length).toBeGreaterThanOrEqual(Math.ceil(200 / 6.1));
     expect(alongText(["A", "B"], 5, 1).startsWith("B")).toBe(true);
+  });
+});
+
+describe("orbitAlpha", () => {
+  it("is strongest at the moon and faint opposite it, and always between", () => {
+    expect(orbitAlpha(1)).toBeGreaterThan(orbitAlpha(0.5));
+    expect(orbitAlpha(0.5)).toBeGreaterThan(orbitAlpha(0));
+    expect(orbitAlpha(0)).toBeGreaterThan(0);
+    expect(orbitAlpha(2)).toBe(orbitAlpha(1));
   });
 });

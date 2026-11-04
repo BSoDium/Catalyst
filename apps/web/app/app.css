@@ -4730,16 +4730,20 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   }
 
   .globe-moon-hud-number {
-    fill-opacity: 0.42;
+    fill: var(--signal-text, currentColor);
+    fill-opacity: 0.55;
   }
 
+  /* tinted with the accent, as the line (engine/moon-overlay.ts `accentFor`): the data above the orbit in it, the numbers too; the line below in the page's ink */
   .globe-moon-hud-along {
     font-size: 8px;
     letter-spacing: 0.16em;
-    fill-opacity: 0.5;
+    fill: var(--signal-text, currentColor);
+    fill-opacity: 0.6;
   }
 
   .globe-moon-hud-along-below {
+    fill: currentColor;
     fill-opacity: 0.38;
   }
 
