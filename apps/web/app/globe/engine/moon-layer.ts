@@ -317,7 +317,7 @@ export class MoonLayer {
     if (!f || !this.basis || !this.sample?.onScreen) return null;
     const basis = this.basis;
     const at = (a: number): Vec3 => toEarthFrame(inertialPosition(f.angle + a, basis), f.eraDeg);
-    const N = 96;
+    const N = 720; // (every half degree: the orbit is long on the screen near the camera, and the line is cut round the moon and where the planet hides it, so it must be fine there)
     const orbit: MoonTrace["orbit"] = [];
     for (let i = 0; i <= N; i++) orbit.push(this.onBuffer(at((2 * Math.PI * i) / N)));
     const ticks: MoonTrace["ticks"] = [];

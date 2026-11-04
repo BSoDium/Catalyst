@@ -1586,7 +1586,7 @@ export class GlobeRenderer {
     const px = (b: [number, number] | null): [number, number] | null => {
       if (!b) return null;
       // the orbit does not run over the moon itself
-      if (m && Math.hypot(b[0] - m.cx, b[1] - m.cy) < m.r * 1.25 + 2) return null;
+      if (m && Math.hypot(b[0] - m.cx, b[1] - m.cy) < m.r + 4) return null;
       const x = b[0] * P + this.canvasLeft;
       const y = (this.bufH - b[1]) * P + this.canvasTop;
       return x < this.canvasLeft - w * 0.25 || x > this.canvasLeft + w * 1.25 || y < this.canvasTop - h * 0.25 || y > this.canvasTop + h * 1.25 ? null : [x, y];
