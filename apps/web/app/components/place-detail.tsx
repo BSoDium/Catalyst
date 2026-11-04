@@ -5,8 +5,8 @@ import type { PlaceSummary } from "@catalyst/schemas";
 import { PANEL_HEADING_ID } from "~/components/detail-panel";
 import { EntryRow } from "~/components/entry/entry-list-card";
 import { TripCards } from "~/components/trip-card";
-import { Button, Icon, ScrollRow, Stack, StatePanel } from "~/components/ui";
-import { formatEntryDate } from "~/lib/dates";
+import { PhotoGallery, type GalleryItem } from "~/components/place-gallery";
+import { Button, Icon, Stack, StatePanel } from "~/components/ui";
 import { KIND_PLURALS } from "~/lib/entries";
 import { coverImageProps } from "~/lib/cover-image";
 import { safeMediaSrc } from "~/lib/entry-blocks";
@@ -242,18 +242,6 @@ function PlaceHeader({ place, cover }: { place: PlaceDetailData; cover: PlaceCov
   );
 }
 
-/** A photograph of the place in its gallery: the cover of a linked photograph entry, with what the label says. */
-interface GalleryItem {
-  src: string;
-  alt: string;
-  width?: number;
-  height?: number;
-  small?: { src: string; width: number; height: number };
-  title: string;
-  href: string;
-  date?: string;
-}
-
 /**
  * The step's own pictures, the photographs linked to it (a photograph of the place IS a picture of it: they lead the page as its gallery, and are not
  * "entries" that would put the story second) and the entries. A sensitive photograph stays an entry, where its card blurs it.
@@ -283,56 +271,6 @@ function GroupHeader({ title, count }: { title: string; count: number }) {
       <h2 className="m-0 font-display text-[2rem] leading-none font-extrabold tracking-[-0.03em]">{title}</h2>
       <span className="ds-meta">{count}</span>
     </header>
-  );
-}
-
-/**
- * The photographs of the place, full panel width with no frame: a row that scrolls sideways and snaps, every picture the same height and as wide as its own
- * proportions make it, so the next one peeks in at the edge (the multi-browse carousel of Material 3 Expressive, with this site's square corners). Each has its label on it, over a soft
- * dome of the page colour: the date in mono, the title in the display face, and where it is in the row. One photograph is a single full-width picture, with no row.
- */
-function PhotoGallery({ items, from }: { items: GalleryItem[]; from: string }) {
-  const one = items.length === 1;
-  const picture = (item: GalleryItem, i: number) => {
-    const date = formatEntryDate(item.date);
-    const ratio = item.width && item.height ? item.width / item.height : 4 / 3;
-    return (
-      <Link
-        to={item.href}
-        state={{ from }}
-        aria-label={item.title}
-        style={{ aspectRatio: ratio }}
-        className={cn("place-gallery-item group relative block overflow-hidden bg-accent no-underline", one ? "w-full max-h-[80dvh]" : "h-[min(26rem,70dvh)] max-w-[88cqw] shrink-0 snap-start")}
-      >
-        <img {...coverImageProps({ src: item.src, width: item.width ?? 0, small: item.small }, "(min-width: 48rem) 50vw, 100vw")} alt={item.alt} loading={i === 0 ? "eager" : "lazy"} decoding="async" className="place-gallery-img size-full object-cover" />
-        <span className="place-gallery-label">
-          <span className="place-gallery-meta ds-micro flex items-baseline justify-between gap-3">
-            <span>{date ? date.text : ""}</span>
-            {!one && (
-              <span aria-hidden="true">
-                {String(i + 1).padStart(2, "0")} / {String(items.length).padStart(2, "0")}
-              </span>
-            )}
-          </span>
-          <span className="place-gallery-title line-clamp-2 font-display text-[1.375rem] leading-[1.1] font-extrabold tracking-[-0.02em] text-foreground">{item.title}</span>
-        </span>
-      </Link>
-    );
-  };
-  return (
-    <div data-slot="place-gallery" data-many={one ? undefined : ""} className="place-gallery @container -mx-6">
-      {one ? (
-        picture(items[0]!, 0)
-      ) : (
-        <ScrollRow noun="photographs" className="flex snap-x snap-mandatory gap-1.5">
-          {items.map((item, i) => (
-            <div key={item.src} className="contents">
-              {picture(item, i)}
-            </div>
-          ))}
-        </ScrollRow>
-      )}
-    </div>
   );
 }
 

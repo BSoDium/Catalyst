@@ -2117,69 +2117,26 @@
       transparent 100%
     );
   }
-  /* The row's pictures GROW as they come into view (scroll-driven, no script: a view timeline on each picture along the row's axis, its progress from "its edge reaches the row's edge" to "it is all in"): the picture from 0.8 to its size, the photograph inside it settling from a closer crop, the title from a thin, small setting of the variable face to its heavy, large one (Bricolage: weight 200 to 800, the optical size follows the size). The first picture is already all in, so it is at full size; the next one peeks in small and grows as it is brought in. Where the browser has no view timelines, or the visitor asks for less motion, every picture is at full size. */
-  @media (prefers-reduced-motion: no-preference) {
-    @supports (animation-timeline: view()) {
-      .place-gallery[data-many] .place-gallery-item {
-        view-timeline: --place-photo inline;
-        transform-origin: 0% 100%;
-        animation: place-photo-grow linear both;
-        animation-timeline: view(inline);
-        animation-range: entry 0% entry 100%;
-      }
-      .place-gallery[data-many] .place-gallery-img {
-        animation: place-photo-settle linear both;
-        animation-timeline: --place-photo;
-        animation-range: entry 0% entry 100%;
-      }
-      .place-gallery[data-many] .place-gallery-title {
-        transform-origin: 0% 100%;
-        animation: place-photo-title linear both;
-        animation-timeline: --place-photo;
-        animation-range: entry 0% entry 100%;
-      }
-      .place-gallery[data-many] .place-gallery-meta {
-        animation: place-photo-meta linear both;
-        animation-timeline: --place-photo;
-        animation-range: entry 30% entry 100%;
-      }
-    }
+  /* The carousel of the photographs (components/place-gallery.tsx, lib/photo-carousel.ts): the row is a native scroller, with no scrollbar, whose pictures are placed from its scroll position, so they change in WIDTH only (the height is the row's). `--g`, 0 to 1, is how much of
+     its full width a picture has; the title in it follows it: from a thin, small setting of the variable face (Bricolage: weight 200, 0.9 rem) to its heavy, large one (800, 1.375 rem), the optical size following the size. A picture with no `--g` (one alone, the row before the script) is at full size. */
+  .place-gallery-scroller {
+    height: min(26rem, 70dvh);
+    scrollbar-width: none;
+    -ms-overflow-style: none;
   }
-  @keyframes place-photo-grow {
-    from {
-      scale: 0.8;
-    }
-    to {
-      scale: 1;
-    }
+  .place-gallery-scroller::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
   }
-  @keyframes place-photo-settle {
-    from {
-      scale: 1.22;
-    }
-    to {
-      scale: 1;
-    }
+  .place-gallery-title {
+    font-size: calc(0.9rem + 0.475rem * var(--g, 1));
+    font-weight: calc(200 + 600 * var(--g, 1));
+    letter-spacing: calc(0.01em - 0.03em * var(--g, 1));
+    line-height: 1.1;
   }
-  @keyframes place-photo-title {
-    from {
-      font-size: 0.9rem;
-      font-weight: 200;
-      letter-spacing: 0.01em;
-    }
-    to {
-      font-size: 1.375rem;
-      font-weight: 800;
-      letter-spacing: -0.02em;
-    }
-  }
-  @keyframes place-photo-meta {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
+  .place-gallery-meta {
+    opacity: clamp(0, calc((var(--g, 1) - 0.3) * 1.43), 1);
   }
   .place-gallery [data-slot="scroll-row-arrow"] {
     top: 50%;
