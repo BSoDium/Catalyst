@@ -4837,6 +4837,95 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
    * label's sharp, fully opaque edge (no feather), so that it hides what is behind it (the globe's lines, the stars) and reads on any of it. Out of sight and out of
    * the pointer's way until the moon is held.
    */
+  /* The orbit display (#586, engine/moon-overlay.ts `OrbitHud`): drawn while the card is held and for the fade after it. The lines are pixel art on their own canvas of the map's cells; the words are SVG text at the screen's resolution, in the map's mono type. */
+  .globe-moon-hud-pixels {
+    position: absolute;
+    image-rendering: pixelated;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.4s var(--ease-standard);
+  }
+
+  .globe-moon-hud-pixels[data-on] {
+    opacity: 1;
+  }
+
+  .globe-moon-hud {
+    /* the display's colours: the accent toned down towards the ink (it reads as a grey with a hint of blue) and, for the earth's shadow, a saturated purple */
+    --hud-tint: color-mix(in srgb, var(--signal-text, currentColor) 38%, var(--foreground));
+    --hud-umbra: oklch(0.66 0.21 305);
+    --hud-solar: oklch(0.8 0.16 75);
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    pointer-events: none;
+    font-family: var(--font-mono);
+    color: var(--foreground);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.4s var(--ease-standard), visibility 0s linear 0.4s;
+  }
+
+  .globe-moon-hud[data-on] {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.4s var(--ease-standard);
+  }
+
+  .globe-moon-hud-number,
+  .globe-moon-hud-readout,
+  .globe-moon-hud-along {
+    fill: currentColor;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    paint-order: stroke;
+    stroke: var(--background);
+    stroke-width: 3px;
+    stroke-linejoin: round;
+  }
+
+  .globe-moon-hud-number {
+    fill: var(--hud-tint);
+    fill-opacity: 0.55;
+  }
+
+  /* tinted with the accent, as the line (engine/moon-overlay.ts `accentFor`): the data above the orbit in it, the numbers too; the line below in the page's ink */
+  .globe-moon-hud-along {
+    font-size: 8px;
+    letter-spacing: 0.16em;
+    fill: var(--hud-tint);
+    fill-opacity: 0.6;
+  }
+
+  .globe-moon-hud-along-below {
+    fill-opacity: 0.42;
+  }
+
+  .globe-moon-hud-readout {
+    font-size: 10px;
+    fill: var(--hud-tint);
+    fill-opacity: 0.6;
+  }
+
+  .globe-moon-hud-solar {
+    fill: var(--hud-solar);
+    fill-opacity: 1;
+  }
+
+  .globe-moon-hud-eclipse {
+    fill: var(--hud-umbra);
+    fill-opacity: 1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .globe-moon-hud,
+    .globe-moon-hud-pixels {
+      transition: none;
+    }
+  }
+
   .globe-moon-card {
     --map-label-plate: var(--background);
     position: absolute;

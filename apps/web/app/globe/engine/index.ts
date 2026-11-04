@@ -320,7 +320,7 @@ export function createGlobe(opts: GlobeOptions): GlobeHandle {
     throw e instanceof Error && /WebGL/i.test(e.message) ? new WebGLUnavailableError() : e;
   }
 
-  if (withMoon && opts.moon && opts.moonRoot) moonOverlay = new MoonOverlay(opts.moonRoot, opts.moon, () => renderer.moonFrame(), (on) => renderer.setMoonHeld(on));
+  if (withMoon && opts.moon && opts.moonRoot) moonOverlay = new MoonOverlay(opts.moonRoot, opts.moon, () => renderer.moonFrame(), (on) => renderer.setMoonHeld(on), (on) => renderer.setMoonHud(on));
   renderer.setSelected(opts.selectedSlug, false);
   labels.setSelected(opts.selectedSlug);
   labels.setWake(() => renderer.requestRender()); // a plan run by the labels' timer on a map at rest started a glide
