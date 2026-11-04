@@ -28,6 +28,11 @@ export const STREET_TUNING = {
   revealMs: 700,
   dissolveMs: 900,
   /**
+   * The spotlight on the selected node's rectangle (core/spot.ts: the map's lines inside lifted by `lift` of the way to the peak, those outside losing
+   * `dim` of their tone; the fills (the background) inside lifted by the smaller `fill`, those outside untouched; `ms` to fade in and out). #569.
+   */
+  spot: { lift: 0.95, dim: 0.45, fill: 0.12, ms: 450 },
+  /**
    * Native art-resolution render: map pixels per art cell along each axis. 3 is the smallest that keeps the line rules of
    * docs/pixel-line-rules.md (the line gate, `pnpm test:street-lines`): the classify sample is then exactly one texel, a
    * 1-cell line is 3 px wide and a dotted line keeps its dashes. 2 samples the average of a 2x2 block, which softens short

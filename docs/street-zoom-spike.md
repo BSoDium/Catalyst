@@ -363,3 +363,14 @@ The owner reported lines that disappear and a look closer to a downscaled hi-res
 - **Tried and rejected:** conservative max-pool (never drops, always doubles), supersample plus Zhang-Suen thinning (shimmers under pan: 1.4x to 1.9x the native change rate, 4.7 % reversals, cuts 4.7 % of line cells), ridge detection (74 % to 79 % broken on MapLibre's flat-profile lines). A native art-resolution render with the same rule matches the quality at less than half the cost (2.8 vs 6.5 ms) but cannot feed the sharp reveal, so it is the option for phones. Vertex-stage grid snapping was not built.
 - **Regression gate.** `pnpm --filter @catalyst/prototype-street-zoom test:lines` (Playwright, 211 checks, exit 1 on violation; the old rule fails 108 of them). `?rule=legacy&widths=legacy&pattern=bayer8` restores the spike's rendering for before/after comparisons.
 - Screenshots: `docs/street-zoom/line-*-before.png` and `line-*-after.png`. The older screenshots above show the pre-fix look.
+
+## Spotlight on the selected city (#569)
+
+When a place is selected, the street map's present pass (`gl/pixel-pass.ts`, FRAG_PRESENT) gives the part of the map inside the selected box more contrast, so its streets read and the selection has focus. The rectangle is the HUD's drawn box (`hud.screen`, whole art cells, `spotRect` in `core/spot.ts`, set by `syncSpot` in `street/engine.ts`) and the strength fades with an `EasedValue` (`STREET_TUNING.spot`, 450 ms; instant under reduced motion). Only the map's greys are changed, per cell, at the last step (the classify, stairs and ease passes are untouched):
+
+- **Lines** (G > 0: streets, rails, outlines) inside are lifted `lift` (0.95) of the way to the PEAK level, one under the ink (the ink is the selection's colour, and the top step of the ramp is the biggest: a first version lifted to the ink and the coast, already at level 9, jumped to full white); a line already at the peak or the ink is never lowered. Outside they lose `dim` (0.45) of their tone.
+- **Fills** (water, green, the satellite stipple: the background) inside are lifted by the smaller `fill` (0.12), outside left alone, so the box does not seem to sit on a lighter ground.
+- **Path trails** (levels from `TRAIL_LEVEL_BASE`) and the page colour are never touched. A tint (blue streets) was tried and dropped by the owner.
+
+`spotLevel` (`core/spot.ts`) is the CPU twin of the rule, tested in `core/spot.test.ts`. The globe-scale view (Three.js) has no streets and is not affected.
+

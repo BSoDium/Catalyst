@@ -48,6 +48,7 @@ import { fadeStraight, thinLegs, thinZoomOf, type ThinLeg } from "../paths/thin"
 import { DEFAULT_HANDOFF, PLACEHOLDER_LAYERS, PLACEHOLDER_REPLACES, PLACEHOLDER_OVERLAP_MS, PLACEHOLDER_SETTLE_MS, ROUTE_LAYER_IDS, applyCell, applyDashScale, applyKeptLegs, buildStreetStyle, placeholderWanted, dashStepOf, focusFilter, graticule, headFocusFilter, ROUTE_HEAD_FOCUS_ID, hasPlaceholder, routeLayerId, seaFrom, type StyleTiles } from "./style/street-style";
 import { onSchemeChange } from "../engine/scheme";
 import { STREET_TUNING } from "./tuning";
+import { sameRect, spotRect, type CellRect } from "./core/spot";
 import type { AnimateOptions, FlyOptions, RevealOptions, StreetDebug, StreetMap, StreetMapOptions, StreetView } from "./types";
 
 export class StreetUnavailableError extends Error {
@@ -364,6 +365,9 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
   const revealV = new EasedValue(STREET_TUNING.revealMs, reduced);
   const sharpV = new EasedValue(STREET_TUNING.dissolveMs, reduced, opts.initialSharp ?? 0);
   const blendV = new EasedValue(STREET_TUNING.dissolveMs, reduced, opts.initialBlend ?? 1);
+  // The spotlight: the selected node's rectangle in art cells (null when it is not drawn), faded in by `spotV`.
+  const spotV = new EasedValue(STREET_TUNING.spot.ms, reduced);
+  let spotBox: CellRect | null = null;
   let revealCenter: "selected" | { lon: number; lat: number } = "selected";
   let reportedLost = false;
   const waiters: { value: EasedValue; resolve(): void }[] = [];
@@ -416,6 +420,7 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
           focus,
           blend: blendV.eased,
           anchor: [0, 0],
+          spot: spotBox && spotV.eased > 0 ? { ...spotBox, lift: STREET_TUNING.spot.lift * spotV.eased, dim: STREET_TUNING.spot.dim * spotV.eased, fill: STREET_TUNING.spot.fill * spotV.eased } : undefined,
         };
       },
       onContextChange: () => reportContext(),
@@ -464,7 +469,7 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
   // ---- animation loop for the capabilities (the only rAF this module owns) ---------------------------------------
   let raf = 0;
   let lastTs = 0;
-  const animating = () => revealV.animating || sharpV.animating || blendV.animating;
+  const animating = () => revealV.animating || sharpV.animating || blendV.animating || spotV.animating;
   const settle = () => {
     for (let i = waiters.length - 1; i >= 0; i--) {
       if (!waiters[i]!.value.animating) {
@@ -481,6 +486,7 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
     revealV.step(dt);
     sharpV.step(dt);
     blendV.step(dt);
+    spotV.step(dt);
     if (!compositor.redraw()) map.triggerRepaint();
     settle();
     if (animating() && !document.hidden) raf = requestAnimationFrame(tick);
@@ -567,6 +573,23 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
     syncOverlayInner();
     perfEnd("street.overlay", t0);
   };
+  // The spotlight follows the selected node's drawn rectangle (whole art cells, as the box is drawn); it fades out when nothing is selected or the node is not drawn.
+  const syncSpot = () => {
+    const i = selected ? lod.indexOf(selected) : -1;
+    const sc = hud.screen;
+    if (i >= 0 && sc.shown[i]) {
+      const next = spotRect({ x0: sc.bx0[i]!, y0: sc.by0[i]!, x1: sc.bx1[i]!, y1: sc.by1[i]! }, mapCell());
+      const moved = !sameRect(spotBox, next);
+      spotBox = next;
+      if (spotV.target !== 1) {
+        spotV.set(1);
+        kick();
+      } else if (moved) compositor.redraw();
+    } else if (spotV.target !== 0) {
+      spotV.set(0);
+      kick();
+    } else if (!spotV.animating) spotBox = null;
+  };
   const syncOverlayInner = () => {
     const w = root.clientWidth;
     const h = root.clientHeight;
@@ -576,6 +599,7 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
     // container's own space with the projection centre the map uses; the free area is the box minus the inset the host passed.
     setLodCamera(lodCam, registerMapToGlobe(v), { width: w, height: h, centreX: (w - pad()) / 2 }, w - clampInset(inset, w), cellCss);
     hud.update({ width: w, height: h, cellCss, cam: lodCam });
+    syncSpot();
     // The camera's signature includes where the centre lands on screen: closing the panel changes the map's padding (the inset), which moves every
     // projected point without changing the centre's lon, lat or zoom.
     const mapViewCap = (cw: number, ch: number) => {
