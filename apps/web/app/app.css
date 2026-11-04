@@ -2006,6 +2006,8 @@
      The text block is trimmed to that where the browser can (`text-box`), else the mark is centred on it. Hairline: a 1 px stroke at any size. */
   .entry-exposure {
     --exposure-gap: 0.25rem;
+    /* the aperture's stroke is the stem of the camera's name beside it (JetBrains Mono at 500: 0.105 em of the 12 px), not a hairline */
+    --exposure-stroke: calc(1em * 0.105);
     display: flex;
     align-items: center;
     gap: 0.75rem;
@@ -2034,7 +2036,7 @@
     --place-stroke: calc(var(--place-name) * 0.09);
     /* the viewfinder is as tall as the INK of the two lines, from the top of the name's tallest letters to the bottom of the second line's descenders (measured: 89 % of the block, 2.7 px down from its top, which puts its middle
        a pixel above the block's), not as the block's line boxes; its drawing runs from 3 to 21 of 24 units (75 %), the stroke is on top of that */
-    --place-ink: calc(var(--place-text-h) * 0.89);
+    --place-ink: calc(var(--place-text-h) * 0.89 - 1px);
     --place-map: calc((var(--place-ink) - var(--place-stroke)) * 24 / 18);
     --place-arrow: 1.5rem;
     display: inline-flex;
@@ -2100,11 +2102,11 @@
     /* the icon's ring spans 20 of its 24 units: the box is 1.2 times the text's height, and the extra 0.1 on each side is taken back, so the RING is as tall as the text
        (less the hairline: its stroke is centred on the ring, so half of it lies outside on each side) */
     --exposure-text: calc(1cap + var(--text-meta--line-height) + var(--exposure-gap));
-    height: calc((var(--exposure-text) - 1px) * 1.2);
+    height: calc((var(--exposure-text) - var(--exposure-stroke)) * 1.2);
     width: auto;
     aspect-ratio: 1;
-    margin-block: calc((var(--exposure-text) - 1px) * -0.1);
-    stroke-width: 1px;
+    margin-block: calc((var(--exposure-text) - var(--exposure-stroke)) * -0.1);
+    stroke-width: var(--exposure-stroke);
     stroke-linecap: butt;
     stroke-linejoin: round;
     color: var(--muted-foreground);
