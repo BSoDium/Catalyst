@@ -2683,7 +2683,8 @@
 
     /* A poem: the title and the lines in 4-10, the marginalia beside the title, 34 px down (the board). */
     .entry[data-kind="poem"][data-layout="full"] .entry-grid {
-      padding-top: 5.5rem;
+      /* (none: the running head and the cover start right under the header, as every other kind's do; there was 5.5 rem here, which left the cover far below the navbar, #582) */
+      padding-top: 0;
     }
 
     /* (the head runs the whole width, as every kind's does: the running head's rule and the cover's picture bleed; the title keeps its columns, 4 to 10) */
@@ -3808,6 +3809,11 @@
     translate: 0 -50%;
     z-index: 3;
     isolation: isolate;
+  }
+
+  /* In the full-screen entry view the page's margin is 2 rem (the content's gutter, and the copy-link button's right edge), not 3.5: the search's box ends where they do (#582). */
+  body:has([data-slot="entry-view"][data-layout="full"]) [data-slot="site-header"] [data-slot="search-trigger"] {
+    right: calc((100% - 100cqw) / 2 + 2rem);
   }
 
   /* Docked outside the row, the search is past the row's own fade (`.nav-fade`): over the globe it had no ground (owner, 2026-10-30). A soft plate of its own, the page's colour at the middle and gone at the edge (a radial ramp in eased stops: no box, no blur to pay for), like the player's at the other corner. */
