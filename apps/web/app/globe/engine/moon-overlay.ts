@@ -16,6 +16,17 @@ import { clock, phaseName } from "./moon-hud";
 import { MOON } from "./moon";
 import { dashingFor, edgeLit } from "./pixel-labels";
 
+/** A span of the orbit (the earth's shadow on the moon, or the moon's on the earth): when it begins, peaks and ends, in radians ahead of the moon, and where those are on the screen. */
+export interface HudSpan {
+  now: boolean;
+  fromAngle: number | null;
+  peakAngle: number | null;
+  endAngle?: number | null;
+  at: [number, number] | null;
+  peakAt: [number, number] | null;
+  endAt?: [number, number] | null;
+}
+
 /** What the globe tells the overlay each time it is asked (the renderer's `moonFrame`), in the container's CSS px. */
 export interface MoonFrame {
   x: number;
@@ -36,7 +47,9 @@ export interface MoonFrame {
     waxing: boolean;
     angleDeg: number;
     info: { range: number; inclDeg: number; phaseDeg: number };
-    eclipse: { now: boolean; fromAngle: number | null; peakAngle: number | null; at: [number, number] | null; peakAt: [number, number] | null };
+    eclipse: HudSpan;
+    /** The moon's shadow on the earth, the same way. */
+    solar?: HudSpan | undefined;
   } | undefined;
 }
 
@@ -238,9 +251,11 @@ export function pathItems(h: Hud): { above: string[]; below: string[] } {
   const degAt = (ahead: number | null) => (ahead === null ? "---" : String(Math.round(((h.angleDeg + (ahead * 180) / Math.PI) % 360 + 360) % 360)).padStart(3, "0"));
   const e = h.eclipse;
   const shadow = e.now ? `UMBRA ENTERED AT ${degAt(0)}\u00b0` : e.fromAngle === null ? "SHADOW NOT ON PATH" : `SHADOW AT ${degAt(e.fromAngle)}\u00b0 PEAK ${degAt(e.peakAngle)}\u00b0`;
+  const sun = h.solar;
+  const solarLine = !sun ? null : sun.now ? "SOLAR ECLIPSE UNDER WAY" : sun.fromAngle === null ? "NO SOLAR ECLIPSE" : `SOLAR ECLIPSE IN ${clock((sun.fromAngle / (2 * Math.PI)) * MOON.periodMs)}`;
   return {
     above: ["LUNA ORBIT", `RADIUS ${MOON.orbit.toFixed(1)} ER`, `INCL ${h.info.inclDeg.toFixed(1)}\u00b0`, `PERIOD ${clock(MOON.periodMs)}`, `ANG VEL ${(360 / (MOON.periodMs / 1000)).toFixed(2)}\u00b0/S`, `RANGE ${h.info.range.toFixed(2)} ER`],
-    below: [`PHASE ANGLE ${String(Math.round(h.info.phaseDeg)).padStart(3, "0")}\u00b0`, `ILLUM ${(h.lit * 100).toFixed(1)}%`, shadow, e.now ? "ECLIPSE UNDER WAY" : e.fromAngle === null ? "NO ECLIPSE" : `T-${clock((e.fromAngle / (2 * Math.PI)) * MOON.periodMs)}`],
+    below: [`PHASE ANGLE ${String(Math.round(h.info.phaseDeg)).padStart(3, "0")}\u00b0`, `ILLUM ${(h.lit * 100).toFixed(1)}%`, shadow, e.now ? "ECLIPSE UNDER WAY" : e.fromAngle === null ? "NO ECLIPSE" : `T-${clock((e.fromAngle / (2 * Math.PI)) * MOON.periodMs)}`, ...(solarLine ? [solarLine] : [])],
   };
 }
 
@@ -373,22 +388,25 @@ class OrbitHud {
       label.textContent = String(k.deg).padStart(3, "0");
       marks.append(label);
     }
+    const tag = (at: [number, number] | null | undefined, text: string, cls: string, dx: number) => {
+      if (!at) return;
+      const t = doc.createElementNS(SVG_NS, "text");
+      t.setAttribute("class", `globe-moon-hud-number ${cls}`);
+      t.setAttribute("x", (at[0] + dx).toFixed(1));
+      t.setAttribute("y", (at[1] + 3).toFixed(1));
+      t.textContent = text;
+      marks.append(t);
+    };
+    // the earth's shadow on the moon in purple, the moon's shadow on the earth in amber: where each begins, where it is deepest and where it ends
     const e = h.eclipse;
-    if (e.at) {
-      const name = doc.createElementNS(SVG_NS, "text");
-      name.setAttribute("class", "globe-moon-hud-number globe-moon-hud-eclipse");
-      name.setAttribute("x", (e.at[0] + 12).toFixed(1));
-      name.setAttribute("y", (e.at[1] + 3).toFixed(1));
-      name.textContent = "UMBRA";
-      marks.append(name);
-    }
-    if (e.peakAt) {
-      const peak = doc.createElementNS(SVG_NS, "text");
-      peak.setAttribute("class", "globe-moon-hud-number globe-moon-hud-eclipse");
-      peak.setAttribute("x", (e.peakAt[0] + 8).toFixed(1));
-      peak.setAttribute("y", (e.peakAt[1] + 3).toFixed(1));
-      peak.textContent = "PEAK";
-      marks.append(peak);
+    tag(e.at, "UMBRA", "globe-moon-hud-eclipse", 12);
+    tag(e.peakAt, "PEAK", "globe-moon-hud-eclipse", 8);
+    tag(e.endAt, "END", "globe-moon-hud-eclipse", 12);
+    const sun = h.solar;
+    if (sun) {
+      tag(sun.at, "SOLAR", "globe-moon-hud-solar", 12);
+      tag(sun.peakAt, "PEAK", "globe-moon-hud-solar", 8);
+      tag(sun.endAt, "END", "globe-moon-hud-solar", 12);
     }
 
     // the readout, one line under the other, on the side of the box that the card is not on
@@ -426,21 +444,20 @@ class OrbitHud {
     return ny > 0 ? [-nx, -ny] : [nx, ny];
   }
 
-  /** Whether the orbit's point `i` of `n` lies in the shadow: from where it begins to where it ends, as far past the middle as before it. */
-  private inShadow(h: Hud, i: number, n: number): boolean {
-    const e = h.eclipse;
-    if (e.now || e.fromAngle === null || e.peakAngle === null) return false;
+  /** Whether the orbit's point `i` of `n` lies in `span`: from where it begins to where it ends (as far past the middle as before it, where the end is not known). */
+  private inSpan(span: HudSpan | undefined, i: number, n: number): boolean {
+    if (!span || span.now || span.fromAngle === null || span.peakAngle === null) return false;
     const ahead = (2 * Math.PI * i) / n;
-    return ahead >= e.fromAngle && ahead <= 2 * e.peakAngle - e.fromAngle;
+    return ahead >= span.fromAngle && ahead <= (span.endAngle ?? 2 * span.peakAngle - span.fromAngle);
   }
 
-  private colours = { tone: "", tint: "", umbra: "" };
+  private colours = { tone: "", tint: "", umbra: "", solar: "" };
 
   /** The display's two colours as a canvas can paint them (`--hud-tint`, an accent toned down towards the ink, and `--hud-umbra`, the shadow's purple: app.css), cached for the `tone` they were read under (it changes with the theme); the box's own tone where there is none. */
-  private coloursFor(tone: string): { tint: string; umbra: string } {
+  private coloursFor(tone: string): { tint: string; umbra: string; solar: string } {
     if (this.colours.tone !== tone) {
       const cs = typeof getComputedStyle === "function" ? getComputedStyle(this.svg) : null;
-      this.colours = { tone, tint: cs?.getPropertyValue("--hud-tint").trim() || tone, umbra: cs?.getPropertyValue("--hud-umbra").trim() || tone };
+      this.colours = { tone, tint: cs?.getPropertyValue("--hud-tint").trim() || tone, umbra: cs?.getPropertyValue("--hud-umbra").trim() || tone, solar: cs?.getPropertyValue("--hud-solar").trim() || tone };
     }
     return this.colours;
   }
@@ -462,7 +479,7 @@ class OrbitHud {
     c.style.height = `${rows * g.cell}px`;
     ctx.clearRect(0, 0, cols, rows);
     // tinted with the accent (`--signal`), and fading along the orbit: strongest at the moon, faint on the far side (the gradient is the angle from the moon)
-    const { tint, umbra } = this.coloursFor(tone);
+    const { tint, umbra, solar } = this.coloursFor(tone);
     ctx.fillStyle = tint;
     const cell = (p: [number, number]): [number, number] => [Math.floor((p[0] - g.left) / g.cell), Math.floor((p[1] - g.top) / g.cell)];
     const dot = (x: number, y: number) => {
@@ -506,8 +523,10 @@ class OrbitHud {
         const from = step;
         // the tint is strongest at each graduation and fades towards the next; inside the earth's shadow the line is solid and strong
         const deg = h.angleDeg + (360 * i) / n;
-        const shaded = this.inShadow(h, i, n);
-        ctx.fillStyle = shaded ? umbra : tint;
+        const dark = this.inSpan(h.eclipse, i, n);
+        const sunny = !dark && this.inSpan(h.solar, i, n);
+        const shaded = dark || sunny;
+        ctx.fillStyle = dark ? umbra : sunny ? solar : tint;
         ctx.globalAlpha = shaded ? 0.9 : orbitAlpha(tickGlow(deg));
         line(prev, q, shaded ? () => true : (k) => (from + k) % 5 < 2);
         step += Math.max(Math.abs(q[0] - prev[0]), Math.abs(q[1] - prev[1]));
@@ -540,9 +559,15 @@ class OrbitHud {
       const c = [corner(-1, -1), corner(1, -1), corner(1, 1), corner(-1, 1)];
       for (let k = 0; k < 4; k++) line(c[k]!, c[(k + 1) % 4]!, () => true);
     };
-    ctx.fillStyle = umbra;
-    if (e.at && orbit.length > 1) square(e.at, 4);
-    if (e.peakAt && orbit.length > 1) square(e.peakAt, 2);
+    if (orbit.length > 1) {
+      for (const [span, colour] of [[e, umbra], [h.solar, solar]] as const) {
+        if (!span) continue;
+        ctx.fillStyle = colour;
+        if (span.at) square(span.at, 4);
+        if (span.peakAt) square(span.peakAt, 2);
+        if (span.endAt) square(span.endAt, 4);
+      }
+    }
     ctx.globalAlpha = 1;
   }
 }
@@ -687,7 +712,8 @@ export class MoonOverlay {
     if (f.hud) {
       const m = this.sizes.rw > 0 ? this.sizes : this.measure();
       this.hud.draw(f.hud, this.at.box, this.card.dataset.side === "below" ? "below" : "above", f.grid, { w: m.rw, h: m.rh }, f.tone);
-      this.hud.show(this.open);
+      // (shown while the card is held and, like its words, for `READ_MS` after it is let go of)
+      this.hud.show(this.open || this.readTimer !== 0);
     } else this.hud.show(false);
   }
 
@@ -717,6 +743,8 @@ export class MoonOverlay {
       delete this.link.dataset.read;
       this.revealed = 0;
       this.paint();
+      // (the orbit display goes with the box)
+      if (!this.open) this.releaseHud();
     }
   }
 
@@ -756,11 +784,9 @@ export class MoonOverlay {
     const doc = this.root.ownerDocument;
     if (on && this.coarse()) doc.addEventListener?.("pointerdown", this.onOutside, true);
     else doc.removeEventListener?.("pointerdown", this.onOutside, true);
-    window.clearTimeout(this.hudTimer);
-    if (on) this.setHud(true);
-    else {
-      this.hud.show(false);
-      this.hudTimer = window.setTimeout(() => this.setHud(false), HUD_FADE_MS + 50);
+    if (on) {
+      window.clearTimeout(this.hudTimer);
+      this.setHud(true);
     }
     if (on) this.link.dataset.open = "";
     else {
@@ -776,7 +802,7 @@ export class MoonOverlay {
       this.reveal(1);
     } else if (this.revealed > 0) {
       this.readTimer = window.setTimeout(() => this.forget(), READ_MS);
-    }
+    } else this.releaseHud();
     this.setHeld(on);
   }
 
@@ -793,11 +819,19 @@ export class MoonOverlay {
   };
 
   /** Unread again: the words scramble (the card, if it is still up, shows gibberish once more). */
+  /** The orbit display goes: it fades, and the globe stops bringing it its data once it has (`HUD_FADE_MS`). */
+  private releaseHud() {
+    window.clearTimeout(this.hudTimer);
+    this.hud.show(false);
+    this.hudTimer = window.setTimeout(() => this.setHud(false), HUD_FADE_MS + 50);
+  }
+
   private forget() {
     window.clearTimeout(this.readTimer);
     this.readTimer = 0;
     delete this.link.dataset.read;
     this.reveal(0);
+    this.releaseHud();
   }
 
   /** The words as they are at `revealed`: the first part clear, the rest scrambled. */

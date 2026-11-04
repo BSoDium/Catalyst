@@ -1598,7 +1598,8 @@ export class GlobeRenderer {
       waxing: t.waxing,
       angleDeg: t.angleDeg,
       info: { range: t.range, inclDeg: t.inclinationDeg, phaseDeg: t.phaseDeg },
-      eclipse: { now: t.eclipse.now, fromAngle: t.eclipse.fromAngle, peakAngle: t.eclipse.peakAngle, at: px(t.eclipse.at), peakAt: px(t.eclipse.peakAt) },
+      eclipse: { now: t.eclipse.now, fromAngle: t.eclipse.fromAngle, peakAngle: t.eclipse.peakAngle, endAngle: t.eclipse.endAngle, at: px(t.eclipse.at), peakAt: px(t.eclipse.peakAt), endAt: px(t.eclipse.endAt) },
+      solar: { now: t.solar.now, fromAngle: t.solar.fromAngle, peakAngle: t.solar.peakAngle, endAngle: t.solar.endAngle, at: px(t.solar.at), peakAt: px(t.solar.peakAt), endAt: px(t.solar.endAt) },
     };
   }
 

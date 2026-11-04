@@ -15,7 +15,7 @@
  */
 import { AddEquation, ClampToEdgeWrapping, Color, CustomBlending, FrontSide, LinearFilter, Mesh, NoColorSpace, OneFactor, OneMinusSrcAlphaFactor, RepeatWrapping, type Scene, ShaderMaterial, SphereGeometry, SrcAlphaFactor, type Texture, TextureLoader, Vector2, Vector3, type PerspectiveCamera } from "three";
 import type { GlobeTheme } from "./colors";
-import { eclipseAhead, litShare, type EclipseAhead } from "./moon-hud";
+import { eclipseAhead, litShare, solarAhead, type EclipseAhead } from "./moon-hud";
 import { MOON, eclipseOf, inertialPosition, moonAmount, orbitBasis, toEarthFrame, unhidden, type OrbitBasis, type Vec3 } from "./moon";
 import { SURFACE, surfaceTones } from "./surface";
 
@@ -47,11 +47,20 @@ export interface MoonTrace {
   waxing: boolean;
   angleDeg: number;
   /** The earth's shadow along the orbit (`eclipseAhead`) and the point where it begins. */
-  eclipse: EclipseAhead & { at: [number, number] | null; peakAt: [number, number] | null };
+  eclipse: EclipseAhead & HudMarks;
+  /** The moon's shadow on the earth along the orbit (`solarAhead`), the same way. */
+  solar: EclipseAhead & HudMarks;
   /** Readout numbers: the camera's range to the moon (earth radii), the orbit's inclination (degrees) and the sun-moon-earth angle (degrees). */
   range: number;
   inclinationDeg: number;
   phaseDeg: number;
+}
+
+/** Where a span's beginning, middle and end are on the buffer (null: nowhere, or not on the picture). */
+interface HudMarks {
+  at: [number, number] | null;
+  peakAt: [number, number] | null;
+  endAt: [number, number] | null;
 }
 
 export interface MoonFrame {
@@ -114,8 +123,8 @@ const FRAGMENT = /* glsl */ `
     // the red of the air's light, after the darkening and only deep in the shadow: the moon's own tones (the maria and the ground) kept, in a subtle red (not a flat patch of it)
     float lum = clamp(dot(col, vec3(0.299, 0.587, 0.114)) * 3.0, 0.0, 1.0);
     col = mix(col, uRed * (0.3 + 0.9 * lum), uEclipse.y * (0.55 - 0.3 * uFlip));
-    // the outline takes the eclipse's red too (a grey ring round a dark red moon looked odd): by the red of the air, and a little by the darkening alone, in the lit tone's brightness
-    rimCol = mix(rimCol, uRed * (0.55 + 0.7 * lum), clamp(uEclipse.y * 0.85 + uEclipse.x * 0.25, 0.0, 1.0));
+    // the outline takes the eclipse's red too (a grey ring round a dark red moon looked odd), very dim: by the red of the air, and a little by the darkening alone
+    rimCol = mix(rimCol, uRed * (0.2 + 0.25 * lum), clamp(uEclipse.y * 0.95 + uEclipse.x * 0.3, 0.0, 1.0));
     col = mix(col, rimCol, rim);
     gl_FragColor = vec4(col, uAmt);
   }
@@ -327,6 +336,12 @@ export class MoonLayer {
     const lit = litShare(at(0), f.sun);
     const waxing = litShare(at(0.02), f.sun) > lit;
     const ahead = eclipseAhead(at, f.sun);
+    const solar = solarAhead(at, f.sun);
+    const marks = (span: EclipseAhead): HudMarks => ({
+      at: span.fromAngle === null ? null : this.onBuffer(at(span.fromAngle)),
+      peakAt: span.peakAngle === null ? null : this.onBuffer(at(span.peakAngle)),
+      endAt: span.endAngle === null ? null : this.onBuffer(at(span.endAngle)),
+    });
     const turn = (f.angle % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
     return {
       orbit,
@@ -337,7 +352,8 @@ export class MoonLayer {
       range: this.sample.distance,
       inclinationDeg: f.inclinationDeg,
       phaseDeg: (Math.acos(Math.min(1, Math.max(-1, -(at(0)[0] * f.sun[0] + at(0)[1] * f.sun[1] + at(0)[2] * f.sun[2]) / Math.hypot(...at(0))))) * 180) / Math.PI,
-      eclipse: { ...ahead, at: ahead.fromAngle === null ? null : this.onBuffer(at(ahead.fromAngle)), peakAt: ahead.peakAngle === null ? null : this.onBuffer(at(ahead.peakAngle)) },
+      eclipse: { ...ahead, ...marks(ahead) },
+      solar: { ...solar, ...marks(solar) },
     };
   }
 

@@ -4701,6 +4701,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     /* the display's colours: the accent toned down towards the ink (it reads as a grey with a hint of blue) and, for the earth's shadow, a saturated purple */
     --hud-tint: color-mix(in srgb, var(--signal-text, currentColor) 38%, var(--foreground));
     --hud-umbra: oklch(0.66 0.21 305);
+    --hud-solar: oklch(0.8 0.16 75);
     position: absolute;
     inset: 0;
     width: 100%;
@@ -4753,6 +4754,11 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     font-size: 10px;
     fill: var(--hud-tint);
     fill-opacity: 0.6;
+  }
+
+  .globe-moon-hud-solar {
+    fill: var(--hud-solar);
+    fill-opacity: 1;
   }
 
   .globe-moon-hud-eclipse {

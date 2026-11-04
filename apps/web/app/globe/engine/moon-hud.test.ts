@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clock, eclipseAhead, litShare, phaseName } from "./moon-hud";
+import { clock, eclipseAhead, solarAhead, litShare, phaseName } from "./moon-hud";
 import { MOON, type Vec3 } from "./moon";
 
 describe("litShare", () => {
@@ -44,7 +44,27 @@ describe("eclipseAhead", () => {
   });
   it("finds none on an orbit that misses the shadow", () => {
     const tilted = (a: number): Vec3 => [R * Math.cos(a) * 0.1, R * Math.sin(a), R * Math.cos(a)];
-    expect(eclipseAhead(tilted, sun)).toEqual({ now: false, fromAngle: null, peakAngle: null });
+    expect(eclipseAhead(tilted, sun)).toEqual({ now: false, fromAngle: null, peakAngle: null, endAngle: null });
+  });
+});
+
+describe("the end of a shadow and the moon's own", () => {
+  const sun: Vec3 = [1, 0, 0];
+  const R = MOON.orbit;
+  const inPlane = (start: number) => (a: number): Vec3 => [R * Math.cos(start + a), R * Math.sin(start + a), 0];
+  it("has an end after the middle, as far past it as the start is before it", () => {
+    const r = eclipseAhead(inPlane(Math.PI / 2), sun);
+    expect(r.endAngle).not.toBeNull();
+    expect(r.endAngle!).toBeGreaterThan(r.peakAngle!);
+    expect(r.peakAngle! - r.fromAngle!).toBeCloseTo(r.endAngle! - r.peakAngle!, 1);
+  });
+  it("finds the moon's shadow on the earth where it crosses the sun's side", () => {
+    // from the shadow's own side (pi) the sun's side (0) is half a lap ahead
+    const r = solarAhead(inPlane(Math.PI), sun);
+    expect(r.now).toBe(false);
+    expect(r.fromAngle).not.toBeNull();
+    expect(r.peakAngle!).toBeCloseTo(Math.PI, 0);
+    expect(r.endAngle!).toBeGreaterThan(r.peakAngle!);
   });
 });
 

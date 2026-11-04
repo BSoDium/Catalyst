@@ -2,7 +2,7 @@
  * The numbers behind the moon's orbit display (#586): what the card shows around the orbit once its words are clear, a spaceship's readout. Pure: the orbit's position at an
  * angle comes in as a function, the sun as a unit vector, both in the earth-fixed frame, so this knows nothing of the camera or the scene.
  */
-import { eclipseOf, type Vec3 } from "./moon";
+import { eclipseOf, moonShadowOn, type Vec3 } from "./moon";
 
 /** The share of the disc the sun lights, as the earth sees it: 0 new moon (between the earth and the sun) to 1 full (the earth between). `p` is the moon's centre, `sun` the unit direction to the sun. */
 export function litShare(p: Vec3, sun: Vec3): number {
@@ -31,6 +31,39 @@ export interface EclipseAhead {
   fromAngle: number | null;
   /** The angle ahead where the moon is deepest in the shadow; null as above. */
   peakAngle: number | null;
+  /** The angle ahead where it leaves the shadow again; null as above, and when it does not within a lap. */
+  endAngle: number | null;
+}
+
+/**
+ * Where, along the orbit, a thing of `strength(a)` (0 is none, over `threshold` is in it) next begins, peaks and ends, `a` radians ahead of the moon. Scans one lap in `steps`. The peak is the middle of
+ * the stretch where it is at its strongest (a shadow's full strength is a plateau, not a point).
+ */
+export function spanAhead(strength: (ahead: number) => number, threshold: number, steps = 360): EclipseAhead {
+  const now = strength(0) > threshold;
+  let from: number | null = now ? 0 : null;
+  let end: number | null = null;
+  const inside: { a: number; s: number }[] = [];
+  for (let i = 0; i <= steps; i++) {
+    const a = (2 * Math.PI * i) / steps;
+    const s = strength(a);
+    if (from === null) {
+      if (s > threshold) {
+        from = a;
+        inside.push({ a, s });
+      }
+      continue;
+    }
+    if (s <= threshold) {
+      end = a;
+      break;
+    }
+    inside.push({ a, s });
+  }
+  if (from === null) return { now, fromAngle: null, peakAngle: null, endAngle: null };
+  const top = Math.max(...inside.map((p) => p.s));
+  const level = inside.filter((p) => p.s >= top - 0.01 * Math.abs(top));
+  return { now, fromAngle: from, peakAngle: (level[0]!.a + level[level.length - 1]!.a) / 2, endAngle: end };
 }
 
 /**
@@ -38,35 +71,18 @@ export interface EclipseAhead {
  * The earth's turn under the orbit is not followed (the lap is short against it): this is the shadow as it stands now.
  */
 export function eclipseAhead(at: (ahead: number) => Vec3, sun: Vec3, steps = 360): EclipseAhead {
-  const dark = (a: number) => eclipseOf(at(a), sun).dark;
-  const now = dark(0) > ECLIPSE_FROM;
-  let from: number | null = now ? 0 : null;
-  let leftShadow = false;
-  let peak = -1;
-  let peakAt: number | null = null;
-  for (let i = 0; i <= steps; i++) {
-    const a = (2 * Math.PI * i) / steps;
-    const d = dark(a);
-    if (from === null) {
-      if (d > ECLIPSE_FROM) {
-        from = a;
-        peak = d;
-        peakAt = a;
-      }
-      continue;
-    }
-    if (d <= ECLIPSE_FROM) {
-      leftShadow = true;
-      if (!now) break;
-      continue;
-    }
-    if (!leftShadow && d > peak) {
-      peak = d;
-      peakAt = a;
-    }
-  }
-  if (from === null) return { now: false, fromAngle: null, peakAngle: null };
-  return { now, fromAngle: from, peakAngle: peakAt };
+  return spanAhead((a) => eclipseOf(at(a), sun).dark, ECLIPSE_FROM, steps);
+}
+
+/** How far into the moon's shadow on the earth the ground is, 0..1 at the nearest: 0 where it misses (`moonShadowOn`). */
+export function solarStrength(p: Vec3, sun: Vec3): number {
+  const m = moonShadowOn(p, sun);
+  return m ? Math.max(0, 1 - Math.hypot(...m.axis) / (1 + m.fall)) : 0;
+}
+
+/** Where, along the orbit, the moon's shadow falls on the earth (a solar eclipse), as `eclipseAhead` does for the earth's on the moon. */
+export function solarAhead(at: (ahead: number) => Vec3, sun: Vec3, steps = 360): EclipseAhead {
+  return spanAhead((a) => solarStrength(at(a), sun), 0.02, steps);
 }
 
 /** `ms` as mm:ss, for the countdown (a day and over is "--:--"). */
