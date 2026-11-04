@@ -32,6 +32,8 @@ export const STREET_TUNING = {
    * hierarchy stays readable; those outside losing
    * `dim` of their tone; the fills (the background) inside lifted by the smaller `fill`, those outside untouched; `ms` to fade in and out). #569.
    */
+  /** The tiled wave of the dissolve (#589): a tile is this many art cells a side. */
+  wave: { tileCells: 14 },
   spot: { lift: 1, liftLow: 0.05, dim: 0.45, fill: 0.12, ms: 450 },
   /**
    * Native art-resolution render: map pixels per art cell along each axis. 3 is the smallest that keeps the line rules of

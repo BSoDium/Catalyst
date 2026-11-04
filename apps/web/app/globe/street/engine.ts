@@ -364,6 +364,15 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
   const revealV = new EasedValue(STREET_TUNING.revealMs, reduced);
   const sharpV = new EasedValue(STREET_TUNING.dissolveMs, reduced, opts.initialSharp ?? 0);
   const blendV = new EasedValue(STREET_TUNING.dissolveMs, reduced, opts.initialBlend ?? 1);
+  // The dissolve of the street map into view (and out of it) is a wave of tiles from the middle of the screen (#589): off under reduced motion, where it is a cut anyway.
+  const waveOn = !reduced;
+  const waveFor = (outW: number, outH: number, cell: number) => {
+    const tile = Math.max(1, Math.round(cell * STREET_TUNING.wave.tileCells));
+    const x = outW / 2;
+    const y = outH / 2;
+    const rings = Math.ceil(Math.max(x, y) / tile);
+    return { x, y, tile, rings };
+  };
   // The spotlight: the selected node's rectangle in art cells (null when it is not drawn), faded in by `spotV`.
   const spotV = new EasedValue(STREET_TUNING.spot.ms, reduced);
   let spotBox: CellRect | null = null;
@@ -418,6 +427,7 @@ export function createStreetMap(container: HTMLElement, opts: StreetMapOptions):
           sharp: native ? 0 : sharpV.eased,
           focus,
           blend: blendV.eased,
+          ...(waveOn && !native && blendV.eased < 1 ? { wave: waveFor(outW, outH, cellDevicePx(cellCss, dpr)) } : {}),
           anchor: [0, 0],
           spot: spotBox && spotV.eased > 0 ? { ...spotBox, lift: STREET_TUNING.spot.lift * spotV.eased, liftLow: STREET_TUNING.spot.liftLow * spotV.eased, dim: STREET_TUNING.spot.dim * spotV.eased, fill: STREET_TUNING.spot.fill * spotV.eased } : undefined,
         };
