@@ -3811,7 +3811,7 @@
   }
 
   /* In the full-screen entry view the page's margin is 2 rem (the content's gutter, and the copy-link button's right edge), not 3.5: the search's box ends where they do (#582). */
-  [data-slot="site-header"][data-full] [data-slot="search-trigger"] {
+  body:has([data-slot="entry-view"][data-layout="full"]) [data-slot="site-header"] [data-slot="search-trigger"] {
     right: calc((100% - 100cqw) / 2 + 2rem);
   }
 
