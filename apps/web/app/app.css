@@ -1211,6 +1211,16 @@
     stroke-linejoin: miter;
   }
 
+  /* The arrows are the one-stroke kind: a shaft and a head that close a square. With the system's square ends the shaft's end pokes past the head's diagonals; butt ends stop it at the corner, where the miter joins the head's two legs (#581). */
+  .ui-icon.lucide-arrow-right,
+  .ui-icon.lucide-arrow-up-right,
+  .ui-icon.lucide-arrow-up-left,
+  .ui-icon.lucide-arrow-up,
+  .ui-icon.lucide-arrow-down {
+    stroke-linecap: butt;
+    stroke-linejoin: miter;
+  }
+
   .ui-icon[data-size="inline"] {
     width: var(--icon-inline);
     height: var(--icon-inline);
@@ -1996,21 +2006,149 @@
      The text block is trimmed to that where the browser can (`text-box`), else the mark is centred on it. Hairline: a 1 px stroke at any size. */
   .entry-exposure {
     --exposure-gap: 0.25rem;
+    /* the aperture's stroke is the stem of the camera's name beside it (JetBrains Mono at 500: 0.105 em of the 12 px), not a hairline */
+    --exposure-stroke: calc(1em * 0.105);
     display: flex;
     align-items: center;
     gap: 0.75rem;
+    margin: 0;
+    color: var(--muted-foreground);
+  }
+  /* The camera's block and the link to the place (#581). Where the row is wide enough for both (a full screen's column, a wide panel) the link sits at the right end of the camera's row, as tall as its mark; where it is not (a tablet's side panel) they
+     are stacked at the left, and both are drawn on the same two columns (the icon, centred in a column of one width; then the text) so the icons are on one vertical and the text starts at one distance from it. */
+  .entry-facts-row {
+    --exposure-text: calc(1cap + var(--text-meta--line-height) + 0.25rem);
+    --facts-icon-col: 2.25rem;
+    container-type: inline-size;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
     margin: 2rem 0 0;
+  }
+  @container (min-width: 46rem) {
+    .entry-facts-row {
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem 2rem;
+    }
+  }
+  /* The link to the place (#581): the pin (the aperture's twin), two lines of text and, in the top right corner, the arrow, with no outline, the glyphs at one distance from the box's edge at the top, the bottom and their own side: each box's padding is that distance less the glyph's own inset (the pin's runs from 5 to 19 of 24 across, the arrow's from 7 to 17). */
+  .entry-place-link {
+    --place-h: 2.75rem;
+    --place-name: 0.8125rem;
+    --place-cta: 0.6875rem;
+    /* the block of text: the name's line box, the gap and the second line's (as set below) */
+    --place-text-h: calc(var(--place-name) * 1.25 + 0.125rem + var(--place-cta) * 1.2);
+    /* the viewfinder is as tall as the INK of the two lines, from the top of the name's tallest letters to the bottom of the second line's descenders (measured: 89 % of the block, 2.7 px down from its top, which puts its middle
+       a pixel above the block's), not as the block's line boxes; its drawing runs from 3 to 21 of 24 units (75 %), the stroke is on top of that */
+    --place-ink: calc(var(--place-text-h) * 0.89 - 1px);
+    /* the pin is the aperture's twin: the same stroke (0.105 em of the camera's 12 px type; the link is set in that type too, its own lines have sizes of their own), the same size (its box is 1.2 times the camera's text less the stroke) and colour */
+    --place-stroke: calc(1em * 0.105);
+    --place-pin: calc((1cap + var(--text-meta--line-height) + 0.25rem - var(--place-stroke)) * 1.2);
+    --place-arrow: 1.5rem;
+    /* the distance of the ink from the box's edge: at the top, the bottom and the sides */
+    --place-pad: calc((var(--place-h) - var(--place-ink)) / 2);
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    box-sizing: border-box;
+    height: var(--place-h);
+    padding-left: calc(var(--place-pad) - var(--place-pin) * 5 / 24 + var(--place-stroke) / 2);
+    /* the arrow is nested in the top right corner (below): its ink is 11.25 of the 24 units of its box (the path from 7 to 17, the 1.25 stroke on top), and the text keeps a gap from it */
+    padding-right: calc(var(--place-pad) + var(--place-arrow) * 11.25 / 24 + 0.75rem);
+    color: var(--foreground);
+    text-decoration: none;
+    transition: background-color var(--duration-fast) var(--ease-standard);
+  }
+  /* (at the right end of the camera's row when both fit; with no camera it is the only thing on the row and stays at the left) */
+  @container (min-width: 46rem) {
+    .entry-exposure ~ .entry-place-link {
+      margin-left: auto;
+    }
+  }
+  /* Stacked: the link first, then the camera's block, on the shared icon column (their text starts at one distance), and the link's hover plate reaches out to the left by its padding so its icon is the camera's. */
+  @container (max-width: 45.999rem) {
+    .entry-place-link {
+      order: -1;
+    }
+    .entry-exposure {
+      display: grid;
+      grid-template-columns: var(--facts-icon-col) auto;
+      column-gap: 0.75rem;
+    }
+    .entry-exposure .entry-exposure-mark {
+      justify-self: center;
+    }
+    .entry-place-link {
+      display: grid;
+      grid-template-columns: var(--facts-icon-col) auto;
+      column-gap: 0.75rem;
+      margin-left: calc(-1 * var(--place-pad) + var(--place-pin) * 5 / 24 - var(--place-stroke) / 2);
+    }
+    .entry-place-link svg.entry-place-link-pin {
+      justify-self: center;
+    }
+  }
+  .entry-place-link:hover,
+  .entry-place-link:focus-visible {
+    background: var(--accent);
+  }
+  .entry-place-link-text {
+    text-transform: none;
+    font-weight: 400;
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    min-width: 0;
+    font-family: var(--font-mono);
+  }
+  /* (the line boxes are as tall as the type needs, descenders included: no overflow clip on them, a "g" in "Bogotá" keeps its tail) */
+  .entry-place-link-name {
+    font-size: var(--place-name);
+    line-height: 1.25;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+  .entry-place-link-cta {
+    font-size: var(--place-cta);
+    line-height: 1.2;
+    letter-spacing: 0.04em;
+    color: var(--muted-foreground);
+  }
+  .entry-place-link svg.entry-place-link-pin {
+    flex: none;
+    width: var(--place-pin);
+    height: var(--place-pin);
+    stroke-width: var(--place-stroke);
+    stroke-linecap: butt;
+    stroke-linejoin: round;
+    color: var(--muted-foreground);
+  }
+  .entry-place-link svg.entry-place-link-pin * {
+    vector-effect: non-scaling-stroke;
+  }
+  .entry-place-link svg.entry-place-link-arrow {
+    position: absolute;
+    top: calc(var(--place-pad) - var(--place-arrow) * 6.375 / 24);
+    right: calc(var(--place-pad) - var(--place-arrow) * 6.375 / 24);
+    width: var(--place-arrow);
+    height: var(--place-arrow);
+    stroke-width: 1.25;
     color: var(--muted-foreground);
   }
   .entry-exposure .entry-exposure-mark {
     /* the icon's ring spans 20 of its 24 units: the box is 1.2 times the text's height, and the extra 0.1 on each side is taken back, so the RING is as tall as the text
        (less the hairline: its stroke is centred on the ring, so half of it lies outside on each side) */
     --exposure-text: calc(1cap + var(--text-meta--line-height) + var(--exposure-gap));
-    height: calc((var(--exposure-text) - 1px) * 1.2);
+    height: calc((var(--exposure-text) - var(--exposure-stroke)) * 1.2);
     width: auto;
     aspect-ratio: 1;
-    margin-block: calc((var(--exposure-text) - 1px) * -0.1);
-    stroke-width: 1px;
+    margin-block: calc((var(--exposure-text) - var(--exposure-stroke)) * -0.1);
+    stroke-width: var(--exposure-stroke);
     stroke-linecap: butt;
     stroke-linejoin: round;
     color: var(--muted-foreground);

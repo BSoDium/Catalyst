@@ -334,7 +334,22 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
                 {tail ? <span className="entry-title-tail">{tail}</span> : null}
               </h1>
               {entry.summary && !poem && <p className="type-standfirst mt-[1.375rem] max-w-[25.4em] md:mt-[2.125rem]">{entry.summary}</p>}
-              {exposure && <ExposureBlock exposure={exposure} />}
+              {/* The way to the place a photograph is about, up where it is read (the other kinds have it in "At a glance", as a link, or in the tags) and not only in a tag or on the map (#581): on the camera's row, at its right end, as tall as the camera's mark, in two lines. */}
+              {(exposure || (entry.kind === "photograph" && globeTarget)) && (
+                <div data-slot="entry-facts-row" className="entry-facts-row">
+                  {exposure && <ExposureBlock exposure={exposure} />}
+                  {entry.kind === "photograph" && globeTarget && (
+                    <Link to={globeTarget.href} data-slot="entry-place-link" className="entry-place-link type-meta print:hidden">
+                      <Icon name="pin" size="large" className="entry-place-link-pin" />
+                      <span className="entry-place-link-text">
+                        <span className="entry-place-link-name">{globeTarget.name}</span>
+                        <span className="entry-place-link-cta">Open on the map</span>
+                      </span>
+                      <Icon name="arrow-up-right" size="large" className="entry-place-link-arrow" />
+                    </Link>
+                  )}
+                </div>
+              )}
               {actions}
             </div>
             {heroSrc && entry.cover && <img src={heroSrc} alt={heroDim ? "" : entry.cover.alt} width={entry.cover.width} height={entry.cover.height} decoding="async" className="entry-hero-img" />}
