@@ -43,14 +43,6 @@ export function CareerPage({ career, places = [], projects = [] }: { career: Pub
       className="entry career mx-auto max-w-[90rem] px-4 pt-[calc(var(--navbar-height)+0.5rem)] min-[56rem]:pt-[calc(var(--navbar-height)+3rem)] pb-24 outline-none md:px-14 print:max-w-none print:p-0"
     >
       <header data-slot="career-head" className="list-head">
-        <p className="list-running type-meta">
-          <span>{career.title}</span>
-          {updated && (
-            <span>
-              Updated <time dateTime={career.updated}>{updated}</time>
-            </span>
-          )}
-        </p>
         <div className="career-id" data-portrait={portrait ? "true" : "false"}>
           <div className="career-id-text">
             {/* Every 10 s the handle comes in over the name, and the name steps back under it, smaller and dimmed, like its shadow (#588): CSS only, `.career-name-handle` and `.career-name-text`. */}
