@@ -1,14 +1,13 @@
 import { safeMediaSrc } from "./entry-blocks";
 import type { PlaceDetailData } from "./projection";
 
-/** The picture that heads a place's panel: where it comes from decides whether it also has a link (to the entry it is the cover of). */
+/** The picture that heads a place's panel (decoration: blurred and dimmed, never credited or linked). `own`: one of the place's own images (it is not shown again in the strip below; an entry's cover is, with its link). */
 export interface PlaceCover {
   src: string;
   alt: string;
   width?: number;
   height?: number;
-  /** Set when the picture is an entry's cover: what the small credit on it says and where it leads. */
-  credit?: { title: string; href: string };
+  own: boolean;
 }
 
 /** Kinds in the order they are tried: a photograph is a picture of the place; the others' covers are what they are. */
@@ -22,13 +21,13 @@ const size = (i: { width?: number | undefined; height?: number | undefined }) =>
  */
 export function placeCover(place: Pick<PlaceDetailData, "images" | "entries">): PlaceCover | null {
   for (const image of place.images) {
-    if (safeMediaSrc(image.src)) return { src: image.src, alt: image.alt, ...size(image) };
+    if (safeMediaSrc(image.src)) return { src: image.src, alt: image.alt, ...size(image), own: true };
   }
   for (const kind of COVER_KINDS) {
     const group = place.entries.find((g) => g.kind === kind);
     for (const entry of group?.entries ?? []) {
       if (entry.sensitive || !entry.cover || !safeMediaSrc(entry.cover.src)) continue;
-      return { src: entry.cover.src, alt: entry.cover.alt, ...size(entry.cover), credit: { title: entry.title, href: entry.href } };
+      return { src: entry.cover.src, alt: entry.cover.alt, ...size(entry.cover), own: false };
     }
   }
   return null;

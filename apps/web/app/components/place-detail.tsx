@@ -5,7 +5,6 @@ import { PANEL_HEADING_ID } from "~/components/detail-panel";
 import { EntryListCard } from "~/components/entry/entry-list-card";
 import { TripCards } from "~/components/trip-card";
 import { Button, Icon, SectionHeader, Stack, StatePanel } from "~/components/ui";
-import { kindCount } from "~/lib/entries";
 import { safeMediaSrc } from "~/lib/entry-blocks";
 import { placeCover, type PlaceCover } from "~/lib/place-cover";
 import { formatPlaceCoordinates, placeCoordinateParts, type CoordinatePart } from "~/lib/labelling";
@@ -138,11 +137,10 @@ function Coordinate({ label, part }: { label: string; part: CoordinatePart }) {
 
 /**
  * What the page knows about the place, as a strip of figures under its name: the two coordinates (at the precision they are stored with), what is on the site about it
- * (what is on the site about it) and when. A figure the data does not have is not drawn.
+ * (one count per kind of entry about it, dimmer) and when. A figure the data does not have is not drawn.
  */
 function PlaceFacts({ place }: { place: PlaceDetailData }) {
   const coordinates = placeCoordinateParts(place.coordinates.lat, place.coordinates.lon);
-  const entries = place.entries.reduce((n, g) => n + g.entries.length, 0);
   return (
     <dl data-slot="place-facts" className="m-0 flex flex-wrap gap-x-7 gap-y-3">
       {coordinates ? (
@@ -155,11 +153,11 @@ function PlaceFacts({ place }: { place: PlaceDetailData }) {
           <span className="ds-meta">{formatPlaceCoordinates(place.coordinates.lat, place.coordinates.lon)}</span>
         </Fact>
       )}
-      {entries > 0 && (
-        <Fact label="On this site" sub={place.entries.map((g) => kindCount(g.kind, g.entries.length)).join(" · ")}>
-          <span className="place-figure place-figure-whole">{entries}</span>
+      {place.entries.map((g) => (
+        <Fact key={g.kind} label={g.label}>
+          <span className="place-figure place-figure-count">{g.entries.length}</span>
         </Fact>
-      )}
+      ))}
       {place.dates && (
         <Fact label="When">
           <time dateTime={place.dates.dateTime} className="place-figure-text">
@@ -179,7 +177,7 @@ function placeWhere(place: PlaceDetailData): string {
 /**
  * The head of the panel: the region and country as a small tracked line, the name in the display face (large), then the facts strip (`PlaceFacts`). With a cover
  * (`lib/place-cover.ts`) the picture is full-bleed behind it and runs up under the panel's bar (the close button sits on it), a gradient into the panel's ground under it so
- * the type reads on any picture; the picture is decoration (`alt=""`), the credit of an entry's cover a faint link in its corner. Without one it is the type alone.
+ * the type reads on any picture; the picture is decoration (`alt=""`): blurred and dimmed toward the panel's ground, so a white or a black one never fights the type. Without one it is the type alone.
  */
 function PlaceHeader({ place, cover }: { place: PlaceDetailData; cover: PlaceCover | null }) {
   const src = cover ? safeMediaSrc(cover.src) : null;
@@ -202,15 +200,9 @@ function PlaceHeader({ place, cover }: { place: PlaceDetailData; cover: PlaceCov
   return (
     <header data-slot="place-cover" className="place-cover relative isolate -mx-6 -mt-2 flex flex-col justify-end gap-3 overflow-hidden px-6 pb-5 md:-mt-[calc(var(--navbar-height)+1.5rem)]">
       <div aria-hidden="true" className="place-cover-art absolute inset-0 -z-10">
-        <img src={src} alt="" decoding="async" className="size-full object-cover object-center" />
-        <div className="absolute inset-0 bg-linear-to-t from-background/70 via-background/25 via-60% to-transparent" />
+        <img src={src} alt="" decoding="async" className="place-cover-img" />
+        <div className="absolute inset-0 bg-linear-to-t from-background/60 via-background/20 via-60% to-transparent" />
       </div>
-      {cover.credit && (
-        <Link to={cover.credit.href} state={{ from: place.slug }} className="place-cover-credit">
-          <span className="truncate">{cover.credit.title}</span>
-          <Icon name="arrow-up-right" size="inline" className="shrink-0" />
-        </Link>
-      )}
       {body}
     </header>
   );
@@ -254,8 +246,8 @@ function storyMeta(place: PlaceDetailData, pictures: number): string {
 export function PlaceDetail({ place }: { place: PlaceDetailData }) {
   const cover = placeCover(place);
   const { photos: all, groups } = stepContent(place);
-  // (a picture that heads the panel is not shown a second time in the strip below)
-  const photos = cover ? all.filter((p) => p.src !== cover.src) : all;
+  // (a place's own picture that heads the panel is not shown a second time in the strip below; an entry's cover is, as the link to the entry)
+  const photos = cover?.own ? all.filter((p) => p.src !== cover.src) : all;
   const count = groups.reduce((n, g) => n + g.entries.length, 0);
   const story = !!place.summary || place.body.length > 0 || photos.length > 0 || place.trips.length > 0;
   return (

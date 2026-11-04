@@ -9,11 +9,11 @@ describe("placeCover", () => {
   it("is the place's own first image before any entry's", () => {
     const c = placeCover({ images: [cover("/media/own.jpg")], entries: [group("photograph", entry("photograph", "p"))] });
     expect(c).toMatchObject({ src: "/media/own.jpg", width: 800, height: 600 });
-    expect(c?.credit).toBeUndefined();
+    expect(c?.own).toBe(true);
   });
   it("else a photograph's cover, then a project's, credited to the entry", () => {
     const entries = [group("project", entry("project", "proj")), group("photograph", entry("photograph", "photo"))];
-    expect(placeCover({ images: [], entries })).toMatchObject({ src: "/media/photo.jpg", credit: { title: "photo", href: "/photograph/photo" } });
+    expect(placeCover({ images: [], entries })).toMatchObject({ src: "/media/photo.jpg", own: false });
     expect(placeCover({ images: [], entries: [entries[0]!] })).toMatchObject({ src: "/media/proj.jpg" });
   });
   it("skips a sensitive entry and an entry with no cover, and is null when nothing is left", () => {
