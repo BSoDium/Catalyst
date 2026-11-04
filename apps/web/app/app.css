@@ -6559,7 +6559,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   }
 
   .career-name-handle-thin {
-    font-weight: 200;
+    font-weight: 300;
   }
 
   @media (prefers-reduced-motion: no-preference) {
