@@ -1999,7 +1999,64 @@
     display: flex;
     align-items: center;
     gap: 0.75rem;
+    margin: 0;
+    color: var(--muted-foreground);
+  }
+  /* The camera's block and, at its right end where the room allows, the link to the place (#581): one row, the link as tall as the camera's mark. */
+  .entry-facts-row {
+    --exposure-text: calc(1cap + var(--text-meta--line-height) + 0.25rem);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem 2rem;
     margin: 2rem 0 0;
+  }
+  .entry-place-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.625rem;
+    margin-left: auto;
+    min-height: 2.75rem;
+    padding: 0 0.75rem;
+    border: var(--hairline) solid var(--border-strong);
+    color: var(--foreground);
+    text-decoration: none;
+    transition: background-color var(--duration-fast) var(--ease-standard);
+  }
+  @media (min-width: 48rem) {
+    .entry-place-link {
+      min-height: 0;
+      height: calc((var(--exposure-text) - 1px) * 1.2);
+    }
+  }
+  .entry-place-link:hover,
+  .entry-place-link:focus-visible {
+    background: var(--accent);
+  }
+  .entry-place-link-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    min-width: 0;
+    font-family: var(--font-mono);
+    line-height: 1.1;
+  }
+  .entry-place-link-name {
+    font-size: 0.8125rem;
+    letter-spacing: 0.02em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .entry-place-link-cta {
+    font-size: 0.6875rem;
+    letter-spacing: 0.04em;
+    color: var(--muted-foreground);
+  }
+  .entry-place-link-pin,
+  .entry-place-link-arrow {
+    flex: none;
     color: var(--muted-foreground);
   }
   .entry-exposure .entry-exposure-mark {

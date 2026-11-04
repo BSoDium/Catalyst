@@ -333,18 +333,20 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
                 {tail ? <span className="entry-title-tail">{tail}</span> : null}
               </h1>
               {entry.summary && !poem && <p className="type-standfirst mt-[1.375rem] max-w-[25.4em] md:mt-[2.125rem]">{entry.summary}</p>}
-              {exposure && <ExposureBlock exposure={exposure} />}
-              {/* The way to the place a photograph, an artwork or an article is about, up where it is read and not only in a tag or on the map (#581). */}
-              {!poem && entry.kind !== "project" && globeTarget && (
-                <div data-slot="entry-place-link" className="mt-6 print:hidden">
-                  <Button asChild variant="secondary" size="sm">
-                    <Link to={globeTarget.href}>
-                      <Icon name="place" size="inline" />
-                      <span>{globeTarget.name}</span>
-                      <span className="text-muted-foreground">Open on the map</span>
-                      <Icon name="arrow-up-right" size="inline" />
+              {/* The way to the place a photograph, an artwork or an article is about, up where it is read and not only in a tag or on the map (#581): on the camera's row, at its right end, as tall as the camera's mark, in two lines. */}
+              {(exposure || (!poem && entry.kind !== "project" && globeTarget)) && (
+                <div data-slot="entry-facts-row" className="entry-facts-row">
+                  {exposure && <ExposureBlock exposure={exposure} />}
+                  {!poem && entry.kind !== "project" && globeTarget && (
+                    <Link to={globeTarget.href} data-slot="entry-place-link" className="entry-place-link print:hidden">
+                      <Icon name="place" size="control" className="entry-place-link-pin" />
+                      <span className="entry-place-link-text">
+                        <span className="entry-place-link-name">{globeTarget.name}</span>
+                        <span className="entry-place-link-cta">Open on the map</span>
+                      </span>
+                      <Icon name="arrow-up-right" size="inline" className="entry-place-link-arrow" />
                     </Link>
-                  </Button>
+                  )}
                 </div>
               )}
               {actions}
