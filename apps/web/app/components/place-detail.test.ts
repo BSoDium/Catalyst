@@ -61,16 +61,16 @@ describe("PlaceDetail", () => {
     expect(html).not.toMatch(/Nothing is linked|Entries/);
     expect(html).not.toContain("ds-frame");
   });
-  it("blurs the card of a sensitive entry in the place's list, with no control, and not its neighbour", () => {
+  it("blurs the picture of a sensitive entry in the place's gallery, with no control, and not its neighbour", () => {
     const html = render("kyoto");
     expect((html.match(/data-slot="sensitive-media"/g) ?? []).length).toBe(1);
     expect(html).toContain("Mature content");
     expect(html).not.toContain("<button");
-    const sensitive = html.slice(html.indexOf('id="figure-study-two"'));
-    expect(sensitive.slice(0, sensitive.indexOf("</article>"))).toContain('data-state="hidden"');
-    // the other card of the same place is an ordinary one
-    const ordinary = html.slice(html.indexOf('id="demo-artwork"'));
-    expect(ordinary.slice(0, ordinary.indexOf("</article>"))).not.toContain("sensitive-media");
+    // it is in the gallery with the others, not a card apart from it
+    const items = html.split("<a ").filter((chunk) => chunk.includes("place-gallery-item"));
+    const blurred = items.filter((chunk) => chunk.slice(0, chunk.indexOf("</a>")).includes('data-state="hidden"'));
+    expect(items.length).toBeGreaterThan(1);
+    expect(blurred).toHaveLength(1);
     expect(render("lisbon")).not.toContain("sensitive-media");
   });
   const route = (slug: string, extra: Record<string, unknown> = {}) => {

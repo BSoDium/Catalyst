@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link } from "react-router";
-import { Icon, ScrollRow } from "~/components/ui";
+import { Icon, ScrollRow, SensitiveMedia } from "~/components/ui";
 import { coverImageProps } from "~/lib/cover-image";
 import { formatEntryDate } from "~/lib/dates";
 import { carouselLayout, growth, keylines, lastPosition, widest, type Keylines } from "~/lib/photo-carousel";
@@ -16,6 +16,8 @@ export interface GalleryItem {
   title: string;
   href: string;
   date?: string;
+  /** Mature content: the picture is blurred under its veil, as on the entry's card; the link still opens the entry, where it can be shown. */
+  sensitive?: true;
 }
 
 const ratioOf = (item: GalleryItem) => (item.width && item.height ? item.width / item.height : 4 / 3);
@@ -24,10 +26,11 @@ const ratioOf = (item: GalleryItem) => (item.width && item.height ? item.width /
 function Picture({ item, i, count, from, style, onFocus, fullWidth }: { item: GalleryItem; i: number; count: number; from: string; style?: React.CSSProperties; onFocus?: () => void; fullWidth?: number }) {
   const date = formatEntryDate(item.date);
   const inner: React.CSSProperties | undefined = fullWidth ? { width: fullWidth } : undefined;
+  const image = <img {...coverImageProps({ src: item.src, width: item.width ?? 0, small: item.small }, "(min-width: 48rem) 50vw, 100vw")} alt={item.alt} loading={i === 0 ? "eager" : "lazy"} decoding="async" className="place-gallery-img size-full object-cover" />;
   return (
     <Link to={item.href} state={{ from }} aria-label={item.title} onFocus={onFocus} style={style} className="place-gallery-item group relative block overflow-hidden bg-accent no-underline">
       <span className={cn("block", fullWidth ? "absolute inset-y-0 left-1/2 -translate-x-1/2" : "size-full")} style={inner}>
-        <img {...coverImageProps({ src: item.src, width: item.width ?? 0, small: item.small }, "(min-width: 48rem) 50vw, 100vw")} alt={item.alt} loading={i === 0 ? "eager" : "lazy"} decoding="async" className="place-gallery-img size-full object-cover" />
+        {item.sensitive ? <SensitiveMedia className="size-full [&_.sensitive-media-content]:size-full">{image}</SensitiveMedia> : image}
       </span>
       <span className="place-gallery-label" style={inner}>
         <span className="place-gallery-meta ds-micro flex items-baseline justify-between gap-3">

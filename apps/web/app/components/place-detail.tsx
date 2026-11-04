@@ -271,7 +271,7 @@ const GALLERY_KINDS = ["photograph", "artwork"] as const;
 
 /**
  * The step's own pictures, the galleries (the photographs linked to the place and its artworks, with a cover: a photograph of the place IS a picture of it, and an artwork is its
- * picture: they are not "entries" that would put the story second) and the entries that are left in their groups. A sensitive one stays an entry, where its card blurs it.
+ * picture: they are not "entries" that would put the story second) and the entries that are left in their groups (those with no picture). A sensitive one is in its gallery too, blurred under its veil as on its card.
  */
 function stepContent(place: PlaceDetailData): { photos: PhotoItem[]; galleries: Map<string, GalleryItem[]>; groups: PlaceDetailData["entries"] } {
   const photos: PhotoItem[] = place.images.map((i) => ({ src: i.src, alt: i.alt, ...(i.width && i.height ? { width: i.width, height: i.height } : {}), ...(i.caption ? { caption: i.caption } : {}) }));
@@ -281,8 +281,8 @@ function stepContent(place: PlaceDetailData): { photos: PhotoItem[]; galleries: 
       if (!(GALLERY_KINDS as readonly string[]).includes(group.kind)) return group;
       const items: GalleryItem[] = [];
       const keep = group.entries.filter((e) => {
-        if (e.sensitive || !e.cover || !safeMediaSrc(e.cover.src)) return true;
-        items.push({ src: e.cover.src, alt: e.cover.alt, ...(e.cover.width && e.cover.height ? { width: e.cover.width, height: e.cover.height } : {}), title: e.title, href: e.href, ...(e.cover.small ? { small: e.cover.small } : {}), ...(e.date ? { date: e.date } : {}) });
+        if (!e.cover || !safeMediaSrc(e.cover.src)) return true;
+        items.push({ src: e.cover.src, alt: e.cover.alt, ...(e.cover.width && e.cover.height ? { width: e.cover.width, height: e.cover.height } : {}), title: e.title, href: e.href, ...(e.cover.small ? { small: e.cover.small } : {}), ...(e.date ? { date: e.date } : {}), ...(e.sensitive ? { sensitive: true as const } : {}) });
         return false;
       });
       items.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
