@@ -2033,9 +2033,21 @@
     align-items: flex-start;
     gap: 1rem;
     margin: 2rem 0 0;
+    /* The camera and the link nest in the corners of the head, each as far from its edges as the picture is below them (`--corner`, the ink's distance): the row hangs out into the head's gutter (`--hero-px`, set by the page) by what is left of it, the camera's ring starting a little inside its box */
+    --corner: 0.75rem;
+    --hero-px: 1.5rem;
+    margin-left: calc(var(--corner) - var(--hero-px) - 0.2rem);
+  }
+  /* Row or stack: the script (`FactsRow`, components/entry/entry-view.tsx) tries the row and, if the link would be wrapped to a line of its own, stacks them, left aligned; until it has run (the server's page, no scripts) the width decides. */
+  .entry-facts-row[data-facts="row"] {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem 2rem;
   }
   @container (min-width: 46rem) {
-    .entry-facts-row {
+    .entry-facts-row:not([data-facts]) {
       flex-direction: row;
       flex-wrap: wrap;
       align-items: center;
@@ -2279,31 +2291,62 @@
     transition: background-color var(--duration-fast) var(--ease-standard);
   }
   /* (at the right end of the camera's row when both fit; with no camera it is the only thing on the row and stays at the left) */
+  .entry-facts-row[data-facts="row"] .entry-exposure ~ .entry-place-link {
+    margin-left: auto;
+  }
   @container (min-width: 46rem) {
-    .entry-exposure ~ .entry-place-link {
+    .entry-facts-row:not([data-facts]) .entry-exposure ~ .entry-place-link {
       margin-left: auto;
     }
   }
+  /* (in a row the link ends at the right corner: its arrow's ink is its padding from its box's edge, which hangs out into the head's gutter by what is left of it; and the box is taller than the camera's text, which lies in the middle of it, so the row's foot is that padding under the ink) */
+  .entry-facts-row[data-facts="row"] .entry-place-link {
+    margin-right: calc(var(--corner) - var(--hero-px) - var(--place-pad));
+  }
+  .entry-facts-row[data-facts="row"] {
+    /* (the link's padding, 8.5 px: `--place-pad` is the link's own) */
+    margin-bottom: -0.53rem;
+  }
   /* Stacked: the link first, then the camera's block, on the shared icon column (their text starts at one distance), and the link's hover plate reaches out to the left by its padding so its icon is the camera's. */
+  .entry-facts-row[data-facts="stack"] .entry-place-link {
+    order: -1;
+  }
+  .entry-facts-row[data-facts="stack"] .entry-exposure {
+    display: grid;
+    grid-template-columns: var(--facts-icon-col) auto;
+    column-gap: 0.75rem;
+  }
+  .entry-facts-row[data-facts="stack"] .entry-exposure .entry-exposure-mark {
+    justify-self: center;
+  }
+  .entry-facts-row[data-facts="stack"] .entry-place-link {
+    display: grid;
+    grid-template-columns: var(--facts-icon-col) auto;
+    column-gap: 0.75rem;
+    margin-left: calc(-1 * var(--place-pad) + var(--place-pin) * 2 / 24 - var(--place-stroke) / 2);
+  }
+  .entry-facts-row[data-facts="stack"] .entry-place-link svg.entry-place-link-pin {
+    justify-self: center;
+  }
   @container (max-width: 45.999rem) {
-    .entry-place-link {
+    .entry-facts-row:not([data-facts]) .entry-place-link {
       order: -1;
     }
-    .entry-exposure {
+    .entry-facts-row:not([data-facts]) .entry-exposure {
       display: grid;
       grid-template-columns: var(--facts-icon-col) auto;
       column-gap: 0.75rem;
     }
-    .entry-exposure .entry-exposure-mark {
+    .entry-facts-row:not([data-facts]) .entry-exposure .entry-exposure-mark {
       justify-self: center;
     }
-    .entry-place-link {
+    .entry-facts-row:not([data-facts]) .entry-place-link {
       display: grid;
       grid-template-columns: var(--facts-icon-col) auto;
       column-gap: 0.75rem;
       margin-left: calc(-1 * var(--place-pad) + var(--place-pin) * 2 / 24 - var(--place-stroke) / 2);
     }
-    .entry-place-link svg.entry-place-link-pin {
+    .entry-facts-row:not([data-facts]) .entry-place-link svg.entry-place-link-pin {
       justify-self: center;
     }
   }
@@ -2374,8 +2417,8 @@
      2 rem of gap would put 4 rem between the block and its picture (owner, 2026-11-02: "the current gap breaks the hierarchy"). */
   .entry:has(.entry-facts-row) .entry-hero {
     --cover-foot: 0rem;
-    /* the camera and the link hug the corners (they hang out into the head's gutter, `-mx`): below, the picture is as near as the sides are (about 0.5 rem of air under their text) */
-    margin-bottom: -1.5rem;
+    /* the camera and the link hug the corners (they hang out into the head's gutter, `-mx`): below, the picture is as near as the sides are (`--corner` under their ink: 2 rem of the grid's gap less this) */
+    margin-bottom: -1.2rem;
   }
   .entry-exposure-text {
     min-width: 0;
