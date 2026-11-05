@@ -347,10 +347,11 @@ export function PlaceDetail({ place }: { place: PlaceDetailData }) {
                     {group.entries.length > 0 && (
                       // (the first row starts at the title's own distance from it, as a gallery does: the rows' padding is between them)
                       // (poems are short: in a wide panel they are two columns, each a row of its own width, and a narrow one is a list again)
-                      <ul className={cn("m-0 grid list-none grid-cols-1 gap-0 p-0 [&>li:first-child>article]:pt-0", group.kind === "poem" && "@xl:grid-cols-2 @xl:gap-x-8 @xl:[&>li:nth-child(2)>article]:pt-0")}>
-                        {newestFirst(group.entries).map((entry) => (
-                          // (the row's own width is what its layout follows: side by side from 28 rem, stacked below)
-                          <li key={entry.slug} className="@container min-w-0">
+                      <ul className={cn("m-0 grid list-none grid-cols-1 gap-0 p-0 [&>li:first-child>article]:pt-0", group.kind === "poem" && "@xl:grid-cols-2 @xl:gap-x-8")}>
+                        {newestFirst(group.entries).map((entry, k) => (
+                          // (the row's own width is what its layout follows: side by side from 28 rem, stacked below. The second poem of two columns starts at the first one's height: it is pulled up by the row's own padding, here, on the cell, because a
+                          // container query on the row would be answered by the cell's width, not the panel's)
+                          <li key={entry.slug} className={cn("@container min-w-0", group.kind === "poem" && k === 1 && "@xl:-mt-5")}>
                             <EntryRow entry={entry} linkState={{ from: place.slug }} headingLevel={3} compact />
                           </li>
                         ))}

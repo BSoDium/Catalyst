@@ -119,11 +119,22 @@ export function EntryRow({
         data-kind={entry.kind}
         data-compact=""
         data-covered={showCover ? "" : undefined}
-        className={cn("ds-card entry-row grid min-w-0 grid-cols-1 gap-x-5 gap-y-3 py-5", showCover && "@md:grid-cols-[11rem_minmax(0,1fr)] @max-md/group:grid-rows-[minmax(0,1fr)_auto_auto_auto_auto] @max-md/group:gap-y-0 @max-md/group:pt-0", className)}
+        className={cn(
+          "ds-card entry-row grid min-w-0 grid-cols-1 gap-x-5 gap-y-3 py-5",
+          // (a poem's picture is a small one beside its words, the words being what a poem is for; the others' is bigger, from 28 rem)
+          showCover && (entry.kind === "poem" ? "grid-cols-[5rem_minmax(0,1fr)] @md:grid-cols-[6.5rem_minmax(0,1fr)]" : "@md:grid-cols-[11rem_minmax(0,1fr)]"),
+          showCover && "@max-md/group:grid-cols-1 @max-md/group:grid-rows-[minmax(0,1fr)_auto_auto_auto_auto] @max-md/group:gap-y-0 @max-md/group:pt-0",
+          className,
+        )}
       >
         {showCover && (
           // (in a wide panel the picture is as tall as the text beside it and fills its cell; in a narrow one, a phone's, it is the list page's: full width, the date and the title resting on its foot, where it dissolves into the page)
-          <div className="place-row-cover relative min-w-0 aspect-[16/10] overflow-hidden @md:aspect-auto @max-md/group:-mx-6 @max-md/group:aspect-[4/3] @max-md/group:[grid-area:1/1/4/2] @md:min-h-32">
+          <div
+            className={cn(
+              "place-row-cover relative min-w-0 overflow-hidden @max-md/group:-mx-6 @max-md/group:aspect-[4/3] @max-md/group:self-auto @max-md/group:[grid-area:1/1/4/2]",
+              entry.kind === "poem" ? "aspect-[3/4] self-start @md:aspect-[3/4]" : "aspect-[16/10] @md:aspect-auto @md:min-h-32",
+            )}
+          >
             {cover && entry.sensitive === true ? (
               <SensitiveMedia className="absolute inset-0 [&_.sensitive-media-content]:size-full">
                 <img src={cover.src} srcSet={cover.srcSet} sizes={cover.sizes} alt={cover.alt} loading="lazy" decoding="async" className="size-full object-cover" />
