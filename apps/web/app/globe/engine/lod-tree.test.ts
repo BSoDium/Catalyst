@@ -295,6 +295,35 @@ describe("a group of one place is that place's rectangle", () => {
   });
 });
 
+describe("the room round a drawn group follows its size", () => {
+  const near = () => [
+    g("area", "area", undefined, 38.75, -9.3, 20),
+    { ...p("a", "area", 38.8, -9.46), bbox: [-9.5, 38.76, -9.42, 38.84] as const },
+    { ...p("b", "area", 38.74, -9.16), bbox: [-9.23, 38.69, -9.09, 38.8] as const },
+  ];
+  it("a small group is drawn at the floor, like a small place, not padCells bigger and masked all the same; a big one has its room", () => {
+    const t = new LodTree(near());
+    const floor = LOD.floorCells * CELL;
+    t.alphas(camAt(-9.3, 38.75, 3.3), false);
+    const i = t.indexOf("area");
+    expect(t.fillAlpha[i]! > 0 || t.alpha[i]! > 0).toBe(true);
+    expect(t.drawX1[i]! - t.drawX0[i]!).toBeCloseTo(Math.max(floor, t.side[i]!), 6);
+    // zoomed in until the interior is no longer masked: the room is back (the group's drawn rectangle is its true one and padCells on each side)
+    const big = new LodTree(near());
+    const far = camAt(-9.3, 38.75, 3.3);
+    big.update(far, -1, -1, false);
+    const side = (zz: number) => {
+      big.update(camAt(-9.3, 38.75, zz), -1, -1, false);
+      return big.side[big.indexOf("area")]!;
+    };
+    let z = 3.3;
+    while (side(z) < LOD.fillFadeTo * floor * 1.2 && z < 9) z += 0.1;
+    const k = big.indexOf("area");
+    big.update(camAt(-9.3, 38.75, z), -1, -1, false);
+    expect(big.drawX1[k]! - big.drawX0[k]!).toBeCloseTo(big.side[k]! + 2 * LOD.padCells * CELL, 6);
+  });
+});
+
 describe("only members that pass the visibility rule count", () => {
   it("a place on the far side is not in the group: with one visible member the group is just that place's rectangle", () => {
     const t = new LodTree([g("c", "country", undefined, 0, 90, 9000), p("near", "c", 0, 2), p("far", "c", 0, 178)]);

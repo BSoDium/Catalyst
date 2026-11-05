@@ -984,8 +984,12 @@ export class LodTree {
       x1[g] = cx + hx;
       y0[g] = cy - hy;
       y1[g] = cy + hy;
-      const fx = (w < 2 * floorHalf ? floorHalf : w / 2) + room;
-      const fy = (h < 2 * floorHalf ? floorHalf : h / 2) + room;
+      // The room round a group that is DRAWN grows with its true size, from none at the floor to `padCells` once the interior is no longer masked (`mark`: the same ratio): a small group is a box of the floor's size like a
+      // small place's, not a box 2 cells bigger that is filled all the same (owner, 2026-11-05: "Lisbon area": huge, and blanked out)
+      const grow = smooth((this.side[g]! / (2 * floorHalf) - LOD.fillFadeFrom) / (LOD.fillFadeTo - LOD.fillFadeFrom));
+      const drawRoom = room * grow;
+      const fx = (w < 2 * floorHalf ? floorHalf : w / 2) + drawRoom;
+      const fy = (h < 2 * floorHalf ? floorHalf : h / 2) + drawRoom;
       dx0[g] = cx - fx;
       dx1[g] = cx + fx;
       dy0[g] = cy - fy;
