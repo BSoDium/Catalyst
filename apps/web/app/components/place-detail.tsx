@@ -341,7 +341,7 @@ export function PlaceDetail({ place }: { place: PlaceDetailData }) {
               {groups.map((group) => {
                 const gallery = galleries.get(group.kind);
                 return (
-                  <div key={group.kind} data-kind={group.kind} className="@container flex flex-col gap-4">
+                  <div key={group.kind} data-kind={group.kind} className="@container/group flex flex-col gap-4">
                     <GroupHeader title={group.label} count={(gallery?.length ?? 0) + group.entries.length} />
                     {gallery && <PhotoGallery key={`${place.slug}:${group.kind}`} items={gallery} from={place.slug} />}
                     {group.entries.length > 0 && (

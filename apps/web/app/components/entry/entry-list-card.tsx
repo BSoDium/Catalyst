@@ -119,11 +119,11 @@ export function EntryRow({
         data-kind={entry.kind}
         data-compact=""
         data-covered={showCover ? "" : undefined}
-        className={cn("ds-card entry-row grid min-w-0 grid-cols-1 gap-x-5 gap-y-3 py-5", showCover && "@md:grid-cols-[11rem_minmax(0,1fr)] @max-md:grid-rows-[minmax(0,1fr)_auto_auto_auto_auto] @max-md:gap-y-0 @max-md:pt-0", className)}
+        className={cn("ds-card entry-row grid min-w-0 grid-cols-1 gap-x-5 gap-y-3 py-5", showCover && "@md:grid-cols-[11rem_minmax(0,1fr)] @max-md/group:grid-rows-[minmax(0,1fr)_auto_auto_auto_auto] @max-md/group:gap-y-0 @max-md/group:pt-0", className)}
       >
         {showCover && (
           // (in a wide panel the picture is as tall as the text beside it and fills its cell; in a narrow one, a phone's, it is the list page's: full width, the date and the title resting on its foot, where it dissolves into the page)
-          <div className="place-row-cover relative min-w-0 overflow-hidden @max-md:-mx-6 @max-md:aspect-[4/3] @max-md:[grid-area:1/1/4/2] @md:min-h-32">
+          <div className="place-row-cover relative min-w-0 aspect-[16/10] overflow-hidden @md:aspect-auto @max-md/group:-mx-6 @max-md/group:aspect-[4/3] @max-md/group:[grid-area:1/1/4/2] @md:min-h-32">
             {cover && entry.sensitive === true ? (
               <SensitiveMedia className="absolute inset-0 [&_.sensitive-media-content]:size-full">
                 <img src={cover.src} srcSet={cover.srcSet} sizes={cover.sizes} alt={cover.alt} loading="lazy" decoding="async" className="size-full object-cover" />
@@ -137,14 +137,14 @@ export function EntryRow({
             )}
           </div>
         )}
-        <div className="flex min-w-0 flex-col gap-2.5 @max-md:contents">
+        <div className="flex min-w-0 flex-col gap-2.5 @max-md/group:contents">
           {(date || status) && (
-            <p className="type-meta m-0 flex flex-wrap @max-md:z-10 @max-md:self-end @max-md:[grid-area:2/1] items-baseline gap-x-3 text-muted-foreground">
+            <p className="type-meta m-0 flex flex-wrap @max-md/group:z-10 @max-md/group:self-end @max-md/group:[grid-area:2/1] items-baseline gap-x-3 text-muted-foreground">
               {date && <time dateTime={date.dateTime}>{date.text}</time>}
               {status && <StatusTag status={status} className="text-[length:inherit] leading-[inherit] [font:inherit] tracking-[inherit] uppercase" />}
             </p>
           )}
-          <Heading data-slot="entry-card-title" className="m-0 font-display text-[1.625rem] leading-[1.06] font-extrabold tracking-[-0.025em] text-balance @max-md:z-10 @max-md:pt-1 @max-md:pb-3.5 @max-md:[grid-area:3/1]">
+          <Heading data-slot="entry-card-title" className="m-0 font-display text-[1.625rem] leading-[1.06] font-extrabold tracking-[-0.025em] text-balance @max-md/group:z-10 @max-md/group:pt-1 @max-md/group:pb-3.5 @max-md/group:[grid-area:3/1]">
             <Link to={entry.href} state={linkState} className="after:absolute after:inset-0 after:content-[''] focus-visible:outline-none">
               {entry.title}
             </Link>
@@ -152,11 +152,11 @@ export function EntryRow({
           {entry.summary &&
             (entry.kind === "poem" ? (
               // (a poem's summary is what the row has to read: the ink and a larger size, as in the poems' list)
-              <p className="m-0 line-clamp-4 font-reading text-[1.1875rem] leading-[1.4] text-pretty text-foreground @max-md:pt-1 @max-md:[grid-area:4/1]">{entry.summary}</p>
+              <p className="m-0 line-clamp-4 font-reading text-[1.1875rem] leading-[1.4] text-pretty text-foreground @max-md/group:pt-1 @max-md/group:[grid-area:4/1]">{entry.summary}</p>
             ) : (
-              <p className="m-0 line-clamp-3 font-reading text-[1.0625rem] leading-[1.4] font-light text-pretty text-muted-foreground @max-md:pt-1 @max-md:[grid-area:4/1]">{entry.summary}</p>
+              <p className="m-0 line-clamp-3 font-reading text-[1.0625rem] leading-[1.4] font-light text-pretty text-muted-foreground @max-md/group:pt-1 @max-md/group:[grid-area:4/1]">{entry.summary}</p>
             ))}
-          {tags.length > 0 && <TagList label="Tags" tags={tags.map((label) => ({ label }))} className="font-meta text-xs @max-md:pt-3 @max-md:[grid-area:5/1]" />}
+          {tags.length > 0 && <TagList label="Tags" tags={tags.map((label) => ({ label }))} className="font-meta text-xs @max-md/group:pt-3 @max-md/group:[grid-area:5/1]" />}
         </div>
       </article>
     );

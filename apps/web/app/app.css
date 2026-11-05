@@ -1073,8 +1073,8 @@
     }
   }
 
-  /* A row of the place panel in a narrow panel (a phone; `@md` is 28rem): the list page's covered row (above), in the panel's width: the picture runs out to the panel's edges and dissolves into the page at its foot, under the date and the title. */
-  @container (max-width: 27.999rem) {
+  /* A row of the place panel in a narrow panel (a phone; `@md` is 28rem; the container is the panel's group of entries, `@container/group`, NOT the row's own cell: a poem's cell in a wide panel's two columns is under 28 rem and is no phone): the list page's covered row (above), in the panel's width: the picture runs out to the panel's edges and dissolves into the page at its foot, under the date and the title. */
+  @container group (max-width: 27.999rem) {
     .place-row-cover {
       -webkit-mask-image: linear-gradient(to top, transparent 0%, rgb(0 0 0 / 0.08) 14%, rgb(0 0 0 / 0.26) 30%, rgb(0 0 0 / 0.54) 46%, rgb(0 0 0 / 0.8) 62%, rgb(0 0 0 / 0.94) 78%, #000 100%);
       mask-image: linear-gradient(to top, transparent 0%, rgb(0 0 0 / 0.08) 14%, rgb(0 0 0 / 0.26) 30%, rgb(0 0 0 / 0.54) 46%, rgb(0 0 0 / 0.8) 62%, rgb(0 0 0 / 0.94) 78%, #000 100%);

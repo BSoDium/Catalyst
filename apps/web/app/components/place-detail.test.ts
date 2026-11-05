@@ -58,7 +58,7 @@ describe("PlaceDetail", () => {
   });
   it("opens on a gallery: the photographs', else the artworks' when there are no photographs to show", () => {
     const base = getPlaceDetail(demo, "kyoto")!;
-    const kinds = (place: typeof base) => [...renderToStaticMarkup(createElement(StaticRouter, { location: "/" }, createElement(PlaceDetail, { place }))).matchAll(/data-kind="(\w+)" class="@container flex flex-col gap-4"/g)].map((m) => m[1]);
+    const kinds = (place: typeof base) => [...renderToStaticMarkup(createElement(StaticRouter, { location: "/" }, createElement(PlaceDetail, { place }))).matchAll(/data-kind="(\w+)" class="@container/group flex flex-col gap-4"/g)].map((m) => m[1]);
     expect(kinds(base)[0]).toBe("artwork"); // (kyoto has artworks and no photographs)
     const withPhoto = { ...base, entries: [{ kind: "photograph" as const, label: "Photography", entries: [{ ...base.entries[0]!.entries[0]!, kind: "photograph" as const, slug: "p" }] }, ...base.entries] };
     expect(kinds(withPhoto)[0]).toBe("photograph");
