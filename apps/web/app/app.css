@@ -2033,10 +2033,11 @@
     align-items: flex-start;
     gap: 1rem;
     margin: 2rem 0 0;
-    /* The camera and the link nest in the corners of the head, each as far from its edges as the picture is below them (`--corner`, the ink's distance): the row hangs out into the head's gutter (`--hero-px`, set by the page) by what is left of it, the camera's ring starting a little inside its box */
+    /* The camera and the link nest in the corners of the head, each at `--corner-x` from the sides and `--corner` from the picture below (the ink's distances): the row hangs out into the head's gutter (`--hero-px`, set by the page) by what is left of it, the camera's ring starting a little inside its box */
     --corner: 0.75rem;
+    --corner-x: 1rem;
     --hero-px: 1.5rem;
-    margin-left: calc(var(--corner) - var(--hero-px) - 0.2rem);
+    margin-left: calc(var(--corner-x) - var(--hero-px) - 0.2rem);
   }
   /* Row or stack: the script (`FactsRow`, components/entry/entry-view.tsx) tries the row and, if the link would be wrapped to a line of its own, stacks them, left aligned; until it has run (the server's page, no scripts) the width decides. */
   .entry-facts-row[data-facts="row"] {
@@ -2301,11 +2302,7 @@
   }
   /* (in a row the link ends at the right corner: its arrow's ink is its padding from its box's edge, which hangs out into the head's gutter by what is left of it; and the box is taller than the camera's text, which lies in the middle of it, so the row's foot is that padding under the ink) */
   .entry-facts-row[data-facts="row"] .entry-place-link {
-    margin-right: calc(var(--corner) - var(--hero-px) - var(--place-pad));
-  }
-  .entry-facts-row[data-facts="row"] {
-    /* (the link's padding, 8.5 px: `--place-pad` is the link's own) */
-    margin-bottom: -0.53rem;
+    margin-right: calc(var(--corner-x) - var(--hero-px) - var(--place-pad));
   }
   /* Stacked: the link first, then the camera's block, on the shared icon column (their text starts at one distance), and the link's hover plate reaches out to the left by its padding so its icon is the camera's. */
   .entry-facts-row[data-facts="stack"] .entry-place-link {
@@ -2416,9 +2413,14 @@
   /* The block belongs to the picture it describes, so it sits nearer to the picture (1.5 rem, the stage's own 0.25 rem included) than to the standfirst above it (2 rem): the head's usual 1.75 rem of foot and the grid's
      2 rem of gap would put 4 rem between the block and its picture (owner, 2026-11-02: "the current gap breaks the hierarchy"). */
   .entry:has(.entry-facts-row) .entry-hero {
-    --cover-foot: 0rem;
-    /* the camera and the link hug the corners (they hang out into the head's gutter, `-mx`): below, the picture is as near as the sides are (`--corner` under their ink: 2 rem of the grid's gap less this) */
-    margin-bottom: -1.2rem;
+    /* (the head clips what is outside it: a quarter rem under the text, so that nothing of it is cut, taken back below) */
+    --cover-foot: 0.25rem;
+    /* the camera and the link hug the corners (they hang out into the head's gutter): below, the picture is as near as the sides are (`--corner` under their ink: 2 rem of the grid's gap less this, less the quarter rem above) */
+    margin-bottom: -1.45rem;
+  }
+  /* (in a row the link's box is taller than the text, by its padding, 8.5 px, under the ink) */
+  .entry:has(.entry-facts-row[data-facts="row"]) .entry-hero {
+    margin-bottom: -1.94rem;
   }
   .entry-exposure-text {
     min-width: 0;
