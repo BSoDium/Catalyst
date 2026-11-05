@@ -1822,7 +1822,7 @@ export class GlobeRenderer {
     // A timed transition of the boxes or of the borders (engine/fade.ts) that has not reached its end keeps the loop going, camera or not.
     // While the street map owns the view the globe draws nothing and its transitions are not advanced here (the street engine runs the
     // boxes' own), so they must not keep this loop spinning.
-    const more = moving || fading || this.moonWantsFrames || this.sunPulsing || this.irisMoving || (!this.suspended && (this.lod.animating || this.globe.animating || !!this.opts.labelsAnimating?.()));
+    const more = moving || fading || this.moonWantsFrames || this.sunPulsing || this.irisMoving || (!this.suspended && (this.lod.animating || this.lod.settling || this.globe.animating || !!this.opts.labelsAnimating?.()));
     if (more) this.keepGoing(moving);
     else if (this.spin.spinning) this.chainSpin();
     else this.armSpin();
@@ -2021,7 +2021,7 @@ export class GlobeRenderer {
     this.opts.onFrame();
     perfEnd("frame.callbacks", t1);
     // Whoever drew this frame (the tick, a resize, a check), the transitions run to their end, and the idle rotation's chain (cancelled above) goes on.
-    if (this.lod.animating || this.globe.animating || (this.caption?.animating ?? false) || this.moonWantsFrames || this.sunPulsing || this.opts.labelsAnimating?.()) this.keepGoing(false);
+    if (this.lod.animating || this.lod.settling || this.globe.animating || (this.caption?.animating ?? false) || this.moonWantsFrames || this.sunPulsing || this.opts.labelsAnimating?.()) this.keepGoing(false);
     else if (this.spin.spinning) this.chainSpin();
     this.pollMoonShadow();
     this.armCaption();

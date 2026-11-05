@@ -161,6 +161,12 @@ export const LOD = {
     touchPx: 3,
     /** A group that does not fit as a box and cannot open into two children (an area, a country, or any group that is an extra) is replaced by the first of this many of its most important children that fits (a minor place does not stand in for it). */
     throughTop: 3,
+    /**
+     * The memory of the hysteresis (which groups are open, which children were drawn) is dropped once, this many ms after the zoom has stopped changing, and the cut is taken again for the same camera as a fresh tree would take it
+     * (#648): while the camera moves the memory keeps a camera jittering around a threshold from flapping, but it also keeps a group open down to the leave gap, so after a zoom OUT a crowd of places
+     * stayed drawn (and moved at every step) that a fresh cut would have grouped. The transitions are the timed ones, so what regroups fades.
+     */
+    settleMs: 450,
     /** A group is judged only while its box is within this many px of the free area (further out nothing of it is seen: it stays closed, and one that pans in is judged before it is seen). */
     judgeMarginPx: 160,
   },
@@ -394,6 +400,10 @@ export class LodTree {
   /** The zoom of the last cut, and whether this one zooms OUT from it (a group open through its places goes back to its box only on a zoom-out). */
   private prevZoom = NaN;
   private zoomingOut = false;
+  /** The zoom the camera is at and since when (the clock of `advance`); `settled` once the memory was dropped for it (`LOD.open.settleMs`). */
+  private stillZoom = NaN;
+  private stillSince = 0;
+  private settled = true;
   private readonly bigHidden: Uint8Array;
   private readonly fillOn: Uint8Array;
   /** What the last evaluation wants drawn, and the mask each of those wants. */
@@ -689,6 +699,18 @@ export class LodTree {
     return this.inkTop;
   }
 
+  /** Drop the hysteresis memory and take the cut again, for the same camera, as a fresh tree would (`LOD.open.settleMs`): called once the zoom has been still. */
+  private forget() {
+    this.settled = true;
+    this.open.fill(0);
+    this.openPrev.fill(0);
+    this.sizeOpen.fill(0);
+    this.decided.fill(0);
+    this.admitted.fill(0);
+    this.boxedPrev.fill(0);
+    this.keyValid = false;
+  }
+
   /** The theme's ramp length (sets the ink level the `level` summary counts in); invalidates the cache. */
   setTones(levels: number) {
     this.inkTop = levels - 1;
@@ -701,6 +723,11 @@ export class LodTree {
    * Cached while the camera and the forced nodes are the same. It sets targets only; the opacities are `advance`'s.
    */
   update(cam: LodCamera, forced0: number, forced1: number, reduced: boolean): number {
+    if (!(Math.abs(cam.zoom - this.stillZoom) <= 1e-6)) {
+      this.stillZoom = cam.zoom;
+      this.stillSince = this.lastNow;
+      this.settled = false;
+    }
     const k = this.key;
     if (
       this.keyValid &&
@@ -772,6 +799,11 @@ export class LodTree {
     return this.overlay.value(0);
   }
 
+  /** The zoom has changed lately and the memory of the hysteresis has not been dropped for it yet (`LOD.open.settleMs`): the host's frame loop must keep going until it is, to take the cut again. */
+  get settling(): boolean {
+    return !this.settled;
+  }
+
   get isSuppressed(): boolean {
     return this.suppressed;
   }
@@ -788,6 +820,7 @@ export class LodTree {
   advance(now: number): boolean {
     const dt = clockStep(this.lastNow, now);
     this.lastNow = now;
+    if (!this.settled && now - this.stillSince >= LOD.open.settleMs) this.forget();
     const instant = this.lastReduced;
     const moved = this.animating;
     if (moved) {

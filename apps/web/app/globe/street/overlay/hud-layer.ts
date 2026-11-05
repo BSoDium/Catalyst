@@ -147,12 +147,12 @@ export class HudLayer {
 
   /** Some timed transition of the boxes (engine/fade.ts) or a label's glide to its place (engine/label-track.ts) has not reached its end: the host must keep drawing frames. */
   get animating(): boolean {
-    return this.lod.animating || this.scene.animating;
+    return this.lod.animating || this.lod.settling || this.scene.animating;
   }
 
   /** A timed transition of the BOXES (engine/fade.ts) has not reached its end: the picture changes, so the host must keep drawing frames. A label's glide does not count (see `driveGlides`). */
   get boxesAnimating(): boolean {
-    return this.lod.animating;
+    return this.lod.animating || this.lod.settling;
   }
 
   /**
