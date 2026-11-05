@@ -116,6 +116,11 @@ describe("Navbar", () => {
     expect(html.match(/class="nav-link[^"]*min-h-11 min-w-11[^"]*"/g)?.length).toBeGreaterThanOrEqual(6);
   });
 
+  it("keeps the globe's tab lit on a place, as a section's is on one of its entries, and not on an entry", async () => {
+    const home = /<a [^>]*aria-current="page"[^>]*href="\/"|<a [^>]*href="\/"[^>]*aria-current="page"/;
+    expect(await render("/locations/paris", { heroResting: false })).toMatch(home);
+    expect(await render("/photography/amber-gateway", { heroResting: false })).not.toMatch(home);
+  });
   it("marks the current page with aria-current on the name (when it is shown) or the section", async () => {
     expect(await render("/", { heroResting: false })).toMatch(/<a [^>]*aria-current="page"[^>]*href="\/"|<a [^>]*href="\/"[^>]*aria-current="page"/);
     const articles = await render("/articles", { shell: false });

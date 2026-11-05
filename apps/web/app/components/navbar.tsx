@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
-import { NavLink, useLocation, useMatches } from "react-router";
+import { Link, NavLink, useLocation, useMatches } from "react-router";
 import { SearchPalette, SearchTriggers } from "~/components/search-palette";
 import { SectionsMenu } from "~/components/sections-menu";
 import { CAREER_LABEL, CAREER_PATH } from "~/lib/career";
@@ -134,6 +134,7 @@ export function Navbar({ heroResting: forced, hasCareer: forcedCareer }: NavbarP
   const { pathname, search } = useLocation();
   const onGlobe = useMatches().some((m) => m.id === "routes/shell");
   const route = parsePanelPath(pathname);
+  const atGlobe = pathname === "/" || route?.type === "place";
   const fullScreen = route?.type === "entry" && parseView(search) === "full";
   // The panel sits beside the globe: the right half of the viewport is its.
   const beside = route !== null && !fullScreen;
@@ -166,15 +167,16 @@ export function Navbar({ heroResting: forced, hasCareer: forcedCareer }: NavbarP
             <nav aria-label="Primary" className="relative flex items-center">
               {/* The full-screen entry view has its own, panel-wide fade (detail-panel.tsx); the lists have the page one (nav-scrim.tsx). */}
               {onGlobe && !fullScreen && <span aria-hidden="true" className="nav-fade print:hidden" />}
-              <NavLink
+              {/* (the globe's tab stays lit on a place, as a section's does on one of its entries: a place is the globe's own detail, as the sections' entries are theirs; the sections menu already counts it so) */}
+              <Link
                 to="/"
-                end
                 data-nav="home"
                 aria-label={`${HOME_LABEL}, ${SITE_NAME} home`}
-                className={({ isActive }) => cn(linkClass, isActive ? "text-foreground underline decoration-1 underline-offset-8" : "text-muted-foreground")}
+                aria-current={atGlobe ? "page" : undefined}
+                className={cn(linkClass, atGlobe ? "text-foreground underline decoration-1 underline-offset-8" : "text-muted-foreground")}
               >
                 {HOME_LABEL}
-              </NavLink>
+              </Link>
               <ul className="nav-inline">
                 {links.map((link) => (
                   <li key={link.to} data-nav-item={link.to === CAREER_PATH ? "career" : undefined}>
