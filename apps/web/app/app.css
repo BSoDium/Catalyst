@@ -2775,7 +2775,8 @@
       inset: -0.8125rem -0.5rem;
     }
 
-    .entry-margin li {
+    /* (not the tags': a chip is as tall as its words, its hit area is the link's `::before` below) */
+    .entry-margin :not(.ds-tags) > li {
       display: flex;
       align-items: center;
       min-height: 2.75rem;
