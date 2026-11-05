@@ -268,6 +268,33 @@ describe("a place nested in another is a detail of it, not a second place", () =
   });
 });
 
+describe("a group of one place is that place's rectangle", () => {
+  const lone = () => [
+    g("dk", "country", undefined, 55.67, 12.55, 50),
+    { ...p("cph", "dk", 55.67, 12.55), bbox: [12.45, 55.61, 12.65, 55.73] as const },
+    { ...p("church", "dk", 55.68, 12.59), bbox: [12.585, 55.678, 12.595, 55.684] as const },
+  ];
+  it("has no room round it, so it is not a second, bigger box about the place's own, and the place has no ghost inside it", () => {
+    const t = new LodTree(lone());
+    expect(t.loneHost[t.indexOf("dk")]).toBe(t.indexOf("cph"));
+    const cam = camAt(12.55, 55.67, 6);
+    t.alphas(cam, false);
+    const d = t.indexOf("dk");
+    const c = t.indexOf("cph");
+    // (the same rectangle as the place would have alone)
+    const alone = new LodTree([{ ...lone()[1]!, parent: undefined }]);
+    alone.alphas(cam, false);
+    expect(t.drawX1[d]! - t.drawX0[d]!).toBeCloseTo(alone.drawX1[0]! - alone.drawX0[0]!, 6);
+    expect(t.boxX1[d]! - t.boxX0[d]!).toBeCloseTo(alone.boxX1[0]! - alone.boxX0[0]!, 6);
+    expect(t.alpha[d]).toBe(1);
+    expect(t.ghosts().some((x) => x.i === c)).toBe(false);
+  });
+  it("a group of two places of their own keeps its room", () => {
+    const t = new LodTree([g("c", "country", undefined, 0, 0, 200), { ...p("a", "c", 0, -0.4), bbox: [-0.45, -0.05, -0.35, 0.05] as const }, { ...p("b", "c", 0, 0.4), bbox: [0.35, -0.05, 0.45, 0.05] as const }]);
+    expect(t.loneHost[t.indexOf("c")]).toBe(-1);
+  });
+});
+
 describe("only members that pass the visibility rule count", () => {
   it("a place on the far side is not in the group: with one visible member the group is just that place's rectangle", () => {
     const t = new LodTree([g("c", "country", undefined, 0, 90, 9000), p("near", "c", 0, 2), p("far", "c", 0, 178)]);

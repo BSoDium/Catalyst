@@ -342,6 +342,8 @@ export class LodTree {
    * counted in its group's total, and a group that holds one place and what is inside it is labelled as that place (its name, its country, its entries), not as "2 places".
    */
   readonly nested: Uint8Array;
+  /** For a group that holds ONE place and what is inside it: that place (`nested` ones do not count), else -1. Its rectangle is the place's own, not a padded one, and the place's ghost is not drawn inside it. */
+  readonly loneHost: Int32Array;
   /** Rectangle of a drawn node (host projection space, CSS px, unsnapped). */
   /** Rectangle of a drawn node (host projection space, CSS px, unsnapped). */
   readonly boxX0: Float64Array;
@@ -564,10 +566,12 @@ export class LodTree {
       const a = this.parent[p]!;
       if (a >= 0 && !this.nested[p]) lone[a] = lone[a] === -1 ? p : -2;
     }
+    this.loneHost = new Int32Array(n).fill(-1);
     this.sub = list.map((x, i) => {
       if (!this.isGroup[i]) return placeSub(countryName(x.countryCode), entries[i]);
       const only = lone[i]!;
       if (only < 0 || this.total[i] !== 1 || this.childCount(i) === 1) return groupSub(this.total[i]!, entries[i]);
+      this.loneHost[i] = only;
       this.text[i] = list[only]!.name;
       return placeSub(countryName(list[only]!.countryCode), entries[i]);
     });
@@ -879,6 +883,9 @@ export class LodTree {
     into.length = 0;
     for (const p of this.places) {
       if (!this.shown[p]) continue;
+      // (the box of a group of this one place is already its rectangle: a ghost of it inside would be a second box)
+      const home = this.parent[p]!;
+      if (home >= 0 && this.loneHost[home] === p && this.members[home]! > 0 && this.life.target[home] === 1) continue;
       const drawn = this.life.p[p]! > 0 ? easeFade(this.life.p[p]!) : 0;
       if (drawn >= 1 - LOD.alphaMin) continue;
       into.push({ i: p, x0: this.trueX0[p]!, y0: this.trueY0[p]!, x1: this.trueX1[p]!, y1: this.trueY1[p]!, alpha: 1 - drawn });
@@ -967,16 +974,18 @@ export class LodTree {
       const h = ty1[g]! - ty0[g]!;
       this.side[g] = w > h ? w : h;
       // clamped to the minimum per axis, about the centre of the union, with padCells of room around
-      const hx = (w < 2 * minHalf ? minHalf : w / 2) + pad;
-      const hy = (h < 2 * minHalf ? minHalf : h / 2) + pad;
+      // (a group of one place is that place's rectangle: no room round it, or it would be a second, bigger box about the first)
+      const room = this.loneHost[g]! >= 0 && this.shown[this.loneHost[g]!] ? 0 : pad;
+      const hx = (w < 2 * minHalf ? minHalf : w / 2) + room;
+      const hy = (h < 2 * minHalf ? minHalf : h / 2) + room;
       const cx = (tx0[g]! + tx1[g]!) / 2;
       const cy = (ty0[g]! + ty1[g]!) / 2;
       x0[g] = cx - hx;
       x1[g] = cx + hx;
       y0[g] = cy - hy;
       y1[g] = cy + hy;
-      const fx = (w < 2 * floorHalf ? floorHalf : w / 2) + pad;
-      const fy = (h < 2 * floorHalf ? floorHalf : h / 2) + pad;
+      const fx = (w < 2 * floorHalf ? floorHalf : w / 2) + room;
+      const fy = (h < 2 * floorHalf ? floorHalf : h / 2) + room;
       dx0[g] = cx - fx;
       dx1[g] = cx + fx;
       dy0[g] = cy - fy;
