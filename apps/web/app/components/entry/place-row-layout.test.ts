@@ -21,9 +21,9 @@ describe("the place panel's rows: the phone layout follows the panel, not the ce
     expect(css).toMatch(/@container group \(max-width: 27\.999rem\)\s*\{\s*\.place-row-cover/);
     expect(css).not.toMatch(/@container \(max-width: 27\.999rem\)\s*\{\s*\.place-row-cover/);
   });
-  it("a poem's picture is a small one beside its words (a poem is for its words), the other kinds' stacked or bigger; a wide panel's second column starts at the first's height", () => {
+  it("a poem's picture is a narrow one beside its words, as tall as they are (a poem is for its words), the other kinds' stacked or bigger; a wide panel's second column starts at the first's height", () => {
     expect(row).toMatch(/entry\.kind === "poem" \? "grid-cols-\[5rem_minmax\(0,1fr\)\] @md:grid-cols-\[6\.5rem_minmax\(0,1fr\)\]"/);
-    expect(row).toMatch(/entry\.kind === "poem" \? "aspect-\[3\/4\] self-start/);
+    expect(row).toMatch(/entry\.kind === "poem" \? "min-h-24 self-stretch"/);
     expect(row).toMatch(/"aspect-\[16\/10\] @md:aspect-auto @md:min-h-32"/);
     // (the second poem is pulled up by the cell, not by a container query on the row, which the row's own cell would answer)
     expect(detail).toMatch(/k === 1 && "@xl:-mt-5"/);

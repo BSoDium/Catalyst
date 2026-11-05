@@ -121,7 +121,7 @@ export function EntryRow({
         data-covered={showCover ? "" : undefined}
         className={cn(
           "ds-card entry-row grid min-w-0 grid-cols-1 gap-x-5 gap-y-3 py-5",
-          // (a poem's picture is a small one beside its words, the words being what a poem is for; the others' is bigger, from 28 rem)
+          // (a poem's picture is a narrow one beside its words, as tall as they are (the words being what a poem is for); the others' is bigger, from 28 rem)
           showCover && (entry.kind === "poem" ? "grid-cols-[5rem_minmax(0,1fr)] @md:grid-cols-[6.5rem_minmax(0,1fr)]" : "@md:grid-cols-[11rem_minmax(0,1fr)]"),
           showCover && "@max-md/group:grid-cols-1 @max-md/group:grid-rows-[minmax(0,1fr)_auto_auto_auto_auto] @max-md/group:gap-y-0 @max-md/group:pt-0",
           className,
@@ -132,7 +132,7 @@ export function EntryRow({
           <div
             className={cn(
               "place-row-cover relative min-w-0 overflow-hidden @max-md/group:-mx-6 @max-md/group:aspect-[4/3] @max-md/group:self-auto @max-md/group:[grid-area:1/1/4/2]",
-              entry.kind === "poem" ? "aspect-[3/4] self-start @md:aspect-[3/4]" : "aspect-[16/10] @md:aspect-auto @md:min-h-32",
+              entry.kind === "poem" ? "min-h-24 self-stretch" : "aspect-[16/10] @md:aspect-auto @md:min-h-32",
             )}
           >
             {cover && entry.sensitive === true ? (
