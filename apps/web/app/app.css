@@ -2372,9 +2372,10 @@
   }
   /* The block belongs to the picture it describes, so it sits nearer to the picture (1.5 rem, the stage's own 0.25 rem included) than to the standfirst above it (2 rem): the head's usual 1.75 rem of foot and the grid's
      2 rem of gap would put 4 rem between the block and its picture (owner, 2026-11-02: "the current gap breaks the hierarchy"). */
-  .entry:has(.entry-exposure) .entry-hero {
+  .entry:has(.entry-facts-row) .entry-hero {
     --cover-foot: 0rem;
-    margin-bottom: -0.75rem;
+    /* the camera and the link hug the corners (they hang out into the head's gutter, `-mx`): below, the picture is as near as the sides are (about 0.5 rem of air under their text) */
+    margin-bottom: -1.5rem;
   }
   .entry-exposure-text {
     min-width: 0;
