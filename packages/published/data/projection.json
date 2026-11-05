@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "dataVersion": {
-    "commit": "53d7f2a8502e05313eeaeb61a5efcd79af344ef5",
-    "date": "2026-11-04"
+    "commit": "dd76e14cf171cd02ceb480ecb3397073882762e9",
+    "date": "2026-11-05"
   },
   "places": [
     {
@@ -907,6 +907,32 @@
       ],
       "images": [],
       "related": []
+    },
+    {
+      "slug": "faculty-of-geodesy-and-cartography",
+      "name": "Faculty of Geodesy and Cartography",
+      "coordinates": {
+        "lat": 52.2208,
+        "lon": 21.0102
+      },
+      "labelPriority": 39,
+      "bbox": [
+        21.00897,
+        52.22012,
+        21.01109,
+        52.22138
+      ],
+      "viewRadiusKm": 0.5,
+      "group": "poland",
+      "countryCode": "PL",
+      "body": [],
+      "images": [],
+      "related": [
+        {
+          "kind": "photograph",
+          "slug": "amber-gateway"
+        }
+      ]
     },
     {
       "slug": "faro",
@@ -3673,7 +3699,7 @@
         "lat": 52.221,
         "lon": 21.011
       },
-      "labelPriority": 39,
+      "labelPriority": 30,
       "bbox": [
         21.00427,
         52.21692,
@@ -3685,12 +3711,7 @@
       "countryCode": "PL",
       "body": [],
       "images": [],
-      "related": [
-        {
-          "kind": "photograph",
-          "slug": "amber-gateway"
-        }
-      ]
+      "related": []
     },
     {
       "slug": "yasuni",
@@ -9529,7 +9550,7 @@
         }
       ],
       "placeSlugs": [
-        "warsaw-university-of-technology"
+        "faculty-of-geodesy-and-cartography"
       ]
     },
     {
