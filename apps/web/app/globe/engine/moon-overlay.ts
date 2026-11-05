@@ -13,6 +13,7 @@
  */
 import type { GlobeMoon } from "../types";
 import { clock, phaseName } from "./moon-hud";
+import { LUNAR } from "./lunar-ephemeris";
 import { MOON } from "./moon";
 import { dashingFor, edgeLit } from "./pixel-labels";
 
@@ -203,10 +204,13 @@ export function orbitPath(points: ReadonlyArray<[number, number] | null>): strin
   return d;
 }
 
-/** The readout's lines (the orbit display's text): the phase, the place on the orbit, the shadow. */
+/**
+ * The readout's lines (the orbit display's text): the phase, the place on the orbit, the shadow. They are what the SCENE shows (the orbit is compressed, a lap is six minutes: `SIM`), never given as the real moon's;
+ * what is real (`REAL`) is the orbit's own constants (`pathItems`), and the live ephemeris, `lunar-ephemeris.ts`, fills it in later.
+ */
 export function hudLines(h: NonNullable<MoonFrame["hud"]>): string[] {
-  const shadow = h.eclipse.now ? "ECLIPSE UNDER WAY" : h.eclipse.fromAngle === null ? "NO ECLIPSE ON THIS ORBIT" : `ECLIPSE IN ${clock((h.eclipse.fromAngle / (2 * Math.PI)) * MOON.periodMs)}`;
-  return [`PHASE ${String(Math.round(h.lit * 100)).padStart(3, "0")}% ${phaseName(h.lit, h.waxing).toUpperCase()}`, `ORBIT ${String(Math.round(h.angleDeg) % 360).padStart(3, "0")}\u00b0`, shadow];
+  const shadow = h.eclipse.now ? "SIM ECLIPSE UNDER WAY" : h.eclipse.fromAngle === null ? "NO ECLIPSE ON THIS ORBIT" : `SIM ECLIPSE T-${clock((h.eclipse.fromAngle / (2 * Math.PI)) * MOON.periodMs)}`;
+  return [`SIM PHASE ${String(Math.round(h.lit * 100)).padStart(3, "0")}% ${phaseName(h.lit, h.waxing).toUpperCase()}`, `SIM ORBIT ${String(Math.round(h.angleDeg) % 360).padStart(3, "0")}\u00b0`, shadow];
 }
 
 /** The orbit display's fade (app.css `.globe-moon-hud`), ms: the globe goes on feeding it frames this long after the card is put away. */
@@ -228,16 +232,36 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 
 type Hud = NonNullable<MoonFrame["hud"]>;
 
-/** The items of data that run along the orbit, above it and below it. Real numbers: the orbit's own, the moon's now, the shadow's. Spaced out along the path by `spread`, no separators. */
+/** A whole number with a comma between thousands (`6557` is `6,557`). */
+const thousands = (n: number): string => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+
+/** How many times faster than the real moon the scene's moon goes: a sidereal month (`LUNAR`) in the time of a lap. */
+export const SIM_RATE = (LUNAR.siderealDays * 86_400_000) / MOON.periodMs;
+
+/**
+ * The items of data that run along the orbit, above it and below it, spaced out along the path by `spread`, no separators. Every one is either `REAL` (the orbit's own constants, which need no ephemeris: `LUNAR`) or
+ * `SIM` (what the scene does, which is compressed: a lap of six minutes, an orbit of 9 earth radii in a composition plane, the angle of the view), so that no scene constant is read as a physical quantity (#628).
+ */
 export function pathItems(h: Hud): { above: string[]; below: string[] } {
   const degAt = (ahead: number | null) => (ahead === null ? "---" : String(Math.round(((h.angleDeg + (ahead * 180) / Math.PI) % 360 + 360) % 360)).padStart(3, "0"));
   const e = h.eclipse;
-  const shadow = e.now ? `UMBRA ENTERED AT ${degAt(0)}\u00b0` : e.fromAngle === null ? "SHADOW NOT ON PATH" : `SHADOW AT ${degAt(e.fromAngle)}\u00b0 PEAK ${degAt(e.peakAngle)}\u00b0`;
+  const shadow = e.now ? `SIM UMBRA ENTERED AT ${degAt(0)}\u00b0` : e.fromAngle === null ? "SHADOW NOT ON PATH" : `SIM SHADOW AT ${degAt(e.fromAngle)}\u00b0 PEAK ${degAt(e.peakAngle)}\u00b0`;
   const sun = h.solar;
-  const solarLine = !sun ? null : sun.now ? "SOLAR ECLIPSE UNDER WAY" : sun.fromAngle === null ? "NO SOLAR ECLIPSE" : `SOLAR ECLIPSE IN ${clock((sun.fromAngle / (2 * Math.PI)) * MOON.periodMs)}`;
+  const solarLine = !sun ? null : sun.now ? "SIM SOLAR ECLIPSE UNDER WAY" : sun.fromAngle === null ? "NO SOLAR ECLIPSE" : `SIM SOLAR ECLIPSE T-${clock((sun.fromAngle / (2 * Math.PI)) * MOON.periodMs)}`;
   return {
-    above: ["LUNA ORBIT", `RADIUS ${MOON.orbit.toFixed(1)} ER`, `INCL ${h.info.inclDeg.toFixed(1)}\u00b0`, `PERIOD ${clock(MOON.periodMs)}`, `ANG VEL ${(360 / (MOON.periodMs / 1000)).toFixed(2)}\u00b0/S`, `RANGE ${h.info.range.toFixed(2)} ER`],
-    below: [`PHASE ANGLE ${String(Math.round(h.info.phaseDeg)).padStart(3, "0")}\u00b0`, `ILLUM ${(h.lit * 100).toFixed(1)}%`, shadow, e.now ? "ECLIPSE UNDER WAY" : e.fromAngle === null ? "NO ECLIPSE" : `T-${clock((e.fromAngle / (2 * Math.PI)) * MOON.periodMs)}`, ...(solarLine ? [solarLine] : [])],
+    above: [
+      "LUNA ORBIT",
+      `REAL MEAN RADIUS ${thousands(LUNAR.meanDistanceKm)} KM`,
+      `REAL INCL ${LUNAR.inclinationDeg.toFixed(3)}\u00b0`,
+      `REAL ECC ${LUNAR.eccentricity}`,
+      `REAL SIDEREAL ${LUNAR.siderealDays.toFixed(2)} D`,
+      `REAL SYNODIC ${LUNAR.synodicDays.toFixed(2)} D`,
+      `SIM RATE x${thousands(SIM_RATE)}`,
+      `SIM LAP ${clock(MOON.periodMs)}`,
+      `SIM VIEW ANGLE ${h.info.inclDeg.toFixed(1)}\u00b0`,
+      `SCENE ${MOON.orbit.toFixed(1)} ER, RANGE ${h.info.range.toFixed(2)} ER (NOT TO SCALE)`,
+    ],
+    below: [`SIM PHASE ANGLE ${String(Math.round(h.info.phaseDeg)).padStart(3, "0")}\u00b0`, `SIM ILLUM ${(h.lit * 100).toFixed(1)}%`, shadow, e.now ? "SIM ECLIPSE UNDER WAY" : e.fromAngle === null ? "NO ECLIPSE" : `SIM T-${clock((e.fromAngle / (2 * Math.PI)) * MOON.periodMs)}`, ...(solarLine ? [solarLine] : [])],
   };
 }
 
