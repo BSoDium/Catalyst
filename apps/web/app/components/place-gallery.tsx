@@ -3,7 +3,8 @@ import { Link } from "react-router";
 import { Icon, ScrollRow, SensitiveMedia } from "~/components/ui";
 import { coverImageProps } from "~/lib/cover-image";
 import { formatEntryDate } from "~/lib/dates";
-import { carouselLayout, growth, keylines, lastPosition, widest, type Keylines } from "~/lib/photo-carousel";
+import { imageTone, type Tone } from "~/lib/image-tone";
+import { carouselLayout, growth, keylines, lastPosition, stepOf, widest, type Keylines } from "~/lib/photo-carousel";
 import { cn } from "~/lib/utils";
 
 /** A photograph of the place in its gallery: the cover of a linked photograph entry, with what the label says. */
@@ -22,14 +23,21 @@ export interface GalleryItem {
 
 const ratioOf = (item: GalleryItem) => (item.width && item.height ? item.width / item.height : 4 / 3);
 
-/** The picture with its label on it: over a soft dome of the page colour, the date in mono, the title in the display face and where it is in the row. */
-function Picture({ item, i, count, from, style, onFocus, fullWidth }: { item: GalleryItem; i: number; count: number; from: string; style?: React.CSSProperties; onFocus?: () => void; fullWidth?: number }) {
+/** The picture with its label on it: over a soft dome, black or white as the picture is dark or light where the label is (until it is known, the page's own colour), the date in mono, the title in the display face and where it is in the row. */
+function Picture({ item, i, count, from, style, className, onFocus, fullWidth }: { item: GalleryItem; i: number; count: number; from: string; style?: React.CSSProperties; className?: string; onFocus?: () => void; fullWidth?: number }) {
   const date = formatEntryDate(item.date);
-  const inner: React.CSSProperties | undefined = fullWidth ? { width: fullWidth } : undefined;
-  const image = <img {...coverImageProps({ src: item.src, width: item.width ?? 0, small: item.small }, "(min-width: 48rem) 50vw, 100vw")} alt={item.alt} loading={i === 0 ? "eager" : "lazy"} decoding="async" className="place-gallery-img size-full object-cover" />;
+  // (never narrower than the box: one or two pictures share the row, and may be wider than the widest of a longer row, which would leave a bar at each side of a tall picture)
+  const inner: React.CSSProperties | undefined = fullWidth ? { width: fullWidth, minWidth: "100%" } : undefined;
+  const img = useRef<HTMLImageElement>(null);
+  const [tone, setTone] = useState<Tone | null>(null);
+  const read = useCallback(() => {
+    if (img.current?.complete) setTone(imageTone(img.current));
+  }, []);
+  useLayoutEffect(read, [read]);
+  const image = <img ref={img} onLoad={read} {...coverImageProps({ src: item.src, width: item.width ?? 0, small: item.small }, fullWidth ? `${fullWidth}px` : "(min-width: 48rem) 50vw, 100vw")} alt={item.alt} loading={i === 0 ? "eager" : "lazy"} decoding="async" className="place-gallery-img size-full object-cover" />;
   return (
-    <Link to={item.href} state={{ from }} aria-label={item.title} onFocus={onFocus} style={style} className="place-gallery-item group relative block overflow-hidden bg-accent no-underline">
-      <span className={cn("block", fullWidth ? "absolute inset-y-0 left-1/2 -translate-x-1/2" : "size-full")} style={inner}>
+    <Link to={item.href} state={{ from }} aria-label={item.title} onFocus={onFocus} style={style} className={cn("place-gallery-item group relative block overflow-hidden bg-accent no-underline", className)} data-tone={tone ?? undefined}>
+      <span className={cn("place-gallery-media block", fullWidth ? "absolute inset-y-0 left-1/2 -translate-x-1/2" : "size-full")} style={inner}>
         {item.sensitive ? <SensitiveMedia className="size-full [&_.sensitive-media-content]:size-full">{image}</SensitiveMedia> : image}
       </span>
       <span className="place-gallery-label" style={inner}>
@@ -41,7 +49,7 @@ function Picture({ item, i, count, from, style, onFocus, fullWidth }: { item: Ga
             </span>
           )}
         </span>
-        <span className="place-gallery-title line-clamp-2 font-display text-foreground">{item.title}</span>
+        <span className="place-gallery-title line-clamp-2 font-display">{item.title}</span>
       </span>
     </Link>
   );
@@ -66,7 +74,7 @@ function Carousel({ items, from }: { items: GalleryItem[]; from: string }) {
     if (!el) return;
     const measure = () => {
       const k = keylines(el.clientWidth);
-      setGeo({ k, step: Math.round(k.large * 0.8) });
+      setGeo({ k, step: stepOf(k) });
     };
     measure();
     if (typeof ResizeObserver === "undefined") return;
@@ -84,10 +92,13 @@ function Carousel({ items, from }: { items: GalleryItem[]; from: string }) {
     boxes.forEach((box, i) => {
       const li = ul.children[i] as HTMLElement | undefined;
       if (!li) return;
+      const visibility = box.w < 1 ? "hidden" : "visible";
+      // (a picture that is not there costs nothing: its styles are left as they were)
+      if (visibility === "hidden" && li.style.visibility === "hidden") return;
       li.style.width = `${box.w}px`;
       li.style.transform = `translate3d(${box.x}px,0,0)`;
-      li.style.visibility = box.w < 1 ? "hidden" : "visible";
-      li.style.setProperty("--g", growth(box.w, geo.k).toFixed(3));
+      li.style.visibility = visibility;
+      li.style.setProperty("--g", growth(box.w, geo.k).toFixed(2));
     });
     const max = el.scrollWidth - el.clientWidth;
     const next = { start: el.scrollLeft > 2, end: el.scrollLeft < max - 2 };
@@ -115,7 +126,7 @@ function Carousel({ items, from }: { items: GalleryItem[]; from: string }) {
     const el = scroller.current;
     if (!el || !geo) return;
     const reduced = typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    el.scrollTo({ left: Math.min(Math.max(index, 0), lastPosition(items.length)) * geo.step, behavior: reduced ? "auto" : "smooth" });
+    el.scrollTo({ left: Math.min(Math.max(index, 0), lastPosition(items.length, geo.k)) * geo.step, behavior: reduced ? "auto" : "smooth" });
   };
   const position = () => (geo && scroller.current ? scroller.current.scrollLeft / geo.step : 0);
   const current = () => Math.round(position());
@@ -124,14 +135,14 @@ function Carousel({ items, from }: { items: GalleryItem[]; from: string }) {
     <div className="relative">
       <div ref={scroller} data-slot="place-gallery-scroller" className="place-gallery-scroller overflow-x-auto overscroll-x-contain snap-x snap-mandatory">
         {geo && (
-          <div className="relative h-full" style={{ width: lastPosition(items.length) * geo.step + geo.k.width }}>
-            {items.slice(0, lastPosition(items.length) + 1).map((item, i) => (
+          <div className="relative h-full" style={{ width: lastPosition(items.length, geo.k) * geo.step + geo.k.width }}>
+            {items.slice(0, lastPosition(items.length, geo.k) + 1).map((item, i) => (
               <span key={item.src} aria-hidden="true" className="absolute top-0 size-px snap-start" style={{ left: i * geo.step }} />
             ))}
             <div className="sticky left-0 top-0 h-full overflow-hidden" style={{ width: geo.k.width }}>
               <ul ref={layer} className="relative m-0 h-full list-none p-0">
                 {items.map((item, i) => (
-                  <li key={item.src} className="absolute top-0 left-0 h-full overflow-hidden" style={{ width: 0, visibility: "hidden" }}>
+                  <li key={item.src} className="absolute top-0 left-0 h-full overflow-hidden [contain:layout_paint]" style={{ width: 0, visibility: "hidden" }}>
                     <Picture item={item} i={i} count={items.length} from={from} fullWidth={widest(geo.k)} onFocus={() => Math.abs(i - position()) > 1 && goTo(i)} style={{ height: "100%" }} />
                   </li>
                 ))}
@@ -175,10 +186,10 @@ export function PhotoGallery({ items, from }: { items: GalleryItem[]; from: stri
       {enhanced ? (
         <Carousel items={items} from={from} />
       ) : (
-        <ScrollRow noun="photographs" className="flex snap-x snap-mandatory gap-1.5 px-6">
+        <ScrollRow noun="photographs" className="flex snap-x snap-mandatory scroll-px-6 gap-1.5 px-6 @max-[35rem]:scroll-px-0 @max-[35rem]:px-0">
           {items.map((item, i) => (
             <div key={item.src} className="contents">
-              <Picture item={item} i={i} count={items.length} from={from} style={{ aspectRatio: ratioOf(item), height: "min(26rem, 70dvh)", maxWidth: "88cqw", flexShrink: 0, scrollSnapAlign: "start" }} />
+              <Picture item={item} i={i} count={items.length} from={from} className="place-gallery-static" style={{ aspectRatio: ratioOf(item), height: "min(26rem, 70dvh)", maxWidth: "88cqw", flexShrink: 0, scrollSnapAlign: "start" }} />
             </div>
           ))}
         </ScrollRow>

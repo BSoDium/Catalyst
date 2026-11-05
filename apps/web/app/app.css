@@ -1073,6 +1073,14 @@
     }
   }
 
+  /* A row of the place panel in a narrow panel (a phone; `@md` is 28rem): the list page's covered row (above), in the panel's width: the picture runs out to the panel's edges and dissolves into the page at its foot, under the date and the title. */
+  @container (max-width: 27.999rem) {
+    .place-row-cover {
+      -webkit-mask-image: linear-gradient(to top, transparent 0%, rgb(0 0 0 / 0.08) 14%, rgb(0 0 0 / 0.26) 30%, rgb(0 0 0 / 0.54) 46%, rgb(0 0 0 / 0.8) 62%, rgb(0 0 0 / 0.94) 78%, #000 100%);
+      mask-image: linear-gradient(to top, transparent 0%, rgb(0 0 0 / 0.08) 14%, rgb(0 0 0 / 0.26) 30%, rgb(0 0 0 / 0.54) 46%, rgb(0 0 0 / 0.8) 62%, rgb(0 0 0 / 0.94) 78%, #000 100%);
+    }
+  }
+
   /* Divider: a hairline, optionally hung with a tick scale (minor every 8 px, major every 40 px). */
   .ds-divider {
     height: 0;
@@ -2106,6 +2114,19 @@
     color: var(--signal-text, var(--foreground));
   }
   /* The photographs of a place (components/place-detail.tsx, `PhotoGallery`): the label is on the picture, over a soft dome of the page colour from its bottom left corner, so it reads on any photograph in both schemes; the arrows are plates over the picture's edge, in the middle, not the chips' top-aligned ones. */
+  /* the label's ground and ink: the page's own until the picture has been read (`lib/image-tone.ts`), then black and white as it is dark or light where the label is, in both schemes */
+  .place-gallery-item {
+    --label-bg: var(--background);
+    --label-ink: var(--foreground);
+  }
+  .place-gallery-item[data-tone="dark"] {
+    --label-bg: #000;
+    --label-ink: #fff;
+  }
+  .place-gallery-item[data-tone="light"] {
+    --label-bg: #fff;
+    --label-ink: #111;
+  }
   .place-gallery-label {
     position: absolute;
     inset: auto 0 0 0;
@@ -2123,11 +2144,11 @@
     /* the whole width of the label (the date is at its left, the position at its right), the page colour held firmly under the text and eased to nothing above it */
     background: linear-gradient(
       to top,
-      color-mix(in srgb, var(--background) 78%, transparent) 0%,
-      color-mix(in srgb, var(--background) 66%, transparent) 40%,
-      color-mix(in srgb, var(--background) 48%, transparent) 62%,
-      color-mix(in srgb, var(--background) 24%, transparent) 80%,
-      color-mix(in srgb, var(--background) 7%, transparent) 93%,
+      color-mix(in srgb, var(--label-bg) 78%, transparent) 0%,
+      color-mix(in srgb, var(--label-bg) 66%, transparent) 40%,
+      color-mix(in srgb, var(--label-bg) 48%, transparent) 62%,
+      color-mix(in srgb, var(--label-bg) 24%, transparent) 80%,
+      color-mix(in srgb, var(--label-bg) 7%, transparent) 93%,
       transparent 100%
     );
   }
@@ -2143,19 +2164,33 @@
     width: 0;
     height: 0;
   }
+  /* The row before the script (the server's page, and the frames until the browser has taken the row over) in a narrow panel is what the carousel is there: one picture, edge to edge, so nothing changes when it is built (lib/photo-carousel.ts, `SINGLE_BELOW`). */
+  @container (max-width: 34.999rem) {
+    .place-gallery-static {
+      aspect-ratio: auto !important;
+      width: 100cqw;
+      max-width: none !important;
+    }
+  }
+  /* the picture fades as it shrinks, less than its title does (a small one is still a picture) */
+  .place-gallery-media {
+    opacity: calc(0.55 + 0.45 * var(--g, 1));
+  }
   .place-gallery-title {
     font-size: 1.375rem;
     font-weight: calc(200 + 600 * var(--g, 1));
-    letter-spacing: -0.02em;
+    /* the heavier the face the wider the line (Bricolage has no width axis: 8.5 % from 200 to 800, 0.041em a character, linearly): the spacing makes up for the weight, so the line is as wide at every weight and never breaks differently as the weight changes */
+    letter-spacing: calc(-0.02em + 0.041em * (1 - var(--g, 1)));
     line-height: 1.1;
     opacity: calc(0.3 + 0.7 * var(--g, 1));
-    text-shadow: 0 0 0.5rem var(--background);
+    color: var(--label-ink);
+    text-shadow: 0 0 0.5rem var(--label-bg);
   }
   /* the date and the position are small mono type over a photograph: the ink, not the muted grey, with a halo of the page colour */
   .place-gallery-meta {
-    color: var(--foreground);
+    color: var(--label-ink);
     opacity: clamp(0, calc((var(--g, 1) - 0.1) * 1.4), 1);
-    text-shadow: 0 0 0.375rem var(--background), 0 0 0.125rem var(--background);
+    text-shadow: 0 0 0.375rem var(--label-bg), 0 0 0.125rem var(--label-bg);
   }
   .place-gallery [data-slot="scroll-row-arrow"] {
     top: 50%;

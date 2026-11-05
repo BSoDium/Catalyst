@@ -337,9 +337,9 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
                 {tail ? <span className="entry-title-tail">{tail}</span> : null}
               </h1>
               {entry.summary && !poem && <p className="type-standfirst mt-[1.375rem] max-w-[25.4em] md:mt-[2.125rem]">{entry.summary}</p>}
-              {/* The way to the place a photograph is about, up where it is read (the other kinds have it in "At a glance", as a link, or in the tags) and not only in a tag or on the map (#581): on the camera's row, at its right end, as tall as the camera's mark, in two lines. */}
+              {/* The way to the place a photograph is about, up where it is read (the other kinds have it in "At a glance", as a link, or in the tags) and not only in a tag or on the map (#581): on the camera's row, at its right end, as tall as the camera's mark, in two lines. They are not the head's text: they hang half-way out into its gutter (`-mx`), so that they hug the corners. */}
               {(exposure || (entry.kind === "photograph" && globeTarget)) && (
-                <div data-slot="entry-facts-row" className="entry-facts-row">
+                <div data-slot="entry-facts-row" className={cn("entry-facts-row", full ? "-mx-2 md:-mx-4" : "-mx-3")}>
                   {exposure && <ExposureBlock exposure={exposure} />}
                   {entry.kind === "photograph" && globeTarget && (
                     <Link to={globeTarget.href} data-slot="entry-place-link" className="entry-place-link type-meta print:hidden">
