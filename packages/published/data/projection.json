@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "dataVersion": {
-    "commit": "dd76e14cf171cd02ceb480ecb3397073882762e9",
+    "commit": "1dc238b9b9fb4c7c5353aa0c2f84c949e96ccd8b",
     "date": "2026-11-05"
   },
   "places": [
@@ -1657,7 +1657,7 @@
         "lon": -60.04
       },
       "labelPriority": 42,
-      "group": "brazil",
+      "group": "manaus-area",
       "countryCode": "BR",
       "body": [
         "The contrast between Senegal and Brazil is gigantic, I had almost forgotten how much I liked South America...",
@@ -1957,21 +1957,21 @@
       "related": []
     },
     {
-      "slug": "near-boa-vista",
-      "name": "Near Boa Vista, Roraima",
+      "slug": "near-manaus",
+      "name": "Near Manaus, Amazonas",
       "coordinates": {
-        "lat": 3.296,
-        "lon": -60.413
+        "lat": -3.29619,
+        "lon": -60.41303
       },
       "labelPriority": 39,
       "bbox": [
-        -60.4175,
-        3.29151,
-        -60.4085,
-        3.30049
+        -60.41753,
+        -3.30069,
+        -60.40853,
+        -3.29169
       ],
       "viewRadiusKm": 0.8,
-      "group": "brazil",
+      "group": "manaus-area",
       "countryCode": "BR",
       "body": [],
       "images": [],
@@ -4287,6 +4287,18 @@
       },
       "viewRadiusKm": 110.9,
       "labelPriority": 57
+    },
+    {
+      "slug": "manaus-area",
+      "name": "Manaus area",
+      "kind": "area",
+      "parent": "brazil",
+      "coordinates": {
+        "lat": -3.163,
+        "lon": -60.183
+      },
+      "viewRadiusKm": 33.4,
+      "labelPriority": 55
     },
     {
       "slug": "mauritania",
@@ -9643,7 +9655,7 @@
         }
       ],
       "placeSlugs": [
-        "near-boa-vista"
+        "near-manaus"
       ]
     },
     {
