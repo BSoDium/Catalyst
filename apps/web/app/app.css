@@ -3858,6 +3858,20 @@
     grid-area: 1 / 1;
   }
 
+  /* The overlay's ground and ink: the page's own until the picture has been read (`useWallTones`, lib/image-tone.ts), then black and white as it is dark or light where the caption is, in both schemes (as the place panel's carousel). */
+  .wall-card {
+    --label-bg: var(--background);
+    --label-ink: var(--foreground);
+  }
+  .wall-card[data-tone="dark"] {
+    --label-bg: #000;
+    --label-ink: #fff;
+  }
+  .wall-card[data-tone="light"] {
+    --label-bg: #fff;
+    --label-ink: #111;
+  }
+
   /* z-index (a grid item takes it without being positioned): the picture's box is positioned and would paint over a static plate, and a positioned plate would shrink the title link's stretched hit area to itself. */
   .wall-caption {
     z-index: 1;
@@ -3868,19 +3882,24 @@
        whole behind and no plate cutting it (owner, 2026-11-02: "instead of cropping and revealing the text under"). The room above the text is the ramp's own; the title is two lines at most, so its height is capped. */
     padding: 4.5rem 0.875rem 0.75rem;
     overflow: visible;
-    color: var(--foreground);
+    color: var(--label-ink);
     background: linear-gradient(
       to top,
-      var(--background) 0%,
-      var(--background) 10%,
-      color-mix(in srgb, var(--background) 78%, transparent) 36%,
-      color-mix(in srgb, var(--background) 38%, transparent) 66%,
+      var(--label-bg) 0%,
+      var(--label-bg) 10%,
+      color-mix(in srgb, var(--label-bg) 78%, transparent) 36%,
+      color-mix(in srgb, var(--label-bg) 38%, transparent) 66%,
       transparent 100%
     );
   }
 
   .wall-title {
     font-size: 1.125rem;
+  }
+
+  /* (over the picture the second line is the ink a little eased towards the ground, not the page's muted grey: that one is for the page) */
+  .wall-meta {
+    color: color-mix(in srgb, var(--label-ink) 82%, var(--label-bg));
   }
 
   /* On a touch screen EVERY picture has the overlay, always, so its backdrop must not be seen as a band (owner, 2026-11-02: a short linear ramp was sharp and fast, and on a white picture a visible shelf). It is ONE
@@ -3923,7 +3942,7 @@
       grid-area: 1 / 1 / 3 / 2;
       z-index: -1;
       margin: calc(-1 * var(--veil-pad-top)) calc(-1 * var(--veil-pad-x)) calc(-1 * var(--veil-pad-bottom));
-      background: color-mix(in srgb, var(--background) 40%, transparent);
+      background: color-mix(in srgb, var(--label-bg) 40%, transparent);
       border-radius: 9999px;
       filter: blur(var(--veil-blur));
     }
@@ -3934,7 +3953,7 @@
 
     /* the medium and the year are in the ink, not the muted grey: over a lighter backdrop (a white picture on the dark page, a dark one on the light page) the grey fell to under 2:1 */
     .wall-meta {
-      color: color-mix(in srgb, var(--foreground) 88%, var(--background));
+      color: color-mix(in srgb, var(--label-ink) 88%, var(--label-bg));
     }
   }
 
@@ -3959,6 +3978,13 @@
       --cap: 5.5rem;
     }
 
+    /* (the caption is on the page here, not on the picture: the page's colours whatever the picture) */
+    .wall-card,
+    .wall-card[data-tone] {
+      --label-bg: var(--background);
+      --label-ink: var(--foreground);
+    }
+
     .wall-media,
     .wall-caption {
       grid-area: auto;
@@ -3966,6 +3992,7 @@
 
     .wall-caption {
       z-index: auto;
+      color: var(--foreground);
       height: var(--cap);
       padding: var(--wall-gutter) var(--wall-gutter) 0;
       overflow: hidden;
@@ -4912,6 +4939,11 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     position: static;
     height: auto;
     opacity: 1;
+  }
+
+  .wall-card[data-tone] {
+    --label-bg: var(--background);
+    --label-ink: var(--foreground);
   }
 
   :root {
