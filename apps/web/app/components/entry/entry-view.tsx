@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import { useLayoutEffect, useRef, type CSSProperties, type ReactNode } from "react";
 import { Link } from "react-router";
 import { PANEL_HEADING_ID } from "~/components/detail-panel";
 import { BlockRenderer } from "~/components/entry/blocks";
@@ -69,6 +69,42 @@ export function EntryView(props: EntryViewProps) {
     <SensitiveMediaScope key={`${entry.kind}/${entry.slug}`} sensitive={isSensitive(entry)}>
       <EntryArticle {...props} />
     </SensitiveMediaScope>
+  );
+}
+
+/**
+ * The camera's block and the link to the place of a photograph: in one row, the link at the right end, when they fit; else stacked at the left. The row is tried first and, if the link
+ * has been wrapped to a line of its own, they are stacked: in between, a wrapped row would leave the link at the right, on its own line (`data-facts`, styled in app.css; until this has run the
+ * container's width decides).
+ */
+function FactsRow({ className, entry, children }: { className?: string; /** What the row is about: when it changes the row is arranged again (a longer camera's name fits in fewer widths), not only when its width does. */ entry: string; children: ReactNode }) {
+  const row = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = row.current;
+    if (!el) return;
+    let width = -1;
+    const arrange = () => {
+      const [a, b] = Array.from(el.children) as HTMLElement[];
+      el.dataset.facts = "row";
+      if (a && b && b.offsetTop >= a.offsetTop + a.offsetHeight) el.dataset.facts = "stack";
+    };
+    const observe = () => {
+      if (el.clientWidth === width) return;
+      width = el.clientWidth;
+      arrange();
+    };
+    arrange();
+    width = el.clientWidth;
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(observe);
+    observer.observe(el);
+    void document.fonts?.ready.then(arrange);
+    return () => observer.disconnect();
+  }, [entry]);
+  return (
+    <div ref={row} data-slot="entry-facts-row" className={cn("entry-facts-row", className)}>
+      {children}
+    </div>
   );
 }
 
@@ -337,9 +373,9 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
                 {tail ? <span className="entry-title-tail">{tail}</span> : null}
               </h1>
               {entry.summary && !poem && <p className="type-standfirst mt-[1.375rem] max-w-[25.4em] md:mt-[2.125rem]">{entry.summary}</p>}
-              {/* The way to the place a photograph is about, up where it is read (the other kinds have it in "At a glance", as a link, or in the tags) and not only in a tag or on the map (#581): on the camera's row, at its right end, as tall as the camera's mark, in two lines. */}
+              {/* The way to the place a photograph is about, up where it is read (the other kinds have it in "At a glance", as a link, or in the tags) and not only in a tag or on the map (#581): on the camera's row, at its right end, as tall as the camera's mark, in two lines. They are not the head's text: they nest in its corners (`.entry-facts-row`), each as near to the edges as the picture is below, and are stacked at the left, not wrapped, where they do not fit on one row (`FactsRow`). */}
               {(exposure || (entry.kind === "photograph" && globeTarget)) && (
-                <div data-slot="entry-facts-row" className="entry-facts-row">
+                <FactsRow entry={entry.slug} className={full ? "[--hero-px:1rem] md:[--hero-px:2rem]" : "[--hero-px:1.5rem]"}>
                   {exposure && <ExposureBlock exposure={exposure} />}
                   {entry.kind === "photograph" && globeTarget && (
                     <Link to={globeTarget.href} data-slot="entry-place-link" className="entry-place-link type-meta print:hidden">
@@ -351,7 +387,7 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
                       <Icon name="arrow-up-right" size="large" className="entry-place-link-arrow" />
                     </Link>
                   )}
-                </div>
+                </FactsRow>
               )}
               {actions}
             </div>
