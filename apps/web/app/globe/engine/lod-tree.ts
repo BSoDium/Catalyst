@@ -337,6 +337,13 @@ export class LodTree {
   readonly side: Float64Array;
   /** Visible places below a group (a group's rectangle wraps only these). */
   readonly members: Int32Array;
+  /**
+   * 1 for a place whose bounding box lies inside that of another place of the same group (the University of Technology in Warsaw, a church in Copenhagen): a detail of that place, not a second one. It is not
+   * counted in its group's total, and a group that holds one place and what is inside it is labelled as that place (its name, its country, its entries), not as "2 places".
+   */
+  readonly nested: Uint8Array;
+  /** For a group that holds ONE place and what is inside it: that place (`nested` ones do not count), else -1. Its rectangle is the place's own, not a padded one, and the place's ghost is not drawn inside it. */
+  readonly loneHost: Int32Array;
   /** Rectangle of a drawn node (host projection space, CSS px, unsnapped). */
   /** Rectangle of a drawn node (host projection space, CSS px, unsnapped). */
   readonly boxX0: Float64Array;
@@ -494,6 +501,30 @@ export class LodTree {
       this.vec.set(lonLatToVec3(lon, lat), i * 3);
     });
 
+    // Nested places: a place whose bounding box lies inside another's of the same group (a place with no box: whose point does), a detail of it. Of two places with the very same box the less important one is the detail.
+    const boxes = list.map((x) => (x.kind === "place" && x.bbox ? x.bbox : null));
+    const area = (b: Bbox) => Math.max(0, b[2] - b[0]) * Math.max(0, b[3] - b[1]);
+    const EPS = 1e-6;
+    const holds = (b: Bbox, a: Bbox) => a[0] >= b[0] - EPS && a[1] >= b[1] - EPS && a[2] <= b[2] + EPS && a[3] <= b[3] + EPS;
+    this.nested = new Uint8Array(n);
+    for (let i = 0; i < n; i++) {
+      if (list[i]!.kind !== "place") continue;
+      const a = boxes[i];
+      for (let j = 0; j < n; j++) {
+        const b = boxes[j];
+        if (!b || j === i || list[j]!.parent !== list[i]!.parent) continue;
+        let inside: boolean;
+        if (a) {
+          const same = holds(b, a) && holds(a, b);
+          inside = same ? list[j]!.priority > list[i]!.priority || (list[j]!.priority === list[i]!.priority && list[j]!.slug < list[i]!.slug) : holds(b, a) && area(b) > area(a);
+        } else inside = list[i]!.lon >= b[0] && list[i]!.lon <= b[2] && list[i]!.lat >= b[1] && list[i]!.lat <= b[3];
+        if (inside) {
+          this.nested[i] = 1;
+          break;
+        }
+      }
+    }
+
     // Parents. Only a group can be a parent; an unknown parent makes a root; a cycle is cut where it closes.
     this.parent = new Int32Array(n).fill(-1);
     list.forEach((x, i) => {
@@ -530,12 +561,26 @@ export class LodTree {
     this.places = Int32Array.from({ length: n }, (_, i) => i).filter((i) => !this.isGroup[i]);
     this.groups = Int32Array.from({ length: n }, (_, i) => i).filter((i) => this.isGroup[i]);
     this.total = new Int32Array(n);
-    for (const p of this.places) for (let a = this.parent[p]!; a >= 0; a = this.parent[a]!) this.total[a]!++;
+    for (const p of this.places) if (!this.nested[p]) for (let a = this.parent[p]!; a >= 0; a = this.parent[a]!) this.total[a]!++;
     // Label text: the name, and a second line that is always there when it has something to say: a place's country (the same for every place) and
     // entries, a group's number of places and entries (engine/label-sub.ts).
     this.text = list.map((x) => x.name);
     const entries = nodeEntryCounts(this.parent, list.map((x) => x.entries));
-    this.sub = list.map((x, i) => (this.isGroup[i] ? groupSub(this.total[i]!, entries[i]) : placeSub(countryName(x.countryCode), entries[i])));
+    // A group of ONE place (and what is inside it) is that place's box with that place's label: "Warsaw", its country and its entries, not "Poland, 2 places".
+    const lone = new Int32Array(n).fill(-1);
+    for (const p of this.places) {
+      const a = this.parent[p]!;
+      if (a >= 0 && !this.nested[p]) lone[a] = lone[a] === -1 ? p : -2;
+    }
+    this.loneHost = new Int32Array(n).fill(-1);
+    this.sub = list.map((x, i) => {
+      if (!this.isGroup[i]) return placeSub(countryName(x.countryCode), entries[i]);
+      const only = lone[i]!;
+      if (only < 0 || this.total[i] !== 1 || this.childCount(i) === 1) return groupSub(this.total[i]!, entries[i]);
+      this.loneHost[i] = only;
+      this.text[i] = list[only]!.name;
+      return placeSub(countryName(list[only]!.countryCode), entries[i]);
+    });
     this.labelW = new Float32Array(n);
     this.labelH = new Float32Array(n);
     for (let i = 0; i < n; i++) {
@@ -613,6 +658,11 @@ export class LodTree {
     Int32Array.from({ length: n }, (_, i) => i)
       .sort(moreImportant)
       .forEach((node, r) => (this.rank[node] = r));
+  }
+
+  /** The number of children of node `i` (its places and groups). */
+  private childCount(i: number): number {
+    return this.childStart[i + 1]! - this.childStart[i]!;
   }
 
   indexOf(slug: string | null | undefined): number {
@@ -839,6 +889,9 @@ export class LodTree {
     into.length = 0;
     for (const p of this.places) {
       if (!this.shown[p]) continue;
+      // (the box of a group of this one place is already its rectangle: a ghost of it inside would be a second box)
+      const home = this.parent[p]!;
+      if (home >= 0 && this.loneHost[home] === p && this.members[home]! > 0 && this.life.target[home] === 1) continue;
       const drawn = this.life.p[p]! > 0 ? easeFade(this.life.p[p]!) : 0;
       if (drawn >= 1 - LOD.alphaMin) continue;
       into.push({ i: p, x0: this.trueX0[p]!, y0: this.trueY0[p]!, x1: this.trueX1[p]!, y1: this.trueY1[p]!, alpha: 1 - drawn });
@@ -927,16 +980,22 @@ export class LodTree {
       const h = ty1[g]! - ty0[g]!;
       this.side[g] = w > h ? w : h;
       // clamped to the minimum per axis, about the centre of the union, with padCells of room around
-      const hx = (w < 2 * minHalf ? minHalf : w / 2) + pad;
-      const hy = (h < 2 * minHalf ? minHalf : h / 2) + pad;
+      // (a group of one place is that place's rectangle: no room round it, or it would be a second, bigger box about the first)
+      const room = this.loneHost[g]! >= 0 && this.shown[this.loneHost[g]!] ? 0 : pad;
+      const hx = (w < 2 * minHalf ? minHalf : w / 2) + room;
+      const hy = (h < 2 * minHalf ? minHalf : h / 2) + room;
       const cx = (tx0[g]! + tx1[g]!) / 2;
       const cy = (ty0[g]! + ty1[g]!) / 2;
       x0[g] = cx - hx;
       x1[g] = cx + hx;
       y0[g] = cy - hy;
       y1[g] = cy + hy;
-      const fx = (w < 2 * floorHalf ? floorHalf : w / 2) + pad;
-      const fy = (h < 2 * floorHalf ? floorHalf : h / 2) + pad;
+      // The room round a group that is DRAWN grows with its true size, from none at the floor to `padCells` once the interior is no longer masked (`mark`: the same ratio): a small group is a box of the floor's size like a
+      // small place's, not a box 2 cells bigger that is filled all the same (owner, 2026-11-05: "Lisbon area": huge, and blanked out)
+      const grow = smooth((this.side[g]! / (2 * floorHalf) - LOD.fillFadeFrom) / (LOD.fillFadeTo - LOD.fillFadeFrom));
+      const drawRoom = room * grow;
+      const fx = (w < 2 * floorHalf ? floorHalf : w / 2) + drawRoom;
+      const fy = (h < 2 * floorHalf ? floorHalf : h / 2) + drawRoom;
       dx0[g] = cx - fx;
       dx1[g] = cx + fx;
       dy0[g] = cy - fy;
