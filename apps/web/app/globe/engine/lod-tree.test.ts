@@ -240,6 +240,34 @@ describe("places that are not crowded are never merged", () => {
   });
 });
 
+describe("a place nested in another is a detail of it, not a second place", () => {
+  const nested = () => [
+    { ...g("pl", "country", undefined, 52.2, 21, 300), countryCode: "PL" },
+    { ...p("city", "pl", 52.23, 21.03), bbox: [20.79, 52.09, 21.27, 52.37] as const, countryCode: "PL" },
+    { ...p("campus", "pl", 52.22, 21.01), bbox: [21.004, 52.217, 21.014, 52.223] as const, countryCode: "PL" },
+  ];
+  it("is not counted in its group's total, and a place beside it with a box of its own is", () => {
+    const t = new LodTree(nested());
+    expect(t.total[t.indexOf("pl")]).toBe(1);
+    expect(t.nested[t.indexOf("campus")]).toBe(1);
+    expect(t.nested[t.indexOf("city")]).toBe(0);
+    // (partly outside the city's box: a place of its own)
+    const both = new LodTree([...nested(), { ...p("other", "pl", 52.2, 21.2), bbox: [21.2, 52.2, 21.4, 52.3] as const }]);
+    expect(both.total[both.indexOf("pl")]).toBe(2);
+    expect(both.nested[both.indexOf("other")]).toBe(0);
+  });
+  it("a group of one place and what is inside it is labelled as that place, not as \"2 places\"", () => {
+    const t = new LodTree(nested());
+    const i = t.indexOf("pl");
+    expect(t.text[i]).toBe("city");
+    expect(subText(t.sub[i]!)).not.toMatch(/places/);
+    // a group of two places of their own keeps its name and its count
+    const two = new LodTree([g("c", "country", undefined, 0, 0, 200), p("a", "c", 0, -0.4), p("b", "c", 0, 0.4)]);
+    expect(two.text[two.indexOf("c")]).toBe("c");
+    expect(subText(two.sub[two.indexOf("c")]!)).toMatch(/2 places/);
+  });
+});
+
 describe("only members that pass the visibility rule count", () => {
   it("a place on the far side is not in the group: with one visible member the group is just that place's rectangle", () => {
     const t = new LodTree([g("c", "country", undefined, 0, 90, 9000), p("near", "c", 0, 2), p("far", "c", 0, 178)]);

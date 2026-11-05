@@ -337,6 +337,11 @@ export class LodTree {
   readonly side: Float64Array;
   /** Visible places below a group (a group's rectangle wraps only these). */
   readonly members: Int32Array;
+  /**
+   * 1 for a place whose bounding box lies inside that of another place of the same group (the University of Technology in Warsaw, a church in Copenhagen): a detail of that place, not a second one. It is not
+   * counted in its group's total, and a group that holds one place and what is inside it is labelled as that place (its name, its country, its entries), not as "2 places".
+   */
+  readonly nested: Uint8Array;
   /** Rectangle of a drawn node (host projection space, CSS px, unsnapped). */
   /** Rectangle of a drawn node (host projection space, CSS px, unsnapped). */
   readonly boxX0: Float64Array;
@@ -494,6 +499,24 @@ export class LodTree {
       this.vec.set(lonLatToVec3(lon, lat), i * 3);
     });
 
+    // Nested places: the bounding box of a place lies inside another's, of the same group.
+    const boxes = list.map((x) => (x.kind === "place" && x.bbox ? x.bbox : null));
+    const area = (b: Bbox) => Math.max(0, b[2] - b[0]) * Math.max(0, b[3] - b[1]);
+    const EPS = 1e-6;
+    this.nested = new Uint8Array(n);
+    for (let i = 0; i < n; i++) {
+      const a = boxes[i];
+      if (!a) continue;
+      for (let j = 0; j < n; j++) {
+        const b = boxes[j];
+        if (!b || j === i || list[j]!.parent !== list[i]!.parent || area(b) <= area(a) + EPS * EPS) continue;
+        if (a[0] >= b[0] - EPS && a[1] >= b[1] - EPS && a[2] <= b[2] + EPS && a[3] <= b[3] + EPS) {
+          this.nested[i] = 1;
+          break;
+        }
+      }
+    }
+
     // Parents. Only a group can be a parent; an unknown parent makes a root; a cycle is cut where it closes.
     this.parent = new Int32Array(n).fill(-1);
     list.forEach((x, i) => {
@@ -530,12 +553,24 @@ export class LodTree {
     this.places = Int32Array.from({ length: n }, (_, i) => i).filter((i) => !this.isGroup[i]);
     this.groups = Int32Array.from({ length: n }, (_, i) => i).filter((i) => this.isGroup[i]);
     this.total = new Int32Array(n);
-    for (const p of this.places) for (let a = this.parent[p]!; a >= 0; a = this.parent[a]!) this.total[a]!++;
+    for (const p of this.places) if (!this.nested[p]) for (let a = this.parent[p]!; a >= 0; a = this.parent[a]!) this.total[a]!++;
     // Label text: the name, and a second line that is always there when it has something to say: a place's country (the same for every place) and
     // entries, a group's number of places and entries (engine/label-sub.ts).
     this.text = list.map((x) => x.name);
     const entries = nodeEntryCounts(this.parent, list.map((x) => x.entries));
-    this.sub = list.map((x, i) => (this.isGroup[i] ? groupSub(this.total[i]!, entries[i]) : placeSub(countryName(x.countryCode), entries[i])));
+    // A group of ONE place (and what is inside it) is that place's box with that place's label: "Warsaw", its country and its entries, not "Poland, 2 places".
+    const lone = new Int32Array(n).fill(-1);
+    for (const p of this.places) {
+      const a = this.parent[p]!;
+      if (a >= 0 && !this.nested[p]) lone[a] = lone[a] === -1 ? p : -2;
+    }
+    this.sub = list.map((x, i) => {
+      if (!this.isGroup[i]) return placeSub(countryName(x.countryCode), entries[i]);
+      const only = lone[i]!;
+      if (only < 0 || this.total[i] !== 1 || this.childCount(i) === 1) return groupSub(this.total[i]!, entries[i]);
+      this.text[i] = list[only]!.name;
+      return placeSub(countryName(list[only]!.countryCode), entries[i]);
+    });
     this.labelW = new Float32Array(n);
     this.labelH = new Float32Array(n);
     for (let i = 0; i < n; i++) {
@@ -613,6 +648,11 @@ export class LodTree {
     Int32Array.from({ length: n }, (_, i) => i)
       .sort(moreImportant)
       .forEach((node, r) => (this.rank[node] = r));
+  }
+
+  /** The number of children of node `i` (its places and groups). */
+  private childCount(i: number): number {
+    return this.childStart[i + 1]! - this.childStart[i]!;
   }
 
   indexOf(slug: string | null | undefined): number {
