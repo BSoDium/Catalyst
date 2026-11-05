@@ -501,18 +501,24 @@ export class LodTree {
       this.vec.set(lonLatToVec3(lon, lat), i * 3);
     });
 
-    // Nested places: the bounding box of a place lies inside another's, of the same group.
+    // Nested places: a place whose bounding box lies inside another's of the same group (a place with no box: whose point does), a detail of it. Of two places with the very same box the less important one is the detail.
     const boxes = list.map((x) => (x.kind === "place" && x.bbox ? x.bbox : null));
     const area = (b: Bbox) => Math.max(0, b[2] - b[0]) * Math.max(0, b[3] - b[1]);
     const EPS = 1e-6;
+    const holds = (b: Bbox, a: Bbox) => a[0] >= b[0] - EPS && a[1] >= b[1] - EPS && a[2] <= b[2] + EPS && a[3] <= b[3] + EPS;
     this.nested = new Uint8Array(n);
     for (let i = 0; i < n; i++) {
+      if (list[i]!.kind !== "place") continue;
       const a = boxes[i];
-      if (!a) continue;
       for (let j = 0; j < n; j++) {
         const b = boxes[j];
-        if (!b || j === i || list[j]!.parent !== list[i]!.parent || area(b) <= area(a) + EPS * EPS) continue;
-        if (a[0] >= b[0] - EPS && a[1] >= b[1] - EPS && a[2] <= b[2] + EPS && a[3] <= b[3] + EPS) {
+        if (!b || j === i || list[j]!.parent !== list[i]!.parent) continue;
+        let inside: boolean;
+        if (a) {
+          const same = holds(b, a) && holds(a, b);
+          inside = same ? list[j]!.priority > list[i]!.priority || (list[j]!.priority === list[i]!.priority && list[j]!.slug < list[i]!.slug) : holds(b, a) && area(b) > area(a);
+        } else inside = list[i]!.lon >= b[0] && list[i]!.lon <= b[2] && list[i]!.lat >= b[1] && list[i]!.lat <= b[3];
+        if (inside) {
           this.nested[i] = 1;
           break;
         }
