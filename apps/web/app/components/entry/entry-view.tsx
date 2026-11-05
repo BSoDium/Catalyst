@@ -77,7 +77,7 @@ export function EntryView(props: EntryViewProps) {
  * has been wrapped to a line of its own, they are stacked: in between, a wrapped row would leave the link at the right, on its own line (`data-facts`, styled in app.css; until this has run the
  * container's width decides).
  */
-function FactsRow({ className, children }: { className?: string; children: ReactNode }) {
+function FactsRow({ className, entry, children }: { className?: string; /** What the row is about: when it changes the row is arranged again (a longer camera's name fits in fewer widths), not only when its width does. */ entry: string; children: ReactNode }) {
   const row = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const el = row.current;
@@ -100,7 +100,7 @@ function FactsRow({ className, children }: { className?: string; children: React
     observer.observe(el);
     void document.fonts?.ready.then(arrange);
     return () => observer.disconnect();
-  }, []);
+  }, [entry]);
   return (
     <div ref={row} data-slot="entry-facts-row" className={cn("entry-facts-row", className)}>
       {children}
@@ -375,7 +375,7 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
               {entry.summary && !poem && <p className="type-standfirst mt-[1.375rem] max-w-[25.4em] md:mt-[2.125rem]">{entry.summary}</p>}
               {/* The way to the place a photograph is about, up where it is read (the other kinds have it in "At a glance", as a link, or in the tags) and not only in a tag or on the map (#581): on the camera's row, at its right end, as tall as the camera's mark, in two lines. They are not the head's text: they nest in its corners (`.entry-facts-row`), each as near to the edges as the picture is below, and are stacked at the left, not wrapped, where they do not fit on one row (`FactsRow`). */}
               {(exposure || (entry.kind === "photograph" && globeTarget)) && (
-                <FactsRow className={full ? "[--hero-px:1rem] md:[--hero-px:2rem]" : "[--hero-px:1.5rem]"}>
+                <FactsRow entry={entry.slug} className={full ? "[--hero-px:1rem] md:[--hero-px:2rem]" : "[--hero-px:1.5rem]"}>
                   {exposure && <ExposureBlock exposure={exposure} />}
                   {entry.kind === "photograph" && globeTarget && (
                     <Link to={globeTarget.href} data-slot="entry-place-link" className="entry-place-link type-meta print:hidden">
