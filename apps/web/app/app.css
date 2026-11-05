@@ -2232,6 +2232,19 @@
   .place-cover-art {
     mask-image: linear-gradient(to bottom, #000 38%, transparent 96%);
   }
+  /* The panel's left edge, a hairline drawn ABOVE what the panel holds (the place's cover, the close bar's oval), not a border under it: the same line all the way down, whatever is beside it (owner, 2026-11-05: it
+     looked fainter where the cover was). The line is the panel's first pixel; the panel has no border box of its own. */
+  @media (min-width: 48rem) {
+    [data-panel="aside"]::after {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      z-index: 40;
+      width: var(--hairline, 1px);
+      background: var(--border);
+      pointer-events: none;
+    }
+  }
   [data-panel]:has([data-slot="place-cover"]) [data-slot="panel-bar"]::before {
     content: "";
     position: absolute;
