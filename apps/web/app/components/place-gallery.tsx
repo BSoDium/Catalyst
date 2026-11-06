@@ -24,7 +24,7 @@ export interface GalleryItem {
 const ratioOf = (item: GalleryItem) => (item.width && item.height ? item.width / item.height : 4 / 3);
 
 /** The picture with its label on it: over a soft dome, black or white as the picture is dark or light where the label is (until it is known, the page's own colour), the date in mono, the title in the display face and where it is in the row. */
-function Picture({ item, i, count, from, style, className, onFocus, fullWidth, textWidth }: { item: GalleryItem; i: number; count: number; from: string; style?: React.CSSProperties; className?: string; onFocus?: () => void; fullWidth?: number; textWidth?: number }) {
+function Picture({ item, i, count, from, style, className, onFocus, fullWidth, textWidth, place }: { item: GalleryItem; i: number; count: number; from: string; style?: React.CSSProperties; className?: string; onFocus?: () => void; fullWidth?: number; textWidth?: number; place?: "large" | "medium" }) {
   const date = formatEntryDate(item.date);
   // (never narrower than the box: one or two pictures share the row, and may be wider than the widest of a longer row, which would leave a bar at each side of a tall picture)
   const inner: React.CSSProperties | undefined = fullWidth ? { width: fullWidth, minWidth: "100%" } : undefined;
@@ -38,7 +38,7 @@ function Picture({ item, i, count, from, style, className, onFocus, fullWidth, t
   useLayoutEffect(read, [read]);
   const image = <img ref={img} onLoad={read} {...coverImageProps({ src: item.src, width: item.width ?? 0, small: item.small }, fullWidth ? `${fullWidth}px` : "(min-width: 48rem) 50vw, 100vw")} alt={item.alt} loading={i === 0 ? "eager" : "lazy"} decoding="async" className="place-gallery-img size-full object-cover" />;
   return (
-    <Link to={item.href} state={{ from }} aria-label={item.title} onFocus={onFocus} style={style} className={cn("place-gallery-item group relative block overflow-hidden bg-accent no-underline", className)} data-tone={tone ?? undefined}>
+    <Link to={item.href} state={{ from }} aria-label={item.title} onFocus={onFocus} style={style} className={cn("place-gallery-item group relative block overflow-hidden bg-accent no-underline", className)} data-tone={tone ?? undefined} data-place={place}>
       <span className={cn("place-gallery-media block", fullWidth ? "absolute inset-y-0 left-1/2 -translate-x-1/2" : "size-full")} style={inner}>
         {item.sensitive ? <SensitiveMedia className="size-full [&_.sensitive-media-content]:size-full">{image}</SensitiveMedia> : image}
       </span>
@@ -191,7 +191,7 @@ export function PhotoGallery({ items, from }: { items: GalleryItem[]; from: stri
         <ScrollRow noun="photographs" className="flex snap-x snap-mandatory scroll-px-6 gap-1.5 px-6 @max-[35rem]:scroll-px-0 @max-[35rem]:px-0">
           {items.map((item, i) => (
             <div key={item.src} className="contents">
-              <Picture item={item} i={i} count={items.length} from={from} className="place-gallery-static" style={{ aspectRatio: ratioOf(item), height: "min(26rem, 70dvh)", maxWidth: "88cqw", flexShrink: 0, scrollSnapAlign: "start" }} />
+              <Picture item={item} i={i} count={items.length} from={from} className="place-gallery-static" place={i === 0 ? "large" : i === 1 ? "medium" : undefined} style={{ aspectRatio: ratioOf(item), height: "min(26rem, 70dvh)", maxWidth: "88cqw", flexShrink: 0, scrollSnapAlign: "start" }} />
             </div>
           ))}
         </ScrollRow>
