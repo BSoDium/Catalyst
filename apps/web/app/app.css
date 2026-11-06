@@ -8253,6 +8253,18 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     margin-top: var(--wco-below);
   }
 
+  /* The docked search of a wide header (from 80 rem) is on the page's own right margin (3.5 rem, 2 in the full-screen entry): with buttons at the right it only keeps clear of them (the header's padding does that), so the margin is
+     given up on that side (`min(...)` is the whole margin where there are buttons and 0 where there are none: the margin stays). */
+  @container (min-width: 80rem) {
+    [data-slot="site-header"] [data-slot="search-trigger"] {
+      right: calc((100% - 100cqw) / 2 + 3.5rem - min(3.5rem, calc(var(--wco-right) * 1000)));
+    }
+
+    body:has([data-slot="entry-view"][data-layout="full"]) [data-slot="site-header"] [data-slot="search-trigger"] {
+      right: calc((100% - 100cqw) / 2 + 2rem - min(2rem, calc(var(--wco-right) * 1000)));
+    }
+  }
+
   /* The title bar is the handle to move the window, and only the title bar: ONE strip the size of the title bar's area (`env(titlebar-area-*)`), first in the document (so what is on it can take the handle back). A drag region
      is read from the BOXES of the elements, not from what the pointer would hit (`pointer-events` do not matter), so it was the whole header's before, and the header holds boxes that reach far down the window (the
      menu's veil is a viewport tall, its sheet hangs below the bar): the map under them moved the window instead of panning, and what was in between the buttons was sometimes the handle and sometimes not. */
