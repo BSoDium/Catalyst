@@ -4,7 +4,7 @@ import { Icon, ScrollRow, SensitiveMedia } from "~/components/ui";
 import { coverImageProps } from "~/lib/cover-image";
 import { formatEntryDate } from "~/lib/dates";
 import { imageTone, type Tone } from "~/lib/image-tone";
-import { carouselLayout, growth, keylines, lastPosition, stepOf, widest, type Keylines } from "~/lib/photo-carousel";
+import { carouselLayout, growth, keylines, lastPosition, stepOf, labelWidth, widest, type Keylines } from "~/lib/photo-carousel";
 import { cn } from "~/lib/utils";
 
 /** A photograph of the place in its gallery: the cover of a linked photograph entry, with what the label says. */
@@ -24,10 +24,12 @@ export interface GalleryItem {
 const ratioOf = (item: GalleryItem) => (item.width && item.height ? item.width / item.height : 4 / 3);
 
 /** The picture with its label on it: over a soft dome, black or white as the picture is dark or light where the label is (until it is known, the page's own colour), the date in mono, the title in the display face and where it is in the row. */
-function Picture({ item, i, count, from, style, className, onFocus, fullWidth }: { item: GalleryItem; i: number; count: number; from: string; style?: React.CSSProperties; className?: string; onFocus?: () => void; fullWidth?: number }) {
+function Picture({ item, i, count, from, style, className, onFocus, fullWidth, textWidth }: { item: GalleryItem; i: number; count: number; from: string; style?: React.CSSProperties; className?: string; onFocus?: () => void; fullWidth?: number; textWidth?: number }) {
   const date = formatEntryDate(item.date);
   // (never narrower than the box: one or two pictures share the row, and may be wider than the widest of a longer row, which would leave a bar at each side of a tall picture)
   const inner: React.CSSProperties | undefined = fullWidth ? { width: fullWidth, minWidth: "100%" } : undefined;
+  // (the label is laid out a little narrower than the picture: at the end of the row the last, medium, picture must show its whole position, "04 / 04")
+  const textInner: React.CSSProperties | undefined = textWidth ? { width: textWidth, minWidth: "100%" } : inner;
   const img = useRef<HTMLImageElement>(null);
   const [tone, setTone] = useState<Tone | null>(null);
   const read = useCallback(() => {
@@ -40,7 +42,7 @@ function Picture({ item, i, count, from, style, className, onFocus, fullWidth }:
       <span className={cn("place-gallery-media block", fullWidth ? "absolute inset-y-0 left-1/2 -translate-x-1/2" : "size-full")} style={inner}>
         {item.sensitive ? <SensitiveMedia className="size-full [&_.sensitive-media-content]:size-full">{image}</SensitiveMedia> : image}
       </span>
-      <span className="place-gallery-label" style={inner}>
+      <span className="place-gallery-label" style={textInner}>
         <span className="place-gallery-meta ds-micro flex items-baseline justify-between gap-3">
           <span>{date ? date.text : ""}</span>
           {count > 1 && (
@@ -143,7 +145,7 @@ function Carousel({ items, from }: { items: GalleryItem[]; from: string }) {
               <ul ref={layer} className="relative m-0 h-full list-none p-0">
                 {items.map((item, i) => (
                   <li key={item.src} className="absolute top-0 left-0 h-full overflow-hidden [contain:layout_paint]" style={{ width: 0, visibility: "hidden" }}>
-                    <Picture item={item} i={i} count={items.length} from={from} fullWidth={widest(geo.k)} onFocus={() => Math.abs(i - position()) > 1 && goTo(i)} style={{ height: "100%" }} />
+                    <Picture item={item} i={i} count={items.length} from={from} fullWidth={widest(geo.k)} textWidth={labelWidth(geo.k)} onFocus={() => Math.abs(i - position()) > 1 && goTo(i)} style={{ height: "100%" }} />
                   </li>
                 ))}
               </ul>

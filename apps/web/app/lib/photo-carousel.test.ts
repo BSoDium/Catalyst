@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { carouselLayout, growth, keylines, lastPosition, stepOf, widest, widthAt } from "./photo-carousel";
+import { carouselLayout, growth, keylines, labelWidth, lastPosition, stepOf, widest, widthAt } from "./photo-carousel";
 
 const k = keylines(600);
 const sum = (items: { x: number; w: number }[]) => items.reduce((n, i) => n + i.w, 0);
@@ -86,5 +86,21 @@ describe("photo carousel geometry", () => {
   it("counts a small picture as no growth and the widest as all of it", () => {
     expect(growth(k.small, k)).toBe(0);
     expect(growth(widest(k), k)).toBe(1);
+  });
+});
+
+describe("labelWidth", () => {
+  it("is no wider than either expanded picture, so the last (medium) one at rest shows its whole label", () => {
+    for (const w of [600, 750, 900, 1200, 1600]) {
+      const k = keylines(w);
+      expect(labelWidth(k)).toBeLessThanOrEqual(k.medium);
+      expect(labelWidth(k)).toBeLessThanOrEqual(widest(k));
+      const last = carouselLayout(lastPosition(5, k), 5, k).at(-1)!;
+      expect(last.w).toBeGreaterThanOrEqual(labelWidth(k) - 0.001);
+    }
+  });
+  it("is the whole row on a narrow one", () => {
+    const k = keylines(400);
+    expect(labelWidth(k)).toBe(k.large);
   });
 });
