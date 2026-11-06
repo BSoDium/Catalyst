@@ -8241,6 +8241,15 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     left: max(var(--np-inset), var(--wco-left-clear));
   }
 
+  /* With a header showing, the player is always UNDER it (the narrow screen's place). From 1280 px it was in the corner, "where the header's links leave it room": here the header is padded by the buttons and its links are
+     centred in what is left, so they reach the player at widths that depend on the platform (the traffic lights' width, the buttons'): no width is the right one for both, so there is none. Without a header (the home screen
+     at rest) it is in the corner, after the traffic lights. */
+  @media (min-width: 1280px) {
+    body:has([data-slot="site-header"]) .np-root {
+      top: calc(var(--navbar-height) + 0.75rem);
+    }
+  }
+
   /* The panel's bar is under the buttons only where the panel reaches the window's edge: at the left, on a phone-sized window (the dialog) and in the full-screen layout; at the right, in the dialog, whose close
      button is at the right and goes BELOW the buttons (a margin above the bar, not beside them: a tall, thin window). Beside the globe (the panel is the right half) its bar starts mid-window and the header's own
      padding does the left (a margin, not padding: the bar's own padding is the content's gutter, 1.5 or 2 rem). */
