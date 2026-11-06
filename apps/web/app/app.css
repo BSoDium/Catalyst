@@ -2281,12 +2281,12 @@
     content: "";
     position: absolute;
     z-index: -1;
-    inset: 0 0 -9rem 0;
+    inset: calc(-1 * var(--wco-bar-down, 0px)) 0 -9rem 0;
     pointer-events: none;
     /* a soft, round-ish oval of the page colour centred on the panel's top corner (the close button's), far bigger than the button so no edge of it is seen, eased to nothing (the model: the nav's search plate over the globe); the box runs below the bar so that the oval's bottom is not cut */
     --plate-x: 0%;
     background: radial-gradient(
-      ellipse 19rem 12rem at var(--plate-x) 0,
+      ellipse 19rem 12rem at var(--plate-x) var(--wco-bar-down, 0px),
       color-mix(in srgb, var(--background) 52%, transparent) 0%,
       color-mix(in srgb, var(--background) 50%, transparent) 20%,
       color-mix(in srgb, var(--background) 34%, transparent) 38%,
@@ -8214,6 +8214,8 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     --wco-right-clear: calc(var(--wco-right) + min(var(--wco-gap), calc(var(--wco-right) * 1000)));
     /* the room under the buttons, where a control at the right edge goes (a dialog's close button; 0 with no buttons at the right) */
     --wco-below: min(calc(var(--wco-height) + var(--wco-gap) / 2), calc(var(--wco-right) * 1000));
+    /* the same for a top row that has something at its left too (an entry's running head): under the bar when there are buttons at either side */
+    --wco-bar: min(calc(var(--wco-height) + var(--wco-gap) / 2), calc((var(--wco-left) + var(--wco-right)) * 1000));
   }
 
   /* The header keeps clear of the buttons: PADDING on its two sides, so that what is measured in it shrinks with it (the narrow form takes over when what is left is under 56 rem, the centred links are centred in what is left,
@@ -8268,6 +8270,18 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
 
   [data-panel="dialog"] [data-slot="panel-bar"] {
     margin-top: var(--wco-below);
+    /* (the plate behind a place's close button is centred on the bar's top: it goes down with it, the plate reaching up to the window's top) */
+    --wco-bar-down: var(--wco-below);
+  }
+
+  /* An entry's dialog has a running head across its top row, and the close button on the same line: both go below the title bar together, the traffic lights at the left and the buttons at the right (either side) being
+     above them, so that the text and the button stay one line, whatever the side. */
+  [data-panel="dialog"]:has([data-slot="entry-view"]) [data-slot="panel-bar"] {
+    margin-top: var(--wco-bar);
+  }
+
+  [data-panel="dialog"]:has([data-slot="entry-view"]) .entry-running {
+    padding-top: calc(1.5rem + var(--wco-bar));
   }
 
   /* The docked search of a wide header (from 80 rem) is on the page's own right margin (3.5 rem, 2 in the full-screen entry): with buttons at the right it only keeps clear of them (the header's padding does that), so the margin is
