@@ -2186,6 +2186,37 @@
       max-width: none !important;
     }
   }
+  /* The same in a wide panel: the row before the script is the carousel at rest (`lib/photo-carousel.ts`, `keylines`), so the page does not jump when it takes over (the pictures were at their own proportions, 313, 365 and 416 px
+     where the carousel has 352, 324 and 138). The gutter (px-6) and the gap (gap-1.5) are the carousel's already; the first picture is the large one, the second the medium one, the others small (cut off by the edge). Every label is laid out
+     at the medium one's width and cropped by its picture, never narrower than it, as the carousel's (`labelWidth`). */
+  @container (min-width: 35rem) {
+    .place-gallery-static {
+      --pg-small: max(48px, calc((100cqw - 24px) / 6));
+      --pg-rest: calc(100cqw - 24px - var(--pg-small) - 12px);
+      --pg-large: calc(var(--pg-rest) * 0.52);
+      --pg-medium: calc(var(--pg-rest) - var(--pg-large));
+      aspect-ratio: auto !important;
+      max-width: none !important;
+      width: var(--pg-small);
+    }
+    .place-gallery-static[data-place="large"] {
+      width: var(--pg-large);
+    }
+    .place-gallery-static[data-place="medium"] {
+      width: var(--pg-medium);
+    }
+    /* Two pictures do not scroll: they share the row between the gutters, the first a little wider (`carouselLayout`, `count <= 2`: 52 % of what is left after the two gutters and the gap) */
+    .place-gallery-static[data-place="pair-first"] {
+      width: calc((100cqw - 54px) * 0.52);
+    }
+    .place-gallery-static[data-place="pair-second"] {
+      width: calc((100cqw - 54px) * 0.48);
+    }
+    .place-gallery-static .place-gallery-label {
+      width: var(--pg-medium);
+      min-width: 100%;
+    }
+  }
   /* the picture fades as it shrinks, less than its title does (a small one is still a picture) */
   .place-gallery-media {
     opacity: calc(0.55 + 0.45 * var(--g, 1));
