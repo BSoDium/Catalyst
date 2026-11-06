@@ -23,6 +23,18 @@ export interface GalleryItem {
 
 const ratioOf = (item: GalleryItem) => (item.width && item.height ? item.width / item.height : 4 / 3);
 
+/**
+ * The box of a place's only picture: the picture's own proportions, as wide as the panel but never taller than 80 % of the window and never wider than the picture is (it is not blown up past its pixels). With
+ * `width: 100%` and a `max-height` the box lost its proportions in a wide panel, and `object-cover` showed a magnified slice of a portrait picture (Warsaw, #660); the width follows the height limit instead, and
+ * what is left of the panel is the page's own colour.
+ */
+export const single = (item: GalleryItem): React.CSSProperties => ({
+  aspectRatio: ratioOf(item),
+  width: `min(100%, calc(80dvh * ${ratioOf(item).toFixed(4)}))`,
+  ...(item.width ? { maxWidth: `${item.width}px` } : {}),
+  marginInline: "auto",
+});
+
 /** The picture with its label on it: over a soft dome, black or white as the picture is dark or light where the label is (until it is known, the page's own colour), the date in mono, the title in the display face and where it is in the row. */
 function Picture({ item, i, count, from, style, className, onFocus, fullWidth, textWidth, place }: { item: GalleryItem; i: number; count: number; from: string; style?: React.CSSProperties; className?: string; onFocus?: () => void; fullWidth?: number; textWidth?: number; place?: "large" | "medium" | "pair-first" | "pair-second" }) {
   const date = formatEntryDate(item.date);
@@ -179,7 +191,7 @@ export function PhotoGallery({ items, from }: { items: GalleryItem[]; from: stri
     const only = items[0]!;
     return (
       <div data-slot="place-gallery" className="place-gallery -mx-6">
-        <Picture item={only} i={0} count={1} from={from} style={{ aspectRatio: ratioOf(only), maxHeight: "80dvh", width: "100%" }} />
+        <Picture item={only} i={0} count={1} from={from} style={single(only)} />
       </div>
     );
   }
