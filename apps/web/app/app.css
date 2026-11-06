@@ -8248,6 +8248,14 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   body:has([data-slot="site-header"]:not([data-beside])) .np-root {
     --np-corner-from: max(calc(2 * (max(var(--np-inset), var(--wco-left-clear)) + 17.25rem) + 43rem - var(--wco-left-clear) + var(--wco-right-clear)), calc(80rem + var(--wco-left-clear) + var(--wco-right-clear)));
     top: clamp(var(--np-inset), calc((var(--np-corner-from) - 100vw) * 1000), calc(var(--navbar-height) + 0.75rem));
+    /* After the traffic lights in the corner; at the normal inset once it is under the header (below the title bar, they are not above it any more): the same switch as `top`, the other way. */
+    left: clamp(var(--np-inset), calc((100vw - var(--np-corner-from)) * 1000), max(var(--np-inset), var(--wco-left-clear)));
+    transition-property: top, left;
+  }
+
+  /* Beside an open panel it is always under the header: no traffic lights above it. */
+  body:has([data-slot="site-header"][data-beside]) .np-root {
+    left: var(--np-inset);
   }
 
   /* The panel's bar is under the buttons only where the panel reaches the window's edge: at the left, on a phone-sized window (the dialog) and in the full-screen layout; at the right, in the dialog, whose close
