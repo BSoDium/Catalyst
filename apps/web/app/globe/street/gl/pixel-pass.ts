@@ -26,6 +26,7 @@
  */
 import type { Rgb } from "../core/pixel-types";
 import { SPOT_EDGE0, SPOT_EDGE1 } from "../core/spot";
+import { WAVE } from "../core/wave";
 import { LEVEL_SCALE, PALETTE_CAPACITY as MAX_LEVELS, ROUTE_THIN, TRAIL_LEVEL_BASE, codeOf } from "../core/palette";
 import { MESH_STEP, type WarpMesh } from "../core/warp";
 
@@ -351,6 +352,8 @@ uniform int uCellOut;
 uniform float uSharp;         // global dissolve of pixel art into the sharp render, 0..1
 uniform float uBlend;         // share of cells that show the street map at all (1 = all, 0 = none: transparent)
 uniform vec4 uFocus;          // x, y (output px, top-origin), radius, feather
+uniform float uWaveMs;        // the wave's clock, ms (the tile of ring r begins at r x WAVE.staggerMs and takes WAVE.fadeMs)
+uniform vec4 uWave;           // the tiled wave of the dissolve (#589): x, y centre (output px, top-origin), z tile side (output px; 0 = no wave: the plain dither), w the rings the wave has to cross
 uniform float uLevelScale;
 uniform vec3 uPal[${MAX_LEVELS}];      // the palette (engine/palette.ts): one colour per level
 uniform ivec2 uAnchor;
@@ -369,7 +372,19 @@ void main() {
   ivec2 p = ivec2(int(gl_FragCoord.x), uOutSize.y - 1 - int(gl_FragCoord.y));
   ivec2 cell = p / uCellOut;
   float th = thr(cell + uAnchor);
-  if (uBlend < 1.0 && !(uBlend > th)) { o = vec4(0.0); return; }   // premultiplied transparent: the layer below shows
+  float shimmer = 0.0;
+  float flash = 0.0;
+  if (uWave.z > 0.0) {
+    // tiles ("chunks") come in one after the other from the centre: a tile r tiles away from the middle one begins r x stagger ms after it, plus a delay of its own at random, and takes fade ms to come
+    // in (dithered); at its start a tile flashes in the ink, then glows in the peak tone, and settles
+    vec2 tile = floor(vec2(p) / uWave.z) - floor(uWave.xy / uWave.z);
+    float ring = length(tile);   // (the straight distance in tiles: a round wave)
+    float tileRand = fract(sin(dot(tile, vec2(12.9898, 78.233))) * 43758.5453);   // (each tile's own delay: the rate they load at is random)
+    float local = clamp((uWaveMs - ring * ${WAVE.staggerMs.toFixed(1)} - tileRand * ${WAVE.jitterMs.toFixed(1)}) / ${WAVE.fadeMs.toFixed(1)}, 0.0, 1.0);
+    if (!(local > th)) { o = vec4(0.0); return; }
+    shimmer = local < 1.0 ? 1.0 - local : 0.0;
+    flash = local < ${WAVE.flash.toFixed(2)} ? 1.0 - local / ${WAVE.flash.toFixed(2)} : 0.0;
+  } else if (uBlend < 1.0 && !(uBlend > th)) { o = vec4(0.0); return; }   // premultiplied transparent: the layer below shows
   vec4 artCell = texelFetch(uArt, cell, 0);
   int level = int(artCell.r * 255.0 + 0.5);
   // Lines (G > 0: streets, rails, outlines) are lifted inside the rectangle and dimmed outside; fills (water, green, the satellite's stipple) are the
@@ -400,6 +415,9 @@ void main() {
     }
     col = c;
   }
+  // (very subtle: dim greys, not the peak: the first moments of a tile lift a few of its cells to a mid-light grey, the rest of its coming in a few to a dark one)
+  if (flash > 0.0 && th < flash * 0.3) col = uPal[GREYS - 6];
+  else if (shimmer > 0.0 && th < shimmer * 0.15) col = uPal[GREYS - 8];
   o = vec4(col, 1.0);
 }`;
 
@@ -427,6 +445,8 @@ export interface PassParams {
   focus: FocusParams;
   /** share of cells that show the street map; the rest are transparent (dissolve into the layer below) */
   blend: number;
+  /** The dissolve (`blend` under 1) comes in as tiles from `x`, `y` (output px, top-left origin) outward, `tile` output px a side, `rings` of them to the farthest corner (#589). Absent: the plain dither. */
+  wave?: { x: number; y: number; tile: number; rings: number; ms: number };
   /** dither phase, whole art cells */
   anchor: [number, number];
   /**
@@ -800,6 +820,8 @@ export class PixelPass {
     gl.uniform2i(u.uOutSize!, outW, outH);
     gl.uniform1f(u.uSharp!, p.sharp);
     gl.uniform1f(u.uBlend!, p.blend);
+    gl.uniform1f(u.uWaveMs!, p.wave?.ms ?? 0);
+    gl.uniform4f(u.uWave!, p.wave?.x ?? 0, p.wave?.y ?? 0, p.wave?.tile ?? 0, p.wave?.rings ?? 0);
     gl.uniform4f(u.uFocus!, p.focus.x, p.focus.y, p.focus.radius, p.focus.feather);
     gl.uniform1f(u.uLevelScale!, LEVEL_SCALE);
     gl.uniform2i(u.uAnchor!, p.anchor[0], p.anchor[1]);

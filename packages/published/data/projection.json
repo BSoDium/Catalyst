@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "dataVersion": {
-    "commit": "4818e5875cf1a4b9509fa0e7b714f57548e489d6",
-    "date": "2026-11-04"
+    "commit": "5caa8558bac936958c4677b4e2f76079eddc38f3",
+    "date": "2026-11-06"
   },
   "places": [
     {
@@ -77,8 +77,15 @@
         "lat": 37,
         "lon": -3.99
       },
-      "labelPriority": 42,
-      "group": "alhama-de-granada-area",
+      "labelPriority": 39,
+      "bbox": [
+        -4.00406,
+        36.98877,
+        -3.97594,
+        37.01123
+      ],
+      "viewRadiusKm": 1.8,
+      "group": "malaga-area",
       "countryCode": "ES",
       "body": [],
       "images": [],
@@ -789,17 +796,19 @@
         "lat": 55.6761,
         "lon": 12.5683
       },
-      "labelPriority": 42,
-      "group": "europe",
+      "labelPriority": 34,
+      "bbox": [
+        12.453,
+        55.613,
+        12.65,
+        55.733
+      ],
+      "viewRadiusKm": 9.1,
+      "group": "denmark",
       "countryCode": "DK",
       "body": [],
       "images": [],
-      "related": [
-        {
-          "kind": "artwork",
-          "slug": "frederiks-church-copenhagen"
-        }
-      ]
+      "related": []
     },
     {
       "slug": "cordoba",
@@ -900,6 +909,32 @@
       "related": []
     },
     {
+      "slug": "faculty-of-geodesy-and-cartography",
+      "name": "Faculty of Geodesy and Cartography",
+      "coordinates": {
+        "lat": 52.2208,
+        "lon": 21.0102
+      },
+      "labelPriority": 39,
+      "bbox": [
+        21.00897,
+        52.22012,
+        21.01109,
+        52.22138
+      ],
+      "viewRadiusKm": 0.5,
+      "group": "poland",
+      "countryCode": "PL",
+      "body": [],
+      "images": [],
+      "related": [
+        {
+          "kind": "photograph",
+          "slug": "amber-gateway"
+        }
+      ]
+    },
+    {
       "slug": "faro",
       "name": "Faro",
       "coordinates": {
@@ -919,6 +954,32 @@
       "body": [],
       "images": [],
       "related": []
+    },
+    {
+      "slug": "frederiks-church",
+      "name": "Frederik's Church",
+      "coordinates": {
+        "lat": 55.685,
+        "lon": 12.59
+      },
+      "labelPriority": 39,
+      "bbox": [
+        12.58887,
+        55.68464,
+        12.59028,
+        55.68531
+      ],
+      "viewRadiusKm": 0.5,
+      "group": "denmark",
+      "countryCode": "DK",
+      "body": [],
+      "images": [],
+      "related": [
+        {
+          "kind": "artwork",
+          "slug": "frederiks-church-copenhagen"
+        }
+      ]
     },
     {
       "slug": "geneva",
@@ -1211,7 +1272,7 @@
         -3.6852526
       ],
       "viewRadiusKm": 22.7,
-      "group": "santa-clotilde-area",
+      "group": "iquitos-area",
       "countryCode": "PE",
       "body": [
         "A pretty city in the middle of nowhere, supposedly one of the only towns of such a size with no road connection to the rest of the world!",
@@ -1247,7 +1308,14 @@
         "lat": 39.7,
         "lon": 21.63
       },
-      "labelPriority": 43,
+      "labelPriority": 40,
+      "bbox": [
+        21.60765,
+        39.68874,
+        21.64409,
+        39.72482
+      ],
+      "viewRadiusKm": 2.6,
       "group": "kalambaka-area",
       "countryCode": "GR",
       "body": [
@@ -1281,6 +1349,7 @@
       "viewRadiusKm": 10.9,
       "group": "klagenfurt-area",
       "countryCode": "AT",
+      "lived": true,
       "body": [],
       "images": [],
       "related": [
@@ -1569,7 +1638,7 @@
         36.8940412
       ],
       "viewRadiusKm": 20.5,
-      "group": "alhama-de-granada-area",
+      "group": "malaga-area",
       "countryCode": "ES",
       "body": [
         "I arrived barely rested in the morning, after a 10 hour long not-so-sleeper bus, and managed to gather enough effort to do a morning walking tour (coffee helped), but hey I made friends!",
@@ -1588,7 +1657,7 @@
         "lon": -60.04
       },
       "labelPriority": 42,
-      "group": "brazil",
+      "group": "manaus-area",
       "countryCode": "BR",
       "body": [
         "The contrast between Senegal and Brazil is gigantic, I had almost forgotten how much I liked South America...",
@@ -1876,8 +1945,8 @@
         "lat": -2.49,
         "lon": -73.68
       },
-      "labelPriority": 43,
-      "group": "santa-clotilde-area",
+      "labelPriority": 35,
+      "group": "iquitos-area",
       "countryCode": "PE",
       "body": [
         "These remote regions of the Amazon are known for being unsafe at night, with pirates occasionally halting ships and robbing passengers. Our boat therefore has to stop in Santa Clotilde for the night. This feels very far-westy, but it allows me to rest and resupply in a local pharmacy, so I'm not complaining!",
@@ -1885,10 +1954,57 @@
         "I'm renting a room for 20 soles, less than 5 euros. It's no luxury but it is cheap and fair, and I feel safer than on our small boat in the middle of the night."
       ],
       "images": [],
+      "related": []
+    },
+    {
+      "slug": "near-manaus",
+      "name": "Near Manaus, Amazonas",
+      "coordinates": {
+        "lat": -3.29619,
+        "lon": -60.41303
+      },
+      "labelPriority": 39,
+      "bbox": [
+        -60.41753,
+        -3.30069,
+        -60.40853,
+        -3.29169
+      ],
+      "viewRadiusKm": 0.8,
+      "group": "manaus-area",
+      "countryCode": "BR",
+      "body": [],
+      "images": [],
       "related": [
         {
           "kind": "photograph",
-          "slug": "speedboat-on-the-napo"
+          "slug": "bow-of-a-boat"
+        }
+      ]
+    },
+    {
+      "slug": "near-uarini",
+      "name": "Near Uarini, Amazonas",
+      "coordinates": {
+        "lat": -2.755,
+        "lon": -65.348
+      },
+      "labelPriority": 39,
+      "bbox": [
+        -65.3525,
+        -2.75949,
+        -65.3435,
+        -2.75051
+      ],
+      "viewRadiusKm": 0.8,
+      "group": "brazil",
+      "countryCode": "BR",
+      "body": [],
+      "images": [],
+      "related": [
+        {
+          "kind": "photograph",
+          "slug": "watermelons-on-deck"
         }
       ]
     },
@@ -2027,14 +2143,46 @@
       "related": []
     },
     {
+      "slug": "on-the-napo",
+      "name": "On the Napo",
+      "coordinates": {
+        "lat": -3.105,
+        "lon": -73.169
+      },
+      "labelPriority": 39,
+      "bbox": [
+        -73.1735,
+        -3.10949,
+        -73.1645,
+        -3.10051
+      ],
+      "viewRadiusKm": 0.8,
+      "group": "iquitos-area",
+      "countryCode": "PE",
+      "body": [],
+      "images": [],
+      "related": [
+        {
+          "kind": "photograph",
+          "slug": "speedboat-on-the-napo"
+        }
+      ]
+    },
+    {
       "slug": "oued-el-ouaar",
       "name": "Oued El-Ouaar",
       "coordinates": {
         "lat": 28.17,
-        "lon": -11.87
+        "lon": -11.866
       },
-      "labelPriority": 40,
-      "viewRadiusKm": 5,
+      "labelPriority": 39,
+      "bbox": [
+        -11.8711,
+        28.16551,
+        -11.8609,
+        28.17449
+      ],
+      "viewRadiusKm": 0.8,
       "group": "oued-el-ouaar-area",
       "countryCode": "MA",
       "body": [],
@@ -2063,6 +2211,7 @@
       "viewRadiusKm": 8.1,
       "group": "france",
       "countryCode": "FR",
+      "lived": true,
       "body": [
         "Tired but motivated, the flight is smooth as butter, and the attendants keep giving us free food. Air France is the best, I swear!"
       ],
@@ -2346,10 +2495,17 @@
       "slug": "puerto-espana",
       "name": "Puerto España",
       "coordinates": {
-        "lat": -3.88,
-        "lon": -71.45
+        "lat": -3.882,
+        "lon": -71.454
       },
-      "labelPriority": 42,
+      "labelPriority": 39,
+      "bbox": [
+        -71.4558,
+        -3.8838,
+        -71.4522,
+        -3.8802
+      ],
+      "viewRadiusKm": 0.5,
       "group": "puerto-espana-area",
       "countryCode": "PE",
       "body": [],
@@ -3125,7 +3281,7 @@
         36.2649851
       ],
       "viewRadiusKm": 21.5,
-      "group": "alhama-de-granada-region",
+      "group": "malaga-region",
       "countryCode": "ES",
       "body": [
         "Sadly, the previous driver wasn't headed to Tarifa but to Algeciras, so here I am trying to find a new one, in a gas station near the city.",
@@ -3247,6 +3403,7 @@
       "viewRadiusKm": 21.9,
       "group": "toulouse-area",
       "countryCode": "FR",
+      "lived": true,
       "body": [],
       "images": [],
       "related": [
@@ -3527,7 +3684,30 @@
         52.37
       ],
       "viewRadiusKm": 22.6,
-      "group": "central-europe",
+      "group": "poland",
+      "countryCode": "PL",
+      "lived": true,
+      "living": true,
+      "body": [],
+      "images": [],
+      "related": []
+    },
+    {
+      "slug": "warsaw-university-of-technology",
+      "name": "Warsaw University of Technology",
+      "coordinates": {
+        "lat": 52.221,
+        "lon": 21.011
+      },
+      "labelPriority": 30,
+      "bbox": [
+        21.00427,
+        52.21692,
+        21.01415,
+        52.22345
+      ],
+      "viewRadiusKm": 0.5,
+      "group": "poland",
       "countryCode": "PL",
       "body": [],
       "images": [],
@@ -3629,30 +3809,6 @@
       },
       "viewRadiusKm": 166.9,
       "labelPriority": 70
-    },
-    {
-      "slug": "alhama-de-granada-area",
-      "name": "Alhama de Granada area",
-      "kind": "area",
-      "parent": "alhama-de-granada-region",
-      "coordinates": {
-        "lat": 36.861,
-        "lon": -4.247
-      },
-      "viewRadiusKm": 43.5,
-      "labelPriority": 55
-    },
-    {
-      "slug": "alhama-de-granada-region",
-      "name": "Alhama de Granada region",
-      "kind": "area",
-      "parent": "spain",
-      "coordinates": {
-        "lat": 36.546,
-        "lon": -4.878
-      },
-      "viewRadiusKm": 116.5,
-      "labelPriority": 57
     },
     {
       "slug": "americas",
@@ -3918,6 +4074,18 @@
       "labelPriority": 70
     },
     {
+      "slug": "denmark",
+      "name": "Denmark",
+      "kind": "country",
+      "parent": "europe",
+      "coordinates": {
+        "lat": 55.673,
+        "lon": 12.551
+      },
+      "viewRadiusKm": 10,
+      "labelPriority": 70
+    },
+    {
       "slug": "eastern-europe",
       "name": "Eastern Europe",
       "kind": "subregion",
@@ -3989,6 +4157,18 @@
       "labelPriority": 80
     },
     {
+      "slug": "iquitos-area",
+      "name": "Iquitos area",
+      "kind": "area",
+      "parent": "peru",
+      "coordinates": {
+        "lat": -3.185,
+        "lon": -73.537
+      },
+      "viewRadiusKm": 100,
+      "labelPriority": 55
+    },
+    {
       "slug": "italy",
       "name": "Italy",
       "kind": "country",
@@ -4018,10 +4198,10 @@
       "kind": "area",
       "parent": "kalambaka-region",
       "coordinates": {
-        "lat": 39.685,
-        "lon": 21.288
+        "lat": 39.686,
+        "lon": 21.231
       },
-      "viewRadiusKm": 45.4,
+      "viewRadiusKm": 40.1,
       "labelPriority": 55
     },
     {
@@ -4083,6 +4263,42 @@
       },
       "viewRadiusKm": 1310.9,
       "labelPriority": 80
+    },
+    {
+      "slug": "malaga-area",
+      "name": "Málaga area",
+      "kind": "area",
+      "parent": "malaga-region",
+      "coordinates": {
+        "lat": 36.836,
+        "lon": -4.294
+      },
+      "viewRadiusKm": 38,
+      "labelPriority": 55
+    },
+    {
+      "slug": "malaga-region",
+      "name": "Málaga region",
+      "kind": "area",
+      "parent": "spain",
+      "coordinates": {
+        "lat": 36.521,
+        "lon": -4.926
+      },
+      "viewRadiusKm": 110.9,
+      "labelPriority": 57
+    },
+    {
+      "slug": "manaus-area",
+      "name": "Manaus area",
+      "kind": "area",
+      "parent": "brazil",
+      "coordinates": {
+        "lat": -3.163,
+        "lon": -60.183
+      },
+      "viewRadiusKm": 33.4,
+      "labelPriority": 55
     },
     {
       "slug": "mauritania",
@@ -4210,10 +4426,10 @@
       "kind": "area",
       "parent": "oued-el-ouaar-region",
       "coordinates": {
-        "lat": 28.138,
-        "lon": -11.947
+        "lat": 28.13,
+        "lon": -11.964
       },
-      "viewRadiusKm": 14.7,
+      "viewRadiusKm": 12.5,
       "labelPriority": 55
     },
     {
@@ -4253,6 +4469,18 @@
       "labelPriority": 55
     },
     {
+      "slug": "poland",
+      "name": "Poland",
+      "kind": "country",
+      "parent": "central-europe",
+      "coordinates": {
+        "lat": 52.23,
+        "lon": 21.03
+      },
+      "viewRadiusKm": 24.9,
+      "labelPriority": 70
+    },
+    {
       "slug": "portugal",
       "name": "Portugal",
       "kind": "country",
@@ -4270,10 +4498,10 @@
       "kind": "area",
       "parent": "peru",
       "coordinates": {
-        "lat": -3.785,
-        "lon": -71.6
+        "lat": -3.757,
+        "lon": -71.646
       },
-      "viewRadiusKm": 34.9,
+      "viewRadiusKm": 28.3,
       "labelPriority": 55
     },
     {
@@ -4334,18 +4562,6 @@
         "lon": -16.442
       },
       "viewRadiusKm": 18.4,
-      "labelPriority": 55
-    },
-    {
-      "slug": "santa-clotilde-area",
-      "name": "Santa Clotilde area",
-      "kind": "area",
-      "parent": "peru",
-      "coordinates": {
-        "lat": -3.185,
-        "lon": -73.537
-      },
-      "viewRadiusKm": 100,
       "labelPriority": 55
     },
     {
@@ -4840,11 +5056,11 @@
           "polyline": "c~laFpwzo@qH|c@cz@lj@sc@rr@cYxgArChwAo[fdBhAx`AwD~^aj@dsBoa@xl@wV|j@op@ny@sJ~YjAdhBhJvlAWlU{a@xgAo]tg@mQhbAdDz_@lNl`@vRn[yB`SuLvLkP|Eof@qB}`@zH{j@gAc[lFq`CrjBc_CxcAiaBjaAmS|Ail@iGo_A|Wu|@pBsXrIac@nX_S~Cw[cHajAkw@ek@oKe`B`Saw@tb@aSjDqY}Ec`@}[uXiHu_AlPebA}L}n@j[sP~CskA}Kw{@pG{UqKka@}q@wf@uWoYu^c|AcwA}^gI_aAxJmc@eHguAgoAgnBus@_vAkcBq]iWe]yNoj@iJmi@\\u\\`FwtBvp@_a@zE_l@[s_AkU_yEejCunAmd@ix@uOs_AqHybADyz@nGc{AdZ}|@~^_i@``@}rBjuBybA~j@c|@bTcqCvV_`AvPuu@zWiaCbmAeq@fUct@hMyt@pDi~CaL_v@hAew@pKanAl_@k|@pO}vCdQwhBtA{w@dGwrBdg@ofAbOql@xQek@rYkuAf`AycDxvAct@jg@mv@pr@uqA~fBm}@nnBy|ApwEav@bwAycAxhAgq@zd@_kAdm@wn@jr@c\\fs@q_An~CsnB~|Di^pk@yhAnkAol@b`@kk@lWu|@zUqrAnPo|Cjm@ux@jAwf@qHelCqw@qy@iOe{@mG}oDiFcm@mGog@ePmzAgv@}wBck@_`AqCsq@fLw`@lQakCd}BebAbl@wvA``@saC|Vmm@lWec@v^kXh_@waAh_Cg]xj@s`@v_@{rCtnByjBjeBia@`Wmh@|Pe{Dv`@gSlGu[bXwt@xsAqFln@~LvxEzUpdBvC`o@iDnv@mWtjAaBvb@zJxj@pa@x|@pi@j}BjEhtAlQdz@v@b\\sHp_A}@ziAaNjrA|QbnB{@j_@eP~_@gZ`OywCbOekAkGcZhD_^fVct@ntAyfAvs@og@|I}jAcDa^hDm|Bzy@gz@vTiN`Kka@li@uGze@tPzdA]p}Aum@x|CoF`aAyGx_@s\\xbAkZvn@eyGt~JqLv`@aG~e@kBn]"
         },
         {
-          "mode": "road",
+          "mode": "rail",
           "polyline": "{yhkFnuiw@@dCmWt_A_BpXtGnYb]~[`FbSi@tf@oKh`@aA~UvOfpBh@`lAp`@z}AQnfDsGfZqUxd@uU`YeJlZ{@|UzGtvBqDzc@_j@bn@cJt[EnRjGbf@yIdo@d_@z{Box@pRsKrMuQ|Dwa@dUidAaRpCjRsDxGvEhMmAjJ}MkCoCbGsRzGzGtJkIdUkNpBh@~K_G`MYX"
         },
         {
-          "mode": "road",
+          "mode": "rail",
           "polyline": "myqkFzpxx@XY~FaMi@_LjNqBjIeU{GuJrR{GnCcG|MjClAkJwEiMrDyGgCuRtcAlRvt@e[vIkKvy@oSfGpBqCZma@m`CJoNhIma@gGkx@nJm\\|b@{a@xFuNpCw_@}FaiCfHqZnYe_@l[gu@lBicDoDoa@sTsm@eHkg@Lo~@{OctBnNyv@Awg@cGwPm[}YuG}WhAgX`Vww@p@{L"
         },
         {
@@ -5021,10 +5237,11 @@
         },
         {
           "mode": "ferry",
-          "polyline": "cgvzErqha@rqPjlZ"
+          "polyline": "cgvzE~sfa@hlAle@|aBxtF`l@pxB|eJ`mOsPbF"
         },
         {
-          "mode": "ferry"
+          "mode": "ferry",
+          "polyline": "otdzE~~cb@rPcFjzNncE"
         },
         {
           "mode": "rail",
@@ -5159,37 +5376,44 @@
           "mode": "flight"
         },
         {
-          "mode": "ferry"
-        },
-        {
-          "mode": "ferry"
-        },
-        {
-          "mode": "ferry"
-        },
-        {
-          "mode": "ferry"
+          "mode": "ferry",
+          "polyline": "~pxQ~pmmJpfJ}`Agc@kYhc@vY}Ru_@hRp_@pe@_CjsAcx@dxCskEnkDqGf{@z[b_A{Ib{E~zEnjDzpExd@fzBiCv|D|IhdIa@nk@yVrmBsnBrkGi]|gCtOjkAaApsKpS`dChv@pkFzs@rtCtYtcBzc@hsInHrhB_FhhDv\\r{B`ZtjCzElz@jRrnAhWv]jwAfdBt[rdAx[n_GzeCltCzdDxfA|mDjeBhfF`aCrnGhmFrYfsDvzAnyCbHjP~zBv_Dt}HhxSeWd|Gg`Bt_IqFvzGaGz|EtNbdKx\\jxGtq@|_Hzu@bfIh}@||EvjBlfCzsA`gBf}f@zcn@to@nkGdtBncGhbApkG|V`~Cj_Dr`KngAxxKaNpm@}l@x_B{|@`gAijDtkFkoApxB}P`WojCleImq@|gBgxH`_U}l@xnDBht@wJ`cAfp@zoBt[dj@j}AfaCvElFf{Bn|CdEpKrLrVvSb|A{Qr{Fb@~xB~JxxHrjAjzCbd@|_@vgDbbC|mFjgDr`@`}Ah\\baCbJrO`ThwBa@lr@Vhd@mBli@dfMb`p@flBpxBvUjkBpPvjClC|`Ada@haAzVnx@hCzX`ChOf]`zA|iArhCdt@lyB{H|Sl@lU|Ohb@dG~TtKd[rHf\\dC``@wc@hnC{e@xqAy_@bzAag@nvAulAtrAkxCtq@m~ApCk_AxRylAkGusBdrAaHxpAgTz_A_Idb@`e@`jD|OrvAQ|`@yfAh~Cag@xvDm@btAxOxxFuAti@{gA~eEk\\f|@ecAj~Bm`C~jEov@|bBmNpiAaMhiA_C|l@il@jkDqIvRys@hyBaNlaD|F~}@lIti@vy@r}C~v@deBr\\xiAd@jPf|@n_E~AhL`KhvD{RjuA}W`nFwY`bDki@nlD}`@dcDkrA`uCao@tlAgeAh~Cw`@duCsKjsAsuAdtHwkC|tJae@j~@enBtyBcxCdhAmmAxf@_VzLkhBfgCmr@|_Ccf@htAssAbqEa\\bmAmv@tbBwdAbxAyjBfkCiv@|_Ame@vf@cF`EgkBt`C_r@jhA{c@hl@wk@rl@af@be@{{BnfCin@~gA_zC`|@cGnDyoAxdAu{Al{Bip@n~BuvBr{BuiA|{@o`Ax|BqaClfF}_@hvAu\\rmBqf@pnDwNfwAeB`h@_X|oBiu@dwCqNzLe{B|tBiw@jg@cy@rZmcCjkBagAht@a_@n[iv@dk@ybCvrByg@jm@eUvYuu@pnAmXbl@eZdr@mu@zhAck@vp@eZnZkp@ri@cYnXqOdQka@db@uBpt@k`Ctp@_eCdmAgcB~qBosA~rBgiAjhCayB~|AamA`qBcaAv_CeRtpAs{ClwF}nCpmCuk@jhAmhBlbFshDhhFsuCv}Cqh@dUcjApx@ytI`tBoGdAmwAkDslDs]giCmc@ct@qXudCoa@{vEz|@crCdlDmRrp@aLdmA`J|lAzx@luBpGdJ~yAptAfg@xfAdBziBrv@xfClRjjAjBdaByPvl@mJzT}}@dkA_ZvSuL~FgnAxmAkNba@}g@tu@ki@`b@{MpNqjBn_@eiD__AkgAup@ej@cZmrAqd@oeCkWmkFzFsiAdIujBb\\si@~Gi}GtwAgWn`@oGjNmC|LuApaAb]xr@be@zw@nQxS~XvNdd@dPdSzD|vAdi@`aA`]hmAbk@blAts@xTtO`oDjvExq@bjArq@n}@z`@dd@|Xlb@|r@bmAx`@dn@bDlH`_AjeBtw@`sCdLvbBfC~eCzXjvCxFz`C_Ody@gLp\\{FtMg}@ljCgn@|cBsqAhvBeSjg@wa@ru@gtFpgCouCnaAkGlCgvCtu@yeAt\\efBnpBqRlhAsD`kAyYz{@sBzLgKbqAKvb@jTrxArUpeDkAtImEf}@pQvtFwJnlAeOxi@cSrh@yV`ZcjAtv@stAtr@yCjOaAzThFrf@|bCjiLn_@~p@`]dv@vGdI~`AbaFuuBhzErk@|mCjnE~pDhsC|rCdhB|nCv|@zjBt_AjdFd@f}CsmAr{A{fHd{B}pEnGwcCiE}_Cef@qlAkZigCi]gtD`dAwkBrkCkL`|BlRfhCba@x`Cbs@jkCjx@pxBzlAdhBfd@npCjfD|~@x`Cmn@ttAvkAlWv`C|eAnWtbCg~@tiBgu@nfCul@`nCiEvzA|T`fC|u@`oApc@x{AfeB`TdeAhJbYlOd[l]th@n~BxvDf\\z[jN|UhsBvyD|d@xj@loA|tBdW~cBx[vnAxDnIhq@xfAcTyM"
         },
         {
           "mode": "ferry",
-          "polyline": "nguX~c{iLkWn|Cwp^jmpC_u^nkpC{pd@bwx@"
-        },
-        {
-          "mode": "ferry"
+          "polyline": "~cvOn_pvKbTxMzEfIlElDPcI]uHxIpDgGlDkNqDvA|a@|@zr@a@zOJrmDlDxp@twBpxJeGb{Eja@ziAhCb~CBbyEtWj|@FhZ|P~yDnAlR[`O_Lxq@w`AxkAwoDtZmmFmcCqgVzr~@phBbsA~l@vs@|fBd~AnkA~yA|`CpjA|rC~cAzTtJpZjTpxAbiBraAjdB`eBt_BpP~Ln|AdxAf`Aj_CxEtxC|HdaCwA~O~^r[z@dNfg@loArg@|hD`Pll@~t@dyAbhBrbBvd@xs@rVf]fAtU|D~`@fr@x{BhaBn{Cpk@t~@d}AllBdZnTAxGTWkHcLkGuTTaHlhCph@zy@|^laCr|Adt@pm@`hApqB~eAbmCdd@~aA`N`UfJfKtu@no@x{B|mAzfBni@hT~KnvCbo@`tAv[vdBld@ru@xQtwC`lArWzVzs@|hAdb@fw@dBbIkBhHaKyHbJbJa_AutE`zCrk@bv@xd@pi@zPpsCbq@fpA_DjiAoa@dw@_N|JyBnj@}Pz`Bc]|o@_It{EzC~VrBth@~GtkEvf@hNbU"
         },
         {
           "mode": "ferry",
-          "polyline": "xwnUtmd~Lk{cBhnUeppBrgXw_Rjl`@"
-        },
-        {
-          "mode": "ferry"
-        },
-        {
-          "mode": "ferry"
+          "polyline": "nneSnqr}KiNcU|jBtkBhn@rcAfXph@n}@jqBdBtHdU|k@bMztBjEvgGhBryAvExeB}B|~Aag@~_DkBjk@yBxgD`FnsBnJl[oe@cNgMx}@~yBv|@hfCrzY_c@z_AirEtzNfiGva[gQn`@uu@bjA}DbRcd@n`BjO|fFz|@voCjf@lgAdeDbpFv\\hl@~kAd`Cd@nLrk@pzAzO~cDaKdlB_Q`wApfDpdZmL`QeiAzfA|lB{_BAiAg@|ZpG`_CmfGj}RnlBdsCd{B|aBtLhL~[n^|hAdsB`Tr{AtLjfCY|`AcF|z@uInpBmVhaDo_@`~AwJpo@aS`jCzJlkAdkC|tDt}C`A``I{dC|`Jx{JnXpqA|q@peArxFt{DbbDxPv_@oOrlMkjIds@dDrgEnHhiAtNrrAbIvmH|nAtJ|Dzi@vIbHtCvlAnZ|{@p]zrAne@riArKvKb@tgBfOf_AnO|[~G`\\`[p[za@xPrVhi@pkAjfAjqC~M`[taBvbE`]`w@bExW_J~KbDoOvSlYh^vUp}Ds^voBejDhdCujC~_Dqa@|r@nSpmCdl@tzC|i@z~@zNlpEd}@jx@rb@rPrKxp@``A|QzTlw@tx@pe@vl@dIrMpLnNv~@zqLtDllA`RvkBz{AfkCp[he@jE~Kr`AdgAxV~MvaAds@ld@`t@lAlItW|lAjP|p@hGhT`y@z`Cb^~jB]nXhQqfA"
         },
         {
           "mode": "ferry",
-          "polyline": "~trD~pekMorj@z|xCksj@j|xCcrAfuA"
+          "polyline": "~mvY~~whLui@oTtJhj@pCz[?hN{WhzAuCvIs~@frBgR~e@kc@vaAmTlZcJrPi_@vs@wOb`@kLxkAiGllBzDxwAAvNoAdLiRx~@}yAr~BgH|Bm\\pTs`Ad_@cvB|m@gXvGa]fPiMtEa~At`@i`@VabBgPiNqCHiH}iByPuk@rLIqDrBbFxEm["
+        },
+        {
+          "mode": "ferry",
+          "polyline": "nguX~c{iLyEl[\\b@rG{@lPwEdNeAdAnMlILnl@tt@gX`EjQtQiIdJ~EwW{T{@nT{Fve@ky@jEaKnCs\\zHgDxIJdKr@qSq@m`BjG_x@xe@xDiJrk@tAqKsC}a@`JbAgI~[XvBeMsa@xVfJwAh\\_L_MzDcYzGneAf`A_hBdnAwWva@ak@dXiUrDcIt@gd@_BkVqEs|B~Ha_A~\\kg@va@gGxRsKrwCuDhJcJfOmf@jr@wSpTgn@vb@qc@z]iDxWuI|Fwe@x_@{bAv{@wSrVryBceCotCdrD_Zpy@_`@n|AexJl`JgzBn\\opBn]}_BzhAs_Al~Aeh@niBcs@v`Bw~@pgAa}Aj|@}mB~FweBvHmhBrToeBvEoyAbeA{|@f_B{e@zmBquA|lG}|@rwB{@hqBjS`p@ftDbbC|fEzxAh~BtpCv|BtqFbM~z@jIrlArK~M|d@v{@q]if@wUqe@sh@hyCkcBv_GlEv`B}Arv@oBfc@wUjhAu[xwC|EznAlIfu@d_BlYphAlZhzA`fBpOjhA|I~bArCvg@gBleAyEfqAdNn`AfiAhsEgBoUcL}]tg@xsBdTjk@tGzNlPjZiFziCkPpz@wd@hnA_l@lnBoVhxBns@b|CpV|z@~GfLz|DhjBbhAbq@da@htAhq@vcBfUvd@vQjX~WpoAjFpQnWrfAzk@xrCl_@vnClEx|Ai@lb@Rzx@z@ld@mCd[qBbc@sCtXc\\zyBiXn`Bg]doAtcBw{IufDtmMue@dx@qAnKq_@t[icAphBrP{l@sWsNcEcHwhBlSstBzSaK|@mj@d@o}B~Tq{@dq@ijB~p@kiAjf@qq@tVyXxOxi@ryCtcCps@h[xUpHtLdErKp@`n@ga@|w@clAthBeSfr@iFjtAyA|zAq@`Zp]~eBb^fcAve@|~BtD~SxTj`Bp@bb@iJfqCRbJuN|tBax@d{Dwg@ffAiAnDaeBd{AjE`[oYtWgc@pc@{z@po@ig@tb@wSjNoQrSq_@lYsLpLsGzSsWjPosDbqDa_B`iBab@vx@od@hhAyVjkAcJrSqPthAeKt[il@vkCkk@hyA{Ij^vAaQyAhPqKfGki@h`Au|BfgBuHz["
+        },
+        {
+          "mode": "ferry",
+          "polyline": "nuoUnt|tLtH{[wtBhcAeyA``@P@mfB{b@qu{@lrNe~@~hDpMwIa@nHjt@fhCmZ}ObXzz@t|B~}@`hAfOh^d`Ajc@te@cgGaaFfxJreHl`Ar\\bWjN|W~j@vS`qCdDjt@rjAtiGil@qoBb@bHhKrw@`\\fxCpGtpBVtWts@btIxxAf}B~j@tt@~nA|cBjo@tkAts@jxB~QkHfn@zc@tf@xp@`sAhsB|ElGfn@nwAxS|{@dOtbAlBh]QttApAby@tThtFyw@vpA_Zpv@ye@ny@iLr]sT|x@Lpk@rCd`@rUlaAn^`uA~A|bAeAncAiRt|@cjAxmCokAtgDuMt\\qm@zpAuLrNkC~Pk]v{@aSxQu}@fbBkBjoBuRh~BaElo@gDtw@Khm@nLhdEj|@~cDth@d}B`G`_@zGli@bPTzJmFfB~PfRrmAfFvi@yPrdBmHvS{{@duBgf@l`AqU`v@ib@rlCcj@fpCcKlpApPtwEjYliChOzr@vb@j{B`}@xaEtd@fmAcB~u@jq@v}DjfCvbFzGfHneBzvAp}BdsBz~A~pBtTlWxt@nz@vzAfaBfn@|~@lXpg@|DhRbo@bz@rJxTpfApsB{Znk@p|ArzA~O|a@~Exx@~Nbf@by@tbB~Ph[`KnNnE|E~h@rh@jXpP~MhGdp@dPfx@jC"
+        },
+        {
+          "mode": "ferry",
+          "polyline": "xwnUzi_~LctCmmAwx@e[upJaxN{l@m_AklA{gBwfH}oI_YyUcjCchB_d@`qE`HtnBiwAziCqqAhl@{aB~uAkkGrxMydV|v@oma@qcKguD|uFa`A`zCyoCrnD_yGyIexBhsAqCnu@tFfXv{@txCre@z}Dji@lhHiI`bAo^`{Cu~BxkAo_H|nBqxA`|B_d@p{@gnD|xDa_Axp@_mGbyBs~Aha@kr@RkdGujCsl@m{@szAqmB{mBiCcmC~o@_lGdhAkxDh{@ixBkTajDsDqiA|JwfFfO{n@fyH{wCljE{b@rt@qSbhAgXjhFs\\t{B_AdOxInU"
+        },
+        {
+          "mode": "ferry",
+          "polyline": "nieN~ru`MyIoUiArLjBcMOpGNmGDf@i@qAeFnCiPxLuZ`Oa^lZ{y@vtB{~AnpD{k@nnBwwAbh@wyAvg@ogFnz@y}BvkAwsApwB_Eba@rTrdBveBplCxCbOa@vjAch@n}CfE|eCxg@hbAbLhKhx@dl@hpD||DnLxd@x`@n}CqfBdtGwgCddHmu@lu@qoCmjDohBanBgW{Lu|BhMmwFzcCojCvl@upA`n@qTdJqmCb_A}|Fr~DOj~@kIt]eEpFabB`cEmsAhbEzQ~xHwfApyFoWry@_kCnaFmqApnCqf@xzAoUlyCksD|pFajCbz@aw@z]}xBjpAebA`eBrXdbEcaCx`F}dBvViN`HuuBxhBizBt}AijCheG_`CtrAyjCls@kxDrrFeiAliAoi@`Pqe@kMeTjEg}CksA_pGygD}bAwNimEmrCs`@cLye@_Ki^cA}{Ggs@ae@Vo{CiGka@oNumA}gAw~ApAqv@jWqvAh{AmpAhv@ce@sKoaGsfBaeCzk@oPf`@eZtYg`@|r@aEll@k}BblFqj@ffAox@blCyi@fn@mkCxuCqgAxz@_eCliFuv@tsFqM`L{pDbrEkkBznCcsC`jBws@nl@ec@zX{mDjfBuvBtwA{Vn`@wTxYu|BnqBoT|g@}tBzjBeTz@up@h@slAtw@eYjn@aIj`@aU|Jus@hv@om@jh@i\\hSoGh^oe@hwAcIxB_iBzeBcfAlk@kI~Re[zcAo_Ad\\ko@dQs_B|aAg^pbAmIjbB}h@pnAwY|V}V|MgT|H_]md@oEaY"
+        },
+        {
+          "mode": "ferry",
+          "polyline": "nm|DnsxiMnE`Y`AsG}BzGnBm@OyIDxKgBQzAkHQHgA~G`BoHcBnHdCqHc@N_B`HjAyHmAzHn@mHPlMZwQ}AtL`BsGBhHcBUdBRCn@HaIQ|HbAzKkHt_B_Mjk@vEfa@rAtZhApm@~DhcACtScBpd@h@fjAgA~qCpYpm@dMnTdHrKvi@hs@ai@ptAmn@zsAqVrQeW|YelA|lB{F~MiIjVyZrp@kd@|aBaUfi@{MhUk~@lcA_GvQGdAn@y@"
+        },
+        {
+          "mode": "ferry",
+          "polyline": "~trD~pekMo@x@tD_JmD`JyxAfhCgwBjnEu]dW{}Cf`Ake@ll@mP`vCczCv|Cmq@~Q}jBsFug@lEyp@bUqeA|}CeVrj@uHpTmhB`i@kuBfGcbCzgB`I|qCwbEtzFcu@ljCoaAttBw_BzeByO|k@aDvbB}Vz|A{_@fiAqEvxAnD|o@oJ~yAmIbW{lAp`H|[fg@yiBzwBo~@`uC{{AtoBsz@vkGh@bu@s~ApzAyg@hoAqdDlbFcnB~lC{lCtb@}mC`k@ky@`Iym@hr@qDtnAps@ppE_B|JuFzvCrMfnGvQn_DbFnbGxkBzjAbnA`}Ab^vhEjp@vcCpcB|cApj@ji@_d@~yDqkArm@a~A`bByMxnAfv@nbCsIlrAmaDzgDskCzpFwn@~j@_aAx\\a|@fd@rZbhDvfAvyBtHtLxTfi@bbA`nChhA|fCvCphDgvAjrBuE~vDbGdhClj@`hCwKxlA_}@`nA}d@~|Bbt@tzB`mBn_Brf@b~EyHfUcw@f|Cvz@zqAnRpVbKfJpV`PbF`tAdAhJVf_DeIpTdC~c@{@`RiP|Emb@xP}M`IsPwC"
         },
         {
           "mode": "road",
@@ -5422,7 +5646,8 @@
           "polyline": "an|_Guz`vBwSnAqr@nMu{@rc@sjBns@e{CzgBelA|f@}^dImm@b]k{@b[_QqBi^|DiZ}Me`@vA}fAev@yHjDaRsf@y^g^ueCmgBsyAiXkMuMqYaj@{|@icAw\\q`Ac_@{q@cNaLeLsAyCmHaXuOyTa`A_FgFaLcs@iOed@yMcr@oKqX{\\qe@yEqTg]o`@gDsMgQgVFgVwN{SeKc\\oE{_@aSmr@OiOmJ{FeHqO}^oMmNfMmYxEaWmHem@`Jia@kIojAkBebAke@aPwSiH}ZyFKwHmd@nCgW{AmXvA_t@hKy~@o@}HxEc@dCyP{AwLfE_e@aE}ZsDjEfK}e@qCbDlD}MAeFuBdDzCe]hInKiJoZ`a@ng@yI_ZvB_AnAnGjEwSaL{EtCuDwDq@nDkIpImCqAkLvDtBcHaIxNbDwCyHt@{]gB_FtPuu@iE}@YqYgDaExIwb@vSoSgEsf@_@lG}FaObB~FuIvWlBeM{DgWfAeH}CnJDtY_M~\\mWpKfAmMlDjBgG{H_BxIiHkFaPbRqY[~IuEa@wVfNiF_PmBgR~NrJcT|EuAqY|HpRuVbLaAm^mHyCvG@kHtVsLOeHnDAxE_LrGxAwFuFjTpCsBuGbP_UbGiSmB`CeEeCeZzT"
         },
         {
-          "mode": "ferry"
+          "mode": "ferry",
+          "polyline": "_gxaGoitwB~pY}rl@jKzj@_GzrA}N`wFeG`yArXbpAh_A|o@hb@zp@rR~iBrs@zr@~`@{oA|z@o{@vbAvNzz@x\\dtAnuBlmA}@vlB_dAxsAlAnaAtj@jd@nzAtf@ngA`N|fBnu@xb@cGkT"
         },
         {
           "mode": "road",
@@ -5438,11 +5663,11 @@
         },
         {
           "mode": "road",
-          "polyline": "y||pFq_h~Bxx@g`@fcA}OfcAdEplAeFog@ic@kKga@|CoaBl_@chDkAmc@iKsYg~@gvAqo@{f@q[at@yi@kt@os@oPep@rd@g`@~G}fB}\\w`DmVkWyNwi@gAcRaO}t@qhBuI_Y}Bk]rB_ZnOmr@?kUcEcTcjAu{AeRc_@qz@grDwm@cq@cUeb@uUi_A}d@u^mKqTiAeQpBwQxb@mbAfB{_AjUct@rDc^y@_cBkc@at@cFyZl@iYdUqaAZ}XwCsPwd@{bA_Acw@om@o`EyPu`@qEa\\yPqP_]aEuh@{f@aEsK`Bkw@eJk\\zBqHfNoInDaRpKuPuE}l@_ToIwLaa@mQgTw|BwiBeo@kZqgCwp@ozB{OsfAoj@uZcEg_Aw@sXmK{j@yb@scBiRaRsLyb@uf@qh@w^ae@oh@ek@uYsw@qA_XxFyx@pa@eF{@kBoGdPkWjPgv@]oRqOyo@dBib@d[{r@lt@i[lVq[hXaeBpE_rA`LyXzW{U|KaS|TyvAfIaXjXyd@biAqlAba@ysAb_BkfBjt@mxBvm@k~@jZs{@tJ_OfX_J|t@uChp@vDpk@}JjX|AdoAds@~Xht@fh@pj@h_B|lCtX|GxuCsCl_As]f\\kg@bYsSfYq`@n~@am@x_@wr@rHmYbCmc@iEqcAnEmYnLuUrRmNnh@mKbj@yl@hl@iLt]uNtBjGmFvByGkUpBmj@mIsKiBwObNec@vBo\\tC`@FsFtJGc@vQkBK"
+          "polyline": "y||pFq_h~Bxx@g`@fcA}OfcAdEplAeFog@ic@kKga@|CoaBl_@chDkAmc@iKsYg~@gvAqo@{f@q[at@yi@kt@os@oPep@rd@g`@~G}fB}\\w`DmVkWyNwi@gAcRaO}t@qhBuI_Y}Bk]rB_ZnOmr@?kUcEcTcjAu{AeRc_@qz@grDwm@cq@cUeb@uUi_A}d@u^mKqTiAeQpBwQxb@mbAfB{_AjUct@rDc^y@_cBkc@at@cFyZl@iYdUqaAZ}XwCsPwd@{bA_Acw@om@o`EyPu`@qEa\\yPqP_]aEuh@{f@aEsK`Bkw@eJk\\zBqHfNoInDaRpKuPuE}l@_ToIwLaa@mQgTw|BwiBeo@kZqgCwp@ozB{OsfAoj@uZcEg_Aw@sXmK{j@yb@scBiRaRsLyb@uf@qh@w^ae@oh@ek@uYsw@qA_XxFyx@pa@eF{@kBoGdPkWjPgv@]oRqOyo@dBib@d[{r@lt@i[lVq[hXaeBpE_rA`LyXzW{U|KaS|TyvAfIaXjXyd@biAqlAba@ysAb_BkfBjt@mxBvm@k~@jZs{@tJ_OfX_J|t@uChp@vDpk@}JjX|AdoAds@~Xht@fh@pj@h_B|lCtX|GxuCsCl_As]f\\kg@bYsSfYq`@n~@am@x_@wr@rHmYbCmc@iEqcAnEmYnLuUrRmNnh@mKbj@yl@hl@iLxXcL"
         },
         {
           "mode": "road",
-          "polyline": "_|hqFor_cCjBJb@wQoPTwAx`@mNj`@~@jR|JrMmDh_@dJjc@vr@uoAhKmb@hJgy@dQo`@fMcLjj@aV~u@ao@nSca@rUsaAn\\eg@xcD}pBbSuUbL{d@ZiaAvD}b@p_@ijA`Iwb@bCyd@}@wy@tE{c@nOgb@ri@qu@jd@qkB~t@gcBvWyUn\\oLplFgd@di@yJ~k@{Wz~B}~AbgAkxAnkAkfAhb@mv@lNeh@~Gyh@zDcxBhH}h@rQqc@~{@meAr[so@rQev@rVkyBbOue@vV{d@tg@}g@bp@qY~g@eGvoBc@rk@yNte@c`@xz@}qAh`@uX~NgAkAgMlHsFpQqAvG}EnmAkgDhSsz@b~@siCfzAyt@ni@y`CtuBenBjKiSbw@edHrn@y{As_AeXsRfAo|Bgi@mBwL~RyrArGqlBvTw]rCfD"
+          "polyline": "qufqFut`cCrJoTfMcLjj@aV~u@ao@nSca@rUsaAn\\eg@xcD}pBbSuUbL{d@ZiaAvD}b@p_@ijA`Iwb@bCyd@}@wy@tE{c@nOgb@ri@qu@jd@qkB~t@gcBvWyUn\\oLplFgd@di@yJ~k@{Wz~B}~AbgAkxAnkAkfAhb@mv@lNeh@~Gyh@zDcxBhH}h@rQqc@~{@meAr[so@rQev@rVkyBbOue@vV{d@tg@}g@bp@qY~g@eGvoBc@rk@yNte@c`@xz@}qAh`@uX~NgAkAgMlHsFpQqAvG}EnmAkgDhSsz@b~@siCfzAyt@ni@y`CtuBenBjKiSbw@edHrn@y{As_AeXsRfAo|Bgi@mBwL~RyrArGqlBvTw]rCfD"
         },
         {
           "mode": "rail",
@@ -8334,7 +8559,7 @@
         }
       ],
       "placeSlugs": [
-        "copenhagen"
+        "frederiks-church"
       ]
     },
     {
@@ -9301,6 +9526,55 @@
   ],
   "photographs": [
     {
+      "slug": "amber-gateway",
+      "title": "Amber gateway",
+      "summary": "A plaster arch frames a bright hall beyond, with the dark diagonal of a stone balustrade running up the staircase in front.",
+      "date": "2026-11-03",
+      "cover": {
+        "src": "/media/photograph/amber-gateway/photo.abb9e3fe.webp",
+        "alt": "A pale plaster arch seen from a dim staircase, opening onto a brightly lit hall; a stone balustrade climbs diagonally across the lower right",
+        "width": 854,
+        "height": 1280,
+        "small": {
+          "src": "/media/photograph/amber-gateway/photo-800w.84f02e59.webp",
+          "width": 800,
+          "height": 1199
+        }
+      },
+      "tags": [
+        "architecture"
+      ],
+      "meta": [
+        {
+          "label": "Camera",
+          "value": "Fujifilm X-T4"
+        },
+        {
+          "label": "Lens",
+          "value": "XF18-55mmF2.8-4 R LM OIS"
+        },
+        {
+          "label": "Focal length",
+          "value": "55 mm"
+        },
+        {
+          "label": "Aperture",
+          "value": "f/18"
+        },
+        {
+          "label": "Shutter",
+          "value": "1/10 s"
+        },
+        {
+          "label": "ISO",
+          "value": "6400"
+        }
+      ],
+      "placeSlugs": [
+        "faculty-of-geodesy-and-cartography"
+      ]
+    },
+    {
       "slug": "blue-facade",
       "title": "Blue facade",
       "summary": "Close view of a building facade made of pale blue vertical panels and rows of narrow windows.",
@@ -9389,8 +9663,9 @@
           "value": "43"
         }
       ],
-      "placeSlugs": [],
-      "countryCode": "BR"
+      "placeSlugs": [
+        "near-manaus"
+      ]
     },
     {
       "slug": "carrying-the-float",
@@ -9925,7 +10200,7 @@
         }
       ],
       "placeSlugs": [
-        "napo"
+        "on-the-napo"
       ]
     },
     {
@@ -10088,8 +10363,9 @@
           "value": "58"
         }
       ],
-      "placeSlugs": [],
-      "countryCode": "BR"
+      "placeSlugs": [
+        "near-uarini"
+      ]
     }
   ],
   "career": {

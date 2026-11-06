@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from "react";
+import { useEffect, useRef, type CSSProperties, type ReactNode } from "react";
 import { Link } from "react-router";
 import { CoverArt, SensitiveMedia } from "~/components/ui";
 import { coverRatio, layoutAllTiers, masonryItemVars, masonryListVars, RATIO_FALLBACK } from "~/lib/masonry";
@@ -7,6 +7,7 @@ import { safeMediaSrc } from "~/lib/entry-blocks";
 import { coverImageProps, WALL_COVER_SIZES } from "~/lib/cover-image";
 import type { EntrySummary } from "~/lib/entries";
 import { planFiller, type FillerTile } from "~/lib/gallery-filler";
+import { imageTone } from "~/lib/image-tone";
 
 /** The first pictures of a wall load at once (the first screen at four columns); the rest are lazy. */
 const EAGER = 4;
@@ -36,6 +37,33 @@ export function artworkCaption(entry: Pick<EntrySummary, "meta" | "date">): { me
   const medium = fact(entry as EntrySummary, "medium");
   const year = fact(entry as EntrySummary, "year") ?? (yearOf(entry.date)?.toString() || undefined);
   return { ...(medium ? { medium } : {}), ...(year ? { year } : {}) };
+}
+
+/**
+ * The overlay's ground and ink follow the picture: black and white as it is dark or light where the caption lies on it (`data-tone` of the card, read from the loaded picture, `lib/image-tone.ts`; the
+ * page's own colours until then, and where the picture cannot be read). Set on the DOM, not through state: a wall has a hundred pictures and they load one by one.
+ */
+function useWallTones(root: React.RefObject<HTMLElement | null>, deps: unknown) {
+  useEffect(() => {
+    const el = root.current;
+    if (!el) return;
+    const read = (img: HTMLImageElement) => {
+      const card = img.closest<HTMLElement>(".wall-card");
+      if (!card || !img.complete) return;
+      const caption = card.querySelector<HTMLElement>(".wall-caption");
+      const fraction = caption && img.clientHeight ? Math.min(0.6, Math.max(0.15, caption.offsetHeight / img.clientHeight)) : 0.3;
+      const tone = imageTone(img, fraction);
+      if (tone) card.dataset.tone = tone;
+      else delete card.dataset.tone;
+    };
+    el.querySelectorAll<HTMLImageElement>("img.wall-img").forEach(read);
+    // (`load` does not bubble: it is caught on the way down)
+    const onLoad = (e: Event) => {
+      if (e.target instanceof HTMLImageElement && e.target.classList.contains("wall-img")) read(e.target);
+    };
+    el.addEventListener("load", onLoad, true);
+    return () => el.removeEventListener("load", onLoad, true);
+  }, [root, deps]);
 }
 
 /**
@@ -69,13 +97,15 @@ export function ArtworkWall({
   kind?: "artwork" | "photograph";
 }) {
   const Heading = `h${headingLevel}` as "h2" | "h3" | "h4";
+  const wall = useRef<HTMLDivElement>(null);
+  useWallTones(wall, items);
   const covers = items.map((entry) => (entry.cover && safeMediaSrc(entry.cover.src) ? entry.cover : null));
   const ratios = covers.map((cover) => (cover ? coverRatio(cover) : RATIO_FALLBACK));
   const plan = filler.length > 0 ? planFiller(ratios, filler) : null;
   const tileRatios = plan ? plan.tiles.map((f) => coverRatio(f)) : [];
   const layouts = layoutAllTiers(ratios, (columns) => tileRatios.slice(0, plan?.count(columns) ?? 0));
   return (
-    <div data-slot="artwork-wall" data-kind={kind} data-filler={plan ? "" : undefined} className="wall">
+    <div ref={wall} data-slot="artwork-wall" data-kind={kind} data-filler={plan ? "" : undefined} className="wall">
       <ul role="list" aria-label={label} className="wall-list" style={masonryListVars(layouts, { flush: plan !== null }) as CSSProperties}>
         {items.map((entry, i) => {
           const cover = covers[i];

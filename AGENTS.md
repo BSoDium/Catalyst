@@ -43,8 +43,20 @@ The board is the user project <https://github.com/users/BSoDium/projects/5> (`gh
 
 - If you cannot reach the board (for example no `project` scope for `gh`, or GraphQL is blocked in your environment), say so explicitly in your final message and in the PR or issue description, so a human can finish it. Never claim the board is up to date when you could not check it.
 
+## Content changes are not done until they are live
+
+Content (places, entries, photographs) lives in the private-ish content repo (`BSoDium/Catalyst-content`); the site only changes when the standing pull request `content/publish` in THIS repo is merged. A content task therefore has four steps, and merging the content PR is only the second:
+
+1. Open the content PR (`pnpm test` in the content repo passes; generated files regenerated as its docs say).
+2. Merge it, after the owner's go.
+3. **Find the standing PR**: `gh pr list --repo BSoDium/Catalyst --head content/publish`. Check it lists the change (the workflow updates it after the merge; if it is stale, say so).
+4. **Report its number and state to the owner and ask for the go to merge it.** Never merge it unasked, never leave it unmentioned, and never say "done" or "published" while it is open.
+
+If you cannot reach step 3 or 4 (no access, workflow failed), say which step is missing in your final message. A final message about content must name the `content/publish` PR (number, open or merged) and whether the change is live.
+
 ## Before finishing a task
 
 1. The PR description has one closing keyword per issue, or `Refs` where the issue stays open.
 2. The issue(s) or the PR are on the board, with every property filled in.
-3. Nothing above was skipped silently: report what you could not do.
+3. A content change was taken all the way to the `content/publish` PR (see "Content changes are not done until they are live"), and its state is reported.
+4. Nothing above was skipped silently: report what you could not do.

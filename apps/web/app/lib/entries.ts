@@ -268,15 +268,43 @@ export function getEntryDetail(projection: PublishedProjection, kind: ContentKin
   };
 }
 
-/** The entries linked to a place (its `related` and the entries' `placeSlugs`, each once), grouped by kind in the design system's order; empty kinds are absent. */
+type Boxed = Pick<PublishedPlace, "slug" | "coordinates" | "bbox">;
+
+const hasBox = (b: PublishedPlace["bbox"]): b is NonNullable<PublishedPlace["bbox"]> => !!b && b.length === 4 && b.every(Number.isFinite) && b[0] < b[2] && b[1] < b[3];
+
+/**
+ * The places NESTED in each place: a place is inside another when its extent (its `bbox`, else its point) lies within the other's `bbox`.
+ * Only groups nest in the published hierarchy, so a city and a site inside it are siblings there; this is the geometric nesting that lets the
+ * city list the site's entries. Strict: a place whose extent is not inside (equal boxes, overlap) is not nested, so no two places contain each other.
+ * Places without a nested place are absent. Pure.
+ */
+export function nestedPlaces(places: readonly Boxed[]): Map<string, string[]> {
+  const out = new Map<string, string[]>();
+  for (const outer of places) {
+    const o = outer.bbox;
+    if (!hasBox(o)) continue;
+    for (const inner of places) {
+      if (inner === outer) continue;
+      const i = inner.bbox;
+      const inside = hasBox(i)
+        ? i[0] >= o[0] && i[1] >= o[1] && i[2] <= o[2] && i[3] <= o[3] && (i[0] > o[0] || i[1] > o[1] || i[2] < o[2] || i[3] < o[3])
+        : inner.coordinates.lon >= o[0] && inner.coordinates.lon <= o[2] && inner.coordinates.lat >= o[1] && inner.coordinates.lat <= o[3];
+      if (inside) out.set(outer.slug, [...(out.get(outer.slug) ?? []), inner.slug]);
+    }
+  }
+  return out;
+}
+
+/** The entries linked to a place or to any place nested in it (`nestedPlaces`), each once: its `related`, the entries' `placeSlugs`; grouped by kind in the design system's order; empty kinds are absent. */
 export function entriesOfPlace(projection: PublishedProjection, placeSlug: string): EntryGroup[] {
   const place = projection.places.find((p) => p.slug === placeSlug);
   if (!place) return [];
   const l = lookups(projection);
-  const named = new Set(place.related.map((r) => refKey(r.kind, r.slug)));
+  const slugs = new Set([placeSlug, ...(nestedPlaces(projection.places).get(placeSlug) ?? [])]);
+  const named = new Set(projection.places.filter((p) => slugs.has(p.slug)).flatMap((p) => p.related.map((r) => refKey(r.kind, r.slug))));
   return CONTENT_KINDS.flatMap((kind): EntryGroup[] => {
     const entries = projection[COLLECTIONS[kind]].flatMap((item, position) =>
-      item.placeSlugs.includes(placeSlug) || named.has(refKey(kind, item.slug)) ? [toSummary(kind, item, position, l)] : [],
+      item.placeSlugs.some((s) => slugs.has(s)) || named.has(refKey(kind, item.slug)) ? [toSummary(kind, item, position, l)] : [],
     );
     return entries.length > 0 ? [{ kind, label: KIND_PLURALS[kind], entries }] : [];
   });

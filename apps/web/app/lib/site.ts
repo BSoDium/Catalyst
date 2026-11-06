@@ -15,6 +15,8 @@ export const SITE = {
   /** The name's two halves: the hero sets the first at the heavy end of the weight axis (800) and the second at the thin end (200). */
   givenName: "Elliot",
   familyName: "Négrel-Jerzy",
+  /** The handle the owner goes by online: what the domain (bsodium.fr) is named after, said once on the home page and the career page (#588). */
+  handle: "BSoDium",
   /** For tight spots (the home-screen label under an icon, 12 characters or fewer). */
   shortName: "Elliot N.-J.",
   /** Who: what the owner does, and where. The hero says "<role> based in <location>." */
@@ -28,6 +30,8 @@ export const SITE = {
 export const SITE_IDENTITY = `${SITE.role} based in ${SITE.location}.`;
 /** What the owner works on, as a sentence: the second half. */
 export const SITE_FOCUS = `${SITE.speciality}.`;
+/** Why the domain reads as it does: the handle the owner goes by online. */
+export const SITE_HANDLE_LINE = `Online as ${SITE.handle}.`;
 /** The sentence under the name on the home page: the same facts as the description, in the owner's words. */
 export const SITE_TAGLINE = `${SITE_IDENTITY} ${SITE_FOCUS}`;
 

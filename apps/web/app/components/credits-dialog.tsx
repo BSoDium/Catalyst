@@ -12,6 +12,8 @@ interface CreditsDialogProps {
   reducedMotion: boolean;
   /** Which version of the content (paths and places) this page has: the date and the commit it was exported from. */
   dataVersion?: PublishedDataVersion | null;
+  /** Development only: which data the page shows (preview or demo), said above the version, or alone where the projection has none. */
+  devNote?: string | null;
   onClose(): void;
   /** After the exit animation: the host returns focus to the button here. */
   onClosed(): void;
@@ -24,7 +26,7 @@ interface CreditsDialogProps {
  * Its borders are the soft `--border` hairline (the card's), not the strong one of the outlined buttons.
  * Rendered in a portal on `document.body`, so no `aria-hidden` or faded ancestor of the globe reaches it.
  */
-export function CreditsDialog({ open, credits, reducedMotion, dataVersion, onClose, onClosed }: CreditsDialogProps) {
+export function CreditsDialog({ open, credits, reducedMotion, dataVersion, devNote, onClose, onClosed }: CreditsDialogProps) {
   const headingId = useId();
   // Mounted open: the modal state is applied as the element appears (guarded: StrictMode runs ref callbacks twice).
   const dialogRef = useRef<HTMLDialogElement | null>(null);
@@ -95,11 +97,16 @@ export function CreditsDialog({ open, credits, reducedMotion, dataVersion, onClo
                 </li>
               ))}
             </ul>
-            {dataVersion && (
-              <p data-slot="data-version" className="mt-5 border-t border-border pt-3 font-mono text-xs text-muted-foreground">
-                Data version <time dateTime={dataVersion.date}>{dataVersion.date}</time> · {dataVersion.commit.slice(0, 7)}
-                <span className="block text-subtle-foreground">The places and paths on this page.</span>
-              </p>
+            {(dataVersion || devNote) && (
+              <div data-slot="data-version" className="mt-5 flex flex-col gap-2 border-t border-border pt-3 font-mono text-xs text-muted-foreground">
+                {devNote && <p data-slot="dev-note">{devNote}</p>}
+                {dataVersion && (
+                  <p>
+                    Data version <time dateTime={dataVersion.date}>{dataVersion.date}</time> · {dataVersion.commit.slice(0, 7)}
+                    <span className="block text-subtle-foreground">The places and paths on this page.</span>
+                  </p>
+                )}
+              </div>
             )}
             <div className="mt-6 flex justify-end">
               <Button variant="outline" size="sm" className="border-border" onClick={onClose}>

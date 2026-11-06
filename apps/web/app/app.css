@@ -1073,6 +1073,14 @@
     }
   }
 
+  /* A row of the place panel in a narrow panel (a phone; `@md` is 28rem; the container is the panel's group of entries, `@container/group`, NOT the row's own cell: a poem's cell in a wide panel's two columns is under 28 rem and is no phone): the list page's covered row (above), in the panel's width: the picture runs out to the panel's edges and dissolves into the page at its foot, under the date and the title. */
+  @container group (max-width: 27.999rem) {
+    .place-row-cover {
+      -webkit-mask-image: linear-gradient(to top, transparent 0%, rgb(0 0 0 / 0.08) 14%, rgb(0 0 0 / 0.26) 30%, rgb(0 0 0 / 0.54) 46%, rgb(0 0 0 / 0.8) 62%, rgb(0 0 0 / 0.94) 78%, #000 100%);
+      mask-image: linear-gradient(to top, transparent 0%, rgb(0 0 0 / 0.08) 14%, rgb(0 0 0 / 0.26) 30%, rgb(0 0 0 / 0.54) 46%, rgb(0 0 0 / 0.8) 62%, rgb(0 0 0 / 0.94) 78%, #000 100%);
+    }
+  }
+
   /* Divider: a hairline, optionally hung with a tick scale (minor every 8 px, major every 40 px). */
   .ds-divider {
     height: 0;
@@ -1208,6 +1216,16 @@
     vertical-align: -0.2em;
     stroke-width: var(--icon-stroke);
     stroke-linecap: square;
+    stroke-linejoin: miter;
+  }
+
+  /* The arrows are the one-stroke kind: a shaft and a head that close a square. With the system's square ends the shaft's end pokes past the head's diagonals; butt ends stop it at the corner, where the miter joins the head's two legs (#581). */
+  .ui-icon.lucide-arrow-right,
+  .ui-icon.lucide-arrow-up-right,
+  .ui-icon.lucide-arrow-up-left,
+  .ui-icon.lucide-arrow-up,
+  .ui-icon.lucide-arrow-down {
+    stroke-linecap: butt;
     stroke-linejoin: miter;
   }
 
@@ -1996,21 +2014,440 @@
      The text block is trimmed to that where the browser can (`text-box`), else the mark is centred on it. Hairline: a 1 px stroke at any size. */
   .entry-exposure {
     --exposure-gap: 0.25rem;
+    /* the aperture's stroke is the stem of the camera's name beside it (JetBrains Mono at 500: 0.105 em of the 12 px), not a hairline */
+    --exposure-stroke: calc(1em * 0.105);
     display: flex;
     align-items: center;
     gap: 0.75rem;
+    margin: 0;
+    color: var(--muted-foreground);
+  }
+  /* The camera's block and the link to the place (#581). Where the row is wide enough for both (a full screen's column, a wide panel) the link sits at the right end of the camera's row, as tall as its mark; where it is not (a tablet's side panel) they
+     are stacked at the left, and both are drawn on the same two columns (the icon, centred in a column of one width; then the text) so the icons are on one vertical and the text starts at one distance from it. */
+  .entry-facts-row {
+    --exposure-text: calc(1cap + var(--text-meta--line-height) + 0.25rem);
+    --facts-icon-col: 2.25rem;
+    container-type: inline-size;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
     margin: 2rem 0 0;
+    /* The camera and the link nest in the corners of the head, each at `--corner-x` from the sides and `--corner` from the picture below (the ink's distances): the row hangs out into the head's gutter (`--hero-px`, set by the page) by what is left of it, the camera's ring starting a little inside its box */
+    --corner: 0.75rem;
+    --corner-x: 1rem;
+    --hero-px: 1.5rem;
+    margin-left: calc(var(--corner-x) - var(--hero-px) - 0.2rem);
+  }
+  /* Row or stack: the script (`FactsRow`, components/entry/entry-view.tsx) tries the row and, if the link would be wrapped to a line of its own, stacks them, left aligned; until it has run (the server's page, no scripts) the width decides. */
+  .entry-facts-row[data-facts="row"] {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem 2rem;
+  }
+  @container (min-width: 46rem) {
+    .entry-facts-row:not([data-facts]) {
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem 2rem;
+    }
+  }
+  /* The head of a place's panel (#611). The name is the site's display face, large; its figures (the coordinates, the counts) are set in the same face in three voices: whole numbers in the foreground, the decimals dimmer, the hemisphere a small tracked mono letter. */
+  .place-name {
+    font-family: var(--font-display);
+    font-optical-sizing: auto;
+    font-synthesis: none;
+    font-weight: 800;
+    font-size: clamp(2.75rem, 1.8rem + 3.2vw, 4.5rem);
+    line-height: 0.95;
+    letter-spacing: -0.04em;
+    text-wrap: balance;
+    overflow-wrap: break-word;
+  }
+  .place-figure {
+    font-family: var(--font-display);
+    font-optical-sizing: auto;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+  }
+  .place-figure-whole {
+    font-size: 1.75rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    color: var(--foreground);
+  }
+  /* the counts of entries: lighter than the coordinates' whole degrees; their ink is set by how many there are (`countInk`) */
+  .place-figure-count {
+    font-size: 1.75rem;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    color: var(--muted-foreground);
+  }
+  /* the dates: as large as the figures beside them, in the secondary grey (nothing in it is more important than the rest) */
+  .place-figure-when {
+    font-size: 1.75rem;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    color: var(--muted-foreground);
+    text-wrap: balance;
+  }
+  .place-when-strong {
+    color: var(--foreground);
+  }
+  /* the count beside a group's title: its digits as tall as the x-height of the title (2 rem Bricolage, x-height about 0.52 em; the digits of the mono face are about 0.73 em), the colour kept */
+  .place-group-count {
+    font-family: var(--font-mono);
+    font-size: calc(2rem * 0.52 / 0.73);
+    line-height: 1;
+    font-variant-numeric: tabular-nums slashed-zero;
+    color: var(--muted-foreground);
+  }
+  .place-figure-fraction {
+    font-size: 1.75rem;
+    font-weight: 300;
+    letter-spacing: -0.02em;
+    color: var(--muted-foreground);
+  }
+  .place-figure-deg {
+    margin-left: 0.05em;
+    font-size: 1.125rem;
+    font-weight: 300;
+    color: var(--muted-foreground);
+  }
+  .place-figure-hemisphere {
+    margin-left: 0.4em;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    color: var(--signal-text, var(--foreground));
+  }
+  /* The photographs of a place (components/place-detail.tsx, `PhotoGallery`): the label is on the picture, over a soft dome of the page colour from its bottom left corner, so it reads on any photograph in both schemes; the arrows are plates over the picture's edge, in the middle, not the chips' top-aligned ones. */
+  /* the label's ground and ink: the page's own until the picture has been read (`lib/image-tone.ts`), then black or a grey, and white or a grey, as it is dark or light where the label is and as the scheme is (below) */
+  .place-gallery-item {
+    --label-bg: var(--background);
+    --label-ink: var(--foreground);
+  }
+  /* Over a dark picture the page's own scheme decides (owner, 2026-11-06): black in the dark scheme, a light GREY in the light one; over a light picture white in the light scheme, a dark GREY in the dark one. Never the pure opposite of the page: a white fog over a bright photograph on the dark page (and a black one over a dark photograph on the light page) is what looked washed out. Solid greys; the dome's own fade is the only opacity. */
+  .place-gallery-item[data-tone="dark"] {
+    --label-bg: light-dark(#d6d6d6, #000);
+    --label-ink: light-dark(#111, #fff);
+  }
+  .place-gallery-item[data-tone="light"] {
+    --label-bg: light-dark(#fff, #3a3a3a);
+    --label-ink: light-dark(#111, #fff);
+  }
+  .place-gallery-label {
+    position: absolute;
+    inset: auto 0 0 0;
+    isolation: isolate;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 5rem 1.25rem 1rem;
+  }
+  .place-gallery-label::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    /* the whole width of the label (the date is at its left, the position at its right), the page colour held firmly under the text and eased to nothing above it */
+    background: linear-gradient(
+      to top,
+      color-mix(in srgb, var(--label-bg) 78%, transparent) 0%,
+      color-mix(in srgb, var(--label-bg) 66%, transparent) 40%,
+      color-mix(in srgb, var(--label-bg) 48%, transparent) 62%,
+      color-mix(in srgb, var(--label-bg) 24%, transparent) 80%,
+      color-mix(in srgb, var(--label-bg) 7%, transparent) 93%,
+      transparent 100%
+    );
+  }
+  /* The carousel of the photographs (components/place-gallery.tsx, lib/photo-carousel.ts): the row is a native scroller, with no scrollbar, whose pictures are placed from its scroll position, so they change in WIDTH only (the height is the row's). `--g`, 0 to 1, is how much of
+     its full width a picture has; the title in it follows it: its size stays, the variable face (Bricolage) goes from its thinnest weight (200) to its heaviest (800) and from a faint ink to the full one. A picture with no `--g` (one alone, the row before the script) is at full size. */
+  .place-gallery-scroller {
+    height: min(26rem, 70dvh);
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .place-gallery-scroller::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+  /* The row before the script (the server's page, and the frames until the browser has taken the row over) in a narrow panel is what the carousel is there: one picture, edge to edge, so nothing changes when it is built (lib/photo-carousel.ts, `SINGLE_BELOW`). */
+  @container (max-width: 34.999rem) {
+    .place-gallery-static {
+      aspect-ratio: auto !important;
+      width: 100cqw;
+      max-width: none !important;
+    }
+  }
+  /* The same in a wide panel: the row before the script is the carousel at rest (`lib/photo-carousel.ts`, `keylines`), so the page does not jump when it takes over (the pictures were at their own proportions, 313, 365 and 416 px
+     where the carousel has 352, 324 and 138). The gutter (px-6) and the gap (gap-1.5) are the carousel's already; the first picture is the large one, the second the medium one, the others small (cut off by the edge). Every label is laid out
+     at the medium one's width and cropped by its picture, never narrower than it, as the carousel's (`labelWidth`). */
+  @container (min-width: 35rem) {
+    .place-gallery-static {
+      --pg-small: max(48px, calc((100cqw - 24px) / 6));
+      --pg-rest: calc(100cqw - 24px - var(--pg-small) - 12px);
+      --pg-large: calc(var(--pg-rest) * 0.52);
+      --pg-medium: calc(var(--pg-rest) - var(--pg-large));
+      aspect-ratio: auto !important;
+      max-width: none !important;
+      width: var(--pg-small);
+    }
+    .place-gallery-static[data-place="large"] {
+      width: var(--pg-large);
+    }
+    .place-gallery-static[data-place="medium"] {
+      width: var(--pg-medium);
+    }
+    /* Two pictures do not scroll: they share the row between the gutters, the first a little wider (`carouselLayout`, `count <= 2`: 52 % of what is left after the two gutters and the gap) */
+    .place-gallery-static[data-place="pair-first"] {
+      width: calc((100cqw - 54px) * 0.52);
+    }
+    .place-gallery-static[data-place="pair-second"] {
+      width: calc((100cqw - 54px) * 0.48);
+    }
+    .place-gallery-static .place-gallery-label {
+      width: var(--pg-medium);
+      min-width: 100%;
+    }
+  }
+  /* the picture fades as it shrinks, less than its title does (a small one is still a picture) */
+  .place-gallery-media {
+    opacity: calc(0.55 + 0.45 * var(--g, 1));
+  }
+  .place-gallery-title {
+    font-size: 1.375rem;
+    font-weight: calc(200 + 600 * var(--g, 1));
+    /* the heavier the face the wider the line (Bricolage has no width axis: 8.5 % from 200 to 800, 0.041em a character, linearly): the spacing makes up for the weight, so the line is as wide at every weight and never breaks differently as the weight changes */
+    letter-spacing: calc(-0.02em + 0.041em * (1 - var(--g, 1)));
+    line-height: 1.1;
+    opacity: calc(0.3 + 0.7 * var(--g, 1));
+    color: var(--label-ink);
+    text-shadow: 0 0 0.5rem var(--label-bg);
+  }
+  /* the date and the position are small mono type over a photograph: the ink, not the muted grey, with a halo of the page colour */
+  .place-gallery-meta {
+    color: var(--label-ink);
+    opacity: clamp(0, calc((var(--g, 1) - 0.1) * 1.4), 1);
+    text-shadow: 0 0 0.375rem var(--label-bg), 0 0 0.125rem var(--label-bg);
+  }
+  .place-gallery [data-slot="scroll-row-arrow"] {
+    top: 50%;
+    translate: 0 -50%;
+    background: color-mix(in srgb, var(--background) 72%, transparent);
+    backdrop-filter: blur(4px);
+  }
+  .place-gallery [data-slot="scroll-row-arrow"]::before {
+    display: none;
+  }
+  /* With a cover the head is tall enough to show the picture above the type, and the panel's bar (the close button) lies over its top edge, where it has no ground of its own: the buttons get a faint plate. */
+  .place-cover {
+    min-height: 26rem;
+  }
+  /* The picture fades out into whatever is behind the panel (it is translucent over the map: a gradient to the page colour would show its edge). */
+  .place-cover-img {
+    position: absolute;
+    inset: -1rem;
+    width: calc(100% + 2rem);
+    height: calc(100% + 2rem);
+    max-width: none;
+    object-fit: cover;
+    filter: blur(6px) saturate(0.85);
+    opacity: 0.42;
+  }
+  .place-cover-art {
+    mask-image: linear-gradient(to bottom, #000 38%, transparent 96%);
+  }
+  /* The panel's left edge, a hairline drawn ABOVE what the panel holds (the place's cover, the close bar's oval), not a border under it: the same line all the way down, whatever is beside it (owner, 2026-11-05: it
+     looked fainter where the cover was). The line is the panel's first pixel; the panel has no border box of its own. */
+  @media (min-width: 48rem) {
+    [data-panel="aside"]::after {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      z-index: 40;
+      width: var(--hairline, 1px);
+      background: var(--border);
+      pointer-events: none;
+    }
+  }
+  [data-panel]:has([data-slot="place-cover"]) [data-slot="panel-bar"]::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset: 0 0 -9rem 0;
+    pointer-events: none;
+    /* a soft, round-ish oval of the page colour centred on the panel's top corner (the close button's), far bigger than the button so no edge of it is seen, eased to nothing (the model: the nav's search plate over the globe); the box runs below the bar so that the oval's bottom is not cut */
+    --plate-x: 0%;
+    background: radial-gradient(
+      ellipse 19rem 12rem at var(--plate-x) 0,
+      color-mix(in srgb, var(--background) 52%, transparent) 0%,
+      color-mix(in srgb, var(--background) 50%, transparent) 20%,
+      color-mix(in srgb, var(--background) 34%, transparent) 38%,
+      color-mix(in srgb, var(--background) 16%, transparent) 55%,
+      color-mix(in srgb, var(--background) 5%, transparent) 72%,
+      color-mix(in srgb, var(--background) 1%, transparent) 88%,
+      transparent 100%
+    );
+  }
+  @media (max-width: 47.99rem) {
+    /* on a phone the bar is a row above the content: with a cover it floats over the picture instead */
+    [data-panel]:has([data-slot="place-cover"]) [data-slot="panel-bar"] {
+      /* (!important: the bar's own utilities, `relative`, are in a later layer) */
+      position: absolute !important;
+      inset: 0 0 auto 0;
+    }
+    [data-panel]:has([data-slot="place-cover"]) [data-slot="panel-bar"]::before {
+      --plate-x: 100%;
+    }
+  }
+  /* The link to the place (#581): the globe (the aperture's twin), two lines of text and, in the top right corner, the arrow, with no outline, the glyphs at one distance from the box's edge at the top, the bottom and their own side: each box's padding is that distance less the glyph's own inset (the globe's runs from 2 to 22 of 24 across, the arrow's from 7 to 17). */
+  .entry-place-link {
+    --place-h: 2.75rem;
+    --place-name: 0.8125rem;
+    --place-cta: 0.6875rem;
+    /* the block of text: the name's line box, the gap and the second line's (as set below) */
+    --place-text-h: calc(var(--place-name) * 1.25 + 0.125rem + var(--place-cta) * 1.2);
+    /* the viewfinder is as tall as the INK of the two lines, from the top of the name's tallest letters to the bottom of the second line's descenders (measured: 89 % of the block, 2.7 px down from its top, which puts its middle
+       a pixel above the block's), not as the block's line boxes; its drawing runs from 3 to 21 of 24 units (75 %), the stroke is on top of that */
+    --place-ink: calc(var(--place-text-h) * 0.89 - 1px);
+    /* the globe is the aperture's twin (its drawing runs from 2 to 22 of 24 units): the same stroke (0.105 em of the camera's 12 px type; the link is set in that type too, its own lines have sizes of their own), the same size (its box is 1.2 times the camera's text less the stroke) and colour */
+    --place-stroke: calc(1em * 0.105);
+    --place-pin: calc((1cap + var(--text-meta--line-height) + 0.25rem - var(--place-stroke)) * 1.2);
+    --place-arrow: 1.5rem;
+    /* the distance of the ink from the box's edge: at the top, the bottom and the sides */
+    --place-pad: calc((var(--place-h) - var(--place-ink)) / 2);
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    box-sizing: border-box;
+    height: var(--place-h);
+    padding-left: calc(var(--place-pad) - var(--place-pin) * 2 / 24 + var(--place-stroke) / 2);
+    /* the arrow is nested in the top right corner (below): its ink is 11.25 of the 24 units of its box (the path from 7 to 17, the 1.25 stroke on top), and the text keeps a gap from it */
+    padding-right: calc(var(--place-pad) + var(--place-arrow) * 11.25 / 24 + 0.75rem);
+    color: var(--foreground);
+    text-decoration: none;
+    transition: background-color var(--duration-fast) var(--ease-standard);
+  }
+  /* (at the right end of the camera's row when both fit; with no camera it is the only thing on the row and stays at the left) */
+  .entry-facts-row[data-facts="row"] .entry-exposure ~ .entry-place-link {
+    margin-left: auto;
+  }
+  @container (min-width: 46rem) {
+    .entry-facts-row:not([data-facts]) .entry-exposure ~ .entry-place-link {
+      margin-left: auto;
+    }
+  }
+  /* (in a row the link ends at the right corner: its arrow's ink is its padding from its box's edge, which hangs out into the head's gutter by what is left of it; and the box is taller than the camera's text, which lies in the middle of it, so the row's foot is that padding under the ink) */
+  .entry-facts-row[data-facts="row"] .entry-place-link {
+    margin-right: calc(var(--corner-x) - var(--hero-px) - var(--place-pad));
+  }
+  /* Stacked: the link first, then the camera's block, on the shared icon column (their text starts at one distance), and the link's hover plate reaches out to the left by its padding so its icon is the camera's. */
+  .entry-facts-row[data-facts="stack"] .entry-place-link {
+    order: -1;
+  }
+  .entry-facts-row[data-facts="stack"] .entry-exposure {
+    display: grid;
+    grid-template-columns: var(--facts-icon-col) auto;
+    column-gap: 0.75rem;
+  }
+  .entry-facts-row[data-facts="stack"] .entry-exposure .entry-exposure-mark {
+    justify-self: center;
+  }
+  .entry-facts-row[data-facts="stack"] .entry-place-link {
+    display: grid;
+    grid-template-columns: var(--facts-icon-col) auto;
+    column-gap: 0.75rem;
+    margin-left: calc(-1 * var(--place-pad) + var(--place-pin) * 2 / 24 - var(--place-stroke) / 2);
+  }
+  .entry-facts-row[data-facts="stack"] .entry-place-link svg.entry-place-link-pin {
+    justify-self: center;
+  }
+  @container (max-width: 45.999rem) {
+    .entry-facts-row:not([data-facts]) .entry-place-link {
+      order: -1;
+    }
+    .entry-facts-row:not([data-facts]) .entry-exposure {
+      display: grid;
+      grid-template-columns: var(--facts-icon-col) auto;
+      column-gap: 0.75rem;
+    }
+    .entry-facts-row:not([data-facts]) .entry-exposure .entry-exposure-mark {
+      justify-self: center;
+    }
+    .entry-facts-row:not([data-facts]) .entry-place-link {
+      display: grid;
+      grid-template-columns: var(--facts-icon-col) auto;
+      column-gap: 0.75rem;
+      margin-left: calc(-1 * var(--place-pad) + var(--place-pin) * 2 / 24 - var(--place-stroke) / 2);
+    }
+    .entry-facts-row:not([data-facts]) .entry-place-link svg.entry-place-link-pin {
+      justify-self: center;
+    }
+  }
+  .entry-place-link:hover,
+  .entry-place-link:focus-visible {
+    background: var(--accent);
+  }
+  .entry-place-link-text {
+    text-transform: none;
+    font-weight: 400;
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    min-width: 0;
+    font-family: var(--font-mono);
+  }
+  /* (the line boxes are as tall as the type needs, descenders included: no overflow clip on them, a "g" in "Bogotá" keeps its tail) */
+  .entry-place-link-name {
+    font-size: var(--place-name);
+    line-height: 1.25;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+  .entry-place-link-cta {
+    font-size: var(--place-cta);
+    line-height: 1.2;
+    letter-spacing: 0.04em;
+    color: var(--muted-foreground);
+  }
+  .entry-place-link svg.entry-place-link-pin {
+    flex: none;
+    width: var(--place-pin);
+    height: var(--place-pin);
+    stroke-width: var(--place-stroke);
+    stroke-linecap: butt;
+    stroke-linejoin: round;
+    color: var(--muted-foreground);
+  }
+  .entry-place-link svg.entry-place-link-pin * {
+    vector-effect: non-scaling-stroke;
+  }
+  .entry-place-link svg.entry-place-link-arrow {
+    position: absolute;
+    top: calc(var(--place-pad) - var(--place-arrow) * 6.375 / 24);
+    right: calc(var(--place-pad) - var(--place-arrow) * 6.375 / 24);
+    width: var(--place-arrow);
+    height: var(--place-arrow);
+    stroke-width: 1.25;
     color: var(--muted-foreground);
   }
   .entry-exposure .entry-exposure-mark {
     /* the icon's ring spans 20 of its 24 units: the box is 1.2 times the text's height, and the extra 0.1 on each side is taken back, so the RING is as tall as the text
        (less the hairline: its stroke is centred on the ring, so half of it lies outside on each side) */
     --exposure-text: calc(1cap + var(--text-meta--line-height) + var(--exposure-gap));
-    height: calc((var(--exposure-text) - 1px) * 1.2);
+    height: calc((var(--exposure-text) - var(--exposure-stroke)) * 1.2);
     width: auto;
     aspect-ratio: 1;
-    margin-block: calc((var(--exposure-text) - 1px) * -0.1);
-    stroke-width: 1px;
+    margin-block: calc((var(--exposure-text) - var(--exposure-stroke)) * -0.1);
+    stroke-width: var(--exposure-stroke);
     stroke-linecap: butt;
     stroke-linejoin: round;
     color: var(--muted-foreground);
@@ -2020,9 +2457,15 @@
   }
   /* The block belongs to the picture it describes, so it sits nearer to the picture (1.5 rem, the stage's own 0.25 rem included) than to the standfirst above it (2 rem): the head's usual 1.75 rem of foot and the grid's
      2 rem of gap would put 4 rem between the block and its picture (owner, 2026-11-02: "the current gap breaks the hierarchy"). */
-  .entry:has(.entry-exposure) .entry-hero {
-    --cover-foot: 0rem;
-    margin-bottom: -0.75rem;
+  .entry:has(.entry-facts-row) .entry-hero {
+    /* (the head clips what is outside it: a quarter rem under the text, so that nothing of it is cut, taken back below) */
+    --cover-foot: 0.25rem;
+    /* the camera and the link hug the corners (they hang out into the head's gutter): below, the picture is as near as the sides are (`--corner` under their ink: 2 rem of the grid's gap less this, less the quarter rem above) */
+    margin-bottom: -1.45rem;
+  }
+  /* (in a row the link's box is taller than the text, by its padding, 8.5 px, under the ink) */
+  .entry:has(.entry-facts-row[data-facts="row"]) .entry-hero {
+    margin-bottom: -1.94rem;
   }
   .entry-exposure-text {
     min-width: 0;
@@ -2377,7 +2820,8 @@
       inset: -0.8125rem -0.5rem;
     }
 
-    .entry-margin li {
+    /* (not the tags': a chip is as tall as its words, its hit area is the link's `::before` below) */
+    .entry-margin :not(.ds-tags) > li {
       display: flex;
       align-items: center;
       min-height: 2.75rem;
@@ -2683,7 +3127,8 @@
 
     /* A poem: the title and the lines in 4-10, the marginalia beside the title, 34 px down (the board). */
     .entry[data-kind="poem"][data-layout="full"] .entry-grid {
-      padding-top: 5.5rem;
+      /* (none: the running head and the cover start right under the header, as every other kind's do; there was 5.5 rem here, which left the cover far below the navbar, #582) */
+      padding-top: 0;
     }
 
     /* (the head runs the whole width, as every kind's does: the running head's rule and the cover's picture bleed; the title keeps its columns, 4 to 10) */
@@ -2918,8 +3363,16 @@
      the site's name, the rule and the big title are not drawn (the title stays in the page for assistive technology, search and the document
      outline, clipped; print keeps all of it), and the folio, "4 poems", is one small mono line above the filter. The career page's running head
      ("Career", "Updated ...") goes the same way: its "Updated" moves under the availability line (`.career-updated`). */
+  /* The career page has no running head: "Updated Month YYYY" is set under the "Get in touch" button, at every width, in the reading face, italic and muted (owner, 2026-11-04). */
   .career-updated {
-    display: none;
+    display: block;
+    margin: 1.25rem 0 0;
+    color: var(--muted-foreground);
+    font-family: var(--font-reading);
+    font-size: 0.9375rem;
+    font-style: italic;
+    letter-spacing: 0;
+    text-transform: none;
   }
 
   @media screen and (max-width: 55.99rem) {
@@ -2943,15 +3396,6 @@
       white-space: nowrap;
     }
 
-    [data-slot="career-head"] .list-running {
-      display: none;
-    }
-
-    .career-updated {
-      display: block;
-      margin: 0.5rem 0 0;
-      color: var(--muted-foreground);
-    }
   }
 
   .list-title {
@@ -3459,6 +3903,21 @@
     grid-area: 1 / 1;
   }
 
+  /* The overlay's ground and ink: the page's own until the picture has been read (`useWallTones`, lib/image-tone.ts), then black and white as it is dark or light where the caption is, in both schemes (as the place panel's carousel). */
+  .wall-card {
+    --label-bg: var(--background);
+    --label-ink: var(--foreground);
+  }
+  /* Over a dark picture the page's own scheme decides (owner, 2026-11-06): black in the dark scheme, a light GREY in the light one; over a light picture white in the light scheme, a dark GREY in the dark one. Never the pure opposite of the page: a white fog over a bright photograph on the dark page (and a black one over a dark photograph on the light page) is what looked washed out. Solid greys; the dome's own fade is the only opacity. */
+  .wall-card[data-tone="dark"] {
+    --label-bg: light-dark(#d6d6d6, #000);
+    --label-ink: light-dark(#111, #fff);
+  }
+  .wall-card[data-tone="light"] {
+    --label-bg: light-dark(#fff, #3a3a3a);
+    --label-ink: light-dark(#111, #fff);
+  }
+
   /* z-index (a grid item takes it without being positioned): the picture's box is positioned and would paint over a static plate, and a positioned plate would shrink the title link's stretched hit area to itself. */
   .wall-caption {
     z-index: 1;
@@ -3469,19 +3928,24 @@
        whole behind and no plate cutting it (owner, 2026-11-02: "instead of cropping and revealing the text under"). The room above the text is the ramp's own; the title is two lines at most, so its height is capped. */
     padding: 4.5rem 0.875rem 0.75rem;
     overflow: visible;
-    color: var(--foreground);
+    color: var(--label-ink);
     background: linear-gradient(
       to top,
-      var(--background) 0%,
-      var(--background) 10%,
-      color-mix(in srgb, var(--background) 78%, transparent) 36%,
-      color-mix(in srgb, var(--background) 38%, transparent) 66%,
+      var(--label-bg) 0%,
+      var(--label-bg) 10%,
+      color-mix(in srgb, var(--label-bg) 78%, transparent) 36%,
+      color-mix(in srgb, var(--label-bg) 38%, transparent) 66%,
       transparent 100%
     );
   }
 
   .wall-title {
     font-size: 1.125rem;
+  }
+
+  /* (over the picture the second line is the ink a little eased towards the ground, not the page's muted grey: that one is for the page) */
+  .wall-meta {
+    color: color-mix(in srgb, var(--label-ink) 82%, var(--label-bg));
   }
 
   /* On a touch screen EVERY picture has the overlay, always, so its backdrop must not be seen as a band (owner, 2026-11-02: a short linear ramp was sharp and fast, and on a white picture a visible shelf). It is ONE
@@ -3524,7 +3988,7 @@
       grid-area: 1 / 1 / 3 / 2;
       z-index: -1;
       margin: calc(-1 * var(--veil-pad-top)) calc(-1 * var(--veil-pad-x)) calc(-1 * var(--veil-pad-bottom));
-      background: color-mix(in srgb, var(--background) 40%, transparent);
+      background: color-mix(in srgb, var(--label-bg) 40%, transparent);
       border-radius: 9999px;
       filter: blur(var(--veil-blur));
     }
@@ -3535,7 +3999,7 @@
 
     /* the medium and the year are in the ink, not the muted grey: over a lighter backdrop (a white picture on the dark page, a dark one on the light page) the grey fell to under 2:1 */
     .wall-meta {
-      color: color-mix(in srgb, var(--foreground) 88%, var(--background));
+      color: color-mix(in srgb, var(--label-ink) 88%, var(--label-bg));
     }
   }
 
@@ -3560,6 +4024,13 @@
       --cap: 5.5rem;
     }
 
+    /* (the caption is on the page here, not on the picture: the page's colours whatever the picture) */
+    .wall-card,
+    .wall-card[data-tone] {
+      --label-bg: var(--background);
+      --label-ink: var(--foreground);
+    }
+
     .wall-media,
     .wall-caption {
       grid-area: auto;
@@ -3567,6 +4038,7 @@
 
     .wall-caption {
       z-index: auto;
+      color: var(--foreground);
       height: var(--cap);
       padding: var(--wall-gutter) var(--wall-gutter) 0;
       overflow: hidden;
@@ -3810,20 +4282,34 @@
     isolation: isolate;
   }
 
+  /* In the full-screen entry view the page's margin is 2 rem (the content's gutter, and the copy-link button's right edge), not 3.5: the search's box ends where they do (#582). */
+  body:has([data-slot="entry-view"][data-layout="full"]) [data-slot="site-header"] [data-slot="search-trigger"] {
+    right: calc((100% - 100cqw) / 2 + 2rem);
+  }
+
   /* Docked outside the row, the search is past the row's own fade (`.nav-fade`): over the globe it had no ground (owner, 2026-10-30). A soft plate of its own, the page's colour at the middle and gone at the edge (a radial ramp in eased stops: no box, no blur to pay for), like the player's at the other corner. */
   [data-slot="site-header"] [data-slot="search-trigger"]::before {
     content: "";
     position: absolute;
     z-index: -1;
-    inset: -1.5rem -3rem;
+    /* the same ellipse as the player's (`.np::before`: thirteen eased stops, the page's colour flat over the middle third, and well past the words), so that it is impossible to tell it from a rectangle or an ellipse (#590) */
+    inset: -7.5rem -7rem -4rem;
     pointer-events: none;
+    --np-plate: color-mix(in srgb, var(--background) 82%, transparent);
     background: radial-gradient(
       closest-side,
-      color-mix(in srgb, var(--background) 85%, transparent) 0%,
-      color-mix(in srgb, var(--background) 82%, transparent) 40%,
-      color-mix(in srgb, var(--background) 62%, transparent) 60%,
-      color-mix(in srgb, var(--background) 28%, transparent) 78%,
-      color-mix(in srgb, var(--background) 7%, transparent) 91%,
+      color-mix(in srgb, var(--np-plate) 100%, transparent) 35%,
+      color-mix(in srgb, var(--np-plate) 98%, transparent) 40%,
+      color-mix(in srgb, var(--np-plate) 93%, transparent) 46%,
+      color-mix(in srgb, var(--np-plate) 84%, transparent) 51%,
+      color-mix(in srgb, var(--np-plate) 74%, transparent) 57%,
+      color-mix(in srgb, var(--np-plate) 62%, transparent) 62%,
+      color-mix(in srgb, var(--np-plate) 50%, transparent) 68%,
+      color-mix(in srgb, var(--np-plate) 38%, transparent) 73%,
+      color-mix(in srgb, var(--np-plate) 26%, transparent) 78%,
+      color-mix(in srgb, var(--np-plate) 16%, transparent) 84%,
+      color-mix(in srgb, var(--np-plate) 7%, transparent) 89%,
+      color-mix(in srgb, var(--np-plate) 2%, transparent) 95%,
       transparent 100%
     );
   }
@@ -3995,7 +4481,7 @@ html[data-eclipse] .landing-hero {
 /*
  * The entry panel's head on a phone (owner, 2026-11-02, #546: a row with only the close button over a second row with the back link, the kind, the place and the date "wastes vertical space"; 2026-11-03: "the text should be
  * centred and properly nested ... the padding at the left and the right equal to the one at the top and the bottom, and the bar a little smaller"): the close button has no row of its own, it floats at the top right on a plate of
- * the page's colour (a circle, blurred) and the running head (`.entry-running`, entry-view.tsx) is the band beside it with ONE padding all round, the page's gutter (1.5 rem: the text's left edge is the title's), one line of
+ * the page's colour (square, blurred) and the running head (`.entry-running`, entry-view.tsx) is the band beside it with ONE padding all round, the page's gutter (1.5 rem: the text's left edge is the title's), one line of
  * text (line height 1) centred between the top of the panel and the hairline, and the close button's glyph as far from the right edge as the text is from the left; the place is cut with an ellipsis when the line is too short.
  * Only where the panel holds an entry (the other panels keep their bar as it was).
  */
@@ -4017,7 +4503,8 @@ html[data-eclipse] .landing-hero {
   }
 
   [data-panel="dialog"]:has([data-slot="entry-view"]) [data-slot="panel-bar"] > button {
-    border-radius: 9999px;
+    /* (a square plate, sharp like everything of the system's: a circle is not one of its shapes) */
+    border-radius: 0;
     background: color-mix(in srgb, var(--background) 86%, transparent);
     -webkit-backdrop-filter: blur(8px);
     backdrop-filter: blur(8px);
@@ -4500,6 +4987,11 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     opacity: 1;
   }
 
+  .wall-card[data-tone] {
+    --label-bg: var(--background);
+    --label-ink: var(--foreground);
+  }
+
   :root {
     color-scheme: light;
     --background: #fff;
@@ -4606,7 +5098,6 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   .nav-scrim,
   #app > header,
   main:has([data-globe]),
-  [data-dev-content-badge],
   [data-slot="skip-links"] {
     display: none !important;
   }
@@ -4684,6 +5175,95 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
    * label's sharp, fully opaque edge (no feather), so that it hides what is behind it (the globe's lines, the stars) and reads on any of it. Out of sight and out of
    * the pointer's way until the moon is held.
    */
+  /* The orbit display (#586, engine/moon-overlay.ts `OrbitHud`): drawn while the card is held and for the fade after it. The lines are pixel art on their own canvas of the map's cells; the words are SVG text at the screen's resolution, in the map's mono type. */
+  .globe-moon-hud-pixels {
+    position: absolute;
+    image-rendering: pixelated;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.4s var(--ease-standard);
+  }
+
+  .globe-moon-hud-pixels[data-on] {
+    opacity: 1;
+  }
+
+  .globe-moon-hud {
+    /* the display's colours: the accent toned down towards the ink (it reads as a grey with a hint of blue) and, for the earth's shadow, a saturated purple */
+    --hud-tint: color-mix(in srgb, var(--signal-text, currentColor) 38%, var(--foreground));
+    --hud-umbra: oklch(0.66 0.21 305);
+    --hud-solar: oklch(0.8 0.16 75);
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    pointer-events: none;
+    font-family: var(--font-mono);
+    color: var(--foreground);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.4s var(--ease-standard), visibility 0s linear 0.4s;
+  }
+
+  .globe-moon-hud[data-on] {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.4s var(--ease-standard);
+  }
+
+  .globe-moon-hud-number,
+  .globe-moon-hud-readout,
+  .globe-moon-hud-along {
+    fill: currentColor;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    paint-order: stroke;
+    stroke: var(--background);
+    stroke-width: 3px;
+    stroke-linejoin: round;
+  }
+
+  .globe-moon-hud-number {
+    fill: var(--hud-tint);
+    fill-opacity: 0.55;
+  }
+
+  /* tinted with the accent, as the line (engine/moon-overlay.ts `accentFor`): the data above the orbit in it, the numbers too; the line below in the page's ink */
+  .globe-moon-hud-along {
+    font-size: 8px;
+    letter-spacing: 0.16em;
+    fill: var(--hud-tint);
+    fill-opacity: 0.6;
+  }
+
+  .globe-moon-hud-along-below {
+    fill-opacity: 0.42;
+  }
+
+  .globe-moon-hud-readout {
+    font-size: 10px;
+    fill: var(--hud-tint);
+    fill-opacity: 0.6;
+  }
+
+  .globe-moon-hud-solar {
+    fill: var(--hud-solar);
+    fill-opacity: 1;
+  }
+
+  .globe-moon-hud-eclipse {
+    fill: var(--hud-umbra);
+    fill-opacity: 1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .globe-moon-hud,
+    .globe-moon-hud-pixels {
+      transition: none;
+    }
+  }
+
   .globe-moon-card {
     --map-label-plate: var(--background);
     position: absolute;
@@ -5351,10 +5931,6 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
       }
     }
 
-    body:has([data-dev-content-badge]) .landing-hero {
-      --hero-clear: 5.75rem;
-    }
-
     /* A fifth row (the career page: `data-rows="5"`) is one more 44 px target, its hairline and the row's padding (measured 50 px at 375 x 667, with the gap: 56), which the name gives up. The stacked
        tiers below hold the row in two columns too: five rows are three lines there, which is also one more line. */
     .landing-hero[data-rows="5"] {
@@ -5813,17 +6389,6 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
       --hero-mini-left: var(--hero-gutter);
       --hero-mini-bottom: 3.25rem;
     }
-
-    body:has([data-dev-content-badge]) .hero-mini {
-      --hero-mini-bottom: 5.75rem;
-    }
-  }
-
-  /* Development only: the content badge sits bottom left (8 to 34 px). */
-  @media (min-width: 48rem) {
-    body:has([data-dev-content-badge]) .hero-mini {
-      --hero-mini-bottom: 2.75rem;
-    }
   }
 
   /*
@@ -6099,14 +6664,6 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
       margin-top: 1.25rem;
     }
 
-    [data-slot="career-head"] .career-updated {
-      margin: 1.75rem 0 0;
-      font-family: var(--font-reading);
-      font-size: 0.9375rem;
-      font-style: italic;
-      letter-spacing: 0;
-      text-transform: none;
-    }
   }
 
   .career-id-text {
@@ -6299,6 +6856,82 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     }
   }
 
+  /* The handle over the name (#588): every 10 s "BSoDium" comes in over the name, set like it (the heavy half and the thin one), and the name steps back under it, a little smaller and dimmed, as if it were the handle's shadow;
+     then the other way round. CSS only (the compositor's opacity and transform), nothing runs under reduced motion. */
+  .career-name {
+    position: relative;
+  }
+
+  .career-name-text {
+    display: inline-block;
+    transform-origin: 0 100%;
+  }
+
+  .career-name-handle {
+    position: absolute;
+    left: 0;
+    /* on the LAST line of the name (the family name's, when the name breaks in two on a phone), not the first: it comes down from above by the same distance and lands there */
+    bottom: 0;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .career-name-handle-heavy {
+    font-weight: 800;
+  }
+
+  .career-name-handle-thin {
+    font-weight: 200;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .career-name-text {
+      animation: career-name-shadow 10s var(--ease-standard) infinite;
+    }
+
+    .career-name-handle {
+      animation: career-name-handle 10s var(--ease-standard) infinite;
+    }
+  }
+
+  @keyframes career-name-shadow {
+    0%,
+    58% {
+      transform: none;
+      opacity: 1;
+    }
+    64%,
+    90% {
+      transform: translateY(0.09em) scale(0.93);
+      opacity: 0.28;
+    }
+    97%,
+    100% {
+      transform: none;
+      opacity: 1;
+    }
+  }
+
+  /* the handle comes down from above by as much as the name steps down (0.09 em, and a little more), fading in, and leaves upwards: it pushes the name down into its shadow and lets it up again */
+  @keyframes career-name-handle {
+    0%,
+    58% {
+      opacity: 0;
+      transform: translateY(-0.12em);
+    }
+    64%,
+    90% {
+      opacity: 1;
+      transform: none;
+    }
+    97%,
+    100% {
+      opacity: 0;
+      transform: translateY(-0.12em);
+    }
+  }
+
   /* The headline statement: the reading face, one paragraph, a comfortable measure. */
   .career-summary {
     margin: 1.5rem 0 0;
@@ -6328,7 +6961,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     flex-wrap: wrap;
     align-items: baseline;
     gap: 0.5rem 2rem;
-    margin-top: 2.5rem;
+    margin-top: 1.25rem;
     padding-block: 0.875rem;
     border-block: var(--hairline) solid var(--border);
   }
@@ -6826,8 +7459,9 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
 
   .contact-thanks {
     display: flex;
+    flex-direction: column;
     align-items: flex-start;
-    gap: 0.75rem;
+    gap: 0.5rem;
     align-self: start;
     z-index: 1;
     color: var(--foreground);
@@ -6835,10 +7469,26 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     animation: contact-thanks-in 0.5s var(--ease-standard) both;
   }
 
-  .contact-thanks .ui-icon {
+  /* The mark above the words: big and thin, an envelope with a check (#583). */
+  .contact-thanks .contact-thanks-icon {
     flex: none;
-    margin-top: 0.125rem;
-    color: var(--signal-text);
+    width: 3.5rem;
+    height: 3.5rem;
+    margin-bottom: 0.5rem;
+    stroke-width: 1;
+    color: var(--foreground);
+  }
+
+  /* the sentence under the title is the quieter of the two */
+  .contact-thanks-sub {
+    color: var(--muted-foreground);
+  }
+
+  .contact-thanks-title {
+    font-family: var(--font-reading);
+    font-size: 1.5rem;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
   }
 
   @keyframes contact-thanks-in {

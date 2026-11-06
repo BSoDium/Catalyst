@@ -13,9 +13,10 @@ import { useIsMobile } from "~/hooks/use-is-mobile";
 import { useLandingHero } from "~/hooks/use-landing-hero";
 import { isWorldView } from "~/lib/hero-machine";
 import { useViewportWidth } from "~/hooks/use-viewport-width";
-import { getProjection } from "~/lib/content.server";
+import { getContentMode, getProjection } from "~/lib/content.server";
+import { devBadgeLabel } from "~/lib/dev-badge";
 import { getTilesConfig } from "~/lib/tiles-config.server";
-import { focusPlaceOf, KIND_PATHS, KIND_PLURALS, parsePanelPath, parseView, resolveBackTarget, resolveListBack, viewSearch, type EntryView } from "~/lib/entries";
+import { focusPlaceOf, KIND_PATHS, KIND_PLURALS, parsePanelPath, parseView, resolveBackTarget, viewSearch, type EntryView } from "~/lib/entries";
 import { panelInset } from "~/lib/layout";
 import { buildPlaceIndex, placePath, toGlobeGroups } from "~/lib/projection";
 import { countryGroupOf, parseCountryParam } from "~/lib/country";
@@ -38,7 +39,8 @@ export async function loader() {
   // How much of each kind there is (the caption's third phrase set): the projection's own collections.
   const counts: KindCounts = { project: projection.projects.length, article: projection.articles.length, artwork: projection.artworks.length, poem: projection.poems.length, photograph: projection.photographs.length };
   // `dataVersion`: which content this is (the credits show it: #504); null where the projection does not say (a local or demo one).
-  return { ...buildPlaceIndex(projection), tiles: getTilesConfig(), counts, dataVersion: projection.dataVersion ?? null };
+  // `devNote`: in development, which data this is (preview or demo; the credits show it beside the version); null in production, where the branch is dead code.
+  return { ...buildPlaceIndex(projection), tiles: getTilesConfig(), counts, dataVersion: projection.dataVersion ?? null, devNote: devBadgeLabel(import.meta.env.DEV ? getContentMode() : null, import.meta.env.DEV) };
 }
 
 /** The place index never changes between navigations inside the shell. */
@@ -53,9 +55,9 @@ export function shouldRevalidate() {
  * in the full-screen container: the panel widens over the SAME globe, which stays mounted and keeps its view.
  */
 export default function Shell({ loaderData }: Route.ComponentProps) {
-  const { places, globePlaces, groups, routes, tiles, counts, dataVersion } = loaderData;
+  const { places, globePlaces, groups, routes, tiles, counts, dataVersion, devNote } = loaderData;
   // The credits slot with the content's version (the slot is a component type: made once per version, not per render, or the button would remount).
-  const attribution = useMemo(() => (props: GlobeAttributionProps) => <AttributionSlot {...props} dataVersion={dataVersion} />, [dataVersion]);
+  const attribution = useMemo(() => (props: GlobeAttributionProps) => <AttributionSlot {...props} dataVersion={dataVersion} devNote={devNote} />, [dataVersion, devNote]);
   // The caption's rows (built once: the globe reads them once, when it is created).
   const captionPhrases = useMemo(() => siteCaption(counts), [counts]);
   const globeGroups = useMemo(() => toGlobeGroups(groups), [groups]);
@@ -102,12 +104,10 @@ export default function Shell({ loaderData }: Route.ComponentProps) {
     return g ? { lon: g.coordinates.lon, lat: g.coordinates.lat, fitRadiusKm: g.viewRadiusKm } : null;
   }, [globePlaces, selectedSlug, framedGroup, groups]);
 
-  // An entry opened from a list closes to that list, not to the map (owner, 2026-10-29); anything else closes to the map.
-  const listBack = panelRoute?.type === "entry" ? resolveListBack(location.state) : null;
-  const closeTo = listBack?.href ?? "/";
+  // The panel's X (and Escape) closes to the map, whatever opened it (owner, 2026-11-04: it replaces the 2026-10-29 rule that an entry opened from a list closed to that list: the way back to the list is the kind's own link in the entry's running head).
   const close = useCallback(() => {
-    void navigate(closeTo, { preventScrollReset: true });
-  }, [navigate, closeTo]);
+    void navigate("/", { preventScrollReset: true });
+  }, [navigate]);
   // The container is part of the URL (`?view=full`): a history entry, so Back collapses; the router state (where the visitor came from) is kept.
   const setView = useCallback(
     (next: EntryView) => {

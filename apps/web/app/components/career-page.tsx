@@ -9,7 +9,7 @@ import { CONTACT_ID } from "~/lib/contact";
 import { safeExternalUrl } from "~/lib/entry-blocks";
 import { entryPath, placePath } from "~/lib/entries";
 import { PORTRAIT_EGG, portraitEggDrawn } from "~/lib/portrait-egg";
-import { SITE } from "~/lib/site";
+import { SITE, SITE_HANDLE_LINE } from "~/lib/site";
 import { useForcedScheme } from "~/lib/theme";
 
 /**
@@ -43,19 +43,19 @@ export function CareerPage({ career, places = [], projects = [] }: { career: Pub
       className="entry career mx-auto max-w-[90rem] px-4 pt-[calc(var(--navbar-height)+0.5rem)] min-[56rem]:pt-[calc(var(--navbar-height)+3rem)] pb-24 outline-none md:px-14 print:max-w-none print:p-0"
     >
       <header data-slot="career-head" className="list-head">
-        <p className="list-running type-meta">
-          <span>{career.title}</span>
-          {updated && (
-            <span>
-              Updated <time dateTime={career.updated}>{updated}</time>
-            </span>
-          )}
-        </p>
         <div className="career-id" data-portrait={portrait ? "true" : "false"}>
           <div className="career-id-text">
-            <h1 id="career-name" className="list-title career-name">
-              {SITE.givenName} <span className="career-name-family">{SITE.familyName}</span>
+            {/* Every 10 s the handle comes in over the name, and the name steps back under it, smaller and dimmed, like its shadow (#588): CSS only, `.career-name-handle` and `.career-name-text`. */}
+            <h1 id="career-name" className="list-title career-name" aria-label={SITE.name}>
+              <span className="career-name-text">
+                <span className="career-name-given">{SITE.givenName}</span> <span className="career-name-family">{SITE.familyName}</span>
+              </span>
+              <span aria-hidden="true" className="career-name-handle">
+                <span className="career-name-handle-heavy">{SITE.handle.slice(0, 4)}</span>
+                <span className="career-name-handle-thin">{SITE.handle.slice(4)}</span>
+              </span>
             </h1>
+            <span className="sr-only">{SITE_HANDLE_LINE}</span>
             <p className="career-summary">{career.summary}</p>
             <div className="career-cta">
             {available && (
@@ -179,7 +179,7 @@ export function CareerPage({ career, places = [], projects = [] }: { career: Pub
 }
 
 /**
- * The head's button to the form (#528): a plain click scrolls there smoothly (instantly under reduced motion), moves the focus to the section (without a second jump) and puts the
+ * The head's button to the form (#528): a plain click scrolls there smoothly (instantly under reduced motion), moves the focus to the first field of the form (without a second jump) and puts the
  * address in the bar; any other click (a modifier, a middle button) and a page without the form are the link's own. The arrow at its end is turned down by the stylesheet while the button is hovered or pressed.
  */
 function scrollToContact(e: React.MouseEvent<HTMLAnchorElement>) {
@@ -190,7 +190,8 @@ function scrollToContact(e: React.MouseEvent<HTMLAnchorElement>) {
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   target.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
   history.replaceState(null, "", `#${CONTACT_ID}`);
-  target.focus({ preventScroll: true });
+  // the first field, so the visitor can start typing; the section itself when the form is not drawn (it is replaced by the thank-you note once sent)
+  (target.querySelector<HTMLElement>('input[name="name"]') ?? target).focus({ preventScroll: true });
 }
 
 /**

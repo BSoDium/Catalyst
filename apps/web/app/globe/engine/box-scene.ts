@@ -582,7 +582,11 @@ export class BoxScene {
     const paint = [...items].sort((a, b) => Number(this.modeOf(a.i, a.wanted) !== "rest") - Number(this.modeOf(b.i, b.wanted) !== "rest") || a.score - b.score);
     this.overlay.frame(h, (buf) => {
       // an outline with its inside in the page colour, like a box that the minimum size has made bigger than the place
-      for (const g of ghosts) drawBox(buf, g.rect, this.tones, { alpha: quantAlpha(g.alpha), fillAlpha: quantAlpha(g.alpha), active: false });
+      for (const g of ghosts) {
+        // like a drawn box: closed and masked at the floor size, and from the moment its edges open into dashes (#585) hollow, so the map shows through
+        const open = ghostOpenness(g.rect);
+        drawBox(buf, g.rect, this.tones, { alpha: quantAlpha(g.alpha), fillAlpha: open > 0 ? 0 : quantAlpha(g.alpha), active: false, open });
+      }
       for (const t of paint) {
         const mode = this.modeOf(t.i, t.wanted);
         drawBox(buf, t.rect, this.tones, { alpha: this.alphaOf(t, mode), fillAlpha: this.fillAlphaOf(t, mode), active: mode !== "rest", solid: mode === "selected", open: this.openNessOf(t) });
@@ -654,4 +658,9 @@ export class BoxScene {
     this.overlay.dispose();
     this.targets = [];
   }
+}
+
+/** How open the outline of a ghost box is (`boxOpenness` of its drawn size in cells against the floor's, like a drawn box's): 0 is a closed rectangle, which keeps its mask. */
+export function ghostOpenness(rect: CellRect): number {
+  return boxOpenness(Math.min(rect.c1 - rect.c0, rect.r1 - rect.r0), LOD.floorCells);
 }

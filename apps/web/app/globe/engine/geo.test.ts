@@ -160,6 +160,14 @@ describe("projectUnit", () => {
       }
     }
   });
+  it("the point under the camera is visible at any zoom, up to the street map's last levels (#622)", () => {
+    for (const zoom of [3, 12, 16, 16.3, 17, 18, 19, 21]) {
+      const basis = viewBasis({ lon: 12.59, lat: 55.685, zoom }, 900);
+      const p = projectLonLat(12.59, 55.685, basis, 1440, 900);
+      expect(p.visible, `zoom ${zoom}`).toBe(true);
+      expect(p.facing, `zoom ${zoom}`).toBeGreaterThan(0.9);
+    }
+  });
   it("fills the object it is given", () => {
     const out = { x: 0, y: 0, visible: false, facing: 0 };
     const basis = viewBasis({ lon: 0, lat: 0, zoom: 3 }, 900);

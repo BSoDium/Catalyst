@@ -92,6 +92,7 @@ export function EntryRow({
   priority,
   className,
   linkState,
+  compact,
 }: {
   entry: EntrySummary;
   headingLevel?: 2 | 3 | 4;
@@ -99,14 +100,78 @@ export function EntryRow({
   className?: string;
   /** The router state of the row's link: where the entry was opened from (`listBackState`). */
   linkState?: unknown;
+  /** The row of a narrow column (the place panel): the same type as the list page's, in one column, with the place left out (the panel is that place). */
+  compact?: boolean;
 }) {
   const Heading = `h${headingLevel}` as "h2" | "h3" | "h4";
   const date = formatEntryDate(entry.date);
   const place = placeLine(entry.places);
   const { status } = splitMeta(entry.meta);
   const cover = entry.cover && safeMediaSrc(entry.cover.src) ? { ...coverImageProps(entry.cover, ROW_COVER_SIZES), alt: entry.cover.alt } : null;
-  const showCover = !!cover || entry.kind === "artwork";
+  // (an artwork's picture IS its page; in the place panel every row has its picture, its own or a generated one)
+  const showCover = !!cover || entry.kind === "artwork" || compact === true;
   const tags = entry.tags.slice(0, 4);
+  if (compact) {
+    return (
+      <article
+        id={entry.slug}
+        data-slot="entry-card"
+        data-kind={entry.kind}
+        data-compact=""
+        data-covered={showCover ? "" : undefined}
+        className={cn(
+          "ds-card entry-row grid min-w-0 grid-cols-1 gap-x-5 gap-y-3 py-5",
+          // (a poem's picture is a narrow one beside its words, as tall as they are (the words being what a poem is for); the others' is bigger, from 28 rem)
+          showCover && (entry.kind === "poem" ? "grid-cols-[5rem_minmax(0,1fr)] @md:grid-cols-[6.5rem_minmax(0,1fr)]" : "@md:grid-cols-[11rem_minmax(0,1fr)]"),
+          showCover && "@max-md/group:grid-cols-1 @max-md/group:grid-rows-[minmax(0,1fr)_auto_auto_auto_auto] @max-md/group:gap-y-0 @max-md/group:pt-0",
+          className,
+        )}
+      >
+        {showCover && (
+          // (in a wide panel the picture is as tall as the text beside it and fills its cell; in a narrow one, a phone's, it is the list page's: full width, the date and the title resting on its foot, where it dissolves into the page)
+          <div
+            className={cn(
+              "place-row-cover relative min-w-0 overflow-hidden @max-md/group:-mx-6 @max-md/group:aspect-[4/3] @max-md/group:self-auto @max-md/group:[grid-area:1/1/4/2]",
+              entry.kind === "poem" ? "min-h-24 self-stretch" : "aspect-[16/10] @md:aspect-auto @md:min-h-32",
+            )}
+          >
+            {cover && entry.sensitive === true ? (
+              <SensitiveMedia className="absolute inset-0 [&_.sensitive-media-content]:size-full">
+                <img src={cover.src} srcSet={cover.srcSet} sizes={cover.sizes} alt={cover.alt} loading="lazy" decoding="async" className="size-full object-cover" />
+              </SensitiveMedia>
+            ) : cover ? (
+              <img src={cover.src} srcSet={cover.srcSet} sizes={cover.sizes} alt={cover.alt} loading="lazy" decoding="async" className="absolute inset-0 size-full object-cover" />
+            ) : (
+              <div className="absolute inset-0 [&>*]:size-full">
+                <CoverArt seed={entry.slug} kind={entry.kind} cols={48} rows={27} />
+              </div>
+            )}
+          </div>
+        )}
+        <div className="flex min-w-0 flex-col gap-2.5 @max-md/group:contents">
+          {(date || status) && (
+            <p className="type-meta m-0 flex flex-wrap @max-md/group:z-10 @max-md/group:self-end @max-md/group:[grid-area:2/1] items-baseline gap-x-3 text-muted-foreground">
+              {date && <time dateTime={date.dateTime}>{date.text}</time>}
+              {status && <StatusTag status={status} className="text-[length:inherit] leading-[inherit] [font:inherit] tracking-[inherit] uppercase" />}
+            </p>
+          )}
+          <Heading data-slot="entry-card-title" className="m-0 font-display text-[1.625rem] leading-[1.06] font-extrabold tracking-[-0.025em] text-balance @max-md/group:z-10 @max-md/group:pt-1 @max-md/group:pb-3.5 @max-md/group:[grid-area:3/1]">
+            <Link to={entry.href} state={linkState} className="after:absolute after:inset-0 after:content-[''] focus-visible:outline-none">
+              {entry.title}
+            </Link>
+          </Heading>
+          {entry.summary &&
+            (entry.kind === "poem" ? (
+              // (a poem's summary is what the row has to read: the ink and a larger size, as in the poems' list)
+              <p className="m-0 line-clamp-4 font-reading text-[1.1875rem] leading-[1.4] text-pretty text-foreground @max-md/group:pt-1 @max-md/group:[grid-area:4/1]">{entry.summary}</p>
+            ) : (
+              <p className="m-0 line-clamp-3 font-reading text-[1.0625rem] leading-[1.4] font-light text-pretty text-muted-foreground @max-md/group:pt-1 @max-md/group:[grid-area:4/1]">{entry.summary}</p>
+            ))}
+          {tags.length > 0 && <TagList label="Tags" tags={tags.map((label) => ({ label }))} className="font-meta text-xs @max-md/group:pt-3 @max-md/group:[grid-area:5/1]" />}
+        </div>
+      </article>
+    );
+  }
   if (entry.kind === "poem") return <PoemRow entry={entry} Heading={Heading} date={date} place={place} status={status} tags={tags} className={className} linkState={linkState} />;
   return (
     <article

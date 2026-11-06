@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import { useLayoutEffect, useRef, type CSSProperties, type ReactNode } from "react";
 import { Link } from "react-router";
 import { PANEL_HEADING_ID } from "~/components/detail-panel";
 import { BlockRenderer } from "~/components/entry/blocks";
@@ -69,6 +69,42 @@ export function EntryView(props: EntryViewProps) {
     <SensitiveMediaScope key={`${entry.kind}/${entry.slug}`} sensitive={isSensitive(entry)}>
       <EntryArticle {...props} />
     </SensitiveMediaScope>
+  );
+}
+
+/**
+ * The camera's block and the link to the place of a photograph: in one row, the link at the right end, when they fit; else stacked at the left. The row is tried first and, if the link
+ * has been wrapped to a line of its own, they are stacked: in between, a wrapped row would leave the link at the right, on its own line (`data-facts`, styled in app.css; until this has run the
+ * container's width decides).
+ */
+function FactsRow({ className, entry, children }: { className?: string; /** What the row is about: when it changes the row is arranged again (a longer camera's name fits in fewer widths), not only when its width does. */ entry: string; children: ReactNode }) {
+  const row = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = row.current;
+    if (!el) return;
+    let width = -1;
+    const arrange = () => {
+      const [a, b] = Array.from(el.children) as HTMLElement[];
+      el.dataset.facts = "row";
+      if (a && b && b.offsetTop >= a.offsetTop + a.offsetHeight) el.dataset.facts = "stack";
+    };
+    const observe = () => {
+      if (el.clientWidth === width) return;
+      width = el.clientWidth;
+      arrange();
+    };
+    arrange();
+    width = el.clientWidth;
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(observe);
+    observer.observe(el);
+    void document.fonts?.ready.then(arrange);
+    return () => observer.disconnect();
+  }, [entry]);
+  return (
+    <div ref={row} data-slot="entry-facts-row" className={cn("entry-facts-row", className)}>
+      {children}
+    </div>
   );
 }
 
@@ -248,18 +284,6 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
     >
       <div className="entry-grid">
         <header className={cn("entry-head flex min-w-0 flex-col", poem && !heroSrc ? "gap-5" : "gap-0")}>
-          {backTo && !backTo.list && (
-            <Link
-              to={backTo.href}
-              className="type-meta -ml-1 mb-3 inline-flex min-h-11 w-fit items-center gap-2 px-1 text-muted-foreground no-underline hover:text-foreground hover:underline print:hidden"
-            >
-              <Icon name="arrow-left" size="inline" />
-              <span>
-                Back to {!backTo.list && <span className="sr-only">place </span>}
-                {backTo.name}
-              </span>
-            </Link>
-          )}
           <p
             data-slot="entry-meta"
             className={cn(
@@ -271,7 +295,22 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
               full ? "-mx-4 px-4 md:-mx-8 md:px-8" : "-mx-6 px-6",
             )}
           >
-            <span className="min-w-0 max-md:flex-1 max-md:truncate max-md:whitespace-nowrap">
+            <span className={cn("min-w-0 max-md:flex-1 max-md:truncate max-md:whitespace-nowrap", backTo && !backTo.list && "flex-1 truncate whitespace-nowrap")}>
+              {backTo && !backTo.list && (
+                <>
+                  {/* (opened from a place: the way back is the first word of the running head, as the kind's name is when opened from its list: a row of its own over the head was two lines for one thing; the head is ONE line, cut at the end when it does not fit) */}
+                  <Link
+                    to={backTo.href}
+                    aria-label={`Back to place ${backTo.name}`}
+                    data-slot="entry-back"
+                    className="relative text-muted-foreground no-underline after:absolute after:-inset-x-1 after:-inset-y-3 after:content-[''] hover:text-foreground hover:underline print:hidden"
+                  >
+                    <Icon name="arrow-left" size="inline" className="mr-1.5 align-[-0.2em]" />
+                    {backTo.name}
+                  </Link>
+                  <span aria-hidden="true" className="print:hidden"> &middot; </span>
+                </>
+              )}
               {backTo?.list ? (
                 // (opened from its list: the kind's name IS the way back, in the running head, so it has no row of its own: a back link with the same word over the kind was two lines for one thing)
                 <Link
@@ -312,7 +351,8 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
                 </>
               )}
             </span>
-            {poem && <span className="-my-2.5 self-center print:hidden max-md:-my-4">{copy}</span>}
+            {/* (in full screen the button's box ends on the cover's right edge, which is the running head's own: the running head's gutter is given back on that side; in the panel the box is as far from the right edge as it is from the rule under it, 5 px: the gutter, 24 px, less that) */}
+            {poem && <span className={cn("-my-2.5 self-center print:hidden max-md:-my-4", full ? "md:-mr-8" : "md:-mr-[19px]")}>{copy}</span>}
             {(status || reading) && (
               <span className="flex items-baseline gap-4 max-md:hidden">
                 {status && <StatusTag status={status} className="text-[length:inherit] leading-[inherit] [font:inherit] tracking-[inherit] uppercase" />}
@@ -333,7 +373,22 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
                 {tail ? <span className="entry-title-tail">{tail}</span> : null}
               </h1>
               {entry.summary && !poem && <p className="type-standfirst mt-[1.375rem] max-w-[25.4em] md:mt-[2.125rem]">{entry.summary}</p>}
-              {exposure && <ExposureBlock exposure={exposure} />}
+              {/* The way to the place a photograph is about, up where it is read (the other kinds have it in "At a glance", as a link, or in the tags) and not only in a tag or on the map (#581): on the camera's row, at its right end, as tall as the camera's mark, in two lines. They are not the head's text: they nest in its corners (`.entry-facts-row`), each as near to the edges as the picture is below, and are stacked at the left, not wrapped, where they do not fit on one row (`FactsRow`). */}
+              {(exposure || (entry.kind === "photograph" && globeTarget)) && (
+                <FactsRow entry={entry.slug} className={full ? "[--hero-px:1rem] md:[--hero-px:2rem]" : "[--hero-px:1.5rem]"}>
+                  {exposure && <ExposureBlock exposure={exposure} />}
+                  {entry.kind === "photograph" && globeTarget && (
+                    <Link to={globeTarget.href} data-slot="entry-place-link" className="entry-place-link type-meta print:hidden">
+                      <Icon name="globe" size="large" className="entry-place-link-pin" />
+                      <span className="entry-place-link-text">
+                        <span className="entry-place-link-name">{globeTarget.name}</span>
+                        <span className="entry-place-link-cta">Open on the map</span>
+                      </span>
+                      <Icon name="arrow-up-right" size="large" className="entry-place-link-arrow" />
+                    </Link>
+                  )}
+                </FactsRow>
+              )}
               {actions}
             </div>
             {heroSrc && entry.cover && <img src={heroSrc} alt={heroDim ? "" : entry.cover.alt} width={entry.cover.width} height={entry.cover.height} decoding="async" className="entry-hero-img" />}

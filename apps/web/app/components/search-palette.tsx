@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useNavigate } from "react-router";
 import { Frame, Icon, KeyHint, KindTag } from "~/components/ui";
-import { prepareInterlude, readMuted, requestInterlude, unlockSound } from "~/globe";
+import { nowPlaying, prepareInterlude, readMuted, requestInterlude, unlockSound } from "~/globe";
+import { matchesSound } from "~/lib/sound-search";
 import { matchesSurprise, SURPRISE } from "~/lib/interlude";
 import { matchesArchive } from "~/lib/archive";
 import { ARCHIVED_V1 } from "~/lib/site";
@@ -21,7 +22,10 @@ const ARCHIVE_ROW = { archive: true as const };
 type ThemeRow = { theme: ThemeChoice };
 const THEME_ROW: Record<ThemeChoice, ThemeRow> = { light: { theme: "light" }, dark: { theme: "dark" }, system: { theme: "system" } };
 const THEME_ICON = { light: "sun", dark: "moon", system: "monitor" } as const;
-type Row = SearchItem | typeof SURPRISE_ROW | typeof ARCHIVE_ROW | ThemeRow;
+/** The sound (#587): one row that mutes or unmutes the page's sound, the same switch as the now-playing widget; listed while nothing is typed and for the words that ask for it (`matchesSound`). */
+const SOUND_ROW = { sound: true as const };
+type Row = SearchItem | typeof SURPRISE_ROW | typeof ARCHIVE_ROW | ThemeRow | typeof SOUND_ROW;
+const isSound = (row: Row | undefined): row is typeof SOUND_ROW => row !== undefined && "sound" in row;
 const isTheme = (row: Row | undefined): row is ThemeRow => row !== undefined && "theme" in row;
 const isSurprise = (row: Row | undefined): row is typeof SURPRISE_ROW => row !== undefined && "surprise" in row;
 const isArchive = (row: Row | undefined): row is typeof ARCHIVE_ROW => row !== undefined && "archive" in row;
@@ -153,7 +157,9 @@ export function SearchPalette() {
   useEffect(() => {
     if (open) setChoice(readThemeChoice());
   }, [open]);
-  const flat = useMemo<Row[]>(() => [...(themeOn ? themeRows : []), ...found, ...(archive ? [ARCHIVE_ROW] : []), ...(surprise ? [SURPRISE_ROW] : [])], [found, themeOn, themeRows, archive, surprise]);
+  const soundOn = useMemo(() => query.trim() === "" || matchesSound(query), [query]);
+  const muted = useSyncExternalStore(nowPlaying.subscribe, () => nowPlaying.getSnapshot().muted, () => false);
+  const flat = useMemo<Row[]>(() => [...(themeOn ? themeRows : []), ...(soundOn ? [SOUND_ROW] : []), ...found, ...(archive ? [ARCHIVE_ROW] : []), ...(surprise ? [SURPRISE_ROW] : [])], [found, themeOn, themeRows, soundOn, archive, surprise]);
   const current = flat[Math.min(active, flat.length - 1)];
 
   useEffect(() => setActive(0), [query]);
@@ -167,6 +173,11 @@ export function SearchPalette() {
       const changed = setThemeChoice(item.theme);
       setChoice(item.theme);
       if (changed) playThemeClick(currentScheme(), readMuted());
+      return;
+    }
+    if (isSound(item)) {
+      // like the theme, inside the gesture and the palette stays open: the row's label turns over
+      nowPlaying.setMuted(!muted);
       return;
     }
     hide();
@@ -211,7 +222,7 @@ export function SearchPalette() {
     }
   };
 
-  const extra = (surprise ? 1 : 0) + (archive ? 1 : 0) + (themeOn && query.trim() !== "" ? themeRows.length : 0);
+  const extra = (surprise ? 1 : 0) + (archive ? 1 : 0) + (themeOn && query.trim() !== "" ? themeRows.length : 0) + (soundOn && query.trim() !== "" ? 1 : 0);
   const total = load.state === "ready" ? load.items.length : 0;
   const hasQuery = query.trim() !== "";
   const status =
@@ -311,6 +322,29 @@ export function SearchPalette() {
                     </ul>
                   </li>
                 )}
+                {soundOn && (
+                  <li role="presentation">
+                    <ul role="group" aria-label="Sound" className="m-0 list-none p-0">
+                      <li role="presentation" className="type-meta px-4 pt-4 pb-1 text-muted-foreground" aria-hidden="true">
+                        Sound
+                      </li>
+                      <li
+                        id={`${id}-opt-${flat.indexOf(SOUND_ROW)}`}
+                        role="option"
+                        aria-selected={current === SOUND_ROW}
+                        onMouseMove={() => setActive(flat.indexOf(SOUND_ROW))}
+                        onClick={() => go(SOUND_ROW)}
+                        className={cn("flex min-h-12 cursor-pointer items-center gap-3 px-4 py-2", current === SOUND_ROW && "bg-accent shadow-[inset_2px_0_0_var(--signal)]")}
+                      >
+                        <Icon name={muted ? "volume-off" : "volume"} size="control" className="shrink-0 text-muted-foreground" />
+                        <span className="flex min-w-0 flex-1 flex-col">
+                          <span className="truncate font-display text-base font-bold tracking-[-0.01em]">{muted ? "Unmute the music" : "Mute the music"}</span>
+                          <span className="ds-meta truncate">{muted ? "Sound is off" : "Sound is on"}</span>
+                        </span>
+                      </li>
+                    </ul>
+                  </li>
+                )}
                 {groups.map((group) => (
                   <li key={group.type} role="presentation">
                     <ul role="group" aria-label={group.label} className="m-0 list-none p-0">
@@ -394,7 +428,7 @@ export function SearchPalette() {
               {!hasQuery && load.state === "ready" && (
                 <p className="m-0 px-4 py-6 text-sm text-muted-foreground">Type a name, a place, a tag. {total} places and entries are indexed.</p>
               )}
-              {hasQuery && load.state === "ready" && results.length === 0 && !surprise && !archive && !themeOn && <p className="m-0 px-4 py-6 text-sm text-muted-foreground">Nothing matches &ldquo;{query.trim()}&rdquo;.</p>}
+              {hasQuery && load.state === "ready" && results.length === 0 && !surprise && !archive && !themeOn && !soundOn && <p className="m-0 px-4 py-6 text-sm text-muted-foreground">Nothing matches &ldquo;{query.trim()}&rdquo;.</p>}
               {load.state === "loading" && <p className="m-0 px-4 py-6 text-sm text-muted-foreground">Loading&hellip;</p>}
               {load.state === "error" && <p className="m-0 px-4 py-6 text-sm text-muted-foreground">The search could not be loaded. Close it and try again.</p>}
             </div>

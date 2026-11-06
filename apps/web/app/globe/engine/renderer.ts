@@ -1364,6 +1364,14 @@ export class GlobeRenderer {
   /** The last frame's sample of the moon (null: not shown). */
   private moonSample: MoonSample | null = null;
 
+  /** The card's orbit display is up (#586): the moon's frame carries the orbit, the phase and the shadow while it is. */
+  private moonHud = false;
+  setMoonHud(on: boolean) {
+    if (on === this.moonHud) return;
+    this.moonHud = on;
+    this.requestRender(); // (a moon at rest draws no frame of its own: the display needs one to appear in)
+  }
+
   /** The moon holds still (the link's card is out under the pointer or the focus, so that it can be clicked). */
   setMoonHeld(on: boolean) {
     if (on === this.moonHeld) return;
@@ -1561,9 +1569,41 @@ export class GlobeRenderer {
 
   moonFrame(): MoonFrame | null {
     const m = this.moonSample;
-    if (!m || !m.onScreen || !this.sized || this.disposed || this.lost || this.suspended || this.inInterlude) return null;
+    // (out of the picture it is still a frame while the orbit display is up, which goes on following the camera; the moon is then no target)
+    if (!m || (!m.onScreen && !this.moonHud) || !this.sized || this.disposed || this.lost || this.suspended || this.inInterlude) return null;
     const P = this.pixel;
-    return { x: m.cx * P + this.canvasLeft, y: (this.bufH - m.cy) * P + this.canvasTop, r: m.r * P, amount: m.amount, unhidden: m.unhidden, angle: this.moonAngleNow(), grid: { col: m.cx, row: this.bufH - m.cy, rad: m.r, visible: visibleBounds({ x: m.cx, y: this.bufH - m.cy, r: m.r }, m.planet && { x: m.planet.x, y: this.bufH - m.planet.y, r: m.planet.r }), cell: P, left: this.canvasLeft, top: this.canvasTop }, tone: this.boxTone() };
+    return { x: m.cx * P + this.canvasLeft, y: (this.bufH - m.cy) * P + this.canvasTop, r: m.r * P, amount: m.amount, unhidden: m.onScreen ? m.unhidden : 0, angle: this.moonAngleNow(), grid: { col: m.cx, row: this.bufH - m.cy, rad: m.r, visible: visibleBounds({ x: m.cx, y: this.bufH - m.cy, r: m.r }, m.planet && { x: m.planet.x, y: this.bufH - m.planet.y, r: m.planet.r }), cell: P, left: this.canvasLeft, top: this.canvasTop }, tone: this.boxTone(), ...(this.moonHud ? { hud: this.moonHudFrame() } : {}) };
+  }
+
+  /** The orbit display's data in the container's CSS px (the frame's own coordinates), from the layer's trace. */
+  private moonHudFrame(): MoonFrame["hud"] {
+    const t = this.globe.moon?.trace();
+    if (!t) return undefined;
+    const P = this.pixel;
+    const m = this.moonSample;
+    // (a point of the orbit far outside the picture, where it swings past the camera, is not drawn: a line that long is a streak across the screen, not an orbit)
+    const w = this.bufW * P;
+    const h = this.bufH * P;
+    const px = (b: [number, number] | null): [number, number] | null => {
+      if (!b) return null;
+      const x = b[0] * P + this.canvasLeft;
+      const y = (this.bufH - b[1]) * P + this.canvasTop;
+      return x < this.canvasLeft - w * 0.25 || x > this.canvasLeft + w * 1.25 || y < this.canvasTop - h * 0.25 || y > this.canvasTop + h * 1.25 ? null : [x, y];
+    };
+    // the orbit does not run over the moon itself: its points there are hidden, and counted along
+    const inMoon = (b: [number, number] | null) => !!(b && m && Math.hypot(b[0] - m.cx, b[1] - m.cy) < m.r + 4);
+    const span = (s: typeof t.eclipse) => ({ now: s.now, fromAngle: s.fromAngle, peakAngle: s.peakAngle, endAngle: s.endAngle, at: px(s.at), peakAt: px(s.peakAt), endAt: px(s.endAt) });
+    return {
+      orbit: t.orbit.map(px),
+      hide: t.hide.map((hid, i) => hid || inMoon(t.orbit[i]!)),
+      ticks: t.ticks.map((k) => ({ deg: k.deg, at: px(k.at), hide: k.hide || inMoon(k.at) })),
+      lit: t.lit,
+      waxing: t.waxing,
+      angleDeg: t.angleDeg,
+      info: { range: t.range, inclDeg: t.inclinationDeg, phaseDeg: t.phaseDeg },
+      eclipse: span(t.eclipse),
+      solar: span(t.solar),
+    };
   }
 
   /** The idle rotation is turning the globe now (a plain read: asked every camera frame, so it builds nothing, unlike `spinInfo`). */
@@ -1782,7 +1822,7 @@ export class GlobeRenderer {
     // A timed transition of the boxes or of the borders (engine/fade.ts) that has not reached its end keeps the loop going, camera or not.
     // While the street map owns the view the globe draws nothing and its transitions are not advanced here (the street engine runs the
     // boxes' own), so they must not keep this loop spinning.
-    const more = moving || fading || this.moonWantsFrames || this.sunPulsing || this.irisMoving || (!this.suspended && (this.lod.animating || this.globe.animating || !!this.opts.labelsAnimating?.()));
+    const more = moving || fading || this.moonWantsFrames || this.sunPulsing || this.irisMoving || (!this.suspended && (this.lod.animating || this.lod.settling || this.globe.animating || !!this.opts.labelsAnimating?.()));
     if (more) this.keepGoing(moving);
     else if (this.spin.spinning) this.chainSpin();
     else this.armSpin();
@@ -1981,7 +2021,7 @@ export class GlobeRenderer {
     this.opts.onFrame();
     perfEnd("frame.callbacks", t1);
     // Whoever drew this frame (the tick, a resize, a check), the transitions run to their end, and the idle rotation's chain (cancelled above) goes on.
-    if (this.lod.animating || this.globe.animating || (this.caption?.animating ?? false) || this.moonWantsFrames || this.sunPulsing || this.opts.labelsAnimating?.()) this.keepGoing(false);
+    if (this.lod.animating || this.lod.settling || this.globe.animating || (this.caption?.animating ?? false) || this.moonWantsFrames || this.sunPulsing || this.opts.labelsAnimating?.()) this.keepGoing(false);
     else if (this.spin.spinning) this.chainSpin();
     this.pollMoonShadow();
     this.armCaption();

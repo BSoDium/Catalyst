@@ -17,7 +17,7 @@ import { bboxExtentsKm, bboxFitRadiusKm, contextScales } from "~/globe/engine/fr
 import type { GlobeEntryRef, GlobeGroup, GlobePlace, GlobeRoute } from "~/globe/types";
 import { paletteOf } from "~/globe/paths/trail";
 import { formatDates, type FormattedDates } from "./dates";
-import { COLLECTIONS, entriesOfPlace, type EntryGroup } from "./entries";
+import { COLLECTIONS, entriesOfPlace, nestedPlaces, type EntryGroup } from "./entries";
 
 /**
  * The light shape of a place for lists and the globe. The same pick as `toPlaceSummary` of `@catalyst/schemas` (a test keeps them equal), written here
@@ -69,7 +69,7 @@ function toGlobePlace(place: PlaceSummary, entries?: readonly GlobeEntryRef[], f
 
 /**
  * The entries linked to every place, by place slug: the content items' `placeSlugs` and the places' own `related` refs, each (kind, slug) once
- * per place, only those that resolve to a published item. Pure. Places with none are absent from the map. (`PlaceSummary` has no `related`, so
+ * per place, only those that resolve to a published item, plus those of the places nested in it (`nestedPlaces`). Pure. Places with none are absent from the map. (`PlaceSummary` has no `related`, so
  * this reads the full projection; the contract is unchanged.)
  */
 export function placeEntries(projection: PublishedProjection): Map<string, GlobeEntryRef[]> {
@@ -87,6 +87,8 @@ export function placeEntries(projection: PublishedProjection): Map<string, Globe
     for (const item of items) for (const place of item.placeSlugs) if (known.has(place)) add(place, kind, item.slug);
     for (const place of projection.places) for (const r of place.related) if (r.kind === kind && exists.has(r.slug)) add(place.slug, kind, r.slug);
   }
+  // A place also carries the entries of the places nested in it (a city: the sites inside it), so its label and its panel agree.
+  for (const [outer, inner] of nestedPlaces(projection.places)) for (const slug of inner) for (const r of out.get(slug)?.values() ?? []) add(outer, r.kind as ContentKind, r.slug);
   return new Map([...out].map(([place, refs]) => [place, [...refs.values()]]));
 }
 
@@ -171,9 +173,15 @@ export interface PlaceDetailData {
   region?: string;
   /** The country's English name, derived from the place's country code when it has one. */
   country?: string;
+  /** A place the owner has lived in: its trips do not count visits (#584). */
+  lived?: true;
+  /** The place the owner lives in now (it is also `lived`): the panel says "Lives here". */
+  living?: true;
   coordinates: Coordinates;
   summary?: string;
   dates: FormattedDates | null;
+  /** The two ends of the dates when they are authored as a range with no label: what the panel marks the changed part of. */
+  datesRange?: { start: string; end: string };
   body: string[];
   images: PublishedImage[];
   /** The entries linked to the place (its `related` and the entries' `placeSlugs`, each once), grouped by kind. Summaries: no body. */
@@ -192,9 +200,13 @@ export function getPlaceDetail(projection: PublishedProjection, slug: string): P
     name: stripCountry(place.name, place.countryCode),
     ...(place.region !== undefined ? { region: place.region } : {}),
     ...(countryName(place.countryCode) ? { country: countryName(place.countryCode)! } : {}),
+    // (a current home is a home, whatever the producer wrote)
+    ...(place.lived === true || place.living === true ? { lived: true } : {}),
+    ...(place.living === true ? { living: true } : {}),
     coordinates: place.coordinates,
     ...(place.summary !== undefined ? { summary: place.summary } : {}),
     dates: formatDates(place.dates),
+    ...(place.dates && !place.dates.label && place.dates.start && place.dates.end ? { datesRange: { start: place.dates.start, end: place.dates.end } } : {}),
     body: place.body,
     images: place.images,
     entries: entriesOfPlace(projection, place.slug),

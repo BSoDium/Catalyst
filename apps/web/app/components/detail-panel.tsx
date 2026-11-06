@@ -185,7 +185,7 @@ export function DetailPanel({ open, isMobile, reducedMotion, routeKey, returnSlu
           exit={reducedMotion ? undefined : hidden}
           transition={{ duration: isMobile ? duration.base : duration.slow, ease: easeStandard }}
           className={cn(
-            "fixed inset-0 z-50 flex flex-col bg-background outline-none md:inset-y-0 md:right-0 md:left-auto md:z-30 md:border-l md:border-border",
+            "fixed inset-0 z-50 flex flex-col bg-background outline-none md:inset-y-0 md:right-0 md:left-auto md:z-30",
             // The width follows the toggle with the base duration (the global reduced-motion rule collapses it); the full view is opaque
             // (no blur of a live canvas over the whole screen), the panel lets the map continue faintly beneath it.
             "md:transition-[width,background-color] md:duration-(--duration-base) md:ease-(--ease-standard)",
@@ -194,9 +194,9 @@ export function DetailPanel({ open, isMobile, reducedMotion, routeKey, returnSlu
         >
           {/* Desktop: fades the content that scrolls under the nav links (hidden on mobile, where the header is static). */}
           <NavScrim className="absolute z-10 hidden opacity-(--scrim-on,1) md:block print:hidden" />
-          {/* The controls sit at the panel's left edge (the page's left edge in full screen); the navigation is centred (over the map, beside
+          {/* The controls' glyphs sit on the content's left edge: the panel's gutter is 1.5 rem, the full-screen page's 2 rem (#582). The controls sit at the panel's left edge (the page's left edge in full screen); the navigation is centred (over the map, beside
               the panel: navbar.tsx), clear of them at every desktop width. */}
-          <div data-slot="panel-bar" className="relative z-20 flex min-h-12 shrink-0 items-center justify-end gap-2 px-3 print:hidden md:absolute md:inset-x-0 md:top-0 md:z-20 md:h-(--navbar-height) md:min-h-0 md:justify-start md:px-6">
+          <div data-slot="panel-bar" className={cn("relative z-20 flex min-h-12 shrink-0 items-center justify-end gap-2 px-3 print:hidden md:absolute md:inset-x-0 md:top-0 md:z-20 md:h-(--navbar-height) md:min-h-0 md:justify-start", full ? "md:px-8" : "md:px-6")}>
             {/* No title here: the content's own heading names the dialog. The controls have no box until they are pointed at. */}
             <IconButton icon="close" label="Close" size="sm" variant="ghost" onClick={onClose} className="md:-ml-2" />
             {onLayoutChange && !isMobile && (

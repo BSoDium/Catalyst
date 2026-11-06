@@ -217,7 +217,9 @@ export function projectUnit(
   const sx = centreX + (basis.f * radius * (px * east[0] + py * east[1] + pz * east[2])) / depth;
   const sy = centreY - (basis.f * radius * (px * north[0] + py * north[1] + pz * north[2])) / depth;
   const horizon = 1 / basis.d;
-  const visible = pc > horizon + 1e-4;
+  // (the margin of the limb: 1e-4 of the cosine, but never more than a tenth of the cap, or from the camera's height of 640 m (zoom 16.3 of the street map) the point under the camera,
+  // pc = 1, is "behind the limb" and nothing is drawn any more: 1 / d is within 1e-4 of 1 (#622))
+  const visible = pc > horizon + Math.min(1e-4, (1 - horizon) * 0.1);
   out.x = sx;
   out.y = sy;
   out.visible = visible;
