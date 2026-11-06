@@ -2205,6 +2205,13 @@
     .place-gallery-static[data-place="medium"] {
       width: var(--pg-medium);
     }
+    /* Two pictures do not scroll: they share the row between the gutters, the first a little wider (`carouselLayout`, `count <= 2`: 52 % of what is left after the two gutters and the gap) */
+    .place-gallery-static[data-place="pair-first"] {
+      width: calc((100cqw - 54px) * 0.52);
+    }
+    .place-gallery-static[data-place="pair-second"] {
+      width: calc((100cqw - 54px) * 0.48);
+    }
     .place-gallery-static .place-gallery-label {
       width: var(--pg-medium);
       min-width: 100%;
