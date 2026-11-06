@@ -8265,15 +8265,32 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     mask-image: linear-gradient(to bottom, #000 calc(100% - var(--wco-fade-down)), transparent);
   }
 
-  [data-slot="site-header"] {
+  /* The title bar is the handle to move the window, and only the title bar: ONE strip the size of the title bar's area (`env(titlebar-area-*)`), first in the document (so what is on it can take the handle back). A drag region
+     is read from the BOXES of the elements, not from what the pointer would hit (`pointer-events` do not matter), so it was the whole header's before, and the header holds boxes that reach far down the window (the
+     menu's veil is a viewport tall, its sheet hangs below the bar): the map under them moved the window instead of panning, and what was in between the buttons was sometimes the handle and sometimes not. */
+  html::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: var(--wco-left);
+    right: var(--wco-right);
+    height: var(--wco-height);
+    pointer-events: none;
     -webkit-app-region: drag;
     app-region: drag;
   }
 
-  [data-slot="site-header"] a,
-  [data-slot="site-header"] button,
-  [data-slot="panel-bar"] a,
-  [data-slot="panel-bar"] button,
+  /* Whatever is clicked is never the handle, wherever it is (a control outside the strip is not affected: a region only counts where the strip is). */
+  a,
+  button,
+  summary,
+  input,
+  select,
+  textarea,
+  [role="button"],
+  [role="menuitem"],
+  [role="tab"],
+  [role="switch"],
   [data-slot="search-trigger"] {
     -webkit-app-region: no-drag;
     app-region: no-drag;
