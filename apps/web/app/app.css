@@ -8207,27 +8207,36 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     --wco-left: env(titlebar-area-x, 0px);
     --wco-right: max(0px, calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw)));
     --wco-height: env(titlebar-area-height, 0px);
+    /* the plate's ease at its inner edge and under its lower edge; nothing is washed by it, so what is next to the buttons starts after it */
+    --wco-fade: 1rem;
+    --wco-fade-down: 0.5rem;
+    /* the room the buttons and the ease of the plate take at each side: 0 on a side with no buttons (`min(...)` is the fade where the side is more than 1/1000 px wide and 0 where it is none) */
+    --wco-left-clear: calc(var(--wco-left) + min(var(--wco-fade), calc(var(--wco-left) * 1000)));
+    --wco-right-clear: calc(var(--wco-right) + min(var(--wco-fade), calc(var(--wco-right) * 1000)));
+    /* the room under the buttons, where a control that is at the right edge goes (0 with no buttons at the right) */
+    --wco-below: min(calc(var(--wco-height) + var(--wco-fade-down) / 2), calc(var(--wco-right) * 1000));
   }
 
   /* The header keeps clear of the traffic lights at the left (its first control, the sections menu, is at the window's left edge). */
   [data-slot="site-header"] {
-    padding-left: var(--wco-left);
+    padding-left: var(--wco-left-clear);
   }
 
   /* The panel's bar is under the buttons only where the panel reaches the window's edge: at the left, on a phone-sized window (the dialog) and in the full-screen layout; at the right, in the dialog, whose close
-     button is at the right. Beside the globe (the panel is the right half) its bar starts mid-window and the header's own padding does the left (a margin, not padding: the bar's own padding is the content's gutter, 1.5 or 2 rem). */
+     button is at the right and goes BELOW the buttons (a margin above the bar, not beside them: a tall, thin window). Beside the globe (the panel is the right half) its bar starts mid-window and the header's own
+     padding does the left (a margin, not padding: the bar's own padding is the content's gutter, 1.5 or 2 rem). */
   [data-panel="dialog"] [data-slot="panel-bar"],
   [data-panel][data-layout="full"] [data-slot="panel-bar"] {
-    margin-left: var(--wco-left);
+    margin-left: var(--wco-left-clear);
   }
 
   [data-panel="dialog"] [data-slot="panel-bar"] {
-    margin-right: var(--wco-right);
+    margin-top: var(--wco-below);
   }
 
   /* The search at the header's right edge is under the buttons only while the header reaches the window's right edge: not beside an open panel, where it is at the middle of the window. */
   body:not(:has([data-panel][data-layout="panel"])) [data-slot="site-header"] [data-slot="search-trigger"] {
-    margin-right: var(--wco-right);
+    margin-right: var(--wco-right-clear);
   }
 
   body::before,
@@ -8236,23 +8245,24 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     position: fixed;
     top: 0;
     z-index: 60;
-    height: calc(var(--wco-height) + 1rem);
+    height: calc(var(--wco-height) + var(--wco-fade-down));
     pointer-events: none;
   }
 
-  /* the plate behind the buttons at the right (and the left, where the traffic lights are): solid under them, eased away from them over 3 rem */
+  /* the plate behind the buttons at the right (and the left, where the traffic lights are): solid under them, eased away over `--wco-fade` towards the page and `--wco-fade-down` under them; no width on a side with no buttons.
+     Controls start after the ease, never in it (it is a wash of the page's colour: what was in it was half hidden). */
   body::after {
     right: 0;
-    width: calc(var(--wco-right) + 3rem);
-    background: linear-gradient(to left, var(--background) calc(100% - 3rem), transparent);
-    mask-image: linear-gradient(to bottom, #000 calc(100% - 1rem), transparent);
+    width: var(--wco-right-clear);
+    background: linear-gradient(to left, var(--background) calc(100% - var(--wco-fade)), transparent);
+    mask-image: linear-gradient(to bottom, #000 calc(100% - var(--wco-fade-down)), transparent);
   }
 
   body::before {
     left: 0;
-    width: calc(var(--wco-left) + 3rem);
-    background: linear-gradient(to right, var(--background) calc(100% - 3rem), transparent);
-    mask-image: linear-gradient(to bottom, #000 calc(100% - 1rem), transparent);
+    width: var(--wco-left-clear);
+    background: linear-gradient(to right, var(--background) calc(100% - var(--wco-fade)), transparent);
+    mask-image: linear-gradient(to bottom, #000 calc(100% - var(--wco-fade-down)), transparent);
   }
 
   [data-slot="site-header"] {
