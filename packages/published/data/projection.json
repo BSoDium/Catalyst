@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "dataVersion": {
-    "commit": "5caa8558bac936958c4677b4e2f76079eddc38f3",
+    "commit": "d957ef9d3632df9dffe475bc9942c9a28248be23",
     "date": "2026-11-06"
   },
   "places": [
@@ -1791,12 +1791,12 @@
       },
       "labelPriority": 43,
       "bbox": [
-        27.52321,
-        53.793847,
-        27.930755,
-        53.9717897
+        27.374,
+        53.7938,
+        27.72,
+        53.9718
       ],
-      "viewRadiusKm": 16.7,
+      "viewRadiusKm": 15.1,
       "group": "eastern-europe",
       "countryCode": "BY",
       "body": [],
