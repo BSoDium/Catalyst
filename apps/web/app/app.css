@@ -2127,18 +2127,19 @@
     color: var(--signal-text, var(--foreground));
   }
   /* The photographs of a place (components/place-detail.tsx, `PhotoGallery`): the label is on the picture, over a soft dome of the page colour from its bottom left corner, so it reads on any photograph in both schemes; the arrows are plates over the picture's edge, in the middle, not the chips' top-aligned ones. */
-  /* the label's ground and ink: the page's own until the picture has been read (`lib/image-tone.ts`), then black and white as it is dark or light where the label is, in both schemes */
+  /* the label's ground and ink: the page's own until the picture has been read (`lib/image-tone.ts`), then black or a grey, and white or a grey, as it is dark or light where the label is and as the scheme is (below) */
   .place-gallery-item {
     --label-bg: var(--background);
     --label-ink: var(--foreground);
   }
+  /* Over a dark picture the page's own scheme decides (owner, 2026-11-06): black in the dark scheme, a light GREY in the light one; over a light picture white in the light scheme, a dark GREY in the dark one. Never the pure opposite of the page: a white fog over a bright photograph on the dark page (and a black one over a dark photograph on the light page) is what looked washed out. Solid greys; the dome's own fade is the only opacity. */
   .place-gallery-item[data-tone="dark"] {
-    --label-bg: #000;
-    --label-ink: #fff;
+    --label-bg: light-dark(#d6d6d6, #000);
+    --label-ink: light-dark(#111, #fff);
   }
   .place-gallery-item[data-tone="light"] {
-    --label-bg: #fff;
-    --label-ink: #111;
+    --label-bg: light-dark(#fff, #3a3a3a);
+    --label-ink: light-dark(#111, #fff);
   }
   .place-gallery-label {
     position: absolute;
@@ -3876,13 +3877,14 @@
     --label-bg: var(--background);
     --label-ink: var(--foreground);
   }
+  /* Over a dark picture the page's own scheme decides (owner, 2026-11-06): black in the dark scheme, a light GREY in the light one; over a light picture white in the light scheme, a dark GREY in the dark one. Never the pure opposite of the page: a white fog over a bright photograph on the dark page (and a black one over a dark photograph on the light page) is what looked washed out. Solid greys; the dome's own fade is the only opacity. */
   .wall-card[data-tone="dark"] {
-    --label-bg: #000;
-    --label-ink: #fff;
+    --label-bg: light-dark(#d6d6d6, #000);
+    --label-ink: light-dark(#111, #fff);
   }
   .wall-card[data-tone="light"] {
-    --label-bg: #fff;
-    --label-ink: #111;
+    --label-bg: light-dark(#fff, #3a3a3a);
+    --label-ink: light-dark(#111, #fff);
   }
 
   /* z-index (a grid item takes it without being positioned): the picture's box is positioned and would paint over a static plate, and a positioned plate would shrink the title link's stretched hit area to itself. */
