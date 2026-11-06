@@ -193,7 +193,7 @@ export function PhotoGallery({ items, from }: { items: GalleryItem[]; from: stri
       <div data-slot="place-gallery" className="place-gallery -mx-6">
         {/* The panel's width is the stage, as an artwork's or a photograph's entry is: where the picture does not fill it, a blurred, dimmed copy of the picture fills the sides (a mature picture has none: its copy would not be veiled). */}
         <div className="place-gallery-stage relative isolate overflow-hidden">
-          {!only.sensitive && <img src={only.src} alt="" aria-hidden="true" decoding="async" className="place-gallery-stage-backdrop" />}
+          {!only.sensitive && <img src={only.small?.src ?? only.src} alt="" aria-hidden="true" decoding="async" className="place-gallery-stage-backdrop" />}
           <Picture item={only} i={0} count={1} from={from} style={single(only)} />
         </div>
       </div>
