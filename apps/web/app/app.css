@@ -1073,8 +1073,8 @@
     }
   }
 
-  /* A row of the place panel in a narrow panel (a phone; `@md` is 28rem): the list page's covered row (above), in the panel's width: the picture runs out to the panel's edges and dissolves into the page at its foot, under the date and the title. */
-  @container (max-width: 27.999rem) {
+  /* A row of the place panel in a narrow panel (a phone; `@md` is 28rem; the container is the panel's group of entries, `@container/group`, NOT the row's own cell: a poem's cell in a wide panel's two columns is under 28 rem and is no phone): the list page's covered row (above), in the panel's width: the picture runs out to the panel's edges and dissolves into the page at its foot, under the date and the title. */
+  @container group (max-width: 27.999rem) {
     .place-row-cover {
       -webkit-mask-image: linear-gradient(to top, transparent 0%, rgb(0 0 0 / 0.08) 14%, rgb(0 0 0 / 0.26) 30%, rgb(0 0 0 / 0.54) 46%, rgb(0 0 0 / 0.8) 62%, rgb(0 0 0 / 0.94) 78%, #000 100%);
       mask-image: linear-gradient(to top, transparent 0%, rgb(0 0 0 / 0.08) 14%, rgb(0 0 0 / 0.26) 30%, rgb(0 0 0 / 0.54) 46%, rgb(0 0 0 / 0.8) 62%, rgb(0 0 0 / 0.94) 78%, #000 100%);
@@ -2126,19 +2126,33 @@
     letter-spacing: 0.12em;
     color: var(--signal-text, var(--foreground));
   }
+  /* The stage of a place's only photograph: the same blurred, dimmed copy behind the picture as an artwork's or a photograph's entry has (`.entry-stage-backdrop`), filling what the picture's own proportions leave of the panel's width. */
+  .place-gallery-stage-backdrop {
+    position: absolute;
+    inset: -3rem;
+    width: calc(100% + 6rem);
+    height: calc(100% + 6rem);
+    max-width: none;
+    object-fit: cover;
+    filter: blur(36px) saturate(0.9);
+    opacity: 0.22;
+    z-index: -1;
+    pointer-events: none;
+  }
   /* The photographs of a place (components/place-detail.tsx, `PhotoGallery`): the label is on the picture, over a soft dome of the page colour from its bottom left corner, so it reads on any photograph in both schemes; the arrows are plates over the picture's edge, in the middle, not the chips' top-aligned ones. */
-  /* the label's ground and ink: the page's own until the picture has been read (`lib/image-tone.ts`), then black and white as it is dark or light where the label is, in both schemes */
+  /* the label's ground and ink: the page's own until the picture has been read (`lib/image-tone.ts`), then black or a grey, and white or a grey, as it is dark or light where the label is and as the scheme is (below) */
   .place-gallery-item {
     --label-bg: var(--background);
     --label-ink: var(--foreground);
   }
+  /* Over a dark picture the page's own scheme decides (owner, 2026-11-06): black in the dark scheme, a light GREY in the light one; over a light picture white in the light scheme, a dark GREY in the dark one. Never the pure opposite of the page: a white fog over a bright photograph on the dark page (and a black one over a dark photograph on the light page) is what looked washed out. Solid greys; the dome's own fade is the only opacity. */
   .place-gallery-item[data-tone="dark"] {
-    --label-bg: #000;
-    --label-ink: #fff;
+    --label-bg: light-dark(#d6d6d6, #000);
+    --label-ink: light-dark(#111, #fff);
   }
   .place-gallery-item[data-tone="light"] {
-    --label-bg: #fff;
-    --label-ink: #111;
+    --label-bg: light-dark(#fff, #3a3a3a);
+    --label-ink: light-dark(#111, #fff);
   }
   .place-gallery-label {
     position: absolute;
@@ -2183,6 +2197,37 @@
       aspect-ratio: auto !important;
       width: 100cqw;
       max-width: none !important;
+    }
+  }
+  /* The same in a wide panel: the row before the script is the carousel at rest (`lib/photo-carousel.ts`, `keylines`), so the page does not jump when it takes over (the pictures were at their own proportions, 313, 365 and 416 px
+     where the carousel has 352, 324 and 138). The gutter (px-6) and the gap (gap-1.5) are the carousel's already; the first picture is the large one, the second the medium one, the others small (cut off by the edge). Every label is laid out
+     at the medium one's width and cropped by its picture, never narrower than it, as the carousel's (`labelWidth`). */
+  @container (min-width: 35rem) {
+    .place-gallery-static {
+      --pg-small: max(48px, calc((100cqw - 24px) / 6));
+      --pg-rest: calc(100cqw - 24px - var(--pg-small) - 12px);
+      --pg-large: calc(var(--pg-rest) * 0.52);
+      --pg-medium: calc(var(--pg-rest) - var(--pg-large));
+      aspect-ratio: auto !important;
+      max-width: none !important;
+      width: var(--pg-small);
+    }
+    .place-gallery-static[data-place="large"] {
+      width: var(--pg-large);
+    }
+    .place-gallery-static[data-place="medium"] {
+      width: var(--pg-medium);
+    }
+    /* Two pictures do not scroll: they share the row between the gutters, the first a little wider (`carouselLayout`, `count <= 2`: 52 % of what is left after the two gutters and the gap) */
+    .place-gallery-static[data-place="pair-first"] {
+      width: calc((100cqw - 54px) * 0.52);
+    }
+    .place-gallery-static[data-place="pair-second"] {
+      width: calc((100cqw - 54px) * 0.48);
+    }
+    .place-gallery-static .place-gallery-label {
+      width: var(--pg-medium);
+      min-width: 100%;
     }
   }
   /* the picture fades as it shrinks, less than its title does (a small one is still a picture) */
@@ -2232,16 +2277,29 @@
   .place-cover-art {
     mask-image: linear-gradient(to bottom, #000 38%, transparent 96%);
   }
+  /* The panel's left edge, a hairline drawn ABOVE what the panel holds (the place's cover, the close bar's oval), not a border under it: the same line all the way down, whatever is beside it (owner, 2026-11-05: it
+     looked fainter where the cover was). The line is the panel's first pixel; the panel has no border box of its own. */
+  @media (min-width: 48rem) {
+    [data-panel="aside"]::after {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      z-index: 40;
+      width: var(--hairline, 1px);
+      background: var(--border);
+      pointer-events: none;
+    }
+  }
   [data-panel]:has([data-slot="place-cover"]) [data-slot="panel-bar"]::before {
     content: "";
     position: absolute;
     z-index: -1;
-    inset: 0 0 -9rem 0;
+    inset: calc(-1 * var(--wco-bar-down, 0px)) 0 -9rem 0;
     pointer-events: none;
     /* a soft, round-ish oval of the page colour centred on the panel's top corner (the close button's), far bigger than the button so no edge of it is seen, eased to nothing (the model: the nav's search plate over the globe); the box runs below the bar so that the oval's bottom is not cut */
     --plate-x: 0%;
     background: radial-gradient(
-      ellipse 19rem 12rem at var(--plate-x) 0,
+      ellipse 19rem 12rem at var(--plate-x) var(--wco-bar-down, 0px),
       color-mix(in srgb, var(--background) 52%, transparent) 0%,
       color-mix(in srgb, var(--background) 50%, transparent) 20%,
       color-mix(in srgb, var(--background) 34%, transparent) 38%,
@@ -3863,13 +3921,14 @@
     --label-bg: var(--background);
     --label-ink: var(--foreground);
   }
+  /* Over a dark picture the page's own scheme decides (owner, 2026-11-06): black in the dark scheme, a light GREY in the light one; over a light picture white in the light scheme, a dark GREY in the dark one. Never the pure opposite of the page: a white fog over a bright photograph on the dark page (and a black one over a dark photograph on the light page) is what looked washed out. Solid greys; the dome's own fade is the only opacity. */
   .wall-card[data-tone="dark"] {
-    --label-bg: #000;
-    --label-ink: #fff;
+    --label-bg: light-dark(#d6d6d6, #000);
+    --label-ink: light-dark(#111, #fff);
   }
   .wall-card[data-tone="light"] {
-    --label-bg: #fff;
-    --label-ink: #111;
+    --label-bg: light-dark(#fff, #3a3a3a);
+    --label-ink: light-dark(#111, #fff);
   }
 
   /* z-index (a grid item takes it without being positioned): the picture's box is positioned and would paint over a static plate, and a positioned plate would shrink the title link's stretched hit area to itself. */
@@ -5027,7 +5086,8 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   }
 
   /* The stage's blurred backdrop is not printed. */
-  .entry-stage-backdrop {
+  .entry-stage-backdrop,
+  .place-gallery-stage-backdrop {
     display: none;
   }
 
@@ -8143,5 +8203,144 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
 
   .career-org-link::after {
     content: none;
+  }
+}
+
+/*
+ * Window Controls Overlay (#580). Installed as an app on a desktop browser that supports it (Chromium: the manifest's `display_override`), the page takes the whole window and the
+ * window's own buttons float over its top corner: the title bar's area is the header's. `env(titlebar-area-*)` says where the buttons are NOT (the area the page may use); what is
+ * left of it, at the left (macOS' traffic lights) or at the right (Windows and Linux: minimise, maximise, close; Chrome's own on a macOS app), is kept clear by `--wco-left` and `--wco-right`,
+ * which are 0 everywhere else. Only where the browser reports the mode (`display-mode: window-controls-overlay`): in a tab or a standalone window nothing here applies.
+ *  - nothing is drawn behind the buttons (a wash of the page's colour was tried in several shapes; every one was a visible patch): what is next to them only keeps clear (their width and `--wco-gap`);
+ *  - the header is padded by the clearances (so its narrow form, its centred links and its docked search follow), the menu's sheet is given the padding back, a dialog's close button (and an entry's
+ *    running head with it) goes under the buttons, the player is in the corner or under the header by the same sum;
+ *  - the title bar is the handle to move the window: ONE strip (`html::before`, `app-region: drag`) and every control is `no-drag` (the header's boxes reach far down the window: a header-wide region
+ *    made the map move the window).
+ * Written without a window to try it in: simulated in a normal tab (the page's own rules applied, the buttons drawn by hand); the values follow the specification. `--wco-right` is measured from `100vw`, which counts a
+ * classic scrollbar of the root (the app's panels scroll inside themselves).
+ */
+@media (display-mode: window-controls-overlay) {
+  :root {
+    --wco-left: env(titlebar-area-x, 0px);
+    --wco-right: max(0px, calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw)));
+    --wco-height: env(titlebar-area-height, 0px);
+    /* What is next to the buttons keeps clear of them: their width and a small gap (`--wco-gap`), 0 on a side that has none (`min(...)` is the gap where the side is more than 1/1000 px wide and 0 where it is none).
+       There is no plate behind the buttons: the page is under them as it is (a wash of the page's colour was tried, and every shape of it was a visible patch). */
+    --wco-gap: 0.5rem;
+    --wco-left-clear: calc(var(--wco-left) + min(var(--wco-gap), calc(var(--wco-left) * 1000)));
+    --wco-right-clear: calc(var(--wco-right) + min(var(--wco-gap), calc(var(--wco-right) * 1000)));
+    /* the room under the buttons, where a control at the right edge goes (a dialog's close button; 0 with no buttons at the right) */
+    --wco-below: min(calc(var(--wco-height) + var(--wco-gap) / 2), calc(var(--wco-right) * 1000));
+    /* the same for a top row that has something at its left too (an entry's running head): under the bar when there are buttons at either side */
+    --wco-bar: min(calc(var(--wco-height) + var(--wco-gap) / 2), calc((var(--wco-left) + var(--wco-right)) * 1000));
+  }
+
+  /* The header keeps clear of the buttons: PADDING on its two sides, so that what is measured in it shrinks with it (the narrow form takes over when what is left is under 56 rem, the centred links are centred in what is left,
+     the docked search ends on the page's margin of what is left: a margin on the search alone put it over the links, and a padding on one side alone would have made the sheet below narrower). The right side only while the header reaches
+     the window's right edge: not beside an open panel (`data-beside`), where it ends at the middle of the window. */
+  [data-slot="site-header"] {
+    --wco-pad-l: var(--wco-left-clear);
+    --wco-pad-r: var(--wco-right-clear);
+    padding-left: var(--wco-pad-l);
+    padding-right: var(--wco-pad-r);
+  }
+
+  [data-slot="site-header"][data-beside] {
+    --wco-pad-r: 0px;
+  }
+
+  /* The menu's sheet and its veil are as wide as the header (`100cqw`, which is the header's CONTENT box): the padding is given back, or the menu would end where the padding does. */
+  .nav-sheet,
+  .nav-veil {
+    width: calc(100cqw + var(--wco-pad-l, 0px) + var(--wco-pad-r, 0px));
+  }
+
+  /* The player is in the window's top corner, where the traffic lights are: it starts after them. */
+  .np-root {
+    --np-left: max(var(--np-inset), var(--wco-left-clear));
+    left: var(--np-left);
+    /* (the cap leaves the inset at the right whatever the left is: it was 2 insets, and the traffic lights' offset pushed the player's end out of the window) */
+    max-width: calc(100% - var(--np-left) - var(--np-inset));
+  }
+
+  /* The player is in the corner when the header's links leave it room and under the header when they do not. Without the buttons that is from 1280 px (the links, 688 px, are centred in the header: the player, 276 px
+     from the corner inset, ends where they begin). With them the header is padded and its links are centred in what is left, so they begin at (width + left clearance - right clearance - 688 px) / 2 and the player
+     begins after the traffic lights: the same sum with the clearances in it, whatever the platform, and not before the header is 80 rem wide (what is left of the window), as only then is the search docked and the links' row 688 px (in the row they are 845). A media query cannot take the clearances (they are `env()`), so the choice is a `clamp()` on a length that goes
+     from the corner's top to the lower one in a thousandth of a pixel of width (the `top` transition does the rest). A header beside an open panel keeps its own rule (always under it). */
+  body:has([data-slot="site-header"]:not([data-beside])) .np-root {
+    --np-w: 17.25rem; /* the player, from the corner's inset to its end */
+    --np-links-w: 43rem; /* the links' row (688 px), centred; with the search docked. They stand for the 1280 px rule above: 2 * (1.25rem + 17.25rem) + 43rem = 80rem (`design-system.test.ts` keeps them together). */
+    --np-corner-from: max(calc(2 * (max(var(--np-inset), var(--wco-left-clear)) + var(--np-w)) + var(--np-links-w) - var(--wco-left-clear) + var(--wco-right-clear)), calc(80rem + var(--wco-left-clear) + var(--wco-right-clear)));
+    top: clamp(var(--np-inset), calc((var(--np-corner-from) - 100vw) * 1000), calc(var(--navbar-height) + 0.75rem));
+    /* After the traffic lights in the corner; at the normal inset once it is under the header (below the title bar, they are not above it any more): the same switch as `top`, the other way. */
+    --np-left: clamp(var(--np-inset), calc((100vw - var(--np-corner-from)) * 1000), max(var(--np-inset), var(--wco-left-clear)));
+    transition-property: top, left, max-width;
+  }
+
+  /* Beside an open panel it is always under the header: no traffic lights above it. */
+  body:has([data-slot="site-header"][data-beside]) .np-root {
+    --np-left: var(--np-inset);
+  }
+
+  /* The panel's bar is under the buttons only where the panel reaches the window's edge: at the left, on a phone-sized window (the dialog) and in the full-screen layout; at the right, in the dialog, whose close
+     button is at the right and goes BELOW the buttons (a margin above the bar, not beside them: a tall, thin window). Beside the globe (the panel is the right half) its bar starts mid-window and the header's own
+     padding does the left (a margin, not padding: the bar's own padding is the content's gutter, 1.5 or 2 rem). */
+  [data-panel="dialog"] [data-slot="panel-bar"],
+  [data-panel][data-layout="full"] [data-slot="panel-bar"] {
+    margin-left: var(--wco-left-clear);
+  }
+
+  [data-panel="dialog"] [data-slot="panel-bar"] {
+    margin-top: var(--wco-below);
+    /* (the plate behind a place's close button is centred on the bar's top: it goes down with it, the plate reaching up to the window's top) */
+    --wco-bar-down: var(--wco-below);
+  }
+
+  /* An entry's dialog has a running head across its top row, and the close button on the same line: both go below the title bar together, the traffic lights at the left and the buttons at the right (either side) being
+     above them, so that the text and the button stay one line, whatever the side. */
+  [data-panel="dialog"]:has([data-slot="entry-view"]) [data-slot="panel-bar"] {
+    margin-top: var(--wco-bar);
+  }
+
+  [data-panel="dialog"]:has([data-slot="entry-view"]) .entry-running {
+    padding-top: calc(1.5rem + var(--wco-bar));
+  }
+
+  /* The docked search of a wide header (from 80 rem) is on the page's own right margin (3.5 rem, 2 in the full-screen entry): with buttons at the right it only keeps clear of them (the header's padding does that), so the margin is
+     given up on that side (`min(...)` is the whole margin where there are buttons and 0 where there are none: the margin stays). */
+  @container (min-width: 80rem) {
+    [data-slot="site-header"] [data-slot="search-trigger"] {
+      right: calc((100% - 100cqw) / 2 + 3.5rem - min(3.5rem, calc(var(--wco-right) * 1000)));
+    }
+
+    body:has([data-slot="entry-view"][data-layout="full"]) [data-slot="site-header"] [data-slot="search-trigger"] {
+      right: calc((100% - 100cqw) / 2 + 2rem - min(2rem, calc(var(--wco-right) * 1000)));
+    }
+  }
+
+  /* The title bar is the handle to move the window, and only the title bar: ONE strip the size of the title bar's area (`env(titlebar-area-*)`), first in the document (so what is on it can take the handle back). A drag region
+     is read from the BOXES of the elements, not from what the pointer would hit (`pointer-events` do not matter), so it was the whole header's before, and the header holds boxes that reach far down the window (the
+     menu's veil is a viewport tall, its sheet hangs below the bar): the map under them moved the window instead of panning, and what was in between the buttons was sometimes the handle and sometimes not. */
+  html::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: var(--wco-left);
+    right: var(--wco-right);
+    height: var(--wco-height);
+    pointer-events: none;
+    -webkit-app-region: drag;
+    app-region: drag;
+  }
+
+  /* Whatever is clicked is never the handle. Only what can be in the strip: the header, a panel's bar, an entry's running head, the player, the search (the map's labels, the page's long lists are not: a region is
+     collected for each element that has one). */
+  [data-slot="site-header"] :is(a, button, summary, [role="button"], [role="menuitem"]),
+  [data-slot="panel-bar"] :is(a, button),
+  .entry-running :is(a, button),
+  .np-root :is(a, button),
+  [data-slot="search-trigger"] {
+    -webkit-app-region: no-drag;
+    app-region: no-drag;
   }
 }

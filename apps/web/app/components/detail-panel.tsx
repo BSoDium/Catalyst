@@ -185,7 +185,7 @@ export function DetailPanel({ open, isMobile, reducedMotion, routeKey, returnSlu
           exit={reducedMotion ? undefined : hidden}
           transition={{ duration: isMobile ? duration.base : duration.slow, ease: easeStandard }}
           className={cn(
-            "fixed inset-0 z-50 flex flex-col bg-background outline-none md:inset-y-0 md:right-0 md:left-auto md:z-30 md:border-l md:border-border",
+            "fixed inset-0 z-50 flex flex-col bg-background outline-none md:inset-y-0 md:right-0 md:left-auto md:z-30",
             // The width follows the toggle with the base duration (the global reduced-motion rule collapses it); the full view is opaque
             // (no blur of a live canvas over the whole screen), the panel lets the map continue faintly beneath it.
             "md:transition-[width,background-color] md:duration-(--duration-base) md:ease-(--ease-standard)",

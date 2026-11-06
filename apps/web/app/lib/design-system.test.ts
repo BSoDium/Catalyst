@@ -313,3 +313,21 @@ describe("restraint (no decorative chrome)", () => {
     }
   });
 });
+
+describe("window controls overlay", () => {
+  const wco = css.slice(css.indexOf("@media (display-mode: window-controls-overlay)"));
+  it("the player's corner threshold is the 1280 px rule's own sum when there are no buttons", () => {
+    // the rule it stands for: the corner from 1280 px, 2 * (inset + player) + links = 80 rem
+    expect(css).toMatch(/@media \(min-width: 1280px\) \{\s*\.np-root,/);
+    const inset = Number(/--np-inset:\s*([\d.]+)rem/.exec(css)![1]);
+    const player = Number(/--np-w:\s*([\d.]+)rem/.exec(wco)![1]);
+    const links = Number(/--np-links-w:\s*([\d.]+)rem/.exec(wco)![1]);
+    expect(2 * (inset + player) + links).toBe(80);
+  });
+  it("every clearance is 0 on a side with no buttons (the min(... * 1000) trick) and only the title bar is a handle", () => {
+    expect(wco).toMatch(/--wco-left-clear:\s*calc\(var\(--wco-left\) \+ min\(var\(--wco-gap\), calc\(var\(--wco-left\) \* 1000\)\)\)/);
+    expect(wco).toMatch(/--wco-right-clear:\s*calc\(var\(--wco-right\) \+ min\(var\(--wco-gap\), calc\(var\(--wco-right\) \* 1000\)\)\)/);
+    expect(wco.match(/(?<!-webkit-)app-region:\s*drag/g)?.length).toBe(1);
+    expect(wco).toMatch(/html::before\s*\{[^}]*app-region:\s*drag/);
+  });
+});

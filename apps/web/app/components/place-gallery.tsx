@@ -4,7 +4,7 @@ import { Icon, ScrollRow, SensitiveMedia } from "~/components/ui";
 import { coverImageProps } from "~/lib/cover-image";
 import { formatEntryDate } from "~/lib/dates";
 import { imageTone, type Tone } from "~/lib/image-tone";
-import { carouselLayout, growth, keylines, lastPosition, stepOf, widest, type Keylines } from "~/lib/photo-carousel";
+import { carouselLayout, growth, keylines, lastPosition, stepOf, labelWidth, widest, type Keylines } from "~/lib/photo-carousel";
 import { cn } from "~/lib/utils";
 
 /** A photograph of the place in its gallery: the cover of a linked photograph entry, with what the label says. */
@@ -23,11 +23,25 @@ export interface GalleryItem {
 
 const ratioOf = (item: GalleryItem) => (item.width && item.height ? item.width / item.height : 4 / 3);
 
+/**
+ * The box of a place's only picture: the picture's own proportions, as wide as the panel but never taller than 80 % of the window and never wider than the picture is (it is not blown up past its pixels). With
+ * `width: 100%` and a `max-height` the box lost its proportions in a wide panel, and `object-cover` showed a magnified slice of a portrait picture (Warsaw, #660); the width follows the height limit instead, and
+ * what is left of the panel is the page's own colour.
+ */
+export const single = (item: GalleryItem): React.CSSProperties => ({
+  aspectRatio: ratioOf(item),
+  width: `min(100%, calc(80dvh * ${ratioOf(item).toFixed(4)}))`,
+  ...(item.width ? { maxWidth: `${item.width}px` } : {}),
+  marginInline: "auto",
+});
+
 /** The picture with its label on it: over a soft dome, black or white as the picture is dark or light where the label is (until it is known, the page's own colour), the date in mono, the title in the display face and where it is in the row. */
-function Picture({ item, i, count, from, style, className, onFocus, fullWidth }: { item: GalleryItem; i: number; count: number; from: string; style?: React.CSSProperties; className?: string; onFocus?: () => void; fullWidth?: number }) {
+function Picture({ item, i, count, from, style, className, onFocus, fullWidth, textWidth, place }: { item: GalleryItem; i: number; count: number; from: string; style?: React.CSSProperties; className?: string; onFocus?: () => void; fullWidth?: number; textWidth?: number; place?: "large" | "medium" | "pair-first" | "pair-second" }) {
   const date = formatEntryDate(item.date);
   // (never narrower than the box: one or two pictures share the row, and may be wider than the widest of a longer row, which would leave a bar at each side of a tall picture)
   const inner: React.CSSProperties | undefined = fullWidth ? { width: fullWidth, minWidth: "100%" } : undefined;
+  // (the label is laid out a little narrower than the picture: at the end of the row the last, medium, picture must show its whole position, "04 / 04")
+  const textInner: React.CSSProperties | undefined = textWidth ? { width: textWidth, minWidth: "100%" } : inner;
   const img = useRef<HTMLImageElement>(null);
   const [tone, setTone] = useState<Tone | null>(null);
   const read = useCallback(() => {
@@ -36,11 +50,11 @@ function Picture({ item, i, count, from, style, className, onFocus, fullWidth }:
   useLayoutEffect(read, [read]);
   const image = <img ref={img} onLoad={read} {...coverImageProps({ src: item.src, width: item.width ?? 0, small: item.small }, fullWidth ? `${fullWidth}px` : "(min-width: 48rem) 50vw, 100vw")} alt={item.alt} loading={i === 0 ? "eager" : "lazy"} decoding="async" className="place-gallery-img size-full object-cover" />;
   return (
-    <Link to={item.href} state={{ from }} aria-label={item.title} onFocus={onFocus} style={style} className={cn("place-gallery-item group relative block overflow-hidden bg-accent no-underline", className)} data-tone={tone ?? undefined}>
+    <Link to={item.href} state={{ from }} aria-label={item.title} onFocus={onFocus} style={style} className={cn("place-gallery-item group relative block overflow-hidden bg-accent no-underline", className)} data-tone={tone ?? undefined} data-place={place}>
       <span className={cn("place-gallery-media block", fullWidth ? "absolute inset-y-0 left-1/2 -translate-x-1/2" : "size-full")} style={inner}>
         {item.sensitive ? <SensitiveMedia className="size-full [&_.sensitive-media-content]:size-full">{image}</SensitiveMedia> : image}
       </span>
-      <span className="place-gallery-label" style={inner}>
+      <span className="place-gallery-label" style={textInner}>
         <span className="place-gallery-meta ds-micro flex items-baseline justify-between gap-3">
           <span>{date ? date.text : ""}</span>
           {count > 1 && (
@@ -143,7 +157,7 @@ function Carousel({ items, from }: { items: GalleryItem[]; from: string }) {
               <ul ref={layer} className="relative m-0 h-full list-none p-0">
                 {items.map((item, i) => (
                   <li key={item.src} className="absolute top-0 left-0 h-full overflow-hidden [contain:layout_paint]" style={{ width: 0, visibility: "hidden" }}>
-                    <Picture item={item} i={i} count={items.length} from={from} fullWidth={widest(geo.k)} onFocus={() => Math.abs(i - position()) > 1 && goTo(i)} style={{ height: "100%" }} />
+                    <Picture item={item} i={i} count={items.length} from={from} fullWidth={widest(geo.k)} textWidth={labelWidth(geo.k)} onFocus={() => Math.abs(i - position()) > 1 && goTo(i)} style={{ height: "100%" }} />
                   </li>
                 ))}
               </ul>
@@ -177,7 +191,11 @@ export function PhotoGallery({ items, from }: { items: GalleryItem[]; from: stri
     const only = items[0]!;
     return (
       <div data-slot="place-gallery" className="place-gallery -mx-6">
-        <Picture item={only} i={0} count={1} from={from} style={{ aspectRatio: ratioOf(only), maxHeight: "80dvh", width: "100%" }} />
+        {/* The panel's width is the stage, as an artwork's or a photograph's entry is: where the picture does not fill it, a blurred, dimmed copy of the picture fills the sides (a mature picture has none: its copy would not be veiled). */}
+        <div className="place-gallery-stage relative isolate overflow-hidden">
+          {!only.sensitive && <img src={only.small?.src ?? only.src} alt="" aria-hidden="true" decoding="async" className="place-gallery-stage-backdrop" />}
+          <Picture item={only} i={0} count={1} from={from} style={single(only)} />
+        </div>
       </div>
     );
   }
@@ -189,7 +207,7 @@ export function PhotoGallery({ items, from }: { items: GalleryItem[]; from: stri
         <ScrollRow noun="photographs" className="flex snap-x snap-mandatory scroll-px-6 gap-1.5 px-6 @max-[35rem]:scroll-px-0 @max-[35rem]:px-0">
           {items.map((item, i) => (
             <div key={item.src} className="contents">
-              <Picture item={item} i={i} count={items.length} from={from} className="place-gallery-static" style={{ aspectRatio: ratioOf(item), height: "min(26rem, 70dvh)", maxWidth: "88cqw", flexShrink: 0, scrollSnapAlign: "start" }} />
+              <Picture item={item} i={i} count={items.length} from={from} className="place-gallery-static" place={items.length === 2 ? (i === 0 ? "pair-first" : "pair-second") : i === 0 ? "large" : i === 1 ? "medium" : undefined} style={{ aspectRatio: ratioOf(item), height: "min(26rem, 70dvh)", maxWidth: "88cqw", flexShrink: 0, scrollSnapAlign: "start" }} />
             </div>
           ))}
         </ScrollRow>

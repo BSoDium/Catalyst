@@ -240,6 +240,90 @@ describe("places that are not crowded are never merged", () => {
   });
 });
 
+describe("a place nested in another is a detail of it, not a second place", () => {
+  const nested = () => [
+    { ...g("pl", "country", undefined, 52.2, 21, 300), countryCode: "PL" },
+    { ...p("city", "pl", 52.23, 21.03), bbox: [20.79, 52.09, 21.27, 52.37] as const, countryCode: "PL" },
+    { ...p("campus", "pl", 52.22, 21.01), bbox: [21.004, 52.217, 21.014, 52.223] as const, countryCode: "PL" },
+  ];
+  it("is not counted in its group's total, and a place beside it with a box of its own is", () => {
+    const t = new LodTree(nested());
+    expect(t.total[t.indexOf("pl")]).toBe(1);
+    expect(t.nested[t.indexOf("campus")]).toBe(1);
+    expect(t.nested[t.indexOf("city")]).toBe(0);
+    // (partly outside the city's box: a place of its own)
+    const both = new LodTree([...nested(), { ...p("other", "pl", 52.2, 21.2), bbox: [21.2, 52.2, 21.4, 52.3] as const }]);
+    expect(both.total[both.indexOf("pl")]).toBe(2);
+    expect(both.nested[both.indexOf("other")]).toBe(0);
+  });
+  it("a group of one place and what is inside it is labelled as that place, not as \"2 places\"", () => {
+    const t = new LodTree(nested());
+    const i = t.indexOf("pl");
+    expect(t.text[i]).toBe("city");
+    expect(subText(t.sub[i]!)).not.toMatch(/places/);
+    // a group of two places of their own keeps its name and its count
+    const two = new LodTree([g("c", "country", undefined, 0, 0, 200), p("a", "c", 0, -0.4), p("b", "c", 0, 0.4)]);
+    expect(two.text[two.indexOf("c")]).toBe("c");
+    expect(subText(two.sub[two.indexOf("c")]!)).toMatch(/2 places/);
+  });
+});
+
+describe("a group of one place is that place's rectangle", () => {
+  const lone = () => [
+    g("dk", "country", undefined, 55.67, 12.55, 50),
+    { ...p("cph", "dk", 55.67, 12.55), bbox: [12.45, 55.61, 12.65, 55.73] as const },
+    { ...p("church", "dk", 55.68, 12.59), bbox: [12.585, 55.678, 12.595, 55.684] as const },
+  ];
+  it("has no room round it, so it is not a second, bigger box about the place's own, and the place has no ghost inside it", () => {
+    const t = new LodTree(lone());
+    expect(t.loneHost[t.indexOf("dk")]).toBe(t.indexOf("cph"));
+    const cam = camAt(12.55, 55.67, 6);
+    t.alphas(cam, false);
+    const d = t.indexOf("dk");
+    const c = t.indexOf("cph");
+    // (the same rectangle as the place would have alone)
+    const alone = new LodTree([{ ...lone()[1]!, parent: undefined }]);
+    alone.alphas(cam, false);
+    expect(t.drawX1[d]! - t.drawX0[d]!).toBeCloseTo(alone.drawX1[0]! - alone.drawX0[0]!, 6);
+    expect(t.boxX1[d]! - t.boxX0[d]!).toBeCloseTo(alone.boxX1[0]! - alone.boxX0[0]!, 6);
+    expect(t.alpha[d]).toBe(1);
+    expect(t.ghosts().some((x) => x.i === c)).toBe(false);
+  });
+  it("a group of two places of their own keeps its room", () => {
+    const t = new LodTree([g("c", "country", undefined, 0, 0, 200), { ...p("a", "c", 0, -0.4), bbox: [-0.45, -0.05, -0.35, 0.05] as const }, { ...p("b", "c", 0, 0.4), bbox: [0.35, -0.05, 0.45, 0.05] as const }]);
+    expect(t.loneHost[t.indexOf("c")]).toBe(-1);
+  });
+});
+
+describe("the room round a drawn group follows its size", () => {
+  const near = () => [
+    g("area", "area", undefined, 38.75, -9.3, 20),
+    { ...p("a", "area", 38.8, -9.46), bbox: [-9.5, 38.76, -9.42, 38.84] as const },
+    { ...p("b", "area", 38.74, -9.16), bbox: [-9.23, 38.69, -9.09, 38.8] as const },
+  ];
+  it("a small group is drawn at the floor, like a small place, not padCells bigger and masked all the same; a big one has its room", () => {
+    const t = new LodTree(near());
+    const floor = LOD.floorCells * CELL;
+    t.alphas(camAt(-9.3, 38.75, 3.3), false);
+    const i = t.indexOf("area");
+    expect(t.fillAlpha[i]! > 0 || t.alpha[i]! > 0).toBe(true);
+    expect(t.drawX1[i]! - t.drawX0[i]!).toBeCloseTo(Math.max(floor, t.side[i]!), 6);
+    // zoomed in until the interior is no longer masked: the room is back (the group's drawn rectangle is its true one and padCells on each side)
+    const big = new LodTree(near());
+    const far = camAt(-9.3, 38.75, 3.3);
+    big.update(far, -1, -1, false);
+    const side = (zz: number) => {
+      big.update(camAt(-9.3, 38.75, zz), -1, -1, false);
+      return big.side[big.indexOf("area")]!;
+    };
+    let z = 3.3;
+    while (side(z) < LOD.fillFadeTo * floor * 1.2 && z < 9) z += 0.1;
+    const k = big.indexOf("area");
+    big.update(camAt(-9.3, 38.75, z), -1, -1, false);
+    expect(big.drawX1[k]! - big.drawX0[k]!).toBeCloseTo(big.side[k]! + 2 * LOD.padCells * CELL, 6);
+  });
+});
+
 describe("only members that pass the visibility rule count", () => {
   it("a place on the far side is not in the group: with one visible member the group is just that place's rectangle", () => {
     const t = new LodTree([g("c", "country", undefined, 0, 90, 9000), p("near", "c", 0, 2), p("far", "c", 0, 178)]);

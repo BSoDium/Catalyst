@@ -57,6 +57,13 @@ export const stepOf = (k: Keylines) => (k.single ? k.large + k.gap : Math.round(
 /** The widest a picture gets: what the picture inside it and its label are laid out at, so that they are cropped by the box and not squeezed. */
 export const widest = (k: Keylines) => Math.max(k.large, k.medium);
 
+/**
+ * The width a picture's label (the date, the position "04 / 04" at its right, the title) is laid out at: the narrower of the two expanded sizes, so that at rest, where the last two pictures are
+ * the large and the medium one, the medium one's position is inside its box and not cropped by it (it was laid out at the large one's width, and cut "04 / 04" to "04 /"). A picture that is
+ * moving is still revealed rather than squeezed; a single picture (a phone) is as wide as the row.
+ */
+export const labelWidth = (k: Keylines) => (k.single ? k.large : Math.min(k.large, k.medium));
+
 /** The width of the picture at distance `u` from the focus. */
 export function widthAt(u: number, k: Keylines): number {
   if (u <= -2 || u >= 3) return 0;
