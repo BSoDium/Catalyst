@@ -8195,12 +8195,15 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
 /*
  * Window Controls Overlay (#580). Installed as an app on a desktop browser that supports it (Chromium: the manifest's `display_override`), the page takes the whole window and the
  * window's own buttons float over its top corner: the title bar's area is the header's. `env(titlebar-area-*)` says where the buttons are NOT (the area the page may use); what is
- * left of it, at the left (macOS' traffic lights) or at the right (Windows and Linux: minimise, maximise, close), is kept clear by `--wco-left` and `--wco-right`, which are 0 everywhere else.
- * Only where the browser reports the mode (`display-mode: window-controls-overlay`): in a tab or a standalone window nothing here applies.
- *  - the controls at the panel's left edge (close, full screen) and the docked search keep clear of the buttons;
- *  - the title bar is a handle to move the window (`app-region: drag`), and every control over it is not (`no-drag`);
- *  - a soft plate of the page's colour behind the buttons (a gradient fading towards the page, no edge), so that the button's sharp square corners do not sit on the map's lines.
- * Written without a window to try it in: the values follow the specification (env() fall back to the viewport's own edges where a browser gives none).
+ * left of it, at the left (macOS' traffic lights) or at the right (Windows and Linux: minimise, maximise, close; Chrome's own on a macOS app), is kept clear by `--wco-left` and `--wco-right`,
+ * which are 0 everywhere else. Only where the browser reports the mode (`display-mode: window-controls-overlay`): in a tab or a standalone window nothing here applies.
+ *  - nothing is drawn behind the buttons (a wash of the page's colour was tried in several shapes; every one was a visible patch): what is next to them only keeps clear (their width and `--wco-gap`);
+ *  - the header is padded by the clearances (so its narrow form, its centred links and its docked search follow), the menu's sheet is given the padding back, a dialog's close button (and an entry's
+ *    running head with it) goes under the buttons, the player is in the corner or under the header by the same sum;
+ *  - the title bar is the handle to move the window: ONE strip (`html::before`, `app-region: drag`) and every control is `no-drag` (the header's boxes reach far down the window: a header-wide region
+ *    made the map move the window).
+ * Written without a window to try it in: simulated in a normal tab (the page's own rules applied, the buttons drawn by hand); the values follow the specification. `--wco-right` is measured from `100vw`, which counts a
+ * classic scrollbar of the root (the app's panels scroll inside themselves).
  */
 @media (display-mode: window-controls-overlay) {
   :root {
@@ -8240,7 +8243,10 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
 
   /* The player is in the window's top corner, where the traffic lights are: it starts after them. */
   .np-root {
-    left: max(var(--np-inset), var(--wco-left-clear));
+    --np-left: max(var(--np-inset), var(--wco-left-clear));
+    left: var(--np-left);
+    /* (the cap leaves the inset at the right whatever the left is: it was 2 insets, and the traffic lights' offset pushed the player's end out of the window) */
+    max-width: calc(100% - var(--np-left) - var(--np-inset));
   }
 
   /* The player is in the corner when the header's links leave it room and under the header when they do not. Without the buttons that is from 1280 px (the links, 688 px, are centred in the header: the player, 276 px
@@ -8248,16 +8254,18 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
      begins after the traffic lights: the same sum with the clearances in it, whatever the platform, and not before the header is 80 rem wide (what is left of the window), as only then is the search docked and the links' row 688 px (in the row they are 845). A media query cannot take the clearances (they are `env()`), so the choice is a `clamp()` on a length that goes
      from the corner's top to the lower one in a thousandth of a pixel of width (the `top` transition does the rest). A header beside an open panel keeps its own rule (always under it). */
   body:has([data-slot="site-header"]:not([data-beside])) .np-root {
-    --np-corner-from: max(calc(2 * (max(var(--np-inset), var(--wco-left-clear)) + 17.25rem) + 43rem - var(--wco-left-clear) + var(--wco-right-clear)), calc(80rem + var(--wco-left-clear) + var(--wco-right-clear)));
+    --np-w: 17.25rem; /* the player, from the corner's inset to its end */
+    --np-links-w: 43rem; /* the links' row (688 px), centred; with the search docked. They stand for the 1280 px rule above: 2 * (1.25rem + 17.25rem) + 43rem = 80rem (`design-system.test.ts` keeps them together). */
+    --np-corner-from: max(calc(2 * (max(var(--np-inset), var(--wco-left-clear)) + var(--np-w)) + var(--np-links-w) - var(--wco-left-clear) + var(--wco-right-clear)), calc(80rem + var(--wco-left-clear) + var(--wco-right-clear)));
     top: clamp(var(--np-inset), calc((var(--np-corner-from) - 100vw) * 1000), calc(var(--navbar-height) + 0.75rem));
     /* After the traffic lights in the corner; at the normal inset once it is under the header (below the title bar, they are not above it any more): the same switch as `top`, the other way. */
-    left: clamp(var(--np-inset), calc((100vw - var(--np-corner-from)) * 1000), max(var(--np-inset), var(--wco-left-clear)));
-    transition-property: top, left;
+    --np-left: clamp(var(--np-inset), calc((100vw - var(--np-corner-from)) * 1000), max(var(--np-inset), var(--wco-left-clear)));
+    transition-property: top, left, max-width;
   }
 
   /* Beside an open panel it is always under the header: no traffic lights above it. */
   body:has([data-slot="site-header"][data-beside]) .np-root {
-    left: var(--np-inset);
+    --np-left: var(--np-inset);
   }
 
   /* The panel's bar is under the buttons only where the panel reaches the window's edge: at the left, on a phone-sized window (the dialog) and in the full-screen layout; at the right, in the dialog, whose close
@@ -8311,17 +8319,12 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     app-region: drag;
   }
 
-  /* Whatever is clicked is never the handle, wherever it is (a control outside the strip is not affected: a region only counts where the strip is). */
-  a,
-  button,
-  summary,
-  input,
-  select,
-  textarea,
-  [role="button"],
-  [role="menuitem"],
-  [role="tab"],
-  [role="switch"],
+  /* Whatever is clicked is never the handle. Only what can be in the strip: the header, a panel's bar, an entry's running head, the player, the search (the map's labels, the page's long lists are not: a region is
+     collected for each element that has one). */
+  [data-slot="site-header"] :is(a, button, summary, [role="button"], [role="menuitem"]),
+  [data-slot="panel-bar"] :is(a, button),
+  .entry-running :is(a, button),
+  .np-root :is(a, button),
   [data-slot="search-trigger"] {
     -webkit-app-region: no-drag;
     app-region: no-drag;
