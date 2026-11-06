@@ -2126,6 +2126,19 @@
     letter-spacing: 0.12em;
     color: var(--signal-text, var(--foreground));
   }
+  /* The stage of a place's only photograph: the same blurred, dimmed copy behind the picture as an artwork's or a photograph's entry has (`.entry-stage-backdrop`), filling what the picture's own proportions leave of the panel's width. */
+  .place-gallery-stage-backdrop {
+    position: absolute;
+    inset: -3rem;
+    width: calc(100% + 6rem);
+    height: calc(100% + 6rem);
+    max-width: none;
+    object-fit: cover;
+    filter: blur(36px) saturate(0.9);
+    opacity: 0.22;
+    z-index: -1;
+    pointer-events: none;
+  }
   /* The photographs of a place (components/place-detail.tsx, `PhotoGallery`): the label is on the picture, over a soft dome of the page colour from its bottom left corner, so it reads on any photograph in both schemes; the arrows are plates over the picture's edge, in the middle, not the chips' top-aligned ones. */
   /* the label's ground and ink: the page's own until the picture has been read (`lib/image-tone.ts`), then black or a grey, and white or a grey, as it is dark or light where the label is and as the scheme is (below) */
   .place-gallery-item {
@@ -5073,7 +5086,8 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   }
 
   /* The stage's blurred backdrop is not printed. */
-  .entry-stage-backdrop {
+  .entry-stage-backdrop,
+  .place-gallery-stage-backdrop {
     display: none;
   }
 
