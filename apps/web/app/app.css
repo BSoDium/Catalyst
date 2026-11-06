@@ -8244,6 +8244,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   }
 
   [data-slot="site-header"] {
+    -webkit-app-region: drag;
     app-region: drag;
   }
 
@@ -8252,6 +8253,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   [data-slot="panel-bar"] a,
   [data-slot="panel-bar"] button,
   [data-slot="search-trigger"] {
+    -webkit-app-region: no-drag;
     app-region: no-drag;
   }
 }
