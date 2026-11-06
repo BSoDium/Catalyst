@@ -8209,12 +8209,24 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     --wco-height: env(titlebar-area-height, 0px);
   }
 
-  /* (a margin, not padding: the bar's own padding is the content's gutter, 1.5 or 2 rem) */
-  [data-slot="panel-bar"] {
+  /* The header keeps clear of the traffic lights at the left (its first control, the sections menu, is at the window's left edge). */
+  [data-slot="site-header"] {
+    padding-left: var(--wco-left);
+  }
+
+  /* The panel's bar is under the buttons only where the panel reaches the window's edge: at the left, on a phone-sized window (the dialog) and in the full-screen layout; at the right, in the dialog, whose close
+     button is at the right. Beside the globe (the panel is the right half) its bar starts mid-window and the header's own padding does the left (a margin, not padding: the bar's own padding is the content's gutter, 1.5 or 2 rem). */
+  [data-panel="dialog"] [data-slot="panel-bar"],
+  [data-panel][data-layout="full"] [data-slot="panel-bar"] {
     margin-left: var(--wco-left);
   }
 
-  [data-slot="site-header"] [data-slot="search-trigger"] {
+  [data-panel="dialog"] [data-slot="panel-bar"] {
+    margin-right: var(--wco-right);
+  }
+
+  /* The search at the header's right edge is under the buttons only while the header reaches the window's right edge: not beside an open panel, where it is at the middle of the window. */
+  body:not(:has([data-panel][data-layout="panel"])) [data-slot="site-header"] [data-slot="search-trigger"] {
     margin-right: var(--wco-right);
   }
 
