@@ -8241,13 +8241,13 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     left: max(var(--np-inset), var(--wco-left-clear));
   }
 
-  /* With a header showing, the player is always UNDER it (the narrow screen's place). From 1280 px it was in the corner, "where the header's links leave it room": here the header is padded by the buttons and its links are
-     centred in what is left, so they reach the player at widths that depend on the platform (the traffic lights' width, the buttons'): no width is the right one for both, so there is none. Without a header (the home screen
-     at rest) it is in the corner, after the traffic lights. */
-  @media (min-width: 1280px) {
-    body:has([data-slot="site-header"]) .np-root {
-      top: calc(var(--navbar-height) + 0.75rem);
-    }
+  /* The player is in the corner when the header's links leave it room and under the header when they do not. Without the buttons that is from 1280 px (the links, 688 px, are centred in the header: the player, 276 px
+     from the corner inset, ends where they begin). With them the header is padded and its links are centred in what is left, so they begin at (width + left clearance - right clearance - 688 px) / 2 and the player
+     begins after the traffic lights: the same sum with the clearances in it, whatever the platform. A media query cannot take the clearances (they are `env()`), so the choice is a `clamp()` on a length that goes
+     from the corner's top to the lower one in a thousandth of a pixel of width (the `top` transition does the rest). A header beside an open panel keeps its own rule (always under it). */
+  body:has([data-slot="site-header"]:not([data-beside])) .np-root {
+    --np-corner-from: calc(2 * (max(var(--np-inset), var(--wco-left-clear)) + 17.25rem) + 43rem - var(--wco-left-clear) + var(--wco-right-clear));
+    top: clamp(var(--np-inset), calc((var(--np-corner-from) - 100vw) * 1000), calc(var(--navbar-height) + 0.75rem));
   }
 
   /* The panel's bar is under the buttons only where the panel reaches the window's edge: at the left, on a phone-sized window (the dialog) and in the full-screen layout; at the right, in the dialog, whose close
