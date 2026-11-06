@@ -8207,19 +8207,37 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     --wco-left: env(titlebar-area-x, 0px);
     --wco-right: max(0px, calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw)));
     --wco-height: env(titlebar-area-height, 0px);
-    /* the plate's ease at its inner edge and under its lower edge; nothing is washed by it, so what is next to the buttons starts after it */
-    --wco-fade: 1rem;
-    --wco-fade-down: 0.5rem;
-    /* the room the buttons and the ease of the plate take at each side: 0 on a side with no buttons (`min(...)` is the fade where the side is more than 1/1000 px wide and 0 where it is none) */
-    --wco-left-clear: calc(var(--wco-left) + min(var(--wco-fade), calc(var(--wco-left) * 1000)));
-    --wco-right-clear: calc(var(--wco-right) + min(var(--wco-fade), calc(var(--wco-right) * 1000)));
-    /* the room under the buttons, where a control that is at the right edge goes (0 with no buttons at the right) */
-    --wco-below: min(calc(var(--wco-height) + var(--wco-fade-down)), calc(var(--wco-right) * 1000));
+    /* The plate behind the buttons is an OVAL (as the nav's plates: a radial gradient on a smoothstep, no edge anywhere): solid over the buttons and eased away to nothing at its rim, an ellipse as wide as the
+       buttons' side, centred on the middle of them (so 1.5 times their width from the window's edge) and 1.6 times as tall as the title bar. What is next to the buttons starts where the plate is nearly gone (a fifth of
+       it left, 0.943 of the way to the rim): 1.44 times the width of the buttons from the edge, 1.35 times the bar's height under them. 0 where there are no buttons (no plate, nothing kept clear). */
+    --wco-left-clear: calc(var(--wco-left) * 1.44);
+    --wco-right-clear: calc(var(--wco-right) * 1.44);
+    --wco-below: min(calc(var(--wco-height) * 1.35), calc(var(--wco-right) * 1000));
   }
 
-  /* The header keeps clear of the traffic lights at the left (its first control, the sections menu, is at the window's left edge). */
+  /* The header keeps clear of the buttons: PADDING on its two sides, so that what is measured in it shrinks with it (the narrow form takes over when what is left is under 56 rem, the centred links are centred in what is left,
+     the docked search ends on the page's margin of what is left: a margin on the search alone put it over the links, and a padding on one side alone would have made the sheet below narrower). The right side only while the header reaches
+     the window's right edge: not beside an open panel (`data-beside`), where it ends at the middle of the window. */
   [data-slot="site-header"] {
-    padding-left: var(--wco-left-clear);
+    --wco-pad-l: var(--wco-left-clear);
+    --wco-pad-r: var(--wco-right-clear);
+    padding-left: var(--wco-pad-l);
+    padding-right: var(--wco-pad-r);
+  }
+
+  [data-slot="site-header"][data-beside] {
+    --wco-pad-r: 0px;
+  }
+
+  /* The menu's sheet and its veil are as wide as the header (`100cqw`, which is the header's CONTENT box): the padding is given back, or the menu would end where the padding does. */
+  .nav-sheet,
+  .nav-veil {
+    width: calc(100cqw + var(--wco-pad-l, 0px) + var(--wco-pad-r, 0px));
+  }
+
+  /* The player is in the window's top corner, where the traffic lights are: it starts after them. */
+  .np-root {
+    left: max(var(--np-inset), var(--wco-left-clear));
   }
 
   /* The panel's bar is under the buttons only where the panel reaches the window's edge: at the left, on a phone-sized window (the dialog) and in the full-screen layout; at the right, in the dialog, whose close
@@ -8234,35 +8252,57 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     margin-top: var(--wco-below);
   }
 
-  /* The search at the header's right edge is under the buttons only while the header reaches the window's right edge: not beside an open panel, where it is at the middle of the window. */
-  body:not(:has([data-panel][data-layout="panel"])) [data-slot="site-header"] [data-slot="search-trigger"] {
-    margin-right: var(--wco-right-clear);
-  }
-
   body::before,
   body::after {
     content: "";
     position: fixed;
     top: 0;
     z-index: 60;
-    height: calc(var(--wco-height) + var(--wco-fade-down));
+    height: calc(var(--wco-height) * 1.6);
     pointer-events: none;
   }
 
-  /* the plate behind the buttons at the right (and the left, where the traffic lights are): solid under them, eased away over `--wco-fade` towards the page and `--wco-fade-down` under them; no width on a side with no buttons.
-     Controls start after the ease, never in it (it is a wash of the page's colour: what was in it was half hidden). */
+  /* the plate behind the buttons at the right (and the left, where the traffic lights are): an oval centred on the middle of the buttons' width at the window's top edge, so that its lower half is what shows; no width on a side with no buttons */
   body::after {
     right: 0;
-    width: var(--wco-right-clear);
-    background: linear-gradient(to left, var(--background) calc(100% - var(--wco-fade)), transparent);
-    mask-image: linear-gradient(to bottom, #000 calc(100% - var(--wco-fade-down)), transparent);
+    width: calc(var(--wco-right) * 1.5);
+    background: radial-gradient(
+      ellipse var(--wco-right) calc(var(--wco-height) * 1.6) at calc(100% - var(--wco-right) / 2) 0,
+      var(--background) 0%,
+      var(--background) 80%,
+      color-mix(in srgb, var(--background) 97.7%, transparent) 81.8%,
+      color-mix(in srgb, var(--background) 91.3%, transparent) 83.6%,
+      color-mix(in srgb, var(--background) 81.7%, transparent) 85.5%,
+      color-mix(in srgb, var(--background) 69.9%, transparent) 87.3%,
+      color-mix(in srgb, var(--background) 56.8%, transparent) 89.1%,
+      color-mix(in srgb, var(--background) 43.2%, transparent) 90.9%,
+      color-mix(in srgb, var(--background) 30.1%, transparent) 92.7%,
+      color-mix(in srgb, var(--background) 18.3%, transparent) 94.5%,
+      color-mix(in srgb, var(--background) 8.7%, transparent) 96.4%,
+      color-mix(in srgb, var(--background) 2.3%, transparent) 98.2%,
+      transparent 100%
+    );
   }
 
   body::before {
     left: 0;
-    width: var(--wco-left-clear);
-    background: linear-gradient(to right, var(--background) calc(100% - var(--wco-fade)), transparent);
-    mask-image: linear-gradient(to bottom, #000 calc(100% - var(--wco-fade-down)), transparent);
+    width: calc(var(--wco-left) * 1.5);
+    background: radial-gradient(
+      ellipse var(--wco-left) calc(var(--wco-height) * 1.6) at calc(var(--wco-left) / 2) 0,
+      var(--background) 0%,
+      var(--background) 80%,
+      color-mix(in srgb, var(--background) 97.7%, transparent) 81.8%,
+      color-mix(in srgb, var(--background) 91.3%, transparent) 83.6%,
+      color-mix(in srgb, var(--background) 81.7%, transparent) 85.5%,
+      color-mix(in srgb, var(--background) 69.9%, transparent) 87.3%,
+      color-mix(in srgb, var(--background) 56.8%, transparent) 89.1%,
+      color-mix(in srgb, var(--background) 43.2%, transparent) 90.9%,
+      color-mix(in srgb, var(--background) 30.1%, transparent) 92.7%,
+      color-mix(in srgb, var(--background) 18.3%, transparent) 94.5%,
+      color-mix(in srgb, var(--background) 8.7%, transparent) 96.4%,
+      color-mix(in srgb, var(--background) 2.3%, transparent) 98.2%,
+      transparent 100%
+    );
   }
 
   /* The title bar is the handle to move the window, and only the title bar: ONE strip the size of the title bar's area (`env(titlebar-area-*)`), first in the document (so what is on it can take the handle back). A drag region
