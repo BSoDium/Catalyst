@@ -8207,11 +8207,12 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     --wco-left: env(titlebar-area-x, 0px);
     --wco-right: max(0px, calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw)));
     --wco-height: env(titlebar-area-height, 0px);
-    /* The plate behind the buttons is an OVAL (as the nav's plates: a radial gradient on a smoothstep, no edge anywhere): solid over the buttons and eased away to nothing at its rim, an ellipse as wide as the
-       buttons' side, centred on the middle of them (so 1.5 times their width from the window's edge) and 1.6 times as tall as the title bar. What is next to the buttons starts where the plate is nearly gone (a fifth of
-       it left, 0.943 of the way to the rim): 1.44 times the width of the buttons from the edge, 1.35 times the bar's height under them. 0 where there are no buttons (no plate, nothing kept clear). */
-    --wco-left-clear: calc(var(--wco-left) * 1.44);
-    --wco-right-clear: calc(var(--wco-right) * 1.44);
+    /* The plate behind the buttons is an OVAL with no edge: a radial gradient whose strength falls like a bell (a Gaussian, 0.92 at its centre, 0.62 at the buttons' inner edge, a tenth where the controls start) and
+       reaches nothing at the rim with a flat slope, over 20 stops, so that no ring is to be seen. It is centred on the middle of the buttons' width at the window's top edge, 1.6 times the buttons' width wide and 2.06
+       times the bar's height tall (so 2.1 times the width from the window's edge, 2.06 times the height). What is next to the buttons starts where it is a tenth: 1.55 times the width from the edge, 1.35 times the
+       height under them. 0 where there are no buttons (no plate, nothing kept clear). */
+    --wco-left-clear: calc(var(--wco-left) * 1.55);
+    --wco-right-clear: calc(var(--wco-right) * 1.55);
     --wco-below: min(calc(var(--wco-height) * 1.35), calc(var(--wco-right) * 1000));
   }
 
@@ -8258,49 +8259,65 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     position: fixed;
     top: 0;
     z-index: 60;
-    height: calc(var(--wco-height) * 1.6);
+    height: calc(var(--wco-height) * 2.06);
     pointer-events: none;
   }
 
-  /* the plate behind the buttons at the right (and the left, where the traffic lights are): an oval centred on the middle of the buttons' width at the window's top edge, so that its lower half is what shows; no width on a side with no buttons */
+  /* the plate behind the buttons at the right (and the left, where the traffic lights are): the oval above, centred on the middle of the buttons' width at the window's top edge, so that its lower half is what shows */
   body::after {
     right: 0;
-    width: calc(var(--wco-right) * 1.5);
+    width: calc(var(--wco-right) * 2.1);
     background: radial-gradient(
-      ellipse var(--wco-right) calc(var(--wco-height) * 1.6) at calc(100% - var(--wco-right) / 2) 0,
-      var(--background) 0%,
-      var(--background) 80%,
-      color-mix(in srgb, var(--background) 97.7%, transparent) 81.8%,
-      color-mix(in srgb, var(--background) 91.3%, transparent) 83.6%,
-      color-mix(in srgb, var(--background) 81.7%, transparent) 85.5%,
-      color-mix(in srgb, var(--background) 69.9%, transparent) 87.3%,
-      color-mix(in srgb, var(--background) 56.8%, transparent) 89.1%,
-      color-mix(in srgb, var(--background) 43.2%, transparent) 90.9%,
-      color-mix(in srgb, var(--background) 30.1%, transparent) 92.7%,
-      color-mix(in srgb, var(--background) 18.3%, transparent) 94.5%,
-      color-mix(in srgb, var(--background) 8.7%, transparent) 96.4%,
-      color-mix(in srgb, var(--background) 2.3%, transparent) 98.2%,
+      ellipse calc(var(--wco-right) * 1.6) calc(var(--wco-height) * 2.06) at calc(100% - var(--wco-right) / 2) 0,
+      color-mix(in srgb, var(--background) 92.0%, transparent) 0%,
+      color-mix(in srgb, var(--background) 90.9%, transparent) 5%,
+      color-mix(in srgb, var(--background) 87.6%, transparent) 10%,
+      color-mix(in srgb, var(--background) 82.3%, transparent) 15%,
+      color-mix(in srgb, var(--background) 75.5%, transparent) 20%,
+      color-mix(in srgb, var(--background) 67.6%, transparent) 25%,
+      color-mix(in srgb, var(--background) 59.0%, transparent) 30%,
+      color-mix(in srgb, var(--background) 50.2%, transparent) 35%,
+      color-mix(in srgb, var(--background) 41.7%, transparent) 40%,
+      color-mix(in srgb, var(--background) 33.8%, transparent) 45%,
+      color-mix(in srgb, var(--background) 26.8%, transparent) 50%,
+      color-mix(in srgb, var(--background) 20.7%, transparent) 55%,
+      color-mix(in srgb, var(--background) 15.5%, transparent) 60%,
+      color-mix(in srgb, var(--background) 11.4%, transparent) 65%,
+      color-mix(in srgb, var(--background) 8.2%, transparent) 70%,
+      color-mix(in srgb, var(--background) 5.7%, transparent) 75%,
+      color-mix(in srgb, var(--background) 3.5%, transparent) 80%,
+      color-mix(in srgb, var(--background) 1.7%, transparent) 85%,
+      color-mix(in srgb, var(--background) 0.6%, transparent) 90%,
+      color-mix(in srgb, var(--background) 0.1%, transparent) 95%,
       transparent 100%
     );
   }
 
   body::before {
     left: 0;
-    width: calc(var(--wco-left) * 1.5);
+    width: calc(var(--wco-left) * 2.1);
     background: radial-gradient(
-      ellipse var(--wco-left) calc(var(--wco-height) * 1.6) at calc(var(--wco-left) / 2) 0,
-      var(--background) 0%,
-      var(--background) 80%,
-      color-mix(in srgb, var(--background) 97.7%, transparent) 81.8%,
-      color-mix(in srgb, var(--background) 91.3%, transparent) 83.6%,
-      color-mix(in srgb, var(--background) 81.7%, transparent) 85.5%,
-      color-mix(in srgb, var(--background) 69.9%, transparent) 87.3%,
-      color-mix(in srgb, var(--background) 56.8%, transparent) 89.1%,
-      color-mix(in srgb, var(--background) 43.2%, transparent) 90.9%,
-      color-mix(in srgb, var(--background) 30.1%, transparent) 92.7%,
-      color-mix(in srgb, var(--background) 18.3%, transparent) 94.5%,
-      color-mix(in srgb, var(--background) 8.7%, transparent) 96.4%,
-      color-mix(in srgb, var(--background) 2.3%, transparent) 98.2%,
+      ellipse calc(var(--wco-left) * 1.6) calc(var(--wco-height) * 2.06) at calc(var(--wco-left) / 2) 0,
+      color-mix(in srgb, var(--background) 92.0%, transparent) 0%,
+      color-mix(in srgb, var(--background) 90.9%, transparent) 5%,
+      color-mix(in srgb, var(--background) 87.6%, transparent) 10%,
+      color-mix(in srgb, var(--background) 82.3%, transparent) 15%,
+      color-mix(in srgb, var(--background) 75.5%, transparent) 20%,
+      color-mix(in srgb, var(--background) 67.6%, transparent) 25%,
+      color-mix(in srgb, var(--background) 59.0%, transparent) 30%,
+      color-mix(in srgb, var(--background) 50.2%, transparent) 35%,
+      color-mix(in srgb, var(--background) 41.7%, transparent) 40%,
+      color-mix(in srgb, var(--background) 33.8%, transparent) 45%,
+      color-mix(in srgb, var(--background) 26.8%, transparent) 50%,
+      color-mix(in srgb, var(--background) 20.7%, transparent) 55%,
+      color-mix(in srgb, var(--background) 15.5%, transparent) 60%,
+      color-mix(in srgb, var(--background) 11.4%, transparent) 65%,
+      color-mix(in srgb, var(--background) 8.2%, transparent) 70%,
+      color-mix(in srgb, var(--background) 5.7%, transparent) 75%,
+      color-mix(in srgb, var(--background) 3.5%, transparent) 80%,
+      color-mix(in srgb, var(--background) 1.7%, transparent) 85%,
+      color-mix(in srgb, var(--background) 0.6%, transparent) 90%,
+      color-mix(in srgb, var(--background) 0.1%, transparent) 95%,
       transparent 100%
     );
   }
