@@ -206,6 +206,11 @@
      capitals 18 px from the top and 16 px from the left, so each control is nested in its corner at one distance (docs/web-architecture.md, "Header"). */
   :root {
     --navbar-base: 3.25rem;
+  }
+}
+/* (the name's small line sits higher on a phone: the same width as its own phone rule, `.hero-mini`) */
+@media (max-width: 47.99rem) {
+  :root {
     --hero-mini-bottom: 3.25rem;
   }
 }

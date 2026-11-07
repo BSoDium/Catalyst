@@ -8,3 +8,11 @@ try {
     for (var i = 0; i < m.length; i++) m[i].setAttribute("content", c);
   }
 } catch (e) {}
+
+/* The installed app is edge to edge (a phone's status and navigation bars, a notch): `viewport-fit=cover`, which only the app gets (the page's `--safe-*` insets, app.css, keep what is pinned to an edge clear of the bars). A tab of a browser keeps the safe area: with it, an iPhone in landscape would draw the page under its notch. */
+try {
+  if (window.matchMedia("(display-mode: standalone), (display-mode: fullscreen), (display-mode: minimal-ui), (display-mode: window-controls-overlay)").matches) {
+    var v = document.querySelector('meta[name="viewport"]');
+    if (v && v.getAttribute("content").indexOf("viewport-fit") < 0) v.setAttribute("content", v.getAttribute("content") + ", viewport-fit=cover");
+  }
+} catch (e) {}

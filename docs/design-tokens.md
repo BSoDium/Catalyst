@@ -362,3 +362,15 @@ The row of the navigation over the globe and the map (`.nav-fade` in `app.css`, 
 
 - Content pages start `navbar-height + 3rem` from the top; `:target` scroll margins use `navbar-height + 1.5rem`.
 - Tuning knobs for the owner: `--scrim-height`, the stop list, and the three blur radii and mask ends.
+
+## Safe area (a phone's system bars)
+
+An installed app is edge to edge: `public/theme-boot.js` adds `viewport-fit=cover` to the viewport when the page runs standalone, fullscreen, minimal-ui or with the window controls overlay (not in a tab of a browser: an iPhone in landscape would draw the page under its notch), and the globe, the page's colour and the panels are drawn under the status bar, the navigation bar and the notch.
+
+| Token | Value | Use |
+| --- | --- | --- |
+| `--safe-top`, `--safe-right`, `--safe-bottom`, `--safe-left` | `env(safe-area-inset-*, 0px)` | the system's bars: 0 everywhere else. The ONLY place the stylesheet reads `env(safe-area-inset-*)` (a test keeps it so), so a check can set them by hand where there is no phone (`:root { --safe-top: 28px; --safe-bottom: 24px }`) |
+| `--navbar-base` | `3.5rem` (3.25 rem on a phone) | the header's own height |
+| `--navbar-height` | `calc(var(--navbar-base) + var(--safe-top))` | the header's height with the status bar's: every offset from the header follows |
+
+What is pinned to an edge keeps clear of the bars with these: the header (`pt-(--safe-top)`), a panel's bar and scrolling end, an entry's head and close button on a phone, the player's corner when there is no header, the credits line, the name's small line (`.hero-mini`), the hero's bottom padding, the "Reset view" button. The name's size and distance from the bottom (`--hero-mini-size`, `--hero-mini-bottom`) are tokens too, shared with what must clear the name. Not covered: the sides in landscape beyond the header and the panels.
