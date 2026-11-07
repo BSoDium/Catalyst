@@ -4649,12 +4649,14 @@ body:not(:has([data-slot="site-header"])) .np-root {
   padding-inline: 1.5rem;
 }
 @media (max-width: 47.99rem) {
+  /* On a phone the button is a compact one (owner, 2026-11-07: "smaller, less padding"): 36 px tall instead of the touch size's 44, 0.75 rem at each side. */
   .world-view-root [data-slot="world-view-button"] {
-    padding-inline: 1rem;
+    min-height: 2.25rem;
+    padding-inline: 0.75rem;
   }
-  /* On a phone the name's small line takes the bottom-left corner across most of the width (245 px at 390): the button is centred ABOVE it, not over its end (the credits' line is under it). */
+  /* The name's small line takes the bottom-left corner across most of the width (245 px at 390): the button is centred ABOVE it, not over its end (the credits' line is under it), with room between (owner, 2026-11-07: "higher"). */
   .world-view-root {
-    bottom: calc(var(--hero-mini-bottom) + var(--safe-bottom) + var(--hero-mini-size) + 0.75rem);
+    bottom: calc(var(--hero-mini-bottom) + var(--safe-bottom) + var(--hero-mini-size) + 1.75rem);
   }
 }
 
