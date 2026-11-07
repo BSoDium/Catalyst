@@ -54,7 +54,7 @@ describe("the site's identity is one constant", () => {
   it("is the owner's name, with a short form for tight spots, and facts only", () => {
     expect(SITE.name).toBe("Elliot Négrel-Jerzy");
     expect(`${SITE.givenName} ${SITE.familyName}`).toBe(SITE.name);
-    expect(SITE.shortName).toBe("Elliot N.-J.");
+    expect(SITE.shortName).toBe("BSoDium");
     expect(SITE.shortName.length).toBeLessThanOrEqual(12);
     expect(SITE_TAGLINE).toBe("Design engineer based in Warsaw. Data visualisation, geospatial and cartography interfaces, design systems, computer graphics.");
     expect(SITE_NAME).toBe(SITE.name);
