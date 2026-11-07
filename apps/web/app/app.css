@@ -4654,7 +4654,10 @@ body:not(:has([data-slot="site-header"])) .np-root {
     min-height: 2.25rem;
     padding-inline: 0.75rem;
   }
-  /* The name's small line takes the bottom-left corner across most of the width (245 px at 390): the button is centred ABOVE it, not over its end (the credits' line is under it), with room between (owner, 2026-11-07: "higher"). */
+}
+/* The name's small line takes the bottom-left corner (its size stops growing at 463 px: it ends 329 px from the left from there on): a button centred in the width clears it by 16 px from 834 px (its width on a wide screen is
+   144 px), so below 53 rem (848 px) the button is centred ABOVE the name, not over its end (the credits' line is under it), with room between (owner, 2026-11-07: "higher"; "the breakpoint's slightly off": it was 48 rem). */
+@media (max-width: 52.99rem) {
   .world-view-root {
     bottom: calc(var(--hero-mini-bottom) + var(--safe-bottom) + var(--hero-mini-size) + 1.75rem);
   }
