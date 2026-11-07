@@ -18,7 +18,7 @@ export const SITE = {
   /** The handle the owner goes by online: what the domain (bsodium.fr) is named after, said once on the home page and the career page (#588). */
   handle: "BSoDium",
   /** For tight spots (the home-screen label under an icon, 12 characters or fewer). */
-  shortName: "Elliot N.-J.",
+  shortName: "BSoDium",
   /** Who: what the owner does, and where. The hero says "<role> based in <location>." */
   role: "Design engineer",
   location: "Warsaw",

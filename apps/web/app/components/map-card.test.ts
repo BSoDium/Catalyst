@@ -43,7 +43,7 @@ describe("credits line", () => {
     expect(html).toContain("--credits-inset:720px");
     expect(html).toContain("right-[calc(var(--credits-inset)+0.5rem)]");
     expect(html).toContain("max-w-[calc(100%-var(--credits-inset)-1rem)]");
-    expect(html).toContain("env(safe-area-inset-bottom)");
+    expect(html).toContain("var(--safe-bottom)");
   });
   it("the button has a name that contains its visible label, opens a dialog, has the up-right arrow", () => {
     const html = credits();
@@ -60,7 +60,7 @@ describe("credits line", () => {
     expect(card).not.toContain("max-md:hidden");
     for (const cls of ["max-md:left-2", "max-md:right-2", "max-md:max-w-none"]) expect(card, cls).toContain(cls);
     expect(card).not.toContain("max-md:block");
-    expect(card).toContain("env(safe-area-inset-bottom)");
+    expect(card).toContain("var(--safe-bottom)");
     expect(card).toContain("z-20");
     const line = /<p[^>]*>/.exec(html)![0];
     expect(line).toContain("h-4");

@@ -45,7 +45,7 @@ export function AttributionButton({ tiles, insetRight, reducedMotion, dataVersio
     <>
       <div
         data-attribution="card"
-        style={{ "--credits-inset": `${insetRight}px`, bottom: "max(0.25rem, env(safe-area-inset-bottom))" } as CSSProperties}
+        style={{ "--credits-inset": `${insetRight}px`, bottom: "max(0.25rem, var(--safe-bottom))" } as CSSProperties}
         className={cn(
           "map-credits absolute right-[calc(var(--credits-inset)+0.5rem)] z-20 flex max-w-[calc(100%-var(--credits-inset)-1rem)] items-center gap-[1ch] rounded-sm px-1.5 py-px font-mono text-[10px] leading-4 tracking-wide text-subtle-foreground",
           // a phone: the full width, left-aligned, still one line

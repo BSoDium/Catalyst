@@ -331,3 +331,20 @@ describe("window controls overlay", () => {
     expect(wco).toMatch(/html::before\s*\{[^}]*app-region:\s*drag/);
   });
 });
+
+describe("the page under a phone's system bars", () => {
+  it("the installed app covers the notch and the bars, and the insets are read in one place (--safe-*), which everything else uses", async () => {
+    const { readFileSync } = await import("node:fs");
+    const root = readFileSync(new URL("../root.tsx", import.meta.url), "utf8");
+    const boot = readFileSync(new URL("../../public/theme-boot.js", import.meta.url), "utf8");
+    // the installed app covers the notch and the bars, a tab of a browser does not (an iPhone in landscape would draw the page under its notch)
+    expect(root).not.toMatch(/name="viewport" content="[^"]*viewport-fit/);
+    expect(boot).toMatch(/display-mode: standalone/);
+    expect(boot).toContain("viewport-fit=cover");
+    // the four tokens are the only `env(safe-area-inset-*)` of the stylesheet: a check can set them by hand where there is no phone
+    expect(css.match(/env\(safe-area-inset-/g)?.length).toBe(4);
+    for (const side of ["top", "right", "bottom", "left"]) expect(css).toContain(`--safe-${side}: env(safe-area-inset-${side}, 0px);`);
+    // the header takes the status bar's height into the bar's
+    expect(css).toMatch(/--navbar-height:\s*calc\(var\(--navbar-base\) \+ var\(--safe-top\)\)/);
+  });
+});

@@ -256,7 +256,7 @@ describe("the hero's CSS (app.css, 'Landing hero')", () => {
     expect(css).toMatch(/--hero-fixed: 26\.5rem;/);
     // a fifth row (the career page) is one more 44 px target that the name gives up
     expect(css).toMatch(/\.landing-hero\[data-rows="5"\] \{\s*--hero-extra: 3\.5rem;/);
-    expect(css).toMatch(/calc\(\(100dvh - var\(--hero-fixed\) - var\(--hero-extra, 0rem\) - var\(--hero-clear\) - env\(safe-area-inset-bottom, 0px\) - 1rem\) \/ 1\.9\)/);
+    expect(css).toMatch(/calc\(\(100dvh - var\(--hero-fixed\) - var\(--hero-extra, 0rem\) - var\(--hero-clear\) - var\(--safe-bottom\) - 1rem\) \/ 1\.9\)/);
     // up to 40 rem tall: no how-to line; up to 36 rem: the rows in two columns; a phone on its side: the wide layout in small
     expect(css).toMatch(/\(max-width: 47\.99rem\) and \(max-height: 40rem\) \{[^@]*--hero-fixed: 24\.5rem;[^@]*\.hero-hint \{\s*display: none;/);
     expect(css).toMatch(/\(max-width: 47\.99rem\) and \(max-height: 36rem\) \{[^@]*--hero-fixed: 17rem;[^@]*grid-template-columns: 1fr 1fr;/);

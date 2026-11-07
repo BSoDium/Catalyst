@@ -29,6 +29,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     <html lang="en" suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
+        {/* (`viewport-fit=cover` is added by /theme-boot.js in an installed app only: edge to edge under the system bars; a tab of a browser keeps the safe area, as a notch in landscape would otherwise cover its sides) */}
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="color-scheme" content="light dark" />
         {/* The browser's own UI (address bar, status bar) takes the page colour of the visitor's scheme. */}
