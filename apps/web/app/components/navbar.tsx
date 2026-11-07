@@ -163,7 +163,7 @@ export function Navbar({ heroResting: forced, hasCareer: forcedCareer }: NavbarP
             beside && "md:right-1/2",
           )}
         >
-          <div className="flex h-(--navbar-height) items-center justify-center px-2">
+          <div className="flex h-(--navbar-height) items-center justify-center pt-(--safe-top) pr-[max(0.5rem,var(--safe-right))] pl-[max(0.5rem,var(--safe-left))]">
             <nav aria-label="Primary" className="relative flex items-center">
               {/* The full-screen entry view has its own, panel-wide fade (detail-panel.tsx); the lists have the page one (nav-scrim.tsx). */}
               {onGlobe && !fullScreen && <span aria-hidden="true" className="nav-fade print:hidden" />}

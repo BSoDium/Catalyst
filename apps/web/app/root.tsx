@@ -29,7 +29,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
     <html lang="en" suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        {/* `viewport-fit=cover`: the page draws under the status bar, the navigation bar and the notch of a phone (an installed app is edge to edge); what must not be under them keeps clear by `--safe-*` (app.css). */}
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <meta name="color-scheme" content="light dark" />
         {/* The browser's own UI (address bar, status bar) takes the page colour of the visitor's scheme. */}
         <meta name="theme-color" content={THEME_COLORS.light} media="(prefers-color-scheme: light)" />

@@ -170,7 +170,17 @@
   --duration-scan: 1600ms;
 
   /* Layout. */
-  --navbar-height: 3.5rem;
+  /* The system's own bars on a phone (the status bar, the navigation bar, a notch): 0 everywhere else. The page is drawn under them (`viewport-fit=cover`, root.tsx), and what is pinned to an edge keeps clear by these.
+     One place, so that a check can set them by hand (`:root { --safe-top: 28px }`) where there is no phone. */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --navbar-base: 3.5rem;
+  --navbar-height: calc(var(--navbar-base) + var(--safe-top));
+  /* The name's small line in the board's bottom-left corner (`.hero-mini`): its size and its distance from the bottom, shared with what has to clear it (the "Reset view" button on a phone). */
+  --hero-mini-size: clamp(1.75rem, 9.5vw, 2.75rem);
+  --hero-mini-bottom: 2rem;
   /* The narrow header (a phone, or the half beside the panel): the selector is the page's title in the bar, in the drawer rows' size; the search is
      the index's twin: the same face, size, weight and features (`--nav-mono` is `--nav-index`), in sentence case, with an icon as tall as a digit of it (below); the index is as tall as the title's capitals (`--nav-index`: Bricolage's capitals are
      0.66 em and JetBrains Mono's digits 0.74 em, so 0.66 / 0.74 of the title's size, measured with canvas `actualBoundingBox`). */
@@ -195,7 +205,8 @@
   /* The phone's bar is 52 px: the 20 px search icon then sits 16 px from the top edge and 16 px from the right one (the gutter), and the title's
      capitals 18 px from the top and 16 px from the left, so each control is nested in its corner at one distance (docs/web-architecture.md, "Header"). */
   :root {
-    --navbar-height: 3.25rem;
+    --navbar-base: 3.25rem;
+    --hero-mini-bottom: 3.25rem;
   }
 }
 
@@ -4502,14 +4513,14 @@ html[data-eclipse] .landing-hero {
 @media (max-width: 47.99rem) {
   [data-panel]:has([data-slot="entry-view"]) .entry-running {
     min-height: 0;
-    padding-block: 1.5rem;
+    padding-block: calc(1.5rem + var(--safe-top)) 1.5rem;
     padding-right: 3.75rem;
     line-height: 1;
   }
 
   [data-panel]:has([data-slot="entry-view"]) [data-slot="panel-bar"] {
     position: absolute;
-    top: 0.5rem;
+    top: calc(0.5rem + var(--safe-top));
     right: 0.75rem;
     z-index: 30;
     min-height: 0;
@@ -4579,12 +4590,12 @@ html[data-eclipse] .landing-hero {
 }
 /* (no header, as on the home screen at rest: the top of the screen) */
 body:not(:has([data-slot="site-header"])) .np-root {
-  top: var(--np-inset);
+  top: calc(var(--np-inset) + var(--safe-top));
 }
 @media (min-width: 1280px) {
   .np-root,
   body:not(:has([data-slot="site-header"])) .np-root {
-    top: var(--np-inset);
+    top: calc(var(--np-inset) + var(--safe-top));
   }
   /* A panel beside the globe (#489) narrows the header to the left half, where it is the selector at the left edge (or links centred in the half): the corner is the header's again, so the player takes the narrow place, under it */
   body:has([data-slot="site-header"][data-beside]) .np-root {
@@ -4625,7 +4636,7 @@ body:not(:has([data-slot="site-header"])) .np-root {
 }
 /* The floating way back to the world view (components/world-view-button.tsx): bottom centre, over the credits' line's height, clear of the safe area of a phone. */
 .world-view-root {
-  bottom: max(1.25rem, env(safe-area-inset-bottom, 0px));
+  bottom: max(1.25rem, var(--safe-bottom));
 }
 /* Over the globe's linework the button must read: the page's colour at 72 % over a blur of what is behind it. */
 .world-view-root [data-slot="world-view-button"] {
@@ -4640,6 +4651,10 @@ body:not(:has([data-slot="site-header"])) .np-root {
 @media (max-width: 47.99rem) {
   .world-view-root [data-slot="world-view-button"] {
     padding-inline: 1rem;
+  }
+  /* On a phone the name's small line takes the bottom-left corner across most of the width (245 px at 390): the button is centred ABOVE it, not over its end (the credits' line is under it). */
+  .world-view-root {
+    bottom: calc(var(--hero-mini-bottom) + var(--safe-bottom) + var(--hero-mini-size) + 0.75rem);
   }
 }
 
@@ -5711,12 +5726,12 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     max-height: calc(100dvh - var(--navbar-height) - 4rem);
     overflow-y: auto;
     overscroll-behavior: contain;
-    padding: 0.25rem max(1rem, env(safe-area-inset-right)) 0 max(1rem, env(safe-area-inset-left));
+    padding: 0.25rem max(1rem, var(--safe-right)) 0 max(1rem, var(--safe-left));
   }
 
   .nav-sheet-grip {
     height: 5px;
-    margin: 0.875rem max(1rem, env(safe-area-inset-right)) 0.875rem max(1rem, env(safe-area-inset-left));
+    margin: 0.875rem max(1rem, var(--safe-right)) 0.875rem max(1rem, var(--safe-left));
     background: repeating-linear-gradient(90deg, var(--border-strong) 0 1px, transparent 1px var(--tick-step));
   }
 
@@ -5806,7 +5821,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   .nav-sheet-link[aria-current="page"]::before {
     content: "";
     position: absolute;
-    left: calc(-1 * max(1rem, env(safe-area-inset-left, 0px)));
+    left: calc(-1 * max(1rem, var(--safe-left)));
     top: 0.5rem;
     bottom: 0.5rem;
     width: 2px;
@@ -5914,7 +5929,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     bottom: 0;
     z-index: 10;
     padding-inline: var(--hero-gutter);
-    padding-bottom: calc(var(--hero-clear) + env(safe-area-inset-bottom, 0px) + 0.15 * var(--hero-size));
+    padding-bottom: calc(var(--hero-clear) + var(--safe-bottom) + 0.15 * var(--hero-size));
     pointer-events: none;
   }
 
@@ -5934,7 +5949,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
         min(
           calc((100vw - 2 * var(--hero-gutter)) / var(--hero-fit)),
           24vh,
-          calc((100dvh - var(--hero-fixed) - var(--hero-extra, 0rem) - var(--hero-clear) - env(safe-area-inset-bottom, 0px) - 1rem) / 1.9)
+          calc((100dvh - var(--hero-fixed) - var(--hero-extra, 0rem) - var(--hero-clear) - var(--safe-bottom) - 1rem) / 1.9)
         )
       );
     }
@@ -6384,10 +6399,9 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
 
   /* The small line that stays when the hero steps back: the board's bottom-left corner (40 px, 32 px), the hint UNDER it (owner, 2026-10-26; it was beside it). */
   .hero-mini {
-    --hero-mini-bottom: 2rem;
     position: absolute;
     left: var(--hero-mini-left, 2.5rem);
-    bottom: calc(var(--hero-mini-bottom) + env(safe-area-inset-bottom, 0px));
+    bottom: calc(var(--hero-mini-bottom) + var(--safe-bottom));
     right: var(--hero-gutter);
     margin: 0;
     display: flex;
@@ -6402,7 +6416,6 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   @media (max-width: 47.99rem) {
     .hero-mini {
       --hero-mini-left: var(--hero-gutter);
-      --hero-mini-bottom: 3.25rem;
     }
   }
 
@@ -6413,7 +6426,6 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
    * screen, 9.5 vw down to 28 px on a phone, so that it clears the credits (card), the dev badge and the hint beside it from 320 px.
    */
   .hero-mini-name {
-    --hero-mini-size: clamp(1.75rem, 9.5vw, 2.75rem);
     visibility: hidden;
     font-family: var(--font-display);
     font-variation-settings: "opsz" 96;
