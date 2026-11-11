@@ -45,13 +45,28 @@ export function rankThemes(query: string): ThemeChoice[] {
   return [...THEME_CHOICES].sort((a, b) => Number(about(b)) - Number(about(a)));
 }
 
-/** The choice kept on this device; `system` where there is none or no storage. */
+/** Whether the page runs as an app installed on a phone (`public/theme-boot.js` marks the root `data-phone-app`; a tab of a browser and a desktop app are not). See `docs/pwa-system-bars.md`. */
+export function isInstalledPhoneApp(): boolean {
+  return typeof document !== "undefined" && document.documentElement.getAttribute("data-phone-app") !== null;
+}
+
+/**
+ * What a choice says under its name. In an app installed on a phone the navigation bar is the manifest's one colour (dark) whatever the page does, so the rows say so: dark matches it, the others leave it dark
+ * under a pale page (a default, not a rule: `docs/pwa-system-bars.md`).
+ */
+export function themeSub(choice: ThemeChoice): string {
+  if (!isInstalledPhoneApp()) return THEME_LABELS[choice].sub;
+  return choice === "dark" ? "Matches the app's navigation bar" : choice === "light" ? "Navigation bar stays dark" : "Follow the phone · navigation bar stays dark";
+}
+
+/** The choice kept on this device; where there is none (or no storage) the default: `system`, and `dark` in an app installed on a phone (the boot script applies the same default). */
 export function readThemeChoice(): ThemeChoice {
+  const fallback: ThemeChoice = isInstalledPhoneApp() ? "dark" : "system";
   try {
     const v = localStorage.getItem(THEME_KEY);
-    return v === "light" || v === "dark" ? v : "system";
+    return v === "light" || v === "dark" || v === "system" ? v : fallback;
   } catch {
-    return "system";
+    return fallback;
   }
 }
 
@@ -65,7 +80,8 @@ export function setThemeChoice(choice: ThemeChoice): boolean {
   if (choice === "system") root.removeAttribute("data-scheme");
   else root.setAttribute("data-scheme", choice);
   try {
-    if (choice === "system") localStorage.removeItem(THEME_KEY);
+    // (`system` is the absence of a choice, except in an app installed on a phone, where the absence means dark: there it is kept)
+    if (choice === "system" && !isInstalledPhoneApp()) localStorage.removeItem(THEME_KEY);
     else localStorage.setItem(THEME_KEY, choice);
   } catch {
     /* not kept */
