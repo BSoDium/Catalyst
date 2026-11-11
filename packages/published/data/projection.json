@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "dataVersion": {
-    "commit": "d957ef9d3632df9dffe475bc9942c9a28248be23",
-    "date": "2026-11-06"
+    "commit": "94d10aa76310f077f52686d024f0f2a765f32ef4",
+    "date": "2026-11-12"
   },
   "places": [
     {
@@ -1921,6 +1921,36 @@
       "related": []
     },
     {
+      "slug": "musee-d-orsay",
+      "name": "Musée d'Orsay",
+      "coordinates": {
+        "lat": 48.8599,
+        "lon": 2.3266
+      },
+      "labelPriority": 44,
+      "bbox": [
+        2.32518,
+        48.85929,
+        2.32787,
+        48.86055
+      ],
+      "viewRadiusKm": 0.5,
+      "group": "paris-area",
+      "countryCode": "FR",
+      "body": [],
+      "images": [],
+      "related": [
+        {
+          "kind": "artwork",
+          "slug": "la-vierge-au-lys-musee-d-orsay"
+        },
+        {
+          "kind": "artwork",
+          "slug": "baroque-with-a-twist-musee-d-orsay"
+        }
+      ]
+    },
+    {
       "slug": "museo-plaza-de-toros",
       "name": "Mitad del mundo",
       "coordinates": {
@@ -2209,7 +2239,7 @@
         48.902156
       ],
       "viewRadiusKm": 8.1,
-      "group": "france",
+      "group": "paris-area",
       "countryCode": "FR",
       "lived": true,
       "body": [
@@ -2266,16 +2296,8 @@
           "slug": "kanop-platform"
         },
         {
-          "kind": "artwork",
-          "slug": "la-vierge-au-lys-musee-d-orsay"
-        },
-        {
           "kind": "project",
           "slug": "portfolio-website"
-        },
-        {
-          "kind": "artwork",
-          "slug": "baroque-with-a-twist-musee-d-orsay"
         },
         {
           "kind": "poem",
@@ -4443,6 +4465,18 @@
       },
       "viewRadiusKm": 144.4,
       "labelPriority": 57
+    },
+    {
+      "slug": "paris-area",
+      "name": "Paris area",
+      "kind": "area",
+      "parent": "france",
+      "coordinates": {
+        "lat": 48.859,
+        "lon": 2.347
+      },
+      "viewRadiusKm": 8.9,
+      "labelPriority": 55
     },
     {
       "slug": "peru",
@@ -8422,7 +8456,7 @@
         }
       ],
       "placeSlugs": [
-        "paris"
+        "musee-d-orsay"
       ]
     },
     {
@@ -8725,7 +8759,7 @@
         }
       ],
       "placeSlugs": [
-        "paris"
+        "musee-d-orsay"
       ]
     },
     {
