@@ -7,7 +7,7 @@ import { matchesSurprise, SURPRISE } from "~/lib/interlude";
 import { matchesArchive } from "~/lib/archive";
 import { ARCHIVED_V1 } from "~/lib/site";
 import { playThemeClick } from "~/lib/theme-click";
-import { THEME_LABELS, matchesTheme, rankThemes, readThemeChoice, setThemeChoice, currentScheme, type ThemeChoice } from "~/lib/theme";
+import { THEME_LABELS, matchesTheme, rankThemes, readThemeChoice, setThemeChoice, themeSub, currentScheme, type ThemeChoice } from "~/lib/theme";
 import { groupResults, rankItems, resultsStatus, SEARCH_LABELS, type SearchItem } from "~/lib/search";
 import { cn } from "~/lib/utils";
 
@@ -308,7 +308,7 @@ export function SearchPalette() {
                             <Icon name={THEME_ICON[row.theme]} size="control" className="shrink-0 text-muted-foreground" />
                             <span className="flex min-w-0 flex-1 flex-col">
                               <span className="truncate font-display text-base font-bold tracking-[-0.01em]">{label.title}</span>
-                              <span className="ds-meta truncate">{label.sub}</span>
+                              <span className="ds-meta truncate">{themeSub(row.theme)}</span>
                             </span>
                             {choice === row.theme && (
                               <>

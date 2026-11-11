@@ -19,7 +19,7 @@ describe("public/ brand assets", () => {
   it("has the home-screen icon at 180 px", () => {
     expect(pngSize("apple-touch-icon.png")).toEqual({ width: 180, height: 180 });
   });
-  it("has a manifest whose icons exist at their declared size and whose colours are the dark page colour", () => {
+  it("has a manifest whose icons exist at their declared size and whose colours are the dark page colour (the installed phone app starts dark: docs/pwa-system-bars.md)", () => {
     const manifest = JSON.parse(readFileSync(pub("manifest.webmanifest"), "utf8")) as {
       name: string; short_name: string; display: string; start_url: string; theme_color: string; background_color: string;
       icons: { src: string; sizes: string; type: string; purpose?: string }[];
