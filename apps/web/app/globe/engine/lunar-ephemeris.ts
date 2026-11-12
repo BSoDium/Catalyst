@@ -130,6 +130,12 @@ export interface LunarPosition {
 /** Julian centuries from J2000.0. */
 const centuries = (ms: number): number => (ms - J2000_MS) / 86_400_000 / 36525;
 
+/** The moon's mean anomaly at `ms`, degrees 0 to 360: the angle from perigee that a moon on an even clock would have gone through (what Kepler's equation starts from). */
+export function moonMeanAnomalyDeg(ms: number): number {
+  const T = centuries(ms);
+  return wrap360(134.9633964 + 477198.8675055 * T + 0.0087414 * T * T);
+}
+
 /** The sum of a table at the arguments (radians), the terms that hold the sun's anomaly scaled by the eccentricity of the earth's orbit (`e`, once for a multiple of 1, squared for 2). */
 function series(terms: readonly Term[], fn: (x: number) => number, D: number, M: number, Mp: number, F: number, e: number): number {
   let sum = 0;

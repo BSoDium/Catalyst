@@ -79,7 +79,8 @@ import { pickOccluder, planetRise, sunRise, type Occluder } from "./sun-flare";
 import { liveSun, opening } from "./daylight";
 import { IMMERSION, immersiveZoom, openingZoom } from "./immersion";
 import { FX, irisStep } from "./fx";
-import { ECLIPSE, MOON, SUN, eclipseInclination, inclinationFor, litTurn, moonAmount, moonShadowOn, orbitAngle, rollFor, sunDirection, toEarthFrame, toRad, visibleBounds, type Vec3 } from "./moon";
+import { LUNAR, lunarPosition, moonMeanAnomalyDeg } from "./lunar-ephemeris";
+import { DEFAULT_ORBIT, ECLIPSE, MOON, SUN, eclipseInclination, inclinationFor, litTurn, moonAmount, moonShadowOn, msAtAngle, orbitAngle, orbitBasis, rollFor, startFor, type OrbitStart, sunDirection, toEarthFrame, toRad, visibleBounds, type Vec3 } from "./moon";
 import { roleColor } from "./palette";
 import type { MoonSample } from "./moon-layer";
 import type { MoonFrame } from "./moon-overlay";
@@ -194,7 +195,8 @@ export class GlobeRenderer {
   private globe: GlobeScene;
   private camera = new PerspectiveCamera(FOV_DEG, 1, 0.05, 20);
   /** The real day and night at load (engine/daylight.ts): the camera starts over the longitude the sun lights from its right. */
-  private readonly open = opening(liveSun() ? Date.now() : null, SKY.eraDeg);
+  private readonly openMs: number | null = liveSun() ? Date.now() : null;
+  private readonly open = opening(this.openMs, SKY.eraDeg);
   private view: ViewState = { lon: this.open.lon, lat: START_VIEW.lat, zoom: 0 };
   private width = 1;
   private height = 1;
@@ -1319,6 +1321,19 @@ export class GlobeRenderer {
   private moonPinned: number | null = null;
   private moonSun: Vec3 = sunDirection(this.open.sunElevationDeg);
   /**
+   * Where the lap starts (#629, #630): on the live page, the angle on the orbit where the moon's lit share is the real one at load, going the way the real phase goes, with perigee where the real mean anomaly puts it
+   * (`startFor`); on a debug page the fixed start. Worked out once, from the orbit's plane as the window has it at the first frame (a window reshaped later turns the plane a few degrees: the phase moves with it).
+   */
+  private moonStartAt: OrbitStart | null = null;
+  private get moonStart(): OrbitStart {
+    if (this.moonStartAt) return this.moonStartAt;
+    if (this.openMs === null) return DEFAULT_ORBIT;
+    const aspect = this.width / Math.max(1, this.height);
+    const real = lunarPosition(this.openMs);
+    const basis = orbitBasis(rollFor(aspect), this.orbitInclination(aspect));
+    return (this.moonStartAt = startFor(real.illuminatedFraction, real.ageDays < LUNAR.synodicDays / 2, moonMeanAnomalyDeg(this.openMs) * (Math.PI / 180), basis, this.moonSun));
+  }
+  /**
    * The session's orbit (owner, 2026-11-02, #443): in one session in `ECLIPSE.chance` the orbit's plane is turned to line up with the sun (`eclipseInclination`, a little off the exact line, by the session's seed), so
    * that the moon crosses the earth's shadow once a lap; in the others it never does. `null` is the usual orbit. A debug page can force it (`?eclipse`).
    */
@@ -1388,13 +1403,13 @@ export class GlobeRenderer {
 
   /** The orbit's angle now, radians (checks): pinned, or where the clock has it. */
   moonAngleNow(): number {
-    return this.moonPinned ?? (this.eclipseSweep ? this.sweepAngle : orbitAngle(this.moonMs));
+    return this.moonPinned ?? (this.eclipseSweep ? this.sweepAngle : orbitAngle(this.moonMs, this.moonStart));
   }
 
   /** Put the moon's clock at `deg` of its orbit and let it run from there (checks). */
   setMoonAngle(deg: number) {
     this.moonPinned = null;
-    this.moonMs = ((toRad(deg) - orbitAngle(0)) / (2 * Math.PI)) * MOON.periodMs;
+    this.moonMs = msAtAngle(toRad(deg), this.moonStart);
     this.moonAt = 0;
     this.requestRender();
   }
@@ -1441,7 +1456,7 @@ export class GlobeRenderer {
       if (this.moonAt > 0) this.moonMs += Math.min(250, Math.max(0, now - this.moonAt));
       this.moonAt = now;
     } else this.moonAt = 0;
-    return orbitAngle(this.moonMs);
+    return orbitAngle(this.moonMs, this.moonStart);
   }
 
   /** The cinematic interlude (the easter egg) has the camera or the land: the sun, the night and the moon are still there, as at rest (the zoom of its close shots is not a visitor's). */
@@ -1547,7 +1562,7 @@ export class GlobeRenderer {
       return;
     }
     const aspect = this.width / Math.max(1, this.height);
-    this.moonSample = moon.sync({ camera: cam, bufW: this.bufW, bufH: this.bufH, eraDeg: this.era, angle: this.moonAngle(now), rollDeg: rollFor(aspect), inclinationDeg: this.orbitInclination(aspect), sun: toEarthFrame(this.moonSun, this.era), d, zoom: this.inInterlude ? this.world : zoom, fit: this.world });
+    this.moonSample = moon.sync({ camera: cam, bufW: this.bufW, bufH: this.bufH, eraDeg: this.era, angle: this.moonAngle(now), perigee: this.moonStart.perigee, rollDeg: rollFor(aspect), inclinationDeg: this.orbitInclination(aspect), sun: toEarthFrame(this.moonSun, this.era), d, zoom: this.inInterlude ? this.world : zoom, fit: this.world });
     // its shadow on the earth, where it is between the sun and the planet (the shared shade of the night's materials; the night's own amount takes it away with the zoom, as it takes the moon)
     const sample = this.moonSample;
     const shade = sample && sample.amount > 0 ? moonShadowOn(sample.position, toEarthFrame(this.moonSun, this.era)) : null;
