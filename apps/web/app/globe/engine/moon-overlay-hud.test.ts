@@ -54,6 +54,12 @@ describe("pathItems", () => {
     expect(below).toContain("SIM SHADOW AT 180\u00b0 PEAK 270\u00b0");
     expect(below).toContain("SIM T-01:30");
   });
+  it("puts the live REAL lines in, half above and half below, when it is given them (#631)", () => {
+    const real = Array.from({ length: 12 }, (_, i) => `REAL LIVE ${i}`);
+    const { above, below } = pathItems({ ...h, eclipse: { now: false, fromAngle: null, peakAngle: null, at: null, peakAt: null } }, real);
+    expect(above).toEqual(expect.arrayContaining(real.slice(0, 6)));
+    expect(below).toEqual(expect.arrayContaining(real.slice(6)));
+  });
   it("never gives a scene constant as a physical quantity", () => {
     const { above, below } = pathItems({ ...h, eclipse: { now: false, fromAngle: Math.PI / 2, peakAngle: Math.PI, at: null, peakAt: null } });
     for (const line of [...above, ...below]) {
