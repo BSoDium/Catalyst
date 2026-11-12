@@ -257,13 +257,13 @@ export function pathItems(h: Hud, real: readonly string[] = []): { above: string
       `REAL ECC ${LUNAR.eccentricity}`,
       `REAL SIDEREAL ${LUNAR.siderealDays.toFixed(2)} D`,
       `REAL SYNODIC ${LUNAR.synodicDays.toFixed(2)} D`,
-      ...real.slice(0, 6),
+      ...real.slice(0, 7),
       `SIM RATE x${thousands(SIM_RATE)}`,
       `SIM LAP ${clock(MOON.periodMs)}`,
       `SIM VIEW ANGLE ${h.info.inclDeg.toFixed(1)}\u00b0`,
       `SCENE ${MOON.orbit.toFixed(1)} ER, RANGE ${h.info.range.toFixed(2)} ER (NOT TO SCALE)`,
     ],
-    below: [...real.slice(6), `SIM PHASE ANGLE ${String(Math.round(h.info.phaseDeg)).padStart(3, "0")}\u00b0`, `SIM ILLUM ${(h.lit * 100).toFixed(1)}%`, shadow, e.now ? "SIM ECLIPSE UNDER WAY" : e.fromAngle === null ? "NO ECLIPSE" : `SIM T-${clock((e.fromAngle / (2 * Math.PI)) * MOON.periodMs)}`, ...(solarLine ? [solarLine] : [])],
+    below: [...real.slice(7), `SIM PHASE ANGLE ${String(Math.round(h.info.phaseDeg)).padStart(3, "0")}\u00b0`, `SIM ILLUM ${(h.lit * 100).toFixed(1)}%`, shadow, e.now ? "SIM ECLIPSE UNDER WAY" : e.fromAngle === null ? "NO ECLIPSE" : `SIM T-${clock((e.fromAngle / (2 * Math.PI)) * MOON.periodMs)}`, ...(solarLine ? [solarLine] : [])],
   };
 }
 

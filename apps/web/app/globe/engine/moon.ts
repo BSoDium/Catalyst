@@ -286,7 +286,7 @@ export function orbitBasis(rollDeg: number, inclinationDeg: number = MOON.inclin
  * little: the red light of the earth's air), `chance` the share of sessions whose orbit lines up with the sun (the draw is the session's seed: most orbits never meet the shadow), `jitterDeg` how far off the exact line such an orbit is
  * (so the moon crosses the shadow's edge or its middle), `scanDeg` the range the alignment is searched in.
  */
-export const ECLIPSE = { umbra: 1, penumbra: 2.7, shadowDark: 0.93, chance: 0.25, jitterDeg: 6, scanDeg: 70 } as const;
+export const ECLIPSE = { realDays: 2, umbra: 1, penumbra: 2.7, shadowDark: 0.93, chance: 0.25, jitterDeg: 6, scanDeg: 70 } as const;
 
 const smooth01 = (a: number, b: number, x: number): number => {
   const t = clamp((x - a) / (b - a), 0, 1);

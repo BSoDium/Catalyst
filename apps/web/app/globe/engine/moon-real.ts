@@ -3,6 +3,7 @@
  * They are scalar maths for the HUD tick (about 10 times a second at most, cached by `realLines`), never per pixel. Each line starts with `REAL`: no scene constant is printed as a physical quantity (#628).
  */
 import { sunAngularRadiusDeg, sunDistanceAu } from "./daylight";
+import { eclipseLines } from "./eclipse-table";
 import { daysToAnomaly, lunarPosition, moonAngularSizeDeg, moonEquatorInclinationDeg, moonSpeedKmS, nextPhaseMs, LUNAR } from "./lunar-ephemeris";
 
 const thousands = (n: number): string => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
@@ -27,6 +28,7 @@ export function computeRealLines(ms: number): string[] {
     `REAL NEXT FULL ${date(nextPhaseMs(ms, 180))}`,
     `REAL NEXT NEW ${date(nextPhaseMs(ms, 0))}`,
     `REAL INCL ${LUNAR.inclinationDeg.toFixed(1)}° ECL, ${moonEquatorInclinationDeg(ms).toFixed(1)}° EQ`,
+    ...eclipseLines(ms),
   ];
 }
 
