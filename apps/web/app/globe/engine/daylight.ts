@@ -25,6 +25,22 @@ export function subsolarPoint(ms: number): { lon: number; lat: number } {
   return { lon: normalizeLon(ra - gmst), lat };
 }
 
+/** The sun's radius, km, and the astronomical unit, km. */
+const SUN_RADIUS_KM = 695_700;
+const AU_KM = 149_597_870.7;
+
+/** The earth-sun distance at `ms`, astronomical units: `R = 1.00014 - 0.01671 cos g - 0.00014 cos 2g` from the same mean anomaly as `subsolarPoint` (0.9833 at perihelion in early January, 1.0167 at aphelion in early July). */
+export function sunDistanceAu(ms: number): number {
+  const n = (ms - Date.UTC(2000, 0, 1, 12)) / 86_400_000;
+  const g = toRad(wrap360(357.528 + 0.9856003 * n));
+  return 1.00014 - 0.01671 * Math.cos(g) - 0.00014 * Math.cos(2 * g);
+}
+
+/** The sun's true angular radius at `ms`, degrees (about 0.266 to 0.271 across the year). The drawn disc (`SUN.angularDeg`) is a deliberate stylisation; this is only what the HUD prints. */
+export function sunAngularRadiusDeg(ms: number): number {
+  return Math.atan(SUN_RADIUS_KM / (sunDistanceAu(ms) * AU_KM)) * DEG;
+}
+
 export interface Opening {
   /** The camera's longitude at load (the planet is lit from its right). */
   lon: number;
