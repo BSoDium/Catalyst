@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "dataVersion": {
-    "commit": "94d10aa76310f077f52686d024f0f2a765f32ef4",
-    "date": "2026-11-12"
+    "commit": "a40c4d58101611faf64317273330c20bac4cab59",
+    "date": "2026-11-13"
   },
   "places": [
     {
@@ -3698,7 +3698,7 @@
         "lat": 52.23,
         "lon": 21.01
       },
-      "labelPriority": 42,
+      "labelPriority": 65,
       "bbox": [
         20.79,
         52.09,
@@ -3712,7 +3712,28 @@
       "living": true,
       "body": [],
       "images": [],
-      "related": []
+      "related": [
+        {
+          "kind": "photograph",
+          "slug": "flare"
+        },
+        {
+          "kind": "photograph",
+          "slug": "museum-and-flags"
+        },
+        {
+          "kind": "photograph",
+          "slug": "palm-and-flags"
+        },
+        {
+          "kind": "photograph",
+          "slug": "red-smoke"
+        },
+        {
+          "kind": "photograph",
+          "slug": "two-coffees-and-an-armband"
+        }
+      ]
     },
     {
       "slug": "warsaw-university-of-technology",
@@ -9565,12 +9586,12 @@
       "summary": "A plaster arch frames a bright hall beyond, with the dark diagonal of a stone balustrade running up the staircase in front.",
       "date": "2026-11-03",
       "cover": {
-        "src": "/media/photograph/amber-gateway/photo.abb9e3fe.webp",
+        "src": "/media/photograph/amber-gateway/photo.fc3a7f03.webp",
         "alt": "A pale plaster arch seen from a dim staircase, opening onto a brightly lit hall; a stone balustrade climbs diagonally across the lower right",
         "width": 854,
         "height": 1280,
         "small": {
-          "src": "/media/photograph/amber-gateway/photo-800w.84f02e59.webp",
+          "src": "/media/photograph/amber-gateway/photo-800w.5f07cbcb.webp",
           "width": 800,
           "height": 1199
         }
@@ -9882,6 +9903,30 @@
       ]
     },
     {
+      "slug": "flare",
+      "title": "Flare",
+      "summary": "A man in a dark beanie raises a burning red flare, lit against black, silhouettes and a phone in the foreground.",
+      "date": "2026-11-11",
+      "cover": {
+        "src": "/media/photograph/flare/photo.4a275477.webp",
+        "alt": "A man in a dark beanie holds up a burning red flare that lights his face and trails smoke, in an almost black scene; silhouetted heads and a phone screen in the foreground",
+        "width": 1280,
+        "height": 1180,
+        "small": {
+          "src": "/media/photograph/flare/photo-800w.4bcb6676.webp",
+          "width": 800,
+          "height": 738
+        }
+      },
+      "sensitive": true,
+      "tags": [
+        "street"
+      ],
+      "placeSlugs": [
+        "warsaw"
+      ]
+    },
+    {
       "slug": "flooded-street",
       "title": "Flooded street",
       "summary": "A busy street after rain: a horse-drawn cart loaded with goods, a bus, a taxi and a man in a striped robe standing in the water.",
@@ -10062,6 +10107,24 @@
       ]
     },
     {
+      "slug": "museum-and-flags",
+      "title": "National Museum and flags",
+      "summary": "The lettering of the National Museum above a crowd, a man holding a flag on the railing in front of it.",
+      "date": "2026-11-11",
+      "cover": {
+        "src": "/media/photograph/museum-and-flags/photo.14868bea.webp",
+        "alt": "The Muzeum Narodowe building at dusk with its sign lit; a man holds a white-and-red flag at a railing in front of it, and flags and the backs of heads fill the foreground",
+        "width": 774,
+        "height": 1280
+      },
+      "tags": [
+        "street"
+      ],
+      "placeSlugs": [
+        "warsaw"
+      ]
+    },
+    {
       "slug": "orange-train",
       "title": "Orange train",
       "summary": "The side of a cream and orange train under overhead wires, a half-built concrete building behind it against a blue sky.",
@@ -10152,6 +10215,29 @@
       ]
     },
     {
+      "slug": "palm-and-flags",
+      "title": "Palm and flags",
+      "summary": "A white-and-red flag on a long pole waves beside a palm tree against a deep blue dusk, above a crowd of flags.",
+      "date": "2026-11-11",
+      "cover": {
+        "src": "/media/photograph/palm-and-flags/photo.a0de4acc.webp",
+        "alt": "A white-and-red flag on a tall pole waves to the left of a palm tree against a deep blue dusk sky; below, the heads of a crowd and many white-and-red flags, with a red glow at the right edge",
+        "width": 853,
+        "height": 1280,
+        "small": {
+          "src": "/media/photograph/palm-and-flags/photo-800w.02962746.webp",
+          "width": 800,
+          "height": 1200
+        }
+      },
+      "tags": [
+        "street"
+      ],
+      "placeSlugs": [
+        "warsaw"
+      ]
+    },
+    {
       "slug": "pointing-at-the-hills",
       "title": "Pointing at the hills",
       "summary": "On the hills above Sinaia, at about 2,000 m: a person in a bright blue Saharawi turban stands in tall grass and points across the slopes.",
@@ -10189,6 +10275,29 @@
       ],
       "placeSlugs": [
         "sinaia"
+      ]
+    },
+    {
+      "slug": "red-smoke",
+      "title": "Red smoke",
+      "summary": "A street crowd under white-and-red flags disappears into thick red smoke, a lit sign glowing orange at the left.",
+      "date": "2026-11-11",
+      "cover": {
+        "src": "/media/photograph/red-smoke/photo.4da95e06.webp",
+        "alt": "A crowd with white-and-red flags in a street filled with dense red smoke; a building at the left carries a glowing orange sign",
+        "width": 1280,
+        "height": 760,
+        "small": {
+          "src": "/media/photograph/red-smoke/photo-800w.082428a0.webp",
+          "width": 800,
+          "height": 475
+        }
+      },
+      "tags": [
+        "street"
+      ],
+      "placeSlugs": [
+        "warsaw"
       ]
     },
     {
@@ -10235,6 +10344,29 @@
       ],
       "placeSlugs": [
         "on-the-napo"
+      ]
+    },
+    {
+      "slug": "two-coffees-and-an-armband",
+      "title": "Two coffees and an armband",
+      "summary": "Two black coffees on china saucers and a folded white-and-red armband on an embroidered tablecloth, laid out like a face.",
+      "date": "2026-11-11",
+      "cover": {
+        "src": "/media/photograph/two-coffees-and-an-armband/photo.ac29ed27.webp",
+        "alt": "Seen from above, two cups of black coffee on gold-rimmed saucers and a folded white-and-red armband below them on an embroidered white tablecloth, together reading as a face",
+        "width": 1280,
+        "height": 942,
+        "small": {
+          "src": "/media/photograph/two-coffees-and-an-armband/photo-800w.71bba896.webp",
+          "width": 800,
+          "height": 589
+        }
+      },
+      "tags": [
+        "still-life"
+      ],
+      "placeSlugs": [
+        "warsaw"
       ]
     },
     {
