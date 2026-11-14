@@ -36,7 +36,7 @@ export const single = (item: GalleryItem): React.CSSProperties => ({
 });
 
 /** The picture with its label on it: over a soft dome, black or white as the picture is dark or light where the label is (until it is known, the page's own colour), the date in mono, the title in the display face and where it is in the row. */
-function Picture({ item, i, count, from, style, className, onFocus, fullWidth, textWidth, place }: { item: GalleryItem; i: number; count: number; from: string; style?: React.CSSProperties; className?: string; onFocus?: () => void; fullWidth?: number; textWidth?: number; place?: "large" | "medium" | "pair-first" | "pair-second" }) {
+function Picture({ item, i, count, from, style, className, onFocus, fullWidth, textWidth, place }: { item: GalleryItem; i: number; count: number; from: string; style?: React.CSSProperties; className?: string; onFocus?: (e: React.FocusEvent<HTMLAnchorElement>) => void; fullWidth?: number; textWidth?: number; place?: "large" | "medium" | "pair-first" | "pair-second" }) {
   const date = formatEntryDate(item.date);
   // (never narrower than the box: one or two pictures share the row, and may be wider than the widest of a longer row, which would leave a bar at each side of a tall picture)
   const inner: React.CSSProperties | undefined = fullWidth ? { width: fullWidth, minWidth: "100%" } : undefined;
@@ -106,12 +106,11 @@ function Carousel({ items, from }: { items: GalleryItem[]; from: string }) {
     boxes.forEach((box, i) => {
       const li = ul.children[i] as HTMLElement | undefined;
       if (!li) return;
-      const visibility = box.w < 1 ? "hidden" : "visible";
-      // (a picture that is not there costs nothing: its styles are left as they were)
-      if (visibility === "hidden" && li.style.visibility === "hidden") return;
-      li.style.width = `${box.w}px`;
+      // (a picture that is not on screen is a box of no width, not `visibility: hidden`: it paints nothing, but stays in the tab order, so a keyboard can reach every picture on a phone too)
+      const off = box.w < 1;
+      if (off && li.style.width === "0px") return;
+      li.style.width = `${off ? 0 : box.w}px`;
       li.style.transform = `translate3d(${box.x}px,0,0)`;
-      li.style.visibility = visibility;
       li.style.setProperty("--g", growth(box.w, geo.k).toFixed(2));
     });
     const max = el.scrollWidth - el.clientWidth;
@@ -146,7 +145,7 @@ function Carousel({ items, from }: { items: GalleryItem[]; from: string }) {
   const current = () => Math.round(position());
 
   return (
-    <div className="relative">
+    <div className="relative" role="group" aria-roledescription="carousel" aria-label="Photographs">
       <div ref={scroller} data-slot="place-gallery-scroller" className="place-gallery-scroller overflow-x-auto overscroll-x-contain snap-x snap-mandatory">
         {geo && (
           <div className="relative h-full" style={{ width: lastPosition(items.length, geo.k) * geo.step + geo.k.width }}>
@@ -156,8 +155,13 @@ function Carousel({ items, from }: { items: GalleryItem[]; from: string }) {
             <div className="sticky left-0 top-0 h-full overflow-hidden" style={{ width: geo.k.width }}>
               <ul ref={layer} className="relative m-0 h-full list-none p-0">
                 {items.map((item, i) => (
-                  <li key={item.src} className="absolute top-0 left-0 h-full overflow-hidden [contain:layout_paint]" style={{ width: 0, visibility: "hidden" }}>
-                    <Picture item={item} i={i} count={items.length} from={from} fullWidth={widest(geo.k)} textWidth={labelWidth(geo.k)} onFocus={() => Math.abs(i - position()) > 1 && goTo(i)} style={{ height: "100%" }} />
+                  <li key={item.src} className="absolute top-0 left-0 h-full overflow-hidden [contain:layout_paint]" style={{ width: 0 }}>
+                    <Picture item={item} i={i} count={items.length} from={from} fullWidth={widest(geo.k)} textWidth={labelWidth(geo.k)} onFocus={(e) => {
+                      // (focus must not scroll the picture inside its own box)
+                      const box = e.currentTarget.parentElement;
+                      if (box) box.scrollLeft = 0;
+                      if (Math.abs(i - position()) > 1) goTo(i);
+                    }} style={{ height: "100%" }} />
                   </li>
                 ))}
               </ul>
