@@ -48,6 +48,7 @@ The board is the user project <https://github.com/users/BSoDium/projects/5> (`gh
 Content (places, entries, photographs) lives in the private-ish content repo (`BSoDium/Catalyst-content`); the site only changes when the standing pull request `content/publish` in THIS repo is merged. A content task therefore has four steps, and merging the content PR is only the second:
 
 1. Open the content PR (`pnpm test` in the content repo passes; generated files regenerated as its docs say).
+   A new or re-edited **photograph must carry its camera and exposure facts** (`facts:` with at least `Camera`): read them from the camera's original with `pnpm photo:exif <original> --entry content/photographs/<slug> --write` in the same PR; ask the owner for the original, never invent them (`pnpm validate` warns `photo-camera-missing`; see the content repo's `AGENTS.md`).
 2. Merge it, after the owner's go.
 3. **Find the standing PR**: `gh pr list --repo BSoDium/Catalyst --head content/publish`. Check it lists the change (the workflow updates it after the merge; if it is stale, say so).
 4. **Report its number and state to the owner and ask for the go to merge it.** Never merge it unasked, never leave it unmentioned, and never say "done" or "published" while it is open.
