@@ -34,10 +34,10 @@ export function eclipseNear(ms: number, days: number): boolean {
   return [...LUNAR_ECLIPSES, ...SOLAR_ECLIPSES].some((e) => Math.abs(e.ms - ms) <= span);
 }
 
-/** The HUD's two lines: `REAL NEXT LUNAR ECLIPSE 2026-08-28 PARTIAL`; past the table's end, "BEYOND TABLE". */
+/** The HUD's two lines: `NEXT LUNAR ECLIPSE 2026-08-28 PARTIAL`; past the table's end, "BEYOND TABLE". */
 export function eclipseLines(ms: number): string[] {
   const day = (t: number) => new Date(t).toISOString().slice(0, 10);
   const l = nextOf(LUNAR_ECLIPSES, ms);
   const s = nextOf(SOLAR_ECLIPSES, ms);
-  return [`REAL NEXT LUNAR ECLIPSE ${l ? `${day(l.ms)} ${LUNAR_NAMES[l.kind]}` : `BEYOND ${ECLIPSE_YEARS[1]}`}`, `REAL NEXT SOLAR ECLIPSE ${s ? `${day(s.ms)} ${SOLAR_NAMES[s.kind]}` : `BEYOND ${ECLIPSE_YEARS[1]}`}`];
+  return [`NEXT LUNAR ECLIPSE ${l ? `${day(l.ms)} ${LUNAR_NAMES[l.kind]}` : `BEYOND ${ECLIPSE_YEARS[1]}`}`, `NEXT SOLAR ECLIPSE ${s ? `${day(s.ms)} ${SOLAR_NAMES[s.kind]}` : `BEYOND ${ECLIPSE_YEARS[1]}`}`];
 }

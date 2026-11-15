@@ -37,8 +37,8 @@ describe("the eclipse table", () => {
   });
   it("makes the HUD's lines", () => {
     const lines = eclipseLines(at("2026-05-01T00:00:00Z"));
-    expect(lines[0]).toBe("REAL NEXT LUNAR ECLIPSE 2026-08-28 PARTIAL");
-    expect(lines[1]).toBe("REAL NEXT SOLAR ECLIPSE 2026-08-12 TOTAL");
+    expect(lines[0]).toBe("NEXT LUNAR ECLIPSE 2026-08-28 PARTIAL");
+    expect(lines[1]).toBe("NEXT SOLAR ECLIPSE 2026-08-12 TOTAL");
     expect(eclipseLines(at("2100-01-01T00:00:00Z"))[0]).toContain("BEYOND");
   });
 });

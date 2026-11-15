@@ -1358,9 +1358,9 @@ export class GlobeRenderer {
       const debug = typeof location !== "undefined" && new URLSearchParams(location.search).has("eclipse");
       const seed = sessionSeed(typeof sessionStorage !== "undefined" ? sessionStorage : null);
       const draw = seededUnit(((seed ?? 0) ^ 0x3c1a55) | 0);
-      // (#633: no coin flip: the orbit is lined up with the sun only in a session that opens within `ECLIPSE.realDays` of a real lunar or solar eclipse)
-      draw();
-      const lined = this.openMs !== null && eclipseNear(this.openMs, ECLIPSE.realDays) && seed !== null;
+      // (#633: always within `ECLIPSE.realDays` of a real lunar or solar eclipse, else the old chance)
+      const real = this.openMs !== null && eclipseNear(this.openMs, ECLIPSE.realDays);
+      const lined = (real || draw() < ECLIPSE.chance) && seed !== null;
       const off = (draw() * 2 - 1) * ECLIPSE.jitterDeg;
       this.eclipseOffset = debug ? 0 : lined ? off : null;
       // `?eclipse` is also a way to SEE one (owner, 2026-11-03: "how do I reproduce an eclipse?", then "the actual progression"): the orbit is the aligned one and the moon SWEEPS through the earth's shadow on a loop, from 224 to 262
