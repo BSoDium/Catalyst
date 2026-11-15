@@ -35,6 +35,9 @@ export const single = (item: GalleryItem): React.CSSProperties => ({
   marginInline: "auto",
 });
 
+/** Whether focusing a picture must scroll it into view: it is a box of no width (not on screen: on a phone every picture but one), or it is more than one step from where the row is (a wide row shows its neighbours). */
+export const focusScrolls = (boxWidth: number, index: number, position: number): boolean => boxWidth < 1 || Math.abs(index - position) > 1;
+
 /** The picture with its label on it: over a soft dome, black or white as the picture is dark or light where the label is (until it is known, the page's own colour), the date in mono, the title in the display face and where it is in the row. */
 function Picture({ item, i, count, from, style, className, onFocus, fullWidth, textWidth, place }: { item: GalleryItem; i: number; count: number; from: string; style?: React.CSSProperties; className?: string; onFocus?: (e: React.FocusEvent<HTMLAnchorElement>) => void; fullWidth?: number; textWidth?: number; place?: "large" | "medium" | "pair-first" | "pair-second" }) {
   const date = formatEntryDate(item.date);
@@ -160,7 +163,7 @@ function Carousel({ items, from }: { items: GalleryItem[]; from: string }) {
                       // (focus must not scroll the picture inside its own box)
                       const box = e.currentTarget.parentElement;
                       if (box) box.scrollLeft = 0;
-                      if (Math.abs(i - position()) > 1) goTo(i);
+                      if (box && focusScrolls(box.getBoundingClientRect().width, i, position())) goTo(i);
                     }} style={{ height: "100%" }} />
                   </li>
                 ))}
