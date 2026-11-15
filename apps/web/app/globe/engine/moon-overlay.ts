@@ -207,7 +207,7 @@ export function orbitPath(points: ReadonlyArray<[number, number] | null>): strin
 
 /**
  * The readout's lines (the orbit display's text): the phase, the place on the orbit, the shadow. They are what the SCENE shows (the orbit is compressed, a lap is six minutes: `SIM`), never given as the real moon's;
- * what is real (`REAL`) is the orbit's own constants (`pathItems`), and the live ephemeris, `lunar-ephemeris.ts`, fills it in later.
+ * what is real is written plain: the orbit's own constants (`pathItems`), and the live ephemeris, `lunar-ephemeris.ts`, fills it in later.
  */
 export function hudLines(h: NonNullable<MoonFrame["hud"]>): string[] {
   const shadow = h.eclipse.now ? "SIM ECLIPSE UNDER WAY" : h.eclipse.fromAngle === null ? "NO ECLIPSE ON THIS ORBIT" : `SIM ECLIPSE T-${clock((h.eclipse.fromAngle / (2 * Math.PI)) * MOON.periodMs)}`;
@@ -240,7 +240,7 @@ const thousands = (n: number): string => Math.round(n).toString().replace(/\B(?=
 export const SIM_RATE = (LUNAR.siderealDays * 86_400_000) / MOON.periodMs;
 
 /**
- * The items of data that run along the orbit, above it and below it, spaced out along the path by `spread`, no separators. Every one is either `REAL` (the orbit's own constants, which need no ephemeris: `LUNAR`) or
+ * The items of data that run along the orbit, above it and below it, spaced out along the path by `spread`, no separators. Every one is either real and written plain (the orbit's own constants, which need no ephemeris: `LUNAR`) or
  * `SIM` (what the scene does, which is compressed: a lap of six minutes, an orbit of 9 earth radii in a composition plane, the angle of the view), so that no scene constant is read as a physical quantity (#628).
  */
 export function pathItems(h: Hud, real: readonly string[] = []): { above: string[]; below: string[] } {
@@ -252,11 +252,11 @@ export function pathItems(h: Hud, real: readonly string[] = []): { above: string
   return {
     above: [
       "LUNA ORBIT",
-      `REAL MEAN RADIUS ${thousands(LUNAR.meanDistanceKm)} KM`,
-      `REAL INCL ${LUNAR.inclinationDeg.toFixed(3)}\u00b0`,
-      `REAL ECC ${LUNAR.eccentricity}`,
-      `REAL SIDEREAL ${LUNAR.siderealDays.toFixed(2)} D`,
-      `REAL SYNODIC ${LUNAR.synodicDays.toFixed(2)} D`,
+      `MEAN RADIUS ${thousands(LUNAR.meanDistanceKm)} KM`,
+      `INCL ${LUNAR.inclinationDeg.toFixed(3)}\u00b0`,
+      `ECC ${LUNAR.eccentricity}`,
+      `SIDEREAL ${LUNAR.siderealDays.toFixed(2)} D`,
+      `SYNODIC ${LUNAR.synodicDays.toFixed(2)} D`,
       ...real.slice(0, 6),
       `SIM RATE x${thousands(SIM_RATE)}`,
       `SIM LAP ${clock(MOON.periodMs)}`,

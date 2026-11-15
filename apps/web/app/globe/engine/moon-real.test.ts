@@ -37,10 +37,10 @@ describe("the moon's real numbers", () => {
 });
 
 describe("the REAL lines", () => {
-  it("are all REAL, and the same inside a tick", () => {
+  it("are plain (real) lines, none says SIM, and they are the same inside a tick", () => {
     const lines = computeRealLines(at("2026-11-12T12:00:00Z"));
     expect(lines.length).toBeGreaterThanOrEqual(12);
-    for (const l of lines) expect(l).toMatch(/^REAL /);
+    for (const l of lines) expect(l).not.toMatch(/^(SIM|SCENE)/);
     expect(realLines(1_000_000)).toBe(realLines(1_000_050));
     expect(realLines(1_000_000)).not.toBe(realLines(1_000_200));
   });
