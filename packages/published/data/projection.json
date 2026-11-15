@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "dataVersion": {
-    "commit": "a40c4d58101611faf64317273330c20bac4cab59",
-    "date": "2026-11-13"
+    "commit": "56b1a1e7d8bf952be625d1791ec589677bb12f2e",
+    "date": "2026-11-16"
   },
   "places": [
     {
@@ -9918,9 +9918,34 @@
           "height": 738
         }
       },
-      "sensitive": true,
       "tags": [
         "street"
+      ],
+      "meta": [
+        {
+          "label": "Camera",
+          "value": "Fujifilm X-T4"
+        },
+        {
+          "label": "Lens",
+          "value": "XF18-55mmF2.8-4 R LM OIS"
+        },
+        {
+          "label": "Focal length",
+          "value": "55 mm"
+        },
+        {
+          "label": "Aperture",
+          "value": "f/8"
+        },
+        {
+          "label": "Shutter",
+          "value": "1/4400 s"
+        },
+        {
+          "label": "ISO",
+          "value": "12800"
+        }
       ],
       "placeSlugs": [
         "warsaw"
@@ -10120,6 +10145,32 @@
       "tags": [
         "street"
       ],
+      "meta": [
+        {
+          "label": "Camera",
+          "value": "Fujifilm X-T4"
+        },
+        {
+          "label": "Lens",
+          "value": "XF18-55mmF2.8-4 R LM OIS"
+        },
+        {
+          "label": "Focal length",
+          "value": "50.5 mm"
+        },
+        {
+          "label": "Aperture",
+          "value": "f/4"
+        },
+        {
+          "label": "Shutter",
+          "value": "1/17 s"
+        },
+        {
+          "label": "ISO",
+          "value": "160"
+        }
+      ],
       "placeSlugs": [
         "warsaw"
       ]
@@ -10233,6 +10284,32 @@
       "tags": [
         "street"
       ],
+      "meta": [
+        {
+          "label": "Camera",
+          "value": "Fujifilm X-T4"
+        },
+        {
+          "label": "Lens",
+          "value": "XF18-55mmF2.8-4 R LM OIS"
+        },
+        {
+          "label": "Focal length",
+          "value": "28.9 mm"
+        },
+        {
+          "label": "Aperture",
+          "value": "f/3.6"
+        },
+        {
+          "label": "Shutter",
+          "value": "1/45 s"
+        },
+        {
+          "label": "ISO",
+          "value": "160"
+        }
+      ],
       "placeSlugs": [
         "warsaw"
       ]
@@ -10295,6 +10372,32 @@
       },
       "tags": [
         "street"
+      ],
+      "meta": [
+        {
+          "label": "Camera",
+          "value": "Fujifilm X-T4"
+        },
+        {
+          "label": "Lens",
+          "value": "XF18-55mmF2.8-4 R LM OIS"
+        },
+        {
+          "label": "Focal length",
+          "value": "55 mm"
+        },
+        {
+          "label": "Aperture",
+          "value": "f/5.6"
+        },
+        {
+          "label": "Shutter",
+          "value": "1/2400 s"
+        },
+        {
+          "label": "ISO",
+          "value": "12800"
+        }
       ],
       "placeSlugs": [
         "warsaw"
@@ -10364,6 +10467,32 @@
       },
       "tags": [
         "still-life"
+      ],
+      "meta": [
+        {
+          "label": "Camera",
+          "value": "Fujifilm X-T4"
+        },
+        {
+          "label": "Lens",
+          "value": "XF18-55mmF2.8-4 R LM OIS"
+        },
+        {
+          "label": "Focal length",
+          "value": "40.7 mm"
+        },
+        {
+          "label": "Aperture",
+          "value": "f/4"
+        },
+        {
+          "label": "Shutter",
+          "value": "1/30 s"
+        },
+        {
+          "label": "ISO",
+          "value": "640"
+        }
       ],
       "placeSlugs": [
         "warsaw"
@@ -10435,6 +10564,28 @@
       },
       "tags": [
         "travel"
+      ],
+      "meta": [
+        {
+          "label": "Camera",
+          "value": "Google Pixel 7"
+        },
+        {
+          "label": "Focal length",
+          "value": "6.81 mm"
+        },
+        {
+          "label": "Aperture",
+          "value": "f/1.85"
+        },
+        {
+          "label": "Shutter",
+          "value": "1/4000 s"
+        },
+        {
+          "label": "ISO",
+          "value": "45"
+        }
       ],
       "placeSlugs": [
         "strait-of-gibraltar"
