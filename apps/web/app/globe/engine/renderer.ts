@@ -1338,7 +1338,10 @@ export class GlobeRenderer {
     const aspect = this.width / Math.max(1, this.height);
     const real = lunarPosition(this.openMs);
     const basis = orbitBasis(rollFor(aspect), this.orbitInclination(aspect));
-    return (this.moonStartAt = startFor(real.illuminatedFraction, real.ageDays < LUNAR.synodicDays / 2, moonMeanAnomalyDeg(this.openMs) * (Math.PI / 180), basis, this.moonSun));
+    // (before the first sized frame the aspect is the placeholder 1: use it for now, but do not keep it)
+    const start = startFor(real.illuminatedFraction, real.ageDays < LUNAR.synodicDays / 2, moonMeanAnomalyDeg(this.openMs) * (Math.PI / 180), basis, this.moonSun);
+    if (this.sized) this.moonStartAt = start;
+    return start;
   }
   /**
    * The session's orbit (owner, 2026-11-02, #443): in one session in `ECLIPSE.chance` the orbit's plane is turned to line up with the sun (`eclipseInclination`, a little off the exact line, by the session's seed), so

@@ -6,6 +6,7 @@
  * The scene is compressed (the orbit is 9 earth radii, a lap is six minutes, the moon moves in a composition plane): what is printed on the HUD and what the lap starts from can be real, and this is where it comes from.
  * It costs scalar maths, once or per HUD tick, never per pixel.
  */
+import { sunDistanceAu } from "./daylight";
 import { normalizeLon } from "./geo";
 
 const RAD = Math.PI / 180;
@@ -183,7 +184,7 @@ export function lunarPosition(ms: number): LunarPosition {
   const sunMean = wrap360(280.46 + 0.9856474 * n);
   const g = wrap360(357.528 + 0.9856003 * n) * RAD;
   const sunLon = wrap360(sunMean + 1.915 * Math.sin(g) + 0.02 * Math.sin(2 * g));
-  const sunDistanceKm = (1.00014 - 0.01671 * Math.cos(g) - 0.00014 * Math.cos(2 * g)) * AU_KM;
+  const sunDistanceKm = sunDistanceAu(ms) * AU_KM;
 
   // The phase (chapter 48): the elongation, then the angle at the moon
   const dLon = (lonDeg - sunLon) * RAD;
@@ -245,9 +246,11 @@ export function nextPhaseMs(ms: number, targetDeg: number): number {
   // (the angle only grows, about 12 degrees a day, and wraps once a month: the signed distance to the target, wrapped to (-180, 180], goes from negative to positive at the crossing)
   const off = (t: number) => ((((elongationAhead(t) - targetDeg) % 360) + 540) % 360) - 180;
   let a = ms;
+  let offA = off(a);
   for (let i = 0; i < 130; i++) {
     const b = a + step;
-    if (off(a) < 0 && off(b) >= 0) {
+    const offB = off(b);
+    if (offA < 0 && offB >= 0) {
       let lo = a;
       let hi = b;
       while (hi - lo > 60_000) {
@@ -258,6 +261,7 @@ export function nextPhaseMs(ms: number, targetDeg: number): number {
       return hi;
     }
     a = b;
+    offA = offB;
   }
   return ms + 30 * 86_400_000;
 }
