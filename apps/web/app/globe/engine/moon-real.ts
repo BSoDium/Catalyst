@@ -4,16 +4,18 @@
  */
 import { sunAngularRadiusDeg, sunDistanceAu } from "./daylight";
 import { eclipseLines } from "./eclipse-table";
-import { daysToAnomaly, lunarPosition, moonAngularSizeDeg, moonEquatorInclinationDeg, moonSpeedKmS, nextPhaseMs, LUNAR } from "./lunar-ephemeris";
+import { daysToAnomaly, lunarPosition, realLibration, moonAngularSizeDeg, moonEquatorInclinationDeg, moonSpeedKmS, nextPhaseMs, LUNAR } from "./lunar-ephemeris";
 
 export const thousands = (n: number): string => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 const date = (ms: number): string => new Date(ms).toISOString().slice(0, 10);
 const days = (d: number): string => (d < 1 ? `${(d * 24).toFixed(0)} H` : `${d.toFixed(1)} D`);
+const signed = (n: number): string => `${n >= 0 ? "+" : "-"}${Math.abs(n).toFixed(1)}`;
 const sign = (n: number, pos: string, neg: string): string => `${Math.abs(n).toFixed(1)} ${n >= 0 ? pos : neg}`;
 
 /** The live REAL lines at `ms`. */
 export function computeRealLines(ms: number): string[] {
   const p = lunarPosition(ms);
+  const libr = realLibration(ms);
   return [
     `RANGE ${thousands(p.distanceKm)} KM`,
     `VEL ${moonSpeedKmS(p.distanceKm).toFixed(2)} KM/S`,
@@ -28,6 +30,7 @@ export function computeRealLines(ms: number): string[] {
     `NEXT FULL ${date(nextPhaseMs(ms, 180))}`,
     `NEXT NEW ${date(nextPhaseMs(ms, 0))}`,
     `INCL ${LUNAR.inclinationDeg.toFixed(1)}° ECL, ${moonEquatorInclinationDeg(ms).toFixed(1)}° EQ`,
+    `LIBR L ${signed(libr.lonDeg)} B ${signed(libr.latDeg)}`,
     ...eclipseLines(ms),
   ];
 }

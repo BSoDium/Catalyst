@@ -352,6 +352,8 @@ export function eclipseInclination(rollDeg: number, baseDeg: number, sun: Vec3, 
 export interface OrbitStart {
   mean: number;
   perigee: number;
+  /** The angle of the ascending node on the orbit, radians (where the moon crosses the ecliptic going north: the libration in latitude follows it, `libration.ts`). Perigee's, with no ephemeris. */
+  node: number;
 }
 
 /**
@@ -378,7 +380,7 @@ export function meanOfTrue(nu: number, e: number = MOON.eccentricity): number {
 }
 
 /** The start a page has without an ephemeris: the moon stands at `MOON.startDeg` of its orbit when the lap begins. */
-export const DEFAULT_ORBIT: OrbitStart = { perigee: toRad(MOON.perigeeDeg), mean: meanOfTrue(toRad(MOON.startDeg) - toRad(MOON.perigeeDeg)) };
+export const DEFAULT_ORBIT: OrbitStart = { perigee: toRad(MOON.perigeeDeg), node: toRad(MOON.perigeeDeg), mean: meanOfTrue(toRad(MOON.startDeg) - toRad(MOON.perigeeDeg)) };
 
 /** The orbit's angle for `activeMs` of running, radians: the moon's true angle on its ellipse (the mean anomaly runs evenly, one lap in `MOON.periodMs`; Kepler's equation turns it into where the moon is). With `e = 0` it is the circle's even angle. */
 export function orbitAngle(activeMs: number, start: OrbitStart = DEFAULT_ORBIT, e: number = MOON.eccentricity): number {
@@ -488,7 +490,7 @@ export function sunDirection(elevationDeg: number = MOON.sunElevationDeg): Vec3 
  * as the real one does. The orbit's plane does not hold the sun, so a new or full moon is only reached to within a few percent. `meanAnomaly` (radians, the real one) places perigee:
  * the moon is where Kepler's equation says it is, at that angle. Pure.
  */
-export function startFor(k: number, waxing: boolean, meanAnomaly: number, basis: OrbitBasis, sun: Vec3, e: number = MOON.eccentricity): OrbitStart {
+export function startFor(k: number, waxing: boolean, meanAnomaly: number, basis: OrbitBasis, sun: Vec3, e: number = MOON.eccentricity, argumentOfPerigee = 0): OrbitStart {
   const share = (angle: number) => {
     const p = inertialPosition(angle, basis, 1);
     return (1 - (p[0] * sun[0] + p[1] * sun[1] + p[2] * sun[2])) / 2;
@@ -509,7 +511,9 @@ export function startFor(k: number, waxing: boolean, meanAnomaly: number, basis:
   }
   // (perigee is where the angle says the moon stands, less the true anomaly that the real mean anomaly gives)
   const nu = trueOf(eccentricAnomaly(meanAnomaly, e), e);
-  return { mean: meanAnomaly, perigee: best - nu };
+  const perigee = best - nu;
+  // (the node is the argument of perigee behind perigee, as the ephemeris has it)
+  return { mean: meanAnomaly, perigee, node: perigee - argumentOfPerigee };
 }
 
 /**

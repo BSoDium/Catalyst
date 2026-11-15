@@ -42,7 +42,7 @@ describe("the elliptical orbit (#630)", () => {
 
   it("reproduces the circle exactly when e = 0", () => {
     for (const ms of [0, 12_345, 100_000, 333_333]) {
-      expect(orbitAngle(ms, { mean: toRad(MOON.startDeg), perigee: 0 }, 0)).toBeCloseTo(toRad(MOON.startDeg) + (2 * Math.PI * ms) / MOON.periodMs, 10);
+      expect(orbitAngle(ms, { mean: toRad(MOON.startDeg), perigee: 0, node: 0 }, 0)).toBeCloseTo(toRad(MOON.startDeg) + (2 * Math.PI * ms) / MOON.periodMs, 10);
     }
     expect(orbitRadius(1.234, DEFAULT_ORBIT, 0)).toBe(MOON.orbit);
   });

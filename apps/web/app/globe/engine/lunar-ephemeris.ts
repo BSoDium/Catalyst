@@ -137,6 +137,16 @@ export function moonMeanAnomalyDeg(ms: number): number {
   return wrap360(134.9633964 + 477198.8675055 * T + 0.0087414 * T * T);
 }
 
+/** The moon's mean argument of latitude F (degrees from the ascending node along the orbit) and the longitude of the mean ascending node, degrees 0 to 360 (Meeus, chapter 47). */
+export function moonArgumentOfLatitudeDeg(ms: number): number {
+  const T = centuries(ms);
+  return wrap360(93.272095 + 483202.0175233 * T - 0.0036539 * T * T);
+}
+export function moonAscendingNodeDeg(ms: number): number {
+  const T = centuries(ms);
+  return wrap360(125.0445479 - 1934.1362891 * T + 0.0020754 * T * T);
+}
+
 /** The sum of a table at the arguments (radians), the terms that hold the sun's anomaly scaled by the eccentricity of the earth's orbit (`e`, once for a multiple of 1, squared for 2). */
 function series(terms: readonly Term[], fn: (x: number) => number, D: number, M: number, Mp: number, F: number, e: number): number {
   let sum = 0;
@@ -273,4 +283,23 @@ export function moonEquatorInclinationDeg(ms: number): number {
   const eps = (23.439 - 0.013 * T) * RAD;
   const i = LUNAR.inclinationDeg * RAD;
   return Math.acos(Math.cos(eps) * Math.cos(i) - Math.sin(eps) * Math.sin(i) * Math.cos(node)) * DEG;
+}
+
+/** The inclination of the moon's equator to the ecliptic, degrees (Meeus, chapter 53), and the angle between its pole and its orbit's normal: the two add (the pole leans away from the orbit's normal, past the ecliptic's). */
+export const LUNAR_EQUATOR_INCLINATION_DEG = 1.54242;
+export const LUNAR_POLE_TILT_DEG = LUNAR_EQUATOR_INCLINATION_DEG + LUNAR.inclinationDeg;
+
+/**
+ * The real optical libration at `ms`, degrees: `lonDeg` and `latDeg` of the point of the moon that is under the earth (Meeus, chapter 53, without the physical libration, under 0.04 degree, and the nutation).
+ * Longitude is east-positive (the Mare Crisium side), latitude north-positive. Up to +/-7.9 and +/-6.7.
+ */
+export function realLibration(ms: number): { lonDeg: number; latDeg: number } {
+  const p = lunarPosition(ms);
+  const I = LUNAR_EQUATOR_INCLINATION_DEG * RAD;
+  const beta = p.latDeg * RAD;
+  const W = (p.lonDeg - moonAscendingNodeDeg(ms)) * RAD;
+  const A = Math.atan2(Math.sin(W) * Math.cos(beta) * Math.cos(I) - Math.sin(beta) * Math.sin(I), Math.cos(W) * Math.cos(beta));
+  const lon = ((A * DEG - moonArgumentOfLatitudeDeg(ms) + 540) % 360) - 180;
+  const lat = Math.asin(-Math.sin(W) * Math.cos(beta) * Math.sin(I) - Math.sin(beta) * Math.cos(I)) * DEG;
+  return { lonDeg: lon, latDeg: lat };
 }

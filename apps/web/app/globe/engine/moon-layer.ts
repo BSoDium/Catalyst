@@ -74,6 +74,8 @@ export interface MoonFrame {
   angle: number;
   /** The orbit's perigee on it, radians (the orbit is an ellipse: `orbitRadius`); the default start's when absent. */
   perigee?: number;
+  /** The libration, degrees: the point of the moon under the earth (`libration.ts`); none when absent (a still face). */
+  libration?: { lonDeg: number; latDeg: number };
   rollDeg: number;
   inclinationDeg: number;
   /** The sun in the earth-fixed frame (unit). */
@@ -262,6 +264,11 @@ export class MoonLayer {
     this.mesh.position.set(p[0], p[1], p[2]);
     this.mesh.scale.setScalar(MOON.radius);
     this.mesh.lookAt(0, 0, 0); // one face to the planet: local +Z (longitude 0, latitude 0) toward it, +Y (north) up
+    if (f.libration) {
+      // the libration (#634): the point under the earth is (lon east, lat north), so the mesh turns it there (tested in libration.test.ts)
+      this.mesh.rotateX((f.libration.latDeg * Math.PI) / 180);
+      this.mesh.rotateY((-f.libration.lonDeg * Math.PI) / 180);
+    }
     this.mesh.updateMatrixWorld();
 
     const cam = f.camera;
