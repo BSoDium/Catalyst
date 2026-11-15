@@ -16,7 +16,7 @@
 import { AddEquation, ClampToEdgeWrapping, Color, CustomBlending, FrontSide, LinearFilter, Mesh, NoColorSpace, OneFactor, OneMinusSrcAlphaFactor, RepeatWrapping, type Scene, ShaderMaterial, SphereGeometry, SrcAlphaFactor, type Texture, TextureLoader, Vector2, Vector3, type PerspectiveCamera } from "three";
 import type { GlobeTheme } from "./colors";
 import { eclipseAhead, litShare, solarAhead, type EclipseAhead } from "./moon-hud";
-import { MOON, eclipseOf, inertialPosition, moonAmount, orbitBasis, toEarthFrame, unhidden, type OrbitBasis, type Vec3 } from "./moon";
+import { DEFAULT_ORBIT, MOON, eclipseOf, inertialPosition, moonAmount, orbitBasis, orbitRadius, toEarthFrame, unhidden, type OrbitBasis, type Vec3 } from "./moon";
 import { SURFACE, surfaceTones } from "./surface";
 
 /** What a frame says of the moon. Buffer pixels (the art grid, y up, as `gl_FragCoord` has them) and earth radii. */
@@ -72,6 +72,8 @@ export interface MoonFrame {
   eraDeg: number;
   /** The orbit's angle, radians, and the roll and inclination of its plane (`rollFor`, `inclinationFor`), degrees. */
   angle: number;
+  /** The orbit's perigee on it, radians (the orbit is an ellipse: `orbitRadius`); the default start's when absent. */
+  perigee?: number;
   rollDeg: number;
   inclinationDeg: number;
   /** The sun in the earth-fixed frame (unit). */
@@ -256,7 +258,7 @@ export class MoonLayer {
       this.incl = f.inclinationDeg;
       this.basis = orbitBasis(f.rollDeg, f.inclinationDeg);
     }
-    const p = toEarthFrame(inertialPosition(f.angle, this.basis), f.eraDeg);
+    const p = toEarthFrame(inertialPosition(f.angle, this.basis, orbitRadius(f.angle, { ...DEFAULT_ORBIT, perigee: f.perigee ?? DEFAULT_ORBIT.perigee })), f.eraDeg);
     this.mesh.position.set(p[0], p[1], p[2]);
     this.mesh.scale.setScalar(MOON.radius);
     this.mesh.lookAt(0, 0, 0); // one face to the planet: local +Z (longitude 0, latitude 0) toward it, +Y (north) up
@@ -338,7 +340,7 @@ export class MoonLayer {
     // (also while the moon is out of the picture: the orbit goes on, in the picture or not, and follows the camera)
     if (!f || !this.basis || !this.sample) return null;
     const basis = this.basis;
-    const at = (a: number): Vec3 => toEarthFrame(inertialPosition(f.angle + a, basis), f.eraDeg);
+    const at = (a: number): Vec3 => toEarthFrame(inertialPosition(f.angle + a, basis, orbitRadius(f.angle + a, { ...DEFAULT_ORBIT, perigee: f.perigee ?? DEFAULT_ORBIT.perigee })), f.eraDeg);
     const N = 720; // (every half degree: the orbit is long on the screen near the camera, and the line is cut round the moon and where the planet hides it, so it must be fine there)
     const orbit: MoonTrace["orbit"] = [];
     const hide: boolean[] = [];

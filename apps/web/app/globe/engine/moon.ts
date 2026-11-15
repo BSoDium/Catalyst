@@ -38,6 +38,13 @@ export const MOON = {
   /** The window's aspect (width over height) at and under which the orbit takes its narrow values, and over which its wide ones. */
   narrowAspect: 0.75,
   wideAspect: 1.15,
+  /**
+   * The orbit's eccentricity: the real one (`LUNAR.eccentricity`, 0.0549), so the moon speeds up near perigee, slows near apogee and its distance varies by +/-5.5 %. If that is not legible, this may be exaggerated
+   * (the HUD keeps the real value); 0 is the circle the orbit was. The mean motion (`periodMs`) and the semi-major axis (`orbit`) are unchanged, so the framing barely moves.
+   */
+  eccentricity: 0.0549,
+  /** Where perigee lies on the orbit, degrees from the orbit's own zero (the orbit's `e1`), when the ephemeris does not say (a debug page). */
+  perigeeDeg: 0,
   /** One lap, ms. It is in the picture for a few seconds of each lap, at the planet's sides: a thing to catch, not to wait for. */
   // (360 s, it was 240: owner, 2026-11-03, "it goes by so fast")
   periodMs: 360_000,
@@ -341,13 +348,58 @@ export function eclipseInclination(rollDeg: number, baseDeg: number, sun: Vec3, 
   return best + offsetDeg;
 }
 
-/** The orbit's angle for `activeMs` of running, radians. */
-export function orbitAngle(activeMs: number): number {
-  return toRad(MOON.startDeg) + (2 * Math.PI * activeMs) / MOON.periodMs;
+/** Where the lap starts: the mean anomaly at 0 ms and the angle of perigee on the orbit, radians. */
+export interface OrbitStart {
+  mean: number;
+  perigee: number;
+}
+
+/**
+ * The eccentric anomaly E for a mean anomaly M (Kepler's equation `M = E - e sin E`), two Newton iterations from `M + e sin M`: good to about 1e-7 rad for the moon's e, at any M (not wrapped: E follows M, so the
+ * angle that comes from it keeps growing lap after lap). Pure.
+ */
+export function eccentricAnomaly(mean: number, e: number = MOON.eccentricity): number {
+  let E = mean + e * Math.sin(mean);
+  for (let i = 0; i < 2; i++) E -= (E - e * Math.sin(E) - mean) / (1 - e * Math.cos(E));
+  return E;
+}
+
+/** The true anomaly (the angle from perigee, at the earth) for an eccentric anomaly, continuous in E. */
+const trueOf = (E: number, e: number): number => {
+  const beta = e / (1 + Math.sqrt(1 - e * e));
+  return E + 2 * Math.atan2(beta * Math.sin(E), 1 - beta * Math.cos(E));
+};
+
+/** The mean anomaly of a true anomaly (the other way round: where on an even clock the moon is when it is at this angle from perigee). */
+export function meanOfTrue(nu: number, e: number = MOON.eccentricity): number {
+  const beta = e / (1 + Math.sqrt(1 - e * e));
+  const E = nu - 2 * Math.atan2(beta * Math.sin(nu), 1 + beta * Math.cos(nu));
+  return E - e * Math.sin(E);
+}
+
+/** The start a page has without an ephemeris: the moon stands at `MOON.startDeg` of its orbit when the lap begins. */
+export const DEFAULT_ORBIT: OrbitStart = { perigee: toRad(MOON.perigeeDeg), mean: meanOfTrue(toRad(MOON.startDeg) - toRad(MOON.perigeeDeg)) };
+
+/** The orbit's angle for `activeMs` of running, radians: the moon's true angle on its ellipse (the mean anomaly runs evenly, one lap in `MOON.periodMs`; Kepler's equation turns it into where the moon is). With `e = 0` it is the circle's even angle. */
+export function orbitAngle(activeMs: number, start: OrbitStart = DEFAULT_ORBIT, e: number = MOON.eccentricity): number {
+  const mean = start.mean + (2 * Math.PI * activeMs) / MOON.periodMs;
+  return trueOf(eccentricAnomaly(mean, e), e) + start.perigee;
+}
+
+/** The running time, ms in [0, a lap), at which the moon is at `angle` of its orbit: `orbitAngle`'s inverse (checks). */
+export function msAtAngle(angle: number, start: OrbitStart = DEFAULT_ORBIT, e: number = MOON.eccentricity): number {
+  const turn = 2 * Math.PI;
+  const d = (((meanOfTrue(angle - start.perigee, e) - start.mean) % turn) + turn) % turn;
+  return (d / turn) * MOON.periodMs;
+}
+
+/** The moon's distance from the earth, in earth radii, at `angle` of the orbit: an ellipse with the earth at one focus, `MOON.orbit` its semi-major axis. */
+export function orbitRadius(angle: number, start: OrbitStart = DEFAULT_ORBIT, e: number = MOON.eccentricity, a: number = MOON.orbit): number {
+  return (a * (1 - e * e)) / (1 + e * Math.cos(angle - start.perigee));
 }
 
 /** The moon's centre in the inertial frame (earth radii) at `angle`. */
-export function inertialPosition(angle: number, basis: OrbitBasis, radius = MOON.orbit): Vec3 {
+export function inertialPosition(angle: number, basis: OrbitBasis, radius: number = MOON.orbit): Vec3 {
   const a = Math.cos(angle) * radius;
   const b = Math.sin(angle) * radius;
   return [a * basis.e1[0] + b * basis.e2[0], a * basis.e1[1] + b * basis.e2[1], a * basis.e1[2] + b * basis.e2[2]];
@@ -428,6 +480,36 @@ export function sunDirection(elevationDeg: number = MOON.sunElevationDeg): Vec3 
   const az = toRad(MOON.sunAzimuthDeg);
   const el = toRad(elevationDeg);
   return norm3([0, 1, 2].map((i) => b.c[i]! * Math.cos(az) * Math.cos(el) + b.east[i]! * Math.sin(az) * Math.cos(el) + b.north[i]! * Math.sin(el)) as Vec3);
+}
+
+/**
+ * Where to start the lap so that the phase shown is the real one (#629). `k` is the real lit share of the disc (0 new, 1 full), `waxing` whether it is growing. The scene's sun is fixed in the sky
+ * (`sunDirection`), so the lit share of a moon at `angle` of the orbit is `(1 - m . s) / 2`; the start is the angle on the orbit, going the way the moon goes, where it is nearest `k` and grows or shrinks
+ * as the real one does. The orbit's plane does not hold the sun, so a new or full moon is only reached to within a few percent. `meanAnomaly` (radians, the real one) places perigee:
+ * the moon is where Kepler's equation says it is, at that angle. Pure.
+ */
+export function startFor(k: number, waxing: boolean, meanAnomaly: number, basis: OrbitBasis, sun: Vec3, e: number = MOON.eccentricity): OrbitStart {
+  const share = (angle: number) => {
+    const p = inertialPosition(angle, basis, 1);
+    return (1 - (p[0] * sun[0] + p[1] * sun[1] + p[2] * sun[2])) / 2;
+  };
+  const N = 720;
+  const step = (2 * Math.PI) / N;
+  let best = 0;
+  let miss = Infinity;
+  for (let i = 0; i < N; i++) {
+    const angle = i * step;
+    const grows = share(angle + 0.5 * step) > share(angle - 0.5 * step);
+    if (grows !== waxing) continue;
+    const d = Math.abs(share(angle) - k);
+    if (d < miss) {
+      miss = d;
+      best = angle;
+    }
+  }
+  // (perigee is where the angle says the moon stands, less the true anomaly that the real mean anomaly gives)
+  const nu = trueOf(eccentricAnomaly(meanAnomaly, e), e);
+  return { mean: meanAnomaly, perigee: best - nu };
 }
 
 /**
