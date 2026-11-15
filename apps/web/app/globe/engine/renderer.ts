@@ -1363,7 +1363,8 @@ export class GlobeRenderer {
       const draw = seededUnit(((seed ?? 0) ^ 0x3c1a55) | 0);
       // (#633: always within `ECLIPSE.realDays` of a real lunar or solar eclipse, else the old chance)
       const real = this.openMs !== null && eclipseNear(this.openMs, ECLIPSE.realDays);
-      const lined = (real || draw() < ECLIPSE.chance) && seed !== null;
+      const roll = draw(); // (always drawn, so the jitter below is the same for a seed on a real eclipse day and on any other)
+      const lined = (real || roll < ECLIPSE.chance) && seed !== null;
       const off = (draw() * 2 - 1) * ECLIPSE.jitterDeg;
       this.eclipseOffset = debug ? 0 : lined ? off : null;
       // `?eclipse` is also a way to SEE one (owner, 2026-11-03: "how do I reproduce an eclipse?", then "the actual progression"): the orbit is the aligned one and the moon SWEEPS through the earth's shadow on a loop, from 224 to 262
