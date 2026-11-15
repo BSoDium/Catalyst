@@ -1,4 +1,4 @@
-// Mature content ("sensitive") entries in a browser (docs/design-system.md, "Sensitive media"; docs/web-architecture.md, "Sensitive media").
+// Sensitive content ("sensitive") entries in a browser (docs/design-system.md, "Sensitive media"; docs/web-architecture.md, "Sensitive media").
 // On the DEMO content (made-up placeholders; the one sensitive entry is `/artworks/figure-study-two`): the images of a sensitive entry are
 // blurred in the server HTML and at every moment of hydration, the entry offers one real "Show image" button (keyboard, aria-pressed,
 // status), a reload and a client-side return re-blur, cards in lists, the place panel and the related entries are blurred with no control,
@@ -37,7 +37,7 @@ async function newPage(contextOptions = DESKTOP, colorScheme = "dark", extra = {
   return { ctx, page, logs };
 }
 
-/** Every frame of mature content in `root`: its state, the blur radius in px (0 = none) of the picture, the frame's width, whether it has a control. */
+/** Every frame of sensitive content in `root`: its state, the blur radius in px (0 = none) of the picture, the frame's width, whether it has a control. */
 const frames = (page, root = "body") =>
   page.evaluate((root) => {
     return [...document.querySelector(root).querySelectorAll("[data-slot=sensitive-media]")].map((frame) => {
@@ -76,7 +76,7 @@ const noCover = (value) => !MEDIA.some((src) => String(value).includes(src.split
   // every <img> of the entry's own pictures sits directly inside a frame's content
   const imgs = [...html.matchAll(/<img\b[^>]*>/g)].map((m) => ({ tag: m[0], at: m.index })).filter((i) => MEDIA.some((src) => i.tag.includes(`src="${src}"`)));
   ok(imgs.length === MEDIA.length && imgs.every((i) => html.slice(i.at - 40, i.at).includes('class="sensitive-media-content">')), `server HTML: each of the ${MEDIA.length} pictures is inside a blurred frame`);
-  ok(/Mature content/.test(html) && /Image hidden/.test(html), 'server HTML: the label "Mature content" and the note "Image hidden"');
+  ok(/Sensitive content/.test(html) && /Image hidden/.test(html), 'server HTML: the label "Sensitive content" and the note "Image hidden"');
   ok(!/<button[^>]*>[^<]*(<[^>]+>)*\s*Show image/.test(html), "server HTML: no dead button (the control is drawn once hydrated)");
   const og = /<meta property="og:image" content="([^"]+)"/.exec(html)?.[1];
   const tw = /<meta name="twitter:image" content="([^"]+)"/.exec(html)?.[1];
@@ -99,7 +99,7 @@ const noCover = (value) => !MEDIA.some((src) => String(value).includes(src.split
   await page.goto(`${BASE_URL}${PATH}`);
   const f = await frames(page);
   ok(f.length === 2 && f.every((x) => x.state === "hidden" && strong(x)), `no JS: both images are blurred by CSS alone (${f.map((x) => `${x.blur.toFixed(0)}px of ${x.width}`).join(", ")})`);
-  ok(f.every((x) => x.label === "Mature content" && /image hidden/i.test(x.text) && x.control === 0), "no JS: the label and the visible note 'Image hidden', and nothing to press");
+  ok(f.every((x) => x.label === "Sensitive content" && /image hidden/i.test(x.text) && x.control === 0), "no JS: the label and the visible note 'Image hidden', and nothing to press");
   await page.screenshot({ path: `${OUT_DIR}/sensitive-nojs-dark.png` });
   await ctx.close();
 }
@@ -138,7 +138,7 @@ const noCover = (value) => !MEDIA.some((src) => String(value).includes(src.split
   const buttons = page.getByRole("button", { name: "Show image" });
   ok((await buttons.count()) === 2, "after hydration: the buttons are real <button>s named 'Show image' (one per image)");
   ok((await buttons.first().getAttribute("aria-pressed")) === "false", "the button is aria-pressed=false while hidden");
-  ok(f.every((x) => x.label === "Mature content"), "the label 'Mature content' is visible on each blurred image");
+  ok(f.every((x) => x.label === "Sensitive content"), "the label 'Sensitive content' is visible on each blurred image");
   ok(logs.length === 0, `no console errors${logs.length ? ` (${logs.join(" | ")})` : ""}`);
   await ctx.close();
 }
@@ -274,7 +274,7 @@ for (const [name, path, scope, expected] of [
     await page.waitForSelector(scope);
     if (js) await page.waitForTimeout(800);
     const f = await frames(page, scope);
-    ok(f.length === expected && f.every((x) => x.state === "hidden" && strong(x) && x.control === 0 && !x.interactive && x.label === "Mature content"), `${name}${js ? "" : " (no JS)"}: ${expected} blurred card image, labelled, with no control (${f.map((x) => `${x.blur.toFixed(0)}px of ${x.width}`).join(", ")})`);
+    ok(f.length === expected && f.every((x) => x.state === "hidden" && strong(x) && x.control === 0 && !x.interactive && x.label === "Sensitive content"), `${name}${js ? "" : " (no JS)"}: ${expected} blurred card image, labelled, with no control (${f.map((x) => `${x.blur.toFixed(0)}px of ${x.width}`).join(", ")})`);
     if (js && name === "list") {
       const rows = await page.evaluate(() => [...document.querySelectorAll("main article")].map((a) => ({ id: a.id, framed: !!a.querySelector("[data-slot=sensitive-media]") })));
       ok(rows.filter((r) => r.framed).map((r) => r.id).join() === SLUG && rows.length === FIXTURE.artworks.length, "list: only the sensitive entry's row is blurred");

@@ -84,7 +84,7 @@ describe("PlaceDetail", () => {
   it("blurs the picture of a sensitive entry in the place's gallery, with no control, and not its neighbour", () => {
     const html = render("kyoto");
     expect((html.match(/data-slot="sensitive-media"/g) ?? []).length).toBe(1);
-    expect(html).toContain("Mature content");
+    expect(html).toContain("Sensitive content");
     expect(html).not.toContain("<button");
     // it is in the gallery with the others, not a card apart from it
     const items = html.split("<a ").filter((chunk) => chunk.includes("place-gallery-item"));

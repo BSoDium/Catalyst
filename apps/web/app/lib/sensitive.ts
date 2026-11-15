@@ -1,5 +1,5 @@
 /**
- * Mature content (docs/design-system.md, "Sensitive media"; the contract field is `sensitive` on an entry, docs/api-contract.md).
+ * Sensitive content (docs/design-system.md, "Sensitive media"; the contract field is `sensitive` on an entry, docs/api-contract.md).
  * Pure decisions, shared by the components, the head tags and the structured data, so that one rule decides everywhere:
  *
  *   - an entry's images (cover and image blocks) are drawn blurred until the visitor asks to see them;
@@ -13,11 +13,11 @@
 /** The words of the interface, in one place: the markup, the tests and the browser check all read them. */
 export const SENSITIVE_COPY = {
   /** The label drawn on a hidden image, and what a card says in its place. */
-  label: "Mature content",
+  label: "Sensitive content",
   /** The accessible name of the control that reveals the entry's images (constant: `aria-pressed` carries the state). */
   show: "Show image",
   /** The name of the control that IS the blurred picture (the words on it): pressing it shows the image. */
-  view: "View mature content",
+  view: "View sensitive content",
   /** The name of the small control that hides a shown image again. */
   hide: "Hide image",
   /** Said where there is no control yet (before hydration, without scripts). */
@@ -27,7 +27,7 @@ export const SENSITIVE_COPY = {
   announceHidden: "Image hidden",
 } as const;
 
-/** Whether an entry (or a summary, or a ref to one) is mature content. Only a literal `true` counts. */
+/** Whether an entry (or a summary, or a ref to one) is sensitive content. Only a literal `true` counts. */
 export function isSensitive(entry: { sensitive?: boolean | undefined } | null | undefined): boolean {
   return entry?.sensitive === true;
 }

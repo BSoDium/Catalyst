@@ -19,7 +19,7 @@ interface EntryCardProps {
   href?: string;
   /** An authored image; without one the cover is generated from `seed` (default: the title). */
   image?: { src: string; alt: string; srcSet?: string; sizes?: string };
-  /** Mature content: the image is blurred for good and the card says why (no control: the visitor opens the entry to reveal). */
+  /** Sensitive content: the image is blurred for good and the card says why (no control: the visitor opens the entry to reveal). */
   sensitive?: boolean;
   seed?: string;
   meta?: readonly { label: string; value: ReactNode }[];
@@ -47,7 +47,7 @@ const CARD_TAGS = 3;
 
 /**
  * A card for a list of entries (docs/design-system.md, "Entry card"): no box. A cover (authored image, or generated; blurred and labelled
- * "Mature content" when the entry is sensitive), the title, a
+ * "Sensitive content" when the entry is sensitive), the title, a
  * short summary, then the date and place as two plain lines and the first tags as muted text. One link (the title) stretched over the
  * card by a pseudo-element, so the whole card is clickable and the tab order still has a single stop per card.
  */

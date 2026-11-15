@@ -153,14 +153,14 @@ describe("EntryListPage with a sensitive entry", () => {
     const one = row.slice(0, row.indexOf("</article>"));
     expect(one).toContain('data-slot="sensitive-media"');
     expect(one).toContain('data-state="hidden"');
-    expect(one).toContain("Mature content");
+    expect(one).toContain("Sensitive content");
     expect(one).not.toContain("<button");
     expect(one).not.toContain("data-interactive");
     expect(one).toContain('href="/artworks/figure-study-two"');
   });
   it("leaves the other rows alone: exactly one frame in the list", () => {
     expect((html.match(/data-slot="sensitive-media"/g) ?? []).length).toBe(1);
-    expect((html.match(/Mature content/g) ?? []).length).toBe(1);
+    expect((html.match(/Sensitive content/g) ?? []).length).toBe(1);
   });
   it("sets the artworks as one wall without year headings, and keeps each artwork's anchor and the filter", () => {
     const artworks = listEntries(demo, "artwork");

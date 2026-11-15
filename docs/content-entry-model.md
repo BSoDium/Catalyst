@@ -21,7 +21,7 @@ The mapper builds a new object field by field, in this key order: `slug, title, 
 | `facts: [{label, value}]` | `meta` | Rename. One line of plain text each, label max 40, value max 200, max **10** entries, labels unique (case-insensitive). The vault's cap of 6 is stricter and fine. |
 | `links: [{label, url}]` | `link` blocks | Appended last (after the body and the gallery images), in order, as `{type:"link", title: label, url}`. The contract has no `links` field. |
 | `images` (`ImageDecl`) | `cover`, `image` blocks | See section 3. |
-| `sensitive: true` | `sensitive` | Mature content (a figure or anatomy study, for instance). **Optional boolean, omitted when false** (never write `sensitive: false`); only `true` is meaningful. Valid only on an entry that exports an image (a `cover` or an `image` block): **warn** (`sensitive-without-image`, not fatal) when it is set on an entry that has none. Any other value than a YAML boolean is an error (`sensitive-not-boolean`), not coerced: `"true"`, `yes`, `1` are all refused. The private profile adds the key to the typed header of the four kinds (artworks use it today). See section 3, "Mature content". |
+| `sensitive: true` | `sensitive` | Sensitive content (a figure or anatomy study, for instance). **Optional boolean, omitted when false** (never write `sensitive: false`); only `true` is meaningful. Valid only on an entry that exports an image (a `cover` or an `image` block): **warn** (`sensitive-without-image`, not fatal) when it is set on an entry that has none. Any other value than a YAML boolean is an error (`sensitive-not-boolean`), not coerced: `"true"`, `yes`, `1` are all refused. The private profile adds the key to the typed header of the four kinds (artworks use it today). See section 3, "Sensitive content". |
 | `places: [place/x]` | `placeSlugs` | Keep only places that are published (as `mapContent` does today). |
 | `status` | (filter) | Only `published` entries are exported. |
 | `id`, `publishedAt`, `notes`, `rights`, `credit`, `readme.*`, `related`, `refKind`, `authors`, `year` | not exported | Private. A project's README snapshot is never exported; only an adopted `README.md` that passes the Markdown profile may become the body. |
@@ -68,7 +68,7 @@ Document-level limits (the contract enforces them, so the private gate must too)
 - Media policy is unchanged: raster only for real content (the demo uses SVG under `apps/web/public/media/demo/`, which the export never writes and never owns), resize, strip metadata, content-hashed names. A media path must be `/media/` followed by plain file names: slugify stems to `[A-Za-z0-9._-]`, no segment starting with a dot, no `..`, no empty segment, max 300 characters in total.
 - Collect every `cover.src` and image block `src` into `mediaSrcs`, as the place images are, so the media export copies them and `check` verifies the files exist.
 
-### Mature content (`sensitive`)
+### Sensitive content (`sensitive`)
 
 An entry the owner wants published but not shown by surprise sets `sensitive: true` in its vault header (an artwork that is a figure or
 anatomy study, for example). The exporter's whole job is to carry the flag; the **web app does the rest**:

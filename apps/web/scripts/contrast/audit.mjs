@@ -1,5 +1,5 @@
 // Contrast audit in a browser (docs/design-tokens.md, "Contrast audit"). Loads every kind of route (the home page, the places panel, the four
-// lists, an entry of each kind in the panel and full screen (the article's figures, their captions and credits, the links to a figure, and a figure open larger in its dialog), a short note, an archived project, a mature artwork, a poem in French, the
+// lists, an entry of each kind in the panel and full screen (the article's figures, their captions and credits, the links to a figure, and a figure open larger in its dialog), a short note, an archived project, a sensitive artwork, a poem in French, the
 // 404 page, the search palette with and without a query, the credits dialog, the styleguide) in BOTH colour schemes at 1440 x 900 and
 // 390 x 844, and for every piece of text compares its colour with what is REALLY drawn behind it:
 //
@@ -105,7 +105,7 @@ const PAGES = [
   { name: "software-archived", path: "/software/weather-ledger?view=full" },
   { name: "artwork-full", path: "/artworks/demo-artwork?view=full" },
   { name: "artwork-panel", path: "/artworks/demo-artwork", after: async (p) => { await waitGlobe(p); await sleep(2000); } },
-  { name: "artwork-mature", path: "/artworks/figure-study-two?view=full" },
+  { name: "artwork-sensitive", path: "/artworks/figure-study-two?view=full" },
   { name: "poem-full", path: "/poetry/demo-poem?view=full" },
   { name: "poem-panel", path: "/poetry/demo-poem", after: async (p) => { await waitGlobe(p); await sleep(2000); } },
   { name: "poem-fr", path: "/poetry/quai-de-nuit?view=full" },

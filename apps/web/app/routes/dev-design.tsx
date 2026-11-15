@@ -868,7 +868,7 @@ function Cards() {
       </Spec>
       <Grid>
         <Col span={12} spanMd={6}>
-          <Spec caption="Mature content in a card: blurred and labelled, no control (the entry's own page has it)">
+          <Spec caption="Sensitive content in a card: blurred and labelled, no control (the entry's own page has it)">
             <div className="max-w-sm">
               <EntryCard
                 kind="artwork"
