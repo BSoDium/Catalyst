@@ -18,11 +18,11 @@ interface SensitiveMediaProps {
 }
 
 /**
- * An image of mature content (docs/design-system.md, "Sensitive media"). The picture sits in `overflow: hidden` and is blurred and
+ * An image of sensitive content (docs/design-system.md, "Sensitive media"). The picture sits in `overflow: hidden` and is blurred and
  * enlarged by CSS (`.sensitive-media`, app.css) from the first byte of HTML: the state is an attribute (`data-state="hidden"`), so the
- * server render, a browser without scripts and print all show it blurred. The words "Mature content" lie straight on the blurred picture
+ * server render, a browser without scripts and print all show it blurred. The words "Sensitive content" lie straight on the blurred picture
  * (dimmed on the dark page and lightened on the light one, by the page's own colour laid over it): no plate, no box. With `onRevealedChange` the
- * whole picture is the control, once hydrated (a button named "View mature content": pressing anywhere on it shows the image); a small icon
+ * whole picture is the control, once hydrated (a button named "View sensitive content": pressing anywhere on it shows the image); a small icon
  * button in its corner hides it again. Without scripts there is nothing to press, and the words say the image is hidden.
  *
  * The state is the caller's and is never stored (no storage, no URL): a reload hides the image again.

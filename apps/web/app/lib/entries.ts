@@ -76,7 +76,7 @@ export interface EntrySummary {
   date?: string;
   url?: string;
   cover?: PublishedCover;
-  /** Mature content: the entry's images are drawn blurred (`lib/sensitive.ts`). Only ever `true`: absent means not sensitive. */
+  /** Sensitive content: the entry's images are drawn blurred (`lib/sensitive.ts`). Only ever `true`: absent means not sensitive. */
   sensitive?: true;
   tags: string[];
   meta: PublishedMetaEntry[];
@@ -96,7 +96,7 @@ export interface EntryRef {
   summary?: string;
   date?: string;
   cover?: PublishedCover;
-  /** Mature content: a tile of the entry blurs its image. Only ever `true`. */
+  /** Sensitive content: a tile of the entry blurs its image. Only ever `true`. */
   sensitive?: true;
 }
 

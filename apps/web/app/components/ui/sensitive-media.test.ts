@@ -12,7 +12,7 @@ const image = (key?: number) => createElement(SensitiveImage, { key, children: i
 const scope = (sensitive: boolean, children: ReturnType<typeof image>[]) => createElement(SensitiveMediaScope, { sensitive, children });
 
 describe("SensitiveMedia", () => {
-  it("is hidden in the server render: a data attribute (no script needed) over the blurred picture, labelled 'Mature content'", () => {
+  it("is hidden in the server render: a data attribute (no script needed) over the blurred picture, labelled 'Sensitive content'", () => {
     const out = html(media({ revealed: false, onRevealedChange: () => {} }));
     expect(out).toContain('data-slot="sensitive-media"');
     expect(out).toContain('data-state="hidden"');
@@ -38,7 +38,7 @@ describe("SensitiveMedia", () => {
     expect(out).not.toContain("data-interactive");
     expect(out).not.toContain("<button");
     expect(out).not.toContain("sensitive-media-note");
-    expect(out).toContain("Mature content");
+    expect(out).toContain("Sensitive content");
   });
   it("shows the same markup, revealed, only by the attribute (the picture is never swapped)", () => {
     const hidden = html(media({ revealed: false, onRevealedChange: () => {} }));
@@ -77,7 +77,7 @@ describe("EntryCard with a sensitive image", () => {
   it("blurs the cover and labels it, with no control: the visitor opens the entry to reveal", () => {
     const out = card(true);
     expect(out).toContain('data-state="hidden"');
-    expect(out).toContain("Mature content");
+    expect(out).toContain("Sensitive content");
     expect(out).not.toContain("<button");
     expect(out).not.toContain("data-interactive");
     // still one link, the title
@@ -95,6 +95,6 @@ describe("EntryCard with a sensitive image", () => {
   it("is unchanged for an ordinary card", () => {
     const out = card(false);
     expect(out).not.toContain("sensitive-media");
-    expect(out).not.toContain("Mature content");
+    expect(out).not.toContain("Sensitive content");
   });
 });

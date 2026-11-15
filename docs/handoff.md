@@ -143,5 +143,5 @@ Not verified: a real touch device (emulated touch only); Safari and Firefox (Chr
 - Accent: BSoD blue (2026-10-13), after the owner's handle and the Windows stop screen.
 - The poems' section is "Poetry", at `/poetry` (2026-10-13).
 - The projects' section is "Software", at `/software` (2026-10-13); the contract keeps `project`.
-- Mature content is blurred by default and revealed on request; it is a hint, not access control (2026-10-13).
+- Sensitive content is blurred by default and revealed on request; it is a hint, not access control (2026-10-13).
 - Home page: no header at all while the hero is at rest; its rows are the sections and its search line is the search (2026-10-13).

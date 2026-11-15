@@ -328,7 +328,7 @@ describe("EntryView", () => {
   });
 });
 
-describe("EntryView of a sensitive entry (mature content)", () => {
+describe("EntryView of a sensitive entry (sensitive content)", () => {
   const cover = demo.artworks.find((a) => a.slug === "figure-study-two")!.cover!;
   const sensitive = (layout: "panel" | "full") => render("artwork", "figure-study-two", layout);
   it("blurs the cover and every image block from the server render, in the panel and in full screen, each with its control slot", () => {
@@ -342,7 +342,7 @@ describe("EntryView of a sensitive entry (mature content)", () => {
       // the sharp picture is only ever inside a frame: no <img> of this entry is outside one
       const body = html.slice(0, html.indexOf('data-slot="entry-more"') === -1 ? undefined : html.indexOf('data-slot="entry-more"'));
       for (const img of body.matchAll(/<img\b[^>]*>/g)) {
-        // (the picture behind the title is blurred by CSS (40 px, dimmed: `data-mature`), an empty-alt backdrop)
+        // (the picture behind the title is blurred by CSS (40 px, dimmed: `data-sensitive`), an empty-alt backdrop)
         if (img[0].includes("entry-hero-img")) continue;
         // (the stage's backdrop is inside the same frame, after the picture, and is blurred and veiled with it)
         if (img[0].includes("entry-stage-backdrop")) continue;
@@ -362,8 +362,8 @@ describe("EntryView of a sensitive entry (mature content)", () => {
     expect((generated.match(/data-slot="sensitive-media"/g) ?? []).length).toBe(1);
     const ordinary = render("artwork", "altiplano-sediment", "panel");
     expect(ordinary).not.toContain("sensitive-media");
-    expect(ordinary).not.toContain("Mature content");
-    expect(ordinary).not.toContain("data-mature");
+    expect(ordinary).not.toContain("Sensitive content");
+    expect(ordinary).not.toContain("data-sensitive");
     expect(ordinary).not.toContain("data-sensitive");
   });
   it("blurs the card of a sensitive entry among the related ones of another, with no control", () => {

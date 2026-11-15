@@ -115,9 +115,9 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
   const project = entry.kind === "project";
   // Every kind but the poem (its own board) has the same order (owner, 2026-10-30, "the redesign with all the other entry types"): the running head with the date, the headline and the summary, the actions, ONE block of facts, the tags as chips, the text, the links at the foot.
   const structured = !poem;
-  // A software entry's cover is the BACKDROP of its head (owner, 2026-10-30): behind the running head, the title and the summary, under a gradient of the page's colour that keeps them readable. A mature one stays a figure, with its control.
+  // A software entry's cover is the BACKDROP of its head (owner, 2026-10-30): behind the running head, the title and the summary, under a gradient of the page's colour that keeps them readable. A sensitive one stays a figure, with its control.
   const heroSrc = entry.cover ? safeMediaSrc(entry.cover.src) : null;
-  // (every kind with a cover has the same head: the picture behind the title. An artwork's and a photograph's, which are the page, and any mature entry's are blurred and dimmed behind it, so that the focus stays on the work below)
+  // (every kind with a cover has the same head: the picture behind the title. An artwork's and a photograph's, which are the page, and any sensitive entry's are blurred and dimmed behind it, so that the focus stays on the work below)
   const heroDim = !!heroSrc && (entry.kind === "artwork" || entry.kind === "photograph" || isSensitive(entry));
   // A photograph is the page: its picture comes straight after the title, before the dateline and the marginalia.
   const photo = entry.kind === "photograph";
@@ -361,7 +361,7 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
             )}
           </p>
           {/* (the cover is the backdrop of what comes under the running head, not of the running head itself: its small type was unreadable on a picture) */}
-          <div data-hero={heroSrc ? "" : undefined} data-tone={heroDim ? "dim" : undefined} data-mature={heroDim && isSensitive(entry) ? "" : undefined} className={heroSrc ? cn("entry-hero relative isolate flex min-w-0 flex-col", full ? "-mx-4 px-4 md:-mx-8 md:px-8" : "-mx-6 px-6") : "contents"}>
+          <div data-hero={heroSrc ? "" : undefined} data-tone={heroDim ? "dim" : undefined} data-sensitive={heroDim && isSensitive(entry) ? "" : undefined} className={heroSrc ? cn("entry-hero relative isolate flex min-w-0 flex-col", full ? "-mx-4 px-4 md:-mx-8 md:px-8" : "-mx-6 px-6") : "contents"}>
             <div className={heroSrc ? "entry-hero-text relative flex min-w-0 flex-col" : "contents"}>
               <h1
                 id={headingId}

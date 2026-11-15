@@ -69,7 +69,7 @@ export function yearOf(date: string | undefined): number | null {
 
 /**
  * Groups entries by year, newest year first; inside a year the newest first (by the date string, which sorts as written); of two entries with the
- * same date, a sensitive one comes after the others (a mature work does not lead a page on a tie: issue #432), then the authored order; undated entries last.
+ * same date, a sensitive one comes after the others (a sensitive work does not lead a page on a tie: issue #432), then the authored order; undated entries last.
  */
 export function groupByYear<T extends Pick<EntrySummary, "date" | "sensitive">>(items: readonly T[]): YearGroup<T>[] {
   const byYear = new Map<number | null, { item: T; order: number }[]>();

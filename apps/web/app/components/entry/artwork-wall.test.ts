@@ -49,7 +49,7 @@ describe("ArtworkWall", () => {
   it("keeps a sensitive artwork blurred (the frame is hidden in the server render)", () => {
     const html = render([make("s", { width: 100, height: 100 }, { sensitive: true })]);
     expect(html).toContain('data-state="hidden"');
-    expect(html).toContain("Mature content");
+    expect(html).toContain("Sensitive content");
   });
   it("captions with the title (the heading's link), the medium and the year", () => {
     const html = render([make("a", { width: 100, height: 100 }, { meta: [{ label: "Medium", value: "Procreate" }, { label: "Year", value: "2025" }] })]);

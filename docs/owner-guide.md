@@ -93,7 +93,7 @@ pnpm export:preview --out ../catalyst         # then look at it locally (section
 # when it is right: set status: published in the header, commit on a branch, open a PR
 ```
 
-Merging your pull request into the private `main` opens or refreshes the publication PR; **merging that one is the publication** (section 5). For mature content (a figure or anatomy study) set `sensitive: true` in the header: the site draws that entry's pictures blurred until the visitor asks to see them, and never uses the cover as a share image. It is a hint for people looking over a shoulder, not access control: the image files stay public at their `/media/` addresses. An entry with `sensitive: true` and no image gets a warning. Not verified from this repo: the exact flags of `new-entry` and `vault` (read them from the private repo's `docs/writing-entries.md` and `pnpm new-entry --help` if they differ).
+Merging your pull request into the private `main` opens or refreshes the publication PR; **merging that one is the publication** (section 5). For sensitive content (a figure or anatomy study) set `sensitive: true` in the header: the site draws that entry's pictures blurred until the visitor asks to see them, and never uses the cover as a share image. It is a hint for people looking over a shoulder, not access control: the image files stay public at their `/media/` addresses. An entry with `sensitive: true` and no image gets a warning. Not verified from this repo: the exact flags of `new-entry` and `vault` (read them from the private repo's `docs/writing-entries.md` and `pnpm new-entry --help` if they differ).
 
 ### Edit the career document
 

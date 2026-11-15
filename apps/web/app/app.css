@@ -1508,7 +1508,7 @@
   }
 
   /*
-   * Sensitive media (components/ui/sensitive-media.tsx, docs/design-system.md "Sensitive media"): an image of mature content is blurred
+   * Sensitive media (components/ui/sensitive-media.tsx, docs/design-system.md "Sensitive media"): an image of sensitive content is blurred
    * from the first byte of HTML. The state is an attribute, so the server render, a browser without scripts and print all show the
    * blur; only a press on the entry's own "Show image" removes it, for that page view. The frame is a size container so that the blur
    * is relative to the width it is drawn at (about five cells across at any size: a 170 px thumbnail and a 1400 px cover are equally
@@ -2578,7 +2578,7 @@
    * the title, the summary and the actions, bled to the panel's edges; the running head, with its rule, is above it, on the page. ONE height for all (`--hero-min`) and the text at its foot.
    * What keeps the text readable is bound to the TEXT, not to the picture's box: the text's own box (`.entry-hero-text`) has a layer behind it that reaches `--hero-reach` ABOVE the first line, a progressive blur and the page's
    * colour rising to 88 % there and staying over it, whatever the length of the title: the picture is clear above that and dissolves into the page below. An artwork's and a photograph's picture (the page itself, shown whole
-   * below) and a mature entry's are BLURRED and DIMMED behind the title (`data-tone="dim"`: on the dark page by the picture's own opacity over it, on the light page by the same, which lightens it), so that the focus stays on the work.
+   * below) and a sensitive entry's are BLURRED and DIMMED behind the title (`data-tone="dim"`: on the dark page by the picture's own opacity over it, on the light page by the same, which lightens it), so that the focus stays on the work.
    * The image is last in the DOM, after the head's text, and lies behind it (`isolate`).
    */
   .entry {
@@ -2628,7 +2628,7 @@
     );
   }
 
-  /* An artwork's, a photograph's and a mature entry's picture is only a coloured backdrop (the work itself is shown whole below): the title and the text are high on it, with no tall clear zone. */
+  /* An artwork's, a photograph's and a sensitive entry's picture is only a coloured backdrop (the work itself is shown whole below): the title and the text are high on it, with no tall clear zone. */
   .entry-hero[data-tone="dim"] {
     --cover-min: 0px;
     --cover-clear: 7rem;
@@ -2659,7 +2659,7 @@
     width: 100%;
     /* The picture fills the part of the head that is SEEN, the clear zone and a little of the ramp (owner, 2026-11-03: "the covers are nearly always aligned to the top, could we center them vertically
        instead?"): it used to fill the whole box, whose middle is behind the text's layer, so that the picture's own middle was hidden and what showed was its upper half. It ends in a fade of its own
-       (the layer behind the text takes over under it). A dimmed backdrop (`data-tone`, `data-mature`) keeps the whole box. */
+       (the layer behind the text takes over under it). A dimmed backdrop (`data-tone`, `data-sensitive`) keeps the whole box. */
     height: calc(var(--cover-clear) + var(--cover-seen, 6rem));
     max-height: 100%;
     -webkit-mask-image: linear-gradient(to bottom, #000 72%, transparent);
@@ -2691,7 +2691,7 @@
     opacity: 0.4;
   }
 
-  .entry-hero[data-mature] .entry-hero-img {
+  .entry-hero[data-sensitive] .entry-hero-img {
     inset: 0;
     height: 100%;
     -webkit-mask-image: none;
@@ -5117,7 +5117,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     display: none;
   }
 
-  /* Mature content stays blurred on paper, revealed or not, and says so: the control is not printed. */
+  /* Sensitive content stays blurred on paper, revealed or not, and says so: the control is not printed. */
   .sensitive-media[data-state] .sensitive-media-content {
     filter: blur(var(--sensitive-blur)) !important;
     transform: scale(1.3) !important;

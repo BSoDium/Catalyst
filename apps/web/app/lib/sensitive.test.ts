@@ -36,7 +36,7 @@ describe("isSensitive and shareableCover (the pure decisions)", () => {
     expect(shareableCover({})).toBeUndefined();
   });
   it("the interface words are the ones the spec names", () => {
-    expect(SENSITIVE_COPY.label).toBe("Mature content");
+    expect(SENSITIVE_COPY.label).toBe("Sensitive content");
     expect(SENSITIVE_COPY.show).toBe("Show image");
   });
 });
