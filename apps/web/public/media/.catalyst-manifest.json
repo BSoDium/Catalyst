@@ -318,14 +318,14 @@
       "bytes": 102948
     },
     {
-      "path": "photograph/amber-gateway/photo-800w.84f02e59.webp",
-      "sha256": "84f02e59d6582a5ecf837874cceab8e1bca1d880bbe84155c13be9d0fc44ee89",
-      "bytes": 36696
+      "path": "photograph/amber-gateway/photo-800w.5f07cbcb.webp",
+      "sha256": "5f07cbcb9c129fc57028841a7a56ca7ddacea6fa20ef3a2343ee1197fb6129ff",
+      "bytes": 70080
     },
     {
-      "path": "photograph/amber-gateway/photo.abb9e3fe.webp",
-      "sha256": "abb9e3fe89944ebd71d960a7abcaeb1ac9833b374ecb679b537d438f668e0a7c",
-      "bytes": 42342
+      "path": "photograph/amber-gateway/photo.fc3a7f03.webp",
+      "sha256": "fc3a7f039f6813cb170fc34da152772f6440be23bc722fa72a418cdb6f05694f",
+      "bytes": 83018
     },
     {
       "path": "photograph/blue-facade/photo-800w.4cc300ab.webp",
@@ -388,6 +388,16 @@
       "bytes": 149534
     },
     {
+      "path": "photograph/flare/photo-800w.4bcb6676.webp",
+      "sha256": "4bcb66764f5a68256e5141932a9c24d81552d74a0e8c053229d577ed0c8a43d9",
+      "bytes": 13542
+    },
+    {
+      "path": "photograph/flare/photo.4a275477.webp",
+      "sha256": "4a2754777b8d5e7fa87c5372c311c6ccd5cc153749fb6dfdb9f4c6b1bf0dac85",
+      "bytes": 45994
+    },
+    {
       "path": "photograph/flooded-street/photo-800w.b1633307.webp",
       "sha256": "b1633307aec2df16e4ea6797c82bdd218999284bb9c389b017784ac81da32eba",
       "bytes": 130180
@@ -428,6 +438,11 @@
       "bytes": 122172
     },
     {
+      "path": "photograph/museum-and-flags/photo.14868bea.webp",
+      "sha256": "14868bea4d0392f9315474540c5ba35c9090095f6adb98a64928c96bc19917d3",
+      "bytes": 36488
+    },
+    {
       "path": "photograph/orange-train/photo-800w.7c34f1e8.webp",
       "sha256": "7c34f1e872128a2a6f1b1f7f6a7fe273dcd22ef468b231f9b61f506312c043b8",
       "bytes": 39736
@@ -448,9 +463,29 @@
       "bytes": 232102
     },
     {
+      "path": "photograph/palm-and-flags/photo-800w.02962746.webp",
+      "sha256": "029627464f5f1a09476c930d7f672b12da935369485824e730c66c70375f3119",
+      "bytes": 52696
+    },
+    {
+      "path": "photograph/palm-and-flags/photo.a0de4acc.webp",
+      "sha256": "a0de4accf3142bf2893a1b243e4ddcd337a94cb7190e48fdf745fc656a452e3c",
+      "bytes": 54328
+    },
+    {
       "path": "photograph/pointing-at-the-hills/photo.7e4ce076.webp",
       "sha256": "7e4ce076e4570a53a8736ca6958db763969e87f5877ffa5eb35588e9049fb206",
       "bytes": 95648
+    },
+    {
+      "path": "photograph/red-smoke/photo-800w.082428a0.webp",
+      "sha256": "082428a0a53a89930d841dc01f73bf6bbfaf7f810841c4ae1a799b324a9586e9",
+      "bytes": 26432
+    },
+    {
+      "path": "photograph/red-smoke/photo.4da95e06.webp",
+      "sha256": "4da95e06f2e93b79a87f5a4910d4a2ab4aa848bb60d6c165e9d73e8b8f21d0a8",
+      "bytes": 97986
     },
     {
       "path": "photograph/speedboat-on-the-napo/photo-800w.a76de00d.webp",
@@ -461,6 +496,16 @@
       "path": "photograph/speedboat-on-the-napo/photo.e9ea0302.webp",
       "sha256": "e9ea0302f0538d0091fd8b14605d3722b50580ed3aac787249cead5b5ff61e6d",
       "bytes": 74502
+    },
+    {
+      "path": "photograph/two-coffees-and-an-armband/photo-800w.71bba896.webp",
+      "sha256": "71bba89649f99357001cf9533fb8223d9517227e789b98e128eae6f2d5142a10",
+      "bytes": 39496
+    },
+    {
+      "path": "photograph/two-coffees-and-an-armband/photo.ac29ed27.webp",
+      "sha256": "ac29ed275ba1aac1c7b7c290e86ae8ca7226f6041a6dfbd6418e1dda96be914d",
+      "bytes": 88414
     },
     {
       "path": "photograph/unloading-at-the-bank/photo-800w.fb6f836d.webp",
