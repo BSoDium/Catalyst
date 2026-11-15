@@ -189,6 +189,9 @@ export const INTERLUDE_DUSK_DEG = 80;
 /** A smootherstep: from rest to rest, with no jump at either end. */
 const smootherstep = (t: number) => t * t * t * (t * (t * 6 - 15) + 10);
 
+/** The camera distance `?moon-wide` allows, earth radii: the orbit (9) fits the picture. */
+const MOON_WIDE_DISTANCE = 26;
+
 export class GlobeRenderer {
   readonly canvas: HTMLCanvasElement;
 
@@ -554,6 +557,8 @@ export class GlobeRenderer {
    */
   private lowestFor(inset: number): { zoom: number; placement: Placement | null } {
     const { width: w, height: h } = this;
+    // (`?moon-wide`, a debug page: the camera may go as far as the whole orbit fits, 26 earth radii away, to see the ellipse at once)
+    if (this.moonWide) return { zoom: radiusPxToZoom(focalPx(h) / (MOON_WIDE_DISTANCE - 1)), placement: null };
     const free = freeWidth(w, inset);
     const fit = fitZoom(free, h, TUNING.fitMargin);
     if (!this.ring) return { zoom: fit, placement: null };
@@ -1319,6 +1324,7 @@ export class GlobeRenderer {
   private moonMs = 0;
   private moonAt = 0;
   private moonHeld = false;
+  private readonly moonWide = typeof location !== "undefined" && new URLSearchParams(location.search).has("moon-wide");
   private moonPinned: number | null = null;
   private moonSun: Vec3 = sunDirection(this.open.sunElevationDeg);
   /**
