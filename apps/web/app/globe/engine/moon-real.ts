@@ -3,6 +3,7 @@
  * They are scalar maths for the HUD tick (about 10 times a second at most, cached by `realLines`), never per pixel. A line is written plain when it is real; what the scene does is `SIM` (`moon-overlay.ts`), so no scene constant is printed as a physical quantity (#628).
  */
 import { sunAngularRadiusDeg, sunDistanceAu } from "./daylight";
+import { eclipseLines } from "./eclipse-table";
 import { daysToAnomaly, lunarPosition, moonAngularSizeDeg, moonEquatorInclinationDeg, moonSpeedKmS, nextPhaseMs, LUNAR } from "./lunar-ephemeris";
 
 export const thousands = (n: number): string => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
@@ -27,6 +28,7 @@ export function computeRealLines(ms: number): string[] {
     `NEXT FULL ${date(nextPhaseMs(ms, 180))}`,
     `NEXT NEW ${date(nextPhaseMs(ms, 0))}`,
     `INCL ${LUNAR.inclinationDeg.toFixed(1)}° ECL, ${moonEquatorInclinationDeg(ms).toFixed(1)}° EQ`,
+    ...eclipseLines(ms),
   ];
 }
 

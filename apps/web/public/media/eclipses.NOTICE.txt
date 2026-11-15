@@ -1,0 +1,4 @@
+app/globe/engine/eclipses.json: the lunar and solar eclipses of 2025 to 2045 (greatest eclipse in UTC, type, magnitude), baked by apps/web/scripts/moon/bake-eclipses.py from NASA's
+"Five Millennium Catalog of Lunar Eclipses" (https://eclipse.gsfc.nasa.gov/LEcat5/LE2001-2100.html) and "Five Millennium Catalog of Solar Eclipses" (https://eclipse.gsfc.nasa.gov/SEcat5/SE2001-2100.html),
+Fred Espenak and Jean Meeus, NASA/GSFC (eclipse.gsfc.nasa.gov). The catalogues give Terrestrial Dynamical Time; the baked time is TD minus the Delta T they print beside it.
+Facts about the sky are not copyrightable and NASA's pages are in the public domain; the credit asked for is "Fred Espenak, NASA's GSFC". Used by engine/eclipse-table.ts, engine/moon-real.ts and engine/renderer.ts.
