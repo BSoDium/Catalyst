@@ -6,6 +6,7 @@
  * The scene is compressed (the orbit is 9 earth radii, a lap is six minutes, the moon moves in a composition plane): what is printed on the HUD and what the lap starts from can be real, and this is where it comes from.
  * It costs scalar maths, once or per HUD tick, never per pixel.
  */
+import { sunDistanceAu } from "./daylight";
 import { normalizeLon } from "./geo";
 
 const RAD = Math.PI / 180;
@@ -183,7 +184,7 @@ export function lunarPosition(ms: number): LunarPosition {
   const sunMean = wrap360(280.46 + 0.9856474 * n);
   const g = wrap360(357.528 + 0.9856003 * n) * RAD;
   const sunLon = wrap360(sunMean + 1.915 * Math.sin(g) + 0.02 * Math.sin(2 * g));
-  const sunDistanceKm = (1.00014 - 0.01671 * Math.cos(g) - 0.00014 * Math.cos(2 * g)) * AU_KM;
+  const sunDistanceKm = sunDistanceAu(ms) * AU_KM;
 
   // The phase (chapter 48): the elongation, then the angle at the moon
   const dLon = (lonDeg - sunLon) * RAD;
@@ -212,4 +213,64 @@ export function lunarPosition(ms: number): LunarPosition {
     decDeg: dec,
     sublunar: { lon: normalizeLon(ra - gmst), lat: dec },
   };
+}
+
+/** The moon's radius, km, and the earth's gravitational parameter, km^3/s^2. */
+const MOON_RADIUS_KM = 1737.4;
+const GM_EARTH = 398_600.4418;
+/** The anomalistic month (perigee to perigee), days. */
+const ANOMALISTIC_DAYS = 27.55455;
+
+/** The moon's speed on its orbit at the distance `km` (vis-viva about the mean orbit), km/s: 0.97 at apogee to 1.08 at perigee. */
+export function moonSpeedKmS(km: number): number {
+  return Math.sqrt(GM_EARTH * (2 / km - 1 / LUNAR.meanDistanceKm));
+}
+
+/** The moon's apparent diameter at the distance `km`, degrees (0.49 to 0.56). */
+export function moonAngularSizeDeg(km: number): number {
+  return 2 * Math.atan(MOON_RADIUS_KM / km) * DEG;
+}
+
+/** Days until the moon's mean anomaly next reaches `targetDeg` (0 is perigee, 180 apogee): on the mean clock, so within a day or so of the real one (the perturbations move perigee by up to about 1.5 days). */
+export function daysToAnomaly(ms: number, targetDeg: number): number {
+  const ahead = wrap360(targetDeg - moonMeanAnomalyDeg(ms));
+  return (ahead / 360) * ANOMALISTIC_DAYS;
+}
+
+/** The angle of the moon ahead of the sun along the ecliptic, 0 (new) to 360, from the same longitudes as `lunarPosition.ageDays`. */
+const elongationAhead = (ms: number): number => (lunarPosition(ms).ageDays / LUNAR.synodicDays) * 360;
+
+/** The next time (epoch ms) after `ms` that the moon is `targetDeg` ahead of the sun: 0 the new moon, 90 the first quarter, 180 the full moon. Steps of six hours, then bisection to a minute. */
+export function nextPhaseMs(ms: number, targetDeg: number): number {
+  const step = 6 * 3_600_000;
+  // (the angle only grows, about 12 degrees a day, and wraps once a month: the signed distance to the target, wrapped to (-180, 180], goes from negative to positive at the crossing)
+  const off = (t: number) => ((((elongationAhead(t) - targetDeg) % 360) + 540) % 360) - 180;
+  let a = ms;
+  let offA = off(a);
+  for (let i = 0; i < 130; i++) {
+    const b = a + step;
+    const offB = off(b);
+    if (offA < 0 && offB >= 0) {
+      let lo = a;
+      let hi = b;
+      while (hi - lo > 60_000) {
+        const mid = (lo + hi) / 2;
+        if (off(mid) < 0) lo = mid;
+        else hi = mid;
+      }
+      return hi;
+    }
+    a = b;
+    offA = offB;
+  }
+  return ms + 30 * 86_400_000;
+}
+
+/** The inclination of the moon's orbit to the earth's equator, degrees: 18.3 to 28.6 over the 18.6 years of the node's turn (the node's mean longitude and the obliquity at `ms`). */
+export function moonEquatorInclinationDeg(ms: number): number {
+  const T = centuries(ms);
+  const node = (125.0445479 - 1934.1362891 * T) * RAD;
+  const eps = (23.439 - 0.013 * T) * RAD;
+  const i = LUNAR.inclinationDeg * RAD;
+  return Math.acos(Math.cos(eps) * Math.cos(i) - Math.sin(eps) * Math.sin(i) * Math.cos(node)) * DEG;
 }

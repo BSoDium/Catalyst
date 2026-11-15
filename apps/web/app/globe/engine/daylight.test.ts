@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { MOON } from "./moon";
-import { opening, subsolarPoint } from "./daylight";
+import { opening, subsolarPoint, sunAngularRadiusDeg, sunDistanceAu } from "./daylight";
 
 describe("subsolarPoint", () => {
   it("is on the equator near the March equinox, over Greenwich around noon UTC", () => {
@@ -31,5 +31,19 @@ describe("opening", () => {
     expect(wrap(o.lon + o.eraDeg - MOON.ref.lonDeg)).toBeCloseTo(0, 6);
     expect(wrap(sub.lon - o.lon - MOON.sunAzimuthDeg)).toBeCloseTo(0, 6);
     expect(o.sunElevationDeg).toBeCloseTo(sub.lat, 6);
+  });
+});
+
+describe("the earth-sun distance (#632)", () => {
+  it("is at its least in early January and its greatest in early July", () => {
+    expect(sunDistanceAu(Date.UTC(2026, 0, 3, 17))).toBeCloseTo(0.9833, 3);
+    expect(sunDistanceAu(Date.UTC(2026, 6, 6, 17))).toBeCloseTo(1.0167, 3);
+  });
+  it("gives the sun's radius, 0.27 degrees, within 1.7 % over the year", () => {
+    for (let m = 0; m < 12; m++) {
+      const r = sunAngularRadiusDeg(Date.UTC(2026, m, 15));
+      expect(r).toBeGreaterThan(0.2615);
+      expect(r).toBeLessThan(0.2715);
+    }
   });
 });

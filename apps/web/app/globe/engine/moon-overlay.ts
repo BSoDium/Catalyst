@@ -15,6 +15,7 @@ import type { GlobeMoon } from "../types";
 import { clock, phaseName } from "./moon-hud";
 import { LUNAR } from "./lunar-ephemeris";
 import { MOON } from "./moon";
+import { realLines, thousands } from "./moon-real";
 import { dashingFor, edgeLit } from "./pixel-labels";
 
 /** A span of the orbit (the earth's shadow on the moon, or the moon's on the earth): when it begins, peaks and ends, in radians ahead of the moon, and where those are on the screen. */
@@ -206,7 +207,7 @@ export function orbitPath(points: ReadonlyArray<[number, number] | null>): strin
 
 /**
  * The readout's lines (the orbit display's text): the phase, the place on the orbit, the shadow. They are what the SCENE shows (the orbit is compressed, a lap is six minutes: `SIM`), never given as the real moon's;
- * what is real (`REAL`) is the orbit's own constants (`pathItems`), and the live ephemeris, `lunar-ephemeris.ts`, fills it in later.
+ * what is real is written plain: the orbit's own constants (`pathItems`), and the live ephemeris, `lunar-ephemeris.ts`, fills it in later.
  */
 export function hudLines(h: NonNullable<MoonFrame["hud"]>): string[] {
   const shadow = h.eclipse.now ? "SIM ECLIPSE UNDER WAY" : h.eclipse.fromAngle === null ? "NO ECLIPSE ON THIS ORBIT" : `SIM ECLIPSE T-${clock((h.eclipse.fromAngle / (2 * Math.PI)) * MOON.periodMs)}`;
@@ -232,17 +233,14 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 
 type Hud = NonNullable<MoonFrame["hud"]>;
 
-/** A whole number with a comma between thousands (`6557` is `6,557`). */
-const thousands = (n: number): string => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-
 /** How many times faster than the real moon the scene's moon goes: a sidereal month (`LUNAR`) in the time of a lap. */
 export const SIM_RATE = (LUNAR.siderealDays * 86_400_000) / MOON.periodMs;
 
 /**
- * The items of data that run along the orbit, above it and below it, spaced out along the path by `spread`, no separators. Every one is either `REAL` (the orbit's own constants, which need no ephemeris: `LUNAR`) or
+ * The items of data that run along the orbit, above it and below it, spaced out along the path by `spread`, no separators. Every one is either real and written plain (the orbit's own constants, which need no ephemeris: `LUNAR`) or
  * `SIM` (what the scene does, which is compressed: a lap of six minutes, an orbit of 9 earth radii in a composition plane, the angle of the view), so that no scene constant is read as a physical quantity (#628).
  */
-export function pathItems(h: Hud): { above: string[]; below: string[] } {
+export function pathItems(h: Hud, real: readonly string[] = []): { above: string[]; below: string[] } {
   const degAt = (ahead: number | null) => (ahead === null ? "---" : String(Math.round(((h.angleDeg + (ahead * 180) / Math.PI) % 360 + 360) % 360)).padStart(3, "0"));
   const e = h.eclipse;
   const shadow = e.now ? `SIM UMBRA ENTERED AT ${degAt(0)}\u00b0` : e.fromAngle === null ? "SHADOW NOT ON PATH" : `SIM SHADOW AT ${degAt(e.fromAngle)}\u00b0 PEAK ${degAt(e.peakAngle)}\u00b0`;
@@ -251,17 +249,18 @@ export function pathItems(h: Hud): { above: string[]; below: string[] } {
   return {
     above: [
       "LUNA ORBIT",
-      `REAL MEAN RADIUS ${thousands(LUNAR.meanDistanceKm)} KM`,
-      `REAL INCL ${LUNAR.inclinationDeg.toFixed(3)}\u00b0`,
-      `REAL ECC ${LUNAR.eccentricity}`,
-      `REAL SIDEREAL ${LUNAR.siderealDays.toFixed(2)} D`,
-      `REAL SYNODIC ${LUNAR.synodicDays.toFixed(2)} D`,
+      `MEAN RADIUS ${thousands(LUNAR.meanDistanceKm)} KM`,
+      `INCL ${LUNAR.inclinationDeg.toFixed(3)}\u00b0`,
+      `ECC ${LUNAR.eccentricity}`,
+      `SIDEREAL ${LUNAR.siderealDays.toFixed(2)} D`,
+      `SYNODIC ${LUNAR.synodicDays.toFixed(2)} D`,
+      ...real.slice(0, 6),
       `SIM RATE x${thousands(SIM_RATE)}`,
       `SIM LAP ${clock(MOON.periodMs)}`,
       `SIM VIEW ANGLE ${h.info.inclDeg.toFixed(1)}\u00b0`,
       `SCENE ${MOON.orbit.toFixed(1)} ER, RANGE ${h.info.range.toFixed(2)} ER (NOT TO SCALE)`,
     ],
-    below: [`SIM PHASE ANGLE ${String(Math.round(h.info.phaseDeg)).padStart(3, "0")}\u00b0`, `SIM ILLUM ${(h.lit * 100).toFixed(1)}%`, shadow, e.now ? "SIM ECLIPSE UNDER WAY" : e.fromAngle === null ? "NO ECLIPSE" : `SIM T-${clock((e.fromAngle / (2 * Math.PI)) * MOON.periodMs)}`, ...(solarLine ? [solarLine] : [])],
+    below: [...real.slice(6), `SIM PHASE ANGLE ${String(Math.round(h.info.phaseDeg)).padStart(3, "0")}\u00b0`, `SIM ILLUM ${(h.lit * 100).toFixed(1)}%`, shadow, e.now ? "SIM ECLIPSE UNDER WAY" : e.fromAngle === null ? "NO ECLIPSE" : `SIM T-${clock((e.fromAngle / (2 * Math.PI)) * MOON.periodMs)}`, ...(solarLine ? [solarLine] : [])],
   };
 }
 
@@ -353,7 +352,7 @@ class OrbitHud {
 
     // the data along the orbit: each item at an angle of the orbit of its own (every 20 degrees, above the line; between them, every 20 degrees, below it), so that it stays where it is in space as the
     // camera moves; one is left out where it would run into the one before it on the screen
-    const data = pathItems(h);
+    const data = pathItems(h, realLines(Date.now()));
     const ticks = h.ticks;
     const lastDrawn: ({ x: number; y: number } | null)[] = [null, null];
     for (let t = 0; t < ticks.length; t++) {
