@@ -15,7 +15,7 @@ import type { GlobeMoon } from "../types";
 import { clock, phaseName } from "./moon-hud";
 import { LUNAR } from "./lunar-ephemeris";
 import { MOON } from "./moon";
-import { realLines } from "./moon-real";
+import { realLines, thousands } from "./moon-real";
 import { dashingFor, edgeLit } from "./pixel-labels";
 
 /** A span of the orbit (the earth's shadow on the moon, or the moon's on the earth): when it begins, peaks and ends, in radians ahead of the moon, and where those are on the screen. */
@@ -232,9 +232,6 @@ export function orbitAlpha(glow: number): number {
 const SVG_NS = "http://www.w3.org/2000/svg";
 
 type Hud = NonNullable<MoonFrame["hud"]>;
-
-/** A whole number with a comma between thousands (`6557` is `6,557`). */
-const thousands = (n: number): string => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
 /** How many times faster than the real moon the scene's moon goes: a sidereal month (`LUNAR`) in the time of a lap. */
 export const SIM_RATE = (LUNAR.siderealDays * 86_400_000) / MOON.periodMs;

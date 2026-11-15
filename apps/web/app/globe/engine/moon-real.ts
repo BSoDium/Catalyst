@@ -5,7 +5,7 @@
 import { sunAngularRadiusDeg, sunDistanceAu } from "./daylight";
 import { daysToAnomaly, lunarPosition, moonAngularSizeDeg, moonEquatorInclinationDeg, moonSpeedKmS, nextPhaseMs, LUNAR } from "./lunar-ephemeris";
 
-const thousands = (n: number): string => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+export const thousands = (n: number): string => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 const date = (ms: number): string => new Date(ms).toISOString().slice(0, 10);
 const days = (d: number): string => (d < 1 ? `${(d * 24).toFixed(0)} H` : `${d.toFixed(1)} D`);
 const sign = (n: number, pos: string, neg: string): string => `${Math.abs(n).toFixed(1)} ${n >= 0 ? pos : neg}`;
