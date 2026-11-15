@@ -41,11 +41,11 @@ describe("pathItems", () => {
   const h = { orbit: [], ticks: [], lit: 0.5, waxing: true, angleDeg: 90, info: { range: 8.25, inclDeg: -12, phaseDeg: 90 } };
   it("has the orbit's real constants and the scene's own numbers above, the moon's now and the shadow's below, each said to be real or simulated", () => {
     const { above, below } = pathItems({ ...h, eclipse: { now: false, fromAngle: Math.PI / 2, peakAngle: Math.PI, at: null, peakAt: null } });
-    expect(above).toContain("REAL MEAN RADIUS 384,400 KM");
-    expect(above).toContain("REAL INCL 5.145\u00b0");
-    expect(above).toContain("REAL ECC 0.0549");
-    expect(above).toContain("REAL SIDEREAL 27.32 D");
-    expect(above).toContain("REAL SYNODIC 29.53 D");
+    expect(above).toContain("MEAN RADIUS 384,400 KM");
+    expect(above).toContain("INCL 5.145\u00b0");
+    expect(above).toContain("ECC 0.0549");
+    expect(above).toContain("SIDEREAL 27.32 D");
+    expect(above).toContain("SYNODIC 29.53 D");
     expect(above).toContain("SIM RATE x6,557");
     expect(above).toContain("SIM LAP 06:00");
     expect(above).toContain("SIM VIEW ANGLE -12.0\u00b0");
@@ -55,7 +55,7 @@ describe("pathItems", () => {
     expect(below).toContain("SIM T-01:30");
   });
   it("puts the live REAL lines in, half above and half below, when it is given them (#631)", () => {
-    const real = Array.from({ length: 15 }, (_, i) => `REAL LIVE ${i}`);
+    const real = Array.from({ length: 15 }, (_, i) => `LIVE ${i}`);
     const { above, below } = pathItems({ ...h, eclipse: { now: false, fromAngle: null, peakAngle: null, at: null, peakAt: null } }, real);
     expect(above).toEqual(expect.arrayContaining(real.slice(0, 7)));
     expect(below).toEqual(expect.arrayContaining(real.slice(7)));
@@ -64,7 +64,9 @@ describe("pathItems", () => {
     const { above, below } = pathItems({ ...h, eclipse: { now: false, fromAngle: Math.PI / 2, peakAngle: Math.PI, at: null, peakAt: null } });
     for (const line of [...above, ...below]) {
       if (line === "LUNA ORBIT" || line.startsWith("NO ") || line.startsWith("SHADOW NOT")) continue;
-      expect(line, line).toMatch(/^(REAL|SIM|SCENE) /);
+      // (what is real is written plain; what the scene says it does is SIM or SCENE)
+      if (/^(MEAN RADIUS|INCL|ECC|SIDEREAL|SYNODIC) /.test(line)) continue;
+      expect(line, line).toMatch(/^(SIM|SCENE) /);
     }
     // (the scene's radius, period and angular speed are no longer printed as the orbit's)
     expect(above.join("|")).not.toMatch(/ANG VEL|RADIUS 9|PERIOD 06/);
