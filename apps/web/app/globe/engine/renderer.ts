@@ -1335,6 +1335,9 @@ export class GlobeRenderer {
   private moonStartAt: OrbitStart | null = null;
   /** The libration at the orbit angle `angle` (#634): none on a debug page (`openMs` null), where the face stays still as it was. */
   private moonLibration(angle: number): { lonDeg: number; latDeg: number } | undefined {
+    // (`?moon-libration=LON,LAT`, a debug page: the libration held at these degrees, to look at the face at its extremes)
+    const held = typeof location !== "undefined" ? new URLSearchParams(location.search).get("moon-libration")?.split(",").map(Number) : undefined;
+    if (held && held.length === 2 && held.every(Number.isFinite)) return { lonDeg: held[0]!, latDeg: held[1]! };
     return this.openMs === null ? undefined : libration(angle, this.moonStart);
   }
   private get moonStart(): OrbitStart {
@@ -1434,7 +1437,7 @@ export class GlobeRenderer {
 
   /** What the moon's last frame made of the globe (checks): the sample and the state that may keep it away. */
   moonDebug() {
-    return { night: this.nightNow, sample: this.moonSample, shade: [...SHADE_UNIFORMS.uShade.value.toArray(), ...SHADE_UNIFORMS.uShadeR.value.toArray()], displayRate: this.wantsDisplayRate, ready: this.globe.moon?.ready ?? false, sized: this.sized, suspended: this.suspended, flying: this.flying, selected: this.selected, inset: this.insetTarget, zoom: this.drawView().zoom, fit: this.fit };
+    return { libration: this.moonLibration(this.moonAngleNow()) ?? null, night: this.nightNow, sample: this.moonSample, shade: [...SHADE_UNIFORMS.uShade.value.toArray(), ...SHADE_UNIFORMS.uShadeR.value.toArray()], displayRate: this.wantsDisplayRate, ready: this.globe.moon?.ready ?? false, sized: this.sized, suspended: this.suspended, flying: this.flying, selected: this.selected, inset: this.insetTarget, zoom: this.drawView().zoom, fit: this.fit };
   }
 
   /** Whether the moon may move now: not under reduced motion, not in a hold of the energy pass, not while the link's card holds it, not in a hidden tab. */

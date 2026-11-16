@@ -86,6 +86,15 @@ export interface MoonFrame {
   fit: number;
 }
 
+const MOON_DEBUG_SCALE = (() => {
+  try {
+    const n = Number(new URLSearchParams(location.search).get("moon-scale"));
+    return Number.isFinite(n) && n >= 1 && n <= 12 ? n : 1;
+  } catch {
+    return 1;
+  }
+})();
+
 const VERTEX = /* glsl */ `
   varying vec3 vDir; varying vec3 vWorld; varying vec3 vNormal;
   void main() {
@@ -262,7 +271,8 @@ export class MoonLayer {
     }
     const p = toEarthFrame(inertialPosition(f.angle, this.basis, orbitRadius(f.angle, { ...DEFAULT_ORBIT, perigee: f.perigee ?? DEFAULT_ORBIT.perigee })), f.eraDeg);
     this.mesh.position.set(p[0], p[1], p[2]);
-    this.mesh.scale.setScalar(MOON.radius);
+    // (`?moon-scale=N`, a debug page: the drawn moon N times bigger, to look at its face, its libration; the hit box and the card stay the real size)
+    this.mesh.scale.setScalar(MOON.radius * MOON_DEBUG_SCALE);
     this.mesh.lookAt(0, 0, 0); // one face to the planet: local +Z (longitude 0, latitude 0) toward it, +Y (north) up
     if (f.libration) {
       // the libration (#634): the point under the earth is (lon east, lat north), so the mesh turns it there (tested in libration.test.ts)
@@ -282,7 +292,8 @@ export class MoonLayer {
     const cx = (ndc.x * 0.5 + 0.5) * f.bufW;
     const cy = (ndc.y * 0.5 + 0.5) * f.bufH;
     const focal = (cam.projectionMatrix.elements[5]! * f.bufH) / 2;
-    const r = (focal * MOON.radius) / Math.sqrt(Math.max(1e-6, D * D - MOON.radius * MOON.radius));
+    const R = MOON.radius * MOON_DEBUG_SCALE;
+    const r = (focal * R) / Math.sqrt(Math.max(1e-6, D * D - R * R));
     // the planet's centre on the buffer and its silhouette, to see how much of the moon it hides: only a point beyond the plane of its horizon can be
     const c0 = this.v.set(0, 0, 0).project(cam);
     const px = (c0.x * 0.5 + 0.5) * f.bufW;
@@ -301,7 +312,7 @@ export class MoonLayer {
     (u.uSun!.value as Vector3).set(f.sun[0], f.sun[1], f.sun[2]);
     const ecl = eclipseOf(p, f.sun);
     (u.uEclipse!.value as Vector2).set(ecl.dark, ecl.red);
-    u.uGamma0!.value = Math.asin(Math.min(1, MOON.radius / D));
+    u.uGamma0!.value = Math.asin(Math.min(1, (MOON.radius * MOON_DEBUG_SCALE) / D));
     u.uEdgeAng!.value = 1 / focal; // one buffer pixel
     u.uAmt!.value = amount;
     this.sample = sample;
