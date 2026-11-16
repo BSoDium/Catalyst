@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "dataVersion": {
-    "commit": "56b1a1e7d8bf952be625d1791ec589677bb12f2e",
+    "commit": "8d9f9071780d36bfd6702da40a10ee5e87ae3686",
     "date": "2026-11-16"
   },
   "places": [
@@ -5396,10 +5396,11 @@
         },
         {
           "mode": "road",
-          "polyline": "ohneB~ogaBpAsAmBwClOt@xgAoMj}Akd@n`Cae@|JuIjZ}m@bI_IrzFgbCzqDqkC~Om|@by@ihBzk@aaA|}@i`ArAuNaG}{Ar]q}CbbCe_GlKsNleFw_ExHkKlBeKQ{~@rTocFnEkNb_@mf@zOcFpo@eBjOwIfmAuH|JiGzpAuyAzRsFlt@xVdkA`cAf|EvRlv@jSbJfNnIdzAzDjOdeCtgCxbA|uAfbBnfCht@xfBlw@`|AfE~QbIxkApe@bfC`_A|nBzf@vpA~Otp@j\\lv@|m@ttDjzAvmBx}@bq@lxAxgBdNtcAtt@jaBhHpfB|b@r}AfT|xAfl@raBzVrdCrNjd@f`CtsClw@tbBjcBvsBjw@rp@|wB~tA~WxZzzB~{AlsAvfBlyAzxB~_A`a@|aBtrA~W|H`|@hd@~k@|a@xRt]z_AjbAfLrhAxYjo@_WvAmlBxs@wIfJmb@j}@yPzI_lB`QorAkN{i@wKgnBlA_uDiD"
+          "polyline": "ohneB~ogaBpAsAt|WffRpb@dPxVnZ`WxQhBmFy]eVxKeFp`AsHlHsMsAmJrAlJmHrMq`ArHyKdFx]dVeBnFjaErsCh}GhlDnSdAnRcRl[yC~OiM`Pwj@lDmz@dLyNpTs@`g@~M~oA|FgNxzB`AfJn{C`iEb{Cnc@xqBloA`pBbZf}GdvC`sH~QjL|BdJjIjtAf`CfcBp{@lk@rhC~aA~ZrvB`qAllCvj@`d@}Crf@y_@vNdAxuB_JjK`@"
         },
         {
-          "mode": "walk"
+          "mode": "road",
+          "polyline": "}uxaB~|ccB~tDhDfnBmAzi@vKnrAjNnbB}NhZ_Llb@k}@vIgJllBys@xVHjgApj@"
         },
         {
           "mode": "road",
