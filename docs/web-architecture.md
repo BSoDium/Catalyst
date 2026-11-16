@@ -253,6 +253,12 @@ focus leaves. Screen readers reach it normally. Hover/focus on a link highlights
 cannot run (`data-state="unavailable"`, no WebGL) a CSS rule keeps the list visible, because pointer users have no
 other way in. Without JavaScript the globe screen shows no list (the globe itself needs JS).
 
+### Prerendered pages (no function for a plain view of an article)
+
+`/articles/:slug` is built to a static file at `pnpm build` (`prerender` in `apps/web/react-router.config.ts`: the slugs of the published projection) and served by Vercel's CDN: no function is invoked for a view of an article (#675). Content changes only when the `content/publish` pull request is merged, which is a deploy, so there is nothing to keep fresh. The other entries, the lists and the locations are still rendered per request (the next steps of #675), and so is any URL with a query (`?view=full`, the place panel).
+
+A static file has no response to carry the per-request CSP nonce. So after the build `scripts/prerender/seal-csp.mts` gives each prerendered page its own policy: a `<meta http-equiv="Content-Security-Policy">` (right after the charset declaration) naming the SHA-256 of each inline script of the page (`scripts/prerender/seal-page.mts`, `buildCsp({ scriptHashes })`), and removes the build's nonce attributes. It is the server's policy otherwise; the two things a `<meta>` cannot carry are covered elsewhere (`frame-ancestors`: `X-Frame-Options: DENY` of `vercel.json`; `upgrade-insecure-requests`: not needed behind Vercel's https). The dynamic routes keep the nonce. The build needs `CATALYST_SITE_URL` (canonical and Open Graph URLs) and the tiles variables in its environment: they are baked into the pages. Checked locally: the page hydrates with no console error and an injected inline script is refused (`script-src-elem`). Not done: the weight of the HTML (the place index is still serialised into every page, 400 kB: option D of #675), and the cache headers of the other pages.
+
 ### Detail panel, SSR and hydration
 
 - Desktop (`md`, 768px and up): the panel is a non-modal complementary region (a `div role="complementary"`) over the right half of the viewport (`md:w-1/2`,

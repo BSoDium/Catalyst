@@ -44,8 +44,10 @@ export function parseOrigins(raw: string | undefined): string[] {
 }
 
 export interface CspInput {
-  /** Fresh per response: marks the inline scripts React Router writes (`<ServerRouter nonce>`). */
-  nonce: string;
+  /** Fresh per response: marks the inline scripts React Router writes (`<ServerRouter nonce>`). Not given for a prerendered page (`scriptHashes`). */
+  nonce?: string;
+  /** A prerendered page (a static file: no response to put a nonce in): the `sha256-...` of each of its inline scripts, and the policy is for a `<meta>` element (no `frame-ancestors`, which a meta ignores; `X-Frame-Options` of `vercel.json` stands in). */
+  scriptHashes?: readonly string[];
   /** Origins the street map fetches tiles from: the primary TileJSON host and the fallback archive host (`getTilesConfig()`), plus `CATALYST_CSP_CONNECT_EXTRA`. */
   connectOrigins: readonly string[];
   /** `upgrade-insecure-requests`: only when the page itself came over https (it would break a plain-http local run). */
@@ -70,11 +72,13 @@ export const CONTACT_ORIGIN = "https://api.web3forms.com";
  *    font host is ever needed).
  *  - media-src: ours (the faint sound of the home screen's easter egg, `public/audio/`).
  */
-export function buildCsp({ nonce, connectOrigins, upgradeInsecure }: CspInput): string {
+export function buildCsp({ nonce, scriptHashes, connectOrigins, upgradeInsecure }: CspInput): string {
+  const meta = scriptHashes !== undefined;
+  const inline = meta ? scriptHashes.map((h) => `'${h}'`) : nonce ? [`'nonce-${nonce}'`] : [];
   const connect = ["'self'", ...new Set([...connectOrigins, CONTACT_ORIGIN])];
   const directives = [
     "default-src 'none'",
-    `script-src 'self' 'nonce-${nonce}'`,
+    `script-src ${["'self'", ...inline].join(" ")}`,
     "style-src 'self'",
     "style-src-attr 'unsafe-inline'",
     "img-src 'self' data: blob:",
@@ -86,8 +90,8 @@ export function buildCsp({ nonce, connectOrigins, upgradeInsecure }: CspInput): 
     "object-src 'none'",
     "base-uri 'self'",
     `form-action 'self' ${CONTACT_ORIGIN}`,
-    "frame-ancestors 'none'",
-    ...(upgradeInsecure ? ["upgrade-insecure-requests"] : []),
+    ...(meta ? [] : ["frame-ancestors 'none'"]),
+    ...(upgradeInsecure && !meta ? ["upgrade-insecure-requests"] : []),
   ];
   return directives.join("; ");
 }
