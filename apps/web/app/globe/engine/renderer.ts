@@ -80,7 +80,8 @@ import { liveSun, opening } from "./daylight";
 import { IMMERSION, immersiveZoom, openingZoom } from "./immersion";
 import { FX, irisStep } from "./fx";
 import { eclipseNear } from "./eclipse-table";
-import { LUNAR, lunarPosition, moonMeanAnomalyDeg } from "./lunar-ephemeris";
+import { libration } from "./libration";
+import { LUNAR, lunarPosition, moonArgumentOfLatitudeDeg, moonMeanAnomalyDeg } from "./lunar-ephemeris";
 import { DEFAULT_ORBIT, ECLIPSE, MOON, SUN, eclipseInclination, inclinationFor, litTurn, moonAmount, moonShadowOn, msAtAngle, orbitAngle, orbitBasis, rollFor, startFor, type OrbitStart, sunDirection, toEarthFrame, toRad, visibleBounds, type Vec3 } from "./moon";
 import { roleColor } from "./palette";
 import type { MoonSample } from "./moon-layer";
@@ -1332,6 +1333,16 @@ export class GlobeRenderer {
    * (`startFor`); on a debug page the fixed start. Worked out once, from the orbit's plane as the window has it at the first frame (a window reshaped later turns the plane a few degrees: the phase moves with it).
    */
   private moonStartAt: OrbitStart | null = null;
+  /** The libration at the orbit angle `angle` (#634): none on a debug page (`openMs` null), where the face stays still as it was. */
+  /** `?moon-libration=LON,LAT` (a debug page): the libration held at these degrees, to look at the face at its extremes. Read once. */
+  private readonly heldLibration: { lonDeg: number; latDeg: number } | null = (() => {
+    const v = typeof location !== "undefined" ? new URLSearchParams(location.search).get("moon-libration")?.split(",").map(Number) : undefined;
+    return v && v.length === 2 && v.every(Number.isFinite) ? { lonDeg: v[0]!, latDeg: v[1]! } : null;
+  })();
+  private moonLibration(angle: number): { lonDeg: number; latDeg: number } | undefined {
+    if (this.heldLibration) return this.heldLibration;
+    return this.openMs === null ? undefined : libration(angle, this.moonStart);
+  }
   private get moonStart(): OrbitStart {
     if (this.moonStartAt) return this.moonStartAt;
     if (this.openMs === null) return DEFAULT_ORBIT;
@@ -1339,7 +1350,7 @@ export class GlobeRenderer {
     const real = lunarPosition(this.openMs);
     const basis = orbitBasis(rollFor(aspect), this.orbitInclination(aspect));
     // (before the first sized frame the aspect is the placeholder 1: use it for now, but do not keep it)
-    const start = startFor(real.illuminatedFraction, real.ageDays < LUNAR.synodicDays / 2, moonMeanAnomalyDeg(this.openMs) * (Math.PI / 180), basis, this.moonSun);
+    const start = startFor(real.illuminatedFraction, real.ageDays < LUNAR.synodicDays / 2, moonMeanAnomalyDeg(this.openMs) * (Math.PI / 180), basis, this.moonSun, MOON.eccentricity, ((moonArgumentOfLatitudeDeg(this.openMs) - moonMeanAnomalyDeg(this.openMs)) * Math.PI) / 180);
     if (this.sized) this.moonStartAt = start;
     return start;
   }
@@ -1429,7 +1440,7 @@ export class GlobeRenderer {
 
   /** What the moon's last frame made of the globe (checks): the sample and the state that may keep it away. */
   moonDebug() {
-    return { night: this.nightNow, sample: this.moonSample, shade: [...SHADE_UNIFORMS.uShade.value.toArray(), ...SHADE_UNIFORMS.uShadeR.value.toArray()], displayRate: this.wantsDisplayRate, ready: this.globe.moon?.ready ?? false, sized: this.sized, suspended: this.suspended, flying: this.flying, selected: this.selected, inset: this.insetTarget, zoom: this.drawView().zoom, fit: this.fit };
+    return { libration: this.moonLibration(this.moonAngleNow()) ?? null, night: this.nightNow, sample: this.moonSample, shade: [...SHADE_UNIFORMS.uShade.value.toArray(), ...SHADE_UNIFORMS.uShadeR.value.toArray()], displayRate: this.wantsDisplayRate, ready: this.globe.moon?.ready ?? false, sized: this.sized, suspended: this.suspended, flying: this.flying, selected: this.selected, inset: this.insetTarget, zoom: this.drawView().zoom, fit: this.fit };
   }
 
   /** Whether the moon may move now: not under reduced motion, not in a hold of the energy pass, not while the link's card holds it, not in a hidden tab. */
@@ -1575,7 +1586,8 @@ export class GlobeRenderer {
       return;
     }
     const aspect = this.width / Math.max(1, this.height);
-    this.moonSample = moon.sync({ camera: cam, bufW: this.bufW, bufH: this.bufH, eraDeg: this.era, angle: this.moonAngle(now), perigee: this.moonStart.perigee, rollDeg: rollFor(aspect), inclinationDeg: this.orbitInclination(aspect), sun: toEarthFrame(this.moonSun, this.era), d, zoom: this.inInterlude ? this.world : zoom, fit: this.world });
+    const angleNow = this.moonAngle(now);
+    this.moonSample = moon.sync({ camera: cam, bufW: this.bufW, bufH: this.bufH, eraDeg: this.era, angle: angleNow, perigee: this.moonStart.perigee, libration: this.moonLibration(angleNow), rollDeg: rollFor(aspect), inclinationDeg: this.orbitInclination(aspect), sun: toEarthFrame(this.moonSun, this.era), d, zoom: this.inInterlude ? this.world : zoom, fit: this.world });
     // its shadow on the earth, where it is between the sun and the planet (the shared shade of the night's materials; the night's own amount takes it away with the zoom, as it takes the moon)
     const sample = this.moonSample;
     const shade = sample && sample.amount > 0 ? moonShadowOn(sample.position, toEarthFrame(this.moonSun, this.era)) : null;

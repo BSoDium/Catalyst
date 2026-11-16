@@ -42,7 +42,7 @@ describe("the elliptical orbit (#630)", () => {
 
   it("reproduces the circle exactly when e = 0", () => {
     for (const ms of [0, 12_345, 100_000, 333_333]) {
-      expect(orbitAngle(ms, { mean: toRad(MOON.startDeg), perigee: 0 }, 0)).toBeCloseTo(toRad(MOON.startDeg) + (2 * Math.PI * ms) / MOON.periodMs, 10);
+      expect(orbitAngle(ms, { mean: toRad(MOON.startDeg), perigee: 0, node: 0 }, 0)).toBeCloseTo(toRad(MOON.startDeg) + (2 * Math.PI * ms) / MOON.periodMs, 10);
     }
     expect(orbitRadius(1.234, DEFAULT_ORBIT, 0)).toBe(MOON.orbit);
   });
@@ -80,6 +80,14 @@ describe("the lap starts at the real phase (#629)", () => {
       expect(Math.abs(share(start) - Math.min(0.94, Math.max(0.06, real.illuminatedFraction)))).toBeLessThan(0.02);
       expect([day, grows(start)]).toEqual([day, real.ageDays < 14.765]);
     }
+  });
+
+  it("puts the ascending node an argument of perigee behind perigee (#634)", () => {
+    const ms = Date.UTC(2026, 10, 12, 12);
+    const real = lunarPosition(ms);
+    const start = startFor(real.illuminatedFraction, true, toRad(moonMeanAnomalyDeg(ms)), basis, sun, MOON.eccentricity, 1.25);
+    expect(start.perigee - start.node).toBeCloseTo(1.25, 9);
+    expect(startFor(real.illuminatedFraction, true, toRad(moonMeanAnomalyDeg(ms)), basis, sun).node).toBeCloseTo(startFor(real.illuminatedFraction, true, toRad(moonMeanAnomalyDeg(ms)), basis, sun).perigee, 9);
   });
 
   it("places perigee so that the real mean anomaly is the moon's at the start", () => {
