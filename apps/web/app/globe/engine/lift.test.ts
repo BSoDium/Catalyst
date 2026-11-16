@@ -80,17 +80,32 @@ describe("placeAbove: the biggest planet whose caption clears the content, its l
 
   it("a smaller planet has a narrower column: it may clear a block a larger one would stand over", () => {
     // a block just outside the narrow column but inside the wide one
-    const blocks = [{ x0: 640, x1: 900, top: 200 }];
+    const blocks = [{ x0: 860, x1: 1000, top: 560 }];
     const p = placeAbove({ ...args, blocks })!;
-    expect(500 + CAPTION_HALF_R * p.r).toBeLessThanOrEqual(640 + 1e-6);
+    expect(500 + CAPTION_HALF_R * p.r).toBeLessThanOrEqual(860 + 1e-6);
   });
 
   it("never lifts the planet above what its ring needs, and never lowers it below the page's middle", () => {
     const p = placeAbove({ ...args, blocks: [] })!;
     expect(p.lift).toBe(0);
-    const q = placeAbove({ ...args, blocks: [{ x0: 0, x1: 1000, top: 90 }] })!; // no room at all: the smallest planet, as high as it goes
-    expect(q.r).toBe(40);
-    expect(q.lift).toBeGreaterThan(0);
+    const q = placeAbove({ ...args, blocks: [{ x0: 0, x1: 1000, top: 90 }] })!; // no room at all: a backdrop, never the 40 px speck
+    expect(q.backdrop).toBe(true);
+    expect(q.r).toBeGreaterThan(40);
+  });
+
+  it("with no room above the content (a folded dual-screen phone) the planet is a backdrop: sized by the short side, inside the window, no ring top cut", () => {
+    for (const [w, h, top] of [[466, 560, 119], [466, 678, 150], [678, 330, 77]] as const) {
+      const p = placeAbove({ height: h, cx: w / 2, rMax: 0.45 * Math.min(w, h), reachTop, blocks: [{ x0: 0, x1: w, top }] })!;
+      expect(p.backdrop, `${w}x${h}`).toBe(true);
+      expect(p.r).toBeGreaterThanOrEqual(0.2 * Math.min(w, h));
+      const centreY = h / 2 - p.lift;
+      expect(centreY - p.r).toBeGreaterThanOrEqual(LIFT.marginPx - 1e-6);
+      expect(centreY + p.r).toBeLessThanOrEqual(h + 1e-6);
+    }
+  });
+
+  it("is not a backdrop when the caption clears the content", () => {
+    expect(placeAbove({ ...args, blocks: [{ x0: 200, x1: 800, top: 620 }] })!.backdrop).toBeUndefined();
   });
 });
 

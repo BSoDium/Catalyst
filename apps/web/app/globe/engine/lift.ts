@@ -85,7 +85,16 @@ export interface Placement {
   lift: number;
   /** The top edge of what is under the caption's column at that size (the container's height when nothing is). */
   top: number;
+  /** No room above the content for a planet with its ring and caption (a short screen: a folded dual-screen phone): the planet is a backdrop behind the content, without words. */
+  backdrop?: boolean;
 }
+
+/** The share of the container's smaller side that a backdrop planet takes as its radius (`placeAbove`, when nothing fits above the content). */
+export const BACKDROP_R = 0.34;
+/** Where the backdrop planet's centre is, as a share of the container's height from the top. */
+export const BACKDROP_CENTRE = 0.4;
+/** The least share of the short side that a planet above the content may take before the backdrop is used instead. */
+export const BACKDROP_MIN = 0.2;
 
 /**
  * The biggest planet whose CAPTION stays clear of the home screen's content, and where it goes. The planet's lower part may go under the content (it
@@ -97,6 +106,15 @@ export interface Placement {
  * Searched from `rMax` downward: a smaller planet has a narrower column and may clear a block that a larger one would stand over.
  */
 export function placeAbove(a: PlaceArgs): Placement | null {
+  const above = placeAboveContent(a);
+  if (!(a.height > 0) || !(a.rMax > 0)) return above;
+  const short = Math.min(a.cx * 2, a.height);
+  // (a planet under `BACKDROP_MIN` of the short side is a speck: the backdrop is the better home screen then)
+  if (above && above.r >= BACKDROP_MIN * short) return above;
+  return backdropOf(a);
+}
+
+function placeAboveContent(a: PlaceArgs): Placement | null {
   const gap = a.gap ?? LIFT.gapPx;
   const margin = a.margin ?? LIFT.marginPx;
   const rMin = a.rMin ?? 40;
@@ -117,8 +135,16 @@ export function placeAbove(a: PlaceArgs): Placement | null {
       return { r, lift: Math.max(0, a.height / 2 - centre), top };
     }
   }
-  // Nothing fits: the smallest planet, as high as it goes (the caller does not draw words that would be cut or run over the content).
-  let top = a.height;
-  for (const b of a.blocks) if (b.x1 > a.cx - CAPTION_HALF_R * rMin && b.x0 < a.cx + CAPTION_HALF_R * rMin) top = Math.min(top, b.top);
-  return { r: rMin, lift: Math.max(0, a.height / 2 - (margin + Math.max(rMin, a.reachTop(rMin)))), top };
+  return null;
+}
+
+function backdropOf(a: PlaceArgs): Placement {
+  const margin = a.margin ?? LIFT.marginPx;
+  const rMin = a.rMin ?? 40;
+  // Nothing worth drawing fits above the content: the planet is a backdrop (the content stands over it, which is how its lower part already is), the ring's text and
+  // the caption are not drawn (`Renderer.textFits`): no strip of 120 px leaves a planet worth drawing, and words could not clear the content.
+  const width = a.cx * 2;
+  const r = Math.max(rMin, Math.min(a.rMax, BACKDROP_R * Math.min(width, a.height)));
+  const centre = Math.max(margin + r, a.height * BACKDROP_CENTRE);
+  return { r, lift: Math.max(0, a.height / 2 - centre), top: a.height, backdrop: true };
 }

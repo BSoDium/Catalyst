@@ -520,7 +520,7 @@ export class GlobeRenderer {
     const lowest = this.lowestFor(inset);
     this.placement = lowest.placement;
     this.minZoom = lowest.zoom;
-    this.textFits = silhouetteRadiusPx(this.minZoom, h) >= MIN_TEXT_PLANET_PX;
+    this.textFits = !lowest.placement?.backdrop && silhouetteRadiusPx(this.minZoom, h) >= MIN_TEXT_PLANET_PX;
     this.containerMask = fadeMask(w, inset);
     this.ring?.setMask(this.containerMask);
     this.layoutRing();
