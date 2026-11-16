@@ -82,6 +82,14 @@ describe("the lap starts at the real phase (#629)", () => {
     }
   });
 
+  it("puts the ascending node an argument of perigee behind perigee (#634)", () => {
+    const ms = Date.UTC(2026, 10, 12, 12);
+    const real = lunarPosition(ms);
+    const start = startFor(real.illuminatedFraction, true, toRad(moonMeanAnomalyDeg(ms)), basis, sun, MOON.eccentricity, 1.25);
+    expect(start.perigee - start.node).toBeCloseTo(1.25, 9);
+    expect(startFor(real.illuminatedFraction, true, toRad(moonMeanAnomalyDeg(ms)), basis, sun).node).toBeCloseTo(startFor(real.illuminatedFraction, true, toRad(moonMeanAnomalyDeg(ms)), basis, sun).perigee, 9);
+  });
+
   it("places perigee so that the real mean anomaly is the moon's at the start", () => {
     const ms = Date.UTC(2026, 10, 12, 12);
     const real = lunarPosition(ms);

@@ -7,7 +7,7 @@
  * The body's frame has its +Z (longitude 0, latitude 0) at the point under the earth at the mean anomaly, +Y at the north pole and +X east, as the texture has them (`moon-layer.ts`: `u = atan(x, z)`).
  */
 import { LUNAR_POLE_TILT_DEG } from "./lunar-ephemeris";
-import { eccentricAnomaly, meanOfTrue, MOON, type OrbitStart } from "./moon";
+import { meanOfTrue, MOON, type OrbitStart } from "./moon";
 
 type V = [number, number, number];
 const dot = (a: V, b: V) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
@@ -43,5 +43,3 @@ export function libration(angle: number, start: OrbitStart, e: number = MOON.ecc
   return { lonDeg: Math.atan2(dot(earth, east), dot(earth, prime)) * DEG, latDeg: Math.asin(Math.max(-1, Math.min(1, dot(earth, pole)))) * DEG };
 }
 
-// (eccentricAnomaly is re-exported for the tests that build a start from a mean anomaly)
-export { eccentricAnomaly };

@@ -1334,10 +1334,13 @@ export class GlobeRenderer {
    */
   private moonStartAt: OrbitStart | null = null;
   /** The libration at the orbit angle `angle` (#634): none on a debug page (`openMs` null), where the face stays still as it was. */
+  /** `?moon-libration=LON,LAT` (a debug page): the libration held at these degrees, to look at the face at its extremes. Read once. */
+  private readonly heldLibration: { lonDeg: number; latDeg: number } | null = (() => {
+    const v = typeof location !== "undefined" ? new URLSearchParams(location.search).get("moon-libration")?.split(",").map(Number) : undefined;
+    return v && v.length === 2 && v.every(Number.isFinite) ? { lonDeg: v[0]!, latDeg: v[1]! } : null;
+  })();
   private moonLibration(angle: number): { lonDeg: number; latDeg: number } | undefined {
-    // (`?moon-libration=LON,LAT`, a debug page: the libration held at these degrees, to look at the face at its extremes)
-    const held = typeof location !== "undefined" ? new URLSearchParams(location.search).get("moon-libration")?.split(",").map(Number) : undefined;
-    if (held && held.length === 2 && held.every(Number.isFinite)) return { lonDeg: held[0]!, latDeg: held[1]! };
+    if (this.heldLibration) return this.heldLibration;
     return this.openMs === null ? undefined : libration(angle, this.moonStart);
   }
   private get moonStart(): OrbitStart {
