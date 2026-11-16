@@ -521,6 +521,8 @@ export class GlobeRenderer {
     this.placement = lowest.placement;
     this.minZoom = lowest.zoom;
     this.textFits = !lowest.placement?.backdrop && silhouetteRadiusPx(this.minZoom, h) >= MIN_TEXT_PLANET_PX;
+    // (a resize that leaves no room for the words takes the caption away NOW, not at the next frame: its canvas stands above the page's content)
+    if (!this.textFits && this.showcaseOn && this.captionOn) this.guardCaption(performance.now());
     this.containerMask = fadeMask(w, inset);
     this.ring?.setMask(this.containerMask);
     this.layoutRing();
