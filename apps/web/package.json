@@ -7,7 +7,7 @@
     "dev": "node scripts/dev.mjs",
     "dev:demo": "CATALYST_CONTENT=demo react-router dev --port 5173",
     "dev:published": "CATALYST_CONTENT=published react-router dev --port 5173",
-    "build": "react-router build",
+    "build": "react-router build && node --experimental-strip-types scripts/prerender/seal-csp.mts",
     "start": "react-router-serve ./build/server/index.js",
     "typecheck": "react-router typegen && tsc",
     "test": "vitest run",
