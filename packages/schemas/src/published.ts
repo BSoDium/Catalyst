@@ -274,6 +274,11 @@ export const publishedRouteSchema = z
      * when the trip is not public: the exporter never sets it for a trip whose visibility it cannot confirm.
      */
     url: httpsUrlSchema.optional(),
+    /**
+     * Additive in schema version 1. The slug of a published photograph chosen as the trip card's backdrop (#510): the owner's pick of the one picture that stands for the trip.
+     * Absent: the card chooses one itself from the photographs taken during the trip. Cross-checked: it must be a photograph of the projection.
+     */
+    cover: slugSchema.optional(),
     stops: z.array(slugSchema).min(2).max(200),
     /**
      * Additive in schema version 1. One entry per consecutive pair of stops, so `stops.length - 1` entries; absent
@@ -1012,6 +1017,9 @@ export const publishedProjectionSchema = projectionShape.superRefine((p, ctx) =>
       ctx.addIssue({ code: "custom", path: ["routes", i, "id"], message: `duplicate route id "${route.id}"` });
     }
     routeIds.add(route.id);
+    if (route.cover !== undefined && !byKind.photograph.has(route.cover)) {
+      ctx.addIssue({ code: "custom", path: ["routes", i, "cover"], message: `unknown photograph "${route.cover}"` });
+    }
     route.stops.forEach((s, j) => {
       if (!placeSlugs.has(s)) {
         ctx.addIssue({ code: "custom", path: ["routes", i, "stops", j], message: `unknown place "${s}"` });
