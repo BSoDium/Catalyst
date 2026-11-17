@@ -8394,6 +8394,9 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
 
 /* The trip cards' carousel (components/trip-rail.tsx), the photographs' logic: `--g`, 1 for the card on the snap point and 0 a card's step away from it. The title goes from the thinnest weight of the variable face to the heaviest and from a faint ink to
    the full one, with the letter spacing making up for the weight so that the line is as wide at every weight; the figures, the dates, the stops and the link fade in as the card comes in (a card with no `--g`, one alone or before the script, is at full strength). */
+.trip-slide {
+  border-left-color: color-mix(in srgb, var(--border) calc(var(--edge, 1) * var(--lb, 1) * 100%), transparent);
+}
 .trip-slide [data-slot="trip-title"] {
   font-weight: calc(200 + 600 * var(--g, 1));
   letter-spacing: calc(-0.02em + 0.041em * (1 - var(--g, 1)));

@@ -69,6 +69,8 @@ export function TripRail({ slides, names }: { slides: ReactNode[]; names: string
       li.style.transform = `translate3d(${box.x}px,0,0)`;
       li.style.setProperty("--g", growth(box.w, geo.k).toFixed(2));
       // (a card nearly gone keeps no border: two pixels of it would be a line against the panel's edge)
+      // (a card at the row's left edge has the panel's own border beside it: its left border would double that one)
+      li.style.setProperty("--lb", box.x < 2 ? "0" : "1");
       li.style.setProperty("--edge", Math.min(1, Math.max(0, (box.w - 4) / 24)).toFixed(2));
     });
     const max = el.scrollWidth - el.clientWidth;
