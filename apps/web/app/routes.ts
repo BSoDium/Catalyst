@@ -38,6 +38,8 @@ export default [
   route("resume", "routes/legacy-resume.ts", { id: "legacy-resume" }),
   // Resource routes (no UI): the crawlers' files. `manifest.webmanifest`, the favicons and the share image are static files in public/.
   route("sitemap.xml", "routes/sitemap.ts"),
+  // The globe's routes (the polylines): a file of their own, prerendered (static on the CDN), so no page carries them (#675).
+  route("globe-routes.json", "routes/globe-routes.ts"),
   route("robots.txt", "routes/robots.ts"),
   // The quick search's index (titles and tags of the places and entries), fetched when the palette first opens.
   route("search-index.json", "routes/search-index.ts"),

@@ -19,6 +19,7 @@ import { getTilesConfig } from "~/lib/tiles-config.server";
 import { focusPlaceOf, KIND_PATHS, KIND_PLURALS, parsePanelPath, parseView, resolveBackTarget, viewSearch, type EntryView } from "~/lib/entries";
 import { panelInset } from "~/lib/layout";
 import { buildPlaceIndex, placePath, toGlobeGroups } from "~/lib/projection";
+import { globeRoutesSrc } from "~/lib/globe-routes";
 import { countryGroupOf, parseCountryParam } from "~/lib/country";
 import { ARCHIVED_V1, SITE, siteCaption, type KindCounts } from "~/lib/site";
 
@@ -40,7 +41,9 @@ export async function loader() {
   const counts: KindCounts = { project: projection.projects.length, article: projection.articles.length, artwork: projection.artworks.length, poem: projection.poems.length, photograph: projection.photographs.length };
   // `dataVersion`: which content this is (the credits show it: #504); null where the projection does not say (a local or demo one).
   // `devNote`: in development, which data this is (preview or demo; the credits show it beside the version); null in production, where the branch is dead code.
-  return { ...buildPlaceIndex(projection), tiles: getTilesConfig(), counts, dataVersion: projection.dataVersion ?? null, devNote: devBadgeLabel(import.meta.env.DEV ? getContentMode() : null, import.meta.env.DEV) };
+  // (`routes` are not in the page data: 172 kB of polylines that only the globe uses, fetched from `GLOBE_ROUTES_PATH` while it loads: lib/globe-routes.ts)
+  const { routes: _routes, ...index } = buildPlaceIndex(projection);
+  return { ...index, routesSrc: globeRoutesSrc(projection.dataVersion), tiles: getTilesConfig(), counts, dataVersion: projection.dataVersion ?? null, devNote: devBadgeLabel(import.meta.env.DEV ? getContentMode() : null, import.meta.env.DEV) };
 }
 
 /** The place index never changes between navigations inside the shell. */
@@ -55,7 +58,7 @@ export function shouldRevalidate() {
  * in the full-screen container: the panel widens over the SAME globe, which stays mounted and keeps its view.
  */
 export default function Shell({ loaderData }: Route.ComponentProps) {
-  const { places, globePlaces, groups, routes, tiles, counts, dataVersion, devNote } = loaderData;
+  const { places, globePlaces, groups, routesSrc, tiles, counts, dataVersion, devNote } = loaderData;
   // The credits slot with the content's version (the slot is a component type: made once per version, not per render, or the button would remount).
   const attribution = useMemo(() => (props: GlobeAttributionProps) => <AttributionSlot {...props} dataVersion={dataVersion} devNote={devNote} />, [dataVersion, devNote]);
   // The caption's rows (built once: the globe reads them once, when it is created).
@@ -158,7 +161,7 @@ export default function Shell({ loaderData }: Route.ComponentProps) {
             <Globe
               places={globePlaces}
               groups={globeGroups}
-              routes={routes}
+              routes={routesSrc}
               selectedSlug={selectedSlug}
               focusedSlug={focusedSlug}
               framedGroup={framedGroup}

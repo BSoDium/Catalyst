@@ -24,7 +24,7 @@ import { applyMoonFlags } from "./engine/moon";
 import { applyShowcaseFlags } from "./engine/caption";
 import { applyDebugArtPixel } from "./engine/tuning";
 import { enablePerf, perfEnd, perfStart } from "./engine/perf";
-import { startsVeiled, type GlobeProps } from "./types";
+import { startsVeiled, type GlobeProps, type GlobeRoute } from "./types";
 
 type Status = "loading" | "ready" | "unavailable" | "lost";
 
@@ -35,6 +35,22 @@ declare global {
     /** Same condition: the handover's view of both renderers. */
     __handoverDebug?: HandoverDebug;
   }
+}
+
+/** The routes' files already asked for, by address: the globe may be rebuilt (a changed tile configuration) and must not fetch them again. */
+const routeFiles = new Map<string, Promise<GlobeRoute[]>>();
+function loadRoutes(src: string): Promise<GlobeRoute[]> {
+  let file = routeFiles.get(src);
+  if (!file) {
+    file = fetch(src).then((r) => {
+      if (!r.ok) throw new Error(`routes: HTTP ${r.status}`);
+      return r.json() as Promise<GlobeRoute[]>;
+    });
+    // (a failed fetch is asked for again at the next build of the globe)
+    file.catch(() => routeFiles.delete(src));
+    routeFiles.set(src, file);
+  }
+  return file;
 }
 
 async function loadGeodata() {
@@ -286,7 +302,8 @@ export default function GlobeCanvas({
     }
     void (async () => {
       try {
-        const geo = await loadGeodata();
+        // (the routes come with the geodata, not after it; a routes file that fails leaves the globe without paths, not without a globe)
+        const [geo, drawn] = await Promise.all([loadGeodata(), typeof routes === "string" ? loadRoutes(routes).catch((e: unknown) => (console.error("Routes failed to load", e), [] as GlobeRoute[])) : routes]);
         if (cancelled) return;
         const now = latest.current;
         const stress = debugEnabled() ? lodStressCount() : 0;
@@ -299,7 +316,7 @@ export default function GlobeCanvas({
           streetRoot,
           places: synthetic ? synthetic.places : places,
           groups: synthetic ? synthetic.groups : groupsForTests() ? [] : groups,
-          routes: debugEnabled() && pathsStressCount() ? stressRoutes(pathsStressCount(), places[0] ? { lat: places[0].lat, lon: places[0].lon } : undefined) : routes,
+          routes: debugEnabled() && pathsStressCount() ? stressRoutes(pathsStressCount(), places[0] ? { lat: places[0].lat, lon: places[0].lon } : undefined) : drawn,
           paths: now.paths,
           coastlines: geo.coastlines,
           borders: geo.borders,
