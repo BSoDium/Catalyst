@@ -318,7 +318,7 @@ export function TripPoster({ trip, here, photo = true, className }: { trip: Trip
           <text ref={textRef} aria-hidden="true" x={WORD_PAD - Math.round(size * 0.05)} y={h - WORD_PAD} fontSize={size} style={{ visibility: "hidden", fontFamily: "var(--font-display)", fontWeight: 800, letterSpacing: "-0.03em" }}>
             {word}
           </text>
-          <text data-slot="trip-word" x={WORD_PAD - Math.round(size * 0.05)} y={h - WORD_PAD} fontSize={size} style={{ fill: backdrop ? "color-mix(in srgb, var(--foreground) calc(30% + 50% * var(--g, 1)), transparent)" : `color-mix(in srgb, var(--foreground) calc(22% + 40% * var(--g, 1)), var(--accent))`, fontFamily: "var(--font-display)", letterSpacing: "-0.03em" }}>
+          <text data-slot="trip-word" x={WORD_PAD - Math.round(size * 0.05)} y={h - WORD_PAD} fontSize={size} style={{ fill: backdrop ? "color-mix(in srgb, var(--foreground) calc(14% + 66% * var(--g, 1) * var(--g, 1)), transparent)" : `color-mix(in srgb, var(--foreground) calc(10% + 52% * var(--g, 1) * var(--g, 1)), var(--accent))`, fontFamily: "var(--font-display)", letterSpacing: "-0.03em" }}>
             {word}
           </text>
           </>

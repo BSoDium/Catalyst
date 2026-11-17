@@ -15,10 +15,8 @@ export const TRIP_GAP = 12;
 export function tripKeylines(width: number): Keylines {
   const gutter = CAROUSEL_GUTTER;
   if (width < SINGLE_BELOW) {
-    // (a phone: the large card and the edge of the next, a hint of the one after)
-    const small = 16;
-    const medium = 40;
-    return { width, gutter, gap: TRIP_GAP, small, large: Math.max(200, width - gutter - small - medium - 2 * TRIP_GAP), medium, single: false };
+    // (a phone: the photographs' shape, one card across the whole row, edge to edge; the next grows from nothing as the row moves)
+    return { width, gutter: 0, gap: 0, small: 0.01, large: Math.max(48, width), medium: 0.01, single: true };
   }
   // (a wide row: the photographs' shape, the large card and a medium one nearly as wide, then the hint of one more; the row fills, and stops where the last two are the large and the medium one)
   const small = PEEK.small;
@@ -31,11 +29,11 @@ export function tripKeylines(width: number): Keylines {
 export const tripStep = (k: Keylines) => stepOf(k);
 
 /** A phone's row (a large card and the edge of the next) stops where the LAST card is the large one; a wide row, as the photographs', where the last two are the large and the medium one. */
-const phone = (k: Keylines) => k.width < SINGLE_BELOW;
+const phone = (k: Keylines) => k.single;
 export const lastTrip = (count: number, k: Keylines) => Math.max(0, count - (phone(k) ? 1 : 2));
 
 /** Where each of `count` cards is, left to right, for a row at position `t`. */
 export function tripLayout(t: number, count: number, k: Keylines): CarouselItem[] {
   // (a phone's row has a phantom card after the last, which takes the place of the medium one, so that it stops where the last card is the large one)
-  return carouselLayout(t, phone(k) ? count + 1 : count, k).slice(0, count);
+  return carouselLayout(t, count, k);
 }

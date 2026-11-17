@@ -135,7 +135,7 @@ export function TripRail({ slides, names }: { slides: ReactNode[]; names: string
                     role="group"
                     aria-roledescription="slide"
                     aria-label={`${i + 1} of ${count}: ${names[i] ?? ""}`}
-                    className="trip-slide absolute top-0 left-0 h-full overflow-hidden border [border-color:color-mix(in_srgb,var(--border)_calc(var(--edge,1)*100%),transparent)] [contain:layout_paint]"
+                    className={`trip-slide absolute top-0 left-0 h-full overflow-hidden ${geo.k.single ? "" : "border"} [border-color:color-mix(in_srgb,var(--border)_calc(var(--edge,1)*100%),transparent)] [contain:layout_paint]`}
                     style={{ width: 0, ["--edge" as string]: 0 }}
                     onFocus={(e) => {
                       // (focus must not scroll the card inside its own box)
