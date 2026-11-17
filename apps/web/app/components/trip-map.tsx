@@ -187,9 +187,9 @@ export function TripPoster({ trip, here, photo = true, className }: { trip: Trip
             {word}
           </text>
         )}
-        {land && <path d={land} style={{ fill: backdrop ? "color-mix(in srgb, var(--accent) 46%, transparent)" : tone(6) }} stroke="none" />}
-        {borders && <path d={borders} fill="none" style={{ stroke: backdrop ? "color-mix(in srgb, var(--foreground) 16%, transparent)" : tone(22) }} strokeWidth={0.75} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />}
-        {coast && <path d={coast} fill="none" style={{ stroke: backdrop ? "color-mix(in srgb, var(--foreground) 30%, transparent)" : tone(34) }} strokeWidth={1} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />}
+        {land && <path d={land} style={{ fill: backdrop ? "color-mix(in srgb, var(--accent) 34%, transparent)" : tone(6) }} stroke="none" />}
+        {borders && <path d={borders} fill="none" style={{ stroke: backdrop ? "color-mix(in srgb, var(--foreground) 11%, transparent)" : tone(22) }} strokeWidth={0.75} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />}
+        {coast && <path d={coast} fill="none" style={{ stroke: backdrop ? "color-mix(in srgb, var(--foreground) 21%, transparent)" : tone(34) }} strokeWidth={1} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />}
         {trip.legPaths.map((leg, i) => {
           const pts = Array.from({ length: leg.points.length / 2 }, (_, k) => `${frame.x(leg.points[k * 2]!).toFixed(1)},${frame.y(leg.points[k * 2 + 1]!).toFixed(1)}`).join(" ");
           return <polyline key={i} points={pts} fill="none" stroke={ink} strokeWidth={backdrop ? 1.75 : 1.5} strokeDasharray={DASH[leg.mode]} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />;
