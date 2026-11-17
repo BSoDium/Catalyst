@@ -151,11 +151,35 @@ export function wordSize(letters: number, width: number, height: number): number
 export function TripPoster({ trip, here, photo = true, className }: { trip: Trip; here: string; photo?: boolean; className?: string }) {
   const { ref, w, h } = usePosterBox();
   const word = trip.word.toUpperCase();
-  const size = wordSize(word.length, w, h);
-  // The word's band under the route: its capital letters' height and a margin; none without a word. The land is not clipped to it.
+  const base = wordSize(word.length, w, h);
+  // The word is measured once it is drawn (its font is not the one the size was worked out for): if it is wider than the poster leaves it, it is made smaller to fit.
+  const textRef = useRef<SVGTextElement>(null);
+  const [fit, setFit] = useState({ key: "", scale: 1, length: 0 });
+  const key = `${word}|${base}|${w}`;
+  const scale = fit.key === key ? fit.scale : 1;
+  const size = Math.round(base * scale);
+  useEffect(() => {
+    const el = textRef.current;
+    if (!el || !word) return;
+    let alive = true;
+    const measure = () => {
+      if (!alive) return;
+      const length = el.getComputedTextLength();
+      const room = w - 2 * WORD_PAD;
+      if (length <= 0) return;
+      const next = Math.min(1, (scale * room) / length);
+      setFit((f) => (f.key === key && Math.abs(f.scale - next) < 0.005 ? f : { key, scale: next, length: length * (next / scale) }));
+    };
+    measure();
+    void document.fonts?.ready.then(measure);
+    return () => {
+      alive = false;
+    };
+  }, [key, word, w, scale]);
+  // The word's band under the route: its capital letters' height and a margin each side; none without a word. The land is not clipped to it.
   const band = word ? Math.round(size * 0.74) + 2 * WORD_PAD : 0;
   // Where the route goes: above the word, across the width; or, when the poster is wide enough that the room to the right of the word can hold the route at the full height, there.
-  const wordW = Math.round(0.62 * size * word.length) + WORD_PAD;
+  const wordW = (fit.key === key ? Math.round(fit.length) : Math.round(0.66 * size * word.length)) + WORD_PAD;
   const side = word !== "" && w - wordW - 24 >= h * 0.9;
   const box = side ? { x: wordW + 16, y: 0, w: w - wordW - 24, h } : { x: 0, y: 0, w, h: h - band };
   const frame = useMemo(() => frameOf(trip, box.x, box.y, box.w, box.h), [trip, box.x, box.y, box.w, box.h]);
@@ -182,14 +206,14 @@ export function TripPoster({ trip, here, photo = true, className }: { trip: Trip
         </>
       )}
       <svg data-slot="trip-poster" viewBox={`0 0 ${w} ${h}`} width={w} height={h} role="img" aria-label={`Map of the trip, ${trip.from} to ${trip.to}`} className="relative block overflow-hidden">
-        {word && (
-          <text x={WORD_PAD - Math.round(size * 0.05)} y={h - WORD_PAD} fontSize={size} style={{ fill: backdrop ? "color-mix(in srgb, var(--foreground) 36%, transparent)" : tone(22), fontFamily: "var(--font-display)", fontWeight: 800, letterSpacing: "-0.03em" }}>
-            {word}
-          </text>
-        )}
         {land && <path d={land} style={{ fill: backdrop ? "color-mix(in srgb, var(--accent) 34%, transparent)" : tone(6) }} stroke="none" />}
         {borders && <path d={borders} fill="none" style={{ stroke: backdrop ? "color-mix(in srgb, var(--foreground) 11%, transparent)" : tone(22) }} strokeWidth={0.75} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />}
         {coast && <path d={coast} fill="none" style={{ stroke: backdrop ? "color-mix(in srgb, var(--foreground) 21%, transparent)" : tone(34) }} strokeWidth={1} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />}
+        {word && (
+          <text ref={textRef} x={WORD_PAD - Math.round(size * 0.05)} y={h - WORD_PAD} fontSize={size} style={{ fill: backdrop ? "color-mix(in srgb, var(--foreground) 36%, transparent)" : tone(22), fontFamily: "var(--font-display)", fontWeight: 800, letterSpacing: "-0.03em" }}>
+            {word}
+          </text>
+        )}
         {trip.legPaths.map((leg, i) => {
           const pts = Array.from({ length: leg.points.length / 2 }, (_, k) => `${frame.x(leg.points[k * 2]!).toFixed(1)},${frame.y(leg.points[k * 2 + 1]!).toFixed(1)}`).join(" ");
           return <polyline key={i} points={pts} fill="none" stroke={ink} strokeWidth={backdrop ? 1.75 : 1.5} strokeDasharray={DASH[leg.mode]} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />;
