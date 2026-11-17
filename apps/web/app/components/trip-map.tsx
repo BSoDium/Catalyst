@@ -98,7 +98,7 @@ type Lines = { positions: Float32Array; offsets: Uint32Array };
 
 /**
  * The lines of a set that touch the poster (its whole box, `w` x `h`, and a degree around it: the land runs on under the word's band and off the edges), as one path.
- * `ring`: only the lines that end where they began, closed so that they can be filled.
+ * `ring`: the outlines of the land, each closed so that it can be filled.
  */
 function linesPath(frame: Frame, lines: Lines | null, w: number, h: number, ring = false): string {
   if (!lines) return "";
@@ -120,7 +120,8 @@ function linesPath(frame: Frame, lines: Lines | null, w: number, h: number, ring
     let d = "";
     for (let i = a; i < b; i++) d += `${i === a ? "M" : "L"}${frame.x(lines.positions[i * 2]!).toFixed(1)} ${frame.y(lines.positions[i * 2 + 1]!).toFixed(1)}`;
     if (!ring) out.push(d);
-    else if (b - a > 3 && lines.positions[a * 2] === lines.positions[(b - 1) * 2] && lines.positions[a * 2 + 1] === lines.positions[(b - 1) * 2 + 1]) out.push(`${d}Z`);
+    // (every land outline is filled, closed or not: a landmass the data cuts at the antimeridian, Europe, Africa and Asia in one, is an open line whose two ends are on that cut, and closing it runs along the cut)
+    else if (b - a > 3) out.push(`${d}Z`);
   }
   return out.join("");
 }
