@@ -237,7 +237,11 @@ export interface GlobeProps {
    * cross-fade (engine/lod-tree.ts). Rebuilding the renderer is needed when this changes (pass a stable array).
    */
   groups: GlobeGroup[];
-  routes: GlobeRoute[];
+  /**
+   * The routes to draw, or the address of a JSON file of them (`/globe-routes.json?v=…`): the globe fetches it while its geodata loads, so the page's own data does not carry them
+   * (172 kB of polylines, in every page's HTML and data file otherwise; #675). Rebuilding the renderer is needed when this changes (pass a stable value).
+   */
+  routes: GlobeRoute[] | string;
   /**
    * The "Paths" layer: every leg of every route drawn faintly, the selected place's in ink. false hides all of them (the visitor's switch);
    * default true. Follows without a rebuild.

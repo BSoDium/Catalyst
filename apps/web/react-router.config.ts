@@ -13,7 +13,7 @@ export default {
     v8_trailingSlashAwareDataRequests: true,
   },
   // The pages served from the CDN as static files, with no function: the bare entry paths of the published projection (docs/web-architecture.md, "Prerendered pages").
-  prerender: async () => loadProjection("published").articles.map((a) => `/articles/${a.slug}`),
+  prerender: async () => [...loadProjection("published").articles.map((a) => `/articles/${a.slug}`), "/globe-routes.json"],
   // Vercel sets VERCEL=1 during builds. Locally we keep the standard
   // `build/server/index.js` layout so `pnpm start` (react-router-serve) works.
   presets: process.env.VERCEL ? [vercelPreset()] : [],

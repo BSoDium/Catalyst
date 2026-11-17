@@ -6,8 +6,9 @@
 // the render wrote are removed (the browser hides them from the DOM anyway, and nothing names them any more).
 //
 //   node --experimental-strip-types scripts/prerender/seal-csp.mts [buildClientDir]
-import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { globeRoutesFile } from "../../app/lib/globe-routes-file.ts";
 import { originOf, parseOrigins } from "../../app/lib/security-headers.ts";
 import { getTilesConfig } from "../../app/lib/tiles-config.server.ts";
 import { sealPage } from "./seal-page.mts";
@@ -25,3 +26,16 @@ const connectOrigins = [originOf(tiles.primaryUrl), originOf(tiles.fallbackPmtil
 const files = htmlFiles(dir);
 for (const file of files) writeFileSync(file, sealPage(readFileSync(file, "utf8"), connectOrigins));
 console.log(`[seal-csp] ${files.length} prerendered page(s) sealed`);
+
+// The routes' file: prerendered at its route's path, which the host answers with the function. Moved to its content-named static address (`globeRoutesFile`),
+// the one the shell's data names (the hash is of the same JSON text), and the route's own copies (and the unused `.data` of the route) removed.
+const routesPath = join(dir, "globe-routes.json");
+if (existsSync(routesPath)) {
+  const json = readFileSync(routesPath, "utf8");
+  const target = join(dir, globeRoutesFile(json));
+  mkdirSync(join(dir, "data"), { recursive: true });
+  writeFileSync(target, json);
+  rmSync(routesPath);
+  rmSync(`${routesPath}.data`, { force: true });
+  console.log(`[seal-csp] routes file at ${target}`);
+}
