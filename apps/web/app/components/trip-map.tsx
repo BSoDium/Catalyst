@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { coverImageProps } from "~/lib/cover-image";
+import { findHorizon } from "~/lib/horizon";
 import type { Trip } from "~/lib/journeys";
 import { cn } from "~/lib/utils";
 
@@ -172,6 +173,57 @@ export function wordSize(letters: number, width: number, height: number): number
   return Math.round(Math.min(112, height * 0.34, Math.max(40, (width * 0.96) / (0.62 * Math.max(1, letters)))));
 }
 
+/** The size (px) of the small copy of a photograph that the horizon is looked for in: its width, and its height as far as the proportion goes (at most `HORIZON_ROWS` rows). */
+const HORIZON_COLS = 40;
+const HORIZON_ROWS = 120;
+
+/**
+ * Where the horizon of the photograph is (a share of its height from the top, or null: none, or not readable), looked for once it has loaded in a small copy of it drawn on a canvas.
+ * The photograph is the site's own file (same origin), so the canvas can be read; if it cannot, there is no horizon and the photograph is placed as it is.
+ */
+function useHorizon(src: string | undefined) {
+  const [state, setState] = useState<{ src: string; horizon: number | null; w: number; h: number } | null>(null);
+  const read = useCallback((img: HTMLImageElement) => {
+    if (!img.naturalWidth || !img.naturalHeight || !src) return;
+    let horizon: number | null = null;
+    try {
+      const cols = HORIZON_COLS;
+      const rows = Math.min(HORIZON_ROWS, Math.max(12, Math.round((cols * img.naturalHeight) / img.naturalWidth)));
+      const canvas = document.createElement("canvas");
+      canvas.width = cols;
+      canvas.height = rows;
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      if (ctx) {
+        ctx.drawImage(img, 0, 0, cols, rows);
+        const { data } = ctx.getImageData(0, 0, cols, rows);
+        const colours: Array<[number, number, number]> = [];
+        for (let y = 0; y < rows; y++) {
+          let r = 0;
+          let g = 0;
+          let b = 0;
+          for (let x = 0; x < cols; x++) {
+            const i = (y * cols + x) * 4;
+            r += data[i]!;
+            g += data[i + 1]!;
+            b += data[i + 2]!;
+          }
+          colours.push([r / cols / 255, g / cols / 255, b / cols / 255]);
+        }
+        horizon = findHorizon(colours);
+      }
+    } catch {
+      horizon = null;
+    }
+    setState((prev) => (prev && prev.src === src && prev.horizon === horizon && prev.w === img.naturalWidth ? prev : { src, horizon, w: img.naturalWidth, h: img.naturalHeight }));
+  }, [src]);
+  // (the picture may have loaded before React attached `onLoad`)
+  const ref = useRef<HTMLImageElement>(null);
+  useEffect(() => {
+    if (ref.current?.complete) read(ref.current);
+  }, [read]);
+  return { horizon: state && state.src === src ? state : null, read, ref };
+}
+
 /**
  * The trip as a poster (owner's mood board, #510): a flat field with the trip's one word in giant type nested in its bottom-left corner, the route above the word as
  * one thin line (the maps' patterns for rail, ferry and flights) with a square at every stop and the start, the end and the place the panel is about named. The land
@@ -215,6 +267,16 @@ export function TripPoster({ trip, here, photo = true, className }: { trip: Trip
   const box = side ? { x: wordW + 16, y: 0, w: w - wordW - 24, h } : { x: 0, y: 0, w, h: h - band };
   const frame = useMemo(() => frameOf(trip, box.x, box.y, box.w, box.h), [trip, box.x, box.y, box.w, box.h]);
   const backdrop = photo ? trip.photo : undefined;
+  const horizon = useHorizon(backdrop?.src);
+  // The photograph placed so that its horizon is at the poster's bottom edge: scaled up as far as it takes to fill the layer above and below that line, never less than the cover size.
+  const placed = (() => {
+    const hz = horizon.horizon;
+    if (!backdrop || !hz || hz.horizon === null) return null;
+    const f = hz.horizon;
+    const run = h + PHOTO_RUN;
+    const k = Math.max(w / hz.w, h / (f * hz.h), PHOTO_RUN / ((1 - f) * hz.h), run / hz.h);
+    return { width: k * hz.w, height: k * hz.h, left: (w - k * hz.w) / 2, top: h - f * k * hz.h } as const;
+  })();
   const coast = useCoast(frame.span < REGIONAL_DEG);
   const land = useMemo(() => linesPath(frame, coast, w, h, true), [frame, coast, w, h]);
   const current = trip.stopPoints.find((s) => s.slug === here);
@@ -230,9 +292,18 @@ export function TripPoster({ trip, here, photo = true, className }: { trip: Trip
     <div ref={ref} data-slot="trip-poster-box" data-photo={backdrop ? "" : undefined} className={cn("relative w-full", backdrop ? "" : "bg-accent", className)} style={{ aspectRatio: `1 / ${ASPECT}`, maxHeight: MAX_H }}>
       {backdrop && (
         // The photograph runs on under the figures below the poster (`PHOTO_RUN`) and fades into the card's background there (`maskImage`), so it ends in no edge: its dynamic range
-        // is held in a band the ink reads on in either theme (`TripPhotoFilters`), not dimmed by a veil.
+        // is held in a band the ink reads on in either theme (`TripPhotoFilters`), not dimmed by a veil. Where it has a horizon, the picture is placed so that the horizon is the seam
+        // between the poster and the figures (the poster's bottom edge): sky and map above it, the ground under it.
         <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 -z-10" style={{ height: h + PHOTO_RUN, maskImage: fade(h), WebkitMaskImage: fade(h) }}>
-          <img {...coverImageProps(backdrop, `${w}px`)} alt="" decoding="async" className="trip-photo size-full object-cover" />
+          <img
+            {...coverImageProps(backdrop, `${w}px`)}
+            alt=""
+            decoding="async"
+            onLoad={(e) => horizon.read(e.currentTarget)}
+            ref={horizon.ref}
+            className={cn("trip-photo", placed ? "absolute max-w-none" : "size-full object-cover")}
+            style={placed ?? undefined}
+          />
         </div>
       )}
       <svg data-slot="trip-poster" viewBox={`0 0 ${w} ${h}`} width={w} height={h} role="img" aria-label={`Map of the trip, ${trip.from} to ${trip.to}`} className="relative block overflow-hidden">
