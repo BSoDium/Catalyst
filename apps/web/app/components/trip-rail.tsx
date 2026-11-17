@@ -129,7 +129,8 @@ export function TripRail({ slides, names }: { slides: ReactNode[]; names: string
             {slides.map((_, i) => (
               <span key={i} aria-hidden="true" className="absolute top-0 size-px snap-start" style={{ left: i * geo.step }} />
             ))}
-            <div className="sticky top-0 left-0 h-full overflow-hidden" style={{ width: geo.k.width }}>
+            <div // (the panel draws its own 1 px line over its left edge, semi-transparent: a card under it would show through and brighten it, so the layer starts one pixel in)
+              className="sticky top-0 left-0 h-full overflow-hidden [clip-path:inset(0_0_0_1px)]" style={{ width: geo.k.width }}>
               <ul ref={layer} className="relative m-0 h-full list-none p-0">
                 {slides.map((slide, i) => (
                   <li
