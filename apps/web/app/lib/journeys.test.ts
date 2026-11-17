@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { EMPTY_PROJECTION, encodePolyline5, type PublishedProjection } from "@catalyst/schemas";
-import { hopDetail, journeyText, journeysOf, roundKm, tripLinkLabel, tripsOf } from "./journeys";
+import { hopDetail, journeyText, journeysOf, roundKm, tripLinkLabel, tripsOf, tripWord } from "./journeys";
 
 const place = (slug: string, name: string, lat: number, lon: number, countryCode?: string) => ({
   slug, name, coordinates: { lat, lon }, labelPriority: 0, body: [], images: [], related: [], ...(countryCode ? { countryCode } : {}),
@@ -103,5 +103,16 @@ describe("hopDetail", () => {
     expect(hopDetail({ mode: "ferry", km: 170 })).toBe("by ferry · about 170 km");
     expect(hopDetail({ mode: "walk", km: 10 })).toBe("on foot · about 10 km");
     expect(hopDetail({ mode: "unknown", km: 1200 })).toBe("about 1,200 km");
+  });
+});
+
+describe("tripWord: the one word of a trip's card, in giant type", () => {
+  it("is the longest word that names something, the later on a tie", () => {
+    const words = ["The Transatlantic Crossing", "A Week in Moscow", "South America: West to East", "The Road to CERN", "Erasmus in Austria", "The Balkan Crawl"].map(tripWord);
+    expect(words).toEqual(["Transatlantic", "Moscow", "America", "CERN", "Austria", "Balkan"]);
+  });
+  it("falls back to the longest word when every word is a small one, and to nothing for an empty title", () => {
+    expect(tripWord("A Trip")).toBe("Trip");
+    expect(tripWord("")).toBe("");
   });
 });

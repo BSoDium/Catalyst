@@ -107,10 +107,28 @@ export interface Trip {
   dates: FormattedDates | null;
   /** The trip's own public page, when the route has one (`routes[].url`). */
   url?: string;
+  /** The one word the card sets in giant type (`tripWord` of the title). */
+  word: string;
+  /** How many countries the stops are in (those the places name): 0 when none is known. */
+  countries: number;
   /** For the trip's own small map: the stops and, per leg, its mode and a few points of its path (`lon, lat` flat, capped for the whole trip). */
   stopPoints: Array<{ slug: string; name: string; lon: number; lat: number }>;
   legPaths: Array<{ mode: LegMode; points: number[] }>;
   visits: TripVisit[];
+}
+
+/** Words that name nothing (articles, prepositions, "trip"): never the giant word. */
+const WORD_SKIP = new Set(["a", "an", "the", "of", "to", "in", "on", "at", "and", "for", "from", "with", "by", "week", "trip", "journey"]);
+
+/**
+ * The one word a trip's card sets in giant type, from its title: the longest word that names something ("The Transatlantic Crossing" is Transatlantic, "A Week in
+ * Moscow" Moscow, "South America: West to East" America), the later one on a tie ("The Road to CERN" is CERN). A title with nothing left gives its longest word, and an
+ * empty one nothing. A default, not an authored word: a trip may get its own later.
+ */
+export function tripWord(title: string): string {
+  const words = title.split(/[^\p{L}\p{N}'’-]+/u).filter(Boolean);
+  const pick = (list: string[]) => list.reduce((best, w) => (w.length >= best.length ? w : best), "");
+  return pick(words.filter((w) => !WORD_SKIP.has(w.toLowerCase()))) || pick(words);
 }
 
 /** Points kept for the whole trip's small map (an overview: the ends of a leg and a few between). */
@@ -178,6 +196,8 @@ export function tripsOf(projection: PublishedProjection, slug: string, nameOf: (
       ...(route.summary ? { summary: route.summary } : {}),
       dates: formatDates(route.dates),
       ...(route.url ? { url: route.url } : {}),
+      word: tripWord(route.title),
+      countries: new Set(places.map((p) => p!.countryCode).filter(Boolean)).size,
       stopPoints: places.map((p) => ({ slug: p!.slug, name: nameOf(p!), lon: p!.coordinates.lon, lat: p!.coordinates.lat })),
       legPaths,
       visits,

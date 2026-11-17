@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import { TripMap } from "~/components/trip-map";
+import { TripPoster } from "~/components/trip-map";
 import { Icon } from "~/components/ui";
 import { hopDetail, tripLinkLabel, type Trip, type TripHop } from "~/lib/journeys";
 import { placePath } from "~/lib/projection";
@@ -26,18 +26,26 @@ function Hop({ hop, side, lead }: { hop: TripHop; side: "before" | "after"; lead
 }
 
 /**
- * The trip this step belongs to, as a card (docs/step-page.md): its map across the top (this step ringed), then in descending weight the trip's own name, one
- * mono line of facts (when, how many stops, how far), where this step falls in it with the stop before and after, and last the trip's own page when it has
- * one. It is the way into the trip, not the page's subject. A place a trip passes several times says so and lists no hop (each visit has its own).
+ * The trip this step belongs to, as a card (docs/step-page.md, #510): a poster across the top (the trip's one word in giant type, the route over it with this
+ * step ringed), the distance as the big figure, then in descending weight the trip's own name, one mono line of facts (stops, countries, when), where this
+ * step falls in it with the stop before and after, and last the trip's own page when it has one. It is the way into the trip, not the page's subject. A place a
+ * trip passes several times says so and lists no hop (each visit has its own).
  */
 export function TripCard({ trip, here, lived = false }: { trip: Trip; here: string; lived?: boolean }) {
-  const facts = [trip.dates?.text, plural(trip.stops, "stop"), `about ${trip.km.toLocaleString("en-US")} km`].filter(Boolean).join(" · ");
+  const facts = [plural(trip.stops, "stop"), trip.countries > 0 ? plural(trip.countries, "country", "countries") : null, trip.dates?.text].filter(Boolean).join(" · ");
   const single = trip.visits.length === 1 ? trip.visits[0]! : null;
   const where = single ? (single.previous === null ? "The trip starts here" : single.next === null ? "The trip ends here" : `Stop ${single.position} of ${trip.stops}`) : lived ? "Home base on this trip" : `Visited ${trip.visits.length} times`; // (a place the owner has lived in is not visited: no count, #584)
   return (
     <article data-slot="trip-card" className="flex flex-col overflow-hidden border border-border">
-      <TripMap trip={trip} here={here} />
+      <TripPoster trip={trip} here={here} />
       <div className="flex flex-col gap-3 p-4">
+        <p data-slot="trip-distance" className="m-0 flex items-center gap-2.5 font-display text-3xl leading-none font-extrabold tracking-tight">
+          <span aria-hidden="true" className="size-2.5 shrink-0 bg-foreground" />
+          <span>
+            <span className="sr-only">About </span>
+            {trip.km.toLocaleString("en-US")} km
+          </span>
+        </p>
         <header className="flex flex-col gap-1">
           <h3 className="m-0 text-lg font-semibold tracking-tight text-balance">{trip.title}</h3>
           <p className="m-0 ds-meta">{facts}</p>

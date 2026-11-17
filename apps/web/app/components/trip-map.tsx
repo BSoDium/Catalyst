@@ -5,10 +5,12 @@ import { cn } from "~/lib/utils";
 /** The strokes of the small map, by mode: the same patterns as the maps' lines (solid road, dashed rail, dotted ferry and flight). */
 const DASH: Record<string, string | undefined> = { road: undefined, rail: "5 3", ferry: "1.5 3", flight: "1.5 3", walk: "1.5 2", unknown: "5 4" };
 
-/** The map's own coordinate space (the SVG scales to the width it is given, keeping this proportion). */
+/** The poster's own coordinate space (the SVG scales to the width it is given, keeping this proportion): the map on top and the trip's word in giant type under it. */
 const W = 360;
-const H = 168;
-const PAD = 14;
+const H = 300;
+/** The map takes the poster's height down to here; the word runs under it (the route is drawn over its letters). */
+const MAP_H = 262;
+const PAD = 26;
 
 interface Frame {
   x: (lon: number) => number;
@@ -21,6 +23,7 @@ interface Frame {
 
 /** An equirectangular frame (longitudes shrunk by cos of the middle latitude) that fits the trip in W x H with PAD around it. */
 function frameOf(trip: Trip): Frame {
+  const H = MAP_H;
   const lons = trip.legPaths.flatMap((l) => l.points.filter((_, i) => i % 2 === 0)).concat(trip.stopPoints.map((s) => s.lon));
   const lats = trip.legPaths.flatMap((l) => l.points.filter((_, i) => i % 2 === 1)).concat(trip.stopPoints.map((s) => s.lat));
   let lon0 = Math.min(...lons);
@@ -64,12 +67,17 @@ function coastPath(frame: Frame, coast: { positions: Float32Array; offsets: Uint
   return out.join("");
 }
 
+/** The giant word's size: the biggest that keeps a heavy, capitalised word of this many letters inside the poster's width (about 0.62 em a letter), from a size that is still a headline to one that does not overflow. */
+export function wordSize(letters: number): number {
+  return Math.round(Math.min(112, Math.max(46, (W * 0.96) / (0.62 * Math.max(1, letters)))));
+}
+
 /**
- * The trip on one small map: the coast behind it (loaded when the card shows, the same data the globe uses), the legs from the blue tail of the
- * trip's gradient to its violet head in the patterns the maps draw, every stop a small square and the place the panel is about a ring. Decoration
- * for the eyes: the card's text says all of it.
+ * The trip as a poster (owner's mood board, #510): a flat field, the trip's one word in giant type across the bottom, and over it the route as one thin
+ * line (the maps' patterns for rail, ferry and flights) with a square at every stop, the start, the end and the place the panel is about named. The coast
+ * is drawn faintly behind the line (loaded when the card shows, the same data the globe uses). Decoration for the eyes: the card's text says all of it.
  */
-export function TripMap({ trip, here, className }: { trip: Trip; here: string; className?: string }) {
+export function TripPoster({ trip, here, className }: { trip: Trip; here: string; className?: string }) {
   const frame = useMemo(() => frameOf(trip), [trip]);
   const [coast, setCoast] = useState<{ positions: Float32Array; offsets: Uint32Array } | null>(null);
   useEffect(() => {
@@ -80,29 +88,44 @@ export function TripMap({ trip, here, className }: { trip: Trip; here: string; c
     };
   }, []);
   const land = useMemo(() => coastPath(frame, coast), [frame, coast]);
-  const legs = trip.legPaths.length;
+  const word = trip.word.toUpperCase();
+  const size = wordSize(word.length);
   const current = trip.stopPoints.find((s) => s.slug === here);
+  // The named places: the start, the end (one label when they are the same place) and this one.
+  const named = [trip.stopPoints[0], trip.stopPoints[trip.stopPoints.length - 1], current]
+    .filter((s): s is Trip["stopPoints"][number] => Boolean(s))
+    .filter((s, i, all) => all.findIndex((o) => o.slug === s.slug) === i);
   return (
-    <svg data-slot="trip-map" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Map of the trip, ${trip.from} to ${trip.to}`} className={cn("block h-auto w-full bg-accent", className)}>
+    <svg data-slot="trip-poster" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Map of the trip, ${trip.from} to ${trip.to}`} className={cn("block h-auto w-full overflow-hidden bg-accent", className)}>
       <defs>
-        <clipPath id={`trip-map-clip-${trip.id}`}>
+        <clipPath id={`trip-poster-clip-${trip.id}`}>
           <rect width={W} height={H} />
         </clipPath>
       </defs>
-      <g clipPath={`url(#trip-map-clip-${trip.id})`}>
-        {land && <path d={land} fill="none" stroke="var(--border)" strokeWidth={1} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />}
+      <g clipPath={`url(#trip-poster-clip-${trip.id})`}>
+        {word && (
+          <text x={-2} y={H - 10} fontSize={size} style={{ fill: "color-mix(in srgb, var(--foreground) 16%, var(--accent))", fontFamily: "var(--font-display)", fontWeight: 800, letterSpacing: "-0.03em" }}>
+            {word}
+          </text>
+        )}
+        {land && <path d={land} fill="none" style={{ stroke: "color-mix(in srgb, var(--foreground) 30%, var(--accent))" }} strokeWidth={1} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />}
         {trip.legPaths.map((leg, i) => {
           const pts = Array.from({ length: leg.points.length / 2 }, (_, k) => `${frame.x(leg.points[k * 2]!).toFixed(1)},${frame.y(leg.points[k * 2 + 1]!).toFixed(1)}`).join(" ");
-          // the gradient runs over the whole trip: tail blue at the first leg, head violet at the last
-          const share = legs > 1 ? Math.round((1 - i / (legs - 1)) * 100) : 100;
-          return <polyline key={i} points={pts} fill="none" style={{ stroke: `color-mix(in srgb, var(--trail-from) ${share}%, var(--trail-to))` }} strokeWidth={1.75} strokeDasharray={DASH[leg.mode]} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />;
+          return <polyline key={i} points={pts} fill="none" stroke="var(--foreground)" strokeWidth={1.5} strokeDasharray={DASH[leg.mode]} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />;
         })}
         {trip.stopPoints.map((s, i) => (
-          <rect key={`${s.slug}-${i}`} x={frame.x(s.lon) - 1.75} y={frame.y(s.lat) - 1.75} width={3.5} height={3.5} fill="var(--background)" stroke="var(--trail-from)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+          <rect key={`${s.slug}-${i}`} x={frame.x(s.lon) - 1.75} y={frame.y(s.lat) - 1.75} width={3.5} height={3.5} fill="var(--foreground)" />
         ))}
-        {current && (
-          <rect x={frame.x(current.lon) - 5} y={frame.y(current.lat) - 5} width={10} height={10} fill="var(--trail-to)" stroke="var(--background)" strokeWidth={2} vectorEffect="non-scaling-stroke" />
-        )}
+        {current && <rect x={frame.x(current.lon) - 6} y={frame.y(current.lat) - 6} width={12} height={12} fill="none" stroke="var(--foreground)" strokeWidth={1.5} vectorEffect="non-scaling-stroke" />}
+        {named.map((s) => {
+          const x = frame.x(s.lon);
+          const end = x > W * 0.6;
+          return (
+            <text key={s.slug} x={end ? x - 9 : x + 9} y={frame.y(s.lat) - 7} textAnchor={end ? "end" : "start"} fontSize={10} style={{ fill: "var(--foreground)", fontFamily: "var(--font-meta)", fontWeight: 700, letterSpacing: "0.04em" }}>
+              {s.name.toUpperCase()}
+            </text>
+          );
+        })}
       </g>
     </svg>
   );

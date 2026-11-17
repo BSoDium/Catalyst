@@ -13,6 +13,8 @@ const trip: Trip = {
   from: "A",
   to: "A",
   dates: null,
+  word: "loop",
+  countries: 2,
   stopPoints: [
     { slug: "a", name: "A", lon: 1, lat: 43 },
     { slug: "b", name: "B", lon: 2, lat: 44 },
@@ -29,5 +31,17 @@ describe("TripCard visits (#584)", () => {
     const html = renderToStaticMarkup(createElement(TripCard, { trip, here: "a", lived: true }));
     expect(html).not.toContain("Visited");
     expect(html).toContain("Home base on this trip");
+  });
+});
+
+describe("TripCard poster (#510)", () => {
+  const html = renderToStaticMarkup(createElement(TripCard, { trip, here: "a" }));
+  it("sets the trip's word in giant capitals in the poster and names the places on it", () => {
+    expect(html).toContain("LOOP");
+    expect(html).toContain('data-slot="trip-poster"');
+  });
+  it("says the distance as the big figure and the stops, countries and dates in the facts line", () => {
+    expect(html).toContain("100 km");
+    expect(html).toContain("4 stops · 2 countries");
   });
 });
