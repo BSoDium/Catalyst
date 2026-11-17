@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EMPTY_PROJECTION, encodePolyline5, type PublishedProjection } from "@catalyst/schemas";
+import { EMPTY_PROJECTION, encodePolyline5, parsePublishedProjection, type PublishedProjection } from "@catalyst/schemas";
 import { hopDetail, journeyText, journeysOf, roundKm, pickHighlights, tripLinkLabel, tripsOf, tripWord } from "./journeys";
 
 const place = (slug: string, name: string, lat: number, lon: number, countryCode?: string) => ({
@@ -127,5 +127,26 @@ describe("pickHighlights: the stops a poster names besides its start, end and he
   it("never names a stop without entries, nor one that is always named, and at most `max`", () => {
     expect(pickHighlights(stops, ["a", "c", "f"], 1)).toEqual(["e"]);
     expect(pickHighlights([stop("a", 0, 0), stop("b", 50, 0)], [])).toEqual([]);
+  });
+});
+
+describe("the photograph of a trip (the poster's backdrop)", () => {
+  const pl = (slug: string, lat: number) => ({ slug, name: slug, coordinates: { lat, lon: 1 }, labelPriority: 0, body: [], images: [], related: [] });
+  const photo = (slug: string, date: string, placeSlugs: string[], extra: object = {}) => ({ slug, title: slug, date, cover: { src: `/media/photograph/${slug}/photo.abc.webp`, alt: slug, width: 800, height: 600 }, placeSlugs, tags: [], meta: [], body: [], ...extra });
+  const base = (photographs: unknown[], route: object = {}): PublishedProjection =>
+    parsePublishedProjection({ ...EMPTY_PROJECTION, places: [pl("a", 1), pl("b", 2), pl("elsewhere", 30)], photographs, routes: [{ id: "t", title: "T", dates: { start: "2025-07", end: "2025-10" }, stops: ["a", "b"], ...route }] });
+  const src = (p: PublishedProjection) => tripsOf(p, "a")[0]!.photo?.src;
+  it("is the owner's pick when the route has a cover, whatever it was taken of", () => {
+    const p = base([photo("at-a-stop", "2025-09-01", ["a"]), photo("the-pick", "2024-01-01", ["elsewhere"])], { cover: "the-pick" });
+    expect(src(p)).toContain("the-pick");
+  });
+  it("else the most recent photograph taken at a stop or during the trip", () => {
+    const p = base([photo("old-stop", "2020-01-01", ["a"]), photo("on-the-road", "2025-08-20", ["elsewhere"]), photo("later", "2026-01-01", ["elsewhere"])]);
+    expect(src(p)).toContain("on-the-road"); // the stop's is older, the last is after the trip
+  });
+  it("never a sensitive photograph, not even as the cover, and none when nobody photographed the trip", () => {
+    const sensitive = photo("hidden", "2025-09-01", ["a"], { sensitive: true });
+    expect(src(base([sensitive], { cover: "hidden" }))).toBeUndefined();
+    expect(src(base([photo("far", "2019-01-01", ["elsewhere"])]))).toBeUndefined();
   });
 });

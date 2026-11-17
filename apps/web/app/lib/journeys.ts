@@ -121,6 +121,24 @@ export interface Trip {
   visits: TripVisit[];
 }
 
+/**
+ * The photograph that stands for a trip (the poster's backdrop): the owner's pick (`route.cover`, when it is a photograph that is not sensitive), else the most recent
+ * photograph that is not sensitive and was taken at one of the stops or during the trip (its date within the trip's months): the trip's photographs are not all at its stops
+ * (a river crossing has its pictures between places). None for a trip nobody photographed.
+ */
+function tripPhoto(projection: PublishedProjection, route: PublishedProjection["routes"][number]): { photo?: Pick<PublishedCover, "src" | "width" | "small"> } {
+  const usable = projection.photographs.filter((p) => !p.sensitive);
+  const stops = new Set(route.stops);
+  const from = route.dates?.start?.slice(0, 7);
+  const to = (route.dates?.end ?? route.dates?.start)?.slice(0, 7);
+  const during = (date: string | undefined) => from !== undefined && to !== undefined && date !== undefined && date.slice(0, 7) >= from && date.slice(0, 7) <= to;
+  const picked =
+    (route.cover === undefined ? undefined : usable.find((p) => p.slug === route.cover)) ??
+    usable.filter((p) => p.placeSlugs.some((s) => stops.has(s)) || during(p.date)).sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""))[0];
+  const cover = picked?.cover;
+  return cover ? { photo: { src: cover.src, width: cover.width, ...(cover.small ? { small: cover.small } : {}) } } : {};
+}
+
 /** How many entries (projects, articles, artworks, poems, photographs) are linked to a place: what makes it worth a name on a poster. */
 function weightOf(projection: PublishedProjection, slug: string): number {
   return [projection.projects, projection.articles, projection.artworks, projection.poems, projection.photographs].reduce((n, items) => n + items.filter((i) => i.placeSlugs.includes(slug)).length, 0);
@@ -233,12 +251,7 @@ export function tripsOf(projection: PublishedProjection, slug: string, nameOf: (
       ...(route.summary ? { summary: route.summary } : {}),
       dates: formatDates(route.dates),
       ...(route.url ? { url: route.url } : {}),
-      ...(() => {
-        const stops = new Set(route.stops);
-        // (the most recent photograph that is not sensitive and was taken at a stop; none for a trip nobody photographed)
-        const cover = projection.photographs.filter((p) => !p.sensitive && p.placeSlugs.some((s) => stops.has(s))).sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""))[0]?.cover;
-        return cover ? { photo: { src: cover.src, width: cover.width, ...(cover.small ? { small: cover.small } : {}) } } : {};
-      })(),
+      ...tripPhoto(projection, route),
       highlights: pickHighlights(
         places.map((p) => ({ slug: p!.slug, lat: p!.coordinates.lat, lon: p!.coordinates.lon, weight: weightOf(projection, p!.slug) })),
         [route.stops[0]!, route.stops[route.stops.length - 1]!, slug],
