@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { coverImageProps } from "~/lib/cover-image";
 import { findHorizon } from "~/lib/horizon";
+import { frameOf, type Frame } from "~/lib/trip-projection";
 import type { Trip } from "~/lib/journeys";
 import { cn } from "~/lib/utils";
 
@@ -49,51 +50,6 @@ const PAD = 26;
 /** The space round the giant word: the same under it and to its left (owner, #510). */
 const WORD_PAD = 16;
 
-interface Frame {
-  x: (lon: number) => number;
-  y: (lat: number) => number;
-  /** The inverse of `x` and `y`: the longitude and latitude at a point of the poster. */
-  lonAt: (x: number) => number;
-  latAt: (y: number) => number;
-  lon0: number;
-  lon1: number;
-  lat0: number;
-  lat1: number;
-  /** The larger side of the trip's box, degrees: how close the map is (`coastsFor`). */
-  span: number;
-}
-
-/** An equirectangular frame (longitudes shrunk by cos of the middle latitude) that fits the trip in the box `bw` x `bh` at (`bx`, `by`) with PAD around it, centred in it. */
-function frameOf(trip: Trip, bx: number, by: number, bw: number, bh: number): Frame {
-  const lons = trip.legPaths.flatMap((l) => l.points.filter((_, i) => i % 2 === 0)).concat(trip.stopPoints.map((s) => s.lon));
-  const lats = trip.legPaths.flatMap((l) => l.points.filter((_, i) => i % 2 === 1)).concat(trip.stopPoints.map((s) => s.lat));
-  let lon0 = Math.min(...lons);
-  let lon1 = Math.max(...lons);
-  let lat0 = Math.min(...lats);
-  let lat1 = Math.max(...lats);
-  const k = Math.cos((((lat0 + lat1) / 2) * Math.PI) / 180);
-  // never a degenerate box: a trip within one city still gets a map of a few kilometres
-  const minSpan = 0.08;
-  if (lon1 - lon0 < minSpan) { const c = (lon0 + lon1) / 2; lon0 = c - minSpan / 2; lon1 = c + minSpan / 2; }
-  if (lat1 - lat0 < minSpan) { const c = (lat0 + lat1) / 2; lat0 = c - minSpan / 2; lat1 = c + minSpan / 2; }
-  const spanX = (lon1 - lon0) * k;
-  const spanY = lat1 - lat0;
-  const scale = Math.max(0.0001, Math.min((bw - 2 * PAD) / spanX, (bh - 2 * PAD) / spanY));
-  const offX = bx + (bw - spanX * scale) / 2;
-  const offY = by + (bh - spanY * scale) / 2;
-  return {
-    x: (lon) => offX + (lon - lon0) * k * scale,
-    y: (lat) => by + bh - (offY - by) - (lat - lat0) * scale,
-    lonAt: (x) => lon0 + (x - offX) / (k * scale),
-    latAt: (y) => lat0 + (by + bh - (offY - by) - y) / scale,
-    lon0,
-    lon1,
-    lat0,
-    lat1,
-    span: Math.max(lon1 - lon0, lat1 - lat0),
-  };
-}
-
 type Lines = { positions: Float32Array; offsets: Uint32Array };
 
 /**
@@ -102,23 +58,29 @@ type Lines = { positions: Float32Array; offsets: Uint32Array };
  */
 function linesPath(frame: Frame, lines: Lines | null, w: number, h: number, ring = false): string {
   if (!lines) return "";
-  const west = frame.lonAt(0) - 1;
-  const east = frame.lonAt(w) + 1;
-  const north = frame.latAt(0) + 1;
-  const south = frame.latAt(h) - 1;
+  const margin = 60;
   const out: string[] = [];
   for (let l = 0; l + 1 < lines.offsets.length; l++) {
     const a = lines.offsets[l]!;
     const b = lines.offsets[l + 1]!;
     let inside = false;
     for (let i = a; i < b && !inside; i++) {
-      const lon = lines.positions[i * 2]!;
-      const lat = lines.positions[i * 2 + 1]!;
-      inside = lon > west && lon < east && lat > south && lat < north;
+      const p = frame.at(lines.positions[i * 2]!, lines.positions[i * 2 + 1]!);
+      inside = p !== null && p.x > -margin && p.x < w + margin && p.y > -margin && p.y < h + margin;
     }
     if (!inside) continue;
     let d = "";
-    for (let i = a; i < b; i++) d += `${i === a ? "M" : "L"}${frame.x(lines.positions[i * 2]!).toFixed(1)} ${frame.y(lines.positions[i * 2 + 1]!).toFixed(1)}`;
+    let pen = false;
+    for (let i = a; i < b; i++) {
+      const p = frame.at(lines.positions[i * 2]!, lines.positions[i * 2 + 1]!);
+      // (a point on the far side of the globe has no place on the poster: the line is broken there)
+      if (!p) {
+        pen = false;
+        continue;
+      }
+      d += `${pen ? "L" : "M"}${p.x.toFixed(1)} ${p.y.toFixed(1)}`;
+      pen = true;
+    }
     if (!ring) out.push(d);
     // (every land outline is filled, closed or not: a landmass the data cuts at the antimeridian, Europe, Africa and Asia in one, is an open line whose two ends are on that cut, and closing it runs along the cut)
     else if (b - a > 3) out.push(`${d}Z`);
@@ -283,7 +245,18 @@ export function TripPoster({ trip, here, photo = true, className }: { trip: Trip
   const wordW = (fit.key === key ? Math.round(fit.length) : Math.round(0.66 * size * word.length)) + WORD_PAD;
   const side = word !== "" && w - wordW - 24 >= h * 0.9;
   const box = side ? { x: wordW + 16, y: 0, w: w - wordW - 24, h } : { x: 0, y: 0, w, h: h - band };
-  const frame = useMemo(() => frameOf(trip, box.x, box.y, box.w, box.h), [trip, box.x, box.y, box.w, box.h]);
+  const frame = useMemo(
+    () =>
+      frameOf(
+        trip.legPaths.flatMap((l) => Array.from({ length: l.points.length / 2 }, (_, k) => ({ lon: l.points[k * 2]!, lat: l.points[k * 2 + 1]! }))).concat(trip.stopPoints.map((s) => ({ lon: s.lon, lat: s.lat }))),
+        box.x,
+        box.y,
+        box.w,
+        box.h,
+        PAD,
+      ),
+    [trip, box.x, box.y, box.w, box.h],
+  );
   const backdrop = photo ? trip.photo : undefined;
   const horizon = useHorizon(backdrop?.src);
   // The photograph placed so that its horizon is at the poster's bottom edge: scaled up as far as it takes to fill the layer above and below that line, never less than the cover size.
@@ -295,6 +268,8 @@ export function TripPoster({ trip, here, photo = true, className }: { trip: Trip
     const k = Math.max(w / hz.w, h / (f * hz.h), PHOTO_RUN / ((1 - f) * hz.h), run / hz.h);
     return { width: k * hz.w, height: k * hz.h, left: (w - k * hz.w) / 2, top: h - f * k * hz.h } as const;
   })();
+  // (the stops are all within the frame, so they all have a place on it)
+  const stopAt = (s: { lon: number; lat: number }) => frame.at(s.lon, s.lat) ?? { x: -99, y: -99 };
   const coast = useCoast(frame.span < REGIONAL_DEG);
   const borders = useBorders(frame.span < REGIONAL_DEG);
   // (the borders are the field's colour, the ocean's: a gap in the land, not a line over it)
@@ -349,19 +324,24 @@ export function TripPoster({ trip, here, photo = true, className }: { trip: Trip
           </>
         )}
         {trip.legPaths.map((leg, i) => {
-          const pts = Array.from({ length: leg.points.length / 2 }, (_, k) => `${frame.x(leg.points[k * 2]!).toFixed(1)},${frame.y(leg.points[k * 2 + 1]!).toFixed(1)}`).join(" ");
+          const pts = Array.from({ length: leg.points.length / 2 }, (_, k) => frame.at(leg.points[k * 2]!, leg.points[k * 2 + 1]!))
+            .filter((q): q is { x: number; y: number } => q !== null)
+            .map((q) => `${q.x.toFixed(1)},${q.y.toFixed(1)}`)
+            .join(" ");
           return <polyline key={i} points={pts} fill="none" stroke={ink} strokeWidth={backdrop ? 1.75 : 1.5} strokeDasharray={DASH[leg.mode]} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />;
         })}
-        {trip.stopPoints.map((s, i) => (
-          <rect key={`${s.slug}-${i}`} x={frame.x(s.lon) - 1.75} y={frame.y(s.lat) - 1.75} width={3.5} height={3.5} fill={ink} />
-        ))}
-        {current && <rect x={frame.x(current.lon) - 6} y={frame.y(current.lat) - 6} width={12} height={12} fill="none" stroke={ink} strokeWidth={1.5} vectorEffect="non-scaling-stroke" />}
+        {trip.stopPoints.map((s, i) => {
+          const q = stopAt(s);
+          return <rect key={`${s.slug}-${i}`} x={q.x - 1.75} y={q.y - 1.75} width={3.5} height={3.5} fill={ink} />;
+        })}
+        {current && <rect x={stopAt(current).x - 6} y={stopAt(current).y - 6} width={12} height={12} fill="none" stroke={ink} strokeWidth={1.5} vectorEffect="non-scaling-stroke" />}
         {named.map((s) => {
-          const x = frame.x(s.lon);
+          const q = stopAt(s);
+          const x = q.x;
           const end = x > w * 0.6;
           // (a halo in the backdrop's colour keeps a name readable where the route or a border runs under it)
           return (
-            <text key={s.slug} x={end ? x - 9 : x + 9} y={Math.max(12, frame.y(s.lat) - 7)} textAnchor={end ? "end" : "start"} fontSize={10} stroke={halo} strokeWidth={3} strokeLinejoin="round" style={{ fill: ink, paintOrder: "stroke", fontFamily: "var(--font-meta)", fontWeight: 700, letterSpacing: "0.04em" }}>
+            <text key={s.slug} x={end ? x - 9 : x + 9} y={Math.max(12, q.y - 7)} textAnchor={end ? "end" : "start"} fontSize={10} stroke={halo} strokeWidth={3} strokeLinejoin="round" style={{ fill: ink, paintOrder: "stroke", fontFamily: "var(--font-meta)", fontWeight: 700, letterSpacing: "0.04em" }}>
               {s.name.toUpperCase()}
             </text>
           );
