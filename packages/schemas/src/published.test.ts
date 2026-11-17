@@ -213,3 +213,16 @@ describe("published projection", () => {
     expect(committed).toBe(buildJsonSchema());
   });
 });
+
+describe("route cover (#510)", () => {
+  const pl = (slug: string, lat: number) => ({ slug, name: slug, coordinates: { lat, lon: 1 }, labelPriority: 0, body: [], images: [], related: [] });
+  const base = { ...EMPTY_PROJECTION, places: [pl("a", 1), pl("b", 2)] };
+  const photo = { slug: "bow", title: "Bow", cover: { src: "/media/photograph/bow/photo.abc.webp", alt: "A bow" }, placeSlugs: ["a"], tags: [], meta: [], body: [] };
+  it("accepts a cover that is a photograph of the projection, and none", () => {
+    expect(parsePublishedProjection({ ...base, photographs: [photo], routes: [{ id: "t", title: "T", stops: ["a", "b"], cover: "bow" }] }).routes[0]!.cover).toBe("bow");
+    expect(parsePublishedProjection({ ...base, photographs: [photo], routes: [{ id: "t", title: "T", stops: ["a", "b"] }] }).routes[0]!.cover).toBeUndefined();
+  });
+  it("rejects a cover that is not a photograph of the projection", () => {
+    expect(() => parsePublishedProjection({ ...base, photographs: [photo], routes: [{ id: "t", title: "T", stops: ["a", "b"], cover: "nope" }] })).toThrow(/unknown photograph/);
+  });
+});

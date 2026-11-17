@@ -350,6 +350,11 @@
             "format": "uri",
             "pattern": "^https:\\/\\/[^\\s\\u0000-\\u001F\\u007F\\u202A-\\u202E\\u2066-\\u2069]+$"
           },
+          "cover": {
+            "type": "string",
+            "maxLength": 80,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+          },
           "stops": {
             "minItems": 2,
             "maxItems": 200,
