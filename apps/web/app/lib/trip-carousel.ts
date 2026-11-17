@@ -3,21 +3,27 @@
  * the scroll position, the same growth (`--g`) that drives the type. What differs is the sizes: a trip card is a poster with its figures, not a picture, so it is laid out at a width that holds
  * them (the large one is nearly the whole row) and the neighbours are slivers of the next and the one before, not cards of their own.
  *
- * A narrow row (a phone, under `SINGLE_BELOW`) is the photographs' own: one card at a time across the whole row, the next growing from nothing as the row moves. A wider one shows the large
- * card with the next one's edge (`PEEK`) and a hint of the one after it; the row stops where the last card is the large one, which a photograph row does not (its last two are expanded): a
+ * A narrow row (a phone, under `SINGLE_BELOW`) shows the large card with the edge of the next; a wider one the large card (a little over half the row), a good part of the next and a hint of the one after; the row stops where the last card is the large one, which a photograph row does not (its last two are expanded): a
  * phantom card after the last one takes the place of the medium one.
  */
-import { CAROUSEL_GUTTER, SINGLE_BELOW, carouselLayout, keylines, stepOf, type CarouselItem, type Keylines } from "./photo-carousel";
+import { CAROUSEL_GUTTER, SINGLE_BELOW, carouselLayout, stepOf, type CarouselItem, type Keylines } from "./photo-carousel";
 
 /** The width of the next card's edge beside the large one (the medium size), and of the hint of the one after it (the small one), in a wide row. */
 export const PEEK = { medium: 72, small: 36 } as const;
 export const TRIP_GAP = 12;
 
 export function tripKeylines(width: number): Keylines {
-  if (width < SINGLE_BELOW) return keylines(width);
   const gutter = CAROUSEL_GUTTER;
-  const large = Math.max(240, width - gutter - PEEK.small - PEEK.medium - 2 * TRIP_GAP);
-  return { width, gutter, gap: TRIP_GAP, small: PEEK.small, large, medium: PEEK.medium, single: false };
+  if (width < SINGLE_BELOW) {
+    // (a phone: the large card and the edge of the next, a hint of the one after)
+    const small = 16;
+    const medium = 40;
+    return { width, gutter, gap: TRIP_GAP, small, large: Math.max(200, width - gutter - small - medium - 2 * TRIP_GAP), medium, single: false };
+  }
+  // (a wide row: the large card a little over half of it, so that the next one shows a good part of itself)
+  const small = PEEK.small;
+  const large = Math.min(460, Math.max(300, Math.round(width * 0.58)));
+  return { width, gutter, gap: TRIP_GAP, small, large, medium: Math.max(PEEK.medium, width - gutter - large - small - 2 * TRIP_GAP), single: false };
 }
 
 /** How far the row scrolls from one card to the next. */
