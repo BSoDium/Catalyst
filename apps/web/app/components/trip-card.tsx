@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router";
 import { TripPoster } from "~/components/trip-map";
 import { Icon } from "~/components/ui";
@@ -12,6 +13,57 @@ function Kpi({ value, unit, big = false, lead }: { value: number; unit: string; 
       <span className={`font-display leading-none font-extrabold tracking-tight ${big ? "text-3xl" : "text-2xl"}`}>{value.toLocaleString("en-US")}</span>
       <span className="text-sm font-medium text-muted-foreground">{unit}</span>
     </p>
+  );
+}
+
+const LINK_CLASS = "inline-flex min-h-11 items-center gap-2 bg-foreground px-4 text-sm font-medium text-background no-underline hover:bg-[color-mix(in_srgb,var(--foreground)_82%,var(--background))]";
+
+/**
+ * The row under the figures: where this step falls in the trip with the stop before and after, and, to the right of them, the button to the trip's own page. When the two
+ * do not fit side by side the button goes on a line of its own and takes the full width of it. (Whether they fit is measured: the stops' natural width and a hidden copy of the
+ * button's, against the row's: a button that is already full width cannot say how wide it would be.)
+ */
+function TripFooter({ trip, where, single }: { trip: Trip; where: string; single: Trip["visits"][number] | null }) {
+  const row = useRef<HTMLDivElement>(null);
+  const stops = useRef<HTMLDivElement>(null);
+  const ghost = useRef<HTMLSpanElement>(null);
+  const [wrapped, setWrapped] = useState(false);
+  useEffect(() => {
+    const r = row.current;
+    const g = ghost.current;
+    const st = stops.current;
+    if (!r || !g || !st) return;
+    const measure = () => setWrapped(st.offsetWidth + 16 + g.offsetWidth > r.clientWidth + 0.5);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(r);
+    return () => ro.disconnect();
+  }, [trip.url]);
+  const label = trip.url ? tripLinkLabel(trip.url) : "";
+  return (
+    <div ref={row} className="relative flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
+      <div ref={stops} className="flex max-w-full min-w-0 flex-col gap-1.5">
+        <p className="m-0 text-sm font-medium">{where}</p>
+        {single && (single.previous || single.next) && (
+          <ul className="m-0 flex list-none flex-col gap-1 p-0">
+            {single.previous && <Hop hop={single.previous} side="before" lead="Arrived from" />}
+            {single.next && <Hop hop={single.next} side="after" lead="Left for" />}
+          </ul>
+        )}
+      </div>
+      {trip.url && (
+        <>
+          <a href={trip.url} target="_blank" rel="noopener noreferrer" data-slot="trip-link" className={`${LINK_CLASS} ${wrapped ? "w-full justify-between" : "ml-auto"}`}>
+            {label}
+            <Icon name="arrow-up-right" size="inline" />
+          </a>
+          <span ref={ghost} aria-hidden="true" className={`${LINK_CLASS} pointer-events-none invisible absolute right-0 bottom-0 w-max whitespace-nowrap`}>
+            {label}
+            <Icon name="arrow-up-right" size="inline" />
+          </span>
+        </>
+      )}
+    </div>
   );
 }
 
@@ -58,29 +110,7 @@ export function TripCard({ trip, here, lived = false, photo = true }: { trip: Tr
           <h3 className="m-0 text-lg font-semibold tracking-tight text-balance">{trip.title}</h3>
           {trip.dates?.text && <p className="m-0 ds-meta">{trip.dates.text}</p>}
         </header>
-        <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
-          <div className="flex min-w-0 flex-col gap-1.5">
-            <p className="m-0 text-sm font-medium">{where}</p>
-            {single && (single.previous || single.next) && (
-              <ul className="m-0 flex list-none flex-col gap-1 p-0">
-                {single.previous && <Hop hop={single.previous} side="before" lead="Arrived from" />}
-                {single.next && <Hop hop={single.next} side="after" lead="Left for" />}
-              </ul>
-            )}
-          </div>
-          {trip.url && (
-            <a
-              href={trip.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              data-slot="trip-link"
-              className="ml-auto inline-flex min-h-11 items-center gap-2 bg-foreground px-4 text-sm font-medium text-background no-underline hover:bg-[color-mix(in_srgb,var(--foreground)_82%,var(--background))]"
-            >
-              {tripLinkLabel(trip.url)}
-              <Icon name="arrow-up-right" size="inline" />
-            </a>
-          )}
-        </div>
+        <TripFooter trip={trip} where={where} single={single} />
       </div>
     </article>
   );

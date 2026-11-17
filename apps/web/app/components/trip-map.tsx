@@ -98,10 +98,9 @@ const REGIONAL_DEG = 40;
  * The geography behind the route: the coast (the 110 m set for a trip across the world, the 50 m one, which the globe loads when it comes close, for a regional
  * trip: the route is far more precise than the 110 m outline) and, for a regional trip, the country borders. Loaded when the card shows.
  */
-function useGeography(regional: boolean, wanted = true) {
+function useGeography(regional: boolean) {
   const [geo, setGeo] = useState<{ coast: Lines | null; borders: Lines | null; fine: boolean }>({ coast: null, borders: null, fine: false });
   useEffect(() => {
-    if (!wanted) return;
     let alive = true;
     import("@catalyst/geodata")
       .then(async (g) => {
@@ -112,8 +111,8 @@ function useGeography(regional: boolean, wanted = true) {
     return () => {
       alive = false;
     };
-  }, [regional, wanted]);
-  return wanted ? geo : { coast: null, borders: null, fine: false };
+  }, [regional]);
+  return geo;
 }
 
 /** The box the poster is drawn in, measured (CSS px): the width its container gives it and the height `MAX_H` allows. Before it is measured, and on the server, the phone-panel size. */
@@ -146,7 +145,7 @@ export function wordSize(letters: number, width: number, height: number): number
  * The trip as a poster (owner's mood board, #510): a flat field with the trip's one word in giant type nested in its bottom-left corner, the route above the word as
  * one thin line (the maps' patterns for rail, ferry and flights) with a square at every stop and the start, the end and the place the panel is about named. The land
  * behind it (a faint shape with its coast, and the country borders for a regional trip, `useGeography`) runs on under the word: only the route keeps clear of it. With a
- * photograph of the trip (`trip.photo`) the photo is the backdrop, a veil in the field's colour over it (so it sits close to the card's background in both themes), and the route and the word drawn on top as on the flat field. The height is at
+ * photograph of the trip (`trip.photo`) the photo is the backdrop, a veil in the field's colour over it (so it sits close to the card's background in both themes), the land on top of that as a translucent surface in the field's colour (it lightens the photograph in the light theme and darkens it in the dark one), and the route and the word as on the flat field. The height is at
  * most `MAX_H`: on a wide panel the poster stretches in width, not in height. Decoration for the eyes: the card's text says all of it.
  */
 export function TripPoster({ trip, here, photo = true, className }: { trip: Trip; here: string; photo?: boolean; className?: string }) {
@@ -161,7 +160,7 @@ export function TripPoster({ trip, here, photo = true, className }: { trip: Trip
   const box = side ? { x: wordW + 16, y: 0, w: w - wordW - 24, h } : { x: 0, y: 0, w, h: h - band };
   const frame = useMemo(() => frameOf(trip, box.x, box.y, box.w, box.h), [trip, box.x, box.y, box.w, box.h]);
   const backdrop = photo ? trip.photo : undefined;
-  const geo = useGeography(frame.span < REGIONAL_DEG && !backdrop, !backdrop);
+  const geo = useGeography(frame.span < REGIONAL_DEG);
   const land = useMemo(() => linesPath(frame, geo.coast, w, h, true), [frame, geo.coast, w, h]);
   const coast = useMemo(() => linesPath(frame, geo.coast, w, h), [frame, geo.coast, w, h]);
   const borders = useMemo(() => linesPath(frame, geo.borders, w, h), [frame, geo.borders, w, h]);
@@ -184,13 +183,13 @@ export function TripPoster({ trip, here, photo = true, className }: { trip: Trip
       )}
       <svg data-slot="trip-poster" viewBox={`0 0 ${w} ${h}`} width={w} height={h} role="img" aria-label={`Map of the trip, ${trip.from} to ${trip.to}`} className="relative block overflow-hidden">
         {word && (
-          <text x={WORD_PAD - Math.round(size * 0.05)} y={h - WORD_PAD} fontSize={size} style={{ fill: backdrop ? "color-mix(in srgb, var(--foreground) 18%, transparent)" : tone(16), fontFamily: "var(--font-display)", fontWeight: 800, letterSpacing: "-0.03em" }}>
+          <text x={WORD_PAD - Math.round(size * 0.05)} y={h - WORD_PAD} fontSize={size} style={{ fill: backdrop ? "color-mix(in srgb, var(--foreground) 36%, transparent)" : tone(22), fontFamily: "var(--font-display)", fontWeight: 800, letterSpacing: "-0.03em" }}>
             {word}
           </text>
         )}
-        {land && <path d={land} style={{ fill: tone(6) }} stroke="none" />}
-        {borders && <path d={borders} fill="none" style={{ stroke: tone(22) }} strokeWidth={0.75} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />}
-        {coast && <path d={coast} fill="none" style={{ stroke: tone(34) }} strokeWidth={1} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />}
+        {land && <path d={land} style={{ fill: backdrop ? "color-mix(in srgb, var(--accent) 46%, transparent)" : tone(6) }} stroke="none" />}
+        {borders && <path d={borders} fill="none" style={{ stroke: backdrop ? "color-mix(in srgb, var(--foreground) 16%, transparent)" : tone(22) }} strokeWidth={0.75} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />}
+        {coast && <path d={coast} fill="none" style={{ stroke: backdrop ? "color-mix(in srgb, var(--foreground) 30%, transparent)" : tone(34) }} strokeWidth={1} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />}
         {trip.legPaths.map((leg, i) => {
           const pts = Array.from({ length: leg.points.length / 2 }, (_, k) => `${frame.x(leg.points[k * 2]!).toFixed(1)},${frame.y(leg.points[k * 2 + 1]!).toFixed(1)}`).join(" ");
           return <polyline key={i} points={pts} fill="none" stroke={ink} strokeWidth={backdrop ? 1.75 : 1.5} strokeDasharray={DASH[leg.mode]} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />;
