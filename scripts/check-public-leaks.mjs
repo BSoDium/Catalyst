@@ -64,7 +64,7 @@ for (const [label, rel] of targets) {
     // A trip's own public page is meant to be public (`routes[].url`, docs/api-contract.md): that one shape, an https address on the trip site with plain path
     // characters, is not private vocabulary (lib/trip-pages.mjs). In the projection it is accepted as the value of a `url` key; in a bundle, which compiles the
     // projection in, as the bare address. Anything else that names the site, in the projection or in a bundle, still fails.
-    text = neutralizeTripPages(text, label === "published projection" ? "projection" : "bundle");
+    text = neutralizeTripPages(text, label === "published projection" ? "projection" : label === "browser bundle" && file.endsWith(".html") ? "page" : "bundle");
     if (label !== "published projection") bundleFiles.push({ file: relative(root, file), text });
     for (const word of FORBIDDEN) {
       if (text.includes(word)) failures.push(`${label}: "${word}" found in ${relative(root, file)}`);

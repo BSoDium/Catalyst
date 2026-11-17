@@ -15,7 +15,15 @@ const IN_PROJECTION = new RegExp(`"url": "${TRIP_PAGE}"`, "g");
 // (It must END there: no query, fragment or further path after it, or it is a different address and fails.)
 const IN_BUNDLE = new RegExp(`${TRIP_PAGE}(?![A-Za-z0-9._?#/%=&~-])`, "g");
 
-/** `text` with the accepted trip-page addresses replaced, so that the vocabulary scan does not see them. `kind` is "projection" or "bundle". */
+/**
+ * A PRERENDERED PAGE (`build/client/**\/*.html`) also says where the link goes, in words: the label `tripLinkLabel` derives from the address ("See the whole trip on
+ * polarsteps.com", app/lib/journeys.ts). That sentence, whole and ending where the element does, is the one other accepted spelling; a bare "polarsteps.com" elsewhere fails.
+ */
+const IN_PAGE_LABEL = /See the whole trip on polarsteps\.com(?=<)/g;
+
+/** `text` with the accepted trip-page addresses replaced, so that the vocabulary scan does not see them. `kind` is "projection", "bundle" or "page" (a bundle, and a prerendered page's label). */
 export function neutralizeTripPages(text, kind) {
-  return text.replace(kind === "projection" ? IN_PROJECTION : IN_BUNDLE, kind === "projection" ? '"url": "<trip page>"' : "<trip page>");
+  if (kind === "projection") return text.replace(IN_PROJECTION, '"url": "<trip page>"');
+  const bare = text.replace(IN_BUNDLE, "<trip page>");
+  return kind === "page" ? bare.replace(IN_PAGE_LABEL, "<trip link label>") : bare;
 }

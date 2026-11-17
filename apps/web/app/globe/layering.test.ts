@@ -89,7 +89,9 @@ describe("globe layering", () => {
       const from = relative(appDir, file).split("\\").join("/");
       if (inside(from, "globe") || /\.test\.tsx?$/.test(from)) continue;
       for (const spec of specifiers(readFileSync(file, "utf8"))) {
-        if (spec.startsWith("~/globe/") && !seam.has(spec.slice(2))) reaching.push(`${from} -> ${spec}`);
+        // (a relative path into globe/ is the same reach: `lib/country.ts` has one, so `react-router.config.ts` can load it without the `~` alias)
+        const alias = spec.startsWith(".") ? `~/${posix.join(posix.dirname(from), spec)}` : spec;
+        if (alias.startsWith("~/globe/") && !seam.has(alias.slice(2))) reaching.push(`${from} -> ${alias}`);
       }
     }
     expect(reaching.sort()).toEqual([

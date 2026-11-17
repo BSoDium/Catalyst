@@ -1,6 +1,7 @@
 import type { Config } from "@react-router/dev/config";
 import { vercelPreset } from "@vercel/react-router/vite";
 import { loadProjection } from "@catalyst/published/dev";
+import { prerenderPaths } from "./app/lib/prerender-paths";
 
 export default {
   ssr: true,
@@ -12,8 +13,8 @@ export default {
     v8_passThroughRequests: true,
     v8_trailingSlashAwareDataRequests: true,
   },
-  // The pages served from the CDN as static files, with no function: the bare entry paths of the published projection (docs/web-architecture.md, "Prerendered pages").
-  prerender: async () => [...loadProjection("published").articles.map((a) => `/articles/${a.slug}`), "/globe-routes.json"],
+  // The pages served from the CDN as static files, with no function: the bare paths of the published projection (`lib/prerender-paths.ts`; docs/web-architecture.md, "Prerendered pages").
+  prerender: async () => prerenderPaths(loadProjection("published")),
   // Vercel sets VERCEL=1 during builds. Locally we keep the standard
   // `build/server/index.js` layout so `pnpm start` (react-router-serve) works.
   presets: process.env.VERCEL ? [vercelPreset()] : [],
