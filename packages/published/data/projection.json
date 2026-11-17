@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "dataVersion": {
-    "commit": "8d9f9071780d36bfd6702da40a10ee5e87ae3686",
-    "date": "2026-11-16"
+    "commit": "f155273a4c8a3ef22174cbb9693a9c07e575ec9d",
+    "date": "2026-11-17"
   },
   "places": [
     {
@@ -5189,6 +5189,7 @@
         "end": "2025-10"
       },
       "url": "https://www.polarsteps.com/bsodium/18932928-the-transatlantic-pathway",
+      "cover": "bow-of-a-boat",
       "stops": [
         "toulouse",
         "latour-de-carol",
