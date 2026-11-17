@@ -22,12 +22,16 @@ describe("the trip carousel's geometry", () => {
     expect(growth(boxes[0]!.w, wide)).toBe(1);
     expect(growth(boxes[1]!.w, wide)).toBeLessThan(0.7);
   });
-  it("stops where the LAST card is the large one, on a wide row and on a phone", () => {
+  it("stops where the LAST card is the large one on a phone, and where the last two are the large and the medium on a wide row", () => {
     for (const k of [wide, narrow]) {
-      const boxes = tripLayout(lastTrip(3), 3, k);
-      expect(boxes[2]!.w).toBe(k.large);
+      const boxes = tripLayout(lastTrip(3, k), 3, k);
+      expect(boxes[2]!.w).toBe(k === narrow ? k.large : k.medium);
       expect(boxes[2]!.x + boxes[2]!.w).toBeLessThanOrEqual(k.width + 1);
     }
+    // (a very wide row fills with the large and the medium card: the medium one is never wider than the large one, so the first card is the one in front at rest)
+    const huge = tripKeylines(1256);
+    expect(huge.medium).toBeLessThanOrEqual(huge.large);
+    expect(growth(tripLayout(0, 3, huge)[0]!.w, huge)).toBe(1);
   });
   it("a card grows as the row moves to it and shrinks as it moves on, and the scroll step is the photographs'", () => {
     const at = (t: number) => tripLayout(t, 3, wide).map((b) => b.w);

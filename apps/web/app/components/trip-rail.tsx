@@ -95,7 +95,7 @@ export function TripRail({ slides, names }: { slides: ReactNode[]; names: string
     const el = scroller.current;
     if (!el || !geo) return;
     const reduced = typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const left = Math.min(Math.max(index, 0), lastTrip(count)) * geo.step;
+    const left = Math.min(Math.max(index, 0), lastTrip(count, geo.k)) * geo.step;
     if (reduced) {
       el.scrollTo({ left, behavior: "auto" });
       return;
@@ -121,7 +121,7 @@ export function TripRail({ slides, names }: { slides: ReactNode[]; names: string
         style={{ height: geo && rowHeight ? rowHeight : undefined }}
       >
         {geo ? (
-          <div className="relative h-full" style={{ width: lastTrip(count) * geo.step + geo.k.width }}>
+          <div className="relative h-full" style={{ width: lastTrip(count, geo.k) * geo.step + geo.k.width }}>
             {slides.map((_, i) => (
               <span key={i} aria-hidden="true" className="absolute top-0 size-px snap-start" style={{ left: i * geo.step }} />
             ))}
