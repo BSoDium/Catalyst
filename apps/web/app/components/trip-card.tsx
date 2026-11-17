@@ -37,10 +37,10 @@ function Hop({ hop, side, lead }: { hop: TripHop; side: "before" | "after"; lead
 }
 
 /**
- * The trip this step belongs to, as a card (docs/step-page.md, #510): a poster across the top (the trip's one word in giant type, the route over it with this
- * step ringed), the distance as the big figure, then in descending weight the trip's own name, one mono line of facts (stops, countries, when), where this
- * step falls in it with the stop before and after, and last the trip's own page when it has one. It is the way into the trip, not the page's subject. A place a
- * trip passes several times says so and lists no hop (each visit has its own).
+ * The trip this step belongs to, as a card (docs/step-page.md, #510): a poster across the top (the trip's one word in giant type, the route with this step ringed),
+ * the figures (distance, stops, countries: the value bold, its unit quiet), the trip's own name and dates, and last where this step falls in it with the stop before
+ * and after, and, to the right of them, a button to the trip's own page when it has one. It is the way into the trip, not the page's subject. A place a trip passes
+ * several times says so and lists no hop (each visit has its own).
  */
 export function TripCard({ trip, here, lived = false, photo = true }: { trip: Trip; here: string; lived?: boolean; photo?: boolean }) {
   const single = trip.visits.length === 1 ? trip.visits[0]! : null;
@@ -58,30 +58,30 @@ export function TripCard({ trip, here, lived = false, photo = true }: { trip: Tr
           <h3 className="m-0 text-lg font-semibold tracking-tight text-balance">{trip.title}</h3>
           {trip.dates?.text && <p className="m-0 ds-meta">{trip.dates.text}</p>}
         </header>
-        <div className="flex flex-col gap-1.5">
-          <p className="m-0 text-sm font-medium">{where}</p>
-          {single && (single.previous || single.next) && (
-            <ul className="m-0 flex list-none flex-col gap-1 p-0">
-              {single.previous && <Hop hop={single.previous} side="before" lead="Arrived from" />}
-              {single.next && <Hop hop={single.next} side="after" lead="Left for" />}
-            </ul>
+        <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
+          <div className="flex min-w-0 flex-col gap-1.5">
+            <p className="m-0 text-sm font-medium">{where}</p>
+            {single && (single.previous || single.next) && (
+              <ul className="m-0 flex list-none flex-col gap-1 p-0">
+                {single.previous && <Hop hop={single.previous} side="before" lead="Arrived from" />}
+                {single.next && <Hop hop={single.next} side="after" lead="Left for" />}
+              </ul>
+            )}
+          </div>
+          {trip.url && (
+            <a
+              href={trip.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              data-slot="trip-link"
+              className="ml-auto inline-flex min-h-11 items-center gap-2 bg-foreground px-4 text-sm font-medium text-background no-underline hover:bg-[color-mix(in_srgb,var(--foreground)_82%,var(--background))]"
+            >
+              {tripLinkLabel(trip.url)}
+              <Icon name="arrow-up-right" size="inline" />
+            </a>
           )}
         </div>
       </div>
-      {trip.url && (
-        <div className="flex justify-end px-4 pb-4">
-          <a
-            href={trip.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            data-slot="trip-link"
-            className="inline-flex min-h-11 items-center gap-2 bg-foreground px-4 text-sm font-medium text-background no-underline hover:bg-[color-mix(in_srgb,var(--foreground)_82%,var(--background))]"
-          >
-            {tripLinkLabel(trip.url)}
-            <Icon name="arrow-up-right" size="inline" />
-          </a>
-        </div>
-      )}
     </article>
   );
 }

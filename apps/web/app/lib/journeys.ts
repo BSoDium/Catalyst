@@ -109,6 +109,8 @@ export interface Trip {
   url?: string;
   /** A photograph taken at one of the trip's stops (the most recent that is not sensitive), the poster's backdrop when it is shown with one. */
   photo?: Pick<PublishedCover, "src" | "width" | "small">;
+  /** The stops worth naming on the poster besides the start, the end and this place (`pickHighlights`): up to three with the most entries, well apart. Slugs. */
+  highlights: string[];
   /** The one word the card sets in giant type (`tripWord` of the title). */
   word: string;
   /** How many countries the stops are in (those the places name): 0 when none is known. */
@@ -118,6 +120,39 @@ export interface Trip {
   legPaths: Array<{ mode: LegMode; points: number[] }>;
   visits: TripVisit[];
 }
+
+/** How many entries (projects, articles, artworks, poems, photographs) are linked to a place: what makes it worth a name on a poster. */
+function weightOf(projection: PublishedProjection, slug: string): number {
+  return [projection.projects, projection.articles, projection.artworks, projection.poems, projection.photographs].reduce((n, items) => n + items.filter((i) => i.placeSlugs.includes(slug)).length, 0);
+}
+
+/**
+ * The stops a poster names besides the ones it always names (`named`: the start, the end, the place the panel is about): the ones with the most linked entries
+ * (a stop with none is never named: nothing says it matters), the earlier on a tie, each at least `SEPARATION` of the trip's extent from every name already
+ * chosen so the labels do not pile up. At most `max`.
+ */
+export function pickHighlights(stops: Array<{ slug: string; lat: number; lon: number; weight: number }>, named: string[], max = 3): string[] {
+  if (stops.length === 0) return [];
+  const lats = stops.map((s) => s.lat);
+  const lons = stops.map((s) => s.lon);
+  const k = Math.cos((((Math.min(...lats) + Math.max(...lats)) / 2) * Math.PI) / 180);
+  const extent = Math.max((Math.max(...lons) - Math.min(...lons)) * k, Math.max(...lats) - Math.min(...lats), 1e-6);
+  const dist = (a: { lat: number; lon: number }, b: { lat: number; lon: number }) => Math.hypot((a.lon - b.lon) * k, a.lat - b.lat) / extent;
+  const chosen = stops.filter((s) => named.includes(s.slug));
+  const out: string[] = [];
+  const byWeight = stops.map((s, i) => ({ s, i })).filter(({ s }) => s.weight > 0).sort((a, b) => b.s.weight - a.s.weight || a.i - b.i);
+  for (const { s } of byWeight) {
+    if (out.length >= max) break;
+    if (out.includes(s.slug) || named.includes(s.slug)) continue;
+    if (chosen.some((c) => dist(c, s) < SEPARATION)) continue;
+    out.push(s.slug);
+    chosen.push(s);
+  }
+  return out;
+}
+
+/** How far apart (as a share of the trip's larger side) two named stops are at least. */
+const SEPARATION = 0.16;
 
 /** Words that name nothing (articles, prepositions, "trip"): never the giant word. */
 const WORD_SKIP = new Set(["a", "an", "the", "of", "to", "in", "on", "at", "and", "for", "from", "with", "by", "week", "trip", "journey"]);
@@ -204,6 +239,10 @@ export function tripsOf(projection: PublishedProjection, slug: string, nameOf: (
         const cover = projection.photographs.filter((p) => !p.sensitive && p.placeSlugs.some((s) => stops.has(s))).sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""))[0]?.cover;
         return cover ? { photo: { src: cover.src, width: cover.width, ...(cover.small ? { small: cover.small } : {}) } } : {};
       })(),
+      highlights: pickHighlights(
+        places.map((p) => ({ slug: p!.slug, lat: p!.coordinates.lat, lon: p!.coordinates.lon, weight: weightOf(projection, p!.slug) })),
+        [route.stops[0]!, route.stops[route.stops.length - 1]!, slug],
+      ),
       word: tripWord(route.title),
       countries: new Set(places.map((p) => p!.countryCode).filter(Boolean)).size,
       stopPoints: places.map((p) => ({ slug: p!.slug, name: nameOf(p!), lon: p!.coordinates.lon, lat: p!.coordinates.lat })),

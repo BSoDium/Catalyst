@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { EMPTY_PROJECTION, encodePolyline5, type PublishedProjection } from "@catalyst/schemas";
-import { hopDetail, journeyText, journeysOf, roundKm, tripLinkLabel, tripsOf, tripWord } from "./journeys";
+import { hopDetail, journeyText, journeysOf, roundKm, pickHighlights, tripLinkLabel, tripsOf, tripWord } from "./journeys";
 
 const place = (slug: string, name: string, lat: number, lon: number, countryCode?: string) => ({
   slug, name, coordinates: { lat, lon }, labelPriority: 0, body: [], images: [], related: [], ...(countryCode ? { countryCode } : {}),
@@ -114,5 +114,18 @@ describe("tripWord: the one word of a trip's card, in giant type", () => {
   it("falls back to the longest word when every word is a small one, and to nothing for an empty title", () => {
     expect(tripWord("A Trip")).toBe("Trip");
     expect(tripWord("")).toBe("");
+  });
+});
+
+describe("pickHighlights: the stops a poster names besides its start, end and here", () => {
+  const stop = (slug: string, lon: number, weight: number) => ({ slug, lat: 0, lon, weight });
+  const stops = [stop("a", 0, 0), stop("b", 30, 5), stop("c", 31, 9), stop("d", 55, 3), stop("e", 80, 7), stop("f", 100, 0)];
+  it("takes the stops with the most entries, each well apart from the names already chosen", () => {
+    // c (9) first; b (5) is too near c; e (7) is next; d (3) is far enough from both
+    expect(pickHighlights(stops, ["a", "f"])).toEqual(["c", "e", "d"]);
+  });
+  it("never names a stop without entries, nor one that is always named, and at most `max`", () => {
+    expect(pickHighlights(stops, ["a", "c", "f"], 1)).toEqual(["e"]);
+    expect(pickHighlights([stop("a", 0, 0), stop("b", 50, 0)], [])).toEqual([]);
   });
 });

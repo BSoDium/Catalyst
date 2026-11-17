@@ -14,6 +14,7 @@ const trip: Trip = {
   from: "A",
   to: "A",
   dates: null,
+  highlights: [],
   word: "loop",
   countries: 2,
   stopPoints: [

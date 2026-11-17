@@ -12,6 +12,8 @@ const ASPECT = 0.83;
 /** The poster is never taller than this (CSS px): on a wide panel it stretches in width and not in height (owner, #510). */
 const MAX_H = 320;
 const PAD = 26;
+/** The space round the giant word: the same under it and to its left (owner, #510). */
+const WORD_PAD = 16;
 
 interface Frame {
   x: (lon: number) => number;
@@ -27,8 +29,8 @@ interface Frame {
   span: number;
 }
 
-/** An equirectangular frame (longitudes shrunk by cos of the middle latitude) that fits the trip in w x h with PAD around it, centred. */
-function frameOf(trip: Trip, w: number, h: number): Frame {
+/** An equirectangular frame (longitudes shrunk by cos of the middle latitude) that fits the trip in the box `bw` x `bh` at (`bx`, `by`) with PAD around it, centred in it. */
+function frameOf(trip: Trip, bx: number, by: number, bw: number, bh: number): Frame {
   const lons = trip.legPaths.flatMap((l) => l.points.filter((_, i) => i % 2 === 0)).concat(trip.stopPoints.map((s) => s.lon));
   const lats = trip.legPaths.flatMap((l) => l.points.filter((_, i) => i % 2 === 1)).concat(trip.stopPoints.map((s) => s.lat));
   let lon0 = Math.min(...lons);
@@ -42,14 +44,14 @@ function frameOf(trip: Trip, w: number, h: number): Frame {
   if (lat1 - lat0 < minSpan) { const c = (lat0 + lat1) / 2; lat0 = c - minSpan / 2; lat1 = c + minSpan / 2; }
   const spanX = (lon1 - lon0) * k;
   const spanY = lat1 - lat0;
-  const scale = Math.max(0.0001, Math.min((w - 2 * PAD) / spanX, (h - 2 * PAD) / spanY));
-  const offX = (w - spanX * scale) / 2;
-  const offY = (h - spanY * scale) / 2;
+  const scale = Math.max(0.0001, Math.min((bw - 2 * PAD) / spanX, (bh - 2 * PAD) / spanY));
+  const offX = bx + (bw - spanX * scale) / 2;
+  const offY = by + (bh - spanY * scale) / 2;
   return {
     x: (lon) => offX + (lon - lon0) * k * scale,
-    y: (lat) => h - offY - (lat - lat0) * scale,
+    y: (lat) => by + bh - (offY - by) - (lat - lat0) * scale,
     lonAt: (x) => lon0 + (x - offX) / (k * scale),
-    latAt: (y) => lat0 + (h - offY - y) / scale,
+    latAt: (y) => lat0 + (by + bh - (offY - by) - y) / scale,
     lon0,
     lon1,
     lat0,
@@ -152,16 +154,20 @@ export function TripPoster({ trip, here, photo = true, className }: { trip: Trip
   const word = trip.word.toUpperCase();
   const size = wordSize(word.length, w, h);
   // The word's band under the route: its capital letters' height and a margin; none without a word. The land is not clipped to it.
-  const band = word ? Math.round(size * 0.74) + 12 : 0;
-  const frame = useMemo(() => frameOf(trip, w, h - band), [trip, w, h, band]);
+  const band = word ? Math.round(size * 0.74) + 2 * WORD_PAD : 0;
+  // Where the route goes: above the word, across the width; or, when the poster is wide enough that the room to the right of the word can hold the route at the full height, there.
+  const wordW = Math.round(0.62 * size * word.length) + WORD_PAD;
+  const side = word !== "" && w - wordW - 24 >= h * 0.9;
+  const box = side ? { x: wordW + 16, y: 0, w: w - wordW - 24, h } : { x: 0, y: 0, w, h: h - band };
+  const frame = useMemo(() => frameOf(trip, box.x, box.y, box.w, box.h), [trip, box.x, box.y, box.w, box.h]);
   const backdrop = photo ? trip.photo : undefined;
   const geo = useGeography(frame.span < REGIONAL_DEG && !backdrop, !backdrop);
   const land = useMemo(() => linesPath(frame, geo.coast, w, h, true), [frame, geo.coast, w, h]);
   const coast = useMemo(() => linesPath(frame, geo.coast, w, h), [frame, geo.coast, w, h]);
   const borders = useMemo(() => linesPath(frame, geo.borders, w, h), [frame, geo.borders, w, h]);
   const current = trip.stopPoints.find((s) => s.slug === here);
-  // The named places: the start, the end (one label when they are the same place) and this one.
-  const named = [trip.stopPoints[0], trip.stopPoints[trip.stopPoints.length - 1], current]
+  // The named places: the start, the end (one label when they are the same place), this one and the highlights (`Trip.highlights`).
+  const named = [trip.stopPoints[0], trip.stopPoints[trip.stopPoints.length - 1], current, ...trip.highlights.map((slug) => trip.stopPoints.find((s) => s.slug === slug))]
     .filter((s): s is Trip["stopPoints"][number] => Boolean(s))
     .filter((s, i, all) => all.findIndex((o) => o.slug === s.slug) === i);
   const tone = (share: number) => `color-mix(in srgb, var(--foreground) ${share}%, var(--accent))`;
@@ -178,7 +184,7 @@ export function TripPoster({ trip, here, photo = true, className }: { trip: Trip
       )}
       <svg data-slot="trip-poster" viewBox={`0 0 ${w} ${h}`} width={w} height={h} role="img" aria-label={`Map of the trip, ${trip.from} to ${trip.to}`} className="relative block overflow-hidden">
         {word && (
-          <text x={-Math.round(size * 0.05)} y={h} fontSize={size} style={{ fill: backdrop ? "color-mix(in srgb, var(--foreground) 18%, transparent)" : tone(16), fontFamily: "var(--font-display)", fontWeight: 800, letterSpacing: "-0.03em" }}>
+          <text x={WORD_PAD - Math.round(size * 0.05)} y={h - WORD_PAD} fontSize={size} style={{ fill: backdrop ? "color-mix(in srgb, var(--foreground) 18%, transparent)" : tone(16), fontFamily: "var(--font-display)", fontWeight: 800, letterSpacing: "-0.03em" }}>
             {word}
           </text>
         )}
