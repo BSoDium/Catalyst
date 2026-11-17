@@ -68,6 +68,8 @@ export function TripRail({ slides, names }: { slides: ReactNode[]; names: string
       li.style.width = `${off ? 0 : box.w}px`;
       li.style.transform = `translate3d(${box.x}px,0,0)`;
       li.style.setProperty("--g", growth(box.w, geo.k).toFixed(2));
+      // (a card nearly gone keeps no border: two pixels of it would be a line against the panel's edge)
+      li.style.setProperty("--edge", Math.min(1, Math.max(0, (box.w - 4) / 24)).toFixed(2));
     });
     const max = el.scrollWidth - el.clientWidth;
     const next = { start: el.scrollLeft > 2, end: el.scrollLeft < max - 2 };
@@ -133,7 +135,7 @@ export function TripRail({ slides, names }: { slides: ReactNode[]; names: string
                     role="group"
                     aria-roledescription="slide"
                     aria-label={`${i + 1} of ${count}: ${names[i] ?? ""}`}
-                    className="trip-slide absolute top-0 left-0 h-full overflow-hidden border border-border [contain:layout_paint]"
+                    className="trip-slide absolute top-0 left-0 h-full overflow-hidden border [border-color:color-mix(in_srgb,var(--border)_calc(var(--edge,1)*100%),transparent)] [contain:layout_paint]"
                     style={{ width: 0 }}
                     onFocus={(e) => {
                       // (focus must not scroll the card inside its own box)
