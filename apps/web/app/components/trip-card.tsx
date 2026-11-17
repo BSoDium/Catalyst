@@ -24,7 +24,7 @@ const LINK_CLASS = "inline-flex min-h-11 items-center gap-2 bg-foreground px-4 t
  * do not fit side by side the button goes on a line of its own and takes the full width of it. (Whether they fit is measured: the stops' natural width and a hidden copy of the
  * button's, against the row's: a button that is already full width cannot say how wide it would be.)
  */
-function TripFooter({ trip, where, single }: { trip: Trip; where: string; single: Trip["visits"][number] | null }) {
+function TripFooter({ trip, where, hops }: { trip: Trip; where: string; hops: { previous: TripHop | null; next: TripHop | null } | null }) {
   const row = useRef<HTMLDivElement>(null);
   const stops = useRef<HTMLDivElement>(null);
   const ghost = useRef<HTMLSpanElement>(null);
@@ -45,10 +45,10 @@ function TripFooter({ trip, where, single }: { trip: Trip; where: string; single
     <div ref={row} data-slot="trip-footer" className="relative mt-auto flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
       <div ref={stops} className="flex max-w-full min-w-0 flex-col gap-1.5">
         <p className="m-0 text-sm font-medium">{where}</p>
-        {single && (single.previous || single.next) && (
+        {hops && (hops.previous || hops.next) && (
           <ul className="m-0 flex list-none flex-col gap-1 p-0">
-            {single.previous && <Hop hop={single.previous} side="before" lead="Arrived from" />}
-            {single.next && <Hop hop={single.next} side="after" lead="Left for" />}
+            {hops.previous && <Hop hop={hops.previous} side="before" lead="Arrived from" />}
+            {hops.next && <Hop hop={hops.next} side="after" lead="Left for" />}
           </ul>
         )}
       </div>
@@ -90,11 +90,13 @@ function Hop({ hop, side, lead }: { hop: TripHop; side: "before" | "after"; lead
  * and after, and, to the right of them, a button to the trip's own page when it has one. It is the way into the trip, not the page's subject. A place a trip passes
  * several times says so and lists no hop (each visit has its own).
  */
-export function TripCard({ trip, here, lived = false, photo = true }: { trip: Trip; here: string; lived?: boolean; photo?: boolean }) {
+export function TripCard({ trip, here, lived = false, photo = true, position }: { trip: Trip; here: string; lived?: boolean; photo?: boolean; position?: string }) {
   const single = trip.visits.length === 1 ? trip.visits[0]! : null;
+  // A home base is visited several times, but the trip still leaves it and comes back to it: the stop it left for the first time, and the one it came back from the last.
+  const ends = !single && lived ? { previous: [...trip.visits].reverse().find((v) => v.previous)?.previous ?? null, next: trip.visits.find((v) => v.next)?.next ?? null } : null;
   const where = single ? (single.previous === null ? "The trip starts here" : single.next === null ? "The trip ends here" : `Stop ${single.position} of ${trip.stops}`) : lived ? "Home base on this trip" : `Visited ${trip.visits.length} times`; // (a place the owner has lived in is not visited: no count, #584)
   return (
-    <article data-slot="trip-card" className="relative isolate flex flex-col overflow-hidden border border-border">
+    <article data-slot="trip-card" className="relative isolate flex flex-col overflow-hidden">
       <TripPoster trip={trip} here={here} photo={photo} />
       <div className="flex grow flex-col gap-4 p-4">
         <div data-slot="trip-figures" className="flex flex-wrap items-baseline gap-x-6 gap-y-2">
@@ -103,24 +105,30 @@ export function TripCard({ trip, here, lived = false, photo = true }: { trip: Tr
           {trip.countries > 0 && <Kpi value={trip.countries} unit={trip.countries === 1 ? "country" : "countries"} />}
         </div>
         <header className="flex flex-col gap-1">
-          <h3 data-slot="trip-title" className="m-0 font-display text-lg tracking-tight text-balance">{trip.title}</h3>
+          <div className="flex items-baseline justify-between gap-3">
+            <h3 data-slot="trip-title" className="m-0 font-display text-lg tracking-tight text-balance">{trip.title}</h3>
+            {position && (
+              <span aria-hidden="true" data-slot="trip-position" className="ds-meta shrink-0">
+                {position}
+              </span>
+            )}
+          </div>
           {trip.dates?.text && <p data-slot="trip-dates" className="m-0 ds-meta">{trip.dates.text}</p>}
         </header>
-        <TripFooter trip={trip} where={where} single={single} />
+        <TripFooter trip={trip} where={where} hops={single ?? ends} />
       </div>
     </article>
   );
 }
 
 /**
- * The trips of the step. One is a card under its heading. Two or more are a carousel in the photographs' way (`TripRail`, #510): the card in front with the edge of the next, the cards changing in
- * width as the row is scrolled, the type of the one in front heavy and the others' thin and faded. The heading carries the count and the position ("1 / 3", said aloud); the arrows are the photographs'.
+ * The trips of the step. One is a card under its heading. Two or more are a carousel in the photographs' way (`TripRail`, #510): the card in front with the edge of the next, the cards sliding out of view
+ * as the row is scrolled, the type of the one in front heavy and the others' thin and faded. The heading carries the count and the position ("1 / 3", said aloud); the arrows are the photographs'.
  */
 export function TripCards({ trips, here, lived = false }: { trips: Trip[]; here: string; lived?: boolean }) {
   // `?poster=flat` shows the flat posters (to compare with the photographs: #510).
   const photo = new URLSearchParams(useLocation().search).get("poster") !== "flat";
-  const [index, setIndex] = useState(0);
-  const many = trips.length > 1;
+    const many = trips.length > 1;
   const headingId = `trips-${here}`;
   return (
     <section data-slot="trip-cards" aria-labelledby={headingId} className="@container flex flex-col gap-4">
@@ -132,16 +140,18 @@ export function TripCards({ trips, here, lived = false }: { trips: Trip[]; here:
           </h2>
           {many && <span className="place-group-count">{trips.length}</span>}
         </div>
-        {many && (
-          <span aria-live="polite" className="ds-meta">
-            {String(index + 1).padStart(2, "0")} / {String(trips.length).padStart(2, "0")}
-          </span>
-        )}
       </header>
       {many ? (
-        <TripRail onIndex={setIndex} names={trips.map((t) => t.title)} slides={trips.map((trip) => <TripCard key={trip.id} trip={trip} here={here} lived={lived} photo={photo} />)} />
+        <TripRail
+          names={trips.map((t) => t.title)}
+          slides={trips.map((trip, i) => (
+            <TripCard key={trip.id} trip={trip} here={here} lived={lived} photo={photo} position={`${String(i + 1).padStart(2, "0")} / ${String(trips.length).padStart(2, "0")}`} />
+          ))}
+        />
       ) : (
-        <TripCard trip={trips[0]!} here={here} lived={lived} photo={photo} />
+        <div className="border border-border">
+          <TripCard trip={trips[0]!} here={here} lived={lived} photo={photo} />
+        </div>
       )}
     </section>
   );

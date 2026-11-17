@@ -14,7 +14,7 @@ import { lastTrip, tripKeylines, tripLayout, tripStep } from "~/lib/trip-carouse
  *
  * Every card is as tall as the tallest (measured at the width they are laid out at). Until the browser has measured the row (the server's page, no scripts) the cards are a plain column.
  */
-export function TripRail({ slides, names, onIndex }: { slides: ReactNode[]; names: string[]; onIndex?: (index: number) => void }) {
+export function TripRail({ slides, names }: { slides: ReactNode[]; names: string[] }) {
   const count = slides.length;
   const scroller = useRef<HTMLDivElement>(null);
   const layer = useRef<HTMLUListElement>(null);
@@ -22,7 +22,6 @@ export function TripRail({ slides, names, onIndex }: { slides: ReactNode[]; name
   const [rowHeight, setRowHeight] = useState(0);
   const [edges, setEdges] = useState({ start: false, end: true });
   const frame = useRef(0);
-  const indexRef = useRef(0);
 
   // The row's width (its height is the tallest card's).
   useLayoutEffect(() => {
@@ -69,16 +68,13 @@ export function TripRail({ slides, names, onIndex }: { slides: ReactNode[]; name
       li.style.width = `${off ? 0 : box.w}px`;
       li.style.transform = `translate3d(${box.x}px,0,0)`;
       li.style.setProperty("--g", growth(box.w, geo.k).toFixed(2));
+      // (a card nearly gone keeps no border: two pixels of it would be a line against the panel's edge)
+      li.style.setProperty("--edge", Math.min(1, Math.max(0, (box.w - 4) / 24)).toFixed(2));
     });
     const max = el.scrollWidth - el.clientWidth;
     const next = { start: el.scrollLeft > 2, end: el.scrollLeft < max - 2 };
     setEdges((prev) => (prev.start === next.start && prev.end === next.end ? prev : next));
-    const index = Math.max(0, Math.min(lastTrip(count), Math.round(t)));
-    if (index !== indexRef.current) {
-      indexRef.current = index;
-      onIndex?.(index);
-    }
-  }, [geo, count, onIndex]);
+  }, [geo, count]);
 
   useLayoutEffect(() => {
     place();
@@ -101,7 +97,20 @@ export function TripRail({ slides, names, onIndex }: { slides: ReactNode[]; name
     const el = scroller.current;
     if (!el || !geo) return;
     const reduced = typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    el.scrollTo({ left: Math.min(Math.max(index, 0), lastTrip(count)) * geo.step, behavior: reduced ? "auto" : "smooth" });
+    const left = Math.min(Math.max(index, 0), lastTrip(count, geo.k)) * geo.step;
+    if (reduced) {
+      el.scrollTo({ left, behavior: "auto" });
+      return;
+    }
+    // (a smooth scroll is cut short by the snapping, which pulls it back to the nearest point: snapping is let go of for the length of the move, and comes back when the scroll ends)
+    el.style.scrollSnapType = "none";
+    const restore = () => {
+      el.style.scrollSnapType = "";
+      el.removeEventListener("scrollend", restore);
+    };
+    el.addEventListener("scrollend", restore);
+    window.setTimeout(restore, 900);
+    el.scrollTo({ left, behavior: "smooth" });
   };
   const position = () => (geo && scroller.current ? scroller.current.scrollLeft / geo.step : 0);
 
@@ -114,7 +123,7 @@ export function TripRail({ slides, names, onIndex }: { slides: ReactNode[]; name
         style={{ height: geo && rowHeight ? rowHeight : undefined }}
       >
         {geo ? (
-          <div className="relative h-full" style={{ width: lastTrip(count) * geo.step + geo.k.width }}>
+          <div className="relative h-full" style={{ width: lastTrip(count, geo.k) * geo.step + geo.k.width }}>
             {slides.map((_, i) => (
               <span key={i} aria-hidden="true" className="absolute top-0 size-px snap-start" style={{ left: i * geo.step }} />
             ))}
@@ -126,8 +135,8 @@ export function TripRail({ slides, names, onIndex }: { slides: ReactNode[]; name
                     role="group"
                     aria-roledescription="slide"
                     aria-label={`${i + 1} of ${count}: ${names[i] ?? ""}`}
-                    className="trip-slide absolute top-0 left-0 h-full overflow-hidden [contain:layout_paint]"
-                    style={{ width: 0 }}
+                    className="trip-slide absolute top-0 left-0 h-full overflow-hidden border [border-color:color-mix(in_srgb,var(--border)_calc(var(--edge,1)*100%),transparent)] [contain:layout_paint]"
+                    style={{ width: 0, ["--edge" as string]: 0 }}
                     onFocus={(e) => {
                       // (focus must not scroll the card inside its own box)
                       e.currentTarget.scrollLeft = 0;

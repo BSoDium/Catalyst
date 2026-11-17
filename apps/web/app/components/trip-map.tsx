@@ -148,6 +148,23 @@ function useCoast(regional: boolean) {
   return coast;
 }
 
+/** The country borders, for a trip that is close enough for them to matter (`regional`: a trip inside a continent has no other distinction between its countries); none for a trip across the world. */
+function useBorders(regional: boolean) {
+  const [borders, setBorders] = useState<Lines | null>(null);
+  useEffect(() => {
+    if (!regional) return;
+    let alive = true;
+    import("@catalyst/geodata")
+      .then((g) => g.loadBorders())
+      .then((b) => alive && setBorders(b))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [regional]);
+  return regional ? borders : null;
+}
+
 /** The box the poster is drawn in, measured (CSS px): the width its container gives it and the height `MAX_H` allows. Before it is measured, and on the server, the phone-panel size. */
 function usePosterBox() {
   const ref = useRef<HTMLDivElement>(null);
@@ -279,7 +296,10 @@ export function TripPoster({ trip, here, photo = true, className }: { trip: Trip
     return { width: k * hz.w, height: k * hz.h, left: (w - k * hz.w) / 2, top: h - f * k * hz.h } as const;
   })();
   const coast = useCoast(frame.span < REGIONAL_DEG);
-  const land = useMemo(() => linesPath(frame, coast, w, h, true), [frame, coast, w, h]);
+  const borders = useBorders(frame.span < REGIONAL_DEG);
+  // (the borders are the field's colour, the ocean's: a gap in the land, not a line over it)
+  const borderPath = useMemo(() => linesPath(frame, borders, w, backdrop ? h + PHOTO_RUN : h), [frame, borders, w, h, backdrop]);
+  const land = useMemo(() => linesPath(frame, coast, w, backdrop ? h + PHOTO_RUN : h, true), [frame, coast, w, h, backdrop]);
   const current = trip.stopPoints.find((s) => s.slug === here);
   // The named places: the start, the end (one label when they are the same place), this one and the highlights (`Trip.highlights`).
   const named = [trip.stopPoints[0], trip.stopPoints[trip.stopPoints.length - 1], current, ...trip.highlights.map((slug) => trip.stopPoints.find((s) => s.slug === slug))]
@@ -307,12 +327,26 @@ export function TripPoster({ trip, here, photo = true, className }: { trip: Trip
           />
         </div>
       )}
+      {backdrop && land && (
+        // The land on a photograph runs as far as the photograph does and fades with it (the same mask), so the map is not cut at the poster's edge while the picture goes on.
+        <svg aria-hidden="true" width={w} height={h + PHOTO_RUN} viewBox={`0 0 ${w} ${h + PHOTO_RUN}`} className="pointer-events-none absolute inset-x-0 top-0 block" style={{ maskImage: fade(h), WebkitMaskImage: fade(h) }}>
+          <path d={land} style={{ fill: "color-mix(in srgb, var(--accent) 38%, transparent)" }} stroke="none" />
+          {borderPath && <path d={borderPath} fill="none" stroke="var(--accent)" strokeWidth={1.25} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />}
+        </svg>
+      )}
       <svg data-slot="trip-poster" viewBox={`0 0 ${w} ${h}`} width={w} height={h} role="img" aria-label={`Map of the trip, ${trip.from} to ${trip.to}`} className="relative block overflow-hidden">
-        {land && <path d={land} style={{ fill: backdrop ? "color-mix(in srgb, var(--accent) 38%, transparent)" : tone(9) }} stroke="none" />}
+        {land && !backdrop && <path d={land} style={{ fill: tone(9) }} stroke="none" />}
+        {borderPath && !backdrop && <path d={borderPath} fill="none" stroke="var(--accent)" strokeWidth={1.25} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />}
         {word && (
-          <text ref={textRef} x={WORD_PAD - Math.round(size * 0.05)} y={h - WORD_PAD} fontSize={size} style={{ fill: backdrop ? "color-mix(in srgb, var(--foreground) 36%, transparent)" : tone(22), fontFamily: "var(--font-display)", fontWeight: 800, letterSpacing: "-0.03em" }}>
+          <>
+          {/* (the word's width is measured on an invisible copy at the heaviest weight, the widest it gets: the visible one is thinner or heavier with the card's `--g`, see `.trip-slide` in app.css) */}
+          <text ref={textRef} aria-hidden="true" x={WORD_PAD - Math.round(size * 0.05)} y={h - WORD_PAD} fontSize={size} style={{ visibility: "hidden", fontFamily: "var(--font-display)", fontWeight: 800, letterSpacing: "-0.03em" }}>
             {word}
           </text>
+          <text data-slot="trip-word" x={WORD_PAD - Math.round(size * 0.05)} y={h - WORD_PAD} fontSize={size} style={{ fill: backdrop ? "color-mix(in srgb, var(--foreground) calc(30% + 50% * var(--g, 1)), transparent)" : `color-mix(in srgb, var(--foreground) calc(22% + 40% * var(--g, 1)), var(--accent))`, fontFamily: "var(--font-display)", letterSpacing: "-0.03em" }}>
+            {word}
+          </text>
+          </>
         )}
         {trip.legPaths.map((leg, i) => {
           const pts = Array.from({ length: leg.points.length / 2 }, (_, k) => `${frame.x(leg.points[k * 2]!).toFixed(1)},${frame.y(leg.points[k * 2 + 1]!).toFixed(1)}`).join(" ");
