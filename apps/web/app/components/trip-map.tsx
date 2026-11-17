@@ -310,9 +310,15 @@ export function TripPoster({ trip, here, photo = true, className }: { trip: Trip
       <svg data-slot="trip-poster" viewBox={`0 0 ${w} ${h}`} width={w} height={h} role="img" aria-label={`Map of the trip, ${trip.from} to ${trip.to}`} className="relative block overflow-hidden">
         {land && <path d={land} style={{ fill: backdrop ? "color-mix(in srgb, var(--accent) 38%, transparent)" : tone(9) }} stroke="none" />}
         {word && (
-          <text ref={textRef} x={WORD_PAD - Math.round(size * 0.05)} y={h - WORD_PAD} fontSize={size} style={{ fill: backdrop ? "color-mix(in srgb, var(--foreground) 36%, transparent)" : tone(22), fontFamily: "var(--font-display)", fontWeight: 800, letterSpacing: "-0.03em" }}>
+          <>
+          {/* (the word's width is measured on an invisible copy at the heaviest weight, the widest it gets: the visible one is thinner or heavier with the card's `--g`, see `.trip-slide` in app.css) */}
+          <text ref={textRef} aria-hidden="true" x={WORD_PAD - Math.round(size * 0.05)} y={h - WORD_PAD} fontSize={size} style={{ visibility: "hidden", fontFamily: "var(--font-display)", fontWeight: 800, letterSpacing: "-0.03em" }}>
             {word}
           </text>
+          <text data-slot="trip-word" x={WORD_PAD - Math.round(size * 0.05)} y={h - WORD_PAD} fontSize={size} style={{ fill: backdrop ? "color-mix(in srgb, var(--foreground) 36%, transparent)" : tone(22), fontFamily: "var(--font-display)", letterSpacing: "-0.03em" }}>
+            {word}
+          </text>
+          </>
         )}
         {trip.legPaths.map((leg, i) => {
           const pts = Array.from({ length: leg.points.length / 2 }, (_, k) => `${frame.x(leg.points[k * 2]!).toFixed(1)},${frame.y(leg.points[k * 2 + 1]!).toFixed(1)}`).join(" ");
