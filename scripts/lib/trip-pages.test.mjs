@@ -37,3 +37,13 @@ test("only the one shape is accepted: another host, a profile page, an address w
 test("every address of a text is neutralised, not only the first", () => {
   assert.equal(neutralizeTripPages(`a ${PAGE} b ${PAGE}`, "bundle"), "a <trip page> b <trip page>");
 });
+
+test("a prerendered page also accepts the derived label of the link, whole, and nothing else that says the name", () => {
+  const html = `<a href="${PAGE}" target="_blank">See the whole trip on polarsteps.com<svg></svg></a>`;
+  assert.doesNotMatch(neutralizeTripPages(html, "page"), /polarsteps/i);
+  // the label is accepted only on a page, and only as the whole sentence ending at the element
+  assert.match(neutralizeTripPages(html, "bundle"), /polarsteps/);
+  for (const bad of ["<p>polarsteps.com</p>", "<p>See the whole trip on polarsteps.com/x</p>", "<p>I use polarsteps.com<</p>"]) {
+    assert.match(neutralizeTripPages(bad, "page"), /polarsteps/, bad);
+  }
+});
