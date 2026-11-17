@@ -43,7 +43,7 @@ export async function loader() {
   // `devNote`: in development, which data this is (preview or demo; the credits show it beside the version); null in production, where the branch is dead code.
   // (`routes` are not in the page data: 172 kB of polylines that only the globe uses, fetched from `GLOBE_ROUTES_PATH` while it loads: lib/globe-routes.ts)
   const { routes: _routes, ...index } = buildPlaceIndex(projection);
-  return { ...index, routesSrc: globeRoutesSrc(projection.dataVersion), tiles: getTilesConfig(), counts, dataVersion: projection.dataVersion ?? null, devNote: devBadgeLabel(import.meta.env.DEV ? getContentMode() : null, import.meta.env.DEV) };
+  return { ...index, routesSrc: globeRoutesSrc(projection, import.meta.env.PROD), tiles: getTilesConfig(), counts, dataVersion: projection.dataVersion ?? null, devNote: devBadgeLabel(import.meta.env.DEV ? getContentMode() : null, import.meta.env.DEV) };
 }
 
 /** The place index never changes between navigations inside the shell. */

@@ -1,12 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { GLOBE_ROUTES_PATH, globeRoutesSrc } from "./globe-routes";
+import { EMPTY_PROJECTION } from "@catalyst/schemas";
+import { GLOBE_ROUTES_ROUTE, globeRoutesFile, globeRoutesHash } from "./globe-routes-file";
+import { globeRoutesJson, globeRoutesSrc } from "./globe-routes";
 
-describe("the address the globe fetches its routes from", () => {
-  it("is the file's path keyed by the first 12 characters of the content's commit", () => {
-    expect(globeRoutesSrc({ commit: "8d9f9071780d36bfd6702da40a10ee5e87ae3686", date: "2026-11-16" })).toBe(`${GLOBE_ROUTES_PATH}?v=8d9f9071780d`);
+describe("where the globe fetches its routes from", () => {
+  it("names the file by a hash of its content: the same text the same address, another text another", () => {
+    expect(globeRoutesFile("[]")).toBe(`/data/globe-routes.${globeRoutesHash("[]")}.json`);
+    expect(globeRoutesHash("[]")).toMatch(/^[0-9a-f]{12}$/);
+    expect(globeRoutesHash("[]")).not.toBe(globeRoutesHash("[1]"));
   });
-  it("is keyed `dev` where the projection carries no version (a local or demo one), so the address is still stable", () => {
-    expect(globeRoutesSrc(undefined)).toBe(`${GLOBE_ROUTES_PATH}?v=dev`);
-    expect(globeRoutesSrc(null)).toBe(`${GLOBE_ROUTES_PATH}?v=dev`);
+  it("is the content-named file in a build and the route itself in development", () => {
+    expect(globeRoutesSrc(EMPTY_PROJECTION, true)).toBe(globeRoutesFile(globeRoutesJson(EMPTY_PROJECTION)));
+    expect(globeRoutesSrc(EMPTY_PROJECTION, false)).toBe(GLOBE_ROUTES_ROUTE);
+  });
+  it("hashes the text the route serves (the build moves the prerendered file to the address the page names)", () => {
+    expect(globeRoutesJson(EMPTY_PROJECTION)).toBe("[]");
   });
 });
