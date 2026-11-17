@@ -92,7 +92,7 @@ function Photos({ images, from }: { images: PhotoItem[]; from: string }) {
 }
 
 /** What the step itself has to say: its few words, the pictures taken there and the trip it is a stop of. Nothing here is a heading of its own: the card's parts say what they are. */
-function StepStory({ place, photos }: { place: PlaceDetailData; photos: PhotoItem[] }) {
+function StepStory({ place, photos, trips = true }: { place: PlaceDetailData; photos: PhotoItem[]; /** The trip cards at its end (a step with entries shows them as a section of their own, after the entries). */ trips?: boolean }) {
   return (
     <Stack gap={6}>
       {place.summary && <p className="m-0 max-w-[60ch] text-lg text-pretty text-muted-foreground">{place.summary}</p>}
@@ -106,7 +106,7 @@ function StepStory({ place, photos }: { place: PlaceDetailData; photos: PhotoIte
         </Stack>
       )}
       {photos.length > 0 && <Photos images={photos} from={place.slug} />}
-      {place.trips.length > 0 && <TripCards trips={place.trips} here={place.slug} lived={place.lived === true} />}
+      {trips && place.trips.length > 0 && <TripCards trips={place.trips} here={place.slug} lived={place.lived === true} />}
     </Stack>
   );
 }
@@ -307,9 +307,9 @@ function newestFirst<T extends { date?: string | undefined }>(entries: T[]): T[]
   return [...entries].sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
 }
 
-/** What is behind the closed "On the road here": the pictures and the trip, counted. */
+/** What is behind the closed "On the road here": the story and the pictures, counted. (The trips are not behind it: they are a section of their own.) */
 function storyMeta(place: PlaceDetailData, pictures: number): string {
-  const parts = [pictures > 0 ? `${pictures} ${pictures === 1 ? "picture" : "pictures"}` : "", place.body.length > 0 || place.summary ? "the story" : "", place.trips.length > 0 ? (place.trips.length === 1 ? place.trips[0]!.title : `${place.trips.length} trips`) : ""];
+  const parts = [pictures > 0 ? `${pictures} ${pictures === 1 ? "picture" : "pictures"}` : "", place.body.length > 0 || place.summary ? "the story" : ""];
   return parts.filter(Boolean).join(" · ");
 }
 
@@ -331,6 +331,8 @@ export function PlaceDetail({ place }: { place: PlaceDetailData }) {
   const groups = leading ? [leading, ...allGroups.filter((g) => g !== leading)] : allGroups;
   const count = allGroups.reduce((n, g) => n + g.entries.length, 0);
   const story = !!place.summary || place.body.length > 0 || photos.length > 0 || place.trips.length > 0;
+  // (what is behind the disclosure of a step with entries: its words and pictures; its trips are a section of their own)
+  const closedStory = !!place.summary || place.body.length > 0 || photos.length > 0;
   return (
     <article aria-labelledby={PANEL_HEADING_ID} data-slot="place-view" data-kind="place" className="px-6 pt-2 pb-10">
       <Stack gap={8}>
@@ -365,8 +367,8 @@ export function PlaceDetail({ place }: { place: PlaceDetailData }) {
         )}
         {/* (a step with no entries is its story, open, under its photographs) */}
         {story && !count && <StepStory place={place} photos={photos} />}
-        {story && count > 0 && (
-          // The entries are what the visitor came for: the step's own story and the trip are the context, one line closed.
+        {closedStory && count > 0 && (
+          // The entries are what the visitor came for: the step's own story and pictures are the context, one line closed.
           <details data-slot="place-story" className="group border-t border-border pt-2">
             <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 text-base [&::-webkit-details-marker]:hidden">
               <span className="flex min-w-0 flex-col">
@@ -376,10 +378,12 @@ export function PlaceDetail({ place }: { place: PlaceDetailData }) {
               <Icon name="chevron-down" size="inline" className="shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
             </summary>
             <div className="pt-4">
-              <StepStory place={place} photos={photos} />
+              <StepStory place={place} photos={photos} trips={false} />
             </div>
           </details>
         )}
+        {/* (the trips: always shown, after the entries, as a carousel when there are several) */}
+        {count > 0 && place.trips.length > 0 && <TripCards trips={place.trips} here={place.slug} lived={place.lived === true} />}
       </Stack>
     </article>
   );
