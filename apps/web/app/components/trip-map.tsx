@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { coverImageProps } from "~/lib/cover-image";
 import type { Trip } from "~/lib/journeys";
 import { cn } from "~/lib/utils";
 
@@ -15,6 +16,9 @@ const PAD = 26;
 interface Frame {
   x: (lon: number) => number;
   y: (lat: number) => number;
+  /** The inverse of `x` and `y`: the longitude and latitude at a point of the poster. */
+  lonAt: (x: number) => number;
+  latAt: (y: number) => number;
   lon0: number;
   lon1: number;
   lat0: number;
@@ -41,16 +45,31 @@ function frameOf(trip: Trip, w: number, h: number): Frame {
   const scale = Math.max(0.0001, Math.min((w - 2 * PAD) / spanX, (h - 2 * PAD) / spanY));
   const offX = (w - spanX * scale) / 2;
   const offY = (h - spanY * scale) / 2;
-  return { x: (lon) => offX + (lon - lon0) * k * scale, y: (lat) => h - offY - (lat - lat0) * scale, lon0, lon1, lat0, lat1, span: Math.max(lon1 - lon0, lat1 - lat0) };
+  return {
+    x: (lon) => offX + (lon - lon0) * k * scale,
+    y: (lat) => h - offY - (lat - lat0) * scale,
+    lonAt: (x) => lon0 + (x - offX) / (k * scale),
+    latAt: (y) => lat0 + (h - offY - y) / scale,
+    lon0,
+    lon1,
+    lat0,
+    lat1,
+    span: Math.max(lon1 - lon0, lat1 - lat0),
+  };
 }
 
 type Lines = { positions: Float32Array; offsets: Uint32Array };
 
-/** The lines of a set that touch the frame (a window wider than the trip: they run off the edges), as one path. `ring`: only the lines that end where they began, closed so that they can be filled. */
-function linesPath(frame: Frame, lines: Lines | null, ring = false): string {
+/**
+ * The lines of a set that touch the poster (its whole box, `w` x `h`, and a degree around it: the land runs on under the word's band and off the edges), as one path.
+ * `ring`: only the lines that end where they began, closed so that they can be filled.
+ */
+function linesPath(frame: Frame, lines: Lines | null, w: number, h: number, ring = false): string {
   if (!lines) return "";
-  const dx = (frame.lon1 - frame.lon0) * 0.6 + 2;
-  const dy = (frame.lat1 - frame.lat0) * 0.6 + 2;
+  const west = frame.lonAt(0) - 1;
+  const east = frame.lonAt(w) + 1;
+  const north = frame.latAt(0) + 1;
+  const south = frame.latAt(h) - 1;
   const out: string[] = [];
   for (let l = 0; l + 1 < lines.offsets.length; l++) {
     const a = lines.offsets[l]!;
@@ -59,7 +78,7 @@ function linesPath(frame: Frame, lines: Lines | null, ring = false): string {
     for (let i = a; i < b && !inside; i++) {
       const lon = lines.positions[i * 2]!;
       const lat = lines.positions[i * 2 + 1]!;
-      inside = lon > frame.lon0 - dx && lon < frame.lon1 + dx && lat > frame.lat0 - dy && lat < frame.lat1 + dy;
+      inside = lon > west && lon < east && lat > south && lat < north;
     }
     if (!inside) continue;
     let d = "";
@@ -77,9 +96,10 @@ const REGIONAL_DEG = 40;
  * The geography behind the route: the coast (the 110 m set for a trip across the world, the 50 m one, which the globe loads when it comes close, for a regional
  * trip: the route is far more precise than the 110 m outline) and, for a regional trip, the country borders. Loaded when the card shows.
  */
-function useGeography(regional: boolean) {
+function useGeography(regional: boolean, wanted = true) {
   const [geo, setGeo] = useState<{ coast: Lines | null; borders: Lines | null; fine: boolean }>({ coast: null, borders: null, fine: false });
   useEffect(() => {
+    if (!wanted) return;
     let alive = true;
     import("@catalyst/geodata")
       .then(async (g) => {
@@ -90,8 +110,8 @@ function useGeography(regional: boolean) {
     return () => {
       alive = false;
     };
-  }, [regional]);
-  return geo;
+  }, [regional, wanted]);
+  return wanted ? geo : { coast: null, borders: null, fine: false };
 }
 
 /** The box the poster is drawn in, measured (CSS px): the width its container gives it and the height `MAX_H` allows. Before it is measured, and on the server, the phone-panel size. */
@@ -121,65 +141,68 @@ export function wordSize(letters: number, width: number, height: number): number
 }
 
 /**
- * The trip as a poster (owner's mood board, #510): a flat field, the trip's one word in giant type across the bottom, and above it the route as one thin
- * line (the maps' patterns for rail, ferry and flights) with a square at every stop, the start, the end and the place the panel is about named. Behind the
- * route the land is a faint shape with its coast, and for a regional trip the country borders (`useGeography`). The map and the word never overlap: the word has
- * its own band. The poster's height is at most `MAX_H`: on a wide panel it stretches in width, not in height. Decoration for the eyes: the card's text says all of it.
+ * The trip as a poster (owner's mood board, #510): a flat field with the trip's one word in giant type nested in its bottom-left corner, the route above the word as
+ * one thin line (the maps' patterns for rail, ferry and flights) with a square at every stop and the start, the end and the place the panel is about named. The land
+ * behind it (a faint shape with its coast, and the country borders for a regional trip, `useGeography`) runs on under the word: only the route keeps clear of it. With a
+ * photograph of the trip (`trip.photo`) the photo is the backdrop, a veil in the field's colour over it (so it sits close to the card's background in both themes), and the route and the word drawn on top as on the flat field. The height is at
+ * most `MAX_H`: on a wide panel the poster stretches in width, not in height. Decoration for the eyes: the card's text says all of it.
  */
-export function TripPoster({ trip, here, className }: { trip: Trip; here: string; className?: string }) {
+export function TripPoster({ trip, here, photo = true, className }: { trip: Trip; here: string; photo?: boolean; className?: string }) {
   const { ref, w, h } = usePosterBox();
   const word = trip.word.toUpperCase();
   const size = wordSize(word.length, w, h);
-  // The word's band under the map: its capital letters' height and a margin; none without a word.
-  const band = word ? Math.round(size * 0.74) + 16 : 0;
-  const mapH = h - band;
-  const frame = useMemo(() => frameOf(trip, w, mapH), [trip, w, mapH]);
-  const geo = useGeography(frame.span < REGIONAL_DEG);
-  const land = useMemo(() => linesPath(frame, geo.coast, true), [frame, geo.coast]);
-  const coast = useMemo(() => linesPath(frame, geo.coast), [frame, geo.coast]);
-  const borders = useMemo(() => linesPath(frame, geo.borders), [frame, geo.borders]);
+  // The word's band under the route: its capital letters' height and a margin; none without a word. The land is not clipped to it.
+  const band = word ? Math.round(size * 0.74) + 12 : 0;
+  const frame = useMemo(() => frameOf(trip, w, h - band), [trip, w, h, band]);
+  const backdrop = photo ? trip.photo : undefined;
+  const geo = useGeography(frame.span < REGIONAL_DEG && !backdrop, !backdrop);
+  const land = useMemo(() => linesPath(frame, geo.coast, w, h, true), [frame, geo.coast, w, h]);
+  const coast = useMemo(() => linesPath(frame, geo.coast, w, h), [frame, geo.coast, w, h]);
+  const borders = useMemo(() => linesPath(frame, geo.borders, w, h), [frame, geo.borders, w, h]);
   const current = trip.stopPoints.find((s) => s.slug === here);
   // The named places: the start, the end (one label when they are the same place) and this one.
   const named = [trip.stopPoints[0], trip.stopPoints[trip.stopPoints.length - 1], current]
     .filter((s): s is Trip["stopPoints"][number] => Boolean(s))
     .filter((s, i, all) => all.findIndex((o) => o.slug === s.slug) === i);
   const tone = (share: number) => `color-mix(in srgb, var(--foreground) ${share}%, var(--accent))`;
+  // The same ink on the field's colour with or without a photograph: the photograph is veiled in the FIELD's colour (light in the light theme, dark in the dark one), so it sits close to the card's background instead of standing out of it.
+  const ink = "var(--foreground)";
+  const halo = "var(--accent)";
   return (
-    <div ref={ref} data-slot="trip-poster-box" className={cn("w-full bg-accent", className)} style={{ aspectRatio: `1 / ${ASPECT}`, maxHeight: MAX_H }}>
-      <svg data-slot="trip-poster" viewBox={`0 0 ${w} ${h}`} width={w} height={h} role="img" aria-label={`Map of the trip, ${trip.from} to ${trip.to}`} className="block overflow-hidden">
-        <defs>
-          <clipPath id={`trip-poster-clip-${trip.id}`}>
-            <rect width={w} height={mapH} />
-          </clipPath>
-        </defs>
+    <div ref={ref} data-slot="trip-poster-box" data-photo={backdrop ? "" : undefined} className={cn("relative w-full overflow-hidden bg-accent", className)} style={{ aspectRatio: `1 / ${ASPECT}`, maxHeight: MAX_H }}>
+      {backdrop && (
+        <>
+          <img {...coverImageProps(backdrop, `${w}px`)} alt="" aria-hidden="true" decoding="async" className="absolute inset-0 size-full object-cover" />
+          <div aria-hidden="true" className="absolute inset-0" style={{ background: "color-mix(in srgb, var(--accent) 68%, transparent)" }} />
+        </>
+      )}
+      <svg data-slot="trip-poster" viewBox={`0 0 ${w} ${h}`} width={w} height={h} role="img" aria-label={`Map of the trip, ${trip.from} to ${trip.to}`} className="relative block overflow-hidden">
         {word && (
-          <text x={-2} y={h - 10} fontSize={size} style={{ fill: tone(16), fontFamily: "var(--font-display)", fontWeight: 800, letterSpacing: "-0.03em" }}>
+          <text x={-Math.round(size * 0.05)} y={h} fontSize={size} style={{ fill: backdrop ? "color-mix(in srgb, var(--foreground) 18%, transparent)" : tone(16), fontFamily: "var(--font-display)", fontWeight: 800, letterSpacing: "-0.03em" }}>
             {word}
           </text>
         )}
-        <g clipPath={`url(#trip-poster-clip-${trip.id})`}>
-          {land && <path d={land} style={{ fill: tone(6) }} stroke="none" />}
-          {borders && <path d={borders} fill="none" style={{ stroke: tone(22) }} strokeWidth={0.75} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />}
-          {coast && <path d={coast} fill="none" style={{ stroke: tone(34) }} strokeWidth={1} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />}
-          {trip.legPaths.map((leg, i) => {
-            const pts = Array.from({ length: leg.points.length / 2 }, (_, k) => `${frame.x(leg.points[k * 2]!).toFixed(1)},${frame.y(leg.points[k * 2 + 1]!).toFixed(1)}`).join(" ");
-            return <polyline key={i} points={pts} fill="none" stroke="var(--foreground)" strokeWidth={1.5} strokeDasharray={DASH[leg.mode]} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />;
-          })}
-          {trip.stopPoints.map((s, i) => (
-            <rect key={`${s.slug}-${i}`} x={frame.x(s.lon) - 1.75} y={frame.y(s.lat) - 1.75} width={3.5} height={3.5} fill="var(--foreground)" />
-          ))}
-          {current && <rect x={frame.x(current.lon) - 6} y={frame.y(current.lat) - 6} width={12} height={12} fill="none" stroke="var(--foreground)" strokeWidth={1.5} vectorEffect="non-scaling-stroke" />}
-          {named.map((s) => {
-            const x = frame.x(s.lon);
-            const end = x > w * 0.6;
-            // (a halo in the field's colour keeps a name readable where the route or a border runs under it)
-            return (
-              <text key={s.slug} x={end ? x - 9 : x + 9} y={Math.max(12, frame.y(s.lat) - 7)} textAnchor={end ? "end" : "start"} fontSize={10} stroke="var(--accent)" strokeWidth={3} strokeLinejoin="round" style={{ fill: "var(--foreground)", paintOrder: "stroke", fontFamily: "var(--font-meta)", fontWeight: 700, letterSpacing: "0.04em" }}>
-                {s.name.toUpperCase()}
-              </text>
-            );
-          })}
-        </g>
+        {land && <path d={land} style={{ fill: tone(6) }} stroke="none" />}
+        {borders && <path d={borders} fill="none" style={{ stroke: tone(22) }} strokeWidth={0.75} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />}
+        {coast && <path d={coast} fill="none" style={{ stroke: tone(34) }} strokeWidth={1} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />}
+        {trip.legPaths.map((leg, i) => {
+          const pts = Array.from({ length: leg.points.length / 2 }, (_, k) => `${frame.x(leg.points[k * 2]!).toFixed(1)},${frame.y(leg.points[k * 2 + 1]!).toFixed(1)}`).join(" ");
+          return <polyline key={i} points={pts} fill="none" stroke={ink} strokeWidth={backdrop ? 1.75 : 1.5} strokeDasharray={DASH[leg.mode]} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />;
+        })}
+        {trip.stopPoints.map((s, i) => (
+          <rect key={`${s.slug}-${i}`} x={frame.x(s.lon) - 1.75} y={frame.y(s.lat) - 1.75} width={3.5} height={3.5} fill={ink} />
+        ))}
+        {current && <rect x={frame.x(current.lon) - 6} y={frame.y(current.lat) - 6} width={12} height={12} fill="none" stroke={ink} strokeWidth={1.5} vectorEffect="non-scaling-stroke" />}
+        {named.map((s) => {
+          const x = frame.x(s.lon);
+          const end = x > w * 0.6;
+          // (a halo in the backdrop's colour keeps a name readable where the route or a border runs under it)
+          return (
+            <text key={s.slug} x={end ? x - 9 : x + 9} y={Math.max(12, frame.y(s.lat) - 7)} textAnchor={end ? "end" : "start"} fontSize={10} stroke={halo} strokeWidth={3} strokeLinejoin="round" style={{ fill: ink, paintOrder: "stroke", fontFamily: "var(--font-meta)", fontWeight: 700, letterSpacing: "0.04em" }}>
+              {s.name.toUpperCase()}
+            </text>
+          );
+        })}
       </svg>
     </div>
   );

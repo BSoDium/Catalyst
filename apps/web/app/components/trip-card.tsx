@@ -1,8 +1,19 @@
-import { Link } from "react-router";
+import { Link, useLocation } from "react-router";
 import { TripPoster } from "~/components/trip-map";
 import { Icon } from "~/components/ui";
 import { hopDetail, tripLinkLabel, type Trip, type TripHop } from "~/lib/journeys";
 import { placePath } from "~/lib/projection";
+
+/** One figure of the trip: the value bold and dark, its unit smaller and quieter (a number to read first, the word after it). */
+function Kpi({ value, unit, big = false, lead }: { value: number; unit: string; big?: boolean; lead?: string }) {
+  return (
+    <p className="m-0 flex items-baseline gap-1.5">
+      {lead && <span className="sr-only">{lead} </span>}
+      <span className={`font-display leading-none font-extrabold tracking-tight ${big ? "text-3xl" : "text-2xl"}`}>{value.toLocaleString("en-US")}</span>
+      <span className="text-sm font-medium text-muted-foreground">{unit}</span>
+    </p>
+  );
+}
 
 /** The first trips are open; the rest sit behind one disclosure, so a place on many routes stays short. */
 const OPEN_TRIPS = 2;
@@ -31,24 +42,21 @@ function Hop({ hop, side, lead }: { hop: TripHop; side: "before" | "after"; lead
  * step falls in it with the stop before and after, and last the trip's own page when it has one. It is the way into the trip, not the page's subject. A place a
  * trip passes several times says so and lists no hop (each visit has its own).
  */
-export function TripCard({ trip, here, lived = false }: { trip: Trip; here: string; lived?: boolean }) {
-  const facts = [plural(trip.stops, "stop"), trip.countries > 0 ? plural(trip.countries, "country", "countries") : null, trip.dates?.text].filter(Boolean).join(" · ");
+export function TripCard({ trip, here, lived = false, photo = true }: { trip: Trip; here: string; lived?: boolean; photo?: boolean }) {
   const single = trip.visits.length === 1 ? trip.visits[0]! : null;
   const where = single ? (single.previous === null ? "The trip starts here" : single.next === null ? "The trip ends here" : `Stop ${single.position} of ${trip.stops}`) : lived ? "Home base on this trip" : `Visited ${trip.visits.length} times`; // (a place the owner has lived in is not visited: no count, #584)
   return (
     <article data-slot="trip-card" className="flex flex-col overflow-hidden border border-border">
-      <TripPoster trip={trip} here={here} />
-      <div className="flex flex-col gap-3 p-4">
-        <p data-slot="trip-distance" className="m-0 flex items-center gap-2.5 font-display text-3xl leading-none font-extrabold tracking-tight">
-          <span aria-hidden="true" className="size-2.5 shrink-0 bg-foreground" />
-          <span>
-            <span className="sr-only">About </span>
-            {trip.km.toLocaleString("en-US")} km
-          </span>
-        </p>
+      <TripPoster trip={trip} here={here} photo={photo} />
+      <div className="flex flex-col gap-4 p-4">
+        <div data-slot="trip-figures" className="flex flex-wrap items-baseline gap-x-6 gap-y-2">
+          <Kpi value={trip.km} unit="km" big lead="About" />
+          <Kpi value={trip.stops} unit={trip.stops === 1 ? "stop" : "stops"} />
+          {trip.countries > 0 && <Kpi value={trip.countries} unit={trip.countries === 1 ? "country" : "countries"} />}
+        </div>
         <header className="flex flex-col gap-1">
           <h3 className="m-0 text-lg font-semibold tracking-tight text-balance">{trip.title}</h3>
-          <p className="m-0 ds-meta">{facts}</p>
+          {trip.dates?.text && <p className="m-0 ds-meta">{trip.dates.text}</p>}
         </header>
         <div className="flex flex-col gap-1.5">
           <p className="m-0 text-sm font-medium">{where}</p>
@@ -61,16 +69,18 @@ export function TripCard({ trip, here, lived = false }: { trip: Trip; here: stri
         </div>
       </div>
       {trip.url && (
-        <a
-          href={trip.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          data-slot="trip-link"
-          className="flex min-h-11 items-center justify-between gap-2 border-t border-border px-4 text-sm font-medium underline-offset-4 hover:bg-accent hover:underline"
-        >
-          {tripLinkLabel(trip.url)}
-          <Icon name="arrow-up-right" size="inline" />
-        </a>
+        <div className="flex justify-end px-4 pb-4">
+          <a
+            href={trip.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            data-slot="trip-link"
+            className="inline-flex min-h-11 items-center gap-2 bg-foreground px-4 text-sm font-medium text-background no-underline hover:bg-[color-mix(in_srgb,var(--foreground)_82%,var(--background))]"
+          >
+            {tripLinkLabel(trip.url)}
+            <Icon name="arrow-up-right" size="inline" />
+          </a>
+        </div>
       )}
     </article>
   );
@@ -78,12 +88,14 @@ export function TripCard({ trip, here, lived = false }: { trip: Trip; here: stri
 
 /** The trips of the step: the first two as cards, the others behind one disclosure. */
 export function TripCards({ trips, here, lived = false }: { trips: Trip[]; here: string; lived?: boolean }) {
+  // `?poster=flat` shows the flat posters (to compare with the photographs: #510).
+  const photo = new URLSearchParams(useLocation().search).get("poster") !== "flat";
   const open = trips.slice(0, OPEN_TRIPS);
   const rest = trips.slice(OPEN_TRIPS);
   return (
     <div data-slot="trip-cards" className="flex flex-col gap-3">
       {open.map((trip) => (
-        <TripCard key={trip.id} trip={trip} here={here} lived={lived} />
+        <TripCard key={trip.id} trip={trip} here={here} lived={lived} photo={photo} />
       ))}
       {rest.length > 0 && (
         <details data-slot="trips-more" className="group flex flex-col gap-3">
@@ -93,7 +105,7 @@ export function TripCards({ trips, here, lived = false }: { trips: Trip[]; here:
           </summary>
           <div className="flex flex-col gap-3">
             {rest.map((trip) => (
-              <TripCard key={trip.id} trip={trip} here={here} lived={lived} />
+              <TripCard key={trip.id} trip={trip} here={here} lived={lived} photo={photo} />
             ))}
           </div>
         </details>

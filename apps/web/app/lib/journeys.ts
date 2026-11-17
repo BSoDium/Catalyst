@@ -10,7 +10,7 @@
  * The distance is the length of the leg's polyline, or the great-circle distance between its stops when it has none, rounded to
  * 10 km ("about"). The mode is a noun phrase; an unknown mode says nothing about how.
  */
-import type { PublishedProjection } from "@catalyst/schemas";
+import type { PublishedCover, PublishedProjection } from "@catalyst/schemas";
 import { legLengthM } from "~/globe/paths/network";
 import { decodePolyline5 } from "~/globe/paths/polyline";
 import { formatDates, type FormattedDates } from "~/lib/dates";
@@ -107,6 +107,8 @@ export interface Trip {
   dates: FormattedDates | null;
   /** The trip's own public page, when the route has one (`routes[].url`). */
   url?: string;
+  /** A photograph taken at one of the trip's stops (the most recent that is not sensitive), the poster's backdrop when it is shown with one. */
+  photo?: Pick<PublishedCover, "src" | "width" | "small">;
   /** The one word the card sets in giant type (`tripWord` of the title). */
   word: string;
   /** How many countries the stops are in (those the places name): 0 when none is known. */
@@ -196,6 +198,12 @@ export function tripsOf(projection: PublishedProjection, slug: string, nameOf: (
       ...(route.summary ? { summary: route.summary } : {}),
       dates: formatDates(route.dates),
       ...(route.url ? { url: route.url } : {}),
+      ...(() => {
+        const stops = new Set(route.stops);
+        // (the most recent photograph that is not sensitive and was taken at a stop; none for a trip nobody photographed)
+        const cover = projection.photographs.filter((p) => !p.sensitive && p.placeSlugs.some((s) => stops.has(s))).sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""))[0]?.cover;
+        return cover ? { photo: { src: cover.src, width: cover.width, ...(cover.small ? { small: cover.small } : {}) } } : {};
+      })(),
       word: tripWord(route.title),
       countries: new Set(places.map((p) => p!.countryCode).filter(Boolean)).size,
       stopPoints: places.map((p) => ({ slug: p!.slug, name: nameOf(p!), lon: p!.coordinates.lon, lat: p!.coordinates.lat })),

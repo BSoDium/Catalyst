@@ -41,9 +41,12 @@ describe("TripCard poster (#510)", () => {
     expect(html).toContain("LOOP");
     expect(html).toContain('data-slot="trip-poster"');
   });
-  it("says the distance as the big figure and the stops, countries and dates in the facts line", () => {
-    expect(html).toContain("100 km");
-    expect(html).toContain("4 stops · 2 countries");
+  it("says the distance, the stops and the countries as figures (the value first, its unit after it) and the dates under the title", () => {
+    expect(html).toContain('data-slot="trip-figures"');
+    expect(html).toContain(">100</span><span");
+    expect(html).toContain(">4</span><span");
+    expect(html).toContain(">stops<");
+    expect(html).toContain(">countries<");
   });
 });
 
