@@ -96,7 +96,7 @@ export function TripCard({ trip, here, lived = false, photo = true, position }: 
   const ends = !single && lived ? { previous: [...trip.visits].reverse().find((v) => v.previous)?.previous ?? null, next: trip.visits.find((v) => v.next)?.next ?? null } : null;
   const where = single ? (single.previous === null ? "The trip starts here" : single.next === null ? "The trip ends here" : `Stop ${single.position} of ${trip.stops}`) : lived ? "Home base on this trip" : `Visited ${trip.visits.length} times`; // (a place the owner has lived in is not visited: no count, #584)
   return (
-    <article data-slot="trip-card" className="relative isolate flex flex-col overflow-hidden border border-border">
+    <article data-slot="trip-card" className="relative isolate flex flex-col overflow-hidden">
       <TripPoster trip={trip} here={here} photo={photo} />
       <div className="flex grow flex-col gap-4 p-4">
         <div data-slot="trip-figures" className="flex flex-wrap items-baseline gap-x-6 gap-y-2">
@@ -149,7 +149,9 @@ export function TripCards({ trips, here, lived = false }: { trips: Trip[]; here:
           ))}
         />
       ) : (
-        <TripCard trip={trips[0]!} here={here} lived={lived} photo={photo} />
+        <div className="border border-border">
+          <TripCard trip={trips[0]!} here={here} lived={lived} photo={photo} />
+        </div>
       )}
     </section>
   );

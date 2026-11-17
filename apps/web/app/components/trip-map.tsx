@@ -279,7 +279,7 @@ export function TripPoster({ trip, here, photo = true, className }: { trip: Trip
     return { width: k * hz.w, height: k * hz.h, left: (w - k * hz.w) / 2, top: h - f * k * hz.h } as const;
   })();
   const coast = useCoast(frame.span < REGIONAL_DEG);
-  const land = useMemo(() => linesPath(frame, coast, w, h, true), [frame, coast, w, h]);
+  const land = useMemo(() => linesPath(frame, coast, w, backdrop ? h + PHOTO_RUN : h, true), [frame, coast, w, h, backdrop]);
   const current = trip.stopPoints.find((s) => s.slug === here);
   // The named places: the start, the end (one label when they are the same place), this one and the highlights (`Trip.highlights`).
   const named = [trip.stopPoints[0], trip.stopPoints[trip.stopPoints.length - 1], current, ...trip.highlights.map((slug) => trip.stopPoints.find((s) => s.slug === slug))]
@@ -307,15 +307,21 @@ export function TripPoster({ trip, here, photo = true, className }: { trip: Trip
           />
         </div>
       )}
+      {backdrop && land && (
+        // The land on a photograph runs as far as the photograph does and fades with it (the same mask), so the map is not cut at the poster's edge while the picture goes on.
+        <svg aria-hidden="true" width={w} height={h + PHOTO_RUN} viewBox={`0 0 ${w} ${h + PHOTO_RUN}`} className="pointer-events-none absolute inset-x-0 top-0 block" style={{ maskImage: fade(h), WebkitMaskImage: fade(h) }}>
+          <path d={land} style={{ fill: "color-mix(in srgb, var(--accent) 38%, transparent)" }} stroke="none" />
+        </svg>
+      )}
       <svg data-slot="trip-poster" viewBox={`0 0 ${w} ${h}`} width={w} height={h} role="img" aria-label={`Map of the trip, ${trip.from} to ${trip.to}`} className="relative block overflow-hidden">
-        {land && <path d={land} style={{ fill: backdrop ? "color-mix(in srgb, var(--accent) 38%, transparent)" : tone(9) }} stroke="none" />}
+        {land && !backdrop && <path d={land} style={{ fill: tone(9) }} stroke="none" />}
         {word && (
           <>
           {/* (the word's width is measured on an invisible copy at the heaviest weight, the widest it gets: the visible one is thinner or heavier with the card's `--g`, see `.trip-slide` in app.css) */}
           <text ref={textRef} aria-hidden="true" x={WORD_PAD - Math.round(size * 0.05)} y={h - WORD_PAD} fontSize={size} style={{ visibility: "hidden", fontFamily: "var(--font-display)", fontWeight: 800, letterSpacing: "-0.03em" }}>
             {word}
           </text>
-          <text data-slot="trip-word" x={WORD_PAD - Math.round(size * 0.05)} y={h - WORD_PAD} fontSize={size} style={{ fill: backdrop ? "color-mix(in srgb, var(--foreground) 36%, transparent)" : tone(22), fontFamily: "var(--font-display)", letterSpacing: "-0.03em" }}>
+          <text data-slot="trip-word" x={WORD_PAD - Math.round(size * 0.05)} y={h - WORD_PAD} fontSize={size} style={{ fill: backdrop ? "color-mix(in srgb, var(--foreground) calc(36% + 26% * var(--g, 1)), transparent)" : tone(22), fontFamily: "var(--font-display)", letterSpacing: "-0.03em" }}>
             {word}
           </text>
           </>
