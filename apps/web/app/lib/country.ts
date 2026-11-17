@@ -7,7 +7,8 @@
  * sit in (walking up from each place). No such group (no published place in that country) means the country is named but not framed.
  */
 import type { PublishedGroup } from "@catalyst/schemas";
-import { countryName } from "~/globe/engine/country-names";
+// (a relative path, not `~/globe/...`: `react-router.config.ts` reads this file through `lib/prerender-paths.ts`, and the config is loaded without the `~` alias; it is still one of the documented exceptions of `globe/layering.test.ts`)
+import { countryName } from "../globe/engine/country-names";
 
 export { countryName };
 
