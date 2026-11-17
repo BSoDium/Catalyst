@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router";
-import { TripPoster } from "~/components/trip-map";
+import { TripPhotoFilters, TripPoster } from "~/components/trip-map";
 import { Icon } from "~/components/ui";
 import { hopDetail, tripLinkLabel, type Trip, type TripHop } from "~/lib/journeys";
 import { placePath } from "~/lib/projection";
@@ -98,7 +98,7 @@ export function TripCard({ trip, here, lived = false, photo = true }: { trip: Tr
   const single = trip.visits.length === 1 ? trip.visits[0]! : null;
   const where = single ? (single.previous === null ? "The trip starts here" : single.next === null ? "The trip ends here" : `Stop ${single.position} of ${trip.stops}`) : lived ? "Home base on this trip" : `Visited ${trip.visits.length} times`; // (a place the owner has lived in is not visited: no count, #584)
   return (
-    <article data-slot="trip-card" className="flex flex-col overflow-hidden border border-border">
+    <article data-slot="trip-card" className="relative isolate flex flex-col overflow-hidden border border-border">
       <TripPoster trip={trip} here={here} photo={photo} />
       <div className="flex flex-col gap-4 p-4">
         <div data-slot="trip-figures" className="flex flex-wrap items-baseline gap-x-6 gap-y-2">
@@ -124,6 +124,7 @@ export function TripCards({ trips, here, lived = false }: { trips: Trip[]; here:
   const rest = trips.slice(OPEN_TRIPS);
   return (
     <div data-slot="trip-cards" className="flex flex-col gap-3">
+      {photo && trips.some((t) => t.photo) && <TripPhotoFilters />}
       {open.map((trip) => (
         <TripCard key={trip.id} trip={trip} here={here} lived={lived} photo={photo} />
       ))}

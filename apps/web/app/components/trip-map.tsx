@@ -6,6 +6,39 @@ import { cn } from "~/lib/utils";
 /** The strokes of the route, by mode: the same patterns as the maps' lines (solid road, dashed rail, dotted ferry and flight). */
 const DASH: Record<string, string | undefined> = { road: undefined, rail: "5 3", ferry: "1.5 3", flight: "1.5 3", walk: "1.5 2", unknown: "5 4" };
 
+/** How far the photograph runs on below the poster, under the figures, before it has faded out (CSS px). */
+const PHOTO_RUN = 150;
+
+/** The photograph's mask: whole down to most of the poster, half at its bottom edge, gone `PHOTO_RUN` px under it (the card's background shows through). */
+const fade = (h: number) => `linear-gradient(to bottom, #000 ${Math.round(h * 0.6)}px, rgb(0 0 0 / 0.55) ${h}px, transparent ${h + PHOTO_RUN}px)`;
+
+/**
+ * The two filters (`--trip-photo-filter`, `.trip-photo` in app.css; one set for all the posters) that hold a photograph's levels in a band: in the light theme the light end of the range
+ * (the ink is dark on it), in the dark theme the dark end. Every channel gets the same slope and intercept, so the colours keep their relations; the contrast of the ink on the darkest or lightest
+ * pixel of the band is then at least about 5 : 1, whatever the photograph.
+ */
+export function TripPhotoFilters() {
+  const levels = (slope: number, intercept: number) => (
+    <feComponentTransfer>
+      <feFuncR type="linear" slope={slope} intercept={intercept} />
+      <feFuncG type="linear" slope={slope} intercept={intercept} />
+      <feFuncB type="linear" slope={slope} intercept={intercept} />
+    </feComponentTransfer>
+  );
+  return (
+    <svg aria-hidden="true" focusable="false" width="0" height="0" className="pointer-events-none absolute">
+      <filter id="trip-range-light" colorInterpolationFilters="sRGB">
+        <feColorMatrix type="saturate" values="1.1" />
+        {levels(0.36, 0.62)}
+      </filter>
+      <filter id="trip-range-dark" colorInterpolationFilters="sRGB">
+        <feColorMatrix type="saturate" values="1.1" />
+        {levels(0.3, 0.04)}
+      </filter>
+    </svg>
+  );
+}
+
 /** The poster's size before it is measured (and on the server): the proportion every poster up to `MAX_H` high has, and a width a phone's panel has. */
 const W0 = 360;
 const ASPECT = 0.83;
@@ -91,28 +124,26 @@ function linesPath(frame: Frame, lines: Lines | null, w: number, h: number, ring
   return out.join("");
 }
 
-/** A trip within this many degrees is a regional one: the finer coastline (50 m) and the country borders are drawn, a bigger one gets the 110 m coastline only. */
+/** A trip within this many degrees is a regional one: the finer coastline (50 m) is used for its land, a bigger one gets the 110 m coastline. */
 const REGIONAL_DEG = 40;
 
 /**
- * The geography behind the route: the coast (the 110 m set for a trip across the world, the 50 m one, which the globe loads when it comes close, for a regional
- * trip: the route is far more precise than the 110 m outline) and, for a regional trip, the country borders. Loaded when the card shows.
+ * The land behind the route (the 110 m coastline for a trip across the world, the 50 m one, which the globe loads when it comes close, for a regional trip: the route is far more
+ * precise than the 110 m outline), drawn as surfaces without outlines or borders. Loaded when the card shows.
  */
-function useGeography(regional: boolean) {
-  const [geo, setGeo] = useState<{ coast: Lines | null; borders: Lines | null; fine: boolean }>({ coast: null, borders: null, fine: false });
+function useCoast(regional: boolean) {
+  const [coast, setCoast] = useState<Lines | null>(null);
   useEffect(() => {
     let alive = true;
     import("@catalyst/geodata")
-      .then(async (g) => {
-        const [coast, borders] = await Promise.all([regional ? g.loadDetailedCoastlines() : g.loadCoastlines(), regional ? g.loadBorders() : Promise.resolve(null)]);
-        if (alive) setGeo({ coast, borders, fine: regional });
-      })
+      .then((g) => (regional ? g.loadDetailedCoastlines() : g.loadCoastlines()))
+      .then((c) => alive && setCoast(c))
       .catch(() => {});
     return () => {
       alive = false;
     };
   }, [regional]);
-  return geo;
+  return coast;
 }
 
 /** The box the poster is drawn in, measured (CSS px): the width its container gives it and the height `MAX_H` allows. Before it is measured, and on the server, the phone-panel size. */
@@ -144,8 +175,8 @@ export function wordSize(letters: number, width: number, height: number): number
 /**
  * The trip as a poster (owner's mood board, #510): a flat field with the trip's one word in giant type nested in its bottom-left corner, the route above the word as
  * one thin line (the maps' patterns for rail, ferry and flights) with a square at every stop and the start, the end and the place the panel is about named. The land
- * behind it (a faint shape with its coast, and the country borders for a regional trip, `useGeography`) runs on under the word: only the route keeps clear of it. With a
- * photograph of the trip (`trip.photo`) the photo is the backdrop, a veil in the field's colour over it (so it sits close to the card's background in both themes), the land on top of that as a translucent surface in the field's colour (it lightens the photograph in the light theme and darkens it in the dark one), and the route and the word as on the flat field. The height is at
+ * behind it (a faint surface, without outline, `useCoast`) runs on under the word: only the route keeps clear of it. With a
+ * photograph of the trip (`trip.photo`) the photo is the backdrop, its dynamic range held in a band the ink reads on (`TripPhotoFilters`), the photograph running on under the figures and fading into the card's background, the land on top of it as a translucent surface in the field's colour (it lightens the photograph in the light theme and darkens it in the dark one) without outlines, and the route and the word as on the flat field. The height is at
  * most `MAX_H`: on a wide panel the poster stretches in width, not in height. Decoration for the eyes: the card's text says all of it.
  */
 export function TripPoster({ trip, here, photo = true, className }: { trip: Trip; here: string; photo?: boolean; className?: string }) {
@@ -184,10 +215,8 @@ export function TripPoster({ trip, here, photo = true, className }: { trip: Trip
   const box = side ? { x: wordW + 16, y: 0, w: w - wordW - 24, h } : { x: 0, y: 0, w, h: h - band };
   const frame = useMemo(() => frameOf(trip, box.x, box.y, box.w, box.h), [trip, box.x, box.y, box.w, box.h]);
   const backdrop = photo ? trip.photo : undefined;
-  const geo = useGeography(frame.span < REGIONAL_DEG);
-  const land = useMemo(() => linesPath(frame, geo.coast, w, h, true), [frame, geo.coast, w, h]);
-  const coast = useMemo(() => linesPath(frame, geo.coast, w, h), [frame, geo.coast, w, h]);
-  const borders = useMemo(() => linesPath(frame, geo.borders, w, h), [frame, geo.borders, w, h]);
+  const coast = useCoast(frame.span < REGIONAL_DEG);
+  const land = useMemo(() => linesPath(frame, coast, w, h, true), [frame, coast, w, h]);
   const current = trip.stopPoints.find((s) => s.slug === here);
   // The named places: the start, the end (one label when they are the same place), this one and the highlights (`Trip.highlights`).
   const named = [trip.stopPoints[0], trip.stopPoints[trip.stopPoints.length - 1], current, ...trip.highlights.map((slug) => trip.stopPoints.find((s) => s.slug === slug))]
@@ -198,17 +227,16 @@ export function TripPoster({ trip, here, photo = true, className }: { trip: Trip
   const ink = "var(--foreground)";
   const halo = "var(--accent)";
   return (
-    <div ref={ref} data-slot="trip-poster-box" data-photo={backdrop ? "" : undefined} className={cn("relative w-full overflow-hidden bg-accent", className)} style={{ aspectRatio: `1 / ${ASPECT}`, maxHeight: MAX_H }}>
+    <div ref={ref} data-slot="trip-poster-box" data-photo={backdrop ? "" : undefined} className={cn("relative w-full", backdrop ? "" : "bg-accent", className)} style={{ aspectRatio: `1 / ${ASPECT}`, maxHeight: MAX_H }}>
       {backdrop && (
-        <>
-          <img {...coverImageProps(backdrop, `${w}px`)} alt="" aria-hidden="true" decoding="async" className="absolute inset-0 size-full object-cover" />
-          <div aria-hidden="true" className="absolute inset-0" style={{ background: "color-mix(in srgb, var(--accent) 68%, transparent)" }} />
-        </>
+        // The photograph runs on under the figures below the poster (`PHOTO_RUN`) and fades into the card's background there (`maskImage`), so it ends in no edge: its dynamic range
+        // is held in a band the ink reads on in either theme (`TripPhotoFilters`), not dimmed by a veil.
+        <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 -z-10" style={{ height: h + PHOTO_RUN, maskImage: fade(h), WebkitMaskImage: fade(h) }}>
+          <img {...coverImageProps(backdrop, `${w}px`)} alt="" decoding="async" className="trip-photo size-full object-cover" />
+        </div>
       )}
       <svg data-slot="trip-poster" viewBox={`0 0 ${w} ${h}`} width={w} height={h} role="img" aria-label={`Map of the trip, ${trip.from} to ${trip.to}`} className="relative block overflow-hidden">
-        {land && <path d={land} style={{ fill: backdrop ? "color-mix(in srgb, var(--accent) 34%, transparent)" : tone(6) }} stroke="none" />}
-        {borders && <path d={borders} fill="none" style={{ stroke: backdrop ? "color-mix(in srgb, var(--foreground) 11%, transparent)" : tone(22) }} strokeWidth={0.75} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />}
-        {coast && <path d={coast} fill="none" style={{ stroke: backdrop ? "color-mix(in srgb, var(--foreground) 21%, transparent)" : tone(34) }} strokeWidth={1} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />}
+        {land && <path d={land} style={{ fill: backdrop ? "color-mix(in srgb, var(--accent) 38%, transparent)" : tone(9) }} stroke="none" />}
         {word && (
           <text ref={textRef} x={WORD_PAD - Math.round(size * 0.05)} y={h - WORD_PAD} fontSize={size} style={{ fill: backdrop ? "color-mix(in srgb, var(--foreground) 36%, transparent)" : tone(22), fontFamily: "var(--font-display)", fontWeight: 800, letterSpacing: "-0.03em" }}>
             {word}
