@@ -8389,3 +8389,43 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     --trip-photo-filter: url(#trip-range-dark);
   }
 }
+
+/* The trip carousel's arrows and dots (components/trip-card.tsx `TripCards`). */
+.trip-arrow {
+  display: inline-flex;
+  width: 2.75rem;
+  height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--foreground);
+  cursor: pointer;
+}
+.trip-arrow:hover:not(:disabled) {
+  background: var(--accent);
+}
+.trip-arrow:disabled {
+  color: var(--subtle-foreground);
+  cursor: default;
+}
+.trip-dot {
+  display: inline-flex;
+  width: 2rem;
+  height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.trip-dot > span {
+  display: block;
+  width: 0.5rem;
+  height: 0.5rem;
+  background: var(--subtle-foreground);
+}
+.trip-dot[aria-current="true"] > span {
+  width: 1.25rem;
+  background: var(--foreground);
+}

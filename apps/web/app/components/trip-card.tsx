@@ -41,7 +41,7 @@ function TripFooter({ trip, where, single }: { trip: Trip; where: string; single
   }, [trip.url]);
   const label = trip.url ? tripLinkLabel(trip.url) : "";
   return (
-    <div ref={row} className="relative flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
+    <div ref={row} className="relative mt-auto flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
       <div ref={stops} className="flex max-w-full min-w-0 flex-col gap-1.5">
         <p className="m-0 text-sm font-medium">{where}</p>
         {single && (single.previous || single.next) && (
@@ -66,11 +66,6 @@ function TripFooter({ trip, where, single }: { trip: Trip; where: string; single
     </div>
   );
 }
-
-/** The first trips are open; the rest sit behind one disclosure, so a place on many routes stays short. */
-const OPEN_TRIPS = 2;
-
-const plural = (n: number, one: string, many = `${one}s`) => `${n.toLocaleString("en-US")} ${n === 1 ? one : many}`;
 
 /** The stop before or after, as a quiet row: an arrow, the place (a link), how it was reached and how far. `lead` is read aloud before it ("Arrived from"). */
 function Hop({ hop, side, lead }: { hop: TripHop; side: "before" | "after"; lead: string }) {
@@ -100,7 +95,7 @@ export function TripCard({ trip, here, lived = false, photo = true }: { trip: Tr
   return (
     <article data-slot="trip-card" className="relative isolate flex flex-col overflow-hidden border border-border">
       <TripPoster trip={trip} here={here} photo={photo} />
-      <div className="flex flex-col gap-4 p-4">
+      <div className="flex grow flex-col gap-4 p-4">
         <div data-slot="trip-figures" className="flex flex-wrap items-baseline gap-x-6 gap-y-2">
           <Kpi value={trip.km} unit="km" big lead="About" />
           <Kpi value={trip.stops} unit={trip.stops === 1 ? "stop" : "stops"} />
@@ -116,31 +111,111 @@ export function TripCard({ trip, here, lived = false, photo = true }: { trip: Tr
   );
 }
 
-/** The trips of the step: the first two as cards, the others behind one disclosure. */
+/** The slide in view and how many there are: the one whose left edge is nearest the scroller's, the last one when the scroller is at its end. */
+function currentSlide(scroller: HTMLElement): number {
+  const slides = Array.from(scroller.children) as HTMLElement[];
+  if (scroller.scrollLeft + scroller.clientWidth >= scroller.scrollWidth - 2) return slides.length - 1;
+  let best = 0;
+  let distance = Infinity;
+  slides.forEach((slide, i) => {
+    const d = Math.abs(slide.offsetLeft - scroller.offsetLeft - scroller.scrollLeft);
+    if (d < distance) {
+      distance = d;
+      best = i;
+    }
+  });
+  return best;
+}
+
+/**
+ * The trips of the step. One is a card under its heading. Two or more are a carousel (#510: they were two open cards of 500 px and the rest behind a text toggle that said "Hide" while
+ * it was closed): the heading with the count and the two arrows, the cards side by side in a row that snaps (the next one shows at the edge: it is plainly a row; two at a time in a
+ * wide panel), and under it one dot a trip, to see where you are and to jump. All cards are as tall as the tallest. The row is a region a keyboard can focus and scroll; the position is
+ * said aloud; the arrows are buttons that are off at the ends.
+ */
 export function TripCards({ trips, here, lived = false }: { trips: Trip[]; here: string; lived?: boolean }) {
   // `?poster=flat` shows the flat posters (to compare with the photographs: #510).
   const photo = new URLSearchParams(useLocation().search).get("poster") !== "flat";
-  const open = trips.slice(0, OPEN_TRIPS);
-  const rest = trips.slice(OPEN_TRIPS);
+  const scroller = useRef<HTMLDivElement>(null);
+  const [index, setIndex] = useState(0);
+  const [reach, setReach] = useState({ start: true, end: false });
+  const measure = () => {
+    const el = scroller.current;
+    if (!el) return;
+    setIndex(currentSlide(el));
+    setReach({ start: el.scrollLeft <= 2, end: el.scrollLeft + el.clientWidth >= el.scrollWidth - 2 });
+  };
+  useEffect(() => {
+    const el = scroller.current;
+    if (!el) return;
+    measure();
+    el.addEventListener("scroll", measure, { passive: true });
+    const ro = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    ro?.observe(el);
+    return () => {
+      el.removeEventListener("scroll", measure);
+      ro?.disconnect();
+    };
+  }, [trips.length]);
+  const reduced = () => typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const show = (i: number) => {
+    const el = scroller.current;
+    const slide = el?.children[Math.max(0, Math.min(trips.length - 1, i))] as HTMLElement | undefined;
+    if (el && slide) el.scrollTo({ left: slide.offsetLeft - el.offsetLeft, behavior: reduced() ? "auto" : "smooth" });
+  };
+  const many = trips.length > 1;
+  const headingId = `trips-${here}`;
   return (
-    <div data-slot="trip-cards" className="flex flex-col gap-3">
+    <section data-slot="trip-cards" aria-labelledby={headingId} {...(many ? { "aria-roledescription": "carousel" } : {})} className="@container flex flex-col gap-4">
       {photo && trips.some((t) => t.photo) && <TripPhotoFilters />}
-      {open.map((trip) => (
-        <TripCard key={trip.id} trip={trip} here={here} lived={lived} photo={photo} />
-      ))}
-      {rest.length > 0 && (
-        <details data-slot="trips-more" className="group flex flex-col gap-3">
-          <summary className="flex min-h-11 cursor-pointer items-center text-sm underline-offset-4 hover:underline">
-            <span className="group-open:hidden">Show {plural(rest.length, "more trip")}</span>
-            <span className="hidden group-open:inline">Hide {plural(rest.length, "trip")}</span>
-          </summary>
-          <div className="flex flex-col gap-3">
-            {rest.map((trip) => (
-              <TripCard key={trip.id} trip={trip} here={here} lived={lived} photo={photo} />
-            ))}
+      <header className="flex items-center justify-between gap-3 pt-2">
+        <div className="flex items-baseline gap-3">
+          <h2 id={headingId} className="m-0 font-display text-[2rem] leading-none font-extrabold tracking-[-0.03em]">
+            {many ? "Trips" : "Trip"}
+          </h2>
+          {many && <span className="place-group-count">{trips.length}</span>}
+        </div>
+        {many && (
+          <div className="flex items-center gap-1">
+            <span aria-live="polite" className="ds-meta mr-2">
+              {index + 1} / {trips.length}
+            </span>
+            <button type="button" aria-label="Previous trip" disabled={reach.start} onClick={() => show(index - 1)} className="trip-arrow">
+              <Icon name="chevron-left" size="control" />
+            </button>
+            <button type="button" aria-label="Next trip" disabled={reach.end} onClick={() => show(index + 1)} className="trip-arrow">
+              <Icon name="chevron-right" size="control" />
+            </button>
           </div>
-        </details>
+        )}
+      </header>
+      {many ? (
+        <div
+          ref={scroller}
+          tabIndex={0}
+          role="group"
+          aria-label="Trips, scroll sideways"
+          data-slot="trip-rail"
+          className="-mx-6 flex snap-x snap-mandatory items-stretch gap-3 overflow-x-auto overscroll-x-contain scroll-smooth px-6 pb-1 [scroll-padding-inline:1.5rem] [scrollbar-width:none] motion-reduce:scroll-auto [&::-webkit-scrollbar]:hidden"
+        >
+          {trips.map((trip, i) => (
+            <div key={trip.id} role="group" aria-roledescription="slide" aria-label={`${i + 1} of ${trips.length}: ${trip.title}`} className="flex min-w-0 shrink-0 basis-[88%] snap-start @3xl:basis-[calc(50%-1.125rem)] [&>article]:grow">
+              <TripCard trip={trip} here={here} lived={lived} photo={photo} />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <TripCard trip={trips[0]!} here={here} lived={lived} photo={photo} />
       )}
-    </div>
+      {many && (
+        <div role="group" aria-label="Choose a trip" className="flex items-center justify-center">
+          {trips.map((trip, i) => (
+            <button key={trip.id} type="button" aria-label={`Show trip ${i + 1}: ${trip.title}`} aria-current={i === index ? "true" : undefined} onClick={() => show(i)} className="trip-dot">
+              <span aria-hidden="true" />
+            </button>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
