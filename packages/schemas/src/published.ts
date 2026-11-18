@@ -313,6 +313,11 @@ export const publishedRouteSchema = z
      * Additive in schema version 1. The trip's code name (#510): the one word the trip card sets in giant type, authored (the owner's pick), a CITY named the way an airport code names where you are going
      * (the trip's destination, or its base). Single line of plain text, 1 to 24 characters, unique across the routes (compared without case or diacritics). Absent: the card derives a word from the title.
      */
+    /**
+     * Additive in schema version 1. The style of lettering the trip card sets its code name in (#510), chosen to match the city's character: `grotesque` (a neutral modern sans), `serif`, `old` (an old-style display
+     * serif: old timey, seaside, old buildings), `slab`, `condensed` (a narrow sans) or `script` (hand lettering). Names of styles, not of fonts: the site maps each to a face and can change it. Absent: `grotesque`.
+     */
+    face: z.enum(["grotesque", "serif", "old", "slab", "condensed", "script"]).optional(),
     codename: z
       .string()
       .trim()

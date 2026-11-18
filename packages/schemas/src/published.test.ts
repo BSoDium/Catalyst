@@ -261,3 +261,16 @@ describe("route codename (#510)", () => {
     expect(() => parsePublishedProjection({ ...base, routes: [route("t1", "Chisinau"), route("t2", "CHIȘINĂU")] })).toThrow(/already the code name/);
   });
 });
+
+describe("route face (#510)", () => {
+  const pl = (slug: string, lat: number) => ({ slug, name: slug, coordinates: { lat, lon: 1 }, labelPriority: 0, body: [], images: [], related: [] });
+  const base = { ...EMPTY_PROJECTION, places: [pl("a", 1), pl("b", 2)] };
+  const route = (face?: string) => ({ id: "t", title: "T", stops: ["a", "b"], ...(face === undefined ? {} : { face }) });
+  it("accepts the named styles, and none", () => {
+    for (const f of ["grotesque", "serif", "old", "slab", "condensed", "script"]) expect(parsePublishedProjection({ ...base, routes: [route(f)] }).routes[0]!.face).toBe(f);
+    expect(parsePublishedProjection({ ...base, routes: [route()] }).routes[0]!.face).toBeUndefined();
+  });
+  it("rejects anything else (a font name, say)", () => {
+    expect(() => parsePublishedProjection({ ...base, routes: [route("Fraunces")] })).toThrow();
+  });
+});

@@ -116,6 +116,8 @@ export interface Trip {
   highlights: string[];
   /** The one word the card sets in giant type: the route's authored `codename`, else `tripWord` of the title. */
   word: string;
+  /** The style of lettering the word is set in (`routes[].face`): absent, the plain sans. */
+  face?: string;
   /** How many countries the stops are in (those the places name): 0 when none is known. */
   countries: number;
   /** For the trip's own small map: the stops and, per leg, its mode and a few points of its path (`lon, lat` flat, capped for the whole trip). */
@@ -266,6 +268,7 @@ export function tripsOf(projection: PublishedProjection, slug: string, nameOf: (
         [route.stops[0]!, route.stops[route.stops.length - 1]!, slug],
       ),
       word: route.codename ?? tripWord(route.title),
+      ...(route.face ? { face: route.face } : {}),
       countries: new Set(places.map((p) => p!.countryCode).filter(Boolean)).size,
       stopPoints: places.map((p) => ({ slug: p!.slug, name: nameOf(p!), lon: p!.coordinates.lon, lat: p!.coordinates.lat })),
       legPaths,

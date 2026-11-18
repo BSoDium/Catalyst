@@ -176,5 +176,8 @@ describe("a trip's code name (#510)", () => {
     expect(tripsOf(withName, "beta")[0]!.word).toBe("Chișinău");
     const without = { ...projection, routes: [{ ...projection.routes[0]!, title: "A Week in Moscow" }] };
     expect(tripsOf(without, "beta")[0]!.word).toBe("Moscow");
+    expect(tripsOf(without, "beta")[0]!.face).toBeUndefined();
+    const styled = { ...projection, routes: [{ ...projection.routes[0]!, face: "old" as const }] };
+    expect(tripsOf(styled, "beta")[0]!.face).toBe("old");
   });
 });

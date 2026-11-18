@@ -419,6 +419,17 @@
             ],
             "additionalProperties": false
           },
+          "face": {
+            "type": "string",
+            "enum": [
+              "grotesque",
+              "serif",
+              "old",
+              "slab",
+              "condensed",
+              "script"
+            ]
+          },
           "codename": {
             "type": "string",
             "minLength": 1,
