@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { coverImageProps } from "~/lib/cover-image";
+import { calmPlace, energyOf } from "~/lib/calm";
 import { findHorizon } from "~/lib/horizon";
 import { frameOf, type Frame } from "~/lib/trip-projection";
 import type { Trip } from "~/lib/journeys";
@@ -195,10 +196,13 @@ const HORIZON_ROWS = 120;
  * The photograph is the site's own file (same origin), so the canvas can be read; if it cannot, there is no horizon and the photograph is placed as it is.
  */
 function useHorizon(src: string | undefined) {
-  const [state, setState] = useState<{ src: string; horizon: number | null; w: number; h: number } | null>(null);
+  const [state, setState] = useState<{ src: string; horizon: number | null; w: number; h: number; energy: Float32Array | null; cols: number; rows: number } | null>(null);
   const read = useCallback((img: HTMLImageElement) => {
     if (!img.naturalWidth || !img.naturalHeight || !src) return;
     let horizon: number | null = null;
+    let energy: Float32Array | null = null;
+    let eCols = 0;
+    let eRows = 0;
     try {
       const cols = HORIZON_COLS;
       const rows = Math.min(HORIZON_ROWS, Math.max(12, Math.round((cols * img.naturalHeight) / img.naturalWidth)));
@@ -223,11 +227,15 @@ function useHorizon(src: string | undefined) {
           colours.push([r / cols / 255, g / cols / 255, b / cols / 255]);
         }
         horizon = findHorizon(colours);
+        // (how much each cell of the small copy changes: where the picture is calm, for the map to fall on)
+        energy = energyOf(data, cols, rows);
+        eCols = cols;
+        eRows = rows;
       }
     } catch {
       horizon = null;
     }
-    setState((prev) => (prev && prev.src === src && prev.horizon === horizon && prev.w === img.naturalWidth ? prev : { src, horizon, w: img.naturalWidth, h: img.naturalHeight }));
+    setState((prev) => (prev && prev.src === src && prev.horizon === horizon && prev.w === img.naturalWidth ? prev : { src, horizon, w: img.naturalWidth, h: img.naturalHeight, energy, cols: eCols, rows: eRows }));
   }, [src]);
   // (the picture may have loaded before React attached `onLoad`)
   const ref = useRef<HTMLImageElement>(null);
@@ -314,9 +322,16 @@ export function TripPoster({ trip, here, photo = true, className, wordFace }: { 
   // The photograph placed so that its horizon is at the poster's bottom edge: scaled up as far as it takes to fill the layer above and below that line, never less than the cover size.
   const placed = (() => {
     const hz = horizon.horizon;
-    if (!backdrop || !hz || hz.horizon === null) return null;
-    const f = hz.horizon;
+    if (!backdrop || !hz) return null;
     const run = h + PHOTO_RUN;
+    // First the calmest place: the photograph where the map falls on its sky or its plain parts (`lib/calm.ts`), whatever it shows.
+    if (hz.energy) {
+      const calm = calmPlace(hz.energy, hz.cols, hz.rows, { w: hz.w, h: hz.h }, { w, run }, box);
+      if (calm) return { width: calm.width, height: calm.height, left: calm.left, top: calm.top } as const;
+    }
+    // Else the horizon where the picture has one: the seam between the poster and the figures.
+    if (hz.horizon === null) return null;
+    const f = hz.horizon;
     const k = Math.max(w / hz.w, h / (f * hz.h), PHOTO_RUN / ((1 - f) * hz.h), run / hz.h);
     return { width: k * hz.w, height: k * hz.h, left: (w - k * hz.w) / 2, top: h - f * k * hz.h } as const;
   })();

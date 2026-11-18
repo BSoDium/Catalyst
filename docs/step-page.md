@@ -66,3 +66,5 @@ Demo data in the browser at desktop and 375 px (Bangkok: no entries, story open;
 
 
 Note (#510, 2026-11-18): the poster is framed on the trip's land (a flight whose ends are not both on the trip's ground, such as the way in and out from home, leaves the frame as a stub); the giant word is quieter (at most 32 % of the ink on the flat field) and carries a small mono "TRIP CODE NAME" tag; the link to the trip's page is a quiet outline.
+
+Note (#510): a trip's photograph is placed behind the poster by its calmest part (`lib/calm.ts`, `calmPlace`: from a small copy of it, the offset and the scale (up to 1.4x) where the picture changes least under the box the route is drawn in; a sky, a plain wall, still water), the horizon rule only when nothing could be read; so a tall picture of a skyline sits with its sky under the map.
