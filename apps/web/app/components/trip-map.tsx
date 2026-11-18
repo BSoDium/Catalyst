@@ -72,9 +72,6 @@ const distanceKm = (a: { lon: number; lat: number }, b: { lon: number; lat: numb
 /** The share of the poster's width a word may take before it is condensed. */
 const WORD_SOFT = 0.78;
 
-/** The room over the word for its small label (px). */
-const TAG_H = 18;
-
 /** The space round the giant word: the same under it and to its left (owner, #510). */
 const WORD_PAD = 16;
 
@@ -285,12 +282,12 @@ export function TripPoster({ trip, here, photo = true, className, wordFace }: { 
       alive = false;
     };
   }, [key, word]);
-  // The word's band under the route: its capital letters' height and a margin each side; none without a word. The land is not clipped to it.
-  const band = word ? Math.round(size * 0.74) + 2 * WORD_PAD + TAG_H : 0;
   // Where the route goes: above the word, across the width; or, when the poster is wide enough that the room to the right of the word can hold the route at the full height, there.
   const wordW = drawn + WORD_PAD;
   const side = word !== "" && w - wordW - 24 >= h * 0.9;
-  const box = side ? { x: wordW + 16, y: 0, w: w - wordW - 24, h } : { x: 0, y: 0, w, h: h - band };
+  // (above the word the route may run down to the top of its letters, over the tag and the gap: the word is quiet, and a strip the height of the whole band left a tall route no room)
+  const clear = word ? Math.round(size * 0.74) + WORD_PAD : 0;
+  const box = side ? { x: wordW + 16, y: 0, w: w - wordW - 24, h } : { x: 0, y: 0, w, h: h - clear };
   const backdrop = photo ? trip.photo : undefined;
   // The map is framed on the trip's land: a long flight (over `FAR_FLIGHT_KM`) is not what the trip is about, and fitting it in (the way home across an ocean) left the trip itself a squiggle in a corner of an empty map. The flight is still drawn,
   // as far as the poster goes: it leaves the frame as a stub toward where it flies. A trip of nothing but long flights (or with none) is framed on all of it.
@@ -307,11 +304,11 @@ export function TripPoster({ trip, here, photo = true, className, wordFace }: { 
     if (kept.length === trip.legPaths.length) return { pts: all, land: false };
     const ends = kept.flatMap((l) => [first(l), last(l)]);
     const near = (q: { lon: number; lat: number }) => ends.some((e) => distanceKm(e, q) < 60);
-    const stops = trip.stopPoints.filter((q) => near(q) || q.slug === here).map((q) => ({ lon: q.lon, lat: q.lat }));
+    const stops = trip.stopPoints.filter((q) => near(q)).map((q) => ({ lon: q.lon, lat: q.lat }));
     return { pts: kept.flatMap((l) => Array.from({ length: l.points.length / 2 }, (_, k) => ({ lon: l.points[k * 2]!, lat: l.points[k * 2 + 1]! }))).concat(stops), land: true };
-  }, [trip, here]);
+  }, [trip]);
   // (a trip framed on its land gets room round it: the continent runs on past the route on every side, so the route is in the map and the map is not a crop of it)
-  const pad = framed.land ? PAD + Math.round(0.14 * Math.min(box.w, box.h)) : PAD;
+  const pad = framed.land ? Math.min(PAD + Math.round(0.14 * Math.min(box.w, box.h)), Math.round(0.3 * Math.min(box.w, box.h))) : PAD;
   const frame = useMemo(() => frameOf(framed.pts, box.x, box.y, box.w, box.h, pad, { w, h: backdrop ? h + PHOTO_RUN : h }), [framed, box.x, box.y, box.w, box.h, pad, w, h, backdrop]);
   const horizon = useHorizon(backdrop?.src);
   // The photograph placed so that its horizon is at the poster's bottom edge: scaled up as far as it takes to fill the layer above and below that line, never less than the cover size.

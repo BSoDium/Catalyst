@@ -29,7 +29,7 @@ const LINK_NEUTRAL = "border-border bg-transparent text-foreground hover:border-
  * do not fit side by side the button goes on a line of its own and takes the full width of it. (Whether they fit is measured: the stops' natural width and a hidden copy of the
  * button's, against the row's: a button that is already full width cannot say how wide it would be.)
  */
-function TripFooter({ trip, where, hops }: { trip: Trip; where: string; hops: { previous: TripHop | null; next: TripHop | null } | null }) {
+function TripFooter({ trip, where, hops, stacked = false }: { trip: Trip; where: string; hops: { previous: TripHop | null; next: TripHop | null } | null; /** The button on a line of its own, always (the cards of a carousel: its place must not depend on the width a card has as it scrolls). */ stacked?: boolean }) {
   const row = useRef<HTMLDivElement>(null);
   const stops = useRef<HTMLDivElement>(null);
   const ghost = useRef<HTMLSpanElement>(null);
@@ -42,14 +42,14 @@ function TripFooter({ trip, where, hops }: { trip: Trip; where: string; hops: { 
     const st = stops.current;
     if (!r || !g || !st) return;
     const measure = () => {
-      setWrapped(st.offsetWidth + 16 + g.offsetWidth > r.clientWidth + 0.5);
+      setWrapped(stacked || st.offsetWidth + 16 + g.offsetWidth > r.clientWidth + 0.5);
       setShort(g.offsetWidth > r.clientWidth + 0.5);
     };
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(r);
     return () => ro.disconnect();
-  }, [trip.url]);
+  }, [trip.url, stacked]);
   const label = trip.url ? tripLinkLabel(trip.url) : "";
   // (the mark of the service the link goes to, when it is one we know: the circle of Polarsteps)
   const brand = !!trip.url && /(^|\.)polarsteps\.com(\/|$)/i.test(trip.url.replace(/^https?:\/\//, ""));
@@ -131,7 +131,7 @@ export function TripCard({ trip, here, lived = false, photo = true, position, wo
           <Kpi value={trip.stops} unit={trip.stops === 1 ? "stop" : "stops"} />
           {trip.countries > 0 && <Kpi value={trip.countries} unit={trip.countries === 1 ? "country" : "countries"} />}
         </div>
-        <TripFooter trip={trip} where={where} hops={single ?? ends} />
+        <TripFooter trip={trip} where={where} hops={single ?? ends} stacked={position !== undefined} />
         {photo && trip.photo?.credit && (
           <p data-slot="trip-photo-credit" className="m-0 text-xs text-muted-foreground">
             Photo: {trip.photo.credit}

@@ -3841,15 +3841,16 @@
     border-color: color-mix(in oklab, var(--brand) 70%, var(--background));
     background-color: color-mix(in oklab, var(--brand) 26%, var(--background));
   }
+  /* On the photography and artwork pages' foot the button is SOLID and high contrast (owner, 2026-11-18): the brand colour lifted towards the page's ink (lighter on the dark page, darker on the light one) with the page's own colour as the label, so the label is the dark on the dark page and the light on the light page, opposite to the fill. */
   .ds-button.gallery-end-link[data-variant][data-brand] {
-    --ds-button-bg: color-mix(in oklab, var(--brand) var(--brand-fill), var(--background));
-    --ds-button-fg: color-mix(in oklab, var(--brand) var(--brand-ink), var(--foreground));
-    --ds-button-line: color-mix(in oklab, var(--brand) var(--brand-line), var(--background));
+    --ds-button-bg: color-mix(in oklab, var(--brand) 72%, var(--foreground));
+    --ds-button-fg: var(--background);
+    --ds-button-line: color-mix(in oklab, var(--brand) 72%, var(--foreground));
   }
   .ds-button.gallery-end-link[data-variant][data-brand]:hover,
   .ds-button.gallery-end-link[data-variant][data-brand]:active {
-    --ds-button-bg: color-mix(in oklab, var(--brand) 26%, var(--background));
-    --ds-button-line: color-mix(in oklab, var(--brand) 70%, var(--background));
+    --ds-button-bg: color-mix(in oklab, var(--brand) 60%, var(--foreground));
+    --ds-button-line: color-mix(in oklab, var(--brand) 60%, var(--foreground));
   }
 
   /* Solid, in the page's ink: white with black text on the dark page (black with white text on the light one), one step dimmer on hover. */
