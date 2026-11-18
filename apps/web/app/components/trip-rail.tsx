@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNo
 import { Icon } from "~/components/ui";
 import { focusScrolls } from "~/components/place-gallery";
 import { growth, widest, type Keylines } from "~/lib/photo-carousel";
-import { lastTrip, tripKeylines, tripLayout, tripStep } from "~/lib/trip-carousel";
+import { lastTrip, tripBleed, tripKeylines, tripLayout, tripStep } from "~/lib/trip-carousel";
 
 /**
  * The trip cards as a carousel in the photographs' way (components/place-gallery.tsx `Carousel`, #510): the row is a native horizontal scroller that holds nothing but an empty track with a snap
@@ -59,14 +59,17 @@ export function TripRail({ slides, names }: { slides: ReactNode[]; names: string
     const ul = layer.current;
     if (!el || !ul || !geo) return;
     const t = geo.step > 0 ? el.scrollLeft / geo.step : 0;
-    tripLayout(t, count, geo.k).forEach((box, i) => {
+    const boxes = tripLayout(t, count, geo.k);
+    boxes.forEach((box, i) => {
       const li = ul.children[i] as HTMLElement | undefined;
       if (!li) return;
       // (a card that is not on screen is a box of no width: it paints nothing but stays in the tab order)
       const off = box.w < 1;
       if (off && li.style.width === "0px") return;
-      li.style.width = `${off ? 0 : box.w}px`;
-      li.style.transform = `translate3d(${box.x}px,0,0)`;
+      // (a card at an edge of the row runs on past it, cropped by the stage: its box is wider than what is seen, what grows and fades with `--g` is the seen width)
+      const bleed = tripBleed(box, i, t, count, geo.k, boxes[i - 1], boxes[i + 1]);
+      li.style.width = `${off ? 0 : box.w + bleed.left + bleed.right}px`;
+      li.style.transform = `translate3d(${box.x - bleed.left}px,0,0)`;
       li.style.setProperty("--g", growth(box.w, geo.k).toFixed(2));
       // (a card nearly gone keeps no border: two pixels of it would be a line against the panel's edge)
       li.style.setProperty("--edge", Math.min(1, Math.max(0, (box.w - 4) / 24)).toFixed(2));

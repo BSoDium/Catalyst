@@ -121,8 +121,8 @@ export function EntryRow({
         data-covered={showCover ? "" : undefined}
         className={cn(
           "ds-card entry-row grid min-w-0 grid-cols-1 gap-x-5 gap-y-3 py-5",
-          // (a poem's picture is a square at least (5 rem, 6.5 rem from the group's `@md`: the width of its column) and at least as tall as the words beside it, so the words never run past its foot; the others' is bigger, from 28 rem)
-          showCover && (entry.kind === "poem" ? "grid-cols-[5rem_minmax(0,1fr)] @md:grid-cols-[6.5rem_minmax(0,1fr)]" : "@md:grid-cols-[11rem_minmax(0,1fr)]"),
+          // (a poem's picture is a square at least (6 rem, 7.5 rem from the group's `@md`: the width of its column) and at least as tall as the words beside it, so the words never run past its foot; the others' is bigger, from 28 rem)
+          showCover && (entry.kind === "poem" ? "grid-cols-[6rem_minmax(0,1fr)] @md:grid-cols-[7.5rem_minmax(0,1fr)]" : "@md:grid-cols-[11rem_minmax(0,1fr)]"),
           showCover && "@max-md/group:grid-cols-1 @max-md/group:grid-rows-[minmax(0,1fr)_auto_auto_auto_auto] @max-md/group:gap-y-0 @max-md/group:pt-0",
           className,
         )}
@@ -132,7 +132,7 @@ export function EntryRow({
           <div
             className={cn(
               "place-row-cover relative min-w-0 overflow-hidden @max-md/group:-mx-6 @max-md/group:aspect-[4/3] @max-md/group:self-auto @max-md/group:[grid-area:1/1/4/2]",
-              entry.kind === "poem" ? "min-h-20 self-stretch @md:min-h-[6.5rem]" : "aspect-[16/10] @md:aspect-auto @md:min-h-32",
+              entry.kind === "poem" ? "min-h-24 self-stretch @md:min-h-[7.5rem]" : "aspect-[16/10] @md:aspect-auto @md:min-h-32",
             )}
           >
             {cover && entry.sensitive === true ? (
