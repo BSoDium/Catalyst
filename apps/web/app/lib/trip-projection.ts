@@ -20,6 +20,9 @@ export interface Frame {
   cuts: (lonA: number, lonB: number) => boolean;
 }
 
+/** A trip within this many degrees keeps the azimuthal map (see `frameOf`). */
+export const REGION_SPAN = 60;
+
 /** The farthest a trip's point may be from its middle for the azimuthal projection to be used (degrees of arc). */
 export const AZIMUTHAL_LIMIT = 100;
 
@@ -128,7 +131,8 @@ export function frameOf(points: GeoPoint[], bx: number, by: number, bw: number, 
     // The disc (radius 2 on the unit sphere) shows its edge when a corner of the poster is beyond it.
     const origin = f.at(centre.lon, centre.lat);
     const reach = origin ? Math.max(...[0, view.w].flatMap((x) => [0, view.h].map((y) => Math.hypot(x - origin.x, y - origin.y)))) : Infinity;
-    if (reach <= 1.9 * f.scale) return { at: f.at, span, azimuthal: true, cuts: () => false };
+    // A trip that is a region of the globe (a continent, `REGION_SPAN` degrees or less) keeps the azimuthal map whatever the shape of the poster: the world map would draw its land sheared and stretched at that latitude, and the disc's far side is ocean or the other side of the world, far from the trip.
+    if (span <= REGION_SPAN || reach <= 1.9 * f.scale) return { at: f.at, span, azimuthal: true, cuts: () => false };
   }
   const project = equalEarth(lon0);
   const f = fit(project);
