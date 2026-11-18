@@ -20,7 +20,9 @@ function Kpi({ value, unit, big = false, lead }: { value: number; unit: string; 
 }
 
 // (a quiet outline, not the page's loudest block: it leaves the site, and the trip's name above it is what the card says)
-const LINK_CLASS = "inline-flex min-h-11 max-w-full items-center gap-2 whitespace-nowrap border border-border bg-transparent px-4 text-sm font-medium text-foreground no-underline hover:border-foreground hover:bg-accent";
+const LINK_CLASS = "inline-flex min-h-11 max-w-full items-center gap-2 whitespace-nowrap border px-4 text-sm font-medium no-underline";
+// (neutral colours, for a link to a service we have no colour for; a known one has its own, `.brand-link`)
+const LINK_NEUTRAL = "border-border bg-transparent text-foreground hover:border-foreground hover:bg-accent";
 
 /**
  * The row under the figures: where this step falls in the trip with the stop before and after, and, to the right of them, the button to the trip's own page. When the two
@@ -64,13 +66,15 @@ function TripFooter({ trip, where, hops }: { trip: Trip; where: string; hops: { 
       </div>
       {trip.url && (
         <>
-          <a href={trip.url} target="_blank" rel="noopener noreferrer" data-slot="trip-link" className={`${LINK_CLASS} ${wrapped ? "w-full justify-between" : "ml-auto"}`}>
-            {brand && <PolarstepsMark className="shrink-0" width="1.25em" height="1.25em" />}
-            <span className="min-w-0 truncate">{short ? "See the whole trip" : label}</span>
+          <a href={trip.url} target="_blank" rel="noopener noreferrer" data-slot="trip-link" className={`${LINK_CLASS} ${brand ? "brand-link pl-3" : LINK_NEUTRAL} ${wrapped ? "w-full justify-between" : "ml-auto"}`} data-brand={brand ? "polarsteps" : undefined}>
+            <span className="flex min-w-0 items-center gap-2.5">
+              {brand && <PolarstepsMark className="shrink-0" width="1.25em" height="1.25em" />}
+              <span className="min-w-0 truncate">{short ? "See the whole trip" : label}</span>
+            </span>
             <Icon name="arrow-up-right" size="inline" className="shrink-0" />
           </a>
-          <span ref={ghost} aria-hidden="true" className={`${LINK_CLASS} pointer-events-none invisible absolute right-0 bottom-0 w-max max-w-none whitespace-nowrap`}>
-            {brand && <PolarstepsMark width="1.25em" height="1.25em" />}
+          <span ref={ghost} aria-hidden="true" className={`${LINK_CLASS} ${brand ? "pl-3" : ""} pointer-events-none invisible absolute right-0 bottom-0 w-max max-w-none whitespace-nowrap`}>
+            {brand && <PolarstepsMark width="1.25em" height="1.25em" className="mr-0.5" />}
             {label}
             <Icon name="arrow-up-right" size="inline" />
           </span>

@@ -3817,6 +3817,41 @@
     margin-top: 0.75rem;
   }
 
+  /* The buttons that go to a service wear its colour, softened into the page (owner, 2026-11-18): the fill is a few percent of the brand over the page's own colour, so it is a darker, quieter tone on the dark page and a lighter, paler one on the light page; the line and the label take more of it. */
+  [data-brand] {
+    --brand-fill: 15%;
+    --brand-line: 42%;
+    --brand-ink: 62%;
+  }
+  [data-brand="polarsteps"] {
+    --brand: #e5448a;
+  }
+  [data-brand="pexels"] {
+    --brand: #05a081;
+  }
+  [data-brand="artstation"] {
+    --brand: #13aff0;
+  }
+  .brand-link {
+    border-color: color-mix(in oklab, var(--brand) var(--brand-line), var(--background));
+    background-color: color-mix(in oklab, var(--brand) var(--brand-fill), var(--background));
+    color: color-mix(in oklab, var(--brand) var(--brand-ink), var(--foreground));
+  }
+  .brand-link:hover {
+    border-color: color-mix(in oklab, var(--brand) 70%, var(--background));
+    background-color: color-mix(in oklab, var(--brand) 26%, var(--background));
+  }
+  .ds-button.gallery-end-link[data-variant][data-brand] {
+    --ds-button-bg: color-mix(in oklab, var(--brand) var(--brand-fill), var(--background));
+    --ds-button-fg: color-mix(in oklab, var(--brand) var(--brand-ink), var(--foreground));
+    --ds-button-line: color-mix(in oklab, var(--brand) var(--brand-line), var(--background));
+  }
+  .ds-button.gallery-end-link[data-variant][data-brand]:hover,
+  .ds-button.gallery-end-link[data-variant][data-brand]:active {
+    --ds-button-bg: color-mix(in oklab, var(--brand) 26%, var(--background));
+    --ds-button-line: color-mix(in oklab, var(--brand) 70%, var(--background));
+  }
+
   /* Solid, in the page's ink: white with black text on the dark page (black with white text on the light one), one step dimmer on hover. */
   .ds-button.gallery-end-link[data-variant] {
     --ds-button-bg: var(--foreground);
