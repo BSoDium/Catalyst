@@ -1,8 +1,9 @@
 /**
  * The projection of a trip's poster (components/trip-map.tsx, #510): not a plate carree (an equirectangular map, which stretches everything away from the equator and made a trip in the north look
  * flat and wide) but a LAMBERT AZIMUTHAL EQUAL-AREA projection centred on the middle of the trip, so the map is drawn as seen from above the trip: nothing is stretched near the middle, areas are
- * true, and the distortion grows only towards the edge of the poster, where the land is faint anyway. A trip that spreads over more than `AZIMUTHAL_LIMIT` degrees from its middle (it would
- * reach the far side of the globe) falls back to the plate carree, shrunk in longitude by the cosine of its middle latitude.
+ * true, and the distortion grows only towards the edge of the poster, where the land is faint anyway. That map is a disc, though: a trip that is a good part of the globe (Paris to Patagonia) is fitted
+ * so small in it that the poster shows the disc's own edge, the whole globe floating on the field. For such a trip (the disc's edge would show, or it reaches the far side of the globe) the map is an
+ * EQUAL EARTH world map instead (equal-area too, its edge is the poles', far from any trip), turned to the trip's own longitude so that the seam of the world is at the other side of the globe.
  */
 export interface GeoPoint {
   lon: number;
@@ -15,6 +16,8 @@ export interface Frame {
   /** The larger side of the trip's box, degrees: how close the map is. */
   span: number;
   azimuthal: boolean;
+  /** True when the segment between two places crosses the world map's seam (never in the azimuthal one): a line is broken there, not drawn across the map. */
+  cuts: (lonA: number, lonB: number) => boolean;
 }
 
 /** The farthest a trip's point may be from its middle for the azimuthal projection to be used (degrees of arc). */
@@ -45,40 +48,88 @@ function azimuthal(centre: GeoPoint): Projector {
   };
 }
 
-function plate(centre: GeoPoint): Projector {
-  const k = Math.cos(centre.lat * RAD);
-  return (lon, lat) => ({ x: (lon - centre.lon) * RAD * k, y: (lat - centre.lat) * RAD });
+/** The longitude, in [-180, 180), that puts the trip in the middle of a world map: the middle of the largest stretch of longitudes the trip does NOT cover (so a trip over the antimeridian is whole). */
+function middleLon(lons: number[]): number {
+  const sorted = [...new Set(lons.map((l) => ((((l + 180) % 360) + 360) % 360) - 180))].sort((a, b) => a - b);
+  if (sorted.length < 2) return sorted[0] ?? 0;
+  let gap = -1;
+  let at = 0;
+  for (let i = 0; i < sorted.length; i++) {
+    const next = i + 1 < sorted.length ? sorted[i + 1]! : sorted[0]! + 360;
+    if (next - sorted[i]! > gap) {
+      gap = next - sorted[i]!;
+      at = i;
+    }
+  }
+  // the trip runs from the point after the gap to the point before it
+  const from = at + 1 < sorted.length ? sorted[at + 1]! : sorted[0]! + 360;
+  const to = sorted[at]! + 360;
+  const mid = (from + to) / 2;
+  return ((((mid + 180) % 360) + 360) % 360) - 180;
 }
 
-/** The frame that fits the trip's `points` in the box `bw` x `bh` at (`bx`, `by`) with `pad` round it, centred in it. */
-export function frameOf(points: GeoPoint[], bx: number, by: number, bw: number, bh: number, pad: number): Frame {
-  const lons = points.map((p) => p.lon);
-  const lats = points.map((p) => p.lat);
-  const lon0 = Math.min(...lons);
-  const lon1 = Math.max(...lons);
+const wrap = (d: number) => ((((d + 180) % 360) + 360) % 360) - 180;
+
+/** Equal Earth (Šavrič, Patterson, Jenny 2018), turned to `lon0`. */
+function equalEarth(lon0: number): Projector {
+  const A1 = 1.340264;
+  const A2 = -0.081106;
+  const A3 = 0.000893;
+  const A4 = 0.003796;
+  const M = Math.sqrt(3) / 2;
+  return (lon, lat) => {
+    const l = wrap(lon - lon0) * RAD;
+    const t = Math.asin(M * Math.sin(lat * RAD));
+    const t2 = t * t;
+    const t6 = t2 * t2 * t2;
+    return { x: (2 * Math.sqrt(3) * l * Math.cos(t)) / (3 * (9 * A4 * t6 * t2 + 7 * A3 * t6 + 3 * A2 * t2 + A1)), y: t * (A1 + A2 * t2 + t6 * (A3 + A4 * t2)) };
+  };
+}
+
+/**
+ * The frame that fits the trip's `points` in the box `bw` x `bh` at (`bx`, `by`) with `pad` round it, centred in it. `view` is the whole poster (the map runs on beyond the box, under the word and the
+ * photograph): when the azimuthal map's edge would show in it, the world map is used.
+ */
+export function frameOf(points: GeoPoint[], bx: number, by: number, bw: number, bh: number, pad: number, view: { w: number; h: number } = { w: bx + bw, h: by + bh }): Frame {
+  const lon0 = middleLon(points.map((p) => p.lon));
+  const rel = points.map((p) => ({ lon: wrap(p.lon - lon0), lat: p.lat }));
+  const lons = rel.map((p) => p.lon);
+  const lats = rel.map((p) => p.lat);
+  const lonMin = Math.min(...lons);
+  const lonMax = Math.max(...lons);
   const lat0 = Math.min(...lats);
   const lat1 = Math.max(...lats);
-  const centre = { lon: (lon0 + lon1) / 2, lat: (lat0 + lat1) / 2 };
-  const azimuthalOk = points.every((p) => arc(centre, p) <= AZIMUTHAL_LIMIT);
-  const project = azimuthalOk ? azimuthal(centre) : plate(centre);
-  const projected = points.map((p) => project(p.lon, p.lat)).filter((p): p is { x: number; y: number } => p !== null);
-  let minX = Math.min(...projected.map((p) => p.x));
-  let maxX = Math.max(...projected.map((p) => p.x));
-  let minY = Math.min(...projected.map((p) => p.y));
-  let maxY = Math.max(...projected.map((p) => p.y));
-  // never a degenerate box: a trip within one city still gets a map of a few kilometres
-  const min = 0.08 * RAD;
-  if (maxX - minX < min) { const c = (minX + maxX) / 2; minX = c - min / 2; maxX = c + min / 2; }
-  if (maxY - minY < min) { const c = (minY + maxY) / 2; minY = c - min / 2; maxY = c + min / 2; }
-  const scale = Math.max(1e-9, Math.min((bw - 2 * pad) / (maxX - minX), (bh - 2 * pad) / (maxY - minY)));
-  const offX = bx + (bw - (maxX - minX) * scale) / 2;
-  const offY = by + (bh - (maxY - minY) * scale) / 2;
-  return {
-    at: (lon, lat) => {
+  const centre = { lon: lon0 + (lonMin + lonMax) / 2, lat: (lat0 + lat1) / 2 };
+  const span = Math.max(lonMax - lonMin, lat1 - lat0);
+
+  const fit = (project: Projector) => {
+    const projected = points.map((p) => project(p.lon, p.lat)).filter((p): p is { x: number; y: number } => p !== null);
+    let minX = Math.min(...projected.map((p) => p.x));
+    let maxX = Math.max(...projected.map((p) => p.x));
+    let minY = Math.min(...projected.map((p) => p.y));
+    let maxY = Math.max(...projected.map((p) => p.y));
+    // never a degenerate box: a trip within one city still gets a map of a few kilometres
+    const min = 0.08 * RAD;
+    if (maxX - minX < min) { const c = (minX + maxX) / 2; minX = c - min / 2; maxX = c + min / 2; }
+    if (maxY - minY < min) { const c = (minY + maxY) / 2; minY = c - min / 2; maxY = c + min / 2; }
+    const scale = Math.max(1e-9, Math.min((bw - 2 * pad) / (maxX - minX), (bh - 2 * pad) / (maxY - minY)));
+    const offX = bx + (bw - (maxX - minX) * scale) / 2;
+    const offY = by + (bh - (maxY - minY) * scale) / 2;
+    const at = (lon: number, lat: number) => {
       const p = project(lon, lat);
       return p ? { x: offX + (p.x - minX) * scale, y: offY + (maxY - p.y) * scale } : null;
-    },
-    span: Math.max(lon1 - lon0, lat1 - lat0),
-    azimuthal: azimuthalOk,
+    };
+    return { at, scale };
   };
+
+  if (points.every((p) => arc(centre, p) <= AZIMUTHAL_LIMIT)) {
+    const f = fit(azimuthal(centre));
+    // The disc (radius 2 on the unit sphere) shows its edge when a corner of the poster is beyond it.
+    const origin = f.at(centre.lon, centre.lat);
+    const reach = origin ? Math.max(...[0, view.w].flatMap((x) => [0, view.h].map((y) => Math.hypot(x - origin.x, y - origin.y)))) : Infinity;
+    if (reach <= 1.9 * f.scale) return { at: f.at, span, azimuthal: true, cuts: () => false };
+  }
+  const project = equalEarth(lon0);
+  const f = fit(project);
+  return { at: f.at, span, azimuthal: false, cuts: (a, b) => Math.abs(wrap(a - lon0) - wrap(b - lon0)) > 180 };
 }

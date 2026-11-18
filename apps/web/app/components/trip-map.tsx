@@ -71,19 +71,27 @@ function linesPath(frame: Frame, lines: Lines | null, w: number, h: number, ring
     if (!inside) continue;
     let d = "";
     let pen = false;
+    let piece = 0;
+    const close = () => {
+      // (every land outline is filled, closed or not: a landmass the data cuts at the antimeridian, Europe, Africa and Asia in one, is an open line whose two ends are on that cut, and closing it runs along the cut)
+      if (ring && pen && piece > 3) d += "Z";
+      piece = 0;
+    };
     for (let i = a; i < b; i++) {
       const p = frame.at(lines.positions[i * 2]!, lines.positions[i * 2 + 1]!);
-      // (a point on the far side of the globe has no place on the poster: the line is broken there)
-      if (!p) {
+      // (a point on the far side of the globe has no place on the poster, and a line over the world map's seam is not drawn across it: the line is broken there)
+      if (!p || (i > a && frame.cuts(lines.positions[(i - 1) * 2]!, lines.positions[i * 2]!))) {
+        close();
         pen = false;
-        continue;
+        if (!p) continue;
       }
       d += `${pen ? "L" : "M"}${p.x.toFixed(1)} ${p.y.toFixed(1)}`;
       pen = true;
+      piece++;
     }
-    if (!ring) out.push(d);
-    // (every land outline is filled, closed or not: a landmass the data cuts at the antimeridian, Europe, Africa and Asia in one, is an open line whose two ends are on that cut, and closing it runs along the cut)
-    else if (b - a > 3) out.push(`${d}Z`);
+    close();
+    out.push(d);
+    continue;
   }
   return out.join("");
 }
@@ -245,6 +253,7 @@ export function TripPoster({ trip, here, photo = true, className }: { trip: Trip
   const wordW = (fit.key === key ? Math.round(fit.length) : Math.round(0.66 * size * word.length)) + WORD_PAD;
   const side = word !== "" && w - wordW - 24 >= h * 0.9;
   const box = side ? { x: wordW + 16, y: 0, w: w - wordW - 24, h } : { x: 0, y: 0, w, h: h - band };
+  const backdrop = photo ? trip.photo : undefined;
   const frame = useMemo(
     () =>
       frameOf(
@@ -254,10 +263,10 @@ export function TripPoster({ trip, here, photo = true, className }: { trip: Trip
         box.w,
         box.h,
         PAD,
+        { w, h: backdrop ? h + PHOTO_RUN : h },
       ),
-    [trip, box.x, box.y, box.w, box.h],
+    [trip, box.x, box.y, box.w, box.h, w, h, backdrop],
   );
-  const backdrop = photo ? trip.photo : undefined;
   const horizon = useHorizon(backdrop?.src);
   // The photograph placed so that its horizon is at the poster's bottom edge: scaled up as far as it takes to fill the layer above and below that line, never less than the cover size.
   const placed = (() => {

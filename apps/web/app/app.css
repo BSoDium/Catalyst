@@ -8425,3 +8425,12 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
 .trip-slide [data-slot="trip-poster-box"] {
   opacity: calc(0.6 + 0.4 * var(--g, 1));
 }
+
+/* The link to the trip's own page is the loudest thing on a card, so it is high contrast only on the card in front: from a faint fill and ink at 0.6 of the card's width to the full inverted button at 1 (components/trip-card.tsx). The
+   colours are solid mixes with the card's ground, not an opacity, so the label never goes see-through over the poster behind it; the short transition smooths the snap at the end of a scroll. */
+.trip-slide [data-slot="trip-link"] {
+  --on: clamp(0, calc((var(--g, 1) - 0.6) * 2.5), 1);
+  background-color: color-mix(in srgb, var(--foreground) calc(10% + 90% * var(--on)), var(--background));
+  color: color-mix(in srgb, var(--background) calc(40% + 60% * var(--on)), var(--foreground));
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
