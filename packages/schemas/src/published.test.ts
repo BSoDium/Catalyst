@@ -226,3 +226,21 @@ describe("route cover (#510)", () => {
     expect(() => parsePublishedProjection({ ...base, photographs: [photo], routes: [{ id: "t", title: "T", stops: ["a", "b"], cover: "nope" }] })).toThrow(/unknown photograph/);
   });
 });
+
+describe("route image (#510)", () => {
+  const pl = (slug: string, lat: number) => ({ slug, name: slug, coordinates: { lat, lon: 1 }, labelPriority: 0, body: [], images: [], related: [] });
+  const base = { ...EMPTY_PROJECTION, places: [pl("a", 1), pl("b", 2)] };
+  const image = { src: "/media/routes/t/image.abcd1234.webp", width: 1280, height: 853, alt: "A bay at dusk", credit: "Jane Doe on Pexels" };
+  const parse = (img: unknown) => parsePublishedProjection({ ...base, routes: [{ id: "t", title: "T", stops: ["a", "b"], image: img }] });
+  it("accepts an image with its credit and a small copy, and none", () => {
+    expect(parse({ ...image, small: { src: "/media/routes/t/image-800w.abcd1234.webp", width: 800, height: 533 } }).routes[0]!.image?.credit).toBe("Jane Doe on Pexels");
+    expect(parsePublishedProjection({ ...base, routes: [{ id: "t", title: "T", stops: ["a", "b"] }] }).routes[0]!.image).toBeUndefined();
+  });
+  it("needs the real size and an alt text, and refuses unknown fields and bad paths", () => {
+    expect(() => parse({ src: image.src, alt: "x" })).toThrow();
+    expect(() => parse({ ...image, alt: "" })).toThrow();
+    expect(() => parse({ ...image, src: "/media/../x.webp" })).toThrow();
+    expect(() => parse({ ...image, rights: "licensed" })).toThrow();
+    expect(() => parse({ ...image, credit: "a\nb" })).toThrow();
+  });
+});

@@ -258,6 +258,31 @@ export const httpsUrlSchema = z
   }, "https only, without credentials");
 
 /**
+ * The picture of a trip card that is not one of the site's photographs. Real pixel size, required (the card reserves the space); `small` is a
+ * smaller copy of the same picture for lists (same shape as a cover's); `credit` is one line of plain text (author and source of a licensed picture).
+ */
+export const publishedRouteImageSchema = z
+  .object({
+    src: mediaSrcSchema,
+    width: z.number().int().positive().max(20000),
+    height: z.number().int().positive().max(20000),
+    alt: imageAltSchema,
+    credit: z
+      .string()
+      .trim()
+      .min(1)
+      .max(120)
+      .regex(/^[^\u0000-\u001F\u007F\u202A-\u202E\u2066-\u2069]*$/, "single line of plain text, no control characters")
+      .optional(),
+    small: z
+      .object({ src: mediaSrcSchema, width: z.number().int().positive().max(20000), height: z.number().int().positive().max(20000) })
+      .strict()
+      .optional(),
+  })
+  .strict();
+export type PublishedRouteImage = z.infer<typeof publishedRouteImageSchema>;
+
+/**
  * An explicitly curated route: an ordered list of published places. Routes are
  * never inferred; if it is not here, no line is drawn.
  */
@@ -279,6 +304,11 @@ export const publishedRouteSchema = z
      * Absent: the card chooses one itself from the photographs taken during the trip. Cross-checked: it must be a photograph of the projection.
      */
     cover: slugSchema.optional(),
+    /**
+     * Additive in schema version 1. A picture that is NOT one of the site's photographs (a royalty-free one, say) for the trip card's backdrop (#510).
+     * `cover` has priority; then this; then the card's own pick. Never listed in the Photography section. `credit` is quoted quietly on the card.
+     */
+    image: publishedRouteImageSchema.optional(),
     stops: z.array(slugSchema).min(2).max(200),
     /**
      * Additive in schema version 1. One entry per consecutive pair of stops, so `stops.length - 1` entries; absent

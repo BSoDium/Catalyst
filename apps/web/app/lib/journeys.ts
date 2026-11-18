@@ -93,6 +93,9 @@ export interface TripVisit {
 }
 
 /** A published route that stops at the place: the panel's itinerary card. */
+/** The picture behind a trip's poster: a photograph's cover, or the route's own `image` (not a photograph of the site), which may carry a `credit`. */
+export type TripPhoto = Pick<PublishedCover, "src" | "width" | "small"> & { credit?: string };
+
 export interface Trip {
   id: string;
   title: string;
@@ -108,7 +111,7 @@ export interface Trip {
   /** The trip's own public page, when the route has one (`routes[].url`). */
   url?: string;
   /** A photograph taken at one of the trip's stops (the most recent that is not sensitive), the poster's backdrop when it is shown with one. */
-  photo?: Pick<PublishedCover, "src" | "width" | "small">;
+  photo?: TripPhoto;
   /** The stops worth naming on the poster besides the start, the end and this place (`pickHighlights`): up to three with the most entries, well apart. Slugs. */
   highlights: string[];
   /** The one word the card sets in giant type (`tripWord` of the title). */
@@ -122,18 +125,24 @@ export interface Trip {
 }
 
 /**
- * The photograph that stands for a trip (the poster's backdrop): the owner's pick (`route.cover`, when it is a photograph that is not sensitive), else the most recent
+ * The picture that stands for a trip (the poster's backdrop): the owner's pick (`route.cover`, when it is a photograph that is not sensitive), else the route's own `image`, else the most recent
  * photograph that is not sensitive and was taken at one of the stops or during the trip (its date within the trip's months): the trip's photographs are not all at its stops
  * (a river crossing has its pictures between places). None for a trip nobody photographed.
  */
-function tripPhoto(projection: PublishedProjection, route: PublishedProjection["routes"][number]): { photo?: Pick<PublishedCover, "src" | "width" | "small"> } {
+function tripPhoto(projection: PublishedProjection, route: PublishedProjection["routes"][number]): { photo?: TripPhoto } {
   const usable = projection.photographs.filter((p) => !p.sensitive);
   const stops = new Set(route.stops);
   const from = route.dates?.start?.slice(0, 7);
   const to = (route.dates?.end ?? route.dates?.start)?.slice(0, 7);
   const during = (date: string | undefined) => from !== undefined && to !== undefined && date !== undefined && date.slice(0, 7) >= from && date.slice(0, 7) <= to;
+  const chosen = route.cover === undefined ? undefined : usable.find((p) => p.slug === route.cover);
+  // The owner's pick comes first; then the route's own picture (a stock picture, say: never one of the photographs); then the trip's photographs.
+  if (!chosen && route.image) {
+    const { src, width, small, credit } = route.image;
+    return { photo: { src, width, ...(small ? { small } : {}), ...(credit ? { credit } : {}) } };
+  }
   const picked =
-    (route.cover === undefined ? undefined : usable.find((p) => p.slug === route.cover)) ??
+    chosen ??
     usable.filter((p) => p.placeSlugs.some((s) => stops.has(s)) || during(p.date)).sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""))[0];
   const cover = picked?.cover;
   return cover ? { photo: { src: cover.src, width: cover.width, ...(cover.small ? { small: cover.small } : {}) } } : {};
