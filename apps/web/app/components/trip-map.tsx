@@ -238,15 +238,17 @@ export function TripPoster({ trip, here, photo = true, className }: { trip: Trip
       const length = el.getComputedTextLength();
       const room = w - 2 * WORD_PAD;
       if (length <= 0) return;
-      const next = Math.min(1, (scale * room) / length);
-      setFit((f) => (f.key === key && Math.abs(f.scale - next) < 0.005 ? f : { key, scale: next, length: length * (next / scale) }));
+      // (the size drawn is a whole number of px, so the width is worked out from it, and the new size is a whole number too: the next measure gives the same one. Worked out from `scale` and not rounded, the two sizes either side of a rounding kept answering each other, one update per frame)
+      const nextSize = Math.min(base, Math.floor((size * room) / length));
+      const next = base > 0 ? nextSize / base : 1;
+      setFit((f) => (f.key === key && f.scale === next ? f : { key, scale: next, length: length * (nextSize / size) }));
     };
     measure();
     void document.fonts?.ready.then(measure);
     return () => {
       alive = false;
     };
-  }, [key, word, w, scale]);
+  }, [key, word, w, scale, base, size]);
   // The word's band under the route: its capital letters' height and a margin each side; none without a word. The land is not clipped to it.
   const band = word ? Math.round(size * 0.74) + 2 * WORD_PAD : 0;
   // Where the route goes: above the word, across the width; or, when the poster is wide enough that the room to the right of the word can hold the route at the full height, there.

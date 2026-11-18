@@ -117,7 +117,8 @@ export function frameOf(points: GeoPoint[], bx: number, by: number, bw: number, 
     const offY = by + (bh - (maxY - minY) * scale) / 2;
     const at = (lon: number, lat: number) => {
       const p = project(lon, lat);
-      return p ? { x: offX + (p.x - minX) * scale, y: offY + (maxY - p.y) * scale } : null;
+      // (rounded to a hundredth of a px: the trigonometry of the server's JavaScript and the browser's differ in the last digits, and the page the server drew would not match the one the browser draws, a hydration error)
+      return p ? { x: Math.round((offX + (p.x - minX) * scale) * 100) / 100, y: Math.round((offY + (maxY - p.y) * scale) * 100) / 100 } : null;
     };
     return { at, scale };
   };
