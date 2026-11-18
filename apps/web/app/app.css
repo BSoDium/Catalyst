@@ -8430,7 +8430,11 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
    colours are solid mixes with the card's ground, not an opacity, so the label never goes see-through over the poster behind it; the short transition smooths the snap at the end of a scroll. */
 .trip-slide [data-slot="trip-link"] {
   --on: clamp(0, calc((var(--g, 1) - 0.6) * 2.5), 1);
+  /* the label is the ink until the fill is over half-way, then the page's colour, in a ramp so steep (a few percent of `--on`) that the two are never the same grey for longer than a moment, and a card at rest is never in it; the dimming
+     is the whole button's opacity, which keeps the contrast between its label and its fill whatever the card's position */
+  --flip: clamp(0, calc((var(--on) - 0.46) * 20), 1);
   background-color: color-mix(in srgb, var(--foreground) calc(10% + 90% * var(--on)), var(--background));
-  color: color-mix(in srgb, var(--background) calc(40% + 60% * var(--on)), var(--foreground));
+  color: color-mix(in srgb, var(--background) calc(100% * var(--flip)), var(--foreground));
+  opacity: calc(0.4 + 0.6 * var(--on));
   transition: background-color 0.2s ease, color 0.2s ease;
 }

@@ -1,3 +1,4 @@
+import { useLocation } from "react-router";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { coverImageProps } from "~/lib/cover-image";
 import { findHorizon } from "~/lib/horizon";
@@ -228,6 +229,9 @@ function useHorizon(src: string | undefined) {
 export function TripPoster({ trip, here, photo = true, className }: { trip: Trip; here: string; photo?: boolean; className?: string }) {
   const { ref, w, h } = usePosterBox();
   const word = trip.word.toUpperCase();
+  // `?word=serif` or `?word=mono` sets the giant word in the reading face or the mono one, to compare with the display face (#510).
+  const wordFace = new URLSearchParams(useLocation().search).get("word");
+  const wordFont = wordFace === "serif" ? "var(--font-reading)" : wordFace === "mono" ? "var(--font-meta)" : "var(--font-display)";
   // The word has ONE size on a poster, whatever its length, so the cards of a row read as a set. A word too wide for the poster is first CONDENSED (the face has no width axis: the glyphs are squeezed
   // sideways, `WORD_MIN_CONDENSE` at the most), and only a word that would have to be squeezed further is made smaller.
   const nominal = wordSize(NOMINAL_LETTERS, w, h);
@@ -352,7 +356,7 @@ export function TripPoster({ trip, here, photo = true, className }: { trip: Trip
         // The land on a photograph runs as far as the photograph does and fades with it (the same mask), so the map is not cut at the poster's edge while the picture goes on.
         <svg aria-hidden="true" width={w} height={h + PHOTO_RUN} viewBox={`0 0 ${w} ${h + PHOTO_RUN}`} className="pointer-events-none absolute inset-x-0 top-0 block" style={{ maskImage: fade(h), WebkitMaskImage: fade(h) }}>
           {fadeDefs}
-          <path d={land} mask={landMask} style={{ fill: "color-mix(in srgb, var(--accent) 38%, transparent)" }} stroke="none" />
+          <path d={land} mask={landMask} style={{ fill: "color-mix(in srgb, #fff 26%, transparent)" }} stroke="none" />
           {borderPath && <path d={borderPath} fill="none" stroke="var(--accent)" strokeWidth={1.25} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />}
         </svg>
       )}
@@ -363,10 +367,10 @@ export function TripPoster({ trip, here, photo = true, className }: { trip: Trip
         {word && (
           <>
           {/* (the word's width is measured on an invisible copy at the heaviest weight, the widest it gets: the visible one is thinner or heavier with the card's `--g`, see `.trip-slide` in app.css) */}
-          <text ref={textRef} aria-hidden="true" x={0} y={-1000} fontSize={nominal} style={{ visibility: "hidden", fontFamily: "var(--font-display)", fontWeight: 800, letterSpacing: "-0.03em" }}>
+          <text ref={textRef} aria-hidden="true" x={0} y={-1000} fontSize={nominal} style={{ visibility: "hidden", fontFamily: wordFont, fontWeight: 800, letterSpacing: "-0.03em" }}>
             {word}
           </text>
-          <text data-slot="trip-word" transform={`translate(${WORD_PAD - Math.round(size * 0.05)} ${h - WORD_PAD}) scale(${condense.toFixed(3)} 1)`} fontSize={size} style={{ fill: backdrop ? "color-mix(in srgb, var(--foreground) calc(14% + 66% * var(--g, 1) * var(--g, 1)), transparent)" : `color-mix(in srgb, var(--foreground) calc(10% + 52% * var(--g, 1) * var(--g, 1)), var(--accent))`, fontFamily: "var(--font-display)", letterSpacing: "-0.03em" }}>
+          <text data-slot="trip-word" transform={`translate(${WORD_PAD - Math.round(size * 0.05)} ${h - WORD_PAD}) scale(${condense.toFixed(3)} 1)`} fontSize={size} style={{ fill: backdrop ? "color-mix(in srgb, var(--foreground) calc(14% + 66% * var(--g, 1) * var(--g, 1)), transparent)" : `color-mix(in srgb, var(--foreground) calc(10% + 52% * var(--g, 1) * var(--g, 1)), var(--accent))`, fontFamily: wordFont, letterSpacing: "-0.03em" }}>
             {word}
           </text>
           </>
