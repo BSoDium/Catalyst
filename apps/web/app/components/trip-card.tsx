@@ -1,3 +1,4 @@
+import { StableTitle } from "~/components/stable-title";
 import { useEffect, useRef, useState } from "react";
 import { TripRail } from "~/components/trip-rail";
 import { Link, useLocation } from "react-router";
@@ -17,7 +18,7 @@ function Kpi({ value, unit, big = false, lead }: { value: number; unit: string; 
   );
 }
 
-const LINK_CLASS = "inline-flex min-h-11 items-center gap-2 bg-foreground px-4 text-sm font-medium text-background no-underline hover:bg-[color-mix(in_srgb,var(--foreground)_82%,var(--background))]";
+const LINK_CLASS = "inline-flex min-h-11 max-w-full items-center gap-2 whitespace-nowrap bg-foreground px-4 text-sm font-medium text-background no-underline hover:bg-[color-mix(in_srgb,var(--foreground)_82%,var(--background))]";
 
 /**
  * The row under the figures: where this step falls in the trip with the stop before and after, and, to the right of them, the button to the trip's own page. When the two
@@ -29,12 +30,17 @@ function TripFooter({ trip, where, hops }: { trip: Trip; where: string; hops: { 
   const stops = useRef<HTMLDivElement>(null);
   const ghost = useRef<HTMLSpanElement>(null);
   const [wrapped, setWrapped] = useState(false);
+  // (a card too narrow for "See the whole trip on polarsteps.com" on one line says "See the whole trip": the host is not worth a cut-off word)
+  const [short, setShort] = useState(false);
   useEffect(() => {
     const r = row.current;
     const g = ghost.current;
     const st = stops.current;
     if (!r || !g || !st) return;
-    const measure = () => setWrapped(st.offsetWidth + 16 + g.offsetWidth > r.clientWidth + 0.5);
+    const measure = () => {
+      setWrapped(st.offsetWidth + 16 + g.offsetWidth > r.clientWidth + 0.5);
+      setShort(g.offsetWidth > r.clientWidth + 0.5);
+    };
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(r);
@@ -55,10 +61,10 @@ function TripFooter({ trip, where, hops }: { trip: Trip; where: string; hops: { 
       {trip.url && (
         <>
           <a href={trip.url} target="_blank" rel="noopener noreferrer" data-slot="trip-link" className={`${LINK_CLASS} ${wrapped ? "w-full justify-between" : "ml-auto"}`}>
-            {label}
-            <Icon name="arrow-up-right" size="inline" />
+            <span className="min-w-0 truncate">{short ? "See the whole trip" : label}</span>
+            <Icon name="arrow-up-right" size="inline" className="shrink-0" />
           </a>
-          <span ref={ghost} aria-hidden="true" className={`${LINK_CLASS} pointer-events-none invisible absolute right-0 bottom-0 w-max whitespace-nowrap`}>
+          <span ref={ghost} aria-hidden="true" className={`${LINK_CLASS} pointer-events-none invisible absolute right-0 bottom-0 w-max max-w-none whitespace-nowrap`}>
             {label}
             <Icon name="arrow-up-right" size="inline" />
           </span>
@@ -90,15 +96,15 @@ function Hop({ hop, side, lead }: { hop: TripHop; side: "before" | "after"; lead
  * and after, and, to the right of them, a button to the trip's own page when it has one. It is the way into the trip, not the page's subject. A place a trip passes
  * several times says so and lists no hop (each visit has its own).
  */
-export function TripCard({ trip, here, lived = false, photo = true, position }: { trip: Trip; here: string; lived?: boolean; photo?: boolean; position?: string }) {
+export function TripCard({ trip, here, lived = false, photo = true, position, wordFace }: { trip: Trip; here: string; lived?: boolean; photo?: boolean; position?: string; wordFace?: string | null }) {
   const single = trip.visits.length === 1 ? trip.visits[0]! : null;
   // A home base is visited several times, but the trip still leaves it and comes back to it: the stop it left for the first time, and the one it came back from the last.
   const ends = !single && lived ? { previous: [...trip.visits].reverse().find((v) => v.previous)?.previous ?? null, next: trip.visits.find((v) => v.next)?.next ?? null } : null;
   const where = single ? (single.previous === null ? "The trip starts here" : single.next === null ? "The trip ends here" : `Stop ${single.position} of ${trip.stops}`) : lived ? "Home base on this trip" : `Visited ${trip.visits.length} times`; // (a place the owner has lived in is not visited: no count, #584)
   return (
     <article data-slot="trip-card" className="relative isolate flex flex-col overflow-hidden">
-      <TripPoster trip={trip} here={here} photo={photo} />
-      <div className="flex grow flex-col gap-4 p-4">
+      <TripPoster trip={trip} here={here} photo={photo} wordFace={wordFace} />
+      <div className="relative flex grow flex-col gap-4 p-4">
         <div data-slot="trip-figures" className="flex flex-wrap items-baseline gap-x-6 gap-y-2">
           <Kpi value={trip.km} unit="km" big lead="About" />
           <Kpi value={trip.stops} unit={trip.stops === 1 ? "stop" : "stops"} />
@@ -106,7 +112,7 @@ export function TripCard({ trip, here, lived = false, photo = true, position }: 
         </div>
         <header className="flex flex-col gap-1">
           <div className="flex items-baseline justify-between gap-3">
-            <h3 data-slot="trip-title" className="m-0 font-display text-lg tracking-tight text-balance">{trip.title}</h3>
+            <h3 className="m-0 text-lg tracking-tight"><StableTitle data-slot="trip-title" text={trip.title} className="font-display" /></h3>
             {position && (
               <span aria-hidden="true" data-slot="trip-position" className="ds-meta shrink-0">
                 {position}
@@ -132,7 +138,9 @@ export function TripCard({ trip, here, lived = false, photo = true, position }: 
  */
 export function TripCards({ trips, here, lived = false }: { trips: Trip[]; here: string; lived?: boolean }) {
   // `?poster=flat` shows the flat posters (to compare with the photographs: #510).
-  const photo = new URLSearchParams(useLocation().search).get("poster") !== "flat";
+  const query = new URLSearchParams(useLocation().search);
+  const photo = query.get("poster") !== "flat";
+  const wordFace = query.get("word");
     const many = trips.length > 1;
   const headingId = `trips-${here}`;
   return (
@@ -150,12 +158,12 @@ export function TripCards({ trips, here, lived = false }: { trips: Trip[]; here:
         <TripRail
           names={trips.map((t) => t.title)}
           slides={trips.map((trip, i) => (
-            <TripCard key={trip.id} trip={trip} here={here} lived={lived} photo={photo} position={`${String(i + 1).padStart(2, "0")} / ${String(trips.length).padStart(2, "0")}`} />
+            <TripCard key={trip.id} trip={trip} here={here} lived={lived} photo={photo} wordFace={wordFace} position={`${String(i + 1).padStart(2, "0")} / ${String(trips.length).padStart(2, "0")}`} />
           ))}
         />
       ) : (
         <div className="border border-border">
-          <TripCard trip={trips[0]!} here={here} lived={lived} photo={photo} />
+          <TripCard trip={trips[0]!} here={here} lived={lived} photo={photo} wordFace={wordFace} />
         </div>
       )}
     </section>

@@ -333,6 +333,10 @@
   --font-display: "Bricolage Grotesque Variable", "Bricolage Grotesque Fallback", var(--font-sans);
   --font-reading: "Newsreader Variable", "Newsreader Fallback", ui-serif, Georgia, "Times New Roman", serif;
   --font-meta: "JetBrains Mono Variable", var(--font-mono);
+  --font-slab: "Bitter Variable", var(--font-reading);
+  --font-condensed: "Archivo Variable", var(--font-sans);
+  --font-old: "Fraunces Variable", var(--font-reading);
+  --font-script: "Caveat Variable", cursive;
 
   /* Weights. The display pair is thin against heavy ("Cata" 200, "lyst" 800); the rest serve the reading face and the small sizes. */
   --weight-thin: 200;
@@ -565,6 +569,44 @@
   font-family: "JetBrains Mono Variable";
   src: url("/fonts/jetbrains-mono-5.3.0-latin-wght.woff2") format("woff2");
   font-weight: 100 800;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* The faces a trip card's giant word can be set in (components/trip-map.tsx `FACES`, #510): variable, so the word's weight follows the card as the display face's does; loaded only when a card uses one. */
+@font-face {
+  font-family: "Bitter Variable";
+  src: url("/fonts/bitter-5.3.0-latin-wght.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Archivo Variable";
+  src: url("/fonts/archivo-5.3.0-latin-wdth-wght.woff2") format("woff2");
+  font-weight: 100 900;
+  font-stretch: 62% 125%;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Fraunces Variable";
+  src: url("/fonts/fraunces-5.3.0-latin-wght.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Caveat Variable";
+  src: url("/fonts/caveat-5.3.0-latin-wght.woff2") format("woff2");
+  font-weight: 400 700;
   font-style: normal;
   font-display: swap;
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
@@ -8409,7 +8451,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   opacity: calc(0.4 + 0.6 * var(--g, 1));
 }
 .trip-slide [data-slot="trip-figures"] {
-  opacity: calc(0.25 + 0.75 * var(--g, 1));
+  opacity: calc(0.08 + 0.92 * var(--g, 1) * var(--g, 1));
 }
 .trip-slide [data-slot="trip-figures"] > p > span:first-of-type:not(.sr-only),
 .trip-slide [data-slot="trip-figures"] > p > .font-display {
@@ -8417,11 +8459,24 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
 }
 .trip-slide [data-slot="trip-dates"],
 .trip-slide [data-slot="trip-footer"] {
-  opacity: clamp(0, calc((var(--g, 1) - 0.1) * 1.4), 1);
+  opacity: clamp(0, calc((var(--g, 1) - 0.35) * 2.2), 1);
 }
 .trip-slide [data-slot="trip-poster"] :is(polyline, rect, text:not([data-slot="trip-word"])) {
   opacity: calc(0.2 + 0.8 * var(--g, 1));
 }
 .trip-slide [data-slot="trip-poster-box"] {
   opacity: calc(0.6 + 0.4 * var(--g, 1));
+}
+
+/* The link to the trip's own page is the loudest thing on a card, so it is high contrast only on the card in front: from a faint fill and ink at 0.6 of the card's width to the full inverted button at 1 (components/trip-card.tsx). The
+   colours are solid mixes with the card's ground, not an opacity, so the label never goes see-through over the poster behind it; the short transition smooths the snap at the end of a scroll. */
+.trip-slide [data-slot="trip-link"] {
+  --on: clamp(0, calc((var(--g, 1) - 0.6) * 2.5), 1);
+  /* the label is the ink until the fill is over half-way, then the page's colour, in a ramp so steep (a few percent of `--on`) that the two are never the same grey for longer than a moment, and a card at rest is never in it; the dimming
+     is the whole button's opacity, which keeps the contrast between its label and its fill whatever the card's position */
+  --flip: clamp(0, calc((var(--on) - 0.46) * 20), 1);
+  background-color: color-mix(in srgb, var(--foreground) calc(10% + 90% * var(--on)), var(--background));
+  color: color-mix(in srgb, var(--background) calc(100% * var(--flip)), var(--foreground));
+  opacity: calc(0.4 + 0.6 * var(--on));
+  transition: background-color 0.2s ease, color 0.2s ease;
 }

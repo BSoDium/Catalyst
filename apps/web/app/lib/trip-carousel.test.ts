@@ -5,10 +5,10 @@ import { PEEK, lastTrip, tripKeylines, tripLayout, tripStep } from "./trip-carou
 describe("the trip carousel's geometry", () => {
   const wide = tripKeylines(592);
   const narrow = tripKeylines(390);
-  it("is a large card with the edge of the next on a phone, and with a good part of the next on a wide row", () => {
-    expect(narrow.single).toBe(false);
-    expect(narrow.large).toBeGreaterThan(250);
-    expect(narrow.large + narrow.gutter + narrow.gap).toBeLessThan(narrow.width);
+  it("is one card across the whole row on a phone, and a large card with a good part of the next on a wide row", () => {
+    expect(narrow.single).toBe(true);
+    expect(narrow.large).toBe(narrow.width);
+    expect(tripLayout(0, 3, narrow)[0]).toEqual({ x: 0, w: 390 });
     expect(wide.single).toBe(false);
     expect(wide.medium).toBeGreaterThanOrEqual(PEEK.medium);
     expect(wide.large).toBeGreaterThanOrEqual(300); // a poster with its figures needs the room
@@ -22,11 +22,22 @@ describe("the trip carousel's geometry", () => {
     expect(growth(boxes[0]!.w, wide)).toBe(1);
     expect(growth(boxes[1]!.w, wide)).toBeLessThan(0.7);
   });
-  it("stops where the LAST card is the large one on a phone, and where the last two are the large and the medium on a wide row", () => {
+  it("stops where the LAST card is the large one, on a phone and on a wide row", () => {
     for (const k of [wide, narrow]) {
+      expect(lastTrip(3, k)).toBe(2);
       const boxes = tripLayout(lastTrip(3, k), 3, k);
-      expect(boxes[2]!.w).toBe(k === narrow ? k.large : k.medium);
+      expect(boxes[2]!.w).toBe(k.large);
       expect(boxes[2]!.x + boxes[2]!.w).toBeLessThanOrEqual(k.width + 1);
+    }
+    // (a wide row's last step: the card before is the medium one, at the left of the last, and the row is full)
+    const end = tripLayout(2, 3, wide);
+    expect(end[1]!.w).toBe(wide.medium);
+    expect(end[2]!.x).toBeGreaterThanOrEqual(end[1]!.x + end[1]!.w);
+    expect(growth(end[2]!.w, wide)).toBe(1);
+    // (on the way there the two trade their sizes, never overlapping)
+    for (const t of [1, 1.25, 1.5, 1.75, 2]) {
+      const b = tripLayout(t, 3, wide);
+      expect(b[2]!.x).toBeGreaterThanOrEqual(b[1]!.x + b[1]!.w - 0.5);
     }
     // (a very wide row fills with the large and the medium card: the medium one is never wider than the large one, so the first card is the one in front at rest)
     const huge = tripKeylines(1256);
