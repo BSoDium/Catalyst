@@ -4,7 +4,7 @@ import { TripRail } from "~/components/trip-rail";
 import { Link, useLocation } from "react-router";
 import { TripPhotoFilters, TripPoster } from "~/components/trip-map";
 import { Icon, PolarstepsMark } from "~/components/ui";
-import { hopDetail, tripLinkLabel, type Trip, type TripHop } from "~/lib/journeys";
+import { hopDetail, linkBrand, tripLinkLabel, type Trip, type TripHop } from "~/lib/journeys";
 import { placePath } from "~/lib/projection";
 import { readableDates } from "~/lib/dates";
 
@@ -51,8 +51,9 @@ function TripFooter({ trip, where, hops, stacked = false }: { trip: Trip; where:
     return () => ro.disconnect();
   }, [trip.url, stacked]);
   const label = trip.url ? tripLinkLabel(trip.url) : "";
-  // (the mark of the service the link goes to, when it is one we know: the circle of Polarsteps)
-  const brand = !!trip.url && /(^|\.)polarsteps\.com(\/|$)/i.test(trip.url.replace(/^https?:\/\//, ""));
+  // (the brand of the service the link goes to, when it is one we know: its colour and its mark)
+  const brandName = trip.url ? linkBrand(trip.url) : undefined;
+  const brand = brandName !== undefined;
   return (
     <div ref={row} data-slot="trip-footer" className="relative mt-auto flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
       <div ref={stops} className="flex max-w-full min-w-0 flex-col gap-1.5">
@@ -66,7 +67,7 @@ function TripFooter({ trip, where, hops, stacked = false }: { trip: Trip; where:
       </div>
       {trip.url && (
         <>
-          <a href={trip.url} target="_blank" rel="noopener noreferrer" data-slot="trip-link" className={`${LINK_CLASS} ${brand ? "brand-link pl-3" : LINK_NEUTRAL} ${wrapped ? "w-full justify-between" : "ml-auto"}`} data-brand={brand ? "polarsteps" : undefined}>
+          <a href={trip.url} target="_blank" rel="noopener noreferrer" data-slot="trip-link" className={`${LINK_CLASS} ${brand ? "brand-link pl-3" : LINK_NEUTRAL} ${wrapped ? "w-full justify-between" : "ml-auto"}`} data-brand={brandName}>
             <span className="flex min-w-0 items-center gap-2.5">
               {brand && <PolarstepsMark className="shrink-0" width="1.25em" height="1.25em" />}
               <span className="min-w-0 truncate">{short ? "See the whole trip" : label}</span>

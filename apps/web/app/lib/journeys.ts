@@ -283,6 +283,21 @@ export function tripsOf(projection: PublishedProjection, slug: string, nameOf: (
  * from the address at run time, so no site's name is written in this code (`scripts/check-public-leaks.mjs` keeps the private layers' vocabulary out of the bundles).
  * Neutral on purpose: it reads right whether the trip is under way or over.
  */
+/**
+ * The services a link can go to that have a brand colour and a mark (`[data-brand]` in app.css, `components/ui/brand-mark.tsx`), by the host of the link. THE ONE PLACE the trip site is named in the code, in the one
+ * spelling `scripts/lib/trip-pages.mjs` lets through the public leak check (`"<host>": "<brand>"`); everything else asks `linkBrand`.
+ */
+const LINK_BRANDS: Record<string, string> = { "polarsteps.com": "polarsteps" };
+
+/** The brand of the service a link goes to (`polarsteps`), or undefined for one with no brand colour. */
+export function linkBrand(url: string): string | undefined {
+  try {
+    return LINK_BRANDS[new URL(url).hostname.replace(/^www\./, "")];
+  } catch {
+    return undefined;
+  }
+}
+
 export function tripLinkLabel(url: string): string {
   try {
     const host = new URL(url).hostname.toLowerCase().replace(/^www\./, "");
