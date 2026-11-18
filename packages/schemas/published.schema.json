@@ -419,6 +419,12 @@
             ],
             "additionalProperties": false
           },
+          "codename": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 24,
+            "pattern": "^[^\\u0000-\\u001F\\u007F\\u202A-\\u202E\\u2066-\\u2069]*$"
+          },
           "face": {
             "type": "string",
             "enum": [
@@ -429,12 +435,6 @@
               "condensed",
               "script"
             ]
-          },
-          "codename": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 24,
-            "pattern": "^[^\\u0000-\\u001F\\u007F\\u202A-\\u202E\\u2066-\\u2069]*$"
           },
           "stops": {
             "minItems": 2,

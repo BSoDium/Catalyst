@@ -1,3 +1,4 @@
+import { StableTitle } from "~/components/stable-title";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { Icon, ScrollRow, SensitiveMedia } from "~/components/ui";
@@ -66,7 +67,8 @@ function Picture({ item, i, count, from, style, className, onFocus, fullWidth, t
             </span>
           )}
         </span>
-        <span className="place-gallery-title line-clamp-2 font-display">{item.title}</span>
+        {/* (the title wraps at the width of the label it has at the medium size, 1.25rem of padding each side, whatever the picture's own width: a title laid out at the front picture's wider box broke at another word than at the side ones', and the box changed height as the picture went from one to the other) */}
+        <StableTitle text={item.title} maxLines={2} className="place-gallery-title font-display" style={textWidth ? { maxWidth: Math.max(0, textWidth - 40) } : undefined} />
       </span>
     </Link>
   );

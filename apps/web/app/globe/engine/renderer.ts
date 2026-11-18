@@ -773,6 +773,9 @@ export class GlobeRenderer {
     if (on) {
       this.canvas.style.opacity = "0";
       this.caption?.hideCrisp();
+      // The pictures of the modes are DOM badges over the canvas, placed by `syncLegIcons`, which a suspended globe no longer runs: they would stay where the last frame put them, on a map that has moved on (a bus
+      // by the panel's edge on no path, until a zoom out brought the globe back). The street map draws its own; the next drawn frame shows these again.
+      this.legIcons?.setVisible(false);
     } else this.requestRender();
   }
   isSuspended() {
