@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "dataVersion": {
-    "commit": "f155273a4c8a3ef22174cbb9693a9c07e575ec9d",
-    "date": "2026-11-17"
+    "commit": "7b5b79811ede6d690a67b8042363219966a8b0e0",
+    "date": "2026-11-18"
   },
   "places": [
     {
@@ -4796,6 +4796,8 @@
         "start": "2019-07",
         "end": "2019-07"
       },
+      "codename": "Moscow",
+      "face": "condensed",
       "stops": [
         "toulouse",
         "minsk",
@@ -4826,6 +4828,8 @@
         "start": "2022-01",
         "end": "2022-01"
       },
+      "codename": "Geneva",
+      "face": "grotesque",
       "stops": [
         "toulouse",
         "grenoble",
@@ -4860,6 +4864,8 @@
         "start": "2022-09",
         "end": "2023-02"
       },
+      "codename": "Klagenfurt",
+      "face": "serif",
       "stops": [
         "toulouse",
         "paris",
@@ -4954,6 +4960,8 @@
         "end": "2023-11"
       },
       "url": "https://www.polarsteps.com/bsodium/15780336-south-america-west-to-east",
+      "codename": "Buenos Aires",
+      "face": "old",
       "stops": [
         "toulouse",
         "paris",
@@ -5084,6 +5092,8 @@
         "start": "2024-11",
         "end": "2024-11"
       },
+      "codename": "Lisbon",
+      "face": "script",
       "stops": [
         "barcelona",
         "seville",
@@ -5131,6 +5141,8 @@
         "start": "2025-03",
         "end": "2025-04"
       },
+      "codename": "Marrakesh",
+      "face": "slab",
       "stops": [
         "barcelona",
         "marrakesh",
@@ -5190,6 +5202,8 @@
       },
       "url": "https://www.polarsteps.com/bsodium/18932928-the-transatlantic-pathway",
       "cover": "bow-of-a-boat",
+      "codename": "Quito",
+      "face": "serif",
       "stops": [
         "toulouse",
         "latour-de-carol",
@@ -5542,6 +5556,8 @@
         "start": "2025-11",
         "end": "2025-11"
       },
+      "codename": "Vienna",
+      "face": "old",
       "stops": [
         "klagenfurt",
         "graz",
@@ -5586,6 +5602,8 @@
         "start": "2026-02",
         "end": "2026-02"
       },
+      "codename": "Paris",
+      "face": "old",
       "stops": [
         "klagenfurt",
         "vienna",
@@ -5613,6 +5631,8 @@
         "start": "2026-06",
         "end": "2026-06"
       },
+      "codename": "Budapest",
+      "face": "slab",
       "stops": [
         "klagenfurt",
         "graz",
@@ -5637,6 +5657,8 @@
         "end": "2026-09"
       },
       "url": "https://www.polarsteps.com/bsodium/26802872-balkans",
+      "codename": "Chișinău",
+      "face": "condensed",
       "stops": [
         "dubrovnik",
         "mostar",
