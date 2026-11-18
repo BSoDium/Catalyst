@@ -366,7 +366,7 @@ export function TripPoster({ trip, here, photo = true, className, wordFace }: { 
         // The land on a photograph runs as far as the photograph does and fades with it (the same mask), so the map is not cut at the poster's edge while the picture goes on.
         <svg aria-hidden="true" width={w} height={h + PHOTO_RUN} viewBox={`0 0 ${w} ${h + PHOTO_RUN}`} className="pointer-events-none absolute inset-x-0 top-0 block" style={{ maskImage: fade(h), WebkitMaskImage: fade(h) }}>
           {fadeDefs}
-          <path d={land} mask={landMask} style={{ fill: "color-mix(in srgb, #fff 26%, transparent)" }} stroke="none" />
+          <path d={land} mask={landMask} style={{ fill: "color-mix(in srgb, #fff 16%, transparent)" }} stroke="none" />
           {borderPath && <path d={borderPath} fill="none" stroke="var(--accent)" strokeWidth={1.25} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />}
         </svg>
       )}
