@@ -165,7 +165,16 @@ export function TripCards({ trips, here, lived = false, intro }: { trips: Trip[]
         </div>
       </header>
       {intro}
-      {many ? (
+      {trips.length === 2 ? (
+        // (two trips are two cards side by side, or one under the other in a narrow panel: a carousel of two has a second card that can never be the one in front, so it stays small and faded, and cannot be scrolled to)
+        <div data-slot="trip-pair" className="grid grid-cols-1 gap-3 @xl:grid-cols-2">
+          {trips.map((trip) => (
+            <div key={trip.id} className="flex flex-col border border-border">
+              <TripCard trip={trip} here={here} lived={lived} photo={photo} wordFace={wordFace} />
+            </div>
+          ))}
+        </div>
+      ) : many ? (
         <TripRail
           names={trips.map((t) => t.title)}
           slides={trips.map((trip, i) => (

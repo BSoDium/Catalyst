@@ -16,6 +16,11 @@ export interface CalmPlace {
 }
 
 const STEPS = 15;
+/** What a place is charged for not keeping the picture's subject in view: more than any difference in calm, so the calmest of the places that keep it. */
+const SHOW = 1;
+/** Where in the layer, as shares of its height and width, the subject is to be (a band: not at the top, under the map, not at the very foot). */
+const SUBJECT_Y = [0.3, 0.95] as const;
+const SUBJECT_X = [0.15, 0.85] as const;
 const ZOOMS = [1, 1.18, 1.4] as const;
 
 export function calmPlace(
@@ -28,6 +33,19 @@ export function calmPlace(
 ): CalmPlace | null {
   if (cols < 2 || rows < 2 || energy.length < cols * rows || natural.w <= 0 || natural.h <= 0 || region.w <= 0 || region.h <= 0) return null;
   const cover = Math.max(layer.w / natural.w, layer.run / natural.h);
+  let total = 0;
+  let mx = 0;
+  let my = 0;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const e = energy[r * cols + c]!;
+      total += e;
+      mx += e * ((c + 0.5) / cols);
+      my += e * ((r + 0.5) / rows);
+    }
+  }
+  // where the picture's detail is, as shares of its width and height: its subject, which is to stay in view
+  const subject = total > 0 ? { x: mx / total, y: my / total } : { x: 0.5, y: 0.5 };
   let best: CalmPlace | null = null;
   let bestScore = Infinity;
   for (const zoom of ZOOMS) {
@@ -54,7 +72,11 @@ export function calmPlace(
         const cost = sum / ((c1 - c0) * (r1 - r0));
         // (a little for being off centre and for being zoomed in: of two equally calm places the plainer one)
         const off = (nx === 1 ? 0 : Math.abs(ix / (nx - 1) - 0.5)) + (ny === 1 ? 0 : Math.abs(iy / (ny - 1) - 0.5));
-        const score = cost + 0.004 * off + 0.01 * (zoom - 1);
+        // The subject (where the picture's detail is) is in view, under the figures and the word, not under the map's top: a place that is all sky shows nothing of what the picture is of. Where no place keeps it in view, the calmest.
+        const sx = left + subject.x * width;
+        const sy = top + subject.y * height;
+        const inView = sy >= SUBJECT_Y[0] * layer.run && sy <= SUBJECT_Y[1] * layer.run && sx >= SUBJECT_X[0] * layer.w && sx <= SUBJECT_X[1] * layer.w;
+        const score = cost + (inView ? 0 : SHOW) + 0.004 * off + 0.05 * (zoom - 1);
         if (score < bestScore) {
           bestScore = score;
           best = { width, height, left, top, cost };

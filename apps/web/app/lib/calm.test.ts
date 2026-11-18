@@ -7,13 +7,14 @@ const rows = 20;
 const skyline = Float32Array.from({ length: cols * rows }, (_, i) => (Math.floor(i / cols) < 8 ? 0.01 : 0.4));
 
 describe("calmPlace", () => {
-  it("puts the map's region on the sky of a tall picture, whatever its size", () => {
+  it("puts the map over as much of the sky as it can while the skyline stays in view (a place that is all sky shows nothing of the picture)", () => {
     const place = calmPlace(skyline, cols, rows, { w: 620, h: 1000 }, { w: 620, run: 470 }, { x: 0, y: 0, w: 620, h: 245 })!;
-    expect(place.cost).toBeLessThan(0.05);
-    // (the sky is 40 % of the picture, 400 px at this size: the map's 245 px are inside it wherever it is put)
-    expect(-place.top + 245).toBeLessThanOrEqual(place.height * 0.4 + 0.5);
-    expect(place.width).toBeGreaterThanOrEqual(620);
-    expect(place.height).toBeGreaterThanOrEqual(470);
+    // (the detail, rows 8 to 20 of 20, has its middle at 70 % of the picture's height: it is in the layer's lower part)
+    const subjectAt = place.top + 0.7 * place.height;
+    expect(subjectAt).toBeGreaterThan(0.3 * 470);
+    expect(subjectAt).toBeLessThan(0.95 * 470);
+    // (and the map's region is calmer than it would be with the skyline under it: the sky is 400 px of the 1000)
+    expect(place.cost).toBeLessThan(0.3);
   });
   it("covers the layer at every place it picks", () => {
     for (const region of [{ x: 0, y: 0, w: 300, h: 200 }, { x: 320, y: 0, w: 300, h: 300 }]) {
