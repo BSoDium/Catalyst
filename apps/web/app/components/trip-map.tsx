@@ -50,6 +50,15 @@ const PAD = 26;
 /** The word is sized for a word of this many letters (every word has that size, a longer one is condensed first), and condensed to at most this fraction of its width before it is made smaller. */
 const NOMINAL_LETTERS = 8;
 const WORD_MIN_CONDENSE = 0.72;
+/** The faces the giant word can be set in: the CSS font stack, and for one with a width axis its natural width and its narrowest, in percent (`font-stretch`). */
+const FACES: Record<string, { font: string; axis?: { base: number; min: number } }> = {
+  grotesque: { font: "var(--font-display)" },
+  serif: { font: "var(--font-reading)" },
+  slab: { font: "var(--font-slab)" },
+  condensed: { font: "var(--font-condensed)", axis: { base: 78, min: 62 } },
+  script: { font: "var(--font-script)" },
+  mono: { font: "var(--font-meta)" },
+};
 /** The share of the poster's width a word may take before it is condensed. */
 const WORD_SOFT = 0.78;
 
@@ -228,8 +237,10 @@ function useHorizon(src: string | undefined) {
 export function TripPoster({ trip, here, photo = true, className, wordFace }: { trip: Trip; here: string; photo?: boolean; className?: string; wordFace?: string | null }) {
   const { ref, w, h } = usePosterBox();
   const word = trip.word.toUpperCase();
-  // `?word=serif` or `?word=mono` sets the giant word in the reading face or the mono one, to compare with the display face (#510).
-  const wordFont = wordFace === "serif" ? "var(--font-reading)" : wordFace === "mono" ? "var(--font-meta)" : "var(--font-display)";
+  // `?word=grotesque|serif|slab|condensed|script|mono` sets the giant word in that face, to choose one per trip (#510). The condensed face has a real width axis: it is condensed by the axis, the others by squeezing the glyphs.
+  const face = FACES[wordFace ?? ""] ?? FACES.grotesque!;
+  const wordFont = face.font;
+  const minCondense = face.axis ? face.axis.min / face.axis.base : WORD_MIN_CONDENSE;
   // The word has ONE size on a poster, whatever its length, so the cards of a row read as a set. A word too wide for the poster is first CONDENSED (the face has no width axis: the glyphs are squeezed
   // sideways, `WORD_MIN_CONDENSE` at the most), and only a word that would have to be squeezed further is made smaller.
   const nominal = wordSize(NOMINAL_LETTERS, w, h);
@@ -237,12 +248,12 @@ export function TripPoster({ trip, here, photo = true, className, wordFace }: { 
   // card's `--g`, see `.trip-slide` in app.css), so what is drawn never feeds back into what is measured.
   const textRef = useRef<SVGTextElement>(null);
   const [measured, setMeasured] = useState({ key: "", length: 0 });
-  const key = `${word}|${nominal}|${w}`;
+  const key = `${word}|${nominal}|${w}|${wordFace ?? ""}`;
   const natural = measured.key === key ? measured.length : 0.66 * nominal * word.length;
   // Three steps, in this order: (1) a word that is wider than the SOFT share of the card (`WORD_SOFT`, so that a word does not run across a wide card) is condensed, down to `WORD_MIN_CONDENSE`; (2) if that is not
   // enough it may take more of the card, up to the whole of it, at that condensing; (3) only a word still wider than the card is made smaller.
   const room = w - 2 * WORD_PAD;
-  const condense = natural > 0 ? Math.min(1, Math.max(WORD_MIN_CONDENSE, (WORD_SOFT * room) / natural)) : 1;
+  const condense = natural > 0 ? Math.min(1, Math.max(minCondense, (WORD_SOFT * room) / natural)) : 1;
   const over = natural > 0 ? (natural * condense) / room : 0;
   const size = over > 1 ? Math.max(12, Math.floor(nominal / over)) : nominal;
   const drawn = Math.round(natural * (size / nominal) * condense);
@@ -365,10 +376,10 @@ export function TripPoster({ trip, here, photo = true, className, wordFace }: { 
         {word && (
           <>
           {/* (the word's width is measured on an invisible copy at the heaviest weight, the widest it gets: the visible one is thinner or heavier with the card's `--g`, see `.trip-slide` in app.css) */}
-          <text ref={textRef} aria-hidden="true" x={0} y={-1000} fontSize={nominal} style={{ visibility: "hidden", fontFamily: wordFont, fontWeight: 800, letterSpacing: "-0.03em" }}>
+          <text ref={textRef} aria-hidden="true" x={0} y={-1000} fontSize={nominal} style={{ visibility: "hidden", fontFamily: wordFont, fontWeight: 800, letterSpacing: "-0.03em", ...(face.axis ? { fontStretch: `${face.axis.base}%` } : {}) }}>
             {word}
           </text>
-          <text data-slot="trip-word" transform={`translate(${WORD_PAD - Math.round(size * 0.05)} ${h - WORD_PAD}) scale(${condense.toFixed(3)} 1)`} fontSize={size} style={{ fill: backdrop ? "color-mix(in srgb, var(--foreground) calc(14% + 66% * var(--g, 1) * var(--g, 1)), transparent)" : `color-mix(in srgb, var(--foreground) calc(10% + 52% * var(--g, 1) * var(--g, 1)), var(--accent))`, fontFamily: wordFont, letterSpacing: "-0.03em" }}>
+          <text data-slot="trip-word" transform={`translate(${WORD_PAD - Math.round(size * 0.05)} ${h - WORD_PAD}) scale(${face.axis ? "1" : condense.toFixed(3)} 1)`} fontSize={size} style={{ fill: backdrop ? "color-mix(in srgb, var(--foreground) calc(14% + 66% * var(--g, 1) * var(--g, 1)), transparent)" : `color-mix(in srgb, var(--foreground) calc(10% + 52% * var(--g, 1) * var(--g, 1)), var(--accent))`, fontFamily: wordFont, letterSpacing: "-0.03em", ...(face.axis ? { fontStretch: `${(face.axis.base * condense).toFixed(1)}%` } : {}) }}>
             {word}
           </text>
           </>
