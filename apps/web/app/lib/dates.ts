@@ -54,3 +54,28 @@ export function changedParts(start: string, end: string): { from: DatePart[]; to
     parts.flatMap((text, i) => [...(i > 0 ? [{ text: "-", strong: false }] : []), { text, strong: i === first }]);
   return { from: cut(a), to: cut(b) };
 }
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/**
+ * A trip's authored dates read for a person ("2023-10–2023-11" is "Oct – Nov 2023"; a range of days "3 – 19 Oct 2023"; across years "Dec 2023 – Feb 2024"): only for a range or a date of
+ * partial ISO dates; a free-form label, or anything else, is returned as it was authored. Nothing is invented: the same months and days, only written out. Pure.
+ */
+export function readableDates(text: string): string {
+  const parts = text.split(/[–—]|\s+to\s+/).map((p) => p.trim());
+  const parse = (d: string) => {
+    const m = /^(\d{4})(?:-(\d{2})(?:-(\d{2}))?)?$/.exec(d);
+    if (!m) return null;
+    const month = m[2] ? Number(m[2]) : null;
+    if (month !== null && (month < 1 || month > 12)) return null;
+    return { y: m[1]!, m: month, d: m[3] ? Number(m[3]) : null };
+  };
+  const dates = parts.map(parse);
+  if (dates.length < 1 || dates.length > 2 || dates.some((d) => d === null)) return text;
+  const [a, b] = dates as NonNullable<(typeof dates)[number]>[];
+  const one = (x: NonNullable<typeof a>, year = true) => [x.d, x.m !== null ? MONTHS[x.m - 1] : null, year ? x.y : null].filter((v) => v !== null).join(" ");
+  if (!b) return one(a!);
+  if (a!.y === b.y && a!.m !== null && a!.m === b.m && a!.d !== null && b.d !== null) return `${a!.d} – ${one(b)}`;
+  if (a!.y === b.y && a!.m !== null && b.m !== null) return `${one(a!, false)} – ${one(b)}`;
+  return `${one(a!)} – ${one(b)}`;
+}

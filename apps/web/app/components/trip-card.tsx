@@ -6,19 +6,21 @@ import { TripPhotoFilters, TripPoster } from "~/components/trip-map";
 import { Icon } from "~/components/ui";
 import { hopDetail, tripLinkLabel, type Trip, type TripHop } from "~/lib/journeys";
 import { placePath } from "~/lib/projection";
+import { readableDates } from "~/lib/dates";
 
 /** One figure of the trip: the value bold and dark, its unit smaller and quieter (a number to read first, the word after it). */
 function Kpi({ value, unit, big = false, lead }: { value: number; unit: string; big?: boolean; lead?: string }) {
   return (
     <p className="m-0 flex items-baseline gap-1.5">
       {lead && <span className="sr-only">{lead} </span>}
-      <span className={`font-display leading-none font-extrabold tracking-tight ${big ? "text-3xl" : "text-2xl"}`}>{value.toLocaleString("en-US")}</span>
+      <span className={`font-display leading-none font-extrabold tracking-tight ${big ? "text-2xl" : "text-xl"}`}>{value.toLocaleString("en-US")}</span>
       <span className="text-sm font-medium text-muted-foreground">{unit}</span>
     </p>
   );
 }
 
-const LINK_CLASS = "inline-flex min-h-11 max-w-full items-center gap-2 whitespace-nowrap bg-foreground px-4 text-sm font-medium text-background no-underline hover:bg-[color-mix(in_srgb,var(--foreground)_82%,var(--background))]";
+// (a quiet outline, not the page's loudest block: it leaves the site, and the trip's name above it is what the card says)
+const LINK_CLASS = "inline-flex min-h-11 max-w-full items-center gap-2 whitespace-nowrap border border-border bg-transparent px-4 text-sm font-medium text-foreground no-underline hover:border-foreground hover:bg-accent";
 
 /**
  * The row under the figures: where this step falls in the trip with the stop before and after, and, to the right of them, the button to the trip's own page. When the two
@@ -105,22 +107,22 @@ export function TripCard({ trip, here, lived = false, photo = true, position, wo
     <article data-slot="trip-card" className="relative isolate flex flex-col overflow-hidden">
       <TripPoster trip={trip} here={here} photo={photo} wordFace={wordFace} />
       <div className="relative flex grow flex-col gap-4 p-4">
-        <div data-slot="trip-figures" className="flex flex-wrap items-baseline gap-x-6 gap-y-2">
-          <Kpi value={trip.km} unit="km" big lead="About" />
-          <Kpi value={trip.stops} unit={trip.stops === 1 ? "stop" : "stops"} />
-          {trip.countries > 0 && <Kpi value={trip.countries} unit={trip.countries === 1 ? "country" : "countries"} />}
-        </div>
-        <header className="flex flex-col gap-1">
+        <header className="flex flex-col gap-1.5">
           <div className="flex items-baseline justify-between gap-3">
-            <h3 className="m-0 text-lg tracking-tight"><StableTitle data-slot="trip-title" text={trip.title} className="font-display" /></h3>
+            <h3 className="m-0 text-2xl leading-tight font-semibold tracking-tight"><StableTitle data-slot="trip-title" text={trip.title} className="font-display" /></h3>
             {position && (
               <span aria-hidden="true" data-slot="trip-position" className="ds-meta shrink-0">
                 {position}
               </span>
             )}
           </div>
-          {trip.dates?.text && <p data-slot="trip-dates" className="m-0 ds-meta">{trip.dates.text}</p>}
+          {trip.dates?.text && <p data-slot="trip-dates" className="m-0 ds-meta">{readableDates(trip.dates.text)}</p>}
         </header>
+        <div data-slot="trip-figures" className="flex flex-wrap items-baseline gap-x-6 gap-y-2">
+          <Kpi value={trip.km} unit="km" big lead="About" />
+          <Kpi value={trip.stops} unit={trip.stops === 1 ? "stop" : "stops"} />
+          {trip.countries > 0 && <Kpi value={trip.countries} unit={trip.countries === 1 ? "country" : "countries"} />}
+        </div>
         <TripFooter trip={trip} where={where} hops={single ?? ends} />
         {photo && trip.photo?.credit && (
           <p data-slot="trip-photo-credit" className="m-0 text-xs text-muted-foreground">

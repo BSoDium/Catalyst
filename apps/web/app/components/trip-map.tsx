@@ -60,8 +60,20 @@ const FACES: Record<string, { font: string; axis?: { base: number; min: number }
   script: { font: "var(--font-script)" },
   mono: { font: "var(--font-meta)" },
 };
+/** A flight longer than this (km) is not what the map is framed on. */
+const FAR_FLIGHT_KM = 2500;
+const distanceKm = (a: { lon: number; lat: number }, b: { lon: number; lat: number }) => {
+  const rad = Math.PI / 180;
+  const dLat = (b.lat - a.lat) * rad;
+  const dLon = (b.lon - a.lon) * rad;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLon / 2) ** 2;
+  return 12742 * Math.asin(Math.min(1, Math.sqrt(h)));
+};
 /** The share of the poster's width a word may take before it is condensed. */
 const WORD_SOFT = 0.78;
+
+/** The room over the word for its small label (px). */
+const TAG_H = 14;
 
 /** The space round the giant word: the same under it and to its left (owner, #510). */
 const WORD_PAD = 16;
@@ -274,25 +286,31 @@ export function TripPoster({ trip, here, photo = true, className, wordFace }: { 
     };
   }, [key, word]);
   // The word's band under the route: its capital letters' height and a margin each side; none without a word. The land is not clipped to it.
-  const band = word ? Math.round(size * 0.74) + 2 * WORD_PAD : 0;
+  const band = word ? Math.round(size * 0.74) + 2 * WORD_PAD + TAG_H : 0;
   // Where the route goes: above the word, across the width; or, when the poster is wide enough that the room to the right of the word can hold the route at the full height, there.
   const wordW = drawn + WORD_PAD;
   const side = word !== "" && w - wordW - 24 >= h * 0.9;
   const box = side ? { x: wordW + 16, y: 0, w: w - wordW - 24, h } : { x: 0, y: 0, w, h: h - band };
   const backdrop = photo ? trip.photo : undefined;
-  const frame = useMemo(
-    () =>
-      frameOf(
-        trip.legPaths.flatMap((l) => Array.from({ length: l.points.length / 2 }, (_, k) => ({ lon: l.points[k * 2]!, lat: l.points[k * 2 + 1]! }))).concat(trip.stopPoints.map((s) => ({ lon: s.lon, lat: s.lat }))),
-        box.x,
-        box.y,
-        box.w,
-        box.h,
-        PAD,
-        { w, h: backdrop ? h + PHOTO_RUN : h },
-      ),
-    [trip, box.x, box.y, box.w, box.h, w, h, backdrop],
-  );
+  // The map is framed on the trip's land: a long flight (over `FAR_FLIGHT_KM`) is not what the trip is about, and fitting it in (the way home across an ocean) left the trip itself a squiggle in a corner of an empty map. The flight is still drawn,
+  // as far as the poster goes: it leaves the frame as a stub toward where it flies. A trip of nothing but long flights (or with none) is framed on all of it.
+  const framed = useMemo(() => {
+    const first = (l: Trip["legPaths"][number]) => ({ lon: l.points[0]!, lat: l.points[1]! });
+    const last = (l: Trip["legPaths"][number]) => ({ lon: l.points[l.points.length - 2]!, lat: l.points[l.points.length - 1]! });
+    const all = trip.legPaths.flatMap((l) => Array.from({ length: l.points.length / 2 }, (_, k) => ({ lon: l.points[k * 2]!, lat: l.points[k * 2 + 1]! }))).concat(trip.stopPoints.map((q) => ({ lon: q.lon, lat: q.lat })));
+    const long = (l: Trip["legPaths"][number]) => l.points.length >= 4 && l.mode === "flight";
+    // (the places the trip travels between on the ground; a flight is part of the frame only when both its ends are such places: a flight in from home and one back are not)
+    const ground = trip.legPaths.filter((l) => l.points.length >= 4 && !long(l)).flatMap((l) => [first(l), last(l)]);
+    const onGround = (q: { lon: number; lat: number }) => ground.some((e) => distanceKm(e, q) < 60);
+    const kept = trip.legPaths.filter((l) => l.points.length >= 4 && (!long(l) || (onGround(first(l)) && onGround(last(l)) && distanceKm(first(l), last(l)) <= FAR_FLIGHT_KM)));
+    if (ground.length === 0) return all;
+    if (kept.length === trip.legPaths.length) return all;
+    const ends = kept.flatMap((l) => [first(l), last(l)]);
+    const near = (q: { lon: number; lat: number }) => ends.some((e) => distanceKm(e, q) < 60);
+    const stops = trip.stopPoints.filter((q) => near(q) || q.slug === here).map((q) => ({ lon: q.lon, lat: q.lat }));
+    return kept.flatMap((l) => Array.from({ length: l.points.length / 2 }, (_, k) => ({ lon: l.points[k * 2]!, lat: l.points[k * 2 + 1]! }))).concat(stops);
+  }, [trip, here]);
+  const frame = useMemo(() => frameOf(framed, box.x, box.y, box.w, box.h, PAD, { w, h: backdrop ? h + PHOTO_RUN : h }), [framed, box.x, box.y, box.w, box.h, w, h, backdrop]);
   const horizon = useHorizon(backdrop?.src);
   // The photograph placed so that its horizon is at the poster's bottom edge: scaled up as far as it takes to fill the layer above and below that line, never less than the cover size.
   const placed = (() => {
@@ -337,9 +355,26 @@ export function TripPoster({ trip, here, photo = true, className, wordFace }: { 
   const landMask = landFade ? `url(#${maskId}-m)` : undefined;
   const current = trip.stopPoints.find((s) => s.slug === here);
   // The named places: the start, the end (one label when they are the same place), this one and the highlights (`Trip.highlights`).
-  const named = [trip.stopPoints[0], trip.stopPoints[trip.stopPoints.length - 1], current, ...trip.highlights.map((slug) => trip.stopPoints.find((s) => s.slug === slug))]
-    .filter((s): s is Trip["stopPoints"][number] => Boolean(s))
-    .filter((s, i, all) => all.findIndex((o) => o.slug === s.slug) === i);
+  const inBox = (q: { x: number; y: number }) => q.x >= box.x + 4 && q.x <= box.x + box.w - 4 && q.y >= box.y + 8 && q.y <= box.y + box.h - 4;
+  // (this place first, then the start and the end, then the highlights; a name that is outside the frame, such as the far end of a flight home, or that would run over one already placed, is left out)
+  const candidates = [current, trip.stopPoints[0], trip.stopPoints[trip.stopPoints.length - 1], ...trip.highlights.map((slug) => trip.stopPoints.find((q) => q.slug === slug))]
+    .filter((q): q is Trip["stopPoints"][number] => Boolean(q))
+    .filter((q, i, all) => all.findIndex((o) => o.slug === q.slug) === i);
+  const named: Array<{ s: Trip["stopPoints"][number]; x: number; y: number; end: boolean }> = [];
+  const taken: Array<{ x0: number; x1: number; y0: number; y1: number }> = [];
+  for (const q of candidates) {
+    const at = stopAt(q);
+    if (!inBox(at)) continue;
+    const end = at.x > w * 0.6;
+    const width = q.name.length * 6.8;
+    const x = end ? at.x - 9 : at.x + 9;
+    const y = Math.max(12, at.y - 7);
+    const rect = end ? { x0: x - width, x1: x } : { x0: x, x1: x + width };
+    const clash = taken.some((t) => rect.x0 < t.x1 + 4 && rect.x1 > t.x0 - 4 && y - 10 < t.y1 && y + 3 > t.y0);
+    if (clash) continue;
+    taken.push({ ...rect, y0: y - 10, y1: y + 3 });
+    named.push({ s: q, x, y, end });
+  }
   const tone = (share: number) => `color-mix(in srgb, var(--foreground) ${share}%, var(--accent))`;
   // The same ink on the field's colour with or without a photograph: the photograph is veiled in the FIELD's colour (light in the light theme, dark in the dark one), so it sits close to the card's background instead of standing out of it.
   const ink = "var(--foreground)";
@@ -380,8 +415,12 @@ export function TripPoster({ trip, here, photo = true, className, wordFace }: { 
           <text ref={textRef} aria-hidden="true" x={0} y={-1000} fontSize={nominal} style={{ visibility: "hidden", fontFamily: wordFont, fontWeight: 800, letterSpacing: "-0.03em", ...(face.axis ? { fontStretch: `${face.axis.base}%` } : {}) }}>
             {word}
           </text>
-          <text data-slot="trip-word" transform={`translate(${WORD_PAD - Math.round(size * 0.05)} ${h - WORD_PAD}) scale(${face.axis ? "1" : condense.toFixed(3)} 1)`} fontSize={size} style={{ fill: backdrop ? "color-mix(in srgb, var(--foreground) calc(14% + 66% * var(--g, 1) * var(--g, 1)), transparent)" : `color-mix(in srgb, var(--foreground) calc(10% + 52% * var(--g, 1) * var(--g, 1)), var(--accent))`, fontFamily: wordFont, letterSpacing: "-0.03em", ...(face.axis ? { fontStretch: `${(face.axis.base * condense).toFixed(1)}%` } : {}) }}>
+          <text data-slot="trip-word" transform={`translate(${WORD_PAD - Math.round(size * 0.05)} ${h - WORD_PAD}) scale(${face.axis ? "1" : condense.toFixed(3)} 1)`} fontSize={size} style={{ fill: backdrop ? "color-mix(in srgb, var(--foreground) calc(12% + 40% * var(--g, 1) * var(--g, 1)), transparent)" : `color-mix(in srgb, var(--foreground) calc(8% + 24% * var(--g, 1) * var(--g, 1)), var(--accent))`, fontFamily: wordFont, letterSpacing: "-0.03em", ...(face.axis ? { fontStretch: `${(face.axis.base * condense).toFixed(1)}%` } : {}) }}>
             {word}
+          </text>
+          {/* (what the word is: the trip's code name, not the place's name; the poster's own small mono type, quiet and only on the card in front) */}
+          <text data-slot="trip-word-tag" aria-hidden="true" x={WORD_PAD} y={h - WORD_PAD - Math.round(size * 0.74) - 8} fontSize={9} style={{ fill: "var(--foreground)", fontFamily: "var(--font-meta)", fontWeight: 500, letterSpacing: "0.14em", fillOpacity: "clamp(0, calc((var(--g, 1) - 0.4) * 1.1), 0.62)" as unknown as number }}>
+            TRIP CODE NAME
           </text>
           </>
         )}
@@ -397,17 +436,12 @@ export function TripPoster({ trip, here, photo = true, className, wordFace }: { 
           return <rect key={`${s.slug}-${i}`} x={q.x - 1.75} y={q.y - 1.75} width={3.5} height={3.5} fill={ink} />;
         })}
         {current && <rect x={stopAt(current).x - 6} y={stopAt(current).y - 6} width={12} height={12} fill="none" stroke={ink} strokeWidth={1.5} vectorEffect="non-scaling-stroke" />}
-        {named.map((s) => {
-          const q = stopAt(s);
-          const x = q.x;
-          const end = x > w * 0.6;
+        {named.map(({ s, x, y, end }) => (
           // (a halo in the backdrop's colour keeps a name readable where the route or a border runs under it)
-          return (
-            <text key={s.slug} x={end ? x - 9 : x + 9} y={Math.max(12, q.y - 7)} textAnchor={end ? "end" : "start"} fontSize={10} stroke={halo} strokeWidth={3} strokeLinejoin="round" style={{ fill: ink, paintOrder: "stroke", fontFamily: "var(--font-meta)", fontWeight: 700, letterSpacing: "0.04em" }}>
-              {s.name.toUpperCase()}
-            </text>
-          );
-        })}
+          <text key={s.slug} x={x} y={y} textAnchor={end ? "end" : "start"} fontSize={10} stroke={halo} strokeWidth={3} strokeLinejoin="round" style={{ fill: ink, paintOrder: "stroke", fontFamily: "var(--font-meta)", fontWeight: 700, letterSpacing: "0.04em" }}>
+            {s.name.toUpperCase()}
+          </text>
+        ))}
       </svg>
     </div>
   );

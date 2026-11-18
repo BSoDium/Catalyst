@@ -243,7 +243,7 @@ function PlaceHeader({ place, cover }: { place: PlaceDetailData; cover: PlaceCov
   const body = (
     <>
       {(where || place.lived || place.living) && (
-        <p className="ds-micro m-0 flex flex-wrap gap-x-2">
+        <p className="ds-micro m-0 -mb-1 flex flex-wrap gap-x-2">
           {where && <span>{where}</span>}
           {(place.lived === true || place.living === true) && <span className="ds-micro" data-tone="signal">{where ? "· " : ""}{place.living ? "Lives here" : "Lived here"}</span>}
         </p>
