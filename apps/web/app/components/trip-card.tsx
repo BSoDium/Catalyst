@@ -1,5 +1,5 @@
 import { StableTitle } from "~/components/stable-title";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { TripRail } from "~/components/trip-rail";
 import { Link, useLocation } from "react-router";
 import { TripPhotoFilters, TripPoster } from "~/components/trip-map";
@@ -136,7 +136,7 @@ export function TripCard({ trip, here, lived = false, photo = true, position, wo
  * The trips of the step. One is a card under its heading. Two or more are a carousel in the photographs' way (`TripRail`, #510): the card in front with the edge of the next, the cards sliding out of view
  * as the row is scrolled, the type of the one in front heavy and the others' thin and faded. The heading carries the count and the position ("1 / 3", said aloud); the arrows are the photographs'.
  */
-export function TripCards({ trips, here, lived = false }: { trips: Trip[]; here: string; lived?: boolean }) {
+export function TripCards({ trips, here, lived = false, intro }: { trips: Trip[]; here: string; lived?: boolean; /** What leads the trips, under their title: the step's story. */ intro?: ReactNode }) {
   // `?poster=flat` shows the flat posters (to compare with the photographs: #510).
   const query = new URLSearchParams(useLocation().search);
   const photo = query.get("poster") !== "flat";
@@ -154,6 +154,7 @@ export function TripCards({ trips, here, lived = false }: { trips: Trip[]; here:
           {many && <span className="place-group-count">{trips.length}</span>}
         </div>
       </header>
+      {intro}
       {many ? (
         <TripRail
           names={trips.map((t) => t.title)}
