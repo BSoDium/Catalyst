@@ -140,9 +140,14 @@ describe("the photograph of a trip (the poster's backdrop)", () => {
     const p = base([photo("at-a-stop", "2025-09-01", ["a"]), photo("the-pick", "2024-01-01", ["elsewhere"])], { cover: "the-pick" });
     expect(src(p)).toContain("the-pick");
   });
-  it("else the most recent photograph taken at a stop or during the trip", () => {
+  it("else the most recent photograph taken during the trip (a later visit to a stop is not the trip)", () => {
     const p = base([photo("old-stop", "2020-01-01", ["a"]), photo("on-the-road", "2025-08-20", ["elsewhere"]), photo("later", "2026-01-01", ["elsewhere"])]);
     expect(src(p)).toContain("on-the-road"); // the stop's is older, the last is after the trip
+    expect(src(base([photo("later-visit", "2026-01-01", ["a"])]))).toBeUndefined(); // (a photograph at a stop, years after the trip, is not the trip's)
+  });
+  it("for a trip with no dates, the most recent photograph taken at a stop", () => {
+    const p = parsePublishedProjection({ ...EMPTY_PROJECTION, places: [pl("a", 1), pl("b", 2), pl("c", 3)], photographs: [photo("at-a", "2025-01-01", ["a"]), photo("elsewhere", "2026-01-01", ["c"])], routes: [{ id: "t", title: "T", stops: ["a", "b"] }] });
+    expect(src(p)).toContain("at-a");
   });
   it("never a sensitive photograph, not even as the cover, and none when nobody photographed the trip", () => {
     const sensitive = photo("hidden", "2025-09-01", ["a"], { sensitive: true });

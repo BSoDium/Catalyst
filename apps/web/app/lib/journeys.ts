@@ -123,7 +123,7 @@ export interface Trip {
 
 /**
  * The photograph that stands for a trip (the poster's backdrop): the owner's pick (`route.cover`, when it is a photograph that is not sensitive), else the most recent
- * photograph that is not sensitive and was taken at one of the stops or during the trip (its date within the trip's months): the trip's photographs are not all at its stops
+ * photograph that is not sensitive and was taken during the trip (its date within the trip's months: a place is visited again years later, a picture from the next visit is not the trip's, so being at a stop is not enough); only for a trip with no dates, the most recent taken at one of its stops. The trip's photographs are not all at its stops
  * (a river crossing has its pictures between places). None for a trip nobody photographed.
  */
 function tripPhoto(projection: PublishedProjection, route: PublishedProjection["routes"][number]): { photo?: Pick<PublishedCover, "src" | "width" | "small"> } {
@@ -134,7 +134,7 @@ function tripPhoto(projection: PublishedProjection, route: PublishedProjection["
   const during = (date: string | undefined) => from !== undefined && to !== undefined && date !== undefined && date.slice(0, 7) >= from && date.slice(0, 7) <= to;
   const picked =
     (route.cover === undefined ? undefined : usable.find((p) => p.slug === route.cover)) ??
-    usable.filter((p) => p.placeSlugs.some((s) => stops.has(s)) || during(p.date)).sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""))[0];
+    usable.filter((p) => (from !== undefined && to !== undefined ? during(p.date) : p.placeSlugs.some((s) => stops.has(s)))).sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""))[0];
   const cover = picked?.cover;
   return cover ? { photo: { src: cover.src, width: cover.width, ...(cover.small ? { small: cover.small } : {}) } } : {};
 }
