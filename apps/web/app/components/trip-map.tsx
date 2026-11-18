@@ -50,6 +50,8 @@ const PAD = 26;
 /** The word is sized for a word of this many letters (every word has that size, a longer one is condensed first), and condensed to at most this fraction of its width before it is made smaller. */
 const NOMINAL_LETTERS = 8;
 const WORD_MIN_CONDENSE = 0.72;
+/** The share of the poster's width a word may take before it is condensed. */
+const WORD_SOFT = 0.78;
 
 /** The space round the giant word: the same under it and to its left (owner, #510). */
 const WORD_PAD = 16;
@@ -235,9 +237,12 @@ export function TripPoster({ trip, here, photo = true, className }: { trip: Trip
   const [measured, setMeasured] = useState({ key: "", length: 0 });
   const key = `${word}|${nominal}|${w}`;
   const natural = measured.key === key ? measured.length : 0.66 * nominal * word.length;
-  const ratio = natural > 0 ? (w - 2 * WORD_PAD) / natural : 1;
-  const condense = Math.min(1, Math.max(WORD_MIN_CONDENSE, ratio));
-  const size = ratio >= WORD_MIN_CONDENSE ? nominal : Math.max(12, Math.floor((nominal * ratio) / WORD_MIN_CONDENSE));
+  // Three steps, in this order: (1) a word that is wider than the SOFT share of the card (`WORD_SOFT`, so that a word does not run across a wide card) is condensed, down to `WORD_MIN_CONDENSE`; (2) if that is not
+  // enough it may take more of the card, up to the whole of it, at that condensing; (3) only a word still wider than the card is made smaller.
+  const room = w - 2 * WORD_PAD;
+  const condense = natural > 0 ? Math.min(1, Math.max(WORD_MIN_CONDENSE, (WORD_SOFT * room) / natural)) : 1;
+  const over = natural > 0 ? (natural * condense) / room : 0;
+  const size = over > 1 ? Math.max(12, Math.floor(nominal / over)) : nominal;
   const drawn = Math.round(natural * (size / nominal) * condense);
   useEffect(() => {
     const el = textRef.current;
