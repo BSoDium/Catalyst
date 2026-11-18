@@ -122,6 +122,11 @@ export function TripCard({ trip, here, lived = false, photo = true, position, wo
           {trip.dates?.text && <p data-slot="trip-dates" className="m-0 ds-meta">{trip.dates.text}</p>}
         </header>
         <TripFooter trip={trip} where={where} hops={single ?? ends} />
+        {photo && trip.photo?.credit && (
+          <p data-slot="trip-photo-credit" className="m-0 text-xs text-muted-foreground">
+            Photo: {trip.photo.credit}
+          </p>
+        )}
       </div>
     </article>
   );

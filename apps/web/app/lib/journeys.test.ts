@@ -149,9 +149,40 @@ describe("the photograph of a trip (the poster's backdrop)", () => {
     const p = parsePublishedProjection({ ...EMPTY_PROJECTION, places: [pl("a", 1), pl("b", 2), pl("c", 3)], photographs: [photo("at-a", "2025-01-01", ["a"]), photo("elsewhere", "2026-01-01", ["c"])], routes: [{ id: "t", title: "T", stops: ["a", "b"] }] });
     expect(src(p)).toContain("at-a");
   });
+  describe("the route's own image (not a photograph of the site)", () => {
+    const image = { src: "/media/routes/t/image.abcd1234.webp", width: 1280, height: 853, alt: "A bay", credit: "Jane Doe on Pexels", small: { src: "/media/routes/t/image-800w.abcd1234.webp", width: 800, height: 533 } };
+    it("is the backdrop when there is no cover, ahead of the trip's own photographs, with its credit and small copy", () => {
+      const p = base([photo("at-a-stop", "2025-09-01", ["a"])], { image });
+      const trip = tripsOf(p, "a")[0]!;
+      expect(trip.photo).toEqual({ src: image.src, width: 1280, small: image.small, credit: "Jane Doe on Pexels" });
+    });
+    it("gives way to the cover, which keeps priority", () => {
+      const p = base([photo("the-pick", "2024-01-01", ["elsewhere"])], { cover: "the-pick", image });
+      const trip = tripsOf(p, "a")[0]!;
+      expect(trip.photo?.src).toContain("the-pick");
+      expect(trip.photo?.credit).toBeUndefined();
+    });
+    it("is used when the cover is a sensitive photograph (never drawn) and carries no credit when it has none", () => {
+      const hidden = photo("hidden", "2025-09-01", ["a"], { sensitive: true });
+      const { credit: _credit, ...bare } = image;
+      expect(tripsOf(base([hidden], { cover: "hidden", image: bare }), "a")[0]!.photo).toEqual({ src: image.src, width: 1280, small: image.small });
+    });
+  });
   it("never a sensitive photograph, not even as the cover, and none when nobody photographed the trip", () => {
     const sensitive = photo("hidden", "2025-09-01", ["a"], { sensitive: true });
     expect(src(base([sensitive], { cover: "hidden" }))).toBeUndefined();
     expect(src(base([photo("far", "2019-01-01", ["elsewhere"])]))).toBeUndefined();
+  });
+});
+
+describe("a trip's code name (#510)", () => {
+  it("is the giant word when the route has one, else the word derived from its title", () => {
+    const withName = { ...projection, routes: [{ ...projection.routes[0]!, title: "A Week in Moscow", codename: "Chișinău" }] };
+    expect(tripsOf(withName, "beta")[0]!.word).toBe("Chișinău");
+    const without = { ...projection, routes: [{ ...projection.routes[0]!, title: "A Week in Moscow" }] };
+    expect(tripsOf(without, "beta")[0]!.word).toBe("Moscow");
+    expect(tripsOf(without, "beta")[0]!.face).toBeUndefined();
+    const styled = { ...projection, routes: [{ ...projection.routes[0]!, face: "old" as const }] };
+    expect(tripsOf(styled, "beta")[0]!.face).toBe("old");
   });
 });
