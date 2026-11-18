@@ -17,3 +17,13 @@ export const FONT_FILES = {
 
 /** The one file the home page asks for before the stylesheet's `@font-face` is even matched: the navigation's text is set in it. */
 export const DISPLAY_FONT_URL = `${FONT_DIR}${FONT_FILES.display}`;
+
+/** The faces a trip card's giant word can be set in besides the three above (components/trip-map.tsx `FACES`, #510): declared in `app.css` and fetched only when a card uses one, never preloaded. */
+export const POSTER_FONT_FILES = {
+  /** Bitter, wght 100-900. */
+  slab: "bitter-5.3.0-latin-wght.woff2",
+  /** Archivo, wght 100-900 and wdth 62-125 (the width axis condenses a long word without squeezing its glyphs). */
+  condensed: "archivo-5.3.0-latin-wdth-wght.woff2",
+  /** Caveat, wght 400-700. */
+  script: "caveat-5.3.0-latin-wght.woff2",
+} as const;

@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { CAPTION_FACES, CAPTION_STYLES } from "~/globe/engine/caption";
 import { describe, expect, it } from "vitest";
-import { DISPLAY_FONT_URL, FONT_DIR, FONT_FILES } from "./fonts";
+import { DISPLAY_FONT_URL, FONT_DIR, FONT_FILES, POSTER_FONT_FILES } from "./fonts";
 
 const css = readFileSync(new URL("../app.css", import.meta.url), "utf8");
 const publicFile = (name: string) => new URL(`../../public/${name}`, import.meta.url);
@@ -16,15 +16,15 @@ describe("self-hosted fonts", () => {
   const webFaces = faces.filter((f) => /url\(/.test(f));
   const fallbackFaces = faces.filter((f) => /local\(/.test(f));
 
-  it("ships exactly the four woff2 files of FONT_FILES, each a real woff2, with the OFL licences beside them", () => {
-    for (const file of Object.values(FONT_FILES)) {
+  it("ships exactly the woff2 files of FONT_FILES and POSTER_FONT_FILES, each a real woff2, with the OFL licences beside them", () => {
+    for (const file of [...Object.values(FONT_FILES), ...Object.values(POSTER_FONT_FILES)]) {
       const url = publicFile(`fonts/${file}`);
       expect(existsSync(url), file).toBe(true);
       expect(readFileSync(url).toString("latin1", 0, 4), `${file} is woff2`).toBe("wOF2");
       // The two Newsreader files carry the optical-size axis (about 129 and 143 kB): the headline is set at opsz 72, the body at 18.
       expect(statSync(url).size, file).toBeLessThan(160 * 1024);
     }
-    for (const name of ["bricolage-grotesque", "newsreader", "jetbrains-mono"]) {
+    for (const name of ["bricolage-grotesque", "newsreader", "jetbrains-mono", "bitter", "archivo", "caveat"]) {
       const licence = readFileSync(publicFile(`fonts/LICENSE-${name}.txt`), "utf8");
       expect(licence, name).toContain("SIL Open Font License, Version 1.1");
       expect(licence, name).toMatch(/^Copyright /);
@@ -37,9 +37,10 @@ describe("self-hosted fonts", () => {
   });
 
   it("is declared with @font-face from this origin only, swapping, in the Latin range, and the CSS names the same files", () => {
-    expect(webFaces.length).toBe(Object.keys(FONT_FILES).length);
+    const all = [...Object.values(FONT_FILES), ...Object.values(POSTER_FONT_FILES)];
+    expect(webFaces.length).toBe(all.length);
     const urls = webFaces.map((f) => /url\("([^"]+)"\)/.exec(f)?.[1]);
-    expect(urls.sort()).toEqual(Object.values(FONT_FILES).map((f) => `${FONT_DIR}${f}`).sort());
+    expect(urls.sort()).toEqual(all.map((f) => `${FONT_DIR}${f}`).sort());
     for (const face of webFaces) {
       expect(prop(face, "font-display")).toBe("swap");
       expect(prop(face, "unicode-range")).toBe(LATIN_RANGE);
