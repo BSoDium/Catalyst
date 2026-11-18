@@ -24,7 +24,7 @@ describe("self-hosted fonts", () => {
       // The two Newsreader files carry the optical-size axis (about 129 and 143 kB): the headline is set at opsz 72, the body at 18.
       expect(statSync(url).size, file).toBeLessThan(160 * 1024);
     }
-    for (const name of ["bricolage-grotesque", "newsreader", "jetbrains-mono", "bitter", "archivo", "caveat"]) {
+    for (const name of ["bricolage-grotesque", "newsreader", "jetbrains-mono", "bitter", "fraunces", "archivo", "caveat"]) {
       const licence = readFileSync(publicFile(`fonts/LICENSE-${name}.txt`), "utf8");
       expect(licence, name).toContain("SIL Open Font License, Version 1.1");
       expect(licence, name).toMatch(/^Copyright /);

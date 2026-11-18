@@ -335,6 +335,7 @@
   --font-meta: "JetBrains Mono Variable", var(--font-mono);
   --font-slab: "Bitter Variable", var(--font-reading);
   --font-condensed: "Archivo Variable", var(--font-sans);
+  --font-old: "Fraunces Variable", var(--font-reading);
   --font-script: "Caveat Variable", cursive;
 
   /* Weights. The display pair is thin against heavy ("Cata" 200, "lyst" 800); the rest serve the reading face and the small sizes. */
@@ -588,6 +589,15 @@
   src: url("/fonts/archivo-5.3.0-latin-wdth-wght.woff2") format("woff2");
   font-weight: 100 900;
   font-stretch: 62% 125%;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Fraunces Variable";
+  src: url("/fonts/fraunces-5.3.0-latin-wght.woff2") format("woff2");
+  font-weight: 100 900;
   font-style: normal;
   font-display: swap;
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;

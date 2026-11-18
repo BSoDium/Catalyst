@@ -24,6 +24,8 @@ export const POSTER_FONT_FILES = {
   slab: "bitter-5.3.0-latin-wght.woff2",
   /** Archivo, wght 100-900 and wdth 62-125 (the width axis condenses a long word without squeezing its glyphs). */
   condensed: "archivo-5.3.0-latin-wdth-wght.woff2",
+  /** Fraunces, wght 100-900: an old-style display serif (old timey, seaside, old buildings). */
+  old: "fraunces-5.3.0-latin-wght.woff2",
   /** Caveat, wght 400-700. */
   script: "caveat-5.3.0-latin-wght.woff2",
 } as const;

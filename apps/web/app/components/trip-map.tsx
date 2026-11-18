@@ -54,6 +54,7 @@ const WORD_MIN_CONDENSE = 0.72;
 const FACES: Record<string, { font: string; axis?: { base: number; min: number } }> = {
   grotesque: { font: "var(--font-display)" },
   serif: { font: "var(--font-reading)" },
+  old: { font: "var(--font-old)" },
   slab: { font: "var(--font-slab)" },
   condensed: { font: "var(--font-condensed)", axis: { base: 78, min: 62 } },
   script: { font: "var(--font-script)" },
@@ -237,8 +238,8 @@ function useHorizon(src: string | undefined) {
 export function TripPoster({ trip, here, photo = true, className, wordFace }: { trip: Trip; here: string; photo?: boolean; className?: string; wordFace?: string | null }) {
   const { ref, w, h } = usePosterBox();
   const word = trip.word.toUpperCase();
-  // `?word=grotesque|serif|slab|condensed|script|mono` sets the giant word in that face, to choose one per trip (#510). The condensed face has a real width axis: it is condensed by the axis, the others by squeezing the glyphs.
-  const face = FACES[wordFace ?? ""] ?? FACES.grotesque!;
+  // The giant word is set in the lettering style of the trip's `face` (`routes[].face`: chosen per city, #510); `?word=grotesque|serif|old|slab|condensed|script|mono` overrides it for every card, to try the faces. The condensed face has a real width axis: it is condensed by the axis, the others by squeezing the glyphs.
+  const face = FACES[wordFace ?? trip.face ?? ""] ?? FACES.grotesque!;
   const wordFont = face.font;
   const minCondense = face.axis ? face.axis.min / face.axis.base : WORD_MIN_CONDENSE;
   // The word has ONE size on a poster, whatever its length, so the cards of a row read as a set. A word too wide for the poster is first CONDENSED (the face has no width axis: the glyphs are squeezed
@@ -248,7 +249,7 @@ export function TripPoster({ trip, here, photo = true, className, wordFace }: { 
   // card's `--g`, see `.trip-slide` in app.css), so what is drawn never feeds back into what is measured.
   const textRef = useRef<SVGTextElement>(null);
   const [measured, setMeasured] = useState({ key: "", length: 0 });
-  const key = `${word}|${nominal}|${w}|${wordFace ?? ""}`;
+  const key = `${word}|${nominal}|${w}|${wordFace ?? trip.face ?? ""}`;
   const natural = measured.key === key ? measured.length : 0.66 * nominal * word.length;
   // Three steps, in this order: (1) a word that is wider than the SOFT share of the card (`WORD_SOFT`, so that a word does not run across a wide card) is condensed, down to `WORD_MIN_CONDENSE`; (2) if that is not
   // enough it may take more of the card, up to the whole of it, at that condensing; (3) only a word still wider than the card is made smaller.
