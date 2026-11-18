@@ -96,11 +96,44 @@ function cutEnd(t: Track, box: CropBox, head: boolean): Track | "outside" | "all
   return { x: back.x.map((v) => v - d), y: back.y, h: back.h };
 }
 
+/** A recorded point this close (degrees, about 11 km) to its box, and outside it, is joined to the box's nearest edge point: farther is a different place, not a box the point just misses. */
+export const SNAP_DEG = 0.1;
+
+/**
+ * The track with its `head` (first) or tail end joined to the nearest point of `box`'s edge when that end lies OUTSIDE the box, within `SNAP_DEG` of it (a stop whose recorded point is a little beside its own
+ * bounding box: the box of a district and the point of the city, say, kilometres apart): the path then ends on the box like every other, instead of in the open ground beside it. The added end is on the
+ * ground (no lift). The same track when the end is on the edge already or the box is not near.
+ */
+function snapEnd(t: Track, box: CropBox, head: boolean): Track {
+  const i = head ? 0 : t.x.length - 1;
+  const [w, s, e, n] = box;
+  const x = near(t.x[i]!, (w + e) / 2) ;
+  const y = t.y[i]!;
+  const nx = Math.min(e, Math.max(w, x));
+  const ny = Math.min(n, Math.max(s, y));
+  const gap = Math.hypot(nx - x, ny - y);
+  // (not an end that is on the edge or a polyline unit (a metre or so) outside it: the roads the repository cut end there)
+  if (gap < 2e-4 || gap > SNAP_DEG) return t;
+  const px = nx + (t.x[i]! - x);
+  const m = t.x.length + 1;
+  const out: Track = { x: new Float64Array(m), y: new Float64Array(m), h: new Float32Array(m) };
+  const at = head ? 0 : m - 1;
+  const from = head ? 1 : 0;
+  for (let k = 0; k < t.x.length; k++) {
+    out.x[from + k] = t.x[k]!;
+    out.y[from + k] = t.y[k]!;
+    out.h[from + k] = t.h[k]!;
+  }
+  out.x[at] = px;
+  out.y[at] = ny;
+  out.h[at] = 0;
+  return out;
+}
+
 /**
  * The path `lonlat` (`[lon, lat, ...]`) with `lift` (one height per point, or null for a path on the ground) cropped to the outside of the box of its
  * first stop (`from`) and of its last (`to`): what is left starts and ends ON the box edge, where the path leaves the first box and enters the last.
- * A box that does not contain the end of the path leaves that end as it is (a stop whose recorded point lies outside its box, a leg that already
- * ends on the edge, a stop with no box). null: nothing is left outside (a leg that stays inside its box, or between two overlapping ones): nothing to draw.
+ * A box that does not contain the end of the path leaves that end as it is (a leg that already ends on the edge, a stop with no box, a recorded point farther than `SNAP_DEG` from its box); an end that lies just OUTSIDE its box is joined to the box's nearest edge point (`snapEnd`). null: nothing is left outside (a leg that stays inside its box, or between two overlapping ones): nothing to draw.
  * A path that no box touches comes back as it was (same numbers).
  */
 export function cropToBoxes(lonlat: ArrayLike<number>, lift: ArrayLike<number> | null, from?: CropBox, to?: CropBox): CroppedPath | null {
@@ -118,7 +151,15 @@ export function cropToBoxes(lonlat: ArrayLike<number>, lift: ArrayLike<number> |
     if (!box) continue;
     const r = cutEnd(t, box, head);
     if (r === "all") return null;
-    if (r === "outside") continue;
+    if (r === "outside") {
+      // (an end beside its box, not in it: joined to the box's edge)
+      const snapped = snapEnd(t, box, head);
+      if (snapped !== t) {
+        t = snapped;
+        cut = true;
+      }
+      continue;
+    }
     t = r;
     cut = true;
   }
