@@ -428,8 +428,8 @@ export function TripPoster({ trip, here, photo = true, className, wordFace }: { 
         <svg aria-hidden="true" width={w} height={h + PHOTO_RUN} viewBox={`0 0 ${w} ${h + PHOTO_RUN}`} className="pointer-events-none absolute inset-x-0 top-0 block" style={{ maskImage: fade(h), WebkitMaskImage: fade(h) }}>
           {fadeDefs}
           <path d={land} mask={landMask} style={{ fill: `color-mix(in srgb, #fff ${landShare}%, transparent)` }} stroke="none" />
-          {/* (on a photograph the borders are a hint, not a net: faint, so they never read as drawn over the picture) */}
-          {borderPath && <path d={borderPath} fill="none" stroke="var(--accent)" strokeOpacity={0.3} strokeWidth={1} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />}
+          {/* (on a photograph the borders are lines of the route's own ink, faint: lighter than the picture like the route, not darker; on the flat field they are gaps in the land, the ocean's colour) */}
+          {borderPath && <path d={borderPath} fill="none" stroke={ink} strokeOpacity={0.32} strokeWidth={1} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />}
         </svg>
       )}
       <svg data-slot="trip-poster" viewBox={`0 0 ${w} ${h}`} width={w} height={h} role="img" aria-label={`Map of the trip, ${trip.from} to ${trip.to}`} className="relative block overflow-hidden">
