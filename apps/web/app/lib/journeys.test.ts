@@ -169,3 +169,12 @@ describe("the photograph of a trip (the poster's backdrop)", () => {
     expect(src(base([photo("far", "2019-01-01", ["elsewhere"])]))).toBeUndefined();
   });
 });
+
+describe("a trip's code name (#510)", () => {
+  it("is the giant word when the route has one, else the word derived from its title", () => {
+    const withName = { ...projection, routes: [{ ...projection.routes[0]!, title: "A Week in Moscow", codename: "Chișinău" }] };
+    expect(tripsOf(withName, "beta")[0]!.word).toBe("Chișinău");
+    const without = { ...projection, routes: [{ ...projection.routes[0]!, title: "A Week in Moscow" }] };
+    expect(tripsOf(without, "beta")[0]!.word).toBe("Moscow");
+  });
+});

@@ -244,3 +244,20 @@ describe("route image (#510)", () => {
     expect(() => parse({ ...image, credit: "a\nb" })).toThrow();
   });
 });
+
+describe("route codename (#510)", () => {
+  const pl = (slug: string, lat: number) => ({ slug, name: slug, coordinates: { lat, lon: 1 }, labelPriority: 0, body: [], images: [], related: [] });
+  const base = { ...EMPTY_PROJECTION, places: [pl("a", 1), pl("b", 2)] };
+  const route = (id: string, codename?: string) => ({ id, title: id, stops: ["a", "b"], ...(codename === undefined ? {} : { codename }) });
+  it("accepts a code name, and none", () => {
+    const p = parsePublishedProjection({ ...base, routes: [route("t1", "Chișinău"), route("t2")] });
+    expect(p.routes[0]!.codename).toBe("Chișinău");
+    expect(p.routes[1]!.codename).toBeUndefined();
+  });
+  it("rejects an empty, a long or a multi-line one", () => {
+    for (const bad of ["", "x".repeat(25), "a\nb"]) expect(() => parsePublishedProjection({ ...base, routes: [route("t1", bad)] })).toThrow();
+  });
+  it("rejects two routes with the same code name, without case or diacritics", () => {
+    expect(() => parsePublishedProjection({ ...base, routes: [route("t1", "Chisinau"), route("t2", "CHIȘINĂU")] })).toThrow(/already the code name/);
+  });
+});

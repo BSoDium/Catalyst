@@ -114,7 +114,7 @@ export interface Trip {
   photo?: TripPhoto;
   /** The stops worth naming on the poster besides the start, the end and this place (`pickHighlights`): up to three with the most entries, well apart. Slugs. */
   highlights: string[];
-  /** The one word the card sets in giant type (`tripWord` of the title). */
+  /** The one word the card sets in giant type: the route's authored `codename`, else `tripWord` of the title. */
   word: string;
   /** How many countries the stops are in (those the places name): 0 when none is known. */
   countries: number;
@@ -187,7 +187,7 @@ const WORD_SKIP = new Set(["a", "an", "the", "of", "to", "in", "on", "at", "and"
 /**
  * The one word a trip's card sets in giant type, from its title: the longest word that names something ("The Transatlantic Crossing" is Transatlantic, "A Week in
  * Moscow" Moscow, "South America: West to East" America), the later one on a tie ("The Road to CERN" is CERN). A title with nothing left gives its longest word, and an
- * empty one nothing. A default, not an authored word: a trip may get its own later.
+ * empty one nothing. The default for a route with no authored `codename`.
  */
 export function tripWord(title: string): string {
   const words = title.split(/[^\p{L}\p{N}'’-]+/u).filter(Boolean);
@@ -265,7 +265,7 @@ export function tripsOf(projection: PublishedProjection, slug: string, nameOf: (
         places.map((p) => ({ slug: p!.slug, lat: p!.coordinates.lat, lon: p!.coordinates.lon, weight: weightOf(projection, p!.slug) })),
         [route.stops[0]!, route.stops[route.stops.length - 1]!, slug],
       ),
-      word: tripWord(route.title),
+      word: route.codename ?? tripWord(route.title),
       countries: new Set(places.map((p) => p!.countryCode).filter(Boolean)).size,
       stopPoints: places.map((p) => ({ slug: p!.slug, name: nameOf(p!), lon: p!.coordinates.lon, lat: p!.coordinates.lat })),
       legPaths,
