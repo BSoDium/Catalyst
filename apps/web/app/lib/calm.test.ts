@@ -42,3 +42,18 @@ describe("energyOf", () => {
     expect(Math.max(...energyOf(rgba, 4, 4))).toBeGreaterThan(0.1);
   });
 });
+
+import { lumaOf, meanUnder } from "./calm";
+describe("meanUnder", () => {
+  it("is the mean of what the region covers on the picture as it is placed", () => {
+    // a 2 x 2 grid, dark on top and light below, drawn 100 x 100 at (0, 0)
+    const grid = [0.1, 0.1, 0.9, 0.9];
+    const place = { width: 100, height: 100, left: 0, top: 0 };
+    expect(meanUnder(grid, 2, 2, place, { x: 0, y: 0, w: 100, h: 50 })).toBeCloseTo(0.1, 5);
+    expect(meanUnder(grid, 2, 2, place, { x: 0, y: 50, w: 100, h: 50 })).toBeCloseTo(0.9, 5);
+    expect(meanUnder(grid, 2, 2, { ...place, top: -200 }, { x: 0, y: 0, w: 100, h: 50 })).toBeNull();
+  });
+  it("reads luminance, green most", () => {
+    expect(lumaOf([0, 255, 0, 255], 1, 1)[0]).toBeGreaterThan(lumaOf([255, 0, 0, 255], 1, 1)[0]!);
+  });
+});

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { coverImageProps } from "~/lib/cover-image";
-import { calmPlace, energyOf } from "~/lib/calm";
+import { calmPlace, energyOf, lumaOf, meanUnder } from "~/lib/calm";
 import { findHorizon } from "~/lib/horizon";
 import { frameOf, type Frame } from "~/lib/trip-projection";
 import type { Trip } from "~/lib/journeys";
@@ -122,6 +122,9 @@ function linesPath(frame: Frame, lines: Lines | null, w: number, h: number, ring
   return out.join("");
 }
 
+/** The map is this close (px a degree) or closer for the country borders to be drawn. */
+const BORDERS_PX_PER_DEG = 8;
+
 /** A trip within this many degrees is a regional one: the finer coastline (50 m) is used for its land, a bigger one gets the 110 m coastline. */
 const REGIONAL_DEG = 40;
 
@@ -196,11 +199,12 @@ const HORIZON_ROWS = 120;
  * The photograph is the site's own file (same origin), so the canvas can be read; if it cannot, there is no horizon and the photograph is placed as it is.
  */
 function useHorizon(src: string | undefined) {
-  const [state, setState] = useState<{ src: string; horizon: number | null; w: number; h: number; energy: Float32Array | null; cols: number; rows: number } | null>(null);
+  const [state, setState] = useState<{ src: string; horizon: number | null; w: number; h: number; energy: Float32Array | null; luma: Float32Array | null; cols: number; rows: number } | null>(null);
   const read = useCallback((img: HTMLImageElement) => {
     if (!img.naturalWidth || !img.naturalHeight || !src) return;
     let horizon: number | null = null;
     let energy: Float32Array | null = null;
+    let luma: Float32Array | null = null;
     let eCols = 0;
     let eRows = 0;
     try {
@@ -229,13 +233,14 @@ function useHorizon(src: string | undefined) {
         horizon = findHorizon(colours);
         // (how much each cell of the small copy changes: where the picture is calm, for the map to fall on)
         energy = energyOf(data, cols, rows);
+        luma = lumaOf(data, cols, rows);
         eCols = cols;
         eRows = rows;
       }
     } catch {
       horizon = null;
     }
-    setState((prev) => (prev && prev.src === src && prev.horizon === horizon && prev.w === img.naturalWidth ? prev : { src, horizon, w: img.naturalWidth, h: img.naturalHeight, energy, cols: eCols, rows: eRows }));
+    setState((prev) => (prev && prev.src === src && prev.horizon === horizon && prev.w === img.naturalWidth ? prev : { src, horizon, w: img.naturalWidth, h: img.naturalHeight, energy, luma, cols: eCols, rows: eRows }));
   }, [src]);
   // (the picture may have loaded before React attached `onLoad`)
   const ref = useRef<HTMLImageElement>(null);
@@ -335,10 +340,17 @@ export function TripPoster({ trip, here, photo = true, className, wordFace }: { 
     const k = Math.max(w / hz.w, h / (f * hz.h), PHOTO_RUN / ((1 - f) * hz.h), run / hz.h);
     return { width: k * hz.w, height: k * hz.h, left: (w - k * hz.w) / 2, top: h - f * k * hz.h } as const;
   })();
+  // How much the land lightens the photograph, in percent of white: the brighter the part of the picture under the map, the more (16 at most); over a dark sky (Buenos Aires' storm) only a few, or the continents stand out of it.
+  const landShare = (() => {
+    const hz = horizon.horizon;
+    const m = placed && hz?.luma ? meanUnder(hz.luma, hz.cols, hz.rows, placed, box) : null;
+    return m === null ? 16 : Math.round(Math.min(16, Math.max(4, 3 + 22 * m)));
+  })();
   // (the stops are all within the frame, so they all have a place on it)
   const stopAt = (s: { lon: number; lat: number }) => frame.at(s.lon, s.lat) ?? { x: -99, y: -99 };
   const coast = useCoast(frame.span < REGIONAL_DEG);
-  const borders = useBorders(frame.span < REGIONAL_DEG);
+  // (the country borders are for a map that is close enough to read them: at a continent's distance they are a net over the land, `BORDERS_PX_PER_DEG`)
+  const borders = useBorders(frame.span < REGIONAL_DEG && frame.pxPerDeg >= BORDERS_PX_PER_DEG);
   // (the borders are the field's colour, the ocean's: a gap in the land, not a line over it)
   const borderPath = useMemo(() => linesPath(frame, borders, w, backdrop ? h + PHOTO_RUN : h), [frame, borders, w, h, backdrop]);
   const land = useMemo(() => linesPath(frame, coast, w, backdrop ? h + PHOTO_RUN : h, true), [frame, coast, w, h, backdrop]);
@@ -415,7 +427,7 @@ export function TripPoster({ trip, here, photo = true, className, wordFace }: { 
         // The land on a photograph runs as far as the photograph does and fades with it (the same mask), so the map is not cut at the poster's edge while the picture goes on.
         <svg aria-hidden="true" width={w} height={h + PHOTO_RUN} viewBox={`0 0 ${w} ${h + PHOTO_RUN}`} className="pointer-events-none absolute inset-x-0 top-0 block" style={{ maskImage: fade(h), WebkitMaskImage: fade(h) }}>
           {fadeDefs}
-          <path d={land} mask={landMask} style={{ fill: "color-mix(in srgb, #fff 16%, transparent)" }} stroke="none" />
+          <path d={land} mask={landMask} style={{ fill: `color-mix(in srgb, #fff ${landShare}%, transparent)` }} stroke="none" />
           {borderPath && <path d={borderPath} fill="none" stroke="var(--accent)" strokeWidth={1.25} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />}
         </svg>
       )}

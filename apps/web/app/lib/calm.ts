@@ -80,3 +80,28 @@ export function energyOf(rgba: ArrayLike<number>, cols: number, rows: number): F
   }
   return out;
 }
+
+/** The luminance of each cell of an RGBA small copy, 0..1. Pure. */
+export function lumaOf(rgba: ArrayLike<number>, cols: number, rows: number): Float32Array {
+  const lum = new Float32Array(cols * rows);
+  for (let i = 0; i < cols * rows; i++) lum[i] = (0.2126 * rgba[i * 4]! + 0.7152 * rgba[i * 4 + 1]! + 0.0722 * rgba[i * 4 + 2]!) / 255;
+  return lum;
+}
+
+/** The mean of `values` (a `cols` x `rows` grid of the picture) under `region`, for the picture drawn at `place` (its size and offset in the layer); null when the region is off the picture. Pure. */
+export function meanUnder(
+  values: ArrayLike<number>,
+  cols: number,
+  rows: number,
+  place: { width: number; height: number; left: number; top: number },
+  region: { x: number; y: number; w: number; h: number },
+): number | null {
+  const c0 = Math.max(0, Math.floor(((region.x - place.left) / place.width) * cols));
+  const c1 = Math.min(cols, Math.ceil(((region.x + region.w - place.left) / place.width) * cols));
+  const r0 = Math.max(0, Math.floor(((region.y - place.top) / place.height) * rows));
+  const r1 = Math.min(rows, Math.ceil(((region.y + region.h - place.top) / place.height) * rows));
+  if (c1 <= c0 || r1 <= r0) return null;
+  let sum = 0;
+  for (let r = r0; r < r1; r++) for (let c = c0; c < c1; c++) sum += values[r * cols + c]!;
+  return sum / ((c1 - c0) * (r1 - r0));
+}

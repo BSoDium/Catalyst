@@ -16,6 +16,8 @@ export interface Frame {
   /** The larger side of the trip's box, degrees: how close the map is. */
   span: number;
   azimuthal: boolean;
+  /** How many px a degree is on the poster near the middle of the trip: how close the map is (a continent is a few, a country a dozen or more). */
+  pxPerDeg: number;
   /** True when the segment between two places crosses the world map's seam (never in the azimuthal one): a line is broken there, not drawn across the map. */
   cuts: (lonA: number, lonB: number) => boolean;
 }
@@ -132,9 +134,9 @@ export function frameOf(points: GeoPoint[], bx: number, by: number, bw: number, 
     const origin = f.at(centre.lon, centre.lat);
     const reach = origin ? Math.max(...[0, view.w].flatMap((x) => [0, view.h].map((y) => Math.hypot(x - origin.x, y - origin.y)))) : Infinity;
     // A trip that is a region of the globe (a continent, `REGION_SPAN` degrees or less) keeps the azimuthal map whatever the shape of the poster: the world map would draw its land sheared and stretched at that latitude, and the disc's far side is ocean or the other side of the world, far from the trip.
-    if (span <= REGION_SPAN || reach <= 1.9 * f.scale) return { at: f.at, span, azimuthal: true, cuts: () => false };
+    if (span <= REGION_SPAN || reach <= 1.9 * f.scale) return { at: f.at, span, azimuthal: true, pxPerDeg: f.scale * RAD, cuts: () => false };
   }
   const project = equalEarth(lon0);
   const f = fit(project);
-  return { at: f.at, span, azimuthal: false, cuts: (a, b) => Math.abs(wrap(a - lon0) - wrap(b - lon0)) > 180 };
+  return { at: f.at, span, azimuthal: false, pxPerDeg: f.scale * RAD, cuts: (a, b) => Math.abs(wrap(a - lon0) - wrap(b - lon0)) > 180 };
 }
