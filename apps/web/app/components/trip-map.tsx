@@ -73,7 +73,7 @@ const distanceKm = (a: { lon: number; lat: number }, b: { lon: number; lat: numb
 const WORD_SOFT = 0.78;
 
 /** The room over the word for its small label (px). */
-const TAG_H = 14;
+const TAG_H = 18;
 
 /** The space round the giant word: the same under it and to its left (owner, #510). */
 const WORD_PAD = 16;
@@ -303,14 +303,16 @@ export function TripPoster({ trip, here, photo = true, className, wordFace }: { 
     const ground = trip.legPaths.filter((l) => l.points.length >= 4 && !long(l)).flatMap((l) => [first(l), last(l)]);
     const onGround = (q: { lon: number; lat: number }) => ground.some((e) => distanceKm(e, q) < 60);
     const kept = trip.legPaths.filter((l) => l.points.length >= 4 && (!long(l) || (onGround(first(l)) && onGround(last(l)) && distanceKm(first(l), last(l)) <= FAR_FLIGHT_KM)));
-    if (ground.length === 0) return all;
-    if (kept.length === trip.legPaths.length) return all;
+    if (ground.length === 0) return { pts: all, land: false };
+    if (kept.length === trip.legPaths.length) return { pts: all, land: false };
     const ends = kept.flatMap((l) => [first(l), last(l)]);
     const near = (q: { lon: number; lat: number }) => ends.some((e) => distanceKm(e, q) < 60);
     const stops = trip.stopPoints.filter((q) => near(q) || q.slug === here).map((q) => ({ lon: q.lon, lat: q.lat }));
-    return kept.flatMap((l) => Array.from({ length: l.points.length / 2 }, (_, k) => ({ lon: l.points[k * 2]!, lat: l.points[k * 2 + 1]! }))).concat(stops);
+    return { pts: kept.flatMap((l) => Array.from({ length: l.points.length / 2 }, (_, k) => ({ lon: l.points[k * 2]!, lat: l.points[k * 2 + 1]! }))).concat(stops), land: true };
   }, [trip, here]);
-  const frame = useMemo(() => frameOf(framed, box.x, box.y, box.w, box.h, PAD, { w, h: backdrop ? h + PHOTO_RUN : h }), [framed, box.x, box.y, box.w, box.h, w, h, backdrop]);
+  // (a trip framed on its land gets room round it: the continent runs on past the route on every side, so the route is in the map and the map is not a crop of it)
+  const pad = framed.land ? PAD + Math.round(0.14 * Math.min(box.w, box.h)) : PAD;
+  const frame = useMemo(() => frameOf(framed.pts, box.x, box.y, box.w, box.h, pad, { w, h: backdrop ? h + PHOTO_RUN : h }), [framed, box.x, box.y, box.w, box.h, pad, w, h, backdrop]);
   const horizon = useHorizon(backdrop?.src);
   // The photograph placed so that its horizon is at the poster's bottom edge: scaled up as far as it takes to fill the layer above and below that line, never less than the cover size.
   const placed = (() => {
@@ -419,8 +421,8 @@ export function TripPoster({ trip, here, photo = true, className, wordFace }: { 
             {word}
           </text>
           {/* (what the word is: the trip's code name, not the place's name; the poster's own small mono type, quiet and only on the card in front) */}
-          <text data-slot="trip-word-tag" aria-hidden="true" x={WORD_PAD} y={h - WORD_PAD - Math.round(size * 0.74) - 8} fontSize={9} style={{ fill: "var(--foreground)", fontFamily: "var(--font-meta)", fontWeight: 500, letterSpacing: "0.14em", fillOpacity: "clamp(0, calc((var(--g, 1) - 0.4) * 1.1), 0.62)" as unknown as number }}>
-            TRIP CODE NAME
+          <text data-slot="trip-word-tag" aria-hidden="true" x={WORD_PAD} y={h - WORD_PAD - Math.round(size * 0.74) - 9} fontSize={11} style={{ fill: "var(--foreground)", fontFamily: "var(--font-meta)", fontWeight: 500, letterSpacing: "0.14em", fillOpacity: "clamp(0, calc((var(--g, 1) - 0.4) * 1.1), 0.62)" as unknown as number }}>
+            CODE NAME
           </text>
           </>
         )}

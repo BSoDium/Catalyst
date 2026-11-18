@@ -1,4 +1,4 @@
-import { Button, Icon } from "~/components/ui";
+import { Button, Icon, PexelsMark } from "~/components/ui";
 import { cn } from "~/lib/utils";
 
 /** The owner's other photographs (issue #336). */
@@ -47,6 +47,7 @@ export function GalleryEnd({ className, kind = "photograph" }: { className?: str
       </div>
       <Button asChild variant="secondary" className="gallery-end-link">
         <a href={end.href} target="_blank" rel="noopener noreferrer">
+          {kind === "photograph" && <PexelsMark />}
           {end.link}
           <Icon name="arrow-up-right" size="inline" aria-hidden="true" />
           <span className="sr-only"> (opens in a new tab)</span>

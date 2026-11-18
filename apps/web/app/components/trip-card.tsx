@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { TripRail } from "~/components/trip-rail";
 import { Link, useLocation } from "react-router";
 import { TripPhotoFilters, TripPoster } from "~/components/trip-map";
-import { Icon } from "~/components/ui";
+import { Icon, PolarstepsMark } from "~/components/ui";
 import { hopDetail, tripLinkLabel, type Trip, type TripHop } from "~/lib/journeys";
 import { placePath } from "~/lib/projection";
 import { readableDates } from "~/lib/dates";
@@ -49,6 +49,8 @@ function TripFooter({ trip, where, hops }: { trip: Trip; where: string; hops: { 
     return () => ro.disconnect();
   }, [trip.url]);
   const label = trip.url ? tripLinkLabel(trip.url) : "";
+  // (the mark of the service the link goes to, when it is one we know: the circle of Polarsteps)
+  const brand = !!trip.url && /(^|\.)polarsteps\.com(\/|$)/i.test(trip.url.replace(/^https?:\/\//, ""));
   return (
     <div ref={row} data-slot="trip-footer" className="relative mt-auto flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
       <div ref={stops} className="flex max-w-full min-w-0 flex-col gap-1.5">
@@ -63,10 +65,12 @@ function TripFooter({ trip, where, hops }: { trip: Trip; where: string; hops: { 
       {trip.url && (
         <>
           <a href={trip.url} target="_blank" rel="noopener noreferrer" data-slot="trip-link" className={`${LINK_CLASS} ${wrapped ? "w-full justify-between" : "ml-auto"}`}>
+            {brand && <PolarstepsMark className="shrink-0" width="1.25em" height="1.25em" />}
             <span className="min-w-0 truncate">{short ? "See the whole trip" : label}</span>
             <Icon name="arrow-up-right" size="inline" className="shrink-0" />
           </a>
           <span ref={ghost} aria-hidden="true" className={`${LINK_CLASS} pointer-events-none invisible absolute right-0 bottom-0 w-max max-w-none whitespace-nowrap`}>
+            {brand && <PolarstepsMark width="1.25em" height="1.25em" />}
             {label}
             <Icon name="arrow-up-right" size="inline" />
           </span>
