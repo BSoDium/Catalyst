@@ -8409,7 +8409,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   opacity: calc(0.4 + 0.6 * var(--g, 1));
 }
 .trip-slide [data-slot="trip-figures"] {
-  opacity: calc(0.25 + 0.75 * var(--g, 1));
+  opacity: calc(0.08 + 0.92 * var(--g, 1) * var(--g, 1));
 }
 .trip-slide [data-slot="trip-figures"] > p > span:first-of-type:not(.sr-only),
 .trip-slide [data-slot="trip-figures"] > p > .font-display {
@@ -8417,7 +8417,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
 }
 .trip-slide [data-slot="trip-dates"],
 .trip-slide [data-slot="trip-footer"] {
-  opacity: clamp(0, calc((var(--g, 1) - 0.1) * 1.4), 1);
+  opacity: clamp(0, calc((var(--g, 1) - 0.35) * 2.2), 1);
 }
 .trip-slide [data-slot="trip-poster"] :is(polyline, rect, text:not([data-slot="trip-word"])) {
   opacity: calc(0.2 + 0.8 * var(--g, 1));

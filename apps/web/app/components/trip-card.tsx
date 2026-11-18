@@ -1,3 +1,4 @@
+import { StableTitle } from "~/components/stable-title";
 import { useEffect, useRef, useState } from "react";
 import { TripRail } from "~/components/trip-rail";
 import { Link, useLocation } from "react-router";
@@ -17,7 +18,7 @@ function Kpi({ value, unit, big = false, lead }: { value: number; unit: string; 
   );
 }
 
-const LINK_CLASS = "inline-flex min-h-11 items-center gap-2 bg-foreground px-4 text-sm font-medium text-background no-underline hover:bg-[color-mix(in_srgb,var(--foreground)_82%,var(--background))]";
+const LINK_CLASS = "inline-flex min-h-11 max-w-full items-center gap-2 whitespace-nowrap bg-foreground px-4 text-sm font-medium text-background no-underline hover:bg-[color-mix(in_srgb,var(--foreground)_82%,var(--background))]";
 
 /**
  * The row under the figures: where this step falls in the trip with the stop before and after, and, to the right of them, the button to the trip's own page. When the two
@@ -55,10 +56,10 @@ function TripFooter({ trip, where, hops }: { trip: Trip; where: string; hops: { 
       {trip.url && (
         <>
           <a href={trip.url} target="_blank" rel="noopener noreferrer" data-slot="trip-link" className={`${LINK_CLASS} ${wrapped ? "w-full justify-between" : "ml-auto"}`}>
-            {label}
-            <Icon name="arrow-up-right" size="inline" />
+            <span className="min-w-0 truncate">{label}</span>
+            <Icon name="arrow-up-right" size="inline" className="shrink-0" />
           </a>
-          <span ref={ghost} aria-hidden="true" className={`${LINK_CLASS} pointer-events-none invisible absolute right-0 bottom-0 w-max whitespace-nowrap`}>
+          <span ref={ghost} aria-hidden="true" className={`${LINK_CLASS} pointer-events-none invisible absolute right-0 bottom-0 w-max max-w-none whitespace-nowrap`}>
             {label}
             <Icon name="arrow-up-right" size="inline" />
           </span>
@@ -106,7 +107,7 @@ export function TripCard({ trip, here, lived = false, photo = true, position }: 
         </div>
         <header className="flex flex-col gap-1">
           <div className="flex items-baseline justify-between gap-3">
-            <h3 data-slot="trip-title" className="m-0 font-display text-lg tracking-tight text-balance">{trip.title}</h3>
+            <h3 className="m-0 text-lg tracking-tight"><StableTitle data-slot="trip-title" text={trip.title} className="font-display" /></h3>
             {position && (
               <span aria-hidden="true" data-slot="trip-position" className="ds-meta shrink-0">
                 {position}

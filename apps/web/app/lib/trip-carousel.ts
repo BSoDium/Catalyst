@@ -3,7 +3,7 @@
  * the scroll position, the same growth (`--g`) that drives the type. What differs is the sizes: a trip card is a poster with its figures, not a picture, so it is laid out at a width that holds
  * them (never under 300 px), and the neighbours are the next card and a hint of the one after.
  *
- * A narrow row (a phone, under `SINGLE_BELOW`) shows the large card with the edge of the next; a wider one the large card (a little over half the row), a good part of the next and a hint of the one after; the row stops where the last card is the large one, which a photograph row does not (its last two are expanded): a
+ * A narrow row (a phone, under `SINGLE_BELOW`) shows the large card with the edge of the next; a wider one the large card (over half the row), a good part of the next and a hint of the one after; the row stops where the last card is the large one, which a photograph row does not (its last two are expanded): a
  * phantom card after the last one takes the place of the medium one.
  */
 import { CAROUSEL_GUTTER, SINGLE_BELOW, carouselLayout, stepOf, type CarouselItem, type Keylines } from "./photo-carousel";
@@ -21,7 +21,7 @@ export function tripKeylines(width: number): Keylines {
   // (a wide row: the photographs' shape, the large card and a medium one nearly as wide, then the hint of one more; the row fills, and stops where the last two are the large and the medium one)
   const small = PEEK.small;
   const all = width - gutter - small - 2 * TRIP_GAP;
-  const large = Math.min(640, Math.max(300, Math.round(all / 1.85)));
+  const large = Math.min(640, Math.max(320, Math.round(all / 1.6)));
   return { width, gutter, gap: TRIP_GAP, small, large, medium: Math.max(PEEK.medium, Math.min(all - large, Math.round(large * 0.85))), single: false };
 }
 
