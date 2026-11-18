@@ -23,7 +23,7 @@ describe("the place panel's rows: the phone layout follows the panel, not the ce
   });
   it("a poem's picture is a small square beside its words, the same on every poem, the other kinds' stacked or bigger; the second column starts only from 42 rem, where each holds 20 rem, and at the first's height", () => {
     expect(row).toMatch(/entry\.kind === "poem" \? "grid-cols-\[5rem_minmax\(0,1fr\)\] @md:grid-cols-\[6\.5rem_minmax\(0,1fr\)\]"/);
-    expect(row).toMatch(/entry\.kind === "poem" \? "aspect-square self-start"/);
+    expect(row).toMatch(/entry\.kind === "poem" \? "min-h-20 self-stretch @md:min-h-\[6\.5rem\]"/);
     expect(row).toMatch(/"aspect-\[16\/10\] @md:aspect-auto @md:min-h-32"/);
     // (the second poem is pulled up by the cell, not by a container query on the row, which the row's own cell would answer)
     expect(detail).toMatch(/k === 1 && "@2xl:-mt-5"/);
