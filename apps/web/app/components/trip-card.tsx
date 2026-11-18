@@ -30,12 +30,17 @@ function TripFooter({ trip, where, hops }: { trip: Trip; where: string; hops: { 
   const stops = useRef<HTMLDivElement>(null);
   const ghost = useRef<HTMLSpanElement>(null);
   const [wrapped, setWrapped] = useState(false);
+  // (a card too narrow for "See the whole trip on polarsteps.com" on one line says "See the whole trip": the host is not worth a cut-off word)
+  const [short, setShort] = useState(false);
   useEffect(() => {
     const r = row.current;
     const g = ghost.current;
     const st = stops.current;
     if (!r || !g || !st) return;
-    const measure = () => setWrapped(st.offsetWidth + 16 + g.offsetWidth > r.clientWidth + 0.5);
+    const measure = () => {
+      setWrapped(st.offsetWidth + 16 + g.offsetWidth > r.clientWidth + 0.5);
+      setShort(g.offsetWidth > r.clientWidth + 0.5);
+    };
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(r);
@@ -56,7 +61,7 @@ function TripFooter({ trip, where, hops }: { trip: Trip; where: string; hops: { 
       {trip.url && (
         <>
           <a href={trip.url} target="_blank" rel="noopener noreferrer" data-slot="trip-link" className={`${LINK_CLASS} ${wrapped ? "w-full justify-between" : "ml-auto"}`}>
-            <span className="min-w-0 truncate">{label}</span>
+            <span className="min-w-0 truncate">{short ? "See the whole trip" : label}</span>
             <Icon name="arrow-up-right" size="inline" className="shrink-0" />
           </a>
           <span ref={ghost} aria-hidden="true" className={`${LINK_CLASS} pointer-events-none invisible absolute right-0 bottom-0 w-max max-w-none whitespace-nowrap`}>
@@ -99,7 +104,7 @@ export function TripCard({ trip, here, lived = false, photo = true, position }: 
   return (
     <article data-slot="trip-card" className="relative isolate flex flex-col overflow-hidden">
       <TripPoster trip={trip} here={here} photo={photo} />
-      <div className="flex grow flex-col gap-4 p-4">
+      <div className="relative flex grow flex-col gap-4 p-4">
         <div data-slot="trip-figures" className="flex flex-wrap items-baseline gap-x-6 gap-y-2">
           <Kpi value={trip.km} unit="km" big lead="About" />
           <Kpi value={trip.stops} unit={trip.stops === 1 ? "stop" : "stops"} />

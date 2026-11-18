@@ -1,7 +1,6 @@
-import { useCallback, useContext, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { coverImageProps } from "~/lib/cover-image";
 import { findHorizon } from "~/lib/horizon";
-import { TripFit } from "~/components/trip-fit";
 import { frameOf, type Frame } from "~/lib/trip-projection";
 import type { Trip } from "~/lib/journeys";
 import { cn } from "~/lib/utils";
@@ -229,15 +228,14 @@ export function TripPoster({ trip, here, photo = true, className }: { trip: Trip
   const word = trip.word.toUpperCase();
   // The word has ONE size on a poster, whatever its length, so the cards of a row read as a set. A word too wide for the poster is first CONDENSED (the face has no width axis: the glyphs are squeezed
   // sideways, `WORD_MIN_CONDENSE` at the most), and only a word that would have to be squeezed further is made smaller.
-  const fitWidth = useContext(TripFit);
   const nominal = wordSize(NOMINAL_LETTERS, w, h);
   // The width of the word at the nominal size is measured on an invisible copy (always drawn at that size and at the heaviest weight, the widest it gets: the visible one is thinner or heavier with the
   // card's `--g`, see `.trip-slide` in app.css), so what is drawn never feeds back into what is measured.
   const textRef = useRef<SVGTextElement>(null);
   const [measured, setMeasured] = useState({ key: "", length: 0 });
-  const key = `${word}|${nominal}|${Math.min(w, fitWidth ?? w)}`;
+  const key = `${word}|${nominal}|${w}`;
   const natural = measured.key === key ? measured.length : 0.66 * nominal * word.length;
-  const ratio = natural > 0 ? (Math.min(w, fitWidth ?? w) - 2 * WORD_PAD) / natural : 1;
+  const ratio = natural > 0 ? (w - 2 * WORD_PAD) / natural : 1;
   const condense = Math.min(1, Math.max(WORD_MIN_CONDENSE, ratio));
   const size = ratio >= WORD_MIN_CONDENSE ? nominal : Math.max(12, Math.floor((nominal * ratio) / WORD_MIN_CONDENSE));
   const drawn = Math.round(natural * (size / nominal) * condense);

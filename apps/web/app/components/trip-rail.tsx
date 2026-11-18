@@ -2,7 +2,6 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNo
 import { Icon } from "~/components/ui";
 import { focusScrolls } from "~/components/place-gallery";
 import { growth, widest, type Keylines } from "~/lib/photo-carousel";
-import { TripFit } from "~/components/trip-fit";
 import { lastTrip, tripKeylines, tripLayout, tripStep } from "~/lib/trip-carousel";
 
 /**
@@ -116,7 +115,6 @@ export function TripRail({ slides, names }: { slides: ReactNode[]; names: string
   const position = () => (geo && scroller.current ? scroller.current.scrollLeft / geo.step : 0);
 
   return (
-    <TripFit.Provider value={geo && !geo.k.single ? Math.min(geo.k.large, geo.k.medium) : null}>
     <div className="trip-rail relative -mx-6" role="group" aria-roledescription="carousel" aria-label="Trips">
       <div
         ref={scroller}
@@ -177,6 +175,5 @@ export function TripRail({ slides, names }: { slides: ReactNode[]; names: string
         </button>
       )}
     </div>
-    </TripFit.Provider>
   );
 }

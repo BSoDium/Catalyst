@@ -28,12 +28,25 @@ export function tripKeylines(width: number): Keylines {
 /** How far the row scrolls from one card to the next. */
 export const tripStep = (k: Keylines) => stepOf(k);
 
-/** A phone's row (a large card and the edge of the next) stops where the LAST card is the large one; a wide row, as the photographs', where the last two are the large and the medium one. */
+/**
+ * A phone's row (one card across the row) stops where the LAST card is the one in front. A wide row does too: it first goes to where the last two cards are the large and the medium one (the photographs' end),
+ * then ONE step more, where the last card has grown to the large size and the one before it has given way to the medium size at its left (a row that ends on a half-seen card looked unfinished).
+ */
 const phone = (k: Keylines) => k.single;
-export const lastTrip = (count: number, k: Keylines) => Math.max(0, count - (phone(k) ? 1 : 2));
+export const lastTrip = (count: number, k: Keylines) => Math.max(0, count - (phone(k) || count >= 3 ? 1 : 2));
 
 /** Where each of `count` cards is, left to right, for a row at position `t`. */
 export function tripLayout(t: number, count: number, k: Keylines): CarouselItem[] {
-  // (a phone's row has a phantom card after the last, which takes the place of the medium one, so that it stops where the last card is the large one)
-  return carouselLayout(t, count, k);
+  if (phone(k) || count < 3) return carouselLayout(t, count, k);
+  const end = count - 2;
+  if (t <= end) return carouselLayout(t, count, k);
+  // (the last step: the two last cards trade their sizes, the last one growing into the large one's place at the right of the medium one)
+  const s = Math.min(1, t - end);
+  const boxes = carouselLayout(end, count, k);
+  const prev = boxes[count - 2]!;
+  const wPrev = k.large + (k.medium - k.large) * s;
+  const wLast = k.medium + (k.large - k.medium) * s;
+  boxes[count - 2] = { x: prev.x, w: wPrev };
+  boxes[count - 1] = { x: prev.x + wPrev + k.gap, w: wLast };
+  return boxes;
 }
