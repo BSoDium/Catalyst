@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { coverImageProps } from "~/lib/cover-image";
 import { findHorizon } from "~/lib/horizon";
 import { frameOf, type Frame } from "~/lib/trip-projection";
@@ -47,6 +47,10 @@ const ASPECT = 0.83;
 /** The poster is never taller than this (CSS px): on a wide panel it stretches in width and not in height (owner, #510). */
 const MAX_H = 320;
 const PAD = 26;
+/** The word is sized for a word of this many letters (every word has that size, a longer one is condensed first), and condensed to at most this fraction of its width before it is made smaller. */
+const NOMINAL_LETTERS = 8;
+const WORD_MIN_CONDENSE = 0.72;
+
 /** The space round the giant word: the same under it and to its left (owner, #510). */
 const WORD_PAD = 16;
 
@@ -222,13 +226,19 @@ function useHorizon(src: string | undefined) {
 export function TripPoster({ trip, here, photo = true, className }: { trip: Trip; here: string; photo?: boolean; className?: string }) {
   const { ref, w, h } = usePosterBox();
   const word = trip.word.toUpperCase();
-  const base = wordSize(word.length, w, h);
-  // The word is measured once it is drawn (its font is not the one the size was worked out for): if it is wider than the poster leaves it, it is made smaller to fit.
+  // The word has ONE size on a poster, whatever its length, so the cards of a row read as a set. A word too wide for the poster is first CONDENSED (the face has no width axis: the glyphs are squeezed
+  // sideways, `WORD_MIN_CONDENSE` at the most), and only a word that would have to be squeezed further is made smaller.
+  const nominal = wordSize(NOMINAL_LETTERS, w, h);
+  // The width of the word at the nominal size is measured on an invisible copy (always drawn at that size and at the heaviest weight, the widest it gets: the visible one is thinner or heavier with the
+  // card's `--g`, see `.trip-slide` in app.css), so what is drawn never feeds back into what is measured.
   const textRef = useRef<SVGTextElement>(null);
-  const [fit, setFit] = useState({ key: "", scale: 1, length: 0 });
-  const key = `${word}|${base}|${w}`;
-  const scale = fit.key === key ? fit.scale : 1;
-  const size = Math.round(base * scale);
+  const [measured, setMeasured] = useState({ key: "", length: 0 });
+  const key = `${word}|${nominal}|${w}`;
+  const natural = measured.key === key ? measured.length : 0.66 * nominal * word.length;
+  const ratio = natural > 0 ? (w - 2 * WORD_PAD) / natural : 1;
+  const condense = Math.min(1, Math.max(WORD_MIN_CONDENSE, ratio));
+  const size = ratio >= WORD_MIN_CONDENSE ? nominal : Math.max(12, Math.floor((nominal * ratio) / WORD_MIN_CONDENSE));
+  const drawn = Math.round(natural * (size / nominal) * condense);
   useEffect(() => {
     const el = textRef.current;
     if (!el || !word) return;
@@ -236,23 +246,18 @@ export function TripPoster({ trip, here, photo = true, className }: { trip: Trip
     const measure = () => {
       if (!alive) return;
       const length = el.getComputedTextLength();
-      const room = w - 2 * WORD_PAD;
-      if (length <= 0) return;
-      // (the size drawn is a whole number of px, so the width is worked out from it, and the new size is a whole number too: the next measure gives the same one. Worked out from `scale` and not rounded, the two sizes either side of a rounding kept answering each other, one update per frame)
-      const nextSize = Math.min(base, Math.floor((size * room) / length));
-      const next = base > 0 ? nextSize / base : 1;
-      setFit((f) => (f.key === key && f.scale === next ? f : { key, scale: next, length: length * (nextSize / size) }));
+      if (length > 0) setMeasured((m) => (m.key === key && Math.abs(m.length - length) < 0.5 ? m : { key, length }));
     };
     measure();
     void document.fonts?.ready.then(measure);
     return () => {
       alive = false;
     };
-  }, [key, word, w, scale, base, size]);
+  }, [key, word]);
   // The word's band under the route: its capital letters' height and a margin each side; none without a word. The land is not clipped to it.
   const band = word ? Math.round(size * 0.74) + 2 * WORD_PAD : 0;
   // Where the route goes: above the word, across the width; or, when the poster is wide enough that the room to the right of the word can hold the route at the full height, there.
-  const wordW = (fit.key === key ? Math.round(fit.length) : Math.round(0.66 * size * word.length)) + WORD_PAD;
+  const wordW = drawn + WORD_PAD;
   const side = word !== "" && w - wordW - 24 >= h * 0.9;
   const box = side ? { x: wordW + 16, y: 0, w: w - wordW - 24, h } : { x: 0, y: 0, w, h: h - band };
   const backdrop = photo ? trip.photo : undefined;
@@ -286,6 +291,31 @@ export function TripPoster({ trip, here, photo = true, className }: { trip: Trip
   // (the borders are the field's colour, the ocean's: a gap in the land, not a line over it)
   const borderPath = useMemo(() => linesPath(frame, borders, w, backdrop ? h + PHOTO_RUN : h), [frame, borders, w, h, backdrop]);
   const land = useMemo(() => linesPath(frame, coast, w, backdrop ? h + PHOTO_RUN : h, true), [frame, coast, w, h, backdrop]);
+  // On a world map (a trip across the globe) the land fades with the distance from the trip, so the map does not stop at the edge of the world: it is there where the route is, and the continents dissolve away from it.
+  const maskId = `fade${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
+  const landFade = useMemo(() => {
+    if (frame.azimuthal) return null;
+    const pts = trip.stopPoints.map((q) => frame.at(q.lon, q.lat)).filter((q): q is { x: number; y: number } => q !== null);
+    if (!pts.length) return null;
+    const cx = pts.reduce((n, q) => n + q.x, 0) / pts.length;
+    const cy = pts.reduce((n, q) => n + q.y, 0) / pts.length;
+    const inner = Math.max(...pts.map((q) => Math.hypot(q.x - cx, q.y - cy)));
+    const r = inner + 0.3 * Math.max(w, h);
+    return { cx, cy, r, inner: Math.min(0.9, (0.6 * inner) / r) };
+  }, [frame, trip, w, h]);
+  const fadeDefs = landFade && (
+    <defs>
+      <radialGradient id={`${maskId}-g`} gradientUnits="userSpaceOnUse" cx={landFade.cx} cy={landFade.cy} r={landFade.r}>
+        <stop offset={0} stopColor="#fff" />
+        <stop offset={landFade.inner} stopColor="#fff" />
+        <stop offset={1} stopColor="#000" />
+      </radialGradient>
+      <mask id={`${maskId}-m`} maskUnits="userSpaceOnUse" x={0} y={-PHOTO_RUN} width={w} height={h + 2 * PHOTO_RUN}>
+        <rect x={0} y={-PHOTO_RUN} width={w} height={h + 2 * PHOTO_RUN} fill={`url(#${maskId}-g)`} />
+      </mask>
+    </defs>
+  );
+  const landMask = landFade ? `url(#${maskId}-m)` : undefined;
   const current = trip.stopPoints.find((s) => s.slug === here);
   // The named places: the start, the end (one label when they are the same place), this one and the highlights (`Trip.highlights`).
   const named = [trip.stopPoints[0], trip.stopPoints[trip.stopPoints.length - 1], current, ...trip.highlights.map((slug) => trip.stopPoints.find((s) => s.slug === slug))]
@@ -316,20 +346,22 @@ export function TripPoster({ trip, here, photo = true, className }: { trip: Trip
       {backdrop && land && (
         // The land on a photograph runs as far as the photograph does and fades with it (the same mask), so the map is not cut at the poster's edge while the picture goes on.
         <svg aria-hidden="true" width={w} height={h + PHOTO_RUN} viewBox={`0 0 ${w} ${h + PHOTO_RUN}`} className="pointer-events-none absolute inset-x-0 top-0 block" style={{ maskImage: fade(h), WebkitMaskImage: fade(h) }}>
-          <path d={land} style={{ fill: "color-mix(in srgb, var(--accent) 38%, transparent)" }} stroke="none" />
+          {fadeDefs}
+          <path d={land} mask={landMask} style={{ fill: "color-mix(in srgb, var(--accent) 38%, transparent)" }} stroke="none" />
           {borderPath && <path d={borderPath} fill="none" stroke="var(--accent)" strokeWidth={1.25} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />}
         </svg>
       )}
       <svg data-slot="trip-poster" viewBox={`0 0 ${w} ${h}`} width={w} height={h} role="img" aria-label={`Map of the trip, ${trip.from} to ${trip.to}`} className="relative block overflow-hidden">
-        {land && !backdrop && <path d={land} style={{ fill: tone(9) }} stroke="none" />}
+        {!backdrop && fadeDefs}
+        {land && !backdrop && <path d={land} mask={landMask} style={{ fill: tone(9) }} stroke="none" />}
         {borderPath && !backdrop && <path d={borderPath} fill="none" stroke="var(--accent)" strokeWidth={1.25} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />}
         {word && (
           <>
           {/* (the word's width is measured on an invisible copy at the heaviest weight, the widest it gets: the visible one is thinner or heavier with the card's `--g`, see `.trip-slide` in app.css) */}
-          <text ref={textRef} aria-hidden="true" x={WORD_PAD - Math.round(size * 0.05)} y={h - WORD_PAD} fontSize={size} style={{ visibility: "hidden", fontFamily: "var(--font-display)", fontWeight: 800, letterSpacing: "-0.03em" }}>
+          <text ref={textRef} aria-hidden="true" x={0} y={-1000} fontSize={nominal} style={{ visibility: "hidden", fontFamily: "var(--font-display)", fontWeight: 800, letterSpacing: "-0.03em" }}>
             {word}
           </text>
-          <text data-slot="trip-word" x={WORD_PAD - Math.round(size * 0.05)} y={h - WORD_PAD} fontSize={size} style={{ fill: backdrop ? "color-mix(in srgb, var(--foreground) calc(14% + 66% * var(--g, 1) * var(--g, 1)), transparent)" : `color-mix(in srgb, var(--foreground) calc(10% + 52% * var(--g, 1) * var(--g, 1)), var(--accent))`, fontFamily: "var(--font-display)", letterSpacing: "-0.03em" }}>
+          <text data-slot="trip-word" transform={`translate(${WORD_PAD - Math.round(size * 0.05)} ${h - WORD_PAD}) scale(${condense.toFixed(3)} 1)`} fontSize={size} style={{ fill: backdrop ? "color-mix(in srgb, var(--foreground) calc(14% + 66% * var(--g, 1) * var(--g, 1)), transparent)" : `color-mix(in srgb, var(--foreground) calc(10% + 52% * var(--g, 1) * var(--g, 1)), var(--accent))`, fontFamily: "var(--font-display)", letterSpacing: "-0.03em" }}>
             {word}
           </text>
           </>
