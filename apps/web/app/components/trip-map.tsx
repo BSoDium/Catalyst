@@ -1,4 +1,3 @@
-import { useLocation } from "react-router";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { coverImageProps } from "~/lib/cover-image";
 import { findHorizon } from "~/lib/horizon";
@@ -226,11 +225,10 @@ function useHorizon(src: string | undefined) {
  * photograph of the trip (`trip.photo`) the photo is the backdrop, its dynamic range held in a band the ink reads on (`TripPhotoFilters`), the photograph running on under the figures and fading into the card's background, the land on top of it as a translucent surface in the field's colour (it lightens the photograph in the light theme and darkens it in the dark one) without outlines, and the route and the word as on the flat field. The height is at
  * most `MAX_H`: on a wide panel the poster stretches in width, not in height. Decoration for the eyes: the card's text says all of it.
  */
-export function TripPoster({ trip, here, photo = true, className }: { trip: Trip; here: string; photo?: boolean; className?: string }) {
+export function TripPoster({ trip, here, photo = true, className, wordFace }: { trip: Trip; here: string; photo?: boolean; className?: string; wordFace?: string | null }) {
   const { ref, w, h } = usePosterBox();
   const word = trip.word.toUpperCase();
   // `?word=serif` or `?word=mono` sets the giant word in the reading face or the mono one, to compare with the display face (#510).
-  const wordFace = new URLSearchParams(useLocation().search).get("word");
   const wordFont = wordFace === "serif" ? "var(--font-reading)" : wordFace === "mono" ? "var(--font-meta)" : "var(--font-display)";
   // The word has ONE size on a poster, whatever its length, so the cards of a row read as a set. A word too wide for the poster is first CONDENSED (the face has no width axis: the glyphs are squeezed
   // sideways, `WORD_MIN_CONDENSE` at the most), and only a word that would have to be squeezed further is made smaller.

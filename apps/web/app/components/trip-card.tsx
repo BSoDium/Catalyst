@@ -96,14 +96,14 @@ function Hop({ hop, side, lead }: { hop: TripHop; side: "before" | "after"; lead
  * and after, and, to the right of them, a button to the trip's own page when it has one. It is the way into the trip, not the page's subject. A place a trip passes
  * several times says so and lists no hop (each visit has its own).
  */
-export function TripCard({ trip, here, lived = false, photo = true, position }: { trip: Trip; here: string; lived?: boolean; photo?: boolean; position?: string }) {
+export function TripCard({ trip, here, lived = false, photo = true, position, wordFace }: { trip: Trip; here: string; lived?: boolean; photo?: boolean; position?: string; wordFace?: string | null }) {
   const single = trip.visits.length === 1 ? trip.visits[0]! : null;
   // A home base is visited several times, but the trip still leaves it and comes back to it: the stop it left for the first time, and the one it came back from the last.
   const ends = !single && lived ? { previous: [...trip.visits].reverse().find((v) => v.previous)?.previous ?? null, next: trip.visits.find((v) => v.next)?.next ?? null } : null;
   const where = single ? (single.previous === null ? "The trip starts here" : single.next === null ? "The trip ends here" : `Stop ${single.position} of ${trip.stops}`) : lived ? "Home base on this trip" : `Visited ${trip.visits.length} times`; // (a place the owner has lived in is not visited: no count, #584)
   return (
     <article data-slot="trip-card" className="relative isolate flex flex-col overflow-hidden">
-      <TripPoster trip={trip} here={here} photo={photo} />
+      <TripPoster trip={trip} here={here} photo={photo} wordFace={wordFace} />
       <div className="relative flex grow flex-col gap-4 p-4">
         <div data-slot="trip-figures" className="flex flex-wrap items-baseline gap-x-6 gap-y-2">
           <Kpi value={trip.km} unit="km" big lead="About" />
@@ -133,7 +133,9 @@ export function TripCard({ trip, here, lived = false, photo = true, position }: 
  */
 export function TripCards({ trips, here, lived = false }: { trips: Trip[]; here: string; lived?: boolean }) {
   // `?poster=flat` shows the flat posters (to compare with the photographs: #510).
-  const photo = new URLSearchParams(useLocation().search).get("poster") !== "flat";
+  const query = new URLSearchParams(useLocation().search);
+  const photo = query.get("poster") !== "flat";
+  const wordFace = query.get("word");
     const many = trips.length > 1;
   const headingId = `trips-${here}`;
   return (
@@ -151,12 +153,12 @@ export function TripCards({ trips, here, lived = false }: { trips: Trip[]; here:
         <TripRail
           names={trips.map((t) => t.title)}
           slides={trips.map((trip, i) => (
-            <TripCard key={trip.id} trip={trip} here={here} lived={lived} photo={photo} position={`${String(i + 1).padStart(2, "0")} / ${String(trips.length).padStart(2, "0")}`} />
+            <TripCard key={trip.id} trip={trip} here={here} lived={lived} photo={photo} wordFace={wordFace} position={`${String(i + 1).padStart(2, "0")} / ${String(trips.length).padStart(2, "0")}`} />
           ))}
         />
       ) : (
         <div className="border border-border">
-          <TripCard trip={trips[0]!} here={here} lived={lived} photo={photo} />
+          <TripCard trip={trips[0]!} here={here} lived={lived} photo={photo} wordFace={wordFace} />
         </div>
       )}
     </section>
