@@ -44,7 +44,7 @@ export function EntryListPage({ kind, items, activityUrl = null }: { kind: Conte
   // One implementation of the count noun: `kindCount` ("33 software", "1 poem").
   const total = kindCount(kind, items.length);
   let seen = 0;
-  // From 90 rem its figures join the picture's grid (`ActivityPanel` `lead`).
+  // From 80 rem its figures join the picture's grid (`ActivityPanel` `lead`).
   const heads = listStats(items, { shown: shown.length, total: items.length, noun: shown.length === 1 ? KIND_NOUNS[kind].one : KIND_NOUNS[kind].many });
   const withPanel = kind === "project" && (import.meta.env.DEV || !!activityUrl);
   const wall = kind === "artwork" || kind === "photograph";
