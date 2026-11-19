@@ -346,6 +346,13 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
         for (const [key, list] of shellsBy) {
           const [src, tier] = shellTier.get(key)!;
           const mat = blockMaterial.clone();
+          // (development only, `?wireframe`: the glass as a wire cage, to check that the rod is centred in it)
+          if (import.meta.env.DEV && new URLSearchParams(window.location.search).has("wireframe")) {
+            mat.wireframe = true;
+            mat.transmission = 0;
+            mat.transparent = true;
+            mat.opacity = 0.9;
+          }
           mat.emissive.copy(tones[src][1]);
           mat.emissiveIntensity = dark ? [0.02, 0.08, 0.15][tier]! : 0;
           // (the room's reflections are a light too: a quiet day must not shine with them)
