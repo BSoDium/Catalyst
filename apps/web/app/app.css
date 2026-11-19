@@ -2349,6 +2349,18 @@
       background: color-mix(in srgb, #000 55%, transparent);
     }
   }
+  /* On a touch screen there is no hover to show them: the arrows are there, as small round plates, with no blur (a backdrop filter over a row that is moving every frame is what a phone cannot afford). */
+  @media (hover: none), (pointer: coarse) {
+    .place-gallery [data-slot="scroll-row-arrow"],
+    .trip-rail [data-slot="scroll-row-arrow"] {
+      opacity: 1;
+      scale: 1;
+      pointer-events: auto;
+      backdrop-filter: none;
+      background: color-mix(in srgb, #000 58%, transparent);
+      box-shadow: none;
+    }
+  }
   .place-gallery [data-slot="scroll-row-arrow"]::before,
   .trip-rail [data-slot="scroll-row-arrow"]::before {
     display: none;
@@ -8482,6 +8494,20 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   [data-slot="search-trigger"] {
     -webkit-app-region: no-drag;
     app-region: no-drag;
+  }
+}
+
+/* The land over a trip poster's photograph (components/trip-map.tsx): in the dark theme it lightens the picture (white, `--trip-land-dark-share` of it, set from the picture's brightness), in the light theme the picture is already
+   held in a light band, so white would vanish on it: the land darkens it, in the ink's colour (owner, 2026-11-19: invisible on Moscow, Buenos Aires and Quito). */
+.trip-land {
+  fill: color-mix(in srgb, var(--foreground) 13%, transparent);
+}
+:root[data-scheme="dark"] .trip-land {
+  fill: color-mix(in srgb, #fff var(--trip-land-dark-share, 16%), transparent);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-scheme="light"]) .trip-land {
+    fill: color-mix(in srgb, #fff var(--trip-land-dark-share, 16%), transparent);
   }
 }
 

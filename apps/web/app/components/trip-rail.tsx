@@ -66,13 +66,22 @@ export function TripRail({ slides, names }: { slides: ReactNode[]; names: string
       // (a card that is not on screen is a box of no width: it paints nothing but stays in the tab order)
       const off = box.w < 1;
       if (off && li.style.width === "0px") return;
-      // (a card at an edge of the row runs on past it, cropped by the stage: its box is wider than what is seen, what grows and fades with `--g` is the seen width)
+      // (a card's width and place follow the scroll exactly; what grows with it (`--g`: the type's weight, the fades) changes in steps of a twenty-fifth, so a frame in which a card has not changed enough to show it costs no restyle of the card's type: the
+      // variable weight of a big title and word is re-set for every value, and on a phone that is the frame rate)
       const bleed = tripBleed(box, i, t, count, geo.k, boxes[i - 1], boxes[i + 1]);
       li.style.width = `${off ? 0 : box.w + bleed.left + bleed.right}px`;
       li.style.transform = `translate3d(${box.x - bleed.left}px,0,0)`;
-      li.style.setProperty("--g", growth(box.w, geo.k).toFixed(2));
+      const g = (Math.round(growth(box.w, geo.k) * 25) / 25).toFixed(2);
+      if (li.dataset.g !== g) {
+        li.dataset.g = g;
+        li.style.setProperty("--g", g);
+      }
       // (a card nearly gone keeps no border: two pixels of it would be a line against the panel's edge)
-      li.style.setProperty("--edge", Math.min(1, Math.max(0, (box.w - 4) / 24)).toFixed(2));
+      const edge = (Math.round(Math.min(1, Math.max(0, (box.w - 4) / 24)) * 10) / 10).toFixed(1);
+      if (li.dataset.edge !== edge) {
+        li.dataset.edge = edge;
+        li.style.setProperty("--edge", edge);
+      }
     });
     const max = el.scrollWidth - el.clientWidth;
     const next = { start: el.scrollLeft > 2, end: el.scrollLeft < max - 2 };
@@ -138,7 +147,7 @@ export function TripRail({ slides, names }: { slides: ReactNode[]; names: string
                     role="group"
                     aria-roledescription="slide"
                     aria-label={`${i + 1} of ${count}: ${names[i] ?? ""}`}
-                    className={`trip-slide absolute top-0 left-0 h-full overflow-hidden ${geo.k.single ? "" : "border"} [border-color:color-mix(in_srgb,var(--border)_calc(var(--edge,1)*100%),transparent)] [contain:layout_paint]`}
+                    className={`trip-slide absolute top-0 left-0 h-full overflow-hidden will-change-transform ${geo.k.single ? "" : "border"} [border-color:color-mix(in_srgb,var(--border)_calc(var(--edge,1)*100%),transparent)] [contain:layout_paint]`}
                     style={{ width: 0, ["--edge" as string]: 0 }}
                     onFocus={(e) => {
                       // (focus must not scroll the card inside its own box)
