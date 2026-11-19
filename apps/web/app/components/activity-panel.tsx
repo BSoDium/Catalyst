@@ -76,7 +76,7 @@ export function ActivityPanel({ url }: { url: string | null }) {
           <FlatMatrix matrix={flat.github} tone="#0fbf3e" />
         </div>
       ) : (
-        <div className="aspect-[3.97/1] w-full max-md:aspect-[1.74/1]">{seen && <Suspense fallback={null}><ActivityScene activity={activity} strips={narrow ? 3 : 1} className="size-full" /></Suspense>}</div>
+        <div className="aspect-[3.97/1] w-full max-md:aspect-[1.7/1]">{seen && <Suspense fallback={null}><ActivityScene activity={activity} strips={narrow ? 3 : 1} className="size-full" /></Suspense>}</div>
       )}
       <dl data-slot="activity-stats" className="grid grid-cols-2 gap-x-8 gap-y-4 px-4 pt-4 md:pointer-events-none md:absolute md:top-3 md:right-14 md:grid-cols-2 md:gap-x-9 md:gap-y-4 md:p-0 md:text-right">
         {stats.map((s) => (

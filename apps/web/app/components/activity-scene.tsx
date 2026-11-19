@@ -53,7 +53,7 @@ export function ActivityScene({ activity, strips = 1, className }: { activity: A
 
       const PITCH = 1.12;
       // the room the glow of the outermost columns needs around the slab, so the picture does not cut it
-      const ROOM = { side: 3.2, near: 2.6, far: 0.6 };
+      const ROOM = { side: 3.2, near: strips > 1 ? 4.4 : 2.6, far: 0.6 };
       // The year is a long strip of weeks; on a narrow page it is cut into `strips` strips of equal length laid one behind the other, so the slab is closer to a square and fills the width
       const perStrip = Math.ceil(layout.github.weeks / strips);
       const STRIP_GAP = 1.6;
