@@ -5,6 +5,15 @@ import { layoutActivity, type Activity, type Matrix } from "~/lib/activity";
 /** How many jittered frames are averaged before the picture is final (soft shadows, anti-aliasing): the scene never moves, so it is drawn once, a frame at a time, and then not at all. */
 const SAMPLES = 96;
 
+/**
+ * How much the device is asked to do: a phone, or a machine with few cores or little memory, gets the light version (a third of the frames, a lower resolution, simpler blocks, a smaller shadow map, a single bloom);
+ * the page can also leave the scene out altogether (`ActivityPanel`: no WebGL 2, "save data"). Not measured on real devices yet (owner, 2026-11-19: it needs heavy testing before it ships).
+ */
+const isLite = () => {
+  const nav = navigator as Navigator & { deviceMemory?: number };
+  return window.matchMedia("(pointer: coarse)").matches || (nav.hardwareConcurrency ?? 8) <= 4 || (nav.deviceMemory ?? 8) < 4;
+};
+
 const isDark = () => {
   const forced = document.documentElement.getAttribute("data-scheme");
   return forced ? forced === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -32,6 +41,9 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
       if (cancelled) return;
 
       const layout = layoutActivity(activity);
+      const lite = isLite();
+      const samples = lite ? 32 : SAMPLES;
+      const t0 = performance.now();
       const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true, powerPreference: "high-performance" });
       renderer.setClearColor(0x000000, 0);
       renderer.shadowMap.enabled = true;
@@ -40,6 +52,8 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
       renderer.domElement.style.cssText = "display:block;width:100%;height:100%";
 
       const PITCH = 1.12;
+      // the room the glow of the outermost columns needs around the slab, so the picture does not cut it
+      const GLOW_ROOM = 3.2;
       const width = layout.github.weeks * PITCH;
       const total = 7 * PITCH;
 
@@ -66,6 +80,8 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
         envMapIntensity: 1.4,
       });
       // the empty days: a plain dull tile in the dark theme (not glass: glass reflects the room and is never dim)
+      // (dark: an unlit flat tile, casting and receiving nothing, a dim mark and no more)
+      const tileUnlit = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false });
       const tileMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.75, metalness: 0, envMapIntensity: 0.25 });
       // the page's own background, read as the browser resolves it: the ground is that colour (so there is something to refract, and no seam with the page)
       const pageColour = () => {
@@ -180,19 +196,19 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
         const tiles: BufferGeometry[] = [];
         const layer = (src: "waka" | "github", x: number, z: number, y0: number, t: number, [low, high]: [Color, Color]) => {
           const h = 0.18 + t * LAYER_MAX;
-          const shell = new RoundedBoxGeometry(0.92, h, 0.92, 4, Math.min(0.16, h / 2.2));
+          const shell = new RoundedBoxGeometry(0.92, h, 0.92, lite ? 2 : 3, Math.min(0.16, h / 2.2));
           shell.translate(x, y0 + h / 2, z);
           const hue = low.clone().lerp(high, t);
           // dark: the glass is nearly clear (the glow of its core shows through it); light: tinted by the level
           // the glass is clear with a hint of the colour (so it stays glass: the colour is carried by the core, seen through it)
-          paint(shell, hue.clone().lerp(new THREE.Color(0xffffff), dark ? 0.6 : 0.55));
+          paint(shell, hue.clone().lerp(new THREE.Color(0xffffff), dark ? 0.45 : 0.3));
           // the glass of a busy day glows on its own surface too (dark theme): three steps of emission per source, each its own material
           const tier = t < 0.34 ? 0 : t < 0.67 ? 1 : 2;
           const key = `${src}${tier}`;
           (shellsBy.get(key) ?? shellsBy.set(key, []).get(key)!).push(shell);
           shellTier.set(key, [src, tier]);
           const hc = h * 0.8;
-          const core = new RoundedBoxGeometry(0.5, hc, 0.5, 3, Math.min(0.1, hc / 2.2));
+          const core = new RoundedBoxGeometry(0.5, hc, 0.5, lite ? 1 : 2, Math.min(0.1, hc / 2.2));
           core.translate(x, y0 + hc / 2 + 0.03, z);
           paint(core, dark ? hue.clone().multiplyScalar(0.22 + 1.5 * t * t + 0.5 * t) : hue);
           cores.push(core);
@@ -204,9 +220,9 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
           const x = g.week * PITCH + 0.5;
           const z = g.day * PITCH + 0.5;
           if (w.value <= 0 && g.value <= 0) {
-            const tile = new RoundedBoxGeometry(0.92, 0.1, 0.92, 3, 0.04);
-            tile.translate(x, 0.05, z);
-            paint(tile, new THREE.Color(dark ? 0x23292f : 0xdadfe5));
+            const tile = new RoundedBoxGeometry(0.92, dark ? 0.06 : 0.1, 0.92, 2, 0.03);
+            tile.translate(x, dark ? 0.03 : 0.05, z);
+            paint(tile, new THREE.Color(dark ? 0x14171b : 0xdadfe5));
             tiles.push(tile);
             return;
           }
@@ -217,8 +233,8 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
         const group = new THREE.Group();
         group.add(groundLayers(stack, tones, dark));
         if (tiles.length) {
-          const tile = new THREE.Mesh(mergeGeometries(tiles), tileMaterial);
-          tile.receiveShadow = true;
+          const tile = new THREE.Mesh(mergeGeometries(tiles), dark ? tileUnlit : tileMaterial);
+          tile.receiveShadow = !dark;
           group.add(tile);
         }
         const materials: import("three").MeshPhysicalMaterial[] = [];
@@ -257,11 +273,11 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
         blocks.clear();
         const dark = isDark();
         const c = (hex: number) => new THREE.Color(hex);
-        // each source has its own hue and the level of the day is the brightness: a quiet day is a dim dark shade, a busy one the brightest (GitHub: orange; WakaTime: violet)
+        // each source has its own hue and the level of the day is the brightness: a quiet day is a dim dark shade, a busy one the brightest (GitHub: its own green, #0fbf3e; WakaTime: the site's BSoD blue, #0078d7)
         blocks.add(
           build(
             { waka: layout.wakatime, github: layout.github },
-            { waka: [c(dark ? 0x5b2fe0 : 0x4a3a8c), c(dark ? 0x9a6bff : 0xb58cff)], github: [c(dark ? 0xff5a14 : 0x7a3a14), c(dark ? 0xffb040 : 0xffa23a)] },
+            { waka: [c(dark ? 0x0a3f78 : 0x0b4a8c), c(dark ? 0x1f9bff : 0x0078d7)], github: [c(dark ? 0x0a5a1c : 0x0b6b22), c(0x0fbf3e)] },
             dark,
           ),
         );
@@ -280,14 +296,14 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
       const sun = new THREE.DirectionalLight(0xffffff, 2.2);
       const sunBase = new THREE.Vector3(-0.45, 1, 0.55).normalize().multiplyScalar(60);
       sun.castShadow = true;
-      sun.shadow.mapSize.set(4096, 4096);
+      sun.shadow.mapSize.set(lite ? 2048 : 4096, lite ? 2048 : 4096);
       sun.shadow.bias = -0.0004;
       sun.shadow.normalBias = 0.03;
       const sc = sun.shadow.camera;
-      sc.left = -width * 0.9;
-      sc.right = width * 0.9;
-      sc.top = total * 3.2;
-      sc.bottom = -total * 3.2;
+      sc.left = -width * 1.4;
+      sc.right = width * 1.4;
+      sc.top = total * 6;
+      sc.bottom = -total * 6;
       sc.near = 1;
       sc.far = 160;
       sun.target.position.set(width / 2, 0, total / 2);
@@ -396,7 +412,7 @@ void main(){
       };
 
       const fit = () => {
-        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const dpr = lite ? 1 : Math.min(window.devicePixelRatio || 1, 2);
         w = Math.max(1, Math.round(el.clientWidth * dpr));
         h = Math.max(1, Math.round(el.clientHeight * dpr));
         renderer.setPixelRatio(1);
@@ -411,10 +427,11 @@ void main(){
         camera.updateMatrixWorld();
         const inv = camera.matrixWorldInverse;
         let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
-        for (const cx of [0, width]) for (const cy of [0, tallest]) for (const cz of [0, total]) {
+        for (const cx of [-GLOW_ROOM, width + GLOW_ROOM]) for (const cy of [0, tallest]) for (const cz of [-GLOW_ROOM, total + GLOW_ROOM]) {
           const p = new THREE.Vector3(cx, cy, cz).applyMatrix4(inv);
           x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y);
         }
+        if (import.meta.env.DEV) el.dataset.fit = ((x1 - x0) / (y1 - y0)).toFixed(3);
         const aspect = w / h;
         const halfH = Math.max((y1 - y0) / 2, (x1 - x0) / 2 / aspect) * 1.04;
         const mx = (x0 + x1) / 2;
@@ -427,8 +444,10 @@ void main(){
         restart();
       };
 
+      const frames: number[] = [];
       const frame = () => {
         raf = 0;
+        const f0 = performance.now();
         // the sun moves on a disc (the soft shadow), the camera a sub-pixel (the anti-aliasing)
         const a = halton(n, 2) * Math.PI * 2;
         const r = Math.sqrt(halton(n, 3)) * 9;
@@ -453,12 +472,19 @@ void main(){
           blurMat.uniforms.stepv!.value.set(0, 0);
           pass(blurMat, quarterA);
           blur(quarterA, quarterB, [w >> 1, h >> 1], 3);
-          blur(quarterA, quarterB, [w >> 1, h >> 1], 5);
+          if (!lite) blur(quarterA, quarterB, [w >> 1, h >> 1], 5);
         }
         renderer.setRenderTarget(null);
         renderer.clear();
         renderer.render(showQuad, quadCam);
-        if (n < SAMPLES) raf = requestAnimationFrame(frame);
+        if (import.meta.env.DEV) {
+          // (development only: how long a frame takes, the GPU included: `finish` waits for it)
+          renderer.getContext().finish();
+          frames.push(performance.now() - f0);
+          el.dataset.frameMs = (frames.reduce((x, y) => x + y, 0) / frames.length).toFixed(1);
+        }
+        if (n < samples) raf = requestAnimationFrame(frame);
+        else if (import.meta.env.DEV) el.dataset.renderMs = String(Math.round(performance.now() - t0));
       };
       function restart() {
         n = 0;
@@ -492,6 +518,7 @@ void main(){
         coreMaterial.dispose();
         glowMaterial.dispose();
         tileMaterial.dispose();
+        tileUnlit.dispose();
         sceneRT.dispose();
         accumRT.dispose();
         [halfA, halfB, quarterA, quarterB].forEach((t) => t.dispose());

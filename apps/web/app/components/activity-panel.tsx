@@ -5,6 +5,8 @@ const ActivityScene = lazy(() => import("~/components/activity-scene").then((m) 
 
 const webgl2 = () => {
   try {
+    // no scene for a visitor who asked to save data, nor where there is no WebGL 2: the flat grids stand in
+    if ((navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData) return false;
     return !!document.createElement("canvas").getContext("webgl2");
   } catch {
     return false;
@@ -59,13 +61,13 @@ export function ActivityPanel({ url }: { url: string | null }) {
     <section ref={box} data-slot="activity" aria-label="Activity over the last year" className="mt-6 mb-2 max-md:mt-3">
       {flat ? (
         <div role="img" aria-label="Activity over the last year: GitHub contributions and WakaTime coding time, a square a day" className="flex flex-col gap-4">
-          <FlatMatrix matrix={flat.wakatime} tone="oklch(0.62 0.2 295)" />
-          <FlatMatrix matrix={flat.github} tone="oklch(0.72 0.18 50)" />
+          <FlatMatrix matrix={flat.wakatime} tone="#0078d7" />
+          <FlatMatrix matrix={flat.github} tone="#0fbf3e" />
         </div>
       ) : (
-        <div className="aspect-[4.07/1] w-full">{seen && <Suspense fallback={null}><ActivityScene activity={activity} className="size-full" /></Suspense>}</div>
+        <div className="aspect-[3.73/1] w-full">{seen && <Suspense fallback={null}><ActivityScene activity={activity} className="size-full" /></Suspense>}</div>
       )}
-      <p className="type-meta mt-2 text-muted-foreground">The last year, a column a day: coding time (violet, below) and GitHub contributions (orange, above); the brighter, the busier</p>
+      <p className="type-meta mt-2 text-muted-foreground">The last year, a column a day: coding time (blue, below) and GitHub contributions (green, above); the brighter, the busier</p>
     </section>
   );
 }
