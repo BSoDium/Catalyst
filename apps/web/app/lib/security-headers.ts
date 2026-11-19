@@ -57,6 +57,9 @@ export interface CspInput {
 /** Where the contact form sends a message (`lib/contact.ts`): the one origin besides the tile hosts a page may fetch. */
 export const CONTACT_ORIGIN = "https://api.web3forms.com";
 
+/** Where the software page fetches the activity file from (`lib/activity.ts`): the `data` branch of the repository, written by a scheduled workflow, so the numbers move without a deploy. */
+export const ACTIVITY_ORIGIN = "https://raw.githubusercontent.com";
+
 /**
  * The Content-Security-Policy of an HTML document. Nothing is allowed by default (`default-src 'none'`); each directive lists what the
  * app really loads:
@@ -65,7 +68,7 @@ export const CONTACT_ORIGIN = "https://api.web3forms.com";
  *  - style-src: our stylesheet only. `style-src-attr 'unsafe-inline'` is separate on purpose: React and the label overlay put `style=""`
  *    on elements (positions, sizes, CSS variables), which cannot be hashed; no inline `<style>` element is allowed.
  *  - worker-src: MapLibre's tile worker is a file of ours, and `blob:` is its documented fallback.
- *  - connect-src: this origin (route data), the tile hosts and the contact form's relay (`CONTACT_ORIGIN`), nothing else.
+ *  - connect-src: this origin (route data), the tile hosts, the contact form's relay (`CONTACT_ORIGIN`) and the activity file (`ACTIVITY_ORIGIN`), nothing else.
  *  - form-action: this origin and the contact form's relay: the form posts there as plain HTML when the script has not run.
  *  - img-src: ours, `data:` and `blob:` (canvas and map rasters). font-src: ours (the self-hosted files of `public/fonts/`: the three families of the page, display, reading
  *    and metadata type, and the two faces the globe's caption can be set in, which it loads itself; every other glyph is the system stack's, so no
@@ -75,7 +78,7 @@ export const CONTACT_ORIGIN = "https://api.web3forms.com";
 export function buildCsp({ nonce, scriptHashes, connectOrigins, upgradeInsecure }: CspInput): string {
   const meta = scriptHashes !== undefined;
   const inline = meta ? scriptHashes.map((h) => `'${h}'`) : nonce ? [`'nonce-${nonce}'`] : [];
-  const connect = ["'self'", ...new Set([...connectOrigins, CONTACT_ORIGIN])];
+  const connect = ["'self'", ...new Set([...connectOrigins, CONTACT_ORIGIN, ACTIVITY_ORIGIN])];
   const directives = [
     "default-src 'none'",
     `script-src ${["'self'", ...inline].join(" ")}`,

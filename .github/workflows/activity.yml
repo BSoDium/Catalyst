@@ -1,0 +1,43 @@
+name: activity
+
+# Refreshes the activity file the software page draws (GitHub contributions + WakaTime coding time), without a deployment: the file lives on the `data` branch and the page fetches it
+# from raw.githubusercontent.com. Public data only, no secret (`scripts/fetch-activity.mjs`). A failed fetch fails the run and leaves the last good file in place.
+
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: activity
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .nvmrc
+      - run: node scripts/fetch-activity.mjs "$RUNNER_TEMP/activity.json"
+      - name: Publish to the data branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git ls-remote --exit-code --heads origin data >/dev/null 2>&1; then
+            git fetch --depth=1 origin data
+            git checkout -B data FETCH_HEAD
+          else
+            git checkout --orphan data
+            git rm -rf --quiet .
+          fi
+          cp "$RUNNER_TEMP/activity.json" activity.json
+          git add activity.json
+          git diff --cached --quiet && exit 0
+          git commit -m "activity: refresh"
+          git push origin data
