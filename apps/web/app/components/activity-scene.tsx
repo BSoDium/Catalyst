@@ -147,7 +147,7 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
           const cy = (z + GLOW_PAD) * PX;
           const r = (0.9 + reach * (0.5 + t * 1.5)) * PX;
           const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-          const a = 0.03 + 0.28 * t * t + 0.06 * t;
+          const a = 0.004 + 0.3 * t * t + 0.03 * t;
           g.addColorStop(0, `rgba(${rgb},${a})`);
           g.addColorStop(0.45, `rgba(${rgb},${a * 0.35})`);
           g.addColorStop(1, `rgba(${rgb},0)`);
@@ -187,6 +187,21 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
 
       // One column a day: WakaTime's coding time at the bottom, GitHub's contributions on top of it. Each layer's height and its tint follow how busy the day was (pale and low when quiet, saturated and tall when busy).
       const LAYER_MAX = 2.3;
+      const roundedSquare = (() => {
+        const half = 0.46;
+        const r = 0.16;
+        const sh = new THREE.Shape();
+        sh.moveTo(-half + r, -half);
+        sh.lineTo(half - r, -half);
+        sh.absarc(half - r, -half + r, r, -Math.PI / 2, 0, false);
+        sh.lineTo(half, half - r);
+        sh.absarc(half - r, half - r, r, 0, Math.PI / 2, false);
+        sh.lineTo(-half + r, half);
+        sh.absarc(-half + r, half - r, r, Math.PI / 2, Math.PI, false);
+        sh.lineTo(-half, -half + r);
+        sh.absarc(-half + r, -half + r, r, Math.PI, Math.PI * 1.5, false);
+        return sh;
+      })();
       let tallest = 1;
       const LIFT = 0.04;
       const build = (stack: { waka: Matrix; github: Matrix }, tones: { waka: [Color, Color]; github: [Color, Color] }, dark: boolean) => {
@@ -220,9 +235,12 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
           const x = g.week * PITCH + 0.5;
           const z = g.day * PITCH + 0.5;
           if (w.value <= 0 && g.value <= 0) {
-            const tile = new RoundedBoxGeometry(0.92, 0.04, 0.92, 2, 0.02);
-            tile.translate(x, 0.02, z);
-            paint(tile, dark ? new THREE.Color(0x14171b) : pageColour().multiplyScalar(0.93));
+            // a flat tile with the same rounded corners as the blocks (a rounded square, extruded 0.04)
+            const tile = new THREE.ExtrudeGeometry(roundedSquare, { depth: 0.04, bevelEnabled: false, curveSegments: lite ? 3 : 6 });
+            tile.rotateX(-Math.PI / 2);
+            tile.deleteAttribute("uv");
+            tile.translate(x, 0, z);
+            paint(tile, pageColour().multiplyScalar(dark ? 1.5 : 0.93));
             tiles.push(tile);
             return;
           }
