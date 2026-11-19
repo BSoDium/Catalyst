@@ -22,5 +22,24 @@ export function ArtStationMark(props: Omit<SVGProps<SVGSVGElement>, "viewBox" | 
 }
 
 export function PexelsMark({ className }: { className?: string }) {
-  return <img src="/brands/pexels-mark.png" alt="" width={64} height={64} aria-hidden="true" decoding="async" className={className ?? "size-[1.125em]"} />;
+  // The mark is the service's favicon (a white "p" on black): its luminance is the mask, so the "p" is drawn in the current colour (the button's brand ink) and the black square is gone.
+  return (
+    <span
+      aria-hidden="true"
+      className={className ?? "inline-block size-[1.125em] shrink-0 bg-current"}
+      style={{
+        maskImage: "url(/brands/pexels-mark.png)",
+        WebkitMaskImage: "url(/brands/pexels-mark.png)",
+        maskSize: "contain",
+        WebkitMaskSize: "contain",
+        maskRepeat: "no-repeat",
+        WebkitMaskRepeat: "no-repeat",
+        maskPosition: "center",
+        WebkitMaskPosition: "center",
+        maskMode: "luminance",
+        // (Safari's name for the same)
+        WebkitMaskSourceType: "luminance",
+      } as React.CSSProperties}
+    />
+  );
 }
