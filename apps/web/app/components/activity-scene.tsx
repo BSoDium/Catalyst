@@ -334,7 +334,7 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
           const core = new RoundedBoxGeometry(cw, hc, cw, lite ? 1 : 2, Math.min(0.1, cw / 2.4, hc / 2.2));
           core.translate(x, y0 + h / 2, z);
           // (a blue rod burns white at its heart: the whiter the busier)
-          const coreHue = dark && src === "waka" ? hue.clone().lerp(new THREE.Color(0xffffff), 0.15 + 0.4 * t) : hue;
+          const coreHue = dark && src === "waka" ? hue.clone().lerp(new THREE.Color(0xffffff), 0.35 + 0.4 * t) : hue;
           paint(core, dark ? coreHue.multiplyScalar(emit(t) * (1 + 1.1 * t)).add(inc) : hue);
           cores.push(core);
         }
@@ -359,7 +359,8 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
           // (dark) the glass absorbs what is not its own colour as the light goes through it: a green block lets a blue rod behind it show only dimly, and the other way round
           if (dark) {
             mat.attenuationColor.copy(tones[src][1]);
-            mat.attenuationDistance = 2.2;
+            // (the blue glass absorbs less: a rod that is meant to be near white would otherwise be seen through a blue filter and come out saturated)
+            mat.attenuationDistance = src === "waka" ? 3.6 : 2.2;
           }
           mat.emissiveIntensity = dark ? [0.02, 0.08, 0.15][tier]! : 0;
           // (the room's reflections are a light too: a quiet day must not shine with them)
