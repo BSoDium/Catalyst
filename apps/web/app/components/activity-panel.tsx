@@ -183,7 +183,7 @@ function DayCard({ info, visible, instant, width }: { info: HoverInfo; visible: 
 
 /**
  * The figures, in two tiers: the three that matter set large (the page's count, the contributions, the hours coded) and the rest small beneath (the first year, the places, the longest run, the share of active days). The page's own
- * (`lead`: its count, then the rest) are only drawn from 90 rem, where this block takes the head's place; below that the head shows them. The year's wait for the file (they fade in); the page's are there at once.
+ * (`lead`: its count, then the rest) are only drawn from 80 rem, where this block takes the head's place; below that the head shows them. The year's wait for the file (they fade in); the page's are there at once.
  */
 function Figures({ lead, stats, ready = true, className }: { lead: { value: string; label: string }[]; stats: ActivityStat[]; ready?: boolean; className?: string }) {
   interface Fig {
@@ -199,18 +199,18 @@ function Figures({ lead, stats, ready = true, className }: { lead: { value: stri
   const primary = [...lead.slice(0, 1).map(own), ...stats.slice(0, 2).map(theirs)];
   const secondary = [...lead.slice(1).map(own), ...stats.slice(2).map(theirs)];
   const cell = (f: Fig, big: boolean) => (
-    <div key={f.key} className={`transition-opacity duration-500 ${big ? "flex flex-col gap-1.5" : "flex items-baseline gap-1.5"} ${f.own ? "hidden min-[90rem]:flex" : ready ? "" : "opacity-0"}`}>
-      <dd className="m-0 flex items-baseline gap-1" style={{ color: f.tone === "plain" ? undefined : soft(f.tone, 75) }}>
+    <div key={f.key} className={`transition-opacity duration-500 ${big ? "flex flex-col gap-1.5 min-[80rem]:items-end" : "flex items-baseline gap-1.5"} ${f.own ? "hidden min-[80rem]:flex" : ready ? "" : "opacity-0"}`}>
+      <dd className="m-0 flex items-baseline gap-1 min-[80rem]:justify-end" style={{ color: f.tone === "plain" ? undefined : soft(f.tone, 75) }}>
         <span className={`font-[family-name:var(--font-display)] leading-none font-medium tracking-[-0.03em] tabular-nums ${big ? "text-[1.75rem] min-[56rem]:text-[clamp(1.75rem,2.8cqi,2.75rem)]" : "text-[1.25rem]"}`}>{f.value}</span>
         {f.unit && <span className="type-meta font-normal text-muted-foreground normal-case">{f.unit}</span>}
       </dd>
-      <dt className="type-meta text-muted-foreground uppercase">{f.label}</dt>
+      <dt className="type-meta text-muted-foreground uppercase min-[80rem]:text-right">{f.label}</dt>
     </div>
   );
   return (
-    <div data-slot="activity-stats" aria-hidden={ready ? undefined : true} className={`flex flex-col gap-5 px-4 pt-6 md:px-14 min-[90rem]:w-max min-[90rem]:gap-4 min-[90rem]:p-0 ${className ?? ""}`}>
-      <dl className="m-0 flex flex-wrap gap-x-[clamp(2rem,5cqi,4.5rem)] gap-y-4 min-[90rem]:flex-nowrap min-[90rem]:justify-between">{primary.map((f) => cell(f, true))}</dl>
-      <dl className="m-0 flex flex-wrap gap-x-6 gap-y-2 min-[90rem]:flex-nowrap min-[90rem]:justify-between">{secondary.map((f) => cell(f, false))}</dl>
+    <div data-slot="activity-stats" aria-hidden={ready ? undefined : true} className={`flex flex-col gap-5 px-4 pt-6 md:px-14 min-[80rem]:w-max min-[80rem]:gap-4 min-[80rem]:p-0 ${className ?? ""}`}>
+      <dl className="m-0 flex flex-wrap gap-x-[clamp(2rem,5cqi,4.5rem)] gap-y-4 min-[80rem]:flex-nowrap min-[80rem]:justify-between">{primary.map((f) => cell(f, true))}</dl>
+      <dl className="m-0 flex flex-wrap gap-x-6 gap-y-2 min-[80rem]:flex-nowrap min-[80rem]:justify-between">{secondary.map((f) => cell(f, false))}</dl>
     </div>
   );
 }
@@ -254,12 +254,12 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
   }, []);
   if (!enabledFor(url)) return null;
   // (the file is not there after all: the picture goes away, and the page's own figures, which the head hid for the grid, are shown on their own)
-  if (failed) return lead.length ? <Figures lead={lead} stats={[]} className="hidden min-[90rem]:grid min-[90rem]:absolute min-[90rem]:top-0 min-[90rem]:right-14" /> : null;
+  if (failed) return lead.length ? <Figures lead={lead} stats={[]} className="hidden min-[80rem]:grid min-[80rem]:absolute min-[80rem]:top-0 min-[80rem]:right-14" /> : null;
   const flat = !gl && activity ? layoutActivity(activity) : null;
   const stats = activity ? activityStats(activity) : WAITING_STATS;
   // The tilt of the scene leaves its top-right and bottom-left corners empty: the figures take the first and the legend the second (on a narrow page there is no corner, they go under the picture).
   return (
-    <section ref={box} data-slot="activity" aria-label="Activity over the last year" className="relative -mx-4 mt-0 mb-2 md:-mx-14 min-[90rem]:-mb-10">
+    <section ref={box} data-slot="activity" aria-label="Activity over the last year" className="relative -mx-4 mt-0 mb-2 md:-mx-14 min-[80rem]:-mb-2 min-[90rem]:-mb-10">
       {flat ? (
         <div role="img" aria-label="Activity over the last year: GitHub contributions and WakaTime coding time, a square a day" className="flex flex-col gap-4 px-4 md:px-14">
           <FlatMatrix matrix={flat.wakatime} tone="#0078d7" />
@@ -290,10 +290,10 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
           <p className="sr-only" aria-live="polite">{hover ? dayText(hover) : ""}</p>
         </div>
       )}
-      {/* The corners are only empty when the scene is big enough (from 90 rem of page): below that the figures and the legend sit under the picture, so the text never lies over the blocks. From there the page's own figures (software, places) join the year's
+      {/* The corners are only empty when the scene is big enough (from 80 rem of page): below that the figures and the legend sit under the picture, so the text never lies over the blocks. From there the page's own figures (software, places) join the year's
           in ONE grid at the top right, from the head's top down into the empty corner of the picture. */}
-      <Figures lead={lead} stats={stats} ready={!!activity} className="min-[90rem]:pointer-events-none min-[90rem]:absolute min-[90rem]:right-14 min-[90rem]:top-[calc(-1*clamp(2.5rem,6.4cqi,5.75rem)-0.25rem)]" />
-      <div data-slot="activity-legend" className="flex flex-col gap-3 px-4 pt-8 md:px-14 min-[90rem]:absolute min-[90rem]:bottom-[4.5rem] min-[90rem]:left-14 min-[90rem]:w-[25rem] min-[90rem]:p-0">
+      <Figures lead={lead} stats={stats} ready={!!activity} className="min-[80rem]:pointer-events-none min-[80rem]:absolute min-[80rem]:right-14 min-[80rem]:top-[calc(-1*clamp(2.5rem,6.4cqi,5.75rem)-0.25rem)]" />
+      <div data-slot="activity-legend" className="flex flex-col gap-3 px-4 pt-8 md:px-14 min-[80rem]:absolute min-[80rem]:bottom-6 min-[90rem]:bottom-[4.5rem] min-[80rem]:left-14 min-[80rem]:w-[25rem] min-[80rem]:p-0">
         <p className="type-meta m-0 text-muted-foreground uppercase">Last <span className="text-foreground">12 months</span></p>
         {/* In the picture's order: the contributions are the upper block of a day, the coding the lower one. */}
         <p className="m-0 font-[family-name:var(--font-display)] text-[1.625rem] leading-[1.1] font-semibold tracking-tight text-balance">
@@ -303,7 +303,7 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
             <span className="sr-only">(opens in a new tab)</span>
           </a>{" "}
           above,
-          <br className="hidden min-[90rem]:inline" />{" "}
+          <br className="hidden min-[80rem]:inline" />{" "}
           <a href={WAKATIME_URL} target="_blank" rel="noopener noreferrer" className={LINK} style={{ color: soft("blue", 75) }}>
             WakaTime activity
             <Icon name="arrow-up-right" size="inline" aria-hidden="true" className="translate-y-[0.05em] self-center opacity-70 transition-opacity group-hover/link:opacity-100" />
