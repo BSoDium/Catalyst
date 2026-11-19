@@ -39,5 +39,5 @@ jobs:
           cp "$RUNNER_TEMP/activity.json" activity.json
           git add activity.json
           git diff --cached --quiet && exit 0
-          git commit -m "activity: refresh"
+          git commit -m "activity: refresh [vercel skip]"
           git push origin data
