@@ -216,7 +216,7 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
           const hue = low.clone().lerp(high, t);
           // dark: the glass is nearly clear (the glow of its core shows through it); light: tinted by the level
           // the glass is clear with a hint of the colour (so it stays glass: the colour is carried by the core, seen through it)
-          paint(shell, hue.clone().lerp(new THREE.Color(0xffffff), dark ? 0.45 : 0.12).multiplyScalar(dark ? 0.3 + 0.7 * t : 1));
+          paint(shell, hue.clone().lerp(new THREE.Color(0xffffff), dark ? 0.15 : 0.12).multiplyScalar(dark ? 0.12 + 0.88 * t : 1));
           // the glass of a busy day glows on its own surface too (dark theme): three steps of emission per source, each its own material
           const tier = t < 0.34 ? 0 : t < 0.67 ? 1 : 2;
           const key = `${src}${tier}`;
@@ -261,7 +261,9 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
           mat.emissive.copy(tones[src][1]);
           mat.emissiveIntensity = dark ? [0.02, 0.12, 0.3][tier]! : 0;
           // (the room's reflections are a light too: a quiet day must not shine with them)
-          mat.envMapIntensity = dark ? [0.2, 0.7, 1.3][tier]! : 1.4;
+          // (a material's own `envMap` is what `envMapIntensity` scales; without it the scene's environment is used as it is)
+          mat.envMap = dark ? env : null;
+          mat.envMapIntensity = dark ? [0.02, 0.18, 0.55][tier]! : 1.4;
           materials.push(mat);
           const glass = new THREE.Mesh(mergeGeometries(list)!, mat);
           glass.castShadow = true;
@@ -284,6 +286,9 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
       const ground0 = () => ((ground.material as import("three").ShadowMaterial).opacity = isDark() ? 0 : 0.32);
       const buildBlocks = () => {
         showMat.uniforms.bloom!.value = isDark() ? 1 : 0;
+        // night: no sun and no room, the only light is what the days give out
+        scene.environmentIntensity = isDark() ? 0 : 0.9;
+        sun.intensity = isDark() ? 0 : 2.2;
         ground0();
         blocks.traverse((o) => {
           (o as Mesh).geometry?.dispose();
