@@ -116,13 +116,6 @@ describe("groupByYear, sensitive entries on a tie (issue #432)", () => {
 
 describe("listStats (#548)", () => {
   const item = (date: string | undefined, places: string[] = []) => ({ date, places: places.map((slug) => ({ slug, name: slug })) }) as never;
-  it("leaves out the years when asked (the software page)", () => {
-    expect(listStats([item("2019-03", ["paris"]), item("2026-09-02", ["toulouse"])], { shown: 2, total: 2, noun: "software" }, { since: false })).toEqual([
-      { value: "2", label: "software" },
-      { value: "2", label: "places" },
-    ]);
-  });
-
   it("counts the entries, gives the first year and counts the distinct places", () => {
     expect(listStats([item("2019-03", ["paris"]), item("2026-09-02", ["paris", "toulouse"]), item("2022")], { shown: 3, total: 3, noun: "software" })).toEqual([
       { value: "3", label: "software" },

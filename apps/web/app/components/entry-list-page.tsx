@@ -44,8 +44,8 @@ export function EntryListPage({ kind, items, activityUrl = null }: { kind: Conte
   // One implementation of the count noun: `kindCount` ("33 software", "1 poem").
   const total = kindCount(kind, items.length);
   let seen = 0;
-  // The software page's head has no "since" (the activity picture sits under it), and from 80 rem its figures join the picture's grid (`ActivityPanel` `lead`).
-  const heads = listStats(items, { shown: shown.length, total: items.length, noun: shown.length === 1 ? KIND_NOUNS[kind].one : KIND_NOUNS[kind].many }, { since: kind !== "project" });
+  // From 90 rem its figures join the picture's grid (`ActivityPanel` `lead`).
+  const heads = listStats(items, { shown: shown.length, total: items.length, noun: shown.length === 1 ? KIND_NOUNS[kind].one : KIND_NOUNS[kind].many });
   const withPanel = kind === "project" && (import.meta.env.DEV || !!activityUrl);
   const wall = kind === "artwork" || kind === "photograph";
   const poems = kind === "poem";
@@ -62,7 +62,7 @@ export function EntryListPage({ kind, items, activityUrl = null }: { kind: Conte
       <header data-slot="list-head" className="list-head">
         <h1 className="list-title">{KIND_PLURALS[kind]}</h1>
         {/* The figures of the list: how many (of how many when a tag filters), since when, how many places. There is no running head above the title any more (the owner's name and the count were said again by the figures: owner, 2026-11-03) */}
-        <dl data-slot="list-stats" className={cn("list-stats", withPanel && "min-[80rem]:invisible")}>
+        <dl data-slot="list-stats" className={cn("list-stats", withPanel && "min-[90rem]:invisible")}>
           {heads.map((stat) => (
             <div key={stat.label} className="list-stat">
               <dd className="list-stat-value">{stat.value}</dd>

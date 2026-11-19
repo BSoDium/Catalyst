@@ -3308,16 +3308,18 @@
     line-height: var(--text-sm--line-height);
     text-decoration: none;
     white-space: nowrap;
-    transition:
-      color var(--duration-fast) var(--ease-standard),
-      background-color var(--duration-fast) var(--ease-standard);
+    transition: color var(--duration-fast) var(--ease-standard);
   }
 
   /* Every chip has the same box, chosen or not (the padding, the weight and the rule are always there, only their colours change): choosing one moves nothing. */
+  /* (the span is the plate: it reaches out over the link's own side padding, so a chosen chip's fill and its rule run edge to edge, and the plate is only as tall as the text with its rule) */
   .ds-filter > span {
-    padding-block: 0.125rem;
+    margin-inline: -0.5rem;
+    padding: 0.125rem 0.5rem;
     border-bottom: 2px solid transparent;
-    transition: border-color var(--duration-fast) var(--ease-standard);
+    transition:
+      background-color var(--duration-fast) var(--ease-standard),
+      border-color var(--duration-fast) var(--ease-standard);
   }
 
   .ds-filter:hover {
@@ -3327,10 +3329,10 @@
   /* the chosen one is a filled plate (the page's text colour, the page's colour on it): selection is seen at a glance, not by an underline alone */
   .ds-filter[aria-current="true"] {
     color: var(--background);
-    background: var(--foreground);
   }
 
   .ds-filter[aria-current="true"] > span {
+    background: var(--foreground);
     /* (the accent's rule under the chosen one stays: the owner's, 2026-10-14) */
     border-bottom-color: var(--signal);
   }
