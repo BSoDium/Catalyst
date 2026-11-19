@@ -53,7 +53,7 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
 
       const PITCH = 1.12;
       // the room the glow of the outermost columns needs around the slab, so the picture does not cut it
-      const GLOW_ROOM = 3.2;
+      const ROOM = { side: 3.2, near: 2.6, far: 0.6 };
       const width = layout.github.weeks * PITCH;
       const total = 7 * PITCH;
 
@@ -201,7 +201,7 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
           const hue = low.clone().lerp(high, t);
           // dark: the glass is nearly clear (the glow of its core shows through it); light: tinted by the level
           // the glass is clear with a hint of the colour (so it stays glass: the colour is carried by the core, seen through it)
-          paint(shell, hue.clone().lerp(new THREE.Color(0xffffff), dark ? 0.45 : 0.3));
+          paint(shell, hue.clone().lerp(new THREE.Color(0xffffff), dark ? 0.45 : 0.12).multiplyScalar(dark ? 0.3 + 0.7 * t : 1));
           // the glass of a busy day glows on its own surface too (dark theme): three steps of emission per source, each its own material
           const tier = t < 0.34 ? 0 : t < 0.67 ? 1 : 2;
           const key = `${src}${tier}`;
@@ -210,10 +210,25 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
           const hc = h * 0.8;
           const core = new RoundedBoxGeometry(0.5, hc, 0.5, lite ? 1 : 2, Math.min(0.1, hc / 2.2));
           core.translate(x, y0 + hc / 2 + 0.03, z);
-          paint(core, dark ? hue.clone().multiplyScalar(0.22 + 1.5 * t * t + 0.5 * t) : hue);
+          paint(core, dark ? hue.clone().multiplyScalar(0.07 + 1.6 * t * t + 0.4 * t) : hue);
           cores.push(core);
           tallest = Math.max(tallest, y0 + h);
           return y0 + h;
+        };
+        // (dark) an empty day takes the light of the glow around it: the colours of the busy days nearby, by how bright and how near
+        const spill = (week: number, day: number) => {
+          const out = new THREE.Color(0x14171b);
+          for (let i = 0; i < stack.github.cells.length; i++) {
+            const g = stack.github.cells[i]!;
+            const dw = g.week - week;
+            const dd = g.day - day;
+            if (Math.abs(dw) > 4 || Math.abs(dd) > 4) continue;
+            const w = stack.waka.cells[i]!;
+            const k = Math.exp(-(dw * dw + dd * dd) / (2 * 1.7 * 1.7));
+            if (w.value > 0) out.add(tones.waka[1].clone().multiplyScalar(k * (0.02 + 0.3 * w.t * w.t + 0.05 * w.t)));
+            if (g.value > 0) out.add(tones.github[1].clone().multiplyScalar(k * (0.02 + 0.3 * g.t * g.t + 0.05 * g.t)));
+          }
+          return out;
         };
         stack.github.cells.forEach((g, i) => {
           const w = stack.waka.cells[i]!;
@@ -222,7 +237,7 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
           if (w.value <= 0 && g.value <= 0) {
             const tile = new RoundedBoxGeometry(0.92, dark ? 0.06 : 0.1, 0.92, 2, 0.03);
             tile.translate(x, dark ? 0.03 : 0.05, z);
-            paint(tile, new THREE.Color(dark ? 0x14171b : 0xdadfe5));
+            paint(tile, dark ? spill(g.week, g.day) : new THREE.Color(0xdadfe5));
             tiles.push(tile);
             return;
           }
@@ -242,7 +257,9 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
           const [src, tier] = shellTier.get(key)!;
           const mat = blockMaterial.clone();
           mat.emissive.copy(tones[src][1]);
-          mat.emissiveIntensity = dark ? [0.03, 0.12, 0.3][tier]! : 0;
+          mat.emissiveIntensity = dark ? [0.02, 0.12, 0.3][tier]! : 0;
+          // (the room's reflections are a light too: a quiet day must not shine with them)
+          mat.envMapIntensity = dark ? [0.2, 0.7, 1.3][tier]! : 1.4;
           materials.push(mat);
           const glass = new THREE.Mesh(mergeGeometries(list)!, mat);
           glass.castShadow = true;
@@ -277,17 +294,17 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
         blocks.add(
           build(
             { waka: layout.wakatime, github: layout.github },
-            { waka: [c(dark ? 0x0a3f78 : 0x0b4a8c), c(dark ? 0x1f9bff : 0x0078d7)], github: [c(dark ? 0x0a5a1c : 0x0b6b22), c(0x0fbf3e)] },
+            { waka: [c(dark ? 0x0a3f78 : 0x1658b8), c(dark ? 0x1f9bff : 0x1a8cff)], github: [c(dark ? 0x0a5a1c : 0x0a8f2c), c(dark ? 0x0fbf3e : 0x00d63c)] },
             dark,
           ),
         );
       };
 
-      const floor = new THREE.Mesh(new THREE.PlaneGeometry(width * 3, total * 3), new THREE.MeshBasicMaterial({ color: pageColour() }));
+      const floor = new THREE.Mesh(new THREE.PlaneGeometry(1200, 1200), new THREE.MeshBasicMaterial({ color: pageColour() }));
       floor.rotation.x = -Math.PI / 2;
       floor.position.set(width / 2, -0.02, total / 2);
       scene.add(floor);
-      const ground = new THREE.Mesh(new THREE.PlaneGeometry(width * 3, total * 3), new THREE.ShadowMaterial({ opacity: 0.32 }));
+      const ground = new THREE.Mesh(new THREE.PlaneGeometry(1200, 1200), new THREE.ShadowMaterial({ opacity: 0.32 }));
       ground.rotation.x = -Math.PI / 2;
       ground.position.set(width / 2, 0, total / 2);
       ground.receiveShadow = true;
@@ -427,7 +444,7 @@ void main(){
         camera.updateMatrixWorld();
         const inv = camera.matrixWorldInverse;
         let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
-        for (const cx of [-GLOW_ROOM, width + GLOW_ROOM]) for (const cy of [0, tallest]) for (const cz of [-GLOW_ROOM, total + GLOW_ROOM]) {
+        for (const cx of [-ROOM.side, width + ROOM.side]) for (const cy of [0, tallest]) for (const cz of [-ROOM.near, total + ROOM.far]) {
           const p = new THREE.Vector3(cx, cy, cz).applyMatrix4(inv);
           x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y);
         }

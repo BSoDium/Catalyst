@@ -58,16 +58,16 @@ export function ActivityPanel({ url }: { url: string | null }) {
   if (!activity) return null;
   const flat = !gl ? layoutActivity(activity) : null;
   return (
-    <section ref={box} data-slot="activity" aria-label="Activity over the last year" className="mt-6 mb-2 max-md:mt-3">
+    <section ref={box} data-slot="activity" aria-label="Activity over the last year" className="-mx-4 mt-0 mb-2 md:-mx-14">
       {flat ? (
         <div role="img" aria-label="Activity over the last year: GitHub contributions and WakaTime coding time, a square a day" className="flex flex-col gap-4">
           <FlatMatrix matrix={flat.wakatime} tone="#0078d7" />
           <FlatMatrix matrix={flat.github} tone="#0fbf3e" />
         </div>
       ) : (
-        <div className="aspect-[3.73/1] w-full">{seen && <Suspense fallback={null}><ActivityScene activity={activity} className="size-full" /></Suspense>}</div>
+        <div className="aspect-[3.97/1] w-full">{seen && <Suspense fallback={null}><ActivityScene activity={activity} className="size-full" /></Suspense>}</div>
       )}
-      <p className="type-meta mt-2 text-muted-foreground">The last year, a column a day: coding time (blue, below) and GitHub contributions (green, above); the brighter, the busier</p>
+      <p className="type-meta mt-1 px-4 text-muted-foreground md:px-14">The last year, a column a day: coding time (blue, below) and GitHub contributions (green, above); the brighter, the busier</p>
     </section>
   );
 }

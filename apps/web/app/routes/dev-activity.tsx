@@ -19,7 +19,7 @@ export default function DevActivity() {
   return (
     <main className="mx-auto max-w-6xl p-6">
       <h1 className="type-h2 mb-4">Activity</h1>
-      <ActivityScene activity={sample as Activity} className="aspect-[3.73/1] w-full" />
+      <ActivityScene activity={sample as Activity} className="aspect-[3.97/1] w-full" />
     </main>
   );
 }
