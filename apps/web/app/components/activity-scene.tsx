@@ -329,9 +329,11 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
           (shellsBy.get(key) ?? shellsBy.set(key, []).get(key)!).push(shell);
           shellTier.set(key, [src, tier]);
           const hc = h * 0.8;
-          const core = new RoundedBoxGeometry(0.5, hc, 0.5, lite ? 1 : 2, Math.min(0.1, hc / 2.2));
+          // (dark) the busier the day the thinner and the brighter its rod: a quiet one is as wide as before and dim, a busy one a slender, intense filament
+          const cw = dark ? 0.5 - 0.3 * t ** 0.85 : 0.5;
+          const core = new RoundedBoxGeometry(cw, hc, cw, lite ? 1 : 2, Math.min(0.1, cw / 2.4, hc / 2.2));
           core.translate(x, y0 + h / 2, z);
-          paint(core, dark ? hue.clone().multiplyScalar(emit(t)).add(inc) : hue);
+          paint(core, dark ? hue.clone().multiplyScalar(emit(t) * (1 + 1.1 * t)).add(inc) : hue);
           cores.push(core);
         }
         const group = new THREE.Group();
