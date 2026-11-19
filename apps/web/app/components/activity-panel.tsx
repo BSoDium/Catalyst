@@ -59,13 +59,13 @@ export function ActivityPanel({ url }: { url: string | null }) {
     <section ref={box} data-slot="activity" aria-label="Activity over the last year" className="mt-6 mb-2 max-md:mt-3">
       {flat ? (
         <div role="img" aria-label="Activity over the last year: GitHub contributions and WakaTime coding time, a square a day" className="flex flex-col gap-4">
-          <FlatMatrix matrix={flat.github} tone="oklch(0.62 0.17 155)" />
-          <FlatMatrix matrix={flat.wakatime} tone="oklch(0.55 0.2 270)" />
+          <FlatMatrix matrix={flat.wakatime} tone="oklch(0.65 0.19 45)" />
+          <FlatMatrix matrix={flat.github} tone="oklch(0.62 0.2 310)" />
         </div>
       ) : (
-        <div className="aspect-[2.2/1] max-md:aspect-[1.7/1] w-full">{seen && <Suspense fallback={null}><ActivityScene activity={activity} className="size-full" /></Suspense>}</div>
+        <div className="aspect-[3.8/1] max-md:aspect-[2.4/1] w-full">{seen && <Suspense fallback={null}><ActivityScene activity={activity} className="size-full" /></Suspense>}</div>
       )}
-      <p className="type-meta mt-2 text-muted-foreground">The last year, a block a day: GitHub contributions (green) and WakaTime coding time (blue)</p>
+      <p className="type-meta mt-2 text-muted-foreground">The last year, a column a day: coding time (orange, below) and GitHub contributions (violet, above)</p>
     </section>
   );
 }

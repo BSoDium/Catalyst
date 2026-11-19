@@ -11,7 +11,7 @@ const isDark = () => {
 };
 
 /**
- * The activity of the year as two matrices of blocks seen from an isometric camera that never moves (GitHub's contributions in front, WakaTime's coding time behind it): the height
+ * The activity of the year as two matrices of blocks seen from an isometric camera that never moves (WakaTime's coding time at the bottom of each day's column, GitHub's contributions on top): the height
  * and the colour of a block follow the intensity of the day. Because nothing moves the picture is progressive: each animation frame renders the scene with the sun a little elsewhere
  * (an area light's soft shadow) and the camera a sub-pixel away (anti-aliasing) and adds it to an accumulation buffer; after `SAMPLES` frames the loop stops and the canvas keeps the
  * result. Translucent rounded blocks (transmission, refraction) lit by a room environment, on a ground that only receives the shadows, so it sits on the page's own background.
@@ -40,10 +40,8 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
       renderer.domElement.style.cssText = "display:block;width:100%;height:100%";
 
       const PITCH = 1.12;
-      const GAP = 4;
-      const matrixDepth = 7 * PITCH;
       const width = layout.github.weeks * PITCH;
-      const total = matrixDepth * 2 + GAP;
+      const total = 7 * PITCH;
 
       const scene = new THREE.Scene();
       const pmrem = new THREE.PMREMGenerator(renderer);
@@ -92,25 +90,41 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
         g.setAttribute("color", new THREE.BufferAttribute(colors, 3));
         g.deleteAttribute("uv");
       };
-      const build = (m: Matrix, z0: number, heightOf: (t: number) => number, low: Color, high: Color) => {
+      // One column a day: WakaTime's coding time at the bottom, GitHub's contributions on top of it. Each layer's height and its tint follow how busy the day was (pale and low when quiet, saturated and tall when busy).
+      const LAYER_MAX = 2.3;
+      const LIFT = 0.04;
+      const build = (stack: { waka: Matrix; github: Matrix }, tones: { waka: [Color, Color]; github: [Color, Color] }) => {
         const shells: BufferGeometry[] = [];
         const cores: BufferGeometry[] = [];
-        for (const c of m.cells) {
-          const h = c.value > 0 ? 0.16 + heightOf(c.t) : 0.1;
-          const x = c.week * PITCH + 0.5;
-          const z = z0 + c.day * PITCH + 0.5;
-          const shell = new RoundedBoxGeometry(0.92, h, 0.92, 4, Math.min(0.18, h / 2.2));
-          shell.translate(x, h / 2, z);
-          paint(shell, c.value > 0 ? low.clone().lerp(high, c.t).lerp(new THREE.Color(0xffffff), 0.35) : new THREE.Color(isDark() ? 0x39414b : 0xe4e8ed));
+        const white = new THREE.Color(0xffffff);
+        const layer = (x: number, z: number, y0: number, t: number, [low, high]: [Color, Color]) => {
+          const h = 0.18 + t * LAYER_MAX;
+          const shell = new RoundedBoxGeometry(0.92, h, 0.92, 4, Math.min(0.16, h / 2.2));
+          shell.translate(x, y0 + h / 2, z);
+          paint(shell, low.clone().lerp(high, t).lerp(white, 0.22 * (1 - t)));
           shells.push(shell);
-          if (c.value > 0) {
-            const hc = h * 0.82;
-            const core = new RoundedBoxGeometry(0.5, hc, 0.5, 3, Math.min(0.1, hc / 2.2));
-            core.translate(x, hc / 2 + 0.03, z);
-            paint(core, low.clone().lerp(high, c.t));
-            cores.push(core);
+          const hc = h * 0.8;
+          const core = new RoundedBoxGeometry(0.5, hc, 0.5, 3, Math.min(0.1, hc / 2.2));
+          core.translate(x, y0 + hc / 2 + 0.03, z);
+          paint(core, low.clone().lerp(high, t));
+          cores.push(core);
+          return y0 + h;
+        };
+        stack.github.cells.forEach((g, i) => {
+          const w = stack.waka.cells[i]!;
+          const x = g.week * PITCH + 0.5;
+          const z = g.day * PITCH + 0.5;
+          if (w.value <= 0 && g.value <= 0) {
+            const tile = new RoundedBoxGeometry(0.92, 0.1, 0.92, 3, 0.04);
+            tile.translate(x, 0.05, z);
+            paint(tile, new THREE.Color(isDark() ? 0x39414b : 0xe4e8ed));
+            shells.push(tile);
+            return;
           }
-        }
+          let y = 0;
+          if (w.value > 0) y = layer(x, z, 0, w.t, tones.waka) + LIFT;
+          if (g.value > 0) layer(x, z, y, g.t, tones.github);
+        });
         const group = new THREE.Group();
         const glass = new THREE.Mesh(mergeGeometries(shells), blockMaterial);
         glass.castShadow = true;
@@ -131,9 +145,14 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
         blocks.traverse((o) => (o as Mesh).geometry?.dispose());
         blocks.clear();
         const dark = isDark();
-        // GitHub's in front (low z is nearest the camera at the left, see the camera below), WakaTime behind
-        blocks.add(build(layout.github, 0, (t) => 0.2 + t * 5.2, new THREE.Color(dark ? 0x1f6f4a : 0x8fd8b0), new THREE.Color(dark ? 0x58f0a0 : 0x0f8f58)));
-        blocks.add(build(layout.wakatime, matrixDepth + GAP, (t) => 0.2 + t * 5.2, new THREE.Color(dark ? 0x3a3f8f : 0xa9b4f5), new THREE.Color(dark ? 0x8fa2ff : 0x3340d0)));
+        const c = (hex: number) => new THREE.Color(hex);
+        // WakaTime: embers (dull brown to a hot orange); GitHub: violet to a bright magenta, on top
+        blocks.add(
+          build(
+            { waka: layout.wakatime, github: layout.github },
+            { waka: [c(dark ? 0x6b3a22 : 0xd9a27a), c(dark ? 0xff7a2a : 0xf2560f)], github: [c(dark ? 0x4b3a7a : 0xa595d6), c(dark ? 0xd86bff : 0x9c27d6)] },
+          ),
+        );
       };
       buildBlocks();
 
@@ -156,8 +175,8 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
       const sc = sun.shadow.camera;
       sc.left = -width * 0.75;
       sc.right = width * 0.75;
-      sc.top = total;
-      sc.bottom = -total;
+      sc.top = total * 1.5;
+      sc.bottom = -total * 1.5;
       sc.near = 1;
       sc.far = 160;
       sun.target.position.set(width / 2, 0, total / 2);
@@ -165,8 +184,8 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
 
       // the isometric camera: from the front-right, above, looking at the middle of the slab; orthographic, so the grid stays a grid
       const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 400);
-      const centre = new THREE.Vector3(width / 2, 1.5, total / 2);
-      camera.position.copy(centre).add(new THREE.Vector3(-0.5, 0.8, -1).normalize().multiplyScalar(150));
+      const centre = new THREE.Vector3(width / 2, 1.2, total / 2);
+      camera.position.copy(centre).add(new THREE.Vector3(-0.3, 0.5, -1).normalize().multiplyScalar(150));
       camera.up.set(0, 1, 0);
       camera.lookAt(centre);
 
@@ -226,7 +245,7 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
         camera.updateMatrixWorld();
         const inv = camera.matrixWorldInverse;
         let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
-        for (const cx of [0, width]) for (const cy of [0, 6]) for (const cz of [0, total]) {
+        for (const cx of [0, width]) for (const cy of [0, 5.2]) for (const cz of [0, total]) {
           const p = new THREE.Vector3(cx, cy, cz).applyMatrix4(inv);
           x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y);
         }
