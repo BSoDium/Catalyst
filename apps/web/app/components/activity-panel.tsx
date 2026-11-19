@@ -1,12 +1,12 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { GitHubMark, Icon, WakaTimeMark } from "~/components/ui";
+import { Icon } from "~/components/ui";
 import { placeholderTiles } from "~/lib/activity-view";
 import { activityStats, dayText, GITHUB_URL, isActivity, layoutActivity, readableDay, WAKATIME_URL, type Activity, type ActivityStat, type HoverInfo, type Matrix } from "~/lib/activity";
 
 /** A source's colour as text, softened toward the page's own text colour (the figures and words are tinted, not painted). */
 const soft = (tone: "green" | "blue", share = 62) => `color-mix(in srgb, var(${tone === "green" ? "--act-green" : "--act-blue"}) ${share}%, var(--foreground))`;
 /** The profile links: a soft tint of the source's colour, no outline; the mark and the label take the same tone. */
-const LINK = "inline-flex min-h-9 items-center gap-2 px-3 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current max-md:min-h-11";
+const LINK = "group/link inline-flex items-baseline gap-1 underline decoration-transparent decoration-1 underline-offset-[0.2em] transition-[text-decoration-color] hover:decoration-current focus-visible:decoration-current focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current";
 
 const ActivityScene = lazy(() => import("~/components/activity-scene").then((m) => ({ default: m.ActivityScene })));
 
@@ -143,12 +143,24 @@ function DayCard({ info, visible, instant, width }: { info: HoverInfo; visible: 
           transition: instant ? "none" : "transform 0.3s cubic-bezier(0.2, 0.7, 0.2, 1)",
           background: "color-mix(in srgb, var(--background) 68%, transparent)",
           // a glassy edge: a faint line all round, a little brighter on top where the light catches it (the shadow is always black: lighter than the page, in the dark theme, it would be a glow)
-          borderRadius: 6,
           boxShadow:
             "inset 0 0 0 1px color-mix(in srgb, var(--foreground) 11%, transparent), inset 0 1px 0 color-mix(in srgb, var(--foreground) 14%, transparent), 0 14px 44px -12px rgb(0 0 0 / 0.38), 0 2px 10px -4px rgb(0 0 0 / 0.22)",
         }}
       >
-        <p className="type-meta m-0 text-muted-foreground uppercase"><Roll value={readableDay(info.date)} order={Date.parse(`${info.date}T00:00:00Z`)} /></p>
+        {/* The day and the month are what the eye looks for: they are in the page's text colour, the weekday and the year (the frame around them) in the muted one. */}
+        <p className="type-meta m-0 flex gap-[0.6em] uppercase">
+          {(() => {
+            const [weekday = "", day = "", month = "", year = ""] = readableDay(info.date).split(" ");
+            const order = Date.parse(`${info.date}T00:00:00Z`);
+            return (
+              <>
+                <span className="text-muted-foreground"><Roll value={weekday} order={order} /></span>
+                <span className="text-foreground"><Roll value={`${day} ${month}`} order={order} /></span>
+                <span className="text-muted-foreground"><Roll value={year} order={order} /></span>
+              </>
+            );
+          })()}
+        </p>
         <div className="mt-2.5 grid grid-cols-2 gap-x-6">
           <div className="flex flex-col gap-1" style={{ color: soft("green", 70) }}>
             <span className="flex items-baseline gap-1 font-[family-name:var(--font-display)] text-[2rem] leading-none font-semibold tracking-tight tabular-nums">
@@ -211,7 +223,7 @@ export function ActivityPanel({ url }: { url: string | null }) {
   const stats = activity ? activityStats(activity) : WAITING_STATS;
   // The tilt of the scene leaves its top-right and bottom-left corners empty: the figures take the first and the legend the second (on a narrow page there is no corner, they go under the picture).
   return (
-    <section ref={box} data-slot="activity" aria-label="Activity over the last year" className="relative -mx-4 mt-0 mb-2 md:-mx-14">
+    <section ref={box} data-slot="activity" aria-label="Activity over the last year" className="relative -mx-4 mt-0 mb-2 md:-mx-14 min-[80rem]:-mb-6">
       {flat ? (
         <div role="img" aria-label="Activity over the last year: GitHub contributions and WakaTime coding time, a square a day" className="flex flex-col gap-4 px-4 md:px-14">
           <FlatMatrix matrix={flat.wakatime} tone="#0078d7" />
@@ -254,25 +266,22 @@ export function ActivityPanel({ url }: { url: string | null }) {
           </div>
         ))}
       </dl>
-      <div data-slot="activity-legend" className="flex flex-col gap-3 px-4 pt-5 md:px-14 min-[80rem]:absolute min-[80rem]:bottom-0 min-[80rem]:left-14 min-[80rem]:w-[25rem] min-[80rem]:p-0">
+      <div data-slot="activity-legend" className="flex flex-col gap-3 px-4 pt-1 md:px-14 min-[80rem]:absolute min-[80rem]:bottom-10 min-[80rem]:left-14 min-[80rem]:w-[25rem] min-[80rem]:p-0">
         <p className="type-meta m-0 text-muted-foreground uppercase">Last 12 months</p>
-        <p className="m-0 font-[family-name:var(--font-display)] text-[1.625rem] leading-[1.1] font-semibold tracking-tight text-balance min-[80rem]:text-nowrap">
-          <span style={{ color: soft("blue", 75) }}>Coding</span> below, <span style={{ color: soft("green", 75) }}>contributions</span> above.
-        </p>
-        <div className="-mt-1 flex flex-wrap gap-2">
-          <a href={WAKATIME_URL} target="_blank" rel="noopener noreferrer" className={LINK} style={{ color: soft("blue", 80), background: "color-mix(in srgb, var(--act-blue) 13%, transparent)" }}>
-            <WakaTimeMark />
-            Coding activity
-            <Icon name="arrow-up-right" size="inline" aria-hidden="true" />
-            <span className="sr-only">on WakaTime (opens in a new tab)</span>
-          </a>
-          <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" className={LINK} style={{ color: soft("green", 80), background: "color-mix(in srgb, var(--act-green) 13%, transparent)" }}>
-            <GitHubMark />
-            GitHub contributions
-            <Icon name="arrow-up-right" size="inline" aria-hidden="true" />
+        <p className="m-0 font-[family-name:var(--font-display)] text-[1.625rem] leading-[1.1] font-semibold tracking-tight text-balance">
+          <a href={WAKATIME_URL} target="_blank" rel="noopener noreferrer" className={LINK} style={{ color: soft("blue", 75) }}>
+            WakaTime activity
+            <Icon name="arrow-up-right" size="inline" aria-hidden="true" className="translate-y-[0.05em] self-center opacity-70 transition-opacity group-hover/link:opacity-100" />
             <span className="sr-only">(opens in a new tab)</span>
-          </a>
-        </div>
+          </a>{" "}
+          below,{" "}
+          <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" className={LINK} style={{ color: soft("green", 75) }}>
+            GitHub contributions
+            <Icon name="arrow-up-right" size="inline" aria-hidden="true" className="translate-y-[0.05em] self-center opacity-70 transition-opacity group-hover/link:opacity-100" />
+            <span className="sr-only">(opens in a new tab)</span>
+          </a>{" "}
+          above.
+        </p>
       </div>
     </section>
   );
