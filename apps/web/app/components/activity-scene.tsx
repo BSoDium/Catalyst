@@ -295,11 +295,12 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
           inc.g = Math.min(inc.g, 0.6);
           inc.b = Math.min(inc.b, 0.6);
           const incLum = (inc.r + inc.g + inc.b) / 3;
-          const tEff = Math.min(1, Math.sqrt(t * t + incLum * 1.2));
+          // (the light of the neighbours lifts a dim block, and leaves a bright one as it is: in a dense, busy stretch the glass must stay clear around its core)
+          const tEff = t + (1 - t) * Math.min(1, Math.sqrt(incLum * 1.2));
           const shell = new RoundedBoxGeometry(0.92, h, 0.92, lite ? 2 : 3, Math.min(0.16, h / 2.2));
           shell.translate(x, y0 + h / 2, z);
           // dark: the glass is nearly clear (the light of its core shows through it); light: tinted by the level
-          paint(shell, hue.clone().lerp(new THREE.Color(0xffffff), dark ? 0.15 : 0.12).multiplyScalar(dark ? 0.12 + 0.88 * tEff : 1).add(inc.clone().multiplyScalar(0.3)));
+          paint(shell, hue.clone().lerp(new THREE.Color(0xffffff), dark ? 0.4 : 0.12).multiplyScalar(dark ? 0.22 + 0.6 * tEff : 1).add(inc.clone().multiplyScalar(0.08)));
           // the glass of a busy day glows on its own surface too (dark theme): three steps of emission per source, each its own material
           const tier = tEff < 0.34 ? 0 : tEff < 0.67 ? 1 : 2;
           const key = `${src}${tier}`;
@@ -322,7 +323,7 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
           const [src, tier] = shellTier.get(key)!;
           const mat = blockMaterial.clone();
           mat.emissive.copy(tones[src][1]);
-          mat.emissiveIntensity = dark ? [0.02, 0.1, 0.2][tier]! : 0;
+          mat.emissiveIntensity = dark ? [0.02, 0.06, 0.11][tier]! : 0;
           // (the room's reflections are a light too: a quiet day must not shine with them)
           // (a material's own `envMap` is what `envMapIntensity` scales; without it the scene's environment is used as it is)
           mat.envMap = dark ? env : null;
