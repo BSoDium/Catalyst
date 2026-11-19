@@ -1577,6 +1577,7 @@ export class GlobeRenderer {
       px: cover.x,
       py: cover.y,
       atmosphere: cover.atmosphere,
+      axis: { x: planet.x, y: planet.y },
     });
   }
 

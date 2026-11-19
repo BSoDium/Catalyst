@@ -54,3 +54,16 @@ describe("changedParts", () => {
     expect(changedParts("Spring 2024", "2025")).toBeNull();
   });
 });
+
+import { readableDates } from "./dates";
+describe("readableDates", () => {
+  it("writes a range of months, days and years out, and leaves anything else as authored", () => {
+    expect(readableDates("2023-10–2023-11")).toBe("Oct – Nov 2023");
+    expect(readableDates("2023-12–2024-02")).toBe("Dec 2023 – Feb 2024");
+    expect(readableDates("2023-10-03–2023-10-19")).toBe("3 – 19 Oct 2023");
+    expect(readableDates("2023-10")).toBe("Oct 2023");
+    expect(readableDates("2023")).toBe("2023");
+    expect(readableDates("Summer 2023")).toBe("Summer 2023");
+    expect(readableDates("2023-13–2023-14")).toBe("2023-13–2023-14");
+  });
+});

@@ -26,6 +26,13 @@ describe("flarePlace", () => {
     expect(flarePlace(frame({ x: 210, y: 135 }))).toBeNull();
     expect(flarePlace(frame({ x: 320, y: 130 }))!.str).toBeGreaterThan(0.5);
   });
+  it("gives way at the lens's axis, the planet's centre, not at the buffer's middle when a panel has shifted the planet (a sun between the planet and the panel kept its flare)", () => {
+    const shifted = { x: 80, y: 130 };
+    expect(flarePlace(frame({ x: 200, y: 130 }))).toBeNull();
+    expect(flarePlace(frame({ x: 200, y: 130, axis: shifted }))!.str).toBeGreaterThan(0.9);
+    expect(flarePlace(frame({ x: 90, y: 135, axis: shifted }))).toBeNull();
+    expect(flarePlace(frame({ x: 200, y: 130, axis: shifted }))!.mx).toBe(80);
+  });
   it("scales with how much of the sun the planet leaves", () => {
     expect(flarePlace(frame({ visible: 0.5 }))!.str).toBeCloseTo(flarePlace(frame())!.str * 0.5, 5);
   });

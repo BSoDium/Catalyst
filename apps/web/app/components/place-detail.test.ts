@@ -123,15 +123,16 @@ describe("PlaceDetail", () => {
     expect(html).toContain('data-slot="trip-card"');
     expect(html.indexOf("We arrived")).toBeLessThan(html.indexOf('data-slot="trip-card"'));
   });
-  it("a step with entries leads with them, and its story and trip wait in one closed disclosure after", () => {
+  it("a step with entries leads with them, and its trips follow with the story open under their title (no disclosure)", () => {
     const html = render("lisbon");
     const story = html.indexOf('data-slot="place-story"');
     expect(story).toBeGreaterThan(html.indexOf('data-slot="place-entries"'));
-    expect(html.slice(story - 1, story + 60)).not.toContain(" open");
-    expect(html).toContain("On the road here");
+    expect(html).not.toContain("On the road here");
+    expect(html).not.toContain("<details");
     expect(html.slice(0, story)).not.toContain("Lisbon is the city I keep returning to");
     expect(html.slice(story)).toContain("Lisbon is the city I keep returning to");
-    expect(html.slice(story)).toContain('data-slot="trip-card"');
+    expect(html.indexOf('data-slot="trip-cards"')).toBeLessThan(story);
+    expect(story).toBeLessThan(html.indexOf('data-slot="trip-card"'));
   });
   it("leads with the photographs taken at the step as a gallery under one 'Photography' title, not as cards that put the story second", () => {
     const html = render("lisbon");

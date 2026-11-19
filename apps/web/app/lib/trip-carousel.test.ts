@@ -52,3 +52,38 @@ describe("the trip carousel's geometry", () => {
     expect(tripStep(wide)).toBeGreaterThan(0);
   });
 });
+
+import { BLEED, tripBleed } from "./trip-carousel";
+describe("the cards at the edges of a wide row", () => {
+  const k = tripKeylines(900);
+  it("run on past the right edge at rest, and the last one does not at the end", () => {
+    const boxes = tripLayout(0, 6, k);
+    expect(tripBleed(boxes[2]!, 2, 0, 6, k).right).toBe(BLEED);
+    expect(tripBleed(boxes[0]!, 0, 0, 6, k)).toEqual({ left: 0, right: 0 });
+    const end = lastTrip(6, k);
+    const last = tripLayout(end, 6, k);
+    expect(tripBleed(last[5]!, 5, end, 6, k).right).toBe(0);
+  });
+  it("run on past the left edge once the row has moved, and not on a phone", () => {
+    const boxes = tripLayout(1, 6, k);
+    expect(tripBleed(boxes[0]!, 0, 1, 6, k).left).toBe(BLEED);
+    const phone = tripKeylines(400);
+    expect(tripBleed(tripLayout(1, 6, phone)[0]!, 0, 1, 6, phone)).toEqual({ left: 0, right: 0 });
+  });
+});
+
+describe("a card's bleed gives way to its neighbour", () => {
+  const k = tripKeylines(900);
+  it("never runs under the card beside it: the sum of what a card takes past its side stays outside the neighbour", () => {
+    for (let t = 0; t <= lastTrip(8, k); t += 0.05) {
+      const boxes = tripLayout(t, 8, k);
+      boxes.forEach((b, i) => {
+        const bl = tripBleed(b, i, t, 8, k, boxes[i - 1], boxes[i + 1]);
+        const next = boxes[i + 1];
+        if (next && next.w >= k.small) expect(bl.right).toBe(0);
+        const prev = boxes[i - 1];
+        if (prev && prev.w >= k.small) expect(bl.left).toBe(0);
+      });
+    }
+  });
+});

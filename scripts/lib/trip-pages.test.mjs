@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { neutralizeTripPages } from "./trip-pages.mjs";
+import { neutralizeBrandWiring, neutralizeTripPages } from "./trip-pages.mjs";
 
 const PAGE = "https://www.polarsteps.com/bsodium/26802872-balkans";
 
@@ -45,5 +45,14 @@ test("a prerendered page also accepts the derived label of the link, whole, and 
   assert.match(neutralizeTripPages(html, "bundle"), /polarsteps/);
   for (const bad of ["<p>polarsteps.com</p>", "<p>See the whole trip on polarsteps.com/x</p>", "<p>I use polarsteps.com<</p>"]) {
     assert.match(neutralizeTripPages(bad, "page"), /polarsteps/, bad);
+  }
+});
+
+test("the brand wiring of the trip link is accepted in its three spellings, and the word anywhere else still fails", () => {
+  for (const ok of [`const L={"polarsteps.com":"polarsteps"}`, `{ "polarsteps.com": "polarsteps" }`, `<a data-brand="polarsteps" href="x">`, `h("a",{"data-brand":b})`, `[data-brand=polarsteps]{--brand:#e5448a}`, `[data-brand="polarsteps"]{}`, `data-brand=\\"polarsteps\\"`]) {
+    assert.doesNotMatch(neutralizeBrandWiring(ok), /polarsteps/, ok);
+  }
+  for (const bad of [`polarstepsClient`, `const x = "polarsteps"`, `import("polarsteps")`, `{"polarsteps.com":"other"}`, `/polarsteps/api`, `data-brand="polarsteps-importer"`]) {
+    assert.match(neutralizeBrandWiring(bad), /polarsteps/, bad);
   }
 });

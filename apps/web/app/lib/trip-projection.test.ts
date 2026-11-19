@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AZIMUTHAL_LIMIT, frameOf } from "./trip-projection";
+import { AZIMUTHAL_LIMIT, REGION_SPAN, frameOf } from "./trip-projection";
 
 describe("the trip poster's projection", () => {
   const box = [0, 0, 360, 300, 26] as const;
@@ -50,5 +50,17 @@ describe("the trip poster's projection", () => {
   it("keeps a trip inside one city a map of a few kilometres", () => {
     const f = frameOf([{ lon: 2.35, lat: 48.85 }], ...box);
     expect(f.at(2.35, 48.85)).not.toBeNull();
+  });
+  it("keeps a continent's trip azimuthal in a wide, short box, where the world map would stretch its land (South America)", () => {
+    const pts = [{ lon: -77, lat: -12 }, { lon: -68, lat: -16 }, { lon: -66, lat: -22 }, { lon: -60, lat: -32 }, { lon: -58.4, lat: -34.6 }];
+    const f = frameOf(pts, 0, 0, 620, 190, 26, { w: 620, h: 470 });
+    expect(f.azimuthal).toBe(true);
+    expect(REGION_SPAN).toBeGreaterThanOrEqual(45);
+    // (a degree of latitude and a degree of longitude at the equator are as long as each other, as on the globe)
+    const a = f.at(-60, 0)!;
+    const dx = f.at(-59, 0)!.x - a.x;
+    const dy = a.y - f.at(-60, 1)!.y;
+    expect(dx / dy).toBeGreaterThan(0.9);
+    expect(dx / dy).toBeLessThan(1.1);
   });
 });

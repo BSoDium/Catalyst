@@ -12,7 +12,8 @@ describe("GalleryEnd", () => {
     expect(html).toContain("(opens in a new tab)");
   });
   it("draws no illustration of its own: the photographs above it are the picture", () => {
-    expect(html).not.toContain("<img");
+    // (the only picture is the service's own small mark on its link)
+    expect((html.match(/<img[^>]*>/g) ?? []).filter((i) => !i.includes("/brands/"))).toEqual([]);
   });
   it("has a few lines to pick from", () => {
     expect(GALLERY_END_LINES.length).toBeGreaterThanOrEqual(3);

@@ -173,6 +173,8 @@ export interface SunFrame {
   /** Where the planet's centre is on the buffer (the crescent's centre of mass is on the line from it through the sun). Absent: straight below the sun. */
   px?: number;
   py?: number;
+  /** Where the planet's centre is on the buffer: the flare's lens axis (`FlareFrame.axis`). Absent: the middle of the buffer. */
+  axis?: { x: number; y: number };
   /** How far the sun's centre is outside the planet's limb, radians (`sunRise`, engine/sun-flare.ts): what is left of the sun and its halo are measured from it. Absent: nothing in the way. */
   rise?: number;
   /** Whether what covers the sun has an atmosphere, as the planet has: the sunset's reddening is its, and the moon (which has none) leaves the sun's colour as it is. Absent: it has (the planet). */
@@ -298,7 +300,7 @@ export class SunLayer {
     // the lens flare comes out of the same centre, as bright as the share of the sun that is left (on the light page whole, until the sun is gone: it does not dim, only the sun's size follows the crescent)
     const rayStartPx = rayStart(sr, cres.area, cres.width, SUN.cover.disc);
     let flaring = false;
-    if (FX.on.flare) flaring = this.flare.sync({ bufW: f.bufW, bufH: f.bufH, x: f.ahead ? bx : f.x, y: f.ahead ? by : f.y, ahead: f.ahead, amount: f.amount, visible: this.dark ? cres.area : Math.sqrt(cres.area), rayDim: this.dark ? undefined : 1, r: rayStartPx, size: Math.sqrt(cres.area), pulse: f.pulse, set: (1 - halo) * SUN.cover.redden * air } satisfies FlareFrame);
+    if (FX.on.flare) flaring = this.flare.sync({ bufW: f.bufW, bufH: f.bufH, x: f.ahead ? bx : f.x, y: f.ahead ? by : f.y, ahead: f.ahead, amount: f.amount, axis: f.axis, visible: this.dark ? cres.area : Math.sqrt(cres.area), rayDim: this.dark ? undefined : 1, r: rayStartPx, size: Math.sqrt(cres.area), pulse: f.pulse, set: (1 - halo) * SUN.cover.redden * air } satisfies FlareFrame);
     else this.flare.hide();
     if (!p) return flaring || blob;
     const u = this.mat.uniforms;

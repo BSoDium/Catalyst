@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { coverImageProps } from "~/lib/cover-image";
+import { calmPlace, energyOf, lumaOf, meanUnder } from "~/lib/calm";
 import { findHorizon } from "~/lib/horizon";
 import { frameOf, type Frame } from "~/lib/trip-projection";
 import type { Trip } from "~/lib/journeys";
@@ -60,6 +61,15 @@ const FACES: Record<string, { font: string; axis?: { base: number; min: number }
   script: { font: "var(--font-script)" },
   mono: { font: "var(--font-meta)" },
 };
+/** A flight longer than this (km) is not what the map is framed on. */
+const FAR_FLIGHT_KM = 2500;
+const distanceKm = (a: { lon: number; lat: number }, b: { lon: number; lat: number }) => {
+  const rad = Math.PI / 180;
+  const dLat = (b.lat - a.lat) * rad;
+  const dLon = (b.lon - a.lon) * rad;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLon / 2) ** 2;
+  return 12742 * Math.asin(Math.min(1, Math.sqrt(h)));
+};
 /** The share of the poster's width a word may take before it is condensed. */
 const WORD_SOFT = 0.78;
 
@@ -111,6 +121,9 @@ function linesPath(frame: Frame, lines: Lines | null, w: number, h: number, ring
   }
   return out.join("");
 }
+
+/** The map is this close (px a degree) or closer for the country borders to be drawn. */
+const BORDERS_PX_PER_DEG = 8;
 
 /** A trip within this many degrees is a regional one: the finer coastline (50 m) is used for its land, a bigger one gets the 110 m coastline. */
 const REGIONAL_DEG = 40;
@@ -186,10 +199,14 @@ const HORIZON_ROWS = 120;
  * The photograph is the site's own file (same origin), so the canvas can be read; if it cannot, there is no horizon and the photograph is placed as it is.
  */
 function useHorizon(src: string | undefined) {
-  const [state, setState] = useState<{ src: string; horizon: number | null; w: number; h: number } | null>(null);
+  const [state, setState] = useState<{ src: string; horizon: number | null; w: number; h: number; energy: Float32Array | null; luma: Float32Array | null; cols: number; rows: number } | null>(null);
   const read = useCallback((img: HTMLImageElement) => {
     if (!img.naturalWidth || !img.naturalHeight || !src) return;
     let horizon: number | null = null;
+    let energy: Float32Array | null = null;
+    let luma: Float32Array | null = null;
+    let eCols = 0;
+    let eRows = 0;
     try {
       const cols = HORIZON_COLS;
       const rows = Math.min(HORIZON_ROWS, Math.max(12, Math.round((cols * img.naturalHeight) / img.naturalWidth)));
@@ -214,11 +231,16 @@ function useHorizon(src: string | undefined) {
           colours.push([r / cols / 255, g / cols / 255, b / cols / 255]);
         }
         horizon = findHorizon(colours);
+        // (how much each cell of the small copy changes: where the picture is calm, for the map to fall on)
+        energy = energyOf(data, cols, rows);
+        luma = lumaOf(data, cols, rows);
+        eCols = cols;
+        eRows = rows;
       }
     } catch {
       horizon = null;
     }
-    setState((prev) => (prev && prev.src === src && prev.horizon === horizon && prev.w === img.naturalWidth ? prev : { src, horizon, w: img.naturalWidth, h: img.naturalHeight }));
+    setState((prev) => (prev && prev.src === src && prev.horizon === horizon && prev.w === img.naturalWidth ? prev : { src, horizon, w: img.naturalWidth, h: img.naturalHeight, energy, luma, cols: eCols, rows: eRows }));
   }, [src]);
   // (the picture may have loaded before React attached `onLoad`)
   const ref = useRef<HTMLImageElement>(null);
@@ -273,40 +295,62 @@ export function TripPoster({ trip, here, photo = true, className, wordFace }: { 
       alive = false;
     };
   }, [key, word]);
-  // The word's band under the route: its capital letters' height and a margin each side; none without a word. The land is not clipped to it.
-  const band = word ? Math.round(size * 0.74) + 2 * WORD_PAD : 0;
   // Where the route goes: above the word, across the width; or, when the poster is wide enough that the room to the right of the word can hold the route at the full height, there.
   const wordW = drawn + WORD_PAD;
   const side = word !== "" && w - wordW - 24 >= h * 0.9;
-  const box = side ? { x: wordW + 16, y: 0, w: w - wordW - 24, h } : { x: 0, y: 0, w, h: h - band };
+  // (above the word the route may run down to the top of its letters, over the tag and the gap: the word is quiet, and a strip the height of the whole band left a tall route no room)
+  const clear = word ? Math.round(size * 0.74) + WORD_PAD : 0;
+  const box = side ? { x: wordW + 16, y: 0, w: w - wordW - 24, h } : { x: 0, y: 0, w, h: h - clear };
   const backdrop = photo ? trip.photo : undefined;
-  const frame = useMemo(
-    () =>
-      frameOf(
-        trip.legPaths.flatMap((l) => Array.from({ length: l.points.length / 2 }, (_, k) => ({ lon: l.points[k * 2]!, lat: l.points[k * 2 + 1]! }))).concat(trip.stopPoints.map((s) => ({ lon: s.lon, lat: s.lat }))),
-        box.x,
-        box.y,
-        box.w,
-        box.h,
-        PAD,
-        { w, h: backdrop ? h + PHOTO_RUN : h },
-      ),
-    [trip, box.x, box.y, box.w, box.h, w, h, backdrop],
-  );
+  // The map is framed on the trip's land: a long flight (over `FAR_FLIGHT_KM`) is not what the trip is about, and fitting it in (the way home across an ocean) left the trip itself a squiggle in a corner of an empty map. The flight is still drawn,
+  // as far as the poster goes: it leaves the frame as a stub toward where it flies. A trip of nothing but long flights (or with none) is framed on all of it.
+  const framed = useMemo(() => {
+    const first = (l: Trip["legPaths"][number]) => ({ lon: l.points[0]!, lat: l.points[1]! });
+    const last = (l: Trip["legPaths"][number]) => ({ lon: l.points[l.points.length - 2]!, lat: l.points[l.points.length - 1]! });
+    const all = trip.legPaths.flatMap((l) => Array.from({ length: l.points.length / 2 }, (_, k) => ({ lon: l.points[k * 2]!, lat: l.points[k * 2 + 1]! }))).concat(trip.stopPoints.map((q) => ({ lon: q.lon, lat: q.lat })));
+    const long = (l: Trip["legPaths"][number]) => l.points.length >= 4 && l.mode === "flight";
+    // (the places the trip travels between on the ground; a flight is part of the frame only when both its ends are such places: a flight in from home and one back are not)
+    const ground = trip.legPaths.filter((l) => l.points.length >= 4 && !long(l)).flatMap((l) => [first(l), last(l)]);
+    const onGround = (q: { lon: number; lat: number }) => ground.some((e) => distanceKm(e, q) < 60);
+    const kept = trip.legPaths.filter((l) => l.points.length >= 4 && (!long(l) || (onGround(first(l)) && onGround(last(l)) && distanceKm(first(l), last(l)) <= FAR_FLIGHT_KM)));
+    if (ground.length === 0) return { pts: all, land: false };
+    if (kept.length === trip.legPaths.length) return { pts: all, land: false };
+    const ends = kept.flatMap((l) => [first(l), last(l)]);
+    const near = (q: { lon: number; lat: number }) => ends.some((e) => distanceKm(e, q) < 60);
+    const stops = trip.stopPoints.filter((q) => near(q)).map((q) => ({ lon: q.lon, lat: q.lat }));
+    return { pts: kept.flatMap((l) => Array.from({ length: l.points.length / 2 }, (_, k) => ({ lon: l.points[k * 2]!, lat: l.points[k * 2 + 1]! }))).concat(stops), land: true };
+  }, [trip]);
+  // (a trip framed on its land gets room round it: the continent runs on past the route on every side, so the route is in the map and the map is not a crop of it)
+  const pad = framed.land ? Math.min(PAD + Math.round(0.14 * Math.min(box.w, box.h)), Math.round(0.3 * Math.min(box.w, box.h))) : PAD;
+  const frame = useMemo(() => frameOf(framed.pts, box.x, box.y, box.w, box.h, pad, { w, h: backdrop ? h + PHOTO_RUN : h }), [framed, box.x, box.y, box.w, box.h, pad, w, h, backdrop]);
   const horizon = useHorizon(backdrop?.src);
   // The photograph placed so that its horizon is at the poster's bottom edge: scaled up as far as it takes to fill the layer above and below that line, never less than the cover size.
   const placed = (() => {
     const hz = horizon.horizon;
-    if (!backdrop || !hz || hz.horizon === null) return null;
-    const f = hz.horizon;
+    if (!backdrop || !hz) return null;
     const run = h + PHOTO_RUN;
+    // First the calmest place: the photograph where the map falls on its sky or its plain parts (`lib/calm.ts`), whatever it shows.
+    if (hz.energy) {
+      const calm = calmPlace(hz.energy, hz.cols, hz.rows, { w: hz.w, h: hz.h }, { w, run }, box);
+      if (calm) return { width: calm.width, height: calm.height, left: calm.left, top: calm.top } as const;
+    }
+    // Else the horizon where the picture has one: the seam between the poster and the figures.
+    if (hz.horizon === null) return null;
+    const f = hz.horizon;
     const k = Math.max(w / hz.w, h / (f * hz.h), PHOTO_RUN / ((1 - f) * hz.h), run / hz.h);
     return { width: k * hz.w, height: k * hz.h, left: (w - k * hz.w) / 2, top: h - f * k * hz.h } as const;
+  })();
+  // How much the land lightens the photograph, in percent of white: the brighter the part of the picture under the map, the more (16 at most); over a dark sky (Buenos Aires' storm) only a few, or the continents stand out of it.
+  const landShare = (() => {
+    const hz = horizon.horizon;
+    const m = placed && hz?.luma ? meanUnder(hz.luma, hz.cols, hz.rows, placed, box) : null;
+    return m === null ? 16 : Math.round(Math.min(16, Math.max(4, 3 + 22 * m)));
   })();
   // (the stops are all within the frame, so they all have a place on it)
   const stopAt = (s: { lon: number; lat: number }) => frame.at(s.lon, s.lat) ?? { x: -99, y: -99 };
   const coast = useCoast(frame.span < REGIONAL_DEG);
-  const borders = useBorders(frame.span < REGIONAL_DEG);
+  // (the country borders are for a map that is close enough to read them: at a continent's distance they are a net over the land, `BORDERS_PX_PER_DEG`)
+  const borders = useBorders(frame.span < REGIONAL_DEG && frame.pxPerDeg >= BORDERS_PX_PER_DEG);
   // (the borders are the field's colour, the ocean's: a gap in the land, not a line over it)
   const borderPath = useMemo(() => linesPath(frame, borders, w, backdrop ? h + PHOTO_RUN : h), [frame, borders, w, h, backdrop]);
   const land = useMemo(() => linesPath(frame, coast, w, backdrop ? h + PHOTO_RUN : h, true), [frame, coast, w, h, backdrop]);
@@ -337,9 +381,26 @@ export function TripPoster({ trip, here, photo = true, className, wordFace }: { 
   const landMask = landFade ? `url(#${maskId}-m)` : undefined;
   const current = trip.stopPoints.find((s) => s.slug === here);
   // The named places: the start, the end (one label when they are the same place), this one and the highlights (`Trip.highlights`).
-  const named = [trip.stopPoints[0], trip.stopPoints[trip.stopPoints.length - 1], current, ...trip.highlights.map((slug) => trip.stopPoints.find((s) => s.slug === slug))]
-    .filter((s): s is Trip["stopPoints"][number] => Boolean(s))
-    .filter((s, i, all) => all.findIndex((o) => o.slug === s.slug) === i);
+  const inBox = (q: { x: number; y: number }) => q.x >= box.x + 4 && q.x <= box.x + box.w - 4 && q.y >= box.y + 8 && q.y <= box.y + box.h - 4;
+  // (this place first, then the start and the end, then the highlights; a name that is outside the frame, such as the far end of a flight home, or that would run over one already placed, is left out)
+  const candidates = [current, trip.stopPoints[0], trip.stopPoints[trip.stopPoints.length - 1], ...trip.highlights.map((slug) => trip.stopPoints.find((q) => q.slug === slug))]
+    .filter((q): q is Trip["stopPoints"][number] => Boolean(q))
+    .filter((q, i, all) => all.findIndex((o) => o.slug === q.slug) === i);
+  const named: Array<{ s: Trip["stopPoints"][number]; x: number; y: number; end: boolean }> = [];
+  const taken: Array<{ x0: number; x1: number; y0: number; y1: number }> = [];
+  for (const q of candidates) {
+    const at = stopAt(q);
+    if (!inBox(at)) continue;
+    const end = at.x > w * 0.6;
+    const width = q.name.length * 6.8;
+    const x = end ? at.x - 9 : at.x + 9;
+    const y = Math.max(12, at.y - 7);
+    const rect = end ? { x0: x - width, x1: x } : { x0: x, x1: x + width };
+    const clash = taken.some((t) => rect.x0 < t.x1 + 4 && rect.x1 > t.x0 - 4 && y - 10 < t.y1 && y + 3 > t.y0);
+    if (clash) continue;
+    taken.push({ ...rect, y0: y - 10, y1: y + 3 });
+    named.push({ s: q, x, y, end });
+  }
   const tone = (share: number) => `color-mix(in srgb, var(--foreground) ${share}%, var(--accent))`;
   // The same ink on the field's colour with or without a photograph: the photograph is veiled in the FIELD's colour (light in the light theme, dark in the dark one), so it sits close to the card's background instead of standing out of it.
   const ink = "var(--foreground)";
@@ -366,8 +427,9 @@ export function TripPoster({ trip, here, photo = true, className, wordFace }: { 
         // The land on a photograph runs as far as the photograph does and fades with it (the same mask), so the map is not cut at the poster's edge while the picture goes on.
         <svg aria-hidden="true" width={w} height={h + PHOTO_RUN} viewBox={`0 0 ${w} ${h + PHOTO_RUN}`} className="pointer-events-none absolute inset-x-0 top-0 block" style={{ maskImage: fade(h), WebkitMaskImage: fade(h) }}>
           {fadeDefs}
-          <path d={land} mask={landMask} style={{ fill: "color-mix(in srgb, #fff 16%, transparent)" }} stroke="none" />
-          {borderPath && <path d={borderPath} fill="none" stroke="var(--accent)" strokeWidth={1.25} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />}
+          <path d={land} mask={landMask} style={{ fill: `color-mix(in srgb, #fff ${landShare}%, transparent)` }} stroke="none" />
+          {/* (on a photograph the borders are lines of the route's own ink, faint: lighter than the picture like the route, not darker; on the flat field they are gaps in the land, the ocean's colour) */}
+          {borderPath && <path d={borderPath} fill="none" stroke={ink} strokeOpacity={0.32} strokeWidth={1} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />}
         </svg>
       )}
       <svg data-slot="trip-poster" viewBox={`0 0 ${w} ${h}`} width={w} height={h} role="img" aria-label={`Map of the trip, ${trip.from} to ${trip.to}`} className="relative block overflow-hidden">
@@ -380,8 +442,12 @@ export function TripPoster({ trip, here, photo = true, className, wordFace }: { 
           <text ref={textRef} aria-hidden="true" x={0} y={-1000} fontSize={nominal} style={{ visibility: "hidden", fontFamily: wordFont, fontWeight: 800, letterSpacing: "-0.03em", ...(face.axis ? { fontStretch: `${face.axis.base}%` } : {}) }}>
             {word}
           </text>
-          <text data-slot="trip-word" transform={`translate(${WORD_PAD - Math.round(size * 0.05)} ${h - WORD_PAD}) scale(${face.axis ? "1" : condense.toFixed(3)} 1)`} fontSize={size} style={{ fill: backdrop ? "color-mix(in srgb, var(--foreground) calc(14% + 66% * var(--g, 1) * var(--g, 1)), transparent)" : `color-mix(in srgb, var(--foreground) calc(10% + 52% * var(--g, 1) * var(--g, 1)), var(--accent))`, fontFamily: wordFont, letterSpacing: "-0.03em", ...(face.axis ? { fontStretch: `${(face.axis.base * condense).toFixed(1)}%` } : {}) }}>
+          <text data-slot="trip-word" transform={`translate(${WORD_PAD - Math.round(size * 0.05)} ${h - WORD_PAD}) scale(${face.axis ? "1" : condense.toFixed(3)} 1)`} fontSize={size} style={{ fill: backdrop ? "color-mix(in srgb, var(--foreground) calc(12% + 40% * var(--g, 1) * var(--g, 1)), transparent)" : `color-mix(in srgb, var(--foreground) calc(8% + 24% * var(--g, 1) * var(--g, 1)), var(--accent))`, fontFamily: wordFont, letterSpacing: "-0.03em", ...(face.axis ? { fontStretch: `${(face.axis.base * condense).toFixed(1)}%` } : {}) }}>
             {word}
+          </text>
+          {/* (what the word is: the trip's code name, not the place's name; the poster's own small mono type, quiet and only on the card in front) */}
+          <text data-slot="trip-word-tag" aria-hidden="true" x={WORD_PAD} y={h - WORD_PAD - Math.round(size * 0.74) - 9} fontSize={11} style={{ fill: "var(--foreground)", fontFamily: "var(--font-meta)", fontWeight: 500, letterSpacing: "0.14em", fillOpacity: "clamp(0, calc((var(--g, 1) - 0.4) * 1.1), 0.62)" as unknown as number }}>
+            CODE NAME
           </text>
           </>
         )}
@@ -397,17 +463,12 @@ export function TripPoster({ trip, here, photo = true, className, wordFace }: { 
           return <rect key={`${s.slug}-${i}`} x={q.x - 1.75} y={q.y - 1.75} width={3.5} height={3.5} fill={ink} />;
         })}
         {current && <rect x={stopAt(current).x - 6} y={stopAt(current).y - 6} width={12} height={12} fill="none" stroke={ink} strokeWidth={1.5} vectorEffect="non-scaling-stroke" />}
-        {named.map((s) => {
-          const q = stopAt(s);
-          const x = q.x;
-          const end = x > w * 0.6;
+        {named.map(({ s, x, y, end }) => (
           // (a halo in the backdrop's colour keeps a name readable where the route or a border runs under it)
-          return (
-            <text key={s.slug} x={end ? x - 9 : x + 9} y={Math.max(12, q.y - 7)} textAnchor={end ? "end" : "start"} fontSize={10} stroke={halo} strokeWidth={3} strokeLinejoin="round" style={{ fill: ink, paintOrder: "stroke", fontFamily: "var(--font-meta)", fontWeight: 700, letterSpacing: "0.04em" }}>
-              {s.name.toUpperCase()}
-            </text>
-          );
-        })}
+          <text key={s.slug} x={x} y={y} textAnchor={end ? "end" : "start"} fontSize={10} stroke={halo} strokeWidth={3} strokeLinejoin="round" style={{ fill: ink, paintOrder: "stroke", fontFamily: "var(--font-meta)", fontWeight: 700, letterSpacing: "0.04em" }}>
+            {s.name.toUpperCase()}
+          </text>
+        ))}
       </svg>
     </div>
   );
