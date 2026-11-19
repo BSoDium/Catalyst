@@ -41,6 +41,20 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
       const { RoomEnvironment } = await import("three/examples/jsm/environments/RoomEnvironment.js");
       if (cancelled) return;
 
+      // The globe sets `ColorManagement.enabled = false` for the whole page when its module loads (see globe/engine/renderer.ts), and three.js's colour handling is global: with it off, the hex colours and the textures here
+      // would not be converted to linear and the picture would come out far too light (the ground a grey slab on the dark page). So everything here runs with it on, and puts the switch back as it found it: the
+      // globe never sees it change (JavaScript does not interleave: the setup runs in one go and the later entry points are wrapped, `cm`).
+      const cm = <T,>(fn: () => T): T => {
+        const prev = THREE.ColorManagement.enabled;
+        THREE.ColorManagement.enabled = true;
+        try {
+          return fn();
+        } finally {
+          THREE.ColorManagement.enabled = prev;
+        }
+      };
+      cm(() => {
+
       const layout = layoutActivity(activity);
       const lite = isLite();
       const samples = lite ? 32 : SAMPLES;
@@ -166,7 +180,7 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
           const cy = (z + GLOW_PAD) * PX;
           const r = (0.9 + reach * (0.5 + t * 1.5)) * PX;
           const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-          const a = 0.004 + 0.3 * t * t + 0.03 * t;
+          const a = 0.004 + 0.2 * t * t + 0.025 * t;
           g.addColorStop(0, `rgba(${rgb},${a})`);
           g.addColorStop(0.45, `rgba(${rgb},${a * 0.35})`);
           g.addColorStop(1, `rgba(${rgb},0)`);
@@ -236,7 +250,7 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
         const specs: Spec[] = [];
         // (a quiet day still has a faint light at its heart, an old bulb struggling: the floor of the emission)
         // (the lift is for the quietest days only: it fades out well before a busy one)
-        const emit = (t: number) => 0.3 + 0.1 * (1 - t) ** 3 + 1.6 * t * t + 0.4 * t;
+        const emit = (t: number) => 0.3 + 0.1 * (1 - t) ** 3 + 0.95 * t * t + 0.3 * t;
         const layer = (cell: number, src: "waka" | "github", x: number, z: number, y0: number, t: number, [low, high]: [Color, Color]) => {
           const h = 0.18 + t * LAYER_MAX;
           picks.push({ cell, x, z, y0, y1: y0 + h });
@@ -308,7 +322,7 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
           const [src, tier] = shellTier.get(key)!;
           const mat = blockMaterial.clone();
           mat.emissive.copy(tones[src][1]);
-          mat.emissiveIntensity = dark ? [0.02, 0.12, 0.3][tier]! : 0;
+          mat.emissiveIntensity = dark ? [0.02, 0.1, 0.2][tier]! : 0;
           // (the room's reflections are a light too: a quiet day must not shine with them)
           // (a material's own `envMap` is what `envMapIntensity` scales; without it the scene's environment is used as it is)
           mat.envMap = dark ? env : null;
@@ -443,7 +457,7 @@ void main(){
         fragmentShader: `uniform sampler2D map; uniform sampler2D near; uniform sampler2D far; uniform float bloom; varying vec2 vUv;
 void main(){
   vec4 c = texture2D(map, vUv);
-  if (bloom > 0.) c.rgb += bloom * (texture2D(near, vUv).rgb * 0.5 + texture2D(far, vUv).rgb * 0.35);
+  if (bloom > 0.) c.rgb += bloom * (texture2D(near, vUv).rgb * 0.35 + texture2D(far, vUv).rgb * 0.25);
   gl_FragColor = c;
 #include <colorspace_fragment>
 }`,
@@ -519,7 +533,8 @@ void main(){
       };
 
       const frames: number[] = [];
-      const frame = () => {
+      const frame = () => cm(frameBody);
+      const frameBody = () => {
         raf = 0;
         const f0 = performance.now();
         // the sun moves on a disc (the soft shadow), the camera a sub-pixel (the anti-aliasing)
@@ -709,7 +724,8 @@ void main(){
         resizeTimer = window.setTimeout(fit, 180);
       });
       ro.observe(el);
-      const rethink = () => {
+      const rethink = () => cm(rethinkBody);
+      const rethinkBody = () => {
         soften();
         pinned = false;
         if (current !== -1) announce(-1);
@@ -750,6 +766,7 @@ void main(){
         renderer.dispose();
         renderer.domElement.remove();
       };
+      });
     })();
     return () => {
       cancelled = true;
