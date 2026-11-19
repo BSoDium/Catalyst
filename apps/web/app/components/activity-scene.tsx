@@ -180,7 +180,7 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
           const cy = (z + GLOW_PAD) * PX;
           const r = (0.9 + reach * (0.5 + t * 1.5)) * PX;
           const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-          const a = 0.004 + 0.2 * t * t + 0.025 * t;
+          const a = 0.004 + 0.26 * t * t + 0.03 * t;
           g.addColorStop(0, `rgba(${rgb},${a})`);
           g.addColorStop(0.45, `rgba(${rgb},${a * 0.35})`);
           g.addColorStop(1, `rgba(${rgb},0)`);
@@ -250,7 +250,7 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
         const specs: Spec[] = [];
         // (a quiet day still has a faint light at its heart, an old bulb struggling: the floor of the emission)
         // (the lift is for the quietest days only: it fades out well before a busy one)
-        const emit = (t: number) => 0.3 + 0.1 * (1 - t) ** 3 + 0.95 * t * t + 0.3 * t;
+        const emit = (t: number) => 0.3 + 0.1 * (1 - t) ** 3 + 1.3 * t * t + 0.4 * t;
         const layer = (cell: number, src: "waka" | "github", x: number, z: number, y0: number, t: number, [low, high]: [Color, Color]) => {
           const h = 0.18 + t * LAYER_MAX;
           picks.push({ cell, x, z, y0, y1: y0 + h });
@@ -323,7 +323,7 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
           const [src, tier] = shellTier.get(key)!;
           const mat = blockMaterial.clone();
           mat.emissive.copy(tones[src][1]);
-          mat.emissiveIntensity = dark ? [0.02, 0.06, 0.11][tier]! : 0;
+          mat.emissiveIntensity = dark ? [0.02, 0.08, 0.15][tier]! : 0;
           // (the room's reflections are a light too: a quiet day must not shine with them)
           // (a material's own `envMap` is what `envMapIntensity` scales; without it the scene's environment is used as it is)
           mat.envMap = dark ? env : null;
@@ -458,7 +458,7 @@ void main(){
         fragmentShader: `uniform sampler2D map; uniform sampler2D near; uniform sampler2D far; uniform float bloom; varying vec2 vUv;
 void main(){
   vec4 c = texture2D(map, vUv);
-  if (bloom > 0.) c.rgb += bloom * (texture2D(near, vUv).rgb * 0.35 + texture2D(far, vUv).rgb * 0.25);
+  if (bloom > 0.) c.rgb += bloom * (texture2D(near, vUv).rgb * 0.45 + texture2D(far, vUv).rgb * 0.32);
   gl_FragColor = c;
 #include <colorspace_fragment>
 }`,
