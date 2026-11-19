@@ -2349,6 +2349,18 @@
       background: color-mix(in srgb, #000 55%, transparent);
     }
   }
+  /* On a touch screen there is no hover to show them: the arrows are there, as small round plates, with no blur (a backdrop filter over a row that is moving every frame is what a phone cannot afford). */
+  @media (hover: none), (pointer: coarse) {
+    .place-gallery [data-slot="scroll-row-arrow"],
+    .trip-rail [data-slot="scroll-row-arrow"] {
+      opacity: 1;
+      scale: 1;
+      pointer-events: auto;
+      backdrop-filter: none;
+      background: color-mix(in srgb, #000 58%, transparent);
+      box-shadow: none;
+    }
+  }
   .place-gallery [data-slot="scroll-row-arrow"]::before,
   .trip-rail [data-slot="scroll-row-arrow"]::before {
     display: none;

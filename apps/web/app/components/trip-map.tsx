@@ -340,6 +340,12 @@ export function TripPoster({ trip, here, photo = true, className, wordFace }: { 
     const k = Math.max(w / hz.w, h / (f * hz.h), PHOTO_RUN / ((1 - f) * hz.h), run / hz.h);
     return { width: k * hz.w, height: k * hz.h, left: (w - k * hz.w) / 2, top: h - f * k * hz.h } as const;
   })();
+  // A busy picture is quieter: the more detail there is in the part of it that shows (the mean energy of the layer: 0.03 is a sky and a plain skyline, 0.06 a crowd and a colourful street), the more it is faded into the card's ground, down to half (owner, 2026-11-19: Moscow's was too busy for the content).
+  const photoOpacity = (() => {
+    const hz = horizon.horizon;
+    const busy = placed && hz?.energy ? meanUnder(hz.energy, hz.cols, hz.rows, placed, { x: 0, y: 0, w, h: h + PHOTO_RUN }) : null;
+    return busy === null ? 1 : 1 - 0.5 * Math.min(1, Math.max(0, (busy - 0.03) / 0.035));
+  })();
   // How much the land lightens the photograph, in percent of white: the brighter the part of the picture under the map, the more (16 at most); over a dark sky (Buenos Aires' storm) only a few, or the continents stand out of it.
   const landShare = (() => {
     const hz = horizon.horizon;
@@ -388,18 +394,28 @@ export function TripPoster({ trip, here, photo = true, className, wordFace }: { 
     .filter((q, i, all) => all.findIndex((o) => o.slug === q.slug) === i);
   const named: Array<{ s: Trip["stopPoints"][number]; x: number; y: number; end: boolean }> = [];
   const taken: Array<{ x0: number; x1: number; y0: number; y1: number }> = [];
+  // The code name and its tag are in the poster's foot: a label is never over them (it goes beside its stop on the other side, or below it, or is left out)
+  const keepOut = word ? { x0: WORD_PAD - 2, x1: WORD_PAD + drawn + 4, y0: h - WORD_PAD - Math.round(size * 0.74) - 18, y1: h } : null;
   for (const q of candidates) {
     const at = stopAt(q);
     if (!inBox(at)) continue;
-    const end = at.x > w * 0.6;
+    const toEnd = at.x > w * 0.6;
     const width = q.name.length * 6.8;
-    const x = end ? at.x - 9 : at.x + 9;
-    const y = Math.max(12, at.y - 7);
-    const rect = end ? { x0: x - width, x1: x } : { x0: x, x1: x + width };
-    const clash = taken.some((t) => rect.x0 < t.x1 + 4 && rect.x1 > t.x0 - 4 && y - 10 < t.y1 && y + 3 > t.y0);
-    if (clash) continue;
-    taken.push({ ...rect, y0: y - 10, y1: y + 3 });
-    named.push({ s: q, x, y, end });
+    let placedLabel: { x: number; y: number; end: boolean; rect: { x0: number; x1: number; y0: number; y1: number } } | null = null;
+    for (const [flipSide, below] of [[false, false], [false, true], [true, false], [true, true]] as const) {
+      const end = flipSide ? !toEnd : toEnd;
+      const x = end ? at.x - 9 : at.x + 9;
+      const y = Math.max(12, below ? at.y + 17 : at.y - 7);
+      const rect = { x0: end ? x - width : x, x1: end ? x : x + width, y0: y - 10, y1: y + 3 };
+      const clash = taken.some((t) => rect.x0 < t.x1 + 4 && rect.x1 > t.x0 - 4 && rect.y0 < t.y1 && rect.y1 > t.y0);
+      const onWord = keepOut !== null && rect.x0 < keepOut.x1 && rect.x1 > keepOut.x0 && rect.y0 < keepOut.y1 && rect.y1 > keepOut.y0;
+      if (clash || onWord || rect.x0 < 2 || rect.x1 > w - 2) continue;
+      placedLabel = { x, y, end, rect };
+      break;
+    }
+    if (!placedLabel) continue;
+    taken.push(placedLabel.rect);
+    named.push({ s: q, x: placedLabel.x, y: placedLabel.y, end: placedLabel.end });
   }
   const tone = (share: number) => `color-mix(in srgb, var(--foreground) ${share}%, var(--accent))`;
   // The same ink on the field's colour with or without a photograph: the photograph is veiled in the FIELD's colour (light in the light theme, dark in the dark one), so it sits close to the card's background instead of standing out of it.
@@ -411,7 +427,7 @@ export function TripPoster({ trip, here, photo = true, className, wordFace }: { 
         // The photograph runs on under the figures below the poster (`PHOTO_RUN`) and fades into the card's background there (`maskImage`), so it ends in no edge: its dynamic range
         // is held in a band the ink reads on in either theme (`TripPhotoFilters`), not dimmed by a veil. Where it has a horizon, the picture is placed so that the horizon is the seam
         // between the poster and the figures (the poster's bottom edge): sky and map above it, the ground under it.
-        <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 -z-10" style={{ height: h + PHOTO_RUN, maskImage: fade(h), WebkitMaskImage: fade(h) }}>
+        <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 -z-10" style={{ height: h + PHOTO_RUN, maskImage: fade(h), WebkitMaskImage: fade(h), opacity: photoOpacity, willChange: "transform" }}>
           <img
             {...coverImageProps(backdrop, `${w}px`)}
             alt=""
@@ -419,7 +435,7 @@ export function TripPoster({ trip, here, photo = true, className, wordFace }: { 
             onLoad={(e) => horizon.read(e.currentTarget)}
             ref={horizon.ref}
             className={cn("trip-photo", placed ? "absolute max-w-none" : "size-full object-cover")}
-            style={placed ?? undefined}
+            style={placed ? { width: placed.width, height: placed.height, left: placed.left, top: placed.top } : undefined}
           />
         </div>
       )}
