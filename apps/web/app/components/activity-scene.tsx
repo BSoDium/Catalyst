@@ -92,22 +92,23 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
       };
       // One column a day: WakaTime's coding time at the bottom, GitHub's contributions on top of it. Each layer's height and its tint follow how busy the day was (pale and low when quiet, saturated and tall when busy).
       const LAYER_MAX = 2.3;
+      let tallest = 1;
       const LIFT = 0.04;
       const build = (stack: { waka: Matrix; github: Matrix }, tones: { waka: [Color, Color]; github: [Color, Color] }) => {
         const shells: BufferGeometry[] = [];
         const cores: BufferGeometry[] = [];
-        const white = new THREE.Color(0xffffff);
         const layer = (x: number, z: number, y0: number, t: number, [low, high]: [Color, Color]) => {
           const h = 0.18 + t * LAYER_MAX;
           const shell = new RoundedBoxGeometry(0.92, h, 0.92, 4, Math.min(0.16, h / 2.2));
           shell.translate(x, y0 + h / 2, z);
-          paint(shell, low.clone().lerp(high, t).lerp(white, 0.22 * (1 - t)));
+          paint(shell, low.clone().lerp(high, t));
           shells.push(shell);
           const hc = h * 0.8;
           const core = new RoundedBoxGeometry(0.5, hc, 0.5, 3, Math.min(0.1, hc / 2.2));
           core.translate(x, y0 + hc / 2 + 0.03, z);
           paint(core, low.clone().lerp(high, t));
           cores.push(core);
+          tallest = Math.max(tallest, y0 + h);
           return y0 + h;
         };
         stack.github.cells.forEach((g, i) => {
@@ -146,11 +147,11 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
         blocks.clear();
         const dark = isDark();
         const c = (hex: number) => new THREE.Color(hex);
-        // WakaTime: embers (dull brown to a hot orange); GitHub: violet to a bright magenta, on top
+        // each source has its own hue and the level of the day is the brightness: a quiet day is a dim dark shade, a busy one the brightest (GitHub: orange; WakaTime: violet)
         blocks.add(
           build(
             { waka: layout.wakatime, github: layout.github },
-            { waka: [c(dark ? 0x6b3a22 : 0xd9a27a), c(dark ? 0xff7a2a : 0xf2560f)], github: [c(dark ? 0x4b3a7a : 0xa595d6), c(dark ? 0xd86bff : 0x9c27d6)] },
+            { waka: [c(dark ? 0x2a1f55 : 0x4a3a8c), c(dark ? 0xa56bff : 0xb58cff)], github: [c(dark ? 0x4a2410 : 0x7a3a14), c(dark ? 0xff8a1f : 0xffa23a)] },
           ),
         );
       };
@@ -198,19 +199,20 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
         uniforms: { map: { value: sceneRT.texture } },
         vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0., 1.); }",
         fragmentShader: "uniform sampler2D map; varying vec2 vUv; void main(){ gl_FragColor = texture2D(map, vUv); }",
+        // a running average (new * k + old * (1 - k), k = 1 / (n + 1)): the values stay in 0..1, where a half float is precise; a plain sum grows to ~100 and its rounding errors tint the whole picture
         blending: THREE.CustomBlending,
         blendEquation: THREE.AddEquation,
-        blendSrc: THREE.OneFactor,
-        blendDst: THREE.OneFactor,
-        blendSrcAlpha: THREE.OneFactor,
-        blendDstAlpha: THREE.OneFactor,
+        blendSrc: THREE.ConstantAlphaFactor,
+        blendDst: THREE.OneMinusConstantAlphaFactor,
+        blendSrcAlpha: THREE.ConstantAlphaFactor,
+        blendDstAlpha: THREE.OneMinusConstantAlphaFactor,
         depthTest: false,
         depthWrite: false,
       });
       const showMat = new THREE.ShaderMaterial({
-        uniforms: { map: { value: accumRT.texture }, n: { value: 1 } },
+        uniforms: { map: { value: accumRT.texture } },
         vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0., 1.); }",
-        fragmentShader: "uniform sampler2D map; uniform float n; varying vec2 vUv;\nvoid main(){\n gl_FragColor = texture2D(map, vUv) / n;\n#include <colorspace_fragment>\n}",
+        fragmentShader: "uniform sampler2D map; varying vec2 vUv;\nvoid main(){\n gl_FragColor = texture2D(map, vUv);\n#include <colorspace_fragment>\n}",
         depthTest: false,
         depthWrite: false,
       });
@@ -245,7 +247,7 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
         camera.updateMatrixWorld();
         const inv = camera.matrixWorldInverse;
         let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
-        for (const cx of [0, width]) for (const cy of [0, 5.2]) for (const cz of [0, total]) {
+        for (const cx of [0, width]) for (const cy of [0, tallest]) for (const cz of [0, total]) {
           const p = new THREE.Vector3(cx, cy, cz).applyMatrix4(inv);
           x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y);
         }
@@ -274,11 +276,10 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
         renderer.render(scene, camera);
         renderer.setRenderTarget(accumRT);
         renderer.autoClear = false;
-        if (n === 0) renderer.clear();
+        addMat.blendAlpha = 1 / (n + 1);
         renderer.render(quadScene, quadCam);
         renderer.autoClear = true;
         n++;
-        showMat.uniforms.n!.value = n;
         renderer.setRenderTarget(null);
         renderer.clear();
         renderer.render(showQuad, quadCam);
