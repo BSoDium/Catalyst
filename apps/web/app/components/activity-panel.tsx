@@ -236,7 +236,7 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
   const box = useRef<HTMLElement>(null);
   const [seen, setSeen] = useState(false);
   const [gl, setGl] = useState(true);
-  // a narrow page gets the year in three strips (a squarer slab) instead of one long one
+  // a narrow page gets the year in four strips (a squarer slab) instead of one long one
   const [narrow, setNarrow] = useState(false);
   useEffect(() => {
     setGl(webgl2());
@@ -267,14 +267,14 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
           <FlatMatrix matrix={flat.github} tone="#0fbf3e" />
         </div>
       ) : (
-        <div ref={sceneBox} className="relative aspect-[3.97/1] w-full max-md:aspect-[1.7/1]">
+        <div ref={sceneBox} className="relative aspect-[3.97/1] w-full max-md:aspect-[1.2/1]">
           <div className={`absolute inset-0 transition-opacity duration-700 ${ready ? "opacity-0" : ""}`}>
             <Waiting strips={1} aspect={3.97} className="max-md:hidden" />
-            <Waiting strips={3} aspect={1.7} className="hidden max-md:block" />
+            <Waiting strips={4} aspect={1.2} className="hidden max-md:block" />
           </div>
           {seen && activity && (
             <Suspense fallback={null}>
-              <ActivityScene activity={activity} strips={narrow ? 3 : 1} onReady={() => setReady(true)} onHover={setHover} className="absolute inset-0 outline-offset-[-2px] focus-visible:outline-2 focus-visible:outline-[var(--ring)]" />
+              <ActivityScene activity={activity} strips={narrow ? 4 : 1} onReady={() => setReady(true)} onHover={setHover} className="absolute inset-0 outline-offset-[-2px] focus-visible:outline-2 focus-visible:outline-[var(--ring)]" />
             </Suspense>
           )}
           {lastHover.current && (
