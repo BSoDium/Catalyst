@@ -65,6 +65,8 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
         specularIntensity: 1,
         envMapIntensity: 1.4,
       });
+      // the empty days: a plain dull tile in the dark theme (not glass: glass reflects the room and is never dim)
+      const tileMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.75, metalness: 0, envMapIntensity: 0.25 });
       // the page's own background, read as the browser resolves it: the ground is that colour (so there is something to refract, and no seam with the page)
       const pageColour = () => {
         const probe = document.createElement("canvas");
@@ -85,24 +87,44 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
       const coreMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.45, metalness: 0 });
       // (in the dark theme the cores are lights: unlit, their colour is the light they give out, brighter than 1 for a busy day, which the bloom and the glow on the ground turn into a glow)
       const glowMaterial = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false });
-      const paint = (g: BufferGeometry, col: Color) => {
+      const paint = (g: BufferGeometry, col: Color, glow = 0) => {
         const n = g.getAttribute("position").count;
         const colors = new Float32Array(n * 3);
         for (let i = 0; i < n; i++) col.toArray(colors, i * 3);
         g.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+        g.setAttribute("aGlow", new THREE.BufferAttribute(new Float32Array(n).fill(glow), 1));
         g.deleteAttribute("uv");
       };
       // The glow a column casts on the ground (the dark theme's answer to the shadows of the light one): a soft additive spot under each layer's column in its colour, as bright as the day was busy, painted on a canvas laid on the ground
       const GLOW_PAD = 5;
       const PX = 22;
-      const groundGlow = (stack: { waka: Matrix; github: Matrix }, tones: { waka: [Color, Color]; github: [Color, Color] }) => {
+      const groundLayers = (stack: { waka: Matrix; github: Matrix }, tones: { waka: [Color, Color]; github: [Color, Color] }, dark: boolean) => {
         const cw = Math.ceil((width + GLOW_PAD * 2) * PX);
         const ch = Math.ceil((total + GLOW_PAD * 2) * PX);
-        const cv = document.createElement("canvas");
-        cv.width = cw;
-        cv.height = ch;
+        const canvas = () => {
+          const c2 = document.createElement("canvas");
+          c2.width = cw;
+          c2.height = ch;
+          return c2;
+        };
+        const cv = canvas();
         const ctx = cv.getContext("2d")!;
         ctx.globalCompositeOperation = "lighter";
+        // the contact shadow (ambient occlusion on the ground): a soft dark spot under every column, wider and darker for a taller one
+        const ao = canvas();
+        const actx = ao.getContext("2d")!;
+        const occlude = (x: number, z: number, height: number) => {
+          const cx = (x + GLOW_PAD) * PX;
+          const cy = (z + GLOW_PAD) * PX;
+          const r = (0.75 + 0.22 * height) * PX;
+          const g = actx.createRadialGradient(cx, cy, 0.3 * PX, cx, cy, r);
+          const a = Math.min(0.85, (dark ? 0.5 : 0.28) + 0.06 * height);
+          g.addColorStop(0, `rgba(0,0,0,${a})`);
+          g.addColorStop(0.5, `rgba(0,0,0,${a * 0.4})`);
+          g.addColorStop(1, "rgba(0,0,0,0)");
+          actx.fillStyle = g;
+          actx.fillRect(cx - r, cy - r, r * 2, r * 2);
+        };
         const spot = (x: number, z: number, t: number, [low, high]: [Color, Color], reach: number) => {
           const col = low.clone().lerp(high, t);
           const rgb = `${Math.round(col.r * 255)},${Math.round(col.g * 255)},${Math.round(col.b * 255)}`;
@@ -121,20 +143,30 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
           const w = stack.waka.cells[i]!;
           const x = g.week * PITCH + 0.5;
           const z = g.day * PITCH + 0.5;
-          if (w.value > 0) spot(x, z, w.t, tones.waka, 1.1);
-          if (g.value > 0) spot(x, z, g.t, tones.github, 1.5);
+          if (dark && w.value > 0) spot(x, z, w.t, tones.waka, 1.1);
+          if (dark && g.value > 0) spot(x, z, g.t, tones.github, 1.5);
+          if (w.value > 0 || g.value > 0) occlude(x, z, (w.value > 0 ? 0.18 + w.t * LAYER_MAX : 0) + (g.value > 0 ? 0.18 + g.t * LAYER_MAX : 0));
         });
-        const tex = new THREE.CanvasTexture(cv);
-        tex.colorSpace = THREE.SRGBColorSpace;
-        const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
-        const mesh = new THREE.Mesh(new THREE.PlaneGeometry(cw / PX, ch / PX), mat);
-        mesh.rotation.x = -Math.PI / 2;
-        mesh.position.set(width / 2, 0.01, total / 2);
-        mesh.userData.dispose = () => {
-          tex.dispose();
-          mat.dispose();
+        const layers = new THREE.Group();
+        const disposers: (() => void)[] = [];
+        const plane = (source: HTMLCanvasElement, material: (tex: import("three").CanvasTexture) => import("three").MeshBasicMaterial, order: number) => {
+          const tex = new THREE.CanvasTexture(source);
+          tex.colorSpace = THREE.SRGBColorSpace;
+          const mat = material(tex);
+          const mesh = new THREE.Mesh(new THREE.PlaneGeometry(cw / PX, ch / PX), mat);
+          mesh.rotation.x = -Math.PI / 2;
+          mesh.position.set(width / 2, 0.01 + order * 0.002, total / 2);
+          mesh.renderOrder = order;
+          layers.add(mesh);
+          disposers.push(() => {
+            tex.dispose();
+            mat.dispose();
+          });
         };
-        return mesh;
+        if (dark) plane(cv, (map) => new THREE.MeshBasicMaterial({ map, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }), 1);
+        plane(ao, (map) => new THREE.MeshBasicMaterial({ map, transparent: true, depthWrite: false, toneMapped: false }), 2);
+        layers.userData.dispose = () => disposers.forEach((d) => d());
+        return layers;
       };
 
       // One column a day: WakaTime's coding time at the bottom, GitHub's contributions on top of it. Each layer's height and its tint follow how busy the day was (pale and low when quiet, saturated and tall when busy).
@@ -142,16 +174,23 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
       let tallest = 1;
       const LIFT = 0.04;
       const build = (stack: { waka: Matrix; github: Matrix }, tones: { waka: [Color, Color]; github: [Color, Color] }, dark: boolean) => {
-        const shells: BufferGeometry[] = [];
+        const shellsBy = new Map<string, BufferGeometry[]>();
+        const shellTier = new Map<string, ["waka" | "github", number]>();
         const cores: BufferGeometry[] = [];
-        const layer = (x: number, z: number, y0: number, t: number, [low, high]: [Color, Color]) => {
+        const tiles: BufferGeometry[] = [];
+        const layer = (src: "waka" | "github", x: number, z: number, y0: number, t: number, [low, high]: [Color, Color]) => {
           const h = 0.18 + t * LAYER_MAX;
           const shell = new RoundedBoxGeometry(0.92, h, 0.92, 4, Math.min(0.16, h / 2.2));
           shell.translate(x, y0 + h / 2, z);
           const hue = low.clone().lerp(high, t);
           // dark: the glass is nearly clear (the glow of its core shows through it); light: tinted by the level
-          paint(shell, dark ? hue.clone().lerp(new THREE.Color(0xffffff), 0.5) : hue);
-          shells.push(shell);
+          // the glass is clear with a hint of the colour (so it stays glass: the colour is carried by the core, seen through it)
+          paint(shell, hue.clone().lerp(new THREE.Color(0xffffff), dark ? 0.6 : 0.55));
+          // the glass of a busy day glows on its own surface too (dark theme): three steps of emission per source, each its own material
+          const tier = t < 0.34 ? 0 : t < 0.67 ? 1 : 2;
+          const key = `${src}${tier}`;
+          (shellsBy.get(key) ?? shellsBy.set(key, []).get(key)!).push(shell);
+          shellTier.set(key, [src, tier]);
           const hc = h * 0.8;
           const core = new RoundedBoxGeometry(0.5, hc, 0.5, 3, Math.min(0.1, hc / 2.2));
           core.translate(x, y0 + hc / 2 + 0.03, z);
@@ -167,26 +206,41 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
           if (w.value <= 0 && g.value <= 0) {
             const tile = new RoundedBoxGeometry(0.92, 0.1, 0.92, 3, 0.04);
             tile.translate(x, 0.05, z);
-            paint(tile, new THREE.Color(dark ? 0x2b323b : 0xe4e8ed));
-            shells.push(tile);
+            paint(tile, new THREE.Color(dark ? 0x23292f : 0xdadfe5));
+            tiles.push(tile);
             return;
           }
           let y = 0;
-          if (w.value > 0) y = layer(x, z, 0, w.t, tones.waka) + LIFT;
-          if (g.value > 0) layer(x, z, y, g.t, tones.github);
+          if (w.value > 0) y = layer("waka", x, z, 0, w.t, tones.waka) + LIFT;
+          if (g.value > 0) layer("github", x, z, y, g.t, tones.github);
         });
         const group = new THREE.Group();
-        if (dark) group.add(groundGlow(stack, tones));
-        const glass = new THREE.Mesh(mergeGeometries(shells), blockMaterial);
-        glass.castShadow = true;
-        glass.receiveShadow = true;
-        group.add(glass);
+        group.add(groundLayers(stack, tones, dark));
+        if (tiles.length) {
+          const tile = new THREE.Mesh(mergeGeometries(tiles), tileMaterial);
+          tile.receiveShadow = true;
+          group.add(tile);
+        }
+        const materials: import("three").MeshPhysicalMaterial[] = [];
+        for (const [key, list] of shellsBy) {
+          const [src, tier] = shellTier.get(key)!;
+          const mat = blockMaterial.clone();
+          mat.emissive.copy(tones[src][1]);
+          mat.emissiveIntensity = dark ? [0.03, 0.12, 0.3][tier]! : 0;
+          materials.push(mat);
+          const glass = new THREE.Mesh(mergeGeometries(list)!, mat);
+          glass.castShadow = true;
+          glass.receiveShadow = true;
+          group.add(glass);
+          list.forEach((p) => p.dispose());
+        }
+        group.userData.dispose = () => materials.forEach((m) => m.dispose());
         if (cores.length) {
           const core = new THREE.Mesh(mergeGeometries(cores), dark ? glowMaterial : coreMaterial);
           core.castShadow = !dark;
           group.add(core);
         }
-        [...shells, ...cores].forEach((p) => p.dispose());
+        [...cores, ...tiles].forEach((p) => p.dispose());
         return group;
       };
 
@@ -207,7 +261,7 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
         blocks.add(
           build(
             { waka: layout.wakatime, github: layout.github },
-            { waka: [c(dark ? 0x7a4dff : 0x4a3a8c), c(dark ? 0xc4a0ff : 0xb58cff)], github: [c(dark ? 0xff5a14 : 0x7a3a14), c(dark ? 0xffb040 : 0xffa23a)] },
+            { waka: [c(dark ? 0x5b2fe0 : 0x4a3a8c), c(dark ? 0x9a6bff : 0xb58cff)], github: [c(dark ? 0xff5a14 : 0x7a3a14), c(dark ? 0xffb040 : 0xffa23a)] },
             dark,
           ),
         );
@@ -230,10 +284,10 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
       sun.shadow.bias = -0.0004;
       sun.shadow.normalBias = 0.03;
       const sc = sun.shadow.camera;
-      sc.left = -width * 0.75;
-      sc.right = width * 0.75;
-      sc.top = total * 1.5;
-      sc.bottom = -total * 1.5;
+      sc.left = -width * 0.9;
+      sc.right = width * 0.9;
+      sc.top = total * 3.2;
+      sc.bottom = -total * 3.2;
       sc.near = 1;
       sc.far = 160;
       sun.target.position.set(width / 2, 0, total / 2);
@@ -265,30 +319,63 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
         depthTest: false,
         depthWrite: false,
       });
-      // what is shown: the average, in the dark theme with a bloom (the bright parts, a wide blur of what is brighter than 0.8, added back: a glowing block gives off a halo)
+      // the bloom (dark theme): what is brighter than 1 is cut out of the picture, blurred wide (a separable gaussian at half and at quarter resolution: smooth, no streaks) and added back, so a glowing block gives off a halo
+      const VERT = "varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0., 1.); }";
+      const rt = () => new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, depthBuffer: false });
+      const halfA = rt();
+      const halfB = rt();
+      const quarterA = rt();
+      const quarterB = rt();
+      const brightMat = new THREE.ShaderMaterial({
+        uniforms: { map: { value: accumRT.texture } },
+        vertexShader: VERT,
+        fragmentShader: "uniform sampler2D map; varying vec2 vUv; void main(){ vec3 c = texture2D(map, vUv).rgb; gl_FragColor = vec4(max(c - 1.0, 0.), 1.); }",
+        depthTest: false,
+        depthWrite: false,
+      });
+      const blurMat = new THREE.ShaderMaterial({
+        uniforms: { map: { value: halfA.texture }, stepv: { value: new THREE.Vector2() } },
+        vertexShader: VERT,
+        fragmentShader: `uniform sampler2D map; uniform vec2 stepv; varying vec2 vUv;
+void main(){
+  vec3 c = texture2D(map, vUv).rgb * 0.227027;
+  c += (texture2D(map, vUv + stepv * 1.3846154).rgb + texture2D(map, vUv - stepv * 1.3846154).rgb) * 0.3162162;
+  c += (texture2D(map, vUv + stepv * 3.2307692).rgb + texture2D(map, vUv - stepv * 3.2307692).rgb) * 0.0702703;
+  gl_FragColor = vec4(c, 1.);
+}`,
+        depthTest: false,
+        depthWrite: false,
+      });
+      // what is shown: the average, with the bloom added in the dark theme
       const showMat = new THREE.ShaderMaterial({
-        uniforms: { map: { value: accumRT.texture }, bloom: { value: 0 }, texel: { value: new THREE.Vector2(1, 1) } },
-        vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0., 1.); }",
-        fragmentShader: `uniform sampler2D map; uniform float bloom; uniform vec2 texel; varying vec2 vUv;
-vec3 halo(float radius, int count) {
-  vec3 sum = vec3(0.);
-  for (int i = 0; i < 40; i++) {
-    if (i >= count) break;
-    float a = float(i) * 2.39996;
-    float r = sqrt((float(i) + 0.5) / float(count)) * radius;
-    sum += max(texture2D(map, vUv + vec2(cos(a), sin(a)) * r * texel).rgb - 0.8, 0.);
-  }
-  return sum / float(count);
-}
+        uniforms: { map: { value: accumRT.texture }, bloom: { value: 0 }, near: { value: halfA.texture }, far: { value: quarterA.texture } },
+        vertexShader: VERT,
+        fragmentShader: `uniform sampler2D map; uniform sampler2D near; uniform sampler2D far; uniform float bloom; varying vec2 vUv;
 void main(){
   vec4 c = texture2D(map, vUv);
-  if (bloom > 0.) c.rgb += bloom * (halo(8., 32) * 0.45 + halo(26., 40) * 0.8);
+  if (bloom > 0.) c.rgb += bloom * (texture2D(near, vUv).rgb * 0.5 + texture2D(far, vUv).rgb * 0.35);
   gl_FragColor = c;
 #include <colorspace_fragment>
 }`,
         depthTest: false,
         depthWrite: false,
       });
+      const fsMesh = new THREE.Mesh(quadGeo, brightMat);
+      const fsScene = new THREE.Scene();
+      fsScene.add(fsMesh);
+      const pass = (material: import("three").ShaderMaterial, target: import("three").WebGLRenderTarget | null) => {
+        fsMesh.material = material;
+        renderer.setRenderTarget(target);
+        renderer.render(fsScene, quadCam);
+      };
+      const blur = (from: import("three").WebGLRenderTarget, to: import("three").WebGLRenderTarget, size: [number, number], radius: number) => {
+        blurMat.uniforms.map!.value = from.texture;
+        blurMat.uniforms.stepv!.value.set(radius / size[0], 0);
+        pass(blurMat, to);
+        blurMat.uniforms.map!.value = to.texture;
+        blurMat.uniforms.stepv!.value.set(0, radius / size[1]);
+        pass(blurMat, from);
+      };
       const addQuad = new THREE.Mesh(quadGeo, addMat);
       const showQuad = new THREE.Mesh(quadGeo, showMat);
       const quadScene = new THREE.Scene();
@@ -316,7 +403,10 @@ void main(){
         renderer.setSize(w, h, false);
         sceneRT.setSize(w, h);
         accumRT.setSize(w, h);
-        showMat.uniforms.texel!.value.set(1 / w, 1 / h);
+        halfA.setSize(Math.max(1, w >> 1), Math.max(1, h >> 1));
+        halfB.setSize(Math.max(1, w >> 1), Math.max(1, h >> 1));
+        quarterA.setSize(Math.max(1, w >> 1), Math.max(1, h >> 1));
+        quarterB.setSize(Math.max(1, w >> 1), Math.max(1, h >> 1));
         // the slab (with its tallest blocks) projected into the camera's frame fills the view, centred
         camera.updateMatrixWorld();
         const inv = camera.matrixWorldInverse;
@@ -354,6 +444,17 @@ void main(){
         renderer.render(quadScene, quadCam);
         renderer.autoClear = true;
         n++;
+        if (showMat.uniforms.bloom!.value > 0) {
+          // bright part -> half resolution, blurred twice (near halo); that, blurred again at quarter resolution (far halo)
+          pass(brightMat, halfA);
+          blur(halfA, halfB, [w >> 1, h >> 1], 1.5);
+          blur(halfA, halfB, [w >> 1, h >> 1], 3);
+          blurMat.uniforms.map!.value = halfA.texture;
+          blurMat.uniforms.stepv!.value.set(0, 0);
+          pass(blurMat, quarterA);
+          blur(quarterA, quarterB, [w >> 1, h >> 1], 3);
+          blur(quarterA, quarterB, [w >> 1, h >> 1], 5);
+        }
         renderer.setRenderTarget(null);
         renderer.clear();
         renderer.render(showQuad, quadCam);
@@ -390,8 +491,10 @@ void main(){
         blockMaterial.dispose();
         coreMaterial.dispose();
         glowMaterial.dispose();
+        tileMaterial.dispose();
         sceneRT.dispose();
         accumRT.dispose();
+        [halfA, halfB, quarterA, quarterB].forEach((t) => t.dispose());
         env.dispose();
         pmrem.dispose();
         renderer.dispose();
