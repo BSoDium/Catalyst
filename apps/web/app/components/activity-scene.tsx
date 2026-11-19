@@ -272,7 +272,7 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
         const specs: Spec[] = [];
         // (a quiet day still has a faint light at its heart, an old bulb struggling: the floor of the emission)
         // (the lift is for the quietest days only: it fades out well before a busy one)
-        const emit = (t: number) => 1.25 * (0.3 + 0.1 * (1 - t) ** 3 + 1.3 * t * t + 0.4 * t);
+        const emit = (t: number) => 1.1 * (0.3 + 0.1 * (1 - t) ** 3 + 1.3 * t * t + 0.4 * t);
         const layer = (cell: number, src: "waka" | "github", x: number, z: number, y0: number, t: number, [low, high]: [Color, Color]) => {
           const h = 0.18 + t * LAYER_MAX;
           picks.push({ cell, x, z, y0, y1: y0 + h });
@@ -330,8 +330,8 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
           shellTier.set(key, [src, tier]);
           const hc = h * 0.8;
           const core = new RoundedBoxGeometry(0.5, hc, 0.5, lite ? 1 : 2, Math.min(0.1, hc / 2.2));
-          core.translate(x, y0 + hc / 2 + 0.03, z);
-          paint(core, dark ? hue.clone().multiplyScalar(emit(t)).add(inc) : hue, 0, dark);
+          core.translate(x, y0 + h / 2, z);
+          paint(core, dark ? hue.clone().multiplyScalar(emit(t)).add(inc) : hue);
           cores.push(core);
         }
         const group = new THREE.Group();
@@ -421,9 +421,10 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
       scene.add(sun, sun.target);
 
       // the isometric camera: from the front-right, above, looking at the middle of the slab; orthographic, so the grid stays a grid
-      const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 400);
+      const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 1900);
       const centre = new THREE.Vector3(width / 2, 1.2, total / 2);
-      camera.position.copy(centre).add(new THREE.Vector3(...CAMERA_DIR).normalize().multiplyScalar(150));
+      // (far away: the glass's refraction takes its view direction from the camera's position, as for a perspective camera, so with this camera orthographic a near one bends the view differently across the picture, and the cores sit off-centre on one side)
+      camera.position.copy(centre).add(new THREE.Vector3(...CAMERA_DIR).normalize().multiplyScalar(900));
       camera.up.set(0, 1, 0);
       camera.lookAt(centre);
 
