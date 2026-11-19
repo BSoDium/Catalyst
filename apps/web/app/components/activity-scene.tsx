@@ -83,6 +83,8 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
 
       // each block is a glass shell around a smaller opaque core of the same colour: the core is what the glass refracts, so the block has depth instead of reading as a pale solid
       const coreMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.45, metalness: 0 });
+      // (in the dark theme the cores are lights: unlit, their colour is the light they give out, brighter than 1 for a busy day, which the bloom and the glow on the ground turn into a glow)
+      const glowMaterial = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false });
       const paint = (g: BufferGeometry, col: Color) => {
         const n = g.getAttribute("position").count;
         const colors = new Float32Array(n * 3);
@@ -90,23 +92,70 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
         g.setAttribute("color", new THREE.BufferAttribute(colors, 3));
         g.deleteAttribute("uv");
       };
+      // The glow a column casts on the ground (the dark theme's answer to the shadows of the light one): a soft additive spot under each layer's column in its colour, as bright as the day was busy, painted on a canvas laid on the ground
+      const GLOW_PAD = 5;
+      const PX = 22;
+      const groundGlow = (stack: { waka: Matrix; github: Matrix }, tones: { waka: [Color, Color]; github: [Color, Color] }) => {
+        const cw = Math.ceil((width + GLOW_PAD * 2) * PX);
+        const ch = Math.ceil((total + GLOW_PAD * 2) * PX);
+        const cv = document.createElement("canvas");
+        cv.width = cw;
+        cv.height = ch;
+        const ctx = cv.getContext("2d")!;
+        ctx.globalCompositeOperation = "lighter";
+        const spot = (x: number, z: number, t: number, [low, high]: [Color, Color], reach: number) => {
+          const col = low.clone().lerp(high, t);
+          const rgb = `${Math.round(col.r * 255)},${Math.round(col.g * 255)},${Math.round(col.b * 255)}`;
+          const cx = (x + GLOW_PAD) * PX;
+          const cy = (z + GLOW_PAD) * PX;
+          const r = (0.9 + reach * (0.5 + t * 1.5)) * PX;
+          const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+          const a = 0.03 + 0.28 * t * t + 0.06 * t;
+          g.addColorStop(0, `rgba(${rgb},${a})`);
+          g.addColorStop(0.45, `rgba(${rgb},${a * 0.35})`);
+          g.addColorStop(1, `rgba(${rgb},0)`);
+          ctx.fillStyle = g;
+          ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+        };
+        stack.github.cells.forEach((g, i) => {
+          const w = stack.waka.cells[i]!;
+          const x = g.week * PITCH + 0.5;
+          const z = g.day * PITCH + 0.5;
+          if (w.value > 0) spot(x, z, w.t, tones.waka, 1.1);
+          if (g.value > 0) spot(x, z, g.t, tones.github, 1.5);
+        });
+        const tex = new THREE.CanvasTexture(cv);
+        tex.colorSpace = THREE.SRGBColorSpace;
+        const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+        const mesh = new THREE.Mesh(new THREE.PlaneGeometry(cw / PX, ch / PX), mat);
+        mesh.rotation.x = -Math.PI / 2;
+        mesh.position.set(width / 2, 0.01, total / 2);
+        mesh.userData.dispose = () => {
+          tex.dispose();
+          mat.dispose();
+        };
+        return mesh;
+      };
+
       // One column a day: WakaTime's coding time at the bottom, GitHub's contributions on top of it. Each layer's height and its tint follow how busy the day was (pale and low when quiet, saturated and tall when busy).
       const LAYER_MAX = 2.3;
       let tallest = 1;
       const LIFT = 0.04;
-      const build = (stack: { waka: Matrix; github: Matrix }, tones: { waka: [Color, Color]; github: [Color, Color] }) => {
+      const build = (stack: { waka: Matrix; github: Matrix }, tones: { waka: [Color, Color]; github: [Color, Color] }, dark: boolean) => {
         const shells: BufferGeometry[] = [];
         const cores: BufferGeometry[] = [];
         const layer = (x: number, z: number, y0: number, t: number, [low, high]: [Color, Color]) => {
           const h = 0.18 + t * LAYER_MAX;
           const shell = new RoundedBoxGeometry(0.92, h, 0.92, 4, Math.min(0.16, h / 2.2));
           shell.translate(x, y0 + h / 2, z);
-          paint(shell, low.clone().lerp(high, t));
+          const hue = low.clone().lerp(high, t);
+          // dark: the glass is nearly clear (the glow of its core shows through it); light: tinted by the level
+          paint(shell, dark ? hue.clone().lerp(new THREE.Color(0xffffff), 0.5) : hue);
           shells.push(shell);
           const hc = h * 0.8;
           const core = new RoundedBoxGeometry(0.5, hc, 0.5, 3, Math.min(0.1, hc / 2.2));
           core.translate(x, y0 + hc / 2 + 0.03, z);
-          paint(core, low.clone().lerp(high, t));
+          paint(core, dark ? hue.clone().multiplyScalar(0.22 + 1.5 * t * t + 0.5 * t) : hue);
           cores.push(core);
           tallest = Math.max(tallest, y0 + h);
           return y0 + h;
@@ -118,7 +167,7 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
           if (w.value <= 0 && g.value <= 0) {
             const tile = new RoundedBoxGeometry(0.92, 0.1, 0.92, 3, 0.04);
             tile.translate(x, 0.05, z);
-            paint(tile, new THREE.Color(isDark() ? 0x39414b : 0xe4e8ed));
+            paint(tile, new THREE.Color(dark ? 0x2b323b : 0xe4e8ed));
             shells.push(tile);
             return;
           }
@@ -127,13 +176,14 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
           if (g.value > 0) layer(x, z, y, g.t, tones.github);
         });
         const group = new THREE.Group();
+        if (dark) group.add(groundGlow(stack, tones));
         const glass = new THREE.Mesh(mergeGeometries(shells), blockMaterial);
         glass.castShadow = true;
         glass.receiveShadow = true;
         group.add(glass);
         if (cores.length) {
-          const core = new THREE.Mesh(mergeGeometries(cores), coreMaterial);
-          core.castShadow = true;
+          const core = new THREE.Mesh(mergeGeometries(cores), dark ? glowMaterial : coreMaterial);
+          core.castShadow = !dark;
           group.add(core);
         }
         [...shells, ...cores].forEach((p) => p.dispose());
@@ -142,8 +192,14 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
 
       const blocks = new THREE.Group();
       scene.add(blocks);
+      const ground0 = () => ((ground.material as import("three").ShadowMaterial).opacity = isDark() ? 0 : 0.32);
       const buildBlocks = () => {
-        blocks.traverse((o) => (o as Mesh).geometry?.dispose());
+        showMat.uniforms.bloom!.value = isDark() ? 1 : 0;
+        ground0();
+        blocks.traverse((o) => {
+          (o as Mesh).geometry?.dispose();
+          (o.userData.dispose as (() => void) | undefined)?.();
+        });
         blocks.clear();
         const dark = isDark();
         const c = (hex: number) => new THREE.Color(hex);
@@ -151,11 +207,11 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
         blocks.add(
           build(
             { waka: layout.wakatime, github: layout.github },
-            { waka: [c(dark ? 0x2a1f55 : 0x4a3a8c), c(dark ? 0xa56bff : 0xb58cff)], github: [c(dark ? 0x4a2410 : 0x7a3a14), c(dark ? 0xff8a1f : 0xffa23a)] },
+            { waka: [c(dark ? 0x7a4dff : 0x4a3a8c), c(dark ? 0xc4a0ff : 0xb58cff)], github: [c(dark ? 0xff5a14 : 0x7a3a14), c(dark ? 0xffb040 : 0xffa23a)] },
+            dark,
           ),
         );
       };
-      buildBlocks();
 
       const floor = new THREE.Mesh(new THREE.PlaneGeometry(width * 3, total * 3), new THREE.MeshBasicMaterial({ color: pageColour() }));
       floor.rotation.x = -Math.PI / 2;
@@ -209,10 +265,27 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
         depthTest: false,
         depthWrite: false,
       });
+      // what is shown: the average, in the dark theme with a bloom (the bright parts, a wide blur of what is brighter than 0.8, added back: a glowing block gives off a halo)
       const showMat = new THREE.ShaderMaterial({
-        uniforms: { map: { value: accumRT.texture } },
+        uniforms: { map: { value: accumRT.texture }, bloom: { value: 0 }, texel: { value: new THREE.Vector2(1, 1) } },
         vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0., 1.); }",
-        fragmentShader: "uniform sampler2D map; varying vec2 vUv;\nvoid main(){\n gl_FragColor = texture2D(map, vUv);\n#include <colorspace_fragment>\n}",
+        fragmentShader: `uniform sampler2D map; uniform float bloom; uniform vec2 texel; varying vec2 vUv;
+vec3 halo(float radius, int count) {
+  vec3 sum = vec3(0.);
+  for (int i = 0; i < 40; i++) {
+    if (i >= count) break;
+    float a = float(i) * 2.39996;
+    float r = sqrt((float(i) + 0.5) / float(count)) * radius;
+    sum += max(texture2D(map, vUv + vec2(cos(a), sin(a)) * r * texel).rgb - 0.8, 0.);
+  }
+  return sum / float(count);
+}
+void main(){
+  vec4 c = texture2D(map, vUv);
+  if (bloom > 0.) c.rgb += bloom * (halo(8., 32) * 0.45 + halo(26., 40) * 0.8);
+  gl_FragColor = c;
+#include <colorspace_fragment>
+}`,
         depthTest: false,
         depthWrite: false,
       });
@@ -243,6 +316,7 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
         renderer.setSize(w, h, false);
         sceneRT.setSize(w, h);
         accumRT.setSize(w, h);
+        showMat.uniforms.texel!.value.set(1 / w, 1 / h);
         // the slab (with its tallest blocks) projected into the camera's frame fills the view, centred
         camera.updateMatrixWorld();
         const inv = camera.matrixWorldInverse;
@@ -290,6 +364,7 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
         if (!raf) raf = requestAnimationFrame(frame);
       }
 
+      buildBlocks();
       const ro = new ResizeObserver(fit);
       ro.observe(el);
       const rethink = () => {
@@ -308,9 +383,13 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
         ro.disconnect();
         mo.disconnect();
         mq.removeEventListener("change", rethink);
-        blocks.traverse((o) => (o as Mesh).geometry?.dispose());
+        blocks.traverse((o) => {
+          (o as Mesh).geometry?.dispose();
+          (o.userData.dispose as (() => void) | undefined)?.();
+        });
         blockMaterial.dispose();
         coreMaterial.dispose();
+        glowMaterial.dispose();
         sceneRT.dispose();
         accumRT.dispose();
         env.dispose();
