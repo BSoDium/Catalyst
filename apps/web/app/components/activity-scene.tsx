@@ -330,10 +330,12 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
           shellTier.set(key, [src, tier]);
           const hc = h * 0.8;
           // (dark) the busier the day the thinner and the brighter its rod: a quiet one is as wide as before and dim, a busy one a slender, intense filament
-          const cw = dark ? 0.5 - 0.3 * t ** 0.85 : 0.5;
+          const cw = dark ? 0.5 - 0.2 * t ** 0.85 : 0.5;
           const core = new RoundedBoxGeometry(cw, hc, cw, lite ? 1 : 2, Math.min(0.1, cw / 2.4, hc / 2.2));
           core.translate(x, y0 + h / 2, z);
-          paint(core, dark ? hue.clone().multiplyScalar(emit(t) * (1 + 1.1 * t)).add(inc) : hue);
+          // (a blue rod burns white at its heart: the whiter the busier)
+          const coreHue = dark && src === "waka" ? hue.clone().lerp(new THREE.Color(0xffffff), 0.15 + 0.4 * t) : hue;
+          paint(core, dark ? coreHue.multiplyScalar(emit(t) * (1 + 1.1 * t)).add(inc) : hue);
           cores.push(core);
         }
         const group = new THREE.Group();

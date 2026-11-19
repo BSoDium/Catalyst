@@ -259,7 +259,7 @@ export function ActivityPanel({ url }: { url: string | null }) {
         <p className="m-0 font-[family-name:var(--font-display)] text-[1.625rem] leading-[1.1] font-semibold tracking-tight text-balance min-[80rem]:text-nowrap">
           <span style={{ color: soft("blue", 75) }}>Coding</span> below, <span style={{ color: soft("green", 75) }}>contributions</span> above.
         </p>
-        <div className="flex flex-wrap gap-2 pt-1">
+        <div className="-mt-1 flex flex-wrap gap-2">
           <a href={WAKATIME_URL} target="_blank" rel="noopener noreferrer" className={LINK} style={{ color: soft("blue", 80), background: "color-mix(in srgb, var(--act-blue) 13%, transparent)" }}>
             <WakaTimeMark />
             Coding activity
