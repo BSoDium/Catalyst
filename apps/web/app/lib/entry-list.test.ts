@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { collectTags, filterByTag, groupByYear, listStats, shouldGroupByYear, parseTagFilter, tagSearch, yearOf } from "./entry-list";
+import { collectTags, filterByTag, foldTags, groupByYear, listStats, matchTags, shouldGroupByYear, parseTagFilter, tagSearch, yearOf } from "./entry-list";
 
 const e = (slug: string, tags: string[], date?: string) => ({ slug, tags, ...(date ? { date } : {}) });
 
@@ -135,5 +135,22 @@ describe("listStats (#548)", () => {
   });
   it("leaves out what is not known: no dates, no places", () => {
     expect(listStats([item(undefined)], { shown: 1, total: 1, noun: "poem" })).toEqual([{ value: "1", label: "poem" }]);
+  });
+});
+
+describe("foldTags and matchTags", () => {
+  const tags = Array.from({ length: 14 }, (_, i) => ({ tag: `t${i}`, count: 14 - i }));
+  it("keeps the most used and the selected one when it folds", () => {
+    const r = foldTags(tags, "t12", 10);
+    expect(r.foldable).toBe(true);
+    expect(r.visible.map((t) => t.tag)).toEqual([...tags.slice(0, 10).map((t) => t.tag), "t12"]);
+    expect(r.hidden).toBe(3);
+  });
+  it("does not fold for a couple of tags", () => {
+    expect(foldTags(tags.slice(0, 12), null, 10)).toMatchObject({ foldable: false, hidden: 0 });
+  });
+  it("matches what was typed, ignoring case and spaces", () => {
+    expect(matchTags([{ tag: "Python", count: 2 }, { tag: "java", count: 1 }], "  PY ").map((t) => t.tag)).toEqual(["Python"]);
+    expect(matchTags(tags, "")).toHaveLength(14);
   });
 });

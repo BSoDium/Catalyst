@@ -1,18 +1,15 @@
-import { useId, useState } from "react";
-import { Link, useLocation } from "react-router";
+import { useLocation } from "react-router";
 import type { ContentKind } from "@catalyst/schemas";
 import { ArtworkWall } from "~/components/entry/artwork-wall";
 import { GalleryEnd } from "~/components/entry/gallery-end";
 import { ARTWORK_FILLER, GALLERY_FILLER } from "~/lib/gallery-filler";
+import { TagFilter } from "~/components/tag-filter";
 import { ActivityPanel } from "~/components/activity-panel";
 import { EntryRow } from "~/components/entry/entry-list-card";
-import { Button, ScrollRow, StatePanel } from "~/components/ui";
+import { StatePanel } from "~/components/ui";
 import { cn } from "~/lib/utils";
 import { KIND_NOUNS, KIND_PLURALS, kindCount, listBackState, type EntrySummary } from "~/lib/entries";
-import { collectTags, filterByTag, groupByYear, listStats, parseTagFilter, shouldGroupByYear, tagSearch, type TagCount } from "~/lib/entry-list";
-
-/** Tags shown before "more": the rest sit one press away (the selected tag is always shown). */
-const TAGS_SHOWN = 10;
+import { collectTags, filterByTag, groupByYear, listStats, parseTagFilter, shouldGroupByYear } from "~/lib/entry-list";
 
 /** What continues a wall under its banner: the photographs' and the artworks' have one, the other lists none. */
 function wallEnd(kind: ContentKind) {
@@ -125,59 +122,5 @@ export function EntryListPage({ kind, items, activityUrl = null }: { kind: Conte
         )}
       </div>
     </main>
-  );
-}
-
-/**
- * The tag filter: one link per tag (and "All"), each to the same page with `?tag=`; the selected one is a filled plate (and `aria-current`), each tag shows how many entries it holds. Links, not buttons: the state is the URL.
- * More than `TAGS_SHOWN` tags fold: the row keeps the most used (and the selected one), and "+N more" opens a search over all of them (typing narrows the list; Escape closes it).
- */
-function TagFilter({ tags, selected, search, label }: { tags: TagCount[]; selected: string | null; search: string; label: string }) {
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const id = useId();
-  const foldable = tags.length > TAGS_SHOWN + 2;
-  const visible = foldable ? tags.filter((t, i) => i < TAGS_SHOWN || t.tag === selected) : tags;
-  const hidden = tags.length - visible.length;
-  const q = query.trim().toLowerCase();
-  const matches = q ? tags.filter((t) => t.tag.toLowerCase().includes(q)) : tags;
-  const link = (to: string | null, text: string, current: boolean, key: string, count?: number) => (
-    <li key={key}>
-      <Link to={{ search: tagSearch(search, to) }} preventScrollReset replace aria-current={current ? "true" : undefined} className="ds-filter" data-filter={to ?? "all"}>
-        <span>
-          {text}
-          {count !== undefined && <span className="ds-filter-count" aria-label={`, ${count} ${count === 1 ? "entry" : "entries"}`}>{count}</span>}
-        </span>
-      </Link>
-    </li>
-  );
-  return (
-    <nav aria-label={label} data-slot="tag-filter" className="list-filter">
-      <ScrollRow noun="tags">
-        <ul className="ds-filter-row flex list-none gap-0">
-          {link(null, "All", selected === null, "all")}
-          {visible.map((t) => link(t.tag, t.tag, selected === t.tag, t.tag, t.count))}
-          {foldable && (
-            <li>
-              <Button variant="link" size="sm" aria-expanded={open} aria-controls={`${id}-panel`} onClick={() => setOpen((v) => !v)}>
-                {open ? "Fewer tags" : `+${hidden} more`}
-              </Button>
-            </li>
-          )}
-        </ul>
-      </ScrollRow>
-      {foldable && open && (
-        <div id={`${id}-panel`} data-slot="tag-search" className="tag-search" onKeyDown={(e) => e.key === "Escape" && (setOpen(false), setQuery(""))}>
-          <label htmlFor={`${id}-q`} className="sr-only">
-            Search {tags.length} tags
-          </label>
-          <input id={`${id}-q`} type="search" autoFocus autoComplete="off" spellCheck={false} value={query} onChange={(e) => setQuery(e.target.value)} placeholder={`Search ${tags.length} tags`} className="tag-search-input" />
-          <ul className="ds-filter-row flex list-none flex-wrap gap-0">{matches.map((t) => link(t.tag, t.tag, selected === t.tag, `m-${t.tag}`, t.count))}</ul>
-          <p role="status" className={matches.length ? "sr-only" : "tag-search-empty"}>
-            {matches.length ? `${matches.length} of ${tags.length} tags` : `No tag matches "${query.trim()}".`}
-          </p>
-        </div>
-      )}
-    </nav>
   );
 }

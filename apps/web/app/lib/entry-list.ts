@@ -127,3 +127,19 @@ export function listStats(
   if (places.size > 0) stats.push({ value: String(places.size), label: places.size === 1 ? "place" : "places" });
   return stats;
 }
+
+/**
+ * The tags a folded filter row shows: the first `limit` (the most used: `collectTags` sorts them so) and the selected one wherever it stands. Nothing folds when only a couple would be hidden (a "+2 more" button costs as much as the two tags).
+ * `hidden` is how many are left out. Pure; tested.
+ */
+export function foldTags(tags: readonly TagCount[], selected: string | null, limit: number): { visible: TagCount[]; hidden: number; foldable: boolean } {
+  const foldable = tags.length > limit + 2;
+  const visible = foldable ? tags.filter((t, i) => i < limit || t.tag === selected) : [...tags];
+  return { visible, hidden: tags.length - visible.length, foldable };
+}
+
+/** The tags that contain what was typed (case and surrounding spaces ignored); all of them for an empty query. Pure; tested. */
+export function matchTags(tags: readonly TagCount[], query: string): TagCount[] {
+  const q = query.trim().toLowerCase();
+  return q ? tags.filter((t) => t.tag.toLowerCase().includes(q)) : [...tags];
+}

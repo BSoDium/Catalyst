@@ -189,7 +189,7 @@ function Figures({ lead, stats, ready = true, className }: { lead: { value: stri
   const item = (key: string, value: string, label: string, unit: string | undefined, tone: ActivityStat["tone"] | "plain", own: boolean) => (
     <div key={key} className={`flex flex-col gap-1.5 transition-opacity duration-500 ${own ? "hidden min-[80rem]:flex" : ready ? "" : "opacity-0"}`}>
       <dd className="m-0 flex items-baseline gap-1" style={{ color: tone === "plain" ? undefined : soft(tone, 75) }}>
-        <span className="font-[family-name:var(--font-display)] text-[1.875rem] leading-none font-semibold tracking-tight tabular-nums">{value}</span>
+        <span className="font-[family-name:var(--font-display)] text-[1.75rem] leading-none font-medium tracking-[-0.03em] tabular-nums min-[56rem]:text-[clamp(2rem,3.6cqi,3.5rem)]">{value}</span>
         {unit && <span className="type-meta font-normal text-muted-foreground normal-case">{unit}</span>}
       </dd>
       <dt className="type-meta text-muted-foreground uppercase">{label}</dt>

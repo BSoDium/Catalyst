@@ -290,7 +290,7 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
             tile.deleteAttribute("uv");
             tile.translate(x, 0, z);
             // (dark) a very dim grey of its own, a little over the page's: an empty day is a faint plate, not a hole
-            paint(tile, dark ? pageColour().add(new THREE.Color(0.012, 0.012, 0.012)) : pageColour().multiplyScalar(0.93));
+            paint(tile, dark ? pageColour().add(new THREE.Color(0.006, 0.006, 0.006)) : pageColour().multiplyScalar(0.93));
             tiles.push(tile);
             picks.push({ cell: i, x, z, y0: 0, y1: 0.04 });
             return;
