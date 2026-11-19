@@ -171,7 +171,8 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
           const mat = material(tex);
           const mesh = new THREE.Mesh(new THREE.PlaneGeometry(cw / PX, ch / PX), mat);
           mesh.rotation.x = -Math.PI / 2;
-          mesh.position.set(width / 2, 0.01 + order * 0.002, total / 2);
+          // (just above the empty tiles: the glow and the contact shadows lie over them as over the ground, so a tile is lit by its neighbours like the rest of the scene)
+          mesh.position.set(width / 2, 0.11 + order * 0.002, total / 2);
           mesh.renderOrder = order;
           layers.add(mesh);
           disposers.push(() => {
@@ -215,29 +216,14 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
           tallest = Math.max(tallest, y0 + h);
           return y0 + h;
         };
-        // (dark) an empty day takes the light of the glow around it: the colours of the busy days nearby, by how bright and how near
-        const spill = (week: number, day: number) => {
-          const out = new THREE.Color(0x14171b);
-          for (let i = 0; i < stack.github.cells.length; i++) {
-            const g = stack.github.cells[i]!;
-            const dw = g.week - week;
-            const dd = g.day - day;
-            if (Math.abs(dw) > 4 || Math.abs(dd) > 4) continue;
-            const w = stack.waka.cells[i]!;
-            const k = Math.exp(-(dw * dw + dd * dd) / (2 * 1.7 * 1.7));
-            if (w.value > 0) out.add(tones.waka[1].clone().multiplyScalar(k * (0.02 + 0.3 * w.t * w.t + 0.05 * w.t)));
-            if (g.value > 0) out.add(tones.github[1].clone().multiplyScalar(k * (0.02 + 0.3 * g.t * g.t + 0.05 * g.t)));
-          }
-          return out;
-        };
         stack.github.cells.forEach((g, i) => {
           const w = stack.waka.cells[i]!;
           const x = g.week * PITCH + 0.5;
           const z = g.day * PITCH + 0.5;
           if (w.value <= 0 && g.value <= 0) {
-            const tile = new RoundedBoxGeometry(0.92, dark ? 0.06 : 0.1, 0.92, 2, 0.03);
-            tile.translate(x, dark ? 0.03 : 0.05, z);
-            paint(tile, dark ? spill(g.week, g.day) : new THREE.Color(0xdadfe5));
+            const tile = new RoundedBoxGeometry(0.92, dark ? 0.04 : 0.1, 0.92, 2, 0.02);
+            tile.translate(x, dark ? 0.02 : 0.05, z);
+            paint(tile, new THREE.Color(dark ? 0x14171b : 0xdadfe5));
             tiles.push(tile);
             return;
           }
