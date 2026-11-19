@@ -25,7 +25,7 @@ const isDark = () => {
  * (an area light's soft shadow) and the camera a sub-pixel away (anti-aliasing) and adds it to an accumulation buffer; after `SAMPLES` frames the loop stops and the canvas keeps the
  * result. Translucent rounded blocks (transmission, refraction) lit by a room environment, on a ground that only receives the shadows, so it sits on the page's own background.
  */
-export function ActivityScene({ activity, strips = 1, className }: { activity: Activity; strips?: number; className?: string }) {
+export function ActivityScene({ activity, strips = 1, onReady, className }: { activity: Activity; strips?: number; onReady?: () => void; className?: string }) {
   const host = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -52,16 +52,23 @@ export function ActivityScene({ activity, strips = 1, className }: { activity: A
       renderer.domElement.style.cssText = "display:block;width:100%;height:100%;transition:filter .4s ease,opacity .4s ease";
       // While the picture is redrawn (a resize, a change of scheme) the last one stays, blurred, and comes back into focus on the new one once it has a few frames in it
       let settling = false;
-      const soften = () => {
+      const soften = (opacity = "0.85") => {
         settling = true;
         renderer.domElement.style.filter = "blur(7px)";
-        renderer.domElement.style.opacity = "0.85";
+        renderer.domElement.style.opacity = opacity;
       };
+      // (it comes in the same way the first time: invisible and blurred, then in focus; `onReady` tells the page to fade its place-holder out)
+      let announced = false;
       const sharpen = () => {
         settling = false;
+        if (!announced) {
+          announced = true;
+          onReady?.();
+        }
         renderer.domElement.style.filter = "";
         renderer.domElement.style.opacity = "";
       };
+      soften("0");
 
       const PITCH = 1.12;
       // the room the glow of the outermost columns needs around the slab, so the picture does not cut it

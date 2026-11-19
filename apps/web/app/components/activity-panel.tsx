@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { GitHubMark, Icon, WakaTimeMark } from "~/components/ui";
-import { activityStats, GITHUB_URL, isActivity, layoutActivity, WAKATIME_URL, type Activity, type Matrix } from "~/lib/activity";
+import { activityStats, GITHUB_URL, isActivity, layoutActivity, WAKATIME_URL, type Activity, type ActivityStat, type Matrix } from "~/lib/activity";
 
 /** A source's colour as text, softened toward the page's own text colour (the figures and words are tinted, not painted). */
 const soft = (tone: "green" | "blue", share = 62) => `color-mix(in srgb, var(${tone === "green" ? "--act-green" : "--act-blue"}) ${share}%, var(--foreground))`;
@@ -19,18 +19,49 @@ const webgl2 = () => {
   }
 };
 
-/** The activity file: `url`'s in production, the snapshot in development (the branch does not exist until the workflow has run). Null while loading and when there is none: the panel is then not drawn at all. */
-function useActivity(url: string | null): Activity | null {
-  const [activity, setActivity] = useState<Activity | null>(null);
+/** Whether the picture is meant to be there at all: the file's address is configured (production), or this is development (a snapshot). Known on the server too, so the room for it is in the prerendered page and nothing moves when it arrives. */
+const enabledFor = (url: string | null) => import.meta.env.DEV || !!url;
+
+/** The activity file: `url`'s in production, the snapshot in development (the branch does not exist until the workflow has run). `failed` when there is none after all: the panel then goes away. */
+function useActivity(url: string | null): { activity: Activity | null; failed: boolean } {
+  const [state, setState] = useState<{ activity: Activity | null; failed: boolean }>({ activity: null, failed: false });
   useEffect(() => {
     const ctl = new AbortController();
     (async () => {
       const raw = import.meta.env.DEV ? (await import("~/lib/activity.sample.json")).default : url ? await fetch(url, { signal: ctl.signal }).then((r) => (r.ok ? r.json() : null)) : null;
-      if (isActivity(raw)) setActivity(raw);
-    })().catch(() => {});
+      setState(isActivity(raw) ? { activity: raw, failed: false } : { activity: null, failed: true });
+    })().catch(() => {
+      if (!ctl.signal.aborted) setState({ activity: null, failed: true });
+    });
     return () => ctl.abort();
   }, [url]);
-  return activity;
+  return state;
+}
+
+/** What stands in for the figures until the file is here: the same shapes, so the room is the same (hidden from sight and from screen readers). */
+const WAITING_STATS: ActivityStat[] = [
+  { value: "0,000", label: "contributions", tone: "plain" },
+  { value: "0,000", unit: "h", label: "coded", tone: "plain" },
+  { value: "00", unit: "days", label: "longest streak", tone: "plain" },
+  { value: "00", unit: "%", label: "days active", tone: "plain" },
+];
+
+/** The picture's place-holder: the year as a faint grid of squares (371, weeks across), shown from the first paint, prerendered, until the scene is ready and fades in over it. */
+function Waiting() {
+  return (
+    <div aria-hidden="true" className="absolute inset-0 flex items-center justify-center px-4 md:px-14">
+      <div className="grid w-full max-w-[72%] -translate-y-3 grid-flow-col grid-rows-7 gap-[3px] motion-safe:animate-pulse max-md:hidden" style={{ gridTemplateColumns: "repeat(53, minmax(0, 1fr))" }}>
+        {Array.from({ length: 53 * 7 }, (_, i) => (
+          <span key={i} className="aspect-square" style={{ background: "color-mix(in srgb, var(--foreground) 4.5%, transparent)" }} />
+        ))}
+      </div>
+      <div className="hidden w-full grid-flow-col grid-rows-[repeat(21,minmax(0,1fr))] gap-[2px] motion-safe:animate-pulse max-md:grid" style={{ gridTemplateColumns: "repeat(18, minmax(0, 1fr))", maxWidth: "60%" }}>
+        {Array.from({ length: 18 * 21 }, (_, i) => (
+          <span key={i} className="aspect-square" style={{ background: "color-mix(in srgb, var(--foreground) 4.5%, transparent)" }} />
+        ))}
+      </div>
+    </div>
+  );
 }
 
 /** The flat matrix of the same numbers (no WebGL): a grid of squares, weeks across, the intensity in the colour. */
@@ -49,7 +80,8 @@ function FlatMatrix({ matrix, tone }: { matrix: Matrix; tone: string }) {
  * opens, the scene (three.js) loads only when the panel scrolls into view, and the room is held (an aspect ratio) so nothing moves when it arrives. Without WebGL the same numbers are two flat grids.
  */
 export function ActivityPanel({ url }: { url: string | null }) {
-  const activity = useActivity(url);
+  const { activity, failed } = useActivity(url);
+  const [ready, setReady] = useState(false);
   const box = useRef<HTMLElement>(null);
   const [seen, setSeen] = useState(false);
   const [gl, setGl] = useState(true);
@@ -69,10 +101,10 @@ export function ActivityPanel({ url }: { url: string | null }) {
       io.disconnect();
       mq.removeEventListener("change", onChange);
     };
-  }, [activity]);
-  if (!activity) return null;
-  const flat = !gl ? layoutActivity(activity) : null;
-  const stats = activityStats(activity);
+  }, []);
+  if (!enabledFor(url) || failed) return null;
+  const flat = !gl && activity ? layoutActivity(activity) : null;
+  const stats = activity ? activityStats(activity) : WAITING_STATS;
   // The tilt of the scene leaves its top-right and bottom-left corners empty: the figures take the first and the legend the second (on a narrow page there is no corner, they go under the picture).
   return (
     <section ref={box} data-slot="activity" aria-label="Activity over the last year" className="relative -mx-4 mt-0 mb-2 md:-mx-14">
@@ -82,10 +114,19 @@ export function ActivityPanel({ url }: { url: string | null }) {
           <FlatMatrix matrix={flat.github} tone="#0fbf3e" />
         </div>
       ) : (
-        <div className="aspect-[3.97/1] w-full max-md:aspect-[1.7/1]">{seen && <Suspense fallback={null}><ActivityScene activity={activity} strips={narrow ? 3 : 1} className="size-full" /></Suspense>}</div>
+        <div className="relative aspect-[3.97/1] w-full max-md:aspect-[1.7/1]">
+          <div className={`absolute inset-0 transition-opacity duration-700 ${ready ? "opacity-0" : ""}`}>
+            <Waiting />
+          </div>
+          {seen && activity && (
+            <Suspense fallback={null}>
+              <ActivityScene activity={activity} strips={narrow ? 3 : 1} onReady={() => setReady(true)} className="absolute inset-0" />
+            </Suspense>
+          )}
+        </div>
       )}
       {/* The corners are only empty when the scene is big enough (from 80 rem of page): below that the figures and the legend sit under the picture, so the text never lies over the blocks. */}
-      <dl data-slot="activity-stats" className="grid grid-cols-2 gap-x-8 gap-y-5 px-4 pt-5 md:grid-cols-4 md:px-14 min-[80rem]:pointer-events-none min-[80rem]:absolute min-[80rem]:top-3 min-[80rem]:right-14 min-[80rem]:grid-flow-col min-[80rem]:grid-cols-none min-[80rem]:grid-rows-2 min-[80rem]:gap-x-14 min-[80rem]:gap-y-5 min-[80rem]:p-0 min-[80rem]:text-right [&>*:nth-child(3)]:md:ml-6 min-[80rem]:[&>*:nth-child(3)]:ml-0">
+      <dl data-slot="activity-stats" aria-hidden={activity ? undefined : true} className={`transition-opacity duration-500 ${activity ? "" : "opacity-0"} grid grid-cols-2 gap-x-8 gap-y-5 px-4 pt-5 md:grid-cols-4 md:px-14 min-[80rem]:pointer-events-none min-[80rem]:absolute min-[80rem]:top-3 min-[80rem]:right-14 min-[80rem]:grid-flow-col min-[80rem]:grid-cols-none min-[80rem]:grid-rows-2 min-[80rem]:gap-x-14 min-[80rem]:gap-y-5 min-[80rem]:p-0 min-[80rem]:text-right [&>*:nth-child(3)]:md:ml-6 min-[80rem]:[&>*:nth-child(3)]:ml-0`}>
         {stats.map((s) => (
           <div key={s.label} className="flex flex-col gap-1.5 min-[80rem]:items-end">
             <dd className="m-0 flex items-baseline gap-1 min-[80rem]:justify-end" style={{ color: s.tone === "plain" ? undefined : soft(s.tone) }}>
