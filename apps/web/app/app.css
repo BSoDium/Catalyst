@@ -8572,3 +8572,19 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   --on: clamp(0, calc((var(--g, 1) - 0.6) * 2.5), 1);
   opacity: calc(0.4 + 0.6 * var(--on));
 }
+
+/* The two sources of the activity picture as TEXT colours (components/activity-panel.tsx): GitHub's green and the BSoD blue, deep enough on the light page for large text (3:1), bright on the dark one. */
+:root {
+  --act-green: #0a8f2c;
+  --act-blue: #1763c6;
+}
+:root[data-scheme="dark"] {
+  --act-green: #2ee05a;
+  --act-blue: #4aa8ff;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-scheme="light"]) {
+    --act-green: #2ee05a;
+    --act-blue: #4aa8ff;
+  }
+}

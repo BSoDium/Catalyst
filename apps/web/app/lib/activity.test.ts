@@ -50,9 +50,9 @@ describe("activityStats", () => {
       { date: "2026-11-04", seconds: 0 },
     ];
     const s = activityStats({ generatedAt: "x", github, wakatime });
-    expect(s[0]).toEqual({ value: "8", label: "contributions" });
-    expect(s[1]).toEqual({ value: "2 h", label: "coded" });
-    expect(s[2]).toEqual({ value: "3 days", label: "longest streak" });
+    expect(s[0]).toEqual({ value: "8", label: "contributions", tone: "green" });
+    expect(s[1]).toEqual({ value: "2", unit: "h", label: "coded", tone: "blue" });
+    expect(s[2]).toEqual({ value: "3", unit: "days", label: "longest streak", tone: "plain" });
     expect(s[3]!.label).toBe("days active");
   });
   it("is empty for an empty file", () => {

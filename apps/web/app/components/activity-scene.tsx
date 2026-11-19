@@ -49,7 +49,19 @@ export function ActivityScene({ activity, strips = 1, className }: { activity: A
       renderer.shadowMap.enabled = true;
       renderer.shadowMap.type = THREE.PCFShadowMap;
       el.appendChild(renderer.domElement);
-      renderer.domElement.style.cssText = "display:block;width:100%;height:100%";
+      renderer.domElement.style.cssText = "display:block;width:100%;height:100%;transition:filter .4s ease,opacity .4s ease";
+      // While the picture is redrawn (a resize, a change of scheme) the last one stays, blurred, and comes back into focus on the new one once it has a few frames in it
+      let settling = false;
+      const soften = () => {
+        settling = true;
+        renderer.domElement.style.filter = "blur(7px)";
+        renderer.domElement.style.opacity = "0.85";
+      };
+      const sharpen = () => {
+        settling = false;
+        renderer.domElement.style.filter = "";
+        renderer.domElement.style.opacity = "";
+      };
 
       const PITCH = 1.12;
       // the room the glow of the outermost columns needs around the slab, so the picture does not cut it
@@ -219,7 +231,7 @@ export function ActivityScene({ activity, strips = 1, className }: { activity: A
         interface Spec { src: "waka" | "github"; x: number; z: number; y0: number; h: number; t: number; hue: Color }
         const specs: Spec[] = [];
         // (a quiet day still has a faint light at its heart, an old bulb struggling: the floor of the emission)
-        const emit = (t: number) => 0.3 + 1.6 * t * t + 0.4 * t;
+        const emit = (t: number) => 0.42 + 1.6 * t * t + 0.4 * t;
         const layer = (src: "waka" | "github", x: number, z: number, y0: number, t: number, [low, high]: [Color, Color]) => {
           const h = 0.18 + t * LAYER_MAX;
           specs.push({ src, x, z, y0, h, t, hue: low.clone().lerp(high, t) });
@@ -518,6 +530,7 @@ void main(){
         renderer.render(quadScene, quadCam);
         renderer.autoClear = true;
         n++;
+        if (settling && n >= Math.min(10, samples)) sharpen();
         if (showMat.uniforms.bloom!.value > 0) {
           // bright part -> half resolution, blurred twice (near halo); that, blurred again at quarter resolution (far halo)
           pass(brightMat, halfA);
@@ -547,9 +560,22 @@ void main(){
       }
 
       buildBlocks();
-      const ro = new ResizeObserver(fit);
+      // (the first size is taken at once; the next ones wait for the resizing to pause: the old picture is softened meanwhile)
+      let first = true;
+      let resizeTimer = 0;
+      const ro = new ResizeObserver(() => {
+        if (first) {
+          first = false;
+          fit();
+          return;
+        }
+        soften();
+        window.clearTimeout(resizeTimer);
+        resizeTimer = window.setTimeout(fit, 180);
+      });
       ro.observe(el);
       const rethink = () => {
+        soften();
         (floor.material as import("three").MeshBasicMaterial).color.copy(pageColour());
         buildBlocks();
         restart();
@@ -558,10 +584,10 @@ void main(){
       mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-scheme"] });
       const mq = window.matchMedia("(prefers-color-scheme: dark)");
       mq.addEventListener("change", rethink);
-      fit();
 
       stop = () => {
         cancelAnimationFrame(raf);
+        window.clearTimeout(resizeTimer);
         ro.disconnect();
         mo.disconnect();
         mq.removeEventListener("change", rethink);

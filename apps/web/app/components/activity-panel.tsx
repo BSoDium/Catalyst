@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
-import { activityStats, isActivity, layoutActivity, type Activity, type Matrix } from "~/lib/activity";
+import { Button, Icon } from "~/components/ui";
+import { activityStats, GITHUB_URL, isActivity, layoutActivity, WAKATIME_URL, type Activity, type Matrix } from "~/lib/activity";
 
 const ActivityScene = lazy(() => import("~/components/activity-scene").then((m) => ({ default: m.ActivityScene })));
 
@@ -79,20 +80,40 @@ export function ActivityPanel({ url }: { url: string | null }) {
         <div className="aspect-[3.97/1] w-full max-md:aspect-[1.7/1]">{seen && <Suspense fallback={null}><ActivityScene activity={activity} strips={narrow ? 3 : 1} className="size-full" /></Suspense>}</div>
       )}
       {/* The corners are only empty when the scene is big enough (from 80 rem of page): below that the figures and the legend sit under the picture, so the text never lies over the blocks. */}
-      <dl data-slot="activity-stats" className="grid grid-cols-2 gap-x-8 gap-y-4 px-4 pt-4 md:grid-cols-4 md:px-14 min-[80rem]:pointer-events-none min-[80rem]:absolute min-[80rem]:top-3 min-[80rem]:right-14 min-[80rem]:grid-cols-2 min-[80rem]:gap-x-9 min-[80rem]:gap-y-4 min-[80rem]:p-0 min-[80rem]:text-right">
+      <dl data-slot="activity-stats" className="grid grid-cols-2 gap-x-8 gap-y-5 px-4 pt-5 md:grid-cols-4 md:px-14 min-[80rem]:pointer-events-none min-[80rem]:absolute min-[80rem]:top-3 min-[80rem]:right-14 min-[80rem]:grid-flow-col min-[80rem]:grid-cols-none min-[80rem]:grid-rows-2 min-[80rem]:gap-x-14 min-[80rem]:gap-y-5 min-[80rem]:p-0 min-[80rem]:text-right [&>*:nth-child(3)]:md:ml-6 min-[80rem]:[&>*:nth-child(3)]:ml-0">
         {stats.map((s) => (
           <div key={s.label} className="flex flex-col gap-1.5 min-[80rem]:items-end">
-            <dd className="m-0 font-[family-name:var(--font-display)] text-[1.625rem] leading-none font-medium tracking-tight tabular-nums">{s.value}</dd>
+            <dd className="m-0 flex items-baseline gap-1 min-[80rem]:justify-end" style={{ color: s.tone === "green" ? "var(--act-green)" : s.tone === "blue" ? "var(--act-blue)" : undefined }}>
+              <span className="font-[family-name:var(--font-display)] text-[1.875rem] leading-none font-semibold tracking-tight tabular-nums">{s.value}</span>
+              {s.unit && <span className="type-meta font-normal text-muted-foreground normal-case">{s.unit}</span>}
+            </dd>
             <dt className="type-meta text-muted-foreground uppercase">{s.label}</dt>
           </div>
         ))}
       </dl>
-      <div data-slot="activity-legend" className="px-4 pt-4 md:px-14 min-[80rem]:absolute min-[80rem]:bottom-0 min-[80rem]:left-14 min-[80rem]:max-w-[22rem] min-[80rem]:p-0">
-        <p className="m-0 max-w-[40rem] text-pretty font-[family-name:var(--font-reading)] text-base leading-snug text-foreground min-[80rem]:text-lg">A year of work, a day to a column: the hours I coded below, my GitHub contributions on top. The brighter the block, the busier the day.</p>
-        <p className="type-meta mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 uppercase text-muted-foreground">
-          <span className="inline-flex items-center gap-1.5"><span aria-hidden="true" className="size-2.5" style={{ background: "#1a8cff" }} />coding time</span>
-          <span className="inline-flex items-center gap-1.5"><span aria-hidden="true" className="size-2.5" style={{ background: "#0fbf3e" }} />GitHub</span>
+      <div data-slot="activity-legend" className="flex flex-col gap-3 px-4 pt-5 md:px-14 min-[80rem]:absolute min-[80rem]:bottom-0 min-[80rem]:left-14 min-[80rem]:w-[25rem] min-[80rem]:p-0">
+        <p className="type-meta m-0 text-muted-foreground uppercase">The last 12 months · brighter, busier</p>
+        <p className="m-0 font-[family-name:var(--font-display)] text-[1.625rem] leading-[1.1] font-semibold tracking-tight text-nowrap">
+          <span style={{ color: "var(--act-blue)" }}>Coding</span> below, <span style={{ color: "var(--act-green)" }}>contributions</span> above.
         </p>
+        <div className="flex flex-wrap gap-2 pt-1">
+          <Button asChild variant="secondary" size="sm" className="gap-2">
+            <a href={WAKATIME_URL} target="_blank" rel="noopener noreferrer">
+              <span aria-hidden="true" className="size-2.5 shrink-0" style={{ background: "#1a8cff" }} />
+              Coding time
+              <Icon name="arrow-up-right" size="inline" aria-hidden="true" />
+              <span className="sr-only">on WakaTime (opens in a new tab)</span>
+            </a>
+          </Button>
+          <Button asChild variant="secondary" size="sm" className="gap-2">
+            <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer">
+              <span aria-hidden="true" className="size-2.5 shrink-0" style={{ background: "#0fbf3e" }} />
+              GitHub contributions
+              <Icon name="arrow-up-right" size="inline" aria-hidden="true" />
+              <span className="sr-only">(opens in a new tab)</span>
+            </a>
+          </Button>
+        </div>
       </div>
     </section>
   );

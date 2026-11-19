@@ -70,8 +70,16 @@ export function isActivity(v: unknown): v is Activity {
 
 export interface ActivityStat {
   value: string;
+  /** The unit, set small and quiet after the value ("h", "days", "%"). */
+  unit?: string;
   label: string;
+  /** Which source the figure belongs to (its colour), or none: the figures of the rhythm are plain. */
+  tone: "green" | "blue" | "plain";
 }
+
+/** The owner's profiles on the two sources (what the picture is made of). */
+export const GITHUB_URL = "https://github.com/BSoDium";
+export const WAKATIME_URL = "https://wakatime.com/@BSoDium";
 
 const DAY = 86_400_000;
 const num = (n: number) => Math.round(n).toLocaleString("en");
@@ -97,9 +105,9 @@ export function activityStats(a: Activity): ActivityStat[] {
     streak = Math.max(streak, run);
   }
   return [
-    { value: num(contributions), label: "contributions" },
-    { value: `${num(hours)} h`, label: "coded" },
-    { value: `${streak} days`, label: "longest streak" },
-    { value: `${Math.round((active.size / 365) * 100)}%`, label: "days active" },
+    { value: num(contributions), label: "contributions", tone: "green" },
+    { value: num(hours), unit: "h", label: "coded", tone: "blue" },
+    { value: String(streak), unit: "days", label: "longest streak", tone: "plain" },
+    { value: String(Math.round((active.size / 365) * 100)), unit: "%", label: "days active", tone: "plain" },
   ];
 }
