@@ -80,9 +80,8 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
         envMapIntensity: 1.4,
       });
       // the empty days: a plain dull tile in the dark theme (not glass: glass reflects the room and is never dim)
-      // (dark: an unlit flat tile, casting and receiving nothing, a dim mark and no more)
+      // (an unlit flat tile in the ground's own colour, a shade apart: it casts and receives nothing itself; the glow, the sun's shadows and the contact shadows are layers over it, as over the ground)
       const tileUnlit = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false });
-      const tileMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.75, metalness: 0, envMapIntensity: 0.25 });
       // the page's own background, read as the browser resolves it: the ground is that colour (so there is something to refract, and no seam with the page)
       const pageColour = () => {
         const probe = document.createElement("canvas");
@@ -221,9 +220,9 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
           const x = g.week * PITCH + 0.5;
           const z = g.day * PITCH + 0.5;
           if (w.value <= 0 && g.value <= 0) {
-            const tile = new RoundedBoxGeometry(0.92, dark ? 0.04 : 0.1, 0.92, 2, 0.02);
-            tile.translate(x, dark ? 0.02 : 0.05, z);
-            paint(tile, new THREE.Color(dark ? 0x14171b : 0xdadfe5));
+            const tile = new RoundedBoxGeometry(0.92, 0.04, 0.92, 2, 0.02);
+            tile.translate(x, 0.02, z);
+            paint(tile, dark ? new THREE.Color(0x14171b) : pageColour().multiplyScalar(0.93));
             tiles.push(tile);
             return;
           }
@@ -234,8 +233,7 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
         const group = new THREE.Group();
         group.add(groundLayers(stack, tones, dark));
         if (tiles.length) {
-          const tile = new THREE.Mesh(mergeGeometries(tiles), dark ? tileUnlit : tileMaterial);
-          tile.receiveShadow = !dark;
+          const tile = new THREE.Mesh(mergeGeometries(tiles), tileUnlit);
           group.add(tile);
         }
         const materials: import("three").MeshPhysicalMaterial[] = [];
@@ -292,7 +290,8 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
       scene.add(floor);
       const ground = new THREE.Mesh(new THREE.PlaneGeometry(1200, 1200), new THREE.ShadowMaterial({ opacity: 0.32 }));
       ground.rotation.x = -Math.PI / 2;
-      ground.position.set(width / 2, 0, total / 2);
+      // (above the empty tiles, under the glow and contact-shadow layers: the sun's shadows fall on a tile as on the ground)
+      ground.position.set(width / 2, 0.06, total / 2);
       ground.receiveShadow = true;
       scene.add(ground);
 
@@ -520,7 +519,6 @@ void main(){
         blockMaterial.dispose();
         coreMaterial.dispose();
         glowMaterial.dispose();
-        tileMaterial.dispose();
         tileUnlit.dispose();
         sceneRT.dispose();
         accumRT.dispose();
