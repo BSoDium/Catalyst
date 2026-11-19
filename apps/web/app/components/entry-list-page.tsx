@@ -101,7 +101,7 @@ export function EntryListPage({ kind, items, activityUrl = null }: { kind: Conte
             return (
               <section key={group.key} aria-labelledby={grouped ? id : undefined} data-year={group.key}>
                 {grouped && (
-                  <h2 id={id} className="ds-year type-display-lg type-thin m-0 mb-6">
+                  <h2 id={id} className="ds-year type-display-lg type-thin ds-year-sticky">
                     {group.year ?? "Undated"}
                     <span className="sr-only">, {group.items.length === 1 ? "1 entry" : `${group.items.length} entries`}</span>
                   </h2>

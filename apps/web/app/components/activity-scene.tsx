@@ -760,7 +760,8 @@ void main(){
         pinned = true;
         announce(next);
       };
-      el.tabIndex = 0;
+      // (not in the tab order: a focus ring round the whole picture is ugly; a click still focuses it, so the arrow keys walk the days after one)
+      el.tabIndex = -1;
       dom.addEventListener("pointermove", onMove);
       dom.addEventListener("pointerleave", onLeave);
       dom.addEventListener("pointerdown", onDown);

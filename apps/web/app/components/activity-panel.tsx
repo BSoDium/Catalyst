@@ -199,7 +199,7 @@ function Figures({ lead, stats, ready = true, className }: { lead: { value: stri
   const primary = [...lead.slice(0, 1).map(own), ...stats.slice(0, 2).map(theirs)];
   const secondary = [...lead.slice(1).map(own), ...stats.slice(2).map(theirs)];
   const cell = (f: Fig, big: boolean) => (
-    <div key={f.key} className={`transition-opacity duration-500 ${big ? "flex flex-col gap-1.5 min-[80rem]:items-end" : "flex items-baseline gap-1.5"} ${f.own ? "hidden min-[80rem]:flex" : ready ? "" : "opacity-0"}`}>
+    <div key={f.key} className={`transition-opacity duration-500 flex flex-col ${big ? "gap-1.5" : "gap-1"} min-[80rem]:items-end ${f.own ? "hidden min-[80rem]:flex" : ready ? "" : "opacity-0"}`}>
       <dd className="m-0 flex items-baseline gap-1 min-[80rem]:justify-end" style={{ color: f.tone === "plain" ? undefined : soft(f.tone, 75) }}>
         <span className={`font-[family-name:var(--font-display)] leading-none font-medium tracking-[-0.03em] tabular-nums ${big ? "text-[1.75rem] min-[56rem]:text-[clamp(1.75rem,2.8cqi,2.75rem)]" : "text-[1.25rem]"}`}>{f.value}</span>
         {f.unit && <span className="type-meta font-normal text-muted-foreground normal-case">{f.unit}</span>}
