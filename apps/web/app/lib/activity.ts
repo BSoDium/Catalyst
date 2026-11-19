@@ -60,3 +60,10 @@ export function layoutActivity(a: Activity): { github: Matrix; wakatime: Matrix;
     wakatime: layoutMatrix(a.wakatime.map((d) => ({ date: d.date, value: d.seconds / 3600 })), end),
   };
 }
+
+/** The file as far as the page needs it: both series, each with enough days; anything else is not drawn. */
+export function isActivity(v: unknown): v is Activity {
+  const a = v as Activity | null;
+  const ok = (xs: unknown, key: string) => Array.isArray(xs) && xs.length > 30 && xs.every((d) => typeof d?.date === "string" && Number.isFinite(d[key]));
+  return !!a && typeof a === "object" && typeof a.generatedAt === "string" && ok(a.github, "count") && ok(a.wakatime, "seconds");
+}

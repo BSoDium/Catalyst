@@ -20,3 +20,15 @@ describe("layoutMatrix", () => {
     expect(layoutMatrix([], "2026-11-19", 2).cells.every((c) => c.t === 0)).toBe(true);
   });
 });
+
+import { isActivity } from "./activity";
+
+describe("isActivity", () => {
+  const days = (key: string) => Array.from({ length: 40 }, (_, i) => ({ date: `2026-01-${String(i + 1).padStart(2, "0")}`, [key]: i }));
+  it("accepts both series with enough days and refuses anything else", () => {
+    expect(isActivity({ generatedAt: "x", github: days("count"), wakatime: days("seconds") })).toBe(true);
+    expect(isActivity({ generatedAt: "x", github: days("count"), wakatime: [] })).toBe(false);
+    expect(isActivity({ generatedAt: "x", github: days("seconds"), wakatime: days("seconds") })).toBe(false);
+    expect(isActivity(null)).toBe(false);
+  });
+});

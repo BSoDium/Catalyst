@@ -4,6 +4,7 @@ import type { ContentKind } from "@catalyst/schemas";
 import { ArtworkWall } from "~/components/entry/artwork-wall";
 import { GalleryEnd } from "~/components/entry/gallery-end";
 import { ARTWORK_FILLER, GALLERY_FILLER } from "~/lib/gallery-filler";
+import { ActivityPanel } from "~/components/activity-panel";
 import { EntryRow } from "~/components/entry/entry-list-card";
 import { Button, ScrollRow, StatePanel } from "~/components/ui";
 import { cn } from "~/lib/utils";
@@ -31,7 +32,7 @@ function wallEnd(kind: ContentKind) {
  * Three sections are set differently: `/artworks` and `/photography` are ONE brick wall of pictures (`ArtworkWall`, no year headings: the year is in each caption) and
  * `/poetry` sets the poems in two columns from 44 rem of the page's width. All five pages are the same width (100 rem), so the titles and the content keep their left edge from tab to tab, with the summary in the reading face at a larger size.
  */
-export function EntryListPage({ kind, items }: { kind: ContentKind; items: EntrySummary[] }) {
+export function EntryListPage({ kind, items, activityUrl = null }: { kind: ContentKind; items: EntrySummary[]; activityUrl?: string | null }) {
   const { search } = useLocation();
   const tags = collectTags(items);
   const tag = parseTagFilter(search, tags);
@@ -70,6 +71,8 @@ export function EntryListPage({ kind, items }: { kind: ContentKind; items: Entry
           ))}
         </dl>
       </header>
+
+      {kind === "project" && <ActivityPanel url={activityUrl} />}
 
       {tags.length > 0 && items.length > 1 && <TagFilter tags={tags} selected={tag} search={search} label={`Filter ${section} by tag`} />}
       <p role="status" className="sr-only">
