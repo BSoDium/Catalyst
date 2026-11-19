@@ -336,7 +336,7 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
           // A blue rod gets its brightness from light added to all three channels (not from more of the same blue, which only makes it bluer and more glowing): a brighter rod is a lighter, clearer blue, not a whiter one
           // (its hue is kept: the blue channel is the hue's own and the red and green rise with the busyness).
           const level = emit(t) * (1 + 1.1 * t);
-          const rod = dark && src === "waka" ? hue.clone().multiplyScalar(level).add(new THREE.Color(0.12, 0.42, 0.5).multiplyScalar(level * t)) : dark ? hue.clone().multiplyScalar(level) : hue;
+          const rod = dark && src === "waka" ? hue.clone().multiplyScalar(level * 1.5).add(new THREE.Color(0.12, 0.42, 0.5).multiplyScalar(level * (0.4 + 1.6 * t))) : dark ? hue.clone().multiplyScalar(level) : hue;
           paint(core, dark ? rod.add(inc) : hue);
           cores.push(core);
         }
