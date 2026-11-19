@@ -1,18 +1,15 @@
-import { useState } from "react";
-import { Link, useLocation } from "react-router";
+import { useLocation } from "react-router";
 import type { ContentKind } from "@catalyst/schemas";
 import { ArtworkWall } from "~/components/entry/artwork-wall";
 import { GalleryEnd } from "~/components/entry/gallery-end";
 import { ARTWORK_FILLER, GALLERY_FILLER } from "~/lib/gallery-filler";
+import { TagFilter } from "~/components/tag-filter";
 import { ActivityPanel } from "~/components/activity-panel";
 import { EntryRow } from "~/components/entry/entry-list-card";
-import { Button, ScrollRow, StatePanel } from "~/components/ui";
+import { StatePanel } from "~/components/ui";
 import { cn } from "~/lib/utils";
 import { KIND_NOUNS, KIND_PLURALS, kindCount, listBackState, type EntrySummary } from "~/lib/entries";
-import { collectTags, filterByTag, groupByYear, listStats, parseTagFilter, shouldGroupByYear, tagSearch, type TagCount } from "~/lib/entry-list";
-
-/** Tags shown before "more": the rest sit one press away (the selected tag is always shown). */
-const TAGS_SHOWN = 10;
+import { collectTags, filterByTag, groupByYear, listStats, parseTagFilter, shouldGroupByYear } from "~/lib/entry-list";
 
 /** What continues a wall under its banner: the photographs' and the artworks' have one, the other lists none. */
 function wallEnd(kind: ContentKind) {
@@ -47,6 +44,9 @@ export function EntryListPage({ kind, items, activityUrl = null }: { kind: Conte
   // One implementation of the count noun: `kindCount` ("33 software", "1 poem").
   const total = kindCount(kind, items.length);
   let seen = 0;
+  // From 80 rem its figures join the picture's grid (`ActivityPanel` `lead`).
+  const heads = listStats(items, { shown: shown.length, total: items.length, noun: shown.length === 1 ? KIND_NOUNS[kind].one : KIND_NOUNS[kind].many });
+  const withPanel = kind === "project" && (import.meta.env.DEV || !!activityUrl);
   const wall = kind === "artwork" || kind === "photograph";
   const poems = kind === "poem";
 
@@ -62,8 +62,8 @@ export function EntryListPage({ kind, items, activityUrl = null }: { kind: Conte
       <header data-slot="list-head" className="list-head">
         <h1 className="list-title">{KIND_PLURALS[kind]}</h1>
         {/* The figures of the list: how many (of how many when a tag filters), since when, how many places. There is no running head above the title any more (the owner's name and the count were said again by the figures: owner, 2026-11-03) */}
-        <dl data-slot="list-stats" className="list-stats">
-          {listStats(items, { shown: shown.length, total: items.length, noun: shown.length === 1 ? KIND_NOUNS[kind].one : KIND_NOUNS[kind].many }).map((stat) => (
+        <dl data-slot="list-stats" className={cn("list-stats", withPanel && "min-[80rem]:invisible")}>
+          {heads.map((stat) => (
             <div key={stat.label} className="list-stat">
               <dd className="list-stat-value">{stat.value}</dd>
               <dt className="list-stat-label type-meta">{stat.label}</dt>
@@ -72,7 +72,7 @@ export function EntryListPage({ kind, items, activityUrl = null }: { kind: Conte
         </dl>
       </header>
 
-      {kind === "project" && <ActivityPanel url={activityUrl} />}
+      {kind === "project" && <ActivityPanel url={activityUrl} lead={heads} />}
 
       {tags.length > 0 && items.length > 1 && <TagFilter tags={tags} selected={tag} search={search} label={`Filter ${section} by tag`} />}
       <p role="status" className="sr-only">
@@ -101,7 +101,7 @@ export function EntryListPage({ kind, items, activityUrl = null }: { kind: Conte
             return (
               <section key={group.key} aria-labelledby={grouped ? id : undefined} data-year={group.key}>
                 {grouped && (
-                  <h2 id={id} className="ds-year type-display-lg type-thin m-0 mb-6">
+                  <h2 id={id} className="ds-year type-display-lg type-thin ds-year-sticky">
                     {group.year ?? "Undated"}
                     <span className="sr-only">, {group.items.length === 1 ? "1 entry" : `${group.items.length} entries`}</span>
                   </h2>
@@ -122,40 +122,5 @@ export function EntryListPage({ kind, items, activityUrl = null }: { kind: Conte
         )}
       </div>
     </main>
-  );
-}
-
-/**
- * The tag filter: one text link per tag (and "All"), each to the same page with `?tag=`; the selected one is heavier, underlined and `aria-current`.
- * Links, not buttons: the state is the URL. More than `TAGS_SHOWN` tags fold behind a "more" button (the selected tag stays visible).
- */
-function TagFilter({ tags, selected, search, label }: { tags: TagCount[]; selected: string | null; search: string; label: string }) {
-  const [open, setOpen] = useState(false);
-  const folded = tags.length > TAGS_SHOWN + 2 && !open;
-  const visible = folded ? tags.filter((t, i) => i < TAGS_SHOWN || t.tag === selected) : tags;
-  const hidden = tags.length - visible.length;
-  const link = (to: string | null, text: string, current: boolean, key: string) => (
-    <li key={key}>
-      <Link to={{ search: tagSearch(search, to) }} preventScrollReset replace aria-current={current ? "true" : undefined} className="ds-filter" data-filter={to ?? "all"}>
-        <span>{text}</span>
-      </Link>
-    </li>
-  );
-  return (
-    <nav aria-label={label} data-slot="tag-filter" className="list-filter">
-      <ScrollRow noun="tags">
-        <ul className="ds-filter-row flex list-none gap-0">
-        {link(null, "All", selected === null, "all")}
-        {visible.map((t) => link(t.tag, t.tag, selected === t.tag, t.tag))}
-        {(hidden > 0 || (open && tags.length > TAGS_SHOWN + 2)) && (
-          <li>
-            <Button variant="link" size="sm" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
-              {open ? "Fewer tags" : `+${hidden} more`}
-            </Button>
-          </li>
-        )}
-        </ul>
-      </ScrollRow>
-    </nav>
   );
 }

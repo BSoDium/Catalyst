@@ -3299,7 +3299,7 @@
     flex: none;
     align-items: center;
     justify-content: center;
-    /* 44 px by 44 px on a phone, also for the shortest word ("All"); the row's gap is this padding, so the text keeps its spacing. */
+    /* 44 px by 44 px on a phone, also for the shortest word ("All"); the row's gap is the span's padding, so the text keeps its spacing. */
     min-height: 2.75rem;
     min-width: 2.75rem;
     padding-inline: 0.5rem;
@@ -3311,22 +3311,105 @@
     transition: color var(--duration-fast) var(--ease-standard);
   }
 
+  /* Every chip has the same box, chosen or not (the padding, the weight and the rule are always there, only their colours change): choosing one moves nothing. */
+  /* (the span is the plate: it reaches out over the link's own side padding, so a chosen chip's fill and its rule run edge to edge, and the plate is only as tall as the text with its rule) */
   .ds-filter > span {
-    padding-block: 0.125rem;
+    margin-inline: -0.5rem;
+    padding: 0.125rem 0.5rem;
     border-bottom: 2px solid transparent;
+    transition:
+      background-color var(--duration-fast) var(--ease-standard),
+      border-color var(--duration-fast) var(--ease-standard);
   }
 
   .ds-filter:hover {
     color: var(--signal-text);
   }
 
+  /* the chosen one is a filled plate (the page's text colour, the page's colour on it): selection is seen at a glance, not by an underline alone */
   .ds-filter[aria-current="true"] {
-    color: var(--foreground);
-    font-weight: 600;
+    color: var(--background);
   }
 
   .ds-filter[aria-current="true"] > span {
+    background: var(--foreground);
+    /* (the accent's rule under the chosen one stays: the owner's, 2026-10-14) */
     border-bottom-color: var(--signal);
+  }
+
+  /* how many entries a tag holds: small, mono, muted */
+  .ds-filter-count {
+    margin-left: 0.4em;
+    font-family: var(--font-mono);
+    font-size: 0.75em;
+    opacity: 0.55;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /*
+   * The search over all the tags: it slides in above the row when the row opens out (a grid row from 0 to its height: no measuring), the field a line with no box. The row itself is the same row, wrapped.
+   */
+  .tag-search {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows var(--duration-base) var(--ease-standard);
+  }
+
+  .tag-search[data-open="true"] {
+    grid-template-rows: 1fr;
+  }
+
+  .tag-search-inner {
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  .tag-search-input {
+    display: block;
+    width: min(100%, 24rem);
+    margin-bottom: 0.5rem;
+    padding: 0.375rem 0;
+    border: 0;
+    border-bottom: 1px solid var(--border);
+    background: transparent;
+    color: var(--foreground);
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    outline: none;
+    opacity: 0;
+    transition: opacity var(--duration-base) var(--ease-standard);
+  }
+
+  .tag-search[data-open="true"] .tag-search-input {
+    opacity: 1;
+  }
+
+  .tag-search-input:focus-visible {
+    border-bottom-color: var(--foreground);
+  }
+
+  .tag-search-empty {
+    margin: 0.5rem 0 0;
+    color: var(--muted-foreground);
+    font-size: var(--text-sm);
+  }
+
+  /* opened out, the row wraps whatever the width (on a phone it is a scroller when folded) */
+  .list-filter[data-open="true"] .scroll-row-viewport {
+    overflow: visible;
+  }
+
+  .list-filter[data-open="true"] .ds-filter-row {
+    flex-wrap: wrap;
+    padding-right: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tag-search,
+    .tag-search-input,
+    .ds-filter > span {
+      transition: none;
+    }
   }
 
   /*
@@ -3450,6 +3533,20 @@
     display: flex;
     align-items: baseline;
     gap: 0.75rem;
+  }
+
+  /* The year of a group stays under the bar while its group scrolls by, and the next year pushes it away (a sticky heading in its own section). Its ground is the page's: the rows slide under it. */
+  .ds-year-sticky {
+    position: sticky;
+    /* (below the bar's own scrim, which blurs and fades what passes under it: the year is clear of it) */
+    top: var(--scrim-height);
+    z-index: 2;
+    /* (the room under the year, 1.5 rem as before: the lower part of it is the fade the rows slide into) */
+    margin: 0 0 0.5rem;
+    /* (only as wide as the numeral: the rows beside it stay in view as they pass) */
+    width: fit-content;
+    padding: 0 0.75rem 1rem 0;
+    background: linear-gradient(var(--background) 70%, transparent);
   }
 
   /*
@@ -3624,8 +3721,10 @@
     }
   }
 
-  /* The tag filter: plain space under the title, a little more than the title's descender (the rows' own hairline closes the head below). */
+  /* The tag filter: plain space under the title, a little more than the title's descender (the rows' own hairline closes the head below). It stands over whatever overlaps it from above (the software page's picture reaches down into its room). */
   .list-filter {
+    position: relative;
+    z-index: 1;
     margin-top: 1.5rem;
   }
 

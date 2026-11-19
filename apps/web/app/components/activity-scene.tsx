@@ -289,7 +289,8 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
             tile.rotateX(-Math.PI / 2);
             tile.deleteAttribute("uv");
             tile.translate(x, 0, z);
-            paint(tile, pageColour().multiplyScalar(dark ? 1.5 : 0.93));
+            // (dark) a very dim grey of its own, a little over the page's: an empty day is a faint plate, not a hole
+            paint(tile, dark ? pageColour().add(new THREE.Color(0.006, 0.006, 0.006)) : pageColour().multiplyScalar(0.93));
             tiles.push(tile);
             picks.push({ cell: i, x, z, y0: 0, y1: 0.04 });
             return;
@@ -759,7 +760,8 @@ void main(){
         pinned = true;
         announce(next);
       };
-      el.tabIndex = 0;
+      // (not in the tab order: a focus ring round the whole picture is ugly; a click still focuses it, so the arrow keys walk the days after one)
+      el.tabIndex = -1;
       dom.addEventListener("pointermove", onMove);
       dom.addEventListener("pointerleave", onLeave);
       dom.addEventListener("pointerdown", onDown);

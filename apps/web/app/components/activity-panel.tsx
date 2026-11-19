@@ -1,12 +1,12 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { GitHubMark, Icon, WakaTimeMark } from "~/components/ui";
+import { Icon } from "~/components/ui";
 import { placeholderTiles } from "~/lib/activity-view";
 import { activityStats, dayText, GITHUB_URL, isActivity, layoutActivity, readableDay, WAKATIME_URL, type Activity, type ActivityStat, type HoverInfo, type Matrix } from "~/lib/activity";
 
 /** A source's colour as text, softened toward the page's own text colour (the figures and words are tinted, not painted). */
 const soft = (tone: "green" | "blue", share = 62) => `color-mix(in srgb, var(${tone === "green" ? "--act-green" : "--act-blue"}) ${share}%, var(--foreground))`;
 /** The profile links: a soft tint of the source's colour, no outline; the mark and the label take the same tone. */
-const LINK = "inline-flex min-h-9 items-center gap-2 px-3 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current max-md:min-h-11";
+const LINK = "group/link inline-flex items-baseline gap-1 underline decoration-transparent decoration-1 underline-offset-[0.2em] transition-[text-decoration-color] hover:decoration-current focus-visible:decoration-current focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current";
 
 const ActivityScene = lazy(() => import("~/components/activity-scene").then((m) => ({ default: m.ActivityScene })));
 
@@ -143,12 +143,24 @@ function DayCard({ info, visible, instant, width }: { info: HoverInfo; visible: 
           transition: instant ? "none" : "transform 0.3s cubic-bezier(0.2, 0.7, 0.2, 1)",
           background: "color-mix(in srgb, var(--background) 68%, transparent)",
           // a glassy edge: a faint line all round, a little brighter on top where the light catches it (the shadow is always black: lighter than the page, in the dark theme, it would be a glow)
-          borderRadius: 6,
           boxShadow:
             "inset 0 0 0 1px color-mix(in srgb, var(--foreground) 11%, transparent), inset 0 1px 0 color-mix(in srgb, var(--foreground) 14%, transparent), 0 14px 44px -12px rgb(0 0 0 / 0.38), 0 2px 10px -4px rgb(0 0 0 / 0.22)",
         }}
       >
-        <p className="type-meta m-0 text-muted-foreground uppercase"><Roll value={readableDay(info.date)} order={Date.parse(`${info.date}T00:00:00Z`)} /></p>
+        {/* The day and the month are what the eye looks for: they are in the page's text colour, the weekday and the year (the frame around them) in the muted one. */}
+        <p className="type-meta m-0 flex gap-[0.6em] uppercase">
+          {(() => {
+            const [weekday = "", day = "", month = "", year = ""] = readableDay(info.date).split(" ");
+            const order = Date.parse(`${info.date}T00:00:00Z`);
+            return (
+              <>
+                <span className="text-muted-foreground"><Roll value={weekday} order={order} /></span>
+                <span className="text-foreground"><Roll value={`${day} ${month}`} order={order} /></span>
+                <span className="text-muted-foreground"><Roll value={year} order={order} /></span>
+              </>
+            );
+          })()}
+        </p>
         <div className="mt-2.5 grid grid-cols-2 gap-x-6">
           <div className="flex flex-col gap-1" style={{ color: soft("green", 70) }}>
             <span className="flex items-baseline gap-1 font-[family-name:var(--font-display)] text-[2rem] leading-none font-semibold tracking-tight tabular-nums">
@@ -170,10 +182,45 @@ function DayCard({ info, visible, instant, width }: { info: HoverInfo; visible: 
 }
 
 /**
+ * The figures, in two tiers: the three that matter set large (the page's count, the contributions, the hours coded) and the rest small beneath (the first year, the places, the longest run, the share of active days). The page's own
+ * (`lead`: its count, then the rest) are only drawn from 80 rem, where this block takes the head's place; below that the head shows them. The year's wait for the file (they fade in); the page's are there at once.
+ */
+function Figures({ lead, stats, ready = true, className }: { lead: { value: string; label: string }[]; stats: ActivityStat[]; ready?: boolean; className?: string }) {
+  interface Fig {
+    key: string;
+    value: string;
+    label: string;
+    unit?: string;
+    tone: ActivityStat["tone"];
+    own: boolean;
+  }
+  const own = (l: { value: string; label: string }): Fig => ({ key: `lead-${l.label}`, value: l.value, label: l.label, tone: "plain", own: true });
+  const theirs = (st: ActivityStat): Fig => ({ key: st.label, value: st.value, label: st.label, unit: st.unit, tone: st.tone, own: false });
+  const primary = [...lead.slice(0, 1).map(own), ...stats.slice(0, 2).map(theirs)];
+  const secondary = [...lead.slice(1).map(own), ...stats.slice(2).map(theirs)];
+  const cell = (f: Fig, big: boolean) => (
+    <div key={f.key} className={`transition-opacity duration-500 flex flex-col ${big ? "gap-1.5" : "gap-1"} min-[80rem]:items-end ${f.own ? "hidden min-[80rem]:flex" : ""}`}>
+      {/* (the year's figures are in their places from the first frame, as faint stand-ins: nothing is missing, and nothing moves when the file arrives) */}
+      <dd className={`m-0 flex items-baseline gap-1 transition-opacity duration-500 min-[80rem]:justify-end ${!f.own && !ready ? "opacity-[0.16]" : ""}`} style={{ color: f.tone === "plain" ? undefined : soft(f.tone, 75) }}>
+        <span className={`font-[family-name:var(--font-display)] leading-none font-medium tracking-[-0.03em] tabular-nums ${big ? "text-[1.75rem] min-[56rem]:text-[clamp(1.75rem,2.8cqi,2.75rem)]" : "text-[1.25rem]"}`}>{f.value}</span>
+        {f.unit && <span className="type-meta font-normal text-muted-foreground normal-case">{f.unit}</span>}
+      </dd>
+      <dt className="type-meta text-muted-foreground uppercase min-[80rem]:text-right">{f.label}</dt>
+    </div>
+  );
+  return (
+    <div data-slot="activity-stats" aria-hidden={ready ? undefined : true} className={`flex flex-col gap-5 px-4 pt-6 md:px-14 min-[80rem]:w-max min-[80rem]:gap-4 min-[80rem]:p-0 ${className ?? ""}`}>
+      <dl className="m-0 flex flex-wrap gap-x-[clamp(2rem,5cqi,4.5rem)] gap-y-4 min-[80rem]:flex-nowrap min-[80rem]:justify-between">{primary.map((f) => cell(f, true))}</dl>
+      <dl className="m-0 flex flex-wrap gap-x-6 gap-y-2 min-[80rem]:flex-nowrap min-[80rem]:justify-between">{secondary.map((f) => cell(f, false))}</dl>
+    </div>
+  );
+}
+
+/**
  * The software page's picture of the year: GitHub contributions and WakaTime coding time, a block a day (`ActivityScene`, a still isometric scene built up over a few dozen frames). Client-only: the file is fetched when the page
  * opens, the scene (three.js) loads only when the panel scrolls into view, and the room is held (an aspect ratio) so nothing moves when it arrives. Without WebGL the same numbers are two flat grids.
  */
-export function ActivityPanel({ url }: { url: string | null }) {
+export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: { value: string; label: string }[] }) {
   const { activity, failed } = useActivity(url);
   const [ready, setReady] = useState(false);
   const [hover, setHover] = useState<HoverInfo | null>(null);
@@ -206,12 +253,14 @@ export function ActivityPanel({ url }: { url: string | null }) {
       mq.removeEventListener("change", onChange);
     };
   }, []);
-  if (!enabledFor(url) || failed) return null;
+  if (!enabledFor(url)) return null;
+  // (the file is not there after all: the picture goes away, and the page's own figures, which the head hid for the grid, are shown on their own)
+  if (failed) return lead.length ? <Figures lead={lead} stats={[]} className="hidden min-[80rem]:grid min-[80rem]:absolute min-[80rem]:top-0 min-[80rem]:right-14" /> : null;
   const flat = !gl && activity ? layoutActivity(activity) : null;
   const stats = activity ? activityStats(activity) : WAITING_STATS;
   // The tilt of the scene leaves its top-right and bottom-left corners empty: the figures take the first and the legend the second (on a narrow page there is no corner, they go under the picture).
   return (
-    <section ref={box} data-slot="activity" aria-label="Activity over the last year" className="relative -mx-4 mt-0 mb-2 md:-mx-14">
+    <section ref={box} data-slot="activity" aria-label="Activity over the last year" className="relative -mx-4 mt-0 mb-2 md:-mx-14 min-[80rem]:-mb-2 min-[90rem]:-mb-10">
       {flat ? (
         <div role="img" aria-label="Activity over the last year: GitHub contributions and WakaTime coding time, a square a day" className="flex flex-col gap-4 px-4 md:px-14">
           <FlatMatrix matrix={flat.wakatime} tone="#0078d7" />
@@ -242,37 +291,27 @@ export function ActivityPanel({ url }: { url: string | null }) {
           <p className="sr-only" aria-live="polite">{hover ? dayText(hover) : ""}</p>
         </div>
       )}
-      {/* The corners are only empty when the scene is big enough (from 80 rem of page): below that the figures and the legend sit under the picture, so the text never lies over the blocks. */}
-      <dl data-slot="activity-stats" aria-hidden={activity ? undefined : true} className={`transition-opacity duration-500 ${activity ? "" : "opacity-0"} grid grid-cols-2 gap-x-8 gap-y-5 px-4 pt-5 md:grid-cols-4 md:px-14 min-[80rem]:pointer-events-none min-[80rem]:absolute min-[80rem]:top-3 min-[80rem]:right-14 min-[80rem]:grid-flow-col min-[80rem]:grid-cols-none min-[80rem]:grid-rows-2 min-[80rem]:gap-x-14 min-[80rem]:gap-y-5 min-[80rem]:p-0 min-[80rem]:text-right [&>*:nth-child(3)]:md:ml-6 min-[80rem]:[&>*:nth-child(3)]:ml-0`}>
-        {stats.map((s) => (
-          <div key={s.label} className="flex flex-col gap-1.5 min-[80rem]:items-end">
-            <dd className="m-0 flex items-baseline gap-1 min-[80rem]:justify-end" style={{ color: s.tone === "plain" ? undefined : soft(s.tone) }}>
-              <span className="font-[family-name:var(--font-display)] text-[1.875rem] leading-none font-semibold tracking-tight tabular-nums">{s.value}</span>
-              {s.unit && <span className="type-meta font-normal text-muted-foreground normal-case">{s.unit}</span>}
-            </dd>
-            <dt className="type-meta text-muted-foreground uppercase">{s.label}</dt>
-          </div>
-        ))}
-      </dl>
-      <div data-slot="activity-legend" className="flex flex-col gap-3 px-4 pt-5 md:px-14 min-[80rem]:absolute min-[80rem]:bottom-0 min-[80rem]:left-14 min-[80rem]:w-[25rem] min-[80rem]:p-0">
-        <p className="type-meta m-0 text-muted-foreground uppercase">Last 12 months</p>
-        <p className="m-0 font-[family-name:var(--font-display)] text-[1.625rem] leading-[1.1] font-semibold tracking-tight text-balance min-[80rem]:text-nowrap">
-          <span style={{ color: soft("blue", 75) }}>Coding</span> below, <span style={{ color: soft("green", 75) }}>contributions</span> above.
-        </p>
-        <div className="-mt-1 flex flex-wrap gap-2">
-          <a href={WAKATIME_URL} target="_blank" rel="noopener noreferrer" className={LINK} style={{ color: soft("blue", 80), background: "color-mix(in srgb, var(--act-blue) 13%, transparent)" }}>
-            <WakaTimeMark />
-            Coding activity
-            <Icon name="arrow-up-right" size="inline" aria-hidden="true" />
-            <span className="sr-only">on WakaTime (opens in a new tab)</span>
-          </a>
-          <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" className={LINK} style={{ color: soft("green", 80), background: "color-mix(in srgb, var(--act-green) 13%, transparent)" }}>
-            <GitHubMark />
+      {/* The corners are only empty when the scene is big enough (from 80 rem of page): below that the figures and the legend sit under the picture, so the text never lies over the blocks. From there the page's own figures (software, places) join the year's
+          in ONE grid at the top right, from the head's top down into the empty corner of the picture. */}
+      <Figures lead={lead} stats={stats} ready={!!activity} className="min-[80rem]:pointer-events-none min-[80rem]:absolute min-[80rem]:right-14 min-[80rem]:top-[calc(-1*clamp(2.5rem,6.4cqi,5.75rem)-0.25rem)]" />
+      <div data-slot="activity-legend" className="flex flex-col gap-3 px-4 pt-8 md:px-14 min-[80rem]:absolute min-[80rem]:bottom-6 min-[90rem]:bottom-[4.5rem] min-[80rem]:left-14 min-[80rem]:w-[25rem] min-[80rem]:p-0">
+        <p className="type-meta m-0 text-muted-foreground uppercase">Last <span className="text-foreground">12 months</span></p>
+        {/* In the picture's order: the contributions are the upper block of a day, the coding the lower one. */}
+        <p className="m-0 font-[family-name:var(--font-display)] text-[1.625rem] leading-[1.1] font-semibold tracking-tight text-balance">
+          <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" className={LINK} style={{ color: soft("green", 75) }}>
             GitHub contributions
-            <Icon name="arrow-up-right" size="inline" aria-hidden="true" />
+            <Icon name="arrow-up-right" size="inline" aria-hidden="true" className="translate-y-[0.05em] self-center opacity-70 transition-opacity group-hover/link:opacity-100" />
             <span className="sr-only">(opens in a new tab)</span>
-          </a>
-        </div>
+          </a>{" "}
+          above,
+          <br className="hidden min-[80rem]:inline" />{" "}
+          <a href={WAKATIME_URL} target="_blank" rel="noopener noreferrer" className={LINK} style={{ color: soft("blue", 75) }}>
+            WakaTime activity
+            <Icon name="arrow-up-right" size="inline" aria-hidden="true" className="translate-y-[0.05em] self-center opacity-70 transition-opacity group-hover/link:opacity-100" />
+            <span className="sr-only">(opens in a new tab)</span>
+          </a>{" "}
+          below.
+        </p>
       </div>
     </section>
   );
