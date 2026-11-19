@@ -135,10 +135,32 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
       const coreMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.45, metalness: 0 });
       // (in the dark theme the cores are lights: unlit, their colour is the light they give out, brighter than 1 for a busy day, which the bloom and the glow on the ground turn into a glow)
       const glowMaterial = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false });
-      const paint = (g: BufferGeometry, col: Color, glow = 0) => {
+      // `shade` (dark theme): the faces of a block are not all lit alike, as if the light were from above and to the left of the camera, and a block is brighter toward its top: its top is the brightest face, then the side that
+      // faces left, then the one that faces the viewer, and the foot is dimmer. An emissive block has no light on it to give it a form, so this puts the form back (without it a busy blue stretch is a field of flat boxes).
+      const paint = (g: BufferGeometry, col: Color, glow = 0, shade = false) => {
         const n = g.getAttribute("position").count;
         const colors = new Float32Array(n * 3);
-        for (let i = 0; i < n; i++) col.toArray(colors, i * 3);
+        const pos = g.getAttribute("position");
+        const nor = g.getAttribute("normal");
+        let y0 = Infinity;
+        let y1 = -Infinity;
+        if (shade) for (let i = 0; i < n; i++) {
+          y0 = Math.min(y0, pos.getY(i));
+          y1 = Math.max(y1, pos.getY(i));
+        }
+        for (let i = 0; i < n; i++) {
+          col.toArray(colors, i * 3);
+          if (!shade || !nor) continue;
+          const nx = nor.getX(i);
+          const ny = nor.getY(i);
+          const nz = nor.getZ(i);
+          const face = 0.5 + 0.62 * Math.max(0, ny) + 0.3 * Math.max(0, -nx) + 0.08 * Math.max(0, -nz);
+          const foot = 0.7 + 0.3 * (y1 > y0 ? (pos.getY(i) - y0) / (y1 - y0) : 1);
+          const k = face * foot;
+          colors[i * 3] = colors[i * 3]! * k;
+          colors[i * 3 + 1] = colors[i * 3 + 1]! * k;
+          colors[i * 3 + 2] = colors[i * 3 + 2]! * k;
+        }
         g.setAttribute("color", new THREE.BufferAttribute(colors, 3));
         g.setAttribute("aGlow", new THREE.BufferAttribute(new Float32Array(n).fill(glow), 1));
         g.deleteAttribute("uv");
@@ -250,7 +272,7 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
         const specs: Spec[] = [];
         // (a quiet day still has a faint light at its heart, an old bulb struggling: the floor of the emission)
         // (the lift is for the quietest days only: it fades out well before a busy one)
-        const emit = (t: number) => 0.3 + 0.1 * (1 - t) ** 3 + 1.3 * t * t + 0.4 * t;
+        const emit = (t: number) => 1.25 * (0.3 + 0.1 * (1 - t) ** 3 + 1.3 * t * t + 0.4 * t);
         const layer = (cell: number, src: "waka" | "github", x: number, z: number, y0: number, t: number, [low, high]: [Color, Color]) => {
           const h = 0.18 + t * LAYER_MAX;
           picks.push({ cell, x, z, y0, y1: y0 + h });
@@ -300,7 +322,7 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
           const shell = new RoundedBoxGeometry(0.92, h, 0.92, lite ? 2 : 3, Math.min(0.16, h / 2.2));
           shell.translate(x, y0 + h / 2, z);
           // dark: the glass is nearly clear (the light of its core shows through it); light: tinted by the level
-          paint(shell, hue.clone().lerp(new THREE.Color(0xffffff), dark ? 0.4 : 0.12).multiplyScalar(dark ? 0.22 + 0.6 * tEff : 1).add(inc.clone().multiplyScalar(0.08)));
+          paint(shell, hue.clone().lerp(new THREE.Color(0xffffff), dark ? 0.4 : 0.12).multiplyScalar(dark ? 0.22 + 0.6 * tEff : 1).add(inc.clone().multiplyScalar(0.08)), 0, dark);
           // the glass of a busy day glows on its own surface too (dark theme): three steps of emission per source, each its own material
           const tier = tEff < 0.34 ? 0 : tEff < 0.67 ? 1 : 2;
           const key = `${src}${tier}`;
@@ -309,7 +331,7 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
           const hc = h * 0.8;
           const core = new RoundedBoxGeometry(0.5, hc, 0.5, lite ? 1 : 2, Math.min(0.1, hc / 2.2));
           core.translate(x, y0 + hc / 2 + 0.03, z);
-          paint(core, dark ? hue.clone().multiplyScalar(emit(t)).add(inc) : hue);
+          paint(core, dark ? hue.clone().multiplyScalar(emit(t)).add(inc) : hue, 0, dark);
           cores.push(core);
         }
         const group = new THREE.Group();
