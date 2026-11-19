@@ -47,13 +47,22 @@ export function ActivityPanel({ url }: { url: string | null }) {
   const box = useRef<HTMLElement>(null);
   const [seen, setSeen] = useState(false);
   const [gl, setGl] = useState(true);
+  // a narrow page gets the year in three strips (a squarer slab) instead of one long one
+  const [narrow, setNarrow] = useState(false);
   useEffect(() => {
     setGl(webgl2());
+    const mq = window.matchMedia("(max-width: 47.99rem)");
+    setNarrow(mq.matches);
+    const onChange = () => setNarrow(mq.matches);
+    mq.addEventListener("change", onChange);
     const el = box.current;
     if (!el || !("IntersectionObserver" in window)) return setSeen(true);
     const io = new IntersectionObserver(([e]) => e?.isIntersecting && (setSeen(true), io.disconnect()), { rootMargin: "200px" });
     io.observe(el);
-    return () => io.disconnect();
+    return () => {
+      io.disconnect();
+      mq.removeEventListener("change", onChange);
+    };
   }, [activity]);
   if (!activity) return null;
   const flat = !gl ? layoutActivity(activity) : null;
@@ -67,7 +76,7 @@ export function ActivityPanel({ url }: { url: string | null }) {
           <FlatMatrix matrix={flat.github} tone="#0fbf3e" />
         </div>
       ) : (
-        <div className="aspect-[3.97/1] w-full max-md:aspect-[2.9/1]">{seen && <Suspense fallback={null}><ActivityScene activity={activity} className="size-full" /></Suspense>}</div>
+        <div className="aspect-[3.97/1] w-full max-md:aspect-[1.74/1]">{seen && <Suspense fallback={null}><ActivityScene activity={activity} strips={narrow ? 3 : 1} className="size-full" /></Suspense>}</div>
       )}
       <dl data-slot="activity-stats" className="grid grid-cols-2 gap-x-8 gap-y-4 px-4 pt-4 md:pointer-events-none md:absolute md:top-3 md:right-14 md:grid-cols-2 md:gap-x-9 md:gap-y-4 md:p-0 md:text-right">
         {stats.map((s) => (

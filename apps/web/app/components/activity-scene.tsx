@@ -25,7 +25,7 @@ const isDark = () => {
  * (an area light's soft shadow) and the camera a sub-pixel away (anti-aliasing) and adds it to an accumulation buffer; after `SAMPLES` frames the loop stops and the canvas keeps the
  * result. Translucent rounded blocks (transmission, refraction) lit by a room environment, on a ground that only receives the shadows, so it sits on the page's own background.
  */
-export function ActivityScene({ activity, className }: { activity: Activity; className?: string }) {
+export function ActivityScene({ activity, strips = 1, className }: { activity: Activity; strips?: number; className?: string }) {
   const host = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -54,8 +54,15 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
       const PITCH = 1.12;
       // the room the glow of the outermost columns needs around the slab, so the picture does not cut it
       const ROOM = { side: 3.2, near: 2.6, far: 0.6 };
-      const width = layout.github.weeks * PITCH;
-      const total = 7 * PITCH;
+      // The year is a long strip of weeks; on a narrow page it is cut into `strips` strips of equal length laid one behind the other, so the slab is closer to a square and fills the width
+      const perStrip = Math.ceil(layout.github.weeks / strips);
+      const STRIP_GAP = 1.6;
+      const width = perStrip * PITCH;
+      const total = strips * 7 * PITCH + (strips - 1) * STRIP_GAP;
+      const at = (week: number, day: number) => ({
+        x: (week % perStrip) * PITCH + 0.5,
+        z: Math.floor(week / perStrip) * (7 * PITCH + STRIP_GAP) + day * PITCH + 0.5,
+      });
 
       const scene = new THREE.Scene();
       const pmrem = new THREE.PMREMGenerator(renderer);
@@ -156,8 +163,7 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
         };
         stack.github.cells.forEach((g, i) => {
           const w = stack.waka.cells[i]!;
-          const x = g.week * PITCH + 0.5;
-          const z = g.day * PITCH + 0.5;
+          const { x, z } = at(g.week, g.day);
           if (dark && w.value > 0) spot(x, z, w.t, tones.waka, 1.1);
           if (dark && g.value > 0) spot(x, z, g.t, tones.github, 1.5);
           if (w.value > 0 || g.value > 0) occlude(x, z, (w.value > 0 ? 0.18 + w.t * LAYER_MAX : 0) + (g.value > 0 ? 0.18 + g.t * LAYER_MAX : 0));
@@ -221,8 +227,7 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
         };
         stack.github.cells.forEach((g, i) => {
           const w = stack.waka.cells[i]!;
-          const x = g.week * PITCH + 0.5;
-          const z = g.day * PITCH + 0.5;
+          const { x, z } = at(g.week, g.day);
           if (w.value <= 0 && g.value <= 0) {
             // a flat tile with the same rounded corners as the blocks (a rounded square, extruded 0.04)
             const tile = new THREE.ExtrudeGeometry(roundedSquare, { depth: 0.04, bevelEnabled: false, curveSegments: lite ? 3 : 6 });
@@ -580,7 +585,7 @@ void main(){
       cancelled = true;
       stop();
     };
-  }, [activity]);
+  }, [activity, strips]);
 
   return <div ref={host} role="img" aria-label="Activity over the last year: GitHub contributions and WakaTime coding time, one block a day" className={className} />;
 }
