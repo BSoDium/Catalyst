@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { type CSSProperties, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { coverImageProps } from "~/lib/cover-image";
 import { calmPlace, energyOf, lumaOf, meanUnder } from "~/lib/calm";
 import { findHorizon } from "~/lib/horizon";
@@ -443,7 +443,7 @@ export function TripPoster({ trip, here, photo = true, className, wordFace }: { 
         // The land on a photograph runs as far as the photograph does and fades with it (the same mask), so the map is not cut at the poster's edge while the picture goes on.
         <svg aria-hidden="true" width={w} height={h + PHOTO_RUN} viewBox={`0 0 ${w} ${h + PHOTO_RUN}`} className="pointer-events-none absolute inset-x-0 top-0 block" style={{ maskImage: fade(h), WebkitMaskImage: fade(h) }}>
           {fadeDefs}
-          <path d={land} mask={landMask} style={{ fill: `color-mix(in srgb, #fff ${landShare}%, transparent)` }} stroke="none" />
+          <path d={land} mask={landMask} className="trip-land" style={{ "--trip-land-dark-share": `${landShare}%` } as CSSProperties} stroke="none" />
           {/* (on a photograph the borders are lines of the route's own ink, faint: lighter than the picture like the route, not darker; on the flat field they are gaps in the land, the ocean's colour) */}
           {borderPath && <path d={borderPath} fill="none" stroke={ink} strokeOpacity={0.32} strokeWidth={1} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />}
         </svg>

@@ -2,7 +2,7 @@ import type { SVGProps } from "react";
 
 /**
  * The marks of the sites the buttons that leave this one go to (the symbol only, never the wordmark), at the size of the button's text. They are the services' own marks, used to say where the link goes:
- * ArtStation's (from Simple Icons, CC0), Polarsteps' (the circle with the pointer, from its site's header logo, drawn in the current colour so it follows both schemes) and Pexels' (its favicon, `public/brands/pexels-mark.png`, as the service publishes it).
+ * ArtStation's (from Simple Icons, CC0), Polarsteps' (the circle with the pointer, from its site's header logo, drawn in the current colour so it follows both schemes) and Pexels' (its favicon, `public/brands/pexels-mark.png`, as the service publishes it, as a square with the "p" cut out: `pexels-mark-square.png`).
  */
 export function PolarstepsMark(props: Omit<SVGProps<SVGSVGElement>, "viewBox" | "children">) {
   return (
@@ -22,23 +22,20 @@ export function ArtStationMark(props: Omit<SVGProps<SVGSVGElement>, "viewBox" | 
 }
 
 export function PexelsMark({ className }: { className?: string }) {
-  // The mark is the service's favicon (a white "p" on black): its luminance is the mask, so the "p" is drawn in the current colour (the button's brand ink) and the black square is gone.
+  // The mark is the service's favicon (a white "p" on a black square), inverted: the square is drawn in the current colour (the button's label) and the "p" is cut out of it, so the button's own fill shows through as the "p".
   return (
     <span
       aria-hidden="true"
       className={className ?? "inline-block size-[1.125em] shrink-0 bg-current"}
       style={{
-        maskImage: "url(/brands/pexels-mark.png)",
-        WebkitMaskImage: "url(/brands/pexels-mark.png)",
+        maskImage: "url(/brands/pexels-mark-square.png)",
+        WebkitMaskImage: "url(/brands/pexels-mark-square.png)",
         maskSize: "contain",
         WebkitMaskSize: "contain",
         maskRepeat: "no-repeat",
         WebkitMaskRepeat: "no-repeat",
         maskPosition: "center",
         WebkitMaskPosition: "center",
-        maskMode: "luminance",
-        // (Safari's name for the same)
-        WebkitMaskSourceType: "luminance",
       } as React.CSSProperties}
     />
   );
