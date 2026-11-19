@@ -32,3 +32,30 @@ describe("isActivity", () => {
     expect(isActivity(null)).toBe(false);
   });
 });
+
+import { activityStats } from "./activity";
+
+describe("activityStats", () => {
+  it("adds the year up and finds the longest run of active days", () => {
+    const github = [
+      { date: "2026-11-01", count: 3, level: 1 },
+      { date: "2026-11-02", count: 0, level: 0 },
+      { date: "2026-11-03", count: 5, level: 2 },
+      { date: "2026-11-04", count: 0, level: 0 },
+    ];
+    const wakatime = [
+      { date: "2026-11-01", seconds: 3600 },
+      { date: "2026-11-02", seconds: 3600 },
+      { date: "2026-11-03", seconds: 0 },
+      { date: "2026-11-04", seconds: 0 },
+    ];
+    const s = activityStats({ generatedAt: "x", github, wakatime });
+    expect(s[0]).toEqual({ value: "8", label: "contributions" });
+    expect(s[1]).toEqual({ value: "2 h", label: "coded" });
+    expect(s[2]).toEqual({ value: "3 days", label: "longest streak" });
+    expect(s[3]!.label).toBe("days active");
+  });
+  it("is empty for an empty file", () => {
+    expect(activityStats({ generatedAt: "x", github: [], wakatime: [] })).toEqual([]);
+  });
+});

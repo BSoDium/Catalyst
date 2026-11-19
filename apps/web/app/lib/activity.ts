@@ -67,3 +67,39 @@ export function isActivity(v: unknown): v is Activity {
   const ok = (xs: unknown, key: string) => Array.isArray(xs) && xs.length > 30 && xs.every((d) => typeof d?.date === "string" && Number.isFinite(d[key]));
   return !!a && typeof a === "object" && typeof a.generatedAt === "string" && ok(a.github, "count") && ok(a.wakatime, "seconds");
 }
+
+export interface ActivityStat {
+  value: string;
+  label: string;
+}
+
+const DAY = 86_400_000;
+const num = (n: number) => Math.round(n).toLocaleString("en");
+
+/**
+ * The figures of the year printed beside the picture: contributions, hours coded, the longest run of days with some activity in either source, and the share of days with any. The year is the 365 days ending at the latest day
+ * of the file. Pure.
+ */
+export function activityStats(a: Activity): ActivityStat[] {
+  const end = [a.github.at(-1)?.date, a.wakatime.at(-1)?.date].filter((d): d is string => !!d).sort().at(-1);
+  if (!end) return [];
+  const from = Date.parse(`${end}T00:00:00Z`) - 364 * DAY;
+  const inYear = (d: { date: string }) => Date.parse(`${d.date}T00:00:00Z`) >= from;
+  const github = a.github.filter(inYear);
+  const waka = a.wakatime.filter(inYear);
+  const contributions = github.reduce((s, d) => s + d.count, 0);
+  const hours = waka.reduce((s, d) => s + d.seconds, 0) / 3600;
+  const active = new Set<string>([...github.filter((d) => d.count > 0).map((d) => d.date), ...waka.filter((d) => d.seconds > 0).map((d) => d.date)]);
+  let streak = 0;
+  let run = 0;
+  for (let t = from; t <= Date.parse(`${end}T00:00:00Z`); t += DAY) {
+    run = active.has(new Date(t).toISOString().slice(0, 10)) ? run + 1 : 0;
+    streak = Math.max(streak, run);
+  }
+  return [
+    { value: num(contributions), label: "contributions" },
+    { value: `${num(hours)} h`, label: "coded" },
+    { value: `${streak} days`, label: "longest streak" },
+    { value: `${Math.round((active.size / 365) * 100)}%`, label: "days active" },
+  ];
+}

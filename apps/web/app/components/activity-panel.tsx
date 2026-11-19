@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
-import { isActivity, layoutActivity, type Activity, type Matrix } from "~/lib/activity";
+import { activityStats, isActivity, layoutActivity, type Activity, type Matrix } from "~/lib/activity";
 
 const ActivityScene = lazy(() => import("~/components/activity-scene").then((m) => ({ default: m.ActivityScene })));
 
@@ -57,17 +57,33 @@ export function ActivityPanel({ url }: { url: string | null }) {
   }, [activity]);
   if (!activity) return null;
   const flat = !gl ? layoutActivity(activity) : null;
+  const stats = activityStats(activity);
+  // The tilt of the scene leaves its top-right and bottom-left corners empty: the figures take the first and the legend the second (on a narrow page there is no corner, they go under the picture).
   return (
-    <section ref={box} data-slot="activity" aria-label="Activity over the last year" className="-mx-4 mt-0 mb-2 md:-mx-14">
+    <section ref={box} data-slot="activity" aria-label="Activity over the last year" className="relative -mx-4 mt-0 mb-2 md:-mx-14">
       {flat ? (
-        <div role="img" aria-label="Activity over the last year: GitHub contributions and WakaTime coding time, a square a day" className="flex flex-col gap-4">
+        <div role="img" aria-label="Activity over the last year: GitHub contributions and WakaTime coding time, a square a day" className="flex flex-col gap-4 px-4 md:px-14">
           <FlatMatrix matrix={flat.wakatime} tone="#0078d7" />
           <FlatMatrix matrix={flat.github} tone="#0fbf3e" />
         </div>
       ) : (
-        <div className="aspect-[3.97/1] w-full">{seen && <Suspense fallback={null}><ActivityScene activity={activity} className="size-full" /></Suspense>}</div>
+        <div className="aspect-[3.97/1] w-full max-md:aspect-[2.9/1]">{seen && <Suspense fallback={null}><ActivityScene activity={activity} className="size-full" /></Suspense>}</div>
       )}
-      <p className="type-meta mt-1 px-4 text-muted-foreground md:px-14">The last year, a column a day: coding time (blue, below) and GitHub contributions (green, above); the brighter, the busier</p>
+      <dl data-slot="activity-stats" className="grid grid-cols-2 gap-x-8 gap-y-4 px-4 pt-4 md:pointer-events-none md:absolute md:top-3 md:right-14 md:grid-cols-2 md:gap-x-9 md:gap-y-4 md:p-0 md:text-right">
+        {stats.map((s) => (
+          <div key={s.label} className="flex flex-col gap-1.5 md:items-end">
+            <dd className="m-0 font-[family-name:var(--font-display)] text-[1.625rem] leading-none font-medium tracking-tight tabular-nums">{s.value}</dd>
+            <dt className="type-meta text-muted-foreground uppercase">{s.label}</dt>
+          </div>
+        ))}
+      </dl>
+      <div data-slot="activity-legend" className="px-4 pt-4 md:absolute md:bottom-0 md:left-14 md:max-w-[22rem] md:p-0">
+        <p className="m-0 text-pretty font-[family-name:var(--font-reading)] text-base leading-snug text-foreground md:text-lg">A year of work, a day to a column: the hours I coded below, my GitHub contributions on top. The brighter the block, the busier the day.</p>
+        <p className="type-meta mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 uppercase text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5"><span aria-hidden="true" className="size-2.5" style={{ background: "#1a8cff" }} />coding time</span>
+          <span className="inline-flex items-center gap-1.5"><span aria-hidden="true" className="size-2.5" style={{ background: "#0fbf3e" }} />GitHub</span>
+        </p>
+      </div>
     </section>
   );
 }
