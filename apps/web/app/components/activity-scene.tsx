@@ -334,7 +334,7 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
           const core = new RoundedBoxGeometry(cw, hc, cw, lite ? 1 : 2, Math.min(0.1, cw / 2.4, hc / 2.2));
           core.translate(x, y0 + h / 2, z);
           // (a blue rod burns white at its heart: the whiter the busier)
-          const coreHue = dark && src === "waka" ? hue.clone().lerp(new THREE.Color(0xffffff), 0.35 + 0.4 * t) : hue;
+          const coreHue = dark && src === "waka" ? new THREE.Color(0xffffff) : hue; // (a blue rod is plain white: its blue is the glass's tint)
           paint(core, dark ? coreHue.multiplyScalar(emit(t) * (1 + 1.1 * t)).add(inc) : hue);
           cores.push(core);
         }
