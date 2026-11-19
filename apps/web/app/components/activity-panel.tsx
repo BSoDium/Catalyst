@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { GitHubMark, Icon, WakaTimeMark } from "~/components/ui";
 import { placeholderTiles } from "~/lib/activity-view";
 import { activityStats, dayText, GITHUB_URL, isActivity, layoutActivity, readableDay, WAKATIME_URL, type Activity, type ActivityStat, type HoverInfo, type Matrix } from "~/lib/activity";
@@ -96,19 +96,56 @@ function Roll({ value, order }: { value: string; order: number }) {
 function DayCard({ info, visible, instant, width }: { info: HoverInfo; visible: boolean; instant: boolean; width: number }) {
   const half = 128;
   const x = width ? Math.min(Math.max(info.x, half + 8), width - half - 8) : info.x;
-  const below = info.y < 120;
-  const glide = instant ? "none" : "transform 0.22s cubic-bezier(0.2, 0.7, 0.2, 1)";
+  const y = info.y;
+  const below = y < 120;
   const hours = info.hours >= 0.05 ? info.hours.toFixed(1) : "0";
+  // The card follows its target with a damped glide (it eases toward it, a fraction of the way each frame), not a fixed transition from jump to jump: a pointer sweeping over many days
+  // moves it in one smooth line. It appears in place when it comes from nothing, and does not move at all with reduced motion.
+  const outer = useRef<HTMLDivElement>(null);
+  const cur = useRef({ x, y, init: false });
+  useLayoutEffect(() => {
+    const el = outer.current;
+    if (!el) return;
+    const c = cur.current;
+    const put = () => {
+      el.style.transform = `translate3d(${c.x.toFixed(2)}px, ${c.y.toFixed(2)}px, 0)`;
+    };
+    if (instant || !c.init || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      c.x = x;
+      c.y = y;
+      c.init = true;
+      put();
+      return;
+    }
+    let raf = 0;
+    let last = performance.now();
+    const tick = (now: number) => {
+      const k = 1 - Math.exp(-Math.min(64, now - last) / 120);
+      last = now;
+      c.x += (x - c.x) * k;
+      c.y += (y - c.y) * k;
+      if (Math.abs(x - c.x) + Math.abs(y - c.y) > 0.25) raf = requestAnimationFrame(tick);
+      else {
+        c.x = x;
+        c.y = y;
+      }
+      put();
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [x, y, instant]);
   return (
-    <div role="presentation" className="pointer-events-none absolute top-0 left-0 z-10" style={{ transform: `translate3d(${x}px, ${info.y}px, 0)`, transition: glide, opacity: visible ? 1 : 0, transitionProperty: instant ? "opacity" : "transform, opacity", transitionDuration: "0.22s, 0.16s" }}>
+    <div ref={outer} role="presentation" className="pointer-events-none absolute top-0 left-0 z-10" style={{ opacity: visible ? 1 : 0, transition: "opacity 0.16s" }}>
       <div
         className="w-64 px-4 py-3.5 backdrop-blur-md"
         style={{
           transform: `translate(-50%, ${below ? "16px" : "calc(-100% - 16px)"})`,
-          transition: instant ? "none" : "transform 0.22s cubic-bezier(0.2, 0.7, 0.2, 1)",
+          transition: instant ? "none" : "transform 0.3s cubic-bezier(0.2, 0.7, 0.2, 1)",
           background: "color-mix(in srgb, var(--background) 68%, transparent)",
-          // (the shadow is always black: a shadow lighter than the page, in the dark theme, would be a glow)
-          boxShadow: "0 14px 44px -12px rgb(0 0 0 / 0.38), 0 2px 10px -4px rgb(0 0 0 / 0.22)",
+          // a glassy edge: a faint line all round, a little brighter on top where the light catches it (the shadow is always black: lighter than the page, in the dark theme, it would be a glow)
+          borderRadius: 6,
+          boxShadow:
+            "inset 0 0 0 1px color-mix(in srgb, var(--foreground) 11%, transparent), inset 0 1px 0 color-mix(in srgb, var(--foreground) 14%, transparent), 0 14px 44px -12px rgb(0 0 0 / 0.38), 0 2px 10px -4px rgb(0 0 0 / 0.22)",
         }}
       >
         <p className="type-meta m-0 text-muted-foreground uppercase"><Roll value={readableDay(info.date)} order={Date.parse(`${info.date}T00:00:00Z`)} /></p>
@@ -193,10 +230,10 @@ export function ActivityPanel({ url }: { url: string | null }) {
           )}
           {lastHover.current && (
             <>
-              <svg aria-hidden="true" className="pointer-events-none absolute inset-0 size-full overflow-visible" style={{ opacity: hover ? 1 : 0, transition: "opacity 0.16s" }}>
+              <svg aria-hidden="true" className="pointer-events-none absolute inset-0 size-full overflow-visible" style={{ opacity: hover ? 1 : 0, transition: instant ? "none" : "opacity 0.12s" }}>
                 {(() => {
                   const d = `M${lastHover.current.outline.split(" ").join("L")}Z`.replaceAll(",", " ");
-                  return <path d={d} style={{ d: `path("${d}")`, transition: instant ? "none" : "d 0.22s cubic-bezier(0.2, 0.7, 0.2, 1)" }} fill="color-mix(in srgb, var(--foreground) 7%, transparent)" stroke="var(--foreground)" strokeWidth={1.5} strokeLinejoin="round" />;
+                  return <path d={d} fill="color-mix(in srgb, var(--foreground) 7%, transparent)" stroke="var(--foreground)" strokeWidth={1.5} strokeLinejoin="round" />;
                 })()}
               </svg>
               <DayCard info={lastHover.current} visible={!!hover} instant={instant} width={sceneBox.current?.clientWidth ?? 0} />
