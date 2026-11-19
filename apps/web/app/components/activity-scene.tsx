@@ -624,6 +624,28 @@ void main(){
         }
         return [...lower.slice(0, -1), ...upper.slice(0, -1)];
       };
+      // The outline is always 24 points along the silhouette from its top-most one, so that the outline of one day can glide into the next one's (a path with the same number of points is interpolated by the browser)
+      const resample = (poly: { x: number; y: number }[], n: number) => {
+        let start = 0;
+        poly.forEach((p, i) => {
+          if (p.y < poly[start]!.y) start = i;
+        });
+        const ring = [...poly.slice(start), ...poly.slice(0, start)];
+        const lens = ring.map((p, i) => Math.hypot(ring[(i + 1) % ring.length]!.x - p.x, ring[(i + 1) % ring.length]!.y - p.y));
+        const total = lens.reduce((x, y) => x + y, 0);
+        const out: { x: number; y: number }[] = [];
+        let seg = 0;
+        let acc = 0;
+        for (let k = 0; k < n; k++) {
+          const target = (k / n) * total;
+          while (acc + lens[seg]! < target && seg < ring.length - 1) acc += lens[seg++]!;
+          const f = lens[seg]! > 0 ? (target - acc) / lens[seg]! : 0;
+          const a2 = ring[seg]!;
+          const b2 = ring[(seg + 1) % ring.length]!;
+          out.push({ x: a2.x + (b2.x - a2.x) * f, y: a2.y + (b2.y - a2.y) * f });
+        }
+        return out;
+      };
       const announce = (cell: number) => {
         current = cell;
         if (cell < 0 || !onHover) return onHover?.(null);
@@ -633,7 +655,7 @@ void main(){
         const corners: { x: number; y: number }[] = [];
         for (const dx of [-0.46, 0.46]) for (const dz of [-0.46, 0.46]) for (const y of [0, top]) corners.push(toCss(new THREE.Vector3(x + dx, y, z + dz)));
         const c = toCss(new THREE.Vector3(x, top, z));
-        onHover({ date: g.date, contributions: g.value, hours: layout.wakatime.cells[cell]?.value ?? 0, outline: hull(corners).map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" "), x: c.x, y: c.y });
+        onHover({ date: g.date, contributions: g.value, hours: layout.wakatime.cells[cell]?.value ?? 0, outline: resample(hull(corners), 24).map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" "), x: c.x, y: c.y });
       };
       const onMove = (e: PointerEvent) => {
         if (e.pointerType === "touch" || pinned || settling) return;

@@ -8588,3 +8588,17 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     --act-blue: #4aa8ff;
   }
 }
+
+/* The numbers of the activity picture's day card slide and blur into each other as the day changes (components/activity-panel.tsx `Roll`): up when the value rises, down when it falls. */
+@keyframes act-in-up { from { transform: translateY(0.45em); filter: blur(5px); opacity: 0; } }
+@keyframes act-out-up { to { transform: translateY(-0.45em); filter: blur(5px); opacity: 0; } }
+@keyframes act-in-down { from { transform: translateY(-0.45em); filter: blur(5px); opacity: 0; } }
+@keyframes act-out-down { to { transform: translateY(0.45em); filter: blur(5px); opacity: 0; } }
+.act-in-up { animation: act-in-up 0.26s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.act-out-up { animation: act-out-up 0.26s cubic-bezier(0.4, 0, 1, 1) both; }
+.act-in-down { animation: act-in-down 0.26s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.act-out-down { animation: act-out-down 0.26s cubic-bezier(0.4, 0, 1, 1) both; }
+@media (prefers-reduced-motion: reduce) {
+  .act-in-up, .act-out-up, .act-in-down, .act-out-down { animation: none; }
+  .act-out-up, .act-out-down { display: none; }
+}

@@ -70,26 +70,64 @@ function FlatMatrix({ matrix, tone }: { matrix: Matrix; tone: string }) {
   );
 }
 
-/** The card of a day, hung on its column: the date and the two numbers, in the picture's two colours. It sits above the column, or under it near the top, and is kept inside the picture. */
-function DayCard({ info, width }: { info: HoverInfo; width: number }) {
-  const half = 96;
-  const x = width ? Math.min(Math.max(info.x, half + 8), width - half - 8) : info.x;
-  const below = info.y < 96;
+/** A value that rolls: when it changes, the old one slides out and blurs while the new one slides in from the other side (up when `order` rises, down when it falls). Both sit in one grid cell, so the width does not jump. */
+function Roll({ value, order }: { value: string; order: number }) {
+  const [s, setS] = useState({ now: value, nowOrder: order, prev: null as string | null, dir: "up" as "up" | "down" });
+  useEffect(() => {
+    if (value === s.now) return;
+    setS({ now: value, nowOrder: order, prev: s.now, dir: order >= s.nowOrder ? "up" : "down" });
+    const t = window.setTimeout(() => setS((x) => ({ ...x, prev: null })), 300);
+    return () => window.clearTimeout(t);
+    // (only a new value starts a roll)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
   return (
-    <div
-      role="presentation"
-      className="pointer-events-none absolute z-10 w-48 border border-[var(--border-strong)] bg-background px-3 py-2.5 shadow-none"
-      style={{ left: x, top: info.y, transform: `translate(-50%, ${below ? "14px" : "calc(-100% - 14px)"})` }}
-    >
-      <p className="type-meta m-0 text-muted-foreground uppercase">{readableDay(info.date)}</p>
-      <p className="m-0 mt-1.5 flex items-center gap-2 text-sm" style={{ color: soft("green", 80) }}>
-        <span aria-hidden="true" className="size-2 shrink-0" style={{ background: "#0fbf3e" }} />
-        <span className="font-semibold tabular-nums">{info.contributions}</span> contribution{info.contributions === 1 ? "" : "s"}
-      </p>
-      <p className="m-0 mt-1 flex items-center gap-2 text-sm" style={{ color: soft("blue", 80) }}>
-        <span aria-hidden="true" className="size-2 shrink-0" style={{ background: "#1a8cff" }} />
-        <span className="font-semibold tabular-nums">{info.hours >= 0.05 ? info.hours.toFixed(1) : "0"}</span> h coded
-      </p>
+    <span className="inline-grid">
+      <span key={s.now} className={s.prev !== null ? `act-in-${s.dir}` : undefined} style={{ gridArea: "1 / 1" }}>{s.now}</span>
+      {s.prev !== null && <span key={`p${s.prev}`} aria-hidden="true" className={`act-out-${s.dir}`} style={{ gridArea: "1 / 1" }}>{s.prev}</span>}
+    </span>
+  );
+}
+
+/**
+ * The card of a day, hung on its column. It stays mounted and glides from one day to the next (and fades when the pointer leaves, snapping to the day where it comes back), over a blurred, translucent ground with a soft shadow and
+ * no outline; its numbers are set like the page's figures (large value, small unit) and roll into each other as the day changes.
+ */
+function DayCard({ info, visible, instant, width }: { info: HoverInfo; visible: boolean; instant: boolean; width: number }) {
+  const half = 128;
+  const x = width ? Math.min(Math.max(info.x, half + 8), width - half - 8) : info.x;
+  const below = info.y < 120;
+  const glide = instant ? "none" : "transform 0.22s cubic-bezier(0.2, 0.7, 0.2, 1)";
+  const hours = info.hours >= 0.05 ? info.hours.toFixed(1) : "0";
+  return (
+    <div role="presentation" className="pointer-events-none absolute top-0 left-0 z-10" style={{ transform: `translate3d(${x}px, ${info.y}px, 0)`, transition: glide, opacity: visible ? 1 : 0, transitionProperty: instant ? "opacity" : "transform, opacity", transitionDuration: "0.22s, 0.16s" }}>
+      <div
+        className="w-64 px-4 py-3.5 backdrop-blur-md"
+        style={{
+          transform: `translate(-50%, ${below ? "16px" : "calc(-100% - 16px)"})`,
+          transition: instant ? "none" : "transform 0.22s cubic-bezier(0.2, 0.7, 0.2, 1)",
+          background: "color-mix(in srgb, var(--background) 68%, transparent)",
+          // (the shadow is always black: a shadow lighter than the page, in the dark theme, would be a glow)
+          boxShadow: "0 14px 44px -12px rgb(0 0 0 / 0.38), 0 2px 10px -4px rgb(0 0 0 / 0.22)",
+        }}
+      >
+        <p className="type-meta m-0 text-muted-foreground uppercase"><Roll value={readableDay(info.date)} order={Date.parse(`${info.date}T00:00:00Z`)} /></p>
+        <div className="mt-2.5 grid grid-cols-2 gap-x-6">
+          <div className="flex flex-col gap-1" style={{ color: soft("green", 70) }}>
+            <span className="flex items-baseline gap-1 font-[family-name:var(--font-display)] text-[2rem] leading-none font-semibold tracking-tight tabular-nums">
+              <Roll value={String(info.contributions)} order={info.contributions} />
+            </span>
+            <span className="type-meta text-muted-foreground uppercase">{info.contributions === 1 ? "contribution" : "contributions"}</span>
+          </div>
+          <div className="flex flex-col gap-1" style={{ color: soft("blue", 70) }}>
+            <span className="flex items-baseline gap-1 font-[family-name:var(--font-display)] text-[2rem] leading-none font-semibold tracking-tight tabular-nums">
+              <Roll value={hours} order={Number(hours)} />
+              <span className="type-meta font-normal text-muted-foreground normal-case">h</span>
+            </span>
+            <span className="type-meta text-muted-foreground uppercase">coded</span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -102,6 +140,14 @@ export function ActivityPanel({ url }: { url: string | null }) {
   const { activity, failed } = useActivity(url);
   const [ready, setReady] = useState(false);
   const [hover, setHover] = useState<HoverInfo | null>(null);
+  // the last day shown stays mounted (the card fades and glides instead of vanishing); a card that comes back from nothing appears in place
+  const lastHover = useRef<HoverInfo | null>(null);
+  const wasShown = useRef(false);
+  if (hover) lastHover.current = hover;
+  const instant = !!hover && !wasShown.current;
+  useEffect(() => {
+    wasShown.current = !!hover;
+  }, [hover]);
   const sceneBox = useRef<HTMLDivElement>(null);
   const box = useRef<HTMLElement>(null);
   const [seen, setSeen] = useState(false);
@@ -145,12 +191,15 @@ export function ActivityPanel({ url }: { url: string | null }) {
               <ActivityScene activity={activity} strips={narrow ? 3 : 1} onReady={() => setReady(true)} onHover={setHover} className="absolute inset-0 outline-offset-[-2px] focus-visible:outline-2 focus-visible:outline-[var(--ring)]" />
             </Suspense>
           )}
-          {hover && (
+          {lastHover.current && (
             <>
-              <svg aria-hidden="true" className="pointer-events-none absolute inset-0 size-full overflow-visible">
-                <polygon points={hover.outline} fill="color-mix(in srgb, var(--foreground) 8%, transparent)" stroke="var(--foreground)" strokeWidth={1.5} strokeLinejoin="round" />
+              <svg aria-hidden="true" className="pointer-events-none absolute inset-0 size-full overflow-visible" style={{ opacity: hover ? 1 : 0, transition: "opacity 0.16s" }}>
+                {(() => {
+                  const d = `M${lastHover.current.outline.split(" ").join("L")}Z`.replaceAll(",", " ");
+                  return <path d={d} style={{ d: `path("${d}")`, transition: instant ? "none" : "d 0.22s cubic-bezier(0.2, 0.7, 0.2, 1)" }} fill="color-mix(in srgb, var(--foreground) 7%, transparent)" stroke="var(--foreground)" strokeWidth={1.5} strokeLinejoin="round" />;
+                })()}
               </svg>
-              <DayCard info={hover} width={sceneBox.current?.clientWidth ?? 0} />
+              <DayCard info={lastHover.current} visible={!!hover} instant={instant} width={sceneBox.current?.clientWidth ?? 0} />
             </>
           )}
           <p className="sr-only" aria-live="polite">{hover ? dayText(hover) : ""}</p>
