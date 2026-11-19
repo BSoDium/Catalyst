@@ -78,16 +78,17 @@ export function ActivityPanel({ url }: { url: string | null }) {
       ) : (
         <div className="aspect-[3.97/1] w-full max-md:aspect-[1.7/1]">{seen && <Suspense fallback={null}><ActivityScene activity={activity} strips={narrow ? 3 : 1} className="size-full" /></Suspense>}</div>
       )}
-      <dl data-slot="activity-stats" className="grid grid-cols-2 gap-x-8 gap-y-4 px-4 pt-4 md:pointer-events-none md:absolute md:top-3 md:right-14 md:grid-cols-2 md:gap-x-9 md:gap-y-4 md:p-0 md:text-right">
+      {/* The corners are only empty when the scene is big enough (from 80 rem of page): below that the figures and the legend sit under the picture, so the text never lies over the blocks. */}
+      <dl data-slot="activity-stats" className="grid grid-cols-2 gap-x-8 gap-y-4 px-4 pt-4 md:grid-cols-4 md:px-14 min-[80rem]:pointer-events-none min-[80rem]:absolute min-[80rem]:top-3 min-[80rem]:right-14 min-[80rem]:grid-cols-2 min-[80rem]:gap-x-9 min-[80rem]:gap-y-4 min-[80rem]:p-0 min-[80rem]:text-right">
         {stats.map((s) => (
-          <div key={s.label} className="flex flex-col gap-1.5 md:items-end">
+          <div key={s.label} className="flex flex-col gap-1.5 min-[80rem]:items-end">
             <dd className="m-0 font-[family-name:var(--font-display)] text-[1.625rem] leading-none font-medium tracking-tight tabular-nums">{s.value}</dd>
             <dt className="type-meta text-muted-foreground uppercase">{s.label}</dt>
           </div>
         ))}
       </dl>
-      <div data-slot="activity-legend" className="px-4 pt-4 md:absolute md:bottom-0 md:left-14 md:max-w-[22rem] md:p-0">
-        <p className="m-0 text-pretty font-[family-name:var(--font-reading)] text-base leading-snug text-foreground md:text-lg">A year of work, a day to a column: the hours I coded below, my GitHub contributions on top. The brighter the block, the busier the day.</p>
+      <div data-slot="activity-legend" className="px-4 pt-4 md:px-14 min-[80rem]:absolute min-[80rem]:bottom-0 min-[80rem]:left-14 min-[80rem]:max-w-[22rem] min-[80rem]:p-0">
+        <p className="m-0 max-w-[40rem] text-pretty font-[family-name:var(--font-reading)] text-base leading-snug text-foreground min-[80rem]:text-lg">A year of work, a day to a column: the hours I coded below, my GitHub contributions on top. The brighter the block, the busier the day.</p>
         <p className="type-meta mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 uppercase text-muted-foreground">
           <span className="inline-flex items-center gap-1.5"><span aria-hidden="true" className="size-2.5" style={{ background: "#1a8cff" }} />coding time</span>
           <span className="inline-flex items-center gap-1.5"><span aria-hidden="true" className="size-2.5" style={{ background: "#0fbf3e" }} />GitHub</span>

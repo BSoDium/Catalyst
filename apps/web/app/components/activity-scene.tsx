@@ -218,7 +218,8 @@ export function ActivityScene({ activity, strips = 1, className }: { activity: A
         // the layers are first only noted (where, how tall, how busy, which colour), so that each can be lit by the others before its geometry is made
         interface Spec { src: "waka" | "github"; x: number; z: number; y0: number; h: number; t: number; hue: Color }
         const specs: Spec[] = [];
-        const emit = (t: number) => 0.07 + 1.6 * t * t + 0.4 * t;
+        // (a quiet day still has a faint light at its heart, an old bulb struggling: the floor of the emission)
+        const emit = (t: number) => 0.3 + 1.6 * t * t + 0.4 * t;
         const layer = (src: "waka" | "github", x: number, z: number, y0: number, t: number, [low, high]: [Color, Color]) => {
           const h = 0.18 + t * LAYER_MAX;
           specs.push({ src, x, z, y0, h, t, hue: low.clone().lerp(high, t) });
@@ -330,7 +331,7 @@ export function ActivityScene({ activity, strips = 1, className }: { activity: A
         blocks.add(
           build(
             { waka: layout.wakatime, github: layout.github },
-            { waka: [c(dark ? 0x0a3f78 : 0x1658b8), c(dark ? 0x1f9bff : 0x1a8cff)], github: [c(dark ? 0x0a5a1c : 0x0a8f2c), c(dark ? 0x0fbf3e : 0x00d63c)] },
+            { waka: [c(dark ? 0x0f5aa8 : 0x1658b8), c(dark ? 0x1f9bff : 0x1a8cff)], github: [c(dark ? 0x0f8a2c : 0x0a8f2c), c(dark ? 0x0fbf3e : 0x00d63c)] },
             dark,
           ),
         );
