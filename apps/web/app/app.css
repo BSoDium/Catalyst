@@ -3320,13 +3320,59 @@
     color: var(--signal-text);
   }
 
+  /* the chosen one is a filled plate (the page's text colour, the page's colour on it): selection is seen at a glance, not by an underline alone */
   .ds-filter[aria-current="true"] {
-    color: var(--foreground);
+    color: var(--background);
     font-weight: 600;
   }
 
   .ds-filter[aria-current="true"] > span {
+    padding-inline: 0.5rem;
+    background: var(--foreground);
+    /* (the accent's rule under the chosen one stays: the owner's, 2026-10-14) */
     border-bottom-color: var(--signal);
+  }
+
+  /* how many entries a tag holds: small, mono, muted */
+  .ds-filter-count {
+    margin-left: 0.4em;
+    font-family: var(--font-mono);
+    font-size: 0.75em;
+    font-weight: 400;
+    opacity: 0.55;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* the search over all the tags: opens under the row, a hairline above it, the field a line with no box */
+  .tag-search {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .tag-search-input {
+    width: min(100%, 24rem);
+    padding: 0.375rem 0;
+    border: 0;
+    border-bottom: 1px solid var(--border);
+    background: transparent;
+    color: var(--foreground);
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    outline: none;
+  }
+
+  .tag-search-input:focus-visible {
+    border-bottom-color: var(--foreground);
+  }
+
+  .tag-search-empty {
+    margin: 0;
+    color: var(--muted-foreground);
+    font-size: var(--text-sm);
   }
 
   /*

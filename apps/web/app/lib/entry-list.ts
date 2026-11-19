@@ -114,10 +114,11 @@ export interface ListStat {
 export function listStats(
   items: readonly Pick<EntrySummary, "date" | "places">[],
   count: { shown: number; total: number; noun: string },
+  options: { since?: boolean } = {},
 ): ListStat[] {
   const stats: ListStat[] = [{ value: String(count.shown), label: count.shown === count.total ? count.noun : `of ${count.total} ${count.noun}` }];
   const years = items.map((i) => yearOf(i.date)).filter((y): y is number => y !== null);
-  if (years.length > 0) {
+  if (years.length > 0 && options.since !== false) {
     const from = Math.min(...years);
     const to = Math.max(...years);
     stats.push({ value: String(from), label: from === to ? "year" : "since" });
