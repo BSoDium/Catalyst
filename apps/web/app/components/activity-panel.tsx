@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { GitHubMark, Icon, WakaTimeMark } from "~/components/ui";
+import { placeholderTiles } from "~/lib/activity-view";
 import { activityStats, GITHUB_URL, isActivity, layoutActivity, WAKATIME_URL, type Activity, type ActivityStat, type Matrix } from "~/lib/activity";
 
 /** A source's colour as text, softened toward the page's own text colour (the figures and words are tinted, not painted). */
@@ -46,21 +47,15 @@ const WAITING_STATS: ActivityStat[] = [
   { value: "00", unit: "%", label: "days active", tone: "plain" },
 ];
 
-/** The picture's place-holder: the year as a faint grid of squares (371, weeks across), shown from the first paint, prerendered, until the scene is ready and fades in over it. */
-function Waiting() {
+/** The picture's place-holder: the year's days as faint flat squares on the same slab, seen by the same camera as the scene (`lib/activity-view.ts`), pulsing, from the first paint and prerendered. The scene fades in over it, in place. */
+function Waiting({ strips, aspect, className }: { strips: number; aspect: number; className: string }) {
+  const { viewBox, d } = placeholderTiles(53, strips, aspect);
   return (
-    <div aria-hidden="true" className="absolute inset-0 flex items-center justify-center px-4 md:px-14">
-      <div className="grid w-full max-w-[72%] -translate-y-3 grid-flow-col grid-rows-7 gap-[3px] motion-safe:animate-pulse max-md:hidden" style={{ gridTemplateColumns: "repeat(53, minmax(0, 1fr))" }}>
-        {Array.from({ length: 53 * 7 }, (_, i) => (
-          <span key={i} className="aspect-square" style={{ background: "color-mix(in srgb, var(--foreground) 4.5%, transparent)" }} />
-        ))}
-      </div>
-      <div className="hidden w-full grid-flow-col grid-rows-[repeat(21,minmax(0,1fr))] gap-[2px] motion-safe:animate-pulse max-md:grid" style={{ gridTemplateColumns: "repeat(18, minmax(0, 1fr))", maxWidth: "60%" }}>
-        {Array.from({ length: 18 * 21 }, (_, i) => (
-          <span key={i} className="aspect-square" style={{ background: "color-mix(in srgb, var(--foreground) 4.5%, transparent)" }} />
-        ))}
-      </div>
-    </div>
+    <svg aria-hidden="true" viewBox={viewBox} preserveAspectRatio="xMidYMid meet" className={`absolute inset-0 size-full ${className}`}>
+      <g className="motion-safe:animate-pulse">
+        <path d={d} fill="var(--foreground)" opacity={0.06} />
+      </g>
+    </svg>
   );
 }
 
@@ -116,7 +111,8 @@ export function ActivityPanel({ url }: { url: string | null }) {
       ) : (
         <div className="relative aspect-[3.97/1] w-full max-md:aspect-[1.7/1]">
           <div className={`absolute inset-0 transition-opacity duration-700 ${ready ? "opacity-0" : ""}`}>
-            <Waiting />
+            <Waiting strips={1} aspect={3.97} className="max-md:hidden" />
+            <Waiting strips={3} aspect={1.7} className="hidden max-md:block" />
           </div>
           {seen && activity && (
             <Suspense fallback={null}>
@@ -139,7 +135,7 @@ export function ActivityPanel({ url }: { url: string | null }) {
       </dl>
       <div data-slot="activity-legend" className="flex flex-col gap-3 px-4 pt-5 md:px-14 min-[80rem]:absolute min-[80rem]:bottom-0 min-[80rem]:left-14 min-[80rem]:w-[25rem] min-[80rem]:p-0">
         <p className="type-meta m-0 text-muted-foreground uppercase">Last 12 months</p>
-        <p className="m-0 font-[family-name:var(--font-display)] text-[1.625rem] leading-[1.1] font-semibold tracking-tight text-nowrap">
+        <p className="m-0 font-[family-name:var(--font-display)] text-[1.625rem] leading-[1.1] font-semibold tracking-tight text-balance min-[80rem]:text-nowrap">
           <span style={{ color: soft("blue", 75) }}>Coding</span> below, <span style={{ color: soft("green", 75) }}>contributions</span> above.
         </p>
         <div className="flex flex-wrap gap-2 pt-1">

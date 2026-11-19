@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import type { BufferGeometry, Color, Mesh } from "three";
 import { layoutActivity, type Activity, type Matrix } from "~/lib/activity";
+import { CAMERA_DIR, roomFor, slabFor } from "~/lib/activity-view";
 
 /** How many jittered frames are averaged before the picture is final (soft shadows, anti-aliasing): the scene never moves, so it is drawn once, a frame at a time, and then not at all. */
 const SAMPLES = 96;
@@ -70,18 +71,10 @@ export function ActivityScene({ activity, strips = 1, onReady, className }: { ac
       };
       soften("0");
 
-      const PITCH = 1.12;
       // the room the glow of the outermost columns needs around the slab, so the picture does not cut it
-      const ROOM = { side: 3.2, near: strips > 1 ? 4.4 : 2.6, far: 0.6 };
+      const ROOM = roomFor(strips);
       // The year is a long strip of weeks; on a narrow page it is cut into `strips` strips of equal length laid one behind the other, so the slab is closer to a square and fills the width
-      const perStrip = Math.ceil(layout.github.weeks / strips);
-      const STRIP_GAP = 1.6;
-      const width = perStrip * PITCH;
-      const total = strips * 7 * PITCH + (strips - 1) * STRIP_GAP;
-      const at = (week: number, day: number) => ({
-        x: (week % perStrip) * PITCH + 0.5,
-        z: Math.floor(week / perStrip) * (7 * PITCH + STRIP_GAP) + day * PITCH + 0.5,
-      });
+      const { width, total, at } = slabFor(layout.github.weeks, strips);
 
       const scene = new THREE.Scene();
       const pmrem = new THREE.PMREMGenerator(renderer);
@@ -387,7 +380,7 @@ export function ActivityScene({ activity, strips = 1, onReady, className }: { ac
       // the isometric camera: from the front-right, above, looking at the middle of the slab; orthographic, so the grid stays a grid
       const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 400);
       const centre = new THREE.Vector3(width / 2, 1.2, total / 2);
-      camera.position.copy(centre).add(new THREE.Vector3(-0.3, 0.5, -1).normalize().multiplyScalar(150));
+      camera.position.copy(centre).add(new THREE.Vector3(...CAMERA_DIR).normalize().multiplyScalar(150));
       camera.up.set(0, 1, 0);
       camera.lookAt(centre);
 
