@@ -137,6 +137,8 @@ export interface FlareFrame {
   visible: number;
   /** How far the rays follow `visible` as the planet covers the sun, 0..1. Absent: `SUN.cover.dim` (the dark page's rays hardly dim). */
   rayDim?: number;
+  /** The lens's axis on the buffer, px: where the ghosts converge and the flare gives way as the sun comes to it. Absent: the middle of the buffer. It is the planet's centre: the page shifts the planet out of the buffer's middle (a panel at the side), and the flare died where the sun was between the planet and the panel, which is the buffer's middle on a wide screen. */
+  axis?: { x: number; y: number };
   /** The sun's disc radius on the buffer, px: the streaks start at its edge. */
   r?: number;
   /** How far the planet has covered the sun's glow, 0 (none) to 1 (all): the light reddens with it (`warm`). Absent: none. */
@@ -273,12 +275,13 @@ export function flarePlace(fr: FlareFrame): { sx: number; sy: number; mx: number
   // (the light page's flare fades with the sun down to its last pixel, `rayDim` set; the dark page's rays do not dim, and go when the sun's last light does, `HALO_LAST`, not before: #487)
   const cut = fr.rayDim === undefined ? HALO_LAST : 0.001;
   if (!fr.ahead || fr.amount <= 0.01 || fr.visible <= cut) return null;
-  const mx = fr.bufW / 2;
-  const my = fr.bufH / 2;
-  const half = Math.hypot(mx, my);
-  const out = Math.hypot(fr.x - mx, fr.y - my) / half;
-  // fades as the sun leaves the picture, and as it comes to the middle
-  const fade = fr.amount * (1 - smooth(FLARE.edgeFrom, FLARE.edgeTo, out)) * smooth(FLARE.midFrom, FLARE.midTo, out);
+  const mx = fr.axis?.x ?? fr.bufW / 2;
+  const my = fr.axis?.y ?? fr.bufH / 2;
+  const half = Math.hypot(fr.bufW / 2, fr.bufH / 2);
+  const out = Math.hypot(fr.x - fr.bufW / 2, fr.y - fr.bufH / 2) / half;
+  const toAxis = Math.hypot(fr.x - mx, fr.y - my) / half;
+  // fades as the sun leaves the picture, and as it comes to the lens's axis
+  const fade = fr.amount * (1 - smooth(FLARE.edgeFrom, FLARE.edgeTo, out)) * smooth(FLARE.midFrom, FLARE.midTo, toAxis);
   const str = fade * fr.visible;
   // the rays are the sun's own: as bright as ever as the planet covers it for now (SUN.cover.dim: 0; they go with the flare), and the same while it is clear
   const ray = fade * (1 - (fr.rayDim ?? SUN.cover.dim) * (1 - fr.visible));

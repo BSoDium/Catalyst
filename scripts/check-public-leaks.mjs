@@ -7,7 +7,7 @@ import { readdirSync, readFileSync, statSync, existsSync } from "node:fs";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { PREVIEW_FILE, findPreviewLeaks, previewFilesInRepoListing } from "./lib/preview-leaks.mjs";
-import { neutralizeTripPages } from "./lib/trip-pages.mjs";
+import { neutralizeBrandWiring, neutralizeTripPages } from "./lib/trip-pages.mjs";
 
 // Also guards the LOCAL preview file (the owner's real places incl. unpublished drafts, written by `pnpm export:preview`):
 // it may exist on a developer machine only if git ignores it, and none of its places may appear in a production bundle.
@@ -65,6 +65,8 @@ for (const [label, rel] of targets) {
     // characters, is not private vocabulary (lib/trip-pages.mjs). In the projection it is accepted as the value of a `url` key; in a bundle, which compiles the
     // projection in, as the bare address. Anything else that names the site, in the projection or in a bundle, still fails.
     text = neutralizeTripPages(text, label === "published projection" ? "projection" : label === "browser bundle" && file.endsWith(".html") ? "page" : "bundle");
+    // The trip link's brand wiring (its three spellings) is accepted in the code that is shipped, never in the projection (lib/trip-pages.mjs).
+    if (label === "browser bundle" || label === "web server bundle") text = neutralizeBrandWiring(text);
     if (label !== "published projection") bundleFiles.push({ file: relative(root, file), text });
     for (const word of FORBIDDEN) {
       if (text.includes(word)) failures.push(`${label}: "${word}" found in ${relative(root, file)}`);

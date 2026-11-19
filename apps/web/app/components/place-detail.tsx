@@ -243,7 +243,7 @@ function PlaceHeader({ place, cover }: { place: PlaceDetailData; cover: PlaceCov
   const body = (
     <>
       {(where || place.lived || place.living) && (
-        <p className="ds-micro m-0 flex flex-wrap gap-x-2">
+        <p className="ds-micro m-0 -mb-1 flex flex-wrap gap-x-2">
           {where && <span>{where}</span>}
           {(place.lived === true || place.living === true) && <span className="ds-micro" data-tone="signal">{where ? "· " : ""}{place.living ? "Lives here" : "Lived here"}</span>}
         </p>
@@ -307,17 +307,10 @@ function newestFirst<T extends { date?: string | undefined }>(entries: T[]): T[]
   return [...entries].sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
 }
 
-/** What is behind the closed "On the road here": the story and the pictures, counted. (The trips are not behind it: they are a section of their own.) */
-function storyMeta(place: PlaceDetailData, pictures: number): string {
-  const parts = [pictures > 0 ? `${pictures} ${pictures === 1 ? "picture" : "pictures"}` : "", place.body.length > 0 || place.summary ? "the story" : ""];
-  return parts.filter(Boolean).join(" · ");
-}
-
 /**
  * Place detail in the panel (docs/design-system.md, docs/step-page.md): the name as the view's h1 with one quiet line under it (country, coordinates, dates).
  * Then one of two pages. A step with no entries is its story: the few words, the pictures taken there, and a small card for the trip it is a stop of. A step
- * with entries leads with them, as entry cards grouped by kind, and its story and trip follow, closed, in one "On the road here" disclosure: the entries
- * are the priority, the travelling is the context. Opening an entry card keeps the panel open (the entry replaces the place in it) and carries
+ * with entries leads with them, as entry cards grouped by kind, and its trips follow, under their title the step's story and pictures (owner, 2026-11-18: the closed "On the road here" did not say what it was). Opening an entry card keeps the panel open (the entry replaces the place in it) and carries
  * `{ from: <place> }` in the router state, which gives the entry a way back. Optional parts are omitted when empty.
  */
 export function PlaceDetail({ place }: { place: PlaceDetailData }) {
@@ -349,11 +342,11 @@ export function PlaceDetail({ place }: { place: PlaceDetailData }) {
                     {group.entries.length > 0 && (
                       // (the first row starts at the title's own distance from it, as a gallery does: the rows' padding is between them)
                       // (poems are short: in a wide panel they are two columns, each a row of its own width, and a narrow one is a list again)
-                      <ul className={cn("m-0 grid list-none grid-cols-1 gap-0 p-0 [&>li:first-child>article]:pt-0", group.kind === "poem" && "@xl:grid-cols-2 @xl:gap-x-8")}>
+                      <ul className={cn("m-0 grid list-none grid-cols-1 gap-0 p-0 [&>li:first-child>article]:pt-0", group.kind === "poem" && "@2xl:grid-cols-2 @2xl:gap-x-8")}>
                         {newestFirst(group.entries).map((entry, k) => (
                           // (the row's own width is what its layout follows: side by side from 28 rem, stacked below. The second poem of two columns starts at the first one's height: it is pulled up by the row's own padding, here, on the cell, because a
                           // container query on the row would be answered by the cell's width, not the panel's)
-                          <li key={entry.slug} className={cn("@container min-w-0", group.kind === "poem" && k === 1 && "@xl:-mt-5")}>
+                          <li key={entry.slug} className={cn("@container min-w-0", group.kind === "poem" && k === 1 && "@2xl:-mt-5")}>
                             <EntryRow entry={entry} linkState={{ from: place.slug }} headingLevel={3} compact />
                           </li>
                         ))}
@@ -367,23 +360,16 @@ export function PlaceDetail({ place }: { place: PlaceDetailData }) {
         )}
         {/* (a step with no entries is its story, open, under its photographs) */}
         {story && !count && <StepStory place={place} photos={photos} />}
-        {closedStory && count > 0 && (
-          // The entries are what the visitor came for: the step's own story and pictures are the context, one line closed.
-          <details data-slot="place-story" className="group border-t border-border pt-2">
-            <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 text-base [&::-webkit-details-marker]:hidden">
-              <span className="flex min-w-0 flex-col">
-                <span className="font-medium">On the road here</span>
-                <span className="ds-meta">{storyMeta(place, photos.length)}</span>
-              </span>
-              <Icon name="chevron-down" size="inline" className="shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
-            </summary>
-            <div className="pt-4">
-              <StepStory place={place} photos={photos} trips={false} />
-            </div>
-          </details>
+        {/* (a step with entries and no trip has its story, open, after them; with trips it is the trips' introduction, under their title) */}
+        {closedStory && count > 0 && place.trips.length === 0 && (
+          <div data-slot="place-story">
+            <StepStory place={place} photos={photos} trips={false} />
+          </div>
         )}
         {/* (the trips: always shown, after the entries, as a carousel when there are several) */}
-        {count > 0 && place.trips.length > 0 && <TripCards trips={place.trips} here={place.slug} lived={place.lived === true} />}
+        {count > 0 && place.trips.length > 0 && (
+          <TripCards trips={place.trips} here={place.slug} lived={place.lived === true} intro={closedStory ? <div data-slot="place-story"><StepStory place={place} photos={photos} trips={false} /></div> : undefined} />
+        )}
       </Stack>
     </article>
   );

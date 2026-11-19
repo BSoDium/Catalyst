@@ -226,3 +226,51 @@ describe("route cover (#510)", () => {
     expect(() => parsePublishedProjection({ ...base, photographs: [photo], routes: [{ id: "t", title: "T", stops: ["a", "b"], cover: "nope" }] })).toThrow(/unknown photograph/);
   });
 });
+
+describe("route image (#510)", () => {
+  const pl = (slug: string, lat: number) => ({ slug, name: slug, coordinates: { lat, lon: 1 }, labelPriority: 0, body: [], images: [], related: [] });
+  const base = { ...EMPTY_PROJECTION, places: [pl("a", 1), pl("b", 2)] };
+  const image = { src: "/media/routes/t/image.abcd1234.webp", width: 1280, height: 853, alt: "A bay at dusk", credit: "Jane Doe on Pexels" };
+  const parse = (img: unknown) => parsePublishedProjection({ ...base, routes: [{ id: "t", title: "T", stops: ["a", "b"], image: img }] });
+  it("accepts an image with its credit and a small copy, and none", () => {
+    expect(parse({ ...image, small: { src: "/media/routes/t/image-800w.abcd1234.webp", width: 800, height: 533 } }).routes[0]!.image?.credit).toBe("Jane Doe on Pexels");
+    expect(parsePublishedProjection({ ...base, routes: [{ id: "t", title: "T", stops: ["a", "b"] }] }).routes[0]!.image).toBeUndefined();
+  });
+  it("needs the real size and an alt text, and refuses unknown fields and bad paths", () => {
+    expect(() => parse({ src: image.src, alt: "x" })).toThrow();
+    expect(() => parse({ ...image, alt: "" })).toThrow();
+    expect(() => parse({ ...image, src: "/media/../x.webp" })).toThrow();
+    expect(() => parse({ ...image, rights: "licensed" })).toThrow();
+    expect(() => parse({ ...image, credit: "a\nb" })).toThrow();
+  });
+});
+
+describe("route codename (#510)", () => {
+  const pl = (slug: string, lat: number) => ({ slug, name: slug, coordinates: { lat, lon: 1 }, labelPriority: 0, body: [], images: [], related: [] });
+  const base = { ...EMPTY_PROJECTION, places: [pl("a", 1), pl("b", 2)] };
+  const route = (id: string, codename?: string) => ({ id, title: id, stops: ["a", "b"], ...(codename === undefined ? {} : { codename }) });
+  it("accepts a code name, and none", () => {
+    const p = parsePublishedProjection({ ...base, routes: [route("t1", "Chișinău"), route("t2")] });
+    expect(p.routes[0]!.codename).toBe("Chișinău");
+    expect(p.routes[1]!.codename).toBeUndefined();
+  });
+  it("rejects an empty, a long or a multi-line one", () => {
+    for (const bad of ["", "x".repeat(25), "a\nb"]) expect(() => parsePublishedProjection({ ...base, routes: [route("t1", bad)] })).toThrow();
+  });
+  it("rejects two routes with the same code name, without case or diacritics", () => {
+    expect(() => parsePublishedProjection({ ...base, routes: [route("t1", "Chisinau"), route("t2", "CHIȘINĂU")] })).toThrow(/already the code name/);
+  });
+});
+
+describe("route face (#510)", () => {
+  const pl = (slug: string, lat: number) => ({ slug, name: slug, coordinates: { lat, lon: 1 }, labelPriority: 0, body: [], images: [], related: [] });
+  const base = { ...EMPTY_PROJECTION, places: [pl("a", 1), pl("b", 2)] };
+  const route = (face?: string) => ({ id: "t", title: "T", stops: ["a", "b"], ...(face === undefined ? {} : { face }) });
+  it("accepts the named styles, and none", () => {
+    for (const f of ["grotesque", "serif", "old", "slab", "condensed", "script"]) expect(parsePublishedProjection({ ...base, routes: [route(f)] }).routes[0]!.face).toBe(f);
+    expect(parsePublishedProjection({ ...base, routes: [route()] }).routes[0]!.face).toBeUndefined();
+  });
+  it("rejects anything else (a font name, say)", () => {
+    expect(() => parsePublishedProjection({ ...base, routes: [route("Fraunces")] })).toThrow();
+  });
+});

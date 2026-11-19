@@ -1,4 +1,4 @@
-import { Button, Icon } from "~/components/ui";
+import { ArtStationMark, Button, Icon, PexelsMark } from "~/components/ui";
 import { cn } from "~/lib/utils";
 
 /** The owner's other photographs (issue #336). */
@@ -45,9 +45,12 @@ export function GalleryEnd({ className, kind = "photograph" }: { className?: str
         <p className="gallery-end-title">{end.title}</p>
         <p className="gallery-end-text">{end.text}</p>
       </div>
-      <Button asChild variant="secondary" className="gallery-end-link">
+      <Button asChild variant="secondary" className={cn("gallery-end-link", "pl-3")} data-brand={kind === "photograph" ? "pexels" : "artstation"}>
         <a href={end.href} target="_blank" rel="noopener noreferrer">
-          {end.link}
+          <span className="flex items-center gap-2.5">
+            {kind === "photograph" ? <PexelsMark /> : <ArtStationMark />}
+            {end.link}
+          </span>
           <Icon name="arrow-up-right" size="inline" aria-hidden="true" />
           <span className="sr-only"> (opens in a new tab)</span>
         </a>

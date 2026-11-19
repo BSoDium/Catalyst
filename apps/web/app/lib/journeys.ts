@@ -93,6 +93,9 @@ export interface TripVisit {
 }
 
 /** A published route that stops at the place: the panel's itinerary card. */
+/** The picture behind a trip's poster: a photograph's cover, or the route's own `image` (not a photograph of the site), which may carry a `credit`. */
+export type TripPhoto = Pick<PublishedCover, "src" | "width" | "small"> & { credit?: string };
+
 export interface Trip {
   id: string;
   title: string;
@@ -108,11 +111,13 @@ export interface Trip {
   /** The trip's own public page, when the route has one (`routes[].url`). */
   url?: string;
   /** A photograph taken at one of the trip's stops (the most recent that is not sensitive), the poster's backdrop when it is shown with one. */
-  photo?: Pick<PublishedCover, "src" | "width" | "small">;
+  photo?: TripPhoto;
   /** The stops worth naming on the poster besides the start, the end and this place (`pickHighlights`): up to three with the most entries, well apart. Slugs. */
   highlights: string[];
-  /** The one word the card sets in giant type (`tripWord` of the title). */
+  /** The one word the card sets in giant type: the route's authored `codename`, else `tripWord` of the title. */
   word: string;
+  /** The style of lettering the word is set in (`routes[].face`): absent, the plain sans. */
+  face?: string;
   /** How many countries the stops are in (those the places name): 0 when none is known. */
   countries: number;
   /** For the trip's own small map: the stops and, per leg, its mode and a few points of its path (`lon, lat` flat, capped for the whole trip). */
@@ -122,19 +127,25 @@ export interface Trip {
 }
 
 /**
- * The photograph that stands for a trip (the poster's backdrop): the owner's pick (`route.cover`, when it is a photograph that is not sensitive), else the most recent
- * photograph that is not sensitive and was taken at one of the stops or during the trip (its date within the trip's months): the trip's photographs are not all at its stops
+ * The picture that stands for a trip (the poster's backdrop): the owner's pick (`route.cover`, when it is a photograph that is not sensitive), else the route's own `image`, else the most recent
+ * photograph that is not sensitive and was taken during the trip (its date within the trip's months: a place is visited again years later, a picture from the next visit is not the trip's, so being at a stop is not enough); only for a trip with no dates, the most recent taken at one of its stops. The trip's photographs are not all at its stops
  * (a river crossing has its pictures between places). None for a trip nobody photographed.
  */
-function tripPhoto(projection: PublishedProjection, route: PublishedProjection["routes"][number]): { photo?: Pick<PublishedCover, "src" | "width" | "small"> } {
+function tripPhoto(projection: PublishedProjection, route: PublishedProjection["routes"][number]): { photo?: TripPhoto } {
   const usable = projection.photographs.filter((p) => !p.sensitive);
   const stops = new Set(route.stops);
   const from = route.dates?.start?.slice(0, 7);
   const to = (route.dates?.end ?? route.dates?.start)?.slice(0, 7);
   const during = (date: string | undefined) => from !== undefined && to !== undefined && date !== undefined && date.slice(0, 7) >= from && date.slice(0, 7) <= to;
+  const chosen = route.cover === undefined ? undefined : usable.find((p) => p.slug === route.cover);
+  // The owner's pick comes first; then the route's own picture (a stock picture, say: never one of the photographs); then the trip's photographs.
+  if (!chosen && route.image) {
+    const { src, width, small, credit } = route.image;
+    return { photo: { src, width, ...(small ? { small } : {}), ...(credit ? { credit } : {}) } };
+  }
   const picked =
-    (route.cover === undefined ? undefined : usable.find((p) => p.slug === route.cover)) ??
-    usable.filter((p) => p.placeSlugs.some((s) => stops.has(s)) || during(p.date)).sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""))[0];
+    chosen ??
+    usable.filter((p) => (from !== undefined && to !== undefined ? during(p.date) : p.placeSlugs.some((s) => stops.has(s)))).sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""))[0];
   const cover = picked?.cover;
   return cover ? { photo: { src: cover.src, width: cover.width, ...(cover.small ? { small: cover.small } : {}) } } : {};
 }
@@ -178,7 +189,7 @@ const WORD_SKIP = new Set(["a", "an", "the", "of", "to", "in", "on", "at", "and"
 /**
  * The one word a trip's card sets in giant type, from its title: the longest word that names something ("The Transatlantic Crossing" is Transatlantic, "A Week in
  * Moscow" Moscow, "South America: West to East" America), the later one on a tie ("The Road to CERN" is CERN). A title with nothing left gives its longest word, and an
- * empty one nothing. A default, not an authored word: a trip may get its own later.
+ * empty one nothing. The default for a route with no authored `codename`.
  */
 export function tripWord(title: string): string {
   const words = title.split(/[^\p{L}\p{N}'’-]+/u).filter(Boolean);
@@ -256,7 +267,8 @@ export function tripsOf(projection: PublishedProjection, slug: string, nameOf: (
         places.map((p) => ({ slug: p!.slug, lat: p!.coordinates.lat, lon: p!.coordinates.lon, weight: weightOf(projection, p!.slug) })),
         [route.stops[0]!, route.stops[route.stops.length - 1]!, slug],
       ),
-      word: tripWord(route.title),
+      word: route.codename ?? tripWord(route.title),
+      ...(route.face ? { face: route.face } : {}),
       countries: new Set(places.map((p) => p!.countryCode).filter(Boolean)).size,
       stopPoints: places.map((p) => ({ slug: p!.slug, name: nameOf(p!), lon: p!.coordinates.lon, lat: p!.coordinates.lat })),
       legPaths,
@@ -271,6 +283,21 @@ export function tripsOf(projection: PublishedProjection, slug: string, nameOf: (
  * from the address at run time, so no site's name is written in this code (`scripts/check-public-leaks.mjs` keeps the private layers' vocabulary out of the bundles).
  * Neutral on purpose: it reads right whether the trip is under way or over.
  */
+/**
+ * The services a link can go to that have a brand colour and a mark (`[data-brand]` in app.css, `components/ui/brand-mark.tsx`), by the host of the link. THE ONE PLACE the trip site is named in the code, in the one
+ * spelling `scripts/lib/trip-pages.mjs` lets through the public leak check (`"<host>": "<brand>"`); everything else asks `linkBrand`.
+ */
+const LINK_BRANDS: Record<string, string> = { "polarsteps.com": "polarsteps" };
+
+/** The brand of the service a link goes to (`polarsteps`), or undefined for one with no brand colour. */
+export function linkBrand(url: string): string | undefined {
+  try {
+    return LINK_BRANDS[new URL(url).hostname.replace(/^www\./, "")];
+  } catch {
+    return undefined;
+  }
+}
+
 export function tripLinkLabel(url: string): string {
   try {
     const host = new URL(url).hostname.toLowerCase().replace(/^www\./, "");

@@ -372,7 +372,7 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
                 {lead}
                 {tail ? <span className="entry-title-tail">{tail}</span> : null}
               </h1>
-              {entry.summary && !poem && <p className="type-standfirst mt-[1.375rem] max-w-[25.4em] md:mt-[2.125rem]">{entry.summary}</p>}
+              {entry.summary && !poem && <p className="type-standfirst mt-[0.875rem] max-w-[25.4em] md:mt-[1.25rem]">{entry.summary}</p>}
               {/* The way to the place a photograph is about, up where it is read (the other kinds have it in "At a glance", as a link, or in the tags) and not only in a tag or on the map (#581): on the camera's row, at its right end, as tall as the camera's mark, in two lines. They are not the head's text: they nest in its corners (`.entry-facts-row`), each as near to the edges as the picture is below, and are stacked at the left, not wrapped, where they do not fit on one row (`FactsRow`). */}
               {(exposure || (entry.kind === "photograph" && globeTarget)) && (
                 <FactsRow entry={entry.slug} className={full ? "[--hero-px:1rem] md:[--hero-px:2rem]" : "[--hero-px:1.5rem]"}>

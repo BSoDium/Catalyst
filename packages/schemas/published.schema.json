@@ -355,6 +355,87 @@
             "maxLength": 80,
             "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
           },
+          "image": {
+            "type": "object",
+            "properties": {
+              "src": {
+                "type": "string",
+                "maxLength": 300,
+                "pattern": "^\\/media\\/(?:[A-Za-z0-9_-][A-Za-z0-9._-]*\\/)*[A-Za-z0-9_-][A-Za-z0-9._-]*$"
+              },
+              "width": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 20000
+              },
+              "height": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 20000
+              },
+              "alt": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 300
+              },
+              "credit": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120,
+                "pattern": "^[^\\u0000-\\u001F\\u007F\\u202A-\\u202E\\u2066-\\u2069]*$"
+              },
+              "small": {
+                "type": "object",
+                "properties": {
+                  "src": {
+                    "type": "string",
+                    "maxLength": 300,
+                    "pattern": "^\\/media\\/(?:[A-Za-z0-9_-][A-Za-z0-9._-]*\\/)*[A-Za-z0-9_-][A-Za-z0-9._-]*$"
+                  },
+                  "width": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 20000
+                  },
+                  "height": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 20000
+                  }
+                },
+                "required": [
+                  "src",
+                  "width",
+                  "height"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "src",
+              "width",
+              "height",
+              "alt"
+            ],
+            "additionalProperties": false
+          },
+          "codename": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 24,
+            "pattern": "^[^\\u0000-\\u001F\\u007F\\u202A-\\u202E\\u2066-\\u2069]*$"
+          },
+          "face": {
+            "type": "string",
+            "enum": [
+              "grotesque",
+              "serif",
+              "old",
+              "slab",
+              "condensed",
+              "script"
+            ]
+          },
           "stops": {
             "minItems": 2,
             "maxItems": 200,

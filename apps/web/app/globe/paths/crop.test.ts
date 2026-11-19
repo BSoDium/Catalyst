@@ -42,6 +42,19 @@ describe("cropToBoxes", () => {
     expect(Array.from(cropToBoxes(p, null, BOX)!.lonlat)).toEqual(Array.from(p));
     expect(Array.from(cropToBoxes(p, null)!.lonlat)).toEqual(Array.from(p));
   });
+  it("joins an end that lies just beside its box to the box's nearest edge point (a stop whose recorded point is outside its box: Cuzco)", () => {
+    // the point is 0.05 degrees west of the box's west edge (9), at the box's height
+    const r = cropToBoxes(pts([8.95, 10], [0, 10]), null, BOX)!;
+    expect(Array.from(r.lonlat)).toEqual([9, 10, 8.95, 10, 0, 10]);
+    const tail = cropToBoxes(pts([0, 10], [8.95, 10.5]), null, undefined, BOX)!;
+    expect(Array.from(tail.lonlat)).toEqual([0, 10, 8.95, 10.5, 9, 10.5]);
+    // (a corner: the nearest point of the box is the corner)
+    const corner = cropToBoxes(pts([8.95, 8.95], [0, 0]), null, BOX)!;
+    expect(Array.from(corner.lonlat).slice(0, 2)).toEqual([9, 9]);
+    // (and not a point that is far from its box, which is a different place)
+    const far = pts([8, 10], [0, 10]);
+    expect(Array.from(cropToBoxes(far, null, BOX)!.lonlat)).toEqual(Array.from(far));
+  });
   it("draws nothing when no part of the path is outside the box", () => {
     expect(cropToBoxes(pts([10, 10], [10.5, 10.5]), null, BOX)).toBeNull();
     expect(cropToBoxes(pts([10, 10], [10.5, 10.5]), null, undefined, BOX)).toBeNull();

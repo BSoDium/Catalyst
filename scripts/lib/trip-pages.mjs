@@ -27,3 +27,16 @@ export function neutralizeTripPages(text, kind) {
   const bare = text.replace(IN_BUNDLE, "<trip page>");
   return kind === "page" ? bare.replace(IN_PAGE_LABEL, "<trip link label>") : bare;
 }
+
+/**
+ * The brand wiring of the trip link (the owner's decision, 2026-11-18: the button to the trip site wears its colour and mark, like the buttons to Pexels and ArtStation). Three spellings, and no others, say the
+ * trip site's name for that: the table in `app/lib/journeys.ts` (`"<host>": "<brand>"`, in any quoting a bundler writes), the attribute on the link (`data-brand="..."`, in a prerendered page and in a bundle) and its
+ * CSS selector (`[data-brand=...]`). `neutralizeBrandWiring` replaces them so the vocabulary scan does not see them; the word anywhere else (an importer's name, a variable, a path) still fails.
+ */
+const BRAND_TABLE = /["']?polarsteps\.com["']?\s*:\s*["']polarsteps["']/g;
+const BRAND_ATTRIBUTE = /data-brand=\\?["']polarsteps\\?["']/g;
+const BRAND_SELECTOR = /\[data-brand=["']?polarsteps["']?\]/g;
+
+export function neutralizeBrandWiring(text) {
+  return text.replace(BRAND_TABLE, "<brand table>").replace(BRAND_ATTRIBUTE, "data-brand=<brand>").replace(BRAND_SELECTOR, "[data-brand=<brand>]");
+}

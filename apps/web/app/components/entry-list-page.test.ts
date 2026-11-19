@@ -186,7 +186,7 @@ describe("EntryListPage with a sensitive entry", () => {
     expect(none).not.toContain("<canvas");
     expect(none).not.toContain("cover-art");
     // the only images are the wall's filler (scenery: no name, no link) under the end banner
-    const imgs = none.match(/<img[^>]*>/g) ?? [];
+    const imgs = (none.match(/<img[^>]*>/g) ?? []).filter((i) => !i.includes("/brands/"));
     expect(imgs.length).toBeGreaterThanOrEqual(8);
     for (const img of imgs) expect(img).toContain('alt=""');
     expect(none.match(/data-slot="wall-filler"/g)).toHaveLength(imgs.length);

@@ -333,6 +333,10 @@
   --font-display: "Bricolage Grotesque Variable", "Bricolage Grotesque Fallback", var(--font-sans);
   --font-reading: "Newsreader Variable", "Newsreader Fallback", ui-serif, Georgia, "Times New Roman", serif;
   --font-meta: "JetBrains Mono Variable", var(--font-mono);
+  --font-slab: "Bitter Variable", var(--font-reading);
+  --font-condensed: "Archivo Variable", var(--font-sans);
+  --font-old: "Fraunces Variable", var(--font-reading);
+  --font-script: "Caveat Variable", cursive;
 
   /* Weights. The display pair is thin against heavy ("Cata" 200, "lyst" 800); the rest serve the reading face and the small sizes. */
   --weight-thin: 200;
@@ -565,6 +569,44 @@
   font-family: "JetBrains Mono Variable";
   src: url("/fonts/jetbrains-mono-5.3.0-latin-wght.woff2") format("woff2");
   font-weight: 100 800;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* The faces a trip card's giant word can be set in (components/trip-map.tsx `FACES`, #510): variable, so the word's weight follows the card as the display face's does; loaded only when a card uses one. */
+@font-face {
+  font-family: "Bitter Variable";
+  src: url("/fonts/bitter-5.3.0-latin-wght.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Archivo Variable";
+  src: url("/fonts/archivo-5.3.0-latin-wdth-wght.woff2") format("woff2");
+  font-weight: 100 900;
+  font-stretch: 62% 125%;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Fraunces Variable";
+  src: url("/fonts/fraunces-5.3.0-latin-wght.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Caveat Variable";
+  src: url("/fonts/caveat-5.3.0-latin-wght.woff2") format("woff2");
+  font-weight: 400 700;
   font-style: normal;
   font-display: swap;
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
@@ -2137,8 +2179,8 @@
   .place-figure-hemisphere {
     margin-left: 0.4em;
     font-family: var(--font-mono);
-    font-size: 0.6875rem;
-    font-weight: 500;
+    font-size: 0.8125rem;
+    font-weight: 600;
     letter-spacing: 0.12em;
     color: var(--signal-text, var(--foreground));
   }
@@ -2266,12 +2308,58 @@
     opacity: clamp(0, calc((var(--g, 1) - 0.1) * 1.4), 1);
     text-shadow: 0 0 0.375rem var(--label-bg), 0 0 0.125rem var(--label-bg);
   }
+  /* Ghost arrows (owner, 2026-11-18: the plates were plain and hid content): a small round glass button inset from the edge, invisible until the pointer is over the carousel (or a key focuses it), and none on touch, where the swipe and the peeking next card say it. It covers a 2.5 rem circle, not a column of the picture. */
   .place-gallery [data-slot="scroll-row-arrow"],
   .trip-rail [data-slot="scroll-row-arrow"] {
     top: 50%;
     translate: 0 -50%;
-    background: color-mix(in srgb, var(--background) 72%, transparent);
-    backdrop-filter: blur(4px);
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 9999px;
+    color: #fff;
+    background: color-mix(in srgb, #000 34%, transparent);
+    border: 1px solid color-mix(in srgb, #fff 22%, transparent);
+    backdrop-filter: blur(10px) saturate(1.4);
+    box-shadow: 0 0.25rem 1rem color-mix(in srgb, #000 28%, transparent);
+    opacity: 0;
+    scale: 0.88;
+    pointer-events: none;
+    transition: opacity var(--duration-fast) var(--ease-standard), scale var(--duration-fast) var(--ease-standard), background-color var(--duration-fast) var(--ease-standard);
+  }
+  .place-gallery [data-slot="scroll-row-arrow"][data-side="start"],
+  .trip-rail [data-slot="scroll-row-arrow"][data-side="start"] {
+    left: 0.75rem;
+  }
+  .place-gallery [data-slot="scroll-row-arrow"][data-side="end"],
+  .trip-rail [data-slot="scroll-row-arrow"][data-side="end"] {
+    right: 0.75rem;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .place-gallery:hover [data-slot="scroll-row-arrow"],
+    .trip-rail:hover [data-slot="scroll-row-arrow"],
+    .place-gallery [data-slot="scroll-row-arrow"]:focus-visible,
+    .trip-rail [data-slot="scroll-row-arrow"]:focus-visible {
+      opacity: 1;
+      scale: 1;
+      pointer-events: auto;
+    }
+    .place-gallery [data-slot="scroll-row-arrow"]:hover,
+    .trip-rail [data-slot="scroll-row-arrow"]:hover {
+      color: #fff;
+      background: color-mix(in srgb, #000 55%, transparent);
+    }
+  }
+  /* On a touch screen there is no hover to show them: the arrows are there, as small round plates, with no blur (a backdrop filter over a row that is moving every frame is what a phone cannot afford). */
+  @media (hover: none), (pointer: coarse) {
+    .place-gallery [data-slot="scroll-row-arrow"],
+    .trip-rail [data-slot="scroll-row-arrow"] {
+      opacity: 1;
+      scale: 1;
+      pointer-events: auto;
+      backdrop-filter: none;
+      background: color-mix(in srgb, #000 58%, transparent);
+      box-shadow: none;
+    }
   }
   .place-gallery [data-slot="scroll-row-arrow"]::before,
   .trip-rail [data-slot="scroll-row-arrow"]::before {
@@ -3739,6 +3827,42 @@
 
   .gallery-end-link {
     margin-top: 0.75rem;
+  }
+
+  /* The buttons that go to a service wear its colour, softened into the page (owner, 2026-11-18): the fill is a few percent of the brand over the page's own colour, so it is a darker, quieter tone on the dark page and a lighter, paler one on the light page; the line and the label take more of it. */
+  [data-brand] {
+    --brand-fill: 15%;
+    --brand-line: 42%;
+    --brand-ink: 62%;
+  }
+  [data-brand="polarsteps"] {
+    --brand: #e5448a;
+  }
+  [data-brand="pexels"] {
+    --brand: #05a081;
+  }
+  [data-brand="artstation"] {
+    --brand: #13aff0;
+  }
+  .brand-link {
+    border-color: color-mix(in oklab, var(--brand) var(--brand-line), var(--background));
+    background-color: color-mix(in oklab, var(--brand) var(--brand-fill), var(--background));
+    color: color-mix(in oklab, var(--brand) var(--brand-ink), var(--foreground));
+  }
+  .brand-link:hover {
+    border-color: color-mix(in oklab, var(--brand) 70%, var(--background));
+    background-color: color-mix(in oklab, var(--brand) 26%, var(--background));
+  }
+  /* On the photography and artwork pages' foot the button is SOLID and high contrast (owner, 2026-11-18): the brand colour lifted towards the page's ink (lighter on the dark page, darker on the light one) with the page's own colour as the label, so the label is the dark on the dark page and the light on the light page, opposite to the fill. */
+  .ds-button.gallery-end-link[data-variant][data-brand] {
+    --ds-button-bg: color-mix(in oklab, var(--brand) 72%, var(--foreground));
+    --ds-button-fg: var(--background);
+    --ds-button-line: color-mix(in oklab, var(--brand) 72%, var(--foreground));
+  }
+  .ds-button.gallery-end-link[data-variant][data-brand]:hover,
+  .ds-button.gallery-end-link[data-variant][data-brand]:active {
+    --ds-button-bg: color-mix(in oklab, var(--brand) 60%, var(--foreground));
+    --ds-button-line: color-mix(in oklab, var(--brand) 60%, var(--foreground));
   }
 
   /* Solid, in the page's ink: white with black text on the dark page (black with white text on the light one), one step dimmer on hover. */
@@ -8373,6 +8497,20 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   }
 }
 
+/* The land over a trip poster's photograph (components/trip-map.tsx): in the dark theme it lightens the picture (white, `--trip-land-dark-share` of it, set from the picture's brightness), in the light theme the picture is already
+   held in a light band, so white would vanish on it: the land darkens it, in the ink's colour (owner, 2026-11-19: invisible on Moscow, Buenos Aires and Quito). */
+.trip-land {
+  fill: color-mix(in srgb, var(--foreground) 13%, transparent);
+}
+:root[data-scheme="dark"] .trip-land {
+  fill: color-mix(in srgb, #fff var(--trip-land-dark-share, 16%), transparent);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-scheme="light"]) .trip-land {
+    fill: color-mix(in srgb, #fff var(--trip-land-dark-share, 16%), transparent);
+  }
+}
+
 /* The filter that holds a trip poster's photograph in a band the ink reads on (components/trip-map.tsx `TripPhotoFilters`). */
 :root {
   --trip-photo-filter: url(#trip-range-light);
@@ -8412,7 +8550,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   opacity: calc(0.4 + 0.6 * var(--g, 1));
 }
 .trip-slide [data-slot="trip-figures"] {
-  opacity: calc(0.25 + 0.75 * var(--g, 1));
+  opacity: calc(0.08 + 0.92 * var(--g, 1) * var(--g, 1));
 }
 .trip-slide [data-slot="trip-figures"] > p > span:first-of-type:not(.sr-only),
 .trip-slide [data-slot="trip-figures"] > p > .font-display {
@@ -8420,11 +8558,17 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
 }
 .trip-slide [data-slot="trip-dates"],
 .trip-slide [data-slot="trip-footer"] {
-  opacity: clamp(0, calc((var(--g, 1) - 0.1) * 1.4), 1);
+  opacity: clamp(0, calc((var(--g, 1) - 0.35) * 2.2), 1);
 }
 .trip-slide [data-slot="trip-poster"] :is(polyline, rect, text:not([data-slot="trip-word"])) {
   opacity: calc(0.2 + 0.8 * var(--g, 1));
 }
 .trip-slide [data-slot="trip-poster-box"] {
   opacity: calc(0.6 + 0.4 * var(--g, 1));
+}
+
+/* The link to the trip's own page is a quiet outline (it leaves the site): on a card that is not in front it fades with the card's width, from 0.6 of it to the full strength at 1 (components/trip-card.tsx). */
+.trip-slide [data-slot="trip-link"] {
+  --on: clamp(0, calc((var(--g, 1) - 0.6) * 2.5), 1);
+  opacity: calc(0.4 + 0.6 * var(--on));
 }

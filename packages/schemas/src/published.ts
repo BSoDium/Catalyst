@@ -258,6 +258,31 @@ export const httpsUrlSchema = z
   }, "https only, without credentials");
 
 /**
+ * The picture of a trip card that is not one of the site's photographs. Real pixel size, required (the card reserves the space); `small` is a
+ * smaller copy of the same picture for lists (same shape as a cover's); `credit` is one line of plain text (author and source of a licensed picture).
+ */
+export const publishedRouteImageSchema = z
+  .object({
+    src: mediaSrcSchema,
+    width: z.number().int().positive().max(20000),
+    height: z.number().int().positive().max(20000),
+    alt: imageAltSchema,
+    credit: z
+      .string()
+      .trim()
+      .min(1)
+      .max(120)
+      .regex(/^[^\u0000-\u001F\u007F\u202A-\u202E\u2066-\u2069]*$/, "single line of plain text, no control characters")
+      .optional(),
+    small: z
+      .object({ src: mediaSrcSchema, width: z.number().int().positive().max(20000), height: z.number().int().positive().max(20000) })
+      .strict()
+      .optional(),
+  })
+  .strict();
+export type PublishedRouteImage = z.infer<typeof publishedRouteImageSchema>;
+
+/**
  * An explicitly curated route: an ordered list of published places. Routes are
  * never inferred; if it is not here, no line is drawn.
  */
@@ -279,6 +304,27 @@ export const publishedRouteSchema = z
      * Absent: the card chooses one itself from the photographs taken during the trip. Cross-checked: it must be a photograph of the projection.
      */
     cover: slugSchema.optional(),
+    /**
+     * Additive in schema version 1. A picture that is NOT one of the site's photographs (a royalty-free one, say) for the trip card's backdrop (#510).
+     * `cover` has priority; then this; then the card's own pick. Never listed in the Photography section. `credit` is quoted quietly on the card.
+     */
+    image: publishedRouteImageSchema.optional(),
+    /**
+     * Additive in schema version 1. The trip's code name (#510): the one word the trip card sets in giant type, authored (the owner's pick), a CITY named the way an airport code names where you are going
+     * (the trip's destination, or its base). Single line of plain text, 1 to 24 characters, unique across the routes (compared without case or diacritics). Absent: the card derives a word from the title.
+     */
+    codename: z
+      .string()
+      .trim()
+      .min(1)
+      .max(24)
+      .regex(/^[^\u0000-\u001F\u007F\u202A-\u202E\u2066-\u2069]*$/, "single line of plain text, no control characters")
+      .optional(),
+    /**
+     * Additive in schema version 1. The style of lettering the trip card sets its code name in (#510), chosen to match the city's character: `grotesque` (a neutral modern sans), `serif`, `old` (an old-style display
+     * serif: old timey, seaside, old buildings), `slab`, `condensed` (a narrow sans) or `script` (hand lettering). Names of styles, not of fonts: the site maps each to a face and can change it. Absent: `grotesque`.
+     */
+    face: z.enum(["grotesque", "serif", "old", "slab", "condensed", "script"]).optional(),
     stops: z.array(slugSchema).min(2).max(200),
     /**
      * Additive in schema version 1. One entry per consecutive pair of stops, so `stops.length - 1` entries; absent
@@ -987,6 +1033,17 @@ export const publishedProjectionSchema = projectionShape.superRefine((p, ctx) =>
         }
       });
     });
+  });
+
+  // A route's code name is unique among the routes (without case or diacritics): two trips with one word on their cards would not be told apart.
+  const codenames = new Map<string, number>();
+  p.routes.forEach((route, i) => {
+    if (route.codename === undefined) return;
+    const key = route.codename.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+    if (codenames.has(key)) {
+      ctx.addIssue({ code: "custom", path: ["routes", i, "codename"], message: `codename "${route.codename}" is already the code name of route ${codenames.get(key)}` });
+    }
+    codenames.set(key, i);
   });
 
   // The career's optional place references name published places of this projection.

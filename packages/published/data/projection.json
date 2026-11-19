@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "dataVersion": {
-    "commit": "f155273a4c8a3ef22174cbb9693a9c07e575ec9d",
-    "date": "2026-11-17"
+    "commit": "f36b897ea5303732aef7b4723052b8642d2b324c",
+    "date": "2026-11-19"
   },
   "places": [
     {
@@ -892,7 +892,7 @@
       "bbox": [
         17.81538,
         42.6208867,
-        18.108327,
+        18.11,
         42.7803608
       ],
       "viewRadiusKm": 15,
@@ -3375,9 +3375,9 @@
         -5.600746,
         31.4725946,
         -5.458163,
-        31.5626317
+        31.57
       ],
-      "viewRadiusKm": 8.5,
+      "viewRadiusKm": 8.7,
       "group": "boumalne-dades-area",
       "countryCode": "MA",
       "body": [],
@@ -3679,12 +3679,12 @@
       },
       "labelPriority": 31,
       "bbox": [
-        -71.970566,
+        -71.98,
         -13.5405852,
         -71.9417,
         -13.5197959
       ],
-      "viewRadiusKm": 2,
+      "viewRadiusKm": 2.4,
       "group": "peru",
       "countryCode": "PE",
       "body": [],
@@ -3990,10 +3990,10 @@
       "kind": "area",
       "parent": "boumalne-dades-region",
       "coordinates": {
-        "lat": 31.481,
-        "lon": -5.768
+        "lat": 31.483,
+        "lon": -5.767
       },
-      "viewRadiusKm": 34.6,
+      "viewRadiusKm": 34.8,
       "labelPriority": 55
     },
     {
@@ -4111,7 +4111,7 @@
       "parent": "balkans",
       "coordinates": {
         "lat": 44.299,
-        "lon": 16.979
+        "lon": 16.98
       },
       "viewRadiusKm": 230.5,
       "labelPriority": 70
@@ -4796,6 +4796,14 @@
         "start": "2019-07",
         "end": "2019-07"
       },
+      "image": {
+        "src": "/media/routes/trip-01/image.5802966a.webp",
+        "width": 720,
+        "height": 1280,
+        "alt": "St Basil's Cathedral on Red Square, Moscow, seen from the ground, with two people walking towards it and its reflection in a puddle under a pale grey sky"
+      },
+      "codename": "Moscow",
+      "face": "condensed",
       "stops": [
         "toulouse",
         "minsk",
@@ -4826,6 +4834,8 @@
         "start": "2022-01",
         "end": "2022-01"
       },
+      "codename": "Geneva",
+      "face": "grotesque",
       "stops": [
         "toulouse",
         "grenoble",
@@ -4860,6 +4870,8 @@
         "start": "2022-09",
         "end": "2023-02"
       },
+      "codename": "Klagenfurt",
+      "face": "serif",
       "stops": [
         "toulouse",
         "paris",
@@ -4954,6 +4966,14 @@
         "end": "2023-11"
       },
       "url": "https://www.polarsteps.com/bsodium/15780336-south-america-west-to-east",
+      "image": {
+        "src": "/media/routes/trip-04/image.6926b256.webp",
+        "width": 795,
+        "height": 1280,
+        "alt": "The Obelisco of Buenos Aires, a white pillar over the Avenida 9 de Julio, in warm evening light under a dark storm sky"
+      },
+      "codename": "Buenos Aires",
+      "face": "old",
       "stops": [
         "toulouse",
         "paris",
@@ -4990,7 +5010,7 @@
         },
         {
           "mode": "road",
-          "polyline": "pivhAjlcuMlcAyZr`A~XjWlAjj@sGfb@Zln@mK|i@cMvTeQdQkFpCbDj@rUjI[rCuZab@qA|Kut@~j@waAhQ{b@~^}Nr[oi@|qEi_Ap`D~YlTeEn}@a~@zcBw`Eld@uq@|dG{bLdx@quBz[cZf}EusCdmIgxI`KyBd{@W~aA{M~w@yCjmA~SvQV|_Jq_B~_Aci@nkAoy@faF{gBloA_bBhoAy}CfUuVbT_Fvk@f@njCfq@bn@wFzi@xAfiC}n@r~AybAxkAmP~WmI`kBgfAteA{sAhUwR~[wL~oBg]vrAcy@l~BilBlzAi`D|wAyeBrs@gPnhBwyAdv@o\\bz@yk@x|@cOxz@dAvwAgCrjCkw@|`At@bp@oMbj@kC`i@{NjQpB`SjVzN|E~vBwQpxJs|CnZeEbn@{@pXsGfbAir@rcAemA|kAep@lgEenD~PoUf_@{bAvNiRvmCqiA|d@sMza@iZ|h@m|@jq@_|@nTcJts@cAxa@_LthBcbBh_B{pAzSuXvKq[|CqY?_bAzEuQ~KeNn{Ai~@|{C{q@|rAmk@hlAmeA`o@}Vvn@yb@p|A_n@r|Bo}Ab|Am}@|`Acg@paDiuAbx@wYh`A{Mls@a`@l{AyZxbCwI|eBv_@|nDfF~hBgMtxB_@z`AeKpbAsCnz@uX~oAqs@lf@eJdbBzEdsBva@lgEtGh`@_FthAip@na@}GdjAX`u@dJ`nBoAlbA~JxcAsGb_A`J`{@_F|wAvTlN@|tGaaDbwIczB|LeL`GaNbtC_}IfF}lDxYovB~H_P|l@im@zHiNhw@{uEbHeuGjl@quSdDgOjsBuwDfYoTdrBsx@j}G{vAvlE_oBjkAeVbo@}Bzl@gt@x]mhAxq@aG~o@tI`uBiKx~@dGb}Dqd@~OtJnh@dOpeBuLx]hH|UHpy@mOhUsP~|A_p@fn@}l@~[yKbu@yRv{AiXhbC_Zl]cNlVr@h`BsHpcBqn@`i@uc@jhE{tEx|B_fBbKeXbHae@t`@md@t@{ImIiVhFaYfrIifVl_Gsa^|Nmx@lWwl@_DqqBv`@wpA`Ue]oBqMgw@c~@mQqh@c@a^qCiK{a@u_@o_@{FfCmFnIlC|Zd@sMuHqA_`@nIi@j@~MhFlA~Pu`@nKgDdOvAbCmPlFyC`~Ab`@dd@eBzFwH~Nou@q@eP|WbFpYxRiD}Q`CcEgC_EhLhDhBqA_M}p@fmAsiAbD\\bv@b`A~j@ny@dg@pd@bSrFvlAeFhw@or@hvCwc@d~Cww@vc@mRt_@e\\xR{D`SqQ`PcXb_@aH~p@ey@~`@uUdFsYh@{p@va@wu@n\\m]yLsh@`AmGzqIasIfyGgdG|oD{uFjy@mcD~J}PzMegA|l@eJja@s@fG{Dm@_V{GmPyAm\\sWsWs_@m_A}AoUzIcqAkQarAzB}P_X}]oDu[`JwjAkh@kfBz@yZcOidArn@mkAzPcLvArBeF`Jzj@_`@dGmLU_NfJqCSoI`N}Ftd@}f@eA`HvJwEzVlCoHqK|LqGsHrIzG}DpICw@_NfMOnSyIqUtPhk@{MTwCaJ}A{AkGnVwNiBqCzEcMjMuEdIpDhFqBjEmEaCyCjLeKsIx@}G{BnJiR@sJwNoScFrFyB{KgNoKOk^aJDmFsZmNcG|CcQcGyOnNaCSeEqGeByM|BmF_Q_BzAzBzJ_ErCiMgKoAwUnG}_@cJ{PqDrAyIoIfHeJwJnFlDdXwDz@}KmM{IsC}GuNlBaDwBiCuGm@{OpIhMwM|F}@n\\bJ_Q{LcLsAyLhCcFwD`I`@}Ec`@_DFsCqEwGmVoDq\\|CuLgMkKiFc\\oJ}DaAaNyGiKsC{ZvFaGiHiSrA}\\_CcWqB~Cj@nRyElHkLoVqLsGkJkj@gIsGn@{RuLq@}FmGnAiI{BaS_YwH~H~LcMjCqUwa@sMcNmJf@wDmMmKuBuJaUyKkK_I@oClHgJmC}EyJsB}WeLmWwZeSjRhCq]yPmLgNyC]pA|DiCDaDcHdB_HyQwXku@st@yLeEwM_Q_PsHoCoNn@oOuc@ih@u_@qgAqP{Z_B}L_HoCn@rR}k@c{@`@mP`HeLyHoNm@qLaLkPG_SiHgRwNoMyaAiWuIyU}_@}\\wBwSsf@iMgEmZz@uLuQgIgK_MiOmr@}CaE}KwBs@wHa[{d@kIwb@cOuPiE{z@}tAisCep@o~Evd@_nCytAgkHlKesB^osAvWchAoC{r@}Mi@ia@xTeHRwIaMkGdBcMiF}DgSwIaEyMuPHmUmStHuRcOyCeLlBcN|RkJhNsAfHad@uIT_V{FqMfIkd@tIeBqCgVx\\qK|DqI_GuGhQqNmCaLaLk@uYjLiHtKi\\DkIbQ{PuXrOsA~IuIpBdGuCu@gGfRoYwAuGzBwHyGxKZ`D_JtF}JdQ_TsD}JnPwOwWcJlE_@dJkK~BiGtN|AkRjKoFsDaJx@sCkB}AeIvA_EeG~GeHjMiC}C{DxLsAjFxHpC{CfInBpHoFnGdAWsHrPqWf^}IA{E|GoBl@_FsBhEqDcAuDfE{i@rIzM}IrPs]fPaGnIqVzPkEwFaC_PvDqF}Dd@uSfLaKNgNeQwHuLg@B_NeCcCbQq\\|A_R|HfAvD|JzNtCba@\\lJsEwBePiFkDoCyLya@yUlCmCEsHbCWnArE~[fErVrOtIiCdJcNlSPzFoG_Agm@uDiE{LeBuHeIyZoE}EcNbHLlOqFtDuF`C_XlJeJ`SyF~[aBvSw_@aDwDbHgIlCmQiBkDhIo@xOpJvYcEpBgIlSyC~TgWQaGtNkZ`WwF_IwLhPuJ|UyCzOiLlOyBfNbBrOaLnBoUpKeCh_@|Ai@mE{UkV_BqN|IgGVkF_^cUsLj@oAyBhX}[jL{B}I}Gi@cGlDiIli@uA_@zIxLxOmByGjO}X`BwU_Vs@QsEaLyEu@if@vJeHaEuJ}Fa@eQbHyXqOaHKwJvEoFeAgGaXmMiBiL{MwAoOyNoFxK`BjDuEuBkFcF_FcSWeMzF`DkHi@cK{BhH}FbDiBaF_Ek@VnRwDoTyEc@}HiVrKUrB}NpEbBjIcElGtDlGYfDkQhQi[|SkBuSaKzUwAvE{Q`S{HfHN`FzDtDuDjM\\uf@eIkNdBzHsDfXiBvDoEfGmSWyK|GgShCk[tKeRWoOmPdLid@t@cF}C]uEgH{C|Fok@uS_JTjMqHmIeGs@uI`B_G`OaLbDaIoD{DkOm^fKmWfAwM`HkVgE{KmL}NS{]dGbQsc@y\\eIkFbJ{HbA|Ew\\gD_D?oS{FkJiPfC{@kYmDeD{EJmZjVmGr@wBoDoGEjAuJ_DsFjLeA`GiEhD{MW{HyHgGwNnC_J}B[mCnOwPgDwZgGiDsFr@iHcFsHr@gFoExEmTeBuFeOwAkDiWa[}]g[oTyMoRnO{BnIyLtJzA~e@~VvRuCxAsH_CyH|F{FcU}XkEiUxBkG~OfBnYfPhRoFjQpLh`@cWzMoOjA_OpJ{DmR_JeEkJsLg{BiJaJwKmm@s@_f@dGgr@_]qTk\\cJ{HqR}Vi[kDqU|\\wkBnA_\\tg@unDkBm[nQgaAzl@e_AfNad@iGyLs\\cC_HsGfH_b@gW_WfXaXoVcb@{Bkc@bHqXfSdMxLn@fJlIdMMjIhEfGcBtJaOtAiu@gJqIoUkc@hBkL}H_AiBaKz]oc@nB_QlNqHzZom@uNaCmIaGpH}XuEmHsKdDyYwOyPfLwIJ|F}`@`ToUu^vJoDuCkAoQzS_k@xA{sArXgQ\\yC_Lyb@gQqNgFqR{H}JaI_k@iLmNkHwg@}zAetDie@i{BxHw`@gQmnAvGiTmNkScMeE`Umj@_M{iAyLyZrGok@pGiDX}D_SiJgO~NoFuKIqT_i@uQa`@fm@eNpGqAaJrScSrH{VcAeTuIaTcm@sPkcBep@}EsZlIqCfMnA^_CevAir@cF{MaA}KbJer@oRkh@n@ukAqKsW}BiaAdV{PfEiKnCqY~Nqk@h\\o~C|q@ijBoFw|@bCwcAdY_b@tIw[DqRc@kOmLuZyOwLeFyMax@mLsWyOiL_SZaVuKkVmHubAkGaOj@sJxH}IbAw]cu@mxAqEcU^gW~WqaBsJg_@yHgMuEss@{s@eoAi\\iYgHaVsa@sn@m_@sTmB}LyI_G}LhByI{AzUeGjO|DwKcGqf@Mk[oPeSKhTcCf[fIbYuCj[~BpI{DeIzAg^iIyKP{IgEu@eJwGqFa^hImFeBhLa@`MaMqBqLeHmEsA~BjHxJyB~CeHn@yJoJcKrAjGiE?{H|QsHqJxB{Y}HegB{v@yHkTcTkNsGpEcNj@c\\aDeh@yj@ya@{SmZcY_SsCeFiEqUmA}TsRuc@oMsaAedAkX}D_SiUqTgIsKcTeLeJcb@wNwJu^uRUcPyIaWyX}KaBk^mVsIeOw^}GwPuPcXaAsU_SsI~@g`A}HkLlAwW}LoEh@cRbT}BtLgT~XgLbb@kl@fn@iWbRcOhd@cNvL\\xS}UwBoDpB}DzNtEt_@w_@xi@[tS{Wr[oFvY~CvMmA~LwRxSoCnPuMbVwGz^sNxSqElRunAlyBcFzTeg@pq@sTxn@yi@lR{Q`BqXh^{GlRqPbAqMhHiUfa@iMpAiTvRkKz@aGpHyTfHy]~^{RiHkVhEwLmDsV_SmWSqDdBeCdNzCxK_AjRaKpIwZaQgLg@wWmMwMuM_T{Ac]dHg`@zS}GqC{^Kuc@tAsQdEcOeEmq@ij@eX_i@gWeT_\\cN{OmU_i@mOmSjMaJkCgBkFlH_[{G{InDaTcDyL_RkAiWkMy_@tAih@{G}`@pAq]}L}Ur@mSaEmXyPoOk\\i[ac@mKid@gXm]oL}HcTfDyTiEcBaDpAkOyJwK{VeGiX}Y{E_`@oHaIeMs@oVnIm_@sMcDg\\uW{ZuK}c@}QcEks@ep@yQw[md@g\\sD_MvGwe@sJcg@}Wub@eSyHk{@mIwX_MaCcEdD{EwFuR}Awb@kMkUmI\\mOkHwg@mE{Lo\\i`@sLmWrIiL|M_Kv@oLgPqYySGs\\}DgJoG{C}DqRwLaDmJnDqRcDaVup@~Ys\\aG_l@_HuPfJiIrFiNaJyKsLet@sFuAiCa]gLoM{\\w`AjHsV{HuWcCgb@oGwFkMPgUeGkEyPiXy_@ep@__@mImHsIkSkh@aWqx@iRaE}Yub@o]_Toh@_LqAeXrEoEsHu|@mKsR}\\aPyq@jH_V]eXxN{r@uM{p@hEgVuAwEgU}B{KuOqNX}XcIig@nAuGqSeXkD{JkW}a@eQk[}F{^sVkOcC{]yPe[MgLqFwFvCgQV{HvEyF}EcOt@yF_K{LOk_@s|@aGqByf@_o@yL{HmJ_DoNHgSeHwPkm@gHuFea@BkOqE{xAiMwTxDcmAgJkTdHcT?}TaOeIoQm`AuGuQeH{PgPoXeBin@`OeHfMmm@nSu_@b[g_@xCyHqB]|LiKtRwD~@kJmEgBlNgP|@iGjHgFr@`GoHsB_SaEcFvBq\\sHk\\dDi|@wHeDjHiBpA{UoHqCaTdQsPuApG|HwGrj@pKbIaA|AsMyINoQ}G}OqP_B_N}W{ZcPl@{B|M~@oX}\\hEwUoLwRaBee@yMwLfAgB{Mgo@u^~b@iEaj@gPmCqPmNgKmBoFaHk@cKgJtAmEkCxBmBgKkDK{KwEgIwTqL`HeNbKFl_@fRpRbVnEiFi@mb@sFyNgSgNcWfH}TiFnMlKoRaHyCgI}Q{CnOvKi[~GzT_G}RaJsFsNl[yDr@aDyGiMxBvP}^xAd@fRhDzFkKhGuTcFwCmSuEsGwKfPuZiCuJoMhL|K`G{@rHnCvSeT|TlRx@oJ{DhAhLiQE{YvC_C_KyVi@lEbHhOeXv[gJqA_I`DxCyDjJe@lFsII_Fs@vFiGfCw]rDqEoCkFiU}LtBqIpOiM}AaH_FaW`CgFeEmGfDvGyHhJrAvJsGxKu@zGxCvMsN|LPo@cInDYr@uFzKXj@eB{DoAaQMaK{IsEqYxIoFnDmNhEHzEgFlJ`EhK{MtH`BtCgJiE`DmGkA}JvGaMaJsTnAmKzFge@cBsVzDgBjEnBvG_RkIwEbA}BlF}IyK{HaA}EpBeH_HeLzFp@aToL_TeW~DlDsJjPwLaDuMeMs@_TzG{AkG}I_DaCcIcIMyHkNoE{Am@eUfFcK{KiNrCoTkDmDo@w^bJmh@aGsP\\iI_HmEJeLwRaNi@_H{F{ArDyDxAoSfF{Iu@eFiGqDfIxAnFdOsCqRuMkFnS~ElK~KmEkOkH{ChLrAbGfFyDaHgWaKpDuBgBiZpKnIxAdHfDaN_@sSwEsNlCu@dM|FxC|QtHnN{@aMhFeBnEyJoClOpFhAQhG`GwAxBpEfBxSlHfJSxGpC|@uC`JfIcCvGxQdStJ~BhIdCqA}AeSeLmMAoQ|EqItZJrNkF}CsCm_@eE{LwM|NuYxHoEoDyHzDcAfBoQgJ_DmAcH}Eb@yLmHaOuT_Oga@_OmOwKwl@gMaJRy_@kMem@vBaMgHyVnB_MbGkHkA_PpKiMsOlBeOqCf`@yWsC_QtBqHsAuOlGsFtGvB~XgQ}Qc]l@yD|FcCnBmNgD~LsHpAyEtG`CyGnHeEt@kUhEiA_GJyDvS_NvGbKcMa@}WsCqA~A`LyEfIiEEqIoH~DqN`KsHnVfFlAeFoQ_QoBgPcH_OaHqAcByDdIyD`G_OzNcGaEoItH{DfB}IrQyBkJuH{FsXdDiXwCsRdFaFxQxIb]\\kUcNqMyRcAiK`CiQmBoBjEkOyBaKrIg]`SsM~Ymo@zWgQlK|AcDiFeCy^iJyKhDcIkFu[pHw\\qJqGsHsSg_@c[wNq@}HkHa@eRvCsPjKoOUo]vGqPgc@ig@oSm]}X_r@{Imm@sT{T{ZqJkOyZaFkAqa@id@cQf@eZhVyO}@wA{FeGb@eDkD_X_BwAgNiTqZ_Aem@aJwMkG}UnBcK_FyWxIgg@eOkcAsl@y_@wH}OgOwHee@cp@yN}\\eTkOeXi@eKkH@uL{\\m_@bFyGaMiHpEwEm^eOpRoKeI{LfQh@sB}EqJkCmG_PtJqBy@aM~CgFwHuBuGrJqPrC}_@iB@gB|Et@pEoCjRRhBkIfIwGcJNeHfJwCB`AkJ{Jr@qJmMbLbE`QqJcTxBiGoG_CsKqV|NrFwLvNsFrJvDaIyJwEnDsI@mG`I_Kv@oKpG|JcPzXkIrB_HnNyHe@eBmGzGmIBi@xH{DDjAgJnL_BhHwUzWpGhEdKdUNFoQ{EoFzEmEgI~AdFzMuGfCiR_OuC{Mau@wUU_HpEqBjI}VeGkFfCc\\`DsDmGuFfQeQ@{LyX`D}OqZk@cRoDsEcIr@}@kCjZukAuDkp@jGkX_FeRnDyNcEuVlQsOtFiPvQqPf}@caDvRue@fd@yPby@}z@p|AewG`C}YzNy^rPoaDyHew@qUcg@_a@{l@syAgqAmbAkj@}DwHhScu@v{@}gAhIyx@dWug@q@qm@kJw[eCac@fRslA`s@c~B]oZlCiNeD{LrPoUhi@}fBxK_I`QyDyJeKXgKlFsEo@uFrLyAjDiEkNkRiCaL`Wud@p@yKdGcA_GiEzDuR{BcICqg@cTeEjMcAuCaKxAsCjDjAnBoD|Br@`BiGrHjC`CyLxZma@f\\uX"
+          "polyline": "pivhAjlcuMlcAyZr`A~XjWlAjj@sGfb@Zln@mK|i@cMvTeQdQkFpCbDj@rUjI[rCuZab@qA|Kut@~j@waAhQ{b@~^}Nr[oi@|qEi_Ap`D~YlTeEn}@a~@zcBw`Eld@uq@|dG{bLdx@quBz[cZf}EusCdmIgxI`KyBd{@W~aA{M~w@yCjmA~SvQV|_Jq_B~_Aci@nkAoy@faF{gBloA_bBhoAy}CfUuVbT_Fvk@f@njCfq@bn@wFzi@xAfiC}n@r~AybAxkAmP~WmI`kBgfAteA{sAhUwR~[wL~oBg]vrAcy@l~BilBlzAi`D|wAyeBrs@gPnhBwyAdv@o\\bz@yk@x|@cOxz@dAvwAgCrjCkw@|`At@bp@oMbj@kC`i@{NjQpB`SjVzN|E~vBwQpxJs|CnZeEbn@{@pXsGfbAir@rcAemA|kAep@lgEenD~PoUf_@{bAvNiRvmCqiA|d@sMza@iZ|h@m|@jq@_|@nTcJts@cAxa@_LthBcbBh_B{pAzSuXvKq[|CqY?_bAzEuQ~KeNn{Ai~@|{C{q@|rAmk@hlAmeA`o@}Vvn@yb@p|A_n@r|Bo}Ab|Am}@|`Acg@paDiuAbx@wYh`A{Mls@a`@l{AyZxbCwI|eBv_@|nDfF~hBgMtxB_@z`AeKpbAsCnz@uX~oAqs@lf@eJdbBzEdsBva@lgEtGh`@_FthAip@na@}GdjAX`u@dJ`nBoAlbA~JxcAsGb_A`J`{@_F|wAvTlN@|tGaaDbwIczB|LeL`GaNbtC_}IfF}lDxYovB~H_P|l@im@zHiNhw@{uEbHeuGjl@quSdDgOjsBuwDfYoTdrBsx@j}G{vAvlE_oBjkAeVbo@}Bzl@gt@x]mhAxq@aG~o@tI`uBiKx~@dGb}Dqd@~OtJnh@dOpeBuLx]hH|UHpy@mOhUsP~|A_p@fn@}l@~[yKbu@yRv{AiXhbC_Zl]cNlVr@h`BsHpcBqn@`i@uc@jhE{tEx|B_fBbKeXbHae@t`@md@t@{ImIiVhFaYfrIifVl_Gsa^|Nmx@lWwl@_DqqBv`@wpA`Ue]oBqMgw@c~@mQqh@c@a^qCiK{a@u_@o_@{FfCmFnIlC|Zd@sMuHqA_`@nIi@j@~MhFlA~Pu`@nKgDdOvAbCmPlFyC`~Ab`@dd@eBzFwH~Nou@q@eP|WbFpYxRiD}Q`CcEgC_EhLhDhBqA_M}p@fmAsiAbD\\bv@b`A~j@ny@dg@pd@bSrFvlAeFhw@or@hvCwc@d~Cww@vc@mRt_@e\\xR{D`SqQ`PcXb_@aH~p@ey@~`@uUdFsYh@{p@va@wu@n\\m]yLsh@`AmGzqIasIfyGgdG|oD{uFjy@mcD~J}PzMegA|l@eJja@s@fG{Dm@_V{GmPyAm\\sWsWs_@m_A}AoUzIcqAkQarAzB}P_X}]oDu[`JwjAkh@kfBz@yZcOidArn@mkAzPcLvArBeF`Jzj@_`@dGmLU_NfJqCSoI`N}Ftd@}f@eA`HvJwEzVlCoHqK|LqGsHrIzG}DpICw@_NfMOnSyIqUtPhk@{MTwCaJ}A{AkGnVwNiBqCzEcMjMuEdIpDhFqBjEmEaCyCjLeKsIx@}G{BnJiR@sJwNoScFrFyB{KgNoKOk^aJDmFsZmNcG|CcQcGyOnNaCSeEqGeByM|BmF_Q_BzAzBzJ_ErCiMgKoAwUnG}_@cJ{PqDrAyIoIfHeJwJnFlDdXwDz@}KmM{IsC}GuNlBaDwBiCuGm@{OpIhMwM|F}@n\\bJ_Q{LcLsAyLhCcFwD`I`@}Ec`@_DFsCqEwGmVoDq\\|CuLgMkKiFc\\oJ}DaAaNyGiKsC{ZvFaGiHiSrA}\\_CcWqB~Cj@nRyElHkLoVqLsGkJkj@gIsGn@{RuLq@}FmGnAiI{BaS_YwH~H~LcMjCqUwa@sMcNmJf@wDmMmKuBuJaUyKkK_I@oClHgJmC}EyJsB}WeLmWwZeSjRhCq]yPmLgNyC]pA|DiCDaDcHdB_HyQwXku@st@yLeEwM_Q_PsHoCoNn@oOuc@ih@u_@qgAqP{Z_B}L_HoCn@rR}k@c{@`@mP`HeLyHoNm@qLaLkPG_SiHgRwNoMyaAiWuIyU}_@}\\wBwSsf@iMgEmZz@uLuQgIgK_MiOmr@}CaE}KwBs@wHa[{d@kIwb@cOuPiE{z@}tAisCep@o~Evd@_nCytAgkHlKesB^osAvWchAoC{r@}Mi@ia@xTeHRwIaMkGdBcMiF}DgSwIaEyMuPHmUmStHuRcOyCeLlBcN|RkJhNsAfHad@uIT_V{FqMfIkd@tIeBqCgVx\\qK|DqI_GuGhQqNmCaLaLk@uYjLiHtKi\\DkIbQ{PuXrOsA~IuIpBdGuCu@gGfRoYwAuGzBwHyGxKZ`D_JtF}JdQ_TsD}JnPwOwWcJlE_@dJkK~BiGtN|AkRjKoFsDaJx@sCkB}AeIvA_EeG~GeHjMiC}C{DxLsAjFxHpC{CfInBpHoFnGdAWsHrPqWf^}IA{E|GoBl@_FsBhEqDcAuDfE{i@rIzM}IrPs]fPaGnIqVzPkEwFaC_PvDqF}Dd@uSfLaKNgNeQwHuLg@B_NeCcCbQq\\|A_R|HfAvD|JzNtCba@\\lJsEwBePiFkDoCyLya@yUlCmCEsHbCWnArE~[fErVrOtIiCdJcNlSPzFoG_Agm@uDiE{LeBuHeIyZoE}EcNbHLlOqFtDuF`C_XlJeJ`SyF~[aBvSw_@aDwDbHgIlCmQiBkDhIo@xOpJvYcEpBgIlSyC~TgWQaGtNkZ`WwF_IwLhPuJ|UyCzOiLlOyBfNbBrOaLnBoUpKeCh_@|Ai@mE{UkV_BqN|IgGVkF_^cUsLj@oAyBhX}[jL{B}I}Gi@cGlDiIli@uA_@zIxLxOmByGjO}X`BwU_Vs@QsEaLyEu@if@vJeHaEuJ}Fa@eQbHyXqOaHKwJvEoFeAgGaXmMiBiL{MwAoOyNoFxK`BjDuEuBkFcF_FcSWeMzF`DkHi@cK{BhH}FbDiBaF_Ek@VnRwDoTyEc@}HiVrKUrB}NpEbBjIcElGtDlGYfDkQhQi[|SkBuSaKzUwAvE{Q`S{HfHN`FzDtDuDjM\\uf@eIkNdBzHsDfXiBvDoEfGmSWyK|GgShCk[tKeRWoOmPdLid@t@cF}C]uEgH{C|Fok@uS_JTjMqHmIeGs@uI`B_G`OaLbDaIoD{DkOm^fKmWfAwM`HkVgE{KmL}NS{]dGbQsc@y\\eIkFbJ{HbA|Ew\\gD_D?oS{FkJiPfC{@kYmDeD{EJmZjVmGr@wBoDoGEjAuJ_DsFjLeA`GiEhD{MW{HyHgGwNnC_J}B[mCnOwPgDwZgGiDsFr@iHcFsHr@gFoExEmTeBuFeOwAkDiWa[}]g[oTyMoRnO{BnIyLtJzA~e@~VvRuCxAsH_CyH|F{FcU}XkEiUxBkG~OfBnYfPhRoFjQpLh`@cWzMoOjA_OpJ{DmR_JeEkJsLg{BiJaJwKmm@s@_f@dGgr@_]qTk\\cJ{HqR}Vi[kDqU|\\wkBnA_\\tg@unDkBm[nQgaAzl@e_AfNad@iGyLs\\cC_HsGfH_b@gW_WfXaXoVcb@{Bkc@bHqXfSdMxLn@fJlIdMMjIhEfGcBtJaOtAiu@gJqIoUkc@hBkL}H_AiBaKz]oc@nB_QlNqHzZom@uNaCmIaGpH}XuEmHsKdDyYwOyPfLwIJ|F}`@`ToUu^vJoDuCkAoQzS_k@xA{sArXgQ\\yC_Lyb@gQqNgFqR{H}JaI_k@iLmNkHwg@}zAetDie@i{BxHw`@gQmnAvGiTmNkScMeE`Umj@_M{iAyLyZrGok@pGiDX}D_SiJgO~NoFuKIqT_i@uQa`@fm@eNpGqAaJrScSrH{VcAeTuIaTcm@sPkcBep@}EsZlIqCfMnA^_CevAir@cF{MaA}KbJer@oRkh@n@ukAqKsW}BiaAdV{PfEiKnCqY~Nqk@h\\o~C|q@ijBoFw|@bCwcAdY_b@tIw[DqRc@kOmLuZyOwLeFyMax@mLsWyOiL_SZaVuKkVmHubAkGaOj@sJxH}IbAw]cu@mxAqEcU^gW~WqaBsJg_@yHgMuEss@{s@eoAi\\iYgHaVsa@sn@m_@sTmB}LyI_G}LhByI{AzUeGjO|DwKcGqf@Mk[oPeSKhTcCf[fIbYuCj[~BpI{DeIzAg^iIyKP{IgEu@eJwGqFa^hImFeBhLa@`MaMqBqLeHmEsA~BjHxJyB~CeHn@yJoJcKrAjGiE?{H|QsHqJxB{Y}HegB{v@yHkTcTkNsGpEcNj@c\\aDeh@yj@ya@{SmZcY_SsCeFiEqUmA}TsRuc@oMsaAedAkX}D_SiUqTgIsKcTeLeJcb@wNwJu^uRUcPyIaWyX}KaBk^mVsIeOw^}GwPuPcXaAsU_SsI~@g`A}HkLlAwW}LoEh@cRbT}BtLgT~XgLbb@kl@fn@iWbRcOhd@cNvL\\xS}UwBoDpB}DzNtEt_@w_@xi@[tS{Wr[oFvY~CvMmA~LwRxSoCnPuMbVwGz^sNxSqElRunAlyBcFzTeg@pq@sTxn@yi@lR{Q`BqXh^{GlRqPbAqMhHiUfa@iMpAiTvRkKz@aGpHyTfHy]~^{RiHkVhEwLmDsV_SmWSqDdBeCdNzCxK_AjRaKpIwZaQgLg@wWmMwMuM_T{Ac]dHg`@zS}GqC{^Kuc@tAsQdEcOeEmq@ij@eX_i@gWeT_\\cN{OmU_i@mOmSjMaJkCgBkFlH_[{G{InDaTcDyL_RkAiWkMy_@tAih@{G}`@pAq]}L}Ur@mSaEmXyPoOk\\i[ac@mKid@gXm]oL}HcTfDyTiEcBaDpAkOyJwK{VeGiX}Y{E_`@oHaIeMs@oVnIm_@sMcDg\\uW{ZuK}c@}QcEks@ep@yQw[md@g\\sD_MvGwe@sJcg@}Wub@eSyHk{@mIwX_MaCcEdD{EwFuR}Awb@kMkUmI\\mOkHwg@mE{Lo\\i`@sLmWrIiL|M_Kv@oLgPqYySGs\\}DgJoG{C}DqRwLaDmJnDqRcDaVup@~Ys\\aG_l@_HuPfJiIrFiNaJyKsLet@sFuAiCa]gLoM{\\w`AjHsV{HuWcCgb@oGwFkMPgUeGkEyPiXy_@ep@__@mImHsIkSkh@aWqx@iRaE}Yub@o]_Toh@_LqAeXrEoEsHu|@mKsR}\\aPyq@jH_V]eXxN{r@uM{p@hEgVuAwEgU}B{KuOqNX}XcIig@nAuGqSeXkD{JkW}a@eQk[}F{^sVkOcC{]yPe[MgLqFwFvCgQV{HvEyF}EcOt@yF_K{LOk_@s|@aGqByf@_o@yL{HmJ_DoNHgSeHwPkm@gHuFea@BkOqE{xAiMwTxDcmAgJkTdHcT?}TaOeIoQm`AuGuQeH{PgPoXeBin@`OeHfMmm@nSu_@b[g_@xCyHqB]|LiKtRwD~@kJmEgBlNgP|@iGjHgFr@`GoHsB_SaEcFvBq\\sHk\\dDi|@wHeDjHiBpA{UoHqCaTdQsPuApG|HwGrj@pKbIaA|AsMyINoQ}G}OqP_B_N}W{ZcPl@{B|M~@oX}\\hEwUoLwRaBee@yMwLfAgB{Mgo@u^~b@iEaj@gPmCqPmNgKmBoFaHk@cKgJtAmEkCxBmBgKkDK{KwEgIwTqL`HeNbKFl_@fRpRbVnEiFi@mb@sFyNgSgNcWfH}TiFnMlKoRaHyCgI}Q{CnOvKi[~GzT_G}RaJsFsNl[yDr@aDyGiMxBvP}^xAd@fRhDzFkKhGuTcFwCmSuEsGwKfPuZiCuJoMhL|K`G{@rHnCvSeT|TlRx@oJ{DhAhLiQE{YvC_C_KyVi@lEbHhOeXv[gJqA_I`DxCyDjJe@lFsII_Fs@vFiGfCw]rDqEoCkFiU}LtBqIpOiM}AaH_FaW`CgFeEmGfDvGyHhJrAvJsGxKu@zGxCvMsN|LPo@cInDYr@uFzKXj@eB{DoAaQMaK{IsEqYxIoFnDmNhEHzEgFlJ`EhK{MtH`BtCgJiE`DmGkA}JvGaMaJsTnAmKzFge@cBsVzDgBjEnBvG_RkIwEbA}BlF}IyK{HaA}EpBeH_HeLzFp@aToL_TeW~DlDsJjPwLaDuMeMs@_TzG{AkG}I_DaCcIcIMyHkNoE{Am@eUfFcK{KiNrCoTkDmDo@w^bJmh@aGsP\\iI_HmEJeLwRaNi@_H{F{ArDyDxAoSfF{Iu@eFiGqDfIxAnFdOsCqRuMkFnS~ElK~KmEkOkH{ChLrAbGfFyDaHgWaKpDuBgBiZpKnIxAdHfDaN_@sSwEsNlCu@dM|FxC|QtHnN{@aMhFeBnEyJoClOpFhAQhG`GwAxBpEfBxSlHfJSxGpC|@uC`JfIcCvGxQdStJ~BhIdCqA}AeSeLmMAoQ|EqItZJrNkF}CsCm_@eE{LwM|NuYxHoEoDyHzDcAfBoQgJ_DmAcH}Eb@yLmHaOuT_Oga@_OmOwKwl@gMaJRy_@kMem@vBaMgHyVnB_MbGkHkA_PpKiMsOlBeOqCf`@yWsC_QtBqHsAuOlGsFtGvB~XgQ}Qc]l@yD|FcCnBmNgD~LsHpAyEtG`CyGnHeEt@kUhEiA_GJyDvS_NvGbKcMa@}WsCqA~A`LyEfIiEEqIoH~DqN`KsHnVfFlAeFoQ_QoBgPcH_OaHqAcByDdIyD`G_OzNcGaEoItH{DfB}IrQyBkJuH{FsXdDiXwCsRdFaFxQxIb]\\kUcNqMyRcAiK`CiQmBoBjEkOyBaKrIg]`SsM~Ymo@zWgQlK|AcDiFeCy^iJyKhDcIkFu[pHw\\qJqGsHsSg_@c[wNq@}HkHa@eRvCsPjKoOUo]vGqPgc@ig@oSm]}X_r@{Imm@sT{T{ZqJkOyZaFkAqa@id@cQf@eZhVyO}@wA{FeGb@eDkD_X_BwAgNiTqZ_Aem@aJwMkG}UnBcK_FyWxIgg@eOkcAsl@y_@wH}OgOwHee@cp@yN}\\eTkOeXi@eKkH@uL{\\m_@bFyGaMiHpEwEm^eOpRoKeI{LfQh@sB}EqJkCmG_PtJqBy@aM~CgFwHuBuGrJqPrC}_@iB@gB|Et@pEoCjRRhBkIfIwGcJNeHfJwCB`AkJ{Jr@qJmMbLbE`QqJcTxBiGoG_CsKqV|NrFwLvNsFrJvDaIyJwEnDsI@mG`I_Kv@oKpG|JcPzXkIrB_HnNyHe@eBmGzGmIBi@xH{DDjAgJnL_BhHwUzWpGhEdKdUNFoQ{EoFzEmEgI~AdFzMuGfCiR_OuC{Mau@wUU_HpEqBjI}VeGkFfCc\\`DsDmGuFfQeQ@{LyX`D}OqZk@cRoDsEcIr@}@kCjZukAuDkp@jGkX_FeRnDyNcEuVlQsOtFiPvQqPf}@caDvRue@fd@yPby@}z@p|AewG`C}YzNy^rPoaDyHew@qUcg@_a@{l@syAgqAmbAkj@}DwHhScu@v{@}gAhIyx@dWug@q@qm@kJw[eCac@fRslA`s@c~B]oZlCiNeD{LrPoUhi@}fBxK_I`QyDyJeKXgKlFsEo@uFrLyAjDiEkNkRiCaL`Wud@p@yKdGcA_GiEzDuR{BcICqg@cTeEjMcAuCaKxAsCjDjAnBoD|Br@`BiGrHjC`CyLxZma@f\\sX"
         },
         {
           "mode": "road",
@@ -5084,6 +5104,8 @@
         "start": "2024-11",
         "end": "2024-11"
       },
+      "codename": "Lisbon",
+      "face": "script",
       "stops": [
         "barcelona",
         "seville",
@@ -5131,6 +5153,19 @@
         "start": "2025-03",
         "end": "2025-04"
       },
+      "image": {
+        "src": "/media/routes/trip-06/image.d58def05.webp",
+        "width": 1280,
+        "height": 960,
+        "alt": "A street in Marrakesh in the afternoon: a white car, two motorbikes and a horse carriage on cobbles, palm trees and pink-ochre buildings behind, under a pale sky",
+        "small": {
+          "src": "/media/routes/trip-06/image-800w.da4597a6.webp",
+          "width": 800,
+          "height": 600
+        }
+      },
+      "codename": "Marrakesh",
+      "face": "slab",
       "stops": [
         "barcelona",
         "marrakesh",
@@ -5190,6 +5225,8 @@
       },
       "url": "https://www.polarsteps.com/bsodium/18932928-the-transatlantic-pathway",
       "cover": "bow-of-a-boat",
+      "codename": "Quito",
+      "face": "serif",
       "stops": [
         "toulouse",
         "latour-de-carol",
@@ -5542,6 +5579,19 @@
         "start": "2025-11",
         "end": "2025-11"
       },
+      "image": {
+        "src": "/media/routes/trip-08/image.806b0d5d.webp",
+        "width": 854,
+        "height": 1280,
+        "alt": "The tiled roof and the spire of St Stephen's Cathedral in Vienna, seen from below against a blue sky with white clouds",
+        "small": {
+          "src": "/media/routes/trip-08/image-800w.a0047e91.webp",
+          "width": 800,
+          "height": 1199
+        }
+      },
+      "codename": "Vienna",
+      "face": "old",
       "stops": [
         "klagenfurt",
         "graz",
@@ -5586,6 +5636,8 @@
         "start": "2026-02",
         "end": "2026-02"
       },
+      "codename": "Paris",
+      "face": "old",
       "stops": [
         "klagenfurt",
         "vienna",
@@ -5613,6 +5665,19 @@
         "start": "2026-06",
         "end": "2026-06"
       },
+      "image": {
+        "src": "/media/routes/trip-10/image.22358507.webp",
+        "width": 1024,
+        "height": 1280,
+        "alt": "The Hungarian Parliament and the Széchenyi Chain Bridge over the Danube in Budapest at golden hour, under a pale blue sky",
+        "small": {
+          "src": "/media/routes/trip-10/image-800w.0c715d05.webp",
+          "width": 800,
+          "height": 1000
+        }
+      },
+      "codename": "Budapest",
+      "face": "slab",
       "stops": [
         "klagenfurt",
         "graz",
@@ -5637,6 +5702,8 @@
         "end": "2026-09"
       },
       "url": "https://www.polarsteps.com/bsodium/26802872-balkans",
+      "codename": "Chișinău",
+      "face": "condensed",
       "stops": [
         "dubrovnik",
         "mostar",
