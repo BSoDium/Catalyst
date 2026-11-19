@@ -272,7 +272,7 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
         const specs: Spec[] = [];
         // (a quiet day still has a faint light at its heart, an old bulb struggling: the floor of the emission)
         // (the lift is for the quietest days only: it fades out well before a busy one)
-        const emit = (t: number) => 1.1 * (0.3 + 0.1 * (1 - t) ** 3 + 1.3 * t * t + 0.4 * t);
+        const emit = (t: number) => 1.3 * (0.3 + 0.1 * (1 - t) ** 3 + 1.3 * t * t + 0.4 * t);
         const layer = (cell: number, src: "waka" | "github", x: number, z: number, y0: number, t: number, [low, high]: [Color, Color]) => {
           const h = 0.18 + t * LAYER_MAX;
           picks.push({ cell, x, z, y0, y1: y0 + h });
@@ -322,7 +322,7 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
           const shell = new RoundedBoxGeometry(0.92, h, 0.92, lite ? 2 : 3, Math.min(0.16, h / 2.2));
           shell.translate(x, y0 + h / 2, z);
           // dark: the glass is nearly clear (the light of its core shows through it); light: tinted by the level
-          paint(shell, hue.clone().lerp(new THREE.Color(0xffffff), dark ? 0.4 : 0.12).multiplyScalar(dark ? 0.22 + 0.6 * tEff : 1).add(inc.clone().multiplyScalar(0.08)), 0, dark);
+          paint(shell, hue.clone().lerp(new THREE.Color(0xffffff), dark ? 0.14 : 0.12).multiplyScalar(dark ? 0.3 + 0.7 * tEff : 1).add(inc.clone().multiplyScalar(0.08)), 0, dark);
           // the glass of a busy day glows on its own surface too (dark theme): three steps of emission per source, each its own material
           const tier = tEff < 0.34 ? 0 : tEff < 0.67 ? 1 : 2;
           const key = `${src}${tier}`;
@@ -354,6 +354,11 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
             mat.opacity = 0.9;
           }
           mat.emissive.copy(tones[src][1]);
+          // (dark) the glass absorbs what is not its own colour as the light goes through it: a green block lets a blue rod behind it show only dimly, and the other way round
+          if (dark) {
+            mat.attenuationColor.copy(tones[src][1]);
+            mat.attenuationDistance = 2.2;
+          }
           mat.emissiveIntensity = dark ? [0.02, 0.08, 0.15][tier]! : 0;
           // (the room's reflections are a light too: a quiet day must not shine with them)
           // (a material's own `envMap` is what `envMapIntensity` scales; without it the scene's environment is used as it is)
