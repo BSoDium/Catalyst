@@ -209,24 +209,13 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
         const shellTier = new Map<string, ["waka" | "github", number]>();
         const cores: BufferGeometry[] = [];
         const tiles: BufferGeometry[] = [];
+        // the layers are first only noted (where, how tall, how busy, which colour), so that each can be lit by the others before its geometry is made
+        interface Spec { src: "waka" | "github"; x: number; z: number; y0: number; h: number; t: number; hue: Color }
+        const specs: Spec[] = [];
+        const emit = (t: number) => 0.07 + 1.6 * t * t + 0.4 * t;
         const layer = (src: "waka" | "github", x: number, z: number, y0: number, t: number, [low, high]: [Color, Color]) => {
           const h = 0.18 + t * LAYER_MAX;
-          const shell = new RoundedBoxGeometry(0.92, h, 0.92, lite ? 2 : 3, Math.min(0.16, h / 2.2));
-          shell.translate(x, y0 + h / 2, z);
-          const hue = low.clone().lerp(high, t);
-          // dark: the glass is nearly clear (the glow of its core shows through it); light: tinted by the level
-          // the glass is clear with a hint of the colour (so it stays glass: the colour is carried by the core, seen through it)
-          paint(shell, hue.clone().lerp(new THREE.Color(0xffffff), dark ? 0.15 : 0.12).multiplyScalar(dark ? 0.12 + 0.88 * t : 1));
-          // the glass of a busy day glows on its own surface too (dark theme): three steps of emission per source, each its own material
-          const tier = t < 0.34 ? 0 : t < 0.67 ? 1 : 2;
-          const key = `${src}${tier}`;
-          (shellsBy.get(key) ?? shellsBy.set(key, []).get(key)!).push(shell);
-          shellTier.set(key, [src, tier]);
-          const hc = h * 0.8;
-          const core = new RoundedBoxGeometry(0.5, hc, 0.5, lite ? 1 : 2, Math.min(0.1, hc / 2.2));
-          core.translate(x, y0 + hc / 2 + 0.03, z);
-          paint(core, dark ? hue.clone().multiplyScalar(0.07 + 1.6 * t * t + 0.4 * t) : hue);
-          cores.push(core);
+          specs.push({ src, x, z, y0, h, t, hue: low.clone().lerp(high, t) });
           tallest = Math.max(tallest, y0 + h);
           return y0 + h;
         };
@@ -248,6 +237,41 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
           if (w.value > 0) y = layer("waka", x, z, 0, w.t, tones.waka) + LIFT;
           if (g.value > 0) layer("github", x, z, y, g.t, tones.github);
         });
+        for (const sp of specs) {
+          const { src, x, z, y0, h, t, hue } = sp;
+          // (dark) the light the other days give out reaches this one: each neighbour's colour and brightness, weakened with the distance between the two blocks; a dim block beside or under a bright one is lit by it
+          const inc = new THREE.Color(0, 0, 0);
+          if (dark) {
+            for (const o of specs) {
+              if (o === sp) continue;
+              const dx = o.x - x;
+              const dz = o.z - z;
+              if (Math.abs(dx) > 4 || Math.abs(dz) > 4) continue;
+              const dy = o.y0 + o.h / 2 - (y0 + h / 2);
+              const k = Math.exp(-(dx * dx + dz * dz + dy * dy) / (2 * 1.2 * 1.2)) * 0.11;
+              inc.add(o.hue.clone().multiplyScalar(emit(o.t) * k));
+            }
+          }
+          inc.r = Math.min(inc.r, 0.6);
+          inc.g = Math.min(inc.g, 0.6);
+          inc.b = Math.min(inc.b, 0.6);
+          const incLum = (inc.r + inc.g + inc.b) / 3;
+          const tEff = Math.min(1, Math.sqrt(t * t + incLum * 1.2));
+          const shell = new RoundedBoxGeometry(0.92, h, 0.92, lite ? 2 : 3, Math.min(0.16, h / 2.2));
+          shell.translate(x, y0 + h / 2, z);
+          // dark: the glass is nearly clear (the light of its core shows through it); light: tinted by the level
+          paint(shell, hue.clone().lerp(new THREE.Color(0xffffff), dark ? 0.15 : 0.12).multiplyScalar(dark ? 0.12 + 0.88 * tEff : 1).add(inc.clone().multiplyScalar(0.3)));
+          // the glass of a busy day glows on its own surface too (dark theme): three steps of emission per source, each its own material
+          const tier = tEff < 0.34 ? 0 : tEff < 0.67 ? 1 : 2;
+          const key = `${src}${tier}`;
+          (shellsBy.get(key) ?? shellsBy.set(key, []).get(key)!).push(shell);
+          shellTier.set(key, [src, tier]);
+          const hc = h * 0.8;
+          const core = new RoundedBoxGeometry(0.5, hc, 0.5, lite ? 1 : 2, Math.min(0.1, hc / 2.2));
+          core.translate(x, y0 + hc / 2 + 0.03, z);
+          paint(core, dark ? hue.clone().multiplyScalar(emit(t)).add(inc) : hue);
+          cores.push(core);
+        }
         const group = new THREE.Group();
         group.add(groundLayers(stack, tones, dark));
         if (tiles.length) {
