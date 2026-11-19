@@ -11,7 +11,7 @@ export const TYPICAL_TALLEST = 4.4;
 
 /** The room around the slab for the glow of the outermost columns (world units): the sides, under it (nearer the camera) and behind it. */
 export function roomFor(strips: number) {
-  return { side: 3.2, near: strips > 1 ? 4.4 : 2.6, far: 0.6 };
+  return { side: strips > 1 ? -1.4 : 3.2, near: strips > 1 ? 1.6 : 2.6, far: strips > 1 ? 0.5 : 0.6 };
 }
 
 /** The slab: `weeks` weeks laid out in `strips` strips (equal length, one behind the other); `at` gives the centre of a day on the ground (x across, z in depth). */
