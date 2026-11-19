@@ -11,7 +11,7 @@ export { IconButton } from "./icon-button";
 export { KeyHint } from "./key-hint";
 export { KindTag } from "./kind-tag";
 export { LogoMark, LogoWordmark } from "./logo-mark";
-export { ArtStationMark, PexelsMark, PolarstepsMark } from "./brand-mark";
+export { ArtStationMark, GitHubMark, PexelsMark, PolarstepsMark, WakaTimeMark } from "./brand-mark";
 export { Col, Grid, Stack } from "./layout";
 export { MetadataStrip } from "./metadata-strip";
 export { MicroLabel } from "./micro-label";
