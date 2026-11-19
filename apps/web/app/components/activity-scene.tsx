@@ -212,7 +212,7 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
         stack.github.cells.forEach((g, i) => {
           const w = stack.waka.cells[i]!;
           const { x, z } = at(g.week, g.day);
-          if (dark && w.value > 0) spot(x, z, w.t, tones.waka, 1.1);
+          if (dark && w.value > 0) spot(x, z, w.t, tones.waka, 2.0);
           if (dark && g.value > 0) spot(x, z, g.t, tones.github, 1.5);
           if (w.value > 0 || g.value > 0) occlude(x, z, (w.value > 0 ? 0.18 + w.t * LAYER_MAX : 0) + (g.value > 0 ? 0.18 + g.t * LAYER_MAX : 0));
         });
@@ -336,7 +336,7 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
           // A blue rod gets its brightness from light added to all three channels (not from more of the same blue, which only makes it bluer and more glowing): a brighter rod is a lighter, clearer blue, not a whiter one
           // (its hue is kept: the blue channel is the hue's own and the red and green rise with the busyness).
           const level = emit(t) * (1 + 1.1 * t);
-          const rod = dark && src === "waka" ? hue.clone().multiplyScalar(level * 1.5).add(new THREE.Color(0.12, 0.42, 0.5).multiplyScalar(level * (0.4 + 1.6 * t))) : dark ? hue.clone().multiplyScalar(level) : hue;
+          const rod = dark && src === "waka" ? hue.clone().multiplyScalar(level * 0.55).add(new THREE.Color(0.4, 0.56, 0.6).multiplyScalar(level * (0.45 + 1.15 * t))) : dark ? hue.clone().multiplyScalar(level * 1.25).add(new THREE.Color(0.22, 0.4, 0.24).multiplyScalar(level * (0.15 + 0.7 * t))) : hue;
           paint(core, dark ? rod.add(inc) : hue);
           cores.push(core);
         }
@@ -363,6 +363,12 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
             mat.attenuationColor.copy(tones[src][1]);
             // (the blue glass absorbs less: a rod that is meant to be near white would otherwise be seen through a blue filter and come out saturated)
             mat.attenuationDistance = src === "waka" ? 3.6 : 2.2;
+            // A green filter passes green and stops the rest: blue light behind it is not turned into green, it is nearly all absorbed (what comes through is a few percent, not a green of the same brightness).
+            if (src === "github") {
+              mat.attenuationColor.r *= 0.2;
+              mat.attenuationColor.b *= 0.15;
+              mat.attenuationDistance = 1.6;
+            }
           }
           mat.emissiveIntensity = dark ? [0.02, 0.08, 0.15][tier]! : 0;
           // (the room's reflections are a light too: a quiet day must not shine with them)
@@ -500,10 +506,14 @@ void main(){
         fragmentShader: `uniform sampler2D map; uniform sampler2D near; uniform sampler2D far; uniform float bloom; varying vec2 vUv;
 void main(){
   vec4 c = texture2D(map, vUv);
-  if (bloom > 0.) c.rgb += bloom * (texture2D(near, vUv).rgb * 0.45 + texture2D(far, vUv).rgb * 0.32);
+  if (bloom > 0.) c.rgb += bloom * (texture2D(near, vUv).rgb * 0.24 + texture2D(far, vUv).rgb * 0.17);
   // A hue-preserving soft clip: a channel past 1 (a busy blue: its blue is far over, its green and red are not) would clip alone and turn the colour pale; the whole colour is brought back so that its brightest channel
   // only just passes 1, and the hue and the saturation stay.
   float m = max(max(c.r, c.g), c.b);
+  // A blue light far over 1 (a busy day's rod) is taken toward white as it rises, so the rod is whiter than the blue glass around it (whose reflections and refractions stay under 1); green is left as it is.
+  float blueish = smoothstep(0., 0.25, (c.b - c.g) / max(m, 1e-4));
+  float hot = smoothstep(1., 3., m);
+  c.rgb = mix(c.rgb, vec3(m), blueish * hot * 0.55);
   if (m > 1.) c.rgb *= (1. + (m - 1.) * 0.12) / m;
   gl_FragColor = c;
 #include <colorspace_fragment>
