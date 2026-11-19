@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "dataVersion": {
-    "commit": "f36b897ea5303732aef7b4723052b8642d2b324c",
+    "commit": "1980436d0b1469905343367898c8b8176a3f451a",
     "date": "2026-11-19"
   },
   "places": [
@@ -4797,10 +4797,15 @@
         "end": "2019-07"
       },
       "image": {
-        "src": "/media/routes/trip-01/image.5802966a.webp",
-        "width": 720,
+        "src": "/media/routes/trip-01/image.025694f0.webp",
+        "width": 853,
         "height": 1280,
-        "alt": "St Basil's Cathedral on Red Square, Moscow, seen from the ground, with two people walking towards it and its reflection in a puddle under a pale grey sky"
+        "alt": "The Kremlin's Vodovzvodnaya tower and red wall seen from a bridge over the Moskva river, with the Moscow City skyscrapers on the horizon under a flat grey autumn sky",
+        "small": {
+          "src": "/media/routes/trip-01/image-800w.ae7e67c3.webp",
+          "width": 800,
+          "height": 1200
+        }
       },
       "codename": "Moscow",
       "face": "condensed",

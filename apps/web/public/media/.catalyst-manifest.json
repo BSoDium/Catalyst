@@ -908,9 +908,14 @@
       "bytes": 168650
     },
     {
-      "path": "routes/trip-01/image.5802966a.webp",
-      "sha256": "5802966a2535b82fd70f0fc98eb9c6f8bbcd50e09b53ed0c252f5e6f23a72960",
-      "bytes": 55394
+      "path": "routes/trip-01/image-800w.ae7e67c3.webp",
+      "sha256": "ae7e67c39c83f16152dcd4f903a98f2e30744bd14fcd7a727ce33738f47c0316",
+      "bytes": 86898
+    },
+    {
+      "path": "routes/trip-01/image.025694f0.webp",
+      "sha256": "025694f0d749118ccf1ed670010227fffd740a14c2a948efba6ef561ba0db6ae",
+      "bytes": 96340
     },
     {
       "path": "routes/trip-04/image.6926b256.webp",
