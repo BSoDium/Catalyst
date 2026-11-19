@@ -459,6 +459,10 @@ void main(){
 void main(){
   vec4 c = texture2D(map, vUv);
   if (bloom > 0.) c.rgb += bloom * (texture2D(near, vUv).rgb * 0.45 + texture2D(far, vUv).rgb * 0.32);
+  // A hue-preserving soft clip: a channel past 1 (a busy blue: its blue is far over, its green and red are not) would clip alone and turn the colour pale; the whole colour is brought back so that its brightest channel
+  // only just passes 1, and the hue and the saturation stay.
+  float m = max(max(c.r, c.g), c.b);
+  if (m > 1.) c.rgb *= (1. + (m - 1.) * 0.12) / m;
   gl_FragColor = c;
 #include <colorspace_fragment>
 }`,
