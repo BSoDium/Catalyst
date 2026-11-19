@@ -59,3 +59,13 @@ describe("activityStats", () => {
     expect(activityStats({ generatedAt: "x", github: [], wakatime: [] })).toEqual([]);
   });
 });
+
+import { dayText, readableDay } from "./activity";
+
+describe("day words", () => {
+  it("reads a date and a day", () => {
+    expect(readableDay("2026-11-19")).toBe("Thu 19 Nov 2026");
+    expect(dayText({ date: "2026-11-19", contributions: 1, hours: 3.46 })).toBe("Thu 19 Nov 2026: 1 contribution, 3.5 h coded");
+    expect(dayText({ date: "2026-11-19", contributions: 0, hours: 0 })).toContain("no coding");
+  });
+});

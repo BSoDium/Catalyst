@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { GitHubMark, Icon, WakaTimeMark } from "~/components/ui";
 import { placeholderTiles } from "~/lib/activity-view";
-import { activityStats, GITHUB_URL, isActivity, layoutActivity, WAKATIME_URL, type Activity, type ActivityStat, type Matrix } from "~/lib/activity";
+import { activityStats, dayText, GITHUB_URL, isActivity, layoutActivity, readableDay, WAKATIME_URL, type Activity, type ActivityStat, type HoverInfo, type Matrix } from "~/lib/activity";
 
 /** A source's colour as text, softened toward the page's own text colour (the figures and words are tinted, not painted). */
 const soft = (tone: "green" | "blue", share = 62) => `color-mix(in srgb, var(${tone === "green" ? "--act-green" : "--act-blue"}) ${share}%, var(--foreground))`;
@@ -70,6 +70,30 @@ function FlatMatrix({ matrix, tone }: { matrix: Matrix; tone: string }) {
   );
 }
 
+/** The card of a day, hung on its column: the date and the two numbers, in the picture's two colours. It sits above the column, or under it near the top, and is kept inside the picture. */
+function DayCard({ info, width }: { info: HoverInfo; width: number }) {
+  const half = 96;
+  const x = width ? Math.min(Math.max(info.x, half + 8), width - half - 8) : info.x;
+  const below = info.y < 96;
+  return (
+    <div
+      role="presentation"
+      className="pointer-events-none absolute z-10 w-48 border border-[var(--border-strong)] bg-background px-3 py-2.5 shadow-none"
+      style={{ left: x, top: info.y, transform: `translate(-50%, ${below ? "14px" : "calc(-100% - 14px)"})` }}
+    >
+      <p className="type-meta m-0 text-muted-foreground uppercase">{readableDay(info.date)}</p>
+      <p className="m-0 mt-1.5 flex items-center gap-2 text-sm" style={{ color: soft("green", 80) }}>
+        <span aria-hidden="true" className="size-2 shrink-0" style={{ background: "#0fbf3e" }} />
+        <span className="font-semibold tabular-nums">{info.contributions}</span> contribution{info.contributions === 1 ? "" : "s"}
+      </p>
+      <p className="m-0 mt-1 flex items-center gap-2 text-sm" style={{ color: soft("blue", 80) }}>
+        <span aria-hidden="true" className="size-2 shrink-0" style={{ background: "#1a8cff" }} />
+        <span className="font-semibold tabular-nums">{info.hours >= 0.05 ? info.hours.toFixed(1) : "0"}</span> h coded
+      </p>
+    </div>
+  );
+}
+
 /**
  * The software page's picture of the year: GitHub contributions and WakaTime coding time, a block a day (`ActivityScene`, a still isometric scene built up over a few dozen frames). Client-only: the file is fetched when the page
  * opens, the scene (three.js) loads only when the panel scrolls into view, and the room is held (an aspect ratio) so nothing moves when it arrives. Without WebGL the same numbers are two flat grids.
@@ -77,6 +101,8 @@ function FlatMatrix({ matrix, tone }: { matrix: Matrix; tone: string }) {
 export function ActivityPanel({ url }: { url: string | null }) {
   const { activity, failed } = useActivity(url);
   const [ready, setReady] = useState(false);
+  const [hover, setHover] = useState<HoverInfo | null>(null);
+  const sceneBox = useRef<HTMLDivElement>(null);
   const box = useRef<HTMLElement>(null);
   const [seen, setSeen] = useState(false);
   const [gl, setGl] = useState(true);
@@ -109,16 +135,25 @@ export function ActivityPanel({ url }: { url: string | null }) {
           <FlatMatrix matrix={flat.github} tone="#0fbf3e" />
         </div>
       ) : (
-        <div className="relative aspect-[3.97/1] w-full max-md:aspect-[1.7/1]">
+        <div ref={sceneBox} className="relative aspect-[3.97/1] w-full max-md:aspect-[1.7/1]">
           <div className={`absolute inset-0 transition-opacity duration-700 ${ready ? "opacity-0" : ""}`}>
             <Waiting strips={1} aspect={3.97} className="max-md:hidden" />
             <Waiting strips={3} aspect={1.7} className="hidden max-md:block" />
           </div>
           {seen && activity && (
             <Suspense fallback={null}>
-              <ActivityScene activity={activity} strips={narrow ? 3 : 1} onReady={() => setReady(true)} className="absolute inset-0" />
+              <ActivityScene activity={activity} strips={narrow ? 3 : 1} onReady={() => setReady(true)} onHover={setHover} className="absolute inset-0 outline-offset-[-2px] focus-visible:outline-2 focus-visible:outline-[var(--ring)]" />
             </Suspense>
           )}
+          {hover && (
+            <>
+              <svg aria-hidden="true" className="pointer-events-none absolute inset-0 size-full overflow-visible">
+                <polygon points={hover.outline} fill="color-mix(in srgb, var(--foreground) 8%, transparent)" stroke="var(--foreground)" strokeWidth={1.5} strokeLinejoin="round" />
+              </svg>
+              <DayCard info={hover} width={sceneBox.current?.clientWidth ?? 0} />
+            </>
+          )}
+          <p className="sr-only" aria-live="polite">{hover ? dayText(hover) : ""}</p>
         </div>
       )}
       {/* The corners are only empty when the scene is big enough (from 80 rem of page): below that the figures and the legend sit under the picture, so the text never lies over the blocks. */}

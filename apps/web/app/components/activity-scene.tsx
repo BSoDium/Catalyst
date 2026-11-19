@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { BufferGeometry, Color, Mesh } from "three";
-import { layoutActivity, type Activity, type Matrix } from "~/lib/activity";
+import { layoutActivity, type Activity, type HoverInfo, type Matrix } from "~/lib/activity";
 import { CAMERA_DIR, roomFor, slabFor } from "~/lib/activity-view";
 
 /** How many jittered frames are averaged before the picture is final (soft shadows, anti-aliasing): the scene never moves, so it is drawn once, a frame at a time, and then not at all. */
@@ -26,7 +26,7 @@ const isDark = () => {
  * (an area light's soft shadow) and the camera a sub-pixel away (anti-aliasing) and adds it to an accumulation buffer; after `SAMPLES` frames the loop stops and the canvas keeps the
  * result. Translucent rounded blocks (transmission, refraction) lit by a room environment, on a ground that only receives the shadows, so it sits on the page's own background.
  */
-export function ActivityScene({ activity, strips = 1, onReady, className }: { activity: Activity; strips?: number; onReady?: () => void; className?: string }) {
+export function ActivityScene({ activity, strips = 1, onReady, onHover, className }: { activity: Activity; strips?: number; onReady?: () => void; onHover?: (info: HoverInfo | null) => void; className?: string }) {
   const host = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -221,8 +221,12 @@ export function ActivityScene({ activity, strips = 1, onReady, className }: { ac
         return sh;
       })();
       let tallest = 1;
+      // the boxes a pointer can hit (one per layer of a column, one per empty day), for the picking
+      interface PickBox { cell: number; x: number; z: number; y0: number; y1: number }
+      let picks: PickBox[] = [];
       const LIFT = 0.04;
       const build = (stack: { waka: Matrix; github: Matrix }, tones: { waka: [Color, Color]; github: [Color, Color] }, dark: boolean) => {
+        picks = [];
         const shellsBy = new Map<string, BufferGeometry[]>();
         const shellTier = new Map<string, ["waka" | "github", number]>();
         const cores: BufferGeometry[] = [];
@@ -233,8 +237,9 @@ export function ActivityScene({ activity, strips = 1, onReady, className }: { ac
         // (a quiet day still has a faint light at its heart, an old bulb struggling: the floor of the emission)
         // (the lift is for the quietest days only: it fades out well before a busy one)
         const emit = (t: number) => 0.3 + 0.1 * (1 - t) ** 3 + 1.6 * t * t + 0.4 * t;
-        const layer = (src: "waka" | "github", x: number, z: number, y0: number, t: number, [low, high]: [Color, Color]) => {
+        const layer = (cell: number, src: "waka" | "github", x: number, z: number, y0: number, t: number, [low, high]: [Color, Color]) => {
           const h = 0.18 + t * LAYER_MAX;
+          picks.push({ cell, x, z, y0, y1: y0 + h });
           specs.push({ src, x, z, y0, h, t, hue: low.clone().lerp(high, t) });
           tallest = Math.max(tallest, y0 + h);
           return y0 + h;
@@ -250,11 +255,12 @@ export function ActivityScene({ activity, strips = 1, onReady, className }: { ac
             tile.translate(x, 0, z);
             paint(tile, pageColour().multiplyScalar(dark ? 1.5 : 0.93));
             tiles.push(tile);
+            picks.push({ cell: i, x, z, y0: 0, y1: 0.04 });
             return;
           }
           let y = 0;
-          if (w.value > 0) y = layer("waka", x, z, 0, w.t, tones.waka) + LIFT;
-          if (g.value > 0) layer("github", x, z, y, g.t, tones.github);
+          if (w.value > 0) y = layer(i, "waka", x, z, 0, w.t, tones.waka) + LIFT;
+          if (g.value > 0) layer(i, "github", x, z, y, g.t, tones.github);
         });
         for (const sp of specs) {
           const { src, x, z, y0, h, t, hue } = sp;
@@ -561,6 +567,110 @@ void main(){
       }
 
       buildBlocks();
+      // --- hovering: the day under the pointer (or the key) ---
+      const dom = renderer.domElement;
+      const ray = new THREE.Raycaster();
+      const ndc = new THREE.Vector2();
+      let current = -1;
+      let pinned = false;
+      const cells = layout.github.cells;
+      const topOf = (cell: number) => picks.filter((b) => b.cell === cell).reduce((m, b) => Math.max(m, b.y1), 0);
+      const pick = (cx: number, cy: number) => {
+        const r = dom.getBoundingClientRect();
+        ndc.set(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1);
+        camera.updateMatrixWorld();
+        ray.setFromCamera(ndc, camera);
+        const o = ray.ray.origin;
+        const d = ray.ray.direction;
+        let best = Infinity;
+        let cell = -1;
+        for (const b of picks) {
+          // the ray against the box (the slab method)
+          let t0 = -Infinity;
+          let t1 = Infinity;
+          for (const [oo, dd, lo, hi] of [[o.x, d.x, b.x - 0.46, b.x + 0.46], [o.y, d.y, b.y0, b.y1], [o.z, d.z, b.z - 0.46, b.z + 0.46]] as const) {
+            if (Math.abs(dd) < 1e-9) {
+              if (oo < lo || oo > hi) t0 = Infinity;
+              continue;
+            }
+            const a = (lo - oo) / dd;
+            const c = (hi - oo) / dd;
+            t0 = Math.max(t0, Math.min(a, c));
+            t1 = Math.min(t1, Math.max(a, c));
+          }
+          if (t0 <= t1 && t0 < best) {
+            best = t0;
+            cell = b.cell;
+          }
+        }
+        return cell;
+      };
+      const toCss = (v: import("three").Vector3) => {
+        const p = v.clone().project(camera);
+        return { x: ((p.x + 1) / 2) * el.clientWidth, y: ((1 - p.y) / 2) * el.clientHeight };
+      };
+      const hull = (pts: { x: number; y: number }[]) => {
+        const s2 = [...pts].sort((a, b) => a.x - b.x || a.y - b.y);
+        const cr = (o: { x: number; y: number }, a: { x: number; y: number }, b: { x: number; y: number }) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+        const lower: typeof pts = [];
+        for (const p of s2) {
+          while (lower.length >= 2 && cr(lower[lower.length - 2]!, lower[lower.length - 1]!, p) <= 0) lower.pop();
+          lower.push(p);
+        }
+        const upper: typeof pts = [];
+        for (const p of [...s2].reverse()) {
+          while (upper.length >= 2 && cr(upper[upper.length - 2]!, upper[upper.length - 1]!, p) <= 0) upper.pop();
+          upper.push(p);
+        }
+        return [...lower.slice(0, -1), ...upper.slice(0, -1)];
+      };
+      const announce = (cell: number) => {
+        current = cell;
+        if (cell < 0 || !onHover) return onHover?.(null);
+        const g = cells[cell]!;
+        const { x, z } = at(g.week, g.day);
+        const top = topOf(cell);
+        const corners: { x: number; y: number }[] = [];
+        for (const dx of [-0.46, 0.46]) for (const dz of [-0.46, 0.46]) for (const y of [0, top]) corners.push(toCss(new THREE.Vector3(x + dx, y, z + dz)));
+        const c = toCss(new THREE.Vector3(x, top, z));
+        onHover({ date: g.date, contributions: g.value, hours: layout.wakatime.cells[cell]?.value ?? 0, outline: hull(corners).map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" "), x: c.x, y: c.y });
+      };
+      const onMove = (e: PointerEvent) => {
+        if (e.pointerType === "touch" || pinned || settling) return;
+        const cell = pick(e.clientX, e.clientY);
+        if (cell !== current) announce(cell);
+      };
+      const onLeave = () => {
+        if (!pinned && current !== -1) announce(-1);
+      };
+      // (a tap on a phone pins a day; a second tap on it, or on nothing, lets it go)
+      const onDown = (e: PointerEvent) => {
+        if (e.pointerType !== "touch" || settling) return;
+        const cell = pick(e.clientX, e.clientY);
+        pinned = cell !== -1 && cell !== current;
+        announce(pinned ? cell : -1);
+      };
+      // (the keys: the arrows walk the days, Escape lets go)
+      const onKey = (e: KeyboardEvent) => {
+        const last = cells.length - 1;
+        let next = current;
+        if (e.key === "Escape") {
+          pinned = false;
+          return announce(-1);
+        }
+        const step = { ArrowLeft: -7, ArrowRight: 7, ArrowUp: -1, ArrowDown: 1 }[e.key];
+        if (step === undefined) return;
+        e.preventDefault();
+        next = current < 0 ? last : Math.min(last, Math.max(0, current + step));
+        pinned = true;
+        announce(next);
+      };
+      el.tabIndex = 0;
+      dom.addEventListener("pointermove", onMove);
+      dom.addEventListener("pointerleave", onLeave);
+      dom.addEventListener("pointerdown", onDown);
+      el.addEventListener("keydown", onKey);
+      el.addEventListener("blur", onLeave);
       // (the first size is taken at once; the next ones wait for the resizing to pause: the old picture is softened meanwhile)
       let first = true;
       let resizeTimer = 0;
@@ -571,12 +681,16 @@ void main(){
           return;
         }
         soften();
+        pinned = false;
+        if (current !== -1) announce(-1);
         window.clearTimeout(resizeTimer);
         resizeTimer = window.setTimeout(fit, 180);
       });
       ro.observe(el);
       const rethink = () => {
         soften();
+        pinned = false;
+        if (current !== -1) announce(-1);
         (floor.material as import("three").MeshBasicMaterial).color.copy(pageColour());
         buildBlocks();
         restart();
@@ -589,6 +703,12 @@ void main(){
       stop = () => {
         cancelAnimationFrame(raf);
         window.clearTimeout(resizeTimer);
+        dom.removeEventListener("pointermove", onMove);
+        dom.removeEventListener("pointerleave", onLeave);
+        dom.removeEventListener("pointerdown", onDown);
+        el.removeEventListener("keydown", onKey);
+        el.removeEventListener("blur", onLeave);
+        onHover?.(null);
         ro.disconnect();
         mo.disconnect();
         mq.removeEventListener("change", rethink);
@@ -615,5 +735,5 @@ void main(){
     };
   }, [activity, strips]);
 
-  return <div ref={host} role="img" aria-label="Activity over the last year: GitHub contributions and WakaTime coding time, one block a day" className={className} />;
+  return <div ref={host} role="group" aria-roledescription="interactive chart" aria-label="Activity over the last year: GitHub contributions and WakaTime coding time, one column a day. Use the arrow keys to move between days."  className={className} />;
 }

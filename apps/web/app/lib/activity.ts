@@ -111,3 +111,29 @@ export function activityStats(a: Activity): ActivityStat[] {
     { value: String(Math.round((active.size / 365) * 100)), unit: "%", label: "days active", tone: "plain" },
   ];
 }
+
+/** What the picture says about the day under the pointer (or the key): its numbers, the outline of its column on the picture and a point to hang the card on (CSS pixels of the picture). */
+export interface HoverInfo {
+  date: string;
+  contributions: number;
+  hours: number;
+  /** SVG `points` of the column's silhouette. */
+  outline: string;
+  x: number;
+  y: number;
+}
+
+/** "Thu 19 Nov 2026" for an ISO date, read in UTC (the date has no time of day). */
+export function readableDay(date: string): string {
+  const d = new Date(`${date}T00:00:00Z`);
+  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return `${days[d.getUTCDay()]} ${d.getUTCDate()} ${months[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+}
+
+/** The words for a day, for a card and for a screen reader. */
+export function dayText(h: Pick<HoverInfo, "date" | "contributions" | "hours">): string {
+  const c = `${h.contributions} contribution${h.contributions === 1 ? "" : "s"}`;
+  const t = h.hours >= 0.05 ? `${h.hours.toFixed(1)} h coded` : "no coding";
+  return `${readableDay(h.date)}: ${c}, ${t}`;
+}
