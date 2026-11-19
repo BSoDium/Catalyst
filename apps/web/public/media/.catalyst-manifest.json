@@ -906,6 +906,46 @@
       "path": "project/whatsapp-content-moderation/cover.81520168.webp",
       "sha256": "8152016888fd72b328a9d39945c9e14aa4c225d778bd51f05982127566e87365",
       "bytes": 168650
+    },
+    {
+      "path": "routes/trip-01/image.5802966a.webp",
+      "sha256": "5802966a2535b82fd70f0fc98eb9c6f8bbcd50e09b53ed0c252f5e6f23a72960",
+      "bytes": 55394
+    },
+    {
+      "path": "routes/trip-04/image.6926b256.webp",
+      "sha256": "6926b2565333c5d7b3a929c5e2976655ffed83cef7225a9254f7f0359398f023",
+      "bytes": 77266
+    },
+    {
+      "path": "routes/trip-06/image-800w.da4597a6.webp",
+      "sha256": "da4597a6b80d13e3e5d483952f31c09ae918c006aa153a2c9d79cd4c6f59c564",
+      "bytes": 81346
+    },
+    {
+      "path": "routes/trip-06/image.d58def05.webp",
+      "sha256": "d58def0529a055774c747bef4518745518aaead4e67f54c5120a75f9324c40e8",
+      "bytes": 213550
+    },
+    {
+      "path": "routes/trip-08/image-800w.a0047e91.webp",
+      "sha256": "a0047e913537303c0d9871b9e319b0180f9f503f55d1ee6aba452c3b1980b0b2",
+      "bytes": 154902
+    },
+    {
+      "path": "routes/trip-08/image.806b0d5d.webp",
+      "sha256": "806b0d5d118d4ed69c2d57cbd907f4d9942e79c12fa5e4ac1f3aa8fbd3914b53",
+      "bytes": 174454
+    },
+    {
+      "path": "routes/trip-10/image-800w.0c715d05.webp",
+      "sha256": "0c715d056d71e285a7880cba4bca52ba4326e4b48759433562702f6694abaa68",
+      "bytes": 83672
+    },
+    {
+      "path": "routes/trip-10/image.22358507.webp",
+      "sha256": "223585070fc332990df5bad8151300f1a960de6f3702b0e0129d7b5a8e91630d",
+      "bytes": 117194
     }
   ]
 }
