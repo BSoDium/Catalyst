@@ -51,43 +51,84 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
       scene.environment = env;
       scene.environmentIntensity = 0.9;
 
+      // glass: it transmits (refracts) what is behind it, the ground and the blocks' own colour tint what passes through
       const blockMaterial = new THREE.MeshPhysicalMaterial({
         vertexColors: true,
-        roughness: 0.18,
+        roughness: 0.04,
         metalness: 0,
-        transmission: 0.55,
-        thickness: 0.9,
-        ior: 1.45,
+        transmission: 1,
+        thickness: 1.6,
+        ior: 1.5,
+        dispersion: 0.35,
+        attenuationColor: new THREE.Color(0xffffff),
+        attenuationDistance: 4,
         clearcoat: 1,
-        clearcoatRoughness: 0.12,
-        transparent: false,
+        clearcoatRoughness: 0.03,
+        specularIntensity: 1,
+        envMapIntensity: 1.4,
       });
+      // the page's own background, read as the browser resolves it: the ground is that colour (so there is something to refract, and no seam with the page)
+      const pageColour = () => {
+        const probe = document.createElement("canvas");
+        probe.width = probe.height = 1;
+        const ctx = probe.getContext("2d")!;
+        const el2 = document.createElement("div");
+        el2.style.cssText = "position:fixed;visibility:hidden;background:var(--background)";
+        document.body.appendChild(el2);
+        const css = getComputedStyle(el2).backgroundColor;
+        el2.remove();
+        ctx.fillStyle = css;
+        ctx.fillRect(0, 0, 1, 1);
+        const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+        return new THREE.Color().setRGB(r! / 255, g! / 255, b! / 255, THREE.SRGBColorSpace);
+      };
 
+      // each block is a glass shell around a smaller opaque core of the same colour: the core is what the glass refracts, so the block has depth instead of reading as a pale solid
+      const coreMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.45, metalness: 0 });
+      const paint = (g: BufferGeometry, col: Color) => {
+        const n = g.getAttribute("position").count;
+        const colors = new Float32Array(n * 3);
+        for (let i = 0; i < n; i++) col.toArray(colors, i * 3);
+        g.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+        g.deleteAttribute("uv");
+      };
       const build = (m: Matrix, z0: number, heightOf: (t: number) => number, low: Color, high: Color) => {
-        const parts: BufferGeometry[] = [];
+        const shells: BufferGeometry[] = [];
+        const cores: BufferGeometry[] = [];
         for (const c of m.cells) {
           const h = c.value > 0 ? 0.16 + heightOf(c.t) : 0.1;
-          const g = new RoundedBoxGeometry(0.92, h, 0.92, 3, Math.min(0.16, h / 2.2));
-          g.translate(c.week * PITCH + 0.5, h / 2, z0 + c.day * PITCH + 0.5);
-          const col = c.value > 0 ? low.clone().lerp(high, c.t) : new THREE.Color(isDark() ? 0x2a3038 : 0xcfd5dc);
-          const n = g.getAttribute("position").count;
-          const colors = new Float32Array(n * 3);
-          for (let i = 0; i < n; i++) col.toArray(colors, i * 3);
-          g.setAttribute("color", new THREE.BufferAttribute(colors, 3));
-          g.deleteAttribute("uv");
-          parts.push(g);
+          const x = c.week * PITCH + 0.5;
+          const z = z0 + c.day * PITCH + 0.5;
+          const shell = new RoundedBoxGeometry(0.92, h, 0.92, 4, Math.min(0.18, h / 2.2));
+          shell.translate(x, h / 2, z);
+          paint(shell, c.value > 0 ? low.clone().lerp(high, c.t).lerp(new THREE.Color(0xffffff), 0.35) : new THREE.Color(isDark() ? 0x39414b : 0xe4e8ed));
+          shells.push(shell);
+          if (c.value > 0) {
+            const hc = h * 0.82;
+            const core = new RoundedBoxGeometry(0.5, hc, 0.5, 3, Math.min(0.1, hc / 2.2));
+            core.translate(x, hc / 2 + 0.03, z);
+            paint(core, low.clone().lerp(high, c.t));
+            cores.push(core);
+          }
         }
-        const mesh = new THREE.Mesh(mergeGeometries(parts), blockMaterial);
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
-        parts.forEach((p) => p.dispose());
-        return mesh;
+        const group = new THREE.Group();
+        const glass = new THREE.Mesh(mergeGeometries(shells), blockMaterial);
+        glass.castShadow = true;
+        glass.receiveShadow = true;
+        group.add(glass);
+        if (cores.length) {
+          const core = new THREE.Mesh(mergeGeometries(cores), coreMaterial);
+          core.castShadow = true;
+          group.add(core);
+        }
+        [...shells, ...cores].forEach((p) => p.dispose());
+        return group;
       };
 
       const blocks = new THREE.Group();
       scene.add(blocks);
       const buildBlocks = () => {
-        blocks.children.forEach((o) => (o as Mesh).geometry.dispose());
+        blocks.traverse((o) => (o as Mesh).geometry?.dispose());
         blocks.clear();
         const dark = isDark();
         // GitHub's in front (low z is nearest the camera at the left, see the camera below), WakaTime behind
@@ -96,6 +137,10 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
       };
       buildBlocks();
 
+      const floor = new THREE.Mesh(new THREE.PlaneGeometry(width * 3, total * 3), new THREE.MeshBasicMaterial({ color: pageColour() }));
+      floor.rotation.x = -Math.PI / 2;
+      floor.position.set(width / 2, -0.02, total / 2);
+      scene.add(floor);
       const ground = new THREE.Mesh(new THREE.PlaneGeometry(width * 3, total * 3), new THREE.ShadowMaterial({ opacity: 0.32 }));
       ground.rotation.x = -Math.PI / 2;
       ground.position.set(width / 2, 0, total / 2);
@@ -228,6 +273,7 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
       const ro = new ResizeObserver(fit);
       ro.observe(el);
       const rethink = () => {
+        (floor.material as import("three").MeshBasicMaterial).color.copy(pageColour());
         buildBlocks();
         restart();
       };
@@ -242,8 +288,9 @@ export function ActivityScene({ activity, className }: { activity: Activity; cla
         ro.disconnect();
         mo.disconnect();
         mq.removeEventListener("change", rethink);
-        blocks.children.forEach((o) => (o as Mesh).geometry.dispose());
+        blocks.traverse((o) => (o as Mesh).geometry?.dispose());
         blockMaterial.dispose();
+        coreMaterial.dispose();
         sceneRT.dispose();
         accumRT.dispose();
         env.dispose();
