@@ -3349,6 +3349,17 @@
   /*
    * The search over all the tags: always above the row, the field a line with no box.
    */
+  /* (the search is as far in as the chips' text: the row's own padding on a phone, and from md the half rem that the list's margin takes out) */
+  .tag-search {
+    padding-inline: var(--bleed, 1rem);
+  }
+
+  @media (min-width: 768px) {
+    .tag-search {
+      padding-inline: 0.5rem;
+    }
+  }
+
   .tag-search-input {
     display: block;
     width: min(100%, 24rem);
@@ -3526,6 +3537,35 @@
     background: linear-gradient(var(--background) 70%, transparent);
   }
 
+  /* On a phone the rows are full-width cards (a picture under the year as often as not), so the year's page-coloured fade would show as a dark smear over a picture: it is a capsule instead (a small blurred pill with a hairline
+     ring and the accent's dot, like a date marker in a feed), which is only as big as the year and is clearly a thing on top. */
+  @media screen and (max-width: 47.99rem) {
+    .ds-year-sticky {
+      align-items: center;
+      gap: 0.5rem;
+      margin: 0 0 0.75rem;
+      padding: 0.3rem 0.9rem 0.3rem 0.75rem;
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--background) 62%, transparent);
+      -webkit-backdrop-filter: blur(14px) saturate(1.2);
+      backdrop-filter: blur(14px) saturate(1.2);
+      box-shadow:
+        inset 0 0 0 1px color-mix(in srgb, var(--foreground) 14%, transparent),
+        0 6px 20px -8px rgb(0 0 0 / 0.35);
+      font-size: 1.375rem;
+      line-height: 1.2;
+    }
+
+    .ds-year-sticky::before {
+      content: "";
+      width: 0.4375rem;
+      height: 0.4375rem;
+      border-radius: 50%;
+      background: var(--signal);
+      flex: none;
+    }
+  }
+
   /*
    * The head of a list page, set as the contents page of a journal (docs/design-system.md, "Entry pages", "Lists"). ONE hairline, under
    * the running head, in the strong border (not the ink: nothing here is a masthead); the title is the reading face at a regular-to-medium
@@ -3656,6 +3696,12 @@
 
     .list-stat-value {
       font-size: 1.75rem;
+    }
+
+    /* (spread over the width, the last figure ends flush with the right edge, its label too) */
+    .list-stat:last-child {
+      align-items: flex-end;
+      text-align: right;
     }
   }
 

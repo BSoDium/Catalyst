@@ -104,7 +104,7 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
       // the room the glow of the outermost columns needs around the slab, so the picture does not cut it
       const ROOM = roomFor(strips);
       // The year is a long strip of weeks; on a narrow page it is cut into `strips` strips of equal length laid one behind the other, so the slab is closer to a square and fills the width
-      const { width, total, at } = slabFor(layout.github.weeks, strips);
+      const { width, total, at, corners } = slabFor(layout.github.weeks, strips);
 
       const scene = new THREE.Scene();
       const pmrem = new THREE.PMREMGenerator(renderer);
@@ -224,7 +224,7 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
       // the traced light is counted on a grid half as fine: enough rays in each cell to look like light and not like grain
       const LPX = PX / 2;
       let neonNeighbours: { j: number[]; m: number[] }[] = [];
-      let neonBlocks: { x: number; z: number; pan: number; t: number }[] = [];
+      let neonBlocks: { x: number; z: number; pan: number; t: number; cell: number }[] = [];
       let stampCtl: { update(levels: ArrayLike<number>): void } | null = null;
       const groundLayers = (stack: { waka: Matrix; github: Matrix }, tones: { waka: [Color, Color]; github: [Color, Color] }, dark: boolean) => {
         const cw = Math.ceil((width + GLOW_PAD * 2) * PX);
@@ -283,7 +283,7 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
             const luck = 0.6 + 0.8 * variety();
             const near = dark ? CAUSTIC_NEAR : SUN_NEAR;
             const far = dark ? CAUSTIC_FAR : SUN_FAR;
-            neonBlocks.push({ x, z, pan: (x / width) * 2 - 1, t });
+            neonBlocks.push({ x, z, pan: (x / width) * 2 - 1, t, cell: i });
             glass.push({
               c: [x, y0 + hy, z],
               h: [0.46, hy, 0.46],
@@ -750,7 +750,7 @@ void main(){
         camera.updateMatrixWorld();
         const inv = camera.matrixWorldInverse;
         let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
-        for (const cx of [-ROOM.side, width + ROOM.side]) for (const cy of [0, tallest]) for (const cz of [-ROOM.near, total + ROOM.far]) {
+        for (const [cx, cz] of corners(ROOM)) for (const cy of [0, tallest]) {
           const p = new THREE.Vector3(cx, cy, cz).applyMatrix4(inv);
           x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y);
         }
@@ -821,6 +821,10 @@ void main(){
       let neonApplyMs = 0;
       let neonTicks = 0;
       const neonAllowed = () => !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      // (the idle flickers of the neon only when the picture is in view)
+      let inView = true;
+      const viewObserver = typeof IntersectionObserver === "undefined" ? null : new IntersectionObserver((entries) => (inView = entries.some((e) => e.isIntersecting)));
+      viewObserver?.observe(el);
       const stopNeon = () => {
         neon?.stop();
         neon = null;
@@ -830,7 +834,7 @@ void main(){
         levelTex.needsUpdate = true;
       };
       // the levels as numbers for the shaders: each block's own, and the light that reaches it from the neighbours that are on
-      const uploadLevels = (levels: ArrayLike<number>) => {
+      const uploadLevels = (levels: ArrayLike<number>, idle = false) => {
         for (let i = 0; i < neonNeighbours.length && i < MAX_LEVELS; i++) {
           const nb = neonNeighbours[i]!;
           let on = 0;
@@ -840,12 +844,71 @@ void main(){
             all += nb.m[k]!;
           }
           levelData[i * 2] = levels[i]!;
-          levelData[i * 2 + 1] = all > 0 ? on / all : 1;
+          // (a tube out in a lit sign is a dimmer gap, not a black one: it gets a bit more than half of what its neighbours would give it at the start-up)
+          levelData[i * 2 + 1] = all > 0 ? (idle ? 0.55 * (on / all) + 0.45 * Math.min(1, levels[i]!) : on / all) : 1;
         }
         levelTex.needsUpdate = true;
       };
+      // --- the selected day (dark theme): its blocks glow brighter and the others dim, smoothly, a moment after the pointer has settled on it. It multiplies the neon's levels, so it works with the start-up and the flickers. ---
+      const FOCUS_ON = 1.7;
+      const FOCUS_OFF = 0.42;
+      let focusCtl: { update(levels: ArrayLike<number>): void } | null = null;
+      let focus = new Float32Array(0);
+      let focusTo = new Float32Array(0);
+      let effective = new Float32Array(0);
+      let lastLevels: ArrayLike<number> = new Float32Array(0);
+      let idleLook = false;
+      let focusRaf = 0;
+      let focusTimer = 0;
+      const applyLevels = (levels: ArrayLike<number>) => {
+        lastLevels = levels;
+        const n = neonBlocks.length;
+        if (effective.length !== n) effective = new Float32Array(n).fill(1);
+        for (let i = 0; i < n; i++) effective[i] = levels[i]! * (focus[i] ?? 1);
+        uploadLevels(effective, idleLook);
+        focusCtl?.update(effective);
+      };
+      const stepFocus = () => {
+        focusRaf = 0;
+        let moving = false;
+        for (let i = 0; i < focus.length; i++) {
+          const d = focusTo[i]! - focus[i]!;
+          if (Math.abs(d) > 0.01) {
+            focus[i]! += d * 0.28;
+            moving = true;
+          } else focus[i] = focusTo[i]!;
+        }
+        applyLevels(lastLevels);
+        samplesCap = Math.min(samplesCap, lite ? 2 : 3);
+        restart();
+        if (moving) focusRaf = window.setTimeout(stepFocus, 1000 / (lite ? 20 : 30)) as unknown as number;
+        else {
+          samplesCap = samples;
+          restart();
+        }
+      };
+      // (a debounce: the day is taken a moment after the pointer stops on it, and let go a moment after it leaves)
+      const GHOST = 0.12;
+      const focusOn = (cell: number, ghosts: number[] = []) => {
+        window.clearTimeout(focusTimer);
+        if (!focusCtl) return;
+        focusTimer = window.setTimeout(() => {
+          for (let i = 0; i < focusTo.length; i++) focusTo[i] = cell < 0 ? 1 : neonBlocks[i]!.cell === cell ? FOCUS_ON : ghosts.includes(neonBlocks[i]!.cell) ? GHOST : FOCUS_OFF;
+          window.clearTimeout(focusRaf);
+          stepFocus();
+        }, cell < 0 ? 140 : 70);
+      };
       const prepareNeon = () => {
         stopNeon();
+        window.clearTimeout(focusTimer);
+        window.clearTimeout(focusRaf);
+        focusCtl = isDark() && stampCtl && neonBlocks.length > 0 && neonBlocks.length <= MAX_LEVELS ? stampCtl : null;
+        focus = new Float32Array(neonBlocks.length).fill(1);
+        focusTo = new Float32Array(neonBlocks.length).fill(1);
+        effective = new Float32Array(neonBlocks.length).fill(1);
+        lastLevels = new Float32Array(neonBlocks.length).fill(1);
+        idleLook = false;
+        if (focusCtl) applyLevels(lastLevels);
         if (!isDark() || !neonAllowed() || !stampCtl || neonBlocks.length === 0 || neonBlocks.length > MAX_LEVELS) return;
         const ctl = stampCtl;
         neonApplyMs = 0;
@@ -853,12 +916,13 @@ void main(){
         neon = createNeon({
           blocks: neonBlocks,
           sound: true,
+          canPlay: () => inView,
           // (a weak device, a phone: half the updates, so half the redraws of the picture while the lights flicker)
           fps: lite ? 10 : 20,
-          apply: (levels) => {
+          apply: (levels, idle) => {
             const a0 = performance.now();
-            uploadLevels(levels);
-            ctl.update(levels);
+            idleLook = !!idle;
+            applyLevels(levels);
             neonApplyMs += performance.now() - a0;
             neonTicks++;
             samplesCap = lite ? 2 : 3;
@@ -877,8 +941,7 @@ void main(){
         });
         if (import.meta.env.DEV) el.dataset.neonRods = String(neon.count);
         // (the flickering rods are off from the first frame: the picture is not seen before it starts)
-        uploadLevels(neon.levels);
-        ctl.update(neon.levels);
+        applyLevels(neon.levels);
         neonStart = () => {
           frames.length = 0;
           neon?.start();
@@ -902,15 +965,15 @@ void main(){
       let pinned = false;
       const cells = layout.github.cells;
       const topOf = (cell: number) => picks.filter((b) => b.cell === cell).reduce((m, b) => Math.max(m, b.y1), 0);
-      const pick = (cx: number, cy: number) => {
+      // every day under the point, the nearest first (a day behind a taller one is under the same point: it is reached by cycling through these)
+      const pickAll = (cx: number, cy: number) => {
         const r = dom.getBoundingClientRect();
         ndc.set(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1);
         camera.updateMatrixWorld();
         ray.setFromCamera(ndc, camera);
         const o = ray.ray.origin;
         const d = ray.ray.direction;
-        let best = Infinity;
-        let cell = -1;
+        const hits = new Map<number, number>();
         for (const b of picks) {
           // the ray against the box (the slab method)
           let t0 = -Infinity;
@@ -925,12 +988,9 @@ void main(){
             t0 = Math.max(t0, Math.min(a, c));
             t1 = Math.min(t1, Math.max(a, c));
           }
-          if (t0 <= t1 && t0 < best) {
-            best = t0;
-            cell = b.cell;
-          }
+          if (t0 <= t1 && t0 < (hits.get(b.cell) ?? Infinity)) hits.set(b.cell, t0);
         }
-        return cell;
+        return [...hits.entries()].sort((x, y) => x[1] - y[1]).map(([cell]) => cell);
       };
       const toCss = (v: import("three").Vector3) => {
         const p = v.clone().project(camera);
@@ -951,7 +1011,7 @@ void main(){
         }
         return [...lower.slice(0, -1), ...upper.slice(0, -1)];
       };
-      // The outline is always 24 points along the silhouette from its top-most one, so that the outline of one day can glide into the next one's (a path with the same number of points is interpolated by the browser)
+      // The outline is always 64 points along the silhouette from its top-most one, so that the outline of one day can glide into the next one's (a path with the same number of points is interpolated by the browser)
       const resample = (poly: { x: number; y: number }[], n: number) => {
         let start = 0;
         poly.forEach((p, i) => {
@@ -973,31 +1033,85 @@ void main(){
         }
         return out;
       };
-      const announce = (cell: number) => {
+      // (days behind one another under the pointer: the stack, where the pointer was when it was made, and whether the visitor is cycling through it)
+      let stack: number[] = [];
+      let stackAt = { x: 0, y: 0 };
+      let cycling = false;
+      const announce = (cell: number, behind?: { index: number; count: number }) => {
         current = cell;
+        // (the days in front of the one looked at are ghosts: it is seen through them)
+        focusOn(cell, behind ? stack.slice(0, behind.index) : []);
         if (cell < 0 || !onHover) return onHover?.(null);
         const g = cells[cell]!;
         const { x, z } = at(g.week, g.day);
         const top = topOf(cell);
+        // The silhouette of the day's rounded blocks: each block is a rounded box (corner radius `r`, as built), so its outline is that of its eight corner spheres, which the (orthographic) camera sees as circles of the same size; the hull of
+        // them is the outline, with the rounded corners and no flat bevels.
+        camera.updateMatrixWorld();
+        const right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0);
+        const origin = toCss(new THREE.Vector3(x, 0, z));
+        const unit = Math.hypot(toCss(new THREE.Vector3(x, 0, z).add(right)).x - origin.x, toCss(new THREE.Vector3(x, 0, z).add(right)).y - origin.y);
         const corners: { x: number; y: number }[] = [];
-        for (const dx of [-0.46, 0.46]) for (const dz of [-0.46, 0.46]) for (const y of [0, top]) corners.push(toCss(new THREE.Vector3(x + dx, y, z + dz)));
+        for (const b of picks) {
+          if (b.cell !== cell) continue;
+          const r = Math.min(0.16, (b.y1 - b.y0) / 2.2);
+          for (const dx of [-1, 1]) for (const dz of [-1, 1]) for (const y of [b.y0 + r, b.y1 - r]) {
+            const p = toCss(new THREE.Vector3(x + dx * (0.46 - r), y, z + dz * (0.46 - r)));
+            for (let k = 0; k < 10; k++) corners.push({ x: p.x + r * unit * Math.cos((k / 10) * Math.PI * 2), y: p.y + r * unit * Math.sin((k / 10) * Math.PI * 2) });
+          }
+        }
         const c = toCss(new THREE.Vector3(x, top, z));
-        onHover({ date: g.date, contributions: g.value, hours: layout.wakatime.cells[cell]?.value ?? 0, outline: resample(hull(corners), 24).map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" "), x: c.x, y: c.y });
+        onHover({ date: g.date, contributions: g.value, hours: layout.wakatime.cells[cell]?.value ?? 0, outline: resample(hull(corners), 64).map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" "), x: c.x, y: c.y, behind });
       };
       const onMove = (e: PointerEvent) => {
-        if (e.pointerType === "touch" || pinned || settling) return;
-        const cell = pick(e.clientX, e.clientY);
-        if (cell !== current) announce(cell);
+        if (e.pointerType === "touch" || settling) return;
+        // (cycling holds the selection until the pointer moves away from where it was clicked)
+        if (cycling && Math.hypot(e.clientX - stackAt.x, e.clientY - stackAt.y) > 8) {
+          cycling = false;
+          pinned = false;
+        }
+        if (pinned) return;
+        const here = pickAll(e.clientX, e.clientY);
+        const cell = here[0] ?? -1;
+        if (cell !== current) {
+          stack = here;
+          stackAt = { x: e.clientX, y: e.clientY };
+          announce(cell, here.length > 1 ? { index: 0, count: here.length } : undefined);
+        }
       };
       const onLeave = () => {
         if (!pinned && current !== -1) announce(-1);
       };
       // (a tap on a phone pins a day; a second tap on it, or on nothing, lets it go)
       const onDown = (e: PointerEvent) => {
-        if (e.pointerType !== "touch" || settling) return;
-        const cell = pick(e.clientX, e.clientY);
+        if (settling) return;
+        const here = pickAll(e.clientX, e.clientY);
+        const sameSpot = Math.hypot(e.clientX - stackAt.x, e.clientY - stackAt.y) <= 8 && stack.length > 1;
+        if (e.pointerType !== "touch") {
+          // (a click on days that are behind one another: the next one behind; after the last, the nearest again)
+          if (here.length < 2) return;
+          if (!sameSpot || !stack.includes(current)) {
+            stack = here;
+            stackAt = { x: e.clientX, y: e.clientY };
+          }
+          const next = (Math.max(0, stack.indexOf(current)) + 1) % stack.length;
+          cycling = true;
+          pinned = true;
+          announce(stack[next]!, { index: next, count: stack.length });
+          return;
+        }
+        // (a tap pins a day; a tap on the same spot goes to the next one behind it, and after the last lets go; a tap elsewhere pins that spot's nearest)
+        if (pinned && sameSpot && current >= 0) {
+          const next = stack.indexOf(current) + 1;
+          if (next < stack.length) return announce(stack[next]!, { index: next, count: stack.length });
+          pinned = false;
+          return announce(-1);
+        }
+        const cell = here[0] ?? -1;
+        stack = here;
+        stackAt = { x: e.clientX, y: e.clientY };
         pinned = cell !== -1 && cell !== current;
-        announce(pinned ? cell : -1);
+        announce(pinned ? cell : -1, pinned && here.length > 1 ? { index: 0, count: here.length } : undefined);
       };
       // (the keys: the arrows walk the days, Escape lets go)
       const onKey = (e: KeyboardEvent) => {
@@ -1056,6 +1170,8 @@ void main(){
 
       stop = () => {
         stopNeon();
+        window.clearTimeout(focusTimer);
+        window.clearTimeout(focusRaf);
         cancelAnimationFrame(raf);
         window.clearTimeout(resizeTimer);
         dom.removeEventListener("pointermove", onMove);
@@ -1075,6 +1191,7 @@ void main(){
         coreMaterial.dispose();
         glowMaterial.dispose();
         levelTex.dispose();
+        viewObserver?.disconnect();
         templates?.texture.dispose();
         tileUnlit.dispose();
         sceneRT.dispose();

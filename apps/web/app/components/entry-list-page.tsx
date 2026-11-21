@@ -62,7 +62,7 @@ export function EntryListPage({ kind, items, activityUrl = null }: { kind: Conte
       <header data-slot="list-head" className="list-head">
         <h1 className="list-title">{KIND_PLURALS[kind]}</h1>
         {/* The figures of the list: how many (of how many when a tag filters), since when, how many places. There is no running head above the title any more (the owner's name and the count were said again by the figures: owner, 2026-11-03) */}
-        <dl data-slot="list-stats" className={cn("list-stats", withPanel && "min-[80rem]:invisible")}>
+        <dl data-slot="list-stats" className={cn("list-stats", withPanel && "md:invisible")}>
           {heads.map((stat) => (
             <div key={stat.label} className="list-stat">
               <dd className="list-stat-value">{stat.value}</dd>

@@ -176,6 +176,12 @@ function DayCard({ info, visible, instant, width }: { info: HoverInfo; visible: 
             <span className="type-meta text-muted-foreground uppercase">coded</span>
           </div>
         </div>
+        {/* (days stand behind one another: how many are under the pointer, and how to reach the next) */}
+        {info.behind && info.behind.count > 1 && (
+          <p className="type-meta m-0 mt-3 text-muted-foreground uppercase">
+            {info.behind.index + 1} of {info.behind.count} <span aria-hidden="true">·</span> click for next
+          </p>
+        )}
       </div>
     </div>
   );
@@ -199,19 +205,19 @@ function Figures({ lead, stats, ready = true, className }: { lead: { value: stri
   const primary = [...lead.slice(0, 1).map(own), ...stats.slice(0, 2).map(theirs)];
   const secondary = [...lead.slice(1).map(own), ...stats.slice(2).map(theirs)];
   const cell = (f: Fig, big: boolean) => (
-    <div key={f.key} className={`transition-opacity duration-500 flex flex-col ${big ? "gap-1.5" : "gap-1"} min-[80rem]:items-end ${f.own ? "hidden min-[80rem]:flex" : ""}`}>
+    <div key={f.key} className={`group/cell max-md:last:items-end max-md:last:text-right transition-opacity duration-500 flex flex-col ${big ? "gap-1.5" : "gap-1"} md:items-end ${big ? "md:max-[56rem]:items-start" : ""} ${f.own ? "hidden md:flex" : ""}`}>
       {/* (the year's figures are in their places from the first frame, as faint stand-ins: nothing is missing, and nothing moves when the file arrives) */}
-      <dd className={`m-0 flex items-baseline gap-1 transition-opacity duration-500 min-[80rem]:justify-end ${!f.own && !ready ? "opacity-[0.16]" : ""}`} style={{ color: f.tone === "plain" ? undefined : soft(f.tone, 75) }}>
-        <span className={`font-[family-name:var(--font-display)] leading-none font-medium tracking-[-0.03em] tabular-nums ${big ? "text-[1.75rem] min-[56rem]:text-[clamp(1.75rem,2.8cqi,2.75rem)]" : "text-[1.25rem]"}`}>{f.value}</span>
+      <dd className={`m-0 flex items-baseline gap-1 transition-opacity duration-500 max-md:group-last/cell:justify-end md:justify-end ${big ? "md:max-[56rem]:justify-start" : ""} ${!f.own && !ready ? "opacity-[0.16]" : ""}`} style={{ color: f.tone === "plain" ? undefined : soft(f.tone, 75) }}>
+        <span className={`font-[family-name:var(--font-display)] leading-none font-medium tracking-[-0.03em] tabular-nums ${big ? "text-[1.75rem] md:text-[clamp(1.2rem,2.8cqi,2.75rem)]" : "text-[1.25rem]"}`}>{f.value}</span>
         {f.unit && <span className="type-meta font-normal text-muted-foreground normal-case">{f.unit}</span>}
       </dd>
-      <dt className="type-meta text-muted-foreground uppercase min-[80rem]:text-right">{f.label}</dt>
+      <dt className={`type-meta text-muted-foreground uppercase md:max-[56rem]:whitespace-nowrap md:text-right ${big ? "md:max-[56rem]:text-left" : ""}`}>{f.label}</dt>
     </div>
   );
   return (
-    <div data-slot="activity-stats" aria-hidden={ready ? undefined : true} className={`flex flex-col gap-5 px-4 pt-6 md:px-14 min-[80rem]:w-max min-[80rem]:gap-4 min-[80rem]:p-0 ${className ?? ""}`}>
-      <dl className="m-0 flex flex-wrap gap-x-[clamp(2rem,5cqi,4.5rem)] gap-y-4 min-[80rem]:flex-nowrap min-[80rem]:justify-between">{primary.map((f) => cell(f, true))}</dl>
-      <dl className="m-0 flex flex-wrap gap-x-6 gap-y-2 min-[80rem]:flex-nowrap min-[80rem]:justify-between">{secondary.map((f) => cell(f, false))}</dl>
+    <div data-slot="activity-stats" aria-hidden={ready ? undefined : true} className={`flex flex-col gap-5 px-4 pt-6 md:w-max md:gap-4 md:p-0 md:max-[56rem]:w-auto md:max-[56rem]:flex-row md:max-[56rem]:justify-between md:max-[56rem]:gap-x-4 ${className ?? ""}`}>
+      <dl className="m-0 flex flex-wrap justify-between gap-x-[clamp(2rem,5cqi,4.5rem)] gap-y-4 md:gap-x-[clamp(1.25rem,5cqi,4.5rem)] md:flex-nowrap md:justify-between md:max-[56rem]:gap-x-[clamp(0.9rem,2.4cqi,1.5rem)]">{primary.map((f) => cell(f, true))}</dl>
+      <dl className="m-0 flex flex-wrap justify-between gap-x-6 gap-y-2 md:flex-nowrap md:justify-between md:max-[56rem]:gap-x-[clamp(0.9rem,2.4cqi,1.5rem)]">{secondary.map((f) => cell(f, false))}</dl>
     </div>
   );
 }
@@ -255,22 +261,22 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
   }, []);
   if (!enabledFor(url)) return null;
   // (the file is not there after all: the picture goes away, and the page's own figures, which the head hid for the grid, are shown on their own)
-  if (failed) return lead.length ? <Figures lead={lead} stats={[]} className="hidden min-[80rem]:grid min-[80rem]:absolute min-[80rem]:top-0 min-[80rem]:right-14" /> : null;
+  if (failed) return lead.length ? <Figures lead={lead} stats={[]} className="hidden md:grid md:absolute md:top-0 md:right-14" /> : null;
   const flat = !gl && activity ? layoutActivity(activity) : null;
   const stats = activity ? activityStats(activity) : WAITING_STATS;
   // The tilt of the scene leaves its top-right and bottom-left corners empty: the figures take the first and the legend the second (on a narrow page there is no corner, they go under the picture).
   return (
-    <section ref={box} data-slot="activity" aria-label="Activity over the last year" className="relative -mx-4 mt-0 mb-2 md:-mx-14 min-[80rem]:-mb-2 min-[90rem]:-mb-10">
+    <section ref={box} data-slot="activity" aria-label="Activity over the last year" className="relative -mx-4 mt-0 mb-2 max-md:flex max-md:flex-col md:-mx-14 md:mb-4 min-[90rem]:-mb-4">
       {flat ? (
         <div role="img" aria-label="Activity over the last year: GitHub contributions and WakaTime coding time, a square a day" className="flex flex-col gap-4 px-4 md:px-14">
           <FlatMatrix matrix={flat.wakatime} tone="#0078d7" />
           <FlatMatrix matrix={flat.github} tone="#0fbf3e" />
         </div>
       ) : (
-        <div ref={sceneBox} className="relative aspect-[3.97/1] w-full max-md:aspect-[1.2/1]">
+        <div ref={sceneBox} className="relative aspect-[3.97/1] w-full max-md:aspect-[0.95/1]">
           <div className={`absolute inset-0 transition-opacity duration-700 ${ready ? "opacity-0" : ""}`}>
             <Waiting strips={1} aspect={3.97} className="max-md:hidden" />
-            <Waiting strips={4} aspect={1.2} className="hidden max-md:block" />
+            <Waiting strips={4} aspect={0.95} className="hidden max-md:block" />
           </div>
           {seen && activity && (
             <Suspense fallback={null}>
@@ -293,18 +299,18 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
       )}
       {/* The corners are only empty when the scene is big enough (from 80 rem of page): below that the figures and the legend sit under the picture, so the text never lies over the blocks. From there the page's own figures (software, places) join the year's
           in ONE grid at the top right, from the head's top down into the empty corner of the picture. */}
-      <Figures lead={lead} stats={stats} ready={!!activity} className="min-[80rem]:pointer-events-none min-[80rem]:absolute min-[80rem]:right-14 min-[80rem]:top-[calc(-1*clamp(2.5rem,6.4cqi,5.75rem)-0.25rem)]" />
-      <div data-slot="activity-legend" className="flex flex-col gap-3 px-4 pt-8 md:px-14 min-[80rem]:absolute min-[80rem]:bottom-[10.7%] min-[80rem]:left-14 min-[80rem]:w-[25rem] min-[80rem]:p-0">
+      <Figures lead={lead} stats={stats} ready={!!activity} className="max-md:order-first max-md:pb-2 md:pointer-events-none md:absolute md:right-14 md:max-[56rem]:left-14 md:top-[calc(-1*clamp(2.5rem,6.4cqi,5.75rem)-0.25rem)]" />
+      <div data-slot="activity-legend" className="relative flex flex-col gap-3 px-4 pt-3 md:pt-6 md:px-14 md:max-[56rem]:-mt-[6.5cqi] min-[56rem]:absolute min-[56rem]:bottom-[1%] min-[80rem]:bottom-[10.7%] min-[56rem]:left-14 min-[56rem]:w-[clamp(20rem,34cqi,25rem)] min-[56rem]:p-0">
         <p className="type-meta m-0 text-muted-foreground uppercase">Last <span className="text-foreground">12 months</span></p>
         {/* In the picture's order: the contributions are the upper block of a day, the coding the lower one. */}
-        <p className="m-0 font-[family-name:var(--font-display)] text-[1.625rem] leading-[1.1] font-semibold tracking-tight text-balance">
+        <p className="m-0 font-[family-name:var(--font-display)] text-[1.625rem] min-[56rem]:text-[clamp(1.25rem,2.3cqi,1.625rem)] leading-[1.1] font-semibold tracking-tight text-balance">
           <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" className={LINK} style={{ color: soft("green", 75) }}>
             GitHub contributions
             <Icon name="arrow-up-right" size="inline" aria-hidden="true" className="translate-y-[0.05em] self-center opacity-70 transition-opacity group-hover/link:opacity-100" />
             <span className="sr-only">(opens in a new tab)</span>
           </a>{" "}
           above,
-          <br className="hidden min-[80rem]:inline" />{" "}
+          <br className="hidden md:inline" />{" "}
           <a href={WAKATIME_URL} target="_blank" rel="noopener noreferrer" className={LINK} style={{ color: soft("blue", 75) }}>
             WakaTime activity
             <Icon name="arrow-up-right" size="inline" aria-hidden="true" className="translate-y-[0.05em] self-center opacity-70 transition-opacity group-hover/link:opacity-100" />

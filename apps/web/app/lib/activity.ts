@@ -121,6 +121,8 @@ export interface HoverInfo {
   outline: string;
   x: number;
   y: number;
+  /** When several days are under the pointer, one behind another: which of them this is (0 the nearest) and how many there are. */
+  behind?: { index: number; count: number };
 }
 
 /** "Thu 19 Nov 2026" for an ISO date, read in UTC (the date has no time of day). */
