@@ -29,6 +29,10 @@ Measured so far (dev build, Apple M4): an update of the neon costs about 0.05 ms
 5. **Both themes, all widths**: the legend and figures at 1300, 1700 and 2560 px; the phone layout (4 strips, bleeding off the edges); the dark glow's brightness against the cubes' (the ground must never be brighter than the blocks).
 6. **Open decisions**: the sound has no visible switch (it plays when the browser allows it and is silent otherwise; add a mute control if that is not enough); cap the update rate on `lite` further if a real phone needs it (`fps` in `createNeon`, and `samplesCap` in `activity-scene.tsx`), and rerun 1-5 on the production build.
 
+## Film grain
+
+A fine, fixed, grey grain over the whole picture, in both themes, added in the last (show) pass after the lighting (`GRAIN` in `activity-scene.tsx`, 0 for none): one speck per device pixel, nothing in the blacks (a speck there would be a light of its own), strongest in the mid-tones. Static (the picture is drawn once, not every frame). Tune on a real screen: the browser pane's downscaling makes it look coarser than it is.
+
 ## Layout (software page)
 
 - From 48 rem (768 px) the picture is one long strip and the page's and the year's figures are in ONE grid in its top right corner (`Figures` in `activity-panel.tsx`; the head's own figures are hidden then). From 56 rem the legend (the GitHub / WakaTime links) is in the bottom left corner too; below that it is under the picture. The grid and the legend scale with the page (`cqi`).

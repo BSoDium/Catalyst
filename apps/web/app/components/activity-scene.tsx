@@ -115,6 +115,8 @@ export function ActivityScene({ activity, strips = 1, onReady, onLit, onHover, c
       scene.environmentIntensity = 0.9;
 
       // glass: it transmits (refracts) what is behind it, the ground and the blocks' own colour tint what passes through
+      /** The film grain's strength over the whole picture (0 for none). */
+      const GRAIN = 0.022;
       /** (light theme) how strong the room's reflections (environment) and the clear coat's are, relative to what comes through the glass. */
       const LIGHT_ENV = 0.85;
       const LIGHT_COAT = 0.4;
@@ -238,6 +240,8 @@ export function ActivityScene({ activity, strips = 1, onReady, onLit, onHover, c
       const xmasOn = () => xmasParam && isDark();
       // (the string: mostly white, with the colours as its highlights, as on a real tree)
       const XMAS_COLOURS = ["#ff0a0a", "#00e03c", "#ffa600", "#1a3cff", "#ff0a0a", "#00e03c"].map((c) => new THREE.Color(c));
+      /** (`?xmas`) a white rod is as bright as this share of a coloured one: a white rod adds up in all three channels, so at the same level it clips to a flat white blob with no shading. */
+      const WHITE_ROD = 0.42;
       const XMAS_WHITE = new THREE.Color("#f8faff");
       const xmasHue = (cell: number, src: "waka" | "github", t: number) => {
         const h = Math.imul(cell + 1, 2654435761) ^ Math.imul(src === "waka" ? 97 : 13, 40503);
@@ -511,7 +515,7 @@ void main() {
           // A blue rod gets its brightness from light added to all three channels (not from more of the same blue, which only makes it bluer and more glowing): a brighter rod is a lighter, clearer blue, not a whiter one
           // (its hue is kept: the blue channel is the hue's own and the red and green rise with the busyness).
           const level = emit(t) * (1 + 1.1 * t);
-          const rod = dark && xmasOn() ? hue0.clone().multiplyScalar(level * 0.55) : dark && src === "waka" ? hue.clone().multiplyScalar(level * 0.5).add(new THREE.Color(0.4, 0.56, 0.6).multiplyScalar(level * (0.38 + 0.98 * t))) : dark ? hue.clone().multiplyScalar(level * 1.25).add(new THREE.Color(0.22, 0.4, 0.24).multiplyScalar(level * (0.15 + 0.7 * t))) : hue;
+          const rod = dark && xmasOn() ? hue0.clone().multiplyScalar(level * 0.55 * (Math.max(hue0.r, hue0.g, hue0.b) - Math.min(hue0.r, hue0.g, hue0.b) < 0.15 * Math.max(hue0.r, hue0.g, hue0.b) ? WHITE_ROD : 1)) : dark && src === "waka" ? hue.clone().multiplyScalar(level * 0.5).add(new THREE.Color(0.4, 0.56, 0.6).multiplyScalar(level * (0.38 + 0.98 * t))) : dark ? hue.clone().multiplyScalar(level * 1.25).add(new THREE.Color(0.22, 0.4, 0.24).multiplyScalar(level * (0.15 + 0.7 * t))) : hue;
           paint(core, dark ? rod : hue);
           // (the light of the blocks around that reaches this rod when its own is off, on its own attribute: the shader adds it, as much as the neighbours that are on give)
           {
@@ -707,9 +711,9 @@ void main(){
       });
       // what is shown: the average, with the bloom added in the dark theme
       const showMat = new THREE.ShaderMaterial({
-        uniforms: { map: { value: accumRT.texture }, bloom: { value: 0 }, veil: { value: 0 }, near: { value: halfA.texture }, far: { value: quarterA.texture } },
+        uniforms: { map: { value: accumRT.texture }, bloom: { value: 0 }, veil: { value: 0 }, grain: { value: GRAIN }, near: { value: halfA.texture }, far: { value: quarterA.texture } },
         vertexShader: VERT,
-        fragmentShader: `uniform sampler2D map; uniform sampler2D near; uniform sampler2D far; uniform float bloom; uniform float veil; varying vec2 vUv;
+        fragmentShader: `uniform sampler2D map; uniform sampler2D near; uniform sampler2D far; uniform float bloom; uniform float veil; uniform float grain; varying vec2 vUv;
 void main(){
   vec4 c = texture2D(map, vUv);
   if (bloom > 0.) {
@@ -733,6 +737,15 @@ void main(){
   if (m > 1.) c.rgb *= (1. + (m - 1.) * 0.12) / m;
   gl_FragColor = c;
 #include <colorspace_fragment>
+  // Film grain: a fine, fixed, grey noise over the whole picture (not over the lighting: after it, on what is shown), the same size as a device pixel, stronger in the mid-tones than in the blacks and whites, as film's is.
+  if (grain > 0.) {
+    vec3 p3 = fract(vec3(gl_FragCoord.xyx) * .1031);
+    p3 += dot(p3, p3.yzx + 33.33);
+    float n = fract((p3.x + p3.y) * p3.z) - 0.5;
+    float lum = dot(gl_FragColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+    // (not in the blacks, where a speck would be a light of its own: it grows with the picture's brightness)
+    gl_FragColor.rgb += n * grain * smoothstep(0.04, 0.35, lum) * (0.5 + 1.5 * lum * (1. - lum)) * gl_FragColor.a;
+  }
 }`,
         depthTest: false,
         depthWrite: false,
