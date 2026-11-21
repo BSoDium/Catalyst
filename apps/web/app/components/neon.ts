@@ -248,40 +248,56 @@ export function createNeon({ blocks, apply, done, sound, fps = NEON_FPS, seed = 
   const idleRandom = () => Math.random();
   // --- the faint wobble: a real tube's gas is never perfectly steady, least of all just after it has lit. For the first half minute, now and then, a few tubes lose a little of their brightness for a moment and come
   // back, several times over, less and less often. No sound; it never touches a tube that is in a flicker (`busy`). ---
-  const wobbling = new Map<number, number>();
+  const wobbling = new Map<number, { from: number; ms: number; depth: number }>();
   const busy = new Set<number>();
   let wobbleTimer = 0;
+  let wobbleRaf = 0;
+  let wobbleLast = -1;
   const WOBBLE_MS = 30000;
+  const ease = (x: number) => x * x * (3 - 2 * x);
+  // (analog: the light does not jump, it sinks a little over a third of a second and climbs back more slowly, both eased, as a tube's gas settles)
+  const dip = (u: number) => (u < 0.35 ? ease(u / 0.35) : ease(1 - (u - 0.35) / 0.65));
+  const wobbleStep = (stamp: number) => {
+    wobbleRaf = 0;
+    if (!idleOn || wobbling.size === 0) return;
+    if (wobbleLast < 0 || stamp - wobbleLast >= 1000 / fps) {
+      wobbleLast = stamp;
+      const now = performance.now();
+      wobbling.forEach((w, i) => {
+        const u = (now - w.from) / w.ms;
+        if (u >= 1) {
+          wobbling.delete(i);
+          if (!busy.has(i)) levels[i] = 1;
+        } else if (!busy.has(i)) levels[i] = 1 - w.depth * dip(Math.max(0, u));
+      });
+      apply(levels, true);
+    }
+    wobbleRaf = requestAnimationFrame(wobbleStep);
+  };
   const wobble = () => {
     if (!idleOn) return;
-    const now = performance.now();
-    const age = now - idleSince;
-    let changed = false;
-    wobbling.forEach((until, i) => {
-      if (age <= WOBBLE_MS && now < until) return;
-      wobbling.delete(i);
-      if (!busy.has(i)) {
-        levels[i] = 1;
-        changed = true;
-      }
-    });
-    if (age <= WOBBLE_MS && canPlay() && !document.hidden) {
+    const age = performance.now() - idleSince;
+    if (age > WOBBLE_MS) return;
+    if (canPlay() && !document.hidden) {
       const n = 1 + Math.floor(idleRandom() * 3);
       for (let k = 0; k < n; k++) {
         const i = Math.floor(idleRandom() * blocks.length);
         if (busy.has(i) || wobbling.has(i)) continue;
-        // (down to 55-80 % for 80-280 ms; the picture shows a little less of it)
-        levels[i] = 0.55 + idleRandom() * 0.25;
-        wobbling.set(i, now + 80 + idleRandom() * 200);
-        changed = true;
+        // (down to 55-80 % at the lowest, over 0.4 to 1.2 s in all; the picture shows a little less of it)
+        wobbling.set(i, { from: performance.now() + idleRandom() * 120, ms: 400 + idleRandom() * 800, depth: 0.2 + idleRandom() * 0.25 });
+      }
+      if (!wobbleRaf && wobbling.size > 0) {
+        wobbleLast = -1;
+        wobbleRaf = requestAnimationFrame(wobbleStep);
       }
     }
-    if (changed) apply(levels, true);
-    if (age <= WOBBLE_MS || wobbling.size > 0) wobbleTimer = window.setTimeout(wobble, (140 + idleRandom() * 420) * (1 + age / 10000));
+    wobbleTimer = window.setTimeout(wobble, (300 + idleRandom() * 900) * (1 + age / 10000));
   };
   const stopIdle = () => {
     idleOn = false;
     window.clearTimeout(wobbleTimer);
+    cancelAnimationFrame(wobbleRaf);
+    wobbleRaf = 0;
     wobbling.clear();
     busy.clear();
     window.clearTimeout(idleTimer);
