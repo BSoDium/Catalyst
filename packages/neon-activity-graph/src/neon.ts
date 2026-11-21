@@ -50,11 +50,11 @@ interface Stutter {
  */
 const PARTIALS: [number, number, number][] = [[1, 1, 0.3], [2.76, 0.35, 0.14], [5.4, 0.12, 0.07]];
 /**
- * A soft, low electrical bzz, for the tubes that do not ding: two sawtooth voices a little apart (135 to 210 Hz and the same a little above an octave up), taken through a low-pass at about 1.5 kHz so that the buzz is light, not deep and not hissy, a
+ * A soft, low electrical bzz, for the tubes that do not ding: two sawtooth voices a little apart (62 to 100 Hz and the same a little above an octave up), taken through a low-pass at about 1.5 kHz so that the buzz is light, not deep and not hissy, a
  * wobble in the level (55 to 90 Hz, shallow) for the "b-z-z" texture and a trace of low-passed noise for the wiring. 130 to 240 ms, very faint: nothing hissy or crackly in it (it is not radio static).
  */
 function bzz(c: AudioContext, dest: AudioNode, when: number, pan: number, level: number, length: number) {
-  const f = 135 + Math.random() * 75;
+  const f = 62 + Math.random() * 38;
   const body = c.createGain();
   body.gain.value = 1;
   for (const [ratio, gain] of [[1, 1], [2.03, 0.5]] as const) {
@@ -69,7 +69,7 @@ function bzz(c: AudioContext, dest: AudioNode, when: number, pan: number, level:
   }
   const lp = c.createBiquadFilter();
   lp.type = "lowpass";
-  lp.frequency.value = 1500;
+  lp.frequency.value = 1000;
   lp.Q.value = 0.7;
   // (a shallow wobble: the level swings by about a third around its mean)
   const wobble = c.createGain();
