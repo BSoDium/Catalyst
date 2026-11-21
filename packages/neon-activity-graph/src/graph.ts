@@ -209,8 +209,8 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       const glowMaterial = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false, alphaHash: true });
       // how much each rod gives out, 0 to 1, one number per block, read by the rod's vertices (`aBlock` is the block's number): the neon start-up changes them over time
       // what is left of a block when its rod is off, the same for all of them: the glass's own glow and the room's reflections in it, as absolute intensities
-      const OFF_EMISSIVE = 0.0115;
-      const OFF_ENV = 0.029;
+      const OFF_EMISSIVE = 0.008;
+      const OFF_ENV = 0.014;
       const MAX_LEVELS = 1024;
       // (two numbers a block: what its own rod gives out, and how much of the light of the blocks around it, which are on, reaches it, 0 to 1, against all of them on)
       const levelData = new Float32Array(MAX_LEVELS * 2).fill(1);
@@ -649,21 +649,26 @@ void main() {
               shader.uniforms.uLevels = { value: levelTex };
               // (what is left of the glow and of the reflections when the rod is off is the same for every block, whatever its size or its day: as a share of this tier's own intensities, whatever they are)
               shader.uniforms.uFloorEm = { value: OFF_EMISSIVE / Math.max(mat.emissiveIntensity, 1e-4) };
-              shader.uniforms.uFloorEnv = { value: OFF_ENV / Math.max(mat.envMapIntensity, 1e-4) };
+              shader.uniforms.uFloorEnv = { value: mat.envMapIntensity > 0 ? OFF_ENV / mat.envMapIntensity : 0 };
               shader.vertexShader = shader.vertexShader
                 .replace("#include <common>", "#include <common>\nattribute float aBlock;\nuniform highp sampler2D uLevels;\nuniform float uFloorEm;\nuniform float uFloorEnv;\nvarying float vLevelEm;\nvarying float vLevelEnv;\nvarying float vOn;")
                 .replace("#include <begin_vertex>", "#include <begin_vertex>\n  vec2 lv = texelFetch(uLevels, ivec2(int(aBlock + 0.5), 0), 0).rg;\n  float own = max(lv.r, 0.3 * lv.g);\n  vOn = clamp(own, 0.0, 1.0);\n  vLevelEm = max(own, uFloorEm);\n  vLevelEnv = max(own, uFloorEnv);");
               shader.fragmentShader = shader.fragmentShader
                 .replace("#include <common>", "#include <common>\nvarying float vLevelEm;\nvarying float vLevelEnv;\nvarying float vOn;")
-                .replace("#include <emissivemap_fragment>", "#include <emissivemap_fragment>\n  // (right off, the glass glows the same cool grey whatever its source; as soon as there is a light in it, its own colour, darker the dimmer the light: a dimmed block is a tinted, darker one, not a grey one)\n  float offGrey = 1.0 - smoothstep(0.0, 0.35, vOn);\n  totalEmissiveRadiance = mix(totalEmissiveRadiance, vec3(dot(totalEmissiveRadiance, vec3(0.333))) * vec3(0.85, 0.95, 1.15), offGrey) * mix(pow(vLevelEm, 1.4), vLevelEm, offGrey);")
+                .replace("#include <emissivemap_fragment>", "#include <emissivemap_fragment>\n  // (right off, the glass glows the same cool grey whatever its source; as soon as there is a light in it, its own colour, darker the dimmer the light: a dimmed block is a tinted, darker one, not a grey one)\n  float offGrey = 1.0 - smoothstep(0.0, 0.35, vOn);\n  totalEmissiveRadiance = mix(totalEmissiveRadiance, vec3(dot(totalEmissiveRadiance, vec3(0.333))) * vec3(0.85, 0.95, 1.15), offGrey) * mix(pow(vLevelEm, 2.0), vLevelEm, offGrey);")
                 .replace("#include <lights_fragment_maps>", "#include <lights_fragment_maps>\n#if defined( RE_IndirectSpecular )\n  radiance *= vLevelEnv;\n#ifdef USE_CLEARCOAT\n  clearcoatRadiance *= vLevelEnv;\n#endif\n#endif\n#if defined( RE_IndirectDiffuse )\n  iblIrradiance *= vLevelEnv;\n#endif");
             };
             mat.customProgramCacheKey = () => "glass-levels";
           }
           // (the room's reflections are a light too: a quiet day must not shine with them)
           // (a material's own `envMap` is what `envMapIntensity` scales; without it the scene's environment is used as it is)
+          // (dark: the room's reflections in the glass and the clear coat's glint are kept, a little dimmer than they were, and tinted with the glass's own colour instead of white; the clear coat is a white layer, so it is made fainter)
           mat.envMap = dark ? env : null;
-          mat.envMapIntensity = dark ? [0.02, 0.18, 0.55][tier]! : LIGHT_ENV;
+          mat.envMapIntensity = dark ? [0.02, 0.18, 0.55][tier]! * 0.6 : LIGHT_ENV;
+          if (dark) {
+            mat.specularColor = tones[src][1].clone().lerp(new THREE.Color(0xffffff), 0.12);
+            mat.clearcoat = 0.45;
+          }
           if (!dark) {
             // (light theme: the glass's own colour is what is seen, through it; the room's reflections on the top and the edges are fainter, and tinted by the glass instead of grey, so that they read as glass and not as polished metal)
             mat.clearcoat = LIGHT_COAT;
@@ -1056,7 +1061,7 @@ void main(){
       };
       // --- the selected day (dark theme): its blocks glow brighter and the others dim, smoothly, a moment after the pointer has settled on it. It multiplies the neon's levels, so it works with the start-up and the flickers. ---
       const FOCUS_ON = 1.7;
-      const FOCUS_OFF = 0.42;
+      const FOCUS_OFF = 0.34;
       let focusCtl: { update(levels: ArrayLike<number>): void } | null = null;
       let focus = new Float32Array(0);
       let focusTo = new Float32Array(0);
