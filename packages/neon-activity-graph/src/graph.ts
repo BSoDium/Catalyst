@@ -209,6 +209,8 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       const glowMaterial = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false, alphaHash: true });
       // how much each rod gives out, 0 to 1, one number per block, read by the rod's vertices (`aBlock` is the block's number): the neon start-up changes them over time
       // what is left of a block when its rod is off, the same for all of them: the glass's own glow and the room's reflections in it, as absolute intensities
+      /** (dark) how much glow the green glass has of its own, against 0.6 of the blue's: a slight tint (0 is a clear glass). Pure green, never whitened: a whitened glow is a grey one. */
+      const DARK_GREEN_GLOW = 0.2;
       const OFF_EMISSIVE = 0.0012;
       const OFF_ENV = 0.004;
       const MAX_LEVELS = 1024;
@@ -629,7 +631,7 @@ void main() {
             mat.transparent = true;
             mat.opacity = 0.9;
           }
-          mat.emissive.copy(customOn() ? new THREE.Color(0x000000) : dark ? tones[src][1].clone().lerp(new THREE.Color(0xffffff), src === "top" ? 0.8 : 0) : tones[src][1]);
+          mat.emissive.copy(customOn() ? new THREE.Color(0x000000) : tones[src][1]);
           // (dark) the glass absorbs what is not its own colour as the light goes through it: a green block lets a blue rod behind it show only dimly, and the other way round
           if (dark) {
             // (the glass is clear: it does not filter what is seen through it, the rods give the colour)
@@ -637,7 +639,7 @@ void main() {
             mat.attenuationDistance = 1e3;
           }
           // (dark: the green glass has no glow of its own at all, it is clear; only the blue keeps a faint one: whatever glow a glass has is a tint, and grey where it should be black)
-          mat.emissiveIntensity = dark ? (src === "top" ? 0 : [0.02, 0.08, 0.15][tier]! * 0.6) : 0;
+          mat.emissiveIntensity = dark ? [0.02, 0.08, 0.15][tier]! * (src === "top" ? DARK_GREEN_GLOW : 0.6) : 0;
           if (dark) {
             // the glass shines as its rod does, down to a little ambient light of the night (the floor 0.14): its own glow and the room's reflections in it follow the rod's level, so that a block whose rod is off is dark
             mat.onBeforeCompile = (shader) => {
