@@ -119,7 +119,7 @@ export function ActivityScene({ activity, strips = 1, onReady, onLit, onHover, c
       const GRAIN = (() => {
         // (`?grain=0.01` sets it from the address, `?grain=0` turns it off: to find the strength that suits a screen)
         const q = Number(new URLSearchParams(window.location.search).get("grain"));
-        return new URLSearchParams(window.location.search).has("grain") && Number.isFinite(q) ? Math.min(0.2, Math.max(0, q)) : 0.003;
+        return new URLSearchParams(window.location.search).has("grain") && Number.isFinite(q) ? Math.min(0.2, Math.max(0, q)) : 0.004;
       })();
       /** (light theme) how strong the room's reflections (environment) and the clear coat's are, relative to what comes through the glass. */
       const LIGHT_ENV = 0.85;
@@ -718,18 +718,6 @@ void main(){
         uniforms: { map: { value: accumRT.texture }, bloom: { value: 0 }, veil: { value: 0 }, grain: { value: GRAIN }, near: { value: halfA.texture }, far: { value: quarterA.texture } },
         vertexShader: VERT,
         fragmentShader: `uniform sampler2D map; uniform sampler2D near; uniform sampler2D far; uniform float bloom; uniform float veil; uniform float grain; varying vec2 vUv;
-vec3 hash3(vec2 p) {
-  vec3 q = fract(vec3(p.xyx) * vec3(.1031, .1030, .0973));
-  q += dot(q, q.yzx + 33.33);
-  return fract((q.xxy + q.yzz) * q.zyx);
-}
-// soft noise: the hash at the corners of a cell about 1.7 pixels wide, blended smoothly, so the grain has no hard pixel-sized specks
-vec3 softNoise(vec2 p) {
-  vec2 i = floor(p);
-  vec2 f = fract(p);
-  f = f * f * (3. - 2. * f);
-  return mix(mix(hash3(i), hash3(i + vec2(1., 0.)), f.x), mix(hash3(i + vec2(0., 1.)), hash3(i + vec2(1., 1.)), f.x), f.y);
-}
 void main(){
   vec4 c = texture2D(map, vUv);
   if (bloom > 0.) {
@@ -756,8 +744,10 @@ void main(){
   // Camera grain: a fine, fixed noise over the whole picture, added after the lighting (on what is shown, not in it). It is meant to read as the noise of a good camera, not as rendering noise: soft (the sum of three
   // uniform numbers, so close to a gaussian and not the harsh specks of a single one), the same for every colour of the picture (it is not gated by brightness: a coloured block gets as much as a grey one), growing with the light (as a sensor's does: the dark glows stay clean) and easing off in the highlights (so that a bright surface does not burn), and a little colour in it (a tenth, as a sensor's has).
   if (grain > 0.) {
-    vec3 h = softNoise(gl_FragCoord.xy * 0.6);
-    float g = (h.x + h.y + h.z - 1.5) * 1.4;
+    vec3 q = fract(vec3(gl_FragCoord.xyx) * vec3(.1031, .1030, .0973));
+    q += dot(q, q.yzx + 33.33);
+    vec3 h = fract((q.xxy + q.yzz) * q.zyx);
+    float g = (h.x + h.y + h.z - 1.5) * 0.7;
     vec3 chroma = (h - 0.5) * 0.35;
     float lum = dot(gl_FragColor.rgb, vec3(0.2126, 0.7152, 0.0722));
     // (the noise of a sensor grows with the light it gets, as its square root: the dark glows stay clean, the lit surfaces carry the grain)
