@@ -50,41 +50,46 @@ interface Stutter {
  */
 const PARTIALS: [number, number, number][] = [[1, 1, 0.3], [2.76, 0.35, 0.14], [5.4, 0.12, 0.07]];
 /**
- * A faint electrical buzz, for the tubes that do not ding: a short burst of band-passed noise (a thin, dry crackle around 1.5 to 3 kHz) chopped at the mains' 100 Hz, as a tube's starter and wiring do. Quieter than a bell,
- * 70 to 150 ms long, with an uneven edge.
+ * A faint electrical fizzle, for the tubes that do not ding: a short sizzle of sparse random impulses (noise at about 5 % density, random polarity and size), high-passed around 1.5 kHz, with an irregular fast gate (random steps
+ * of 3 to 11 ms) so that it stutters like a tube fizzling on, "gzz". Quiet, 80 to 200 ms, nothing tonal in it (no ring, nothing crystalline).
  */
-function buzz(c: AudioContext, dest: AudioNode, when: number, pan: number, level: number, length: number, pitch: number) {
+function fizzle(c: AudioContext, dest: AudioNode, when: number, pan: number, level: number, length: number) {
   const len = Math.floor(c.sampleRate * (length + 0.05));
-  const buf = c.createBuffer(1, len, c.sampleRate);
-  const d = buf.getChannelData(0);
-  for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+  const crackle = c.createBuffer(1, len, c.sampleRate);
+  const d = crackle.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = Math.random() < 0.05 ? (Math.random() * 2 - 1) * (0.3 + Math.random() * 0.7) : 0;
+  const gate = c.createBuffer(1, len, c.sampleRate);
+  const g = gate.getChannelData(0);
+  for (let i = 0; i < len; ) {
+    const step = Math.max(1, Math.floor(c.sampleRate * (0.003 + Math.random() * 0.008)));
+    const v = Math.random() < 0.3 ? 0 : 0.3 + Math.random() * 0.7;
+    for (let j = 0; j < step && i < len; j++, i++) g[i] = v;
+  }
   const src = c.createBufferSource();
-  src.buffer = buf;
-  const band = c.createBiquadFilter();
-  band.type = "bandpass";
-  band.frequency.value = pitch;
-  band.Q.value = 3.5;
+  src.buffer = crackle;
+  const gateSrc = c.createBufferSource();
+  gateSrc.buffer = gate;
+  const hp = c.createBiquadFilter();
+  hp.type = "highpass";
+  hp.frequency.value = 1500;
+  const lp = c.createBiquadFilter();
+  lp.type = "lowpass";
+  lp.frequency.value = 9000;
   const chop = c.createGain();
-  chop.gain.value = 0.5;
-  // (the 100 Hz chop: the gain swings between 0 and 1 around 0.5)
-  const lfo = c.createOscillator();
-  lfo.type = "sine";
-  lfo.frequency.value = 100;
-  const depth = c.createGain();
-  depth.gain.value = 0.5;
-  lfo.connect(depth).connect(chop.gain);
+  chop.gain.value = 0;
+  gateSrc.connect(chop.gain);
   const env = c.createGain();
   env.gain.setValueAtTime(0, when);
-  env.gain.linearRampToValueAtTime(0.045 * level, when + 0.012);
-  env.gain.setValueAtTime(0.045 * level, when + length * 0.6);
+  env.gain.linearRampToValueAtTime(0.2 * level, when + 0.01);
+  env.gain.setValueAtTime(0.2 * level, when + length * 0.55);
   env.gain.exponentialRampToValueAtTime(0.0001, when + length);
   const panner = c.createStereoPanner();
   panner.pan.value = pan * 0.8;
-  src.connect(band).connect(chop).connect(env).connect(panner).connect(dest);
+  src.connect(hp).connect(lp).connect(chop).connect(env).connect(panner).connect(dest);
   src.start(when);
+  gateSrc.start(when);
   src.stop(when + length + 0.03);
-  lfo.start(when);
-  lfo.stop(when + length + 0.03);
+  gateSrc.stop(when + length + 0.03);
 }
 function bell(c: AudioContext, dest: AudioNode, when: number, f0: number, pan: number, level: number) {
   const out = c.createGain();
@@ -252,18 +257,18 @@ export function createNeon({ blocks, apply, done, sound, fps = NEON_FPS, wobbleF
     const members = new Map<number, number[]>();
     plans.forEach((p, i) => (members.get(p.area) ?? members.set(p.area, []).get(p.area)!).push(i));
     // The tick of a tube lighting: not a crackle but a tiny bell, a very high, short, quiet ding; the pitch is a little different each time.
-    // Not every tube dings: each has its own voice, the same every time (about half ding, a third give a faint electrical buzz instead, the rest are silent: in a sign of this many tubes a few are quiet).
+    // Not every tube dings: each has its own voice, the same every time (about half ding, a third give a faint electrical fizzle instead, the rest are silent: in a sign of this many tubes a few are quiet).
     const voices = blocks.map(() => {
       const r = random();
-      return r < 0.5 ? "ding" : r < 0.82 ? "buzz" : "quiet";
+      return r < 0.5 ? "ding" : r < 0.82 ? "fizzle" : "quiet";
     });
     const click = (at: number, pan: number, level: number, tube: number) => {
       const voice = voices[tube] ?? "ding";
       if (voice === "quiet" || clicks >= 110) return;
       clicks++;
       const when = Math.max(now + at / 1000, c.currentTime);
-      if (voice === "buzz") {
-        buzz(c, master, when, pan, level, 0.07 + random() * 0.08, 1500 + random() * 1500);
+      if (voice === "fizzle") {
+        fizzle(c, master, when, pan, level, 0.08 + random() * 0.12);
         return;
       }
       // (some of them low, a deeper bell: about a third, from 800 to 1500 Hz; the rest high, 2300 to 3800)
