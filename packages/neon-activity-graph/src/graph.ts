@@ -213,8 +213,8 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       /** (dark) how much glow the green glass has of its own, against 0.6 of the blue's: a slight tint (0 is a clear glass). Pure green, never whitened: a whitened glow is a grey one. */
       const DARK_GREEN_GLOW = 0.2;
       // (the green glass filters the light that goes through it, Beer-Lambert: it multiplies, so the bright light of a rod behind it is turned green and the dark parts stay dark; smaller distance = stronger)
-      const GREEN_FILTER = 0x3fe070;
-      const GREEN_FILTER_DISTANCE = 1.2;
+      // (the filter's colour is the layer's own palette colour, whatever the palette: a grey or white layer is not filtered)
+      const LAYER_FILTER_DISTANCE = 1.2;
       /** (dark) how much of the light the neighbours give out the glass of a block glows with: inside a group of lamps no glass is dark, and an isolated block's is. */
       const NEIGHBOUR_GLOW = 0.22;
       /** How much light behind a block it takes to light its glass most of the way (the share is `1 - e^-(light behind / this)`). */
@@ -518,7 +518,8 @@ void main() {
         // (the page's colour is read from the browser once a build, not once a tile: it makes a canvas and reads a pixel back)
         const page = pageColour();
         const shellsBy = new Map<string, BufferGeometry[]>();
-        const shellTier = new Map<string, ["bottom" | "top", number]>();
+        const shellHue = new Map<string, import("three").Color>();
+      const shellTier = new Map<string, ["bottom" | "top", number]>();
         const cores: BufferGeometry[] = [];
         const tiles: BufferGeometry[] = [];
         // the layers are first only noted (where, how tall, how busy, which colour), so that each can be lit by the others before its geometry is made
@@ -630,6 +631,7 @@ void main() {
           const key = `${src}${tier}`;
           (shellsBy.get(key) ?? shellsBy.set(key, []).get(key)!).push(shell);
           shellTier.set(key, [src, tier]);
+          if (!shellHue.has(key)) shellHue.set(key, hue0.clone());
           // (dark) the busier the day the thinner and the brighter its rod: a quiet one is as wide as before and dim, a busy one a slender, intense filament
           const cw = dark ? 0.5 - 0.2 * t ** 0.85 : 0.5;
           // (dark) the rod is the core of the block: as much glass above and below it as at its sides, so a tall block has a column, a block that is as tall as the rod is wide a cube, and a shorter one a flat core
@@ -678,8 +680,12 @@ void main() {
           // (dark) the glass absorbs what is not its own colour as the light goes through it: a green block lets a blue rod behind it show only dimly, and the other way round
           if (dark) {
             // (the glass is clear: it does not filter what is seen through it, the rods give the colour)
-            mat.attenuationColor.set(src === "top" ? GREEN_FILTER : 0xffffff);
-            mat.attenuationDistance = src === "top" ? GREEN_FILTER_DISTANCE : 1e3;
+            // (only the GitHub layer filters, and in its own palette colour, lifted to its brightest channel; a layer with no hue stays clear)
+            const lh = shellHue.get(key);
+            const m = lh ? Math.max(lh.r, lh.g, lh.b, 1e-3) : 1;
+            const sat = lh ? (m - Math.min(lh.r, lh.g, lh.b)) / m : 0;
+            mat.attenuationColor.copy(lh && src === "top" ? new THREE.Color(lh.r / m, lh.g / m, lh.b / m) : new THREE.Color(1, 1, 1));
+            mat.attenuationDistance = src === "top" && sat > 0.15 ? LAYER_FILTER_DISTANCE / Math.min(1, sat * 1.5) : 1e3;
           }
           // (dark: the green glass has no glow of its own at all, it is clear; only the blue keeps a faint one: whatever glow a glass has is a tint, and grey where it should be black)
           mat.emissiveIntensity = dark ? [0.02, 0.08, 0.15][tier]! * (src === "top" ? DARK_GREEN_GLOW : 0.6) : 0;
