@@ -102,6 +102,8 @@ export interface GraphOptions {
   label?: string;
   /** The day under the pointer (or the arrow keys), or null when there is none. */
   onHover?: (info: HoverInfo | null) => void;
+  /** The blocks' bounds changed (the first layout, a resize). */
+  onLayout?: (bounds: ContentBounds) => void;
   /** The first picture is on screen (fade your place-holder out). */
   onReady?: () => void;
   /** `false` while the neon start-up runs, `true` when the picture is lit (always, when there is no start-up). */
@@ -123,7 +125,17 @@ export interface GraphOptions {
   debug?: { metrics?: boolean; wireframe?: boolean; neonHold?: boolean };
 }
 
+/** Where the blocks are on the screen, in CSS pixels of the container (not the box: the isometric view leaves empty ground at the corners). */
+export interface ContentBounds {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+}
+
 export interface ActivityGraph {
+  /** Where the blocks are (null before the first picture is laid out). Also set on the container as the CSS variables `--nag-content-left`, `--nag-content-right`, `--nag-content-top` and `--nag-content-bottom` (px), kept up to date on resize. */
+  readonly bounds: ContentBounds | null;
   /** Draws other data (the graph is rebuilt). */
   update(data: GraphData): void;
   /** Changes the theme (the graph is rebuilt, and the start-up plays again in the dark one). Call it again after the page's background changed. */

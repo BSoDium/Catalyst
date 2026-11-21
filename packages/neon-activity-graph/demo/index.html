@@ -11,27 +11,43 @@
       @media (prefers-color-scheme: dark) { :root { --bg: #0b0b0e; --fg: #ececf1; --green: #3ddc6a; --blue: #5aa9ff; } }
       * { box-sizing: border-box; }
       body { margin: 0; min-height: 100svh; background: var(--bg); color: var(--fg); font: 16px/1.4 system-ui, sans-serif; display: grid; align-content: center; }
-      main { width: min(2400px, 100%); margin: 0 auto; padding: 24px 24px 40px; }
-      h1 { margin: 0; font-size: clamp(22px, 3vw, 34px); font-weight: 600; letter-spacing: -0.01em; }
-      .sub { margin: 4px 0 0; opacity: 0.6; font-size: 14px; }
-      .legend { display: flex; flex-wrap: wrap; gap: 6px 24px; margin-top: 16px; font-size: 14px; }
+      main { position: relative; width: min(2400px, 100%); margin: 0 auto; padding: 56px 24px 24px; }
+      .source { position: absolute; top: 18px; right: 24px; margin: 0; max-width: calc(100% - 48px); font-size: 13px; text-align: right; opacity: 0.55; }
+      .source a { color: inherit; }
+      /* The stage holds the graph box and its text block (title, sub, legend), which hangs in the bottom-left corner, in the empty ground the isometric view leaves there, with its left edge on the blocks' own left edge:
+         the package sets --nag-content-left (px) on the graph box from the picture's geometry and keeps it up to date on resize (main.ts copies it to the stage, where the caption is). */
+      #stage { position: relative; width: 100%; container-type: inline-size; }
+      #graph { position: relative; width: 100%; aspect-ratio: 3.2 / 1; --nag-top: var(--green); --nag-bottom: var(--blue); }
+      .caption { position: absolute; left: var(--nag-content-left, 0px); bottom: 0; z-index: 1; pointer-events: none; display: flex; flex-direction: column; gap: 0.6em; max-width: 30cqi; }
+      h1 { margin: 0; font-size: clamp(20px, 2.6cqi, 40px); font-weight: 600; letter-spacing: -0.01em; line-height: 1.1; }
+      .sub { margin: 0; opacity: 0.6; font-size: clamp(12px, 1.1cqi, 16px); }
+      .legend { display: flex; flex-direction: column; gap: 0.3em; font-size: clamp(12px, 1.1cqi, 16px); }
       .legend span { display: inline-flex; align-items: center; gap: 8px; }
-      .legend i { width: 10px; height: 10px; border-radius: 3px; background: currentColor; }
+      .legend i { width: 0.7em; height: 0.7em; border-radius: 3px; background: currentColor; }
       .legend .g { color: var(--green); } .legend .b { color: var(--blue); } .legend b { color: var(--fg); font-weight: 500; }
-      #graph { --nag-top: var(--green); --nag-bottom: var(--blue); }
-      #graph { position: relative; width: 100%; aspect-ratio: 3.97 / 1; margin-top: 8px; }
-      @media (max-width: 767px) { #graph { aspect-ratio: 0.8; } main { padding: 16px 12px 32px; } }
-      .foot { margin-top: 12px; font-size: 13px; opacity: 0.55; }
-      .foot a { color: inherit; }
+      /* Below 1100 px the title block would run into the blocks: it goes above the graph (and a phone gets four strips in a taller box). */
+      @media (max-width: 1099px) {
+        main { padding-top: 72px; }
+        .caption { position: static; max-width: none; padding: 0 0 12px; }
+        h1 { font-size: 26px; } .sub, .legend { font-size: 14px; }
+      }
+      @media (max-width: 767px) {
+        main { padding: 72px 12px 24px; }
+        #graph { aspect-ratio: 0.8; }
+      }
     </style>
   </head>
   <body>
     <main>
-      <h1>Neon-activity-graph</h1>
-      <p class="sub" id="sub">One glass block a day, GitHub contributions over coding time.</p>
-      <div class="legend"><span class="g"><i></i><b>GitHub contributions</b> above</span><span class="b"><i></i><b>WakaTime coding time</b> below</span></div>
-      <div id="graph"></div>
-      <p class="foot"><a href="https://github.com/BSoDium/Neon-activity-graph">Source, install and options on GitHub</a> · hover a day, click to cycle through the days behind it</p>
+      <p class="source"><a href="https://github.com/BSoDium/Neon-activity-graph">Source, install and options on GitHub</a> · hover a day, click to cycle through the days behind it</p>
+      <div id="stage">
+        <div class="caption">
+          <h1>Neon-activity-graph</h1>
+          <p class="sub" id="sub">One glass block a day, over the last year.</p>
+          <div class="legend"><span class="g"><i></i><b>GitHub contributions</b> above</span><span class="b"><i></i><b>WakaTime coding time</b> below</span></div>
+        </div>
+        <div id="graph"></div>
+      </div>
     </main>
     <script type="module" src="./main.ts"></script>
   </body>

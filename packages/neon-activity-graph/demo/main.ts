@@ -5,6 +5,7 @@ import { createActivityGraph, fakeLayer, type ActivityGraph, type GraphData } fr
 const DATA_URL = "https://raw.githubusercontent.com/BSoDium/Neon-activity-graph/data/activity.json";
 
 const host = document.getElementById("graph")!;
+const stage = document.getElementById("stage")!;
 const sub = document.getElementById("sub")!;
 const narrow = matchMedia("(max-width: 767px)");
 
@@ -26,12 +27,14 @@ let current: GraphData | null = null;
 const mount = () => {
   graph?.destroy();
   // (a phone gets the four staggered strips; the place-holder shows from the first paint, over the empty box)
-  graph = createActivityGraph(host, { data: current, strips: narrow.matches ? 4 : 1, theme: "auto", overlay: true, background: () => getComputedStyle(document.body).backgroundColor });
+  graph = createActivityGraph(host, { data: current, strips: narrow.matches ? 4 : 1, theme: "auto", overlay: true,
+    // (the package sets --nag-content-left on the graph box; the caption lives in the stage around it)
+    onLayout: (b) => stage.style.setProperty("--nag-content-left", `${b.left}px`), background: () => getComputedStyle(document.body).backgroundColor });
 };
 // (the place-holder is drawn at once, while the data is fetched: the graph is created with no data, then given it)
 mount();
 narrow.addEventListener("change", mount);
 const { data, live, at } = await load();
 current = data;
-sub.textContent = live ? `Live: my GitHub contributions over my WakaTime coding time, over the last year${at ? ` (updated ${new Date(at).toLocaleDateString()})` : ""}.` : "Generated sample data: the live activity file is not there yet.";
+sub.textContent = live ? `Live data${at ? `, updated ${new Date(at).toLocaleDateString()}` : ""}.` : "Generated sample data.";
 (graph as ActivityGraph | null)?.update(data);

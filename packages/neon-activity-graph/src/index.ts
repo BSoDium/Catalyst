@@ -29,10 +29,13 @@ export function createActivityGraph(container: HTMLElement, options: GraphOption
       o.onHover?.(i);
     },
   });
-  const start = (): SceneHandle => (opts.data ? mountScene(container, wrap({ ...opts, data: opts.data }) as GraphOptions & { data: GraphData }, state) : { stop() {}, rethink() {}, ready: Promise.resolve() });
+  const start = (): SceneHandle => (opts.data ? mountScene(container, wrap({ ...opts, data: opts.data }) as GraphOptions & { data: GraphData }, state) : { stop() {}, rethink() {}, bounds: () => null, ready: Promise.resolve() });
   let handle: SceneHandle = start();
   let destroyed = false;
   return {
+    get bounds() {
+      return handle.bounds();
+    },
     get ready() {
       return handle.ready;
     },
@@ -62,4 +65,4 @@ export type { HoverOverlay, OverlayOptions } from "./overlay";
 export { cardPosition, formatDay, outlinePath } from "./overlay-math";
 export { renderSize } from "./size";
 export { DEFAULT_COLORS } from "./graph";
-export type { ActivityGraph, GraphOptions, HoverInfo, RodContext, Startup } from "./types";
+export type { ActivityGraph, ContentBounds, GraphOptions, HoverInfo, RodContext, Startup } from "./types";

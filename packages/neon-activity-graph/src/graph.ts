@@ -3,7 +3,7 @@ import { createGroundLight, loadCausticTemplates, type CausticTemplates, type Gl
 import { layoutGraph, type Matrix } from "./layout";
 import { createNeon } from "./neon";
 import { renderSize } from "./size";
-import type { GraphData, GraphOptions, LayerColors, Startup, Tones } from "./types";
+import type { ContentBounds, GraphData, GraphOptions, LayerColors, Startup, Tones } from "./types";
 import { CAMERA_DIR, roomFor, slabFor, stripShifts } from "./view";
 
 /** How many jittered frames are averaged before the picture is final (soft shadows, anti-aliasing): the scene never moves, so it is drawn once, a frame at a time, and then not at all. */
@@ -36,6 +36,8 @@ function resolveBackground(el: HTMLElement, option: GraphOptions["background"], 
 }
 
 export interface SceneHandle {
+  /** Where the blocks are, in CSS pixels of the container (null before the first layout). */
+  bounds(): ContentBounds | null;
   stop(): void;
   rethink(): void;
   ready: Promise<void>;
@@ -48,7 +50,7 @@ export interface SceneHandle {
  * result. Translucent rounded blocks (transmission, refraction) lit by a room environment, on a ground that only receives the shadows, so it sits on the page's own background.
  */
 export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphData }, st: { theme: "light" | "dark" | "auto" }): SceneHandle {
-  const api = { stop: () => {}, rethink: () => {} };
+  const api = { stop: () => {}, rethink: () => {}, bounds: (): ContentBounds | null => null };
   let cancelled = false;
   const dbg = opts.debug ?? {};
   const mq = window.matchMedia("(prefers-color-scheme: dark)");
@@ -428,6 +430,8 @@ void main() {
         return sh;
       })();
       let tallest = 1;
+      let bounds: ContentBounds | null = null;
+      api.bounds = () => bounds;
       // the boxes a pointer can hit (one per layer of a column, one per empty day), for the picking
       interface PickBox { cell: number; x: number; z: number; y0: number; y1: number }
       let picks: PickBox[] = [];
@@ -837,7 +841,36 @@ void main(){
         camera.top = my + halfH;
         camera.bottom = my - halfH;
         camera.updateProjectionMatrix();
+        publishBounds();
         restart();
+      };
+
+      // Where the blocks are on the screen, in CSS pixels of the container: the footprints of the days that have a block (their left and right edges and their foot), and the top of the tallest column.
+      // Written to the container as `--nag-content-left` / `-right` / `-top` / `-bottom` (px) and given to `onLayout`, so a caption can be lined up with the picture, not with the box.
+      const publishBounds = () => {
+        camera.updateMatrixWorld();
+        let l = Infinity, r = -Infinity, t = Infinity, b = -Infinity;
+        const cw = el.clientWidth;
+        const ch = el.clientHeight;
+        const px = (x: number, y: number, z: number) => {
+          const p = new THREE.Vector3(x, y, z).project(camera);
+          return { x: ((p.x + 1) / 2) * cw, y: ((1 - p.y) / 2) * ch };
+        };
+        layout.top.cells.forEach((g, i) => {
+          if (g.value <= 0 && layout.bottom.cells[i]!.value <= 0) return;
+          const { x, z } = at(g.week, g.day);
+          for (const [dx, dz] of [[-0.46, -0.46], [0.46, -0.46], [-0.46, 0.46], [0.46, 0.46]] as const) {
+            const foot = px(x + dx, 0, z + dz);
+            l = Math.min(l, foot.x);
+            r = Math.max(r, foot.x);
+            b = Math.max(b, foot.y);
+          }
+          t = Math.min(t, px(x, topOf(i), z).y);
+        });
+        if (!Number.isFinite(l)) return;
+        bounds = { left: l, right: r, top: t, bottom: b };
+        for (const [k, v] of Object.entries(bounds)) el.style.setProperty(`--nag-content-${k}`, `${v.toFixed(1)}px`);
+        opts.onLayout?.(bounds);
       };
 
       const frames: number[] = [];
@@ -1318,6 +1351,7 @@ void main(){
       el.removeAttribute("aria-label");
     },
     rethink: () => api.rethink(),
+    bounds: () => api.bounds(),
     ready,
   };
 }
