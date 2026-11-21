@@ -65,13 +65,12 @@
       @media (prefers-reduced-motion: reduce) { h1::after { animation: none; } }
       .about { margin: 0; color: var(--muted); font-size: clamp(14px, 1.2cqi, 19px); line-height: 1.45; max-width: 36em; font-weight: 420; }
       .about .hl { font-weight: 720; color: var(--fg); }
-      .about .pick { display: flex; align-items: center; gap: 0.2em 0.7em; margin-top: 0.7em; font-size: 0.92em; }
-      /* (the choice of theme: three squares side by side, the chosen one filled with the text's colour and its letters in the page's, so that it reads as a switch, not as a link) */
-      .about .segs { display: inline-flex; border: 1px solid color-mix(in srgb, var(--fg) 32%, transparent); }
-      .about .theme { pointer-events: auto; font: inherit; font-weight: 600; line-height: 1; color: var(--fg); background: none; border: 0; border-radius: 0; margin: 0; padding: 0.42em 0.8em 0.46em; cursor: pointer; }
-      .about .theme + .theme { border-left: 1px solid color-mix(in srgb, var(--fg) 32%, transparent); }
+      .about .pick { display: flex; align-items: center; gap: 0.2em 0.35em; margin-top: 0.7em; font-size: 0.92em; }
+      /* (the choice of theme: the three words as they are, the chosen one on a highlight in the text's colour with its letters in the page's, so that it reads as the chosen one and not as a link) */
+      .about .segs { display: contents; }
+      .about .theme { pointer-events: auto; font: inherit; font-weight: 600; line-height: 1.25; color: var(--fg); background: none; border: 0; border-radius: 2px; margin: 0; padding: 0.1em 0.45em; cursor: pointer; }
       .about .theme[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
-      .about .theme:not([aria-pressed="true"]):hover { background: color-mix(in srgb, var(--fg) 14%, transparent); }
+      .about .theme:not([aria-pressed="true"]):hover { background: color-mix(in srgb, var(--fg) 16%, transparent); }
       .about .lib { font: 400 0.9em var(--mono); letter-spacing: 0; color: var(--fg); }
       .about .for { display: block; margin-top: 0.6em; font-size: 0.92em; color: var(--muted); }
       .about a { pointer-events: auto; color: var(--fg); text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; text-decoration-color: var(--cyan); }
@@ -126,15 +125,16 @@
         .about { font-size: 16px; } .legend { font-size: 12.5px; margin: 0.3em 0 0.9em; }
       }
       /* A phone (under 768): the text above the graph, close to the top left corner (more room at the left than at the top), and the graph from edge to edge of the screen. */
-      @media (max-width: 767px) {
+      @media (max-width: 767px), (max-aspect-ratio: 1/1) {
         /* The page is as tall as the screen when it can be (the graph takes what the text leaves, its picture fitted in it), and scrolls only when the screen is too short for the text and a graph of a legible size. */
         body { justify-content: flex-start; }
         main { flex: 1; display: flex; flex-direction: column; padding: 8px 14px 0; }
         #stage { flex: 1; display: flex; flex-direction: column; }
         #graph { flex: 1 1 auto; aspect-ratio: auto; min-height: 82vw; margin: -3vw -14px 0; width: calc(100% + 28px); }
-        .caption { position: relative; left: 0; bottom: auto; z-index: 1; order: 0; flex-direction: column; margin: 0; width: 100%; padding: 0 0 10px; gap: 0.55em; }
-        h1 { font-size: clamp(30px, 8.4vw, 56px); }
-        .about { font-size: 15px; } .legend { font-size: 12px; margin: 0.8em 0 0; }
+        .caption { position: relative; left: 0; bottom: auto; z-index: 1; order: 0; flex-direction: column; margin: 0; width: 100%; max-width: 44rem; padding: 0 0 10px; gap: 0.55em; }
+        .caption::before { display: none; }
+        h1 { font-size: clamp(30px, 8.4vw, 64px); }
+        .about { font-size: clamp(15px, 2.1vw, 19px); } .legend { font-size: clamp(12px, 1.6vw, 14px); margin: 0.8em 0 0; }
         /* the corner is the last block of the page, at the left, under the graph: the links, then the state of the data; the panels they open come over the page above it */
         .corner { position: static; align-items: flex-start; gap: 6px; padding: 4px 14px max(12px, env(safe-area-inset-bottom)); }
         .links { justify-content: flex-start; padding: 6px 9px; margin-left: -2px; }

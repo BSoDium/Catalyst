@@ -8,7 +8,8 @@ const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as 
 const host = $("graph");
 const stage = $("stage");
 const live$ = $("live");
-const narrow = matchMedia("(max-width: 767px)");
+// (the portrait picture, four strips: on a phone, and on any screen that is as tall as it is wide or taller, where one long strip would be a thin line in the middle of it)
+const narrow = matchMedia("(max-width: 767px), (max-aspect-ratio: 1/1)");
 
 // (the title is plain markup in the page: there from the first paint, whole. Only the graph's own start-up flickers.)
 
