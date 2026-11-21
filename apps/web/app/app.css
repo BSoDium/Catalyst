@@ -3349,6 +3349,17 @@
   /*
    * The search over all the tags: always above the row, the field a line with no box.
    */
+  /* (the search is as far in as the chips' text: the row's own padding on a phone, and from md the half rem that the list's margin takes out) */
+  .tag-search {
+    padding-inline: var(--bleed, 1rem);
+  }
+
+  @media (min-width: 768px) {
+    .tag-search {
+      padding-inline: 0.5rem;
+    }
+  }
+
   .tag-search-input {
     display: block;
     width: min(100%, 24rem);
@@ -3368,9 +3379,34 @@
   }
 
   .tag-search-empty {
-    margin: 0.5rem 0 0;
+    display: flex;
+    align-items: center;
+    min-height: 2.75rem;
+    /* (the row's own padding already puts it where the search's text starts) */
+    padding-inline: 0;
     color: var(--muted-foreground);
     font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    animation: tag-search-empty-in var(--duration-fast, 150ms) var(--ease-standard, ease) both;
+  }
+
+  @keyframes tag-search-empty-in {
+    from {
+      opacity: 0;
+      transform: translateY(0.25rem);
+    }
+  }
+
+  @media (min-width: 768px) {
+    .tag-search-empty {
+      min-height: 2rem;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tag-search-empty {
+      animation: none;
+    }
   }
 
   /* opened out, the row wraps whatever the width (on a phone it is a scroller when folded) */
@@ -3401,8 +3437,8 @@
   }
 
   .ds-filter-row {
-    /* (the first toggle's own padding is outside the text column: the row starts that much earlier) */
-    padding: 0 var(--bleed) 0 calc(var(--bleed) - 0.5rem);
+    /* (the chosen chip's plate reaches out half a rem over its text: the row starts where the search's line does, so the plate is flush with it) */
+    padding: 0 var(--bleed);
   }
 
   @media (min-width: 768px) {
@@ -3416,7 +3452,7 @@
 
     .ds-filter-row {
       flex-wrap: wrap;
-      padding: 0;
+      padding: 0 0 0 0.5rem;
     }
 
     .ds-filter {
@@ -3524,6 +3560,51 @@
     width: fit-content;
     padding: 0 0.75rem 1rem 0;
     background: linear-gradient(var(--background) 70%, transparent);
+  }
+
+  /* On a phone the rows are full-width cards (a picture under the year as often as not), so the year's page-coloured fade would show as a dark smear over a picture. The year keeps its big numeral while it is where it started; when it sticks under the
+     bar (`data-stuck`, set by the list page) it shrinks, smoothly, a little (to 0.82), to a square-cornered blurred plate with a hairline ring that floats above the rows. It shrinks with a transform, not a size: a smaller box would pull the rows up and un-stick it. */
+  @media screen and (max-width: 47.99rem) {
+    .ds-year-sticky {
+      background: none;
+      /* (the room under the numeral is the desktop's: the year is a heading, and the first row must not touch it) */
+      padding: 0 0.75rem 1rem 0;
+      isolation: isolate;
+      transform-origin: 0 0;
+      transition: transform 0.4s var(--ease-standard);
+    }
+
+    .ds-year-sticky::before {
+      content: "";
+      position: absolute;
+      /* (a plate hugging the numeral: 0.1 em above and below, 0.16 em at the sides, the optical padding of a wide word in a box; the heading's own right and bottom padding, which hold the room under it, are taken off) */
+      inset: -0.1em calc(0.75rem - 0.16em) calc(1rem - 0.1em) -0.16em;
+      z-index: -1;
+      border-radius: 0.1em;
+      background: color-mix(in srgb, var(--background) 82%, transparent);
+      -webkit-backdrop-filter: blur(18px) saturate(1.3);
+      backdrop-filter: blur(18px) saturate(1.3);
+      box-shadow:
+        inset 0 0 0 1px color-mix(in srgb, var(--foreground) 9%, transparent),
+        0 0.15em 0.5em -0.15em rgb(0 0 0 / 0.35);
+      opacity: 0;
+      transition: opacity 0.3s var(--ease-standard);
+    }
+
+    .ds-year-sticky[data-stuck="true"] {
+      transform: translateX(0.05em) scale(0.82);
+    }
+
+    .ds-year-sticky[data-stuck="true"]::before {
+      opacity: 1;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ds-year-sticky,
+    .ds-year-sticky::before {
+      transition: none;
+    }
   }
 
   /*
@@ -3656,6 +3737,12 @@
 
     .list-stat-value {
       font-size: 1.75rem;
+    }
+
+    /* (spread over the width, the last figure ends flush with the right edge, its label too) */
+    .list-stat:last-child {
+      align-items: flex-end;
+      text-align: right;
     }
   }
 

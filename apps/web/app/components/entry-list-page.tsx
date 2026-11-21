@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useLocation } from "react-router";
 import type { ContentKind } from "@catalyst/schemas";
 import { ArtworkWall } from "~/components/entry/artwork-wall";
@@ -39,6 +40,34 @@ export function EntryListPage({ kind, items, activityUrl = null }: { kind: Conte
   const grouped = shouldGroupByYear(byYear);
   const groups = grouped ? byYear : [{ key: "all", year: null, items: byYear.flatMap((g) => g.items) }];
   const cardLevel = grouped ? 3 : 2;
+  // The year heading that is stuck under the bar says so (`data-stuck`), for the phone's pill (app.css): a sticky element cannot be asked, so each scroll (once a frame) compares a heading's top with its own sticky position, read live
+  // (the bar's height is set after the first paint).
+  const groupCount = groups.length;
+  useEffect(() => {
+    const heads = Array.from(document.querySelectorAll<HTMLElement>(".ds-year-sticky"));
+    if (!heads.length) return;
+    let raf = 0;
+    const check = () => {
+      raf = 0;
+      heads.forEach((h) => {
+        const top = parseFloat(getComputedStyle(h).top) || 0;
+        const stuck = h.getBoundingClientRect().top <= top + 1;
+        const v = stuck ? "true" : "false";
+        if (h.dataset.stuck !== v) h.dataset.stuck = v;
+      });
+    };
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(check);
+    };
+    check();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      cancelAnimationFrame(raf);
+    };
+  }, [groupCount, kind]);
   // The section's name for labels ("Filter poetry by tag"), the count noun for counts ("4 poems", "33 software").
   const section = KIND_PLURALS[kind].toLowerCase();
   // One implementation of the count noun: `kindCount` ("33 software", "1 poem").
@@ -62,7 +91,7 @@ export function EntryListPage({ kind, items, activityUrl = null }: { kind: Conte
       <header data-slot="list-head" className="list-head">
         <h1 className="list-title">{KIND_PLURALS[kind]}</h1>
         {/* The figures of the list: how many (of how many when a tag filters), since when, how many places. There is no running head above the title any more (the owner's name and the count were said again by the figures: owner, 2026-11-03) */}
-        <dl data-slot="list-stats" className={cn("list-stats", withPanel && "min-[80rem]:invisible")}>
+        <dl data-slot="list-stats" className={cn("list-stats", withPanel && "md:invisible")}>
           {heads.map((stat) => (
             <div key={stat.label} className="list-stat">
               <dd className="list-stat-value">{stat.value}</dd>

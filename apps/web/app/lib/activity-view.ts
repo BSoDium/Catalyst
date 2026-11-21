@@ -14,17 +14,64 @@ export function roomFor(strips: number) {
   return { side: strips > 1 ? -1.4 : 3.2, near: strips > 1 ? 1.6 : 2.6, far: strips > 1 ? 0.5 : 0.6 };
 }
 
-/** The slab: `weeks` weeks laid out in `strips` strips (equal length, one behind the other); `at` gives the centre of a day on the ground (x across, z in depth). */
-export function slabFor(weeks: number, strips: number) {
+/**
+ * The slab: `weeks` weeks laid out in `strips` strips (equal length, one behind the other); `at` gives the centre of a day on the ground (x across, z in depth). On a page with several strips each one is moved along x by the amount
+ * that cancels what the camera's tilt does to it on the screen (a strip farther in depth is seen farther to one side): the strips are then stacked straight on the screen, in a staircase on the ground, and the picture is
+ * about a third narrower than with the strips side by side in x, so the fit can enlarge it.
+ */
+export function slabFor(weeks: number, strips: number, shifts?: readonly number[]) {
   const perStrip = Math.ceil(weeks / strips);
+  // (`shifts`: a further move of each strip along x, in weeks, from `stripShifts`: the strips are made to look centred, not only to be; moved all to the same side of zero, so that no strip is left of the slab's first column)
+  const low = shifts ? Math.min(...shifts) : 0;
+  const extra = (k: number) => (shifts ? ((shifts[k] ?? 0) - low) * PITCH : 0);
+  const spread = shifts ? (Math.max(...shifts) - low) * PITCH : 0;
+  const pitchZ = 7 * PITCH + STRIP_GAP;
+  const ax = screenAxes().x;
+  // (the screen x of a point is dot(ax, p): a step of `pitchZ` in z is cancelled by a step of -pitchZ * ax.z / ax.x in x)
+  const step = strips > 1 ? (-pitchZ * ax[2]) / ax[0] : 0;
+  const offset = (k: number) => (step >= 0 ? k * step : (strips - 1 - k) * -step) + extra(k);
+  const rects = Array.from({ length: strips }, (_, k) => ({ x0: offset(k), x1: offset(k) + perStrip * PITCH, z0: k * pitchZ, z1: k * pitchZ + 7 * PITCH }));
   return {
-    width: perStrip * PITCH,
+    width: perStrip * PITCH + (strips - 1) * Math.abs(step) + spread,
     total: strips * 7 * PITCH + (strips - 1) * STRIP_GAP,
-    at: (week: number, day: number) => ({
-      x: (week % perStrip) * PITCH + 0.5,
-      z: Math.floor(week / perStrip) * (7 * PITCH + STRIP_GAP) + day * PITCH + 0.5,
-    }),
+    rects,
+    /** The corners (x, z) of the slab with the room around it, for fitting the picture in its box: each strip's, the room at the sides of all, under the first and behind the last. */
+    corners(room: { side: number; near: number; far: number }) {
+      return rects.flatMap((r, k) => {
+        const z0 = r.z0 - (k === 0 ? room.near : 0);
+        const z1 = r.z1 + (k === strips - 1 ? room.far : 0);
+        return [[r.x0 - room.side, z0], [r.x1 + room.side, z0], [r.x0 - room.side, z1], [r.x1 + room.side, z1]] as [number, number][];
+      });
+    },
+    at: (week: number, day: number) => {
+      const k = Math.floor(week / perStrip);
+      return { x: offset(k) + (week % perStrip) * PITCH + 0.5, z: k * pitchZ + day * PITCH + 0.5 };
+    },
   };
+}
+
+/**
+ * How far to move each strip of a narrow page along x (in weeks) so that the weight of the blocks of every strip is centred on the page: a strip whose busy days are on its left looks left, a shorter last strip (53 weeks in 4 strips are 14, 14, 14 and
+ * 11) is left of the others. `weightAt(week, day)` is how much the day weighs on the eye (its blocks' height); the centre of gravity of each strip is brought to the middle of a full strip. At most 3 weeks either way. Pure.
+ */
+export function stripShifts(weeks: number, strips: number, weightAt: (week: number, day: number) => number): number[] {
+  if (strips <= 1) return [0];
+  const perStrip = Math.ceil(weeks / strips);
+  const middle = (perStrip - 1) / 2;
+  return Array.from({ length: strips }, (_, k) => {
+    let sum = 0;
+    let moment = 0;
+    for (let i = 0; i < perStrip; i++) {
+      const week = k * perStrip + i;
+      if (week >= weeks) break;
+      for (let day = 0; day < 7; day++) {
+        const w = Math.max(0, weightAt(week, day));
+        sum += w;
+        moment += w * i;
+      }
+    }
+    return sum > 0 ? Math.max(-3, Math.min(3, middle - moment / sum)) : 0;
+  });
 }
 
 const norm = (v: readonly number[]) => {
@@ -47,7 +94,7 @@ function screenAxes() {
  * typical tallest column). Returns the SVG `viewBox` and one path of all the squares (to be filled).
  */
 export function placeholderTiles(weeks: number, strips: number, aspect: number, tallest = TYPICAL_TALLEST) {
-  const { width, total, at } = slabFor(weeks, strips);
+  const { corners, at } = slabFor(weeks, strips);
   const room = roomFor(strips);
   const ax = screenAxes();
   const project = (px: number, py: number, pz: number) => ({ x: dot(ax.x, [px, py, pz]), y: -dot(ax.y, [px, py, pz]) });
@@ -55,7 +102,7 @@ export function placeholderTiles(weeks: number, strips: number, aspect: number, 
   let x1 = -Infinity;
   let y0 = Infinity;
   let y1 = -Infinity;
-  for (const cx of [-room.side, width + room.side]) for (const cy of [0, tallest]) for (const cz of [-room.near, total + room.far]) {
+  for (const [cx, cz] of corners(room)) for (const cy of [0, tallest]) {
     const p = project(cx, cy, cz);
     x0 = Math.min(x0, p.x);
     x1 = Math.max(x1, p.x);

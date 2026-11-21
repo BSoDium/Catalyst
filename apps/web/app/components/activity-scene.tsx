@@ -1,9 +1,11 @@
 import { useEffect, useRef } from "react";
 import type { BufferGeometry, Color, Mesh } from "three";
 import { layoutActivity, type Activity, type HoverInfo, type Matrix } from "~/lib/activity";
-import { CAMERA_DIR, roomFor, slabFor } from "~/lib/activity-view";
+import { CAMERA_DIR, roomFor, slabFor, stripShifts } from "~/lib/activity-view";
 import { createGroundLight, loadCausticTemplates, type CausticTemplates, type GlassLight } from "~/components/ground-light";
 import { createNeon } from "~/components/neon";
+import { createSleighBells } from "~/components/sleigh-bells";
+import { xmasNow } from "~/lib/xmas";
 import causticTemplatesUrl from "~/assets/caustic-templates.png?url";
 
 /** How many jittered frames are averaged before the picture is final (soft shadows, anti-aliasing): the scene never moves, so it is drawn once, a frame at a time, and then not at all. */
@@ -31,7 +33,7 @@ const isDark = () => {
  * (an area light's soft shadow) and the camera a sub-pixel away (anti-aliasing) and adds it to an accumulation buffer; after `SAMPLES` frames the loop stops and the canvas keeps the
  * result. Translucent rounded blocks (transmission, refraction) lit by a room environment, on a ground that only receives the shadows, so it sits on the page's own background.
  */
-export function ActivityScene({ activity, strips = 1, onReady, onHover, className }: { activity: Activity; strips?: number; onReady?: () => void; onHover?: (info: HoverInfo | null) => void; className?: string }) {
+export function ActivityScene({ activity, strips = 1, onReady, onLit, onHover, className }: { activity: Activity; strips?: number; onReady?: () => void; onLit?: (lit: boolean) => void; onHover?: (info: HoverInfo | null) => void; className?: string }) {
   const host = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -104,7 +106,10 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
       // the room the glow of the outermost columns needs around the slab, so the picture does not cut it
       const ROOM = roomFor(strips);
       // The year is a long strip of weeks; on a narrow page it is cut into `strips` strips of equal length laid one behind the other, so the slab is closer to a square and fills the width
-      const { width, total, at } = slabFor(layout.github.weeks, strips);
+      // (on a phone each strip is moved so that the weight of its blocks, not only its rectangle, is centred on the page)
+      const weigh = new Map<number, number>();
+      for (const m of [layout.github, layout.wakatime]) for (const c of m.cells) weigh.set(c.week * 7 + c.day, (weigh.get(c.week * 7 + c.day) ?? 0) + 0.18 + c.t * 2.2);
+      const { width, total, at, corners } = slabFor(layout.github.weeks, strips, stripShifts(layout.github.weeks, strips, (week, day) => weigh.get(week * 7 + day) ?? 0.18));
 
       const scene = new THREE.Scene();
       const pmrem = new THREE.PMREMGenerator(renderer);
@@ -113,6 +118,11 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
       scene.environmentIntensity = 0.9;
 
       // glass: it transmits (refracts) what is behind it, the ground and the blocks' own colour tint what passes through
+      /** The film grain's strength over the whole picture (0 for none). */
+      const GRAIN = 0.012;
+      /** (light theme) how strong the room's reflections (environment) and the clear coat's are, relative to what comes through the glass. */
+      const LIGHT_ENV = 0.85;
+      const LIGHT_COAT = 0.4;
       const blockMaterial = new THREE.MeshPhysicalMaterial({
         vertexColors: true,
         roughness: 0.04,
@@ -224,8 +234,26 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
       // the traced light is counted on a grid half as fine: enough rays in each cell to look like light and not like grain
       const LPX = PX / 2;
       let neonNeighbours: { j: number[]; m: number[] }[] = [];
-      let neonBlocks: { x: number; z: number; pan: number; t: number }[] = [];
+      let neonBlocks: { x: number; z: number; pan: number; t: number; cell: number }[] = [];
       let stampCtl: { update(levels: ArrayLike<number>): void } | null = null;
+      // `?xmas`, an Easter egg (a demo, not on by default): every rod is one of a string of lights, in the warm colours of a tree's (red, green, gold, blue, pink; saturated), the same for a day each time. The colour is the day's and its
+      // brightness is the activity, as ever; the glass is left clear so that the rod's colour is what is seen, and the baked light on the ground takes the rod's colour like any other.
+      const xmasParam = xmasNow();
+      // (the dark theme only: the glass of the light theme, lit by the sun, does not take the white lights, and the scene is rebuilt when the theme changes)
+      const xmasOn = () => xmasParam && isDark();
+      // (the string: mostly white, with the colours as its highlights, as on a real tree)
+      const XMAS_COLOURS = ["#ff0a0a", "#00e03c", "#ffa600", "#1a3cff", "#ff0a0a", "#00e03c"].map((c) => new THREE.Color(c));
+      /** (`?xmas`) a white rod is as bright as this share of a coloured one: a white rod adds up in all three channels, so at the same level it clips to a flat white blob with no shading. */
+      const WHITE_ROD = 0.62;
+      const XMAS_WHITE = new THREE.Color("#f8faff");
+      const xmasHue = (cell: number, src: "waka" | "github", t: number) => {
+        const h = Math.imul(cell + 1, 2654435761) ^ Math.imul(src === "waka" ? 97 : 13, 40503);
+        const slot = ((h >>> 7) % 10 + 10) % 10;
+        // (a white light that is dim is a grey one, and no lamp glows grey: a quiet day is never white, it takes a colour of the string; a busy day's white is kept at a good brightness)
+        // (white is the string's default, the colours are its highlights: 7 slots of 10 for a busy day, 3 for a quiet one)
+        if (slot < (t >= 0.5 ? 7 : 3) && t >= 0.35) return XMAS_WHITE.clone().multiplyScalar(0.6 + 0.4 * t);
+        return XMAS_COLOURS[((h >>> 13) % XMAS_COLOURS.length + XMAS_COLOURS.length) % XMAS_COLOURS.length]!.clone().multiplyScalar(0.3 + 0.7 * t);
+      };
       const groundLayers = (stack: { waka: Matrix; github: Matrix }, tones: { waka: [Color, Color]; github: [Color, Color] }, dark: boolean) => {
         const cw = Math.ceil((width + GLOW_PAD * 2) * PX);
         const ch = Math.ceil((total + GLOW_PAD * 2) * PX);
@@ -271,26 +299,30 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
           let top = 0;
           const add = (src: "waka" | "github", y0: number, y1: number, t: number, [low, high]: [Color, Color], gain: number) => {
             const hy = (y1 - y0) / 2;
-            const hue = low.clone().lerp(high, t);
+            const hue = xmasOn() ? xmasHue(i, src, t) : low.clone().lerp(high, t);
             // (dark) the light is the rod's, and the rod is near white where it is busy: its own chroma (as drawn, see `build`), normalised, the strength being `power`; (light) the colour of the glass
-            const rod =
-              src === "waka"
+            const rod = xmasOn()
+              ? // (`?xmas`: the light on the ground is the light's own colour, not lifted toward white as a busy rod is in the usual picture)
+                hue.clone()
+              : src === "waka"
                 ? hue.clone().multiplyScalar(0.5).add(new THREE.Color(0.4, 0.56, 0.6).multiplyScalar(0.38 + 0.98 * t))
                 : hue.clone().multiplyScalar(1.25).add(new THREE.Color(0.22, 0.4, 0.24).multiplyScalar(0.15 + 0.7 * t));
             const col = dark ? rod.multiplyScalar(1 / Math.max(1e-4, rod.r, rod.g, rod.b)) : hue;
+            // (`?xmas`: a white light adds to all three channels, so on the ground it washes out the colours around it: it lights the ground half as much)
+            const whiteLight = xmasOn() && Math.max(hue.r, hue.g, hue.b) - Math.min(hue.r, hue.g, hue.b) < 0.15 * Math.max(hue.r, hue.g, hue.b) ? 0.5 : 1;
             // (no two blocks are alike: a small tilt of the glass of each, a strength and a reach of its own)
             const tilt = (): number => (variety() - 0.5) * 0.22;
             const luck = 0.6 + 0.8 * variety();
             const near = dark ? CAUSTIC_NEAR : SUN_NEAR;
             const far = dark ? CAUSTIC_FAR : SUN_FAR;
-            neonBlocks.push({ x, z, pan: (x / width) * 2 - 1, t });
+            neonBlocks.push({ x, z, pan: (x / width) * 2 - 1, t, cell: i });
             glass.push({
               c: [x, y0 + hy, z],
               h: [0.46, hy, 0.46],
               r: Math.min(0.16, (2 * hy) / 2.2),
               bias: [tilt(), tilt() * 0.4, tilt()],
               col: [col.r, col.g, col.b],
-              power: (0.05 + t * t) * gain * luck * CAUSTIC_POWER,
+              power: (0.05 + t * t) * gain * luck * CAUSTIC_POWER * whiteLight,
               near,
               far,
               // (the rod, as drawn: its width)
@@ -298,7 +330,7 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
               seed: [variety(), variety(), variety(), variety(), variety()],
               // (the soft pool: a haze under the block, as bright as its day was busy; it goes out with its rod)
               pool: (() => {
-                const peak = POOL * GROUND_LIGHT * gain * (0.004 + 0.26 * t * t + 0.03 * t);
+                const peak = POOL * GROUND_LIGHT * gain * (0.004 + 0.26 * t * t + 0.03 * t) * whiteLight;
                 return { col: [hue.r * peak, hue.g * peak, hue.b * peak] as [number, number, number], r: 0.9 + GROUND_REACH * (0.5 + t * 1.5) };
               })(),
             });
@@ -410,7 +442,7 @@ void main() {
         const layer = (cell: number, src: "waka" | "github", x: number, z: number, y0: number, t: number, [low, high]: [Color, Color]) => {
           const h = 0.18 + t * LAYER_MAX;
           picks.push({ cell, x, z, y0, y1: y0 + h });
-          specs.push({ src, x, z, y0, h, t, hue: low.clone().lerp(high, t) });
+          specs.push({ src, x, z, y0, h, t, hue: xmasOn() ? xmasHue(cell, src, t) : low.clone().lerp(high, t) });
           tallest = Math.max(tallest, y0 + h);
           return y0 + h;
         };
@@ -436,7 +468,9 @@ void main() {
         let blockIndex = 0;
         neonNeighbours = [];
         for (const sp of specs) {
-          const { src, x, z, y0, h, t, hue } = sp;
+          const { src, x, z, y0, h, t, hue: hue0 } = sp;
+          // (`hue` is the glass's: `?xmas` lets a white glass be tainted by the lights around it; the rod in the middle (`hue0`) is always the light's own colour)
+          let hue = hue0;
           // (dark) the light the other days give out reaches this one: each neighbour's colour and brightness, weakened with the distance between the two blocks; a dim block beside or under a bright one is lit by it
           const inc = new THREE.Color(0, 0, 0);
           const nb: { j: number[]; m: number[] } = { j: [], m: [] };
@@ -455,6 +489,11 @@ void main() {
             }
           }
           neonNeighbours.push(nb);
+          // (`?xmas`: a white light beside or on a coloured one takes its colour, as a white bulb does: it must not stand out as a grey block among the bright ones)
+          if (dark && xmasOn() && Math.max(hue.r, hue.g, hue.b) - Math.min(hue.r, hue.g, hue.b) < 0.15 * Math.max(hue.r, hue.g, hue.b)) {
+            const m = Math.max(inc.r, inc.g, inc.b);
+            if (m > 1e-4) hue = hue.clone().lerp(inc.clone().multiplyScalar(1 / m).multiplyScalar(Math.max(hue.r, hue.g, hue.b)), Math.min(0.75, m * 3));
+          }
           inc.r = Math.min(inc.r, 0.6);
           inc.g = Math.min(inc.g, 0.6);
           inc.b = Math.min(inc.b, 0.6);
@@ -464,7 +503,7 @@ void main() {
           const shell = new RoundedBoxGeometry(0.92, h, 0.92, lite ? 2 : 3, Math.min(0.16, h / 2.2));
           shell.translate(x, y0 + h / 2, z);
           // dark: the glass is nearly clear (the light of its core shows through it); light: tinted by the level
-          paint(shell, hue.clone().lerp(new THREE.Color(0xffffff), dark ? 0.14 : 0.12).multiplyScalar(dark ? 0.3 + 0.7 * tEff : 1).add(inc.clone().multiplyScalar(0.08)), 0, dark);
+          paint(shell, hue.clone().lerp(new THREE.Color(0xffffff), dark ? 0.14 : 0.12).multiplyScalar(dark ? 0.3 + 0.7 * tEff : 1).add(inc.clone().multiplyScalar(dark && xmasOn() ? 0.35 : 0.08)), 0, dark);
           shell.setAttribute("aBlock", new THREE.BufferAttribute(new Float32Array(shell.getAttribute("position").count).fill(blockIndex), 1));
           // the glass of a busy day glows on its own surface too (dark theme): three steps of emission per source, each its own material
           const tier = tEff < 0.34 ? 0 : tEff < 0.67 ? 1 : 2;
@@ -479,7 +518,7 @@ void main() {
           // A blue rod gets its brightness from light added to all three channels (not from more of the same blue, which only makes it bluer and more glowing): a brighter rod is a lighter, clearer blue, not a whiter one
           // (its hue is kept: the blue channel is the hue's own and the red and green rise with the busyness).
           const level = emit(t) * (1 + 1.1 * t);
-          const rod = dark && src === "waka" ? hue.clone().multiplyScalar(level * 0.5).add(new THREE.Color(0.4, 0.56, 0.6).multiplyScalar(level * (0.38 + 0.98 * t))) : dark ? hue.clone().multiplyScalar(level * 1.25).add(new THREE.Color(0.22, 0.4, 0.24).multiplyScalar(level * (0.15 + 0.7 * t))) : hue;
+          const rod = dark && xmasOn() ? hue0.clone().multiplyScalar(level * 0.55 * (Math.max(hue0.r, hue0.g, hue0.b) - Math.min(hue0.r, hue0.g, hue0.b) < 0.15 * Math.max(hue0.r, hue0.g, hue0.b) ? WHITE_ROD : 1)) : dark && src === "waka" ? hue.clone().multiplyScalar(level * 0.5).add(new THREE.Color(0.4, 0.56, 0.6).multiplyScalar(level * (0.38 + 0.98 * t))) : dark ? hue.clone().multiplyScalar(level * 1.25).add(new THREE.Color(0.22, 0.4, 0.24).multiplyScalar(level * (0.15 + 0.7 * t))) : hue;
           paint(core, dark ? rod : hue);
           // (the light of the blocks around that reaches this rod when its own is off, on its own attribute: the shader adds it, as much as the neighbours that are on give)
           {
@@ -508,14 +547,14 @@ void main() {
             mat.transparent = true;
             mat.opacity = 0.9;
           }
-          mat.emissive.copy(tones[src][1]);
+          mat.emissive.copy(xmasOn() ? new THREE.Color(0x000000) : tones[src][1]);
           // (dark) the glass absorbs what is not its own colour as the light goes through it: a green block lets a blue rod behind it show only dimly, and the other way round
           if (dark) {
-            mat.attenuationColor.copy(tones[src][1]);
+            mat.attenuationColor.copy(xmasOn() ? new THREE.Color(0xffffff) : tones[src][1]);
             // (the blue glass absorbs less: a rod that is meant to be near white would otherwise be seen through a blue filter and come out saturated)
             mat.attenuationDistance = src === "waka" ? 3.6 : 2.2;
             // A green filter passes green and stops the rest: blue light behind it is not turned into green, it is nearly all absorbed (what comes through is a few percent, not a green of the same brightness).
-            if (src === "github") {
+            if (src === "github" && !xmasOn()) {
               mat.attenuationColor.r *= 0.2;
               mat.attenuationColor.b *= 0.15;
               mat.attenuationDistance = 1.6;
@@ -542,7 +581,12 @@ void main() {
           // (the room's reflections are a light too: a quiet day must not shine with them)
           // (a material's own `envMap` is what `envMapIntensity` scales; without it the scene's environment is used as it is)
           mat.envMap = dark ? env : null;
-          mat.envMapIntensity = dark ? [0.02, 0.18, 0.55][tier]! : 1.4;
+          mat.envMapIntensity = dark ? [0.02, 0.18, 0.55][tier]! : LIGHT_ENV;
+          if (!dark) {
+            // (light theme: the glass's own colour is what is seen, through it; the room's reflections on the top and the edges are fainter, and tinted by the glass instead of grey, so that they read as glass and not as polished metal)
+            mat.clearcoat = LIGHT_COAT;
+            mat.specularColor = tones[src][1].clone().lerp(new THREE.Color(0xffffff), 0.35);
+          }
           materials.push(mat);
           const glass = new THREE.Mesh(mergeGeometries(list)!, mat);
           glass.castShadow = true;
@@ -564,7 +608,8 @@ void main() {
       scene.add(blocks);
       const ground0 = () => ((ground.material as import("three").ShadowMaterial).opacity = isDark() ? 0 : 0.05);
       const buildBlocks = () => {
-        showMat.uniforms.bloom!.value = isDark() ? 1 : 0;
+        showMat.uniforms.bloom!.value = isDark() ? (xmasOn() ? 0.4 : 1) : 0;
+        showMat.uniforms.veil!.value = xmasOn() ? 0.75 : 0;
         // night: no sun and no room, the only light is what the days give out
         scene.environmentIntensity = isDark() ? 0 : 0.9;
         sun.intensity = isDark() ? 0 : 2.2;
@@ -669,9 +714,9 @@ void main(){
       });
       // what is shown: the average, with the bloom added in the dark theme
       const showMat = new THREE.ShaderMaterial({
-        uniforms: { map: { value: accumRT.texture }, bloom: { value: 0 }, near: { value: halfA.texture }, far: { value: quarterA.texture } },
+        uniforms: { map: { value: accumRT.texture }, bloom: { value: 0 }, veil: { value: 0 }, grain: { value: GRAIN }, near: { value: halfA.texture }, far: { value: quarterA.texture } },
         vertexShader: VERT,
-        fragmentShader: `uniform sampler2D map; uniform sampler2D near; uniform sampler2D far; uniform float bloom; varying vec2 vUv;
+        fragmentShader: `uniform sampler2D map; uniform sampler2D near; uniform sampler2D far; uniform float bloom; uniform float veil; uniform float grain; varying vec2 vUv;
 void main(){
   vec4 c = texture2D(map, vUv);
   if (bloom > 0.) {
@@ -683,16 +728,32 @@ void main(){
     // (the blue's halo is fainter, the green's a little stronger)
     c.rgb += bloom * halo * mix(1.3, 0.38, haloBlue);
   }
+  // (?xmas: the grey-white veil that the glass's reflections, the halo and the emissive add to every channel is taken off: what is left is the rod's own colour, as saturated as it is, at the same brightness)
+  if (veil > 0.) { float mx = max(c.r, max(c.g, c.b)); float mn = min(c.r, min(c.g, c.b)); float k = smoothstep(0.12, 0.5, (mx - mn) / max(mx, 1e-4)); c.rgb -= mn * veil * k; c.rgb *= mix(1., mix(0.15, 1., k), smoothstep(0.04, 0.2, mx) * (1. - smoothstep(0.2, 0.4, mx))); }
   // A hue-preserving soft clip: a channel past 1 (a busy blue: its blue is far over, its green and red are not) would clip alone and turn the colour pale; the whole colour is brought back so that its brightest channel
   // only just passes 1, and the hue and the saturation stay.
   float m = max(max(c.r, c.g), c.b);
   // A blue light far over 1 (a busy day's rod) is taken toward white as it rises, so the rod is whiter than the blue glass around it (whose reflections and refractions stay under 1); green is left as it is.
   float blueish = smoothstep(0., 0.25, (c.b - c.g) / max(m, 1e-4));
   float hot = smoothstep(1., 3., m);
-  c.rgb = mix(c.rgb, vec3(m), blueish * hot * 0.55);
+  c.rgb = mix(c.rgb, vec3(m), blueish * hot * 0.55 * step(veil, 0.));
   if (m > 1.) c.rgb *= (1. + (m - 1.) * 0.12) / m;
   gl_FragColor = c;
 #include <colorspace_fragment>
+  // Camera grain: a fine, fixed noise over the whole picture, added after the lighting (on what is shown, not in it). It is meant to read as the noise of a good camera, not as rendering noise: soft (the sum of three
+  // uniform numbers, so close to a gaussian and not the harsh specks of a single one), the same for every colour of the picture (it is not gated by brightness: a coloured block gets as much as a grey one), growing with the light (as a sensor's does: the dark glows stay clean) and easing off in the highlights (so that a bright surface does not burn); brightness only, no colour noise.
+  if (grain > 0.) {
+    vec3 q = fract(vec3(gl_FragCoord.xyx) * vec3(.1031, .1030, .0973));
+    q += dot(q, q.yzx + 33.33);
+    vec3 h = fract((q.xxy + q.yzz) * q.zyx);
+    float g = (h.x + h.y + h.z - 1.5) * 0.7;
+    float lum = dot(gl_FragColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+    // (the noise of a sensor grows with the light it gets, as its square root: the dark glows stay clean, the lit surfaces carry the grain)
+    // (and none at all in the near-blacks: in an 8-bit picture a tiny noise there only flips single pixels between two levels, which is a speckle, not a grain)
+    float tone = sqrt(clamp(lum, 0., 1.)) * smoothstep(0.08, 0.3, lum) * (1. - smoothstep(0.7, 1.0, lum) * 0.8);
+    // (a soft rise or loss of brightness, a few per cent, never a dark speck: the colour is scaled, its hue kept, and there is no colour noise)
+    gl_FragColor.rgb *= 1. + g * grain * 5. * tone;
+  }
 }`,
         depthTest: false,
         depthWrite: false,
@@ -750,14 +811,25 @@ void main(){
         camera.updateMatrixWorld();
         const inv = camera.matrixWorldInverse;
         let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
-        for (const cx of [-ROOM.side, width + ROOM.side]) for (const cy of [0, tallest]) for (const cz of [-ROOM.near, total + ROOM.far]) {
+        for (const [cx, cz] of corners(ROOM)) for (const cy of [0, tallest]) {
           const p = new THREE.Vector3(cx, cy, cz).applyMatrix4(inv);
           x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y);
         }
         if (import.meta.env.DEV) el.dataset.fit = ((x1 - x0) / (y1 - y0)).toFixed(3);
         const aspect = w / h;
-        const halfH = Math.max((y1 - y0) / 2, (x1 - x0) / 2 / aspect) * 1.04;
-        const mx = (x0 + x1) / 2;
+        // With strips (a phone) the picture is centred on its rows' centre of gravity (each strip's middle, after `stripShifts` has brought the weight of its blocks there), not on its bounding box: the staggered rows make the box lopsided
+        let gx = (x0 + x1) / 2;
+        if (strips > 1) {
+          const perStrip = Math.ceil(layout.github.weeks / strips);
+          let sum = 0;
+          for (let k = 0; k < strips; k++) {
+            const c = at(k * perStrip + (perStrip - 1) / 2, 3);
+            sum += new THREE.Vector3(c.x, 0, c.z).applyMatrix4(inv).x;
+          }
+          gx = sum / strips;
+        }
+        const halfH = Math.max((y1 - y0) / 2, Math.max(x1 - gx, gx - x0) / aspect) * 1.04;
+        const mx = gx;
         const my = (y0 + y1) / 2;
         camera.left = mx - halfH * aspect;
         camera.right = mx + halfH * aspect;
@@ -768,25 +840,28 @@ void main(){
       };
 
       const frames: number[] = [];
-      const frame = () => cm(frameBody);
-      const frameBody = () => {
+      const frame = () => cm(() => frameBody());
+      // `count` samples are added up before anything is shown (one, when the picture is converging frame by frame; a few at once for an update of the lights, so that the picture never shows its first, rawest samples in a row: that is a shimmer of the whole picture)
+      const frameBody = (count = 1) => {
         raf = 0;
         const f0 = performance.now();
-        // the sun moves on a disc (the soft shadow), the camera a sub-pixel (the anti-aliasing)
-        const a = halton(n, 2) * Math.PI * 2;
-        const r = Math.sqrt(halton(n, 3)) * 9;
-        sun.position.copy(sunBase).add(new THREE.Vector3(Math.cos(a) * r, 0, Math.sin(a) * r)).add(sun.target.position);
-        camera.setViewOffset(w, h, halton(n, 5) - 0.5, halton(n, 7) - 0.5, w, h);
-        renderer.setRenderTarget(sceneRT);
-        renderer.setClearColor(0x000000, 0);
-        renderer.clear();
-        renderer.render(scene, camera);
-        renderer.setRenderTarget(accumRT);
-        renderer.autoClear = false;
-        addMat.blendAlpha = 1 / (n + 1);
-        renderer.render(quadScene, quadCam);
-        renderer.autoClear = true;
-        n++;
+        for (let c = 0; c < count; c++) {
+          // the sun moves on a disc (the soft shadow), the camera a sub-pixel (the anti-aliasing)
+          const a = halton(n, 2) * Math.PI * 2;
+          const r = Math.sqrt(halton(n, 3)) * 9;
+          sun.position.copy(sunBase).add(new THREE.Vector3(Math.cos(a) * r, 0, Math.sin(a) * r)).add(sun.target.position);
+          camera.setViewOffset(w, h, halton(n, 5) - 0.5, halton(n, 7) - 0.5, w, h);
+          renderer.setRenderTarget(sceneRT);
+          renderer.setClearColor(0x000000, 0);
+          renderer.clear();
+          renderer.render(scene, camera);
+          renderer.setRenderTarget(accumRT);
+          renderer.autoClear = false;
+          addMat.blendAlpha = 1 / (n + 1);
+          renderer.render(quadScene, quadCam);
+          renderer.autoClear = true;
+          n++;
+        }
         if (settling && n >= Math.min(10, samples)) sharpen();
         if (showMat.uniforms.bloom!.value > 0) {
           // bright part -> half resolution, blurred twice (near halo); that, blurred again at quarter resolution (far halo)
@@ -815,13 +890,29 @@ void main(){
         n = 0;
         if (!raf) raf = requestAnimationFrame(frame);
       }
+      // (an update of the lights while the picture is otherwise done: `k` samples drawn at once and shown together, then it stops)
+      const burst = (k: number) => {
+        cancelAnimationFrame(raf);
+        raf = 0;
+        n = 0;
+        samplesCap = k;
+        cm(() => frameBody(k));
+      };
 
       // --- the neon start-up of the dark theme (not for those who ask for less motion) ---
       let neon: ReturnType<typeof createNeon> | null = null;
       let neonApplyMs = 0;
       let neonTicks = 0;
       const neonAllowed = () => !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      // (the idle flickers of the neon only when the picture is in view)
+      let inView = true;
+      const viewObserver = typeof IntersectionObserver === "undefined" ? null : new IntersectionObserver((entries) => (inView = entries.some((e) => e.isIntersecting)));
+      viewObserver?.observe(el);
+      // (`?xmas`, dark theme: a faint shake of sleigh bells now and then, started with the picture, stopped with it)
+      let bells: ReturnType<typeof createSleighBells> | null = null;
       const stopNeon = () => {
+        bells?.stop();
+        bells = null;
         neon?.stop();
         neon = null;
         neonStart = null;
@@ -830,7 +921,7 @@ void main(){
         levelTex.needsUpdate = true;
       };
       // the levels as numbers for the shaders: each block's own, and the light that reaches it from the neighbours that are on
-      const uploadLevels = (levels: ArrayLike<number>) => {
+      const uploadLevels = (levels: ArrayLike<number>, idle = false) => {
         for (let i = 0; i < neonNeighbours.length && i < MAX_LEVELS; i++) {
           const nb = neonNeighbours[i]!;
           let on = 0;
@@ -840,31 +931,105 @@ void main(){
             all += nb.m[k]!;
           }
           levelData[i * 2] = levels[i]!;
-          levelData[i * 2 + 1] = all > 0 ? on / all : 1;
+          // (a tube out in a lit sign is a dimmer gap, not a black one: it gets a bit more than half of what its neighbours would give it at the start-up)
+          levelData[i * 2 + 1] = all > 0 ? (idle ? 0.55 * (on / all) + 0.45 * Math.min(1, levels[i]!) : on / all) : 1;
         }
         levelTex.needsUpdate = true;
       };
+      // --- the selected day (dark theme): its blocks glow brighter and the others dim, smoothly, a moment after the pointer has settled on it. It multiplies the neon's levels, so it works with the start-up and the flickers. ---
+      const FOCUS_ON = 1.7;
+      const FOCUS_OFF = 0.42;
+      let focusCtl: { update(levels: ArrayLike<number>): void } | null = null;
+      let focus = new Float32Array(0);
+      let focusTo = new Float32Array(0);
+      let effective = new Float32Array(0);
+      let lastLevels: ArrayLike<number> = new Float32Array(0);
+      let idleLook = false;
+      let focusRaf = 0;
+      let focusTimer = 0;
+      const applyLevels = (levels: ArrayLike<number>) => {
+        lastLevels = levels;
+        const n = neonBlocks.length;
+        if (effective.length !== n) effective = new Float32Array(n).fill(1);
+        for (let i = 0; i < n; i++) effective[i] = levels[i]! * (focus[i] ?? 1);
+        uploadLevels(effective, idleLook);
+        focusCtl?.update(effective);
+      };
+      const stepFocus = () => {
+        focusRaf = 0;
+        let moving = false;
+        for (let i = 0; i < focus.length; i++) {
+          const d = focusTo[i]! - focus[i]!;
+          if (Math.abs(d) > 0.01) {
+            focus[i]! += d * 0.28;
+            moving = true;
+          } else focus[i] = focusTo[i]!;
+        }
+        applyLevels(lastLevels);
+        samplesCap = Math.min(samplesCap, lite ? 2 : 3);
+        restart();
+        if (moving) focusRaf = window.setTimeout(stepFocus, 1000 / (lite ? 20 : 30)) as unknown as number;
+        else {
+          samplesCap = samples;
+          restart();
+        }
+      };
+      // (a debounce: the day is taken a moment after the pointer stops on it, and let go a moment after it leaves)
+      const GHOST = 0.12;
+      const focusOn = (cell: number, ghosts: number[] = []) => {
+        window.clearTimeout(focusTimer);
+        if (!focusCtl) return;
+        focusTimer = window.setTimeout(() => {
+          for (let i = 0; i < focusTo.length; i++) focusTo[i] = cell < 0 ? 1 : neonBlocks[i]!.cell === cell ? FOCUS_ON : ghosts.includes(neonBlocks[i]!.cell) ? GHOST : FOCUS_OFF;
+          window.clearTimeout(focusRaf);
+          stepFocus();
+        }, cell < 0 ? 140 : 70);
+      };
       const prepareNeon = () => {
         stopNeon();
-        if (!isDark() || !neonAllowed() || !stampCtl || neonBlocks.length === 0 || neonBlocks.length > MAX_LEVELS) return;
+        // (`onLit`: whether the picture is lit, for the page's greeting: not while the start-up runs, always when there is none)
+        onLit?.(false);
+        window.clearTimeout(focusTimer);
+        window.clearTimeout(focusRaf);
+        focusCtl = isDark() && stampCtl && neonBlocks.length > 0 && neonBlocks.length <= MAX_LEVELS ? stampCtl : null;
+        focus = new Float32Array(neonBlocks.length).fill(1);
+        focusTo = new Float32Array(neonBlocks.length).fill(1);
+        effective = new Float32Array(neonBlocks.length).fill(1);
+        lastLevels = new Float32Array(neonBlocks.length).fill(1);
+        idleLook = false;
+        if (focusCtl) applyLevels(lastLevels);
+        if (!isDark() || !neonAllowed() || !stampCtl || neonBlocks.length === 0 || neonBlocks.length > MAX_LEVELS) return void onLit?.(true);
         const ctl = stampCtl;
         neonApplyMs = 0;
         neonTicks = 0;
         neon = createNeon({
           blocks: neonBlocks,
           sound: true,
+          canPlay: () => inView,
           // (a weak device, a phone: half the updates, so half the redraws of the picture while the lights flicker)
           fps: lite ? 10 : 20,
-          apply: (levels) => {
+          // (the wobble is redrawn more often than the flickers: 40 a second, 15 on a weak device)
+          wobbleFps: lite ? 15 : 40,
+          apply: (levels, idle) => {
             const a0 = performance.now();
-            uploadLevels(levels);
-            ctl.update(levels);
+            idleLook = !!idle;
+            applyLevels(levels);
             neonApplyMs += performance.now() - a0;
             neonTicks++;
-            samplesCap = lite ? 2 : 3;
-            restart();
+            if (import.meta.env.DEV) {
+              let mn = 1;
+              let sum = 0;
+              for (let q = 0; q < levels.length; q++) {
+                mn = Math.min(mn, levels[q]!);
+                sum += levels[q]!;
+              }
+              el.dataset.neonMin = mn.toFixed(2);
+              el.dataset.neonMean = (sum / levels.length).toFixed(3);
+            }
+            burst(lite ? 2 : 3);
           },
           done: () => {
+            onLit?.(true);
             samplesCap = samples;
             restart();
             if (import.meta.env.DEV) {
@@ -875,12 +1040,17 @@ void main(){
             }
           },
         });
+        if (xmasOn()) {
+          bells = createSleighBells({ canPlay: () => inView });
+          // (the recording is fetched at once, so that it is ready when the start-up begins)
+          bells.load();
+        }
         if (import.meta.env.DEV) el.dataset.neonRods = String(neon.count);
         // (the flickering rods are off from the first frame: the picture is not seen before it starts)
-        uploadLevels(neon.levels);
-        ctl.update(neon.levels);
+        applyLevels(neon.levels);
         neonStart = () => {
           frames.length = 0;
+          bells?.start();
           neon?.start();
         };
         // (development only, `?neonhold`: the start-up never begins, and the picture is held half on, half off, to look at it with rods off)
@@ -902,15 +1072,15 @@ void main(){
       let pinned = false;
       const cells = layout.github.cells;
       const topOf = (cell: number) => picks.filter((b) => b.cell === cell).reduce((m, b) => Math.max(m, b.y1), 0);
-      const pick = (cx: number, cy: number) => {
+      // every day under the point, the nearest first (a day behind a taller one is under the same point: it is reached by cycling through these)
+      const pickAll = (cx: number, cy: number) => {
         const r = dom.getBoundingClientRect();
         ndc.set(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1);
         camera.updateMatrixWorld();
         ray.setFromCamera(ndc, camera);
         const o = ray.ray.origin;
         const d = ray.ray.direction;
-        let best = Infinity;
-        let cell = -1;
+        const hits = new Map<number, number>();
         for (const b of picks) {
           // the ray against the box (the slab method)
           let t0 = -Infinity;
@@ -925,12 +1095,9 @@ void main(){
             t0 = Math.max(t0, Math.min(a, c));
             t1 = Math.min(t1, Math.max(a, c));
           }
-          if (t0 <= t1 && t0 < best) {
-            best = t0;
-            cell = b.cell;
-          }
+          if (t0 <= t1 && t0 < (hits.get(b.cell) ?? Infinity)) hits.set(b.cell, t0);
         }
-        return cell;
+        return [...hits.entries()].sort((x, y) => x[1] - y[1]).map(([cell]) => cell);
       };
       const toCss = (v: import("three").Vector3) => {
         const p = v.clone().project(camera);
@@ -951,7 +1118,7 @@ void main(){
         }
         return [...lower.slice(0, -1), ...upper.slice(0, -1)];
       };
-      // The outline is always 24 points along the silhouette from its top-most one, so that the outline of one day can glide into the next one's (a path with the same number of points is interpolated by the browser)
+      // The outline is always 64 points along the silhouette from its top-most one, so that the outline of one day can glide into the next one's (a path with the same number of points is interpolated by the browser)
       const resample = (poly: { x: number; y: number }[], n: number) => {
         let start = 0;
         poly.forEach((p, i) => {
@@ -973,31 +1140,85 @@ void main(){
         }
         return out;
       };
-      const announce = (cell: number) => {
+      // (days behind one another under the pointer: the stack, where the pointer was when it was made, and whether the visitor is cycling through it)
+      let stack: number[] = [];
+      let stackAt = { x: 0, y: 0 };
+      let cycling = false;
+      const announce = (cell: number, behind?: { index: number; count: number }) => {
         current = cell;
+        // (the days in front of the one looked at are ghosts: it is seen through them)
+        focusOn(cell, behind ? stack.slice(0, behind.index) : []);
         if (cell < 0 || !onHover) return onHover?.(null);
         const g = cells[cell]!;
         const { x, z } = at(g.week, g.day);
         const top = topOf(cell);
+        // The silhouette of the day's rounded blocks: each block is a rounded box (corner radius `r`, as built), so its outline is that of its eight corner spheres, which the (orthographic) camera sees as circles of the same size; the hull of
+        // them is the outline, with the rounded corners and no flat bevels.
+        camera.updateMatrixWorld();
+        const right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0);
+        const origin = toCss(new THREE.Vector3(x, 0, z));
+        const unit = Math.hypot(toCss(new THREE.Vector3(x, 0, z).add(right)).x - origin.x, toCss(new THREE.Vector3(x, 0, z).add(right)).y - origin.y);
         const corners: { x: number; y: number }[] = [];
-        for (const dx of [-0.46, 0.46]) for (const dz of [-0.46, 0.46]) for (const y of [0, top]) corners.push(toCss(new THREE.Vector3(x + dx, y, z + dz)));
+        for (const b of picks) {
+          if (b.cell !== cell) continue;
+          const r = Math.min(0.16, (b.y1 - b.y0) / 2.2);
+          for (const dx of [-1, 1]) for (const dz of [-1, 1]) for (const y of [b.y0 + r, b.y1 - r]) {
+            const p = toCss(new THREE.Vector3(x + dx * (0.46 - r), y, z + dz * (0.46 - r)));
+            for (let k = 0; k < 10; k++) corners.push({ x: p.x + r * unit * Math.cos((k / 10) * Math.PI * 2), y: p.y + r * unit * Math.sin((k / 10) * Math.PI * 2) });
+          }
+        }
         const c = toCss(new THREE.Vector3(x, top, z));
-        onHover({ date: g.date, contributions: g.value, hours: layout.wakatime.cells[cell]?.value ?? 0, outline: resample(hull(corners), 24).map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" "), x: c.x, y: c.y });
+        onHover({ date: g.date, contributions: g.value, hours: layout.wakatime.cells[cell]?.value ?? 0, outline: resample(hull(corners), 64).map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" "), x: c.x, y: c.y, behind });
       };
       const onMove = (e: PointerEvent) => {
-        if (e.pointerType === "touch" || pinned || settling) return;
-        const cell = pick(e.clientX, e.clientY);
-        if (cell !== current) announce(cell);
+        if (e.pointerType === "touch" || settling) return;
+        // (cycling holds the selection until the pointer moves away from where it was clicked)
+        if (cycling && Math.hypot(e.clientX - stackAt.x, e.clientY - stackAt.y) > 8) {
+          cycling = false;
+          pinned = false;
+        }
+        if (pinned) return;
+        const here = pickAll(e.clientX, e.clientY);
+        const cell = here[0] ?? -1;
+        if (cell !== current) {
+          stack = here;
+          stackAt = { x: e.clientX, y: e.clientY };
+          announce(cell, here.length > 1 ? { index: 0, count: here.length } : undefined);
+        }
       };
       const onLeave = () => {
         if (!pinned && current !== -1) announce(-1);
       };
       // (a tap on a phone pins a day; a second tap on it, or on nothing, lets it go)
       const onDown = (e: PointerEvent) => {
-        if (e.pointerType !== "touch" || settling) return;
-        const cell = pick(e.clientX, e.clientY);
+        if (settling) return;
+        const here = pickAll(e.clientX, e.clientY);
+        const sameSpot = Math.hypot(e.clientX - stackAt.x, e.clientY - stackAt.y) <= 8 && stack.length > 1;
+        if (e.pointerType !== "touch") {
+          // (a click on days that are behind one another: the next one behind; after the last, the nearest again)
+          if (here.length < 2) return;
+          if (!sameSpot || !stack.includes(current)) {
+            stack = here;
+            stackAt = { x: e.clientX, y: e.clientY };
+          }
+          const next = (Math.max(0, stack.indexOf(current)) + 1) % stack.length;
+          cycling = true;
+          pinned = true;
+          announce(stack[next]!, { index: next, count: stack.length });
+          return;
+        }
+        // (a tap pins a day; a tap on the same spot goes to the next one behind it, and after the last lets go; a tap elsewhere pins that spot's nearest)
+        if (pinned && sameSpot && current >= 0) {
+          const next = stack.indexOf(current) + 1;
+          if (next < stack.length) return announce(stack[next]!, { index: next, count: stack.length });
+          pinned = false;
+          return announce(-1);
+        }
+        const cell = here[0] ?? -1;
+        stack = here;
+        stackAt = { x: e.clientX, y: e.clientY };
         pinned = cell !== -1 && cell !== current;
-        announce(pinned ? cell : -1);
+        announce(pinned ? cell : -1, pinned && here.length > 1 ? { index: 0, count: here.length } : undefined);
       };
       // (the keys: the arrows walk the days, Escape lets go)
       const onKey = (e: KeyboardEvent) => {
@@ -1056,6 +1277,8 @@ void main(){
 
       stop = () => {
         stopNeon();
+        window.clearTimeout(focusTimer);
+        window.clearTimeout(focusRaf);
         cancelAnimationFrame(raf);
         window.clearTimeout(resizeTimer);
         dom.removeEventListener("pointermove", onMove);
@@ -1075,6 +1298,7 @@ void main(){
         coreMaterial.dispose();
         glowMaterial.dispose();
         levelTex.dispose();
+        viewObserver?.disconnect();
         templates?.texture.dispose();
         tileUnlit.dispose();
         sceneRT.dispose();
