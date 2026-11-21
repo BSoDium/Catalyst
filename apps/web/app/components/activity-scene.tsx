@@ -235,8 +235,8 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
       const xmasHue = (cell: number, src: "waka" | "github", t: number) => {
         const h = Math.imul(cell + 1, 2654435761) ^ Math.imul(src === "waka" ? 97 : 13, 40503);
         const pick = ((h >>> 7) % XMAS.length + XMAS.length) % XMAS.length;
-        // (the warm whites have almost no chroma, so the final pass reads them as grey glass and dims them: they are given the light to come out as bright as the colours)
-        return XMAS[pick]!.clone().multiplyScalar((0.3 + 0.7 * t) * (pick === 2 || pick === 4 ? 2.5 : 1));
+        // (the whites have almost no chroma: the final pass leaves the bright ones alone, so they need no extra light, which would also be cast on the ground)
+        return XMAS[pick]!.clone().multiplyScalar((0.3 + 0.7 * t));
       };
       const groundLayers = (stack: { waka: Matrix; github: Matrix }, tones: { waka: [Color, Color]; github: [Color, Color] }, dark: boolean) => {
         const cw = Math.ceil((width + GLOW_PAD * 2) * PX);
@@ -698,7 +698,7 @@ void main(){
     c.rgb += bloom * halo * mix(1.3, 0.38, haloBlue);
   }
   // (?xmas: the grey-white veil that the glass's reflections, the halo and the emissive add to every channel is taken off: what is left is the rod's own colour, as saturated as it is, at the same brightness)
-  if (veil > 0.) { float mx = max(c.r, max(c.g, c.b)); float mn = min(c.r, min(c.g, c.b)); float k = smoothstep(0.12, 0.5, (mx - mn) / max(mx, 1e-4)); c.rgb -= mn * veil * k; c.rgb *= mix(1., mix(0.4, 1., k), smoothstep(0.04, 0.2, mx)); }
+  if (veil > 0.) { float mx = max(c.r, max(c.g, c.b)); float mn = min(c.r, min(c.g, c.b)); float k = smoothstep(0.12, 0.5, (mx - mn) / max(mx, 1e-4)); c.rgb -= mn * veil * k; c.rgb *= mix(1., mix(0.4, 1., k), smoothstep(0.04, 0.2, mx) * (1. - smoothstep(0.45, 0.8, mx))); }
   // A hue-preserving soft clip: a channel past 1 (a busy blue: its blue is far over, its green and red are not) would clip alone and turn the colour pale; the whole colour is brought back so that its brightest channel
   // only just passes 1, and the hue and the saturation stay.
   float m = max(max(c.r, c.g), c.b);
