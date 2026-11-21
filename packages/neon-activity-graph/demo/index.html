@@ -75,8 +75,8 @@
       .about .for { display: block; margin-top: 0.6em; font-size: 0.92em; color: var(--muted); }
       .about a { pointer-events: auto; color: var(--fg); text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; text-decoration-color: var(--cyan); }
       .about a:hover { text-decoration-color: var(--magenta); }
-      /* (the two small texts of the corner, the links and the state of the data, are one block: one above the other, on the same side) */
-      #live { margin: 0; padding: 0; color: var(--muted); font: 400 10.5px / 1.3 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; pointer-events: none; }
+      /* (the state of the data at the bottom left, the links at the bottom right; where they would not fit on a line (a phone, a portrait screen) they are one block, one above the other, on the same side: see below) */
+      #live { position: fixed; left: max(14px, env(safe-area-inset-left)); bottom: max(14px, env(safe-area-inset-bottom)); z-index: 8; margin: 0; padding: 0; color: var(--muted); font: 400 10.5px / 1.3 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; pointer-events: none; }
       .sub-unused { margin: 0; color: var(--muted); font: 400 clamp(10.5px, 0.8cqi, 13px) / 1.4 var(--mono); letter-spacing: 0.04em; text-transform: uppercase; }
       .legend { display: flex; flex-direction: column; gap: 0.35em; margin: 0.3em 0 0.9em; font: 400 clamp(11px, 0.85cqi, 14px) / 1.3 var(--mono); letter-spacing: 0.04em; text-transform: uppercase; }
       .legend span { display: inline-flex; align-items: center; gap: 8px; }
@@ -136,6 +136,7 @@
         h1 { font-size: clamp(30px, 8.4vw, 64px); }
         .about { font-size: clamp(15px, 2.1vw, 19px); } .legend { font-size: clamp(12px, 1.6vw, 14px); margin: 0.8em 0 0; }
         /* the corner is the last block of the page, at the left, under the graph: the links, then the state of the data; the panels they open come over the page above it */
+        #live { position: static; }
         .corner { position: static; flex-direction: column-reverse; align-items: flex-start; gap: 6px; padding: 4px 22px max(14px, env(safe-area-inset-bottom)); }
         .links { justify-content: flex-start; }
         .panel { position: fixed; left: 12px; right: 12px; bottom: 84px; width: auto; max-height: calc(100svh - 110px); overflow: auto; }
