@@ -968,24 +968,27 @@ void main(){
       const frames: number[] = [];
       const frame = () => cm(() => frameBody());
       // `count` samples are added up before anything is shown (one, when the picture is converging frame by frame; a few at once for an update of the lights, so that the picture never shows its first, rawest samples in a row: that is a shimmer of the whole picture)
+      // (`blendFloor`: the least weight a new sample has in the picture; `jitter`: where the sun and the camera are in their sequences, which goes on at every light update, so that the samples of an update are not the same few again)
+      let blendFloor = 0;
+      let jitter = 0;
       const frameBody = (count = 1) => {
         raf = 0;
         const f0 = performance.now();
         for (let c = 0; c < count; c++) {
           // the sun moves on a disc (the soft shadow), the camera a sub-pixel (the anti-aliasing)
-          const a = halton(n, 2) * Math.PI * 2;
-          const r = Math.sqrt(halton(n, 3)) * 9;
+          const a = halton(n + jitter, 2) * Math.PI * 2;
+          const r = Math.sqrt(halton(n + jitter, 3)) * 9;
           // (a running count, not the sample's number in the picture, which starts again at 0 at every update of the lights: the dither would be the same pattern at every frame of the hover's fade; consecutive samples step by the golden ratio, so that even two or three of them are spread evenly over the opacity)
           rodSeed.value = rodCount++;
           sun.position.copy(sunBase).add(new THREE.Vector3(Math.cos(a) * r, 0, Math.sin(a) * r)).add(sun.target.position);
-          camera.setViewOffset(w, h, halton(n, 5) - 0.5, halton(n, 7) - 0.5, w, h);
+          camera.setViewOffset(w, h, halton(n + jitter, 5) - 0.5, halton(n + jitter, 7) - 0.5, w, h);
           renderer.setRenderTarget(sceneRT);
           renderer.setClearColor(0x000000, 0);
           renderer.clear();
           renderer.render(scene, camera);
           renderer.setRenderTarget(accumRT);
           renderer.autoClear = false;
-          addMat.blendAlpha = 1 / (n + 1);
+          addMat.blendAlpha = Math.max(1 / (n + 1), blendFloor);
           renderer.render(quadScene, quadCam);
           renderer.autoClear = true;
           n++;
@@ -1020,12 +1023,17 @@ void main(){
         if (!raf) raf = requestAnimationFrame(frame);
       }
       // (an update of the lights while the picture is otherwise done: `k` samples drawn at once and shown together, then it stops)
-      const burst = (k: number) => {
+      // An update of the lights, drawn as ONE sample blended into the picture (a running average, the new sample weighing at least `floor`): the camera does not move, so the last picture is a good start for the next, and the noise of the one sample
+      // is averaged with the few before it, where `burst` drew several at once from nothing. A fifth of the cost of five samples, with the light changes a few frames late. `n` is kept low, so that the picture can go on to the full number from here.
+      const ema = (floor = 0.3) => {
         cancelAnimationFrame(raf);
         raf = 0;
-        n = 0;
-        samplesCap = k;
-        cm(() => frameBody(k));
+        n = Math.min(n, 6);
+        jitter += 1;
+        samplesCap = 0;
+        blendFloor = floor;
+        cm(() => frameBody(1));
+        blendFloor = 0;
       };
 
       // --- the neon start-up of the dark theme (not for those who ask for less motion) ---
@@ -1112,7 +1120,7 @@ void main(){
         applyLevels(lastLevels);
         humLevel();
         // (each step of the fade is drawn from a few samples at once and shown together, not sample by sample: the first of a restart, alone, is the noisiest picture there is)
-        burst(lite ? 2 : 5);
+        ema(lite ? 0.45 : 0.3);
         if (moving) focusRaf = window.setTimeout(stepFocus, 1000 / (lite ? 20 : 30)) as unknown as number;
         else {
           // (the fade is over: the picture goes on from the samples it has, up to the full number, it does not start again from one)
@@ -1174,13 +1182,14 @@ void main(){
               el.dataset.neonMin = mn.toFixed(2);
               el.dataset.neonMean = (sum / levels.length).toFixed(3);
             }
-            burst(lite ? 2 : 3);
+            ema(lite ? 0.45 : 0.3);
           },
           done: () => {
             humOk = true;
             onLit?.(true);
+            // (the picture goes on from the samples it has to the full number: it does not start again from one, the noisiest picture there is)
             samplesCap = samples;
-            restart();
+            if (!raf) raf = requestAnimationFrame(frame);
             if (dbg.metrics) {
               el.dataset.neonTicks = String(neonTicks);
               el.dataset.neonApplyMs = (neonApplyMs / Math.max(1, neonTicks)).toFixed(2);
