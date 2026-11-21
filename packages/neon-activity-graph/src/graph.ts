@@ -216,6 +216,10 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       const NEIGHBOUR_GLOW = 0.22;
       /** How much light behind a block it takes to light its glass most of the way (the share is `1 - e^-(light behind / this)`). */
       const BEHIND_SCALE = 1.6;
+      /** How far the neighbours' light is tinted by the block's own colour, 0 to 1. */
+      const GLOW_TINT = 0.75;
+      /** (dark) the least a green rod gives out, in the units of `emit(t) * (1 + 1.1 t)` (0.5 for the quietest day, about 3 for the busiest): a quiet green day still shows green, even over a bright blue block, whose light would otherwise be most of what lights it. */
+      const GREEN_MIN_LEVEL = 1.1;
       const DARK_GLASS_ROUGHNESS = 0.04;
       const OFF_EMISSIVE = 0.0012;
       const OFF_ENV = 0.004;
@@ -558,7 +562,7 @@ void main() {
         const glowOf = new Map<(typeof specs)[number], number>();
         if (dark) {
           const bright = specs.map((q) => {
-            const lv = emit(q.t) * (1 + 1.1 * q.t);
+            const lv = Math.max(emit(q.t) * (1 + 1.1 * q.t), q.src === "top" ? GREEN_MIN_LEVEL : 0);
             const r = customOn() ? q.hue.clone().multiplyScalar(lv * 0.55) : rodLight(q.src, q.hue, q.t, lv);
             return Math.max(r.r, r.g, r.b);
           });
@@ -608,7 +612,12 @@ void main() {
           shell.setAttribute("aBlock", new THREE.BufferAttribute(new Float32Array(shell.getAttribute("position").count).fill(blockIndex), 1));
           // (the light of the neighbours, for the glass to glow with: see `NEIGHBOUR_GLOW`; only where there are lamps BEHIND the glass as the camera sees it, and none against a dark background, or the glass would look opaque and washed out)
           const nbShare = glowOf.get(sp) ?? 0;
-          shell.setAttribute("aInc", new THREE.BufferAttribute(Float32Array.from({ length: shell.getAttribute("position").count * 3 }, (_, k) => [inc.r, inc.g, inc.b][k % 3]! * nbShare), 3));
+          // (the light that comes from the neighbours is tinted by the block's own colour, as it passes the gas: a green block lit by a white or blue one is lit green: full 1 is the block's colour as it is, 0 the neighbours' light as it is)
+          const glowTint = (() => {
+            const m = Math.max(hue0.r, hue0.g, hue0.b, 1e-3);
+            return new THREE.Color(1, 1, 1).lerp(new THREE.Color(hue0.r / m, hue0.g / m, hue0.b / m), GLOW_TINT);
+          })();
+          shell.setAttribute("aInc", new THREE.BufferAttribute(Float32Array.from({ length: shell.getAttribute("position").count * 3 }, (_, k) => [inc.r * glowTint.r, inc.g * glowTint.g, inc.b * glowTint.b][k % 3]! * nbShare), 3));
           // the glass of a busy day glows on its own surface too (dark theme): three steps of emission per source, each its own material
           const tier = tEff < 0.34 ? 0 : tEff < 0.67 ? 1 : 2;
           const key = `${src}${tier}`;
@@ -624,7 +633,7 @@ void main() {
           core.translate(x, y0 + h / 2, z);
           // A blue rod gets its brightness from light added to all three channels (not from more of the same blue, which only makes it bluer and more glowing): a brighter rod is a lighter, clearer blue, not a whiter one
           // (its hue is kept: the blue channel is the hue's own and the red and green rise with the busyness).
-          const level = emit(t) * (1 + 1.1 * t);
+          const level = Math.max(emit(t) * (1 + 1.1 * t), src === "top" ? GREEN_MIN_LEVEL : 0);
           const rod = dark && customOn() ? hue0.clone().multiplyScalar(level * 0.55 * (Math.max(hue0.r, hue0.g, hue0.b) - Math.min(hue0.r, hue0.g, hue0.b) < 0.15 * Math.max(hue0.r, hue0.g, hue0.b) ? WHITE_ROD : 1)) : dark ? rodLight(src, hue, t, level) : hue;
           paint(core, dark ? rod.clone().multiplyScalar(shadeOf.get(sp) ?? 1) : hue);
           // (the light of the blocks around that reaches this rod when its own is off, on its own attribute: the shader adds it, as much as the neighbours that are on give)
