@@ -238,6 +238,10 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       // (`alphaHash`: a rod that is almost off is almost not there: it is dithered away, and the picture's many samples average the dither out)
       // (a rod's translucency is its colour scaled by its opacity: it is the light it gives out, so that a dim rod is a dim light, with no dither, no noise)
       // (dark) a rod is an emitter, not an absorber: it is drawn ADDITIVELY (`transparent` stays false, so that it is in the opaque pass the glass sees, and three.js still blends it additively): it adds its light to what is behind it and takes none away, so a dim rod is a faint light over whatever is lit there and an off rod is not there at all
+      /** (dark) a rod's brightest channel is compressed above `ROD_KNEE` towards `ROD_MAX` (any hue), and whitened by up to `ROD_WHITE` where it is brightest. */
+      const ROD_KNEE = 0.7;
+      const ROD_MAX = 1.5;
+      const ROD_WHITE = 0.35;
       const glowMaterial = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false, blending: THREE.AdditiveBlending, depthWrite: false });
       /** (dark) how much of the ground's light the glass shows, 1 at rest, lower when the lights are dimmed (see `applyLevels`): shared with the backdrop's shader. */
       const backdropDim = { value: 1 };
@@ -280,7 +284,7 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
           .replace("#include <begin_vertex>", "#include <begin_vertex>\n  transformed.xz = aCtr + (transformed.xz - aCtr) * mix(0.6, 1.0, smoothstep(0.0, 2.5, rodB));");
         shader.fragmentShader = shader.fragmentShader
           .replace("#include <common>", "#include <common>\nvarying float vRodA;")
-          .replace("#include <color_fragment>", "#include <color_fragment>\n  diffuseColor.rgb *= vRodA;");
+          .replace("#include <color_fragment>", "#include <color_fragment>\n  diffuseColor.rgb *= vRodA;\n  // (a very bright rod is not a flat blob of its colour: above the knee its level is compressed, whatever its hue, and what is left of it is whitened a little, as a real light too bright for the eye or the film turns to a hot white core with the colour round it; the faces' shading survives, as a smaller difference)\n  float rm = max(diffuseColor.r, max(diffuseColor.g, diffuseColor.b));\n  if (rm > " + ROD_KNEE.toFixed(2) + ") {\n    float rc = " + ROD_KNEE.toFixed(2) + " + " + (ROD_MAX - ROD_KNEE).toFixed(2) + " * tanh((rm - " + ROD_KNEE.toFixed(2) + ") / " + (ROD_MAX - ROD_KNEE).toFixed(2) + ");\n    diffuseColor.rgb = mix(diffuseColor.rgb * (rc / rm), vec3(rc), " + ROD_WHITE.toFixed(2) + " * smoothstep(" + ROD_KNEE.toFixed(2) + ", 3.0, rm));\n  }");
       };
       glowMaterial.customProgramCacheKey = () => "rod-levels";
       // `shade` (dark theme): the faces of a block are not all lit alike, as if the light were from above and to the left of the camera, and a block is brighter toward its top: its top is the brightest face, then the side that
