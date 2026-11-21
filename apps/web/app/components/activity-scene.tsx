@@ -119,7 +119,7 @@ export function ActivityScene({ activity, strips = 1, onReady, onLit, onHover, c
       const GRAIN = (() => {
         // (`?grain=0.01` sets it from the address, `?grain=0` turns it off: to find the strength that suits a screen)
         const q = Number(new URLSearchParams(window.location.search).get("grain"));
-        return new URLSearchParams(window.location.search).has("grain") && Number.isFinite(q) ? Math.min(0.2, Math.max(0, q)) : 0.004;
+        return new URLSearchParams(window.location.search).has("grain") && Number.isFinite(q) ? Math.min(0.2, Math.max(0, q)) : 0.006;
       })();
       /** (light theme) how strong the room's reflections (environment) and the clear coat's are, relative to what comes through the glass. */
       const LIGHT_ENV = 0.85;
