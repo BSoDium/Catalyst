@@ -517,7 +517,7 @@ void main() {
             mat.transparent = true;
             mat.opacity = 0.9;
           }
-          mat.emissive.copy(xmas ? new THREE.Color(0xffffff) : tones[src][1]);
+          mat.emissive.copy(xmas ? new THREE.Color(0x000000) : tones[src][1]);
           // (dark) the glass absorbs what is not its own colour as the light goes through it: a green block lets a blue rod behind it show only dimly, and the other way round
           if (dark) {
             mat.attenuationColor.copy(xmas ? new THREE.Color(0xffffff) : tones[src][1]);
@@ -694,7 +694,7 @@ void main(){
     c.rgb += bloom * halo * mix(1.3, 0.38, haloBlue);
   }
   // (?xmas: the grey-white veil that the glass's reflections, the halo and the emissive add to every channel is taken off: what is left is the rod's own colour, as saturated as it is, at the same brightness)
-  if (veil > 0.) { float mx = max(c.r, max(c.g, c.b)); float mn = min(c.r, min(c.g, c.b)); c.rgb -= mn * veil * smoothstep(0.12, 0.5, (mx - mn) / max(mx, 1e-4)); }
+  if (veil > 0.) { float mx = max(c.r, max(c.g, c.b)); float mn = min(c.r, min(c.g, c.b)); float k = smoothstep(0.12, 0.5, (mx - mn) / max(mx, 1e-4)); c.rgb -= mn * veil * k; c.rgb *= mix(0.4, 1., k); }
   // A hue-preserving soft clip: a channel past 1 (a busy blue: its blue is far over, its green and red are not) would clip alone and turn the colour pale; the whole colour is brought back so that its brightest channel
   // only just passes 1, and the hue and the saturation stay.
   float m = max(max(c.r, c.g), c.b);
