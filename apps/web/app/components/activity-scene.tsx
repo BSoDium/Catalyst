@@ -228,7 +228,9 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
       let stampCtl: { update(levels: ArrayLike<number>): void } | null = null;
       // `?xmas`, an Easter egg (a demo, not on by default): every rod is one of a string of lights, in the warm colours of a tree's (red, green, gold, blue, pink; saturated), the same for a day each time. The colour is the day's and its
       // brightness is the activity, as ever; the glass is left clear so that the rod's colour is what is seen, and the baked light on the ground takes the rod's colour like any other.
-      const xmas = new URLSearchParams(window.location.search).has("xmas");
+      const xmasParam = new URLSearchParams(window.location.search).has("xmas");
+      // (the dark theme only: the glass of the light theme, lit by the sun, does not take the white lights, and the scene is rebuilt when the theme changes)
+      const xmasOn = () => xmasParam && isDark();
       const XMAS = ["#ff0a0a", "#00e03c", "#f4f7ff", "#ffa600", "#f4f7ff", "#1a3cff", "#ff0a0a", "#00e03c"].map((c) => new THREE.Color(c));
       const xmasHue = (cell: number, src: "waka" | "github", t: number) => {
         const h = Math.imul(cell + 1, 2654435761) ^ Math.imul(src === "waka" ? 97 : 13, 40503);
@@ -281,9 +283,9 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
           let top = 0;
           const add = (src: "waka" | "github", y0: number, y1: number, t: number, [low, high]: [Color, Color], gain: number) => {
             const hy = (y1 - y0) / 2;
-            const hue = xmas ? xmasHue(i, src, t) : low.clone().lerp(high, t);
+            const hue = xmasOn() ? xmasHue(i, src, t) : low.clone().lerp(high, t);
             // (dark) the light is the rod's, and the rod is near white where it is busy: its own chroma (as drawn, see `build`), normalised, the strength being `power`; (light) the colour of the glass
-            const rod = xmas
+            const rod = xmasOn()
               ? hue.clone().add(new THREE.Color(0.3, 0.27, 0.2).multiplyScalar(t))
               : src === "waka"
                 ? hue.clone().multiplyScalar(0.5).add(new THREE.Color(0.4, 0.56, 0.6).multiplyScalar(0.38 + 0.98 * t))
@@ -421,7 +423,7 @@ void main() {
         const layer = (cell: number, src: "waka" | "github", x: number, z: number, y0: number, t: number, [low, high]: [Color, Color]) => {
           const h = 0.18 + t * LAYER_MAX;
           picks.push({ cell, x, z, y0, y1: y0 + h });
-          specs.push({ src, x, z, y0, h, t, hue: xmas ? xmasHue(cell, src, t) : low.clone().lerp(high, t) });
+          specs.push({ src, x, z, y0, h, t, hue: xmasOn() ? xmasHue(cell, src, t) : low.clone().lerp(high, t) });
           tallest = Math.max(tallest, y0 + h);
           return y0 + h;
         };
@@ -490,7 +492,7 @@ void main() {
           // A blue rod gets its brightness from light added to all three channels (not from more of the same blue, which only makes it bluer and more glowing): a brighter rod is a lighter, clearer blue, not a whiter one
           // (its hue is kept: the blue channel is the hue's own and the red and green rise with the busyness).
           const level = emit(t) * (1 + 1.1 * t);
-          const rod = dark && xmas ? hue.clone().multiplyScalar(level * 0.55) : dark && src === "waka" ? hue.clone().multiplyScalar(level * 0.5).add(new THREE.Color(0.4, 0.56, 0.6).multiplyScalar(level * (0.38 + 0.98 * t))) : dark ? hue.clone().multiplyScalar(level * 1.25).add(new THREE.Color(0.22, 0.4, 0.24).multiplyScalar(level * (0.15 + 0.7 * t))) : hue;
+          const rod = dark && xmasOn() ? hue.clone().multiplyScalar(level * 0.55) : dark && src === "waka" ? hue.clone().multiplyScalar(level * 0.5).add(new THREE.Color(0.4, 0.56, 0.6).multiplyScalar(level * (0.38 + 0.98 * t))) : dark ? hue.clone().multiplyScalar(level * 1.25).add(new THREE.Color(0.22, 0.4, 0.24).multiplyScalar(level * (0.15 + 0.7 * t))) : hue;
           paint(core, dark ? rod : hue);
           // (the light of the blocks around that reaches this rod when its own is off, on its own attribute: the shader adds it, as much as the neighbours that are on give)
           {
@@ -519,14 +521,14 @@ void main() {
             mat.transparent = true;
             mat.opacity = 0.9;
           }
-          mat.emissive.copy(xmas ? new THREE.Color(0x000000) : tones[src][1]);
+          mat.emissive.copy(xmasOn() ? new THREE.Color(0x000000) : tones[src][1]);
           // (dark) the glass absorbs what is not its own colour as the light goes through it: a green block lets a blue rod behind it show only dimly, and the other way round
           if (dark) {
-            mat.attenuationColor.copy(xmas ? new THREE.Color(0xffffff) : tones[src][1]);
+            mat.attenuationColor.copy(xmasOn() ? new THREE.Color(0xffffff) : tones[src][1]);
             // (the blue glass absorbs less: a rod that is meant to be near white would otherwise be seen through a blue filter and come out saturated)
             mat.attenuationDistance = src === "waka" ? 3.6 : 2.2;
             // A green filter passes green and stops the rest: blue light behind it is not turned into green, it is nearly all absorbed (what comes through is a few percent, not a green of the same brightness).
-            if (src === "github" && !xmas) {
+            if (src === "github" && !xmasOn()) {
               mat.attenuationColor.r *= 0.2;
               mat.attenuationColor.b *= 0.15;
               mat.attenuationDistance = 1.6;
@@ -575,8 +577,8 @@ void main() {
       scene.add(blocks);
       const ground0 = () => ((ground.material as import("three").ShadowMaterial).opacity = isDark() ? 0 : 0.05);
       const buildBlocks = () => {
-        showMat.uniforms.bloom!.value = isDark() ? (xmas ? 0.4 : 1) : 0;
-        showMat.uniforms.veil!.value = xmas && isDark() ? 0.75 : 0;
+        showMat.uniforms.bloom!.value = isDark() ? (xmasOn() ? 0.4 : 1) : 0;
+        showMat.uniforms.veil!.value = xmasOn() ? 0.75 : 0;
         // night: no sun and no room, the only light is what the days give out
         scene.environmentIntensity = isDark() ? 0 : 0.9;
         sun.intensity = isDark() ? 0 : 2.2;
