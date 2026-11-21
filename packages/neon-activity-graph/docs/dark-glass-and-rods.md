@@ -82,7 +82,7 @@ An empty day is a soft square **pit** dug in the ground (`graph.ts`, `tileShape`
 
 ## Light theme: clear glass, a soft core, coloured shadows
 
-- The glass is perfectly clear (roughness 0.04, its tint mixed 40 % toward white: `LIGHT_SHELL_WHITE`) with faint reflections (`LIGHT_ENV` 0.3, `LIGHT_COAT` 0.1, `LIGHT_SPECULAR` 0.35) so the refraction and the caustics are what is seen.
+- The glass is perfectly clear (roughness 0.04, its tint mixed 50 % toward white: `LIGHT_SHELL_WHITE`) with faint reflections (`LIGHT_ENV` 0.3, `LIGHT_COAT` 0.1, `LIGHT_SPECULAR` 0.35) so the refraction and the caustics are what is seen.
 - The core is an unlit, slightly lifted lamp, narrower (0.38), whose colour fades toward a pale haze at its silhouette (`coreMaterial.onBeforeCompile`, haze 0.5, deepened by `LIGHT_CORE_DEPTH` 0.78): a blurred glow in the middle, with the glass around it untouched.
 - Shadows follow the glass's colour: stronger absorption (`ABSORB` 2.6, `STRAIGHT` 0.92), deeper shade (`SHADOW` 0.72) pushed away from grey (`SHADE_SATURATION` 2.4), stronger caustics (`GLEAM` 3.4), and the contact shadow of a column is tinted by its layers' colours (`LIGHT_SHADOW_DEPTH`).
 - The title's CRT scan in the light page is paper-coloured, so it only thins the ink and is invisible on the paper (no strike-through look).
@@ -97,4 +97,4 @@ The shells are `DoubleSide`: three.js draws the back faces of double-sided glass
 
 ### Light theme: tinted by what is behind (current)
 
-Double-sided glass (`LIGHT_DOUBLE_SIDED`, now off, kept as a fallback) tinted isolated blocks by their own back faces too. Now the shells are single-sided again and each block's glass is tinted by what the camera sees behind it: `lightBehind` run with weights 1 and the three channels of the hues gives the colour of the blocks whose outline it covers and how much of it they cover; the shell's colour is multiplied by white mixed toward that colour by the coverage (`LIGHT_BEHIND_TINT` 0.85). A block against the paper stays clear; one in front of other blocks takes their tint. The tint is per block, not per pixel.
+Double-sided glass (`LIGHT_DOUBLE_SIDED`, now off, kept as a fallback) tinted isolated blocks by their own back faces too. Now the shells are single-sided again and each block's glass is tinted by what the camera sees behind it: `lightBehind` run with weights 1 and the three channels of the hues gives the colour of the blocks whose outline it covers and how much of it they cover; the shell's colour is multiplied by white mixed toward that colour by the coverage (`LIGHT_BEHIND_TINT` 0.65). A block against the paper stays clear; one in front of other blocks takes their tint. The tint is per block, not per pixel.

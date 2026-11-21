@@ -211,11 +211,11 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       // (light theme) the core's brightness: below 1 is deeper and more saturated
       const LIGHT_CORE_DEPTH = 0.78;
       // (light theme) how much of white the glass shell's tint is mixed with (1: clear)
-      const LIGHT_SHELL_WHITE = 0.4;
+      const LIGHT_SHELL_WHITE = 0.5;
       /** (light theme) double-sided glass: the back faces of the blocks behind tint what is seen, but an isolated block is tinted by its own back faces too. Kept as a fallback; off. */
       const LIGHT_DOUBLE_SIDED = false;
       /** (light theme) how much of the colour of the blocks behind a block (as the camera sees it) its glass takes, when they cover all of its outline. */
-      const LIGHT_BEHIND_TINT = 0.85;
+      const LIGHT_BEHIND_TINT = 0.65;
       const coreMaterial = new THREE.MeshBasicMaterial({ vertexColors: true });
       // (the glass is perfectly clear; it is the core that is soft: its colour fades toward a pale haze of itself toward its silhouette, so it is a blurred glow in the middle of the block, with no hard edge)
       coreMaterial.onBeforeCompile = (shader) => {
