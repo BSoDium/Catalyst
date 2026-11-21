@@ -9,19 +9,21 @@ export const defaultAspect = (strips: number) => (strips > 1 ? 0.8 : 3.97);
  */
 export function placeholderMarkup({ weeks = 53, strips = 1, aspect, shifts, tallest }: { weeks?: number; strips?: number; aspect?: number; shifts?: readonly number[]; tallest?: number }): string {
   const { viewBox, d } = placeholderTiles(weeks, strips, aspect ?? defaultAspect(strips), tallest, shifts);
-  // (the scene's pits are lit by the sun from the top right, floor as light as the page: a crisp inner shadow along the top and right edges (the outline, stroked, moved toward the bottom left and kept inside the square) and a pale lip outside the left and lower
-  // edges (the outline moved toward the left, kept outside): plain strokes, clips and a mask, no filter, so it is cheap; the offsets are shares of the picture's width, so they follow the tiles' size)
+  // (the scene's pits are lit by the sun from the top right, the floor as light as the page: a thin inner shadow along the top and right edges (the square minus the square moved toward the bottom left) and a thin pale lip outside the left and lower edges (the square
+  // moved toward the left, minus the square): plain fills and masks, no filter, so it is cheap; the offsets are shares of the picture's width, so they follow the tiles' size)
   const w = Number(viewBox.split(" ")[2]) || 100;
-  const sw = (w * 0.0017).toFixed(3);
-  const k = (w * 0.00075).toFixed(3);
+  const k = (w * 0.0009).toFixed(3);
+  const kl = (w * 0.0007).toFixed(3);
+  const big = `<rect x="-1e5" y="-1e5" width="2e5" height="2e5" fill="#fff"/>`;
   return (
     `<svg data-neon-placeholder aria-hidden="true" viewBox="${viewBox}" preserveAspectRatio="xMidYMid meet" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;transition:opacity .4s ease">` +
-    `<style>@keyframes nag-pulse{50%{opacity:.5}}.nag-pulse{animation:nag-pulse 2s ease-in-out infinite}.nag-lip{stroke-opacity:.65}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .nag-lip{stroke-opacity:.12}}:root[data-theme="dark"] .nag-lip{stroke-opacity:.12}@media (prefers-reduced-motion:reduce){.nag-pulse{animation:none}}</style>` +
-    `<defs><path id="nag-p" d="${d}"/><clipPath id="nag-in"><use href="#nag-p"/></clipPath>` +
-    `<mask id="nag-out"><rect x="-1e5" y="-1e5" width="2e5" height="2e5" fill="#fff"/><use href="#nag-p" fill="#000"/></mask></defs>` +
+    `<style>@keyframes nag-pulse{50%{opacity:.5}}.nag-pulse{animation:nag-pulse 2s ease-in-out infinite}.nag-lip{fill-opacity:.7}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .nag-lip{fill-opacity:.1}}:root[data-theme="dark"] .nag-lip{fill-opacity:.1}@media (prefers-reduced-motion:reduce){.nag-pulse{animation:none}}</style>` +
+    `<defs><path id="nag-p" d="${d}"/>` +
+    `<mask id="nag-sh">${big}<use href="#nag-p" fill="#000" transform="translate(-${k} ${k})"/></mask>` +
+    `<mask id="nag-out">${big}<use href="#nag-p" fill="#000"/></mask></defs>` +
     `<g class="nag-pulse">` +
-    `<g mask="url(#nag-out)"><use href="#nag-p" class="nag-lip" fill="none" stroke="#fff" stroke-width="${sw}" transform="translate(-${k} ${k})"/></g>` +
-    `<g clip-path="url(#nag-in)"><use href="#nag-p" fill="none" stroke="#000" stroke-opacity="0.2" stroke-width="${sw}" transform="translate(-${k} ${k})"/></g>` +
+    `<g mask="url(#nag-out)"><use href="#nag-p" class="nag-lip" fill="#fff" transform="translate(-${kl} ${(Number(kl) * 0.5).toFixed(3)})"/></g>` +
+    `<use href="#nag-p" fill="#000" fill-opacity="0.16" mask="url(#nag-sh)"/>` +
     `</g></svg>`
   );
 }
