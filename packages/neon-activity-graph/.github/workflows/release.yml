@@ -20,11 +20,11 @@ jobs:
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22.14
+          node-version: 24
           cache: pnpm
           registry-url: https://registry.npmjs.org
-      # (Trusted Publishing needs npm 11.5.1 or newer)
-      - run: npm install -g npm@latest
+      # (Trusted Publishing needs npm 11.5.1 or newer; npm 12 needs a newer node than 22.14, so the major is pinned)
+      - run: npm install -g npm@^11.5.1
       - run: pnpm install --frozen-lockfile
       - run: pnpm run typecheck
       - run: pnpm test
