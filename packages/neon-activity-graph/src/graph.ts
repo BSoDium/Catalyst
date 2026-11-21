@@ -214,6 +214,8 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       const LIGHT_SHELL_WHITE = 0.78;
       /** (light theme) double-sided glass: the back faces of the blocks behind tint what is seen, but an isolated block is tinted by its own back faces too. Kept as a fallback; off. */
       const LIGHT_DOUBLE_SIDED = false;
+      /** (light theme) the ground, baked, as what the glass sees behind it (see `groundLayers`): false to compare. */
+      const LIGHT_BACKDROP = true;
       /** (light theme) how much of the colour of the blocks behind a block (as the camera sees it) its glass takes, when they cover all of its outline. */
       const LIGHT_BEHIND_TINT = 0.9;
       const coreMaterial = new THREE.MeshBasicMaterial({ vertexColors: true });
@@ -548,6 +550,52 @@ void main() {
         aoTex.colorSpace = THREE.SRGBColorSpace;
         plane(aoTex, (map) => new THREE.MeshBasicMaterial({ map, transparent: true, depthWrite: false, toneMapped: false }), 2);
         disposers.push(() => ground.dispose());
+        if (!dark && LIGHT_BACKDROP) {
+          // (light theme) What a glass sees behind it is only what three.js draws OPAQUE, and the shade, the caustics and the contact shadows are transparent layers over the paper: the glass would see bare paper where the ground is in shadow. So the ground
+          // is baked once, from above (the paper, with every layer over it, as seen straight down), onto an opaque plane that is drawn ONLY into what the glass sees (it is thrown away in the picture itself, where the layers are as they were): the glass over
+          // a shaded ground is seen through as shaded. The light theme's shadows never change (no lamp turns on or off), so it is baked once.
+          const sizeX = cw / PX;
+          const sizeZ = ch / PX;
+          const bakeW = Math.min(2048, Math.ceil(sizeX * 48));
+          const bakeH = Math.min(2048, Math.ceil((sizeZ / sizeX) * bakeW));
+          const bake = new THREE.WebGLRenderTarget(bakeW, bakeH, { type: THREE.HalfFloatType, depthBuffer: false });
+          const cam = new THREE.OrthographicCamera(-sizeX / 2, sizeX / 2, sizeZ / 2, -sizeZ / 2, 0.1, 20);
+          cam.up.set(0, 0, -1);
+          cam.position.set(width / 2, 5, total / 2);
+          cam.lookAt(width / 2, 0, total / 2);
+          const bakeScene = new THREE.Scene();
+          bakeScene.add(layers);
+          const prevTarget = renderer.getRenderTarget();
+          const prevClear = renderer.getClearColor(new THREE.Color());
+          const prevAlpha = renderer.getClearAlpha();
+          renderer.setRenderTarget(bake);
+          renderer.setClearColor(pageColour(), 1);
+          renderer.clear();
+          renderer.render(bakeScene, cam);
+          renderer.setRenderTarget(prevTarget);
+          renderer.setClearColor(prevClear, prevAlpha);
+          bakeScene.remove(layers);
+          const uBackdrop = { value: 0 };
+          const proxyMat = new THREE.MeshBasicMaterial({ map: bake.texture, toneMapped: false });
+          proxyMat.onBeforeCompile = (shader) => {
+            shader.uniforms.uBackdrop = uBackdrop;
+            shader.fragmentShader = shader.fragmentShader.replace("#include <common>", "#include <common>\nuniform float uBackdrop;").replace("void main() {", "void main() {\n  if (uBackdrop < 0.5) discard;");
+          };
+          proxyMat.customProgramCacheKey = () => "ground-backdrop";
+          const proxy = new THREE.Mesh(new THREE.PlaneGeometry(sizeX, sizeZ), proxyMat);
+          proxy.rotation.x = -Math.PI / 2;
+          proxy.position.set(width / 2, 0.01, total / 2);
+          proxy.onBeforeRender = (r) => {
+            uBackdrop.value = r.getRenderTarget() === sceneRT ? 0 : 1;
+          };
+          proxy.frustumCulled = false;
+          layers.add(proxy);
+          disposers.push(() => {
+            bake.dispose();
+            proxyMat.dispose();
+            proxy.geometry.dispose();
+          });
+        }
         layers.userData.dispose = () => disposers.forEach((d) => d());
         return layers;
       };
