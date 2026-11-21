@@ -488,7 +488,7 @@ void main() {
           // A blue rod gets its brightness from light added to all three channels (not from more of the same blue, which only makes it bluer and more glowing): a brighter rod is a lighter, clearer blue, not a whiter one
           // (its hue is kept: the blue channel is the hue's own and the red and green rise with the busyness).
           const level = emit(t) * (1 + 1.1 * t);
-          const rod = dark && xmas ? hue.clone().multiplyScalar(level * 0.42) : dark && src === "waka" ? hue.clone().multiplyScalar(level * 0.5).add(new THREE.Color(0.4, 0.56, 0.6).multiplyScalar(level * (0.38 + 0.98 * t))) : dark ? hue.clone().multiplyScalar(level * 1.25).add(new THREE.Color(0.22, 0.4, 0.24).multiplyScalar(level * (0.15 + 0.7 * t))) : hue;
+          const rod = dark && xmas ? hue.clone().multiplyScalar(level * 0.3) : dark && src === "waka" ? hue.clone().multiplyScalar(level * 0.5).add(new THREE.Color(0.4, 0.56, 0.6).multiplyScalar(level * (0.38 + 0.98 * t))) : dark ? hue.clone().multiplyScalar(level * 1.25).add(new THREE.Color(0.22, 0.4, 0.24).multiplyScalar(level * (0.15 + 0.7 * t))) : hue;
           paint(core, dark ? rod : hue);
           // (the light of the blocks around that reaches this rod when its own is off, on its own attribute: the shader adds it, as much as the neighbours that are on give)
           {
@@ -573,8 +573,8 @@ void main() {
       scene.add(blocks);
       const ground0 = () => ((ground.material as import("three").ShadowMaterial).opacity = isDark() ? 0 : 0.05);
       const buildBlocks = () => {
-        showMat.uniforms.bloom!.value = isDark() ? (xmas ? 0.45 : 1) : 0;
-        showMat.uniforms.sat!.value = xmas && isDark() ? 2.6 : 1;
+        showMat.uniforms.bloom!.value = isDark() ? (xmas ? 0.3 : 1) : 0;
+        showMat.uniforms.sat!.value = xmas && isDark() ? 2.1 : 1;
         // night: no sun and no room, the only light is what the days give out
         scene.environmentIntensity = isDark() ? 0 : 0.9;
         sun.intensity = isDark() ? 0 : 2.2;
