@@ -964,6 +964,8 @@ void main(){
           canPlay: () => inView,
           // (a weak device, a phone: half the updates, so half the redraws of the picture while the lights flicker)
           fps: lite ? 10 : 20,
+          // (the wobble is redrawn more often than the flickers: 40 a second, 15 on a weak device)
+          wobbleFps: lite ? 15 : 40,
           apply: (levels, idle) => {
             const a0 = performance.now();
             idleLook = !!idle;

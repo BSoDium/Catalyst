@@ -25,6 +25,8 @@ export interface NeonOptions {
   sound: boolean;
   /** How often the picture is updated while the start-up runs (a weak device is given fewer). */
   fps?: number;
+  /** How often the picture is updated while the wobble runs (frames a second; the wobble's fastest drift is 0.4 of it, so that it is never faster than the updates can show). */
+  wobbleFps?: number;
   /** A seed, so that a run can be repeated. */
   seed?: number;
   /** Whether a flicker may be shown and heard now (the picture in view, the tab visible); the quirks of the idle neon check it each time. */
@@ -69,7 +71,7 @@ function bell(c: AudioContext, dest: AudioNode, when: number, f0: number, pan: n
   }
 }
 
-export function createNeon({ blocks, apply, done, sound, fps = NEON_FPS, seed = 7, canPlay = () => true }: NeonOptions) {
+export function createNeon({ blocks, apply, done, sound, fps = NEON_FPS, wobbleFps = 40, seed = 7, canPlay = () => true }: NeonOptions) {
   // (nothing to light: a controller that does nothing, rather than a search for the centres of areas among no blocks)
   if (blocks.length === 0) return { levels: new Float32Array(0), count: 0, start: () => done(), stop: () => {} };
   let s = seed;
@@ -249,7 +251,10 @@ export function createNeon({ blocks, apply, done, sound, fps = NEON_FPS, seed = 
   // --- the wobble: a tube's gas is never perfectly steady, least of all while the ballast hums. Every tube's brightness drifts slowly (two slow sines of its own, its own strength: a few wobble a lot, most hardly at all), and how
   // much follows the hum's own loudness: it rises as the tubes light, is at its fullest when the start-up has settled, and dies away with the hum (the same decay, 2 s). No sound of its own. Tubes that are in a flicker are left to it. ---
   const busy = new Set<number>();
-  const wobbleSeed = blocks.map(() => ({ s: random() ** 1.4, f1: 0.6 + random() * 1.8, f2: 1.8 + random() * 3.2, p1: random() * 6.283, p2: random() * 6.283 }));
+  // (fast, as the hum is: the two drifts at a quarter to a half, and at a half to all, of 0.4 of the update rate: 4-8 Hz and 8-16 Hz at 40 updates a second; a faster drift than half the rate cannot be shown)
+  const fMax = wobbleFps * 0.4;
+  const wobbleSeed = blocks.map(() => ({ s: random() ** 1.4, f1: fMax * (0.25 + random() * 0.25), f2: fMax * (0.5 + random() * 0.5), p1: random() * 6.283, p2: random() * 6.283 }));
+  const rate = Math.max(fps, wobbleFps);
   const HUM_STEP = 25;
   const humEnd = end + 200;
   const humLit: number[] = [];
@@ -277,7 +282,7 @@ export function createNeon({ blocks, apply, done, sound, fps = NEON_FPS, seed = 
     if (!tailing) return;
     const ms = performance.now() - t0;
     const hum = humAt(ms);
-    if (tailLast < 0 || stamp - tailLast >= 1000 / fps) {
+    if (tailLast < 0 || stamp - tailLast >= 1000 / rate) {
       tailLast = stamp;
       // (only while the picture is in view: out of view the wobble goes on in time, unseen)
       if (canPlay() && !document.hidden) {
@@ -412,8 +417,8 @@ export function createNeon({ blocks, apply, done, sound, fps = NEON_FPS, seed = 
     raf = 0;
     if (!running) return;
     const ms = stamp - t0;
-    // (the picture is updated at a low rate, as a flicker looks like one: a few steps, not a smooth fade)
-    if (last < 0 || stamp - last >= 1000 / fps) {
+    // (the picture is updated often enough for the wobble to be seen drifting; the tubes' own stutters are timed, so they do not depend on it)
+    if (last < 0 || stamp - last >= 1000 / rate) {
       last = stamp;
       let changed = false;
       const hum = humAt(ms);
