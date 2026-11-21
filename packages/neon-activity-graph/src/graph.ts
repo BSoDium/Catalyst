@@ -815,7 +815,8 @@ void main(){
         if (dbg.metrics) el.dataset.fit = ((x1 - x0) / (y1 - y0)).toFixed(3);
         const aspect = w / h;
         const halfH = Math.max((y1 - y0) / 2, (x1 - x0) / 2 / aspect) * 1.04;
-        const mx = (x0 + x1) / 2;
+        // (the four strips of a phone: the picture's weight is on its right, where the strips' staggered rows end, so it is moved left by 4 % of the view's width to look centred in the page)
+        const mx = (x0 + x1) / 2 + (strips > 1 ? 0.04 * 2 * halfH * aspect : 0);
         const my = (y0 + y1) / 2;
         camera.left = mx - halfH * aspect;
         camera.right = mx + halfH * aspect;
