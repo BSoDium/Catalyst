@@ -116,7 +116,7 @@ export function ActivityScene({ activity, strips = 1, onReady, onLit, onHover, c
 
       // glass: it transmits (refracts) what is behind it, the ground and the blocks' own colour tint what passes through
       /** The film grain's strength over the whole picture (0 for none). */
-      const GRAIN = 0.022;
+      const GRAIN = 0.012;
       /** (light theme) how strong the room's reflections (environment) and the clear coat's are, relative to what comes through the glass. */
       const LIGHT_ENV = 0.85;
       const LIGHT_COAT = 0.4;
@@ -241,7 +241,7 @@ export function ActivityScene({ activity, strips = 1, onReady, onLit, onHover, c
       // (the string: mostly white, with the colours as its highlights, as on a real tree)
       const XMAS_COLOURS = ["#ff0a0a", "#00e03c", "#ffa600", "#1a3cff", "#ff0a0a", "#00e03c"].map((c) => new THREE.Color(c));
       /** (`?xmas`) a white rod is as bright as this share of a coloured one: a white rod adds up in all three channels, so at the same level it clips to a flat white blob with no shading. */
-      const WHITE_ROD = 0.42;
+      const WHITE_ROD = 0.62;
       const XMAS_WHITE = new THREE.Color("#f8faff");
       const xmasHue = (cell: number, src: "waka" | "github", t: number) => {
         const h = Math.imul(cell + 1, 2654435761) ^ Math.imul(src === "waka" ? 97 : 13, 40503);
@@ -726,7 +726,7 @@ void main(){
     c.rgb += bloom * halo * mix(1.3, 0.38, haloBlue);
   }
   // (?xmas: the grey-white veil that the glass's reflections, the halo and the emissive add to every channel is taken off: what is left is the rod's own colour, as saturated as it is, at the same brightness)
-  if (veil > 0.) { float mx = max(c.r, max(c.g, c.b)); float mn = min(c.r, min(c.g, c.b)); float k = smoothstep(0.12, 0.5, (mx - mn) / max(mx, 1e-4)); c.rgb -= mn * veil * k; c.rgb *= mix(1., mix(0.15, 1., k), smoothstep(0.04, 0.2, mx) * (1. - smoothstep(0.45, 0.8, mx))); }
+  if (veil > 0.) { float mx = max(c.r, max(c.g, c.b)); float mn = min(c.r, min(c.g, c.b)); float k = smoothstep(0.12, 0.5, (mx - mn) / max(mx, 1e-4)); c.rgb -= mn * veil * k; c.rgb *= mix(1., mix(0.15, 1., k), smoothstep(0.04, 0.2, mx) * (1. - smoothstep(0.2, 0.4, mx))); }
   // A hue-preserving soft clip: a channel past 1 (a busy blue: its blue is far over, its green and red are not) would clip alone and turn the colour pale; the whole colour is brought back so that its brightest channel
   // only just passes 1, and the hue and the saturation stay.
   float m = max(max(c.r, c.g), c.b);
@@ -743,8 +743,8 @@ void main(){
     p3 += dot(p3, p3.yzx + 33.33);
     float n = fract((p3.x + p3.y) * p3.z) - 0.5;
     float lum = dot(gl_FragColor.rgb, vec3(0.2126, 0.7152, 0.0722));
-    // (not in the blacks, where a speck would be a light of its own: it grows with the picture's brightness)
-    gl_FragColor.rgb += n * grain * smoothstep(0.04, 0.35, lum) * (0.5 + 1.5 * lum * (1. - lum)) * gl_FragColor.a;
+    // (only on what is bright: the blocks' own surfaces, not the glows and the dark, where a speck would be a light of its own)
+    gl_FragColor.rgb += n * grain * smoothstep(0.15, 0.55, lum) * gl_FragColor.a;
   }
 }`,
         depthTest: false,

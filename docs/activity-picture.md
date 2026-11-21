@@ -31,7 +31,7 @@ Measured so far (dev build, Apple M4): an update of the neon costs about 0.05 ms
 
 ## Film grain
 
-A fine, fixed, grey grain over the whole picture, in both themes, added in the last (show) pass after the lighting (`GRAIN` in `activity-scene.tsx`, 0 for none): one speck per device pixel, nothing in the blacks (a speck there would be a light of its own), strongest in the mid-tones. Static (the picture is drawn once, not every frame). Tune on a real screen: the browser pane's downscaling makes it look coarser than it is.
+A fine, fixed, grey grain over the whole picture, in both themes, added in the last (show) pass after the lighting (`GRAIN` in `activity-scene.tsx`, 0 for none): one speck per device pixel, only on the bright surfaces (nothing in the glows and the dark: a speck there would be a light of its own). Static (the picture is drawn once, not every frame). Tune on a real screen: the browser pane's downscaling makes it look coarser than it is.
 
 ## Layout (software page)
 
