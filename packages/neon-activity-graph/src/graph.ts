@@ -190,6 +190,15 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       // the empty days: a plain dull tile in the dark theme (not glass: glass reflects the room and is never dim)
       // (an unlit flat tile in the ground's own colour, a shade apart: it casts and receives nothing itself; the glow, the sun's shadows and the contact shadows are layers over it, as over the ground)
       const tileUnlit = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false, side: THREE.BackSide });
+      // (a pit that is looked at lights up like a neon: one lamp, a flat rounded square on the pit's floor, moved to the pit and faded in; where it is, and how lit it is, 0 to 1)
+      const pitHot = { value: new THREE.Vector3(-1e3, -1e3, 0) };
+      let pitLamp: import("three").Mesh | null = null;
+      const pitShow = () => {
+        if (!pitLamp) return;
+        pitLamp.visible = pitHot.value.z > 0.005;
+        pitLamp.position.set(pitHot.value.x, -0.01, pitHot.value.y);
+        (pitLamp.material as import("three").MeshBasicMaterial).opacity = pitHot.value.z;
+      };
       // the page's own background, read as the browser resolves it: the ground is that colour (so there is something to refract, and no seam with the page)
       const pageColour = () => {
         const css = resolveBackground(el, opts.background, isDark() ? "dark" : "light");
@@ -342,10 +351,33 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
           actx.fillStyle = g;
           actx.fillRect(cx - r, cy - r, r * 2, r * 2);
         };
+        // An empty day is a pit: the light that lies over the ground must not light its floor as it lights the ground, or it reads as a flat plate. Its rim shades the floor (an inner shadow, on the sides away from the light, which the light theme's sun
+        // has on the top right of the screen: the -x and +z sides), a little all round and more on those two.
+        const recess = (x: number, z: number) => {
+          const cx = (x + GLOW_PAD) * PX;
+          const cy = (z + GLOW_PAD) * PX;
+          const half = 0.44 * PX;
+          const rr = 0.16 * PX;
+          const path = new Path2D();
+          path.roundRect(cx - half, cy - half, half * 2, half * 2, rr);
+          const frame = new Path2D();
+          frame.rect(cx - 2 * PX, cy - 2 * PX, 4 * PX, 4 * PX);
+          frame.addPath(path);
+          actx.save();
+          actx.clip(path);
+          actx.shadowColor = `rgba(0,0,0,${dark ? 0.9 : 0.5})`;
+          actx.shadowBlur = 0.16 * PX;
+          actx.shadowOffsetX = 0.08 * PX;
+          actx.shadowOffsetY = -0.08 * PX;
+          actx.fillStyle = "#000";
+          actx.fill(frame, "evenodd");
+          actx.restore();
+        };
         stack.top.cells.forEach((g, i) => {
           const w = stack.bottom.cells[i]!;
           const { x, z } = at(g.week, g.day);
           if (w.value > 0 || g.value > 0) occlude(x, z, (w.value > 0 ? 0.18 + w.t * LAYER_MAX : 0) + (g.value > 0 ? 0.18 + g.t * LAYER_MAX : 0));
+          else recess(x, z);
         });
         // The layers of glass of every column, each as a block of its own: WakaTime's at the bottom, GitHub's on top (what the picture draws, see `build`).
         const t0 = performance.now();
@@ -512,7 +544,7 @@ void main() {
       let bounds: ContentBounds | null = null;
       api.bounds = () => bounds;
       // the boxes a pointer can hit (one per layer of a column, one per empty day), for the picking
-      interface PickBox { cell: number; x: number; z: number; y0: number; y1: number }
+      interface PickBox { cell: number; x: number; z: number; y0: number; y1: number; pit?: boolean }
       let picks: PickBox[] = [];
       const LIFT = 0.04;
       const build = (stack: { bottom: Matrix; top: Matrix }, tones: { bottom: [Color, Color]; top: [Color, Color] }, dark: boolean) => {
@@ -521,6 +553,7 @@ void main() {
         let tileShape = null as BufferGeometry | null;
         let ringShape0 = null as BufferGeometry | null;
         const rims: BufferGeometry[] = [];
+        const pitRims: { geom: BufferGeometry; x: number; z: number }[] = [];
         // (the page's colour is read from the browser once a build, not once a tile: it makes a canvas and reads a pixel back)
         const page = pageColour();
         const shellsBy = new Map<string, BufferGeometry[]>();
@@ -577,11 +610,11 @@ void main() {
               const rp = ring.getAttribute("position");
               const rc = new Float32Array(rp.count * 3);
               for (let q = 0; q < rp.count; q++) {
-                // (a soft key light above and behind the viewer, a little to one side: the lip of a pit catches it on the edges whose slope faces it, that is the FAR edges (a bevel there slopes down towards the viewer), never the near ones; a vertex of the ring is on an edge by its direction from the middle)
+                // (the light is the scene's own: the sun of the light theme comes from the top right on the screen, so a pit's lip catches it where its slope faces the top right: on the LEFT edge (+x here: the screen's left is +x) in full, and on the near, lower edge only a hint, as that bevel is turned away from the camera and foreshortened; a vertex of the ring is on an edge by its direction from the middle)
                 const rx = rp.getX(q);
                 const rz = rp.getZ(q);
                 const rl = Math.hypot(rx, rz) || 1;
-                const w = Math.pow(Math.max(0, (rx * -0.707 + rz * -0.707) / -rl), 3);
+                const w = Math.pow(Math.max(0, rx / rl), 3) + 0.3 * Math.pow(Math.max(0, -rz / rl), 3);
                 if (dark) c3.copy(page).add(new THREE.Color(0.024, 0.026, 0.034).multiplyScalar(Math.min(1, w)));
                 else c3.copy(page).lerp(new THREE.Color(1, 1, 1), 0.3 * Math.min(1, w));
                 c3.toArray(rc, q * 3);
@@ -595,7 +628,8 @@ void main() {
             const rim = ringShape0!.clone();
             rim.translate(x, 0, z);
             rims.push(rim);
-            picks.push({ cell: i, x, z, y0: 0, y1: 0.04 });
+            pitRims.push({ geom: rim, x, z });
+            picks.push({ cell: i, x, z, y0: 0, y1: 0.04, pit: true });
             return;
           }
           let y = 0;
@@ -701,12 +735,49 @@ void main() {
           core.setAttribute("aCtr", new THREE.BufferAttribute(Float32Array.from({ length: core.getAttribute("position").count * 2 }, (_, k) => (k % 2 ? z : x)), 2));
           cores.push(core);
         }
+        // (dark) there is no sun: the lip of a pit shines with the light of the neon around it, on the edge that faces the lamps (a lamp on one side lights the lip on the other side, whose slope faces it), in the lamps' colours; nothing where no lamp is near
+        if (dark) {
+          for (const pr of pitRims) {
+            const rp = pr.geom.getAttribute("position");
+            const rc = pr.geom.getAttribute("color");
+            for (let q = 0; q < rp.count; q++) {
+              const rx = rp.getX(q) - pr.x;
+              const rz = rp.getZ(q) - pr.z;
+              const rl = Math.hypot(rx, rz) || 1;
+              let r = 0;
+              let gg = 0;
+              let bb = 0;
+              for (const sp of specs) {
+                const dx = sp.x - pr.x;
+                const dz = sp.z - pr.z;
+                const dist = Math.hypot(dx, dz);
+                if (dist < 0.5 || dist > 4) continue;
+                const facing = Math.max(0, (-(rx / rl) * dx - (rz / rl) * dz) / dist);
+                if (facing <= 0) continue;
+                const k = emit(sp.t) * Math.exp(-(dist * dist) / (2 * 1.6 * 1.6)) * facing * facing * 0.018;
+                r += sp.hue.r * k;
+                gg += sp.hue.g * k;
+                bb += sp.hue.b * k;
+              }
+              rc.setXYZ(q, page.r + Math.min(r, 0.1), page.g + Math.min(gg, 0.1), page.b + Math.min(bb, 0.1));
+            }
+            rc.needsUpdate = true;
+          }
+        }
         const tb1 = performance.now();
         const group = new THREE.Group();
         group.add(groundLayers(stack, tones, dark));
         const tb2 = performance.now();
         if (tiles.length) {
           const tile = new THREE.Mesh(mergeGeometries(tiles), tileUnlit);
+          const lampGeo = new THREE.ShapeGeometry(roundedSquare, lite ? 3 : 6);
+          lampGeo.rotateX(-Math.PI / 2);
+          lampGeo.scale(0.86, 1, 0.86);
+          const lampCol = tones.top[1].clone().add(tones.bottom[1]).multiplyScalar(0.7);
+          pitLamp = new THREE.Mesh(lampGeo, new THREE.MeshBasicMaterial({ color: lampCol, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
+          pitLamp.visible = false;
+          pitLamp.renderOrder = 3;
+          group.add(pitLamp);
           group.add(tile);
           const rim = new THREE.Mesh(mergeGeometries(rims), tileUnlit.clone());
           (rim.material as import("three").MeshBasicMaterial).side = THREE.FrontSide;
@@ -823,7 +894,7 @@ void main() {
       floor.rotation.x = -Math.PI / 2;
       floor.position.set(width / 2, -0.02, total / 2);
       scene.add(floor);
-      const ground = new THREE.Mesh(new THREE.PlaneGeometry(1200, 1200), new THREE.ShadowMaterial({ opacity: 0.32 }));
+      const ground = new THREE.Mesh(new THREE.PlaneGeometry(1200, 1200), new THREE.ShadowMaterial({ opacity: 0.32, depthWrite: false }));
       ground.rotation.x = -Math.PI / 2;
       // (above the empty tiles, under the glow and contact-shadow layers: the sun's shadows fall on a tile as on the ground)
       ground.position.set(width / 2, 0.06, total / 2);
@@ -1207,6 +1278,8 @@ void main(){
             moving = true;
           } else focus[i] = focusTo[i]!;
         }
+        if (pitStep()) moving = true;
+        pitShow();
         applyLevels(lastLevels);
         humLevel();
         // (each step of the fade is drawn from a few samples at once and shown together, not sample by sample: the first of a restart, alone, is the noisiest picture there is)
@@ -1220,10 +1293,24 @@ void main(){
       };
       // (a debounce: the day is taken a moment after the pointer stops on it, and let go a moment after it leaves)
       const GHOST = 0.12;
+      // (the pit that is looked at: where it is, and how lit it is, easing towards 0 or 1 with the focus)
+      let pitTo = 0;
+      const pitStep = () => {
+        const d = pitTo - pitHot.value.z;
+        if (Math.abs(d) > 0.01) {
+          pitHot.value.z += d * 0.28;
+          return true;
+        }
+        pitHot.value.z = pitTo;
+        return false;
+      };
       const focusOn = (cell: number, ghosts: number[] = []) => {
         window.clearTimeout(focusTimer);
         if (!focusCtl) return;
         focusTimer = window.setTimeout(() => {
+          const pit = cell >= 0 ? picks.find((b) => b.cell === cell && b.pit) : undefined;
+          if (pit) pitHot.value.set(pit.x, pit.z, pitHot.value.z);
+          pitTo = pit ? 1 : 0;
           for (let i = 0; i < focusTo.length; i++) focusTo[i] = cell < 0 ? 1 : neonBlocks[i]!.cell === cell ? FOCUS_ON : ghosts.includes(neonBlocks[i]!.cell) ? GHOST : FOCUS_OFF;
           window.clearTimeout(focusRaf);
           stepFocus();
@@ -1405,8 +1492,9 @@ void main(){
         const corners: { x: number; y: number }[] = [];
         for (const b of picks) {
           if (b.cell !== cell) continue;
-          const r = Math.min(0.16, (b.y1 - b.y0) / 2.2);
-          for (const dx of [-1, 1]) for (const dz of [-1, 1]) for (const y of [b.y0 + r, b.y1 - r]) {
+          // (a pit's outline is the rounded square it is, not the squashed box of its pick)
+          const r = b.pit ? 0.16 : Math.min(0.16, (b.y1 - b.y0) / 2.2);
+          for (const dx of [-1, 1]) for (const dz of [-1, 1]) for (const y of b.pit ? [0] : [b.y0 + r, b.y1 - r]) {
             const p = toCss(new THREE.Vector3(x + dx * (0.46 - r), y, z + dz * (0.46 - r)));
             for (let k = 0; k < 10; k++) corners.push({ x: p.x + r * unit * Math.cos((k / 10) * Math.PI * 2), y: p.y + r * unit * Math.sin((k / 10) * Math.PI * 2) });
           }
