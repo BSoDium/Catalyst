@@ -222,8 +222,8 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
         shader.uniforms.uLevels = { value: levelTex };
         shader.vertexShader = shader.vertexShader
           .replace("#include <common>", "#include <common>\nattribute float aBlock;\nattribute vec3 aInc;\nattribute vec2 aCtr;\nvarying float vRodA;\nuniform highp sampler2D uLevels;")
-          .replace("#include <color_vertex>", "#include <color_vertex>\n#ifdef USE_COLOR\n  vec2 lv = texelFetch(uLevels, ivec2(int(aBlock + 0.5), 0), 0).rg;\n  float rodB = max(vColor.r, max(vColor.g, vColor.b)) * lv.r;\n  vColor.rgb = vColor.rgb * lv.r + vec3(0.029, 0.037, 0.053) * (1.0 - lv.r) + aInc * lv.g;\n  vRodA = smoothstep(0.0, 2.5, rodB);\n  float rodL = dot(vColor.rgb, vec3(0.299, 0.587, 0.114));\n  vColor.rgb = max(vec3(0.0), mix(vec3(rodL), vColor.rgb, 1.3 + 1.8 * (1.0 - clamp(lv.r, 0.0, 1.0))));\n#endif")
-          .replace("#include <begin_vertex>", "#include <begin_vertex>\n  transformed.xz = aCtr + (transformed.xz - aCtr) * mix(0.08, 1.0, smoothstep(0.0, 3.5, rodB));");
+          .replace("#include <color_vertex>", "#include <color_vertex>\n#ifdef USE_COLOR\n  vec2 lv = texelFetch(uLevels, ivec2(int(aBlock + 0.5), 0), 0).rg;\n  float rodB = max(vColor.r, max(vColor.g, vColor.b)) * lv.r;\n  vColor.rgb = vColor.rgb * lv.r + vec3(0.029, 0.037, 0.053) * (1.0 - lv.r) + aInc * lv.g;\n  vRodA = smoothstep(0.0, 3.0, rodB);\n  float rodL = dot(vColor.rgb, vec3(0.299, 0.587, 0.114));\n  vColor.rgb = max(vec3(0.0), mix(vec3(rodL), vColor.rgb, 1.3 + 1.8 * (1.0 - clamp(lv.r, 0.0, 1.0))));\n#endif")
+          .replace("#include <begin_vertex>", "#include <begin_vertex>\n  transformed.xz = aCtr + (transformed.xz - aCtr) * mix(0.6, 1.0, smoothstep(0.0, 2.5, rodB));");
         shader.fragmentShader = shader.fragmentShader
           .replace("#include <common>", "#include <common>\nvarying float vRodA;")
           .replace("#include <color_fragment>", "#include <color_fragment>\n  diffuseColor.a = vRodA;");
@@ -590,9 +590,12 @@ void main() {
           const key = `${src}${tier}`;
           (shellsBy.get(key) ?? shellsBy.set(key, []).get(key)!).push(shell);
           shellTier.set(key, [src, tier]);
-          const hc = h * 0.8;
           // (dark) the busier the day the thinner and the brighter its rod: a quiet one is as wide as before and dim, a busy one a slender, intense filament
           const cw = dark ? 0.5 - 0.2 * t ** 0.85 : 0.5;
+          // (dark) the rod is the core of the block: as much glass above and below it as at its sides, so a tall block has a column, a block that is as tall as the rod is wide a cube, and a shorter one a flat core
+          // (the gap is kept, down to a rod 0.1 high); the light theme keeps its rod at 80 % of the block
+          const gap = (0.92 - cw) / 2;
+          const hc = dark ? Math.max(0.1, h - 2 * Math.min(gap, (h - 0.1) / 2)) : h * 0.8;
           const core = roundedBox(cw, hc, cw, lite ? 1 : 2, Math.min(0.1, cw / 2.4, hc / 2.2));
           core.translate(x, y0 + h / 2, z);
           // A blue rod gets its brightness from light added to all three channels (not from more of the same blue, which only makes it bluer and more glowing): a brighter rod is a lighter, clearer blue, not a whiter one

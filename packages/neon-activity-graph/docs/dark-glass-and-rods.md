@@ -22,6 +22,10 @@ The dark picture is **clear glass with neon gas inside**. The glass adds nothing
 5. **Hover**: the other blocks dim to `FOCUS_OFF` = 0.34.
 6. **A glass in front dims the rods behind it** (`glassShades`, `view.ts`): `GLASS_ABSORB` 0.45, `GLASS_FLOOR` 0.3, so that a clump of bright blocks is not one blob.
 
+## The rod is the block's core (geometry)
+
+The rod keeps **the same gap to the glass all round**: `gap = (0.92 − rodWidth) / 2` at the sides, and the same above and below, so its height is `h − 2 × gap` (never under 0.1; if the block is too short for the full gap the gap shrinks to what fits). A tall block has a column; at `h = rodWidth + 2 × gap` it is a **cube**; a shorter block has a **flat core**, still with as much glass as possible above and below. (The light theme keeps its rod at 80 % of the block.) The brightness is shown mostly by **opacity** (`smoothstep(0, 3, B)`) and only a little by **width** (`mix(0.6, 1, smoothstep(0, 2.5, B))`, it was 8 % to 100 %).
+
 ## Knobs
 
 | What | Where | Now |
