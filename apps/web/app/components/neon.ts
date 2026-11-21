@@ -246,8 +246,44 @@ export function createNeon({ blocks, apply, done, sound, fps = NEON_FPS, seed = 
   let idleOn = false;
   let idleSince = 0;
   const idleRandom = () => Math.random();
+  // --- the faint wobble: a real tube's gas is never perfectly steady, least of all just after it has lit. For the first half minute, now and then, a few tubes lose a little of their brightness for a moment and come
+  // back, several times over, less and less often. No sound; it never touches a tube that is in a flicker (`busy`). ---
+  const wobbling = new Map<number, number>();
+  const busy = new Set<number>();
+  let wobbleTimer = 0;
+  const WOBBLE_MS = 30000;
+  const wobble = () => {
+    if (!idleOn) return;
+    const now = performance.now();
+    const age = now - idleSince;
+    let changed = false;
+    wobbling.forEach((until, i) => {
+      if (age <= WOBBLE_MS && now < until) return;
+      wobbling.delete(i);
+      if (!busy.has(i)) {
+        levels[i] = 1;
+        changed = true;
+      }
+    });
+    if (age <= WOBBLE_MS && canPlay() && !document.hidden) {
+      const n = 1 + Math.floor(idleRandom() * 3);
+      for (let k = 0; k < n; k++) {
+        const i = Math.floor(idleRandom() * blocks.length);
+        if (busy.has(i) || wobbling.has(i)) continue;
+        // (down to 55-80 % for 80-280 ms; the picture shows a little less of it)
+        levels[i] = 0.55 + idleRandom() * 0.25;
+        wobbling.set(i, now + 80 + idleRandom() * 200);
+        changed = true;
+      }
+    }
+    if (changed) apply(levels, true);
+    if (age <= WOBBLE_MS || wobbling.size > 0) wobbleTimer = window.setTimeout(wobble, (140 + idleRandom() * 420) * (1 + age / 10000));
+  };
   const stopIdle = () => {
     idleOn = false;
+    window.clearTimeout(wobbleTimer);
+    wobbling.clear();
+    busy.clear();
     window.clearTimeout(idleTimer);
     window.clearTimeout(idleClose);
     cancelAnimationFrame(idleRaf);
@@ -301,6 +337,7 @@ export function createNeon({ blocks, apply, done, sound, fps = NEON_FPS, seed = 
       .sort((a, b) => a.d - b.d)
       .slice(0, want);
     const batch = ranked.map((o) => o.i);
+    batch.forEach((i) => busy.add(i));
     // (out for a time that is short or long, from 0.12 to 2.5 s, more often short; then 0 to 3 stutters on the way back (a half-glow, and out again), then on; each tube a few ms off the others)
     const dark = 120 + idleRandom() ** 2 * 2400;
     let at = dark;
@@ -337,7 +374,11 @@ export function createNeon({ blocks, apply, done, sound, fps = NEON_FPS, seed = 
         apply(levels, true);
       }
       if (ms >= total) {
-        batch.forEach((i) => (levels[i] = 1));
+        batch.forEach((i) => {
+          levels[i] = 1;
+          busy.delete(i);
+          wobbling.delete(i);
+        });
         apply(levels, true);
         done();
         return;
@@ -351,6 +392,8 @@ export function createNeon({ blocks, apply, done, sound, fps = NEON_FPS, seed = 
     idleSince = performance.now();
     window.clearTimeout(idleTimer);
     idleTimer = window.setTimeout(flicker, 2500 + idleRandom() * 3500);
+    window.clearTimeout(wobbleTimer);
+    wobbleTimer = window.setTimeout(wobble, 600);
   };
 
   const tick = (stamp: number) => {

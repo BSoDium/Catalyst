@@ -455,7 +455,8 @@ void main() {
         let blockIndex = 0;
         neonNeighbours = [];
         for (const sp of specs) {
-          const { src, x, z, y0, h, t, hue } = sp;
+          const { src, x, z, y0, h, t, hue: hue0 } = sp;
+          let hue = hue0;
           // (dark) the light the other days give out reaches this one: each neighbour's colour and brightness, weakened with the distance between the two blocks; a dim block beside or under a bright one is lit by it
           const inc = new THREE.Color(0, 0, 0);
           const nb: { j: number[]; m: number[] } = { j: [], m: [] };
@@ -474,6 +475,11 @@ void main() {
             }
           }
           neonNeighbours.push(nb);
+          // (`?xmas`: a white light beside or on a coloured one takes its colour, as a white bulb does: it must not stand out as a grey block among the bright ones)
+          if (dark && xmasOn() && Math.max(hue.r, hue.g, hue.b) - Math.min(hue.r, hue.g, hue.b) < 0.15 * Math.max(hue.r, hue.g, hue.b)) {
+            const m = Math.max(inc.r, inc.g, inc.b);
+            if (m > 1e-4) hue = hue.clone().lerp(inc.clone().multiplyScalar(1 / m).multiplyScalar(Math.max(hue.r, hue.g, hue.b)), Math.min(0.75, m * 3));
+          }
           inc.r = Math.min(inc.r, 0.6);
           inc.g = Math.min(inc.g, 0.6);
           inc.b = Math.min(inc.b, 0.6);
@@ -483,7 +489,7 @@ void main() {
           const shell = new RoundedBoxGeometry(0.92, h, 0.92, lite ? 2 : 3, Math.min(0.16, h / 2.2));
           shell.translate(x, y0 + h / 2, z);
           // dark: the glass is nearly clear (the light of its core shows through it); light: tinted by the level
-          paint(shell, hue.clone().lerp(new THREE.Color(0xffffff), dark ? 0.14 : 0.12).multiplyScalar(dark ? 0.3 + 0.7 * tEff : 1).add(inc.clone().multiplyScalar(0.08)), 0, dark);
+          paint(shell, hue.clone().lerp(new THREE.Color(0xffffff), dark ? 0.14 : 0.12).multiplyScalar(dark ? 0.3 + 0.7 * tEff : 1).add(inc.clone().multiplyScalar(dark && xmasOn() ? 0.35 : 0.08)), 0, dark);
           shell.setAttribute("aBlock", new THREE.BufferAttribute(new Float32Array(shell.getAttribute("position").count).fill(blockIndex), 1));
           // the glass of a busy day glows on its own surface too (dark theme): three steps of emission per source, each its own material
           const tier = tEff < 0.34 ? 0 : tEff < 0.67 ? 1 : 2;
