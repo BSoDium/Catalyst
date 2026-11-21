@@ -135,4 +135,4 @@ Tuning, final form: the backdrop is back to its full strength at rest (`DARK_BAC
 
 A very bright rod no longer clips to a flat blob of its hue (the busiest green): in the rod's shader its brightest channel is compressed above a knee (`ROD_KNEE` 0.7 towards `ROD_MAX` 1.5) and whitened by up to `ROD_WHITE`, whatever the hue, so any palette gets a hot core with the colour round it and the faces' shading stays readable. (The stock blue already did this by its own: its brightness is light added to all three channels, a green was left pure.)
 
-The compression only applies to a SATURATED rod (weighted by its chroma): a pale rod, like the stock blue whose brightness is light added to all channels, is already a hot core and keeps its full power; a pure green (or any pure hue) is held back.
+The compression only applies to a SATURATED rod (weighted by its chroma, from 0.62 to 0.85: the stock blue is about 0.55 and is untouched): a pale rod, like the stock blue whose brightness is light added to all channels, is already a hot core and keeps its full power; a pure green (or any pure hue) is held back.
