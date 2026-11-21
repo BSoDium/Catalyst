@@ -49,91 +49,6 @@ interface Stutter {
  * A tiny bell: a few partials that are not whole multiples of the pitch (1, 2.76, 5.4: the ratios of a small struck bar), each dying away on its own, the higher ones faster.
  */
 const PARTIALS: [number, number, number][] = [[1, 1, 0.3], [2.76, 0.35, 0.14], [5.4, 0.12, 0.07]];
-/**
- * A soft, low electrical bzz, for the tubes that do not ding: two sawtooth voices a little apart (30 to 48 Hz and the same a little above an octave up), taken through a low-pass at about 1.5 kHz so that the buzz is light, not deep and not hissy, a
- * wobble in the level (55 to 90 Hz, shallow) for the "b-z-z" texture and a trace of low-passed noise for the wiring. 130 to 240 ms, very faint: nothing hissy or crackly in it (it is not radio static).
- */
-function bzz(c: AudioContext, dest: AudioNode, when: number, pan: number, level: number, length: number) {
-  const f = 30 + Math.random() * 18;
-  const body = c.createGain();
-  body.gain.value = 1;
-  // (the "zz": the fundamental, a little above an octave, and upper partials a little apart, so that the buzz has body in the mids where small speakers can reproduce it)
-  for (const [ratio, gain] of [[1, 1], [2.03, 0.5], [3.97, 0.42], [6.05, 0.32], [8.1, 0.22], [11.9, 0.14]] as const) {
-    const o = c.createOscillator();
-    o.type = "sawtooth";
-    o.frequency.value = f * ratio;
-    const g = c.createGain();
-    g.gain.value = gain;
-    o.connect(g).connect(body);
-    o.start(when);
-    o.stop(when + length + 0.03);
-  }
-  const lp = c.createBiquadFilter();
-  lp.type = "lowpass";
-  lp.frequency.value = 1700;
-  lp.Q.value = 0.7;
-  // (a shallow wobble: the level swings by about a third around its mean)
-  const wobble = c.createGain();
-  wobble.gain.value = 0.7;
-  const lfo = c.createOscillator();
-  lfo.type = "sine";
-  lfo.frequency.value = 55 + Math.random() * 35;
-  const depth = c.createGain();
-  depth.gain.value = 0.3;
-  lfo.connect(depth).connect(wobble.gain);
-  lfo.start(when);
-  lfo.stop(when + length + 0.03);
-  // (a trace of low noise)
-  const len = Math.floor(c.sampleRate * (length + 0.05));
-  const nb = c.createBuffer(1, len, c.sampleRate);
-  const d = nb.getChannelData(0);
-  for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
-  const ns = c.createBufferSource();
-  ns.buffer = nb;
-  const nlp = c.createBiquadFilter();
-  nlp.type = "lowpass";
-  nlp.frequency.value = 1400;
-  const ng = c.createGain();
-  ng.gain.value = 0.05;
-  ns.connect(nlp).connect(ng).connect(lp);
-  ns.start(when);
-  ns.stop(when + length + 0.03);
-  const env = c.createGain();
-  env.gain.setValueAtTime(0, when);
-  env.gain.linearRampToValueAtTime(0.014 * level, when + 0.02);
-  env.gain.setValueAtTime(0.014 * level, when + length * 0.55);
-  env.gain.exponentialRampToValueAtTime(0.0001, when + length);
-  const panner = c.createStereoPanner();
-  panner.pan.value = pan * 0.8;
-  body.connect(lp).connect(wobble).connect(env).connect(panner).connect(dest);
-  // The "b" that starts the "bzz": a soft plosive, a 12 ms thump of low-passed noise (nothing sharp), a hair before the tone speaks.
-  const tn = Math.floor(c.sampleRate * 0.014);
-  const tb = c.createBuffer(1, tn, c.sampleRate);
-  const td = tb.getChannelData(0);
-  for (let i = 0; i < tn; i++) td[i] = (Math.random() * 2 - 1) * (1 - i / tn) ** 2;
-  const ts = c.createBufferSource();
-  ts.buffer = tb;
-  const tlp = c.createBiquadFilter();
-  tlp.type = "lowpass";
-  tlp.frequency.value = 700;
-  const tg = c.createGain();
-  tg.gain.value = 0.16 * level;
-  ts.connect(tlp).connect(tg).connect(panner);
-  ts.start(when);
-  ts.stop(when + 0.02);
-  // A bass peak at the very start, like a click: a sine that drops from 120 to 45 Hz in 40 ms, struck at once and gone in 55 ms.
-  const kick = c.createOscillator();
-  kick.type = "sine";
-  kick.frequency.setValueAtTime(120, when);
-  kick.frequency.exponentialRampToValueAtTime(45, when + 0.04);
-  const kg = c.createGain();
-  kg.gain.setValueAtTime(0, when);
-  kg.gain.linearRampToValueAtTime(0.12 * level, when + 0.002);
-  kg.gain.exponentialRampToValueAtTime(0.0001, when + 0.055);
-  kick.connect(kg).connect(panner);
-  kick.start(when);
-  kick.stop(when + 0.06);
-}
 export function bell(c: AudioContext, dest: AudioNode, when: number, f0: number, pan: number, level: number) {
   const out = c.createGain();
   out.gain.value = 0.05 * level;
@@ -283,22 +198,20 @@ export function createNeon({ blocks, apply, done, sound, fps = NEON_FPS, wobbleF
     const members = new Map<number, number[]>();
     plans.forEach((p, i) => (members.get(p.area) ?? members.set(p.area, []).get(p.area)!).push(i));
     // The tick of a tube lighting: not a crackle but a tiny bell, a very high, short, quiet ding; the pitch is a little different each time.
-    // Not every tube dings: each has its own voice, the same every time (about half ding, a third give a soft, low electrical bzz instead, the rest are silent: in a sign of this many tubes a few are quiet).
+    // Not every tube dings, and no two dings are alike: each tube has its own voice, the same every time (most ding, a few are silent: in a sign of this many tubes some are quiet), its own band of pitch (some low, most high, some very high) and its own
+    // loudness, and each ding is a little different again (pitch and volume).
     const voices = blocks.map(() => {
       const r = random();
-      return r < 0.5 ? "ding" : r < 0.82 ? "bzz" : "quiet";
+      const band = random();
+      const hz = band < 0.25 ? 800 + random() * 700 : band < 0.7 ? 2300 + random() * 1500 : 4200 + random() * 2600;
+      return { quiet: r >= 0.85, hz, gain: 0.45 + random() * 0.95 };
     });
     const click = (at: number, pan: number, level: number, tube: number) => {
-      const voice = voices[tube] ?? "ding";
-      if (voice === "quiet" || clicks >= 40) return;
+      const voice = voices[tube];
+      if (!voice || voice.quiet || clicks >= 40) return;
       clicks++;
       const when = Math.max(now + at / 1000, c.currentTime);
-      if (voice === "bzz") {
-        bzz(c, master, when, pan, level, 0.13 + random() * 0.11);
-        return;
-      }
-      // (some of them low, a deeper bell: about a third, from 800 to 1500 Hz; the rest high, 2300 to 3800)
-      bell(c, master, when, random() < 0.35 ? 800 + random() * 700 : 2300 + random() * 1500, pan, level);
+      bell(c, master, when, voice.hz * (0.93 + random() * 0.14), pan, level * voice.gain * (0.6 + random() * 0.6));
     };
     // (a few clicks for each stutter of an area, from some of its tubes, a few milliseconds apart: the tubes switching on, and off again)
     areaPlans.forEach((plan, area) => {
