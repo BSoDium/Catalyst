@@ -80,7 +80,7 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
       };
       // (it comes in the same way the first time: invisible and blurred, then in focus; `onReady` tells the page to fade its place-holder out)
       let announced = false;
-      // (the neon start-up, a prototype behind `?neon`, begins when the picture first appears)
+      // (the neon start-up begins when the picture first appears)
       let neonStart: (() => void) | null = null;
       const sharpen = () => {
         settling = false;
@@ -147,7 +147,7 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
       const coreMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.45, metalness: 0 });
       // (in the dark theme the cores are lights: unlit, their colour is the light they give out, brighter than 1 for a busy day, which the bloom and the glow on the ground turn into a glow)
       const glowMaterial = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false });
-      // (a prototype, `?neon`) how much each rod gives out, 0 to 1, one number per block, read by the rod's vertices (`aBlock` is the block's number): the neon start-up changes them over time
+      // how much each rod gives out, 0 to 1, one number per block, read by the rod's vertices (`aBlock` is the block's number): the neon start-up changes them over time
       // what is left of a block when its rod is off, the same for all of them: the glass's own glow and the room's reflections in it, as absolute intensities
       const OFF_EMISSIVE = 0.0115;
       const OFF_ENV = 0.029;
@@ -519,7 +519,7 @@ void main() {
           }
           mat.emissiveIntensity = dark ? [0.02, 0.08, 0.15][tier]! : 0;
           if (dark) {
-            // (a prototype, `?neon`) the glass shines as its rod does, down to a little ambient light of the night (the floor 0.14): its own glow and the room's reflections in it follow the rod's level, so that a block whose rod is off is dark
+            // the glass shines as its rod does, down to a little ambient light of the night (the floor 0.14): its own glow and the room's reflections in it follow the rod's level, so that a block whose rod is off is dark
             mat.onBeforeCompile = (shader) => {
               shader.uniforms.uLevels = { value: levelTex };
               // (what is left of the glow and of the reflections when the rod is off is the same for every block, whatever its size or its day: as a share of this tier's own intensities, whatever they are)
@@ -812,11 +812,11 @@ void main(){
         if (!raf) raf = requestAnimationFrame(frame);
       }
 
-      // --- the neon start-up (a prototype: only with `?neon` in the address, and not for those who ask for less motion) ---
+      // --- the neon start-up of the dark theme (not for those who ask for less motion) ---
       let neon: ReturnType<typeof createNeon> | null = null;
       let neonApplyMs = 0;
       let neonTicks = 0;
-      const neonAllowed = () => new URLSearchParams(window.location.search).has("neon") && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const neonAllowed = () => !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       const stopNeon = () => {
         neon?.stop();
         neon = null;

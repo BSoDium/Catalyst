@@ -1,4 +1,4 @@
-// The activity picture's neon start-up (`/software?neon`, dark theme) under a slow phone: a Pixel 7's screen and touch, the CPU slowed `--throttle` times, the Mac's own GPU. Reads what the dev build of the picture
+// The activity picture's neon start-up (`/software`, dark theme) under a slow phone: a Pixel 7's screen and touch, the CPU slowed `--throttle` times, the Mac's own GPU. Reads what the dev build of the picture
 // reports about itself (`data-*` on its box: how many rods flicker, the cost of an update, the cost of a frame while it runs) and times the rAF frames during the start-up.
 //
 //   node apps/web/scripts/perf/activity-neon.mjs --base http://localhost:5173 [--device pixel7|mobile|desktop] [--throttle 6] [--lite]
@@ -27,7 +27,7 @@ await page.addInitScript(() => {
   requestAnimationFrame(tick);
 });
 const t0 = Date.now();
-await page.goto(`${base}/software?neon${args.lite ? "&lite" : ""}`, { waitUntil: "load" });
+await page.goto(`${base}/software${args.lite ? "?lite" : ""}`, { waitUntil: "load" });
 // the picture draws when it scrolls into view; wait for the start-up to finish
 const finished = await page
   .waitForFunction(() => document.querySelector("[data-neon-done]"), null, { timeout: 90000 })

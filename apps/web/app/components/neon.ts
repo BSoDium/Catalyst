@@ -1,5 +1,5 @@
 /**
- * The neon start-up of the dark theme's rods (a prototype, behind `?neon`): when the picture appears some of the rods do not just come on, they flicker like a gas tube that is struggling to start, a few stutters of
+ * The neon start-up of the dark theme's rods: when the picture appears some of the rods do not just come on, they flicker like a gas tube that is struggling to start, a few stutters of
  * light with gaps between, and then stay on after a short warm-up; with a faint click and buzz for each stutter. No file: the sound is synthesised (Web Audio), very quiet, and only if the browser lets the page make sound
  * (it does not before the visitor has interacted with the page; then it is silent and nothing else changes).
  *
