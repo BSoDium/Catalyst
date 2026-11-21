@@ -105,17 +105,29 @@
       .presets i { display: inline-block; width: 14px; height: 14px; border-radius: 50%; background: linear-gradient(135deg, var(--a) 50%, var(--b) 50%); }
 
       /* Below 1100 px the title block would run into the blocks: it goes above the graph (and a phone gets four strips in a taller box). */
-      @media (max-width: 1099px) {
-        main { padding: 30px 16px 76px; }
-        #graph { aspect-ratio: 2.2 / 1; }
-        .caption { position: static; flex-direction: column; width: auto; padding: 0 0 14px; opacity: 1; gap: 0.55em; }
-        .caption::before { display: none; }
-        h1 { font-size: clamp(30px, 7.6vw, 64px); }
-        .about { font-size: 15px; } .legend { font-size: 12px; margin: 1em 0 0; }
+      /* The big screens: the text hangs over the empty ground at the bottom left of the graph; from 1100 to 1399 it is lowered a little more, as the graph is smaller than the text there. */
+      @media (min-width: 1100px) and (max-width: 1399px) {
+        .caption { bottom: calc(-3.4cqi - (1400px - 100cqi) * 0.1); width: clamp(24rem, 34cqi, 34rem); }
+        .about { font-size: 15.5px; } .legend { font-size: 12.5px; }
       }
+      /* A tablet (768 to 1099): the graph above and the text under it, as it is hung under the blocks (the graph's weight is at the bottom right, its bottom left is empty): it does not shrink with the page, and keeps its left edge on the blocks'. */
+      @media (max-width: 1099px) {
+        main { padding: 30px 28px 76px; }
+        #graph { aspect-ratio: 2.2 / 1; }
+        #stage { display: flex; flex-direction: column; }
+        .caption { position: static; order: 2; flex-direction: column-reverse; width: min(100%, 40rem); margin: -5cqi 0 0 var(--nag-content-left, 0px); padding: 0.4em 0 14px; opacity: 1; gap: 0.7em; }
+        .caption::before { display: none; }
+        h1 { font-size: clamp(36px, 5.4vw, 56px); }
+        .about { font-size: 16px; } .legend { font-size: 12.5px; margin: 0.3em 0 0.9em; }
+      }
+      /* A phone (under 768): the text above the graph, close to the top left corner (more room at the left than at the top), and the graph from edge to edge of the screen. */
       @media (max-width: 767px) {
-        main { padding: 26px 12px 76px; }
-        #graph { aspect-ratio: 0.8; }
+        body { justify-content: flex-start; }
+        main { padding: 14px 22px 76px; }
+        #graph { aspect-ratio: 0.8; margin: 0 -22px; width: calc(100% + 44px); }
+        .caption { order: 0; flex-direction: column; margin: 0; width: 100%; padding: 0 0 10px; gap: 0.55em; }
+        h1 { font-size: clamp(30px, 8.4vw, 56px); }
+        .about { font-size: 15px; } .legend { font-size: 12px; margin: 0.8em 0 0; }
       }
     </style>
   </head>
