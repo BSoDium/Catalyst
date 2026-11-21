@@ -25,7 +25,9 @@ export function createActivityGraph(container: HTMLElement, options: GraphOption
     return { shifts: known && strips0 > 1 ? shiftsFromLayers([known.top, known.bottom], strips0) : undefined, tallest: known ? tallestOfLayers(known.top, known.bottom) : undefined };
   };
   let { shifts, tallest } = geometryOf(options.data);
-  const holder = options.placeholder === false ? null : mountPlaceholder(container, { weeks: options.weeks, strips: options.strips, shifts, tallest });
+  // (is the theme dark: the place-holder's tiles are faint grey squares in the dark theme only; `undefined` while it is the system's and there is no way to ask, as in a prerender)
+  const isDarkTheme = (): boolean | undefined => (state.theme === "auto" ? (typeof matchMedia === "undefined" ? undefined : matchMedia("(prefers-color-scheme: dark)").matches) : state.theme === "dark");
+  const holder = options.placeholder === false ? null : mountPlaceholder(container, { weeks: options.weeks, strips: options.strips, shifts, tallest, dark: isDarkTheme() });
   const overlay: HoverOverlay | null = options.overlay ? createHoverOverlay(container, options.overlay === true ? {} : options.overlay, () => ({ top: opts.data?.top, bottom: opts.data?.bottom })) : null;
   // (what the scene is given: the caller's callbacks, plus the place-holder's fade and the overlay's updates)
   const wrap = (o: GraphOptions): GraphOptions => ({
@@ -80,7 +82,7 @@ export function createActivityGraph(container: HTMLElement, options: GraphOption
     },
     cling(size) {
       // (the bells belong to the neon: in the light theme the tubes are off, so there is nothing to ring)
-      if (!destroyed && options.sound !== false && (state.theme === "auto" ? typeof matchMedia !== "undefined" && matchMedia("(prefers-color-scheme: dark)").matches : state.theme === "dark")) cling(size);
+      if (!destroyed && options.sound !== false && isDarkTheme()) cling(size);
     },
     setColors(colors) {
       if (destroyed) return;
@@ -105,6 +107,7 @@ export function createActivityGraph(container: HTMLElement, options: GraphOption
     setTheme(theme) {
       if (destroyed) return;
       state.theme = theme;
+      holder?.setDark(isDarkTheme());
       handle.rethink();
     },
     destroy() {

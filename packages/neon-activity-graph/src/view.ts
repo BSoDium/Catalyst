@@ -96,6 +96,10 @@ function screenAxes() {
  * The place-holder: every day of the year as a flat rounded square on the ground, projected as the scene's camera sees it, fitted into a box of the given aspect ratio the way the scene fits itself (`fit` in the scene, with a
  * typical tallest column). Returns the SVG `viewBox` and one path of all the squares (to be filled).
  */
+/** Where the scene's pits are seen: half the side of their opening (the pit's 0.46 and the lip round it, 5 % more) and the height of the layers lying over the ground (the pit's shading is drawn there). */
+export const PIT_HALF = 0.48;
+export const PIT_LEVEL = 0.11;
+
 export function placeholderTiles(weeks: number, strips: number, aspect: number, tallest = TYPICAL_TALLEST, shifts?: readonly number[]) {
   const { corners, at } = slabFor(weeks, strips, shifts);
   const room = roomFor(strips);
@@ -113,9 +117,9 @@ export function placeholderTiles(weeks: number, strips: number, aspect: number, 
     y1 = Math.max(y1, p.y);
   }
   const { mx, my, halfH } = frameOf(strips, weeks, at, project, x0, x1, y0, y1, aspect);
-  // a rounded square on the ground (half side 0.46, corner radius 0.16 like the blocks'), its outline sampled in world space and then projected, so the foreshortening is the scene's own
+  // a rounded square (half side `PIT_HALF`, the opening of the scene's pit with its lip, corner radius 0.16 like the blocks'), at the height of the layers over the ground (`PIT_LEVEL`) where the pit is seen, its outline sampled in world space and then projected, so the foreshortening is the scene's own
   const outline: [number, number][] = [];
-  for (const [cx, cz, a0] of [[0.3, 0.3, 0], [-0.3, 0.3, Math.PI / 2], [-0.3, -0.3, Math.PI], [0.3, -0.3, Math.PI * 1.5]] as const) {
+  for (const [cx, cz, a0] of [[PIT_HALF - 0.16, PIT_HALF - 0.16, 0], [-(PIT_HALF - 0.16), PIT_HALF - 0.16, Math.PI / 2], [-(PIT_HALF - 0.16), -(PIT_HALF - 0.16), Math.PI], [PIT_HALF - 0.16, -(PIT_HALF - 0.16), Math.PI * 1.5]] as const) {
     for (let i = 0; i <= 3; i++) {
       const a = a0 + (i / 3) * (Math.PI / 2);
       outline.push([cx + 0.16 * Math.cos(a), cz + 0.16 * Math.sin(a)]);
@@ -125,7 +129,7 @@ export function placeholderTiles(weeks: number, strips: number, aspect: number, 
   for (let week = 0; week < weeks; week++) {
     for (let day = 0; day < 7; day++) {
       const c = at(week, day);
-      const pts = outline.map(([dx, dz]) => project(c.x + dx, 0, c.z + dz));
+      const pts = outline.map(([dx, dz]) => project(c.x + dx, PIT_LEVEL, c.z + dz));
       d += `M${pts.map((p) => `${p.x.toFixed(3)} ${p.y.toFixed(3)}`).join("L")}Z`;
     }
   }
