@@ -9,7 +9,7 @@ The dark picture is **clear glass with neon gas inside**. The glass adds nothing
 
 ## The path (what was tried, and what it taught)
 
-1. **The rod stayed an opaque dark bar when dim.** A gas tube that is off is clear glass. The rod is now translucent by *its own brightness* (not only the neon's on/off level, which is 1 for every block once lit): a per-sample dither (`rodSeed`: the noise changes at every sample, so the samples add up to the true opacity), opacity `smoothstep(0, 2.5, B)`, and thinner, `mix(0.08, 1, smoothstep(0, 3.5, B))` of its width about its own axis (`aCtr`), where `B` is the rod's brightest channel (baked colour, 0.08 to 6.6 across the 409 rods) times the level. Median rod 0.5, 75 % are under 1.3.
+1. **The rod stayed an opaque dark bar when dim.** A gas tube that is off is clear glass. The rod is now translucent by *its own brightness* (not only the neon's on/off level, which is 1 for every block once lit): its colour scaled by its opacity (no dither: a dithered translucency, even averaged over samples, flickers whenever the lights move), opacity `smoothstep(0, 2.5, B)`, and thinner, `mix(0.08, 1, smoothstep(0, 3.5, B))` of its width about its own axis (`aCtr`), where `B` is the rod's brightest channel (baked colour, 0.08 to 6.6 across the 409 rods) times the level. Median rod 0.5, 75 % are under 1.3.
 2. **Dimmed (hovered-away) blocks were grey.** The cause was *not* the glass colour. Three things added a grey light to a glass block: (a) the glass's glow (`emissive`) blended toward one cool grey when the level fell, by design, (b) the room's reflections: the glass is mirror-smooth and reflects `RoomEnvironment`, a bright grey room, so every face got a grey sheen, and (c) a small floor of glow and reflection kept when a rod is off. Tinting the sheen only changed its colour.
 3. **Wrong turns, so as not to take them again.** Taking the glass's colour toward *white* made it lighter, hence washed out. Taking it toward the *grey of the same lightness* made it grey. Removing all reflections and the clear coat made the glass flat. Colouring the glow of dim glass (to "tint it") made all the blocks look tinted. A whitened glow is a grey glow.
 4. **What worked** (the current state):
@@ -40,3 +40,9 @@ The rod keeps **the same gap to the glass all round**: `gap = (0.92 − rodWidth
 ## Method
 
 Judge it on screenshots, not by reasoning: the demo at `/` with a block hovered (dimmed neighbours are where grey shows), and `/?hold` for the off state. Zoom with a CSS `transform: scale(3)` on `#graph` for a close look.
+
+## Noise and cost (what we learned)
+
+- **No stochastic translucency.** `alphaHash` and our own per-sample dither both looked right once settled but flickered whenever the lights moved (few samples). The rod's translucency is now its colour scaled by its opacity: noise-free, and against a dark glass the look is the same.
+- **Light updates are one sample, averaged** (`ema` in `graph.ts`): the camera is still, so the last picture is a start for the next; the new sample weighs at least 30 %. A fifth of the cost of 5 samples drawn from nothing, and no restart from a single noisy sample.
+- **Frosted glass**: `DARK_GLASS_ROUGHNESS` 0.22: the glass's transmission is a blurred mip of the picture seen through it, so the glow of the rods spreads a little in the glass. It costs next to nothing.
