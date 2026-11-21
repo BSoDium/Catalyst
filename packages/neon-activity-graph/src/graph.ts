@@ -116,6 +116,28 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       let announced = false;
       // (the neon start-up begins when the picture first appears)
       let neonStart: (() => void) | null = null;
+      // While the box is being resized the picture is not stretched with it: it keeps the size it was drawn at, centred, softened, until the new one is drawn (a stretched picture jumps, which is what the blur is there to hide)
+      let shownW = 0;
+      let shownH = 0;
+      const holdSize = () => {
+        if (!shownW || !shownH) return;
+        const s = renderer.domElement.style;
+        s.inset = "auto";
+        s.width = `${shownW}px`;
+        s.height = `${shownH}px`;
+        s.left = `${(el.clientWidth - shownW) / 2}px`;
+        s.top = `${(el.clientHeight - shownH) / 2}px`;
+      };
+      const releaseSize = () => {
+        const s = renderer.domElement.style;
+        s.inset = "0";
+        s.left = "";
+        s.top = "";
+        s.width = "100%";
+        s.height = "100%";
+        shownW = el.clientWidth;
+        shownH = el.clientHeight;
+      };
       const sharpen = () => {
         settling = false;
         if (!announced) {
@@ -894,6 +916,7 @@ void main(){
         camera.top = my + halfH;
         camera.bottom = my - halfH;
         camera.updateProjectionMatrix();
+        releaseSize();
         publishBounds();
         restart();
       };
@@ -1363,6 +1386,7 @@ void main(){
         seenW = el.clientWidth;
         seenH = el.clientHeight;
         soften();
+        holdSize();
         pinned = false;
         if (current !== -1) announce(-1);
         window.clearTimeout(resizeTimer);
