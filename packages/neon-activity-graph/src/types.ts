@@ -124,8 +124,6 @@ export interface GraphOptions {
   /** The most pixels the picture is rendered at (default 8 million: the render is scaled down on a very large container). */
   maxPixels?: number;
   /** Development helpers: `metrics` writes `data-*` timings on the container and logs the ground light's cost, `wireframe` draws the glass as a cage, `neonHold` holds the picture half on, half off (a number between 0 and 1: the off half at that level). */
-  /** Linear exposure of the finished picture (1 = as designed; below 1 darkens, above brightens). Also changeable live with `setExposure`. */
-  exposure?: number;
   debug?: { metrics?: boolean; wireframe?: boolean; neonHold?: boolean | number };
 }
 
@@ -146,8 +144,6 @@ export interface ActivityGraph {
   cling(size?: "small" | "big"): void;
   /** Changes the colours of one or both layers (see `colors`): the blocks are rebuilt once the changes settle (about 120 ms after the last call), without the start-up and without refetching; the old picture stays, softened, until the new one is in focus. */
   setColors(colors: { top?: Partial<LayerColors>; bottom?: Partial<LayerColors> }): void;
-  /** Changes the exposure of the picture (a gain on the light, applied to the finished picture without redrawing it; 1 = as designed). */
-  setExposure(exposure: number): void;
   /** Changes the theme (the graph is rebuilt, and the start-up plays again in the dark one). Call it again after the page's background changed. */
   setTheme(theme: "light" | "dark" | "auto"): void;
   /** Resolves when the graph has been built (or has failed). */
