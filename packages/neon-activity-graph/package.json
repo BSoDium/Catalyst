@@ -27,21 +27,7 @@
     "./layout": "./src/pure.ts"
   },
   "publishConfig": {
-    "access": "public",
-    "exports": {
-      ".": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/index.js"
-      },
-      "./react": {
-        "types": "./dist/react.d.ts",
-        "default": "./dist/react.js"
-      },
-      "./layout": {
-        "types": "./dist/layout.d.ts",
-        "default": "./dist/layout.js"
-      }
-    }
+    "access": "public"
   },
   "scripts": {
     "build": "node scripts/embed-templates.mjs && tsup",
@@ -87,5 +73,19 @@
     "node": ">=22"
   },
   "main": "./dist/index.js",
-  "types": "./dist/index.d.ts"
+  "types": "./dist/index.d.ts",
+  "publishExports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "default": "./dist/react.js"
+    },
+    "./layout": {
+      "types": "./dist/layout.d.ts",
+      "default": "./dist/layout.js"
+    }
+  }
 }

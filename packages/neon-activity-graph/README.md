@@ -1,5 +1,7 @@
 # Neon-activity-graph
 
+[![npm](https://img.shields.io/npm/v/neon-activity-graph)](https://www.npmjs.com/package/neon-activity-graph) [![ci](https://github.com/BSoDium/Neon-activity-graph/actions/workflows/ci.yml/badge.svg)](https://github.com/BSoDium/Neon-activity-graph/actions/workflows/ci.yml) [![license](https://img.shields.io/npm/l/neon-activity-graph)](LICENSE)
+
 A 3D activity graph in three.js: one glass block a day, two layers stacked in a column (say GitHub contributions on top of coding time), lit like a neon sign. In the dark theme the blocks' rods flicker on like gas tubes, with a synthesised hum; in the light theme the sun shines through the glass and casts coloured shadows and caustics. The camera never moves, so the picture is rendered progressively (soft shadows and anti-aliasing accumulated over a few dozen frames) and then the GPU goes idle.
 
 It draws the graph only: no panel, no figures, no legend. Hover and keyboard events are handed to you as data (`onHover`) so the card is yours.
@@ -128,11 +130,9 @@ pnpm dev   # the playground: fake data and every option
 
 ## Releasing (maintainers)
 
-Releases go through npm Trusted Publishing (OIDC): no npm token is created or stored.
+Releases go through npm Trusted Publishing (OIDC): no npm token is created or stored. `0.1.0` was published by hand (a trusted publisher can only be attached to a package that exists); the trusted publisher is set on npmjs.com (package > Settings > Trusted Publisher > GitHub Actions: user `BSoDium`, repository `Neon-activity-graph`, workflow `release.yml`, environment empty).
 
-1. **First version, once, by hand** (a trusted publisher can only be attached to a package that exists): in this folder, `pnpm install && pnpm run build`, then `npm login` (with your 2FA) and `npm publish --access public`. (`npm pack --dry-run` lists what goes in: `dist`, `README.md`, `LICENSE`, and a `package.json` whose `exports` point at `dist`.)
-2. On npmjs.com, open the package > Settings > Trusted Publisher > GitHub Actions: user `BSoDium`, repository `Neon-activity-graph`, workflow file `release.yml`, environment empty.
-3. From then on: bump `version` in `package.json`, commit, then `git tag vX.Y.Z && git push origin vX.Y.Z`. The `release` workflow tests, builds and publishes with provenance (the tag must match the version).
+From now on: bump `version` in `package.json` (the next one, `0.1.1`, is the first to be published with provenance), commit, then `git tag v0.1.1 && git push origin v0.1.1`. The `release` workflow tests, builds and publishes with provenance; the tag must match the version, and a tag for a version already on npm does nothing.
 
 ## License
 
