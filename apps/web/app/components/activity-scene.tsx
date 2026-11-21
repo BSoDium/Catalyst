@@ -116,7 +116,11 @@ export function ActivityScene({ activity, strips = 1, onReady, onLit, onHover, c
 
       // glass: it transmits (refracts) what is behind it, the ground and the blocks' own colour tint what passes through
       /** The film grain's strength over the whole picture (0 for none). */
-      const GRAIN = 0.012;
+      const GRAIN = (() => {
+        // (`?grain=0.01` sets it from the address, `?grain=0` turns it off: to find the strength that suits a screen)
+        const q = Number(new URLSearchParams(window.location.search).get("grain"));
+        return new URLSearchParams(window.location.search).has("grain") && Number.isFinite(q) ? Math.min(0.2, Math.max(0, q)) : 0.012;
+      })();
       /** (light theme) how strong the room's reflections (environment) and the clear coat's are, relative to what comes through the glass. */
       const LIGHT_ENV = 0.85;
       const LIGHT_COAT = 0.4;
@@ -737,14 +741,19 @@ void main(){
   if (m > 1.) c.rgb *= (1. + (m - 1.) * 0.12) / m;
   gl_FragColor = c;
 #include <colorspace_fragment>
-  // Film grain: a fine, fixed, grey noise over the whole picture (not over the lighting: after it, on what is shown), the same size as a device pixel, stronger in the mid-tones than in the blacks and whites, as film's is.
+  // Camera grain: a fine, fixed noise over the whole picture, added after the lighting (on what is shown, not in it). It is meant to read as the noise of a good camera, not as rendering noise: soft (the sum of three
+  // uniform numbers, so close to a gaussian and not the harsh specks of a single one), the same for every colour of the picture (it is not gated by brightness: a coloured block gets as much as a grey one), growing with the light (as a sensor's does: the dark glows stay clean) and easing off in the highlights (so that a bright surface does not burn), and a little colour in it (a tenth, as a sensor's has).
   if (grain > 0.) {
-    vec3 p3 = fract(vec3(gl_FragCoord.xyx) * .1031);
-    p3 += dot(p3, p3.yzx + 33.33);
-    float n = fract((p3.x + p3.y) * p3.z) - 0.5;
+    vec3 q = fract(vec3(gl_FragCoord.xyx) * vec3(.1031, .1030, .0973));
+    q += dot(q, q.yzx + 33.33);
+    vec3 h = fract((q.xxy + q.yzz) * q.zyx);
+    float g = (h.x + h.y + h.z - 1.5) * 0.7;
+    vec3 chroma = (h - 0.5) * 0.35;
     float lum = dot(gl_FragColor.rgb, vec3(0.2126, 0.7152, 0.0722));
-    // (only on what is bright: the blocks' own surfaces, not the glows and the dark, where a speck would be a light of its own)
-    gl_FragColor.rgb += n * grain * smoothstep(0.15, 0.55, lum) * gl_FragColor.a;
+    // (the noise of a sensor grows with the light it gets, as its square root: the dark glows stay clean, the lit surfaces carry the grain)
+    // (and none at all in the near-blacks: in an 8-bit picture a tiny noise there only flips single pixels between two levels, which is a speckle, not a grain)
+    float tone = sqrt(clamp(lum, 0., 1.)) * smoothstep(0.08, 0.3, lum) * (1. - smoothstep(0.7, 1.0, lum) * 0.8);
+    gl_FragColor.rgb += (g + chroma * 0.1) * grain * tone * gl_FragColor.a;
   }
 }`,
         depthTest: false,

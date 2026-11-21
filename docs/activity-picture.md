@@ -29,9 +29,9 @@ Measured so far (dev build, Apple M4): an update of the neon costs about 0.05 ms
 5. **Both themes, all widths**: the legend and figures at 1300, 1700 and 2560 px; the phone layout (4 strips, bleeding off the edges); the dark glow's brightness against the cubes' (the ground must never be brighter than the blocks).
 6. **Open decisions**: the sound has no visible switch (it plays when the browser allows it and is silent otherwise; add a mute control if that is not enough); cap the update rate on `lite` further if a real phone needs it (`fps` in `createNeon`, and `samplesCap` in `activity-scene.tsx`), and rerun 1-5 on the production build.
 
-## Film grain
+## Camera grain
 
-A fine, fixed, grey grain over the whole picture, in both themes, added in the last (show) pass after the lighting (`GRAIN` in `activity-scene.tsx`, 0 for none): one speck per device pixel, only on the bright surfaces (nothing in the glows and the dark: a speck there would be a light of its own). Static (the picture is drawn once, not every frame). Tune on a real screen: the browser pane's downscaling makes it look coarser than it is.
+A fine, fixed noise over the whole picture, in both themes, added in the last (show) pass after the lighting (`GRAIN` in `activity-scene.tsx`, 0.012 by default; `?grain=0.02` sets it from the address, `?grain=0` turns it off, to find what suits a screen). It is meant to read as a camera's, not as rendering noise: soft (the sum of three uniform numbers), the same for every colour, growing with the light (the square root of the brightness, as a sensor's does), eased off in the highlights so that a bright surface does not burn, none in the near-blacks (in 8 bits a tiny noise there only flips pixels between two levels, a speckle), and a tenth of it in colour. Static (the picture is drawn once, not every frame).
 
 ## Layout (software page)
 
