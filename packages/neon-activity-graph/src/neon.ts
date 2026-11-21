@@ -50,14 +50,14 @@ interface Stutter {
  */
 const PARTIALS: [number, number, number][] = [[1, 1, 0.3], [2.76, 0.35, 0.14], [5.4, 0.12, 0.07]];
 /**
- * A soft, low electrical bzz, for the tubes that do not ding: two sawtooth voices a little apart (90 to 135 Hz and the same a little above an octave up), taken through a low-pass at about 650 Hz so that only the warm low part is left, a slow
- * wobble in the level (45 to 70 Hz, shallow) for the "b-z-z" texture and a trace of low-passed noise for the wiring. 130 to 240 ms, very faint: nothing hissy or crackly in it (it is not radio static).
+ * A soft, low electrical bzz, for the tubes that do not ding: two sawtooth voices a little apart (170 to 260 Hz and the same a little above an octave up), taken through a low-pass at about 1.5 kHz so that the buzz is light, not deep and not hissy, a
+ * wobble in the level (55 to 90 Hz, shallow) for the "b-z-z" texture and a trace of low-passed noise for the wiring. 130 to 240 ms, very faint: nothing hissy or crackly in it (it is not radio static).
  */
 function bzz(c: AudioContext, dest: AudioNode, when: number, pan: number, level: number, length: number) {
-  const f = 90 + Math.random() * 45;
+  const f = 170 + Math.random() * 90;
   const body = c.createGain();
   body.gain.value = 1;
-  for (const [ratio, gain] of [[1, 1], [2.03, 0.35]] as const) {
+  for (const [ratio, gain] of [[1, 1], [2.03, 0.5]] as const) {
     const o = c.createOscillator();
     o.type = "sawtooth";
     o.frequency.value = f * ratio;
@@ -69,14 +69,14 @@ function bzz(c: AudioContext, dest: AudioNode, when: number, pan: number, level:
   }
   const lp = c.createBiquadFilter();
   lp.type = "lowpass";
-  lp.frequency.value = 650;
+  lp.frequency.value = 1500;
   lp.Q.value = 0.7;
   // (a shallow wobble: the level swings by about a third around its mean)
   const wobble = c.createGain();
   wobble.gain.value = 0.7;
   const lfo = c.createOscillator();
   lfo.type = "sine";
-  lfo.frequency.value = 45 + Math.random() * 25;
+  lfo.frequency.value = 55 + Math.random() * 35;
   const depth = c.createGain();
   depth.gain.value = 0.3;
   lfo.connect(depth).connect(wobble.gain);
@@ -91,7 +91,7 @@ function bzz(c: AudioContext, dest: AudioNode, when: number, pan: number, level:
   ns.buffer = nb;
   const nlp = c.createBiquadFilter();
   nlp.type = "lowpass";
-  nlp.frequency.value = 900;
+  nlp.frequency.value = 1400;
   const ng = c.createGain();
   ng.gain.value = 0.05;
   ns.connect(nlp).connect(ng).connect(lp);
