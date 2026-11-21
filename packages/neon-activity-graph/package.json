@@ -28,7 +28,6 @@
   },
   "publishConfig": {
     "access": "public",
-    "provenance": true,
     "exports": {
       ".": {
         "types": "./dist/index.d.ts",
@@ -54,7 +53,9 @@
     "demo": "vite demo",
     "build:demo": "vite build demo",
     "fetch:activity": "node demo/scripts/fetch-activity.mjs demo/public/activity.json",
-    "prepublishOnly": "pnpm run build"
+    "prepublishOnly": "pnpm run build",
+    "prepack": "node scripts/apply-publish-config.mjs",
+    "postpack": "node scripts/apply-publish-config.mjs --restore"
   },
   "peerDependencies": {
     "react": ">=18",
@@ -84,5 +85,7 @@
   "packageManager": "pnpm@10.5.2",
   "engines": {
     "node": ">=22"
-  }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts"
 }

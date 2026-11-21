@@ -128,7 +128,11 @@ pnpm dev   # the playground: fake data and every option
 
 ## Releasing (maintainers)
 
-Add the repository secret `NPM_TOKEN` (a token that can publish `neon-activity-graph`), bump `version` in `package.json`, then `git tag vX.Y.Z && git push origin vX.Y.Z`: the `release` workflow tests, builds and publishes with provenance.
+Releases go through npm Trusted Publishing (OIDC): no npm token is created or stored.
+
+1. **First version, once, by hand** (a trusted publisher can only be attached to a package that exists): in this folder, `pnpm install && pnpm run build`, then `npm login` (with your 2FA) and `npm publish --access public`. (`npm pack --dry-run` lists what goes in: `dist`, `README.md`, `LICENSE`, and a `package.json` whose `exports` point at `dist`.)
+2. On npmjs.com, open the package > Settings > Trusted Publisher > GitHub Actions: user `BSoDium`, repository `Neon-activity-graph`, workflow file `release.yml`, environment empty.
+3. From then on: bump `version` in `package.json`, commit, then `git tag vX.Y.Z && git push origin vX.Y.Z`. The `release` workflow tests, builds and publishes with provenance (the tag must match the version).
 
 ## License
 

@@ -1,7 +1,7 @@
 name: release
 
-# Publishes to npm, with provenance, when a version tag is pushed (`git tag v0.1.0 && git push origin v0.1.0`).
-# Needs the repository secret NPM_TOKEN (an npm automation / granular token that can publish `neon-activity-graph`).
+# Publishes to npm with provenance when a version tag is pushed (`git tag v0.1.1 && git push origin v0.1.1`), through npm Trusted Publishing (OIDC): there is no token and no secret.
+# One-time setup on npmjs.com (package > Settings > Trusted Publisher > GitHub Actions): user BSoDium, repository Neon-activity-graph, workflow release.yml, environment empty. See the README.
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
 
 permissions:
   contents: read
-  id-token: write # (npm provenance)
+  id-token: write # (the OIDC token npm exchanges for a publish credential, and the provenance)
 
 jobs:
   publish:
@@ -20,15 +20,15 @@ jobs:
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version-file: .nvmrc
+          node-version: 22.14
           cache: pnpm
           registry-url: https://registry.npmjs.org
+      # (Trusted Publishing needs npm 11.5.1 or newer)
+      - run: npm install -g npm@latest
       - run: pnpm install --frozen-lockfile
       - run: pnpm run typecheck
       - run: pnpm test
       - name: The tag matches package.json
         run: test "v$(node -p "require('./package.json').version")" = "$GITHUB_REF_NAME"
-      # (pnpm applies `publishConfig.exports`, which points the package at dist)
-      - run: pnpm publish --provenance --access public --no-git-checks
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      # (`prepublishOnly` builds; `prepack` points `exports` at dist for the tarball, see scripts/apply-publish-config.mjs)
+      - run: npm publish --provenance --access public
