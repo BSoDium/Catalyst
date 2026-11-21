@@ -1507,7 +1507,7 @@ void main(){
           if (focusTo[i]! > 1 && (held < 0 || focusTo[i]! > focusTo[held]!)) held = i;
         }
         if (held < 0) return hum.set(lvl);
-        hum.set(lvl, neonBlocks[held]!.pan, neonBlocks[held]!.cell);
+        hum.set(lvl, neonBlocks[held]!.pan, neonBlocks[held]!.cell, neonBlocks[held]!.t);
       };
       const stepFocus = () => {
         focusRaf = 0;

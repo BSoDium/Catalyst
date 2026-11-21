@@ -1,5 +1,5 @@
 /**
- * The hum of the neon under the pointer: a ballast's buzz (100 Hz, a sawtooth with its edges taken off) whose loudness (and brightness of tone) follows how bright the neon is, 0 when nothing is selected, the most when it is at full
+ * The hum of the neon under the pointer: a ballast's buzz (a sawtooth with its edges taken off, pitched by the neon's size: 150 Hz for the smallest down to 70 for the biggest) whose loudness (and brightness of tone) follows how bright the neon is, 0 when nothing is selected, the most when it is at full
  * brightness, and slowly back to 0 as it falls back. It is not one steady tone: two buzzing voices a fifth or so apart lie on top of each other and one ducks the other, as in a sidechain, at a slow rate of its own, so that the hum
  * breathes and beats as two real ballasts do. It is made on demand (a context only when the first neon is selected, and let go a few seconds after the last hum has died), only when the browser lets the page make sound (the visitor
  * has used the page), and it is the page's own business to say when (`level`).
@@ -11,8 +11,11 @@ const IDLE_CLOSE_MS = 4500;
 const ATTACK = 0.09;
 const RELEASE = 0.45;
 
-/** Each neon has a hum of its own, the same every time: from the neon's number come its pitch (not far from 100 Hz), the pitch of the second voice, the slow beat, the rate and depth of the ducking and the brightness of the tone. */
-function voiceOf(seed: number) {
+/** The pitch of a neon's hum by its size (0 the smallest, 1 the biggest): a small neon hums high and a big one low, as a short string or pipe does, from 150 Hz down to 70. */
+const pitchOf = (size: number) => 150 - 80 * Math.max(0, Math.min(1, size));
+
+/** Each neon has a hum of its own, the same every time: from the neon's number come a little variety on its size's pitch (a few percent), the pitch of the second voice, the slow beat, the rate and depth of the ducking and the brightness of the tone. */
+function voiceOf(seed: number, size: number) {
   let a = (seed * 2654435761 + 0x9e3779b9) >>> 0;
   const rnd = () => {
     a = (a + 0x6d2b79f5) >>> 0;
@@ -21,7 +24,7 @@ function voiceOf(seed: number) {
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
-  const base = 95 + rnd() * 10;
+  const base = pitchOf(size) * (0.96 + rnd() * 0.08);
   const ratios = [1.5, 1.335, 1.26, 2.01];
   return {
     base,
@@ -47,6 +50,7 @@ export function createHoverHum() {
   let voiceA: GainNode | null = null;
   let voiceB: GainNode | null = null;
   let seeded = -1;
+  let seededSize = -1;
   let tone = 1;
   let prev = 0;
   const allowed = () => (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation?.hasBeenActive !== false;
@@ -64,6 +68,7 @@ export function createHoverHum() {
     c = null;
     gain = lp = panner = upperGain = duck = swell = voiceA = voiceB = null;
     seeded = -1;
+    seededSize = -1;
     prev = 0;
     if (x && x.state !== "closed") x.close().catch(() => {});
   };
@@ -115,19 +120,19 @@ export function createHoverHum() {
   };
   return {
     /**
-     * The hum's strength, 0 to 1 (the selected neon's brightness above its normal, as a share of the most it gets). `pan` (-1 to 1) and `seed` (the neon's number) say which neon it is, or `null` when none is under the pointer:
+     * The hum's strength, 0 to 1 (the selected neon's brightness above its normal, as a share of the most it gets). `pan` (-1 to 1), `seed` (the neon's number) and `size` (0 the smallest to 1 the biggest: it sets the pitch, small high and big low) say which neon it is, or `null` when none is under the pointer:
      * then the hum is the last neon's, as it was, and only fades.
      */
-    set(level: number, pan: number | null = null, seed: number | null = null) {
+    set(level: number, pan: number | null = null, seed: number | null = null, size = 0.5) {
       const v = Math.max(0, Math.min(1, level));
       if (v < 0.01 && !c) return;
       if (!c && !open()) return;
       if (!c || !gain || !lp || !panner) return;
       const t = c.currentTime;
       if (c.state === "suspended") void c.resume().catch(() => {});
-      if (seed !== null && pan !== null && seed !== seeded) {
+      if (seed !== null && pan !== null && (seed !== seeded || size !== seededSize)) {
         // (another neon: its own voice; the first time the pitch is set at once, after that it glides, so that moving across the blocks does not click)
-        const vc = voiceOf(seed);
+        const vc = voiceOf(seed, size);
         const glide = seeded < 0 ? 0.001 : 0.12;
         oscs[0]?.frequency.setTargetAtTime(vc.base, t, glide);
         oscs[1]?.frequency.setTargetAtTime(vc.base + vc.beat, t, glide);
@@ -139,6 +144,7 @@ export function createHoverHum() {
         duck?.gain.setTargetAtTime(-0.4 * vc.depth, t, glide);
         tone = vc.tone;
         seeded = seed;
+        seededSize = size;
       }
       if (pan !== null) panner.pan.setTargetAtTime(pan * 0.7, t, 0.15);
       // (a soft change: the hum swells with the light, and dies slowly, with the light, not with the frame)
