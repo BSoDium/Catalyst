@@ -48,7 +48,7 @@
          --nag-content-left (px) on the graph box at once, from the geometry (the scene's own value replaces it), and main.ts copies it to the stage; the caption is hidden for the one frame before that, then fades in: it never moves. */
       #stage { position: relative; width: 100%; container-type: inline-size; }
       #graph { position: relative; width: 100%; aspect-ratio: 2.7 / 1; --nag-top: var(--top); --nag-bottom: var(--bottom); }
-      .caption { position: absolute; left: var(--nag-content-left, 0px); bottom: 2%; z-index: 1; pointer-events: none; display: flex; flex-direction: column-reverse; align-items: flex-start; gap: 0.7em; width: 34cqi; padding: 1.4em 0 0 0; opacity: 0; transition: opacity 0.5s ease; }
+      .caption { position: absolute; left: var(--nag-content-left, 0px); bottom: -3.4cqi; z-index: 1; pointer-events: none; display: flex; flex-direction: column-reverse; align-items: flex-start; gap: 0.7em; width: 34cqi; padding: 1.4em 0 0 0; opacity: 0; transition: opacity 0.5s ease; }
       .caption.ready { opacity: 1; }
       .caption > * { pointer-events: auto; user-select: text; -webkit-user-select: text; }
       .caption::before { content: ""; position: absolute; inset: -2em -6em -2em -3em; z-index: -1; background: radial-gradient(ellipse 50% 50% at 50% 50%, color-mix(in srgb, var(--bg) 84%, transparent) 0%, color-mix(in srgb, var(--bg) 72%, transparent) 55%, transparent 100%); }
@@ -64,13 +64,12 @@
       @media (prefers-reduced-motion: reduce) { h1::after { animation: none; } }
       .about { margin: 0; color: var(--muted); font-size: clamp(14px, 1.2cqi, 19px); line-height: 1.45; max-width: 36em; font-weight: 420; }
       .about .hl { font-weight: 720; color: var(--fg); }
-      .about .more { display: block; margin-top: 0.4em; }
-      .about .pick { display: flex; align-items: baseline; gap: 0.2em 0.9em; margin-top: 0.9em; font-size: 0.92em; }
+      .about .pick { display: flex; align-items: baseline; gap: 0.2em 0.9em; margin-top: 0.6em; font-size: 0.92em; }
       .about .lib { font: 400 0.9em var(--mono); letter-spacing: 0; color: var(--fg); }
       .about .theme { pointer-events: auto; font: inherit; font-weight: 600; color: var(--fg); background: none; border: 0; padding: 0 0 0.1em; margin: 0; cursor: pointer; border-bottom: 2px solid color-mix(in srgb, var(--fg) 28%, transparent); }
       .about .theme[aria-pressed="true"] { border-bottom-color: var(--fg); }
       .about .theme:hover { border-bottom-color: var(--cyan); }
-      .about .for { display: block; margin-top: 0.5em; font-size: 0.92em; color: var(--muted); }
+      .about .for { display: block; margin-top: 0.35em; font-size: 0.92em; color: var(--muted); }
       .about a { pointer-events: auto; color: var(--fg); text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; text-decoration-color: var(--cyan); }
       .about a:hover { text-decoration-color: var(--magenta); }
       #live { position: fixed; left: max(14px, env(safe-area-inset-left)); bottom: max(14px, env(safe-area-inset-bottom)); z-index: 8; margin: 0; color: var(--muted); font: 400 10.5px / 1.3 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; pointer-events: none; }
@@ -127,7 +126,7 @@
       <div id="stage">
         <div class="caption" id="caption">
           <h1 id="title" aria-label="Neon activity graph"><span aria-hidden="true"><span class="rb">N</span>eon activity graph</span><span class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Neon activity graph</span></h1>
-          <p class="about">A <span class="hl">year</span> of activity drawn as <span class="hl">glass blocks</span> lit like neon tubes.<span class="more">A <span class="lib">three.js</span> component with a <span class="hl">React</span> wrapper, in a light and a dark theme.</span><span class="pick" role="group" aria-label="Theme">Theme <button type="button" class="theme" data-theme="system" aria-pressed="true">system</button> <button type="button" class="theme" data-theme="light" aria-pressed="false">light</button> <button type="button" class="theme" data-theme="dark" aria-pressed="false">dark</button></span><span class="for">Used on the <a href="https://v2.bsodium.fr/software">software page</a> of <a href="https://v2.bsodium.fr/">BSoDium’s</a> Catalyst.</span></p>
+          <p class="about">A <span class="hl">year</span> of activity drawn as <span class="hl">glass blocks</span> lit like neon tubes. A <span class="lib">three.js</span> component with a <span class="hl">React</span> wrapper, in a light and a dark theme.<span class="pick" role="group" aria-label="Theme">Theme <button type="button" class="theme" data-theme="system" aria-pressed="true">system</button> <button type="button" class="theme" data-theme="light" aria-pressed="false">light</button> <button type="button" class="theme" data-theme="dark" aria-pressed="false">dark</button></span><span class="for">Check out the <a href="https://v2.bsodium.fr/software">software page</a> of <a href="https://v2.bsodium.fr/">BSoDium’s</a> Catalyst.</span></p>
                     <div class="legend"><span class="g"><i></i><b>GitHub contributions</b></span><span class="b"><i></i><b>WakaTime coding time</b></span></div>
         </div>
         <div id="graph"></div>
