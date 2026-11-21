@@ -29,6 +29,8 @@ const mount = () => {
   // (a phone gets the four staggered strips; the place-holder shows from the first paint, over the empty box)
   graph = createActivityGraph(host, { data: current, strips: narrow.matches ? 4 : 1, theme: "auto", overlay: true,
     // (the package sets --nag-content-left on the graph box; the caption lives in the stage around it)
+    // (the hint fades once the visitor has hovered a day)
+    onHover: (i) => i && document.body.classList.add("hovered"),
     onLayout: (b) => stage.style.setProperty("--nag-content-left", `${b.left}px`), background: () => getComputedStyle(document.body).backgroundColor });
 };
 // (the place-holder is drawn at once, while the data is fetched: the graph is created with no data, then given it)
@@ -38,3 +40,38 @@ const { data, live, at } = await load();
 current = data;
 sub.textContent = live ? `Live data${at ? `, updated ${new Date(at).toLocaleDateString()}` : ""}.` : "Generated sample data.";
 (graph as ActivityGraph | null)?.update(data);
+
+// --- "How it works": a small panel, keyboard accessible (Escape closes, so does a click outside) ---
+const how = document.getElementById("how")!;
+how.tabIndex = -1;
+const howBtn = document.getElementById("how-btn")!;
+const setOpen = (open: boolean) => {
+  how.hidden = !open;
+  howBtn.setAttribute("aria-expanded", String(open));
+  if (open) (how.querySelector<HTMLElement>("button:not([disabled])") ?? how).focus({ preventScroll: true });
+};
+howBtn.addEventListener("click", () => setOpen(how.hidden));
+addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !how.hidden) {
+    setOpen(false);
+    howBtn.focus();
+  }
+});
+addEventListener("pointerdown", (e) => {
+  if (!how.hidden && !how.contains(e.target as Node) && !howBtn.contains(e.target as Node)) setOpen(false);
+});
+
+// The install chip: greyed ("coming soon") until the package is on npm; the registry is asked, so it turns on by itself.
+const copy = document.getElementById("copy") as HTMLButtonElement;
+fetch("https://registry.npmjs.org/neon-activity-graph", { headers: { accept: "application/vnd.npm.install-v1+json" } })
+  .then((r) => {
+    if (!r.ok) return;
+    copy.disabled = false;
+    copy.textContent = "copy";
+    copy.addEventListener("click", async () => {
+      await navigator.clipboard?.writeText("npm i neon-activity-graph").catch(() => {});
+      copy.textContent = "copied";
+      setTimeout(() => (copy.textContent = "copy"), 1500);
+    });
+  })
+  .catch(() => {});
