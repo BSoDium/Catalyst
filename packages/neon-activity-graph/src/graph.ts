@@ -221,7 +221,7 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       const LIGHT_BACKDROP = true;
       // (dark theme: the glass sees the ground's glow, see groundLayers) and how much of it
       const DARK_BACKDROP = true;
-      const DARK_BACKDROP_GAIN = 1;
+      const DARK_BACKDROP_GAIN = 3;
       /** (light theme) how much of the colour of the blocks behind a block (as the camera sees it) its glass takes, when they cover all of its outline. */
       const LIGHT_BEHIND_TINT = 0.85;
       const coreMaterial = new THREE.MeshBasicMaterial({ vertexColors: true });
