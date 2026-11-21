@@ -90,3 +90,7 @@ An empty day is a soft square **pit** dug in the ground (`graph.ts`, `tileShape`
 (Tried and removed: shading light-theme glass by the blocks behind it. It only made blocks darker for no reason.)
 
 (Tried and reverted: the light glass as stacked multiplying filters plus an additive shine. It fixed the paper showing through, but it no longer looked like glass at all: no refraction, no depth, no edges that catch the light.)
+
+### Light theme: double-sided glass
+
+The shells are `DoubleSide`: three.js draws the back faces of double-sided glass into what the glass in front of it sees, so a block behind another tints it and the paper no longer shows through as white streaks, while the glass in front keeps its refraction and reflections.

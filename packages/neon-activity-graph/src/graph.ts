@@ -883,6 +883,8 @@ void main() {
             mat.roughness = LIGHT_GLASS_ROUGHNESS;
             mat.specularIntensity = LIGHT_SPECULAR;
             mat.specularColor = tones[src][1].clone().lerp(new THREE.Color(0xffffff), 0.75);
+            // (two-sided: three.js draws the BACK faces of a double-sided glass into what the glass in front of it sees, so a block behind another tints it)
+            mat.side = THREE.DoubleSide;
           }
           materials.push(mat);
           const glass = new THREE.Mesh(mergeGeometries(list)!, mat);
