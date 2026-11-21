@@ -123,4 +123,6 @@ Revised: the dithered see-through (`alphaHash`) was noisy and is gone. A rod sta
 
 Final: the rods are drawn additively (`AdditiveBlending`, `transparent: false`, no depth write, `renderOrder` after the backdrop). three.js blends a non-transparent material with its blending mode, and keeps it in the opaque pass that the glass samples, so a rod only ever adds light to what is behind it (the backdrop's ground light, the other rods): it cannot absorb, an off rod adds nothing and is not there, and no dither or thinning is needed (both removed).
 
-With the rod off, the glass is not an empty dark slab: its reflections keep a floor (`OFF_ENV` 0.004 -> 0.15, so edges and highlights show) and its tint (the filter's colour) goes away with the rod's light (`vOn`), so an off block is clear glass, not a coloured opaque one.
+With the rod off, the glass is not a coloured slab: its tint (the filter's colour) goes away with the rod's light (`vOn`), so an off block is clear glass, not a coloured opaque one.
+
+Tried and removed: a higher reflection floor on the off glass (`OFF_ENV` 0.04 and 0.15): it made the glass more specular and plastic, not more transparent. What makes glass read as clear is what is seen through it (refraction of a lit background), not reflections.
