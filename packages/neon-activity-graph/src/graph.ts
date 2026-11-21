@@ -217,7 +217,9 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       /** How much light behind a block it takes to light its glass most of the way (the share is `1 - e^-(light behind / this)`). */
       const BEHIND_SCALE = 1.6;
       /** How far the neighbours' light is tinted by the block's own colour, 0 to 1. */
-      const GLOW_TINT = 0.75;
+      const GLOW_TINT = 1.0;
+      // (the tint grows with the glow's own brightness: the brighter part of the light is tinted in full, the faint part only this much)
+      const GLOW_TINT_FAINT = 0.15;
       /** (dark) the least a green rod gives out, in the units of `emit(t) * (1 + 1.1 t)` (0.5 for the quietest day, about 3 for the busiest): a quiet green day still shows green, even over a bright blue block, whose light would otherwise be most of what lights it. */
       const GREEN_MIN_LEVEL = 1.1;
       const DARK_GLASS_ROUGHNESS = 0.04;
@@ -617,7 +619,9 @@ void main() {
             const m = Math.max(hue0.r, hue0.g, hue0.b, 1e-3);
             return new THREE.Color(1, 1, 1).lerp(new THREE.Color(hue0.r / m, hue0.g / m, hue0.b / m), GLOW_TINT);
           })();
-          shell.setAttribute("aInc", new THREE.BufferAttribute(Float32Array.from({ length: shell.getAttribute("position").count * 3 }, (_, k) => [inc.r * glowTint.r, inc.g * glowTint.g, inc.b * glowTint.b][k % 3]! * nbShare), 3));
+          const vcount = shell.getAttribute("position").count;
+          shell.setAttribute("aInc", new THREE.BufferAttribute(Float32Array.from({ length: vcount * 3 }, (_, k) => [inc.r, inc.g, inc.b][k % 3]! * nbShare), 3));
+          shell.setAttribute("aTint", new THREE.BufferAttribute(Float32Array.from({ length: vcount * 3 }, (_, k) => [glowTint.r, glowTint.g, glowTint.b][k % 3]!), 3));
           // the glass of a busy day glows on its own surface too (dark theme): three steps of emission per source, each its own material
           const tier = tEff < 0.34 ? 0 : tEff < 0.67 ? 1 : 2;
           const key = `${src}${tier}`;
@@ -684,11 +688,11 @@ void main() {
               shader.uniforms.uFloorEm = { value: OFF_EMISSIVE / Math.max(mat.emissiveIntensity, 1e-4) };
               shader.uniforms.uFloorEnv = { value: mat.envMapIntensity > 0 ? OFF_ENV / mat.envMapIntensity : 0 };
               shader.vertexShader = shader.vertexShader
-                .replace("#include <common>", "#include <common>\nattribute float aBlock;\nattribute vec3 aInc;\nvarying vec3 vInc;\nuniform highp sampler2D uLevels;\nuniform float uFloorEm;\nuniform float uFloorEnv;\nvarying float vLevelEm;\nvarying float vLevelEnv;\nvarying float vOn;")
-                .replace("#include <begin_vertex>", "#include <begin_vertex>\n  vec2 lv = texelFetch(uLevels, ivec2(int(aBlock + 0.5), 0), 0).rg;\n  float own = max(lv.r, 0.3 * lv.g);\n  vOn = clamp(own, 0.0, 1.0);\n  vLevelEm = max(own, uFloorEm);\n  vLevelEnv = max(own, uFloorEnv);\n  vInc = aInc * lv.g;");
+                .replace("#include <common>", "#include <common>\nattribute float aBlock;\nattribute vec3 aInc;\nattribute vec3 aTint;\nvarying vec3 vInc;\nvarying vec3 vTint;\nuniform highp sampler2D uLevels;\nuniform float uFloorEm;\nuniform float uFloorEnv;\nvarying float vLevelEm;\nvarying float vLevelEnv;\nvarying float vOn;")
+                .replace("#include <begin_vertex>", "#include <begin_vertex>\n  vec2 lv = texelFetch(uLevels, ivec2(int(aBlock + 0.5), 0), 0).rg;\n  float own = max(lv.r, 0.3 * lv.g);\n  vOn = clamp(own, 0.0, 1.0);\n  vLevelEm = max(own, uFloorEm);\n  vLevelEnv = max(own, uFloorEnv);\n  vInc = aInc * lv.g;\n  vTint = aTint;");
               shader.fragmentShader = shader.fragmentShader
-                .replace("#include <common>", "#include <common>\nvarying float vLevelEm;\nvarying float vLevelEnv;\nvarying float vOn;\nvarying vec3 vInc;")
-                .replace("#include <emissivemap_fragment>", "#include <emissivemap_fragment>\n  // (right off, the glass glows the same cool grey whatever its source; as soon as there is a light in it, its own colour, darker the dimmer the light: a dimmed block is a tinted, darker one, not a grey one)\n  float offGrey = 1.0 - smoothstep(0.0, 0.35, vOn);\n  totalEmissiveRadiance = mix(totalEmissiveRadiance, vec3(dot(totalEmissiveRadiance, vec3(0.333))) * vec3(0.85, 0.95, 1.15), offGrey) * mix(pow(vLevelEm, 2.0), vLevelEm, offGrey);\n  totalEmissiveRadiance += min(vInc * " + NEIGHBOUR_GLOW.toFixed(3) + ", vec3(0.1));")
+                .replace("#include <common>", "#include <common>\nvarying float vLevelEm;\nvarying float vLevelEnv;\nvarying float vOn;\nvarying vec3 vInc;\nvarying vec3 vTint;")
+                .replace("#include <emissivemap_fragment>", "#include <emissivemap_fragment>\n  // (right off, the glass glows the same cool grey whatever its source; as soon as there is a light in it, its own colour, darker the dimmer the light: a dimmed block is a tinted, darker one, not a grey one)\n  float offGrey = 1.0 - smoothstep(0.0, 0.35, vOn);\n  totalEmissiveRadiance = mix(totalEmissiveRadiance, vec3(dot(totalEmissiveRadiance, vec3(0.333))) * vec3(0.85, 0.95, 1.15), offGrey) * mix(pow(vLevelEm, 2.0), vLevelEm, offGrey);\n  vec3 nb = min(vInc * " + NEIGHBOUR_GLOW.toFixed(3) + ", vec3(0.1));\n  nb *= mix(vec3(1.0), vTint, mix(" + GLOW_TINT_FAINT.toFixed(3) + ", 1.0, smoothstep(0.02, 0.1, max(nb.r, max(nb.g, nb.b)))));\n  totalEmissiveRadiance += nb;")
                 .replace("#include <lights_fragment_maps>", "#include <lights_fragment_maps>\n#if defined( RE_IndirectSpecular )\n  radiance *= vLevelEnv;\n#ifdef USE_CLEARCOAT\n  clearcoatRadiance *= vLevelEnv;\n#endif\n#endif\n#if defined( RE_IndirectDiffuse )\n  iblIrradiance *= vLevelEnv;\n#endif");
             };
             mat.customProgramCacheKey = () => "glass-levels";

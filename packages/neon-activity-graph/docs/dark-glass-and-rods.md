@@ -54,3 +54,5 @@ Glass with lamps **behind** it, as the camera sees it, glows with their light an
 ## Green over bright blue
 
 A quiet green block on a bright blue one was lit mostly by the blue light and did not read green. Two physical fixes, not a cheat on the colour: (1) the **least a green rod gives out** is raised (`GREEN_MIN_LEVEL` 1.1: a quiet green day still has a lamp of its own), and (2) **the light that comes from the neighbours is tinted by the block's own colour** as it passes the gas (`GLOW_TINT` 0.75: `aInc` is multiplied by the block's colour normalised to its brightest channel, so a green block lit by a white or blue one is lit green).
+
+The tint is **weighted by the glow's own brightness** (shader, `aTint` + `GLOW_TINT_FAINT` 0.15): the bright part of the light is tinted in full (`GLOW_TINT` 1), the faint part (the shadows) only 15 %, smoothly between 0.02 and 0.1 of glow.
