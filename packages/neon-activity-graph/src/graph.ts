@@ -1703,8 +1703,11 @@ void main(){
         pinned = false;
         if (current !== -1) announce(-1);
         (floor.material as import("three").MeshBasicMaterial).color.copy(pageColour());
-        // (switching to the dark theme from the light one: the baked light is fetched then, and the blocks built again when it is there)
-        if (isDark() && !templates && !templatesFailed) void wantTemplates().then(() => !cancelled && templates && rethink(recolour));
+        // (switching to the dark theme from the light one: the baked light is fetched first, and the blocks are built once, when it is there: built without it they had no neon to start up, so they were drawn lit, then built again, off, and flickered on)
+        if (isDark() && !templates && !templatesFailed) {
+          void wantTemplates().then(() => !cancelled && rethink(recolour));
+          return;
+        }
         buildBlocks();
         prepareNeon(recolour);
         restart();
