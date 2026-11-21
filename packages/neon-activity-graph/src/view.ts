@@ -246,29 +246,59 @@ export function lightBehind(boxes: readonly { x: number; z: number; y0: number; 
   const ax = screenAxes();
   const depthAxis = norm(CAMERA_DIR);
   const HALF = 0.46;
-  const rects = boxes.map((b) => {
-    let x0 = Infinity;
-    let x1 = -Infinity;
-    let y0 = Infinity;
-    let y1 = -Infinity;
+  type P = [number, number];
+  const cross = (o: P, p: P, q: P) => (p[0] - o[0]) * (q[1] - o[1]) - (p[1] - o[1]) * (q[0] - o[0]);
+  // the block's real outline on the screen (the convex hull of its 8 corners), not its bounding rectangle: a rectangle would count the neighbours beside a block as lamps behind it
+  const hullOf = (pts: P[]): P[] => {
+    const s2 = [...pts].sort((u, v) => u[0] - v[0] || u[1] - v[1]);
+    const lo: P[] = [];
+    for (const p of s2) {
+      while (lo.length >= 2 && cross(lo[lo.length - 2]!, lo[lo.length - 1]!, p) <= 0) lo.pop();
+      lo.push(p);
+    }
+    const up: P[] = [];
+    for (const p of [...s2].reverse()) {
+      while (up.length >= 2 && cross(up[up.length - 2]!, up[up.length - 1]!, p) <= 0) up.pop();
+      up.push(p);
+    }
+    return [...lo.slice(0, -1), ...up.slice(0, -1)];
+  };
+  const inside = (h: P[], p: P) => {
+    for (let k = 0; k < h.length; k++) if (cross(h[k]!, h[(k + 1) % h.length]!, p) < 0) return false;
+    return true;
+  };
+  const shapes = boxes.map((b) => {
+    const pts: P[] = [];
     for (const dx of [-HALF, HALF]) for (const dz of [-HALF, HALF]) for (const y of [b.y0, b.y0 + b.h]) {
       const p = [b.x + dx, y, b.z + dz];
-      x0 = Math.min(x0, dot(p, ax.x));
-      x1 = Math.max(x1, dot(p, ax.x));
-      y0 = Math.min(y0, dot(p, ax.y));
-      y1 = Math.max(y1, dot(p, ax.y));
+      pts.push([dot(p, ax.x), dot(p, ax.y)]);
     }
-    return { x0, x1, y0, y1, depth: dot([b.x, b.y0 + b.h / 2, b.z], depthAxis) };
+    const hull = hullOf(pts);
+    return {
+      hull,
+      x0: Math.min(...pts.map((q) => q[0])),
+      x1: Math.max(...pts.map((q) => q[0])),
+      y0: Math.min(...pts.map((q) => q[1])),
+      y1: Math.max(...pts.map((q) => q[1])),
+      depth: dot([b.x, b.y0 + b.h / 2, b.z], depthAxis),
+    };
   });
-  return rects.map((a, i) => {
-    const area = (a.x1 - a.x0) * (a.y1 - a.y0);
+  const N = 7;
+  return shapes.map((a, i) => {
+    // sample points of this block's outline
+    const samples: P[] = [];
+    for (let u = 0; u < N; u++) for (let v = 0; v < N; v++) {
+      const q: P = [a.x0 + ((u + 0.5) / N) * (a.x1 - a.x0), a.y0 + ((v + 0.5) / N) * (a.y1 - a.y0)];
+      if (inside(a.hull, q)) samples.push(q);
+    }
+    if (!samples.length) return 0;
     let sum = 0;
-    rects.forEach((b, j) => {
+    shapes.forEach((b, j) => {
       if (j === i || b.depth >= a.depth) return;
-      const w = Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0);
-      const h = Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0);
-      if (w <= 0 || h <= 0) return;
-      sum += (brightness[j] ?? 0) * Math.min(1, (w * h) / area);
+      if (Math.min(a.x1, b.x1) <= Math.max(a.x0, b.x0) || Math.min(a.y1, b.y1) <= Math.max(a.y0, b.y0)) return;
+      let hit = 0;
+      for (const q of samples) if (inside(b.hull, q)) hit++;
+      if (hit) sum += (brightness[j] ?? 0) * (hit / samples.length);
     });
     return sum;
   });

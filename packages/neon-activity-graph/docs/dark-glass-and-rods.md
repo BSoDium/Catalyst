@@ -58,3 +58,5 @@ A quiet green block on a bright blue one was lit mostly by the blue light and di
 The tint is **weighted by the glow's own brightness** (shader, `aTint` + `GLOW_TINT_FAINT` 0.15): the bright part of the light is tinted in full (`GLOW_TINT` 1), the faint part (the shadows) only 15 %, smoothly between 0.02 and 0.1 of glow.
 
 The tint on the *glow* alone was not enough: the bright light that actually gets through a green glass is the rods behind it, seen through clear glass. So the green glass now **filters** what goes through it (the GitHub layer's own palette colour (`shellHue`, so it follows any palette), `LAYER_FILTER_DISTANCE` 1.2, weaker the less saturated the colour, none for white or grey, Beer-Lambert: it multiplies, so bright light turns green and the dark parts stay dark). Blue glass stays clear.
+
+`lightBehind` measures the overlap with the blocks' **real outlines** (convex hull of the 8 projected corners, 7×7 sample points), not their bounding rectangles: a rectangle counted the neighbours beside a block, and the blocks at the top edge, against the black, got a grey glow.
