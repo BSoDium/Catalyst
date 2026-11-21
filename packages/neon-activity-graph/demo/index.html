@@ -31,7 +31,8 @@
       :root[data-theme="dark"] { color-scheme: dark; --bg: #08080b; --fg: #f4f1ea; --top: #3ddc6a; --bottom: #5aa9ff; }
       :root[data-theme="light"] { color-scheme: light; --bg: #f1ece1; --fg: #17150f; --top: #0a8f2c; --bottom: #1a6fe0; }
       * { box-sizing: border-box; }
-      html { overflow-x: clip; }
+      /* (nothing may make the page wider than the screen, whatever a phone's browser does with `clip`: the older ones know only `hidden`; and the graph's own box, which runs to the screen's edges on a phone, and the day card are cut at them) */
+      html { overflow-x: hidden; overflow-x: clip; max-width: 100%; }
       body { margin: 0; min-height: 100svh; overflow-x: clip; background: var(--bg); color: var(--fg); font: 16px/1.45 var(--sans); display: flex; flex-direction: column; justify-content: center; position: relative; }
       a, button { color: inherit; }
       :focus-visible { outline: 2px solid currentColor; outline-offset: 3px; border-radius: 4px; }
@@ -42,7 +43,7 @@
         radial-gradient(55vmax 40vmax at 100% 0%, color-mix(in srgb, var(--cyan) 10%, transparent), transparent 70%),
         radial-gradient(45vmax 35vmax at 100% 100%, color-mix(in srgb, var(--yellow) 8%, transparent), transparent 70%); }
       .grain { position: fixed; inset: 0; z-index: 7; pointer-events: none; opacity: 0.09; mix-blend-mode: overlay; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"); }
-      main { position: relative; z-index: 1; width: min(2400px, 100%); margin: 0 auto; padding: 24px 24px 12svh; }
+      main { overflow-x: clip; position: relative; z-index: 1; width: min(2400px, 100%); margin: 0 auto; padding: 24px 24px 12svh; }
 
       /* The stage holds the graph box and its text block, which hangs in the bottom-left corner over the empty ground the isometric view leaves there, its left edge on the blocks' own left edge. The package sets
          --nag-content-left (px) on the graph box at once, from the geometry (the scene's own value replaces it), and main.ts copies it to the stage; the caption is hidden for the one frame before that, then fades in: it never moves. */
