@@ -253,7 +253,7 @@ export function createNeon({ blocks, apply, done, sound, fps = NEON_FPS, wobbleF
   const busy = new Set<number>();
   // (fast, as the hum is: the two drifts at a quarter to a half, and at a half to all, of 0.4 of the update rate: 4-8 Hz and 8-16 Hz at 40 updates a second; a faster drift than half the rate cannot be shown)
   const fMax = wobbleFps * 0.4;
-  const wobbleSeed = blocks.map(() => ({ s: random() ** 1.4, f1: fMax * (0.25 + random() * 0.25), f2: fMax * (0.5 + random() * 0.5), p1: random() * 6.283, p2: random() * 6.283 }));
+  const wobbleSeed = blocks.map(() => ({ s: random() < 0.18 ? 0.4 + random() * 0.6 : 0, f1: fMax * (0.25 + random() * 0.25), f2: fMax * (0.5 + random() * 0.5), p1: random() * 6.283, p2: random() * 6.283 }));
   const rate = Math.max(fps, wobbleFps);
   const HUM_STEP = 25;
   const humEnd = end + 200;
@@ -265,8 +265,8 @@ export function createNeon({ blocks, apply, done, sound, fps = NEON_FPS, wobbleF
   }
   /** The hum's loudness, 0 to 1, `ms` after the start-up began (the sound's own envelope: the share of tubes lit, then an exponential fade of time constant 2 s). */
   const humAt = (ms: number) => (ms <= humEnd ? (humLit[Math.min(humLit.length - 1, Math.floor(ms / HUM_STEP))] ?? 0) : Math.exp(-(ms - humEnd) / 2000));
-  /** Down to a quarter of its brightness, at the hum's loudest, for the strongest tube. */
-  const WOBBLE_DEPTH = 0.75;
+  /** Down to 55 % of its brightness, at the hum's loudest, for the strongest tube; only about one tube in five wobbles at all. */
+  const WOBBLE_DEPTH = 0.45;
   const wob = (i: number, ms: number, hum: number) => {
     if (hum <= 0.005) return 1;
     const w = wobbleSeed[i]!;
