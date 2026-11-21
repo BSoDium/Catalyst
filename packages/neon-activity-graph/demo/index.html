@@ -65,12 +65,15 @@
       @media (prefers-reduced-motion: reduce) { h1::after { animation: none; } }
       .about { margin: 0; color: var(--muted); font-size: clamp(14px, 1.2cqi, 19px); line-height: 1.45; max-width: 36em; font-weight: 420; }
       .about .hl { font-weight: 720; color: var(--fg); }
-      .about .pick { display: flex; align-items: baseline; gap: 0.2em 0.9em; margin-top: 0.6em; font-size: 0.92em; }
+      .about .pick { display: flex; align-items: center; gap: 0.2em 0.7em; margin-top: 0.7em; font-size: 0.92em; }
+      /* (the choice of theme: three squares side by side, the chosen one filled with the text's colour and its letters in the page's, so that it reads as a switch, not as a link) */
+      .about .segs { display: inline-flex; border: 1px solid color-mix(in srgb, var(--fg) 32%, transparent); }
+      .about .theme { pointer-events: auto; font: inherit; font-weight: 600; line-height: 1; color: var(--fg); background: none; border: 0; border-radius: 0; margin: 0; padding: 0.42em 0.8em 0.46em; cursor: pointer; }
+      .about .theme + .theme { border-left: 1px solid color-mix(in srgb, var(--fg) 32%, transparent); }
+      .about .theme[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+      .about .theme:not([aria-pressed="true"]):hover { background: color-mix(in srgb, var(--fg) 14%, transparent); }
       .about .lib { font: 400 0.9em var(--mono); letter-spacing: 0; color: var(--fg); }
-      .about .theme { pointer-events: auto; font: inherit; font-weight: 600; color: var(--fg); background: none; border: 0; padding: 0 0 0.1em; margin: 0; cursor: pointer; border-bottom: 2px solid color-mix(in srgb, var(--fg) 28%, transparent); }
-      .about .theme[aria-pressed="true"] { border-bottom-color: var(--fg); }
-      .about .theme:hover { border-bottom-color: var(--cyan); }
-      .about .for { display: block; margin-top: 0.35em; font-size: 0.92em; color: var(--muted); }
+      .about .for { display: block; margin-top: 0.6em; font-size: 0.92em; color: var(--muted); }
       .about a { pointer-events: auto; color: var(--fg); text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; text-decoration-color: var(--cyan); }
       .about a:hover { text-decoration-color: var(--magenta); }
       /* (the two small texts of the corner, the links and the state of the data, are one block: one above the other, on the same side) */
@@ -145,7 +148,7 @@
       <div id="stage">
         <div class="caption" id="caption">
           <h1 id="title" aria-label="Neon activity graph"><span aria-hidden="true"><span class="rb">N</span>eon activity graph</span><span class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Neon activity graph</span></h1>
-          <p class="about">A <span class="hl">year</span> of activity drawn as <span class="hl">glass blocks</span> lit like neon tubes. A <span class="lib">three.js</span> component with a <span class="hl">React</span> wrapper, in a light and a dark theme.<span class="pick" role="group" aria-label="Theme">Theme <button type="button" class="theme" data-theme="system" aria-pressed="true">system</button> <button type="button" class="theme" data-theme="light" aria-pressed="false">light</button> <button type="button" class="theme" data-theme="dark" aria-pressed="false">dark</button></span><span class="for">Check out the <a href="https://v2.bsodium.fr/software">software page</a> of <a href="https://v2.bsodium.fr/">BSoDium’s</a> Catalyst.</span></p>
+          <p class="about">A <span class="hl">year</span> of activity drawn as <span class="hl">glass blocks</span> lit like neon tubes. A <span class="lib">three.js</span> component with a <span class="hl">React</span> wrapper, in a light and a dark theme.<span class="for">Check out the <a href="https://v2.bsodium.fr/software">software page</a> of <a href="https://v2.bsodium.fr/">BSoDium’s</a> Catalyst.</span><span class="pick">Theme <span class="segs" role="group" aria-label="Theme"><button type="button" class="theme" data-theme="system" aria-pressed="true">system</button><button type="button" class="theme" data-theme="light" aria-pressed="false">light</button><button type="button" class="theme" data-theme="dark" aria-pressed="false">dark</button></span></span></p>
                     <div class="legend"><span class="g"><i></i><b>GitHub contributions</b></span><span class="b"><i></i><b>WakaTime coding time</b></span></div>
         </div>
         <div id="graph"></div>
