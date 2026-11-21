@@ -5,7 +5,7 @@
  * has used the page), and it is the page's own business to say when (`level`).
  */
 // (as quiet as the start-up's own hum: its ballast is 0.004 through a master of 0.5; this is several voices, so a little under)
-const MAX = 0.0022;
+const MAX = 0.0030;
 const IDLE_CLOSE_MS = 4500;
 /** How fast the hum swells with the light, and how slowly it dies away (time constants, seconds). */
 const ATTACK = 0.09;
