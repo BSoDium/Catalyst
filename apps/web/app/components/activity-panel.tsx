@@ -297,7 +297,7 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
             </Suspense>
           )}
           {xmas && (
-            <div aria-hidden="true" className="pointer-events-none absolute right-0 bottom-0 z-10 flex items-end justify-end px-[3cqi] pt-[9cqi] pb-[1.5cqi] pl-[16cqi] opacity-100 transition-opacity duration-500 group-hover/scene:opacity-0" style={{ background: "radial-gradient(ellipse at 100% 100%, color-mix(in oklab, var(--background) 96%, transparent) 25%, color-mix(in oklab, var(--background) 80%, transparent) 55%, transparent 85%)" }}>
+            <div aria-hidden="true" className="pointer-events-none absolute right-0 bottom-0 z-10 flex items-end justify-end px-[3cqi] pt-[9cqi] pb-[1.5cqi] pl-[16cqi] opacity-100 transition-opacity duration-500 group-hover/scene:opacity-0" style={{ background: "radial-gradient(ellipse at 100% 100%, color-mix(in oklab, var(--background) 68%, transparent) 25%, color-mix(in oklab, var(--background) 50%, transparent) 55%, transparent 85%)" }}>
               <span className="text-[clamp(2.25rem,6cqi,4.25rem)] leading-none" style={{ fontFamily: '"Imperial Script", "Snell Roundhand", "Apple Chancery", cursive', color: "#ff5a5a", WebkitTextStroke: "0.6px #ff5a5a", textShadow: "0 0 0.12em var(--background), 0 0 0.3em var(--background), 0 0 0.6em rgb(255 60 60 / 0.3)" }}>
                 Merry Christmas
               </span>
