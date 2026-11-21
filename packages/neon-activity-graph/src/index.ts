@@ -41,7 +41,7 @@ export function createActivityGraph(container: HTMLElement, options: GraphOption
     },
   });
   let sceneOpts: (GraphOptions & { data: GraphData }) | null = null;
-  const start = (): SceneHandle => (opts.data ? mountScene(container, (sceneOpts = wrap({ ...opts, data: opts.data }) as GraphOptions & { data: GraphData }), state) : { stop() {}, rethink() {}, bounds: () => null, ready: Promise.resolve() });
+  const start = (): SceneHandle => (opts.data ? mountScene(container, (sceneOpts = wrap({ ...opts, data: opts.data }) as GraphOptions & { data: GraphData }), state) : { stop() {}, rethink() {}, setExposure() {}, bounds: () => null, ready: Promise.resolve() });
   // The blocks' bounds are known at once, from the geometry alone, so a caption lined up with them (`--nag-content-left`) is placed at the first paint and does not move when the scene arrives; the scene's own bounds replace them.
   let measured = false;
   const predict = () => {
@@ -100,6 +100,12 @@ export function createActivityGraph(container: HTMLElement, options: GraphOption
         colorTimer = window.setTimeout(settle, 120);
       };
       colorTimer = window.setTimeout(settle, 120);
+    },
+    setExposure(exposure) {
+      if (destroyed) return;
+      opts = { ...opts, exposure };
+      if (sceneOpts) sceneOpts.exposure = exposure;
+      handle.setExposure(exposure);
     },
     setTheme(theme) {
       if (destroyed) return;

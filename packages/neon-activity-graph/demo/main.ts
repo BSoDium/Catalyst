@@ -77,6 +77,7 @@ let pending: { size: "small" | "big"; at: number } | null = null;
 const latencies: number[] = [];
 const ask = (size: "small" | "big") => (pending = { size, at: performance.now() });
 let graph: ActivityGraph | null = null;
+let exposure = Number(localStorage.getItem("nag-exposure") ?? 1) || 1;
 let current: GraphData | null = null;
 
 const valid = (v: any): v is GraphData & { generatedAt?: string } => ["top", "bottom"].every((k) => Array.isArray(v?.[k]?.days) && v[k].days.length > 30 && v[k].days.every((d: any) => typeof d?.date === "string" && Number.isFinite(d?.value)));
@@ -102,6 +103,7 @@ const mount = () => {
     strips: narrow.matches ? 4 : 1,
     theme: theme ?? "auto",
     colors: toColors(pair),
+    exposure,
     overlay: true,
     debug: location.search.includes("debug") || location.search.includes("hold") ? { metrics: location.search.includes("debug"), neonHold: location.search.includes("hold") ? Number(new URLSearchParams(location.search).get("hold")) || true : undefined } : undefined,
     onRedrawn: () => {
@@ -156,6 +158,16 @@ addEventListener("pointerdown", (e) => {
 // the colour controls
 const inTop = $<HTMLInputElement>("c-top");
 const inBottom = $<HTMLInputElement>("c-bottom");
+const expInput = $("c-exp") as HTMLInputElement;
+const expOut = $("c-exp-v");
+expInput.value = String(exposure);
+expOut.textContent = exposure.toFixed(2);
+expInput.addEventListener("input", () => {
+  exposure = Number(expInput.value);
+  expOut.textContent = exposure.toFixed(2);
+  localStorage.setItem("nag-exposure", String(exposure));
+  graph?.setExposure(exposure);
+});
 const presetBox = $("presets");
 const syncInputs = () => {
   inTop.value = (pair ?? ORIGINAL).top;

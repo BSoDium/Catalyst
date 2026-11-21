@@ -46,6 +46,7 @@ export interface SceneHandle {
   bounds(): ContentBounds | null;
   stop(): void;
   rethink(recolour?: boolean): void;
+  setExposure(exposure: number): void;
   ready: Promise<void>;
 }
 
@@ -56,7 +57,7 @@ export interface SceneHandle {
  * result. Translucent rounded blocks (transmission, refraction) lit by a room environment, on a ground that only receives the shadows, so it sits on the page's own background.
  */
 export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphData }, st: { theme: "light" | "dark" | "auto" }): SceneHandle {
-  const api = { stop: () => {}, rethink: (_recolour?: boolean) => {}, bounds: (): ContentBounds | null => null };
+  const api = { stop: () => {}, rethink: (_recolour?: boolean) => {}, setExposure: (_e: number) => {}, bounds: (): ContentBounds | null => null };
   let cancelled = false;
   const dbg = opts.debug ?? {};
   const mq = window.matchMedia("(prefers-color-scheme: dark)");
@@ -858,11 +859,12 @@ void main(){
       });
       // what is shown: the average, with the bloom added in the dark theme
       const showMat = new THREE.ShaderMaterial({
-        uniforms: { map: { value: accumRT.texture }, bloom: { value: 0 }, veil: { value: 0 }, grain: { value: GRAIN }, near: { value: halfA.texture }, far: { value: quarterA.texture } },
+        uniforms: { map: { value: accumRT.texture }, bloom: { value: 0 }, veil: { value: 0 }, grain: { value: GRAIN }, exposure: { value: opts.exposure ?? 1 }, near: { value: halfA.texture }, far: { value: quarterA.texture } },
         vertexShader: VERT,
-        fragmentShader: `uniform sampler2D map; uniform sampler2D near; uniform sampler2D far; uniform float bloom; uniform float veil; uniform float grain; varying vec2 vUv;
+        fragmentShader: `uniform sampler2D map; uniform sampler2D near; uniform sampler2D far; uniform float bloom; uniform float veil; uniform float grain; uniform float exposure; varying vec2 vUv;
 void main(){
   vec4 c = texture2D(map, vUv);
+  c.rgb *= exposure;
   if (bloom > 0.) {
     vec3 halo = texture2D(near, vUv).rgb * 0.24 + texture2D(far, vUv).rgb * 0.17;
     // The halo is cut out of the picture before the rods are taken toward white, so it keeps the saturated blue of their raw light: a near-white rod would glow deep blue. It takes the rod's colour (the same pull toward white), only dimmer; green is left as it is.
@@ -870,7 +872,7 @@ void main(){
     float haloBlue = smoothstep(0., 0.25, (halo.b - halo.g) / max(hm, 1e-4));
     halo = mix(halo, vec3(hm), haloBlue * 0.6);
     // (the blue's halo is fainter, the green's a little stronger)
-    c.rgb += bloom * halo * mix(1.3, 0.38, haloBlue);
+    c.rgb += bloom * halo * exposure * mix(1.3, 0.38, haloBlue);
   }
   // (rodColor: the grey-white veil that the glass's reflections, the halo and the emissive add to every channel is taken off: what is left is the rod's own colour, as saturated as it is, at the same brightness)
   if (veil > 0.) { float mx = max(c.r, max(c.g, c.b)); float mn = min(c.r, min(c.g, c.b)); float k = smoothstep(0.12, 0.5, (mx - mn) / max(mx, 1e-4)); c.rgb -= mn * veil * k; c.rgb *= mix(1., mix(0.15, 1., k), smoothstep(0.04, 0.2, mx) * (1. - smoothstep(0.2, 0.4, mx))); }
@@ -1484,6 +1486,13 @@ void main(){
       const onScheme = () => st.theme === "auto" && rethink(false);
       mq.addEventListener("change", onScheme);
       api.rethink = (recolour) => rethink(recolour);
+      api.setExposure = (e) => {
+        showMat.uniforms.exposure!.value = e;
+        // (only the last pass is redone: the picture in the accumulation buffer is untouched)
+        renderer.setRenderTarget(null);
+        renderer.clear();
+        renderer.render(showQuad, quadCam);
+      };
 
       api.stop = () => {
         stopNeon();
@@ -1533,6 +1542,7 @@ void main(){
       el.removeAttribute("aria-label");
     },
     rethink: (recolour?: boolean) => api.rethink(recolour),
+    setExposure: (e: number) => api.setExposure(e),
     bounds: () => api.bounds(),
     ready,
   };
