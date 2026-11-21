@@ -211,7 +211,7 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       // (light theme) the core's brightness: below 1 is deeper and more saturated
       const LIGHT_CORE_DEPTH = 0.78;
       // (light theme) how much of white the glass shell's tint is mixed with (1: clear)
-      const LIGHT_SHELL_WHITE = 0.7;
+      const LIGHT_SHELL_WHITE = 0.58;
       // (light theme) how much blocks behind a block shade it: the scale of their coverage at which the shade is 63 %, how dark the glass goes in full shade (a share of its light kept), and the page's colour that the shade takes
       const LIGHT_OCC_FROM = 0.9;
       const LIGHT_OCC_FULL = 3;
@@ -897,7 +897,7 @@ void main() {
               shader.fragmentShader = shader.fragmentShader
                 .replace("#include <common>", "#include <common>\nvarying float vOcc;\nuniform vec3 uShadeTint;")
                 .replace("#include <lights_fragment_maps>", `#include <lights_fragment_maps>\n#if defined( RE_IndirectSpecular )\n  radiance *= 1.0 - vOcc * ${(1 - LIGHT_OCC_REFLECT).toFixed(2)};\n#ifdef USE_CLEARCOAT\n  clearcoatRadiance *= 1.0 - vOcc * ${(1 - LIGHT_OCC_REFLECT).toFixed(2)};\n#endif\n#endif`)
-                .replace("#include <opaque_fragment>", "outgoingLight *= mix(vec3(1.0), uShadeTint, vOcc);\n#include <opaque_fragment>");
+                .replace("#include <opaque_fragment>", "vec3 hueN = vColor.rgb / max(max(vColor.r, vColor.g), max(vColor.b, 1e-3));\n  outgoingLight *= mix(vec3(1.0), uShadeTint * mix(vec3(1.0), pow(hueN, vec3(2.5)), 0.9), vOcc);\n#include <opaque_fragment>");
             };
             mat.customProgramCacheKey = () => "glass-shade";
             // (light theme: the glass's own colour is what is seen, through it; the room's reflections on the top and the edges are fainter, and tinted by the glass instead of grey, so that they read as glass and not as polished metal)
