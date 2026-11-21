@@ -220,8 +220,8 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
         shader.uniforms.uLevels = { value: levelTex };
         shader.vertexShader = shader.vertexShader
           .replace("#include <common>", "#include <common>\nattribute float aBlock;\nattribute vec3 aInc;\nattribute vec2 aCtr;\nvarying float vRodA;\nuniform highp sampler2D uLevels;")
-          .replace("#include <color_vertex>", "#include <color_vertex>\n#ifdef USE_COLOR\n  vec2 lv = texelFetch(uLevels, ivec2(int(aBlock + 0.5), 0), 0).rg;\n  vColor.rgb = vColor.rgb * lv.r + vec3(0.029, 0.037, 0.053) * (1.0 - lv.r) + aInc * lv.g;\n  vRodA = pow(clamp(lv.r, 0.0, 1.0), 0.8);\n#endif")
-          .replace("#include <begin_vertex>", "#include <begin_vertex>\n  float rodLevel = texelFetch(uLevels, ivec2(int(aBlock + 0.5), 0), 0).r;\n  transformed.xz = aCtr + (transformed.xz - aCtr) * mix(0.3, 1.0, smoothstep(0.0, 0.75, rodLevel));");
+          .replace("#include <color_vertex>", "#include <color_vertex>\n#ifdef USE_COLOR\n  vec2 lv = texelFetch(uLevels, ivec2(int(aBlock + 0.5), 0), 0).rg;\n  float rodB = max(vColor.r, max(vColor.g, vColor.b)) * lv.r;\n  vColor.rgb = vColor.rgb * lv.r + vec3(0.029, 0.037, 0.053) * (1.0 - lv.r) + aInc * lv.g;\n  vRodA = smoothstep(0.0, 1.4, rodB);\n#endif")
+          .replace("#include <begin_vertex>", "#include <begin_vertex>\n  transformed.xz = aCtr + (transformed.xz - aCtr) * mix(0.15, 1.0, smoothstep(0.0, 1.6, rodB));");
         shader.fragmentShader = shader.fragmentShader
           .replace("#include <common>", "#include <common>\nvarying float vRodA;")
           .replace("#include <color_fragment>", "#include <color_fragment>\n  diffuseColor.a = vRodA;");
