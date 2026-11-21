@@ -206,7 +206,9 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       const coreMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.45, metalness: 0 });
       // (in the dark theme the cores are lights: unlit, their colour is the light they give out, brighter than 1 for a busy day, which the bloom and the glow on the ground turn into a glow)
       // (`alphaHash`: a rod that is almost off is almost not there: it is dithered away, and the picture's many samples average the dither out)
-      const glowMaterial = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false, alphaHash: true });
+      // (the dither is changed at every sample of the picture, `rodSeed`, so that the samples add up to the true translucency: with a fixed pattern, as `alphaHash` has, the grain stays)
+      const rodSeed = { value: 0 };
+      const glowMaterial = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false });
       // how much each rod gives out, 0 to 1, one number per block, read by the rod's vertices (`aBlock` is the block's number): the neon start-up changes them over time
       // what is left of a block when its rod is off, the same for all of them: the glass's own glow and the room's reflections in it, as absolute intensities
       /** (dark) how much glow the green glass has of its own, against 0.6 of the blue's: a slight tint (0 is a clear glass). Pure green, never whitened: a whitened glow is a grey one. */
@@ -220,13 +222,14 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       levelTex.needsUpdate = true;
       glowMaterial.onBeforeCompile = (shader) => {
         shader.uniforms.uLevels = { value: levelTex };
+        shader.uniforms.uRodSeed = rodSeed;
         shader.vertexShader = shader.vertexShader
           .replace("#include <common>", "#include <common>\nattribute float aBlock;\nattribute vec3 aInc;\nattribute vec2 aCtr;\nvarying float vRodA;\nuniform highp sampler2D uLevels;")
           .replace("#include <color_vertex>", "#include <color_vertex>\n#ifdef USE_COLOR\n  vec2 lv = texelFetch(uLevels, ivec2(int(aBlock + 0.5), 0), 0).rg;\n  float rodB = max(vColor.r, max(vColor.g, vColor.b)) * lv.r;\n  vColor.rgb = vColor.rgb * lv.r + vec3(0.029, 0.037, 0.053) * (1.0 - lv.r) + aInc * lv.g;\n  vRodA = smoothstep(0.0, 3.0, rodB);\n  float rodL = dot(vColor.rgb, vec3(0.299, 0.587, 0.114));\n  vColor.rgb = max(vec3(0.0), mix(vec3(rodL), vColor.rgb, 1.3 + 1.8 * (1.0 - clamp(lv.r, 0.0, 1.0))));\n#endif")
           .replace("#include <begin_vertex>", "#include <begin_vertex>\n  transformed.xz = aCtr + (transformed.xz - aCtr) * mix(0.6, 1.0, smoothstep(0.0, 2.5, rodB));");
         shader.fragmentShader = shader.fragmentShader
-          .replace("#include <common>", "#include <common>\nvarying float vRodA;")
-          .replace("#include <color_fragment>", "#include <color_fragment>\n  diffuseColor.a = vRodA;");
+          .replace("#include <common>", "#include <common>\nvarying float vRodA;\nuniform float uRodSeed;")
+          .replace("#include <color_fragment>", "#include <color_fragment>\n  float rodNoise = fract(52.9829189 * fract(dot(gl_FragCoord.xy + uRodSeed * vec2(47.0, 17.0), vec2(0.06711056, 0.00583715))));\n  if (vRodA < rodNoise) discard;");
       };
       glowMaterial.customProgramCacheKey = () => "rod-levels";
       // `shade` (dark theme): the faces of a block are not all lit alike, as if the light were from above and to the left of the camera, and a block is brighter toward its top: its top is the brightest face, then the side that
@@ -971,6 +974,7 @@ void main(){
           // the sun moves on a disc (the soft shadow), the camera a sub-pixel (the anti-aliasing)
           const a = halton(n, 2) * Math.PI * 2;
           const r = Math.sqrt(halton(n, 3)) * 9;
+          rodSeed.value = n;
           sun.position.copy(sunBase).add(new THREE.Vector3(Math.cos(a) * r, 0, Math.sin(a) * r)).add(sun.target.position);
           camera.setViewOffset(w, h, halton(n, 5) - 0.5, halton(n, 7) - 0.5, w, h);
           renderer.setRenderTarget(sceneRT);
