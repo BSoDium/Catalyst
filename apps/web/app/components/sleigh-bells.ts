@@ -1,6 +1,6 @@
 /**
  * Sleigh bells for the `?xmas` Easter egg: a recording ("Bells jingling 2", dragon-studio, trimmed to 3.4 s with a fade-out; `/audio/sleigh-bells.mp3`),
- * played ONCE, faintly, a moment after the picture's start-up begins. It plays only if the browser lets the page (not before the visitor has interacted
+ * played ONCE, faintly, as the picture's start-up begins (the file is fetched as soon as the picture is built). It plays only if the browser lets the page (not before the visitor has interacted
  * with it: a refused try is silent) and the picture is in view and the tab visible: if it is not, the try is repeated every second for up to 20 s, so that
  * the bells come when the visitor first sees the picture, and never twice. Stopped, it ends the sound and closes its audio context.
  */
@@ -16,6 +16,8 @@ export function createSleighBells({ canPlay = () => true }: SleighBellsOptions =
   let timer = 0;
   let ctx: AudioContext | null = null;
   let tries = 0;
+  let data: Promise<ArrayBuffer> | null = null;
+  const fetchData = () => (data ??= fetch(URL).then((r) => r.arrayBuffer()));
 
   const attempt = async () => {
     if (!running) return;
@@ -33,8 +35,7 @@ export function createSleighBells({ canPlay = () => true }: SleighBellsOptions =
       return retry();
     }
     try {
-      const data = await (await fetch(URL)).arrayBuffer();
-      const buffer = await c.decodeAudioData(data);
+      const buffer = await c.decodeAudioData((await fetchData()).slice(0));
       if (!running) return void c.close().catch(() => {});
       ctx = c;
       const gain = c.createGain();
@@ -57,12 +58,16 @@ export function createSleighBells({ canPlay = () => true }: SleighBellsOptions =
   };
 
   return {
+    /** Fetch the recording now (it is decoded when it is played). */
+    load() {
+      void fetchData().catch(() => {});
+    },
     start() {
       if (running) return;
       running = true;
       tries = 0;
-      // (a moment after the start-up begins)
-      timer = window.setTimeout(attempt, 1500);
+      // (with the start-up: the first tube's flicker)
+      void attempt();
     },
     stop() {
       running = false;

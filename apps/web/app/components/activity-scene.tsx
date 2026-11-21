@@ -232,14 +232,15 @@ export function ActivityScene({ activity, strips = 1, onReady, onLit, onHover, c
       const xmasParam = new URLSearchParams(window.location.search).has("xmas");
       // (the dark theme only: the glass of the light theme, lit by the sun, does not take the white lights, and the scene is rebuilt when the theme changes)
       const xmasOn = () => xmasParam && isDark();
-      const XMAS = ["#ff0a0a", "#00e03c", "#f4f7ff", "#ffa600", "#f4f7ff", "#1a3cff", "#ff0a0a", "#00e03c"].map((c) => new THREE.Color(c));
+      // (the string: a good share of it white, as on a real tree: 4 slots of 10)
+      const XMAS_COLOURS = ["#ff0a0a", "#00e03c", "#ffa600", "#1a3cff", "#ff0a0a", "#00e03c"].map((c) => new THREE.Color(c));
+      const XMAS_WHITE = new THREE.Color("#f8faff");
       const xmasHue = (cell: number, src: "waka" | "github", t: number) => {
         const h = Math.imul(cell + 1, 2654435761) ^ Math.imul(src === "waka" ? 97 : 13, 40503);
-        let pick = ((h >>> 7) % XMAS.length + XMAS.length) % XMAS.length;
-        // (a white light that is dim is a grey one, and no lamp glows grey: a quiet day is never white, it takes the colour next to it in the string; a busy day's white is kept at a good brightness)
-        const white = pick === 2 || pick === 4;
-        if (white && t < 0.5) pick = pick === 2 ? 3 : 5;
-        return XMAS[pick]!.clone().multiplyScalar(white && pick !== 3 && pick !== 5 ? 0.6 + 0.4 * t : 0.3 + 0.7 * t);
+        const slot = ((h >>> 7) % 10 + 10) % 10;
+        // (a white light that is dim is a grey one, and no lamp glows grey: a quiet day is never white, it takes a colour of the string; a busy day's white is kept at a good brightness)
+        if (slot < 4 && t >= 0.5) return XMAS_WHITE.clone().multiplyScalar(0.6 + 0.4 * t);
+        return XMAS_COLOURS[((h >>> 13) % XMAS_COLOURS.length + XMAS_COLOURS.length) % XMAS_COLOURS.length]!.clone().multiplyScalar(0.3 + 0.7 * t);
       };
       const groundLayers = (stack: { waka: Matrix; github: Matrix }, tones: { waka: [Color, Color]; github: [Color, Color] }, dark: boolean) => {
         const cw = Math.ceil((width + GLOW_PAD * 2) * PX);
@@ -456,6 +457,7 @@ void main() {
         neonNeighbours = [];
         for (const sp of specs) {
           const { src, x, z, y0, h, t, hue: hue0 } = sp;
+          // (`hue` is the glass's: `?xmas` lets a white glass be tainted by the lights around it; the rod in the middle (`hue0`) is always the light's own colour)
           let hue = hue0;
           // (dark) the light the other days give out reaches this one: each neighbour's colour and brightness, weakened with the distance between the two blocks; a dim block beside or under a bright one is lit by it
           const inc = new THREE.Color(0, 0, 0);
@@ -504,7 +506,7 @@ void main() {
           // A blue rod gets its brightness from light added to all three channels (not from more of the same blue, which only makes it bluer and more glowing): a brighter rod is a lighter, clearer blue, not a whiter one
           // (its hue is kept: the blue channel is the hue's own and the red and green rise with the busyness).
           const level = emit(t) * (1 + 1.1 * t);
-          const rod = dark && xmasOn() ? hue.clone().multiplyScalar(level * 0.55) : dark && src === "waka" ? hue.clone().multiplyScalar(level * 0.5).add(new THREE.Color(0.4, 0.56, 0.6).multiplyScalar(level * (0.38 + 0.98 * t))) : dark ? hue.clone().multiplyScalar(level * 1.25).add(new THREE.Color(0.22, 0.4, 0.24).multiplyScalar(level * (0.15 + 0.7 * t))) : hue;
+          const rod = dark && xmasOn() ? hue0.clone().multiplyScalar(level * 0.55) : dark && src === "waka" ? hue.clone().multiplyScalar(level * 0.5).add(new THREE.Color(0.4, 0.56, 0.6).multiplyScalar(level * (0.38 + 0.98 * t))) : dark ? hue.clone().multiplyScalar(level * 1.25).add(new THREE.Color(0.22, 0.4, 0.24).multiplyScalar(level * (0.15 + 0.7 * t))) : hue;
           paint(core, dark ? rod : hue);
           // (the light of the blocks around that reaches this rod when its own is off, on its own attribute: the shader adds it, as much as the neighbours that are on give)
           {
@@ -998,13 +1000,15 @@ void main(){
         });
         if (xmasOn()) {
           bells = createSleighBells({ canPlay: () => inView });
-          bells.start();
+          // (the recording is fetched at once, so that it is ready when the start-up begins)
+          bells.load();
         }
         if (import.meta.env.DEV) el.dataset.neonRods = String(neon.count);
         // (the flickering rods are off from the first frame: the picture is not seen before it starts)
         applyLevels(neon.levels);
         neonStart = () => {
           frames.length = 0;
+          bells?.start();
           neon?.start();
         };
         // (development only, `?neonhold`: the start-up never begins, and the picture is held half on, half off, to look at it with rods off)
