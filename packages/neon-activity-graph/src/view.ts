@@ -170,3 +170,43 @@ export function predictBounds(weeks: number, strips: number, width: number, heig
   }
   return { left: l, right: r, top: t, bottom: b };
 }
+
+/**
+ * How much of its light each block lets through to the camera, 0 to 1 (1: nothing in front of it). The camera never moves, so what stands in front of a block is known from the geometry: another block, nearer the camera, that covers some of its
+ * outline on the screen. Light that comes through a block of glass is dimmed by it (`absorb` for a block that covers it wholly, less for part of it), and through several blocks it is dimmed again, never below `floor`. Without this a clump of
+ * bright blocks, one in front of the other, adds up to one overexposed blob; with it the ones behind are quieter and the ones in front stand out.
+ * `boxes` are the blocks' columns: centre x and z, bottom `y0` and height `h` (they are 0.92 wide).
+ */
+export function glassShades(boxes: readonly { x: number; z: number; y0: number; h: number }[], absorb = 0.3, floor = 0.4): number[] {
+  const ax = screenAxes();
+  const depthAxis = norm(CAMERA_DIR);
+  const HALF = 0.46;
+  const rects = boxes.map((b) => {
+    let x0 = Infinity;
+    let x1 = -Infinity;
+    let y0 = Infinity;
+    let y1 = -Infinity;
+    for (const dx of [-HALF, HALF]) for (const dz of [-HALF, HALF]) for (const y of [b.y0, b.y0 + b.h]) {
+      const p = [b.x + dx, y, b.z + dz];
+      const sx = dot(p, ax.x);
+      const sy = dot(p, ax.y);
+      x0 = Math.min(x0, sx);
+      x1 = Math.max(x1, sx);
+      y0 = Math.min(y0, sy);
+      y1 = Math.max(y1, sy);
+    }
+    return { x0, x1, y0, y1, depth: dot([b.x, b.y0 + b.h / 2, b.z], depthAxis) };
+  });
+  return rects.map((a, i) => {
+    const area = (a.x1 - a.x0) * (a.y1 - a.y0);
+    let shade = 1;
+    rects.forEach((b, j) => {
+      if (j === i || b.depth <= a.depth) return;
+      const w = Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0);
+      const h = Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0);
+      if (w <= 0 || h <= 0) return;
+      shade *= 1 - absorb * Math.min(1, (w * h) / area);
+    });
+    return Math.max(floor, shade);
+  });
+}

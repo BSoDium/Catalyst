@@ -6,7 +6,11 @@ import { createNeon } from "./neon";
 import { renderSize } from "./size";
 import { createHoverHum } from "./hover-hum";
 import type { ContentBounds, GraphData, GraphOptions, LayerColors, Startup, Tones } from "./types";
-import { CAMERA_DIR, roomFor, slabFor, stripShifts } from "./view";
+import { CAMERA_DIR, glassShades, roomFor, slabFor, stripShifts } from "./view";
+
+/** How much of the light behind a block of glass the glass takes (the whole of it covering), and the least that is let through however many there are in front. */
+const GLASS_ABSORB = 0.45;
+const GLASS_FLOOR = 0.3;
 
 /** How many jittered frames are averaged before the picture is final (soft shadows, anti-aliasing): the scene never moves, so it is drawn once, a frame at a time, and then not at all. */
 const SAMPLES = 96;
@@ -323,7 +327,8 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
             const luck = 0.6 + 0.8 * variety();
             const near = dark ? CAUSTIC_NEAR : SUN_NEAR;
             const far = dark ? CAUSTIC_FAR : SUN_FAR;
-            neonBlocks.push({ x, z, pan: (x / width) * 2 - 1, t, cell: i });
+            neonBlocks.push({ x, z, // (the camera looks along -z, so the world's +x is on the LEFT of the screen: the stereo place is the other way round)
+            pan: 1 - (x / width) * 2, t, cell: i });
             glass.push({
               c: [x, y0 + hy, z],
               h: [0.46, hy, 0.46],
@@ -510,6 +515,9 @@ void main() {
         });
         let blockIndex = 0;
         neonNeighbours = [];
+        // (dark) the light of a rod that has glass in front of it, nearer the camera, is dimmed by that glass: a clump of bright blocks one in front of the other does not add up to one overexposed blob (the camera never moves, so it is known beforehand)
+        const shades = dark ? glassShades(specs.map((q) => ({ x: q.x, z: q.z, y0: q.y0, h: q.h })), GLASS_ABSORB, GLASS_FLOOR) : [];
+        const shadeOf = new Map(specs.map((q, k) => [q, shades[k] ?? 1] as const));
         for (const sp of specs) {
           const { src, x, z, y0, h, t, hue: hue0 } = sp;
           // (`hue` is the glass's: `rodColor` lets a white glass be tainted by the lights around it; the rod in the middle (`hue0`) is always the light's own colour)
@@ -562,7 +570,7 @@ void main() {
           // (its hue is kept: the blue channel is the hue's own and the red and green rise with the busyness).
           const level = emit(t) * (1 + 1.1 * t);
           const rod = dark && customOn() ? hue0.clone().multiplyScalar(level * 0.55 * (Math.max(hue0.r, hue0.g, hue0.b) - Math.min(hue0.r, hue0.g, hue0.b) < 0.15 * Math.max(hue0.r, hue0.g, hue0.b) ? WHITE_ROD : 1)) : dark ? rodLight(src, hue, t, level) : hue;
-          paint(core, dark ? rod : hue);
+          paint(core, dark ? rod.clone().multiplyScalar(shadeOf.get(sp) ?? 1) : hue);
           // (the light of the blocks around that reaches this rod when its own is off, on its own attribute: the shader adds it, as much as the neighbours that are on give)
           {
             const count = core.getAttribute("position").count;
@@ -1154,7 +1162,7 @@ void main(){
         if (dbg.neonHold) {
           neonStart = null;
           // (and the left part of the picture is on, the right part off: to see a block that is off beside blocks that are on)
-          const half = Float32Array.from(neonBlocks, (b) => (b.pan < 0.1 ? 1 : 0));
+          const half = Float32Array.from(neonBlocks, (b) => (b.pan > -0.1 ? 1 : 0));
           uploadLevels(half);
           ctl.update(half);
         }
