@@ -258,6 +258,8 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
   const show = xmas && dark;
   // (the legend is in the picture's corner from 56 rem; below that it is under the picture, or half over its corner, and the greeting is not set on its baseline: it sits in its own corner, on two lines)
   const [corner, setCorner] = useState(false);
+  // below 56 rem the greeting sits beside the legend, on the right of its lines, when there is room there (`side`: it is moved down to the legend's last line); else in the picture's corner
+  const [side, setSide] = useState(false);
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 56rem)");
     const read = () => setCorner(mq.matches);
@@ -269,10 +271,6 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
     const g = greeting.current;
     const l = legend.current;
     if (!show || !g || !l) return;
-    if (!corner) {
-      setDrop(0);
-      return;
-    }
     const baseline = (el: HTMLElement) => {
       const probe = document.createElement("span");
       probe.style.cssText = "display:inline-block;width:0;height:0;vertical-align:baseline";
@@ -293,7 +291,25 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
       // (absolute, so that two measures in a frame agree: the greeting's baseline without the shift it has now, then the shift that puts it on the legend's)
       const applied = g.parentElement ? new DOMMatrix(getComputedStyle(g.parentElement).transform).m42 : 0;
       const target = baseline(l) - (baseline(g) - applied + ink);
-      if (Number.isFinite(target)) setDrop((d) => (Math.abs(target - d) < 0.5 ? d : target));
+      if (!Number.isFinite(target)) return;
+      if (corner) {
+        setSide(false);
+        setDrop((d) => (Math.abs(target - d) < 0.5 ? d : target));
+        return;
+      }
+      // below 56 rem: beside the legend if the lines it would stand next to end far enough to the left of the greeting; the corner otherwise
+      const gr = g.getBoundingClientRect();
+      const top = gr.top - applied + target;
+      const bottom = gr.bottom - applied + target;
+      const range = document.createRange();
+      range.selectNodeContents(l);
+      let right = 0;
+      for (const r of Array.from(range.getClientRects())) if (r.bottom > top && r.top < bottom && r.width > 0) right = Math.max(right, r.right);
+      const room = box.current ? box.current.getBoundingClientRect().width * 0.02 : 8;
+      const fits = right > 0 && target > 0 && right + 14 + room <= gr.right - gr.width;
+      setSide(fits);
+      const want = fits ? target : 0;
+      setDrop((d) => (Math.abs(want - d) < 0.5 ? d : want));
     };
     measure();
     const ro = new ResizeObserver(measure);
@@ -361,7 +377,7 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
           <FlatMatrix matrix={flat.github} tone="#0fbf3e" />
         </div>
       ) : (
-        <div ref={sceneBox} className="group/scene relative aspect-[3.97/1] w-full max-md:aspect-[0.95/1]">
+        <div ref={sceneBox} className="group/scene relative aspect-[3.97/1] w-full max-md:-mt-[12cqi] max-md:aspect-[0.95/1]">
           <div className={`absolute inset-0 transition-opacity duration-700 ${ready ? "opacity-0" : ""}`}>
             <Waiting strips={1} aspect={3.97} className="max-md:hidden" />
             <Waiting strips={4} aspect={0.95} className="hidden max-md:block" />
@@ -372,9 +388,9 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
             </Suspense>
           )}
           {show && (
-            <div aria-hidden="true" className="pointer-events-none absolute right-0 bottom-0 z-10 flex items-end justify-end px-[3cqi] pt-[9cqi] pl-[10cqi] min-[56rem]:pl-[16cqi] opacity-100 transition-opacity duration-1000 group-hover/scene:opacity-0" style={{ opacity: lit ? undefined : 0, transform: `translateY(${drop}px)` }}>
+            <div aria-hidden="true" className="pointer-events-none absolute right-0 bottom-0 z-10 flex items-end justify-end px-[3cqi] pt-[9cqi] min-[56rem]:pl-[16cqi] opacity-100 transition-opacity duration-1000 group-hover/scene:opacity-0" style={{ opacity: lit ? undefined : 0, transform: `translateY(${drop}px)`, paddingLeft: corner ? undefined : side ? "2cqi" : "10cqi" }}>
               {/* (the backdrop reaches down past the shifted text, to the picture's own bottom edge, so that no glow shows under it) */}
-              <span className="absolute inset-x-0 top-0" style={{ bottom: corner ? `${-(Math.max(0, -drop) + 12)}px` : 0, background: "radial-gradient(ellipse at 100% 100%, color-mix(in oklab, var(--background) 68%, transparent) 25%, color-mix(in oklab, var(--background) 50%, transparent) 55%, transparent 85%)" }} />
+              <span className="absolute inset-x-0 top-0" style={{ bottom: corner ? `${-(Math.max(0, -drop) + 12)}px` : 0, background: "radial-gradient(ellipse 100% 100% at 100% 100%, color-mix(in oklab, var(--background) 68%, transparent) 0%, color-mix(in oklab, var(--background) 64%, transparent) 20%, color-mix(in oklab, var(--background) 50%, transparent) 42%, color-mix(in oklab, var(--background) 30%, transparent) 62%, color-mix(in oklab, var(--background) 12%, transparent) 80%, color-mix(in oklab, var(--background) 3%, transparent) 92%, transparent 100%)" }} />
               <span ref={greeting} className="relative text-right text-[clamp(2.75rem,13cqi,4.25rem)] leading-[0.95] min-[56rem]:text-[clamp(2.25rem,6cqi,4.25rem)] min-[56rem]:leading-none" style={{ fontFamily: '"Imperial Script", "Snell Roundhand", "Apple Chancery", cursive', color: "#fff", WebkitTextStroke: "0.6px #fff", textShadow: "0 0 0.12em var(--background), 0 0 0.3em var(--background), 0 0 0.6em rgb(255 60 60 / 0.45)" }}>
                 Merry<br className="min-[56rem]:hidden" /> Christmas
               </span>
@@ -396,7 +412,7 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
       )}
       {/* The corners are only empty when the scene is big enough (from 80 rem of page): below that the figures and the legend sit under the picture, so the text never lies over the blocks. From there the page's own figures (software, places) join the year's
           in ONE grid at the top right, from the head's top down into the empty corner of the picture. */}
-      <Figures lead={lead} stats={stats} ready={!!activity} className="max-md:order-first max-md:pb-2 md:pointer-events-none md:absolute md:right-14 md:max-[56rem]:left-14 md:top-[calc(-1*clamp(2.5rem,6.4cqi,5.75rem)-0.25rem)]" />
+      <Figures lead={lead} stats={stats} ready={!!activity} className="max-md:relative max-md:z-10 max-md:order-first max-md:pb-2 md:pointer-events-none md:absolute md:right-14 md:max-[56rem]:left-14 md:top-[calc(-1*clamp(2.5rem,6.4cqi,5.75rem)-0.25rem)]" />
       <div data-slot="activity-legend" className="relative flex flex-col gap-3 px-4 pt-3 md:pt-6 md:px-14 md:max-[56rem]:-mt-[6.5cqi] min-[56rem]:absolute min-[56rem]:bottom-[1%] min-[80rem]:bottom-[10.7%] min-[56rem]:left-14 min-[56rem]:w-[clamp(20rem,34cqi,25rem)] min-[56rem]:p-0">
         <p className="type-meta m-0 text-muted-foreground uppercase">Last <span className="text-foreground">12 months</span></p>
         {/* In the picture's order: the contributions are the upper block of a day, the coding the lower one. */}
