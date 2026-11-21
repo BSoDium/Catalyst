@@ -212,6 +212,10 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       const LIGHT_CORE_DEPTH = 0.78;
       // (light theme) how much of white the glass shell's tint is mixed with (1: clear)
       const LIGHT_SHELL_WHITE = 0.7;
+      // (light theme) how much blocks behind a block shade it: the scale of their coverage at which the shade is 63 %, how dark the glass goes in full shade (a share of its light kept), and the page's colour that the shade takes
+      const LIGHT_OCC_SCALE = 1.2;
+      const LIGHT_OCC_KEEP = 0.5;
+      const LIGHT_OCC_REFLECT = 0.15;
       const coreMaterial = new THREE.MeshBasicMaterial({ vertexColors: true });
       // (the glass is perfectly clear; it is the core that is soft: its colour fades toward a pale haze of itself toward its silhouette, so it is a blurred glow in the middle of the block, with no hard edge)
       coreMaterial.onBeforeCompile = (shader) => {
@@ -706,6 +710,12 @@ void main() {
             glowOf.set(q, (1 - Math.exp(-(behind[k] ?? 0) / BEHIND_SCALE)) * (1 - own * own * (3 - 2 * own)));
           });
         }
+        // (light) a block in front of many others is in the shade of them all: how much of its outline is covered by blocks behind it, saturating, so that its reflections and the white of its glass go dark there and take the colour of the paper in shade
+        const occOf = new Map<(typeof specs)[number], number>();
+        if (!dark) {
+          const behind = lightBehind(specs.map((q) => ({ x: q.x, z: q.z, y0: q.y0, h: q.h })), specs.map(() => 1));
+          specs.forEach((q, k) => occOf.set(q, 1 - Math.exp(-(behind[k] ?? 0) / LIGHT_OCC_SCALE)));
+        }
         for (const sp of specs) {
           const { src, x, z, y0, h, t, hue: hue0 } = sp;
           // (`hue` is the glass's: `rodColor` lets a white glass be tainted by the lights around it; the rod in the middle (`hue0`) is always the light's own colour)
@@ -746,6 +756,7 @@ void main() {
           shell.setAttribute("aBlock", new THREE.BufferAttribute(new Float32Array(shell.getAttribute("position").count).fill(blockIndex), 1));
           // (the light of the neighbours, for the glass to glow with: see `NEIGHBOUR_GLOW`; only where there are lamps BEHIND the glass as the camera sees it, and none against a dark background, or the glass would look opaque and washed out)
           const nbShare = glowOf.get(sp) ?? 0;
+          shell.setAttribute("aOcc", new THREE.BufferAttribute(new Float32Array(shell.getAttribute("position").count).fill(occOf.get(sp) ?? 0), 1));
           // (the light that comes from the neighbours is tinted by the block's own colour, as it passes the gas: a green block lit by a white or blue one is lit green: full 1 is the block's colour as it is, 0 the neighbours' light as it is)
           const glowTint = (() => {
             const m = Math.max(hue0.r, hue0.g, hue0.b, 1e-3);
@@ -878,6 +889,16 @@ void main() {
             mat.roughness = DARK_GLASS_ROUGHNESS;
           }
           if (!dark) {
+            const shadeTint = page.clone().multiplyScalar(1 / Math.max(page.r, page.g, page.b, 1e-3)).multiplyScalar(LIGHT_OCC_KEEP);
+            mat.onBeforeCompile = (shader) => {
+              shader.uniforms.uShadeTint = { value: new THREE.Vector3(shadeTint.r, shadeTint.g, shadeTint.b) };
+              shader.vertexShader = shader.vertexShader.replace("#include <common>", "#include <common>\nattribute float aOcc;\nvarying float vOcc;").replace("#include <begin_vertex>", "#include <begin_vertex>\n  vOcc = aOcc;");
+              shader.fragmentShader = shader.fragmentShader
+                .replace("#include <common>", "#include <common>\nvarying float vOcc;\nuniform vec3 uShadeTint;")
+                .replace("#include <lights_fragment_maps>", `#include <lights_fragment_maps>\n#if defined( RE_IndirectSpecular )\n  radiance *= 1.0 - vOcc * ${(1 - LIGHT_OCC_REFLECT).toFixed(2)};\n#ifdef USE_CLEARCOAT\n  clearcoatRadiance *= 1.0 - vOcc * ${(1 - LIGHT_OCC_REFLECT).toFixed(2)};\n#endif\n#endif`)
+                .replace("#include <opaque_fragment>", "outgoingLight *= mix(vec3(1.0), uShadeTint, vOcc);\n#include <opaque_fragment>");
+            };
+            mat.customProgramCacheKey = () => "glass-shade";
             // (light theme: the glass's own colour is what is seen, through it; the room's reflections on the top and the edges are fainter, and tinted by the glass instead of grey, so that they read as glass and not as polished metal)
             mat.clearcoat = LIGHT_COAT;
             mat.roughness = LIGHT_GLASS_ROUGHNESS;
