@@ -209,6 +209,12 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       const glowMaterial = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false, alphaHash: true });
       // how much each rod gives out, 0 to 1, one number per block, read by the rod's vertices (`aBlock` is the block's number): the neon start-up changes them over time
       // what is left of a block when its rod is off, the same for all of them: the glass's own glow and the room's reflections in it, as absolute intensities
+/** (dark) how much of its colour the glass keeps: 0 to 1 of the way to the grey of the same lightness (not toward white, which would only make it lighter and washed out): the glass is only lightly tinted, and it is the rods, the neon gas, that give the colour; the green, a dark glass, less tinted than the blue. */
+      const DARK_GLASS_MUTE = { top: 0.72, bottom: 0.3 };
+      const mute = (c: Color, k: number) => {
+        const luma = 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
+        return c.clone().lerp(new THREE.Color(luma, luma, luma), k);
+      };
       const OFF_EMISSIVE = 0.008;
       const OFF_ENV = 0.014;
       const MAX_LEVELS = 1024;
@@ -581,7 +587,7 @@ void main() {
           const shell = roundedBox(0.92, h, 0.92, lite ? 2 : 3, Math.min(0.16, h / 2.2));
           shell.translate(x, y0 + h / 2, z);
           // dark: the glass is nearly clear (the light of its core shows through it); light: tinted by the level
-          paint(shell, hue.clone().lerp(new THREE.Color(0xffffff), dark ? 0.14 : 0.12).multiplyScalar(dark ? 0.3 + 0.7 * tEff : 1).add(inc.clone().multiplyScalar(dark && customOn() ? 0.35 : 0.08)), 0, dark);
+          paint(shell, (dark ? mute(hue, DARK_GLASS_MUTE[src]) : hue.clone()).lerp(new THREE.Color(0xffffff), dark ? 0.14 : 0.12).multiplyScalar(dark ? 0.3 + 0.7 * tEff : 1).add(inc.clone().multiplyScalar(dark && customOn() ? 0.35 : 0.08)), 0, dark);
           shell.setAttribute("aBlock", new THREE.BufferAttribute(new Float32Array(shell.getAttribute("position").count).fill(blockIndex), 1));
           // the glass of a busy day glows on its own surface too (dark theme): three steps of emission per source, each its own material
           const tier = tEff < 0.34 ? 0 : tEff < 0.67 ? 1 : 2;
@@ -629,7 +635,7 @@ void main() {
             mat.transparent = true;
             mat.opacity = 0.9;
           }
-          mat.emissive.copy(customOn() ? new THREE.Color(0x000000) : tones[src][1]);
+          mat.emissive.copy(customOn() ? new THREE.Color(0x000000) : dark ? mute(tones[src][1], DARK_GLASS_MUTE[src]) : tones[src][1]);
           // (dark) the glass absorbs what is not its own colour as the light goes through it: a green block lets a blue rod behind it show only dimly, and the other way round
           if (dark) {
             mat.attenuationColor.copy(customOn() ? new THREE.Color(0xffffff) : tones[src][1]);
@@ -666,7 +672,7 @@ void main() {
           mat.envMap = dark ? env : null;
           mat.envMapIntensity = dark ? [0.02, 0.18, 0.55][tier]! * 0.6 : LIGHT_ENV;
           if (dark) {
-            mat.specularColor = tones[src][1].clone().lerp(new THREE.Color(0xffffff), 0.12);
+            mat.specularColor = mute(tones[src][1], DARK_GLASS_MUTE[src]).lerp(new THREE.Color(0xffffff), 0.12);
             mat.clearcoat = 0.45;
           }
           if (!dark) {
