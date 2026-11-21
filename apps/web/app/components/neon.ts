@@ -277,7 +277,12 @@ export function createNeon({ blocks, apply, done, sound, fps = NEON_FPS, seed = 
   const wobble = () => {
     if (!idleOn) return;
     const age = performance.now() - idleSince;
-    if (age > WOBBLE_MS) return;
+    if (age > WOBBLE_MS) {
+      // (the wobble is over: let the picture converge again, once the last dips are done)
+      if (wobbling.size === 0) done();
+      else wobbleTimer = window.setTimeout(wobble, 500);
+      return;
+    }
     if (canPlay() && !document.hidden) {
       const n = 1 + Math.floor(idleRandom() * 3);
       for (let k = 0; k < n; k++) {

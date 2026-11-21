@@ -796,25 +796,28 @@ void main(){
       };
 
       const frames: number[] = [];
-      const frame = () => cm(frameBody);
-      const frameBody = () => {
+      const frame = () => cm(() => frameBody());
+      // `count` samples are added up before anything is shown (one, when the picture is converging frame by frame; a few at once for an update of the lights, so that the picture never shows its first, rawest samples in a row: that is a shimmer of the whole picture)
+      const frameBody = (count = 1) => {
         raf = 0;
         const f0 = performance.now();
-        // the sun moves on a disc (the soft shadow), the camera a sub-pixel (the anti-aliasing)
-        const a = halton(n, 2) * Math.PI * 2;
-        const r = Math.sqrt(halton(n, 3)) * 9;
-        sun.position.copy(sunBase).add(new THREE.Vector3(Math.cos(a) * r, 0, Math.sin(a) * r)).add(sun.target.position);
-        camera.setViewOffset(w, h, halton(n, 5) - 0.5, halton(n, 7) - 0.5, w, h);
-        renderer.setRenderTarget(sceneRT);
-        renderer.setClearColor(0x000000, 0);
-        renderer.clear();
-        renderer.render(scene, camera);
-        renderer.setRenderTarget(accumRT);
-        renderer.autoClear = false;
-        addMat.blendAlpha = 1 / (n + 1);
-        renderer.render(quadScene, quadCam);
-        renderer.autoClear = true;
-        n++;
+        for (let c = 0; c < count; c++) {
+          // the sun moves on a disc (the soft shadow), the camera a sub-pixel (the anti-aliasing)
+          const a = halton(n, 2) * Math.PI * 2;
+          const r = Math.sqrt(halton(n, 3)) * 9;
+          sun.position.copy(sunBase).add(new THREE.Vector3(Math.cos(a) * r, 0, Math.sin(a) * r)).add(sun.target.position);
+          camera.setViewOffset(w, h, halton(n, 5) - 0.5, halton(n, 7) - 0.5, w, h);
+          renderer.setRenderTarget(sceneRT);
+          renderer.setClearColor(0x000000, 0);
+          renderer.clear();
+          renderer.render(scene, camera);
+          renderer.setRenderTarget(accumRT);
+          renderer.autoClear = false;
+          addMat.blendAlpha = 1 / (n + 1);
+          renderer.render(quadScene, quadCam);
+          renderer.autoClear = true;
+          n++;
+        }
         if (settling && n >= Math.min(10, samples)) sharpen();
         if (showMat.uniforms.bloom!.value > 0) {
           // bright part -> half resolution, blurred twice (near halo); that, blurred again at quarter resolution (far halo)
@@ -843,6 +846,14 @@ void main(){
         n = 0;
         if (!raf) raf = requestAnimationFrame(frame);
       }
+      // (an update of the lights while the picture is otherwise done: `k` samples drawn at once and shown together, then it stops)
+      const burst = (k: number) => {
+        cancelAnimationFrame(raf);
+        raf = 0;
+        n = 0;
+        samplesCap = k;
+        cm(() => frameBody(k));
+      };
 
       // --- the neon start-up of the dark theme (not for those who ask for less motion) ---
       let neon: ReturnType<typeof createNeon> | null = null;
@@ -959,8 +970,11 @@ void main(){
             applyLevels(levels);
             neonApplyMs += performance.now() - a0;
             neonTicks++;
-            samplesCap = lite ? 2 : 3;
-            restart();
+            if (idle) burst(lite ? 2 : 3);
+            else {
+              samplesCap = lite ? 2 : 3;
+              restart();
+            }
           },
           done: () => {
             onLit?.(true);
