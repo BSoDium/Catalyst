@@ -6,7 +6,7 @@ import { createNeon } from "./neon";
 import { renderSize } from "./size";
 import { createHoverHum } from "./hover-hum";
 import type { ContentBounds, GraphData, GraphOptions, LayerColors, Startup, Tones } from "./types";
-import { CAMERA_DIR, glassShades, roomFor, slabFor, stripShifts } from "./view";
+import { CAMERA_DIR, glassShades, roomFor, shiftsFromLayers, slabFor } from "./view";
 
 /** How much of the light behind a block of glass the glass takes (the whole of it covering), and the least that is let through however many there are in front. */
 const GLASS_ABSORB = 0.45;
@@ -134,9 +134,7 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       const ROOM = roomFor(strips);
       // The year is a long strip of weeks; on a narrow page it is cut into `strips` strips of equal length laid one behind the other, so the slab is closer to a square and fills the width
       // (on a phone each strip is moved so that the weight of its blocks, not only its rectangle, is centred on the page)
-      const weigh = new Map<number, number>();
-      for (const m of [layout.top, layout.bottom]) for (const c of m.cells) weigh.set(c.week * 7 + c.day, (weigh.get(c.week * 7 + c.day) ?? 0) + 0.18 + c.t * 2.2);
-      const { width, total, at, corners } = slabFor(layout.top.weeks, strips, stripShifts(layout.top.weeks, strips, (week, day) => weigh.get(week * 7 + day) ?? 0.18));
+      const { width, total, at, corners } = slabFor(layout.top.weeks, strips, shiftsFromLayers([layout.top, layout.bottom], strips));
 
       const scene = new THREE.Scene();
       const pmrem = new THREE.PMREMGenerator(renderer);
@@ -949,7 +947,8 @@ void main(){
           renderer.autoClear = true;
           n++;
         }
-        if (settling && n >= Math.min(10, samples)) sharpen();
+        // (a light update while the picture settles caps the samples at 2 or 3: that is all it will get then, so it comes into focus on them rather than waiting for ten that never come)
+        if (settling && n >= Math.min(10, samples, samplesCap)) sharpen();
         if (showMat.uniforms.bloom!.value > 0) {
           // bright part -> half resolution, blurred twice (near halo); that, blurred again at quarter resolution (far halo)
           pass(brightMat, halfA);

@@ -2,7 +2,8 @@ import { mountScene, type SceneHandle } from "./graph";
 import { createHoverOverlay, type HoverOverlay } from "./overlay";
 import { mountPlaceholder } from "./placeholder";
 import { cling } from "./sound";
-import { predictBounds } from "./view";
+import { layoutGraph } from "./layout";
+import { predictBounds, shiftsFromLayers, tallestOfLayers } from "./view";
 import type { ActivityGraph, ContentBounds, GraphData, GraphOptions } from "./types";
 
 /**
@@ -17,7 +18,14 @@ import type { ActivityGraph, ContentBounds, GraphData, GraphOptions } from "./ty
 export function createActivityGraph(container: HTMLElement, options: GraphOptions): ActivityGraph {
   const state = { theme: options.theme ?? "auto" };
   let opts = options;
-  const holder = options.placeholder === false ? null : mountPlaceholder(container, { weeks: options.weeks, strips: options.strips });
+  // (the strips of a narrow page are moved by the weight of their days, which the scene knows from the data: the place-holder and the predicted bounds are given the same, when the data is there, so that they are where the scene will be)
+  const strips0 = options.strips ?? 1;
+  const geometryOf = (data: GraphData | null | undefined) => {
+    const known = data ? layoutGraph(data, options.weeks ?? 53) : null;
+    return { shifts: known && strips0 > 1 ? shiftsFromLayers([known.top, known.bottom], strips0) : undefined, tallest: known ? tallestOfLayers(known.top, known.bottom) : undefined };
+  };
+  let { shifts, tallest } = geometryOf(options.data);
+  const holder = options.placeholder === false ? null : mountPlaceholder(container, { weeks: options.weeks, strips: options.strips, shifts, tallest });
   const overlay: HoverOverlay | null = options.overlay ? createHoverOverlay(container, options.overlay === true ? {} : options.overlay, () => ({ top: opts.data?.top, bottom: opts.data?.bottom })) : null;
   // (what the scene is given: the caller's callbacks, plus the place-holder's fade and the overlay's updates)
   const wrap = (o: GraphOptions): GraphOptions => ({
@@ -38,7 +46,7 @@ export function createActivityGraph(container: HTMLElement, options: GraphOption
   let measured = false;
   const predict = () => {
     if (measured || !container.clientWidth || !container.clientHeight) return;
-    const b = predictBounds(options.weeks ?? 53, options.strips ?? 1, container.clientWidth, container.clientHeight);
+    const b = predictBounds(options.weeks ?? 53, options.strips ?? 1, container.clientWidth, container.clientHeight, tallest, shifts);
     for (const [k, v] of Object.entries(b)) container.style.setProperty(`--nag-content-${k}`, `${v.toFixed(1)}px`);
   };
   predict();
@@ -62,6 +70,10 @@ export function createActivityGraph(container: HTMLElement, options: GraphOption
     },
     update(data: GraphData) {
       if (destroyed) return;
+      // (the place-holder, if it is still there, and the predicted bounds follow the new data: they are where the scene will be)
+      ({ shifts, tallest } = geometryOf(data));
+      holder?.setGeometry({ shifts, tallest });
+      predict();
       handle.stop();
       opts = { ...opts, data };
       handle = start();

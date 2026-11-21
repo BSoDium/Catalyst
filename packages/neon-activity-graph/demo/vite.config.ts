@@ -6,5 +6,6 @@ export default defineConfig({
   base: "./",
   resolve: { alias: { "neon-activity-graph": fileURLToPath(new URL("../src/index.ts", import.meta.url)) } },
   build: { outDir: "dist", emptyOutDir: true, target: "esnext" },
-  server: { port: 5189 },
+  // (reachable from other devices on the tailnet by name too: Vite refuses unknown host names otherwise)
+  server: { port: 5189, host: true, allowedHosts: true },
 });

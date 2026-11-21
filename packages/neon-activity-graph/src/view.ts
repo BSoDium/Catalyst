@@ -93,8 +93,8 @@ function screenAxes() {
  * The place-holder: every day of the year as a flat rounded square on the ground, projected as the scene's camera sees it, fitted into a box of the given aspect ratio the way the scene fits itself (`fit` in the scene, with a
  * typical tallest column). Returns the SVG `viewBox` and one path of all the squares (to be filled).
  */
-export function placeholderTiles(weeks: number, strips: number, aspect: number, tallest = TYPICAL_TALLEST) {
-  const { corners, at } = slabFor(weeks, strips);
+export function placeholderTiles(weeks: number, strips: number, aspect: number, tallest = TYPICAL_TALLEST, shifts?: readonly number[]) {
+  const { corners, at } = slabFor(weeks, strips, shifts);
   const room = roomFor(strips);
   const ax = screenAxes();
   const project = (px: number, py: number, pz: number) => ({ x: dot(ax.x, [px, py, pz]), y: -dot(ax.y, [px, py, pz]) });
@@ -109,9 +109,7 @@ export function placeholderTiles(weeks: number, strips: number, aspect: number, 
     y0 = Math.min(y0, p.y);
     y1 = Math.max(y1, p.y);
   }
-  const halfH = Math.max((y1 - y0) / 2, (x1 - x0) / 2 / aspect) * 1.04;
-  const mx = (x0 + x1) / 2;
-  const my = (y0 + y1) / 2;
+  const { mx, my, halfH } = frameOf(strips, weeks, at, project, x0, x1, y0, y1, aspect);
   // a rounded square on the ground (half side 0.46, corner radius 0.16 like the blocks'), its outline sampled in world space and then projected, so the foreshortening is the scene's own
   const outline: [number, number][] = [];
   for (const [cx, cz, a0] of [[0.3, 0.3, 0], [-0.3, 0.3, Math.PI / 2], [-0.3, -0.3, Math.PI], [0.3, -0.3, Math.PI * 1.5]] as const) {
@@ -135,8 +133,8 @@ export function placeholderTiles(weeks: number, strips: number, aspect: number, 
  * Where the blocks will be on the screen, in CSS pixels of a `width` x `height` box, before anything is drawn: the same camera and fit as the scene's, taking every day as a block (the scene's own, `ContentBounds`, replaces it once it
  * is laid out: the left edge differs by a few pixels at most, when the first days are empty). Lets a caption be placed at the first paint and never move.
  */
-export function predictBounds(weeks: number, strips: number, width: number, height: number, tallest = TYPICAL_TALLEST) {
-  const { corners, at, rects } = slabFor(weeks, strips);
+export function predictBounds(weeks: number, strips: number, width: number, height: number, tallest = TYPICAL_TALLEST, shifts?: readonly number[]) {
+  const { corners, at, rects } = slabFor(weeks, strips, shifts);
   const ax = screenAxes();
   const project = (px: number, py: number, pz: number) => ({ x: dot(ax.x, [px, py, pz]), y: -dot(ax.y, [px, py, pz]) });
   let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
@@ -145,18 +143,7 @@ export function predictBounds(weeks: number, strips: number, width: number, heig
     x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y);
   }
   const aspect = width / height;
-  const halfH = Math.max((y1 - y0) / 2, (x1 - x0) / 2 / aspect) * 1.04;
-  let mx = (x0 + x1) / 2;
-  if (strips > 1) {
-    const perStrip = Math.ceil(weeks / strips);
-    let sum = 0;
-    for (let k = 0; k < strips; k++) {
-      const c = at(k * perStrip + (perStrip - 1) / 2, 3);
-      sum += project(c.x, 0, c.z).x;
-    }
-    mx = sum / strips;
-  }
-  const my = (y0 + y1) / 2;
+  const { mx, my, halfH } = frameOf(strips, weeks, at, project, x0, x1, y0, y1, aspect);
   const toPx = (p: { x: number; y: number }) => ({ x: ((p.x - (mx - halfH * aspect)) / (2 * halfH * aspect)) * width, y: ((p.y - (my - halfH)) / (2 * halfH)) * height });
   let l = Infinity, r = -Infinity, t = Infinity, b = -Infinity;
   void rects;
@@ -209,4 +196,41 @@ export function glassShades(boxes: readonly { x: number; z: number; y0: number; 
     });
     return Math.max(floor, shade);
   });
+}
+
+/** The strips' shifts (`stripShifts`) for the days of the layers `layers` (each: its weeks and its cells with their week, day and intensity 0..1): the weight of a day is that of its blocks, as the scene weighs them. The same for the scene and for the place-holder. */
+export function shiftsFromLayers(layers: readonly { weeks: number; cells: readonly { week: number; day: number; t: number }[] }[], strips: number): number[] {
+  const weeks = layers[0]?.weeks ?? 53;
+  const weigh = new Map<number, number>();
+  for (const m of layers) for (const c of m.cells) weigh.set(c.week * 7 + c.day, (weigh.get(c.week * 7 + c.day) ?? 0) + 0.18 + c.t * 2.2);
+  return stripShifts(weeks, strips, (week, day) => weigh.get(week * 7 + day) ?? 0.18);
+}
+
+/** What the picture is centred on, and how far it must reach each side of that, in the camera's frame: the middle of the box, or, for strips, their rows' centre of gravity (see the scene's `fit`). */
+function frameOf(strips: number, weeks: number, at: (w: number, d: number) => { x: number; z: number }, project: (x: number, y: number, z: number) => { x: number; y: number }, x0: number, x1: number, y0: number, y1: number, aspect: number) {
+  let mx = (x0 + x1) / 2;
+  if (strips > 1) {
+    const perStrip = Math.ceil(weeks / strips);
+    let sum = 0;
+    for (let k = 0; k < strips; k++) {
+      const c = at(k * perStrip + (perStrip - 1) / 2, 3);
+      sum += project(c.x, 0, c.z).x;
+    }
+    mx = sum / strips;
+  }
+  const halfH = Math.max((y1 - y0) / 2, Math.max(x1 - mx, mx - x0) / aspect) * 1.04;
+  return { mx, my: (y0 + y1) / 2, halfH };
+}
+
+/** How tall the tallest column of these two layers is (what the scene fits the picture to; the place-holder takes it too, when the data is there, so that it is the same size). */
+export function tallestOfLayers(top: { cells: readonly { value: number; t: number }[] }, bottom: { cells: readonly { value: number; t: number }[] }): number {
+  let tallest = 1;
+  top.cells.forEach((g, i) => {
+    const w = bottom.cells[i];
+    let y = 0;
+    if (w && w.value > 0) y = 0.18 + w.t * 2.3 + 0.04;
+    if (g.value > 0) y += 0.18 + g.t * 2.3;
+    tallest = Math.max(tallest, y);
+  });
+  return tallest;
 }
