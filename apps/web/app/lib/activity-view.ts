@@ -19,16 +19,20 @@ export function roomFor(strips: number) {
  * that cancels what the camera's tilt does to it on the screen (a strip farther in depth is seen farther to one side): the strips are then stacked straight on the screen, in a staircase on the ground, and the picture is
  * about a third narrower than with the strips side by side in x, so the fit can enlarge it.
  */
-export function slabFor(weeks: number, strips: number) {
+export function slabFor(weeks: number, strips: number, shifts?: readonly number[]) {
   const perStrip = Math.ceil(weeks / strips);
+  // (`shifts`: a further move of each strip along x, in weeks, from `stripShifts`: the strips are made to look centred, not only to be; moved all to the same side of zero, so that no strip is left of the slab's first column)
+  const low = shifts ? Math.min(...shifts) : 0;
+  const extra = (k: number) => (shifts ? ((shifts[k] ?? 0) - low) * PITCH : 0);
+  const spread = shifts ? (Math.max(...shifts) - low) * PITCH : 0;
   const pitchZ = 7 * PITCH + STRIP_GAP;
   const ax = screenAxes().x;
   // (the screen x of a point is dot(ax, p): a step of `pitchZ` in z is cancelled by a step of -pitchZ * ax.z / ax.x in x)
   const step = strips > 1 ? (-pitchZ * ax[2]) / ax[0] : 0;
-  const offset = (k: number) => (step >= 0 ? k * step : (strips - 1 - k) * -step);
+  const offset = (k: number) => (step >= 0 ? k * step : (strips - 1 - k) * -step) + extra(k);
   const rects = Array.from({ length: strips }, (_, k) => ({ x0: offset(k), x1: offset(k) + perStrip * PITCH, z0: k * pitchZ, z1: k * pitchZ + 7 * PITCH }));
   return {
-    width: perStrip * PITCH + (strips - 1) * Math.abs(step),
+    width: perStrip * PITCH + (strips - 1) * Math.abs(step) + spread,
     total: strips * 7 * PITCH + (strips - 1) * STRIP_GAP,
     rects,
     /** The corners (x, z) of the slab with the room around it, for fitting the picture in its box: each strip's, the room at the sides of all, under the first and behind the last. */
@@ -44,6 +48,30 @@ export function slabFor(weeks: number, strips: number) {
       return { x: offset(k) + (week % perStrip) * PITCH + 0.5, z: k * pitchZ + day * PITCH + 0.5 };
     },
   };
+}
+
+/**
+ * How far to move each strip of a narrow page along x (in weeks) so that the weight of the blocks of every strip is centred on the page: a strip whose busy days are on its left looks left, a shorter last strip (53 weeks in 4 strips are 14, 14, 14 and
+ * 11) is left of the others. `weightAt(week, day)` is how much the day weighs on the eye (its blocks' height); the centre of gravity of each strip is brought to the middle of a full strip. At most 3 weeks either way. Pure.
+ */
+export function stripShifts(weeks: number, strips: number, weightAt: (week: number, day: number) => number): number[] {
+  if (strips <= 1) return [0];
+  const perStrip = Math.ceil(weeks / strips);
+  const middle = (perStrip - 1) / 2;
+  return Array.from({ length: strips }, (_, k) => {
+    let sum = 0;
+    let moment = 0;
+    for (let i = 0; i < perStrip; i++) {
+      const week = k * perStrip + i;
+      if (week >= weeks) break;
+      for (let day = 0; day < 7; day++) {
+        const w = Math.max(0, weightAt(week, day));
+        sum += w;
+        moment += w * i;
+      }
+    }
+    return sum > 0 ? Math.max(-3, Math.min(3, middle - moment / sum)) : 0;
+  });
 }
 
 const norm = (v: readonly number[]) => {

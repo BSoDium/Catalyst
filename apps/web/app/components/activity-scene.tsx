@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import type { BufferGeometry, Color, Mesh } from "three";
 import { layoutActivity, type Activity, type HoverInfo, type Matrix } from "~/lib/activity";
-import { CAMERA_DIR, roomFor, slabFor } from "~/lib/activity-view";
+import { CAMERA_DIR, roomFor, slabFor, stripShifts } from "~/lib/activity-view";
 import { createGroundLight, loadCausticTemplates, type CausticTemplates, type GlassLight } from "~/components/ground-light";
 import { createNeon } from "~/components/neon";
 import { createSleighBells } from "~/components/sleigh-bells";
@@ -106,7 +106,10 @@ export function ActivityScene({ activity, strips = 1, onReady, onLit, onHover, c
       // the room the glow of the outermost columns needs around the slab, so the picture does not cut it
       const ROOM = roomFor(strips);
       // The year is a long strip of weeks; on a narrow page it is cut into `strips` strips of equal length laid one behind the other, so the slab is closer to a square and fills the width
-      const { width, total, at, corners } = slabFor(layout.github.weeks, strips);
+      // (on a phone each strip is moved so that the weight of its blocks, not only its rectangle, is centred on the page)
+      const weigh = new Map<number, number>();
+      for (const m of [layout.github, layout.wakatime]) for (const c of m.cells) weigh.set(c.week * 7 + c.day, (weigh.get(c.week * 7 + c.day) ?? 0) + 0.18 + c.t * 2.2);
+      const { width, total, at, corners } = slabFor(layout.github.weeks, strips, stripShifts(layout.github.weeks, strips, (week, day) => weigh.get(week * 7 + day) ?? 0.18));
 
       const scene = new THREE.Scene();
       const pmrem = new THREE.PMREMGenerator(renderer);
@@ -814,9 +817,19 @@ void main(){
         }
         if (import.meta.env.DEV) el.dataset.fit = ((x1 - x0) / (y1 - y0)).toFixed(3);
         const aspect = w / h;
-        const halfH = Math.max((y1 - y0) / 2, (x1 - x0) / 2 / aspect) * 1.04;
-        // (the four strips of a phone: the picture's weight is on its right, where the strips' staggered rows end, so it is moved left by 4 % of the view's width to look centred in the page)
-        const mx = (x0 + x1) / 2 + (strips > 1 ? 0.04 * 2 * halfH * aspect : 0);
+        // With strips (a phone) the picture is centred on its rows' centre of gravity (each strip's middle, after `stripShifts` has brought the weight of its blocks there), not on its bounding box: the staggered rows make the box lopsided
+        let gx = (x0 + x1) / 2;
+        if (strips > 1) {
+          const perStrip = Math.ceil(layout.github.weeks / strips);
+          let sum = 0;
+          for (let k = 0; k < strips; k++) {
+            const c = at(k * perStrip + (perStrip - 1) / 2, 3);
+            sum += new THREE.Vector3(c.x, 0, c.z).applyMatrix4(inv).x;
+          }
+          gx = sum / strips;
+        }
+        const halfH = Math.max((y1 - y0) / 2, Math.max(x1 - gx, gx - x0) / aspect) * 1.04;
+        const mx = gx;
         const my = (y0 + y1) / 2;
         camera.left = mx - halfH * aspect;
         camera.right = mx + halfH * aspect;
