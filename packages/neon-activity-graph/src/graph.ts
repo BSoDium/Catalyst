@@ -208,6 +208,7 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       // (`alphaHash`: a rod that is almost off is almost not there: it is dithered away, and the picture's many samples average the dither out)
       // (the dither is changed at every sample of the picture, `rodSeed`, so that the samples add up to the true translucency: with a fixed pattern, as `alphaHash` has, the grain stays)
       const rodSeed = { value: 0 };
+      let rodCount = 0;
       const glowMaterial = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false });
       // how much each rod gives out, 0 to 1, one number per block, read by the rod's vertices (`aBlock` is the block's number): the neon start-up changes them over time
       // what is left of a block when its rod is off, the same for all of them: the glass's own glow and the room's reflections in it, as absolute intensities
@@ -229,7 +230,7 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
           .replace("#include <begin_vertex>", "#include <begin_vertex>\n  transformed.xz = aCtr + (transformed.xz - aCtr) * mix(0.6, 1.0, smoothstep(0.0, 2.5, rodB));");
         shader.fragmentShader = shader.fragmentShader
           .replace("#include <common>", "#include <common>\nvarying float vRodA;\nuniform float uRodSeed;")
-          .replace("#include <color_fragment>", "#include <color_fragment>\n  float rodNoise = fract(52.9829189 * fract(dot(gl_FragCoord.xy + uRodSeed * vec2(47.0, 17.0), vec2(0.06711056, 0.00583715))));\n  if (vRodA < rodNoise) discard;");
+          .replace("#include <color_fragment>", "#include <color_fragment>\n  float rodNoise = fract(fract(sin(dot(floor(gl_FragCoord.xy), vec2(12.9898, 78.233))) * 43758.5453) + uRodSeed * 0.61803398875);\n  if (vRodA < rodNoise) discard;");
       };
       glowMaterial.customProgramCacheKey = () => "rod-levels";
       // `shade` (dark theme): the faces of a block are not all lit alike, as if the light were from above and to the left of the camera, and a block is brighter toward its top: its top is the brightest face, then the side that
@@ -974,7 +975,8 @@ void main(){
           // the sun moves on a disc (the soft shadow), the camera a sub-pixel (the anti-aliasing)
           const a = halton(n, 2) * Math.PI * 2;
           const r = Math.sqrt(halton(n, 3)) * 9;
-          rodSeed.value = n;
+          // (a running count, not the sample's number in the picture, which starts again at 0 at every update of the lights: the dither would be the same pattern at every frame of the hover's fade; consecutive samples step by the golden ratio, so that even two or three of them are spread evenly over the opacity)
+          rodSeed.value = rodCount++;
           sun.position.copy(sunBase).add(new THREE.Vector3(Math.cos(a) * r, 0, Math.sin(a) * r)).add(sun.target.position);
           camera.setViewOffset(w, h, halton(n, 5) - 0.5, halton(n, 7) - 0.5, w, h);
           renderer.setRenderTarget(sceneRT);
@@ -1109,12 +1111,13 @@ void main(){
         }
         applyLevels(lastLevels);
         humLevel();
-        samplesCap = Math.min(samplesCap, lite ? 2 : 3);
-        restart();
+        // (each step of the fade is drawn from a few samples at once and shown together, not sample by sample: the first of a restart, alone, is the noisiest picture there is)
+        burst(lite ? 2 : 5);
         if (moving) focusRaf = window.setTimeout(stepFocus, 1000 / (lite ? 20 : 30)) as unknown as number;
         else {
+          // (the fade is over: the picture goes on from the samples it has, up to the full number, it does not start again from one)
           samplesCap = samples;
-          restart();
+          if (!raf) raf = requestAnimationFrame(frame);
         }
       };
       // (a debounce: the day is taken a moment after the pointer stops on it, and let go a moment after it leaves)
