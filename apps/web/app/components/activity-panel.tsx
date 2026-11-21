@@ -136,9 +136,9 @@ function DayCard({ info, visible, instant, width }: { info: HoverInfo; visible: 
     return () => cancelAnimationFrame(raf);
   }, [x, y, instant]);
   return (
-    <div ref={outer} role="presentation" className="pointer-events-none absolute top-0 left-0 z-10" style={{ opacity: visible ? 1 : 0, transition: "opacity 0.16s" }}>
+    <div ref={outer} role="presentation" className="pointer-events-none absolute top-0 left-0 z-10 h-0 w-0" style={{ opacity: visible ? 1 : 0, transition: "opacity 0.16s" }}>
       <div
-        className="w-64 px-4 py-3.5 backdrop-blur-md"
+        className="absolute top-0 left-0 w-64 px-4 py-3.5 backdrop-blur-md"
         style={{
           transform: `translate(-50%, ${below ? "16px" : "calc(-100% - 16px)"})`,
           transition: instant ? "none" : "transform 0.3s cubic-bezier(0.2, 0.7, 0.2, 1)",
@@ -370,7 +370,7 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
   const stats = activity ? activityStats(activity) : WAITING_STATS;
   // The tilt of the scene leaves its top-right and bottom-left corners empty: the figures take the first and the legend the second (on a narrow page there is no corner, they go under the picture).
   return (
-    <section ref={box} data-slot="activity" aria-label="Activity over the last year" className="relative -mx-4 mt-0 mb-2 max-md:flex max-md:flex-col md:-mx-14 md:mb-4 min-[90rem]:-mb-4">
+    <section ref={box} data-slot="activity" aria-label="Activity over the last year" className="relative -mx-4 mt-0 mb-2 [overflow-x:clip] max-md:flex max-md:flex-col md:-mx-14 md:mb-4 min-[90rem]:-mb-4">
       {flat ? (
         <div role="img" aria-label="Activity over the last year: GitHub contributions and WakaTime coding time, a square a day" className="flex flex-col gap-4 px-4 md:px-14">
           <FlatMatrix matrix={flat.wakatime} tone="#0078d7" />
