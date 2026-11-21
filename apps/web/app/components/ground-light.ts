@@ -42,11 +42,6 @@ const COMMON = /* glsl */ `
 const float IOR = 1.5;
 const float R0 = 0.04;
 float reflectance(float c) { c = clamp(c, 0., 1.); return R0 + (1. - R0) * pow(1. - c, 5.); }
-float halton(float i, float base) {
-  float f = 1.; float r = 0.;
-  for (int k = 0; k < 16; k++) { if (i < 1.) break; f /= base; r += f * mod(i, base); i = floor(i / base); }
-  return r;
-}
 float sdf(vec3 p, vec3 h, float r) {
   vec3 q = abs(p) - (h - r);
   return length(max(q, 0.)) + min(max(q.x, max(q.y, q.z)), 0.) - r;

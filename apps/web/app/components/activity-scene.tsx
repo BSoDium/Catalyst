@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import type { BufferGeometry, Color, Mesh } from "three";
 import { layoutActivity, type Activity, type HoverInfo, type Matrix } from "~/lib/activity";
 import { CAMERA_DIR, roomFor, slabFor } from "~/lib/activity-view";
-import { createGroundLight, loadCausticTemplates, type GlassLight } from "~/components/ground-light";
+import { createGroundLight, loadCausticTemplates, type CausticTemplates, type GlassLight } from "~/components/ground-light";
 import { createNeon } from "~/components/neon";
 import causticTemplatesUrl from "~/assets/caustic-templates.png?url";
 
@@ -44,7 +44,11 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
       const { RoundedBoxGeometry } = await import("three/examples/jsm/geometries/RoundedBoxGeometry.js");
       const { mergeGeometries } = await import("three/examples/jsm/utils/BufferGeometryUtils.js");
       const { RoomEnvironment } = await import("three/examples/jsm/environments/RoomEnvironment.js");
-      const templates = await loadCausticTemplates(THREE, causticTemplatesUrl);
+      // The baked light of the dark theme (41 KB): fetched only when the dark theme is on, and a failure only means no baked light (the rods and the glass are drawn without it), never that there is no picture.
+      let templates: CausticTemplates | null = null;
+      let templatesFailed = false;
+      const wantTemplates = () => (templatesFailed ? Promise.resolve() : loadCausticTemplates(THREE, causticTemplatesUrl).then((t) => void (templates = t)).catch(() => void (templatesFailed = true)));
+      if (isDark()) await wantTemplates();
       if (cancelled) return;
 
       // The globe sets `ColorManagement.enabled = false` for the whole page when its module loads (see globe/engine/renderer.ts), and three.js's colour handling is global: with it off, the hex colours and the textures here
@@ -314,7 +318,7 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
           ? createGroundLight(THREE, renderer, { w: cw, h: ch, scale: PX, x0: -GLOW_PAD, z0: -GLOW_PAD })
           : createGroundLight(THREE, renderer, { w: lw, h: lh, scale: LPX, x0: -GLOW_PAD, z0: -GLOW_PAD });
         if (dark) {
-          stampCtl = ground.stamps(
+          stampCtl = !templates ? null : ground.stamps(
             glass.map((g) => ({ x: g.c[0], z: g.c[2], height: 2 * g.h[1], foot: g.c[1] - g.h[1], col: [g.col[0] * g.power, g.col[1] * g.power, g.col[2] * g.power] as [number, number, number], poolCol: g.pool!.col, poolRadius: g.pool!.r })),
             templates,
           );
@@ -1039,6 +1043,8 @@ void main(){
         pinned = false;
         if (current !== -1) announce(-1);
         (floor.material as import("three").MeshBasicMaterial).color.copy(pageColour());
+        // (switching to the dark theme from the light one: the baked light is fetched then, and the blocks built again when it is there)
+        if (isDark() && !templates && !templatesFailed) void wantTemplates().then(() => !cancelled && templates && rethink());
         buildBlocks();
         prepareNeon();
         restart();
@@ -1049,6 +1055,7 @@ void main(){
       mq.addEventListener("change", rethink);
 
       stop = () => {
+        stopNeon();
         cancelAnimationFrame(raf);
         window.clearTimeout(resizeTimer);
         dom.removeEventListener("pointermove", onMove);
@@ -1067,6 +1074,8 @@ void main(){
         blockMaterial.dispose();
         coreMaterial.dispose();
         glowMaterial.dispose();
+        levelTex.dispose();
+        templates?.texture.dispose();
         tileUnlit.dispose();
         sceneRT.dispose();
         accumRT.dispose();

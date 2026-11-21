@@ -1,7 +1,7 @@
 /**
- * The neon start-up of the dark theme's rods: when the picture appears some of the rods do not just come on, they flicker like a gas tube that is struggling to start, a few stutters of
- * light with gaps between, and then stay on after a short warm-up; with a faint click and buzz for each stutter. No file: the sound is synthesised (Web Audio), very quiet, and only if the browser lets the page make sound
- * (it does not before the visitor has interacted with the page; then it is silent and nothing else changes).
+ * The neon start-up of the dark theme's rods: when the picture appears the rods do not just come on, they flicker like a gas tube that is struggling to start (the blocks are divided into oval areas, each with its own
+ * few stutters of light with gaps between, and then a short warm-up); with a faint low hum that dies away slowly and a few quiet bell-like dings. No file: the sound is synthesised (Web Audio), and only if the browser lets
+ * the page make sound and the tab is in view (it does not before the visitor has interacted with the page; then it is silent and nothing else changes).
  *
  * This module only decides the levels (0 to 1, one per block, as a function of time) and the sound; what a level does to the picture is the scene's business (`apply`).
  */
@@ -28,7 +28,7 @@ export interface NeonOptions {
   seed?: number;
 }
 
-/** How many areas the rods are divided into, how many of them flicker (the rest are on from the start), how long the start-up lasts, and how often the picture is updated while it does. */
+/** How many areas the rods are divided into, how many of them flicker (all of them now; a smaller number would leave the others on from the start), how long the start-up lasts, and how often the picture is updated while it does. */
 const AREAS = 8;
 const FLICKERING = AREAS;
 const SPAN_MS = 2600;
@@ -41,6 +41,8 @@ interface Stutter {
 }
 
 export function createNeon({ blocks, apply, done, sound, fps = NEON_FPS, seed = 7 }: NeonOptions) {
+  // (nothing to light: a controller that does nothing, rather than a search for the centres of areas among no blocks)
+  if (blocks.length === 0) return { levels: new Float32Array(0), count: 0, start: () => done(), stop: () => {} };
   let s = seed;
   const random = () => ((s = (s * 16807) % 2147483647) / 2147483647);
   const levels = new Float32Array(blocks.length).fill(1);
@@ -120,8 +122,21 @@ export function createNeon({ blocks, apply, done, sound, fps = NEON_FPS, seed = 
 
   // --- the sound ---
   let ctx: AudioContext | null = null;
+  let closeTimer = 0;
+  const closeSound = () => {
+    window.clearTimeout(closeTimer);
+    document.removeEventListener("visibilitychange", onVisibility);
+    const c = ctx;
+    ctx = null;
+    // (a context that is closed already refuses to close again: nothing to do then)
+    if (c && c.state !== "closed") c.close().catch(() => {});
+  };
+  // (the sound was scheduled in one go against the audio clock, and a tab that is not in view stops the picture's clock: when the tab goes out of view the sound goes too)
+  const onVisibility = () => {
+    if (document.hidden) closeSound();
+  };
   const schedule = async () => {
-    if (!sound || typeof AudioContext === "undefined") return;
+    if (!sound || typeof AudioContext === "undefined" || document.hidden) return;
     let c: AudioContext;
     try {
       c = new AudioContext();
@@ -129,9 +144,9 @@ export function createNeon({ blocks, apply, done, sound, fps = NEON_FPS, seed = 
     } catch {
       return;
     }
-    if (c.state !== "running" || !running) {
-      // (not allowed to make sound yet, or the start-up is over already: silent, and the context is let go)
-      void c.close();
+    if (c.state !== "running" || !running || document.hidden) {
+      // (not allowed to make sound yet, or the start-up is over already, or the tab went out of view: silent, and the context is let go)
+      c.close().catch(() => {});
       return;
     }
     ctx = c;
@@ -210,7 +225,7 @@ export function createNeon({ blocks, apply, done, sound, fps = NEON_FPS, seed = 
         }
       });
     });
-    window.setTimeout(() => void c.close(), (stopAt - c.currentTime) * 1000 + 500);
+    closeTimer = window.setTimeout(closeSound, (stopAt - c.currentTime) * 1000 + 500);
   };
 
   const tick = (stamp: number) => {
@@ -232,6 +247,8 @@ export function createNeon({ blocks, apply, done, sound, fps = NEON_FPS, seed = 
     }
     if (ms >= end) {
       running = false;
+      // (the sound's tail goes on a few seconds after the picture is done: it keeps its listener until it is let go)
+      if (!ctx) document.removeEventListener("visibilitychange", onVisibility);
       plans.forEach((_, i) => (levels[i] = 1));
       apply(levels);
       done();
@@ -251,14 +268,16 @@ export function createNeon({ blocks, apply, done, sound, fps = NEON_FPS, seed = 
       last = -1;
       t0 = performance.now();
       apply(levels);
+      document.addEventListener("visibilitychange", onVisibility);
       void schedule();
       raf = requestAnimationFrame(tick);
     },
     stop() {
       running = false;
       cancelAnimationFrame(raf);
+      document.removeEventListener("visibilitychange", onVisibility);
       plans.forEach((_, i) => (levels[i] = 1));
-      if (ctx) void ctx.close();
+      closeSound();
     },
   };
 }
