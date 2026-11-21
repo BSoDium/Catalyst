@@ -220,7 +220,7 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
         shader.uniforms.uLevels = { value: levelTex };
         shader.vertexShader = shader.vertexShader
           .replace("#include <common>", "#include <common>\nattribute float aBlock;\nattribute vec3 aInc;\nattribute vec2 aCtr;\nvarying float vRodA;\nuniform highp sampler2D uLevels;")
-          .replace("#include <color_vertex>", "#include <color_vertex>\n#ifdef USE_COLOR\n  vec2 lv = texelFetch(uLevels, ivec2(int(aBlock + 0.5), 0), 0).rg;\n  float rodB = max(vColor.r, max(vColor.g, vColor.b)) * lv.r;\n  vColor.rgb = vColor.rgb * lv.r + vec3(0.029, 0.037, 0.053) * (1.0 - lv.r) + aInc * lv.g;\n  vRodA = smoothstep(0.0, 2.5, rodB);\n  float rodL = dot(vColor.rgb, vec3(0.299, 0.587, 0.114));\n  vColor.rgb = max(vec3(0.0), mix(vec3(rodL), vColor.rgb, 1.0 + 1.8 * (1.0 - clamp(lv.r, 0.0, 1.0))));\n#endif")
+          .replace("#include <color_vertex>", "#include <color_vertex>\n#ifdef USE_COLOR\n  vec2 lv = texelFetch(uLevels, ivec2(int(aBlock + 0.5), 0), 0).rg;\n  float rodB = max(vColor.r, max(vColor.g, vColor.b)) * lv.r;\n  vColor.rgb = vColor.rgb * lv.r + vec3(0.029, 0.037, 0.053) * (1.0 - lv.r) + aInc * lv.g;\n  vRodA = smoothstep(0.0, 2.5, rodB);\n  float rodL = dot(vColor.rgb, vec3(0.299, 0.587, 0.114));\n  vColor.rgb = max(vec3(0.0), mix(vec3(rodL), vColor.rgb, 1.3 + 1.8 * (1.0 - clamp(lv.r, 0.0, 1.0))));\n#endif")
           .replace("#include <begin_vertex>", "#include <begin_vertex>\n  transformed.xz = aCtr + (transformed.xz - aCtr) * mix(0.08, 1.0, smoothstep(0.0, 3.5, rodB));");
         shader.fragmentShader = shader.fragmentShader
           .replace("#include <common>", "#include <common>\nvarying float vRodA;")
@@ -629,14 +629,15 @@ void main() {
             mat.transparent = true;
             mat.opacity = 0.9;
           }
-          mat.emissive.copy(customOn() ? new THREE.Color(0x000000) : dark ? tones[src][1].clone() : tones[src][1]);
+          mat.emissive.copy(customOn() ? new THREE.Color(0x000000) : dark ? tones[src][1].clone().lerp(new THREE.Color(0xffffff), src === "top" ? 0.8 : 0) : tones[src][1]);
           // (dark) the glass absorbs what is not its own colour as the light goes through it: a green block lets a blue rod behind it show only dimly, and the other way round
           if (dark) {
             // (the glass is clear: it does not filter what is seen through it, the rods give the colour)
             mat.attenuationColor.set(0xffffff);
             mat.attenuationDistance = 1e3;
           }
-          mat.emissiveIntensity = dark ? [0.02, 0.08, 0.15][tier]! * 0.6 : 0;
+          // (dark: the green glass has no glow of its own at all, it is clear; only the blue keeps a faint one: whatever glow a glass has is a tint, and grey where it should be black)
+          mat.emissiveIntensity = dark ? (src === "top" ? 0 : [0.02, 0.08, 0.15][tier]! * 0.6) : 0;
           if (dark) {
             // the glass shines as its rod does, down to a little ambient light of the night (the floor 0.14): its own glow and the room's reflections in it follow the rod's level, so that a block whose rod is off is dark
             mat.onBeforeCompile = (shader) => {

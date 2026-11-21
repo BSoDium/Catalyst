@@ -211,7 +211,7 @@ export function createNeon({ blocks, apply, done, sound, fps = NEON_FPS, wobbleF
     const voices = blocks.map(() => {
       const r = random();
       const band = random();
-      const hz = band < 0.25 ? 800 + random() * 700 : band < 0.7 ? 2300 + random() * 1500 : 4200 + random() * 2600;
+      const hz = band < 0.15 ? 1300 + random() * 250 : 2700 + random() * 650;
       return { quiet: r >= 0.85, hz, gain: 0.45 + random() * 0.95 };
     });
     // (the clicks are first collected, then thinned out evenly over the whole start-up if there are more than 40: a cap met in the order they are made would silence the last areas, and the sound would end before the last flicker)
@@ -245,7 +245,7 @@ export function createNeon({ blocks, apply, done, sound, fps = NEON_FPS, wobbleF
       if (random() > keep) return;
       const voice = voices[h.tube]!;
       const when = Math.max(now + h.at / 1000, c.currentTime);
-      bell(c, master, when, voice.hz * (0.93 + random() * 0.14), h.pan, h.level * voice.gain * (0.6 + random() * 0.6));
+      bell(c, master, when, voice.hz * (0.98 + random() * 0.04), h.pan, h.level * voice.gain * (0.6 + random() * 0.6));
     });
     closeTimer = window.setTimeout(closeSound, (stopAt - c.currentTime) * 1000 + 500);
   };
@@ -348,8 +348,8 @@ export function createNeon({ blocks, apply, done, sound, fps = NEON_FPS, wobbleF
     // (every time the tube goes out, a lower bell; every time it lights, a higher one)
     const base = audioTime(c, perfStart);
     // (one pitch for going out and one for lighting, the same each time it happens in this flicker: it is the one tube, going out and on again)
-    const outHz = 650 + idleRandom() * 450;
-    const onHz = 2400 + idleRandom() * 1000;
+    const outHz = 800 + idleRandom() * 150;
+    const onHz = 2700 + idleRandom() * 350;
     edges.forEach((e) => bell(c, master, base + e.at / 1000, e.on ? onHz : outHz, pan, e.level));
     window.clearTimeout(idleClose);
     idleClose = window.setTimeout(() => {

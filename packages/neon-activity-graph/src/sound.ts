@@ -19,9 +19,9 @@ export function cling(size: "small" | "big" = "small"): void {
     }
     if (ctx.state === "suspended") void ctx.resume().catch(() => {});
     const when = ctx.currentTime + 0.01;
-    const pitch = 2300 + Math.random() * 1500;
+    const pitch = 2700 + Math.random() * 650;
     if (size === "big") {
-      bell(ctx, master!, when, 900 + Math.random() * 400, 0, 2.6);
+      bell(ctx, master!, when, 1000 + Math.random() * 150, 0, 2.6);
       bell(ctx, master!, when + 0.03, pitch, 0, 1.6);
     } else {
       bell(ctx, master!, when, pitch, 0, 1.2);
