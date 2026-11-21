@@ -350,6 +350,8 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       let neonNeighbours: { j: number[]; m: number[] }[] = [];
       let neonBlocks: { x: number; z: number; pan: number; t: number; cell: number; peak: number }[] = [];
       let stampCtl: { update(levels: ArrayLike<number>): void } | null = null;
+      // (dark) sets how much of its lamps' light each pit has, from the blocks' levels (the pits' shading follows the neon, see `groundLayers`)
+      let pitLight: ((levels: ArrayLike<number>) => void) | null = null;
       // `rodColor`: every rod is lit in a colour the caller picks (a string of lights, say), the same for a day each time. Its colour is the day's and its brightness is the activity, as ever; the glass is left clear so that the rod's
       // colour is what is seen, and the baked light on the ground takes the rod's colour like any other. The dark theme only (the glass of the light theme, lit by the sun, does not take coloured lights; the scene is rebuilt when the theme changes).
       const customOn = () => !!opts.rodColor && isDark();
@@ -389,7 +391,7 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
         // near wall keeps the light off the floor (and the opposite wall is the lit one, and the lip there takes the highlight): the light is the lamps around the pit in the dark theme (there is no sun), the sun in the light theme (top right of the screen:
         // -x and +z). `(lx, lz)` is the direction to the light, `amount` how one-sided it is (0 all round, 1 from one side).
         const pitCells: { x: number; z: number }[] = [];
-        const recess = (x: number, z: number, lx: number, lz: number, amount: number) => {
+        const recess = (x: number, z: number, lx: number, lz: number, amount: number, ctx: CanvasRenderingContext2D = actx) => {
           const cx = (x + GLOW_PAD) * PX;
           const cy = (z + GLOW_PAD) * PX;
           const half = 0.44 * PX;
@@ -399,16 +401,16 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
           const frame = new Path2D();
           frame.rect(cx - 2 * PX, cy - 2 * PX, 4 * PX, 4 * PX);
           frame.addPath(path);
-          actx.save();
-          actx.clip(path);
-          actx.shadowColor = `rgba(0,0,0,${dark ? 0.9 : 0.5})`;
-          actx.shadowBlur = 0.16 * PX;
+          ctx.save();
+          ctx.clip(path);
+          ctx.shadowColor = `rgba(0,0,0,${dark ? 0.9 : 0.5})`;
+          ctx.shadowBlur = 0.16 * PX;
           // (the frame is moved away from the light: its edge on the light's side goes into the pit and shades the floor there)
-          actx.shadowOffsetX = -lx * amount * 0.09 * PX;
-          actx.shadowOffsetY = -lz * amount * 0.09 * PX;
-          actx.fillStyle = "#000";
-          actx.fill(frame, "evenodd");
-          actx.restore();
+          ctx.shadowOffsetX = -lx * amount * 0.09 * PX;
+          ctx.shadowOffsetY = -lz * amount * 0.09 * PX;
+          ctx.fillStyle = "#000";
+          ctx.fill(frame, "evenodd");
+          ctx.restore();
         };
         stack.top.cells.forEach((g, i) => {
           const w = stack.bottom.cells[i]!;
@@ -541,21 +543,31 @@ void main() {
           plane(ground.texture, () => resolve(true), 0);
           plane(ground.texture, () => resolve(false), 1);
         }
+        // (dark) The lamps around a pit shade its floor on the side that faces them, so with the lamps off there is nothing to shade it that way: the pits are drawn twice, with the shading of the lamps all on and with none (`aoSym`),
+        // and the picture mixes the two by how much of their light there is, pit by pit (`pitLit`, set from the levels, see `layers.userData.setLevels`).
+        const aoSym = dark ? canvas() : null;
+        aoSym?.getContext("2d")!.drawImage(ao, 0, 0);
+        const pitNear: { gi: number; wx: number; wz: number; w: number }[][] = [];
+        const pitBase: number[] = [];
+        // (how one-sided the light is, and how strong: lamps all round cancel out)
+        const amountOf = (lxv: number, lzv: number, st: number) => Math.min(1, (Math.hypot(lxv, lzv) / Math.max(st, 1e-6)) * 1.4) * Math.min(1, st * 6);
         for (const pc of pitCells) {
           let lx = 0;
           let lz = 0;
           let strength = 0;
+          const near: { gi: number; wx: number; wz: number; w: number }[] = [];
           if (dark) {
-            for (const g of glass) {
+            glass.forEach((g, gi) => {
               const dx = g.c[0] - pc.x;
               const dz = g.c[2] - pc.z;
               const dist = Math.hypot(dx, dz);
-              if (dist < 0.5 || dist > 5) continue;
+              if (dist < 0.5 || dist > 5) return;
               const w = (g.col[0] + g.col[1] + g.col[2]) * g.power * Math.exp(-(dist * dist) / (2 * 1.8 * 1.8));
               lx += (dx / dist) * w;
               lz += (dz / dist) * w;
               strength += w;
-            }
+              near.push({ gi, wx: (dx / dist) * w, wz: (dz / dist) * w, w });
+            });
           } else {
             lx = -0.63;
             lz = 0.77;
@@ -563,11 +575,64 @@ void main() {
           }
           const len = Math.hypot(lx, lz);
           // (how one-sided the light is: lamps all round cancel out)
-          recess(pc.x, pc.z, len > 0 ? lx / len : 0, len > 0 ? lz / len : 0, dark ? Math.min(1, (len / Math.max(strength, 1e-6)) * 1.4) * Math.min(1, strength * 6) : 1);
+          const amount = dark ? amountOf(lx, lz, strength) : 1;
+          recess(pc.x, pc.z, len > 0 ? lx / len : 0, len > 0 ? lz / len : 0, amount);
+          if (aoSym) recess(pc.x, pc.z, 0, 0, 0, aoSym.getContext("2d")!);
+          pitNear.push(near);
+          pitBase.push(amount);
         }
         const aoTex = new THREE.CanvasTexture(ao);
         aoTex.colorSpace = THREE.SRGBColorSpace;
-        plane(aoTex, (map) => new THREE.MeshBasicMaterial({ map, transparent: true, depthWrite: false, toneMapped: false }), 2);
+        if (!aoSym) plane(aoTex, (map) => new THREE.MeshBasicMaterial({ map, transparent: true, depthWrite: false, toneMapped: false }), 2);
+        else {
+          const symTex = new THREE.CanvasTexture(aoSym);
+          symTex.colorSpace = THREE.SRGBColorSpace;
+          // (how much of its lamps' light each pit has, 4 texels a unit over the whole ground: 1 = all on, as baked)
+          const LT = 4;
+          const litW = Math.ceil((cw / PX) * LT);
+          const litH = Math.ceil((ch / PX) * LT);
+          const litData = new Float32Array(litW * litH).fill(1);
+          const litTex = new THREE.DataTexture(litData, litW, litH, THREE.RedFormat, THREE.FloatType);
+          litTex.minFilter = THREE.NearestFilter;
+          litTex.magFilter = THREE.NearestFilter;
+          litTex.needsUpdate = true;
+          plane(aoTex, (map) => {
+            const m = new THREE.ShaderMaterial({
+              uniforms: { full: { value: map }, sym: { value: symTex }, lit: { value: litTex } },
+              vertexShader: "varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }",
+              fragmentShader: "uniform sampler2D full; uniform sampler2D sym; uniform sampler2D lit; varying vec2 vUv; void main() { float a = mix(texture2D(sym, vUv).a, texture2D(full, vUv).a, clamp(texture2D(lit, vUv).r, 0., 1.)); gl_FragColor = vec4(0., 0., 0., a); }",
+              transparent: true,
+              depthWrite: false,
+            });
+            return m;
+          }, 2);
+          disposers.push(() => {
+            symTex.dispose();
+            litTex.dispose();
+          });
+          layers.userData.setLevels = (levels: ArrayLike<number>) => {
+            for (let k = 0; k < pitCells.length; k++) {
+              let lx = 0;
+              let lz = 0;
+              let st = 0;
+              for (const n of pitNear[k]!) {
+                const lv = levels[n.gi] ?? 1;
+                lx += n.wx * lv;
+                lz += n.wz * lv;
+                st += n.w * lv;
+              }
+              const lit = pitBase[k]! > 1e-4 ? Math.min(1, amountOf(lx, lz, st) / pitBase[k]!) : 0;
+              const u = pitCells[k]!.x + GLOW_PAD;
+              const v = pitCells[k]!.z + GLOW_PAD;
+              const i0 = Math.max(0, Math.floor((u - 0.44) * LT));
+              const i1 = Math.min(litW - 1, Math.floor((u + 0.44) * LT));
+              const j0 = Math.max(0, litH - 1 - Math.floor((v + 0.44) * LT));
+              const j1 = Math.min(litH - 1, litH - 1 - Math.floor((v - 0.44) * LT));
+              for (let jj = j0; jj <= j1; jj++) for (let ii = i0; ii <= i1; ii++) litData[jj * litW + ii] = lit;
+            }
+            litTex.needsUpdate = true;
+          };
+        }
         disposers.push(() => ground.dispose());
         if (!dark && LIGHT_BACKDROP) {
           // (light theme) What a glass sees behind it is only what three.js draws OPAQUE, and the shade, the caustics and the contact shadows are transparent layers over the paper: the glass would see bare paper where the ground is in shadow. So the ground
@@ -930,7 +995,9 @@ void main() {
         }
         const tb1 = performance.now();
         const group = new THREE.Group();
-        group.add(groundLayers(stack, tones, dark));
+        const groundGroup = groundLayers(stack, tones, dark);
+        pitLight = (groundGroup.userData.setLevels as typeof pitLight) ?? null;
+        group.add(groundGroup);
         const tb2 = performance.now();
         if (tiles.length) {
           const tile = new THREE.Mesh(mergeGeometries(tiles), tileUnlit);
@@ -1421,6 +1488,7 @@ void main(){
         for (let i = 0; i < n; i++) effective[i] = levels[i]! * (focus[i] ?? 1);
         uploadLevels(effective, idleLook);
         focusCtl?.update(effective);
+        pitLight?.(effective);
         // (the ground's light seen through the glass follows how lit the scene is, and more than in proportion: with every light dimmed it all but goes out)
         let lit = 0;
         for (let i = 0; i < n; i++) lit += Math.min(1, effective[i]!);
