@@ -217,7 +217,7 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       /** (light theme) the ground, baked, as what the glass sees behind it (see `groundLayers`): false to compare. */
       const LIGHT_BACKDROP = true;
       /** (light theme) how much of the colour of the blocks behind a block (as the camera sees it) its glass takes, when they cover all of its outline. */
-      const LIGHT_BEHIND_TINT = 0.9;
+      const LIGHT_BEHIND_TINT = 0.6;
       const coreMaterial = new THREE.MeshBasicMaterial({ vertexColors: true });
       // (the glass is perfectly clear; it is the core that is soft: its colour fades toward a pale haze of itself toward its silhouette, so it is a blurred glow in the middle of the block, with no hard edge)
       coreMaterial.onBeforeCompile = (shader) => {

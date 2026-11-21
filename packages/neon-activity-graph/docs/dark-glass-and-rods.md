@@ -97,7 +97,7 @@ The shells are `DoubleSide`: three.js draws the back faces of double-sided glass
 
 ### Light theme: tinted by what is behind (current)
 
-Double-sided glass (`LIGHT_DOUBLE_SIDED`, now off, kept as a fallback) tinted isolated blocks by their own back faces too. Now the shells are single-sided again and each block's glass is tinted by what the camera sees behind it: `lightBehind` run with weights 1 and the three channels of the hues gives the colour of the blocks whose outline it covers and how much of it they cover; the shell's colour is multiplied by white mixed toward that colour by the coverage (`LIGHT_BEHIND_TINT` 0.9). A block against the paper stays clear; one in front of other blocks takes their tint. The tint is per block, not per pixel.
+Double-sided glass (`LIGHT_DOUBLE_SIDED`, now off, kept as a fallback) tinted isolated blocks by their own back faces too. Now the shells are single-sided again and each block's glass is tinted by what the camera sees behind it: `lightBehind` run with weights 1 and the three channels of the hues gives the colour of the blocks whose outline it covers and how much of it they cover; the shell's colour is multiplied by white mixed toward that colour by the coverage (`LIGHT_BEHIND_TINT` 0.6). A block against the paper stays clear; one in front of other blocks takes their tint. The tint is per block, not per pixel.
 
 ### Light theme: the baked ground is what the glass sees
 
