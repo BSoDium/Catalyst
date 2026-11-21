@@ -124,11 +124,11 @@
       /* A phone (under 768): the text above the graph, close to the top left corner (more room at the left than at the top), and the graph from edge to edge of the screen. */
       @media (max-width: 767px) {
         body { justify-content: flex-start; }
-        main { padding: 14px 22px 76px; }
-        #graph { aspect-ratio: 0.8; margin: -11vw -22px 0; width: calc(100% + 44px); }
-        .caption { position: relative; z-index: 1; }
+        main { padding: 8px 14px 76px; }
+        #graph { aspect-ratio: 0.8; margin: -11vw -14px 0; width: calc(100% + 28px); }
+        .caption { position: relative; left: 0; bottom: auto; z-index: 1; }
         /* (the two small texts at the bottom of the screen would meet: the sample-data line goes to the end of the page, clear of the links) */
-        #live { position: static; order: 2; margin: 0 22px 96px; }
+        #live { position: static; order: 2; margin: 0 14px 96px; }
         .caption { order: 0; flex-direction: column; margin: 0; width: 100%; padding: 0 0 10px; gap: 0.55em; }
         h1 { font-size: clamp(30px, 8.4vw, 56px); }
         .about { font-size: 15px; } .legend { font-size: 12px; margin: 0.8em 0 0; }

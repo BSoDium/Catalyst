@@ -34,12 +34,12 @@ describe("placeholderTiles", () => {
 });
 
 describe("stripShifts", () => {
-  it("moves a strip whose weight is on its left to the right, and the other way round", () => {
-    // (53 weeks in 4 strips of 14, the last of 11: strip 0 is heavy on its first weeks, strip 1 on its last, the others even)
+  it("does not move a full strip, whatever the weight of its days (the strips stand evenly)", () => {
     const w = (week: number, _day: number) => (week < 14 ? (week < 4 ? 5 : 1) : week < 28 ? (week - 14 > 9 ? 5 : 1) : 1);
     const s = stripShifts(53, 4, w);
-    expect(s[0]).toBeGreaterThan(0);
-    expect(s[1]).toBeLessThan(0);
+    expect(s[0]).toBeCloseTo(0);
+    expect(s[1]).toBeCloseTo(0);
+    expect(s[2]).toBeCloseTo(0);
   });
   it("moves a shorter last strip to the right, to the middle of a full one", () => {
     const s = stripShifts(53, 4, () => 1);

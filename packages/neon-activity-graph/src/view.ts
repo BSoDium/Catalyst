@@ -70,7 +70,10 @@ export function stripShifts(weeks: number, strips: number, weightAt: (week: numb
         moment += w * i;
       }
     }
-    return sum > 0 ? Math.max(-3, Math.min(3, middle - moment / sum)) : 0;
+    // (only a shorter strip is moved, to the middle of a full one: the weight of the days no longer moves a strip, which made one strip stand far from the others, and a ragged picture)
+    void moment;
+    const own = (Math.min(perStrip, weeks - k * perStrip) - 1) / 2;
+    return sum > 0 ? Math.max(-3, Math.min(3, middle - own)) : 0;
   });
 }
 
