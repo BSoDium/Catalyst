@@ -1,4 +1,5 @@
 import type { Cell, Matrix } from "./layout";
+import type { OverlayOptions } from "./overlay";
 
 /** One day of one layer. `date` is an ISO day (`2026-11-19`), read in UTC. */
 export interface DayValue {
@@ -70,7 +71,8 @@ export interface Startup {
 }
 
 export interface GraphOptions {
-  data: GraphData;
+  /** The two layers, or `null` while they are being fetched: only the place-holder is shown, and the graph is built by `update(data)`. */
+  data: GraphData | null;
   /** How many weeks are drawn (default 53). */
   weeks?: number;
   /** One long strip (1, default), or 4 staggered strips for a narrow, tall box (the picture is then about a third narrower; give the box an aspect of about 0.8). */
@@ -109,6 +111,14 @@ export interface GraphOptions {
    * `stop` when it is torn down. `inView()` tells whether the graph is on screen and the tab visible.
    */
   startup?: (ctx: { inView: () => boolean }) => Startup | void;
+  /** Show the SVG place-holder (the flat days) until the first picture is on screen (default true; the React view renders it itself, so it is in server-rendered pages). */
+  placeholder?: boolean;
+  /** The day's outline and card, drawn over the graph (default off): `true`, or options. See `createHoverOverlay`. */
+  overlay?: boolean | OverlayOptions;
+  /** The highest pixel ratio the picture is rendered at (default 2; a `lite` device always gets 1). */
+  maxPixelRatio?: number;
+  /** The most pixels the picture is rendered at (default 8 million: the render is scaled down on a very large container). */
+  maxPixels?: number;
   /** Development helpers: `metrics` writes `data-*` timings on the container and logs the ground light's cost, `wireframe` draws the glass as a cage, `neonHold` holds the picture half on, half off. */
   debug?: { metrics?: boolean; wireframe?: boolean; neonHold?: boolean };
 }

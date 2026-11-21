@@ -66,7 +66,7 @@ The graph shows the last `weeks` weeks (53 by default) ending at the latest day 
 
 | Option | Default | |
 | --- | --- | --- |
-| `data` | required | The two layers. |
+| `data` | required | The two layers, or `null` while they are being fetched (only the place-holder shows; `update(data)` builds the graph). |
 | `weeks` | `53` | How many weeks are drawn. |
 | `strips` | `1` | `1` is one long strip; `4` staggers four strips for a narrow, tall box (aspect about 0.8). |
 | `theme` | `"auto"` | `"light"`, `"dark"` or `"auto"` (follows `prefers-color-scheme`). Change it with `setTheme`. |
@@ -79,10 +79,16 @@ The graph shows the last `weeks` weeks (53 by default) ending at the latest day 
 | `grain` | `0.012` | Camera grain strength; `0` is off. |
 | `templatesUrl` | embedded | URL of `caustic-templates.png` (see below) instead of the embedded data URI. |
 | `label` | "Activity graph, ..." | The accessible name. The arrow keys walk the days (focus the graph by clicking it), Escape lets go. |
+| `placeholder` | `true` | Shows the flat days (the same slab, seen by the same camera, strips on a narrow box) at once, pulsing, and fades it out when the first picture is on screen. The React view renders it itself, so it is in server-rendered pages. |
+| `overlay` | off | `true` or `{ outline?, card?, locale? }`: the day's outline (an SVG path round its blocks) and a day card, drawn over the graph. `card` can be `false` or a function `(info) => string \| Node`. Styled with CSS variables on the container or above: `--nag-outline`, `--nag-outline-fill`, `--nag-card-bg`, `--nag-card-fg`, `--nag-card-muted`, `--nag-top`, `--nag-bottom`, `--nag-card-radius`. |
+| `maxPixelRatio` | `2` | The highest pixel ratio the picture is rendered at (`lite` is always 1). |
+| `maxPixels` | `8_000_000` | The most pixels rendered; a larger container is rendered at a lower ratio (also capped by the card's texture size). |
 | `onHover` | | `(info \| null) => void`: `{ index, date, top, bottom, outline, x, y, behind }`. `outline` is the SVG `points` of the day's silhouette, `x, y` a point on its top in CSS pixels of the container. Clicking days that are behind one another cycles through them (`behind`). |
 | `onReady` / `onLit` | | The first picture is on screen (fade your place-holder); the picture is lit (`false` while the start-up runs). |
 | `startup` | | `({ inView }) => { start?, stop? } \| void`: called each time a start-up is prepared, to hook your own sound or greeting to it. |
 | `debug` | | `{ metrics?, wireframe?, neonHold? }`: development helpers (`data-*` timings on the container, the glass as a cage, the picture held half on). |
+
+`createHoverOverlay(container, options, labels)` is the overlay on its own, for a graph you drive yourself. In React, `<ActivityGraphView aspect={4} overlay />` takes the same options (`aspect` is the box's, so the server-rendered place-holder has the right shape).
 
 A flat place-holder that shares the scene's camera (so the scene replaces it in place) can be drawn without loading three.js: `import { placeholderTiles } from "neon-activity-graph/layout"` gives an SVG `viewBox` and one path of all the squares.
 
@@ -92,6 +98,7 @@ A flat place-holder that shares the scene's camera (so the scene replaces it in 
 - The start-up and the idle flickers update the light of the blocks, not their geometry: a light update costs about 0.05 ms of CPU and a frame about 0.5 ms on an Apple M4; on an emulated Pixel 7 (CPU slowed 6x) 0.7-0.8 ms and 4-5 ms.
 - The one-time build (geometry, ground light) stalls the main thread for a few hundred ms, up to 1.3 s on a slowed phone. Dark theme: the baked light is decoded once.
 - The idle flickers run only while the graph is in view and the tab visible; `prefers-reduced-motion` skips the start-up altogether.
+- The picture is rendered at the container's size times the pixel ratio (up to 2), so it grows with the screen; above 8 million pixels the ratio drops. Measured (Chrome on an Apple M4, dark and light): a 2352 px wide graph on a 2560 px screen at ratio 2 renders 4704 x 1184 px (5.6 MP), the first picture is on screen after about 1 s, rAF stays at 16.7 ms (p95 16.8 ms) with a one-time build hitch of 250-330 ms, JS heap about 100 MB. GPU memory is not measured: expect a few hundred MB of half-float targets at that size, which `maxPixels` bounds.
 - three.js is imported on demand: until the graph is created nothing of it is loaded.
 
 ## Browser support

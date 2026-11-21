@@ -2,7 +2,8 @@ import type { BufferGeometry, Color, Mesh } from "three";
 import { createGroundLight, loadCausticTemplates, type CausticTemplates, type GlassLight } from "./ground-light";
 import { layoutGraph, type Matrix } from "./layout";
 import { createNeon } from "./neon";
-import type { GraphOptions, LayerColors, Startup, Tones } from "./types";
+import { renderSize } from "./size";
+import type { GraphData, GraphOptions, LayerColors, Startup, Tones } from "./types";
 import { CAMERA_DIR, roomFor, slabFor, stripShifts } from "./view";
 
 /** How many jittered frames are averaged before the picture is final (soft shadows, anti-aliasing): the scene never moves, so it is drawn once, a frame at a time, and then not at all. */
@@ -46,7 +47,7 @@ export interface SceneHandle {
  * (an area light's soft shadow) and the camera a sub-pixel away (anti-aliasing) and adds it to an accumulation buffer; after `SAMPLES` frames the loop stops and the canvas keeps the
  * result. Translucent rounded blocks (transmission, refraction) lit by a room environment, on a ground that only receives the shadows, so it sits on the page's own background.
  */
-export function mountScene(el: HTMLElement, opts: GraphOptions, st: { theme: "light" | "dark" | "auto" }): SceneHandle {
+export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphData }, st: { theme: "light" | "dark" | "auto" }): SceneHandle {
   const api = { stop: () => {}, rethink: () => {} };
   let cancelled = false;
   const dbg = opts.debug ?? {};
@@ -796,9 +797,9 @@ void main(){
       };
 
       const fit = () => {
-        const dpr = lite ? 1 : Math.min(window.devicePixelRatio || 1, 2);
-        w = Math.max(1, Math.round(el.clientWidth * dpr));
-        h = Math.max(1, Math.round(el.clientHeight * dpr));
+        const size = renderSize({ cssWidth: el.clientWidth, cssHeight: el.clientHeight, devicePixelRatio: window.devicePixelRatio, lite, maxPixelRatio: opts.maxPixelRatio, maxPixels: opts.maxPixels, maxSize: renderer.capabilities.maxTextureSize });
+        w = size.width;
+        h = size.height;
         renderer.setPixelRatio(1);
         renderer.setSize(w, h, false);
         sceneRT.setSize(w, h);

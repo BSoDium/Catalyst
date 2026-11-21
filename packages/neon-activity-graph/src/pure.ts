@@ -5,3 +5,4 @@ export { layoutGraph, layoutMatrix } from "./layout";
 export type { Cell, Matrix } from "./layout";
 export { CAMERA_DIR, placeholderTiles, PITCH, roomFor, slabFor, STRIP_GAP, TYPICAL_TALLEST } from "./view";
 export type { ColorInput, DayValue, GraphData, GraphLayer, LayerColors, Rgb, Tones } from "./types";
+export { defaultAspect, placeholderMarkup } from "./placeholder";
