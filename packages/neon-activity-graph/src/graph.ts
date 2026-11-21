@@ -212,7 +212,7 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       // what is left of a block when its rod is off, the same for all of them: the glass's own glow and the room's reflections in it, as absolute intensities
       /** (dark) how much glow the green glass has of its own, against 0.6 of the blue's: a slight tint (0 is a clear glass). Pure green, never whitened: a whitened glow is a grey one. */
       const DARK_GREEN_GLOW = 0.2;
-      const DARK_GLASS_ROUGHNESS = 0.22;
+      const DARK_GLASS_ROUGHNESS = 0.08;
       const OFF_EMISSIVE = 0.0012;
       const OFF_ENV = 0.004;
       const MAX_LEVELS = 1024;

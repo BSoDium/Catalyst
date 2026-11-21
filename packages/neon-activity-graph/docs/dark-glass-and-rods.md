@@ -45,4 +45,4 @@ Judge it on screenshots, not by reasoning: the demo at `/` with a block hovered 
 
 - **No stochastic translucency.** `alphaHash` and our own per-sample dither both looked right once settled but flickered whenever the lights moved (few samples). The rod's translucency is now its colour scaled by its opacity: noise-free, and against a dark glass the look is the same.
 - **Light updates are one sample, averaged** (`ema` in `graph.ts`): the camera is still, so the last picture is a start for the next; the new sample weighs at least 30 %. A fifth of the cost of 5 samples drawn from nothing, and no restart from a single noisy sample.
-- **Frosted glass**: `DARK_GLASS_ROUGHNESS` 0.22: the glass's transmission is a blurred mip of the picture seen through it, so the glow of the rods spreads a little in the glass. It costs next to nothing.
+- **Frosted glass**: `DARK_GLASS_ROUGHNESS` 0.08 (0.22 was too fuzzy, and the edges, which refract more, blurred differently from the faces): the glass's transmission is a blurred mip of the picture seen through it, so the glow of the rods spreads a little in the glass. It costs next to nothing.
