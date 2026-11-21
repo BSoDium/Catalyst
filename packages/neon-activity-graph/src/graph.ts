@@ -352,6 +352,7 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       let stampCtl: { update(levels: ArrayLike<number>): void } | null = null;
       // (dark) sets how much of its lamps' light each pit has, from the blocks' levels (the pits' shading follows the neon, see `groundLayers`)
       let pitLight: ((levels: ArrayLike<number>) => void) | null = null;
+      let rimLight: ((levels: ArrayLike<number>) => void) | null = null;
       // `rodColor`: every rod is lit in a colour the caller picks (a string of lights, say), the same for a day each time. Its colour is the day's and its brightness is the activity, as ever; the glass is left clear so that the rod's
       // colour is what is seen, and the baked light on the ground takes the rod's colour like any other. The dark theme only (the glass of the light theme, lit by the sun, does not take coloured lights; the scene is rebuilt when the theme changes).
       const customOn = () => !!opts.rodColor && isDark();
@@ -549,6 +550,7 @@ void main() {
         aoSym?.getContext("2d")!.drawImage(ao, 0, 0);
         const pitNear: { gi: number; wx: number; wz: number; w: number }[][] = [];
         const pitBase: number[] = [];
+        const pitStrength: number[] = [];
         // (how one-sided the light is, and how strong: lamps all round cancel out)
         const amountOf = (lxv: number, lzv: number, st: number) => Math.min(1, (Math.hypot(lxv, lzv) / Math.max(st, 1e-6)) * 1.4) * Math.min(1, st * 6);
         for (const pc of pitCells) {
@@ -580,6 +582,7 @@ void main() {
           if (aoSym) recess(pc.x, pc.z, 0, 0, 0, aoSym.getContext("2d")!);
           pitNear.push(near);
           pitBase.push(amount);
+          pitStrength.push(strength);
         }
         const aoTex = new THREE.CanvasTexture(ao);
         aoTex.colorSpace = THREE.SRGBColorSpace;
@@ -621,7 +624,8 @@ void main() {
                 lz += n.wz * lv;
                 st += n.w * lv;
               }
-              const lit = pitBase[k]! > 1e-4 ? Math.min(1, amountOf(lx, lz, st) / pitBase[k]!) : 0;
+              // (and in proportion to the light itself, not only to how one-sided it is: a lamp that is barely on does not give the full highlight)
+              const lit = pitBase[k]! > 1e-4 && pitStrength[k]! > 1e-6 ? Math.min(1, (amountOf(lx, lz, st) / pitBase[k]!) * Math.min(1, st / pitStrength[k]!)) : 0;
               const u = pitCells[k]!.x + GLOW_PAD;
               const v = pitCells[k]!.z + GLOW_PAD;
               const i0 = Math.max(0, Math.floor((u - 0.44) * LT));
@@ -769,6 +773,7 @@ void main() {
         let ringShape0 = null as BufferGeometry | null;
         const rims: BufferGeometry[] = [];
         const pitRims: { geom: BufferGeometry; x: number; z: number }[] = [];
+        const pitLamps: { si: number; w: number }[][] = [];
         // (the page's colour is read from the browser once a build, not once a tile: it makes a canvas and reads a pixel back)
         const page = pageColour();
         const shellsBy = new Map<string, BufferGeometry[]>();
@@ -966,7 +971,15 @@ void main() {
         }
         // (dark) there is no sun: the lip of a pit shines with the light of the neon around it, on the edge that faces the lamps (a lamp on one side lights the lip on the other side, whose slope faces it), in the lamps' colours; nothing where no lamp is near
         if (dark) {
-          for (const pr of pitRims) {
+          pitRims.forEach((pr, pi) => {
+            pr.geom.setAttribute("aPit", new THREE.BufferAttribute(new Float32Array(pr.geom.getAttribute("position").count).fill(pi), 1));
+            // (what the lamps give this pit's lip, by lamp: the lip's light follows them as they come on, see `rimLight`)
+            const lamps: { si: number; w: number }[] = [];
+            specs.forEach((sp, si) => {
+              const d = Math.hypot(sp.x - pr.x, sp.z - pr.z);
+              if (d >= 0.5 && d <= 4) lamps.push({ si, w: emit(sp.t) * Math.exp(-(d * d) / (2 * 1.6 * 1.6)) });
+            });
+            pitLamps.push(lamps);
             const rp = pr.geom.getAttribute("position");
             const rc = pr.geom.getAttribute("color");
             for (let q = 0; q < rp.count; q++) {
@@ -991,7 +1004,7 @@ void main() {
               rc.setXYZ(q, page.r + Math.min(r, 0.1), page.g + Math.min(gg, 0.1), page.b + Math.min(bb, 0.1));
             }
             rc.needsUpdate = true;
-          }
+          });
         }
         const tb1 = performance.now();
         const group = new THREE.Group();
@@ -1003,7 +1016,32 @@ void main() {
           const tile = new THREE.Mesh(mergeGeometries(tiles), tileUnlit);
           group.add(tile);
           const rim = new THREE.Mesh(mergeGeometries(rims), tileUnlit.clone());
-          (rim.material as import("three").MeshBasicMaterial).side = THREE.FrontSide;
+          const rimMat = rim.material as import("three").MeshBasicMaterial;
+          rimMat.side = THREE.FrontSide;
+          rimLight = null;
+          if (dark && pitLamps.length === pitRims.length && pitRims.length > 0) {
+            // (dark) the lip of a pit shines with the lamps around it, so it follows them: its colour above the ground's is scaled by how much of their light there is now (per pit, from the levels)
+            const litData = new Float32Array(pitRims.length).fill(1);
+            const litTex = new THREE.DataTexture(litData, pitRims.length, 1, THREE.RedFormat, THREE.FloatType);
+            litTex.needsUpdate = true;
+            rimMat.onBeforeCompile = (shader) => {
+              shader.uniforms.uPitLit = { value: litTex };
+              shader.uniforms.uPage = { value: page };
+              shader.vertexShader = shader.vertexShader
+                .replace("#include <common>", "#include <common>\nattribute float aPit;\nuniform highp sampler2D uPitLit;\nuniform vec3 uPage;")
+                .replace("#include <color_vertex>", "#include <color_vertex>\n#ifdef USE_COLOR\n  vColor.rgb = uPage + (vColor.rgb - uPage) * texelFetch(uPitLit, ivec2(int(aPit + 0.5), 0), 0).r;\n#endif");
+            };
+            rimMat.customProgramCacheKey = () => "pit-rim-lit";
+            const totals = pitLamps.map((l) => l.reduce((acc, q) => acc + q.w, 0));
+            rimLight = (levels) => {
+              for (let k = 0; k < pitLamps.length; k++) {
+                let on = 0;
+                for (const q of pitLamps[k]!) on += q.w * Math.min(1, levels[q.si] ?? 1);
+                litData[k] = totals[k]! > 1e-6 ? on / totals[k]! : 0;
+              }
+              litTex.needsUpdate = true;
+            };
+          }
           group.add(rim);
         }
         const materials: import("three").MeshPhysicalMaterial[] = [];
@@ -1489,6 +1527,7 @@ void main(){
         uploadLevels(effective, idleLook);
         focusCtl?.update(effective);
         pitLight?.(effective);
+        rimLight?.(effective);
         // (the ground's light seen through the glass follows how lit the scene is, and more than in proportion: with every light dimmed it all but goes out)
         let lit = 0;
         for (let i = 0; i < n; i++) lit += Math.min(1, effective[i]!);
