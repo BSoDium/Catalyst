@@ -222,6 +222,8 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       // (dark theme: the glass sees the ground's glow, see groundLayers) and how much of it
       const DARK_BACKDROP = true;
       const DARK_BACKDROP_GAIN = 200;
+      /** (dark) the most the light seen behind the glass can add, on its brightest channel (a soft cap that keeps the hue). */
+      const DARK_BACKDROP_CAP = 0.35;
       /** (light theme) how much of the colour of the blocks behind a block (as the camera sees it) its glass takes, when they cover all of its outline. */
       const LIGHT_BEHIND_TINT = 0.85;
       const coreMaterial = new THREE.MeshBasicMaterial({ vertexColors: true });
@@ -236,6 +238,11 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       // (`alphaHash`: a rod that is almost off is almost not there: it is dithered away, and the picture's many samples average the dither out)
       // (a rod's translucency is its colour scaled by its opacity: it is the light it gives out, so that a dim rod is a dim light, with no dither, no noise)
       const glowMaterial = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false });
+      // (dark) the ground's light as the glass (and the rods in it) sees it behind: the live texture, where it lies (x0, z0, 1/sizeX, 1/sizeZ) and by how much it is seen
+      const groundSeen = { map: { value: new THREE.DataTexture(new Float32Array(4), 1, 1, THREE.RGBAFormat, THREE.FloatType) as import("three").Texture }, xf: { value: new THREE.Vector4(0, 0, 1, 1) } };
+      groundSeen.map.value.needsUpdate = true;
+      /** GLSL: the light seen behind, `g` (linear), scaled and then capped softly on its brightest channel, so a strong hue is not overexposed whatever the palette: its colour is kept, only its level is compressed. */
+      const softSeen = `vec3 softSeen(vec3 g) { float m = max(g.r, max(g.g, g.b)); if (m < 1e-6) return g; float k = ${DARK_BACKDROP_CAP.toFixed(3)}; return g * (k * tanh(m * ${DARK_BACKDROP_GAIN.toFixed(3)} / k) / m); }`;
       // how much each rod gives out, 0 to 1, one number per block, read by the rod's vertices (`aBlock` is the block's number): the neon start-up changes them over time
       // what is left of a block when its rod is off, the same for all of them: the glass's own glow and the room's reflections in it, as absolute intensities
       /** (dark) how much glow the green glass has of its own, against 0.6 of the blue's: a slight tint (0 is a clear glass). Pure green, never whitened: a whitened glow is a grey one. */
@@ -267,13 +274,16 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       levelTex.needsUpdate = true;
       glowMaterial.onBeforeCompile = (shader) => {
         shader.uniforms.uLevels = { value: levelTex };
+        shader.uniforms.uGround = groundSeen.map;
+        shader.uniforms.uGroundXf = groundSeen.xf;
         shader.vertexShader = shader.vertexShader
-          .replace("#include <common>", "#include <common>\nattribute float aBlock;\nattribute vec3 aInc;\nattribute vec2 aCtr;\nvarying float vRodA;\nuniform highp sampler2D uLevels;")
+          .replace("#include <common>", "#include <common>\nattribute float aBlock;\nattribute vec3 aInc;\nattribute vec2 aCtr;\nvarying float vRodA;\nvarying vec2 vRodXZ;\nuniform highp sampler2D uLevels;")
           .replace("#include <color_vertex>", "#include <color_vertex>\n#ifdef USE_COLOR\n  vec2 lv = texelFetch(uLevels, ivec2(int(aBlock + 0.5), 0), 0).rg;\n  float rodB = max(vColor.r, max(vColor.g, vColor.b)) * lv.r;\n  vColor.rgb = vColor.rgb * lv.r + vec3(0.029, 0.037, 0.053) * (1.0 - lv.r) + aInc * lv.g;\n  vRodA = smoothstep(0.0, 3.0, rodB);\n  float rodL = dot(vColor.rgb, vec3(0.299, 0.587, 0.114));\n  vColor.rgb = max(vec3(0.0), mix(vec3(rodL), vColor.rgb, 1.3 + 1.8 * (1.0 - clamp(lv.r, 0.0, 1.0))));\n#endif")
-          .replace("#include <begin_vertex>", "#include <begin_vertex>\n  transformed.xz = aCtr + (transformed.xz - aCtr) * mix(0.6, 1.0, smoothstep(0.0, 2.5, rodB));");
+          .replace("#include <begin_vertex>", "#include <begin_vertex>\n  transformed.xz = aCtr + (transformed.xz - aCtr) * mix(0.6, 1.0, smoothstep(0.0, 2.5, rodB));\n  vRodXZ = (modelMatrix * vec4(aCtr.x, 0.0, aCtr.y, 1.0)).xz;");
         shader.fragmentShader = shader.fragmentShader
-          .replace("#include <common>", "#include <common>\nvarying float vRodA;")
-          .replace("#include <color_fragment>", "#include <color_fragment>\n  diffuseColor.rgb *= vRodA;");
+          .replace("#include <common>", "#include <common>\nvarying float vRodA;\nvarying vec2 vRodXZ;\nuniform sampler2D uGround;\nuniform vec4 uGroundXf;\n" + softSeen)
+          // (a rod is an emitter, not an absorber: what is behind it shows through it and its light adds to that, so a dim rod is never darker than the ground's light around it, it just disappears into it)
+          .replace("#include <color_fragment>", "#include <color_fragment>\n  diffuseColor.rgb *= vRodA;\n  diffuseColor.rgb += softSeen(texture2D(uGround, vec2((vRodXZ.x - uGroundXf.x) * uGroundXf.z + 0.5, 0.5 - (vRodXZ.y - uGroundXf.y) * uGroundXf.w)).rgb);");
       };
       glowMaterial.customProgramCacheKey = () => "rod-levels";
       // `shade` (dark theme): the faces of a block are not all lit alike, as if the light were from above and to the left of the camera, and a block is brighter toward its top: its top is the brightest face, then the side that
@@ -605,6 +615,8 @@ void main() {
         if (dark && DARK_BACKDROP) {
           // (dark theme) The same gap: the glow on the ground is an additive transparent layer, so the glass would see the bare dark ground behind it (black strips next to a lit floor). An opaque plane drawn ONLY into what the glass sees shows the dark ground plus the
           // very texture the glow is drawn from, which hover and the start-up update in place: the glass sees the live light, the picture itself is unchanged.
+          groundSeen.map.value = ground.texture;
+          groundSeen.xf.value.set(width / 2, total / 2, PX / cw, PX / ch);
           const uBackdrop = { value: 0 };
           const page = pageColour();
           const proxyMat = new THREE.MeshBasicMaterial({ map: ground.texture, toneMapped: false });
@@ -613,8 +625,8 @@ void main() {
             shader.uniforms.uPage = { value: page };
             shader.fragmentShader = shader.fragmentShader
               .replace("#include <common>", "#include <common>\nuniform float uBackdrop;\nuniform vec3 uPage;")
-              .replace("void main() {", "void main() {\n  if (uBackdrop < 0.5) discard;")
-              .replace("#include <opaque_fragment>", `outgoingLight = uPage + outgoingLight * ${DARK_BACKDROP_GAIN.toFixed(3)};\n#include <opaque_fragment>`);
+              .replace("void main() {", softSeen + "\nvoid main() {\n  if (uBackdrop < 0.5) discard;")
+              .replace("#include <opaque_fragment>", `outgoingLight = uPage + softSeen(outgoingLight);\n#include <opaque_fragment>`);
           };
           proxyMat.customProgramCacheKey = () => "ground-backdrop-dark";
           const proxy = new THREE.Mesh(new THREE.PlaneGeometry(cw / PX, ch / PX), proxyMat);
