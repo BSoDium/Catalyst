@@ -52,6 +52,7 @@ export function createActivityGraph(container: HTMLElement, options: GraphOption
   let handle: SceneHandle = start();
   let destroyed = false;
   let colorTimer = 0;
+  let colorDirty = false;
   return {
     get bounds() {
       return handle.bounds();
@@ -71,11 +72,22 @@ export function createActivityGraph(container: HTMLElement, options: GraphOption
     setColors(colors) {
       if (destroyed) return;
       opts = { ...opts, colors: { top: { ...opts.colors?.top, ...colors.top }, bottom: { ...opts.colors?.bottom, ...colors.bottom } } };
-      // (debounced: a colour input fires on every step of a drag; the blocks are rebuilt once it settles, without the start-up and without fetching anything)
       // (the mounted scene reads its colours from its own options object: it is given the new ones too)
       if (sceneOpts) sceneOpts.colors = opts.colors;
-      window.clearTimeout(colorTimer);
-      colorTimer = window.setTimeout(() => handle.rethink(true), 120);
+      // The first change in a quiet moment is applied at once (a click on a preset), the ones that follow within 120 ms (a drag on a colour input fires on every step) are folded into one more rebuild at the end of that window.
+      if (colorTimer) {
+        colorDirty = true;
+        return;
+      }
+      handle.rethink(true);
+      const settle = () => {
+        colorTimer = 0;
+        if (!colorDirty || destroyed) return;
+        colorDirty = false;
+        handle.rethink(true);
+        colorTimer = window.setTimeout(settle, 120);
+      };
+      colorTimer = window.setTimeout(settle, 120);
     },
     setTheme(theme) {
       if (destroyed) return;

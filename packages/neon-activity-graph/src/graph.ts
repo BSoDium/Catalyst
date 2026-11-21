@@ -117,6 +117,7 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
         }
         renderer.domElement.style.filter = "";
         renderer.domElement.style.opacity = "";
+        opts.onRedrawn?.();
         // (once per build: the neon start-up begins when the picture comes into focus)
         const go = neonStart;
         neonStart = null;
@@ -429,6 +430,14 @@ void main() {
         return sh;
       })();
       let tallest = 1;
+      // The blocks' shapes, kept from one build to the next: a new colour or theme rebuilds the picture, but its blocks are the same (the data has not changed), and a rounded box costs far more to make than to copy.
+      const boxes = new Map<string, BufferGeometry>();
+      const roundedBox = (w: number, h: number, d: number, seg: number, r: number): BufferGeometry => {
+        const key = `${w.toFixed(4)}|${h.toFixed(4)}|${d.toFixed(4)}|${seg}|${r.toFixed(4)}`;
+        let g = boxes.get(key);
+        if (!g) boxes.set(key, (g = new RoundedBoxGeometry(w, h, d, seg, r)));
+        return g.clone();
+      };
       // (whether a layer has the package's own colours: the rods' lift toward white is tuned to them; other colours get a generic one)
       const stock = { top: true, bottom: true };
       /** The rod's light, as a (dark theme) colour, for a day at busyness `t`, scaled by `level`. */
@@ -453,7 +462,11 @@ void main() {
       let picks: PickBox[] = [];
       const LIFT = 0.04;
       const build = (stack: { bottom: Matrix; top: Matrix }, tones: { bottom: [Color, Color]; top: [Color, Color] }, dark: boolean) => {
+        const tb0 = performance.now();
         picks = [];
+        let tileShape = null as BufferGeometry | null;
+        // (the page's colour is read from the browser once a build, not once a tile: it makes a canvas and reads a pixel back)
+        const page = pageColour();
         const shellsBy = new Map<string, BufferGeometry[]>();
         const shellTier = new Map<string, ["bottom" | "top", number]>();
         const cores: BufferGeometry[] = [];
@@ -476,12 +489,16 @@ void main() {
           const { x, z } = at(g.week, g.day);
           if (w.value <= 0 && g.value <= 0) {
             // a flat tile with the same rounded corners as the blocks (a rounded square, extruded 0.04)
-            const tile = new THREE.ExtrudeGeometry(roundedSquare, { depth: 0.04, bevelEnabled: false, curveSegments: lite ? 3 : 6 });
-            tile.rotateX(-Math.PI / 2);
-            tile.deleteAttribute("uv");
+            // (every empty day is the same plate: built once, then copied)
+            if (!tileShape) {
+              tileShape = new THREE.ExtrudeGeometry(roundedSquare, { depth: 0.04, bevelEnabled: false, curveSegments: lite ? 3 : 6 });
+              tileShape.rotateX(-Math.PI / 2);
+              tileShape.deleteAttribute("uv");
+            }
+            const tile = tileShape.clone();
             tile.translate(x, 0, z);
             // (dark) a very dim grey of its own, a little over the page's: an empty day is a faint plate, not a hole
-            paint(tile, dark ? pageColour().add(new THREE.Color(0.006, 0.006, 0.006)) : pageColour().multiplyScalar(0.93));
+            paint(tile, dark ? page.clone().add(new THREE.Color(0.006, 0.006, 0.006)) : page.clone().multiplyScalar(0.93));
             tiles.push(tile);
             picks.push({ cell: i, x, z, y0: 0, y1: 0.04 });
             return;
@@ -525,7 +542,7 @@ void main() {
           const incLum = (inc.r + inc.g + inc.b) / 3;
           // (the light of the neighbours lifts a dim block, and leaves a bright one as it is: in a dense, busy stretch the glass must stay clear around its core)
           const tEff = t + (1 - t) * Math.min(1, Math.sqrt(incLum * 1.2));
-          const shell = new RoundedBoxGeometry(0.92, h, 0.92, lite ? 2 : 3, Math.min(0.16, h / 2.2));
+          const shell = roundedBox(0.92, h, 0.92, lite ? 2 : 3, Math.min(0.16, h / 2.2));
           shell.translate(x, y0 + h / 2, z);
           // dark: the glass is nearly clear (the light of its core shows through it); light: tinted by the level
           paint(shell, hue.clone().lerp(new THREE.Color(0xffffff), dark ? 0.14 : 0.12).multiplyScalar(dark ? 0.3 + 0.7 * tEff : 1).add(inc.clone().multiplyScalar(dark && customOn() ? 0.35 : 0.08)), 0, dark);
@@ -538,7 +555,7 @@ void main() {
           const hc = h * 0.8;
           // (dark) the busier the day the thinner and the brighter its rod: a quiet one is as wide as before and dim, a busy one a slender, intense filament
           const cw = dark ? 0.5 - 0.2 * t ** 0.85 : 0.5;
-          const core = new RoundedBoxGeometry(cw, hc, cw, lite ? 1 : 2, Math.min(0.1, cw / 2.4, hc / 2.2));
+          const core = roundedBox(cw, hc, cw, lite ? 1 : 2, Math.min(0.1, cw / 2.4, hc / 2.2));
           core.translate(x, y0 + h / 2, z);
           // A blue rod gets its brightness from light added to all three channels (not from more of the same blue, which only makes it bluer and more glowing): a brighter rod is a lighter, clearer blue, not a whiter one
           // (its hue is kept: the blue channel is the hue's own and the red and green rise with the busyness).
@@ -555,8 +572,10 @@ void main() {
           core.setAttribute("aBlock", new THREE.BufferAttribute(new Float32Array(core.getAttribute("position").count).fill(blockIndex++), 1));
           cores.push(core);
         }
+        const tb1 = performance.now();
         const group = new THREE.Group();
         group.add(groundLayers(stack, tones, dark));
+        const tb2 = performance.now();
         if (tiles.length) {
           const tile = new THREE.Mesh(mergeGeometries(tiles), tileUnlit);
           group.add(tile);
@@ -626,6 +645,8 @@ void main() {
           group.add(core);
         }
         [...cores, ...tiles].forEach((p) => p.dispose());
+        tileShape?.dispose();
+        if (dbg.metrics) console.info(`[activity] build: geometry ${Math.round(tb1 - tb0)} ms, ground ${Math.round(tb2 - tb1)} ms, merge ${Math.round(performance.now() - tb2)} ms`);
         return group;
       };
 
@@ -1348,6 +1369,7 @@ void main(){
           (o as Mesh).geometry?.dispose();
           (o.userData.dispose as (() => void) | undefined)?.();
         });
+        boxes.forEach((g) => g.dispose());
         blockMaterial.dispose();
         coreMaterial.dispose();
         glowMaterial.dispose();

@@ -50,11 +50,11 @@ interface Stutter {
  */
 const PARTIALS: [number, number, number][] = [[1, 1, 0.3], [2.76, 0.35, 0.14], [5.4, 0.12, 0.07]];
 /**
- * A soft, low electrical bzz, for the tubes that do not ding: two sawtooth voices a little apart (170 to 260 Hz and the same a little above an octave up), taken through a low-pass at about 1.5 kHz so that the buzz is light, not deep and not hissy, a
+ * A soft, low electrical bzz, for the tubes that do not ding: two sawtooth voices a little apart (135 to 210 Hz and the same a little above an octave up), taken through a low-pass at about 1.5 kHz so that the buzz is light, not deep and not hissy, a
  * wobble in the level (55 to 90 Hz, shallow) for the "b-z-z" texture and a trace of low-passed noise for the wiring. 130 to 240 ms, very faint: nothing hissy or crackly in it (it is not radio static).
  */
 function bzz(c: AudioContext, dest: AudioNode, when: number, pan: number, level: number, length: number) {
-  const f = 170 + Math.random() * 90;
+  const f = 135 + Math.random() * 75;
   const body = c.createGain();
   body.gain.value = 1;
   for (const [ratio, gain] of [[1, 1], [2.03, 0.5]] as const) {
@@ -250,7 +250,7 @@ export function createNeon({ blocks, apply, done, sound, fps = NEON_FPS, wobbleF
       lit.push(sum / Math.max(1, plans.size));
     }
     const settled = now + (end + 200) / 1000;
-    const FADE = 6;
+    const FADE = 10;
     const hum = c.createOscillator();
     hum.type = "sawtooth";
     hum.frequency.value = 100;
@@ -329,7 +329,7 @@ export function createNeon({ blocks, apply, done, sound, fps = NEON_FPS, wobbleF
     humLit.push(sum / Math.max(1, plans.size));
   }
   /** The hum's loudness, 0 to 1, `ms` after the start-up began (the sound's own envelope: the share of tubes lit, then an exponential fade of time constant 2 s). */
-  const humAt = (ms: number) => (ms <= humEnd ? (humLit[Math.min(humLit.length - 1, Math.floor(ms / HUM_STEP))] ?? 0) : Math.exp(-(ms - humEnd) / 2000));
+  const humAt = (ms: number) => (ms <= humEnd ? (humLit[Math.min(humLit.length - 1, Math.floor(ms / HUM_STEP))] ?? 0) : Math.exp(-(ms - humEnd) / 3333));
   /** Down to 55 % of its brightness, at the hum's loudest, for the strongest tube; only about one tube in five wobbles at all. */
   const WOBBLE_DEPTH = 0.45;
   const wob = (i: number, ms: number, hum: number) => {

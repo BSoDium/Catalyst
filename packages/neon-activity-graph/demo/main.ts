@@ -35,6 +35,7 @@ const applyTheme = (t: Theme) => {
     /* (no storage: the choice lasts for the visit) */
   }
   paintTheme();
+  ask("small");
   // (the page's colours have changed: the graph is told, and re-reads the background)
   graph?.setTheme(t ?? "auto");
 };
@@ -70,6 +71,10 @@ const paintPage = () => {
   }
 };
 
+// A cling for a change the visitor made sounds when the picture has been redrawn with it (onRedrawn), not on the click: there is a moment between the two.
+let pending: { size: "small" | "big"; at: number } | null = null;
+const latencies: number[] = [];
+const ask = (size: "small" | "big") => (pending = { size, at: performance.now() });
 let graph: ActivityGraph | null = null;
 let current: GraphData | null = null;
 
@@ -97,6 +102,13 @@ const mount = () => {
     theme: theme ?? "auto",
     colors: toColors(pair),
     overlay: true,
+    debug: location.search.includes("debug") ? { metrics: true } : undefined,
+    onRedrawn: () => {
+      if (!pending) return;
+      latencies.push(Math.round(performance.now() - pending.at));
+      graph?.cling(pending.size);
+      pending = null;
+    },
     background: () => getComputedStyle(document.body).backgroundColor,
     // (the hint fades once the visitor has hovered a day)
     onHover: (i) => i && document.body.classList.add("hovered"),
@@ -108,7 +120,7 @@ paintPage();
 mount();
 narrow.addEventListener("change", mount);
 const { data, live, at } = await load();
-(window as unknown as { __nag?: unknown }).__nag = location.search.includes("debug") ? { get graph() { return graph; } } : undefined;
+(window as unknown as { __nag?: unknown }).__nag = location.search.includes("debug") ? { get graph() { return graph; }, latencies } : undefined;
 current = data;
 live$.textContent = live ? `Live data · updated ${new Date(at ?? Date.now()).toLocaleDateString()}` : "Sample data";
 (graph as ActivityGraph | null)?.update(data);
@@ -169,17 +181,14 @@ for (const [name, p] of Object.entries(PRESETS)) {
   b.dataset.name = name;
   b.innerHTML = `<i style="--a:${(p ?? ORIGINAL).top};--b:${(p ?? ORIGINAL).bottom}"></i>${name}`;
   b.addEventListener("click", () => {
+    ask("big");
     apply(p);
-    graph?.cling("big");
   });
   presetBox.append(b);
 }
-// (a small cling once the picker has settled, as the colours are applied)
-let clingTimer = 0;
 const picked = () => {
+  ask("small");
   apply({ top: inTop.value, bottom: inBottom.value });
-  window.clearTimeout(clingTimer);
-  clingTimer = window.setTimeout(() => graph?.cling("small"), 180);
 };
 inTop.addEventListener("input", picked);
 inBottom.addEventListener("input", picked);

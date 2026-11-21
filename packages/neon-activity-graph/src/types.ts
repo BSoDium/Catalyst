@@ -106,6 +106,8 @@ export interface GraphOptions {
   onLayout?: (bounds: ContentBounds) => void;
   /** The first picture is on screen (fade your place-holder out). */
   onReady?: () => void;
+  /** The picture has been drawn again and is in focus: after the first build, and after every rebuild (a new theme, new colours, a resize). Use it to time an effect to the moment the picture changes, not to the click that asked for it. */
+  onRedrawn?: () => void;
   /** `false` while the neon start-up runs, `true` when the picture is lit (always, when there is no start-up). */
   onLit?: (lit: boolean) => void;
   /**
