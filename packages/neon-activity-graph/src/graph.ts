@@ -212,10 +212,6 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       const LIGHT_CORE_DEPTH = 0.78;
       // (light theme) how much of white the glass shell's tint is mixed with (1: clear)
       const LIGHT_SHELL_WHITE = 0.4;
-      /** (light theme) the glass as a stack of filters (multiply) instead of the refracting slab of three.js: false to compare. */
-      const LIGHT_FILTER_GLASS = true;
-      /** (light theme) how much of the glass's colour one face of a shell takes from the light (1: all of it). */
-      const LIGHT_FILTER_STRENGTH = 0.55;
       const coreMaterial = new THREE.MeshBasicMaterial({ vertexColors: true });
       // (the glass is perfectly clear; it is the core that is soft: its colour fades toward a pale haze of itself toward its silhouette, so it is a blurred glow in the middle of the block, with no hard edge)
       coreMaterial.onBeforeCompile = (shader) => {
@@ -829,7 +825,7 @@ void main() {
           (rim.material as import("three").MeshBasicMaterial).side = THREE.FrontSide;
           group.add(rim);
         }
-        const materials: import("three").Material[] = [];
+        const materials: import("three").MeshPhysicalMaterial[] = [];
         for (const [key, list] of shellsBy) {
           const [src, tier] = shellTier.get(key)!;
           const mat = blockMaterial.clone();
@@ -887,27 +883,6 @@ void main() {
             mat.roughness = LIGHT_GLASS_ROUGHNESS;
             mat.specularIntensity = LIGHT_SPECULAR;
             mat.specularColor = tones[src][1].clone().lerp(new THREE.Color(0xffffff), 0.75);
-          }
-          if (!dark && LIGHT_FILTER_GLASS && !dbg.wireframe) {
-            // (light theme) the glass is a coloured FILTER, not a refracting slab: every shell face, front and back, multiplies what is behind it (the ground, the cores, other glass), so stacked glass gives the product of its tints (Beer-Lambert), and the
-            // paper never shows through where another block's glass should be. A product does not depend on the order, so no sorting. The room's reflections and the glints are a separate additive layer.
-            const geom = mergeGeometries(list)!;
-            const filter = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.MultiplyBlending, premultipliedAlpha: true, toneMapped: false });
-            // (each face is a thin film: a share of the glass's colour, and the front and the back of a block both count)
-            filter.onBeforeCompile = (shader) => {
-              shader.fragmentShader = shader.fragmentShader.replace("#include <color_fragment>", `#include <color_fragment>\n  diffuseColor.rgb = mix(vec3(1.0), diffuseColor.rgb, ${LIGHT_FILTER_STRENGTH.toFixed(2)});`);
-            };
-            filter.customProgramCacheKey = () => `glass-filter-${LIGHT_FILTER_STRENGTH}`;
-            const shine = new THREE.MeshPhysicalMaterial({ color: 0x000000, roughness: LIGHT_GLASS_ROUGHNESS, metalness: 0, envMap: null, envMapIntensity: LIGHT_ENV, clearcoat: LIGHT_COAT, clearcoatRoughness: 0.03, specularIntensity: LIGHT_SPECULAR, specularColor: mat.specularColor, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.FrontSide });
-            const f = new THREE.Mesh(geom, filter);
-            f.renderOrder = 10;
-            f.castShadow = true;
-            const sh = new THREE.Mesh(geom, shine);
-            sh.renderOrder = 11;
-            group.add(f, sh);
-            materials.push(filter, shine, mat);
-            list.forEach((p) => p.dispose());
-            continue;
           }
           materials.push(mat);
           const glass = new THREE.Mesh(mergeGeometries(list)!, mat);
