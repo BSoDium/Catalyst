@@ -24,7 +24,7 @@ export function placeholderMarkup({ weeks = 53, strips = 1, aspect, shifts, tall
     `<svg data-neon-placeholder aria-hidden="true" viewBox="${viewBox}" preserveAspectRatio="xMidYMid meet" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;transition:opacity .4s ease">` +
     `<style>@keyframes nag-pulse{50%{opacity:.5}}.nag-pulse{animation:nag-pulse 2s ease-in-out infinite}.nag-lip{flood-opacity:1}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .nag-lip{flood-opacity:.1}}:root[data-theme="dark"] .nag-lip{flood-opacity:.1}@media (prefers-reduced-motion:reduce){.nag-pulse{animation:none}}</style>` +
     `<defs>${filter}</defs>` +
-    `<g class="nag-pulse"><path d="${d}" fill="#000" fill-opacity="0.2" filter="url(#nag-pit)"/></g></svg>`
+    `<g class="nag-pulse"><path d="${d}" fill="#000" fill-opacity="0.03" filter="url(#nag-pit)"/></g></svg>`
   );
 }
 
