@@ -104,7 +104,8 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       el.appendChild(renderer.domElement);
       // (absolute, so that the canvas never decides the size of its box: with its own aspect it could make the box a pixel taller, the box's resize would redraw the picture, and so on, without end)
       if (getComputedStyle(el).position === "static") el.style.position = "relative";
-      renderer.domElement.style.cssText = "position:absolute;inset:0;display:block;width:100%;height:100%;transition:filter .4s ease,opacity .4s ease";
+      renderer.domElement.style.cssText = "position:absolute;inset:0;display:block;width:100%;height:100%;transition:filter .4s ease,opacity .4s ease;opacity:0;filter:blur(7px)";
+      // (the canvas is born invisible and blurred, so that nothing of it can show before the picture is first drawn: it came in at full strength and was faded out by `soften` a moment later)
       // While the picture is redrawn (a resize, a change of scheme) the last one stays, blurred, and comes back into focus on the new one once it has a few frames in it
       let settling = false;
       const soften = (opacity = "0.85") => {
