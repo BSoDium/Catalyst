@@ -30,5 +30,12 @@ jobs:
       - run: pnpm test
       - name: The tag matches package.json
         run: test "v$(node -p "require('./package.json').version")" = "$GITHUB_REF_NAME"
+      # (a tag for a version that is already on npm, the first one having been published by hand, is a no-op)
+      - name: Already published?
+        id: exists
+        run: |
+          v=$(node -p "require('./package.json').version")
+          if npm view "neon-activity-graph@$v" version >/dev/null 2>&1; then echo "published=true" >> "$GITHUB_OUTPUT"; echo "neon-activity-graph@$v is already on npm: nothing to do"; fi
       # (`prepublishOnly` builds; `prepack` points `exports` at dist for the tarball, see scripts/apply-publish-config.mjs)
-      - run: npm publish --provenance --access public
+      - if: steps.exists.outputs.published != 'true'
+        run: npm publish --provenance --access public
