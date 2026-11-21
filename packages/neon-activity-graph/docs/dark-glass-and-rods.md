@@ -104,3 +104,5 @@ Double-sided glass (`LIGHT_DOUBLE_SIDED`, now off, kept as a fallback) tinted is
 Three.js lets a glass see only what is drawn opaque, and the ground's shade, caustics and contact shadows are transparent layers over the paper, so the glass saw bare paper where the ground is shaded (a small block in a shadow stayed bright). `groundLayers` now bakes the paper and all its layers once, from above, into a texture on an opaque plane (`LIGHT_BACKDROP`) that is drawn only into the glass's backdrop (it discards itself in the picture proper, `uBackdrop`, set from the render target in `onBeforeRender`). The light theme's shadows never change, so it is baked once.
 
 Switching to the dark theme from the light one waits for the baked light, then builds the blocks once: built without it they had no neon to start up, so they were drawn lit, then built again, off, and flickered on.
+
+A change of theme hides the old picture at once (no fade: the rebuild blocks the page, so a fade would only start after it, with the old, light picture on a dark page for its first frames); the new one fades in when it is ready.

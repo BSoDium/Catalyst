@@ -104,7 +104,8 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       el.appendChild(renderer.domElement);
       // (absolute, so that the canvas never decides the size of its box: with its own aspect it could make the box a pixel taller, the box's resize would redraw the picture, and so on, without end)
       if (getComputedStyle(el).position === "static") el.style.position = "relative";
-      renderer.domElement.style.cssText = "position:absolute;inset:0;display:block;width:100%;height:100%;transition:filter .4s ease,opacity .4s ease;opacity:0;filter:blur(7px)";
+      const CANVAS_FADE = "filter .4s ease,opacity .4s ease";
+      renderer.domElement.style.cssText = `position:absolute;inset:0;display:block;width:100%;height:100%;transition:${CANVAS_FADE};opacity:0;filter:blur(7px)`;
       // (the canvas is born invisible and blurred, so that nothing of it can show before the picture is first drawn: it came in at full strength and was faded out by `soften` a moment later)
       // While the picture is redrawn (a resize, a change of scheme) the last one stays, blurred, and comes back into focus on the new one once it has a few frames in it
       let settling = false;
@@ -145,6 +146,7 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
           announced = true;
           onReady?.();
         }
+        renderer.domElement.style.transition = CANVAS_FADE;
         renderer.domElement.style.filter = "";
         renderer.domElement.style.opacity = "";
         opts.onRedrawn?.();
@@ -1699,7 +1701,9 @@ void main(){
       // `recolour`: the colours changed, nothing else: the blocks are built again, but the start-up does not play again (the tubes are simply on)
       const rethink = (recolour = false) => cm(() => rethinkBody(recolour));
       const rethinkBody = (recolour: boolean) => {
-        soften();
+        // (a change of theme: the page has already changed, and the old picture, light on a dark page or the reverse, must not stay on it: it goes at once, with no fade: the rebuild blocks the page, and a fade would start only after it, with the old picture on show for its first frames)
+        if (!recolour) renderer.domElement.style.transition = "none";
+        soften(recolour ? "0.85" : "0");
         pinned = false;
         if (current !== -1) announce(-1);
         (floor.material as import("three").MeshBasicMaterial).color.copy(pageColour());
