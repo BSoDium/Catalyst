@@ -226,7 +226,7 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       // (the tint grows with the glow's own brightness: the brighter part of the light is tinted in full, the faint part only this much)
       const GLOW_TINT_FAINT = 0.35;
       // (the light of several neighbours of different colours adds up towards grey: it is pushed back to its colour, so that the glass takes the colour of the lamps around it, not a milk)
-      const GLOW_SATURATION = 2.5;
+      const GLOW_SATURATION = 3.5;
       /** (dark) the least a green rod gives out, in the units of `emit(t) * (1 + 1.1 t)` (0.5 for the quietest day, about 3 for the busiest): a quiet green day still shows green, even over a bright blue block, whose light would otherwise be most of what lights it. */
       const GREEN_MIN_LEVEL = 1.1;
       const DARK_GLASS_ROUGHNESS = 0.04;
