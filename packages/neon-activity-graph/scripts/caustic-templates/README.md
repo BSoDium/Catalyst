@@ -1,6 +1,6 @@
 # Caustic templates
 
-`apps/web/app/assets/caustic-templates.png` is the baked light one glass block casts on the ground (dark theme of the software page's activity picture, see `ground-light.ts`). It is generated, not drawn:
+`assets/caustic-templates.png` is the baked light one glass block casts on the ground (the dark theme, see `ground-light.ts`; embedded in `src/templates-data.ts` by `pnpm embed:templates`). It is generated, not drawn:
 
 1. `render_template.py <height> <foot> <spp> <res>` renders one rounded glass block with a rod of white light in it, seen from above, with a real light tracer (Mitsuba 3), and averages the picture over the eight symmetries of the
    square (enough samples that it is clean). `run_templates.sh` renders the set the page uses (3 heights x 4 feet above the ground, 4000 samples, about 15 minutes).

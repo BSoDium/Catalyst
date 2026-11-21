@@ -1,5 +1,5 @@
 /**
- * Caustics under glass blocks, by tracing light through them (a one-time computation for the activity picture, `components/activity-scene.tsx`). Pure, no three.js.
+ * Caustics under glass blocks, by tracing light through them (a readable reference of the optics the GPU traces in `ground-light.ts`, kept for its tests). Pure, no three.js.
  *
  * A block is a rounded box of glass (index 1.5). Its faces are flat, so a ray is intersected with the sharp box (a few multiplications); only the NORMAL is that of the rounded box (at a point near an edge it turns
  * smoothly from one face's to the next, like a small cylindrical lens: that is what gathers the light into the bright lines along the edges of a real glass cube). Rays are refracted in and out (Snell's law, Fresnel's

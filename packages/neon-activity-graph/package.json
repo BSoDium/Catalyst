@@ -1,0 +1,53 @@
+{
+  "name": "neon-activity-graph",
+  "version": "0.1.0",
+  "description": "A 3D glass-and-neon activity graph (GitHub contributions, coding time, anything one number a day) in three.js, with a start-up like a gas tube sign. Framework-agnostic, with a React wrapper.",
+  "keywords": ["three.js", "webgl", "activity-graph", "contributions", "visualization", "neon", "glass", "react"],
+  "license": "MIT",
+  "author": "Elliot Négrel-Jerzy",
+  "type": "module",
+  "sideEffects": false,
+  "files": ["dist", "README.md", "LICENSE"],
+  "exports": {
+    ".": "./src/index.ts",
+    "./react": "./src/react.tsx",
+    "./layout": "./src/pure.ts"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "exports": {
+      ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+      "./react": { "types": "./dist/react.d.ts", "default": "./dist/react.js" },
+      "./layout": { "types": "./dist/layout.d.ts", "default": "./dist/layout.js" }
+    }
+  },
+  "scripts": {
+    "build": "node scripts/embed-templates.mjs && tsup",
+    "embed:templates": "node scripts/embed-templates.mjs",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "dev": "vite playground",
+    "build:playground": "vite build playground"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "three": ">=0.170.0 <1"
+  },
+  "peerDependenciesMeta": {
+    "react": { "optional": true }
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.3.0",
+    "@types/three": "^0.186.0",
+    "react": "^19.3.0",
+    "three": "^0.186.1",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.0",
+    "vite": "^7.3.6",
+    "vitest": "^3.2.0"
+  },
+  "repository": { "type": "git", "url": "git+https://github.com/BSoDium/Neon-activity-graph.git" },
+  "homepage": "https://github.com/BSoDium/Neon-activity-graph#readme"
+}

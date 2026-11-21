@@ -1,5 +1,5 @@
 /**
- * The geometry the activity picture shares between its 3D scene (`components/activity-scene.tsx`) and its place-holder (`components/activity-panel.tsx`): the pitch of the days, the strips of a narrow page, the camera's
+ * The geometry the activity picture shares between its 3D scene (`graph.ts`) and a place-holder drawn flat in front of it (`placeholderTiles`): the pitch of the days, the strips of a narrow page, the camera's
  * direction, the room around the slab, and the projection of a flat day onto the screen. Pure (no three.js): the place-holder is the same slab seen by the same camera, drawn flat, so the scene replaces it in place.
  */
 export const PITCH = 1.12;

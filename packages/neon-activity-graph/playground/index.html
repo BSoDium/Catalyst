@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="data:," />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Neon-activity-graph playground</title>
+    <style>
+      :root { color-scheme: light dark; --bg: #f6f6f4; --fg: #15151a; }
+      @media (prefers-color-scheme: dark) { :root { --bg: #0b0b0e; --fg: #ececf1; } }
+      :root[data-theme="light"] { color-scheme: light; --bg: #f6f6f4; --fg: #15151a; }
+      :root[data-theme="dark"] { color-scheme: dark; --bg: #0b0b0e; --fg: #ececf1; }
+      body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.4 system-ui, sans-serif; }
+      main { max-width: 1280px; margin: 0 auto; padding: 24px; }
+      h1 { font-size: 18px; font-weight: 600; margin: 0 0 16px; }
+      .controls { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; margin-bottom: 16px; }
+      label { display: inline-flex; gap: 6px; align-items: center; }
+      #graph { position: relative; width: 100%; aspect-ratio: 3.97 / 1; }
+      #graph.narrow { aspect-ratio: 0.8; max-width: 420px; }
+      #card { position: absolute; pointer-events: none; transform: translate(-50%, calc(-100% - 12px)); padding: 6px 10px; border-radius: 8px; background: color-mix(in srgb, var(--bg) 70%, transparent); backdrop-filter: blur(10px); box-shadow: 0 4px 24px #0004; opacity: 0; transition: opacity .15s; white-space: nowrap; z-index: 2; }
+      #status { opacity: .6; margin-top: 8px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Neon-activity-graph</h1>
+      <div class="controls">
+        <label>Theme <select id="theme"><option>auto</option><option>light</option><option>dark</option></select></label>
+        <label>Strips <select id="strips"><option>1</option><option>4</option></select></label>
+        <label><input type="checkbox" id="sound" checked /> Sound</label>
+        <label><input type="checkbox" id="lite" /> Lite</label>
+        <label>Grain <input type="range" id="grain" min="0" max="0.03" step="0.002" value="0.012" /></label>
+        <label><input type="checkbox" id="lights" /> String of lights (rodColor)</label>
+        <button id="again">New data</button>
+      </div>
+      <div id="graph"><div id="card"></div></div>
+      <div id="status"></div>
+    </main>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

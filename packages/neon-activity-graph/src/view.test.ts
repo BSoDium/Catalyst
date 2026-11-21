@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { placeholderTiles, slabFor } from "./activity-view";
+import { placeholderTiles, slabFor } from "./view";
 
 describe("slabFor", () => {
   it("lays the weeks in equal strips one behind the other", () => {
