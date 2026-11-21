@@ -226,6 +226,14 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
       let neonNeighbours: { j: number[]; m: number[] }[] = [];
       let neonBlocks: { x: number; z: number; pan: number; t: number; cell: number }[] = [];
       let stampCtl: { update(levels: ArrayLike<number>): void } | null = null;
+      // `?xmas`, an Easter egg (a demo, not on by default): every rod is one of a string of lights, in the warm colours of a tree's (red, green, gold, blue, pink, warm white), the same for a day each time. The colour is the day's and its
+      // brightness is the activity, as ever; the glass is left clear so that the rod's colour is what is seen, and the baked light on the ground takes the rod's colour like any other.
+      const xmas = new URLSearchParams(window.location.search).has("xmas");
+      const XMAS = ["#ff2b2b", "#18d84a", "#ffbe2e", "#2f6bff", "#ff3fa6", "#ffe3b8"].map((c) => new THREE.Color(c));
+      const xmasHue = (cell: number, src: "waka" | "github", t: number) => {
+        const h = Math.imul(cell + 1, 2654435761) ^ Math.imul(src === "waka" ? 97 : 13, 40503);
+        return XMAS[((h >>> 7) % XMAS.length + XMAS.length) % XMAS.length]!.clone().multiplyScalar(0.3 + 0.7 * t);
+      };
       const groundLayers = (stack: { waka: Matrix; github: Matrix }, tones: { waka: [Color, Color]; github: [Color, Color] }, dark: boolean) => {
         const cw = Math.ceil((width + GLOW_PAD * 2) * PX);
         const ch = Math.ceil((total + GLOW_PAD * 2) * PX);
@@ -271,10 +279,11 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
           let top = 0;
           const add = (src: "waka" | "github", y0: number, y1: number, t: number, [low, high]: [Color, Color], gain: number) => {
             const hy = (y1 - y0) / 2;
-            const hue = low.clone().lerp(high, t);
+            const hue = xmas ? xmasHue(i, src, t) : low.clone().lerp(high, t);
             // (dark) the light is the rod's, and the rod is near white where it is busy: its own chroma (as drawn, see `build`), normalised, the strength being `power`; (light) the colour of the glass
-            const rod =
-              src === "waka"
+            const rod = xmas
+              ? hue.clone().add(new THREE.Color(0.3, 0.27, 0.2).multiplyScalar(t))
+              : src === "waka"
                 ? hue.clone().multiplyScalar(0.5).add(new THREE.Color(0.4, 0.56, 0.6).multiplyScalar(0.38 + 0.98 * t))
                 : hue.clone().multiplyScalar(1.25).add(new THREE.Color(0.22, 0.4, 0.24).multiplyScalar(0.15 + 0.7 * t));
             const col = dark ? rod.multiplyScalar(1 / Math.max(1e-4, rod.r, rod.g, rod.b)) : hue;
@@ -410,7 +419,7 @@ void main() {
         const layer = (cell: number, src: "waka" | "github", x: number, z: number, y0: number, t: number, [low, high]: [Color, Color]) => {
           const h = 0.18 + t * LAYER_MAX;
           picks.push({ cell, x, z, y0, y1: y0 + h });
-          specs.push({ src, x, z, y0, h, t, hue: low.clone().lerp(high, t) });
+          specs.push({ src, x, z, y0, h, t, hue: xmas ? xmasHue(cell, src, t) : low.clone().lerp(high, t) });
           tallest = Math.max(tallest, y0 + h);
           return y0 + h;
         };
@@ -479,7 +488,7 @@ void main() {
           // A blue rod gets its brightness from light added to all three channels (not from more of the same blue, which only makes it bluer and more glowing): a brighter rod is a lighter, clearer blue, not a whiter one
           // (its hue is kept: the blue channel is the hue's own and the red and green rise with the busyness).
           const level = emit(t) * (1 + 1.1 * t);
-          const rod = dark && src === "waka" ? hue.clone().multiplyScalar(level * 0.5).add(new THREE.Color(0.4, 0.56, 0.6).multiplyScalar(level * (0.38 + 0.98 * t))) : dark ? hue.clone().multiplyScalar(level * 1.25).add(new THREE.Color(0.22, 0.4, 0.24).multiplyScalar(level * (0.15 + 0.7 * t))) : hue;
+          const rod = dark && xmas ? hue.clone().multiplyScalar(level * 1.2).add(new THREE.Color(0.5, 0.45, 0.35).multiplyScalar(level * 0.5 * t)) : dark && src === "waka" ? hue.clone().multiplyScalar(level * 0.5).add(new THREE.Color(0.4, 0.56, 0.6).multiplyScalar(level * (0.38 + 0.98 * t))) : dark ? hue.clone().multiplyScalar(level * 1.25).add(new THREE.Color(0.22, 0.4, 0.24).multiplyScalar(level * (0.15 + 0.7 * t))) : hue;
           paint(core, dark ? rod : hue);
           // (the light of the blocks around that reaches this rod when its own is off, on its own attribute: the shader adds it, as much as the neighbours that are on give)
           {
@@ -508,14 +517,14 @@ void main() {
             mat.transparent = true;
             mat.opacity = 0.9;
           }
-          mat.emissive.copy(tones[src][1]);
+          mat.emissive.copy(xmas ? new THREE.Color(0xffffff) : tones[src][1]);
           // (dark) the glass absorbs what is not its own colour as the light goes through it: a green block lets a blue rod behind it show only dimly, and the other way round
           if (dark) {
-            mat.attenuationColor.copy(tones[src][1]);
+            mat.attenuationColor.copy(xmas ? new THREE.Color(0xffffff) : tones[src][1]);
             // (the blue glass absorbs less: a rod that is meant to be near white would otherwise be seen through a blue filter and come out saturated)
             mat.attenuationDistance = src === "waka" ? 3.6 : 2.2;
             // A green filter passes green and stops the rest: blue light behind it is not turned into green, it is nearly all absorbed (what comes through is a few percent, not a green of the same brightness).
-            if (src === "github") {
+            if (src === "github" && !xmas) {
               mat.attenuationColor.r *= 0.2;
               mat.attenuationColor.b *= 0.15;
               mat.attenuationDistance = 1.6;

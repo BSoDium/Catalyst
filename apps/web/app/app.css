@@ -3412,8 +3412,8 @@
   }
 
   .ds-filter-row {
-    /* (the first toggle's own padding is outside the text column: the row starts that much earlier) */
-    padding: 0 var(--bleed) 0 calc(var(--bleed) - 0.5rem);
+    /* (the chosen chip's plate reaches out half a rem over its text: the row starts where the search's line does, so the plate is flush with it) */
+    padding: 0 var(--bleed);
   }
 
   @media (min-width: 768px) {
@@ -3427,7 +3427,7 @@
 
     .ds-filter-row {
       flex-wrap: wrap;
-      padding: 0;
+      padding: 0 0 0 0.5rem;
     }
 
     .ds-filter {
