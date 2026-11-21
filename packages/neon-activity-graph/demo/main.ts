@@ -103,7 +103,7 @@ const mount = () => {
     theme: theme ?? "auto",
     colors: toColors(pair),
     overlay: true,
-    debug: location.search.includes("debug") || location.search.includes("hold") ? { metrics: location.search.includes("debug"), neonHold: location.search.includes("hold") } : undefined,
+    debug: location.search.includes("debug") || location.search.includes("hold") ? { metrics: location.search.includes("debug"), neonHold: location.search.includes("hold") ? Number(new URLSearchParams(location.search).get("hold")) || true : undefined } : undefined,
     onRedrawn: () => {
       if (!pending) return;
       latencies.push(Math.round(performance.now() - pending.at));

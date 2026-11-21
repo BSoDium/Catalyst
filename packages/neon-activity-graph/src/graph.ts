@@ -219,8 +219,9 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       glowMaterial.onBeforeCompile = (shader) => {
         shader.uniforms.uLevels = { value: levelTex };
         shader.vertexShader = shader.vertexShader
-          .replace("#include <common>", "#include <common>\nattribute float aBlock;\nattribute vec3 aInc;\nvarying float vRodA;\nuniform highp sampler2D uLevels;")
-          .replace("#include <color_vertex>", "#include <color_vertex>\n#ifdef USE_COLOR\n  vec2 lv = texelFetch(uLevels, ivec2(int(aBlock + 0.5), 0), 0).rg;\n  vColor.rgb = vColor.rgb * lv.r + vec3(0.029, 0.037, 0.053) * (1.0 - lv.r) + aInc * lv.g;\n  vRodA = smoothstep(0.04, 0.5, lv.r);\n#endif");
+          .replace("#include <common>", "#include <common>\nattribute float aBlock;\nattribute vec3 aInc;\nattribute vec2 aCtr;\nvarying float vRodA;\nuniform highp sampler2D uLevels;")
+          .replace("#include <color_vertex>", "#include <color_vertex>\n#ifdef USE_COLOR\n  vec2 lv = texelFetch(uLevels, ivec2(int(aBlock + 0.5), 0), 0).rg;\n  vColor.rgb = vColor.rgb * lv.r + vec3(0.029, 0.037, 0.053) * (1.0 - lv.r) + aInc * lv.g;\n  vRodA = pow(clamp(lv.r, 0.0, 1.0), 0.8);\n#endif")
+          .replace("#include <begin_vertex>", "#include <begin_vertex>\n  float rodLevel = texelFetch(uLevels, ivec2(int(aBlock + 0.5), 0), 0).r;\n  transformed.xz = aCtr + (transformed.xz - aCtr) * mix(0.3, 1.0, smoothstep(0.0, 0.75, rodLevel));");
         shader.fragmentShader = shader.fragmentShader
           .replace("#include <common>", "#include <common>\nvarying float vRodA;")
           .replace("#include <color_fragment>", "#include <color_fragment>\n  diffuseColor.a = vRodA;");
@@ -605,6 +606,8 @@ void main() {
             core.setAttribute("aInc", new THREE.BufferAttribute(incs, 3));
           }
           core.setAttribute("aBlock", new THREE.BufferAttribute(new Float32Array(core.getAttribute("position").count).fill(blockIndex++), 1));
+          // (where the rod stands, across: a dim rod is drawn thinner about it)
+          core.setAttribute("aCtr", new THREE.BufferAttribute(Float32Array.from({ length: core.getAttribute("position").count * 2 }, (_, k) => (k % 2 ? z : x)), 2));
           cores.push(core);
         }
         const tb1 = performance.now();
@@ -1187,7 +1190,7 @@ void main(){
         if (dbg.neonHold) {
           neonStart = null;
           // (and the left part of the picture is on, the right part off: to see a block that is off beside blocks that are on)
-          const half = Float32Array.from(neonBlocks, (b) => (b.pan > -0.1 ? 1 : 0));
+          const half = Float32Array.from(neonBlocks, (b) => (b.pan > -0.1 ? 1 : Number(dbg.neonHold) > 0 && Number(dbg.neonHold) < 1 ? Number(dbg.neonHold) : 0));
           uploadLevels(half);
           ctl.update(half);
         }
