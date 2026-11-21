@@ -109,11 +109,18 @@ Anything with WebGL 2 and half-float render targets (current Chrome, Edge, Firef
 
 Only needed if the blocks' shape or the rod changes. See `scripts/caustic-templates/README.md` (Mitsuba 3, about 15 minutes), then `pnpm embed:templates` rewrites the embedded data URI (`pnpm build` does it too).
 
-## Playground
+## Demo and playground
+
+The [demo](https://bsodium.github.io/Neon-activity-graph/) draws the author's current activity (GitHub contributions over WakaTime coding time) and falls back to generated data when the activity file is not there. `demo/` is the page, `demo/scripts/fetch-activity.mjs` fetches public data without a token (a scheduled workflow writes `activity.json` to the `data` branch every 6 hours; set the repository variables `GITHUB_LOGIN` and `WAKATIME_USER` to draw somebody else).
 
 ```sh
-pnpm dev   # in this package: a page with fake data and every option
+pnpm demo  # the demo page
+pnpm dev   # the playground: fake data and every option
 ```
+
+## Releasing (maintainers)
+
+Add the repository secret `NPM_TOKEN` (a token that can publish `neon-activity-graph`), bump `version` in `package.json`, then `git tag vX.Y.Z && git push origin vX.Y.Z`: the `release` workflow tests, builds and publishes with provenance.
 
 ## License
 
