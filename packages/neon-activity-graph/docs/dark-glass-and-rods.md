@@ -45,4 +45,8 @@ Judge it on screenshots, not by reasoning: the demo at `/` with a block hovered 
 
 - **No stochastic translucency.** `alphaHash` and our own per-sample dither both looked right once settled but flickered whenever the lights moved (few samples). The rod's translucency is now its colour scaled by its opacity: noise-free, and against a dark glass the look is the same.
 - **Light updates are one sample, averaged** (`ema` in `graph.ts`): the camera is still, so the last picture is a start for the next; the new sample weighs at least 30 %. A fifth of the cost of 5 samples drawn from nothing, and no restart from a single noisy sample.
-- **Frosted glass**: `DARK_GLASS_ROUGHNESS` 0.08 (0.22 was too fuzzy, and the edges, which refract more, blurred differently from the faces): the glass's transmission is a blurred mip of the picture seen through it, so the glow of the rods spreads a little in the glass. It costs next to nothing.
+- **Frosted glass**: `DARK_GLASS_ROUGHNESS` back to the clear 0.04 (frosting, 0.22 and 0.08, did not solve what it was meant for and made the edges, which refract more, differ from the faces): the glass's transmission is a blurred mip of the picture seen through it, so the glow of the rods spreads a little in the glass. It costs next to nothing.
+
+## Glass inside a dense group of lamps
+
+Glass inside a crowd of lit blocks should not be pitch dark, but a block at the edge of the picture, with light on one side only, must stay clear. The glass gets a **glow from the light of its neighbours** (`aInc`, the neighbours' colour and brightness already worked out for the rods, times the neighbours' current level), scaled by `NEIGHBOUR_GLOW` (0.16) and by a **density gate** (`smoothstep(0.3, 0.8, neighbour light)`): none at the edge, full inside a group. A flat glow everywhere (first try, 0.35, no gate) made the glass look opaque and washed out.
