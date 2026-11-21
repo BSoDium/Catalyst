@@ -221,9 +221,9 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       const LIGHT_BACKDROP = true;
       // (dark theme: the glass sees the ground's glow, see groundLayers) and how much of it
       const DARK_BACKDROP = true;
-      const DARK_BACKDROP_GAIN = 80;
+      const DARK_BACKDROP_GAIN = 200;
       /** (dark) the most the light seen behind the glass can add, on its brightest channel (a soft cap that keeps the hue). */
-      const DARK_BACKDROP_CAP = 0.25;
+      const DARK_BACKDROP_CAP = 0.15;
       /** (light theme) how much of the colour of the blocks behind a block (as the camera sees it) its glass takes, when they cover all of its outline. */
       const LIGHT_BEHIND_TINT = 0.85;
       const coreMaterial = new THREE.MeshBasicMaterial({ vertexColors: true });
@@ -239,9 +239,8 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       // (a rod's translucency is its colour scaled by its opacity: it is the light it gives out, so that a dim rod is a dim light, with no dither, no noise)
       // (dark) a rod is an emitter, not an absorber: it is drawn ADDITIVELY (`transparent` stays false, so that it is in the opaque pass the glass sees, and three.js still blends it additively): it adds its light to what is behind it and takes none away, so a dim rod is a faint light over whatever is lit there and an off rod is not there at all
       const glowMaterial = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false, blending: THREE.AdditiveBlending, depthWrite: false });
-      // (dark) the ground's light as the glass (and the rods in it) sees it behind: the live texture, where it lies (x0, z0, 1/sizeX, 1/sizeZ) and by how much it is seen
-      const groundSeen = { map: { value: new THREE.DataTexture(new Float32Array(4), 1, 1, THREE.RGBAFormat, THREE.FloatType) as import("three").Texture }, xf: { value: new THREE.Vector4(0, 0, 1, 1) } };
-      groundSeen.map.value.needsUpdate = true;
+      /** (dark) how much of the ground's light the glass shows, 1 at rest, lower when the lights are dimmed (see `applyLevels`): shared with the backdrop's shader. */
+      const backdropDim = { value: 1 };
       /** GLSL: the light seen behind, `g` (linear), scaled and then capped softly on its brightest channel, so a strong hue is not overexposed whatever the palette: its colour is kept, only its level is compressed. */
       const softSeen = `vec3 softSeen(vec3 g) { float m = max(g.r, max(g.g, g.b)); if (m < 1e-6) return g; float k = ${DARK_BACKDROP_CAP.toFixed(3)}; return g * (k * tanh(m * ${DARK_BACKDROP_GAIN.toFixed(3)} / k) / m); }`;
       // how much each rod gives out, 0 to 1, one number per block, read by the rod's vertices (`aBlock` is the block's number): the neon start-up changes them over time
@@ -275,15 +274,12 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       levelTex.needsUpdate = true;
       glowMaterial.onBeforeCompile = (shader) => {
         shader.uniforms.uLevels = { value: levelTex };
-        shader.uniforms.uGround = groundSeen.map;
-        shader.uniforms.uGroundXf = groundSeen.xf;
         shader.vertexShader = shader.vertexShader
-          .replace("#include <common>", "#include <common>\nattribute float aBlock;\nattribute vec3 aInc;\nattribute vec2 aCtr;\nvarying float vRodA;\nvarying vec2 vRodXZ;\nuniform highp sampler2D uLevels;")
+          .replace("#include <common>", "#include <common>\nattribute float aBlock;\nattribute vec3 aInc;\nattribute vec2 aCtr;\nvarying float vRodA;\nuniform highp sampler2D uLevels;")
           .replace("#include <color_vertex>", "#include <color_vertex>\n#ifdef USE_COLOR\n  vec2 lv = texelFetch(uLevels, ivec2(int(aBlock + 0.5), 0), 0).rg;\n  float rodB = max(vColor.r, max(vColor.g, vColor.b)) * lv.r;\n  vColor.rgb = vColor.rgb * lv.r + vec3(0.029, 0.037, 0.053) * (1.0 - lv.r) + aInc * lv.g;\n  vRodA = smoothstep(0.0, 3.0, rodB);\n  float rodL = dot(vColor.rgb, vec3(0.299, 0.587, 0.114));\n  vColor.rgb = max(vec3(0.0), mix(vec3(rodL), vColor.rgb, 1.3 + 1.8 * (1.0 - clamp(lv.r, 0.0, 1.0))));\n#endif")
-          .replace("#include <begin_vertex>", "#include <begin_vertex>\n  transformed.xz = aCtr + (transformed.xz - aCtr) * mix(0.6, 1.0, smoothstep(0.0, 2.5, rodB));\n  vRodXZ = (modelMatrix * vec4(aCtr.x, 0.0, aCtr.y, 1.0)).xz;");
+          .replace("#include <begin_vertex>", "#include <begin_vertex>\n  transformed.xz = aCtr + (transformed.xz - aCtr) * mix(0.6, 1.0, smoothstep(0.0, 2.5, rodB));");
         shader.fragmentShader = shader.fragmentShader
-          .replace("#include <common>", "#include <common>\nvarying float vRodA;\nvarying vec2 vRodXZ;\nuniform sampler2D uGround;\nuniform vec4 uGroundXf;\n" + softSeen)
-          // (a rod is an emitter, not an absorber: what is behind it shows through it and its light adds to that, so a dim rod is never darker than the ground's light around it, it just disappears into it)
+          .replace("#include <common>", "#include <common>\nvarying float vRodA;")
           .replace("#include <color_fragment>", "#include <color_fragment>\n  diffuseColor.rgb *= vRodA;");
       };
       glowMaterial.customProgramCacheKey = () => "rod-levels";
@@ -616,18 +612,17 @@ void main() {
         if (dark && DARK_BACKDROP) {
           // (dark theme) The same gap: the glow on the ground is an additive transparent layer, so the glass would see the bare dark ground behind it (black strips next to a lit floor). An opaque plane drawn ONLY into what the glass sees shows the dark ground plus the
           // very texture the glow is drawn from, which hover and the start-up update in place: the glass sees the live light, the picture itself is unchanged.
-          groundSeen.map.value = ground.texture;
-          groundSeen.xf.value.set(width / 2, total / 2, PX / cw, PX / ch);
           const uBackdrop = { value: 0 };
           const page = pageColour();
           const proxyMat = new THREE.MeshBasicMaterial({ map: ground.texture, toneMapped: false });
           proxyMat.onBeforeCompile = (shader) => {
             shader.uniforms.uBackdrop = uBackdrop;
             shader.uniforms.uPage = { value: page };
+            shader.uniforms.uDim = backdropDim;
             shader.fragmentShader = shader.fragmentShader
-              .replace("#include <common>", "#include <common>\nuniform float uBackdrop;\nuniform vec3 uPage;")
+              .replace("#include <common>", "#include <common>\nuniform float uBackdrop;\nuniform float uDim;\nuniform vec3 uPage;")
               .replace("void main() {", softSeen + "\nvoid main() {\n  if (uBackdrop < 0.5) discard;")
-              .replace("#include <opaque_fragment>", `outgoingLight = uPage + softSeen(outgoingLight);\n#include <opaque_fragment>`);
+              .replace("#include <opaque_fragment>", `outgoingLight = uPage + uDim * softSeen(outgoingLight);\n#include <opaque_fragment>`);
           };
           proxyMat.customProgramCacheKey = () => "ground-backdrop-dark";
           const proxy = new THREE.Mesh(new THREE.PlaneGeometry(cw / PX, ch / PX), proxyMat);
@@ -1400,6 +1395,8 @@ void main(){
       // --- the selected day (dark theme): its blocks glow brighter and the others dim, smoothly, a moment after the pointer has settled on it. It multiplies the neon's levels, so it works with the start-up and the flickers. ---
       const FOCUS_ON = 1.7;
       const FOCUS_OFF = 0.34;
+      /** The power of the share of lit blocks that dims the backdrop (2: all dimmed to 0.34 leaves about an eighth). */
+      const BACKDROP_DIM_POWER = 2;
       let focusCtl: { update(levels: ArrayLike<number>): void } | null = null;
       let focus = new Float32Array(0);
       let focusTo = new Float32Array(0);
@@ -1415,6 +1412,10 @@ void main(){
         for (let i = 0; i < n; i++) effective[i] = levels[i]! * (focus[i] ?? 1);
         uploadLevels(effective, idleLook);
         focusCtl?.update(effective);
+        // (the ground's light seen through the glass follows how lit the scene is, and more than in proportion: with every light dimmed it all but goes out)
+        let lit = 0;
+        for (let i = 0; i < n; i++) lit += Math.min(1, effective[i]!);
+        backdropDim.value = n > 0 ? (lit / n) ** BACKDROP_DIM_POWER : 1;
       };
       // (the hum of the selected neon follows its brightness, once the start-up is over and when the page may make sound)
       const hum = createHoverHum();
