@@ -212,6 +212,10 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       const LIGHT_CORE_DEPTH = 0.78;
       // (light theme) how much of white the glass shell's tint is mixed with (1: clear)
       const LIGHT_SHELL_WHITE = 0.4;
+      /** (light theme) double-sided glass: the back faces of the blocks behind tint what is seen, but an isolated block is tinted by its own back faces too. Kept as a fallback; off. */
+      const LIGHT_DOUBLE_SIDED = false;
+      /** (light theme) how much of the colour of the blocks behind a block (as the camera sees it) its glass takes, when they cover all of its outline. */
+      const LIGHT_BEHIND_TINT = 0.85;
       const coreMaterial = new THREE.MeshBasicMaterial({ vertexColors: true });
       // (the glass is perfectly clear; it is the core that is soft: its colour fades toward a pale haze of itself toward its silhouette, so it is a blurred glow in the middle of the block, with no hard edge)
       coreMaterial.onBeforeCompile = (shader) => {
@@ -706,6 +710,20 @@ void main() {
             glowOf.set(q, (1 - Math.exp(-(behind[k] ?? 0) / BEHIND_SCALE)) * (1 - own * own * (3 - 2 * own)));
           });
         }
+        // (light) what is seen through a glass is what is behind it: where that is the paper it stays clear, where it is other blocks, the light that comes through them is tinted by them (they are not in what three.js lets the glass see). From the camera's view: the colour
+        // of the blocks whose outline this one covers (weighted by how much of it they fill), and how much of it they cover.
+        const behindTint = new Map<(typeof specs)[number], Color>();
+        if (!dark && !LIGHT_DOUBLE_SIDED) {
+          const boxes = specs.map((q) => ({ x: q.x, z: q.z, y0: q.y0, h: q.h }));
+          const cover = lightBehind(boxes, specs.map(() => 1));
+          const chans = [0, 1, 2].map((c) => lightBehind(boxes, specs.map((q) => [q.hue.r, q.hue.g, q.hue.b][c]!)));
+          specs.forEach((q, k) => {
+            const cv = cover[k] ?? 0;
+            if (cv < 1e-3) return;
+            const mean = new THREE.Color(chans[0]![k]! / cv, chans[1]![k]! / cv, chans[2]![k]! / cv);
+            behindTint.set(q, new THREE.Color(1, 1, 1).lerp(mean, Math.min(1, cv) * LIGHT_BEHIND_TINT));
+          });
+        }
         for (const sp of specs) {
           const { src, x, z, y0, h, t, hue: hue0 } = sp;
           // (`hue` is the glass's: `rodColor` lets a white glass be tainted by the lights around it; the rod in the middle (`hue0`) is always the light's own colour)
@@ -742,7 +760,7 @@ void main() {
           const shell = roundedBox(0.92, h, 0.92, lite ? 2 : 3, Math.min(0.16, h / 2.2));
           shell.translate(x, y0 + h / 2, z);
           // dark: the glass is nearly clear (the light of its core shows through it); light: tinted by the level
-          paint(shell, (dark ? new THREE.Color(0xffffff) : hue.clone().lerp(new THREE.Color(0xffffff), LIGHT_SHELL_WHITE)).add(inc.clone().multiplyScalar(dark && customOn() ? 0.35 : 0.08)), 0, dark);
+          paint(shell, (dark ? new THREE.Color(0xffffff) : hue.clone().lerp(new THREE.Color(0xffffff), LIGHT_SHELL_WHITE).multiply(behindTint.get(sp) ?? new THREE.Color(1, 1, 1))).add(inc.clone().multiplyScalar(dark && customOn() ? 0.35 : 0.08)), 0, dark);
           shell.setAttribute("aBlock", new THREE.BufferAttribute(new Float32Array(shell.getAttribute("position").count).fill(blockIndex), 1));
           // (the light of the neighbours, for the glass to glow with: see `NEIGHBOUR_GLOW`; only where there are lamps BEHIND the glass as the camera sees it, and none against a dark background, or the glass would look opaque and washed out)
           const nbShare = glowOf.get(sp) ?? 0;
@@ -884,7 +902,7 @@ void main() {
             mat.specularIntensity = LIGHT_SPECULAR;
             mat.specularColor = tones[src][1].clone().lerp(new THREE.Color(0xffffff), 0.75);
             // (two-sided: three.js draws the BACK faces of a double-sided glass into what the glass in front of it sees, so a block behind another tints it)
-            mat.side = THREE.DoubleSide;
+            mat.side = LIGHT_DOUBLE_SIDED ? THREE.DoubleSide : THREE.FrontSide;
           }
           materials.push(mat);
           const glass = new THREE.Mesh(mergeGeometries(list)!, mat);

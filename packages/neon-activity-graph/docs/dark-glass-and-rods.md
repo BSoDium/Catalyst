@@ -94,3 +94,7 @@ An empty day is a soft square **pit** dug in the ground (`graph.ts`, `tileShape`
 ### Light theme: double-sided glass
 
 The shells are `DoubleSide`: three.js draws the back faces of double-sided glass into what the glass in front of it sees, so a block behind another tints it and the paper no longer shows through as white streaks, while the glass in front keeps its refraction and reflections.
+
+### Light theme: tinted by what is behind (current)
+
+Double-sided glass (`LIGHT_DOUBLE_SIDED`, now off, kept as a fallback) tinted isolated blocks by their own back faces too. Now the shells are single-sided again and each block's glass is tinted by what the camera sees behind it: `lightBehind` run with weights 1 and the three channels of the hues gives the colour of the blocks whose outline it covers and how much of it they cover; the shell's colour is multiplied by white mixed toward that colour by the coverage (`LIGHT_BEHIND_TINT` 0.85). A block against the paper stays clear; one in front of other blocks takes their tint. The tint is per block, not per pixel.
