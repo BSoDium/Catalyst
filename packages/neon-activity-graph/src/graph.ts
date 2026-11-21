@@ -1709,6 +1709,9 @@ void main(){
         (floor.material as import("three").MeshBasicMaterial).color.copy(pageColour());
         // (switching to the dark theme from the light one: the baked light is fetched first, and the blocks are built once, when it is there: built without it they had no neon to start up, so they were drawn lit, then built again, off, and flickered on)
         if (isDark() && !templates && !templatesFailed) {
+          // (the old picture's frames must stop meanwhile: its accumulation would reach its tenth sample and bring the old, light picture back into focus on the dark page)
+          cancelAnimationFrame(raf);
+          raf = 0;
           void wantTemplates().then(() => !cancelled && rethink(recolour));
           return;
         }
