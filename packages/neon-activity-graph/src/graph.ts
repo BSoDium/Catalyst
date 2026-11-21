@@ -208,13 +208,15 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       // each block is a glass shell around a smaller opaque core of the same colour: the core is what the glass refracts, so the block has depth instead of reading as a pale solid
       // (light theme: the core is a lamp too, not a lit bar: unlit, a little lifted toward white, and the frosted glass turns it into a soft glow)
       const LIGHT_CORE_LIFT = 0.25;
+      // (light theme) how much of white the glass shell's tint is mixed with (1: clear)
+      const LIGHT_SHELL_WHITE = 0.28;
       const coreMaterial = new THREE.MeshBasicMaterial({ vertexColors: true });
       // (the glass is perfectly clear; it is the core that is soft: its colour fades toward a pale haze of itself toward its silhouette, so it is a blurred glow in the middle of the block, with no hard edge)
       coreMaterial.onBeforeCompile = (shader) => {
         shader.vertexShader = shader.vertexShader.replace("#include <common>", "#include <common>\nvarying vec3 vCoreN;").replace("#include <begin_vertex>", "#include <begin_vertex>\n  vCoreN = normalize(normalMatrix * normal);");
         shader.fragmentShader = shader.fragmentShader
           .replace("#include <common>", "#include <common>\nvarying vec3 vCoreN;")
-          .replace("#include <color_fragment>", "#include <color_fragment>\n  float cf = pow(clamp(abs(normalize(vCoreN).z), 0.0, 1.0), 0.7);\n  diffuseColor.rgb = mix(mix(diffuseColor.rgb, vec3(1.0), CORE_HAZE), diffuseColor.rgb, cf);".replace("CORE_HAZE", "0.6"));
+          .replace("#include <color_fragment>", "#include <color_fragment>\n  float cf = pow(clamp(abs(normalize(vCoreN).z), 0.0, 1.0), 0.9);\n  diffuseColor.rgb = mix(mix(diffuseColor.rgb, vec3(1.0), CORE_HAZE), diffuseColor.rgb, cf);".replace("CORE_HAZE", "0.68"));
       };
       // (in the dark theme the cores are lights: unlit, their colour is the light they give out, brighter than 1 for a busy day, which the bloom and the glow on the ground turn into a glow)
       // (`alphaHash`: a rod that is almost off is almost not there: it is dithered away, and the picture's many samples average the dither out)
@@ -738,7 +740,7 @@ void main() {
           const shell = roundedBox(0.92, h, 0.92, lite ? 2 : 3, Math.min(0.16, h / 2.2));
           shell.translate(x, y0 + h / 2, z);
           // dark: the glass is nearly clear (the light of its core shows through it); light: tinted by the level
-          paint(shell, (dark ? new THREE.Color(0xffffff) : hue.clone().lerp(new THREE.Color(0xffffff), 0.04)).add(inc.clone().multiplyScalar(dark && customOn() ? 0.35 : 0.08)), 0, dark);
+          paint(shell, (dark ? new THREE.Color(0xffffff) : hue.clone().lerp(new THREE.Color(0xffffff), LIGHT_SHELL_WHITE)).add(inc.clone().multiplyScalar(dark && customOn() ? 0.35 : 0.08)), 0, dark);
           shell.setAttribute("aBlock", new THREE.BufferAttribute(new Float32Array(shell.getAttribute("position").count).fill(blockIndex), 1));
           // (the light of the neighbours, for the glass to glow with: see `NEIGHBOUR_GLOW`; only where there are lamps BEHIND the glass as the camera sees it, and none against a dark background, or the glass would look opaque and washed out)
           const nbShare = glowOf.get(sp) ?? 0;
