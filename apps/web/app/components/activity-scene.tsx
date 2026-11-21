@@ -574,6 +574,7 @@ void main() {
       const ground0 = () => ((ground.material as import("three").ShadowMaterial).opacity = isDark() ? 0 : 0.05);
       const buildBlocks = () => {
         showMat.uniforms.bloom!.value = isDark() ? 1 : 0;
+        showMat.uniforms.sat!.value = xmas && isDark() ? 2.6 : 1;
         // night: no sun and no room, the only light is what the days give out
         scene.environmentIntensity = isDark() ? 0 : 0.9;
         sun.intensity = isDark() ? 0 : 2.2;
@@ -678,9 +679,9 @@ void main(){
       });
       // what is shown: the average, with the bloom added in the dark theme
       const showMat = new THREE.ShaderMaterial({
-        uniforms: { map: { value: accumRT.texture }, bloom: { value: 0 }, near: { value: halfA.texture }, far: { value: quarterA.texture } },
+        uniforms: { map: { value: accumRT.texture }, bloom: { value: 0 }, sat: { value: 1 }, near: { value: halfA.texture }, far: { value: quarterA.texture } },
         vertexShader: VERT,
-        fragmentShader: `uniform sampler2D map; uniform sampler2D near; uniform sampler2D far; uniform float bloom; varying vec2 vUv;
+        fragmentShader: `uniform sampler2D map; uniform sampler2D near; uniform sampler2D far; uniform float bloom; uniform float sat; varying vec2 vUv;
 void main(){
   vec4 c = texture2D(map, vUv);
   if (bloom > 0.) {
@@ -692,13 +693,15 @@ void main(){
     // (the blue's halo is fainter, the green's a little stronger)
     c.rgb += bloom * halo * mix(1.3, 0.38, haloBlue);
   }
+  // (?xmas: the colours pushed away from grey, so that the glass's pale sheen and the white of the halo do not wash the lights out)
+  if (sat != 1.) { float l = dot(c.rgb, vec3(0.2126, 0.7152, 0.0722)); c.rgb = max(vec3(0.), mix(vec3(l), c.rgb, sat)); }
   // A hue-preserving soft clip: a channel past 1 (a busy blue: its blue is far over, its green and red are not) would clip alone and turn the colour pale; the whole colour is brought back so that its brightest channel
   // only just passes 1, and the hue and the saturation stay.
   float m = max(max(c.r, c.g), c.b);
   // A blue light far over 1 (a busy day's rod) is taken toward white as it rises, so the rod is whiter than the blue glass around it (whose reflections and refractions stay under 1); green is left as it is.
   float blueish = smoothstep(0., 0.25, (c.b - c.g) / max(m, 1e-4));
   float hot = smoothstep(1., 3., m);
-  c.rgb = mix(c.rgb, vec3(m), blueish * hot * 0.55);
+  c.rgb = mix(c.rgb, vec3(m), blueish * hot * 0.55 * step(sat, 1.));
   if (m > 1.) c.rgb *= (1. + (m - 1.) * 0.12) / m;
   gl_FragColor = c;
 #include <colorspace_fragment>
