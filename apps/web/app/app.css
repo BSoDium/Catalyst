@@ -337,8 +337,6 @@
   --font-condensed: "Archivo Variable", var(--font-sans);
   --font-old: "Fraunces Variable", var(--font-reading);
   --font-script: "Caveat Variable", cursive;
-  /* the globe's calligraphy (its captions' script face); the `?xmas` greeting */
-  --font-imperial: "Imperial Script", "Snell Roundhand", "Apple Chancery", cursive;
 
   /* Weights. The display pair is thin against heavy ("Cata" 200, "lyst" 800); the rest serve the reading face and the small sizes. */
   --weight-thin: 200;
@@ -540,14 +538,6 @@
  * the fallback stacks below are for. `font-display: swap` shows the text at once in the metric-matched fallback face (below), so
  * the swap moves nothing much. The weight range is the file's own: a request for 200 and for 800 is the same file, no synthesis.
  */
-@font-face {
-  font-family: "Imperial Script";
-  src: url("/fonts/imperial-script-1.010-latin-400.woff2") format("woff2");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
 @font-face {
   font-family: "Bricolage Grotesque Variable";
   src: url("/fonts/bricolage-grotesque-5.3.0-latin-wght-opsz.woff2") format("woff2");

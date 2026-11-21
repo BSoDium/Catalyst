@@ -248,7 +248,17 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
   const [xmas, setXmas] = useState(false);
   useEffect(() => {
     setGl(webgl2());
-    setXmas(new URLSearchParams(window.location.search).has("xmas"));
+    if (new URLSearchParams(window.location.search).has("xmas")) {
+      // (the globe's calligraphy: not in the stylesheet, so that no page pays for it; the greeting loads it here, and only then shows)
+      const face = new FontFace("Imperial Script", "url(/fonts/imperial-script-1.010-latin-400.woff2)", { display: "swap" });
+      face.load().then(
+        () => {
+          document.fonts.add(face);
+          setXmas(true);
+        },
+        () => setXmas(true),
+      );
+    }
     const mq = window.matchMedia("(max-width: 47.99rem)");
     setNarrow(mq.matches);
     const onChange = () => setNarrow(mq.matches);
@@ -288,7 +298,7 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
           )}
           {xmas && (
             <div aria-hidden="true" className="pointer-events-none absolute right-0 bottom-0 z-10 flex items-end justify-end px-[4cqi] pt-[6cqi] pb-[1.5cqi] opacity-100 transition-opacity duration-500 group-hover/scene:opacity-0" style={{ background: "radial-gradient(ellipse at 100% 100%, color-mix(in oklab, var(--background) 85%, transparent), transparent 72%)" }}>
-              <span className="font-[family-name:var(--font-imperial)] text-[clamp(2.25rem,6cqi,4.25rem)] leading-none" style={{ color: "#ff5a5a", WebkitTextStroke: "0.6px #ff5a5a", textShadow: "0 0 0.5em rgb(255 60 60 / 0.35)" }}>
+              <span className="text-[clamp(2.25rem,6cqi,4.25rem)] leading-none" style={{ fontFamily: '"Imperial Script", "Snell Roundhand", "Apple Chancery", cursive', color: "#ff5a5a", WebkitTextStroke: "0.6px #ff5a5a", textShadow: "0 0 0.5em rgb(255 60 60 / 0.35)" }}>
                 Merry Christmas
               </span>
             </div>
