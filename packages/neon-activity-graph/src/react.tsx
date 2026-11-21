@@ -56,6 +56,16 @@ export function ActivityGraphView({ className, style, aspect, placeholder = true
     // (`theme` is not a dependency: it is changed in place, below)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, strips, weeks, lite, templatesUrl, custom]);
+  // (a rebuild of the view starts from the latest colours, which `latest` holds)
+
+  // (new colours rebuild the blocks in place: not the whole view)
+  const colorsKey = JSON.stringify(options.colors ?? null);
+  const appliedColors = useRef(colorsKey);
+  useEffect(() => {
+    if (appliedColors.current === colorsKey) return;
+    appliedColors.current = colorsKey;
+    if (latest.current.colors) graph.current?.setColors(latest.current.colors);
+  }, [colorsKey]);
 
   useEffect(() => {
     graph.current?.setTheme(theme ?? "auto");

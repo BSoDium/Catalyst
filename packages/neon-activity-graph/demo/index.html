@@ -6,69 +6,114 @@
     <title>Neon-activity-graph</title>
     <meta name="description" content="A 3D glass-and-neon activity graph in three.js: GitHub contributions over coding time, one column a day." />
     <link rel="icon" href="data:," />
+    <link rel="preload" href="./fonts/shrikhand.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="./fonts/bricolage.woff2" as="font" type="font/woff2" crossorigin />
     <style>
-      :root { color-scheme: light dark; --bg: #f6f6f4; --fg: #15151a; --muted: color-mix(in srgb, var(--fg) 72%, var(--bg)); --green: #0a8f2c; --blue: #1a6fe0; }
-      @media (prefers-color-scheme: dark) { :root { --bg: #0b0b0e; --fg: #ececf1; --green: #3ddc6a; --blue: #5aa9ff; } }
+      /* Type. The title is Shrikhand (OFL), a fat 70s italic that holds stripes and off-register fringes; the text is Bricolage Grotesque (OFL), the labels JetBrains Mono (OFL). Latin subsets, self-hosted. Shrikhand swaps in over a local fallback
+         scaled to its width (size-adjust, measured), so nothing moves when it arrives; the other two are `optional` (used only if they are there at the first paint). */
+      @font-face { font-family: "Shrikhand"; src: url("./fonts/shrikhand.woff2") format("woff2"); font-display: swap; }
+      @font-face { font-family: "Shrikhand Fallback"; src: local("Georgia Bold Italic"), local("Georgia-BoldItalic"); size-adjust: 103.4%; ascent-override: 92%; descent-override: 24%; line-gap-override: 0%; }
+      @font-face { font-family: "Shrikhand Fallback 2"; src: local("Times New Roman Bold Italic"), local("TimesNewRomanPS-BoldItalicMT"), local("Liberation Serif Bold Italic"); size-adjust: 133.5%; ascent-override: 74%; descent-override: 19%; line-gap-override: 0%; }
+      @font-face { font-family: "Bricolage"; src: url("./fonts/bricolage.woff2") format("woff2"); font-weight: 200 800; font-display: optional; }
+      @font-face { font-family: "JetBrains Mono"; src: url("./fonts/jetbrains-mono.woff2") format("woff2"); font-display: optional; }
+
+      :root {
+        color-scheme: light dark;
+        --bg: #f1ece1; --fg: #17150f; --muted: color-mix(in srgb, var(--fg) 74%, var(--bg));
+        --top: #0a8f2c; --bottom: #1a6fe0;
+        --red: #ff3b30; --yellow: #ffd60a; --cyan: #00c8ff; --magenta: #ff2d9b;
+        --display: "Shrikhand", "Shrikhand Fallback", "Shrikhand Fallback 2", Georgia, serif;
+        --sans: "Bricolage", system-ui, -apple-system, "Segoe UI", sans-serif;
+        --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      @media (prefers-color-scheme: dark) { :root { --bg: #08080b; --fg: #f4f1ea; --top: #3ddc6a; --bottom: #5aa9ff; } }
       * { box-sizing: border-box; }
-      body { margin: 0; min-height: 100svh; background: var(--bg); color: var(--fg); font: 16px/1.4 system-ui, sans-serif; display: flex; flex-direction: column; justify-content: center; }
+      html { overflow-x: clip; }
+      body { margin: 0; min-height: 100svh; overflow-x: clip; background: var(--bg); color: var(--fg); font: 16px/1.45 var(--sans); display: flex; flex-direction: column; justify-content: center; position: relative; }
       a, button { color: inherit; }
       :focus-visible { outline: 2px solid currentColor; outline-offset: 3px; border-radius: 4px; }
-      /* (centred, a little low: the corner links need the floor, the sky above the blocks needs less) */
-      main { width: min(2400px, 100%); margin: 0 auto; padding: 24px 24px 12svh; }
 
-      /* The stage holds the graph box and its text block, which hangs in the bottom-left corner over the empty ground the isometric view leaves there, its left edge on the blocks' own left edge: the package sets
-         --nag-content-left (px) on the graph box from the picture's geometry and keeps it current on resize (main.ts copies it to the stage, where the caption is). A soft backdrop fades to nothing inside the caption's own box. */
+      /* The page: a Technicolor stripe along the top edge, colour fog in the corners (over the graph too, so the canvas has no seam with the page), and paper grain over everything (fixed, so it never adds to the page's size). */
+      body::before { content: ""; position: fixed; inset: 0 0 auto 0; height: 5px; z-index: 6; background: linear-gradient(90deg, var(--red) 0 16.6%, var(--yellow) 0 33.3%, #35d36a 0 50%, var(--cyan) 0 66.6%, #3a54ff 0 83.3%, var(--magenta) 0); }
+      body::after { content: ""; position: fixed; inset: 0; z-index: 2; pointer-events: none; background:
+        radial-gradient(60vmax 40vmax at 0% 100%, color-mix(in srgb, var(--magenta) 11%, transparent), transparent 70%),
+        radial-gradient(55vmax 40vmax at 100% 0%, color-mix(in srgb, var(--cyan) 10%, transparent), transparent 70%),
+        radial-gradient(45vmax 35vmax at 100% 100%, color-mix(in srgb, var(--yellow) 8%, transparent), transparent 70%); }
+      .grain { position: fixed; inset: 0; z-index: 7; pointer-events: none; opacity: 0.09; mix-blend-mode: overlay; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"); }
+      main { position: relative; z-index: 1; width: min(2400px, 100%); margin: 0 auto; padding: 24px 24px 12svh; }
+
+      /* The stage holds the graph box and its text block, which hangs in the bottom-left corner over the empty ground the isometric view leaves there, its left edge on the blocks' own left edge. The package sets
+         --nag-content-left (px) on the graph box at once, from the geometry (the scene's own value replaces it), and main.ts copies it to the stage; the caption is hidden for the one frame before that, then fades in: it never moves. */
       #stage { position: relative; width: 100%; container-type: inline-size; }
-      #graph { position: relative; width: 100%; aspect-ratio: 2.7 / 1; --nag-top: var(--green); --nag-bottom: var(--blue); }
-      .caption { position: absolute; left: var(--nag-content-left, 0px); bottom: 2%; z-index: 1; pointer-events: none; display: flex; flex-direction: column; gap: 0.5em; width: 31cqi; padding: 1.4em 0 0 0; }
-      .caption::before { content: ""; position: absolute; inset: -2em -6em -2em -3em; z-index: -1; background: radial-gradient(ellipse 50% 50% at 50% 50%, color-mix(in srgb, var(--bg) 82%, transparent) 0%, color-mix(in srgb, var(--bg) 70%, transparent) 55%, transparent 100%); }
-      h1 { margin: 0; font-size: clamp(22px, 2.6cqi, 42px); font-weight: 600; letter-spacing: -0.01em; line-height: 1.1; }
-      .about { margin: 0; color: var(--muted); font-size: clamp(13px, 1.05cqi, 17px); line-height: 1.45; max-width: 34em; }
-      .sub { margin: 0; color: var(--muted); font-size: clamp(12px, 1cqi, 15px); }
-      .legend { display: flex; flex-direction: column; gap: 0.3em; margin-top: 0.4em; font-size: clamp(13px, 1.05cqi, 17px); }
-      .legend span { display: inline-flex; align-items: center; gap: 8px; }
-      .legend i { width: 0.7em; height: 0.7em; border-radius: 3px; background: currentColor; }
-      .legend .g { color: var(--green); } .legend .b { color: var(--blue); } .legend b { color: var(--fg); font-weight: 500; }
+      #graph { position: relative; width: 100%; aspect-ratio: 2.7 / 1; --nag-top: var(--top); --nag-bottom: var(--bottom); }
+      .caption { position: absolute; left: var(--nag-content-left, 0px); bottom: 2%; z-index: 1; pointer-events: none; display: flex; flex-direction: column; gap: 0.55em; width: 34cqi; padding: 1.4em 0 0 0; opacity: 0; transition: opacity 0.5s ease; }
+      .caption.ready { opacity: 1; }
+      .caption::before { content: ""; position: absolute; inset: -2em -6em -2em -3em; z-index: -1; background: radial-gradient(ellipse 50% 50% at 50% 50%, color-mix(in srgb, var(--bg) 84%, transparent) 0%, color-mix(in srgb, var(--bg) 72%, transparent) 55%, transparent 100%); }
 
-      /* The links, in the screen's bottom-right corner, small and quiet. */
-      .corner { position: fixed; right: max(12px, env(safe-area-inset-right)); bottom: max(12px, env(safe-area-inset-bottom)); z-index: 5; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; font-size: 13px; }
-      .links { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px 14px; padding: 6px 10px; border-radius: 10px; background: color-mix(in srgb, var(--bg) 78%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); color: var(--muted); }
-      .links a, .links button { font: inherit; background: none; border: 0; padding: 0; text-decoration: underline; text-decoration-color: color-mix(in srgb, currentColor 40%, transparent); text-underline-offset: 3px; cursor: pointer; }
+      /* The title. Real text. White (ink, on the light paper) letters with off-register colour-separation fringes, as on a badly aligned print; a few letters filled with the Technicolor stripes; a faint CRT scan over it and a bloom. It
+         switches on like a neon sign, letter by letter, in step with the graph's own start-up (main.ts). */
+      h1 { margin: 0; position: relative; width: max-content; font: 400 clamp(30px, 3.5cqi, 62px) / 1.02 var(--display); letter-spacing: -0.005em; color: var(--fg); filter: drop-shadow(0 0 0.28em color-mix(in srgb, var(--cyan) 38%, transparent)); text-shadow: -0.045em 0.012em 0 var(--red), 0.045em -0.012em 0 var(--cyan), 0.01em 0.04em 0 var(--yellow); white-space: nowrap; }
+      h1 .l { display: inline-block; }
+      h1 .rb { background: repeating-linear-gradient(180deg, var(--red) 0 0.11em, var(--yellow) 0 0.22em, #35d36a 0 0.33em, var(--cyan) 0 0.44em, #3a54ff 0 0.55em, var(--magenta) 0 0.66em); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent; text-shadow: none; filter: drop-shadow(-0.04em 0 0 var(--red)) drop-shadow(0.04em 0 0 var(--cyan)); }
+      h1::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgb(0 0 0 / 0.26) 0 1px, transparent 1px 3px); mix-blend-mode: multiply; opacity: 0.4; animation: scan 6s steps(60) infinite; }
+      @keyframes scan { 0%, 100% { opacity: 0.38; } 47% { opacity: 0.45; } 50% { opacity: 0.28; } 53% { opacity: 0.45; } }
+      @media (prefers-reduced-motion: reduce) { h1::after { animation: none; } }
+      .about { margin: 0; color: var(--muted); font-size: clamp(14px, 1.2cqi, 19px); line-height: 1.45; max-width: 36em; font-weight: 420; }
+      .about a { pointer-events: auto; color: var(--fg); text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; text-decoration-color: var(--cyan); }
+      .about a:hover { text-decoration-color: var(--magenta); }
+      .sub { margin: 0; color: var(--muted); font: 400 clamp(10.5px, 0.8cqi, 13px) / 1.4 var(--mono); letter-spacing: 0.04em; text-transform: uppercase; }
+      .legend { display: flex; flex-direction: column; gap: 0.35em; margin-top: 0.3em; font: 400 clamp(11px, 0.85cqi, 14px) / 1.3 var(--mono); letter-spacing: 0.04em; text-transform: uppercase; }
+      .legend span { display: inline-flex; align-items: center; gap: 8px; }
+      .legend i { width: 0.8em; height: 0.8em; border-radius: 3px; background: currentColor; box-shadow: 0 0 0.7em currentColor; }
+      .legend .g { color: var(--top); } .legend .b { color: var(--bottom); } .legend b { color: var(--fg); font-weight: 400; }
+
+      /* The corner: a few quiet links, and the two small panels they open. */
+      .corner { position: fixed; right: max(12px, env(safe-area-inset-right)); bottom: max(12px, env(safe-area-inset-bottom)); z-index: 8; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; font: 400 11.5px / 1.3 var(--mono); letter-spacing: 0.04em; text-transform: uppercase; }
+      .links { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px 14px; padding: 7px 11px; border-radius: 10px; background: color-mix(in srgb, var(--bg) 78%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); color: var(--muted); }
+      .links a, .links button { font: inherit; letter-spacing: inherit; text-transform: inherit; background: none; border: 0; padding: 0; text-decoration: underline; text-decoration-color: color-mix(in srgb, currentColor 40%, transparent); text-underline-offset: 3px; cursor: pointer; }
       .links a:hover, .links button:hover { color: var(--fg); text-decoration-color: currentColor; }
-      .hint { color: var(--muted); transition: opacity 0.6s; }
+      .hint { transition: opacity 0.6s; }
       body.hovered .hint { opacity: 0; pointer-events: none; position: absolute; }
-      #how { width: min(24rem, calc(100vw - 24px)); padding: 16px 18px 14px; border-radius: 14px; background: color-mix(in srgb, var(--bg) 88%, transparent); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--fg) 12%, transparent), 0 18px 50px -14px rgb(0 0 0 / 0.4); }
-      #how[hidden] { display: none; }
-      #how:focus { outline: none; }
-      #how h2 { margin: 0 0 8px; font-size: 14px; font-weight: 600; }
-      #how ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 9px; color: var(--muted); line-height: 1.4; }
+      .panel { width: min(24rem, calc(100vw - 24px)); padding: 16px 18px 14px; border-radius: 14px; font: 400 14px / 1.45 var(--sans); letter-spacing: 0; text-transform: none; background: color-mix(in srgb, var(--bg) 90%, transparent); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--fg) 14%, transparent), 0 18px 50px -14px rgb(0 0 0 / 0.45); }
+      .panel[hidden] { display: none; }
+      .panel:focus { outline: none; }
+      .panel h2 { margin: 0 0 10px; font: 400 13px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; }
+      #how ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 9px; color: var(--muted); }
       #how li b { color: var(--fg); font-weight: 600; }
-      .npm { display: flex; align-items: center; gap: 8px; margin-top: 12px; padding: 7px 8px 7px 12px; border-radius: 9px; background: color-mix(in srgb, var(--fg) 7%, transparent); font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace; }
+      .npm { display: flex; align-items: center; gap: 8px; margin-top: 12px; padding: 7px 8px 7px 12px; border-radius: 9px; background: color-mix(in srgb, var(--fg) 7%, transparent); font: 12.5px var(--mono); }
       .npm code { flex: 1; font: inherit; }
-      .npm button { font: 12px system-ui, sans-serif; padding: 3px 9px; border-radius: 7px; border: 1px solid color-mix(in srgb, var(--fg) 25%, transparent); background: none; cursor: pointer; }
+      .npm button { font: 11.5px var(--mono); padding: 3px 9px; border-radius: 7px; border: 1px solid color-mix(in srgb, var(--fg) 25%, transparent); background: none; cursor: pointer; }
       .npm button:disabled { opacity: 0.55; cursor: default; }
+      .row { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; color: var(--muted); }
+      .row label { flex: 1; }
+      .row input[type="color"] { width: 44px; height: 30px; padding: 0; border: 1px solid color-mix(in srgb, var(--fg) 25%, transparent); border-radius: 8px; background: none; cursor: pointer; }
+      .presets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+      .presets button { font: 11px var(--mono); letter-spacing: 0.04em; text-transform: uppercase; padding: 5px 9px 5px 7px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--fg) 22%, transparent); background: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+      .presets button[aria-pressed="true"] { border-color: var(--fg); }
+      .presets i { display: inline-block; width: 14px; height: 14px; border-radius: 50%; background: linear-gradient(135deg, var(--a) 50%, var(--b) 50%); }
 
       /* Below 1100 px the title block would run into the blocks: it goes above the graph (and a phone gets four strips in a taller box). */
       @media (max-width: 1099px) {
-        main { padding: 28px 16px 72px; }
+        main { padding: 30px 16px 76px; }
         #graph { aspect-ratio: 2.2 / 1; }
-        .caption { position: static; width: auto; padding: 0 0 14px; }
+        .caption { position: static; width: auto; padding: 0 0 14px; opacity: 1; }
         .caption::before { display: none; }
-        h1 { font-size: 26px; }
+        h1 { font-size: clamp(30px, 7.6vw, 64px); }
+        .about { font-size: 15px; } .sub { font-size: 11px; } .legend { font-size: 12px; }
       }
       @media (max-width: 767px) {
-        main { padding: 24px 12px 72px; }
+        main { padding: 26px 12px 76px; }
         #graph { aspect-ratio: 0.8; }
-        .links { font-size: 12.5px; }
       }
     </style>
   </head>
   <body>
+    <div class="grain" aria-hidden="true"></div>
     <main>
       <div id="stage">
-        <div class="caption">
-          <h1>Neon-activity-graph</h1>
-          <p class="about">A year of activity as glass blocks lit like neon tubes: three.js, light and dark, a React wrapper.</p>
+        <div class="caption" id="caption">
+          <h1 id="title" aria-label="Neon-activity-graph"><span aria-hidden="true" id="title-letters"></span><span class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Neon-activity-graph</span></h1>
+          <p class="about">A year of activity as glass blocks lit like neon tubes: three.js, light and dark, a React wrapper. Used on the <a href="https://v2.bsodium.fr/software">software page of Catalyst</a>, Elliot’s portfolio.</p>
           <p class="sub" id="sub">One glass block a day, over the last year.</p>
           <div class="legend"><span class="g"><i></i><b>GitHub contributions</b> above</span><span class="b"><i></i><b>WakaTime coding time</b> below</span></div>
         </div>
@@ -76,7 +121,7 @@
       </div>
     </main>
     <div class="corner">
-      <section id="how" role="dialog" aria-labelledby="how-title" hidden>
+      <section id="how" class="panel" role="dialog" aria-labelledby="how-title" hidden>
         <h2 id="how-title">How it works</h2>
         <ul>
           <li><b>Data.</b> Two daily series from any source, one number a day each: here GitHub contributions on top, WakaTime coding time below.</li>
@@ -86,10 +131,16 @@
         </ul>
         <div class="npm"><code>npm i neon-activity-graph</code><button type="button" id="copy" disabled>coming soon</button></div>
       </section>
+      <section id="paint" class="panel" role="dialog" aria-labelledby="paint-title" hidden>
+        <h2 id="paint-title">Colours</h2>
+        <div class="row"><label for="c-top">GitHub layer</label><input type="color" id="c-top" value="#3ddc6a" /></div>
+        <div class="row"><label for="c-bottom">WakaTime layer</label><input type="color" id="c-bottom" value="#5aa9ff" /></div>
+        <div class="presets" id="presets" role="group" aria-label="Presets"></div>
+      </section>
       <nav class="links" aria-label="Links">
         <span class="hint" id="hint">Hover a day · click to cycle</span>
+        <button type="button" id="paint-btn" aria-expanded="false" aria-controls="paint">Colours</button>
         <button type="button" id="how-btn" aria-expanded="false" aria-controls="how">How it works</button>
-        <a href="https://v2.bsodium.fr/software">Used on Catalyst</a>
         <a href="https://github.com/BSoDium/Neon-activity-graph">Source</a>
       </nav>
     </div>

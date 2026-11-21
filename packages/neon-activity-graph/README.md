@@ -10,6 +10,9 @@ It draws the graph only: no panel, no figures, no legend. Hover and keyboard eve
   <img alt="Dark theme" src="docs/dark.jpg" width="49%" />
   <img alt="Light theme" src="docs/light.jpg" width="49%" />
 </p>
+<p>
+  <img alt="Custom colours (the demo's Technicolor preset)" src="docs/technicolor.jpg" width="98%" />
+</p>
 
 - Framework-agnostic core (`createActivityGraph`) and a React wrapper (`neon-activity-graph/react`)
 - Generic data: two layers of `{ date, value }`; adapters for GitHub's contribution calendar and WakaTime's summaries
@@ -72,7 +75,7 @@ The graph shows the last `weeks` weeks (53 by default) ending at the latest day 
 | `weeks` | `53` | How many weeks are drawn. |
 | `strips` | `1` | `1` is one long strip; `4` staggers four strips for a narrow, tall box (aspect about 0.8). |
 | `theme` | `"auto"` | `"light"`, `"dark"` or `"auto"` (follows `prefers-color-scheme`). Change it with `setTheme`. |
-| `colors` | green on top, blue below | `{ top?: { light?: [low, high], dark?: [low, high] }, bottom?: ... }`, colours as `#rrggbb` or `0xrrggbb`: the glass of a quiet day and of the busiest one. |
+| `colors` | green on top, blue below | `{ top?: { light?: [low, high], dark?: [low, high] }, bottom?: ... }`, colours as `#rrggbb` or `0xrrggbb`: the glass of a quiet day and of the busiest one. Change them live with `graph.setColors({ top, bottom })` (React: change the `colors` prop): the blocks are rebuilt in place, debounced by 120 ms, without the start-up and without refetching; about 0.8 s on a laptop (at 1440 px, 371 days), the old picture stays, softened, until the new one is in focus. Colours other than the defaults get a generic rod (the hue lifted toward white) instead of the tuned green and blue. |
 | `background` | nearest opaque ancestor background | A CSS colour, or `(theme) => css`. The ground takes it, so the picture has no seam with the page. Call `setTheme` again after it changed. |
 | `rodColor` | `undefined` | `({ layer, index, date, t }) => [r, g, b] \| null`: the dark theme's rod colour (linear RGB, around 0..1; `t` is how busy the day was). Giving it turns on the "string of lights" look: clear glass, no grey veil, softer bloom; `null` keeps the default colour for that day. |
 | `sound` | `true` | The synthesised hum and dings of the start-up. They play only once the browser lets the page make sound (after the visitor interacted with it) and only while the graph is on screen. |
@@ -92,6 +95,8 @@ The graph shows the last `weeks` weeks (53 by default) ending at the latest day 
 | `debug` | | `{ metrics?, wireframe?, neonHold? }`: development helpers (`data-*` timings on the container, the glass as a cage, the picture held half on). |
 
 `createHoverOverlay(container, options, labels)` is the overlay on its own, for a graph you drive yourself. In React, `<ActivityGraphView aspect={4} overlay />` takes the same options (`aspect` is the box's, so the server-rendered place-holder has the right shape).
+
+The blocks' bounds are also known before anything is drawn: `predictBounds(weeks, strips, width, height)` (in `neon-activity-graph/layout`) is what the container's `--nag-content-*` variables are set from at creation, so a caption lined up with the picture is placed at the first paint and does not move when the scene arrives; the scene's own measurement replaces it a moment later (a few pixels at most).
 
 A flat place-holder that shares the scene's camera (so the scene replaces it in place) can be drawn without loading three.js: `import { placeholderTiles } from "neon-activity-graph/layout"` gives an SVG `viewBox` and one path of all the squares.
 
@@ -120,6 +125,9 @@ Anything with WebGL 2 and half-float render targets (current Chrome, Edge, Firef
 Only needed if the blocks' shape or the rod changes. See `scripts/caustic-templates/README.md` (Mitsuba 3, about 15 minutes), then `pnpm embed:templates` rewrites the embedded data URI (`pnpm build` does it too).
 
 ## Demo and playground
+
+The demo's fonts are Shrikhand (title), Bricolage Grotesque (text) and JetBrains Mono (labels), all SIL Open Font License 1.1 (licence texts in `demo/public/fonts`), Latin subsets, self-hosted. It also shows the colour presets (`setColors`), a title that switches on with the graph's start-up, and the overlay.
+
 
 The [demo](https://bsodium.github.io/Neon-activity-graph/) draws the author's current activity (GitHub contributions over WakaTime coding time) and falls back to generated data when the activity file is not there. `demo/` is the page, `demo/scripts/fetch-activity.mjs` fetches public data without a token (a scheduled workflow writes `activity.json` to the `data` branch every 6 hours; set the repository variables `GITHUB_LOGIN` and `WAKATIME_USER` to draw somebody else).
 

@@ -40,3 +40,15 @@ describe("placeholderMarkup", () => {
     expect(a).not.toBe(placeholderMarkup({ strips: 4, aspect: 0.8 }));
   });
 });
+
+describe("cardPosition in a narrow box", () => {
+  it("never puts the card outside a box wider than the card, and centres it in one that is not", () => {
+    const card = { width: 256, height: 90 };
+    for (const x of [0, 10, 195, 380, 390]) {
+      const p = cardPosition({ x, y: 200 }, { width: 390, height: 400 }, card);
+      expect(p.x).toBeGreaterThanOrEqual(8 - 0.001);
+      expect(p.x + card.width).toBeLessThanOrEqual(390 - 8 + 0.001);
+    }
+    expect(cardPosition({ x: 30, y: 200 }, { width: 200, height: 400 }, card).x).toBe(200 / 2 - 128);
+  });
+});

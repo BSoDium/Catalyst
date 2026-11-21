@@ -58,3 +58,23 @@ describe("stripShifts", () => {
     }
   });
 });
+
+import { predictBounds } from "./view";
+
+describe("predictBounds", () => {
+  it("puts the blocks inside the box, left of right and above the foot", () => {
+    for (const [strips, w, h] of [[1, 1400, 520], [1, 2352, 870], [4, 366, 458]] as const) {
+      const b = predictBounds(53, strips, w, h);
+      expect(b.left).toBeGreaterThanOrEqual(-0.1 * w);
+      expect(b.right).toBeLessThanOrEqual(1.1 * w);
+      expect(b.left).toBeLessThan(b.right);
+      expect(b.top).toBeLessThan(b.bottom);
+    }
+  });
+  it("scales with the box", () => {
+    const a = predictBounds(53, 1, 1000, 370);
+    const b = predictBounds(53, 1, 2000, 740);
+    expect(b.left).toBeCloseTo(a.left * 2, 0);
+    expect(b.bottom).toBeCloseTo(a.bottom * 2, 0);
+  });
+});

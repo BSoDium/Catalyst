@@ -138,6 +138,8 @@ export interface ActivityGraph {
   readonly bounds: ContentBounds | null;
   /** Draws other data (the graph is rebuilt). */
   update(data: GraphData): void;
+  /** Changes the colours of one or both layers (see `colors`): the blocks are rebuilt once the changes settle (about 120 ms after the last call), without the start-up and without refetching; the old picture stays, softened, until the new one is in focus. */
+  setColors(colors: { top?: Partial<LayerColors>; bottom?: Partial<LayerColors> }): void;
   /** Changes the theme (the graph is rebuilt, and the start-up plays again in the dark one). Call it again after the page's background changed. */
   setTheme(theme: "light" | "dark" | "auto"): void;
   /** Resolves when the graph has been built (or has failed). */

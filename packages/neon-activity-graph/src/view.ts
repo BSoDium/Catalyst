@@ -130,3 +130,43 @@ export function placeholderTiles(weeks: number, strips: number, aspect: number, 
   }
   return { viewBox: `${(mx - halfH * aspect).toFixed(3)} ${(my - halfH).toFixed(3)} ${(2 * halfH * aspect).toFixed(3)} ${(2 * halfH).toFixed(3)}`, d };
 }
+
+/**
+ * Where the blocks will be on the screen, in CSS pixels of a `width` x `height` box, before anything is drawn: the same camera and fit as the scene's, taking every day as a block (the scene's own, `ContentBounds`, replaces it once it
+ * is laid out: the left edge differs by a few pixels at most, when the first days are empty). Lets a caption be placed at the first paint and never move.
+ */
+export function predictBounds(weeks: number, strips: number, width: number, height: number, tallest = TYPICAL_TALLEST) {
+  const { corners, at, rects } = slabFor(weeks, strips);
+  const ax = screenAxes();
+  const project = (px: number, py: number, pz: number) => ({ x: dot(ax.x, [px, py, pz]), y: -dot(ax.y, [px, py, pz]) });
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  for (const [cx, cz] of corners(roomFor(strips))) for (const cy of [0, tallest]) {
+    const p = project(cx, cy, cz);
+    x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y);
+  }
+  const aspect = width / height;
+  const halfH = Math.max((y1 - y0) / 2, (x1 - x0) / 2 / aspect) * 1.04;
+  let mx = (x0 + x1) / 2;
+  if (strips > 1) {
+    const perStrip = Math.ceil(weeks / strips);
+    let sum = 0;
+    for (let k = 0; k < strips; k++) {
+      const c = at(k * perStrip + (perStrip - 1) / 2, 3);
+      sum += project(c.x, 0, c.z).x;
+    }
+    mx = sum / strips;
+  }
+  const my = (y0 + y1) / 2;
+  const toPx = (p: { x: number; y: number }) => ({ x: ((p.x - (mx - halfH * aspect)) / (2 * halfH * aspect)) * width, y: ((p.y - (my - halfH)) / (2 * halfH)) * height });
+  let l = Infinity, r = -Infinity, t = Infinity, b = -Infinity;
+  void rects;
+  for (let w = 0; w < weeks; w++) for (let d = 0; d < 7; d++) {
+    const { x, z } = at(w, d);
+    for (const [dx, dz] of [[-0.46, -0.46], [0.46, -0.46], [-0.46, 0.46], [0.46, 0.46]] as const) {
+      const f = toPx(project(x + dx, 0, z + dz));
+      l = Math.min(l, f.x); r = Math.max(r, f.x); b = Math.max(b, f.y);
+    }
+    t = Math.min(t, toPx(project(x, tallest, z)).y);
+  }
+  return { left: l, right: r, top: t, bottom: b };
+}

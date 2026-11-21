@@ -39,7 +39,7 @@ export interface SceneHandle {
   /** Where the blocks are, in CSS pixels of the container (null before the first layout). */
   bounds(): ContentBounds | null;
   stop(): void;
-  rethink(): void;
+  rethink(recolour?: boolean): void;
   ready: Promise<void>;
 }
 
@@ -50,7 +50,7 @@ export interface SceneHandle {
  * result. Translucent rounded blocks (transmission, refraction) lit by a room environment, on a ground that only receives the shadows, so it sits on the page's own background.
  */
 export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphData }, st: { theme: "light" | "dark" | "auto" }): SceneHandle {
-  const api = { stop: () => {}, rethink: () => {}, bounds: (): ContentBounds | null => null };
+  const api = { stop: () => {}, rethink: (_recolour?: boolean) => {}, bounds: (): ContentBounds | null => null };
   let cancelled = false;
   const dbg = opts.debug ?? {};
   const mq = window.matchMedia("(prefers-color-scheme: dark)");
@@ -311,9 +311,7 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
             const rod = customOn()
               ? // (`rodColor`: the light on the ground is the light's own colour, not lifted toward white as a busy rod is in the usual picture)
                 hue.clone()
-              : src === "bottom"
-                ? hue.clone().multiplyScalar(0.5).add(new THREE.Color(0.4, 0.56, 0.6).multiplyScalar(0.38 + 0.98 * t))
-                : hue.clone().multiplyScalar(1.25).add(new THREE.Color(0.22, 0.4, 0.24).multiplyScalar(0.15 + 0.7 * t));
+              : rodLight(src, hue, t, 1);
             const col = dark ? rod.multiplyScalar(1 / Math.max(1e-4, rod.r, rod.g, rod.b)) : hue;
             // (`rodColor`: a white light adds to all three channels, so on the ground it washes out the colours around it: it lights the ground half as much)
             const whiteLight = customOn() && Math.max(hue.r, hue.g, hue.b) - Math.min(hue.r, hue.g, hue.b) < 0.15 * Math.max(hue.r, hue.g, hue.b) ? 0.5 : 1;
@@ -430,6 +428,16 @@ void main() {
         return sh;
       })();
       let tallest = 1;
+      // (whether a layer has the package's own colours: the rods' lift toward white is tuned to them; other colours get a generic one)
+      const stock = { top: true, bottom: true };
+      const WHITE = new THREE.Color(1, 1, 1);
+      /** The rod's light, as a (dark theme) colour, for a day at busyness `t`, scaled by `level`. */
+      const rodLight = (src: "top" | "bottom", hue: Color, t: number, level: number): Color => {
+        if (!stock[src]) return hue.clone().multiplyScalar(level * 0.5).add(hue.clone().lerp(WHITE, 0.7).multiplyScalar(level * (0.38 + 0.98 * t) * 0.9));
+        return src === "bottom"
+          ? hue.clone().multiplyScalar(level * 0.5).add(new THREE.Color(0.4, 0.56, 0.6).multiplyScalar(level * (0.38 + 0.98 * t)))
+          : hue.clone().multiplyScalar(level * 1.25).add(new THREE.Color(0.22, 0.4, 0.24).multiplyScalar(level * (0.15 + 0.7 * t)));
+      };
       let bounds: ContentBounds | null = null;
       api.bounds = () => bounds;
       // the boxes a pointer can hit (one per layer of a column, one per empty day), for the picking
@@ -527,7 +535,7 @@ void main() {
           // A blue rod gets its brightness from light added to all three channels (not from more of the same blue, which only makes it bluer and more glowing): a brighter rod is a lighter, clearer blue, not a whiter one
           // (its hue is kept: the blue channel is the hue's own and the red and green rise with the busyness).
           const level = emit(t) * (1 + 1.1 * t);
-          const rod = dark && customOn() ? hue0.clone().multiplyScalar(level * 0.55 * (Math.max(hue0.r, hue0.g, hue0.b) - Math.min(hue0.r, hue0.g, hue0.b) < 0.15 * Math.max(hue0.r, hue0.g, hue0.b) ? WHITE_ROD : 1)) : dark && src === "bottom" ? hue.clone().multiplyScalar(level * 0.5).add(new THREE.Color(0.4, 0.56, 0.6).multiplyScalar(level * (0.38 + 0.98 * t))) : dark ? hue.clone().multiplyScalar(level * 1.25).add(new THREE.Color(0.22, 0.4, 0.24).multiplyScalar(level * (0.15 + 0.7 * t))) : hue;
+          const rod = dark && customOn() ? hue0.clone().multiplyScalar(level * 0.55 * (Math.max(hue0.r, hue0.g, hue0.b) - Math.min(hue0.r, hue0.g, hue0.b) < 0.15 * Math.max(hue0.r, hue0.g, hue0.b) ? WHITE_ROD : 1)) : dark ? rodLight(src, hue, t, level) : hue;
           paint(core, dark ? rod : hue);
           // (the light of the blocks around that reaches this rod when its own is off, on its own attribute: the shader adds it, as much as the neighbours that are on give)
           {
@@ -563,7 +571,7 @@ void main() {
             // (the blue glass absorbs less: a rod that is meant to be near white would otherwise be seen through a blue filter and come out saturated)
             mat.attenuationDistance = src === "bottom" ? 3.6 : 2.2;
             // A green filter passes green and stops the rest: blue light behind it is not turned into green, it is nearly all absorbed (what comes through is a few percent, not a green of the same brightness).
-            if (src === "top" && !customOn()) {
+            if (src === "top" && !customOn() && stock.top) {
               mat.attenuationColor.r *= 0.2;
               mat.attenuationColor.b *= 0.15;
               mat.attenuationDistance = 1.6;
@@ -631,6 +639,8 @@ void main() {
         const dark = isDark();
         const pair = (layer: "top" | "bottom"): [Color, Color] => {
           const [low, high] = colorOf(layer, dark);
+          const [dl, dh] = DEFAULT_COLORS[layer][dark ? "dark" : "light"];
+          stock[layer] = new THREE.Color(low).equals(new THREE.Color(dl)) && new THREE.Color(high).equals(new THREE.Color(dh));
           return [new THREE.Color(low), new THREE.Color(high)];
         };
         blocks.add(build({ bottom: layout.bottom, top: layout.top }, { bottom: pair("bottom"), top: pair("top") }, dark));
@@ -1019,7 +1029,7 @@ void main(){
           stepFocus();
         }, cell < 0 ? 140 : 70);
       };
-      const prepareNeon = () => {
+      const prepareNeon = (skipStartup = false) => {
         stopNeon();
         // (`onLit`: whether the picture is lit, for the page's greeting: not while the start-up runs, always when there is none)
         onLit?.(false);
@@ -1032,7 +1042,7 @@ void main(){
         lastLevels = new Float32Array(neonBlocks.length).fill(1);
         idleLook = false;
         if (focusCtl) applyLevels(lastLevels);
-        if (!isDark() || !neonAllowed() || !stampCtl || neonBlocks.length === 0 || neonBlocks.length > MAX_LEVELS) return void onLit?.(true);
+        if (!isDark() || !neonAllowed() || skipStartup || !stampCtl || neonBlocks.length === 0 || neonBlocks.length > MAX_LEVELS) return void onLit?.(true);
         const ctl = stampCtl;
         neonApplyMs = 0;
         neonTicks = 0;
@@ -1288,22 +1298,23 @@ void main(){
         resizeTimer = window.setTimeout(fit, 180);
       });
       ro.observe(el);
-      const rethink = () => cm(rethinkBody);
-      const rethinkBody = () => {
+      // `recolour`: the colours changed, nothing else: the blocks are built again, but the start-up does not play again (the tubes are simply on)
+      const rethink = (recolour = false) => cm(() => rethinkBody(recolour));
+      const rethinkBody = (recolour: boolean) => {
         soften();
         pinned = false;
         if (current !== -1) announce(-1);
         (floor.material as import("three").MeshBasicMaterial).color.copy(pageColour());
         // (switching to the dark theme from the light one: the baked light is fetched then, and the blocks built again when it is there)
-        if (isDark() && !templates && !templatesFailed) void wantTemplates().then(() => !cancelled && templates && rethink());
+        if (isDark() && !templates && !templatesFailed) void wantTemplates().then(() => !cancelled && templates && rethink(recolour));
         buildBlocks();
-        prepareNeon();
+        prepareNeon(recolour);
         restart();
       };
       // (`theme: "auto"` follows the system's)
-      const onScheme = () => st.theme === "auto" && rethink();
+      const onScheme = () => st.theme === "auto" && rethink(false);
       mq.addEventListener("change", onScheme);
-      api.rethink = rethink;
+      api.rethink = (recolour) => rethink(recolour);
 
       api.stop = () => {
         stopNeon();
@@ -1350,7 +1361,7 @@ void main(){
       el.removeAttribute("aria-roledescription");
       el.removeAttribute("aria-label");
     },
-    rethink: () => api.rethink(),
+    rethink: (recolour?: boolean) => api.rethink(recolour),
     bounds: () => api.bounds(),
     ready,
   };

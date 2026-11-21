@@ -25,7 +25,8 @@ export function createHoverOverlay(container: HTMLElement, options: OverlayOptio
   if (getComputedStyle(container).position === "static") container.style.position = "relative";
   const root = document.createElement("div");
   root.className = "nag-overlay";
-  root.style.cssText = "position:absolute;inset:0;pointer-events:none;z-index:2";
+  // (the overlay is the container's size and clips what is outside it: a card can never widen the page)
+  root.style.cssText = "position:absolute;inset:0;pointer-events:none;z-index:2;overflow:clip";
   root.innerHTML = `<style>
 .nag-overlay{--nag-top-default:#0a8f2c;--nag-bottom-default:#1a6fe0}
 @media (prefers-color-scheme:dark){.nag-overlay{--nag-top-default:#3ddc6a;--nag-bottom-default:#5aa9ff}}
