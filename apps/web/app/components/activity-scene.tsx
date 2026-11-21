@@ -4,6 +4,7 @@ import { layoutActivity, type Activity, type HoverInfo, type Matrix } from "~/li
 import { CAMERA_DIR, roomFor, slabFor } from "~/lib/activity-view";
 import { createGroundLight, loadCausticTemplates, type CausticTemplates, type GlassLight } from "~/components/ground-light";
 import { createNeon } from "~/components/neon";
+import { createSleighBells } from "~/components/sleigh-bells";
 import causticTemplatesUrl from "~/assets/caustic-templates.png?url";
 
 /** How many jittered frames are averaged before the picture is final (soft shadows, anti-aliasing): the scene never moves, so it is drawn once, a frame at a time, and then not at all. */
@@ -841,7 +842,11 @@ void main(){
       let inView = true;
       const viewObserver = typeof IntersectionObserver === "undefined" ? null : new IntersectionObserver((entries) => (inView = entries.some((e) => e.isIntersecting)));
       viewObserver?.observe(el);
+      // (`?xmas`, dark theme: a faint shake of sleigh bells now and then, started with the picture, stopped with it)
+      let bells: ReturnType<typeof createSleighBells> | null = null;
       const stopNeon = () => {
+        bells?.stop();
+        bells = null;
         neon?.stop();
         neon = null;
         neonStart = null;
@@ -955,6 +960,10 @@ void main(){
             }
           },
         });
+        if (xmasOn()) {
+          bells = createSleighBells({ canPlay: () => inView });
+          bells.start();
+        }
         if (import.meta.env.DEV) el.dataset.neonRods = String(neon.count);
         // (the flickering rods are off from the first frame: the picture is not seen before it starts)
         applyLevels(neon.levels);

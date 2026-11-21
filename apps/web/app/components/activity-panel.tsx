@@ -248,6 +248,38 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
   const [xmas, setXmas] = useState(false);
   // (the dark theme only: it follows the page's scheme, forced by `data-scheme` or the system's)
   const [dark, setDark] = useState(false);
+  // the greeting's baseline is set on the legend's last line ("WakaTime activity below."): measured with zero-size probes on the two baselines, at every width and whenever the layout or the font changes
+  const greeting = useRef<HTMLSpanElement>(null);
+  const legend = useRef<HTMLParagraphElement>(null);
+  const [drop, setDrop] = useState(0);
+  const show = xmas && dark;
+  useEffect(() => {
+    const g = greeting.current;
+    const l = legend.current;
+    if (!show || !g || !l) return;
+    const baseline = (el: HTMLElement) => {
+      const probe = document.createElement("span");
+      probe.style.cssText = "display:inline-block;width:0;height:0;vertical-align:baseline";
+      el.appendChild(probe);
+      const y = probe.getBoundingClientRect().bottom;
+      probe.remove();
+      return y;
+    };
+    const measure = () => {
+      const delta = baseline(l) - baseline(g);
+      if (Number.isFinite(delta)) setDrop((d) => (Math.abs(delta) < 0.5 ? d : d + delta));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(l);
+    if (box.current) ro.observe(box.current);
+    void document.fonts.ready.then(measure);
+    document.fonts.addEventListener("loadingdone", measure);
+    return () => {
+      ro.disconnect();
+      document.fonts.removeEventListener("loadingdone", measure);
+    };
+  }, [show]);
   useEffect(() => {
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     const read = () => {
@@ -313,9 +345,9 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
               <ActivityScene activity={activity} strips={narrow ? 4 : 1} onReady={() => setReady(true)} onHover={setHover} className="absolute inset-0 outline-offset-[-2px] focus-visible:outline-2 focus-visible:outline-[var(--ring)]" />
             </Suspense>
           )}
-          {xmas && dark && (
-            <div aria-hidden="true" className="pointer-events-none absolute right-0 bottom-0 z-10 flex items-end justify-end px-[3cqi] pt-[9cqi] pb-[1.5cqi] pl-[16cqi] opacity-100 transition-opacity duration-500 group-hover/scene:opacity-0" style={{ background: "radial-gradient(ellipse at 100% 100%, color-mix(in oklab, var(--background) 68%, transparent) 25%, color-mix(in oklab, var(--background) 50%, transparent) 55%, transparent 85%)" }}>
-              <span className="text-[clamp(2.25rem,6cqi,4.25rem)] leading-none" style={{ fontFamily: '"Imperial Script", "Snell Roundhand", "Apple Chancery", cursive', color: "#fff", WebkitTextStroke: "0.6px #fff", textShadow: "0 0 0.12em var(--background), 0 0 0.3em var(--background), 0 0 0.6em rgb(255 60 60 / 0.45)" }}>
+          {show && (
+            <div aria-hidden="true" className="pointer-events-none absolute right-0 bottom-0 z-10 flex items-end justify-end px-[3cqi] pt-[9cqi] pl-[16cqi] opacity-100 transition-opacity duration-500 group-hover/scene:opacity-0" style={{ transform: `translateY(${drop}px)`, background: "radial-gradient(ellipse at 100% 100%, color-mix(in oklab, var(--background) 68%, transparent) 25%, color-mix(in oklab, var(--background) 50%, transparent) 55%, transparent 85%)" }}>
+              <span ref={greeting} className="text-[clamp(2.25rem,6cqi,4.25rem)] leading-none" style={{ fontFamily: '"Imperial Script", "Snell Roundhand", "Apple Chancery", cursive', color: "#fff", WebkitTextStroke: "0.6px #fff", textShadow: "0 0 0.12em var(--background), 0 0 0.3em var(--background), 0 0 0.6em rgb(255 60 60 / 0.45)" }}>
                 Merry Christmas
               </span>
             </div>
@@ -340,7 +372,7 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
       <div data-slot="activity-legend" className="relative flex flex-col gap-3 px-4 pt-3 md:pt-6 md:px-14 md:max-[56rem]:-mt-[6.5cqi] min-[56rem]:absolute min-[56rem]:bottom-[1%] min-[80rem]:bottom-[10.7%] min-[56rem]:left-14 min-[56rem]:w-[clamp(20rem,34cqi,25rem)] min-[56rem]:p-0">
         <p className="type-meta m-0 text-muted-foreground uppercase">Last <span className="text-foreground">12 months</span></p>
         {/* In the picture's order: the contributions are the upper block of a day, the coding the lower one. */}
-        <p className="m-0 font-[family-name:var(--font-display)] text-[1.625rem] min-[56rem]:text-[clamp(1.25rem,2.3cqi,1.625rem)] leading-[1.1] font-semibold tracking-tight text-balance">
+        <p ref={legend} className="m-0 font-[family-name:var(--font-display)] text-[1.625rem] min-[56rem]:text-[clamp(1.25rem,2.3cqi,1.625rem)] leading-[1.1] font-semibold tracking-tight text-balance">
           <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" className={LINK} style={{ color: soft("green", 75) }}>
             GitHub contributions
             <Icon name="arrow-up-right" size="inline" aria-hidden="true" className="translate-y-[0.05em] self-center opacity-70 transition-opacity group-hover/link:opacity-100" />
