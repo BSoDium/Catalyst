@@ -213,8 +213,9 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       // (light theme) how much of white the glass shell's tint is mixed with (1: clear)
       const LIGHT_SHELL_WHITE = 0.7;
       // (light theme) how much blocks behind a block shade it: the scale of their coverage at which the shade is 63 %, how dark the glass goes in full shade (a share of its light kept), and the page's colour that the shade takes
-      const LIGHT_OCC_SCALE = 1.2;
-      const LIGHT_OCC_KEEP = 0.5;
+      const LIGHT_OCC_FROM = 0.9;
+      const LIGHT_OCC_FULL = 3;
+      const LIGHT_OCC_KEEP = 0.72;
       const LIGHT_OCC_REFLECT = 0.15;
       const coreMaterial = new THREE.MeshBasicMaterial({ vertexColors: true });
       // (the glass is perfectly clear; it is the core that is soft: its colour fades toward a pale haze of itself toward its silhouette, so it is a blurred glow in the middle of the block, with no hard edge)
@@ -714,7 +715,7 @@ void main() {
         const occOf = new Map<(typeof specs)[number], number>();
         if (!dark) {
           const behind = lightBehind(specs.map((q) => ({ x: q.x, z: q.z, y0: q.y0, h: q.h })), specs.map(() => 1));
-          specs.forEach((q, k) => occOf.set(q, 1 - Math.exp(-(behind[k] ?? 0) / LIGHT_OCC_SCALE)));
+          specs.forEach((q, k) => occOf.set(q, ((u) => u * u * (3 - 2 * u))(Math.min(1, Math.max(0, ((behind[k] ?? 0) - LIGHT_OCC_FROM) / (LIGHT_OCC_FULL - LIGHT_OCC_FROM))))));
         }
         for (const sp of specs) {
           const { src, x, z, y0, h, t, hue: hue0 } = sp;
