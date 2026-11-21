@@ -31,7 +31,7 @@ Measured so far (dev build, Apple M4): an update of the neon costs about 0.05 ms
 
 ## Year headings on a phone (software and the other lists)
 
-The year heading keeps its big numeral where it started. When it sticks under the bar (`data-stuck`, set by `EntryListPage` from the scroll, since a sticky element cannot be asked) it shrinks, in 0.4 s, a little (to 0.7) to a square-cornered blurred plate with a hairline ring that floats above the rows (`.ds-year-sticky` in `app.css`, below 48 rem). Unstuck it has the room under it that it has on a desktop (a heading, with the first row clear of it). It shrinks with a transform, not a size: a smaller box would pull the rows up and un-stick it.
+The year heading keeps its big numeral where it started. When it sticks under the bar (`data-stuck`, set by `EntryListPage` from the scroll, since a sticky element cannot be asked) it shrinks, in 0.4 s, a little (to 0.82) to a square-cornered blurred plate with a hairline ring that floats above the rows (`.ds-year-sticky` in `app.css`, below 48 rem). Unstuck it has the room under it that it has on a desktop (a heading, with the first row clear of it). It shrinks with a transform, not a size: a smaller box would pull the rows up and un-stick it.
 
 ## Camera grain
 
