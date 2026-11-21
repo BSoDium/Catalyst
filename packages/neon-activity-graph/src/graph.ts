@@ -321,10 +321,10 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       const SHADE_SATURATION = 2.4;
       // (light theme) how bright the brightest channel of a column's contact shadow is: low is deep, the colour of the glass
       const LIGHT_SHADOW_DEPTH = 0.45;
-      const GLEAM = 3.4;
+      const GLEAM = 4.8;
       // (light theme) how far from its block the sun's light is counted in full, and where it has faded out
       const NOISE_FLOOR = 0.03;
-      const GLEAM_MAX = 0.6;
+      const GLEAM_MAX = 0.8;
       const SUN_NEAR = 3.4;
       const SUN_FAR = 6;
       const PX = 22;
