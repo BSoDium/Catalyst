@@ -3562,32 +3562,47 @@
     background: linear-gradient(var(--background) 70%, transparent);
   }
 
-  /* On a phone the rows are full-width cards (a picture under the year as often as not), so the year's page-coloured fade would show as a dark smear over a picture: it is a capsule instead (a small blurred pill with a hairline
-     ring and the accent's dot, like a date marker in a feed), which is only as big as the year and is clearly a thing on top. */
+  /* On a phone the rows are full-width cards (a picture under the year as often as not), so the year's page-coloured fade would show as a dark smear over a picture. The year keeps its big numeral while it is where it started; when it sticks under the
+     bar (`data-stuck`, set by the list page) it shrinks, smoothly, to a small blurred pill with a hairline ring that is clearly a thing on top. It shrinks with a transform, not a size: a smaller box would pull the rows up and un-stick it. */
   @media screen and (max-width: 47.99rem) {
     .ds-year-sticky {
-      align-items: center;
-      gap: 0.5rem;
-      margin: 0 0 0.75rem;
-      padding: 0.3rem 0.9rem 0.3rem 0.75rem;
-      border-radius: 999px;
-      background: color-mix(in srgb, var(--background) 62%, transparent);
-      -webkit-backdrop-filter: blur(14px) saturate(1.2);
-      backdrop-filter: blur(14px) saturate(1.2);
-      box-shadow:
-        inset 0 0 0 1px color-mix(in srgb, var(--foreground) 14%, transparent),
-        0 6px 20px -8px rgb(0 0 0 / 0.35);
-      font-size: 1.375rem;
-      line-height: 1.2;
+      background: none;
+      margin: 0 0 0.5rem;
+      padding: 0 0.75rem 0 0;
+      isolation: isolate;
+      transform-origin: 0 0;
+      transition: transform 0.4s var(--ease-standard);
     }
 
     .ds-year-sticky::before {
       content: "";
-      width: 0.4375rem;
-      height: 0.4375rem;
-      border-radius: 50%;
-      background: var(--signal);
-      flex: none;
+      position: absolute;
+      inset: -0.1em -0.28em -0.04em -0.28em;
+      z-index: -1;
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--background) 82%, transparent);
+      -webkit-backdrop-filter: blur(18px) saturate(1.3);
+      backdrop-filter: blur(18px) saturate(1.3);
+      box-shadow:
+        inset 0 0 0 3px color-mix(in srgb, var(--foreground) 22%, transparent),
+        0 0.15em 0.5em -0.15em rgb(0 0 0 / 0.35);
+      opacity: 0;
+      transition: opacity 0.3s var(--ease-standard);
+    }
+
+    .ds-year-sticky[data-stuck="true"] {
+      transform: translateX(0.1em) scale(0.45);
+    }
+
+    .ds-year-sticky[data-stuck="true"]::before {
+      opacity: 1;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ds-year-sticky,
+    .ds-year-sticky::before {
+      transition: none;
     }
   }
 

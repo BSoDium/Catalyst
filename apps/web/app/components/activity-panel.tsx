@@ -256,10 +256,23 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
   const legend = useRef<HTMLParagraphElement>(null);
   const [drop, setDrop] = useState(0);
   const show = xmas && dark;
+  // (the legend is in the picture's corner from 56 rem; below that it is under the picture, or half over its corner, and the greeting is not set on its baseline: it sits in its own corner, on two lines)
+  const [corner, setCorner] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 56rem)");
+    const read = () => setCorner(mq.matches);
+    read();
+    mq.addEventListener("change", read);
+    return () => mq.removeEventListener("change", read);
+  }, []);
   useEffect(() => {
     const g = greeting.current;
     const l = legend.current;
     if (!show || !g || !l) return;
+    if (!corner) {
+      setDrop(0);
+      return;
+    }
     const baseline = (el: HTMLElement) => {
       const probe = document.createElement("span");
       probe.style.cssText = "display:inline-block;width:0;height:0;vertical-align:baseline";
@@ -292,7 +305,7 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
       ro.disconnect();
       document.fonts.removeEventListener("loadingdone", measure);
     };
-  }, [show]);
+  }, [show, corner]);
   useEffect(() => {
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     const read = () => {
@@ -359,11 +372,11 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
             </Suspense>
           )}
           {show && (
-            <div aria-hidden="true" className="pointer-events-none absolute right-0 bottom-0 z-10 flex items-end justify-end px-[3cqi] pt-[9cqi] pl-[16cqi] opacity-100 transition-opacity duration-1000 group-hover/scene:opacity-0" style={{ opacity: lit ? undefined : 0, transform: `translateY(${drop}px)` }}>
+            <div aria-hidden="true" className="pointer-events-none absolute right-0 bottom-0 z-10 flex items-end justify-end px-[3cqi] pt-[9cqi] pl-[10cqi] min-[56rem]:pl-[16cqi] opacity-100 transition-opacity duration-1000 group-hover/scene:opacity-0" style={{ opacity: lit ? undefined : 0, transform: `translateY(${drop}px)` }}>
               {/* (the backdrop reaches down past the shifted text, to the picture's own bottom edge, so that no glow shows under it) */}
-              <span className="absolute inset-x-0 top-0" style={{ bottom: `${-(Math.max(0, -drop) + 12)}px`, background: "radial-gradient(ellipse at 100% 100%, color-mix(in oklab, var(--background) 68%, transparent) 25%, color-mix(in oklab, var(--background) 50%, transparent) 55%, transparent 85%)" }} />
-              <span ref={greeting} className="relative text-[clamp(2.25rem,6cqi,4.25rem)] leading-none" style={{ fontFamily: '"Imperial Script", "Snell Roundhand", "Apple Chancery", cursive', color: "#fff", WebkitTextStroke: "0.6px #fff", textShadow: "0 0 0.12em var(--background), 0 0 0.3em var(--background), 0 0 0.6em rgb(255 60 60 / 0.45)" }}>
-                Merry Christmas
+              <span className="absolute inset-x-0 top-0" style={{ bottom: corner ? `${-(Math.max(0, -drop) + 12)}px` : 0, background: "radial-gradient(ellipse at 100% 100%, color-mix(in oklab, var(--background) 68%, transparent) 25%, color-mix(in oklab, var(--background) 50%, transparent) 55%, transparent 85%)" }} />
+              <span ref={greeting} className="relative text-right text-[clamp(2.75rem,13cqi,4.25rem)] leading-[0.95] min-[56rem]:text-[clamp(2.25rem,6cqi,4.25rem)] min-[56rem]:leading-none" style={{ fontFamily: '"Imperial Script", "Snell Roundhand", "Apple Chancery", cursive', color: "#fff", WebkitTextStroke: "0.6px #fff", textShadow: "0 0 0.12em var(--background), 0 0 0.3em var(--background), 0 0 0.6em rgb(255 60 60 / 0.45)" }}>
+                Merry<br className="min-[56rem]:hidden" /> Christmas
               </span>
             </div>
           )}
