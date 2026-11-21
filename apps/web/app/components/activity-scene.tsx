@@ -226,10 +226,10 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
       let neonNeighbours: { j: number[]; m: number[] }[] = [];
       let neonBlocks: { x: number; z: number; pan: number; t: number; cell: number }[] = [];
       let stampCtl: { update(levels: ArrayLike<number>): void } | null = null;
-      // `?xmas`, an Easter egg (a demo, not on by default): every rod is one of a string of lights, in the warm colours of a tree's (red, green, gold, blue, pink, warm white), the same for a day each time. The colour is the day's and its
+      // `?xmas`, an Easter egg (a demo, not on by default): every rod is one of a string of lights, in the warm colours of a tree's (red, green, gold, blue, pink; saturated), the same for a day each time. The colour is the day's and its
       // brightness is the activity, as ever; the glass is left clear so that the rod's colour is what is seen, and the baked light on the ground takes the rod's colour like any other.
       const xmas = new URLSearchParams(window.location.search).has("xmas");
-      const XMAS = ["#ff2b2b", "#18d84a", "#ffbe2e", "#2f6bff", "#ff3fa6", "#ffe3b8"].map((c) => new THREE.Color(c));
+      const XMAS = ["#ff0a0a", "#00e03c", "#ffa600", "#1a3cff", "#ff1493", "#ff0a0a"].map((c) => new THREE.Color(c));
       const xmasHue = (cell: number, src: "waka" | "github", t: number) => {
         const h = Math.imul(cell + 1, 2654435761) ^ Math.imul(src === "waka" ? 97 : 13, 40503);
         return XMAS[((h >>> 7) % XMAS.length + XMAS.length) % XMAS.length]!.clone().multiplyScalar(0.3 + 0.7 * t);
@@ -488,7 +488,7 @@ void main() {
           // A blue rod gets its brightness from light added to all three channels (not from more of the same blue, which only makes it bluer and more glowing): a brighter rod is a lighter, clearer blue, not a whiter one
           // (its hue is kept: the blue channel is the hue's own and the red and green rise with the busyness).
           const level = emit(t) * (1 + 1.1 * t);
-          const rod = dark && xmas ? hue.clone().multiplyScalar(level * 1.2).add(new THREE.Color(0.5, 0.45, 0.35).multiplyScalar(level * 0.5 * t)) : dark && src === "waka" ? hue.clone().multiplyScalar(level * 0.5).add(new THREE.Color(0.4, 0.56, 0.6).multiplyScalar(level * (0.38 + 0.98 * t))) : dark ? hue.clone().multiplyScalar(level * 1.25).add(new THREE.Color(0.22, 0.4, 0.24).multiplyScalar(level * (0.15 + 0.7 * t))) : hue;
+          const rod = dark && xmas ? hue.clone().multiplyScalar(level * 0.8) : dark && src === "waka" ? hue.clone().multiplyScalar(level * 0.5).add(new THREE.Color(0.4, 0.56, 0.6).multiplyScalar(level * (0.38 + 0.98 * t))) : dark ? hue.clone().multiplyScalar(level * 1.25).add(new THREE.Color(0.22, 0.4, 0.24).multiplyScalar(level * (0.15 + 0.7 * t))) : hue;
           paint(core, dark ? rod : hue);
           // (the light of the blocks around that reaches this rod when its own is off, on its own attribute: the shader adds it, as much as the neighbours that are on give)
           {

@@ -3379,9 +3379,34 @@
   }
 
   .tag-search-empty {
-    margin: 0.5rem 0 0;
+    display: flex;
+    align-items: center;
+    min-height: 2.75rem;
+    /* (the row's own padding already puts it where the search's text starts) */
+    padding-inline: 0;
     color: var(--muted-foreground);
     font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    animation: tag-search-empty-in var(--duration-fast, 150ms) var(--ease-standard, ease) both;
+  }
+
+  @keyframes tag-search-empty-in {
+    from {
+      opacity: 0;
+      transform: translateY(0.25rem);
+    }
+  }
+
+  @media (min-width: 768px) {
+    .tag-search-empty {
+      min-height: 2rem;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tag-search-empty {
+      animation: none;
+    }
   }
 
   /* opened out, the row wraps whatever the width (on a phone it is a scroller when folded) */
