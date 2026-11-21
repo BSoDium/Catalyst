@@ -237,3 +237,39 @@ export function tallestOfLayers(top: { cells: readonly { value: number; t: numbe
   });
   return tallest;
 }
+
+/**
+ * How much light there is BEHIND each block, seen by the camera: the sum, over the blocks farther from it whose outline on the screen is covered by this one, of their brightness times the share of this block's outline they fill. A glass
+ * with lamps behind it is lit by them (what is seen through it, and what scatters in it), a glass against the dark is not. `brightness` is each block's own (the rod's brightest channel). The camera does not move, so this is worked out once.
+ */
+export function lightBehind(boxes: readonly { x: number; z: number; y0: number; h: number }[], brightness: readonly number[]): number[] {
+  const ax = screenAxes();
+  const depthAxis = norm(CAMERA_DIR);
+  const HALF = 0.46;
+  const rects = boxes.map((b) => {
+    let x0 = Infinity;
+    let x1 = -Infinity;
+    let y0 = Infinity;
+    let y1 = -Infinity;
+    for (const dx of [-HALF, HALF]) for (const dz of [-HALF, HALF]) for (const y of [b.y0, b.y0 + b.h]) {
+      const p = [b.x + dx, y, b.z + dz];
+      x0 = Math.min(x0, dot(p, ax.x));
+      x1 = Math.max(x1, dot(p, ax.x));
+      y0 = Math.min(y0, dot(p, ax.y));
+      y1 = Math.max(y1, dot(p, ax.y));
+    }
+    return { x0, x1, y0, y1, depth: dot([b.x, b.y0 + b.h / 2, b.z], depthAxis) };
+  });
+  return rects.map((a, i) => {
+    const area = (a.x1 - a.x0) * (a.y1 - a.y0);
+    let sum = 0;
+    rects.forEach((b, j) => {
+      if (j === i || b.depth >= a.depth) return;
+      const w = Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0);
+      const h = Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0);
+      if (w <= 0 || h <= 0) return;
+      sum += (brightness[j] ?? 0) * Math.min(1, (w * h) / area);
+    });
+    return sum;
+  });
+}

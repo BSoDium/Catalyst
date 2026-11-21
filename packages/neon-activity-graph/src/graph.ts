@@ -6,7 +6,7 @@ import { createNeon } from "./neon";
 import { renderSize } from "./size";
 import { createHoverHum } from "./hover-hum";
 import type { ContentBounds, GraphData, GraphOptions, LayerColors, Startup, Tones } from "./types";
-import { CAMERA_DIR, glassShades, roomFor, shiftsFromLayers, slabFor } from "./view";
+import { CAMERA_DIR, glassShades, lightBehind, roomFor, shiftsFromLayers, slabFor } from "./view";
 
 /** How much of the light behind a block of glass the glass takes (the whole of it covering), and the least that is let through however many there are in front. */
 const GLASS_ABSORB = 0.45;
@@ -213,7 +213,9 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       /** (dark) how much glow the green glass has of its own, against 0.6 of the blue's: a slight tint (0 is a clear glass). Pure green, never whitened: a whitened glow is a grey one. */
       const DARK_GREEN_GLOW = 0.2;
       /** (dark) how much of the light the neighbours give out the glass of a block glows with: inside a group of lamps no glass is dark, and an isolated block's is. */
-      const NEIGHBOUR_GLOW = 0.16;
+      const NEIGHBOUR_GLOW = 0.22;
+      /** How much light behind a block it takes to light its glass most of the way (the share is `1 - e^-(light behind / this)`). */
+      const BEHIND_SCALE = 1.6;
       const DARK_GLASS_ROUGHNESS = 0.04;
       const OFF_EMISSIVE = 0.0012;
       const OFF_ENV = 0.004;
@@ -551,6 +553,21 @@ void main() {
         // (dark) the light of a rod that has glass in front of it, nearer the camera, is dimmed by that glass: a clump of bright blocks one in front of the other does not add up to one overexposed blob (the camera never moves, so it is known beforehand)
         const shades = dark ? glassShades(specs.map((q) => ({ x: q.x, z: q.z, y0: q.y0, h: q.h })), GLASS_ABSORB, GLASS_FLOOR) : [];
         const shadeOf = new Map(specs.map((q, k) => [q, shades[k] ?? 1] as const));
+        // (dark) the glass is lit by what is behind it, as the camera sees it: lamps behind (their brightness, as much as they are covered by this block's outline) light it, a dark background does not; the share saturates (`1 - e^-x`) so that a stack
+        // of bright blocks does not add up to one blob, and a block whose own rod is bright needs none
+        const glowOf = new Map<(typeof specs)[number], number>();
+        if (dark) {
+          const bright = specs.map((q) => {
+            const lv = emit(q.t) * (1 + 1.1 * q.t);
+            const r = customOn() ? q.hue.clone().multiplyScalar(lv * 0.55) : rodLight(q.src, q.hue, q.t, lv);
+            return Math.max(r.r, r.g, r.b);
+          });
+          const behind = lightBehind(specs.map((q) => ({ x: q.x, z: q.z, y0: q.y0, h: q.h })), bright);
+          specs.forEach((q, k) => {
+            const own = Math.min(1, Math.max(0, (bright[k]! - 0.5) / 1.5));
+            glowOf.set(q, (1 - Math.exp(-(behind[k] ?? 0) / BEHIND_SCALE)) * (1 - own * own * (3 - 2 * own)));
+          });
+        }
         for (const sp of specs) {
           const { src, x, z, y0, h, t, hue: hue0 } = sp;
           // (`hue` is the glass's: `rodColor` lets a white glass be tainted by the lights around it; the rod in the middle (`hue0`) is always the light's own colour)
@@ -589,11 +606,8 @@ void main() {
           // dark: the glass is nearly clear (the light of its core shows through it); light: tinted by the level
           paint(shell, (dark ? new THREE.Color(0xffffff) : hue.clone().lerp(new THREE.Color(0xffffff), 0.12)).add(inc.clone().multiplyScalar(dark && customOn() ? 0.35 : 0.08)), 0, dark);
           shell.setAttribute("aBlock", new THREE.BufferAttribute(new Float32Array(shell.getAttribute("position").count).fill(blockIndex), 1));
-          // (the light of the neighbours, for the glass to glow with: see `NEIGHBOUR_GLOW`; only inside a dense group of lit blocks, where light comes from all round: a block at the edge of the picture, with light on one side only, has none, or its glass would look opaque and washed out)
-          const nbShare = (() => {
-            const x = Math.min(1, Math.max(0, (incLum - 0.3) / 0.5));
-            return x * x * (3 - 2 * x);
-          })();
+          // (the light of the neighbours, for the glass to glow with: see `NEIGHBOUR_GLOW`; only where there are lamps BEHIND the glass as the camera sees it, and none against a dark background, or the glass would look opaque and washed out)
+          const nbShare = glowOf.get(sp) ?? 0;
           shell.setAttribute("aInc", new THREE.BufferAttribute(Float32Array.from({ length: shell.getAttribute("position").count * 3 }, (_, k) => [inc.r, inc.g, inc.b][k % 3]! * nbShare), 3));
           // the glass of a busy day glows on its own surface too (dark theme): three steps of emission per source, each its own material
           const tier = tEff < 0.34 ? 0 : tEff < 0.67 ? 1 : 2;
@@ -665,7 +679,7 @@ void main() {
                 .replace("#include <begin_vertex>", "#include <begin_vertex>\n  vec2 lv = texelFetch(uLevels, ivec2(int(aBlock + 0.5), 0), 0).rg;\n  float own = max(lv.r, 0.3 * lv.g);\n  vOn = clamp(own, 0.0, 1.0);\n  vLevelEm = max(own, uFloorEm);\n  vLevelEnv = max(own, uFloorEnv);\n  vInc = aInc * lv.g;");
               shader.fragmentShader = shader.fragmentShader
                 .replace("#include <common>", "#include <common>\nvarying float vLevelEm;\nvarying float vLevelEnv;\nvarying float vOn;\nvarying vec3 vInc;")
-                .replace("#include <emissivemap_fragment>", "#include <emissivemap_fragment>\n  // (right off, the glass glows the same cool grey whatever its source; as soon as there is a light in it, its own colour, darker the dimmer the light: a dimmed block is a tinted, darker one, not a grey one)\n  float offGrey = 1.0 - smoothstep(0.0, 0.35, vOn);\n  totalEmissiveRadiance = mix(totalEmissiveRadiance, vec3(dot(totalEmissiveRadiance, vec3(0.333))) * vec3(0.85, 0.95, 1.15), offGrey) * mix(pow(vLevelEm, 2.0), vLevelEm, offGrey);\n  totalEmissiveRadiance += vInc * " + NEIGHBOUR_GLOW.toFixed(3) + ";")
+                .replace("#include <emissivemap_fragment>", "#include <emissivemap_fragment>\n  // (right off, the glass glows the same cool grey whatever its source; as soon as there is a light in it, its own colour, darker the dimmer the light: a dimmed block is a tinted, darker one, not a grey one)\n  float offGrey = 1.0 - smoothstep(0.0, 0.35, vOn);\n  totalEmissiveRadiance = mix(totalEmissiveRadiance, vec3(dot(totalEmissiveRadiance, vec3(0.333))) * vec3(0.85, 0.95, 1.15), offGrey) * mix(pow(vLevelEm, 2.0), vLevelEm, offGrey);\n  totalEmissiveRadiance += min(vInc * " + NEIGHBOUR_GLOW.toFixed(3) + ", vec3(0.1));")
                 .replace("#include <lights_fragment_maps>", "#include <lights_fragment_maps>\n#if defined( RE_IndirectSpecular )\n  radiance *= vLevelEnv;\n#ifdef USE_CLEARCOAT\n  clearcoatRadiance *= vLevelEnv;\n#endif\n#endif\n#if defined( RE_IndirectDiffuse )\n  iblIrradiance *= vLevelEnv;\n#endif");
             };
             mat.customProgramCacheKey = () => "glass-levels";
