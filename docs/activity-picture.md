@@ -31,7 +31,7 @@ Measured so far (dev build, Apple M4): an update of the neon costs about 0.05 ms
 
 ## Camera grain
 
-A fine, fixed noise over the whole picture, in both themes, added in the last (show) pass after the lighting (`GRAIN` in `activity-scene.tsx`, 0.018 by default; `?grain=0.02` sets it from the address, `?grain=0` turns it off, to find what suits a screen). It is meant to read as a camera's, not as rendering noise: soft (the sum of three uniform numbers), the same for every colour, growing with the light (the square root of the brightness, as a sensor's does), eased off in the highlights so that a bright surface does not burn, none in the near-blacks (in 8 bits a tiny noise there only flips pixels between two levels, a speckle), brightness only: it scales the colour by a few per cent (hue kept), never adds a dark speck, and has no colour noise. Static (the picture is drawn once, not every frame).
+A fine, fixed noise over the whole picture, in both themes, added in the last (show) pass after the lighting (`GRAIN` in `activity-scene.tsx`, 0.012 by default; `?grain=0.02` sets it from the address, `?grain=0` turns it off, to find what suits a screen). It is meant to read as a camera's, not as rendering noise: soft (the sum of three uniform numbers), the same for every colour, growing with the light (the square root of the brightness, as a sensor's does), eased off in the highlights so that a bright surface does not burn, none in the near-blacks (in 8 bits a tiny noise there only flips pixels between two levels, a speckle), brightness only: it scales the colour by a few per cent (hue kept), never adds a dark speck, and has no colour noise. Static (the picture is drawn once, not every frame).
 
 ## Layout (software page)
 
