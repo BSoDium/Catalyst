@@ -106,3 +106,7 @@ Three.js lets a glass see only what is drawn opaque, and the ground's shade, cau
 Switching to the dark theme from the light one waits for the baked light, then builds the blocks once: built without it they had no neon to start up, so they were drawn lit, then built again, off, and flickered on.
 
 A change of theme hides the old picture at once (no fade: the rebuild blocks the page, so a fade would only start after it, with the old, light picture on a dark page for its first frames); the new one fades in when it is ready.
+
+## Dark theme: the glass sees the ground's glow
+
+The glow on the ground is an additive transparent layer, and three.js's transmission pass only draws opaque objects, so the glass saw bare black ground (dark strips beside a lit floor). `groundLayers` adds an opaque plane (`DARK_BACKDROP`) drawn only into that pass (same `uBackdrop` switch as the light theme's baked backdrop): the dark ground plus the very texture the glow is drawn from (`DARK_BACKDROP_GAIN` scales it). Hover and the start-up update that texture in place, so the glass sees the live light and nothing is baked.

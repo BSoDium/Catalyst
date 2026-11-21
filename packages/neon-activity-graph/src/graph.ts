@@ -219,6 +219,9 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       const LIGHT_DOUBLE_SIDED = false;
       /** (light theme) the ground, baked, as what the glass sees behind it (see `groundLayers`): false to compare. */
       const LIGHT_BACKDROP = true;
+      // (dark theme: the glass sees the ground's glow, see groundLayers) and how much of it
+      const DARK_BACKDROP = true;
+      const DARK_BACKDROP_GAIN = 1;
       /** (light theme) how much of the colour of the blocks behind a block (as the camera sees it) its glass takes, when they cover all of its outline. */
       const LIGHT_BEHIND_TINT = 0.85;
       const coreMaterial = new THREE.MeshBasicMaterial({ vertexColors: true });
@@ -595,6 +598,34 @@ void main() {
           layers.add(proxy);
           disposers.push(() => {
             bake.dispose();
+            proxyMat.dispose();
+            proxy.geometry.dispose();
+          });
+        }
+        if (dark && DARK_BACKDROP) {
+          // (dark theme) The same gap: the glow on the ground is an additive transparent layer, so the glass would see the bare dark ground behind it (black strips next to a lit floor). An opaque plane drawn ONLY into what the glass sees shows the dark ground plus the
+          // very texture the glow is drawn from, which hover and the start-up update in place: the glass sees the live light, the picture itself is unchanged.
+          const uBackdrop = { value: 0 };
+          const page = pageColour();
+          const proxyMat = new THREE.MeshBasicMaterial({ map: ground.texture, toneMapped: false });
+          proxyMat.onBeforeCompile = (shader) => {
+            shader.uniforms.uBackdrop = uBackdrop;
+            shader.uniforms.uPage = { value: page };
+            shader.fragmentShader = shader.fragmentShader
+              .replace("#include <common>", "#include <common>\nuniform float uBackdrop;\nuniform vec3 uPage;")
+              .replace("void main() {", "void main() {\n  if (uBackdrop < 0.5) discard;")
+              .replace("#include <opaque_fragment>", `outgoingLight = uPage + outgoingLight * ${DARK_BACKDROP_GAIN.toFixed(3)};\n#include <opaque_fragment>`);
+          };
+          proxyMat.customProgramCacheKey = () => "ground-backdrop-dark";
+          const proxy = new THREE.Mesh(new THREE.PlaneGeometry(cw / PX, ch / PX), proxyMat);
+          proxy.rotation.x = -Math.PI / 2;
+          proxy.position.set(width / 2, 0.01, total / 2);
+          proxy.onBeforeRender = (r) => {
+            uBackdrop.value = r.getRenderTarget() === sceneRT ? 0 : 1;
+          };
+          proxy.frustumCulled = false;
+          layers.add(proxy);
+          disposers.push(() => {
             proxyMat.dispose();
             proxy.geometry.dispose();
           });
