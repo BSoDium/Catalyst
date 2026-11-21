@@ -1041,14 +1041,16 @@ void main(){
         if (!humOk || !(opts.sound ?? true)) return hum.set(0);
         let lvl = 0;
         let pan = 0;
+        let cellOf = 0;
         for (let i = 0; i < focus.length; i++) {
           const v = (focus[i]! - 1) / (FOCUS_ON - 1);
           if (v > lvl) {
             lvl = v;
             pan = neonBlocks[i]!.pan;
+            cellOf = neonBlocks[i]!.cell;
           }
         }
-        hum.set(lvl, pan);
+        hum.set(lvl, pan, cellOf);
       };
       const stepFocus = () => {
         focusRaf = 0;
