@@ -229,12 +229,12 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
       // `?xmas`, an Easter egg (a demo, not on by default): every rod is one of a string of lights, in the warm colours of a tree's (red, green, gold, blue, pink; saturated), the same for a day each time. The colour is the day's and its
       // brightness is the activity, as ever; the glass is left clear so that the rod's colour is what is seen, and the baked light on the ground takes the rod's colour like any other.
       const xmas = new URLSearchParams(window.location.search).has("xmas");
-      const XMAS = ["#ff0a0a", "#00e03c", "#fff0d8", "#ffa600", "#fff0d8", "#1a3cff", "#ff0a0a", "#00e03c"].map((c) => new THREE.Color(c));
+      const XMAS = ["#ff0a0a", "#00e03c", "#f4f7ff", "#ffa600", "#f4f7ff", "#1a3cff", "#ff0a0a", "#00e03c"].map((c) => new THREE.Color(c));
       const xmasHue = (cell: number, src: "waka" | "github", t: number) => {
         const h = Math.imul(cell + 1, 2654435761) ^ Math.imul(src === "waka" ? 97 : 13, 40503);
         const pick = ((h >>> 7) % XMAS.length + XMAS.length) % XMAS.length;
         // (the warm whites have almost no chroma, so the final pass reads them as grey glass and dims them: they are given the light to come out as bright as the colours)
-        return XMAS[pick]!.clone().multiplyScalar((0.3 + 0.7 * t) * (pick === 2 || pick === 4 ? 2 : 1));
+        return XMAS[pick]!.clone().multiplyScalar((0.3 + 0.7 * t) * (pick === 2 || pick === 4 ? 2.5 : 1));
       };
       const groundLayers = (stack: { waka: Matrix; github: Matrix }, tones: { waka: [Color, Color]; github: [Color, Color] }, dark: boolean) => {
         const cw = Math.ceil((width + GLOW_PAD * 2) * PX);
