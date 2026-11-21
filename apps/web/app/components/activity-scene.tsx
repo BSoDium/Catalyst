@@ -742,18 +742,18 @@ void main(){
   gl_FragColor = c;
 #include <colorspace_fragment>
   // Camera grain: a fine, fixed noise over the whole picture, added after the lighting (on what is shown, not in it). It is meant to read as the noise of a good camera, not as rendering noise: soft (the sum of three
-  // uniform numbers, so close to a gaussian and not the harsh specks of a single one), the same for every colour of the picture (it is not gated by brightness: a coloured block gets as much as a grey one), growing with the light (as a sensor's does: the dark glows stay clean) and easing off in the highlights (so that a bright surface does not burn), and a little colour in it (a tenth, as a sensor's has).
+  // uniform numbers, so close to a gaussian and not the harsh specks of a single one), the same for every colour of the picture (it is not gated by brightness: a coloured block gets as much as a grey one), growing with the light (as a sensor's does: the dark glows stay clean) and easing off in the highlights (so that a bright surface does not burn); brightness only, no colour noise.
   if (grain > 0.) {
     vec3 q = fract(vec3(gl_FragCoord.xyx) * vec3(.1031, .1030, .0973));
     q += dot(q, q.yzx + 33.33);
     vec3 h = fract((q.xxy + q.yzz) * q.zyx);
     float g = (h.x + h.y + h.z - 1.5) * 0.7;
-    vec3 chroma = (h - 0.5) * 0.35;
     float lum = dot(gl_FragColor.rgb, vec3(0.2126, 0.7152, 0.0722));
     // (the noise of a sensor grows with the light it gets, as its square root: the dark glows stay clean, the lit surfaces carry the grain)
     // (and none at all in the near-blacks: in an 8-bit picture a tiny noise there only flips single pixels between two levels, which is a speckle, not a grain)
     float tone = sqrt(clamp(lum, 0., 1.)) * smoothstep(0.08, 0.3, lum) * (1. - smoothstep(0.7, 1.0, lum) * 0.8);
-    gl_FragColor.rgb += (g + chroma * 0.1) * grain * tone * gl_FragColor.a;
+    // (a soft rise or loss of brightness, a few per cent, never a dark speck: the colour is scaled, its hue kept, and there is no colour noise)
+    gl_FragColor.rgb *= 1. + g * grain * 5. * tone;
   }
 }`,
         depthTest: false,
