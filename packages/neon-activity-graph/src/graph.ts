@@ -1,5 +1,6 @@
 import type { BufferGeometry, Color, Mesh } from "three";
 import { createGroundLight, loadCausticTemplates, type CausticTemplates, type GlassLight } from "./ground-light";
+import { clampTone, sameColor } from "./color";
 import { layoutGraph, type Matrix } from "./layout";
 import { createNeon } from "./neon";
 import { renderSize } from "./size";
@@ -430,13 +431,20 @@ void main() {
       let tallest = 1;
       // (whether a layer has the package's own colours: the rods' lift toward white is tuned to them; other colours get a generic one)
       const stock = { top: true, bottom: true };
-      const WHITE = new THREE.Color(1, 1, 1);
       /** The rod's light, as a (dark theme) colour, for a day at busyness `t`, scaled by `level`. */
-      const rodLight = (src: "top" | "bottom", hue: Color, t: number, level: number): Color => {
-        if (!stock[src]) return hue.clone().multiplyScalar(level * 0.5).add(hue.clone().lerp(WHITE, 0.7).multiplyScalar(level * (0.38 + 0.98 * t) * 0.9));
-        return src === "bottom"
+      const lum = (c: Color) => 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
+      const stockRod = (src: "top" | "bottom", hue: Color, t: number, level: number): Color =>
+        src === "bottom"
           ? hue.clone().multiplyScalar(level * 0.5).add(new THREE.Color(0.4, 0.56, 0.6).multiplyScalar(level * (0.38 + 0.98 * t)))
           : hue.clone().multiplyScalar(level * 1.25).add(new THREE.Color(0.22, 0.4, 0.24).multiplyScalar(level * (0.15 + 0.7 * t)));
+      const rodLight = (src: "top" | "bottom", hue: Color, t: number, level: number): Color => {
+        if (stock[src]) return stockRod(src, hue, t, level);
+        // Any other colour keeps its hue (it is not lifted toward white, as the stock rods are), and is given the brightness of the stock rod on the same day: the same luminance, and never a brighter brightest channel
+        // (a pale blue or a bright red would otherwise come out far brighter than the tuned defaults: a light colour has more luminance, a red needs a big red channel to match a green's).
+        const [dl, dh] = DEFAULT_COLORS[src].dark;
+        const ref = stockRod(src, new THREE.Color(dl).lerp(new THREE.Color(dh), t), t, level);
+        const k = Math.min(lum(ref) / Math.max(lum(hue), 1e-3), Math.max(ref.r, ref.g, ref.b) / Math.max(hue.r, hue.g, hue.b, 1e-3));
+        return hue.clone().multiplyScalar(k);
       };
       let bounds: ContentBounds | null = null;
       api.bounds = () => bounds;
@@ -640,7 +648,12 @@ void main() {
         const pair = (layer: "top" | "bottom"): [Color, Color] => {
           const [low, high] = colorOf(layer, dark);
           const [dl, dh] = DEFAULT_COLORS[layer][dark ? "dark" : "light"];
-          stock[layer] = new THREE.Color(low).equals(new THREE.Color(dl)) && new THREE.Color(high).equals(new THREE.Color(dh));
+          stock[layer] = sameColor(low, dl) && sameColor(high, dh);
+          // (any other colour is brought into the range where the rods, the glass and the ground light look right: see `clampTone`)
+          if (!stock[layer]) {
+            const [lo, hi] = clampTone(high);
+            return [new THREE.Color(lo), new THREE.Color(hi)];
+          }
           return [new THREE.Color(low), new THREE.Color(high)];
         };
         blocks.add(build({ bottom: layout.bottom, top: layout.top }, { bottom: pair("bottom"), top: pair("top") }, dark));
