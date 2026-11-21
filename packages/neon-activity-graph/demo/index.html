@@ -152,7 +152,7 @@
       <div id="stage">
         <div class="caption" id="caption">
           <h1 id="title" aria-label="Neon activity graph"><span aria-hidden="true"><span class="rb">N</span>eon activity graph</span><span class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Neon activity graph</span></h1>
-          <p class="about">A <span class="hl">year</span> of activity drawn as <span class="hl">glass blocks</span> lit like neon tubes. A <span class="lib">three.js</span> component with a <span class="hl">React</span> wrapper, in a light and a dark theme.<span class="for">Check out the <a href="https://v2.bsodium.fr/software">software page</a> of <a href="https://v2.bsodium.fr/">BSoDium’s</a> Catalyst.</span><span class="pick">Theme <span class="segs" role="group" aria-label="Theme"><button type="button" class="theme" data-theme="system" aria-pressed="true">system</button><button type="button" class="theme" data-theme="light" aria-pressed="false">light</button><button type="button" class="theme" data-theme="dark" aria-pressed="false">dark</button></span></span></p>
+          <p class="about">A <span class="hl">year</span> of activity drawn as <span class="hl">glass blocks</span>: lit like neon tubes in the dark theme, and in the light theme the same glass with the tubes switched off, lit by the sun. A <span class="lib">three.js</span> component with a <span class="hl">React</span> wrapper.<span class="for">Check out the <a href="https://v2.bsodium.fr/software">software page</a> of <a href="https://v2.bsodium.fr/">BSoDium’s</a> Catalyst.</span><span class="pick">Theme <span class="segs" role="group" aria-label="Theme"><button type="button" class="theme" data-theme="system" aria-pressed="true">system</button><button type="button" class="theme" data-theme="light" aria-pressed="false">light</button><button type="button" class="theme" data-theme="dark" aria-pressed="false">dark</button></span></span></p>
                     <div class="legend"><span class="g"><i></i><b>GitHub contributions</b></span><span class="b"><i></i><b>WakaTime coding time</b></span></div>
         </div>
         <div id="graph"></div>
@@ -163,8 +163,8 @@
         <h2 id="how-title">How it works</h2>
         <ul>
           <li><b>Data.</b> Two daily series from any source, one number a day each: here GitHub contributions on top, WakaTime coding time below.</li>
-          <li><b>Rendering.</b> Glass blocks refract the ground. In the dark theme each block holds a neon-tube rod that lights the glass and the ground; in the light theme the sun's caustics through the glass are traced on the GPU.</li>
-          <li><b>Start-up.</b> In the dark theme the tubes flicker on like a gas sign, with a synthesised hum. Skipped for reduced motion.</li>
+          <li><b>Rendering.</b> Glass blocks refract the ground. In the dark theme each block holds a neon-tube rod that lights the glass and the ground; in the light theme the tubes are off and the glass is lit by the sun, whose coloured shadows and caustics through it are traced on the GPU.</li>
+          <li><b>Start-up.</b> In the dark theme the tubes flicker on like a gas sign, with a synthesised hum, and a bell rings when the colours change. The light theme is silent. Skipped for reduced motion.</li>
           <li><b>Cost.</b> Drawn progressively once, then idle. A <code>lite</code> mode for weak devices. About 33 KB gzipped (plus 42 KB of baked light, dark theme only); three.js is yours.</li>
         </ul>
         <div class="npm"><code>npm i neon-activity-graph</code><button type="button" id="copy" disabled>coming soon</button></div>

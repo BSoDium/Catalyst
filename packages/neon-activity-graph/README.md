@@ -2,7 +2,7 @@
 
 [![npm](https://img.shields.io/npm/v/neon-activity-graph)](https://www.npmjs.com/package/neon-activity-graph) [![ci](https://github.com/BSoDium/Neon-activity-graph/actions/workflows/ci.yml/badge.svg)](https://github.com/BSoDium/Neon-activity-graph/actions/workflows/ci.yml) [![license](https://img.shields.io/npm/l/neon-activity-graph)](LICENSE)
 
-A 3D activity graph in three.js: one glass block a day, two layers stacked in a column (say GitHub contributions on top of coding time), lit like a neon sign. In the dark theme the blocks' rods flicker on like gas tubes, with a synthesised hum; in the light theme the sun shines through the glass and casts coloured shadows and caustics. The camera never moves, so the picture is rendered progressively (soft shadows and anti-aliasing accumulated over a few dozen frames) and then the GPU goes idle.
+A 3D activity graph in three.js: one glass block a day, two layers stacked in a column (say GitHub contributions on top of coding time), lit like a neon sign **in the dark theme**: each block holds a rod that flickers on like a gas tube, with a synthesised hum. **In the light theme the tubes are switched off**: the blocks are plain tinted glass, lit by the sun, which casts coloured shadows and caustics, and there is no sound. The camera never moves, so the picture is rendered progressively (soft shadows and anti-aliasing accumulated over a few dozen frames) and then the GPU goes idle.
 
 It draws the graph only: no panel, no figures, no legend. Hover and keyboard events are handed to you as data (`onHover`) so the card is yours.
 
@@ -99,7 +99,7 @@ The graph shows the last `weeks` weeks (53 by default) ending at the latest day 
 
 The blocks' bounds are also known before anything is drawn: `predictBounds(weeks, strips, width, height)` (in `neon-activity-graph/layout`) is what the container's `--nag-content-*` variables are set from at creation, so a caption lined up with the picture is placed at the first paint and does not move when the scene arrives; the scene's own measurement replaces it a moment later (a few pixels at most).
 
-`graph.cling("small" | "big")` plays one of the start-up's bell-like clicks on demand (the demo uses it when the colours change): same synthesised bell, quiet, honours `sound`, and silent where the browser does not allow sound yet (call it from a click or key handler).
+`graph.cling("small" | "big")` plays one of the start-up's bell-like clicks on demand (the demo uses it when the colours change): same synthesised bell, quiet, honours `sound`, silent in the light theme (the tubes are off) and where the browser does not allow sound yet (call it from a click or key handler).
 
 A flat place-holder that shares the scene's camera (so the scene replaces it in place) can be drawn without loading three.js: `import { placeholderTiles } from "neon-activity-graph/layout"` gives an SVG `viewBox` and one path of all the squares.
 

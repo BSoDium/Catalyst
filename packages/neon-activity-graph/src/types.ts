@@ -140,7 +140,7 @@ export interface ActivityGraph {
   readonly bounds: ContentBounds | null;
   /** Draws other data (the graph is rebuilt). */
   update(data: GraphData): void;
-  /** One of the start-up's bell-like clicks on demand (`"big"`: a deeper bell with a high one over it), for a change the visitor made; honours the `sound` option, and stays silent where the browser does not allow sound (call it from a click or key handler). */
+  /** One of the start-up's bell-like clicks on demand (`"big"`: a deeper bell with a high one over it), for a change the visitor made; honours the `sound` option, and stays silent in the light theme (the neon tubes are off there) and where the browser does not allow sound (call it from a click or key handler). */
   cling(size?: "small" | "big"): void;
   /** Changes the colours of one or both layers (see `colors`): the blocks are rebuilt once the changes settle (about 120 ms after the last call), without the start-up and without refetching; the old picture stays, softened, until the new one is in focus. */
   setColors(colors: { top?: Partial<LayerColors>; bottom?: Partial<LayerColors> }): void;

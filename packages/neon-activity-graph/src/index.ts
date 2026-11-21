@@ -79,7 +79,8 @@ export function createActivityGraph(container: HTMLElement, options: GraphOption
       handle = start();
     },
     cling(size) {
-      if (!destroyed && options.sound !== false) cling(size);
+      // (the bells belong to the neon: in the light theme the tubes are off, so there is nothing to ring)
+      if (!destroyed && options.sound !== false && (state.theme === "auto" ? typeof matchMedia !== "undefined" && matchMedia("(prefers-color-scheme: dark)").matches : state.theme === "dark")) cling(size);
     },
     setColors(colors) {
       if (destroyed) return;
