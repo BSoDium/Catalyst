@@ -132,9 +132,16 @@ export function createNeon({ blocks, apply, done, sound, fps = NEON_FPS, wobbleF
   let raf = 0;
   let t0 = 0;
   let last = -1;
+  let dirty = false;
   let running = false;
 
   // --- the sound ---
+  // In step with the picture: a light changed at time P (the picture's clock) is on the screen about a frame and a half later (the next frame is drawn, then shown), and a sound scheduled for the audio clock's time T is heard
+  // `outputLatency` later (the speakers, the Bluetooth link). So a sound for P is scheduled at P + the frame's delay - the output latency, on the audio clock (the two clocks are tied at the moment of scheduling).
+  const FRAME_LAG = 25;
+  const audioTime = (c: AudioContext, perfStart: number) => c.currentTime - (performance.now() - perfStart) / 1000 + FRAME_LAG / 1000 - (c.outputLatency || c.baseLatency || 0);
+  // (a browser that has not let the page make sound yet leaves the context suspended for ever: then nothing waits for it)
+  const mayWait = () => (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation?.hasBeenActive !== false;
   let ctx: AudioContext | null = null;
   let closeTimer = 0;
   const closeSound = () => {
@@ -149,23 +156,25 @@ export function createNeon({ blocks, apply, done, sound, fps = NEON_FPS, wobbleF
   const onVisibility = () => {
     if (document.hidden) closeSound();
   };
-  const schedule = async () => {
-    if (!sound || typeof AudioContext === "undefined" || document.hidden) return;
+  // The context, ready before the start-up's clock starts (so that no sound of the first moments is late): null when there is to be no sound, or the browser does not let the page make one yet.
+  const prepare = async (): Promise<AudioContext | null> => {
+    if (!sound || typeof AudioContext === "undefined" || document.hidden || !mayWait()) return null;
     let c: AudioContext;
     try {
       c = new AudioContext();
       await Promise.race([c.resume(), new Promise((r) => setTimeout(r, 300))]);
     } catch {
-      return;
+      return null;
     }
-    if (c.state !== "running" || !running || document.hidden) {
-      // (not allowed to make sound yet, or the start-up is over already, or the tab went out of view: silent, and the context is let go)
+    if (c.state !== "running" || document.hidden) {
       c.close().catch(() => {});
-      return;
+      return null;
     }
+    return c;
+  };
+  const schedule = (c: AudioContext) => {
     ctx = c;
-    // (the sound's clock starts a little after the picture's: the difference is taken off)
-    const now = c.currentTime + 0.05 - (performance.now() - t0) / 1000;
+    const now = audioTime(c, t0);
     const master = c.createGain();
     master.gain.value = 0.5;
     const limiter = c.createDynamicsCompressor();
@@ -194,7 +203,6 @@ export function createNeon({ blocks, apply, done, sound, fps = NEON_FPS, wobbleF
     hum.start(Math.max(now, c.currentTime));
     const stopAt = settled + FADE * 1.6;
     hum.stop(stopAt);
-    let clicks = 0;
     const members = new Map<number, number[]>();
     plans.forEach((p, i) => (members.get(p.area) ?? members.set(p.area, []).get(p.area)!).push(i));
     // The tick of a tube lighting: not a crackle but a tiny bell, a very high, short, quiet ding; the pitch is a little different each time.
@@ -206,12 +214,12 @@ export function createNeon({ blocks, apply, done, sound, fps = NEON_FPS, wobbleF
       const hz = band < 0.25 ? 800 + random() * 700 : band < 0.7 ? 2300 + random() * 1500 : 4200 + random() * 2600;
       return { quiet: r >= 0.85, hz, gain: 0.45 + random() * 0.95 };
     });
+    // (the clicks are first collected, then thinned out evenly over the whole start-up if there are more than 40: a cap met in the order they are made would silence the last areas, and the sound would end before the last flicker)
+    const heard: { at: number; pan: number; level: number; tube: number }[] = [];
     const click = (at: number, pan: number, level: number, tube: number) => {
       const voice = voices[tube];
-      if (!voice || voice.quiet || clicks >= 40) return;
-      clicks++;
-      const when = Math.max(now + at / 1000, c.currentTime);
-      bell(c, master, when, voice.hz * (0.93 + random() * 0.14), pan, level * voice.gain * (0.6 + random() * 0.6));
+      // (at the tube's own moment: its picture is a few ms off the others', and its sound goes with it)
+      if (voice && !voice.quiet) heard.push({ at: at + (plans.get(tube)?.shift ?? 0), pan, level, tube });
     };
     // (a few clicks for each stutter of an area, from some of its tubes, a few milliseconds apart: the tubes switching on, and off again)
     areaPlans.forEach((plan, area) => {
@@ -221,10 +229,23 @@ export function createNeon({ blocks, apply, done, sound, fps = NEON_FPS, wobbleF
         const n = 1 + Math.floor(random() * 3);
         for (let k = 0; k < n; k++) {
           const i = own[Math.floor(random() * own.length)]!;
-          click(st.at + random() * 60, blocks[i]!.pan, st.level, i);
-          if (random() < 0.6) click(st.at + st.length + random() * 40, blocks[i]!.pan, st.level * 0.35, i);
+          click(st.at, blocks[i]!.pan, st.level, i);
+          if (random() < 0.6) click(st.at + st.length, blocks[i]!.pan, st.level * 0.35, i);
         }
       });
+      // (the last light of the area, when it comes on for good: a few of its tubes say so, the stronger ones, at the moment the picture does it)
+      const settle = 2 + Math.floor(random() * 3);
+      for (let k = 0; k < settle; k++) {
+        const i = own[Math.floor(random() * own.length)]!;
+        click(plan.steady, blocks[i]!.pan, 0.85, i);
+      }
+    });
+    const keep = Math.min(1, 40 / Math.max(1, heard.length));
+    heard.forEach((h) => {
+      if (random() > keep) return;
+      const voice = voices[h.tube]!;
+      const when = Math.max(now + h.at / 1000, c.currentTime);
+      bell(c, master, when, voice.hz * (0.93 + random() * 0.14), h.pan, h.level * voice.gain * (0.6 + random() * 0.6));
     });
     closeTimer = window.setTimeout(closeSound, (stopAt - c.currentTime) * 1000 + 500);
   };
@@ -302,26 +323,30 @@ export function createNeon({ blocks, apply, done, sound, fps = NEON_FPS, wobbleF
     idleCtx = null;
     if (c && c.state !== "closed") c.close().catch(() => {});
   };
-  const idleSound = async (edges: { at: number; on: boolean; level: number }[], pan: number) => {
-    if (!sound || typeof AudioContext === "undefined") return;
+  // (the context first, and the flicker's picture only starts when it is ready, so that the first sound is not late; null: silent, and the picture does not wait)
+  const idleContext = async (): Promise<AudioContext | null> => {
+    if (!sound || typeof AudioContext === "undefined" || !mayWait()) return null;
     let c: AudioContext;
     try {
       c = new AudioContext();
       await Promise.race([c.resume(), new Promise((r) => setTimeout(r, 300))]);
     } catch {
-      return;
+      return null;
     }
-    // (not allowed to make sound yet: silent, and the picture does not wait for it)
+    // (not allowed to make sound yet)
     if (c.state !== "running" || !idleOn) {
       c.close().catch(() => {});
-      return;
+      return null;
     }
+    return c;
+  };
+  const idleSound = (c: AudioContext, edges: { at: number; on: boolean; level: number }[], pan: number, perfStart: number) => {
     idleCtx = c;
     const master = c.createGain();
     master.gain.value = 0.5;
     master.connect(c.createDynamicsCompressor()).connect(c.destination);
     // (every time the tube goes out, a lower bell; every time it lights, a higher one)
-    const base = c.currentTime + 0.03;
+    const base = audioTime(c, perfStart);
     // (one pitch for going out and one for lighting, the same each time it happens in this flicker: it is the one tube, going out and on again)
     const outHz = 650 + idleRandom() * 450;
     const onHz = 2400 + idleRandom() * 1000;
@@ -362,28 +387,35 @@ export function createNeon({ blocks, apply, done, sound, fps = NEON_FPS, wobbleF
     const onAt = at;
     // (each a few ms off the others, the farther from the first the later: the failure runs along the segment)
     const shift = ranked.map((o) => o.d * 12 + idleRandom() * 30);
-    const t0 = performance.now();
     const total = onAt + 40 + 40;
     // (one sound for each change: out, then each stutter lights and goes out, then the last light; the stutters a little fainter)
     const edges = [{ at: 0, on: false, level: 1 }];
     glows.forEach(([a, b, v]) => edges.push({ at: a, on: true, level: 0.5 * v + 0.2 }, { at: b, on: false, level: 0.6 }));
     edges.push({ at: onAt, on: true, level: 0.8 });
-    void idleSound(edges, blocks[first]!.pan);
+    const play = async () => {
+    const c = await idleContext();
+    if (!idleOn) {
+      c?.close().catch(() => {});
+      return;
+    }
+    const t0 = performance.now();
+    if (c) idleSound(c, edges, blocks[first]!.pan, t0);
     let last = -1;
     const step = (stamp: number) => {
       idleRaf = 0;
       if (!idleOn) return;
       const ms = stamp - t0;
-      if (last < 0 || stamp - last >= 1000 / fps) {
-        last = stamp;
-        batch.forEach((i, k) => {
-          const m = ms - shift[k]!;
-          let v = 1;
-          if (m >= 0 && m < onAt) v = glows.find(([a, b]) => m >= a && m < b)?.[2] ?? 0;
-          levels[i] = v;
-        });
-        apply(levels, true);
-      }
+      // (drawn only when a light changed, and at once: the changes are the sound's, so they are not held to the update rate)
+      let changed = false;
+      batch.forEach((i, k) => {
+        const m = ms - shift[k]!;
+        let v = 1;
+        if (m >= 0 && m < onAt) v = glows.find(([a, b]) => m >= a && m < b)?.[2] ?? 0;
+        if (v !== levels[i] || last < 0) changed = true;
+        levels[i] = v;
+      });
+      last = stamp;
+      if (changed) apply(levels, true);
       if (ms >= total) {
         batch.forEach((i) => {
           levels[i] = 1;
@@ -396,6 +428,8 @@ export function createNeon({ blocks, apply, done, sound, fps = NEON_FPS, wobbleF
       idleRaf = requestAnimationFrame(step);
     };
     idleRaf = requestAnimationFrame(step);
+    };
+    void play();
   };
   const startIdle = () => {
     idleOn = true;
@@ -409,19 +443,23 @@ export function createNeon({ blocks, apply, done, sound, fps = NEON_FPS, wobbleF
     if (!running) return;
     const ms = stamp - t0;
     // (the picture is updated often enough for the wobble to be seen drifting; the tubes' own stutters are timed, so they do not depend on it)
-    if (last < 0 || stamp - last >= 1000 / rate) {
-      last = stamp;
-      let changed = false;
-      const hum = humAt(ms);
-      for (let i = 0; i < blocks.length; i++) {
-        const plan = plans.get(i);
-        const v = (plan ? levelAt(plan, ms) : 1) * wob(i, ms, hum);
-        if (Math.abs(v - levels[i]!) > 1e-3) {
-          levels[i] = v;
-          changed = true;
-        }
+    // (the levels are worked out at every frame; a jump of a tube (the light going out, coming on) is drawn at once, so that it falls on the sound's moment, and the slow drift only at the update rate)
+    let jump = false;
+    const hum = humAt(ms);
+    for (let i = 0; i < blocks.length; i++) {
+      const plan = plans.get(i);
+      const v = (plan ? levelAt(plan, ms) : 1) * wob(i, ms, hum);
+      const d = Math.abs(v - levels[i]!);
+      if (d > 1e-3) {
+        if (d > 0.15) jump = true;
+        levels[i] = v;
+        dirty = true;
       }
-      if (changed) apply(levels);
+    }
+    if (dirty && (jump || last < 0 || stamp - last >= 1000 / rate)) {
+      last = stamp;
+      dirty = false;
+      apply(levels);
     }
     if (ms >= end) {
       running = false;
@@ -446,12 +484,20 @@ export function createNeon({ blocks, apply, done, sound, fps = NEON_FPS, wobbleF
     start() {
       if (running) return;
       running = true;
-      last = -1;
-      t0 = performance.now();
+      dirty = false;
       apply(levels);
       document.addEventListener("visibilitychange", onVisibility);
-      void schedule();
-      raf = requestAnimationFrame(tick);
+      // (the clock starts when the sound is ready, a few ms later at most: the picture and the sound start together)
+      void prepare().then((c) => {
+        if (!running || raf) {
+          c?.close().catch(() => {});
+          return;
+        }
+        last = -1;
+        t0 = performance.now();
+        if (c) schedule(c);
+        raf = requestAnimationFrame(tick);
+      });
     },
     stop() {
       running = false;
