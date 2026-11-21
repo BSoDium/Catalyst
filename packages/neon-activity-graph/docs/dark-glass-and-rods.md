@@ -88,3 +88,7 @@ An empty day is a soft square **pit** dug in the ground (`graph.ts`, `tileShape`
 - The title's CRT scan in the light page is paper-coloured, so it only thins the ink and is invisible on the paper (no strike-through look).
 
 (Tried and removed: shading light-theme glass by the blocks behind it. It only made blocks darker for no reason.)
+
+### Light theme: the glass is a stack of filters
+
+three.js's transmission only sees opaque things and the back faces of other glass behind a shell, so a block in front of another showed the paper where the other's glass should be (white streaks). In the light theme the shells are now two plain meshes (`LIGHT_FILTER_GLASS`): a **filter** (every face, front and back, multiplies what is behind it by the glass's colour, a share `LIGHT_FILTER_STRENGTH` of it per face; a product does not depend on order, so nothing is sorted: stacked glass gives the product of its tints, Beer-Lambert) and a **shine** (additive: the room's reflections, the clear coat, the glints). No refraction or dispersion in the glass any more; the sun's caustics and coloured shadows on the ground are baked and do not depend on it. Set `LIGHT_FILTER_GLASS = false` to compare with the old transmission glass.
