@@ -285,7 +285,7 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
         shader.fragmentShader = shader.fragmentShader
           .replace("#include <common>", "#include <common>\nvarying float vRodA;\nvarying vec2 vRodXZ;\nvarying float vRodB;\nuniform sampler2D uGround;\nuniform vec4 uGroundXf;\n" + softSeen)
           // (a rod is an emitter, not an absorber: what is behind it shows through it and its light adds to that, so a dim rod is never darker than the ground's light around it, it just disappears into it)
-          .replace("#include <color_fragment>", "#include <color_fragment>\n  diffuseColor.a = smoothstep(0.0, " + ROD_FADE.toFixed(2) + ", vRodB);\n  diffuseColor.rgb += softSeen(texture2D(uGround, vec2((vRodXZ.x - uGroundXf.x) * uGroundXf.z + 0.5, 0.5 - (vRodXZ.y - uGroundXf.y) * uGroundXf.w)).rgb);");
+          .replace("#include <color_fragment>", "#include <color_fragment>\n  diffuseColor.rgb *= vRodA;\n  diffuseColor.a = smoothstep(0.0, " + ROD_FADE.toFixed(2) + ", vRodB);");
       };
       glowMaterial.customProgramCacheKey = () => "rod-levels";
       // `shade` (dark theme): the faces of a block are not all lit alike, as if the light were from above and to the left of the camera, and a block is brighter toward its top: its top is the brightest face, then the side that
