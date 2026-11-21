@@ -223,7 +223,7 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       const DARK_BACKDROP = true;
       const DARK_BACKDROP_GAIN = 200;
       /** (dark) the most the light seen behind the glass can add, on its brightest channel (a soft cap that keeps the hue). */
-      const DARK_BACKDROP_CAP = 0.35;
+      const DARK_BACKDROP_CAP = 0.15;
       /** (light theme) how much of the colour of the blocks behind a block (as the camera sees it) its glass takes, when they cover all of its outline. */
       const LIGHT_BEHIND_TINT = 0.85;
       const coreMaterial = new THREE.MeshBasicMaterial({ vertexColors: true });
@@ -277,13 +277,13 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
         shader.uniforms.uGround = groundSeen.map;
         shader.uniforms.uGroundXf = groundSeen.xf;
         shader.vertexShader = shader.vertexShader
-          .replace("#include <common>", "#include <common>\nattribute float aBlock;\nattribute vec3 aInc;\nattribute vec2 aCtr;\nvarying float vRodA;\nvarying vec2 vRodXZ;\nuniform highp sampler2D uLevels;")
-          .replace("#include <color_vertex>", "#include <color_vertex>\n#ifdef USE_COLOR\n  vec2 lv = texelFetch(uLevels, ivec2(int(aBlock + 0.5), 0), 0).rg;\n  float rodB = max(vColor.r, max(vColor.g, vColor.b)) * lv.r;\n  vColor.rgb = vColor.rgb * lv.r + vec3(0.029, 0.037, 0.053) * (1.0 - lv.r) + aInc * lv.g;\n  vRodA = smoothstep(0.0, 3.0, rodB);\n  float rodL = dot(vColor.rgb, vec3(0.299, 0.587, 0.114));\n  vColor.rgb = max(vec3(0.0), mix(vec3(rodL), vColor.rgb, 1.3 + 1.8 * (1.0 - clamp(lv.r, 0.0, 1.0))));\n#endif")
+          .replace("#include <common>", "#include <common>\nattribute float aBlock;\nattribute vec3 aInc;\nattribute vec2 aCtr;\nvarying float vRodA;\nvarying vec2 vRodXZ;\nvarying vec3 vRodFloor;\nuniform highp sampler2D uLevels;")
+          .replace("#include <color_vertex>", "#include <color_vertex>\n#ifdef USE_COLOR\n  vec2 lv = texelFetch(uLevels, ivec2(int(aBlock + 0.5), 0), 0).rg;\n  float rodB = max(vColor.r, max(vColor.g, vColor.b)) * lv.r;\n  vColor.rgb = vColor.rgb * lv.r + vec3(0.029, 0.037, 0.053) * (1.0 - lv.r) + aInc * lv.g;\n  vRodA = smoothstep(0.0, 3.0, rodB);\n  vRodFloor = vec3(0.029, 0.037, 0.053) * (1.0 - lv.r) + aInc * lv.g;\n  float rodL = dot(vColor.rgb, vec3(0.299, 0.587, 0.114));\n  vColor.rgb = max(vec3(0.0), mix(vec3(rodL), vColor.rgb, 1.3 + 1.8 * (1.0 - clamp(lv.r, 0.0, 1.0))));\n#endif")
           .replace("#include <begin_vertex>", "#include <begin_vertex>\n  transformed.xz = aCtr + (transformed.xz - aCtr) * mix(0.6, 1.0, smoothstep(0.0, 2.5, rodB));\n  vRodXZ = (modelMatrix * vec4(aCtr.x, 0.0, aCtr.y, 1.0)).xz;");
         shader.fragmentShader = shader.fragmentShader
-          .replace("#include <common>", "#include <common>\nvarying float vRodA;\nvarying vec2 vRodXZ;\nuniform sampler2D uGround;\nuniform vec4 uGroundXf;\n" + softSeen)
+          .replace("#include <common>", "#include <common>\nvarying float vRodA;\nvarying vec2 vRodXZ;\nvarying vec3 vRodFloor;\nuniform sampler2D uGround;\nuniform vec4 uGroundXf;\n" + softSeen)
           // (a rod is an emitter, not an absorber: what is behind it shows through it and its light adds to that, so a dim rod is never darker than the ground's light around it, it just disappears into it)
-          .replace("#include <color_fragment>", "#include <color_fragment>\n  diffuseColor.rgb *= vRodA;\n  diffuseColor.rgb += softSeen(texture2D(uGround, vec2((vRodXZ.x - uGroundXf.x) * uGroundXf.z + 0.5, 0.5 - (vRodXZ.y - uGroundXf.y) * uGroundXf.w)).rgb);");
+          .replace("#include <color_fragment>", "#include <color_fragment>\n  diffuseColor.rgb = max(diffuseColor.rgb * vRodA, vRodFloor);\n  diffuseColor.rgb += softSeen(texture2D(uGround, vec2((vRodXZ.x - uGroundXf.x) * uGroundXf.z + 0.5, 0.5 - (vRodXZ.y - uGroundXf.y) * uGroundXf.w)).rgb);");
       };
       glowMaterial.customProgramCacheKey = () => "rod-levels";
       // `shade` (dark theme): the faces of a block are not all lit alike, as if the light were from above and to the left of the camera, and a block is brighter toward its top: its top is the brightest face, then the side that
