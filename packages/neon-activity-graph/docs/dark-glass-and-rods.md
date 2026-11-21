@@ -60,3 +60,5 @@ The tint is **weighted by the glow's own brightness** (shader, `aTint` + `GLOW_T
 The tint on the *glow* alone was not enough: the bright light that actually gets through a green glass is the rods behind it, seen through clear glass. So the green glass now **filters** what goes through it (the GitHub layer's own palette colour (`shellHue`, so it follows any palette), `LAYER_FILTER_DISTANCE` 1.2, weaker the less saturated the colour, none for white or grey, Beer-Lambert: it multiplies, so bright light turns green and the dark parts stay dark). Blue glass stays clear.
 
 `lightBehind` measures the overlap with the blocks' **real outlines** (convex hull of the 8 projected corners, 7×7 sample points), not their bounding rectangles: a rectangle counted the neighbours beside a block, and the blocks at the top edge, against the black, got a grey glow.
+
+The filter is **not pure**: its colour is the layer colour taken 60 % of the way from white (`LAYER_FILTER_PURITY`), distance 2. A pure red filter (Technicolor pink) stopped cyan light dead; now some of it goes through, tinted.

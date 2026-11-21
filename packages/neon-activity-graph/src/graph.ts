@@ -214,7 +214,9 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       const DARK_GREEN_GLOW = 0.2;
       // (the green glass filters the light that goes through it, Beer-Lambert: it multiplies, so the bright light of a rod behind it is turned green and the dark parts stay dark; smaller distance = stronger)
       // (the filter's colour is the layer's own palette colour, whatever the palette: a grey or white layer is not filtered)
-      const LAYER_FILTER_DISTANCE = 1.2;
+      const LAYER_FILTER_DISTANCE = 2;
+      // (how much of the layer's colour the filter takes: 1 would absorb the other channels completely, so a red glass would stop a blue light dead; real tinted glass is never that pure)
+      const LAYER_FILTER_PURITY = 0.6;
       /** (dark) how much of the light the neighbours give out the glass of a block glows with: inside a group of lamps no glass is dark, and an isolated block's is. */
       const NEIGHBOUR_GLOW = 0.22;
       /** How much light behind a block it takes to light its glass most of the way (the share is `1 - e^-(light behind / this)`). */
@@ -684,7 +686,7 @@ void main() {
             const lh = shellHue.get(key);
             const m = lh ? Math.max(lh.r, lh.g, lh.b, 1e-3) : 1;
             const sat = lh ? (m - Math.min(lh.r, lh.g, lh.b)) / m : 0;
-            mat.attenuationColor.copy(lh && src === "top" ? new THREE.Color(lh.r / m, lh.g / m, lh.b / m) : new THREE.Color(1, 1, 1));
+            mat.attenuationColor.copy(lh && src === "top" ? new THREE.Color(1, 1, 1).lerp(new THREE.Color(lh.r / m, lh.g / m, lh.b / m), LAYER_FILTER_PURITY) : new THREE.Color(1, 1, 1));
             mat.attenuationDistance = src === "top" && sat > 0.15 ? LAYER_FILTER_DISTANCE / Math.min(1, sat * 1.5) : 1e3;
           }
           // (dark: the green glass has no glow of its own at all, it is clear; only the blue keeps a faint one: whatever glow a glass has is a tint, and grey where it should be black)
