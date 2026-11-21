@@ -170,8 +170,11 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       /** The film grain's strength over the whole picture (0 for none). */
       const GRAIN = opts.grain ?? 0.012;
       /** (light theme) how strong the room's reflections (environment) and the clear coat's are, relative to what comes through the glass. */
-      const LIGHT_ENV = 0.85;
-      const LIGHT_COAT = 0.4;
+      const LIGHT_ENV = 0.3;
+      const LIGHT_COAT = 0.1;
+      /** (light theme) how frosted the glass is (the core seen through it is a soft glow, not a hard bar) and how strong its specular glints are. */
+      const LIGHT_GLASS_ROUGHNESS = 0.04;
+      const LIGHT_SPECULAR = 0.35;
       const blockMaterial = new THREE.MeshPhysicalMaterial({
         vertexColors: true,
         roughness: 0.04,
@@ -203,7 +206,16 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       };
 
       // each block is a glass shell around a smaller opaque core of the same colour: the core is what the glass refracts, so the block has depth instead of reading as a pale solid
-      const coreMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.45, metalness: 0 });
+      // (light theme: the core is a lamp too, not a lit bar: unlit, a little lifted toward white, and the frosted glass turns it into a soft glow)
+      const LIGHT_CORE_LIFT = 0.25;
+      const coreMaterial = new THREE.MeshBasicMaterial({ vertexColors: true });
+      // (the glass is perfectly clear; it is the core that is soft: its colour fades toward a pale haze of itself toward its silhouette, so it is a blurred glow in the middle of the block, with no hard edge)
+      coreMaterial.onBeforeCompile = (shader) => {
+        shader.vertexShader = shader.vertexShader.replace("#include <common>", "#include <common>\nvarying vec3 vCoreN;").replace("#include <begin_vertex>", "#include <begin_vertex>\n  vCoreN = normalize(normalMatrix * normal);");
+        shader.fragmentShader = shader.fragmentShader
+          .replace("#include <common>", "#include <common>\nvarying vec3 vCoreN;")
+          .replace("#include <color_fragment>", "#include <color_fragment>\n  float cf = pow(clamp(abs(normalize(vCoreN).z), 0.0, 1.0), 0.7);\n  diffuseColor.rgb = mix(mix(diffuseColor.rgb, vec3(1.0), CORE_HAZE), diffuseColor.rgb, cf);".replace("CORE_HAZE", "0.6"));
+      };
       // (in the dark theme the cores are lights: unlit, their colour is the light they give out, brighter than 1 for a busy day, which the bloom and the glow on the ground turn into a glow)
       // (`alphaHash`: a rod that is almost off is almost not there: it is dithered away, and the picture's many samples average the dither out)
       // (a rod's translucency is its colour scaled by its opacity: it is the light it gives out, so that a dim rod is a dim light, with no dither, no noise)
@@ -290,15 +302,19 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       const CAUSTIC_FAR = 18;
       const CAUSTIC_POWER = 0.055;
       // (light theme) how strongly the glass takes the light that is not its colour away, per unit of glass crossed, and how much the traced caustics count
-      const ABSORB = 1.1;
+      const ABSORB = 2.6;
       const LIGHT_CAUSTIC = 1.0;
-      const STRAIGHT = 0.65;
+      const STRAIGHT = 0.92;
       // how deep the shadows go (a share of the traced loss of light) and how much the caustics are pushed
-      const SHADOW = 0.5;
-      const GLEAM = 2.2;
+      const SHADOW = 0.72;
+      // (light theme) how far the shadows are pushed from grey toward the glass's colour (1 as traced)
+      const SHADE_SATURATION = 2.4;
+      // (light theme) how bright the brightest channel of a column's contact shadow is: low is deep, the colour of the glass
+      const LIGHT_SHADOW_DEPTH = 0.45;
+      const GLEAM = 3.4;
       // (light theme) how far from its block the sun's light is counted in full, and where it has faded out
       const NOISE_FLOOR = 0.03;
-      const GLEAM_MAX = 0.45;
+      const GLEAM_MAX = 0.6;
       const SUN_NEAR = 3.4;
       const SUN_FAR = 6;
       const PX = 22;
@@ -330,15 +346,15 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
         // the contact shadow (ambient occlusion on the ground): a soft dark spot under every column, wider and darker for a taller one
         const ao = canvas();
         const actx = ao.getContext("2d")!;
-        const occlude = (x: number, z: number, height: number) => {
+        const occlude = (x: number, z: number, height: number, tint = "0,0,0") => {
           const cx = (x + GLOW_PAD) * PX;
           const cy = (z + GLOW_PAD) * PX;
           const r = (0.75 + 0.22 * height) * PX;
           const g = actx.createRadialGradient(cx, cy, 0.3 * PX, cx, cy, r);
           const a = Math.min(0.85, (dark ? 0.5 : 0.28) + 0.06 * height);
-          g.addColorStop(0, `rgba(0,0,0,${a})`);
-          g.addColorStop(0.5, `rgba(0,0,0,${a * 0.4})`);
-          g.addColorStop(1, "rgba(0,0,0,0)");
+          g.addColorStop(0, `rgba(${tint},${a})`);
+          g.addColorStop(0.5, `rgba(${tint},${a * 0.4})`);
+          g.addColorStop(1, `rgba(${tint},0)`);
           actx.fillStyle = g;
           actx.fillRect(cx - r, cy - r, r * 2, r * 2);
         };
@@ -370,7 +386,19 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
         stack.top.cells.forEach((g, i) => {
           const w = stack.bottom.cells[i]!;
           const { x, z } = at(g.week, g.day);
-          if (w.value > 0 || g.value > 0) occlude(x, z, (w.value > 0 ? 0.18 + w.t * LAYER_MAX : 0) + (g.value > 0 ? 0.18 + g.t * LAYER_MAX : 0));
+          if (w.value > 0 || g.value > 0) {
+            // (light theme: the shadow of a column is the colour of its glass, deep and saturated, not grey: light that went through tinted glass lies on the ground in that colour)
+            let tint = "0,0,0";
+            if (!dark) {
+              const ww = w.value > 0 ? 0.18 + w.t * LAYER_MAX : 0;
+              const wg = g.value > 0 ? 0.18 + g.t * LAYER_MAX : 0;
+              const c = tones.bottom[1].clone().multiplyScalar(ww).add(tones.top[1].clone().multiplyScalar(wg)).multiplyScalar(1 / (ww + wg));
+              const m = Math.max(c.r, c.g, c.b, 1e-3);
+              const deep = c.clone().multiplyScalar(LIGHT_SHADOW_DEPTH / m);
+              tint = [deep.r, deep.g, deep.b].map((v) => Math.round(255 * Math.min(1, v) ** (1 / 2.2))).join(",");
+            }
+            occlude(x, z, (w.value > 0 ? 0.18 + w.t * LAYER_MAX : 0) + (g.value > 0 ? 0.18 + g.t * LAYER_MAX : 0), tint);
+          }
           else pitCells.push({ x, z });
         });
         // The layers of glass of every column, each as a block of its own: WakaTime's at the bottom, GitHub's on top (what the picture draws, see `build`).
@@ -474,7 +502,7 @@ void main() {
   vec3 v = texture2D(map, vUv).rgb;
   // (the differences of overlapping shadows are summed, but light that has been through two blocks has lost the share of each, not both shares: the product, which the exponential of the sum is) (below a small difference there is only the noise of the rays: it is not light)
   vec3 f = exp(${(LIGHT_CAUSTIC * 1.2).toFixed(3)} * sign(v) * max(abs(v) - ${NOISE_FLOOR.toFixed(3)}, 0.));
-  ${shade ? `gl_FragColor = vec4(vec3(1. - ${SHADOW.toFixed(3)} * (1. - min(f, vec3(1.)))), 1.);` : `vec3 g = max(f - 1., 0.) * ${GLEAM.toFixed(3)}; gl_FragColor = vec4(${GLEAM_MAX.toFixed(3)} * tanh(g / ${GLEAM_MAX.toFixed(3)}), 1.);`}
+  ${shade ? `vec3 d = 1. - min(f, vec3(1.)); d = max(vec3(0.), mix(vec3(dot(d, vec3(0.3333))), d, ${SHADE_SATURATION.toFixed(2)})); gl_FragColor = vec4(vec3(1. - ${SHADOW.toFixed(3)} * min(d, vec3(1.))), 1.);` : `vec3 g = max(f - 1., 0.) * ${GLEAM.toFixed(3)}; gl_FragColor = vec4(${GLEAM_MAX.toFixed(3)} * tanh(g / ${GLEAM_MAX.toFixed(3)}), 1.);`}
 }`,
               transparent: true,
               blending: shade ? THREE.MultiplyBlending : THREE.AdditiveBlending,
@@ -710,7 +738,7 @@ void main() {
           const shell = roundedBox(0.92, h, 0.92, lite ? 2 : 3, Math.min(0.16, h / 2.2));
           shell.translate(x, y0 + h / 2, z);
           // dark: the glass is nearly clear (the light of its core shows through it); light: tinted by the level
-          paint(shell, (dark ? new THREE.Color(0xffffff) : hue.clone().lerp(new THREE.Color(0xffffff), 0.12)).add(inc.clone().multiplyScalar(dark && customOn() ? 0.35 : 0.08)), 0, dark);
+          paint(shell, (dark ? new THREE.Color(0xffffff) : hue.clone().lerp(new THREE.Color(0xffffff), 0.04)).add(inc.clone().multiplyScalar(dark && customOn() ? 0.35 : 0.08)), 0, dark);
           shell.setAttribute("aBlock", new THREE.BufferAttribute(new Float32Array(shell.getAttribute("position").count).fill(blockIndex), 1));
           // (the light of the neighbours, for the glass to glow with: see `NEIGHBOUR_GLOW`; only where there are lamps BEHIND the glass as the camera sees it, and none against a dark background, or the glass would look opaque and washed out)
           const nbShare = glowOf.get(sp) ?? 0;
@@ -729,7 +757,7 @@ void main() {
           shellTier.set(key, [src, tier]);
           if (!shellHue.has(key)) shellHue.set(key, hue0.clone());
           // (dark) the busier the day the thinner and the brighter its rod: a quiet one is as wide as before and dim, a busy one a slender, intense filament
-          const cw = dark ? 0.5 - 0.2 * t ** 0.85 : 0.5;
+          const cw = dark ? 0.5 - 0.2 * t ** 0.85 : 0.38;
           // (dark) the rod is the core of the block: as much glass above and below it as at its sides, so a tall block has a column, a block that is as tall as the rod is wide a cube, and a shorter one a flat core
           // (the gap is kept, down to a rod 0.1 high); the light theme keeps its rod at 80 % of the block
           const gap = (0.92 - cw) / 2;
@@ -740,7 +768,7 @@ void main() {
           // (its hue is kept: the blue channel is the hue's own and the red and green rise with the busyness).
           const level = Math.max(emit(t) * (1 + 1.1 * t), src === "top" ? GREEN_MIN_LEVEL : 0);
           const rod = dark && customOn() ? hue0.clone().multiplyScalar(level * 0.55 * (Math.max(hue0.r, hue0.g, hue0.b) - Math.min(hue0.r, hue0.g, hue0.b) < 0.15 * Math.max(hue0.r, hue0.g, hue0.b) ? WHITE_ROD : 1)) : dark ? rodLight(src, hue, t, level) : hue;
-          paint(core, dark ? rod.clone().multiplyScalar(shadeOf.get(sp) ?? 1) : hue);
+          paint(core, dark ? rod.clone().multiplyScalar(shadeOf.get(sp) ?? 1) : hue.clone().lerp(new THREE.Color(0xffffff), LIGHT_CORE_LIFT));
           // (the light of the blocks around that reaches this rod when its own is off, on its own attribute: the shader adds it, as much as the neighbours that are on give)
           {
             const count = core.getAttribute("position").count;
@@ -848,6 +876,8 @@ void main() {
           if (!dark) {
             // (light theme: the glass's own colour is what is seen, through it; the room's reflections on the top and the edges are fainter, and tinted by the glass instead of grey, so that they read as glass and not as polished metal)
             mat.clearcoat = LIGHT_COAT;
+            mat.roughness = LIGHT_GLASS_ROUGHNESS;
+            mat.specularIntensity = LIGHT_SPECULAR;
             mat.specularColor = tones[src][1].clone().lerp(new THREE.Color(0xffffff), 0.35);
           }
           materials.push(mat);
@@ -860,7 +890,7 @@ void main() {
         group.userData.dispose = () => materials.forEach((m) => m.dispose());
         if (cores.length) {
           const core = new THREE.Mesh(mergeGeometries(cores), dark ? glowMaterial : coreMaterial);
-          core.castShadow = !dark;
+          core.castShadow = false;
           group.add(core);
         }
         [...cores, ...tiles].forEach((p) => p.dispose());

@@ -79,3 +79,10 @@ An empty day is a soft square **pit** dug in the ground (`graph.ts`, `tileShape`
 - **The lip's highlight** in the dark theme is no longer a fixed direction: there is no sun at night, the light is the neon's, so each lip edge is lit by the lamps on its opposite side, in their colour, falling off with distance (computed once, after all the blocks are known). In the light theme the highlight is the sun's, from the top right: the left edge, a hint on the lower one.
 - **No hover light**: a looked-at empty day does not light up (tried, taken out).
 - The hover outline of an empty day is the pit's own rounded square, flat on the ground.
+
+## Light theme: clear glass, a soft core, coloured shadows
+
+- The glass is perfectly clear (roughness 0.04) with faint reflections (`LIGHT_ENV` 0.3, `LIGHT_COAT` 0.1, `LIGHT_SPECULAR` 0.35) so the refraction and the caustics are what is seen.
+- The core is an unlit, slightly lifted lamp, narrower (0.38), whose colour fades toward a pale haze at its silhouette (`coreMaterial.onBeforeCompile`, haze 0.6): a blurred glow in the middle, with the glass around it untouched.
+- Shadows follow the glass's colour: stronger absorption (`ABSORB` 2.6, `STRAIGHT` 0.92), deeper shade (`SHADOW` 0.72) pushed away from grey (`SHADE_SATURATION` 2.4), stronger caustics (`GLEAM` 3.4), and the contact shadow of a column is tinted by its layers' colours (`LIGHT_SHADOW_DEPTH`).
+- The title's CRT scan in the light page is paper-coloured, so it only thins the ink and is invisible on the paper (no strike-through look).

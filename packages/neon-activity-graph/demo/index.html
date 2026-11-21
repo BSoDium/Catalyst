@@ -61,6 +61,9 @@
       h1 .rb { display: inline-block; padding: 0.08em 0.16em 0.16em 0.05em; margin: -0.08em -0.14em -0.16em -0.05em; }
       h1 .rb { background: repeating-linear-gradient(180deg, var(--red) 0 0.11em, var(--yellow) 0 0.22em, #35d36a 0 0.33em, var(--cyan) 0 0.44em, #3a54ff 0 0.55em, var(--magenta) 0 0.66em); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent; text-shadow: none; filter: drop-shadow(-0.04em 0 0 var(--red)) drop-shadow(0.04em 0 0 var(--cyan)); }
       h1::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgb(0 0 0 / 0.26) 0 1px, transparent 1px 3px); mix-blend-mode: multiply; opacity: 0.4; animation: scan 6s steps(60) infinite; }
+      /* (light page: dark stripes over the paper read as strike-through lines; here the scan is paper-coloured, so it only thins the ink of the letters and the fringes, and is invisible on the page) */
+      :root[data-theme="light"] h1::after { background: repeating-linear-gradient(0deg, color-mix(in srgb, var(--bg) 55%, transparent) 0 1px, transparent 1px 3px); mix-blend-mode: normal; opacity: 0.5; }
+      @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) h1::after { background: repeating-linear-gradient(0deg, color-mix(in srgb, var(--bg) 55%, transparent) 0 1px, transparent 1px 3px); mix-blend-mode: normal; opacity: 0.5; } }
       @keyframes scan { 0%, 100% { opacity: 0.38; } 47% { opacity: 0.45; } 50% { opacity: 0.28; } 53% { opacity: 0.45; } }
       @media (prefers-reduced-motion: reduce) { h1::after { animation: none; } }
       .about { margin: 0; color: var(--muted); font-size: clamp(14px, 1.2cqi, 19px); line-height: 1.45; max-width: 36em; font-weight: 420; }
