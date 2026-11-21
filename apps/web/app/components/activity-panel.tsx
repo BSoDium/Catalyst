@@ -294,7 +294,7 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
       {/* The corners are only empty when the scene is big enough (from 80 rem of page): below that the figures and the legend sit under the picture, so the text never lies over the blocks. From there the page's own figures (software, places) join the year's
           in ONE grid at the top right, from the head's top down into the empty corner of the picture. */}
       <Figures lead={lead} stats={stats} ready={!!activity} className="min-[80rem]:pointer-events-none min-[80rem]:absolute min-[80rem]:right-14 min-[80rem]:top-[calc(-1*clamp(2.5rem,6.4cqi,5.75rem)-0.25rem)]" />
-      <div data-slot="activity-legend" className="flex flex-col gap-3 px-4 pt-8 md:px-14 min-[80rem]:absolute min-[80rem]:bottom-6 min-[90rem]:bottom-[4.5rem] min-[80rem]:left-14 min-[80rem]:w-[25rem] min-[80rem]:p-0">
+      <div data-slot="activity-legend" className="flex flex-col gap-3 px-4 pt-8 md:px-14 min-[80rem]:absolute min-[80rem]:bottom-[10.7%] min-[80rem]:left-14 min-[80rem]:w-[25rem] min-[80rem]:p-0">
         <p className="type-meta m-0 text-muted-foreground uppercase">Last <span className="text-foreground">12 months</span></p>
         {/* In the picture's order: the contributions are the upper block of a day, the coding the lower one. */}
         <p className="m-0 font-[family-name:var(--font-display)] text-[1.625rem] leading-[1.1] font-semibold tracking-tight text-balance">

@@ -3347,23 +3347,8 @@
   }
 
   /*
-   * The search over all the tags: it slides in above the row when the row opens out (a grid row from 0 to its height: no measuring), the field a line with no box. The row itself is the same row, wrapped.
+   * The search over all the tags: always above the row, the field a line with no box.
    */
-  .tag-search {
-    display: grid;
-    grid-template-rows: 0fr;
-    transition: grid-template-rows var(--duration-base) var(--ease-standard);
-  }
-
-  .tag-search[data-open="true"] {
-    grid-template-rows: 1fr;
-  }
-
-  .tag-search-inner {
-    overflow: hidden;
-    min-height: 0;
-  }
-
   .tag-search-input {
     display: block;
     width: min(100%, 24rem);
@@ -3376,12 +3361,6 @@
     font-family: var(--font-mono);
     font-size: var(--text-sm);
     outline: none;
-    opacity: 0;
-    transition: opacity var(--duration-base) var(--ease-standard);
-  }
-
-  .tag-search[data-open="true"] .tag-search-input {
-    opacity: 1;
   }
 
   .tag-search-input:focus-visible {
@@ -3405,8 +3384,6 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .tag-search,
-    .tag-search-input,
     .ds-filter > span {
       transition: none;
     }
