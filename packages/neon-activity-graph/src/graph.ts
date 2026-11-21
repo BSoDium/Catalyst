@@ -220,10 +220,10 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       /** (light theme) the ground, baked, as what the glass sees behind it (see `groundLayers`): false to compare. */
       const LIGHT_BACKDROP = true;
       // (dark theme: the glass sees the ground's glow, see groundLayers) and how much of it
-      const DARK_BACKDROP = false;
-      const DARK_BACKDROP_GAIN = 200;
+      const DARK_BACKDROP = true;
+      const DARK_BACKDROP_GAIN = 80;
       /** (dark) the most the light seen behind the glass can add, on its brightest channel (a soft cap that keeps the hue). */
-      const DARK_BACKDROP_CAP = 0.15;
+      const DARK_BACKDROP_CAP = 0.25;
       /** (light theme) how much of the colour of the blocks behind a block (as the camera sees it) its glass takes, when they cover all of its outline. */
       const LIGHT_BEHIND_TINT = 0.85;
       const coreMaterial = new THREE.MeshBasicMaterial({ vertexColors: true });

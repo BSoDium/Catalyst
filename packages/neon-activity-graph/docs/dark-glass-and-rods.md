@@ -128,3 +128,5 @@ With the rod off, the glass is not a coloured slab: its tint (the filter's colou
 Tried and removed: a higher reflection floor on the off glass (`OFF_ENV` 0.04 and 0.15): it made the glass more specular and plastic, not more transparent. What makes glass read as clear is what is seen through it (refraction of a lit background), not reflections.
 
 Why a dimmed block kept a strong colour: not its shell, but the ground's light seen through it (`DARK_BACKDROP`, gain 200, soft-capped: even a faint remainder is lifted to the cap, in the block's own colour). With the backdrop off, a block whose rod is off is clear and dark; desaturating the backdrop for it instead looked grey and plastic. `DARK_BACKDROP` is therefore off for now (the code stays); the shell's tint and neutral glow also follow the rod's level (`vOn`).
+
+The backdrop is back on, toned down (`DARK_BACKDROP_GAIN` 80, `DARK_BACKDROP_CAP` 0.25: less lift of a faint remainder, more headroom for a lit one, so a dimmed block's glass follows its dimmed ground light instead of being held at the cap). Tune these two.
