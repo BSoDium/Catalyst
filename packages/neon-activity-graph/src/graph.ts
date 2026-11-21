@@ -267,7 +267,7 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       const GREEN_MIN_LEVEL = 1.1;
       const DARK_GLASS_ROUGHNESS = 0.04;
       const OFF_EMISSIVE = 0.0012;
-      const OFF_ENV = 0.04;
+      const OFF_ENV = 0.15;
       const MAX_LEVELS = 1024;
       // (two numbers a block: what its own rod gives out, and how much of the light of the blocks around it, which are on, reaches it, 0 to 1, against all of them on)
       const levelData = new Float32Array(MAX_LEVELS * 2).fill(1);
