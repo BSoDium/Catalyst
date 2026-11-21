@@ -34,7 +34,7 @@ export interface NeonOptions {
 }
 
 /** How many areas the rods are divided into, how many of them flicker (all of them now; a smaller number would leave the others on from the start), how long the start-up lasts, and how often the picture is updated while it does. */
-const AREAS = 8;
+const AREAS = 4;
 const FLICKERING = AREAS;
 const SPAN_MS = 2600;
 export const NEON_FPS = 20;
@@ -105,6 +105,21 @@ function bzz(c: AudioContext, dest: AudioNode, when: number, pan: number, level:
   const panner = c.createStereoPanner();
   panner.pan.value = pan * 0.8;
   body.connect(lp).connect(wobble).connect(env).connect(panner).connect(dest);
+  // The "b" that starts the "bzz": a soft plosive, a 12 ms thump of low-passed noise (nothing sharp), a hair before the tone speaks.
+  const tn = Math.floor(c.sampleRate * 0.014);
+  const tb = c.createBuffer(1, tn, c.sampleRate);
+  const td = tb.getChannelData(0);
+  for (let i = 0; i < tn; i++) td[i] = (Math.random() * 2 - 1) * (1 - i / tn) ** 2;
+  const ts = c.createBufferSource();
+  ts.buffer = tb;
+  const tlp = c.createBiquadFilter();
+  tlp.type = "lowpass";
+  tlp.frequency.value = 700;
+  const tg = c.createGain();
+  tg.gain.value = 0.16 * level;
+  ts.connect(tlp).connect(tg).connect(panner);
+  ts.start(when);
+  ts.stop(when + 0.02);
 }
 function bell(c: AudioContext, dest: AudioNode, when: number, f0: number, pan: number, level: number) {
   const out = c.createGain();
@@ -176,7 +191,8 @@ export function createNeon({ blocks, apply, done, sound, fps = NEON_FPS, wobbleF
   const areaPlans = new Map<number, { start: number; stutters: Stutter[]; steady: number }>();
   flickering.forEach((k) => {
     const start = random() * (SPAN_MS - 1100);
-    const count = 4 + Math.floor(random() * 5);
+    // (few stutters: the picture is not to be a nervous flicker; fewer, bigger circuits, each one with a few)
+    const count = 2 + Math.floor(random() * 3);
     const stutters: Stutter[] = [];
     let at = start;
     for (let j = 0; j < count; j++) {
@@ -279,7 +295,7 @@ export function createNeon({ blocks, apply, done, sound, fps = NEON_FPS, wobbleF
     });
     const click = (at: number, pan: number, level: number, tube: number) => {
       const voice = voices[tube] ?? "ding";
-      if (voice === "quiet" || clicks >= 110) return;
+      if (voice === "quiet" || clicks >= 40) return;
       clicks++;
       const when = Math.max(now + at / 1000, c.currentTime);
       if (voice === "bzz") {
