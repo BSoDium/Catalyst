@@ -126,3 +126,5 @@ Final: the rods are drawn additively (`AdditiveBlending`, `transparent: false`, 
 With the rod off, the glass is not a coloured slab: its tint (the filter's colour) goes away with the rod's light (`vOn`), so an off block is clear glass, not a coloured opaque one.
 
 Tried and removed: a higher reflection floor on the off glass (`OFF_ENV` 0.04 and 0.15): it made the glass more specular and plastic, not more transparent. What makes glass read as clear is what is seen through it (refraction of a lit background), not reflections.
+
+Why a dimmed block kept a strong colour: not its shell, but the ground's light seen through it (`DARK_BACKDROP`, gain 200, soft-capped: even a faint remainder is lifted to the cap, in the block's own colour). With the backdrop off, a block whose rod is off is clear and dark; desaturating the backdrop for it instead looked grey and plastic. `DARK_BACKDROP` is therefore off for now (the code stays); the shell's tint and neutral glow also follow the rod's level (`vOn`).
