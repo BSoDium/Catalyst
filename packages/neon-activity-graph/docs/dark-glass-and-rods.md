@@ -118,3 +118,5 @@ A rod's light going down no longer darkens it (it read as an absorber) nor leave
 Correction: a rod keeps its colour scaled by its brightness as before (without it small, quiet days' rods came out as bright as busy ones), the fade is only added to it; the ground's light is no longer added to the rods (it overexposed the bright ones). The softly capped backdrop remains for the glass only.
 
 Final form: a rod's opacity IS its brightness gradient (`vRodA`, 0 at zero, 1 at the brightest), and its colour is not scaled by it: the rod is a premultiplied emitter, so over a dark background it looks as it did when its colour was scaled, and where something lit is behind it that shows through. (`ROD_FADE` is gone.)
+
+Revised: the dithered see-through (`alphaHash`) was noisy and is gone. A rod stays opaque, its colour scaled by its brightness, and it gets thinner as it dims, to nothing at zero (a smooth gradient, no noise); the ground's light is not added to it.

@@ -237,8 +237,8 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       // (in the dark theme the cores are lights: unlit, their colour is the light they give out, brighter than 1 for a busy day, which the bloom and the glow on the ground turn into a glow)
       // (`alphaHash`: a rod that is almost off is almost not there: it is dithered away, and the picture's many samples average the dither out)
       // (a rod's translucency is its colour scaled by its opacity: it is the light it gives out, so that a dim rod is a dim light, with no dither, no noise)
-      // (dark) a rod is an emitter, not an absorber: as its light goes down it does not turn dark, it becomes transparent, and at zero it is not there. `alphaHash` is a see-through in the opaque pass (so the glass still shows the rod), dithered; the picture's many samples average it out
-      const glowMaterial = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false, alphaHash: true });
+      // (dark) a rod is an emitter, not an absorber: as its light goes down it gets thinner as well as dimmer, and at zero it is not there (a see-through by dithering was tried: noise)
+      const glowMaterial = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false });
       // (dark) the ground's light as the glass (and the rods in it) sees it behind: the live texture, where it lies (x0, z0, 1/sizeX, 1/sizeZ) and by how much it is seen
       const groundSeen = { map: { value: new THREE.DataTexture(new Float32Array(4), 1, 1, THREE.RGBAFormat, THREE.FloatType) as import("three").Texture }, xf: { value: new THREE.Vector4(0, 0, 1, 1) } };
       groundSeen.map.value.needsUpdate = true;
@@ -280,11 +280,11 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
         shader.vertexShader = shader.vertexShader
           .replace("#include <common>", "#include <common>\nattribute float aBlock;\nattribute vec3 aInc;\nattribute vec2 aCtr;\nvarying float vRodA;\nvarying vec2 vRodXZ;\nuniform highp sampler2D uLevels;")
           .replace("#include <color_vertex>", "#include <color_vertex>\n#ifdef USE_COLOR\n  vec2 lv = texelFetch(uLevels, ivec2(int(aBlock + 0.5), 0), 0).rg;\n  float rodB = max(vColor.r, max(vColor.g, vColor.b)) * lv.r;\n  vColor.rgb = vColor.rgb * lv.r + vec3(0.029, 0.037, 0.053) * (1.0 - lv.r) + aInc * lv.g;\n  vRodA = smoothstep(0.0, 3.0, rodB);\n  float rodL = dot(vColor.rgb, vec3(0.299, 0.587, 0.114));\n  vColor.rgb = max(vec3(0.0), mix(vec3(rodL), vColor.rgb, 1.3 + 1.8 * (1.0 - clamp(lv.r, 0.0, 1.0))));\n#endif")
-          .replace("#include <begin_vertex>", "#include <begin_vertex>\n  transformed.xz = aCtr + (transformed.xz - aCtr) * mix(0.6, 1.0, smoothstep(0.0, 2.5, rodB));\n  vRodXZ = (modelMatrix * vec4(aCtr.x, 0.0, aCtr.y, 1.0)).xz;");
+          .replace("#include <begin_vertex>", "#include <begin_vertex>\n  transformed.xz = aCtr + (transformed.xz - aCtr) * smoothstep(0.0, 0.45, rodB) * mix(0.6, 1.0, smoothstep(0.0, 2.5, rodB));\n  vRodXZ = (modelMatrix * vec4(aCtr.x, 0.0, aCtr.y, 1.0)).xz;");
         shader.fragmentShader = shader.fragmentShader
           .replace("#include <common>", "#include <common>\nvarying float vRodA;\nvarying vec2 vRodXZ;\nuniform sampler2D uGround;\nuniform vec4 uGroundXf;\n" + softSeen)
           // (a rod is an emitter, not an absorber: what is behind it shows through it and its light adds to that, so a dim rod is never darker than the ground's light around it, it just disappears into it)
-          .replace("#include <color_fragment>", "#include <color_fragment>\n  diffuseColor.a = vRodA;");
+          .replace("#include <color_fragment>", "#include <color_fragment>\n  diffuseColor.rgb *= vRodA;");
       };
       glowMaterial.customProgramCacheKey = () => "rod-levels";
       // `shade` (dark theme): the faces of a block are not all lit alike, as if the light were from above and to the left of the camera, and a block is brighter toward its top: its top is the brightest face, then the side that
