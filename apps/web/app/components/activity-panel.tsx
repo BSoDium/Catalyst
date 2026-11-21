@@ -248,6 +248,8 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
   const [xmas, setXmas] = useState(false);
   // (the dark theme only: it follows the page's scheme, forced by `data-scheme` or the system's)
   const [dark, setDark] = useState(false);
+  // (the neon start-up is over: the greeting comes once all the lights are on)
+  const [lit, setLit] = useState(false);
   // the greeting's baseline is set on the legend's last line ("WakaTime activity below."): measured with zero-size probes on the two baselines, at every width and whenever the layout or the font changes
   const greeting = useRef<HTMLSpanElement>(null);
   const legend = useRef<HTMLParagraphElement>(null);
@@ -342,11 +344,11 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
           </div>
           {seen && activity && (
             <Suspense fallback={null}>
-              <ActivityScene activity={activity} strips={narrow ? 4 : 1} onReady={() => setReady(true)} onHover={setHover} className="absolute inset-0 outline-offset-[-2px] focus-visible:outline-2 focus-visible:outline-[var(--ring)]" />
+              <ActivityScene activity={activity} strips={narrow ? 4 : 1} onReady={() => setReady(true)} onLit={setLit} onHover={setHover} className="absolute inset-0 outline-offset-[-2px] focus-visible:outline-2 focus-visible:outline-[var(--ring)]" />
             </Suspense>
           )}
           {show && (
-            <div aria-hidden="true" className="pointer-events-none absolute right-0 bottom-0 z-10 flex items-end justify-end px-[3cqi] pt-[9cqi] pl-[16cqi] opacity-100 transition-opacity duration-500 group-hover/scene:opacity-0" style={{ transform: `translateY(${drop}px)`, background: "radial-gradient(ellipse at 100% 100%, color-mix(in oklab, var(--background) 68%, transparent) 25%, color-mix(in oklab, var(--background) 50%, transparent) 55%, transparent 85%)" }}>
+            <div aria-hidden="true" className="pointer-events-none absolute right-0 bottom-0 z-10 flex items-end justify-end px-[3cqi] pt-[9cqi] pl-[16cqi] opacity-100 transition-opacity duration-1000 group-hover/scene:opacity-0" style={{ opacity: lit ? undefined : 0, transform: `translateY(${drop}px)`, background: "radial-gradient(ellipse at 100% 100%, color-mix(in oklab, var(--background) 68%, transparent) 25%, color-mix(in oklab, var(--background) 50%, transparent) 55%, transparent 85%)" }}>
               <span ref={greeting} className="text-[clamp(2.25rem,6cqi,4.25rem)] leading-none" style={{ fontFamily: '"Imperial Script", "Snell Roundhand", "Apple Chancery", cursive', color: "#fff", WebkitTextStroke: "0.6px #fff", textShadow: "0 0 0.12em var(--background), 0 0 0.3em var(--background), 0 0 0.6em rgb(255 60 60 / 0.45)" }}>
                 Merry Christmas
               </span>

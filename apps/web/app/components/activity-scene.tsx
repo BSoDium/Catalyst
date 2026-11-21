@@ -32,7 +32,7 @@ const isDark = () => {
  * (an area light's soft shadow) and the camera a sub-pixel away (anti-aliasing) and adds it to an accumulation buffer; after `SAMPLES` frames the loop stops and the canvas keeps the
  * result. Translucent rounded blocks (transmission, refraction) lit by a room environment, on a ground that only receives the shadows, so it sits on the page's own background.
  */
-export function ActivityScene({ activity, strips = 1, onReady, onHover, className }: { activity: Activity; strips?: number; onReady?: () => void; onHover?: (info: HoverInfo | null) => void; className?: string }) {
+export function ActivityScene({ activity, strips = 1, onReady, onLit, onHover, className }: { activity: Activity; strips?: number; onReady?: () => void; onLit?: (lit: boolean) => void; onHover?: (info: HoverInfo | null) => void; className?: string }) {
   const host = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -921,6 +921,8 @@ void main(){
       };
       const prepareNeon = () => {
         stopNeon();
+        // (`onLit`: whether the picture is lit, for the page's greeting: not while the start-up runs, always when there is none)
+        onLit?.(false);
         window.clearTimeout(focusTimer);
         window.clearTimeout(focusRaf);
         focusCtl = isDark() && stampCtl && neonBlocks.length > 0 && neonBlocks.length <= MAX_LEVELS ? stampCtl : null;
@@ -930,7 +932,7 @@ void main(){
         lastLevels = new Float32Array(neonBlocks.length).fill(1);
         idleLook = false;
         if (focusCtl) applyLevels(lastLevels);
-        if (!isDark() || !neonAllowed() || !stampCtl || neonBlocks.length === 0 || neonBlocks.length > MAX_LEVELS) return;
+        if (!isDark() || !neonAllowed() || !stampCtl || neonBlocks.length === 0 || neonBlocks.length > MAX_LEVELS) return void onLit?.(true);
         const ctl = stampCtl;
         neonApplyMs = 0;
         neonTicks = 0;
@@ -950,6 +952,7 @@ void main(){
             restart();
           },
           done: () => {
+            onLit?.(true);
             samplesCap = samples;
             restart();
             if (import.meta.env.DEV) {
