@@ -212,6 +212,9 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       // what is left of a block when its rod is off, the same for all of them: the glass's own glow and the room's reflections in it, as absolute intensities
       /** (dark) how much glow the green glass has of its own, against 0.6 of the blue's: a slight tint (0 is a clear glass). Pure green, never whitened: a whitened glow is a grey one. */
       const DARK_GREEN_GLOW = 0.2;
+      // (the green glass filters the light that goes through it, Beer-Lambert: it multiplies, so the bright light of a rod behind it is turned green and the dark parts stay dark; smaller distance = stronger)
+      const GREEN_FILTER = 0x3fe070;
+      const GREEN_FILTER_DISTANCE = 1.2;
       /** (dark) how much of the light the neighbours give out the glass of a block glows with: inside a group of lamps no glass is dark, and an isolated block's is. */
       const NEIGHBOUR_GLOW = 0.22;
       /** How much light behind a block it takes to light its glass most of the way (the share is `1 - e^-(light behind / this)`). */
@@ -675,8 +678,8 @@ void main() {
           // (dark) the glass absorbs what is not its own colour as the light goes through it: a green block lets a blue rod behind it show only dimly, and the other way round
           if (dark) {
             // (the glass is clear: it does not filter what is seen through it, the rods give the colour)
-            mat.attenuationColor.set(0xffffff);
-            mat.attenuationDistance = 1e3;
+            mat.attenuationColor.set(src === "top" ? GREEN_FILTER : 0xffffff);
+            mat.attenuationDistance = src === "top" ? GREEN_FILTER_DISTANCE : 1e3;
           }
           // (dark: the green glass has no glow of its own at all, it is clear; only the blue keeps a faint one: whatever glow a glass has is a tint, and grey where it should be black)
           mat.emissiveIntensity = dark ? [0.02, 0.08, 0.15][tier]! * (src === "top" ? DARK_GREEN_GLOW : 0.6) : 0;
