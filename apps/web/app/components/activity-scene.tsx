@@ -287,11 +287,14 @@ export function ActivityScene({ activity, strips = 1, onReady, onLit, onHover, c
             const hue = xmasOn() ? xmasHue(i, src, t) : low.clone().lerp(high, t);
             // (dark) the light is the rod's, and the rod is near white where it is busy: its own chroma (as drawn, see `build`), normalised, the strength being `power`; (light) the colour of the glass
             const rod = xmasOn()
-              ? hue.clone().add(new THREE.Color(0.3, 0.27, 0.2).multiplyScalar(t))
+              ? // (`?xmas`: the light on the ground is the light's own colour, not lifted toward white as a busy rod is in the usual picture)
+                hue.clone()
               : src === "waka"
                 ? hue.clone().multiplyScalar(0.5).add(new THREE.Color(0.4, 0.56, 0.6).multiplyScalar(0.38 + 0.98 * t))
                 : hue.clone().multiplyScalar(1.25).add(new THREE.Color(0.22, 0.4, 0.24).multiplyScalar(0.15 + 0.7 * t));
             const col = dark ? rod.multiplyScalar(1 / Math.max(1e-4, rod.r, rod.g, rod.b)) : hue;
+            // (`?xmas`: a white light adds to all three channels, so on the ground it washes out the colours around it: it lights the ground half as much)
+            const whiteLight = xmasOn() && Math.max(hue.r, hue.g, hue.b) - Math.min(hue.r, hue.g, hue.b) < 0.15 * Math.max(hue.r, hue.g, hue.b) ? 0.5 : 1;
             // (no two blocks are alike: a small tilt of the glass of each, a strength and a reach of its own)
             const tilt = (): number => (variety() - 0.5) * 0.22;
             const luck = 0.6 + 0.8 * variety();
@@ -304,7 +307,7 @@ export function ActivityScene({ activity, strips = 1, onReady, onLit, onHover, c
               r: Math.min(0.16, (2 * hy) / 2.2),
               bias: [tilt(), tilt() * 0.4, tilt()],
               col: [col.r, col.g, col.b],
-              power: (0.05 + t * t) * gain * luck * CAUSTIC_POWER,
+              power: (0.05 + t * t) * gain * luck * CAUSTIC_POWER * whiteLight,
               near,
               far,
               // (the rod, as drawn: its width)
@@ -312,7 +315,7 @@ export function ActivityScene({ activity, strips = 1, onReady, onLit, onHover, c
               seed: [variety(), variety(), variety(), variety(), variety()],
               // (the soft pool: a haze under the block, as bright as its day was busy; it goes out with its rod)
               pool: (() => {
-                const peak = POOL * GROUND_LIGHT * gain * (0.004 + 0.26 * t * t + 0.03 * t);
+                const peak = POOL * GROUND_LIGHT * gain * (0.004 + 0.26 * t * t + 0.03 * t) * whiteLight;
                 return { col: [hue.r * peak, hue.g * peak, hue.b * peak] as [number, number, number], r: 0.9 + GROUND_REACH * (0.5 + t * 1.5) };
               })(),
             });

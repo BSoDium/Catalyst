@@ -268,8 +268,18 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
       return y;
     };
     const measure = () => {
-      const delta = baseline(l) - baseline(g);
-      if (Number.isFinite(delta)) setDrop((d) => (Math.abs(delta) < 0.5 ? d : d + delta));
+      // (the script's letters do not rest on the font's declared baseline: the ink's own is found with the bottom of letters that sit on it, "rsc", measured on a canvas)
+      const cs = getComputedStyle(g);
+      const m2 = document.createElement("canvas").getContext("2d");
+      let ink = 0;
+      if (m2) {
+        m2.font = `${cs.fontSize} ${cs.fontFamily}`;
+        ink = m2.measureText("rsc").actualBoundingBoxDescent;
+      }
+      // (absolute, so that two measures in a frame agree: the greeting's baseline without the shift it has now, then the shift that puts it on the legend's)
+      const applied = g.parentElement ? new DOMMatrix(getComputedStyle(g.parentElement).transform).m42 : 0;
+      const target = baseline(l) - (baseline(g) - applied + ink);
+      if (Number.isFinite(target)) setDrop((d) => (Math.abs(target - d) < 0.5 ? d : target));
     };
     measure();
     const ro = new ResizeObserver(measure);
