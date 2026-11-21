@@ -87,7 +87,4 @@ An empty day is a soft square **pit** dug in the ground (`graph.ts`, `tileShape`
 - Shadows follow the glass's colour: stronger absorption (`ABSORB` 2.6, `STRAIGHT` 0.92), deeper shade (`SHADOW` 0.72) pushed away from grey (`SHADE_SATURATION` 2.4), stronger caustics (`GLEAM` 3.4), and the contact shadow of a column is tinted by its layers' colours (`LIGHT_SHADOW_DEPTH`).
 - The title's CRT scan in the light page is paper-coloured, so it only thins the ink and is invisible on the paper (no strike-through look).
 
-### Light theme: blocks in the shade of the ones behind them
-
-A block that stands in front of many others is in their shade. `lightBehind` (same hull overlap as the dark theme's glow) gives each block how much of its outline is covered by blocks behind it; smoothed between `LIGHT_OCC_FROM` 0.9 and `LIGHT_OCC_FULL` 3 (so a block against the paper, or with one block behind it, is not shaded at all) it is the attribute `aOcc`. In the light glass shader it takes the room's reflections and the clear coat away (all but `LIGHT_OCC_REFLECT` 0.15) and multiplies the glass's light by the page's own colour at `LIGHT_OCC_KEEP` 0.72, so the white parts of the glass in a shaded stretch go darker and take the paper's tint, not grey.
-In shade the glass also takes its own hue (the shell colour, normalised and squared: `SHADE_HUE_POW`), so shaded glass is a deep tint of the block, not grey.
+(Tried and removed: shading light-theme glass by the blocks behind it. It only made blocks darker for no reason.)
