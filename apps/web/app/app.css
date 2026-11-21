@@ -3577,14 +3577,15 @@
     .ds-year-sticky::before {
       content: "";
       position: absolute;
-      inset: -0.1em -0.28em calc(1rem - 0.04em) -0.28em;
+      /* (a plate hugging the numeral: 0.1 em above and below, 0.3 em at the sides, the optical padding of a wide word in a box; the heading's own right and bottom padding, which hold the room under it, are taken off) */
+      inset: -0.1em calc(0.75rem - 0.3em) calc(1rem - 0.1em) -0.3em;
       z-index: -1;
       border-radius: 0.1em;
       background: color-mix(in srgb, var(--background) 82%, transparent);
       -webkit-backdrop-filter: blur(18px) saturate(1.3);
       backdrop-filter: blur(18px) saturate(1.3);
       box-shadow:
-        inset 0 0 0 3px color-mix(in srgb, var(--foreground) 22%, transparent),
+        inset 0 0 0 1.5px color-mix(in srgb, var(--foreground) 20%, transparent),
         0 0.15em 0.5em -0.15em rgb(0 0 0 / 0.35);
       opacity: 0;
       transition: opacity 0.3s var(--ease-standard);
