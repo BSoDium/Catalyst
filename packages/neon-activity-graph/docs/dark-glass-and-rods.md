@@ -65,4 +65,6 @@ The filter is **not pure**: its colour is the layer colour taken 60 % of the way
 
 **Dimmed blocks went milky** (hover): `FOCUS_OFF` 0.34 is just under the 0.35 at which the shader treated a rod as "right off" and swapped the glass glow for the cool grey (`offGrey`), so every dimmed block glowed grey. Found by switching glow, reflections, clear coat, specular and the sun off one by one: with the glow off the dimmed glass was clear and dark. `offGrey` now only applies below 0.12.
 
-**Milk of the wrong colour**: the neighbours' light (`inc`) is the *sum* of their colours, so red and cyan neighbours add up to grey. In the shader the glow is now pushed back from grey to its colour (`GLOW_SATURATION` 3.5, about its luminance) and the faint part takes 35 % of the block's own tint (`GLOW_TINT_FAINT`).
+**Milk of the wrong colour**: the neighbours' light (`inc`) is the *sum* of their colours, so red and cyan neighbours add up to grey. In the shader the glow is now pushed back from grey to its colour (`GLOW_SATURATION` 2.5, about its luminance) and the faint part takes 35 % of the block's own tint (`GLOW_TINT_FAINT`).
+
+**No milk while everything is dimmed** (hover): the neighbours' glow follows the cube of the neighbours' level (`lv.g³`), so at the hover's dimming (0.34) it is down to 4 % and the dimmed blocks are plain glass; at full level it is unchanged.
