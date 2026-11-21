@@ -970,11 +970,17 @@ void main(){
             applyLevels(levels);
             neonApplyMs += performance.now() - a0;
             neonTicks++;
-            if (idle) burst(lite ? 2 : 3);
-            else {
-              samplesCap = lite ? 2 : 3;
-              restart();
+            if (import.meta.env.DEV) {
+              let mn = 1;
+              let sum = 0;
+              for (let q = 0; q < levels.length; q++) {
+                mn = Math.min(mn, levels[q]!);
+                sum += levels[q]!;
+              }
+              el.dataset.neonMin = mn.toFixed(2);
+              el.dataset.neonMean = (sum / levels.length).toFixed(3);
             }
+            burst(lite ? 2 : 3);
           },
           done: () => {
             onLit?.(true);

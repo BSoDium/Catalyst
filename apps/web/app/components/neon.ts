@@ -246,64 +246,58 @@ export function createNeon({ blocks, apply, done, sound, fps = NEON_FPS, seed = 
   let idleOn = false;
   let idleSince = 0;
   const idleRandom = () => Math.random();
-  // --- the faint wobble: a real tube's gas is never perfectly steady, least of all just after it has lit. For the first half minute, now and then, a few tubes lose a little of their brightness for a moment and come
-  // back, several times over, less and less often. No sound; it never touches a tube that is in a flicker (`busy`). ---
-  const wobbling = new Map<number, { from: number; ms: number; depth: number }>();
+  // --- the wobble: a tube's gas is never perfectly steady, least of all while the ballast hums. Every tube's brightness drifts slowly (two slow sines of its own, its own strength: a few wobble a lot, most hardly at all), and how
+  // much follows the hum's own loudness: it rises as the tubes light, is at its fullest when the start-up has settled, and dies away with the hum (the same decay, 2 s). No sound of its own. Tubes that are in a flicker are left to it. ---
   const busy = new Set<number>();
-  let wobbleTimer = 0;
-  let wobbleRaf = 0;
-  let wobbleLast = -1;
-  const WOBBLE_MS = 30000;
-  const ease = (x: number) => x * x * (3 - 2 * x);
-  // (analog: the light does not jump, it sinks a little over a third of a second and climbs back more slowly, both eased, as a tube's gas settles)
-  const dip = (u: number) => (u < 0.35 ? ease(u / 0.35) : ease(1 - (u - 0.35) / 0.65));
-  const wobbleStep = (stamp: number) => {
-    wobbleRaf = 0;
-    if (!idleOn || wobbling.size === 0) return;
-    if (wobbleLast < 0 || stamp - wobbleLast >= 1000 / fps) {
-      wobbleLast = stamp;
-      const now = performance.now();
-      wobbling.forEach((w, i) => {
-        const u = (now - w.from) / w.ms;
-        if (u >= 1) {
-          wobbling.delete(i);
-          if (!busy.has(i)) levels[i] = 1;
-        } else if (!busy.has(i)) levels[i] = 1 - w.depth * dip(Math.max(0, u));
-      });
-      apply(levels, true);
-    }
-    wobbleRaf = requestAnimationFrame(wobbleStep);
+  const wobbleSeed = blocks.map(() => ({ s: random() ** 1.4, f1: 0.6 + random() * 1.8, f2: 1.8 + random() * 3.2, p1: random() * 6.283, p2: random() * 6.283 }));
+  const HUM_STEP = 25;
+  const humEnd = end + 200;
+  const humLit: number[] = [];
+  for (let ms = 0; ms <= humEnd; ms += HUM_STEP) {
+    let sum = 0;
+    plans.forEach((p) => (sum += levelAt(p, ms)));
+    humLit.push(sum / Math.max(1, plans.size));
+  }
+  /** The hum's loudness, 0 to 1, `ms` after the start-up began (the sound's own envelope: the share of tubes lit, then an exponential fade of time constant 2 s). */
+  const humAt = (ms: number) => (ms <= humEnd ? (humLit[Math.min(humLit.length - 1, Math.floor(ms / HUM_STEP))] ?? 0) : Math.exp(-(ms - humEnd) / 2000));
+  /** Down to a quarter of its brightness, at the hum's loudest, for the strongest tube. */
+  const WOBBLE_DEPTH = 0.75;
+  const wob = (i: number, ms: number, hum: number) => {
+    if (hum <= 0.005) return 1;
+    const w = wobbleSeed[i]!;
+    const sec = ms / 1000;
+    const n = 0.5 + 0.5 * (0.6 * Math.sin(6.283 * w.f1 * sec + w.p1) + 0.4 * Math.sin(6.283 * w.f2 * sec + w.p2));
+    return 1 - WOBBLE_DEPTH * hum * w.s * n;
   };
-  const wobble = () => {
-    if (!idleOn) return;
-    const age = performance.now() - idleSince;
-    if (age > WOBBLE_MS) {
-      // (the wobble is over: let the picture converge again, once the last dips are done)
-      if (wobbling.size === 0) done();
-      else wobbleTimer = window.setTimeout(wobble, 500);
+  let tailing = false;
+  let tailRaf = 0;
+  let tailLast = -1;
+  const tail = (stamp: number) => {
+    tailRaf = 0;
+    if (!tailing) return;
+    const ms = performance.now() - t0;
+    const hum = humAt(ms);
+    if (tailLast < 0 || stamp - tailLast >= 1000 / fps) {
+      tailLast = stamp;
+      // (only while the picture is in view: out of view the wobble goes on in time, unseen)
+      if (canPlay() && !document.hidden) {
+        for (let i = 0; i < blocks.length; i++) if (!busy.has(i)) levels[i] = wob(i, ms, hum);
+        apply(levels);
+      }
+    }
+    if (hum < 0.015) {
+      tailing = false;
+      for (let i = 0; i < blocks.length; i++) if (!busy.has(i)) levels[i] = 1;
+      apply(levels);
+      done();
       return;
     }
-    if (canPlay() && !document.hidden) {
-      const n = 1 + Math.floor(idleRandom() * 3);
-      for (let k = 0; k < n; k++) {
-        const i = Math.floor(idleRandom() * blocks.length);
-        if (busy.has(i) || wobbling.has(i)) continue;
-        // (down to 55-80 % at the lowest, over 0.4 to 1.2 s in all; the picture shows a little less of it)
-        wobbling.set(i, { from: performance.now() + idleRandom() * 120, ms: 400 + idleRandom() * 800, depth: 0.2 + idleRandom() * 0.25 });
-      }
-      if (!wobbleRaf && wobbling.size > 0) {
-        wobbleLast = -1;
-        wobbleRaf = requestAnimationFrame(wobbleStep);
-      }
-    }
-    wobbleTimer = window.setTimeout(wobble, (300 + idleRandom() * 900) * (1 + age / 10000));
+    tailRaf = requestAnimationFrame(tail);
   };
   const stopIdle = () => {
     idleOn = false;
-    window.clearTimeout(wobbleTimer);
-    cancelAnimationFrame(wobbleRaf);
-    wobbleRaf = 0;
-    wobbling.clear();
+    tailing = false;
+    cancelAnimationFrame(tailRaf);
     busy.clear();
     window.clearTimeout(idleTimer);
     window.clearTimeout(idleClose);
@@ -398,7 +392,6 @@ export function createNeon({ blocks, apply, done, sound, fps = NEON_FPS, seed = 
         batch.forEach((i) => {
           levels[i] = 1;
           busy.delete(i);
-          wobbling.delete(i);
         });
         apply(levels, true);
         done();
@@ -413,8 +406,6 @@ export function createNeon({ blocks, apply, done, sound, fps = NEON_FPS, seed = 
     idleSince = performance.now();
     window.clearTimeout(idleTimer);
     idleTimer = window.setTimeout(flicker, 2500 + idleRandom() * 3500);
-    window.clearTimeout(wobbleTimer);
-    wobbleTimer = window.setTimeout(wobble, 600);
   };
 
   const tick = (stamp: number) => {
@@ -425,23 +416,27 @@ export function createNeon({ blocks, apply, done, sound, fps = NEON_FPS, seed = 
     if (last < 0 || stamp - last >= 1000 / fps) {
       last = stamp;
       let changed = false;
-      plans.forEach((plan, i) => {
-        const v = levelAt(plan, ms);
+      const hum = humAt(ms);
+      for (let i = 0; i < blocks.length; i++) {
+        const plan = plans.get(i);
+        const v = (plan ? levelAt(plan, ms) : 1) * wob(i, ms, hum);
         if (Math.abs(v - levels[i]!) > 1e-3) {
           levels[i] = v;
           changed = true;
         }
-      });
+      }
       if (changed) apply(levels);
     }
     if (ms >= end) {
       running = false;
       // (the sound's tail goes on a few seconds after the picture is done: it keeps its listener until it is let go)
       if (!ctx) document.removeEventListener("visibilitychange", onVisibility);
-      plans.forEach((_, i) => (levels[i] = 1));
-      apply(levels);
+      // (the lights are all on: the page is told so; the wobble goes on with the hum, which is at its fullest now, until it has died away)
       done();
       startIdle();
+      tailing = true;
+      tailLast = -1;
+      tailRaf = requestAnimationFrame(tail);
       return;
     }
     raf = requestAnimationFrame(tick);
@@ -466,7 +461,7 @@ export function createNeon({ blocks, apply, done, sound, fps = NEON_FPS, seed = 
       running = false;
       cancelAnimationFrame(raf);
       document.removeEventListener("visibilitychange", onVisibility);
-      plans.forEach((_, i) => (levels[i] = 1));
+      levels.fill(1);
       closeSound();
       stopIdle();
     },
