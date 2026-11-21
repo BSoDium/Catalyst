@@ -215,8 +215,8 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
         const luma = 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
         return c.clone().lerp(new THREE.Color(luma, luma, luma), k);
       };
-      const OFF_EMISSIVE = 0.008;
-      const OFF_ENV = 0.014;
+      const OFF_EMISSIVE = 0.0012;
+      const OFF_ENV = 0.004;
       const MAX_LEVELS = 1024;
       // (two numbers a block: what its own rod gives out, and how much of the light of the blocks around it, which are on, reaches it, 0 to 1, against all of them on)
       const levelData = new Float32Array(MAX_LEVELS * 2).fill(1);
@@ -587,7 +587,7 @@ void main() {
           const shell = roundedBox(0.92, h, 0.92, lite ? 2 : 3, Math.min(0.16, h / 2.2));
           shell.translate(x, y0 + h / 2, z);
           // dark: the glass is nearly clear (the light of its core shows through it); light: tinted by the level
-          paint(shell, (dark ? mute(hue, DARK_GLASS_MUTE[src]) : hue.clone()).lerp(new THREE.Color(0xffffff), dark ? 0.14 : 0.12).multiplyScalar(dark ? 0.3 + 0.7 * tEff : 1).add(inc.clone().multiplyScalar(dark && customOn() ? 0.35 : 0.08)), 0, dark);
+          paint(shell, (dark ? mute(hue, DARK_GLASS_MUTE[src]) : hue.clone()).lerp(new THREE.Color(0xffffff), dark ? 0.14 : 0.12).multiplyScalar(dark ? 0.1 + 0.9 * tEff : 1).add(inc.clone().multiplyScalar(dark && customOn() ? 0.35 : 0.08)), 0, dark);
           shell.setAttribute("aBlock", new THREE.BufferAttribute(new Float32Array(shell.getAttribute("position").count).fill(blockIndex), 1));
           // the glass of a busy day glows on its own surface too (dark theme): three steps of emission per source, each its own material
           const tier = tEff < 0.34 ? 0 : tEff < 0.67 ? 1 : 2;
