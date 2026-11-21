@@ -189,7 +189,7 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       });
       // the empty days: a plain dull tile in the dark theme (not glass: glass reflects the room and is never dim)
       // (an unlit flat tile in the ground's own colour, a shade apart: it casts and receives nothing itself; the glow, the sun's shadows and the contact shadows are layers over it, as over the ground)
-      const tileUnlit = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false });
+      const tileUnlit = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false, side: THREE.BackSide });
       // the page's own background, read as the browser resolves it: the ground is that colour (so there is something to refract, and no seam with the page)
       const pageColour = () => {
         const css = resolveBackground(el, opts.background, isDark() ? "dark" : "light");
@@ -519,6 +519,8 @@ void main() {
         const tb0 = performance.now();
         picks = [];
         let tileShape = null as BufferGeometry | null;
+        let ringShape0 = null as BufferGeometry | null;
+        const rims: BufferGeometry[] = [];
         // (the page's colour is read from the browser once a build, not once a tile: it makes a canvas and reads a pixel back)
         const page = pageColour();
         const shellsBy = new Map<string, BufferGeometry[]>();
@@ -543,18 +545,56 @@ void main() {
           const w = stack.bottom.cells[i]!;
           const { x, z } = at(g.week, g.day);
           if (w.value <= 0 && g.value <= 0) {
-            // a flat tile with the same rounded corners as the blocks (a rounded square, extruded 0.04)
-            // (every empty day is the same plate: built once, then copied)
+            // an empty day is a soft square pit dug in the ground (the same rounded corners as the blocks): its inside is what is seen (the walls and the floor, from inside: back faces), its floor darker than the page, its walls lighter near the rim
+            // (the glow of the neighbours lies over it, so it reflects their light), and a thin rim round its opening takes a highlight on the edges that face the light
             if (!tileShape) {
-              tileShape = new THREE.ExtrudeGeometry(roundedSquare, { depth: 0.04, bevelEnabled: false, curveSegments: lite ? 3 : 6 });
-              tileShape.rotateX(-Math.PI / 2);
-              tileShape.deleteAttribute("uv");
+              const PIT = 0.07;
+              const BEVEL = 0.025;
+              const g = new THREE.ExtrudeGeometry(roundedSquare, { depth: PIT, bevelEnabled: true, bevelSize: BEVEL, bevelThickness: BEVEL, bevelSegments: lite ? 1 : 3, curveSegments: lite ? 3 : 6 });
+              g.rotateX(-Math.PI / 2);
+              g.deleteAttribute("uv");
+              g.translate(0, -(PIT + BEVEL), 0);
+              const pos = g.getAttribute("position");
+              const col = new Float32Array(pos.count * 3);
+              const floor = dark ? page.clone().multiplyScalar(0.3) : page.clone().multiplyScalar(0.8);
+              const wall = dark ? page.clone().add(new THREE.Color(0.012, 0.013, 0.016)) : page.clone().multiplyScalar(0.97);
+              const c3 = new THREE.Color();
+              for (let q = 0; q < pos.count; q++) {
+                const d = Math.min(1, Math.max(0, -pos.getY(q) / (PIT + BEVEL)));
+                c3.copy(wall).lerp(floor, d * d);
+                c3.toArray(col, q * 3);
+              }
+              g.setAttribute("color", new THREE.BufferAttribute(col, 3));
+              tileShape = g;
+              // the rim: a thin ring round the opening, brighter on the edges that face the sun's side (a soft specular line, not a frame)
+              const outer = roundedSquare.getPoints(lite ? 3 : 6);
+              const ringShape = new THREE.Shape(outer.map((v) => v.clone().multiplyScalar(1.05)));
+              ringShape.holes.push(new THREE.Path(outer.map((v) => v.clone().multiplyScalar(0.955)).reverse()));
+              const ring = new THREE.ShapeGeometry(ringShape);
+              ring.rotateX(-Math.PI / 2);
+              ring.translate(0, 0.004, 0);
+              ring.deleteAttribute("uv");
+              const rp = ring.getAttribute("position");
+              const rc = new Float32Array(rp.count * 3);
+              for (let q = 0; q < rp.count; q++) {
+                // (a soft key light above and behind the viewer, a little to one side: the lip of a pit catches it on the edges whose slope faces it, that is the FAR edges (a bevel there slopes down towards the viewer), never the near ones; a vertex of the ring is on an edge by its direction from the middle)
+                const rx = rp.getX(q);
+                const rz = rp.getZ(q);
+                const rl = Math.hypot(rx, rz) || 1;
+                const w = Math.pow(Math.max(0, (rx * -0.707 + rz * -0.707) / -rl), 3);
+                if (dark) c3.copy(page).add(new THREE.Color(0.024, 0.026, 0.034).multiplyScalar(Math.min(1, w)));
+                else c3.copy(page).lerp(new THREE.Color(1, 1, 1), 0.3 * Math.min(1, w));
+                c3.toArray(rc, q * 3);
+              }
+              ring.setAttribute("color", new THREE.BufferAttribute(rc, 3));
+              ringShape0 = ring;
             }
             const tile = tileShape.clone();
             tile.translate(x, 0, z);
-            // (dark) a very dim grey of its own, a little over the page's: an empty day is a faint plate, not a hole
-            paint(tile, dark ? page.clone().add(new THREE.Color(0.006, 0.006, 0.006)) : page.clone().multiplyScalar(0.93));
             tiles.push(tile);
+            const rim = ringShape0!.clone();
+            rim.translate(x, 0, z);
+            rims.push(rim);
             picks.push({ cell: i, x, z, y0: 0, y1: 0.04 });
             return;
           }
@@ -668,6 +708,9 @@ void main() {
         if (tiles.length) {
           const tile = new THREE.Mesh(mergeGeometries(tiles), tileUnlit);
           group.add(tile);
+          const rim = new THREE.Mesh(mergeGeometries(rims), tileUnlit.clone());
+          (rim.material as import("three").MeshBasicMaterial).side = THREE.FrontSide;
+          group.add(rim);
         }
         const materials: import("three").MeshPhysicalMaterial[] = [];
         for (const [key, list] of shellsBy) {
@@ -741,6 +784,7 @@ void main() {
         }
         [...cores, ...tiles].forEach((p) => p.dispose());
         tileShape?.dispose();
+        ringShape0?.dispose();
         if (dbg.metrics) console.info(`[activity] build: geometry ${Math.round(tb1 - tb0)} ms, ground ${Math.round(tb2 - tb1)} ms, merge ${Math.round(performance.now() - tb2)} ms`);
         return group;
       };

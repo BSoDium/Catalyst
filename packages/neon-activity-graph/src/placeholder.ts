@@ -4,7 +4,7 @@ import { placeholderTiles } from "./view";
 export const defaultAspect = (strips: number) => (strips > 1 ? 0.8 : 3.97);
 
 /**
- * The place-holder as SVG markup: the year's days as faint flat squares on the same slab, seen by the same camera as the scene, pulsing (not with `prefers-reduced-motion`). It fills its (positioned) parent, takes the parent's
+ * The place-holder as SVG markup: the year's days as faint square pits (darker than the page, with a hairline rim) on the same slab, seen by the same camera as the scene, pulsing (not with `prefers-reduced-motion`). It fills its (positioned) parent, takes the parent's
  * text colour, and is the same string in the browser and on the server, so it can be in a prerendered page (React: `dangerouslySetInnerHTML`, or just use `ActivityGraphView`, which does it).
  */
 export function placeholderMarkup({ weeks = 53, strips = 1, aspect, shifts, tallest }: { weeks?: number; strips?: number; aspect?: number; shifts?: readonly number[]; tallest?: number }): string {
@@ -12,7 +12,7 @@ export function placeholderMarkup({ weeks = 53, strips = 1, aspect, shifts, tall
   return (
     `<svg data-neon-placeholder aria-hidden="true" viewBox="${viewBox}" preserveAspectRatio="xMidYMid meet" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;transition:opacity .4s ease">` +
     `<style>@keyframes nag-pulse{50%{opacity:.5}}.nag-pulse{animation:nag-pulse 2s ease-in-out infinite}@media (prefers-reduced-motion:reduce){.nag-pulse{animation:none}}</style>` +
-    `<g class="nag-pulse"><path d="${d}" fill="currentColor" opacity="0.07"/></g></svg>`
+    `<g class="nag-pulse"><path d="${d}" fill="#000" fill-opacity="0.24" stroke="currentColor" stroke-opacity="0.1" stroke-width="1" vector-effect="non-scaling-stroke"/></g></svg>`
   );
 }
 

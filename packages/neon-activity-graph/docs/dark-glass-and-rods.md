@@ -68,3 +68,7 @@ The filter is **not pure**: its colour is the layer colour taken 60 % of the way
 **Milk of the wrong colour**: the neighbours' light (`inc`) is the *sum* of their colours, so red and cyan neighbours add up to grey. In the shader the glow is now pushed back from grey to its colour (`GLOW_SATURATION` 2.5, about its luminance) and the faint part takes 35 % of the block's own tint (`GLOW_TINT_FAINT`).
 
 **No milk while everything is dimmed** (hover): the neighbours' glow follows the cube of the neighbours' level (`lv.g³`), so at the hover's dimming (0.34) it is down to 4 % and the dimmed blocks are plain glass; at full level it is unchanged.
+
+## The empty days are pits
+
+An empty day is a soft square **pit** dug in the ground (`graph.ts`, `tileShape`): a rounded-square extrusion sunk 0.07 below the ground with a rounded lip, drawn from inside (back faces): the walls are a little lighter than the page near the rim, the floor darker, and the baked glow of the neighbours lies over it, so it reflects their light. A thin ring round the opening takes a **soft highlight on the two far edges** only: the light is imagined above and behind the viewer, and the lip of a pit catches it where its slope faces it, which is on the far side (never the near one). Not a real lighting calculation: a vertex colour. The place-holder (`placeholder.ts`) draws the same squares as darker-than-the-page pits with a hairline rim.
