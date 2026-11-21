@@ -235,9 +235,11 @@ export function ActivityScene({ activity, strips = 1, onReady, onLit, onHover, c
       const XMAS = ["#ff0a0a", "#00e03c", "#f4f7ff", "#ffa600", "#f4f7ff", "#1a3cff", "#ff0a0a", "#00e03c"].map((c) => new THREE.Color(c));
       const xmasHue = (cell: number, src: "waka" | "github", t: number) => {
         const h = Math.imul(cell + 1, 2654435761) ^ Math.imul(src === "waka" ? 97 : 13, 40503);
-        const pick = ((h >>> 7) % XMAS.length + XMAS.length) % XMAS.length;
-        // (the whites have almost no chroma: the final pass leaves the bright ones alone, so they need no extra light, which would also be cast on the ground)
-        return XMAS[pick]!.clone().multiplyScalar((0.3 + 0.7 * t));
+        let pick = ((h >>> 7) % XMAS.length + XMAS.length) % XMAS.length;
+        // (a white light that is dim is a grey one, and no lamp glows grey: a quiet day is never white, it takes the colour next to it in the string; a busy day's white is kept at a good brightness)
+        const white = pick === 2 || pick === 4;
+        if (white && t < 0.5) pick = pick === 2 ? 3 : 5;
+        return XMAS[pick]!.clone().multiplyScalar(white && pick !== 3 && pick !== 5 ? 0.6 + 0.4 * t : 0.3 + 0.7 * t);
       };
       const groundLayers = (stack: { waka: Matrix; github: Matrix }, tones: { waka: [Color, Color]; github: [Color, Color] }, dark: boolean) => {
         const cw = Math.ceil((width + GLOW_PAD * 2) * PX);
@@ -702,7 +704,7 @@ void main(){
     c.rgb += bloom * halo * mix(1.3, 0.38, haloBlue);
   }
   // (?xmas: the grey-white veil that the glass's reflections, the halo and the emissive add to every channel is taken off: what is left is the rod's own colour, as saturated as it is, at the same brightness)
-  if (veil > 0.) { float mx = max(c.r, max(c.g, c.b)); float mn = min(c.r, min(c.g, c.b)); float k = smoothstep(0.12, 0.5, (mx - mn) / max(mx, 1e-4)); c.rgb -= mn * veil * k; c.rgb *= mix(1., mix(0.4, 1., k), smoothstep(0.04, 0.2, mx) * (1. - smoothstep(0.45, 0.8, mx))); }
+  if (veil > 0.) { float mx = max(c.r, max(c.g, c.b)); float mn = min(c.r, min(c.g, c.b)); float k = smoothstep(0.12, 0.5, (mx - mn) / max(mx, 1e-4)); c.rgb -= mn * veil * k; c.rgb *= mix(1., mix(0.15, 1., k), smoothstep(0.04, 0.2, mx) * (1. - smoothstep(0.45, 0.8, mx))); }
   // A hue-preserving soft clip: a channel past 1 (a busy blue: its blue is far over, its green and red are not) would clip alone and turn the colour pale; the whole colour is brought back so that its brightest channel
   // only just passes 1, and the hue and the saturation stay.
   float m = max(max(c.r, c.g), c.b);

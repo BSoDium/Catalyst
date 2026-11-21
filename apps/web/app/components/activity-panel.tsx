@@ -358,8 +358,10 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
             </Suspense>
           )}
           {show && (
-            <div aria-hidden="true" className="pointer-events-none absolute right-0 bottom-0 z-10 flex items-end justify-end px-[3cqi] pt-[9cqi] pl-[16cqi] opacity-100 transition-opacity duration-1000 group-hover/scene:opacity-0" style={{ opacity: lit ? undefined : 0, transform: `translateY(${drop}px)`, background: "radial-gradient(ellipse at 100% 100%, color-mix(in oklab, var(--background) 68%, transparent) 25%, color-mix(in oklab, var(--background) 50%, transparent) 55%, transparent 85%)" }}>
-              <span ref={greeting} className="text-[clamp(2.25rem,6cqi,4.25rem)] leading-none" style={{ fontFamily: '"Imperial Script", "Snell Roundhand", "Apple Chancery", cursive', color: "#fff", WebkitTextStroke: "0.6px #fff", textShadow: "0 0 0.12em var(--background), 0 0 0.3em var(--background), 0 0 0.6em rgb(255 60 60 / 0.45)" }}>
+            <div aria-hidden="true" className="pointer-events-none absolute right-0 bottom-0 z-10 flex items-end justify-end px-[3cqi] pt-[9cqi] pl-[16cqi] opacity-100 transition-opacity duration-1000 group-hover/scene:opacity-0" style={{ opacity: lit ? undefined : 0, transform: `translateY(${drop}px)` }}>
+              {/* (the backdrop reaches down past the shifted text, to the picture's own bottom edge, so that no glow shows under it) */}
+              <span className="absolute inset-x-0 top-0" style={{ bottom: `${-(Math.max(0, -drop) + 12)}px`, background: "radial-gradient(ellipse at 100% 100%, color-mix(in oklab, var(--background) 68%, transparent) 25%, color-mix(in oklab, var(--background) 50%, transparent) 55%, transparent 85%)" }} />
+              <span ref={greeting} className="relative text-[clamp(2.25rem,6cqi,4.25rem)] leading-none" style={{ fontFamily: '"Imperial Script", "Snell Roundhand", "Apple Chancery", cursive', color: "#fff", WebkitTextStroke: "0.6px #fff", textShadow: "0 0 0.12em var(--background), 0 0 0.3em var(--background), 0 0 0.6em rgb(255 60 60 / 0.45)" }}>
                 Merry Christmas
               </span>
             </div>
