@@ -62,3 +62,5 @@ The tint on the *glow* alone was not enough: the bright light that actually gets
 `lightBehind` measures the overlap with the blocks' **real outlines** (convex hull of the 8 projected corners, 7×7 sample points), not their bounding rectangles: a rectangle counted the neighbours beside a block, and the blocks at the top edge, against the black, got a grey glow.
 
 The filter is **not pure**: its colour is the layer colour taken 60 % of the way from white (`LAYER_FILTER_PURITY`), distance 2. A pure red filter (Technicolor pink) stopped cyan light dead; now some of it goes through, tinted.
+
+**Dimmed blocks went milky** (hover): `FOCUS_OFF` 0.34 is just under the 0.35 at which the shader treated a rod as "right off" and swapped the glass glow for the cool grey (`offGrey`), so every dimmed block glowed grey. Found by switching glow, reflections, clear coat, specular and the sun off one by one: with the glow off the dimmed glass was clear and dark. `offGrey` now only applies below 0.12.

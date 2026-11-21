@@ -216,7 +216,7 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       // (the filter's colour is the layer's own palette colour, whatever the palette: a grey or white layer is not filtered)
       const LAYER_FILTER_DISTANCE = 2;
       // (how much of the layer's colour the filter takes: 1 would absorb the other channels completely, so a red glass would stop a blue light dead; real tinted glass is never that pure)
-      const LAYER_FILTER_PURITY = 0.6;
+      const LAYER_FILTER_PURITY = 0.72;
       /** (dark) how much of the light the neighbours give out the glass of a block glows with: inside a group of lamps no glass is dark, and an isolated block's is. */
       const NEIGHBOUR_GLOW = 0.22;
       /** How much light behind a block it takes to light its glass most of the way (the share is `1 - e^-(light behind / this)`). */
@@ -703,7 +703,7 @@ void main() {
                 .replace("#include <begin_vertex>", "#include <begin_vertex>\n  vec2 lv = texelFetch(uLevels, ivec2(int(aBlock + 0.5), 0), 0).rg;\n  float own = max(lv.r, 0.3 * lv.g);\n  vOn = clamp(own, 0.0, 1.0);\n  vLevelEm = max(own, uFloorEm);\n  vLevelEnv = max(own, uFloorEnv);\n  vInc = aInc * lv.g;\n  vTint = aTint;");
               shader.fragmentShader = shader.fragmentShader
                 .replace("#include <common>", "#include <common>\nvarying float vLevelEm;\nvarying float vLevelEnv;\nvarying float vOn;\nvarying vec3 vInc;\nvarying vec3 vTint;")
-                .replace("#include <emissivemap_fragment>", "#include <emissivemap_fragment>\n  // (right off, the glass glows the same cool grey whatever its source; as soon as there is a light in it, its own colour, darker the dimmer the light: a dimmed block is a tinted, darker one, not a grey one)\n  float offGrey = 1.0 - smoothstep(0.0, 0.35, vOn);\n  totalEmissiveRadiance = mix(totalEmissiveRadiance, vec3(dot(totalEmissiveRadiance, vec3(0.333))) * vec3(0.85, 0.95, 1.15), offGrey) * mix(pow(vLevelEm, 2.0), vLevelEm, offGrey);\n  vec3 nb = min(vInc * " + NEIGHBOUR_GLOW.toFixed(3) + ", vec3(0.1));\n  nb *= mix(vec3(1.0), vTint, mix(" + GLOW_TINT_FAINT.toFixed(3) + ", 1.0, smoothstep(0.02, 0.1, max(nb.r, max(nb.g, nb.b)))));\n  totalEmissiveRadiance += nb;")
+                .replace("#include <emissivemap_fragment>", "#include <emissivemap_fragment>\n  // (right off, the glass glows the same cool grey whatever its source; as soon as there is a light in it, its own colour, darker the dimmer the light: a dimmed block is a tinted, darker one, not a grey one)\n  float offGrey = 1.0 - smoothstep(0.0, 0.12, vOn);\n  totalEmissiveRadiance = mix(totalEmissiveRadiance, vec3(dot(totalEmissiveRadiance, vec3(0.333))) * vec3(0.85, 0.95, 1.15), offGrey) * mix(pow(vLevelEm, 2.0), vLevelEm, offGrey);\n  vec3 nb = min(vInc * " + NEIGHBOUR_GLOW.toFixed(3) + ", vec3(0.1));\n  nb *= mix(vec3(1.0), vTint, mix(" + GLOW_TINT_FAINT.toFixed(3) + ", 1.0, smoothstep(0.02, 0.1, max(nb.r, max(nb.g, nb.b)))));\n  totalEmissiveRadiance += nb;")
                 .replace("#include <lights_fragment_maps>", "#include <lights_fragment_maps>\n#if defined( RE_IndirectSpecular )\n  radiance *= vLevelEnv;\n#ifdef USE_CLEARCOAT\n  clearcoatRadiance *= vLevelEnv;\n#endif\n#endif\n#if defined( RE_IndirectDiffuse )\n  iblIrradiance *= vLevelEnv;\n#endif");
             };
             mat.customProgramCacheKey = () => "glass-levels";
