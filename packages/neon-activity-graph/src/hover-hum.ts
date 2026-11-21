@@ -1,13 +1,17 @@
 /**
- * The hum of the neon under the pointer: a ballast's buzz (100 Hz, a sawtooth with its edges taken off, and a little beating against a second one a hair away) whose loudness (and brightness of tone) follows how bright the
- * neon is, 0 when nothing is selected, the most when it is at full brightness, and back to 0 as it falls back. It is made on demand (a context only when the first neon is selected, and let go a few seconds after the last hum has
- * died), only when the browser lets the page make sound (the visitor has used the page), and it is the page's own business to say when (`level`).
+ * The hum of the neon under the pointer: a ballast's buzz (100 Hz, a sawtooth with its edges taken off) whose loudness (and brightness of tone) follows how bright the neon is, 0 when nothing is selected, the most when it is at full
+ * brightness, and slowly back to 0 as it falls back. It is not one steady tone: two buzzing voices a fifth or so apart lie on top of each other and one ducks the other, as in a sidechain, at a slow rate of its own, so that the hum
+ * breathes and beats as two real ballasts do. It is made on demand (a context only when the first neon is selected, and let go a few seconds after the last hum has died), only when the browser lets the page make sound (the visitor
+ * has used the page), and it is the page's own business to say when (`level`).
  */
-// (as quiet as the start-up's own hum: its ballast is 0.004 through a master of 0.5; this is three voices, so a little under)
-const MAX = 0.0024;
-const IDLE_CLOSE_MS = 3000;
+// (as quiet as the start-up's own hum: its ballast is 0.004 through a master of 0.5; this is several voices, so a little under)
+const MAX = 0.0022;
+const IDLE_CLOSE_MS = 4500;
+/** How fast the hum swells with the light, and how slowly it dies away (time constants, seconds). */
+const ATTACK = 0.09;
+const RELEASE = 0.45;
 
-/** Each neon has a hum of its own, the same every time: its pitch, the slow beat between the two buzzing voices, the share of the upper partial and the brightness of the tone come from the neon's number. */
+/** Each neon has a hum of its own, the same every time: from the neon's number come its pitch (not far from 100 Hz), the pitch of the second voice, the slow beat, the rate and depth of the ducking and the brightness of the tone. */
 function voiceOf(seed: number) {
   let a = (seed * 2654435761 + 0x9e3779b9) >>> 0;
   const rnd = () => {
@@ -17,8 +21,17 @@ function voiceOf(seed: number) {
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
-  const base = 88 + rnd() * 26;
-  return { base, beat: 0.3 + rnd() * 1.3, upper: 0.15 + rnd() * 0.45, upperHz: base * (2 + (rnd() < 0.5 ? 0 : 0.003)), tone: 0.8 + rnd() * 0.5 };
+  const base = 95 + rnd() * 10;
+  const ratios = [1.5, 1.335, 1.26, 2.01];
+  return {
+    base,
+    beat: 0.3 + rnd() * 1.1,
+    second: base * ratios[Math.floor(rnd() * ratios.length)]!,
+    lfo: 0.35 + rnd() * 1.3,
+    depth: 0.5 + rnd() * 0.4,
+    upper: 0.15 + rnd() * 0.35,
+    tone: 0.85 + rnd() * 0.3,
+  };
 }
 
 export function createHoverHum() {
@@ -29,8 +42,13 @@ export function createHoverHum() {
   let closeTimer = 0;
   let oscs: OscillatorNode[] = [];
   let upperGain: GainNode | null = null;
+  let duck: GainNode | null = null;
+  let swell: GainNode | null = null;
+  let voiceA: GainNode | null = null;
+  let voiceB: GainNode | null = null;
   let seeded = -1;
   let tone = 1;
+  let prev = 0;
   const allowed = () => (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation?.hasBeenActive !== false;
   const close = () => {
     window.clearTimeout(closeTimer);
@@ -44,8 +62,9 @@ export function createHoverHum() {
     oscs = [];
     const x = c;
     c = null;
-    gain = lp = panner = upperGain = null;
+    gain = lp = panner = upperGain = duck = swell = voiceA = voiceB = null;
     seeded = -1;
+    prev = 0;
     if (x && x.state !== "closed") x.close().catch(() => {});
   };
   const open = () => {
@@ -60,44 +79,73 @@ export function createHoverHum() {
     lp.frequency.value = 380;
     lp.Q.value = 0.6;
     panner = c.createStereoPanner();
-    for (const [f, g] of [[100, 1], [100.7, 0.8], [200.3, 0.35]] as const) {
-      const o = c.createOscillator();
-      o.type = f > 150 ? "sine" : "sawtooth";
-      o.frequency.value = f;
-      const og = c.createGain();
-      og.gain.value = g;
-      if (f > 150) upperGain = og;
-      o.connect(og).connect(lp);
+    const osc = (type: OscillatorType) => {
+      const o = c!.createOscillator();
+      o.type = type;
+      o.frequency.value = 100;
       o.start();
       oscs.push(o);
-    }
+      return o;
+    };
+    // voice A: two sawtooths a hair apart (the slow beat); voice B: a sawtooth at the second pitch; and a sine an octave above A
+    voiceA = c.createGain();
+    voiceA.gain.value = 0.7;
+    osc("sawtooth").connect(voiceA);
+    osc("sawtooth").connect(voiceA);
+    voiceB = c.createGain();
+    voiceB.gain.value = 0.4;
+    osc("sawtooth").connect(voiceB);
+    upperGain = c.createGain();
+    upperGain.gain.value = 0.3;
+    osc("sine").connect(upperGain);
+    // the sidechain: a slow sine makes B swell as it makes A duck (the one keeps the other's level moving, never both loud or both quiet)
+    const lfo = osc("sine");
+    lfo.frequency.value = 0.8;
+    swell = c.createGain();
+    swell.gain.value = 0.3;
+    duck = c.createGain();
+    duck.gain.value = -0.3;
+    lfo.connect(swell).connect(voiceB.gain);
+    lfo.connect(duck).connect(voiceA.gain);
+    voiceA.connect(lp);
+    voiceB.connect(lp);
+    upperGain.connect(lp);
     lp.connect(gain).connect(panner).connect(c.destination);
     return true;
   };
   return {
-    /** The hum's strength, 0 to 1 (the selected neon's brightness above its normal, as a share of the most it gets), and where it is across the picture, -1 to 1. */
-    set(level: number, pan = 0, seed = 0) {
+    /**
+     * The hum's strength, 0 to 1 (the selected neon's brightness above its normal, as a share of the most it gets). `pan` (-1 to 1) and `seed` (the neon's number) say which neon it is, or `null` when none is under the pointer:
+     * then the hum is the last neon's, as it was, and only fades.
+     */
+    set(level: number, pan: number | null = null, seed: number | null = null) {
       const v = Math.max(0, Math.min(1, level));
       if (v < 0.01 && !c) return;
       if (!c && !open()) return;
       if (!c || !gain || !lp || !panner) return;
       const t = c.currentTime;
-      if (seed !== seeded && v >= 0.01) {
+      if (c.state === "suspended") void c.resume().catch(() => {});
+      if (seed !== null && pan !== null && seed !== seeded) {
         // (another neon: its own voice; the first time the pitch is set at once, after that it glides, so that moving across the blocks does not click)
         const vc = voiceOf(seed);
         const glide = seeded < 0 ? 0.001 : 0.12;
         oscs[0]?.frequency.setTargetAtTime(vc.base, t, glide);
         oscs[1]?.frequency.setTargetAtTime(vc.base + vc.beat, t, glide);
-        oscs[2]?.frequency.setTargetAtTime(vc.upperHz, t, glide);
+        oscs[2]?.frequency.setTargetAtTime(vc.second, t, glide);
+        oscs[3]?.frequency.setTargetAtTime(vc.base * 2, t, glide);
+        oscs[4]?.frequency.setTargetAtTime(vc.lfo, t, glide);
         upperGain?.gain.setTargetAtTime(vc.upper, t, glide);
+        swell?.gain.setTargetAtTime(0.4 * vc.depth, t, glide);
+        duck?.gain.setTargetAtTime(-0.4 * vc.depth, t, glide);
         tone = vc.tone;
         seeded = seed;
       }
-      if (c.state === "suspended") void c.resume().catch(() => {});
-      // (a soft change: the hum swells and dies with the light, not with the frame)
-      gain.gain.setTargetAtTime(MAX * v ** 1.5, t, 0.09);
-      lp.frequency.setTargetAtTime((380 + 520 * v) * tone, t, 0.09);
-      panner.pan.setTargetAtTime(pan * 0.7, t, 0.15);
+      if (pan !== null) panner.pan.setTargetAtTime(pan * 0.7, t, 0.15);
+      // (a soft change: the hum swells with the light, and dies slowly, with the light, not with the frame)
+      const tc = v >= prev ? ATTACK : RELEASE;
+      prev = v;
+      gain.gain.setTargetAtTime(MAX * v ** 1.5, t, tc);
+      lp.frequency.setTargetAtTime((380 + 520 * v) * tone, t, tc);
       window.clearTimeout(closeTimer);
       if (v < 0.01) closeTimer = window.setTimeout(close, IDLE_CLOSE_MS);
     },

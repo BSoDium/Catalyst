@@ -1047,18 +1047,15 @@ void main(){
       let humOk = false;
       const humLevel = () => {
         if (!humOk || !(opts.sound ?? true)) return hum.set(0);
+        // (the level is the brightest of the blocks, whichever, so that it dies with the light; the voice is the neon that is under the pointer, and none when none is: then the last one's hum only fades)
         let lvl = 0;
-        let pan = 0;
-        let cellOf = 0;
+        let held = -1;
         for (let i = 0; i < focus.length; i++) {
-          const v = (focus[i]! - 1) / (FOCUS_ON - 1);
-          if (v > lvl) {
-            lvl = v;
-            pan = neonBlocks[i]!.pan;
-            cellOf = neonBlocks[i]!.cell;
-          }
+          lvl = Math.max(lvl, (focus[i]! - 1) / (FOCUS_ON - 1));
+          if (focusTo[i]! > 1 && (held < 0 || focusTo[i]! > focusTo[held]!)) held = i;
         }
-        hum.set(lvl, pan, cellOf);
+        if (held < 0) return hum.set(lvl);
+        hum.set(lvl, neonBlocks[held]!.pan, neonBlocks[held]!.cell);
       };
       const stepFocus = () => {
         focusRaf = 0;
