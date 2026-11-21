@@ -1,5 +1,5 @@
 /**
- * The hum of the neon under the pointer: a ballast's buzz (a sawtooth with its edges taken off, pitched by the neon's size: 150 Hz for the smallest down to 70 for the biggest) whose loudness (and brightness of tone) follows how bright the neon is, 0 when nothing is selected, the most when it is at full
+ * The hum of the neon under the pointer: a ballast's buzz (a sawtooth with its edges taken off, pitched by the neon's size: 112 Hz for the smallest down to 70 for the biggest) whose loudness (and brightness of tone) follows how bright the neon is, 0 when nothing is selected, the most when it is at full
  * brightness, and slowly back to 0 as it falls back. It is not one steady tone: two buzzing voices a fifth or so apart lie on top of each other and one ducks the other, as in a sidechain, at a slow rate of its own, so that the hum
  * breathes and beats as two real ballasts do. It is made on demand (a context only when the first neon is selected, and let go a few seconds after the last hum has died), only when the browser lets the page make sound (the visitor
  * has used the page), and it is the page's own business to say when (`level`).
@@ -11,8 +11,8 @@ const IDLE_CLOSE_MS = 4500;
 const ATTACK = 0.09;
 const RELEASE = 0.45;
 
-/** The pitch of a neon's hum by its size (0 the smallest, 1 the biggest): a small neon hums high and a big one low, as a short string or pipe does, from 150 Hz down to 70. */
-const pitchOf = (size: number) => 150 - 80 * Math.max(0, Math.min(1, size));
+/** The pitch of a neon's hum by its size (0 the smallest, 1 the biggest): a small neon hums high and a big one low, as a short string or pipe does, from 112 Hz down to 70. */
+const pitchOf = (size: number) => 112 - 42 * Math.max(0, Math.min(1, size));
 
 /** Each neon has a hum of its own, the same every time: from the neon's number come a little variety on its size's pitch (a few percent), the pitch of the second voice, the slow beat, the rate and depth of the ducking and the brightness of the tone. */
 function voiceOf(seed: number, size: number) {
