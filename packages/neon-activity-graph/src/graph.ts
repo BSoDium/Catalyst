@@ -211,7 +211,7 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       // (light theme) the core's brightness: below 1 is deeper and more saturated
       const LIGHT_CORE_DEPTH = 0.78;
       // (light theme) how much of white the glass shell's tint is mixed with (1: clear)
-      const LIGHT_SHELL_WHITE = 0.58;
+      const LIGHT_SHELL_WHITE = 0.4;
       const coreMaterial = new THREE.MeshBasicMaterial({ vertexColors: true });
       // (the glass is perfectly clear; it is the core that is soft: its colour fades toward a pale haze of itself toward its silhouette, so it is a blurred glow in the middle of the block, with no hard edge)
       coreMaterial.onBeforeCompile = (shader) => {
