@@ -1,6 +1,7 @@
 import { mountScene, type SceneHandle } from "./graph";
 import { createHoverOverlay, type HoverOverlay } from "./overlay";
 import { mountPlaceholder } from "./placeholder";
+import { cling } from "./sound";
 import { predictBounds } from "./view";
 import type { ActivityGraph, ContentBounds, GraphData, GraphOptions } from "./types";
 
@@ -63,6 +64,9 @@ export function createActivityGraph(container: HTMLElement, options: GraphOption
       handle.stop();
       opts = { ...opts, data };
       handle = start();
+    },
+    cling(size) {
+      if (!destroyed && options.sound !== false) cling(size);
     },
     setColors(colors) {
       if (destroyed) return;

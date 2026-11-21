@@ -98,6 +98,8 @@ The graph shows the last `weeks` weeks (53 by default) ending at the latest day 
 
 The blocks' bounds are also known before anything is drawn: `predictBounds(weeks, strips, width, height)` (in `neon-activity-graph/layout`) is what the container's `--nag-content-*` variables are set from at creation, so a caption lined up with the picture is placed at the first paint and does not move when the scene arrives; the scene's own measurement replaces it a moment later (a few pixels at most).
 
+`graph.cling("small" | "big")` plays one of the start-up's bell-like clicks on demand (the demo uses it when the colours change): same synthesised bell, quiet, honours `sound`, and silent where the browser does not allow sound yet (call it from a click or key handler).
+
 A flat place-holder that shares the scene's camera (so the scene replaces it in place) can be drawn without loading three.js: `import { placeholderTiles } from "neon-activity-graph/layout"` gives an SVG `viewBox` and one path of all the squares.
 
 ## Performance
@@ -117,7 +119,7 @@ Anything with WebGL 2 and half-float render targets (current Chrome, Edge, Firef
 
 - **Light theme.** The sun's light through the glass is traced on the GPU (`ground-light.ts`, a vertex shader that splats rays onto the ground): refraction, Fresnel, total internal reflection, the glass's colour absorption, rounded edges. The ground's brightness is a signed difference to what it would have got with no glass, so shadows are coloured and soft and the caustics are the surplus. `glass-caustics.ts` is the readable CPU version of the same optics, with the tests.
 - **Dark theme.** There is no sun; the light is each block's rod. What one block casts on the ground is *baked*: `assets/caustic-templates.png` holds path-traced templates (Mitsuba 3) of a glass block with a rod in it, for 3 heights x 4 heights above the ground, averaged over the square's symmetries. The graph lays the right template under every block, in the rod's colour. Tracing this live does not work: with the rays a page can afford the result is noise.
-- **Start-up.** The blocks are split into 4 oval areas, each with its own few stutters (2-4), then a warm-up; a block whose rod is off is dim and lit by its lit neighbours. The sound is Web Audio (a 100 Hz ballast hum and bell-like dings), no file. Afterwards, rarely and less and less, a batch of tubes flickers like a sign's.
+- **Start-up.** The blocks are split into 5 adjacent rectangles of different sizes (recursive cuts), each with its own few stutters (2-4), then a warm-up; a block whose rod is off is dim and lit by its lit neighbours. The sound is Web Audio (a 100 Hz ballast hum and bell-like dings), no file. Afterwards, rarely and less and less, a batch of tubes flickers like a sign's.
 - **Grain.** A soft, luminance-dependent noise added in the last pass, like a camera's.
 
 ### Regenerating the caustic templates

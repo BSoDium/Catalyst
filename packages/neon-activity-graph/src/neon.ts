@@ -1,5 +1,5 @@
 /**
- * The neon start-up of the dark theme's rods: when the picture appears the rods do not just come on, they flicker like a gas tube that is struggling to start (the blocks are divided into oval areas, each with its own
+ * The neon start-up of the dark theme's rods: when the picture appears the rods do not just come on, they flicker like a gas tube that is struggling to start (the blocks are divided into rectangular areas, each with its own
  * few stutters of light with gaps between, and then a short warm-up); with a faint low hum that dies away slowly and a few quiet bell-like dings. No file: the sound is synthesised (Web Audio), and only if the browser lets
  * the page make sound and the tab is in view (it does not before the visitor has interacted with the page; then it is silent and nothing else changes).
  *
@@ -34,7 +34,7 @@ export interface NeonOptions {
 }
 
 /** How many areas the rods are divided into, how many of them flicker (all of them now; a smaller number would leave the others on from the start), how long the start-up lasts, and how often the picture is updated while it does. */
-const AREAS = 4;
+const AREAS = 5;
 const FLICKERING = AREAS;
 const SPAN_MS = 2600;
 export const NEON_FPS = 20;
@@ -121,7 +121,7 @@ function bzz(c: AudioContext, dest: AudioNode, when: number, pan: number, level:
   ts.start(when);
   ts.stop(when + 0.02);
 }
-function bell(c: AudioContext, dest: AudioNode, when: number, f0: number, pan: number, level: number) {
+export function bell(c: AudioContext, dest: AudioNode, when: number, f0: number, pan: number, level: number) {
   const out = c.createGain();
   out.gain.value = 0.05 * level;
   const panner = c.createStereoPanner();
@@ -149,44 +149,26 @@ export function createNeon({ blocks, apply, done, sound, fps = NEON_FPS, wobbleF
   let s = seed;
   const random = () => ((s = (s * 16807) % 2147483647) / 2147483647);
   const levels = new Float32Array(blocks.length).fill(1);
-  // The rods are divided into areas, not square ones: each area is the blocks nearest to a centre by a distance that is stretched along its own direction (an oval, turned a random way), and the centres are spread out. A few
-  // of the areas flicker (all of them, now), as one: a stuttering of its own, the same for all its blocks, each a few milliseconds off the others and not quite as bright, so that it reads as a patch of tubes on one circuit.
-  const centres: { x: number; z: number; ax: number; cos: number; sin: number }[] = [];
-  const picks = blocks.map((_, i) => i);
-  const first = Math.floor(random() * blocks.length);
-  const spread = (i: number) => Math.min(...centres.map((c) => Math.hypot(blocks[i]!.x - c.x, blocks[i]!.z - c.z)));
-  centres.push({ x: blocks[first]!.x, z: blocks[first]!.z, ax: 1, cos: 1, sin: 0 });
-  while (centres.length < Math.min(AREAS, blocks.length)) {
-    // (the farthest block of a few tried: spread, but not in a regular pattern)
-    let best = -1;
-    let bestD = -1;
-    for (let k = 0; k < 6; k++) {
-      const i = picks[Math.floor(random() * picks.length)]!;
-      const d = spread(i);
-      if (d > bestD) {
-        best = i;
-        bestD = d;
-      }
+  // The rods are divided into areas that are rectangles: the picture is cut in two across its longer side, then the biggest piece again (each cut at a random place near the middle, by the number of blocks), until there are `AREAS` pieces. So the
+  // blocks of an area are next to each other and the areas are of different sizes; the pieces flicker each as one: a stuttering of its own, the same for all its blocks, each a few milliseconds off the others and not quite as bright, so that it reads as a patch of tubes on one circuit.
+  const pieces: number[][] = [blocks.map((_, i) => i)];
+  while (pieces.length < Math.min(AREAS, blocks.length)) {
+    pieces.sort((p, q) => q.length - p.length);
+    const piece = pieces.shift()!;
+    if (piece.length < 2) {
+      pieces.push(piece);
+      break;
     }
-    const angle = random() * Math.PI;
-    centres.push({ x: blocks[best]!.x, z: blocks[best]!.z, ax: 0.55 + random() * 1.1, cos: Math.cos(angle), sin: Math.sin(angle) });
+    const xs = piece.map((i) => blocks[i]!.x);
+    const zs = piece.map((i) => blocks[i]!.z);
+    const alongX = Math.max(...xs) - Math.min(...xs) >= Math.max(...zs) - Math.min(...zs);
+    const sorted = [...piece].sort((i, j) => (alongX ? blocks[i]!.x - blocks[j]!.x : blocks[i]!.z - blocks[j]!.z));
+    const cut = Math.min(sorted.length - 1, Math.max(1, Math.round(sorted.length * (0.35 + random() * 0.3))));
+    pieces.push(sorted.slice(0, cut), sorted.slice(cut));
   }
-  const areaOf = blocks.map((b) => {
-    let best = 0;
-    let bestD = Infinity;
-    centres.forEach((c, k) => {
-      const dx = b.x - c.x;
-      const dz = b.z - c.z;
-      const u = (dx * c.cos + dz * c.sin) * c.ax;
-      const v = (-dx * c.sin + dz * c.cos) / c.ax;
-      const d = Math.hypot(u, v);
-      if (d < bestD) {
-        bestD = d;
-        best = k;
-      }
-    });
-    return best;
-  });
+  const centres = pieces;
+  const areaOf = new Array<number>(blocks.length).fill(0);
+  pieces.forEach((p, k) => p.forEach((i) => (areaOf[i] = k)));
   const flickering = new Set([...centres.keys()].sort(() => random() - 0.5).slice(0, FLICKERING));
   const areaPlans = new Map<number, { start: number; stutters: Stutter[]; steady: number }>();
   flickering.forEach((k) => {

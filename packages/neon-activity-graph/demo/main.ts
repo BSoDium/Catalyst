@@ -168,11 +168,21 @@ for (const [name, p] of Object.entries(PRESETS)) {
   b.type = "button";
   b.dataset.name = name;
   b.innerHTML = `<i style="--a:${(p ?? ORIGINAL).top};--b:${(p ?? ORIGINAL).bottom}"></i>${name}`;
-  b.addEventListener("click", () => apply(p));
+  b.addEventListener("click", () => {
+    apply(p);
+    graph?.cling("big");
+  });
   presetBox.append(b);
 }
-inTop.addEventListener("input", () => apply({ top: inTop.value, bottom: inBottom.value }));
-inBottom.addEventListener("input", () => apply({ top: inTop.value, bottom: inBottom.value }));
+// (a small cling once the picker has settled, as the colours are applied)
+let clingTimer = 0;
+const picked = () => {
+  apply({ top: inTop.value, bottom: inBottom.value });
+  window.clearTimeout(clingTimer);
+  clingTimer = window.setTimeout(() => graph?.cling("small"), 180);
+};
+inTop.addEventListener("input", picked);
+inBottom.addEventListener("input", picked);
 syncInputs();
 
 // The install chip: greyed ("coming soon") until the package is on npm; the registry is asked, so it turns on by itself.
