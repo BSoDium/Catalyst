@@ -5,6 +5,7 @@ import { CAMERA_DIR, roomFor, slabFor } from "~/lib/activity-view";
 import { createGroundLight, loadCausticTemplates, type CausticTemplates, type GlassLight } from "~/components/ground-light";
 import { createNeon } from "~/components/neon";
 import { createSleighBells } from "~/components/sleigh-bells";
+import { xmasNow } from "~/lib/xmas";
 import causticTemplatesUrl from "~/assets/caustic-templates.png?url";
 
 /** How many jittered frames are averaged before the picture is final (soft shadows, anti-aliasing): the scene never moves, so it is drawn once, a frame at a time, and then not at all. */
@@ -114,6 +115,9 @@ export function ActivityScene({ activity, strips = 1, onReady, onLit, onHover, c
       scene.environmentIntensity = 0.9;
 
       // glass: it transmits (refracts) what is behind it, the ground and the blocks' own colour tint what passes through
+      /** (light theme) how strong the room's reflections (environment) and the clear coat's are, relative to what comes through the glass. */
+      const LIGHT_ENV = 0.85;
+      const LIGHT_COAT = 0.4;
       const blockMaterial = new THREE.MeshPhysicalMaterial({
         vertexColors: true,
         roughness: 0.04,
@@ -229,17 +233,18 @@ export function ActivityScene({ activity, strips = 1, onReady, onLit, onHover, c
       let stampCtl: { update(levels: ArrayLike<number>): void } | null = null;
       // `?xmas`, an Easter egg (a demo, not on by default): every rod is one of a string of lights, in the warm colours of a tree's (red, green, gold, blue, pink; saturated), the same for a day each time. The colour is the day's and its
       // brightness is the activity, as ever; the glass is left clear so that the rod's colour is what is seen, and the baked light on the ground takes the rod's colour like any other.
-      const xmasParam = new URLSearchParams(window.location.search).has("xmas");
+      const xmasParam = xmasNow();
       // (the dark theme only: the glass of the light theme, lit by the sun, does not take the white lights, and the scene is rebuilt when the theme changes)
       const xmasOn = () => xmasParam && isDark();
-      // (the string: a good share of it white, as on a real tree: 4 slots of 10)
+      // (the string: mostly white, with the colours as its highlights, as on a real tree)
       const XMAS_COLOURS = ["#ff0a0a", "#00e03c", "#ffa600", "#1a3cff", "#ff0a0a", "#00e03c"].map((c) => new THREE.Color(c));
       const XMAS_WHITE = new THREE.Color("#f8faff");
       const xmasHue = (cell: number, src: "waka" | "github", t: number) => {
         const h = Math.imul(cell + 1, 2654435761) ^ Math.imul(src === "waka" ? 97 : 13, 40503);
         const slot = ((h >>> 7) % 10 + 10) % 10;
         // (a white light that is dim is a grey one, and no lamp glows grey: a quiet day is never white, it takes a colour of the string; a busy day's white is kept at a good brightness)
-        if (slot < 4 && t >= 0.5) return XMAS_WHITE.clone().multiplyScalar(0.6 + 0.4 * t);
+        // (white is the string's default, the colours are its highlights: 7 slots of 10 for a busy day, 3 for a quiet one)
+        if (slot < (t >= 0.5 ? 7 : 3) && t >= 0.35) return XMAS_WHITE.clone().multiplyScalar(0.6 + 0.4 * t);
         return XMAS_COLOURS[((h >>> 13) % XMAS_COLOURS.length + XMAS_COLOURS.length) % XMAS_COLOURS.length]!.clone().multiplyScalar(0.3 + 0.7 * t);
       };
       const groundLayers = (stack: { waka: Matrix; github: Matrix }, tones: { waka: [Color, Color]; github: [Color, Color] }, dark: boolean) => {
@@ -569,7 +574,12 @@ void main() {
           // (the room's reflections are a light too: a quiet day must not shine with them)
           // (a material's own `envMap` is what `envMapIntensity` scales; without it the scene's environment is used as it is)
           mat.envMap = dark ? env : null;
-          mat.envMapIntensity = dark ? [0.02, 0.18, 0.55][tier]! : 1.4;
+          mat.envMapIntensity = dark ? [0.02, 0.18, 0.55][tier]! : LIGHT_ENV;
+          if (!dark) {
+            // (light theme: the glass's own colour is what is seen, through it; the room's reflections on the top and the edges are fainter, and tinted by the glass instead of grey, so that they read as glass and not as polished metal)
+            mat.clearcoat = LIGHT_COAT;
+            mat.specularColor = tones[src][1].clone().lerp(new THREE.Color(0xffffff), 0.35);
+          }
           materials.push(mat);
           const glass = new THREE.Mesh(mergeGeometries(list)!, mat);
           glass.castShadow = true;

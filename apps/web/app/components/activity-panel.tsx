@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from "re
 import { Icon } from "~/components/ui";
 import { placeholderTiles } from "~/lib/activity-view";
 import { activityStats, dayText, GITHUB_URL, isActivity, layoutActivity, readableDay, WAKATIME_URL, type Activity, type ActivityStat, type HoverInfo, type Matrix } from "~/lib/activity";
+import { xmasNow } from "~/lib/xmas";
 
 /** A source's colour as text, softened toward the page's own text colour (the figures and words are tinted, not painted). */
 const soft = (tone: "green" | "blue", share = 62) => `color-mix(in srgb, var(${tone === "green" ? "--act-green" : "--act-blue"}) ${share}%, var(--foreground))`;
@@ -309,7 +310,7 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
   }, []);
   useEffect(() => {
     setGl(webgl2());
-    if (new URLSearchParams(window.location.search).has("xmas")) {
+    if (xmasNow()) {
       // (the globe's calligraphy: not in the stylesheet, so that no page pays for it; the greeting loads it here, and only then shows)
       const face = new FontFace("Imperial Script", "url(/fonts/imperial-script-1.010-latin-400.woff2)", { display: "swap" });
       face.load().then(
