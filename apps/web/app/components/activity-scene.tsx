@@ -574,7 +574,7 @@ void main() {
       const ground0 = () => ((ground.material as import("three").ShadowMaterial).opacity = isDark() ? 0 : 0.05);
       const buildBlocks = () => {
         showMat.uniforms.bloom!.value = isDark() ? (xmas ? 0.4 : 1) : 0;
-        showMat.uniforms.veil!.value = xmas && isDark() ? 0.92 : 0;
+        showMat.uniforms.veil!.value = xmas && isDark() ? 0.75 : 0;
         // night: no sun and no room, the only light is what the days give out
         scene.environmentIntensity = isDark() ? 0 : 0.9;
         sun.intensity = isDark() ? 0 : 2.2;
@@ -694,7 +694,7 @@ void main(){
     c.rgb += bloom * halo * mix(1.3, 0.38, haloBlue);
   }
   // (?xmas: the grey-white veil that the glass's reflections, the halo and the emissive add to every channel is taken off: what is left is the rod's own colour, as saturated as it is, at the same brightness)
-  if (veil > 0.) { float mx = max(c.r, max(c.g, c.b)); float mn = min(c.r, min(c.g, c.b)); float k = smoothstep(0.12, 0.5, (mx - mn) / max(mx, 1e-4)); c.rgb -= mn * veil * k; c.rgb *= mix(0.4, 1., k); }
+  if (veil > 0.) { float mx = max(c.r, max(c.g, c.b)); float mn = min(c.r, min(c.g, c.b)); float k = smoothstep(0.12, 0.5, (mx - mn) / max(mx, 1e-4)); c.rgb -= mn * veil * k; c.rgb *= mix(1., mix(0.4, 1., k), smoothstep(0.04, 0.2, mx)); }
   // A hue-preserving soft clip: a channel past 1 (a busy blue: its blue is far over, its green and red are not) would clip alone and turn the colour pale; the whole colour is brought back so that its brightest channel
   // only just passes 1, and the hue and the saturation stay.
   float m = max(max(c.r, c.g), c.b);
