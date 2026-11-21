@@ -1,0 +1,46 @@
+name: activity
+
+# Refreshes the demo's data: the owner's public GitHub contribution calendar and WakaTime days, written as `activity.json` to the `data` branch (which the demo page fetches from raw.githubusercontent.com).
+# Public data only, no secret. Set the repository variables GITHUB_LOGIN and WAKATIME_USER (the public WakaTime profile's user id) to draw somebody else. A failed fetch fails the run and leaves the last good file in place.
+
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: activity
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - run: node demo/scripts/fetch-activity.mjs "$RUNNER_TEMP/activity.json"
+        env:
+          GITHUB_LOGIN: ${{ vars.GITHUB_LOGIN || 'BSoDium' }}
+          WAKATIME_USER: ${{ vars.WAKATIME_USER || '0025b5dc-508a-41b5-ac23-f122137a2995' }}
+      - name: Publish to the data branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git ls-remote --exit-code --heads origin data >/dev/null 2>&1; then
+            git fetch --depth=1 origin data
+            git checkout -B data FETCH_HEAD
+          else
+            git checkout --orphan data
+            git rm -rf --quiet .
+          fi
+          cp "$RUNNER_TEMP/activity.json" activity.json
+          git add activity.json
+          git diff --cached --quiet && exit 0
+          git commit -m "activity: refresh"
+          git push origin data

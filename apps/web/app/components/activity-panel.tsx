@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Icon } from "~/components/ui";
-import { placeholderTiles } from "~/lib/activity-view";
+import { placeholderTiles } from "neon-activity-graph/layout";
 import { activityStats, dayText, GITHUB_URL, isActivity, layoutActivity, readableDay, WAKATIME_URL, type Activity, type ActivityStat, type HoverInfo, type Matrix } from "~/lib/activity";
 import { xmasNow } from "~/lib/xmas";
 
@@ -48,7 +48,7 @@ const WAITING_STATS: ActivityStat[] = [
   { value: "00", unit: "%", label: "days active", tone: "plain" },
 ];
 
-/** The picture's place-holder: the year's days as faint flat squares on the same slab, seen by the same camera as the scene (`lib/activity-view.ts`), pulsing, from the first paint and prerendered. The scene fades in over it, in place. */
+/** The picture's place-holder: the year's days as faint flat squares on the same slab, seen by the same camera as the scene (`placeholderTiles` of `neon-activity-graph`), pulsing, from the first paint and prerendered. The scene fades in over it, in place. */
 function Waiting({ strips, aspect, className }: { strips: number; aspect: number; className: string }) {
   const { viewBox, d } = placeholderTiles(53, strips, aspect);
   return (
