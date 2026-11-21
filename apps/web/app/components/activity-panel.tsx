@@ -244,8 +244,11 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
   const [gl, setGl] = useState(true);
   // a narrow page gets the year in four strips (a squarer slab) instead of one long one
   const [narrow, setNarrow] = useState(false);
+  // `?xmas`, an Easter egg (a demo, not on by default): a greeting joins the legend (read after the first paint, so that the page's first render is the same everywhere)
+  const [xmas, setXmas] = useState(false);
   useEffect(() => {
     setGl(webgl2());
+    setXmas(new URLSearchParams(window.location.search).has("xmas"));
     const mq = window.matchMedia("(max-width: 47.99rem)");
     setNarrow(mq.matches);
     const onChange = () => setNarrow(mq.matches);
@@ -301,6 +304,11 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
           in ONE grid at the top right, from the head's top down into the empty corner of the picture. */}
       <Figures lead={lead} stats={stats} ready={!!activity} className="max-md:order-first max-md:pb-2 md:pointer-events-none md:absolute md:right-14 md:max-[56rem]:left-14 md:top-[calc(-1*clamp(2.5rem,6.4cqi,5.75rem)-0.25rem)]" />
       <div data-slot="activity-legend" className="relative flex flex-col gap-3 px-4 pt-3 md:pt-6 md:px-14 md:max-[56rem]:-mt-[6.5cqi] min-[56rem]:absolute min-[56rem]:bottom-[1%] min-[80rem]:bottom-[10.7%] min-[56rem]:left-14 min-[56rem]:w-[clamp(20rem,34cqi,25rem)] min-[56rem]:p-0">
+        {xmas && (
+          <p className="m-0 font-[family-name:var(--font-display)] text-[1.625rem] min-[56rem]:text-[clamp(1.25rem,2.3cqi,1.625rem)] leading-[1.1] font-semibold tracking-tight" style={{ color: "#ff4d4d" }}>
+            Merry Christmas
+          </p>
+        )}
         <p className="type-meta m-0 text-muted-foreground uppercase">Last <span className="text-foreground">12 months</span></p>
         {/* In the picture's order: the contributions are the upper block of a day, the coding the lower one. */}
         <p className="m-0 font-[family-name:var(--font-display)] text-[1.625rem] min-[56rem]:text-[clamp(1.25rem,2.3cqi,1.625rem)] leading-[1.1] font-semibold tracking-tight text-balance">
