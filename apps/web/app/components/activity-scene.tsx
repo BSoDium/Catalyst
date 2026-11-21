@@ -2,6 +2,9 @@ import { useEffect, useRef } from "react";
 import type { BufferGeometry, Color, Mesh } from "three";
 import { layoutActivity, type Activity, type HoverInfo, type Matrix } from "~/lib/activity";
 import { CAMERA_DIR, roomFor, slabFor } from "~/lib/activity-view";
+import { createGroundLight, loadCausticTemplates, type GlassLight } from "~/components/ground-light";
+import { createNeon } from "~/components/neon";
+import causticTemplatesUrl from "~/assets/caustic-templates.png?url";
 
 /** How many jittered frames are averaged before the picture is final (soft shadows, anti-aliasing): the scene never moves, so it is drawn once, a frame at a time, and then not at all. */
 const SAMPLES = 96;
@@ -11,6 +14,8 @@ const SAMPLES = 96;
  * the page can also leave the scene out altogether (`ActivityPanel`: no WebGL 2, "save data"). Not measured on real devices yet (owner, 2026-11-19: it needs heavy testing before it ships).
  */
 const isLite = () => {
+  // (development only, `?lite`: the light version on any machine, to see what a weak one is given)
+  if (import.meta.env.DEV && new URLSearchParams(window.location.search).has("lite")) return true;
   const nav = navigator as Navigator & { deviceMemory?: number };
   return window.matchMedia("(pointer: coarse)").matches || (nav.hardwareConcurrency ?? 8) <= 4 || (nav.deviceMemory ?? 8) < 4;
 };
@@ -39,6 +44,7 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
       const { RoundedBoxGeometry } = await import("three/examples/jsm/geometries/RoundedBoxGeometry.js");
       const { mergeGeometries } = await import("three/examples/jsm/utils/BufferGeometryUtils.js");
       const { RoomEnvironment } = await import("three/examples/jsm/environments/RoomEnvironment.js");
+      const templates = await loadCausticTemplates(THREE, causticTemplatesUrl);
       if (cancelled) return;
 
       // The globe sets `ColorManagement.enabled = false` for the whole page when its module loads (see globe/engine/renderer.ts), and three.js's colour handling is global: with it off, the hex colours and the textures here
@@ -74,6 +80,8 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
       };
       // (it comes in the same way the first time: invisible and blurred, then in focus; `onReady` tells the page to fade its place-holder out)
       let announced = false;
+      // (the neon start-up, a prototype behind `?neon`, begins when the picture first appears)
+      let neonStart: (() => void) | null = null;
       const sharpen = () => {
         settling = false;
         if (!announced) {
@@ -82,6 +90,10 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
         }
         renderer.domElement.style.filter = "";
         renderer.domElement.style.opacity = "";
+        // (once per build: the neon start-up begins when the picture comes into focus)
+        const go = neonStart;
+        neonStart = null;
+        go?.();
       };
       soften("0");
 
@@ -135,6 +147,22 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
       const coreMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.45, metalness: 0 });
       // (in the dark theme the cores are lights: unlit, their colour is the light they give out, brighter than 1 for a busy day, which the bloom and the glow on the ground turn into a glow)
       const glowMaterial = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false });
+      // (a prototype, `?neon`) how much each rod gives out, 0 to 1, one number per block, read by the rod's vertices (`aBlock` is the block's number): the neon start-up changes them over time
+      // what is left of a block when its rod is off, the same for all of them: the glass's own glow and the room's reflections in it, as absolute intensities
+      const OFF_EMISSIVE = 0.0115;
+      const OFF_ENV = 0.029;
+      const MAX_LEVELS = 1024;
+      // (two numbers a block: what its own rod gives out, and how much of the light of the blocks around it, which are on, reaches it, 0 to 1, against all of them on)
+      const levelData = new Float32Array(MAX_LEVELS * 2).fill(1);
+      const levelTex = new THREE.DataTexture(levelData, MAX_LEVELS, 1, THREE.RGFormat, THREE.FloatType);
+      levelTex.needsUpdate = true;
+      glowMaterial.onBeforeCompile = (shader) => {
+        shader.uniforms.uLevels = { value: levelTex };
+        shader.vertexShader = shader.vertexShader
+          .replace("#include <common>", "#include <common>\nattribute float aBlock;\nattribute vec3 aInc;\nuniform highp sampler2D uLevels;")
+          .replace("#include <color_vertex>", "#include <color_vertex>\n#ifdef USE_COLOR\n  vec2 lv = texelFetch(uLevels, ivec2(int(aBlock + 0.5), 0), 0).rg;\n  vColor.rgb = vColor.rgb * lv.r + vec3(0.029, 0.037, 0.053) * (1.0 - lv.r) + aInc * lv.g;\n#endif");
+      };
+      glowMaterial.customProgramCacheKey = () => "rod-levels";
       // `shade` (dark theme): the faces of a block are not all lit alike, as if the light were from above and to the left of the camera, and a block is brighter toward its top: its top is the brightest face, then the side that
       // faces left, then the one that faces the viewer, and the foot is dimmer. An emissive block has no light on it to give it a form, so this puts the form back (without it a busy blue stretch is a field of flat boxes).
       const paint = (g: BufferGeometry, col: Color, glow = 0, shade = false) => {
@@ -166,20 +194,45 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
         g.deleteAttribute("uv");
       };
       // The glow a column casts on the ground (the dark theme's answer to the shadows of the light one): a soft additive spot under each layer's column in its colour, as bright as the day was busy, painted on a canvas laid on the ground
-      const GLOW_PAD = 5;
+      const GLOW_PAD = 9;
+      // both sources light the ground the same way (same reach); GROUND_LIGHT is the radiance of a busy day's spot at its centre
+      const GROUND_REACH = 1.75;
+      const GROUND_LIGHT = 0.5;
+      // (dark theme) how much of the ground's light is the soft pool (haze, scatter) and how much the traced light of the rods through the glass, and the power of that (a busy day's rod, in all the directions it sends)
+      const POOL = 0.15;
+      // (dark theme) how far from its block the traced light is at full strength, and where it has faded out (world units): far, as a real glow is, which is faint but wide
+      const CAUSTIC_NEAR = 7;
+      const CAUSTIC_FAR = 18;
+      const CAUSTIC_POWER = 0.055;
+      // (light theme) how strongly the glass takes the light that is not its colour away, per unit of glass crossed, and how much the traced caustics count
+      const ABSORB = 1.1;
+      const LIGHT_CAUSTIC = 1.0;
+      const STRAIGHT = 0.65;
+      // how deep the shadows go (a share of the traced loss of light) and how much the caustics are pushed
+      const SHADOW = 0.5;
+      const GLEAM = 2.2;
+      // (light theme) how far from its block the sun's light is counted in full, and where it has faded out
+      const NOISE_FLOOR = 0.03;
+      const GLEAM_MAX = 0.45;
+      const SUN_NEAR = 3.4;
+      const SUN_FAR = 6;
       const PX = 22;
+      // the traced light is counted on a grid half as fine: enough rays in each cell to look like light and not like grain
+      const LPX = PX / 2;
+      let neonNeighbours: { j: number[]; m: number[] }[] = [];
+      let neonBlocks: { x: number; z: number; pan: number; t: number }[] = [];
+      let stampCtl: { update(levels: ArrayLike<number>): void } | null = null;
       const groundLayers = (stack: { waka: Matrix; github: Matrix }, tones: { waka: [Color, Color]; github: [Color, Color] }, dark: boolean) => {
         const cw = Math.ceil((width + GLOW_PAD * 2) * PX);
         const ch = Math.ceil((total + GLOW_PAD * 2) * PX);
+        const lw = Math.ceil((width + GLOW_PAD * 2) * LPX);
+        const lh = Math.ceil((total + GLOW_PAD * 2) * LPX);
         const canvas = () => {
           const c2 = document.createElement("canvas");
           c2.width = cw;
           c2.height = ch;
           return c2;
         };
-        const cv = canvas();
-        const ctx = cv.getContext("2d")!;
-        ctx.globalCompositeOperation = "lighter";
         // the contact shadow (ambient occlusion on the ground): a soft dark spot under every column, wider and darker for a taller one
         const ao = canvas();
         const actx = ao.getContext("2d")!;
@@ -195,32 +248,85 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
           actx.fillStyle = g;
           actx.fillRect(cx - r, cy - r, r * 2, r * 2);
         };
-        const spot = (x: number, z: number, t: number, [low, high]: [Color, Color], reach: number) => {
-          const col = low.clone().lerp(high, t);
-          const rgb = `${Math.round(col.r * 255)},${Math.round(col.g * 255)},${Math.round(col.b * 255)}`;
-          const cx = (x + GLOW_PAD) * PX;
-          const cy = (z + GLOW_PAD) * PX;
-          const r = (0.9 + reach * (0.5 + t * 1.5)) * PX;
-          const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-          const a = 0.004 + 0.26 * t * t + 0.03 * t;
-          g.addColorStop(0, `rgba(${rgb},${a})`);
-          g.addColorStop(0.45, `rgba(${rgb},${a * 0.35})`);
-          g.addColorStop(1, `rgba(${rgb},0)`);
-          ctx.fillStyle = g;
-          ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
-        };
         stack.github.cells.forEach((g, i) => {
           const w = stack.waka.cells[i]!;
           const { x, z } = at(g.week, g.day);
-          if (dark && w.value > 0) spot(x, z, w.t, tones.waka, 2.0);
-          if (dark && g.value > 0) spot(x, z, g.t, tones.github, 1.5);
           if (w.value > 0 || g.value > 0) occlude(x, z, (w.value > 0 ? 0.18 + w.t * LAYER_MAX : 0) + (g.value > 0 ? 0.18 + g.t * LAYER_MAX : 0));
         });
+        // The layers of glass of every column, each as a block of its own: WakaTime's at the bottom, GitHub's on top (what the picture draws, see `build`).
+        const t0 = performance.now();
+        const glass: GlassLight[] = [];
+        neonBlocks = [];
+        const variety = (() => {
+          let seed = 987654;
+          return () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+        })();
+        stack.github.cells.forEach((g, i) => {
+          const w = stack.waka.cells[i]!;
+          const { x, z } = at(g.week, g.day);
+          let top = 0;
+          const add = (src: "waka" | "github", y0: number, y1: number, t: number, [low, high]: [Color, Color], gain: number) => {
+            const hy = (y1 - y0) / 2;
+            const hue = low.clone().lerp(high, t);
+            // (dark) the light is the rod's, and the rod is near white where it is busy: its own chroma (as drawn, see `build`), normalised, the strength being `power`; (light) the colour of the glass
+            const rod =
+              src === "waka"
+                ? hue.clone().multiplyScalar(0.5).add(new THREE.Color(0.4, 0.56, 0.6).multiplyScalar(0.38 + 0.98 * t))
+                : hue.clone().multiplyScalar(1.25).add(new THREE.Color(0.22, 0.4, 0.24).multiplyScalar(0.15 + 0.7 * t));
+            const col = dark ? rod.multiplyScalar(1 / Math.max(1e-4, rod.r, rod.g, rod.b)) : hue;
+            // (no two blocks are alike: a small tilt of the glass of each, a strength and a reach of its own)
+            const tilt = (): number => (variety() - 0.5) * 0.22;
+            const luck = 0.6 + 0.8 * variety();
+            const near = dark ? CAUSTIC_NEAR : SUN_NEAR;
+            const far = dark ? CAUSTIC_FAR : SUN_FAR;
+            neonBlocks.push({ x, z, pan: (x / width) * 2 - 1, t });
+            glass.push({
+              c: [x, y0 + hy, z],
+              h: [0.46, hy, 0.46],
+              r: Math.min(0.16, (2 * hy) / 2.2),
+              bias: [tilt(), tilt() * 0.4, tilt()],
+              col: [col.r, col.g, col.b],
+              power: (0.05 + t * t) * gain * luck * CAUSTIC_POWER,
+              near,
+              far,
+              // (the rod, as drawn: its width)
+              rod: (0.5 - 0.2 * t ** 0.85) / 2,
+              seed: [variety(), variety(), variety(), variety(), variety()],
+              // (the soft pool: a haze under the block, as bright as its day was busy; it goes out with its rod)
+              pool: (() => {
+                const peak = POOL * GROUND_LIGHT * gain * (0.004 + 0.26 * t * t + 0.03 * t);
+                return { col: [hue.r * peak, hue.g * peak, hue.b * peak] as [number, number, number], r: 0.9 + GROUND_REACH * (0.5 + t * 1.5) };
+              })(),
+            });
+          };
+          if (w.value > 0) {
+            add("waka", 0, 0.18 + w.t * LAYER_MAX, w.t, tones.waka, 1);
+            top = 0.18 + w.t * LAYER_MAX + 0.04;
+          }
+          if (g.value > 0) add("github", top, top + 0.18 + g.t * LAYER_MAX, g.t, tones.github, 1.8);
+        });
+        // The light of the glass on the ground. (dark theme) There is no sun: the light is the rods'. What one block casts is baked (see `loadCausticTemplates`, from a path tracer): a fan out of every face and a faint wide glow;
+        // here each block lays its own, in the colour of its rod and as strong as its day was busy, on the ground at the ground's own resolution. (light theme) The sun through the glass, traced on the graphics card
+        // (see `ground-light.ts`), on a grid half as fine as the ground's other layers: parallel rays go through every block: refracted in, absorbed by the glass's colour (a blue block lets blue through and takes the rest),
+        // refracted out, landing on the ground displaced and gathered. Where each lands the ground gets its power, and where it would have landed without the glass it loses it: so the ground is as bright as ever where no glass
+        // reaches it, a shadow is a lack of light (in the glass's colour, not grey), and the caustics are its surplus. Two layers over the ground: one that multiplies it where it is darker, one that adds light where it is brighter.
+        const ground = dark
+          ? createGroundLight(THREE, renderer, { w: cw, h: ch, scale: PX, x0: -GLOW_PAD, z0: -GLOW_PAD })
+          : createGroundLight(THREE, renderer, { w: lw, h: lh, scale: LPX, x0: -GLOW_PAD, z0: -GLOW_PAD });
+        if (dark) {
+          stampCtl = ground.stamps(
+            glass.map((g) => ({ x: g.c[0], z: g.c[2], height: 2 * g.h[1], foot: g.c[1] - g.h[1], col: [g.col[0] * g.power, g.col[1] * g.power, g.col[2] * g.power] as [number, number, number], poolCol: g.pool!.col, poolRadius: g.pool!.r })),
+            templates,
+          );
+        } else {
+          const sunDir = new THREE.Vector3().copy(sunBase).normalize().negate();
+          ground.sun(glass, lite ? 40 : 64, [sunDir.x, sunDir.y, sunDir.z], ABSORB, STRAIGHT, (LPX * LPX) / -sunDir.y);
+          ground.smooth(3);
+        }
+        if (import.meta.env.DEV) console.info(`[activity] ground light drawn in ${Math.round(performance.now() - t0)} ms (${dark ? "dark" : "light"}, ${glass.length} blocks)`);
         const layers = new THREE.Group();
         const disposers: (() => void)[] = [];
-        const plane = (source: HTMLCanvasElement, material: (tex: import("three").CanvasTexture) => import("three").MeshBasicMaterial, order: number) => {
-          const tex = new THREE.CanvasTexture(source);
-          tex.colorSpace = THREE.SRGBColorSpace;
+        const plane = (tex: import("three").Texture, material: (tex: import("three").Texture) => import("three").MeshBasicMaterial | import("three").ShaderMaterial, order: number) => {
           const mat = material(tex);
           const mesh = new THREE.Mesh(new THREE.PlaneGeometry(cw / PX, ch / PX), mat);
           mesh.rotation.x = -Math.PI / 2;
@@ -233,8 +339,32 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
             mat.dispose();
           });
         };
-        if (dark) plane(cv, (map) => new THREE.MeshBasicMaterial({ map, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }), 1);
-        plane(ao, (map) => new THREE.MeshBasicMaterial({ map, transparent: true, depthWrite: false, toneMapped: false }), 2);
+        if (dark) plane(ground.texture, (map) => new THREE.MeshBasicMaterial({ map, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }), 1);
+        else {
+          // (the difference to the sun's light, turned into what multiplies the ground and what is added to it)
+          const resolve = (shade: boolean) =>
+            new THREE.ShaderMaterial({
+              uniforms: { map: { value: ground.texture } },
+              vertexShader: "varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }",
+              fragmentShader: `uniform sampler2D map; varying vec2 vUv;
+void main() {
+  vec3 v = texture2D(map, vUv).rgb;
+  // (the differences of overlapping shadows are summed, but light that has been through two blocks has lost the share of each, not both shares: the product, which the exponential of the sum is) (below a small difference there is only the noise of the rays: it is not light)
+  vec3 f = exp(${(LIGHT_CAUSTIC * 1.2).toFixed(3)} * sign(v) * max(abs(v) - ${NOISE_FLOOR.toFixed(3)}, 0.));
+  ${shade ? `gl_FragColor = vec4(vec3(1. - ${SHADOW.toFixed(3)} * (1. - min(f, vec3(1.)))), 1.);` : `vec3 g = max(f - 1., 0.) * ${GLEAM.toFixed(3)}; gl_FragColor = vec4(${GLEAM_MAX.toFixed(3)} * tanh(g / ${GLEAM_MAX.toFixed(3)}), 1.);`}
+}`,
+              transparent: true,
+              blending: shade ? THREE.MultiplyBlending : THREE.AdditiveBlending,
+              premultipliedAlpha: shade,
+              depthWrite: false,
+            });
+          plane(ground.texture, () => resolve(true), 0);
+          plane(ground.texture, () => resolve(false), 1);
+        }
+        const aoTex = new THREE.CanvasTexture(ao);
+        aoTex.colorSpace = THREE.SRGBColorSpace;
+        plane(aoTex, (map) => new THREE.MeshBasicMaterial({ map, transparent: true, depthWrite: false, toneMapped: false }), 2);
+        disposers.push(() => ground.dispose());
         layers.userData.dispose = () => disposers.forEach((d) => d());
         return layers;
       };
@@ -299,12 +429,16 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
           if (w.value > 0) y = layer(i, "waka", x, z, 0, w.t, tones.waka) + LIFT;
           if (g.value > 0) layer(i, "github", x, z, y, g.t, tones.github);
         });
+        let blockIndex = 0;
+        neonNeighbours = [];
         for (const sp of specs) {
           const { src, x, z, y0, h, t, hue } = sp;
           // (dark) the light the other days give out reaches this one: each neighbour's colour and brightness, weakened with the distance between the two blocks; a dim block beside or under a bright one is lit by it
           const inc = new THREE.Color(0, 0, 0);
+          const nb: { j: number[]; m: number[] } = { j: [], m: [] };
           if (dark) {
-            for (const o of specs) {
+            for (let oi = 0; oi < specs.length; oi++) {
+              const o = specs[oi]!;
               if (o === sp) continue;
               const dx = o.x - x;
               const dz = o.z - z;
@@ -312,8 +446,11 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
               const dy = o.y0 + o.h / 2 - (y0 + h / 2);
               const k = Math.exp(-(dx * dx + dz * dz + dy * dy) / (2 * 1.2 * 1.2)) * 0.11;
               inc.add(o.hue.clone().multiplyScalar(emit(o.t) * k));
+              nb.j.push(oi);
+              nb.m.push(emit(o.t) * k * (o.hue.r + o.hue.g + o.hue.b));
             }
           }
+          neonNeighbours.push(nb);
           inc.r = Math.min(inc.r, 0.6);
           inc.g = Math.min(inc.g, 0.6);
           inc.b = Math.min(inc.b, 0.6);
@@ -324,6 +461,7 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
           shell.translate(x, y0 + h / 2, z);
           // dark: the glass is nearly clear (the light of its core shows through it); light: tinted by the level
           paint(shell, hue.clone().lerp(new THREE.Color(0xffffff), dark ? 0.14 : 0.12).multiplyScalar(dark ? 0.3 + 0.7 * tEff : 1).add(inc.clone().multiplyScalar(0.08)), 0, dark);
+          shell.setAttribute("aBlock", new THREE.BufferAttribute(new Float32Array(shell.getAttribute("position").count).fill(blockIndex), 1));
           // the glass of a busy day glows on its own surface too (dark theme): three steps of emission per source, each its own material
           const tier = tEff < 0.34 ? 0 : tEff < 0.67 ? 1 : 2;
           const key = `${src}${tier}`;
@@ -338,7 +476,15 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
           // (its hue is kept: the blue channel is the hue's own and the red and green rise with the busyness).
           const level = emit(t) * (1 + 1.1 * t);
           const rod = dark && src === "waka" ? hue.clone().multiplyScalar(level * 0.5).add(new THREE.Color(0.4, 0.56, 0.6).multiplyScalar(level * (0.38 + 0.98 * t))) : dark ? hue.clone().multiplyScalar(level * 1.25).add(new THREE.Color(0.22, 0.4, 0.24).multiplyScalar(level * (0.15 + 0.7 * t))) : hue;
-          paint(core, dark ? rod.add(inc) : hue);
+          paint(core, dark ? rod : hue);
+          // (the light of the blocks around that reaches this rod when its own is off, on its own attribute: the shader adds it, as much as the neighbours that are on give)
+          {
+            const count = core.getAttribute("position").count;
+            const incs = new Float32Array(count * 3);
+            if (dark) for (let q = 0; q < count; q++) inc.toArray(incs, q * 3);
+            core.setAttribute("aInc", new THREE.BufferAttribute(incs, 3));
+          }
+          core.setAttribute("aBlock", new THREE.BufferAttribute(new Float32Array(core.getAttribute("position").count).fill(blockIndex++), 1));
           cores.push(core);
         }
         const group = new THREE.Group();
@@ -372,6 +518,23 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
             }
           }
           mat.emissiveIntensity = dark ? [0.02, 0.08, 0.15][tier]! : 0;
+          if (dark) {
+            // (a prototype, `?neon`) the glass shines as its rod does, down to a little ambient light of the night (the floor 0.14): its own glow and the room's reflections in it follow the rod's level, so that a block whose rod is off is dark
+            mat.onBeforeCompile = (shader) => {
+              shader.uniforms.uLevels = { value: levelTex };
+              // (what is left of the glow and of the reflections when the rod is off is the same for every block, whatever its size or its day: as a share of this tier's own intensities, whatever they are)
+              shader.uniforms.uFloorEm = { value: OFF_EMISSIVE / Math.max(mat.emissiveIntensity, 1e-4) };
+              shader.uniforms.uFloorEnv = { value: OFF_ENV / Math.max(mat.envMapIntensity, 1e-4) };
+              shader.vertexShader = shader.vertexShader
+                .replace("#include <common>", "#include <common>\nattribute float aBlock;\nuniform highp sampler2D uLevels;\nuniform float uFloorEm;\nuniform float uFloorEnv;\nvarying float vLevelEm;\nvarying float vLevelEnv;\nvarying float vOn;")
+                .replace("#include <begin_vertex>", "#include <begin_vertex>\n  vec2 lv = texelFetch(uLevels, ivec2(int(aBlock + 0.5), 0), 0).rg;\n  float own = max(lv.r, 0.3 * lv.g);\n  vOn = clamp(own, 0.0, 1.0);\n  vLevelEm = max(own, uFloorEm);\n  vLevelEnv = max(own, uFloorEnv);");
+              shader.fragmentShader = shader.fragmentShader
+                .replace("#include <common>", "#include <common>\nvarying float vLevelEm;\nvarying float vLevelEnv;\nvarying float vOn;")
+                .replace("#include <emissivemap_fragment>", "#include <emissivemap_fragment>\n  // (off, the glass glows the same cool grey whatever its source; on, its own colour)\n  totalEmissiveRadiance = mix(vec3(dot(totalEmissiveRadiance, vec3(0.333))) * vec3(0.85, 0.95, 1.15), totalEmissiveRadiance, vOn) * vLevelEm;")
+                .replace("#include <lights_fragment_maps>", "#include <lights_fragment_maps>\n#if defined( RE_IndirectSpecular )\n  radiance *= vLevelEnv;\n#ifdef USE_CLEARCOAT\n  clearcoatRadiance *= vLevelEnv;\n#endif\n#endif\n#if defined( RE_IndirectDiffuse )\n  iblIrradiance *= vLevelEnv;\n#endif");
+            };
+            mat.customProgramCacheKey = () => "glass-levels";
+          }
           // (the room's reflections are a light too: a quiet day must not shine with them)
           // (a material's own `envMap` is what `envMapIntensity` scales; without it the scene's environment is used as it is)
           mat.envMap = dark ? env : null;
@@ -395,7 +558,7 @@ export function ActivityScene({ activity, strips = 1, onReady, onHover, classNam
 
       const blocks = new THREE.Group();
       scene.add(blocks);
-      const ground0 = () => ((ground.material as import("three").ShadowMaterial).opacity = isDark() ? 0 : 0.32);
+      const ground0 = () => ((ground.material as import("three").ShadowMaterial).opacity = isDark() ? 0 : 0.05);
       const buildBlocks = () => {
         showMat.uniforms.bloom!.value = isDark() ? 1 : 0;
         // night: no sun and no room, the only light is what the days give out
@@ -507,7 +670,15 @@ void main(){
         fragmentShader: `uniform sampler2D map; uniform sampler2D near; uniform sampler2D far; uniform float bloom; varying vec2 vUv;
 void main(){
   vec4 c = texture2D(map, vUv);
-  if (bloom > 0.) c.rgb += bloom * (texture2D(near, vUv).rgb * 0.24 + texture2D(far, vUv).rgb * 0.17);
+  if (bloom > 0.) {
+    vec3 halo = texture2D(near, vUv).rgb * 0.24 + texture2D(far, vUv).rgb * 0.17;
+    // The halo is cut out of the picture before the rods are taken toward white, so it keeps the saturated blue of their raw light: a near-white rod would glow deep blue. It takes the rod's colour (the same pull toward white), only dimmer; green is left as it is.
+    float hm = max(max(halo.r, halo.g), halo.b);
+    float haloBlue = smoothstep(0., 0.25, (halo.b - halo.g) / max(hm, 1e-4));
+    halo = mix(halo, vec3(hm), haloBlue * 0.6);
+    // (the blue's halo is fainter, the green's a little stronger)
+    c.rgb += bloom * halo * mix(1.3, 0.38, haloBlue);
+  }
   // A hue-preserving soft clip: a channel past 1 (a busy blue: its blue is far over, its green and red are not) would clip alone and turn the colour pale; the whole colour is brought back so that its brightest channel
   // only just passes 1, and the hue and the saturation stay.
   float m = max(max(c.r, c.g), c.b);
@@ -546,6 +717,8 @@ void main(){
       let w = 1;
       let h = 1;
       let n = 0;
+      // (how many frames are added up before the loop stops: all of them, but only a few while the lights are changing, so that the picture keeps up with them)
+      let samplesCap = samples;
       let raf = 0;
       const halton = (i: number, b: number) => {
         let f = 1;
@@ -631,7 +804,7 @@ void main(){
           frames.push(performance.now() - f0);
           el.dataset.frameMs = (frames.reduce((x, y) => x + y, 0) / frames.length).toFixed(1);
         }
-        if (n < samples) raf = requestAnimationFrame(frame);
+        if (n < samplesCap) raf = requestAnimationFrame(frame);
         else if (import.meta.env.DEV) el.dataset.renderMs = String(Math.round(performance.now() - t0));
       };
       function restart() {
@@ -639,7 +812,84 @@ void main(){
         if (!raf) raf = requestAnimationFrame(frame);
       }
 
+      // --- the neon start-up (a prototype: only with `?neon` in the address, and not for those who ask for less motion) ---
+      let neon: ReturnType<typeof createNeon> | null = null;
+      let neonApplyMs = 0;
+      let neonTicks = 0;
+      const neonAllowed = () => new URLSearchParams(window.location.search).has("neon") && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const stopNeon = () => {
+        neon?.stop();
+        neon = null;
+        neonStart = null;
+        samplesCap = samples;
+        levelData.fill(1);
+        levelTex.needsUpdate = true;
+      };
+      // the levels as numbers for the shaders: each block's own, and the light that reaches it from the neighbours that are on
+      const uploadLevels = (levels: ArrayLike<number>) => {
+        for (let i = 0; i < neonNeighbours.length && i < MAX_LEVELS; i++) {
+          const nb = neonNeighbours[i]!;
+          let on = 0;
+          let all = 0;
+          for (let k = 0; k < nb.j.length; k++) {
+            on += nb.m[k]! * levels[nb.j[k]!]!;
+            all += nb.m[k]!;
+          }
+          levelData[i * 2] = levels[i]!;
+          levelData[i * 2 + 1] = all > 0 ? on / all : 1;
+        }
+        levelTex.needsUpdate = true;
+      };
+      const prepareNeon = () => {
+        stopNeon();
+        if (!isDark() || !neonAllowed() || !stampCtl || neonBlocks.length === 0 || neonBlocks.length > MAX_LEVELS) return;
+        const ctl = stampCtl;
+        neonApplyMs = 0;
+        neonTicks = 0;
+        neon = createNeon({
+          blocks: neonBlocks,
+          sound: true,
+          // (a weak device, a phone: half the updates, so half the redraws of the picture while the lights flicker)
+          fps: lite ? 10 : 20,
+          apply: (levels) => {
+            const a0 = performance.now();
+            uploadLevels(levels);
+            ctl.update(levels);
+            neonApplyMs += performance.now() - a0;
+            neonTicks++;
+            samplesCap = lite ? 2 : 3;
+            restart();
+          },
+          done: () => {
+            samplesCap = samples;
+            restart();
+            if (import.meta.env.DEV) {
+              el.dataset.neonTicks = String(neonTicks);
+              el.dataset.neonApplyMs = (neonApplyMs / Math.max(1, neonTicks)).toFixed(2);
+              el.dataset.neonFrameMs = (frames.reduce((x, y) => x + y, 0) / Math.max(1, frames.length)).toFixed(1);
+              el.dataset.neonDone = "1";
+            }
+          },
+        });
+        if (import.meta.env.DEV) el.dataset.neonRods = String(neon.count);
+        // (the flickering rods are off from the first frame: the picture is not seen before it starts)
+        uploadLevels(neon.levels);
+        ctl.update(neon.levels);
+        neonStart = () => {
+          frames.length = 0;
+          neon?.start();
+        };
+        // (development only, `?neonhold`: the start-up never begins, and the picture is held half on, half off, to look at it with rods off)
+        if (import.meta.env.DEV && new URLSearchParams(window.location.search).has("neonhold")) {
+          neonStart = null;
+          // (and the left part of the picture is on, the right part off: to see a block that is off beside blocks that are on)
+          const half = Float32Array.from(neonBlocks, (b) => (b.pan < 0.1 ? 1 : 0));
+          uploadLevels(half);
+          ctl.update(half);
+        }
+      };
       buildBlocks();
+      prepareNeon();
       // --- hovering: the day under the pointer (or the key) ---
       const dom = renderer.domElement;
       const ray = new THREE.Raycaster();
@@ -790,6 +1040,7 @@ void main(){
         if (current !== -1) announce(-1);
         (floor.material as import("three").MeshBasicMaterial).color.copy(pageColour());
         buildBlocks();
+        prepareNeon();
         restart();
       };
       const mo = new MutationObserver(rethink);
