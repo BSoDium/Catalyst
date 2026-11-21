@@ -12,7 +12,7 @@ const narrow = matchMedia("(max-width: 767px)");
 
 // (the title is plain markup in the page: there from the first paint, whole. Only the graph's own start-up flickers.)
 
-// --- theme: follow the system, or the visitor's choice of the words "light" / "dark" in the text (clicking the chosen one again goes back to the system's) ---
+// --- theme: "system" (follow the visitor's system, the default) or "light" / "dark", chosen with the three words in the text ---
 type Theme = "light" | "dark" | null;
 let theme: Theme = (() => {
   try {
@@ -23,7 +23,7 @@ let theme: Theme = (() => {
   }
 })();
 const themeButtons = [...document.querySelectorAll<HTMLButtonElement>("button.theme")];
-const paintTheme = () => themeButtons.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.theme === theme)));
+const paintTheme = () => themeButtons.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.theme === (theme ?? "system"))));
 const applyTheme = (t: Theme) => {
   theme = t;
   if (t) document.documentElement.dataset.theme = t;
@@ -39,7 +39,7 @@ const applyTheme = (t: Theme) => {
   // (the page's colours have changed: the graph is told, and re-reads the background)
   graph?.setTheme(t ?? "auto");
 };
-themeButtons.forEach((b) => b.addEventListener("click", () => applyTheme(theme === b.dataset.theme ? null : (b.dataset.theme as Theme))));
+themeButtons.forEach((b) => b.addEventListener("click", () => applyTheme(b.dataset.theme === "system" ? null : (b.dataset.theme as Theme))));
 paintTheme();
 
 // --- colours: two layers, a preset or a swatch each; kept in the URL hash ---

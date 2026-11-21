@@ -4,6 +4,7 @@ import { clampTone, sameColor } from "./color";
 import { layoutGraph, type Matrix } from "./layout";
 import { createNeon } from "./neon";
 import { renderSize } from "./size";
+import { createHoverHum } from "./hover-hum";
 import type { ContentBounds, GraphData, GraphOptions, LayerColors, Startup, Tones } from "./types";
 import { CAMERA_DIR, roomFor, slabFor, stripShifts } from "./view";
 
@@ -1033,6 +1034,22 @@ void main(){
         uploadLevels(effective, idleLook);
         focusCtl?.update(effective);
       };
+      // (the hum of the selected neon follows its brightness, once the start-up is over and when the page may make sound)
+      const hum = createHoverHum();
+      let humOk = false;
+      const humLevel = () => {
+        if (!humOk || !(opts.sound ?? true)) return hum.set(0);
+        let lvl = 0;
+        let pan = 0;
+        for (let i = 0; i < focus.length; i++) {
+          const v = (focus[i]! - 1) / (FOCUS_ON - 1);
+          if (v > lvl) {
+            lvl = v;
+            pan = neonBlocks[i]!.pan;
+          }
+        }
+        hum.set(lvl, pan);
+      };
       const stepFocus = () => {
         focusRaf = 0;
         let moving = false;
@@ -1044,6 +1061,7 @@ void main(){
           } else focus[i] = focusTo[i]!;
         }
         applyLevels(lastLevels);
+        humLevel();
         samplesCap = Math.min(samplesCap, lite ? 2 : 3);
         restart();
         if (moving) focusRaf = window.setTimeout(stepFocus, 1000 / (lite ? 20 : 30)) as unknown as number;
@@ -1065,6 +1083,8 @@ void main(){
       };
       const prepareNeon = (skipStartup = false) => {
         stopNeon();
+        humOk = false;
+        hum.stop();
         // (`onLit`: whether the picture is lit, for the page's greeting: not while the start-up runs, always when there is none)
         onLit?.(false);
         window.clearTimeout(focusTimer);
@@ -1076,7 +1096,7 @@ void main(){
         lastLevels = new Float32Array(neonBlocks.length).fill(1);
         idleLook = false;
         if (focusCtl) applyLevels(lastLevels);
-        if (!isDark() || !neonAllowed() || skipStartup || !stampCtl || neonBlocks.length === 0 || neonBlocks.length > MAX_LEVELS) return void onLit?.(true);
+        if (!isDark() || !neonAllowed() || skipStartup || !stampCtl || neonBlocks.length === 0 || neonBlocks.length > MAX_LEVELS) return void ((humOk = true), onLit?.(true));
         const ctl = stampCtl;
         neonApplyMs = 0;
         neonTicks = 0;
@@ -1107,6 +1127,7 @@ void main(){
             burst(lite ? 2 : 3);
           },
           done: () => {
+            humOk = true;
             onLit?.(true);
             samplesCap = samples;
             restart();
@@ -1352,6 +1373,7 @@ void main(){
 
       api.stop = () => {
         stopNeon();
+        hum.stop();
         window.clearTimeout(focusTimer);
         window.clearTimeout(focusRaf);
         cancelAnimationFrame(raf);

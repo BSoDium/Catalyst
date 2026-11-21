@@ -64,7 +64,8 @@
       @media (prefers-reduced-motion: reduce) { h1::after { animation: none; } }
       .about { margin: 0; color: var(--muted); font-size: clamp(14px, 1.2cqi, 19px); line-height: 1.45; max-width: 36em; font-weight: 420; }
       .about .hl { font-weight: 720; color: var(--fg); }
-      .about .tube { font-style: italic; font-weight: 640; color: var(--fg); }
+      .about .more { display: block; margin-top: 0.4em; }
+      .about .pick { display: flex; align-items: baseline; gap: 0.2em 0.9em; margin-top: 0.9em; font-size: 0.92em; }
       .about .lib { font: 400 0.9em var(--mono); letter-spacing: 0; color: var(--fg); }
       .about .theme { pointer-events: auto; font: inherit; font-weight: 600; color: var(--fg); background: none; border: 0; padding: 0 0 0.1em; margin: 0; cursor: pointer; border-bottom: 2px solid color-mix(in srgb, var(--fg) 28%, transparent); }
       .about .theme[aria-pressed="true"] { border-bottom-color: var(--fg); }
@@ -74,7 +75,7 @@
       .about a:hover { text-decoration-color: var(--magenta); }
       #live { position: fixed; left: max(14px, env(safe-area-inset-left)); bottom: max(14px, env(safe-area-inset-bottom)); z-index: 8; margin: 0; color: var(--muted); font: 400 10.5px / 1.3 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; pointer-events: none; }
       .sub-unused { margin: 0; color: var(--muted); font: 400 clamp(10.5px, 0.8cqi, 13px) / 1.4 var(--mono); letter-spacing: 0.04em; text-transform: uppercase; }
-      .legend { display: flex; flex-direction: column; gap: 0.35em; margin-top: 0.3em; font: 400 clamp(11px, 0.85cqi, 14px) / 1.3 var(--mono); letter-spacing: 0.04em; text-transform: uppercase; }
+      .legend { display: flex; flex-direction: column; gap: 0.35em; margin: 0.3em 0 0.9em; font: 400 clamp(11px, 0.85cqi, 14px) / 1.3 var(--mono); letter-spacing: 0.04em; text-transform: uppercase; }
       .legend span { display: inline-flex; align-items: center; gap: 8px; }
       .legend i { width: 0.8em; height: 0.8em; border-radius: 3px; background: currentColor; box-shadow: 0 0 0.45em color-mix(in srgb, currentColor 30%, transparent); }
       .legend .g { color: var(--top); } .legend .b { color: var(--bottom); } .legend b { color: var(--fg); font-weight: 400; }
@@ -111,7 +112,7 @@
         .caption { position: static; flex-direction: column; width: auto; padding: 0 0 14px; opacity: 1; gap: 0.55em; }
         .caption::before { display: none; }
         h1 { font-size: clamp(30px, 7.6vw, 64px); }
-        .about { font-size: 15px; } .legend { font-size: 12px; }
+        .about { font-size: 15px; } .legend { font-size: 12px; margin: 1em 0 0; }
       }
       @media (max-width: 767px) {
         main { padding: 26px 12px 76px; }
@@ -125,8 +126,8 @@
     <main>
       <div id="stage">
         <div class="caption" id="caption">
-          <h1 id="title" aria-label="Neon-activity-graph"><span aria-hidden="true"><span class="rb">N</span>eon<span class="rb">-</span>activity<span class="rb">-</span>graph</span><span class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Neon-activity-graph</span></h1>
-          <p class="about">A <span class="hl">year</span> of activity as <span class="hl">glass blocks</span> lit like <span class="tube">neon tubes</span>. <span class="lib">three.js</span>, <button type="button" class="theme" data-theme="light" aria-pressed="false">light</button> &amp; <button type="button" class="theme" data-theme="dark" aria-pressed="false">dark</button>, and a <span class="hl">React</span> wrapper.<span class="for">Used on the <a href="https://v2.bsodium.fr/software">software page</a> of <a href="https://v2.bsodium.fr/">BSoDium’s</a> Catalyst.</span></p>
+          <h1 id="title" aria-label="Neon activity graph"><span aria-hidden="true"><span class="rb">N</span>eon activity graph</span><span class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Neon activity graph</span></h1>
+          <p class="about">A <span class="hl">year</span> of activity drawn as <span class="hl">glass blocks</span> lit like neon tubes.<span class="more">A <span class="lib">three.js</span> component with a <span class="hl">React</span> wrapper, in a light and a dark theme.</span><span class="pick" role="group" aria-label="Theme">Theme <button type="button" class="theme" data-theme="system" aria-pressed="true">system</button> <button type="button" class="theme" data-theme="light" aria-pressed="false">light</button> <button type="button" class="theme" data-theme="dark" aria-pressed="false">dark</button></span><span class="for">Used on the <a href="https://v2.bsodium.fr/software">software page</a> of <a href="https://v2.bsodium.fr/">BSoDium’s</a> Catalyst.</span></p>
                     <div class="legend"><span class="g"><i></i><b>GitHub contributions</b></span><span class="b"><i></i><b>WakaTime coding time</b></span></div>
         </div>
         <div id="graph"></div>
