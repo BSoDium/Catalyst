@@ -122,3 +122,5 @@ Final form: a rod's opacity IS its brightness gradient (`vRodA`, 0 at zero, 1 at
 Revised: the dithered see-through (`alphaHash`) was noisy and is gone. A rod stays opaque, its colour scaled by its brightness, and it gets thinner as it dims, to nothing at zero (a smooth gradient, no noise); the ground's light is not added to it.
 
 Final: the rods are drawn additively (`AdditiveBlending`, `transparent: false`, no depth write, `renderOrder` after the backdrop). three.js blends a non-transparent material with its blending mode, and keeps it in the opaque pass that the glass samples, so a rod only ever adds light to what is behind it (the backdrop's ground light, the other rods): it cannot absorb, an off rod adds nothing and is not there, and no dither or thinning is needed (both removed).
+
+With the rod off, the glass is not an empty dark slab: its reflections keep a floor (`OFF_ENV` 0.004 -> 0.04, so edges and highlights show) and its tint (the filter's colour) goes away with the rod's light (`vOn`), so an off block is clear glass, not a coloured opaque one.
