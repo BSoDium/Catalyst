@@ -120,3 +120,5 @@ Correction: a rod keeps its colour scaled by its brightness as before (without i
 Final form: a rod's opacity IS its brightness gradient (`vRodA`, 0 at zero, 1 at the brightest), and its colour is not scaled by it: the rod is a premultiplied emitter, so over a dark background it looks as it did when its colour was scaled, and where something lit is behind it that shows through. (`ROD_FADE` is gone.)
 
 Revised: the dithered see-through (`alphaHash`) was noisy and is gone. A rod stays opaque, its colour scaled by its brightness, and it gets thinner as it dims, to nothing at zero (a smooth gradient, no noise); the ground's light is not added to it.
+
+Final: the rods are drawn additively (`AdditiveBlending`, `transparent: false`, no depth write, `renderOrder` after the backdrop). three.js blends a non-transparent material with its blending mode, and keeps it in the opaque pass that the glass samples, so a rod only ever adds light to what is behind it (the backdrop's ground light, the other rods): it cannot absorb, an off rod adds nothing and is not there, and no dither or thinning is needed (both removed).
