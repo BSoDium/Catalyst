@@ -190,15 +190,6 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       // the empty days: a plain dull tile in the dark theme (not glass: glass reflects the room and is never dim)
       // (an unlit flat tile in the ground's own colour, a shade apart: it casts and receives nothing itself; the glow, the sun's shadows and the contact shadows are layers over it, as over the ground)
       const tileUnlit = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false, side: THREE.BackSide });
-      // (a pit that is looked at lights up like a neon: one lamp, a flat rounded square on the pit's floor, moved to the pit and faded in; where it is, and how lit it is, 0 to 1)
-      const pitHot = { value: new THREE.Vector3(-1e3, -1e3, 0) };
-      let pitLamp: import("three").Mesh | null = null;
-      const pitShow = () => {
-        if (!pitLamp) return;
-        pitLamp.visible = pitHot.value.z > 0.005;
-        pitLamp.position.set(pitHot.value.x, -0.01, pitHot.value.y);
-        (pitLamp.material as import("three").MeshBasicMaterial).opacity = pitHot.value.z;
-      };
       // the page's own background, read as the browser resolves it: the ground is that colour (so there is something to refract, and no seam with the page)
       const pageColour = () => {
         const css = resolveBackground(el, opts.background, isDark() ? "dark" : "light");
@@ -351,9 +342,11 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
           actx.fillStyle = g;
           actx.fillRect(cx - r, cy - r, r * 2, r * 2);
         };
-        // An empty day is a pit: the light that lies over the ground must not light its floor as it lights the ground, or it reads as a flat plate. Its rim shades the floor (an inner shadow, on the sides away from the light, which the light theme's sun
-        // has on the top right of the screen: the -x and +z sides), a little all round and more on those two.
-        const recess = (x: number, z: number) => {
+        // An empty day is a pit: the light that lies over the ground must not light its floor as it lights the ground, or it reads as a flat plate. Its rim shades the floor (an inner shadow) on the side that faces the light, which is where the
+        // near wall keeps the light off the floor (and the opposite wall is the lit one, and the lip there takes the highlight): the light is the lamps around the pit in the dark theme (there is no sun), the sun in the light theme (top right of the screen:
+        // -x and +z). `(lx, lz)` is the direction to the light, `amount` how one-sided it is (0 all round, 1 from one side).
+        const pitCells: { x: number; z: number }[] = [];
+        const recess = (x: number, z: number, lx: number, lz: number, amount: number) => {
           const cx = (x + GLOW_PAD) * PX;
           const cy = (z + GLOW_PAD) * PX;
           const half = 0.44 * PX;
@@ -367,8 +360,9 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
           actx.clip(path);
           actx.shadowColor = `rgba(0,0,0,${dark ? 0.9 : 0.5})`;
           actx.shadowBlur = 0.16 * PX;
-          actx.shadowOffsetX = 0.08 * PX;
-          actx.shadowOffsetY = -0.08 * PX;
+          // (the frame is moved away from the light: its edge on the light's side goes into the pit and shades the floor there)
+          actx.shadowOffsetX = -lx * amount * 0.09 * PX;
+          actx.shadowOffsetY = -lz * amount * 0.09 * PX;
           actx.fillStyle = "#000";
           actx.fill(frame, "evenodd");
           actx.restore();
@@ -377,7 +371,7 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
           const w = stack.bottom.cells[i]!;
           const { x, z } = at(g.week, g.day);
           if (w.value > 0 || g.value > 0) occlude(x, z, (w.value > 0 ? 0.18 + w.t * LAYER_MAX : 0) + (g.value > 0 ? 0.18 + g.t * LAYER_MAX : 0));
-          else recess(x, z);
+          else pitCells.push({ x, z });
         });
         // The layers of glass of every column, each as a block of its own: WakaTime's at the bottom, GitHub's on top (what the picture draws, see `build`).
         const t0 = performance.now();
@@ -489,6 +483,30 @@ void main() {
             });
           plane(ground.texture, () => resolve(true), 0);
           plane(ground.texture, () => resolve(false), 1);
+        }
+        for (const pc of pitCells) {
+          let lx = 0;
+          let lz = 0;
+          let strength = 0;
+          if (dark) {
+            for (const g of glass) {
+              const dx = g.c[0] - pc.x;
+              const dz = g.c[2] - pc.z;
+              const dist = Math.hypot(dx, dz);
+              if (dist < 0.5 || dist > 5) continue;
+              const w = (g.col[0] + g.col[1] + g.col[2]) * g.power * Math.exp(-(dist * dist) / (2 * 1.8 * 1.8));
+              lx += (dx / dist) * w;
+              lz += (dz / dist) * w;
+              strength += w;
+            }
+          } else {
+            lx = -0.63;
+            lz = 0.77;
+            strength = 1;
+          }
+          const len = Math.hypot(lx, lz);
+          // (how one-sided the light is: lamps all round cancel out)
+          recess(pc.x, pc.z, len > 0 ? lx / len : 0, len > 0 ? lz / len : 0, dark ? Math.min(1, (len / Math.max(strength, 1e-6)) * 1.4) * Math.min(1, strength * 6) : 1);
         }
         const aoTex = new THREE.CanvasTexture(ao);
         aoTex.colorSpace = THREE.SRGBColorSpace;
@@ -770,14 +788,6 @@ void main() {
         const tb2 = performance.now();
         if (tiles.length) {
           const tile = new THREE.Mesh(mergeGeometries(tiles), tileUnlit);
-          const lampGeo = new THREE.ShapeGeometry(roundedSquare, lite ? 3 : 6);
-          lampGeo.rotateX(-Math.PI / 2);
-          lampGeo.scale(0.86, 1, 0.86);
-          const lampCol = tones.top[1].clone().add(tones.bottom[1]).multiplyScalar(0.7);
-          pitLamp = new THREE.Mesh(lampGeo, new THREE.MeshBasicMaterial({ color: lampCol, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
-          pitLamp.visible = false;
-          pitLamp.renderOrder = 3;
-          group.add(pitLamp);
           group.add(tile);
           const rim = new THREE.Mesh(mergeGeometries(rims), tileUnlit.clone());
           (rim.material as import("three").MeshBasicMaterial).side = THREE.FrontSide;
@@ -1278,8 +1288,6 @@ void main(){
             moving = true;
           } else focus[i] = focusTo[i]!;
         }
-        if (pitStep()) moving = true;
-        pitShow();
         applyLevels(lastLevels);
         humLevel();
         // (each step of the fade is drawn from a few samples at once and shown together, not sample by sample: the first of a restart, alone, is the noisiest picture there is)
@@ -1293,24 +1301,10 @@ void main(){
       };
       // (a debounce: the day is taken a moment after the pointer stops on it, and let go a moment after it leaves)
       const GHOST = 0.12;
-      // (the pit that is looked at: where it is, and how lit it is, easing towards 0 or 1 with the focus)
-      let pitTo = 0;
-      const pitStep = () => {
-        const d = pitTo - pitHot.value.z;
-        if (Math.abs(d) > 0.01) {
-          pitHot.value.z += d * 0.28;
-          return true;
-        }
-        pitHot.value.z = pitTo;
-        return false;
-      };
       const focusOn = (cell: number, ghosts: number[] = []) => {
         window.clearTimeout(focusTimer);
         if (!focusCtl) return;
         focusTimer = window.setTimeout(() => {
-          const pit = cell >= 0 ? picks.find((b) => b.cell === cell && b.pit) : undefined;
-          if (pit) pitHot.value.set(pit.x, pit.z, pitHot.value.z);
-          pitTo = pit ? 1 : 0;
           for (let i = 0; i < focusTo.length; i++) focusTo[i] = cell < 0 ? 1 : neonBlocks[i]!.cell === cell ? FOCUS_ON : ghosts.includes(neonBlocks[i]!.cell) ? GHOST : FOCUS_OFF;
           window.clearTimeout(focusRaf);
           stepFocus();

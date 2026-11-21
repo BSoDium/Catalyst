@@ -75,7 +75,7 @@ An empty day is a soft square **pit** dug in the ground (`graph.ts`, `tileShape`
 
 ### Pits, second pass
 - **They really are below the ground now.** The (invisible) ground plane wrote depth at y 0.06 and hid everything sunk under it; it no longer writes depth (`depthWrite: false`), so the pit's walls and floor are drawn.
-- **Recess**: the glow that lies over the ground would light a pit's floor like the ground, a flat plate. Each pit gets an inner shadow in the contact-shadow layer (`recess`, strongest on the -x and +z sides, away from the light theme's sun on the top right of the screen), so the floor reads as lower.
+- **Recess**: the glow that lies over the ground would light a pit's floor like the ground, a flat plate. Each pit gets an inner shadow in the contact-shadow layer (`recess`, on the side that faces the light: the lamps around the pit in the dark theme (their strength and direction, summed; none if they surround it), the sun from the top right in the light theme. The lit wall is the opposite one, where the lip's highlight is, so shadow, wall and lip agree), so the floor reads as lower.
 - **The lip's highlight** in the dark theme is no longer a fixed direction: there is no sun at night, the light is the neon's, so each lip edge is lit by the lamps on its opposite side, in their colour, falling off with distance (computed once, after all the blocks are known). In the light theme the highlight is the sun's, from the top right: the left edge, a hint on the lower one.
-- **Hover**: a looked-at empty day lights its floor like a neon: one lamp (a flat additive rounded square in the colours of the two layers) moved to the pit and faded in with the focus.
+- **No hover light**: a looked-at empty day does not light up (tried, taken out).
 - The hover outline of an empty day is the pit's own rounded square, flat on the ground.
