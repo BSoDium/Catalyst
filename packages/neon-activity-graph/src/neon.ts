@@ -57,7 +57,8 @@ function bzz(c: AudioContext, dest: AudioNode, when: number, pan: number, level:
   const f = 30 + Math.random() * 18;
   const body = c.createGain();
   body.gain.value = 1;
-  for (const [ratio, gain] of [[1, 1], [2.03, 0.5]] as const) {
+  // (the "zz": the fundamental, a little above an octave, and upper partials a little apart, so that the buzz has body in the mids where small speakers can reproduce it)
+  for (const [ratio, gain] of [[1, 1], [2.03, 0.5], [3.97, 0.42], [6.05, 0.32], [8.1, 0.22], [11.9, 0.14]] as const) {
     const o = c.createOscillator();
     o.type = "sawtooth";
     o.frequency.value = f * ratio;
@@ -69,7 +70,7 @@ function bzz(c: AudioContext, dest: AudioNode, when: number, pan: number, level:
   }
   const lp = c.createBiquadFilter();
   lp.type = "lowpass";
-  lp.frequency.value = 700;
+  lp.frequency.value = 1700;
   lp.Q.value = 0.7;
   // (a shallow wobble: the level swings by about a third around its mean)
   const wobble = c.createGain();
@@ -99,8 +100,8 @@ function bzz(c: AudioContext, dest: AudioNode, when: number, pan: number, level:
   ns.stop(when + length + 0.03);
   const env = c.createGain();
   env.gain.setValueAtTime(0, when);
-  env.gain.linearRampToValueAtTime(0.02 * level, when + 0.02);
-  env.gain.setValueAtTime(0.02 * level, when + length * 0.55);
+  env.gain.linearRampToValueAtTime(0.014 * level, when + 0.02);
+  env.gain.setValueAtTime(0.014 * level, when + length * 0.55);
   env.gain.exponentialRampToValueAtTime(0.0001, when + length);
   const panner = c.createStereoPanner();
   panner.pan.value = pan * 0.8;
@@ -120,6 +121,18 @@ function bzz(c: AudioContext, dest: AudioNode, when: number, pan: number, level:
   ts.connect(tlp).connect(tg).connect(panner);
   ts.start(when);
   ts.stop(when + 0.02);
+  // A bass peak at the very start, like a click: a sine that drops from 120 to 45 Hz in 40 ms, struck at once and gone in 55 ms.
+  const kick = c.createOscillator();
+  kick.type = "sine";
+  kick.frequency.setValueAtTime(120, when);
+  kick.frequency.exponentialRampToValueAtTime(45, when + 0.04);
+  const kg = c.createGain();
+  kg.gain.setValueAtTime(0, when);
+  kg.gain.linearRampToValueAtTime(0.12 * level, when + 0.002);
+  kg.gain.exponentialRampToValueAtTime(0.0001, when + 0.055);
+  kick.connect(kg).connect(panner);
+  kick.start(when);
+  kick.stop(when + 0.06);
 }
 export function bell(c: AudioContext, dest: AudioNode, when: number, f0: number, pan: number, level: number) {
   const out = c.createGain();
