@@ -5015,6 +5015,17 @@ body:not(:has([data-slot="site-header"])) .np-root {
   height: 2px;
   background: var(--signal);
 }
+/* The narrowest phones (360 px): "Paused" makes the strip 350 px long, 5 px from each edge; a little less padding gives it room. */
+@media (max-width: 24rem) {
+  .globe-dock-item {
+    padding-inline: 0.625rem;
+    gap: 0.5rem;
+  }
+  .globe-dock-item[aria-pressed="true"]::after {
+    left: 0.625rem;
+    right: 0.625rem;
+  }
+}
 /* The state in words after the name: the accent while it is on, dim while it is off. Both words share one grid cell, so the item is as wide as the longer one and nothing moves when it flips. */
 .globe-dock-state {
   display: inline-grid;
@@ -5036,6 +5047,11 @@ body:not(:has([data-slot="site-header"])) .np-root {
 }
 .globe-dock-state[data-on="true"] > span:last-child {
   visibility: hidden;
+}
+/* On but not turning (the street map is up and the globe is suspended under it): the accent word says "paused", the globe stands still and the rule stays (it IS on). */
+.globe-dock-paused {
+  margin-inline-start: 0.125rem;
+  color: var(--signal-text);
 }
 /* The turning globe takes the accent while it turns (the label stays ink: the rule under it and the icon say it is on). */
 .globe-dock-item[aria-pressed="true"] .globe-dock-globe {

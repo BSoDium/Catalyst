@@ -141,11 +141,14 @@ export default function Shell({ loaderData }: Route.ComponentProps) {
   const heroOnView = hero.onView;
   // Whether the camera is away from the world view (the floating way back, #458): a state that changes only when the answer does, not on every view report.
   const [zoomedIn, setZoomedIn] = useState(false);
+  // Whether the street map is up (past the regional scale): the globe is suspended under it and cannot turn (the Auto-rotate control says "paused").
+  const [streetLevel, setStreetLevel] = useState(false);
   const saveView = useCallback(
     (view: GlobeViewState) => {
       viewRef.current = view;
       heroOnView(view);
       setZoomedIn(!isWorldView(view));
+      setStreetLevel((view.street ?? 0) > 0);
     },
     [heroOnView],
   );
@@ -187,7 +190,7 @@ export default function Shell({ loaderData }: Route.ComponentProps) {
           )}
           {/* What the page is playing, and the switch that turns its sound off (components/now-playing-player.tsx) */}
           {globeActive && <NowPlayingPlayer />}
-          {globeActive && <WorldViewButton showReset={zoomedIn && !isOpen} showAmbient={!isOpen && (zoomedIn || heroSnap.state === "collapsed")} />}
+          {globeActive && <WorldViewButton showReset={zoomedIn && !isOpen} showAmbient={!isOpen && (zoomedIn || heroSnap.state === "collapsed")} streetLevel={streetLevel} />}
           {/* Only the globe needs JavaScript: the lists, the entries and the places are server-rendered pages that read and navigate without it. */}
           <noscript>
             <p className="absolute inset-y-0 left-0 m-0 flex w-full items-center justify-center px-6 text-center text-sm text-muted-foreground md:w-1/2 [&_a]:underline">

@@ -16,9 +16,11 @@ import { ambient, requestWorldView } from "~/globe";
  * The strip never stretches. When "Reset view" comes, the one beside it first glides out of its way (`layout="position"`: a move, never a scale) and the newcomer fades in once there is room; when it goes, it fades out first
  * and the other glides back (the leaving one stays in the row for its fade). Bottom centre: clear of the name's small line (left; on a narrow screen the strip is above it, and higher by the hint's line while the hint is there: `data-hint`), the credits (right), the player (top left) and the header (top).
  */
-export function WorldViewButton({ showReset, showAmbient }: { showReset: boolean; showAmbient: boolean }) {
+export function WorldViewButton({ showReset, showAmbient, streetLevel = false }: { showReset: boolean; showAmbient: boolean; streetLevel?: boolean }) {
   const reduced = useReducedMotion();
   const on = useSyncExternalStore(ambient.subscribe, ambient.getSnapshot, () => false);
+  // On, but the street map is showing: the globe is suspended under it, so nothing turns until the visitor zooms out (the control says so).
+  const paused = on && streetLevel;
   const hidden = reduced ? { opacity: 0 } : { opacity: 0, y: 6 };
   const glide = { duration: 0.3, ease: [0.2, 0, 0, 1] as const };
   return (
@@ -60,7 +62,7 @@ export function WorldViewButton({ showReset, showAmbient }: { showReset: boolean
                   className="globe-dock-item"
                   data-slot="ambient-toggle"
                   aria-pressed={on}
-                  title="Keep the globe turning, at any zoom"
+                  title={paused ? "Paused while the street map is showing: zoom out and the globe turns" : "Keep the globe turning, at any zoom"}
                   onClick={() => ambient.set(!on)}
                   layout={reduced ? false : "position"}
                   transition={{ layout: glide }}
@@ -68,13 +70,19 @@ export function WorldViewButton({ showReset, showAmbient }: { showReset: boolean
                   animate={{ opacity: 1, transition: { duration: 0.2, delay: reduced ? 0 : 0.22 } }}
                   exit={{ opacity: 0, transition: { duration: 0.16 } }}
                 >
-                  <TurningGlobe turning={on && !reduced} />
+                  <TurningGlobe turning={on && !paused && !reduced} />
                   Auto-rotate
                   {/* the state in words, for the eye (`aria-pressed` says it to the ear): both words are laid in the same cell so that the strip does not change width when it flips */}
-                  <span className="globe-dock-state" data-on={on} aria-hidden="true">
-                    <span>On</span>
-                    <span>Off</span>
-                  </span>
+                  {paused ? (
+                    <span className="globe-dock-paused" aria-hidden="true">
+                      Paused
+                    </span>
+                  ) : (
+                    <span className="globe-dock-state" data-on={on} aria-hidden="true">
+                      <span>On</span>
+                      <span>Off</span>
+                    </span>
+                  )}
                 </motion.button>
               )}
             </AnimatePresence>
