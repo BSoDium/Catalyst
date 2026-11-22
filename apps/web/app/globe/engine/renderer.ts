@@ -445,7 +445,7 @@ export class GlobeRenderer {
     this.cleanups.push(() => window.clearTimeout(this.spinTimer));
     // Ambient mode (engine/ambient.ts): the visitor's choice, live.
     this.setAmbient(ambient.getSnapshot());
-    this.cleanups.push(ambient.subscribe(() => this.setAmbient(ambient.getSnapshot())));
+    this.cleanups.push(ambient.subscribe(() => this.setAmbient(ambient.getSnapshot(), true)));
 
     try {
       if (new URLSearchParams(location.search).has("caption-fps")) {
@@ -848,10 +848,12 @@ export class GlobeRenderer {
   }
 
   /** Ambient mode on or off (the visitor's choice, `SPIN.ambient`): the idle rotation at any zoom, under the view as it is. Turning it off lets a turning globe coast to rest where it blocks again. */
-  setAmbient(on: boolean) {
-    if (SPIN.ambient === on) return;
+  setAmbient(on: boolean, hurry = false) {
+    const was = SPIN.ambient;
     SPIN.ambient = on;
     this.noteChange();
+    if (hurry && on && !was) this.spin.hurry(performance.now(), 600); // (asked for just now: it starts in a moment, with the picture at rest)
+    this.armSpin();
     this.requestRender();
   }
 
@@ -1799,8 +1801,8 @@ export class GlobeRenderer {
   }
 
   private onInput = (e: Event) => {
-    // Ambient mode: a mouse that moves with no button down (a hover, a nudged desk) is not a gesture: the screensaver goes on.
-    if (SPIN.ambient && e.type === "pointermove" && e instanceof PointerEvent && e.pointerType === "mouse" && e.buttons === 0) return;
+    // Ambient mode: a mouse or pen that moves with no button down (a hover, a nudged desk) is not a gesture: the screensaver goes on.
+    if (SPIN.ambient && e.type === "pointermove" && e instanceof PointerEvent && e.pointerType !== "touch" && e.buttons === 0) return;
     // A gesture ON the globe (the hero's own definition: a press or a wheel over the stage) ends the showcase at once: the boxes come back and the
     // press that began it is no click (nobody could see what was under it).
     // (and a gesture drops an interlude asked for that has not begun yet: the visitor has taken the globe back, `wantInterlude`)

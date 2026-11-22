@@ -4928,32 +4928,119 @@ body:not(:has([data-slot="site-header"])) .np-root {
     transparent 100%
   );
 }
-/* The floating way back to the world view (components/world-view-button.tsx): bottom centre, over the credits' line's height, clear of the safe area of a phone. */
+/* The floating globe controls (components/world-view-button.tsx): "Reset view" and "Auto-rotate", ONE docked strip of mono caps on the player's soft plate (no box: the header's search is not boxed either), bottom centre, over the
+   credits' line's height, clear of the safe area of a phone. Muted at rest, the accent on hover, and the one that is on takes full ink with the header's 2 px accent rule under it. */
 .world-view-root {
   bottom: max(1.25rem, var(--safe-bottom));
 }
-/* Over the globe's linework the button must read: the page's colour at 72 % over a blur of what is behind it. */
-.world-view-root [data-slot="world-view-button"] {
-  --ds-button-bg: color-mix(in srgb, var(--background) 72%, transparent);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
-  /* the outline is the soft one, not the strong hairline; the content is centred */
-  --ds-button-line: var(--border);
-  /* wide by default (1.5 rem each side), the button's own 1 rem only where the width is short */
-  padding-inline: 1.5rem;
-}
-@media (max-width: 47.99rem) {
-  /* On a phone the button is a compact one (owner, 2026-11-07: "smaller, less padding"): 36 px tall instead of the touch size's 44, 0.75 rem at each side. */
-  .world-view-root [data-slot="world-view-button"] {
-    min-height: 2.25rem;
-    padding-inline: 0.75rem;
+/* The name's small line takes the bottom-left corner (its size stops growing at 463 px: it ends 329 px from the left from there on): the strip is about 290 px wide, so it clears the name's end by 16 px from 976 px; below 61 rem
+   it is centred ABOVE the name, with room between (owner, 2026-11-07: "higher"). */
+@media (max-width: 60.99rem) {
+  .world-view-root {
+    bottom: calc(var(--hero-mini-bottom) + var(--safe-bottom) + var(--hero-mini-size) + 1.25rem);
   }
 }
-/* The name's small line takes the bottom-left corner (its size stops growing at 463 px: it ends 329 px from the left from there on): a button centred in the width clears it by 16 px from 834 px (its width on a wide screen is
-   144 px), so below 53 rem (848 px) the button is centred ABOVE the name, not over its end (the credits' line is under it), with room between (owner, 2026-11-07: "higher"; "the breakpoint's slightly off": it was 48 rem). */
-@media (max-width: 52.99rem) {
-  .world-view-root {
-    bottom: calc(var(--hero-mini-bottom) + var(--safe-bottom) + var(--hero-mini-size) + 1.75rem);
+/* The player's plate: the page's colour, feathered to nothing, so the linework gives way under the words (no box, no blur). */
+.globe-dock {
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: stretch;
+  line-height: 1;
+  --dock-plate: color-mix(in srgb, var(--background) 82%, transparent);
+}
+.globe-dock::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: -2.25rem -4.5rem;
+  pointer-events: none;
+  background: radial-gradient(
+    closest-side,
+    var(--dock-plate) 38%,
+    color-mix(in srgb, var(--dock-plate) 84%, transparent) 51%,
+    color-mix(in srgb, var(--dock-plate) 50%, transparent) 68%,
+    color-mix(in srgb, var(--dock-plate) 16%, transparent) 84%,
+    transparent 100%
+  );
+}
+.globe-dock-item {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  min-height: 2.75rem;
+  padding-inline: 1rem;
+  border: 0;
+  background: none;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-standard);
+}
+.globe-dock-item + .globe-dock-item::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 30%;
+  bottom: 30%;
+  width: var(--hairline);
+  background: var(--border);
+}
+.globe-dock-item:hover {
+  color: var(--signal-text);
+}
+.globe-dock-item[aria-pressed="true"] {
+  color: var(--foreground);
+}
+.globe-dock-item[aria-pressed="true"]::after {
+  content: "";
+  position: absolute;
+  left: 1rem;
+  right: 1rem;
+  bottom: 0.375rem;
+  height: 2px;
+  background: var(--signal);
+}
+/* The meter: three pixel cells, grey when off; on, the accent with one ink cell stepping round (the globe is turning). Still under reduced motion. */
+.globe-dock-meter {
+  display: inline-grid;
+  grid-template-columns: repeat(3, 4px);
+  gap: 2px;
+}
+.globe-dock-meter > i {
+  width: 4px;
+  height: 4px;
+  background: var(--border-strong);
+}
+[aria-pressed="true"] .globe-dock-meter > i {
+  background: var(--signal);
+  animation: dock-orbit 1.8s steps(1, end) infinite;
+}
+[aria-pressed="true"] .globe-dock-meter > i:nth-child(2) {
+  animation-delay: 0.6s;
+}
+[aria-pressed="true"] .globe-dock-meter > i:nth-child(3) {
+  animation-delay: 1.2s;
+}
+@keyframes dock-orbit {
+  0% {
+    background: var(--foreground);
+  }
+  33.33% {
+    background: var(--signal);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [aria-pressed="true"] .globe-dock-meter > i {
+    animation: none;
+  }
+}
+@media (forced-colors: active) {
+  .globe-dock::before {
+    background: Canvas;
   }
 }
 

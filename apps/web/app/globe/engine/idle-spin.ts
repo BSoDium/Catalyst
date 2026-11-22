@@ -248,6 +248,11 @@ export class IdleSpin {
     this.halt();
   }
 
+  /** The visitor just asked for ambient mode: the globe starts to turn after `afterMs` of rest (not the full idle delay, or nothing seems to happen), if it is not turning already. */
+  hurry(now: number, afterMs: number, cfg: SpinConfig = SPIN): void {
+    if (this.phase === "idle") this.lastActivity = Math.min(this.lastActivity, now - cfg.idleMs + afterMs);
+  }
+
   /** Camera motion or a change of a condition that is not an input: restart the idle clock; if it is turning it coasts to rest. */
   settle(now: number): void {
     this.lastActivity = now;

@@ -187,7 +187,7 @@ export default function Shell({ loaderData }: Route.ComponentProps) {
           )}
           {/* What the page is playing, and the switch that turns its sound off (components/now-playing-player.tsx) */}
           {globeActive && <NowPlayingPlayer />}
-          {globeActive && <WorldViewButton show={zoomedIn && !isOpen} ambientShow={!isOpen && (zoomedIn || heroSnap.state === "collapsed")} />}
+          {globeActive && <WorldViewButton showReset={zoomedIn && !isOpen} showAmbient={!isOpen && (zoomedIn || heroSnap.state === "collapsed")} />}
           {/* Only the globe needs JavaScript: the lists, the entries and the places are server-rendered pages that read and navigate without it. */}
           <noscript>
             <p className="absolute inset-y-0 left-0 m-0 flex w-full items-center justify-center px-6 text-center text-sm text-muted-foreground md:w-1/2 [&_a]:underline">

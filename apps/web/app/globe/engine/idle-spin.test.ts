@@ -385,3 +385,15 @@ describe("ambient mode", () => {
     expect(spinBlock(ctx({ reduced: true }), cfg)).toBe("reduced-motion");
   });
 });
+
+describe("ambient hurry", () => {
+  it("starts the turn after the short delay instead of the idle one, and leaves a turning globe alone", () => {
+    const c: SpinContext = { reduced: false, hidden: false, lost: false, suspended: false, selected: false, focused: false, inset: 0, zoom: 3, minZoom: 0, busy: false };
+    const cfg = { ...SPIN_DEFAULTS, ambient: true };
+    const s = new IdleSpin(1000);
+    s.activity(1000);
+    s.hurry(1000, 600, cfg);
+    expect(s.wait(1000, c, cfg)).toBe(600);
+    expect(s.wait(1600, c, cfg)).toBe(0);
+  });
+});
