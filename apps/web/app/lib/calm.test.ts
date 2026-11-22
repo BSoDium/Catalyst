@@ -7,14 +7,19 @@ const rows = 20;
 const skyline = Float32Array.from({ length: cols * rows }, (_, i) => (Math.floor(i / cols) < 8 ? 0.01 : 0.4));
 
 describe("calmPlace", () => {
-  it("puts the map over as much of the sky as it can while the skyline stays in view (a place that is all sky shows nothing of the picture)", () => {
-    const place = calmPlace(skyline, cols, rows, { w: 620, h: 1000 }, { w: 620, run: 470 }, { x: 0, y: 0, w: 620, h: 245 })!;
-    // (the detail, rows 8 to 20 of 20, has its middle at 70 % of the picture's height: it is in the layer's lower part)
-    const subjectAt = place.top + 0.7 * place.height;
+  it("keeps the picture's subject in view while the map is over the sky, when that is about as calm as anywhere (a place that is all sky shows nothing of the picture)", () => {
+    // (a skyline whose detail is as quiet as the sky: nothing to choose between but the subject, rows 8 to 20 of 20, whose weighted middle is at 52 % of the picture's height)
+    const quiet = Float32Array.from({ length: cols * rows }, (_, i) => (Math.floor(i / cols) < 8 ? 0.01 : 0.012));
+    const place = calmPlace(quiet, cols, rows, { w: 620, h: 1000 }, { w: 620, run: 470 }, { x: 0, y: 0, w: 620, h: 245 })!;
+    const subjectAt = place.top + 0.52 * place.height;
     expect(subjectAt).toBeGreaterThan(0.3 * 470);
     expect(subjectAt).toBeLessThan(0.95 * 470);
-    // (and the map's region is calmer than it would be with the skyline under it: the sky is 400 px of the 1000)
-    expect(place.cost).toBeLessThan(0.3);
+  });
+  it("puts the map over the sky, not over the subject, when the subject is busy (owner, 2026-11-22: Chișinău's card on a wide panel)", () => {
+    const place = calmPlace(skyline, cols, rows, { w: 620, h: 1000 }, { w: 620, run: 470 }, { x: 0, y: 0, w: 620, h: 245 })!;
+    expect(place.cost).toBeLessThan(0.02);
+    // (the sky is the picture's first 400 px and the map's region 245 of them: the picture is no further up than that)
+    expect(place.top).toBeGreaterThan(-160);
   });
   it("covers the layer at every place it picks", () => {
     for (const region of [{ x: 0, y: 0, w: 300, h: 200 }, { x: 320, y: 0, w: 300, h: 300 }]) {

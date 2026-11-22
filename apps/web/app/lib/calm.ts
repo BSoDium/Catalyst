@@ -16,8 +16,12 @@ export interface CalmPlace {
 }
 
 const STEPS = 15;
-/** What a place is charged for not keeping the picture's subject in view: more than any difference in calm, so the calmest of the places that keep it. */
-const SHOW = 1;
+/**
+ * What a place is charged for not keeping the picture's subject in view (in the same unit as the cost, the mean energy under the map): a little, so that of two places the one that keeps the subject in view wins when it is about as calm,
+ * and a place with the map on plain sky wins when the subject's place is busy. It used to be more than any difference in calm, and on a wide card (a portrait photograph enlarged to the card's width shows a thin band of it) the map
+ * was always put on the subject itself: the figure, the arch, the horizon (owner, 2026-11-22: Chișinău's card, "too fuzzy").
+ */
+const SHOW = 0.01;
 /** Where in the layer, as shares of its height and width, the subject is to be (a band: not at the top, under the map, not at the very foot). */
 const SUBJECT_Y = [0.3, 0.95] as const;
 const SUBJECT_X = [0.15, 0.85] as const;
