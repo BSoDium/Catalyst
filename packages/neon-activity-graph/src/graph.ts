@@ -242,7 +242,7 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       const ROD_KNEE = 0.7;
       const ROD_MAX = 1.5;
       /** (dark) how much a rod that is OFF shows, as a neutral grey share of its own faint level (0 for none: it is invisible then): a ghost of a tube inside the glass, the one thing that is there for the glass to refract while no light is on. */
-      const ROD_GHOST = 0.25;
+      const ROD_GHOST = 0.06;
       const ROD_WHITE = 0.35;
       const glowMaterial = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false, blending: THREE.AdditiveBlending, depthWrite: false });
       /** (dark) how much of the ground's light the glass shows, 1 at rest, lower when the lights are dimmed (see `applyLevels`): shared with the backdrop's shader. */
