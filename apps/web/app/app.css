@@ -4980,10 +4980,11 @@ body:not(:has([data-slot="site-header"])) .np-root {
   cursor: pointer;
   transition: color var(--duration-fast) var(--ease-standard);
 }
-.globe-dock-item + .globe-dock-item::before {
+/* The hairline between the two is the first one's right edge, so that it comes and goes with it (not with its neighbour, which is always there). */
+.globe-dock-item:not(:last-child)::before {
   content: "";
   position: absolute;
-  left: 0;
+  right: 0;
   top: 30%;
   bottom: 30%;
   width: var(--hairline);
@@ -5004,39 +5005,9 @@ body:not(:has([data-slot="site-header"])) .np-root {
   height: 2px;
   background: var(--signal);
 }
-/* The meter: three pixel cells, grey when off; on, the accent with one ink cell stepping round (the globe is turning). Still under reduced motion. */
-.globe-dock-meter {
-  display: inline-grid;
-  grid-template-columns: repeat(3, 4px);
-  gap: 2px;
-}
-.globe-dock-meter > i {
-  width: 4px;
-  height: 4px;
-  background: var(--border-strong);
-}
-[aria-pressed="true"] .globe-dock-meter > i {
-  background: var(--signal);
-  animation: dock-orbit 1.8s steps(1, end) infinite;
-}
-[aria-pressed="true"] .globe-dock-meter > i:nth-child(2) {
-  animation-delay: 0.6s;
-}
-[aria-pressed="true"] .globe-dock-meter > i:nth-child(3) {
-  animation-delay: 1.2s;
-}
-@keyframes dock-orbit {
-  0% {
-    background: var(--foreground);
-  }
-  33.33% {
-    background: var(--signal);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  [aria-pressed="true"] .globe-dock-meter > i {
-    animation: none;
-  }
+/* The turning globe takes the accent while it turns (the label stays ink: the rule under it and the icon say it is on). */
+.globe-dock-item[aria-pressed="true"] .globe-dock-globe {
+  color: var(--signal-text);
 }
 @media (forced-colors: active) {
   .globe-dock::before {
