@@ -23,7 +23,7 @@ export default defineConfig({
   plugins: [quietDevtoolsProbe(), tailwindcss(), reactRouter()],
   // The dependencies the client reaches only through lazy imports (the globe, the street map, the activity picture, the animation and icon libraries) are declared, so
   // the dev server bundles them at start. Found on demand, each wave re-optimised, reloaded the page and answered the open one with 504 "Outdated Optimize Dep".
-  optimizeDeps: { include: ["motion/react", "clsx", "tailwind-merge", "@radix-ui/react-slot", "lucide-react", "three", "maplibre-gl", "pmtiles", "neon-activity-graph", "neon-activity-graph/react", "neon-activity-graph/layout", "@carbon/icons-react"] },
+  optimizeDeps: { include: ["motion/react", "clsx", "tailwind-merge", "@radix-ui/react-slot", "lucide-react", "three", "maplibre-gl", "pmtiles", "neon-activity-graph", "neon-activity-graph/react", "neon-activity-graph/layout", "@carbon/icons-react", "three/examples/jsm/geometries/RoundedBoxGeometry.js", "three/examples/jsm/utils/BufferGeometryUtils.js", "three/examples/jsm/environments/RoomEnvironment.js"] },
   resolve: { alias: { "~": fileURLToPath(new URL("./app", import.meta.url)) } },
   // Dev server only (builds ignore `server`). Reachable from a phone on the LAN or the tailnet unless CATALYST_DEV_HOST=localhost;
   // the Host names it accepts are in scripts/dev-host.mjs. HMR needs no setting: the client connects back to the page's own host.
