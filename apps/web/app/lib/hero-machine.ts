@@ -25,6 +25,12 @@ import type { GlobeViewState } from "~/globe";
 export const HERO_IDLE_MS = 8000;
 
 /**
+ * The short beat, ms, after which a hero born by a handover from the header (the visit began on another page, `lib/hero-rest.ts`) brings in the whole
+ * presentation: long enough to see where the header link you pressed went, short enough that it is still the arrival.
+ */
+export const HERO_HANDOVER_MS = 2000;
+
+/**
  * Largest `GlobeViewState.zoom` ([0, 1] from the whole globe to the closest the world-scale globe goes) still counted as the world view.
  * The idle rotation's own slack is 0.15 zoom levels over a range of about 5.3 (`TUNING.maxZoom` 6.5 less the whole-globe fit), that is
  * 0.03: a wheel at the minimum zoom lands exactly on 0, the slack absorbs rounding.
@@ -97,9 +103,15 @@ const browserTimers: HeroTimers = {
   clearTimeout: (handle) => globalThis.clearTimeout(handle as ReturnType<typeof setTimeout>),
 };
 
-export function createHeroMachine({ idleMs = HERO_IDLE_MS, timers = browserTimers, initial = "rest" }: { idleMs?: number; timers?: HeroTimers; initial?: HeroState } = {}): HeroMachine {
+export function createHeroMachine({
+  idleMs = HERO_IDLE_MS,
+  timers = browserTimers,
+  initial = "rest",
+  firstIdleMs,
+}: { idleMs?: number; timers?: HeroTimers; initial?: HeroState; /** The delay of the first period only (a hero born collapsed by a handover from the header, `lib/hero-rest.ts`); every later one is `idleMs`. */ firstIdleMs?: number } = {}): HeroMachine {
   let snapshot: HeroSnapshot = { state: initial, world: true, interlude: false };
   let timer: unknown = null;
+  let first = firstIdleMs !== undefined;
   const held = new Set<HoldReason>();
   const listeners = new Set<() => void>();
 
@@ -117,10 +129,12 @@ export function createHeroMachine({ idleMs = HERO_IDLE_MS, timers = browserTimer
   const arm = () => {
     clear();
     if (held.size > 0 || snapshot.state !== "collapsed" || !snapshot.world) return;
+    const delay = first ? firstIdleMs! : idleMs;
     timer = timers.setTimeout(() => {
       timer = null;
+      first = false;
       if (snapshot.state === "collapsed" && snapshot.world) set({ state: "rest" });
-    }, idleMs);
+    }, delay);
   };
 
   // Born collapsed (the visitor came back to the home page from another): the full hero returns after the idle delay, as after a gesture.
@@ -133,11 +147,13 @@ export function createHeroMachine({ idleMs = HERO_IDLE_MS, timers = browserTimer
       return () => void listeners.delete(listener);
     },
     interact() {
+      first = false;
       set({ state: "collapsed" });
       arm();
     },
     setWorld(world) {
       if (world === snapshot.world) return;
+      first = false;
       // Leaving the world view (zooming in, a place opening) is leaving the landing: the hero does not wait for a gesture to step back.
       set(world ? { world } : { world, state: "collapsed" });
       arm();
@@ -147,12 +163,14 @@ export function createHeroMachine({ idleMs = HERO_IDLE_MS, timers = browserTimer
     },
     hold(next, reason = "focus") {
       if (next === held.has(reason)) return;
+      first = false;
       if (next) held.add(reason);
       else held.delete(reason);
       arm();
     },
     restore() {
       if (!snapshot.world) return;
+      first = false;
       clear();
       set({ state: "rest" });
     },

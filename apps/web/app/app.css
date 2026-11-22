@@ -4509,6 +4509,33 @@
 }
 
 /*
+ * The header fading with the hero's rows, both ways (`useLingering`, lib/hero-rest.ts; the leave's duration is `HEADER_FADE_MS` of navbar.tsx). Out: it stays
+ * mounted and fades as the rows come in. In: the header that a gesture brings (`data-guard`, set before the first paint) fades in as the rows fade out,
+ * instead of appearing in one frame. Every other way the header comes (a route change, a load) is unchanged: no fade.
+ */
+[data-slot="site-header"][data-leaving] {
+  opacity: 0;
+  transition: opacity 300ms var(--ease-standard);
+  pointer-events: none;
+}
+header[data-guard][data-slot="site-header"] {
+  animation: header-in 260ms var(--ease-standard) backwards;
+}
+@keyframes header-in {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-slot="site-header"][data-leaving] {
+    transition: none;
+  }
+  header[data-guard][data-slot="site-header"] {
+    animation: none;
+  }
+}
+
+/*
  * The narrow header's bar (the header is under 56 rem wide: a phone, or the half beside the open panel; docs/web-architecture.md, "Header").
  * Two zones on one grid: the selector (`SectionsMenu`) at the left edge and the search at the right edge, on the same 1 rem gutter as the drawer's rows. Unlayered: the links carry utilities
  * (`min-w-11`, `justify-center`) that would otherwise centre their words in their 44 px boxes and push them off the gutter. The targets
