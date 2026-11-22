@@ -4933,9 +4933,9 @@ body:not(:has([data-slot="site-header"])) .np-root {
 .world-view-root {
   bottom: max(1.25rem, var(--safe-bottom));
 }
-/* The name's small line takes the bottom-left corner (its size stops growing at 463 px: it ends 329 px from the left from there on): the strip is about 290 px wide, so it clears the name's end by 16 px from 976 px; below 61 rem
+/* The name's small line takes the bottom-left corner (its size stops growing at 463 px: it ends 329 px from the left from there on): the strip is about 330 px wide (with the state's word), so it clears the name's end by 16 px from 1020 px; below 64 rem
    it is centred ABOVE the name, with room between (owner, 2026-11-07: "higher"). */
-@media (max-width: 60.99rem) {
+@media (max-width: 63.99rem) {
   .world-view-root {
     bottom: calc(var(--hero-mini-bottom) + var(--safe-bottom) + var(--hero-mini-size) + 1.25rem);
     transition: bottom 300ms var(--ease-standard);
@@ -4945,7 +4945,7 @@ body:not(:has([data-slot="site-header"])) .np-root {
     bottom: calc(var(--hero-mini-bottom) + var(--safe-bottom) + var(--hero-mini-size) + 2.75rem);
   }
 }
-@media (max-width: 60.99rem) and (prefers-reduced-motion: reduce) {
+@media (max-width: 63.99rem) and (prefers-reduced-motion: reduce) {
   .world-view-root {
     transition: none;
   }
@@ -5014,6 +5014,28 @@ body:not(:has([data-slot="site-header"])) .np-root {
   bottom: 0.375rem;
   height: 2px;
   background: var(--signal);
+}
+/* The state in words after the name: the accent while it is on, dim while it is off. Both words share one grid cell, so the item is as wide as the longer one and nothing moves when it flips. */
+.globe-dock-state {
+  display: inline-grid;
+  margin-inline-start: 0.125rem;
+}
+.globe-dock-state > span {
+  grid-area: 1 / 1;
+  text-align: start;
+}
+.globe-dock-state > span:first-child {
+  color: var(--signal-text);
+  visibility: hidden;
+}
+.globe-dock-state > span:last-child {
+  color: var(--subtle-foreground);
+}
+.globe-dock-state[data-on="true"] > span:first-child {
+  visibility: visible;
+}
+.globe-dock-state[data-on="true"] > span:last-child {
+  visibility: hidden;
 }
 /* The turning globe takes the accent while it turns (the label stays ink: the rule under it and the icon say it is on). */
 .globe-dock-item[aria-pressed="true"] .globe-dock-globe {

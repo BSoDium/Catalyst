@@ -70,6 +70,11 @@ export function WorldViewButton({ showReset, showAmbient }: { showReset: boolean
                 >
                   <TurningGlobe turning={on && !reduced} />
                   Auto-rotate
+                  {/* the state in words, for the eye (`aria-pressed` says it to the ear): both words are laid in the same cell so that the strip does not change width when it flips */}
+                  <span className="globe-dock-state" data-on={on} aria-hidden="true">
+                    <span>On</span>
+                    <span>Off</span>
+                  </span>
                 </motion.button>
               )}
             </AnimatePresence>
