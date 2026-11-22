@@ -92,14 +92,14 @@ function screenAxes() {
   return { x, y };
 }
 
-/**
- * The place-holder: every day of the year as a flat rounded square on the ground, projected as the scene's camera sees it, fitted into a box of the given aspect ratio the way the scene fits itself (`fit` in the scene, with a
- * typical tallest column). Returns the SVG `viewBox` and one path of all the squares (to be filled).
- */
 /** Where the scene's pits are seen: half the side of their opening (the pit's 0.46 and the lip round it, 5 % more) and the height of the layers lying over the ground (the pit's shading is drawn there). */
 export const PIT_HALF = 0.48;
 export const PIT_LEVEL = 0.11;
 
+/**
+ * The place-holder: every day of the year as a flat rounded square on the ground, projected as the scene's camera sees it, fitted into a box of the given aspect ratio the way the scene fits itself (`fit` in the scene, with a
+ * typical tallest column). Returns the SVG `viewBox` and one path of all the squares (to be filled).
+ */
 export function placeholderTiles(weeks: number, strips: number, aspect: number, tallest = TYPICAL_TALLEST, shifts?: readonly number[]) {
   const { corners, at } = slabFor(weeks, strips, shifts);
   const room = roomFor(strips);

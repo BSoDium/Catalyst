@@ -235,8 +235,6 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
           .replace("#include <color_fragment>", "#include <color_fragment>\n  float cf = pow(clamp(abs(normalize(vCoreN).z), 0.0, 1.0), 0.9);\n  diffuseColor.rgb = mix(mix(diffuseColor.rgb, vec3(1.0), CORE_HAZE), diffuseColor.rgb, cf);".replace("CORE_HAZE", "0.5"));
       };
       // (in the dark theme the cores are lights: unlit, their colour is the light they give out, brighter than 1 for a busy day, which the bloom and the glow on the ground turn into a glow)
-      // (`alphaHash`: a rod that is almost off is almost not there: it is dithered away, and the picture's many samples average the dither out)
-      // (a rod's translucency is its colour scaled by its opacity: it is the light it gives out, so that a dim rod is a dim light, with no dither, no noise)
       // (dark) a rod is an emitter, not an absorber: it is drawn ADDITIVELY (`transparent` stays false, so that it is in the opaque pass the glass sees, and three.js still blends it additively): it adds its light to what is behind it and takes none away, so a dim rod is a faint light over whatever is lit there and an off rod is not there at all
       /** (dark) a rod's brightest channel is compressed above `ROD_KNEE` towards `ROD_MAX` (any hue), and whitened by up to `ROD_WHITE` where it is brightest. */
       const ROD_KNEE = 0.7;
@@ -246,7 +244,7 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
       /** (dark) how much of the ground's light the glass shows, 1 at rest, lower when the lights are dimmed (see `applyLevels`): shared with the backdrop's shader. */
       const backdropDim = { value: 1 };
       /** GLSL: the light seen behind, `g` (linear), scaled and then capped softly on its brightest channel, so a strong hue is not overexposed whatever the palette: its colour is kept, only its level is compressed. */
-      const softSeen = `vec3 softSeen(vec3 g) { float m = max(g.r, max(g.g, g.b)); if (m < 1e-6) return g; float k = ${DARK_BACKDROP_CAP.toFixed(3)}; return g * (k * tanh(m * ${DARK_BACKDROP_GAIN.toFixed(3)} / k) / m); }`;
+      const softSeen = `vec3 softSeen(vec3 g) { float m = max(g.r, max(g.g, g.b)); if (m < 1e-6) return g; float k = ${DARK_BACKDROP_CAP.toFixed(3)}; return g * (k * tanh(min(m * ${DARK_BACKDROP_GAIN.toFixed(3)} / k, 12.0)) / m); }`;
       // how much each rod gives out, 0 to 1, one number per block, read by the rod's vertices (`aBlock` is the block's number): the neon start-up changes them over time
       // what is left of a block when its rod is off, the same for all of them: the glass's own glow and the room's reflections in it, as absolute intensities
       /** (dark) how much glow the green glass has of its own, against 0.6 of the blue's: a slight tint (0 is a clear glass). Pure green, never whitened: a whitened glow is a grey one. */
@@ -284,7 +282,7 @@ export function mountScene(el: HTMLElement, opts: GraphOptions & { data: GraphDa
           .replace("#include <begin_vertex>", "#include <begin_vertex>\n  transformed.xz = aCtr + (transformed.xz - aCtr) * mix(0.6, 1.0, smoothstep(0.0, 2.5, rodB));");
         shader.fragmentShader = shader.fragmentShader
           .replace("#include <common>", "#include <common>\nvarying float vRodA;")
-          .replace("#include <color_fragment>", "#include <color_fragment>\n  diffuseColor.rgb *= vRodA;\n  // (a very bright rod is not a flat blob of its colour: above the knee its level is compressed, whatever its hue, and what is left of it is whitened a little, as a real light too bright for the eye or the film turns to a hot white core with the colour round it; the faces' shading survives, as a smaller difference)\n  float rm = max(diffuseColor.r, max(diffuseColor.g, diffuseColor.b));\n  if (rm > " + ROD_KNEE.toFixed(2) + ") {\n    float rc = " + ROD_KNEE.toFixed(2) + " + " + (ROD_MAX - ROD_KNEE).toFixed(2) + " * tanh((rm - " + ROD_KNEE.toFixed(2) + ") / " + (ROD_MAX - ROD_KNEE).toFixed(2) + ");\n    // (only a SATURATED rod is held back: a pale one, like the stock blue whose brightness is light added to all three channels, is already a hot core and keeps its full power)\n    float rs = smoothstep(0.62, 0.85, (rm - min(diffuseColor.r, min(diffuseColor.g, diffuseColor.b))) / rm);\n    diffuseColor.rgb = mix(diffuseColor.rgb, mix(diffuseColor.rgb * (rc / rm), vec3(rc), " + ROD_WHITE.toFixed(2) + " * smoothstep(" + ROD_KNEE.toFixed(2) + ", 3.0, rm)), rs);\n  }");
+          .replace("#include <color_fragment>", "#include <color_fragment>\n  diffuseColor.rgb *= vRodA;\n  // (a very bright rod is not a flat blob of its colour: above the knee its level is compressed, whatever its hue, and what is left of it is whitened a little, as a real light too bright for the eye or the film turns to a hot white core with the colour round it; the faces' shading survives, as a smaller difference)\n  float rm = max(diffuseColor.r, max(diffuseColor.g, diffuseColor.b));\n  if (rm > " + ROD_KNEE.toFixed(2) + ") {\n    float rc = " + ROD_KNEE.toFixed(2) + " + " + (ROD_MAX - ROD_KNEE).toFixed(2) + " * tanh(min((rm - " + ROD_KNEE.toFixed(2) + ") / " + (ROD_MAX - ROD_KNEE).toFixed(2) + ", 12.0));\n    // (only a SATURATED rod is held back: a pale one, like the stock blue whose brightness is light added to all three channels, is already a hot core and keeps its full power)\n    float rs = smoothstep(0.62, 0.85, (rm - min(diffuseColor.r, min(diffuseColor.g, diffuseColor.b))) / rm);\n    diffuseColor.rgb = mix(diffuseColor.rgb, mix(diffuseColor.rgb * (rc / rm), vec3(rc), " + ROD_WHITE.toFixed(2) + " * smoothstep(" + ROD_KNEE.toFixed(2) + ", 3.0, rm)), rs);\n  }");
       };
       glowMaterial.customProgramCacheKey = () => "rod-levels";
       // `shade` (dark theme): the faces of a block are not all lit alike, as if the light were from above and to the left of the camera, and a block is brighter toward its top: its top is the brightest face, then the side that
@@ -534,7 +532,7 @@ void main() {
   vec3 v = texture2D(map, vUv).rgb;
   // (the differences of overlapping shadows are summed, but light that has been through two blocks has lost the share of each, not both shares: the product, which the exponential of the sum is) (below a small difference there is only the noise of the rays: it is not light)
   vec3 f = exp(${(LIGHT_CAUSTIC * 1.2).toFixed(3)} * sign(v) * max(abs(v) - ${NOISE_FLOOR.toFixed(3)}, 0.));
-  ${shade ? `vec3 d = 1. - min(f, vec3(1.)); d = max(vec3(0.), mix(vec3(dot(d, vec3(0.3333))), d, ${SHADE_SATURATION.toFixed(2)})); gl_FragColor = vec4(vec3(1. - ${SHADOW.toFixed(3)} * min(d, vec3(1.))), 1.);` : `vec3 g = max(f - 1., 0.) * ${GLEAM.toFixed(3)}; gl_FragColor = vec4(${GLEAM_MAX.toFixed(3)} * tanh(g / ${GLEAM_MAX.toFixed(3)}), 1.);`}
+  ${shade ? `vec3 d = 1. - min(f, vec3(1.)); d = max(vec3(0.), mix(vec3(dot(d, vec3(0.3333))), d, ${SHADE_SATURATION.toFixed(2)})); gl_FragColor = vec4(vec3(1. - ${SHADOW.toFixed(3)} * min(d, vec3(1.))), 1.);` : `vec3 g = max(f - 1., 0.) * ${GLEAM.toFixed(3)}; gl_FragColor = vec4(${GLEAM_MAX.toFixed(3)} * tanh(min(g / ${GLEAM_MAX.toFixed(3)}, vec3(12.))), 1.);`}
 }`,
               transparent: true,
               blending: shade ? THREE.MultiplyBlending : THREE.AdditiveBlending,
@@ -1012,13 +1010,13 @@ void main() {
         pitLight = (groundGroup.userData.setLevels as typeof pitLight) ?? null;
         group.add(groundGroup);
         const tb2 = performance.now();
+        rimLight = null;
         if (tiles.length) {
           const tile = new THREE.Mesh(mergeGeometries(tiles), tileUnlit);
           group.add(tile);
           const rim = new THREE.Mesh(mergeGeometries(rims), tileUnlit.clone());
           const rimMat = rim.material as import("three").MeshBasicMaterial;
           rimMat.side = THREE.FrontSide;
-          rimLight = null;
           if (dark && pitLamps.length === pitRims.length && pitRims.length > 0) {
             // (dark) the lip of a pit shines with the lamps around it, so it follows them: its colour above the ground's is scaled by how much of their light there is now (per pit, from the levels)
             const litData = new Float32Array(pitRims.length).fill(1);
@@ -1594,6 +1592,7 @@ void main(){
         effective = new Float32Array(neonBlocks.length).fill(1);
         lastLevels = new Float32Array(neonBlocks.length).fill(1);
         idleLook = false;
+        backdropDim.value = 1;
         if (focusCtl) applyLevels(lastLevels);
         if (!isDark() || !neonAllowed() || skipStartup || !stampCtl || neonBlocks.length === 0 || neonBlocks.length > MAX_LEVELS) return void ((humOk = true), onLit?.(true));
         const ctl = stampCtl;
