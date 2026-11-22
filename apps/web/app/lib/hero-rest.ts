@@ -26,15 +26,23 @@ export function useHeroResting(): boolean {
 }
 
 /**
- * Whether the visitor has been on another page of the site in this session. The landing hero is born at rest (the full presentation, no header),
- * which is right for a visit that begins on the home page and wrong for one that comes back to it from a list: someone who clicked "Globe" in the
- * header expects the header to stay (owner, 2026-10-21), and the presentation to return by itself after the idle delay. The header reports the
- * pages it is on; the hero reads this when it is created.
+ * Whether the visitor is coming back to the home page from another one, having already seen it earlier in the session. The landing hero is born at
+ * rest (the full presentation, no header), which is right for a first arrival and wrong for a return from a list: someone who clicked "Globe" in the
+ * header expects the header to stay (owner, 2026-10-21), and the presentation to return by itself after the idle delay. But a visit that BEGINS on
+ * another page (the software list, say) has not seen the presentation yet, so its first arrival on the globe is a first landing, whole hero
+ * included (owner, 2026-11-22). The header reports every page it is on; the hero reads this when it is created.
  */
+let seenHome = false;
 let leftHome = false;
-export function markLeftHome(): void {
-  leftHome = true;
+export function markPage(onHome: boolean): void {
+  if (onHome) seenHome = true;
+  else if (seenHome) leftHome = true;
 }
 export function cameBackHome(): boolean {
   return leftHome;
+}
+/** Test hook: a fresh session. */
+export function resetHeroRest(): void {
+  seenHome = false;
+  leftHome = false;
 }
