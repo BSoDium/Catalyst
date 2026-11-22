@@ -4938,6 +4938,16 @@ body:not(:has([data-slot="site-header"])) .np-root {
 @media (max-width: 60.99rem) {
   .world-view-root {
     bottom: calc(var(--hero-mini-bottom) + var(--safe-bottom) + var(--hero-mini-size) + 1.25rem);
+    transition: bottom 300ms var(--ease-standard);
+  }
+  /* At the world view the hint sits under the name (a 1rem line and the 0.5rem gap above it) and the name is that much higher: the strip rises with it, and comes down when the hint goes (zoomed in). */
+  .world-view-root[data-hint="true"] {
+    bottom: calc(var(--hero-mini-bottom) + var(--safe-bottom) + var(--hero-mini-size) + 2.75rem);
+  }
+}
+@media (max-width: 60.99rem) and (prefers-reduced-motion: reduce) {
+  .world-view-root {
+    transition: none;
   }
 }
 /* The player's plate: the page's colour, feathered to nothing, so the linework gives way under the words (no box, no blur). */

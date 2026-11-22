@@ -14,7 +14,7 @@ import { ambient, requestWorldView } from "~/globe";
  * is zoomed in, and never while a place or an entry is open. Its name does not change with its state: `aria-pressed` and the turning globe say it.
  *
  * The strip never stretches. When "Reset view" comes, the one beside it first glides out of its way (`layout="position"`: a move, never a scale) and the newcomer fades in once there is room; when it goes, it fades out first
- * and the other glides back (the leaving one stays in the row for its fade). Bottom centre: clear of the name's small line (left), the credits (right), the player (top left) and the header (top).
+ * and the other glides back (the leaving one stays in the row for its fade). Bottom centre: clear of the name's small line (left; on a narrow screen the strip is above it, and higher by the hint's line while the hint is there: `data-hint`), the credits (right), the player (top left) and the header (top).
  */
 export function WorldViewButton({ showReset, showAmbient }: { showReset: boolean; showAmbient: boolean }) {
   const reduced = useReducedMotion();
@@ -22,7 +22,7 @@ export function WorldViewButton({ showReset, showAmbient }: { showReset: boolean
   const hidden = reduced ? { opacity: 0 } : { opacity: 0, y: 6 };
   const glide = { duration: 0.3, ease: [0.2, 0, 0, 1] as const };
   return (
-    <div className="world-view-root pointer-events-none absolute inset-x-0 z-20 flex justify-center">
+    <div className="world-view-root pointer-events-none absolute inset-x-0 z-20 flex justify-center" data-hint={!showReset}>
       <AnimatePresence>
         {(showReset || showAmbient) && (
           <motion.div
