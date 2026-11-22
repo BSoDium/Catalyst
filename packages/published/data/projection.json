@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "dataVersion": {
-    "commit": "3b20de9b4f316a2d3d409f1132e133bdf47d9493",
+    "commit": "8b16533d457d86b97f9dbdf618c0319cee02c655",
     "date": "2026-11-22"
   },
   "places": [
@@ -4805,6 +4805,7 @@
         "width": 853,
         "height": 1280,
         "alt": "The Kremlin's Vodovzvodnaya tower and red wall seen from a bridge over the Moskva river, with the Moscow City skyscrapers on the horizon under a flat grey autumn sky",
+        "credit": "Azamat Hatypov, Pexels",
         "small": {
           "src": "/media/routes/trip-01/image-800w.ae7e67c3.webp",
           "width": 800,
@@ -4979,7 +4980,8 @@
         "src": "/media/routes/trip-04/image.6926b256.webp",
         "width": 795,
         "height": 1280,
-        "alt": "The Obelisco of Buenos Aires, a white pillar over the Avenida 9 de Julio, in warm evening light under a dark storm sky"
+        "alt": "The Obelisco of Buenos Aires, a white pillar over the Avenida 9 de Julio, in warm evening light under a dark storm sky",
+        "credit": "Mario Amé, Pexels"
       },
       "codename": "Buenos Aires",
       "face": "old",
@@ -5167,6 +5169,7 @@
         "width": 1280,
         "height": 960,
         "alt": "A street in Marrakesh in the afternoon: a white car, two motorbikes and a horse carriage on cobbles, palm trees and pink-ochre buildings behind, under a pale sky",
+        "credit": "Marion Batteur, Pexels",
         "small": {
           "src": "/media/routes/trip-06/image-800w.da4597a6.webp",
           "width": 800,
@@ -5680,6 +5683,7 @@
         "width": 1024,
         "height": 1280,
         "alt": "The Hungarian Parliament and the Széchenyi Chain Bridge over the Danube in Budapest at golden hour, under a pale blue sky",
+        "credit": "Alessio Lupi Maillo, Pexels",
         "small": {
           "src": "/media/routes/trip-10/image-800w.0c715d05.webp",
           "width": 800,
@@ -10918,7 +10922,7 @@
   "career": {
     "title": "Career",
     "summary": "Design engineer with an MSc in Computer Graphics & Vision and several years of production experience building React/TypeScript interfaces for geospatial and data-heavy platforms. Comfortable partnering closely with product, design, and engineering to ship technically complex, high-quality UI, from rendering-layer optimisation to end-to-end frontend architecture.",
-    "updated": "2026-10",
+    "updated": "2026-11",
     "portrait": {
       "src": "/media/career/portrait.4c9d2eb0.webp",
       "alt": "Illustrated portrait of Elliot Négrel-Jerzy, a smiling man with dark hair, round glasses and a blue jacket, drawn as a hand-penned blueprint",
@@ -10940,11 +10944,27 @@
         }
       }
     },
-    "availability": {
-      "text": "Open to opportunities",
-      "asOf": "2026-10"
-    },
     "roles": [
+      {
+        "id": "nordvpn-design-engineer",
+        "title": "Design Engineer",
+        "org": "NordVPN",
+        "orgUrl": "https://nordvpn.com",
+        "logo": {
+          "src": "/media/career/logo.44cbbf17.webp",
+          "width": 200,
+          "height": 200
+        },
+        "location": "Warsaw, Poland",
+        "employment": "Full-time",
+        "start": "2026-11",
+        "highlights": [
+          "Member of the Aurora team, which builds and maintains the design system used across most Nord Security products"
+        ],
+        "skills": [
+          "Design systems"
+        ]
+      },
       {
         "id": "macrodata-labs-founding-engineer",
         "title": "Founding Engineer, Frontend & UX",
@@ -10957,8 +10977,9 @@
         },
         "location": "Paris, France",
         "place": "paris",
-        "employment": "Permanent",
-        "start": "2026",
+        "employment": "Full-time",
+        "start": "2026-04",
+        "end": "2026-06",
         "highlights": [
           "Built the frontend and design of Macrodata Labs' data observability platform, enabling AI teams to process, understand, and scale multimodal datasets"
         ],
