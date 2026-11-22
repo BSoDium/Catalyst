@@ -6,7 +6,7 @@ import { xmasRod } from "~/lib/xmas-lights";
 import { xmasNow } from "~/lib/xmas";
 
 /**
- * The activity picture of the software page: the `neon-activity-graph` package's scene (`packages/neon-activity-graph`, which documents the optics, the neon start-up and the options) with what is the site's own: the page's
+ * The activity picture of the software page: the `neon-activity-graph` package's scene (from npm, developed in https://github.com/BSoDium/Neon-activity-graph, which documents the optics, the neon start-up and the options) with what is the site's own: the page's
  * theme and background, the `?xmas` string of lights and its sleigh bells, the card's numbers, and the development helpers (`?lite`, `?wireframe`, `?neonhold`, the `data-*` figures).
  */
 const query = (name: string) => import.meta.env.DEV && new URLSearchParams(window.location.search).has(name);

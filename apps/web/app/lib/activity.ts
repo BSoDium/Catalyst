@@ -1,6 +1,6 @@
 /**
  * The activity the software page draws: one number per day from two sources (GitHub's contributions, WakaTime's coding time), laid out as the weeks x weekdays matrix GitHub made familiar.
- * Pure (no three.js here): `components/activity-scene.tsx` draws it with the `neon-activity-graph` package (`packages/neon-activity-graph`). The data is `activity.json` (`scripts/fetch-activity.mjs`).
+ * Pure (no three.js here): `components/activity-scene.tsx` draws it with the `neon-activity-graph` package (from npm, developed in https://github.com/BSoDium/Neon-activity-graph). The data is `activity.json` (`scripts/fetch-activity.mjs`).
  */
 import { layoutGraph, type GraphData, type Matrix } from "neon-activity-graph/layout";
 
