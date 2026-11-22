@@ -21,7 +21,15 @@ const STEPS = 15;
  * and a place with the map on plain sky wins when the subject's place is busy. It used to be more than any difference in calm, and on a wide card (a portrait photograph enlarged to the card's width shows a thin band of it) the map
  * was always put on the subject itself: the figure, the arch, the horizon (owner, 2026-11-22: Chișinău's card, "too fuzzy").
  */
-const SHOW = 0.01;
+const SHOW = 0.004;
+/**
+ * What a place is credited for the detail it shows under the map (the figures and the word's band, down to `SEEN` of the layer: the fade takes the rest): a share of the mean energy there, at most `SEEN_CAP` of it.
+ * On a wide card the picture is a thin slice, and the sky alone shows nothing of what the picture is of; of the places with the map on calm sky, the one with the subject's head and arm under the map wins.
+ * Small, so that a busier map never pays for it (owner, 2026-11-22: "for wide layouts nothing is visible").
+ */
+const DETAIL_CREDIT = 0.15;
+const SEEN_CAP = 0.04;
+const SEEN = 0.92;
 /** Where in the layer, as shares of its height and width, the subject is to be (a band: not at the top, under the map, not at the very foot). */
 const SUBJECT_Y = [0.3, 0.95] as const;
 const SUBJECT_X = [0.15, 0.85] as const;
@@ -80,7 +88,9 @@ export function calmPlace(
         const sx = left + subject.x * width;
         const sy = top + subject.y * height;
         const inView = sy >= SUBJECT_Y[0] * layer.run && sy <= SUBJECT_Y[1] * layer.run && sx >= SUBJECT_X[0] * layer.w && sx <= SUBJECT_X[1] * layer.w;
-        const score = cost + (inView ? 0 : SHOW) + 0.004 * off + 0.05 * (zoom - 1);
+        const under = region.y + region.h;
+        const seen = layer.run * SEEN > under ? meanUnder(energy, cols, rows, { width, height, left, top }, { x: 0, y: under, w: layer.w, h: layer.run * SEEN - under }) : null;
+        const score = cost - DETAIL_CREDIT * Math.min(seen ?? 0, SEEN_CAP) + (inView ? 0 : SHOW) + 0.004 * off + 0.05 * (zoom - 1);
         if (score < bestScore) {
           bestScore = score;
           best = { width, height, left, top, cost };
