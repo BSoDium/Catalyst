@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
 /**
  * Whether the landing hero is at rest (the whole hero showing). The hero's four rows ARE the home page's section links, so the header
@@ -26,23 +26,54 @@ export function useHeroResting(): boolean {
 }
 
 /**
- * Whether the visitor is coming back to the home page from another one, having already seen it earlier in the session. The landing hero is born at
- * rest (the full presentation, no header), which is right for a first arrival and wrong for a return from a list: someone who clicked "Globe" in the
- * header expects the header to stay (owner, 2026-10-21), and the presentation to return by itself after the idle delay. But a visit that BEGINS on
- * another page (the software list, say) has not seen the presentation yet, so its first arrival on the globe is a first landing, whole hero
- * included (owner, 2026-11-22). The header reports every page it is on; the hero reads this when it is created.
+ * How the landing hero is born, by the pages the visitor has been on (the header reports every page it is on; the hero reads this when it is created).
+ *
+ *  - `first`: the visit begins on the home page. The full presentation, no header.
+ *  - `back`: the visitor saw the home page and comes back to it from a list. Born collapsed, the header stays (someone who clicked "Globe" expects
+ *    it to, owner 2026-10-21), the presentation returns after the usual idle delay.
+ *  - `handover`: the visit began on another page (the software list, say), so the presentation has not been seen. Born collapsed too: the header link
+ *    just clicked must not vanish the instant the page arrives (owner, 2026-11-22: the visitor gets lost). The presentation follows after a short
+ *    beat, the header fading as it comes in.
  */
+export type Arrival = "first" | "back" | "handover";
+
 let seenHome = false;
+let seenElsewhere = false;
 let leftHome = false;
 export function markPage(onHome: boolean): void {
   if (onHome) seenHome = true;
-  else if (seenHome) leftHome = true;
+  else {
+    seenElsewhere = true;
+    if (seenHome) leftHome = true;
+  }
 }
-export function cameBackHome(): boolean {
-  return leftHome;
+export function arrival(): Arrival {
+  if (leftHome) return "back";
+  return seenElsewhere && !seenHome ? "handover" : "first";
 }
 /** Test hook: a fresh session. */
 export function resetHeroRest(): void {
   seenHome = false;
+  seenElsewhere = false;
   leftHome = false;
+}
+
+/**
+ * Keeps the header mounted for `ms` after it is asked to go, so it can fade out (`data-leaving`, app.css) as the hero's rows fade in, rather than
+ * vanish. It comes back at once when it is asked for again. The server and the first render say what they are told.
+ */
+export function useLingering(wanted: boolean, ms: number): { mounted: boolean; leaving: boolean } {
+  const [lingering, setLingering] = useState(false);
+  const [prev, setPrev] = useState(wanted);
+  // (adjusted during the render, not in an effect: an effect would unmount the header for a frame and bring it back already faded)
+  if (prev !== wanted) {
+    setPrev(wanted);
+    setLingering(prev && !wanted);
+  }
+  useEffect(() => {
+    if (!lingering) return;
+    const t = setTimeout(() => setLingering(false), ms);
+    return () => clearTimeout(t);
+  }, [lingering, ms]);
+  return { mounted: wanted || lingering, leaving: !wanted && lingering };
 }

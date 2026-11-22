@@ -4508,6 +4508,18 @@
   color: var(--signal-text);
 }
 
+/* The header fading out as the hero's rows take over (`useLingering`, lib/hero-rest.ts); the duration is `HEADER_FADE_MS` of navbar.tsx. */
+[data-slot="site-header"][data-leaving] {
+  opacity: 0;
+  transition: opacity 400ms var(--ease-standard);
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-slot="site-header"][data-leaving] {
+    transition: none;
+  }
+}
+
 /*
  * The narrow header's bar (the header is under 56 rem wide: a phone, or the half beside the open panel; docs/web-architecture.md, "Header").
  * Two zones on one grid: the selector (`SectionsMenu`) at the left edge and the search at the right edge, on the same 1 rem gutter as the drawer's rows. Unlayered: the links carry utilities

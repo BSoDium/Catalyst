@@ -1,32 +1,31 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { cameBackHome, markPage, resetHeroRest } from "./hero-rest";
+import { arrival, markPage, resetHeroRest } from "./hero-rest";
 
-describe("cameBackHome", () => {
+describe("arrival", () => {
   beforeEach(resetHeroRest);
 
-  it("is false on a visit that begins on the home page", () => {
+  it("is first on a visit that begins on the home page", () => {
     markPage(true);
-    expect(cameBackHome()).toBe(false);
+    expect(arrival()).toBe("first");
   });
 
-  it("is false when the first page was another one: the first arrival on the globe is a first landing", () => {
+  it("is a handover when the visit began on another page: the header link just clicked must not vanish", () => {
     markPage(false);
-    expect(cameBackHome()).toBe(false);
     markPage(false);
-    expect(cameBackHome()).toBe(false);
+    expect(arrival()).toBe("handover");
   });
 
-  it("is true once the home page was seen and left", () => {
+  it("is back once the home page was seen and left", () => {
     markPage(true);
     markPage(false);
-    expect(cameBackHome()).toBe(true);
+    expect(arrival()).toBe("back");
   });
 
-  it("is true on a second return after starting elsewhere", () => {
+  it("is first again at the home page after a handover has been seen", () => {
     markPage(false);
     markPage(true);
-    expect(cameBackHome()).toBe(false);
+    expect(arrival()).toBe("first");
     markPage(false);
-    expect(cameBackHome()).toBe(true);
+    expect(arrival()).toBe("back");
   });
 });

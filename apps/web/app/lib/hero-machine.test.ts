@@ -351,3 +351,40 @@ describe("the interlude's look", () => {
     expect(seen).toEqual([true, false]);
   });
 });
+
+describe("a hero born by a handover from the header (the visit began on another page)", () => {
+  it("brings the full hero in after the short first beat, then waits the usual delay after a gesture", () => {
+    vi.useFakeTimers();
+    try {
+      const m = createHeroMachine({ initial: "collapsed", firstIdleMs: 2000 });
+      vi.advanceTimersByTime(1999);
+      expect(m.getSnapshot().state).toBe("collapsed");
+      vi.advanceTimersByTime(1);
+      expect(m.getSnapshot().state).toBe("rest");
+      m.interact();
+      vi.advanceTimersByTime(HERO_IDLE_MS - 1);
+      expect(m.getSnapshot().state).toBe("collapsed");
+      vi.advanceTimersByTime(1);
+      expect(m.getSnapshot().state).toBe("rest");
+      m.stop();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("a touch of the globe during the beat cancels the handover: the usual delay applies", () => {
+    vi.useFakeTimers();
+    try {
+      const m = createHeroMachine({ initial: "collapsed", firstIdleMs: 2000 });
+      vi.advanceTimersByTime(1000);
+      m.interact();
+      vi.advanceTimersByTime(HERO_IDLE_MS - 1);
+      expect(m.getSnapshot().state).toBe("collapsed");
+      vi.advanceTimersByTime(1);
+      expect(m.getSnapshot().state).toBe("rest");
+      m.stop();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { INTERLUDE_STATE_EVENT, RESTORE_HERO_EVENT, type CoverBlock, type InterludeStateDetail, type GlobeShowcase, type GlobeSignal, type GlobeViewState, ambient, nowPlaying, sunAudible } from "~/globe";
-import { cameBackHome } from "~/lib/hero-rest";
-import { createHeroMachine, HERO_IDLE_MS, isWorldView, showcaseOf, type HeroMachine } from "~/lib/hero-machine";
+import { arrival } from "~/lib/hero-rest";
+import { createHeroMachine, HERO_HANDOVER_MS, HERO_IDLE_MS, isWorldView, showcaseOf, type HeroMachine } from "~/lib/hero-machine";
 
 /**
  * The idle delay. Test-only override, in debug mode only (`?globe-debug`, what the browser checks run in; the same convention as
@@ -72,7 +72,11 @@ export interface LandingHero {
  * `open` is whether a place or an entry is open (the panel): the hero is not the page then, and the world view is not "the world view".
  */
 export function useLandingHero(open: boolean): LandingHero {
-  const machine = useMemo(() => createHeroMachine({ idleMs: idleMs(), initial: cameBackHome() ? "collapsed" : "rest" }), []);
+  const machine = useMemo(() => {
+    const how = arrival();
+    const idle = idleMs();
+    return createHeroMachine({ idleMs: idle, initial: how === "first" ? "rest" : "collapsed", firstIdleMs: how === "handover" ? Math.min(HERO_HANDOVER_MS, idle) : undefined });
+  }, []);
   const zoomAtWorld = useRef(true);
   const openRef = useRef(open);
 

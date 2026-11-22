@@ -5,7 +5,7 @@ import { SectionsMenu } from "~/components/sections-menu";
 import { CAREER_LABEL, CAREER_PATH } from "~/lib/career";
 import { KIND_PATHS, KIND_PLURALS, parsePanelPath, parseView } from "~/lib/entries";
 import { GESTURE_GUARD_CAP_MS, GESTURE_GUARD_MS, GestureGuard } from "~/lib/gesture-guard";
-import { markPage, useHeroResting } from "~/lib/hero-rest";
+import { markPage, useHeroResting, useLingering } from "~/lib/hero-rest";
 import { useHasCareer } from "~/lib/use-has-career";
 import { useSectionCounts } from "~/lib/use-section-counts";
 import { SITE_NAME } from "~/lib/site";
@@ -13,6 +13,8 @@ import { cn } from "~/lib/utils";
 
 /** Re-exported for the tests that name the guard's length. */
 export { GESTURE_GUARD_CAP_MS, GESTURE_GUARD_MS };
+/** How long the header takes to fade out when the hero's rows take over (app.css, `[data-leaving]`). */
+const HEADER_FADE_MS = 400;
 const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
 /**
@@ -141,19 +143,23 @@ export function Navbar({ heroResting: forced, hasCareer: forcedCareer }: NavbarP
   // The home page's hero shows the sections and the search itself while it is at rest: no header then.
   const stored = useHeroResting();
   const heroResting = forced ?? stored;
-  const bar = !(pathname === "/" && heroResting);
+  const wantBar = !(pathname === "/" && heroResting);
+  // The header fades out as the hero's rows fade in, instead of vanishing (the handover from the header, `lib/hero-rest.ts`).
+  const { mounted: bar, leaving } = useLingering(wantBar, HEADER_FADE_MS);
   const headerRef = useRef<HTMLElement>(null);
   // The landing hero starts collapsed when the visitor comes back to the home page after having seen it (`lib/hero-rest.ts`).
   useEffect(() => {
     markPage(pathname === "/");
   }, [pathname]);
-  useGestureGuard(bar, pathname === "/", headerRef);
+  useGestureGuard(wantBar, pathname === "/", headerRef);
   return (
     <>
       {bar && (
         <header
           ref={headerRef}
           data-slot="site-header"
+          data-leaving={leaving ? "" : undefined}
+          inert={leaving || undefined}
           data-career={withCareer ? "" : undefined}
           data-globe={onGlobe ? "" : undefined}
           data-beside={beside ? "" : undefined}
