@@ -2,6 +2,14 @@
 
 Rules for any AI agent (Claude Code, Copilot, etc.) that opens issues or pull requests in this repository. Project conventions live in [docs/](docs/).
 
+## The neon-activity-graph library is not developed here
+
+The activity picture's library, `neon-activity-graph`, lives in its own repository: <https://github.com/BSoDium/Neon-activity-graph> (its README, demo, CI and npm releases are there). **All work on the library (its code, demo, docs, tests, versions and releases) is done in that repository**, in a clone of it, never in `packages/neon-activity-graph` here, which is only a copy. Catalyst only consumes the package.
+
+- Asked to change how the activity picture looks or behaves inside the library? Check which repository you are in first. If it is Catalyst, work in a clone of `BSoDium/Neon-activity-graph` instead, or ask the owner.
+- Changes to how Catalyst *uses* the library (`apps/web`, its options, the panel around it) stay here.
+- This already went wrong once: a whole session of library work was done in the copy here and had to be carried over by hand.
+
 ## Linking a pull request to its issue
 
 - A pull request based on an issue **must** be linked to it. No exceptions.

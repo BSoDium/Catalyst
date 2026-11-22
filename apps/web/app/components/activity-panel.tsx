@@ -1,7 +1,8 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Icon } from "~/components/ui";
-import { placeholderTiles } from "~/lib/activity-view";
+import { placeholderTiles } from "neon-activity-graph/layout";
 import { activityStats, dayText, GITHUB_URL, isActivity, layoutActivity, readableDay, WAKATIME_URL, type Activity, type ActivityStat, type HoverInfo, type Matrix } from "~/lib/activity";
+import { xmasNow } from "~/lib/xmas";
 
 /** A source's colour as text, softened toward the page's own text colour (the figures and words are tinted, not painted). */
 const soft = (tone: "green" | "blue", share = 62) => `color-mix(in srgb, var(${tone === "green" ? "--act-green" : "--act-blue"}) ${share}%, var(--foreground))`;
@@ -47,7 +48,7 @@ const WAITING_STATS: ActivityStat[] = [
   { value: "00", unit: "%", label: "days active", tone: "plain" },
 ];
 
-/** The picture's place-holder: the year's days as faint flat squares on the same slab, seen by the same camera as the scene (`lib/activity-view.ts`), pulsing, from the first paint and prerendered. The scene fades in over it, in place. */
+/** The picture's place-holder: the year's days as faint flat squares on the same slab, seen by the same camera as the scene (`placeholderTiles` of `neon-activity-graph`), pulsing, from the first paint and prerendered. The scene fades in over it, in place. */
 function Waiting({ strips, aspect, className }: { strips: number; aspect: number; className: string }) {
   const { viewBox, d } = placeholderTiles(53, strips, aspect);
   return (
@@ -135,9 +136,9 @@ function DayCard({ info, visible, instant, width }: { info: HoverInfo; visible: 
     return () => cancelAnimationFrame(raf);
   }, [x, y, instant]);
   return (
-    <div ref={outer} role="presentation" className="pointer-events-none absolute top-0 left-0 z-10" style={{ opacity: visible ? 1 : 0, transition: "opacity 0.16s" }}>
+    <div ref={outer} role="presentation" className="pointer-events-none absolute top-0 left-0 z-10 h-0 w-0" style={{ opacity: visible ? 1 : 0, transition: "opacity 0.16s" }}>
       <div
-        className="w-64 px-4 py-3.5 backdrop-blur-md"
+        className="absolute top-0 left-0 w-64 px-4 py-3.5 backdrop-blur-md"
         style={{
           transform: `translate(-50%, ${below ? "16px" : "calc(-100% - 16px)"})`,
           transition: instant ? "none" : "transform 0.3s cubic-bezier(0.2, 0.7, 0.2, 1)",
@@ -176,6 +177,12 @@ function DayCard({ info, visible, instant, width }: { info: HoverInfo; visible: 
             <span className="type-meta text-muted-foreground uppercase">coded</span>
           </div>
         </div>
+        {/* (days stand behind one another: how many are under the pointer, and how to reach the next) */}
+        {info.behind && info.behind.count > 1 && (
+          <p className="type-meta m-0 mt-3 text-muted-foreground uppercase">
+            {info.behind.index + 1} of {info.behind.count} <span aria-hidden="true">·</span> click for next
+          </p>
+        )}
       </div>
     </div>
   );
@@ -199,19 +206,19 @@ function Figures({ lead, stats, ready = true, className }: { lead: { value: stri
   const primary = [...lead.slice(0, 1).map(own), ...stats.slice(0, 2).map(theirs)];
   const secondary = [...lead.slice(1).map(own), ...stats.slice(2).map(theirs)];
   const cell = (f: Fig, big: boolean) => (
-    <div key={f.key} className={`transition-opacity duration-500 flex flex-col ${big ? "gap-1.5" : "gap-1"} min-[80rem]:items-end ${f.own ? "hidden min-[80rem]:flex" : ""}`}>
+    <div key={f.key} className={`group/cell max-md:last:items-end max-md:last:text-right transition-opacity duration-500 flex flex-col ${big ? "gap-1.5" : "gap-1"} md:items-end ${big ? "md:max-[56rem]:items-start" : ""} ${f.own ? "hidden md:flex" : ""}`}>
       {/* (the year's figures are in their places from the first frame, as faint stand-ins: nothing is missing, and nothing moves when the file arrives) */}
-      <dd className={`m-0 flex items-baseline gap-1 transition-opacity duration-500 min-[80rem]:justify-end ${!f.own && !ready ? "opacity-[0.16]" : ""}`} style={{ color: f.tone === "plain" ? undefined : soft(f.tone, 75) }}>
-        <span className={`font-[family-name:var(--font-display)] leading-none font-medium tracking-[-0.03em] tabular-nums ${big ? "text-[1.75rem] min-[56rem]:text-[clamp(1.75rem,2.8cqi,2.75rem)]" : "text-[1.25rem]"}`}>{f.value}</span>
+      <dd className={`m-0 flex items-baseline gap-1 transition-opacity duration-500 max-md:group-last/cell:justify-end md:justify-end ${big ? "md:max-[56rem]:justify-start" : ""} ${!f.own && !ready ? "opacity-[0.16]" : ""}`} style={{ color: f.tone === "plain" ? undefined : soft(f.tone, 75) }}>
+        <span className={`font-[family-name:var(--font-display)] leading-none font-medium tracking-[-0.03em] tabular-nums ${big ? "text-[1.75rem] md:text-[clamp(1.2rem,2.8cqi,2.75rem)]" : "text-[1.25rem]"}`}>{f.value}</span>
         {f.unit && <span className="type-meta font-normal text-muted-foreground normal-case">{f.unit}</span>}
       </dd>
-      <dt className="type-meta text-muted-foreground uppercase min-[80rem]:text-right">{f.label}</dt>
+      <dt className={`type-meta text-muted-foreground uppercase md:max-[56rem]:whitespace-nowrap md:text-right ${big ? "md:max-[56rem]:text-left" : ""}`}>{f.label}</dt>
     </div>
   );
   return (
-    <div data-slot="activity-stats" aria-hidden={ready ? undefined : true} className={`flex flex-col gap-5 px-4 pt-6 md:px-14 min-[80rem]:w-max min-[80rem]:gap-4 min-[80rem]:p-0 ${className ?? ""}`}>
-      <dl className="m-0 flex flex-wrap gap-x-[clamp(2rem,5cqi,4.5rem)] gap-y-4 min-[80rem]:flex-nowrap min-[80rem]:justify-between">{primary.map((f) => cell(f, true))}</dl>
-      <dl className="m-0 flex flex-wrap gap-x-6 gap-y-2 min-[80rem]:flex-nowrap min-[80rem]:justify-between">{secondary.map((f) => cell(f, false))}</dl>
+    <div data-slot="activity-stats" aria-hidden={ready ? undefined : true} className={`flex flex-col gap-5 px-4 pt-6 md:w-max md:gap-4 md:p-0 md:max-[56rem]:w-auto md:max-[56rem]:flex-row md:max-[56rem]:justify-between md:max-[56rem]:gap-x-6 ${className ?? ""}`}>
+      <dl className="m-0 flex flex-wrap justify-between gap-x-[clamp(2rem,5cqi,4.5rem)] gap-y-4 md:gap-x-[clamp(1.25rem,5cqi,4.5rem)] md:flex-nowrap md:justify-between md:max-[56rem]:gap-x-[clamp(1.25rem,3.4cqi,2.5rem)]">{primary.map((f) => cell(f, true))}</dl>
+      <dl className="m-0 flex flex-wrap justify-between gap-x-6 gap-y-2 md:flex-nowrap md:justify-between md:max-[56rem]:gap-x-[clamp(1.25rem,3.4cqi,2.5rem)]">{secondary.map((f) => cell(f, false))}</dl>
     </div>
   );
 }
@@ -238,8 +245,111 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
   const [gl, setGl] = useState(true);
   // a narrow page gets the year in four strips (a squarer slab) instead of one long one
   const [narrow, setNarrow] = useState(false);
+  // `?xmas`, an Easter egg (a demo, not on by default): a greeting joins the legend (read after the first paint, so that the page's first render is the same everywhere)
+  const [xmas, setXmas] = useState(false);
+  // (the dark theme only: it follows the page's scheme, forced by `data-scheme` or the system's)
+  const [dark, setDark] = useState(false);
+  // (the neon start-up is over: the greeting comes once all the lights are on)
+  const [lit, setLit] = useState(false);
+  // the greeting's baseline is set on the legend's last line ("WakaTime activity below."): measured with zero-size probes on the two baselines, at every width and whenever the layout or the font changes
+  const greeting = useRef<HTMLSpanElement>(null);
+  const legend = useRef<HTMLParagraphElement>(null);
+  const [drop, setDrop] = useState(0);
+  const show = xmas && dark;
+  // (the legend is in the picture's corner from 56 rem; below that it is under the picture, or half over its corner, and the greeting is not set on its baseline: it sits in its own corner, on two lines)
+  const [corner, setCorner] = useState(false);
+  // below 56 rem the greeting sits beside the legend, on the right of its lines, when there is room there (`side`: it is moved down to the legend's last line); else in the picture's corner
+  const [side, setSide] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 56rem)");
+    const read = () => setCorner(mq.matches);
+    read();
+    mq.addEventListener("change", read);
+    return () => mq.removeEventListener("change", read);
+  }, []);
+  useEffect(() => {
+    const g = greeting.current;
+    const l = legend.current;
+    if (!show || !g || !l) return;
+    const baseline = (el: HTMLElement) => {
+      const probe = document.createElement("span");
+      probe.style.cssText = "display:inline-block;width:0;height:0;vertical-align:baseline";
+      el.appendChild(probe);
+      const y = probe.getBoundingClientRect().bottom;
+      probe.remove();
+      return y;
+    };
+    const measure = () => {
+      // (the script's letters do not rest on the font's declared baseline: the ink's own is found with the bottom of letters that sit on it, "rsc", measured on a canvas)
+      const cs = getComputedStyle(g);
+      const m2 = document.createElement("canvas").getContext("2d");
+      let ink = 0;
+      if (m2) {
+        m2.font = `${cs.fontSize} ${cs.fontFamily}`;
+        ink = m2.measureText("rsc").actualBoundingBoxDescent;
+      }
+      // (absolute, so that two measures in a frame agree: the greeting's baseline without the shift it has now, then the shift that puts it on the legend's)
+      const applied = g.parentElement ? new DOMMatrix(getComputedStyle(g.parentElement).transform).m42 : 0;
+      const target = baseline(l) - (baseline(g) - applied + ink);
+      if (!Number.isFinite(target)) return;
+      if (corner) {
+        setSide(false);
+        setDrop((d) => (Math.abs(target - d) < 0.5 ? d : target));
+        return;
+      }
+      // below 56 rem: beside the legend if the lines it would stand next to end far enough to the left of the greeting; the corner otherwise
+      const gr = g.getBoundingClientRect();
+      const top = gr.top - applied + target;
+      const bottom = gr.bottom - applied + target;
+      const range = document.createRange();
+      range.selectNodeContents(l);
+      let right = 0;
+      for (const r of Array.from(range.getClientRects())) if (r.bottom > top && r.top < bottom && r.width > 0) right = Math.max(right, r.right);
+      const room = box.current ? box.current.getBoundingClientRect().width * 0.02 : 8;
+      const fits = right > 0 && target > 0 && right + 14 + room <= gr.right - gr.width;
+      setSide(fits);
+      const want = fits ? target : 0;
+      setDrop((d) => (Math.abs(want - d) < 0.5 ? d : want));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(l);
+    if (box.current) ro.observe(box.current);
+    void document.fonts.ready.then(measure);
+    document.fonts.addEventListener("loadingdone", measure);
+    return () => {
+      ro.disconnect();
+      document.fonts.removeEventListener("loadingdone", measure);
+    };
+  }, [show, corner]);
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const read = () => {
+      const forced = document.documentElement.getAttribute("data-scheme");
+      setDark(forced ? forced === "dark" : mq.matches);
+    };
+    read();
+    mq.addEventListener("change", read);
+    const mo = new MutationObserver(read);
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-scheme"] });
+    return () => {
+      mq.removeEventListener("change", read);
+      mo.disconnect();
+    };
+  }, []);
   useEffect(() => {
     setGl(webgl2());
+    if (xmasNow()) {
+      // (the globe's calligraphy: not in the stylesheet, so that no page pays for it; the greeting loads it here, and only then shows)
+      const face = new FontFace("Imperial Script", "url(/fonts/imperial-script-1.010-latin-400.woff2)", { display: "swap" });
+      face.load().then(
+        () => {
+          document.fonts.add(face);
+          setXmas(true);
+        },
+        () => setXmas(true),
+      );
+    }
     const mq = window.matchMedia("(max-width: 47.99rem)");
     setNarrow(mq.matches);
     const onChange = () => setNarrow(mq.matches);
@@ -255,27 +365,36 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
   }, []);
   if (!enabledFor(url)) return null;
   // (the file is not there after all: the picture goes away, and the page's own figures, which the head hid for the grid, are shown on their own)
-  if (failed) return lead.length ? <Figures lead={lead} stats={[]} className="hidden min-[80rem]:grid min-[80rem]:absolute min-[80rem]:top-0 min-[80rem]:right-14" /> : null;
+  if (failed) return lead.length ? <Figures lead={lead} stats={[]} className="hidden md:grid md:absolute md:top-0 md:right-14" /> : null;
   const flat = !gl && activity ? layoutActivity(activity) : null;
   const stats = activity ? activityStats(activity) : WAITING_STATS;
   // The tilt of the scene leaves its top-right and bottom-left corners empty: the figures take the first and the legend the second (on a narrow page there is no corner, they go under the picture).
   return (
-    <section ref={box} data-slot="activity" aria-label="Activity over the last year" className="relative -mx-4 mt-0 mb-2 md:-mx-14 min-[80rem]:-mb-2 min-[90rem]:-mb-10">
+    <section ref={box} data-slot="activity" aria-label="Activity over the last year" className="relative -mx-4 mt-0 mb-2 [overflow-x:clip] max-md:flex max-md:flex-col md:-mx-14 md:mb-4 min-[90rem]:-mb-4">
       {flat ? (
         <div role="img" aria-label="Activity over the last year: GitHub contributions and WakaTime coding time, a square a day" className="flex flex-col gap-4 px-4 md:px-14">
           <FlatMatrix matrix={flat.wakatime} tone="#0078d7" />
           <FlatMatrix matrix={flat.github} tone="#0fbf3e" />
         </div>
       ) : (
-        <div ref={sceneBox} className="relative aspect-[3.97/1] w-full max-md:aspect-[1.2/1]">
+        <div ref={sceneBox} className="group/scene relative aspect-[3.97/1] w-full max-md:-mt-[12cqi] max-md:aspect-[0.95/1]">
           <div className={`absolute inset-0 transition-opacity duration-700 ${ready ? "opacity-0" : ""}`}>
             <Waiting strips={1} aspect={3.97} className="max-md:hidden" />
-            <Waiting strips={4} aspect={1.2} className="hidden max-md:block" />
+            <Waiting strips={4} aspect={0.95} className="hidden max-md:block" />
           </div>
           {seen && activity && (
             <Suspense fallback={null}>
-              <ActivityScene activity={activity} strips={narrow ? 4 : 1} onReady={() => setReady(true)} onHover={setHover} className="absolute inset-0 outline-offset-[-2px] focus-visible:outline-2 focus-visible:outline-[var(--ring)]" />
+              <ActivityScene activity={activity} strips={narrow ? 4 : 1} onReady={() => setReady(true)} onLit={setLit} onHover={setHover} className="absolute inset-0 outline-offset-[-2px] focus-visible:outline-2 focus-visible:outline-[var(--ring)]" />
             </Suspense>
+          )}
+          {show && (
+            <div aria-hidden="true" className="pointer-events-none absolute right-0 bottom-0 z-10 flex items-end justify-end px-[3cqi] pt-[16cqi] min-[56rem]:pt-[9cqi] min-[56rem]:pl-[16cqi] opacity-100 transition-opacity duration-1000 group-hover/scene:opacity-0" style={{ opacity: lit ? undefined : 0, transform: `translateY(${drop}px)`, paddingLeft: corner ? undefined : side ? "2cqi" : "26cqi" }}>
+              {/* (the backdrop reaches down past the shifted text, to the picture's own bottom edge, so that no glow shows under it) */}
+              <span className="absolute inset-x-0 top-0" style={{ bottom: corner ? `${-(Math.max(0, -drop) + 12)}px` : 0, background: "radial-gradient(ellipse 100% 100% at 100% 100%, color-mix(in oklab, var(--background) 68%, transparent) 0%, color-mix(in oklab, var(--background) 64%, transparent) 20%, color-mix(in oklab, var(--background) 50%, transparent) 42%, color-mix(in oklab, var(--background) 30%, transparent) 62%, color-mix(in oklab, var(--background) 12%, transparent) 80%, color-mix(in oklab, var(--background) 3%, transparent) 92%, transparent 100%)" }} />
+              <span ref={greeting} className="relative text-right text-[clamp(2.75rem,13cqi,4.25rem)] leading-[0.95] min-[56rem]:text-[clamp(2.25rem,6cqi,4.25rem)] min-[56rem]:leading-none" style={{ fontFamily: '"Imperial Script", "Snell Roundhand", "Apple Chancery", cursive', color: "#fff", WebkitTextStroke: "0.6px #fff", textShadow: "0 0 0.12em var(--background), 0 0 0.3em var(--background), 0 0 0.6em rgb(255 60 60 / 0.45)" }}>
+                Merry<br className="min-[56rem]:hidden" /> Christmas
+              </span>
+            </div>
           )}
           {lastHover.current && (
             <>
@@ -293,18 +412,18 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
       )}
       {/* The corners are only empty when the scene is big enough (from 80 rem of page): below that the figures and the legend sit under the picture, so the text never lies over the blocks. From there the page's own figures (software, places) join the year's
           in ONE grid at the top right, from the head's top down into the empty corner of the picture. */}
-      <Figures lead={lead} stats={stats} ready={!!activity} className="min-[80rem]:pointer-events-none min-[80rem]:absolute min-[80rem]:right-14 min-[80rem]:top-[calc(-1*clamp(2.5rem,6.4cqi,5.75rem)-0.25rem)]" />
-      <div data-slot="activity-legend" className="flex flex-col gap-3 px-4 pt-8 md:px-14 min-[80rem]:absolute min-[80rem]:bottom-[10.7%] min-[80rem]:left-14 min-[80rem]:w-[25rem] min-[80rem]:p-0">
+      <Figures lead={lead} stats={stats} ready={!!activity} className="max-md:relative max-md:z-10 max-md:order-first max-md:pb-2 md:pointer-events-none md:absolute md:right-14 md:max-[56rem]:left-14 md:top-[calc(-1*clamp(2.5rem,6.4cqi,5.75rem)-0.25rem)]" />
+      <div data-slot="activity-legend" className="relative flex flex-col gap-3 px-4 pt-3 md:pt-6 md:px-14 md:max-[56rem]:-mt-[6.5cqi] min-[56rem]:absolute min-[56rem]:bottom-[1%] min-[80rem]:bottom-[10.7%] min-[56rem]:left-14 min-[56rem]:w-[clamp(20rem,34cqi,25rem)] min-[56rem]:p-0">
         <p className="type-meta m-0 text-muted-foreground uppercase">Last <span className="text-foreground">12 months</span></p>
         {/* In the picture's order: the contributions are the upper block of a day, the coding the lower one. */}
-        <p className="m-0 font-[family-name:var(--font-display)] text-[1.625rem] leading-[1.1] font-semibold tracking-tight text-balance">
+        <p ref={legend} className="m-0 font-[family-name:var(--font-display)] text-[1.625rem] min-[56rem]:text-[clamp(1.25rem,2.3cqi,1.625rem)] leading-[1.1] font-semibold tracking-tight text-balance">
           <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" className={LINK} style={{ color: soft("green", 75) }}>
             GitHub contributions
             <Icon name="arrow-up-right" size="inline" aria-hidden="true" className="translate-y-[0.05em] self-center opacity-70 transition-opacity group-hover/link:opacity-100" />
             <span className="sr-only">(opens in a new tab)</span>
           </a>{" "}
           above,
-          <br className="hidden min-[80rem]:inline" />{" "}
+          <br className="hidden md:inline" />{" "}
           <a href={WAKATIME_URL} target="_blank" rel="noopener noreferrer" className={LINK} style={{ color: soft("blue", 75) }}>
             WakaTime activity
             <Icon name="arrow-up-right" size="inline" aria-hidden="true" className="translate-y-[0.05em] self-center opacity-70 transition-opacity group-hover/link:opacity-100" />

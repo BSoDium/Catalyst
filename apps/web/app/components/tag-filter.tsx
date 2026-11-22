@@ -19,6 +19,9 @@ export function TagFilter({ tags, selected, search, label, limit = TAGS_SHOWN }:
   const id = useId();
   const { visible, hidden, foldable } = foldTags(tags, selected, limit);
   const shown = open ? matchTags(tags, query) : visible;
+  const searching = query.trim() !== "";
+  // (a search with no match: the message takes the place of the chips, in the row's own height, so that nothing moves)
+  const none = searching && shown.length === 0;
   const close = () => {
     setExpanded(false);
     setQuery("");
@@ -52,19 +55,27 @@ export function TagFilter({ tags, selected, search, label, limit = TAGS_SHOWN }:
       )}
       <ScrollRow noun="tags">
         <ul className="ds-filter-row flex list-none gap-0">
-          {chip(null, "All")}
-          {shown.map((t) => chip(t.tag, t.tag, t.count))}
-          {foldable && (
-            <li>
-              <Button variant="link" size="sm" aria-expanded={open} onClick={() => (open ? close() : setExpanded(true))}>
-                {open ? "Fewer tags" : `+${hidden} more`}
-              </Button>
+          {none ? (
+            <li className="tag-search-empty" key="none">
+              No tag matches “{query.trim()}”
             </li>
+          ) : (
+            <>
+              {chip(null, "All")}
+              {shown.map((t) => chip(t.tag, t.tag, t.count))}
+              {foldable && !searching && (
+                <li>
+                  <Button variant="link" size="sm" aria-expanded={open} onClick={() => (open ? close() : setExpanded(true))}>
+                    {open ? "Fewer tags" : `+${hidden} more`}
+                  </Button>
+                </li>
+              )}
+            </>
           )}
         </ul>
       </ScrollRow>
-      <p role="status" className={open && query.trim() && shown.length === 0 ? "tag-search-empty" : "sr-only"}>
-        {open && query.trim() ? (shown.length ? `${shown.length} of ${tags.length} tags` : `No tag matches "${query.trim()}".`) : ""}
+      <p role="status" className="sr-only">
+        {searching ? (shown.length ? `${shown.length} of ${tags.length} tags` : `No tag matches "${query.trim()}".`) : ""}
       </p>
     </nav>
   );
