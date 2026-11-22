@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { INTERLUDE_STATE_EVENT, RESTORE_HERO_EVENT, type CoverBlock, type InterludeStateDetail, type GlobeShowcase, type GlobeSignal, type GlobeViewState, nowPlaying, sunAudible } from "~/globe";
+import { INTERLUDE_STATE_EVENT, RESTORE_HERO_EVENT, type CoverBlock, type InterludeStateDetail, type GlobeShowcase, type GlobeSignal, type GlobeViewState, ambient, nowPlaying, sunAudible } from "~/globe";
 import { cameBackHome } from "~/lib/hero-rest";
 import { createHeroMachine, HERO_IDLE_MS, isWorldView, showcaseOf, type HeroMachine } from "~/lib/hero-machine";
 
@@ -168,6 +168,17 @@ export function useLandingHero(open: boolean): LandingHero {
     return () => {
       off();
       machine.hold(false, "music");
+    };
+  }, [machine]);
+
+  // (ambient mode: the screensaver is not covered by the hero either; turning it off starts a whole idle period)
+  useEffect(() => {
+    const sync = () => machine.hold(ambient.getSnapshot(), "ambient");
+    sync();
+    const off = ambient.subscribe(sync);
+    return () => {
+      off();
+      machine.hold(false, "ambient");
     };
   }, [machine]);
 

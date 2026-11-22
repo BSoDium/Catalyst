@@ -350,7 +350,7 @@ Below `md`, a row of an entry list that has a cover (an article's, a software's,
 One library, one wrapper, one scale (owner, 2026-10-13: the hand-drawn glyph set was too small next to its text everywhere). The set is
 **lucide-react**, except the header's three (the way back's arrow, the selector's chevron, the search), which are from IBM's **Carbon** (`@carbon/icons-react`, Apache-2.0; owner, 2026-10-28: lucide's rounder shapes looked wrong beside the header's mono type; Carbon's are square-ended, filled, on a pixel grid, so the stroke tokens do not apply to them); `components/ui/icon.tsx` is the only file that imports either, and every use is `<Icon name="..." size="..." />`.
 Nothing is drawn by hand: `components/ui/icon.test.ts` fails on an inline `<svg>` anywhere in the components other than the brand mark
-(`logo-mark.tsx`, a fixed 16 x 16 grid) and the generated cover art (`cover-art.tsx`, a dithered grid, not an icon), on an SVG data URI
+(`logo-mark.tsx`, a fixed 16 x 16 grid), the one ANIMATED icon (`turning-globe.tsx`: the Auto-rotate control's globe, whose meridians turn while the globe does; no library icon moves; it is drawn on the same 24-unit grid and takes the same `.ui-icon` stroke, square ends and `currentColor`, still under reduced motion) and the generated cover art (`cover-art.tsx`, a dithered grid, not an icon), on an SVG data URI
 in the CSS, on a second importer of the library, on a text character used as an icon (an arrow, the command key, a tick) and on a size given in pixels.
 
 **The scale.** A size says what the icon sits next to, not a number; the values are tokens in `app.css` (`--icon-*`).

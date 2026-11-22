@@ -366,3 +366,34 @@ describe("edgeSpeed", () => {
     expect(edgeSpeed(200, 0, 0.2)).toBe(0.2);
   });
 });
+
+describe("ambient mode", () => {
+  const ctx = (o: Partial<SpinContext> = {}): SpinContext => ({ reduced: false, hidden: false, lost: false, suspended: false, selected: false, focused: false, inset: 0, zoom: 3, minZoom: 0, busy: false, ...o });
+  it("turns at any zoom, and a hovered place does not stop it", () => {
+    const cfg = { ...SPIN_DEFAULTS, ambient: true };
+    expect(spinBlock(ctx(), cfg)).toBeNull();
+    expect(spinBlock(ctx({ focused: true }), cfg)).toBeNull();
+    expect(spinBlock(ctx(), SPIN_DEFAULTS)).toBe("zoomed-in");
+    expect(spinBlock(ctx({ focused: true, zoom: 0 }), SPIN_DEFAULTS)).toBe("place-focused");
+  });
+  it("is still blocked by a selected place, the panel, the street map, a hidden tab and reduced motion", () => {
+    const cfg = { ...SPIN_DEFAULTS, ambient: true };
+    expect(spinBlock(ctx({ selected: true }), cfg)).toBe("place-selected");
+    expect(spinBlock(ctx({ inset: 400 }), cfg)).toBe("panel-open");
+    expect(spinBlock(ctx({ suspended: true }), cfg)).toBe("street");
+    expect(spinBlock(ctx({ hidden: true }), cfg)).toBe("hidden");
+    expect(spinBlock(ctx({ reduced: true }), cfg)).toBe("reduced-motion");
+  });
+});
+
+describe("ambient hurry", () => {
+  it("starts the turn after the short delay instead of the idle one, and leaves a turning globe alone", () => {
+    const c: SpinContext = { reduced: false, hidden: false, lost: false, suspended: false, selected: false, focused: false, inset: 0, zoom: 3, minZoom: 0, busy: false };
+    const cfg = { ...SPIN_DEFAULTS, ambient: true };
+    const s = new IdleSpin(1000);
+    s.activity(1000);
+    s.hurry(1000, 600, cfg);
+    expect(s.wait(1000, c, cfg)).toBe(600);
+    expect(s.wait(1600, c, cfg)).toBe(0);
+  });
+});

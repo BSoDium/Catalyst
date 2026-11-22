@@ -41,7 +41,7 @@ export function isWorldView(view: Pick<GlobeViewState, "zoom" | "street" | "worl
 export type HeroState = "rest" | "collapsed";
 
 /** Why the idle clock is held (see `HeroMachine.hold`). */
-export type HoldReason = "focus" | "music";
+export type HoldReason = "focus" | "music" | "ambient";
 
 /**
  * What the globe is told about the home screen (`GlobeProps.showcase`): the showcase (the caption in, the boxes and labels out, the planet

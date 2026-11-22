@@ -16,6 +16,11 @@
 import { clamp, smoothstep } from "./geo";
 
 export interface SpinConfig {
+  /**
+   * Ambient mode (the visitor's own choice, a screensaver): the globe turns at ANY zoom, under the view the visitor framed, and a place hovered in the list or on the globe does not stop it. A press, a wheel or a key
+   * still does, and it resumes after `idleMs`; a selected place, the open panel, the street map, a hidden tab and reduced motion still block it (someone is reading, or must not be moved).
+   */
+  ambient: boolean;
   /** Master switch (`applySpinFlags`): off with `?no-rotate`, and by default in debug mode, where the browser checks assert zero frames at rest. */
   enabled: boolean;
   /** Time without input or camera motion before the globe starts to turn, ms. */
@@ -52,6 +57,7 @@ export interface SpinConfig {
 }
 
 export const SPIN_DEFAULTS: Readonly<SpinConfig> = {
+  ambient: false,
   enabled: true,
   idleMs: 8000,
   degPerSec: 0.2,
@@ -78,7 +84,9 @@ export const SPIN: SpinConfig = { ...SPIN_DEFAULTS };
  *    chose `degPerSec` (label slot changes per minute at each candidate speed, docs/web-architecture.md) run the real engine at them.
  */
 export function applySpinFlags(): void {
+  const ambient = SPIN.ambient; // (the visitor's choice outlives a re-read of the page's flags)
   Object.assign(SPIN, SPIN_DEFAULTS);
+  SPIN.ambient = ambient;
   try {
     const q = new URLSearchParams(location.search);
     const flag = (name: string) => q.get(name) ?? sessionStorage.getItem(name);
@@ -139,9 +147,9 @@ export function spinBlock(c: SpinContext, cfg: SpinConfig = SPIN): SpinBlock | n
   if (c.lost) return "context-lost";
   if (c.suspended) return "street";
   if (c.selected) return "place-selected";
-  if (c.focused) return "place-focused";
+  if (c.focused && !cfg.ambient) return "place-focused";
   if (c.inset > 0) return "panel-open";
-  if (c.zoom > c.minZoom + cfg.unzoomedSlack) return "zoomed-in";
+  if (c.zoom > c.minZoom + cfg.unzoomedSlack && !cfg.ambient) return "zoomed-in";
   if (c.busy) return "camera-busy";
   return null;
 }
@@ -238,6 +246,11 @@ export class IdleSpin {
   activity(now: number): void {
     this.lastActivity = now;
     this.halt();
+  }
+
+  /** The visitor just asked for ambient mode: the globe starts to turn after `afterMs` of rest (not the full idle delay, or nothing seems to happen), if it is not turning already. */
+  hurry(now: number, afterMs: number, cfg: SpinConfig = SPIN): void {
+    if (this.phase === "idle") this.lastActivity = Math.min(this.lastActivity, now - cfg.idleMs + afterMs);
   }
 
   /** Camera motion or a change of a condition that is not an input: restart the idle clock; if it is turning it coasts to rest. */

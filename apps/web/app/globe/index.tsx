@@ -8,6 +8,7 @@ export { INTERLUDE_STATE_EVENT, prepareInterlude, requestInterlude, requestWorld
 export { unlockSound } from "./engine/cinematic-sound";
 export { SCHEME_EVENT, currentScheme, onSchemeChange } from "./engine/scheme";
 export { sunMusic } from "./engine/sun-music";
+export { ambient } from "./engine/ambient";
 export { beatPulse } from "./engine/sun-pulse";
 export { TRACKS, nowPlaying, pillVisible, readMuted, sunAudible, type NowPlayingSnapshot, type Track } from "./engine/now-playing";
 export { ringPhrases, type RingIdentity } from "./ring-text";
