@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "dataVersion": {
-    "commit": "a07a4be026b5707d5f376143db901e4c5a67efd1",
+    "commit": "9bc87020a7a6a47e2cfa64f0fad6f8f91fdeba1f",
     "date": "2026-11-22"
   },
   "places": [
@@ -7106,7 +7106,7 @@
       "title": "Neon activity graph",
       "summary": "A year of activity drawn as glass blocks in three.js: lit like neon tubes that stutter on with a synthesised hum in the dark theme, and lit by the sun, with traced coloured shadows and caustics, in the light theme. Published on npm with a React component.",
       "date": "2026-11",
-      "url": "https://bsodium.github.io/Neon-activity-graph/",
+      "url": "https://neon.bsodium.fr/",
       "cover": {
         "src": "/media/project/neon-activity-graph/cover.5752515a.webp",
         "alt": "Close-up of rows of glass blocks on a dark ground, green blocks stacked on blue ones, each with a glowing neon tube inside that lights the glass and the ground around it.",
@@ -7235,7 +7235,7 @@
         {
           "type": "link",
           "title": "Live demo",
-          "url": "https://bsodium.github.io/Neon-activity-graph/"
+          "url": "https://neon.bsodium.fr/"
         },
         {
           "type": "link",
