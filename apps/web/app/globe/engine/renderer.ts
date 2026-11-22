@@ -852,7 +852,12 @@ export class GlobeRenderer {
     const was = SPIN.ambient;
     SPIN.ambient = on;
     this.noteChange();
-    if (hurry && on && !was) this.spin.hurry(performance.now(), 600); // (asked for just now: it starts in a moment, with the picture at rest)
+    if (hurry && on && !was) {
+      // (asked for just now: it starts in a moment, with the picture at rest; the timer `noteChange` armed for the full idle delay is replaced by one for the short one)
+      this.spin.hurry(performance.now(), 600);
+      window.clearTimeout(this.spinTimer);
+      this.spinTimer = 0;
+    }
     this.armSpin();
     this.requestRender();
   }
@@ -1835,7 +1840,12 @@ export class GlobeRenderer {
     this.spinTimer = 0;
     if (this.disposed) return;
     const wait = this.spin.wait(performance.now(), this.spinContext());
-    if (wait === null) return;
+    if (wait === null) {
+      // Blocked for now. A lasting reason (a place, the panel, the zoom...) is announced when it ends (`noteChange`), but the camera being busy (a flick's inertia, a finger still down) ends with nothing to say so: nothing would
+      // wake the globe again until the next touch, so a busy camera is looked at again shortly.
+      if (spinBlock(this.spinContext()) === "camera-busy") this.spinTimer = window.setTimeout(this.onSpinTimer, 250);
+      return;
+    }
     if (wait > 0) {
       this.spinTimer = window.setTimeout(this.onSpinTimer, wait);
       return;
