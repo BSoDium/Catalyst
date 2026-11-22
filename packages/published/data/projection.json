@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "dataVersion": {
-    "commit": "1980436d0b1469905343367898c8b8176a3f451a",
-    "date": "2026-11-19"
+    "commit": "a07a4be026b5707d5f376143db901e4c5a67efd1",
+    "date": "2026-11-22"
   },
   "places": [
     {
@@ -3698,7 +3698,7 @@
         "lat": 52.23,
         "lon": 21.01
       },
-      "labelPriority": 65,
+      "labelPriority": 67,
       "bbox": [
         20.79,
         52.09,
@@ -3732,6 +3732,10 @@
         {
           "kind": "photograph",
           "slug": "two-coffees-and-an-armband"
+        },
+        {
+          "kind": "project",
+          "slug": "neon-activity-graph"
         }
       ]
     },
@@ -7095,6 +7099,157 @@
       ],
       "placeSlugs": [
         "paris"
+      ]
+    },
+    {
+      "slug": "neon-activity-graph",
+      "title": "Neon activity graph",
+      "summary": "A year of activity drawn as glass blocks in three.js: lit like neon tubes that stutter on with a synthesised hum in the dark theme, and lit by the sun, with traced coloured shadows and caustics, in the light theme. Published on npm with a React component.",
+      "date": "2026-11",
+      "url": "https://bsodium.github.io/Neon-activity-graph/",
+      "cover": {
+        "src": "/media/project/neon-activity-graph/cover.5752515a.webp",
+        "alt": "Close-up of rows of glass blocks on a dark ground, green blocks stacked on blue ones, each with a glowing neon tube inside that lights the glass and the ground around it.",
+        "width": 1352,
+        "height": 1014,
+        "small": {
+          "src": "/media/project/neon-activity-graph/cover-800w.2744cd81.webp",
+          "width": 800,
+          "height": 600
+        }
+      },
+      "tags": [
+        "graphics",
+        "three-js",
+        "dataviz",
+        "typescript",
+        "audio"
+      ],
+      "meta": [
+        {
+          "label": "Stack",
+          "value": "TypeScript, three.js, WebGL 2, GLSL, Web Audio, React, Mitsuba 3"
+        },
+        {
+          "label": "Status",
+          "value": "Active"
+        },
+        {
+          "label": "Package",
+          "value": "npm: neon-activity-graph"
+        },
+        {
+          "label": "Repository",
+          "value": "github.com/BSoDium/Neon-activity-graph"
+        }
+      ],
+      "body": [
+        {
+          "type": "paragraph",
+          "text": "A component that draws a year of activity, such as GitHub contributions over coding time, as a field of glass blocks: one column a day, two blocks to a column. I designed it for the software page of this site, then made it a library of its own, published on npm with a React component and a demo that shows my own activity, refreshed every six hours."
+        },
+        {
+          "type": "paragraph",
+          "text": "It is a design problem as much as a rendering one: a familiar picture (the contribution calendar) given a material, a light and a voice, without getting in the way of reading it."
+        },
+        {
+          "type": "heading",
+          "level": 2,
+          "text": "Two themes, one glass"
+        },
+        {
+          "type": "paragraph",
+          "text": "In the dark theme every block holds a neon tube. The tube is a pure emitter: it lights the glass from inside and spills coloured light onto the ground. In the light theme the same glass has its tubes switched off and is lit by the sun instead, so it casts soft, coloured shadows and small caustics. Switching themes is not a recolouring: it is the same object under another light."
+        },
+        {
+          "type": "heading",
+          "level": 2,
+          "text": "Optics"
+        },
+        {
+          "type": "list",
+          "ordered": false,
+          "items": [
+            "The sun through the glass is traced on the GPU: a vertex shader splats rays onto the ground with refraction, Fresnel, total internal reflection, the glass's colour absorption and its rounded edges. The ground stores a signed difference to what it would get with no glass, so the shadows are coloured and the caustics are the surplus. A readable CPU version of the same optics is what the tests check.",
+            "The neon's light on the ground cannot be traced live with the rays a page can afford: the result is noise. It is baked instead: I path-traced templates of one block with its tube in Mitsuba 3, for a range of block heights and distances to the ground, and the graph lays the right one under every block, in the tube's colour. The whole set is a 41 KB image embedded in the package.",
+            "Nothing moves, so the picture is accumulated over a few dozen jittered frames (soft shadows and anti-aliasing for free) and the GPU then goes idle."
+          ]
+        },
+        {
+          "type": "heading",
+          "level": 2,
+          "text": "Neon start-up and sound"
+        },
+        {
+          "type": "paragraph",
+          "text": "When the graph appears in the dark theme, the tubes do not simply turn on: the blocks are cut into a few rectangular circuits, and each stutters and catches like a gas sign warming up. Later, rarely, a small batch of tubes flickers. The sound is synthesised with Web Audio, with no files: a low ballast hum that dies away, soft bell-like clicks as the circuits catch, and a faint hum on the tube under the pointer. It only plays once the visitor has used the page and while the graph is on screen; the light theme, whose tubes are off, is silent."
+        },
+        {
+          "type": "heading",
+          "level": 2,
+          "text": "Theming"
+        },
+        {
+          "type": "paragraph",
+          "text": "Each layer has two tones per theme, for the quietest and the busiest day. Colours can change live: the blocks are rebuilt in place in about a third of a second, while the old picture stays on screen, softened. A per-tube colour function turns the graph into a string of lights. The ground takes the page's own background, so the picture has no seam with the page around it."
+        },
+        {
+          "type": "heading",
+          "level": 2,
+          "text": "The package"
+        },
+        {
+          "type": "list",
+          "ordered": false,
+          "items": [
+            "A framework-agnostic core and a React component, with adapters for GitHub's contribution calendar and WakaTime's summaries.",
+            "three.js is a peer dependency loaded on demand; a flat placeholder, seen by the same camera, is drawn at once (and rendered on the server in React), so the scene replaces it in place.",
+            "A layout of four strips for narrow screens, a lighter mode for phones and modest machines, reduced-motion support, keyboard navigation of the days and an announced hover card.",
+            "Released from GitHub Actions through npm Trusted Publishing, with provenance and no stored token."
+          ]
+        },
+        {
+          "type": "image",
+          "src": "/media/project/neon-activity-graph/dark.e25b26d3.webp",
+          "alt": "A year of activity as three strips of glass blocks on a black ground, green over blue, each block lit by its neon tube.",
+          "width": 2560,
+          "height": 700,
+          "caption": "The dark theme: every block holds a neon tube, and its light on the ground is baked from path-traced templates."
+        },
+        {
+          "type": "image",
+          "src": "/media/project/neon-activity-graph/light.f8ff97b5.webp",
+          "alt": "The same strips of green and blue glass blocks on a pale ground, lit by the sun, casting soft coloured shadows.",
+          "width": 2560,
+          "height": 700,
+          "caption": "The light theme: the same glass with the tubes off, lit by the sun; the coloured shadows and caustics are traced on the GPU."
+        },
+        {
+          "type": "image",
+          "src": "/media/project/neon-activity-graph/technicolor.af029927.webp",
+          "alt": "The graph in red and cyan neon on black, with one column outlined and a card reading Sun, 1 Feb 2026: 2 contributions, 12 h coding time.",
+          "width": 2560,
+          "height": 700,
+          "caption": "Custom colours (the demo's Technicolor preset) and the optional hover card."
+        },
+        {
+          "type": "link",
+          "title": "Live demo",
+          "url": "https://bsodium.github.io/Neon-activity-graph/"
+        },
+        {
+          "type": "link",
+          "title": "Source",
+          "url": "https://github.com/BSoDium/Neon-activity-graph"
+        },
+        {
+          "type": "link",
+          "title": "npm package",
+          "url": "https://www.npmjs.com/package/neon-activity-graph"
+        }
+      ],
+      "placeSlugs": [
+        "warsaw"
       ]
     },
     {

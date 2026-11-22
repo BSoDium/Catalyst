@@ -758,6 +758,31 @@
       "bytes": 107926
     },
     {
+      "path": "project/neon-activity-graph/cover-800w.2744cd81.webp",
+      "sha256": "2744cd81f75f7361a966600b5497bc7a73f981922b93f7022df4db7156432c90",
+      "bytes": 56092
+    },
+    {
+      "path": "project/neon-activity-graph/cover.5752515a.webp",
+      "sha256": "5752515ab8c630c70f6affbffe9f5db457d0469fce40d702895dadd9c881a4e6",
+      "bytes": 124662
+    },
+    {
+      "path": "project/neon-activity-graph/dark.e25b26d3.webp",
+      "sha256": "e25b26d3ee8ee492cefcadc5e5e1720442cafed30527e6b07f4c1c4c30453f4a",
+      "bytes": 79404
+    },
+    {
+      "path": "project/neon-activity-graph/light.f8ff97b5.webp",
+      "sha256": "f8ff97b5022e30e9baab9095b5ba5d8fc2e031fe6e3ce3fbef2cc684dfabbf6f",
+      "bytes": 77372
+    },
+    {
+      "path": "project/neon-activity-graph/technicolor.af029927.webp",
+      "sha256": "af02992712dd5345f6b0634a7a97e7b8e79117eee1387e6798b8f7108d67c653",
+      "bytes": 55332
+    },
+    {
       "path": "project/pconsole/cover-800w.e41fc359.webp",
       "sha256": "e41fc3597e649322164e9a5fb60274c1d011cffbba12d8a4d6ceec049a37b603",
       "bytes": 35554
