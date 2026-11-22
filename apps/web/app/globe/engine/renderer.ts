@@ -76,7 +76,19 @@ import { CAP_HEIGHT_EM, ringAlpha, ringFloorZoom, ringRoomRadius, RING_STATE } f
 import { RingLayer } from "./ring-layer";
 import { GlobeScene } from "./scene";
 import { pickOccluder, planetRise, sunRise, type Occluder } from "./sun-flare";
+import { ambient } from "./ambient";
 import { liveSun, opening } from "./daylight";
+
+/** `?sun-at=2026-06-21T12:00:00Z` (a live page) opens the globe as if it were that instant: where the sun is, and so which side of the earth the camera looks at (docs/web-architecture.md, "Idle rotation"). */
+function sunAtOverride(): number | null {
+  try {
+    const v = new URLSearchParams(location.search).get("sun-at");
+    const t = v ? Date.parse(v) : NaN;
+    return Number.isNaN(t) ? null : t;
+  } catch {
+    return null;
+  }
+}
 import { IMMERSION, immersiveZoom, openingZoom } from "./immersion";
 import { FX, irisStep } from "./fx";
 import { eclipseNear } from "./eclipse-table";
@@ -200,7 +212,7 @@ export class GlobeRenderer {
   private globe: GlobeScene;
   private camera = new PerspectiveCamera(FOV_DEG, 1, 0.05, 20);
   /** The real day and night at load (engine/daylight.ts): the camera starts over the longitude the sun lights from its right. */
-  private readonly openMs: number | null = liveSun() ? Date.now() : null;
+  private readonly openMs: number | null = liveSun() ? sunAtOverride() ?? Date.now() : null;
   private readonly open = opening(this.openMs, SKY.eraDeg);
   private view: ViewState = { lon: this.open.lon, lat: START_VIEW.lat, zoom: 0 };
   private width = 1;
@@ -431,6 +443,9 @@ export class GlobeRenderer {
       this.cleanups.push(() => window.removeEventListener(type, this.onInput, { capture: true }));
     }
     this.cleanups.push(() => window.clearTimeout(this.spinTimer));
+    // Ambient mode (engine/ambient.ts): the visitor's choice, live.
+    this.setAmbient(ambient.getSnapshot());
+    this.cleanups.push(ambient.subscribe(() => this.setAmbient(ambient.getSnapshot())));
 
     try {
       if (new URLSearchParams(location.search).has("caption-fps")) {
@@ -830,6 +845,14 @@ export class GlobeRenderer {
   /** The target of the flight in progress, or null. */
   flightTarget(): ViewState | null {
     return this.flight ? { ...this.flight.to } : null;
+  }
+
+  /** Ambient mode on or off (the visitor's choice, `SPIN.ambient`): the idle rotation at any zoom, under the view as it is. Turning it off lets a turning globe coast to rest where it blocks again. */
+  setAmbient(on: boolean) {
+    if (SPIN.ambient === on) return;
+    SPIN.ambient = on;
+    this.noteChange();
+    this.requestRender();
   }
 
   setReducedMotion(on: boolean) {
@@ -1776,6 +1799,8 @@ export class GlobeRenderer {
   }
 
   private onInput = (e: Event) => {
+    // Ambient mode: a mouse that moves with no button down (a hover, a nudged desk) is not a gesture: the screensaver goes on.
+    if (SPIN.ambient && e.type === "pointermove" && e instanceof PointerEvent && e.pointerType === "mouse" && e.buttons === 0) return;
     // A gesture ON the globe (the hero's own definition: a press or a wheel over the stage) ends the showcase at once: the boxes come back and the
     // press that began it is no click (nobody could see what was under it).
     // (and a gesture drops an interlude asked for that has not begun yet: the visitor has taken the globe back, `wantInterlude`)
