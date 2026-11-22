@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "dataVersion": {
-    "commit": "9bc87020a7a6a47e2cfa64f0fad6f8f91fdeba1f",
+    "commit": "3b20de9b4f316a2d3d409f1132e133bdf47d9493",
     "date": "2026-11-22"
   },
   "places": [
@@ -5589,14 +5589,15 @@
         "end": "2025-11"
       },
       "image": {
-        "src": "/media/routes/trip-08/image.806b0d5d.webp",
-        "width": 854,
+        "src": "/media/routes/trip-08/image.f751a130.webp",
+        "width": 1053,
         "height": 1280,
-        "alt": "The tiled roof and the spire of St Stephen's Cathedral in Vienna, seen from below against a blue sky with white clouds",
+        "alt": "The Upper Belvedere palace in Vienna seen across its long pond, with a green copper roof and a white baroque facade under a clear blue sky and one large white cloud",
+        "credit": "Oscar M, Pexels",
         "small": {
-          "src": "/media/routes/trip-08/image-800w.a0047e91.webp",
+          "src": "/media/routes/trip-08/image-800w.31a32165.webp",
           "width": 800,
-          "height": 1199
+          "height": 973
         }
       },
       "codename": "Vienna",
