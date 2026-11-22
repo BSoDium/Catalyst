@@ -5,7 +5,7 @@ import { SectionsMenu } from "~/components/sections-menu";
 import { CAREER_LABEL, CAREER_PATH } from "~/lib/career";
 import { KIND_PATHS, KIND_PLURALS, parsePanelPath, parseView } from "~/lib/entries";
 import { GESTURE_GUARD_CAP_MS, GESTURE_GUARD_MS, GestureGuard } from "~/lib/gesture-guard";
-import { markLeftHome, useHeroResting } from "~/lib/hero-rest";
+import { markPage, useHeroResting } from "~/lib/hero-rest";
 import { useHasCareer } from "~/lib/use-has-career";
 import { useSectionCounts } from "~/lib/use-section-counts";
 import { SITE_NAME } from "~/lib/site";
@@ -143,9 +143,9 @@ export function Navbar({ heroResting: forced, hasCareer: forcedCareer }: NavbarP
   const heroResting = forced ?? stored;
   const bar = !(pathname === "/" && heroResting);
   const headerRef = useRef<HTMLElement>(null);
-  // The landing hero starts collapsed when the visitor comes back to the home page from another one (`lib/hero-rest.ts`).
+  // The landing hero starts collapsed when the visitor comes back to the home page after having seen it (`lib/hero-rest.ts`).
   useEffect(() => {
-    if (pathname !== "/") markLeftHome();
+    markPage(pathname === "/");
   }, [pathname]);
   useGestureGuard(bar, pathname === "/", headerRef);
   return (
