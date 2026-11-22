@@ -88,8 +88,8 @@ importers:
         specifier: ^14.0.0
         version: 14.0.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       neon-activity-graph:
-        specifier: ^0.1.3
-        version: 0.1.3(react@19.3.0)(three@0.186.1)
+        specifier: ^0.1.4
+        version: 0.1.4(react@19.3.0)(three@0.186.1)
       pmtiles:
         specifier: ^4.5.0
         version: 4.5.0
@@ -1808,8 +1808,8 @@ packages:
     resolution: {integrity: sha512-myRT3DiWPHqho5PrJaIRyaMv2kgYf0mUVgBNOYMuCH5Ki1yEiQaf/ZJuQ62nvpc44wL5WDbTX7yGJi1Neevw8w==}
     engines: {node: '>= 0.6'}
 
-  neon-activity-graph@0.1.3:
-    resolution: {integrity: sha512-9bipjKZKFZ4rZpgvcds4eWTfG729vWi6PRkzskvlgsGB0pBbeFdiF4N06x9+ga4jSpNQQhZHJjiHv45e47nflg==}
+  neon-activity-graph@0.1.4:
+    resolution: {integrity: sha512-QpO8cXpjYf0fG+Y3jQ/q9/ayY4Rr/zM6Eg9IwsskIortIu8XMQgO2nUBvEhz+sMXR2PtG6koGyqXNQLdQy5S6w==}
     engines: {node: '>=22'}
     peerDependencies:
       react: '>=18'
@@ -3746,7 +3746,7 @@ snapshots:
 
   negotiator@0.6.4: {}
 
-  neon-activity-graph@0.1.3(react@19.3.0)(three@0.186.1):
+  neon-activity-graph@0.1.4(react@19.3.0)(three@0.186.1):
     dependencies:
       three: 0.186.1
     optionalDependencies:
