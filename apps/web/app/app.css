@@ -4518,7 +4518,7 @@
   transition: opacity 300ms var(--ease-standard);
   pointer-events: none;
 }
-[data-slot="site-header"][data-guard] {
+header[data-guard][data-slot="site-header"] {
   animation: header-in 260ms var(--ease-standard) backwards;
 }
 @keyframes header-in {
@@ -4530,7 +4530,7 @@
   [data-slot="site-header"][data-leaving] {
     transition: none;
   }
-  [data-slot="site-header"][data-guard] {
+  header[data-guard][data-slot="site-header"] {
     animation: none;
   }
 }
