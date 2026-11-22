@@ -14,7 +14,7 @@ import { cn } from "~/lib/utils";
 /** Re-exported for the tests that name the guard's length. */
 export { GESTURE_GUARD_CAP_MS, GESTURE_GUARD_MS };
 /** How long the header takes to fade out when the hero's rows take over (app.css, `[data-leaving]`). */
-const HEADER_FADE_MS = 400;
+const HEADER_FADE_MS = 300;
 const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
 /**

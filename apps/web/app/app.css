@@ -4508,15 +4508,30 @@
   color: var(--signal-text);
 }
 
-/* The header fading out as the hero's rows take over (`useLingering`, lib/hero-rest.ts); the duration is `HEADER_FADE_MS` of navbar.tsx. */
+/*
+ * The header fading with the hero's rows, both ways (`useLingering`, lib/hero-rest.ts; the leave's duration is `HEADER_FADE_MS` of navbar.tsx). Out: it stays
+ * mounted and fades as the rows come in. In: the header that a gesture brings (`data-guard`, set before the first paint) fades in as the rows fade out,
+ * instead of appearing in one frame. Every other way the header comes (a route change, a load) is unchanged: no fade.
+ */
 [data-slot="site-header"][data-leaving] {
   opacity: 0;
-  transition: opacity 400ms var(--ease-standard);
+  transition: opacity 300ms var(--ease-standard);
   pointer-events: none;
+}
+[data-slot="site-header"][data-guard] {
+  animation: header-in 260ms var(--ease-standard) backwards;
+}
+@keyframes header-in {
+  from {
+    opacity: 0;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   [data-slot="site-header"][data-leaving] {
     transition: none;
+  }
+  [data-slot="site-header"][data-guard] {
+    animation: none;
   }
 }
 
