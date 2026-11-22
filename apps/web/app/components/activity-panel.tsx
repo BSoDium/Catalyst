@@ -377,7 +377,7 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
           <FlatMatrix matrix={flat.github} tone="#0fbf3e" />
         </div>
       ) : (
-        <div ref={sceneBox} className="group/scene relative aspect-[3.97/1] w-full max-md:-mt-[12cqi] max-md:aspect-[0.95/1]">
+        <div ref={sceneBox} className="group/scene relative aspect-[3.97/1] w-full max-md:-mt-[6cqi] max-md:aspect-[0.95/1]">
           <div className={`absolute inset-0 transition-opacity duration-700 ${ready ? "opacity-0" : ""}`}>
             <Waiting strips={1} aspect={3.97} className="max-md:hidden" />
             <Waiting strips={4} aspect={0.95} className="hidden max-md:block" />
