@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "dataVersion": {
-    "commit": "8b16533d457d86b97f9dbdf618c0319cee02c655",
-    "date": "2026-11-22"
+    "commit": "1b7498c88576eb0f4b276be61a43b86df1d05715",
+    "date": "2026-11-23"
   },
   "places": [
     {
@@ -7885,14 +7885,14 @@
       "summary": "An OpenGL proof of concept of a procedural terrain interpolation algorithm, documented in French.",
       "date": "2022-05",
       "cover": {
-        "src": "/media/project/terrain-interpolation/cover.7929f37e.webp",
-        "alt": "A white wireframe terrain with hundreds of red normal vectors standing off its surface, in a window titled Terrain interpolation demo.",
+        "src": "/media/project/terrain-interpolation/cover.15b07c1e.webp",
+        "alt": "A white wireframe terrain with hundreds of red normal vectors standing off its surface.",
         "width": 1920,
-        "height": 1080,
+        "height": 1040,
         "small": {
-          "src": "/media/project/terrain-interpolation/cover-800w.f53af6d1.webp",
+          "src": "/media/project/terrain-interpolation/cover-800w.d4788eac.webp",
           "width": 800,
-          "height": 450
+          "height": 433
         }
       },
       "tags": [

@@ -888,14 +888,14 @@
       "bytes": 102948
     },
     {
-      "path": "project/terrain-interpolation/cover-800w.f53af6d1.webp",
-      "sha256": "f53af6d1122d12b2d06f1a3b872e5b7de00e188cd3cb6ee95cd697242d7faad2",
-      "bytes": 64204
+      "path": "project/terrain-interpolation/cover-800w.d4788eac.webp",
+      "sha256": "d4788eacb60ce2787e133c7939006736f05c74751cc5a33cc6719cd30b229a8c",
+      "bytes": 59706
     },
     {
-      "path": "project/terrain-interpolation/cover.7929f37e.webp",
-      "sha256": "7929f37e92b3ecaea1e33dfb668db07fa310c3b450a20e1a181885b487354a0c",
-      "bytes": 498110
+      "path": "project/terrain-interpolation/cover.15b07c1e.webp",
+      "sha256": "15b07c1eb8ef1b7512b21eb05fb5218a96431c4a6622307cf45774bb85e40b97",
+      "bytes": 489558
     },
     {
       "path": "project/voxelife/cover-800w.91c2e62b.webp",
