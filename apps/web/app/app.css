@@ -3759,7 +3759,9 @@
     display: flex;
     align-items: center;
     gap: 0.75rem;
+    /* The rule sits at the label line's middle, so take half a line off the gap: the languages row then sits midway between the two rules. */
     margin: 0 0 0.875rem;
+    margin-bottom: calc(0.875rem - 0.5lh);
     color: var(--muted-foreground);
     white-space: nowrap;
   }
