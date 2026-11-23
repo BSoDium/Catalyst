@@ -47,3 +47,26 @@ describe("day words", () => {
     expect(dayText({ date: "2026-11-19", contributions: 0, hours: 0 })).toContain("no coding");
   });
 });
+
+describe("the day card's helpers", () => {
+  it("says hours the short way", async () => {
+    const { hoursText } = await import("./activity");
+    expect(hoursText(0)).toBeNull();
+    expect(hoursText(0.01)).toBeNull();
+    expect(hoursText(0.42)).toBe("25 min");
+    expect(hoursText(10)).toBe("10 h");
+    expect(hoursText(2.5)).toBe("2.5 h");
+    expect(hoursText(7.96)).toBe("8 h");
+  });
+  it("puts a day against the year: shares of the best, and a note only for the notable", async () => {
+    const { yearContext } = await import("./activity");
+    const github = Array.from({ length: 100 }, (_, i) => ({ date: `2026-01-${String((i % 28) + 1).padStart(2, "0")}`, count: i === 0 ? 40 : i % 10, level: 1 }));
+    const wakatime = Array.from({ length: 100 }, (_, i) => ({ date: `2026-01-${String((i % 28) + 1).padStart(2, "0")}`, seconds: i === 1 ? 36000 : 3600 }));
+    const at = yearContext({ generatedAt: "x", github, wakatime });
+    expect(at(40, 1).c).toBe(1);
+    expect(at(40, 1).note).toBe("Most contributions in a day");
+    expect(at(0, 10).note).toBe("Longest day of coding");
+    expect(at(3, 1).note).toBeNull();
+    expect(at(0, 0)).toEqual({ c: 0, h: 0, note: null });
+  });
+});

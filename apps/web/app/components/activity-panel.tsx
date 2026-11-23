@@ -1,7 +1,7 @@
-import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "~/components/ui";
 import { placeholderTiles } from "neon-activity-graph/layout";
-import { activityStats, dayText, GITHUB_URL, isActivity, layoutActivity, readableDay, WAKATIME_URL, type Activity, type ActivityStat, type HoverInfo, type Matrix } from "~/lib/activity";
+import { activityStats, dayText, GITHUB_URL, hoursText, isActivity, layoutActivity, readableDay, WAKATIME_URL, yearContext, type Activity, type ActivityStat, type HoverInfo, type Matrix } from "~/lib/activity";
 import { xmasNow } from "~/lib/xmas";
 
 /** A source's colour as text, softened toward the page's own text colour (the figures and words are tinted, not painted). */
@@ -91,17 +91,23 @@ function Roll({ value, order }: { value: string; order: number }) {
 }
 
 /**
- * The card of a day, hung on its column. It stays mounted and glides from one day to the next (and fades when the pointer leaves, snapping to the day where it comes back), over a blurred, translucent ground with a soft shadow and
- * no outline; its numbers are set like the page's figures (large value, small unit) and roll into each other as the day changes.
+ * The card of a day (the "datasheet", owner-approved direction B of the 2026-11-23 audit): a solid surface with one hairline, square, no blur and no shadow. It reads like the column it hangs on: the date as its title, the contributions (green) above
+ * the coding (blue), each with a swatch of its colour, the value at full strength and a 1 px rule showing the day against the year's best; a note appears only for a notable day, and the key cap for stacked days. A leader (a hairline with a square at
+ * the column's top) joins it to its column, so that clamping at the picture's edges never loses the link. It stays mounted and glides from one day to the next (fading when the pointer leaves, appearing in place where it comes back).
+ * Phones have no card: the legend says the day (`ActivityPanel`).
  */
-function DayCard({ info, visible, instant, width }: { info: HoverInfo; visible: boolean; instant: boolean; width: number }) {
-  const half = 128;
+function DayCard({ info, ctx, visible, instant, width, touch }: { info: HoverInfo; ctx: ReturnType<typeof yearContext> | null; visible: boolean; instant: boolean; width: number; touch: boolean }) {
+  const half = 120;
   const x = width ? Math.min(Math.max(info.x, half + 8), width - half - 8) : info.x;
   const y = info.y;
-  const below = y < 120;
-  const hours = info.hours >= 0.05 ? info.hours.toFixed(1) : "0";
+  const below = y < 148;
+  const hours = hoursText(info.hours);
+  const empty = info.contributions === 0 && !hours;
+  const k = ctx?.(info.contributions, info.hours) ?? { c: 0, h: 0, note: null };
+  const [weekday = "", day = "", month = "", year = ""] = readableDay(info.date).split(" ");
+  const order = Date.parse(`${info.date}T00:00:00Z`);
   // The card follows its target with a damped glide (it eases toward it, a fraction of the way each frame), not a fixed transition from jump to jump: a pointer sweeping over many days
-  // moves it in one smooth line. It appears in place when it comes from nothing, and does not move at all with reduced motion.
+  // moves it in one smooth line. It appears in place when it comes from nothing, and does not move at all with reduced motion. `--lx` is where the column is, from the card's own point (the leader is drawn to it).
   const outer = useRef<HTMLDivElement>(null);
   const cur = useRef({ x, y, init: false });
   useLayoutEffect(() => {
@@ -110,6 +116,7 @@ function DayCard({ info, visible, instant, width }: { info: HoverInfo; visible: 
     const c = cur.current;
     const put = () => {
       el.style.transform = `translate3d(${c.x.toFixed(2)}px, ${c.y.toFixed(2)}px, 0)`;
+      el.style.setProperty("--lx", `${(info.x - c.x).toFixed(2)}px`);
     };
     if (instant || !c.init || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       c.x = x;
@@ -121,10 +128,10 @@ function DayCard({ info, visible, instant, width }: { info: HoverInfo; visible: 
     let raf = 0;
     let last = performance.now();
     const tick = (now: number) => {
-      const k = 1 - Math.exp(-Math.min(64, now - last) / 120);
+      const f = 1 - Math.exp(-Math.min(64, now - last) / 70);
       last = now;
-      c.x += (x - c.x) * k;
-      c.y += (y - c.y) * k;
+      c.x += (x - c.x) * f;
+      c.y += (y - c.y) * f;
       if (Math.abs(x - c.x) + Math.abs(y - c.y) > 0.25) raf = requestAnimationFrame(tick);
       else {
         c.x = x;
@@ -134,54 +141,49 @@ function DayCard({ info, visible, instant, width }: { info: HoverInfo; visible: 
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [x, y, instant]);
+  }, [x, y, instant, info.x]);
+  const stacked = info.behind && info.behind.count > 1;
   return (
-    <div ref={outer} role="presentation" className="pointer-events-none absolute top-0 left-0 z-10 h-0 w-0" style={{ opacity: visible ? 1 : 0, transition: "opacity 0.16s" }}>
-      <div
-        className="absolute top-0 left-0 w-64 px-4 py-3.5 backdrop-blur-md"
-        style={{
-          transform: `translate(-50%, ${below ? "16px" : "calc(-100% - 16px)"})`,
-          transition: instant ? "none" : "transform 0.3s cubic-bezier(0.2, 0.7, 0.2, 1)",
-          background: "color-mix(in srgb, var(--background) 68%, transparent)",
-          // a glassy edge: a faint line all round, a little brighter on top where the light catches it (the shadow is always black: lighter than the page, in the dark theme, it would be a glow)
-          boxShadow:
-            "inset 0 0 0 1px color-mix(in srgb, var(--foreground) 11%, transparent), inset 0 1px 0 color-mix(in srgb, var(--foreground) 14%, transparent), 0 14px 44px -12px rgb(0 0 0 / 0.38), 0 2px 10px -4px rgb(0 0 0 / 0.22)",
-        }}
-      >
-        {/* The day and the month are what the eye looks for: they are in the page's text colour, the weekday and the year (the frame around them) in the muted one. */}
-        <p className="type-meta m-0 flex gap-[0.6em] uppercase">
-          {(() => {
-            const [weekday = "", day = "", month = "", year = ""] = readableDay(info.date).split(" ");
-            const order = Date.parse(`${info.date}T00:00:00Z`);
-            return (
-              <>
-                <span className="text-muted-foreground"><Roll value={weekday} order={order} /></span>
-                <span className="text-foreground"><Roll value={`${day} ${month}`} order={order} /></span>
-                <span className="text-muted-foreground"><Roll value={year} order={order} /></span>
-              </>
-            );
-          })()}
-        </p>
-        <div className="mt-2.5 grid grid-cols-2 gap-x-6">
-          <div className="flex flex-col gap-1" style={{ color: soft("green", 70) }}>
-            <span className="flex items-baseline gap-1 font-[family-name:var(--font-display)] text-[2rem] leading-none font-semibold tracking-tight tabular-nums">
-              <Roll value={String(info.contributions)} order={info.contributions} />
-            </span>
-            <span className="type-meta text-muted-foreground uppercase">{info.contributions === 1 ? "contribution" : "contributions"}</span>
-          </div>
-          <div className="flex flex-col gap-1" style={{ color: soft("blue", 70) }}>
-            <span className="flex items-baseline gap-1 font-[family-name:var(--font-display)] text-[2rem] leading-none font-semibold tracking-tight tabular-nums">
-              <Roll value={hours} order={Number(hours)} />
-              <span className="type-meta font-normal text-muted-foreground normal-case">h</span>
-            </span>
-            <span className="type-meta text-muted-foreground uppercase">coded</span>
-          </div>
-        </div>
-        {/* (days stand behind one another: how many are under the pointer, and how to reach the next) */}
-        {info.behind && info.behind.count > 1 && (
-          <p className="type-meta m-0 mt-3 text-muted-foreground uppercase">
-            {info.behind.index + 1} of {info.behind.count} <span aria-hidden="true">·</span> click for next
-          </p>
+    <div ref={outer} role="presentation" data-below={below ? "" : undefined} className="act-card-anchor pointer-events-none absolute top-0 left-0 z-20 h-0 w-0" style={{ opacity: visible ? 1 : 0, transition: "opacity 0.12s var(--ease-standard)" }}>
+      <span aria-hidden="true" className="act-leader-dot" />
+      <span aria-hidden="true" className="act-leader-stem" />
+      <span aria-hidden="true" className="act-leader-bar" />
+      <div className="act-card" style={{ transform: `translate(-50%, ${below ? "14px" : "calc(-100% - 14px)"})`, transition: instant ? "none" : "transform 0.3s cubic-bezier(0.2, 0.7, 0.2, 1)" }}>
+        <header className="act-card-head">
+          <span className="act-card-date"><Roll value={`${day} ${month}`} order={order} /></span>
+          <span className="type-meta text-muted-foreground uppercase"><Roll value={`${weekday} · ${year}`} order={order} /></span>
+        </header>
+        {empty ? (
+          <p className="act-card-empty type-meta m-0 text-muted-foreground uppercase">No activity</p>
+        ) : (
+          <dl className="act-card-rows">
+            <div className="act-card-row" data-tone="green">
+              <span aria-hidden="true" className="act-card-swatch" />
+              <dt className="type-meta text-muted-foreground uppercase">{info.contributions === 1 ? "contribution" : "contributions"}</dt>
+              <dd className="act-card-value">
+                <Roll value={info.contributions ? String(info.contributions) : "—"} order={info.contributions} />
+              </dd>
+              <span aria-hidden="true" className="act-card-meter" style={{ "--share": k.c } as React.CSSProperties} />
+            </div>
+            <div className="act-card-row" data-tone="blue">
+              <span aria-hidden="true" className="act-card-swatch" />
+              <dt className="type-meta text-muted-foreground uppercase">coded</dt>
+              <dd className="act-card-value">
+                <Roll value={hours ?? "—"} order={info.hours} />
+              </dd>
+              <span aria-hidden="true" className="act-card-meter" style={{ "--share": k.h } as React.CSSProperties} />
+            </div>
+          </dl>
+        )}
+        {(k.note || stacked) && (
+          <footer className="act-card-foot type-meta uppercase">
+            {k.note && <span style={{ color: "var(--signal-text)" }}>{k.note}</span>}
+            {stacked && info.behind && (
+              <span className="ml-auto text-muted-foreground">
+                {info.behind.index + 1}/{info.behind.count} <kbd className="ds-micro">{touch ? "Tap" : "Click"}</kbd>
+              </span>
+            )}
+          </footer>
         )}
       </div>
     </div>
@@ -240,6 +242,9 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
     wasShown.current = !!hover;
   }, [hover]);
   const sceneBox = useRef<HTMLDivElement>(null);
+  // (the day card against the year, and whether the last press was a finger: the key cap says Tap then)
+  const ctx = useMemo(() => (activity ? yearContext(activity) : null), [activity]);
+  const [touch, setTouch] = useState(false);
   const box = useRef<HTMLElement>(null);
   const [seen, setSeen] = useState(false);
   const [gl, setGl] = useState(true);
@@ -377,7 +382,7 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
           <FlatMatrix matrix={flat.github} tone="#0fbf3e" />
         </div>
       ) : (
-        <div ref={sceneBox} className="group/scene relative aspect-[3.97/1] w-full max-md:-mt-[6cqi] max-md:aspect-[0.95/1]">
+        <div ref={sceneBox} onPointerDownCapture={(e) => setTouch(e.pointerType === "touch")} className="group/scene relative aspect-[3.97/1] w-full max-md:-mt-[6cqi] max-md:aspect-[0.95/1]">
           <div className={`absolute inset-0 transition-opacity duration-700 ${ready ? "opacity-0" : ""}`}>
             <Waiting strips={1} aspect={3.97} className="max-md:hidden" />
             <Waiting strips={4} aspect={0.95} className="hidden max-md:block" />
@@ -404,7 +409,7 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
                   return <path d={d} fill="color-mix(in srgb, var(--foreground) 7%, transparent)" stroke="var(--foreground)" strokeWidth={1.5} strokeLinejoin="round" />;
                 })()}
               </svg>
-              <DayCard info={lastHover.current} visible={!!hover} instant={instant} width={sceneBox.current?.clientWidth ?? 0} />
+              {!narrow && <DayCard info={lastHover.current} ctx={ctx} visible={!!hover} instant={instant} width={sceneBox.current?.clientWidth ?? 0} touch={touch} />}
             </>
           )}
           <p className="sr-only" aria-live="polite">{hover ? dayText(hover) : ""}</p>
@@ -414,23 +419,48 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
           in ONE grid at the top right, from the head's top down into the empty corner of the picture. */}
       <Figures lead={lead} stats={stats} ready={!!activity} className="max-md:relative max-md:z-10 max-md:order-first max-md:pb-2 md:pointer-events-none md:absolute md:right-14 md:max-[56rem]:left-14 md:top-[calc(-1*clamp(2.5rem,6.4cqi,5.75rem)-0.25rem)]" />
       <div data-slot="activity-legend" className="relative flex flex-col gap-3 px-4 pt-3 md:pt-6 md:px-14 md:max-[56rem]:-mt-[6.5cqi] min-[56rem]:absolute min-[56rem]:bottom-[1%] min-[80rem]:bottom-[10.7%] min-[56rem]:left-14 min-[56rem]:w-[clamp(20rem,34cqi,25rem)] min-[56rem]:p-0">
-        <p className="type-meta m-0 text-muted-foreground uppercase">Last <span className="text-foreground">12 months</span></p>
-        {/* In the picture's order: the contributions are the upper block of a day, the coding the lower one. */}
-        <p ref={legend} className="m-0 font-[family-name:var(--font-display)] text-[1.625rem] min-[56rem]:text-[clamp(1.25rem,2.3cqi,1.625rem)] leading-[1.1] font-semibold tracking-tight text-balance">
-          <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" className={LINK} style={{ color: soft("green", 75) }}>
-            GitHub contributions
-            <Icon name="arrow-up-right" size="inline" aria-hidden="true" className="translate-y-[0.05em] self-center opacity-70 transition-opacity group-hover/link:opacity-100" />
-            <span className="sr-only">(opens in a new tab)</span>
-          </a>{" "}
-          above,
-          <br className="hidden md:inline" />{" "}
-          <a href={WAKATIME_URL} target="_blank" rel="noopener noreferrer" className={LINK} style={{ color: soft("blue", 75) }}>
-            WakaTime activity
-            <Icon name="arrow-up-right" size="inline" aria-hidden="true" className="translate-y-[0.05em] self-center opacity-70 transition-opacity group-hover/link:opacity-100" />
-            <span className="sr-only">(opens in a new tab)</span>
-          </a>{" "}
-          below.
-        </p>
+        {/* On a phone the legend is where the day is read (no card over the picture): the two layers share one cell, the day's over the legend while a day is held. */}
+        <div className="grid">
+          <div className="flex flex-col gap-3 transition-opacity duration-150" style={{ gridArea: "1 / 1", opacity: narrow && hover ? 0 : 1 }}>
+          <p className="type-meta m-0 text-muted-foreground uppercase">Last <span className="text-foreground">12 months</span></p>
+          {/* In the picture's order: the contributions are the upper block of a day, the coding the lower one. */}
+          <p ref={legend} className="m-0 font-[family-name:var(--font-display)] text-[1.625rem] min-[56rem]:text-[clamp(1.25rem,2.3cqi,1.625rem)] leading-[1.1] font-semibold tracking-tight text-balance">
+            <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" className={LINK} style={{ color: soft("green", 75) }}>
+              GitHub contributions
+              <Icon name="arrow-up-right" size="inline" aria-hidden="true" className="translate-y-[0.05em] self-center opacity-70 transition-opacity group-hover/link:opacity-100" />
+              <span className="sr-only">(opens in a new tab)</span>
+            </a>{" "}
+            above,
+            <br className="hidden md:inline" />{" "}
+            <a href={WAKATIME_URL} target="_blank" rel="noopener noreferrer" className={LINK} style={{ color: soft("blue", 75) }}>
+              WakaTime activity
+              <Icon name="arrow-up-right" size="inline" aria-hidden="true" className="translate-y-[0.05em] self-center opacity-70 transition-opacity group-hover/link:opacity-100" />
+              <span className="sr-only">(opens in a new tab)</span>
+            </a>{" "}
+            below.
+          </p>
+          </div>
+          {narrow && lastHover.current && (
+            <div aria-hidden="true" className="pointer-events-none flex flex-col gap-3 transition-opacity duration-150" style={{ gridArea: "1 / 1", opacity: hover ? 1 : 0 }}>
+              <p className="type-meta m-0 flex gap-[0.6em] uppercase">
+                {(() => {
+                  const [weekday = "", day = "", month = "", year = ""] = readableDay(lastHover.current.date).split(" ");
+                  return (
+                    <>
+                      <span className="text-foreground">{day} {month}</span>
+                      <span className="text-muted-foreground">{weekday} · {year}</span>
+                    </>
+                  );
+                })()}
+              </p>
+              <p className="m-0 font-[family-name:var(--font-display)] text-[1.625rem] leading-[1.1] font-semibold tracking-tight tabular-nums">
+                <span style={{ color: "var(--act-green)" }}>{lastHover.current.contributions || "No"} {lastHover.current.contributions === 1 ? "contribution" : "contributions"}</span> above,
+                <br />
+                <span style={{ color: "var(--act-blue)" }}>{hoursText(lastHover.current.hours) ?? "no coding"}</span> below.
+              </p>
+            </div>
+          )}
+        </div>
       </div>
     </section>
   );

@@ -9126,12 +9126,131 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   }
 }
 
-/* The numbers of the activity picture's day card fade and blur into each other as the day changes (components/activity-panel.tsx `Roll`): the old one out, the new one in, in the same place. */
-@keyframes act-in { from { filter: blur(5px); opacity: 0; } }
-@keyframes act-out { to { filter: blur(5px); opacity: 0; } }
+/* The numbers of the activity picture's day card fade and slide into each other as the day changes (components/activity-panel.tsx `Roll`): the old one out, the new one in, in the same place. */
+@keyframes act-in { from { transform: translateY(3px); opacity: 0; } }
+@keyframes act-out { to { transform: translateY(-3px); opacity: 0; } }
 .act-in-up, .act-in-down { animation: act-in 0.24s ease-out both; }
 .act-out-up, .act-out-down { animation: act-out 0.24s ease-in both; }
 @media (prefers-reduced-motion: reduce) {
   .act-in-up, .act-out-up, .act-in-down, .act-out-down { animation: none; }
   .act-out-up, .act-out-down { display: none; }
+}
+
+/* The day card of the activity picture (components/activity-panel.tsx `DayCard`; docs/design-system.md: square, a solid surface, one hairline, no shadow, no blur). The page's own figures set the type: a display value, small mono caps. */
+.act-card {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 15rem;
+  background: var(--surface);
+  border: var(--hairline) solid var(--border-strong);
+  color: var(--foreground);
+}
+.act-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.625rem 0.75rem 0.5rem;
+}
+.act-card-date {
+  display: inline-grid;
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.01em;
+}
+.act-card-empty {
+  padding: 0 0.75rem 0.75rem;
+}
+.act-card-rows {
+  margin: 0;
+  display: grid;
+}
+.act-card-row {
+  --tone: var(--act-green);
+  position: relative;
+  display: grid;
+  grid-template-columns: 0.625rem 1fr auto;
+  align-items: baseline;
+  column-gap: 0.5rem;
+  padding: 0.5rem 0.75rem 0.625rem;
+  border-top: var(--hairline) solid var(--border);
+}
+.act-card-row[data-tone="blue"] {
+  --tone: var(--act-blue);
+}
+.act-card-swatch {
+  width: 0.625rem;
+  height: 0.625rem;
+  align-self: center;
+  background: var(--tone);
+}
+.act-card-value {
+  margin: 0;
+  display: inline-grid;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--tone);
+}
+/* The day against the year's best: a rule at the row's foot, the source's colour over the hairline (solid colours, no opacity). */
+.act-card-meter {
+  position: absolute;
+  left: 0;
+  bottom: calc(var(--hairline) * -1);
+  height: 1px;
+  width: calc(var(--share, 0) * 100%);
+  background: var(--tone);
+  transition: width 0.16s var(--ease-standard);
+}
+.act-card-foot {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-top: var(--hairline) solid var(--border);
+}
+/* The leader: a square on the column's top, a stem and a bar to the card's own point; `--lx` (set per frame) is where the column is, from the card's point. */
+.act-leader-dot,
+.act-leader-stem,
+.act-leader-bar {
+  position: absolute;
+  background: var(--foreground);
+  pointer-events: none;
+}
+.act-leader-dot {
+  width: 3px;
+  height: 3px;
+  left: calc(var(--lx, 0px) - 1.5px);
+  top: -1.5px;
+}
+.act-leader-stem {
+  width: var(--hairline);
+  height: 14px;
+  left: var(--lx, 0px);
+  top: -14px;
+  background: var(--border-strong);
+}
+.act-leader-bar {
+  height: var(--hairline);
+  width: max(var(--lx, 0px), calc(var(--lx, 0px) * -1));
+  left: min(var(--lx, 0px), 0px);
+  top: -14px;
+  background: var(--border-strong);
+}
+.act-card-anchor[data-below] .act-leader-stem,
+.act-card-anchor[data-below] .act-leader-bar {
+  top: 0;
+}
+.act-card-anchor[data-below] .act-leader-bar {
+  top: 14px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .act-card-meter {
+    transition: none;
+  }
 }

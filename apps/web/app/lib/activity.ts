@@ -90,6 +90,33 @@ export interface HoverInfo {
   behind?: { index: number; count: number };
 }
 
+/** The hours of a day as the card says them: "10 h", "2.5 h", "25 min", or null when there were none (no ".0": whole hours are whole). */
+export function hoursText(h: number): string | null {
+  if (!(h >= 0.05)) return null;
+  if (h < 1) return `${Math.max(1, Math.round(h * 60))} min`;
+  const t = h.toFixed(1);
+  return `${t.endsWith(".0") ? t.slice(0, -2) : t} h`;
+}
+
+/** Where a day stands in the file's year: its share of the best day's value, per source (0..1), and a note when it is notable (the best day of a source, or in the top 5 % of its active days). Pure. */
+export function yearContext(a: Activity): (contributions: number, hours: number) => { c: number; h: number; note: string | null } {
+  const gh = a.github.map((d) => d.count);
+  const wk = a.wakatime.map((d) => d.seconds / 3600);
+  const maxC = Math.max(1, ...gh);
+  const maxH = Math.max(0.1, ...wk);
+  const activeC = gh.filter((x) => x > 0).length;
+  const activeH = wk.filter((x) => x >= 0.05).length;
+  // (how many days did at least as much: ties count against a day, so a year of identical days has no top 5 %)
+  const rank = (xs: number[], v: number) => xs.filter((x) => x >= v).length;
+  return (contributions, hours) => {
+    const rc = contributions > 0 ? rank(gh, contributions) : null;
+    const rh = hours >= 0.05 ? rank(wk, hours) : null;
+    const note =
+      rc === 1 ? "Most contributions in a day" : rh === 1 ? "Longest day of coding" : rc !== null && rc <= Math.max(1, Math.round(activeC * 0.05)) ? "Top 5 % for contributions" : rh !== null && rh <= Math.max(1, Math.round(activeH * 0.05)) ? "Top 5 % for coding" : null;
+    return { c: Math.min(1, contributions / maxC), h: Math.min(1, hours / maxH), note };
+  };
+}
+
 /** "Thu 19 Nov 2026" for an ISO date, read in UTC (the date has no time of day). */
 export function readableDay(date: string): string {
   const d = new Date(`${date}T00:00:00Z`);
