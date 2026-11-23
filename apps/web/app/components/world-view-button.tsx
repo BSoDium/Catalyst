@@ -16,14 +16,13 @@ import { ambient, requestWorldView } from "~/globe";
  * The strip never stretches. When "Reset view" comes, the one beside it first glides out of its way (`layout="position"`: a move, never a scale) and the newcomer fades in once there is room; when it goes, it fades out first
  * and the other glides back (the leaving one stays in the row for its fade). Bottom centre: clear of the name's small line (left; on a narrow screen the strip is above it, and higher by the hint's line while the hint is there: `data-hint`), the credits (right), the player (top left) and the header (top).
  */
-/** Why the globe is not turning although Auto-rotate is on, by the engine's reason (`SpinBlock`): the hint under "Disabled". */
+/** What to do to get Auto-rotate going again, by the engine's reason (`SpinBlock`): the hint under "Disabled". Only the way out, never how the picture is made (to the visitor the zoomed-in view and the globe are one picture). */
 const DISABLED_WHY: Record<string, string> = {
-  street: "The street map is showing, and the globe is hidden under it. Zoom out and it turns again.",
-  "reduced-motion": "Your device asks for less motion, so the globe stays still.",
-  "place-selected": "A place is selected. Close it and the globe turns again.",
-  "panel-open": "A panel is open. Close it and the globe turns again.",
-  hidden: "This tab is in the background. The globe turns again when you come back.",
-  default: "The globe cannot turn right now.",
+  street: "Zoom out to turn it on again.",
+  "reduced-motion": "Your device is set to reduce motion.",
+  "place-selected": "Close the place to turn it on again.",
+  "panel-open": "Close the panel to turn it on again.",
+  default: "Not available right now.",
 };
 
 export function WorldViewButton({ showReset, showAmbient, streetLevel = false }: { showReset: boolean; showAmbient: boolean; streetLevel?: boolean }) {
