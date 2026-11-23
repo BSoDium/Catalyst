@@ -9152,7 +9152,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
 :where(:root[data-scheme="light"]) .act-outline { stroke: #fff; }
 :where(:root[data-scheme="light"]) .act-outline-halo { stroke: #111114; }
 /* The connector: a line from the outline's own colour (the text colour: the selected column's line) to a softer one where it reaches the card, whose edge takes `--act-link-edge` at the joint. In the light theme, as the outline: a white core
-   (to a light grey at the card) on a thin near-black casing, which the card's edge takes at the joint. */
+   (into the near-black of the card's edge at the card) on a thin near-black casing, which the card's edge takes at the joint. */
 :root {
   --act-link-from: var(--foreground);
   --act-link-to: color-mix(in srgb, var(--foreground) 55%, var(--background));
@@ -9162,15 +9162,15 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
 @media (prefers-color-scheme: light) {
   :root:not([data-scheme="dark"]) {
     --act-link-from: #fff;
-    --act-link-to: #d8d8d8;
-    --act-link-edge: rgb(10 10 10 / 0.85);
+    --act-link-to: #1c1c1c;
+    --act-link-edge: var(--act-link-to);
     --act-link-halo: #111114;
   }
 }
 :root[data-scheme="light"] {
   --act-link-from: #fff;
-  --act-link-to: #d8d8d8;
-  --act-link-edge: rgb(10 10 10 / 0.85);
+  --act-link-to: #1c1c1c;
+  --act-link-edge: var(--act-link-to);
   --act-link-halo: #111114;
 }
 .act-card {
