@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "~/components/ui";
 import { placeholderTiles } from "neon-activity-graph/layout";
 import { activityStats, dayText, GITHUB_URL, hoursText, isActivity, layoutActivity, readableDay, WAKATIME_URL, yearContext, type Activity, type ActivityStat, type HoverInfo, type Matrix } from "~/lib/activity";
@@ -91,64 +91,44 @@ function Roll({ value, order }: { value: string; order: number }) {
 }
 
 /**
- * The card of a day (the "datasheet", owner-approved direction B of the 2026-11-23 audit): a solid surface with one hairline, square, no blur and no shadow. It reads like the column it hangs on: the date as its title, the contributions (green) above
- * the coding (blue), each with a swatch of its colour, the value at full strength and a 1 px rule showing the day against the year's best; a note appears only for a notable day, and the key cap for stacked days. A leader (a hairline with a square at
- * the column's top) joins it to its column, so that clamping at the picture's edges never loses the link. It stays mounted and glides from one day to the next (fading when the pointer leaves, appearing in place where it comes back).
- * Phones have no card: the legend says the day (`ActivityPanel`).
+ * Where the day card hangs and the leader that ties it to its column, like the labels of a textbook's schematic (owner, 2026-11-23): from the outline's own edge (its topmost point, or its lowest when the card goes below), a 45 degree
+ * stroke away from the column, then a flat one to the card's side, where the card is centred on the line's end. Drawn in the outline's own stroke (same width and colour), so that it reads as the outline's continuation. The card goes to
+ * the right of the column, to the left where there is no room, and below it where there is none above. Pure (CSS pixels of the picture).
  */
-function DayCard({ info, ctx, visible, instant, width, touch }: { info: HoverInfo; ctx: ReturnType<typeof yearContext> | null; visible: boolean; instant: boolean; width: number; touch: boolean }) {
-  const half = 120;
-  const x = width ? Math.min(Math.max(info.x, half + 8), width - half - 8) : info.x;
-  const y = info.y;
-  const below = y < 148;
+export function callout(outline: string, width: number): { path: string; x: number; y: number; side: 1 | -1; below: boolean } {
+  const pts = outline.split(" ").map((q) => q.split(",").map(Number) as [number, number]).filter((q) => q.length === 2 && Number.isFinite(q[0]) && Number.isFinite(q[1]));
+  if (!pts.length) return { path: "", x: 0, y: 0, side: 1, below: false };
+  const TILT = 18; // the 45 degree stroke's run (and rise)
+  const FLAT = 16; // the flat stroke
+  const CARD = 240;
+  const top = pts.reduce((m, q) => (q[1] < m[1] ? q : m));
+  const low = pts.reduce((m, q) => (q[1] > m[1] ? q : m));
+  const below = top[1] - TILT < 78; // (the card is about 120 px tall, centred on the line: no room above)
+  const [px, py] = below ? low : top;
+  const side: 1 | -1 = !width || px + TILT + FLAT + CARD + 8 <= width ? 1 : -1;
+  const dy = below ? TILT : -TILT;
+  const x1 = px + side * TILT;
+  const y1 = py + dy;
+  const x2 = x1 + side * FLAT;
+  return { path: `M${px} ${py}L${x1} ${y1}L${x2} ${y1}`, x: x2, y: y1, side, below };
+}
+
+/**
+ * The card of a day (the "datasheet", owner-approved direction B of the 2026-11-23 audit): a solid surface with one hairline, square, no blur and no shadow. It reads like the column it hangs on: the date as its title, the contributions (green) above
+ * the coding (blue), each with a swatch of its colour, the value at full strength and a 1 px rule showing the day against the year's best; a note appears only for a notable day, and the key cap for stacked days. It sits at the end of the callout
+ * (`callout`, drawn with the outline) and moves with it, with no glide of its own, so that the two never come apart; it fades when the pointer leaves and the numbers roll as the day changes. Phones have no card: the legend says the day (`ActivityPanel`).
+ */
+function DayCard({ info, ctx, visible, width, touch }: { info: HoverInfo; ctx: ReturnType<typeof yearContext> | null; visible: boolean; width: number; touch: boolean }) {
+  const c = callout(info.outline, width);
   const hours = hoursText(info.hours);
   const empty = info.contributions === 0 && !hours;
   const k = ctx?.(info.contributions, info.hours) ?? { c: 0, h: 0, note: null };
   const [weekday = "", day = "", month = "", year = ""] = readableDay(info.date).split(" ");
   const order = Date.parse(`${info.date}T00:00:00Z`);
-  // The card follows its target with a damped glide (it eases toward it, a fraction of the way each frame), not a fixed transition from jump to jump: a pointer sweeping over many days
-  // moves it in one smooth line. It appears in place when it comes from nothing, and does not move at all with reduced motion. `--lx` is where the column is, from the card's own point (the leader is drawn to it).
-  const outer = useRef<HTMLDivElement>(null);
-  const cur = useRef({ x, y, init: false });
-  useLayoutEffect(() => {
-    const el = outer.current;
-    if (!el) return;
-    const c = cur.current;
-    const put = () => {
-      el.style.transform = `translate3d(${c.x.toFixed(2)}px, ${c.y.toFixed(2)}px, 0)`;
-      el.style.setProperty("--lx", `${(info.x - c.x).toFixed(2)}px`);
-    };
-    if (instant || !c.init || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      c.x = x;
-      c.y = y;
-      c.init = true;
-      put();
-      return;
-    }
-    let raf = 0;
-    let last = performance.now();
-    const tick = (now: number) => {
-      const f = 1 - Math.exp(-Math.min(64, now - last) / 70);
-      last = now;
-      c.x += (x - c.x) * f;
-      c.y += (y - c.y) * f;
-      if (Math.abs(x - c.x) + Math.abs(y - c.y) > 0.25) raf = requestAnimationFrame(tick);
-      else {
-        c.x = x;
-        c.y = y;
-      }
-      put();
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [x, y, instant, info.x]);
   const stacked = info.behind && info.behind.count > 1;
   return (
-    <div ref={outer} role="presentation" data-below={below ? "" : undefined} className="act-card-anchor pointer-events-none absolute top-0 left-0 z-20 h-0 w-0" style={{ opacity: visible ? 1 : 0, transition: "opacity 0.12s var(--ease-standard)" }}>
-      <span aria-hidden="true" className="act-leader-dot" />
-      <span aria-hidden="true" className="act-leader-stem" />
-      <span aria-hidden="true" className="act-leader-bar" />
-      <div className="act-card" style={{ transform: `translate(-50%, ${below ? "14px" : "calc(-100% - 14px)"})`, transition: instant ? "none" : "transform 0.3s cubic-bezier(0.2, 0.7, 0.2, 1)" }}>
+    <div role="presentation" className="pointer-events-none absolute top-0 left-0 z-20 h-0 w-0" style={{ opacity: visible ? 1 : 0, transition: "opacity 0.12s var(--ease-standard)" }}>
+      <div className="act-card" style={{ left: c.x, top: c.y, transform: c.side === 1 ? "translate(0, -50%)" : "translate(-100%, -50%)" }}>
         <header className="act-card-head">
           <span className="act-card-date"><Roll value={`${day} ${month}`} order={order} /></span>
           <span className="type-meta text-muted-foreground uppercase"><Roll value={`${weekday} · ${year}`} order={order} /></span>
@@ -406,10 +386,15 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
               <svg aria-hidden="true" className="pointer-events-none absolute inset-0 size-full overflow-visible" style={{ opacity: hover ? 1 : 0, transition: instant ? "none" : "opacity 0.12s" }}>
                 {(() => {
                   const d = `M${lastHover.current.outline.split(" ").join("L")}Z`.replaceAll(",", " ");
-                  return <path d={d} fill="color-mix(in srgb, var(--foreground) 7%, transparent)" stroke="var(--foreground)" strokeWidth={1.5} strokeLinejoin="round" />;
+                  return (
+                    <>
+                      <path d={d} fill="color-mix(in srgb, var(--foreground) 7%, transparent)" stroke="var(--foreground)" strokeWidth={1.5} strokeLinejoin="round" />
+                      {!narrow && <path d={callout(lastHover.current.outline, sceneBox.current?.clientWidth ?? 0).path} fill="none" stroke="var(--foreground)" strokeWidth={1.5} strokeLinejoin="round" strokeLinecap="butt" />}
+                    </>
+                  );
                 })()}
               </svg>
-              {!narrow && <DayCard info={lastHover.current} ctx={ctx} visible={!!hover} instant={instant} width={sceneBox.current?.clientWidth ?? 0} touch={touch} />}
+              {!narrow && <DayCard info={lastHover.current} ctx={ctx} visible={!!hover} width={sceneBox.current?.clientWidth ?? 0} touch={touch} />}
             </>
           )}
           <p className="sr-only" aria-live="polite">{hover ? dayText(hover) : ""}</p>
@@ -454,9 +439,9 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
                 })()}
               </p>
               <p className="m-0 font-[family-name:var(--font-display)] text-[1.625rem] leading-[1.1] font-semibold tracking-tight tabular-nums">
-                <span style={{ color: "var(--act-green)" }}>{lastHover.current.contributions || "No"} {lastHover.current.contributions === 1 ? "contribution" : "contributions"}</span> above,
+                <span style={{ color: "var(--act-green)" }}>{lastHover.current.contributions || "No"} {lastHover.current.contributions === 1 ? "contribution" : "contributions"}</span> on GitHub,
                 <br />
-                <span style={{ color: "var(--act-blue)" }}>{hoursText(lastHover.current.hours) ?? "no coding"}</span> below.
+                <span style={{ color: "var(--act-blue)" }}>{hoursText(lastHover.current.hours) ?? "No coding"}</span> {hoursText(lastHover.current.hours) ? "logged " : ""}on WakaTime.
               </p>
             </div>
           )}

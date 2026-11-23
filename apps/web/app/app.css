@@ -9214,41 +9214,6 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   padding: 0.5rem 0.75rem;
   border-top: var(--hairline) solid var(--border);
 }
-/* The leader: a square on the column's top, a stem and a bar to the card's own point; `--lx` (set per frame) is where the column is, from the card's point. */
-.act-leader-dot,
-.act-leader-stem,
-.act-leader-bar {
-  position: absolute;
-  background: var(--foreground);
-  pointer-events: none;
-}
-.act-leader-dot {
-  width: 3px;
-  height: 3px;
-  left: calc(var(--lx, 0px) - 1.5px);
-  top: -1.5px;
-}
-.act-leader-stem {
-  width: var(--hairline);
-  height: 14px;
-  left: var(--lx, 0px);
-  top: -14px;
-  background: var(--border-strong);
-}
-.act-leader-bar {
-  height: var(--hairline);
-  width: max(var(--lx, 0px), calc(var(--lx, 0px) * -1));
-  left: min(var(--lx, 0px), 0px);
-  top: -14px;
-  background: var(--border-strong);
-}
-.act-card-anchor[data-below] .act-leader-stem,
-.act-card-anchor[data-below] .act-leader-bar {
-  top: 0;
-}
-.act-card-anchor[data-below] .act-leader-bar {
-  top: 14px;
-}
 @media (prefers-reduced-motion: reduce) {
   .act-card-meter {
     transition: none;
