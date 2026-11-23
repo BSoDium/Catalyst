@@ -25,6 +25,8 @@ export interface SpinConfig {
   enabled: boolean;
   /** Time without input or camera motion before the globe starts to turn, ms. */
   idleMs: number;
+  /** Ambient mode (the visitor asked for a turning globe): the delay after a gesture is this one when it is shorter than `idleMs`, so the screensaver is back in a moment, not after the 8 s that keep a bare page still. */
+  ambientIdleMs: number;
   /**
    * Cruise speed, degrees of longitude per second: 0.2 is one turn in 30 minutes. Chosen from measurements (docs/web-architecture.md, "Idle
    * rotation": label events per minute at 4, 1.2, 0.6, 0.3, 0.2 and 0.15 degrees a second): the labels stop flickering below 0.3 and the
@@ -60,6 +62,7 @@ export const SPIN_DEFAULTS: Readonly<SpinConfig> = {
   ambient: false,
   enabled: true,
   idleMs: 8000,
+  ambientIdleMs: 2500,
   degPerSec: 0.2,
   edgePxPerSec: 3,
   pinned: false,
@@ -138,6 +141,9 @@ export type SpinBlock =
   | "panel-open"
   | "zoomed-in"
   | "camera-busy";
+
+/** The idle delay in force: the ambient one (when shorter) while ambient mode is on. */
+const idleFor = (cfg: SpinConfig): number => (cfg.ambient ? Math.min(cfg.idleMs, cfg.ambientIdleMs) : cfg.idleMs);
 
 /** Why the globe must not turn now, or null when it may. The first reason in this order wins. */
 export function spinBlock(c: SpinContext, cfg: SpinConfig = SPIN): SpinBlock | null {
@@ -250,7 +256,7 @@ export class IdleSpin {
 
   /** The visitor just asked for ambient mode: the globe starts to turn after `afterMs` of rest (not the full idle delay, or nothing seems to happen), if it is not turning already. */
   hurry(now: number, afterMs: number, cfg: SpinConfig = SPIN): void {
-    if (this.phase === "idle") this.lastActivity = Math.min(this.lastActivity, now - cfg.idleMs + afterMs);
+    if (this.phase === "idle") this.lastActivity = Math.min(this.lastActivity, now - idleFor(cfg) + afterMs);
   }
 
   /** Camera motion or a change of a condition that is not an input: restart the idle clock; if it is turning it coasts to rest. */
@@ -262,14 +268,14 @@ export class IdleSpin {
   /** Ms until the globe may start turning (0 = now), or null when something blocks it (nothing to wait for). */
   wait(now: number, c: SpinContext, cfg: SpinConfig = SPIN): number | null {
     if (spinBlock(c, cfg)) return null;
-    return Math.max(0, this.lastActivity + cfg.idleMs - now);
+    return Math.max(0, this.lastActivity + idleFor(cfg) - now);
   }
 
   /** Degrees of eastward rotation to apply for the frame at `now`: 0 while waiting, on the frame that starts the turn, and when blocked hard. */
   step(now: number, c: SpinContext, cfg: SpinConfig = SPIN): number {
     const block = spinBlock(c, cfg);
     if (this.phase === "idle") {
-      if (block || now - this.lastActivity < cfg.idleMs) return 0;
+      if (block || now - this.lastActivity < idleFor(cfg)) return 0;
       this.phase = "easing-in";
       this.ramp = 0;
       this.speed = 0;

@@ -5017,6 +5017,13 @@ body:not(:has([data-slot="site-header"])) .np-root {
   cursor: pointer;
   transition: color var(--duration-fast) var(--ease-standard);
 }
+/* The strip's icons are a whole 12 px (the type is 12 px, its capitals 8.8): 1.1em was 13.19 px, so the icon's edges fell on half pixels, blurred, and its circle stood taller than the letters beside it. */
+.globe-dock-item .ui-icon[data-size] {
+  width: 0.75rem;
+  height: 0.75rem;
+  /* (a capital's middle is a little above its line's: half a pixel up puts the icon's on it) */
+  transform: translateY(-0.5px);
+}
 /* The hairline between the two is the first one's right edge, so that it comes and goes with it (not with its neighbour, which is always there). */
 .globe-dock-item:not(:last-child)::before {
   content: "";
