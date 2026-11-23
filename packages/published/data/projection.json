@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "dataVersion": {
-    "commit": "1b7498c88576eb0f4b276be61a43b86df1d05715",
+    "commit": "e010f01e0c67690a2f32e70da1c037104f70d853",
     "date": "2026-11-23"
   },
   "places": [
@@ -9859,6 +9859,13 @@
           "value": "6400"
         }
       ],
+      "body": [
+        {
+          "type": "link",
+          "title": "Download on Pexels",
+          "url": "https://www.pexels.com/photo/40999685/"
+        }
+      ],
       "placeSlugs": [
         "faculty-of-geodesy-and-cartography"
       ]
@@ -9902,6 +9909,13 @@
         {
           "label": "ISO",
           "value": "40"
+        }
+      ],
+      "body": [
+        {
+          "type": "link",
+          "title": "Download on Pexels",
+          "url": "https://www.pexels.com/photo/38065649/"
         }
       ],
       "placeSlugs": [
@@ -9952,6 +9966,13 @@
           "value": "43"
         }
       ],
+      "body": [
+        {
+          "type": "link",
+          "title": "Download on Pexels",
+          "url": "https://www.pexels.com/photo/40273964/"
+        }
+      ],
       "placeSlugs": [
         "near-manaus"
       ]
@@ -9995,6 +10016,13 @@
         {
           "label": "ISO",
           "value": "667"
+        }
+      ],
+      "body": [
+        {
+          "type": "link",
+          "title": "Download on Pexels",
+          "url": "https://www.pexels.com/photo/40273956/"
         }
       ],
       "placeSlugs": [
@@ -10042,6 +10070,13 @@
           "value": "45"
         }
       ],
+      "body": [
+        {
+          "type": "link",
+          "title": "Download on Pexels",
+          "url": "https://www.pexels.com/photo/38065618/"
+        }
+      ],
       "placeSlugs": [
         "bogota"
       ]
@@ -10087,6 +10122,13 @@
           "value": "41"
         }
       ],
+      "body": [
+        {
+          "type": "link",
+          "title": "Download on Pexels",
+          "url": "https://www.pexels.com/photo/38065650/"
+        }
+      ],
       "placeSlugs": [
         "santiago-de-cali"
       ]
@@ -10130,6 +10172,13 @@
         {
           "label": "ISO",
           "value": "49"
+        }
+      ],
+      "body": [
+        {
+          "type": "link",
+          "title": "Download on Pexels",
+          "url": "https://www.pexels.com/photo/38065651/"
         }
       ],
       "placeSlugs": [
@@ -10181,6 +10230,13 @@
           "value": "12800"
         }
       ],
+      "body": [
+        {
+          "type": "link",
+          "title": "Download on Pexels",
+          "url": "https://www.pexels.com/photo/40999716/"
+        }
+      ],
       "placeSlugs": [
         "warsaw"
       ]
@@ -10224,6 +10280,13 @@
         {
           "label": "ISO",
           "value": "46"
+        }
+      ],
+      "body": [
+        {
+          "type": "link",
+          "title": "Download on Pexels",
+          "url": "https://www.pexels.com/photo/38065647/"
         }
       ],
       "placeSlugs": [
@@ -10271,6 +10334,13 @@
           "value": "775"
         }
       ],
+      "body": [
+        {
+          "type": "link",
+          "title": "Download on Pexels",
+          "url": "https://www.pexels.com/photo/40273955/"
+        }
+      ],
       "placeSlugs": [
         "popayan"
       ]
@@ -10314,6 +10384,13 @@
         {
           "label": "ISO",
           "value": "44"
+        }
+      ],
+      "body": [
+        {
+          "type": "link",
+          "title": "Download on Pexels",
+          "url": "https://www.pexels.com/photo/40273998/"
         }
       ],
       "placeSlugs": [
@@ -10361,6 +10438,13 @@
           "value": "167"
         }
       ],
+      "body": [
+        {
+          "type": "link",
+          "title": "Download on Pexels",
+          "url": "https://www.pexels.com/photo/38065644/"
+        }
+      ],
       "placeSlugs": [
         "saint-louis"
       ]
@@ -10403,6 +10487,13 @@
         {
           "label": "ISO",
           "value": "160"
+        }
+      ],
+      "body": [
+        {
+          "type": "link",
+          "title": "Download on Pexels",
+          "url": "https://www.pexels.com/photo/40999714/"
         }
       ],
       "placeSlugs": [
@@ -10450,6 +10541,13 @@
           "value": "42"
         }
       ],
+      "body": [
+        {
+          "type": "link",
+          "title": "Download on Pexels",
+          "url": "https://www.pexels.com/photo/40273996/"
+        }
+      ],
       "placeSlugs": [
         "casablanca"
       ]
@@ -10493,6 +10591,13 @@
         {
           "label": "ISO",
           "value": "40"
+        }
+      ],
+      "body": [
+        {
+          "type": "link",
+          "title": "Download on Pexels",
+          "url": "https://www.pexels.com/photo/38065645/"
         }
       ],
       "placeSlugs": [
@@ -10544,6 +10649,13 @@
           "value": "160"
         }
       ],
+      "body": [
+        {
+          "type": "link",
+          "title": "Download on Pexels",
+          "url": "https://www.pexels.com/photo/40999713/"
+        }
+      ],
       "placeSlugs": [
         "warsaw"
       ]
@@ -10582,6 +10694,13 @@
         {
           "label": "ISO",
           "value": "58"
+        }
+      ],
+      "body": [
+        {
+          "type": "link",
+          "title": "Download on Pexels",
+          "url": "https://www.pexels.com/photo/40308610/"
         }
       ],
       "placeSlugs": [
@@ -10633,6 +10752,13 @@
           "value": "12800"
         }
       ],
+      "body": [
+        {
+          "type": "link",
+          "title": "Download on Pexels",
+          "url": "https://www.pexels.com/photo/40999715/"
+        }
+      ],
       "placeSlugs": [
         "warsaw"
       ]
@@ -10677,6 +10803,13 @@
         {
           "label": "ISO",
           "value": "46"
+        }
+      ],
+      "body": [
+        {
+          "type": "link",
+          "title": "Download on Pexels",
+          "url": "https://www.pexels.com/photo/40273968/"
         }
       ],
       "placeSlugs": [
@@ -10728,6 +10861,13 @@
           "value": "640"
         }
       ],
+      "body": [
+        {
+          "type": "link",
+          "title": "Download on Pexels",
+          "url": "https://www.pexels.com/photo/40999717/"
+        }
+      ],
       "placeSlugs": [
         "warsaw"
       ]
@@ -10776,6 +10916,13 @@
           "value": "45"
         }
       ],
+      "body": [
+        {
+          "type": "link",
+          "title": "Download on Pexels",
+          "url": "https://www.pexels.com/photo/40273967/"
+        }
+      ],
       "placeSlugs": [
         "puerto-espana"
       ]
@@ -10821,6 +10968,13 @@
           "value": "45"
         }
       ],
+      "body": [
+        {
+          "type": "link",
+          "title": "Download on Pexels",
+          "url": "https://www.pexels.com/photo/40274001/"
+        }
+      ],
       "placeSlugs": [
         "strait-of-gibraltar"
       ]
@@ -10864,6 +11018,13 @@
         {
           "label": "ISO",
           "value": "48"
+        }
+      ],
+      "body": [
+        {
+          "type": "link",
+          "title": "Download on Pexels",
+          "url": "https://www.pexels.com/photo/38065646/"
         }
       ],
       "placeSlugs": [
@@ -10914,6 +11075,13 @@
           "value": "58"
         }
       ],
+      "body": [
+        {
+          "type": "link",
+          "title": "Download on Pexels",
+          "url": "https://www.pexels.com/photo/40273965/"
+        }
+      ],
       "placeSlugs": [
         "near-uarini"
       ]
@@ -10943,6 +11111,10 @@
           "height": 1280
         }
       }
+    },
+    "availability": {
+      "text": "Not currently looking for new roles",
+      "asOf": "2026-11"
     },
     "roles": [
       {
