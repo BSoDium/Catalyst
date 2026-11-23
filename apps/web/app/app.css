@@ -1057,11 +1057,13 @@
   }
 
   .ds-link-card {
+    --link-card-inset: 1rem;
+    position: relative;
     display: flex;
     align-items: center;
     gap: 1rem;
     min-height: 4rem;
-    padding: 0.875rem 1rem 0.875rem 1.25rem;
+    padding: 0.875rem var(--link-card-inset) 0.875rem 1.25rem;
     background: var(--accent);
     color: var(--foreground);
     text-decoration: none;
@@ -1108,7 +1110,15 @@
     white-space: nowrap;
   }
 
+  /* The mark sits in the plate's top right corner, as far from the top as from the right edge (owner, 2026-11-23); the text keeps clear of it. */
+  a.ds-link-card {
+    padding-right: calc(var(--link-card-inset) + 1.25rem + 0.75rem);
+  }
+
   .ds-link-card-arrow {
+    position: absolute;
+    top: var(--link-card-inset);
+    right: var(--link-card-inset);
     flex-shrink: 0;
     color: var(--muted-foreground);
     transition: color var(--duration-fast) var(--ease-standard);
@@ -5645,6 +5655,10 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   .ds-link-card-destination {
     white-space: normal;
     overflow-wrap: anywhere;
+  }
+
+  a.ds-link-card {
+    padding-right: var(--link-card-inset);
   }
 
   .ds-link-card-arrow {
