@@ -5140,6 +5140,13 @@ body:not(:has([data-slot="site-header"])) .np-root {
   cursor: pointer;
   transition: color var(--duration-fast) var(--ease-standard);
 }
+/* The strip's icons are a whole 12 px (the type is 12 px, its capitals 8.8): 1.1em was 13.19 px, so the icon's edges fell on half pixels, blurred, and its circle stood taller than the letters beside it. */
+.globe-dock-item .ui-icon[data-size] {
+  width: 0.75rem;
+  height: 0.75rem;
+  /* (a capital's middle is a little above its line's: half a pixel up puts the icon's on it) */
+  transform: translateY(-0.5px);
+}
 /* The hairline between the two is the first one's right edge, so that it comes and goes with it (not with its neighbour, which is always there). */
 .globe-dock-item:not(:last-child)::before {
   content: "";
@@ -5180,31 +5187,82 @@ body:not(:has([data-slot="site-header"])) .np-root {
 .globe-dock-state {
   display: inline-grid;
   margin-inline-start: 0.125rem;
+  /* (the width is set by world-view-button.tsx to the word shown; it glides) */
+  overflow: hidden;
+  transition: width var(--duration-base) var(--ease-standard);
 }
 .globe-dock-state > span {
   grid-area: 1 / 1;
+  justify-self: start;
+  white-space: nowrap;
   text-align: start;
-}
-.globe-dock-state > span:first-child {
   color: var(--signal-text);
-  visibility: hidden;
+  opacity: 0;
+  transition: opacity var(--duration-base) var(--ease-standard);
 }
-.globe-dock-state > span:last-child {
+.globe-dock-state > [data-word="off"],
+.globe-dock-state > [data-word="disabled"] {
   color: var(--subtle-foreground);
 }
-.globe-dock-state[data-on="true"] > span:first-child {
-  visibility: visible;
+.globe-dock-state[data-state="on"] > [data-word="on"],
+.globe-dock-state[data-state="starting"] > [data-word="starting"],
+.globe-dock-state[data-state="disabled"] > [data-word="disabled"],
+.globe-dock-state[data-state="off"] > [data-word="off"] {
+  opacity: 1;
 }
-.globe-dock-state[data-on="true"] > span:last-child {
-  visibility: hidden;
+/* The reason under "Disabled": above the strip, on hover or keyboard focus (the strip is at the bottom edge). */
+.globe-dock-why {
+  position: absolute;
+  bottom: calc(100% + 0.5rem);
+  left: 50%;
+  width: max-content;
+  max-width: min(16rem, 80vw);
+  padding: 0.5rem 0.75rem;
+  border: var(--hairline) solid var(--border);
+  background: var(--background);
+  color: var(--muted-foreground);
+  text-transform: none;
+  letter-spacing: normal;
+  line-height: 1.4;
+  text-align: start;
+  white-space: normal;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, 0.25rem);
+  transition:
+    opacity var(--duration-base) var(--ease-standard),
+    transform var(--duration-base) var(--ease-standard);
 }
-/* On but not turning (the street map is up and the globe is suspended under it): the accent word says "paused", the globe stands still and the rule stays (it IS on). */
-.globe-dock-paused {
-  margin-inline-start: 0.125rem;
-  color: var(--signal-text);
+.globe-dock-item:hover > .globe-dock-why,
+.globe-dock-item:focus-visible > .globe-dock-why {
+  opacity: 1;
+  transform: translate(-50%, 0);
 }
-/* The turning globe takes the accent while it turns (the label stays ink: the rule under it and the icon say it is on). */
-.globe-dock-item[aria-pressed="true"] .globe-dock-globe {
+@media (prefers-reduced-motion: reduce) {
+  .globe-dock-why {
+    transition: none;
+  }
+}
+/* On but not at pace yet: the accent word breathes while it waits and eases in. On but suspended (the street map is up): the accent word says "paused", the globe stands still and the rule stays (it IS on). */
+.globe-dock-state[data-state="starting"] > [data-word="starting"] {
+  animation: globe-dock-starting 1.6s ease-in-out infinite;
+}
+@keyframes globe-dock-starting {
+  50% {
+    opacity: 0.45;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .globe-dock-state,
+  .globe-dock-state > span {
+    transition: none;
+  }
+  .globe-dock-state[data-state="starting"] > [data-word="starting"] {
+    animation: none;
+  }
+}
+/* The globe icon follows the real state: the accent and turning only while the globe is at full pace; still and plain while it starts, is disabled or is off (the label stays ink: the rule under it says the switch is on). */
+.globe-dock-item[data-state="on"] .globe-dock-globe {
   color: var(--signal-text);
 }
 @media (forced-colors: active) {
@@ -7025,6 +7083,27 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     letter-spacing: 0.06em;
     color: var(--muted-foreground);
     transition: opacity var(--hero-fade);
+  }
+
+  /*
+   * The hint's second sentence fades away (and slips back a little) while Auto-rotate is on: the view does not reset then, so it would be a promise. Opacity and transform only, like the rest of the
+   * hero (the sentence is the line's last, so nothing follows it that would have to move); it comes back the same way.
+   */
+  .hero-mini-hint-tail {
+    display: inline-block;
+    white-space: pre;
+    transition:
+      opacity var(--hero-fade),
+      transform var(--hero-fade);
+  }
+  .hero-mini-hint-tail[data-ambient] {
+    opacity: 0;
+    transform: translateX(-0.5rem);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hero-mini-hint-tail {
+      transition: none;
+    }
   }
 
   /* Under the name on a phone the hint is one line (48 characters between the gutters from 360 px). */

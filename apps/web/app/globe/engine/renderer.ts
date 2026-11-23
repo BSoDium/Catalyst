@@ -851,6 +851,12 @@ export class GlobeRenderer {
   setAmbient(on: boolean, hurry = false) {
     const was = SPIN.ambient;
     SPIN.ambient = on;
+    // (switched on while the energy pass has the picture held: the switch is not an input, and the hold would stay; it lets go and the budget starts again)
+    if (on && this.idleFrozen) {
+      this.idleFrozen = false;
+      this.applyHold();
+      this.armFreeze();
+    }
     this.noteChange();
     if (hurry && on && !was) {
       // (asked for just now: it starts in a moment, with the picture at rest; the timer `noteChange` armed for the full idle delay is replaced by one for the short one)
@@ -1695,6 +1701,7 @@ export class GlobeRenderer {
   /** An input, or a change that cannot let it go on (hidden, context lost, reduced motion, street): the globe stops turning now, with no coasting, and the idle clock restarts. */
   private noteActivity() {
     this.spin.activity(performance.now());
+    this.reportTurning();
     this.armSpin();
     if (this.parkTimer) {
       // the settle was under way: the rows go back to the roll from where they are
@@ -1738,7 +1745,8 @@ export class GlobeRenderer {
   private freezeWhenIdle = () => {
     this.freezeTimer = 0;
     // (or the sun's music is playing: the visitor is in the cinematic experience, the view does not go to sleep under it; owner, 2026-10-29)
-    if (this.caption?.interluding || sunAudible(nowPlaying.getSnapshot())) {
+    // (or Auto-rotate is on and nothing blocks the turn: the visitor chose a globe that turns by itself, and a hover is no input, so the budget ran out under it, froze it for good and left the control at "Starting" until the next press, found 2026-11-23)
+    if (this.caption?.interluding || sunAudible(nowPlaying.getSnapshot()) || (SPIN.ambient && spinBlock(this.spinContext()) === null)) {
       this.freezeTimer = window.setTimeout(this.freezeWhenIdle, 1000);
       return;
     }
@@ -1802,12 +1810,19 @@ export class GlobeRenderer {
   /** A change that is not an input (a place selected or focused from the URL or the list, the inset, a flight, the zoom limit): the idle clock restarts and a turning globe coasts to rest. */
   private noteChange() {
     this.spin.settle(performance.now());
+    this.reportTurning();
     this.armSpin();
   }
 
+  /** Tell the page's Auto-rotate control whether the globe is at full pace (it reads "Starting" while it is on and not yet). */
+  private reportTurning() {
+    const block = spinBlock(this.spinContext());
+    ambient.setTurning(this.spin.phase === "cruise" || this.spin.phase === "easing-in", block !== "camera-busy" ? block : null);
+  }
+
   private onInput = (e: Event) => {
-    // Ambient mode: a mouse or pen that moves with no button down (a hover, a nudged desk) is not a gesture: the screensaver goes on.
-    if (SPIN.ambient && e.type === "pointermove" && e instanceof PointerEvent && e.pointerType !== "touch" && e.buttons === 0) return;
+    // The page's own Auto-rotate control is not a gesture on the globe: pressing it must not stop the turn it is about to switch off (the word went to "Starting" for the length of the press).
+    if (e.target instanceof Element && e.target.closest('[data-slot="ambient-toggle"]')) return;
     // A gesture ON the globe (the hero's own definition: a press or a wheel over the stage) ends the showcase at once: the boxes come back and the
     // press that began it is no click (nobody could see what was under it).
     // (and a gesture drops an interlude asked for that has not begun yet: the visitor has taken the globe back, `wantInterlude`)
@@ -1822,6 +1837,13 @@ export class GlobeRenderer {
     if (e instanceof PointerEvent) {
       if (e.type === "pointerdown") this.pressed.add(e.pointerId);
       else if (e.type === "pointerup" || e.type === "pointercancel" || (e.pointerType === "mouse" && e.buttons === 0)) this.pressed.delete(e.pointerId);
+    }
+    // Ambient mode: a mouse or pen that moves with no button down (a hover, a nudged desk) is not a gesture: the screensaver goes on. (After the press bookkeeping above: a release that was missed
+    // (outside the window, a context menu) is forgotten by the first move with no button down, as before; returning first left the press in the set, the globe "busy" for good and the control at "Starting".)
+    if (SPIN.ambient && e.type === "pointermove" && e instanceof PointerEvent && e.pointerType !== "touch" && e.buttons === 0) {
+      // (and the timer is looked at again: it is not armed while the press blocks the turn, and nothing else would wake it)
+      this.armSpin();
+      return;
     }
     this.noteActivity();
   };
@@ -1862,6 +1884,7 @@ export class GlobeRenderer {
       this.setHovered(null);
       this.opts.onHover?.(null);
     }
+    this.reportTurning();
     if (yaw !== 0) {
       // The earth turns under a camera that stays where it is: the view's longitude goes down by what the earth's rotation angle goes up by,
       // so the camera's longitude in the inertial frame (view + era) and with it every star on the screen does not change.
@@ -2869,6 +2892,7 @@ export class GlobeRenderer {
     this.tagline = null;
     if (this.disposed) return;
     this.disposed = true;
+    ambient.setTurning(false);
     this.cancelFrame();
     clearTimeout(this.shadowPoll);
     SHADE_UNIFORMS.uShade.value.w = 0;
