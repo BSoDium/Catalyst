@@ -82,12 +82,12 @@ describe("Ambient: whether the globe is at full pace", () => {
     const a = new Ambient(() => true);
     const fired = vi.fn();
     a.subscribeTurning(fired);
-    expect(a.getBlocked()).toBe(false);
-    a.setTurning(false, true);
-    expect(a.getBlocked()).toBe(true);
-    a.setTurning(false, true);
+    expect(a.getBlocked()).toBeNull();
+    a.setTurning(false, "street");
+    expect(a.getBlocked()).toBe("street");
+    a.setTurning(false, "street");
     expect(fired).toHaveBeenCalledTimes(1);
-    a.setTurning(false, false);
-    expect(a.getBlocked()).toBe(false);
+    a.setTurning(false, null);
+    expect(a.getBlocked()).toBeNull();
   });
 });

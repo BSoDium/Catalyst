@@ -1810,7 +1810,7 @@ export class GlobeRenderer {
   /** Tell the page's Auto-rotate control whether the globe is at full pace (it reads "Starting" while it is on and not yet). */
   private reportTurning() {
     const block = spinBlock(this.spinContext());
-    ambient.setTurning(this.spin.phase === "cruise", block !== null && block !== "camera-busy");
+    ambient.setTurning(this.spin.phase === "cruise", block !== "camera-busy" ? block : null);
   }
 
   private onInput = (e: Event) => {

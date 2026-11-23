@@ -5070,14 +5070,48 @@ body:not(:has([data-slot="site-header"])) .np-root {
   opacity: 0;
   transition: opacity var(--duration-base) var(--ease-standard);
 }
-.globe-dock-state > [data-word="off"] {
+.globe-dock-state > [data-word="off"],
+.globe-dock-state > [data-word="disabled"] {
   color: var(--subtle-foreground);
 }
 .globe-dock-state[data-state="on"] > [data-word="on"],
 .globe-dock-state[data-state="starting"] > [data-word="starting"],
-.globe-dock-state[data-state="paused"] > [data-word="paused"],
+.globe-dock-state[data-state="disabled"] > [data-word="disabled"],
 .globe-dock-state[data-state="off"] > [data-word="off"] {
   opacity: 1;
+}
+/* The reason under "Disabled": above the strip, on hover or keyboard focus (the strip is at the bottom edge). */
+.globe-dock-why {
+  position: absolute;
+  bottom: calc(100% + 0.5rem);
+  left: 50%;
+  width: max-content;
+  max-width: min(16rem, 80vw);
+  padding: 0.5rem 0.75rem;
+  border: var(--hairline) solid var(--border);
+  background: var(--background);
+  color: var(--muted-foreground);
+  text-transform: none;
+  letter-spacing: normal;
+  line-height: 1.4;
+  text-align: start;
+  white-space: normal;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, 0.25rem);
+  transition:
+    opacity var(--duration-base) var(--ease-standard),
+    transform var(--duration-base) var(--ease-standard);
+}
+.globe-dock-item:hover > .globe-dock-why,
+.globe-dock-item:focus-visible > .globe-dock-why {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+@media (prefers-reduced-motion: reduce) {
+  .globe-dock-why {
+    transition: none;
+  }
 }
 /* On but not at pace yet: the accent word breathes while it waits and eases in. On but suspended (the street map is up): the accent word says "paused", the globe stands still and the rule stays (it IS on). */
 .globe-dock-state[data-state="starting"] > [data-word="starting"] {
