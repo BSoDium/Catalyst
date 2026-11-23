@@ -1,46 +1,86 @@
+import { nowPlaying, sunAudible } from "./now-playing";
+
 /**
- * Ambient mode: the visitor's one choice to let the globe be a screensaver (docs/web-architecture.md, "Idle rotation"). On, the idle rotation turns the earth at ANY zoom under the view the visitor framed
+ * Ambient mode: letting the globe be a screensaver (docs/web-architecture.md, "Idle rotation"). On, the idle rotation turns the earth at ANY zoom under the view the visitor framed
  * (the sun's glare, a place's surroundings), and the home screen's full hero does not come back over it; off, the page is as it was (the rotation only at the world view, the hero back after the idle delay).
- * Kept in localStorage; `?ambient` starts a visit in it without keeping it. A small external store, like `nowPlaying`: the page's toggle, the hero and the renderer all read it.
+ *
+ * Three-way (owner, 2026-11-23): AUTO is the default, and means "on while the sun's music is audible, off otherwise" (the moment the screensaver is for: the sun in view, the sound
+ * on, nobody wants the globe to stop). The visitor's own press of the toggle is an explicit choice that beats it, for the session (sessionStorage), after which the next visit is automatic again.
+ * `?ambient` starts a visit in an explicit "on" without keeping it. The snapshot is the EFFECTIVE state, a boolean: the toggle, the hero, the hint and the renderer all read it, as one small external store.
  */
-export const AMBIENT_KEY = "ambient";
+export const AMBIENT_KEY = "ambient-choice";
+
+/** What the automatic mode follows: whether the sun's music is audible now. */
+export interface AudibleSource {
+  getSnapshot(): boolean;
+  subscribe(listener: () => void): () => void;
+}
 
 export class Ambient {
-  private on = false;
+  private choice: boolean | null;
+  private audible = false;
+  private effective = false;
   private readonly listeners = new Set<() => void>();
 
-  constructor(read: () => boolean = readStored) {
-    this.on = read();
+  constructor(read: () => boolean | null = readChoice, source?: AudibleSource) {
+    this.choice = read();
+    if (source) {
+      this.audible = source.getSnapshot();
+      source.subscribe(() => {
+        this.audible = source.getSnapshot();
+        this.refresh();
+      });
+    }
+    this.effective = this.compute();
   }
 
-  getSnapshot = (): boolean => this.on;
+  private compute = (): boolean => this.choice ?? this.audible;
+
+  private refresh(): void {
+    const next = this.compute();
+    if (next === this.effective) return;
+    this.effective = next;
+    this.listeners.forEach((l) => l());
+  }
+
+  /** The effective state: the visitor's choice, else whether the sun's music is audible. */
+  getSnapshot = (): boolean => this.effective;
+
+  /** Whether the state is the automatic one (the visitor has not pressed the toggle). */
+  isAuto = (): boolean => this.choice === null;
 
   subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener);
     return () => void this.listeners.delete(listener);
   };
 
-  /** The visitor turns it on or off; kept. */
+  /** The visitor turns it on or off: an explicit choice, kept for the session. */
   set(on: boolean): void {
-    if (on === this.on) return;
-    this.on = on;
+    this.choice = on;
     try {
-      if (on) localStorage.setItem(AMBIENT_KEY, "1");
-      else localStorage.removeItem(AMBIENT_KEY);
+      sessionStorage.setItem(AMBIENT_KEY, on ? "1" : "0");
     } catch {
       /* not kept */
     }
-    this.listeners.forEach((l) => l());
+    this.refresh();
   }
 }
 
-function readStored(): boolean {
+function readChoice(): boolean | null {
   try {
-    return new URLSearchParams(location.search).has("ambient") || localStorage.getItem(AMBIENT_KEY) === "1";
+    if (new URLSearchParams(location.search).has("ambient")) return true;
+    const kept = sessionStorage.getItem(AMBIENT_KEY);
+    return kept === "1" ? true : kept === "0" ? false : null;
   } catch {
-    return false;
+    return null;
   }
 }
+
+/** The sun's music, as a source for the automatic mode (the browser only: a server render has no sound). */
+const sunMusic: AudibleSource = {
+  getSnapshot: () => sunAudible(nowPlaying.getSnapshot()),
+  subscribe: (l) => nowPlaying.subscribe(l),
+};
 
 /** The page's one switch. */
-export const ambient = new Ambient();
+export const ambient = new Ambient(readChoice, typeof window === "undefined" ? undefined : sunMusic);

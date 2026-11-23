@@ -6883,6 +6883,27 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     transition: opacity var(--hero-fade);
   }
 
+  /*
+   * The hint's second sentence fades away (and slips back a little) while Auto-rotate is on: the view does not reset then, so it would be a promise. Opacity and transform only, like the rest of the
+   * hero (the sentence is the line's last, so nothing follows it that would have to move); it comes back the same way.
+   */
+  .hero-mini-hint-tail {
+    display: inline-block;
+    white-space: pre;
+    transition:
+      opacity var(--hero-fade),
+      transform var(--hero-fade);
+  }
+  .hero-mini-hint-tail[data-ambient] {
+    opacity: 0;
+    transform: translateX(-0.5rem);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hero-mini-hint-tail {
+      transition: none;
+    }
+  }
+
   /* Under the name on a phone the hint is one line (48 characters between the gutters from 360 px). */
   @media (max-width: 47.99rem) {
     .hero-mini-hint {

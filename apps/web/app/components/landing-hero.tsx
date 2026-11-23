@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useSyncExternalStore } from "react";
+import { ambient } from "~/globe";
 import { Link } from "react-router";
 import { openSearch } from "~/components/search-palette";
 import { Icon, KeyHint } from "~/components/ui";
@@ -162,6 +163,7 @@ export function LandingHero({ machine, away, empty, orbit = null, onCover, hasCa
   const career = forcedCareer ?? storedCareer;
   const shortcuts = career ? [...SHORTCUTS, CAREER_SHORTCUT] : SHORTCUTS;
   const snapshot = useSyncExternalStore(machine.subscribe, machine.getSnapshot, () => SERVER_SNAPSHOT);
+  const screensaver = useSyncExternalStore(ambient.subscribe, ambient.getSnapshot, () => false);
   // The look: the interlude (a window of 21 s at the rest state) gives the hero its collapsed look, the small name, and takes it back at the end.
   const state = away ? "away" : snapshot.interlude ? "collapsed" : snapshot.state;
   // The header reads this: while the rows are showing it carries no section links of its own (the interlude does not change that: the picture is the point then).
@@ -362,7 +364,13 @@ export function LandingHero({ machine, away, empty, orbit = null, onCover, hasCa
             <FamilyName />
           </span>
         </span>
-        <span className="hero-mini-hint">Drag to explore. Stop moving to reset the view.</span>
+        <span className="hero-mini-hint">
+          Drag to explore.
+          {/* The way back is only promised while the view really resets: with Auto-rotate on the globe keeps turning and the hero stays, so the second sentence folds away (app.css, `data-ambient`). */}
+          <span className="hero-mini-hint-tail" data-ambient={screensaver ? "" : undefined}>
+            {" Stop moving to reset the view."}
+          </span>
+        </span>
       </p>
     </div>
   );
