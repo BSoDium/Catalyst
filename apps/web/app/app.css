@@ -8468,6 +8468,15 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     border-top: var(--hairline) solid var(--muted-foreground);
   }
 
+  /* A position with a single highlight reads as a sentence, not a list: no dash, no indent (owner, 2026-11-23). */
+  .career-highlights li:only-child {
+    padding-left: 0;
+  }
+
+  .career-highlights li:only-child::before {
+    content: none;
+  }
+
 
   /* The projects of a position (#531): a row of their own under the head and the detail, across the whole width of the item (owner, 2026-11-03: not a column on the left, which
      made the left side tall and the right one short), in two columns from 64 rem. No rules between them (owner: not too many dividers): the space does it. A project is a title

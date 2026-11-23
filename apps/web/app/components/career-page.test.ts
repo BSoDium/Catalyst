@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { StaticRouter } from "react-router";
@@ -213,5 +214,13 @@ describe("CareerPage", () => {
       expect(m[1]).toMatch(/^https:/);
       expect(m[0]).toContain("noopener");
     }
+  });
+});
+
+describe("a position's highlights", () => {
+  it("lose their dash and indent when there is only one (it reads as a sentence, not a list)", () => {
+    const css = readFileSync(new URL("../app.css", import.meta.url), "utf8");
+    expect(css).toMatch(/\.career-highlights li:only-child\s*\{[^}]*padding-left:\s*0/);
+    expect(css).toMatch(/\.career-highlights li:only-child::before\s*\{[^}]*content:\s*none/);
   });
 });
