@@ -88,6 +88,56 @@ export interface HoverInfo {
   y: number;
   /** When several days are under the pointer, one behind another: which of them this is (0 the nearest) and how many there are. */
   behind?: { index: number; count: number };
+  /** What put the day there: the pointer, a finger or a key (the card says "Tap" after a finger). */
+  source: "pointer" | "touch" | "key";
+}
+
+/** The hours of a day as the card says them: "10 h", "2.5 h", "25 min", or null when there were none (no ".0": whole hours are whole). */
+export function hoursText(h: number): string | null {
+  if (!(h >= 0.05)) return null;
+  if (h < 1) return `${Math.max(1, Math.round(h * 60))} min`;
+  const t = h.toFixed(1);
+  return `${t.endsWith(".0") ? t.slice(0, -2) : t} h`;
+}
+
+/** A notable day: what to say and whose colour to say it in. */
+export interface DayNote {
+  text: string;
+  /** The source the achievement belongs to: GitHub (green) or WakaTime (blue). */
+  tone: "green" | "blue";
+  /** The best day of the year (a record), against one of the top 5 %. */
+  record: boolean;
+}
+
+/** Where a day stands in the file's year, as the day card's note says it: the best day of a source, or one in the top 5 % of its active days; null for any other day. (No share of the year's best: the best can change, so a share says nothing.) Pure. */
+export function yearContext(a: Activity): (contributions: number, hours: number) => DayNote | null {
+  const gh = a.github.map((d) => d.count);
+  const wk = a.wakatime.map((d) => d.seconds / 3600);
+  const activeC = gh.filter((x) => x > 0).length;
+  const activeH = wk.filter((x) => x >= 0.05).length;
+  // (how many days did at least as much: ties count against a day, so a year of identical days has no top 5 %)
+  const rank = (xs: number[], v: number) => xs.filter((x) => x >= v).length;
+  return (contributions, hours) => {
+    const rc = contributions > 0 ? rank(gh, contributions) : null;
+    const rh = hours >= 0.05 ? rank(wk, hours) : null;
+    if (rc === 1) return { text: "Most contributions in a day", tone: "green", record: true };
+    if (rh === 1) return { text: "Longest day of coding", tone: "blue", record: true };
+    if (rc !== null && rc <= Math.max(1, Math.round(activeC * 0.05))) return { text: "Top 5 % for contributions", tone: "green", record: false };
+    if (rh !== null && rh <= Math.max(1, Math.round(activeH * 0.05))) return { text: "Top 5 % for coding", tone: "blue", record: false };
+    return null;
+  };
+}
+
+/** How long ago a day was, as the day card's footer says it when it has nothing more notable to say: "Today", "Yesterday", "5 days ago", "3 weeks ago", "4 months ago", "2 years ago" (whole days, in UTC: the date has no time of day). Pure. */
+export function agoText(date: string, now: number): string {
+  const days = Math.floor((Date.UTC(new Date(now).getUTCFullYear(), new Date(now).getUTCMonth(), new Date(now).getUTCDate()) - Date.parse(`${date}T00:00:00Z`)) / 86_400_000);
+  if (days <= 0) return "Today";
+  if (days === 1) return "Yesterday";
+  if (days < 14) return `${days} days ago`;
+  if (days < 61) return `${Math.floor(days / 7)} weeks ago`;
+  if (days < 365) return `${Math.floor(days / 30.44)} months ago`;
+  const y = Math.floor(days / 365.25);
+  return y <= 1 ? "A year ago" : `${y} years ago`;
 }
 
 /** "Thu 19 Nov 2026" for an ISO date, read in UTC (the date has no time of day). */

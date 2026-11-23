@@ -9126,12 +9126,222 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   }
 }
 
-/* The numbers of the activity picture's day card fade and blur into each other as the day changes (components/activity-panel.tsx `Roll`): the old one out, the new one in, in the same place. */
-@keyframes act-in { from { filter: blur(5px); opacity: 0; } }
-@keyframes act-out { to { filter: blur(5px); opacity: 0; } }
+/* The numbers of the activity picture's day card fade and slide into each other as the day changes (components/activity-panel.tsx `Roll`): the old one out, the new one in, in the same place. */
+@keyframes act-in { from { transform: translateY(3px); opacity: 0; } }
+@keyframes act-out { to { transform: translateY(-3px); opacity: 0; } }
 .act-in-up, .act-in-down { animation: act-in 0.24s ease-out both; }
 .act-out-up, .act-out-down { animation: act-out 0.24s ease-in both; }
 @media (prefers-reduced-motion: reduce) {
   .act-in-up, .act-out-up, .act-in-down, .act-out-down { animation: none; }
   .act-out-up, .act-out-down { display: none; }
+}
+
+/*
+ * The day card of the activity picture (components/activity-panel.tsx `DayCard`; docs/activity-picture.md, "The day card"): the page's own surface and one soft `--border` hairline (owner, 2026-11-23: the strong one read as an odd frame; with none, the light card's edge dissolved into the pale picture), square, no shadow, no blur, compact. Each source's row carries a
+ * soft WASH of its colour (green for the contributions, blue for the coding), a gradient of solid colours from the figure's edge to the surface, no opacity. Its height is the same for every day (one footer line, always there): the placement reads
+ * it once per day, so nothing jumps.
+ */
+.act-outline { stroke: var(--foreground); }
+/* The halo (the library's `--nag-halo-*`: 8 px wide, blurred 3 px, half strength): a soft dip in brightness round the line, dark in the light theme only. */
+.act-halo { stroke-width: 8; stroke-opacity: 0.5; filter: blur(3px); }
+.act-outline-halo { stroke: transparent; }
+@media (prefers-color-scheme: light) {
+  :where(:root:not([data-scheme="dark"])) .act-outline { stroke: #fff; }
+  :where(:root:not([data-scheme="dark"])) .act-outline-halo { stroke: #111114; }
+}
+:where(:root[data-scheme="light"]) .act-outline { stroke: #fff; }
+:where(:root[data-scheme="light"]) .act-outline-halo { stroke: #111114; }
+/* The connector: a line from the outline's own colour (the text colour: the selected column's line) to a softer one where it reaches the card, whose edge takes `--act-link-edge` at the joint. In the light theme, as the outline: a white core
+   (into the near-black of the card's edge at the card) on a thin near-black casing, which the card's edge takes at the joint. */
+:root {
+  --act-link-from: var(--foreground);
+  --act-link-to: color-mix(in srgb, var(--foreground) 55%, var(--background));
+  --act-link-edge: var(--act-link-to);
+  --act-link-halo: transparent;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-scheme="dark"]) {
+    --act-link-from: #fff;
+    --act-link-to: #1c1c1c;
+    --act-link-edge: var(--act-link-to);
+    --act-link-halo: #111114;
+  }
+}
+:root[data-scheme="light"] {
+  --act-link-from: #fff;
+  --act-link-to: #1c1c1c;
+  --act-link-edge: var(--act-link-to);
+  --act-link-halo: #111114;
+}
+.act-card {
+  --pad: 0.625rem;
+  --rule: var(--border);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 15rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--foreground);
+}
+/* The title block: the date (display face) over the weekday and the year (metadata); when several days lie under the pointer, one pip per day (this one filled) on the date's line and "Click for next day" on the metadata's, at the right. */
+.act-card-head {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: "date pips" "day next";
+  align-items: baseline;
+  column-gap: 0.75rem;
+  padding: 0.5rem var(--pad) 0.4375rem;
+}
+.act-card-date {
+  grid-area: date;
+  display: inline-grid;
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+  font-weight: 700;
+  line-height: 1.375rem;
+  letter-spacing: -0.015em;
+}
+.act-card-day {
+  grid-area: day;
+  color: var(--muted-foreground);
+}
+/* The pips: 6 px squares, 3 px apart, the day shown in the ink, the others in the plain hairline's grey (quiet: the one that is shown must be told at a glance, owner 2026-11-23); lifted so that they are centred on the date's capitals (13 px of ink over its baseline: (13 - 6) / 2 = 3.5, so 4 px). */
+.act-card-pips {
+  grid-area: pips;
+  justify-self: end;
+  display: inline-flex;
+  gap: 0.1875rem;
+  position: relative;
+  top: -0.25rem;
+  color: var(--muted-foreground);
+}
+.act-card-pips > span:not(.type-meta) {
+  width: 0.375rem;
+  height: 0.375rem;
+  background: var(--border);
+}
+.act-card-pips > span[data-on] {
+  background: var(--foreground);
+}
+.act-card-next {
+  grid-area: next;
+  justify-self: end;
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+}
+/* The key cap is plain text, never a box (docs/design-system.md, "KeyHint"): the verb in the ink against the muted rest. */
+.act-card-key {
+  font: inherit;
+  font-weight: 600;
+  color: var(--foreground);
+}
+.act-card-rows {
+  margin: 0;
+  display: grid;
+}
+/* A source: its swatch and label (metadata), its figure (display face, the source's colour) on the label's baseline, over a wash of the source's colour that fades from the figure's edge into the surface. */
+.act-card-row {
+  --tone: var(--act-green);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  column-gap: 0.75rem;
+  padding: 0.3125rem var(--pad) 0.25rem;
+  border-top: 1px solid var(--rule);
+  background: linear-gradient(to left, color-mix(in srgb, var(--tone) 15%, var(--surface)), color-mix(in srgb, var(--tone) 6%, var(--surface)) 45%, var(--surface) 85%);
+}
+.act-card-row[data-tone="blue"] {
+  --tone: var(--act-blue);
+}
+.act-card-row[data-none] {
+  --tone: var(--muted-foreground);
+  background: none;
+}
+.act-card-label {
+  margin: 0;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+}
+/* The swatch is a 9 px square, the height of the label's capitals (JetBrains Mono at 12 px: 9 px of ink, measured), sitting on the label's baseline (an empty inline block's baseline is its foot): its top and foot are the capitals' top and foot,
+   whatever the row's line height. Whole pixels, so its edges are crisp at 1x. */
+.act-card-swatch {
+  display: inline-block;
+  width: 0.5625rem;
+  height: 0.5625rem;
+  margin-right: 0.5rem;
+  vertical-align: baseline;
+  background: var(--tone);
+}
+.act-card-row[data-none] .act-card-swatch {
+  background: var(--border-strong);
+}
+.act-card-value {
+  margin: 0;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.125rem;
+  height: 1.5rem;
+  font-family: var(--font-display);
+  font-size: 1.1875rem;
+  font-weight: 650;
+  line-height: 1.5rem;
+  font-variant-numeric: tabular-nums lining-nums;
+  color: var(--tone);
+}
+/* No figure: a light dash in the quiet tone, not a bold bar. */
+.act-card-row[data-none] .act-card-value {
+  font-weight: 300;
+}
+.act-card-unit {
+  display: inline-grid;
+  line-height: 1;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+/* One line, always there (no layout shift): a sentence, so the reading face in sentence case; the note of a notable day in the ink, else a quiet line (how long ago the day was, or "No activity"). */
+.act-card-foot {
+  display: flex;
+  align-items: center;
+  gap: 0.4375rem;
+  padding: 0.3125rem var(--pad) 0.375rem;
+  border-top: 1px solid var(--rule);
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+}
+.act-card-foot[data-note] {
+  color: var(--foreground);
+  font-weight: 500;
+}
+/* An achievement: no fill, a soft glow of its source's colour (GitHub green, WakaTime blue) centred on its mark, fading out into the surface; the mark in the colour itself, the words in the ink. */
+.act-card-foot[data-tone] {
+  --tone: var(--act-green);
+  background: radial-gradient(ellipse 9rem 150% at 1.25rem 50%, color-mix(in srgb, var(--tone) 24%, var(--surface)), color-mix(in srgb, var(--tone) 7%, var(--surface)) 55%, var(--surface) 100%);
+}
+.act-card-foot[data-tone="blue"] {
+  --tone: var(--act-blue);
+}
+.act-card-foot[data-tone] .act-card-note-icon {
+  color: var(--tone);
+}
+.act-card-note-icon {
+  flex: none;
+}
+/* The connector's energy: the card's own edge, only its 1 px border (a mask cuts out the inside), in the connector's colour at the point where the connector arrives and fading into the quiet border along the edge. */
+.act-card-edge {
+  position: absolute;
+  inset: -1px;
+  padding: 1.5px;
+  pointer-events: none;
+  background: radial-gradient(circle 120px at var(--ax, 50%) var(--ay, 0), var(--act-link-edge) 0, color-mix(in srgb, var(--act-link-edge) 35%, transparent) 45%, transparent 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
 }

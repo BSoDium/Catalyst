@@ -1,7 +1,8 @@
-import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "~/components/ui";
 import { placeholderTiles } from "neon-activity-graph/layout";
-import { activityStats, dayText, GITHUB_URL, isActivity, layoutActivity, readableDay, WAKATIME_URL, type Activity, type ActivityStat, type HoverInfo, type Matrix } from "~/lib/activity";
+import { bounds, CARD_W, grow, overlaps, parseOutline, plan, route, type Rect } from "~/lib/day-card-plan";
+import { activityStats, agoText, dayText, GITHUB_URL, hoursText, isActivity, layoutActivity, readableDay, WAKATIME_URL, yearContext, type Activity, type ActivityStat, type DayNote, type HoverInfo, type Matrix } from "~/lib/activity";
 import { xmasNow } from "~/lib/xmas";
 
 /** A source's colour as text, softened toward the page's own text colour (the figures and words are tinted, not painted). */
@@ -91,100 +92,230 @@ function Roll({ value, order }: { value: string; order: number }) {
 }
 
 /**
- * The card of a day, hung on its column. It stays mounted and glides from one day to the next (and fades when the pointer leaves, snapping to the day where it comes back), over a blurred, translucent ground with a soft shadow and
- * no outline; its numbers are set like the page's figures (large value, small unit) and roll into each other as the day changes.
+ * A number that rolls digit by digit, aligned on its last digit (owner, 2026-11-24): only the digits that change roll, and a digit that goes (the leftmost ones: 12 to 9) rolls out in place, so the digits that stay never move.
+ * The figures sit at the right of their row, so when the leftmost digit's cell goes at the end of the roll the others stay where they are.
  */
-function DayCard({ info, visible, instant, width }: { info: HoverInfo; visible: boolean; instant: boolean; width: number }) {
-  const half = 128;
-  const x = width ? Math.min(Math.max(info.x, half + 8), width - half - 8) : info.x;
-  const y = info.y;
-  const below = y < 120;
-  const hours = info.hours >= 0.05 ? info.hours.toFixed(1) : "0";
-  // The card follows its target with a damped glide (it eases toward it, a fraction of the way each frame), not a fixed transition from jump to jump: a pointer sweeping over many days
-  // moves it in one smooth line. It appears in place when it comes from nothing, and does not move at all with reduced motion.
-  const outer = useRef<HTMLDivElement>(null);
-  const cur = useRef({ x, y, init: false });
+function RollNum({ value, order }: { value: string; order: number }) {
+  const [s, setS] = useState({ now: value, nowOrder: order, prev: null as string | null, dir: "up" as "up" | "down" });
+  useEffect(() => {
+    if (value === s.now) return;
+    setS({ now: value, nowOrder: order, prev: s.now, dir: order >= s.nowOrder ? "up" : "down" });
+    const t = window.setTimeout(() => setS((x) => ({ ...x, prev: null })), 300);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+  const { now, prev, dir } = s;
+  const n = Math.max(now.length, prev?.length ?? 0);
+  return (
+    <span className="inline-flex">
+      {Array.from({ length: n }, (_, i) => {
+        const fromRight = n - 1 - i;
+        const a = now[now.length - 1 - fromRight];
+        const b = prev === null ? undefined : prev[prev.length - 1 - fromRight];
+        if (prev === null || a === b) return <span key={fromRight}>{a}</span>;
+        return (
+          <span key={fromRight} className="inline-grid">
+            {a !== undefined && <span key={a} className={`act-in-${dir}`} style={{ gridArea: "1 / 1" }}>{a}</span>}
+            {b !== undefined && <span key={`p${b}`} aria-hidden="true" className={`act-out-${dir}`} style={{ gridArea: "1 / 1" }}>{b}</span>}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
+/**
+ * The day card's face (owner, 2026-11-23; docs/activity-picture.md, "The day card"): the page's surface, one hairline, square, no shadow, no blur, compact. The date is its title, the weekday and the year quiet metadata under it; when several days lie under
+ * the pointer, one pip per day in the top right corner (this one filled) over "Click for next day" ("Tap" after a touch); the contributions above the coding, as in the column, each a swatch the height of the label's capitals sat on its baseline, the label, and the figure in the source's colour over a
+ * soft wash of it; one footer line, ALWAYS there (the card's height never changes, so the placement and the connector never jump): the note of a notable day, else "No activity", else how long ago the day was.
+ */
+export function DayCard({ info, note, touch, now, cardRef }: { info: Pick<HoverInfo, "date" | "contributions" | "hours" | "behind">; note: DayNote | null; touch: boolean; now?: number; cardRef?: React.Ref<HTMLDivElement> }) {
+  const hours = hoursText(info.hours);
+  const empty = info.contributions === 0 && !hours;
+  const [weekday = "", day = "", month = "", year = ""] = readableDay(info.date).split(" ");
+  const order = Date.parse(`${info.date}T00:00:00Z`);
+  const stacked = !!info.behind && info.behind.count > 1;
+  const [figure = "", unit = ""] = hours?.split(" ") ?? [];
+  return (
+    <div ref={cardRef} className="act-card" data-empty={empty || undefined}>
+      <header className="act-card-head">
+        <span className="act-card-date"><Roll value={`${day} ${month}`} order={order} /></span>
+        <span className="act-card-day type-meta"><Roll value={`${weekday} · ${year}`} order={order} /></span>
+        {stacked && info.behind && (
+          <>
+            {/* the days lying one behind another under the pointer, one pip each, this one filled (a count past ten: "3/14") */}
+            <span className="act-card-pips" aria-hidden="true" title={`Day ${info.behind.index + 1} of ${info.behind.count} here`}>
+              {info.behind.count <= 10 ? Array.from({ length: info.behind.count }, (_, i) => <span key={i} data-on={i === info.behind!.index || undefined} />) : <span className="type-meta">{info.behind.index + 1}/{info.behind.count}</span>}
+            </span>
+            <span className="act-card-next">
+              <kbd className="act-card-key">{touch ? "Tap" : "Click"}</kbd> for next day
+            </span>
+          </>
+        )}
+      </header>
+      <dl className="act-card-rows">
+        <div className="act-card-row" data-tone="green" data-none={!info.contributions || undefined}>
+          <dt className="act-card-label type-meta"><span aria-hidden="true" className="act-card-swatch" />{info.contributions === 1 ? "contribution" : "contributions"}</dt>
+          <dd className="act-card-value">
+            <RollNum value={info.contributions ? String(info.contributions) : "—"} order={info.contributions} />
+          </dd>
+        </div>
+        <div className="act-card-row" data-tone="blue" data-none={!hours || undefined}>
+          <dt className="act-card-label type-meta"><span aria-hidden="true" className="act-card-swatch" />coded</dt>
+          <dd className="act-card-value">
+            <RollNum value={figure || "—"} order={info.hours} />
+            {unit && <span className="act-card-unit"><Roll value={unit} order={info.hours} /></span>}
+          </dd>
+        </div>
+      </dl>
+      <footer className="act-card-foot" data-note={note ? "" : undefined} data-tone={note?.tone}>
+        {note && <NoteIcon record={note.record} />}
+        <Roll value={note?.text ?? (empty ? "No activity" : agoText(info.date, now ?? Date.now()))} order={order} />
+      </footer>
+      {/* where the connector joins the card, the edge takes the connector's colour and gives it back along the edge (position set by HoverLayer) */}
+      <span aria-hidden="true" className="act-card-edge" />
+    </div>
+  );
+}
+
+/** The mark of an achievement: a crown for a record (the best day), an arrow rising past a bar for a top 5 %. */
+function NoteIcon({ record }: { record: boolean }) {
+  return (
+    <svg aria-hidden="true" className="act-card-note-icon" viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round">
+      {record ? <path d="M2 11.5h10M2.5 10 1.75 4.5l3.25 2.5L7 2.75 9 7l3.25-2.5L11.5 10z" /> : <path d="M2 12V8.5M6 12V6M10 12V3.5M2.5 5.5 7 1.75l1 .9" />}
+    </svg>
+  );
+}
+
+/** The outline, the connector and the card fade at one rate (`onDay` and `shown` change together except while the pointer is busy): there is never a connector without its outline. */
+const FADE = "opacity 0.12s var(--ease-standard)";
+/** Too many days in too short a time (a pointer sweeping across the picture): the connector and the card fade away until it slows down, instead of flickering over every column. */
+const BUSY_CHANGES = 8;
+const BUSY_WINDOW_MS = 400;
+/** ... and they must also span this much of the picture (the extent of the days' places, CSS px): a pointer working a small area, even back and forth over many columns, is not sweeping. */
+const BUSY_SPAN_PX = 420;
+const CALM_MS = 220;
+/** How long the pointer can be off the picture before the next day is a new visit (the card then appears in place). */
+const FRESH_MS = 700;
+
+/**
+ * What the pointer is on: the outline of the day's column, the card, and the connector between them (owner, 2026-11-23). The card (the "datasheet", direction B of the audit: a solid surface, one hairline, no blur, no shadow; the date as its
+ * title, the contributions above the coding, each with a swatch and its value over a wash of its colour; one footer line always there, the note of a notable day; the key cap for stacked days: `DayCard`) stays CLOSE to its column but not on it
+ * (`plan`, lib/day-card-plan.ts: above it, or at 45 degrees to a side, clear of the page's figures) and glides to its place SLOWLY, so that a sweeping pointer does not drag it along; the connector (a gradient line, from the outline's colour to the card's edge colour), from the outline's edge or
+ * protruding corner to the card where it is now, is what moves. A card that the glide leaves over the selected column glides out of its way faster (never a jump). Phones have no card: the legend says the day (`ActivityPanel`).
+ */
+function HoverLayer({ info, onDay, shown, instant, ctx, touch, view, figures, withCard }: { info: HoverInfo; onDay: boolean; shown: boolean; instant: boolean; ctx: ReturnType<typeof yearContext> | null; touch: boolean; view: { width: number; height: number }; figures: Rect | null; withCard: boolean }) {
+  const card = useRef<HTMLDivElement>(null);
+  const link = useRef<SVGPathElement>(null);
+  const linkHalo = useRef<SVGPathElement>(null);
+  const haloGrad = useRef<SVGLinearGradientElement>(null);
+  const grad = useRef<SVGLinearGradientElement>(null);
+  const uid = useId().replaceAll(":", "");
+  const gid = `act-link-${uid}`;
+  const mid = `act-mask-${uid}`;
+  const cur = useRef({ x: 0, y: 0, init: false, key: "" });
+  const note = ctx?.(info.contributions, info.hours) ?? null;
+  // (whether the card was showing at the last commit: a card that comes back from hidden (a sweep that has settled, the pointer back from empty ground) is put in its place at once, with no glide to give it an inertia as it appears)
+  const wasShown = useRef(false);
+  useEffect(() => {
+    wasShown.current = shown;
+  });
   useLayoutEffect(() => {
-    const el = outer.current;
-    if (!el) return;
+    const el = card.current;
+    const path = link.current;
+    if (!withCard || !el || !path) return;
+    const h = el.offsetHeight || 124;
+    const p = plan(info.outline, view, figures, h, cur.current.key);
+    if (!p) return;
     const c = cur.current;
-    const put = () => {
+    c.key = p.key;
+    const column = grow(bounds(parseOutline(info.outline)), 10);
+    const draw = () => {
       el.style.transform = `translate3d(${c.x.toFixed(2)}px, ${c.y.toFixed(2)}px, 0)`;
+      const d = route(p.mode, p.from, { x: c.x, y: c.y, w: CARD_W, h });
+      path.setAttribute("d", d);
+      linkHalo.current?.setAttribute("d", d);
+      // (the connector's gradient runs from where it leaves the outline to where it reaches the card)
+      const nums = d.replace(/[ML]/g, " ").trim().split(/\s+/).map(Number);
+      if (nums.length >= 4) {
+        for (const g of [grad.current, haloGrad.current]) {
+          g?.setAttribute("x1", String(nums[0]));
+          g?.setAttribute("y1", String(nums[1]));
+          g?.setAttribute("x2", String(nums[nums.length - 2]));
+          g?.setAttribute("y2", String(nums[nums.length - 1]));
+        }
+      }
+      // (the connector's end, on the card's edge, in the card's own coordinates)
+      const end = d.split("L").pop()?.split(" ").map(Number);
+      if (end && end.length === 2) {
+        el.style.setProperty("--ax", `${(end[0]! - c.x).toFixed(1)}px`);
+        el.style.setProperty("--ay", `${(end[1]! - c.y).toFixed(1)}px`);
+      }
     };
-    if (instant || !c.init || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      c.x = x;
-      c.y = y;
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (instant || !c.init || reduced || !wasShown.current) {
+      c.x = p.x;
+      c.y = p.y;
       c.init = true;
-      put();
+      draw();
       return;
     }
     let raf = 0;
     let last = performance.now();
     const tick = (now: number) => {
-      const k = 1 - Math.exp(-Math.min(64, now - last) / 120);
+      // (slow, but twice as quick while the card still lies over the selected column: it gets out of the way without a jump)
+      const f = 1 - Math.exp(-Math.min(64, now - last) / (overlaps({ x: c.x, y: c.y, w: CARD_W, h }, column) ? 160 : 320));
       last = now;
-      c.x += (x - c.x) * k;
-      c.y += (y - c.y) * k;
-      if (Math.abs(x - c.x) + Math.abs(y - c.y) > 0.25) raf = requestAnimationFrame(tick);
+      c.x += (p.x - c.x) * f;
+      c.y += (p.y - c.y) * f;
+      if (Math.abs(p.x - c.x) + Math.abs(p.y - c.y) > 0.25) raf = requestAnimationFrame(tick);
       else {
-        c.x = x;
-        c.y = y;
+        c.x = p.x;
+        c.y = p.y;
       }
-      put();
+      draw();
     };
+    draw();
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [x, y, instant]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [info.outline, instant, withCard, view.width, view.height, figures?.x, figures?.y, figures?.w, figures?.h]);
   return (
-    <div ref={outer} role="presentation" className="pointer-events-none absolute top-0 left-0 z-10 h-0 w-0" style={{ opacity: visible ? 1 : 0, transition: "opacity 0.16s" }}>
-      <div
-        className="absolute top-0 left-0 w-64 px-4 py-3.5 backdrop-blur-md"
-        style={{
-          transform: `translate(-50%, ${below ? "16px" : "calc(-100% - 16px)"})`,
-          transition: instant ? "none" : "transform 0.3s cubic-bezier(0.2, 0.7, 0.2, 1)",
-          background: "color-mix(in srgb, var(--background) 68%, transparent)",
-          // a glassy edge: a faint line all round, a little brighter on top where the light catches it (the shadow is always black: lighter than the page, in the dark theme, it would be a glow)
-          boxShadow:
-            "inset 0 0 0 1px color-mix(in srgb, var(--foreground) 11%, transparent), inset 0 1px 0 color-mix(in srgb, var(--foreground) 14%, transparent), 0 14px 44px -12px rgb(0 0 0 / 0.38), 0 2px 10px -4px rgb(0 0 0 / 0.22)",
-        }}
-      >
-        {/* The day and the month are what the eye looks for: they are in the page's text colour, the weekday and the year (the frame around them) in the muted one. */}
-        <p className="type-meta m-0 flex gap-[0.6em] uppercase">
-          {(() => {
-            const [weekday = "", day = "", month = "", year = ""] = readableDay(info.date).split(" ");
-            const order = Date.parse(`${info.date}T00:00:00Z`);
-            return (
-              <>
-                <span className="text-muted-foreground"><Roll value={weekday} order={order} /></span>
-                <span className="text-foreground"><Roll value={`${day} ${month}`} order={order} /></span>
-                <span className="text-muted-foreground"><Roll value={year} order={order} /></span>
-              </>
-            );
-          })()}
-        </p>
-        <div className="mt-2.5 grid grid-cols-2 gap-x-6">
-          <div className="flex flex-col gap-1" style={{ color: soft("green", 70) }}>
-            <span className="flex items-baseline gap-1 font-[family-name:var(--font-display)] text-[2rem] leading-none font-semibold tracking-tight tabular-nums">
-              <Roll value={String(info.contributions)} order={info.contributions} />
-            </span>
-            <span className="type-meta text-muted-foreground uppercase">{info.contributions === 1 ? "contribution" : "contributions"}</span>
-          </div>
-          <div className="flex flex-col gap-1" style={{ color: soft("blue", 70) }}>
-            <span className="flex items-baseline gap-1 font-[family-name:var(--font-display)] text-[2rem] leading-none font-semibold tracking-tight tabular-nums">
-              <Roll value={hours} order={Number(hours)} />
-              <span className="type-meta font-normal text-muted-foreground normal-case">h</span>
-            </span>
-            <span className="type-meta text-muted-foreground uppercase">coded</span>
-          </div>
+    <>
+      <svg aria-hidden="true" className="pointer-events-none absolute inset-0 size-full overflow-visible">
+        <defs>
+          {/* (the halos are seen outside the outline only: the inside of the column is cut out of them) */}
+          <mask id={mid} maskUnits="userSpaceOnUse" x="-10000" y="-10000" width="20000" height="20000">
+            <rect x="-10000" y="-10000" width="20000" height="20000" fill="#fff" />
+            <path d={`M${info.outline.split(" ").join("L")}Z`.replaceAll(",", " ")} fill="#000" />
+          </mask>
+          {withCard && (
+            <>
+              {/* the connector's colour, from the outline's to the card's, and its halo, which fades out toward the card as the colour goes into the card's edge */}
+              <linearGradient ref={grad} id={gid} gradientUnits="userSpaceOnUse">
+                <stop offset="0" style={{ stopColor: "var(--act-link-from)" }} />
+                <stop offset="1" style={{ stopColor: "var(--act-link-to)" }} />
+              </linearGradient>
+              <linearGradient ref={haloGrad} id={`${gid}h`} gradientUnits="userSpaceOnUse">
+                <stop offset="0" style={{ stopColor: "var(--act-link-halo)", stopOpacity: 1 }} />
+                {/* (gone by the middle: past it the core is no longer white and needs no halo) */}
+                <stop offset="0.5" style={{ stopColor: "var(--act-link-halo)", stopOpacity: 0 }} />
+              </linearGradient>
+            </>
+          )}
+        </defs>
+        {/* Back to front: the connector's halo, the outline's halo, the connector, the outline (so that nothing of the connector or of a halo lies over the selector's line). The light theme's halo is the library's; the dark theme has none. */}
+        {withCard && <path ref={linkHalo} className="act-halo" mask={`url(#${mid})`} stroke={`url(#${gid}h)`} fill="none" strokeLinejoin="round" strokeLinecap="butt" style={{ opacity: shown ? 1 : 0, transition: FADE }} />}
+        <path className="act-outline-halo act-halo" mask={`url(#${mid})`} d={`M${info.outline.split(" ").join("L")}Z`.replaceAll(",", " ")} fill="none" strokeLinejoin="round" style={{ opacity: onDay ? 1 : 0, transition: FADE }} />
+        {withCard && <path ref={link} style={{ opacity: shown ? 1 : 0, transition: FADE }} fill="none" stroke={`url(#${gid})`} strokeWidth={1.5} strokeLinejoin="round" strokeLinecap="butt" />}
+        <path className="act-outline" d={`M${info.outline.split(" ").join("L")}Z`.replaceAll(",", " ")} fill="color-mix(in srgb, var(--foreground) 7%, transparent)" strokeWidth={1.5} strokeLinejoin="round" style={{ opacity: onDay ? 1 : 0, transition: FADE }} />
+      </svg>
+      {withCard && (
+        <div role="presentation" className="pointer-events-none absolute top-0 left-0 z-20 h-0 w-0" style={{ opacity: shown ? 1 : 0, transition: FADE }}>
+          <DayCard cardRef={card} info={info} note={note} touch={touch} />
         </div>
-        {/* (days stand behind one another: how many are under the pointer, and how to reach the next) */}
-        {info.behind && info.behind.count > 1 && (
-          <p className="type-meta m-0 mt-3 text-muted-foreground uppercase">
-            {info.behind.index + 1} of {info.behind.count} <span aria-hidden="true">·</span> click for next
-          </p>
-        )}
-      </div>
-    </div>
+      )}
+    </>
   );
 }
 
@@ -233,13 +364,42 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
   const [hover, setHover] = useState<HoverInfo | null>(null);
   // the last day shown stays mounted (the card fades and glides instead of vanishing); a card that comes back from nothing appears in place
   const lastHover = useRef<HoverInfo | null>(null);
-  const wasShown = useRef(false);
   if (hover) lastHover.current = hover;
-  const instant = !!hover && !wasShown.current;
+  // A day that comes back within `FRESH_MS` of the last is not a new visit (the card glides to it, as from day to day) instead of appearing in place. The outline, the connector and the card go together with the day (one fade, `FADE`), and
+  // also while the pointer is `busy`: when the day changes `BUSY_CHANGES` times within `BUSY_WINDOW_MS` the connector and the card (not the outline: the hovered column stays marked) fade until it has been calm for `CALM_MS` (owner, 2026-11-23: flickering, and in the way).
+  const [busy, setBusy] = useState(false);
+  const leftAt = useRef<number | null>(null);
+  const everShown = useRef(false);
+  const changes = useRef<{ t: number; x: number; y: number }[]>([]);
+  const calm = useRef(0);
+  const fresh = !!hover && (!everShown.current || (leftAt.current !== null && performance.now() - leftAt.current > FRESH_MS));
+  const day = hover?.date ?? null;
   useEffect(() => {
-    wasShown.current = !!hover;
-  }, [hover]);
+    const now = performance.now();
+    if (day) {
+      everShown.current = true;
+      leftAt.current = null;
+      const list = changes.current;
+      list.push({ t: now, x: hover?.x ?? 0, y: hover?.y ?? 0 });
+      while (list.length && now - list[0]!.t > BUSY_WINDOW_MS) list.shift();
+      const xs = list.map((q) => q.x);
+      const ys = list.map((q) => q.y);
+      const span = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys));
+      if (list.length >= BUSY_CHANGES && span >= BUSY_SPAN_PX) setBusy(true);
+      window.clearTimeout(calm.current);
+      calm.current = window.setTimeout(() => {
+        changes.current = [];
+        setBusy(false);
+      }, CALM_MS);
+    } else leftAt.current ??= now;
+  }, [day]);
+  useEffect(() => () => window.clearTimeout(calm.current), []);
+  const instant = fresh;
   const sceneBox = useRef<HTMLDivElement>(null);
+  // (the day card against the year, and whether the last press was a finger: the key cap says Tap then)
+  const ctx = useMemo(() => (activity ? yearContext(activity) : null), [activity]);
+  const [figures, setFigures] = useState<Rect | null>(null);
+  const [view, setView] = useState({ width: 0, height: 0 });
   const box = useRef<HTMLElement>(null);
   const [seen, setSeen] = useState(false);
   const [gl, setGl] = useState(true);
@@ -363,6 +523,24 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
       mq.removeEventListener("change", onChange);
     };
   }, []);
+  // where the figures' grid is, from the picture's own corner, and how wide the picture is: the card's place (`dockOf`) follows them
+  useEffect(() => {
+    const scene = sceneBox.current;
+    const root = box.current;
+    if (!scene || !root) return;
+    const measure = () => {
+      const r = scene.getBoundingClientRect();
+      const f = root.querySelector<HTMLElement>('[data-slot="activity-stats"]');
+      const fr = f && getComputedStyle(f).position === "absolute" ? f.getBoundingClientRect() : null;
+      setView((v) => (v.width === r.width && v.height === r.height ? v : { width: r.width, height: r.height }));
+      setFigures(fr && fr.width > 0 ? { x: fr.left - r.left, y: fr.top - r.top, w: fr.width, h: fr.height } : null);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(scene);
+    ro.observe(root);
+    return () => ro.disconnect();
+  }, [seen, gl, activity, narrow]);
   if (!enabledFor(url)) return null;
   // (the file is not there after all: the picture goes away, and the page's own figures, which the head hid for the grid, are shown on their own)
   if (failed) return lead.length ? <Figures lead={lead} stats={[]} className="hidden md:grid md:absolute md:top-0 md:right-14" /> : null;
@@ -396,17 +574,7 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
               </span>
             </div>
           )}
-          {lastHover.current && (
-            <>
-              <svg aria-hidden="true" className="pointer-events-none absolute inset-0 size-full overflow-visible" style={{ opacity: hover ? 1 : 0, transition: instant ? "none" : "opacity 0.12s" }}>
-                {(() => {
-                  const d = `M${lastHover.current.outline.split(" ").join("L")}Z`.replaceAll(",", " ");
-                  return <path d={d} fill="color-mix(in srgb, var(--foreground) 7%, transparent)" stroke="var(--foreground)" strokeWidth={1.5} strokeLinejoin="round" />;
-                })()}
-              </svg>
-              <DayCard info={lastHover.current} visible={!!hover} instant={instant} width={sceneBox.current?.clientWidth ?? 0} />
-            </>
-          )}
+          {lastHover.current && <HoverLayer info={lastHover.current} onDay={!!hover} shown={!!hover && !busy} instant={instant} ctx={ctx} touch={lastHover.current.source === "touch"} view={view} figures={figures} withCard={!narrow} />}
           <p className="sr-only" aria-live="polite">{hover ? dayText(hover) : ""}</p>
         </div>
       )}
@@ -414,23 +582,48 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
           in ONE grid at the top right, from the head's top down into the empty corner of the picture. */}
       <Figures lead={lead} stats={stats} ready={!!activity} className="max-md:relative max-md:z-10 max-md:order-first max-md:pb-2 md:pointer-events-none md:absolute md:right-14 md:max-[56rem]:left-14 md:top-[calc(-1*clamp(2.5rem,6.4cqi,5.75rem)-0.25rem)]" />
       <div data-slot="activity-legend" className="relative flex flex-col gap-3 px-4 pt-3 md:pt-6 md:px-14 md:max-[56rem]:-mt-[6.5cqi] min-[56rem]:absolute min-[56rem]:bottom-[1%] min-[80rem]:bottom-[10.7%] min-[56rem]:left-14 min-[56rem]:w-[clamp(20rem,34cqi,25rem)] min-[56rem]:p-0">
-        <p className="type-meta m-0 text-muted-foreground uppercase">Last <span className="text-foreground">12 months</span></p>
-        {/* In the picture's order: the contributions are the upper block of a day, the coding the lower one. */}
-        <p ref={legend} className="m-0 font-[family-name:var(--font-display)] text-[1.625rem] min-[56rem]:text-[clamp(1.25rem,2.3cqi,1.625rem)] leading-[1.1] font-semibold tracking-tight text-balance">
-          <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" className={LINK} style={{ color: soft("green", 75) }}>
-            GitHub contributions
-            <Icon name="arrow-up-right" size="inline" aria-hidden="true" className="translate-y-[0.05em] self-center opacity-70 transition-opacity group-hover/link:opacity-100" />
-            <span className="sr-only">(opens in a new tab)</span>
-          </a>{" "}
-          above,
-          <br className="hidden md:inline" />{" "}
-          <a href={WAKATIME_URL} target="_blank" rel="noopener noreferrer" className={LINK} style={{ color: soft("blue", 75) }}>
-            WakaTime activity
-            <Icon name="arrow-up-right" size="inline" aria-hidden="true" className="translate-y-[0.05em] self-center opacity-70 transition-opacity group-hover/link:opacity-100" />
-            <span className="sr-only">(opens in a new tab)</span>
-          </a>{" "}
-          below.
-        </p>
+        {/* On a phone the legend is where the day is read (no card over the picture): the two layers share one cell, the day's over the legend while a day is held. */}
+        <div className="grid">
+          <div className="flex flex-col gap-3 transition-opacity duration-150" style={{ gridArea: "1 / 1", opacity: narrow && hover ? 0 : 1 }}>
+          <p className="type-meta m-0 text-muted-foreground uppercase">Last <span className="text-foreground">12 months</span></p>
+          {/* In the picture's order: the contributions are the upper block of a day, the coding the lower one. */}
+          <p ref={legend} className="m-0 font-[family-name:var(--font-display)] text-[1.625rem] min-[56rem]:text-[clamp(1.25rem,2.3cqi,1.625rem)] leading-[1.1] font-semibold tracking-tight text-balance">
+            <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" className={LINK} style={{ color: soft("green", 75) }}>
+              GitHub contributions
+              <Icon name="arrow-up-right" size="inline" aria-hidden="true" className="translate-y-[0.05em] self-center opacity-70 transition-opacity group-hover/link:opacity-100" />
+              <span className="sr-only">(opens in a new tab)</span>
+            </a>{" "}
+            above,
+            <br className="hidden md:inline" />{" "}
+            <a href={WAKATIME_URL} target="_blank" rel="noopener noreferrer" className={LINK} style={{ color: soft("blue", 75) }}>
+              WakaTime activity
+              <Icon name="arrow-up-right" size="inline" aria-hidden="true" className="translate-y-[0.05em] self-center opacity-70 transition-opacity group-hover/link:opacity-100" />
+              <span className="sr-only">(opens in a new tab)</span>
+            </a>{" "}
+            below.
+          </p>
+          </div>
+          {narrow && lastHover.current && (
+            <div aria-hidden="true" className="pointer-events-none flex flex-col gap-3 transition-opacity duration-150" style={{ gridArea: "1 / 1", opacity: hover ? 1 : 0 }}>
+              <p className="type-meta m-0 flex gap-[0.6em] uppercase">
+                {(() => {
+                  const [weekday = "", day = "", month = "", year = ""] = readableDay(lastHover.current.date).split(" ");
+                  return (
+                    <>
+                      <span className="text-foreground">{day} {month}</span>
+                      <span className="text-muted-foreground">{weekday} · {year}</span>
+                    </>
+                  );
+                })()}
+              </p>
+              <p className="m-0 font-[family-name:var(--font-display)] text-[1.625rem] leading-[1.1] font-semibold tracking-tight tabular-nums">
+                <span style={{ color: "var(--act-green)" }}>{lastHover.current.contributions || "No"} {lastHover.current.contributions === 1 ? "contribution" : "contributions"}</span> on GitHub,
+                <br />
+                <span style={{ color: "var(--act-blue)" }}>{hoursText(lastHover.current.hours) ?? "No coding"}</span> {hoursText(lastHover.current.hours) ? "logged " : ""}on WakaTime.
+              </p>
+            </div>
+          )}
+        </div>
       </div>
     </section>
   );
