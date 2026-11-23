@@ -208,6 +208,7 @@ function HoverLayer({ info, onDay, shown, instant, ctx, touch, view, figures, wi
   const card = useRef<HTMLDivElement>(null);
   const link = useRef<SVGPathElement>(null);
   const linkHalo = useRef<SVGPathElement>(null);
+  const haloGrad = useRef<SVGLinearGradientElement>(null);
   const grad = useRef<SVGLinearGradientElement>(null);
   const uid = useId().replaceAll(":", "");
   const gid = `act-link-${uid}`;
@@ -236,11 +237,13 @@ function HoverLayer({ info, onDay, shown, instant, ctx, touch, view, figures, wi
       linkHalo.current?.setAttribute("d", d);
       // (the connector's gradient runs from where it leaves the outline to where it reaches the card)
       const nums = d.replace(/[ML]/g, " ").trim().split(/\s+/).map(Number);
-      if (grad.current && nums.length >= 4) {
-        grad.current.setAttribute("x1", String(nums[0]));
-        grad.current.setAttribute("y1", String(nums[1]));
-        grad.current.setAttribute("x2", String(nums[nums.length - 2]));
-        grad.current.setAttribute("y2", String(nums[nums.length - 1]));
+      if (nums.length >= 4) {
+        for (const g of [grad.current, haloGrad.current]) {
+          g?.setAttribute("x1", String(nums[0]));
+          g?.setAttribute("y1", String(nums[1]));
+          g?.setAttribute("x2", String(nums[nums.length - 2]));
+          g?.setAttribute("y2", String(nums[nums.length - 1]));
+        }
       }
       // (the connector's end, on the card's edge, in the card's own coordinates)
       const end = d.split("L").pop()?.split(" ").map(Number);
@@ -282,27 +285,30 @@ function HoverLayer({ info, onDay, shown, instant, ctx, touch, view, figures, wi
       <svg aria-hidden="true" className="pointer-events-none absolute inset-0 size-full overflow-visible">
         {/* The library's "auto" outline: the text colour in the dark theme; in the light one a white line on a thin near-black casing (a dark line is lost on dark, saturated blocks). */}
         <defs>
-          {/* (the halo is seen outside the outline only: the inside of the column is cut out of it) */}
+          {/* (the halos are seen outside the outline only: the inside of the column is cut out of them) */}
           <mask id={mid} maskUnits="userSpaceOnUse" x="-10000" y="-10000" width="20000" height="20000">
             <rect x="-10000" y="-10000" width="20000" height="20000" fill="#fff" />
             <path d={`M${info.outline.split(" ").join("L")}Z`.replaceAll(",", " ")} fill="#000" />
           </mask>
-        </defs>
-        <path className="act-outline-halo" mask={`url(#${mid})`} d={`M${info.outline.split(" ").join("L")}Z`.replaceAll(",", " ")} fill="none" strokeLinejoin="round" style={{ opacity: onDay ? 1 : 0, transition: FADE }} />
-        <path className="act-outline" d={`M${info.outline.split(" ").join("L")}Z`.replaceAll(",", " ")} fill="color-mix(in srgb, var(--foreground) 7%, transparent)" strokeWidth={1.5} strokeLinejoin="round" style={{ opacity: onDay ? 1 : 0, transition: FADE }} />
-        {withCard && (
-          <>
-            <defs>
+          {withCard && (
+            <>
+              {/* the connector's colour, from the outline's to the card's, and its halo, which fades out toward the card as the colour goes into the card's edge */}
               <linearGradient ref={grad} id={gid} gradientUnits="userSpaceOnUse">
                 <stop offset="0" style={{ stopColor: "var(--act-link-from)" }} />
                 <stop offset="1" style={{ stopColor: "var(--act-link-to)" }} />
               </linearGradient>
-            </defs>
-            {/* (the light theme's soft halo, as the outline has: a white core on a blurred dark line) */}
-            <path ref={linkHalo} className="act-outline-halo" style={{ opacity: shown ? 1 : 0, transition: FADE }} fill="none" strokeLinejoin="round" strokeLinecap="butt" />
-            <path ref={link} style={{ opacity: shown ? 1 : 0, transition: FADE }} fill="none" stroke={`url(#${gid})`} strokeWidth={1.5} strokeLinejoin="round" strokeLinecap="butt" />
-          </>
-        )}
+              <linearGradient ref={haloGrad} id={`${gid}h`} gradientUnits="userSpaceOnUse">
+                <stop offset="0" style={{ stopColor: "var(--act-link-halo)", stopOpacity: 1 }} />
+                <stop offset="1" style={{ stopColor: "var(--act-link-halo)", stopOpacity: 0 }} />
+              </linearGradient>
+            </>
+          )}
+        </defs>
+        {/* Back to front: the connector's halo, the outline's halo, the connector, the outline (so that nothing of the connector or of a halo lies over the selector's line). The light theme's halo is the library's; the dark theme has none. */}
+        {withCard && <path ref={linkHalo} className="act-halo" mask={`url(#${mid})`} stroke={`url(#${gid}h)`} fill="none" strokeLinejoin="round" strokeLinecap="butt" style={{ opacity: shown ? 1 : 0, transition: FADE }} />}
+        <path className="act-outline-halo act-halo" mask={`url(#${mid})`} d={`M${info.outline.split(" ").join("L")}Z`.replaceAll(",", " ")} fill="none" strokeLinejoin="round" style={{ opacity: onDay ? 1 : 0, transition: FADE }} />
+        {withCard && <path ref={link} style={{ opacity: shown ? 1 : 0, transition: FADE }} fill="none" stroke={`url(#${gid})`} strokeWidth={1.5} strokeLinejoin="round" strokeLinecap="butt" />}
+        <path className="act-outline" d={`M${info.outline.split(" ").join("L")}Z`.replaceAll(",", " ")} fill="color-mix(in srgb, var(--foreground) 7%, transparent)" strokeWidth={1.5} strokeLinejoin="round" style={{ opacity: onDay ? 1 : 0, transition: FADE }} />
       </svg>
       {withCard && (
         <div role="presentation" className="pointer-events-none absolute top-0 left-0 z-20 h-0 w-0" style={{ opacity: shown ? 1 : 0, transition: FADE }}>

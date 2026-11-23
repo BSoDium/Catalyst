@@ -9143,7 +9143,8 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
  */
 .act-outline { stroke: var(--foreground); }
 /* The halo (the library's `--nag-halo-*`: 8 px wide, blurred 3 px, half strength): a soft dip in brightness round the line, dark in the light theme only. */
-.act-outline-halo { stroke: transparent; stroke-width: 8; stroke-opacity: 0.5; filter: blur(3px); }
+.act-halo { stroke-width: 8; stroke-opacity: 0.5; filter: blur(3px); }
+.act-outline-halo { stroke: transparent; }
 @media (prefers-color-scheme: light) {
   :where(:root:not([data-scheme="dark"])) .act-outline { stroke: #fff; }
   :where(:root:not([data-scheme="dark"])) .act-outline-halo { stroke: #111114; }
@@ -9156,18 +9157,21 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   --act-link-from: var(--foreground);
   --act-link-to: color-mix(in srgb, var(--foreground) 55%, var(--background));
   --act-link-edge: var(--act-link-to);
+  --act-link-halo: transparent;
 }
 @media (prefers-color-scheme: light) {
   :root:not([data-scheme="dark"]) {
     --act-link-from: #fff;
     --act-link-to: #d8d8d8;
     --act-link-edge: rgb(10 10 10 / 0.85);
+    --act-link-halo: #111114;
   }
 }
 :root[data-scheme="light"] {
   --act-link-from: #fff;
   --act-link-to: #d8d8d8;
   --act-link-edge: rgb(10 10 10 / 0.85);
+  --act-link-halo: #111114;
 }
 .act-card {
   --pad: 0.625rem;
