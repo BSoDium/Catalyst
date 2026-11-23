@@ -77,4 +77,17 @@ describe("Ambient: whether the globe is at full pace", () => {
     expect(turning).toHaveBeenCalledTimes(1);
     expect(sw).not.toHaveBeenCalled();
   });
+
+  it("says when the globe cannot turn for a lasting reason", () => {
+    const a = new Ambient(() => true);
+    const fired = vi.fn();
+    a.subscribeTurning(fired);
+    expect(a.getBlocked()).toBe(false);
+    a.setTurning(false, true);
+    expect(a.getBlocked()).toBe(true);
+    a.setTurning(false, true);
+    expect(fired).toHaveBeenCalledTimes(1);
+    a.setTurning(false, false);
+    expect(a.getBlocked()).toBe(false);
+  });
 });

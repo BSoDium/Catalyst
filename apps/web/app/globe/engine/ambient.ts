@@ -22,6 +22,7 @@ export class Ambient {
   private effective = false;
   private readonly listeners = new Set<() => void>();
   private turning = false;
+  private blocked = false;
   private readonly turningListeners = new Set<() => void>();
 
   constructor(read: () => boolean | null = readChoice, source?: AudibleSource) {
@@ -63,14 +64,18 @@ export class Ambient {
    */
   getTurning = (): boolean => this.turning;
 
+  /** The globe cannot turn for a lasting reason (the street map owns the picture, reduced motion, a place or the panel open...), as the engine says it: the toggle reads "Paused", not "Starting" forever. */
+  getBlocked = (): boolean => this.blocked;
+
   subscribeTurning = (listener: () => void): (() => void) => {
     this.turningListeners.add(listener);
     return () => void this.turningListeners.delete(listener);
   };
 
-  setTurning(turning: boolean): void {
-    if (turning === this.turning) return;
+  setTurning(turning: boolean, blocked = false): void {
+    if (turning === this.turning && blocked === this.blocked) return;
     this.turning = turning;
+    this.blocked = blocked;
     this.turningListeners.forEach((l) => l());
   }
 

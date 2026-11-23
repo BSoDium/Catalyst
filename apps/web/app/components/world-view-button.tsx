@@ -20,7 +20,8 @@ export function WorldViewButton({ showReset, showAmbient, streetLevel = false }:
   const reduced = useReducedMotion();
   const on = useSyncExternalStore(ambient.subscribe, ambient.getSnapshot, () => false);
   // On, but the street map is showing: the globe is suspended under it, so nothing turns until the visitor zooms out (the control says so).
-  const paused = on && streetLevel;
+  const blocked = useSyncExternalStore(ambient.subscribeTurning, ambient.getBlocked, () => false);
+  const paused = on && (streetLevel || blocked);
   // On, but not turning at full pace yet: it waits for the idle delay (a moment after the switch, the full delay after a touch) and then eases in over 3 s, so the word says "Starting" meanwhile.
   const turning = useSyncExternalStore(ambient.subscribeTurning, ambient.getTurning, () => false);
   const state = !on ? "off" : paused ? "paused" : turning ? "on" : "starting";
