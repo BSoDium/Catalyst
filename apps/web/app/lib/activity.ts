@@ -88,6 +88,8 @@ export interface HoverInfo {
   y: number;
   /** When several days are under the pointer, one behind another: which of them this is (0 the nearest) and how many there are. */
   behind?: { index: number; count: number };
+  /** What put the day there: the pointer, a finger or a key (the card says "Tap" after a finger). */
+  source: "pointer" | "touch" | "key";
 }
 
 /** The hours of a day as the card says them: "10 h", "2.5 h", "25 min", or null when there were none (no ".0": whole hours are whole). */

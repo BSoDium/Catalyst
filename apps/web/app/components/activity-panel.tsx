@@ -214,7 +214,9 @@ function HoverLayer({ info, onDay, shown, instant, ctx, touch, view, figures, wi
   return (
     <>
       <svg aria-hidden="true" className="pointer-events-none absolute inset-0 size-full overflow-visible">
-        <path d={`M${info.outline.split(" ").join("L")}Z`.replaceAll(",", " ")} fill="color-mix(in srgb, var(--foreground) 7%, transparent)" stroke="var(--foreground)" strokeWidth={1.5} strokeLinejoin="round" style={{ opacity: onDay ? 1 : 0, transition: FADE }} />
+        {/* The library's "auto" outline: the text colour in the dark theme; in the light one a white line on a thin near-black casing (a dark line is lost on dark, saturated blocks). */}
+        <path className="act-outline-halo" d={`M${info.outline.split(" ").join("L")}Z`.replaceAll(",", " ")} fill="none" strokeWidth={3.5} strokeLinejoin="round" style={{ opacity: onDay ? 1 : 0, transition: FADE }} />
+        <path className="act-outline" d={`M${info.outline.split(" ").join("L")}Z`.replaceAll(",", " ")} fill="color-mix(in srgb, var(--foreground) 7%, transparent)" strokeWidth={1.5} strokeLinejoin="round" style={{ opacity: onDay ? 1 : 0, transition: FADE }} />
         {withCard && <path ref={link} style={{ opacity: shown ? 1 : 0, transition: FADE }} fill="none" stroke="var(--foreground)" strokeWidth={1.5} strokeDasharray="4 3" strokeLinejoin="round" strokeLinecap="butt" />}
       </svg>
       {withCard && (
@@ -305,7 +307,6 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
   const sceneBox = useRef<HTMLDivElement>(null);
   // (the day card against the year, and whether the last press was a finger: the key cap says Tap then)
   const ctx = useMemo(() => (activity ? yearContext(activity) : null), [activity]);
-  const [touch, setTouch] = useState(false);
   const [figures, setFigures] = useState<Rect | null>(null);
   const [view, setView] = useState({ width: 0, height: 0 });
   const box = useRef<HTMLElement>(null);
@@ -463,7 +464,7 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
           <FlatMatrix matrix={flat.github} tone="#0fbf3e" />
         </div>
       ) : (
-        <div ref={sceneBox} onPointerDownCapture={(e) => setTouch(e.pointerType === "touch")} className="group/scene relative aspect-[3.97/1] w-full max-md:-mt-[6cqi] max-md:aspect-[0.95/1]">
+        <div ref={sceneBox} className="group/scene relative aspect-[3.97/1] w-full max-md:-mt-[6cqi] max-md:aspect-[0.95/1]">
           <div className={`absolute inset-0 transition-opacity duration-700 ${ready ? "opacity-0" : ""}`}>
             <Waiting strips={1} aspect={3.97} className="max-md:hidden" />
             <Waiting strips={4} aspect={0.95} className="hidden max-md:block" />
@@ -482,7 +483,7 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
               </span>
             </div>
           )}
-          {lastHover.current && <HoverLayer info={lastHover.current} onDay={!!hover} shown={!!hover && !busy} instant={instant} ctx={ctx} touch={touch} view={view} figures={figures} withCard={!narrow} />}
+          {lastHover.current && <HoverLayer info={lastHover.current} onDay={!!hover} shown={!!hover && !busy} instant={instant} ctx={ctx} touch={lastHover.current.source === "touch"} view={view} figures={figures} withCard={!narrow} />}
           <p className="sr-only" aria-live="polite">{hover ? dayText(hover) : ""}</p>
         </div>
       )}

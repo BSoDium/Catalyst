@@ -9141,6 +9141,14 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
  * soft WASH of its colour (green for the contributions, blue for the coding), a gradient of solid colours from the figure's edge to the surface, no opacity. Its height is the same for every day (one footer line, always there): the placement reads
  * it once per day, so nothing jumps.
  */
+.act-outline { stroke: var(--foreground); }
+.act-outline-halo { stroke: transparent; }
+@media (prefers-color-scheme: light) {
+  :where(:root:not([data-scheme="dark"])) .act-outline { stroke: #fff; }
+  :where(:root:not([data-scheme="dark"])) .act-outline-halo { stroke: rgb(10 10 10 / 0.85); }
+}
+:where(:root[data-scheme="light"]) .act-outline { stroke: #fff; }
+:where(:root[data-scheme="light"]) .act-outline-halo { stroke: rgb(10 10 10 / 0.85); }
 .act-card {
   --pad: 0.625rem;
   --rule: var(--border);

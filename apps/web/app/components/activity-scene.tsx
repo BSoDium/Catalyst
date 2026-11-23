@@ -71,7 +71,7 @@ export function ActivityScene({ activity, strips = 1, onReady, onLit, onHover, c
       label="Activity over the last year: GitHub contributions and WakaTime coding time, one column a day. Use the arrow keys to move between days."
       onReady={onReady}
       onLit={onLit}
-      onHover={onHover && ((i) => onHover(i && { date: i.date, contributions: i.top, hours: i.bottom, outline: i.outline, x: i.x, y: i.y, behind: i.behind }))}
+      onHover={onHover && ((i) => onHover(i && { date: i.date, contributions: i.top, hours: i.bottom, outline: i.outline, x: i.x, y: i.y, behind: i.behind, source: i.source }))}
       className={className}
     />
   );
