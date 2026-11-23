@@ -4,9 +4,9 @@ import { CopyButton, Divider, Frame, Icon, SensitiveImage } from "~/components/u
 import {
   buildOutline,
   dedupeKeys,
-  displayHost,
   groupBlocks,
   leadingIndent,
+  linkDestination,
   safeExternalUrl,
   safeMediaSrc,
   splitLines,
@@ -59,7 +59,7 @@ export function BlockRenderer({
     <div data-slot="entry-body" lang={lang} className={cn("ds-prose flex min-w-0 flex-col gap-6", className)}>
       {groups.map((group) =>
         group.type === "links" ? (
-          <ul key={group.key} className="m-0 flex list-none flex-col gap-3 p-0">
+          <ul key={group.key} data-slot="link-list" className="ds-link-list">
             {group.blocks.map((block, i) => (
               <li key={`${group.key}-${i}`}>
                 <LinkCard block={block} />
@@ -266,29 +266,38 @@ function CodeView({ block }: { block: Extract<Block, { type: "code" }> }) {
   );
 }
 
-/** A block-level link card. The destination must pass `safeExternalUrl`; otherwise the card is plain text (no link). */
+/**
+ * A block-level link card (`.ds-link-card`, app.css; docs/design-system.md, "Link card"): a solid plate, no outline. What the link is called
+ * in the display face, what it says of itself (the optional description) in the reading face, and where it goes in mono: the host in the
+ * ink, the path muted, one line cut with an ellipsis. The up-right arrow at the right says it leaves the site; the words say so to
+ * assistive technology. The destination must pass `safeExternalUrl`; otherwise the card is the same plate with its words and no link.
+ */
 function LinkCard({ block }: { block: Extract<Block, { type: "link" }> }) {
   const href = safeExternalUrl(block.url);
-  const body = (
-    <>
-      <span className="flex min-w-0 flex-1 flex-col gap-1">
-        <span className="font-medium">{block.title}</span>
-        {block.description && <span className="text-sm text-muted-foreground">{block.description}</span>}
-        {href && <span className="text-sm text-muted-foreground">{displayHost(href)}</span>}
+  const dest = href ? linkDestination(href) : null;
+  const text = (
+    <span className="ds-link-card-text">
+      <span data-slot="link-card-title" className="ds-link-card-title">
+        {block.title}
       </span>
-      {href && <Icon name="arrow-up-right" size="control" className="mt-0.5 shrink-0" />}
-    </>
-  );
-  return (
-    <Frame interactive={!!href} padding="none" className="min-w-0">
-      {href ? (
-        <a href={href} target="_blank" rel="noopener noreferrer" className="flex min-h-11 items-start gap-3 p-4 no-underline focus-visible:outline-offset-4">
-          {body}
-          <span className="sr-only"> (opens in a new tab)</span>
-        </a>
-      ) : (
-        <div className="flex items-start gap-3 p-4">{body}</div>
+      {block.description && <span className="ds-link-card-description">{block.description}</span>}
+      {dest && (
+        <span data-slot="link-card-destination" className="ds-link-card-destination">
+          <span className="text-foreground">{dest.host}</span>
+          {dest.path}
+        </span>
       )}
-    </Frame>
+    </span>
+  );
+  return href ? (
+    <a href={href} target="_blank" rel="noopener noreferrer" data-slot="link-card" className="ds-link-card">
+      {text}
+      <Icon name="arrow-up-right" size="control" className="ds-link-card-arrow" />
+      <span className="sr-only"> (opens in a new tab)</span>
+    </a>
+  ) : (
+    <div data-slot="link-card" className="ds-link-card">
+      {text}
+    </div>
   );
 }

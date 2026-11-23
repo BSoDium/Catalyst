@@ -75,6 +75,28 @@ describe("BlockRenderer", () => {
     expect(bad).not.toContain("javascript:");
     expect(bad).toContain("Evil");
   });
+  it("draws a link card as a plate: its title, its description, then the host in the ink and the path, and the arrow; no Frame", () => {
+    const html = render([
+      { type: "link", title: "Source", url: "https://www.github.com/BSoDium/Catalyst/", description: "The code" },
+      { type: "link", title: "Live demo", url: "https://neon.bsodium.fr" },
+    ]);
+    expect(html).toContain('data-slot="link-list"');
+    expect(html.match(/<a [^>]*class="ds-link-card"/g)).toHaveLength(2);
+    expect(html).not.toContain('data-slot="frame"');
+    // The title first (it starts the accessible name), then the description, then where it goes.
+    const order = [">Source<", ">The code<", ">github.com<", "</span>/BSoDium/Catalyst", "(opens in a new tab)"].map((s) => html.indexOf(s));
+    expect(order.every((at) => at >= 0)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+    expect(html).toContain('<span class="text-foreground">github.com</span>/BSoDium/Catalyst</span>');
+    // A site's root has no path; each card has its arrow.
+    expect(html).toContain('<span class="text-foreground">neon.bsodium.fr</span></span>');
+    expect(html.match(/ds-link-card-arrow/g)).toHaveLength(2);
+    // A card without a safe destination keeps its plate and its words, and has no arrow and no destination.
+    const bad = render([{ type: "link", title: "Evil", url: "http://example.org" } as PublishedBodyBlock]);
+    expect(bad).toContain('<div data-slot="link-card" class="ds-link-card">');
+    expect(bad).not.toContain("ds-link-card-arrow");
+    expect(bad).not.toContain("link-card-destination");
+  });
   it("renders a divider as a thematic break, but not at the edges", () => {
     expect(render([{ type: "paragraph", text: "a" }, { type: "divider" }, { type: "paragraph", text: "b" }])).toContain("<hr");
     expect(render([{ type: "divider" }])).toBe("");

@@ -6,6 +6,7 @@ import {
   displayHost,
   groupBlocks,
   leadingIndent,
+  linkDestination,
   MAX_VERSE_INDENT,
   safeExternalUrl,
   safeMediaSrc,
@@ -144,5 +145,14 @@ describe("safeExternalUrl", () => {
   it("shows the host without www", () => {
     expect(displayHost("https://www.example.org/a/b")).toBe("example.org");
     expect(displayHost("not a url")).toBe("not a url");
+  });
+  it("splits a link card's destination into its host and its path", () => {
+    expect(linkDestination("https://github.com/BSoDium/Catalyst")).toEqual({ host: "github.com", path: "/BSoDium/Catalyst" });
+    expect(linkDestination("https://www.example.org/")).toEqual({ host: "example.org", path: "" });
+    expect(linkDestination("https://neon.bsodium.fr")).toEqual({ host: "neon.bsodium.fr", path: "" });
+    expect(linkDestination("https://example.org/a/b/?q=1#top")).toEqual({ host: "example.org", path: "/a/b" });
+    expect(linkDestination("https://example.org/caf%C3%A9")).toEqual({ host: "example.org", path: "/café" });
+    expect(linkDestination("https://example.org/%E0%A4%A")).toEqual({ host: "example.org", path: "/%E0%A4%A" });
+    expect(linkDestination("not a url")).toEqual({ host: "not a url", path: "" });
   });
 });

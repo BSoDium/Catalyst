@@ -999,7 +999,7 @@
   }
 
   /*
-   * Frame: a hairline box on the surface, for the few things that are a box (a code block, a link card, the search dialog, the
+   * Frame: a hairline box on the surface, for the few things that are a box (a code block, the search dialog, the
    * active state). No brackets, no shadow. Variants: plain, active (strong line and a faint signal wash: the selected thing),
    * inverted (the opposite scheme's tokens, rebound for the subtree so every child reads correctly).
    */
@@ -1040,20 +1040,136 @@
     color: var(--signal-foreground);
   }
 
-  /* Interactive frames (a link card): the line answers the pointer and the keyboard focus, no movement. */
-  .ds-frame[data-interactive] {
-    transition:
-      border-color var(--duration-fast) var(--ease-standard),
-      background-color var(--duration-fast) var(--ease-standard);
+  /*
+   * Link card (docs/design-system.md, "Link card"): the external links after an entry's text. A solid plate, the tags' faint tile (no
+   * outline), stacked two pixels apart so that a run of links reads as one index. What the link is called (the display face, the ink),
+   * what it says of itself (the reading face, muted), where it goes (mono: the host in the ink, the path muted, one line, cut at the end).
+   * The up-right arrow at the right is the "leaves the site" mark. Pointer: the plate a step deeper, the title underlined in the accent and
+   * the arrow in the accent's text tone; pressed: one more step. Nothing moves. Focus: the ring, drawn just inside the plate.
+   */
+  .ds-link-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
   }
 
-  .ds-frame[data-interactive]:hover {
-    border-color: var(--border-strong);
+  .ds-link-card {
+    --link-card-inset: 1rem;
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    min-height: 4rem;
+    padding: 0.875rem var(--link-card-inset) 0.875rem 1.25rem;
+    background: var(--accent);
+    color: var(--foreground);
+    text-decoration: none;
+    transition: background-color var(--duration-fast) var(--ease-standard);
   }
 
-  .ds-frame[data-interactive]:has(:focus-visible) {
-    outline: 2px solid var(--ring);
-    outline-offset: 2px;
+  .ds-link-card-text {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .ds-link-card-title {
+    font-family: var(--font-display);
+    font-optical-sizing: auto;
+    font-synthesis: none;
+    font-size: 1.125rem;
+    line-height: 1.3;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    text-wrap: pretty;
+    overflow-wrap: anywhere;
+    text-decoration: underline 2px transparent;
+    text-underline-offset: 0.2em;
+    transition: text-decoration-color var(--duration-fast) var(--ease-standard);
+  }
+
+  .ds-link-card-description {
+    font-size: 1rem;
+    line-height: 1.45;
+    color: var(--muted-foreground);
+  }
+
+  .ds-link-card-destination {
+    overflow: hidden;
+    font-family: var(--font-meta);
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    font-variant-numeric: tabular-nums slashed-zero;
+    color: var(--muted-foreground);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* The mark sits in the plate's top right corner, as far from the top as from the right edge (owner, 2026-11-23); the text keeps clear of it. */
+  a.ds-link-card {
+    padding-right: calc(var(--link-card-inset) + 1.25rem + 0.75rem);
+  }
+
+  .ds-link-card-arrow {
+    position: absolute;
+    top: var(--link-card-inset);
+    right: var(--link-card-inset);
+    flex-shrink: 0;
+    color: var(--muted-foreground);
+    transition: color var(--duration-fast) var(--ease-standard);
+  }
+
+  a.ds-link-card:hover {
+    background: color-mix(in srgb, var(--foreground) 12%, var(--background));
+  }
+
+  a.ds-link-card:hover .ds-link-card-title {
+    text-decoration-color: var(--signal);
+  }
+
+  a.ds-link-card:hover .ds-link-card-arrow,
+  a.ds-link-card:focus-visible .ds-link-card-arrow {
+    color: var(--signal-text);
+  }
+
+  /* The ring inside the plate: stacked two pixels apart, a ring outside (and its moat) would lie over the next card. */
+  a.ds-link-card:focus-visible {
+    outline-offset: -2px;
+    box-shadow: none;
+  }
+
+  a.ds-link-card:active {
+    background: color-mix(in srgb, var(--foreground) 18%, var(--background));
+  }
+
+  @container (min-width: 36rem) {
+    .ds-link-card {
+      padding-block: 1rem;
+    }
+
+    .ds-link-card-title {
+      font-size: 1.25rem;
+    }
+  }
+
+  @media (forced-colors: active) {
+    .ds-link-card {
+      border: 1px solid CanvasText;
+    }
+
+    a.ds-link-card {
+      border-color: LinkText;
+    }
+
+    a.ds-link-card .ds-link-card-title,
+    a.ds-link-card .ds-link-card-arrow {
+      color: LinkText;
+    }
   }
 
   /*
@@ -1928,7 +2044,7 @@
   }
 
   .ds-prose p a,
-  .ds-prose li a {
+  .ds-prose li a:not(.ds-link-card) {
     color: var(--signal-text);
     text-decoration-line: underline;
     text-decoration-color: currentColor;
@@ -1937,7 +2053,7 @@
   }
 
   .ds-prose p a:hover,
-  .ds-prose li a:hover {
+  .ds-prose li a:not(.ds-link-card):hover {
     text-decoration-thickness: 0.16em;
   }
 
@@ -5524,8 +5640,29 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   pre,
   figure,
   blockquote,
-  .ds-frame {
+  .ds-frame,
+  .ds-link-card {
     break-inside: avoid;
+  }
+
+  /* A link card on paper: a grey hairline for the plate, the whole destination (no ellipsis), no arrow. */
+  .ds-link-card {
+    min-height: 0;
+    border: 1px solid #999;
+    background: none;
+  }
+
+  .ds-link-card-destination {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  a.ds-link-card {
+    padding-right: var(--link-card-inset);
+  }
+
+  .ds-link-card-arrow {
+    display: none;
   }
 
   h2,
