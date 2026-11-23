@@ -98,6 +98,8 @@ export const LIGHTS = {
   // (a reddish yellow, an amber: owner, 2026-10-29, "the clusters should be bright in the centre, but mainly reddish yellow"; it was a plain warm yellow, 1, 0.82, 0.45)
   color: [1, 0.68, 0.3] as const,
   strength: 0.5,
+  /** On the LIGHT page the lights are taken this much of the way to their own grey (their luminance, so their brightness is kept): the amber and yellow tints looked off beside a monochrome page (owner, 2026-11-23); a trace of warmth stays. The dark page keeps its colours. */
+  lightMono: 0.85,
   cover: 0.9,
   /**
    * The HEAT of a cluster: the map's green channel is how packed the lights are round a texel (0..1). From `from` to `to` of it (a smoothstep) a light goes from `color` to `core`, a pale yellow, at `coreStrength`
