@@ -162,6 +162,11 @@ function HoverLayer({ info, onDay, shown, instant, ctx, touch, view, figures, wi
   const link = useRef<SVGPathElement>(null);
   const cur = useRef({ x: 0, y: 0, init: false, key: "" });
   const note = ctx?.(info.contributions, info.hours) ?? null;
+  // (whether the card was showing at the last commit: a card that comes back from hidden (a sweep that has settled, the pointer back from empty ground) is put in its place at once, with no glide to give it an inertia as it appears)
+  const wasShown = useRef(false);
+  useEffect(() => {
+    wasShown.current = shown;
+  });
   useLayoutEffect(() => {
     const el = card.current;
     const path = link.current;
@@ -177,7 +182,7 @@ function HoverLayer({ info, onDay, shown, instant, ctx, touch, view, figures, wi
       path.setAttribute("d", route(p.mode, p.from, { x: c.x, y: c.y, w: CARD_W, h }));
     };
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (instant || !c.init || reduced) {
+    if (instant || !c.init || reduced || !wasShown.current) {
       c.x = p.x;
       c.y = p.y;
       c.init = true;
