@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState }
 import { Icon } from "~/components/ui";
 import { placeholderTiles } from "neon-activity-graph/layout";
 import { bounds, CARD_W, grow, overlaps, parseOutline, plan, route, type Rect } from "~/lib/day-card-plan";
-import { activityStats, dayText, GITHUB_URL, hoursText, isActivity, layoutActivity, readableDay, WAKATIME_URL, yearContext, type Activity, type ActivityStat, type HoverInfo, type Matrix } from "~/lib/activity";
+import { activityStats, agoText, dayText, GITHUB_URL, hoursText, isActivity, layoutActivity, readableDay, WAKATIME_URL, yearContext, type Activity, type ActivityStat, type HoverInfo, type Matrix } from "~/lib/activity";
 import { xmasNow } from "~/lib/xmas";
 
 /** A source's colour as text, softened toward the page's own text colour (the figures and words are tinted, not painted). */
@@ -91,26 +91,77 @@ function Roll({ value, order }: { value: string; order: number }) {
   );
 }
 
+/**
+ * The day card's face (owner, 2026-11-23; docs/activity-picture.md, "The day card"): the page's surface, one hairline, square, no shadow, no blur, compact. The date is its title, the weekday and the year quiet metadata under it; when several days lie under
+ * the pointer, one pip per day in the top right corner (this one filled) over "Click for next day" ("Tap" after a touch); the contributions above the coding, as in the column, each a swatch the height of the label's capitals sat on its baseline, the label, and the figure in the source's colour over a
+ * soft wash of it; one footer line, ALWAYS there (the card's height never changes, so the placement and the connector never jump): the note of a notable day, else "No activity", else how long ago the day was.
+ */
+export function DayCard({ info, note, touch, now, cardRef }: { info: Pick<HoverInfo, "date" | "contributions" | "hours" | "behind">; note: string | null; touch: boolean; now?: number; cardRef?: React.Ref<HTMLDivElement> }) {
+  const hours = hoursText(info.hours);
+  const empty = info.contributions === 0 && !hours;
+  const [weekday = "", day = "", month = "", year = ""] = readableDay(info.date).split(" ");
+  const order = Date.parse(`${info.date}T00:00:00Z`);
+  const stacked = !!info.behind && info.behind.count > 1;
+  const [figure = "", unit = ""] = hours?.split(" ") ?? [];
+  return (
+    <div ref={cardRef} className="act-card" data-empty={empty || undefined}>
+      <header className="act-card-head">
+        <span className="act-card-date"><Roll value={`${day} ${month}`} order={order} /></span>
+        <span className="act-card-day type-meta"><Roll value={`${weekday} · ${year}`} order={order} /></span>
+        {stacked && info.behind && (
+          <>
+            {/* the days lying one behind another under the pointer, one pip each, this one filled (a count past ten: "3/14") */}
+            <span className="act-card-pips" aria-hidden="true" title={`Day ${info.behind.index + 1} of ${info.behind.count} here`}>
+              {info.behind.count <= 10 ? Array.from({ length: info.behind.count }, (_, i) => <span key={i} data-on={i === info.behind!.index || undefined} />) : <span className="type-meta">{info.behind.index + 1}/{info.behind.count}</span>}
+            </span>
+            <span className="act-card-next">
+              <kbd className="act-card-key">{touch ? "Tap" : "Click"}</kbd> for next day
+            </span>
+          </>
+        )}
+      </header>
+      <dl className="act-card-rows">
+        <div className="act-card-row" data-tone="green" data-none={!info.contributions || undefined}>
+          <dt className="act-card-label type-meta"><span aria-hidden="true" className="act-card-swatch" />{info.contributions === 1 ? "contribution" : "contributions"}</dt>
+          <dd className="act-card-value">
+            <Roll value={info.contributions ? String(info.contributions) : "—"} order={info.contributions} />
+          </dd>
+        </div>
+        <div className="act-card-row" data-tone="blue" data-none={!hours || undefined}>
+          <dt className="act-card-label type-meta"><span aria-hidden="true" className="act-card-swatch" />coded</dt>
+          <dd className="act-card-value">
+            <Roll value={figure || "—"} order={info.hours} />
+            {unit && <span className="act-card-unit"><Roll value={unit} order={info.hours} /></span>}
+          </dd>
+        </div>
+      </dl>
+      <footer className="act-card-foot" data-note={note ? "" : undefined}>
+        <Roll value={note ?? (empty ? "No activity" : agoText(info.date, now ?? Date.now()))} order={order} />
+      </footer>
+    </div>
+  );
+}
+
 /** How long the card stays after the pointer leaves a day, and how long it can be away before a day is a new visit (the card then appears in place). */
-const GRACE_MS = 280;
+/** The outline, the connector and the card fade at one rate (`onDay` and `shown` change together except while the pointer is busy): there is never a connector without its outline. */
+const FADE = "opacity 0.12s var(--ease-standard)";
+/** Too many days in too short a time (a pointer sweeping across the picture): the connector and the card fade away until it slows down, instead of flickering over every column. */
+const BUSY_CHANGES = 5;
+const BUSY_WINDOW_MS = 450;
+const CALM_MS = 180;
 const FRESH_MS = 700;
 
 /**
  * What the pointer is on: the outline of the day's column, the card, and the connector between them (owner, 2026-11-23). The card (the "datasheet", direction B of the audit: a solid surface, one hairline, no blur, no shadow; the date as its
- * title, the contributions above the coding, each with a swatch, its value at full strength and a 1 px rule for the day against the year's best; a note only for a notable day, the key cap for stacked days) stays CLOSE to its column but not on it
+ * title, the contributions above the coding, each with a swatch and its value over a wash of its colour; one footer line always there, the note of a notable day; the key cap for stacked days: `DayCard`) stays CLOSE to its column but not on it
  * (`plan`, lib/day-card-plan.ts: above it, or at 45 degrees to a side, clear of the page's figures) and glides to its place SLOWLY, so that a sweeping pointer does not drag it along; the dashed connector, from the outline's edge or
  * protruding corner to the card where it is now, is what moves. A card that the glide leaves over the selected column glides out of its way faster (never a jump). Phones have no card: the legend says the day (`ActivityPanel`).
  */
-function HoverLayer({ info, onDay, visible, instant, ctx, touch, view, figures, withCard }: { info: HoverInfo; onDay: boolean; visible: boolean; instant: boolean; ctx: ReturnType<typeof yearContext> | null; touch: boolean; view: { width: number; height: number }; figures: Rect | null; withCard: boolean }) {
+function HoverLayer({ info, onDay, shown, instant, ctx, touch, view, figures, withCard }: { info: HoverInfo; onDay: boolean; shown: boolean; instant: boolean; ctx: ReturnType<typeof yearContext> | null; touch: boolean; view: { width: number; height: number }; figures: Rect | null; withCard: boolean }) {
   const card = useRef<HTMLDivElement>(null);
   const link = useRef<SVGPathElement>(null);
   const cur = useRef({ x: 0, y: 0, init: false, key: "" });
-  const hours = hoursText(info.hours);
-  const empty = info.contributions === 0 && !hours;
-  const k = ctx?.(info.contributions, info.hours) ?? { c: 0, h: 0, note: null };
-  const [weekday = "", day = "", month = "", year = ""] = readableDay(info.date).split(" ");
-  const order = Date.parse(`${info.date}T00:00:00Z`);
-  const stacked = info.behind && info.behind.count > 1;
+  const note = ctx?.(info.contributions, info.hours) ?? null;
   useLayoutEffect(() => {
     const el = card.current;
     const path = link.current;
@@ -156,49 +207,12 @@ function HoverLayer({ info, onDay, visible, instant, ctx, touch, view, figures, 
   return (
     <>
       <svg aria-hidden="true" className="pointer-events-none absolute inset-0 size-full overflow-visible">
-        <path d={`M${info.outline.split(" ").join("L")}Z`.replaceAll(",", " ")} fill="color-mix(in srgb, var(--foreground) 7%, transparent)" stroke="var(--foreground)" strokeWidth={1.5} strokeLinejoin="round" style={{ opacity: onDay ? 1 : 0, transition: instant ? "none" : "opacity 0.12s" }} />
-        {withCard && <path ref={link} style={{ opacity: visible && onDay ? 1 : visible ? 0.35 : 0, transition: "opacity 0.16s" }} fill="none" stroke="var(--foreground)" strokeWidth={1.5} strokeDasharray="4 3" strokeLinejoin="round" strokeLinecap="butt" />}
+        <path d={`M${info.outline.split(" ").join("L")}Z`.replaceAll(",", " ")} fill="color-mix(in srgb, var(--foreground) 7%, transparent)" stroke="var(--foreground)" strokeWidth={1.5} strokeLinejoin="round" style={{ opacity: onDay ? 1 : 0, transition: FADE }} />
+        {withCard && <path ref={link} style={{ opacity: shown ? 1 : 0, transition: FADE }} fill="none" stroke="var(--foreground)" strokeWidth={1.5} strokeDasharray="4 3" strokeLinejoin="round" strokeLinecap="butt" />}
       </svg>
       {withCard && (
-        <div role="presentation" className="pointer-events-none absolute top-0 left-0 z-20 h-0 w-0" style={{ opacity: visible ? 1 : 0, transition: "opacity 0.12s var(--ease-standard)" }}>
-          <div ref={card} className="act-card">
-        <header className="act-card-head">
-          <span className="act-card-date"><Roll value={`${day} ${month}`} order={order} /></span>
-          <span className="type-meta text-muted-foreground uppercase"><Roll value={`${weekday} · ${year}`} order={order} /></span>
-        </header>
-        {empty ? (
-          <p className="act-card-empty type-meta m-0 text-muted-foreground uppercase">No activity</p>
-        ) : (
-          <dl className="act-card-rows">
-            <div className="act-card-row" data-tone="green">
-              <span aria-hidden="true" className="act-card-swatch" />
-              <dt className="type-meta text-muted-foreground uppercase">{info.contributions === 1 ? "contribution" : "contributions"}</dt>
-              <dd className="act-card-value">
-                <Roll value={info.contributions ? String(info.contributions) : "—"} order={info.contributions} />
-              </dd>
-              <span aria-hidden="true" className="act-card-meter" style={{ "--share": k.c } as React.CSSProperties} />
-            </div>
-            <div className="act-card-row" data-tone="blue">
-              <span aria-hidden="true" className="act-card-swatch" />
-              <dt className="type-meta text-muted-foreground uppercase">coded</dt>
-              <dd className="act-card-value">
-                <Roll value={hours ?? "—"} order={info.hours} />
-              </dd>
-              <span aria-hidden="true" className="act-card-meter" style={{ "--share": k.h } as React.CSSProperties} />
-            </div>
-          </dl>
-        )}
-        {(k.note || stacked) && (
-          <footer className="act-card-foot type-meta uppercase">
-            {k.note && <span style={{ color: "var(--signal-text)" }}>{k.note}</span>}
-            {stacked && info.behind && (
-              <span className="ml-auto text-muted-foreground">
-                {info.behind.index + 1}/{info.behind.count} <kbd className="ds-micro">{touch ? "Tap" : "Click"}</kbd>
-              </span>
-            )}
-          </footer>
-        )}
-          </div>
+        <div role="presentation" className="pointer-events-none absolute top-0 left-0 z-20 h-0 w-0" style={{ opacity: shown ? 1 : 0, transition: FADE }}>
+          <DayCard cardRef={card} info={info} note={note} touch={touch} />
         </div>
       )}
     </>
@@ -251,23 +265,32 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
   // the last day shown stays mounted (the card fades and glides instead of vanishing); a card that comes back from nothing appears in place
   const lastHover = useRef<HoverInfo | null>(null);
   if (hover) lastHover.current = hover;
-  // The card outlives the pointer's passes over empty ground between two columns: it stays `GRACE_MS` after the day is gone (the outline goes at once), and a day that comes back within `FRESH_MS` is not a new visit (the card
-  // glides to it, as from day to day) instead of jumping to it, which is what crossing a block with no value used to do (owner, 2026-11-23).
-  const [gone, setGone] = useState(true);
+  // A day that comes back within `FRESH_MS` of the last is not a new visit (the card glides to it, as from day to day) instead of appearing in place. The outline, the connector and the card go together with the day (one fade, `FADE`), and
+  // also while the pointer is `busy`: when the day changes `BUSY_CHANGES` times within `BUSY_WINDOW_MS` the connector and the card (not the outline: the hovered column stays marked) fade until it has been calm for `CALM_MS` (owner, 2026-11-23: flickering, and in the way).
+  const [busy, setBusy] = useState(false);
   const leftAt = useRef<number | null>(null);
   const everShown = useRef(false);
+  const changes = useRef<number[]>([]);
+  const calm = useRef(0);
   const fresh = !!hover && (!everShown.current || (leftAt.current !== null && performance.now() - leftAt.current > FRESH_MS));
+  const day = hover?.date ?? null;
   useEffect(() => {
-    if (hover) {
+    const now = performance.now();
+    if (day) {
       everShown.current = true;
       leftAt.current = null;
-      setGone(false);
-      return;
-    }
-    leftAt.current ??= performance.now();
-    const t = window.setTimeout(() => setGone(true), GRACE_MS);
-    return () => window.clearTimeout(t);
-  }, [hover]);
+      const list = changes.current;
+      list.push(now);
+      while (list.length && now - list[0]! > BUSY_WINDOW_MS) list.shift();
+      if (list.length >= BUSY_CHANGES) setBusy(true);
+      window.clearTimeout(calm.current);
+      calm.current = window.setTimeout(() => {
+        changes.current = [];
+        setBusy(false);
+      }, CALM_MS);
+    } else leftAt.current ??= now;
+  }, [day]);
+  useEffect(() => () => window.clearTimeout(calm.current), []);
   const instant = fresh;
   const sceneBox = useRef<HTMLDivElement>(null);
   // (the day card against the year, and whether the last press was a finger: the key cap says Tap then)
@@ -449,7 +472,7 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
               </span>
             </div>
           )}
-          {lastHover.current && <HoverLayer info={lastHover.current} onDay={!!hover} visible={!gone} instant={instant} ctx={ctx} touch={touch} view={view} figures={figures} withCard={!narrow} />}
+          {lastHover.current && <HoverLayer info={lastHover.current} onDay={!!hover} shown={!!hover && !busy} instant={instant} ctx={ctx} touch={touch} view={view} figures={figures} withCard={!narrow} />}
           <p className="sr-only" aria-live="polite">{hover ? dayText(hover) : ""}</p>
         </div>
       )}

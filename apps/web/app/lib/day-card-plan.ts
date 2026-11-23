@@ -7,8 +7,9 @@
  * the card's CURRENT place, is what moves.
  */
 export const CARD_W = 240;
-const GAP = 48; // the card above the column: its foot this far over the outline's top
-const DIAG = 48; // the card at 45 degrees: its attach point this far over and across from the corner
+const GAP = 76; // the card above the column: its foot this far over the outline's top
+const DIAG = 72; // the card at 45 degrees: its attach point this far over from the corner
+const FLAT = 56; // ... and this much further across: the connector is 45 degrees, THEN a flat run into the card's side (owner, 2026-11-23: not just a diagonal)
 const ATTACH = 24; // (the level of the card's date line, where a side connector enters)
 
 export type Pt = [number, number];
@@ -76,7 +77,7 @@ export function plan(outline: string, view: { width: number; height: number }, f
   cands.push({ mode: "top", key: "top", from: topMid, x: cx, y: topMid[1] - GAP - h });
   for (const [mode, side, v] of [["right", 1, -1], ["left", -1, -1], ["right", 1, 1], ["left", -1, 1]] as const) {
     const s = corner(pts, side, v);
-    const ex = s[0] + side * DIAG;
+    const ex = s[0] + side * (DIAG + FLAT);
     cands.push({ mode, key: `${mode}${v}`, from: s, x: side === 1 ? ex : ex - CARD_W, y: s[1] + v * DIAG - ATTACH });
   }
   const bx = Math.min(Math.max(botMid[0] - CARD_W / 2, 4), W - CARD_W - 4);

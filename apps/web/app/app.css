@@ -9136,86 +9136,152 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   .act-out-up, .act-out-down { display: none; }
 }
 
-/* The day card of the activity picture (components/activity-panel.tsx `DayCard`; docs/design-system.md: square, a solid surface, one hairline, no shadow, no blur). The page's own figures set the type: a display value, small mono caps. */
+/*
+ * The day card of the activity picture (components/activity-panel.tsx `DayCard`; docs/activity-picture.md, "The day card"): the page's own surface and one soft `--border` hairline (owner, 2026-11-23: the strong one read as an odd frame; with none, the light card's edge dissolved into the pale picture), square, no shadow, no blur, compact. Each source's row carries a
+ * soft WASH of its colour (green for the contributions, blue for the coding), a gradient of solid colours from the figure's edge to the surface, no opacity. Its height is the same for every day (one footer line, always there): the placement reads
+ * it once per day, so nothing jumps.
+ */
 .act-card {
+  --pad: 0.625rem;
+  --rule: var(--border);
   position: absolute;
   top: 0;
   left: 0;
   width: 15rem;
   background: var(--surface);
-  border: var(--hairline) solid var(--border-strong);
+  border: 1px solid var(--border);
   color: var(--foreground);
 }
+/* The title block: the date (display face) over the weekday and the year (metadata); when several days lie under the pointer, one pip per day (this one filled) on the date's line and "Click for next day" on the metadata's, at the right. */
 .act-card-head {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: "date pips" "day next";
   align-items: baseline;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.625rem 0.75rem 0.5rem;
+  column-gap: 0.75rem;
+  padding: 0.5rem var(--pad) 0.4375rem;
 }
 .act-card-date {
+  grid-area: date;
   display: inline-grid;
   font-family: var(--font-display);
   font-size: 1.125rem;
   font-weight: 700;
-  line-height: 1;
-  letter-spacing: -0.01em;
+  line-height: 1.375rem;
+  letter-spacing: -0.015em;
 }
-.act-card-empty {
-  padding: 0 0.75rem 0.75rem;
+.act-card-day {
+  grid-area: day;
+  color: var(--muted-foreground);
+}
+/* The pips: 6 px squares, 3 px apart, the day shown in the ink, the others in the plain hairline's grey (quiet: the one that is shown must be told at a glance, owner 2026-11-23); lifted so that they are centred on the date's capitals (13 px of ink over its baseline: (13 - 6) / 2 = 3.5, so 4 px). */
+.act-card-pips {
+  grid-area: pips;
+  justify-self: end;
+  display: inline-flex;
+  gap: 0.1875rem;
+  position: relative;
+  top: -0.25rem;
+  color: var(--muted-foreground);
+}
+.act-card-pips > span:not(.type-meta) {
+  width: 0.375rem;
+  height: 0.375rem;
+  background: var(--border);
+}
+.act-card-pips > span[data-on] {
+  background: var(--foreground);
+}
+.act-card-next {
+  grid-area: next;
+  justify-self: end;
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+}
+/* The key cap is plain text, never a box (docs/design-system.md, "KeyHint"): the verb in the ink against the muted rest. */
+.act-card-key {
+  font: inherit;
+  font-weight: 600;
+  color: var(--foreground);
 }
 .act-card-rows {
   margin: 0;
   display: grid;
 }
+/* A source: its swatch and label (metadata), its figure (display face, the source's colour) on the label's baseline, over a wash of the source's colour that fades from the figure's edge into the surface. */
 .act-card-row {
   --tone: var(--act-green);
-  position: relative;
   display: grid;
-  grid-template-columns: 0.625rem 1fr auto;
+  grid-template-columns: 1fr auto;
   align-items: baseline;
-  column-gap: 0.5rem;
-  padding: 0.5rem 0.75rem 0.625rem;
-  border-top: var(--hairline) solid var(--border);
+  column-gap: 0.75rem;
+  padding: 0.3125rem var(--pad) 0.25rem;
+  border-top: 1px solid var(--rule);
+  background: linear-gradient(to left, color-mix(in srgb, var(--tone) 15%, var(--surface)), color-mix(in srgb, var(--tone) 6%, var(--surface)) 45%, var(--surface) 85%);
 }
 .act-card-row[data-tone="blue"] {
   --tone: var(--act-blue);
 }
+.act-card-row[data-none] {
+  --tone: var(--muted-foreground);
+  background: none;
+}
+.act-card-label {
+  margin: 0;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+}
+/* The swatch is a 9 px square, the height of the label's capitals (JetBrains Mono at 12 px: 9 px of ink, measured), sitting on the label's baseline (an empty inline block's baseline is its foot): its top and foot are the capitals' top and foot,
+   whatever the row's line height. Whole pixels, so its edges are crisp at 1x. */
 .act-card-swatch {
-  width: 0.625rem;
-  height: 0.625rem;
-  align-self: center;
+  display: inline-block;
+  width: 0.5625rem;
+  height: 0.5625rem;
+  margin-right: 0.5rem;
+  vertical-align: baseline;
   background: var(--tone);
+}
+.act-card-row[data-none] .act-card-swatch {
+  background: var(--border-strong);
 }
 .act-card-value {
   margin: 0;
-  display: inline-grid;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.125rem;
+  height: 1.5rem;
   font-family: var(--font-display);
-  font-size: 1.5rem;
-  font-weight: 600;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
+  font-size: 1.1875rem;
+  font-weight: 650;
+  line-height: 1.5rem;
+  font-variant-numeric: tabular-nums lining-nums;
   color: var(--tone);
 }
-/* The day against the year's best: a rule at the row's foot, the source's colour over the hairline (solid colours, no opacity). */
-.act-card-meter {
-  position: absolute;
-  left: 0;
-  bottom: calc(var(--hairline) * -1);
-  height: 1px;
-  width: calc(var(--share, 0) * 100%);
-  background: var(--tone);
-  transition: width 0.16s var(--ease-standard);
+/* No figure: a light dash in the quiet tone, not a bold bar. */
+.act-card-row[data-none] .act-card-value {
+  font-weight: 300;
 }
+.act-card-unit {
+  display: inline-grid;
+  line-height: 1;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+/* One line, always there (no layout shift): a sentence, so the reading face in sentence case; the note of a notable day in the ink, else a quiet line (how long ago the day was, or "No activity"). */
 .act-card-foot {
-  display: flex;
-  align-items: baseline;
-  gap: 0.75rem;
-  padding: 0.5rem 0.75rem;
-  border-top: var(--hairline) solid var(--border);
+  display: grid;
+  padding: 0.3125rem var(--pad) 0.375rem;
+  border-top: 1px solid var(--rule);
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
+  color: var(--muted-foreground);
+  white-space: nowrap;
 }
-@media (prefers-reduced-motion: reduce) {
-  .act-card-meter {
-    transition: none;
-  }
+.act-card-foot[data-note] {
+  color: var(--foreground);
+  font-weight: 500;
 }

@@ -58,15 +58,26 @@ describe("the day card's helpers", () => {
     expect(hoursText(2.5)).toBe("2.5 h");
     expect(hoursText(7.96)).toBe("8 h");
   });
-  it("puts a day against the year: shares of the best, and a note only for the notable", async () => {
+  it("says how long ago a day was, in whole UTC days", async () => {
+    const { agoText } = await import("./activity");
+    const now = Date.parse("2026-11-23T23:30:00Z");
+    expect(agoText("2026-11-23", now)).toBe("Today");
+    expect(agoText("2026-11-24", now)).toBe("Today");
+    expect(agoText("2026-11-22", now)).toBe("Yesterday");
+    expect(agoText("2026-11-18", now)).toBe("5 days ago");
+    expect(agoText("2026-11-02", now)).toBe("3 weeks ago");
+    expect(agoText("2026-06-09", now)).toBe("5 months ago");
+    expect(agoText("2025-11-23", now)).toBe("A year ago");
+    expect(agoText("2023-11-01", now)).toBe("3 years ago");
+  });
+  it("puts a day against the year: a note only for the notable", async () => {
     const { yearContext } = await import("./activity");
     const github = Array.from({ length: 100 }, (_, i) => ({ date: `2026-01-${String((i % 28) + 1).padStart(2, "0")}`, count: i === 0 ? 40 : i % 10, level: 1 }));
     const wakatime = Array.from({ length: 100 }, (_, i) => ({ date: `2026-01-${String((i % 28) + 1).padStart(2, "0")}`, seconds: i === 1 ? 36000 : 3600 }));
     const at = yearContext({ generatedAt: "x", github, wakatime });
-    expect(at(40, 1).c).toBe(1);
-    expect(at(40, 1).note).toBe("Most contributions in a day");
-    expect(at(0, 10).note).toBe("Longest day of coding");
-    expect(at(3, 1).note).toBeNull();
-    expect(at(0, 0)).toEqual({ c: 0, h: 0, note: null });
+    expect(at(40, 1)).toBe("Most contributions in a day");
+    expect(at(0, 10)).toBe("Longest day of coding");
+    expect(at(3, 1)).toBeNull();
+    expect(at(0, 0)).toBeNull();
   });
 });
