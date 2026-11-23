@@ -78,11 +78,6 @@ export function CareerPage({ career, places = [], projects = [] }: { career: Pub
               </Button>
             </p>
             </div>
-            {updated && (
-              <p data-slot="career-updated" className="career-updated type-meta">
-                Updated <time dateTime={career.updated}>{updated}</time>
-              </p>
-            )}
           </div>
           {portrait && (
             <figure data-slot="career-portrait" className="career-portrait">
@@ -95,23 +90,32 @@ export function CareerPage({ career, places = [], projects = [] }: { career: Pub
         </div>
       </header>
 
-      {career.languages.length > 0 && (
-        <section data-slot="career-languages" aria-labelledby="career-languages-h" className="career-languages">
-          <h2 id="career-languages-h" className="career-languages-label type-meta">
-            Languages
-          </h2>
-          <ul>
-            {career.languages.map((l) => {
-              const detail = languageDetail(l);
-              return (
-                <li key={l.name}>
-                  <span className="career-language-name">{l.name}</span>
-                  {detail && <span className="career-language-detail">{detail}</span>}
-                </li>
-              );
-            })}
-          </ul>
-        </section>
+      {(career.languages.length > 0 || updated) && (
+        <div data-slot="career-strip" className="career-strip" data-updated={updated ? "true" : undefined}>
+          {updated && (
+            <p data-slot="career-updated" className="career-updated type-meta">
+              Updated <time dateTime={career.updated}>{updated}</time>
+            </p>
+          )}
+        {career.languages.length > 0 && (
+          <section data-slot="career-languages" aria-labelledby="career-languages-h" className="career-languages">
+            <h2 id="career-languages-h" className="career-languages-label type-meta">
+              Languages
+            </h2>
+            <ul>
+              {career.languages.map((l) => {
+                const detail = languageDetail(l);
+                return (
+                  <li key={l.name}>
+                    <span className="career-language-name">{l.name}</span>
+                    {detail && <span className="career-language-detail">{detail}</span>}
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        )}
+        </div>
       )}
 
       <Block id="experience" title="Experience" count={career.roles.length}>
