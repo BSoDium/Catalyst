@@ -27,8 +27,14 @@ export function brightness(pixels: ArrayLike<number>): number {
   return n === 0 ? 0.5 : sum / n;
 }
 
-/** Dark where the picture is darker than the middle grey. */
-export const toneOf = (level: number): Tone => (level < 0.5 ? "dark" : "light");
+/**
+ * The cut between the two grounds: light only where the picture is REALLY bright (owner, 2026-11-23). At the middle grey (0.5) a picture a little brighter than half got a white (or a grey) overlay that played
+ * badly with it: mid-bright pictures are served better by the dark ground, so the light one is kept for the very bright ones.
+ */
+export const LIGHT_FROM = 0.78;
+
+/** Light only where the picture is very bright, dark everywhere else. */
+export const toneOf = (level: number): Tone => (level < LIGHT_FROM ? "dark" : "light");
 
 /** The tone under the label of an image that has loaded, or null when it cannot be read (a picture from another origin taints the canvas). */
 export function imageTone(img: HTMLImageElement, fraction = 0.34): Tone | null {
