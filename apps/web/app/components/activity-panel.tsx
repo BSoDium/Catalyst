@@ -187,7 +187,6 @@ function NoteIcon({ record }: { record: boolean }) {
   );
 }
 
-/** How long the card stays after the pointer leaves a day, and how long it can be away before a day is a new visit (the card then appears in place). */
 /** The outline, the connector and the card fade at one rate (`onDay` and `shown` change together except while the pointer is busy): there is never a connector without its outline. */
 const FADE = "opacity 0.12s var(--ease-standard)";
 /** Too many days in too short a time (a pointer sweeping across the picture): the connector and the card fade away until it slows down, instead of flickering over every column. */
@@ -196,12 +195,13 @@ const BUSY_WINDOW_MS = 400;
 /** ... and they must also span this much of the picture (the extent of the days' places, CSS px): a pointer working a small area, even back and forth over many columns, is not sweeping. */
 const BUSY_SPAN_PX = 420;
 const CALM_MS = 220;
+/** How long the pointer can be off the picture before the next day is a new visit (the card then appears in place). */
 const FRESH_MS = 700;
 
 /**
  * What the pointer is on: the outline of the day's column, the card, and the connector between them (owner, 2026-11-23). The card (the "datasheet", direction B of the audit: a solid surface, one hairline, no blur, no shadow; the date as its
  * title, the contributions above the coding, each with a swatch and its value over a wash of its colour; one footer line always there, the note of a notable day; the key cap for stacked days: `DayCard`) stays CLOSE to its column but not on it
- * (`plan`, lib/day-card-plan.ts: above it, or at 45 degrees to a side, clear of the page's figures) and glides to its place SLOWLY, so that a sweeping pointer does not drag it along; the dashed connector, from the outline's edge or
+ * (`plan`, lib/day-card-plan.ts: above it, or at 45 degrees to a side, clear of the page's figures) and glides to its place SLOWLY, so that a sweeping pointer does not drag it along; the connector (a gradient line, from the outline's colour to the card's edge colour), from the outline's edge or
  * protruding corner to the card where it is now, is what moves. A card that the glide leaves over the selected column glides out of its way faster (never a jump). Phones have no card: the legend says the day (`ActivityPanel`).
  */
 function HoverLayer({ info, onDay, shown, instant, ctx, touch, view, figures, withCard }: { info: HoverInfo; onDay: boolean; shown: boolean; instant: boolean; ctx: ReturnType<typeof yearContext> | null; touch: boolean; view: { width: number; height: number }; figures: Rect | null; withCard: boolean }) {
@@ -212,7 +212,7 @@ function HoverLayer({ info, onDay, shown, instant, ctx, touch, view, figures, wi
   const grad = useRef<SVGLinearGradientElement>(null);
   const uid = useId().replaceAll(":", "");
   const gid = `act-link-${uid}`;
-  const mid = `act-in-${uid}`;
+  const mid = `act-mask-${uid}`;
   const cur = useRef({ x: 0, y: 0, init: false, key: "" });
   const note = ctx?.(info.contributions, info.hours) ?? null;
   // (whether the card was showing at the last commit: a card that comes back from hidden (a sweep that has settled, the pointer back from empty ground) is put in its place at once, with no glide to give it an inertia as it appears)
@@ -283,7 +283,6 @@ function HoverLayer({ info, onDay, shown, instant, ctx, touch, view, figures, wi
   return (
     <>
       <svg aria-hidden="true" className="pointer-events-none absolute inset-0 size-full overflow-visible">
-        {/* The library's "auto" outline: the text colour in the dark theme; in the light one a white line on a thin near-black casing (a dark line is lost on dark, saturated blocks). */}
         <defs>
           {/* (the halos are seen outside the outline only: the inside of the column is cut out of them) */}
           <mask id={mid} maskUnits="userSpaceOnUse" x="-10000" y="-10000" width="20000" height="20000">
