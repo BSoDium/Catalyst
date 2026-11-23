@@ -209,7 +209,9 @@ function HoverLayer({ info, onDay, shown, instant, ctx, touch, view, figures, wi
   const link = useRef<SVGPathElement>(null);
   const linkHalo = useRef<SVGPathElement>(null);
   const grad = useRef<SVGLinearGradientElement>(null);
-  const gid = `act-link-${useId().replaceAll(":", "")}`;
+  const uid = useId().replaceAll(":", "");
+  const gid = `act-link-${uid}`;
+  const mid = `act-in-${uid}`;
   const cur = useRef({ x: 0, y: 0, init: false, key: "" });
   const note = ctx?.(info.contributions, info.hours) ?? null;
   // (whether the card was showing at the last commit: a card that comes back from hidden (a sweep that has settled, the pointer back from empty ground) is put in its place at once, with no glide to give it an inertia as it appears)
@@ -279,7 +281,14 @@ function HoverLayer({ info, onDay, shown, instant, ctx, touch, view, figures, wi
     <>
       <svg aria-hidden="true" className="pointer-events-none absolute inset-0 size-full overflow-visible">
         {/* The library's "auto" outline: the text colour in the dark theme; in the light one a white line on a thin near-black casing (a dark line is lost on dark, saturated blocks). */}
-        <path className="act-outline-halo" d={`M${info.outline.split(" ").join("L")}Z`.replaceAll(",", " ")} fill="none" strokeWidth={3.5} strokeLinejoin="round" style={{ opacity: onDay ? 1 : 0, transition: FADE }} />
+        <defs>
+          {/* (the halo is seen outside the outline only: the inside of the column is cut out of it) */}
+          <mask id={mid} maskUnits="userSpaceOnUse" x="-10000" y="-10000" width="20000" height="20000">
+            <rect x="-10000" y="-10000" width="20000" height="20000" fill="#fff" />
+            <path d={`M${info.outline.split(" ").join("L")}Z`.replaceAll(",", " ")} fill="#000" />
+          </mask>
+        </defs>
+        <path className="act-outline-halo" mask={`url(#${mid})`} d={`M${info.outline.split(" ").join("L")}Z`.replaceAll(",", " ")} fill="none" strokeLinejoin="round" style={{ opacity: onDay ? 1 : 0, transition: FADE }} />
         <path className="act-outline" d={`M${info.outline.split(" ").join("L")}Z`.replaceAll(",", " ")} fill="color-mix(in srgb, var(--foreground) 7%, transparent)" strokeWidth={1.5} strokeLinejoin="round" style={{ opacity: onDay ? 1 : 0, transition: FADE }} />
         {withCard && (
           <>
@@ -289,8 +298,8 @@ function HoverLayer({ info, onDay, shown, instant, ctx, touch, view, figures, wi
                 <stop offset="1" style={{ stopColor: "var(--act-link-to)" }} />
               </linearGradient>
             </defs>
-            {/* (the light theme's casing, as the outline has: the connector is a white core on a thin near-black line) */}
-            <path ref={linkHalo} className="act-outline-halo" style={{ opacity: shown ? 1 : 0, transition: FADE }} fill="none" strokeWidth={3.5} strokeLinejoin="round" strokeLinecap="butt" />
+            {/* (the light theme's soft halo, as the outline has: a white core on a blurred dark line) */}
+            <path ref={linkHalo} className="act-outline-halo" style={{ opacity: shown ? 1 : 0, transition: FADE }} fill="none" strokeLinejoin="round" strokeLinecap="butt" />
             <path ref={link} style={{ opacity: shown ? 1 : 0, transition: FADE }} fill="none" stroke={`url(#${gid})`} strokeWidth={1.5} strokeLinejoin="round" strokeLinecap="butt" />
           </>
         )}

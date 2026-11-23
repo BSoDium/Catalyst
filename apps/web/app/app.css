@@ -9142,13 +9142,14 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
  * it once per day, so nothing jumps.
  */
 .act-outline { stroke: var(--foreground); }
-.act-outline-halo { stroke: transparent; }
+/* The halo (the library's `--nag-halo-*`: 8 px wide, blurred 3 px, half strength): a soft dip in brightness round the line, dark in the light theme only. */
+.act-outline-halo { stroke: transparent; stroke-width: 8; stroke-opacity: 0.5; filter: blur(3px); }
 @media (prefers-color-scheme: light) {
   :where(:root:not([data-scheme="dark"])) .act-outline { stroke: #fff; }
-  :where(:root:not([data-scheme="dark"])) .act-outline-halo { stroke: rgb(10 10 10 / 0.85); }
+  :where(:root:not([data-scheme="dark"])) .act-outline-halo { stroke: #111114; }
 }
 :where(:root[data-scheme="light"]) .act-outline { stroke: #fff; }
-:where(:root[data-scheme="light"]) .act-outline-halo { stroke: rgb(10 10 10 / 0.85); }
+:where(:root[data-scheme="light"]) .act-outline-halo { stroke: #111114; }
 /* The connector: a line from the outline's own colour (the text colour: the selected column's line) to a softer one where it reaches the card, whose edge takes `--act-link-edge` at the joint. In the light theme, as the outline: a white core
    (to a light grey at the card) on a thin near-black casing, which the card's edge takes at the joint. */
 :root {
