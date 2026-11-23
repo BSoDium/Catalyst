@@ -155,3 +155,22 @@ export function displayHost(url: string): string {
     return url;
   }
 }
+
+/**
+ * Where a link card goes, in two parts: the host (without `www.`) and the path after it ("/BSoDium/Catalyst"), without a trailing slash,
+ * the query or the fragment, percent-decoded where that is valid. The path is "" for a site's root. Not a URL to follow: words to read.
+ */
+export function linkDestination(url: string): { host: string; path: string } {
+  try {
+    const u = new URL(url);
+    let path = u.pathname.replace(/\/+$/, "");
+    try {
+      path = decodeURIComponent(path);
+    } catch {
+      // (a malformed escape stays as written)
+    }
+    return { host: u.hostname.replace(/^www\./, ""), path };
+  } catch {
+    return { host: url, path: "" };
+  }
+}
