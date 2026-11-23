@@ -5131,8 +5131,8 @@ body:not(:has([data-slot="site-header"])) .np-root {
     animation: none;
   }
 }
-/* The turning globe takes the accent while it turns (the label stays ink: the rule under it and the icon say it is on). */
-.globe-dock-item[aria-pressed="true"] .globe-dock-globe {
+/* The globe icon follows the real state: the accent and turning only while the globe is at full pace; still and plain while it starts, is disabled or is off (the label stays ink: the rule under it says the switch is on). */
+.globe-dock-item[data-state="on"] .globe-dock-globe {
   color: var(--signal-text);
 }
 @media (forced-colors: active) {

@@ -851,6 +851,12 @@ export class GlobeRenderer {
   setAmbient(on: boolean, hurry = false) {
     const was = SPIN.ambient;
     SPIN.ambient = on;
+    // (switched on while the energy pass has the picture held: the switch is not an input, and the hold would stay; it lets go and the budget starts again)
+    if (on && this.idleFrozen) {
+      this.idleFrozen = false;
+      this.applyHold();
+      this.armFreeze();
+    }
     this.noteChange();
     if (hurry && on && !was) {
       // (asked for just now: it starts in a moment, with the picture at rest; the timer `noteChange` armed for the full idle delay is replaced by one for the short one)
@@ -1739,7 +1745,8 @@ export class GlobeRenderer {
   private freezeWhenIdle = () => {
     this.freezeTimer = 0;
     // (or the sun's music is playing: the visitor is in the cinematic experience, the view does not go to sleep under it; owner, 2026-10-29)
-    if (this.caption?.interluding || sunAudible(nowPlaying.getSnapshot())) {
+    // (or Auto-rotate is on and nothing blocks the turn: the visitor chose a globe that turns by itself, and a hover is no input, so the budget ran out under it, froze it for good and left the control at "Starting" until the next press, found 2026-11-23)
+    if (this.caption?.interluding || sunAudible(nowPlaying.getSnapshot()) || (SPIN.ambient && spinBlock(this.spinContext()) === null)) {
       this.freezeTimer = window.setTimeout(this.freezeWhenIdle, 1000);
       return;
     }

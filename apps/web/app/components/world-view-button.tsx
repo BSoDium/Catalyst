@@ -91,6 +91,7 @@ export function WorldViewButton({ showReset, showAmbient, streetLevel = false }:
                   type="button"
                   className="globe-dock-item"
                   data-slot="ambient-toggle"
+                  data-state={state}
                   aria-pressed={on}
                   aria-describedby={state === "disabled" ? "ambient-why" : undefined}
                   title={
@@ -107,7 +108,7 @@ export function WorldViewButton({ showReset, showAmbient, streetLevel = false }:
                   animate={{ opacity: 1, transition: { duration: 0.2, delay: reduced ? 0 : 0.22 } }}
                   exit={{ opacity: 0, transition: { duration: 0.16 } }}
                 >
-                  <TurningGlobe turning={on && !paused && !reduced} />
+                  <TurningGlobe turning={state === "on" && !reduced} />
                   Auto-rotate
                   {/* the state in words, for the eye (`aria-pressed` says it to the ear): the four words are laid in one cell whose width follows the word shown (and glides), so the strip is as long as its text and resizes smoothly as it changes */}
                   <span ref={cell} className="globe-dock-state" data-state={state} aria-hidden="true">
