@@ -299,7 +299,8 @@ function HoverLayer({ info, onDay, shown, instant, ctx, touch, view, figures, wi
               </linearGradient>
               <linearGradient ref={haloGrad} id={`${gid}h`} gradientUnits="userSpaceOnUse">
                 <stop offset="0" style={{ stopColor: "var(--act-link-halo)", stopOpacity: 1 }} />
-                <stop offset="1" style={{ stopColor: "var(--act-link-halo)", stopOpacity: 0 }} />
+                {/* (gone by the middle: past it the core is no longer white and needs no halo) */}
+                <stop offset="0.5" style={{ stopColor: "var(--act-link-halo)", stopOpacity: 0 }} />
               </linearGradient>
             </>
           )}
