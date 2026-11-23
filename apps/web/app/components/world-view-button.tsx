@@ -1,5 +1,5 @@
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { useSyncExternalStore } from "react";
+import { useLayoutEffect, useRef, useSyncExternalStore } from "react";
 import { Icon } from "~/components/ui/icon";
 import { TurningGlobe } from "~/components/ui/turning-globe";
 import { ambient, requestWorldView } from "~/globe";
@@ -24,6 +24,22 @@ export function WorldViewButton({ showReset, showAmbient, streetLevel = false }:
   // On, but not turning at full pace yet: it waits for the idle delay (a moment after the switch, the full delay after a touch) and then eases in over 3 s, so the word says "Starting" meanwhile.
   const turning = useSyncExternalStore(ambient.subscribeTurning, ambient.getTurning, () => false);
   const state = !on ? "off" : paused ? "paused" : turning ? "on" : "starting";
+  const cell = useRef<HTMLSpanElement>(null);
+  // The word's cell takes the width of the word it shows, and the width glides (app.css): the strip follows the text, smoothly, instead of keeping room for the longest word ("Starting")
+  // and leaving a gap after "On". Measured again when a word's own size changes (a font arriving, the narrow-screen type).
+  useLayoutEffect(() => {
+    const el = cell.current;
+    if (!el) return;
+    const fit = () => {
+      const word = el.querySelector<HTMLElement>(`[data-word="${state}"]`);
+      if (word) el.style.width = `${word.offsetWidth}px`;
+    };
+    fit();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(fit);
+    el.querySelectorAll("[data-word]").forEach((w) => ro.observe(w));
+    return () => ro.disconnect();
+  }, [state, showAmbient]);
   const hidden = reduced ? { opacity: 0 } : { opacity: 0, y: 6 };
   const glide = { duration: 0.3, ease: [0.2, 0, 0, 1] as const };
   return (
@@ -81,8 +97,8 @@ export function WorldViewButton({ showReset, showAmbient, streetLevel = false }:
                 >
                   <TurningGlobe turning={on && !paused && !reduced} />
                   Auto-rotate
-                  {/* the state in words, for the eye (`aria-pressed` says it to the ear): the four words are laid in the same cell, so the strip does not change width as it changes */}
-                  <span className="globe-dock-state" data-state={state} aria-hidden="true">
+                  {/* the state in words, for the eye (`aria-pressed` says it to the ear): the four words are laid in one cell whose width follows the word shown (and glides), so the strip is as long as its text and resizes smoothly as it changes */}
+                  <span ref={cell} className="globe-dock-state" data-state={state} aria-hidden="true">
                     <span data-word="on">On</span>
                     <span data-word="starting">Starting</span>
                     <span data-word="paused">Paused</span>

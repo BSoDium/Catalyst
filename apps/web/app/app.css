@@ -5057,9 +5057,14 @@ body:not(:has([data-slot="site-header"])) .np-root {
 .globe-dock-state {
   display: inline-grid;
   margin-inline-start: 0.125rem;
+  /* (the width is set by world-view-button.tsx to the word shown; it glides) */
+  overflow: hidden;
+  transition: width var(--duration-base) var(--ease-standard);
 }
 .globe-dock-state > span {
   grid-area: 1 / 1;
+  justify-self: start;
+  white-space: nowrap;
   text-align: start;
   color: var(--signal-text);
   opacity: 0;
@@ -5084,6 +5089,7 @@ body:not(:has([data-slot="site-header"])) .np-root {
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .globe-dock-state,
   .globe-dock-state > span {
     transition: none;
   }
