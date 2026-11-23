@@ -3753,16 +3753,21 @@
      the site's name, the rule and the big title are not drawn (the title stays in the page for assistive technology, search and the document
      outline, clipped; print keeps all of it), and the folio, "4 poems", is one small mono line above the filter. The career page's running head
      ("Career", "Updated ...") goes the same way: its "Updated" moves under the availability line (`.career-updated`). */
-  /* The career page has no running head: "Updated Month YYYY" is set under the "Get in touch" button, at every width, in the reading face, italic and muted (owner, 2026-11-04). */
+  /* The career page has no running head: "Updated Month YYYY" sits ON the strip's top rule, at its right end: the hairline runs from the left edge and stops at the label, in the
+     same small mono caps as "Languages" (owner, 2026-11-23: it read as messy under the button). */
   .career-updated {
-    display: block;
-    margin: 1.25rem 0 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 0 0 0.875rem;
     color: var(--muted-foreground);
-    font-family: var(--font-reading);
-    font-size: 0.9375rem;
-    font-style: italic;
-    letter-spacing: 0;
-    text-transform: none;
+    white-space: nowrap;
+  }
+
+  .career-updated::before {
+    content: "";
+    flex: 1;
+    border-top: var(--hairline) solid var(--border);
   }
 
   @media screen and (max-width: 55.99rem) {
@@ -7256,7 +7261,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     }
 
     /* The strip under the head sits closer to "Updated": about the air it has between its two hairlines. */
-    .career-languages[data-slot="career-languages"] {
+    .career-strip[data-slot="career-strip"] {
       margin-top: 1.25rem;
     }
 
@@ -7552,14 +7557,23 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   }
 
   /* Languages: ONE compact line under the head, between two hairlines of the page; wraps on a phone. */
+  .career-strip {
+    margin-top: 1.25rem;
+    padding-bottom: 0.875rem;
+    border-bottom: var(--hairline) solid var(--border);
+  }
+
+  /* With no "Updated" label the strip draws its top rule itself. */
+  .career-strip:not([data-updated]) {
+    padding-top: 0.875rem;
+    border-top: var(--hairline) solid var(--border);
+  }
+
   .career-languages {
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
     gap: 0.5rem 2rem;
-    margin-top: 1.25rem;
-    padding-block: 0.875rem;
-    border-block: var(--hairline) solid var(--border);
   }
 
   .career-languages-label {
@@ -7597,7 +7611,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   }
 
   /* The languages line already closes with a hairline: the first block does not draw a second one. */
-  .career-languages + .career-block {
+  .career-strip + .career-block {
     margin-top: 3rem;
     padding-top: 0;
     border-top: 0;
@@ -8766,7 +8780,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     break-inside: avoid;
   }
 
-  .career-languages {
+  .career-strip {
     margin-top: 1rem;
     border-color: #000;
   }
