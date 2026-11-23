@@ -18,10 +18,10 @@ import { ambient, requestWorldView } from "~/globe";
  */
 /** What to do to get Auto-rotate going again, by the engine's reason (`SpinBlock`): the hint under "Disabled". Only the way out, never how the picture is made (to the visitor the zoomed-in view and the globe are one picture). */
 const DISABLED_WHY: Record<string, string> = {
-  street: "Zoom out to turn it on again.",
+  street: "Zoom out to turn back on.",
   "reduced-motion": "Your device is set to reduce motion.",
-  "place-selected": "Close the place to turn it on again.",
-  "panel-open": "Close the panel to turn it on again.",
+  "place-selected": "Close the place to turn back on.",
+  "panel-open": "Close the panel to turn back on.",
   default: "Not available right now.",
 };
 
@@ -119,7 +119,7 @@ export function WorldViewButton({ showReset, showAmbient, streetLevel = false }:
                   {/* the reason, on hover or keyboard focus, while it is disabled (the visitor turned it on and nothing turns: say why, and what to do) */}
                   {state === "disabled" && (
                     <span id="ambient-why" role="tooltip" className="globe-dock-why">
-                      {why}
+                      Automatic globe rotation disabled. {why}
                     </span>
                   )}
                 </motion.button>
