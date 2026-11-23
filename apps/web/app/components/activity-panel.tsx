@@ -146,9 +146,11 @@ export function DayCard({ info, note, touch, now, cardRef }: { info: Pick<HoverI
 /** The outline, the connector and the card fade at one rate (`onDay` and `shown` change together except while the pointer is busy): there is never a connector without its outline. */
 const FADE = "opacity 0.12s var(--ease-standard)";
 /** Too many days in too short a time (a pointer sweeping across the picture): the connector and the card fade away until it slows down, instead of flickering over every column. */
-const BUSY_CHANGES = 5;
-const BUSY_WINDOW_MS = 450;
-const CALM_MS = 180;
+const BUSY_CHANGES = 8;
+const BUSY_WINDOW_MS = 400;
+/** ... and they must also span this much of the picture (the extent of the days' places, CSS px): a pointer working a small area, even back and forth over many columns, is not sweeping. */
+const BUSY_SPAN_PX = 420;
+const CALM_MS = 220;
 const FRESH_MS = 700;
 
 /**
@@ -275,7 +277,7 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
   const [busy, setBusy] = useState(false);
   const leftAt = useRef<number | null>(null);
   const everShown = useRef(false);
-  const changes = useRef<number[]>([]);
+  const changes = useRef<{ t: number; x: number; y: number }[]>([]);
   const calm = useRef(0);
   const fresh = !!hover && (!everShown.current || (leftAt.current !== null && performance.now() - leftAt.current > FRESH_MS));
   const day = hover?.date ?? null;
@@ -285,9 +287,12 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
       everShown.current = true;
       leftAt.current = null;
       const list = changes.current;
-      list.push(now);
-      while (list.length && now - list[0]! > BUSY_WINDOW_MS) list.shift();
-      if (list.length >= BUSY_CHANGES) setBusy(true);
+      list.push({ t: now, x: hover?.x ?? 0, y: hover?.y ?? 0 });
+      while (list.length && now - list[0]!.t > BUSY_WINDOW_MS) list.shift();
+      const xs = list.map((q) => q.x);
+      const ys = list.map((q) => q.y);
+      const span = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys));
+      if (list.length >= BUSY_CHANGES && span >= BUSY_SPAN_PX) setBusy(true);
       window.clearTimeout(calm.current);
       calm.current = window.setTimeout(() => {
         changes.current = [];
