@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "~/components/ui";
 import { placeholderTiles } from "neon-activity-graph/layout";
+import { bounds, CARD_W, overlaps, parseOutline, plan, route, type Rect } from "~/lib/day-card-plan";
 import { activityStats, dayText, GITHUB_URL, hoursText, isActivity, layoutActivity, readableDay, WAKATIME_URL, yearContext, type Activity, type ActivityStat, type HoverInfo, type Matrix } from "~/lib/activity";
 import { xmasNow } from "~/lib/xmas";
 
@@ -90,78 +91,73 @@ function Roll({ value, order }: { value: string; order: number }) {
   );
 }
 
-/** The card's box in the picture's own pixels: it stays where it is put (`dockOf`), and only the connector moves with the pointer. */
-export interface Dock {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-}
-export const CARD_W = 240;
+const grow = (r: Rect, m: number): Rect => ({ x: r.x - m, y: r.y - m, w: r.w + 2 * m, h: r.h + 2 * m });
 
 /**
- * Where the day card stands: fixed for the whole visit of the pointer (owner, 2026-11-23: the card stays put, the connector does the moving). On desktop it goes in the free room between the page's head and the figures grid at the top right
- * (its top level with the grid's, its right edge a gap short of it); where there is no such room (the figures sit at the left under 56 rem), over the picture's top right corner. Pure (CSS pixels).
+ * What the pointer is on: the outline of the day's column, the card, and the connector between them (owner, 2026-11-23). The card (the "datasheet", direction B of the audit: a solid surface, one hairline, no blur, no shadow; the date as its
+ * title, the contributions above the coding, each with a swatch, its value at full strength and a 1 px rule for the day against the year's best; a note only for a notable day, the key cap for stacked days) stays CLOSE to its column but not on it
+ * (`plan`, lib/day-card-plan.ts: above it, or at 45 degrees to a side, clear of the page's figures) and glides to its place SLOWLY, so that a sweeping pointer does not drag it along; the dashed connector, from the outline's edge or
+ * protruding corner to the card where it is now, is what moves. A card that the glide leaves over the selected column goes to its place at once. Phones have no card: the legend says the day (`ActivityPanel`).
  */
-export function dockOf(scene: { width: number }, figures: { left: number; top: number } | null, h: number): Dock {
-  const GAP = 24;
-  if (figures && figures.left - GAP - CARD_W >= 16) return { x: figures.left - GAP - CARD_W, y: figures.top, w: CARD_W, h };
-  return { x: Math.max(8, scene.width - CARD_W - 8), y: 8, w: CARD_W, h };
-}
-
-/**
- * The connector from the outline to the card, like the labels of a textbook's schematic (owner, 2026-11-23): it leaves the outline's PROTRUDING corner (the vertex furthest towards the card, so that it never reads as the continuation of
- * an edge of the outline: a tangent), runs 45 degrees towards the card, then flat into its side (or, with the card straight above, 45 degrees a little way and straight up to its foot). Dashed, in the outline's own stroke width and colour. Pure.
- */
-export function callout(outline: string, dock: Dock): string {
-  const pts = outline.split(" ").map((q) => q.split(",").map(Number) as [number, number]).filter((q) => q.length === 2 && Number.isFinite(q[0]) && Number.isFinite(q[1]));
-  if (!pts.length) return "";
-  const ay = dock.y + 24; // (the level of the card's date line)
-  const centre = pts.reduce((m, q) => [m[0] + q[0] / pts.length, m[1] + q[1] / pts.length], [0, 0]);
-  const toward = (side: number, v: number) => pts.reduce((m, q) => (side * q[0] + v * q[1] > side * m[0] + v * m[1] ? q : m));
-  if (centre[0] < dock.x || centre[0] > dock.x + dock.w) {
-    const side = centre[0] < dock.x ? 1 : -1;
-    const v = ay < centre[1] ? -1 : 1;
-    const [px, py] = toward(side, v);
-    const ax = side === 1 ? dock.x : dock.x + dock.w;
-    const D = Math.abs(ax - px);
-    const V = Math.abs(ay - py);
-    if (D >= V) return `M${px} ${py}L${px + side * V} ${ay}L${ax} ${ay}`;
-    return `M${px} ${py}L${px} ${py + v * (V - D)}L${ax} ${ay}`;
-  }
-  // the card is straight above (or below) the column: 45 degrees a little way towards the middle of the card, then straight to its foot
-  const side = centre[0] < dock.x + dock.w / 2 ? 1 : -1;
-  const v = dock.y + dock.h < centre[1] ? -1 : 1;
-  const [px, py] = toward(side, v);
-  const foot = v === -1 ? dock.y + dock.h : dock.y;
-  const d = Math.min(16, Math.abs(py - foot));
-  return `M${px} ${py}L${px + side * d} ${py + v * d}L${px + side * d} ${foot}`;
-}
-
-/**
- * The card of a day (the "datasheet", owner-approved direction B of the 2026-11-23 audit): a solid surface with one hairline, square, no blur and no shadow. It reads like the column it hangs on: the date as its title, the contributions (green) above
- * the coding (blue), each with a swatch of its colour, the value at full strength and a 1 px rule showing the day against the year's best; a note appears only for a notable day, and the key cap for stacked days. It does not move with the pointer
- * (`dockOf`: the connector, drawn with the outline, does); it fades when the pointer leaves and the numbers roll as the day changes. Phones have no card: the legend says the day (`ActivityPanel`).
- */
-function DayCard({ info, ctx, visible, dock, onHeight, touch }: { info: HoverInfo; ctx: ReturnType<typeof yearContext> | null; visible: boolean; dock: Dock; onHeight: (h: number) => void; touch: boolean }) {
+function HoverLayer({ info, visible, instant, ctx, touch, view, figures, withCard }: { info: HoverInfo; visible: boolean; instant: boolean; ctx: ReturnType<typeof yearContext> | null; touch: boolean; view: { width: number; height: number }; figures: Rect | null; withCard: boolean }) {
   const card = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => {
-    const el = card.current;
-    if (!el) return;
-    onHeight(el.offsetHeight);
-    const ro = new ResizeObserver(() => onHeight(el.offsetHeight));
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [onHeight]);
+  const link = useRef<SVGPathElement>(null);
+  const cur = useRef({ x: 0, y: 0, init: false });
   const hours = hoursText(info.hours);
   const empty = info.contributions === 0 && !hours;
   const k = ctx?.(info.contributions, info.hours) ?? { c: 0, h: 0, note: null };
   const [weekday = "", day = "", month = "", year = ""] = readableDay(info.date).split(" ");
   const order = Date.parse(`${info.date}T00:00:00Z`);
   const stacked = info.behind && info.behind.count > 1;
+  useLayoutEffect(() => {
+    const el = card.current;
+    const path = link.current;
+    if (!withCard || !el || !path) return;
+    const h = el.offsetHeight || 124;
+    const p = plan(info.outline, view, figures, h);
+    if (!p) return;
+    const c = cur.current;
+    const column = grow(bounds(parseOutline(info.outline)), 10);
+    const draw = () => {
+      el.style.transform = `translate3d(${c.x.toFixed(2)}px, ${c.y.toFixed(2)}px, 0)`;
+      path.setAttribute("d", route(p.mode, p.from, { x: c.x, y: c.y, w: CARD_W, h }));
+    };
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (instant || !c.init || reduced || overlaps({ x: c.x, y: c.y, w: CARD_W, h }, column)) {
+      c.x = p.x;
+      c.y = p.y;
+      c.init = true;
+      draw();
+      return;
+    }
+    let raf = 0;
+    let last = performance.now();
+    const tick = (now: number) => {
+      const f = 1 - Math.exp(-Math.min(64, now - last) / 320);
+      last = now;
+      c.x += (p.x - c.x) * f;
+      c.y += (p.y - c.y) * f;
+      if (Math.abs(p.x - c.x) + Math.abs(p.y - c.y) > 0.25) raf = requestAnimationFrame(tick);
+      else {
+        c.x = p.x;
+        c.y = p.y;
+      }
+      draw();
+    };
+    draw();
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [info.outline, instant, withCard, view.width, view.height, figures?.x, figures?.y, figures?.w, figures?.h]);
   return (
-    <div role="presentation" className="pointer-events-none absolute top-0 left-0 z-20 h-0 w-0" style={{ opacity: visible ? 1 : 0, transition: "opacity 0.12s var(--ease-standard)" }}>
-      <div ref={card} className="act-card" style={{ left: dock.x, top: dock.y }}>
+    <>
+      <svg aria-hidden="true" className="pointer-events-none absolute inset-0 size-full overflow-visible" style={{ opacity: visible ? 1 : 0, transition: instant ? "none" : "opacity 0.12s" }}>
+        <path d={`M${info.outline.split(" ").join("L")}Z`.replaceAll(",", " ")} fill="color-mix(in srgb, var(--foreground) 7%, transparent)" stroke="var(--foreground)" strokeWidth={1.5} strokeLinejoin="round" />
+        {withCard && <path ref={link} fill="none" stroke="var(--foreground)" strokeWidth={1.5} strokeDasharray="4 3" strokeLinejoin="round" strokeLinecap="butt" />}
+      </svg>
+      {withCard && (
+        <div role="presentation" className="pointer-events-none absolute top-0 left-0 z-20 h-0 w-0" style={{ opacity: visible ? 1 : 0, transition: "opacity 0.12s var(--ease-standard)" }}>
+          <div ref={card} className="act-card">
         <header className="act-card-head">
           <span className="act-card-date"><Roll value={`${day} ${month}`} order={order} /></span>
           <span className="type-meta text-muted-foreground uppercase"><Roll value={`${weekday} · ${year}`} order={order} /></span>
@@ -198,8 +194,10 @@ function DayCard({ info, ctx, visible, dock, onHeight, touch }: { info: HoverInf
             )}
           </footer>
         )}
-      </div>
-    </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -258,9 +256,8 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
   // (the day card against the year, and whether the last press was a finger: the key cap says Tap then)
   const ctx = useMemo(() => (activity ? yearContext(activity) : null), [activity]);
   const [touch, setTouch] = useState(false);
-  const [cardH, setCardH] = useState(124);
-  const [figures, setFigures] = useState<{ left: number; top: number } | null>(null);
-  const [sceneW, setSceneW] = useState(0);
+  const [figures, setFigures] = useState<Rect | null>(null);
+  const [view, setView] = useState({ width: 0, height: 0 });
   const box = useRef<HTMLElement>(null);
   const [seen, setSeen] = useState(false);
   const [gl, setGl] = useState(true);
@@ -393,8 +390,8 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
       const r = scene.getBoundingClientRect();
       const f = root.querySelector<HTMLElement>('[data-slot="activity-stats"]');
       const fr = f && getComputedStyle(f).position === "absolute" ? f.getBoundingClientRect() : null;
-      setSceneW(r.width);
-      setFigures(fr && fr.width > 0 ? { left: fr.left - r.left, top: fr.top - r.top } : null);
+      setView((v) => (v.width === r.width && v.height === r.height ? v : { width: r.width, height: r.height }));
+      setFigures(fr && fr.width > 0 ? { x: fr.left - r.left, y: fr.top - r.top, w: fr.width, h: fr.height } : null);
     };
     measure();
     const ro = new ResizeObserver(measure);
@@ -402,7 +399,6 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
     ro.observe(root);
     return () => ro.disconnect();
   }, [seen, gl, activity, narrow]);
-  const dock = dockOf({ width: sceneW }, figures, cardH);
   if (!enabledFor(url)) return null;
   // (the file is not there after all: the picture goes away, and the page's own figures, which the head hid for the grid, are shown on their own)
   if (failed) return lead.length ? <Figures lead={lead} stats={[]} className="hidden md:grid md:absolute md:top-0 md:right-14" /> : null;
@@ -436,22 +432,7 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
               </span>
             </div>
           )}
-          {lastHover.current && (
-            <>
-              <svg aria-hidden="true" className="pointer-events-none absolute inset-0 size-full overflow-visible" style={{ opacity: hover ? 1 : 0, transition: instant ? "none" : "opacity 0.12s" }}>
-                {(() => {
-                  const d = `M${lastHover.current.outline.split(" ").join("L")}Z`.replaceAll(",", " ");
-                  return (
-                    <>
-                      <path d={d} fill="color-mix(in srgb, var(--foreground) 7%, transparent)" stroke="var(--foreground)" strokeWidth={1.5} strokeLinejoin="round" />
-                      {!narrow && <path d={callout(lastHover.current.outline, dock)} fill="none" stroke="var(--foreground)" strokeWidth={1.5} strokeDasharray="4 3" strokeLinejoin="round" strokeLinecap="butt" />}
-                    </>
-                  );
-                })()}
-              </svg>
-              {!narrow && <DayCard info={lastHover.current} ctx={ctx} visible={!!hover} dock={dock} onHeight={setCardH} touch={touch} />}
-            </>
-          )}
+          {lastHover.current && <HoverLayer info={lastHover.current} visible={!!hover} instant={instant} ctx={ctx} touch={touch} view={view} figures={figures} withCard={!narrow} />}
           <p className="sr-only" aria-live="polite">{hover ? dayText(hover) : ""}</p>
         </div>
       )}
