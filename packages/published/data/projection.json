@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "dataVersion": {
-    "commit": "e010f01e0c67690a2f32e70da1c037104f70d853",
+    "commit": "6adf140d6e85002ac688f933694a325e7ab1dc1f",
     "date": "2026-11-23"
   },
   "places": [
@@ -11153,7 +11153,8 @@
         "start": "2026-04",
         "end": "2026-06",
         "highlights": [
-          "Built the frontend and design of Macrodata Labs' data observability platform, enabling AI teams to process, understand, and scale multimodal datasets"
+          "Designed and built the landing page for Macrodata Labs, a data observability platform that helps AI teams process, understand and scale multimodal datasets",
+          "Built part of the design system behind the platform's frontend"
         ],
         "skills": [
           "React",
