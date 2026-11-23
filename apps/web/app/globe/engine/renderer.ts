@@ -1813,8 +1813,8 @@ export class GlobeRenderer {
   }
 
   private onInput = (e: Event) => {
-    // Ambient mode: a mouse or pen that moves with no button down (a hover, a nudged desk) is not a gesture: the screensaver goes on.
-    if (SPIN.ambient && e.type === "pointermove" && e instanceof PointerEvent && e.pointerType !== "touch" && e.buttons === 0) return;
+    // The page's own Auto-rotate control is not a gesture on the globe: pressing it must not stop the turn it is about to switch off (the word went to "Starting" for the length of the press).
+    if (e.target instanceof Element && e.target.closest('[data-slot="ambient-toggle"]')) return;
     // A gesture ON the globe (the hero's own definition: a press or a wheel over the stage) ends the showcase at once: the boxes come back and the
     // press that began it is no click (nobody could see what was under it).
     // (and a gesture drops an interlude asked for that has not begun yet: the visitor has taken the globe back, `wantInterlude`)
@@ -1829,6 +1829,13 @@ export class GlobeRenderer {
     if (e instanceof PointerEvent) {
       if (e.type === "pointerdown") this.pressed.add(e.pointerId);
       else if (e.type === "pointerup" || e.type === "pointercancel" || (e.pointerType === "mouse" && e.buttons === 0)) this.pressed.delete(e.pointerId);
+    }
+    // Ambient mode: a mouse or pen that moves with no button down (a hover, a nudged desk) is not a gesture: the screensaver goes on. (After the press bookkeeping above: a release that was missed
+    // (outside the window, a context menu) is forgotten by the first move with no button down, as before; returning first left the press in the set, the globe "busy" for good and the control at "Starting".)
+    if (SPIN.ambient && e.type === "pointermove" && e instanceof PointerEvent && e.pointerType !== "touch" && e.buttons === 0) {
+      // (and the timer is looked at again: it is not armed while the press blocks the turn, and nothing else would wake it)
+      this.armSpin();
+      return;
     }
     this.noteActivity();
   };
