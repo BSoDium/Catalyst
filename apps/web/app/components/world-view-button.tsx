@@ -21,6 +21,9 @@ export function WorldViewButton({ showReset, showAmbient, streetLevel = false }:
   const on = useSyncExternalStore(ambient.subscribe, ambient.getSnapshot, () => false);
   // On, but the street map is showing: the globe is suspended under it, so nothing turns until the visitor zooms out (the control says so).
   const paused = on && streetLevel;
+  // On, but not turning at full pace yet: it waits for the idle delay (a moment after the switch, the full delay after a touch) and then eases in over 3 s, so the word says "Starting" meanwhile.
+  const turning = useSyncExternalStore(ambient.subscribeTurning, ambient.getTurning, () => false);
+  const state = !on ? "off" : paused ? "paused" : turning ? "on" : "starting";
   const hidden = reduced ? { opacity: 0 } : { opacity: 0, y: 6 };
   const glide = { duration: 0.3, ease: [0.2, 0, 0, 1] as const };
   return (
@@ -62,7 +65,13 @@ export function WorldViewButton({ showReset, showAmbient, streetLevel = false }:
                   className="globe-dock-item"
                   data-slot="ambient-toggle"
                   aria-pressed={on}
-                  title={paused ? "Paused while the street map is showing: zoom out and the globe turns" : "Keep the globe turning, at any zoom"}
+                  title={
+                    state === "paused"
+                      ? "Paused while the street map is showing: zoom out and the globe turns"
+                      : state === "starting"
+                        ? "Starting: the globe waits a moment, then eases into its turn"
+                        : "Keep the globe turning, at any zoom"
+                  }
                   onClick={() => ambient.set(!on)}
                   layout={reduced ? false : "position"}
                   transition={{ layout: glide }}
@@ -72,17 +81,13 @@ export function WorldViewButton({ showReset, showAmbient, streetLevel = false }:
                 >
                   <TurningGlobe turning={on && !paused && !reduced} />
                   Auto-rotate
-                  {/* the state in words, for the eye (`aria-pressed` says it to the ear): both words are laid in the same cell so that the strip does not change width when it flips */}
-                  {paused ? (
-                    <span className="globe-dock-paused" aria-hidden="true">
-                      Paused
-                    </span>
-                  ) : (
-                    <span className="globe-dock-state" data-on={on} aria-hidden="true">
-                      <span>On</span>
-                      <span>Off</span>
-                    </span>
-                  )}
+                  {/* the state in words, for the eye (`aria-pressed` says it to the ear): the four words are laid in the same cell, so the strip does not change width as it changes */}
+                  <span className="globe-dock-state" data-state={state} aria-hidden="true">
+                    <span data-word="on">On</span>
+                    <span data-word="starting">Starting</span>
+                    <span data-word="paused">Paused</span>
+                    <span data-word="off">Off</span>
+                  </span>
                 </motion.button>
               )}
             </AnimatePresence>

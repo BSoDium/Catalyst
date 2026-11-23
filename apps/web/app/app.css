@@ -5061,24 +5061,35 @@ body:not(:has([data-slot="site-header"])) .np-root {
 .globe-dock-state > span {
   grid-area: 1 / 1;
   text-align: start;
-}
-.globe-dock-state > span:first-child {
   color: var(--signal-text);
-  visibility: hidden;
+  opacity: 0;
+  transition: opacity var(--duration-base) var(--ease-standard);
 }
-.globe-dock-state > span:last-child {
+.globe-dock-state > [data-word="off"] {
   color: var(--subtle-foreground);
 }
-.globe-dock-state[data-on="true"] > span:first-child {
-  visibility: visible;
+.globe-dock-state[data-state="on"] > [data-word="on"],
+.globe-dock-state[data-state="starting"] > [data-word="starting"],
+.globe-dock-state[data-state="paused"] > [data-word="paused"],
+.globe-dock-state[data-state="off"] > [data-word="off"] {
+  opacity: 1;
 }
-.globe-dock-state[data-on="true"] > span:last-child {
-  visibility: hidden;
+/* On but not at pace yet: the accent word breathes while it waits and eases in. On but suspended (the street map is up): the accent word says "paused", the globe stands still and the rule stays (it IS on). */
+.globe-dock-state[data-state="starting"] > [data-word="starting"] {
+  animation: globe-dock-starting 1.6s ease-in-out infinite;
 }
-/* On but not turning (the street map is up and the globe is suspended under it): the accent word says "paused", the globe stands still and the rule stays (it IS on). */
-.globe-dock-paused {
-  margin-inline-start: 0.125rem;
-  color: var(--signal-text);
+@keyframes globe-dock-starting {
+  50% {
+    opacity: 0.45;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .globe-dock-state > span {
+    transition: none;
+  }
+  .globe-dock-state[data-state="starting"] > [data-word="starting"] {
+    animation: none;
+  }
 }
 /* The turning globe takes the accent while it turns (the label stays ink: the rule under it and the icon say it is on). */
 .globe-dock-item[aria-pressed="true"] .globe-dock-globe {

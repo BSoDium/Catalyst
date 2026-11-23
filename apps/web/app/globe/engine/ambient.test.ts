@@ -62,3 +62,19 @@ describe("Ambient: automatic by default, the visitor's choice wins", () => {
     expect(a.getSnapshot()).toBe(false);
   });
 });
+
+describe("Ambient: whether the globe is at full pace", () => {
+  it("is false until the renderer says so, and its changes do not reach the switch's listeners", () => {
+    const a = new Ambient(() => true);
+    const sw = vi.fn();
+    const turning = vi.fn();
+    a.subscribe(sw);
+    a.subscribeTurning(turning);
+    expect(a.getTurning()).toBe(false);
+    a.setTurning(true);
+    a.setTurning(true);
+    expect(a.getTurning()).toBe(true);
+    expect(turning).toHaveBeenCalledTimes(1);
+    expect(sw).not.toHaveBeenCalled();
+  });
+});

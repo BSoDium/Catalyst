@@ -21,6 +21,8 @@ export class Ambient {
   private audible = false;
   private effective = false;
   private readonly listeners = new Set<() => void>();
+  private turning = false;
+  private readonly turningListeners = new Set<() => void>();
 
   constructor(read: () => boolean | null = readChoice, source?: AudibleSource) {
     this.choice = read();
@@ -53,6 +55,24 @@ export class Ambient {
     this.listeners.add(listener);
     return () => void this.listeners.delete(listener);
   };
+
+  /**
+   * Whether the globe is turning at full pace (the idle rotation's cruise): on, it waits for the idle delay (a moment after the switch, the full delay after a touch) and eases in over 3 s, so
+   * the switch is on well before anything visibly moves. The renderer says it (`setTurning`); the toggle reads it to say "Starting" in between. A separate store from the switch itself,
+   * so that its changes do not re-run what the switch drives (the hurry, the hero's hold).
+   */
+  getTurning = (): boolean => this.turning;
+
+  subscribeTurning = (listener: () => void): (() => void) => {
+    this.turningListeners.add(listener);
+    return () => void this.turningListeners.delete(listener);
+  };
+
+  setTurning(turning: boolean): void {
+    if (turning === this.turning) return;
+    this.turning = turning;
+    this.turningListeners.forEach((l) => l());
+  }
 
   /** The visitor turns it on or off: an explicit choice, kept for the session. */
   set(on: boolean): void {

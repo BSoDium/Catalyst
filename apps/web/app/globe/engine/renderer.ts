@@ -1695,6 +1695,7 @@ export class GlobeRenderer {
   /** An input, or a change that cannot let it go on (hidden, context lost, reduced motion, street): the globe stops turning now, with no coasting, and the idle clock restarts. */
   private noteActivity() {
     this.spin.activity(performance.now());
+    this.reportTurning();
     this.armSpin();
     if (this.parkTimer) {
       // the settle was under way: the rows go back to the roll from where they are
@@ -1802,7 +1803,13 @@ export class GlobeRenderer {
   /** A change that is not an input (a place selected or focused from the URL or the list, the inset, a flight, the zoom limit): the idle clock restarts and a turning globe coasts to rest. */
   private noteChange() {
     this.spin.settle(performance.now());
+    this.reportTurning();
     this.armSpin();
+  }
+
+  /** Tell the page's Auto-rotate control whether the globe is at full pace (it reads "Starting" while it is on and not yet). */
+  private reportTurning() {
+    ambient.setTurning(this.spin.phase === "cruise");
   }
 
   private onInput = (e: Event) => {
@@ -1862,6 +1869,7 @@ export class GlobeRenderer {
       this.setHovered(null);
       this.opts.onHover?.(null);
     }
+    this.reportTurning();
     if (yaw !== 0) {
       // The earth turns under a camera that stays where it is: the view's longitude goes down by what the earth's rotation angle goes up by,
       // so the camera's longitude in the inertial frame (view + era) and with it every star on the screen does not change.
@@ -2869,6 +2877,7 @@ export class GlobeRenderer {
     this.tagline = null;
     if (this.disposed) return;
     this.disposed = true;
+    ambient.setTurning(false);
     this.cancelFrame();
     clearTimeout(this.shadowPoll);
     SHADE_UNIFORMS.uShade.value.w = 0;
