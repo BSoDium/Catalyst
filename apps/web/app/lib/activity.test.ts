@@ -75,8 +75,8 @@ describe("the day card's helpers", () => {
     const github = Array.from({ length: 100 }, (_, i) => ({ date: `2026-01-${String((i % 28) + 1).padStart(2, "0")}`, count: i === 0 ? 40 : i % 10, level: 1 }));
     const wakatime = Array.from({ length: 100 }, (_, i) => ({ date: `2026-01-${String((i % 28) + 1).padStart(2, "0")}`, seconds: i === 1 ? 36000 : 3600 }));
     const at = yearContext({ generatedAt: "x", github, wakatime });
-    expect(at(40, 1)).toBe("Most contributions in a day");
-    expect(at(0, 10)).toBe("Longest day of coding");
+    expect(at(40, 1)).toEqual({ text: "Most contributions in a day", tone: "green", record: true });
+    expect(at(0, 10)).toEqual({ text: "Longest day of coding", tone: "blue", record: true });
     expect(at(3, 1)).toBeNull();
     expect(at(0, 0)).toBeNull();
   });

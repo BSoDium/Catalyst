@@ -9149,6 +9149,25 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
 }
 :where(:root[data-scheme="light"]) .act-outline { stroke: #fff; }
 :where(:root[data-scheme="light"]) .act-outline-halo { stroke: rgb(10 10 10 / 0.85); }
+/* The connector: a line from the outline's own colour (the text colour: the selected column's line) to a softer one where it reaches the card, whose edge takes `--act-link-edge` at the joint. In the light theme, as the outline: a white core
+   (to a light grey at the card) on a thin near-black casing, which the card's edge takes at the joint. */
+:root {
+  --act-link-from: var(--foreground);
+  --act-link-to: color-mix(in srgb, var(--foreground) 55%, var(--background));
+  --act-link-edge: var(--act-link-to);
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-scheme="dark"]) {
+    --act-link-from: #fff;
+    --act-link-to: #d8d8d8;
+    --act-link-edge: rgb(10 10 10 / 0.85);
+  }
+}
+:root[data-scheme="light"] {
+  --act-link-from: #fff;
+  --act-link-to: #d8d8d8;
+  --act-link-edge: rgb(10 10 10 / 0.85);
+}
 .act-card {
   --pad: 0.625rem;
   --rule: var(--border);
@@ -9280,7 +9299,9 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
 }
 /* One line, always there (no layout shift): a sentence, so the reading face in sentence case; the note of a notable day in the ink, else a quiet line (how long ago the day was, or "No activity"). */
 .act-card-foot {
-  display: grid;
+  display: flex;
+  align-items: center;
+  gap: 0.4375rem;
   padding: 0.3125rem var(--pad) 0.375rem;
   border-top: 1px solid var(--rule);
   font-family: var(--font-sans);
@@ -9292,4 +9313,30 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
 .act-card-foot[data-note] {
   color: var(--foreground);
   font-weight: 500;
+}
+/* An achievement: no fill, a soft glow of its source's colour (GitHub green, WakaTime blue) centred on its mark, fading out into the surface; the mark in the colour itself, the words in the ink. */
+.act-card-foot[data-tone] {
+  --tone: var(--act-green);
+  background: radial-gradient(ellipse 9rem 150% at 1.25rem 50%, color-mix(in srgb, var(--tone) 24%, var(--surface)), color-mix(in srgb, var(--tone) 7%, var(--surface)) 55%, var(--surface) 100%);
+}
+.act-card-foot[data-tone="blue"] {
+  --tone: var(--act-blue);
+}
+.act-card-foot[data-tone] .act-card-note-icon {
+  color: var(--tone);
+}
+.act-card-note-icon {
+  flex: none;
+}
+/* The connector's energy: the card's own edge, only its 1 px border (a mask cuts out the inside), in the connector's colour at the point where the connector arrives and fading into the quiet border along the edge. */
+.act-card-edge {
+  position: absolute;
+  inset: -1px;
+  padding: 1.5px;
+  pointer-events: none;
+  background: radial-gradient(circle 120px at var(--ax, 50%) var(--ay, 0), var(--act-link-edge) 0, color-mix(in srgb, var(--act-link-edge) 35%, transparent) 45%, transparent 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
 }

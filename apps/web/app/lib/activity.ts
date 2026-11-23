@@ -100,8 +100,17 @@ export function hoursText(h: number): string | null {
   return `${t.endsWith(".0") ? t.slice(0, -2) : t} h`;
 }
 
+/** A notable day: what to say and whose colour to say it in. */
+export interface DayNote {
+  text: string;
+  /** The source the achievement belongs to: GitHub (green) or WakaTime (blue). */
+  tone: "green" | "blue";
+  /** The best day of the year (a record), against one of the top 5 %. */
+  record: boolean;
+}
+
 /** Where a day stands in the file's year, as the day card's note says it: the best day of a source, or one in the top 5 % of its active days; null for any other day. (No share of the year's best: the best can change, so a share says nothing.) Pure. */
-export function yearContext(a: Activity): (contributions: number, hours: number) => string | null {
+export function yearContext(a: Activity): (contributions: number, hours: number) => DayNote | null {
   const gh = a.github.map((d) => d.count);
   const wk = a.wakatime.map((d) => d.seconds / 3600);
   const activeC = gh.filter((x) => x > 0).length;
@@ -111,7 +120,11 @@ export function yearContext(a: Activity): (contributions: number, hours: number)
   return (contributions, hours) => {
     const rc = contributions > 0 ? rank(gh, contributions) : null;
     const rh = hours >= 0.05 ? rank(wk, hours) : null;
-    return rc === 1 ? "Most contributions in a day" : rh === 1 ? "Longest day of coding" : rc !== null && rc <= Math.max(1, Math.round(activeC * 0.05)) ? "Top 5 % for contributions" : rh !== null && rh <= Math.max(1, Math.round(activeH * 0.05)) ? "Top 5 % for coding" : null;
+    if (rc === 1) return { text: "Most contributions in a day", tone: "green", record: true };
+    if (rh === 1) return { text: "Longest day of coding", tone: "blue", record: true };
+    if (rc !== null && rc <= Math.max(1, Math.round(activeC * 0.05))) return { text: "Top 5 % for contributions", tone: "green", record: false };
+    if (rh !== null && rh <= Math.max(1, Math.round(activeH * 0.05))) return { text: "Top 5 % for coding", tone: "blue", record: false };
+    return null;
   };
 }
 
