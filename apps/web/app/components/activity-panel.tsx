@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "~/components/ui";
 import { placeholderTiles } from "neon-activity-graph/layout";
-import { bounds, CARD_W, overlaps, parseOutline, plan, route, type Rect } from "~/lib/day-card-plan";
+import { bounds, CARD_W, grow, overlaps, parseOutline, plan, route, type Rect } from "~/lib/day-card-plan";
 import { activityStats, dayText, GITHUB_URL, hoursText, isActivity, layoutActivity, readableDay, WAKATIME_URL, yearContext, type Activity, type ActivityStat, type HoverInfo, type Matrix } from "~/lib/activity";
 import { xmasNow } from "~/lib/xmas";
 
@@ -91,18 +91,20 @@ function Roll({ value, order }: { value: string; order: number }) {
   );
 }
 
-const grow = (r: Rect, m: number): Rect => ({ x: r.x - m, y: r.y - m, w: r.w + 2 * m, h: r.h + 2 * m });
+/** How long the card stays after the pointer leaves a day, and how long it can be away before a day is a new visit (the card then appears in place). */
+const GRACE_MS = 280;
+const FRESH_MS = 700;
 
 /**
  * What the pointer is on: the outline of the day's column, the card, and the connector between them (owner, 2026-11-23). The card (the "datasheet", direction B of the audit: a solid surface, one hairline, no blur, no shadow; the date as its
  * title, the contributions above the coding, each with a swatch, its value at full strength and a 1 px rule for the day against the year's best; a note only for a notable day, the key cap for stacked days) stays CLOSE to its column but not on it
  * (`plan`, lib/day-card-plan.ts: above it, or at 45 degrees to a side, clear of the page's figures) and glides to its place SLOWLY, so that a sweeping pointer does not drag it along; the dashed connector, from the outline's edge or
- * protruding corner to the card where it is now, is what moves. A card that the glide leaves over the selected column goes to its place at once. Phones have no card: the legend says the day (`ActivityPanel`).
+ * protruding corner to the card where it is now, is what moves. A card that the glide leaves over the selected column glides out of its way faster (never a jump). Phones have no card: the legend says the day (`ActivityPanel`).
  */
-function HoverLayer({ info, visible, instant, ctx, touch, view, figures, withCard }: { info: HoverInfo; visible: boolean; instant: boolean; ctx: ReturnType<typeof yearContext> | null; touch: boolean; view: { width: number; height: number }; figures: Rect | null; withCard: boolean }) {
+function HoverLayer({ info, onDay, visible, instant, ctx, touch, view, figures, withCard }: { info: HoverInfo; onDay: boolean; visible: boolean; instant: boolean; ctx: ReturnType<typeof yearContext> | null; touch: boolean; view: { width: number; height: number }; figures: Rect | null; withCard: boolean }) {
   const card = useRef<HTMLDivElement>(null);
   const link = useRef<SVGPathElement>(null);
-  const cur = useRef({ x: 0, y: 0, init: false });
+  const cur = useRef({ x: 0, y: 0, init: false, key: "" });
   const hours = hoursText(info.hours);
   const empty = info.contributions === 0 && !hours;
   const k = ctx?.(info.contributions, info.hours) ?? { c: 0, h: 0, note: null };
@@ -114,16 +116,17 @@ function HoverLayer({ info, visible, instant, ctx, touch, view, figures, withCar
     const path = link.current;
     if (!withCard || !el || !path) return;
     const h = el.offsetHeight || 124;
-    const p = plan(info.outline, view, figures, h);
+    const p = plan(info.outline, view, figures, h, cur.current.key);
     if (!p) return;
     const c = cur.current;
+    c.key = p.key;
     const column = grow(bounds(parseOutline(info.outline)), 10);
     const draw = () => {
       el.style.transform = `translate3d(${c.x.toFixed(2)}px, ${c.y.toFixed(2)}px, 0)`;
       path.setAttribute("d", route(p.mode, p.from, { x: c.x, y: c.y, w: CARD_W, h }));
     };
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (instant || !c.init || reduced || overlaps({ x: c.x, y: c.y, w: CARD_W, h }, column)) {
+    if (instant || !c.init || reduced) {
       c.x = p.x;
       c.y = p.y;
       c.init = true;
@@ -133,7 +136,8 @@ function HoverLayer({ info, visible, instant, ctx, touch, view, figures, withCar
     let raf = 0;
     let last = performance.now();
     const tick = (now: number) => {
-      const f = 1 - Math.exp(-Math.min(64, now - last) / 320);
+      // (slow, but twice as quick while the card still lies over the selected column: it gets out of the way without a jump)
+      const f = 1 - Math.exp(-Math.min(64, now - last) / (overlaps({ x: c.x, y: c.y, w: CARD_W, h }, column) ? 160 : 320));
       last = now;
       c.x += (p.x - c.x) * f;
       c.y += (p.y - c.y) * f;
@@ -151,9 +155,9 @@ function HoverLayer({ info, visible, instant, ctx, touch, view, figures, withCar
   }, [info.outline, instant, withCard, view.width, view.height, figures?.x, figures?.y, figures?.w, figures?.h]);
   return (
     <>
-      <svg aria-hidden="true" className="pointer-events-none absolute inset-0 size-full overflow-visible" style={{ opacity: visible ? 1 : 0, transition: instant ? "none" : "opacity 0.12s" }}>
-        <path d={`M${info.outline.split(" ").join("L")}Z`.replaceAll(",", " ")} fill="color-mix(in srgb, var(--foreground) 7%, transparent)" stroke="var(--foreground)" strokeWidth={1.5} strokeLinejoin="round" />
-        {withCard && <path ref={link} fill="none" stroke="var(--foreground)" strokeWidth={1.5} strokeDasharray="4 3" strokeLinejoin="round" strokeLinecap="butt" />}
+      <svg aria-hidden="true" className="pointer-events-none absolute inset-0 size-full overflow-visible">
+        <path d={`M${info.outline.split(" ").join("L")}Z`.replaceAll(",", " ")} fill="color-mix(in srgb, var(--foreground) 7%, transparent)" stroke="var(--foreground)" strokeWidth={1.5} strokeLinejoin="round" style={{ opacity: onDay ? 1 : 0, transition: instant ? "none" : "opacity 0.12s" }} />
+        {withCard && <path ref={link} style={{ opacity: visible && onDay ? 1 : visible ? 0.35 : 0, transition: "opacity 0.16s" }} fill="none" stroke="var(--foreground)" strokeWidth={1.5} strokeDasharray="4 3" strokeLinejoin="round" strokeLinecap="butt" />}
       </svg>
       {withCard && (
         <div role="presentation" className="pointer-events-none absolute top-0 left-0 z-20 h-0 w-0" style={{ opacity: visible ? 1 : 0, transition: "opacity 0.12s var(--ease-standard)" }}>
@@ -246,12 +250,25 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
   const [hover, setHover] = useState<HoverInfo | null>(null);
   // the last day shown stays mounted (the card fades and glides instead of vanishing); a card that comes back from nothing appears in place
   const lastHover = useRef<HoverInfo | null>(null);
-  const wasShown = useRef(false);
   if (hover) lastHover.current = hover;
-  const instant = !!hover && !wasShown.current;
+  // The card outlives the pointer's passes over empty ground between two columns: it stays `GRACE_MS` after the day is gone (the outline goes at once), and a day that comes back within `FRESH_MS` is not a new visit (the card
+  // glides to it, as from day to day) instead of jumping to it, which is what crossing a block with no value used to do (owner, 2026-11-23).
+  const [gone, setGone] = useState(true);
+  const leftAt = useRef<number | null>(null);
+  const everShown = useRef(false);
+  const fresh = !!hover && (!everShown.current || (leftAt.current !== null && performance.now() - leftAt.current > FRESH_MS));
   useEffect(() => {
-    wasShown.current = !!hover;
+    if (hover) {
+      everShown.current = true;
+      leftAt.current = null;
+      setGone(false);
+      return;
+    }
+    leftAt.current ??= performance.now();
+    const t = window.setTimeout(() => setGone(true), GRACE_MS);
+    return () => window.clearTimeout(t);
   }, [hover]);
+  const instant = fresh;
   const sceneBox = useRef<HTMLDivElement>(null);
   // (the day card against the year, and whether the last press was a finger: the key cap says Tap then)
   const ctx = useMemo(() => (activity ? yearContext(activity) : null), [activity]);
@@ -432,7 +449,7 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
               </span>
             </div>
           )}
-          {lastHover.current && <HoverLayer info={lastHover.current} visible={!!hover} instant={instant} ctx={ctx} touch={touch} view={view} figures={figures} withCard={!narrow} />}
+          {lastHover.current && <HoverLayer info={lastHover.current} onDay={!!hover} visible={!gone} instant={instant} ctx={ctx} touch={touch} view={view} figures={figures} withCard={!narrow} />}
           <p className="sr-only" aria-live="polite">{hover ? dayText(hover) : ""}</p>
         </div>
       )}

@@ -21,6 +21,8 @@ export interface Rect {
 export type Mode = "top" | "bottom" | "right" | "left";
 export interface Plan {
   mode: Mode;
+  /** Which of the places this is (`mode` and the corner it leaves from): what the next plan prefers. */
+  key: string;
   /** Where the connector leaves the outline. */
   from: Pt;
   /** The card's top left corner. */
@@ -43,7 +45,7 @@ export const bounds = (pts: Pt[]): Rect => {
   return { x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y };
 };
 
-const grow = (r: Rect, m: number): Rect => ({ x: r.x - m, y: r.y - m, w: r.w + 2 * m, h: r.h + 2 * m });
+export const grow = (r: Rect, m: number): Rect => ({ x: r.x - m, y: r.y - m, w: r.w + 2 * m, h: r.h + 2 * m });
 export const overlaps = (a: Rect, b: Rect): boolean => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 const rectOf = (a: Pt, b: Pt): Rect => ({ x: Math.min(a[0], b[0]), y: Math.min(a[1], b[1]), w: Math.abs(a[0] - b[0]), h: Math.abs(a[1] - b[1]) });
 
@@ -62,7 +64,7 @@ function corner(pts: Pt[], side: number, v: number): Pt {
 }
 
 /** The card's place, by the order of preference above; `view` is the picture's size, `figures` the grid of the page's figures (or null) and `h` the card's height. */
-export function plan(outline: string, view: { width: number; height: number }, figures: Rect | null, h: number): Plan | null {
+export function plan(outline: string, view: { width: number; height: number }, figures: Rect | null, h: number, prefer?: string): Plan | null {
   const pts = parseOutline(outline);
   if (!pts.length) return null;
   const W = view.width || 1e9;
@@ -71,14 +73,14 @@ export function plan(outline: string, view: { width: number; height: number }, f
   const topMid = edgeMid(pts, true);
   const botMid = edgeMid(pts, false);
   const cx = Math.min(Math.max(topMid[0] - CARD_W / 2, 4), W - CARD_W - 4);
-  cands.push({ mode: "top", from: topMid, x: cx, y: topMid[1] - GAP - h });
+  cands.push({ mode: "top", key: "top", from: topMid, x: cx, y: topMid[1] - GAP - h });
   for (const [mode, side, v] of [["right", 1, -1], ["left", -1, -1], ["right", 1, 1], ["left", -1, 1]] as const) {
     const s = corner(pts, side, v);
     const ex = s[0] + side * DIAG;
-    cands.push({ mode, from: s, x: side === 1 ? ex : ex - CARD_W, y: s[1] + v * DIAG - ATTACH });
+    cands.push({ mode, key: `${mode}${v}`, from: s, x: side === 1 ? ex : ex - CARD_W, y: s[1] + v * DIAG - ATTACH });
   }
   const bx = Math.min(Math.max(botMid[0] - CARD_W / 2, 4), W - CARD_W - 4);
-  cands.push({ mode: "bottom", from: botMid, x: bx, y: botMid[1] + GAP });
+  cands.push({ mode: "bottom", key: "bottom", from: botMid, x: bx, y: botMid[1] + GAP });
   const fits = (c: Plan) => {
     const card: Rect = { x: c.x, y: c.y, w: CARD_W, h };
     if (!inView(card)) return false;
@@ -90,7 +92,9 @@ export function plan(outline: string, view: { width: number; height: number }, f
     }
     return true;
   };
-  return cands.find(fits) ?? cands[0] ?? null;
+  // (the place the card had stays the first choice while it still fits: a column a little higher or lower must not send the card across to another side)
+  const first = prefer ? cands.filter((c) => c.key === prefer) : [];
+  return [...first, ...cands].find(fits) ?? cands[0] ?? null;
 }
 
 /** The connector's two ends: where it leaves the outline and where it enters the card (its foot or its side). */
@@ -119,3 +123,4 @@ export function route(mode: Mode, from: Pt, card: Rect): string {
   if (V >= D) return `M${M(s)}L${M([s[0], e[1] - sy * D])}L${M(e)}`;
   return `M${M(s)}L${M(e)}`;
 }
+
