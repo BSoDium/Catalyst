@@ -34,7 +34,7 @@
     "lucide-react": "^1.52.0",
     "maplibre-gl": "^6.11.2",
     "motion": "^14.0.0",
-    "neon-activity-graph": "^0.2.1",
+    "neon-activity-graph": "^0.3.0",
     "pmtiles": "^4.5.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",

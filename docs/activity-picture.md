@@ -35,6 +35,10 @@ Measured so far (dev build, Apple M4): an update of the neon costs about 0.05 ms
 
 The year heading keeps its big numeral where it started. When it sticks under the bar (`data-stuck`, set by `EntryListPage` from the scroll, since a sticky element cannot be asked) it shrinks, in 0.4 s, a little (to 0.82) to a square-cornered blurred plate with a hairline ring that floats above the rows (`.ds-year-sticky` in `app.css`, below 48 rem). Unstuck it has the room under it that it has on a desktop (a heading, with the first row clear of it). It shrinks with a transform, not a size: a smaller box would pull the rows up and un-stick it.
 
+## Attribution link
+
+The picture carries the library's small "Powered by Neon" link in its bottom right corner (`attribution` on `ActivityGraphView` in `components/activity-scene.tsx`, `neon-activity-graph` 0.3.0 or later): it links to the library's page, <https://neon.bsodium.fr/>, and is styled by the library through `--nag-attribution-*` variables (none set here: faded text colour, brightening and underlined on hover).
+
 ## Camera grain
 
 A fine, fixed noise over the whole picture, in both themes, added in the last (show) pass after the lighting (`grain` option of the library, default 0.012, the strength settled on by eye on a real screen: 0.004 was barely there, 0.018 started to show as grain; 0 turns it off. To tweak it, change the constant and look at it on a real screen: the browser pane's downscaling misleads). It is meant to read as a camera's, not as rendering noise: soft (the sum of three uniform numbers), the same for every colour, growing with the light (the square root of the brightness, as a sensor's does), eased off in the highlights so that a bright surface does not burn, none in the near-blacks (in 8 bits a tiny noise there only flips pixels between two levels, a speckle), brightness only: it scales the colour by a few per cent (hue kept), never adds a dark speck, and has no colour noise. Static (the picture is drawn once, not every frame).
