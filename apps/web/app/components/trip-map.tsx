@@ -600,7 +600,7 @@ export function TripPoster({ trip, here, photo = true, cutout = true, occlude, c
     </radialGradient>
     {named.map(({ s, x, y, end }) => {
       const width = s.name.length * 6.8;
-      return <ellipse key={`${s.slug}-glow`} cx={end ? x - width / 2 : x + width / 2} cy={y - 3.5} rx={width / 2 + 30} ry={20} fill={`url(#${maskId}-glow)`} />;
+      return <ellipse key={`${s.slug}-glow`} cx={end ? x - width / 2 : x + width / 2} cy={y - 3.5} rx={width / 2 + 34} ry={22} fill={`url(#${maskId}-glow)`} style={{ opacity: "var(--trip-glow-strength)" as unknown as number, mixBlendMode: "var(--trip-glow-blend)" as unknown as "normal" }} />;
     })}
     {named.map(({ s, x, y, end }) => (
       <text key={s.slug} x={x} y={y} textAnchor={end ? "end" : "start"} fontSize={10} style={{ fill: LABEL_INK, fontFamily: "var(--font-meta)", fontWeight: 600, letterSpacing: "0.04em" }}>

@@ -9051,13 +9051,20 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
 /* The glow behind a name on a trip poster's route (components/trip-map.tsx): neutral, so it darkens (dark scheme) or lightens (light scheme) the photograph without giving it a grey or tinted patch. */
 :root {
   --trip-glow: #fff;
+  --trip-glow-strength: 1;
+  --trip-glow-blend: normal;
 }
+/* (in the dark scheme it only darkens, multiplied into the picture, and half as strongly: a black glow on a blue sky reads as a grey patch) */
 :root[data-scheme="dark"] {
   --trip-glow: #000;
+  --trip-glow-strength: 0.5;
+  --trip-glow-blend: multiply;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-scheme="light"]) {
     --trip-glow: #000;
+    --trip-glow-strength: 0.5;
+    --trip-glow-blend: multiply;
   }
 }
 
