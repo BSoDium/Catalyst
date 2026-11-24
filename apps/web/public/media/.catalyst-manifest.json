@@ -443,11 +443,6 @@
       "bytes": 122172
     },
     {
-      "path": "photograph/museum-and-flags/photo.14868bea.webp",
-      "sha256": "14868bea4d0392f9315474540c5ba35c9090095f6adb98a64928c96bc19917d3",
-      "bytes": 36488
-    },
-    {
       "path": "photograph/orange-train/photo-800w.7c34f1e8.webp",
       "sha256": "7c34f1e872128a2a6f1b1f7f6a7fe273dcd22ef468b231f9b61f506312c043b8",
       "bytes": 39736
@@ -483,16 +478,6 @@
       "bytes": 95648
     },
     {
-      "path": "photograph/red-smoke/photo-800w.082428a0.webp",
-      "sha256": "082428a0a53a89930d841dc01f73bf6bbfaf7f810841c4ae1a799b324a9586e9",
-      "bytes": 26432
-    },
-    {
-      "path": "photograph/red-smoke/photo.4da95e06.webp",
-      "sha256": "4da95e06f2e93b79a87f5a4910d4a2ab4aa848bb60d6c165e9d73e8b8f21d0a8",
-      "bytes": 97986
-    },
-    {
       "path": "photograph/speedboat-on-the-napo/photo-800w.a76de00d.webp",
       "sha256": "a76de00d04618aaa4df43b55b68c4e424bd5815f9f0449efb855b53220f90e5f",
       "bytes": 59746
@@ -501,16 +486,6 @@
       "path": "photograph/speedboat-on-the-napo/photo.e9ea0302.webp",
       "sha256": "e9ea0302f0538d0091fd8b14605d3722b50580ed3aac787249cead5b5ff61e6d",
       "bytes": 74502
-    },
-    {
-      "path": "photograph/two-coffees-and-an-armband/photo-800w.71bba896.webp",
-      "sha256": "71bba89649f99357001cf9533fb8223d9517227e789b98e128eae6f2d5142a10",
-      "bytes": 39496
-    },
-    {
-      "path": "photograph/two-coffees-and-an-armband/photo.ac29ed27.webp",
-      "sha256": "ac29ed275ba1aac1c7b7c290e86ae8ca7226f6041a6dfbd6418e1dda96be914d",
-      "bytes": 88414
     },
     {
       "path": "photograph/unloading-at-the-bank/photo-800w.fb6f836d.webp",

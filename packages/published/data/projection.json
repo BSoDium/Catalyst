@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "dataVersion": {
-    "commit": "6adf140d6e85002ac688f933694a325e7ab1dc1f",
-    "date": "2026-11-23"
+    "commit": "18396afd9aacd41d225b57654716c512de81a4d1",
+    "date": "2026-11-24"
   },
   "places": [
     {
@@ -3698,7 +3698,7 @@
         "lat": 52.23,
         "lon": 21.01
       },
-      "labelPriority": 67,
+      "labelPriority": 60,
       "bbox": [
         20.79,
         52.09,
@@ -3719,19 +3719,7 @@
         },
         {
           "kind": "photograph",
-          "slug": "museum-and-flags"
-        },
-        {
-          "kind": "photograph",
           "slug": "palm-and-flags"
-        },
-        {
-          "kind": "photograph",
-          "slug": "red-smoke"
-        },
-        {
-          "kind": "photograph",
-          "slug": "two-coffees-and-an-armband"
         },
         {
           "kind": "project",
@@ -10450,57 +10438,6 @@
       ]
     },
     {
-      "slug": "museum-and-flags",
-      "title": "National Museum and flags",
-      "summary": "The lettering of the National Museum above a crowd, a man holding a flag on the railing in front of it.",
-      "date": "2026-11-11",
-      "cover": {
-        "src": "/media/photograph/museum-and-flags/photo.14868bea.webp",
-        "alt": "The Muzeum Narodowe building at dusk with its sign lit; a man holds a white-and-red flag at a railing in front of it, and flags and the backs of heads fill the foreground",
-        "width": 774,
-        "height": 1280
-      },
-      "tags": [
-        "street"
-      ],
-      "meta": [
-        {
-          "label": "Camera",
-          "value": "Fujifilm X-T4"
-        },
-        {
-          "label": "Lens",
-          "value": "XF18-55mmF2.8-4 R LM OIS"
-        },
-        {
-          "label": "Focal length",
-          "value": "50.5 mm"
-        },
-        {
-          "label": "Aperture",
-          "value": "f/4"
-        },
-        {
-          "label": "Shutter",
-          "value": "1/17 s"
-        },
-        {
-          "label": "ISO",
-          "value": "160"
-        }
-      ],
-      "body": [
-        {
-          "type": "link",
-          "title": "Download on Pexels",
-          "url": "https://www.pexels.com/photo/40999714/"
-        }
-      ],
-      "placeSlugs": [
-        "warsaw"
-      ]
-    },
-    {
       "slug": "orange-train",
       "title": "Orange train",
       "summary": "The side of a cream and orange train under overhead wires, a half-built concrete building behind it against a blue sky.",
@@ -10708,62 +10645,6 @@
       ]
     },
     {
-      "slug": "red-smoke",
-      "title": "Red smoke",
-      "summary": "A street crowd under white-and-red flags disappears into thick red smoke, a lit sign glowing orange at the left.",
-      "date": "2026-11-11",
-      "cover": {
-        "src": "/media/photograph/red-smoke/photo.4da95e06.webp",
-        "alt": "A crowd with white-and-red flags in a street filled with dense red smoke; a building at the left carries a glowing orange sign",
-        "width": 1280,
-        "height": 760,
-        "small": {
-          "src": "/media/photograph/red-smoke/photo-800w.082428a0.webp",
-          "width": 800,
-          "height": 475
-        }
-      },
-      "tags": [
-        "street"
-      ],
-      "meta": [
-        {
-          "label": "Camera",
-          "value": "Fujifilm X-T4"
-        },
-        {
-          "label": "Lens",
-          "value": "XF18-55mmF2.8-4 R LM OIS"
-        },
-        {
-          "label": "Focal length",
-          "value": "55 mm"
-        },
-        {
-          "label": "Aperture",
-          "value": "f/5.6"
-        },
-        {
-          "label": "Shutter",
-          "value": "1/2400 s"
-        },
-        {
-          "label": "ISO",
-          "value": "12800"
-        }
-      ],
-      "body": [
-        {
-          "type": "link",
-          "title": "Download on Pexels",
-          "url": "https://www.pexels.com/photo/40999715/"
-        }
-      ],
-      "placeSlugs": [
-        "warsaw"
-      ]
-    },
-    {
       "slug": "speedboat-on-the-napo",
       "title": "Speedboat on the Napo",
       "summary": "Inside the fast boat up the Napo, between the Amazon and the border with Ecuador.",
@@ -10814,62 +10695,6 @@
       ],
       "placeSlugs": [
         "on-the-napo"
-      ]
-    },
-    {
-      "slug": "two-coffees-and-an-armband",
-      "title": "Two coffees and an armband",
-      "summary": "Two black coffees on china saucers and a folded white-and-red armband on an embroidered tablecloth, laid out like a face.",
-      "date": "2026-11-11",
-      "cover": {
-        "src": "/media/photograph/two-coffees-and-an-armband/photo.ac29ed27.webp",
-        "alt": "Seen from above, two cups of black coffee on gold-rimmed saucers and a folded white-and-red armband below them on an embroidered white tablecloth, together reading as a face",
-        "width": 1280,
-        "height": 942,
-        "small": {
-          "src": "/media/photograph/two-coffees-and-an-armband/photo-800w.71bba896.webp",
-          "width": 800,
-          "height": 589
-        }
-      },
-      "tags": [
-        "still-life"
-      ],
-      "meta": [
-        {
-          "label": "Camera",
-          "value": "Fujifilm X-T4"
-        },
-        {
-          "label": "Lens",
-          "value": "XF18-55mmF2.8-4 R LM OIS"
-        },
-        {
-          "label": "Focal length",
-          "value": "40.7 mm"
-        },
-        {
-          "label": "Aperture",
-          "value": "f/4"
-        },
-        {
-          "label": "Shutter",
-          "value": "1/30 s"
-        },
-        {
-          "label": "ISO",
-          "value": "640"
-        }
-      ],
-      "body": [
-        {
-          "type": "link",
-          "title": "Download on Pexels",
-          "url": "https://www.pexels.com/photo/40999717/"
-        }
-      ],
-      "placeSlugs": [
-        "warsaw"
       ]
     },
     {
