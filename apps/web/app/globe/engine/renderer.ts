@@ -94,7 +94,7 @@ import { FX, irisStep } from "./fx";
 import { eclipseNear } from "./eclipse-table";
 import { libration } from "./libration";
 import { LUNAR, lunarPosition, moonArgumentOfLatitudeDeg, moonMeanAnomalyDeg } from "./lunar-ephemeris";
-import { DEFAULT_ORBIT, ECLIPSE, MOON, SUN, eclipseInclination, inclinationFor, litTurn, moonAmount, moonShadowOn, msAtAngle, orbitAngle, orbitBasis, orbitLined, rollFor, startFor, type OrbitStart, sunDirection, toEarthFrame, toRad, visibleBounds, type Vec3 } from "./moon";
+import { DEFAULT_ORBIT, ECLIPSE, MOON, SUN, clearInclination, eclipseInclination, inclinationFor, litTurn, moonAmount, moonShadowOn, msAtAngle, orbitAngle, orbitBasis, orbitLined, rollFor, startFor, type OrbitStart, sunDirection, toEarthFrame, toRad, visibleBounds, type Vec3 } from "./moon";
 import { roleColor } from "./palette";
 import type { MoonSample } from "./moon-layer";
 import type { MoonFrame } from "./moon-overlay";
@@ -1401,6 +1401,7 @@ export class GlobeRenderer {
    */
   private eclipseOffset: number | null | undefined;
   private eclipseTilts = new Map<number, number>();
+  private usualTilts = new Map<number, number>();
   /** The debug sweep through the shadow (`?eclipse`), and when it began. */
   private eclipseSweep = false;
   private sweepFrom = -1;
@@ -1432,7 +1433,15 @@ export class GlobeRenderer {
         document.documentElement.dataset.eclipse = "";
       }
     }
-    if (this.eclipseOffset === null) return base;
+    if (this.eclipseOffset === null) {
+      // (the usual orbit, kept out of the shadow for the sun of the day: `clearInclination`)
+      let usual = this.usualTilts.get(aspect);
+      if (usual === undefined) {
+        usual = clearInclination(rollFor(aspect), base, this.moonSun);
+        this.usualTilts.set(aspect, usual);
+      }
+      return usual;
+    }
     let tilt = this.eclipseTilts.get(aspect);
     if (tilt === undefined) {
       tilt = eclipseInclination(rollFor(aspect), base, this.moonSun, this.eclipseOffset);

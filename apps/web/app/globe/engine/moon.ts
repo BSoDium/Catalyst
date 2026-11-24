@@ -340,6 +340,28 @@ export function moonShadowOn(p: Vec3, sun: Vec3): { axis: Vec3; reach: number; f
 }
 
 /**
+ * The usual orbit's inclination for the sun as it is now (owner, 2026-11-24: the moon opened in the earth's shadow on the usual orbit, on a day with no eclipse). The usual orbit was tuned for the default sun
+ * (`MOON.sunElevationDeg`); the live page's sun is at the real elevation of the date, and for some of them the usual orbit crosses the shadow, which the real phase (a full moon opens at the point of the orbit nearest the
+ * shadow) then shows at every load. This is `baseDeg` when the orbit already stays out of the shadow, else the nearest inclination to it (by half degrees, either side) whose whole lap does, the penumbra's soft edge included
+ * and the orbit's eccentric radii. Pure.
+ */
+export function clearInclination(rollDeg: number, baseDeg: number, sun: Vec3): number {
+  const clear = (incl: number): boolean => {
+    const basis = orbitBasis(rollDeg, incl);
+    for (const r of [MOON.orbit * (1 - MOON.eccentricity), MOON.orbit * (1 + MOON.eccentricity)]) {
+      for (let a = 0; a < 360; a += 1) if (eclipseOf(inertialPosition((a * Math.PI) / 180, basis, r), sun).dark > 0) return false;
+    }
+    return true;
+  };
+  if (clear(baseDeg)) return baseDeg;
+  for (let d = 0.5; d <= ECLIPSE.scanDeg; d += 0.5) {
+    if (clear(baseDeg + d)) return baseDeg + d;
+    if (clear(baseDeg - d)) return baseDeg - d;
+  }
+  return baseDeg;
+}
+
+/**
  * The inclination (degrees) of the orbit for a session whose orbit lines up with the sun: the plane (`orbitBasis` at `rollDeg`) is turned about its horizontal axis from `baseDeg` to where it holds the sun's direction (`sun`,
  * in the inertial frame), plus `offsetDeg` off the exact line. The moon then crosses the earth's shadow once a lap.
  */
