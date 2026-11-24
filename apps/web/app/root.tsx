@@ -1,3 +1,4 @@
+import { Analytics } from "@vercel/analytics/react";
 import { MotionConfig } from "motion/react";
 import { useEffect } from "react";
 import { isRouteErrorResponse, Links, Meta, Outlet, Scripts, ScrollRestoration } from "react-router";
@@ -50,6 +51,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
         <ScrollRestoration />
         <Scripts />
+        {/* Vercel Web Analytics: cookieless page views (no consent banner needed). The script is first-party (`/_vercel/insights/script.js`, the host serves it), so the CSP's `'self'` already allows it and the beacons. Renders nothing; injects the script on the client only. */}
+        <Analytics />
       </body>
     </html>
   );

@@ -69,6 +69,9 @@ importers:
       '@react-router/serve':
         specifier: ^7.18.4
         version: 7.18.4(react-router@7.18.4(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(typescript@5.9.3)
+      '@vercel/analytics':
+        specifier: ^2.0.1
+        version: 2.0.1(react@19.3.0)
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -1069,6 +1072,35 @@ packages:
 
   '@types/webxr@0.5.24':
     resolution: {integrity: sha512-h8fgEd/DpoS9CBrjEQXR+dIDraopAEfu4wYVNY2tEPwk60stPWhvZMf4Foo5FakuQ7HFZoa8WceaWFervK2Ovg==}
+
+  '@vercel/analytics@2.0.1':
+    resolution: {integrity: sha512-MTQG6V9qQrt1tsDeF+2Uoo5aPjqbVPys1xvnIftXSJYG2SrwXRHnqEvVoYID7BTruDz4lCd2Z7rM1BdkUehk2g==}
+    peerDependencies:
+      '@remix-run/react': ^2
+      '@sveltejs/kit': ^1 || ^2
+      next: '>= 13'
+      nuxt: '>= 3'
+      react: ^18 || ^19 || ^19.0.0-rc
+      svelte: '>= 4'
+      vue: ^3
+      vue-router: ^4
+    peerDependenciesMeta:
+      '@remix-run/react':
+        optional: true
+      '@sveltejs/kit':
+        optional: true
+      next:
+        optional: true
+      nuxt:
+        optional: true
+      react:
+        optional: true
+      svelte:
+        optional: true
+      vue:
+        optional: true
+      vue-router:
+        optional: true
 
   '@vercel/react-router@1.3.7':
     resolution: {integrity: sha512-6lR2IymF6VYNBxzxDJ2xU7IdeeTLgDC7Hz3jW3eTwZxECOHRdl9zJ300cEp3QHGrvD7T1Kz3SqOUD06F9Ea2fg==}
@@ -3022,6 +3054,10 @@ snapshots:
       '@types/geojson': 7946.0.16
 
   '@types/webxr@0.5.24': {}
+
+  '@vercel/analytics@2.0.1(react@19.3.0)':
+    optionalDependencies:
+      react: 19.3.0
 
   '@vercel/react-router@1.3.7(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)(@react-router/dev@7.18.4(@react-router/serve@7.18.4(react-router@7.18.4(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(typescript@5.9.3))(@types/node@22.20.5)(jiti@2.7.0)(lightningcss@1.33.0)(react-router@7.18.4(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(tsx@4.23.15)(typescript@5.9.3)(vite@7.3.6(@types/node@22.20.5)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.15)))(@react-router/node@7.18.4(react-router@7.18.4(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(typescript@5.9.3))(isbot@5.2.2)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)':
     dependencies:
