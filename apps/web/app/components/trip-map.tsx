@@ -503,27 +503,63 @@ export function TripPoster({ trip, here, photo = true, cutout = true, occlude, c
   const taken: Array<{ x0: number; x1: number; y0: number; y1: number }> = [];
   // The code name and its tag are in the poster's foot: a label is never over them (it goes beside its stop on the other side, or below it, or is left out)
   const keepOut = word ? { x0: WORD_PAD - 2, x1: WORD_PAD + drawn + 4, y0: h - WORD_PAD - Math.round(size * 0.74) - 18, y1: h } : null;
+  // The route as segments (px), to keep a name off it: how much of the route runs through a name's box is what a place for it costs.
+  const segs = legLines.flatMap((pts) => {
+    const p = pts.split(" ").map((c) => c.split(",").map(Number) as [number, number]);
+    return p.slice(1).map((b, i) => [p[i]!, b] as const);
+  });
+  const through = (r: { x0: number; x1: number; y0: number; y1: number }) => {
+    let len = 0;
+    for (const [[ax, ay], [bx, by]] of segs) {
+      // (Liang-Barsky: the length of the segment inside the box)
+      let t0 = 0;
+      let t1 = 1;
+      const dx = bx - ax;
+      const dy = by - ay;
+      let hit = true;
+      for (const [pp, qq] of [[-dx, ax - r.x0], [dx, r.x1 - ax], [-dy, ay - r.y0], [dy, r.y1 - ay]] as const) {
+        if (pp === 0) {
+          if (qq < 0) hit = false;
+        } else {
+          const t = qq / pp;
+          if (pp < 0) t0 = Math.max(t0, t);
+          else t1 = Math.min(t1, t);
+        }
+      }
+      if (hit && t0 < t1) len += (t1 - t0) * Math.hypot(dx, dy);
+    }
+    return len;
+  };
+  const priority = new Set([current?.slug, trip.stopPoints[0]?.slug, trip.stopPoints[trip.stopPoints.length - 1]?.slug, onMap[0]?.slug, onMap[onMap.length - 1]?.slug]);
   for (const q of candidates) {
     if (named.length >= MAX_LABELS) break;
+    if (named.some((n) => n.s.slug === q.slug)) continue;
     const at = stopAt(q);
     if (!inBox(at)) continue;
     const toEnd = at.x > w * 0.6;
     const width = q.name.length * 6.8;
-    let placedLabel: { x: number; y: number; end: boolean; rect: { x0: number; x1: number; y0: number; y1: number } } | null = null;
-    for (const [flipSide, below] of [[false, false], [false, true], [true, false], [true, true]] as const) {
-      const end = flipSide ? !toEnd : toEnd;
-      const x = end ? at.x - 9 : at.x + 9;
-      const y = Math.max(12, below ? at.y + 17 : at.y - 7);
-      const rect = { x0: end ? x - width : x, x1: end ? x : x + width, y0: y - 10, y1: y + 3 };
-      const clash = taken.some((t) => rect.x0 < t.x1 + 4 && rect.x1 > t.x0 - 4 && rect.y0 < t.y1 && rect.y1 > t.y0);
-      const onWord = keepOut !== null && rect.x0 < keepOut.x1 && rect.x1 > keepOut.x0 && rect.y0 < keepOut.y1 && rect.y1 > keepOut.y0;
-      if (clash || onWord || rect.x0 < 2 || rect.x1 > w - 2) continue;
-      placedLabel = { x, y, end, rect };
-      break;
+    let best: { x: number; y: number; end: boolean; rect: { x0: number; x1: number; y0: number; y1: number }; cost: number } | null = null;
+    // Six places round the dot (either side, above, level, below), the one the route crosses least; ties go to the first (the side away from the poster's middle, above).
+    let order = 0;
+    for (const flipSide of [false, true]) {
+      for (const dy of [-7, 3, 17]) {
+        const end = flipSide ? !toEnd : toEnd;
+        const x = end ? at.x - 9 : at.x + 9;
+        const y = Math.max(12, at.y + dy);
+        const rect = { x0: end ? x - width : x, x1: end ? x : x + width, y0: y - 10, y1: y + 3 };
+        order++;
+        const clash = taken.some((t) => rect.x0 < t.x1 + 4 && rect.x1 > t.x0 - 4 && rect.y0 < t.y1 && rect.y1 > t.y0);
+        const onWord = keepOut !== null && rect.x0 < keepOut.x1 && rect.x1 > keepOut.x0 && rect.y0 < keepOut.y1 && rect.y1 > keepOut.y0;
+        if (clash || onWord || rect.x0 < 2 || rect.x1 > w - 2) continue;
+        const cost = through({ x0: rect.x0 - 2, x1: rect.x1 + 2, y0: rect.y0, y1: rect.y1 }) + 0.01 * order;
+        if (!best || cost < best.cost) best = { x, y, end, rect, cost };
+      }
     }
-    if (!placedLabel) continue;
-    taken.push(placedLabel.rect);
-    named.push({ s: q, x: placedLabel.x, y: placedLabel.y, end: placedLabel.end });
+    if (!best) continue;
+    // (a name that is not one of the ends that always are named is left out where the route would run through it: it is not worth the clutter)
+    if (!priority.has(q.slug) && best.cost > 14) continue;
+    taken.push(best.rect);
+    named.push({ s: q, x: best.x, y: best.y, end: best.end });
   }
   // The dots of the stops: on a trip with many, a dot is drawn only where it is `DOT_GAP` px from the ones already drawn (the start, the end, this place and the named ones always are), so the line is not lost under a string of dots.
   const dots = (() => {
@@ -567,6 +603,22 @@ export function TripPoster({ trip, here, photo = true, cutout = true, occlude, c
   // The route, its stops and its names: over the subject on a poster with none, BEHIND it where there is a cutout (the map and the path are part of the backdrop: owner, 2026-11-24).
   const routeNodes = (
     <>
+    {/* The route is dimmed (only the route) behind each name: a soft spot of the mask over every name, not a hole. */}
+    <defs>
+      <radialGradient id={`${maskId}-dimg`}>
+        {[0.72, 0.68, 0.55, 0.38, 0.2, 0.07, 0].map((o, k, all) => (
+          <stop key={k} offset={k / (all.length - 1)} style={{ stopColor: "#000", stopOpacity: o }} />
+        ))}
+      </radialGradient>
+      <mask id={`${maskId}-dim`} maskUnits="userSpaceOnUse" x={-20} y={-20} width={w + 40} height={h + 40}>
+        <rect x={-20} y={-20} width={w + 40} height={h + 40} fill="#fff" />
+        {named.map(({ s: place, x, y, end }) => {
+          const width = place.name.length * 6.8;
+          return <ellipse key={place.slug} cx={end ? x - width / 2 : x + width / 2} cy={y - 3.5} rx={width / 2 + 12} ry={11} fill={`url(#${maskId}-dimg)`} />;
+        })}
+      </mask>
+    </defs>
+    <g mask={`url(#${maskId}-dim)`}>
     {trip.legPaths.map((leg, i) => {
       const at = Array.from({ length: leg.points.length / 2 }, (_, k) => frame.at(leg.points[k * 2]!, leg.points[k * 2 + 1]!)).filter((q): q is { x: number; y: number } => q !== null);
       const pts = at.map((q) => `${q.x.toFixed(1)},${q.y.toFixed(1)}`).join(" ");
@@ -586,6 +638,7 @@ export function TripPoster({ trip, here, photo = true, cutout = true, occlude, c
         </g>
       );
     })}
+    </g>
     {trip.stopPoints.map((s, i) => {
       if (!dots.has(i)) return null;
       const q = stopAt(s);
