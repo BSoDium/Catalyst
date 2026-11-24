@@ -1,0 +1,60 @@
+{
+  "_doc": "Per picture (the folder name under public/media/photograph or routes): how its cutout is made. mode: vision (Apple's foreground mask, the default), semantic (SegFormer ADE20K labels what each region is: everything that is not the sky, or `exclude`/`classes`; `boost` classes it under-labels; `crop`), polygon (a hand-drawn outline of the subject, shares of the picture), sky (older: sky grown by colour), none. All of them end in alpha matting at the edge. band: the unknown strip round the edge, px. occlude: the share of the word's height the subject hides (default 0.35). percentile: which of the subject's columns the top edge is read at (the tallest N% start above it; default 15). none: no cutout for this picture (the poster shows the photograph flat): kept for the pictures where no cut was clean enough. rod: a straight pole and its flag cut by geometry (axis, half, flag).",
+  "trip-01": {
+    "mode": "semantic"
+  },
+  "trip-04": {
+    "mode": "sky",
+    "tol": 1.5
+  },
+  "trip-06": {
+    "mode": "none"
+  },
+  "trip-08": {
+    "mode": "none"
+  },
+  "trip-10": {
+    "mode": "semantic",
+    "percentile": 6,
+    "occlude": 0.3
+  },
+  "bow-of-a-boat": {
+    "mode": "rod",
+    "axis": [
+      [
+        0.314,
+        0.268
+      ],
+      [
+        0.322,
+        0.3
+      ],
+      [
+        0.333,
+        0.4
+      ],
+      [
+        0.349,
+        0.5
+      ],
+      [
+        0.365,
+        0.6
+      ],
+      [
+        0.372,
+        0.675
+      ]
+    ],
+    "half": 0.007,
+    "flag": [
+      0.318,
+      0.268,
+      0.39,
+      0.33
+    ],
+    "top": 0.675,
+    "occlude": 0.05,
+    "force": true
+  }
+}

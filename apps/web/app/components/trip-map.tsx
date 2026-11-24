@@ -1,5 +1,6 @@
 import { type CSSProperties, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { coverImageProps } from "~/lib/cover-image";
+import { cutoutOf, OCCLUDE, subjectPlace } from "~/lib/cutout";
 import { calmPlace, energyOf, lumaOf, meanUnder } from "~/lib/calm";
 import { findHorizon } from "~/lib/horizon";
 import { frameOf, type Frame } from "~/lib/trip-projection";
@@ -8,6 +9,14 @@ import { cn } from "~/lib/utils";
 
 /** The strokes of the route, by mode: the same patterns as the maps' lines (solid road, dashed rail, dotted ferry and flight). */
 const DASH: Record<string, string | undefined> = { road: undefined, rail: "5 3", ferry: "1.5 3", flight: "1.5 3", walk: "1.5 2", unknown: "5 4" };
+
+/** The subject's mask: whole down to the poster's bottom edge (it hides the word completely: a faded subject lets the word through and the layering is lost), then gone `SUBJECT_RUN` px under it. */
+const fadeAfter = (h: number) => `linear-gradient(to bottom, #000 ${h}px, transparent ${h + SUBJECT_RUN}px)`;
+/** The subject is gone this far under the poster (CSS px): sooner than the photograph, so the figures' ink is clear of it. */
+const SUBJECT_RUN = 70;
+
+/** The width of the gap a country border cuts in the land over a photograph (CSS px, it does not scale). */
+const BORDER_GAP = 1.5;
 
 /** How far the photograph runs on below the poster, under the figures, before it has faded out (CSS px). */
 const PHOTO_RUN = 150;
@@ -37,6 +46,15 @@ export function TripPhotoFilters() {
       <filter id="trip-range-dark" colorInterpolationFilters="sRGB">
         <feColorMatrix type="saturate" values="1.1" />
         {levels(0.3, 0.04)}
+      </filter>
+      {/* the subject in front of the word: a gentler band, so it stands out of the backdrop (it is not read through: the ink below the poster is clear of it) */}
+      <filter id="trip-subject-light" colorInterpolationFilters="sRGB">
+        <feColorMatrix type="saturate" values="1" />
+        {levels(0.6, 0.38)}
+      </filter>
+      <filter id="trip-subject-dark" colorInterpolationFilters="sRGB">
+        <feColorMatrix type="saturate" values="1" />
+        {levels(0.62, 0.03)}
       </filter>
     </svg>
   );
@@ -257,7 +275,7 @@ function useHorizon(src: string | undefined) {
  * photograph of the trip (`trip.photo`) the photo is the backdrop, its dynamic range held in a band the ink reads on (`TripPhotoFilters`), the photograph running on under the figures and fading into the card's background, the land on top of it as a translucent surface in the field's colour (it lightens the photograph in the light theme and darkens it in the dark one) without outlines, and the route and the word as on the flat field. The height is at
  * most `MAX_H`: on a wide panel the poster stretches in width, not in height. Decoration for the eyes: the card's text says all of it.
  */
-export function TripPoster({ trip, here, photo = true, className, wordFace }: { trip: Trip; here: string; photo?: boolean; className?: string; wordFace?: string | null }) {
+export function TripPoster({ trip, here, photo = true, cutout = true, occlude, className, wordFace }: { trip: Trip; here: string; photo?: boolean; /** The subject of the photograph in front of the word, when it has a cutout (`lib/cutout.ts`); `false` shows the photograph flat, to compare. */ cutout?: boolean; /** The share of the word's height the subject hides (default: the picture's own, else `OCCLUDE`). */ occlude?: number; className?: string; wordFace?: string | null }) {
   const { ref, w, h } = usePosterBox();
   const word = trip.word.toUpperCase();
   // The giant word is set in the lettering style of the trip's `face` (`routes[].face`: chosen per city, #510); `?word=grotesque|serif|old|slab|condensed|script|mono` overrides it for every card, to try the faces. The condensed face has a real width axis: it is condensed by the axis, the others by squeezing the glyphs.
@@ -302,6 +320,7 @@ export function TripPoster({ trip, here, photo = true, className, wordFace }: { 
   const clear = word ? Math.round(size * 0.74) + WORD_PAD : 0;
   const box = side ? { x: wordW + 16, y: 0, w: w - wordW - 24, h } : { x: 0, y: 0, w, h: h - clear };
   const backdrop = photo ? trip.photo : undefined;
+  const layer = backdrop && cutout ? cutoutOf(backdrop.src) : undefined;
   // The map is framed on the trip's land: a long flight (over `FAR_FLIGHT_KM`) is not what the trip is about, and fitting it in (the way home across an ocean) left the trip itself a squiggle in a corner of an empty map. The flight is still drawn,
   // as far as the poster goes: it leaves the frame as a stub toward where it flies. A trip of nothing but long flights (or with none) is framed on all of it.
   const framed = useMemo(() => {
@@ -329,6 +348,8 @@ export function TripPoster({ trip, here, photo = true, className, wordFace }: { 
     const hz = horizon.horizon;
     if (!backdrop || !hz) return null;
     const run = h + PHOTO_RUN;
+    // With a cutout: the photograph is placed so that its subject's top edge (the skyline, the rail of the boat) falls a share of the letters' height above their foot: the subject hides the bottom of the word, and only that, not where the map is calmest.
+    if (layer) return subjectPlace(layer, { w: hz.w, h: hz.h }, { w, run }, { x: WORD_PAD + Math.min(drawn, 0.6 * w) / 2, y: h - WORD_PAD - (occlude ?? layer.occlude ?? OCCLUDE) * 0.74 * size });
     // First the calmest place: the photograph where the map falls on its sky or its plain parts (`lib/calm.ts`), whatever it shows.
     if (hz.energy) {
       const calm = calmPlace(hz.energy, hz.cols, hz.rows, { w: hz.w, h: hz.h }, { w, run }, box);
@@ -419,6 +440,22 @@ export function TripPoster({ trip, here, photo = true, className, wordFace }: { 
   }
   const tone = (share: number) => `color-mix(in srgb, var(--foreground) ${share}%, var(--accent))`;
   // The same ink on the field's colour with or without a photograph: the photograph is veiled in the FIELD's colour (light in the light theme, dark in the dark one), so it sits close to the card's background instead of standing out of it.
+  // The word and its tag: in the poster's own drawing, or, when the photograph has a cutout (`layer`), in a drawing of their own under the cutout, so the subject stands in front of the word.
+  const wordNodes = word ? (
+    <>
+      {/* (the word's width is measured on an invisible copy at the heaviest weight, the widest it gets: the visible one is thinner or heavier with the card's `--g`, see `.trip-slide` in app.css) */}
+    <text ref={textRef} aria-hidden="true" x={0} y={-1000} fontSize={nominal} style={{ visibility: "hidden", fontFamily: wordFont, fontWeight: 800, letterSpacing: "-0.03em", ...(face.axis ? { fontStretch: `${face.axis.base}%` } : {}) }}>
+      {word}
+    </text>
+    <text data-slot="trip-word" transform={`translate(${WORD_PAD - Math.round(size * 0.05)} ${h - WORD_PAD}) scale(${face.axis ? "1" : condense.toFixed(3)} 1)`} fontSize={size} style={{ fill: backdrop ? "color-mix(in srgb, var(--foreground) calc(12% + 40% * var(--g, 1) * var(--g, 1)), transparent)" : `color-mix(in srgb, var(--foreground) calc(8% + 24% * var(--g, 1) * var(--g, 1)), var(--accent))`, fontFamily: wordFont, letterSpacing: "-0.03em", ...(face.axis ? { fontStretch: `${(face.axis.base * condense).toFixed(1)}%` } : {}) }}>
+      {word}
+    </text>
+    {/* (what the word is: the trip's code name, not the place's name; the poster's own small mono type, quiet and only on the card in front) */}
+    <text data-slot="trip-word-tag" aria-hidden="true" x={WORD_PAD} y={h - WORD_PAD - Math.round(size * 0.74) - 9} fontSize={11} style={{ fill: "var(--foreground)", fontFamily: "var(--font-meta)", fontWeight: 500, letterSpacing: "0.14em", fillOpacity: "clamp(0, calc((var(--g, 1) - 0.4) * 1.1), 0.62)" as unknown as number }}>
+      CODE NAME
+    </text>
+    </>
+  ) : null;
   const ink = "var(--foreground)";
   const halo = "var(--accent)";
   return (
@@ -439,34 +476,45 @@ export function TripPoster({ trip, here, photo = true, className, wordFace }: { 
           />
         </div>
       )}
+      {backdrop && (
+        // The word is drawn between the photograph and its cutout (the subject in front of it): where there is no cutout, over the photograph as always, in the poster's own drawing.
+        layer && (
+          <>
+            <svg aria-hidden="true" data-slot="trip-word-layer" width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="pointer-events-none absolute inset-x-0 top-0 block overflow-hidden">
+              {wordNodes}
+            </svg>
+            {/* (the cutout is placed and filtered exactly as the photograph, the same picture with its background made transparent; it is not faded, so it hides the word completely where it covers it) */}
+            <div aria-hidden="true" data-slot="trip-cutout" className="pointer-events-none absolute inset-x-0 top-0" style={{ height: h + PHOTO_RUN, maskImage: fadeAfter(h), WebkitMaskImage: fadeAfter(h), willChange: "transform" }}>
+              <img
+                src={layer.src}
+                alt=""
+                decoding="async"
+                className={cn("trip-subject", placed ? "absolute max-w-none" : "size-full object-cover")}
+                style={placed ? { width: placed.width, height: placed.height, left: placed.left, top: placed.top } : undefined}
+              />
+            </div>
+          </>
+        )
+      )}
       {backdrop && land && (
         // The land on a photograph runs as far as the photograph does and fades with it (the same mask), so the map is not cut at the poster's edge while the picture goes on.
         <svg aria-hidden="true" width={w} height={h + PHOTO_RUN} viewBox={`0 0 ${w} ${h + PHOTO_RUN}`} className="pointer-events-none absolute inset-x-0 top-0 block" style={{ maskImage: fade(h), WebkitMaskImage: fade(h) }}>
           {fadeDefs}
-          <path d={land} mask={landMask} className="trip-land" style={{ "--trip-land-dark-share": `${landShare}%` } as CSSProperties} stroke="none" />
-          {/* (on a photograph the borders are lines of the route's own ink, faint: lighter than the picture like the route, not darker; on the flat field they are gaps in the land, the ocean's colour) */}
-          {borderPath && <path d={borderPath} fill="none" stroke={ink} strokeOpacity={0.32} strokeWidth={1} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />}
+          {/* The borders are gaps in the land, not lines over it (owner, 2026-11-24): the land's mask is its fade (or whole) with the borders cut out of it, so the photograph shows through them, whatever the photograph is. */}
+          <defs>
+            <mask id={`${maskId}-l`} maskUnits="userSpaceOnUse" x={0} y={-PHOTO_RUN} width={w} height={h + 2 * PHOTO_RUN}>
+              <rect x={0} y={-PHOTO_RUN} width={w} height={h + 2 * PHOTO_RUN} fill={landFade ? `url(#${maskId}-g)` : "#fff"} />
+              {borderPath && <path d={borderPath} fill="none" stroke="#000" strokeWidth={BORDER_GAP} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />}
+            </mask>
+          </defs>
+          <path d={land} mask={`url(#${maskId}-l)`} className="trip-land" style={{ "--trip-land-dark-share": `${landShare}%` } as CSSProperties} stroke="none" />
         </svg>
       )}
       <svg data-slot="trip-poster" viewBox={`0 0 ${w} ${h}`} width={w} height={h} role="img" aria-label={`Map of the trip, ${trip.from} to ${trip.to}`} className="relative block overflow-hidden">
         {!backdrop && fadeDefs}
         {land && !backdrop && <path d={land} mask={landMask} style={{ fill: tone(9) }} stroke="none" />}
         {borderPath && !backdrop && <path d={borderPath} fill="none" stroke="var(--accent)" strokeWidth={1.25} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />}
-        {word && (
-          <>
-          {/* (the word's width is measured on an invisible copy at the heaviest weight, the widest it gets: the visible one is thinner or heavier with the card's `--g`, see `.trip-slide` in app.css) */}
-          <text ref={textRef} aria-hidden="true" x={0} y={-1000} fontSize={nominal} style={{ visibility: "hidden", fontFamily: wordFont, fontWeight: 800, letterSpacing: "-0.03em", ...(face.axis ? { fontStretch: `${face.axis.base}%` } : {}) }}>
-            {word}
-          </text>
-          <text data-slot="trip-word" transform={`translate(${WORD_PAD - Math.round(size * 0.05)} ${h - WORD_PAD}) scale(${face.axis ? "1" : condense.toFixed(3)} 1)`} fontSize={size} style={{ fill: backdrop ? "color-mix(in srgb, var(--foreground) calc(12% + 40% * var(--g, 1) * var(--g, 1)), transparent)" : `color-mix(in srgb, var(--foreground) calc(8% + 24% * var(--g, 1) * var(--g, 1)), var(--accent))`, fontFamily: wordFont, letterSpacing: "-0.03em", ...(face.axis ? { fontStretch: `${(face.axis.base * condense).toFixed(1)}%` } : {}) }}>
-            {word}
-          </text>
-          {/* (what the word is: the trip's code name, not the place's name; the poster's own small mono type, quiet and only on the card in front) */}
-          <text data-slot="trip-word-tag" aria-hidden="true" x={WORD_PAD} y={h - WORD_PAD - Math.round(size * 0.74) - 9} fontSize={11} style={{ fill: "var(--foreground)", fontFamily: "var(--font-meta)", fontWeight: 500, letterSpacing: "0.14em", fillOpacity: "clamp(0, calc((var(--g, 1) - 0.4) * 1.1), 0.62)" as unknown as number }}>
-            CODE NAME
-          </text>
-          </>
-        )}
+        {!layer && wordNodes}
         {trip.legPaths.map((leg, i) => {
           const pts = Array.from({ length: leg.points.length / 2 }, (_, k) => frame.at(leg.points[k * 2]!, leg.points[k * 2 + 1]!))
             .filter((q): q is { x: number; y: number } => q !== null)

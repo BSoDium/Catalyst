@@ -9035,35 +9035,43 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
 }
 
 /* The land over a trip poster's photograph (components/trip-map.tsx): in the dark theme it lightens the picture (white, `--trip-land-dark-share` of it, set from the picture's brightness), in the light theme the picture is already
-   held in a light band, so white would vanish on it: the land darkens it, in the ink's colour (owner, 2026-11-19: invisible on Moscow, Buenos Aires and Quito). */
+   held in a light band, so white would vanish on it: the land darkens it, in the ink's colour (owner, 2026-11-19: invisible on Moscow, Buenos Aires and Quito; 2026-11-24: lighter, and the borders are gaps in it, not lines). */
 .trip-land {
-  fill: color-mix(in srgb, var(--foreground) 13%, transparent);
+  fill: color-mix(in srgb, var(--foreground) 8%, transparent);
 }
 :root[data-scheme="dark"] .trip-land {
-  fill: color-mix(in srgb, #fff var(--trip-land-dark-share, 16%), transparent);
+  fill: color-mix(in srgb, #fff calc(var(--trip-land-dark-share, 16%) * 0.6), transparent);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-scheme="light"]) .trip-land {
-    fill: color-mix(in srgb, #fff var(--trip-land-dark-share, 16%), transparent);
+    fill: color-mix(in srgb, #fff calc(var(--trip-land-dark-share, 16%) * 0.6), transparent);
   }
 }
 
 /* The filter that holds a trip poster's photograph in a band the ink reads on (components/trip-map.tsx `TripPhotoFilters`). */
 :root {
   --trip-photo-filter: url(#trip-range-light);
+  --trip-subject-filter: url(#trip-subject-light);
 }
 .trip-photo {
   filter: var(--trip-photo-filter);
 }
+/* The subject in front of the word (a cutout, `lib/cutout.ts`) keeps more of its own levels than the backdrop: it is what stands out. It fades out just under the poster, before the figures. */
+.trip-subject {
+  filter: var(--trip-subject-filter);
+}
 :root[data-scheme="dark"] {
   --trip-photo-filter: url(#trip-range-dark);
+  --trip-subject-filter: url(#trip-subject-dark);
 }
 :root[data-scheme="light"] {
   --trip-photo-filter: url(#trip-range-light);
+  --trip-subject-filter: url(#trip-subject-light);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-scheme="light"]) {
     --trip-photo-filter: url(#trip-range-dark);
+    --trip-subject-filter: url(#trip-subject-dark);
   }
 }
 
