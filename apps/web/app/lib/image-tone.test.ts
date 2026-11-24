@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { brightness, labelRegion, toneOf } from "./image-tone";
+import { LIGHT_FROM, brightness, labelRegion, toneOf } from "./image-tone";
 
 describe("image tone", () => {
   it("takes the foot of what is seen of a picture that is cropped by its box", () => {
@@ -21,8 +21,11 @@ describe("image tone", () => {
     expect(brightness([255, 255, 255, 255, 0, 0, 0, 255])).toBeCloseTo(0.5, 5);
     expect(brightness([255, 255, 255, 0])).toBe(0.5);
   });
-  it("is dark under the middle grey and light over it", () => {
+  it("is light only over a really bright picture: a picture a little over the middle grey is still dark (owner, 2026-11-23)", () => {
     expect(toneOf(0.2)).toBe("dark");
-    expect(toneOf(0.8)).toBe("light");
+    expect(toneOf(0.55)).toBe("dark");
+    expect(toneOf(0.7)).toBe("dark");
+    expect(toneOf(LIGHT_FROM)).toBe("light");
+    expect(toneOf(0.9)).toBe("light");
   });
 });
