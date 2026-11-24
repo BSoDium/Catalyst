@@ -14,8 +14,8 @@
  "/media/photograph/bow-of-a-boat/photo.4e8a3272.webp": {
   "coverage": 0.005,
   "cx": 0.349,
-  "cy": 0.431,
-  "top": 0.62,
+  "cy": 0.432,
+  "top": 0.6227,
   "box": [
    0.311,
    0.268,
@@ -23,7 +23,8 @@
    0.675
   ],
   "occlude": 0.0,
-  "force": true
+  "force": true,
+  "blend": true
  },
  "/media/photograph/carrying-the-float/photo.0d912656.webp": {
   "coverage": 0.278,
@@ -252,6 +253,34 @@
    0.999,
    0.999
   ]
+ },
+ "/media/routes/trip-06/image.d58def05.webp": {
+  "coverage": 0.506,
+  "cx": 0.496,
+  "cy": 0.738,
+  "top": 0.47,
+  "box": [
+   0.0,
+   0.012,
+   0.999,
+   0.999
+  ],
+  "occlude": 0.3,
+  "placeOnly": true
+ },
+ "/media/routes/trip-08/image.f751a130.webp": {
+  "coverage": 0.49,
+  "cx": 0.5,
+  "cy": 0.754,
+  "top": 0.493,
+  "box": [
+   0.0,
+   0.463,
+   0.999,
+   0.999
+  ],
+  "occlude": 0.5,
+  "placeOnly": true
  },
  "/media/routes/trip-10/image.22358507.webp": {
   "coverage": 0.548,

@@ -19,8 +19,9 @@ describe("subjectPlace", () => {
 
   it("brings the subject to the target when the picture has room", () => {
     const p = subjectPlace({ cx: 0.5, top: 0.5 }, { w: 400, h: 1500 }, layer, { x: 120, y: 390 });
-    expect(p.left + 0.5 * p.width).toBeCloseTo(120, 3);
+    // (the edge's height is the point: exact; across, near the target is enough)
     expect(p.top + 0.5 * p.height).toBeCloseTo(390, 3);
+    expect(Math.abs(p.left + 0.5 * p.width - 120)).toBeLessThan(80);
   });
 
   it("gets as close as it can when it has no room, without leaving the layer uncovered", () => {

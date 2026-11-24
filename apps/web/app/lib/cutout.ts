@@ -5,7 +5,7 @@ import manifest from "./cutouts.generated.json";
  * subject transparent, made by `scripts/cutout/run.py` (Apple's Vision foreground mask by default; a skyline is "everything but the sky", the boat of Quito a hand-drawn polygon refined by GrabCut: `scripts/cutout/config.json`). The poster draws it over the trip's word, so the subject stands in front of the lettering.
  * `cutouts.generated.json` lists the photographs that have one, with the share of the picture the subject covers.
  */
-const SUBJECTS = manifest as unknown as Record<string, { coverage: number; cx: number; cy: number; top: number; occlude?: number; force?: boolean; box: [number, number, number, number] }>;
+const SUBJECTS = manifest as unknown as Record<string, { coverage: number; cx: number; cy: number; top: number; occlude?: number; force?: boolean; blend?: boolean; placeOnly?: boolean; box: [number, number, number, number] }>;
 
 /** A subject that covers less than this is a speck, more than this is the whole picture: either way there is nothing to put the word behind. */
 export const CUTOUT_MIN = 0.05;
@@ -24,18 +24,28 @@ export interface Cutout {
   occlude?: number;
   /** Used whatever the share it covers (a pole and its flag cover almost nothing of the picture, and are the whole point). */
   force?: boolean;
+  /** Dimmed and faded exactly as the photograph is (not whole down to the poster's foot): for a subject that stands on a part of the picture that is faded (a pole on a boat), so it does not stand out of nothing. */
+  blend?: boolean;
+  /** No cutout is drawn: the picture is only placed by this subject's edge (a skyline), so that the part that matters stays in the poster whatever the card's width. */
+  placeOnly?: boolean;
 }
 
 /** The raw cutout of a photograph, whatever its coverage (the gallery shows them all). */
 export function rawCutoutOf(src: string): Cutout | undefined {
   const s = SUBJECTS[src];
-  return s === undefined ? undefined : { src: src.replace(/\.webp$/, ".cutout.webp"), coverage: s.coverage, cx: s.cx, cy: s.cy, top: s.top, ...(s.occlude !== undefined ? { occlude: s.occlude } : {}), ...(s.force ? { force: true } : {}) };
+  return s === undefined ? undefined : { src: src.replace(/\.webp$/, ".cutout.webp"), coverage: s.coverage, cx: s.cx, cy: s.cy, top: s.top, ...(s.occlude !== undefined ? { occlude: s.occlude } : {}), ...(s.force ? { force: true } : {}), ...(s.blend ? { blend: true } : {}), ...(s.placeOnly ? { placeOnly: true } : {}) };
 }
 
 /** The cutout the poster uses: only one whose subject is neither a speck nor the whole picture. */
+/** What a picture is placed by, with or without a cutout drawn: the subject's edge and where across it is. */
+export function anchorOf(src: string): Cutout | undefined {
+  const c = rawCutoutOf(src);
+  return c && (c.placeOnly || c.force || (c.coverage >= CUTOUT_MIN && c.coverage <= CUTOUT_MAX)) ? c : undefined;
+}
+
 export function cutoutOf(src: string): Cutout | undefined {
   const c = rawCutoutOf(src);
-  return c && (c.force || (c.coverage >= CUTOUT_MIN && c.coverage <= CUTOUT_MAX)) ? c : undefined;
+  return c && !c.placeOnly && (c.force || (c.coverage >= CUTOUT_MIN && c.coverage <= CUTOUT_MAX)) ? c : undefined;
 }
 
 /** The share of the word's height the subject hides (the bottom of the letters): the word stays readable, and the subject opens onto it. */
@@ -63,7 +73,8 @@ export function subjectPlace(subject: Pick<Cutout, "cx" | "top">, image: { w: nu
     const height = image.h * base * zoom;
     const left = Math.min(0, Math.max(layer.w - width, target.x - subject.cx * width));
     const top = Math.min(0, Math.max(layer.run - height, target.y - subject.top * height));
-    const miss = Math.hypot(left + subject.cx * width - target.x, top + subject.top * height - target.y);
+    // (where the subject's edge stands vertically is the point of it: the horizon on the word's foot; across, any place near the word will do)
+    const miss = Math.hypot(0.15 * (left + subject.cx * width - target.x), top + subject.top * height - target.y);
     const cost = miss + (zoom - 1) * 10 * ZOOM_COST;
     if (best === null || cost < best.cost) best = { width, height, left, top, cost };
   }

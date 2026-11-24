@@ -1,5 +1,5 @@
 {
-  "_doc": "Per picture (the folder name under public/media/photograph or routes): how its cutout is made. mode: vision (Apple's foreground mask, the default), semantic (SegFormer ADE20K labels what each region is: everything that is not the sky, or `exclude`/`classes`; `boost` classes it under-labels; `crop`), polygon (a hand-drawn outline of the subject, shares of the picture), sky (older: sky grown by colour), none. All of them end in alpha matting at the edge. band: the unknown strip round the edge, px. occlude: the share of the word's height the subject hides (default 0.35). percentile: which of the subject's columns the top edge is read at (the tallest N% start above it; default 15). none: no cutout for this picture (the poster shows the photograph flat): kept for the pictures where no cut was clean enough. rod: a straight pole and its flag cut by geometry (axis, half, flag).",
+  "_doc": "Per picture (the folder name under public/media/photograph or routes): how its cutout is made. mode: vision (Apple's foreground mask, the default), semantic (SegFormer ADE20K labels what each region is: everything that is not the sky, or `exclude`/`classes`; `boost` classes it under-labels; `crop`), polygon (a hand-drawn outline of the subject, shares of the picture), sky (older: sky grown by colour), none. All of them end in alpha matting at the edge. band: the unknown strip round the edge, px. occlude: the share of the word's height the subject hides (default 0.35). percentile: which of the subject's columns the top edge is read at (the tallest N% start above it; default 15). none: no cutout for this picture (the poster shows the photograph flat): kept for the pictures where no cut was clean enough. rod: a straight pole and its flag cut by geometry (axis, half, flag). placeOnly: no cutout is drawn, the subject's edge only places the photograph (a skyline stays under the word at any card width). blend: the cutout is dimmed and faded as the photograph is.",
   "trip-01": {
     "mode": "semantic"
   },
@@ -8,10 +8,23 @@
     "tol": 1.5
   },
   "trip-06": {
-    "mode": "none"
+    "mode": "semantic",
+    "boost": [
+      "palm",
+      "tree",
+      "plant",
+      "streetlight",
+      "pole"
+    ],
+    "clear": 42,
+    "percentile": 40,
+    "placeOnly": true,
+    "occlude": 0.3
   },
   "trip-08": {
-    "mode": "none"
+    "mode": "semantic",
+    "placeOnly": true,
+    "occlude": 0.5
   },
   "trip-10": {
     "mode": "semantic",
@@ -53,8 +66,9 @@
       0.39,
       0.33
     ],
-    "top": 0.62,
+    "top": 0.6227,
     "occlude": 0.0,
-    "force": true
+    "force": true,
+    "blend": true
   }
 }

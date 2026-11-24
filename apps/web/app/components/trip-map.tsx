@@ -1,6 +1,6 @@
 import { type CSSProperties, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { coverImageProps } from "~/lib/cover-image";
-import { cutoutOf, OCCLUDE, subjectPlace } from "~/lib/cutout";
+import { anchorOf, cutoutOf, OCCLUDE, subjectPlace } from "~/lib/cutout";
 import { calmPlace, energyOf, lumaOf, meanUnder } from "~/lib/calm";
 import { findHorizon } from "~/lib/horizon";
 import { frameOf, type Frame } from "~/lib/trip-projection";
@@ -20,7 +20,7 @@ const fadeAfter = (h: number) => `linear-gradient(to bottom, #000 ${h}px, transp
 const SUBJECT_RUN = 70;
 
 /** The width of the gap a country border cuts in the land over a photograph (CSS px, it does not scale). */
-const BORDER_GAP = 1.5;
+const BORDER_GAP = 1.1;
 
 /** How far the photograph runs on below the poster, under the figures, before it has faded out (CSS px). */
 const PHOTO_RUN = 150;
@@ -49,7 +49,7 @@ export function TripPhotoFilters() {
       </filter>
       <filter id="trip-range-dark" colorInterpolationFilters="sRGB">
         <feColorMatrix type="saturate" values="1.1" />
-        {levels(0.3, 0.04)}
+        {levels(0.42, 0.05)}
       </filter>
       {/* the subject in front of the word: a gentler band, so it stands out of the backdrop (it is not read through: the ink below the poster is clear of it) */}
       <filter id="trip-subject-light" colorInterpolationFilters="sRGB">
@@ -58,7 +58,7 @@ export function TripPhotoFilters() {
       </filter>
       <filter id="trip-subject-dark" colorInterpolationFilters="sRGB">
         <feColorMatrix type="saturate" values="1" />
-        {levels(0.62, 0.03)}
+        {levels(0.56, 0.04)}
       </filter>
     </svg>
   );
@@ -120,19 +120,54 @@ function linesPath(frame: Frame, lines: Lines | null, w: number, h: number, ring
     let d = "";
     let pen = false;
     let piece = 0;
+    // (the ends of the piece being drawn, and whether the line was cut there by the far side of the globe)
+    let first: { x: number; y: number } | null = null;
+    let last: { x: number; y: number } | null = null;
+    let startCut = false;
+    let endCut = false;
+    let afterGap = false;
     const close = () => {
       // (every land outline is filled, closed or not: a landmass the data cuts at the antimeridian, Europe, Africa and Asia in one, is an open line whose two ends are on that cut, and closing it runs along the cut)
-      if (ring && pen && piece > 3) d += "Z";
+      if (ring && pen && piece > 3) {
+        const disc = frame.disc;
+        if (disc && first && last && (startCut || endCut)) {
+          // A line that leaves the azimuthal map at its far side comes back to it: the land is closed along the disc's edge (the shorter way round), not across the poster by a chord.
+          const onDisc = (q: { x: number; y: number }) => {
+            const a = Math.atan2(q.y - disc.y, q.x - disc.x);
+            return { a, x: disc.x + disc.r * Math.cos(a), y: disc.y + disc.r * Math.sin(a) };
+          };
+          const e = onDisc(last);
+          const st = onDisc(first);
+          let delta = st.a - e.a;
+          while (delta > Math.PI) delta -= 2 * Math.PI;
+          while (delta < -Math.PI) delta += 2 * Math.PI;
+          d += `L${e.x.toFixed(1)} ${e.y.toFixed(1)}A${disc.r.toFixed(1)} ${disc.r.toFixed(1)} 0 0 ${delta > 0 ? 1 : 0} ${st.x.toFixed(1)} ${st.y.toFixed(1)}L${first.x.toFixed(1)} ${first.y.toFixed(1)}Z`;
+        } else d += "Z";
+      }
       piece = 0;
+      first = null;
+      last = null;
+      startCut = false;
+      endCut = false;
     };
     for (let i = a; i < b; i++) {
       const p = frame.at(lines.positions[i * 2]!, lines.positions[i * 2 + 1]!);
       // (a point on the far side of the globe has no place on the poster, and a line over the world map's seam is not drawn across it: the line is broken there)
       if (!p || (i > a && frame.cuts(lines.positions[(i - 1) * 2]!, lines.positions[i * 2]!))) {
+        if (!p) endCut = true;
         close();
         pen = false;
-        if (!p) continue;
+        if (!p) {
+          afterGap = true;
+          continue;
+        }
       }
+      if (piece === 0) {
+        first = p;
+        startCut = afterGap;
+        afterGap = false;
+      }
+      last = p;
       d += `${pen ? "L" : "M"}${p.x.toFixed(1)} ${p.y.toFixed(1)}`;
       pen = true;
       piece++;
@@ -324,7 +359,12 @@ export function TripPoster({ trip, here, photo = true, cutout = true, occlude, c
   const clear = word ? Math.round(size * 0.74) + WORD_PAD + 26 : 0;
   const box = side ? { x: wordW + 16, y: 0, w: w - wordW - 24, h } : { x: 0, y: 0, w, h: h - clear };
   const backdrop = photo ? trip.photo : undefined;
+  // The screen's pixel ratio, read after mounting (the server draws for 1, so the page and the server's agree): a photograph shown larger than its own pixels is softened by as much as it is enlarged.
+  const [dpr, setDpr] = useState(1);
+  useEffect(() => setDpr(window.devicePixelRatio || 1), []);
   const layer = backdrop && cutout ? cutoutOf(backdrop.src) : undefined;
+  // (what the photograph is placed by: its cutout's subject, or, with no cutout drawn, a skyline's edge)
+  const anchor = backdrop && cutout ? anchorOf(backdrop.src) : undefined;
   // The map is framed on the trip's land: a long flight (over `FAR_FLIGHT_KM`) is not what the trip is about, and fitting it in (the way home across an ocean) left the trip itself a squiggle in a corner of an empty map. The flight is still drawn,
   // as far as the poster goes: it leaves the frame as a stub toward where it flies. A trip of nothing but long flights (or with none) is framed on all of it.
   const framed = useMemo(() => {
@@ -344,7 +384,7 @@ export function TripPoster({ trip, here, photo = true, cutout = true, occlude, c
     return { pts: kept.flatMap((l) => Array.from({ length: l.points.length / 2 }, (_, k) => ({ lon: l.points[k * 2]!, lat: l.points[k * 2 + 1]! }))).concat(stops), land: true };
   }, [trip]);
   // (a trip framed on its land gets room round it: the continent runs on past the route on every side, so the route is in the map and the map is not a crop of it)
-  const pad = framed.land ? Math.min(PAD + Math.round(0.14 * Math.min(box.w, box.h)), Math.round(0.3 * Math.min(box.w, box.h))) : PAD;
+  const pad = framed.land ? Math.min(PAD + Math.round(0.05 * Math.min(box.w, box.h)), Math.round(0.14 * Math.min(box.w, box.h))) : PAD;
   const frame = useMemo(() => frameOf(framed.pts, box.x, box.y, box.w, box.h, pad, { w, h: backdrop ? h + PHOTO_RUN : h }), [framed, box.x, box.y, box.w, box.h, pad, w, h, backdrop]);
   const horizon = useHorizon(backdrop?.src);
   // The photograph placed so that its horizon is at the poster's bottom edge: scaled up as far as it takes to fill the layer above and below that line, never less than the cover size.
@@ -353,7 +393,7 @@ export function TripPoster({ trip, here, photo = true, cutout = true, occlude, c
     if (!backdrop || !hz) return null;
     const run = h + PHOTO_RUN;
     // With a cutout: the photograph is placed so that its subject's top edge (the skyline, the rail of the boat) falls a share of the letters' height above their foot: the subject hides the bottom of the word, and only that, not where the map is calmest.
-    if (layer) return subjectPlace(layer, { w: hz.w, h: hz.h }, { w, run }, { x: WORD_PAD + Math.min(drawn, 0.6 * w) / 2, y: h - WORD_PAD - (occlude ?? layer.occlude ?? OCCLUDE) * 0.74 * size });
+    if (anchor) return subjectPlace(anchor, { w: hz.w, h: hz.h }, { w, run }, { x: WORD_PAD + Math.min(drawn, 0.6 * w) / 2, y: h - WORD_PAD - (occlude ?? anchor.occlude ?? OCCLUDE) * 0.74 * size });
     // First the calmest place: the photograph where the map falls on its sky or its plain parts (`lib/calm.ts`), whatever it shows.
     if (hz.energy) {
       const calm = calmPlace(hz.energy, hz.cols, hz.rows, { w: hz.w, h: hz.h }, { w, run }, box);
@@ -365,6 +405,9 @@ export function TripPoster({ trip, here, photo = true, cutout = true, occlude, c
     const k = Math.max(w / hz.w, h / (f * hz.h), PHOTO_RUN / ((1 - f) * hz.h), run / hz.h);
     return { width: k * hz.w, height: k * hz.h, left: (w - k * hz.w) / 2, top: h - f * k * hz.h } as const;
   })();
+  // The photograph enlarged beyond its own pixels (device pixels per source pixel above 1) is blurred by about what the enlargement lacks, so it looks like a shallow depth of field and not like squares (owner, 2026-11-24).
+  const softness = placed && backdrop ? Math.min(3, Math.max(0, (placed.width * dpr) / (backdrop.width ?? placed.width) - 1) * 0.7) / dpr : 0;
+  const softened = (filter: string) => (softness > 0.05 ? `${filter} blur(${softness.toFixed(2)}px)` : undefined);
   // A busy picture is quieter: the more detail there is in the part of it that shows (the mean energy of the layer: 0.03 is a sky and a plain skyline, 0.06 a crowd and a colourful street), the more it is faded into the card's ground, down to half (owner, 2026-11-19: Moscow's was too busy for the content).
   const photoOpacity = (() => {
     const hz = horizon.horizon;
@@ -410,6 +453,15 @@ export function TripPoster({ trip, here, photo = true, cutout = true, occlude, c
     </defs>
   );
   const landMask = landFade ? `url(#${maskId}-m)` : undefined;
+  // The route as lines of the poster (px), for the land's fade on a photograph: the land is there round the route, and dissolves with the distance from it.
+  const legLines = useMemo(
+    () =>
+      trip.legPaths
+        .map((leg) => Array.from({ length: leg.points.length / 2 }, (_, k) => frame.at(leg.points[k * 2]!, leg.points[k * 2 + 1]!)).filter((q): q is { x: number; y: number } => q !== null).map((q) => `${q.x.toFixed(1)},${q.y.toFixed(1)}`).join(" "))
+        .filter((pts) => pts.includes(" ")),
+    [trip, frame],
+  );
+  const near = Math.min(w, h);
   const current = trip.stopPoints.find((s) => s.slug === here);
   // The named places: the start, the end (one label when they are the same place), this one and the highlights (`Trip.highlights`).
   const inBox = (q: { x: number; y: number }) => q.x >= box.x + 4 && q.x <= box.x + box.w - 4 && q.y >= box.y + 8 && q.y <= box.y + box.h - 4;
@@ -511,7 +563,7 @@ export function TripPoster({ trip, here, photo = true, cutout = true, occlude, c
             onLoad={(e) => horizon.read(e.currentTarget)}
             ref={horizon.ref}
             className={cn("trip-photo", placed ? "absolute max-w-none" : "size-full object-cover")}
-            style={placed ? { width: placed.width, height: placed.height, left: placed.left, top: placed.top } : undefined}
+            style={placed ? { width: placed.width, height: placed.height, left: placed.left, top: placed.top, filter: softened("var(--trip-photo-filter)") } : undefined}
           />
         </div>
       )}
@@ -524,13 +576,13 @@ export function TripPoster({ trip, here, photo = true, cutout = true, occlude, c
               {routeNodes}
             </svg>
             {/* (the cutout is placed and filtered exactly as the photograph, the same picture with its background made transparent; it is not faded, so it hides the word completely where it covers it) */}
-            <div aria-hidden="true" data-slot="trip-cutout" className="pointer-events-none absolute inset-x-0 top-0" style={{ height: h + PHOTO_RUN, maskImage: fadeAfter(h), WebkitMaskImage: fadeAfter(h), willChange: "transform" }}>
+            <div aria-hidden="true" data-slot="trip-cutout" className="pointer-events-none absolute inset-x-0 top-0" style={{ height: h + PHOTO_RUN, maskImage: layer.blend ? fade(h) : fadeAfter(h), WebkitMaskImage: layer.blend ? fade(h) : fadeAfter(h), opacity: layer.blend ? photoOpacity : undefined, willChange: "transform" }}>
               <img
                 src={layer.src}
                 alt=""
                 decoding="async"
                 className={cn("trip-subject", placed ? "absolute max-w-none" : "size-full object-cover")}
-                style={placed ? { width: placed.width, height: placed.height, left: placed.left, top: placed.top } : undefined}
+                style={placed ? { width: placed.width, height: placed.height, left: placed.left, top: placed.top, filter: softened("var(--trip-subject-filter)") } : undefined}
               />
             </div>
           </>
@@ -542,8 +594,17 @@ export function TripPoster({ trip, here, photo = true, cutout = true, occlude, c
           {fadeDefs}
           {/* The borders are gaps in the land, not lines over it (owner, 2026-11-24): the land's mask is its fade (or whole) with the borders cut out of it, so the photograph shows through them, whatever the photograph is. */}
           <defs>
+            {/* On a photograph the land is only round the route (owner, 2026-11-24: "we only need to see the continent around the road"): the mask is black, the route stroked white and blurred, so the land dissolves softly with the distance from the path; then the borders are cut out of it. A poster with no photograph keeps the land more widely (it has nothing else to show). */}
+            <filter id={`${maskId}-f`} filterUnits="userSpaceOnUse" x={-near} y={-PHOTO_RUN - near} width={w + 2 * near} height={h + 2 * PHOTO_RUN + 2 * near}>
+              <feGaussianBlur stdDeviation={0.13 * near} />
+            </filter>
             <mask id={`${maskId}-l`} maskUnits="userSpaceOnUse" x={0} y={-PHOTO_RUN} width={w} height={h + 2 * PHOTO_RUN}>
-              <rect x={0} y={-PHOTO_RUN} width={w} height={h + 2 * PHOTO_RUN} fill={landFade ? `url(#${maskId}-g)` : "#fff"} />
+              <rect x={0} y={-PHOTO_RUN} width={w} height={h + 2 * PHOTO_RUN} fill="#000" />
+              <g filter={`url(#${maskId}-f)`} fill="none" stroke="#fff" strokeWidth={0.36 * near} strokeLinecap="round" strokeLinejoin="round">
+                {legLines.map((pts, i) => (
+                  <polyline key={i} points={pts} />
+                ))}
+              </g>
               {borderPath && <path d={borderPath} fill="none" stroke="#000" strokeWidth={BORDER_GAP} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />}
             </mask>
           </defs>

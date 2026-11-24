@@ -303,11 +303,23 @@ def by_rod(rgb: np.ndarray, axis, half: float, flag):
     ring[y0:y1, x0:x1] = False
     B = np.median(img[ring], axis=0)
     d = np.linalg.norm(img - B, axis=2)
-    key = np.clip((d - 22) / 40, 0, 1)
+    key = np.clip((d - 34) / 30, 0, 1)
     box = np.zeros((h, w), bool)
     box[y0:y1, x0:x1] = True
     key = np.where(box, key, 0)
+    # (the edge of the cloth is half sky: its colour is taken from the solid cloth next to it, or a bright sky-blue fringe shows against a dark card)
+    solid = ((key > 0.92) & box).astype(np.float64)
+    num = np.zeros_like(img)
+    den = np.zeros((h, w))
+    for sigma in (1.5, 3, 6):
+        nn = cv2.GaussianBlur(img * solid[:, :, None], (0, 0), sigma)
+        dd = cv2.GaussianBlur(solid, (0, 0), sigma)
+        fill = (den < 1e-3) & (dd > 1e-3)
+        num[fill] = nn[fill] / dd[fill][:, None]
+        den[fill] = dd[fill]
+    edge = box & (key > 0) & (key <= 0.92) & (den > 1e-3)
     fg[box & (key > 0)] = rgb[box & (key > 0)]
+    fg[edge] = num[edge]
     alpha = np.maximum(alpha, key)
     return fg.astype(np.uint8), (alpha * 255).astype(np.uint8)
 
@@ -395,6 +407,15 @@ def main():
             s["top"] = cfg["top"]
         if cfg.get("force"):
             s["force"] = True
+        if cfg.get("blend"):
+            s["blend"] = True
+        if cfg.get("placeOnly"):
+            # (no cutout drawn: the stats only place the photograph by this edge)
+            s["placeOnly"] = True
+            out.unlink(missing_ok=True)
+            manifest[src] = s
+            print(f"  place   {s['coverage']:.2f} top {s['top']:.2f}  {folder}")
+            continue
         rgba = np.dstack([fg, alpha])
         png = Path(tempfile.mkstemp(suffix=".png")[1])
         Image.fromarray(rgba, "RGBA").save(png)

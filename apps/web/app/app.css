@@ -9040,11 +9040,11 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   fill: color-mix(in srgb, var(--foreground) 8%, transparent);
 }
 :root[data-scheme="dark"] .trip-land {
-  fill: color-mix(in srgb, #fff calc(var(--trip-land-dark-share, 16%) * 0.6), transparent);
+  fill: color-mix(in srgb, #fff calc(var(--trip-land-dark-share, 16%) * 0.8), transparent);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-scheme="light"]) .trip-land {
-    fill: color-mix(in srgb, #fff calc(var(--trip-land-dark-share, 16%) * 0.6), transparent);
+    fill: color-mix(in srgb, #fff calc(var(--trip-land-dark-share, 16%) * 0.8), transparent);
   }
 }
 
