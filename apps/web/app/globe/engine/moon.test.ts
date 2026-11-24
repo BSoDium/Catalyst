@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ECLIPSE, MOON, direction, eclipseInclination, eclipseOf, inclinationFor, inertialPosition, moonAmount, MOON_SHADOW, moonShadowOn, orbitAngle, orbitBasis, litTurn, rollFor, sunDirection, toEarthFrame, toRad, unhidden, visibleBounds, type Vec3 } from "./moon";
+import { ECLIPSE, MOON, direction, eclipseInclination, eclipseOf, inclinationFor, inertialPosition, moonAmount, MOON_SHADOW, moonShadowOn, orbitAngle, orbitBasis, litTurn, orbitLined, rollFor, sunDirection, toEarthFrame, toRad, unhidden, visibleBounds, type Vec3 } from "./moon";
 import { viewBasis } from "./geo";
 
 const dot = (a: Vec3, b: Vec3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
@@ -258,5 +258,20 @@ describe("the moon's shadow on the earth (#443)", () => {
     expect(moonShadowOn([0, 0, -9], s)).toBeNull();
     expect(moonShadowOn([3, 0, 9], s)).toBeNull();
     expect(moonShadowOn([1 + MOON.radius * MOON_SHADOW.fall - 0.01, 0, 9], s)).not.toBeNull();
+  });
+});
+
+describe("when the orbit is lined up with the sun (an eclipse, owner 2026-11-24: the moon opened in the earth's shadow at every load around a full moon)", () => {
+  it("is always near a real eclipse, whatever the phase", () => {
+    expect(orbitLined(true, 0.99, 1)).toBe(true);
+    expect(orbitLined(true, 0.99, 0)).toBe(true);
+  });
+  it("is otherwise one session in `chance`, drawn by the seed", () => {
+    expect(orbitLined(false, ECLIPSE.chance - 0.01, 0.5)).toBe(true);
+    expect(orbitLined(false, ECLIPSE.chance + 0.01, 0.5)).toBe(false);
+  });
+  it("is never by chance while the moon is nearly full or nearly new (the lap would open in the eclipse)", () => {
+    for (const lit of [0, 0.05, 0.14, 0.86, 0.95, 1]) expect(orbitLined(false, 0, lit)).toBe(false);
+    for (const lit of [0.2, 0.5, 0.8]) expect(orbitLined(false, 0, lit)).toBe(true);
   });
 });

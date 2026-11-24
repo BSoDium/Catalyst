@@ -284,9 +284,19 @@ export function orbitBasis(rollDeg: number, inclinationDeg: number = MOON.inclin
  * The moon in the earth's shadow (owner, 2026-11-02, #443: "eclipsed by the earth now and then", with a penumbra, "the moon must not go instantly and completely dark"). The shadow is a cylinder of the earth's radius behind it, away from the
  * sun, with a wide soft edge: `umbra` is the radius (earth radii) inside which the moon is in the deepest shadow, `penumbra` the one where the shadow ends, `shadowDark` how much of its light the moon loses at the deepest (it keeps a
  * little: the red light of the earth's air), `chance` the share of sessions whose orbit lines up with the sun (the draw is the session's seed: most orbits never meet the shadow), `jitterDeg` how far off the exact line such an orbit is
- * (so the moon crosses the shadow's edge or its middle), `scanDeg` the range the alignment is searched in.
+ * (so the moon crosses the shadow's edge or its middle), `scanDeg` the range the alignment is searched in, `clearLit` how close to full or new (the lit share of the disc) the real phase may be for the CHANCE to line the orbit up:
+ * the lap starts from the real phase, so on a lined-up orbit a moon that is nearly full opens inside the earth's shadow (and one nearly new, on the sun line): an eclipse at every load, for days around each full moon (owner, 2026-11-24). Real
+ * eclipses (`realDays`) are the only way in then.
  */
-export const ECLIPSE = { realDays: 2, umbra: 1, penumbra: 2.7, shadowDark: 0.93, chance: 0.25, jitterDeg: 6, scanDeg: 70 } as const;
+export const ECLIPSE = { realDays: 2, umbra: 1, penumbra: 2.7, shadowDark: 0.93, chance: 0.25, jitterDeg: 6, scanDeg: 70, clearLit: 0.15 } as const;
+
+/**
+ * Whether the session's orbit is lined up with the sun, so that the moon crosses the earth's shadow (or the sun line) once a lap: always near a real eclipse (`real`), else by the session's draw (`roll`, 0 to 1) in one session in
+ * `ECLIPSE.chance`, but never while the real phase `lit` (0 new, 1 full) is within `ECLIPSE.clearLit` of an extreme (the lap would open in the eclipse). Pure.
+ */
+export function orbitLined(real: boolean, roll: number, lit: number): boolean {
+  return real || (roll < ECLIPSE.chance && lit > ECLIPSE.clearLit && lit < 1 - ECLIPSE.clearLit);
+}
 
 const smooth01 = (a: number, b: number, x: number): number => {
   const t = clamp((x - a) / (b - a), 0, 1);
