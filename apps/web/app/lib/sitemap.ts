@@ -1,5 +1,6 @@
 /** `sitemap.xml` and `robots.txt` bodies. Pure: the resource routes read the projection and the site URL, these only format. */
 import type { PublishedProjection } from "@catalyst/schemas";
+import { crawlersFor } from "./ai-crawlers";
 import { CAREER_PATH } from "./career";
 import { COLLECTIONS, CONTENT_KINDS, KIND_PATHS, entryPath, placePath } from "./entries";
 
@@ -41,9 +42,25 @@ export function sitemapXml(urls: readonly SitemapUrl[]): string {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${items.join("\n")}\n</urlset>\n`;
 }
 
-/** Allow everything and point at the sitemap on the production site; on any other host (preview, `*.vercel.app`, localhost) disallow everything. */
+/**
+ * The production file: everyone is welcome, except the crawlers that collect pages to train a model (`lib/ai-crawlers.ts`); search and
+ * user-triggered AI agents stay under `*`. On any other host (preview, `*.vercel.app`, localhost) disallow everything.
+ */
 export function robotsTxt({ siteUrl, indexable }: { siteUrl: string; indexable: boolean }): string {
-  return indexable
-    ? `User-agent: *\nAllow: /\n\nSitemap: ${siteUrl}/sitemap.xml\n`
-    : `# Not the production site: nothing here is meant to be indexed.\nUser-agent: *\nDisallow: /\n`;
+  if (!indexable) return `# Not the production site: nothing here is meant to be indexed.\nUser-agent: *\nDisallow: /\n`;
+  const training = crawlersFor("training");
+  const welcome = [...crawlersFor("search"), ...crawlersFor("agent")].map((c) => c.token).join(", ");
+  return [
+    "# Crawlers that collect pages to train a model are not welcome: the writing, artwork and photographs are all rights reserved.",
+    ...training.map((c) => `User-agent: ${c.token}`),
+    "Disallow: /",
+    "",
+    `# Search and assistants fetching a page for a person (${welcome}) follow the rules below, like everyone else.`,
+    "# A machine-readable description of the site, for language models: " + `${siteUrl}/llms.txt`,
+    "User-agent: *",
+    "Allow: /",
+    "",
+    `Sitemap: ${siteUrl}/sitemap.xml`,
+    "",
+  ].join("\n");
 }

@@ -1,4 +1,5 @@
 import { index, layout, route, type RouteConfig } from "@react-router/dev/routes";
+import { SECTIONS } from "./lib/sections";
 
 // `/dev/street` (the street map on its own, for checks and measurements) and `/dev/design` (the UI system's styleguide) exist
 // only in development or in a build made with CATALYST_DEV_ROUTES=1; their loaders answer 404 anywhere else.
@@ -43,6 +44,14 @@ export default [
   route("robots.txt", "routes/robots.ts"),
   // The quick search's index (titles and tags of the places and entries), fetched when the palette first opens.
   route("search-index.json", "routes/search-index.ts"),
+  // For language models (#750, docs/llm-access.md): `/llms.txt`, and the Markdown twin of every page (`<page>.md`, one loader for all of them: it reads the path).
+  route("llms.txt", "routes/llms-txt.ts"),
+  route("career.md", "routes/markdown.ts", { id: "markdown-career" }),
+  route("locations/:slug.md", "routes/markdown.ts", { id: "markdown-place" }),
+  ...Object.values(SECTIONS).flatMap((section) => [
+    route(`${section.slug}.md`, "routes/markdown.ts", { id: `markdown-${section.slug}` }),
+    route(`${section.slug}/:slug.md`, "routes/markdown.ts", { id: `markdown-${section.slug}-entry` }),
+  ]),
   ...devRoutes,
   // Last: any other address is a 404 drawn by the root boundary (with the root loader's data, so the header has its career link).
   route("*", "routes/not-found.tsx"),

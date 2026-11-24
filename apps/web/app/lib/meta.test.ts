@@ -25,6 +25,13 @@ describe("pageMeta", () => {
     expect(find(tags, "property", "og:url")?.content).toBe(`${ORIGIN}/articles/a`);
     expect(pageMeta({ origin: ORIGIN, path: "/" })).toContainEqual({ tagName: "link", rel: "canonical", href: `${ORIGIN}/` });
   });
+  it("advertises the Markdown twin of a page that has one, from its canonical path", () => {
+    const link = { tagName: "link", rel: "alternate", type: "text/markdown", href: `${ORIGIN}/articles/a.md` };
+    expect(pageMeta({ origin: ORIGIN, path: "/articles/a?view=full", markdown: true })).toContainEqual(link);
+    expect(pageMeta({ origin: ORIGIN, path: "/articles/a" })).not.toContainEqual(link);
+    // no origin, no canonical, so no alternate either
+    expect(pageMeta({ path: "/articles/a", markdown: true }).some((t) => "rel" in t)).toBe(false);
+  });
   it("has no canonical without an origin or a path (a relative one is worse than none)", () => {
     expect(pageMeta({ path: "/x" }).some((t) => "rel" in t)).toBe(false);
     expect(pageMeta({ origin: ORIGIN }).some((t) => "rel" in t)).toBe(false);

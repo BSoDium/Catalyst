@@ -12,6 +12,8 @@ export interface PageMeta {
   origin?: string;
   /** The page's path (`/articles/x`, no query): the canonical URL and `og:url`. Absent = no canonical tag. */
   path?: string;
+  /** The page has a Markdown twin at `<path>.md` (`lib/llm-text.ts`): advertised as `<link rel="alternate" type="text/markdown">`, for agents. Needs the origin and the path. */
+  markdown?: boolean;
   /** Keep the page out of search engines (not-found pages). */
   noindex?: boolean;
   /** The page may be indexed, but not its images (`noimageindex`): a sensitive entry. Ignored with `noindex`, which already says more. */
@@ -29,7 +31,7 @@ export type MetaDescriptor =
   | { title: string }
   | { name: string; content: string }
   | { property: string; content: string }
-  | { tagName: "link"; rel: string; href: string }
+  | { tagName: "link"; rel: string; href: string; type?: string }
   | { "script:ld+json": object };
 
 /** The absolute URL of a site path, or the path itself when the origin is unknown or unusable. */
@@ -63,7 +65,7 @@ export function canonicalUrl(path: string | undefined, origin: string | undefine
  * Every head tag of a page: title, description, canonical, Open Graph, Twitter card and, when given, the robots hint and JSON-LD. Every
  * page has a share image: the entry's cover when it is a format scrapers read, else the default one (1200x630 PNG).
  */
-export function pageMeta({ title, description = SITE_DESCRIPTION, type = "website", image, origin, path, noindex, noImageIndex, publishedTime, tags, copyright, jsonLd }: PageMeta = {}): MetaDescriptor[] {
+export function pageMeta({ title, description = SITE_DESCRIPTION, type = "website", image, origin, path, markdown, noindex, noImageIndex, publishedTime, tags, copyright, jsonLd }: PageMeta = {}): MetaDescriptor[] {
   const fullTitle = pageTitle(title);
   const canonical = canonicalUrl(path, origin);
   const useCover = image !== undefined && isScrapableImage(image.src);
@@ -76,6 +78,7 @@ export function pageMeta({ title, description = SITE_DESCRIPTION, type = "websit
     { name: "description", content: description },
     ...(noindex ? [{ name: "robots", content: "noindex" }] : noImageIndex ? [{ name: "robots", content: "noimageindex" }] : []),
     ...(canonical ? [{ tagName: "link" as const, rel: "canonical", href: canonical }] : []),
+    ...(canonical && markdown ? [{ tagName: "link" as const, rel: "alternate", type: "text/markdown", href: `${canonical.replace(/\/+$/, "")}.md` }] : []),
     { property: "og:site_name", content: SITE_NAME },
     { property: "og:type", content: type },
     { property: "og:title", content: fullTitle },

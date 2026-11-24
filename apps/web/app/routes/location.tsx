@@ -22,6 +22,7 @@ export function meta(args: Route.MetaArgs) {
   const first = place.images.find((i) => isScrapableImage(i.src));
   return pageMeta({
     ...base,
+    markdown: true,
     title: place.name,
     description: place.summary ?? fallback,
     image: first ? { src: first.src, alt: first.alt, width: first.width, height: first.height } : undefined,

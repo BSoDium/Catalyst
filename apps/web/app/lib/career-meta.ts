@@ -15,6 +15,7 @@ export function careerMeta(career: PublishedCareer | undefined, base: { origin?:
     description: describe(career.summary),
     origin: base.origin,
     path: base.path ?? CAREER_PATH,
+    markdown: true,
     jsonLd: base.origin ? careerJsonLd(career, base.origin) : undefined,
   });
 }
