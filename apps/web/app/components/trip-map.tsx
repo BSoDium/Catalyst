@@ -466,7 +466,9 @@ export function TripPoster({ trip, here, photo = true, cutout = true, occlude, c
   // The named places: the start, the end (one label when they are the same place), this one and the highlights (`Trip.highlights`).
   const inBox = (q: { x: number; y: number }) => q.x >= box.x + 4 && q.x <= box.x + box.w - 4 && q.y >= box.y + 8 && q.y <= box.y + box.h - 4;
   // (this place first, then the start and the end, then the highlights; a name that is outside the frame, such as the far end of a flight home, or that would run over one already placed, is left out)
-  const candidates = [current, trip.stopPoints[0], trip.stopPoints[trip.stopPoints.length - 1], ...trip.highlights.map((slug) => trip.stopPoints.find((q) => q.slug === slug))]
+  // When the trip's first or last stop is outside the map (the map is framed on the stretch by land: the flight in and the flight home are left out), the map's own ends are named instead: the first and the last stop that are on it. Otherwise such a trip has no name on it at all.
+  const onMap = trip.stopPoints.filter((q) => inBox(stopAt(q)));
+  const candidates = [current, trip.stopPoints[0], trip.stopPoints[trip.stopPoints.length - 1], onMap[0], onMap[onMap.length - 1], ...trip.highlights.map((slug) => trip.stopPoints.find((q) => q.slug === slug))]
     .filter((q): q is Trip["stopPoints"][number] => Boolean(q))
     .filter((q, i, all) => all.findIndex((o) => o.slug === q.slug) === i);
   const named: Array<{ s: Trip["stopPoints"][number]; x: number; y: number; end: boolean }> = [];
@@ -576,7 +578,7 @@ export function TripPoster({ trip, here, photo = true, cutout = true, occlude, c
               {routeNodes}
             </svg>
             {/* (the cutout is placed and filtered exactly as the photograph, the same picture with its background made transparent; it is not faded, so it hides the word completely where it covers it) */}
-            <div aria-hidden="true" data-slot="trip-cutout" className="pointer-events-none absolute inset-x-0 top-0" style={{ height: h + PHOTO_RUN, maskImage: layer.blend ? fade(h) : fadeAfter(h), WebkitMaskImage: layer.blend ? fade(h) : fadeAfter(h), opacity: layer.blend ? photoOpacity : undefined, willChange: "transform" }}>
+            <div aria-hidden="true" data-slot="trip-cutout" className="pointer-events-none absolute inset-x-0 top-0" style={{ height: h + PHOTO_RUN, maskImage: layer.blend ? fade(h) : fadeAfter(h), WebkitMaskImage: layer.blend ? fade(h) : fadeAfter(h), willChange: "transform" }}>
               <img
                 src={layer.src}
                 alt=""
