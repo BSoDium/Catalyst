@@ -94,7 +94,7 @@ import { FX, irisStep } from "./fx";
 import { eclipseNear } from "./eclipse-table";
 import { libration } from "./libration";
 import { LUNAR, lunarPosition, moonArgumentOfLatitudeDeg, moonMeanAnomalyDeg } from "./lunar-ephemeris";
-import { DEFAULT_ORBIT, ECLIPSE, MOON, SUN, eclipseInclination, inclinationFor, litTurn, moonAmount, moonShadowOn, msAtAngle, orbitAngle, orbitBasis, rollFor, startFor, type OrbitStart, sunDirection, toEarthFrame, toRad, visibleBounds, type Vec3 } from "./moon";
+import { DEFAULT_ORBIT, ECLIPSE, MOON, SUN, clearInclination, eclipseInclination, inclinationFor, litTurn, moonAmount, moonShadowOn, msAtAngle, orbitAngle, orbitBasis, orbitLined, rollFor, startFor, type OrbitStart, sunDirection, toEarthFrame, toRad, visibleBounds, type Vec3 } from "./moon";
 import { roleColor } from "./palette";
 import type { MoonSample } from "./moon-layer";
 import type { MoonFrame } from "./moon-overlay";
@@ -1401,6 +1401,7 @@ export class GlobeRenderer {
    */
   private eclipseOffset: number | null | undefined;
   private eclipseTilts = new Map<number, number>();
+  private usualTilts = new Map<number, number>();
   /** The debug sweep through the shadow (`?eclipse`), and when it began. */
   private eclipseSweep = false;
   private sweepFrom = -1;
@@ -1413,10 +1414,11 @@ export class GlobeRenderer {
       const debug = typeof location !== "undefined" && new URLSearchParams(location.search).has("eclipse");
       const seed = sessionSeed(typeof sessionStorage !== "undefined" ? sessionStorage : null);
       const draw = seededUnit(((seed ?? 0) ^ 0x3c1a55) | 0);
-      // (#633: always within `ECLIPSE.realDays` of a real lunar or solar eclipse, else the old chance)
+      // (#633: always within `ECLIPSE.realDays` of a real lunar or solar eclipse, else the old chance, but not while the moon is nearly full or new: the lap would open in the eclipse)
       const real = this.openMs !== null && eclipseNear(this.openMs, ECLIPSE.realDays);
       const roll = draw(); // (always drawn, so the jitter below is the same for a seed on a real eclipse day and on any other)
-      const lined = (real || roll < ECLIPSE.chance) && seed !== null;
+      const lit = this.openMs === null ? 0.5 : lunarPosition(this.openMs).illuminatedFraction;
+      const lined = orbitLined(real, roll, lit) && seed !== null;
       const off = (draw() * 2 - 1) * ECLIPSE.jitterDeg;
       this.eclipseOffset = debug ? 0 : lined ? off : null;
       // `?eclipse` is also a way to SEE one (owner, 2026-11-03: "how do I reproduce an eclipse?", then "the actual progression"): the orbit is the aligned one and the moon SWEEPS through the earth's shadow on a loop, from 224 to 262
@@ -1431,7 +1433,15 @@ export class GlobeRenderer {
         document.documentElement.dataset.eclipse = "";
       }
     }
-    if (this.eclipseOffset === null) return base;
+    if (this.eclipseOffset === null) {
+      // (the usual orbit, kept out of the shadow for the sun of the day: `clearInclination`)
+      let usual = this.usualTilts.get(aspect);
+      if (usual === undefined) {
+        usual = clearInclination(rollFor(aspect), base, this.moonSun);
+        this.usualTilts.set(aspect, usual);
+      }
+      return usual;
+    }
     let tilt = this.eclipseTilts.get(aspect);
     if (tilt === undefined) {
       tilt = eclipseInclination(rollFor(aspect), base, this.moonSun, this.eclipseOffset);
