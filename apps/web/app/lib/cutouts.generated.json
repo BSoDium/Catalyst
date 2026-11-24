@@ -15,14 +15,14 @@
   "coverage": 0.005,
   "cx": 0.349,
   "cy": 0.431,
-  "top": 0.675,
+  "top": 0.62,
   "box": [
    0.311,
    0.268,
    0.381,
    0.675
   ],
-  "occlude": 0.05,
+  "occlude": 0.0,
   "force": true
  },
  "/media/photograph/carrying-the-float/photo.0d912656.webp": {

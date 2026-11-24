@@ -8,6 +8,10 @@ import type { Trip } from "~/lib/journeys";
 import { cn } from "~/lib/utils";
 
 /** The strokes of the route, by mode: the same patterns as the maps' lines (solid road, dashed rail, dotted ferry and flight). */
+/** The ends of a leg's gradient (the globe's trail tokens `--trail-from` and `--trail-to`: blue at the tail, violet at the head, lighter in the dark scheme), mixed with the ink so that it stays quiet whichever the scheme or the photograph. */
+const TRAIL_TAIL = "color-mix(in srgb, var(--trail-from) 62%, var(--foreground))";
+const TRAIL_HEAD = "color-mix(in srgb, var(--trail-to) 62%, var(--foreground))";
+
 const DASH: Record<string, string | undefined> = { road: undefined, rail: "5 3", ferry: "1.5 3", flight: "1.5 3", walk: "1.5 2", unknown: "5 4" };
 
 /** The subject's mask: whole down to the poster's bottom edge (it hides the word completely: a faded subject lets the word through and the layering is lost), then gone `SUBJECT_RUN` px under it. */
@@ -316,8 +320,8 @@ export function TripPoster({ trip, here, photo = true, cutout = true, occlude, c
   // Where the route goes: above the word, across the width; or, when the poster is wide enough that the room to the right of the word can hold the route at the full height, there.
   const wordW = drawn + WORD_PAD;
   const side = word !== "" && w - wordW - 24 >= h * 0.9;
-  // (above the word the route may run down to the top of its letters, over the tag and the gap: the word is quiet, and a strip the height of the whole band left a tall route no room)
-  const clear = word ? Math.round(size * 0.74) + WORD_PAD : 0;
+  // (above the word the route stops clear of the CODE NAME tag, 26 px over the letters: the start of a trip touched the tag on Moscow's card; the route's markers have a ring of 6 px. the word is quiet, and a strip the height of the whole band left a tall route no room)
+  const clear = word ? Math.round(size * 0.74) + WORD_PAD + 26 : 0;
   const box = side ? { x: wordW + 16, y: 0, w: w - wordW - 24, h } : { x: 0, y: 0, w, h: h - clear };
   const backdrop = photo ? trip.photo : undefined;
   const layer = backdrop && cutout ? cutoutOf(backdrop.src) : undefined;
@@ -458,6 +462,41 @@ export function TripPoster({ trip, here, photo = true, cutout = true, occlude, c
   ) : null;
   const ink = "var(--foreground)";
   const halo = "var(--accent)";
+  // The route, its stops and its names: over the subject on a poster with none, BEHIND it where there is a cutout (the map and the path are part of the backdrop: owner, 2026-11-24).
+  const routeNodes = (
+    <>
+    {trip.legPaths.map((leg, i) => {
+      const at = Array.from({ length: leg.points.length / 2 }, (_, k) => frame.at(leg.points[k * 2]!, leg.points[k * 2 + 1]!)).filter((q): q is { x: number; y: number } => q !== null);
+      const pts = at.map((q) => `${q.x.toFixed(1)},${q.y.toFixed(1)}`).join(" ");
+      // The globe's trail: along each leg, from its origin to its destination, one gradient from blue to violet, here washed toward the ink so the poster stays quiet (owner, 2026-11-24).
+      const first = at[0];
+      const last = at[at.length - 1];
+      const graded = first !== undefined && last !== undefined && Math.hypot(last.x - first.x, last.y - first.y) > 2;
+      return (
+        <g key={i}>
+          {graded && (
+            <linearGradient id={`${maskId}-t${i}`} gradientUnits="userSpaceOnUse" x1={first.x} y1={first.y} x2={last.x} y2={last.y}>
+              <stop offset={0} style={{ stopColor: TRAIL_TAIL }} />
+              <stop offset={1} style={{ stopColor: TRAIL_HEAD }} />
+            </linearGradient>
+          )}
+          <polyline points={pts} fill="none" stroke={graded ? `url(#${maskId}-t${i})` : ink} strokeWidth={backdrop ? 1.75 : 1.5} strokeDasharray={DASH[leg.mode]} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+        </g>
+      );
+    })}
+    {trip.stopPoints.map((s, i) => {
+      const q = stopAt(s);
+      return <rect key={`${s.slug}-${i}`} x={q.x - 1.75} y={q.y - 1.75} width={3.5} height={3.5} fill={ink} />;
+    })}
+    {current && <rect x={stopAt(current).x - 6} y={stopAt(current).y - 6} width={12} height={12} fill="none" stroke={ink} strokeWidth={1.5} vectorEffect="non-scaling-stroke" />}
+    {named.map(({ s, x, y, end }) => (
+      // (a halo in the backdrop's colour keeps a name readable where the route or a border runs under it)
+      <text key={s.slug} x={x} y={y} textAnchor={end ? "end" : "start"} fontSize={10} stroke={halo} strokeWidth={3} strokeLinejoin="round" style={{ fill: ink, paintOrder: "stroke", fontFamily: "var(--font-meta)", fontWeight: 700, letterSpacing: "0.04em" }}>
+        {s.name.toUpperCase()}
+      </text>
+    ))}
+    </>
+  );
   return (
     <div ref={ref} data-slot="trip-poster-box" data-photo={backdrop ? "" : undefined} className={cn("relative w-full", backdrop ? "" : "bg-accent", className)} style={{ aspectRatio: `1 / ${ASPECT}`, maxHeight: MAX_H }}>
       {backdrop && (
@@ -482,6 +521,7 @@ export function TripPoster({ trip, here, photo = true, cutout = true, occlude, c
           <>
             <svg aria-hidden="true" data-slot="trip-word-layer" width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="pointer-events-none absolute inset-x-0 top-0 block overflow-hidden">
               {wordNodes}
+              {routeNodes}
             </svg>
             {/* (the cutout is placed and filtered exactly as the photograph, the same picture with its background made transparent; it is not faded, so it hides the word completely where it covers it) */}
             <div aria-hidden="true" data-slot="trip-cutout" className="pointer-events-none absolute inset-x-0 top-0" style={{ height: h + PHOTO_RUN, maskImage: fadeAfter(h), WebkitMaskImage: fadeAfter(h), willChange: "transform" }}>
@@ -515,24 +555,7 @@ export function TripPoster({ trip, here, photo = true, cutout = true, occlude, c
         {land && !backdrop && <path d={land} mask={landMask} style={{ fill: tone(9) }} stroke="none" />}
         {borderPath && !backdrop && <path d={borderPath} fill="none" stroke="var(--accent)" strokeWidth={1.25} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />}
         {!layer && wordNodes}
-        {trip.legPaths.map((leg, i) => {
-          const pts = Array.from({ length: leg.points.length / 2 }, (_, k) => frame.at(leg.points[k * 2]!, leg.points[k * 2 + 1]!))
-            .filter((q): q is { x: number; y: number } => q !== null)
-            .map((q) => `${q.x.toFixed(1)},${q.y.toFixed(1)}`)
-            .join(" ");
-          return <polyline key={i} points={pts} fill="none" stroke={ink} strokeWidth={backdrop ? 1.75 : 1.5} strokeDasharray={DASH[leg.mode]} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />;
-        })}
-        {trip.stopPoints.map((s, i) => {
-          const q = stopAt(s);
-          return <rect key={`${s.slug}-${i}`} x={q.x - 1.75} y={q.y - 1.75} width={3.5} height={3.5} fill={ink} />;
-        })}
-        {current && <rect x={stopAt(current).x - 6} y={stopAt(current).y - 6} width={12} height={12} fill="none" stroke={ink} strokeWidth={1.5} vectorEffect="non-scaling-stroke" />}
-        {named.map(({ s, x, y, end }) => (
-          // (a halo in the backdrop's colour keeps a name readable where the route or a border runs under it)
-          <text key={s.slug} x={x} y={y} textAnchor={end ? "end" : "start"} fontSize={10} stroke={halo} strokeWidth={3} strokeLinejoin="round" style={{ fill: ink, paintOrder: "stroke", fontFamily: "var(--font-meta)", fontWeight: 700, letterSpacing: "0.04em" }}>
-            {s.name.toUpperCase()}
-          </text>
-        ))}
+        {!layer && routeNodes}
       </svg>
     </div>
   );
