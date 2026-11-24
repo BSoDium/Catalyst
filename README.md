@@ -1,113 +1,124 @@
+<div align="center">
+
 # Catalyst
 
-A personal archive organized around places. An interactive globe is the main way to discover curated places and the stories, software, articles and artworks attached to them. The site runs at https://bsodium.fr (the first version, kept as it was, stays at https://v1.bsodium.fr).
+**A personal archive, mapped step by step.**
+Spin a pixel-art globe, pick a place, and find the stories, software, articles, artworks and photographs attached to it.
 
-This repository is the **public** half of the system: the web app, the public API, and the sanitized, published content projection. Raw travel data and editorial drafts live in a separate **private** content repository and reach this repo only as a reviewed pull request.
+[**Visit the site → bsodium.fr**](https://bsodium.fr) · [Read the docs](#documentation) · [Run it locally](#run-it-locally)
 
-## Repository layout
+<img src="docs/readme/home-dark.png" alt="The Catalyst home page: a dotted pixel globe wrapped in a ring of text, with the sections listed on the right and a large name at the bottom" width="880">
+
+</div>
+
+## What is this?
+
+Catalyst is the personal website of [Elliot Négrel-Jerzy](https://bsodium.fr), a design engineer based in Warsaw. Instead of a list of pages, everything hangs off a **map**: trips, projects and writing are pinned to the places they belong to. You can wander the globe, zoom from the whole planet down to street level, or skip the map and browse by section.
+
+This repository is the code behind the site. You don't need to read it to enjoy the site, but you're very welcome to.
+
+## A quick tour
+
+| | |
+|---|---|
+| <img src="docs/readme/place-lisbon.png" alt="A place page: a street-level pixel map of Lisbon next to the story of the trips that passed through it"> | **Places.** Zoom into any city and the globe turns into a pixel-art street map. Each place opens a panel with the trips that went through it and everything written, built or photographed there. |
+| <img src="docs/readme/software.png" alt="The Software page: glowing 3D blocks showing a year of coding activity, followed by a list of projects"> | **Sections.** Software, Articles, Artworks, Poetry, Photography and a Career page. The software page draws a year of coding activity as glowing 3D blocks (the [neon-activity-graph](https://github.com/BSoDium/Neon-activity-graph) library). |
+| <img src="docs/readme/home-mobile.png" alt="The home page on a phone" width="220"> | **Everywhere.** Built phone-first: touch to spin the globe, search with <kbd>⌘</kbd> <kbd>K</kbd> (or the search line), light and dark themes, and an installable app feel. |
+
+<details>
+<summary>Light theme</summary>
+<br>
+<img src="docs/readme/home-light.png" alt="The home page in the light theme" width="880">
+</details>
+
+## Under the hood
+
+- **Web app** (`apps/web`): React 19 and React Router 7 (server-rendered), Tailwind 4, Motion. The globe is a custom [Three.js](https://threejs.org) renderer drawn through a pixel pass, with a [MapLibre](https://maplibre.org)-based street map at close range. [Why Three.js](docs/renderer-decision.md).
+- **API** (`apps/api`): a small [Hono](https://hono.dev) service that serves the published content, read-only.
+- **Content contract** (`packages/schemas`): a [zod](https://zod.dev) schema that defines exactly what may be published.
+- **Plain, fast, private by default**: no cookies, no tracking beyond cookieless page views, and nothing reaches the public repo without passing an allowlist and a schema check.
+- **Friendly to machines too**: Markdown versions of every page, an [`/llms.txt`](docs/llm-access.md), and an explicit policy for AI crawlers.
 
 ```
 apps/
-  web/            React Router (framework mode, SSR), Tailwind 4, Motion, Three.js globe   [Vercel project 1]
-  api/            Hono API serving ONLY the published projection (read-only)                [Vercel project 2]
+  web/          the website (React Router, Three.js globe)
+  api/          read-only API over the published content
 packages/
-  schemas/        The published content contract (zod) + generated JSON Schema
-  published/      The published projection (data/projection.json) + loader, local preview loader, placeholder test fixture
-  geodata/        Coastline/border datasets for the globe + the generator script
-docs/             Architecture, contracts, decisions (see below)
+  schemas/      the published content contract
+  published/    the published content itself (one JSON file) + loaders
+  geodata/      coastline and border data for the globe
+docs/           architecture, design system, decisions
 ```
 
-## How content flows
+## How content gets onto the map
+
+Raw travel data and drafts live in a separate **private** repository. Only a reviewed, sanitised copy ever reaches this one.
 
 ```
-Polarsteps ──(one-way, daily, GitHub Actions)──▶ private repo: source/ + archive/
-                                                  private repo: editorial/   (hand-written, status: draft|published)
-                                                          │  export (allowlist + schema gate)
-                                                          ▼
-                              PR against this repo: packages/published/data/projection.json
-                                                          │  merge = publication
-                                                          ▼
-                                       apps/api  and  apps/web  redeploy
+Polarsteps trips ──▶ private repo (imports, hand-written drafts)
+                          │  export: allowlist + schema check
+                          ▼
+              pull request here (published content)
+                          │  merge = publication
+                          ▼
+                 website and API redeploy
 ```
 
-The website keeps working from the last merged projection if Polarsteps or the importer breaks.
+If the importer breaks, the site simply keeps serving the last merged content.
 
-## Quick start
+## Run it locally
 
-Requires Node 22+ and pnpm 10.
+You need **Node 22+** and **pnpm 10**.
 
 ```bash
 pnpm install
-pnpm dev            # web on http://localhost:5173: your local preview if you made one, else the published (empty) state
-pnpm dev:demo       # web with the placeholder fixture (made-up places), explicit opt-in only
-pnpm dev:api        # api on http://localhost:3001
+pnpm dev:demo       # website with made-up demo places: the quickest way to see everything
 ```
 
-### Test on a phone
+Then open <http://localhost:5173>.
 
-`pnpm dev` listens on every interface, so a phone on the same Wi-Fi or on your Tailscale tailnet can open it: read the URLs it prints at startup (`http://<LAN IP>:5173/`, `http://<tailscale IP or name>:5173/`). WebGL (the globe and the street map) works over plain http; service workers, the clipboard API and other secure-context APIs need https (`tailscale serve --bg 5173`, tailnet only). Which URLs, how to read the performance state and the caveats: [Testing on a phone](docs/performance.md#testing-on-a-phone). The preview data is then reachable by anyone who can reach that port: on a network you do not trust, run `CATALYST_DEV_HOST=localhost pnpm dev`.
-
-### See your real places locally (preview)
-
-The committed projection is empty until the first publication, and demo data is made up, so to see your own places on the globe, build a **local preview** from the private repo (all places, drafts included, names and positions only, with the generated group hierarchy):
+Other useful commands:
 
 ```bash
-cd ~/Developer/catalyst-content && pnpm export:preview --out ../catalyst
-cd ../catalyst && pnpm dev          # the bottom-left badge reads "PREVIEW · local data · not published"
+pnpm dev            # website with the real published content (or your local preview)
+pnpm dev:api        # API on http://localhost:3001
+pnpm test           # unit tests
+pnpm typecheck      # type-check every package
+pnpm build          # production build
 ```
 
-This writes one git-ignored file, `packages/published/data/preview.projection.json`. It is never committed, never published, never part of a build (`pnpm check:leaks` fails if it is tracked or if its places appear in a production bundle). Without that file, `pnpm dev` serves the published (empty) projection and prints a one-line hint. Re-run the export after editing places; reload the page to see it (restart `pnpm dev` only if the file did not exist when it started). The API never serves the preview.
-
-To try a production build with the preview on your machine only: `pnpm build && CATALYST_CONTENT=preview CATALYST_ALLOW_PREVIEW=1 pnpm --filter @catalyst/web start` (without `CATALYST_ALLOW_PREVIEW=1` a production process refuses preview content).
-
-## Commands
-
-| Command | What it does |
-|---|---|
-| `pnpm typecheck` | Type-check every package |
-| `pnpm test` | Unit tests across the workspace |
-| `pnpm test:scripts` | Tests of the repo scripts (leak-check helpers) |
-| `pnpm test:deploy` | Tests of the tile extraction plan (`deploy/tiles`) |
-| `pnpm check:leaks` | After `pnpm build`: fail on private vocabulary, a tracked/unignored preview file, or preview places inside a bundle |
-| `pnpm build` | Production builds of both Vercel projects (`apps/web`, `apps/api`) |
-| `pnpm validate:published [file]` | Validate a projection against the contract incl. cross-references (default: the committed projection; a relative path is relative to the directory you typed the command in, run it from the repo root) |
-| `pnpm --filter @catalyst/schemas build:contract` | Regenerate `published.schema.json` (a test fails if it is stale) |
-| `pnpm --filter @catalyst/geodata generate` | Regenerate the globe datasets from Natural Earth |
-
-GitHub Actions (`.github/workflows/ci.yml`) runs `pnpm install --frozen-lockfile`, `typecheck`, `test`, `test:scripts`, `test:deploy`, `build` and `check:leaks` on every pull request and on pushes to `main`. It needs no secret. The browser, GPU and local-tile checks (`pnpm perf`, the Playwright scripts) are not part of it.
-
-## Environment variables
-
-| Variable | App | Meaning |
-|---|---|---|
-| `CATALYST_CONTENT` | web, api | `published` (default). Web only: `preview` (local file, dev only) or `demo` (placeholder fixture). The api accepts `published` or `demo`. Never set `demo` or `preview` in production. |
-| `CATALYST_DEV_HOST` | web (dev server) | Unset: the dev server listens on every interface (phones on the LAN or tailnet can open it). `localhost` keeps it on this machine; an IP binds that one interface. Dev only, builds ignore it. |
-| `CATALYST_DEV_ALLOWED_HOSTS` | web (dev server) | Comma-separated extra Host names the dev server accepts (a leading dot allows a domain). `*.ts.net`, `*.local`, `*.lan`, `*.home.arpa` and this machine's hostname are accepted already; IP addresses always are. |
-| `CATALYST_ALLOW_PREVIEW` | web | `1` lets a production-mode process (`react-router-serve`) read the local preview file; for testing a build on your own machine only, never set it on a deployment. |
-| `CATALYST_API_URL` | web | Optional. Fetch `${url}/v1/projection` with a 2 s timeout; fall back to the bundled snapshot on any failure. |
-| `PORT` | api (dev server only) | Defaults to 3001. |
-
-No secrets exist in this repository or in either Vercel project. The Polarsteps token is a secret of the private content repo's workflow only.
+`pnpm dev` also listens on your local network, so you can open it on a phone. More on that, on previewing your own places, and the full list of commands and environment variables: [Development reference](docs/development.md).
 
 ## Documentation
 
-- [Owner's guide](docs/owner-guide.md): day-to-day recipes (add, edit, hide, preview, sync, publish, roll back), secrets, groups, Vercel, troubleshooting, cheat sheet
+**Start here**
 - [Architecture overview](docs/architecture.md): layers, data flow, invariants, deployment
-- [Web architecture](docs/web-architecture.md): routing, data, focus management, globe lifecycle, measurements
-- [Design tokens](docs/design-tokens.md)
-- [Design system](docs/design-system.md)
-- [Landing hero](docs/landing.md): the home page's typographic hero over the globe (states, hooks, header, tests)
+- [Development reference](docs/development.md): phone testing, local preview, all commands and environment variables
+- [Owner's guide](docs/owner-guide.md): day-to-day recipes (add, edit, hide, publish, roll back)
+
+**Design**
+- [Design system](docs/design-system.md) and [design tokens](docs/design-tokens.md)
+- [Landing hero](docs/landing.md): the typographic home page over the globe
+- [Pixel line rules](docs/pixel-line-rules.md) and [street map architecture](docs/street-architecture.md)
+
+**Engineering**
+- [Web architecture](docs/web-architecture.md): routing, data, focus management, globe lifecycle
 - [Renderer decision](docs/renderer-decision.md): why standalone Three.js, with benchmarks
-- [Street map architecture](docs/street-architecture.md): the street-scale renderer (pixel pass, style, handover, palette, road hierarchy)
-- [Pixel line rules](docs/pixel-line-rules.md): the line and palette spec the street renderer follows
-- [Performance](docs/performance.md): investigation, fixes, measurements and the budget check of the globe and street renderers
-- [Self-hosting](docs/self-hosting.md): containers and the fallback tile server
+- [Performance](docs/performance.md): measurements and the budget check
+- [API contract](docs/api-contract.md), [API cost and abuse](docs/api-cost-and-abuse.md)
+- [Entry content model](docs/content-entry-model.md)
+- [Language models and crawlers](docs/llm-access.md)
+- [Self-hosting](docs/self-hosting.md)
 - [Handoff](docs/handoff.md): state of the rebuild and what is left
-- [API contract](docs/api-contract.md): endpoints, caching, Vercel setup, monorepo build behaviour
-- [API cost and abuse](docs/api-cost-and-abuse.md): the free-tier quotas, what an abusive client can cost, the firewall rules applied
-- [Entry content model](docs/content-entry-model.md): how vault documents (header + Markdown) map onto the entries of the contract (articles, projects, artworks, poems, typed body blocks)
-- Private repo docs (privacy model, import contract, sync invariants, editorial workflow, publication, database migration plan) live in the content repository.
+
+The private content repository has its own docs (privacy model, import, editorial workflow, publication).
+
+## Contributing
+
+This is a personal project, so it isn't open to code contributions, but bug reports and ideas are welcome as issues. If you work on it with an AI agent, read [AGENTS.md](AGENTS.md) first.
 
 ## License
 
-Source-available, not open source. You are welcome to read the code, learn from it, take inspiration, and reuse individual pieces (functions, shaders, components) in your own projects with attribution. You may not publish or deploy a copy of the site, and the Catalyst name, design and content are not licensed for reuse. See [LICENSE](LICENSE) for the exact terms. `packages/geodata` is MIT. The three typefaces in `apps/web/public/fonts/` (Bricolage Grotesque, Newsreader, JetBrains Mono) are not covered by that licence: each is under the SIL Open Font License 1.1, with its licence text beside the files.
+Source-available, not open source. You are welcome to read the code, learn from it, take inspiration, and reuse individual pieces (functions, shaders, components) in your own projects with attribution. You may not publish or deploy a copy of the site, and the Catalyst name, design and content are not licensed for reuse. See [LICENSE](LICENSE) for the exact terms.
+
+`packages/geodata` is MIT. The three typefaces in `apps/web/public/fonts/` (Bricolage Grotesque, Newsreader, JetBrains Mono) are under the SIL Open Font License 1.1, with their licence texts beside the files.
