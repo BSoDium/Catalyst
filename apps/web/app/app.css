@@ -9048,6 +9048,19 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   }
 }
 
+/* The glow behind a name on a trip poster's route (components/trip-map.tsx): neutral, so it darkens (dark scheme) or lightens (light scheme) the photograph without giving it a grey or tinted patch. */
+:root {
+  --trip-glow: #fff;
+}
+:root[data-scheme="dark"] {
+  --trip-glow: #000;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-scheme="light"]) {
+    --trip-glow: #000;
+  }
+}
+
 /* The filter that holds a trip poster's photograph in a band the ink reads on (components/trip-map.tsx `TripPhotoFilters`). */
 :root {
   --trip-photo-filter: url(#trip-range-light);

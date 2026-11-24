@@ -564,7 +564,6 @@ export function TripPoster({ trip, here, photo = true, cutout = true, occlude, c
     </text>
     </>
   ) : null;
-  const halo = "var(--accent)";
   // The route, its stops and its names: over the subject on a poster with none, BEHIND it where there is a cutout (the map and the path are part of the backdrop: owner, 2026-11-24).
   const routeNodes = (
     <>
@@ -592,15 +591,16 @@ export function TripPoster({ trip, here, photo = true, cutout = true, occlude, c
       const q = stopAt(s);
       return <rect key={`${s.slug}-${i}`} x={q.x - 1.75} y={q.y - 1.75} width={3.5} height={3.5} fill={MARK_INK} />;
     })}
-    {/* The names sit on a soft glow in the backdrop's colour (it darkens the picture in the dark scheme, lightens it in the light one) instead of an outline: readable over the route or a border, with no edge to it (owner, 2026-11-24). */}
+    {/* The names sit on a soft glow in the backdrop's colour (black in the dark scheme, white in the light one: it darkens or lightens the picture without tinting it, `--trip-glow`) instead of an outline: readable over the route or a border, with no edge to it (owner, 2026-11-24). */}
     <radialGradient id={`${maskId}-glow`}>
-      <stop offset={0} style={{ stopColor: halo, stopOpacity: 0.62 }} />
-      <stop offset={0.5} style={{ stopColor: halo, stopOpacity: 0.4 }} />
-      <stop offset={1} style={{ stopColor: halo, stopOpacity: 0 }} />
+      {/* (an eased fall, many steps, so the ellipse has no edge to see) */}
+      {[0.5, 0.47, 0.4, 0.31, 0.22, 0.14, 0.07, 0.025, 0].map((o, k, all) => (
+        <stop key={k} offset={k / (all.length - 1)} style={{ stopColor: "var(--trip-glow)", stopOpacity: o }} />
+      ))}
     </radialGradient>
     {named.map(({ s, x, y, end }) => {
       const width = s.name.length * 6.8;
-      return <ellipse key={`${s.slug}-glow`} cx={end ? x - width / 2 : x + width / 2} cy={y - 3.5} rx={width / 2 + 18} ry={14} fill={`url(#${maskId}-glow)`} />;
+      return <ellipse key={`${s.slug}-glow`} cx={end ? x - width / 2 : x + width / 2} cy={y - 3.5} rx={width / 2 + 30} ry={20} fill={`url(#${maskId}-glow)`} />;
     })}
     {named.map(({ s, x, y, end }) => (
       <text key={s.slug} x={x} y={y} textAnchor={end ? "end" : "start"} fontSize={10} style={{ fill: LABEL_INK, fontFamily: "var(--font-meta)", fontWeight: 600, letterSpacing: "0.04em" }}>
