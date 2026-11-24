@@ -9,8 +9,12 @@ import { cn } from "~/lib/utils";
 
 /** The strokes of the route, by mode: the same patterns as the maps' lines (solid road, dashed rail, dotted ferry and flight). */
 /** The ends of a leg's gradient (the globe's trail tokens `--trail-from` and `--trail-to`: blue at the tail, violet at the head, lighter in the dark scheme), mixed with the ink so that it stays quiet whichever the scheme or the photograph. */
-const TRAIL_TAIL = "color-mix(in srgb, var(--trail-from) 62%, var(--foreground))";
-const TRAIL_HEAD = "color-mix(in srgb, var(--trail-to) 62%, var(--foreground))";
+const TRAIL_TAIL = "color-mix(in srgb, var(--trail-from) 55%, var(--foreground))";
+const TRAIL_HEAD = "color-mix(in srgb, var(--trail-to) 55%, var(--foreground))";
+
+/** The ink of what is drawn on the route (the dots of the stops, their ring, the names): the foreground washed a quarter toward the field, so it is not the loudest thing on the poster (owner, 2026-11-24). The routes themselves are `ROUTE_OPACITY` of theirs. */
+const MARK_INK = "color-mix(in srgb, var(--foreground) 74%, transparent)";
+const ROUTE_OPACITY = 0.8;
 
 const DASH: Record<string, string | undefined> = { road: undefined, rail: "5 3", ferry: "1.5 3", flight: "1.5 3", walk: "1.5 2", unknown: "5 4" };
 
@@ -514,7 +518,6 @@ export function TripPoster({ trip, here, photo = true, cutout = true, occlude, c
     </text>
     </>
   ) : null;
-  const ink = "var(--foreground)";
   const halo = "var(--accent)";
   // The route, its stops and its names: over the subject on a poster with none, BEHIND it where there is a cutout (the map and the path are part of the backdrop: owner, 2026-11-24).
   const routeNodes = (
@@ -534,18 +537,18 @@ export function TripPoster({ trip, here, photo = true, cutout = true, occlude, c
               <stop offset={1} style={{ stopColor: TRAIL_HEAD }} />
             </linearGradient>
           )}
-          <polyline points={pts} fill="none" stroke={graded ? `url(#${maskId}-t${i})` : ink} strokeWidth={backdrop ? 1.75 : 1.5} strokeDasharray={DASH[leg.mode]} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+          <polyline points={pts} fill="none" stroke={graded ? `url(#${maskId}-t${i})` : MARK_INK} strokeOpacity={ROUTE_OPACITY} strokeWidth={backdrop ? 1.6 : 1.4} strokeDasharray={DASH[leg.mode]} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
         </g>
       );
     })}
     {trip.stopPoints.map((s, i) => {
       const q = stopAt(s);
-      return <rect key={`${s.slug}-${i}`} x={q.x - 1.75} y={q.y - 1.75} width={3.5} height={3.5} fill={ink} />;
+      return <rect key={`${s.slug}-${i}`} x={q.x - 1.75} y={q.y - 1.75} width={3.5} height={3.5} fill={MARK_INK} />;
     })}
-    {current && <rect x={stopAt(current).x - 6} y={stopAt(current).y - 6} width={12} height={12} fill="none" stroke={ink} strokeWidth={1.5} vectorEffect="non-scaling-stroke" />}
+    {current && <rect x={stopAt(current).x - 6} y={stopAt(current).y - 6} width={12} height={12} fill="none" stroke={MARK_INK} strokeWidth={1.25} vectorEffect="non-scaling-stroke" />}
     {named.map(({ s, x, y, end }) => (
       // (a halo in the backdrop's colour keeps a name readable where the route or a border runs under it)
-      <text key={s.slug} x={x} y={y} textAnchor={end ? "end" : "start"} fontSize={10} stroke={halo} strokeWidth={3} strokeLinejoin="round" style={{ fill: ink, paintOrder: "stroke", fontFamily: "var(--font-meta)", fontWeight: 700, letterSpacing: "0.04em" }}>
+      <text key={s.slug} x={x} y={y} textAnchor={end ? "end" : "start"} fontSize={10} stroke={halo} strokeWidth={3} strokeLinejoin="round" style={{ fill: MARK_INK, paintOrder: "stroke", fontFamily: "var(--font-meta)", fontWeight: 600, letterSpacing: "0.04em" }}>
         {s.name.toUpperCase()}
       </text>
     ))}
