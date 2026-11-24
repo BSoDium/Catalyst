@@ -69,6 +69,7 @@
     "top": 0.6227,
     "occlude": 0.0,
     "force": true,
-    "blend": true
+    "blend": true,
+    "placeOnly": true
   }
 }

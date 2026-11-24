@@ -24,7 +24,8 @@
   ],
   "occlude": 0.0,
   "force": true,
-  "blend": true
+  "blend": true,
+  "placeOnly": true
  },
  "/media/photograph/carrying-the-float/photo.0d912656.webp": {
   "coverage": 0.278,

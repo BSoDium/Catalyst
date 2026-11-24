@@ -115,7 +115,7 @@ export function TripCard({ trip, here, lived = false, photo = true, cutout = tru
   return (
     <article data-slot="trip-card" className="relative isolate flex flex-col overflow-hidden">
       <TripPoster trip={trip} here={here} photo={photo} cutout={cutout} occlude={occlude} wordFace={wordFace} />
-      <div className="relative flex grow flex-col gap-4 p-4">
+      <div className="relative flex grow flex-col gap-4 px-4 pt-4 pb-2.5">
         <header className="flex flex-col gap-1.5">
           <div className="flex items-baseline justify-between gap-3">
             <h3 className="m-0 text-2xl leading-tight font-semibold tracking-tight"><StableTitle data-slot="trip-title" text={trip.title} className="font-display" /></h3>

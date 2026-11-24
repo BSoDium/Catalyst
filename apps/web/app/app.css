@@ -9105,7 +9105,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
 .trip-slide [data-slot="trip-footer"] {
   opacity: clamp(0, calc((var(--g, 1) - 0.35) * 2.2), 1);
 }
-.trip-slide [data-slot="trip-poster"] :is(polyline, rect, text:not([data-slot="trip-word"])) {
+.trip-slide :is([data-slot="trip-poster"], [data-slot="trip-word-layer"]) :is(polyline, rect, text:not([data-slot="trip-word"])) {
   opacity: calc(0.2 + 0.8 * var(--g, 1));
 }
 .trip-slide [data-slot="trip-poster-box"] {
