@@ -103,8 +103,16 @@ export function entryMarkdown(entry: EntryDetail, origin: string): string {
       ["Link", entry.url],
       ["Page", abs(origin, entry.href)],
     ]),
+    // a photograph or an artwork is its picture: the cover, unless the body already shows it
+    ...(entry.cover && !entry.sensitive && !entry.body.some((b) => b.type === "image" && b.src === entry.cover!.src)
+      ? [`![${text(entry.cover.alt)}](${abs(origin, entry.cover.src)})`]
+      : []),
     ...body(entry.body, origin, !entry.sensitive),
     ...(entry.sensitive ? ["*The images of this entry are not described here: the page shows them blurred until a visitor asks.*"] : []),
+    ...(entry.related.length ? ["## Related", entry.related.map((r) => entryLine(r, origin)).join("\n")] : []),
+    ...(entry.prev || entry.next
+      ? [[entry.prev && `Previous: ${entryLine(entry.prev, origin).slice(2)}`, entry.next && `Next: ${entryLine(entry.next, origin).slice(2)}`].filter(Boolean).join("  \n")]
+      : []),
     ...(notice ? ["---", notice.text] : []),
   ]);
 }

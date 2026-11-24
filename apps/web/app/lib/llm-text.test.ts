@@ -84,6 +84,23 @@ describe("entryMarkdown", () => {
   });
 });
 
+describe("entryMarkdown: cover, related, neighbours", () => {
+  const base = () => getEntryDetail(projection, "article", projection.articles[0]!.slug)!;
+  const cover = { src: "/media/c.webp", alt: "A cover" };
+  const ref = (slug: string) => ({ kind: "article" as const, slug, title: `T ${slug}`, href: `/articles/${slug}`, index: 1 });
+  it("shows the cover, once, and not when the entry is sensitive or the body already has it", () => {
+    expect(entryMarkdown({ ...base(), cover, body: [] }, ORIGIN)).toContain(`![A cover](${ORIGIN}/media/c.webp)`);
+    const inBody = entryMarkdown({ ...base(), cover, body: [{ type: "image", src: cover.src, alt: "A cover" }] }, ORIGIN);
+    expect(inBody.split("/media/c.webp").length - 1).toBe(1);
+    expect(entryMarkdown({ ...base(), cover, sensitive: true, body: [] }, ORIGIN)).not.toContain("/media/c.webp");
+  });
+  it("links related, previous and next entries to their twins", () => {
+    const md = entryMarkdown({ ...base(), related: [ref("r")], prev: ref("p"), next: ref("n") }, ORIGIN);
+    expect(md).toContain(`## Related\n\n- [T r](${ORIGIN}/articles/r.md)`);
+    expect(md).toContain(`Previous: [T p](${ORIGIN}/articles/p.md)  \nNext: [T n](${ORIGIN}/articles/n.md)`);
+  });
+});
+
 describe("placeMarkdown", () => {
   it("has the name, its entries as links to their twins, and no coordinates", () => {
     const place = projection.places.find((p) => getPlaceDetail(projection, p.slug)!.entries.length > 0)!;
