@@ -19,6 +19,8 @@ const DOT_GAP = 15;
 const MAX_LABELS = 6;
 /** From this many px a degree the borders and coasts are drawn smoothed (a country across the poster). */
 const SMOOTH_PX_PER_DEG = 22;
+/** The names are a little quieter still than the dots. */
+const LABEL_INK = "color-mix(in srgb, var(--foreground) 66%, transparent)";
 const MARK_INK = "color-mix(in srgb, var(--foreground) 74%, transparent)";
 const ROUTE_OPACITY = 0.8;
 
@@ -432,7 +434,7 @@ export function TripPoster({ trip, here, photo = true, cutout = true, occlude, c
     return { width: k * hz.w, height: k * hz.h, left: (w - k * hz.w) / 2, top: h - f * k * hz.h } as const;
   })();
   // The photograph enlarged beyond its own pixels (device pixels per source pixel above 1) is blurred by about what the enlargement lacks, so it looks like a shallow depth of field and not like squares (owner, 2026-11-24).
-  const softness = placed && backdrop ? Math.min(3, Math.max(0, (placed.width * dpr) / (backdrop.width ?? placed.width) - 1) * 0.7) / dpr : 0;
+  const softness = placed && backdrop ? Math.min(6, Math.max(0, (placed.width * dpr) / (backdrop.width ?? placed.width) - 0.9) * 1.6) / dpr : 0;
   const softened = (filter: string) => (softness > 0.05 ? `${filter} blur(${softness.toFixed(2)}px)` : undefined);
   // A busy picture is quieter: the more detail there is in the part of it that shows (the mean energy of the layer: 0.03 is a sky and a plain skyline, 0.06 a crowd and a colourful street), the more it is faded into the card's ground, down to half (owner, 2026-11-19: Moscow's was too busy for the content).
   const photoOpacity = (() => {
@@ -590,9 +592,18 @@ export function TripPoster({ trip, here, photo = true, cutout = true, occlude, c
       const q = stopAt(s);
       return <rect key={`${s.slug}-${i}`} x={q.x - 1.75} y={q.y - 1.75} width={3.5} height={3.5} fill={MARK_INK} />;
     })}
+    {/* The names sit on a soft glow in the backdrop's colour (it darkens the picture in the dark scheme, lightens it in the light one) instead of an outline: readable over the route or a border, with no edge to it (owner, 2026-11-24). */}
+    <radialGradient id={`${maskId}-glow`}>
+      <stop offset={0} style={{ stopColor: halo, stopOpacity: 0.62 }} />
+      <stop offset={0.5} style={{ stopColor: halo, stopOpacity: 0.4 }} />
+      <stop offset={1} style={{ stopColor: halo, stopOpacity: 0 }} />
+    </radialGradient>
+    {named.map(({ s, x, y, end }) => {
+      const width = s.name.length * 6.8;
+      return <ellipse key={`${s.slug}-glow`} cx={end ? x - width / 2 : x + width / 2} cy={y - 3.5} rx={width / 2 + 18} ry={14} fill={`url(#${maskId}-glow)`} />;
+    })}
     {named.map(({ s, x, y, end }) => (
-      // (a halo in the backdrop's colour keeps a name readable where the route or a border runs under it)
-      <text key={s.slug} x={x} y={y} textAnchor={end ? "end" : "start"} fontSize={10} stroke={halo} strokeWidth={3} strokeLinejoin="round" style={{ fill: MARK_INK, paintOrder: "stroke", fontFamily: "var(--font-meta)", fontWeight: 600, letterSpacing: "0.04em" }}>
+      <text key={s.slug} x={x} y={y} textAnchor={end ? "end" : "start"} fontSize={10} style={{ fill: LABEL_INK, fontFamily: "var(--font-meta)", fontWeight: 600, letterSpacing: "0.04em" }}>
         {s.name.toUpperCase()}
       </text>
     ))}
