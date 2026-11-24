@@ -90,4 +90,12 @@ describe("the night lights, in the interlude's close shots", () => {
     expect(lightsMaterial().uniforms.uSize!.value).toEqual([2048, 1024]);
     expect(readFileSync("app/globe/engine/scene.ts", "utf8")).toMatch(/uniforms\.uSize!\.value = \[img\.width, img\.height\]/);
   });
+
+  it("go nearly to grey on the light page (by `uFlip`, keeping their luminance) and keep their colours on the dark one", () => {
+    expect(LIGHTS.lightMono).toBeGreaterThan(0.5);
+    expect(LIGHTS.lightMono).toBeLessThanOrEqual(1);
+    const src = lightsMaterial().fragmentShader;
+    expect(src).toMatch(/uFlip \* 0\.85/);
+    expect(src.indexOf("uFlip * 0.85")).toBeLessThan(src.indexOf("gl_FragColor"));
+  });
 });
