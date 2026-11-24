@@ -1,5 +1,6 @@
 import { type CSSProperties, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { coverImageProps } from "~/lib/cover-image";
+import { anchorOf, cutoutOf, OCCLUDE, subjectPlace } from "~/lib/cutout";
 import { calmPlace, energyOf, lumaOf, meanUnder } from "~/lib/calm";
 import { findHorizon } from "~/lib/horizon";
 import { frameOf, type Frame } from "~/lib/trip-projection";
@@ -7,7 +8,31 @@ import type { Trip } from "~/lib/journeys";
 import { cn } from "~/lib/utils";
 
 /** The strokes of the route, by mode: the same patterns as the maps' lines (solid road, dashed rail, dotted ferry and flight). */
+/** The ends of a leg's gradient (the globe's trail tokens `--trail-from` and `--trail-to`: blue at the tail, violet at the head, lighter in the dark scheme), mixed with the ink so that it stays quiet whichever the scheme or the photograph. */
+const TRAIL_TAIL = "color-mix(in srgb, var(--trail-from) 55%, var(--foreground))";
+const TRAIL_HEAD = "color-mix(in srgb, var(--trail-to) 55%, var(--foreground))";
+
+/** The ink of what is drawn on the route (the dots of the stops, their ring, the names): the foreground washed a quarter toward the field, so it is not the loudest thing on the poster (owner, 2026-11-24). The routes themselves are `ROUTE_OPACITY` of theirs. */
+/** The least distance (px) between two dots of the stops on a poster. */
+const DOT_GAP = 15;
+/** The most names on a poster's route. */
+const MAX_LABELS = 6;
+/** From this many px a degree the borders and coasts are drawn smoothed (a country across the poster). */
+const SMOOTH_PX_PER_DEG = 22;
+/** The names are a little quieter still than the dots. */
+const LABEL_INK = "color-mix(in srgb, var(--foreground) 66%, transparent)";
+const MARK_INK = "color-mix(in srgb, var(--foreground) 74%, transparent)";
+const ROUTE_OPACITY = 0.8;
+
 const DASH: Record<string, string | undefined> = { road: undefined, rail: "5 3", ferry: "1.5 3", flight: "1.5 3", walk: "1.5 2", unknown: "5 4" };
+
+/** The subject's mask: whole down to the poster's bottom edge (it hides the word completely: a faded subject lets the word through and the layering is lost), then gone `SUBJECT_RUN` px under it. */
+const fadeAfter = (h: number) => `linear-gradient(to bottom, #000 ${h}px, transparent ${h + SUBJECT_RUN}px)`;
+/** The subject is gone this far under the poster (CSS px): sooner than the photograph, so the figures' ink is clear of it. */
+const SUBJECT_RUN = 70;
+
+/** The width of the gap a country border cuts in the land over a photograph (CSS px, it does not scale). */
+const BORDER_GAP = 1.1;
 
 /** How far the photograph runs on below the poster, under the figures, before it has faded out (CSS px). */
 const PHOTO_RUN = 150;
@@ -36,7 +61,16 @@ export function TripPhotoFilters() {
       </filter>
       <filter id="trip-range-dark" colorInterpolationFilters="sRGB">
         <feColorMatrix type="saturate" values="1.1" />
-        {levels(0.3, 0.04)}
+        {levels(0.42, 0.05)}
+      </filter>
+      {/* the subject in front of the word: a gentler band, so it stands out of the backdrop (it is not read through: the ink below the poster is clear of it) */}
+      <filter id="trip-subject-light" colorInterpolationFilters="sRGB">
+        <feColorMatrix type="saturate" values="1" />
+        {levels(0.6, 0.38)}
+      </filter>
+      <filter id="trip-subject-dark" colorInterpolationFilters="sRGB">
+        <feColorMatrix type="saturate" values="1" />
+        {levels(0.56, 0.04)}
       </filter>
     </svg>
   );
@@ -83,6 +117,8 @@ type Lines = { positions: Float32Array; offsets: Uint32Array };
  * `ring`: the outlines of the land, each closed so that it can be filled.
  */
 function linesPath(frame: Frame, lines: Lines | null, w: number, h: number, ring = false): string {
+  // Close up (a country across the poster) the data's straight segments show: the line is drawn as quadratic curves through the middles of its segments, which rounds the corners without moving the line (the data has no finer resolution: this is what is there to do).
+  const smooth = frame.pxPerDeg >= SMOOTH_PX_PER_DEG;
   if (!lines) return "";
   const margin = 60;
   const out: string[] = [];
@@ -98,20 +134,69 @@ function linesPath(frame: Frame, lines: Lines | null, w: number, h: number, ring
     let d = "";
     let pen = false;
     let piece = 0;
+    // (the ends of the piece being drawn, and whether the line was cut there by the far side of the globe)
+    let cur: Array<{ x: number; y: number }> = [];
+    let first: { x: number; y: number } | null = null;
+    let last: { x: number; y: number } | null = null;
+    let startCut = false;
+    let endCut = false;
+    let afterGap = false;
+    const flush = () => {
+      if (cur.length === 0) return;
+      d += `M${cur[0]!.x.toFixed(1)} ${cur[0]!.y.toFixed(1)}`;
+      if (smooth && cur.length > 2) {
+        for (let k = 1; k < cur.length - 1; k++) {
+          const m = { x: (cur[k]!.x + cur[k + 1]!.x) / 2, y: (cur[k]!.y + cur[k + 1]!.y) / 2 };
+          d += `Q${cur[k]!.x.toFixed(1)} ${cur[k]!.y.toFixed(1)} ${m.x.toFixed(1)} ${m.y.toFixed(1)}`;
+        }
+        d += `L${cur[cur.length - 1]!.x.toFixed(1)} ${cur[cur.length - 1]!.y.toFixed(1)}`;
+      } else for (let k = 1; k < cur.length; k++) d += `L${cur[k]!.x.toFixed(1)} ${cur[k]!.y.toFixed(1)}`;
+      cur = [];
+    };
     const close = () => {
+      flush();
       // (every land outline is filled, closed or not: a landmass the data cuts at the antimeridian, Europe, Africa and Asia in one, is an open line whose two ends are on that cut, and closing it runs along the cut)
-      if (ring && pen && piece > 3) d += "Z";
+      if (ring && pen && piece > 3) {
+        const disc = frame.disc;
+        if (disc && first && last && (startCut || endCut)) {
+          // A line that leaves the azimuthal map at its far side comes back to it: the land is closed along the disc's edge (the shorter way round), not across the poster by a chord.
+          const onDisc = (q: { x: number; y: number }) => {
+            const a = Math.atan2(q.y - disc.y, q.x - disc.x);
+            return { a, x: disc.x + disc.r * Math.cos(a), y: disc.y + disc.r * Math.sin(a) };
+          };
+          const e = onDisc(last);
+          const st = onDisc(first);
+          let delta = st.a - e.a;
+          while (delta > Math.PI) delta -= 2 * Math.PI;
+          while (delta < -Math.PI) delta += 2 * Math.PI;
+          d += `L${e.x.toFixed(1)} ${e.y.toFixed(1)}A${disc.r.toFixed(1)} ${disc.r.toFixed(1)} 0 0 ${delta > 0 ? 1 : 0} ${st.x.toFixed(1)} ${st.y.toFixed(1)}L${first.x.toFixed(1)} ${first.y.toFixed(1)}Z`;
+        } else d += "Z";
+      }
       piece = 0;
+      first = null;
+      last = null;
+      startCut = false;
+      endCut = false;
     };
     for (let i = a; i < b; i++) {
       const p = frame.at(lines.positions[i * 2]!, lines.positions[i * 2 + 1]!);
       // (a point on the far side of the globe has no place on the poster, and a line over the world map's seam is not drawn across it: the line is broken there)
       if (!p || (i > a && frame.cuts(lines.positions[(i - 1) * 2]!, lines.positions[i * 2]!))) {
+        if (!p) endCut = true;
         close();
         pen = false;
-        if (!p) continue;
+        if (!p) {
+          afterGap = true;
+          continue;
+        }
       }
-      d += `${pen ? "L" : "M"}${p.x.toFixed(1)} ${p.y.toFixed(1)}`;
+      if (piece === 0) {
+        first = p;
+        startCut = afterGap;
+        afterGap = false;
+      }
+      last = p;
+      cur.push(p);
       pen = true;
       piece++;
     }
@@ -257,7 +342,7 @@ function useHorizon(src: string | undefined) {
  * photograph of the trip (`trip.photo`) the photo is the backdrop, its dynamic range held in a band the ink reads on (`TripPhotoFilters`), the photograph running on under the figures and fading into the card's background, the land on top of it as a translucent surface in the field's colour (it lightens the photograph in the light theme and darkens it in the dark one) without outlines, and the route and the word as on the flat field. The height is at
  * most `MAX_H`: on a wide panel the poster stretches in width, not in height. Decoration for the eyes: the card's text says all of it.
  */
-export function TripPoster({ trip, here, photo = true, className, wordFace }: { trip: Trip; here: string; photo?: boolean; className?: string; wordFace?: string | null }) {
+export function TripPoster({ trip, here, photo = true, cutout = true, occlude, className, wordFace }: { trip: Trip; here: string; photo?: boolean; /** The subject of the photograph in front of the word, when it has a cutout (`lib/cutout.ts`); `false` shows the photograph flat, to compare. */ cutout?: boolean; /** The share of the word's height the subject hides (default: the picture's own, else `OCCLUDE`). */ occlude?: number; className?: string; wordFace?: string | null }) {
   const { ref, w, h } = usePosterBox();
   const word = trip.word.toUpperCase();
   // The giant word is set in the lettering style of the trip's `face` (`routes[].face`: chosen per city, #510); `?word=grotesque|serif|old|slab|condensed|script|mono` overrides it for every card, to try the faces. The condensed face has a real width axis: it is condensed by the axis, the others by squeezing the glyphs.
@@ -298,10 +383,16 @@ export function TripPoster({ trip, here, photo = true, className, wordFace }: { 
   // Where the route goes: above the word, across the width; or, when the poster is wide enough that the room to the right of the word can hold the route at the full height, there.
   const wordW = drawn + WORD_PAD;
   const side = word !== "" && w - wordW - 24 >= h * 0.9;
-  // (above the word the route may run down to the top of its letters, over the tag and the gap: the word is quiet, and a strip the height of the whole band left a tall route no room)
-  const clear = word ? Math.round(size * 0.74) + WORD_PAD : 0;
+  // (above the word the route stops clear of the CODE NAME tag, 26 px over the letters: the start of a trip touched the tag on Moscow's card; the route's markers have a ring of 6 px. the word is quiet, and a strip the height of the whole band left a tall route no room)
+  const clear = word ? Math.round(size * 0.74) + WORD_PAD + 26 : 0;
   const box = side ? { x: wordW + 16, y: 0, w: w - wordW - 24, h } : { x: 0, y: 0, w, h: h - clear };
   const backdrop = photo ? trip.photo : undefined;
+  // The screen's pixel ratio, read after mounting (the server draws for 1, so the page and the server's agree): a photograph shown larger than its own pixels is softened by as much as it is enlarged.
+  const [dpr, setDpr] = useState(1);
+  useEffect(() => setDpr(window.devicePixelRatio || 1), []);
+  const layer = backdrop && cutout ? cutoutOf(backdrop.src) : undefined;
+  // (what the photograph is placed by: its cutout's subject, or, with no cutout drawn, a skyline's edge)
+  const anchor = backdrop && cutout ? anchorOf(backdrop.src) : undefined;
   // The map is framed on the trip's land: a long flight (over `FAR_FLIGHT_KM`) is not what the trip is about, and fitting it in (the way home across an ocean) left the trip itself a squiggle in a corner of an empty map. The flight is still drawn,
   // as far as the poster goes: it leaves the frame as a stub toward where it flies. A trip of nothing but long flights (or with none) is framed on all of it.
   const framed = useMemo(() => {
@@ -321,7 +412,7 @@ export function TripPoster({ trip, here, photo = true, className, wordFace }: { 
     return { pts: kept.flatMap((l) => Array.from({ length: l.points.length / 2 }, (_, k) => ({ lon: l.points[k * 2]!, lat: l.points[k * 2 + 1]! }))).concat(stops), land: true };
   }, [trip]);
   // (a trip framed on its land gets room round it: the continent runs on past the route on every side, so the route is in the map and the map is not a crop of it)
-  const pad = framed.land ? Math.min(PAD + Math.round(0.14 * Math.min(box.w, box.h)), Math.round(0.3 * Math.min(box.w, box.h))) : PAD;
+  const pad = framed.land ? Math.min(PAD + Math.round(0.05 * Math.min(box.w, box.h)), Math.round(0.14 * Math.min(box.w, box.h))) : PAD;
   const frame = useMemo(() => frameOf(framed.pts, box.x, box.y, box.w, box.h, pad, { w, h: backdrop ? h + PHOTO_RUN : h }), [framed, box.x, box.y, box.w, box.h, pad, w, h, backdrop]);
   const horizon = useHorizon(backdrop?.src);
   // The photograph placed so that its horizon is at the poster's bottom edge: scaled up as far as it takes to fill the layer above and below that line, never less than the cover size.
@@ -329,6 +420,8 @@ export function TripPoster({ trip, here, photo = true, className, wordFace }: { 
     const hz = horizon.horizon;
     if (!backdrop || !hz) return null;
     const run = h + PHOTO_RUN;
+    // With a cutout: the photograph is placed so that its subject's top edge (the skyline, the rail of the boat) falls a share of the letters' height above their foot: the subject hides the bottom of the word, and only that, not where the map is calmest.
+    if (anchor) return subjectPlace(anchor, { w: hz.w, h: hz.h }, { w, run }, { x: WORD_PAD + Math.min(drawn, 0.6 * w) / 2, y: h - WORD_PAD - (occlude ?? anchor.occlude ?? OCCLUDE) * 0.74 * size });
     // First the calmest place: the photograph where the map falls on its sky or its plain parts (`lib/calm.ts`), whatever it shows.
     if (hz.energy) {
       const calm = calmPlace(hz.energy, hz.cols, hz.rows, { w: hz.w, h: hz.h }, { w, run }, box);
@@ -340,6 +433,9 @@ export function TripPoster({ trip, here, photo = true, className, wordFace }: { 
     const k = Math.max(w / hz.w, h / (f * hz.h), PHOTO_RUN / ((1 - f) * hz.h), run / hz.h);
     return { width: k * hz.w, height: k * hz.h, left: (w - k * hz.w) / 2, top: h - f * k * hz.h } as const;
   })();
+  // The photograph enlarged beyond its own pixels (device pixels per source pixel above 1) is blurred by about what the enlargement lacks, so it looks like a shallow depth of field and not like squares (owner, 2026-11-24).
+  const softness = placed && backdrop ? Math.min(6, Math.max(0, (placed.width * dpr) / (backdrop.width ?? placed.width) - 0.9) * 1.6) / dpr : 0;
+  const softened = (filter: string) => (softness > 0.05 ? `${filter} blur(${softness.toFixed(2)}px)` : undefined);
   // A busy picture is quieter: the more detail there is in the part of it that shows (the mean energy of the layer: 0.03 is a sky and a plain skyline, 0.06 a crowd and a colourful street), the more it is faded into the card's ground, down to half (owner, 2026-11-19: Moscow's was too busy for the content).
   const photoOpacity = (() => {
     const hz = horizon.horizon;
@@ -385,42 +481,187 @@ export function TripPoster({ trip, here, photo = true, className, wordFace }: { 
     </defs>
   );
   const landMask = landFade ? `url(#${maskId}-m)` : undefined;
+  // The route as lines of the poster (px), for the land's fade on a photograph: the land is there round the route, and dissolves with the distance from it.
+  const legLines = useMemo(
+    () =>
+      trip.legPaths
+        .map((leg) => Array.from({ length: leg.points.length / 2 }, (_, k) => frame.at(leg.points[k * 2]!, leg.points[k * 2 + 1]!)).filter((q): q is { x: number; y: number } => q !== null).map((q) => `${q.x.toFixed(1)},${q.y.toFixed(1)}`).join(" "))
+        .filter((pts) => pts.includes(" ")),
+    [trip, frame],
+  );
+  const near = Math.min(w, h);
   const current = trip.stopPoints.find((s) => s.slug === here);
   // The named places: the start, the end (one label when they are the same place), this one and the highlights (`Trip.highlights`).
   const inBox = (q: { x: number; y: number }) => q.x >= box.x + 4 && q.x <= box.x + box.w - 4 && q.y >= box.y + 8 && q.y <= box.y + box.h - 4;
   // (this place first, then the start and the end, then the highlights; a name that is outside the frame, such as the far end of a flight home, or that would run over one already placed, is left out)
-  const candidates = [current, trip.stopPoints[0], trip.stopPoints[trip.stopPoints.length - 1], ...trip.highlights.map((slug) => trip.stopPoints.find((q) => q.slug === slug))]
+  // When the trip's first or last stop is outside the map (the map is framed on the stretch by land: the flight in and the flight home are left out), the map's own ends are named instead: the first and the last stop that are on it. Otherwise such a trip has no name on it at all.
+  const onMap = trip.stopPoints.filter((q) => inBox(stopAt(q)));
+  const candidates = [current, trip.stopPoints[0], trip.stopPoints[trip.stopPoints.length - 1], onMap[0], onMap[onMap.length - 1], ...trip.highlights.map((slug) => trip.stopPoints.find((q) => q.slug === slug)), ...[0.25, 0.5, 0.75, 0.375, 0.625].map((t) => onMap[Math.round(t * (onMap.length - 1))])]
     .filter((q): q is Trip["stopPoints"][number] => Boolean(q))
     .filter((q, i, all) => all.findIndex((o) => o.slug === q.slug) === i);
   const named: Array<{ s: Trip["stopPoints"][number]; x: number; y: number; end: boolean }> = [];
   const taken: Array<{ x0: number; x1: number; y0: number; y1: number }> = [];
   // The code name and its tag are in the poster's foot: a label is never over them (it goes beside its stop on the other side, or below it, or is left out)
   const keepOut = word ? { x0: WORD_PAD - 2, x1: WORD_PAD + drawn + 4, y0: h - WORD_PAD - Math.round(size * 0.74) - 18, y1: h } : null;
+  // The route as segments (px), to keep a name off it: how much of the route runs through a name's box is what a place for it costs.
+  const segs = legLines.flatMap((pts) => {
+    const p = pts.split(" ").map((c) => c.split(",").map(Number) as [number, number]);
+    return p.slice(1).map((b, i) => [p[i]!, b] as const);
+  });
+  const through = (r: { x0: number; x1: number; y0: number; y1: number }) => {
+    let len = 0;
+    for (const [[ax, ay], [bx, by]] of segs) {
+      // (Liang-Barsky: the length of the segment inside the box)
+      let t0 = 0;
+      let t1 = 1;
+      const dx = bx - ax;
+      const dy = by - ay;
+      let hit = true;
+      for (const [pp, qq] of [[-dx, ax - r.x0], [dx, r.x1 - ax], [-dy, ay - r.y0], [dy, r.y1 - ay]] as const) {
+        if (pp === 0) {
+          if (qq < 0) hit = false;
+        } else {
+          const t = qq / pp;
+          if (pp < 0) t0 = Math.max(t0, t);
+          else t1 = Math.min(t1, t);
+        }
+      }
+      if (hit && t0 < t1) len += (t1 - t0) * Math.hypot(dx, dy);
+    }
+    return len;
+  };
+  const priority = new Set([current?.slug, trip.stopPoints[0]?.slug, trip.stopPoints[trip.stopPoints.length - 1]?.slug, onMap[0]?.slug, onMap[onMap.length - 1]?.slug]);
   for (const q of candidates) {
+    if (named.length >= MAX_LABELS) break;
+    if (named.some((n) => n.s.slug === q.slug)) continue;
     const at = stopAt(q);
     if (!inBox(at)) continue;
     const toEnd = at.x > w * 0.6;
     const width = q.name.length * 6.8;
-    let placedLabel: { x: number; y: number; end: boolean; rect: { x0: number; x1: number; y0: number; y1: number } } | null = null;
-    for (const [flipSide, below] of [[false, false], [false, true], [true, false], [true, true]] as const) {
-      const end = flipSide ? !toEnd : toEnd;
-      const x = end ? at.x - 9 : at.x + 9;
-      const y = Math.max(12, below ? at.y + 17 : at.y - 7);
-      const rect = { x0: end ? x - width : x, x1: end ? x : x + width, y0: y - 10, y1: y + 3 };
-      const clash = taken.some((t) => rect.x0 < t.x1 + 4 && rect.x1 > t.x0 - 4 && rect.y0 < t.y1 && rect.y1 > t.y0);
-      const onWord = keepOut !== null && rect.x0 < keepOut.x1 && rect.x1 > keepOut.x0 && rect.y0 < keepOut.y1 && rect.y1 > keepOut.y0;
-      if (clash || onWord || rect.x0 < 2 || rect.x1 > w - 2) continue;
-      placedLabel = { x, y, end, rect };
-      break;
+    let best: { x: number; y: number; end: boolean; rect: { x0: number; x1: number; y0: number; y1: number }; cost: number } | null = null;
+    // Six places round the dot (either side, above, level, below), the one the route crosses least; ties go to the first (the side away from the poster's middle, above).
+    let order = 0;
+    for (const flipSide of [false, true]) {
+      for (const dy of [-7, 3, 17]) {
+        const end = flipSide ? !toEnd : toEnd;
+        const x = end ? at.x - 9 : at.x + 9;
+        const y = Math.max(12, at.y + dy);
+        const rect = { x0: end ? x - width : x, x1: end ? x : x + width, y0: y - 10, y1: y + 3 };
+        order++;
+        const clash = taken.some((t) => rect.x0 < t.x1 + 4 && rect.x1 > t.x0 - 4 && rect.y0 < t.y1 && rect.y1 > t.y0);
+        const onWord = keepOut !== null && rect.x0 < keepOut.x1 && rect.x1 > keepOut.x0 && rect.y0 < keepOut.y1 && rect.y1 > keepOut.y0;
+        if (clash || onWord || rect.x0 < 2 || rect.x1 > w - 2) continue;
+        const cost = through({ x0: rect.x0 - 2, x1: rect.x1 + 2, y0: rect.y0, y1: rect.y1 }) + 0.01 * order;
+        if (!best || cost < best.cost) best = { x, y, end, rect, cost };
+      }
     }
-    if (!placedLabel) continue;
-    taken.push(placedLabel.rect);
-    named.push({ s: q, x: placedLabel.x, y: placedLabel.y, end: placedLabel.end });
+    if (!best) continue;
+    // (a name that is not one of the ends that always are named is left out where the route would run through it: it is not worth the clutter)
+    if (!priority.has(q.slug) && best.cost > 14) continue;
+    taken.push(best.rect);
+    named.push({ s: q, x: best.x, y: best.y, end: best.end });
   }
+  // The dots of the stops: on a trip with many, a dot is drawn only where it is `DOT_GAP` px from the ones already drawn (the start, the end, this place and the named ones always are), so the line is not lost under a string of dots.
+  const dots = (() => {
+    const must = new Set([current?.slug, trip.stopPoints[0]?.slug, trip.stopPoints[trip.stopPoints.length - 1]?.slug, ...named.map((n) => n.s.slug)]);
+    const placed: Array<{ x: number; y: number }> = [];
+    const keep = new Set<number>();
+    trip.stopPoints.forEach((s, i) => {
+      if (must.has(s.slug)) {
+        keep.add(i);
+        placed.push(stopAt(s));
+      }
+    });
+    trip.stopPoints.forEach((s, i) => {
+      if (keep.has(i)) return;
+      const q = stopAt(s);
+      if (placed.every((o) => Math.hypot(o.x - q.x, o.y - q.y) >= DOT_GAP)) {
+        keep.add(i);
+        placed.push(q);
+      }
+    });
+    return keep;
+  })();
   const tone = (share: number) => `color-mix(in srgb, var(--foreground) ${share}%, var(--accent))`;
   // The same ink on the field's colour with or without a photograph: the photograph is veiled in the FIELD's colour (light in the light theme, dark in the dark one), so it sits close to the card's background instead of standing out of it.
-  const ink = "var(--foreground)";
-  const halo = "var(--accent)";
+  // The word and its tag: in the poster's own drawing, or, when the photograph has a cutout (`layer`), in a drawing of their own under the cutout, so the subject stands in front of the word.
+  const wordNodes = word ? (
+    <>
+      {/* (the word's width is measured on an invisible copy at the heaviest weight, the widest it gets: the visible one is thinner or heavier with the card's `--g`, see `.trip-slide` in app.css) */}
+    <text ref={textRef} aria-hidden="true" x={0} y={-1000} fontSize={nominal} style={{ visibility: "hidden", fontFamily: wordFont, fontWeight: 800, letterSpacing: "-0.03em", ...(face.axis ? { fontStretch: `${face.axis.base}%` } : {}) }}>
+      {word}
+    </text>
+    <text data-slot="trip-word" transform={`translate(${WORD_PAD - Math.round(size * 0.05)} ${h - WORD_PAD}) scale(${face.axis ? "1" : condense.toFixed(3)} 1)`} fontSize={size} style={{ ...(backdrop ? { fill: "var(--foreground)", opacity: "calc(0.12 + 0.4 * var(--g, 1) * var(--g, 1))" as unknown as number } : {}), ...(backdrop ? {} : { fill: `color-mix(in srgb, var(--foreground) calc(8% + 24% * var(--g, 1) * var(--g, 1)), var(--accent))` }), fontFamily: wordFont, letterSpacing: "-0.03em", ...(face.axis ? { fontStretch: `${(face.axis.base * condense).toFixed(1)}%` } : {}) }}>
+      {word}
+    </text>
+    {/* (what the word is: the trip's code name, not the place's name; the poster's own small mono type, quiet and only on the card in front) */}
+    <text data-slot="trip-word-tag" aria-hidden="true" x={WORD_PAD} y={h - WORD_PAD - Math.round(size * 0.74) - 9} fontSize={11} style={{ fill: "var(--foreground)", fontFamily: "var(--font-meta)", fontWeight: 500, letterSpacing: "0.14em", fillOpacity: "clamp(0, calc((var(--g, 1) - 0.4) * 1.1), 0.62)" as unknown as number }}>
+      CODE NAME
+    </text>
+    </>
+  ) : null;
+  // The route, its stops and its names: over the subject on a poster with none, BEHIND it where there is a cutout (the map and the path are part of the backdrop: owner, 2026-11-24).
+  const routeNodes = (
+    <>
+    {/* The route is dimmed (only the route) behind each name: a soft spot of the mask over every name, not a hole. */}
+    <defs>
+      <radialGradient id={`${maskId}-dimg`}>
+        {[0.72, 0.68, 0.55, 0.38, 0.2, 0.07, 0].map((o, k, all) => (
+          <stop key={k} offset={k / (all.length - 1)} style={{ stopColor: "#000", stopOpacity: o }} />
+        ))}
+      </radialGradient>
+      <mask id={`${maskId}-dim`} maskUnits="userSpaceOnUse" x={-20} y={-20} width={w + 40} height={h + 40}>
+        <rect x={-20} y={-20} width={w + 40} height={h + 40} fill="#fff" />
+        {named.map(({ s: place, x, y, end }) => {
+          const width = place.name.length * 6.8;
+          return <ellipse key={place.slug} cx={end ? x - width / 2 : x + width / 2} cy={y - 3.5} rx={width / 2 + 12} ry={11} fill={`url(#${maskId}-dimg)`} />;
+        })}
+      </mask>
+    </defs>
+    <g mask={`url(#${maskId}-dim)`}>
+    {trip.legPaths.map((leg, i) => {
+      const at = Array.from({ length: leg.points.length / 2 }, (_, k) => frame.at(leg.points[k * 2]!, leg.points[k * 2 + 1]!)).filter((q): q is { x: number; y: number } => q !== null);
+      const pts = at.map((q) => `${q.x.toFixed(1)},${q.y.toFixed(1)}`).join(" ");
+      // The globe's trail: along each leg, from its origin to its destination, one gradient from blue to violet, here washed toward the ink so the poster stays quiet (owner, 2026-11-24).
+      const first = at[0];
+      const last = at[at.length - 1];
+      const graded = first !== undefined && last !== undefined && Math.hypot(last.x - first.x, last.y - first.y) > 2;
+      return (
+        <g key={i}>
+          {graded && (
+            <linearGradient id={`${maskId}-t${i}`} gradientUnits="userSpaceOnUse" x1={first.x} y1={first.y} x2={last.x} y2={last.y}>
+              <stop offset={0} style={{ stopColor: TRAIL_TAIL }} />
+              <stop offset={1} style={{ stopColor: TRAIL_HEAD }} />
+            </linearGradient>
+          )}
+          <polyline points={pts} fill="none" stroke={graded ? `url(#${maskId}-t${i})` : MARK_INK} strokeOpacity={ROUTE_OPACITY} strokeWidth={backdrop ? 1.6 : 1.4} strokeDasharray={DASH[leg.mode]} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+        </g>
+      );
+    })}
+    </g>
+    {trip.stopPoints.map((s, i) => {
+      if (!dots.has(i)) return null;
+      const q = stopAt(s);
+      return <rect key={`${s.slug}-${i}`} x={q.x - 1.75} y={q.y - 1.75} width={3.5} height={3.5} fill={MARK_INK} />;
+    })}
+    {/* The names sit on a soft glow in the backdrop's colour (black in the dark scheme, white in the light one: it darkens or lightens the picture without tinting it, `--trip-glow`) instead of an outline: readable over the route or a border, with no edge to it (owner, 2026-11-24). */}
+    <radialGradient id={`${maskId}-glow`}>
+      {/* (an eased fall, many steps, so the ellipse has no edge to see) */}
+      {[0.5, 0.47, 0.4, 0.31, 0.22, 0.14, 0.07, 0.025, 0].map((o, k, all) => (
+        <stop key={k} offset={k / (all.length - 1)} style={{ stopColor: "var(--trip-glow)", stopOpacity: o }} />
+      ))}
+    </radialGradient>
+    {named.map(({ s, x, y, end }) => {
+      const width = s.name.length * 6.8;
+      return <ellipse key={`${s.slug}-glow`} cx={end ? x - width / 2 : x + width / 2} cy={y - 3.5} rx={width / 2 + 34} ry={22} fill={`url(#${maskId}-glow)`} style={{ opacity: "var(--trip-glow-strength)" as unknown as number, mixBlendMode: "var(--trip-glow-blend)" as unknown as "normal" }} />;
+    })}
+    {named.map(({ s, x, y, end }) => (
+      <text key={s.slug} x={x} y={y} textAnchor={end ? "end" : "start"} fontSize={10} style={{ fill: LABEL_INK, fontFamily: "var(--font-meta)", fontWeight: 600, letterSpacing: "0.04em" }}>
+        {s.name.toUpperCase()}
+      </text>
+    ))}
+    </>
+  );
   return (
     <div ref={ref} data-slot="trip-poster-box" data-photo={backdrop ? "" : undefined} className={cn("relative w-full", backdrop ? "" : "bg-accent", className)} style={{ aspectRatio: `1 / ${ASPECT}`, maxHeight: MAX_H }}>
       {backdrop && (
@@ -435,56 +676,60 @@ export function TripPoster({ trip, here, photo = true, className, wordFace }: { 
             onLoad={(e) => horizon.read(e.currentTarget)}
             ref={horizon.ref}
             className={cn("trip-photo", placed ? "absolute max-w-none" : "size-full object-cover")}
-            style={placed ? { width: placed.width, height: placed.height, left: placed.left, top: placed.top } : undefined}
+            style={placed ? { width: placed.width, height: placed.height, left: placed.left, top: placed.top, filter: softened("var(--trip-photo-filter)") } : undefined}
           />
         </div>
+      )}
+      {backdrop && (
+        // The word is drawn between the photograph and its cutout (the subject in front of it): where there is no cutout, over the photograph as always, in the poster's own drawing.
+        layer && (
+          <>
+            <svg aria-hidden="true" data-slot="trip-word-layer" width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="pointer-events-none absolute inset-x-0 top-0 block overflow-hidden">
+              {wordNodes}
+              {routeNodes}
+            </svg>
+            {/* (the cutout is placed and filtered exactly as the photograph, the same picture with its background made transparent; it is not faded, so it hides the word completely where it covers it) */}
+            <div aria-hidden="true" data-slot="trip-cutout" className="pointer-events-none absolute inset-x-0 top-0" style={{ height: h + PHOTO_RUN, maskImage: layer.blend ? fade(h) : fadeAfter(h), WebkitMaskImage: layer.blend ? fade(h) : fadeAfter(h), willChange: "transform" }}>
+              <img
+                src={layer.src}
+                alt=""
+                decoding="async"
+                className={cn("trip-subject", placed ? "absolute max-w-none" : "size-full object-cover")}
+                style={placed ? { width: placed.width, height: placed.height, left: placed.left, top: placed.top, filter: softened("var(--trip-subject-filter)") } : undefined}
+              />
+            </div>
+          </>
+        )
       )}
       {backdrop && land && (
         // The land on a photograph runs as far as the photograph does and fades with it (the same mask), so the map is not cut at the poster's edge while the picture goes on.
         <svg aria-hidden="true" width={w} height={h + PHOTO_RUN} viewBox={`0 0 ${w} ${h + PHOTO_RUN}`} className="pointer-events-none absolute inset-x-0 top-0 block" style={{ maskImage: fade(h), WebkitMaskImage: fade(h) }}>
           {fadeDefs}
-          <path d={land} mask={landMask} className="trip-land" style={{ "--trip-land-dark-share": `${landShare}%` } as CSSProperties} stroke="none" />
-          {/* (on a photograph the borders are lines of the route's own ink, faint: lighter than the picture like the route, not darker; on the flat field they are gaps in the land, the ocean's colour) */}
-          {borderPath && <path d={borderPath} fill="none" stroke={ink} strokeOpacity={0.32} strokeWidth={1} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />}
+          {/* The borders are gaps in the land, not lines over it (owner, 2026-11-24): the land's mask is its fade (or whole) with the borders cut out of it, so the photograph shows through them, whatever the photograph is. */}
+          <defs>
+            {/* On a photograph the land is only round the route (owner, 2026-11-24: "we only need to see the continent around the road"): the mask is black, the route stroked white and blurred, so the land dissolves softly with the distance from the path; then the borders are cut out of it. A poster with no photograph keeps the land more widely (it has nothing else to show). */}
+            <filter id={`${maskId}-f`} filterUnits="userSpaceOnUse" x={-near} y={-PHOTO_RUN - near} width={w + 2 * near} height={h + 2 * PHOTO_RUN + 2 * near}>
+              <feGaussianBlur stdDeviation={0.13 * near} />
+            </filter>
+            <mask id={`${maskId}-l`} maskUnits="userSpaceOnUse" x={0} y={-PHOTO_RUN} width={w} height={h + 2 * PHOTO_RUN}>
+              <rect x={0} y={-PHOTO_RUN} width={w} height={h + 2 * PHOTO_RUN} fill="#000" />
+              <g filter={`url(#${maskId}-f)`} fill="none" stroke="#fff" strokeWidth={0.36 * near} strokeLinecap="round" strokeLinejoin="round">
+                {legLines.map((pts, i) => (
+                  <polyline key={i} points={pts} />
+                ))}
+              </g>
+              {borderPath && <path d={borderPath} fill="none" stroke="#000" strokeWidth={BORDER_GAP} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />}
+            </mask>
+          </defs>
+          <path d={land} mask={`url(#${maskId}-l)`} className="trip-land" style={{ "--trip-land-dark-share": `${landShare}%` } as CSSProperties} stroke="none" />
         </svg>
       )}
       <svg data-slot="trip-poster" viewBox={`0 0 ${w} ${h}`} width={w} height={h} role="img" aria-label={`Map of the trip, ${trip.from} to ${trip.to}`} className="relative block overflow-hidden">
         {!backdrop && fadeDefs}
         {land && !backdrop && <path d={land} mask={landMask} style={{ fill: tone(9) }} stroke="none" />}
         {borderPath && !backdrop && <path d={borderPath} fill="none" stroke="var(--accent)" strokeWidth={1.25} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />}
-        {word && (
-          <>
-          {/* (the word's width is measured on an invisible copy at the heaviest weight, the widest it gets: the visible one is thinner or heavier with the card's `--g`, see `.trip-slide` in app.css) */}
-          <text ref={textRef} aria-hidden="true" x={0} y={-1000} fontSize={nominal} style={{ visibility: "hidden", fontFamily: wordFont, fontWeight: 800, letterSpacing: "-0.03em", ...(face.axis ? { fontStretch: `${face.axis.base}%` } : {}) }}>
-            {word}
-          </text>
-          <text data-slot="trip-word" transform={`translate(${WORD_PAD - Math.round(size * 0.05)} ${h - WORD_PAD}) scale(${face.axis ? "1" : condense.toFixed(3)} 1)`} fontSize={size} style={{ fill: backdrop ? "color-mix(in srgb, var(--foreground) calc(12% + 40% * var(--g, 1) * var(--g, 1)), transparent)" : `color-mix(in srgb, var(--foreground) calc(8% + 24% * var(--g, 1) * var(--g, 1)), var(--accent))`, fontFamily: wordFont, letterSpacing: "-0.03em", ...(face.axis ? { fontStretch: `${(face.axis.base * condense).toFixed(1)}%` } : {}) }}>
-            {word}
-          </text>
-          {/* (what the word is: the trip's code name, not the place's name; the poster's own small mono type, quiet and only on the card in front) */}
-          <text data-slot="trip-word-tag" aria-hidden="true" x={WORD_PAD} y={h - WORD_PAD - Math.round(size * 0.74) - 9} fontSize={11} style={{ fill: "var(--foreground)", fontFamily: "var(--font-meta)", fontWeight: 500, letterSpacing: "0.14em", fillOpacity: "clamp(0, calc((var(--g, 1) - 0.4) * 1.1), 0.62)" as unknown as number }}>
-            CODE NAME
-          </text>
-          </>
-        )}
-        {trip.legPaths.map((leg, i) => {
-          const pts = Array.from({ length: leg.points.length / 2 }, (_, k) => frame.at(leg.points[k * 2]!, leg.points[k * 2 + 1]!))
-            .filter((q): q is { x: number; y: number } => q !== null)
-            .map((q) => `${q.x.toFixed(1)},${q.y.toFixed(1)}`)
-            .join(" ");
-          return <polyline key={i} points={pts} fill="none" stroke={ink} strokeWidth={backdrop ? 1.75 : 1.5} strokeDasharray={DASH[leg.mode]} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />;
-        })}
-        {trip.stopPoints.map((s, i) => {
-          const q = stopAt(s);
-          return <rect key={`${s.slug}-${i}`} x={q.x - 1.75} y={q.y - 1.75} width={3.5} height={3.5} fill={ink} />;
-        })}
-        {current && <rect x={stopAt(current).x - 6} y={stopAt(current).y - 6} width={12} height={12} fill="none" stroke={ink} strokeWidth={1.5} vectorEffect="non-scaling-stroke" />}
-        {named.map(({ s, x, y, end }) => (
-          // (a halo in the backdrop's colour keeps a name readable where the route or a border runs under it)
-          <text key={s.slug} x={x} y={y} textAnchor={end ? "end" : "start"} fontSize={10} stroke={halo} strokeWidth={3} strokeLinejoin="round" style={{ fill: ink, paintOrder: "stroke", fontFamily: "var(--font-meta)", fontWeight: 700, letterSpacing: "0.04em" }}>
-            {s.name.toUpperCase()}
-          </text>
-        ))}
+        {!layer && wordNodes}
+        {!layer && routeNodes}
       </svg>
     </div>
   );

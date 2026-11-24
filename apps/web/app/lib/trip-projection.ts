@@ -20,6 +20,8 @@ export interface Frame {
   pxPerDeg: number;
   /** True when the segment between two places crosses the world map's seam (never in the azimuthal one): a line is broken there, not drawn across the map. */
   cuts: (lonA: number, lonB: number) => boolean;
+  /** The azimuthal map's disc (its edge is the far side of the globe, radius 2 on the unit sphere), in px: land that leaves the map there is closed along this circle, not by a straight chord across the poster. */
+  disc?: { x: number; y: number; r: number };
 }
 
 /** A trip within this many degrees keeps the azimuthal map (see `frameOf`). */
@@ -134,7 +136,7 @@ export function frameOf(points: GeoPoint[], bx: number, by: number, bw: number, 
     const origin = f.at(centre.lon, centre.lat);
     const reach = origin ? Math.max(...[0, view.w].flatMap((x) => [0, view.h].map((y) => Math.hypot(x - origin.x, y - origin.y)))) : Infinity;
     // A trip that is a region of the globe (a continent, `REGION_SPAN` degrees or less) keeps the azimuthal map whatever the shape of the poster: the world map would draw its land sheared and stretched at that latitude, and the disc's far side is ocean or the other side of the world, far from the trip.
-    if (span <= REGION_SPAN || reach <= 1.9 * f.scale) return { at: f.at, span, azimuthal: true, pxPerDeg: f.scale * RAD, cuts: () => false };
+    if (span <= REGION_SPAN || reach <= 1.9 * f.scale) return { at: f.at, span, azimuthal: true, pxPerDeg: f.scale * RAD, cuts: () => false, ...(origin ? { disc: { x: origin.x, y: origin.y, r: 2 * f.scale } } : {}) };
   }
   const project = equalEarth(lon0);
   const f = fit(project);

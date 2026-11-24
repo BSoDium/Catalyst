@@ -107,15 +107,15 @@ function Hop({ hop, side, lead }: { hop: TripHop; side: "before" | "after"; lead
  * and after, and, to the right of them, a button to the trip's own page when it has one. It is the way into the trip, not the page's subject. A place a trip passes
  * several times says so and lists no hop (each visit has its own).
  */
-export function TripCard({ trip, here, lived = false, photo = true, position, wordFace }: { trip: Trip; here: string; lived?: boolean; photo?: boolean; position?: string; wordFace?: string | null }) {
+export function TripCard({ trip, here, lived = false, photo = true, cutout = true, occlude, position, wordFace }: { trip: Trip; here: string; lived?: boolean; photo?: boolean; cutout?: boolean; occlude?: number; position?: string; wordFace?: string | null }) {
   const single = trip.visits.length === 1 ? trip.visits[0]! : null;
   // A home base is visited several times, but the trip still leaves it and comes back to it: the stop it left for the first time, and the one it came back from the last.
   const ends = !single && lived ? { previous: [...trip.visits].reverse().find((v) => v.previous)?.previous ?? null, next: trip.visits.find((v) => v.next)?.next ?? null } : null;
   const where = single ? (single.previous === null ? "The trip starts here" : single.next === null ? "The trip ends here" : `Stop ${single.position} of ${trip.stops}`) : lived ? "Home base on this trip" : `Visited ${trip.visits.length} times`; // (a place the owner has lived in is not visited: no count, #584)
   return (
     <article data-slot="trip-card" className="relative isolate flex flex-col overflow-hidden">
-      <TripPoster trip={trip} here={here} photo={photo} wordFace={wordFace} />
-      <div className="relative flex grow flex-col gap-4 p-4">
+      <TripPoster trip={trip} here={here} photo={photo} cutout={cutout} occlude={occlude} wordFace={wordFace} />
+      <div className="relative flex grow flex-col gap-4 px-4 pt-4 pb-2.5">
         <header className="flex flex-col gap-1.5">
           <div className="flex items-baseline justify-between gap-3">
             <h3 className="m-0 text-2xl leading-tight font-semibold tracking-tight"><StableTitle data-slot="trip-title" text={trip.title} className="font-display" /></h3>

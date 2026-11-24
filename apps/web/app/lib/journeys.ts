@@ -210,6 +210,10 @@ function mapPath(a: { lat: number; lon: number }, b: { lat: number; lon: number 
     const i = Math.round((k * (n - 1)) / (keep - 1));
     out.push(flat[i * 2]!, flat[i * 2 + 1]!);
   }
+  // A routed line begins and ends where the road was snapped to, not on the stop: the poster would show a gap between the legs, and between a leg and its stop's square. Each leg runs from its stop to the next.
+  const EPS = 1e-6;
+  if (Math.abs(out[0]! - a.lon) > EPS || Math.abs(out[1]! - a.lat) > EPS) out.unshift(a.lon, a.lat);
+  if (Math.abs(out[out.length - 2]! - b.lon) > EPS || Math.abs(out[out.length - 1]! - b.lat) > EPS) out.push(b.lon, b.lat);
   return out;
 }
 
