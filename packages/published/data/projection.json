@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "dataVersion": {
-    "commit": "36347967c2158094bbaffcb00a759bdef844841f",
+    "commit": "d852cee1a43c95d7bec70958aca1028b76303a61",
     "date": "2026-11-25"
   },
   "places": [
@@ -9794,7 +9794,7 @@
       "slug": "amber-gateway",
       "title": "Amber gateway",
       "summary": "A plaster arch frames a bright hall beyond, with the dark diagonal of a stone balustrade running up the staircase in front.",
-      "date": "2026-11-03",
+      "date": "2026-11",
       "cover": {
         "src": "/media/photograph/amber-gateway/photo.fc3a7f03.webp",
         "alt": "A pale plaster arch seen from a dim staircase, opening onto a brightly lit hall; a stone balustrade climbs diagonally across the lower right",
