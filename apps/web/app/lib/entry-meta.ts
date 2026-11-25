@@ -30,6 +30,7 @@ export function entryMeta(data: { entry: EntryDetail; origin?: string } | undefi
     image: cover ? { src: cover.src, alt: cover.alt, width: cover.width, height: cover.height } : undefined,
     origin,
     path: entry.href,
+    markdown: true,
     publishedTime: entry.date,
     tags: entry.tags,
     noImageIndex: isSensitive(entry),
@@ -40,5 +41,5 @@ export function entryMeta(data: { entry: EntryDetail; origin?: string } | undefi
 
 /** Head tags of a list route (`/articles`, ...). */
 export function listMeta(kind: keyof typeof KIND_PLURALS, base: Base = {}) {
-  return pageMeta({ title: KIND_PLURALS[kind], description: archiveLine(KIND_PLURALS[kind]), origin: base.origin, path: base.path });
+  return pageMeta({ title: KIND_PLURALS[kind], description: archiveLine(KIND_PLURALS[kind]), origin: base.origin, path: base.path, markdown: true });
 }

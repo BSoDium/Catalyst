@@ -51,7 +51,7 @@ app/
   routes/entry-{article,project,artwork,poem,photograph}.tsx   `/<kind>/:slug`: loader (lib/entry-loader.server.ts), meta, EntryRoute; no error boundary (404 -> root)
   routes/{software,articles,artworks,poetry,photography}.tsx    the lists: summaries -> EntryListPage ("Software" is the projects' list, "Poetry" the poems')
   lib/sections.ts      the sections' table: each contract kind -> address, labels, count nouns, former addresses (see "The projects' section is Software")
-  routes/{sitemap,robots}.ts   resource routes (no UI): the crawlers' files, built from the projection and `CATALYST_SITE_URL`
+  routes/{sitemap,robots,llms-txt,markdown}.ts   resource routes (no UI): the crawlers' files and the Markdown for language models, built from the projection and `CATALYST_SITE_URL`
   routes/search-index.ts   `/search-index.json` (no UI): titles, kinds, tags and one-line summaries of places and entries, for the quick search
   routes/dev-design.tsx   DEV ONLY `/dev/design`: the UI system's styleguide (guarded like `/dev/street`; docs/design-system.md)
   components/         navbar, nav-scrim, skip-links, places-nav, detail-panel, place-detail, entry-list-page,
@@ -135,6 +135,8 @@ What a deployment needs beyond the features, in one place. Everything here is ve
 ### Crawlers: sitemap.xml and robots.txt
 
 Resource routes (`routes/sitemap.ts`, `routes/robots.ts`; no static copies in `public/`, which would shadow them). `/sitemap.xml` lists `/`, the four lists, every entry and every place of the projection (absolute URLs on `CATALYST_SITE_URL`, `lastmod` = the authored date when there is one: an entry's `date`, a place's `dates.end` or `start`; the content has no edit time), `application/xml`, `s-maxage=3600` + `stale-while-revalidate=86400`. The protocol's 50,000-URL limit is far away (one file). `/robots.txt` allows everything and names the sitemap **only on the production host**: when the request's host (`x-forwarded-host`, else `host`) is not the host of `CATALYST_SITE_URL`, or `VERCEL_ENV` is `preview` or `development`, it answers `Disallow: /` and the pages carry `X-Robots-Tag: noindex, nofollow`. So preview deployments, the `*.vercel.app` address of production and localhost never get indexed, with no environment to remember.
+
+The same resource routes serve language models (#750, [llm-access.md](llm-access.md)): `/llms.txt` (`routes/llms-txt.ts`) and the Markdown twin of every page, `<address>.md` (`routes/markdown.ts`, one loader registered under each address in `routes.ts`, text in `lib/llm-text.ts`). `robots.txt` also turns away the crawlers that collect pages to train a model (`lib/ai-crawlers.ts`); search and user-triggered agents stay welcome.
 
 ### Security headers
 

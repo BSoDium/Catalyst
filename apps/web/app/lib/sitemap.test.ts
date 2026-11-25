@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { loadDemoProjection } from "@catalyst/published/dev";
 import { EMPTY_PROJECTION, type PublishedProjection } from "@catalyst/schemas";
+import { AI_CRAWLERS, crawlersFor } from "./ai-crawlers";
 import { robotsTxt, sitemapUrls, sitemapXml } from "./sitemap";
 
 const ORIGIN = "https://v2.bsodium.fr";
@@ -71,8 +72,35 @@ describe("sitemapXml", () => {
 });
 
 describe("robotsTxt", () => {
-  it("allows everything and links the sitemap on the production host", () => {
-    expect(robotsTxt({ siteUrl: ORIGIN, indexable: true })).toBe(`User-agent: *\nAllow: /\n\nSitemap: ${ORIGIN}/sitemap.xml\n`);
+  /** The groups of a robots file: the user agents of each, and its rules. */
+  const groups = (txt: string) =>
+    txt
+      .split(/\n\s*\n/)
+      .map((block) => block.split("\n").filter((l) => l && !l.startsWith("#")))
+      .filter((lines) => lines.some((l) => l.startsWith("User-agent:")))
+      .map((lines) => ({ agents: lines.filter((l) => l.startsWith("User-agent:")).map((l) => l.slice(12)), rules: lines.filter((l) => !l.startsWith("User-agent:")) }));
+
+  it("welcomes everyone on the production host and links the sitemap", () => {
+    const txt = robotsTxt({ siteUrl: ORIGIN, indexable: true });
+    expect(groups(txt).find((g) => g.agents.includes("*"))).toEqual({ agents: ["*"], rules: ["Allow: /"] });
+    expect(txt).toContain(`Sitemap: ${ORIGIN}/sitemap.xml\n`);
+  });
+  it("turns away every training crawler, and only those", () => {
+    const [blocked, ...rest] = groups(robotsTxt({ siteUrl: ORIGIN, indexable: true }));
+    expect(blocked!.rules).toEqual(["Disallow: /"]);
+    expect(blocked!.agents).toEqual(crawlersFor("training").map((c) => c.token));
+    expect(blocked!.agents).toEqual(expect.arrayContaining(["GPTBot", "ClaudeBot", "Google-Extended", "CCBot"]));
+    // search and assistants fetching for a person are never named in a Disallow group
+    for (const c of [...crawlersFor("search"), ...crawlersFor("agent")]) expect(blocked!.agents).not.toContain(c.token);
+    expect(rest.flatMap((g) => g.agents)).toEqual(["*"]);
+  });
+  it("keeps the ordinary search engines out of the AI table", () => {
+    const tokens = AI_CRAWLERS.map((c) => c.token.toLowerCase());
+    for (const engine of ["googlebot", "bingbot", "duckduckbot", "applebot", "yandex", "baiduspider"]) expect(tokens).not.toContain(engine);
+    expect(new Set(tokens).size).toBe(tokens.length);
+  });
+  it("points language models at /llms.txt", () => {
+    expect(robotsTxt({ siteUrl: ORIGIN, indexable: true })).toContain(`${ORIGIN}/llms.txt`);
   });
   it("disallows everything, and names no sitemap, anywhere else", () => {
     const txt = robotsTxt({ siteUrl: ORIGIN, indexable: false });
