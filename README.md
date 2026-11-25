@@ -99,14 +99,17 @@ pnpm build          # production build
 **Design**
 - [Design system](docs/design-system.md) and [design tokens](docs/design-tokens.md)
 - [Landing hero](docs/landing.md): the typographic home page over the globe
-- [Pixel line rules](docs/pixel-line-rules.md) and [street map architecture](docs/street-architecture.md)
+- [Pixel line rules](docs/pixel-line-rules.md), [street map architecture](docs/street-architecture.md) and [the street zoom spike](docs/street-zoom-spike.md)
+- Pages: [career](docs/career-page.md), [step page](docs/step-page.md), [activity picture](docs/activity-picture.md), [paths](docs/paths.md)
+- [PWA system bars](docs/pwa-system-bars.md), [phone remount spec](docs/phone-remount-spec.md)
 
 **Engineering**
 - [Web architecture](docs/web-architecture.md): routing, data, focus management, globe lifecycle
 - [Renderer decision](docs/renderer-decision.md): why standalone Three.js, with benchmarks
 - [Performance](docs/performance.md): measurements and the budget check
 - [API contract](docs/api-contract.md), [API cost and abuse](docs/api-cost-and-abuse.md)
-- [Entry content model](docs/content-entry-model.md)
+- [Entry content model](docs/content-entry-model.md) and [media policy](docs/media-policy.md)
+- [3D globe report](docs/globe-3d-report.md)
 - [Language models and crawlers](docs/llm-access.md)
 - [Self-hosting](docs/self-hosting.md)
 - [Handoff](docs/handoff.md): state of the rebuild and what is left
