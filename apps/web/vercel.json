@@ -91,7 +91,7 @@
       ]
     }
   ],
-  "rewrites": [
+  "redirects": [
     {
       "source": "/",
       "has": [
@@ -101,7 +101,8 @@
           "value": ".*text/markdown.*"
         }
       ],
-      "destination": "/index.md"
+      "destination": "/index.md",
+      "statusCode": 307
     },
     {
       "source": "/:path((?!assets/|data/|fonts/|media/)[^.]+)",
@@ -112,7 +113,8 @@
           "value": ".*text/markdown.*"
         }
       ],
-      "destination": "/:path.md"
+      "destination": "/:path.md",
+      "statusCode": 307
     }
   ]
 }
