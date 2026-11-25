@@ -4,12 +4,13 @@ import type { ContentKind } from "@catalyst/schemas";
 import { ArtworkWall } from "~/components/entry/artwork-wall";
 import { GalleryEnd } from "~/components/entry/gallery-end";
 import { ARTWORK_FILLER, GALLERY_FILLER } from "~/lib/gallery-filler";
+import { MarkdownLink } from "~/components/markdown-link";
 import { TagFilter } from "~/components/tag-filter";
 import { ActivityPanel } from "~/components/activity-panel";
 import { EntryRow } from "~/components/entry/entry-list-card";
 import { StatePanel } from "~/components/ui";
 import { cn } from "~/lib/utils";
-import { KIND_NOUNS, KIND_PLURALS, kindCount, listBackState, type EntrySummary } from "~/lib/entries";
+import { KIND_NOUNS, KIND_PATHS, KIND_PLURALS, kindCount, listBackState, type EntrySummary } from "~/lib/entries";
 import { collectTags, filterByTag, groupByYear, listStats, parseTagFilter, shouldGroupByYear } from "~/lib/entry-list";
 
 /** What continues a wall under its banner: the photographs' and the artworks' have one, the other lists none. */
@@ -150,6 +151,7 @@ export function EntryListPage({ kind, items, activityUrl = null }: { kind: Conte
           })
         )}
       </div>
+      <MarkdownLink path={KIND_PATHS[kind]} className="mt-12" />
     </main>
   );
 }

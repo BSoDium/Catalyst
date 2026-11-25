@@ -10,6 +10,7 @@ import { Button, Icon, Stack, StatePanel } from "~/components/ui";
 import { coverImageProps } from "~/lib/cover-image";
 import { changedParts, type DatePart } from "~/lib/dates";
 import { safeMediaSrc } from "~/lib/entry-blocks";
+import { MarkdownLink } from "~/components/markdown-link";
 import { placeCover, type PlaceCover } from "~/lib/place-cover";
 import { formatPlaceCoordinates, placeCoordinateParts, type CoordinatePart } from "~/lib/labelling";
 import { imageSize, placePath, type PlaceDetailData } from "~/lib/projection";
@@ -370,6 +371,7 @@ export function PlaceDetail({ place }: { place: PlaceDetailData }) {
         {count > 0 && place.trips.length > 0 && (
           <TripCards trips={place.trips} here={place.slug} lived={place.lived === true} intro={closedStory ? <div data-slot="place-story"><StepStory place={place} photos={photos} trips={false} /></div> : undefined} />
         )}
+        <MarkdownLink path={placePath(place.slug)} />
       </Stack>
     </article>
   );

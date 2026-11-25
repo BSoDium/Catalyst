@@ -6,6 +6,7 @@ import { EntryRefCard } from "~/components/entry/entry-list-card";
 import { TableOfContents } from "~/components/entry/toc";
 import { Button, CopyButton, CoverArt, Icon, SensitiveImage, SensitiveMediaScope, StatusTag, TagList } from "~/components/ui";
 import { shareUrl } from "~/lib/clipboard";
+import { MarkdownLink } from "~/components/markdown-link";
 import { copyrightNotice } from "~/lib/copyright";
 import { formatEntryDate } from "~/lib/dates";
 import {
@@ -419,6 +420,8 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
           {notice.text}
         </p>
       )}
+
+      <MarkdownLink path={entry.href} className="mt-4" />
 
       {hasMore && (
         <div className="mt-16 print:hidden md:mt-20">

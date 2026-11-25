@@ -2,9 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import type { PublishedCareer, PublishedCareerEducation, PublishedCareerProject, PublishedCareerRole } from "@catalyst/schemas";
 import { ContactForm } from "~/components/contact-form";
+import { MarkdownLink } from "~/components/markdown-link";
 import { Button, Icon } from "~/components/ui";
 import type { IconName } from "~/components/ui/icon";
-import { asOfText, careerDuration, careerIcon, careerLogoSrc, careerPeriod, formatCareerMonth, isCurrent, languageDetail, safeLinks, safePortrait, safeProjects } from "~/lib/career";
+import { CAREER_PATH, asOfText, careerDuration, careerIcon, careerLogoSrc, careerPeriod, formatCareerMonth, isCurrent, languageDetail, safeLinks, safePortrait, safeProjects } from "~/lib/career";
 import { CONTACT_ID } from "~/lib/contact";
 import { safeExternalUrl } from "~/lib/entry-blocks";
 import { entryPath, placePath } from "~/lib/entries";
@@ -97,6 +98,7 @@ export function CareerPage({ career, places = [], projects = [] }: { career: Pub
               Updated <time dateTime={career.updated}>{updated}</time>
             </p>
           )}
+          <MarkdownLink path={CAREER_PATH} className="career-updated" />
         {career.languages.length > 0 && (
           <section data-slot="career-languages" aria-labelledby="career-languages-h" className="career-languages">
             <h2 id="career-languages-h" className="career-languages-label type-meta">
