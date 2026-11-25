@@ -37,7 +37,14 @@ The year heading keeps its big numeral where it started. When it sticks under th
 
 ## Attribution link
 
-The picture carries the library's small "Powered by Neon" link in its bottom right corner (`attribution` on `ActivityGraphView` in `components/activity-scene.tsx`, `neon-activity-graph` 0.3.0 or later): it links to the library's page, <https://neon.bsodium.fr/>, and is styled by the library through `--nag-attribution-*` variables (none set here: faded text colour, brightening and underlined on hover).
+The picture carries the library's small "Powered by Neon" link, the library's own `NeonAttribution` (`neon-activity-graph/react`, 0.3.1 or later), placed by the page's layout in `components/activity-panel.tsx` (the library's `attribution` option, which puts the same link inside the canvas, is not used: the page wants it outside it). It links to the library's page, <https://neon.bsodium.fr/>, and is styled by the library through `--nag-attribution-*` variables (none set here: faded text colour, brightening and underlined on hover). Where it is, by width (owner, 2026-11-25):
+
+- **Phone (under 48 rem)**: at the right end of the "Last 12 months" row of the legend, on the label's line.
+- **48 to 56 rem (a tablet)**: the same row's link, moved 2.15 rem down so that it is level with the first line of the legend's headline, under the picture's glow.
+- **56 to 80 rem**: under the picture's bottom right corner, 6 px up over the canvas's bottom edge (it hung fully below at first; a little higher is better).
+- **80 rem and up**: in the canvas's own bottom right corner (12 px up from its edge, in the gap the blocks leave there), in line with the page's right margin.
+
+The two links in the markup are one at a time: `hidden` and `min-[56rem]:hidden` decide which is shown (the library sets no display on the link itself, so the page's classes always apply).
 
 ## Camera grain
 

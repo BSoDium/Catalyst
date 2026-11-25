@@ -68,7 +68,6 @@ export function ActivityScene({ activity, strips = 1, onReady, onLit, onHover, c
       startup={xmas ? bellsStartup : undefined}
       debug={debug}
       placeholder={false}
-      attribution
       label="Activity over the last year: GitHub contributions and WakaTime coding time, one column a day. Use the arrow keys to move between days."
       onReady={onReady}
       onLit={onLit}

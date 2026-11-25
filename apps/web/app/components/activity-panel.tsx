@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "~/components/ui";
 import { placeholderTiles } from "neon-activity-graph/layout";
+import { NeonAttribution } from "neon-activity-graph/react";
 import { bounds, CARD_W, grow, overlaps, parseOutline, plan, route, type Rect } from "~/lib/day-card-plan";
 import { activityStats, agoText, dayText, GITHUB_URL, hoursText, isActivity, layoutActivity, readableDay, WAKATIME_URL, yearContext, type Activity, type ActivityStat, type DayNote, type HoverInfo, type Matrix } from "~/lib/activity";
 import { xmasNow } from "~/lib/xmas";
@@ -580,12 +581,17 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
       )}
       {/* The corners are only empty when the scene is big enough (from 80 rem of page): below that the figures and the legend sit under the picture, so the text never lies over the blocks. From there the page's own figures (software, places) join the year's
           in ONE grid at the top right, from the head's top down into the empty corner of the picture. */}
+      <NeonAttribution className="absolute right-14 bottom-0 z-10 hidden translate-y-[calc(100%-0.375rem)] min-[56rem]:inline-flex min-[80rem]:bottom-3 min-[80rem]:translate-y-0" />
       <Figures lead={lead} stats={stats} ready={!!activity} className="max-md:relative max-md:z-10 max-md:order-first max-md:pb-2 md:pointer-events-none md:absolute md:right-14 md:max-[56rem]:left-14 md:top-[calc(-1*clamp(2.5rem,6.4cqi,5.75rem)-0.25rem)]" />
       <div data-slot="activity-legend" className="relative flex flex-col gap-3 px-4 pt-3 md:pt-6 md:px-14 md:max-[56rem]:-mt-[6.5cqi] min-[56rem]:absolute min-[56rem]:bottom-[1%] min-[80rem]:bottom-[10.7%] min-[56rem]:left-14 min-[56rem]:w-[clamp(20rem,34cqi,25rem)] min-[56rem]:p-0">
         {/* On a phone the legend is where the day is read (no card over the picture): the two layers share one cell, the day's over the legend while a day is held. */}
         <div className="grid">
           <div className="flex flex-col gap-3 transition-opacity duration-150" style={{ gridArea: "1 / 1", opacity: narrow && hover ? 0 : 1 }}>
-          <p className="type-meta m-0 text-muted-foreground uppercase">Last <span className="text-foreground">12 months</span></p>
+          <div className="flex items-baseline justify-between gap-4">
+            <p className="type-meta m-0 text-muted-foreground uppercase">Last <span className="text-foreground">12 months</span></p>
+            {/* (the credit link, the library's own: under 56 rem it ends the "Last 12 months" row; from 56 rem it hangs under the picture's bottom right corner, below) */}
+            <NeonAttribution className="-my-1 -mr-[3px] md:max-[56rem]:translate-y-[2.15rem] min-[56rem]:hidden" />
+          </div>
           {/* In the picture's order: the contributions are the upper block of a day, the coding the lower one. */}
           <p ref={legend} className="m-0 font-[family-name:var(--font-display)] text-[1.625rem] min-[56rem]:text-[clamp(1.25rem,2.3cqi,1.625rem)] leading-[1.1] font-semibold tracking-tight text-balance">
             <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" className={LINK} style={{ color: soft("green", 75) }}>
