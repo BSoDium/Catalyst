@@ -123,6 +123,9 @@ export const HTML_CACHE_CONTROL = "private, no-cache";
  */
 export const DATA_CACHE_CONTROL = "public, max-age=0, s-maxage=60, stale-while-revalidate=300";
 
+/** `Link` header of every document: `/llms.txt` describes the site for language models, and names the Markdown twin of each page. */
+export const LLMS_LINK = '</llms.txt>; rel="describedby"; type="text/plain"';
+
 export interface ResponsePolicyInput {
   nonce: string;
   connectOrigins: readonly string[];
@@ -137,6 +140,8 @@ export interface ResponsePolicyInput {
 export function applyDocumentHeaders(headers: Headers, { nonce, connectOrigins, upgradeInsecure, indexable, dev }: ResponsePolicyInput): void {
   for (const [name, value] of Object.entries(STATIC_SECURITY_HEADERS)) headers.set(name, value);
   if (!indexable) headers.set("X-Robots-Tag", "noindex, nofollow");
+  // every page points agents that read the headers (and not the HTML) at the site's plain-text description (#750)
+  headers.append("Link", LLMS_LINK);
   if (dev) return;
   headers.set("Content-Security-Policy", buildCsp({ nonce, connectOrigins, upgradeInsecure }));
   headers.set("Cache-Control", HTML_CACHE_CONTROL);

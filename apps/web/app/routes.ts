@@ -46,6 +46,7 @@ export default [
   route("search-index.json", "routes/search-index.ts"),
   // For language models (#750, docs/llm-access.md): `/llms.txt`, and the Markdown twin of every page (`<page>.md`, one loader for all of them: it reads the path).
   route("llms.txt", "routes/llms-txt.ts"),
+  route("index.md", "routes/markdown.ts", { id: "markdown-home" }),
   route("career.md", "routes/markdown.ts", { id: "markdown-career" }),
   route("locations/:slug.md", "routes/markdown.ts", { id: "markdown-place" }),
   ...Object.values(SECTIONS).flatMap((section) => [

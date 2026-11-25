@@ -19,7 +19,7 @@ describe("Markdown twin loader", () => {
   it("answers each kind of address with Markdown", async () => {
     const article = projection.articles[0]!.slug;
     const place = projection.places[0]!.slug;
-    for (const path of ["/career.md", "/articles.md", `/articles/${article}.md`, `/locations/${place}.md`]) {
+    for (const path of ["/index.md", "/career.md", "/articles.md", `/articles/${article}.md`, `/locations/${place}.md`]) {
       const res = await get(path);
       expect(res.status, path).toBe(200);
       expect(res.headers.get("Content-Type")).toBe("text/markdown; charset=utf-8");
@@ -31,6 +31,12 @@ describe("Markdown twin loader", () => {
     const res = await get(`/articles/${projection.articles[0]!.slug}.md`);
     expect(res.headers.get("X-Robots-Tag")).toBe("noindex");
     expect(res.headers.get("Link")).toMatch(/^<https?:\/\/[^>]+\/articles\/[^>.]+>; rel="canonical"$/);
+  });
+
+  it("serves the home page as the text of /llms.txt, canonical at /", async () => {
+    const res = await get("/index.md");
+    expect(res.headers.get("Link")).toMatch(/^<https?:\/\/[^>\/]+\/>; rel="canonical"$/);
+    expect(await res.text()).toMatch(/^# .+\n\n> /);
   });
 
   it("is a 404 for an unknown entry, place, section or depth", async () => {

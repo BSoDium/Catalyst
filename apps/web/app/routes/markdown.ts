@@ -3,7 +3,7 @@ import type { ContentKind } from "@catalyst/schemas";
 import type { Route } from "./+types/markdown";
 import { getProjection } from "~/lib/content.server";
 import { getEntryDetail, listEntries } from "~/lib/entries";
-import { careerMarkdown, entryMarkdown, listMarkdown, placeMarkdown } from "~/lib/llm-text";
+import { careerMarkdown, entryMarkdown, listMarkdown, llmsTxt, placeMarkdown } from "~/lib/llm-text";
 import { getPlaceDetail } from "~/lib/projection";
 import { SECTIONS } from "~/lib/sections";
 import { STATIC_SECURITY_HEADERS } from "~/lib/security-headers";
@@ -11,7 +11,7 @@ import { getSiteUrl } from "~/lib/site.server";
 
 /**
  * The Markdown twin of a page, for language models and agents (#750): `/locations/<slug>.md`, `/<section>/<slug>.md` for an entry,
- * `/<section>.md` for a list and `/career.md`. One resource route module registered under each address (`routes.ts`). The same content
+ * `/<section>.md` for a list, `/career.md` and `/index.md` (the home page: the text of `/llms.txt`). One resource route module registered under each address (`routes.ts`). The same content
  * as the HTML page and nothing more (`lib/llm-text.ts`); an unknown address is a plain 404. Marked `noindex` with the HTML page as canonical.
  */
 const KIND_OF_SECTION = new Map<string, ContentKind>(Object.entries(SECTIONS).map(([kind, section]) => [section.slug, kind as ContentKind]));
@@ -26,7 +26,8 @@ export async function loader({ request }: Route.LoaderArgs) {
   const [first, slug] = segments;
 
   let markdown: string | null = null;
-  if (first === "career" && segments.length === 1) markdown = projection.career ? careerMarkdown(projection.career, origin) : null;
+  if (first === "index" && segments.length === 1) markdown = llmsTxt(projection, origin);
+  else if (first === "career" && segments.length === 1) markdown = projection.career ? careerMarkdown(projection.career, origin) : null;
   else if (first === "locations" && segments.length === 2 && slug) {
     const place = getPlaceDetail(projection, slug);
     markdown = place ? placeMarkdown(place, origin) : null;
@@ -46,7 +47,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       "Cache-Control": "public, max-age=0, s-maxage=3600, stale-while-revalidate=86400",
       // a twin is for readers that ask for it, not a second page for search engines: the HTML page is the canonical one
       "X-Robots-Tag": "noindex",
-      Link: `<${origin}${pagePath}>; rel="canonical"`,
+      Link: `<${origin}${pagePath === "/index" ? "/" : pagePath}>; rel="canonical"`,
     },
   });
 }

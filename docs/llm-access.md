@@ -19,9 +19,10 @@ To change a bot, change its `purpose` (or add a row) and nothing else. Ordinary 
 ## Reading: `/llms.txt` and the Markdown twins
 
 - `/llms.txt` ([llmstxt.org](https://llmstxt.org)): what the site is, then a link to the Markdown twin of every entry (with its one-line summary), the lists and the career page; the places are under "Optional".
-- `<address>.md` is the plain Markdown of a page: `/locations/<slug>.md`, `/<section>/<slug>.md` (articles, software, artworks, poetry, photography), `/<section>.md`, `/career.md`. One loader (`routes/markdown.ts`, registered under each address in `routes.ts`), pure formatting in `lib/llm-text.ts`. An unknown address is a 404.
+- `<address>.md` is the plain Markdown of a page: `/locations/<slug>.md`, `/<section>/<slug>.md` (articles, software, artworks, poetry, photography), `/<section>.md`, `/career.md`, and `/index.md` for the home page (the text of `/llms.txt`). One loader (`routes/markdown.ts`, registered under each address in `routes.ts`), pure formatting in `lib/llm-text.ts`. An unknown address is a 404.
 - A twin has the page's metadata, its text, the cover image when the entry has one (unless it is `sensitive`) and links to its related, previous and next entries (their twins). It is sent `X-Robots-Tag: noindex` and `Link: <page>; rel="canonical"`, so search engines keep the HTML page as the one that is indexed; assistants that fetch it for a person still read it.
-- Every such page carries `<link rel="alternate" type="text/markdown" href="...md">` (`pageMeta`'s `markdown` flag), so an agent that got the HTML finds the twin.
+- Every such page, the home page included, carries `<link rel="alternate" type="text/markdown" href="...md">` (`pageMeta`'s `markdown` flag), so an agent that got the HTML finds the twin. Every document response also has `Link: </llms.txt>; rel="describedby"` (`applyDocumentHeaders`), for agents that read the headers and not the markup.
+- **`Accept: text/markdown`** on a page address is rewritten to its twin (`rewrites` in `apps/web/vercel.json`, header condition on `Accept`), with `Vary: Accept`. The HTML is `private, no-cache`, so no shared cache holds two versions of one address; the twin is cached at its own `.md` address. Not available on the dev server (a Vercel rewrite): use the `.md` address there.
 
 The twins say what the HTML page says (same fields, same copyright notice) and nothing more.
 
@@ -33,5 +34,5 @@ The twins say what the HTML page says (same fields, same copyright notice) and n
 
 ### Not done
 
-- `Accept: text/markdown` on the HTML address (content negotiation): it needs `Vary: Accept` on every page, which fragments the CDN cache. The `.md` address and the `alternate` link cover agents that read the HTML first.
+- A visible link to `/llms.txt` in the page body: the site has no footer, and text hidden from people but left for bots would be cloaking. Where it should live is a design decision.
 - Rate limiting of unidentified scrapers: a Vercel WAF rule (see `docs/api-cost-and-abuse.md`), set in the dashboard, not in this repo.

@@ -61,6 +61,12 @@ export function canonicalUrl(path: string | undefined, origin: string | undefine
   return absoluteUrl(path.split(/[?#]/)[0] || "/", origin);
 }
 
+/** The address of a page's Markdown twin: `<page>.md`, and `/index.md` for the home page (`/.md` would be no file name). */
+const markdownHref = (canonical: string) => {
+  const page = canonical.replace(/\/+$/, "");
+  return /^https?:\/\/[^/]+$/.test(page) ? `${page}/index.md` : `${page}.md`;
+};
+
 /**
  * Every head tag of a page: title, description, canonical, Open Graph, Twitter card and, when given, the robots hint and JSON-LD. Every
  * page has a share image: the entry's cover when it is a format scrapers read, else the default one (1200x630 PNG).
@@ -78,7 +84,7 @@ export function pageMeta({ title, description = SITE_DESCRIPTION, type = "websit
     { name: "description", content: description },
     ...(noindex ? [{ name: "robots", content: "noindex" }] : noImageIndex ? [{ name: "robots", content: "noimageindex" }] : []),
     ...(canonical ? [{ tagName: "link" as const, rel: "canonical", href: canonical }] : []),
-    ...(canonical && markdown ? [{ tagName: "link" as const, rel: "alternate", type: "text/markdown", href: `${canonical.replace(/\/+$/, "")}.md` }] : []),
+    ...(canonical && markdown ? [{ tagName: "link" as const, rel: "alternate", type: "text/markdown", href: markdownHref(canonical) }] : []),
     { property: "og:site_name", content: SITE_NAME },
     { property: "og:type", content: type },
     { property: "og:title", content: fullTitle },
