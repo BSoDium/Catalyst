@@ -421,7 +421,7 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
         </p>
       )}
 
-      <MarkdownLink path={entry.href} className="mt-4" />
+      <MarkdownLink path={entry.href} className="mt-6" />
 
       {hasMore && (
         <div className="mt-16 print:hidden md:mt-20">

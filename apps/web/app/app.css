@@ -3048,6 +3048,79 @@
     position: relative;
   }
 
+  /*
+   * "Read as Markdown" (components/markdown-link.tsx): the page's plain-text twin. At the foot of an entry, a list or a place it is one line
+   * in the form of the career page's "Updated" (owner-approved): a hairline runs from the left edge and stops at a right-aligned label, so it
+   * reads as the page's colophon and not as a stray underlined line. The label is a small tile (a page's icon and ".md": the file it opens),
+   * the meta capitals' tile of the tags and skills (solid `--accent`, square, no outline), then the words in muted mono capitals. Under the
+   * pointer the tile goes one step deeper (the link card's step) and the words take the accent's text tone, as a muted tag's do; nothing moves.
+   */
+  .markdown-link[data-placement="foot"] {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0;
+    color: var(--muted-foreground);
+  }
+
+  .markdown-link[data-placement="foot"]::before {
+    content: "";
+    flex: 1;
+    border-top: var(--hairline) solid var(--border);
+  }
+
+  .markdown-link-anchor {
+    position: relative;
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: 0.625rem;
+    color: var(--muted-foreground);
+    white-space: nowrap;
+    text-decoration: none;
+    transition: color var(--duration-fast) var(--ease-standard);
+  }
+
+  .markdown-link-file {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3em;
+    padding: 0.1875rem 0.375rem;
+    background: var(--accent);
+    font-family: var(--font-meta);
+    font-size: 0.75rem;
+    line-height: 1;
+    letter-spacing: 0.02em;
+    font-feature-settings: "calt" 0;
+    /* (a file's extension is lower case, even in a line of capitals: the career page's "Updated" line) */
+    text-transform: none;
+    transition: background-color var(--duration-fast) var(--ease-standard);
+  }
+
+  .markdown-link-anchor:hover {
+    color: var(--signal-text);
+  }
+
+  .markdown-link-anchor:hover .markdown-link-file {
+    background: color-mix(in srgb, var(--foreground) 12%, var(--background));
+  }
+
+  /* The tile is a fill, which forced colours drop: it gets an outline instead. */
+  @media (forced-colors: active) {
+    .markdown-link-file {
+      outline: 1px solid CanvasText;
+    }
+  }
+
+  /* A 44 px target below `md`, as `.entry-link`: the hit area grows, the text does not. */
+  @media (max-width: 767.98px) {
+    .markdown-link-anchor::before {
+      content: "";
+      position: absolute;
+      inset: -0.8125rem -0.5rem;
+    }
+  }
+
   @media (max-width: 767.98px) {
     .entry-link::before {
       content: "";
@@ -3770,6 +3843,33 @@
     content: "";
     flex: 1;
     border-top: var(--hairline) solid var(--border);
+  }
+
+  /* The Markdown link (components/markdown-link.tsx) ends the line, after the date: the rule stops at the date, the tile sets the two
+     apart. On a phone the two do not fit beside a useful length of rule: the link is a second line of its own, at the right under the date,
+     and the line no longer centres on the rule, so the languages get the strip's whole gap back. (Forced at a width, not left to wrap:
+     a wrap that depends on the font's metrics would move the languages by a line from one device to the next.) */
+  .career-updated {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    row-gap: 0.75rem;
+  }
+
+  .career-updated [data-slot="markdown-link"] {
+    display: inline-flex;
+    margin-left: 0.75rem;
+  }
+
+  @media (max-width: 39.99rem) {
+    .career-updated {
+      margin-bottom: 0.875rem;
+    }
+
+    .career-updated [data-slot="markdown-link"] {
+      flex-basis: 100%;
+      justify-content: flex-end;
+      margin-left: 0;
+    }
   }
 
   @media screen and (max-width: 55.99rem) {
@@ -7644,10 +7744,10 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     border-bottom: var(--hairline) solid var(--border);
   }
 
-  /* With no "Updated" label the strip draws its top rule itself. */
-  .career-strip:not([data-updated]) {
-    padding-top: 0.875rem;
-    border-top: var(--hairline) solid var(--border);
+  /* With no languages the strip is the "Updated" line alone: no empty band, no second rule under it. */
+  .career-strip:not(:has(.career-languages)) {
+    padding-bottom: 0;
+    border-bottom: 0;
   }
 
   .career-languages {

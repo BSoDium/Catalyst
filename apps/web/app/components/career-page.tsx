@@ -91,14 +91,16 @@ export function CareerPage({ career, places = [], projects = [] }: { career: Pub
         </div>
       </header>
 
-      {(career.languages.length > 0 || updated) && (
-        <div data-slot="career-strip" className="career-strip" data-updated={updated ? "true" : undefined}>
+      {/* (the strip's top rule is the "Updated" line, which always has the Markdown link at its end, with or without a date) */}
+      <div data-slot="career-strip" className="career-strip">
+        <p data-slot="career-updated" className="career-updated type-meta">
           {updated && (
-            <p data-slot="career-updated" className="career-updated type-meta">
+            <span>
               Updated <time dateTime={career.updated}>{updated}</time>
-            </p>
+            </span>
           )}
-          <MarkdownLink path={CAREER_PATH} className="career-updated" />
+          <MarkdownLink path={CAREER_PATH} placement="inline" />
+        </p>
         {career.languages.length > 0 && (
           <section data-slot="career-languages" aria-labelledby="career-languages-h" className="career-languages">
             <h2 id="career-languages-h" className="career-languages-label type-meta">
@@ -117,8 +119,7 @@ export function CareerPage({ career, places = [], projects = [] }: { career: Pub
             </ul>
           </section>
         )}
-        </div>
-      )}
+      </div>
 
       <Block id="experience" title="Experience" count={career.roles.length}>
         <ol className="career-timeline" aria-labelledby="experience-h">

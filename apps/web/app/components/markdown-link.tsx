@@ -1,15 +1,30 @@
+import { Icon } from "~/components/ui/icon";
 import { markdownPath } from "~/lib/markdown-path";
+
+/**
+ * Where the link stands, which sets its rule: `foot` (an entry, a section list, a place's panel) is its own line, a hairline from the
+ * left edge that stops at the label, as the career page's "Updated" does; `inline` is a label only, laid into a row that already has
+ * its rule (the career page's "Updated" line).
+ */
+export type MarkdownLinkPlacement = "foot" | "inline";
 
 /**
  * The plain-text version of the page it is on (#758): a visible link, for a person who wants the text and for the agents and the tools that turn HTML into text
  * and keep what they can see. A real document navigation to the resource route (`routes/markdown.ts`), not a client-side one; hidden when printed.
+ * The label is a small tile (a page's icon and ".md", the file it opens) and the words "Read as Markdown" in the meta capitals (app.css,
+ * `.markdown-link`). The tile is decoration (`aria-hidden`): the words are the link's whole name, as they are its text.
  */
-export function MarkdownLink({ path, className }: { path: string; className?: string }) {
+export function MarkdownLink({ path, placement = "foot", className }: { path: string; placement?: MarkdownLinkPlacement; className?: string }) {
+  const Tag = placement === "inline" ? "span" : "p";
   return (
-    <p data-slot="markdown-link" className={`type-meta text-muted-foreground print:hidden ${className ?? ""}`.trim()}>
-      <a href={markdownPath(path)} rel="alternate" type="text/markdown" className="underline underline-offset-4 hover:text-foreground hover:no-underline">
-        Read as Markdown
+    <Tag data-slot="markdown-link" data-placement={placement} className={`markdown-link print:hidden ${className ?? ""}`.trim()}>
+      <a href={markdownPath(path)} rel="alternate" type="text/markdown" className="markdown-link-anchor">
+        <span aria-hidden="true" className="markdown-link-file">
+          <Icon name="article" size="inline" />
+          .md
+        </span>
+        <span className="type-meta">Read as Markdown</span>
       </a>
-    </p>
+    </Tag>
   );
 }
