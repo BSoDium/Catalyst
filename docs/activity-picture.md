@@ -35,6 +35,17 @@ Measured so far (dev build, Apple M4): an update of the neon costs about 0.05 ms
 
 The year heading keeps its big numeral where it started. When it sticks under the bar (`data-stuck`, set by `EntryListPage` from the scroll, since a sticky element cannot be asked) it shrinks, in 0.4 s, a little (to 0.82) to a square-cornered blurred plate with a hairline ring that floats above the rows (`.ds-year-sticky` in `app.css`, below 48 rem). Unstuck it has the room under it that it has on a desktop (a heading, with the first row clear of it). It shrinks with a transform, not a size: a smaller box would pull the rows up and un-stick it.
 
+## Attribution link
+
+The picture carries the library's small "Powered by Neon" link, the library's own `NeonAttribution` (`neon-activity-graph/react`, 0.3.1 or later), placed by the page's layout in `components/activity-panel.tsx` (the library's `attribution` option, which puts the same link inside the canvas, is not used: the page wants it outside it). It links to the library's page, <https://neon.bsodium.fr/>, and is styled by the library through `--nag-attribution-*` variables (none set here: faded text colour, brightening and underlined on hover). Where it is, by width (owner, 2026-11-25):
+
+- **Phone (under 48 rem)**: at the right end of the "Last 12 months" row of the legend, on the label's line.
+- **48 to 56 rem (a tablet)**: the same row's link, moved 2.15 rem down so that it is level with the first line of the legend's headline, under the picture's glow.
+- **56 to 80 rem**: under the picture's bottom right corner, 6 px up over the canvas's bottom edge (it hung fully below at first; a little higher is better).
+- **80 rem and up**: in the canvas's own bottom right corner (12 px up from its edge, in the gap the blocks leave there), in line with the page's right margin.
+
+The two links in the markup are one at a time: `hidden` and `min-[56rem]:hidden` decide which is shown (the library sets no display on the link itself, so the page's classes always apply).
+
 ## Camera grain
 
 A fine, fixed noise over the whole picture, in both themes, added in the last (show) pass after the lighting (`grain` option of the library, default 0.012, the strength settled on by eye on a real screen: 0.004 was barely there, 0.018 started to show as grain; 0 turns it off. To tweak it, change the constant and look at it on a real screen: the browser pane's downscaling misleads). It is meant to read as a camera's, not as rendering noise: soft (the sum of three uniform numbers), the same for every colour, growing with the light (the square root of the brightness, as a sensor's does), eased off in the highlights so that a bright surface does not burn, none in the near-blacks (in 8 bits a tiny noise there only flips pixels between two levels, a speckle), brightness only: it scales the colour by a few per cent (hue kept), never adds a dark speck, and has no colour noise. Static (the picture is drawn once, not every frame).
