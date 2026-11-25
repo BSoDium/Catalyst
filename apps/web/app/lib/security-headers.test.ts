@@ -8,7 +8,6 @@ import {
   applyDataHeaders,
   isCacheableData,
   applyDocumentHeaders,
-  LLMS_LINK,
   buildCsp,
   createNonce,
   originOf,
@@ -91,13 +90,6 @@ describe("applyDocumentHeaders", () => {
     expect(h.get("cache-control")).toBe(HTML_CACHE_CONTROL);
     expect(HTML_CACHE_CONTROL).toBe("private, no-cache");
     expect(h.get("x-robots-tag")).toBeNull();
-  });
-  it("points at /llms.txt in every mode, the dev server included", () => {
-    for (const dev of [false, true]) {
-      const h = new Headers();
-      applyDocumentHeaders(h, { ...base, dev });
-      expect(h.get("link")).toBe(LLMS_LINK);
-    }
   });
   it("adds X-Robots-Tag noindex off the production host", () => {
     const h = new Headers();

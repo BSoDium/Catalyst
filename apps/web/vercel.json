@@ -87,6 +87,10 @@
         {
           "key": "Vary",
           "value": "Accept"
+        },
+        {
+          "key": "Link",
+          "value": "</llms.txt>; rel=\"describedby\"; type=\"text/plain\""
         }
       ]
     }
@@ -105,7 +109,7 @@
       "statusCode": 307
     },
     {
-      "source": "/:path((?!assets/|data/|fonts/|media/)[^.]+)",
+      "source": "/:path((?!assets/|data/|fonts/|media/|__manifest)[^.]*[^./])",
       "has": [
         {
           "type": "header",
