@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "dataVersion": {
-    "commit": "18396afd9aacd41d225b57654716c512de81a4d1",
-    "date": "2026-11-24"
+    "commit": "36347967c2158094bbaffcb00a759bdef844841f",
+    "date": "2026-11-25"
   },
   "places": [
     {
@@ -912,17 +912,11 @@
       "slug": "faculty-of-geodesy-and-cartography",
       "name": "Faculty of Geodesy and Cartography",
       "coordinates": {
-        "lat": 52.2208,
-        "lon": 21.0102
+        "lat": 52.22,
+        "lon": 21.01
       },
       "labelPriority": 39,
-      "bbox": [
-        21.00897,
-        52.22012,
-        21.01109,
-        52.22138
-      ],
-      "viewRadiusKm": 0.5,
+      "viewRadiusKm": 2,
       "group": "poland",
       "countryCode": "PL",
       "body": [],
@@ -3718,12 +3712,12 @@
           "slug": "flare"
         },
         {
-          "kind": "photograph",
-          "slug": "palm-and-flags"
-        },
-        {
           "kind": "project",
           "slug": "neon-activity-graph"
+        },
+        {
+          "kind": "photograph",
+          "slug": "palm-and-flags"
         }
       ]
     },
@@ -3731,17 +3725,11 @@
       "slug": "warsaw-university-of-technology",
       "name": "Warsaw University of Technology",
       "coordinates": {
-        "lat": 52.221,
-        "lon": 21.011
+        "lat": 52.22,
+        "lon": 21.01
       },
       "labelPriority": 30,
-      "bbox": [
-        21.00427,
-        52.21692,
-        21.01415,
-        52.22345
-      ],
-      "viewRadiusKm": 0.5,
+      "viewRadiusKm": 2,
       "group": "poland",
       "countryCode": "PL",
       "body": [],
@@ -10177,7 +10165,7 @@
       "slug": "flare",
       "title": "Flare",
       "summary": "A man in a dark beanie raises a burning red flare, lit against black, silhouettes and a phone in the foreground.",
-      "date": "2026-11-11",
+      "date": "2026-11",
       "cover": {
         "src": "/media/photograph/flare/photo.4a275477.webp",
         "alt": "A man in a dark beanie holds up a burning red flare that lights his face and trails smoke, in an almost black scene; silhouetted heads and a phone screen in the foreground",
@@ -10545,7 +10533,7 @@
       "slug": "palm-and-flags",
       "title": "Palm and flags",
       "summary": "A white-and-red flag on a long pole waves beside a palm tree against a deep blue dusk, above a crowd of flags.",
-      "date": "2026-11-11",
+      "date": "2026-11",
       "cover": {
         "src": "/media/photograph/palm-and-flags/photo.a0de4acc.webp",
         "alt": "A white-and-red flag on a tall pole waves to the left of a palm tree against a deep blue dusk sky; below, the heads of a crowd and many white-and-red flags, with a red glow at the right edge",
@@ -10601,7 +10589,7 @@
       "slug": "pointing-at-the-hills",
       "title": "Pointing at the hills",
       "summary": "On the hills above Sinaia, at about 2,000 m: a person in a bright blue Saharawi turban stands in tall grass and points across the slopes.",
-      "date": "2026-09-02",
+      "date": "2026-09",
       "cover": {
         "src": "/media/photograph/pointing-at-the-hills/photo.7e4ce076.webp",
         "alt": "A person in a bright blue Saharawi turban, a beige jacket and white trousers stands in tall grass pointing across the hills, a pale arch of light behind them",
