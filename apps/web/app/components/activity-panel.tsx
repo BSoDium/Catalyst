@@ -359,6 +359,12 @@ function Figures({ lead, stats, ready = true, className }: { lead: { value: stri
  * The software page's picture of the year: GitHub contributions and WakaTime coding time, a block a day (`ActivityScene`, a still isometric scene built up over a few dozen frames). Client-only: the file is fetched when the page
  * opens, the scene (three.js) loads only when the panel scrolls into view, and the room is held (an aspect ratio) so nothing moves when it arrives. Without WebGL the same numbers are two flat grids.
  */
+/**
+ * The credit link's looks, as the page's own classes (not the library's injected `<style>`, which the page's Content-Security-Policy (`style-src 'self'`) refuses: unstyled, its arrow drew 130 px wide on the live page): the box and the gap
+ * of its inner element, the bold name, the 1.1 em arrow, the faded text colour that brightens, and the underline on hover and focus. The library sets nothing of the link's own box, so these and the placing classes below are all there is.
+ */
+const CREDIT = "rounded-[4px] text-[11px] leading-none font-medium tracking-[0.04em] no-underline text-muted-foreground transition-colors hover:text-foreground focus-visible:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current [&_.nag-in]:inline-flex [&_.nag-in]:items-center [&_.nag-in]:gap-[0.25em] [&_.nag-in]:px-[3px] [&_.nag-in]:py-1 [&_b]:font-bold [&_svg]:size-[1.1em] [&_svg]:flex-none hover:[&_.nag-w]:underline hover:[&_.nag-w]:underline-offset-[3px] focus-visible:[&_.nag-w]:underline focus-visible:[&_.nag-w]:underline-offset-[3px]";
+
 export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: { value: string; label: string }[] }) {
   const { activity, failed } = useActivity(url);
   const [ready, setReady] = useState(false);
@@ -581,7 +587,7 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
       )}
       {/* The corners are only empty when the scene is big enough (from 80 rem of page): below that the figures and the legend sit under the picture, so the text never lies over the blocks. From there the page's own figures (software, places) join the year's
           in ONE grid at the top right, from the head's top down into the empty corner of the picture. */}
-      <NeonAttribution className="absolute right-14 bottom-0 z-10 hidden translate-y-[calc(100%-0.375rem)] min-[56rem]:inline-flex min-[80rem]:bottom-3 min-[80rem]:translate-y-0" />
+      <NeonAttribution className={`${CREDIT} absolute right-14 bottom-0 z-10 hidden translate-y-[calc(100%-0.375rem)] min-[56rem]:inline-flex min-[80rem]:bottom-3 min-[80rem]:translate-y-0`} />
       <Figures lead={lead} stats={stats} ready={!!activity} className="max-md:relative max-md:z-10 max-md:order-first max-md:pb-2 md:pointer-events-none md:absolute md:right-14 md:max-[56rem]:left-14 md:top-[calc(-1*clamp(2.5rem,6.4cqi,5.75rem)-0.25rem)]" />
       <div data-slot="activity-legend" className="relative flex flex-col gap-3 px-4 pt-3 md:pt-6 md:px-14 md:max-[56rem]:-mt-[6.5cqi] min-[56rem]:absolute min-[56rem]:bottom-[1%] min-[80rem]:bottom-[10.7%] min-[56rem]:left-14 min-[56rem]:w-[clamp(20rem,34cqi,25rem)] min-[56rem]:p-0">
         {/* On a phone the legend is where the day is read (no card over the picture): the two layers share one cell, the day's over the legend while a day is held. */}
@@ -590,7 +596,7 @@ export function ActivityPanel({ url, lead = [] }: { url: string | null; lead?: {
           <div className="flex items-baseline justify-between gap-4">
             <p className="type-meta m-0 text-muted-foreground uppercase">Last <span className="text-foreground">12 months</span></p>
             {/* (the credit link, the library's own: under 56 rem it ends the "Last 12 months" row; from 56 rem it hangs under the picture's bottom right corner, below) */}
-            <NeonAttribution className="-my-1 -mr-[3px] md:max-[56rem]:translate-y-[2.15rem] min-[56rem]:hidden" />
+            <NeonAttribution className={`${CREDIT} -my-1 -mr-[3px] md:max-[56rem]:translate-y-[2.15rem] min-[56rem]:hidden`} />
           </div>
           {/* In the picture's order: the contributions are the upper block of a day, the coding the lower one. */}
           <p ref={legend} className="m-0 font-[family-name:var(--font-display)] text-[1.625rem] min-[56rem]:text-[clamp(1.25rem,2.3cqi,1.625rem)] leading-[1.1] font-semibold tracking-tight text-balance">
