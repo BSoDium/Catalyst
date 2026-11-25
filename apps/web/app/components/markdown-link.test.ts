@@ -21,5 +21,7 @@ describe("MarkdownLink", () => {
     expect(html).toMatch(/^<p data-slot="markdown-link" data-placement="foot" class="markdown-link print:hidden"/);
     const inline = renderToStaticMarkup(createElement(MarkdownLink, { path: "/career", placement: "inline" }));
     expect(inline).toMatch(/^<span data-slot="markdown-link" data-placement="inline" class="markdown-link print:hidden"/);
+    const tools = renderToStaticMarkup(createElement(MarkdownLink, { path: "/articles", placement: "tools" }));
+    expect(tools).toMatch(/^<p data-slot="markdown-link" data-placement="tools" class="markdown-link print:hidden"/);
   });
 });

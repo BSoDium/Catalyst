@@ -2,11 +2,12 @@ import { Icon } from "~/components/ui/icon";
 import { markdownPath } from "~/lib/markdown-path";
 
 /**
- * Where the link stands, which sets its rule: `foot` (an entry, a section list, a place's panel) is its own line, a hairline from the
- * left edge that stops at the label, as the career page's "Updated" does; `inline` is a label only, laid into a row that already has
- * its rule (the career page's "Updated" line).
+ * Where the link stands, which sets its rule: `foot` (an entry, a place's panel) is its own line, a hairline from the left edge that
+ * stops at the label, as the career page's "Updated" does; `inline` is a label only, laid into a row that already has its rule (the
+ * career page's "Updated" line); `tools` is a label only, at the right of a section list's tools under its head (beside the tag filter):
+ * there a rule would be one more of the rows' own hairlines and read as an empty row, not as an action of the page.
  */
-export type MarkdownLinkPlacement = "foot" | "inline";
+export type MarkdownLinkPlacement = "foot" | "inline" | "tools";
 
 /**
  * The plain-text version of the page it is on (#758): a visible link, for a person who wants the text and for the agents and the tools that turn HTML into text
