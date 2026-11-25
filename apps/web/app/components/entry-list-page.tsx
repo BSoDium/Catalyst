@@ -104,11 +104,7 @@ export function EntryListPage({ kind, items, activityUrl = null }: { kind: Conte
 
       {kind === "project" && <ActivityPanel url={activityUrl} lead={heads} />}
 
-      {/* The page's tools under its head: the tag filter (when there is something to filter) and, at the right, the list's Markdown twin, a page-level action and not a row of the list */}
-      <div data-slot="list-tools" className="list-tools">
-        {tags.length > 0 && items.length > 1 && <TagFilter tags={tags} selected={tag} search={search} label={`Filter ${section} by tag`} />}
-        <MarkdownLink path={KIND_PATHS[kind]} placement="tools" />
-      </div>
+      {tags.length > 0 && items.length > 1 && <TagFilter tags={tags} selected={tag} search={search} label={`Filter ${section} by tag`} />}
       <p role="status" className="sr-only">
         {tag ? `Showing ${shown.length} of ${total} tagged ${tag}` : ""}
       </p>
@@ -155,6 +151,7 @@ export function EntryListPage({ kind, items, activityUrl = null }: { kind: Conte
           })
         )}
       </div>
+      <MarkdownLink path={KIND_PATHS[kind]} placement="end" />
     </main>
   );
 }

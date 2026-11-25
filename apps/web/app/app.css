@@ -3069,6 +3069,21 @@
     border-top: var(--hairline) solid var(--border);
   }
 
+  /* At the end of a section list (owner, 2026-11-26): the label alone at the right edge of the rows, with a row's worth of air above it.
+     The rows are cut by hairlines (each row's top), so a rule here read as the top of one more, empty, row; with no rule and that air the
+     label is outside the list, the page's closing line. */
+  .markdown-link[data-placement="end"] {
+    display: flex;
+    justify-content: flex-end;
+    margin: 4rem 0 0;
+  }
+
+  @media (max-width: 767.98px) {
+    .markdown-link[data-placement="end"] {
+      margin-top: 3rem;
+    }
+  }
+
   .markdown-link-anchor {
     position: relative;
     display: inline-flex;
@@ -4009,7 +4024,7 @@
   }
 
   /* The tag filter: plain space under the title, a little more than the title's descender (the rows' own hairline closes the head below). It stands over whatever overlaps it from above (the software page's picture reaches down into its room). */
-  .list-tools {
+  .list-filter {
     position: relative;
     z-index: 1;
     margin-top: 1.5rem;
@@ -4017,59 +4032,8 @@
 
   /* on a phone the filter sits close under the figures (owner, 2026-11-03: "remove some of the space") */
   @media screen and (max-width: 55.99rem) {
-    [data-slot="list-head"] + .list-tools {
+    [data-slot="list-head"] + .list-filter {
       margin-top: 1rem;
-    }
-  }
-
-  /*
-   * The page's tools (components/entry-list-page.tsx): the tag filter and the list's "Read as Markdown" (components/markdown-link.tsx).
-   * The link is an action of the page, so it stands with the filter under the head, at the right, as the figures above it do, and has
-   * no rule: at the list's foot its hairline was one more of the rows' and read as an empty row (owner, 2026-11-25). From md it is level
-   * with the filter's first line (the tag search, else the chips), which takes the width to its left; on a phone, where the chips are one
-   * row that scrolls to both screen edges, it is a short line of its own at the right, over the filter. With no filter (one entry, no
-   * tags) it is that short line alone.
-   */
-  .list-tools {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    row-gap: 0.75rem;
-  }
-
-  .list-tools > .list-filter {
-    grid-row: 2;
-    grid-column: 1 / -1;
-  }
-
-  .list-tools > .markdown-link {
-    grid-row: 1;
-    grid-column: 2;
-    align-self: start;
-    display: flex;
-    align-items: center;
-    min-height: 2rem;
-    margin: 0;
-  }
-
-  @media (min-width: 768px) {
-    .list-tools {
-      column-gap: 2.5rem;
-    }
-
-    .list-tools > .list-filter {
-      grid-row: 1;
-      grid-column: 1;
-    }
-
-    /* With the tag search (many tags) the filter keeps the whole width: the search is a short field (24 rem at most), so the link sits at
-       the right of ITS line, over room the filter does not use, and the chips under it wrap as they always have. */
-    .list-tools:has(> .list-filter .tag-search) > .list-filter {
-      grid-column: 1 / -1;
-    }
-
-    .list-tools > .markdown-link {
-      position: relative;
-      z-index: 1;
     }
   }
 
