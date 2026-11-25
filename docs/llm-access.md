@@ -20,6 +20,7 @@ To change a bot, change its `purpose` (or add a row) and nothing else. Ordinary 
 
 - `/llms.txt` ([llmstxt.org](https://llmstxt.org)): what the site is, then a link to the Markdown twin of every entry (with its one-line summary), the lists and the career page; the places are under "Optional".
 - `<address>.md` is the plain Markdown of a page: `/locations/<slug>.md`, `/<section>/<slug>.md` (articles, software, artworks, poetry, photography), `/<section>.md`, `/career.md`. One loader (`routes/markdown.ts`, registered under each address in `routes.ts`), pure formatting in `lib/llm-text.ts`. An unknown address is a 404.
+- A twin has the page's metadata, its text, the cover image when the entry has one (unless it is `sensitive`) and links to its related, previous and next entries (their twins). It is sent `X-Robots-Tag: noindex` and `Link: <page>; rel="canonical"`, so search engines keep the HTML page as the one that is indexed; assistants that fetch it for a person still read it.
 - Every such page carries `<link rel="alternate" type="text/markdown" href="...md">` (`pageMeta`'s `markdown` flag), so an agent that got the HTML finds the twin.
 
 The twins say what the HTML page says (same fields, same copyright notice) and nothing more.

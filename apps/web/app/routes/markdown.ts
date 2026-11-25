@@ -12,7 +12,7 @@ import { getSiteUrl } from "~/lib/site.server";
 /**
  * The Markdown twin of a page, for language models and agents (#750): `/locations/<slug>.md`, `/<section>/<slug>.md` for an entry,
  * `/<section>.md` for a list and `/career.md`. One resource route module registered under each address (`routes.ts`). The same content
- * as the HTML page and nothing more (`lib/llm-text.ts`); an unknown address is a plain 404.
+ * as the HTML page and nothing more (`lib/llm-text.ts`); an unknown address is a plain 404. Marked `noindex` with the HTML page as canonical.
  */
 const KIND_OF_SECTION = new Map<string, ContentKind>(Object.entries(SECTIONS).map(([kind, section]) => [section.slug, kind as ContentKind]));
 
@@ -21,7 +21,8 @@ const notFound = () => data({ message: "No such page" }, { status: 404 });
 export async function loader({ request }: Route.LoaderArgs) {
   const projection = await getProjection();
   const origin = getSiteUrl();
-  const segments = new URL(request.url).pathname.replace(/\.md$/, "").split("/").filter(Boolean);
+  const pagePath = new URL(request.url).pathname.replace(/\.md$/, "");
+  const segments = pagePath.split("/").filter(Boolean);
   const [first, slug] = segments;
 
   let markdown: string | null = null;
@@ -43,6 +44,9 @@ export async function loader({ request }: Route.LoaderArgs) {
       ...STATIC_SECURITY_HEADERS,
       "Content-Type": "text/markdown; charset=utf-8",
       "Cache-Control": "public, max-age=0, s-maxage=3600, stale-while-revalidate=86400",
+      // a twin is for readers that ask for it, not a second page for search engines: the HTML page is the canonical one
+      "X-Robots-Tag": "noindex",
+      Link: `<${origin}${pagePath}>; rel="canonical"`,
     },
   });
 }
