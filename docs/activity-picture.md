@@ -44,6 +44,8 @@ The picture carries the library's small "Powered by Neon" link, the library's ow
 - **56 to 80 rem**: under the picture's bottom right corner, 6 px up over the canvas's bottom edge (it hung fully below at first; a little higher is better).
 - **80 rem and up**: in the canvas's own bottom right corner (12 px up from its edge, in the gap the blocks leave there), in line with the page's right margin.
 
+**Looks come from the page, not the library**: the page's Content-Security-Policy (`style-src 'self'`) refuses the `<style>` the library injects, and unstyled the link's arrow drew 130 px wide on the live page (the dev server has no such CSP, so it was not seen there). The link is styled by the `CREDIT` classes in `activity-panel.tsx` (arbitrary variants on the link's own parts: `.nag-in`, `b`, `svg`, `.nag-w`). Check a change to it on a production build (`pnpm --filter @catalyst/web build` with `CATALYST_ACTIVITY_URL=https://raw.githubusercontent.com/BSoDium/Catalyst/data/activity.json`, then `start`), not only in dev.
+
 The two links in the markup are one at a time: `hidden` and `min-[56rem]:hidden` decide which is shown (the library sets no display on the link itself, so the page's classes always apply).
 
 ## Camera grain
