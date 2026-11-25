@@ -5,7 +5,7 @@ import { metaBase, pageMeta } from "~/lib/meta";
 
 export function meta(args: Route.MetaArgs) {
   const base = metaBase(args);
-  return pageMeta({ ...base, jsonLd: base.origin ? websiteJsonLd(base.origin) : undefined });
+  return pageMeta({ ...base, markdown: true, jsonLd: base.origin ? websiteJsonLd(base.origin) : undefined });
 }
 
 /**

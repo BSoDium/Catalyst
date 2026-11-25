@@ -32,6 +32,9 @@ describe("pageMeta", () => {
     // no origin, no canonical, so no alternate either
     expect(pageMeta({ path: "/articles/a", markdown: true }).some((t) => "rel" in t)).toBe(false);
   });
+  it("gives the home page /index.md as its twin", () => {
+    expect(pageMeta({ origin: ORIGIN, path: "/", markdown: true })).toContainEqual({ tagName: "link", rel: "alternate", type: "text/markdown", href: `${ORIGIN}/index.md` });
+  });
   it("has no canonical without an origin or a path (a relative one is worse than none)", () => {
     expect(pageMeta({ path: "/x" }).some((t) => "rel" in t)).toBe(false);
     expect(pageMeta({ origin: ORIGIN }).some((t) => "rel" in t)).toBe(false);

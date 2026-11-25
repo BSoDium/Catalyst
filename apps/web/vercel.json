@@ -80,6 +80,45 @@
           "value": "public, max-age=86400, stale-while-revalidate=604800"
         }
       ]
+    },
+    {
+      "source": "/((?!assets/|data/|fonts/|media/).*)",
+      "headers": [
+        {
+          "key": "Vary",
+          "value": "Accept"
+        },
+        {
+          "key": "Link",
+          "value": "</llms.txt>; rel=\"describedby\"; type=\"text/plain\""
+        }
+      ]
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "header",
+          "key": "accept",
+          "value": ".*text/markdown.*"
+        }
+      ],
+      "destination": "/index.md",
+      "statusCode": 307
+    },
+    {
+      "source": "/:path((?!assets/|data/|fonts/|media/|__manifest)[^.]*[^./])",
+      "has": [
+        {
+          "type": "header",
+          "key": "accept",
+          "value": ".*text/markdown.*"
+        }
+      ],
+      "destination": "/:path.md",
+      "statusCode": 307
     }
   ]
 }
