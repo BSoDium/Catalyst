@@ -3146,7 +3146,7 @@
     transition: color var(--duration-fast) var(--ease-standard);
   }
 
-  /* (the links for AI agents lead with a small icon, in the words' colour so it turns with them under the pointer: the icon's left edge is the label's) */
+  /* (the links for agents lead with a small icon, in the words' colour so it turns with them under the pointer: the icon's left edge is the label's) */
   .site-footer-agents .site-footer-link {
     gap: 0.5rem;
   }
@@ -3162,7 +3162,8 @@
     content: "MD";
     font-family: var(--font-meta);
     font-size: 0.8125rem;
-    font-weight: 700;
+    /* (its stems as thick as the index icon's strokes: 1.75 on a 24 grid drawn at 18 px, about 1.3 px) */
+    font-weight: 500;
     letter-spacing: 0;
   }
 
