@@ -13,7 +13,7 @@ describe("SiteFooter", () => {
 
   it("is one footer, with the page in Markdown and the site index for agents as real, visible links named by their words", () => {
     expect(html.match(/<footer[ >]/g)).toHaveLength(1);
-    expect(html).toMatch(/<a href="\/articles\.md" rel="alternate" type="text\/markdown" data-slot="markdown-link"[^>]*><span aria-hidden="true" class="site-footer-md"><\/span>Read this page as Markdown<\/a>/);
+    expect(html).toMatch(/<a href="\/articles\.md" rel="alternate" type="text\/markdown" data-slot="markdown-link"[^>]*><svg[^>]*aria-hidden="true".*?<\/svg>Read this page as Markdown<\/a>/);
     expect(html).toMatch(/<a href="\/llms\.txt" type="text\/plain"[^>]*><svg[^>]*aria-hidden="true".*?<\/svg>Site index \(llms\.txt\)<\/a>/);
     expect(html).toContain(">For agents</p>");
     expect(render({ path: "/locations/lisbon" })).toContain('href="/locations/lisbon.md"');

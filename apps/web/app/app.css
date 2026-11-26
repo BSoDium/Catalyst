@@ -3151,24 +3151,6 @@
     gap: 0.5rem;
   }
 
-  /* (one slot for both marks, so the two labels start on one line) */
-  .site-footer-agents .site-footer-link > :first-child {
-    flex: none;
-    width: 1.125rem;
-  }
-
-  /* The Markdown mark: the two letters in the mono face. Drawn by CSS, so they are no part of the page's text (an HTML-to-text tool reads the words alone). */
-  .site-footer-md::before {
-    content: "MD";
-    font-family: var(--font-meta);
-    font-size: 0.8125rem;
-    /* (its stems as thick as the index icon's strokes: 1.75 on a 24 grid drawn at 18 px, about 1.3 px) */
-    font-weight: 500;
-    letter-spacing: 0;
-    /* (no taller than the words' line: the two links stand level when side by side) */
-    line-height: 1;
-  }
-
   .site-footer-link[aria-current="page"] {
     color: var(--foreground);
   }

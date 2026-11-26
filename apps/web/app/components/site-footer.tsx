@@ -98,7 +98,7 @@ export function SiteFooter({ path, className, hasCareer: forcedCareer, lead }: S
             <p className="site-footer-label type-meta">For agents</p>
             <ul className="site-footer-list">
               <li>
-                <MarkdownLink path={path} className="site-footer-link" icon={<span aria-hidden="true" className="site-footer-md" />} />
+                <MarkdownLink path={path} className="site-footer-link" icon={<Icon name="markdown" size="inline" />} />
               </li>
               <li>
                 <a href={LLMS_TXT_PATH} type="text/plain" className="site-footer-link">
