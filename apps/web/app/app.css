@@ -3049,90 +3049,81 @@
   }
 
   /*
-   * The site footer (components/site-footer.tsx, docs/design-system.md "Site footer"): the end of every page with a Markdown twin. A colophon,
-   * not a second header: ONE hairline on top (the page's faint rule, the one between rows), then up to three columns by the footer's own
-   * width (a size container, so the half panel and a phone get the stacked form): who (the name in the display face, the line under it in
-   * the reading face, muted), the sections (plain words, muted, the accent's text tone under the pointer as the header's items), and the
-   * plain-text files (`.file-link`: the tile and the meta capitals). Under them one small mono line: the holder at the left, the first
-   * version of the site at the right. Its labels ("Sections", "Plain text") are the margin's small capitals. Nothing is filled but the tiles.
+   * The site footer (components/site-footer.tsx, docs/design-system.md "Site footer"): the end of every page with a Markdown twin, a band
+   * of its own. The band is one step off the page (`--accent`, the hover grey: on the lists' reading surface `--surface` IS the page, so
+   * it could not be the step) under a hairline, from edge to edge of the window (or of the panel); its content sits on the page's own
+   * column (the caller's width and side padding on `.site-footer-inner`). Up to three columns by that column's width (a size container:
+   * stacked under 40 rem): who (the name in the display face, the line in the reading face), the sections, the links for agents. The
+   * labels are the meta capitals (as the lists' figures' labels); the links are plain muted words, the current page in the ink, the
+   * accent's text tone under the pointer (as the header's items). Under them a quieter bar, one sentence, behind a fainter hairline.
+   *
+   * ONE spacing scale: 0.5 rem (label to its links), 2.5 rem / 3 rem (between the columns; above and below the band's content), 1.5 rem
+   * (the bar's own padding). The two lists have ONE row pitch (a 1.5 rem line, 0.375 rem apart), so their rows line up across the columns.
    */
   .site-footer {
-    container-type: inline-size;
-    padding-bottom: calc(2.5rem + var(--safe-bottom, 0px));
+    border-top: var(--hairline) solid var(--border);
+    background: var(--accent);
     color: var(--muted-foreground);
   }
 
-  /* (the rule is drawn inside the side padding, so it is as wide as the content above it, not the page) */
+  .site-footer-inner {
+    container-type: inline-size;
+    padding-top: 3rem;
+    padding-bottom: calc(1.5rem + var(--safe-bottom, 0px));
+  }
+
   .site-footer-grid {
     display: grid;
-    gap: 2rem;
-    padding-top: 2rem;
-    border-top: var(--hairline) solid var(--border);
-  }
-
-  /* The short form, in the side panel beside the globe and the phone's slide-over (components/detail-panel.tsx, `data-layout="panel"`): the
-     header and the globe are right there, so only the plain-text files are drawn. The full-screen entry has the whole footer. */
-  [data-panel][data-layout="panel"] .site-footer :is(.site-footer-who, .site-footer-nav, .site-footer-legal) {
-    display: none;
-  }
-
-  [data-panel][data-layout="panel"] .site-footer-grid {
-    padding-top: 1.5rem;
+    gap: 2.5rem;
   }
 
   @container (min-width: 40rem) {
-    .site-footer .site-footer-grid {
-      grid-template-columns: minmax(0, 1.25fr) minmax(0, 1.5fr) auto;
-      column-gap: clamp(2rem, 6cqi, 6rem);
+    .site-footer-grid {
+      grid-template-columns: minmax(0, 1fr) max-content max-content;
+      column-gap: clamp(3rem, 8cqi, 7rem);
     }
   }
 
-  .site-footer-who p,
-  .site-footer-group p {
+  /* (no specificity: the margins set below win without a fight) */
+  .site-footer :where(p) {
     margin: 0;
   }
 
+  /* (the name's first line stands where the labels' do: the same top, so the three columns start on one line) */
   .site-footer-name {
     font-family: var(--font-display);
     font-size: 1.125rem;
-    line-height: 1.3;
+    line-height: 1.25rem;
     font-weight: 700;
     letter-spacing: -0.01em;
     color: var(--foreground);
   }
 
   .site-footer-line {
-    margin-top: 0.25rem;
+    margin-top: 0.5rem;
+    max-width: 24rem;
     font-family: var(--font-reading);
     font-size: 1rem;
-    line-height: 1.45;
+    line-height: 1.5;
   }
 
   .site-footer-label {
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.5rem;
   }
 
-  .site-footer-sections,
-  .site-footer-files {
+  .site-footer-list {
+    display: grid;
+    gap: 0.375rem 2.5rem;
     margin: 0;
     padding: 0;
     list-style: none;
   }
 
-  /* The sections in two columns read down (seven words make a short block, not a long run: Globe to Artworks, then the rest); the files one under the other. */
-  .site-footer-sections {
-    display: grid;
+  /* The sections in two columns read down (seven words make a short block, not a long run: Globe to Artworks, then the rest). */
+  .site-footer-list[data-columns="2"] {
     grid-template-rows: repeat(4, auto);
     grid-auto-flow: column;
     grid-auto-columns: max-content;
-    gap: 0.375rem 2.5rem;
-  }
-
-  .site-footer-files {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.625rem;
   }
 
   .site-footer-link {
@@ -3140,13 +3131,12 @@
     align-items: center;
     gap: 0.25em;
     font-size: 0.9375rem;
-    line-height: 1.5;
+    line-height: 1.5rem;
     color: var(--muted-foreground);
     text-decoration: none;
     transition: color var(--duration-fast) var(--ease-standard);
   }
 
-  .site-footer-link:hover,
   .site-footer-link[aria-current="page"] {
     color: var(--foreground);
   }
@@ -3155,83 +3145,57 @@
     color: var(--signal-text);
   }
 
-  .site-footer-legal {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem 2rem;
-    margin-top: 2.5rem;
+  .site-footer-bar {
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: var(--hairline) solid var(--border);
+    font-size: 0.875rem;
+    line-height: 1.5rem;
   }
 
-  .site-footer-legal .site-footer-link {
+  .site-footer-bar .site-footer-link {
     font-size: inherit;
-    line-height: inherit;
+    color: var(--foreground);
   }
 
-  /*
-   * A plain-text file (components/markdown-link.tsx, `FileLink`): a small tile, the meta capitals' tile of the tags and skills (solid
-   * `--accent`, square, no outline) with a page's icon and the file's name, then what it is in muted mono capitals. Under the pointer the
-   * tile goes one step deeper (the link card's step) and the words take the accent's text tone, as a muted tag's do; nothing moves.
-   */
-  .file-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.625rem;
-    color: var(--muted-foreground);
-    white-space: nowrap;
-    text-decoration: none;
-    transition: color var(--duration-fast) var(--ease-standard);
-  }
-
-  .file-link-tile {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3em;
-    padding: 0.1875rem 0.375rem;
-    background: var(--accent);
-    font-family: var(--font-meta);
-    font-size: 0.75rem;
-    line-height: 1;
-    letter-spacing: 0.02em;
-    font-feature-settings: "calt" 0;
-    transition: background-color var(--duration-fast) var(--ease-standard);
-  }
-
-  .file-link:hover {
+  .site-footer-bar .site-footer-link:hover {
     color: var(--signal-text);
   }
 
-  .file-link:hover .file-link-tile {
-    background: color-mix(in srgb, var(--foreground) 12%, var(--background));
+  /* The short form, in the side panel beside the globe and the phone's slide-over (components/detail-panel.tsx, `data-layout="panel"`): the
+     same band to the panel's edges, the links for agents only (the header and the globe are right there). The full-screen entry has it whole. */
+  [data-panel][data-layout="panel"] .site-footer :is(.site-footer-who, .site-footer-nav, .site-footer-bar) {
+    display: none;
   }
 
-  /* The tile is a fill, which forced colours drop: it gets an outline instead. */
-  @media (forced-colors: active) {
-    .file-link-tile {
-      outline: 1px solid CanvasText;
-    }
+  [data-panel][data-layout="panel"] .site-footer-inner {
+    padding-top: 2rem;
+    padding-bottom: calc(2rem + var(--safe-bottom, 0px));
   }
 
-  /* Below `md` (fingers) every link of the footer is a 44 px row: the target is the link's own box, so neighbours never overlap. */
+  /* Below `md` (fingers) every link is a 44 px row, the rows touching (their pitch is the target), the label closer above them. */
   @media (max-width: 767.98px) {
-    .site-footer .site-footer-link,
-    .site-footer .file-link {
+    .site-footer-inner {
+      padding-top: 2.5rem;
+    }
+
+    .site-footer-link {
       min-height: 2.75rem;
     }
 
-    .site-footer-sections,
-    .site-footer-files {
-      gap: 0 2.5rem;
+    .site-footer-list {
+      row-gap: 0;
     }
 
     .site-footer-label {
-      margin-bottom: 0.25rem;
+      margin-bottom: 0;
+    }
+
+    .site-footer-bar {
+      margin-top: 2.5rem;
     }
   }
 
-  /* A page of its own (a list, the career page) ends with the footer at the bottom of the window however short it is: the app column is a
-     flex column as tall as the window and the page's `main` takes the room that is left (the header and the scrims are fixed, out of the flow). */
   #app:has(> [data-slot="site-footer"]) {
     display: flex;
     flex-direction: column;
