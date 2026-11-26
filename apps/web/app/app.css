@@ -3151,6 +3151,11 @@
     gap: 0.5rem;
   }
 
+  /* (the index icon as heavy as the MD mark's stems beside it, about 1.5 px at this size: the set's 1.75 stroke read thinner (owner, 2026-11-27)) */
+  .site-footer-agents .site-footer-link .ui-icon {
+    stroke-width: 2.25;
+  }
+
   /* (one slot for both marks, so the two labels start on one line) */
   .site-footer-agents .site-footer-link > :first-child {
     flex: none;
