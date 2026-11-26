@@ -49,8 +49,10 @@ describe("SiteFooter", () => {
     expect(who).toContain('class="lead-probe"');
     expect(who).not.toContain(SITE.name);
     expect(who).not.toContain("site-footer-line");
-    // (the first version stays at the column's foot, after the lead)
-    expect(who.indexOf("lead-probe")).toBeLessThan(who.indexOf(ARCHIVED_V1.url));
+    // (the first version leaves the full column: it is said once, after the two lists)
+    expect(who).not.toContain(ARCHIVED_V1.url);
+    expect(led.split(ARCHIVED_V1.url)).toHaveLength(2);
+    expect(led.indexOf('href="/llms.txt"')).toBeLessThan(led.indexOf(ARCHIVED_V1.url));
     expect(led).toContain('data-slot="markdown-link"');
     expect(led).toContain('href="/llms.txt"');
     expect(html).not.toContain("data-lead");

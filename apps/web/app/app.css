@@ -3193,6 +3193,25 @@
     color: var(--signal-text);
   }
 
+  /* With a page's own lead (the walls' closing words) the first column is full: the first-version sentence goes UNDER the two lists, its last line level with the lead's button (owner, 2026-11-26: the left side felt cramped). Stacked, it is simply last. */
+  @container (min-width: 40rem) {
+    .site-footer[data-lead] .site-footer-who {
+      grid-row: span 2;
+    }
+
+    .site-footer[data-lead] .site-footer-archive {
+      grid-column: 2 / -1;
+      align-self: end;
+      margin: 0;
+      padding-top: 0;
+      max-width: none;
+    }
+  }
+
+  .site-footer[data-lead] .site-footer-archive {
+    padding-top: 0;
+  }
+
   /* The short form, in the side panel beside the globe and the phone's slide-over (components/detail-panel.tsx, `data-layout="panel"`): the
      same band to the panel's edges, the links for agents only (the header and the globe are right there). The full-screen entry has it whole. */
   [data-panel][data-layout="panel"] .site-footer :is(.site-footer-who, .site-footer-nav) {
@@ -4317,7 +4336,7 @@
   }
 
   .gallery-end-link {
-    margin-top: 1rem;
+    margin-top: 2rem;
   }
 
   /* The buttons that go to a service wear its colour, softened into the page (owner, 2026-11-18): the fill is a few percent of the brand over the page's own colour, so it is a darker, quieter tone on the dark page and a lighter, paler one on the light page; the line and the label take more of it. */

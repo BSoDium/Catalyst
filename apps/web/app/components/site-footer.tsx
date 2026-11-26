@@ -39,7 +39,7 @@ const ARCHIVE_HOST = new URL(ARCHIVED_V1.url).host;
  *
  * A band a whisper off the page (4 % of the ink in the page colour, app.css), from edge to edge of the window or the panel, with no
  * rule inside it; its content on the page's own column (`className` is the content's width and side padding). The first version of
- * the site is a quiet sentence at the foot of the who column, not a row of its own. ONE markup everywhere: in the side panel beside the globe (an
+ * the site is a quiet sentence at the foot of the who column, not a row of its own (under the two lists on a page with a `lead`). ONE markup everywhere: in the side panel beside the globe (an
  * entry, a place; and the phone's slide-over) CSS draws its short form, the links for agents only, since the header and the globe are
  * right there; the full-screen entry has it whole. (The same markup, so an entry's text does not change with its container:
  * `entry-view.test.ts`.)
@@ -56,6 +56,17 @@ export function SiteFooter({ path, className, hasCareer: forcedCareer, lead }: S
     ...SECTION_KINDS.map((kind) => ({ to: KIND_PATHS[kind], label: KIND_PLURALS[kind] })),
     ...(withCareer ? [{ to: CAREER_PATH, label: CAREER_LABEL }] : []),
   ];
+  // (at the foot of the who column, level with the last row of the lists beside it: no row of its own. A page's `lead` fills that column, so there the sentence goes under the lists instead.)
+  const archive = (
+    <p className="site-footer-archive">
+      {ARCHIVED_V1.sub}:{" "}
+      <a href={ARCHIVED_V1.url} target="_blank" rel="noopener noreferrer" className="site-footer-link">
+        {ARCHIVE_HOST}
+        <Icon name="arrow-up-right" size="inline" />
+        <span className="sr-only"> (opens in a new tab)</span>
+      </a>
+    </p>
+  );
   return (
     <footer data-slot="site-footer" data-lead={lead ? "" : undefined} className="site-footer print:hidden">
       <div className={cn("site-footer-inner", className)}>
@@ -67,15 +78,7 @@ export function SiteFooter({ path, className, hasCareer: forcedCareer, lead }: S
                 <p className="site-footer-line">{SITE_IDENTITY}</p>
               </>
             )}
-            {/* (at the foot of the column, level with the last row of the lists beside it: no row of its own) */}
-            <p className="site-footer-archive">
-              {ARCHIVED_V1.sub}:{" "}
-              <a href={ARCHIVED_V1.url} target="_blank" rel="noopener noreferrer" className="site-footer-link">
-                {ARCHIVE_HOST}
-                <Icon name="arrow-up-right" size="inline" />
-                <span className="sr-only"> (opens in a new tab)</span>
-              </a>
-            </p>
+            {!lead && archive}
           </div>
           <nav aria-labelledby="site-footer-sections" className="site-footer-group site-footer-nav">
             <p id="site-footer-sections" className="site-footer-label type-meta">
@@ -105,6 +108,7 @@ export function SiteFooter({ path, className, hasCareer: forcedCareer, lead }: S
               </li>
             </ul>
           </div>
+          {lead && archive}
         </div>
       </div>
     </footer>
