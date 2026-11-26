@@ -3151,6 +3151,11 @@
     gap: 0.5rem;
   }
 
+  /* (the index icon as heavy as the MD mark's stems beside it, about 1.5 px at this size: the set's 1.75 stroke read thinner (owner, 2026-11-27)) */
+  .site-footer-agents .site-footer-link .ui-icon {
+    stroke-width: 2.25;
+  }
+
   /* (one slot for both marks, so the two labels start on one line) */
   .site-footer-agents .site-footer-link > :first-child {
     flex: none;
@@ -3165,6 +3170,8 @@
     /* (its stems as thick as the index icon's strokes: 1.75 on a 24 grid drawn at 18 px, about 1.3 px) */
     font-weight: 500;
     letter-spacing: 0;
+    /* (no taller than the words' line: the two links stand level when side by side) */
+    line-height: 1;
   }
 
   .site-footer-link[aria-current="page"] {
@@ -3218,9 +3225,21 @@
     display: none;
   }
 
+  /* (not raised there: the panel is already a surface of its own, and a lighter band at the end of its short column stood out (owner, 2026-11-27); the panel's own colour shows through, the faint top line stays) */
+  [data-panel][data-layout="panel"] .site-footer {
+    background: transparent;
+  }
+
   [data-panel][data-layout="panel"] .site-footer-inner {
-    padding-top: 2rem;
-    padding-bottom: calc(2rem + var(--safe-bottom, 0px));
+    padding-top: 1.25rem;
+    padding-bottom: calc(1.25rem + var(--safe-bottom, 0px));
+  }
+
+  /* (its two links side by side, under their label: stacked they made a tall band for two lines of words (owner, 2026-11-26); they wrap where the panel is too narrow for both) */
+  [data-panel][data-layout="panel"] .site-footer-agents .site-footer-list {
+    display: flex;
+    flex-wrap: wrap;
+    column-gap: 2rem;
   }
 
   /* Below `md` (fingers) every link is a 44 px row, the rows touching (their pitch is the target), the label closer above them. */
