@@ -3239,6 +3239,11 @@
     width: 100%;
   }
 
+  /* Under a wall's end (the artworks, the photographs: `.wall-end`) the band has no top edge: the wall's fade lands in its colour, one ending. */
+  #app > main:has(.wall-end) + [data-slot="site-footer"] {
+    border-top: none;
+  }
+
   @media (max-width: 767.98px) {
     .entry-link::before {
       content: "";
@@ -4262,21 +4267,43 @@
     }
   }
 
+  /*
+   * The wall's fade lands in the SITE FOOTER's band colour, not the page's (owner, 2026-11-26: the banner over the wall and the footer
+   * under it read as two endings): the list page has no padding under a wall and the footer under it no top hairline (below), so the
+   * scenery dissolves straight into the band and the banner is the head of the one ending. (`--wall-ground` is the footer's own mix.)
+   * The fade runs from edge to edge of the WINDOW, as the band does (`::before`, behind the banner; `#app` clips its overshoot): a fade as
+   * wide as the wall would leave the page colour in the margins beside it, a block cut out of the band.
+   */
   .wall-end {
+    --wall-ground: color-mix(in srgb, var(--foreground) 4%, var(--background));
     position: absolute;
-    inset: auto 0 -6px;
+    /* (past the list's 6 px clip margin by 2 px more: on the same fractional edge the cut tiles' foot showed through as a hairline in the band) */
+    inset: auto 0 -8px;
     height: min(100%, 34rem);
     display: flex;
     align-items: flex-end;
     justify-content: center;
+    /* (above the pictures' outlines, `.wall-media::after` at 2: a filler tile's foot hairline showed through the band) */
+    z-index: 3;
+    pointer-events: none;
+  }
+
+  .wall-end::before {
+    content: "";
+    position: absolute;
+    inset: 0 calc(50% - 50vw);
+    z-index: -1;
     background: linear-gradient(
       to bottom,
       transparent,
-      color-mix(in oklab, var(--background) 55%, transparent) 30%,
-      color-mix(in oklab, var(--background) 92%, transparent) 58%,
-      var(--background) 74%
+      color-mix(in oklab, var(--wall-ground) 55%, transparent) 30%,
+      color-mix(in oklab, var(--wall-ground) 92%, transparent) 58%,
+      var(--wall-ground) 74%
     );
-    pointer-events: none;
+  }
+
+  #app:has(> main .wall-end) {
+    overflow-x: clip;
   }
 
   /*
@@ -4290,7 +4317,9 @@
     align-items: flex-start;
     gap: 0.75rem;
     width: 100%;
-    padding: 0 0 2.5rem;
+    /* (a little under it: with the footer's own padding above its columns, about 4 rem between the banner and them, 3.5 on a phone, so the
+       banner leads the band without reading as one of its columns; the end overhangs the wall by 8 px, hence the odd sum) */
+    padding: 0 0 1.5rem;
     text-align: left;
     pointer-events: auto;
   }
@@ -4372,32 +4401,22 @@
       display: contents;
     }
 
-    .gallery-end-eyebrow {
+    .gallery-end-title {
       grid-column: 1;
       grid-row: 1;
     }
 
-    .gallery-end-title {
-      grid-column: 1;
-      grid-row: 2;
-    }
-
     .gallery-end-text {
       grid-column: 1;
-      grid-row: 3;
+      grid-row: 2;
     }
 
     .gallery-end-link {
       grid-column: 2;
-      grid-row: 2;
+      grid-row: 1;
       align-self: center;
       margin-top: 0;
     }
-  }
-
-  .gallery-end-eyebrow {
-    margin: 0;
-    color: var(--muted-foreground);
   }
 
   .gallery-end-title {
@@ -4431,7 +4450,7 @@
 
     /* (`--wall-gutter` is only set where the wall bleeds, under 34 rem of the screen; between the wall's 34 rem and the screen's, 1 rem of padding more, the wall is one column still but inset: 0 there) */
     .gallery-end {
-      padding: 0 var(--wall-gutter, 0px) var(--wall-gutter, 1rem);
+      padding: 0 var(--wall-gutter, 0px) 1.5rem;
     }
   }
 

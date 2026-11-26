@@ -137,6 +137,11 @@ describe("EntryListPage", () => {
     expect((html.match(/data-slot="wall-filler"/g) ?? []).length).toBeGreaterThanOrEqual(8);
     expect(html).toContain('data-slot="gallery-end"');
     expect(html).toContain("https://www.artstation.com/bsodium");
+    // one ending: the wall's end runs into the site footer, no padding under the main between them (a list without a wall keeps it)
+    expect(html).toMatch(/<main[^>]*class="[^"]*\bpb-0\b/);
+    expect(html).not.toMatch(/<main[^>]*class="[^"]*\bpb-24\b/);
+    expect(html).not.toContain("End of the gallery</p>");
+    expect(render(listEntries(demo, "article"), "", "article")).toMatch(/<main[^>]*class="[^"]*\bpb-24\b/);
   });
   it("says the year as a thin display numeral when years group entries", () => {
     const items = [make("a", "2022-01", ["x"]), make("b", "2024-05", ["x"]), make("c", "2024-02", ["y"]), make("d", "2022-09", ["y"])];

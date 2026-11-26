@@ -78,6 +78,8 @@ export function EntryListPage({ kind, items, activityUrl = null }: { kind: Conte
   const heads = listStats(items, { shown: shown.length, total: items.length, noun: shown.length === 1 ? KIND_NOUNS[kind].one : KIND_NOUNS[kind].many });
   const withPanel = kind === "project" && (import.meta.env.DEV || !!activityUrl);
   const wall = kind === "artwork" || kind === "photograph";
+  // A wall ends in its scenery and banner, which run straight into the site footer: one ending, no gap under the main (app.css, `.wall-end`).
+  const joined = wall && items.length > 0;
   const poems = kind === "poem";
 
   return (
@@ -88,7 +90,7 @@ export function EntryListPage({ kind, items, activityUrl = null }: { kind: Conte
         data-surface="reading"
         data-layout="full"
         data-list={kind}
-        className="entry mx-auto max-w-[100rem] px-4 pt-[calc(var(--navbar-height)+1.5rem)] min-[56rem]:pt-[calc(var(--navbar-height)+3rem)] pb-24 outline-none md:px-14"
+        className={cn("entry mx-auto max-w-[100rem] px-4 pt-[calc(var(--navbar-height)+1.5rem)] min-[56rem]:pt-[calc(var(--navbar-height)+3rem)] outline-none md:px-14", joined ? "pb-0" : "pb-24")}
       >
         <header data-slot="list-head" className="list-head">
           <h1 className="list-title">{KIND_PLURALS[kind]}</h1>
