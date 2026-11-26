@@ -784,6 +784,12 @@ export const careerRoleSchema = z
     start: careerDateSchema,
     /** Absent = the document says nothing about the end; `present` = ongoing. */
     end: careerEndSchema.optional(),
+    /**
+     * Optional, only `true` (additive in schema version 1): the position is accepted but has NOT begun yet (`start` is when it will). The page says "Joining",
+     * not "Present", and counts no stay. It is authored, never derived: a month cannot tell a start on the 30th from one on the 1st, and the page reads no clock.
+     * The owner removes it once they have joined. Never together with `end: present` (an ongoing role has begun).
+     */
+    upcoming: z.literal(true).optional(),
     highlights: z.array(careerText(CAREER_TEXT.highlight)).max(CAREER_LIMITS.highlights),
     /** Optional: the projects worked on in this position, shown with it. */
     projects: z.array(careerProjectSchema).max(CAREER_LIMITS.projects).optional(),
@@ -793,7 +799,8 @@ export const careerRoleSchema = z
       .refine((s) => new Set(s.map((x) => x.toLowerCase())).size === s.length, "skills must be unique"),
   })
   .strict()
-  .refine(endsAfterStart, ENDS_AFTER_START);
+  .refine(endsAfterStart, ENDS_AFTER_START)
+  .refine((r) => !(r.upcoming && r.end === "present"), "a role that has not begun cannot be ongoing: drop `upcoming` or `end: present`");
 
 export const careerEducationSchema = z
   .object({

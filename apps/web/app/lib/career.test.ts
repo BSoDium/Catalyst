@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { loadDemoProjection } from "@catalyst/published/dev";
 import type { PublishedCareer } from "@catalyst/schemas";
-import { asOfText, careerDuration, careerIcon, careerLogo, careerLogoSrc, careerJsonLd, careerPeriod, formatCareerMonth, isCurrent, languageDetail, safeLinks, safePortrait, safeProjects } from "./career";
+import { asOfText, careerDuration, careerIcon, careerLogo, careerLogoSrc, careerJsonLd, careerPeriod, formatCareerMonth, isCurrent, isUpcoming, languageDetail, safeLinks, safePortrait, safeProjects } from "./career";
 import { SITE } from "./site";
 
 const demo = loadDemoProjection().career!;
@@ -45,6 +45,24 @@ describe("careerPeriod", () => {
     expect(p.end).toBeUndefined();
     expect(p.spoken).toBe("from 2021");
   });
+  it('says "Joining" for a role that has not begun: the start, no "Present", no end', () => {
+    const p = careerPeriod("2026-12", undefined, true);
+    expect(p.text).toBe("Joining Dec 2026");
+    expect(p.status).toBe("Joining");
+    expect(p.start).toEqual({ text: "Dec 2026", dateTime: "2026-12" });
+    expect(p.end).toBeUndefined();
+    expect(p.spoken).toBe("joining in December 2026, not started yet");
+    expect(careerPeriod("2026-12", "present", true).text).toBe("Joining Dec 2026");
+  });
+  it("keeps a dated end after the start of a role that has not begun", () => {
+    const p = careerPeriod("2026-12", "2027-05", true);
+    expect(p.text).toBe("Joining Dec 2026 – May 2027");
+    expect(p.end).toEqual({ text: "May 2027", dateTime: "2027-05" });
+    expect(p.spoken).toBe("joining in December 2026, until May 2027, not started yet");
+  });
+  it("has no status word for a role that has begun", () => {
+    expect(careerPeriod("2025-09", "present").status).toBeUndefined();
+  });
   it("does not repeat a range that starts and ends in the same year-only text", () => {
     expect(careerPeriod("2019", "2019").text).toBe("2019");
     expect(careerPeriod("2016", "2021").text).toBe("2016 – 2021");
@@ -63,6 +81,10 @@ describe("careerDuration", () => {
     expect(careerDuration("2025-09", "present", "2026-10")).toBe("1y 2m");
     expect(careerDuration("2025-09", "present", "2025-12")).toBe("4m");
     expect(careerDuration("2025-09", "present", "bad")).toBeNull();
+  });
+  it("counts no stay for a role that has not begun", () => {
+    expect(careerDuration("2026-10", "present", "2026-10", true)).toBeNull();
+    expect(careerDuration("2026-10", undefined, "2026-10", true)).toBeNull();
   });
   it("is null when it cannot be told", () => {
     expect(careerDuration("2021", undefined, asOf)).toBeNull();
@@ -116,6 +138,12 @@ describe("isCurrent, languageDetail", () => {
     expect(isCurrent({ end: "present" })).toBe(true);
     expect(isCurrent({ end: "2025" })).toBe(false);
     expect(isCurrent({})).toBe(false);
+  });
+  it("a role that has not begun is upcoming and never current", () => {
+    expect(isUpcoming({ upcoming: true })).toBe(true);
+    expect(isUpcoming({})).toBe(false);
+    expect(isCurrent({ end: "present", upcoming: true })).toBe(false);
+    expect(isCurrent({ upcoming: true })).toBe(false);
   });
   it("joins the label and the level, never the same word twice", () => {
     expect(languageDetail({ name: "English", level: "C2", label: "Native" })).toBe("Native, C2");

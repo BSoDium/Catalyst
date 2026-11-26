@@ -56,6 +56,22 @@ describe("CareerPage", () => {
     expect(html.match(/data-current="true"/g)).toHaveLength(1);
   });
 
+  it('shows a role that has not begun as "Joining", not as the role in progress', () => {
+    const { end: _end, ...open } = { ...demo.roles[0]!, id: "joining-co", org: "Joining Co", start: "2026-11", upcoming: true as const };
+    const page = render({ ...demo, roles: [open, ...demo.roles] });
+    const item = page.slice(page.indexOf('id="joining-co"'));
+    const li = item.slice(0, item.indexOf("</li>"));
+    expect(li).toContain('data-upcoming="true"');
+    expect(li).not.toContain("data-current");
+    expect(li).toContain('<span class="career-status">Joining</span> <time dateTime="2026-11">Nov 2026</time>');
+    expect(li).toContain("joining in November 2026, not started yet"); // what a screen reader hears
+    expect(li).not.toMatch(/Present|career-duration/);
+    // the role that was in progress is the one still marked
+    expect(page.match(/data-current="true"/g)).toHaveLength(1);
+    expect(page.match(/data-upcoming="true"/g)).toHaveLength(1);
+    expect(html).not.toContain("data-upcoming");
+  });
+
   it("shows a year-only start with no end as the year alone", () => {
     const item = html.slice(html.indexOf('id="interface-designer-placeholder-co"'));
     expect(item.slice(0, item.indexOf("</li>"))).toMatch(/<time dateTime="2021">2021<\/time>/);
