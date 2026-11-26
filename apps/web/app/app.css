@@ -3220,6 +3220,11 @@
     display: none;
   }
 
+  /* (not raised there: the panel is already a surface of its own, and a lighter band at the end of its short column stood out (owner, 2026-11-27); the panel's own colour shows through, the faint top line stays) */
+  [data-panel][data-layout="panel"] .site-footer {
+    background: transparent;
+  }
+
   [data-panel][data-layout="panel"] .site-footer-inner {
     padding-top: 1.25rem;
     padding-bottom: calc(1.25rem + var(--safe-bottom, 0px));
