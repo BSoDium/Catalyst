@@ -30,8 +30,9 @@ const ARCHIVE_HOST = new URL(ARCHIVED_V1.url).host;
  * the career page while there is one), the page in Markdown and the site map for agents (`/llms.txt`), and where the first version of
  * the site is kept (`ARCHIVED_V1`). No copyright line (the owner's decision is pending; an entry's work says its own notice above).
  *
- * A band one step off the page (the hover grey, `--accent`), from edge to edge of the window or the panel, its content on the page's
- * own column (`className` is the content's width and side padding). ONE markup everywhere: in the side panel beside the globe (an
+ * A band a whisper off the page (4 % of the ink in the page colour, app.css), from edge to edge of the window or the panel, with no
+ * rule inside it; its content on the page's own column (`className` is the content's width and side padding). The first version of
+ * the site is a quiet sentence at the foot of the who column, not a row of its own. ONE markup everywhere: in the side panel beside the globe (an
  * entry, a place; and the phone's slide-over) CSS draws its short form, the links for agents only, since the header and the globe are
  * right there; the full-screen entry has it whole. (The same markup, so an entry's text does not change with its container:
  * `entry-view.test.ts`.)
@@ -55,6 +56,14 @@ export function SiteFooter({ path, className, hasCareer: forcedCareer }: SiteFoo
           <div className="site-footer-who">
             <p className="site-footer-name">{SITE.name}</p>
             <p className="site-footer-line">{SITE_IDENTITY}</p>
+            {/* (at the foot of the column, level with the last row of the lists beside it: no row of its own) */}
+            <p className="site-footer-archive">
+              {ARCHIVED_V1.sub}:{" "}
+              <a href={ARCHIVED_V1.url} rel="noopener" className="site-footer-link">
+                {ARCHIVE_HOST}
+                <Icon name="arrow-up-right" size="inline" />
+              </a>
+            </p>
           </div>
           <nav aria-labelledby="site-footer-sections" className="site-footer-group site-footer-nav">
             <p id="site-footer-sections" className="site-footer-label type-meta">
@@ -84,13 +93,6 @@ export function SiteFooter({ path, className, hasCareer: forcedCareer }: SiteFoo
             </ul>
           </div>
         </div>
-        <p className="site-footer-bar">
-          {ARCHIVED_V1.sub}:{" "}
-          <a href={ARCHIVED_V1.url} rel="noopener" className="site-footer-link">
-            {ARCHIVE_HOST}
-            <Icon name="arrow-up-right" size="inline" />
-          </a>
-        </p>
       </div>
     </footer>
   );

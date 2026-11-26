@@ -32,6 +32,8 @@ describe("SiteFooter", () => {
     expect(html).toMatch(new RegExp(`${ARCHIVED_V1.sub}: <a href="${ARCHIVED_V1.url}"[^>]*>v1\\.bsodium\\.fr<svg`));
     // (a list carries no notice and software is under the repository's licence: an entry's own notice is the only one)
     expect(html).not.toContain("©");
+    // (at the foot of the who column, not a bar of its own)
+    expect(/<div class="site-footer-who">.*?<\/div>/.exec(html)![0]).toContain(`href="${ARCHIVED_V1.url}"`);
     expect(html).not.toMatch(/catalyst/i);
   });
 });

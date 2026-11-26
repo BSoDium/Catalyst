@@ -3050,26 +3050,30 @@
 
   /*
    * The site footer (components/site-footer.tsx, docs/design-system.md "Site footer"): the end of every page with a Markdown twin, a band
-   * of its own. The band is one step off the page (`--accent`, the hover grey: on the lists' reading surface `--surface` IS the page, so
-   * it could not be the step) under a hairline, from edge to edge of the window (or of the panel); its content sits on the page's own
-   * column (the caller's width and side padding on `.site-footer-inner`). Up to three columns by that column's width (a size container:
+   * of its own. The band is a SUBTLE raise (owner, 2026-11-26: the hover grey was "too elevated"): the page colour with 4 % of the ink
+   * mixed in (about #141414 on the dark page's #0a0a0a, #f1f1f1 on the light one's #fbfbfb; the muted words stay AA on it, 7:1 dark, 6:1
+   * light), from edge to edge of the window (or of the panel), its top edge a whisper: a full-width hairline only a few points brighter
+   * than the band, never a line as wide as the content. Its content sits on the page's own column (the caller's width and side padding
+   * on `.site-footer-inner`). Up to three columns by that column's width (a size container:
    * stacked under 40 rem): who (the name in the display face, the line in the reading face), the sections, the links for agents. The
    * labels are the meta capitals (as the lists' figures' labels); the links are plain muted words, the current page in the ink, the
-   * accent's text tone under the pointer (as the header's items). Under them a quieter bar, one sentence, behind a fainter hairline.
+   * accent's text tone under the pointer (as the header's items). The first version of the site is one quieter sentence at the FOOT of
+   * the who column, level with the lists' last row (owner, 2026-11-26: a bottom row of its own wasted space); stacked, it follows the
+   * line under the name. No rule inside the band (a content-wide line in a window-wide band looks cut off).
    *
-   * ONE spacing scale: 0.5 rem (label to its links), 2.5 rem / 3 rem (between the columns; above and below the band's content), 1.5 rem
-   * (the bar's own padding). The two lists have ONE row pitch (a 1.5 rem line, 0.375 rem apart), so their rows line up across the columns.
+   * ONE spacing scale: 0.5 rem (label to its links), 1.5 rem (the sentence's least room under the line), 2.5 rem / 3 rem (between the
+   * columns; above and below the band's content, the same both ways). The two lists have ONE row pitch (a 1.5 rem line, 0.375 rem apart), so their rows line up across the columns.
    */
   .site-footer {
-    border-top: var(--hairline) solid var(--border);
-    background: var(--accent);
+    border-top: var(--hairline) solid color-mix(in srgb, var(--foreground) 9%, var(--background));
+    background: color-mix(in srgb, var(--foreground) 4%, var(--background));
     color: var(--muted-foreground);
   }
 
   .site-footer-inner {
     container-type: inline-size;
     padding-top: 3rem;
-    padding-bottom: calc(1.5rem + var(--safe-bottom, 0px));
+    padding-bottom: calc(3rem + var(--safe-bottom, 0px));
   }
 
   .site-footer-grid {
@@ -3097,6 +3101,11 @@
     font-weight: 700;
     letter-spacing: -0.01em;
     color: var(--foreground);
+  }
+
+  .site-footer-who {
+    display: flex;
+    flex-direction: column;
   }
 
   .site-footer-line {
@@ -3145,26 +3154,27 @@
     color: var(--signal-text);
   }
 
-  .site-footer-bar {
-    margin-top: 3rem;
+  /* (pushed to the column's foot: its last line sits on the lists' last row; `max-width` keeps it to two short lines in a narrow column) */
+  .site-footer-archive {
+    margin-top: auto;
     padding-top: 1.5rem;
-    border-top: var(--hairline) solid var(--border);
-    font-size: 0.875rem;
+    max-width: 24rem;
+    font-size: 0.8125rem;
     line-height: 1.5rem;
   }
 
-  .site-footer-bar .site-footer-link {
+  .site-footer-archive .site-footer-link {
     font-size: inherit;
     color: var(--foreground);
   }
 
-  .site-footer-bar .site-footer-link:hover {
+  .site-footer-archive .site-footer-link:hover {
     color: var(--signal-text);
   }
 
   /* The short form, in the side panel beside the globe and the phone's slide-over (components/detail-panel.tsx, `data-layout="panel"`): the
      same band to the panel's edges, the links for agents only (the header and the globe are right there). The full-screen entry has it whole. */
-  [data-panel][data-layout="panel"] .site-footer :is(.site-footer-who, .site-footer-nav, .site-footer-bar) {
+  [data-panel][data-layout="panel"] .site-footer :is(.site-footer-who, .site-footer-nav) {
     display: none;
   }
 
@@ -3177,6 +3187,7 @@
   @media (max-width: 767.98px) {
     .site-footer-inner {
       padding-top: 2.5rem;
+      padding-bottom: calc(2.5rem + var(--safe-bottom, 0px));
     }
 
     .site-footer-link {
@@ -3189,10 +3200,6 @@
 
     .site-footer-label {
       margin-bottom: 0;
-    }
-
-    .site-footer-bar {
-      margin-top: 2.5rem;
     }
   }
 
