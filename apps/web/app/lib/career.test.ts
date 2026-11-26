@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { loadDemoProjection } from "@catalyst/published/dev";
 import type { PublishedCareer } from "@catalyst/schemas";
-import { asOfText, careerDuration, careerIcon, careerLogo, careerLogoSrc, careerJsonLd, careerPeriod, formatCareerMonth, isCurrent, isUpcoming, languageDetail, safeLinks, safePortrait, safeProjects } from "./career";
+import { asOfText, careerDuration, careerIcon, careerLogo, careerLogoSrc, careerJsonLd, careerPeriod, formatCareerMonth, languageDetail, localDay, roleState, safeLinks, safePortrait, safeProjects } from "./career";
 import { SITE } from "./site";
 
 const demo = loadDemoProjection().career!;
@@ -133,17 +133,34 @@ describe("careerLogo", () => {
   });
 });
 
-describe("isCurrent, languageDetail", () => {
-  it("only `present` is current", () => {
-    expect(isCurrent({ end: "present" })).toBe(true);
-    expect(isCurrent({ end: "2025" })).toBe(false);
-    expect(isCurrent({})).toBe(false);
+describe("roleState, localDay, languageDetail", () => {
+  it("a role with an end of `present` is the one in progress, any other end is not", () => {
+    expect(roleState({ end: "present" }, null)).toEqual({ upcoming: false, end: "present", current: true });
+    expect(roleState({ end: "2025" }, null)).toEqual({ upcoming: false, end: "2025", current: false });
+    expect(roleState({}, "2030-01-01")).toEqual({ upcoming: false, end: undefined, current: false });
   });
-  it("a role that has not begun is upcoming and never current", () => {
-    expect(isUpcoming({ upcoming: true })).toBe(true);
-    expect(isUpcoming({})).toBe(false);
-    expect(isCurrent({ end: "present", upcoming: true })).toBe(false);
-    expect(isCurrent({ upcoming: true })).toBe(false);
+  it("`upcoming: true` has not begun, whatever the day, and is never current", () => {
+    for (const today of [null, "2026-11-01", "2099-01-01"]) expect(roleState({ upcoming: true }, today)).toEqual({ upcoming: true, end: undefined, current: false });
+  });
+  it("`upcoming: <day>` has not begun until that day, with the document as authored when the day is unknown (server, static page, hydration pass)", () => {
+    const r = { upcoming: "2026-11-30" } as const;
+    for (const today of [null, "2026-11-26", "2026-11-29"]) expect(roleState(r, today)).toEqual({ upcoming: true, end: undefined, current: false });
+  });
+  it("`upcoming: <day>` begins ON that day: the role is the one in progress, an absent end meaning `present`", () => {
+    const r = { upcoming: "2026-11-30" } as const;
+    for (const today of ["2026-11-30", "2026-12-01", "2027-06-15"]) expect(roleState(r, today)).toEqual({ upcoming: false, end: "present", current: true });
+  });
+  it("a begun `upcoming: <day>` role keeps a dated end, and is then not in progress", () => {
+    expect(roleState({ upcoming: "2026-11-30", end: "2027-05" }, "2026-12-01")).toEqual({ upcoming: false, end: "2027-05", current: false });
+    expect(roleState({ upcoming: "2026-11-30", end: "present" }, "2026-12-01")).toEqual({ upcoming: false, end: "present", current: true });
+  });
+  it("compares days as text, so a month or a year boundary is no special case", () => {
+    expect(roleState({ upcoming: "2027-01-01" }, "2026-12-31").upcoming).toBe(true);
+    expect(roleState({ upcoming: "2027-01-01" }, "2027-01-01").upcoming).toBe(false);
+  });
+  it("localDay is the visitor's calendar day, zero padded", () => {
+    expect(localDay(new Date(2026, 0, 5, 23, 59))).toBe("2026-01-05");
+    expect(localDay(new Date(2026, 10, 30, 0, 0))).toBe("2026-11-30");
   });
   it("joins the label and the level, never the same word twice", () => {
     expect(languageDetail({ name: "English", level: "C2", label: "Native" })).toBe("Native, C2");

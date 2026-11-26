@@ -725,6 +725,12 @@ export const careerDateSchema = z.string().regex(/^(?:19|20)\d{2}(?:-(?:0[1-9]|1
 /** A date or `present`: where the role or the programme is still going on. A role may also have no end at all. */
 export const careerEndSchema = z.string().regex(/^(?:(?:19|20)\d{2}(?:-(?:0[1-9]|1[0-2]))?|present)$/, "YYYY, YYYY-MM or present");
 
+/** A calendar day, `YYYY-MM-DD`, years 1900 to 2099, a day that exists (no 31 February). */
+export const careerDaySchema = z
+  .string()
+  .regex(/^(?:19|20)\d{2}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])$/, "YYYY-MM-DD")
+  .refine((d) => new Date(`${d}T00:00:00Z`).toISOString().slice(0, 10) === d, "not a day of the calendar");
+
 /** Months since year 0 of a career date: a year alone is its first month as a start and its last month as an end. */
 function careerMonth(date: string, bound: "start" | "end"): number {
   const year = Number(date.slice(0, 4));
@@ -785,11 +791,12 @@ export const careerRoleSchema = z
     /** Absent = the document says nothing about the end; `present` = ongoing. */
     end: careerEndSchema.optional(),
     /**
-     * Optional, only `true` (additive in schema version 1): the position is accepted but has NOT begun yet (`start` is when it will). The page says "Joining",
-     * not "Present", and counts no stay. It is authored, never derived: a month cannot tell a start on the 30th from one on the 1st, and the page reads no clock.
-     * The owner removes it once they have joined. Never together with `end: present` (an ongoing role has begun).
+     * Optional (additive in schema version 1): the position is accepted but has NOT begun yet (`start` is when it will). The page says "Joining", not
+     * "Present", and counts no stay. `true` = until the owner removes it. A day `YYYY-MM-DD` (in the month of `start`) = the day it begins: the page, in the
+     * browser only (it reads no clock on the server: its pages are static files), then shows the position as the one in progress by itself, with no end meaning
+     * `present`. Never together with `end: present` (an ongoing role has begun).
      */
-    upcoming: z.literal(true).optional(),
+    upcoming: z.union([z.literal(true), careerDaySchema]).optional(),
     highlights: z.array(careerText(CAREER_TEXT.highlight)).max(CAREER_LIMITS.highlights),
     /** Optional: the projects worked on in this position, shown with it. */
     projects: z.array(careerProjectSchema).max(CAREER_LIMITS.projects).optional(),
@@ -800,7 +807,8 @@ export const careerRoleSchema = z
   })
   .strict()
   .refine(endsAfterStart, ENDS_AFTER_START)
-  .refine((r) => !(r.upcoming && r.end === "present"), "a role that has not begun cannot be ongoing: drop `upcoming` or `end: present`");
+  .refine((r) => !(r.upcoming && r.end === "present"), "a role that has not begun cannot be ongoing: drop `upcoming` or `end: present`")
+  .refine((r) => typeof r.upcoming !== "string" || r.upcoming.startsWith(r.start), "the day a role begins must fall in its start (`start` is its month or year)");
 
 export const careerEducationSchema = z
   .object({

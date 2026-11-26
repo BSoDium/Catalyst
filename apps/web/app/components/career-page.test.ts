@@ -8,8 +8,8 @@ import type { PublishedCareer } from "@catalyst/schemas";
 import { CareerPage } from "./career-page";
 
 const demo = loadDemoProjection().career!;
-const render = (career: PublishedCareer, places: string[] = ["paris"], projects: string[] = []) =>
-  renderToStaticMarkup(createElement(StaticRouter, { location: "/career" }, createElement(CareerPage, { career, places, projects })));
+const render = (career: PublishedCareer, places: string[] = ["paris"], projects: string[] = [], today?: string | null) =>
+  renderToStaticMarkup(createElement(StaticRouter, { location: "/career" }, createElement(CareerPage, { career, places, projects, ...(today !== undefined ? { today } : {}) })));
 const without = <K extends keyof PublishedCareer>(c: PublishedCareer, ...keys: K[]): PublishedCareer => {
   const copy = { ...c };
   for (const k of keys) delete copy[k];
@@ -70,6 +70,45 @@ describe("CareerPage", () => {
     expect(page.match(/data-current="true"/g)).toHaveLength(1);
     expect(page.match(/data-upcoming="true"/g)).toHaveLength(1);
     expect(html).not.toContain("data-upcoming");
+  });
+
+  describe("a position that begins on a given day (`upcoming: YYYY-MM-DD`)", () => {
+    const { end: _end, ...open } = { ...demo.roles[0]!, id: "joining-co", org: "Joining Co", start: "2026-11", upcoming: "2026-11-30" as const };
+    const career = { ...demo, updated: "2026-11", roles: [open, ...demo.roles] };
+    const item = (page: string) => {
+      const from = page.slice(page.indexOf('id="joining-co"'));
+      return from.slice(0, from.indexOf("</li>"));
+    };
+
+    it("is prerendered as it is authored: the server has no clock, and the first client render must equal it", () => {
+      // no `today` given: the hook says "not hydrated" in a server render, as in the hydration pass
+      for (const li of [item(render(career)), item(render(career, ["paris"], [], null))]) {
+        expect(li).toContain('data-upcoming="true"');
+        expect(li).toContain('<span class="career-status">Joining</span>');
+        expect(li).not.toMatch(/data-current|Present|career-duration/);
+      }
+    });
+    it("still says Joining on the days before", () => {
+      expect(item(render(career, ["paris"], [], "2026-11-29"))).toContain('data-upcoming="true"');
+    });
+    it("is the position in progress from that day, with no end meaning Present and a stay counted to the review month", () => {
+      const li = item(render(career, ["paris"], [], "2026-11-30"));
+      expect(li).toContain('data-current="true"');
+      expect(li).not.toContain("data-upcoming");
+      expect(li).not.toContain("career-status");
+      expect(li).toContain("Present");
+      expect(li).toContain("November 2026 to present");
+      expect(li).toContain(">1m<"); // Nov 2026 to the review month, Nov 2026, both counted
+    });
+  });
+
+  it("reads the clock in one place: the career page has no other `Date` in it (the server and the static page have none)", () => {
+    const here = (f: string) => readFileSync(new URL(f, import.meta.url), "utf8");
+    expect(here("./career-page.tsx")).not.toMatch(/new Date|Date\.now|performance\.now/);
+    const lib = here("../lib/career.ts");
+    expect(lib.match(/new Date|Date\.now/g)).toEqual(["new Date"]); // `localDay`'s default, nothing else
+    expect(here("../lib/career-meta.ts")).not.toMatch(/new Date|Date\.now/);
+    expect(here("../lib/llm-text.ts")).not.toMatch(/new Date|Date\.now/);
   });
 
   it("shows a year-only start with no end as the year alone", () => {
