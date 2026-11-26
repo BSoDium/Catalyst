@@ -32,6 +32,7 @@ import {
   Camera,
   Image as ImageIcon,
   Info,
+  TextAlignStart,
   Link2,
   Maximize2,
   MapPin,
@@ -97,6 +98,8 @@ export const ICONS = {
   "chevron-left": ChevronLeft,
   "chevron-right": ChevronRight,
   copy: Copy,
+  /** Three bars of different lengths, a list (the footer's link to `/llms.txt`, an index of everything). */
+  list: TextAlignStart,
   link: Link2,
   hash: Hash,
   search: CarbonSearch,

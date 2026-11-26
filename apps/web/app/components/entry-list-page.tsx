@@ -4,12 +4,13 @@ import type { ContentKind } from "@catalyst/schemas";
 import { ArtworkWall } from "~/components/entry/artwork-wall";
 import { GalleryEnd } from "~/components/entry/gallery-end";
 import { ARTWORK_FILLER, GALLERY_FILLER } from "~/lib/gallery-filler";
+import { SiteFooter } from "~/components/site-footer";
 import { TagFilter } from "~/components/tag-filter";
 import { ActivityPanel } from "~/components/activity-panel";
 import { EntryRow } from "~/components/entry/entry-list-card";
 import { StatePanel } from "~/components/ui";
 import { cn } from "~/lib/utils";
-import { KIND_NOUNS, KIND_PLURALS, kindCount, listBackState, type EntrySummary } from "~/lib/entries";
+import { KIND_NOUNS, KIND_PATHS, KIND_PLURALS, kindCount, listBackState, type EntrySummary } from "~/lib/entries";
 import { collectTags, filterByTag, groupByYear, listStats, parseTagFilter, shouldGroupByYear } from "~/lib/entry-list";
 
 /** What continues a wall under its banner: the photographs' and the artworks' have one, the other lists none. */
@@ -80,76 +81,79 @@ export function EntryListPage({ kind, items, activityUrl = null }: { kind: Conte
   const poems = kind === "poem";
 
   return (
-    <main
-      id="main"
-      tabIndex={-1}
-      data-surface="reading"
-      data-layout="full"
-      data-list={kind}
-      className="entry mx-auto max-w-[100rem] px-4 pt-[calc(var(--navbar-height)+1.5rem)] min-[56rem]:pt-[calc(var(--navbar-height)+3rem)] pb-24 outline-none md:px-14"
-    >
-      <header data-slot="list-head" className="list-head">
-        <h1 className="list-title">{KIND_PLURALS[kind]}</h1>
-        {/* The figures of the list: how many (of how many when a tag filters), since when, how many places. There is no running head above the title any more (the owner's name and the count were said again by the figures: owner, 2026-11-03) */}
-        <dl data-slot="list-stats" className={cn("list-stats", withPanel && "md:invisible")}>
-          {heads.map((stat) => (
-            <div key={stat.label} className="list-stat">
-              <dd className="list-stat-value">{stat.value}</dd>
-              <dt className="list-stat-label type-meta">{stat.label}</dt>
-            </div>
-          ))}
-        </dl>
-      </header>
+    <>
+      <main
+        id="main"
+        tabIndex={-1}
+        data-surface="reading"
+        data-layout="full"
+        data-list={kind}
+        className="entry mx-auto max-w-[100rem] px-4 pt-[calc(var(--navbar-height)+1.5rem)] min-[56rem]:pt-[calc(var(--navbar-height)+3rem)] pb-24 outline-none md:px-14"
+      >
+        <header data-slot="list-head" className="list-head">
+          <h1 className="list-title">{KIND_PLURALS[kind]}</h1>
+          {/* The figures of the list: how many (of how many when a tag filters), since when, how many places. There is no running head above the title any more (the owner's name and the count were said again by the figures: owner, 2026-11-03) */}
+          <dl data-slot="list-stats" className={cn("list-stats", withPanel && "md:invisible")}>
+            {heads.map((stat) => (
+              <div key={stat.label} className="list-stat">
+                <dd className="list-stat-value">{stat.value}</dd>
+                <dt className="list-stat-label type-meta">{stat.label}</dt>
+              </div>
+            ))}
+          </dl>
+        </header>
 
-      {kind === "project" && <ActivityPanel url={activityUrl} lead={heads} />}
+        {kind === "project" && <ActivityPanel url={activityUrl} lead={heads} />}
 
-      {tags.length > 0 && items.length > 1 && <TagFilter tags={tags} selected={tag} search={search} label={`Filter ${section} by tag`} />}
-      <p role="status" className="sr-only">
-        {tag ? `Showing ${shown.length} of ${total} tagged ${tag}` : ""}
-      </p>
+        {tags.length > 0 && items.length > 1 && <TagFilter tags={tags} selected={tag} search={search} label={`Filter ${section} by tag`} />}
+        <p role="status" className="sr-only">
+          {tag ? `Showing ${shown.length} of ${total} tagged ${tag}` : ""}
+        </p>
 
-      {/* Close under the filter (owner, 2026-11-03): the filter sits in the angle between the first entry's top and the left edge; a list with YEAR headings keeps a little more room (a big year numeral follows the filter) */}
-      <div className={cn("flex flex-col gap-14", grouped ? "mt-8 max-md:mt-4" : "mt-6 max-md:mt-1.5")}>
-        {items.length === 0 ? (
-          <StatePanel state="empty" headingLevel={2} title="Nothing here yet." />
-        ) : wall ? (
-          // One wall for every year, newest first: the year is in each caption, and a heading would cut the bricks.
-          <>
-            <ArtworkWall
-              items={groups.flatMap((g) => g.items)}
-              headingLevel={2}
-              label={KIND_PLURALS[kind]}
-              kind={kind}
-              linkState={listBackState(kind, search)}
-              {...wallEnd(kind)}
-            />
-          </>
-        ) : (
-          groups.map((group) => {
-            const id = `year-${group.key}`;
-            return (
-              <section key={group.key} aria-labelledby={grouped ? id : undefined} data-year={group.key}>
-                {grouped && (
-                  <h2 id={id} className="ds-year type-display-lg type-thin ds-year-sticky">
-                    {group.year ?? "Undated"}
-                    <span className="sr-only">, {group.items.length === 1 ? "1 entry" : `${group.items.length} entries`}</span>
-                  </h2>
-                )}
-                <div role="list" aria-label={grouped ? `${KIND_PLURALS[kind]} ${group.year ?? "undated"}` : KIND_PLURALS[kind]} className={poems ? "poem-grid" : "flex flex-col"}>
-                  {group.items.map((entry) => {
-                    const priority = seen++ < 3;
-                    return (
-                      <div key={entry.slug} role="listitem" className="min-w-0">
-                        <EntryRow entry={entry} headingLevel={cardLevel} priority={priority} className="scroll-mt-24" linkState={listBackState(kind, search)} />
-                      </div>
-                    );
-                  })}
-                </div>
-              </section>
-            );
-          })
-        )}
-      </div>
-    </main>
+        {/* Close under the filter (owner, 2026-11-03): the filter sits in the angle between the first entry's top and the left edge; a list with YEAR headings keeps a little more room (a big year numeral follows the filter) */}
+        <div className={cn("flex flex-col gap-14", grouped ? "mt-8 max-md:mt-4" : "mt-6 max-md:mt-1.5")}>
+          {items.length === 0 ? (
+            <StatePanel state="empty" headingLevel={2} title="Nothing here yet." />
+          ) : wall ? (
+            // One wall for every year, newest first: the year is in each caption, and a heading would cut the bricks.
+            <>
+              <ArtworkWall
+                items={groups.flatMap((g) => g.items)}
+                headingLevel={2}
+                label={KIND_PLURALS[kind]}
+                kind={kind}
+                linkState={listBackState(kind, search)}
+                {...wallEnd(kind)}
+              />
+            </>
+          ) : (
+            groups.map((group) => {
+              const id = `year-${group.key}`;
+              return (
+                <section key={group.key} aria-labelledby={grouped ? id : undefined} data-year={group.key}>
+                  {grouped && (
+                    <h2 id={id} className="ds-year type-display-lg type-thin ds-year-sticky">
+                      {group.year ?? "Undated"}
+                      <span className="sr-only">, {group.items.length === 1 ? "1 entry" : `${group.items.length} entries`}</span>
+                    </h2>
+                  )}
+                  <div role="list" aria-label={grouped ? `${KIND_PLURALS[kind]} ${group.year ?? "undated"}` : KIND_PLURALS[kind]} className={poems ? "poem-grid" : "flex flex-col"}>
+                    {group.items.map((entry) => {
+                      const priority = seen++ < 3;
+                      return (
+                        <div key={entry.slug} role="listitem" className="min-w-0">
+                          <EntryRow entry={entry} headingLevel={cardLevel} priority={priority} className="scroll-mt-24" linkState={listBackState(kind, search)} />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+              );
+            })
+          )}
+        </div>
+      </main>
+      <SiteFooter path={KIND_PATHS[kind]} className="mx-auto max-w-[100rem] px-4 md:px-14" />
+    </>
   );
 }

@@ -3048,6 +3048,196 @@
     position: relative;
   }
 
+  /*
+   * The site footer (components/site-footer.tsx, docs/design-system.md "Site footer"): the end of every page with a Markdown twin, a band
+   * of its own. The band is a SUBTLE raise (owner, 2026-11-26: the hover grey was "too elevated"): the page colour with 4 % of the ink
+   * mixed in (about #141414 on the dark page's #0a0a0a, #f1f1f1 on the light one's #fbfbfb; the muted words stay AA on it, 7:1 dark, 6:1
+   * light), from edge to edge of the window (or of the panel), its top edge a whisper: a full-width hairline only a few points brighter
+   * than the band, never a line as wide as the content. Its content sits on the page's own column (the caller's width and side padding
+   * on `.site-footer-inner`). Up to three columns by that column's width (a size container:
+   * stacked under 40 rem): who (the name in the display face, the line in the reading face), the sections, the links for agents. The
+   * labels are the meta capitals (as the lists' figures' labels); the links are plain muted words, the current page in the ink, the
+   * accent's text tone under the pointer (as the header's items). The first version of the site is one quieter sentence at the FOOT of
+   * the who column, level with the lists' last row (owner, 2026-11-26: a bottom row of its own wasted space); stacked, it follows the
+   * line under the name. No rule inside the band (a content-wide line in a window-wide band looks cut off).
+   *
+   * ONE spacing scale: 0.5 rem (label to its links), 1.5 rem (the sentence's least room under the line), 2.5 rem / 3 rem (between the
+   * columns; above and below the band's content, the same both ways). The two lists have ONE row pitch (a 1.5 rem line, 0.375 rem apart), so their rows line up across the columns.
+   */
+  .site-footer {
+    border-top: var(--hairline) solid color-mix(in srgb, var(--foreground) 9%, var(--background));
+    background: color-mix(in srgb, var(--foreground) 4%, var(--background));
+    color: var(--muted-foreground);
+  }
+
+  .site-footer-inner {
+    container-type: inline-size;
+    padding-top: 3rem;
+    padding-bottom: calc(3rem + var(--safe-bottom, 0px));
+  }
+
+  .site-footer-grid {
+    display: grid;
+    gap: 2.5rem;
+  }
+
+  @container (min-width: 40rem) {
+    .site-footer-grid {
+      grid-template-columns: minmax(0, 1fr) max-content max-content;
+      column-gap: clamp(3rem, 8cqi, 7rem);
+    }
+  }
+
+  /* (no specificity: the margins set below win without a fight) */
+  .site-footer :where(p) {
+    margin: 0;
+  }
+
+  /* (the name's first line stands where the labels' do: the same top, so the three columns start on one line) */
+  .site-footer-name {
+    font-family: var(--font-display);
+    font-size: 1.125rem;
+    line-height: 1.25rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--foreground);
+  }
+
+  .site-footer-who {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .site-footer-line {
+    margin-top: 0.5rem;
+    max-width: 24rem;
+    font-family: var(--font-reading);
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+
+  .site-footer-label {
+    margin-bottom: 0.5rem;
+  }
+
+  .site-footer-list {
+    display: grid;
+    gap: 0.375rem 2.5rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* The sections in two columns read down (seven words make a short block, not a long run: Globe to Artworks, then the rest). */
+  .site-footer-list[data-columns="2"] {
+    grid-template-rows: repeat(4, auto);
+    grid-auto-flow: column;
+    grid-auto-columns: max-content;
+  }
+
+  .site-footer-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25em;
+    font-size: 0.9375rem;
+    line-height: 1.5rem;
+    color: var(--muted-foreground);
+    text-decoration: none;
+    transition: color var(--duration-fast) var(--ease-standard);
+  }
+
+  /* (the links for AI agents lead with a small icon, in the words' colour so it turns with them under the pointer: the icon's left edge is the label's) */
+  .site-footer-agents .site-footer-link {
+    gap: 0.5rem;
+  }
+
+  /* (one slot for both marks, so the two labels start on one line) */
+  .site-footer-agents .site-footer-link > :first-child {
+    flex: none;
+    width: 1.125rem;
+  }
+
+  /* The Markdown mark: the two letters in the mono face. Drawn by CSS, so they are no part of the page's text (an HTML-to-text tool reads the words alone). */
+  .site-footer-md::before {
+    content: "MD";
+    font-family: var(--font-meta);
+    font-size: 0.8125rem;
+    font-weight: 700;
+    letter-spacing: 0;
+  }
+
+  .site-footer-link[aria-current="page"] {
+    color: var(--foreground);
+  }
+
+  .site-footer-link:hover {
+    color: var(--signal-text);
+  }
+
+  /* (pushed to the column's foot: its last line sits on the lists' last row; `max-width` keeps it to two short lines in a narrow column) */
+  .site-footer-archive {
+    margin-top: auto;
+    padding-top: 1.5rem;
+    max-width: 24rem;
+    font-size: 0.8125rem;
+    line-height: 1.5rem;
+  }
+
+  .site-footer-archive .site-footer-link {
+    font-size: inherit;
+    color: var(--foreground);
+  }
+
+  .site-footer-archive .site-footer-link:hover {
+    color: var(--signal-text);
+  }
+
+  /* The short form, in the side panel beside the globe and the phone's slide-over (components/detail-panel.tsx, `data-layout="panel"`): the
+     same band to the panel's edges, the links for agents only (the header and the globe are right there). The full-screen entry has it whole. */
+  [data-panel][data-layout="panel"] .site-footer :is(.site-footer-who, .site-footer-nav) {
+    display: none;
+  }
+
+  [data-panel][data-layout="panel"] .site-footer-inner {
+    padding-top: 2rem;
+    padding-bottom: calc(2rem + var(--safe-bottom, 0px));
+  }
+
+  /* Below `md` (fingers) every link is a 44 px row, the rows touching (their pitch is the target), the label closer above them. */
+  @media (max-width: 767.98px) {
+    .site-footer-inner {
+      padding-top: 2.5rem;
+      padding-bottom: calc(2.5rem + var(--safe-bottom, 0px));
+    }
+
+    .site-footer-link {
+      min-height: 2.75rem;
+    }
+
+    .site-footer-list {
+      row-gap: 0;
+    }
+
+    .site-footer-label {
+      margin-bottom: 0;
+    }
+  }
+
+  #app:has(> [data-slot="site-footer"]) {
+    display: flex;
+    flex-direction: column;
+    min-height: 100dvh;
+  }
+
+  #app:has(> [data-slot="site-footer"]) > main {
+    flex: 1 0 auto;
+    width: 100%;
+  }
+
+  #app > [data-slot="site-footer"] {
+    width: 100%;
+  }
+
   @media (max-width: 767.98px) {
     .entry-link::before {
       content: "";
@@ -9372,4 +9562,22 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   -webkit-mask-composite: xor;
   mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   mask-composite: exclude;
+}
+
+/*
+ * A section list's rows are cut by hairlines, each row's own top rule (`EntryRow`: the `border-t` utility): the hairlines are BETWEEN
+ * rows, so the first row of a list has none (owner, 2026-11-26: the line between the tag filter, or a year, and the first entry was heavy
+ * and said nothing). The room it stood in is the row's own top padding. In the poems' two columns, the first row of each column. In the
+ * utilities' layer: a rule of the components' layer would lose to the `border-t` it removes. (The place panel's compact rows draw no rule.)
+ */
+@layer utilities {
+  [data-list] [role="list"] > [role="listitem"]:first-child > .entry-row {
+    border-top-width: 0;
+  }
+
+  @container (min-width: 44rem) {
+    [data-list] .poem-grid > [role="listitem"]:nth-child(2) > .entry-row {
+      border-top-width: 0;
+    }
+  }
 }

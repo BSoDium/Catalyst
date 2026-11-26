@@ -6,6 +6,7 @@ import { PANEL_HEADING_ID } from "~/components/detail-panel";
 import { EntryRow } from "~/components/entry/entry-list-card";
 import { TripCards } from "~/components/trip-card";
 import { PhotoGallery, type GalleryItem } from "~/components/place-gallery";
+import { SiteFooter } from "~/components/site-footer";
 import { Button, Icon, Stack, StatePanel } from "~/components/ui";
 import { coverImageProps } from "~/lib/cover-image";
 import { changedParts, type DatePart } from "~/lib/dates";
@@ -327,51 +328,55 @@ export function PlaceDetail({ place }: { place: PlaceDetailData }) {
   // (what is behind the disclosure of a step with entries: its words and pictures; its trips are a section of their own)
   const closedStory = !!place.summary || place.body.length > 0 || photos.length > 0;
   return (
-    <article aria-labelledby={PANEL_HEADING_ID} data-slot="place-view" data-kind="place" className="px-6 pt-2 pb-10">
-      <Stack gap={8}>
-        <PlaceHeader place={place} cover={cover} />
-        {groups.length > 0 && (
-          <section aria-label="Entries" data-slot="place-entries">
-            <Stack gap={10}>
-              {groups.map((group) => {
-                const gallery = galleries.get(group.kind);
-                return (
-                  <div key={group.kind} data-kind={group.kind} className="@container/group flex flex-col gap-4">
-                    <GroupHeader title={group.label} count={(gallery?.length ?? 0) + group.entries.length} />
-                    {gallery && <PhotoGallery key={`${place.slug}:${group.kind}`} items={gallery} from={place.slug} />}
-                    {group.entries.length > 0 && (
-                      // (the first row starts at the title's own distance from it, as a gallery does: the rows' padding is between them)
-                      // (poems are short: in a wide panel they are two columns, each a row of its own width, and a narrow one is a list again)
-                      <ul className={cn("m-0 grid list-none grid-cols-1 gap-0 p-0 [&>li:first-child>article]:pt-0", group.kind === "poem" && "@2xl:grid-cols-2 @2xl:gap-x-8")}>
-                        {newestFirst(group.entries).map((entry, k) => (
-                          // (the row's own width is what its layout follows: side by side from 28 rem, stacked below. The second poem of two columns starts at the first one's height: it is pulled up by the row's own padding, here, on the cell, because a
-                          // container query on the row would be answered by the cell's width, not the panel's)
-                          <li key={entry.slug} className={cn("@container min-w-0", group.kind === "poem" && k === 1 && "@2xl:-mt-5")}>
-                            <EntryRow entry={entry} linkState={{ from: place.slug }} headingLevel={3} compact />
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                );
-              })}
-            </Stack>
-          </section>
-        )}
-        {/* (a step with no entries is its story, open, under its photographs) */}
-        {story && !count && <StepStory place={place} photos={photos} />}
-        {/* (a step with entries and no trip has its story, open, after them; with trips it is the trips' introduction, under their title) */}
-        {closedStory && count > 0 && place.trips.length === 0 && (
-          <div data-slot="place-story">
-            <StepStory place={place} photos={photos} trips={false} />
-          </div>
-        )}
-        {/* (the trips: always shown, after the entries, as a carousel when there are several) */}
-        {count > 0 && place.trips.length > 0 && (
-          <TripCards trips={place.trips} here={place.slug} lived={place.lived === true} intro={closedStory ? <div data-slot="place-story"><StepStory place={place} photos={photos} trips={false} /></div> : undefined} />
-        )}
-      </Stack>
-    </article>
+    <>
+      <article aria-labelledby={PANEL_HEADING_ID} data-slot="place-view" data-kind="place" className="px-6 pt-2 pb-10">
+        <Stack gap={8}>
+          <PlaceHeader place={place} cover={cover} />
+          {groups.length > 0 && (
+            <section aria-label="Entries" data-slot="place-entries">
+              <Stack gap={10}>
+                {groups.map((group) => {
+                  const gallery = galleries.get(group.kind);
+                  return (
+                    <div key={group.kind} data-kind={group.kind} className="@container/group flex flex-col gap-4">
+                      <GroupHeader title={group.label} count={(gallery?.length ?? 0) + group.entries.length} />
+                      {gallery && <PhotoGallery key={`${place.slug}:${group.kind}`} items={gallery} from={place.slug} />}
+                      {group.entries.length > 0 && (
+                        // (the first row starts at the title's own distance from it, as a gallery does: the rows' padding is between them)
+                        // (poems are short: in a wide panel they are two columns, each a row of its own width, and a narrow one is a list again)
+                        <ul className={cn("m-0 grid list-none grid-cols-1 gap-0 p-0 [&>li:first-child>article]:pt-0", group.kind === "poem" && "@2xl:grid-cols-2 @2xl:gap-x-8")}>
+                          {newestFirst(group.entries).map((entry, k) => (
+                            // (the row's own width is what its layout follows: side by side from 28 rem, stacked below. The second poem of two columns starts at the first one's height: it is pulled up by the row's own padding, here, on the cell, because a
+                            // container query on the row would be answered by the cell's width, not the panel's)
+                            <li key={entry.slug} className={cn("@container min-w-0", group.kind === "poem" && k === 1 && "@2xl:-mt-5")}>
+                              <EntryRow entry={entry} linkState={{ from: place.slug }} headingLevel={3} compact />
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  );
+                })}
+              </Stack>
+            </section>
+          )}
+          {/* (a step with no entries is its story, open, under its photographs) */}
+          {story && !count && <StepStory place={place} photos={photos} />}
+          {/* (a step with entries and no trip has its story, open, after them; with trips it is the trips' introduction, under their title) */}
+          {closedStory && count > 0 && place.trips.length === 0 && (
+            <div data-slot="place-story">
+              <StepStory place={place} photos={photos} trips={false} />
+            </div>
+          )}
+          {/* (the trips: always shown, after the entries, as a carousel when there are several) */}
+          {count > 0 && place.trips.length > 0 && (
+            <TripCards trips={place.trips} here={place.slug} lived={place.lived === true} intro={closedStory ? <div data-slot="place-story"><StepStory place={place} photos={photos} trips={false} /></div> : undefined} />
+          )}
+        </Stack>
+      </article>
+      {/* (after the article: the site's footer at the end of the panel, its edges the article's) */}
+      <SiteFooter path={placePath(place.slug)} className="px-6" />
+    </>
   );
 }
 

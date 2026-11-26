@@ -2,9 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import type { PublishedCareer, PublishedCareerEducation, PublishedCareerProject, PublishedCareerRole } from "@catalyst/schemas";
 import { ContactForm } from "~/components/contact-form";
+import { SiteFooter } from "~/components/site-footer";
 import { Button, Icon } from "~/components/ui";
 import type { IconName } from "~/components/ui/icon";
-import { asOfText, careerDuration, careerIcon, careerLogoSrc, careerPeriod, formatCareerMonth, isCurrent, languageDetail, safeLinks, safePortrait, safeProjects } from "~/lib/career";
+import { asOfText, CAREER_PATH, careerDuration, careerIcon, careerLogoSrc, careerPeriod, formatCareerMonth, isCurrent, languageDetail, safeLinks, safePortrait, safeProjects } from "~/lib/career";
 import { CONTACT_ID } from "~/lib/contact";
 import { safeExternalUrl } from "~/lib/entry-blocks";
 import { entryPath, placePath } from "~/lib/entries";
@@ -33,152 +34,155 @@ export function CareerPage({ career, places = [], projects = [] }: { career: Pub
   const known = new Set(places);
   const haveProject = new Set(projects);
   return (
-    <main
-      id="main"
-      tabIndex={-1}
-      data-surface="reading"
-      data-layout="full"
-      data-slot="career"
-      aria-labelledby="career-name"
-      className="entry career mx-auto max-w-[90rem] px-4 pt-[calc(var(--navbar-height)+0.5rem)] min-[56rem]:pt-[calc(var(--navbar-height)+3rem)] pb-24 outline-none md:px-14 print:max-w-none print:p-0"
-    >
-      <header data-slot="career-head" className="list-head">
-        <div className="career-id" data-portrait={portrait ? "true" : "false"}>
-          <div className="career-id-text">
-            {/* Every 10 s the handle comes in over the name, and the name steps back under it, smaller and dimmed, like its shadow (#588): CSS only, `.career-name-handle` and `.career-name-text`. */}
-            <h1 id="career-name" className="list-title career-name" aria-label={SITE.name}>
-              <span className="career-name-text">
-                <span className="career-name-given">{SITE.givenName}</span> <span className="career-name-family">{SITE.familyName}</span>
-              </span>
-              <span aria-hidden="true" className="career-name-handle">
-                <span className="career-name-handle-heavy">{SITE.handle.slice(0, 4)}</span>
-                <span className="career-name-handle-thin">{SITE.handle.slice(4)}</span>
-              </span>
-            </h1>
-            <span className="sr-only">{SITE_HANDLE_LINE}</span>
-            <p className="career-summary">{career.summary}</p>
-            <div className="career-cta">
-            {available && (
-              <p data-slot="career-availability" className="career-availability type-meta">
-                <span>
-                  {available.text}
-                  <span className="career-asof">
-                    <span className="career-sep"> · </span>
-                    <time dateTime={available.asOf}>{asOfText(available.asOf)}</time>
-                  </span>
+    <>
+      <main
+        id="main"
+        tabIndex={-1}
+        data-surface="reading"
+        data-layout="full"
+        data-slot="career"
+        aria-labelledby="career-name"
+        className="entry career mx-auto max-w-[90rem] px-4 pt-[calc(var(--navbar-height)+0.5rem)] min-[56rem]:pt-[calc(var(--navbar-height)+3rem)] pb-24 outline-none md:px-14 print:max-w-none print:p-0"
+      >
+        <header data-slot="career-head" className="list-head">
+          <div className="career-id" data-portrait={portrait ? "true" : "false"}>
+            <div className="career-id-text">
+              {/* Every 10 s the handle comes in over the name, and the name steps back under it, smaller and dimmed, like its shadow (#588): CSS only, `.career-name-handle` and `.career-name-text`. */}
+              <h1 id="career-name" className="list-title career-name" aria-label={SITE.name}>
+                <span className="career-name-text">
+                  <span className="career-name-given">{SITE.givenName}</span> <span className="career-name-family">{SITE.familyName}</span>
                 </span>
+                <span aria-hidden="true" className="career-name-handle">
+                  <span className="career-name-handle-heavy">{SITE.handle.slice(0, 4)}</span>
+                  <span className="career-name-handle-thin">{SITE.handle.slice(4)}</span>
+                </span>
+              </h1>
+              <span className="sr-only">{SITE_HANDLE_LINE}</span>
+              <p className="career-summary">{career.summary}</p>
+              <div className="career-cta">
+              {available && (
+                <p data-slot="career-availability" className="career-availability type-meta">
+                  <span>
+                    {available.text}
+                    <span className="career-asof">
+                      <span className="career-sep"> · </span>
+                      <time dateTime={available.asOf}>{asOfText(available.asOf)}</time>
+                    </span>
+                  </span>
+                </p>
+              )}
+              <p className="career-reach print:hidden">
+                <Button asChild variant="secondary">
+                  <a href={`#${CONTACT_ID}`} data-slot="career-contact-link" onClick={scrollToContact}>
+                    Get in touch
+                    <Icon name="arrow-right" size="inline" aria-hidden="true" />
+                  </a>
+                </Button>
+              </p>
+              </div>
+            </div>
+            {portrait && (
+              <figure data-slot="career-portrait" className="career-portrait">
+                <PortraitPicture portrait={portrait} alt="" decorative crashed={crashed} className="career-portrait-glow" />
+                <PortraitPicture portrait={portrait} alt={crashed && portrait.egg ? PORTRAIT_EGG.alt : portrait.alt} eager />
+                {/* the egg is laid OVER the plain portrait, which is drawn the same everywhere but on the face: its flicker is the face's alone */}
+                {crashed && portrait.egg && <PortraitPicture portrait={portrait} alt="" decorative crashed eager />}
+              </figure>
+            )}
+          </div>
+        </header>
+
+        {(career.languages.length > 0 || updated) && (
+          <div data-slot="career-strip" className="career-strip" data-updated={updated ? "true" : undefined}>
+            {updated && (
+              <p data-slot="career-updated" className="career-updated type-meta">
+                Updated <time dateTime={career.updated}>{updated}</time>
               </p>
             )}
-            <p className="career-reach print:hidden">
-              <Button asChild variant="secondary">
-                <a href={`#${CONTACT_ID}`} data-slot="career-contact-link" onClick={scrollToContact}>
-                  Get in touch
-                  <Icon name="arrow-right" size="inline" aria-hidden="true" />
-                </a>
-              </Button>
-            </p>
-            </div>
+          {career.languages.length > 0 && (
+            <section data-slot="career-languages" aria-labelledby="career-languages-h" className="career-languages">
+              <h2 id="career-languages-h" className="career-languages-label type-meta">
+                Languages
+              </h2>
+              <ul>
+                {career.languages.map((l) => {
+                  const detail = languageDetail(l);
+                  return (
+                    <li key={l.name}>
+                      <span className="career-language-name">{l.name}</span>
+                      {detail && <span className="career-language-detail">{detail}</span>}
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          )}
           </div>
-          {portrait && (
-            <figure data-slot="career-portrait" className="career-portrait">
-              <PortraitPicture portrait={portrait} alt="" decorative crashed={crashed} className="career-portrait-glow" />
-              <PortraitPicture portrait={portrait} alt={crashed && portrait.egg ? PORTRAIT_EGG.alt : portrait.alt} eager />
-              {/* the egg is laid OVER the plain portrait, which is drawn the same everywhere but on the face: its flicker is the face's alone */}
-              {crashed && portrait.egg && <PortraitPicture portrait={portrait} alt="" decorative crashed eager />}
-            </figure>
-          )}
-        </div>
-      </header>
-
-      {(career.languages.length > 0 || updated) && (
-        <div data-slot="career-strip" className="career-strip" data-updated={updated ? "true" : undefined}>
-          {updated && (
-            <p data-slot="career-updated" className="career-updated type-meta">
-              Updated <time dateTime={career.updated}>{updated}</time>
-            </p>
-          )}
-        {career.languages.length > 0 && (
-          <section data-slot="career-languages" aria-labelledby="career-languages-h" className="career-languages">
-            <h2 id="career-languages-h" className="career-languages-label type-meta">
-              Languages
-            </h2>
-            <ul>
-              {career.languages.map((l) => {
-                const detail = languageDetail(l);
-                return (
-                  <li key={l.name}>
-                    <span className="career-language-name">{l.name}</span>
-                    {detail && <span className="career-language-detail">{detail}</span>}
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-        )}
-        </div>
-      )}
-
-      <Block id="experience" title="Experience" count={career.roles.length}>
-        <ol className="career-timeline" aria-labelledby="experience-h">
-          {career.roles.map((role) => (
-            <RoleItem key={role.id} role={role} placeKnown={role.place !== undefined && known.has(role.place)} projectKnown={(slug) => haveProject.has(slug)} asOf={career.updated} />
-          ))}
-        </ol>
-      </Block>
-
-      <div className="career-pair">
-        {career.education.length > 0 && (
-          <Block id="education" title="Education" count={career.education.length}>
-            <ol className="career-timeline" aria-labelledby="education-h">
-              {career.education.map((e) => (
-                <EducationItem key={e.id} item={e} placeKnown={e.place !== undefined && known.has(e.place)} asOf={career.updated} />
-              ))}
-            </ol>
-          </Block>
         )}
 
-        {career.skills.length > 0 && (
-          <Block id="skills" title="Skills">
-            <dl className="career-skills">
-              {career.skills.map((g) => (
-                <div key={g.group}>
-                  <dt className="type-meta">{g.group}</dt>
-                  <dd>
-                    <ul className="career-chips">
-                      {g.items.map((s) => (
-                        <li key={s}>{s}</li>
-                      ))}
-                    </ul>
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          </Block>
-        )}
-      </div>
-
-      <div className="career-pair">
-      {links.length > 0 && (
-        <footer data-slot="career-links" className="career-block career-footer">
-          <h2 id="links-h" className="career-block-title">
-            Socials
-          </h2>
-          <ul aria-labelledby="links-h" className="career-links">
-            {links.map((l) => (
-              <li key={l.url}>
-                <a href={l.url} rel="me noopener noreferrer" className="career-link">
-                  <span>{l.label}</span>
-                  <Icon name="arrow-up-right" size="inline" className="print:hidden" />
-                </a>
-              </li>
+        <Block id="experience" title="Experience" count={career.roles.length}>
+          <ol className="career-timeline" aria-labelledby="experience-h">
+            {career.roles.map((role) => (
+              <RoleItem key={role.id} role={role} placeKnown={role.place !== undefined && known.has(role.place)} projectKnown={(slug) => haveProject.has(slug)} asOf={career.updated} />
             ))}
-          </ul>
-        </footer>
-      )}
-      {/* After the socials in the document, so that wrapped to one column the socials come first and the tab order is the order seen; from 80 rem the pair is two columns, the form at the left and the socials at the right (the grid places them: #506). */}
-      <ContactForm />
-      </div>
-    </main>
+          </ol>
+        </Block>
+
+        <div className="career-pair">
+          {career.education.length > 0 && (
+            <Block id="education" title="Education" count={career.education.length}>
+              <ol className="career-timeline" aria-labelledby="education-h">
+                {career.education.map((e) => (
+                  <EducationItem key={e.id} item={e} placeKnown={e.place !== undefined && known.has(e.place)} asOf={career.updated} />
+                ))}
+              </ol>
+            </Block>
+          )}
+
+          {career.skills.length > 0 && (
+            <Block id="skills" title="Skills">
+              <dl className="career-skills">
+                {career.skills.map((g) => (
+                  <div key={g.group}>
+                    <dt className="type-meta">{g.group}</dt>
+                    <dd>
+                      <ul className="career-chips">
+                        {g.items.map((s) => (
+                          <li key={s}>{s}</li>
+                        ))}
+                      </ul>
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </Block>
+          )}
+        </div>
+
+        <div className="career-pair">
+        {links.length > 0 && (
+          <footer data-slot="career-links" className="career-block career-footer">
+            <h2 id="links-h" className="career-block-title">
+              Socials
+            </h2>
+            <ul aria-labelledby="links-h" className="career-links">
+              {links.map((l) => (
+                <li key={l.url}>
+                  <a href={l.url} rel="me noopener noreferrer" className="career-link">
+                    <span>{l.label}</span>
+                    <Icon name="arrow-up-right" size="inline" className="print:hidden" />
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </footer>
+        )}
+        {/* After the socials in the document, so that wrapped to one column the socials come first and the tab order is the order seen; from 80 rem the pair is two columns, the form at the left and the socials at the right (the grid places them: #506). */}
+        <ContactForm />
+        </div>
+      </main>
+      <SiteFooter path={CAREER_PATH} className="mx-auto max-w-[90rem] px-4 md:px-14" />
+    </>
   );
 }
 

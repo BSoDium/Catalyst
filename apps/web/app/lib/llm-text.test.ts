@@ -84,6 +84,17 @@ describe("entryMarkdown", () => {
   });
 });
 
+describe("every twin ends at the site index", () => {
+  const index = `Site index: ${ORIGIN}/llms.txt`;
+  it("names /llms.txt", () => {
+    const article = getEntryDetail(projection, "article", projection.articles[0]!.slug)!;
+    expect(entryMarkdown(article, ORIGIN).trimEnd().endsWith(index)).toBe(true);
+    expect(listMarkdown("article", projection.articles.map((a) => getEntryDetail(projection, "article", a.slug)!), ORIGIN).trimEnd().endsWith(index)).toBe(true);
+    expect(placeMarkdown(getPlaceDetail(projection, projection.places[0]!.slug)!, ORIGIN).trimEnd().endsWith(index)).toBe(true);
+    expect(careerMarkdown(projection.career!, ORIGIN).trimEnd().endsWith(index)).toBe(true);
+  });
+});
+
 describe("entryMarkdown: cover, related, neighbours", () => {
   const base = () => getEntryDetail(projection, "article", projection.articles[0]!.slug)!;
   const cover = { src: "/media/c.webp", alt: "A cover" };

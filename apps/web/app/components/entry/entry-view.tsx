@@ -4,6 +4,7 @@ import { PANEL_HEADING_ID } from "~/components/detail-panel";
 import { BlockRenderer } from "~/components/entry/blocks";
 import { EntryRefCard } from "~/components/entry/entry-list-card";
 import { TableOfContents } from "~/components/entry/toc";
+import { SiteFooter } from "~/components/site-footer";
 import { Button, CopyButton, CoverArt, Icon, SensitiveImage, SensitiveMediaScope, StatusTag, TagList } from "~/components/ui";
 import { shareUrl } from "~/lib/clipboard";
 import { copyrightNotice } from "~/lib/copyright";
@@ -272,160 +273,164 @@ function EntryArticle({ entry, layout, backTo, headingId = PANEL_HEADING_ID }: E
   );
 
   return (
-    <article
-      aria-labelledby={headingId}
-      data-slot="entry-view"
-      data-surface="reading"
-      data-layout={layout}
-      data-kind={entry.kind}
-      data-structured={structured ? "" : undefined}
-      data-sensitive={isSensitive(entry) ? "" : undefined}
-      className={cn("entry mx-auto w-full min-w-0", full ? "max-w-[100rem] px-4 pt-3 pb-20 md:px-8" : "px-6 pt-2 pb-10")}
-    >
-      <div className="entry-grid">
-        <header className={cn("entry-head flex min-w-0 flex-col", poem && !heroSrc ? "gap-5" : "gap-0")}>
-          <p
-            data-slot="entry-meta"
-            className={cn(
-              "type-meta m-0 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 text-muted-foreground max-md:flex-nowrap",
-              "entry-running",
-              // On a phone the panel's close button floats at the right of this very row (it has no row of its own: `[data-slot="panel-bar"]`, app.css): the row is a band with the page's gutter (24 px) all round, the text centred, with room for it
-              "max-md:-mt-2 max-md:items-center",
-              // (its rule runs the panel's whole width, and a cover's picture starts at it: the text keeps the page's gutter)
-              full ? "-mx-4 px-4 md:-mx-8 md:px-8" : "-mx-6 px-6",
-            )}
-          >
-            <span className={cn("min-w-0 max-md:flex-1 max-md:truncate max-md:whitespace-nowrap", backTo && !backTo.list && "flex-1 truncate whitespace-nowrap")}>
-              {backTo && !backTo.list && (
-                <>
-                  {/* (opened from a place: the way back is the first word of the running head, as the kind's name is when opened from its list: a row of its own over the head was two lines for one thing; the head is ONE line, cut at the end when it does not fit) */}
+    <>
+      <article
+        aria-labelledby={headingId}
+        data-slot="entry-view"
+        data-surface="reading"
+        data-layout={layout}
+        data-kind={entry.kind}
+        data-structured={structured ? "" : undefined}
+        data-sensitive={isSensitive(entry) ? "" : undefined}
+        className={cn("entry mx-auto w-full min-w-0", full ? "max-w-[100rem] px-4 pt-3 pb-20 md:px-8" : "px-6 pt-2 pb-10")}
+      >
+        <div className="entry-grid">
+          <header className={cn("entry-head flex min-w-0 flex-col", poem && !heroSrc ? "gap-5" : "gap-0")}>
+            <p
+              data-slot="entry-meta"
+              className={cn(
+                "type-meta m-0 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 text-muted-foreground max-md:flex-nowrap",
+                "entry-running",
+                // On a phone the panel's close button floats at the right of this very row (it has no row of its own: `[data-slot="panel-bar"]`, app.css): the row is a band with the page's gutter (24 px) all round, the text centred, with room for it
+                "max-md:-mt-2 max-md:items-center",
+                // (its rule runs the panel's whole width, and a cover's picture starts at it: the text keeps the page's gutter)
+                full ? "-mx-4 px-4 md:-mx-8 md:px-8" : "-mx-6 px-6",
+              )}
+            >
+              <span className={cn("min-w-0 max-md:flex-1 max-md:truncate max-md:whitespace-nowrap", backTo && !backTo.list && "flex-1 truncate whitespace-nowrap")}>
+                {backTo && !backTo.list && (
+                  <>
+                    {/* (opened from a place: the way back is the first word of the running head, as the kind's name is when opened from its list: a row of its own over the head was two lines for one thing; the head is ONE line, cut at the end when it does not fit) */}
+                    <Link
+                      to={backTo.href}
+                      aria-label={`Back to place ${backTo.name}`}
+                      data-slot="entry-back"
+                      className="relative text-muted-foreground no-underline after:absolute after:-inset-x-1 after:-inset-y-3 after:content-[''] hover:text-foreground hover:underline print:hidden"
+                    >
+                      <Icon name="arrow-left" size="inline" className="mr-1.5 align-[-0.2em]" />
+                      {backTo.name}
+                    </Link>
+                    <span aria-hidden="true" className="print:hidden"> &middot; </span>
+                  </>
+                )}
+                {backTo?.list ? (
+                  // (opened from its list: the kind's name IS the way back, in the running head, so it has no row of its own: a back link with the same word over the kind was two lines for one thing)
                   <Link
                     to={backTo.href}
-                    aria-label={`Back to place ${backTo.name}`}
-                    data-slot="entry-back"
+                    aria-label={`Back to ${backTo.name}`}
+                    data-slot="entry-kind"
+                    // (inline, so that its text sits on the running head's own baseline with the places and the date: a flex box took the baseline of its icon; the touch target is a pseudo-element, taller than the line)
                     className="relative text-muted-foreground no-underline after:absolute after:-inset-x-1 after:-inset-y-3 after:content-[''] hover:text-foreground hover:underline print:hidden"
                   >
                     <Icon name="arrow-left" size="inline" className="mr-1.5 align-[-0.2em]" />
-                    {backTo.name}
+                    {KIND_LABELS[entry.kind]}
                   </Link>
-                  <span aria-hidden="true" className="print:hidden"> &middot; </span>
-                </>
-              )}
-              {backTo?.list ? (
-                // (opened from its list: the kind's name IS the way back, in the running head, so it has no row of its own: a back link with the same word over the kind was two lines for one thing)
-                <Link
-                  to={backTo.href}
-                  aria-label={`Back to ${backTo.name}`}
-                  data-slot="entry-kind"
-                  // (inline, so that its text sits on the running head's own baseline with the places and the date: a flex box took the baseline of its icon; the touch target is a pseudo-element, taller than the line)
-                  className="relative text-muted-foreground no-underline after:absolute after:-inset-x-1 after:-inset-y-3 after:content-[''] hover:text-foreground hover:underline print:hidden"
-                >
-                  <Icon name="arrow-left" size="inline" className="mr-1.5 align-[-0.2em]" />
-                  {KIND_LABELS[entry.kind]}
-                </Link>
-              ) : (
-                <span data-slot="entry-kind">{KIND_LABELS[entry.kind]}</span>
-              )}
-              {/* On a phone the head is ONE line (owner, 2026-11-03: "keep a single-line layout everywhere"), and what it says is in this order of priority: the kind, the status and the reading time, then the date, and the place only when there
-                  is no status or reading time to say (the place and the date are in "At a glance" too). What does not fit is cut at the end with an ellipsis. */}
-              {(status || reading) && (
-                <span data-slot="entry-compact" className="hidden max-md:inline">
-                  <span aria-hidden="true"> &middot; </span>
-                  {status && <StatusTag status={status} className="inline text-[length:inherit] leading-[inherit] [font:inherit] tracking-[inherit] uppercase" />}
-                  {status && reading && <span aria-hidden="true"> &middot; </span>}
-                  {reading && <span>{reading}</span>}
-                </span>
-              )}
-              {names && (
-                <span className={cn((status || reading) && "max-md:hidden")}>
-                  <span aria-hidden="true"> &middot; </span>
-                  <span data-slot="entry-place">{names}</span>
-                </span>
-              )}
-              {date && (
-                <>
-                  <span aria-hidden="true"> &middot; </span>
-                  <time dateTime={date.dateTime} data-slot="entry-date">
-                    {date.text}
-                  </time>
-                </>
-              )}
-            </span>
-            {/* (in full screen the button's box ends on the cover's right edge, which is the running head's own: the running head's gutter is given back on that side; in the panel the box is as far from the right edge as it is from the rule under it, 5 px: the gutter, 24 px, less that) */}
-            {poem && <span className={cn("-my-2.5 self-center print:hidden max-md:-my-4", full ? "md:-mr-8" : "md:-mr-[19px]")}>{copy}</span>}
-            {(status || reading) && (
-              <span className="flex items-baseline gap-4 max-md:hidden">
-                {status && <StatusTag status={status} className="text-[length:inherit] leading-[inherit] [font:inherit] tracking-[inherit] uppercase" />}
-                {reading && <span data-slot="entry-reading">{reading}</span>}
+                ) : (
+                  <span data-slot="entry-kind">{KIND_LABELS[entry.kind]}</span>
+                )}
+                {/* On a phone the head is ONE line (owner, 2026-11-03: "keep a single-line layout everywhere"), and what it says is in this order of priority: the kind, the status and the reading time, then the date, and the place only when there
+                    is no status or reading time to say (the place and the date are in "At a glance" too). What does not fit is cut at the end with an ellipsis. */}
+                {(status || reading) && (
+                  <span data-slot="entry-compact" className="hidden max-md:inline">
+                    <span aria-hidden="true"> &middot; </span>
+                    {status && <StatusTag status={status} className="inline text-[length:inherit] leading-[inherit] [font:inherit] tracking-[inherit] uppercase" />}
+                    {status && reading && <span aria-hidden="true"> &middot; </span>}
+                    {reading && <span>{reading}</span>}
+                  </span>
+                )}
+                {names && (
+                  <span className={cn((status || reading) && "max-md:hidden")}>
+                    <span aria-hidden="true"> &middot; </span>
+                    <span data-slot="entry-place">{names}</span>
+                  </span>
+                )}
+                {date && (
+                  <>
+                    <span aria-hidden="true"> &middot; </span>
+                    <time dateTime={date.dateTime} data-slot="entry-date">
+                      {date.text}
+                    </time>
+                  </>
+                )}
               </span>
-            )}
-          </p>
-          {/* (the cover is the backdrop of what comes under the running head, not of the running head itself: its small type was unreadable on a picture) */}
-          <div data-hero={heroSrc ? "" : undefined} data-tone={heroDim ? "dim" : undefined} data-sensitive={heroDim && isSensitive(entry) ? "" : undefined} className={heroSrc ? cn("entry-hero relative isolate flex min-w-0 flex-col", full ? "-mx-4 px-4 md:-mx-8 md:px-8" : "-mx-6 px-6") : "contents"}>
-            <div className={heroSrc ? "entry-hero-text relative flex min-w-0 flex-col" : "contents"}>
-              <h1
-                id={headingId}
-                tabIndex={-1}
-                data-poem={poem ? "" : undefined}
-                style={poem ? undefined : ({ "--title-scale": headlineScale(entry.title) } as CSSProperties)}
-                className={cn("entry-title outline-offset-4", poem ? "mt-4" : heroSrc ? "mt-0" : "mt-8 md:mt-10")}>
-                {lead}
-                {tail ? <span className="entry-title-tail">{tail}</span> : null}
-              </h1>
-              {entry.summary && !poem && <p className="type-standfirst mt-[0.875rem] max-w-[25.4em] md:mt-[1.25rem]">{entry.summary}</p>}
-              {/* The way to the place a photograph is about, up where it is read (the other kinds have it in "At a glance", as a link, or in the tags) and not only in a tag or on the map (#581): on the camera's row, at its right end, as tall as the camera's mark, in two lines. They are not the head's text: they nest in its corners (`.entry-facts-row`), each as near to the edges as the picture is below, and are stacked at the left, not wrapped, where they do not fit on one row (`FactsRow`). */}
-              {(exposure || (entry.kind === "photograph" && globeTarget)) && (
-                <FactsRow entry={entry.slug} className={full ? "[--hero-px:1rem] md:[--hero-px:2rem]" : "[--hero-px:1.5rem]"}>
-                  {exposure && <ExposureBlock exposure={exposure} />}
-                  {entry.kind === "photograph" && globeTarget && (
-                    <Link to={globeTarget.href} data-slot="entry-place-link" className="entry-place-link type-meta print:hidden">
-                      <Icon name="globe" size="large" className="entry-place-link-pin" />
-                      <span className="entry-place-link-text">
-                        <span className="entry-place-link-name">{globeTarget.name}</span>
-                        <span className="entry-place-link-cta">Open on the map</span>
-                      </span>
-                      <Icon name="arrow-up-right" size="large" className="entry-place-link-arrow" />
-                    </Link>
-                  )}
-                </FactsRow>
+              {/* (in full screen the button's box ends on the cover's right edge, which is the running head's own: the running head's gutter is given back on that side; in the panel the box is as far from the right edge as it is from the rule under it, 5 px: the gutter, 24 px, less that) */}
+              {poem && <span className={cn("-my-2.5 self-center print:hidden max-md:-my-4", full ? "md:-mr-8" : "md:-mr-[19px]")}>{copy}</span>}
+              {(status || reading) && (
+                <span className="flex items-baseline gap-4 max-md:hidden">
+                  {status && <StatusTag status={status} className="text-[length:inherit] leading-[inherit] [font:inherit] tracking-[inherit] uppercase" />}
+                  {reading && <span data-slot="entry-reading">{reading}</span>}
+                </span>
               )}
-              {actions}
+            </p>
+            {/* (the cover is the backdrop of what comes under the running head, not of the running head itself: its small type was unreadable on a picture) */}
+            <div data-hero={heroSrc ? "" : undefined} data-tone={heroDim ? "dim" : undefined} data-sensitive={heroDim && isSensitive(entry) ? "" : undefined} className={heroSrc ? cn("entry-hero relative isolate flex min-w-0 flex-col", full ? "-mx-4 px-4 md:-mx-8 md:px-8" : "-mx-6 px-6") : "contents"}>
+              <div className={heroSrc ? "entry-hero-text relative flex min-w-0 flex-col" : "contents"}>
+                <h1
+                  id={headingId}
+                  tabIndex={-1}
+                  data-poem={poem ? "" : undefined}
+                  style={poem ? undefined : ({ "--title-scale": headlineScale(entry.title) } as CSSProperties)}
+                  className={cn("entry-title outline-offset-4", poem ? "mt-4" : heroSrc ? "mt-0" : "mt-8 md:mt-10")}>
+                  {lead}
+                  {tail ? <span className="entry-title-tail">{tail}</span> : null}
+                </h1>
+                {entry.summary && !poem && <p className="type-standfirst mt-[0.875rem] max-w-[25.4em] md:mt-[1.25rem]">{entry.summary}</p>}
+                {/* The way to the place a photograph is about, up where it is read (the other kinds have it in "At a glance", as a link, or in the tags) and not only in a tag or on the map (#581): on the camera's row, at its right end, as tall as the camera's mark, in two lines. They are not the head's text: they nest in its corners (`.entry-facts-row`), each as near to the edges as the picture is below, and are stacked at the left, not wrapped, where they do not fit on one row (`FactsRow`). */}
+                {(exposure || (entry.kind === "photograph" && globeTarget)) && (
+                  <FactsRow entry={entry.slug} className={full ? "[--hero-px:1rem] md:[--hero-px:2rem]" : "[--hero-px:1.5rem]"}>
+                    {exposure && <ExposureBlock exposure={exposure} />}
+                    {entry.kind === "photograph" && globeTarget && (
+                      <Link to={globeTarget.href} data-slot="entry-place-link" className="entry-place-link type-meta print:hidden">
+                        <Icon name="globe" size="large" className="entry-place-link-pin" />
+                        <span className="entry-place-link-text">
+                          <span className="entry-place-link-name">{globeTarget.name}</span>
+                          <span className="entry-place-link-cta">Open on the map</span>
+                        </span>
+                        <Icon name="arrow-up-right" size="large" className="entry-place-link-arrow" />
+                      </Link>
+                    )}
+                  </FactsRow>
+                )}
+                {actions}
+              </div>
+              {heroSrc && entry.cover && <img src={heroSrc} alt={heroDim ? "" : entry.cover.alt} width={entry.cover.width} height={entry.cover.height} decoding="async" className="entry-hero-img" />}
             </div>
-            {heroSrc && entry.cover && <img src={heroSrc} alt={heroDim ? "" : entry.cover.alt} width={entry.cover.width} height={entry.cover.height} decoding="async" className="entry-hero-img" />}
+          </header>
+
+          {photo && <Cover entry={entry} />}
+
+          {!poem && marginEl}
+          {!poem && !photo && (!heroSrc || heroDim) && <Cover entry={entry} />}
+
+          <div className="entry-text min-w-0">
+            <BlockRenderer blocks={entry.body} lang={language} dropCap={editorial} figures={editorial} className="gap-[1.1em]" />
           </div>
-        </header>
-
-        {photo && <Cover entry={entry} />}
-
-        {!poem && marginEl}
-        {!poem && !photo && (!heroSrc || heroDim) && <Cover entry={entry} />}
-
-        <div className="entry-text min-w-0">
-          <BlockRenderer blocks={entry.body} lang={language} dropCap={editorial} figures={editorial} className="gap-[1.1em]" />
+          {poem && marginEl}
+          {poem && !heroSrc && <Cover entry={entry} />}
         </div>
-        {poem && marginEl}
-        {poem && !heroSrc && <Cover entry={entry} />}
-      </div>
 
-      {structured && (linkedFoot || skip) && (
-        <p data-slot="entry-linked" className="type-meta mt-12 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 text-muted-foreground print:hidden">
-          <span>{linkedFoot ? `Linked to ${linkedFoot}` : null}</span>
-          {skip}
-        </p>
-      )}
+        {structured && (linkedFoot || skip) && (
+          <p data-slot="entry-linked" className="type-meta mt-12 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 text-muted-foreground print:hidden">
+            <span>{linkedFoot ? `Linked to ${linkedFoot}` : null}</span>
+            {skip}
+          </p>
+        )}
 
-      {notice && (
-        <p data-slot="entry-copyright" lang={notice.language === "fr" ? "fr" : undefined} className="entry-copyright">
-          {notice.text}
-        </p>
-      )}
+        {notice && (
+          <p data-slot="entry-copyright" lang={notice.language === "fr" ? "fr" : undefined} className="entry-copyright">
+            {notice.text}
+          </p>
+        )}
 
-      {hasMore && (
-        <div className="mt-16 print:hidden md:mt-20">
-          <KeepReading entry={entry} full={full} />
-        </div>
-      )}
-    </article>
+        {hasMore && (
+          <div className="mt-16 print:hidden md:mt-20">
+            <KeepReading entry={entry} full={full} />
+          </div>
+        )}
+      </article>
+      {/* (after the article, not in it: the site's footer, not the entry's; the end of what the panel scrolls, its edges the article's) */}
+      <SiteFooter path={entry.href} className={full ? "mx-auto w-full max-w-[100rem] px-4 md:px-8" : "px-6"} />
+    </>
   );
 }
 

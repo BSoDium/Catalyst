@@ -11,12 +11,12 @@ import type { PublishedBodyBlock, PublishedCareer, PublishedProjection } from "@
 import { CAREER_PATH } from "./career";
 import { copyrightNotice } from "./copyright";
 import { formatEntryDate } from "./dates";
+import { markdownPath } from "./markdown-path";
 import { CONTENT_KINDS, COLLECTIONS, KIND_LABELS, KIND_PATHS, KIND_PLURALS, placePath, type EntryDetail, type EntrySummary } from "./entries";
 import type { PlaceDetailData } from "./projection";
 import { SITE, SITE_DESCRIPTION } from "./site";
 
-/** The Markdown twin of a page path: `/articles` is `/articles.md`, `/articles/a` is `/articles/a.md`. The home page has none (`/llms.txt` is its text). */
-export const markdownPath = (path: string) => `${path.replace(/\/+$/, "")}.md`;
+export { markdownPath };
 
 const abs = (origin: string, path: string) => `${origin}${path}`;
 const mdUrl = (origin: string, path: string) => abs(origin, markdownPath(path));
@@ -78,6 +78,9 @@ function head(title: string, summary: string | undefined, facts: ReadonlyArray<[
   return [`# ${title}`, ...(summary ? [`> ${summary}`] : []), ...(rows.length ? [rows.join("\n")] : [])];
 }
 
+/** The last line of every twin: the way back to the description of the whole site, so an agent that landed on one page finds the rest. */
+const siteIndex = (origin: string) => `Site index: ${abs(origin, "/llms.txt")}`;
+
 const join = (parts: readonly string[]) => `${parts.join("\n\n")}\n`;
 
 const entryLine = (e: Pick<EntrySummary, "title" | "href" | "summary" | "date">, origin: string) => {
@@ -114,6 +117,7 @@ export function entryMarkdown(entry: EntryDetail, origin: string): string {
       ? [[entry.prev && `Previous: ${entryLine(entry.prev, origin).slice(2)}`, entry.next && `Next: ${entryLine(entry.next, origin).slice(2)}`].filter(Boolean).join("  \n")]
       : []),
     ...(notice ? ["---", notice.text] : []),
+    siteIndex(origin),
   ]);
 }
 
@@ -135,12 +139,13 @@ export function placeMarkdown(place: PlaceDetailData, origin: string): string {
         ]
       : []),
     ...place.entries.flatMap((g) => [`## ${KIND_PLURALS[g.kind]}`, g.entries.map((e) => entryLine(e, origin)).join("\n")]),
+    siteIndex(origin),
   ]);
 }
 
 /** A section's list page: `/articles`, `/software`, ... */
 export function listMarkdown(kind: (typeof CONTENT_KINDS)[number], entries: readonly EntrySummary[], origin: string): string {
-  return join([`# ${KIND_PLURALS[kind]}`, ...(entries.length ? [entries.map((e) => entryLine(e, origin)).join("\n")] : ["Nothing here yet."]), `Page: ${abs(origin, KIND_PATHS[kind])}`]);
+  return join([`# ${KIND_PLURALS[kind]}`, ...(entries.length ? [entries.map((e) => entryLine(e, origin)).join("\n")] : ["Nothing here yet."]), `Page: ${abs(origin, KIND_PATHS[kind])}`, siteIndex(origin)]);
 }
 
 /** The career document. */
@@ -168,6 +173,7 @@ export function careerMarkdown(career: PublishedCareer, origin: string): string 
     ...(career.skills.length ? ["## Skills", career.skills.map((g) => `- ${g.group}: ${g.items.join(", ")}`).join("\n")] : []),
     ...(career.languages.length ? ["## Languages", career.languages.map((l) => `- ${l.name}: ${l.label ?? l.level}`).join("\n")] : []),
     ...(career.links.length ? ["## Links", career.links.map((l) => `- ${link(l.label, l.url)}`).join("\n")] : []),
+    siteIndex(origin),
   ]);
 }
 
