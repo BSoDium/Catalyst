@@ -55,10 +55,10 @@ docs/           architecture, design system, decisions
 Raw travel data and drafts live in a separate **private** repository. Only a reviewed, sanitised copy ever reaches this one.
 
 ```mermaid
-flowchart TD
-    trips["Polarsteps trips"] -->|import| private[("Private repo<br/>imports and hand-written drafts")]
-    private -->|"export: allowlist + schema check"| pr["Pull request here<br/>published content"]
-    pr -->|"merge = publication"| deploy["Website and API redeploy"]
+flowchart LR
+    trips["Polarsteps<br/>trips"] -->|import| private[("Private repo<br/>imports + drafts")]
+    private -->|"allowlist +<br/>schema check"| pr["Pull request<br/>in this repo"]
+    pr -->|"merge =<br/>publication"| deploy["Website + API<br/>redeploy"]
 ```
 
 If the importer breaks, the site simply keeps serving the last merged content.
