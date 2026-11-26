@@ -54,14 +54,11 @@ docs/           architecture, design system, decisions
 
 Raw travel data and drafts live in a separate **private** repository. Only a reviewed, sanitised copy ever reaches this one.
 
-```
-Polarsteps trips ──▶ private repo (imports, hand-written drafts)
-                          │  export: allowlist + schema check
-                          ▼
-              pull request here (published content)
-                          │  merge = publication
-                          ▼
-                 website and API redeploy
+```mermaid
+flowchart TD
+    trips["Polarsteps trips"] -->|import| private[("Private repo<br/>imports and hand-written drafts")]
+    private -->|"export: allowlist + schema check"| pr["Pull request here<br/>published content"]
+    pr -->|"merge = publication"| deploy["Website and API redeploy"]
 ```
 
 If the importer breaks, the site simply keeps serving the last merged content.
