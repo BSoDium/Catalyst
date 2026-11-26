@@ -40,7 +40,6 @@ import {
   Minimize2,
   Terminal,
   X,
-  createLucideIcon,
   type LucideIcon,
   type LucideProps,
   Moon,
@@ -52,15 +51,6 @@ import {
 } from "lucide-react";
 import type { ComponentType } from "react";
 import { cn } from "~/lib/utils";
-
-/**
- * "MD", the Markdown mark of the footer, as two letters drawn on lucide's grid: the same stroke, caps and joins as the icon beside it, which
- * letters of a font never quite matched (owner, 2026-11-27). The one drawing of our own in the set; lucide has no such mark.
- */
-const MarkdownMark = createLucideIcon("markdown-mark", [
-  ["path", { d: "M2 18V6l4.5 6L11 6v12", key: "m" }],
-  ["path", { d: "M15 6v12h1a6 6 0 0 0 0-12z", key: "d" }],
-]);
 
 /**
  * The icon set of the UI system: lucide-react, each icon under the name the interface uses for it, with the header's three (the way back's
@@ -112,8 +102,6 @@ export const ICONS = {
   list: TextAlignStart,
   link: Link2,
   hash: Hash,
-  /** The footer's "Read this page as Markdown". */
-  markdown: MarkdownMark,
   search: CarbonSearch,
   eye: Eye,
   "eye-off": EyeOff,
