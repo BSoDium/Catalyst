@@ -27,7 +27,6 @@ import {
   Eye,
   EyeOff,
   Feather,
-  File,
   FileText,
   Hash,
   Camera,
@@ -99,8 +98,6 @@ export const ICONS = {
   "chevron-left": ChevronLeft,
   "chevron-right": ChevronRight,
   copy: Copy,
-  /** A page (the footer's "Read this page as Markdown"): the plain sheet, no lines on it, so it stays clear at the text's size. */
-  file: File,
   /** Three bars of different lengths, a list (the footer's link to `/llms.txt`, an index of everything). */
   list: TextAlignStart,
   link: Link2,

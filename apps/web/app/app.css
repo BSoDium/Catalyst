@@ -3151,6 +3151,21 @@
     gap: 0.5rem;
   }
 
+  /* (one slot for both marks, so the two labels start on one line) */
+  .site-footer-agents .site-footer-link > :first-child {
+    flex: none;
+    width: 1.125rem;
+  }
+
+  /* The Markdown mark: the two letters in the mono face. Drawn by CSS, so they are no part of the page's text (an HTML-to-text tool reads the words alone). */
+  .site-footer-md::before {
+    content: "MD";
+    font-family: var(--font-meta);
+    font-size: 0.8125rem;
+    font-weight: 700;
+    letter-spacing: 0;
+  }
+
   .site-footer-link[aria-current="page"] {
     color: var(--foreground);
   }
@@ -3208,22 +3223,19 @@
     }
   }
 
-  /*
-   * The footer starts BELOW the first screen, however short the page (owner, 2026-11-26): what comes before it is at least as tall as
-   * what is visible on landing, so it is reached by scrolling and never sits in the middle or at the foot of the first view (a list
-   * filtered to one row, an empty list). A page: its `main`, a whole large viewport (`lvh`: still beyond the edge when a phone's bars fold
-   * away). In the panel: the article, the whole height of what the panel scrolls (its content box: the bar's padding is above it).
-   * Not in print, where it would make a blank page.
-   */
-  @media screen {
-    #app > main:has(~ [data-slot="site-footer"]) {
-      min-height: 100vh;
-      min-height: 100lvh;
-    }
+  #app:has(> [data-slot="site-footer"]) {
+    display: flex;
+    flex-direction: column;
+    min-height: 100dvh;
+  }
 
-    [data-panel] article:has(+ [data-slot="site-footer"]) {
-      min-height: 100%;
-    }
+  #app:has(> [data-slot="site-footer"]) > main {
+    flex: 1 0 auto;
+    width: 100%;
+  }
+
+  #app > [data-slot="site-footer"] {
+    width: 100%;
   }
 
   @media (max-width: 767.98px) {
