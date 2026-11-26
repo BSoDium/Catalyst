@@ -1,8 +1,9 @@
 /**
  * The career page's pure part (docs/career-page.md): dates as the page shows them, the languages line, the share/structured-data
- * facts. Everything is derived from the projection's `career` (nothing is invented) and the site's own name. No clock: the page
- * shows authored months only ("as of September 2026"), never "x years ago", so server and client agree and nothing goes stale in a
- * cached page.
+ * facts. Everything is derived from the projection's `career` (nothing is invented) and the site's own name. No clock, with ONE
+ * exception: the page shows authored months only ("as of September 2026"), never "x years ago", so server and client agree and nothing
+ * goes stale in a static file; the exception is `roleState` (a position that begins on a given day), which takes the day as an argument,
+ * and `localDay`, its only source, which the page calls in the browser after hydration (docs/career-page.md, "The one use of the clock").
  */
 import type { PublishedCareer, PublishedCareerLanguage, PublishedCareerProject, PublishedCareerRole } from "@catalyst/schemas";
 import type { IconName } from "~/components/ui/icon";
@@ -104,11 +105,32 @@ export function careerLogo(name: string): string | null {
   return hit ? `/career-logos/${hit[1]}.webp` : null;
 }
 
-/** Whether a role is the one in progress (`end: present`, and begun). */
-export const isCurrent = (r: Pick<PublishedCareerRole, "end" | "upcoming">): boolean => r.end === "present" && !r.upcoming;
+/** Today's date in the browser as `YYYY-MM-DD`, the visitor's own calendar day (the page's one use of a clock: `roleState`, and only after hydration). */
+export function localDay(d: Date = new Date()): string {
+  const two = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}`;
+}
 
-/** Whether a role is accepted but not begun (`upcoming: true`, authored: a month cannot tell the 30th from the 1st and the page reads no clock). */
-export const isUpcoming = (r: Pick<PublishedCareerRole, "upcoming">): boolean => r.upcoming === true;
+export interface RoleState {
+  /** Accepted, not begun: the page says "Joining", counts no stay, marks nothing as in progress. */
+  upcoming: boolean;
+  /** The end the page draws: the document's, except a begun `upcoming` role with no end, which is `present`. */
+  end: string | undefined;
+  /** The role in progress (`end: present`, and begun). */
+  current: boolean;
+}
+
+/**
+ * The state of a role on `today` (`YYYY-MM-DD`; null = unknown: the server, the static page and the hydration pass, which show the document as authored, so the first
+ * client render equals the prerendered HTML). `upcoming: true` stays so until the owner removes it; `upcoming: "YYYY-MM-DD"` stops on that day: the role is then begun, and
+ * without an end it is the one in progress (docs/career-page.md, "A position that has not begun"). Pure.
+ */
+export function roleState(r: Pick<PublishedCareerRole, "end" | "upcoming">, today: string | null): RoleState {
+  const day = typeof r.upcoming === "string" ? r.upcoming : null;
+  if (r.upcoming && !(day !== null && today !== null && today >= day)) return { upcoming: true, end: r.end, current: false };
+  const end = r.upcoming ? (r.end ?? "present") : r.end;
+  return { upcoming: false, end, current: end === "present" };
+}
 
 /** A language as the line reads it: the label and the level, not the same word twice (`Native, C2`; `A2`). */
 export function languageDetail(l: PublishedCareerLanguage): string {

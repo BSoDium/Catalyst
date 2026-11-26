@@ -230,11 +230,20 @@ describe("career (an optional singleton document, additive in schema version 1)"
       ok(career({ roles: [role({ start: "2026-11", end: "2027-05", upcoming: true })] }));
       ok(career({ roles: [role({ start: "2026-11" })] })); // absent = as before
     });
-    it("is only ever `true`: `false`, a word or a number is refused (absent says it)", () => {
-      for (const upcoming of [false, "true", "yes", 1, null]) bad(career({ roles: [role({ upcoming })] }));
+    it("is `true` or a day: `false`, a word, a number, a month or a day that does not exist is refused (absent says it)", () => {
+      for (const upcoming of [false, "true", "yes", 1, null, "2026-11", "2026-11-31", "2026-02-30", "2026-13-01", "2026-11-1", "30/11/2026", "2026-11-30T10:00"]) bad(career({ roles: [role({ start: "2026-11", upcoming })] }));
+    });
+    it("accepts the day it begins, which must fall in its start (a month, or a year)", () => {
+      ok(career({ roles: [role({ start: "2026-11", upcoming: "2026-11-30" })] }));
+      ok(career({ roles: [role({ start: "2027", upcoming: "2027-03-01" })] }));
+      ok(career({ roles: [role({ start: "2028-02", upcoming: "2028-02-29" })] })); // a leap day
+      bad(career({ roles: [role({ start: "2026-11", upcoming: "2026-12-01" })] }), /must fall in its start/);
+      bad(career({ roles: [role({ start: "2026-11", upcoming: "2027-11-30" })] }), /must fall in its start/);
+      bad(career({ roles: [role({ start: "2027-02", upcoming: "2027-02-29" })] })); // not a leap year
     });
     it("cannot also be ongoing: a role that has not begun is not `present`", () => {
       bad(career({ roles: [role({ start: "2026-11", end: "present", upcoming: true })] }), /has not begun/);
+      bad(career({ roles: [role({ start: "2026-11", end: "present", upcoming: "2026-11-30" })] }), /has not begun/);
     });
   });
 

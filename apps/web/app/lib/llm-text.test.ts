@@ -145,4 +145,9 @@ describe("listMarkdown and careerMarkdown", () => {
     expect(md).toContain("Joining 2026-12 · ");
     expect(md).not.toContain("2026-12 to now");
   });
+  it("words a role with a start day with no state of its own: the twin is a static file and reads no clock", () => {
+    const career = projection.career!;
+    const md = careerMarkdown({ ...career, roles: [{ ...career.roles[0]!, start: "2026-12", end: undefined, upcoming: "2026-12-07" }, ...career.roles.slice(1)] }, ORIGIN);
+    expect(md).toContain("Starts 2026-12-07 · ");
+  });
 });

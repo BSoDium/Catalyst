@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import type { PublishedCareer, PublishedCareerEducation, PublishedCareerProject, PublishedCareerRole } from "@catalyst/schemas";
 import { ContactForm } from "~/components/contact-form";
+import { useHydrated } from "~/hooks/use-hydrated";
 import { SiteFooter } from "~/components/site-footer";
 import { Button, Icon } from "~/components/ui";
 import type { IconName } from "~/components/ui/icon";
-import { asOfText, CAREER_PATH, careerDuration, careerIcon, careerLogoSrc, careerPeriod, formatCareerMonth, isCurrent, isUpcoming, languageDetail, safeLinks, safePortrait, safeProjects } from "~/lib/career";
+import { asOfText, CAREER_PATH, careerDuration, careerIcon, careerLogoSrc, careerPeriod, formatCareerMonth, languageDetail, localDay, roleState, safeLinks, safePortrait, safeProjects } from "~/lib/career";
 import { CONTACT_ID } from "~/lib/contact";
 import { safeExternalUrl } from "~/lib/entry-blocks";
 import { entryPath, placePath } from "~/lib/entries";
@@ -25,7 +26,11 @@ import { useForcedScheme } from "~/lib/theme";
  * one way to reach the owner is the contact form (`ContactForm`, docs/career-page.md, "Contact") after the socials: a "Get in touch"
  * button in the head scrolls to it. There is no address, phone number or mailto link anywhere (the contract has no field for one).
  */
-export function CareerPage({ career, places = [], projects = [] }: { career: PublishedCareer; places?: readonly string[]; projects?: readonly string[] }) {
+export function CareerPage({ career, places = [], projects = [], today: given }: { career: PublishedCareer; places?: readonly string[]; projects?: readonly string[]; today?: string | null }) {
+  // The day, for the one thing that depends on it: a position that begins on a given day (`upcoming: YYYY-MM-DD`) turns into the one in progress by itself. The page is a static file, so the
+  // clock is read in the browser only, after hydration (null on the server and in the hydration pass: the first client render is the prerendered HTML). `today` is for tests.
+  const hydrated = useHydrated();
+  const today = given !== undefined ? given : hydrated ? localDay() : null;
   const portrait = safePortrait(career);
   const crashed = usePortraitEgg(portrait?.egg);
   const links = safeLinks(career);
@@ -123,7 +128,7 @@ export function CareerPage({ career, places = [], projects = [] }: { career: Pub
         <Block id="experience" title="Experience" count={career.roles.length}>
           <ol className="career-timeline" aria-labelledby="experience-h">
             {career.roles.map((role) => (
-              <RoleItem key={role.id} role={role} placeKnown={role.place !== undefined && known.has(role.place)} projectKnown={(slug) => haveProject.has(slug)} asOf={career.updated} />
+              <RoleItem key={role.id} role={role} placeKnown={role.place !== undefined && known.has(role.place)} projectKnown={(slug) => haveProject.has(slug)} asOf={career.updated} today={today} />
             ))}
           </ol>
         </Block>
@@ -356,11 +361,12 @@ function OrgName({ name, url }: { name: string; url: string | null }) {
   );
 }
 
-function RoleItem({ role, placeKnown, projectKnown, asOf }: { role: PublishedCareerRole; placeKnown: boolean; projectKnown: (slug: string) => boolean; asOf: string }) {
+function RoleItem({ role, placeKnown, projectKnown, asOf, today }: { role: PublishedCareerRole; placeKnown: boolean; projectKnown: (slug: string) => boolean; asOf: string; today: string | null }) {
+  const state = roleState(role, today);
   const orgUrl = role.orgUrl ? safeExternalUrl(role.orgUrl) : null;
   const projects = safeProjects(role);
   return (
-    <li id={role.id} data-slot="career-role" data-current={isCurrent(role) ? "true" : undefined} data-upcoming={isUpcoming(role) ? "true" : undefined} className="career-item">
+    <li id={role.id} data-slot="career-role" data-current={state.current ? "true" : undefined} data-upcoming={state.upcoming ? "true" : undefined} className="career-item">
       <Marker item={role} name={role.org} icon={careerIcon(role.title, "role")} />
       <div className="career-head">
         <div className="career-top">
@@ -372,7 +378,7 @@ function RoleItem({ role, placeKnown, projectKnown, asOf }: { role: PublishedCar
           {role.title}
         </p>
         <div className="career-meta type-meta">
-          <Period start={role.start} end={role.end} asOf={asOf} upcoming={isUpcoming(role)} />
+          <Period start={role.start} end={state.end} asOf={asOf} upcoming={state.upcoming} />
         </div>
         <p className="career-facts">
           <Where text={role.location} place={role.place} known={placeKnown} />
