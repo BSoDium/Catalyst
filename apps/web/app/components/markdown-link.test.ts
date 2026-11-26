@@ -11,7 +11,7 @@ describe("MarkdownLink", () => {
   });
 
   it("says what it is in plain visible words, which are its whole name (what an HTML-to-text tool keeps)", () => {
-    expect(html.replace(/<[^>]+>/g, "")).toBe("This page in Markdown");
+    expect(html.replace(/<[^>]+>/g, "")).toBe("Read this page as Markdown");
     expect(html).not.toMatch(/sr-only|aria-label|aria-hidden/);
   });
 });

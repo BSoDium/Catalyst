@@ -3146,6 +3146,11 @@
     transition: color var(--duration-fast) var(--ease-standard);
   }
 
+  /* (the links for AI agents lead with a small icon, in the words' colour so it turns with them under the pointer: the icon's left edge is the label's) */
+  .site-footer-agents .site-footer-link {
+    gap: 0.5rem;
+  }
+
   .site-footer-link[aria-current="page"] {
     color: var(--foreground);
   }
@@ -3203,19 +3208,22 @@
     }
   }
 
-  #app:has(> [data-slot="site-footer"]) {
-    display: flex;
-    flex-direction: column;
-    min-height: 100dvh;
-  }
+  /*
+   * The footer starts BELOW the first screen, however short the page (owner, 2026-11-26): what comes before it is at least as tall as
+   * what is visible on landing, so it is reached by scrolling and never sits in the middle or at the foot of the first view (a list
+   * filtered to one row, an empty list). A page: its `main`, a whole large viewport (`lvh`: still beyond the edge when a phone's bars fold
+   * away). In the panel: the article, the whole height of what the panel scrolls (its content box: the bar's padding is above it).
+   * Not in print, where it would make a blank page.
+   */
+  @media screen {
+    #app > main:has(~ [data-slot="site-footer"]) {
+      min-height: 100vh;
+      min-height: 100lvh;
+    }
 
-  #app:has(> [data-slot="site-footer"]) > main {
-    flex: 1 0 auto;
-    width: 100%;
-  }
-
-  #app > [data-slot="site-footer"] {
-    width: 100%;
+    [data-panel] article:has(+ [data-slot="site-footer"]) {
+      min-height: 100%;
+    }
   }
 
   @media (max-width: 767.98px) {
@@ -9542,4 +9550,22 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   -webkit-mask-composite: xor;
   mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   mask-composite: exclude;
+}
+
+/*
+ * A section list's rows are cut by hairlines, each row's own top rule (`EntryRow`: the `border-t` utility): the hairlines are BETWEEN
+ * rows, so the first row of a list has none (owner, 2026-11-26: the line between the tag filter, or a year, and the first entry was heavy
+ * and said nothing). The room it stood in is the row's own top padding. In the poems' two columns, the first row of each column. In the
+ * utilities' layer: a rule of the components' layer would lose to the `border-t` it removes. (The place panel's compact rows draw no rule.)
+ */
+@layer utilities {
+  [data-list] [role="list"] > [role="listitem"]:first-child > .entry-row {
+    border-top-width: 0;
+  }
+
+  @container (min-width: 44rem) {
+    [data-list] .poem-grid > [role="listitem"]:nth-child(2) > .entry-row {
+      border-top-width: 0;
+    }
+  }
 }

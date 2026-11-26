@@ -11,10 +11,11 @@ const render = (props: SiteFooterProps) => renderToStaticMarkup(createElement(St
 describe("SiteFooter", () => {
   const html = render({ path: "/articles", hasCareer: true });
 
-  it("is one footer, with the page in Markdown and the site map for agents as real, visible links", () => {
+  it("is one footer, with the page in Markdown and the site index for AI agents as real, visible links named by their words", () => {
     expect(html.match(/<footer[ >]/g)).toHaveLength(1);
-    expect(html).toMatch(/<a href="\/articles\.md" rel="alternate" type="text\/markdown" data-slot="markdown-link"[^>]*>This page in Markdown<\/a>/);
-    expect(html).toMatch(/<a href="\/llms\.txt" type="text\/plain"[^>]*>Site map \(llms\.txt\)<\/a>/);
+    expect(html).toMatch(/<a href="\/articles\.md" rel="alternate" type="text\/markdown" data-slot="markdown-link"[^>]*><svg[^>]*aria-hidden="true".*?<\/svg>Read this page as Markdown<\/a>/);
+    expect(html).toMatch(/<a href="\/llms\.txt" type="text\/plain"[^>]*><svg[^>]*aria-hidden="true".*?<\/svg>Site index \(llms\.txt\)<\/a>/);
+    expect(html).toContain(">For AI agents</p>");
     expect(render({ path: "/locations/lisbon" })).toContain('href="/locations/lisbon.md"');
   });
 
@@ -29,7 +30,10 @@ describe("SiteFooter", () => {
   it("says only what the site's own tables say: the owner, the first version; no copyright line, never the code name", () => {
     expect(html).toContain(SITE.name);
     // the first version explains itself: the words of `ARCHIVED_V1`, then its address as the link's words
-    expect(html).toMatch(new RegExp(`${ARCHIVED_V1.sub}: <a href="${ARCHIVED_V1.url}"[^>]*>v1\\.bsodium\\.fr<svg`));
+    expect(html).toMatch(new RegExp(`${ARCHIVED_V1.sub}: <a href="${ARCHIVED_V1.url}" target="_blank" rel="noopener noreferrer"[^>]*>v1\\.bsodium\\.fr<svg.*?<\/svg><span class="sr-only"> \\(opens in a new tab\\)</span></a>`));
+    // (the only link that leaves the site, and the only one in a new tab: the others are same-origin)
+    expect(html.match(/target="_blank"/g)).toHaveLength(1);
+    expect([...html.matchAll(/href="([^"]*)"/g)].map((m) => m[1]).filter((h) => /^https?:/.test(h!))).toEqual([ARCHIVED_V1.url]);
     // (a list carries no notice and software is under the repository's licence: an entry's own notice is the only one)
     expect(html).not.toContain("©");
     // (at the foot of the who column, not a bar of its own)

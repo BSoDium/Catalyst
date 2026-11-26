@@ -32,6 +32,7 @@ import {
   Camera,
   Image as ImageIcon,
   Info,
+  ListTree,
   Link2,
   Maximize2,
   MapPin,
@@ -97,6 +98,10 @@ export const ICONS = {
   "chevron-left": ChevronLeft,
   "chevron-right": ChevronRight,
   copy: Copy,
+  /** A page of text (the footer's "Read this page as Markdown"; the same drawing as `article`, named for what it says there). */
+  "file-text": FileText,
+  /** An index of everything (the footer's link to `/llms.txt`). */
+  "list-tree": ListTree,
   link: Link2,
   hash: Hash,
   search: CarbonSearch,
