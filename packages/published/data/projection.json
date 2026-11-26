@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "dataVersion": {
-    "commit": "d852cee1a43c95d7bec70958aca1028b76303a61",
-    "date": "2026-11-25"
+    "commit": "313290829a0fb26c0726d21b64eb03f12bffa098",
+    "date": "2026-11-26"
   },
   "places": [
     {
@@ -10943,6 +10943,7 @@
         "location": "Warsaw, Poland",
         "employment": "Full-time",
         "start": "2026-11",
+        "upcoming": true,
         "highlights": [
           "Member of the Aurora team, which builds and maintains the design system used across most Nord Security products"
         ],
