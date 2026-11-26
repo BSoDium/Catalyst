@@ -84,11 +84,11 @@ export function SiteFooter({ path, className, hasCareer: forcedCareer }: SiteFoo
             <p className="site-footer-label type-meta">For AI agents</p>
             <ul className="site-footer-list">
               <li>
-                <MarkdownLink path={path} className="site-footer-link" icon={<Icon name="file-text" size="inline" />} />
+                <MarkdownLink path={path} className="site-footer-link" icon={<Icon name="file" size="inline" />} />
               </li>
               <li>
                 <a href={LLMS_TXT_PATH} type="text/plain" className="site-footer-link">
-                  <Icon name="list-tree" size="inline" />
+                  <Icon name="list" size="inline" />
                   Site index (llms.txt)
                 </a>
               </li>
