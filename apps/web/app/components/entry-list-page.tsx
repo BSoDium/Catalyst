@@ -13,10 +13,10 @@ import { cn } from "~/lib/utils";
 import { KIND_NOUNS, KIND_PATHS, KIND_PLURALS, kindCount, listBackState, type EntrySummary } from "~/lib/entries";
 import { collectTags, filterByTag, groupByYear, listStats, parseTagFilter, shouldGroupByYear } from "~/lib/entry-list";
 
-/** What continues a wall under its banner: the photographs' and the artworks' have one, the other lists none. */
+/** What continues a wall into the footer (the scenery), and the wall's closing words, the footer's lead: the photographs' and the artworks' have them, the other lists none. */
 function wallEnd(kind: ContentKind) {
-  if (kind === "photograph") return { filler: GALLERY_FILLER, end: <GalleryEnd /> };
-  if (kind === "artwork") return { filler: ARTWORK_FILLER, end: <GalleryEnd kind="artwork" /> };
+  if (kind === "photograph") return { filler: GALLERY_FILLER, lead: <GalleryEnd /> };
+  if (kind === "artwork") return { filler: ARTWORK_FILLER, lead: <GalleryEnd kind="artwork" /> };
   return {};
 }
 
@@ -78,7 +78,7 @@ export function EntryListPage({ kind, items, activityUrl = null }: { kind: Conte
   const heads = listStats(items, { shown: shown.length, total: items.length, noun: shown.length === 1 ? KIND_NOUNS[kind].one : KIND_NOUNS[kind].many });
   const withPanel = kind === "project" && (import.meta.env.DEV || !!activityUrl);
   const wall = kind === "artwork" || kind === "photograph";
-  // A wall ends in its scenery and banner, which run straight into the site footer: one ending, no gap under the main (app.css, `.wall-end`).
+  // A wall's scenery runs straight into the site footer, whose lead is the wall's closing words: one ending, no gap under the main (app.css, `.wall-end`).
   const joined = wall && items.length > 0;
   const poems = kind === "poem";
 
@@ -125,7 +125,7 @@ export function EntryListPage({ kind, items, activityUrl = null }: { kind: Conte
                 label={KIND_PLURALS[kind]}
                 kind={kind}
                 linkState={listBackState(kind, search)}
-                {...wallEnd(kind)}
+                filler={wallEnd(kind).filler}
               />
             </>
           ) : (
@@ -155,7 +155,7 @@ export function EntryListPage({ kind, items, activityUrl = null }: { kind: Conte
           )}
         </div>
       </main>
-      <SiteFooter path={KIND_PATHS[kind]} className="mx-auto max-w-[100rem] px-4 md:px-14" />
+      <SiteFooter path={KIND_PATHS[kind]} lead={joined ? wallEnd(kind).lead : undefined} className="mx-auto max-w-[100rem] px-4 md:px-14" />
     </>
   );
 }

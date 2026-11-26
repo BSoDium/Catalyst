@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { NavLink } from "react-router";
 import { MarkdownLink } from "~/components/markdown-link";
 import { Icon } from "~/components/ui/icon";
@@ -18,6 +19,12 @@ export interface SiteFooterProps {
   className?: string;
   /** A fixed answer in place of the projection's (tests): whether the career page is in the sections. */
   hasCareer?: boolean;
+  /**
+   * The page's own closing words, in place of the name and the line in the first column (the artworks' and the photographs' walls:
+   * `GalleryEnd`). ONE title in the ending: the name is in the page's running head already. The first-version sentence stays at the
+   * column's foot.
+   */
+  lead?: ReactNode;
 }
 
 /** The first version of the site's address as a reader sees it: the host, no scheme (`v1.bsodium.fr`). */
@@ -41,7 +48,7 @@ const ARCHIVE_HOST = new URL(ARCHIVED_V1.url).host;
  * `main`. In the shell it ends the panel's content inside the panel's own landmark, so it is that panel's footer, not a second
  * `contentinfo`. Not printed: everything in it is a way somewhere else.
  */
-export function SiteFooter({ path, className, hasCareer: forcedCareer }: SiteFooterProps) {
+export function SiteFooter({ path, className, hasCareer: forcedCareer, lead }: SiteFooterProps) {
   const storedCareer = useHasCareer();
   const withCareer = forcedCareer ?? storedCareer;
   const sections = [
@@ -50,12 +57,16 @@ export function SiteFooter({ path, className, hasCareer: forcedCareer }: SiteFoo
     ...(withCareer ? [{ to: CAREER_PATH, label: CAREER_LABEL }] : []),
   ];
   return (
-    <footer data-slot="site-footer" className="site-footer print:hidden">
+    <footer data-slot="site-footer" data-lead={lead ? "" : undefined} className="site-footer print:hidden">
       <div className={cn("site-footer-inner", className)}>
         <div className="site-footer-grid">
           <div className="site-footer-who">
-            <p className="site-footer-name">{SITE.name}</p>
-            <p className="site-footer-line">{SITE_IDENTITY}</p>
+            {lead ?? (
+              <>
+                <p className="site-footer-name">{SITE.name}</p>
+                <p className="site-footer-line">{SITE_IDENTITY}</p>
+              </>
+            )}
             {/* (at the foot of the column, level with the last row of the lists beside it: no row of its own) */}
             <p className="site-footer-archive">
               {ARCHIVED_V1.sub}:{" "}

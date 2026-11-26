@@ -40,4 +40,19 @@ describe("SiteFooter", () => {
     expect(/<div class="site-footer-who">.*?<\/div>/.exec(html)![0]).toContain(`href="${ARCHIVED_V1.url}"`);
     expect(html).not.toMatch(/catalyst/i);
   });
+
+  it("takes a page's own closing words as its lead, in place of the name and the line: one title in the ending, the rest unchanged", () => {
+    const led = render({ path: "/artworks", hasCareer: true, lead: createElement("p", { className: "lead-probe" }, "That's the whole wall.") });
+    expect(led.match(/<footer[ >]/g)).toHaveLength(1);
+    expect(led).toContain("data-lead");
+    const who = /<div class="site-footer-who">.*?<\/div>/.exec(led)![0];
+    expect(who).toContain('class="lead-probe"');
+    expect(who).not.toContain(SITE.name);
+    expect(who).not.toContain("site-footer-line");
+    // (the first version stays at the column's foot, after the lead)
+    expect(who.indexOf("lead-probe")).toBeLessThan(who.indexOf(ARCHIVED_V1.url));
+    expect(led).toContain('data-slot="markdown-link"');
+    expect(led).toContain('href="/llms.txt"');
+    expect(html).not.toContain("data-lead");
+  });
 });

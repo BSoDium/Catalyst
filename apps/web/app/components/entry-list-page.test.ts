@@ -141,6 +141,11 @@ describe("EntryListPage", () => {
     expect(html).toMatch(/<main[^>]*class="[^"]*\bpb-0\b/);
     expect(html).not.toMatch(/<main[^>]*class="[^"]*\bpb-24\b/);
     expect(html).not.toContain("End of the gallery</p>");
+    // the wall's closing words are the footer's lead, its one title: the name is not said again there (it is in the running head)
+    const footer = html.slice(html.indexOf('data-slot="site-footer"'));
+    expect(footer).toContain('data-slot="gallery-end"');
+    expect(footer).not.toContain("site-footer-name");
+    expect(html.slice(0, html.indexOf('data-slot="site-footer"'))).not.toContain('data-slot="gallery-end"');
     expect(render(listEntries(demo, "article"), "", "article")).toMatch(/<main[^>]*class="[^"]*\bpb-24\b/);
   });
   it("says the year as a thin display numeral when years group entries", () => {

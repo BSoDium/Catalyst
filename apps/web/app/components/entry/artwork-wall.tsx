@@ -1,4 +1,4 @@
-import { useEffect, useRef, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, type CSSProperties } from "react";
 import { Link } from "react-router";
 import { CoverArt, SensitiveMedia } from "~/components/ui";
 import { coverRatio, layoutAllTiers, masonryItemVars, masonryListVars, RATIO_FALLBACK } from "~/lib/masonry";
@@ -84,11 +84,9 @@ export function ArtworkWall({
   kind = "artwork",
   linkState,
   filler = [],
-  end,
 }: {
-  /** Scenery that continues the wall after the last picture (decorative, no link, no name), and the banner laid over its foot (`end`). Both or neither. */
+  /** Scenery that continues the wall after the last picture (decorative, no link, no name), faded into the site footer's band (`.wall-end`); the words that close the wall are the footer's lead (`GalleryEnd`, `SiteFooter lead`). */
   filler?: readonly FillerTile[];
-  end?: ReactNode;
   /** The router state of the links: where the entry is opened from (`listBackState`). */
   linkState?: unknown;
   items: readonly EntrySummary[];
@@ -169,7 +167,7 @@ export function ArtworkWall({
           </li>
         ))}
       </ul>
-      {end && <div className="wall-end">{end}</div>}
+      {plan && <div aria-hidden="true" className="wall-end" />}
     </div>
   );
 }

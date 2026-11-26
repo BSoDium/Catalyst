@@ -32,23 +32,21 @@ const ENDS = {
 } as const;
 
 /**
- * The foot of the photography wall (issue #336): a banner laid over the last rows of the wall, which are generic photographs faded into the
- * page (`.wall-end` and `.gallery-end` in app.css; the wall draws the filler, see `lib/gallery-filler.ts`). A few words and a link to the rest
- * of the owner's photographs. Temporary: it goes when the gallery's storage moves to the owner's own bucket.
+ * The closing words of the photography and the artworks walls (issue #336): a title, a line and the way to the rest of the owner's work
+ * (Pexels, ArtStation). Temporary: it goes when the gallery's storage moves to the owner's own bucket.
  *
- * It is the first part of the page's ONE ending (owner, 2026-11-26: over the new site footer it read as two endings, one after the
- * other): the wall's fade lands in the footer's band colour, the main has no padding under it and the footer has no top hairline, so
- * the banner sits at the head of the band and the footer's columns follow 3 rem below. No "End of the gallery" eyebrow any more (the
- * title says it, and a mono label there read as a fourth footer column); the landmark keeps the words for assistive tech.
+ * It is the LEAD of the site footer on those two pages (`SiteFooter lead`, the first column, in place of the owner's name and line):
+ * owner, 2026-11-26, first "two endings one after the other" (a banner over the wall, then the footer), then, with the banner at the
+ * head of the footer's band, "a double title" (the wall's title right above the name). Now the wall's scenery fades into the band
+ * (`.wall-end`) and the ending has ONE title, beside the sections and the links for agents. No "End of the gallery" eyebrow (the
+ * title says it); the `aside` keeps the words as its name.
  */
 export function GalleryEnd({ className, kind = "photograph" }: { className?: string; kind?: "photograph" | "artwork" }) {
   const end = ENDS[kind];
   return (
     <aside data-slot="gallery-end" aria-label="End of the gallery" className={cn("gallery-end", className)}>
-      <div className="gallery-end-copy">
-        <p className="gallery-end-title">{end.title}</p>
-        <p className="gallery-end-text">{end.text}</p>
-      </div>
+      <p className="gallery-end-title">{end.title}</p>
+      <p className="gallery-end-text">{end.text}</p>
       <Button asChild variant="secondary" className={cn("gallery-end-link", "pl-3")} data-brand={kind === "photograph" ? "pexels" : "artstation"}>
         <a href={end.href} target="_blank" rel="noopener noreferrer">
           <span className="flex items-center gap-2.5">
