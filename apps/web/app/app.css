@@ -3146,7 +3146,7 @@
     transition: color var(--duration-fast) var(--ease-standard);
   }
 
-  /* (the links for AI agents lead with a small icon, in the words' colour so it turns with them under the pointer: the icon's left edge is the label's) */
+  /* (the links for agents lead with a small icon, in the words' colour so it turns with them under the pointer: the icon's left edge is the label's) */
   .site-footer-agents .site-footer-link {
     gap: 0.5rem;
   }
@@ -3162,7 +3162,8 @@
     content: "MD";
     font-family: var(--font-meta);
     font-size: 0.8125rem;
-    font-weight: 700;
+    /* (its stems as thick as the index icon's strokes: 1.75 on a 24 grid drawn at 18 px, about 1.3 px) */
+    font-weight: 500;
     letter-spacing: 0;
   }
 
@@ -3190,6 +3191,25 @@
 
   .site-footer-archive .site-footer-link:hover {
     color: var(--signal-text);
+  }
+
+  /* With a page's own lead (the walls' closing words) the first column is full: the first-version sentence goes UNDER the two lists, its last line level with the lead's button (owner, 2026-11-26: the left side felt cramped). Stacked, it is simply last. */
+  @container (min-width: 40rem) {
+    .site-footer[data-lead] .site-footer-who {
+      grid-row: span 2;
+    }
+
+    .site-footer[data-lead] .site-footer-archive {
+      grid-column: 2 / -1;
+      align-self: end;
+      margin: 0;
+      padding-top: 0;
+      max-width: none;
+    }
+  }
+
+  .site-footer[data-lead] .site-footer-archive {
+    padding-top: 0;
   }
 
   /* The short form, in the side panel beside the globe and the phone's slide-over (components/detail-panel.tsx, `data-layout="panel"`): the
@@ -3236,6 +3256,11 @@
 
   #app > [data-slot="site-footer"] {
     width: 100%;
+  }
+
+  /* Under a wall's end (the artworks, the photographs: `.wall-end`) the band has no top edge: the wall's fade lands in its colour, one ending. */
+  #app > main:has(.wall-end) + [data-slot="site-footer"] {
+    border-top: none;
   }
 
   @media (max-width: 767.98px) {
@@ -4261,48 +4286,57 @@
     }
   }
 
+  /*
+   * The wall's scenery fades into the SITE FOOTER's band colour, not the page's (owner, 2026-11-26: a banner over the wall and the footer
+   * under it read as two endings, then as "a double title"): the list page has no padding under a wall and the footer under it no top
+   * hairline (above), so the scenery dissolves straight into the band, whose lead is the wall's closing words (`GalleryEnd` in
+   * `SiteFooter lead`). The fade carries no words of its own. (`--wall-ground` is the footer's own mix.) It runs from edge to edge of the
+   * WINDOW, as the band does (`::before`; `#app` clips its overshoot): a fade as wide as the wall would leave the page colour in the
+   * margins beside it, a block cut out of the band.
+   */
   .wall-end {
+    --wall-ground: color-mix(in srgb, var(--foreground) 4%, var(--background));
     position: absolute;
-    inset: auto 0 -6px;
+    /* (past the list's 6 px clip margin by 2 px more: on the same fractional edge the cut tiles' foot showed through as a hairline in the band) */
+    inset: auto 0 -8px;
     height: min(100%, 34rem);
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    background: linear-gradient(
-      to bottom,
-      transparent,
-      color-mix(in oklab, var(--background) 55%, transparent) 30%,
-      color-mix(in oklab, var(--background) 92%, transparent) 58%,
-      var(--background) 74%
-    );
+    /* (above the pictures' outlines, `.wall-media::after` at 2: a filler tile's foot hairline showed through the band) */
+    z-index: 3;
     pointer-events: none;
   }
 
+  .wall-end::before {
+    content: "";
+    position: absolute;
+    inset: 0 calc(50% - 50vw);
+    background: linear-gradient(
+      to bottom,
+      transparent,
+      color-mix(in oklab, var(--wall-ground) 50%, transparent) 35%,
+      color-mix(in oklab, var(--wall-ground) 88%, transparent) 70%,
+      var(--wall-ground) 96%
+    );
+  }
+
+  #app:has(> main .wall-end) {
+    overflow-x: clip;
+  }
+
   /*
-   * The banner is set on the wall's own edges: the words at the left, the way on at the right. On a wide wall it is a grid whose copy is
-   * dissolved into it (`display: contents`), so the link sits in the row of the big title and is centred on it, not on the whole block;
-   * on a narrow wall everything stacks, left aligned, the link last.
+   * The wall's closing words as the footer's LEAD (the first column, in place of the name and the line): ONE title in the ending, the
+   * line under it, the way to the rest of the work last, then the footer's first-version sentence at the column's foot. The title is
+   * the reading face at a size the column holds on one line at 1024 px beside the two lists (its first line stands where the lists'
+   * labels do); stacked on a phone, it leads the band.
    */
   .gallery-end {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: 0.75rem;
-    width: 100%;
-    padding: 0 0 2.5rem;
-    text-align: left;
-    pointer-events: auto;
-  }
-
-  .gallery-end-copy {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.75rem;
+    gap: 0.5rem;
   }
 
   .gallery-end-link {
-    margin-top: 0.75rem;
+    margin-top: 2rem;
   }
 
   /* The buttons that go to a service wear its colour, softened into the page (owner, 2026-11-18): the fill is a few percent of the brand over the page's own colour, so it is a darker, quieter tone on the dark page and a lighter, paler one on the light page; the line and the label take more of it. */
@@ -4358,79 +4392,31 @@
     --ds-button-line: color-mix(in oklab, var(--foreground) 74%, var(--background));
   }
 
-  @container wall (min-width: 34rem) {
-    .gallery-end {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      column-gap: 3rem;
-      row-gap: 0.75rem;
-      align-items: start;
-    }
-
-    .gallery-end-copy {
-      display: contents;
-    }
-
-    .gallery-end-eyebrow {
-      grid-column: 1;
-      grid-row: 1;
-    }
-
-    .gallery-end-title {
-      grid-column: 1;
-      grid-row: 2;
-    }
-
-    .gallery-end-text {
-      grid-column: 1;
-      grid-row: 3;
-    }
-
-    .gallery-end-link {
-      grid-column: 2;
-      grid-row: 2;
-      align-self: center;
-      margin-top: 0;
-    }
-  }
-
-  .gallery-end-eyebrow {
-    margin: 0;
-    color: var(--muted-foreground);
-  }
-
   .gallery-end-title {
-    margin: 0;
     font-family: var(--font-reading);
     font-optical-sizing: auto;
-    font-size: clamp(1.75rem, 1.2rem + 2.2cqi, 3rem);
+    font-size: clamp(1.75rem, 1.25rem + 1.6cqi, 2.5rem);
     font-weight: var(--weight-medium);
-    line-height: 1.05;
+    line-height: 1.1;
     letter-spacing: -0.01em;
+    color: var(--foreground);
     text-wrap: balance;
   }
 
   .gallery-end-text {
-    margin: 0;
-    max-width: 32em;
+    max-width: 30em;
     font-family: var(--font-reading);
-    font-size: 1.0625rem;
+    font-size: 1rem;
     line-height: 1.5;
     color: var(--muted-foreground);
     text-wrap: pretty;
   }
 
-  /* ONE column (a phone; the wall is full-bleed there, so the banner's text is at the screen's edge unless it is inset: the padding was "messy", owner, 2026-11-02, #539): the words and the link are inset by the page's side
-     padding (`--wall-gutter`) and the same under the link, and the banner is no taller than its one filler picture (a portrait of 1.25 times the screen's width, under 26 rem on a phone) so that it lies on that picture
-     and not on the last real one. */
+  /* ONE column (a phone): the fade is no taller than the wall's one filler picture (a portrait of 1.25 times the screen's width), so it
+     dissolves that picture and not the last real one. */
   @container wall (max-width: 33.99rem) {
     .wall-end {
       height: min(100%, 26rem);
-    }
-
-    /* (`--wall-gutter` is only set where the wall bleeds, under 34 rem of the screen; between the wall's 34 rem and the screen's, 1 rem of padding more, the wall is one column still but inset: 0 there) */
-    .gallery-end {
-      padding: 0 var(--wall-gutter, 0px) var(--wall-gutter, 1rem);
     }
   }
 

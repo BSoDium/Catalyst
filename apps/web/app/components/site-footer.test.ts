@@ -11,11 +11,11 @@ const render = (props: SiteFooterProps) => renderToStaticMarkup(createElement(St
 describe("SiteFooter", () => {
   const html = render({ path: "/articles", hasCareer: true });
 
-  it("is one footer, with the page in Markdown and the site index for AI agents as real, visible links named by their words", () => {
+  it("is one footer, with the page in Markdown and the site index for agents as real, visible links named by their words", () => {
     expect(html.match(/<footer[ >]/g)).toHaveLength(1);
     expect(html).toMatch(/<a href="\/articles\.md" rel="alternate" type="text\/markdown" data-slot="markdown-link"[^>]*><span aria-hidden="true" class="site-footer-md"><\/span>Read this page as Markdown<\/a>/);
     expect(html).toMatch(/<a href="\/llms\.txt" type="text\/plain"[^>]*><svg[^>]*aria-hidden="true".*?<\/svg>Site index \(llms\.txt\)<\/a>/);
-    expect(html).toContain(">For AI agents</p>");
+    expect(html).toContain(">For agents</p>");
     expect(render({ path: "/locations/lisbon" })).toContain('href="/locations/lisbon.md"');
   });
 
@@ -39,5 +39,22 @@ describe("SiteFooter", () => {
     // (at the foot of the who column, not a bar of its own)
     expect(/<div class="site-footer-who">.*?<\/div>/.exec(html)![0]).toContain(`href="${ARCHIVED_V1.url}"`);
     expect(html).not.toMatch(/catalyst/i);
+  });
+
+  it("takes a page's own closing words as its lead, in place of the name and the line: one title in the ending, the rest unchanged", () => {
+    const led = render({ path: "/artworks", hasCareer: true, lead: createElement("p", { className: "lead-probe" }, "That's the whole wall.") });
+    expect(led.match(/<footer[ >]/g)).toHaveLength(1);
+    expect(led).toContain("data-lead");
+    const who = /<div class="site-footer-who">.*?<\/div>/.exec(led)![0];
+    expect(who).toContain('class="lead-probe"');
+    expect(who).not.toContain(SITE.name);
+    expect(who).not.toContain("site-footer-line");
+    // (the first version leaves the full column: it is said once, after the two lists)
+    expect(who).not.toContain(ARCHIVED_V1.url);
+    expect(led.split(ARCHIVED_V1.url)).toHaveLength(2);
+    expect(led.indexOf('href="/llms.txt"')).toBeLessThan(led.indexOf(ARCHIVED_V1.url));
+    expect(led).toContain('data-slot="markdown-link"');
+    expect(led).toContain('href="/llms.txt"');
+    expect(html).not.toContain("data-lead");
   });
 });
