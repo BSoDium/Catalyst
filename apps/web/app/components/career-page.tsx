@@ -5,7 +5,7 @@ import { ContactForm } from "~/components/contact-form";
 import { SiteFooter } from "~/components/site-footer";
 import { Button, Icon } from "~/components/ui";
 import type { IconName } from "~/components/ui/icon";
-import { asOfText, CAREER_PATH, careerDuration, careerIcon, careerLogoSrc, careerPeriod, formatCareerMonth, isCurrent, languageDetail, safeLinks, safePortrait, safeProjects } from "~/lib/career";
+import { asOfText, CAREER_PATH, careerDuration, careerIcon, careerLogoSrc, careerPeriod, formatCareerMonth, isCurrent, isUpcoming, languageDetail, safeLinks, safePortrait, safeProjects } from "~/lib/career";
 import { CONTACT_ID } from "~/lib/contact";
 import { safeExternalUrl } from "~/lib/entry-blocks";
 import { entryPath, placePath } from "~/lib/entries";
@@ -284,14 +284,19 @@ function Block({ id, title, count, children }: { id: string; title: string; coun
   );
 }
 
-function Period({ start, end, asOf }: { start: string; end: string | undefined; asOf: string }) {
-  const p = careerPeriod(start, end);
-  const duration = careerDuration(start, end, asOf);
+function Period({ start, end, asOf, upcoming = false }: { start: string; end: string | undefined; asOf: string; upcoming?: boolean }) {
+  const p = careerPeriod(start, end, upcoming);
+  const duration = careerDuration(start, end, asOf, upcoming);
   return (
     <>
       <p className="career-period">
         <span className="sr-only">{p.spoken}</span>
         <span aria-hidden="true">
+          {p.status && (
+            <>
+              <span className="career-status">{p.status}</span>{" "}
+            </>
+          )}
           <time dateTime={p.start.dateTime}>{p.start.text}</time>
           {p.end && (
             <>
@@ -355,7 +360,7 @@ function RoleItem({ role, placeKnown, projectKnown, asOf }: { role: PublishedCar
   const orgUrl = role.orgUrl ? safeExternalUrl(role.orgUrl) : null;
   const projects = safeProjects(role);
   return (
-    <li id={role.id} data-slot="career-role" data-current={isCurrent(role) ? "true" : undefined} className="career-item">
+    <li id={role.id} data-slot="career-role" data-current={isCurrent(role) ? "true" : undefined} data-upcoming={isUpcoming(role) ? "true" : undefined} className="career-item">
       <Marker item={role} name={role.org} icon={careerIcon(role.title, "role")} />
       <div className="career-head">
         <div className="career-top">
@@ -367,7 +372,7 @@ function RoleItem({ role, placeKnown, projectKnown, asOf }: { role: PublishedCar
           {role.title}
         </p>
         <div className="career-meta type-meta">
-          <Period start={role.start} end={role.end} asOf={asOf} />
+          <Period start={role.start} end={role.end} asOf={asOf} upcoming={isUpcoming(role)} />
         </div>
         <p className="career-facts">
           <Where text={role.location} place={role.place} known={placeKnown} />

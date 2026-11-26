@@ -139,4 +139,10 @@ describe("listMarkdown and careerMarkdown", () => {
     expect(md).toContain("## Experience");
     expect(md).not.toMatch(/@|mailto:|tel:/);
   });
+  it("says a role that has not begun is being joined, not that it runs to now", () => {
+    const career = projection.career!;
+    const md = careerMarkdown({ ...career, roles: [{ ...career.roles[0]!, start: "2026-12", end: undefined, upcoming: true }, ...career.roles.slice(1)] }, ORIGIN);
+    expect(md).toContain("Joining 2026-12 · ");
+    expect(md).not.toContain("2026-12 to now");
+  });
 });

@@ -223,6 +223,21 @@ describe("career (an optional singleton document, additive in schema version 1)"
     });
   });
 
+  describe("a role that has not begun (`upcoming`)", () => {
+    it("is an optional `true`, kept as given, with a start and no end or a dated end", () => {
+      const joining = role({ id: "joining", start: "2026-11", upcoming: true });
+      expect(parse(career({ roles: [joining] })).career!.roles[0]).toEqual(joining);
+      ok(career({ roles: [role({ start: "2026-11", end: "2027-05", upcoming: true })] }));
+      ok(career({ roles: [role({ start: "2026-11" })] })); // absent = as before
+    });
+    it("is only ever `true`: `false`, a word or a number is refused (absent says it)", () => {
+      for (const upcoming of [false, "true", "yes", 1, null]) bad(career({ roles: [role({ upcoming })] }));
+    });
+    it("cannot also be ongoing: a role that has not begun is not `present`", () => {
+      bad(career({ roles: [role({ start: "2026-11", end: "present", upcoming: true })] }), /has not begun/);
+    });
+  });
+
   describe("dates", () => {
     it("accept YYYY and YYYY-MM for a start, and `present` or nothing for an end", () => {
       for (const start of ["2026", "2025-02", "1999-12"]) ok(career({ roles: [role({ start })] }));
@@ -363,6 +378,7 @@ describe("career (an optional singleton document, additive in schema version 1)"
           employment: f(CAREER_TEXT.employment),
           start: "2000-01",
           end: "2001-12",
+          upcoming: true as const,
           highlights: n(CAREER_LIMITS.highlights).map((j) => f(CAREER_TEXT.highlight, `h${j}`)),
           projects: n(CAREER_LIMITS.projects).map((j) => ({
             title: f(CAREER_TEXT.projectTitle, `t${j}`),
@@ -414,7 +430,7 @@ describe("career (an optional singleton document, additive in schema version 1)"
       expect(max.links).toHaveLength(CAREER_LIMITS.links);
       // every optional key of every object is there
       const shape = (o: object) => Object.keys(o).sort();
-      expect(shape(max.roles[0]!)).toEqual(["end", "employment", "highlights", "id", "location", "org", "orgUrl", "place", "projects", "skills", "start", "title"].sort());
+      expect(shape(max.roles[0]!)).toEqual(["end", "employment", "highlights", "id", "location", "org", "orgUrl", "place", "projects", "skills", "start", "title", "upcoming"].sort());
       expect(shape(max.education[0]!)).toEqual(["end", "id", "institution", "institutionUrl", "level", "location", "note", "place", "programme", "start"].sort());
       expect(shape(max)).toEqual(["availability", "education", "languages", "links", "portrait", "roles", "skills", "summary", "title", "updated"]);
     });

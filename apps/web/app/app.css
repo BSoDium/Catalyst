@@ -8100,8 +8100,21 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
     color: var(--subtle-foreground);
   }
 
-  .career-item[data-current="true"] .career-period {
+  .career-item[data-current="true"] .career-period,
+  .career-item[data-upcoming="true"] .career-period {
     color: var(--foreground);
+  }
+
+  /* A position that has not begun (owner, 2026-11-26): "Joining Dec 2026". The word is the state, in the accent's text tone (AA under 24 px), the date stays in
+     the ink; no pill, no box, no dot, no animation. The marker keeps the quiet look of a past role (the accent icon says "I am here now": the current role only),
+     and the rail running from it to the role it will follow is dashed: "not yet", a shape, not a colour (the forced-colours rule below is less specific and keeps
+     the dash's width; print draws the word in ink). */
+  .career-status {
+    color: var(--signal-text);
+  }
+
+  .career-item[data-upcoming="true"]:not(:last-child)::before {
+    border-left-style: dashed;
   }
 
   .career-duration {

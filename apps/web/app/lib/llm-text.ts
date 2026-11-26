@@ -161,7 +161,7 @@ export function careerMarkdown(career: PublishedCareer, origin: string): string 
     ...career.roles.map((r) =>
       [
         `### ${r.title}, ${r.org}`,
-        `${range(r.start, r.end)} · ${r.location}${r.employment ? ` · ${r.employment}` : ""}`,
+        `${r.upcoming ? `Joining ${r.start}${r.end && r.end !== "present" ? `, to ${r.end}` : ""}` : range(r.start, r.end)} · ${r.location}${r.employment ? ` · ${r.employment}` : ""}`,
         ...(r.highlights.length ? [r.highlights.map((h) => `- ${h}`).join("\n")] : []),
         ...(r.projects?.length ? [r.projects.map((p) => `- ${p.title}: ${p.summary}`).join("\n")] : []),
         ...(r.skills.length ? [`Skills: ${r.skills.join(", ")}`] : []),

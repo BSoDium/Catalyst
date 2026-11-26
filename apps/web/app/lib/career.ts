@@ -32,8 +32,10 @@ export function asOfText(asOf: string): string {
 }
 
 export interface CareerPeriod {
-  /** The visible text, `Sep 2025 – Present`. */
+  /** The visible text, `Sep 2025 – Present`; `Joining Dec 2026` for a role that has not begun. */
   text: string;
+  /** Only for a role that has not begun: the status word, drawn apart from the date (`Joining`). */
+  status?: string;
   /** Machine-readable parts for `<time>`: the start, and the end when it is a date (`present` and no end have none). */
   start: { text: string; dateTime: string };
   end?: { text: string; dateTime?: string };
@@ -45,10 +47,16 @@ export interface CareerPeriod {
  * The period of a role or a programme. A missing end (the document says nothing about it) shows the start alone; `present` shows
  * "Present" (no `<time>`: it has no date). The end of a same-year or same-text range is not repeated.
  */
-export function careerPeriod(start: string, end: string | undefined): CareerPeriod {
+export function careerPeriod(start: string, end: string | undefined, upcoming = false): CareerPeriod {
   const from = formatCareerMonth(start, "short") ?? start;
   const fromLong = formatCareerMonth(start) ?? start;
   const startPart = { text: from, dateTime: start };
+  // Not begun: "Joining Dec 2026", never "– Present" (a role that has not started is not ongoing). A dated end, if any, still closes the range.
+  if (upcoming) {
+    const to = end && end !== "present" ? formatCareerMonth(end, "short") ?? end : undefined;
+    const range = to && to !== from ? { end: { text: to, dateTime: end! } } : {};
+    return { text: `Joining ${from}${range.end ? ` – ${to}` : ""}`, status: "Joining", start: startPart, ...range, spoken: `joining in ${fromLong}${range.end ? `, until ${formatCareerMonth(end!) ?? end}` : ""}, not started yet` };
+  }
   if (end === undefined) return { text: from, start: startPart, spoken: `from ${fromLong}` };
   if (end === "present") return { text: `${from} – Present`, start: startPart, end: { text: "Present" }, spoken: `${fromLong} to present` };
   const to = formatCareerMonth(end, "short") ?? end;
@@ -96,8 +104,11 @@ export function careerLogo(name: string): string | null {
   return hit ? `/career-logos/${hit[1]}.webp` : null;
 }
 
-/** Whether a role is the one in progress (`end: present`). */
-export const isCurrent = (r: Pick<PublishedCareerRole, "end">): boolean => r.end === "present";
+/** Whether a role is the one in progress (`end: present`, and begun). */
+export const isCurrent = (r: Pick<PublishedCareerRole, "end" | "upcoming">): boolean => r.end === "present" && !r.upcoming;
+
+/** Whether a role is accepted but not begun (`upcoming: true`, authored: a month cannot tell the 30th from the 1st and the page reads no clock). */
+export const isUpcoming = (r: Pick<PublishedCareerRole, "upcoming">): boolean => r.upcoming === true;
 
 /** A language as the line reads it: the label and the level, not the same word twice (`Native, C2`; `A2`). */
 export function languageDetail(l: PublishedCareerLanguage): string {
@@ -165,7 +176,8 @@ export function careerJsonLd(career: PublishedCareer, origin: string): Record<st
  * be told: a bare year, no end, or a malformed month. An ongoing role runs to `asOf`, the month the owner last reviewed the
  * document (`career.updated`, authored): the page never reads the clock, so a cached page never goes stale.
  */
-export function careerDuration(start: string, end: string | undefined, asOf: string): string | null {
+export function careerDuration(start: string, end: string | undefined, asOf: string, upcoming = false): string | null {
+  if (upcoming) return null; // nothing to count yet
   const month = (s: string): number | null => {
     const m = /^(\d{4})-(\d{2})$/.exec(s);
     return m ? Number(m[1]) * 12 + Number(m[2]) - 1 : null;
