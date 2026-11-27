@@ -1,5 +1,5 @@
 {
-  "_doc": "Per picture (the folder name under public/media/photograph or routes): how its cutout is made. mode: vision (Apple's foreground mask, the default), semantic (SegFormer ADE20K labels what each region is: everything that is not the sky, or `exclude`/`classes`; `boost` classes it under-labels; `crop`), polygon (a hand-drawn outline of the subject, shares of the picture), sky (older: sky grown by colour), none. All of them end in alpha matting at the edge. band: the unknown strip round the edge, px. occlude: the share of the word's height the subject hides (default 0.35). percentile: which of the subject's columns the top edge is read at (the tallest N% start above it; default 15). none: no cutout for this picture (the poster shows the photograph flat): kept for the pictures where no cut was clean enough. rod: a straight pole and its flag cut by geometry (axis, half, flag). placeOnly: no cutout is drawn, the subject's edge only places the photograph (a skyline stays under the word at any card width). blend: the cutout is dimmed and faded as the photograph is. spires: recover the thin tips above a skyline that the model's mask cuts off. A key `folder/file` configures one picture of a folder that holds several. holes: make solid what the subject closes in (a bright slot taken for sky); the value is how wide a mouth is closed to find it, px. solid: hand-drawn outlines that are subject whole (a statue's shaft). cx: where across the picture (a share) is brought over the middle of the word, when the subject's centre is not what should be there (a statue that should stand beside the word). keep: an outline beyond which nothing is subject (misty distance). feather: how soft that outline is, px. trim: how far the edge is drawn in at the end, px (default 1; 0 none).",
+  "_doc": "Per picture (the folder name under public/media/photograph or routes): how its cutout is made. mode: vision (Apple's foreground mask, the default), semantic (SegFormer ADE20K labels what each region is: everything that is not the sky, or `exclude`/`classes`; `boost` classes it under-labels; `crop`), polygon (a hand-drawn outline of the subject, shares of the picture), sky (older: sky grown by colour), none. All of them end in alpha matting at the edge. band: the unknown strip round the edge, px. occlude: the share of the word's height the subject hides (default 0.35). percentile: which of the subject's columns the top edge is read at (the tallest N% start above it; default 15). none: no cutout for this picture (the poster shows the photograph flat): kept for the pictures where no cut was clean enough. rod: a straight pole and its flag cut by geometry (axis, half, flag). placeOnly: no cutout is drawn, the subject's edge only places the photograph (a skyline stays under the word at any card width). blend: the cutout is dimmed and faded as the photograph is. spires: recover the thin tips above a skyline that the model's mask cuts off. A key `folder/file` configures one picture of a folder that holds several. holes: make solid what the subject closes in (a bright slot taken for sky); the value is how wide a mouth is closed to find it, px. solid: hand-drawn outlines that are subject whole (a statue's shaft). cx: where across the picture (a share) is brought over the middle of the word, when the subject's centre is not what should be there (a statue that should stand beside the word). keep: an outline beyond which nothing is subject (misty distance). feather: how soft that outline is, px. trim: how far the edge is drawn in at the end, px (default 1; 0 none). soft: an area where the subject is only half there (`level`, 0 to 1), its outline blurred by `feather` px: a part that is too dark as backdrop and too hazy as subject.",
   "trip-01": {
     "mode": "semantic",
     "spires": true,
@@ -149,111 +149,27 @@
     "keep": [
       [
         0.0,
-        0.4735
+        0.5012
       ],
       [
-        0.0195,
-        0.4713
+        0.05,
+        0.4991
       ],
       [
-        0.0391,
-        0.4691
+        0.1579,
+        0.5012
       ],
       [
-        0.0558,
-        0.4679
+        0.2526,
+        0.5004
       ],
       [
-        0.0837,
-        0.4668
+        0.3368,
+        0.505
       ],
       [
-        0.106,
-        0.4646
-      ],
-      [
-        0.1256,
-        0.4628
-      ],
-      [
-        0.1451,
-        0.4639
-      ],
-      [
-        0.1618,
-        0.4668
-      ],
-      [
-        0.1786,
-        0.4657
-      ],
-      [
-        0.1931,
-        0.4671
-      ],
-      [
-        0.1959,
-        0.4601
-      ],
-      [
-        0.2009,
-        0.4517
-      ],
-      [
-        0.2054,
-        0.4601
-      ],
-      [
-        0.2098,
-        0.4657
-      ],
-      [
-        0.2232,
-        0.4635
-      ],
-      [
-        0.2455,
-        0.4657
-      ],
-      [
-        0.2651,
-        0.4635
-      ],
-      [
-        0.2846,
-        0.4624
-      ],
-      [
-        0.3069,
-        0.4635
-      ],
-      [
-        0.3237,
-        0.4612
-      ],
-      [
-        0.3362,
-        0.4653
-      ],
-      [
-        0.3465,
-        0.4635
-      ],
-      [
-        0.3549,
-        0.4697
-      ],
-      [
-        0.3627,
-        0.478
-      ],
-      [
-        0.3677,
-        0.4858
-      ],
-      [
-        0.3697,
-        0.4981
+        0.3684,
+        0.5021
       ],
       [
         0.3753,
@@ -420,7 +336,49 @@
         1
       ]
     ],
-    "feather": 1.1
+    "feather": 1.1,
+    "soft": {
+      "outline": [
+        [
+          0.0,
+          0.4651
+        ],
+        [
+          0.0526,
+          0.4609
+        ],
+        [
+          0.1316,
+          0.4575
+        ],
+        [
+          0.2105,
+          0.4546
+        ],
+        [
+          0.2737,
+          0.4575
+        ],
+        [
+          0.3368,
+          0.463
+        ],
+        [
+          0.3684,
+          0.4756
+        ],
+        [
+          0.3747,
+          0.505
+        ],
+        [
+          0.0,
+          0.505
+        ]
+      ],
+      "level": 0.35,
+      "feather": 14
+    }
   },
   "bow-of-a-boat": {
     "mode": "none"
