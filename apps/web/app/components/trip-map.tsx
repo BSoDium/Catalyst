@@ -21,6 +21,14 @@ const MAX_LABELS = 6;
 const SMOOTH_PX_PER_DEG = 22;
 /** The names are a little quieter still than the dots. */
 const LABEL_INK = "color-mix(in srgb, var(--foreground) 66%, transparent)";
+/** The size the poster's word is measured at. */
+const MEASURE_SIZE = 100;
+/** How far above the subject its shadow falls (CSS px). */
+const SHADOW_RISE = 5;
+/** From this many px a degree the country borders are dashed. */
+const DASHED_PX_PER_DEG = 40;
+/** The `sizes` of a poster's photograph: the same whatever its width, so a poster that is being resized never swaps the small file for the large one (and back), which showed as a flash. */
+const PHOTO_SIZES = "720px";
 const MARK_INK = "color-mix(in srgb, var(--foreground) 74%, transparent)";
 const ROUTE_OPACITY = 0.8;
 
@@ -64,12 +72,20 @@ export function TripPhotoFilters() {
         {levels(0.42, 0.05)}
       </filter>
       {/* the subject in front of the word: a gentler band, so it stands out of the backdrop (it is not read through: the ink below the poster is clear of it) */}
+      {/* the subject's shadow: the subject darkened (each channel alike, so its own colours tint it) and blurred */}
+      {([["light", 0.45], ["dark", 0.3]] as const).map(([name, light]) => (
+        <filter key={name} id={`trip-shadow-${name}`} x="-10%" y="-10%" width="120%" height="120%" colorInterpolationFilters="sRGB">
+          <feColorMatrix type="saturate" values="1.4" />
+          {levels(light, 0)}
+          <feGaussianBlur stdDeviation={9} />
+        </filter>
+      ))}
       <filter id="trip-subject-light" colorInterpolationFilters="sRGB">
-        <feColorMatrix type="saturate" values="1" />
+        <feColorMatrix type="saturate" values="1.2" />
         {levels(0.6, 0.38)}
       </filter>
       <filter id="trip-subject-dark" colorInterpolationFilters="sRGB">
-        <feColorMatrix type="saturate" values="1" />
+        <feColorMatrix type="saturate" values="1.2" />
         {levels(0.56, 0.04)}
       </filter>
     </svg>
@@ -352,12 +368,12 @@ export function TripPoster({ trip, here, photo = true, cutout = true, occlude, c
   // The word has ONE size on a poster, whatever its length, so the cards of a row read as a set. A word too wide for the poster is first CONDENSED (the face has no width axis: the glyphs are squeezed
   // sideways, `WORD_MIN_CONDENSE` at the most), and only a word that would have to be squeezed further is made smaller.
   const nominal = wordSize(NOMINAL_LETTERS, w, h);
-  // The width of the word at the nominal size is measured on an invisible copy (always drawn at that size and at the heaviest weight, the widest it gets: the visible one is thinner or heavier with the
-  // card's `--g`, see `.trip-slide` in app.css), so what is drawn never feeds back into what is measured.
+  // The word's width is measured once, on an invisible copy drawn at a fixed size (`MEASURE_SIZE`) and at the heaviest weight, the widest it gets (the visible one is thinner or heavier with the card's `--g`, see `.trip-slide` in
+  // app.css), and scaled to the poster's size: so nothing measured depends on the poster's size, and a poster that is being resized never draws a frame with a guess in place of a measure (the word flickered).
   const textRef = useRef<SVGTextElement>(null);
   const [measured, setMeasured] = useState({ key: "", length: 0 });
-  const key = `${word}|${nominal}|${w}|${wordFace ?? trip.face ?? ""}`;
-  const natural = measured.key === key ? measured.length : 0.66 * nominal * word.length;
+  const key = `${word}|${wordFace ?? trip.face ?? ""}`;
+  const natural = ((measured.key === key ? measured.length : 0.66 * MEASURE_SIZE * word.length) * nominal) / MEASURE_SIZE;
   // Three steps, in this order: (1) a word that is wider than the SOFT share of the card (`WORD_SOFT`, so that a word does not run across a wide card) is condensed, down to `WORD_MIN_CONDENSE`; (2) if that is not
   // enough it may take more of the card, up to the whole of it, at that condensing; (3) only a word still wider than the card is made smaller.
   const room = w - 2 * WORD_PAD;
@@ -434,7 +450,7 @@ export function TripPoster({ trip, here, photo = true, cutout = true, occlude, c
     return { width: k * hz.w, height: k * hz.h, left: (w - k * hz.w) / 2, top: h - f * k * hz.h } as const;
   })();
   // The photograph enlarged beyond its own pixels (device pixels per source pixel above 1) is blurred by about what the enlargement lacks, so it looks like a shallow depth of field and not like squares (owner, 2026-11-24).
-  const softness = placed && backdrop ? Math.min(6, Math.max(0, (placed.width * dpr) / (backdrop.width ?? placed.width) - 0.9) * 1.6) / dpr : 0;
+  const softness = placed && backdrop ? Math.min(10, Math.max(0, (placed.width * dpr) / (backdrop.width ?? placed.width) - 0.75) * 3) / dpr : 0;
   const softened = (filter: string) => (softness > 0.05 ? `${filter} blur(${softness.toFixed(2)}px)` : undefined);
   // A busy picture is quieter: the more detail there is in the part of it that shows (the mean energy of the layer: 0.03 is a sky and a plain skyline, 0.06 a crowd and a colourful street), the more it is faded into the card's ground, down to half (owner, 2026-11-19: Moscow's was too busy for the content).
   const photoOpacity = (() => {
@@ -456,6 +472,8 @@ export function TripPoster({ trip, here, photo = true, cutout = true, occlude, c
   // (the borders are the field's colour, the ocean's: a gap in the land, not a line over it)
   const borderPath = useMemo(() => linesPath(frame, borders, w, backdrop ? h + PHOTO_RUN : h), [frame, borders, w, h, backdrop]);
   const land = useMemo(() => linesPath(frame, coast, w, backdrop ? h + PHOTO_RUN : h, true), [frame, coast, w, h, backdrop]);
+  // Close up (hardly a country on the poster) the borders are dashed: the same gaps in the land, in pieces.
+  const borderDash = frame.pxPerDeg >= DASHED_PX_PER_DEG ? "6 4" : undefined;
   // On a world map (a trip across the globe) the land fades with the distance from the trip, so the map does not stop at the edge of the world: it is there where the route is, and the continents dissolve away from it.
   const maskId = `fade${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
   const landFade = useMemo(() => {
@@ -585,17 +603,19 @@ export function TripPoster({ trip, here, photo = true, cutout = true, occlude, c
   const tone = (share: number) => `color-mix(in srgb, var(--foreground) ${share}%, var(--accent))`;
   // The same ink on the field's colour with or without a photograph: the photograph is veiled in the FIELD's colour (light in the light theme, dark in the dark one), so it sits close to the card's background instead of standing out of it.
   // The word and its tag: in the poster's own drawing, or, when the photograph has a cutout (`layer`), in a drawing of their own under the cutout, so the subject stands in front of the word.
+  const wordTransform = `translate(${WORD_PAD - Math.round(size * 0.05)} ${h - WORD_PAD}) scale(${face.axis ? "1" : condense.toFixed(3)} 1)`;
+  const wordType: CSSProperties = { fontFamily: wordFont, letterSpacing: "-0.03em", ...(face.axis ? { fontStretch: `${(face.axis.base * condense).toFixed(1)}%` } : {}) };
   const wordNodes = word ? (
     <>
       {/* (the word's width is measured on an invisible copy at the heaviest weight, the widest it gets: the visible one is thinner or heavier with the card's `--g`, see `.trip-slide` in app.css) */}
-    <text ref={textRef} aria-hidden="true" x={0} y={-1000} fontSize={nominal} style={{ visibility: "hidden", fontFamily: wordFont, fontWeight: 800, letterSpacing: "-0.03em", ...(face.axis ? { fontStretch: `${face.axis.base}%` } : {}) }}>
+    <text ref={textRef} aria-hidden="true" x={0} y={-1000} fontSize={MEASURE_SIZE} style={{ visibility: "hidden", fontFamily: wordFont, fontWeight: 800, letterSpacing: "-0.03em", ...(face.axis ? { fontStretch: `${face.axis.base}%` } : {}) }}>
       {word}
     </text>
-    <text data-slot="trip-word" transform={`translate(${WORD_PAD - Math.round(size * 0.05)} ${h - WORD_PAD}) scale(${face.axis ? "1" : condense.toFixed(3)} 1)`} fontSize={size} style={{ ...(backdrop ? { fill: "var(--foreground)", opacity: "calc(0.12 + 0.4 * var(--g, 1) * var(--g, 1))" as unknown as number } : {}), ...(backdrop ? {} : { fill: `color-mix(in srgb, var(--foreground) calc(8% + 24% * var(--g, 1) * var(--g, 1)), var(--accent))` }), fontFamily: wordFont, letterSpacing: "-0.03em", ...(face.axis ? { fontStretch: `${(face.axis.base * condense).toFixed(1)}%` } : {}) }}>
+    <text data-slot="trip-word" transform={wordTransform} fontSize={size} style={{ ...(backdrop ? { fill: "var(--foreground)", opacity: "calc(0.1 + 0.3 * var(--g, 1) * var(--g, 1))" as unknown as number } : {}), ...(backdrop ? {} : { fill: `color-mix(in srgb, var(--foreground) calc(7% + 18% * var(--g, 1) * var(--g, 1)), var(--accent))` }), ...wordType }}>
       {word}
     </text>
     {/* (what the word is: the trip's code name, not the place's name; the poster's own small mono type, quiet and only on the card in front) */}
-    <text data-slot="trip-word-tag" aria-hidden="true" x={WORD_PAD} y={h - WORD_PAD - Math.round(size * 0.74) - 9} fontSize={11} style={{ fill: "var(--foreground)", fontFamily: "var(--font-meta)", fontWeight: 500, letterSpacing: "0.14em", fillOpacity: "clamp(0, calc((var(--g, 1) - 0.4) * 1.1), 0.62)" as unknown as number }}>
+    <text data-slot="trip-word-tag" aria-hidden="true" x={WORD_PAD} y={h - WORD_PAD - Math.round(size * 0.74) - 9} fontSize={11} style={{ fill: "var(--foreground)", fontFamily: "var(--font-meta)", fontWeight: 500, letterSpacing: "0.14em", fillOpacity: "clamp(0, calc((var(--g, 1) - 0.4) * 0.8), 0.42)" as unknown as number }}>
       CODE NAME
     </text>
     </>
@@ -670,7 +690,7 @@ export function TripPoster({ trip, here, photo = true, cutout = true, occlude, c
         // between the poster and the figures (the poster's bottom edge): sky and map above it, the ground under it.
         <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 -z-10" style={{ height: h + PHOTO_RUN, maskImage: fade(h), WebkitMaskImage: fade(h), opacity: photoOpacity, willChange: "transform" }}>
           <img
-            {...coverImageProps(backdrop, `${w}px`)}
+            {...coverImageProps(backdrop, PHOTO_SIZES)}
             alt=""
             decoding="async"
             onLoad={(e) => horizon.read(e.currentTarget)}
@@ -686,6 +706,26 @@ export function TripPoster({ trip, here, photo = true, cutout = true, occlude, c
           <>
             <svg aria-hidden="true" data-slot="trip-word-layer" width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="pointer-events-none absolute inset-x-0 top-0 block overflow-hidden">
               {wordNodes}
+              {word && (
+                <>
+                  {/* The subject's shadow, ON THE WORD only (owner, 2026-11-27: on the picture it looked odd where subject and backdrop are close in colour): the cutout darkened and blurred (tinted by the picture), a little higher, through a soft mask of the letters. */}
+                  <defs>
+                    <filter id={`${maskId}-soft`} filterUnits="userSpaceOnUse" x={0} y={-20} width={w} height={h + 40}>
+                      <feGaussianBlur stdDeviation={3.5} />
+                    </filter>
+                    <mask id={`${maskId}-w`} maskUnits="userSpaceOnUse" x={0} y={0} width={w} height={h}>
+                      <g filter={`url(#${maskId}-soft)`}>
+                        <text data-slot="trip-word-mask" transform={wordTransform} fontSize={size} fill="#fff" stroke="#fff" strokeWidth={5} strokeLinejoin="round" style={wordType}>
+                          {word}
+                        </text>
+                      </g>
+                    </mask>
+                  </defs>
+                  <g mask={`url(#${maskId}-w)`}>
+                    <image data-slot="trip-shadow" className="trip-shadow" href={layer.src} x={placed ? placed.left : 0} y={(placed ? placed.top : 0) - SHADOW_RISE} width={placed ? placed.width : w} height={placed ? placed.height : h + PHOTO_RUN} preserveAspectRatio={placed ? "none" : "xMidYMid slice"} />
+                  </g>
+                </>
+              )}
               {routeNodes}
             </svg>
             {/* (the cutout is placed and filtered exactly as the photograph, the same picture with its background made transparent; it is not faded, so it hides the word completely where it covers it) */}
@@ -718,7 +758,7 @@ export function TripPoster({ trip, here, photo = true, cutout = true, occlude, c
                   <polyline key={i} points={pts} />
                 ))}
               </g>
-              {borderPath && <path d={borderPath} fill="none" stroke="#000" strokeWidth={BORDER_GAP} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />}
+              {borderPath && <path d={borderPath} fill="none" stroke="#000" strokeWidth={BORDER_GAP} strokeDasharray={borderDash} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />}
             </mask>
           </defs>
           <path d={land} mask={`url(#${maskId}-l)`} className="trip-land" style={{ "--trip-land-dark-share": `${landShare}%` } as CSSProperties} stroke="none" />
@@ -727,7 +767,7 @@ export function TripPoster({ trip, here, photo = true, cutout = true, occlude, c
       <svg data-slot="trip-poster" viewBox={`0 0 ${w} ${h}`} width={w} height={h} role="img" aria-label={`Map of the trip, ${trip.from} to ${trip.to}`} className="relative block overflow-hidden">
         {!backdrop && fadeDefs}
         {land && !backdrop && <path d={land} mask={landMask} style={{ fill: tone(9) }} stroke="none" />}
-        {borderPath && !backdrop && <path d={borderPath} fill="none" stroke="var(--accent)" strokeWidth={1.25} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />}
+        {borderPath && !backdrop && <path d={borderPath} fill="none" stroke="var(--accent)" strokeWidth={1.25} strokeDasharray={borderDash} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />}
         {!layer && wordNodes}
         {!layer && routeNodes}
       </svg>

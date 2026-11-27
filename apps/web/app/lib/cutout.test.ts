@@ -24,6 +24,17 @@ describe("subjectPlace", () => {
     expect(Math.abs(p.left + 0.5 * p.width - 120)).toBeLessThanOrEqual(80);
   });
 
+  it("moves continuously as the layer is resized", () => {
+    let last = subjectPlace({ cx: 0.4, top: 0.6 }, image, { w: 240, run: 288 }, { x: 80, y: 138 });
+    for (let w = 241; w <= 960; w++) {
+      const run = Math.min(470, w * 1.2);
+      const next = subjectPlace({ cx: 0.4, top: 0.6 }, image, { w, run }, { x: w / 3, y: run - 150 });
+      expect(Math.abs(next.height - last.height)).toBeLessThan(12);
+      expect(Math.abs(next.top - last.top)).toBeLessThan(12);
+      last = next;
+    }
+  });
+
   it("gets as close as it can when it has no room, without leaving the layer uncovered", () => {
     const p = subjectPlace({ cx: 0.95, top: 0.05 }, { w: 400, h: 470 }, layer, { x: 120, y: 390 });
     expect(p.left).toBeLessThanOrEqual(0);

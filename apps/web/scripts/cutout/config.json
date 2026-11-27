@@ -1,75 +1,463 @@
 {
-  "_doc": "Per picture (the folder name under public/media/photograph or routes): how its cutout is made. mode: vision (Apple's foreground mask, the default), semantic (SegFormer ADE20K labels what each region is: everything that is not the sky, or `exclude`/`classes`; `boost` classes it under-labels; `crop`), polygon (a hand-drawn outline of the subject, shares of the picture), sky (older: sky grown by colour), none. All of them end in alpha matting at the edge. band: the unknown strip round the edge, px. occlude: the share of the word's height the subject hides (default 0.35). percentile: which of the subject's columns the top edge is read at (the tallest N% start above it; default 15). none: no cutout for this picture (the poster shows the photograph flat): kept for the pictures where no cut was clean enough. rod: a straight pole and its flag cut by geometry (axis, half, flag). placeOnly: no cutout is drawn, the subject's edge only places the photograph (a skyline stays under the word at any card width). blend: the cutout is dimmed and faded as the photograph is.",
+  "_doc": "Per picture (the folder name under public/media/photograph or routes): how its cutout is made. mode: vision (Apple's foreground mask, the default), semantic (SegFormer ADE20K labels what each region is: everything that is not the sky, or `exclude`/`classes`; `boost` classes it under-labels; `crop`), polygon (a hand-drawn outline of the subject, shares of the picture), sky (older: sky grown by colour), none. All of them end in alpha matting at the edge. band: the unknown strip round the edge, px. occlude: the share of the word's height the subject hides (default 0.35). percentile: which of the subject's columns the top edge is read at (the tallest N% start above it; default 15). none: no cutout for this picture (the poster shows the photograph flat): kept for the pictures where no cut was clean enough. rod: a straight pole and its flag cut by geometry (axis, half, flag). placeOnly: no cutout is drawn, the subject's edge only places the photograph (a skyline stays under the word at any card width). blend: the cutout is dimmed and faded as the photograph is. spires: recover the thin tips above a skyline that the model's mask cuts off. A key `folder/file` configures one picture of a folder that holds several. holes: make solid what the subject closes in (a bright slot taken for sky); the value is how wide a mouth is closed to find it, px. solid: hand-drawn outlines that are subject whole (a statue's shaft). cx: where across the picture (a share) is brought over the middle of the word, when the subject's centre is not what should be there (a statue that should stand beside the word). keep: an outline beyond which nothing is subject (misty distance). feather: how soft that outline is, px. trim: how far the edge is drawn in at the end, px (default 1; 0 none).",
   "trip-01": {
-    "mode": "semantic"
+    "mode": "semantic",
+    "spires": true,
+    "percentile": 40,
+    "occlude": 0.1,
+    "cx": 0.3
   },
   "trip-04": {
     "mode": "sky",
     "tol": 1.5
   },
   "trip-06": {
-    "mode": "semantic",
-    "boost": [
-      "palm",
-      "tree",
-      "plant",
-      "streetlight",
-      "pole"
+    "mode": "polygon",
+    "polygon": [
+      [
+        0,
+        0.628
+      ],
+      [
+        0.05,
+        0.61
+      ],
+      [
+        0.1,
+        0.592
+      ],
+      [
+        0.15,
+        0.578
+      ],
+      [
+        0.2,
+        0.56
+      ],
+      [
+        0.25,
+        0.55
+      ],
+      [
+        0.28,
+        0.553
+      ],
+      [
+        0.33,
+        0.548
+      ],
+      [
+        0.4,
+        0.545
+      ],
+      [
+        0.45,
+        0.538
+      ],
+      [
+        0.5,
+        0.524
+      ],
+      [
+        0.55,
+        0.515
+      ],
+      [
+        0.58,
+        0.507
+      ],
+      [
+        0.61,
+        0.504
+      ],
+      [
+        0.64,
+        0.511
+      ],
+      [
+        0.66,
+        0.517
+      ],
+      [
+        0.69,
+        0.52
+      ],
+      [
+        0.72,
+        0.516
+      ],
+      [
+        0.74,
+        0.519
+      ],
+      [
+        0.77,
+        0.532
+      ],
+      [
+        0.79,
+        0.54
+      ],
+      [
+        0.82,
+        0.548
+      ],
+      [
+        0.86,
+        0.563
+      ],
+      [
+        0.9,
+        0.576
+      ],
+      [
+        0.94,
+        0.585
+      ],
+      [
+        0.98,
+        0.593
+      ],
+      [
+        1,
+        0.598
+      ],
+      [
+        1,
+        1
+      ],
+      [
+        0,
+        1
+      ]
     ],
-    "clear": 42,
-    "percentile": 40,
-    "placeOnly": true,
-    "occlude": 0.3
+    "band": 4,
+    "percentile": 25,
+    "occlude": 0.17
   },
   "trip-08": {
     "mode": "semantic",
-    "placeOnly": true,
-    "occlude": 0.5
+    "spires": true,
+    "percentile": 15,
+    "occlude": 0.14
   },
   "trip-10": {
     "mode": "semantic",
     "percentile": 6,
-    "occlude": 0.3
-  },
-  "bow-of-a-boat": {
-    "mode": "rod",
-    "axis": [
+    "occlude": 0.3,
+    "spires": true,
+    "keep": [
       [
-        0.314,
-        0.268
+        0.0,
+        0.4735
       ],
       [
-        0.322,
-        0.3
+        0.0195,
+        0.4713
       ],
       [
-        0.333,
-        0.4
+        0.0391,
+        0.4691
       ],
       [
-        0.349,
-        0.5
+        0.0558,
+        0.4679
       ],
       [
-        0.365,
-        0.6
+        0.0837,
+        0.4668
       ],
       [
-        0.372,
-        0.675
+        0.106,
+        0.4646
+      ],
+      [
+        0.1256,
+        0.4628
+      ],
+      [
+        0.1451,
+        0.4639
+      ],
+      [
+        0.1618,
+        0.4668
+      ],
+      [
+        0.1786,
+        0.4657
+      ],
+      [
+        0.1931,
+        0.4671
+      ],
+      [
+        0.1959,
+        0.4601
+      ],
+      [
+        0.2009,
+        0.4517
+      ],
+      [
+        0.2054,
+        0.4601
+      ],
+      [
+        0.2098,
+        0.4657
+      ],
+      [
+        0.2232,
+        0.4635
+      ],
+      [
+        0.2455,
+        0.4657
+      ],
+      [
+        0.2651,
+        0.4635
+      ],
+      [
+        0.2846,
+        0.4624
+      ],
+      [
+        0.3069,
+        0.4635
+      ],
+      [
+        0.3237,
+        0.4612
+      ],
+      [
+        0.3362,
+        0.4653
+      ],
+      [
+        0.3465,
+        0.4635
+      ],
+      [
+        0.3549,
+        0.4697
+      ],
+      [
+        0.3627,
+        0.478
+      ],
+      [
+        0.3677,
+        0.4858
+      ],
+      [
+        0.3697,
+        0.4981
+      ],
+      [
+        0.3753,
+        0.4943
+      ],
+      [
+        0.3747,
+        0.4726
+      ],
+      [
+        0.3921,
+        0.471
+      ],
+      [
+        0.3947,
+        0.4588
+      ],
+      [
+        0.4095,
+        0.4041
+      ],
+      [
+        0.4474,
+        0.4041
+      ],
+      [
+        0.4537,
+        0.423
+      ],
+      [
+        0.4737,
+        0.3894
+      ],
+      [
+        0.5,
+        0.36
+      ],
+      [
+        0.5237,
+        0.36
+      ],
+      [
+        0.5526,
+        0.4167
+      ],
+      [
+        0.5832,
+        0.4188
+      ],
+      [
+        0.5884,
+        0.4546
+      ],
+      [
+        0.5937,
+        0.4684
+      ],
+      [
+        0.6484,
+        0.4701
+      ],
+      [
+        0.6547,
+        0.4861
+      ],
+      [
+        0.6974,
+        0.4853
+      ],
+      [
+        0.708,
+        0.4859
+      ],
+      [
+        0.7162,
+        0.4784
+      ],
+      [
+        0.7259,
+        0.4647
+      ],
+      [
+        0.7275,
+        0.4614
+      ],
+      [
+        0.7277,
+        0.453
+      ],
+      [
+        0.7292,
+        0.4478
+      ],
+      [
+        0.7311,
+        0.453
+      ],
+      [
+        0.7318,
+        0.4584
+      ],
+      [
+        0.7495,
+        0.4584
+      ],
+      [
+        0.7502,
+        0.453
+      ],
+      [
+        0.752,
+        0.4475
+      ],
+      [
+        0.7539,
+        0.453
+      ],
+      [
+        0.7546,
+        0.4618
+      ],
+      [
+        0.7723,
+        0.4837
+      ],
+      [
+        0.7816,
+        0.4832
+      ],
+      [
+        0.8211,
+        0.4844
+      ],
+      [
+        0.8642,
+        0.4861
+      ],
+      [
+        0.8763,
+        0.4911
+      ],
+      [
+        0.9079,
+        0.4932
+      ],
+      [
+        0.9379,
+        0.4937
+      ],
+      [
+        0.9447,
+        0.4907
+      ],
+      [
+        1.0,
+        0.4907
+      ],
+      [
+        1,
+        1
+      ],
+      [
+        0,
+        1
       ]
     ],
-    "half": 0.007,
-    "flag": [
-      0.318,
-      0.268,
-      0.39,
-      0.33
+    "feather": 1.1
+  },
+  "bow-of-a-boat": {
+    "mode": "none"
+  },
+  "trip-07": {
+    "mode": "sky",
+    "tol": 2,
+    "band": 3,
+    "spires": true,
+    "percentile": 25,
+    "occlude": 0.1
+  },
+  "trip-05": {
+    "mode": "semantic",
+    "spires": true,
+    "percentile": 50,
+    "occlude": 0.05,
+    "solid": [
+      [
+        [
+          0.4928,
+          0.5555
+        ],
+        [
+          0.5178,
+          0.5555
+        ],
+        [
+          0.5205,
+          0.621
+        ],
+        [
+          0.489,
+          0.621
+        ]
+      ]
     ],
-    "top": 0.6227,
-    "occlude": 0.0,
-    "force": true,
-    "blend": true,
-    "placeOnly": true
+    "cx": 0.27
   }
 }
