@@ -485,7 +485,13 @@ def main():
             h_, w_ = rgb.shape[:2]
             inside = np.zeros((h_, w_), np.uint8)
             cv2.fillPoly(inside, [np.array([[x * w_ * 4, y * h_ * 4] for x, y in cfg["keep"]], np.int32)], 255, lineType=cv2.LINE_AA, shift=2)
+            whole = alpha
             alpha = np.minimum(alpha, cv2.GaussianBlur(inside, (0, 0), cfg.get("feather", 0.8)))
+            if "soft" in cfg:
+                area = np.zeros((h_, w_), np.uint8)
+                cv2.fillPoly(area, [np.array([[x * w_ * 4, y * h_ * 4] for x, y in cfg["soft"]["outline"]], np.int32)], 255, lineType=cv2.LINE_AA, shift=2)
+                half = (cv2.GaussianBlur(area, (0, 0), cfg["soft"]["feather"]) * cfg["soft"]["level"]).astype(np.uint8)
+                alpha = np.maximum(alpha, np.minimum(whole, half))
         if alpha is not None and mode != "rod" and cfg.get("trim", 1):
             fg, alpha = trim_edge(rgb, fg, alpha, cfg.get("trim", 1))
         s = stats(alpha, cfg.get("percentile", 15)) if alpha is not None else None
