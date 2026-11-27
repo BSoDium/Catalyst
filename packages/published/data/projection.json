@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "dataVersion": {
-    "commit": "b2b60aa9ea5a746c94a9645bf1cf12187008e6e3",
-    "date": "2026-11-26"
+    "commit": "12f78799323d9699c6e947a13d98565a1a861bc3",
+    "date": "2026-11-27"
   },
   "places": [
     {
@@ -4777,15 +4777,15 @@
         "end": "2019-07"
       },
       "image": {
-        "src": "/media/routes/trip-01/image.025694f0.webp",
-        "width": 853,
-        "height": 1280,
-        "alt": "The Kremlin's Vodovzvodnaya tower and red wall seen from a bridge over the Moskva river, with the Moscow City skyscrapers on the horizon under a flat grey autumn sky",
-        "credit": "Azamat Hatypov, Pexels",
+        "src": "/media/routes/trip-01/image.f0546c64.webp",
+        "width": 1280,
+        "height": 1152,
+        "alt": "The Kudrinskaya Square high-rise, one of Moscow's Seven Sisters, above the city's rooftops in evening light",
+        "credit": "Valeria Nikitina, Pexels",
         "small": {
-          "src": "/media/routes/trip-01/image-800w.ae7e67c3.webp",
+          "src": "/media/routes/trip-01/image-800w.c7996cc6.webp",
           "width": 800,
-          "height": 1200
+          "height": 720
         }
       },
       "codename": "Moscow",
@@ -5091,6 +5091,18 @@
         "start": "2024-11",
         "end": "2024-11"
       },
+      "image": {
+        "src": "/media/routes/trip-05/image.fbcacd47.webp",
+        "width": 1137,
+        "height": 1280,
+        "alt": "The Cristo Rei monument on the wooded hills across the Tagus from Lisbon, under an evening sky",
+        "credit": "Mateus Castro, Pexels",
+        "small": {
+          "src": "/media/routes/trip-05/image-800w.104df87c.webp",
+          "width": 800,
+          "height": 900
+        }
+      },
       "codename": "Lisbon",
       "face": "script",
       "stops": [
@@ -5141,15 +5153,15 @@
         "end": "2025-04"
       },
       "image": {
-        "src": "/media/routes/trip-06/image.d58def05.webp",
-        "width": 1280,
-        "height": 960,
-        "alt": "A street in Marrakesh in the afternoon: a white car, two motorbikes and a horse carriage on cobbles, palm trees and pink-ochre buildings behind, under a pale sky",
-        "credit": "Marion Batteur, Pexels",
+        "src": "/media/routes/trip-06/image.daf57215.webp",
+        "width": 1274,
+        "height": 1280,
+        "alt": "Sand dunes in the Algerian Sahara under a hazy golden sunrise, the low sun above a flat horizon",
+        "credit": "Mohamed elamine M'siouri, Pexels",
         "small": {
-          "src": "/media/routes/trip-06/image-800w.da4597a6.webp",
+          "src": "/media/routes/trip-06/image-800w.ef3fc186.webp",
           "width": 800,
-          "height": 600
+          "height": 804
         }
       },
       "codename": "Marrakesh",
@@ -5212,7 +5224,18 @@
         "end": "2025-10"
       },
       "url": "https://www.polarsteps.com/bsodium/18932928-the-transatlantic-pathway",
-      "cover": "bow-of-a-boat",
+      "image": {
+        "src": "/media/routes/trip-07/image.dd832bb1.webp",
+        "width": 1177,
+        "height": 1280,
+        "alt": "A river passenger ship lit gold by the evening sun, in front of a dark tree line under a pale sunset sky, in Breves, Brazil",
+        "credit": "Wallace Castro, Pexels",
+        "small": {
+          "src": "/media/routes/trip-07/image-800w.4dcc4cae.webp",
+          "width": 800,
+          "height": 870
+        }
+      },
       "codename": "Quito",
       "face": "serif",
       "stops": [
@@ -5568,15 +5591,15 @@
         "end": "2025-11"
       },
       "image": {
-        "src": "/media/routes/trip-08/image.f751a130.webp",
-        "width": 1053,
+        "src": "/media/routes/trip-08/image.5a1d8f09.webp",
+        "width": 1186,
         "height": 1280,
-        "alt": "The Upper Belvedere palace in Vienna seen across its long pond, with a green copper roof and a white baroque facade under a clear blue sky and one large white cloud",
-        "credit": "Oscar M, Pexels",
+        "alt": "Vienna seen from Schönbrunn: rooftops and a red church spire under a plain dark blue sky, the palace roof in front",
+        "credit": "Minsu B, Pexels",
         "small": {
-          "src": "/media/routes/trip-08/image-800w.31a32165.webp",
+          "src": "/media/routes/trip-08/image-800w.91cc8c43.webp",
           "width": 800,
-          "height": 973
+          "height": 863
         }
       },
       "codename": "Vienna",
