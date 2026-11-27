@@ -3225,6 +3225,22 @@
     display: none;
   }
 
+  /* In a panel the footer ends it: a place with little in it would leave the footer part way down with a quarter of the panel empty under it (owner, 2026-11-27).
+     What the panel scrolls is a column as tall as the panel and the footer takes the room left over above itself; a longer panel scrolls to it as before. */
+  [data-panel] div:has(> [data-slot="site-footer"]) {
+    display: flex;
+    flex-direction: column;
+  }
+
+  [data-panel] div:has(> [data-slot="site-footer"]) > * {
+    flex-shrink: 0;
+    width: 100%;
+  }
+
+  [data-panel] div > [data-slot="site-footer"] {
+    margin-top: auto;
+  }
+
   /* (not raised there: the panel is already a surface of its own, and a lighter band at the end of its short column stood out (owner, 2026-11-27); the panel's own colour shows through, the faint top line stays) */
   [data-panel][data-layout="panel"] .site-footer {
     background: transparent;
