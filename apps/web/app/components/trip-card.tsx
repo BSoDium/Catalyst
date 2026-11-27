@@ -115,6 +115,12 @@ export function TripCard({ trip, here, lived = false, photo = true, cutout = tru
   return (
     <article data-slot="trip-card" className="relative isolate flex flex-col overflow-hidden">
       <TripPoster trip={trip} here={here} photo={photo} cutout={cutout} occlude={occlude} wordFace={wordFace} />
+      {/* The picture's credit runs up the poster's right edge, in the tag's small type, as a magazine sets it: on the picture it speaks of, and no line of its own under the card (owner, 2026-11-27). */}
+      {photo && trip.photo?.credit && (
+        <p data-slot="trip-photo-credit" className="trip-credit">
+          Photo: {trip.photo.credit}
+        </p>
+      )}
       <div className="relative flex grow flex-col gap-4 px-4 pt-4 pb-2.5">
         <header className="flex flex-col gap-1.5">
           <div className="flex items-baseline justify-between gap-3">
@@ -133,11 +139,6 @@ export function TripCard({ trip, here, lived = false, photo = true, cutout = tru
           {trip.countries > 0 && <Kpi value={trip.countries} unit={trip.countries === 1 ? "country" : "countries"} />}
         </div>
         <TripFooter trip={trip} where={where} hops={single ?? ends} stacked={position !== undefined} />
-        {photo && trip.photo?.credit && (
-          <p data-slot="trip-photo-credit" className="m-0 text-xs text-muted-foreground">
-            Photo: {trip.photo.credit}
-          </p>
-        )}
       </div>
     </article>
   );

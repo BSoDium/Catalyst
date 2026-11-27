@@ -58,26 +58,26 @@ export interface Placement {
   top: number;
 }
 
-/** What a tenth of zoom costs, in px of distance the subject is from its target (a little zoom is taken only when it brings the subject appreciably closer). */
-const ZOOM_COST = 8;
+/** The most the photograph is enlarged beyond covering the layer to bring the subject's edge to its place. */
+const MAX_ZOOM = 1.4;
 
 /**
- * Where to put the photograph so that its subject rises over the word: the subject's centre (across) comes to `target.x` and its top edge to `target.y` (px, in the layer: the middle of the word's width and of its height, so the subject
- * covers the lower half of the lettering and the upper half stays readable). The picture covers the layer (`w` by `run`) at least, may be scaled up to 1.4x for room to slide, and is slid as close to that as covering the layer allows.
+ * Where to put the photograph so that its subject rises over the word: the subject's top edge comes to `target.y` (px in the layer: the point of the word where the horizon or the skyline is to be) and its centre across as near `target.x`
+ * as covering the layer allows. The picture covers the layer (`w` by `run`) at least, and is enlarged just as much as it takes for the edge to reach its height (up to `MAX_ZOOM`). Every value is a continuous function of the
+ * layer's size, so a poster that is being resized moves its photograph smoothly (a choice among a few zooms jumped from one to another).
  */
 export function subjectPlace(subject: Pick<Cutout, "cx" | "top">, image: { w: number; h: number }, layer: { w: number; run: number }, target: { x: number; y: number }): Placement {
   const base = Math.max(layer.w / image.w, layer.run / image.h);
-  let best: (Placement & { cost: number }) | null = null;
-  for (const zoom of [1, 1.1, 1.2, 1.3, 1.4]) {
-    const width = image.w * base * zoom;
-    const height = image.h * base * zoom;
-    const left = Math.min(0, Math.max(layer.w - width, target.x - subject.cx * width));
-    const top = Math.min(0, Math.max(layer.run - height, target.y - subject.top * height));
-    // (where the subject's edge stands vertically is the point of it: the horizon on the word's foot; across, any place near the word will do)
-    const miss = Math.hypot(0.15 * (left + subject.cx * width - target.x), top + subject.top * height - target.y);
-    const cost = miss + (zoom - 1) * 10 * ZOOM_COST;
-    if (best === null || cost < best.cost) best = { width, height, left, top, cost };
-  }
-  const { width, height, left, top } = best!;
-  return { width, height, left, top };
+  const top = Math.min(0.999, Math.max(0.001, subject.top));
+  // (the height the picture needs: the edge at `target.y` with the picture's top at or above the layer's, and its bottom at or below the layer's)
+  const needed = Math.max(target.y / top, (layer.run - target.y) / (1 - top));
+  const zoom = Math.min(MAX_ZOOM, Math.max(1, needed / (image.h * base)));
+  const width = image.w * base * zoom;
+  const height = image.h * base * zoom;
+  return {
+    width,
+    height,
+    left: Math.min(0, Math.max(layer.w - width, target.x - subject.cx * width)),
+    top: Math.min(0, Math.max(layer.run - height, target.y - top * height)),
+  };
 }

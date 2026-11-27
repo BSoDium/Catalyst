@@ -324,6 +324,76 @@ def by_rod(rgb: np.ndarray, axis, half: float, flag):
     return fg.astype(np.uint8), (alpha * 255).astype(np.uint8)
 
 
+def recover_thin(rgb: np.ndarray, fg: np.ndarray, alpha: np.ndarray, height: float = 0.12, floor: float = 9.0, full: float = 22.0):
+    """Spires, pinnacles, finials, a star on a tower: narrower than the model sees (a quarter of 640 px), so its mask cuts them off and they hang in the sky. Above the skyline the sky is smooth: the picture with
+    everything thin taken out (a wide median) is the sky behind, and what differs from it, no higher than `height` over the subject and connected to it, is the subject. Its alpha is how much it differs (`floor` nothing,
+    `full` solid), its colour the picture's own."""
+    h, w = rgb.shape[:2]
+    k = max(15, int(0.035 * w)) | 1
+    behind = cv2.medianBlur(rgb, k)
+    lab = cv2.cvtColor(cv2.GaussianBlur(rgb, (0, 0), 0.6), cv2.COLOR_RGB2LAB).astype(np.float64)
+    diff = np.linalg.norm(lab - cv2.cvtColor(behind, cv2.COLOR_RGB2LAB).astype(np.float64), axis=2)
+    solid = (alpha > 127).astype(np.uint8)
+    # (a second look at the sky, spread from the clear sky away from the subject: at a building's corner the median mixes both and calls sky different from "behind"; what is really there is the sky's colour)
+    clear = ~cv2.dilate(solid, ellipse(k // 2)).astype(bool) & (diff < floor)
+    far = np.linalg.norm(lab - sky_colour(lab.astype(np.uint8), clear), axis=2)
+    diff = np.minimum(diff, far)
+    reach = int(height * h)
+    # (the pixels that have the subject below them within `reach`: the dilation looks downward from its anchor)
+    above = cv2.dilate(solid, np.ones((reach, 9), np.uint8), anchor=(4, 0)).astype(bool)
+    found = (diff > floor * 1.4) & above
+    joined = (solid.astype(bool) | cv2.dilate(found.astype(np.uint8), ellipse(1)).astype(bool)).astype(np.uint8)
+    n, labels = cv2.connectedComponents(joined, connectivity=8)
+    keep = np.zeros(n, bool)
+    keep[np.unique(labels[solid.astype(bool)])] = True
+    keep[0] = False
+    zone = cv2.dilate(found.astype(np.uint8), ellipse(1)).astype(bool) & keep[labels]
+    thin = np.clip((diff - floor) / (full - floor), 0, 1) * 255
+    take = zone & (thin > alpha)
+    out_fg = fg.copy()
+    out_fg[take] = rgb[take]
+    out = alpha.copy()
+    out[take] = thin[take].astype(np.uint8)
+    return out_fg, out
+
+
+def fill_holes(rgb: np.ndarray, fg: np.ndarray, alpha: np.ndarray, reach: int = 7):
+    """A slot in a statue or a window as bright as the sky is cut out of the subject: what is (nearly) closed in by the solid subject, and so not the sky, is made solid again. `reach`: how wide a mouth is closed to find it."""
+    solid = (alpha > 160).astype(np.uint8)
+    closed = cv2.morphologyEx(solid, cv2.MORPH_CLOSE, ellipse(reach))
+    outside = (1 - closed).astype(np.uint8)
+    n, labels = cv2.connectedComponents(outside, connectivity=4)
+    sky = np.unique(labels[0, :][outside[0, :] > 0])
+    hole = (closed > 0) | ((outside > 0) & ~np.isin(labels, sky))
+    hole &= alpha < 250
+    # (not the open edge: only what has solid on both sides across, well inside the shape)
+    inner = cv2.erode(closed, ellipse(2)).astype(bool) | (~np.isin(labels, sky) & (outside > 0))
+    take = hole & inner
+    out_fg, out = fg.copy(), alpha.copy()
+    out_fg[take] = rgb[take]
+    out[take] = 255
+    return out_fg, out
+
+
+def trim_edge(rgb: np.ndarray, fg: np.ndarray, alpha: np.ndarray, px: int = 1):
+    """The last cut: the edge is drawn in by `px` (a rim of half-sky round trees and roofs reads as a silver lining on the card), thin things (a mast, a spire, a cross) kept as they are; and what is still brighter than the
+    subject just inside, along the edge, takes the subject's colour."""
+    core = (alpha > 127).astype(np.uint8)
+    wide = cv2.morphologyEx(core, cv2.MORPH_OPEN, ellipse(px + 2))
+    thin = cv2.dilate((core & ~cv2.dilate(wide, ellipse(2))).astype(np.uint8), ellipse(1)).astype(bool)
+    out = np.where(thin, alpha, cv2.erode(alpha, ellipse(px)))
+    solid = cv2.erode(core, ellipse(px + 3)).astype(np.float64)
+    img = fg.astype(np.float64)
+    near = cv2.GaussianBlur(img * solid[:, :, None], (0, 0), 5)
+    weight = cv2.GaussianBlur(solid, (0, 0), 5)
+    inner = near / np.maximum(weight, 1e-6)[:, :, None]
+    luma = np.array([0.299, 0.587, 0.114])
+    rim = (out > 0) & (solid == 0) & ~thin & (weight > 0.02) & (img @ luma > inner @ luma + 12)
+    out_fg = fg.copy()
+    out_fg[rim] = inner[rim].astype(np.uint8)
+    return out_fg, out.astype(np.uint8)
+
+
 def by_polygon(rgb: np.ndarray, poly, band: int = 7, minus=None):
     """A hand-drawn polygon of the subject (shares of the picture): a band of unknown round its edge, matted."""
     h, w = rgb.shape[:2]
@@ -376,7 +446,7 @@ def main():
         if only and folder != only:
             continue
         src = "/media/" + path.relative_to(MEDIA).as_posix()
-        cfg = CONFIG.get(folder, {"mode": "vision"})
+        cfg = CONFIG.get(f"{folder}/{path.name}") or CONFIG.get(folder, {"mode": "vision"})
         out = path.with_name(path.name[: -len(".webp")] + ".cutout.webp")
         rgb = np.array(Image.open(path).convert("RGB"))
         mode = os.environ.get("CUTOUT_FORCE") or cfg["mode"]
@@ -389,12 +459,35 @@ def main():
                 fg, alpha = refine(rgb, alpha, cfg.get("band", 5))
         elif mode == "semantic":
             fg, alpha = by_semantic(rgb, cfg.get("classes"), cfg.get("band", 4), cfg.get("clear", 22), cfg.get("boost"), cfg.get("exclude"), cfg.get("crop"), cfg.get("darker", 28), cfg.get("grow", 0))
+            if cfg.get("spires"):
+                fg, alpha = recover_thin(rgb, fg, alpha)
+            if cfg.get("holes"):
+                fg, alpha = fill_holes(rgb, fg, alpha, cfg["holes"])
+            for outline in cfg.get("solid", []):
+                # (a shape drawn by hand where the model is unsure of a plain solid object: the picture's own pixels, whole, with a soft pixel of edge)
+                h_, w_ = rgb.shape[:2]
+                inside = np.zeros((h_, w_), np.uint8)
+                cv2.fillPoly(inside, [np.array([[x * w_ * 4, y * h_ * 4] for x, y in outline], np.int32)], 255, lineType=cv2.LINE_AA, shift=2)
+                take = inside > alpha
+                fg, alpha = fg.copy(), alpha.copy()
+                fg[inside > 40] = rgb[inside > 40]
+                alpha[take] = inside[take]
         elif mode == "sky":
             fg, alpha = by_sky(rgb, cfg.get("tol", 2), cfg.get("band", 4), cfg.get("pocket", 10), cfg.get("clear", 22), cfg.get("reach", 0.07))
+            if cfg.get("spires"):
+                fg, alpha = recover_thin(rgb, fg, alpha, floor=cfg.get("floor", 14), full=cfg.get("full", 30))
         elif mode == "rod":
             fg, alpha = by_rod(rgb, cfg["axis"], cfg["half"], cfg["flag"])
         elif mode == "polygon":
             fg, alpha = by_polygon(rgb, cfg["polygon"], cfg.get("band", 7), cfg.get("minus"))
+        if alpha is not None and "keep" in cfg:
+            # (an outline drawn by hand beyond which nothing is subject: the misty distance behind a city, which the model counts as not sky)
+            h_, w_ = rgb.shape[:2]
+            inside = np.zeros((h_, w_), np.uint8)
+            cv2.fillPoly(inside, [np.array([[x * w_ * 4, y * h_ * 4] for x, y in cfg["keep"]], np.int32)], 255, lineType=cv2.LINE_AA, shift=2)
+            alpha = np.minimum(alpha, cv2.GaussianBlur(inside, (0, 0), cfg.get("feather", 0.8)))
+        if alpha is not None and mode != "rod" and cfg.get("trim", 1):
+            fg, alpha = trim_edge(rgb, fg, alpha, cfg.get("trim", 1))
         s = stats(alpha, cfg.get("percentile", 15)) if alpha is not None else None
         if s is None:
             out.unlink(missing_ok=True)
@@ -405,6 +498,8 @@ def main():
             s["occlude"] = cfg["occlude"]
         if "top" in cfg:
             s["top"] = cfg["top"]
+        if "cx" in cfg:
+            s["cx"] = cfg["cx"]
         if cfg.get("force"):
             s["force"] = True
         if cfg.get("blend"):

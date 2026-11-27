@@ -9288,6 +9288,46 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
 .trip-subject {
   filter: var(--trip-subject-filter);
 }
+/* A trip picture's credit, up the right edge of its poster (components/trip-card.tsx): read from the bottom, small and see-through, a faint shade behind the letters so it reads on any picture. */
+.trip-credit {
+  position: absolute;
+  z-index: 1;
+  top: 10px;
+  right: 5px;
+  margin: 0;
+  max-height: 270px;
+  overflow: hidden;
+  white-space: nowrap;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-family: var(--font-meta);
+  font-size: 9px;
+  line-height: 1;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--foreground) 58%, transparent);
+  text-shadow: 0 0 6px var(--trip-glow);
+}
+
+/* The subject's shadow on the word (components/trip-map.tsx): the filter and the strength of each scheme. */
+.trip-shadow {
+  filter: var(--trip-shadow-filter);
+  opacity: var(--trip-shadow-opacity);
+}
+:root {
+  --trip-shadow-filter: url(#trip-shadow-light);
+  --trip-shadow-opacity: 0.38;
+}
+:root[data-scheme="dark"] {
+  --trip-shadow-filter: url(#trip-shadow-dark);
+  --trip-shadow-opacity: 0.55;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-scheme="light"]) {
+    --trip-shadow-filter: url(#trip-shadow-dark);
+    --trip-shadow-opacity: 0.55;
+  }
+}
 :root[data-scheme="dark"] {
   --trip-photo-filter: url(#trip-range-dark);
   --trip-subject-filter: url(#trip-subject-dark);
@@ -9313,10 +9353,12 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
   letter-spacing: calc(-0.02em + 0.041em * (1 - var(--g, 1)));
   opacity: calc(0.3 + 0.7 * var(--g, 1));
 }
-[data-slot="trip-word"] {
+[data-slot="trip-word"],
+[data-slot="trip-word-mask"] {
   font-weight: 800;
 }
-.trip-slide [data-slot="trip-word"] {
+.trip-slide [data-slot="trip-word"],
+.trip-slide [data-slot="trip-word-mask"] {
   font-weight: calc(200 + 600 * var(--g, 1));
 }
 .trip-slide [data-slot="trip-position"] {
@@ -9333,7 +9375,7 @@ body:has(.landing-hero[data-hero="rest"]) .map-credits {
 .trip-slide [data-slot="trip-footer"] {
   opacity: clamp(0, calc((var(--g, 1) - 0.35) * 2.2), 1);
 }
-.trip-slide :is([data-slot="trip-poster"], [data-slot="trip-word-layer"]) :is(polyline, rect, text:not([data-slot="trip-word"])) {
+.trip-slide :is([data-slot="trip-poster"], [data-slot="trip-word-layer"]) :is(polyline, rect, text:not([data-slot="trip-word"], [data-slot="trip-word-mask"])) {
   opacity: calc(0.2 + 0.8 * var(--g, 1));
 }
 .trip-slide [data-slot="trip-poster-box"] {

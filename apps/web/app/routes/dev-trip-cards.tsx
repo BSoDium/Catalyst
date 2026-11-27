@@ -1,5 +1,5 @@
 /**
- * DEV ONLY: `/dev/trip-cards` is a gallery of the trip cards (#510), a storybook for the subject cutout: every trip of the content with its own photograph, and every photograph
+ * DEV ONLY: `/dev/trip-cards` is a gallery of the trip cards (#510), a storybook for the subject cutout: every trip of the content with its own photograph, the card as the place panel lays it out (one, a pair, the carousel), and every photograph
  * (and route picture) on a trip of your choice, at several widths, each card resizable by its corner (the cards are resizable in the app too), with the cutout on or off, light or
  * dark. A card says what Vision found in its picture (the share the subject covers) and whether the poster uses it. It exists only where `routes.ts` includes it (development,
  * or CATALYST_DEV_ROUTES=1) and answers 404 anywhere else.
@@ -8,7 +8,7 @@
  */
 import { useEffect, useMemo } from "react";
 import { data, useLoaderData, useSearchParams } from "react-router";
-import { TripCard } from "~/components/trip-card";
+import { TripCard, TripCards } from "~/components/trip-card";
 import { TripPhotoFilters, TripPoster } from "~/components/trip-map";
 import { getProjection } from "~/lib/content.server";
 import { CUTOUT_MAX, CUTOUT_MIN, cutoutOf, rawCutoutOf } from "~/lib/cutout";
@@ -35,7 +35,11 @@ export async function loader() {
     ...projection.photographs.filter((p) => p.cover).map((p) => ({ id: p.slug, label: p.slug, photo: { src: p.cover!.src, width: p.cover!.width, ...(p.cover!.small ? { small: p.cover!.small } : {}) } })),
     ...projection.routes.flatMap((r) => (r.image ? [{ id: `${r.id}-image`, label: `${r.id} (route picture)`, photo: { src: r.image.src, width: r.image.width, ...(r.image.small ? { small: r.image.small } : {}) } }] : [])),
   ];
-  return { trips, pictures };
+  // The card as the place panel lays it out: a place with one trip (a card), with two (a pair), and the one with the most (the carousel).
+  const byPlace = projection.places.map((p) => ({ here: p.slug, name: p.name, trips: tripsOf(projection, p.slug) })).filter((p) => p.trips.length > 0);
+  const most = [...byPlace].sort((a, b) => b.trips.length - a.trips.length)[0];
+  const layouts = [byPlace.find((p) => p.trips.length === 1 && p.trips[0]!.photo), byPlace.find((p) => p.trips.length === 2), most && most.trips.length > 2 ? most : undefined].filter((p) => p !== undefined);
+  return { trips, pictures, layouts };
 }
 
 export function meta() {
@@ -43,6 +47,8 @@ export function meta() {
 }
 
 const WIDTHS = [320, 480, 720];
+/** The panel's widths: a phone's, a narrow panel's and a wide one's. */
+const PANEL_WIDTHS = [375, 600, 900];
 
 function useForcedScheme(scheme: string | null) {
   useEffect(() => {
@@ -65,7 +71,7 @@ function Resizable({ width, children }: { width: number; children: React.ReactNo
 const CHECKER = "repeating-conic-gradient(#8884 0% 25%, transparent 0% 50%) 50% / 14px 14px";
 
 export default function DevTripCards() {
-  const { trips, pictures } = useLoaderData<typeof loader>();
+  const { trips, pictures, layouts } = useLoaderData<typeof loader>();
   const [params, setParams] = useSearchParams();
   const scheme = params.get("scheme");
   useForcedScheme(scheme);
@@ -131,6 +137,26 @@ export default function DevTripCards() {
         </div>
       </header>
 
+      <section className="flex flex-col gap-6">
+        <h2 className="m-0 text-lg font-semibold">In the place panel: one trip, two, and a carousel</h2>
+        {layouts.map((l) => (
+          <div key={l.here} className="flex flex-col gap-2">
+            <p className="m-0 font-mono text-xs text-muted-foreground">
+              {l.name} · {l.trips.length} {l.trips.length === 1 ? "trip" : "trips"}
+            </p>
+            <div className="flex flex-wrap items-start gap-4">
+              {PANEL_WIDTHS.map((w) => (
+                <Resizable key={w} width={w}>
+                  <div className="p-4">
+                    <TripCards trips={l.trips} here={l.here} />
+                  </div>
+                </Resizable>
+              ))}
+            </div>
+          </div>
+        ))}
+      </section>
+
       <section className="flex flex-col gap-4">
         <h2 className="m-0 text-lg font-semibold">The trips, each with its own picture</h2>
         {trips.map(({ trip, here }) => {
@@ -138,7 +164,7 @@ export default function DevTripCards() {
           return (
             <div key={trip.id} className="flex flex-col gap-2">
               <p className="m-0 font-mono text-xs text-muted-foreground">
-                {trip.id} · {trip.word} · {trip.photo ? (raw ? `subject ${Math.round(raw.coverage * 100)}%${cutoutOf(trip.photo.src) ? "" : " (not used)"}` : "no subject found") : "no picture"}
+                {trip.id} · {trip.word} · {trip.photo ? (raw?.placeOnly ? "placed by its edge, no cutout" : raw ? `subject ${Math.round(raw.coverage * 100)}%${cutoutOf(trip.photo.src) ? "" : " (not used)"}` : "no subject found") : "no picture"}
               </p>
               <div className="flex flex-wrap items-start gap-4">
                 {widths.map((w) => (
@@ -172,7 +198,7 @@ export default function DevTripCards() {
               return (
                 <figure key={pic.id} className="m-0 flex flex-col gap-1.5">
                   <figcaption className="font-mono text-xs text-muted-foreground">
-                    {pic.label} · {raw ? `subject ${Math.round(raw.coverage * 100)}%${used ? "" : " (not used)"}` : "no subject found"}
+                    {pic.label} · {raw?.placeOnly ? "placed by its edge, no cutout" : raw ? `subject ${Math.round(raw.coverage * 100)}%${used ? "" : " (not used)"}` : "no subject found"}
                   </figcaption>
                   <div className="flex items-start gap-3">
                     {widths.map((w) => (
@@ -183,7 +209,7 @@ export default function DevTripCards() {
                       </Resizable>
                     ))}
                     <div className="h-24 w-20 shrink-0 border border-border" style={{ background: CHECKER }}>
-                      {raw && <img src={raw.src} alt="" className="size-full object-contain" />}
+                      {raw && !raw.placeOnly && <img src={raw.src} alt="" className="size-full object-contain" />}
                     </div>
                   </div>
                 </figure>

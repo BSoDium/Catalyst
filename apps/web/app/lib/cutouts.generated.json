@@ -1,6 +1,6 @@
 {
  "/media/photograph/amber-gateway/photo.fc3a7f03.webp": {
-  "coverage": 0.714,
+  "coverage": 0.711,
   "cx": 0.526,
   "cy": 0.475,
   "top": 0.0,
@@ -11,36 +11,20 @@
    0.999
   ]
  },
- "/media/photograph/bow-of-a-boat/photo.4e8a3272.webp": {
-  "coverage": 0.005,
-  "cx": 0.349,
-  "cy": 0.432,
-  "top": 0.6227,
-  "box": [
-   0.311,
-   0.268,
-   0.381,
-   0.675
-  ],
-  "occlude": 0.0,
-  "force": true,
-  "blend": true,
-  "placeOnly": true
- },
  "/media/photograph/carrying-the-float/photo.0d912656.webp": {
-  "coverage": 0.278,
+  "coverage": 0.276,
   "cx": 0.441,
   "cy": 0.77,
-  "top": 0.517,
+  "top": 0.518,
   "box": [
-   0.095,
-   0.499,
-   0.848,
+   0.096,
+   0.5,
+   0.846,
    0.999
   ]
  },
  "/media/photograph/concrete-terraces/photo.58bf68fc.webp": {
-  "coverage": 0.985,
+  "coverage": 0.984,
   "cx": 0.503,
   "cy": 0.505,
   "top": 0.0,
@@ -55,67 +39,55 @@
   "coverage": 0.015,
   "cx": 0.629,
   "cy": 0.365,
-  "top": 0.288,
+  "top": 0.289,
   "box": [
    0.538,
-   0.282,
+   0.283,
    0.709,
-   0.456
+   0.455
   ]
  },
  "/media/photograph/flooded-street/photo.ff185bdd.webp": {
-  "coverage": 0.102,
-  "cx": 0.713,
-  "cy": 0.688,
-  "top": 0.472,
+  "coverage": 0.1,
+  "cx": 0.714,
+  "cy": 0.689,
+  "top": 0.473,
   "box": [
-   0.052,
-   0.459,
+   0.053,
+   0.46,
    0.999,
-   0.988
+   0.987
   ]
  },
  "/media/photograph/flower-bearers/photo.ddbd983c.webp": {
-  "coverage": 0.38,
-  "cx": 0.392,
-  "cy": 0.649,
-  "top": 0.26,
+  "coverage": 0.377,
+  "cx": 0.391,
+  "cy": 0.65,
+  "top": 0.261,
   "box": [
-   0.028,
-   0.24,
-   0.863,
+   0.029,
+   0.241,
+   0.862,
    0.999
   ]
  },
  "/media/photograph/minaret-and-rooftops/photo.02045418.webp": {
-  "coverage": 0.115,
+  "coverage": 0.113,
   "cx": 0.634,
-  "cy": 0.656,
+  "cy": 0.657,
   "top": 0.277,
   "box": [
    0.402,
-   0.219,
-   0.972,
-   0.882
-  ]
- },
- "/media/photograph/museum-and-flags/photo.14868bea.webp": {
-  "coverage": 0.634,
-  "cx": 0.431,
-  "cy": 0.627,
-  "top": 0.225,
-  "box": [
-   0.0,
-   0.208,
-   0.999,
-   0.999
+   0.22,
+   0.971,
+   0.881
   ]
  },
  "/media/photograph/orange-train/photo.a7408ca6.webp": {
-  "coverage": 0.603,
+  "coverage": 0.601,
   "cx": 0.504,
-  "cy": 0.665,
-  "top": 0.356,
+  "cy": 0.664,
+  "top": 0.357,
   "box": [
    0.0,
    0.353,
@@ -124,130 +96,106 @@
   ]
  },
  "/media/photograph/painted-boats/photo.972ece3b.webp": {
-  "coverage": 0.389,
-  "cx": 0.492,
-  "cy": 0.552,
-  "top": 0.267,
+  "coverage": 0.387,
+  "cx": 0.491,
+  "cy": 0.553,
+  "top": 0.269,
   "box": [
    0.0,
    0.205,
    0.999,
-   0.816
+   0.815
   ]
  },
  "/media/photograph/palm-and-flags/photo.a0de4acc.webp": {
-  "coverage": 0.126,
+  "coverage": 0.121,
   "cx": 0.603,
-  "cy": 0.606,
-  "top": 0.155,
+  "cy": 0.604,
+  "top": 0.156,
   "box": [
    0.0,
-   0.116,
+   0.117,
    0.999,
    0.999
   ]
  },
  "/media/photograph/pointing-at-the-hills/photo.7e4ce076.webp": {
-  "coverage": 0.057,
-  "cx": 0.497,
+  "coverage": 0.055,
+  "cx": 0.496,
   "cy": 0.597,
-  "top": 0.407,
+  "top": 0.408,
   "box": [
-   0.386,
-   0.404,
+   0.388,
+   0.405,
    0.711,
-   0.829
+   0.827
   ]
  },
  "/media/photograph/speedboat-on-the-napo/photo.e9ea0302.webp": {
-  "coverage": 0.071,
+  "coverage": 0.07,
   "cx": 0.552,
   "cy": 0.568,
-  "top": 0.336,
+  "top": 0.337,
   "box": [
-   0.431,
-   0.334,
-   0.696,
-   0.887
-  ]
- },
- "/media/photograph/two-coffees-and-an-armband/photo.ac29ed27.webp": {
-  "coverage": 0.322,
-  "cx": 0.472,
-  "cy": 0.48,
-  "top": 0.087,
-  "box": [
-   0.098,
-   0.063,
-   0.834,
-   0.935
+   0.432,
+   0.335,
+   0.695,
+   0.886
   ]
  },
  "/media/photograph/unloading-at-the-bank/photo.0dcaccfe.webp": {
-  "coverage": 0.031,
-  "cx": 0.53,
+  "coverage": 0.03,
+  "cx": 0.529,
   "cy": 0.551,
-  "top": 0.242,
+  "top": 0.244,
   "box": [
-   0.413,
-   0.227,
+   0.414,
+   0.228,
    0.687,
-   0.842
+   0.841
   ]
  },
  "/media/photograph/wake/photo.0fa0d9dc.webp": {
-  "coverage": 0.405,
+  "coverage": 0.402,
   "cx": 0.461,
-  "cy": 0.749,
+  "cy": 0.75,
   "top": 0.441,
   "box": [
    0.0,
-   0.244,
-   0.957,
+   0.245,
+   0.956,
    0.999
   ]
  },
  "/media/photograph/walkway-at-dusk/photo.f576c0bb.webp": {
-  "coverage": 0.014,
+  "coverage": 0.013,
   "cx": 0.27,
   "cy": 0.664,
   "top": 0.568,
   "box": [
-   0.22,
-   0.564,
-   0.335,
-   0.772
+   0.221,
+   0.565,
+   0.334,
+   0.771
   ]
  },
  "/media/photograph/watermelons-on-deck/photo.9ef0ee98.webp": {
-  "coverage": 0.365,
-  "cx": 0.225,
+  "coverage": 0.363,
+  "cx": 0.224,
   "cy": 0.467,
   "top": 0.0,
   "box": [
    0.0,
    0.0,
-   0.502,
-   0.999
-  ]
- },
- "/media/routes/trip-01/image.025694f0.webp": {
-  "coverage": 0.446,
-  "cx": 0.508,
-  "cy": 0.774,
-  "top": 0.501,
-  "box": [
-   0.0,
-   0.472,
-   0.999,
+   0.501,
    0.999
   ]
  },
  "/media/routes/trip-04/image.6926b256.webp": {
-  "coverage": 0.573,
+  "coverage": 0.572,
   "cx": 0.521,
-  "cy": 0.71,
-  "top": 0.356,
+  "cy": 0.711,
+  "top": 0.358,
   "box": [
    0.0,
    0.284,
@@ -255,45 +203,82 @@
    0.999
   ]
  },
- "/media/routes/trip-06/image.d58def05.webp": {
-  "coverage": 0.506,
-  "cx": 0.496,
-  "cy": 0.738,
-  "top": 0.47,
+ "/media/routes/trip-05/image.fbcacd47.webp": {
+  "coverage": 0.376,
+  "cx": 0.27,
+  "cy": 0.811,
+  "top": 0.623,
   "box": [
    0.0,
-   0.012,
+   0.529,
    0.999,
    0.999
   ],
-  "occlude": 0.3,
-  "placeOnly": true
+  "occlude": 0.05
  },
- "/media/routes/trip-08/image.f751a130.webp": {
-  "coverage": 0.49,
-  "cx": 0.5,
-  "cy": 0.754,
-  "top": 0.493,
+ "/media/routes/trip-06/image.daf57215.webp": {
+  "coverage": 0.447,
+  "cx": 0.506,
+  "cy": 0.775,
+  "top": 0.525,
   "box": [
    0.0,
-   0.463,
+   0.505,
    0.999,
    0.999
   ],
-  "occlude": 0.5,
-  "placeOnly": true
+  "occlude": 0.17
+ },
+ "/media/routes/trip-07/image.dd832bb1.webp": {
+  "coverage": 0.371,
+  "cx": 0.495,
+  "cy": 0.814,
+  "top": 0.623,
+  "box": [
+   0.0,
+   0.589,
+   0.999,
+   0.999
+  ],
+  "occlude": 0.1
+ },
+ "/media/routes/trip-08/image.5a1d8f09.webp": {
+  "coverage": 0.506,
+  "cx": 0.494,
+  "cy": 0.745,
+  "top": 0.465,
+  "box": [
+   0.0,
+   0.272,
+   0.999,
+   0.999
+  ],
+  "occlude": 0.14
  },
  "/media/routes/trip-10/image.22358507.webp": {
-  "coverage": 0.548,
-  "cx": 0.501,
-  "cy": 0.725,
-  "top": 0.427,
+  "coverage": 0.533,
+  "cx": 0.495,
+  "cy": 0.732,
+  "top": 0.421,
   "box": [
    0.0,
-   0.381,
+   0.36,
    0.999,
    0.999
   ],
   "occlude": 0.3
+ },
+ "/media/routes/trip-01/image.f0546c64.webp": {
+  "coverage": 0.41,
+  "cx": 0.3,
+  "cy": 0.793,
+  "top": 0.589,
+  "box": [
+   0.0,
+   0.368,
+   0.999,
+   0.999
+  ],
+  "occlude": 0.1
  }
 }
